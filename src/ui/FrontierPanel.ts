@@ -9,8 +9,8 @@ export class FrontierPanel {
   private frontier: FrontierManager;
   private onPurchase: (building: FrontierBuilding) => void;
   private onAction: (action: string, buildingIdx: number) => void;
-  private ownedContainer: Phaser.GameObjects.Container;
-  private ownedTexts: Phaser.GameObjects.GameObject[] = [];
+  private ownedItems: Phaser.GameObjects.GameObject[] = [];
+  private ownedStartY: number = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -25,11 +25,8 @@ export class FrontierPanel {
 
     const topY = SendPanel.HEIGHT;
     this.container = scene.add.container(0, topY).setDepth(28);
-    this.ownedContainer = scene.add.container(0, 0);
 
     this.buildPanel();
-    // Add ownedContainer AFTER buildPanel so it renders on top of the background
-    this.container.add(this.ownedContainer);
     this.updateOwned();
   }
 
@@ -49,13 +46,11 @@ export class FrontierPanel {
     });
     this.container.add(title);
 
-    // Available buildings to purchase
     let y = 26;
     for (const building of this.frontier.availableBuildings) {
       const text = this.scene.add.text(8, y, `[Buy] ${building.name} (${building.cost}g)`, {
         fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
       });
-      // Add to container FIRST, then set interactive
       this.container.add(text);
       text.setInteractive({ useHandCursor: true });
       text.on('pointerdown', () => this.onPurchase(building));
@@ -71,38 +66,39 @@ export class FrontierPanel {
       y += desc.height + 8;
     }
 
-    // Divider
     const divider = this.scene.add.graphics();
     divider.lineStyle(1, 0x444444, 0.5);
     divider.lineBetween(8, y, panelW - 8, y);
     this.container.add(divider);
     y += 6;
 
-    // "Owned" label
     const ownedLabel = this.scene.add.text(8, y, 'Owned Buildings:', {
       fontSize: '10px', color: '#88ff88', fontFamily: 'monospace',
     });
     this.container.add(ownedLabel);
 
-    this.ownedContainer.setPosition(0, y + 16);
+    this.ownedStartY = y + 16;
   }
 
   updateOwned(): void {
-    for (const obj of this.ownedTexts) obj.destroy();
-    this.ownedTexts = [];
+    // Remove old owned items from container and destroy
+    for (const obj of this.ownedItems) {
+      this.container.remove(obj, true);
+    }
+    this.ownedItems = [];
 
     const active = this.frontier.getActiveBuildings();
+    let y = this.ownedStartY;
 
     if (active.length === 0) {
-      const empty = this.scene.add.text(12, 0, '(none)', {
+      const empty = this.scene.add.text(12, y, '(none)', {
         fontSize: '9px', color: '#555555', fontFamily: 'monospace',
       });
-      this.ownedContainer.add(empty);
-      this.ownedTexts.push(empty);
+      this.container.add(empty);
+      this.ownedItems.push(empty);
       return;
     }
 
-    let y = 0;
     for (let i = 0; i < active.length; i++) {
       const b = active[i];
 
@@ -118,11 +114,10 @@ export class FrontierPanel {
       const nameText = this.scene.add.text(12, y, `${b.def.name}${status}`, {
         fontSize: '9px', color: statusColor, fontFamily: 'monospace',
       });
-      this.ownedContainer.add(nameText);
-      this.ownedTexts.push(nameText);
+      this.container.add(nameText);
+      this.ownedItems.push(nameText);
       y += 14;
 
-      // Action button based on mechanic
       const idx = i;
       if (b.def.mechanic === 'overcharge' && b.dormantWaves === 0) {
         y += this.createActionButton(16, y, '[Overcharge 3x]', '#ffaa44', () => {
@@ -146,23 +141,21 @@ export class FrontierPanel {
     const summary = this.scene.add.text(8, y + 4, `Frontier base income: +${totalIncome}/w`, {
       fontSize: '9px', color: '#888888', fontFamily: 'monospace',
     });
-    this.ownedContainer.add(summary);
-    this.ownedTexts.push(summary);
+    this.container.add(summary);
+    this.ownedItems.push(summary);
   }
 
-  /** Creates an action button, returns height consumed */
   private createActionButton(x: number, y: number, label: string, color: string, onClick: () => void): number {
     const btn = this.scene.add.text(x, y, label, {
       fontSize: '9px', color, fontFamily: 'monospace',
     });
-    // Add to container FIRST, then set interactive
-    this.ownedContainer.add(btn);
+    this.container.add(btn);
     btn.setInteractive({ useHandCursor: true });
     btn.on('pointerdown', onClick);
     btn.on('pointerover', () => btn.setColor('#ffffff'));
     btn.on('pointerout', () => btn.setColor(color));
 
-    this.ownedTexts.push(btn);
+    this.ownedItems.push(btn);
     return btn.height + 4;
   }
 }
