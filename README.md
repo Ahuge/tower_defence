@@ -1,6 +1,8 @@
 # Tower Defence
 
-A grid-based maze-building tower defence game built with Phaser 3 + TypeScript + Vite.
+A grid-based maze-building tower defence game with 11 factions, P2P multiplayer, and deep economic strategy. Built with Phaser 3 + TypeScript + Vite.
+
+**[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Changelog](CHANGELOG.md)
 
 ## Quick Start
 ```bash
@@ -10,125 +12,89 @@ npm run dev
 
 ## Game Overview
 
-Build towers to create mazes, defend against waves of creeps, manage your economy across three investment channels (towers, sends, frontier), and leverage your faction's unique strengths.
+Build towers to create mazes, defend against 14 creep types across 30+ waves, manage your economy across three channels (towers, sends, frontier), and leverage your faction's unique strengths. Play solo or versus a friend via peer-to-peer WebRTC.
 
 ### Match Flow
-1. **Menu** — Choose map (Plains/Crossroads/Fortress), difficulty (Easy/Normal/Hard), and match mode (Sprint 15w / Standard 30w / Marathon endless)
-2. **Faction Select** — Pick from 5 factions with unique tower rosters, or Random for a rotating pool
-3. **Draft** — Choose 1 of 3 random modifiers (Gold Rush, Rapid Fire, Glass Cannon, etc.)
-4. **Game** — Build, defend, invest. Press SPACE to start waves.
-5. **Score Screen** — Detailed breakdown: tower DPS, gold efficiency, frontier ROI
+1. **Menu** — Choose map (8 options), difficulty (Easy/Normal/Hard), match mode (Sprint/Standard/Marathon)
+2. **Faction Select** — Pick from 11 factions with unique tower rosters
+3. **Draft** — Choose 1 of 3 random modifiers (Gold Rush, Glass Cannon, etc.)
+4. **Game** — Build, defend, invest. Press SPACE to start waves. TAB to change speed.
+5. **Score Screen** — Tower DPS tables, economy breakdown, gold efficiency, MVP awards
 
 ### Controls
 | Key | Action |
 |-----|--------|
 | 1-8 | Select tower type |
 | Click tower button | Select/deselect tower type |
-| Left click (grid) | Build tower / Inspect tower / Inspect creep |
+| Left click (grid) | Build / Inspect tower / Inspect creep |
 | Right click | Sell tower |
 | Z/X/C/V | Buy sends (Standard/Fast/Armored/Swarm) |
-| SPACE | Start next wave |
-| P | Pause menu (Resume / Exit to Menu) |
+| SPACE | Start next wave / Vote ready (versus) |
+| TAB | Cycle game speed (0x/0.5x/1x/1.5x/2x/3x) |
+| P | Pause menu |
+| ENTER | Chat (versus mode) |
 | ESC | Deselect |
+
+## Factions (11)
+
+| Faction | Towers | Identity |
+|---------|--------|----------|
+| Arcane | 7 | Crits, AoE, spell amplification |
+| Mechanical | 8 | Burn, pierce, ramp-up, engineering |
+| Nature | 6 | Poison, growth, adjacency synergy |
+| Void | 5 | Gambling, gold gen, teleportation |
+| Military | 6 | Mobile units that move to engage |
+| Spawn Aliens | 7 | Extreme fire rates, swarm tactics |
+| Cypherpunk | 7 | Firewall beams, viruses, hacking |
+| Infernal | 6 | Expiring towers, decay, kamikaze sacrifice |
+| Celestial | 5 | Life gain, leak absorption, mage silencing |
+| Psionic | 5 | True damage (ignores armor), confusion |
+| Random | 6/wave | Rotating pool from all factions |
+
+See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.
 
 ## Major Systems
 
 ### Trait System
-All tower and creep behaviors are composable **traits** — data objects with registered handler functions. Instead of `if (ability === 'chain') {...}`, you compose:
+All behaviors are composable traits — data objects with registered handler functions:
 ```
 Tesla: [chain_damage(count:2, range:96, falloff:0.7)]
-Frost: [direct_damage, slow_on_hit(duration:2500, factor:0.35)]
-Titan: [splash_damage(96), burn_dot(dps:25), armor_shred(amount:2)]
+Fiend: [mobile_unit(speed:180, engageRange:0.5, selfDestruct:true)]
+Absolution: [splash_damage(72), life_on_kill(0.10), mute_mage_aura, bonus_vs_boss(0.3)]
 ```
 
-Traits have lifecycle hooks: `onHit`, `modifyDamage`, `modifyFireRate`, `onFire`, `onUpdate`. Adding a new behavior = register a handler function + add the trait to tower data.
-
-**Tower traits:** direct_damage, splash_damage, chain_damage, pierce_delivery, teleport_delivery, tower_aura_damage, slow_on_hit, burn_dot, poison_dot, gold_on_hit, strip_shield, armor_shred, damage_amp, root_on_hit, crit_chance, jackpot, damage_variance, ramp_up, adjacency_buff, spell_amp, overclock_buff, slow_aura, growth_scaling, fire_rate_mult, damage_mult
-
-**Creep traits:** shield, evasion, heal_aura, flat_heal_aura, armor_aura, speed_aura, evasion_aura, split_on_death
-
-### Difficulty System
-Three levels (Easy/Normal/Hard) produce `DifficultyHints` with toughness, count, speed, and goldMult modifiers. Each creep type has `applyDifficulty()` that interprets hints according to its identity — armored creeps scale HP hard but don't multiply, swarms multiply aggressively, fast creeps get faster not tougher.
+### Creep Types (14)
+Standard, Fast, Armored, Swarm, Healer, Boss, Group, Splitter, Shielded, Evasive, Flying, Iron/Haste/Mist/Heal Mage.
 
 ### Economy Triangle
-Three ways to spend gold, creating strategic tension:
 - **Towers** — Direct defence
-- **Sends** — Spend gold to add extra creeps to your own wave for permanent income bonus
-- **Frontier** — Invest in passive income buildings with faction-flavored mechanics (overcharge, dig, grow, gamble)
+- **Sends** — Spend gold to add creeps to your wave for permanent income bonus (in versus: sends go to opponent)
+- **Frontier** — Invest in passive income buildings with faction-flavored mechanics
 
-### Selection Modes
-Three-mode system for clean interaction:
-- **Build mode** — Tower bar active, click to place
-- **Inspect mode** — Click placed tower for stats/upgrade, click creep for HP/effects
-- **None mode** — Nothing selected, click tower/creep to inspect
+### Difficulty System
+Easy/Normal/Hard. Each creep type interprets difficulty individually — armored gets tankier, swarms multiply, fast creeps get faster.
 
-### Pathfinding
-A* pathfinding with 4-directional movement. Tower placement validates path isn't blocked. Creep paths update dynamically when towers are placed/sold. Flying creeps bypass pathfinding entirely.
+### Multiplayer (P2P WebRTC)
+- No server required — manual SDP exchange via clipboard
+- Host picks map + difficulty, both pick factions
+- Sends go to opponent as extra creeps
+- 30s wave countdown (60s for first wave), vote ready with SPACE
+- Opponent minimap with click-to-swap full view
+- In-game chat via ENTER
+- Mirrored waves (shared seed)
 
-### Maps
-- **Plains** — Open field with scattered no-build tiles
-- **Crossroads** — Two entries converge, no-build near intersection
-- **Fortress** — Three entries, center exit, wall ring with no-build interior
-
-### Stats & Scoring
-Full game statistics tracked per tower type: total damage, average DPS, gold earned, shots fired. Economy stats: frontier ROI, send investment, kill efficiency. Score = waves * 100 + kills * 2 + gold + win bonus.
+### Maps (8)
+Plains, Crossroads, Fortress, Serpentine, Islands, Gauntlet, Spiral, Siege.
 
 ## Tech Stack
-- **Phaser 3.90** — Game framework (WebGL rendering, scene management, input)
+- **Phaser 3.90** — WebGL rendering, scene management, input
 - **TypeScript 5.9** — Type safety
-- **Vite 8** — Build tooling with HMR
+- **Vite 8** — Build + HMR
+- **WebRTC** — P2P multiplayer (no server)
 
-## File Structure
+## Deploy
+```bash
+npm run build
+# Upload dist/ to any static host
 ```
-src/
-  config.ts              — Grid/sidebar constants, coordinate helpers
-  main.ts                — Game init + trait handler registration
-  data/
-    TowerTypes.ts        — 30 tower definitions with traits, costs, upgrades
-    CreepTypes.ts        — 14 creep types with difficulty scaling
-    Factions.ts          — 5 factions (Arcane/Mechanical/Nature/Void/Random)
-    Maps.ts              — 3 map layouts with blocked + no-build terrain
-    Difficulty.ts        — Easy/Normal/Hard modifier definitions
-    WaveDefinitions.ts   — Wave composition generator
-    DraftModifiers.ts    — 8 draft modifier definitions
-    FrontierBuildings.ts — Frontier buildings per faction
-    SendCreepTypes.ts    — 4 send options
-  entities/
-    Tower.ts             — Tower entity with trait pipeline, projectile system
-    Creep.ts             — Creep entity with status effects, trait hooks
-    Fighter.ts           — Autonomous fighter units
-  scenes/
-    MenuScene.ts         — Map + difficulty + mode selection
-    FactionSelectScene.ts — Faction cards with tower lists
-    DraftScene.ts        — Modifier draft pick
-    GameScene.ts         — Main gameplay orchestrator
-    GameOverScene.ts     — Score screen with detailed stats
-  systems/
-    Grid.ts              — Cell types (Empty/Tower/Entry/Exit/Blocked/NoBuild)
-    Pathfinding.ts       — A* algorithm
-    EventBus.ts          — Typed event emitter
-    EconomyManager.ts    — Gold tracking
-    SpawnManager.ts      — Wave spawning with difficulty scaling
-    SendManager.ts       — Send creep spawning with adaptive batching
-    IncomeManager.ts     — Wave income tracking
-    FrontierManager.ts   — Frontier buildings + faction mechanics
-    FighterManager.ts    — Fighter unit management
-    StatusEffects.ts     — Slow/burn/poison/root/shred/amp/evasion
-    StatsTracker.ts      — Per-tower-type game statistics
-    InputManager.ts      — Mouse/keyboard abstraction
-    UIOverlay.ts         — HUD status bar
-    traits/
-      Trait.ts           — Core trait interface, registry, resolution pipeline
-      TowerTraitHandlers.ts — All tower trait implementations
-      CreepTraitHandlers.ts — All creep trait implementations
-  ui/
-    TowerSelectBar.ts    — Tower hotbar with click zones + tooltips
-    TowerInfoPanel.ts    — Tower stats, upgrade preview, aura indicators
-    CreepInfoPanel.ts    — Creep HP/armor/status inspection
-    SendPanel.ts         — Send purchase panel with Z/X/C/V hotkeys
-    FrontierPanel.ts     — Frontier buy/manage with grouped view
-    FighterPanel.ts      — Fighter purchase panel
-    UpcomingWaves.ts     — Next 3 waves preview
-    IncomeDisplay.ts     — Income breakdown display
-    EventLog.ts          — Scrolling event log
-```
+Auto-deploys to GitHub Pages on push to `develop`.

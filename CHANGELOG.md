@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-03-17
+
+### Documentation Overhaul
+- Updated CLAUDE.md with documentation rules, multiplayer architecture, all current design decisions.
+- Updated README.md with 11 factions, 8 maps, multiplayer, all controls.
+- Updated FACTIONS.md with all 11 factions including lore quotes, tower tables, and frontier buildings.
+
+### Initial Speed Sync
+- Host sends current game speed to joiner on game start (was only synced on TAB press).
+
+### Lobby Faction Grid
+- Faction picker in multiplayer lobby now uses a 2-row grid (6 columns) instead of overflowing single row.
+
+### Firewall Beam Visual + Faction Aura Fix
+- Firewall towers now draw a cyan beam between linked pairs (redraws each frame).
+- Faction speed aura (_faction_rate_buff) shows pink glow on buffed towers.
+
+### 5 New Maps (8 total)
+- **Serpentine**: Pre-built snake maze with S-curves. Limited build space.
+- **Islands**: 4 build zones separated by no-build rivers.
+- **Gauntlet**: 4 entries (all sides), center exit. Hardest map.
+- **Spiral**: Concentric walls, entry at corner, exit at center. Long path.
+- **Siege**: Mirrored top/bottom halves. Designed for versus.
+
+### Multi-Spawn, Scoreboard Fix, Frontier Rework, Mobile Units, Kamikaze
+- Creeps now spawn from ALL entry points (round-robin distribution).
+- Scoreboard economy section is now a proper table, positioned dynamically.
+- Unique frontier buildings per new faction (Breeding Pool, Crypto Mine, Soul Well, etc.).
+- **Alien Swarmling** (15g): cheap mobile melee unit, stackable.
+- **Infernal Fiend** (20g): kamikaze — sprints to creep, explodes for 80 AoE, self-destructs.
+- Tower lifecycle: expires_after_waves, decay_per_wave, life_on_kill, leak_absorb all wired.
+
+### 5 New Factions (11 total)
+- **Spawn Aliens** (7): Spitter, Stinger, Swarm Node, Acid Sprayer, Hive Spire, Swarmling, Overmind. Extreme fire rates, faction speed aura.
+- **Cypherpunk** (7): Ping, Firewall (linked beams), Virus (spreading DoT), Backdoor (hack reverse), DDoS (AoE root), Rootkit (mute + shred), Zero Day. Digital warfare.
+- **Infernal** (6): Imp (expires), Hellfire (decays), Soul Drain (gold/kill), Fiend (kamikaze), Immolate, Apocalypse. Sacrifice and decay.
+- **Celestial** (5): Acolyte (life on kill), Ward (mute mages), Smite (+50% vs boss), Sanctuary (absorb leaks), Absolution. Holy protection.
+- **Psionic** (5): Probe (true damage), Mesmer (confusion), Terror (fear aura), Mind Spike (+50% vs mages), Overmind. True damage ignoring armor.
+- New traits: true_damage, confuse_on_hit, life_on_kill, mute_mage_aura, leak_absorb, bonus_vs_boss/mage, firewall_link, virus_spread, hack_reverse, expires_after_waves, decay_per_wave, gold_per_kill_range, faction_speed_aura, damage_cap_shield.
+- Creep confusion (walk backward), muted (suppress abilities), virus DoT.
+
+### Score Screen Economy Fix
+- totalGoldEarned now properly tracked (kill gold, wave income, frontier, tower gold-on-hit).
+- totalGoldSpent tracks tower, send, and frontier purchases.
+
+### Resolution + UI Improvements
+- 28px tiles, 36x26 grid (1368x808 canvas). Denser playfield.
+- Tower bar: 68px tall, 52px buttons. Font sizes +2px across all UI.
+- Income display moved to tower bar top-right.
+
 ## 2026-03-16
 
 ### Multiplayer Polish: Settings, Speed Sync, Chat, Ping, Disconnect, Mirrored Waves
