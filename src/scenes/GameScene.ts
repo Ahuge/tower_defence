@@ -182,6 +182,9 @@ export class GameScene extends Phaser.Scene {
       (action: string, idx: number) => {
         this.handleFrontierAction(action, idx);
       },
+      (action: string, defId: string) => {
+        this.handleFrontierBatchAction(action, defId);
+      },
     );
 
     // Fighter system (only with faction)
@@ -420,6 +423,26 @@ export class GameScene extends Phaser.Scene {
       }
       case 'harvest': {
         const gold = this.frontierMgr.harvestGrowth(idx);
+        if (gold > 0) this.economy.addGold(gold);
+        break;
+      }
+    }
+    this.frontierPanel.updateOwned();
+  }
+
+  private handleFrontierBatchAction(action: string, defId: string): void {
+    switch (action) {
+      case 'overcharge': {
+        const gold = this.frontierMgr.overchargeAllOfType(defId);
+        if (gold > 0) this.economy.addGold(gold);
+        break;
+      }
+      case 'dig': {
+        this.frontierMgr.digAllOfType(defId);
+        break;
+      }
+      case 'harvest': {
+        const gold = this.frontierMgr.harvestAllOfType(defId);
         if (gold > 0) this.economy.addGold(gold);
         break;
       }

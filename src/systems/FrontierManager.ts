@@ -117,6 +117,45 @@ export class FrontierManager {
     return payout;
   }
 
+  // Batch actions — operate on all active buildings of a given type
+  overchargeAllOfType(defId: string): number {
+    let totalGold = 0;
+    for (const b of this.buildings) {
+      if (b.destroyed || b.def.id !== defId || b.def.mechanic !== 'overcharge' || b.dormantWaves > 0) continue;
+      totalGold += b.def.baseIncome * 3;
+      b.dormantWaves = 2;
+    }
+    return totalGold;
+  }
+
+  digAllOfType(defId: string): { successes: number; collapses: number } {
+    let successes = 0;
+    let collapses = 0;
+    for (const b of this.buildings) {
+      if (b.destroyed || b.def.id !== defId || b.def.mechanic !== 'dig') continue;
+      b.digLevel++;
+      const risk = b.def.id.includes('_2') ? 0.05 : 0.1;
+      if (Math.random() < risk * b.digLevel) {
+        b.destroyed = true;
+        collapses++;
+      } else {
+        successes++;
+      }
+    }
+    if (collapses > 0) this.recalculateBaseIncome();
+    return { successes, collapses };
+  }
+
+  harvestAllOfType(defId: string): number {
+    let totalGold = 0;
+    for (const b of this.buildings) {
+      if (b.destroyed || b.def.id !== defId || b.def.mechanic !== 'grow') continue;
+      totalGold += b.growthStacks * 5;
+      b.growthStacks = 0;
+    }
+    return totalGold;
+  }
+
   private recalculateBaseIncome(): void {
     let total = 0;
     for (const b of this.buildings) {
