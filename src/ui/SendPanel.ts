@@ -31,12 +31,12 @@ export class SendPanel {
     this.container.add(bg);
 
     const title = this.scene.add.text(8, 6, 'SENDS', {
-      fontSize: '11px', color: '#ff8844', fontFamily: 'monospace',
+      fontSize: '13px', color: '#ff8844', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     const subtitle = this.scene.add.text(60, 7, '(between waves)', {
-      fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+      fontSize: '13px', color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(subtitle);
 
@@ -50,7 +50,7 @@ export class SendPanel {
         : `${opt.name} (${opt.cost}g) +${opt.incomeReward}/w`;
 
       const text = this.scene.add.text(8, y, label, {
-        fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
+        fontSize: '12px', color: '#cccccc', fontFamily: 'monospace',
       });
 
       this.container.add(text);

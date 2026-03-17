@@ -13,9 +13,9 @@ export class TowerSelectBar {
   private tooltipBg: Phaser.GameObjects.Graphics;
   private tooltipText: Phaser.GameObjects.Text;
 
-  static readonly BAR_HEIGHT = 52;
-  private static readonly BTN_SIZE = 40;
-  private static readonly PADDING = 8;
+  static readonly BAR_HEIGHT = 68;
+  private static readonly BTN_SIZE = 52;
+  private static readonly PADDING = 10;
 
   constructor(scene: Phaser.Scene, towerIds: string[], onSelect: (typeId: string | null) => void) {
     this.scene = scene;
@@ -28,7 +28,7 @@ export class TowerSelectBar {
     this.tooltipBg = scene.add.graphics();
     this.tooltip.add(this.tooltipBg);
     this.tooltipText = scene.add.text(8, 6, '', {
-      fontSize: '10px', color: '#dddddd', fontFamily: 'monospace',
+      fontSize: '12px', color: '#dddddd', fontFamily: 'monospace',
       lineSpacing: 3,
     });
     this.tooltip.add(this.tooltipText);
@@ -66,17 +66,17 @@ export class TowerSelectBar {
 
       const hotkeyNum = String(i + 1);
       const label = this.scene.add.text(x + 2, y + 1, hotkeyNum, {
-        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace'
+        fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace'
       });
       this.container.add(label);
 
       const costLabel = this.scene.add.text(x + BTN_SIZE / 2, y + BTN_SIZE - 2, `${t.cost}g`, {
-        fontSize: '9px', color: '#ffdd44', fontFamily: 'monospace'
+        fontSize: '11px', color: '#ffdd44', fontFamily: 'monospace'
       }).setOrigin(0.5, 1);
       this.container.add(costLabel);
 
       const nameLabel = this.scene.add.text(x + BTN_SIZE / 2, y + BTN_SIZE / 2 - 2, t.name.substring(0, 5), {
-        fontSize: '10px', color: '#ffffff', fontFamily: 'monospace'
+        fontSize: '12px', color: '#ffffff', fontFamily: 'monospace'
       }).setOrigin(0.5, 0.5);
       this.container.add(nameLabel);
     }

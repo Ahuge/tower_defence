@@ -48,7 +48,7 @@ export class OpponentMinimap {
     });
 
     this.labelText = scene.add.text(4, 2, 'OPPONENT (click to swap)', {
-      fontSize: '8px', color: '#ff6666', fontFamily: 'monospace',
+      fontSize: '10px', color: '#ff6666', fontFamily: 'monospace',
     });
     this.container.add(this.labelText);
 
@@ -56,12 +56,12 @@ export class OpponentMinimap {
     this.container.add(this.boardGraphics);
 
     this.statusText = scene.add.text(4, this.mapH + 14, '', {
-      fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
+      fontSize: '13px', color: '#cccccc', fontFamily: 'monospace',
     });
     this.container.add(this.statusText);
 
     this.timerText = scene.add.text(this.mapW - 4, 2, '', {
-      fontSize: '9px', color: '#ffdd44', fontFamily: 'monospace',
+      fontSize: '13px', color: '#ffdd44', fontFamily: 'monospace',
     }).setOrigin(1, 0);
     this.container.add(this.timerText);
   }

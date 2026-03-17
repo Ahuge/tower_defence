@@ -33,7 +33,7 @@ export class DraftScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.add.text(cx, 100, 'Pick one to apply for this game', {
-      fontSize: '12px', color: '#888888', fontFamily: 'monospace',
+      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     for (let i = 0; i < modifiers.length; i++) {
@@ -54,7 +54,7 @@ export class DraftScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       this.add.text(x, y + 45, mod.description, {
-        fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
+        fontSize: '14px', color: '#cccccc', fontFamily: 'monospace',
         wordWrap: { width: w - 16 },
         align: 'center',
       }).setOrigin(0.5);
@@ -87,7 +87,7 @@ export class DraftScene extends Phaser.Scene {
 
     // Skip option
     this.add.text(cx, 300, '[ Skip - No modifier ]', {
-      fontSize: '12px', color: '#666666', fontFamily: 'monospace',
+      fontSize: '14px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         this.scene.start('GameScene', {

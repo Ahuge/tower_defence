@@ -34,16 +34,16 @@ export class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.add.text(cx, 60, 'Peer-to-peer — no server needed', {
-      fontSize: '11px', color: '#666666', fontFamily: 'monospace',
+      fontSize: '13px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     this.statusText = this.add.text(cx, 95, '', {
-      fontSize: '12px', color: '#ffaa44', fontFamily: 'monospace',
+      fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
       align: 'center', wordWrap: { width: CANVAS_WIDTH - 100 },
     }).setOrigin(0.5);
 
     this.codeDisplay = this.add.text(cx, 200, '', {
-      fontSize: '9px', color: '#88aacc', fontFamily: 'monospace',
+      fontSize: '13px', color: '#88aacc', fontFamily: 'monospace',
       align: 'center', wordWrap: { width: CANVAS_WIDTH - 100 },
     }).setOrigin(0.5, 0);
 
@@ -70,7 +70,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     this.add.text(cx, totalH - 50, 'Codes are copied to/pasted from clipboard', {
-      fontSize: '9px', color: '#555555', fontFamily: 'monospace',
+      fontSize: '13px', color: '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5);
   }
 
@@ -168,14 +168,14 @@ export class LobbyScene extends Phaser.Scene {
 
     // Host picks map + difficulty
     if (this.isHost) {
-      this.add.text(cx, 195, 'Map:', { fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
+      this.add.text(cx, 195, 'Map:', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
 
       const mapBtns: { btn: Phaser.GameObjects.Text; id: MapId }[] = [];
       const mapStartX = cx - (MAP_ORDER.length * 80) / 2;
       for (let i = 0; i < MAP_ORDER.length; i++) {
         const mid = MAP_ORDER[i];
         const btn = this.add.text(mapStartX + i * 80 + 40, 212, MAPS[mid].name, {
-          fontSize: '11px', color: mid === this.selectedMap ? '#ffffff' : '#666666', fontFamily: 'monospace',
+          fontSize: '13px', color: mid === this.selectedMap ? '#ffffff' : '#666666', fontFamily: 'monospace',
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {
           this.selectedMap = mid;
@@ -184,7 +184,7 @@ export class LobbyScene extends Phaser.Scene {
         mapBtns.push({ btn, id: mid });
       }
 
-      this.add.text(cx, 230, 'Difficulty:', { fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
+      this.add.text(cx, 230, 'Difficulty:', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
 
       const diffs: DifficultyLevel[] = ['easy', 'normal', 'hard'];
       const diffColors: Record<string, string> = { easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444' };
@@ -194,7 +194,7 @@ export class LobbyScene extends Phaser.Scene {
         const did = diffs[i];
         const isSelected = did === this.selectedDifficulty;
         const btn = this.add.text(diffStartX + i * 80 + 40, 248, did.charAt(0).toUpperCase() + did.slice(1), {
-          fontSize: '11px', color: isSelected ? diffColors[did] : '#444444', fontFamily: 'monospace',
+          fontSize: '13px', color: isSelected ? diffColors[did] : '#444444', fontFamily: 'monospace',
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {
           this.selectedDifficulty = did;
@@ -204,14 +204,14 @@ export class LobbyScene extends Phaser.Scene {
       }
     } else {
       this.add.text(cx, 215, 'Host is choosing map & difficulty...', {
-        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+        fontSize: '14px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
     }
 
     // Faction cards
     const factionY = this.isHost ? 275 : 245;
     this.add.text(cx, factionY, 'Pick your faction:', {
-      fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+      fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const playable = FACTION_ORDER;
@@ -239,7 +239,7 @@ export class LobbyScene extends Phaser.Scene {
 
       const tCount = fid === 'random' ? '6/wave' : `${faction.towerIds.length} towers`;
       this.add.text(x + cardW / 2, y + 35, tCount, {
-        fontSize: '9px', color: '#888888', fontFamily: 'monospace',
+        fontSize: '13px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(x + cardW / 2, y + h / 2, cardW, h).setInteractive({ useHandCursor: true });

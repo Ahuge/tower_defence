@@ -22,10 +22,10 @@ export class TowerInfoPanel {
     this.container.add(this.bg);
 
     this.nameText = scene.add.text(8, 4, '', { fontSize: '13px', color: '#ffdd44', fontFamily: 'monospace' });
-    this.statsText = scene.add.text(8, 22, '', { fontSize: '10px', color: '#ffffff', fontFamily: 'monospace' });
-    this.buffText = scene.add.text(8, 36, '', { fontSize: '10px', color: '#88ff88', fontFamily: 'monospace' });
-    this.traitsText = scene.add.text(8, 50, '', { fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace' });
-    this.upgradeText = scene.add.text(8, 66, '', { fontSize: '10px', color: '#88ff88', fontFamily: 'monospace' });
+    this.statsText = scene.add.text(8, 22, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' });
+    this.buffText = scene.add.text(8, 36, '', { fontSize: '12px', color: '#88ff88', fontFamily: 'monospace' });
+    this.traitsText = scene.add.text(8, 50, '', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' });
+    this.upgradeText = scene.add.text(8, 66, '', { fontSize: '12px', color: '#88ff88', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.buffText, this.traitsText, this.upgradeText]);
 
     this.rangeCircle = scene.add.graphics().setDepth(19);

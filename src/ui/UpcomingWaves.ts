@@ -20,7 +20,7 @@ export class UpcomingWaves {
     this.container.add(bg);
 
     const title = scene.add.text(8, 4, 'UPCOMING WAVES', {
-      fontSize: '10px', color: '#6688aa', fontFamily: 'monospace',
+      fontSize: '12px', color: '#6688aa', fontFamily: 'monospace',
     });
     this.container.add(title);
   }
@@ -47,7 +47,7 @@ export class UpcomingWaves {
       const typeStr = types.join(', ');
 
       const text = this.scene.add.text(8, y, `${prefix} W${waveNum}: ${typeStr}${bossTag} (${totalCount})`, {
-        fontSize: '9px',
+        fontSize: '13px',
         color: wave.isBoss ? '#ff4444' : (i === 0 ? '#cccccc' : '#888888'),
         fontFamily: 'monospace',
         wordWrap: { width: SIDEBAR_WIDTH - 16 },
@@ -59,7 +59,7 @@ export class UpcomingWaves {
 
     if (currentWave >= waves.length) {
       const text = this.scene.add.text(8, y, 'Final wave!', {
-        fontSize: '9px', color: '#ffdd44', fontFamily: 'monospace',
+        fontSize: '13px', color: '#ffdd44', fontFamily: 'monospace',
       });
       this.container.add(text);
       this.contentItems.push(text);

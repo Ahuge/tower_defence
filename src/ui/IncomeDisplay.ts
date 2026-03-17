@@ -7,7 +7,7 @@ export class IncomeDisplay {
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.text = scene.add.text(GRID_OFFSET_X + 300, GAME_HEIGHT + 16, '', {
-      fontSize: '10px', color: '#88ff88', fontFamily: 'monospace',
+      fontSize: '12px', color: '#88ff88', fontFamily: 'monospace',
     }).setDepth(28);
   }
 

@@ -9,14 +9,14 @@ export class UIOverlay {
   private speedText: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene, _events: EventBus) {
-    const uiStyle = { fontSize: '14px', color: '#ffffff', fontFamily: 'monospace' };
+    const uiStyle = { fontSize: '16px', color: '#ffffff', fontFamily: 'monospace' };
     const baseX = GRID_OFFSET_X;
     this.goldText = scene.add.text(baseX + 8, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
     this.livesText = scene.add.text(baseX + 160, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
     this.waveText = scene.add.text(baseX + 300, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
     this.statusText = scene.add.text(baseX + 480, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
     this.speedText = scene.add.text(CANVAS_WIDTH - 8, GAME_HEIGHT + 4, '', {
-      ...uiStyle, fontSize: '12px', color: '#aaaaaa',
+      ...uiStyle, fontSize: '16px', color: '#aaaaaa',
     }).setDepth(30).setOrigin(1, 0);
   }
 

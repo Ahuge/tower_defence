@@ -28,13 +28,13 @@ export class EventLog {
 
     // Title
     const title = scene.add.text(8, 4, 'EVENT LOG', {
-      fontSize: '10px', color: '#666688', fontFamily: 'monospace',
+      fontSize: '12px', color: '#666688', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     // Log text
     this.textObj = scene.add.text(8, 20, '', {
-      fontSize: '9px', color: '#999999', fontFamily: 'monospace',
+      fontSize: '13px', color: '#999999', fontFamily: 'monospace',
       lineSpacing: 2,
       wordWrap: { width: SIDEBAR_WIDTH - 16 },
     });

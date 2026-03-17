@@ -60,7 +60,7 @@ export class GameOverScene extends Phaser.Scene {
     ];
 
     this.add.text(cx, 65, overviewLines.join('\n'), {
-      fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
+      fontSize: '13px', color: '#cccccc', fontFamily: 'monospace',
       align: 'center', lineSpacing: 4,
     }).setOrigin(0.5, 0);
 
@@ -77,7 +77,7 @@ export class GameOverScene extends Phaser.Scene {
       const headers = ['Tower', 'Total DMG', 'Avg DPS', 'Gold Earned', 'Shots', 'Built'];
       headers.forEach((h, i) => {
         this.add.text(colX[i], headerY, h, {
-          fontSize: '9px', color: '#888888', fontFamily: 'monospace',
+          fontSize: '13px', color: '#888888', fontFamily: 'monospace',
         });
       });
 
@@ -108,7 +108,7 @@ export class GameOverScene extends Phaser.Scene {
         const rowColor = ts.totalDamage > 0 ? '#cccccc' : '#666666';
         values.forEach((v, i) => {
           this.add.text(colX[i], rowY, v, {
-            fontSize: '9px', color: rowColor, fontFamily: 'monospace',
+            fontSize: '13px', color: rowColor, fontFamily: 'monospace',
           });
         });
         rowY += 14;
@@ -133,7 +133,7 @@ export class GameOverScene extends Phaser.Scene {
       ];
 
       this.add.text(cx, econY + 20, econLines.join('\n'), {
-        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+        fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
         align: 'center', lineSpacing: 4,
       }).setOrigin(0.5, 0);
 
@@ -156,7 +156,7 @@ export class GameOverScene extends Phaser.Scene {
 
       if (funLines.length > 0) {
         this.add.text(cx, funY, funLines.join('\n'), {
-          fontSize: '10px', color: '#88aacc', fontFamily: 'monospace',
+          fontSize: '14px', color: '#88aacc', fontFamily: 'monospace',
           align: 'center', lineSpacing: 4,
         }).setOrigin(0.5, 0);
       }
@@ -192,7 +192,7 @@ export class GameOverScene extends Phaser.Scene {
       }
 
       this.add.text(cx, vsY + 50, vsLines.join('\n'), {
-        fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
+        fontSize: '14px', color: '#cccccc', fontFamily: 'monospace',
         align: 'center', lineSpacing: 4,
       }).setOrigin(0.5, 0);
     }

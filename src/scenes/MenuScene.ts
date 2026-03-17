@@ -24,7 +24,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Map selection
     this.add.text(cx, 95, 'Select Map', {
-      fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
+      fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const mapBtnW = 140;
@@ -47,7 +47,7 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       this.add.text(x + mapBtnW / 2, y + 28, map.description.substring(0, 24), {
-        fontSize: '8px', color: '#888888', fontFamily: 'monospace',
+        fontSize: '14px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(x + mapBtnW / 2, y + h / 2, mapBtnW, h).setInteractive({ useHandCursor: true });
@@ -61,7 +61,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Difficulty selection
     this.add.text(cx, 165, 'Difficulty', {
-      fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
+      fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const diffs: { id: DifficultyLevel; label: string; color: string }[] = [
@@ -84,7 +84,7 @@ export class MenuScene extends Phaser.Scene {
       this.diffButtons.push({ btn, id: d.id, x, y, w: diffBtnW, h });
 
       this.add.text(x + diffBtnW / 2, y + h / 2, d.label, {
-        fontSize: '12px', color: d.color, fontFamily: 'monospace',
+        fontSize: '14px', color: d.color, fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(x + diffBtnW / 2, y + h / 2, diffBtnW, h).setInteractive({ useHandCursor: true });
@@ -98,7 +98,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Mode selection
     this.add.text(cx, 220, 'Select Match Mode', {
-      fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
+      fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const modes: { mode: MatchMode; label: string; desc: string; y: number }[] = [
@@ -116,7 +116,7 @@ export class MenuScene extends Phaser.Scene {
     mpBtn.on('pointerout', () => mpBtn.setColor('#ff8844'));
 
     this.add.text(cx, 468, 'P2P — no server required', {
-      fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+      fontSize: '13px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     for (const m of modes) {
@@ -131,7 +131,7 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       this.add.text(cx, m.y + 25, m.desc, {
-        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+        fontSize: '14px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(cx, m.y + 15, 300, 50).setInteractive({ useHandCursor: true });

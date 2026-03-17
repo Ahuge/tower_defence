@@ -18,9 +18,9 @@ export class CreepInfoPanel {
     this.bg = scene.add.graphics();
     this.container.add(this.bg);
 
-    this.nameText = scene.add.text(8, 4, '', { fontSize: '12px', color: '#ff8888', fontFamily: 'monospace' });
-    this.statsText = scene.add.text(8, 20, '', { fontSize: '10px', color: '#ffffff', fontFamily: 'monospace' });
-    this.effectsText = scene.add.text(8, 48, '', { fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace' });
+    this.nameText = scene.add.text(8, 4, '', { fontSize: '14px', color: '#ff8888', fontFamily: 'monospace' });
+    this.statsText = scene.add.text(8, 20, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' });
+    this.effectsText = scene.add.text(8, 48, '', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.effectsText]);
   }
 
