@@ -359,6 +359,10 @@ export class GameScene extends Phaser.Scene {
       // Start initial 60s countdown for first wave
       this.versus.waveTimer = 60000;
       this.versus.waveTimerActive = true;
+      // Sync initial speed from host
+      if (this.versus.isHost) {
+        this.versus.send({ type: 'speed_change', speed: this.gameSpeed });
+      }
     }
 
         const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
