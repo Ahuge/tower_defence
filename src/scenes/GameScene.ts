@@ -37,7 +37,7 @@ import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
 import { TowerManager } from '../systems/TowerManager';
-import { CreepManager } from '../systems/CreepManager';
+import { CreepManager, StandardLeakHandler, StandardDeathHandler } from '../systems/CreepManager';
 import { WaveController } from '../systems/WaveController';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
@@ -267,7 +267,9 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
-    this.creepMgr = new CreepManager(this.economy, this.statsTracker, this.eventBus, this.eventLog, this.modifier?.killGoldMult ?? 1);
+    const leakHandler = new StandardLeakHandler(this.eventLog, this.statsTracker);
+    const deathHandler = new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1);
+    this.creepMgr = new CreepManager(leakHandler, deathHandler);
 
     // Wave controller
     this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {

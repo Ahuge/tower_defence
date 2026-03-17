@@ -4,36 +4,84 @@ import { EventBus } from './EventBus';
 import { EventLog } from '../ui/EventLog';
 import { Creep } from '../entities/Creep';
 
+/**
+ * Called when a creep reaches the exit. Different game modes handle
+ * this differently:
+ * - Standard: subtract lives
+ * - Hero Defense: route creep to hero arena
+ * - Circle Co-op: pass to next player's sector
+ */
+export interface LeakHandler {
+  onCreepLeaked(creep: Creep): number; // returns life damage (0 if handled otherwise)
+}
+
+/**
+ * Called when a creep is killed. Different modes can add behavior:
+ * - Standard: award gold
+ * - Hero Defense: hero arena kills award 50% gold
+ */
+export interface DeathHandler {
+  onCreepKilled(creep: Creep): void;
+}
+
+/** Standard leak handler: boss = 5 lives, normal = 1 life */
+export class StandardLeakHandler implements LeakHandler {
+  private eventLog: EventLog;
+  private statsTracker: StatsTracker;
+
+  constructor(eventLog: EventLog, statsTracker: StatsTracker) {
+    this.eventLog = eventLog;
+    this.statsTracker = statsTracker;
+  }
+
+  onCreepLeaked(creep: Creep): number {
+    const damage = creep.isBoss ? 5 : 1;
+    this.eventLog.gameMessage(damage > 1 ? `BOSS leaked! -${damage} lives` : 'Creep reached exit! -1 life');
+    this.statsTracker.recordLeak();
+    return damage;
+  }
+}
+
+/** Standard death handler: award kill gold */
+export class StandardDeathHandler implements DeathHandler {
+  private economy: EconomyManager;
+  private statsTracker: StatsTracker;
+  private eventBus: EventBus;
+  private killGoldMult: number;
+
+  constructor(economy: EconomyManager, statsTracker: StatsTracker, eventBus: EventBus, killGoldMult: number) {
+    this.economy = economy;
+    this.statsTracker = statsTracker;
+    this.eventBus = eventBus;
+    this.killGoldMult = killGoldMult;
+  }
+
+  onCreepKilled(creep: Creep): void {
+    const killGold = Math.round(this.economy.getKillGold() * this.killGoldMult);
+    this.eventBus.emit('creepKilled', 0, killGold);
+    this.statsTracker.recordKill();
+    this.statsTracker.recordGoldEarned(killGold);
+  }
+}
+
 export interface LeakResult {
   totalLeakDamage: number;
   leakCount: number;
 }
 
 /**
- * Manages creep lifecycle: movement updates, leak handling,
- * kill processing, and dead creep cleanup.
+ * Manages creep lifecycle: movement, leaks, kills, cleanup.
+ * Leak and death behavior is pluggable via handlers.
  */
 export class CreepManager {
   creeps: Creep[] = [];
-  private economy: EconomyManager;
-  private statsTracker: StatsTracker;
-  private eventBus: EventBus;
-  private eventLog: EventLog;
-  private killGoldMult: number;
   totalCreepsKilled: number = 0;
+  leakHandler: LeakHandler;
+  deathHandler: DeathHandler;
 
-  constructor(
-    economy: EconomyManager,
-    statsTracker: StatsTracker,
-    eventBus: EventBus,
-    eventLog: EventLog,
-    killGoldMult: number = 1,
-  ) {
-    this.economy = economy;
-    this.statsTracker = statsTracker;
-    this.eventBus = eventBus;
-    this.eventLog = eventLog;
-    this.killGoldMult = killGoldMult;
+  constructor(leakHandler: LeakHandler, deathHandler: DeathHandler) {
+    this.leakHandler = leakHandler;
+    this.deathHandler = deathHandler;
   }
 
   /** Update all creeps, process leaks and kills. Returns leak damage. */
@@ -43,31 +91,25 @@ export class CreepManager {
       creep.update(delta, this.creeps);
     }
 
-    // Process leaks
+    // Process leaks via handler
     let totalLeakDamage = 0;
     let leakCount = 0;
     for (const creep of this.creeps) {
       if (creep.reached) {
-        const leakDamage = creep.isBoss ? 5 : 1;
-        totalLeakDamage += leakDamage;
+        const damage = this.leakHandler.onCreepLeaked(creep);
+        totalLeakDamage += damage;
         leakCount++;
-        this.eventBus.emit('livesChanged', -leakDamage);
-        this.eventLog.gameMessage(leakDamage > 1 ? `BOSS leaked! -${leakDamage} lives` : 'Creep reached exit! -1 life');
-        this.statsTracker.recordLeak();
         creep.reached = false;
         creep.alive = false;
       }
     }
 
-    // Process kills
+    // Process kills via handler
     for (const creep of this.creeps) {
       if (!creep.alive && !creep.reached && creep.hp <= 0) {
-        const killGold = Math.round(this.economy.getKillGold() * this.killGoldMult);
-        this.eventBus.emit('creepKilled', 0, killGold);
+        this.deathHandler.onCreepKilled(creep);
         this.totalCreepsKilled++;
-        this.statsTracker.recordKill();
-        this.statsTracker.recordGoldEarned(killGold);
-        creep.hp = -999;
+        creep.hp = -999; // sentinel to prevent double-processing
       }
     }
 
