@@ -178,7 +178,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const headers = ['Tower', 'Cost', 'DMG', 'Range', 'Upgrades', 'Key Traits'];
     for (let i = 0; i < headers.length; i++) {
       const h = this.add.text(colX[i], y, headers[i], {
-        fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+        fontSize: '10px', color: '#666666', fontFamily: 'monospace',
       });
       this.contentContainer.add(h);
     }
@@ -211,7 +211,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       if (tLore) {
         y += 14;
         const fl = this.add.text(colX[0] + 10, y, tLore, {
-          fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+          fontSize: '10px', color: '#666666', fontFamily: 'monospace',
           fontStyle: 'italic',
           wordWrap: { width: contentW - 20 },
         });
@@ -322,7 +322,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const loreText = this.add.text(cx, y, `"${lore}"`, {
       fontSize: '10px', color: '#999999', fontFamily: 'monospace',
       fontStyle: 'italic',
-      wordWrap: { width: CANVAS_WIDTH - 160 },
+      wordWrap: { width: CANVAS_WIDTH - 400 },
       align: 'center',
     }).setOrigin(0.5, 0);
     this.contentContainer.add(loreText);
@@ -393,77 +393,81 @@ export class EncyclopediaScene extends Phaser.Scene {
   // ===================== CREEPS TAB =====================
   private buildCreepsTab(): void {
     let y = 0;
+    const marginL = 200;
+    const marginR = 200;
+    const cardW = CANVAS_WIDTH - marginL - marginR;
 
     for (const [id, ct] of Object.entries(CREEP_TYPES)) {
-      const cardH = 70;
+      const cardH = 80;
       const cardY = y;
 
       // Background card
       const cardBg = this.add.graphics();
       cardBg.fillStyle(0x151520, 1);
-      cardBg.fillRect(30, cardY, CANVAS_WIDTH - 60, cardH);
+      cardBg.fillRect(marginL - 40, cardY, cardW + 80, cardH);
       cardBg.lineStyle(1, 0x333344, 0.6);
-      cardBg.strokeRect(30, cardY, CANVAS_WIDTH - 60, cardH);
+      cardBg.strokeRect(marginL - 40, cardY, cardW + 80, cardH);
       this.contentContainer.add(cardBg);
 
       // Creep icon (colored circle)
-      const iconX = 65;
+      const iconX = marginL - 10;
       const iconY = cardY + cardH / 2;
-      const iconSize = ct.id === 'boss' ? 18 : (ct.size ?? 1) * 12;
+      const iconSize = ct.id === 'boss' ? 18 : (ct.size ?? 1) * 14;
       const iconG = this.add.graphics();
       iconG.fillStyle(ct.color, 1);
       iconG.fillCircle(iconX, iconY, iconSize);
       this.contentContainer.add(iconG);
 
-      // Stats table (center)
-      const statsX = 100;
-      const nameText = this.add.text(statsX, cardY + 5, ct.name, {
-        fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+      // Stats (left of center)
+      const statsX = marginL + 20;
+      const nameText = this.add.text(statsX, cardY + 6, ct.name, {
+        fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
       });
       this.contentContainer.add(nameText);
 
       const traits = ct.traits.map(t => {
         switch (t.id) {
-          case 'shield': return 'Shield';
-          case 'damage_cap_shield': return `DmgCap(${t.shieldHits})`;
-          case 'heal_aura': return 'Heal Aura';
-          case 'flat_heal_aura': return 'Flat Heal';
-          case 'armor_aura': return '+Armor Aura';
-          case 'speed_aura': return '+Speed Aura';
-          case 'evasion_aura': return 'Evasion Aura';
-          case 'evasion': return `Evasion(${Math.round((t.chance ?? 0.25) * 100)}%)`;
-          case 'split_on_death': return `Splits(${t.splitCount})`;
+          case 'shield': return `Shield(${Math.round((t.hpPercent ?? 0.3) * 100)}% HP)`;
+          case 'damage_cap_shield': return `DmgCap(${t.shieldHits} hits)`;
+          case 'heal_aura': return `Heal(${Math.round((t.healPercent ?? 0.03) * 100)}%/s)`;
+          case 'flat_heal_aura': return `Heal(${t.healAmount ?? 15}hp)`;
+          case 'armor_aura': return '+1 Armor Aura';
+          case 'speed_aura': return `+${Math.round((t.speedBonus ?? 0.3) * 100)}% Speed Aura`;
+          case 'evasion_aura': return `${Math.round((t.evasionBonus ?? 0.15) * 100)}% Evasion Aura`;
+          case 'evasion': return `${Math.round((t.chance ?? 0.25) * 100)}% Evasion`;
+          case 'split_on_death': return `Splits into ${t.splitCount}`;
           default: return t.id;
         }
       }).join(', ') || 'None';
 
-      const spawn = ct.spawnBehavior === 'flying' ? 'Flying' :
-        ct.spawnBehavior === 'group' ? 'Group(4)' :
-        ct.count > 1 ? `x${ct.count}` : 'Normal';
+      const spawn = ct.spawnBehavior === 'flying' ? 'Flying (ignores maze)' :
+        ct.spawnBehavior === 'group' ? 'Group burst (x4)' :
+        ct.count > 1 ? `Swarm (x${ct.count})` : 'Normal';
 
-      const statsStr = `HP: ${ct.hpMultiplier}x  SPD: ${ct.speedMultiplier}x  Armor: ${ct.armor}  Spawn: ${spawn}`;
-      const statsText = this.add.text(statsX, cardY + 22, statsStr, {
-        fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace',
+      const statsStr = `HP: ${ct.hpMultiplier}x  |  SPD: ${ct.speedMultiplier}x  |  Armor: ${ct.armor}  |  ${spawn}`;
+      const statsText = this.add.text(statsX, cardY + 24, statsStr, {
+        fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace',
       });
       this.contentContainer.add(statsText);
 
-      const traitsText = this.add.text(statsX, cardY + 36, `Traits: ${traits}`, {
-        fontSize: '9px', color: '#888888', fontFamily: 'monospace',
+      const traitsText = this.add.text(statsX, cardY + 40, `Traits: ${traits}`, {
+        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+        wordWrap: { width: cardW * 0.45 },
       });
       this.contentContainer.add(traitsText);
 
-      // Flavor text (right side)
+      // Flavor text (right side of card)
       const lore = CREEP_LORE[id] ?? ct.description;
-      const flavorX = 580;
+      const flavorX = marginL + cardW * 0.5;
       const flavor = this.add.text(flavorX, cardY + 8, lore, {
-        fontSize: '9px', color: '#777777', fontFamily: 'monospace',
+        fontSize: '10px', color: '#777777', fontFamily: 'monospace',
         fontStyle: 'italic',
-        wordWrap: { width: CANVAS_WIDTH - flavorX - 50 },
-        lineSpacing: 2,
+        wordWrap: { width: cardW * 0.45 },
+        lineSpacing: 3,
       });
       this.contentContainer.add(flavor);
 
-      y += cardH + 6;
+      y += cardH + 8;
     }
 
     this.contentHeight = y;
