@@ -339,10 +339,19 @@ export class GameScene extends Phaser.Scene {
         this.viewingOpponent = !this.viewingOpponent;
         if (this.viewingOpponent) {
           this.eventLog.gameMessage('Viewing opponent board');
+          // Hide own towers
+          for (const tower of this.towers) {
+            tower.graphics.setVisible(false);
+          }
         } else {
           this.eventLog.gameMessage('Viewing your board');
+          // Show own towers
+          for (const tower of this.towers) {
+            tower.graphics.setVisible(true);
+            tower.drawTower();
+          }
+          this.opponentOverlay?.clear();
         }
-        // Redraw grid to show opponent's or own towers
         this.drawGrid();
         this.drawOpponentView();
       });

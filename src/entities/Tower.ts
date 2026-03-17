@@ -166,7 +166,9 @@ export class Tower {
   update(time: number, delta: number, creeps: Creep[]): void {
     // Mobile units are handled by their trait — skip normal projectile firing
     if (hasTrait(this.traits, 'mobile_unit')) {
-      this.drawTower(); // redraw at current position each frame
+      if (this.graphics.visible) {
+        this.drawTower(); // redraw at current position each frame
+      }
       return;
     }
 
