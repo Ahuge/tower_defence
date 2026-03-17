@@ -2,6 +2,15 @@
 
 ## 2026-03-16
 
+### Gameplay Fixes: Blossom, Random Frontier, Shielded Creeps, Multiplayer UX
+- **Blossom tower** reworked: no damage, no attack. Pure adjacency buff aura. Range 1.5 tiles = adjacent only. Description clarified.
+- **Random faction frontier**: 2 random frontier buildings from all faction pools each wave. Rotates on wave clear alongside tower pool. FrontierPanel rebuilds purchase list dynamically.
+- **Shielded creep** type: energy shield caps damage to 1 per hit until shield breaks (15 hits, 25 on hard). Mana Drain's strip_shield instantly depletes both HP shields and damage-cap shields. Appears from wave 13+.
+- **Meteor** confirmed location-targeted (splash_damage is already location-based — projectile continues to destination if target dies).
+- **Multiplayer lobby** reworked: host picks map + difficulty, both players see faction picker after connection. Factions sent via game_start message.
+- **Versus wave timer**: 30s countdown auto-starts on game begin and after each wave clear. Status bar shows `[SPACE] Ready (25s)`. Wave starts when both ready OR timer expires.
+- **Boss leak** costs 5 lives instead of 1. Event log shows "BOSS leaked! -5 lives".
+
 ### Versus Multiplayer (P2P WebRTC)
 - **Peer-to-peer multiplayer** — no server required. Uses WebRTC data channels with manual SDP exchange (copy-paste offer/answer codes).
 - **Lobby scene**: Host generates offer code (copied to clipboard), Joiner pastes it and generates answer code. Connection established directly between browsers.

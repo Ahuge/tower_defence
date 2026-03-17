@@ -84,6 +84,16 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
   random: [],
 };
 
+/** Get all faction frontier buildings (for Random faction pool) */
+export function getAllFactionFrontierBuildings(): FrontierBuilding[] {
+  const all: FrontierBuilding[] = [];
+  for (const [fid, buildings] of Object.entries(FRONTIER_BUILDINGS)) {
+    if (fid === 'random' || fid === 'military') continue;
+    all.push(...buildings);
+  }
+  return all;
+}
+
 // Generic outposts for non-faction play
 export const GENERIC_OUTPOSTS: FrontierBuilding[] = [
   {

@@ -20,13 +20,17 @@ export class UIOverlay {
     }).setDepth(30).setOrigin(1, 0);
   }
 
-  update(gold: number, lives: number, currentWave: number, totalWaves: number, waveActive: boolean, betweenWaves: boolean, gameSpeed: number = 1): void {
+  update(gold: number, lives: number, currentWave: number, totalWaves: number, waveActive: boolean, betweenWaves: boolean, gameSpeed: number = 1, versusTimer: number = -1): void {
     this.goldText.setText(`Gold: ${gold}`);
     this.livesText.setText(`Lives: ${lives}`);
     this.waveText.setText(`Wave: ${currentWave}/${totalWaves}`);
 
     if (betweenWaves && currentWave < totalWaves && lives > 0) {
-      this.statusText.setText('[SPACE] Start Next Wave');
+      if (versusTimer >= 0) {
+        this.statusText.setText(`[SPACE] Ready (${versusTimer}s)`);
+      } else {
+        this.statusText.setText('[SPACE] Start Next Wave');
+      }
     } else if (waveActive) {
       this.statusText.setText('Wave in progress...');
     }

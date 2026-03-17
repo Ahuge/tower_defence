@@ -60,6 +60,9 @@ function generateStandardWaves(count: number): WaveDefinition[] {
       if (waveNum >= 12) {
         groups.push({ creepType: 'evasive', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       }
+      if (waveNum >= 13) {
+        groups.push({ creepType: 'shielded', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+      }
       if (waveNum >= 14) {
         groups.push({ creepType: 'splitter', count: 1, hpScale: baseHp, speedScale: baseSpeed });
       }
@@ -71,6 +74,7 @@ function generateStandardWaves(count: number): WaveDefinition[] {
       groups.push({ creepType: 'swarm', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'evasive', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'splitter', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'shielded', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       if (waveNum >= 18) {
         groups.push({ creepType: 'healer', count: 1, hpScale: baseHp, speedScale: baseSpeed });
         // Mage type rotates
@@ -88,6 +92,7 @@ function generateStandardWaves(count: number): WaveDefinition[] {
       groups.push({ creepType: 'swarm', count: 4, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'evasive', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'splitter', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'shielded', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'healer', count: 1, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'group', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'flying', count: 3, hpScale: baseHp, speedScale: baseSpeed });

@@ -36,6 +36,15 @@ export class FrontierPanel {
     this.updateOwned();
   }
 
+  /** Rebuild purchase list (for Random faction rotation) */
+  rebuildPurchaseList(): void {
+    // Clear and rebuild entire container
+    this.container.removeAll(true);
+    this.ownedItems = [];
+    this.buildPanel();
+    this.updateOwned();
+  }
+
   private buildPanel(): void {
     const panelW = SIDEBAR_WIDTH;
     const panelH = GAME_HEIGHT - SendPanel.HEIGHT - UpcomingWaves.HEIGHT - 200; // leave room for event log

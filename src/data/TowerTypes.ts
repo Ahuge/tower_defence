@@ -260,13 +260,13 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   nature_blossom: def({
-    id: 'nature_blossom', name: 'Blossom', description: 'Buffs adjacent towers: +15% DMG, +50ms SPD per level.',
-    faction: 'nature', damageType: 'magic', cost: 60, damage: 5, range: 2.5, fireRate: 1200,
-    color: 0xff88aa, projectileSpeed: 250, hotkey: '3',
-    traits: [{ id: 'direct_damage' }, { id: 'adjacency_buff', damagePercent: 0.15, ratePercent: 0.08 }],
+    id: 'nature_blossom', name: 'Blossom', description: 'No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level.',
+    faction: 'nature', damageType: 'magic', cost: 60, damage: 0, range: 1.5, fireRate: 99999,
+    color: 0xff88aa, projectileSpeed: 0, hotkey: '3',
+    traits: [{ id: 'adjacency_buff', damagePercent: 0.15, ratePercent: 0.08 }],
     upgrades: [
-      { level: 2, cost: 55, damage: 8, range: 3, fireRate: 1100 },
-      { level: 3, cost: 90, damage: 12, range: 3, fireRate: 1000 },
+      { level: 2, cost: 55, damage: 0, range: 1.5, fireRate: 99999 },
+      { level: 3, cost: 90, damage: 0, range: 1.5, fireRate: 99999 },
     ],
   }),
   nature_spore: def({

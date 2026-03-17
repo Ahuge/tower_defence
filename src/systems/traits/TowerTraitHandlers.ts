@@ -279,10 +279,16 @@ registerHitEffect('strip_shield', (_trait: Trait, ctx: HitContext) => {
   for (const target of ctx.hitTargets) {
     const traits = (target as any).traits;
     if (traits) {
+      // Break HP shield (boss)
       const shield = traits.find((t: Trait) => t.id === 'shield');
       if (shield) {
         shield._shieldHp = 0;
         shield._active = false;
+      }
+      // Break damage cap shield
+      const capShield = traits.find((t: Trait) => t.id === 'damage_cap_shield');
+      if (capShield) {
+        capShield._hits = capShield.shieldHits ?? 15;
       }
     }
   }

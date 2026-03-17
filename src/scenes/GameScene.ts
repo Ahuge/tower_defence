@@ -296,9 +296,12 @@ export class GameScene extends Phaser.Scene {
     if (this.versus) {
       this.opponentMinimap = new OpponentMinimap(this, this.versus);
       this.eventLog.gameMessage('VERSUS MODE — sends go to opponent!');
+      // Start initial 30s countdown
+      this.versus.startWaveCountdown();
     }
 
-    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed);
+        const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
+    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
   }
 
   // === Selection Mode Management ===
@@ -715,7 +718,9 @@ export class GameScene extends Phaser.Scene {
       if (this.faction === 'random') {
         this.activeTowerIds = this.rollRandomTowers();
         this.towerBar.setTowerIds(this.activeTowerIds);
-        this.eventLog.gameMessage('Tower pool rotated!');
+        this.frontierMgr.rotateRandomFrontier();
+        this.frontierPanel.rebuildPurchaseList();
+        this.eventLog.gameMessage('Tower + frontier pool rotated!');
         this.enterNoneMode();
       }
     }
@@ -733,7 +738,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed);
+        const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
+    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);

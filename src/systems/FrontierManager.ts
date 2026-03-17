@@ -1,4 +1,4 @@
-import { FrontierBuilding, FRONTIER_BUILDINGS, GENERIC_OUTPOSTS } from '../data/FrontierBuildings';
+import { FrontierBuilding, FRONTIER_BUILDINGS, GENERIC_OUTPOSTS, getAllFactionFrontierBuildings } from '../data/FrontierBuildings';
 import { FactionId } from '../data/Factions';
 import { EventBus } from './EventBus';
 import { IncomeManager } from './IncomeManager';
@@ -23,10 +23,26 @@ export class FrontierManager {
     this.incomeMgr = incomeMgr;
     this.faction = faction;
 
-    if (faction) {
+    if (faction === 'random') {
+      this.availableBuildings = this.rollRandomFrontier();
+    } else if (faction) {
       this.availableBuildings = FRONTIER_BUILDINGS[faction] || [];
     } else {
       this.availableBuildings = GENERIC_OUTPOSTS;
+    }
+  }
+
+  /** Roll 2 random frontier buildings from all faction pools */
+  rollRandomFrontier(): FrontierBuilding[] {
+    const all = getAllFactionFrontierBuildings();
+    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 2);
+  }
+
+  /** Rotate frontier for random faction (called on wave clear) */
+  rotateRandomFrontier(): void {
+    if (this.faction === 'random') {
+      this.availableBuildings = this.rollRandomFrontier();
     }
   }
 

@@ -22,6 +22,27 @@ registerCreepDamage('shield', (trait: Trait, damage: number) => {
 });
 
 // ============================================================
+// Damage Cap Shield — max 1 damage per hit until shield depleted
+// ============================================================
+
+registerCreepDamage('damage_cap_shield', (trait: Trait, damage: number) => {
+  if ((trait._hits ?? 0) >= (trait.shieldHits ?? 15)) return damage; // shield depleted
+  trait._hits = (trait._hits ?? 0) + 1;
+  return 1; // cap to 1 damage per hit
+});
+
+registerCreepDraw('damage_cap_shield', (trait: Trait, creep: any, g: any) => {
+  const remaining = (trait.shieldHits ?? 15) - (trait._hits ?? 0);
+  if (remaining <= 0) return;
+  const baseSize = creep.isBoss ? TILE_SIZE * 0.45 : TILE_SIZE * 0.3;
+  const drawSize = baseSize * creep.size;
+  // Hexagonal shield effect
+  g.lineStyle(2, 0x44aaff, 0.6);
+  g.strokeCircle(creep.x, creep.y, drawSize + 4);
+  g.strokeCircle(creep.x, creep.y, drawSize + 6);
+});
+
+// ============================================================
 // Evasion — chance to dodge incoming damage entirely
 // ============================================================
 

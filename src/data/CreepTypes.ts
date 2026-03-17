@@ -247,6 +247,25 @@ export const CREEP_TYPES: Record<string, CreepType> = {
     },
   },
 
+  shielded: {
+    id: 'shielded', name: 'Shielded', description: 'Energy shield: max 1 damage per hit until shield breaks.',
+    hpMultiplier: 0.9, speedMultiplier: 1.0, armor: 'medium',
+    color: 0x44aaff, size: 1.1, count: 1,
+    traits: [{ id: 'damage_cap_shield', shieldHits: 15 }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness,
+        speedMult: hints.speed,
+        countMult: Math.max(1, hints.count * 0.7),
+        goldMult: hints.goldMult,
+        extraTraits: hints.toughness >= 1.5
+          ? [{ id: 'damage_cap_shield', shieldHits: 25 }]
+          : [],
+      };
+    },
+  },
+
   evasive: {
     id: 'evasive', name: 'Evasive', description: '25% dodge chance. Attacks can miss entirely.',
     hpMultiplier: 0.7, speedMultiplier: 1.4, armor: 'light',
