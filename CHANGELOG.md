@@ -2,6 +2,16 @@
 
 ## 2026-03-17
 
+### GameMode Interface System
+- **Pluggable GameMode interface**: each match mode (Standard, Battle) is a self-contained class implementing `createUI()`, `update()`, `onWaveCleared()`, `canStartWave()`, `handleSend()`.
+- **StandardMode**: owns SendPanel, FrontierManager, FrontierPanel, and all frontier actions (overcharge, dig, harvest — both individual and batch).
+- **BattleMode**: owns EssencePanel, essence resource registration, generator purchases, and essence sends.
+- GameScene delegates to `this.gameMode` instead of inline if/else checks per mode.
+- Fixed: `eventLog` was passed to game mode context before being created (was null).
+- Fixed: `versus` reference now properly wired into `GameModeContext` after versus initialization.
+- Random faction frontier rotation goes through `StandardMode.rotateRandomFrontier()`.
+- Removed ~130 lines of mode-specific code from GameScene (now ~1070 lines).
+
 ### Dual Economy (Battle) Game Mode
 - **New match mode: Battle** — two resources: Gold (towers) + Essence (sends).
 - **Essence generators**: buy with gold (Tap 30g/+1/s, Well 80g/+3/s, Conduit 200g/+8/s, Nexus 500g/+20/s). Essence ticks in real-time.

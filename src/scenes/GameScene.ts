@@ -21,19 +21,14 @@ import { DifficultyLevel, DIFFICULTIES, DifficultyHints } from '../data/Difficul
 import { DraftModifier } from '../data/DraftModifiers';
 import { IncomeManager } from '../systems/IncomeManager';
 import { SendManager } from '../systems/SendManager';
-import { FrontierManager } from '../systems/FrontierManager';
-import { FrontierBuilding } from '../data/FrontierBuildings';
-import { SEND_OPTIONS, SendCreepOption } from '../data/SendCreepTypes';
-import { EssenceGenerator, EssenceSendOption, ESSENCE_SENDS } from '../data/EssenceGenerators';
-import { EssencePanel } from '../ui/EssencePanel';
+import { GameMode, GameModeContext } from '../systems/GameMode';
+import { StandardMode } from '../systems/modes/StandardMode';
+import { BattleMode } from '../systems/modes/BattleMode';
 
-const SEND_OPTIONS_MAP: Record<string, SendCreepOption> = {};
-for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
+// Send options map moved to StandardMode
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { TowerInfoPanel } from '../ui/TowerInfoPanel';
-import { SendPanel } from '../ui/SendPanel';
 import { IncomeDisplay } from '../ui/IncomeDisplay';
-import { FrontierPanel } from '../ui/FrontierPanel';
 import { EventLog } from '../ui/EventLog';
 import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
@@ -65,11 +60,8 @@ export class GameScene extends Phaser.Scene {
   towerInfo!: TowerInfoPanel;
   incomeMgr!: IncomeManager;
   sendMgr!: SendManager;
-  sendPanel!: SendPanel;
   incomeDisplay!: IncomeDisplay;
-  frontierMgr!: FrontierManager;
-  frontierPanel!: FrontierPanel;
-  essencePanel: EssencePanel | null = null;
+  gameMode!: GameMode;
   eventLog!: EventLog;
   creepInfo!: CreepInfoPanel;
   upcomingWaves!: UpcomingWaves;
@@ -223,86 +215,32 @@ export class GameScene extends Phaser.Scene {
     this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
 
-    const sidebarTopOffset = UpcomingWaves.HEIGHT;
-
-    if (this.matchMode === 'battle') {
-      // Dual Economy: register essence resource + create essence panel
-      this.economy.resources.addResource({
-        id: 'essence', name: 'Essence', startingAmount: 0, tickRate: 0, color: '#44ddff',
-      });
-
-      this.essencePanel = new EssencePanel(this, this.economy.resources,
-        (gen: EssenceGenerator) => {
-          // Buy generator with gold
-          if (this.economy.spend(gen.cost)) {
-            const state = this.economy.resources.getState('essence');
-            if (state) state.tickRate += gen.essencePerSec;
-            // Track owned
-            const existing = this.essencePanel!.generators.find(g => g.def.id === gen.id);
-            if (existing) existing.count++;
-            else this.essencePanel!.generators.push({ def: gen, count: 1 });
-            this.essencePanel!.updateOwned();
-            this.eventLog.gameMessage(`Built ${gen.name} (+${gen.essencePerSec}/s essence)`);
-            this.statsTracker.recordGoldSpent(gen.cost);
-          }
-        },
-        (send: EssenceSendOption) => {
-          // Buy send with essence
-          if (this.betweenWaves && this.economy.resources.canAfford('essence', send.essenceCost)) {
-            this.economy.resources.spend('essence', send.essenceCost);
-            this.sendMgr.queueSend({ id: send.id, name: send.name, creepType: send.creepType, count: send.count, cost: 0, incomeReward: send.incomeReward, description: send.description });
-            this.incomeMgr.addSendBonus(send.incomeReward);
-            this.eventLog.gameMessage(`Sent ${send.name} (${send.essenceCost}e) → +${send.incomeReward}g/w`);
-            this.statsTracker.recordSendIncome(send.incomeReward);
-          }
-        },
-      );
-    } else {
-      // Standard mode: gold-based sends
-      this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
-        if (this.betweenWaves && this.economy.spend(opt.cost)) {
-          if (this.versus && this.versus.isConnected()) {
-            this.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
-            this.versus.sendsSent++;
-            this.eventLog.gameMessage(`Sent ${opt.name} to opponent!`);
-          } else {
-            this.sendMgr.queueSend(opt);
-          }
-          this.incomeMgr.addSendBonus(opt.incomeReward);
-          this.eventLog.sendQueued(opt.name, opt.cost);
-          this.statsTracker.recordSendSpent(opt.cost);
-          this.statsTracker.recordSendIncome(opt.incomeReward);
-          this.statsTracker.recordGoldSpent(opt.cost);
-        }
-      }, sidebarTopOffset);
-    }
-
-    this.incomeDisplay = new IncomeDisplay(this);
-
-    // Frontier (with action callbacks)
-    this.frontierMgr = new FrontierManager(this.eventBus, this.incomeMgr, this.faction);
-    this.frontierPanel = new FrontierPanel(
-      this,
-      this.frontierMgr,
-      (building: FrontierBuilding) => {
-        if (this.economy.spend(building.cost)) {
-          this.frontierMgr.purchaseBuilding(building);
-          this.frontierPanel.updateOwned();
-          this.eventLog.frontierPurchased(building.name, building.cost);
-          this.statsTracker.recordFrontierSpent(building.cost);
-          this.statsTracker.recordGoldSpent(building.cost);
-        }
-      },
-      (action: string, idx: number) => {
-        this.handleFrontierAction(action, idx);
-      },
-      (action: string, defId: string) => {
-        this.handleFrontierBatchAction(action, defId);
-      },
-    );
-
     // Event log (bottom of sidebar)
     this.eventLog = new EventLog(this, 480);
+
+    // Game mode creates mode-specific UI (sends, frontier/essence panels)
+    if (this.matchMode === 'battle') {
+      this.gameMode = new BattleMode();
+    } else {
+      this.gameMode = new StandardMode(this.matchMode);
+    }
+
+    const gameModeCtx: GameModeContext = {
+      scene: this,
+      economy: this.economy,
+      incomeMgr: this.incomeMgr,
+      sendMgr: this.sendMgr,
+      statsTracker: this.statsTracker,
+      eventBus: this.eventBus,
+      eventLog: this.eventLog,
+      faction: this.faction,
+      modifier: this.modifier,
+      versus: null, // set after versus init
+      sidebarTopY: UpcomingWaves.HEIGHT,
+    };
+    this.gameMode.createUI(gameModeCtx);
+
+    this.incomeDisplay = new IncomeDisplay(this);
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
@@ -455,9 +393,12 @@ export class GameScene extends Phaser.Scene {
       if (this.versus.isHost) {
         this.versus.send({ type: 'speed_change', speed: this.gameSpeed });
       }
+
+      // Wire versus into game mode context (was null at createUI time)
+      gameModeCtx.versus = this.versus;
     }
 
-        const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
+    const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
   }
 
@@ -711,66 +652,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // === Frontier Actions ===
-
-  private handleFrontierAction(action: string, idx: number): void {
-    switch (action) {
-      case 'overcharge': {
-        const gold = this.frontierMgr.overchargeBuilding(idx);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Overcharge', `+${gold}g burst, dormant 2 waves`);
-        }
-        break;
-      }
-      case 'dig': {
-        const result = this.frontierMgr.digDeeper(idx);
-        if (result.collapsed) {
-          this.eventLog.frontierAction('Dig Deeper', 'CAVE-IN! Mine destroyed');
-        } else if (result.success) {
-          this.eventLog.frontierAction('Dig Deeper', 'Success! +1 depth');
-        }
-        break;
-      }
-      case 'harvest': {
-        const gold = this.frontierMgr.harvestGrowth(idx);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Harvest', `+${gold}g collected`);
-        }
-        break;
-      }
-    }
-    this.frontierPanel.updateOwned();
-  }
-
-  private handleFrontierBatchAction(action: string, defId: string): void {
-    switch (action) {
-      case 'overcharge': {
-        const gold = this.frontierMgr.overchargeAllOfType(defId);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Overcharge All', `+${gold}g burst`);
-        }
-        break;
-      }
-      case 'dig': {
-        const result = this.frontierMgr.digAllOfType(defId);
-        this.eventLog.frontierAction('Dig All', `${result.successes} ok, ${result.collapses} collapsed`);
-        break;
-      }
-      case 'harvest': {
-        const gold = this.frontierMgr.harvestAllOfType(defId);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Harvest All', `+${gold}g collected`);
-        }
-        break;
-      }
-    }
-    this.frontierPanel.updateOwned();
-  }
-
   // === Game Loop ===
 
   update(time: number, delta: number): void {
@@ -826,11 +707,8 @@ export class GameScene extends Phaser.Scene {
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
 
-    // Dual Economy: tick essence in real-time
-    if (this.matchMode === 'battle') {
-      this.economy.resources.tick(delta);
-      this.essencePanel?.update();
-    }
+    // Mode-specific per-frame update (essence ticking, etc.)
+    this.gameMode.update(delta);
 
     // Versus: wave timer, minimap, incoming sends, ping, disconnect, chat
     if (this.versus) {
@@ -852,11 +730,7 @@ export class GameScene extends Phaser.Scene {
       // Incoming sends
       const incoming = this.versus.drainIncomingSends();
       for (const sendId of incoming) {
-        const opt = SEND_OPTIONS_MAP[sendId];
-        if (opt) {
-          this.sendMgr.queueSend(opt);
-          this.eventLog.gameMessage(`Incoming send: ${opt.name}!`);
-        }
+        this.gameMode.handleSend(sendId);
       }
 
       // Incoming chat
@@ -1196,35 +1070,22 @@ export class GameScene extends Phaser.Scene {
       this.versus.notifyWaveCleared(waveNum);
     }
 
-    // Frontier
-    const frontierBonus = this.frontierMgr.onWaveEnd(waveNum);
-    if (frontierBonus > 0) {
-      this.economy.addGold(frontierBonus);
-      this.statsTracker.recordFrontierEarned(frontierBonus);
-      this.statsTracker.recordGoldEarned(frontierBonus);
-    }
-    this.frontierPanel.updateOwned();
-
-    // Income
-    const income = this.incomeMgr.collectWaveIncome();
-    this.economy.addGold(income);
-    this.statsTracker.recordGoldEarned(income);
+    // Mode-specific wave-end (frontier income, essence, etc.)
+    this.gameMode.onWaveCleared(waveNum);
 
     // Events + UI
     this.eventBus.emit('waveCleared', waveNum);
-    this.eventLog.waveCleared(waveNum, income + (frontierBonus > 0 ? frontierBonus : 0));
+    this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
     this.upcomingWaves.update(waveNum, this.waves);
-    if (frontierBonus > 0) {
-      this.eventLog.frontierIncome('Frontier bonus', frontierBonus);
-    }
 
     // Random faction rotation
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds);
-      this.frontierMgr.rotateRandomFrontier();
-      this.frontierPanel.rebuildPurchaseList();
+      if (this.gameMode instanceof StandardMode) {
+        (this.gameMode as StandardMode).rotateRandomFrontier();
+      }
       this.eventLog.gameMessage('Tower + frontier pool rotated!');
       this.enterNoneMode();
       if (this.versus?.isHost) {

@@ -5,6 +5,18 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v15 — GameMode Interface',
+    changes: [
+      'Pluggable GameMode system: each mode is a self-contained class',
+      'StandardMode owns sends, frontier panel, and frontier actions',
+      'BattleMode owns essence panel, generators, and essence sends',
+      'Frontier actions (overcharge/dig/harvest) moved from GameScene into StandardMode',
+      'Fixed: eventLog created before game mode init (was null)',
+      'Fixed: versus reference now wired into game mode context',
+      'GameScene reduced from ~1200 to ~1070 lines',
+    ],
+  },
+  {
     version: 'v14 — Dual Economy & Architecture',
     changes: [
       'Battle mode: Dual Economy with Gold + Essence resources',
