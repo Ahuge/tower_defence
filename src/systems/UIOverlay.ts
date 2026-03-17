@@ -21,7 +21,7 @@ export class UIOverlay {
   }
 
   update(gold: number, lives: number, currentWave: number, totalWaves: number, waveActive: boolean, betweenWaves: boolean, gameSpeed: number = 1, versusTimer: number = -1): void {
-    this.goldText.setText(`Gold: ${gold}`);
+    this.goldText.setText(`Gold: ${Math.floor(gold)}`);
     this.livesText.setText(`Lives: ${lives}`);
     this.waveText.setText(`Wave: ${currentWave}/${totalWaves}`);
 

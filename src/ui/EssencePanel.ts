@@ -108,8 +108,8 @@ export class EssencePanel {
     const hotkeys = ['Z', 'X', 'C', 'V'];
     for (let i = 0; i < ESSENCE_SENDS.length; i++) {
       const send = ESSENCE_SENDS[i];
-      const hk = hotkeys[i] ?? '';
-      const text = this.scene.add.text(8, y, `[${hk}] ${send.name} (${send.essenceCost}e) +${send.incomeReward}g/w`, {
+      const hk = i < hotkeys.length ? `[${hotkeys[i]}] ` : '';
+      const text = this.scene.add.text(8, y, `${hk}${send.name} (${send.essenceCost}e) +${send.incomeReward}g/w`, {
         fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
       });
       this.container.add(text);
@@ -117,10 +117,10 @@ export class EssencePanel {
       text.on('pointerdown', () => this.onSend(send));
       text.on('pointerover', () => text.setColor('#ffffff'));
       text.on('pointerout', () => text.setColor('#cccccc'));
-      y += 16;
+      y += 14;
     }
 
-    // Register send hotkeys
+    // Register send hotkeys (first 4 only)
     for (let i = 0; i < ESSENCE_SENDS.length && i < hotkeys.length; i++) {
       const send = ESSENCE_SENDS[i];
       this.scene.input.keyboard!.on(`keydown-${hotkeys[i]}`, () => {
