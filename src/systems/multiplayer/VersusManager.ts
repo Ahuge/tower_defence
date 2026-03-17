@@ -12,7 +12,7 @@ export class VersusManager {
   waveTimer: number = 0;
   waveTimerActive: boolean = false;
 
-  // Wave sync: host waits for joiner to finish before starting countdown
+  // Wave sync
   localWaveCleared: boolean = false;
   opponentWaveCleared: boolean = false;
 
@@ -22,13 +22,23 @@ export class VersusManager {
   opponentTowers: { towerId: string; col: number; row: number; level: number }[] = [];
   opponentGameOver: boolean = false;
   opponentEndStats: { stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number } | null = null;
+  opponentDisconnected: boolean = false;
 
-  // Incoming sends
+  // Incoming sends + chat
   incomingSends: string[] = [];
+  incomingChats: string[] = [];
 
-  // Stats for end screen
+  // Stats
   sendsSent: number = 0;
   sendsReceived: number = 0;
+
+  // Ping
+  lastPingSent: number = 0;
+  latencyMs: number = 0;
+  private pingInterval: number = 0;
+
+  // Shared seed for mirrored waves
+  sharedSeed: number = 0;
 
   // Callbacks
   onGameMessage: ((msg: GameMessage) => void) | null = null;
@@ -43,12 +53,18 @@ export class VersusManager {
 
     this.peer = new PeerConnection(
       (data) => this.handleMessage(data),
-      (state) => this.onConnectionChange?.(state),
+      (state) => {
+        this.onConnectionChange?.(state);
+        if (state === 'failed') {
+          this.opponentDisconnected = true;
+        }
+      },
     );
   }
 
   async host(): Promise<string> {
     this.isHost = true;
+    this.sharedSeed = Math.floor(Math.random() * 999999);
     return this.peer.createOffer();
   }
 
@@ -78,7 +94,7 @@ export class VersusManager {
         break;
       case 'tower_upgraded': {
         const t = this.opponentTowers.find(t => t.col === msg.col && t.row === msg.row);
-        if (t) t.level++;
+        if (t) t.level = msg.level;
         break;
       }
       case 'send_purchased':
@@ -93,19 +109,22 @@ export class VersusManager {
         break;
       case 'wave_cleared':
         this.opponentWaveCleared = true;
-        // If we're the host and both have cleared, start countdown
+        this.opponentWave = msg.wave;
         if (this.isHost && this.localWaveCleared && this.opponentWaveCleared) {
           this.beginCountdown(30000);
         }
         break;
       case 'countdown_start':
-        // Joiner receives countdown from host
         if (!this.isHost) {
           this.startWaveCountdown(msg.duration);
         }
         break;
       case 'tower_pool':
-        // Host sent new random tower pool (for random faction)
+        break; // forwarded to GameScene via callback
+      case 'speed_change':
+        break; // forwarded to GameScene
+      case 'chat':
+        this.incomingChats.push(msg.text);
         break;
       case 'game_over':
         this.opponentGameOver = true;
@@ -117,27 +136,29 @@ export class VersusManager {
           sendsReceived: msg.sendsReceived,
         };
         break;
+      case 'game_start':
+        this.sharedSeed = msg.seed;
+        break;
+      case 'pong':
+        this.latencyMs = Date.now() - msg.timestamp;
+        break;
+      case 'ping':
+        this.send({ type: 'pong', timestamp: msg.timestamp });
+        break;
     }
 
     this.onGameMessage?.(msg);
   }
 
-  /** Called by GameScene when our wave clears */
-  notifyWaveCleared(): void {
+  notifyWaveCleared(wave: number): void {
     this.localWaveCleared = true;
-    this.send({ type: 'wave_cleared' });
+    this.send({ type: 'wave_cleared', wave });
 
-    if (this.isHost) {
-      // Host: check if opponent also cleared
-      if (this.opponentWaveCleared) {
-        this.beginCountdown(30000);
-      }
-      // Otherwise wait for opponent's wave_cleared
+    if (this.isHost && this.opponentWaveCleared) {
+      this.beginCountdown(30000);
     }
-    // Joiner: wait for host's countdown_start
   }
 
-  /** Host only: both players cleared, start the countdown and notify joiner */
   private beginCountdown(duration: number): void {
     this.localWaveCleared = false;
     this.opponentWaveCleared = false;
@@ -149,6 +170,12 @@ export class VersusManager {
     const sends = [...this.incomingSends];
     this.incomingSends = [];
     return sends;
+  }
+
+  drainIncomingChats(): string[] {
+    const chats = [...this.incomingChats];
+    this.incomingChats = [];
+    return chats;
   }
 
   updateWaveTimer(delta: number): boolean {
@@ -175,17 +202,25 @@ export class VersusManager {
     this.send({ type: 'wave_ready' });
   }
 
-  /** Send game_over with our stats */
+  sendChat(text: string): void {
+    this.send({ type: 'chat', text });
+  }
+
   notifyGameOver(won: boolean, stats: GameStats, wave: number, lives: number): void {
     this.send({
-      type: 'game_over',
-      won,
-      stats,
-      wave,
-      lives,
-      sendsSent: this.sendsSent,
-      sendsReceived: this.sendsReceived,
+      type: 'game_over', won, stats, wave, lives,
+      sendsSent: this.sendsSent, sendsReceived: this.sendsReceived,
     });
+  }
+
+  /** Call periodically to send pings */
+  updatePing(delta: number): void {
+    this.pingInterval += delta;
+    if (this.pingInterval >= 3000) {
+      this.pingInterval = 0;
+      this.lastPingSent = Date.now();
+      this.send({ type: 'ping', timestamp: this.lastPingSent });
+    }
   }
 
   getWaveTimerSeconds(): number {

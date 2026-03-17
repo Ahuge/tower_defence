@@ -164,7 +164,9 @@ export class GameScene extends Phaser.Scene {
 
     // Systems
     this.economy = new EconomyManager(this.eventBus);
-    this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints);
+    const versusRef = this.registry.get('versus') as VersusManager | null;
+    const waveSeed = versusRef?.sharedSeed ?? 0;
+    this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
     this.inputMgr = new InputManager(this, this.eventBus);
     this.ui = new UIOverlay(this, this.eventBus);
 
@@ -290,7 +292,7 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onKey('ESC', () => this.enterNoneMode());
     this.inputMgr.onKey('P', () => this.togglePause());
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
-    // Prevent TAB from changing browser focus
+    this.inputMgr.onKey('ENTER', () => this.openChat());
     this.input.keyboard!.addCapture('TAB');
 
     // Versus mode setup
@@ -298,16 +300,30 @@ export class GameScene extends Phaser.Scene {
     if (this.versus) {
       // Rewire message handler from lobby to game scene
       this.versus.onGameMessage = (msg) => {
-        if (msg.type === 'wave_ready') {
-          this.eventLog.gameMessage('Opponent is ready!');
-        } else if (msg.type === 'game_over') {
-          this.eventLog.gameMessage('Opponent defeated! You win!');
-        } else if (msg.type === 'tower_pool') {
-          // Random faction: host sent us our tower pool
-          this.activeTowerIds = msg.towerIds;
-          this.towerBar.setTowerIds(this.activeTowerIds);
-          this.enterNoneMode();
-          this.eventLog.gameMessage('Tower pool updated!');
+        switch (msg.type) {
+          case 'wave_ready':
+            this.eventLog.gameMessage('Opponent is ready!');
+            break;
+          case 'game_over':
+            this.eventLog.gameMessage('Opponent defeated! You win!');
+            break;
+          case 'tower_pool':
+            if (this.faction === 'random') {
+              this.activeTowerIds = msg.towerIds;
+              this.towerBar.setTowerIds(this.activeTowerIds);
+              this.enterNoneMode();
+              this.eventLog.gameMessage('Tower pool updated!');
+            }
+            break;
+          case 'speed_change':
+            this.gameSpeed = msg.speed;
+            this.speedIndex = GameScene.SPEED_OPTIONS.indexOf(msg.speed);
+            if (this.speedIndex === -1) this.speedIndex = 2;
+            this.eventLog.gameMessage(`Host set speed: ${msg.speed}x`);
+            break;
+          case 'chat':
+            this.eventLog.gameMessage(`[OPP] ${msg.text}`);
+            break;
         }
       };
 
@@ -429,6 +445,7 @@ export class GameScene extends Phaser.Scene {
             if (this.economy.spend(cost)) {
               existingTower.upgrade();
               this.towerInfo.show(existingTower);
+              this.versus?.send({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
             }
           } else {
             this.enterInspectMode(existingTower);
@@ -727,7 +744,7 @@ export class GameScene extends Phaser.Scene {
 
       // Versus: notify wave cleared (host manages countdown timing)
       if (this.versus) {
-        this.versus.notifyWaveCleared();
+        this.versus.notifyWaveCleared(this.currentWave);
       }
 
       // Frontier mechanic bonuses (growth, dig, gamble)
@@ -795,7 +812,7 @@ export class GameScene extends Phaser.Scene {
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
 
-    // Versus: wave timer, minimap, incoming sends
+    // Versus: wave timer, minimap, incoming sends, ping, disconnect, chat
     if (this.versus) {
       if (this.versus.waveTimerActive) {
         if (this.versus.updateWaveTimer(delta)) {
@@ -808,7 +825,8 @@ export class GameScene extends Phaser.Scene {
       if (this.viewingOpponent) {
         this.drawOpponentView();
       }
-      // Process incoming sends from opponent
+
+      // Incoming sends
       const incoming = this.versus.drainIncomingSends();
       for (const sendId of incoming) {
         const opt = SEND_OPTIONS_MAP[sendId];
@@ -817,8 +835,25 @@ export class GameScene extends Phaser.Scene {
           this.eventLog.gameMessage(`Incoming send: ${opt.name}!`);
         }
       }
+
+      // Incoming chat
+      const chats = this.versus.drainIncomingChats();
+      for (const text of chats) {
+        this.eventLog.gameMessage(`[OPP] ${text}`);
+      }
+
+      // Ping
+      this.versus.updatePing(delta);
+
+      // Disconnect detection
+      if (this.versus.opponentDisconnected) {
+        this.eventLog.gameMessage('Opponent disconnected!');
+        this.ui.setStatus('OPPONENT DISCONNECTED — P to continue solo');
+        this.versus = null; // detach, continue as single player
+      }
+
       // Broadcast lives
-      this.versus.send({ type: 'lives_update', lives: this.lives });
+      this.versus?.send({ type: 'lives_update', lives: this.lives });
     }
 
     // Update tower alive time for DPS calc
@@ -866,7 +901,19 @@ export class GameScene extends Phaser.Scene {
     this.speedIndex = (this.speedIndex + 1) % GameScene.SPEED_OPTIONS.length;
     this.gameSpeed = GameScene.SPEED_OPTIONS[this.speedIndex];
     this.eventLog.gameMessage(`Speed: ${this.gameSpeed}x`);
-    // TODO: sync speed to opponent via message
+    if (this.versus) {
+      this.versus.send({ type: 'speed_change', speed: this.gameSpeed });
+    }
+  }
+
+  /** Send a chat message (Enter key opens prompt) */
+  private openChat(): void {
+    if (!this.versus) return;
+    const text = prompt('Chat:');
+    if (text && text.trim()) {
+      this.versus.sendChat(text.trim());
+      this.eventLog.gameMessage(`[YOU] ${text.trim()}`);
+    }
   }
 
   private togglePause(): void {

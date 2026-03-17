@@ -6,6 +6,15 @@ import { CREEP_TYPES } from '../data/CreepTypes';
 import { DifficultyHints } from '../data/Difficulty';
 import { EventBus } from './EventBus';
 
+/** Simple seeded PRNG for deterministic wave spawning */
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
 interface SpawnEntry {
   creepType: string;
   hpScale: number;
@@ -22,11 +31,15 @@ export class SpawnManager {
   private spawnInterval: number = 0;
   private difficulty: DifficultyHints;
   private flyingPath: PathPoint[] | null = null;
+  private seed: number;
+  private rng: () => number;
 
-  constructor(scene: Phaser.Scene, events: EventBus, difficulty: DifficultyHints) {
+  constructor(scene: Phaser.Scene, events: EventBus, difficulty: DifficultyHints, seed: number = 0) {
     this.scene = scene;
     this.events = events;
     this.difficulty = difficulty;
+    this.seed = seed || Math.floor(Math.random() * 999999);
+    this.rng = seededRandom(this.seed);
   }
 
   /** Set the direct-line path for flying creeps */
@@ -64,7 +77,7 @@ export class SpawnManager {
 
     // Shuffle (but keep group entries together)
     for (let i = this.spawnQueue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(this.rng() * (i + 1));
       [this.spawnQueue[i], this.spawnQueue[j]] = [this.spawnQueue[j], this.spawnQueue[i]];
     }
 

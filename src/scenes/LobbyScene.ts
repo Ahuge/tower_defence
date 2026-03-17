@@ -13,14 +13,11 @@ export class LobbyScene extends Phaser.Scene {
   private codeDisplay!: Phaser.GameObjects.Text;
   private isHost: boolean = false;
 
-  // Host-selected settings
   private selectedMap: MapId = 'plains';
   private selectedDifficulty: DifficultyLevel = 'normal';
-
-  // Both players pick faction
   private myFaction: FactionId | null = null;
   private opponentFaction: FactionId | null = null;
-  private factionPhase: boolean = false;
+  private opponentMsg: GameMessage | null = null;
 
   constructor() {
     super('LobbyScene');
@@ -50,7 +47,6 @@ export class LobbyScene extends Phaser.Scene {
       align: 'center', wordWrap: { width: CANVAS_WIDTH - 100 },
     }).setOrigin(0.5, 0);
 
-    // Host button
     const hostBtn = this.add.text(cx - 120, 130, '[ HOST GAME ]', {
       fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -58,7 +54,6 @@ export class LobbyScene extends Phaser.Scene {
     hostBtn.on('pointerover', () => hostBtn.setColor('#88ff88'));
     hostBtn.on('pointerout', () => hostBtn.setColor('#44ff44'));
 
-    // Join button
     const joinBtn = this.add.text(cx + 120, 130, '[ JOIN GAME ]', {
       fontSize: '16px', color: '#4488ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -66,7 +61,6 @@ export class LobbyScene extends Phaser.Scene {
     joinBtn.on('pointerover', () => joinBtn.setColor('#88bbff'));
     joinBtn.on('pointerout', () => joinBtn.setColor('#4488ff'));
 
-    // Back
     const backBtn = this.add.text(50, totalH - 30, '[ Back ]', {
       fontSize: '14px', color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
@@ -85,8 +79,8 @@ export class LobbyScene extends Phaser.Scene {
       (msg) => this.handleMessage(msg),
       (state) => {
         if (state === 'connected') {
-          this.statusText.setText('CONNECTED! Picking factions...');
-          this.showFactionPick();
+          this.statusText.setText('CONNECTED! Setting up game...');
+          this.showGameSetup();
         }
       },
     );
@@ -94,10 +88,15 @@ export class LobbyScene extends Phaser.Scene {
 
   private handleMessage(msg: GameMessage): void {
     if (msg.type === 'game_start') {
-      // Opponent picked their faction
       this.opponentFaction = msg.faction as FactionId;
+      this.opponentMsg = msg;
+      // Joiner gets map/difficulty from host
+      if (!this.isHost) {
+        this.selectedMap = msg.map as MapId;
+        this.selectedDifficulty = msg.difficulty as DifficultyLevel;
+      }
       if (this.myFaction) {
-        this.launchGame(msg);
+        this.launchGame();
       }
     }
   }
@@ -163,37 +162,70 @@ export class LobbyScene extends Phaser.Scene {
     });
   }
 
-  private showFactionPick(): void {
+  private showGameSetup(): void {
     this.codeDisplay.setText('');
+    const cx = CANVAS_WIDTH / 2;
 
     // Host picks map + difficulty
     if (this.isHost) {
-      this.add.text(CANVAS_WIDTH / 2, 200, `Map: ${this.selectedMap}  |  Difficulty: ${this.selectedDifficulty}`, {
-        fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace',
-      }).setOrigin(0.5);
+      this.add.text(cx, 195, 'Map:', { fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
+
+      const mapBtns: { btn: Phaser.GameObjects.Text; id: MapId }[] = [];
+      const mapStartX = cx - (MAP_ORDER.length * 80) / 2;
+      for (let i = 0; i < MAP_ORDER.length; i++) {
+        const mid = MAP_ORDER[i];
+        const btn = this.add.text(mapStartX + i * 80 + 40, 212, MAPS[mid].name, {
+          fontSize: '11px', color: mid === this.selectedMap ? '#ffffff' : '#666666', fontFamily: 'monospace',
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        btn.on('pointerdown', () => {
+          this.selectedMap = mid;
+          mapBtns.forEach(b => b.btn.setColor(b.id === mid ? '#ffffff' : '#666666'));
+        });
+        mapBtns.push({ btn, id: mid });
+      }
+
+      this.add.text(cx, 230, 'Difficulty:', { fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
+
+      const diffs: DifficultyLevel[] = ['easy', 'normal', 'hard'];
+      const diffColors: Record<string, string> = { easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444' };
+      const diffBtns: { btn: Phaser.GameObjects.Text; id: DifficultyLevel }[] = [];
+      const diffStartX = cx - (diffs.length * 80) / 2;
+      for (let i = 0; i < diffs.length; i++) {
+        const did = diffs[i];
+        const isSelected = did === this.selectedDifficulty;
+        const btn = this.add.text(diffStartX + i * 80 + 40, 248, did.charAt(0).toUpperCase() + did.slice(1), {
+          fontSize: '11px', color: isSelected ? diffColors[did] : '#444444', fontFamily: 'monospace',
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        btn.on('pointerdown', () => {
+          this.selectedDifficulty = did;
+          diffBtns.forEach(b => b.btn.setColor(b.id === did ? diffColors[b.id] : '#444444'));
+        });
+        diffBtns.push({ btn, id: did });
+      }
     } else {
-      this.add.text(CANVAS_WIDTH / 2, 200, 'Host is choosing map & difficulty...', {
+      this.add.text(cx, 215, 'Host is choosing map & difficulty...', {
         fontSize: '10px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
     }
 
     // Faction cards
-    this.add.text(CANVAS_WIDTH / 2, 225, 'Pick your faction:', {
+    const factionY = this.isHost ? 275 : 245;
+    this.add.text(cx, factionY, 'Pick your faction:', {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const playable = FACTION_ORDER;
-    const cardW = 140;
-    const gap = 8;
+    const cardW = 130;
+    const gap = 6;
     const totalW = playable.length * cardW + (playable.length - 1) * gap;
-    const startX = CANVAS_WIDTH / 2 - totalW / 2;
+    const startX = cx - totalW / 2;
 
     for (let i = 0; i < playable.length; i++) {
       const fid = playable[i];
       const faction = FACTIONS[fid];
       const x = startX + i * (cardW + gap);
-      const y = 245;
-      const h = 80;
+      const y = factionY + 20;
+      const h = 60;
 
       const card = this.add.graphics();
       card.fillStyle(0x222222, 1);
@@ -201,12 +233,12 @@ export class LobbyScene extends Phaser.Scene {
       card.lineStyle(2, faction.primaryColor, 0.8);
       card.strokeRect(x, y, cardW, h);
 
-      this.add.text(x + cardW / 2, y + 20, faction.name, {
-        fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + 15, faction.name, {
+        fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const tCount = fid === 'random' ? '6/wave' : `${faction.towerIds.length} towers`;
-      this.add.text(x + cardW / 2, y + 45, tCount, {
+      this.add.text(x + cardW / 2, y + 35, tCount, {
         fontSize: '9px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
@@ -215,38 +247,31 @@ export class LobbyScene extends Phaser.Scene {
         this.myFaction = fid;
         this.statusText.setText(`You picked ${faction.name}! Waiting for opponent...`);
 
-        // Send game_start with settings
         this.versus!.send({
           type: 'game_start',
           faction: fid,
           matchMode: 'standard',
           map: this.selectedMap,
           difficulty: this.selectedDifficulty,
-          seed: Math.floor(Math.random() * 999999),
+          seed: this.versus!.sharedSeed,
         });
 
         if (this.opponentFaction) {
-          this.launchGame(null);
+          this.launchGame();
         }
       });
     }
-
-    this.factionPhase = true;
   }
 
-  private launchGame(opponentMsg: GameMessage | null): void {
+  private launchGame(): void {
     if (!this.myFaction || !this.versus) return;
-
-    // Determine map/difficulty — host's settings win
-    const map = this.selectedMap;
-    const difficulty = this.selectedDifficulty;
 
     this.registry.set('versus', this.versus);
     this.scene.start('DraftScene', {
       mode: 'standard',
       faction: this.myFaction,
-      map,
-      difficulty,
+      map: this.selectedMap,
+      difficulty: this.selectedDifficulty,
     });
   }
 }
