@@ -699,8 +699,11 @@ export class GameScene extends Phaser.Scene {
       delta,
     };
 
-    // Reset harmonic aura accumulators before aura handlers re-add them
+    // Reset harmonic aura accumulators + conduit link flags
     for (const tower of this.towers) {
+      (tower as any)._linkedByConduit = false;
+      (tower as any)._conduitX = undefined;
+      (tower as any)._conduitY = undefined;
       for (const trait of tower.traits) {
         if (trait.id === '_harmonic_damage' || trait.id === '_harmonic_rate') {
           trait.bonus = 0;

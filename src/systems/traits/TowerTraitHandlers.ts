@@ -895,26 +895,46 @@ registerTowerUpdate('conduit_link', (trait: Trait, tower: any, ctx: UpdateContex
   const linkRange = (trait.linkRange ?? 6) * TILE_SIZE;
   const auraTraitIds = ['damage_aura', 'rate_aura', 'range_aura', 'crit_aura'];
 
-  // Find nearest aura towers
-  const auraTowers: any[] = [];
+  // Find nearest aura towers — must be DIFFERENT aura types
+  const auraTowers: { tower: any; dist: number; auraType: string }[] = [];
   for (const other of ctx.allTowers) {
     if (other === tower) continue;
-    const hasAura = other.traits.some((t: any) => auraTraitIds.includes(t.id));
-    if (!hasAura) continue;
+    const auraTrait = other.traits.find((t: any) => auraTraitIds.includes(t.id));
+    if (!auraTrait) continue;
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist <= linkRange) {
-      auraTowers.push({ tower: other, dist });
+      auraTowers.push({ tower: other, dist, auraType: auraTrait.id });
     }
   }
 
-  // Sort by distance, take closest N
+  // Sort by distance, then pick closest N with DIFFERENT aura types
   auraTowers.sort((a, b) => a.dist - b.dist);
-  const linked = auraTowers.slice(0, maxLinks);
+  const linked: typeof auraTowers = [];
+  const usedTypes = new Set<string>();
+  for (const at of auraTowers) {
+    if (linked.length >= maxLinks) break;
+    if (usedTypes.has(at.auraType)) continue; // skip duplicate aura types
+    linked.push(at);
+    usedTypes.add(at.auraType);
+  }
 
-  // Store link positions for visual
-  trait._links = linked.map((l: any) => ({ x: l.tower.x, y: l.tower.y }));
+  // Store link positions + colors for visual
+  const auraColors: Record<string, number> = {
+    damage_aura: 0xff4444, rate_aura: 0x44ff44,
+    range_aura: 0x4488ff, crit_aura: 0xff44ff,
+  };
+  trait._links = linked.map((l) => ({
+    x: l.tower.x, y: l.tower.y, color: auraColors[l.auraType] ?? 0xffcc44,
+  }));
+
+  // Mark linked towers so they can show they're connected
+  for (const l of linked) {
+    l.tower._linkedByConduit = true;
+    l.tower._conduitX = tower.x;
+    l.tower._conduitY = tower.y;
+  }
 
   // For each pair of linked towers, share auras between them
   for (let i = 0; i < linked.length; i++) {

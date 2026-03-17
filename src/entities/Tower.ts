@@ -134,12 +134,23 @@ export class Tower {
       this.graphics.lineBetween(this.x, this.y, fwTrait._partnerX, fwTrait._partnerY);
     }
 
-    // Conduit link visuals
+    // Conduit link visuals — colored lines to each linked aura tower
     const conduit = getTrait(this.traits, 'conduit_link');
     if (conduit && conduit._links) {
-      this.graphics.lineStyle(1, 0xffcc44, 0.4);
       for (const link of conduit._links) {
+        this.graphics.lineStyle(2, link.color ?? 0xffcc44, 0.4);
         this.graphics.lineBetween(this.x, this.y, link.x, link.y);
+      }
+    }
+
+    // Show link indicator on aura towers connected via Conduit
+    if ((this as any)._linkedByConduit) {
+      this.graphics.lineStyle(1, 0xffcc44, 0.5);
+      this.graphics.strokeCircle(this.x, this.y, s + 5);
+      // Faint line back to conduit
+      if ((this as any)._conduitX !== undefined) {
+        this.graphics.lineStyle(1, 0xffcc44, 0.15);
+        this.graphics.lineBetween(this.x, this.y, (this as any)._conduitX, (this as any)._conduitY);
       }
     }
 
@@ -196,7 +207,11 @@ export class Tower {
     resolveTowerUpdates(this.traits, this, ctx);
     cleanupExpiredTraits(this.traits);
     // Redraw towers with dynamic visuals each frame
-    if ((hasTrait(this.traits, 'firewall_link') || hasTrait(this.traits, 'conduit_link')) && this.graphics.visible) {
+    const needsRedraw = hasTrait(this.traits, 'firewall_link') ||
+      hasTrait(this.traits, 'conduit_link') ||
+      hasTrait(this.traits, 'damage_aura') || hasTrait(this.traits, 'rate_aura') ||
+      hasTrait(this.traits, 'range_aura') || hasTrait(this.traits, 'crit_aura');
+    if (needsRedraw && this.graphics.visible) {
       this.drawTower();
     }
   }
