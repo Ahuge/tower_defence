@@ -44,7 +44,7 @@ import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
 
-type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'none';
+type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
 export class GameScene extends Phaser.Scene {
   // Core systems
@@ -73,6 +73,7 @@ export class GameScene extends Phaser.Scene {
   opponentSim: OpponentSimulation | null = null;
   viewingOpponent: boolean = false;
   selectedCreep: Creep | null = null;
+  linkingConduit: Tower | null = null; // tower being linked in link mode
 
   // Game state
   towers: Tower[] = [];
@@ -297,6 +298,7 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onKey('P', () => this.togglePause());
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
     this.inputMgr.onKey('ENTER', () => this.openChat());
+    this.inputMgr.onKey('L', () => this.enterLinkMode());
     this.input.keyboard!.addCapture('TAB');
 
     // Versus mode setup
@@ -405,11 +407,82 @@ export class GameScene extends Phaser.Scene {
     this.selectedBuildType = null;
     this.selectedTower = null;
     this.selectedCreep = null;
+    this.linkingConduit = null;
     this.towerBar.deselect();
     this.towerInfo.hide();
     this.creepInfo.hide();
     this.hoverGraphics.clear();
     this.rangeGraphics.clear();
+  }
+
+  private handleLinkClick(target: Tower): void {
+    if (!this.linkingConduit) return;
+    const conduitTrait = this.linkingConduit.traits.find(t => t.id === 'conduit_link');
+    if (!conduitTrait) return;
+
+    const auraTraitIds = ['damage_aura', 'rate_aura', 'range_aura', 'crit_aura'];
+    const targetAura = target.traits.find(t => auraTraitIds.includes(t.id));
+
+    if (!targetAura) {
+      this.eventLog.gameMessage('Not an aura tower. Click an Amplifier, Quickener, Reach, or Critical Mass.');
+      return;
+    }
+
+    // Check range
+    const dx = target.x - this.linkingConduit.x;
+    const dy = target.y - this.linkingConduit.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const linkRange = (conduitTrait.linkRange ?? 6) * TILE_SIZE;
+    if (dist > linkRange) {
+      this.eventLog.gameMessage('Too far! Move the Conduit closer.');
+      return;
+    }
+
+    // Init manual links array
+    if (!conduitTrait._manualLinks) conduitTrait._manualLinks = [];
+    const links = conduitTrait._manualLinks as { col: number; row: number }[];
+    const maxLinks = conduitTrait.maxLinks ?? 2;
+
+    // Check if already linked — toggle off
+    const existingIdx = links.findIndex(l => l.col === target.col && l.row === target.row);
+    if (existingIdx !== -1) {
+      links.splice(existingIdx, 1);
+      this.eventLog.gameMessage(`Unlinked ${target.typeDef.name}.`);
+      return;
+    }
+
+    // Check if already have a tower of this aura type linked
+    for (const link of links) {
+      const linkedTower = this.towers.find(t => t.col === link.col && t.row === link.row);
+      if (linkedTower) {
+        const linkedAura = linkedTower.traits.find(t => auraTraitIds.includes(t.id));
+        if (linkedAura && linkedAura.id === targetAura.id) {
+          this.eventLog.gameMessage(`Already linked a ${targetAura.id.replace('_', ' ')}. Link a different aura type.`);
+          return;
+        }
+      }
+    }
+
+    if (links.length >= maxLinks) {
+      this.eventLog.gameMessage(`Max ${maxLinks} links. Unlink one first (click linked tower).`);
+      return;
+    }
+
+    links.push({ col: target.col, row: target.row });
+    this.eventLog.gameMessage(`Linked ${target.typeDef.name}! (${links.length}/${maxLinks})`);
+  }
+
+  private enterLinkMode(): void {
+    // Only works when inspecting a Conduit tower
+    if (this.selectionMode !== 'inspect' || !this.selectedTower) return;
+    const conduitTrait = this.selectedTower.traits.find(t => t.id === 'conduit_link');
+    if (!conduitTrait) {
+      this.eventLog.gameMessage('Select a Conduit tower first.');
+      return;
+    }
+    this.selectionMode = 'link';
+    this.linkingConduit = this.selectedTower;
+    this.eventLog.gameMessage('LINK MODE: Click aura towers to link/unlink. ESC to cancel.');
   }
 
   // === Input Handlers ===
@@ -477,6 +550,14 @@ export class GameScene extends Phaser.Scene {
           } else {
             this.enterInspectMode(existingTower);
           }
+        } else {
+          this.enterNoneMode();
+        }
+        break;
+
+      case 'link':
+        if (existingTower && this.linkingConduit) {
+          this.handleLinkClick(existingTower);
         } else {
           this.enterNoneMode();
         }

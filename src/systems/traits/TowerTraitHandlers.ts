@@ -890,63 +890,44 @@ registerTowerUpdate('_harmonic_crit', (trait: Trait, _tower: any, ctx: UpdateCon
 });
 
 /** Conduit: links 2-3 nearest aura towers and shares their auras */
+/** Conduit: MANUAL linking. Links stored in trait._manualLinks by GameScene. */
 registerTowerUpdate('conduit_link', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  const maxLinks = trait.maxLinks ?? 2;
-  const linkRange = (trait.linkRange ?? 6) * TILE_SIZE;
   const auraTraitIds = ['damage_aura', 'rate_aura', 'range_aura', 'crit_aura'];
-
-  // Find nearest aura towers — must be DIFFERENT aura types
-  const auraTowers: { tower: any; dist: number; auraType: string }[] = [];
-  for (const other of ctx.allTowers) {
-    if (other === tower) continue;
-    const auraTrait = other.traits.find((t: any) => auraTraitIds.includes(t.id));
-    if (!auraTrait) continue;
-    const dx = other.x - tower.x;
-    const dy = other.y - tower.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist <= linkRange) {
-      auraTowers.push({ tower: other, dist, auraType: auraTrait.id });
-    }
-  }
-
-  // Sort by distance, then pick closest N with DIFFERENT aura types
-  auraTowers.sort((a, b) => a.dist - b.dist);
-  const linked: typeof auraTowers = [];
-  const usedTypes = new Set<string>();
-  for (const at of auraTowers) {
-    if (linked.length >= maxLinks) break;
-    if (usedTypes.has(at.auraType)) continue; // skip duplicate aura types
-    linked.push(at);
-    usedTypes.add(at.auraType);
-  }
-
-  // Store link positions + colors for visual
   const auraColors: Record<string, number> = {
     damage_aura: 0xff4444, rate_aura: 0x44ff44,
     range_aura: 0x4488ff, crit_aura: 0xff44ff,
   };
-  trait._links = linked.map((l) => ({
-    x: l.tower.x, y: l.tower.y, color: auraColors[l.auraType] ?? 0xffcc44,
-  }));
 
-  // Mark linked towers so they can show they're connected
-  for (const l of linked) {
-    l.tower._linkedByConduit = true;
-    l.tower._conduitX = tower.x;
-    l.tower._conduitY = tower.y;
+  // Resolve manual links to actual tower references
+  const manualLinks = (trait._manualLinks ?? []) as { col: number; row: number }[];
+  const linkedTowers: any[] = [];
+
+  for (const link of manualLinks) {
+    const linkedTower = ctx.allTowers.find((t: any) => t.col === link.col && t.row === link.row);
+    if (linkedTower) linkedTowers.push(linkedTower);
   }
 
-  // For each pair of linked towers, share auras between them
-  for (let i = 0; i < linked.length; i++) {
-    for (let j = i + 1; j < linked.length; j++) {
-      const towerA = linked[i].tower;
-      const towerB = linked[j].tower;
+  // Store link positions + colors for visual
+  trait._links = linkedTowers.map((t: any) => {
+    const auraTrait = t.traits.find((tr: any) => auraTraitIds.includes(tr.id));
+    return { x: t.x, y: t.y, color: auraColors[auraTrait?.id] ?? 0xffcc44 };
+  });
 
-      // Copy A's aura effects to B's position and vice versa
+  // Mark linked towers
+  for (const lt of linkedTowers) {
+    lt._linkedByConduit = true;
+    lt._conduitX = tower.x;
+    lt._conduitY = tower.y;
+  }
+
+  // Share auras between each pair of linked towers
+  for (let i = 0; i < linkedTowers.length; i++) {
+    for (let j = i + 1; j < linkedTowers.length; j++) {
+      const towerA = linkedTowers[i];
+      const towerB = linkedTowers[j];
+
       for (const traitA of towerA.traits) {
         if (!auraTraitIds.includes(traitA.id)) continue;
-        // Simulate towerB having towerA's aura
-        // Apply towerA's aura effect from towerB's position
         shareAura(traitA, towerB, ctx, tower.level);
       }
       for (const traitB of towerB.traits) {
