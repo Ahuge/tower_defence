@@ -468,10 +468,19 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { level: 3, cost: 250, damage: 26, range: 5, fireRate: 300 },
     ],
   }),
+  alien_brood_mother: def({
+    id: 'alien_brood_mother', name: 'Brood Mother', description: 'Each wave spawns 2 temporary Swarmlings nearby.',
+    faction: 'aliens', damageType: 'physical', cost: 80, damage: 6, range: 3, fireRate: 600,
+    color: 0x55aa22, projectileSpeed: 300, hotkey: '6',
+    traits: [{ id: 'direct_damage' }, { id: 'spawn_swarmlings_per_wave', count: 2 }],
+    upgrades: [
+      { level: 2, cost: 70, damage: 10, range: 3.5, fireRate: 550 },
+    ],
+  }),
   alien_swarmling: def({
     id: 'alien_swarmling', name: 'Swarmling', description: 'Mobile melee. Cheap, fast, disposable.',
     faction: 'aliens', damageType: 'physical', cost: 15, damage: 4, range: 2, fireRate: 400,
-    color: 0x99ee55, projectileSpeed: 0, hotkey: '6',
+    color: 0x99ee55, projectileSpeed: 0, hotkey: '7',
     traits: [{ id: 'mobile_unit', moveSpeed: 160, engageRange: 0.6, attackCooldown: 400 }],
     upgrades: [
       { level: 2, cost: 15, damage: 10, range: 2, fireRate: 350 },
@@ -480,7 +489,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   alien_overmind: def({
     id: 'alien_overmind', name: 'Overmind', description: 'ULTIMATE. Extreme fire rate. Buffs all aliens nearby.',
     faction: 'aliens', damageType: 'physical', cost: 700, damage: 15, range: 5, fireRate: 150,
-    color: 0xccff88, projectileSpeed: 500, hotkey: '7', ultimate: true,
+    color: 0xccff88, projectileSpeed: 500, hotkey: '8', ultimate: true,
     traits: [{ id: 'direct_damage' }, { id: 'faction_speed_aura', ratePercent: 0.3 }],
   }),
 

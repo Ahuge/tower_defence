@@ -56,7 +56,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
     description: 'The hive hungers. Cheap, fast, overwhelming swarms.',
     primaryColor: 0x88ff44,
     secondaryColor: 0xaaff66,
-    towerIds: ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_swarmling', 'alien_overmind'],
+    towerIds: ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind'],
   },
   cypherpunk: {
     id: 'cypherpunk',

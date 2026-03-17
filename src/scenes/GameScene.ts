@@ -1059,6 +1059,34 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private spawnBroodMotherSwarmlings(): void {
+    const swarmlingType = getTowerType('alien_swarmling');
+    for (const tower of this.towers) {
+      const trait = tower.traits.find(t => t.id === 'spawn_swarmlings_per_wave');
+      if (!trait) continue;
+      const count = trait.count ?? 2;
+      // Find empty adjacent cells to spawn in
+      const offsets = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+      let spawned = 0;
+      for (const [dc, dr] of offsets) {
+        if (spawned >= count) break;
+        const sc = tower.col + dc;
+        const sr = tower.row + dr;
+        if (sc < 0 || sc >= GRID_COLS || sr < 0 || sr >= GRID_ROWS) continue;
+        // Spawn as mobile (non-blocking)
+        const swarmling = new Tower(this, sc, sr, swarmlingType);
+        swarmling.isMobile = true;
+        // Expires after 1 wave
+        swarmling.traits.push({ id: 'expires_after_waves', waves: 1, _wavesRemaining: 1 });
+        this.towers.push(swarmling);
+        spawned++;
+      }
+      if (spawned > 0) {
+        this.eventLog.gameMessage(`Brood Mother spawned ${spawned} Swarmlings!`);
+      }
+    }
+  }
+
   private getEffectiveCost(baseCost: number): number {
     return Math.round(baseCost * (this.modifier?.costMult ?? 1));
   }
@@ -1181,6 +1209,9 @@ export class GameScene extends Phaser.Scene {
     this.currentWave++;
     this.eventBus.emit('waveStarted', this.currentWave);
     this.spawner.startWave(wave, this.allPaths.filter(p => p !== null).length);
+
+    // Brood Mother: spawn temporary swarmlings
+    this.spawnBroodMotherSwarmlings();
 
     // Log wave start with creep types
     const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];

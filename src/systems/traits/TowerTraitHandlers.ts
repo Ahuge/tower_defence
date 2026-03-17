@@ -753,6 +753,13 @@ registerTowerUpdate('_faction_rate_buff', (trait: Trait, _tower: any, ctx: Updat
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
 });
 
+/** Spawn temporary swarmlings each wave (Alien Brood Mother) */
+// This trait is handled in GameScene on wave start, not per-frame.
+// The trait just stores the config. GameScene checks for it.
+registerTowerUpdate('spawn_swarmlings_per_wave', (_trait: Trait, _tower: any, _ctx: UpdateContext) => {
+  // No per-frame action — spawning handled by GameScene on wave start
+});
+
 // ============================================================
 // HARMONIC FACTION AURAS
 // ============================================================
