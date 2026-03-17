@@ -124,9 +124,13 @@ export class ChangelogScene extends Phaser.Scene {
     }).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
 
-    // Scrollable content (extra top padding to avoid title overlap)
-    const contentY = 60;
-    const contentH = totalH - 70;
+    // Scrollable content
+    const contentY = 65;
+    const contentH = totalH - 75;
+    const marginL = 280;
+    const marginR = 280;
+    const contentW = CANVAS_WIDTH - marginL - marginR;
+
     const mask = this.add.graphics();
     mask.fillRect(0, contentY, CANVAS_WIDTH, contentH);
     const maskGeo = mask.createGeometryMask();
@@ -134,7 +138,7 @@ export class ChangelogScene extends Phaser.Scene {
     const container = this.add.container(0, contentY);
     container.setMask(maskGeo);
 
-    let y = 0;
+    let y = 10; // top spacer
     for (const section of CHANGELOG_ENTRIES) {
       const header = this.add.text(cx, y, section.version, {
         fontSize: '16px', color: '#ffaa44', fontFamily: 'monospace',
@@ -143,9 +147,9 @@ export class ChangelogScene extends Phaser.Scene {
       y += 24;
 
       for (const change of section.changes) {
-        const text = this.add.text(80, y, `• ${change}`, {
+        const text = this.add.text(marginL, y, `• ${change}`, {
           fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
-          wordWrap: { width: CANVAS_WIDTH - 160 },
+          wordWrap: { width: contentW },
         });
         container.add(text);
         y += text.height + 6;
