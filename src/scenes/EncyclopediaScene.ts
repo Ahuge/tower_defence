@@ -159,8 +159,8 @@ export class EncyclopediaScene extends Phaser.Scene {
     y += 18;
 
     // Content margins — narrower centered card
-    const marginL = 200;
-    const marginR = 200;
+    const marginL = 280;
+    const marginR = 280;
     const contentW = CANVAS_WIDTH - marginL - marginR;
 
     // Lore paragraph
@@ -322,7 +322,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const loreText = this.add.text(cx, y, `"${lore}"`, {
       fontSize: '10px', color: '#999999', fontFamily: 'monospace',
       fontStyle: 'italic',
-      wordWrap: { width: CANVAS_WIDTH - 400 },
+      wordWrap: { width: CANVAS_WIDTH - 560 },
       align: 'center',
     }).setOrigin(0.5, 0);
     this.contentContainer.add(loreText);
@@ -359,9 +359,9 @@ export class EncyclopediaScene extends Phaser.Scene {
         if (upg.fireRate !== prevRate) diffs.push(`SPD: ${prevRate}→${upg.fireRate}ms`);
         const diffStr = diffs.length > 0 ? diffs.join(', ') : 'No stat change';
 
-        const upgText = this.add.text(100, y, `Lv${upg.level} (${upg.cost}g): ${diffStr}`, {
+        const upgText = this.add.text(cx, y, `Lv${upg.level} (${upg.cost}g): ${diffStr}`, {
           fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
-        });
+        }).setOrigin(0.5, 0);
         this.contentContainer.add(upgText);
         y += 14;
 
@@ -393,8 +393,8 @@ export class EncyclopediaScene extends Phaser.Scene {
   // ===================== CREEPS TAB =====================
   private buildCreepsTab(): void {
     let y = 0;
-    const marginL = 200;
-    const marginR = 200;
+    const marginL = 280;
+    const marginR = 280;
     const cardW = CANVAS_WIDTH - marginL - marginR;
 
     for (const [id, ct] of Object.entries(CREEP_TYPES)) {
