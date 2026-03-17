@@ -557,10 +557,84 @@ export class GameScene extends Phaser.Scene {
     this.scene.start('GameOverScene', data);
   }
 
+  // Pause menu
+  private pauseOverlay: Phaser.GameObjects.Container | null = null;
+
   private togglePause(): void {
     this.paused = !this.paused;
     if (this.paused) {
-      this.ui.setStatus('PAUSED - Press P to resume');
+      this.showPauseMenu();
+    } else {
+      this.hidePauseMenu();
+    }
+  }
+
+  private showPauseMenu(): void {
+    if (this.pauseOverlay) return;
+
+    const cx = GRID_OFFSET_X + GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+
+    this.pauseOverlay = this.add.container(0, 0).setDepth(50);
+
+    // Dim overlay
+    const dim = this.add.graphics();
+    dim.fillStyle(0x000000, 0.6);
+    dim.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, GAME_HEIGHT);
+    this.pauseOverlay.add(dim);
+
+    // Panel
+    const panelW = 260;
+    const panelH = 180;
+    const px = cx - panelW / 2;
+    const py = cy - panelH / 2;
+
+    const panel = this.add.graphics();
+    panel.fillStyle(0x1a1a1a, 0.95);
+    panel.fillRect(px, py, panelW, panelH);
+    panel.lineStyle(2, 0x555555, 1);
+    panel.strokeRect(px, py, panelW, panelH);
+    this.pauseOverlay.add(panel);
+
+    this.add.text(cx, py + 20, 'PAUSED', {
+      fontSize: '24px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51);
+    this.pauseOverlay.add(this.children.getAt(this.children.length - 1) as Phaser.GameObjects.Text);
+
+    // Resume button
+    const resumeBtn = this.add.text(cx, py + 70, '[ Resume ]', {
+      fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51);
+    this.pauseOverlay.add(resumeBtn);
+    resumeBtn.setInteractive({ useHandCursor: true });
+    resumeBtn.on('pointerdown', () => this.togglePause());
+    resumeBtn.on('pointerover', () => resumeBtn.setColor('#88ff88'));
+    resumeBtn.on('pointerout', () => resumeBtn.setColor('#44ff44'));
+
+    // Exit to menu button
+    const exitBtn = this.add.text(cx, py + 110, '[ Exit to Menu ]', {
+      fontSize: '16px', color: '#ff8844', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51);
+    this.pauseOverlay.add(exitBtn);
+    exitBtn.setInteractive({ useHandCursor: true });
+    exitBtn.on('pointerdown', () => {
+      this.hidePauseMenu();
+      this.scene.start('MenuScene');
+    });
+    exitBtn.on('pointerover', () => exitBtn.setColor('#ffbb77'));
+    exitBtn.on('pointerout', () => exitBtn.setColor('#ff8844'));
+
+    // Hint
+    const hint = this.add.text(cx, py + panelH - 16, 'Press P to resume', {
+      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51);
+    this.pauseOverlay.add(hint);
+  }
+
+  private hidePauseMenu(): void {
+    if (this.pauseOverlay) {
+      this.pauseOverlay.destroy(true);
+      this.pauseOverlay = null;
     }
   }
 
