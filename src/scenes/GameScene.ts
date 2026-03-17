@@ -244,7 +244,7 @@ export class GameScene extends Phaser.Scene {
     this.selectionMode = 'build';
     this.selectedBuildType = typeId;
     this.selectedTower = null;
-    this.towerInfo.hide();
+    this.towerInfo?.hide();
   }
 
   private enterInspectMode(tower: Tower): void {

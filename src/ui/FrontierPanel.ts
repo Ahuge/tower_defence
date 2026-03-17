@@ -25,10 +25,11 @@ export class FrontierPanel {
 
     const topY = SendPanel.HEIGHT;
     this.container = scene.add.container(0, topY).setDepth(28);
-    this.ownedContainer = scene.add.container(0, 0).setDepth(28);
-    this.container.add(this.ownedContainer);
+    this.ownedContainer = scene.add.container(0, 0);
 
     this.buildPanel();
+    // Add ownedContainer AFTER buildPanel so it renders on top of the background
+    this.container.add(this.ownedContainer);
     this.updateOwned();
   }
 
