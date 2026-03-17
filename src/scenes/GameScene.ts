@@ -411,32 +411,60 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleRightClick(col: number, row: number): void {
-    if (this.grid.cells[row]?.[col] !== CellType.Tower) return;
-
+    // Find tower at this cell (could be grid-blocking or mobile)
     const idx = this.towers.findIndex(t => t.col === col && t.row === row);
-    if (idx !== -1) {
-      const tower = this.towers[idx];
-      const refund = tower.getSellValue();
-      this.economy.addGold(refund);
-      this.eventLog.towerSold(tower.typeDef.name, refund);
-      if (this.selectedTower === tower) this.enterNoneMode();
-      tower.destroy();
-      this.towers.splice(idx, 1);
-    }
+    if (idx === -1) return;
 
-    this.grid.removeTower(col, row);
-    this.eventBus.emit('towerSold', col, row);
-    this.recalculatePaths();
-    this.drawPath();
+    const tower = this.towers[idx];
+    const refund = tower.getSellValue();
+    this.economy.addGold(refund);
+    this.eventLog.towerSold(tower.typeDef.name, refund);
+    if (this.selectedTower === tower) this.enterNoneMode();
+    tower.destroy();
+    this.towers.splice(idx, 1);
+
+    // Only modify grid for non-mobile towers
+    if (!tower.isMobile) {
+      this.grid.removeTower(col, row);
+      this.eventBus.emit('towerSold', col, row);
+      this.recalculatePaths();
+      this.drawPath();
+    }
   }
 
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
     const towerType = getTowerType(this.selectedBuildType);
     const cost = this.getEffectiveCost(towerType.cost);
+    const isMobile = towerType.traits.some(t => t.id === 'mobile_unit');
 
-    if (!this.grid.canPlaceTower(col, row)) return;
     if (!this.economy.canAfford(cost)) return;
+
+    if (isMobile) {
+      // Mobile units: don't block grid, allow stacking, no path check
+      // Just need a valid grid cell (not blocked terrain)
+      if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return;
+      const cell = this.grid.cells[row][col];
+      if (cell === CellType.Blocked) return;
+
+      this.economy.spend(cost);
+      const tower = new Tower(this, col, row, towerType);
+      tower.isMobile = true;
+      if (this.modifier) {
+        for (const t of this.modifier.towerTraits) {
+          tower.traits.push({ ...t });
+        }
+      }
+      this.towers.push(tower);
+      this.totalTowersBuilt++;
+      this.eventLog.towerBuilt(towerType.name, cost);
+      this.statsTracker.recordTowerBuilt(towerType.id);
+      this.statsTracker.recordGoldSpent(cost);
+      return;
+    }
+
+    // Normal tower placement
+    if (!this.grid.canPlaceTower(col, row)) return;
 
     this.grid.placeTower(col, row);
 

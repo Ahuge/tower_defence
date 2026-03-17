@@ -48,6 +48,7 @@ export class Tower {
   projectileColor: number;
   homeX: number = 0;
   homeY: number = 0;
+  isMobile: boolean = false;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
