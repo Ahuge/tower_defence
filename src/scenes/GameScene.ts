@@ -302,8 +302,21 @@ export class GameScene extends Phaser.Scene {
           this.eventLog.gameMessage('Opponent is ready!');
         } else if (msg.type === 'game_over') {
           this.eventLog.gameMessage('Opponent defeated! You win!');
+        } else if (msg.type === 'tower_pool') {
+          // Random faction: host sent us our tower pool
+          this.activeTowerIds = msg.towerIds;
+          this.towerBar.setTowerIds(this.activeTowerIds);
+          this.enterNoneMode();
+          this.eventLog.gameMessage('Tower pool updated!');
         }
       };
+
+      // Random faction in versus: host rolls towers for joiner too
+      if (this.faction === 'random' && this.versus.isHost) {
+        // Send the initial pool to joiner (if they're also random,
+        // they'll use this; if not, they'll ignore it)
+        this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
+      }
       this.opponentMinimap = new OpponentMinimap(this, this.versus, () => {
         this.viewingOpponent = !this.viewingOpponent;
         if (this.viewingOpponent) {
@@ -743,6 +756,10 @@ export class GameScene extends Phaser.Scene {
         this.frontierPanel.rebuildPurchaseList();
         this.eventLog.gameMessage('Tower + frontier pool rotated!');
         this.enterNoneMode();
+        // Versus: host sends tower pool to joiner
+        if (this.versus?.isHost) {
+          this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
+        }
       }
     }
 

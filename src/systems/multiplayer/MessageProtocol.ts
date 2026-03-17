@@ -9,6 +9,8 @@ export type GameMessage =
   | { type: 'wave_ready' }
   | { type: 'wave_cleared' }
   | { type: 'countdown_start'; duration: number }
+  | { type: 'tower_pool'; towerIds: string[] }
+  | { type: 'frontier_pool'; buildingIds: string[] }
   | { type: 'lives_update'; lives: number }
   | { type: 'game_over'; won: boolean; stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number }
   | { type: 'game_start'; faction: string; matchMode: string; map: string; difficulty: string; seed: number }

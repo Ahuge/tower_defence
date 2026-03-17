@@ -104,6 +104,9 @@ export class VersusManager {
           this.startWaveCountdown(msg.duration);
         }
         break;
+      case 'tower_pool':
+        // Host sent new random tower pool (for random faction)
+        break;
       case 'game_over':
         this.opponentGameOver = true;
         this.opponentEndStats = {

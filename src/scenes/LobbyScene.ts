@@ -182,7 +182,7 @@ export class LobbyScene extends Phaser.Scene {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const playable = FACTION_ORDER.filter(f => f !== 'random');
+    const playable = FACTION_ORDER;
     const cardW = 140;
     const gap = 8;
     const totalW = playable.length * cardW + (playable.length - 1) * gap;
@@ -205,7 +205,8 @@ export class LobbyScene extends Phaser.Scene {
         fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
-      this.add.text(x + cardW / 2, y + 45, `${faction.towerIds.length} towers`, {
+      const tCount = fid === 'random' ? '6/wave' : `${faction.towerIds.length} towers`;
+      this.add.text(x + cardW / 2, y + 45, tCount, {
         fontSize: '9px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
