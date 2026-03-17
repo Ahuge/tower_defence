@@ -4,21 +4,24 @@ import { DraftModifier, getRandomModifiers } from '../data/DraftModifiers';
 import { MatchMode } from '../data/WaveDefinitions';
 import { FactionId } from '../data/Factions';
 import { MapId } from '../data/Maps';
+import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 export class DraftScene extends Phaser.Scene {
   private matchMode: MatchMode = 'standard';
   private faction: FactionId | null = null;
   private mapId: MapId = 'plains';
+  private difficulty: DifficultyLevel = 'normal';
 
   constructor() {
     super('DraftScene');
   }
 
-  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId }): void {
+  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId; difficulty?: DifficultyLevel }): void {
     this.matchMode = data.mode;
     this.faction = data.faction;
     this.mapId = data.map;
+    this.difficulty = data.difficulty || 'normal';
   }
 
   create(): void {
@@ -77,6 +80,7 @@ export class DraftScene extends Phaser.Scene {
           faction: this.faction,
           map: this.mapId,
           modifier: mod,
+          difficulty: this.difficulty,
         });
       });
     }
@@ -91,6 +95,7 @@ export class DraftScene extends Phaser.Scene {
           faction: this.faction,
           map: this.mapId,
           modifier: null,
+          difficulty: this.difficulty,
         });
       })
       .on('pointerover', function(this: Phaser.GameObjects.Text) { this.setColor('#aaaaaa'); })

@@ -2,11 +2,14 @@ import Phaser from 'phaser';
 import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
+import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 export class MenuScene extends Phaser.Scene {
   private selectedMap: MapId = 'plains';
+  private selectedDifficulty: DifficultyLevel = 'normal';
   private mapButtons: { btn: Phaser.GameObjects.Graphics; id: MapId; x: number; y: number; w: number; h: number }[] = [];
+  private diffButtons: { btn: Phaser.GameObjects.Graphics; id: DifficultyLevel; x: number; y: number; w: number; h: number }[] = [];
 
   constructor() {
     super('MenuScene');
@@ -56,15 +59,52 @@ export class MenuScene extends Phaser.Scene {
 
     this.drawMapButtons();
 
+    // Difficulty selection
+    this.add.text(cx, 165, 'Difficulty', {
+      fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    const diffs: { id: DifficultyLevel; label: string; color: string }[] = [
+      { id: 'easy', label: 'Easy', color: '#44ff44' },
+      { id: 'normal', label: 'Normal', color: '#ffaa44' },
+      { id: 'hard', label: 'Hard', color: '#ff4444' },
+    ];
+    const diffBtnW = 90;
+    const diffGap = 8;
+    const diffTotalW = diffs.length * diffBtnW + (diffs.length - 1) * diffGap;
+    const diffStartX = cx - diffTotalW / 2;
+
+    for (let i = 0; i < diffs.length; i++) {
+      const d = diffs[i];
+      const x = diffStartX + i * (diffBtnW + diffGap);
+      const y = 180;
+      const h = 28;
+
+      const btn = this.add.graphics();
+      this.diffButtons.push({ btn, id: d.id, x, y, w: diffBtnW, h });
+
+      this.add.text(x + diffBtnW / 2, y + h / 2, d.label, {
+        fontSize: '12px', color: d.color, fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
+      const zone = this.add.zone(x + diffBtnW / 2, y + h / 2, diffBtnW, h).setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', () => {
+        this.selectedDifficulty = d.id;
+        this.drawDiffButtons();
+      });
+    }
+
+    this.drawDiffButtons();
+
     // Mode selection
-    this.add.text(cx, 170, 'Select Match Mode', {
+    this.add.text(cx, 220, 'Select Match Mode', {
       fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const modes: { mode: MatchMode; label: string; desc: string; y: number }[] = [
-      { mode: 'sprint', label: 'Sprint (15 waves)', desc: 'Quick game, fewer creep types', y: 200 },
-      { mode: 'standard', label: 'Standard (30 waves)', desc: 'Full experience, all creep types', y: 270 },
-      { mode: 'marathon', label: 'Marathon (Endless)', desc: 'Infinite scaling, how far can you go?', y: 340 },
+      { mode: 'sprint', label: 'Sprint (15 waves)', desc: 'Quick game, fewer creep types', y: 250 },
+      { mode: 'standard', label: 'Standard (30 waves)', desc: 'Full experience, all creep types', y: 320 },
+      { mode: 'marathon', label: 'Marathon (Endless)', desc: 'Infinite scaling, how far can you go?', y: 390 },
     ];
 
     for (const m of modes) {
@@ -98,8 +138,25 @@ export class MenuScene extends Phaser.Scene {
         btn.strokeRect(cx - 150, m.y - 10, 300, 50);
       });
       zone.on('pointerdown', () => {
-        this.scene.start('FactionSelectScene', { mode: m.mode, map: this.selectedMap });
+        this.scene.start('FactionSelectScene', { mode: m.mode, map: this.selectedMap, difficulty: this.selectedDifficulty });
       });
+    }
+  }
+
+  private drawDiffButtons(): void {
+    for (const db of this.diffButtons) {
+      db.btn.clear();
+      if (db.id === this.selectedDifficulty) {
+        db.btn.fillStyle(0x444444, 1);
+        db.btn.fillRect(db.x, db.y, db.w, db.h);
+        db.btn.lineStyle(2, 0xffffff, 1);
+        db.btn.strokeRect(db.x, db.y, db.w, db.h);
+      } else {
+        db.btn.fillStyle(0x2a2a2a, 1);
+        db.btn.fillRect(db.x, db.y, db.w, db.h);
+        db.btn.lineStyle(1, 0x555555, 0.6);
+        db.btn.strokeRect(db.x, db.y, db.w, db.h);
+      }
     }
   }
 

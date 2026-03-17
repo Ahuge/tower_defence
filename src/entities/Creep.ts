@@ -119,11 +119,17 @@ export class Creep {
   }
 
   takeDamage(amount: number): void {
+    // Check evasion buff from mage auras
+    const auraEvasion = this.statusEffects.getEvasionChance();
+    if (auraEvasion > 0 && Math.random() < auraEvasion) {
+      return; // dodged via aura
+    }
+
     // Apply damage amplification
     const amp = this.statusEffects.getDamageAmp();
     const amped = Math.round(amount * amp);
 
-    // Run through creep traits (shield absorb, etc.)
+    // Run through creep traits (shield absorb, own evasion, etc.)
     const finalDamage = resolveCreepDamage(this.traits, amped);
     if (finalDamage <= 0) return;
 

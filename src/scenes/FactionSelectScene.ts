@@ -4,19 +4,22 @@ import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { TOWER_TYPES } from '../data/TowerTypes';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId } from '../data/Maps';
+import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 export class FactionSelectScene extends Phaser.Scene {
   private matchMode: MatchMode = 'standard';
   private mapId: MapId = 'plains';
+  private difficulty: DifficultyLevel = 'normal';
 
   constructor() {
     super('FactionSelectScene');
   }
 
-  init(data: { mode: MatchMode; map?: MapId }): void {
+  init(data: { mode: MatchMode; map?: MapId; difficulty?: DifficultyLevel }): void {
     this.matchMode = data.mode;
     this.mapId = data.map || 'plains';
+    this.difficulty = data.difficulty || 'normal';
   }
 
   create(): void {
@@ -110,7 +113,7 @@ export class FactionSelectScene extends Phaser.Scene {
         card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerdown', () => {
-        this.scene.start('DraftScene', { mode: this.matchMode, faction: factionId, map: this.mapId });
+        this.scene.start('DraftScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty });
       });
     }
   }

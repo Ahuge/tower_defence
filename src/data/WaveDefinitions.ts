@@ -3,8 +3,8 @@ export type MatchMode = 'sprint' | 'standard' | 'marathon';
 export interface WaveCreepGroup {
   creepType: string;
   count: number;
-  hpScale: number; // multiplier on base hp for this wave
-  speedScale: number; // multiplier on base speed
+  hpScale: number;
+  speedScale: number;
 }
 
 export interface WaveDefinition {
@@ -36,37 +36,64 @@ function generateStandardWaves(count: number): WaveDefinition[] {
 
     const groups: WaveCreepGroup[] = [];
 
-    // Mix creep types based on wave number
     if (waveNum <= 3) {
+      // Early: just standard
       groups.push({ creepType: 'standard', count: 5 + waveNum, hpScale: baseHp, speedScale: baseSpeed });
     } else if (waveNum <= 6) {
+      // Introduce fast
       groups.push({ creepType: 'standard', count: 4 + waveNum, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 2, hpScale: baseHp, speedScale: baseSpeed });
     } else if (waveNum <= 9) {
+      // Introduce armored + group
       groups.push({ creepType: 'standard', count: 3 + waveNum, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'armored', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+      if (waveNum >= 8) {
+        groups.push({ creepType: 'group', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      }
     } else if (waveNum <= 15) {
-      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.8), hpScale: baseHp, speedScale: baseSpeed });
+      // Introduce swarm, evasive, splitter
+      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.7), hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'armored', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'swarm', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       if (waveNum >= 12) {
-        groups.push({ creepType: 'swarm', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+        groups.push({ creepType: 'evasive', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      }
+      if (waveNum >= 14) {
+        groups.push({ creepType: 'splitter', count: 1, hpScale: baseHp, speedScale: baseSpeed });
       }
     } else if (waveNum <= 20) {
-      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.6), hpScale: baseHp, speedScale: baseSpeed });
+      // Introduce mages, flying
+      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.5), hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 4, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'armored', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'swarm', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'evasive', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'splitter', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       if (waveNum >= 18) {
         groups.push({ creepType: 'healer', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+        // Mage type rotates
+        const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion'];
+        groups.push({ creepType: mageTypes[waveNum % mageTypes.length], count: 1, hpScale: baseHp, speedScale: baseSpeed });
+      }
+      if (waveNum >= 19) {
+        groups.push({ creepType: 'flying', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       }
     } else {
-      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.5), hpScale: baseHp, speedScale: baseSpeed });
+      // Late game: everything
+      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.4), hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 5, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'armored', count: 4, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'swarm', count: 4, hpScale: baseHp, speedScale: baseSpeed });
-      groups.push({ creepType: 'healer', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'evasive', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'splitter', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'healer', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'group', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'flying', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+      // Rotating mage
+      const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion'];
+      groups.push({ creepType: mageTypes[waveNum % mageTypes.length], count: 1, hpScale: baseHp, speedScale: baseSpeed });
     }
 
     waves.push({ wave: waveNum, groups, spawnInterval: interval, isBoss: false });
@@ -82,7 +109,6 @@ export function getWavesForMode(mode: MatchMode): WaveDefinition[] {
     case 'standard':
       return generateStandardWaves(30);
     case 'marathon':
-      // Generate 100 waves with scaling
       return generateStandardWaves(100);
   }
 }

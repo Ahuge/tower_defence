@@ -6,7 +6,8 @@ export enum CellType {
   Tower,
   Entry,
   Exit,
-  Blocked, // terrain
+  Blocked,  // can't walk or build
+  NoBuild,  // can walk through, can't build on
 }
 
 export class Grid {
@@ -38,6 +39,11 @@ export class Grid {
           this.cells[b.row][b.col] = CellType.Blocked;
         }
       }
+      for (const b of (mapDef.noBuild || [])) {
+        if (b.row >= 0 && b.row < GRID_ROWS && b.col >= 0 && b.col < GRID_COLS) {
+          this.cells[b.row][b.col] = CellType.NoBuild;
+        }
+      }
     } else {
       // Default: plains
       this.entry = { col: 0, row: Math.floor(GRID_ROWS / 2) };
@@ -54,11 +60,13 @@ export class Grid {
     if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return false;
     const cell = this.cells[row][col];
     return cell !== CellType.Tower && cell !== CellType.Blocked;
+    // NoBuild IS walkable (creeps can walk through, towers can't be placed)
   }
 
   canPlaceTower(col: number, row: number): boolean {
     if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return false;
     return this.cells[row][col] === CellType.Empty;
+    // NoBuild, Blocked, Tower, Entry, Exit all return false
   }
 
   placeTower(col: number, row: number): boolean {

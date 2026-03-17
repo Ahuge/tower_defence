@@ -17,6 +17,7 @@ import { getTowerType, TOWER_ORDER, getAllFactionTowerIds } from '../data/TowerT
 import { FactionId, getFaction } from '../data/Factions';
 import { MatchMode, WaveDefinition, getWavesForMode } from '../data/WaveDefinitions';
 import { MapId, MAPS } from '../data/Maps';
+import { DifficultyLevel, DIFFICULTIES, DifficultyHints } from '../data/Difficulty';
 import { DraftModifier } from '../data/DraftModifiers';
 import { IncomeManager } from '../systems/IncomeManager';
 import { SendManager } from '../systems/SendManager';
@@ -72,6 +73,8 @@ export class GameScene extends Phaser.Scene {
   waves!: WaveDefinition[];
   matchMode: MatchMode = 'standard';
   mapId: MapId = 'plains';
+  difficulty: DifficultyLevel = 'normal';
+  difficultyHints!: DifficultyHints;
   faction: FactionId | null = null;
   modifier: DraftModifier | null = null;
   activeTowerIds: string[] = TOWER_ORDER;
@@ -98,11 +101,13 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
     this.modifier = data.modifier ?? null;
+    this.difficulty = data.difficulty || 'normal';
+    this.difficultyHints = DIFFICULTIES[this.difficulty];
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
     } else if (this.faction) {
@@ -149,7 +154,9 @@ export class GameScene extends Phaser.Scene {
 
     // Systems
     this.economy = new EconomyManager(this.eventBus);
-    this.spawner = new SpawnManager(this, this.eventBus);
+    this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints);
+    // Set flying path (direct line from first entry to first exit)
+    this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
     this.inputMgr = new InputManager(this, this.eventBus);
     this.ui = new UIOverlay(this, this.eventBus);
 
@@ -766,11 +773,24 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(0x1a1a1a, 1);
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
-        if (this.grid.cells[row][col] === CellType.Blocked) {
+        const cell = this.grid.cells[row][col];
+        if (cell === CellType.Blocked) {
+          g.fillStyle(0x1a1a1a, 1);
           g.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, 0x333333, 0.5);
           g.strokeRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-          g.lineStyle(1, COLOR_GRID_LINE, 0.3);
+        } else if (cell === CellType.NoBuild) {
+          // Walkable but unbuildable — subtle X pattern
+          g.fillStyle(0x2a2222, 1);
+          g.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.lineStyle(1, 0x442222, 0.3);
+          const lx = gridLeftX(col);
+          const ty = row * TILE_SIZE;
+          g.lineBetween(lx + 4, ty + 4, lx + TILE_SIZE - 4, ty + TILE_SIZE - 4);
+          g.lineBetween(lx + TILE_SIZE - 4, ty + 4, lx + 4, ty + TILE_SIZE - 4);
+        }
+        if (cell === CellType.Blocked || cell === CellType.NoBuild) {
+          g.lineStyle(1, COLOR_GRID_LINE, 0.3); // restore
         }
       }
     }

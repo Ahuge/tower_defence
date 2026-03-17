@@ -78,6 +78,15 @@ export class StatusEffectManager {
     return amp;
   }
 
+  /** Get evasion chance from evasion_buff status (applied by mage aura) */
+  getEvasionChance(): number {
+    let chance = 0;
+    for (const e of this.effects) {
+      if (e.type === 'evasion_buff') chance += e.magnitude;
+    }
+    return Math.min(0.5, chance); // cap at 50%
+  }
+
   has(type: string): boolean {
     return this.effects.some(e => e.type === type);
   }
