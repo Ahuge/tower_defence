@@ -687,6 +687,20 @@ export class GameScene extends Phaser.Scene {
       delta,
     };
 
+    // Reset harmonic aura accumulators before aura handlers re-add them
+    for (const tower of this.towers) {
+      for (const trait of tower.traits) {
+        if (trait.id === '_harmonic_damage' || trait.id === '_harmonic_rate') {
+          trait.bonus = 0;
+        } else if (trait.id === '_harmonic_range') {
+          trait.bonus = 0;
+          tower.range = tower.typeDef.range * TILE_SIZE; // reset to base
+        } else if (trait.id === '_harmonic_crit') {
+          trait.chance = 0;
+        }
+      }
+    }
+
     for (const tower of this.towers) {
       tower.runTraitUpdates(traitCtx);
     }

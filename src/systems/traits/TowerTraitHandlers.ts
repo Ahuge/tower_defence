@@ -764,6 +764,13 @@ registerTowerUpdate('spawn_swarmlings_per_wave', (_trait: Trait, _tower: any, _c
 // HARMONIC FACTION AURAS
 // ============================================================
 
+/**
+ * Harmonic aura system — all auras STACK additively.
+ * Each aura handler adds to the buff trait's bonus.
+ * The _harmonic_* buff traits reset each frame via _ttl expiry
+ * and get re-added by active auras, accumulating from all sources.
+ */
+
 /** Damage aura: +X% damage to all towers in range (stacks) */
 registerTowerUpdate('damage_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
   const bonus = (trait.percent ?? 0.2) * tower.level;
@@ -773,12 +780,13 @@ registerTowerUpdate('damage_aura', (trait: Trait, tower: any, ctx: UpdateContext
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      addOrRefreshTrait(other.traits, {
-        id: '_harmonic_damage',
-        bonus,
-        _ttl: 200,
-        _source: `${tower.col},${tower.row}`,
-      });
+      const existing = other.traits.find((t: any) => t.id === '_harmonic_damage');
+      if (existing) {
+        existing.bonus += bonus; // stack!
+        existing._ttl = 200;
+      } else {
+        other.traits.push({ id: '_harmonic_damage', bonus, _ttl: 200 });
+      }
     }
   }
 });
@@ -788,9 +796,11 @@ registerDamageMod('_harmonic_damage', (trait: Trait, damage: number, _ctx: HitCo
 });
 registerTowerUpdate('_harmonic_damage', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+  // Reset bonus for next frame's accumulation (if not expired, it gets re-added)
+  if (trait._ttl <= 0) trait.bonus = 0;
 });
 
-/** Rate aura: +X% fire rate to all towers in range */
+/** Rate aura: +X% fire rate to all towers in range (stacks) */
 registerTowerUpdate('rate_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
   const bonus = (trait.percent ?? 0.15) * tower.level;
   const range = tower.range || (TILE_SIZE * 4);
@@ -799,23 +809,26 @@ registerTowerUpdate('rate_aura', (trait: Trait, tower: any, ctx: UpdateContext) 
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      addOrRefreshTrait(other.traits, {
-        id: '_harmonic_rate',
-        bonus,
-        _ttl: 200,
-      });
+      const existing = other.traits.find((t: any) => t.id === '_harmonic_rate');
+      if (existing) {
+        existing.bonus += bonus;
+        existing._ttl = 200;
+      } else {
+        other.traits.push({ id: '_harmonic_rate', bonus, _ttl: 200 });
+      }
     }
   }
 });
 
 registerFireRateMod('_harmonic_rate', (trait: Trait, rate: number, _tower: any) => {
-  return Math.round(rate * (1 - (trait.bonus ?? 0)));
+  return Math.round(rate * (1 - Math.min(0.8, trait.bonus ?? 0))); // cap at 80% reduction
 });
 registerTowerUpdate('_harmonic_rate', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+  if (trait._ttl <= 0) trait.bonus = 0;
 });
 
-/** Range aura: +X tiles range to all towers in range */
+/** Range aura: +X tiles range to all towers in range (stacks) */
 registerTowerUpdate('range_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
   const bonus = (trait.tiles ?? 1.5) * tower.level;
   const range = tower.range || (TILE_SIZE * 4);
@@ -824,26 +837,26 @@ registerTowerUpdate('range_aura', (trait: Trait, tower: any, ctx: UpdateContext)
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      addOrRefreshTrait(other.traits, {
-        id: '_harmonic_range',
-        bonus: bonus * TILE_SIZE,
-        _ttl: 200,
-      });
+      const existing = other.traits.find((t: any) => t.id === '_harmonic_range');
+      if (existing) {
+        existing.bonus += bonus * TILE_SIZE;
+        existing._ttl = 200;
+      } else {
+        other.traits.push({ id: '_harmonic_range', bonus: bonus * TILE_SIZE, _ttl: 200 });
+      }
     }
   }
 });
 
-// Range bonus applied by recalculating each frame (not a fire rate mod)
-// Handled in Tower.getEffectiveRange() or as part of findTarget override
 registerTowerUpdate('_harmonic_range', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  // Temporarily boost tower range
+  // Apply accumulated range bonus
   const baseRange = tower.typeDef.range * TILE_SIZE;
-  const rangeBonus = trait.bonus ?? 0;
-  tower.range = baseRange + rangeBonus;
+  tower.range = baseRange + (trait.bonus ?? 0);
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+  if (trait._ttl <= 0) trait.bonus = 0;
 });
 
-/** Crit aura: grants crit chance to towers in range */
+/** Crit aura: grants stacking crit chance to towers in range */
 registerTowerUpdate('crit_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
   const chance = (trait.chance ?? 0.15) * tower.level;
   const multiplier = trait.multiplier ?? 2;
@@ -853,12 +866,14 @@ registerTowerUpdate('crit_aura', (trait: Trait, tower: any, ctx: UpdateContext) 
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      addOrRefreshTrait(other.traits, {
-        id: '_harmonic_crit',
-        chance: Math.min(0.6, chance),
-        multiplier,
-        _ttl: 200,
-      });
+      const existing = other.traits.find((t: any) => t.id === '_harmonic_crit');
+      if (existing) {
+        existing.chance = Math.min(0.8, (existing.chance ?? 0) + chance); // stack, cap 80%
+        existing.multiplier = Math.max(existing.multiplier ?? 2, multiplier);
+        existing._ttl = 200;
+      } else {
+        other.traits.push({ id: '_harmonic_crit', chance: Math.min(0.8, chance), multiplier, _ttl: 200 });
+      }
     }
   }
 });
@@ -871,6 +886,7 @@ registerDamageMod('_harmonic_crit', (trait: Trait, damage: number, _ctx: HitCont
 });
 registerTowerUpdate('_harmonic_crit', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+  if (trait._ttl <= 0) { trait.chance = 0; trait.bonus = 0; }
 });
 
 /** Conduit: links 2-3 nearest aura towers and shares their auras */
