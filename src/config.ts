@@ -1,6 +1,6 @@
-export const TILE_SIZE = 40;
-export const GRID_COLS = 25;
-export const GRID_ROWS = 18;
+export const TILE_SIZE = 28;
+export const GRID_COLS = 36;
+export const GRID_ROWS = 26;
 export const GAME_WIDTH = GRID_COLS * TILE_SIZE;
 export const GAME_HEIGHT = GRID_ROWS * TILE_SIZE;
 
