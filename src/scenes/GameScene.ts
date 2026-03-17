@@ -208,10 +208,11 @@ export class GameScene extends Phaser.Scene {
     const sidebarTopOffset = UpcomingWaves.HEIGHT;
     this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
       if (this.betweenWaves && this.economy.spend(opt.cost)) {
-        if (this.versus) {
+        if (this.versus && this.versus.isConnected()) {
           // Versus: sends go to opponent, not to self
           this.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
           this.versus.sendsSent++;
+          this.eventLog.gameMessage(`Sent ${opt.name} to opponent!`);
         } else {
           this.sendMgr.queueSend(opt);
         }
@@ -647,6 +648,7 @@ export class GameScene extends Phaser.Scene {
       this.eventLog.towerBuilt(towerType.name, cost);
       this.statsTracker.recordTowerBuilt(towerType.id);
       this.statsTracker.recordGoldSpent(cost);
+      this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
       return;
     }
 
