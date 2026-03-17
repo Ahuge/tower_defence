@@ -8,6 +8,8 @@ export class TowerInfoPanel {
   private bg: Phaser.GameObjects.Graphics;
   private nameText: Phaser.GameObjects.Text;
   private statsText: Phaser.GameObjects.Text;
+  private buffText: Phaser.GameObjects.Text;
+  private traitsText: Phaser.GameObjects.Text;
   private upgradeText: Phaser.GameObjects.Text;
   private rangeCircle: Phaser.GameObjects.Graphics;
   private visible: boolean = false;
@@ -19,11 +21,12 @@ export class TowerInfoPanel {
     this.bg = scene.add.graphics();
     this.container.add(this.bg);
 
-    const style = { fontSize: '11px', color: '#ffffff', fontFamily: 'monospace' };
-    this.nameText = scene.add.text(8, 4, '', { ...style, fontSize: '13px', color: '#ffdd44' });
-    this.statsText = scene.add.text(8, 22, '', style);
-    this.upgradeText = scene.add.text(8, 56, '', { ...style, color: '#88ff88' });
-    this.container.add([this.nameText, this.statsText, this.upgradeText]);
+    this.nameText = scene.add.text(8, 4, '', { fontSize: '13px', color: '#ffdd44', fontFamily: 'monospace' });
+    this.statsText = scene.add.text(8, 22, '', { fontSize: '10px', color: '#ffffff', fontFamily: 'monospace' });
+    this.buffText = scene.add.text(8, 36, '', { fontSize: '10px', color: '#88ff88', fontFamily: 'monospace' });
+    this.traitsText = scene.add.text(8, 50, '', { fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace' });
+    this.upgradeText = scene.add.text(8, 66, '', { fontSize: '10px', color: '#88ff88', fontFamily: 'monospace' });
+    this.container.add([this.nameText, this.statsText, this.buffText, this.traitsText, this.upgradeText]);
 
     this.rangeCircle = scene.add.graphics().setDepth(19);
   }
@@ -32,35 +35,89 @@ export class TowerInfoPanel {
     this.visible = true;
     this.container.setVisible(true);
 
-    this.nameText.setText(`${tower.typeDef.name} Lv${tower.level}`);
+    // Name + level
+    const ultTag = tower.typeDef.ultimate ? ' [ULTIMATE]' : '';
+    this.nameText.setText(`${tower.typeDef.name} Lv${tower.level}${ultTag}`);
 
-    // Build stats line from traits
-    let stats = `DMG: ${tower.damage}  RNG: ${(tower.range / TILE_SIZE).toFixed(1)}  SPD: ${tower.fireRate}ms`;
+    // Base stats
+    const baseDmg = tower.damage;
+    const baseRate = tower.fireRate;
+    const baseRange = tower.range / TILE_SIZE;
 
-    const splashTrait = getTrait(tower.traits, 'splash_damage');
-    if (splashTrait) stats += `  Splash: ${((splashTrait.radius ?? 0) / TILE_SIZE).toFixed(1)}`;
+    this.statsText.setText(
+      `DMG: ${baseDmg}  RNG: ${baseRange.toFixed(1)}  SPD: ${baseRate}ms  [${tower.damageType}]`
+    );
 
-    const slowTrait = getTrait(tower.traits, 'slow_on_hit');
-    if (slowTrait) stats += `  Slow: ${Math.round((slowTrait.factor ?? 1) * 100)}%`;
+    // Aura buff display
+    const adjDmg = getTrait(tower.traits, '_adj_damage_buff');
+    const adjRate = getTrait(tower.traits, '_adj_rate_buff');
+    const spellAmp = getTrait(tower.traits, '_spell_amp_buff');
+    const overclock = getTrait(tower.traits, '_overclock_buff');
+    const buffs: string[] = [];
 
-    if (hasTrait(tower.traits, 'chain_damage')) stats += '  Chain';
-    if (hasTrait(tower.traits, 'teleport_delivery')) stats += '  Teleport';
-    if (hasTrait(tower.traits, 'damage_variance')) stats += '  Variance';
-    if (hasTrait(tower.traits, 'gold_on_hit')) stats += '  Gold/hit';
-    if (hasTrait(tower.traits, 'ramp_up')) stats += '  Ramp-up';
-    if (hasTrait(tower.traits, 'adjacency_buff')) stats += '  Aura';
+    if (adjDmg && adjDmg.bonus > 0) buffs.push(`+${adjDmg.bonus} DMG (aura)`);
+    if (adjRate && adjRate.bonus > 0) buffs.push(`-${adjRate.bonus}ms SPD (aura)`);
+    if (spellAmp && spellAmp.bonus > 0) buffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic (amp)`);
+    if (overclock && overclock.bonus > 0) buffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (overclock)`);
+    this.buffText.setText(buffs.length > 0 ? buffs.join('  ') : '');
 
-    this.statsText.setText(stats);
+    // Trait summary
+    const traitNames: string[] = [];
+    for (const trait of tower.typeDef.traits) {
+      switch (trait.id) {
+        case 'splash_damage': traitNames.push(`Splash ${((trait.radius ?? 0) / TILE_SIZE).toFixed(1)}`); break;
+        case 'chain_damage': traitNames.push(`Chain ${(trait.chainCount ?? 2) + 1}`); break;
+        case 'teleport_delivery': traitNames.push('Teleport'); break;
+        case 'slow_on_hit': traitNames.push(`Slow ${Math.round((1 - (trait.factor ?? 1)) * 100)}%`); break;
+        case 'gold_on_hit': traitNames.push(`+${trait.amount}g/hit`); break;
+        case 'damage_variance': traitNames.push(`Var ${Math.round((trait.min ?? 0.5) * 100)}-${Math.round((trait.max ?? 1.5) * 100)}%`); break;
+        case 'ramp_up': traitNames.push('Ramp-up'); break;
+        case 'adjacency_buff': traitNames.push('Adj. aura'); break;
+        case 'crit_chance': traitNames.push(`${Math.round((trait.chance ?? 0.25) * 100)}% crit x${trait.multiplier ?? 3}`); break;
+        case 'jackpot': traitNames.push(`${Math.round((trait.killChance ?? 0.08) * 100)}% kill / ${Math.round((trait.missChance ?? 0.25) * 100)}% miss`); break;
+        case 'burn_dot': traitNames.push(`Burn ${trait.dps}dps`); break;
+        case 'poison_dot': traitNames.push(`Poison ${Math.round((trait.percentPerSec ?? 0.02) * 100)}%/s`); break;
+        case 'pierce_delivery': traitNames.push('Pierce line'); break;
+        case 'strip_shield': traitNames.push('Strip shields'); break;
+        case 'armor_shred_on_hit': traitNames.push('Armor shred'); break;
+        case 'damage_amp_on_hit': traitNames.push(`+${Math.round((trait.ampAmount ?? 0.15) * 100)}% vuln`); break;
+        case 'root_on_hit': traitNames.push(`${Math.round((trait.chance ?? 0.2) * 100)}% root`); break;
+        case 'growth_scaling': traitNames.push('Grows over time'); break;
+        case 'slow_aura': traitNames.push(`Slow aura ${Math.round((1 - (trait.factor ?? 0.7)) * 100)}%`); break;
+        case 'spell_amp': traitNames.push(`+${Math.round((trait.ampPercent ?? 0.3) * 100)}% magic amp`); break;
+        case 'overclock_buff': traitNames.push('Overclock adj.'); break;
+        case 'direct_damage': break;
+        default: break;
+      }
+    }
+    this.traitsText.setText(traitNames.length > 0 ? traitNames.join(', ') : '');
+
+    // Upgrade info
+    let upgradeY = 50 + (traitNames.length > 0 ? 14 : 0);
+    this.upgradeText.setPosition(8, upgradeY + (buffs.length > 0 ? 14 : 0));
 
     if (tower.canUpgrade()) {
-      const cost = tower.getUpgradeCost();
-      this.upgradeText.setText(`Upgrade: ${cost}g (click tower) | Sell: ${tower.getSellValue()}g (right-click)`);
+      const next = tower.typeDef.upgrades[tower.level - 1];
+      const deltas: string[] = [];
+      const dmgDelta = next.damage - tower.damage;
+      const rangeDelta = next.range - tower.range / TILE_SIZE;
+      const rateDelta = next.fireRate - tower.fireRate;
+
+      if (dmgDelta !== 0) deltas.push(`${dmgDelta > 0 ? '+' : ''}${dmgDelta} DMG`);
+      if (rangeDelta !== 0) deltas.push(`${rangeDelta > 0 ? '+' : ''}${rangeDelta.toFixed(1)} RNG`);
+      if (rateDelta !== 0) deltas.push(`${rateDelta}ms SPD`);
+
+      const deltaStr = deltas.length > 0 ? ` (${deltas.join(', ')})` : '';
+      this.upgradeText.setText(`Upgrade Lv${next.level}: ${next.cost}g${deltaStr}\nSell: ${tower.getSellValue()}g (right-click)`);
     } else {
-      this.upgradeText.setText(`MAX LEVEL | Sell: ${tower.getSellValue()}g (right-click)`);
+      this.upgradeText.setText(`MAX | Sell: ${tower.getSellValue()}g (right-click)`);
     }
 
-    const panelW = 340;
-    const panelH = 76;
+    // Calculate panel size
+    const panelW = 350;
+    const panelH = upgradeY + (buffs.length > 0 ? 14 : 0) + 36;
+
+    // Position near tower
     let px = tower.x + TILE_SIZE;
     let py = tower.y - panelH / 2;
     if (px + panelW > CANVAS_WIDTH) px = tower.x - TILE_SIZE - panelW;
@@ -69,11 +126,18 @@ export class TowerInfoPanel {
 
     this.container.setPosition(px, py);
     this.bg.clear();
-    this.bg.fillStyle(0x111111, 0.9);
+    this.bg.fillStyle(0x111111, 0.95);
     this.bg.fillRect(0, 0, panelW, panelH);
     this.bg.lineStyle(1, 0x555555, 1);
     this.bg.strokeRect(0, 0, panelW, panelH);
 
+    // Aura buff border
+    if (buffs.length > 0) {
+      this.bg.lineStyle(2, 0xff88aa, 0.6);
+      this.bg.strokeRect(1, 1, panelW - 2, panelH - 2);
+    }
+
+    // Range circle
     this.rangeCircle.clear();
     this.rangeCircle.lineStyle(1, 0xffffff, 0.2);
     this.rangeCircle.strokeCircle(tower.x, tower.y, tower.range);

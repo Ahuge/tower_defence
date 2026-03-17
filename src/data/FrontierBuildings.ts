@@ -67,6 +67,7 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
       mechanic: 'gamble',
     },
   ],
+  random: [],
 };
 
 // Generic outposts for non-faction play

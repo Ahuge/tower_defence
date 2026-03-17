@@ -1,4 +1,4 @@
-export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void';
+export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'random';
 
 export interface Faction {
   id: FactionId;
@@ -13,38 +13,46 @@ export const FACTIONS: Record<FactionId, Faction> = {
   arcane: {
     id: 'arcane',
     name: 'Arcane',
-    description: 'Precision magic. Crits, AoE, shields, and spell amplification.',
+    description: 'Precision magic. Crits, AoE, and spell amplification.',
     primaryColor: 0x6644ff,
     secondaryColor: 0x9988ff,
-    towerIds: ['arcane_bolt', 'arcane_storm', 'arcane_frost', 'arcane_focus', 'arcane_meteor', 'arcane_spellweave', 'arcane_drain'],
+    towerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
   },
   mechanical: {
     id: 'mechanical',
     name: 'Mechanical',
-    description: 'Efficiency engineering. Ramp-up DPS, burn, piercing, and overclocking.',
+    description: 'Engineering and firepower. Burn, pierce, and raw efficiency.',
     primaryColor: 0xcc8833,
     secondaryColor: 0xeebb66,
-    towerIds: ['mech_turret', 'mech_tesla', 'mech_wall', 'mech_flamethrower', 'mech_railgun', 'mech_overclocker', 'mech_mortar'],
+    towerIds: ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
   },
   nature: {
     id: 'nature',
     name: 'Nature',
-    description: 'Living defences. Poison, roots, growth scaling, and adjacency synergy.',
+    description: 'Growth and synergy. Poison, roots, and adjacency buffs.',
     primaryColor: 0x33aa44,
     secondaryColor: 0x66dd77,
-    towerIds: ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_treant', 'nature_bramble'],
+    towerIds: ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder'],
   },
   void: {
     id: 'void',
     name: 'Void',
-    description: 'Chaotic powers. Variance, gold gen, teleport, armor shred, and gambling.',
+    description: 'Pure chaos. Gambling, gold gen, and teleportation.',
     primaryColor: 0x8822aa,
     secondaryColor: 0xbb55dd,
-    towerIds: ['void_spike', 'void_siphon', 'void_rift', 'void_beam', 'void_entropy', 'void_gambler', 'void_anchor'],
+    towerIds: ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion'],
+  },
+  random: {
+    id: 'random',
+    name: 'Random',
+    description: '6 random towers each wave from all factions. Adapt or die.',
+    primaryColor: 0xcccccc,
+    secondaryColor: 0xffffff,
+    towerIds: [], // Populated dynamically each wave
   },
 };
 
-export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void'];
+export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'random'];
 
 export function getFaction(id: FactionId): Faction {
   return FACTIONS[id];

@@ -13,7 +13,7 @@ import { EconomyManager } from '../systems/EconomyManager';
 import { SpawnManager } from '../systems/SpawnManager';
 import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
-import { getTowerType, TOWER_ORDER } from '../data/TowerTypes';
+import { getTowerType, TOWER_ORDER, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction } from '../data/Factions';
 import { MatchMode, WaveDefinition, getWavesForMode } from '../data/WaveDefinitions';
 import { MapId, MAPS } from '../data/Maps';
@@ -30,6 +30,7 @@ import { IncomeDisplay } from '../ui/IncomeDisplay';
 import { FrontierPanel } from '../ui/FrontierPanel';
 import { FighterPanel } from '../ui/FighterPanel';
 import { EventLog } from '../ui/EventLog';
+import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { FighterManager } from '../systems/FighterManager';
 import { FighterType } from '../data/FighterTypes';
 import { UpdateContext } from '../systems/traits/Trait';
@@ -37,7 +38,7 @@ import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
 
-type SelectionMode = 'build' | 'inspect' | 'none';
+type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'none';
 
 export class GameScene extends Phaser.Scene {
   // Core systems
@@ -60,6 +61,8 @@ export class GameScene extends Phaser.Scene {
   frontierMgr!: FrontierManager;
   frontierPanel!: FrontierPanel;
   eventLog!: EventLog;
+  creepInfo!: CreepInfoPanel;
+  selectedCreep: Creep | null = null;
 
   // Game state
   towers: Tower[] = [];
@@ -100,12 +103,20 @@ export class GameScene extends Phaser.Scene {
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
     this.modifier = data.modifier ?? null;
-    if (this.faction) {
+    if (this.faction === 'random') {
+      this.activeTowerIds = this.rollRandomTowers();
+    } else if (this.faction) {
       const f = getFaction(this.faction);
       this.activeTowerIds = f.towerIds;
     } else {
       this.activeTowerIds = TOWER_ORDER;
     }
+  }
+
+  private rollRandomTowers(): string[] {
+    const all = getAllFactionTowerIds().filter(id => !getTowerType(id).ultimate);
+    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 6);
   }
 
   create(): void {
@@ -157,6 +168,7 @@ export class GameScene extends Phaser.Scene {
       }
     });
     this.towerInfo = new TowerInfoPanel(this);
+    this.creepInfo = new CreepInfoPanel(this);
 
     // Economy systems
     this.incomeMgr = new IncomeManager(this.eventBus);
@@ -237,7 +249,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Tower selection hotkeys
-    const numKeys = ['ONE', 'TWO', 'THREE', 'FOUR'];
+    const numKeys = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'];
     for (let i = 0; i < numKeys.length; i++) {
       const idx = i;
       this.inputMgr.onKey(numKeys[i], () => {
@@ -264,16 +276,20 @@ export class GameScene extends Phaser.Scene {
     this.selectionMode = 'inspect';
     this.selectedBuildType = null;
     this.selectedTower = tower;
+    this.selectedCreep = null;
     this.towerBar.deselect();
     this.towerInfo.show(tower);
+    this.creepInfo.hide();
   }
 
   private enterNoneMode(): void {
     this.selectionMode = 'none';
     this.selectedBuildType = null;
     this.selectedTower = null;
+    this.selectedCreep = null;
     this.towerBar.deselect();
     this.towerInfo.hide();
+    this.creepInfo.hide();
     this.hoverGraphics.clear();
     this.rangeGraphics.clear();
   }
@@ -310,6 +326,17 @@ export class GameScene extends Phaser.Scene {
   handleClick(col: number, row: number): void {
     const existingTower = this.towers.find(t => t.col === col && t.row === row);
 
+    // Check for creep click (any mode except build)
+    if (!existingTower && this.selectionMode !== 'build') {
+      const clickX = gridX(col);
+      const clickY = gridY(col);
+      const clickedCreep = this.findCreepNear(gridX(col), gridY(row));
+      if (clickedCreep) {
+        this.enterCreepInspect(clickedCreep);
+        return;
+      }
+    }
+
     switch (this.selectionMode) {
       case 'build':
         if (existingTower) {
@@ -320,6 +347,7 @@ export class GameScene extends Phaser.Scene {
         break;
 
       case 'inspect':
+      case 'inspect_creep':
         if (existingTower) {
           if (existingTower === this.selectedTower && existingTower.canUpgrade()) {
             const cost = existingTower.getUpgradeCost();
@@ -339,9 +367,34 @@ export class GameScene extends Phaser.Scene {
         if (existingTower) {
           this.enterInspectMode(existingTower);
         }
-        // Click on empty in none mode does nothing
         break;
     }
+  }
+
+  private findCreepNear(px: number, py: number): Creep | null {
+    let closest: Creep | null = null;
+    let closestDist = TILE_SIZE; // detection radius
+    for (const creep of this.creeps) {
+      if (!creep.alive || creep.reached) continue;
+      const dx = creep.x - px;
+      const dy = creep.y - py;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < closestDist) {
+        closest = creep;
+        closestDist = dist;
+      }
+    }
+    return closest;
+  }
+
+  private enterCreepInspect(creep: Creep): void {
+    this.selectionMode = 'inspect_creep';
+    this.selectedBuildType = null;
+    this.selectedTower = null;
+    this.selectedCreep = creep;
+    this.towerBar.deselect();
+    this.towerInfo.hide();
+    this.creepInfo.show(creep);
   }
 
   handleRightClick(col: number, row: number): void {
@@ -555,6 +608,14 @@ export class GameScene extends Phaser.Scene {
       if (frontierBonus > 0) {
         this.eventLog.frontierIncome('Frontier bonus', frontierBonus);
       }
+
+      // Random faction: rotate available towers each wave
+      if (this.faction === 'random') {
+        this.activeTowerIds = this.rollRandomTowers();
+        this.towerBar.setTowerIds(this.activeTowerIds);
+        this.eventLog.gameMessage('Tower pool rotated!');
+        this.enterNoneMode();
+      }
     }
 
     if (this.lives <= 0) {
@@ -572,6 +633,7 @@ export class GameScene extends Phaser.Scene {
 
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
+    this.creepInfo.updateTracked();
   }
 
   // === Helpers ===

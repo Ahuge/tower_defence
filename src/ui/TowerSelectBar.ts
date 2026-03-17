@@ -151,6 +151,15 @@ export class TowerSelectBar {
     return lines.join('\n');
   }
 
+  /** Rebuild the bar with new tower IDs (for Random faction rotation) */
+  setTowerIds(ids: string[]): void {
+    this.towerIds = ids;
+    this.selectedIndex = -1;
+    this.buttons = [];
+    this.container.removeAll(true);
+    this.buildBar();
+  }
+
   highlight(index: number): void {
     if (index < 0 || index >= this.towerIds.length) return;
 

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
+import { TOWER_TYPES } from '../data/TowerTypes';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId } from '../data/Maps';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
@@ -19,24 +20,24 @@ export class FactionSelectScene extends Phaser.Scene {
   }
 
   create(): void {
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
     const cx = CANVAS_WIDTH / 2;
 
-    this.add.text(cx, 50, 'Choose Your Faction', {
+    this.add.text(cx, 30, 'Choose Your Faction', {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const cardW = 170;
-    const cardH = 200;
-    const gap = 12;
-    const totalW = FACTION_ORDER.length * cardW + (FACTION_ORDER.length - 1) * gap;
+    const cardW = 200;
+    const cardH = 320;
+    const gap = 10;
+    const factions = FACTION_ORDER;
+    const totalW = factions.length * cardW + (factions.length - 1) * gap;
     const startX = cx - totalW / 2;
 
-    for (let i = 0; i < FACTION_ORDER.length; i++) {
-      const factionId = FACTION_ORDER[i];
+    for (let i = 0; i < factions.length; i++) {
+      const factionId = factions[i];
       const faction = FACTIONS[factionId];
       const x = startX + i * (cardW + gap);
-      const y = 100;
+      const y = 65;
 
       const card = this.add.graphics();
       card.fillStyle(0x222222, 1);
@@ -46,32 +47,58 @@ export class FactionSelectScene extends Phaser.Scene {
 
       // Color strip
       card.fillStyle(faction.primaryColor, 0.6);
-      card.fillRect(x, y, cardW, 8);
+      card.fillRect(x, y, cardW, 6);
 
-      this.add.text(x + cardW / 2, y + 30, faction.name, {
-        fontSize: '18px', color: '#ffffff', fontFamily: 'monospace',
+      // Name
+      this.add.text(x + cardW / 2, y + 22, faction.name, {
+        fontSize: '16px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
-      // Description wrapped
+      // Tower count badge
+      const tCount = faction.towerIds.length > 0 ? `${faction.towerIds.length} towers` : '6/wave';
+      this.add.text(x + cardW / 2, y + 40, tCount, {
+        fontSize: '9px', color: '#888888', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
+      // Description
       this.add.text(x + 8, y + 55, faction.description, {
-        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+        fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace',
         wordWrap: { width: cardW - 16 },
       });
 
-      // Tower names
-      const towerNames = faction.towerIds.map(id => {
-        const t = this.getTowerName(id);
-        return t;
-      }).join('\n');
+      // Tower list
+      const towerY = y + 100;
+      if (factionId === 'random') {
+        this.add.text(x + 8, towerY, 'Each wave: 6 random\ntowers from all factions.\nBought towers persist.\nAdapt to what you get.', {
+          fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
+          lineSpacing: 4,
+        });
+      } else {
+        this.add.text(x + 8, towerY - 4, 'Towers:', {
+          fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+        });
+        let ty = towerY + 10;
+        for (const tid of faction.towerIds) {
+          const t = TOWER_TYPES[tid];
+          if (!t) continue;
+          const costStr = `${t.cost}g`;
+          const ultTag = t.ultimate ? ' *' : '';
+          const label = `${t.name} (${costStr})${ultTag}`;
+          const color = t.ultimate ? '#ffdd44' : '#cccccc';
+          this.add.text(x + 12, ty, label, {
+            fontSize: '9px', color, fontFamily: 'monospace',
+          });
+          ty += 13;
+        }
+        // Legend for ultimate
+        if (faction.towerIds.some(id => TOWER_TYPES[id]?.ultimate)) {
+          this.add.text(x + 12, ty + 4, '* = Ultimate tower', {
+            fontSize: '8px', color: '#ffdd44', fontFamily: 'monospace',
+          });
+        }
+      }
 
-      this.add.text(x + 8, y + 110, 'Towers:', {
-        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
-      });
-      this.add.text(x + 8, y + 125, towerNames, {
-        fontSize: '10px', color: '#dddddd', fontFamily: 'monospace',
-      });
-
-      // Interactive zone
+      // Click zone
       const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });
       zone.on('pointerover', () => {
         card.clear();
@@ -80,7 +107,7 @@ export class FactionSelectScene extends Phaser.Scene {
         card.lineStyle(3, faction.primaryColor, 1);
         card.strokeRect(x, y, cardW, cardH);
         card.fillStyle(faction.primaryColor, 0.8);
-        card.fillRect(x, y, cardW, 8);
+        card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerout', () => {
         card.clear();
@@ -89,40 +116,11 @@ export class FactionSelectScene extends Phaser.Scene {
         card.lineStyle(2, faction.primaryColor, 0.8);
         card.strokeRect(x, y, cardW, cardH);
         card.fillStyle(faction.primaryColor, 0.6);
-        card.fillRect(x, y, cardW, 8);
+        card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerdown', () => {
         this.scene.start('DraftScene', { mode: this.matchMode, faction: factionId, map: this.mapId });
       });
     }
-
-    // "No faction" option
-    this.add.text(cx, 330, '[ Play Generic (no faction) ]', {
-      fontSize: '14px', color: '#666666', fontFamily: 'monospace',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
-        this.scene.start('DraftScene', { mode: this.matchMode, faction: null, map: this.mapId });
-      })
-      .on('pointerover', function(this: Phaser.GameObjects.Text) { this.setColor('#aaaaaa'); })
-      .on('pointerout', function(this: Phaser.GameObjects.Text) { this.setColor('#666666'); });
-  }
-
-  private getTowerName(id: string): string {
-    // Import would be circular-ish, just extract name from id
-    const names: Record<string, string> = {
-      arcane_bolt: 'Bolt (single)',
-      arcane_storm: 'Storm (AoE)',
-      arcane_frost: 'Frost (slow)',
-      mech_turret: 'Turret (ramp DPS)',
-      mech_tesla: 'Tesla (chain)',
-      mech_wall: 'Wall (blocker)',
-      nature_thorn: 'Thorn (DPS)',
-      nature_root: 'Root (CC)',
-      nature_blossom: 'Blossom (buff)',
-      void_spike: 'Spike (variance)',
-      void_siphon: 'Siphon (gold)',
-      void_rift: 'Rift (teleport)',
-    };
-    return names[id] || id;
   }
 }
