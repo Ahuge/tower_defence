@@ -36,6 +36,8 @@ import { EventLog } from '../ui/EventLog';
 import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
+import { TowerManager } from '../systems/TowerManager';
+import { CreepManager } from '../systems/CreepManager';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
@@ -68,6 +70,8 @@ export class GameScene extends Phaser.Scene {
   creepInfo!: CreepInfoPanel;
   upcomingWaves!: UpcomingWaves;
   statsTracker!: StatsTracker;
+  towerMgr!: TowerManager;
+  creepMgr!: CreepManager;
   versus: VersusManager | null = null;
   opponentMinimap: OpponentMinimap | null = null;
   opponentSim: OpponentSimulation | null = null;
@@ -75,9 +79,13 @@ export class GameScene extends Phaser.Scene {
   selectedCreep: Creep | null = null;
   linkingConduit: Tower | null = null; // tower being linked in link mode
 
-  // Game state
-  towers: Tower[] = [];
-  creeps: Creep[] = [];
+  // Game state — towers and creeps live in managers, these are accessors
+  get towers(): Tower[] { return this.towerMgr?.towers ?? this._towers; }
+  set towers(v: Tower[]) { if (this.towerMgr) this.towerMgr.towers = v; else this._towers = v; }
+  private _towers: Tower[] = [];
+  get creeps(): Creep[] { return this.creepMgr?.creeps ?? this._creeps; }
+  set creeps(v: Creep[]) { if (this.creepMgr) this.creepMgr.creeps = v; else this._creeps = v; }
+  private _creeps: Creep[] = [];
   currentPath: PathPoint[] | null = null;
   allPaths: (PathPoint[] | null)[] = [];
   waves!: WaveDefinition[];
@@ -96,9 +104,7 @@ export class GameScene extends Phaser.Scene {
   gameSpeed: number = 1.0;
   autoPlay: boolean = false;
   private static readonly SPEED_OPTIONS = [0, 0.5, 1.0, 1.5, 2.0, 3.0];
-  private speedIndex: number = 2; // default 1.0x
-  totalTowersBuilt: number = 0;
-  totalCreepsKilled: number = 0;
+  private speedIndex: number = 2;
 
   // Selection state
   selectionMode: SelectionMode = 'none';
@@ -139,8 +145,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.towers = [];
-    this.creeps = [];
+    this._towers = [];
+    this._creeps = [];
     this.lives = STARTING_LIVES;
     this.currentWave = 0;
     this.waveActive = false;
@@ -149,8 +155,7 @@ export class GameScene extends Phaser.Scene {
     this.selectionMode = 'none';
     this.selectedBuildType = null;
     this.selectedTower = null;
-    this.totalTowersBuilt = 0;
-    this.totalCreepsKilled = 0;
+    // totalTowersBuilt and totalCreepsKilled tracked by managers
 
     // Apply one-time modifier effects
     if (this.modifier) {
@@ -250,6 +255,10 @@ export class GameScene extends Phaser.Scene {
 
     // Event log (bottom of sidebar)
     this.eventLog = new EventLog(this, 480);
+
+    // Core managers
+    this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
+    this.creepMgr = new CreepManager(this.economy, this.statsTracker, this.eventBus, this.eventLog, this.modifier?.killGoldMult ?? 1);
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
@@ -498,7 +507,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.grid.canPlaceTower(col, row)) {
       const towerType = getTowerType(this.selectedBuildType);
-      const cost = this.getEffectiveCost(towerType.cost);
+      const cost = this.towerMgr.getEffectiveCost(towerType.cost);
       const canPlace = this.economy.canAfford(cost);
       const color = canPlace ? COLOR_HOVER_VALID : COLOR_HOVER_INVALID;
 
@@ -575,19 +584,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private findCreepNear(px: number, py: number): Creep | null {
-    let closest: Creep | null = null;
-    let closestDist = TILE_SIZE; // detection radius
-    for (const creep of this.creeps) {
-      if (!creep.alive || creep.reached) continue;
-      const dx = creep.x - px;
-      const dy = creep.y - py;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < closestDist) {
-        closest = creep;
-        closestDist = dist;
-      }
-    }
-    return closest;
+    return this.creepMgr.findCreepNear(px, py, TILE_SIZE);
   }
 
   private enterCreepInspect(creep: Creep): void {
@@ -601,22 +598,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleRightClick(col: number, row: number): void {
-    // Find tower at this cell (could be grid-blocking or mobile)
-    const idx = this.towers.findIndex(t => t.col === col && t.row === row);
-    if (idx === -1) return;
+    const result = this.towerMgr.sellTower(col, row);
+    if (!result) return;
 
-    const tower = this.towers[idx];
-    const refund = tower.getSellValue();
-    this.economy.addGold(refund);
-    this.eventLog.towerSold(tower.typeDef.name, refund);
-    if (this.selectedTower === tower) this.enterNoneMode();
-    tower.destroy();
-    this.towers.splice(idx, 1);
-
+    if (this.selectedTower === result.tower) this.enterNoneMode();
     this.versus?.send({ type: 'tower_sold', col, row });
-    if (!tower.isMobile) {
-      this.grid.removeTower(col, row);
-      this.eventBus.emit('towerSold', col, row);
+
+    if (!result.tower.isMobile) {
       this.recalculatePaths();
       this.drawPath();
     }
@@ -625,87 +613,36 @@ export class GameScene extends Phaser.Scene {
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
     const towerType = getTowerType(this.selectedBuildType);
-    const cost = this.getEffectiveCost(towerType.cost);
-    const isMobile = towerType.traits.some(t => t.id === 'mobile_unit');
 
-    if (!this.economy.canAfford(cost)) return;
+    const result = this.towerMgr.placeTower(col, row, towerType, this.allPaths, () => {
+      this.recalculatePaths();
+      return this.allPaths;
+    });
 
-    if (isMobile) {
-      // Mobile units: don't block grid, allow stacking, no path check
-      // Just need a valid grid cell (not blocked terrain)
-      if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return;
-      const cell = this.grid.cells[row][col];
-      if (cell === CellType.Blocked) return;
+    if (!result) return;
 
-      this.economy.spend(cost);
-      const tower = new Tower(this, col, row, towerType);
-      tower.isMobile = true;
-      if (this.modifier) {
-        for (const t of this.modifier.towerTraits) {
-          tower.traits.push({ ...t });
-        }
-      }
-      this.towers.push(tower);
-      this.totalTowersBuilt++;
-      this.eventLog.towerBuilt(towerType.name, cost);
-      this.statsTracker.recordTowerBuilt(towerType.id);
-      this.statsTracker.recordGoldSpent(cost);
-      this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
-      return;
-    }
-
-    // Normal tower placement
-    if (!this.grid.canPlaceTower(col, row)) return;
-
-    this.grid.placeTower(col, row);
-
-    const oldPaths = this.allPaths;
-    this.recalculatePaths();
-    const anyBlocked = this.allPaths.some(p => p === null);
-
-    if (anyBlocked || !this.currentPath) {
-      this.grid.removeTower(col, row);
-      this.allPaths = oldPaths;
-      this.currentPath = oldPaths.find(p => p !== null) ?? null;
-      return;
-    }
-
-    this.economy.spend(cost);
-    const tower = new Tower(this, col, row, towerType);
-
-    if (this.modifier) {
-      for (const t of this.modifier.towerTraits) {
-        tower.traits.push({ ...t });
-      }
-    }
-
-    this.towers.push(tower);
-    this.totalTowersBuilt++;
-    this.eventLog.towerBuilt(towerType.name, cost);
-    this.statsTracker.recordTowerBuilt(towerType.id);
-    this.statsTracker.recordGoldSpent(cost);
-    this.eventBus.emit('towerPlaced', col, row, towerType.id);
     this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
 
-    // Update existing creep paths
-    for (const creep of this.creeps) {
-      if (!creep.alive || creep.reached) continue;
-      const creepCol = pixelToCol(creep.x);
-      const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
-      let bestPath: PathPoint[] | null = null;
-      for (const exit of this.grid.exits) {
-        const p = findPath(this.grid, { col: creepCol, row: creepRow }, exit);
-        if (p && (!bestPath || p.length < bestPath.length)) {
-          bestPath = p;
+    if (result.pathsChanged) {
+      // Update existing creep paths
+      for (const creep of this.creepMgr.creeps) {
+        if (!creep.alive || creep.reached) continue;
+        const creepCol = pixelToCol(creep.x);
+        const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+        let bestPath: PathPoint[] | null = null;
+        for (const exit of this.grid.exits) {
+          const p = findPath(this.grid, { col: creepCol, row: creepRow }, exit);
+          if (p && (!bestPath || p.length < bestPath.length)) {
+            bestPath = p;
+          }
+        }
+        if (bestPath) {
+          creep.path = bestPath;
+          creep.pathIndex = 1;
         }
       }
-      if (bestPath) {
-        creep.path = bestPath;
-        creep.pathIndex = 1;
-      }
+      this.drawPath();
     }
-
-    this.drawPath();
   }
 
   // === Frontier Actions ===
@@ -777,97 +714,15 @@ export class GameScene extends Phaser.Scene {
     delta *= this.gameSpeed;
     if (delta === 0) return; // speed 0 = paused
 
-    const traitCtx: UpdateContext = {
-      allTowers: this.towers,
-      allCreeps: this.creeps,
-      time,
-      delta,
-    };
+    // Tower updates: aura resets, trait updates, gold/damage collection, fire
+    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps);
 
-    // Reset harmonic aura accumulators + conduit link flags
-    for (const tower of this.towers) {
-      (tower as any)._linkedByConduit = false;
-      (tower as any)._conduitX = undefined;
-      (tower as any)._conduitY = undefined;
-      for (const trait of tower.traits) {
-        if (trait.id === '_harmonic_damage' || trait.id === '_harmonic_rate') {
-          trait.bonus = 0;
-        } else if (trait.id === '_harmonic_range') {
-          trait.bonus = 0;
-          tower.range = tower.typeDef.range * TILE_SIZE; // reset to base
-        } else if (trait.id === '_harmonic_crit') {
-          trait.chance = 0;
-        }
-      }
-    }
+    // Creep updates: movement, leak handling, kill processing, cleanup
+    const leakResult = this.creepMgr.update(delta);
+    this.lives -= leakResult.totalLeakDamage;
 
-    for (const tower of this.towers) {
-      tower.runTraitUpdates(traitCtx);
-    }
-
-    for (const tower of this.towers) {
-      if (tower.goldEarned > 0) {
-        this.economy.addGold(tower.goldEarned);
-        this.statsTracker.recordTowerGold(tower.typeId, tower.goldEarned);
-        this.statsTracker.recordGoldEarned(tower.goldEarned);
-        tower.goldEarned = 0;
-      }
-      if (tower.damageDealt > 0) {
-        this.statsTracker.recordDamage(tower.typeId, tower.damageDealt);
-        this.statsTracker.recordHitStats(tower.typeId, tower.hitStatsAccum);
-        tower.damageDealt = 0;
-        // Reset granular stats
-        for (const key of Object.keys(tower.hitStatsAccum)) {
-          tower.hitStatsAccum[key] = 0;
-        }
-      }
-    }
-
-    for (const tower of this.towers) {
-      tower.update(time, delta, this.creeps);
-    }
-
-    for (const creep of this.creeps) {
-      creep.update(delta, this.creeps);
-    }
-
-    for (const creep of this.creeps) {
-      if (creep.reached) {
-        const leakDamage = creep.isBoss ? 5 : 1;
-        this.lives -= leakDamage;
-        this.eventBus.emit('livesChanged', this.lives);
-        this.eventLog.gameMessage(leakDamage > 1 ? `BOSS leaked! -${leakDamage} lives` : 'Creep reached exit! -1 life');
-        this.statsTracker.recordLeak();
-        creep.reached = false;
-        creep.alive = false;
-      }
-    }
-
-    const killGoldMult = this.modifier?.killGoldMult ?? 1;
-    for (const creep of this.creeps) {
-      if (!creep.alive && !creep.reached && creep.hp <= 0) {
-        const killGold = Math.round(this.economy.getKillGold() * killGoldMult);
-        this.eventBus.emit('creepKilled', 0, killGold);
-        this.totalCreepsKilled++;
-        this.statsTracker.recordKill();
-        this.statsTracker.recordGoldEarned(killGold);
-        creep.hp = -999;
-      }
-    }
-
-    this.creeps = this.creeps.filter(c => c.alive);
-
-    // Clean up expired towers (Infernal Fiend kamikaze, expired Imps, etc.)
-    for (let i = this.towers.length - 1; i >= 0; i--) {
-      const tower = this.towers[i];
-      if ((tower as any)._expired) {
-        tower.destroy();
-        if (!tower.isMobile) {
-          this.grid.removeTower(tower.col, tower.row);
-        }
-        this.towers.splice(i, 1);
-      }
-    }
+    // Clean up expired towers
+    this.towerMgr.cleanupExpired();
 
     this.spawner.update(delta, this.allPaths, this.creeps);
     this.sendMgr.update(delta, this.currentPath, this.creeps);
@@ -885,48 +740,9 @@ export class GameScene extends Phaser.Scene {
         });
       }
 
-      // Snap mobile units back home + process wave-end tower effects
-      for (const tower of this.towers) {
-        if (tower.isMobile) {
-          tower.x = tower.homeX;
-          tower.y = tower.homeY;
-          tower.drawTower();
-        }
-        // Infernal: decrement expires_after_waves
-        for (const trait of tower.traits) {
-          if (trait.id === 'expires_after_waves') {
-            if (trait._wavesRemaining === undefined) trait._wavesRemaining = trait.waves ?? 4;
-            trait._wavesRemaining--;
-            if (trait._wavesRemaining <= 0) {
-              (tower as any)._expired = true;
-              this.eventLog.gameMessage(`${tower.typeDef.name} expired!`);
-            }
-          }
-          // Infernal: decay_per_wave reduces damage
-          if (trait.id === 'decay_per_wave') {
-            const decayPercent = trait.decayPercent ?? 0.15;
-            tower.damage = Math.max(1, Math.round(tower.damage * (1 - decayPercent)));
-            tower.drawTower();
-          }
-        }
-        // Celestial: life_on_kill — collect earned lives
-        if ((tower as any)._livesEarned > 0) {
-          this.lives += (tower as any)._livesEarned;
-          this.eventLog.gameMessage(`+${(tower as any)._livesEarned} life from ${tower.typeDef.name}!`);
-          (tower as any)._livesEarned = 0;
-        }
-        // Celestial: leak_absorb recharge
-        for (const trait of tower.traits) {
-          if (trait.id === 'leak_absorb') {
-            if (trait._rechargeCounter === undefined) trait._rechargeCounter = 0;
-            trait._rechargeCounter++;
-            if (trait._rechargeCounter >= (trait.rechargeWaves ?? 10)) {
-              trait._charges = Math.min((trait._charges ?? 0) + 1, trait.maxCharges ?? 1);
-              trait._rechargeCounter = 0;
-            }
-          }
-        }
-      }
+      // Tower wave-end: mobile reset, expiry, decay, life gain, leak absorb
+      const livesGained = this.towerMgr.onWaveEnd();
+      this.lives += livesGained;
 
       // Versus: notify wave cleared (host manages countdown timing)
       if (this.versus) {
@@ -1062,8 +878,8 @@ export class GameScene extends Phaser.Scene {
       wave: this.currentWave,
       totalWaves: this.waves.length,
       gold: this.economy.gold,
-      towersBuilt: this.totalTowersBuilt,
-      creepsKilled: this.totalCreepsKilled,
+      towersBuilt: this.towerMgr.totalTowersBuilt,
+      creepsKilled: this.creepMgr.totalCreepsKilled,
       matchMode: this.matchMode,
       faction: this.faction,
       stats: this.statsTracker.stats,
@@ -1183,38 +999,6 @@ export class GameScene extends Phaser.Scene {
       this.pauseOverlay.destroy(true);
       this.pauseOverlay = null;
     }
-  }
-
-  private spawnBroodMotherSwarmlings(): void {
-    const swarmlingType = getTowerType('alien_swarmling');
-    for (const tower of this.towers) {
-      const trait = tower.traits.find(t => t.id === 'spawn_swarmlings_per_wave');
-      if (!trait) continue;
-      const count = trait.count ?? 2;
-      // Find empty adjacent cells to spawn in
-      const offsets = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
-      let spawned = 0;
-      for (const [dc, dr] of offsets) {
-        if (spawned >= count) break;
-        const sc = tower.col + dc;
-        const sr = tower.row + dr;
-        if (sc < 0 || sc >= GRID_COLS || sr < 0 || sr >= GRID_ROWS) continue;
-        // Spawn as mobile (non-blocking)
-        const swarmling = new Tower(this, sc, sr, swarmlingType);
-        swarmling.isMobile = true;
-        // Expires after 1 wave
-        swarmling.traits.push({ id: 'expires_after_waves', waves: 1, _wavesRemaining: 1 });
-        this.towers.push(swarmling);
-        spawned++;
-      }
-      if (spawned > 0) {
-        this.eventLog.gameMessage(`Brood Mother spawned ${spawned} Swarmlings!`);
-      }
-    }
-  }
-
-  private getEffectiveCost(baseCost: number): number {
-    return Math.round(baseCost * (this.modifier?.costMult ?? 1));
   }
 
   recalculatePaths(): void {
@@ -1383,7 +1167,7 @@ export class GameScene extends Phaser.Scene {
     this.spawner.startWave(wave, this.allPaths.filter(p => p !== null).length);
 
     // Brood Mother: spawn temporary swarmlings
-    this.spawnBroodMotherSwarmlings();
+    this.towerMgr.spawnBroodMotherSwarmlings();
 
     // Start opponent simulation wave
     this.opponentSim?.startWave(wave);
