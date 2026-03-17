@@ -158,18 +158,23 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.contentContainer.add(tCount);
     y += 18;
 
+    // Content margins — narrower centered card
+    const marginL = 200;
+    const marginR = 200;
+    const contentW = CANVAS_WIDTH - marginL - marginR;
+
     // Lore paragraph
     const lore = FACTION_LORE[fid] ?? faction.description;
-    const loreText = this.add.text(60, y, lore, {
+    const loreText = this.add.text(marginL, y, lore, {
       fontSize: '10px', color: '#999999', fontFamily: 'monospace',
-      wordWrap: { width: CANVAS_WIDTH - 120 },
+      wordWrap: { width: contentW },
       lineSpacing: 3,
     });
     this.contentContainer.add(loreText);
     y += loreText.height + 16;
 
     // Tower table
-    const colX = [60, 190, 250, 310, 380, 490];
+    const colX = [marginL, marginL + 120, marginL + 170, marginL + 220, marginL + 280, marginL + 350];
     const headers = ['Tower', 'Cost', 'DMG', 'Range', 'Upgrades', 'Key Traits'];
     for (let i = 0; i < headers.length; i++) {
       const h = this.add.text(colX[i], y, headers[i], {
@@ -196,7 +201,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         const txt = this.add.text(colX[i], y, vals[i], {
           fontSize: '10px', color: t.ultimate ? '#ffdd44' : '#cccccc',
           fontFamily: 'monospace',
-          wordWrap: i === 5 ? { width: CANVAS_WIDTH - colX[5] - 20 } : undefined,
+          wordWrap: i === 5 ? { width: CANVAS_WIDTH - marginR - colX[5] } : undefined,
         });
         this.contentContainer.add(txt);
       }
@@ -208,7 +213,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         const fl = this.add.text(colX[0] + 10, y, tLore, {
           fontSize: '9px', color: '#666666', fontFamily: 'monospace',
           fontStyle: 'italic',
-          wordWrap: { width: CANVAS_WIDTH - 100 },
+          wordWrap: { width: contentW - 20 },
         });
         this.contentContainer.add(fl);
         y += fl.height + 4;
@@ -221,20 +226,20 @@ export class EncyclopediaScene extends Phaser.Scene {
     const buildings = FRONTIER_BUILDINGS[fid];
     if (buildings && buildings.length > 0) {
       y += 8;
-      const fLabel = this.add.text(60, y, 'FRONTIER BUILDINGS', {
+      const fLabel = this.add.text(marginL, y, 'FRONTIER BUILDINGS', {
         fontSize: '11px', color: '#888844', fontFamily: 'monospace',
       });
       this.contentContainer.add(fLabel);
       y += 16;
       for (const b of buildings) {
-        const bText = this.add.text(80, y, `${b.name} (${b.cost}g) — ${b.mechanic}`, {
+        const bText = this.add.text(marginL + 20, y, `${b.name} (${b.cost}g) — ${b.mechanic}`, {
           fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
         });
         this.contentContainer.add(bText);
         y += 14;
-        const bDesc = this.add.text(100, y, b.description, {
+        const bDesc = this.add.text(marginL + 40, y, b.description, {
           fontSize: '9px', color: '#777777', fontFamily: 'monospace',
-          wordWrap: { width: CANVAS_WIDTH - 130 },
+          wordWrap: { width: contentW - 60 },
         });
         this.contentContainer.add(bDesc);
         y += bDesc.height + 6;
@@ -470,48 +475,52 @@ export class EncyclopediaScene extends Phaser.Scene {
     for (const trait of t.traits) {
       switch (trait.id) {
         case 'direct_damage': break;
-        case 'splash_damage': parts.push(`Splash`); break;
-        case 'chain_damage': parts.push(`Chain(${(trait.chainCount ?? 2) + 1})`); break;
-        case 'pierce_delivery': parts.push('Pierce'); break;
-        case 'teleport_delivery': parts.push('Teleport'); break;
-        case 'tower_aura_damage': parts.push('Tower AoE'); break;
-        case 'true_damage': parts.push('True DMG'); break;
-        case 'slow_on_hit': parts.push('Slow'); break;
-        case 'burn_dot': parts.push('Burn'); break;
-        case 'poison_dot': parts.push('Poison'); break;
-        case 'gold_on_hit': parts.push(`+${trait.amount}g/hit`); break;
-        case 'crit_chance': parts.push(`Crit(${Math.round((trait.chance ?? 0.25) * 100)}%)`); break;
-        case 'jackpot': parts.push(`Kill/Miss`); break;
-        case 'damage_variance': parts.push('Variance'); break;
-        case 'ramp_up': parts.push('Ramp-up'); break;
-        case 'strip_shield': parts.push('Strip Shield'); break;
-        case 'armor_shred_on_hit': parts.push('Shred'); break;
-        case 'damage_amp_on_hit': parts.push('Vuln'); break;
-        case 'root_on_hit': parts.push('Root'); break;
-        case 'confuse_on_hit': parts.push('Confuse'); break;
-        case 'hack_reverse': parts.push('Hack'); break;
-        case 'virus_spread': parts.push('Virus'); break;
-        case 'mobile_unit': parts.push('Mobile'); break;
-        case 'damage_aura': parts.push('+DMG Aura'); break;
-        case 'rate_aura': parts.push('+SPD Aura'); break;
-        case 'range_aura': parts.push('+RNG Aura'); break;
-        case 'crit_aura': parts.push('Crit Aura'); break;
-        case 'conduit_link': parts.push('Conduit'); break;
-        case 'adjacency_buff': parts.push('Adj Buff'); break;
-        case 'slow_aura': parts.push('Slow Aura'); break;
-        case 'growth_scaling': parts.push('Grows'); break;
-        case 'firewall_link': parts.push('Firewall'); break;
-        case 'mute_mage_aura': parts.push('Mute'); break;
-        case 'life_on_kill': parts.push('+Life'); break;
-        case 'leak_absorb': parts.push('Absorb'); break;
-        case 'bonus_vs_boss': parts.push('+vsBoss'); break;
-        case 'bonus_vs_mage': parts.push('+vsMage'); break;
-        case 'faction_speed_aura': parts.push('Faction SPD'); break;
-        case 'expires_after_waves': parts.push(`Expires(${trait.waves}w)`); break;
-        case 'decay_per_wave': parts.push('Decays'); break;
-        case 'gold_per_kill_range': parts.push(`+${trait.goldPerKill}g/kill`); break;
-        case 'spawn_swarmlings_per_wave': parts.push(`Spawn(${trait.count})`); break;
-        case 'barbed_wire': parts.push('Slow Adj'); break;
+        case 'splash_damage': parts.push(`Splash(${((trait.radius ?? 48) / TILE_SIZE).toFixed(1)} tiles)`); break;
+        case 'chain_damage': parts.push(`Chain(${(trait.chainCount ?? 2) + 1} targets)`); break;
+        case 'pierce_delivery': parts.push('Pierce(line)'); break;
+        case 'teleport_delivery': parts.push(`Teleport(${trait.stepsBase ?? 3}+ steps)`); break;
+        case 'tower_aura_damage': parts.push(`Tower AoE(${((trait.radius ?? 96) / TILE_SIZE).toFixed(1)} tiles)`); break;
+        case 'true_damage': parts.push('True DMG(ignores armor)'); break;
+        case 'slow_on_hit': parts.push(`Slow(${Math.round((1 - (trait.factor ?? 0.5)) * 100)}% for ${((trait.duration ?? 2000) / 1000).toFixed(1)}s)`); break;
+        case 'burn_dot': parts.push(`Burn(${trait.dps ?? 8}dps/${((trait.duration ?? 3000) / 1000).toFixed(0)}s)`); break;
+        case 'poison_dot': parts.push(`Poison(${Math.round((trait.percentPerSec ?? 0.02) * 100)}%hp/s)`); break;
+        case 'gold_on_hit': parts.push(`+${trait.amount ?? 1}g/hit`); break;
+        case 'crit_chance': parts.push(`Crit(${Math.round((trait.chance ?? 0.25) * 100)}% for ${trait.multiplier ?? 3}x)`); break;
+        case 'jackpot': parts.push(`${Math.round((trait.killChance ?? 0.08) * 100)}% kill / ${Math.round((trait.missChance ?? 0.25) * 100)}% miss`); break;
+        case 'damage_variance': parts.push(`${Math.round((trait.min ?? 0.5) * 100)}-${Math.round((trait.max ?? 1.5) * 100)}% dmg`); break;
+        case 'ramp_up': parts.push(`Ramp(+${Math.round((trait.reductionPerStack ?? 0.08) * 100)}%spd/stack, max ${trait.maxStacks ?? 5})`); break;
+        case 'strip_shield': parts.push('Strip all shields'); break;
+        case 'armor_shred_on_hit': parts.push(`Shred(${trait.shredAmount ?? 1} tier/${((trait.duration ?? 4000) / 1000).toFixed(0)}s)`); break;
+        case 'damage_amp_on_hit': parts.push(`Vuln(+${Math.round((trait.ampAmount ?? 0.15) * 100)}% taken/${((trait.duration ?? 3000) / 1000).toFixed(0)}s)`); break;
+        case 'root_on_hit': parts.push(`Root(${Math.round((trait.chance ?? 0.2) * 100)}% for ${((trait.duration ?? 800) / 1000).toFixed(1)}s)`); break;
+        case 'confuse_on_hit': parts.push(`Confuse(${((trait.duration ?? 1200) / 1000).toFixed(1)}s backward)`); break;
+        case 'hack_reverse': parts.push(`Hack(${((trait.duration ?? 1500) / 1000).toFixed(1)}s backward)`); break;
+        case 'virus_spread': parts.push(`Virus(${trait.dps ?? 10}dps, spreads)`); break;
+        case 'mobile_unit': {
+          const range = ((trait.engageRange ?? 0.8)).toFixed(1);
+          parts.push(`Mobile(spd:${trait.moveSpeed ?? 100}, rng:${range}${trait.selfDestruct ? ', kamikaze' : ''})`);
+          break;
+        }
+        case 'damage_aura': parts.push(`+${Math.round((trait.percent ?? 0.2) * 100)}% DMG aura`); break;
+        case 'rate_aura': parts.push(`+${Math.round((trait.percent ?? 0.15) * 100)}% SPD aura`); break;
+        case 'range_aura': parts.push(`+${trait.tiles ?? 1.5} tile RNG aura`); break;
+        case 'crit_aura': parts.push(`${Math.round((trait.chance ?? 0.15) * 100)}% crit(${trait.multiplier ?? 2}x) aura`); break;
+        case 'conduit_link': parts.push(`Conduit(link ${trait.maxLinks ?? 2} auras)`); break;
+        case 'adjacency_buff': parts.push(`Adj(+${Math.round((trait.damagePercent ?? 0.15) * 100)}%dmg, +${Math.round((trait.ratePercent ?? 0.08) * 100)}%spd)`); break;
+        case 'slow_aura': parts.push(`Slow aura(${Math.round((1 - (trait.factor ?? 0.7)) * 100)}%)`); break;
+        case 'growth_scaling': parts.push(`Grows(+${Math.round((trait.growthPercent ?? 0.08) * 100)}%/cycle)`); break;
+        case 'firewall_link': parts.push(`Firewall(${trait.dps ?? 20}dps beam)`); break;
+        case 'mute_mage_aura': parts.push('Mute mage abilities'); break;
+        case 'life_on_kill': parts.push(`+1 life(${Math.round((trait.chance ?? 0.05) * 100)}% on kill)`); break;
+        case 'leak_absorb': parts.push(`Absorb ${trait.maxCharges ?? 1} leak(s)`); break;
+        case 'bonus_vs_boss': parts.push(`+${Math.round((trait.bonus ?? 0.5) * 100)}% vs boss/shield`); break;
+        case 'bonus_vs_mage': parts.push(`+${Math.round((trait.bonus ?? 0.5) * 100)}% vs mages`); break;
+        case 'faction_speed_aura': parts.push(`Faction +${Math.round((trait.ratePercent ?? 0.2) * 100)}% SPD`); break;
+        case 'expires_after_waves': parts.push(`Expires(${trait.waves ?? 4} waves)`); break;
+        case 'decay_per_wave': parts.push(`Decays(${Math.round((trait.decayPercent ?? 0.15) * 100)}%/wave)`); break;
+        case 'gold_per_kill_range': parts.push(`+${trait.goldPerKill ?? 2}g per nearby kill`); break;
+        case 'spawn_swarmlings_per_wave': parts.push(`Spawns ${trait.count ?? 2} units/wave`); break;
+        case 'barbed_wire': parts.push(`Slow adj(${Math.round((1 - (trait.factor ?? 0.6)) * 100)}%)`); break;
         default: break;
       }
     }
