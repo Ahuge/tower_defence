@@ -38,6 +38,7 @@ import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
 import { TowerManager } from '../systems/TowerManager';
 import { CreepManager } from '../systems/CreepManager';
+import { WaveController } from '../systems/WaveController';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
@@ -72,6 +73,7 @@ export class GameScene extends Phaser.Scene {
   statsTracker!: StatsTracker;
   towerMgr!: TowerManager;
   creepMgr!: CreepManager;
+  waveMgr!: WaveController;
   versus: VersusManager | null = null;
   opponentMinimap: OpponentMinimap | null = null;
   opponentSim: OpponentSimulation | null = null;
@@ -97,9 +99,16 @@ export class GameScene extends Phaser.Scene {
   modifier: DraftModifier | null = null;
   activeTowerIds: string[] = TOWER_ORDER;
   lives: number = STARTING_LIVES;
-  currentWave: number = 0;
-  waveActive: boolean = false;
-  betweenWaves: boolean = true;
+  // Wave state delegated to WaveController — getters for backward compat
+  get currentWave(): number { return this.waveMgr?.currentWave ?? this._currentWave; }
+  set currentWave(v: number) { if (this.waveMgr) this.waveMgr.currentWave = v; else this._currentWave = v; }
+  private _currentWave: number = 0;
+  get waveActive(): boolean { return this.waveMgr?.waveActive ?? this._waveActive; }
+  set waveActive(v: boolean) { if (this.waveMgr) this.waveMgr.waveActive = v; else this._waveActive = v; }
+  private _waveActive: boolean = false;
+  get betweenWaves(): boolean { return this.waveMgr?.betweenWaves ?? this._betweenWaves; }
+  set betweenWaves(v: boolean) { if (this.waveMgr) this.waveMgr.betweenWaves = v; else this._betweenWaves = v; }
+  private _betweenWaves: boolean = true;
   paused: boolean = false;
   gameSpeed: number = 1.0;
   autoPlay: boolean = false;
@@ -259,6 +268,22 @@ export class GameScene extends Phaser.Scene {
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
     this.creepMgr = new CreepManager(this.economy, this.statsTracker, this.eventBus, this.eventLog, this.modifier?.killGoldMult ?? 1);
+
+    // Wave controller
+    this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {
+      canStartWave: () => !!this.currentPath,
+      onWaveStart: (wave, waveNum, totalWaves) => {
+        this.towerMgr.spawnBroodMotherSwarmlings();
+        this.opponentSim?.startWave(wave);
+        const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
+        this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
+        this.upcomingWaves.update(waveNum, this.waves);
+        this.eventBus.emit('waveStarted', waveNum);
+      },
+      onWaveCleared: (waveNum) => {
+        this.onWaveCleared(waveNum);
+      },
+    });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
@@ -724,65 +749,9 @@ export class GameScene extends Phaser.Scene {
     // Clean up expired towers
     this.towerMgr.cleanupExpired();
 
-    this.spawner.update(delta, this.allPaths, this.creeps);
-    this.sendMgr.update(delta, this.currentPath, this.creeps);
-
-    if (this.waveActive && !this.spawner.isSpawning() && !this.sendMgr.isSpawning() && this.creeps.length === 0) {
-      this.waveActive = false;
-      this.betweenWaves = true;
-
-      // Auto-play: schedule next wave automatically
-      if (this.autoPlay && this.currentWave < this.waves.length && !this.versus) {
-        this.time.delayedCall(1500, () => {
-          if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
-            this.startWave();
-          }
-        });
-      }
-
-      // Tower wave-end: mobile reset, expiry, decay, life gain, leak absorb
-      const livesGained = this.towerMgr.onWaveEnd();
-      this.lives += livesGained;
-
-      // Versus: notify wave cleared (host manages countdown timing)
-      if (this.versus) {
-        this.versus.notifyWaveCleared(this.currentWave);
-      }
-
-      // Frontier mechanic bonuses (growth, dig, gamble)
-      const frontierBonus = this.frontierMgr.onWaveEnd(this.currentWave);
-      if (frontierBonus > 0) {
-        this.economy.addGold(frontierBonus);
-        this.statsTracker.recordFrontierEarned(frontierBonus);
-        this.statsTracker.recordGoldEarned(frontierBonus);
-      }
-      this.frontierPanel.updateOwned();
-      // Wave income (includes base + sends + frontier base)
-      const income = this.incomeMgr.collectWaveIncome();
-      this.economy.addGold(income);
-      this.statsTracker.recordGoldEarned(income);
-      this.eventBus.emit('waveCleared', this.currentWave);
-      this.eventLog.waveCleared(this.currentWave, income + (frontierBonus > 0 ? frontierBonus : 0));
-      this.statsTracker.recordWaveCompleted();
-      this.upcomingWaves.update(this.currentWave, this.waves);
-      if (frontierBonus > 0) {
-        this.eventLog.frontierIncome('Frontier bonus', frontierBonus);
-      }
-
-      // Random faction: rotate available towers each wave
-      if (this.faction === 'random') {
-        this.activeTowerIds = this.rollRandomTowers();
-        this.towerBar.setTowerIds(this.activeTowerIds);
-        this.frontierMgr.rotateRandomFrontier();
-        this.frontierPanel.rebuildPurchaseList();
-        this.eventLog.gameMessage('Tower + frontier pool rotated!');
-        this.enterNoneMode();
-        // Versus: host sends tower pool to joiner
-        if (this.versus?.isHost) {
-          this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
-        }
-      }
-    }
+    // Spawning + wave clear detection
+    this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
+    this.waveMgr.checkWaveComplete(this.creeps.length);
 
     if (this.lives <= 0) {
       this.lives = 0;
@@ -801,7 +770,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.currentWave >= this.waves.length && this.creeps.length === 0 && !this.waveActive) {
+    if (this.waveMgr.isComplete() && this.creeps.length === 0) {
       this.eventBus.emit('gameWon');
       if (this.versus) {
         this.versus.notifyGameOver(true, this.statsTracker.stats, this.currentWave, this.lives);
@@ -1157,28 +1126,63 @@ export class GameScene extends Phaser.Scene {
   }
 
   startWave(): void {
-    if (!this.currentPath) return;
+    this.waveMgr.startWave(this.allPaths);
+  }
 
-    this.betweenWaves = false;
-    this.waveActive = true;
-    const wave = this.waves[this.currentWave];
-    this.currentWave++;
-    this.eventBus.emit('waveStarted', this.currentWave);
-    this.spawner.startWave(wave, this.allPaths.filter(p => p !== null).length);
+  /** Called by WaveController when a wave clears */
+  private onWaveCleared(waveNum: number): void {
+    // Auto-play: schedule next wave automatically
+    if (this.autoPlay && this.currentWave < this.waves.length && !this.versus) {
+      this.time.delayedCall(1500, () => {
+        if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
+          this.startWave();
+        }
+      });
+    }
 
-    // Brood Mother: spawn temporary swarmlings
-    this.towerMgr.spawnBroodMotherSwarmlings();
+    // Tower wave-end processing
+    const livesGained = this.towerMgr.onWaveEnd();
+    this.lives += livesGained;
 
-    // Start opponent simulation wave
-    this.opponentSim?.startWave(wave);
+    // Versus: notify
+    if (this.versus) {
+      this.versus.notifyWaveCleared(waveNum);
+    }
 
-    // Log wave start with creep types
-    const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
-    this.eventLog.waveStarted(this.currentWave, this.waves.length, creepTypes);
-    this.upcomingWaves.update(this.currentWave, this.waves);
+    // Frontier
+    const frontierBonus = this.frontierMgr.onWaveEnd(waveNum);
+    if (frontierBonus > 0) {
+      this.economy.addGold(frontierBonus);
+      this.statsTracker.recordFrontierEarned(frontierBonus);
+      this.statsTracker.recordGoldEarned(frontierBonus);
+    }
+    this.frontierPanel.updateOwned();
 
-    const baseHp = wave.groups[0]?.hpScale || 30;
-    const baseSpeed = wave.groups[0]?.speedScale || 1;
-    this.sendMgr.activateSends(baseHp, baseSpeed);
+    // Income
+    const income = this.incomeMgr.collectWaveIncome();
+    this.economy.addGold(income);
+    this.statsTracker.recordGoldEarned(income);
+
+    // Events + UI
+    this.eventBus.emit('waveCleared', waveNum);
+    this.eventLog.waveCleared(waveNum, income + (frontierBonus > 0 ? frontierBonus : 0));
+    this.statsTracker.recordWaveCompleted();
+    this.upcomingWaves.update(waveNum, this.waves);
+    if (frontierBonus > 0) {
+      this.eventLog.frontierIncome('Frontier bonus', frontierBonus);
+    }
+
+    // Random faction rotation
+    if (this.faction === 'random') {
+      this.activeTowerIds = this.rollRandomTowers();
+      this.towerBar.setTowerIds(this.activeTowerIds);
+      this.frontierMgr.rotateRandomFrontier();
+      this.frontierPanel.rebuildPurchaseList();
+      this.eventLog.gameMessage('Tower + frontier pool rotated!');
+      this.enterNoneMode();
+      if (this.versus?.isHost) {
+        this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
+      }
+    }
   }
 }
