@@ -1,4 +1,4 @@
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
 import { FighterType, getFighterTypesForFaction } from '../data/FighterTypes';
 import { FactionId } from '../data/Factions';
 import { TowerSelectBar } from './TowerSelectBar';
@@ -13,7 +13,7 @@ export class FighterPanel {
     this.scene = scene;
     this.onPurchase = onPurchase;
     this.fighterTypes = getFighterTypesForFaction(faction);
-    this.container = scene.add.container(GAME_WIDTH - 160, GAME_HEIGHT + 28).setDepth(30);
+    this.container = scene.add.container(CANVAS_WIDTH - 180, GAME_HEIGHT + 28).setDepth(30);
 
     this.buildPanel();
   }
@@ -28,10 +28,9 @@ export class FighterPanel {
 
     for (let i = 0; i < this.fighterTypes.length; i++) {
       const ft = this.fighterTypes[i];
-      const x = 0;
       const y = 22 + i * 14;
 
-      const text = this.scene.add.text(x, y, `[F${i + 1}] ${ft.name} (${ft.cost}g)`, {
+      const text = this.scene.add.text(0, y, `[F${i + 1}] ${ft.name} (${ft.cost}g)`, {
         fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
       }).setInteractive({ useHandCursor: true });
 
@@ -42,7 +41,6 @@ export class FighterPanel {
       this.container.add(text);
     }
 
-    // Hotkeys
     for (let i = 0; i < this.fighterTypes.length; i++) {
       const ft = this.fighterTypes[i];
       this.scene.input.keyboard!.on(`keydown-F${i + 1}`, () => {

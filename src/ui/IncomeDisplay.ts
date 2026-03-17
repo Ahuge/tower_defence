@@ -1,18 +1,14 @@
-import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { GAME_HEIGHT, GRID_OFFSET_X } from '../config';
 
 export class IncomeDisplay {
   private scene: Phaser.Scene;
-  private container: Phaser.GameObjects.Container;
   private text: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    this.container = scene.add.container(0, 0).setDepth(28);
-
-    this.text = scene.add.text(300, GAME_HEIGHT + 16, '', {
+    this.text = scene.add.text(GRID_OFFSET_X + 300, GAME_HEIGHT + 16, '', {
       fontSize: '10px', color: '#88ff88', fontFamily: 'monospace',
-    });
-    this.container.add(this.text);
+    }).setDepth(28);
   }
 
   update(breakdown: { base: number; sends: number; frontier: number; total: number }): void {

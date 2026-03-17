@@ -1,4 +1,4 @@
-import { GAME_HEIGHT } from '../config';
+import { GAME_HEIGHT, GRID_OFFSET_X } from '../config';
 import { EventBus } from './EventBus';
 
 export class UIOverlay {
@@ -9,10 +9,11 @@ export class UIOverlay {
 
   constructor(scene: Phaser.Scene, _events: EventBus) {
     const uiStyle = { fontSize: '14px', color: '#ffffff', fontFamily: 'monospace' };
-    this.goldText = scene.add.text(8, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.livesText = scene.add.text(160, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.waveText = scene.add.text(300, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.statusText = scene.add.text(480, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    const baseX = GRID_OFFSET_X;
+    this.goldText = scene.add.text(baseX + 8, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    this.livesText = scene.add.text(baseX + 160, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    this.waveText = scene.add.text(baseX + 300, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    this.statusText = scene.add.text(baseX + 480, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
   }
 
   update(gold: number, lives: number, currentWave: number, totalWaves: number, waveActive: boolean, betweenWaves: boolean): void {
