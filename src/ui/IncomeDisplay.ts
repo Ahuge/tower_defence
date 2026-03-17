@@ -1,4 +1,5 @@
-import { GAME_HEIGHT, GRID_OFFSET_X } from '../config';
+import { GAME_HEIGHT, CANVAS_WIDTH } from '../config';
+import { TowerSelectBar } from './TowerSelectBar';
 
 export class IncomeDisplay {
   private scene: Phaser.Scene;
@@ -6,9 +7,11 @@ export class IncomeDisplay {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    this.text = scene.add.text(GRID_OFFSET_X + 300, GAME_HEIGHT + 16, '', {
-      fontSize: '12px', color: '#88ff88', fontFamily: 'monospace',
-    }).setDepth(28);
+    // Position in the tower bar area, top-right
+    const barY = GAME_HEIGHT + 28;
+    this.text = scene.add.text(CANVAS_WIDTH - 10, barY + 8, '', {
+      fontSize: '11px', color: '#88ff88', fontFamily: 'monospace',
+    }).setDepth(31).setOrigin(1, 0);
   }
 
   update(breakdown: { base: number; sends: number; frontier: number; total: number }): void {
