@@ -5,6 +5,7 @@ import { FactionSelectScene } from './scenes/FactionSelectScene';
 import { DraftScene } from './scenes/DraftScene';
 import { GameScene } from './scenes/GameScene';
 import { GameOverScene } from './scenes/GameOverScene';
+import { LobbyScene } from './scenes/LobbyScene';
 import { TowerSelectBar } from './ui/TowerSelectBar';
 
 // Register trait handlers (side-effect imports)
@@ -17,7 +18,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT,
   backgroundColor: '#111111',
   parent: document.body,
-  scene: [MenuScene, FactionSelectScene, DraftScene, GameScene, GameOverScene],
+  scene: [MenuScene, FactionSelectScene, DraftScene, GameScene, GameOverScene, LobbyScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

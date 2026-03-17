@@ -23,7 +23,10 @@ import { IncomeManager } from '../systems/IncomeManager';
 import { SendManager } from '../systems/SendManager';
 import { FrontierManager } from '../systems/FrontierManager';
 import { FrontierBuilding } from '../data/FrontierBuildings';
-import { SendCreepOption } from '../data/SendCreepTypes';
+import { SEND_OPTIONS, SendCreepOption } from '../data/SendCreepTypes';
+
+const SEND_OPTIONS_MAP: Record<string, SendCreepOption> = {};
+for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { TowerInfoPanel } from '../ui/TowerInfoPanel';
 import { SendPanel } from '../ui/SendPanel';
@@ -33,6 +36,8 @@ import { EventLog } from '../ui/EventLog';
 import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
+import { VersusManager } from '../systems/multiplayer/VersusManager';
+import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
@@ -62,6 +67,8 @@ export class GameScene extends Phaser.Scene {
   creepInfo!: CreepInfoPanel;
   upcomingWaves!: UpcomingWaves;
   statsTracker!: StatsTracker;
+  versus: VersusManager | null = null;
+  opponentMinimap: OpponentMinimap | null = null;
   selectedCreep: Creep | null = null;
 
   // Game state
@@ -195,7 +202,12 @@ export class GameScene extends Phaser.Scene {
     const sidebarTopOffset = UpcomingWaves.HEIGHT;
     this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
       if (this.betweenWaves && this.economy.spend(opt.cost)) {
-        this.sendMgr.queueSend(opt);
+        if (this.versus) {
+          // Versus: sends go to opponent, not to self
+          this.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
+        } else {
+          this.sendMgr.queueSend(opt);
+        }
         this.incomeMgr.addSendBonus(opt.incomeReward);
         this.eventLog.sendQueued(opt.name, opt.cost);
         this.statsTracker.recordSendSpent(opt.cost);
@@ -254,7 +266,13 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onRightClick((col, row) => this.handleRightClick(col, row));
     this.inputMgr.onSpace(() => {
       if (this.betweenWaves && this.currentWave < this.waves.length) {
-        this.startWave();
+        if (this.versus) {
+          // Versus: vote ready instead of instant start
+          this.versus.voteReady();
+          this.eventLog.gameMessage('Ready! Waiting for opponent...');
+        } else {
+          this.startWave();
+        }
       }
     });
 
@@ -272,6 +290,13 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
     // Prevent TAB from changing browser focus
     this.input.keyboard!.addCapture('TAB');
+
+    // Versus mode setup
+    this.versus = this.registry.get('versus') as VersusManager | null;
+    if (this.versus) {
+      this.opponentMinimap = new OpponentMinimap(this, this.versus);
+      this.eventLog.gameMessage('VERSUS MODE — sends go to opponent!');
+    }
 
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed);
   }
@@ -423,7 +448,7 @@ export class GameScene extends Phaser.Scene {
     tower.destroy();
     this.towers.splice(idx, 1);
 
-    // Only modify grid for non-mobile towers
+    this.versus?.send({ type: 'tower_sold', col, row });
     if (!tower.isMobile) {
       this.grid.removeTower(col, row);
       this.eventBus.emit('towerSold', col, row);
@@ -494,6 +519,7 @@ export class GameScene extends Phaser.Scene {
     this.statsTracker.recordTowerBuilt(towerType.id);
     this.statsTracker.recordGoldSpent(cost);
     this.eventBus.emit('towerPlaced', col, row, towerType.id);
+    this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
 
     // Update existing creep paths
     for (const creep of this.creeps) {
@@ -662,6 +688,11 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
+      // Versus: start 30s wave countdown
+      if (this.versus) {
+        this.versus.startWaveCountdown();
+      }
+
       // Frontier mechanic bonuses (growth, dig, gamble)
       const frontierBonus = this.frontierMgr.onWaveEnd(this.currentWave);
       if (frontierBonus > 0) {
@@ -706,6 +737,28 @@ export class GameScene extends Phaser.Scene {
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
+
+    // Versus: wave timer, minimap, incoming sends
+    if (this.versus) {
+      if (this.versus.waveTimerActive) {
+        if (this.versus.updateWaveTimer(delta)) {
+          this.startWave();
+        }
+      }
+
+      this.opponentMinimap?.update();
+      // Process incoming sends from opponent
+      const incoming = this.versus.drainIncomingSends();
+      for (const sendId of incoming) {
+        const opt = SEND_OPTIONS_MAP[sendId];
+        if (opt) {
+          this.sendMgr.queueSend(opt);
+          this.eventLog.gameMessage(`Incoming send: ${opt.name}!`);
+        }
+      }
+      // Broadcast lives
+      this.versus.send({ type: 'lives_update', lives: this.lives });
+    }
 
     // Update tower alive time for DPS calc
     for (const tower of this.towers) {

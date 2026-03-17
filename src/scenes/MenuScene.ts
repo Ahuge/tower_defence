@@ -107,6 +107,18 @@ export class MenuScene extends Phaser.Scene {
       { mode: 'marathon', label: 'Marathon (Endless)', desc: 'Infinite scaling, how far can you go?', y: 390 },
     ];
 
+    // Multiplayer button
+    const mpBtn = this.add.text(cx, 450, '[ VERSUS MULTIPLAYER ]', {
+      fontSize: '14px', color: '#ff8844', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    mpBtn.on('pointerdown', () => this.scene.start('LobbyScene'));
+    mpBtn.on('pointerover', () => mpBtn.setColor('#ffbb77'));
+    mpBtn.on('pointerout', () => mpBtn.setColor('#ff8844'));
+
+    this.add.text(cx, 468, 'P2P — no server required', {
+      fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
     for (const m of modes) {
       const btn = this.add.graphics();
       btn.fillStyle(0x333333, 1);
