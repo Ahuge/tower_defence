@@ -122,9 +122,16 @@ export class Tower {
       }
     }
 
-    if (hasTrait(this.traits, '_adj_damage_buff') || hasTrait(this.traits, '_adj_rate_buff')) {
+    if (hasTrait(this.traits, '_adj_damage_buff') || hasTrait(this.traits, '_adj_rate_buff') || hasTrait(this.traits, '_faction_rate_buff')) {
       this.graphics.lineStyle(1, 0xff88aa, 0.4);
       this.graphics.strokeCircle(this.x, this.y, s + 3);
+    }
+
+    // Firewall beam visual
+    const fwTrait = getTrait(this.traits, 'firewall_link');
+    if (fwTrait && fwTrait._partnerX !== undefined) {
+      this.graphics.lineStyle(2, 0x00ffcc, 0.5);
+      this.graphics.lineBetween(this.x, this.y, fwTrait._partnerX, fwTrait._partnerY);
     }
   }
 
@@ -161,6 +168,10 @@ export class Tower {
   runTraitUpdates(ctx: UpdateContext): void {
     resolveTowerUpdates(this.traits, this, ctx);
     cleanupExpiredTraits(this.traits);
+    // Redraw firewall beam each frame
+    if (hasTrait(this.traits, 'firewall_link') && this.graphics.visible) {
+      this.drawTower();
+    }
   }
 
   update(time: number, delta: number, creeps: Creep[]): void {
