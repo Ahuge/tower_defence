@@ -1,7 +1,7 @@
 import { TILE_SIZE } from '../config';
 import { Creep } from '../entities/Creep';
 import { PathPoint } from './Pathfinding';
-import { WaveDefinition, WaveCreepGroup } from '../data/WaveDefinitions';
+import { WaveDefinition } from '../data/WaveDefinitions';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { DifficultyHints } from '../data/Difficulty';
 import { EventBus } from './EventBus';
@@ -20,7 +20,8 @@ interface SpawnEntry {
   hpScale: number;
   speedScale: number;
   isBoss: boolean;
-  groupBurst: number; // how many to spawn at once (group behavior)
+  groupBurst: number;
+  pathIndex: number; // which path/entry to use
 }
 
 export class SpawnManager {
@@ -42,40 +43,40 @@ export class SpawnManager {
     this.rng = seededRandom(this.seed);
   }
 
-  /** Set the direct-line path for flying creeps */
   setFlyingPath(entry: { col: number; row: number }, exit: { col: number; row: number }): void {
-    // Straight line from entry to exit
     this.flyingPath = [
       { col: entry.col, row: entry.row },
       { col: exit.col, row: exit.row },
     ];
   }
 
-  startWave(waveDef: WaveDefinition): void {
+  startWave(waveDef: WaveDefinition, numPaths: number = 1): void {
     this.spawnQueue = [];
 
     for (const group of waveDef.groups) {
       const ct = CREEP_TYPES[group.creepType];
       if (!ct) continue;
 
-      // Apply difficulty modifiers per creep type
       const resolved = ct.applyDifficulty(this.difficulty);
       const baseCount = group.count * (ct.count || 1);
       const actualCount = Math.round(baseCount * resolved.countMult);
 
       for (let i = 0; i < actualCount; i++) {
         const groupBurst = ct.spawnBehavior === 'group' ? 4 : 1;
+        // Distribute creeps across paths (round-robin)
+        const pathIndex = numPaths > 1 ? (i % numPaths) : 0;
         this.spawnQueue.push({
           creepType: group.creepType,
           hpScale: group.hpScale * resolved.hpMult,
           speedScale: group.speedScale * resolved.speedMult,
           isBoss: waveDef.isBoss,
           groupBurst,
+          pathIndex,
         });
       }
     }
 
-    // Shuffle (but keep group entries together)
+    // Shuffle
     for (let i = this.spawnQueue.length - 1; i > 0; i--) {
       const j = Math.floor(this.rng() * (i + 1));
       [this.spawnQueue[i], this.spawnQueue[j]] = [this.spawnQueue[j], this.spawnQueue[i]];
@@ -85,20 +86,28 @@ export class SpawnManager {
     this.spawnTimer = 0;
   }
 
-  update(delta: number, currentPath: PathPoint[] | null, creeps: Creep[]): void {
-    if (this.spawnQueue.length === 0 || !currentPath) return;
+  /** Pass all available paths. Creeps spawn from the path matching their pathIndex. */
+  update(delta: number, allPaths: (PathPoint[] | null)[], creeps: Creep[]): void {
+    if (this.spawnQueue.length === 0) return;
+    // Need at least one valid path
+    if (!allPaths.some(p => p !== null)) return;
 
     this.spawnTimer -= delta;
     if (this.spawnTimer <= 0) {
       const entry = this.spawnQueue.shift()!;
       const ct = CREEP_TYPES[entry.creepType];
 
-      // Determine path: flying creeps use direct path
-      const path = (ct?.spawnBehavior === 'flying' && this.flyingPath)
-        ? this.flyingPath
-        : currentPath;
+      // Pick the path for this creep
+      let path: PathPoint[] | null = null;
+      if (ct?.spawnBehavior === 'flying' && this.flyingPath) {
+        path = this.flyingPath;
+      } else {
+        // Use assigned path, fallback to first valid
+        path = allPaths[entry.pathIndex] ?? allPaths.find(p => p !== null) ?? null;
+      }
 
-      // Group behavior: spawn burst of creeps at once
+      if (!path) return;
+
       const burstCount = entry.groupBurst;
       for (let b = 0; b < burstCount; b++) {
         const creep = new Creep(
@@ -117,43 +126,39 @@ export class SpawnManager {
       }
     }
 
-    // Handle split_on_death: check for dead creeps with split trait
-    this.processSplits(currentPath, creeps);
+    // Handle split_on_death
+    this.processSplits(allPaths, creeps);
   }
 
-  private processSplits(currentPath: PathPoint[], creeps: Creep[]): void {
+  private processSplits(allPaths: (PathPoint[] | null)[], creeps: Creep[]): void {
     const newCreeps: Creep[] = [];
 
     for (const creep of creeps) {
       if (creep.alive || creep.reached) continue;
-      if (creep.hp > -900) continue; // already processed (hp set to -999 on kill)
+      if (creep.hp > -900) continue;
 
-      // Check for split_on_death trait
       for (const trait of creep.creepType.traits) {
         if (trait.id === 'split_on_death') {
           const splitCount = trait.splitCount ?? 2;
           const splitType = trait.splitType ?? 'splitter_child';
-
-          // Find current position in path
           const pathIdx = Math.max(0, creep.pathIndex - 1);
           const remainingPath = creep.path.slice(pathIdx);
           if (remainingPath.length < 2) continue;
 
           for (let s = 0; s < splitCount; s++) {
             const child = new Creep(
-              (creep as any).graphics?.scene ?? this.scene,
+              this.scene,
               [...remainingPath],
-              creep.maxHp * 0.4, // children get 40% of parent's max HP
-              creep.baseSpeed / 80, // convert back to multiplier roughly
+              creep.maxHp * 0.4,
+              creep.baseSpeed / 80,
               false,
               splitType,
             );
-            // Offset slightly so they spread out
             child.x = creep.x + (Math.random() - 0.5) * TILE_SIZE;
             child.y = creep.y + (Math.random() - 0.5) * TILE_SIZE;
             newCreeps.push(child);
           }
-          break; // only process one split trait
+          break;
         }
       }
     }

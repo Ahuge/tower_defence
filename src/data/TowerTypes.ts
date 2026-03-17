@@ -468,10 +468,19 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { level: 3, cost: 250, damage: 26, range: 5, fireRate: 300 },
     ],
   }),
+  alien_swarmling: def({
+    id: 'alien_swarmling', name: 'Swarmling', description: 'Mobile melee. Cheap, fast, disposable.',
+    faction: 'aliens', damageType: 'physical', cost: 15, damage: 6, range: 2, fireRate: 400,
+    color: 0x99ee55, projectileSpeed: 0, hotkey: '6',
+    traits: [{ id: 'mobile_unit', moveSpeed: 160, engageRange: 0.6, attackCooldown: 400 }],
+    upgrades: [
+      { level: 2, cost: 15, damage: 10, range: 2, fireRate: 350 },
+    ],
+  }),
   alien_overmind: def({
     id: 'alien_overmind', name: 'Overmind', description: 'ULTIMATE. Extreme fire rate. Buffs all aliens nearby.',
     faction: 'aliens', damageType: 'physical', cost: 700, damage: 15, range: 5, fireRate: 150,
-    color: 0xccff88, projectileSpeed: 500, hotkey: '6', ultimate: true,
+    color: 0xccff88, projectileSpeed: 500, hotkey: '7', ultimate: true,
     traits: [{ id: 'direct_damage' }, { id: 'faction_speed_aura', ratePercent: 0.3 }],
   }),
 
@@ -575,10 +584,16 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { level: 3, cost: 100, damage: 42, range: 5, fireRate: 700 },
     ],
   }),
+  infernal_bomber: def({
+    id: 'infernal_bomber', name: 'Fiend', description: 'Kamikaze. Runs to nearest creep and explodes for AoE damage. Single use.',
+    faction: 'infernal', damageType: 'magic', cost: 20, damage: 80, range: 10, fireRate: 99999,
+    color: 0xdd3300, projectileSpeed: 0, hotkey: '4',
+    traits: [{ id: 'mobile_unit', moveSpeed: 180, engageRange: 0.5, attackCooldown: 100, attackSplash: 56, selfDestruct: true }],
+  }),
   infernal_immolate: def({
     id: 'infernal_immolate', name: 'Immolate', description: 'Strong DPS. Right-click to sacrifice for 2000 AoE damage.',
     faction: 'infernal', damageType: 'magic', cost: 200, damage: 40, range: 4, fireRate: 800,
-    color: 0xff8800, projectileSpeed: 300, hotkey: '4',
+    color: 0xff8800, projectileSpeed: 300, hotkey: '5',
     traits: [{ id: 'direct_damage' }, { id: 'burn_dot', dps: 15, duration: 3000 }],
     upgrades: [
       { level: 2, cost: 160, damage: 65, range: 4.5, fireRate: 700 },

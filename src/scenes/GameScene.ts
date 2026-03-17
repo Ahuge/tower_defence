@@ -739,19 +739,65 @@ export class GameScene extends Phaser.Scene {
 
     this.creeps = this.creeps.filter(c => c.alive);
 
-    this.spawner.update(delta, this.currentPath, this.creeps);
+    // Clean up expired towers (Infernal Fiend kamikaze, expired Imps, etc.)
+    for (let i = this.towers.length - 1; i >= 0; i--) {
+      const tower = this.towers[i];
+      if ((tower as any)._expired) {
+        tower.destroy();
+        if (!tower.isMobile) {
+          this.grid.removeTower(tower.col, tower.row);
+        }
+        this.towers.splice(i, 1);
+      }
+    }
+
+    this.spawner.update(delta, this.allPaths, this.creeps);
     this.sendMgr.update(delta, this.currentPath, this.creeps);
 
     if (this.waveActive && !this.spawner.isSpawning() && !this.sendMgr.isSpawning() && this.creeps.length === 0) {
       this.waveActive = false;
       this.betweenWaves = true;
 
-      // Snap mobile units back home
+      // Snap mobile units back home + process wave-end tower effects
       for (const tower of this.towers) {
         if (tower.isMobile) {
           tower.x = tower.homeX;
           tower.y = tower.homeY;
           tower.drawTower();
+        }
+        // Infernal: decrement expires_after_waves
+        for (const trait of tower.traits) {
+          if (trait.id === 'expires_after_waves') {
+            if (trait._wavesRemaining === undefined) trait._wavesRemaining = trait.waves ?? 4;
+            trait._wavesRemaining--;
+            if (trait._wavesRemaining <= 0) {
+              (tower as any)._expired = true;
+              this.eventLog.gameMessage(`${tower.typeDef.name} expired!`);
+            }
+          }
+          // Infernal: decay_per_wave reduces damage
+          if (trait.id === 'decay_per_wave') {
+            const decayPercent = trait.decayPercent ?? 0.15;
+            tower.damage = Math.max(1, Math.round(tower.damage * (1 - decayPercent)));
+            tower.drawTower();
+          }
+        }
+        // Celestial: life_on_kill — collect earned lives
+        if ((tower as any)._livesEarned > 0) {
+          this.lives += (tower as any)._livesEarned;
+          this.eventLog.gameMessage(`+${(tower as any)._livesEarned} life from ${tower.typeDef.name}!`);
+          (tower as any)._livesEarned = 0;
+        }
+        // Celestial: leak_absorb recharge
+        for (const trait of tower.traits) {
+          if (trait.id === 'leak_absorb') {
+            if (trait._rechargeCounter === undefined) trait._rechargeCounter = 0;
+            trait._rechargeCounter++;
+            if (trait._rechargeCounter >= (trait.rechargeWaves ?? 10)) {
+              trait._charges = Math.min((trait._charges ?? 0) + 1, trait.maxCharges ?? 1);
+              trait._rechargeCounter = 0;
+            }
+          }
         }
       }
 
@@ -1130,7 +1176,7 @@ export class GameScene extends Phaser.Scene {
     const wave = this.waves[this.currentWave];
     this.currentWave++;
     this.eventBus.emit('waveStarted', this.currentWave);
-    this.spawner.startWave(wave);
+    this.spawner.startWave(wave, this.allPaths.filter(p => p !== null).length);
 
     // Log wave start with creep types
     const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];

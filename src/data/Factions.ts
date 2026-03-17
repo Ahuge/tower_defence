@@ -56,7 +56,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
     description: 'The hive hungers. Cheap, fast, overwhelming swarms.',
     primaryColor: 0x88ff44,
     secondaryColor: 0xaaff66,
-    towerIds: ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_overmind'],
+    towerIds: ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_swarmling', 'alien_overmind'],
   },
   cypherpunk: {
     id: 'cypherpunk',
@@ -72,7 +72,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
     description: 'Power at any price. Towers decay, expire, or sacrifice.',
     primaryColor: 0xff4422,
     secondaryColor: 0xff8844,
-    towerIds: ['infernal_imp', 'infernal_hellfire', 'infernal_soul_drain', 'infernal_immolate', 'infernal_apocalypse'],
+    towerIds: ['infernal_imp', 'infernal_hellfire', 'infernal_soul_drain', 'infernal_bomber', 'infernal_immolate', 'infernal_apocalypse'],
   },
   celestial: {
     id: 'celestial',

@@ -114,31 +114,45 @@ export class GameOverScene extends Phaser.Scene {
         rowY += 14;
       }
 
-      // Economy section
-      const econY = Math.max(rowY + 20, 380);
+      // Economy table — positioned dynamically after tower table
+      const econY = rowY + 16;
       this.add.text(cx, econY, 'ECONOMY', {
         fontSize: '13px', color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const s = data.stats;
       const towerBonusGold = Object.values(s.towerStats).reduce((sum, t) => sum + t.totalGoldEarned, 0);
-      const econLines = [
-        `Creeps Killed: ${s.creepsKilled}  |  Leaked: ${s.creepsLeaked}`,
-        `Gold Earned: ${s.totalGoldEarned.toLocaleString()}g (kills + income + frontier)`,
-        `Gold Spent: ${s.totalGoldSpent.toLocaleString()}g (towers + sends + frontier)`,
-        `Tower Bonus Gold: ${towerBonusGold}g (Siphon, gold-on-hit, etc.)`,
-        `Frontier — Invested: ${s.frontierSpent}g  |  Returned: ${s.frontierEarned}g  |  ROI: ${s.frontierSpent > 0 ? Math.round((s.frontierEarned / s.frontierSpent) * 100) : 0}%`,
-        `Sends — Spent: ${s.sendsSpent}g  |  Income Gained: +${s.sendsIncome}/wave`,
-        `Kill Efficiency: ${s.creepsKilled > 0 ? (s.totalGoldEarned / s.creepsKilled).toFixed(1) : 0}g per kill`,
+      const econHeaderY = econY + 18;
+      const econColX = [60, 250, 500];
+      const econHeaders = ['Stat', 'Value', 'Detail'];
+      econHeaders.forEach((h, i) => {
+        this.add.text(econColX[i], econHeaderY, h, {
+          fontSize: '11px', color: '#888888', fontFamily: 'monospace',
+        });
+      });
+
+      const econRows = [
+        ['Creeps Killed', s.creepsKilled.toString(), `Leaked: ${s.creepsLeaked}`],
+        ['Gold Earned', `${s.totalGoldEarned.toLocaleString()}g`, 'kills + income + frontier'],
+        ['Gold Spent', `${s.totalGoldSpent.toLocaleString()}g`, 'towers + sends + frontier'],
+        ['Tower Bonus', `${towerBonusGold}g`, 'Siphon, gold-on-hit'],
+        ['Frontier', `${s.frontierEarned}g earned`, `Invested: ${s.frontierSpent}g | ROI: ${s.frontierSpent > 0 ? Math.round((s.frontierEarned / s.frontierSpent) * 100) : 0}%`],
+        ['Sends', `${s.sendsSpent}g spent`, `Income: +${s.sendsIncome}/wave`],
+        ['Kill Efficiency', `${s.creepsKilled > 0 ? (s.totalGoldEarned / s.creepsKilled).toFixed(1) : 0}g/kill`, ''],
       ];
 
-      this.add.text(cx, econY + 20, econLines.join('\n'), {
-        fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
-        align: 'center', lineSpacing: 4,
-      }).setOrigin(0.5, 0);
+      let econRowY = econHeaderY + 16;
+      for (const row of econRows) {
+        row.forEach((v, i) => {
+          this.add.text(econColX[i], econRowY, v, {
+            fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
+          });
+        });
+        econRowY += 14;
+      }
 
       // Fun stats
-      const funY = econY + 90;
+      const funY = econRowY + 8;
       const topDamage = entries[0];
       const topGold = entries.reduce((best, e) =>
         e[1].totalGoldEarned > (best?.[1]?.totalGoldEarned ?? 0) ? e : best, entries[0]);
@@ -146,20 +160,17 @@ export class GameOverScene extends Phaser.Scene {
       const funLines: string[] = [];
       if (topDamage) {
         const name = TOWER_TYPES[topDamage[0]]?.name ?? topDamage[0];
-        funLines.push(`MVP Tower: ${name} (${topDamage[1].totalDamage.toLocaleString()} damage)`);
+        funLines.push(`MVP: ${name} (${topDamage[1].totalDamage.toLocaleString()} dmg)`);
       }
       if (topGold && topGold[1].totalGoldEarned > 0) {
         const name = TOWER_TYPES[topGold[0]]?.name ?? topGold[0];
-        funLines.push(`Best Earner: ${name} (+${topGold[1].totalGoldEarned}g)`);
+        funLines.push(`Top Earner: ${name} (+${topGold[1].totalGoldEarned}g)`);
       }
-      funLines.push(`Damage per second: ${gameTime > 0 ? Math.round(entries.reduce((s, e) => s + e[1].totalDamage, 0) / gameTime) : 0}/s overall`);
+      funLines.push(`Overall DPS: ${gameTime > 0 ? Math.round(entries.reduce((s, e) => s + e[1].totalDamage, 0) / gameTime) : 0}/s`);
 
-      if (funLines.length > 0) {
-        this.add.text(cx, funY, funLines.join('\n'), {
-          fontSize: '14px', color: '#88aacc', fontFamily: 'monospace',
-          align: 'center', lineSpacing: 4,
-        }).setOrigin(0.5, 0);
-      }
+      this.add.text(cx, funY, funLines.join('  |  '), {
+        fontSize: '11px', color: '#88aacc', fontFamily: 'monospace',
+      }).setOrigin(0.5);
     }
 
     // Versus summary

@@ -489,6 +489,11 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
           target.takeDamage(attackDamage);
           tower.damageDealt += attackDamage;
         }
+
+        // Self-destruct: destroy tower after first attack (kamikaze)
+        if (trait.selfDestruct) {
+          tower._expired = true;
+        }
       }
     }
   }
