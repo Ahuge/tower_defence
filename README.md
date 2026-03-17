@@ -1,6 +1,6 @@
 # Tower Defence
 
-A grid-based maze-building tower defence game with 11 factions, P2P multiplayer, and deep economic strategy. Built with Phaser 3 + TypeScript + Vite.
+A grid-based maze-building tower defence game with 12 factions, P2P multiplayer, and deep economic strategy. Built with Phaser 3 + TypeScript + Vite.
 
 **[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Changelog](CHANGELOG.md)
 
@@ -16,7 +16,7 @@ Build towers to create mazes, defend against 14 creep types across 30+ waves, ma
 
 ### Match Flow
 1. **Menu** — Choose map (8 options), difficulty (Easy/Normal/Hard), match mode (Sprint/Standard/Marathon)
-2. **Faction Select** — Pick from 11 factions with unique tower rosters
+2. **Faction Select** — Pick from 12 factions with unique tower rosters
 3. **Draft** — Choose 1 of 3 random modifiers (Gold Rush, Glass Cannon, etc.)
 4. **Game** — Build, defend, invest. Press SPACE to start waves. TAB to change speed.
 5. **Score Screen** — Tower DPS tables, economy breakdown, gold efficiency, MVP awards
@@ -33,9 +33,10 @@ Build towers to create mazes, defend against 14 creep types across 30+ waves, ma
 | TAB | Cycle game speed (0x/0.5x/1x/1.5x/2x/3x) |
 | P | Pause menu |
 | ENTER | Chat (versus mode) |
-| ESC | Deselect |
+| L | Link mode (Conduit tower) |
+| ESC | Deselect / cancel link mode |
 
-## Factions (11)
+## Factions (12)
 
 | Faction | Towers | Identity |
 |---------|--------|----------|
@@ -49,6 +50,7 @@ Build towers to create mazes, defend against 14 creep types across 30+ waves, ma
 | Infernal | 6 | Expiring towers, decay, kamikaze sacrifice |
 | Celestial | 5 | Life gain, leak absorption, mage silencing |
 | Psionic | 5 | True damage (ignores armor), confusion |
+| Harmonic | 7 | Stacking aura network, Conduit linking |
 | Random | 6/wave | Rotating pool from all factions |
 
 See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.

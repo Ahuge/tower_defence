@@ -162,6 +162,27 @@
 
 ---
 
+## Harmonic (7 towers)
+*"Alone, a whisper. Together, a symphony." — Aura network.*
+
+| Tower | Cost | Key Traits |
+|-------|------|------------|
+| Resonator | 20g | Basic DPS. Weak alone, powerful with aura stacking. 4 levels. |
+| Amplifier | 30g | No attack. +20% damage aura (red). Stacks with other Amplifiers. |
+| Quickener | 40g | No attack. +15% fire rate aura (green). |
+| Reach | 50g | No attack. +1.5 tile range aura (blue). |
+| Critical Mass | 80g | No attack. 15% crit chance aura (magenta). |
+| Conduit | 100g | Manual link: press L to link 2-3 aura towers. Shares their effects at 70%. |
+| **Crescendo** | **650g** | Ultimate. Moderate DPS designed for maximum aura stacking. |
+
+**How Conduit works:** Click Conduit → press L → click aura towers to link. Only links different aura types. Linked towers share their effects with each other at 70% strength. Click a linked tower to unlink. Max 2 links (3 at level 3).
+
+**Identity:** The placement puzzle faction. Individual towers are weak — the power comes from overlapping aura coverage. Two Amplifiers + Quickener on a Resonator = massive DPS. Conduit extends the network across the map.
+
+**Frontier:** Resonance Chamber (growth) / Symphony Hall (overcharge).
+
+---
+
 ## Random (dynamic)
 *"Adapt or die." — 6 random towers + 2 frontier buildings each wave.*
 

@@ -48,7 +48,7 @@ src/
 - Expired towers: set `_expired = true`, cleaned up each frame in GameScene
 
 ## Key Design Decisions
-- 11 factions with asymmetric tower counts (5-8 towers each)
+- 12 factions with asymmetric tower counts (5-8 towers each)
 - Each faction has 1 Ultimate tower (600-900g)
 - Difficulty modifiers are per-creep-type interpreted
 - Random faction: 6 towers + 2 frontier buildings rotate each wave

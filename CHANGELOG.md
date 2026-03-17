@@ -2,6 +2,15 @@
 
 ## 2026-03-17
 
+### Manual Conduit Linking + Encyclopedia + Changelog Viewer
+- **Manual Conduit linking**: Conduit no longer auto-links. Click Conduit → press L → click aura towers to link/unlink. Only links different aura types. Max 2-3 links based on level. Visual: colored lines per aura type (red=damage, green=rate, blue=range, magenta=crit). Linked towers show gold outline.
+- **Encyclopedia scene**: browse all towers (grouped by faction with traits), creeps (HP/speed/armor/abilities), and frontier buildings. Mouse wheel scrolling, tab switching.
+- **In-app Changelog**: scrollable history from v1 to latest on the menu screen.
+- **Harmonic aura info**: TowerInfoPanel shows all active Harmonic buffs (+X% DMG, -X% SPD, +X RNG, X% crit) when inspecting a buffed tower.
+- **Distinct aura colors**: Amplifier red, Quickener green, Reach blue, Critical Mass magenta. Tower colors and aura circles match.
+- **Version SHA** on menu screen (bottom-right, gray).
+- Menu has [ Encyclopedia ] and [ Changelog ] buttons.
+
 ### Documentation Overhaul
 - Updated CLAUDE.md with documentation rules, multiplayer architecture, all current design decisions.
 - Updated README.md with 11 factions, 8 maps, multiplayer, all controls.
