@@ -29,6 +29,7 @@ import { SendPanel } from '../ui/SendPanel';
 import { IncomeDisplay } from '../ui/IncomeDisplay';
 import { FrontierPanel } from '../ui/FrontierPanel';
 import { FighterPanel } from '../ui/FighterPanel';
+import { EventLog } from '../ui/EventLog';
 import { FighterManager } from '../systems/FighterManager';
 import { FighterType } from '../data/FighterTypes';
 import { UpdateContext } from '../systems/traits/Trait';
@@ -58,6 +59,7 @@ export class GameScene extends Phaser.Scene {
   incomeDisplay!: IncomeDisplay;
   frontierMgr!: FrontierManager;
   frontierPanel!: FrontierPanel;
+  eventLog!: EventLog;
 
   // Game state
   towers: Tower[] = [];
@@ -166,6 +168,7 @@ export class GameScene extends Phaser.Scene {
       if (this.betweenWaves && this.economy.spend(opt.cost)) {
         this.sendMgr.queueSend(opt);
         this.incomeMgr.addSendBonus(opt.incomeReward);
+        this.eventLog.sendQueued(opt.name, opt.cost);
       }
     });
     this.incomeDisplay = new IncomeDisplay(this);
@@ -179,6 +182,7 @@ export class GameScene extends Phaser.Scene {
         if (this.economy.spend(building.cost)) {
           this.frontierMgr.purchaseBuilding(building);
           this.frontierPanel.updateOwned();
+          this.eventLog.frontierPurchased(building.name, building.cost);
         }
       },
       (action: string, idx: number) => {
@@ -188,6 +192,10 @@ export class GameScene extends Phaser.Scene {
         this.handleFrontierBatchAction(action, defId);
       },
     );
+
+    // Event log (bottom of sidebar)
+    this.eventLog = new EventLog(this, 420);
+    this.eventLog.gameMessage('Game started. Press SPACE for wave 1.');
 
     // Fighter system (only with faction)
     if (this.faction) {
@@ -342,7 +350,9 @@ export class GameScene extends Phaser.Scene {
     const idx = this.towers.findIndex(t => t.col === col && t.row === row);
     if (idx !== -1) {
       const tower = this.towers[idx];
-      this.economy.addGold(tower.getSellValue());
+      const refund = tower.getSellValue();
+      this.economy.addGold(refund);
+      this.eventLog.towerSold(tower.typeDef.name, refund);
       if (this.selectedTower === tower) this.enterNoneMode();
       tower.destroy();
       this.towers.splice(idx, 1);
@@ -386,6 +396,7 @@ export class GameScene extends Phaser.Scene {
 
     this.towers.push(tower);
     this.totalTowersBuilt++;
+    this.eventLog.towerBuilt(towerType.name, cost);
     this.eventBus.emit('towerPlaced', col, row, towerType.id);
 
     // Update existing creep paths
@@ -415,17 +426,27 @@ export class GameScene extends Phaser.Scene {
     switch (action) {
       case 'overcharge': {
         const gold = this.frontierMgr.overchargeBuilding(idx);
-        if (gold > 0) this.economy.addGold(gold);
+        if (gold > 0) {
+          this.economy.addGold(gold);
+          this.eventLog.frontierAction('Overcharge', `+${gold}g burst, dormant 2 waves`);
+        }
         break;
       }
       case 'dig': {
         const result = this.frontierMgr.digDeeper(idx);
-        // Could show feedback for collapse
+        if (result.collapsed) {
+          this.eventLog.frontierAction('Dig Deeper', 'CAVE-IN! Mine destroyed');
+        } else if (result.success) {
+          this.eventLog.frontierAction('Dig Deeper', 'Success! +1 depth');
+        }
         break;
       }
       case 'harvest': {
         const gold = this.frontierMgr.harvestGrowth(idx);
-        if (gold > 0) this.economy.addGold(gold);
+        if (gold > 0) {
+          this.economy.addGold(gold);
+          this.eventLog.frontierAction('Harvest', `+${gold}g collected`);
+        }
         break;
       }
     }
@@ -436,16 +457,23 @@ export class GameScene extends Phaser.Scene {
     switch (action) {
       case 'overcharge': {
         const gold = this.frontierMgr.overchargeAllOfType(defId);
-        if (gold > 0) this.economy.addGold(gold);
+        if (gold > 0) {
+          this.economy.addGold(gold);
+          this.eventLog.frontierAction('Overcharge All', `+${gold}g burst`);
+        }
         break;
       }
       case 'dig': {
-        this.frontierMgr.digAllOfType(defId);
+        const result = this.frontierMgr.digAllOfType(defId);
+        this.eventLog.frontierAction('Dig All', `${result.successes} ok, ${result.collapses} collapsed`);
         break;
       }
       case 'harvest': {
         const gold = this.frontierMgr.harvestAllOfType(defId);
-        if (gold > 0) this.economy.addGold(gold);
+        if (gold > 0) {
+          this.economy.addGold(gold);
+          this.eventLog.frontierAction('Harvest All', `+${gold}g collected`);
+        }
         break;
       }
     }
@@ -491,6 +519,7 @@ export class GameScene extends Phaser.Scene {
       if (creep.reached) {
         this.lives--;
         this.eventBus.emit('livesChanged', this.lives);
+        this.eventLog.creepReached();
         creep.reached = false;
         creep.alive = false;
       }
@@ -522,6 +551,10 @@ export class GameScene extends Phaser.Scene {
       const income = this.incomeMgr.collectWaveIncome();
       this.economy.addGold(income);
       this.eventBus.emit('waveCleared', this.currentWave);
+      this.eventLog.waveCleared(this.currentWave, income + (frontierBonus > 0 ? frontierBonus : 0));
+      if (frontierBonus > 0) {
+        this.eventLog.frontierIncome('Frontier bonus', frontierBonus);
+      }
     }
 
     if (this.lives <= 0) {
@@ -716,6 +749,10 @@ export class GameScene extends Phaser.Scene {
     this.currentWave++;
     this.eventBus.emit('waveStarted', this.currentWave);
     this.spawner.startWave(wave);
+
+    // Log wave start with creep types
+    const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
+    this.eventLog.waveStarted(this.currentWave, this.waves.length, creepTypes);
 
     const baseHp = wave.groups[0]?.hpScale || 30;
     const baseSpeed = wave.groups[0]?.speedScale || 1;
