@@ -215,17 +215,22 @@ export class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const playable = FACTION_ORDER;
-    const cardW = 130;
+    const cardW = 120;
+    const cardH = 50;
     const gap = 6;
-    const totalW = playable.length * cardW + (playable.length - 1) * gap;
-    const startX = cx - totalW / 2;
+    const cols = 6;
 
     for (let i = 0; i < playable.length; i++) {
       const fid = playable[i];
       const faction = FACTIONS[fid];
-      const x = startX + i * (cardW + gap);
-      const y = factionY + 20;
-      const h = 60;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const rowCount = row < Math.floor(playable.length / cols) ? cols : playable.length % cols || cols;
+      const rowW = rowCount * cardW + (rowCount - 1) * gap;
+      const rowStartX = cx - rowW / 2;
+      const x = rowStartX + col * (cardW + gap);
+      const y = factionY + 20 + row * (cardH + gap);
+      const h = cardH;
 
       const card = this.add.graphics();
       card.fillStyle(0x222222, 1);
