@@ -1,5 +1,6 @@
-import { CANVAS_WIDTH, GAME_HEIGHT, GRID_OFFSET_X } from '../config';
-import { getTowerType } from '../data/TowerTypes';
+import { CANVAS_WIDTH, GAME_HEIGHT, GRID_OFFSET_X, TILE_SIZE } from '../config';
+import { getTowerType, TowerType } from '../data/TowerTypes';
+import { hasTrait } from '../systems/traits/Trait';
 
 export class TowerSelectBar {
   private scene: Phaser.Scene;
@@ -8,6 +9,9 @@ export class TowerSelectBar {
   private selectedIndex: number = -1;
   private onSelect: (typeId: string | null) => void;
   private towerIds: string[];
+  private tooltip: Phaser.GameObjects.Container;
+  private tooltipBg: Phaser.GameObjects.Graphics;
+  private tooltipText: Phaser.GameObjects.Text;
 
   static readonly BAR_HEIGHT = 52;
   private static readonly BTN_SIZE = 40;
@@ -18,6 +22,16 @@ export class TowerSelectBar {
     this.towerIds = towerIds;
     this.onSelect = onSelect;
     this.container = scene.add.container(0, GAME_HEIGHT + 28).setDepth(30);
+
+    // Tooltip (rendered above the bar)
+    this.tooltip = scene.add.container(0, 0).setDepth(35).setVisible(false);
+    this.tooltipBg = scene.add.graphics();
+    this.tooltip.add(this.tooltipBg);
+    this.tooltipText = scene.add.text(8, 6, '', {
+      fontSize: '10px', color: '#dddddd', fontFamily: 'monospace',
+      lineSpacing: 3,
+    });
+    this.tooltip.add(this.tooltipText);
 
     this.buildBar();
   }
@@ -38,19 +52,18 @@ export class TowerSelectBar {
       const x = startX + i * (BTN_SIZE + PADDING);
       const y = 6;
 
-      // Button background
       const btn = this.scene.add.graphics();
       this.container.add(btn);
       this.buttons.push(btn);
 
-      // Click zone (Phaser Zone for reliable input)
       const idx = i;
       const zone = this.scene.add.zone(x + BTN_SIZE / 2, y + BTN_SIZE / 2, BTN_SIZE, BTN_SIZE);
       this.container.add(zone);
       zone.setInteractive({ useHandCursor: true });
       zone.on('pointerdown', () => this.highlight(idx));
+      zone.on('pointerover', () => this.showTooltip(idx));
+      zone.on('pointerout', () => this.hideTooltip());
 
-      // Labels
       const hotkeyNum = String(i + 1);
       const label = this.scene.add.text(x + 2, y + 1, hotkeyNum, {
         fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace'
@@ -69,6 +82,73 @@ export class TowerSelectBar {
     }
 
     this.redraw();
+  }
+
+  private showTooltip(index: number): void {
+    const t = getTowerType(this.towerIds[index]);
+    const lines = this.buildTooltipText(t);
+
+    this.tooltipText.setText(lines);
+
+    const textW = this.tooltipText.width + 16;
+    const textH = this.tooltipText.height + 12;
+
+    this.tooltipBg.clear();
+    this.tooltipBg.fillStyle(0x111111, 0.95);
+    this.tooltipBg.fillRect(0, 0, textW, textH);
+    this.tooltipBg.lineStyle(1, 0x555555, 1);
+    this.tooltipBg.strokeRect(0, 0, textW, textH);
+
+    // Position above the button
+    const { BTN_SIZE, PADDING } = TowerSelectBar;
+    const startX = GRID_OFFSET_X + PADDING;
+    const btnX = startX + index * (BTN_SIZE + PADDING);
+    const barY = GAME_HEIGHT + 28;
+
+    let tx = btnX;
+    if (tx + textW > CANVAS_WIDTH) tx = CANVAS_WIDTH - textW;
+    const ty = barY - textH - 4;
+
+    this.tooltip.setPosition(tx, ty);
+    this.tooltip.setVisible(true);
+  }
+
+  private hideTooltip(): void {
+    this.tooltip.setVisible(false);
+  }
+
+  private buildTooltipText(t: TowerType): string {
+    const lines: string[] = [];
+    lines.push(`${t.name} (${t.cost}g)`);
+    lines.push(t.description);
+    lines.push(`DMG: ${t.damage}  RNG: ${t.range}  SPD: ${t.fireRate}ms`);
+    lines.push(`Type: ${t.damageType}`);
+
+    // Trait summary
+    const traitNames: string[] = [];
+    for (const trait of t.traits) {
+      switch (trait.id) {
+        case 'splash_damage': traitNames.push(`Splash (${(trait.radius / TILE_SIZE).toFixed(1)} tiles)`); break;
+        case 'chain_damage': traitNames.push(`Chain (${trait.chainCount + 1} targets)`); break;
+        case 'teleport_delivery': traitNames.push('Teleport'); break;
+        case 'slow_on_hit': traitNames.push(`Slow (${Math.round(trait.factor * 100)}%, ${(trait.duration / 1000).toFixed(1)}s)`); break;
+        case 'gold_on_hit': traitNames.push(`+${trait.amount}g/hit`); break;
+        case 'damage_variance': traitNames.push(`Variance (${Math.round(trait.min * 100)}-${Math.round(trait.max * 100)}%)`); break;
+        case 'ramp_up': traitNames.push('Ramp-up'); break;
+        case 'adjacency_buff': traitNames.push('Adjacency aura'); break;
+        case 'direct_damage': break; // don't show
+        default: break;
+      }
+    }
+    if (traitNames.length > 0) {
+      lines.push('Traits: ' + traitNames.join(', '));
+    }
+
+    if (t.upgrades.length > 0) {
+      lines.push(`Upgrades: ${t.upgrades.length} levels`);
+    }
+
+    return lines.join('\n');
   }
 
   highlight(index: number): void {

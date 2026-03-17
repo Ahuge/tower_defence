@@ -148,7 +148,9 @@ export class GameScene extends Phaser.Scene {
     this.towerBar = new TowerSelectBar(this, this.activeTowerIds, (typeId) => {
       if (typeId) {
         this.enterBuildMode(typeId);
-      } else {
+      } else if (this.selectionMode === 'build') {
+        // Only enter none mode if we were in build mode.
+        // If deselect was triggered by enterInspectMode, don't override it.
         this.enterNoneMode();
       }
     });
