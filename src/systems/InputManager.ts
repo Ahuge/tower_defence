@@ -1,4 +1,4 @@
-import { TILE_SIZE, GRID_COLS, GRID_ROWS } from '../config';
+import { GRID_COLS, GRID_ROWS, pixelToCol, pixelToRow } from '../config';
 import { EventBus } from './EventBus';
 
 export interface GridCoord {
@@ -11,6 +11,7 @@ export class InputManager {
   private events: EventBus;
   private hoverCallback: ((col: number, row: number) => void) | null = null;
   private clickCallback: ((col: number, row: number) => void) | null = null;
+  private clickMissCallback: (() => void) | null = null;
   private rightClickCallback: ((col: number, row: number) => void) | null = null;
   private spaceCallback: (() => void) | null = null;
 
@@ -27,10 +28,13 @@ export class InputManager {
 
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       const coord = this.pointerToGrid(pointer);
-      if (!coord) return;
-      if (pointer.leftButtonDown() && this.clickCallback) {
-        this.clickCallback(coord.col, coord.row);
-      } else if (pointer.rightButtonDown() && this.rightClickCallback) {
+      if (pointer.leftButtonDown()) {
+        if (coord && this.clickCallback) {
+          this.clickCallback(coord.col, coord.row);
+        } else if (!coord && this.clickMissCallback) {
+          this.clickMissCallback();
+        }
+      } else if (pointer.rightButtonDown() && coord && this.rightClickCallback) {
         this.rightClickCallback(coord.col, coord.row);
       }
     });
@@ -50,6 +54,11 @@ export class InputManager {
     this.clickCallback = cb;
   }
 
+  /** Called when left-click is outside the grid (sidebar, etc.) */
+  onClickMiss(cb: () => void): void {
+    this.clickMissCallback = cb;
+  }
+
   onRightClick(cb: (col: number, row: number) => void): void {
     this.rightClickCallback = cb;
   }
@@ -63,8 +72,8 @@ export class InputManager {
   }
 
   private pointerToGrid(pointer: Phaser.Input.Pointer): GridCoord | null {
-    const col = Math.floor(pointer.x / TILE_SIZE);
-    const row = Math.floor(pointer.y / TILE_SIZE);
+    const col = pixelToCol(pointer.x);
+    const row = pixelToRow(pointer.y);
     if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return null;
     return { col, row };
   }

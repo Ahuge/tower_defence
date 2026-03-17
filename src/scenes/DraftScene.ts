@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
 import { DraftModifier, getRandomModifiers } from '../data/DraftModifiers';
 import { MatchMode } from '../data/WaveDefinitions';
 import { FactionId } from '../data/Factions';
@@ -22,7 +22,7 @@ export class DraftScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = GAME_WIDTH / 2;
+    const cx = CANVAS_WIDTH / 2;
     const modifiers = getRandomModifiers(3);
 
     this.add.text(cx, 60, 'Choose a Modifier', {

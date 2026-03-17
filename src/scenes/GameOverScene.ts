@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 export interface GameOverData {
@@ -19,7 +19,7 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   create(data: GameOverData): void {
-    const cx = GAME_WIDTH / 2;
+    const cx = CANVAS_WIDTH / 2;
 
     const title = data.won ? 'VICTORY!' : 'DEFEAT';
     const titleColor = data.won ? '#44ff44' : '#ff4444';

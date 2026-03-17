@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from './config';
+import { CANVAS_WIDTH, GAME_HEIGHT } from './config';
 import { MenuScene } from './scenes/MenuScene';
 import { FactionSelectScene } from './scenes/FactionSelectScene';
 import { DraftScene } from './scenes/DraftScene';
@@ -13,7 +13,7 @@ import './systems/traits/CreepTraitHandlers';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: GAME_WIDTH,
+  width: CANVAS_WIDTH,
   height: GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT,
   backgroundColor: '#111111',
   parent: document.body,

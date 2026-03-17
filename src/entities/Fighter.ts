@@ -1,4 +1,4 @@
-import { TILE_SIZE } from '../config';
+import { TILE_SIZE, gridX, gridY } from '../config';
 import { FighterType } from '../data/FighterTypes';
 import { Creep } from './Creep';
 

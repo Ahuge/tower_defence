@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId } from '../data/Maps';
@@ -20,7 +20,7 @@ export class FactionSelectScene extends Phaser.Scene {
 
   create(): void {
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-    const cx = GAME_WIDTH / 2;
+    const cx = CANVAS_WIDTH / 2;
 
     this.add.text(cx, 50, 'Choose Your Faction', {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',

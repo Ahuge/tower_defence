@@ -1,4 +1,4 @@
-import { TILE_SIZE } from '../config';
+import { TILE_SIZE, gridX, gridY } from '../config';
 import { FighterType } from '../data/FighterTypes';
 import { Fighter } from '../entities/Fighter';
 import { Creep } from '../entities/Creep';
@@ -14,8 +14,8 @@ export class FighterManager {
   constructor(scene: Phaser.Scene, events: EventBus, rallyCol: number, rallyRow: number) {
     this.scene = scene;
     this.events = events;
-    this.rallyX = rallyCol * TILE_SIZE + TILE_SIZE / 2;
-    this.rallyY = rallyRow * TILE_SIZE + TILE_SIZE / 2;
+    this.rallyX = gridX(rallyCol);
+    this.rallyY = gridY(rallyRow);
   }
 
   purchaseFighter(fighterType: FighterType): Fighter[] {

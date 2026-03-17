@@ -1,4 +1,4 @@
-import { TILE_SIZE } from '../../config';
+import { TILE_SIZE, gridX, gridY } from '../../config';
 import { calculateDamage } from '../DamageCalculator';
 import {
   registerDelivery, registerDamageMod, registerFireRateMod,
@@ -75,8 +75,8 @@ registerDelivery('teleport_delivery', (trait: Trait, ctx: HitContext) => {
   target.pathIndex = Math.max(1, target.pathIndex - steps);
   const tp = target.path[target.pathIndex - 1];
   if (tp) {
-    target.x = tp.col * TILE_SIZE + TILE_SIZE / 2;
-    target.y = tp.row * TILE_SIZE + TILE_SIZE / 2;
+    target.x = gridX(tp.col);
+    target.y = gridY(tp.row);
   }
   ctx.hitTargets.push(target);
 });

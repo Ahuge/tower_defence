@@ -1,4 +1,4 @@
-import { TILE_SIZE, COLOR_PROJECTILE } from '../config';
+import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
 import { TowerType } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
 import {
@@ -43,8 +43,8 @@ export class Tower {
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
-    this.x = col * TILE_SIZE + TILE_SIZE / 2;
-    this.y = row * TILE_SIZE + TILE_SIZE / 2;
+    this.x = gridX(col);
+    this.y = gridY(row);
     this.typeDef = towerType;
     this.typeId = towerType.id;
     this.range = towerType.range * TILE_SIZE;

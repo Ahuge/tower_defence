@@ -1,4 +1,4 @@
-import { TILE_SIZE, CREEP_BASE_SPEED } from '../config';
+import { TILE_SIZE, CREEP_BASE_SPEED, gridX, gridY } from '../config';
 import { PathPoint } from '../systems/Pathfinding';
 import { StatusEffectManager } from '../systems/StatusEffects';
 import { ArmorType, CreepType, CREEP_TYPES } from '../data/CreepTypes';
@@ -52,8 +52,8 @@ export class Creep {
       shieldTrait._active = true;
     }
 
-    this.x = path[0].col * TILE_SIZE + TILE_SIZE / 2;
-    this.y = path[0].row * TILE_SIZE + TILE_SIZE / 2;
+    this.x = gridX(path[0].col);
+    this.y = gridY(path[0].row);
     this.pathIndex = 1;
 
     this.graphics = scene.add.graphics();
@@ -77,8 +77,8 @@ export class Creep {
     }
 
     const target = this.path[this.pathIndex];
-    const tx = target.col * TILE_SIZE + TILE_SIZE / 2;
-    const ty = target.row * TILE_SIZE + TILE_SIZE / 2;
+    const tx = gridX(target.col);
+    const ty = gridY(target.row);
 
     const dx = tx - this.x;
     const dy = ty - this.y;

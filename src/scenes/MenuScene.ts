@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
@@ -13,7 +13,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = GAME_WIDTH / 2;
+    const cx = CANVAS_WIDTH / 2;
 
     this.add.text(cx, 40, 'TOWER DEFENCE', {
       fontSize: '36px', color: '#ffffff', fontFamily: 'monospace',

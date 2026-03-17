@@ -4,6 +4,32 @@ export const GRID_ROWS = 20;
 export const GAME_WIDTH = GRID_COLS * TILE_SIZE;
 export const GAME_HEIGHT = GRID_ROWS * TILE_SIZE;
 
+// Sidebar
+export const SIDEBAR_WIDTH = 300;
+export const GRID_OFFSET_X = SIDEBAR_WIDTH;
+export const CANVAS_WIDTH = SIDEBAR_WIDTH + GAME_WIDTH;
+
+// Grid-pixel conversion helpers
+export function gridX(col: number): number {
+  return col * TILE_SIZE + TILE_SIZE / 2 + GRID_OFFSET_X;
+}
+
+export function gridLeftX(col: number): number {
+  return col * TILE_SIZE + GRID_OFFSET_X;
+}
+
+export function gridY(row: number): number {
+  return row * TILE_SIZE + TILE_SIZE / 2;
+}
+
+export function pixelToCol(x: number): number {
+  return Math.floor((x - GRID_OFFSET_X) / TILE_SIZE);
+}
+
+export function pixelToRow(y: number): number {
+  return Math.floor(y / TILE_SIZE);
+}
+
 // Colors
 export const COLOR_GROUND = 0x2d2d2d;
 export const COLOR_GRID_LINE = 0x3a3a3a;
