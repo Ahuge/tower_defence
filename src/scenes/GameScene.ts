@@ -206,6 +206,7 @@ export class GameScene extends Phaser.Scene {
         if (this.versus) {
           // Versus: sends go to opponent, not to self
           this.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
+          this.versus.sendsSent++;
         } else {
           this.sendMgr.queueSend(opt);
         }
@@ -711,9 +712,9 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      // Versus: start 30s wave countdown
+      // Versus: notify wave cleared (host manages countdown timing)
       if (this.versus) {
-        this.versus.startWaveCountdown();
+        this.versus.notifyWaveCleared();
       }
 
       // Frontier mechanic bonuses (growth, dig, gamble)
@@ -748,12 +749,25 @@ export class GameScene extends Phaser.Scene {
     if (this.lives <= 0) {
       this.lives = 0;
       this.eventBus.emit('gameOver');
+      if (this.versus) {
+        this.versus.notifyGameOver(false, this.statsTracker.stats, this.currentWave, 0);
+      }
       this.goToGameOver(false);
+      return;
+    }
+
+    // Check if opponent lost in versus
+    if (this.versus?.opponentGameOver) {
+      this.versus.notifyGameOver(true, this.statsTracker.stats, this.currentWave, this.lives);
+      this.goToGameOver(true);
       return;
     }
 
     if (this.currentWave >= this.waves.length && this.creeps.length === 0 && !this.waveActive) {
       this.eventBus.emit('gameWon');
+      if (this.versus) {
+        this.versus.notifyGameOver(true, this.statsTracker.stats, this.currentWave, this.lives);
+      }
       this.goToGameOver(true);
       return;
     }
@@ -810,7 +824,16 @@ export class GameScene extends Phaser.Scene {
       matchMode: this.matchMode,
       faction: this.faction,
       stats: this.statsTracker.stats,
+      // Versus data
+      isVersus: !!this.versus,
+      sendsSent: this.versus?.sendsSent ?? 0,
+      sendsReceived: this.versus?.sendsReceived ?? 0,
+      opponentStats: this.versus?.opponentEndStats ?? null,
+      opponentLives: this.versus?.opponentLives ?? 0,
+      lives: this.lives,
     };
+    this.versus?.close();
+    this.registry.remove('versus');
     this.scene.start('GameOverScene', data);
   }
 

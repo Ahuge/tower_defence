@@ -14,6 +14,13 @@ export interface GameOverData {
   matchMode: string;
   faction: string | null;
   stats?: GameStats;
+  // Versus fields
+  isVersus?: boolean;
+  lives?: number;
+  sendsSent?: number;
+  sendsReceived?: number;
+  opponentStats?: { stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number } | null;
+  opponentLives?: number;
 }
 
 export class GameOverScene extends Phaser.Scene {
@@ -149,6 +156,41 @@ export class GameOverScene extends Phaser.Scene {
           align: 'center', lineSpacing: 4,
         }).setOrigin(0.5, 0);
       }
+    }
+
+    // Versus summary
+    if (data.isVersus) {
+      const vsY = 520;
+      this.add.text(cx, vsY, 'VERSUS RESULTS', {
+        fontSize: '14px', color: '#ff8844', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
+      const winner = data.won ? 'YOU WON!' : 'YOU LOST';
+      const winColor = data.won ? '#44ff44' : '#ff4444';
+      this.add.text(cx, vsY + 22, winner, {
+        fontSize: '18px', color: winColor, fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
+      const myLives = data.lives ?? 0;
+      const oppLives = data.opponentLives ?? 0;
+
+      const vsLines = [
+        `Your Lives: ${myLives}  |  Opponent Lives: ${oppLives}`,
+        `Sends Sent: ${data.sendsSent ?? 0}  |  Sends Received: ${data.sendsReceived ?? 0}`,
+      ];
+
+      if (data.opponentStats) {
+        const os = data.opponentStats;
+        const oppTotalDmg = Object.values(os.stats.towerStats).reduce((s, t) => s + t.totalDamage, 0);
+        const myTotalDmg = data.stats ? Object.values(data.stats.towerStats).reduce((s, t) => s + t.totalDamage, 0) : 0;
+        vsLines.push(`Your Total Damage: ${myTotalDmg.toLocaleString()}  |  Opponent: ${oppTotalDmg.toLocaleString()}`);
+        vsLines.push(`Opponent Wave: ${os.wave}  |  Opponent Kills: ${os.stats.creepsKilled}`);
+      }
+
+      this.add.text(cx, vsY + 50, vsLines.join('\n'), {
+        fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
+        align: 'center', lineSpacing: 4,
+      }).setOrigin(0.5, 0);
     }
 
     // Buttons

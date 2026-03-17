@@ -1,7 +1,4 @@
-/**
- * All messages sent between peers during a versus game.
- * Each player simulates the opponent's game locally using these events.
- */
+import { GameStats } from '../StatsTracker';
 
 export type GameMessage =
   | { type: 'tower_placed'; towerId: string; col: number; row: number }
@@ -10,8 +7,10 @@ export type GameMessage =
   | { type: 'send_purchased'; sendOptionId: string }
   | { type: 'frontier_purchased'; buildingId: string }
   | { type: 'wave_ready' }
+  | { type: 'wave_cleared' }
+  | { type: 'countdown_start'; duration: number }
   | { type: 'lives_update'; lives: number }
-  | { type: 'game_over'; won: boolean }
+  | { type: 'game_over'; won: boolean; stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number }
   | { type: 'game_start'; faction: string; matchMode: string; map: string; difficulty: string; seed: number }
   | { type: 'ping'; timestamp: number }
   | { type: 'pong'; timestamp: number };
