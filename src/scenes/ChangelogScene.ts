@@ -5,6 +5,30 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v14 — Dual Economy & Architecture',
+    changes: [
+      'Battle mode: Dual Economy with Gold + Essence resources',
+      'Essence generators: buy with gold, produce essence in real-time',
+      'Sends cost essence instead of gold — compound growth loop',
+      'GameScene decomposed: TowerManager, CreepManager, WaveController',
+      'Pluggable leak/death handlers for future game modes',
+      'ResourceManager: N-resource system with real-time ticking',
+    ],
+  },
+  {
+    version: 'v13 — New Factions & Maps',
+    changes: [
+      'Harmonic faction: stacking aura network with Conduit linking',
+      'Manual Conduit: press L to link/unlink aura towers',
+      'Distinct aura colors: red (damage), green (rate), blue (range), magenta (crit)',
+      'Maps reworked: mountains, lakes, rivers, canyons',
+      '5 new maps: Serpentine, Islands, Gauntlet, Spiral, Siege',
+      'Encyclopedia: Factions carousel, Tower carousel, Creep cards',
+      'In-app Changelog viewer with full history',
+      'Version SHA on menu screen',
+    ],
+  },
+  {
     version: 'v12 — Harmonic & Encyclopedia',
     changes: [
       'Harmonic faction: aura network with stacking damage/rate/range/crit auras',

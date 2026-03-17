@@ -2,6 +2,22 @@
 
 ## 2026-03-17
 
+### Dual Economy (Battle) Game Mode
+- **New match mode: Battle** — two resources: Gold (towers) + Essence (sends).
+- **Essence generators**: buy with gold (Tap 30g/+1/s, Well 80g/+3/s, Conduit 200g/+8/s, Nexus 500g/+20/s). Essence ticks in real-time.
+- **Sends cost Essence**: Standard 10e, Fast 15e, Armored 30e, Swarm 8e. Each gives gold income per wave.
+- **Compound growth loop**: Gold → Generators → Essence/sec → Sends → Gold income/wave → more Generators or towers.
+- EssencePanel replaces Send+Frontier in Battle mode. Shows essence counter, rate, generators, sends.
+- Z/X/C/V hotkeys work for essence sends.
+
+### Architecture Decomposition
+- **TowerManager** (282 lines): tower placement, selling, upgrades, trait updates, expired cleanup, wave-end processing, brood mother spawning.
+- **CreepManager** (120 lines): creep movement, leak/death handling via pluggable interfaces, cleanup, proximity search.
+- **WaveController** (88 lines): wave start/clear detection, spawning delegation, callback-driven side effects.
+- **Leak/Death handlers**: `LeakHandler` and `DeathHandler` interfaces with `StandardLeakHandler` and `StandardDeathHandler` implementations. Future Hero Defense mode swaps these.
+- **ResourceManager** (120 lines): N-resource system with real-time ticking. Gold is default. Battle mode adds Essence.
+- GameScene reduced from 1376 to ~1200 lines via extraction.
+
 ### Manual Conduit Linking + Encyclopedia + Changelog Viewer
 - **Manual Conduit linking**: Conduit no longer auto-links. Click Conduit → press L → click aura towers to link/unlink. Only links different aura types. Max 2-3 links based on level. Visual: colored lines per aura type (red=damage, green=rate, blue=range, magenta=crit). Linked towers show gold outline.
 - **Encyclopedia scene**: browse all towers (grouped by faction with traits), creeps (HP/speed/armor/abilities), and frontier buildings. Mouse wheel scrolling, tab switching.

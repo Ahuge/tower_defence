@@ -15,7 +15,7 @@ npm run dev
 Build towers to create mazes, defend against 14 creep types across 30+ waves, manage your economy across three channels (towers, sends, frontier), and leverage your faction's unique strengths. Play solo or versus a friend via peer-to-peer WebRTC.
 
 ### Match Flow
-1. **Menu** — Choose map (8 options), difficulty (Easy/Normal/Hard), match mode (Sprint/Standard/Marathon)
+1. **Menu** — Choose map (8 options), difficulty (Easy/Normal/Hard), match mode (Sprint/Standard/Marathon/Battle)
 2. **Faction Select** — Pick from 12 factions with unique tower rosters
 3. **Draft** — Choose 1 of 3 random modifiers (Gold Rush, Glass Cannon, etc.)
 4. **Game** — Build, defend, invest. Press SPACE to start waves. TAB to change speed.
@@ -56,6 +56,12 @@ Build towers to create mazes, defend against 14 creep types across 30+ waves, ma
 See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.
 
 ## Major Systems
+
+### Match Modes
+- **Sprint** (15 waves) — Quick game
+- **Standard** (30 waves) — Full experience
+- **Marathon** (Endless) — Infinite scaling
+- **Battle** (Dual Economy) — Gold + Essence. Buy generators with gold to produce essence in real-time. Spend essence on sends for gold income. Compound growth loop.
 
 ### Trait System
 All behaviors are composable traits — data objects with registered handler functions:
