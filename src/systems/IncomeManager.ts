@@ -1,10 +1,15 @@
 import { EventBus } from './EventBus';
 
+/**
+ * Tracks per-wave income from multiple sources.
+ * Works with EconomyManager — income is collected as gold at wave end.
+ * Future modes can have income feed into different resources.
+ */
 export class IncomeManager {
   private events: EventBus;
   baseIncome: number = 10;
-  sendBonus: number = 0; // bonus income from sends
-  frontierIncome: number = 0; // income from frontier buildings
+  sendBonus: number = 0;
+  frontierIncome: number = 0;
   totalIncomeEarned: number = 0;
 
   constructor(events: EventBus) {
