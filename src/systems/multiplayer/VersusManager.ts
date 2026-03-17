@@ -22,7 +22,7 @@ export class VersusManager {
   incomingSends: string[] = [];
 
   // Callbacks
-  private onGameMessage: ((msg: GameMessage) => void) | null = null;
+  onGameMessage: ((msg: GameMessage) => void) | null = null;
   private onConnectionChange: ((state: ConnectionState) => void) | null = null;
 
   constructor(
@@ -112,8 +112,8 @@ export class VersusManager {
     return false;
   }
 
-  startWaveCountdown(): void {
-    this.waveTimer = 30000;
+  startWaveCountdown(durationMs: number = 30000): void {
+    this.waveTimer = durationMs;
     this.waveTimerActive = true;
     this.localReady = false;
     this.opponentReady = false;

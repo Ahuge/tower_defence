@@ -1,38 +1,36 @@
-import { CANVAS_WIDTH, GRID_COLS, GRID_ROWS, TILE_SIZE, GAME_HEIGHT, GRID_OFFSET_X } from '../config';
+import { CANVAS_WIDTH, GRID_COLS, GRID_ROWS, TILE_SIZE, GAME_HEIGHT, GRID_OFFSET_X, gridLeftX } from '../config';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { TOWER_TYPES } from '../data/TowerTypes';
 
-/**
- * Renders a minimap of the opponent's game board.
- * Shows tower placements, lives, and wave count.
- */
 export class OpponentMinimap {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
   private boardGraphics: Phaser.GameObjects.Graphics;
   private statusText: Phaser.GameObjects.Text;
   private timerText: Phaser.GameObjects.Text;
+  private labelText: Phaser.GameObjects.Text;
   private versus: VersusManager;
+  private onToggleView: () => void;
+  private showingOpponent: boolean = true;
 
-  // Minimap dimensions
   private readonly mapW = 200;
   private readonly mapH = 130;
   private readonly cellW: number;
   private readonly cellH: number;
 
-  constructor(scene: Phaser.Scene, versus: VersusManager) {
+  constructor(scene: Phaser.Scene, versus: VersusManager, onToggleView: () => void) {
     this.scene = scene;
     this.versus = versus;
+    this.onToggleView = onToggleView;
     this.cellW = this.mapW / GRID_COLS;
     this.cellH = this.mapH / GRID_ROWS;
 
-    // Position in top-right of game area
     const x = CANVAS_WIDTH - this.mapW - 10;
     const y = 6;
 
     this.container = scene.add.container(x, y).setDepth(29);
 
-    // Background
+    // Background + click zone
     const bg = scene.add.graphics();
     bg.fillStyle(0x111111, 0.9);
     bg.fillRect(0, 0, this.mapW, this.mapH + 30);
@@ -40,53 +38,72 @@ export class OpponentMinimap {
     bg.strokeRect(0, 0, this.mapW, this.mapH + 30);
     this.container.add(bg);
 
-    // Label
-    const label = scene.add.text(4, 2, 'OPPONENT', {
+    // Clickable zone to toggle view
+    const zone = scene.add.zone(this.mapW / 2, (this.mapH + 30) / 2, this.mapW, this.mapH + 30);
+    this.container.add(zone);
+    zone.setInteractive({ useHandCursor: true });
+    zone.on('pointerdown', () => {
+      this.showingOpponent = !this.showingOpponent;
+      this.onToggleView();
+    });
+
+    this.labelText = scene.add.text(4, 2, 'OPPONENT (click to swap)', {
       fontSize: '8px', color: '#ff6666', fontFamily: 'monospace',
     });
-    this.container.add(label);
+    this.container.add(this.labelText);
 
-    // Board graphics
     this.boardGraphics = scene.add.graphics();
     this.container.add(this.boardGraphics);
 
-    // Status
     this.statusText = scene.add.text(4, this.mapH + 14, '', {
       fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
     });
     this.container.add(this.statusText);
 
-    // Wave timer
     this.timerText = scene.add.text(this.mapW - 4, 2, '', {
       fontSize: '9px', color: '#ffdd44', fontFamily: 'monospace',
     }).setOrigin(1, 0);
     this.container.add(this.timerText);
   }
 
-  update(): void {
+  /** Set which view the minimap shows */
+  setShowingOpponent(val: boolean): void {
+    this.showingOpponent = val;
+  }
+
+  update(myTowers?: { col: number; row: number; color: number }[]): void {
     const g = this.boardGraphics;
     g.clear();
 
     const offsetY = 12;
 
-    // Draw grid background
     g.fillStyle(0x2d2d2d, 1);
     g.fillRect(0, offsetY, this.mapW, this.mapH);
 
-    // Draw opponent's towers
-    for (const t of this.versus.opponentTowers) {
-      const towerDef = TOWER_TYPES[t.towerId];
-      const color = towerDef?.color ?? 0xffffff;
-      const x = t.col * this.cellW;
-      const y = t.row * this.cellH + offsetY;
-      g.fillStyle(color, 0.8);
-      g.fillRect(x, y, this.cellW, this.cellH);
+    if (this.showingOpponent) {
+      // Draw opponent's towers
+      this.labelText.setText('OPPONENT (click to swap)');
+      this.labelText.setColor('#ff6666');
+      for (const t of this.versus.opponentTowers) {
+        const towerDef = TOWER_TYPES[t.towerId];
+        const color = towerDef?.color ?? 0xffffff;
+        g.fillStyle(color, 0.8);
+        g.fillRect(t.col * this.cellW, t.row * this.cellH + offsetY, this.cellW, this.cellH);
+      }
+      this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWave}`);
+    } else {
+      // Draw my towers (minimap of own board)
+      this.labelText.setText('YOUR BOARD (click to swap)');
+      this.labelText.setColor('#44ff44');
+      if (myTowers) {
+        for (const t of myTowers) {
+          g.fillStyle(t.color, 0.8);
+          g.fillRect(t.col * this.cellW, t.row * this.cellH + offsetY, this.cellW, this.cellH);
+        }
+      }
+      this.statusText.setText('Viewing opponent\'s full board');
     }
 
-    // Status text
-    this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWave}`);
-
-    // Timer
     if (this.versus.waveTimerActive) {
       const secs = this.versus.getWaveTimerSeconds();
       const readyStr = this.versus.opponentReady ? ' [READY]' : '';

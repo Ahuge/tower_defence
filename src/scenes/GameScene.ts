@@ -13,7 +13,7 @@ import { EconomyManager } from '../systems/EconomyManager';
 import { SpawnManager } from '../systems/SpawnManager';
 import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
-import { getTowerType, TOWER_ORDER, getAllFactionTowerIds } from '../data/TowerTypes';
+import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction } from '../data/Factions';
 import { MatchMode, WaveDefinition, getWavesForMode } from '../data/WaveDefinitions';
 import { MapId, MAPS } from '../data/Maps';
@@ -69,6 +69,7 @@ export class GameScene extends Phaser.Scene {
   statsTracker!: StatsTracker;
   versus: VersusManager | null = null;
   opponentMinimap: OpponentMinimap | null = null;
+  viewingOpponent: boolean = false;
   selectedCreep: Creep | null = null;
 
   // Game state
@@ -294,10 +295,29 @@ export class GameScene extends Phaser.Scene {
     // Versus mode setup
     this.versus = this.registry.get('versus') as VersusManager | null;
     if (this.versus) {
-      this.opponentMinimap = new OpponentMinimap(this, this.versus);
+      // Rewire message handler from lobby to game scene
+      this.versus.onGameMessage = (msg) => {
+        if (msg.type === 'wave_ready') {
+          this.eventLog.gameMessage('Opponent is ready!');
+        } else if (msg.type === 'game_over') {
+          this.eventLog.gameMessage('Opponent defeated! You win!');
+        }
+      };
+      this.opponentMinimap = new OpponentMinimap(this, this.versus, () => {
+        this.viewingOpponent = !this.viewingOpponent;
+        if (this.viewingOpponent) {
+          this.eventLog.gameMessage('Viewing opponent board');
+        } else {
+          this.eventLog.gameMessage('Viewing your board');
+        }
+        // Redraw grid to show opponent's or own towers
+        this.drawGrid();
+        this.drawOpponentView();
+      });
       this.eventLog.gameMessage('VERSUS MODE — sends go to opponent!');
-      // Start initial 30s countdown
-      this.versus.startWaveCountdown();
+      // Start initial 60s countdown for first wave
+      this.versus.waveTimer = 60000;
+      this.versus.waveTimerActive = true;
     }
 
         const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
@@ -752,7 +772,11 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      this.opponentMinimap?.update();
+      const myTowerData = this.towers.map(t => ({ col: t.col, row: t.row, color: t.color }));
+      this.opponentMinimap?.update(myTowerData);
+      if (this.viewingOpponent) {
+        this.drawOpponentView();
+      }
       // Process incoming sends from opponent
       const incoming = this.versus.drainIncomingSends();
       for (const sendId of incoming) {
@@ -794,9 +818,15 @@ export class GameScene extends Phaser.Scene {
   private pauseOverlay: Phaser.GameObjects.Container | null = null;
 
   private cycleSpeed(): void {
+    // In versus, only host can change speed
+    if (this.versus && !this.versus.isHost) {
+      this.eventLog.gameMessage('Only the host can change game speed.');
+      return;
+    }
     this.speedIndex = (this.speedIndex + 1) % GameScene.SPEED_OPTIONS.length;
     this.gameSpeed = GameScene.SPEED_OPTIONS[this.speedIndex];
     this.eventLog.gameMessage(`Speed: ${this.gameSpeed}x`);
+    // TODO: sync speed to opponent via message
   }
 
   private togglePause(): void {
@@ -940,6 +970,37 @@ export class GameScene extends Phaser.Scene {
       g.fillStyle(COLOR_EXIT, 0.5);
       g.fillRect(gridLeftX(exit.col), exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
+  }
+
+  /** Overlay opponent's towers on the main grid when viewing their board */
+  private opponentOverlay: Phaser.GameObjects.Graphics | null = null;
+
+  drawOpponentView(): void {
+    if (!this.opponentOverlay) {
+      this.opponentOverlay = this.add.graphics().setDepth(18);
+    }
+    this.opponentOverlay.clear();
+
+    if (!this.viewingOpponent || !this.versus) return;
+
+    // Dim own towers
+    // Draw opponent towers as colored squares on the main grid
+    for (const t of this.versus.opponentTowers) {
+      const towerDef = TOWER_TYPES[t.towerId];
+      const color = towerDef?.color ?? 0xffffff;
+      const s = TILE_SIZE * 0.35;
+      const x = gridLeftX(t.col) + TILE_SIZE / 2;
+      const y = t.row * TILE_SIZE + TILE_SIZE / 2;
+      this.opponentOverlay.fillStyle(color, 0.7);
+      this.opponentOverlay.fillRect(x - s, y - s, s * 2, s * 2);
+      this.opponentOverlay.lineStyle(1, 0xff4444, 0.5);
+      this.opponentOverlay.strokeRect(x - s, y - s, s * 2, s * 2);
+    }
+
+    // Label
+    this.opponentOverlay.fillStyle(0xff4444, 0.8);
+    this.opponentOverlay.fillRect(gridLeftX(0), 0, 160, 18);
+    // Can't easily draw text on graphics, the label is in the minimap
   }
 
   drawPath(): void {
