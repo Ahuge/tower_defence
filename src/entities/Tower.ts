@@ -14,11 +14,12 @@ interface Projectile {
   x: number;
   y: number;
   target: Creep;
-  destX: number; // snapshot of target position at fire time
+  destX: number;
   destY: number;
   speed: number;
   graphics: Phaser.GameObjects.Graphics;
-  locationBased: boolean; // true = continues to location if target dies
+  locationBased: boolean;
+  age: number; // seconds alive — tracking projectiles accelerate over time
 }
 
 export class Tower {
@@ -213,6 +214,7 @@ export class Tower {
       speed: this.typeDef.projectileSpeed,
       graphics: g,
       locationBased: isLocationBased,
+      age: 0,
     });
   }
 
@@ -240,7 +242,14 @@ export class Tower {
       const dx = tx - p.x;
       const dy = ty - p.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const move = p.speed * (delta / 1000);
+
+      // Tracking projectiles accelerate parabolically so they always catch up
+      // Location-based projectiles travel at constant speed
+      p.age += delta / 1000;
+      const effectiveSpeed = p.locationBased
+        ? p.speed
+        : p.speed * (1 + p.age * p.age * 2);
+      const move = effectiveSpeed * (delta / 1000);
 
       if (dist <= move) {
         if (p.target.alive) {
