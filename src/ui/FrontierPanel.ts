@@ -29,6 +29,7 @@ export class FrontierPanel {
     this.container.add(this.ownedContainer);
 
     this.buildPanel();
+    this.updateOwned();
   }
 
   private buildPanel(): void {
