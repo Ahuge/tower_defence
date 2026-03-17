@@ -20,7 +20,6 @@ export class SendPanel {
     const panelW = SIDEBAR_WIDTH;
     const panelH = SendPanel.HEIGHT;
 
-    // Background
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x151515, 1);
     bg.fillRect(0, 0, panelW, panelH);
@@ -44,13 +43,14 @@ export class SendPanel {
 
       const text = this.scene.add.text(8, y, `${opt.name} (${opt.cost}g) +${opt.incomeReward}/w`, {
         fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
-      }).setInteractive({ useHandCursor: true });
+      });
 
+      // Add to container FIRST, then set interactive
+      this.container.add(text);
+      text.setInteractive({ useHandCursor: true });
       text.on('pointerdown', () => this.onSend(opt));
       text.on('pointerover', () => text.setColor('#ffffff'));
       text.on('pointerout', () => text.setColor('#cccccc'));
-
-      this.container.add(text);
     }
   }
 }
