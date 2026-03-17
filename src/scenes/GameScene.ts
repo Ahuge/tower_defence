@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import {
   TILE_SIZE, GRID_COLS, GRID_ROWS, GAME_WIDTH, GAME_HEIGHT,
+  CANVAS_WIDTH, GRID_OFFSET_X, SIDEBAR_WIDTH,
   COLOR_GROUND, COLOR_GRID_LINE, COLOR_ENTRY, COLOR_EXIT,
   COLOR_HOVER_VALID, COLOR_HOVER_INVALID, STARTING_LIVES,
+  gridX, gridY, gridLeftX, pixelToCol,
 } from '../config';
 import { Grid, CellType } from '../systems/Grid';
 import { findPath, PathPoint } from '../systems/Pathfinding';
@@ -33,6 +35,8 @@ import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
+
+type SelectionMode = 'build' | 'inspect' | 'none';
 
 export class GameScene extends Phaser.Scene {
   // Core systems
@@ -74,15 +78,16 @@ export class GameScene extends Phaser.Scene {
   totalTowersBuilt: number = 0;
   totalCreepsKilled: number = 0;
 
+  // Selection state
+  selectionMode: SelectionMode = 'none';
+  selectedBuildType: string | null = null;
+  selectedTower: Tower | null = null;
+
   // Graphics layers
   gridGraphics!: Phaser.GameObjects.Graphics;
   pathGraphics!: Phaser.GameObjects.Graphics;
   hoverGraphics!: Phaser.GameObjects.Graphics;
   rangeGraphics!: Phaser.GameObjects.Graphics;
-
-  // Current tower type for placement
-  selectedTowerType: string = 'arrow';
-  selectedTower: Tower | null = null;
 
   constructor() {
     super('GameScene');
@@ -109,8 +114,9 @@ export class GameScene extends Phaser.Scene {
     this.waveActive = false;
     this.betweenWaves = true;
     this.paused = false;
+    this.selectionMode = 'none';
+    this.selectedBuildType = null;
     this.selectedTower = null;
-    this.selectedTowerType = this.activeTowerIds[0];
     this.totalTowersBuilt = 0;
     this.totalCreepsKilled = 0;
 
@@ -138,10 +144,13 @@ export class GameScene extends Phaser.Scene {
       this.economy.addGold(this.modifier.extraGold);
     }
 
-    // UI panels
+    // Tower bar (starts deselected)
     this.towerBar = new TowerSelectBar(this, this.activeTowerIds, (typeId) => {
-      this.selectedTowerType = typeId;
-      this.deselectTower();
+      if (typeId) {
+        this.enterBuildMode(typeId);
+      } else {
+        this.enterNoneMode();
+      }
     });
     this.towerInfo = new TowerInfoPanel(this);
 
@@ -159,14 +168,21 @@ export class GameScene extends Phaser.Scene {
     });
     this.incomeDisplay = new IncomeDisplay(this);
 
-    // Frontier
+    // Frontier (with action callbacks)
     this.frontierMgr = new FrontierManager(this.eventBus, this.incomeMgr, this.faction);
-    this.frontierPanel = new FrontierPanel(this, this.frontierMgr, (building: FrontierBuilding) => {
-      if (this.economy.spend(building.cost)) {
-        this.frontierMgr.purchaseBuilding(building);
-        this.frontierPanel.updateOwned();
-      }
-    });
+    this.frontierPanel = new FrontierPanel(
+      this,
+      this.frontierMgr,
+      (building: FrontierBuilding) => {
+        if (this.economy.spend(building.cost)) {
+          this.frontierMgr.purchaseBuilding(building);
+          this.frontierPanel.updateOwned();
+        }
+      },
+      (action: string, idx: number) => {
+        this.handleFrontierAction(action, idx);
+      },
+    );
 
     // Fighter system (only with faction)
     if (this.faction) {
@@ -186,12 +202,20 @@ export class GameScene extends Phaser.Scene {
     this.hoverGraphics = this.add.graphics().setDepth(20);
     this.rangeGraphics = this.add.graphics().setDepth(19);
 
+    // Sidebar background
+    const sidebarBg = this.add.graphics().setDepth(0);
+    sidebarBg.fillStyle(0x0e0e12, 1);
+    sidebarBg.fillRect(0, 0, SIDEBAR_WIDTH, GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT);
+
     this.drawGrid();
     this.drawPath();
 
     // Wire input
-    this.inputMgr.onHover((col, row) => this.drawHover(col, row));
+    this.inputMgr.onHover((col, row) => this.handleHover(col, row));
     this.inputMgr.onClick((col, row) => this.handleClick(col, row));
+    this.inputMgr.onClickMiss(() => {
+      // Clicked outside grid (sidebar) — don't change selection
+    });
     this.inputMgr.onRightClick((col, row) => this.handleRightClick(col, row));
     this.inputMgr.onSpace(() => {
       if (this.betweenWaves && this.currentWave < this.waves.length) {
@@ -199,6 +223,7 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
+    // Tower selection hotkeys
     const numKeys = ['ONE', 'TWO', 'THREE', 'FOUR'];
     for (let i = 0; i < numKeys.length; i++) {
       const idx = i;
@@ -207,16 +232,206 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    this.inputMgr.onKey('ESC', () => this.deselectTower());
+    this.inputMgr.onKey('ESC', () => this.enterNoneMode());
     this.inputMgr.onKey('P', () => this.togglePause());
 
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves);
   }
 
+  // === Selection Mode Management ===
+
+  private enterBuildMode(typeId: string): void {
+    this.selectionMode = 'build';
+    this.selectedBuildType = typeId;
+    this.selectedTower = null;
+    this.towerInfo.hide();
+  }
+
+  private enterInspectMode(tower: Tower): void {
+    this.selectionMode = 'inspect';
+    this.selectedBuildType = null;
+    this.selectedTower = tower;
+    this.towerBar.deselect();
+    this.towerInfo.show(tower);
+  }
+
+  private enterNoneMode(): void {
+    this.selectionMode = 'none';
+    this.selectedBuildType = null;
+    this.selectedTower = null;
+    this.towerBar.deselect();
+    this.towerInfo.hide();
+    this.hoverGraphics.clear();
+    this.rangeGraphics.clear();
+  }
+
+  // === Input Handlers ===
+
+  handleHover(col: number, row: number): void {
+    this.hoverGraphics.clear();
+    this.rangeGraphics.clear();
+
+    if (this.selectionMode !== 'build' || !this.selectedBuildType) return;
+
+    if (this.grid.canPlaceTower(col, row)) {
+      const towerType = getTowerType(this.selectedBuildType);
+      const cost = this.getEffectiveCost(towerType.cost);
+      const canPlace = this.economy.canAfford(cost);
+      const color = canPlace ? COLOR_HOVER_VALID : COLOR_HOVER_INVALID;
+
+      this.hoverGraphics.fillStyle(color, 0.2);
+      this.hoverGraphics.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this.hoverGraphics.lineStyle(1, color, 0.6);
+      this.hoverGraphics.strokeRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+      if (canPlace) {
+        let range = towerType.range;
+        const rangeBonus = (this.modifier?.towerTraits ?? []).find(t => t.id === 'range_bonus');
+        if (rangeBonus) range += rangeBonus.bonus ?? 0;
+        this.rangeGraphics.lineStyle(1, color, 0.2);
+        this.rangeGraphics.strokeCircle(gridX(col), gridY(row), range * TILE_SIZE);
+      }
+    }
+  }
+
+  handleClick(col: number, row: number): void {
+    const existingTower = this.towers.find(t => t.col === col && t.row === row);
+
+    switch (this.selectionMode) {
+      case 'build':
+        if (existingTower) {
+          this.enterInspectMode(existingTower);
+        } else {
+          this.tryBuildTower(col, row);
+        }
+        break;
+
+      case 'inspect':
+        if (existingTower) {
+          if (existingTower === this.selectedTower && existingTower.canUpgrade()) {
+            const cost = existingTower.getUpgradeCost();
+            if (this.economy.spend(cost)) {
+              existingTower.upgrade();
+              this.towerInfo.show(existingTower);
+            }
+          } else {
+            this.enterInspectMode(existingTower);
+          }
+        } else {
+          this.enterNoneMode();
+        }
+        break;
+
+      case 'none':
+        if (existingTower) {
+          this.enterInspectMode(existingTower);
+        }
+        // Click on empty in none mode does nothing
+        break;
+    }
+  }
+
+  handleRightClick(col: number, row: number): void {
+    if (this.grid.cells[row]?.[col] !== CellType.Tower) return;
+
+    const idx = this.towers.findIndex(t => t.col === col && t.row === row);
+    if (idx !== -1) {
+      const tower = this.towers[idx];
+      this.economy.addGold(tower.getSellValue());
+      if (this.selectedTower === tower) this.enterNoneMode();
+      tower.destroy();
+      this.towers.splice(idx, 1);
+    }
+
+    this.grid.removeTower(col, row);
+    this.eventBus.emit('towerSold', col, row);
+    this.recalculatePaths();
+    this.drawPath();
+  }
+
+  private tryBuildTower(col: number, row: number): void {
+    if (!this.selectedBuildType) return;
+    const towerType = getTowerType(this.selectedBuildType);
+    const cost = this.getEffectiveCost(towerType.cost);
+
+    if (!this.grid.canPlaceTower(col, row)) return;
+    if (!this.economy.canAfford(cost)) return;
+
+    this.grid.placeTower(col, row);
+
+    const oldPaths = this.allPaths;
+    this.recalculatePaths();
+    const anyBlocked = this.allPaths.some(p => p === null);
+
+    if (anyBlocked || !this.currentPath) {
+      this.grid.removeTower(col, row);
+      this.allPaths = oldPaths;
+      this.currentPath = oldPaths.find(p => p !== null) ?? null;
+      return;
+    }
+
+    this.economy.spend(cost);
+    const tower = new Tower(this, col, row, towerType);
+
+    if (this.modifier) {
+      for (const t of this.modifier.towerTraits) {
+        tower.traits.push({ ...t });
+      }
+    }
+
+    this.towers.push(tower);
+    this.totalTowersBuilt++;
+    this.eventBus.emit('towerPlaced', col, row, towerType.id);
+
+    // Update existing creep paths
+    for (const creep of this.creeps) {
+      if (!creep.alive || creep.reached) continue;
+      const creepCol = pixelToCol(creep.x);
+      const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+      let bestPath: PathPoint[] | null = null;
+      for (const exit of this.grid.exits) {
+        const p = findPath(this.grid, { col: creepCol, row: creepRow }, exit);
+        if (p && (!bestPath || p.length < bestPath.length)) {
+          bestPath = p;
+        }
+      }
+      if (bestPath) {
+        creep.path = bestPath;
+        creep.pathIndex = 1;
+      }
+    }
+
+    this.drawPath();
+  }
+
+  // === Frontier Actions ===
+
+  private handleFrontierAction(action: string, idx: number): void {
+    switch (action) {
+      case 'overcharge': {
+        const gold = this.frontierMgr.overchargeBuilding(idx);
+        if (gold > 0) this.economy.addGold(gold);
+        break;
+      }
+      case 'dig': {
+        const result = this.frontierMgr.digDeeper(idx);
+        // Could show feedback for collapse
+        break;
+      }
+      case 'harvest': {
+        const gold = this.frontierMgr.harvestGrowth(idx);
+        if (gold > 0) this.economy.addGold(gold);
+        break;
+      }
+    }
+    this.frontierPanel.updateOwned();
+  }
+
+  // === Game Loop ===
+
   update(time: number, delta: number): void {
     if (this.paused) return;
 
-    // Build trait update context
     const traitCtx: UpdateContext = {
       allTowers: this.towers,
       allCreeps: this.creeps,
@@ -224,12 +439,10 @@ export class GameScene extends Phaser.Scene {
       delta,
     };
 
-    // Run per-tower trait updates (adjacency buffs, TTL cleanup)
     for (const tower of this.towers) {
       tower.runTraitUpdates(traitCtx);
     }
 
-    // Collect gold from gold_on_hit trait
     for (const tower of this.towers) {
       if (tower.goldEarned > 0) {
         this.economy.addGold(tower.goldEarned);
@@ -237,33 +450,27 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Update towers
     for (const tower of this.towers) {
       tower.update(time, delta, this.creeps);
     }
 
-    // Update creeps (pass nearby creeps for trait updates like heal_aura)
     for (const creep of this.creeps) {
       creep.update(delta, this.creeps);
     }
 
-    // Update fighters
     if (this.fighterMgr) {
       this.fighterMgr.update(time, delta, this.creeps);
     }
 
-    // Check for creeps that reached the exit
     for (const creep of this.creeps) {
       if (creep.reached) {
         this.lives--;
         this.eventBus.emit('livesChanged', this.lives);
-        this.eventBus.emit('creepReached', 0);
         creep.reached = false;
         creep.alive = false;
       }
     }
 
-    // Award kill gold
     const killGoldMult = this.modifier?.killGoldMult ?? 1;
     for (const creep of this.creeps) {
       if (!creep.alive && !creep.reached && creep.hp <= 0) {
@@ -274,26 +481,24 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Clean up dead creeps
     this.creeps = this.creeps.filter(c => c.alive);
 
-    // Spawning
     this.spawner.update(delta, this.currentPath, this.creeps);
     this.sendMgr.update(delta, this.currentPath, this.creeps);
 
-    // Check wave complete
     if (this.waveActive && !this.spawner.isSpawning() && !this.sendMgr.isSpawning() && this.creeps.length === 0) {
       this.waveActive = false;
       this.betweenWaves = true;
-      const frontierGold = this.frontierMgr.onWaveEnd(this.currentWave);
-      this.economy.addGold(frontierGold);
+      // Frontier mechanic bonuses (growth, dig, gamble)
+      const frontierBonus = this.frontierMgr.onWaveEnd(this.currentWave);
+      if (frontierBonus > 0) this.economy.addGold(frontierBonus);
       this.frontierPanel.updateOwned();
+      // Wave income (includes base + sends + frontier base)
       const income = this.incomeMgr.collectWaveIncome();
       this.economy.addGold(income);
       this.eventBus.emit('waveCleared', this.currentWave);
     }
 
-    // Game over
     if (this.lives <= 0) {
       this.lives = 0;
       this.eventBus.emit('gameOver');
@@ -301,7 +506,6 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    // Win
     if (this.currentWave >= this.waves.length && this.creeps.length === 0 && !this.waveActive) {
       this.eventBus.emit('gameWon');
       this.goToGameOver(true);
@@ -311,6 +515,8 @@ export class GameScene extends Phaser.Scene {
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
   }
+
+  // === Helpers ===
 
   private goToGameOver(won: boolean): void {
     const data: GameOverData = {
@@ -352,23 +558,24 @@ export class GameScene extends Phaser.Scene {
     g.clear();
 
     g.fillStyle(COLOR_GROUND, 1);
-    g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    g.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, GAME_HEIGHT);
 
     g.lineStyle(1, COLOR_GRID_LINE, 0.3);
     for (let col = 0; col <= GRID_COLS; col++) {
-      g.lineBetween(col * TILE_SIZE, 0, col * TILE_SIZE, GAME_HEIGHT);
+      g.lineBetween(gridLeftX(col), 0, gridLeftX(col), GAME_HEIGHT);
     }
     for (let row = 0; row <= GRID_ROWS; row++) {
-      g.lineBetween(0, row * TILE_SIZE, GAME_WIDTH, row * TILE_SIZE);
+      g.lineBetween(GRID_OFFSET_X, row * TILE_SIZE, GRID_OFFSET_X + GAME_WIDTH, row * TILE_SIZE);
     }
 
+    // Blocked terrain
     g.fillStyle(0x1a1a1a, 1);
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         if (this.grid.cells[row][col] === CellType.Blocked) {
-          g.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, 0x333333, 0.5);
-          g.strokeRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.strokeRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, COLOR_GRID_LINE, 0.3);
         }
       }
@@ -376,11 +583,11 @@ export class GameScene extends Phaser.Scene {
 
     for (const entry of this.grid.entries) {
       g.fillStyle(COLOR_ENTRY, 0.5);
-      g.fillRect(entry.col * TILE_SIZE, entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      g.fillRect(gridLeftX(entry.col), entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
     for (const exit of this.grid.exits) {
       g.fillStyle(COLOR_EXIT, 0.5);
-      g.fillRect(exit.col * TILE_SIZE, exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      g.fillRect(gridLeftX(exit.col), exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
   }
 
@@ -393,147 +600,12 @@ export class GameScene extends Phaser.Scene {
 
       g.lineStyle(2, 0x666666, 0.4);
       g.beginPath();
-      g.moveTo(
-        path[0].col * TILE_SIZE + TILE_SIZE / 2,
-        path[0].row * TILE_SIZE + TILE_SIZE / 2
-      );
+      g.moveTo(gridX(path[0].col), gridY(path[0].row));
       for (let i = 1; i < path.length; i++) {
-        g.lineTo(
-          path[i].col * TILE_SIZE + TILE_SIZE / 2,
-          path[i].row * TILE_SIZE + TILE_SIZE / 2
-        );
+        g.lineTo(gridX(path[i].col), gridY(path[i].row));
       }
       g.strokePath();
     }
-  }
-
-  drawHover(col: number, row: number): void {
-    this.hoverGraphics.clear();
-    this.rangeGraphics.clear();
-
-    if (this.grid.canPlaceTower(col, row)) {
-      const towerType = getTowerType(this.selectedTowerType);
-      const cost = this.getEffectiveCost(towerType.cost);
-      const canPlace = this.economy.canAfford(cost);
-      const color = canPlace ? COLOR_HOVER_VALID : COLOR_HOVER_INVALID;
-
-      this.hoverGraphics.fillStyle(color, 0.2);
-      this.hoverGraphics.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      this.hoverGraphics.lineStyle(1, color, 0.6);
-      this.hoverGraphics.strokeRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-
-      if (canPlace) {
-        const cx = col * TILE_SIZE + TILE_SIZE / 2;
-        const cy = row * TILE_SIZE + TILE_SIZE / 2;
-        // Estimate range including modifier traits
-        let range = towerType.range;
-        const rangeBonus = (this.modifier?.towerTraits ?? []).find(t => t.id === 'range_bonus');
-        if (rangeBonus) range += rangeBonus.bonus ?? 0;
-        this.rangeGraphics.lineStyle(1, color, 0.2);
-        this.rangeGraphics.strokeCircle(cx, cy, range * TILE_SIZE);
-      }
-    }
-  }
-
-  handleClick(col: number, row: number): void {
-    const existingTower = this.towers.find(t => t.col === col && t.row === row);
-    if (existingTower) {
-      if (this.selectedTower === existingTower && existingTower.canUpgrade()) {
-        const cost = existingTower.getUpgradeCost();
-        if (this.economy.spend(cost)) {
-          existingTower.upgrade();
-          this.towerInfo.show(existingTower);
-        }
-      } else {
-        this.selectTower(existingTower);
-      }
-      return;
-    }
-
-    this.deselectTower();
-
-    const towerType = getTowerType(this.selectedTowerType);
-    const cost = this.getEffectiveCost(towerType.cost);
-
-    if (!this.grid.canPlaceTower(col, row)) return;
-    if (!this.economy.canAfford(cost)) return;
-
-    this.grid.placeTower(col, row);
-
-    const oldPaths = this.allPaths;
-    this.recalculatePaths();
-    const anyBlocked = this.allPaths.some(p => p === null);
-
-    if (anyBlocked || !this.currentPath) {
-      this.grid.removeTower(col, row);
-      this.allPaths = oldPaths;
-      this.currentPath = oldPaths.find(p => p !== null) ?? null;
-      return;
-    }
-
-    this.economy.spend(cost);
-    const tower = new Tower(this, col, row, towerType);
-
-    // Apply modifier traits to new tower
-    if (this.modifier) {
-      for (const t of this.modifier.towerTraits) {
-        tower.traits.push({ ...t });
-      }
-    }
-
-    this.towers.push(tower);
-    this.totalTowersBuilt++;
-    this.eventBus.emit('towerPlaced', col, row, towerType.id);
-    this.eventBus.emit('pathUpdated', this.currentPath);
-
-    for (const creep of this.creeps) {
-      if (!creep.alive || creep.reached) continue;
-      const creepPos = {
-        col: Math.round((creep.x - TILE_SIZE / 2) / TILE_SIZE),
-        row: Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE),
-      };
-      let bestPath: PathPoint[] | null = null;
-      for (const exit of this.grid.exits) {
-        const p = findPath(this.grid, creepPos, exit);
-        if (p && (!bestPath || p.length < bestPath.length)) {
-          bestPath = p;
-        }
-      }
-      if (bestPath) {
-        creep.path = bestPath;
-        creep.pathIndex = 1;
-      }
-    }
-
-    this.drawPath();
-  }
-
-  handleRightClick(col: number, row: number): void {
-    if (this.grid.cells[row]?.[col] !== CellType.Tower) return;
-
-    const idx = this.towers.findIndex(t => t.col === col && t.row === row);
-    if (idx !== -1) {
-      const tower = this.towers[idx];
-      this.economy.addGold(tower.getSellValue());
-      if (this.selectedTower === tower) this.deselectTower();
-      tower.destroy();
-      this.towers.splice(idx, 1);
-    }
-
-    this.grid.removeTower(col, row);
-    this.eventBus.emit('towerSold', col, row);
-    this.recalculatePaths();
-    this.drawPath();
-  }
-
-  selectTower(tower: Tower): void {
-    this.selectedTower = tower;
-    this.towerInfo.show(tower);
-  }
-
-  deselectTower(): void {
-    this.selectedTower = null;
-    this.towerInfo.hide();
   }
 
   startWave(): void {
