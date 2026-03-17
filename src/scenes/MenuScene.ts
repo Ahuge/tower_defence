@@ -119,6 +119,12 @@ export class MenuScene extends Phaser.Scene {
       fontSize: '13px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
+    // Version SHA
+    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    this.add.text(CANVAS_WIDTH - 8, totalH - 8, `v${__GIT_SHA__}`, {
+      fontSize: '9px', color: '#444444', fontFamily: 'monospace',
+    }).setOrigin(1, 1);
+
     for (const m of modes) {
       const btn = this.add.graphics();
       btn.fillStyle(0x333333, 1);

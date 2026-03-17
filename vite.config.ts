@@ -1,10 +1,21 @@
 import { defineConfig } from 'vite';
+import { execSync } from 'child_process';
+
+// Get git SHA at build time
+const gitSha = (() => {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch {
+    return 'dev';
+  }
+})();
 
 export default defineConfig({
-  // For GitHub Pages: set base to repo name
-  // e.g. if deployed to https://username.github.io/tower-defence/
-  // Change this to match your repo name:
   base: '/tower_defence/',
+
+  define: {
+    __GIT_SHA__: JSON.stringify(gitSha),
+  },
 
   build: {
     chunkSizeWarningLimit: 1500,
