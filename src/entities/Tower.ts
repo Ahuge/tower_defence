@@ -43,14 +43,18 @@ export class Tower {
   traits: Trait[];
   goldEarned: number = 0;
   damageDealt: number = 0;
-  hitStatsAccum: HitStats = createHitStats(); // granular damage stats
+  hitStatsAccum: HitStats = createHitStats();
   projectileColor: number;
+  homeX: number = 0;
+  homeY: number = 0;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
     this.x = gridX(col);
     this.y = gridY(row);
+    this.homeX = this.x;
+    this.homeY = this.y;
     this.typeDef = towerType;
     this.typeId = towerType.id;
     this.range = towerType.range * TILE_SIZE;
@@ -81,12 +85,33 @@ export class Tower {
   drawTower(): void {
     this.graphics.clear();
 
+    const isMobile = hasTrait(this.traits, 'mobile_unit');
+
+    // Mobile units draw as diamonds, static towers as squares
     this.graphics.fillStyle(this.color, 1);
     const s = TILE_SIZE * 0.35;
-    this.graphics.fillRect(this.x - s, this.y - s, s * 2, s * 2);
-
-    this.graphics.lineStyle(1, 0xffffff, 0.3);
-    this.graphics.strokeRect(this.x - s, this.y - s, s * 2, s * 2);
+    if (isMobile) {
+      this.graphics.beginPath();
+      this.graphics.moveTo(this.x, this.y - s);
+      this.graphics.lineTo(this.x + s, this.y);
+      this.graphics.lineTo(this.x, this.y + s);
+      this.graphics.lineTo(this.x - s, this.y);
+      this.graphics.closePath();
+      this.graphics.fillPath();
+      this.graphics.lineStyle(1, 0xffffff, 0.4);
+      this.graphics.strokePath();
+      // Draw home position marker when away
+      const dx = this.x - this.homeX;
+      const dy = this.y - this.homeY;
+      if (Math.sqrt(dx * dx + dy * dy) > 4) {
+        this.graphics.lineStyle(1, this.color, 0.2);
+        this.graphics.strokeCircle(this.homeX, this.homeY, TILE_SIZE * 0.25);
+      }
+    } else {
+      this.graphics.fillRect(this.x - s, this.y - s, s * 2, s * 2);
+      this.graphics.lineStyle(1, 0xffffff, 0.3);
+      this.graphics.strokeRect(this.x - s, this.y - s, s * 2, s * 2);
+    }
 
     if (this.level > 1) {
       this.graphics.fillStyle(0xffffff, 0.8);
@@ -137,6 +162,12 @@ export class Tower {
   }
 
   update(time: number, delta: number, creeps: Creep[]): void {
+    // Mobile units are handled by their trait — skip normal projectile firing
+    if (hasTrait(this.traits, 'mobile_unit')) {
+      this.drawTower(); // redraw at current position each frame
+      return;
+    }
+
     const effectiveRate = this.getEffectiveFireRate();
     if (time - this.lastFired >= effectiveRate) {
       const target = this.findTarget(creeps);

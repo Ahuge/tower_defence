@@ -1,4 +1,4 @@
-export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'random';
+export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'random';
 
 export interface Faction {
   id: FactionId;
@@ -42,6 +42,14 @@ export const FACTIONS: Record<FactionId, Faction> = {
     secondaryColor: 0xbb55dd,
     towerIds: ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion'],
   },
+  military: {
+    id: 'military',
+    name: 'Military',
+    description: 'Mobile units that move to engage. Walls, wire, and boots on the ground.',
+    primaryColor: 0x556b2f,
+    secondaryColor: 0x8fbc8f,
+    towerIds: ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander'],
+  },
   random: {
     id: 'random',
     name: 'Random',
@@ -52,7 +60,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
   },
 };
 
-export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'random'];
+export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'random'];
 
 export function getFaction(id: FactionId): Faction {
   return FACTIONS[id];

@@ -74,6 +74,24 @@
 
 ---
 
+## Military (6 towers)
+*Mobile units that move to engage. Walls, wire, and boots on the ground.*
+
+| Tower | Cost | Type | Key Traits |
+|-------|------|------|------------|
+| Sandbag | 8g | Wall | Cheapest maze filler. No attack. |
+| Barbed Wire | 25g | Passive | Slows adjacent creeps by 40%. No attack. |
+| Rifleman | 40g | Ranged Unit | Mobile. Moves to engage at medium range, returns home. |
+| Brawler | 55g | Melee Unit | Mobile. Gets in close, high single-target damage. |
+| Heavy Gunner | 120g | AoE Unit | Mobile. Slower but AoE damage around self. |
+| **Commander** | **750g** | **Ultimate Unit** | Mobile. Strong melee + buffs all adjacent towers/units. |
+
+**Identity:** Military is the only faction with mobile units — towers that physically move to engage creeps, then return to their placement position. Sandbag and Barbed Wire handle mazing, while Rifleman/Brawler/Heavy provide active area defense. Units are shown as diamonds on the map with a home-position marker. The Commander is both a powerful fighter and a force multiplier.
+
+**Frontier:** Supply Depot / Forward Base (steady income, no faction mechanic).
+
+---
+
 ## Random (dynamic)
 *6 random towers each wave from all factions. Adapt or die.*
 

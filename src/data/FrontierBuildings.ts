@@ -67,6 +67,20 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
       mechanic: 'gamble',
     },
   ],
+  military: [
+    {
+      id: 'supply_depot_1', name: 'Supply Depot', faction: 'military',
+      cost: 45, baseIncome: 4,
+      description: 'Steady supply income. Reliable.',
+      mechanic: 'steady',
+    },
+    {
+      id: 'supply_depot_2', name: 'Forward Base', faction: 'military',
+      cost: 100, baseIncome: 9,
+      description: 'Upgraded supply chain. Higher returns.',
+      mechanic: 'steady',
+    },
+  ],
   random: [],
 };
 

@@ -29,9 +29,9 @@ export class FactionSelectScene extends Phaser.Scene {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const cardW = 200;
-    const cardH = 320;
-    const gap = 10;
+    const cardW = 170;
+    const cardH = 340;
+    const gap = 8;
     const factions = FACTION_ORDER;
     const totalW = factions.length * cardW + (factions.length - 1) * gap;
     const startX = cx - totalW / 2;

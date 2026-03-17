@@ -29,13 +29,10 @@ import { TowerInfoPanel } from '../ui/TowerInfoPanel';
 import { SendPanel } from '../ui/SendPanel';
 import { IncomeDisplay } from '../ui/IncomeDisplay';
 import { FrontierPanel } from '../ui/FrontierPanel';
-import { FighterPanel } from '../ui/FighterPanel';
 import { EventLog } from '../ui/EventLog';
 import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
-import { FighterManager } from '../systems/FighterManager';
-import { FighterType } from '../data/FighterTypes';
 import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
@@ -55,8 +52,6 @@ export class GameScene extends Phaser.Scene {
   // UI panels
   towerBar!: TowerSelectBar;
   towerInfo!: TowerInfoPanel;
-  fighterPanel: FighterPanel | null = null;
-  fighterMgr: FighterManager | null = null;
   incomeMgr!: IncomeManager;
   sendMgr!: SendManager;
   sendPanel!: SendPanel;
@@ -232,18 +227,6 @@ export class GameScene extends Phaser.Scene {
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1.');
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
-
-    // Fighter system (only with faction)
-    if (this.faction) {
-      const rallyCol = Math.floor(GRID_COLS / 2);
-      const rallyRow = Math.floor(GRID_ROWS / 2);
-      this.fighterMgr = new FighterManager(this, this.eventBus, rallyCol, rallyRow);
-      this.fighterPanel = new FighterPanel(this, this.faction, (ft: FighterType) => {
-        if (this.economy.spend(ft.cost) && this.fighterMgr) {
-          this.fighterMgr.purchaseFighter(ft);
-        }
-      });
-    }
 
     // Graphics layers
     this.gridGraphics = this.add.graphics().setDepth(0);
@@ -598,10 +581,6 @@ export class GameScene extends Phaser.Scene {
 
     for (const creep of this.creeps) {
       creep.update(delta, this.creeps);
-    }
-
-    if (this.fighterMgr) {
-      this.fighterMgr.update(time, delta, this.creeps);
     }
 
     for (const creep of this.creeps) {

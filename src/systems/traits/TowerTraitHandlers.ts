@@ -416,6 +416,116 @@ registerTowerUpdate('growth_scaling', (trait: Trait, tower: any, ctx: UpdateCont
   }
 });
 
+/** Mobile unit: tower moves to engage creeps, then returns home */
+registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const moveSpeed = (trait.moveSpeed ?? 120) * (ctx.delta / 1000);
+  const engageRange = (trait.engageRange ?? 0.8) * TILE_SIZE;
+  const leashRange = (trait.leashRange ?? 5) * TILE_SIZE;
+  const attackDamage = tower.damage;
+  const attackCooldown = trait.attackCooldown ?? 600;
+  const attackSplash = trait.attackSplash ?? 0;
+
+  // Init state
+  if (trait._target === undefined) trait._target = null;
+  if (trait._attackTimer === undefined) trait._attackTimer = 0;
+  trait._attackTimer -= ctx.delta;
+
+  // Find or validate target
+  let target = trait._target;
+  if (target && (!target.alive || target.reached)) {
+    target = null;
+    trait._target = null;
+  }
+
+  // Check leash distance from home
+  if (target) {
+    const dxHome = target.x - tower.homeX;
+    const dyHome = target.y - tower.homeY;
+    if (Math.sqrt(dxHome * dxHome + dyHome * dyHome) > leashRange) {
+      target = null;
+      trait._target = null;
+    }
+  }
+
+  // Find new target if needed
+  if (!target) {
+    let closest = null;
+    let closestDist = leashRange;
+    for (const creep of ctx.allCreeps) {
+      if (!creep.alive || creep.reached) continue;
+      const dx = creep.x - tower.homeX;
+      const dy = creep.y - tower.homeY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < closestDist) {
+        closest = creep;
+        closestDist = dist;
+      }
+    }
+    target = closest;
+    trait._target = target;
+  }
+
+  if (target) {
+    // Move toward target
+    const dx = target.x - tower.x;
+    const dy = target.y - tower.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > engageRange) {
+      tower.x += (dx / dist) * moveSpeed;
+      tower.y += (dy / dist) * moveSpeed;
+    } else {
+      // In range — attack
+      if (trait._attackTimer <= 0) {
+        trait._attackTimer = attackCooldown;
+
+        if (attackSplash > 0) {
+          // AoE attack around self
+          for (const creep of ctx.allCreeps) {
+            if (!creep.alive || creep.reached) continue;
+            const cx = creep.x - tower.x;
+            const cy = creep.y - tower.y;
+            if (Math.sqrt(cx * cx + cy * cy) <= attackSplash) {
+              creep.takeDamage(attackDamage);
+              tower.damageDealt += attackDamage;
+            }
+          }
+        } else {
+          // Single target
+          target.takeDamage(attackDamage);
+          tower.damageDealt += attackDamage;
+        }
+      }
+    }
+  } else {
+    // Return home
+    const dx = tower.homeX - tower.x;
+    const dy = tower.homeY - tower.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 2) {
+      tower.x += (dx / dist) * moveSpeed;
+      tower.y += (dy / dist) * moveSpeed;
+    } else {
+      tower.x = tower.homeX;
+      tower.y = tower.homeY;
+    }
+  }
+});
+
+/** Barbed wire: passively slows adjacent creeps (1-tile radius) */
+registerTowerUpdate('barbed_wire', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const factor = trait.factor ?? 0.6;
+  const range = TILE_SIZE * 1.5; // adjacent cells only
+  for (const creep of ctx.allCreeps) {
+    if (!creep.alive || creep.reached) continue;
+    const dx = creep.x - tower.homeX;
+    const dy = creep.y - tower.homeY;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      creep.applySlow(200, factor);
+    }
+  }
+});
+
 // TTL countdown for dynamic buff traits
 registerTowerUpdate('_adj_damage_buff', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;

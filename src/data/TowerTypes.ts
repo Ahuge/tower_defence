@@ -358,6 +358,66 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
     // No upgrades — pure chaos incarnate
   }),
+
+  // ================================================================
+  // MILITARY (6) — Mobile units, area denial, tactical control
+  // ================================================================
+  mil_sandbag: def({
+    id: 'mil_sandbag', name: 'Sandbag', description: 'Dirt cheap maze filler. No attack.',
+    faction: 'military', damageType: 'physical', cost: 8, damage: 0, range: 0, fireRate: 99999,
+    color: 0x998877, projectileSpeed: 0, hotkey: '1',
+    traits: [],
+    // No upgrades — it's an 8g blocker
+  }),
+  mil_wire: def({
+    id: 'mil_wire', name: 'Barbed Wire', description: 'Slows adjacent creeps by 40%. No attack.',
+    faction: 'military', damageType: 'physical', cost: 25, damage: 0, range: 1.5, fireRate: 99999,
+    color: 0x777766, projectileSpeed: 0, hotkey: '2',
+    traits: [{ id: 'barbed_wire', factor: 0.6 }],
+    upgrades: [
+      { level: 2, cost: 30, damage: 0, range: 2, fireRate: 99999 },
+    ],
+  }),
+  mil_rifleman: def({
+    id: 'mil_rifleman', name: 'Rifleman', description: 'Mobile ranged unit. Engages at medium range.',
+    faction: 'military', damageType: 'physical', cost: 40, damage: 14, range: 3, fireRate: 700,
+    color: 0x556b2f, projectileSpeed: 0, hotkey: '3',
+    traits: [{ id: 'mobile_unit', moveSpeed: 100, engageRange: 2.5, leashRange: 5, attackCooldown: 700 }],
+    upgrades: [
+      { level: 2, cost: 45, damage: 22, range: 3.5, fireRate: 600 },
+      { level: 3, cost: 80, damage: 34, range: 4, fireRate: 500 },
+    ],
+  }),
+  mil_brawler: def({
+    id: 'mil_brawler', name: 'Brawler', description: 'Mobile melee. High damage, gets up close.',
+    faction: 'military', damageType: 'physical', cost: 55, damage: 30, range: 2, fireRate: 500,
+    color: 0x8b4513, projectileSpeed: 0, hotkey: '4',
+    traits: [{ id: 'mobile_unit', moveSpeed: 140, engageRange: 0.8, leashRange: 4, attackCooldown: 500 }],
+    upgrades: [
+      { level: 2, cost: 60, damage: 48, range: 2, fireRate: 450 },
+      { level: 3, cost: 100, damage: 70, range: 2, fireRate: 400 },
+    ],
+  }),
+  mil_heavy: def({
+    id: 'mil_heavy', name: 'Heavy Gunner', description: 'Mobile AoE. Slower but hits everything nearby.',
+    faction: 'military', damageType: 'physical', cost: 120, damage: 20, range: 3, fireRate: 1200,
+    color: 0x4a6741, projectileSpeed: 0, hotkey: '5',
+    traits: [{ id: 'mobile_unit', moveSpeed: 70, engageRange: 1, leashRange: 5, attackCooldown: 1200, attackSplash: 64 }],
+    upgrades: [
+      { level: 2, cost: 100, damage: 32, range: 3.5, fireRate: 1000 },
+      { level: 3, cost: 160, damage: 48, range: 4, fireRate: 800 },
+    ],
+  }),
+  mil_commander: def({
+    id: 'mil_commander', name: 'Commander', description: 'ULTIMATE. Mobile. Buffs all units in range. Strong melee.',
+    faction: 'military', damageType: 'physical', cost: 750, damage: 60, range: 5, fireRate: 800,
+    color: 0xdaa520, projectileSpeed: 0, hotkey: '6', ultimate: true,
+    traits: [
+      { id: 'mobile_unit', moveSpeed: 90, engageRange: 1, leashRange: 6, attackCooldown: 800 },
+      { id: 'adjacency_buff', damagePercent: 0.2, ratePercent: 0.1 },
+    ],
+    // No upgrades — the Commander leads by presence
+  }),
 };
 
 export const TOWER_ORDER = ['arrow', 'cannon', 'sniper', 'slow'];
