@@ -583,7 +583,12 @@ export class GameScene extends Phaser.Scene {
       }
       if (tower.damageDealt > 0) {
         this.statsTracker.recordDamage(tower.typeId, tower.damageDealt);
+        this.statsTracker.recordHitStats(tower.typeId, tower.hitStatsAccum);
         tower.damageDealt = 0;
+        // Reset granular stats
+        for (const key of Object.keys(tower.hitStatsAccum)) {
+          tower.hitStatsAccum[key] = 0;
+        }
       }
     }
 

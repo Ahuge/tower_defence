@@ -20,6 +20,22 @@ export interface HitTarget {
   applySlow(duration: number, factor: number): void;
 }
 
+/** Per-hit stat recording that traits write to */
+export interface HitStats {
+  directDamage: number;
+  splashDamage: number;
+  burnDamage: number;
+  poisonDamage: number;
+  chainDamage: number;
+  pierceDamage: number;
+  auraDamage: number;
+  [key: string]: number; // extensible for future trait-specific stats
+}
+
+export function createHitStats(): HitStats {
+  return { directDamage: 0, splashDamage: 0, burnDamage: 0, poisonDamage: 0, chainDamage: 0, pierceDamage: 0, auraDamage: 0 };
+}
+
 export interface HitContext {
   towerLevel: number;
   damage: number;
@@ -28,6 +44,7 @@ export interface HitContext {
   allTargets: HitTarget[];
   hitTargets: HitTarget[];
   goldEarned: number;
+  hitStats: HitStats;
 }
 
 export interface UpdateContext {

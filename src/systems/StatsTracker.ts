@@ -6,6 +6,15 @@ export interface TowerTypeStats {
   totalGoldEarned: number;
   timeAlive: number; // ms
   count: number; // how many of this type were built
+  // Granular damage by source
+  directDamage: number;
+  splashDamage: number;
+  burnDamage: number;
+  poisonDamage: number;
+  chainDamage: number;
+  pierceDamage: number;
+  auraDamage: number;
+  [key: string]: number; // extensible
 }
 
 export interface GameStats {
@@ -46,6 +55,13 @@ export class StatsTracker {
         totalGoldEarned: 0,
         timeAlive: 0,
         count: 0,
+        directDamage: 0,
+        splashDamage: 0,
+        burnDamage: 0,
+        poisonDamage: 0,
+        chainDamage: 0,
+        pierceDamage: 0,
+        auraDamage: 0,
       };
     }
     return this.stats.towerStats[typeId];
@@ -57,6 +73,15 @@ export class StatsTracker {
 
   recordDamage(typeId: string, amount: number): void {
     this.getOrCreate(typeId).totalDamage += amount;
+  }
+
+  recordHitStats(typeId: string, hitStats: Record<string, number>): void {
+    const s = this.getOrCreate(typeId);
+    for (const key of Object.keys(hitStats)) {
+      if (hitStats[key] > 0) {
+        s[key] = (s[key] ?? 0) + hitStats[key];
+      }
+    }
   }
 
   recordShot(typeId: string): void {

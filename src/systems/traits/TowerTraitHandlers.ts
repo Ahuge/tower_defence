@@ -19,6 +19,7 @@ registerDelivery('direct_damage', (_trait: Trait, ctx: HitContext) => {
   const dmg = calculateDamage(ctx.damage, ctx.damageType, ctx.target.armor);
   ctx.target.takeDamage(dmg);
   ctx.hitTargets.push(ctx.target);
+  ctx.hitStats.directDamage += dmg;
 });
 
 registerDelivery('splash_damage', (trait: Trait, ctx: HitContext) => {
@@ -33,6 +34,7 @@ registerDelivery('splash_damage', (trait: Trait, ctx: HitContext) => {
       const dmg = calculateDamage(ctx.damage, ctx.damageType, creep.armor);
       creep.takeDamage(dmg);
       ctx.hitTargets.push(creep);
+      ctx.hitStats.splashDamage += dmg;
     }
   }
 });
@@ -45,6 +47,7 @@ registerDelivery('chain_damage', (trait: Trait, ctx: HitContext) => {
   const dmg = calculateDamage(ctx.damage, ctx.damageType, ctx.target.armor);
   ctx.target.takeDamage(dmg);
   ctx.hitTargets.push(ctx.target);
+  ctx.hitStats.chainDamage += dmg;
 
   const hit = new Set([ctx.target]);
   let current = ctx.target;
@@ -69,6 +72,7 @@ registerDelivery('chain_damage', (trait: Trait, ctx: HitContext) => {
     );
     nearest.takeDamage(chainDmg);
     ctx.hitTargets.push(nearest);
+    ctx.hitStats.chainDamage += chainDmg;
     hit.add(nearest);
     current = nearest;
   }
@@ -100,6 +104,7 @@ registerDelivery('tower_aura_damage', (trait: Trait, ctx: HitContext) => {
       const dmg = calculateDamage(ctx.damage, ctx.damageType, creep.armor);
       creep.takeDamage(dmg);
       ctx.hitTargets.push(creep);
+      ctx.hitStats.auraDamage += dmg;
     }
   }
 });
@@ -129,6 +134,7 @@ registerDelivery('pierce_delivery', (trait: Trait, ctx: HitContext) => {
       const dmg = calculateDamage(ctx.damage, ctx.damageType, creep.armor);
       creep.takeDamage(dmg);
       ctx.hitTargets.push(creep);
+      ctx.hitStats.pierceDamage += dmg;
     }
   }
 });

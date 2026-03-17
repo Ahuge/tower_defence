@@ -3,7 +3,7 @@ import { TowerType } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
 import { HitTarget } from '../systems/traits/Trait';
 import {
-  Trait, HitContext, hasTrait, getTrait,
+  Trait, HitContext, HitStats, createHitStats, hasTrait, getTrait,
   resolveDelivery, resolveDamageModifiers, resolveFireRate,
   resolveHitEffects, resolveOnFire, resolveTowerUpdates,
   cleanupExpiredTraits, UpdateContext,
@@ -42,7 +42,8 @@ export class Tower {
   damageType: DamageType;
   traits: Trait[];
   goldEarned: number = 0;
-  damageDealt: number = 0; // accumulated for stats collection
+  damageDealt: number = 0;
+  hitStatsAccum: HitStats = createHitStats(); // granular damage stats
   projectileColor: number;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
@@ -232,6 +233,7 @@ export class Tower {
   }
 
   private onProjectileHit(p: Projectile, allCreeps: Creep[]): void {
+    const stats = createHitStats();
     const ctx: HitContext = {
       towerLevel: this.level,
       damage: this.damage,
@@ -240,6 +242,7 @@ export class Tower {
       allTargets: allCreeps,
       hitTargets: [],
       goldEarned: 0,
+      hitStats: stats,
     };
 
     resolveDamageModifiers(this.traits, ctx);
@@ -247,11 +250,13 @@ export class Tower {
     resolveHitEffects(this.traits, ctx);
     this.goldEarned += ctx.goldEarned;
     this.damageDealt += ctx.damage * ctx.hitTargets.length;
+    // Accumulate granular stats
+    for (const key of Object.keys(stats)) {
+      this.hitStatsAccum[key] = (this.hitStatsAccum[key] ?? 0) + stats[key];
+    }
   }
 
-  /** Projectile arrived at location but original target is dead */
   private onProjectileHitLocation(p: Projectile, allCreeps: Creep[]): void {
-    // Create a phantom target at the destination for splash/pierce center
     const phantom: HitTarget = {
       x: p.destX, y: p.destY,
       alive: false, reached: false,
@@ -261,6 +266,7 @@ export class Tower {
       applySlow: () => {},
     };
 
+    const stats = createHitStats();
     const ctx: HitContext = {
       towerLevel: this.level,
       damage: this.damage,
@@ -269,6 +275,7 @@ export class Tower {
       allTargets: allCreeps,
       hitTargets: [],
       goldEarned: 0,
+      hitStats: stats,
     };
 
     resolveDamageModifiers(this.traits, ctx);
@@ -276,6 +283,9 @@ export class Tower {
     resolveHitEffects(this.traits, ctx);
     this.goldEarned += ctx.goldEarned;
     this.damageDealt += ctx.damage * ctx.hitTargets.length;
+    for (const key of Object.keys(stats)) {
+      this.hitStatsAccum[key] = (this.hitStatsAccum[key] ?? 0) + stats[key];
+    }
   }
 
   getSellValue(): number {
