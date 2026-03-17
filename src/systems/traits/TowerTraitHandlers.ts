@@ -485,19 +485,8 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
         }
       }
     }
-  } else {
-    // No targets — return home
-    const dx = tower.homeX - tower.x;
-    const dy = tower.homeY - tower.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 2) {
-      tower.x += (dx / dist) * moveSpeed;
-      tower.y += (dy / dist) * moveSpeed;
-    } else {
-      tower.x = tower.homeX;
-      tower.y = tower.homeY;
-    }
   }
+  // No targets: stay put (don't return home until wave ends)
 });
 
 /** Barbed wire: passively slows adjacent creeps (1-tile radius) */

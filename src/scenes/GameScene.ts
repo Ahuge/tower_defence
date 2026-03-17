@@ -623,9 +623,10 @@ export class GameScene extends Phaser.Scene {
 
     for (const creep of this.creeps) {
       if (creep.reached) {
-        this.lives--;
+        const leakDamage = creep.isBoss ? 5 : 1;
+        this.lives -= leakDamage;
         this.eventBus.emit('livesChanged', this.lives);
-        this.eventLog.creepReached();
+        this.eventLog.gameMessage(leakDamage > 1 ? `BOSS leaked! -${leakDamage} lives` : 'Creep reached exit! -1 life');
         this.statsTracker.recordLeak();
         creep.reached = false;
         creep.alive = false;
@@ -651,6 +652,16 @@ export class GameScene extends Phaser.Scene {
     if (this.waveActive && !this.spawner.isSpawning() && !this.sendMgr.isSpawning() && this.creeps.length === 0) {
       this.waveActive = false;
       this.betweenWaves = true;
+
+      // Snap mobile units back home
+      for (const tower of this.towers) {
+        if (tower.isMobile) {
+          tower.x = tower.homeX;
+          tower.y = tower.homeY;
+          tower.drawTower();
+        }
+      }
+
       // Frontier mechanic bonuses (growth, dig, gamble)
       const frontierBonus = this.frontierMgr.onWaveEnd(this.currentWave);
       if (frontierBonus > 0) {
