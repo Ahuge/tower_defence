@@ -24,6 +24,8 @@ import { SendManager } from '../systems/SendManager';
 import { FrontierManager } from '../systems/FrontierManager';
 import { FrontierBuilding } from '../data/FrontierBuildings';
 import { SEND_OPTIONS, SendCreepOption } from '../data/SendCreepTypes';
+import { EssenceGenerator, EssenceSendOption, ESSENCE_SENDS } from '../data/EssenceGenerators';
+import { EssencePanel } from '../ui/EssencePanel';
 
 const SEND_OPTIONS_MAP: Record<string, SendCreepOption> = {};
 for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
@@ -67,6 +69,7 @@ export class GameScene extends Phaser.Scene {
   incomeDisplay!: IncomeDisplay;
   frontierMgr!: FrontierManager;
   frontierPanel!: FrontierPanel;
+  essencePanel: EssencePanel | null = null;
   eventLog!: EventLog;
   creepInfo!: CreepInfoPanel;
   upcomingWaves!: UpcomingWaves;
@@ -221,23 +224,59 @@ export class GameScene extends Phaser.Scene {
     this.upcomingWaves.update(this.currentWave, this.waves);
 
     const sidebarTopOffset = UpcomingWaves.HEIGHT;
-    this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
-      if (this.betweenWaves && this.economy.spend(opt.cost)) {
-        if (this.versus && this.versus.isConnected()) {
-          // Versus: sends go to opponent, not to self
-          this.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
-          this.versus.sendsSent++;
-          this.eventLog.gameMessage(`Sent ${opt.name} to opponent!`);
-        } else {
-          this.sendMgr.queueSend(opt);
+
+    if (this.matchMode === 'battle') {
+      // Dual Economy: register essence resource + create essence panel
+      this.economy.resources.addResource({
+        id: 'essence', name: 'Essence', startingAmount: 0, tickRate: 0, color: '#44ddff',
+      });
+
+      this.essencePanel = new EssencePanel(this, this.economy.resources,
+        (gen: EssenceGenerator) => {
+          // Buy generator with gold
+          if (this.economy.spend(gen.cost)) {
+            const state = this.economy.resources.getState('essence');
+            if (state) state.tickRate += gen.essencePerSec;
+            // Track owned
+            const existing = this.essencePanel!.generators.find(g => g.def.id === gen.id);
+            if (existing) existing.count++;
+            else this.essencePanel!.generators.push({ def: gen, count: 1 });
+            this.essencePanel!.updateOwned();
+            this.eventLog.gameMessage(`Built ${gen.name} (+${gen.essencePerSec}/s essence)`);
+            this.statsTracker.recordGoldSpent(gen.cost);
+          }
+        },
+        (send: EssenceSendOption) => {
+          // Buy send with essence
+          if (this.betweenWaves && this.economy.resources.canAfford('essence', send.essenceCost)) {
+            this.economy.resources.spend('essence', send.essenceCost);
+            this.sendMgr.queueSend({ id: send.id, name: send.name, creepType: send.creepType, count: send.count, cost: 0, incomeReward: send.incomeReward, description: send.description });
+            this.incomeMgr.addSendBonus(send.incomeReward);
+            this.eventLog.gameMessage(`Sent ${send.name} (${send.essenceCost}e) → +${send.incomeReward}g/w`);
+            this.statsTracker.recordSendIncome(send.incomeReward);
+          }
+        },
+      );
+    } else {
+      // Standard mode: gold-based sends
+      this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
+        if (this.betweenWaves && this.economy.spend(opt.cost)) {
+          if (this.versus && this.versus.isConnected()) {
+            this.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
+            this.versus.sendsSent++;
+            this.eventLog.gameMessage(`Sent ${opt.name} to opponent!`);
+          } else {
+            this.sendMgr.queueSend(opt);
+          }
+          this.incomeMgr.addSendBonus(opt.incomeReward);
+          this.eventLog.sendQueued(opt.name, opt.cost);
+          this.statsTracker.recordSendSpent(opt.cost);
+          this.statsTracker.recordSendIncome(opt.incomeReward);
+          this.statsTracker.recordGoldSpent(opt.cost);
         }
-        this.incomeMgr.addSendBonus(opt.incomeReward);
-        this.eventLog.sendQueued(opt.name, opt.cost);
-        this.statsTracker.recordSendSpent(opt.cost);
-        this.statsTracker.recordSendIncome(opt.incomeReward);
-        this.statsTracker.recordGoldSpent(opt.cost);
-      }
-    }, sidebarTopOffset);
+      }, sidebarTopOffset);
+    }
+
     this.incomeDisplay = new IncomeDisplay(this);
 
     // Frontier (with action callbacks)
@@ -786,6 +825,12 @@ export class GameScene extends Phaser.Scene {
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
+
+    // Dual Economy: tick essence in real-time
+    if (this.matchMode === 'battle') {
+      this.economy.resources.tick(delta);
+      this.essencePanel?.update();
+    }
 
     // Versus: wave timer, minimap, incoming sends, ping, disconnect, chat
     if (this.versus) {

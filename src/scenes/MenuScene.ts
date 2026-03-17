@@ -105,6 +105,7 @@ export class MenuScene extends Phaser.Scene {
       { mode: 'sprint', label: 'Sprint (15 waves)', desc: 'Quick game, fewer creep types', y: 250 },
       { mode: 'standard', label: 'Standard (30 waves)', desc: 'Full experience, all creep types', y: 320 },
       { mode: 'marathon', label: 'Marathon (Endless)', desc: 'Infinite scaling, how far can you go?', y: 390 },
+      { mode: 'battle', label: 'Battle (Dual Economy)', desc: 'Gold + Essence. Compound growth engine.', y: 430 },
     ];
 
     // Multiplayer button

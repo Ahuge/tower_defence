@@ -1,4 +1,4 @@
-export type MatchMode = 'sprint' | 'standard' | 'marathon';
+export type MatchMode = 'sprint' | 'standard' | 'marathon' | 'battle';
 
 export interface WaveCreepGroup {
   creepType: string;
@@ -115,5 +115,7 @@ export function getWavesForMode(mode: MatchMode): WaveDefinition[] {
       return generateStandardWaves(30);
     case 'marathon':
       return generateStandardWaves(100);
+    case 'battle':
+      return generateStandardWaves(30); // same wave structure, different economy
   }
 }
