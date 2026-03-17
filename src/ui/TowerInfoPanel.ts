@@ -56,7 +56,7 @@ export class TowerInfoPanel {
     const buffs: string[] = [];
 
     if (adjDmg && adjDmg.bonus > 0) buffs.push(`+${adjDmg.bonus} DMG (aura)`);
-    if (adjRate && adjRate.bonus > 0) buffs.push(`-${adjRate.bonus}ms SPD (aura)`);
+    if (adjRate && adjRate.bonus > 0) buffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD (aura)`);
     if (spellAmp && spellAmp.bonus > 0) buffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic (amp)`);
     if (overclock && overclock.bonus > 0) buffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (overclock)`);
     this.buffText.setText(buffs.length > 0 ? buffs.join('  ') : '');

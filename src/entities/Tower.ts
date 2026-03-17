@@ -1,6 +1,7 @@
 import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
 import { TowerType } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
+import { HitTarget } from '../systems/traits/Trait';
 import {
   Trait, HitContext, hasTrait, getTrait,
   resolveDelivery, resolveDamageModifiers, resolveFireRate,
@@ -13,8 +14,11 @@ interface Projectile {
   x: number;
   y: number;
   target: Creep;
+  destX: number; // snapshot of target position at fire time
+  destY: number;
   speed: number;
   graphics: Phaser.GameObjects.Graphics;
+  locationBased: boolean; // true = continues to location if target dies
 }
 
 export class Tower {
@@ -60,10 +64,8 @@ export class Tower {
     this.lastFired = 0;
     this.projectiles = [];
 
-    // Clone traits so each tower has its own mutable state
     this.traits = towerType.traits.map(t => ({ ...t }));
 
-    // Apply range_bonus trait (from draft modifiers)
     const rangeBonus = getTrait(this.traits, 'range_bonus');
     if (rangeBonus) {
       this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
@@ -84,7 +86,6 @@ export class Tower {
     this.graphics.lineStyle(1, 0xffffff, 0.3);
     this.graphics.strokeRect(this.x - s, this.y - s, s * 2, s * 2);
 
-    // Level pips
     if (this.level > 1) {
       this.graphics.fillStyle(0xffffff, 0.8);
       for (let i = 0; i < this.level - 1; i++) {
@@ -92,7 +93,6 @@ export class Tower {
       }
     }
 
-    // Adjacency buff glow
     if (hasTrait(this.traits, '_adj_damage_buff') || hasTrait(this.traits, '_adj_rate_buff')) {
       this.graphics.lineStyle(1, 0xff88aa, 0.4);
       this.graphics.strokeCircle(this.x, this.y, s + 3);
@@ -117,7 +117,6 @@ export class Tower {
     this.fireRate = upg.fireRate;
     this.totalInvested += upg.cost;
 
-    // Re-apply range_bonus
     const rangeBonus = getTrait(this.traits, 'range_bonus');
     if (rangeBonus) {
       this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
@@ -130,7 +129,6 @@ export class Tower {
     return resolveFireRate(this.traits, this.fireRate, this);
   }
 
-  /** Run per-frame trait updates (adjacency, TTL cleanup). */
   runTraitUpdates(ctx: UpdateContext): void {
     resolveTowerUpdates(this.traits, this, ctx);
     cleanupExpiredTraits(this.traits);
@@ -172,12 +170,16 @@ export class Tower {
   fire(target: Creep): void {
     const g = this.graphics.scene.add.graphics();
     g.setDepth(15);
+    const isLocationBased = hasTrait(this.traits, 'splash_damage') || hasTrait(this.traits, 'pierce_delivery');
     this.projectiles.push({
       x: this.x,
       y: this.y,
       target,
+      destX: target.x,
+      destY: target.y,
       speed: this.typeDef.projectileSpeed,
       graphics: g,
+      locationBased: isLocationBased,
     });
   }
 
@@ -185,19 +187,35 @@ export class Tower {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
 
-      if (!p.target.alive) {
+      // If target died: location-based projectiles continue, tracking ones disappear
+      if (!p.target.alive && !p.locationBased) {
         p.graphics.destroy();
         this.projectiles.splice(i, 1);
         continue;
       }
 
-      const dx = p.target.x - p.x;
-      const dy = p.target.y - p.y;
+      // Move toward target (if alive and tracking) or destination (location-based)
+      const tx = (p.target.alive && !p.locationBased) ? p.target.x : p.destX;
+      const ty = (p.target.alive && !p.locationBased) ? p.target.y : p.destY;
+
+      // Update destination if target is still alive (track moving targets)
+      if (p.target.alive) {
+        p.destX = p.target.x;
+        p.destY = p.target.y;
+      }
+
+      const dx = tx - p.x;
+      const dy = ty - p.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const move = p.speed * (delta / 1000);
 
       if (dist <= move) {
-        this.onProjectileHit(p, allCreeps);
+        if (p.target.alive) {
+          this.onProjectileHit(p, allCreeps);
+        } else {
+          // Location-based: hit whatever's at the destination
+          this.onProjectileHitLocation(p, allCreeps);
+        }
         p.graphics.destroy();
         this.projectiles.splice(i, 1);
       } else {
@@ -223,16 +241,37 @@ export class Tower {
       goldEarned: 0,
     };
 
-    // 1. Damage modifiers (variance, damage_mult, adjacency buff)
     resolveDamageModifiers(this.traits, ctx);
-
-    // 2. Delivery (determines who gets hit, applies damage)
     resolveDelivery(this.traits, ctx);
-
-    // 3. Hit effects (slow, gold_on_hit — run on each hitTarget)
     resolveHitEffects(this.traits, ctx);
+    this.goldEarned += ctx.goldEarned;
+  }
 
-    // 4. Collect outputs
+  /** Projectile arrived at location but original target is dead */
+  private onProjectileHitLocation(p: Projectile, allCreeps: Creep[]): void {
+    // Create a phantom target at the destination for splash/pierce center
+    const phantom: HitTarget = {
+      x: p.destX, y: p.destY,
+      alive: false, reached: false,
+      armor: 'medium',
+      pathIndex: 0, path: [],
+      takeDamage: () => {},
+      applySlow: () => {},
+    };
+
+    const ctx: HitContext = {
+      towerLevel: this.level,
+      damage: this.damage,
+      damageType: this.damageType,
+      target: phantom,
+      allTargets: allCreeps,
+      hitTargets: [],
+      goldEarned: 0,
+    };
+
+    resolveDamageModifiers(this.traits, ctx);
+    resolveDelivery(this.traits, ctx);
+    resolveHitEffects(this.traits, ctx);
     this.goldEarned += ctx.goldEarned;
   }
 

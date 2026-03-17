@@ -263,7 +263,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'nature_blossom', name: 'Blossom', description: 'Buffs adjacent towers: +15% DMG, +50ms SPD per level.',
     faction: 'nature', damageType: 'magic', cost: 60, damage: 5, range: 2.5, fireRate: 1200,
     color: 0xff88aa, projectileSpeed: 250, hotkey: '3',
-    traits: [{ id: 'direct_damage' }, { id: 'adjacency_buff', damagePercent: 0.15, rateBonus: 50 }],
+    traits: [{ id: 'direct_damage' }, { id: 'adjacency_buff', damagePercent: 0.15, ratePercent: 0.08 }],
     upgrades: [
       { level: 2, cost: 55, damage: 8, range: 3, fireRate: 1100 },
       { level: 3, cost: 90, damage: 12, range: 3, fireRate: 1000 },
@@ -297,7 +297,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { id: 'direct_damage' },
       { id: 'growth_scaling', growthPercent: 0.08 },
       { id: 'root_on_hit', chance: 0.25, duration: 1000 },
-      { id: 'adjacency_buff', damagePercent: 0.25, rateBonus: 80 },
+      { id: 'adjacency_buff', damagePercent: 0.25, ratePercent: 0.12 },
     ],
     // No upgrades — it grows on its own
   }),

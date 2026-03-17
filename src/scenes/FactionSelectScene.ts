@@ -81,20 +81,11 @@ export class FactionSelectScene extends Phaser.Scene {
         for (const tid of faction.towerIds) {
           const t = TOWER_TYPES[tid];
           if (!t) continue;
-          const costStr = `${t.cost}g`;
-          const ultTag = t.ultimate ? ' *' : '';
-          const label = `${t.name} (${costStr})${ultTag}`;
-          const color = t.ultimate ? '#ffdd44' : '#cccccc';
+          const label = `${t.name} (${t.cost}g)`;
           this.add.text(x + 12, ty, label, {
-            fontSize: '9px', color, fontFamily: 'monospace',
+            fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
           });
           ty += 13;
-        }
-        // Legend for ultimate
-        if (faction.towerIds.some(id => TOWER_TYPES[id]?.ultimate)) {
-          this.add.text(x + 12, ty + 4, '* = Ultimate tower', {
-            fontSize: '8px', color: '#ffdd44', fontFamily: 'monospace',
-          });
         }
       }
 
