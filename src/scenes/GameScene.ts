@@ -216,6 +216,7 @@ export class GameScene extends Phaser.Scene {
         this.eventLog.sendQueued(opt.name, opt.cost);
         this.statsTracker.recordSendSpent(opt.cost);
         this.statsTracker.recordSendIncome(opt.incomeReward);
+        this.statsTracker.recordGoldSpent(opt.cost);
       }
     }, sidebarTopOffset);
     this.incomeDisplay = new IncomeDisplay(this);
@@ -231,6 +232,7 @@ export class GameScene extends Phaser.Scene {
           this.frontierPanel.updateOwned();
           this.eventLog.frontierPurchased(building.name, building.cost);
           this.statsTracker.recordFrontierSpent(building.cost);
+          this.statsTracker.recordGoldSpent(building.cost);
         }
       },
       (action: string, idx: number) => {
@@ -680,6 +682,7 @@ export class GameScene extends Phaser.Scene {
       if (tower.goldEarned > 0) {
         this.economy.addGold(tower.goldEarned);
         this.statsTracker.recordTowerGold(tower.typeId, tower.goldEarned);
+        this.statsTracker.recordGoldEarned(tower.goldEarned);
         tower.goldEarned = 0;
       }
       if (tower.damageDealt > 0) {
@@ -720,6 +723,7 @@ export class GameScene extends Phaser.Scene {
         this.eventBus.emit('creepKilled', 0, killGold);
         this.totalCreepsKilled++;
         this.statsTracker.recordKill();
+        this.statsTracker.recordGoldEarned(killGold);
         creep.hp = -999;
       }
     }
@@ -752,11 +756,13 @@ export class GameScene extends Phaser.Scene {
       if (frontierBonus > 0) {
         this.economy.addGold(frontierBonus);
         this.statsTracker.recordFrontierEarned(frontierBonus);
+        this.statsTracker.recordGoldEarned(frontierBonus);
       }
       this.frontierPanel.updateOwned();
       // Wave income (includes base + sends + frontier base)
       const income = this.incomeMgr.collectWaveIncome();
       this.economy.addGold(income);
+      this.statsTracker.recordGoldEarned(income);
       this.eventBus.emit('waveCleared', this.currentWave);
       this.eventLog.waveCleared(this.currentWave, income + (frontierBonus > 0 ? frontierBonus : 0));
       this.statsTracker.recordWaveCompleted();

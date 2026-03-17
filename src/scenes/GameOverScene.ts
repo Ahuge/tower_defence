@@ -121,8 +121,12 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       const s = data.stats;
+      const towerBonusGold = Object.values(s.towerStats).reduce((sum, t) => sum + t.totalGoldEarned, 0);
       const econLines = [
-        `Total Gold Earned: ${s.totalGoldEarned.toLocaleString()}  |  Spent: ${s.totalGoldSpent.toLocaleString()}`,
+        `Creeps Killed: ${s.creepsKilled}  |  Leaked: ${s.creepsLeaked}`,
+        `Gold Earned: ${s.totalGoldEarned.toLocaleString()}g (kills + income + frontier)`,
+        `Gold Spent: ${s.totalGoldSpent.toLocaleString()}g (towers + sends + frontier)`,
+        `Tower Bonus Gold: ${towerBonusGold}g (Siphon, gold-on-hit, etc.)`,
         `Frontier — Invested: ${s.frontierSpent}g  |  Returned: ${s.frontierEarned}g  |  ROI: ${s.frontierSpent > 0 ? Math.round((s.frontierEarned / s.frontierSpent) * 100) : 0}%`,
         `Sends — Spent: ${s.sendsSpent}g  |  Income Gained: +${s.sendsIncome}/wave`,
         `Kill Efficiency: ${s.creepsKilled > 0 ? (s.totalGoldEarned / s.creepsKilled).toFixed(1) : 0}g per kill`,
