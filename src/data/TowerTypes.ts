@@ -418,6 +418,289 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
     // No upgrades — the Commander leads by presence
   }),
+
+  // ================================================================
+  // SPAWN ALIENS (7) — Cheap, fast, swarm. Overwhelm through quantity.
+  // ================================================================
+  alien_spitter: def({
+    id: 'alien_spitter', name: 'Spitter', description: 'Dirt cheap. Extremely fast fire, tiny damage.',
+    faction: 'aliens', damageType: 'physical', cost: 12, damage: 3, range: 3, fireRate: 250,
+    color: 0x88ff44, projectileSpeed: 400, hotkey: '1',
+    upgrades: [
+      { level: 2, cost: 15, damage: 5, range: 3, fireRate: 220 },
+      { level: 3, cost: 25, damage: 8, range: 3.5, fireRate: 200 },
+    ],
+  }),
+  alien_stinger: def({
+    id: 'alien_stinger', name: 'Stinger', description: 'Fast fire. Applies weak poison (1% HP/s).',
+    faction: 'aliens', damageType: 'physical', cost: 25, damage: 4, range: 3, fireRate: 350,
+    color: 0x66dd22, projectileSpeed: 350, hotkey: '2',
+    traits: [{ id: 'direct_damage' }, { id: 'poison_dot', percentPerSec: 0.01, duration: 2000 }],
+    upgrades: [
+      { level: 2, cost: 30, damage: 6, range: 3.5, fireRate: 300 },
+    ],
+  }),
+  alien_swarm_node: def({
+    id: 'alien_swarm_node', name: 'Swarm Node', description: 'No attack. All Alien towers in range fire 20% faster.',
+    faction: 'aliens', damageType: 'physical', cost: 60, damage: 0, range: 4, fireRate: 99999,
+    color: 0xaaff66, projectileSpeed: 0, hotkey: '3',
+    traits: [{ id: 'faction_speed_aura', ratePercent: 0.2 }],
+    upgrades: [
+      { level: 2, cost: 55, damage: 0, range: 5, fireRate: 99999 },
+    ],
+  }),
+  alien_acid: def({
+    id: 'alien_acid', name: 'Acid Sprayer', description: 'Short range AoE + armor shred + poison.',
+    faction: 'aliens', damageType: 'physical', cost: 100, damage: 8, range: 2.5, fireRate: 500,
+    color: 0x44bb00, projectileSpeed: 250, projectileColor: 0x66ff00, hotkey: '4',
+    traits: [{ id: 'splash_damage', radius: 40 }, { id: 'armor_shred_on_hit', shredAmount: 1, duration: 3000 }, { id: 'poison_dot', percentPerSec: 0.015, duration: 2500 }],
+    upgrades: [
+      { level: 2, cost: 90, damage: 12, range: 3, fireRate: 450 },
+    ],
+  }),
+  alien_hive_spire: def({
+    id: 'alien_hive_spire', name: 'Hive Spire', description: 'Very fast chain. Chains to 5 targets.',
+    faction: 'aliens', damageType: 'physical', cost: 180, damage: 12, range: 4, fireRate: 400,
+    color: 0x77ee33, projectileSpeed: 450, hotkey: '5',
+    traits: [{ id: 'chain_damage', chainCount: 4, chainRange: 80, falloff: 0.8 }],
+    upgrades: [
+      { level: 2, cost: 150, damage: 18, range: 4.5, fireRate: 350 },
+      { level: 3, cost: 250, damage: 26, range: 5, fireRate: 300 },
+    ],
+  }),
+  alien_overmind: def({
+    id: 'alien_overmind', name: 'Overmind', description: 'ULTIMATE. Extreme fire rate. Buffs all aliens nearby.',
+    faction: 'aliens', damageType: 'physical', cost: 700, damage: 15, range: 5, fireRate: 150,
+    color: 0xccff88, projectileSpeed: 500, hotkey: '6', ultimate: true,
+    traits: [{ id: 'direct_damage' }, { id: 'faction_speed_aura', ratePercent: 0.3 }],
+  }),
+
+  // ================================================================
+  // CYPHERPUNK (7) — Digital warfare. Hacking, viruses, firewalls.
+  // ================================================================
+  cyber_ping: def({
+    id: 'cyber_ping', name: 'Ping', description: 'Cheap. Very long range, low damage.',
+    faction: 'cypherpunk', damageType: 'magic', cost: 15, damage: 5, range: 8, fireRate: 900,
+    color: 0x00ffcc, projectileSpeed: 500, hotkey: '1',
+    upgrades: [
+      { level: 2, cost: 20, damage: 8, range: 9, fireRate: 800 },
+      { level: 3, cost: 40, damage: 13, range: 10, fireRate: 700 },
+    ],
+  }),
+  cyber_firewall: def({
+    id: 'cyber_firewall', name: 'Firewall', description: 'No attack. Links to another Firewall. Beam damages creeps crossing.',
+    faction: 'cypherpunk', damageType: 'magic', cost: 35, damage: 0, range: 8, fireRate: 99999,
+    color: 0x0088aa, projectileSpeed: 0, hotkey: '2',
+    traits: [{ id: 'firewall_link', linkRange: 8, dps: 20 }],
+    upgrades: [
+      { level: 2, cost: 40, damage: 0, range: 10, fireRate: 99999 },
+    ],
+  }),
+  cyber_virus: def({
+    id: 'cyber_virus', name: 'Virus', description: 'Infects target. Spreads to nearby creeps as DoT.',
+    faction: 'cypherpunk', damageType: 'magic', cost: 55, damage: 8, range: 4, fireRate: 1200,
+    color: 0x00dd88, projectileSpeed: 350, projectileColor: 0x00ff88, hotkey: '3',
+    traits: [{ id: 'direct_damage' }, { id: 'virus_spread', dps: 10, duration: 4000, spreadRange: 2 }],
+    upgrades: [
+      { level: 2, cost: 60, damage: 12, range: 4.5, fireRate: 1000 },
+      { level: 3, cost: 100, damage: 18, range: 5, fireRate: 800 },
+    ],
+  }),
+  cyber_backdoor: def({
+    id: 'cyber_backdoor', name: 'Backdoor', description: 'Hacks target — creep walks backward for 1.5s.',
+    faction: 'cypherpunk', damageType: 'magic', cost: 90, damage: 10, range: 5, fireRate: 3000,
+    color: 0x00aaff, projectileSpeed: 400, hotkey: '4',
+    traits: [{ id: 'direct_damage' }, { id: 'hack_reverse', duration: 1500 }],
+    upgrades: [
+      { level: 2, cost: 80, damage: 15, range: 5.5, fireRate: 2700 },
+      { level: 3, cost: 130, damage: 22, range: 6, fireRate: 2400 },
+    ],
+  }),
+  cyber_ddos: def({
+    id: 'cyber_ddos', name: 'DDoS', description: 'AoE. Roots all creeps in range for 0.5s periodically.',
+    faction: 'cypherpunk', damageType: 'magic', cost: 150, damage: 15, range: 3.5, fireRate: 2000,
+    color: 0x4488ee, projectileSpeed: 300, hotkey: '5',
+    traits: [{ id: 'splash_damage', radius: 56 }, { id: 'root_on_hit', chance: 1.0, duration: 500 }],
+    upgrades: [
+      { level: 2, cost: 120, damage: 22, range: 4, fireRate: 1800 },
+    ],
+  }),
+  cyber_rootkit: def({
+    id: 'cyber_rootkit', name: 'Rootkit', description: 'Mutes creep abilities in range. Strong armor shred per hit.',
+    faction: 'cypherpunk', damageType: 'magic', cost: 300, damage: 12, range: 5, fireRate: 1000,
+    color: 0x2266aa, projectileSpeed: 350, hotkey: '6',
+    traits: [{ id: 'direct_damage' }, { id: 'mute_mage_aura' }, { id: 'armor_shred_on_hit', shredAmount: 2, duration: 6000 }],
+    upgrades: [
+      { level: 2, cost: 250, damage: 18, range: 5.5, fireRate: 900 },
+    ],
+  }),
+  cyber_zeroday: def({
+    id: 'cyber_zeroday', name: 'Zero Day', description: 'ULTIMATE. Hacks + virus + mutes in massive range.',
+    faction: 'cypherpunk', damageType: 'magic', cost: 800, damage: 30, range: 6, fireRate: 1500,
+    color: 0x00ffff, projectileSpeed: 450, hotkey: '7', ultimate: true,
+    traits: [
+      { id: 'direct_damage' },
+      { id: 'hack_reverse', duration: 2000 },
+      { id: 'virus_spread', dps: 15, duration: 5000, spreadRange: 3 },
+      { id: 'mute_mage_aura' },
+      { id: 'armor_shred_on_hit', shredAmount: 2, duration: 5000 },
+    ],
+  }),
+
+  // ================================================================
+  // INFERNAL (6) — Sacrifice and decay. Power at any price.
+  // ================================================================
+  infernal_imp: def({
+    id: 'infernal_imp', name: 'Imp', description: 'Cheap. Decent damage. Expires after 4 waves.',
+    faction: 'infernal', damageType: 'magic', cost: 10, damage: 14, range: 3, fireRate: 700,
+    color: 0xff4422, projectileSpeed: 350, hotkey: '1',
+    traits: [{ id: 'direct_damage' }, { id: 'expires_after_waves', waves: 4 }],
+  }),
+  infernal_hellfire: def({
+    id: 'infernal_hellfire', name: 'Hellfire', description: 'Strong AoE + burn. Loses 15% damage each wave.',
+    faction: 'infernal', damageType: 'magic', cost: 45, damage: 35, range: 3, fireRate: 1500,
+    color: 0xff6600, projectileSpeed: 250, hotkey: '2',
+    traits: [{ id: 'splash_damage', radius: 48 }, { id: 'burn_dot', dps: 12, duration: 3000 }, { id: 'decay_per_wave', decayPercent: 0.15 }],
+    upgrades: [
+      { level: 2, cost: 50, damage: 55, range: 3.5, fireRate: 1300 },
+    ],
+  }),
+  infernal_soul_drain: def({
+    id: 'infernal_soul_drain', name: 'Soul Drain', description: 'Earns +2g per kill within range.',
+    faction: 'infernal', damageType: 'magic', cost: 70, damage: 18, range: 4, fireRate: 900,
+    color: 0xcc3366, projectileSpeed: 300, hotkey: '3',
+    traits: [{ id: 'direct_damage' }, { id: 'gold_per_kill_range', goldPerKill: 2 }],
+    upgrades: [
+      { level: 2, cost: 65, damage: 28, range: 4.5, fireRate: 800 },
+      { level: 3, cost: 100, damage: 42, range: 5, fireRate: 700 },
+    ],
+  }),
+  infernal_immolate: def({
+    id: 'infernal_immolate', name: 'Immolate', description: 'Strong DPS. Right-click to sacrifice for 2000 AoE damage.',
+    faction: 'infernal', damageType: 'magic', cost: 200, damage: 40, range: 4, fireRate: 800,
+    color: 0xff8800, projectileSpeed: 300, hotkey: '4',
+    traits: [{ id: 'direct_damage' }, { id: 'burn_dot', dps: 15, duration: 3000 }],
+    upgrades: [
+      { level: 2, cost: 160, damage: 65, range: 4.5, fireRate: 700 },
+    ],
+  }),
+  infernal_apocalypse: def({
+    id: 'infernal_apocalypse', name: 'Apocalypse', description: 'ULTIMATE. Massive burn AoE. Sacrifice for 8000 damage.',
+    faction: 'infernal', damageType: 'magic', cost: 900, damage: 80, range: 5, fireRate: 1000,
+    color: 0xff2200, projectileSpeed: 300, hotkey: '5', ultimate: true,
+    traits: [
+      { id: 'splash_damage', radius: 80 },
+      { id: 'burn_dot', dps: 30, duration: 5000 },
+      { id: 'damage_amp_on_hit', ampAmount: 0.25, duration: 4000 },
+    ],
+  }),
+
+  // ================================================================
+  // CELESTIAL (5) — Holy protection. Gain lives, block leaks, mute mages.
+  // ================================================================
+  celestial_acolyte: def({
+    id: 'celestial_acolyte', name: 'Acolyte', description: 'Light damage. 5% chance on nearby kill to gain +1 life.',
+    faction: 'celestial', damageType: 'magic', cost: 25, damage: 10, range: 3.5, fireRate: 800,
+    color: 0xffffaa, projectileSpeed: 350, hotkey: '1',
+    traits: [{ id: 'direct_damage' }, { id: 'life_on_kill', chance: 0.05 }],
+    upgrades: [
+      { level: 2, cost: 30, damage: 16, range: 4, fireRate: 700 },
+      { level: 3, cost: 55, damage: 24, range: 4.5, fireRate: 600 },
+    ],
+  }),
+  celestial_ward: def({
+    id: 'celestial_ward', name: 'Ward', description: 'No attack. Mutes all creep mage abilities in range.',
+    faction: 'celestial', damageType: 'magic', cost: 40, damage: 0, range: 4, fireRate: 99999,
+    color: 0xffddaa, projectileSpeed: 0, hotkey: '2',
+    traits: [{ id: 'mute_mage_aura' }],
+    upgrades: [
+      { level: 2, cost: 45, damage: 0, range: 5, fireRate: 99999 },
+      { level: 3, cost: 80, damage: 0, range: 6, fireRate: 99999 },
+    ],
+  }),
+  celestial_smite: def({
+    id: 'celestial_smite', name: 'Smite', description: 'High damage. +50% vs bosses and shielded creeps.',
+    faction: 'celestial', damageType: 'magic', cost: 80, damage: 45, range: 5, fireRate: 1800,
+    color: 0xffeecc, projectileSpeed: 400, hotkey: '3',
+    traits: [{ id: 'direct_damage' }, { id: 'bonus_vs_boss', bonus: 0.5 }],
+    upgrades: [
+      { level: 2, cost: 90, damage: 70, range: 5.5, fireRate: 1600 },
+      { level: 3, cost: 150, damage: 110, range: 6, fireRate: 1400 },
+    ],
+  }),
+  celestial_sanctuary: def({
+    id: 'celestial_sanctuary', name: 'Sanctuary', description: 'Absorbs 1 leaked creep. Recharges every 10 waves.',
+    faction: 'celestial', damageType: 'magic', cost: 150, damage: 15, range: 4, fireRate: 1000,
+    color: 0xffffff, projectileSpeed: 350, hotkey: '4',
+    traits: [{ id: 'direct_damage' }, { id: 'leak_absorb', maxCharges: 1, rechargeWaves: 10 }],
+    upgrades: [
+      { level: 2, cost: 120, damage: 25, range: 4.5, fireRate: 900 },
+    ],
+  }),
+  celestial_absolution: def({
+    id: 'celestial_absolution', name: 'Absolution', description: 'ULTIMATE. Huge holy AoE. 10% life gain on kill. Mutes mages.',
+    faction: 'celestial', damageType: 'magic', cost: 600, damage: 60, range: 5, fireRate: 1200,
+    color: 0xfff8e0, projectileSpeed: 350, hotkey: '5', ultimate: true,
+    traits: [
+      { id: 'splash_damage', radius: 72 },
+      { id: 'life_on_kill', chance: 0.10 },
+      { id: 'mute_mage_aura' },
+      { id: 'bonus_vs_boss', bonus: 0.3 },
+    ],
+  }),
+
+  // ================================================================
+  // PSIONIC (5) — True damage. Confusion. Mind over matter.
+  // ================================================================
+  psi_probe: def({
+    id: 'psi_probe', name: 'Probe', description: 'Cheap true damage. Ignores all armor.',
+    faction: 'psionic', damageType: 'magic', cost: 20, damage: 8, range: 3, fireRate: 700,
+    color: 0xdd88ff, projectileSpeed: 350, hotkey: '1',
+    traits: [{ id: 'true_damage' }],
+    upgrades: [
+      { level: 2, cost: 25, damage: 14, range: 3.5, fireRate: 650 },
+      { level: 3, cost: 50, damage: 22, range: 4, fireRate: 580 },
+    ],
+  }),
+  psi_mesmer: def({
+    id: 'psi_mesmer', name: 'Mesmer', description: 'Confuses target — walks backward for 1.2s.',
+    faction: 'psionic', damageType: 'magic', cost: 45, damage: 6, range: 4, fireRate: 2500,
+    color: 0xcc66ff, projectileSpeed: 300, hotkey: '2',
+    traits: [{ id: 'true_damage' }, { id: 'confuse_on_hit', duration: 1200 }],
+    upgrades: [
+      { level: 2, cost: 50, damage: 10, range: 4.5, fireRate: 2200 },
+      { level: 3, cost: 90, damage: 16, range: 5, fireRate: 1900 },
+    ],
+  }),
+  psi_terror: def({
+    id: 'psi_terror', name: 'Terror', description: 'Fear aura: 50% slow field. Plus true damage.',
+    faction: 'psionic', damageType: 'magic', cost: 80, damage: 12, range: 3.5, fireRate: 900,
+    color: 0xbb44ee, projectileSpeed: 300, hotkey: '3',
+    traits: [{ id: 'true_damage' }, { id: 'slow_aura', factor: 0.5 }],
+    upgrades: [
+      { level: 2, cost: 75, damage: 20, range: 4, fireRate: 800 },
+    ],
+  }),
+  psi_mind_spike: def({
+    id: 'psi_mind_spike', name: 'Mind Spike', description: 'Long range true damage. +50% vs mage creeps.',
+    faction: 'psionic', damageType: 'magic', cost: 150, damage: 55, range: 7, fireRate: 2500,
+    color: 0xaa22dd, projectileSpeed: 500, hotkey: '4',
+    traits: [{ id: 'true_damage' }, { id: 'bonus_vs_mage', bonus: 0.5 }],
+    upgrades: [
+      { level: 2, cost: 130, damage: 85, range: 8, fireRate: 2200 },
+      { level: 3, cost: 200, damage: 130, range: 9, fireRate: 1900 },
+    ],
+  }),
+  psi_overmind: def({
+    id: 'psi_overmind', name: 'Overmind', description: 'ULTIMATE. Mass confusion + massive true damage pulse.',
+    faction: 'psionic', damageType: 'magic', cost: 750, damage: 100, range: 5, fireRate: 2000,
+    color: 0x9900ff, projectileSpeed: 400, hotkey: '5', ultimate: true,
+    traits: [
+      { id: 'splash_damage', radius: 80 },
+      { id: 'confuse_on_hit', duration: 2000 },
+      { id: 'bonus_vs_mage', bonus: 1.0 },
+    ],
+  }),
 };
 
 export const TOWER_ORDER = ['arrow', 'cannon', 'sniper', 'slow'];

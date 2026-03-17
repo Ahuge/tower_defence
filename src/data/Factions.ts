@@ -1,4 +1,4 @@
-export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'random';
+export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'random';
 
 export interface Faction {
   id: FactionId;
@@ -50,6 +50,46 @@ export const FACTIONS: Record<FactionId, Faction> = {
     secondaryColor: 0x8fbc8f,
     towerIds: ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander'],
   },
+  aliens: {
+    id: 'aliens',
+    name: 'Spawn Aliens',
+    description: 'The hive hungers. Cheap, fast, overwhelming swarms.',
+    primaryColor: 0x88ff44,
+    secondaryColor: 0xaaff66,
+    towerIds: ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_overmind'],
+  },
+  cypherpunk: {
+    id: 'cypherpunk',
+    name: 'Cypherpunk',
+    description: 'Everything is data. Hack, infect, and rewrite reality.',
+    primaryColor: 0x00ffcc,
+    secondaryColor: 0x44ffdd,
+    towerIds: ['cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor', 'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday'],
+  },
+  infernal: {
+    id: 'infernal',
+    name: 'Infernal',
+    description: 'Power at any price. Towers decay, expire, or sacrifice.',
+    primaryColor: 0xff4422,
+    secondaryColor: 0xff8844,
+    towerIds: ['infernal_imp', 'infernal_hellfire', 'infernal_soul_drain', 'infernal_immolate', 'infernal_apocalypse'],
+  },
+  celestial: {
+    id: 'celestial',
+    name: 'Celestial',
+    description: 'The light endures. Gain lives, block leaks, silence mages.',
+    primaryColor: 0xffffaa,
+    secondaryColor: 0xffffff,
+    towerIds: ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_sanctuary', 'celestial_absolution'],
+  },
+  psionic: {
+    id: 'psionic',
+    name: 'Psionic',
+    description: 'Your thoughts betray you. True damage ignoring all armor.',
+    primaryColor: 0xdd88ff,
+    secondaryColor: 0xee99ff,
+    towerIds: ['psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike', 'psi_overmind'],
+  },
   random: {
     id: 'random',
     name: 'Random',
@@ -60,7 +100,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
   },
 };
 
-export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'random'];
+export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'random'];
 
 export function getFaction(id: FactionId): Faction {
   return FACTIONS[id];

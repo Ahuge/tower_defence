@@ -29,18 +29,23 @@ export class FactionSelectScene extends Phaser.Scene {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const cardW = 170;
-    const cardH = 340;
-    const gap = 8;
+    const cardW = 140;
+    const cardH = 280;
+    const gap = 6;
     const factions = FACTION_ORDER;
-    const totalW = factions.length * cardW + (factions.length - 1) * gap;
-    const startX = cx - totalW / 2;
+    const cols = 6;
+    const rows = Math.ceil(factions.length / cols);
 
     for (let i = 0; i < factions.length; i++) {
       const factionId = factions[i];
       const faction = FACTIONS[factionId];
-      const x = startX + i * (cardW + gap);
-      const y = 65;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const rowCount = row < rows - 1 ? cols : factions.length - (rows - 1) * cols;
+      const rowW = rowCount * cardW + (rowCount - 1) * gap;
+      const rowStartX = cx - rowW / 2;
+      const x = rowStartX + col * (cardW + gap);
+      const y = 55 + row * (cardH + gap);
 
       const card = this.add.graphics();
       card.fillStyle(0x222222, 1);

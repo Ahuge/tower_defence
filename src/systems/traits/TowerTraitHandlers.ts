@@ -522,3 +522,228 @@ registerTowerUpdate('_spell_amp_buff', (trait: Trait, _tower: any, ctx: UpdateCo
 registerTowerUpdate('_overclock_buff', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
 });
+
+// ============================================================
+// NEW FACTION TRAITS
+// ============================================================
+
+// --- True Damage delivery (Psionic — bypasses armor) ---
+registerDelivery('true_damage', (_trait: Trait, ctx: HitContext) => {
+  ctx.target.takeDamage(ctx.damage);
+  ctx.hitTargets.push(ctx.target);
+  ctx.hitStats.directDamage += ctx.damage;
+});
+
+// --- Confuse on hit (Psionic — creep walks backward) ---
+registerHitEffect('confuse_on_hit', (trait: Trait, ctx: HitContext) => {
+  const duration = levelScale(trait.duration ?? 1200, ctx.towerLevel, 0.1);
+  for (const target of ctx.hitTargets) {
+    (target as any).statusEffects?.apply('confused', duration, 1);
+  }
+});
+
+// --- Bonus vs boss/shielded (Celestial Smite) ---
+registerDamageMod('bonus_vs_boss', (trait: Trait, damage: number, ctx: HitContext) => {
+  const target = ctx.target as any;
+  const isBoss = target.isBoss;
+  const hasShield = target.traits?.some((t: any) => t.id === 'shield' || t.id === 'damage_cap_shield');
+  if (isBoss || hasShield) {
+    return Math.round(damage * (1 + (trait.bonus ?? 0.5)));
+  }
+  return damage;
+});
+
+// --- Bonus vs mage creeps (Psionic Mind Spike) ---
+registerDamageMod('bonus_vs_mage', (trait: Trait, damage: number, ctx: HitContext) => {
+  const target = ctx.target as any;
+  const isMage = target.creepType?.id?.includes('mage');
+  if (isMage) {
+    return Math.round(damage * (1 + (trait.bonus ?? 0.5)));
+  }
+  return damage;
+});
+
+// --- Life on kill (Celestial — chance to gain life) ---
+registerTowerUpdate('life_on_kill', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  // Check for recently dead creeps near tower
+  const chance = trait.chance ?? 0.05;
+  const range = tower.range || (TILE_SIZE * 5);
+  for (const creep of ctx.allCreeps) {
+    if (creep.alive || creep.reached || creep.hp > -900) continue;
+    const dx = creep.x - tower.x;
+    const dy = creep.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      if (Math.random() < chance) {
+        // Signal to GameScene via a special flag on tower
+        tower._livesEarned = (tower._livesEarned ?? 0) + 1;
+      }
+    }
+  }
+});
+
+// --- Mute mage aura (Celestial Ward / Cypherpunk Rootkit) ---
+registerTowerUpdate('mute_mage_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const range = tower.range || (TILE_SIZE * 4);
+  for (const creep of ctx.allCreeps) {
+    if (!creep.alive || creep.reached) continue;
+    const dx = creep.x - tower.x;
+    const dy = creep.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      creep.statusEffects?.apply('muted', 200, 1);
+    }
+  }
+});
+
+// --- Leak absorb (Celestial Sanctuary) ---
+registerTowerUpdate('leak_absorb', (trait: Trait, _tower: any, _ctx: UpdateContext) => {
+  // State managed by GameScene checking tower._leakCharges
+  if (trait._charges === undefined) {
+    trait._charges = trait.maxCharges ?? 1;
+    trait._rechargeTimer = 0;
+  }
+  // Recharge over waves (handled externally)
+});
+
+// --- Firewall link (Cypherpunk — damage beam between two firewalls) ---
+registerTowerUpdate('firewall_link', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const linkRange = (trait.linkRange ?? 8) * TILE_SIZE;
+  const dps = trait.dps ?? 15;
+  const damage = dps * (ctx.delta / 1000);
+
+  // Find partner if not linked
+  if (!trait._partnerCol && trait._partnerCol !== 0) {
+    for (const other of ctx.allTowers) {
+      if (other === tower) continue;
+      const otherTrait = other.traits?.find((t: any) => t.id === 'firewall_link');
+      if (!otherTrait) continue;
+      if (otherTrait._partnerCol !== undefined) continue; // already linked
+      const dx = other.x - tower.x;
+      const dy = other.y - tower.y;
+      if (Math.sqrt(dx * dx + dy * dy) <= linkRange) {
+        trait._partnerCol = other.col;
+        trait._partnerRow = other.row;
+        trait._partnerX = other.x;
+        trait._partnerY = other.y;
+        otherTrait._partnerCol = tower.col;
+        otherTrait._partnerRow = tower.row;
+        otherTrait._partnerX = tower.x;
+        otherTrait._partnerY = tower.y;
+        break;
+      }
+    }
+  }
+
+  if (trait._partnerX === undefined) return;
+
+  // Draw beam and damage creeps crossing it
+  const ax = tower.x, ay = tower.y;
+  const bx = trait._partnerX, by = trait._partnerY;
+  const beamLen = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
+  if (beamLen === 0) return;
+  const nx = (bx - ax) / beamLen;
+  const ny = (by - ay) / beamLen;
+
+  for (const creep of ctx.allCreeps) {
+    if (!creep.alive || creep.reached) continue;
+    const cx = creep.x - ax;
+    const cy = creep.y - ay;
+    const proj = cx * nx + cy * ny;
+    if (proj < 0 || proj > beamLen) continue;
+    const perpX = cx - proj * nx;
+    const perpY = cy - proj * ny;
+    const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
+    if (perpDist <= TILE_SIZE * 0.6) {
+      creep.takeDamage(Math.round(damage));
+      tower.damageDealt += Math.round(damage);
+    }
+  }
+
+  // Visual beam drawn in Tower.drawTower
+});
+
+// --- Virus spread (Cypherpunk — DoT that chains to nearby) ---
+registerHitEffect('virus_spread', (trait: Trait, ctx: HitContext) => {
+  const dps = trait.dps ?? 10;
+  const duration = trait.duration ?? 4000;
+  const spreadRange = (trait.spreadRange ?? 2) * TILE_SIZE;
+  for (const target of ctx.hitTargets) {
+    (target as any).statusEffects?.apply('virus', duration, dps);
+    // Spread to nearby
+    for (const other of ctx.allTargets) {
+      if (other === target || !other.alive || other.reached) continue;
+      const dx = other.x - target.x;
+      const dy = other.y - target.y;
+      if (Math.sqrt(dx * dx + dy * dy) <= spreadRange) {
+        (other as any).statusEffects?.apply('virus', duration * 0.7, dps * 0.7);
+      }
+    }
+  }
+});
+
+// --- Hack reverse (Cypherpunk Backdoor — creep walks backward) ---
+registerHitEffect('hack_reverse', (trait: Trait, ctx: HitContext) => {
+  const duration = levelScale(trait.duration ?? 1500, ctx.towerLevel, 0.15);
+  for (const target of ctx.hitTargets) {
+    (target as any).statusEffects?.apply('confused', duration, 1);
+  }
+});
+
+// --- Disable abilities (Cypherpunk Rootkit) ---
+// Same as mute_mage_aura — reuse that handler
+
+// --- Expires after waves (Infernal Imp) ---
+registerTowerUpdate('expires_after_waves', (trait: Trait, tower: any, _ctx: UpdateContext) => {
+  // Wave counting handled by GameScene on wave clear
+  // This trait stores _wavesRemaining
+  if (trait._wavesRemaining !== undefined && trait._wavesRemaining <= 0) {
+    tower._expired = true;
+  }
+});
+
+// --- Decay per wave (Infernal Hellfire) ---
+// Damage reduction handled by GameScene on wave clear
+registerTowerUpdate('decay_per_wave', (_trait: Trait, _tower: any, _ctx: UpdateContext) => {
+  // No per-frame action — decay applied on wave clear in GameScene
+});
+
+// --- Gold per kill in range (Infernal Soul Drain) ---
+registerTowerUpdate('gold_per_kill_range', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const goldPerKill = trait.goldPerKill ?? 2;
+  const range = tower.range || (TILE_SIZE * 4);
+  for (const creep of ctx.allCreeps) {
+    if (creep.alive || creep.reached || creep.hp > -900) continue;
+    const dx = creep.x - tower.x;
+    const dy = creep.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      tower.goldEarned += goldPerKill;
+    }
+  }
+});
+
+// --- Faction speed aura (Spawn Aliens — buff same-faction towers) ---
+registerTowerUpdate('faction_speed_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const rateBonus = trait.ratePercent ?? 0.2;
+  const range = tower.range || (TILE_SIZE * 4);
+  const faction = tower.typeDef?.faction;
+  if (!faction) return;
+
+  for (const other of ctx.allTowers) {
+    if (other === tower || other.typeDef?.faction !== faction) continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      addOrRefreshTrait(other.traits, {
+        id: '_faction_rate_buff',
+        bonus: rateBonus * tower.level,
+        _ttl: 200,
+      });
+    }
+  }
+});
+
+registerFireRateMod('_faction_rate_buff', (trait: Trait, rate: number, _tower: any) => {
+  return Math.round(rate * (1 - (trait.bonus ?? 0)));
+});
+registerTowerUpdate('_faction_rate_buff', (trait: Trait, _tower: any, ctx: UpdateContext) => {
+  trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+});

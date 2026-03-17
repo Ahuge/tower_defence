@@ -87,12 +87,36 @@ export class Creep {
     // Speed (slow + root)
     this.speed = this.baseSpeed * this.statusEffects.getSlowFactor();
 
-    // Trait updates (heal_aura, etc.)
-    resolveCreepUpdates(this.traits, this, delta, nearbyCreeps ?? []);
+    // Trait updates (heal_aura, etc.) — suppressed when muted
+    if (!this.statusEffects.isMuted()) {
+      resolveCreepUpdates(this.traits, this, delta, nearbyCreeps ?? []);
+    }
 
     if (this.pathIndex >= this.path.length) {
       this.reached = true;
       this.graphics.destroy();
+      return;
+    }
+
+    // Confused: walk backward along path
+    const confused = this.statusEffects.isConfused();
+    if (confused && this.pathIndex > 1) {
+      const prev = this.path[this.pathIndex - 2];
+      const bx = gridX(prev.col);
+      const by = gridY(prev.row);
+      const bdx = bx - this.x;
+      const bdy = by - this.y;
+      const bdist = Math.sqrt(bdx * bdx + bdy * bdy);
+      const move = this.speed * (delta / 1000);
+      if (bdist <= move) {
+        this.x = bx;
+        this.y = by;
+        this.pathIndex = Math.max(1, this.pathIndex - 1);
+      } else if (bdist > 0) {
+        this.x += (bdx / bdist) * move;
+        this.y += (bdy / bdist) * move;
+      }
+      this.draw();
       return;
     }
 
@@ -155,7 +179,9 @@ export class Creep {
 
     // Body color based on status
     let bodyColor = this.color;
-    if (this.statusEffects.has('root')) bodyColor = 0xffffff;
+    if (this.statusEffects.has('confused')) bodyColor = 0xff00ff;
+    else if (this.statusEffects.has('root')) bodyColor = 0xffffff;
+    else if (this.statusEffects.has('virus')) bodyColor = 0x00ff88;
     else if (this.statusEffects.has('burn')) bodyColor = 0xff6622;
     else if (this.statusEffects.has('poison')) bodyColor = 0x44cc22;
     else if (this.statusEffects.has('slow')) bodyColor = 0x6688cc;

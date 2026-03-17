@@ -47,17 +47,27 @@ export class StatusEffectManager {
     return factor;
   }
 
-  /** Total DoT damage this frame (flat burn + % poison) */
+  /** Total DoT damage this frame (flat burn + % poison + virus) */
   getDotDamage(delta: number, maxHp: number): number {
     let total = 0;
     for (const e of this.effects) {
-      if (e.type === 'burn') {
-        total += e.magnitude * (delta / 1000); // magnitude = damage per second
+      if (e.type === 'burn' || e.type === 'virus') {
+        total += e.magnitude * (delta / 1000);
       } else if (e.type === 'poison') {
-        total += maxHp * e.magnitude * (delta / 1000); // magnitude = fraction per second
+        total += maxHp * e.magnitude * (delta / 1000);
       }
     }
     return Math.round(total);
+  }
+
+  /** Is this creep confused (walking backward)? */
+  isConfused(): boolean {
+    return this.has('confused');
+  }
+
+  /** Are this creep's abilities muted? */
+  isMuted(): boolean {
+    return this.has('muted');
   }
 
   /** Number of armor tiers to reduce (heavy→medium→light) */

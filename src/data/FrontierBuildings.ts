@@ -81,6 +81,36 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
       mechanic: 'steady',
     },
   ],
+  aliens: [
+    { id: 'spawning_pool', name: 'Spawning Pool', faction: 'aliens', cost: 35, baseIncome: 3,
+      description: 'Organic income. Grows +2 per wave.', mechanic: 'grow' },
+    { id: 'hive_cluster', name: 'Hive Cluster', faction: 'aliens', cost: 90, baseIncome: 7,
+      description: 'Larger hive. Faster growth.', mechanic: 'grow' },
+  ],
+  cypherpunk: [
+    { id: 'crypto_mine', name: 'Crypto Mine', faction: 'cypherpunk', cost: 40, baseIncome: 0,
+      description: 'Mines crypto: 0-20g per wave. Volatile.', mechanic: 'gamble' },
+    { id: 'data_center', name: 'Data Center', faction: 'cypherpunk', cost: 100, baseIncome: 8,
+      description: 'Steady data income.', mechanic: 'steady' },
+  ],
+  infernal: [
+    { id: 'soul_well', name: 'Soul Well', faction: 'infernal', cost: 30, baseIncome: 0,
+      description: 'Souls gamble: 0-25g per wave. Chaotic.', mechanic: 'gamble' },
+    { id: 'demon_forge', name: 'Demon Forge', faction: 'infernal', cost: 80, baseIncome: 5,
+      description: 'Overcharge for 3x burst, dormant 2 waves.', mechanic: 'overcharge' },
+  ],
+  celestial: [
+    { id: 'temple', name: 'Temple', faction: 'celestial', cost: 50, baseIncome: 5,
+      description: 'Steady holy income.', mechanic: 'steady' },
+    { id: 'cathedral', name: 'Cathedral', faction: 'celestial', cost: 120, baseIncome: 11,
+      description: 'Greater temple. Reliable.', mechanic: 'steady' },
+  ],
+  psionic: [
+    { id: 'mind_nexus', name: 'Mind Nexus', faction: 'psionic', cost: 45, baseIncome: 4,
+      description: 'Dig deeper into minds. +1/wave but 10% collapse risk.', mechanic: 'dig' },
+    { id: 'psi_amplifier', name: 'Psi Amplifier', faction: 'psionic', cost: 100, baseIncome: 8,
+      description: 'Lower risk dig. Better base.', mechanic: 'dig' },
+  ],
   random: [],
 };
 
