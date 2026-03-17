@@ -14,6 +14,7 @@ export class SendManager {
   private queuedSends: QueuedSend[] = [];
   private spawnQueue: { creepType: string; hp: number; speed: number }[] = [];
   private spawnTimer: number = 0;
+  private spawnInterval: number = 150;
 
   constructor(scene: Phaser.Scene, events: EventBus) {
     this.scene = scene;
@@ -40,6 +41,17 @@ export class SendManager {
     }
     this.queuedSends = [];
     this.spawnTimer = 0;
+
+    // Scale interval: more sends = faster spawning, minimum 50ms
+    // Base 150ms, but if 20+ creeps queued, batch them out quickly
+    const count = this.spawnQueue.length;
+    if (count <= 5) {
+      this.spawnInterval = 200;
+    } else if (count <= 15) {
+      this.spawnInterval = 120;
+    } else {
+      this.spawnInterval = Math.max(50, Math.round(3000 / count));
+    }
   }
 
   update(delta: number, currentPath: PathPoint[] | null, creeps: Creep[]): void {
@@ -47,17 +59,21 @@ export class SendManager {
 
     this.spawnTimer -= delta;
     if (this.spawnTimer <= 0) {
-      const entry = this.spawnQueue.shift()!;
-      const creep = new Creep(
-        this.scene,
-        [...currentPath],
-        entry.hp,
-        entry.speed,
-        false,
-        entry.creepType,
-      );
-      creeps.push(creep);
-      this.spawnTimer = 400; // send creeps slightly faster
+      // Spawn a batch if many are queued
+      const batchSize = this.spawnQueue.length > 20 ? 3 : this.spawnQueue.length > 10 ? 2 : 1;
+      for (let b = 0; b < batchSize && this.spawnQueue.length > 0; b++) {
+        const entry = this.spawnQueue.shift()!;
+        const creep = new Creep(
+          this.scene,
+          [...currentPath],
+          entry.hp,
+          entry.speed,
+          false,
+          entry.creepType,
+        );
+        creeps.push(creep);
+      }
+      this.spawnTimer = this.spawnInterval;
     }
   }
 
