@@ -1,6 +1,8 @@
 import { SIDEBAR_WIDTH } from '../config';
 import { SEND_OPTIONS, SendCreepOption } from '../data/SendCreepTypes';
 
+const SEND_HOTKEYS = ['Z', 'X', 'C', 'V'];
+
 export class SendPanel {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
@@ -14,6 +16,7 @@ export class SendPanel {
     this.container = scene.add.container(0, 0).setDepth(28);
 
     this.buildPanel();
+    this.registerHotkeys();
   }
 
   private buildPanel(): void {
@@ -39,18 +42,31 @@ export class SendPanel {
 
     for (let i = 0; i < SEND_OPTIONS.length; i++) {
       const opt = SEND_OPTIONS[i];
+      const hotkey = SEND_HOTKEYS[i] || '';
       const y = 24 + i * 17;
 
-      const text = this.scene.add.text(8, y, `${opt.name} (${opt.cost}g) +${opt.incomeReward}/w`, {
+      const label = hotkey
+        ? `[${hotkey}] ${opt.name} (${opt.cost}g) +${opt.incomeReward}/w`
+        : `${opt.name} (${opt.cost}g) +${opt.incomeReward}/w`;
+
+      const text = this.scene.add.text(8, y, label, {
         fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
       });
 
-      // Add to container FIRST, then set interactive
       this.container.add(text);
       text.setInteractive({ useHandCursor: true });
       text.on('pointerdown', () => this.onSend(opt));
       text.on('pointerover', () => text.setColor('#ffffff'));
       text.on('pointerout', () => text.setColor('#cccccc'));
+    }
+  }
+
+  private registerHotkeys(): void {
+    for (let i = 0; i < SEND_OPTIONS.length && i < SEND_HOTKEYS.length; i++) {
+      const opt = SEND_OPTIONS[i];
+      this.scene.input.keyboard!.on(`keydown-${SEND_HOTKEYS[i]}`, () => {
+        this.onSend(opt);
+      });
     }
   }
 }
