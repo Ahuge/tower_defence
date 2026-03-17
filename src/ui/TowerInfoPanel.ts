@@ -48,17 +48,27 @@ export class TowerInfoPanel {
       `DMG: ${baseDmg}  RNG: ${baseRange.toFixed(1)}  SPD: ${baseRate}ms  [${tower.damageType}]`
     );
 
-    // Aura buff display
+    // Aura buff display — adjacency, harmonic, faction, spell amp, overclock
     const adjDmg = getTrait(tower.traits, '_adj_damage_buff');
     const adjRate = getTrait(tower.traits, '_adj_rate_buff');
     const spellAmp = getTrait(tower.traits, '_spell_amp_buff');
     const overclock = getTrait(tower.traits, '_overclock_buff');
+    const harmDmg = getTrait(tower.traits, '_harmonic_damage');
+    const harmRate = getTrait(tower.traits, '_harmonic_rate');
+    const harmRange = getTrait(tower.traits, '_harmonic_range');
+    const harmCrit = getTrait(tower.traits, '_harmonic_crit');
+    const factionRate = getTrait(tower.traits, '_faction_rate_buff');
     const buffs: string[] = [];
 
-    if (adjDmg && adjDmg.bonus > 0) buffs.push(`+${adjDmg.bonus} DMG (aura)`);
-    if (adjRate && adjRate.bonus > 0) buffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD (aura)`);
-    if (spellAmp && spellAmp.bonus > 0) buffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic (amp)`);
-    if (overclock && overclock.bonus > 0) buffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (overclock)`);
+    if (adjDmg && adjDmg.bonus > 0) buffs.push(`+${adjDmg.bonus} DMG (adj)`);
+    if (adjRate && adjRate.bonus > 0) buffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD (adj)`);
+    if (harmDmg && harmDmg.bonus > 0) buffs.push(`+${Math.round(harmDmg.bonus * 100)}% DMG`);
+    if (harmRate && harmRate.bonus > 0) buffs.push(`-${Math.round(harmRate.bonus * 100)}% SPD`);
+    if (harmRange && harmRange.bonus > 0) buffs.push(`+${(harmRange.bonus / TILE_SIZE).toFixed(1)} RNG`);
+    if (harmCrit && (harmCrit.chance ?? 0) > 0) buffs.push(`${Math.round((harmCrit.chance ?? 0) * 100)}% crit`);
+    if (factionRate && factionRate.bonus > 0) buffs.push(`-${Math.round(factionRate.bonus * 100)}% SPD (faction)`);
+    if (spellAmp && spellAmp.bonus > 0) buffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic`);
+    if (overclock && overclock.bonus > 0) buffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (OC)`);
     this.buffText.setText(buffs.length > 0 ? buffs.join('  ') : '');
 
     // Trait summary

@@ -119,10 +119,26 @@ export class MenuScene extends Phaser.Scene {
       fontSize: '13px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
+    // Encyclopedia + Changelog buttons
+    const bottomRowY = 490;
+    const encBtn = this.add.text(cx - 120, bottomRowY, '[ Encyclopedia ]', {
+      fontSize: '13px', color: '#88aacc', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    encBtn.on('pointerdown', () => this.scene.start('EncyclopediaScene'));
+    encBtn.on('pointerover', () => encBtn.setColor('#bbddff'));
+    encBtn.on('pointerout', () => encBtn.setColor('#88aacc'));
+
+    const logBtn = this.add.text(cx + 120, bottomRowY, '[ Changelog ]', {
+      fontSize: '13px', color: '#88aacc', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    logBtn.on('pointerdown', () => this.scene.start('ChangelogScene'));
+    logBtn.on('pointerover', () => logBtn.setColor('#bbddff'));
+    logBtn.on('pointerout', () => logBtn.setColor('#88aacc'));
+
     // Version SHA
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
     this.add.text(CANVAS_WIDTH - 8, totalH - 8, `v${__GIT_SHA__}`, {
-      fontSize: '9px', color: '#444444', fontFamily: 'monospace',
+      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(1, 1);
 
     for (const m of modes) {

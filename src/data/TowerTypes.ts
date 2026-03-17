@@ -741,7 +741,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   harmonic_amplifier: def({
     id: 'harmonic_amplifier', name: 'Amplifier', description: 'No attack. +20% damage to towers in range. Stacks.',
     faction: 'harmonic', damageType: 'magic', cost: 30, damage: 0, range: 4, fireRate: 99999,
-    color: 0xffdd66, projectileSpeed: 0, hotkey: '2',
+    color: 0xff6644, projectileSpeed: 0, hotkey: '2',
     traits: [{ id: 'damage_aura', percent: 0.2 }],
     upgrades: [
       { level: 2, cost: 35, damage: 0, range: 4.5, fireRate: 99999 },
@@ -751,7 +751,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   harmonic_quickener: def({
     id: 'harmonic_quickener', name: 'Quickener', description: 'No attack. +15% fire rate to towers in range.',
     faction: 'harmonic', damageType: 'magic', cost: 40, damage: 0, range: 4, fireRate: 99999,
-    color: 0xeecc55, projectileSpeed: 0, hotkey: '3',
+    color: 0x44ee44, projectileSpeed: 0, hotkey: '3',
     traits: [{ id: 'rate_aura', percent: 0.15 }],
     upgrades: [
       { level: 2, cost: 45, damage: 0, range: 4.5, fireRate: 99999 },
@@ -760,7 +760,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   harmonic_reach: def({
     id: 'harmonic_reach', name: 'Reach', description: 'No attack. +1.5 tile range to towers in range.',
     faction: 'harmonic', damageType: 'magic', cost: 50, damage: 0, range: 4, fireRate: 99999,
-    color: 0xddbb44, projectileSpeed: 0, hotkey: '4',
+    color: 0x4488ff, projectileSpeed: 0, hotkey: '4',
     traits: [{ id: 'range_aura', tiles: 1.5 }],
     upgrades: [
       { level: 2, cost: 55, damage: 0, range: 5, fireRate: 99999 },
@@ -769,7 +769,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   harmonic_critical_mass: def({
     id: 'harmonic_critical_mass', name: 'Critical Mass', description: 'No attack. Grants 15% crit (2x) to towers in range.',
     faction: 'harmonic', damageType: 'magic', cost: 80, damage: 0, range: 4, fireRate: 99999,
-    color: 0xccaa33, projectileSpeed: 0, hotkey: '5',
+    color: 0xff44ff, projectileSpeed: 0, hotkey: '5',
     traits: [{ id: 'crit_aura', chance: 0.15, multiplier: 2 }],
     upgrades: [
       { level: 2, cost: 75, damage: 0, range: 5, fireRate: 99999 },

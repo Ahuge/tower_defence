@@ -143,10 +143,21 @@ export class Tower {
       }
     }
 
-    // Harmonic aura range indicator (for aura towers)
-    if (hasTrait(this.traits, 'damage_aura') || hasTrait(this.traits, 'rate_aura') ||
-        hasTrait(this.traits, 'range_aura') || hasTrait(this.traits, 'crit_aura')) {
-      this.graphics.lineStyle(1, 0xffcc44, 0.15);
+    // Harmonic aura range indicators (each type has distinct color)
+    if (hasTrait(this.traits, 'damage_aura')) {
+      this.graphics.lineStyle(1, 0xff4444, 0.2); // red
+      this.graphics.strokeCircle(this.x, this.y, this.range);
+    }
+    if (hasTrait(this.traits, 'rate_aura')) {
+      this.graphics.lineStyle(1, 0x44ff44, 0.2); // green
+      this.graphics.strokeCircle(this.x, this.y, this.range);
+    }
+    if (hasTrait(this.traits, 'range_aura')) {
+      this.graphics.lineStyle(1, 0x4488ff, 0.2); // blue
+      this.graphics.strokeCircle(this.x, this.y, this.range);
+    }
+    if (hasTrait(this.traits, 'crit_aura')) {
+      this.graphics.lineStyle(1, 0xff44ff, 0.2); // magenta
       this.graphics.strokeCircle(this.x, this.y, this.range);
     }
   }

@@ -6,6 +6,8 @@ import { DraftScene } from './scenes/DraftScene';
 import { GameScene } from './scenes/GameScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { LobbyScene } from './scenes/LobbyScene';
+import { ChangelogScene } from './scenes/ChangelogScene';
+import { EncyclopediaScene } from './scenes/EncyclopediaScene';
 import { TowerSelectBar } from './ui/TowerSelectBar';
 
 // Register trait handlers (side-effect imports)
@@ -20,7 +22,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: gameHeight,
   backgroundColor: '#111111',
   parent: document.body,
-  scene: [MenuScene, FactionSelectScene, DraftScene, GameScene, GameOverScene, LobbyScene],
+  scene: [MenuScene, FactionSelectScene, DraftScene, GameScene, GameOverScene, LobbyScene, ChangelogScene, EncyclopediaScene],
   render: {
     antialias: true,
     pixelArt: false,
