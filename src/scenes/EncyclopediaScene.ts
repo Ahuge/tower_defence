@@ -15,9 +15,11 @@ export class EncyclopediaScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
   private contentHeight: number = 0;
   private tabButtons: { text: Phaser.GameObjects.Text; tab: Tab }[] = [];
-  // Tower carousel state
+  // Carousel state
   private allTowerIds: string[] = [];
   private towerIndex: number = 0;
+  private factionIndex: number = 0;
+  private playableFactions: FactionId[] = [];
 
   constructor() {
     super('EncyclopediaScene');
@@ -63,10 +65,10 @@ export class EncyclopediaScene extends Phaser.Scene {
       this.tabButtons.push({ text, tab: t.tab });
     }
 
-    // Build tower ID list for carousel
+    // Build lists for carousels
+    this.playableFactions = FACTION_ORDER.filter(f => f !== 'random');
     this.allTowerIds = [];
-    for (const fid of FACTION_ORDER) {
-      if (fid === 'random') continue;
+    for (const fid of this.playableFactions) {
       for (const tid of FACTIONS[fid].towerIds) this.allTowerIds.push(tid);
     }
 
@@ -82,7 +84,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rebuildContent();
 
     this.input.on('wheel', (_p: any, _g: any, _dx: number, dy: number) => {
-      if (this.activeTab === 'towers') return; // towers use carousel
+      if (this.activeTab === 'towers' || this.activeTab === 'factions') return; // carousels
       this.scrollY = Phaser.Math.Clamp(
         this.scrollY - dy * 0.5,
         -(this.contentHeight - contentH + 40),
@@ -110,89 +112,148 @@ export class EncyclopediaScene extends Phaser.Scene {
     }
   }
 
-  // ===================== FACTIONS TAB =====================
+  // ===================== FACTIONS TAB (CAROUSEL) =====================
   private buildFactionsTab(): void {
-    let y = 0;
     const cx = CANVAS_WIDTH / 2;
+    const fid = this.playableFactions[this.factionIndex];
+    const faction = FACTIONS[fid];
+    if (!faction) return;
 
-    for (const fid of FACTION_ORDER) {
-      if (fid === 'random') continue;
-      const faction = FACTIONS[fid];
+    // Navigation
+    const prevBtn = this.add.text(40, 10, '< Prev', {
+      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    }).setInteractive({ useHandCursor: true });
+    prevBtn.on('pointerdown', () => {
+      this.factionIndex = (this.factionIndex - 1 + this.playableFactions.length) % this.playableFactions.length;
+      this.rebuildContent();
+    });
+    this.contentContainer.add(prevBtn);
 
-      // Faction name
-      const header = this.add.text(cx, y, faction.name, {
-        fontSize: '18px', color: '#ffaa44', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      this.contentContainer.add(header);
-      y += 22;
+    const nextBtn = this.add.text(CANVAS_WIDTH - 40, 10, 'Next >', {
+      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    nextBtn.on('pointerdown', () => {
+      this.factionIndex = (this.factionIndex + 1) % this.playableFactions.length;
+      this.rebuildContent();
+    });
+    this.contentContainer.add(nextBtn);
 
-      // Lore paragraph
-      const lore = FACTION_LORE[fid] ?? '';
-      const loreText = this.add.text(60, y, lore, {
-        fontSize: '10px', color: '#999999', fontFamily: 'monospace',
-        wordWrap: { width: CANVAS_WIDTH - 120 },
-        lineSpacing: 2,
+    const counter = this.add.text(cx, 12, `${this.factionIndex + 1} / ${this.playableFactions.length}`, {
+      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    this.contentContainer.add(counter);
+
+    let y = 35;
+
+    // Faction name + tower count
+    const header = this.add.text(cx, y, faction.name, {
+      fontSize: '22px', color: '#ffaa44', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    this.contentContainer.add(header);
+    y += 24;
+
+    const tCount = this.add.text(cx, y, `${faction.towerIds.length} towers`, {
+      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    this.contentContainer.add(tCount);
+    y += 18;
+
+    // Lore paragraph
+    const lore = FACTION_LORE[fid] ?? faction.description;
+    const loreText = this.add.text(60, y, lore, {
+      fontSize: '10px', color: '#999999', fontFamily: 'monospace',
+      wordWrap: { width: CANVAS_WIDTH - 120 },
+      lineSpacing: 3,
+    });
+    this.contentContainer.add(loreText);
+    y += loreText.height + 16;
+
+    // Tower table
+    const colX = [60, 190, 250, 310, 380, 490];
+    const headers = ['Tower', 'Cost', 'DMG', 'Range', 'Upgrades', 'Key Traits'];
+    for (let i = 0; i < headers.length; i++) {
+      const h = this.add.text(colX[i], y, headers[i], {
+        fontSize: '9px', color: '#666666', fontFamily: 'monospace',
       });
-      this.contentContainer.add(loreText);
-      y += loreText.height + 10;
-
-      // Tower table
-      const colX = [60, 180, 240, 310, 380, 480];
-      const headers = ['Tower', 'Cost', 'DMG', 'Range', 'Upgrades', 'Key Traits'];
-      for (let i = 0; i < headers.length; i++) {
-        const h = this.add.text(colX[i], y, headers[i], {
-          fontSize: '9px', color: '#666666', fontFamily: 'monospace',
-        });
-        this.contentContainer.add(h);
-      }
-      y += 13;
-
-      for (const tid of faction.towerIds) {
-        const t = TOWER_TYPES[tid];
-        if (!t) continue;
-        const traits = this.summarizeTraits(t);
-        const upgCount = t.upgrades.length > 0 ? `${t.upgrades.length} lvl` : 'none';
-        const vals = [
-          t.name + (t.ultimate ? ' *' : ''),
-          `${t.cost}g`,
-          t.damage > 0 ? `${t.damage}` : '-',
-          `${t.range}`,
-          upgCount,
-          traits,
-        ];
-        for (let i = 0; i < vals.length; i++) {
-          const txt = this.add.text(colX[i], y, vals[i], {
-            fontSize: '9px', color: t.ultimate ? '#ffdd44' : '#cccccc',
-            fontFamily: 'monospace',
-            wordWrap: i === 5 ? { width: CANVAS_WIDTH - colX[5] - 20 } : undefined,
-          });
-          this.contentContainer.add(txt);
-        }
-        y += 13;
-      }
-
-      // Frontier buildings
-      const buildings = FRONTIER_BUILDINGS[fid];
-      if (buildings && buildings.length > 0) {
-        y += 4;
-        const fLabel = this.add.text(60, y, 'Frontier:', {
-          fontSize: '9px', color: '#888844', fontFamily: 'monospace',
-        });
-        this.contentContainer.add(fLabel);
-        y += 12;
-        for (const b of buildings) {
-          const bText = this.add.text(80, y, `${b.name} (${b.cost}g) — ${b.mechanic} — ${b.description}`, {
-            fontSize: '9px', color: '#777777', fontFamily: 'monospace',
-            wordWrap: { width: CANVAS_WIDTH - 100 },
-          });
-          this.contentContainer.add(bText);
-          y += bText.height + 4;
-        }
-      }
-
-      y += 16;
+      this.contentContainer.add(h);
     }
+    y += 14;
+
+    for (const tid of faction.towerIds) {
+      const t = TOWER_TYPES[tid];
+      if (!t) continue;
+      const traits = this.summarizeTraits(t);
+      const upgCount = t.upgrades.length > 0 ? `${t.upgrades.length} lvl` : 'none';
+      const vals = [
+        t.name + (t.ultimate ? ' *' : ''),
+        `${t.cost}g`,
+        t.damage > 0 ? `${t.damage}` : '-',
+        `${t.range}`,
+        upgCount,
+        traits,
+      ];
+      for (let i = 0; i < vals.length; i++) {
+        const txt = this.add.text(colX[i], y, vals[i], {
+          fontSize: '10px', color: t.ultimate ? '#ffdd44' : '#cccccc',
+          fontFamily: 'monospace',
+          wordWrap: i === 5 ? { width: CANVAS_WIDTH - colX[5] - 20 } : undefined,
+        });
+        this.contentContainer.add(txt);
+      }
+
+      // Tower flavor text on next line
+      const tLore = TOWER_LORE[tid];
+      if (tLore) {
+        y += 14;
+        const fl = this.add.text(colX[0] + 10, y, tLore, {
+          fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+          fontStyle: 'italic',
+          wordWrap: { width: CANVAS_WIDTH - 100 },
+        });
+        this.contentContainer.add(fl);
+        y += fl.height + 4;
+      } else {
+        y += 15;
+      }
+    }
+
+    // Frontier buildings
+    const buildings = FRONTIER_BUILDINGS[fid];
+    if (buildings && buildings.length > 0) {
+      y += 8;
+      const fLabel = this.add.text(60, y, 'FRONTIER BUILDINGS', {
+        fontSize: '11px', color: '#888844', fontFamily: 'monospace',
+      });
+      this.contentContainer.add(fLabel);
+      y += 16;
+      for (const b of buildings) {
+        const bText = this.add.text(80, y, `${b.name} (${b.cost}g) — ${b.mechanic}`, {
+          fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+        });
+        this.contentContainer.add(bText);
+        y += 14;
+        const bDesc = this.add.text(100, y, b.description, {
+          fontSize: '9px', color: '#777777', fontFamily: 'monospace',
+          wordWrap: { width: CANVAS_WIDTH - 130 },
+        });
+        this.contentContainer.add(bDesc);
+        y += bDesc.height + 6;
+      }
+    }
+
     this.contentHeight = y;
+
+    // Keyboard nav
+    this.input.keyboard!.removeAllListeners('keydown-LEFT');
+    this.input.keyboard!.removeAllListeners('keydown-RIGHT');
+    this.input.keyboard!.on('keydown-LEFT', () => {
+      this.factionIndex = (this.factionIndex - 1 + this.playableFactions.length) % this.playableFactions.length;
+      this.rebuildContent();
+    });
+    this.input.keyboard!.on('keydown-RIGHT', () => {
+      this.factionIndex = (this.factionIndex + 1) % this.playableFactions.length;
+      this.rebuildContent();
+    });
   }
 
   // ===================== TOWERS CAROUSEL =====================
