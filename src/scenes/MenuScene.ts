@@ -47,7 +47,7 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       this.add.text(x + mapBtnW / 2, y + 28, map.description.substring(0, 24), {
-        fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(x + mapBtnW / 2, y + h / 2, mapBtnW, h).setInteractive({ useHandCursor: true });
@@ -131,7 +131,7 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       this.add.text(cx, m.y + 25, m.desc, {
-        fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(cx, m.y + 15, 300, 50).setInteractive({ useHandCursor: true });

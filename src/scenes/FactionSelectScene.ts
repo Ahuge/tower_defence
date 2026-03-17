@@ -60,12 +60,12 @@ export class FactionSelectScene extends Phaser.Scene {
       // Tower count badge
       const tCount = faction.towerIds.length > 0 ? `${faction.towerIds.length} towers` : '6/wave';
       this.add.text(x + cardW / 2, y + 40, tCount, {
-        fontSize: '13px', color: '#888888', fontFamily: 'monospace',
+        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Description
       this.add.text(x + 8, y + 55, faction.description, {
-        fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace',
+        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
         wordWrap: { width: cardW - 16 },
       });
 
@@ -73,12 +73,12 @@ export class FactionSelectScene extends Phaser.Scene {
       const towerY = y + 100;
       if (factionId === 'random') {
         this.add.text(x + 8, towerY, 'Each wave: 6 random\ntowers from all factions.\nBought towers persist.\nAdapt to what you get.', {
-          fontSize: '13px', color: '#cccccc', fontFamily: 'monospace',
+          fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
           lineSpacing: 4,
         });
       } else {
         this.add.text(x + 8, towerY - 4, 'Towers:', {
-          fontSize: '13px', color: '#666666', fontFamily: 'monospace',
+          fontSize: '10px', color: '#666666', fontFamily: 'monospace',
         });
         let ty = towerY + 10;
         for (const tid of faction.towerIds) {
@@ -86,7 +86,7 @@ export class FactionSelectScene extends Phaser.Scene {
           if (!t) continue;
           const label = `${t.name} (${t.cost}g)`;
           this.add.text(x + 12, ty, label, {
-            fontSize: '13px', color: '#cccccc', fontFamily: 'monospace',
+            fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
           });
           ty += 13;
         }
