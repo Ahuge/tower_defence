@@ -37,6 +37,7 @@ import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
+import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
@@ -69,6 +70,7 @@ export class GameScene extends Phaser.Scene {
   statsTracker!: StatsTracker;
   versus: VersusManager | null = null;
   opponentMinimap: OpponentMinimap | null = null;
+  opponentSim: OpponentSimulation | null = null;
   viewingOpponent: boolean = false;
   selectedCreep: Creep | null = null;
 
@@ -323,6 +325,12 @@ export class GameScene extends Phaser.Scene {
             if (this.speedIndex === -1) this.speedIndex = 2;
             this.eventLog.gameMessage(`Host set speed: ${msg.speed}x`);
             break;
+          case 'tower_placed':
+          case 'tower_sold':
+          case 'tower_upgraded':
+            // Rebuild opponent simulation grid when their towers change
+            this.opponentSim?.rebuildGrid();
+            break;
           case 'chat':
             this.eventLog.gameMessage(`[OPP] ${msg.text}`);
             break;
@@ -355,6 +363,10 @@ export class GameScene extends Phaser.Scene {
         this.drawGrid();
         this.drawOpponentView();
       });
+      // Create opponent simulation
+      const mapDef = MAPS[this.mapId];
+      this.opponentSim = new OpponentSimulation(this.versus, mapDef, this.difficultyHints);
+
       this.eventLog.gameMessage('VERSUS MODE — sends go to opponent!');
       // Start initial 60s countdown for first wave
       this.versus.waveTimer = 60000;
@@ -899,6 +911,9 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
+      // Update opponent simulation
+      this.opponentSim?.update(delta);
+
       const myTowerData = this.towers.map(t => ({ col: t.col, row: t.row, color: t.color }));
       this.opponentMinimap?.update(myTowerData);
       if (this.viewingOpponent) {
@@ -1203,6 +1218,25 @@ export class GameScene extends Phaser.Scene {
     this.opponentOverlay.fillStyle(0xff2222, 0.8);
     this.opponentOverlay.fillRect(GRID_OFFSET_X, 0, 220, 22);
 
+    // Draw simulated opponent creeps
+    if (this.opponentSim) {
+      for (const creep of this.opponentSim.creeps) {
+        if (!creep.alive || creep.reached) continue;
+        const baseSize = creep.isBoss ? TILE_SIZE * 0.4 : TILE_SIZE * 0.25;
+        const drawSize = baseSize * creep.size;
+        this.opponentOverlay.fillStyle(creep.color, 0.8);
+        this.opponentOverlay.fillCircle(creep.x, creep.y, drawSize);
+        // HP bar
+        const barW = TILE_SIZE * 0.6;
+        const barH = 2;
+        const hpRatio = creep.hp / creep.maxHp;
+        this.opponentOverlay.fillStyle(0x333333, 1);
+        this.opponentOverlay.fillRect(creep.x - barW / 2, creep.y - drawSize - 4, barW, barH);
+        this.opponentOverlay.fillStyle(hpRatio > 0.5 ? 0x44ff44 : 0xff4444, 1);
+        this.opponentOverlay.fillRect(creep.x - barW / 2, creep.y - drawSize - 4, barW * hpRatio, barH);
+      }
+    }
+
     if (!this.opponentLabel) {
       this.opponentLabel = this.add.text(GRID_OFFSET_X + 8, 3, 'VIEWING OPPONENT', {
         fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
@@ -1240,6 +1274,9 @@ export class GameScene extends Phaser.Scene {
 
     // Brood Mother: spawn temporary swarmlings
     this.spawnBroodMotherSwarmlings();
+
+    // Start opponent simulation wave
+    this.opponentSim?.startWave(wave);
 
     // Log wave start with creep types
     const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
