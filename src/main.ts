@@ -12,13 +12,19 @@ import { TowerSelectBar } from './ui/TowerSelectBar';
 import './systems/traits/TowerTraitHandlers';
 import './systems/traits/CreepTraitHandlers';
 
+const gameHeight = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+
 const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
+  type: Phaser.WEBGL,
   width: CANVAS_WIDTH,
-  height: GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT,
+  height: gameHeight,
   backgroundColor: '#111111',
   parent: document.body,
   scene: [MenuScene, FactionSelectScene, DraftScene, GameScene, GameOverScene, LobbyScene],
+  render: {
+    antialias: true,
+    pixelArt: false,
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

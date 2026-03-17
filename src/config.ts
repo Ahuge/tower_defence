@@ -1,11 +1,11 @@
-export const TILE_SIZE = 32;
+export const TILE_SIZE = 40;
 export const GRID_COLS = 25;
-export const GRID_ROWS = 20;
+export const GRID_ROWS = 18;
 export const GAME_WIDTH = GRID_COLS * TILE_SIZE;
 export const GAME_HEIGHT = GRID_ROWS * TILE_SIZE;
 
 // Sidebar
-export const SIDEBAR_WIDTH = 300;
+export const SIDEBAR_WIDTH = 360;
 export const GRID_OFFSET_X = SIDEBAR_WIDTH;
 export const CANVAS_WIDTH = SIDEBAR_WIDTH + GAME_WIDTH;
 
