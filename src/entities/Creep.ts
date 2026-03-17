@@ -2,6 +2,9 @@ import { TILE_SIZE, CREEP_BASE_SPEED } from '../config';
 import { PathPoint } from '../systems/Pathfinding';
 import { StatusEffectManager } from '../systems/StatusEffects';
 import { ArmorType, CreepType, CREEP_TYPES } from '../data/CreepTypes';
+import {
+  Trait, getTrait, resolveCreepDamage, resolveCreepUpdates, resolveCreepDraw,
+} from '../systems/traits/Trait';
 
 export class Creep {
   x: number;
@@ -21,10 +24,7 @@ export class Creep {
   creepType: CreepType;
   color: number;
   size: number;
-  abilities: string[];
-  healCooldown: number = 0;
-  shieldHp: number = 0;
-  shieldActive: boolean = false;
+  traits: Trait[];
 
   constructor(scene: Phaser.Scene, path: PathPoint[], hp: number, speedMultiplier: number, isBoss: boolean, creepTypeId: string = 'standard') {
     this.creepType = CREEP_TYPES[creepTypeId] || CREEP_TYPES.standard;
@@ -40,13 +40,16 @@ export class Creep {
     this.armor = this.creepType.armor;
     this.color = this.creepType.color;
     this.size = this.creepType.size;
-    this.abilities = [...this.creepType.abilities];
     this.statusEffects = new StatusEffectManager();
 
-    // Boss shield
-    if (this.abilities.includes('shield')) {
-      this.shieldHp = Math.floor(this.maxHp * 0.3);
-      this.shieldActive = true;
+    // Clone traits for per-instance mutable state
+    this.traits = this.creepType.traits.map(t => ({ ...t }));
+
+    // Init shield state
+    const shieldTrait = getTrait(this.traits, 'shield');
+    if (shieldTrait) {
+      shieldTrait._shieldHp = Math.floor(this.maxHp * (shieldTrait.hpPercent ?? 0.3));
+      shieldTrait._active = true;
     }
 
     this.x = path[0].col * TILE_SIZE + TILE_SIZE / 2;
@@ -64,21 +67,8 @@ export class Creep {
     this.statusEffects.update(delta);
     this.speed = this.baseSpeed * this.statusEffects.getSlowFactor();
 
-    // Heal aura ability
-    if (this.abilities.includes('heal_aura') && nearbyCreeps) {
-      this.healCooldown -= delta;
-      if (this.healCooldown <= 0) {
-        this.healCooldown = 1000; // heal every 1s
-        for (const other of nearbyCreeps) {
-          if (other === this || !other.alive || other.reached) continue;
-          const dx = other.x - this.x;
-          const dy = other.y - this.y;
-          if (Math.sqrt(dx * dx + dy * dy) <= TILE_SIZE * 3) {
-            other.hp = Math.min(other.maxHp, other.hp + Math.floor(other.maxHp * 0.03));
-          }
-        }
-      }
-    }
+    // Run creep trait updates (heal_aura, etc.)
+    resolveCreepUpdates(this.traits, this, delta, nearbyCreeps ?? []);
 
     if (this.pathIndex >= this.path.length) {
       this.reached = true;
@@ -109,19 +99,11 @@ export class Creep {
   }
 
   takeDamage(amount: number): void {
-    // Shield absorbs damage first
-    if (this.shieldActive && this.shieldHp > 0) {
-      this.shieldHp -= amount;
-      if (this.shieldHp <= 0) {
-        this.shieldActive = false;
-        amount = -this.shieldHp; // remaining damage
-        this.shieldHp = 0;
-      } else {
-        return; // all absorbed
-      }
-    }
+    // Run damage through creep traits (shield absorb, etc.)
+    const finalDamage = resolveCreepDamage(this.traits, amount);
+    if (finalDamage <= 0) return;
 
-    this.hp -= amount;
+    this.hp -= finalDamage;
     if (this.hp <= 0) {
       this.alive = false;
       this.graphics.destroy();
@@ -138,22 +120,13 @@ export class Creep {
     const baseSize = this.isBoss ? TILE_SIZE * 0.45 : TILE_SIZE * 0.3;
     const drawSize = baseSize * this.size;
 
-    // Shield glow
-    if (this.shieldActive) {
-      this.graphics.lineStyle(2, 0x4488ff, 0.5);
-      this.graphics.strokeCircle(this.x, this.y, drawSize + 3);
-    }
+    // Trait-based overlays (shield glow, heal aura ring)
+    resolveCreepDraw(this.traits, this, this.graphics);
 
     // Body
     const isSlowed = this.statusEffects.has('slow');
     this.graphics.fillStyle(isSlowed ? 0x6688cc : this.color, 1);
     this.graphics.fillCircle(this.x, this.y, drawSize);
-
-    // Heal aura indicator
-    if (this.abilities.includes('heal_aura')) {
-      this.graphics.lineStyle(1, 0x44ff88, 0.3);
-      this.graphics.strokeCircle(this.x, this.y, TILE_SIZE * 3);
-    }
 
     // HP bar
     const barWidth = TILE_SIZE * 0.8;
@@ -167,10 +140,11 @@ export class Creep {
     this.graphics.fillStyle(hpRatio > 0.5 ? 0x44ff44 : hpRatio > 0.25 ? 0xffaa00 : 0xff2222, 1);
     this.graphics.fillRect(barX, barY, barWidth * hpRatio, barHeight);
 
-    // Shield bar (below hp bar)
-    if (this.shieldActive || this.shieldHp > 0) {
-      const shieldMax = Math.floor(this.maxHp * 0.3);
-      const shieldRatio = this.shieldHp / shieldMax;
+    // Shield bar (from shield trait state)
+    const shieldTrait = getTrait(this.traits, 'shield');
+    if (shieldTrait && (shieldTrait._active || shieldTrait._shieldHp > 0)) {
+      const shieldMax = Math.floor(this.maxHp * (shieldTrait.hpPercent ?? 0.3));
+      const shieldRatio = (shieldTrait._shieldHp ?? 0) / shieldMax;
       this.graphics.fillStyle(0x222244, 1);
       this.graphics.fillRect(barX, barY + barHeight + 1, barWidth, 2);
       this.graphics.fillStyle(0x4488ff, 1);

@@ -7,6 +7,10 @@ import { GameScene } from './scenes/GameScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { TowerSelectBar } from './ui/TowerSelectBar';
 
+// Register trait handlers (side-effect imports)
+import './systems/traits/TowerTraitHandlers';
+import './systems/traits/CreepTraitHandlers';
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   width: GAME_WIDTH,

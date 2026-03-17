@@ -1,5 +1,6 @@
 import { TILE_SIZE, GAME_WIDTH } from '../config';
 import { Tower } from '../entities/Tower';
+import { hasTrait, getTrait } from '../systems/traits/Trait';
 
 export class TowerInfoPanel {
   private scene: Phaser.Scene;
@@ -32,11 +33,24 @@ export class TowerInfoPanel {
     this.container.setVisible(true);
 
     this.nameText.setText(`${tower.typeDef.name} Lv${tower.level}`);
-    this.statsText.setText(
-      `DMG: ${tower.damage}  RNG: ${(tower.range / TILE_SIZE).toFixed(1)}  SPD: ${tower.fireRate}ms` +
-      (tower.splash > 0 ? `  Splash: ${(tower.splash / TILE_SIZE).toFixed(1)}` : '') +
-      (tower.slowDuration > 0 ? `  Slow: ${Math.round(tower.slowFactor * 100)}%` : '')
-    );
+
+    // Build stats line from traits
+    let stats = `DMG: ${tower.damage}  RNG: ${(tower.range / TILE_SIZE).toFixed(1)}  SPD: ${tower.fireRate}ms`;
+
+    const splashTrait = getTrait(tower.traits, 'splash_damage');
+    if (splashTrait) stats += `  Splash: ${((splashTrait.radius ?? 0) / TILE_SIZE).toFixed(1)}`;
+
+    const slowTrait = getTrait(tower.traits, 'slow_on_hit');
+    if (slowTrait) stats += `  Slow: ${Math.round((slowTrait.factor ?? 1) * 100)}%`;
+
+    if (hasTrait(tower.traits, 'chain_damage')) stats += '  Chain';
+    if (hasTrait(tower.traits, 'teleport_delivery')) stats += '  Teleport';
+    if (hasTrait(tower.traits, 'damage_variance')) stats += '  Variance';
+    if (hasTrait(tower.traits, 'gold_on_hit')) stats += '  Gold/hit';
+    if (hasTrait(tower.traits, 'ramp_up')) stats += '  Ramp-up';
+    if (hasTrait(tower.traits, 'adjacency_buff')) stats += '  Aura';
+
+    this.statsText.setText(stats);
 
     if (tower.canUpgrade()) {
       const cost = tower.getUpgradeCost();
@@ -45,8 +59,7 @@ export class TowerInfoPanel {
       this.upgradeText.setText(`MAX LEVEL | Sell: ${tower.getSellValue()}g (right-click)`);
     }
 
-    // Position near tower
-    const panelW = 320;
+    const panelW = 340;
     const panelH = 76;
     let px = tower.x + TILE_SIZE;
     let py = tower.y - panelH / 2;
@@ -60,7 +73,6 @@ export class TowerInfoPanel {
     this.bg.lineStyle(1, 0x555555, 1);
     this.bg.strokeRect(0, 0, panelW, panelH);
 
-    // Range circle
     this.rangeCircle.clear();
     this.rangeCircle.lineStyle(1, 0xffffff, 0.2);
     this.rangeCircle.strokeCircle(tower.x, tower.y, tower.range);

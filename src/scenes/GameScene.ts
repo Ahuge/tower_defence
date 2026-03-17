@@ -29,6 +29,7 @@ import { FrontierPanel } from '../ui/FrontierPanel';
 import { FighterPanel } from '../ui/FighterPanel';
 import { FighterManager } from '../systems/FighterManager';
 import { FighterType } from '../data/FighterTypes';
+import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
@@ -58,7 +59,7 @@ export class GameScene extends Phaser.Scene {
   towers: Tower[] = [];
   creeps: Creep[] = [];
   currentPath: PathPoint[] | null = null;
-  allPaths: (PathPoint[] | null)[] = []; // one path per entry
+  allPaths: (PathPoint[] | null)[] = [];
   waves!: WaveDefinition[];
   matchMode: MatchMode = 'standard';
   mapId: MapId = 'plains';
@@ -101,7 +102,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Reset state
     this.towers = [];
     this.creeps = [];
     this.lives = STARTING_LIVES;
@@ -114,8 +114,13 @@ export class GameScene extends Phaser.Scene {
     this.totalTowersBuilt = 0;
     this.totalCreepsKilled = 0;
 
-    // Apply modifier effects
-    this.applyModifier();
+    // Apply one-time modifier effects
+    if (this.modifier) {
+      this.lives += this.modifier.extraLives;
+      if (this.modifier.livesOverride !== null) {
+        this.lives = this.modifier.livesOverride;
+      }
+    }
 
     this.eventBus = new EventBus();
     const mapDef = MAPS[this.mapId];
@@ -129,9 +134,8 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr = new InputManager(this, this.eventBus);
     this.ui = new UIOverlay(this, this.eventBus);
 
-    // Apply modifier: extra gold
-    if (this.modifier?.effect === 'extra_gold') {
-      this.economy.addGold(50);
+    if (this.modifier && this.modifier.extraGold > 0) {
+      this.economy.addGold(this.modifier.extraGold);
     }
 
     // UI panels
@@ -143,8 +147,8 @@ export class GameScene extends Phaser.Scene {
 
     // Economy systems
     this.incomeMgr = new IncomeManager(this.eventBus);
-    if (this.modifier?.effect === 'extra_income') {
-      this.incomeMgr.baseIncome += 5;
+    if (this.modifier && this.modifier.extraIncome > 0) {
+      this.incomeMgr.baseIncome += this.modifier.extraIncome;
     }
     this.sendMgr = new SendManager(this, this.eventBus);
     this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
@@ -195,7 +199,6 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Tower selection hotkeys
     const numKeys = ['ONE', 'TWO', 'THREE', 'FOUR'];
     for (let i = 0; i < numKeys.length; i++) {
       const idx = i;
@@ -204,36 +207,31 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Escape to deselect
     this.inputMgr.onKey('ESC', () => this.deselectTower());
-
-    // Pause
     this.inputMgr.onKey('P', () => this.togglePause());
 
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves);
   }
 
-  private applyModifier(): void {
-    if (!this.modifier) return;
-    switch (this.modifier.effect) {
-      case 'extra_lives':
-        this.lives += 10;
-        break;
-      case 'glass_cannon':
-        this.lives = 5;
-        break;
-    }
-  }
-
   update(time: number, delta: number): void {
     if (this.paused) return;
 
-    // Update adjacency buffs (nature_blossom)
-    this.updateAdjacencyBuffs();
+    // Build trait update context
+    const traitCtx: UpdateContext = {
+      allTowers: this.towers,
+      allCreeps: this.creeps,
+      time,
+      delta,
+    };
 
-    // Collect siphon gold
+    // Run per-tower trait updates (adjacency buffs, TTL cleanup)
     for (const tower of this.towers) {
-      if (tower.ability === 'gold_on_hit' && tower.goldEarned > 0) {
+      tower.runTraitUpdates(traitCtx);
+    }
+
+    // Collect gold from gold_on_hit trait
+    for (const tower of this.towers) {
+      if (tower.goldEarned > 0) {
         this.economy.addGold(tower.goldEarned);
         tower.goldEarned = 0;
       }
@@ -244,7 +242,7 @@ export class GameScene extends Phaser.Scene {
       tower.update(time, delta, this.creeps);
     }
 
-    // Update creeps (pass nearby creeps for heal aura)
+    // Update creeps (pass nearby creeps for trait updates like heal_aura)
     for (const creep of this.creeps) {
       creep.update(delta, this.creeps);
     }
@@ -266,12 +264,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Award kill gold
+    const killGoldMult = this.modifier?.killGoldMult ?? 1;
     for (const creep of this.creeps) {
       if (!creep.alive && !creep.reached && creep.hp <= 0) {
-        let killGold = this.economy.getKillGold();
-        if (this.modifier?.effect === 'strong_creeps') {
-          killGold = Math.round(killGold * 1.5);
-        }
+        const killGold = Math.round(this.economy.getKillGold() * killGoldMult);
         this.eventBus.emit('creepKilled', 0, killGold);
         this.totalCreepsKilled++;
         creep.hp = -999;
@@ -283,20 +279,15 @@ export class GameScene extends Phaser.Scene {
 
     // Spawning
     this.spawner.update(delta, this.currentPath, this.creeps);
-
-    // Send creep spawning
     this.sendMgr.update(delta, this.currentPath, this.creeps);
 
     // Check wave complete
     if (this.waveActive && !this.spawner.isSpawning() && !this.sendMgr.isSpawning() && this.creeps.length === 0) {
       this.waveActive = false;
       this.betweenWaves = true;
-      // Frontier wave processing
       const frontierGold = this.frontierMgr.onWaveEnd(this.currentWave);
       this.economy.addGold(frontierGold);
       this.frontierPanel.updateOwned();
-
-      // Award wave income
       const income = this.incomeMgr.collectWaveIncome();
       this.economy.addGold(income);
       this.eventBus.emit('waveCleared', this.currentWave);
@@ -342,15 +333,17 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private getEffectiveCost(baseCost: number): number {
+    return Math.round(baseCost * (this.modifier?.costMult ?? 1));
+  }
+
   recalculatePaths(): void {
-    // Calculate paths from all entries to all exits
     this.allPaths = [];
     for (const entry of this.grid.entries) {
       for (const exit of this.grid.exits) {
         this.allPaths.push(findPath(this.grid, entry, exit));
       }
     }
-    // Use the first valid path as primary
     this.currentPath = this.allPaths.find(p => p !== null) ?? null;
   }
 
@@ -369,7 +362,6 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(0, row * TILE_SIZE, GAME_WIDTH, row * TILE_SIZE);
     }
 
-    // Draw blocked terrain
     g.fillStyle(0x1a1a1a, 1);
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
@@ -377,12 +369,11 @@ export class GameScene extends Phaser.Scene {
           g.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, 0x333333, 0.5);
           g.strokeRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-          g.lineStyle(1, COLOR_GRID_LINE, 0.3); // restore
+          g.lineStyle(1, COLOR_GRID_LINE, 0.3);
         }
       }
     }
 
-    // All entries and exits
     for (const entry of this.grid.entries) {
       g.fillStyle(COLOR_ENTRY, 0.5);
       g.fillRect(entry.col * TILE_SIZE, entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -397,7 +388,6 @@ export class GameScene extends Phaser.Scene {
     const g = this.pathGraphics;
     g.clear();
 
-    // Draw all paths
     for (const path of this.allPaths) {
       if (!path || path.length < 2) continue;
 
@@ -423,10 +413,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.grid.canPlaceTower(col, row)) {
       const towerType = getTowerType(this.selectedTowerType);
-      let cost = towerType.cost;
-      if (this.modifier?.effect === 'cheap_towers') {
-        cost = Math.round(cost * 0.8);
-      }
+      const cost = this.getEffectiveCost(towerType.cost);
       const canPlace = this.economy.canAfford(cost);
       const color = canPlace ? COLOR_HOVER_VALID : COLOR_HOVER_INVALID;
 
@@ -438,8 +425,10 @@ export class GameScene extends Phaser.Scene {
       if (canPlace) {
         const cx = col * TILE_SIZE + TILE_SIZE / 2;
         const cy = row * TILE_SIZE + TILE_SIZE / 2;
+        // Estimate range including modifier traits
         let range = towerType.range;
-        if (this.modifier?.effect === 'long_range') range += 1;
+        const rangeBonus = (this.modifier?.towerTraits ?? []).find(t => t.id === 'range_bonus');
+        if (rangeBonus) range += rangeBonus.bonus ?? 0;
         this.rangeGraphics.lineStyle(1, color, 0.2);
         this.rangeGraphics.strokeCircle(cx, cy, range * TILE_SIZE);
       }
@@ -447,14 +436,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleClick(col: number, row: number): void {
-    // Check if clicking an existing tower (select/upgrade)
     const existingTower = this.towers.find(t => t.col === col && t.row === row);
     if (existingTower) {
       if (this.selectedTower === existingTower && existingTower.canUpgrade()) {
         const cost = existingTower.getUpgradeCost();
         if (this.economy.spend(cost)) {
           existingTower.upgrade();
-          this.applyTowerModifiers(existingTower);
           this.towerInfo.show(existingTower);
         }
       } else {
@@ -466,17 +453,13 @@ export class GameScene extends Phaser.Scene {
     this.deselectTower();
 
     const towerType = getTowerType(this.selectedTowerType);
-    let cost = towerType.cost;
-    if (this.modifier?.effect === 'cheap_towers') {
-      cost = Math.round(cost * 0.8);
-    }
+    const cost = this.getEffectiveCost(towerType.cost);
 
     if (!this.grid.canPlaceTower(col, row)) return;
     if (!this.economy.canAfford(cost)) return;
 
     this.grid.placeTower(col, row);
 
-    // Check all paths remain valid
     const oldPaths = this.allPaths;
     this.recalculatePaths();
     const anyBlocked = this.allPaths.some(p => p === null);
@@ -490,20 +473,25 @@ export class GameScene extends Phaser.Scene {
 
     this.economy.spend(cost);
     const tower = new Tower(this, col, row, towerType);
-    this.applyTowerModifiers(tower);
+
+    // Apply modifier traits to new tower
+    if (this.modifier) {
+      for (const t of this.modifier.towerTraits) {
+        tower.traits.push({ ...t });
+      }
+    }
+
     this.towers.push(tower);
     this.totalTowersBuilt++;
     this.eventBus.emit('towerPlaced', col, row, towerType.id);
     this.eventBus.emit('pathUpdated', this.currentPath);
 
-    // Update existing creep paths
     for (const creep of this.creeps) {
       if (!creep.alive || creep.reached) continue;
       const creepPos = {
         col: Math.round((creep.x - TILE_SIZE / 2) / TILE_SIZE),
         row: Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE),
       };
-      // Find path from creep to nearest exit
       let bestPath: PathPoint[] | null = null;
       for (const exit of this.grid.exits) {
         const p = findPath(this.grid, creepPos, exit);
@@ -518,18 +506,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.drawPath();
-  }
-
-  private applyTowerModifiers(tower: Tower): void {
-    if (this.modifier?.effect === 'fast_towers') {
-      tower.fireRate = Math.round(tower.fireRate * 0.85);
-    }
-    if (this.modifier?.effect === 'long_range') {
-      tower.range = (tower.typeDef.range + 1) * TILE_SIZE;
-    }
-    if (this.modifier?.effect === 'glass_cannon') {
-      tower.damage = Math.round(tower.damage * 1.5);
-    }
   }
 
   handleRightClick(col: number, row: number): void {
@@ -560,26 +536,6 @@ export class GameScene extends Phaser.Scene {
     this.towerInfo.hide();
   }
 
-  updateAdjacencyBuffs(): void {
-    for (const tower of this.towers) {
-      tower.adjacencyDamageBonus = 0;
-      tower.adjacencyRateBonus = 0;
-    }
-
-    for (const blossom of this.towers) {
-      if (blossom.ability !== 'adjacency_buff') continue;
-      for (const other of this.towers) {
-        if (other === blossom) continue;
-        const dc = Math.abs(other.col - blossom.col);
-        const dr = Math.abs(other.row - blossom.row);
-        if (dc <= 1 && dr <= 1) {
-          other.adjacencyDamageBonus += Math.round(other.damage * 0.15 * blossom.level);
-          other.adjacencyRateBonus += 50 * blossom.level;
-        }
-      }
-    }
-  }
-
   startWave(): void {
     if (!this.currentPath) return;
 
@@ -590,7 +546,6 @@ export class GameScene extends Phaser.Scene {
     this.eventBus.emit('waveStarted', this.currentWave);
     this.spawner.startWave(wave);
 
-    // Activate queued sends
     const baseHp = wave.groups[0]?.hpScale || 30;
     const baseSpeed = wave.groups[0]?.speedScale || 1;
     this.sendMgr.activateSends(baseHp, baseSpeed);

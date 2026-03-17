@@ -1,7 +1,12 @@
 import { TILE_SIZE, COLOR_PROJECTILE } from '../config';
 import { TowerType } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
-import { calculateDamage } from '../systems/DamageCalculator';
+import {
+  Trait, HitContext, hasTrait, getTrait,
+  resolveDelivery, resolveDamageModifiers, resolveFireRate,
+  resolveHitEffects, resolveOnFire, resolveTowerUpdates,
+  cleanupExpiredTraits, UpdateContext,
+} from '../systems/traits/Trait';
 import { Creep } from './Creep';
 
 interface Projectile {
@@ -31,21 +36,9 @@ export class Tower {
   sellRefundRatio: number;
   level: number;
   damageType: DamageType;
-  splash: number;
-  slowDuration: number;
-  slowFactor: number;
-  ability: string | undefined;
-
-  // Ramp-up state (mech_turret)
-  private lastTargetId: number = -1;
-  private rampStacks: number = 0;
-
-  // Adjacency buff tracking
-  adjacencyDamageBonus: number = 0;
-  adjacencyRateBonus: number = 0;
-
-  // Gold earned tracking (void_siphon)
+  traits: Trait[];
   goldEarned: number = 0;
+  projectileColor: number;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
@@ -62,13 +55,19 @@ export class Tower {
     this.totalInvested = towerType.cost;
     this.sellRefundRatio = towerType.sellRefundRatio;
     this.damageType = towerType.damageType;
-    this.splash = towerType.splash;
-    this.slowDuration = towerType.slowDuration;
-    this.slowFactor = towerType.slowFactor;
-    this.ability = towerType.ability;
+    this.projectileColor = towerType.projectileColor ?? COLOR_PROJECTILE;
     this.level = 1;
     this.lastFired = 0;
     this.projectiles = [];
+
+    // Clone traits so each tower has its own mutable state
+    this.traits = towerType.traits.map(t => ({ ...t }));
+
+    // Apply range_bonus trait (from draft modifiers)
+    const rangeBonus = getTrait(this.traits, 'range_bonus');
+    if (rangeBonus) {
+      this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
+    }
 
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(5);
@@ -94,7 +93,7 @@ export class Tower {
     }
 
     // Adjacency buff glow
-    if (this.adjacencyDamageBonus > 0 || this.adjacencyRateBonus > 0) {
+    if (hasTrait(this.traits, '_adj_damage_buff') || hasTrait(this.traits, '_adj_rate_buff')) {
       this.graphics.lineStyle(1, 0xff88aa, 0.4);
       this.graphics.strokeCircle(this.x, this.y, s + 3);
     }
@@ -117,26 +116,24 @@ export class Tower {
     this.range = upg.range * TILE_SIZE;
     this.fireRate = upg.fireRate;
     this.totalInvested += upg.cost;
+
+    // Re-apply range_bonus
+    const rangeBonus = getTrait(this.traits, 'range_bonus');
+    if (rangeBonus) {
+      this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
+    }
+
     this.drawTower();
   }
 
-  getEffectiveDamage(): number {
-    let dmg = this.damage + this.adjacencyDamageBonus;
-    if (this.ability === 'variance') {
-      // 50% to 150% random
-      dmg = Math.round(dmg * (0.5 + Math.random()));
-    }
-    return dmg;
+  getEffectiveFireRate(): number {
+    return resolveFireRate(this.traits, this.fireRate, this);
   }
 
-  getEffectiveFireRate(): number {
-    let rate = this.fireRate - this.adjacencyRateBonus;
-    if (this.ability === 'ramp_up') {
-      // Up to 40% faster with 5 stacks on same target
-      const reduction = Math.min(this.rampStacks * 0.08, 0.4);
-      rate = Math.round(rate * (1 - reduction));
-    }
-    return Math.max(100, rate);
+  /** Run per-frame trait updates (adjacency, TTL cleanup). */
+  runTraitUpdates(ctx: UpdateContext): void {
+    resolveTowerUpdates(this.traits, this, ctx);
+    cleanupExpiredTraits(this.traits);
   }
 
   update(time: number, delta: number, creeps: Creep[]): void {
@@ -144,17 +141,8 @@ export class Tower {
     if (time - this.lastFired >= effectiveRate) {
       const target = this.findTarget(creeps);
       if (target) {
-        // Track ramp stacks
-        const targetId = creeps.indexOf(target);
-        if (this.ability === 'ramp_up') {
-          if (targetId === this.lastTargetId) {
-            this.rampStacks = Math.min(this.rampStacks + 1, 5);
-          } else {
-            this.rampStacks = 0;
-            this.lastTargetId = targetId;
-          }
-        }
-
+        const targetIdx = creeps.indexOf(target);
+        resolveOnFire(this.traits, this, targetIdx);
         this.fire(target);
         this.lastFired = time;
       }
@@ -217,85 +205,35 @@ export class Tower {
         p.y += (dy / dist) * move;
 
         p.graphics.clear();
-        const projColor = this.ability === 'gold_on_hit' ? 0xffdd44 : COLOR_PROJECTILE;
-        p.graphics.fillStyle(projColor, 1);
-        p.graphics.fillCircle(p.x, p.y, this.splash > 0 ? 4 : 3);
+        const hasSplash = hasTrait(this.traits, 'splash_damage');
+        p.graphics.fillStyle(this.projectileColor, 1);
+        p.graphics.fillCircle(p.x, p.y, hasSplash ? 4 : 3);
       }
     }
   }
 
   private onProjectileHit(p: Projectile, allCreeps: Creep[]): void {
-    const effectiveDmg = this.getEffectiveDamage();
+    const ctx: HitContext = {
+      towerLevel: this.level,
+      damage: this.damage,
+      damageType: this.damageType,
+      target: p.target,
+      allTargets: allCreeps,
+      hitTargets: [],
+      goldEarned: 0,
+    };
 
-    if (this.ability === 'teleport_back') {
-      // Move creep back along its path
-      const stepsBack = 3 + this.level;
-      p.target.pathIndex = Math.max(1, p.target.pathIndex - stepsBack);
-      const tp = p.target.path[p.target.pathIndex - 1];
-      if (tp) {
-        p.target.x = tp.col * TILE_SIZE + TILE_SIZE / 2;
-        p.target.y = tp.row * TILE_SIZE + TILE_SIZE / 2;
-      }
-      return;
-    }
+    // 1. Damage modifiers (variance, damage_mult, adjacency buff)
+    resolveDamageModifiers(this.traits, ctx);
 
-    if (this.ability === 'chain') {
-      // Hit primary target, then chain to 2 more nearby
-      const chainCount = 2 + Math.floor(this.level / 2);
-      const chainRange = TILE_SIZE * 3;
-      const dmg = calculateDamage(effectiveDmg, this.damageType, p.target.armor);
-      p.target.takeDamage(dmg);
+    // 2. Delivery (determines who gets hit, applies damage)
+    resolveDelivery(this.traits, ctx);
 
-      const hit = new Set<Creep>([p.target]);
-      let current = p.target;
-      for (let c = 0; c < chainCount; c++) {
-        let nearest: Creep | null = null;
-        let nearDist = Infinity;
-        for (const creep of allCreeps) {
-          if (!creep.alive || creep.reached || hit.has(creep)) continue;
-          const dx = creep.x - current.x;
-          const dy = creep.y - current.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d <= chainRange && d < nearDist) {
-            nearest = creep;
-            nearDist = d;
-          }
-        }
-        if (!nearest) break;
-        const chainDmg = calculateDamage(Math.round(effectiveDmg * 0.7), this.damageType, nearest.armor);
-        nearest.takeDamage(chainDmg);
-        hit.add(nearest);
-        current = nearest;
-      }
-      return;
-    }
+    // 3. Hit effects (slow, gold_on_hit — run on each hitTarget)
+    resolveHitEffects(this.traits, ctx);
 
-    if (this.splash > 0) {
-      for (const creep of allCreeps) {
-        if (!creep.alive || creep.reached) continue;
-        const dx = creep.x - p.target.x;
-        const dy = creep.y - p.target.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= this.splash) {
-          const dmg = calculateDamage(effectiveDmg, this.damageType, creep.armor);
-          creep.takeDamage(dmg);
-          if (this.slowDuration > 0) {
-            creep.applySlow(this.slowDuration, this.slowFactor);
-          }
-        }
-      }
-    } else {
-      const dmg = calculateDamage(effectiveDmg, this.damageType, p.target.armor);
-      p.target.takeDamage(dmg);
-      if (this.slowDuration > 0) {
-        p.target.applySlow(this.slowDuration, this.slowFactor);
-      }
-    }
-
-    // Gold on hit (void_siphon)
-    if (this.ability === 'gold_on_hit') {
-      this.goldEarned += 1;
-    }
+    // 4. Collect outputs
+    this.goldEarned += ctx.goldEarned;
   }
 
   getSellValue(): number {
