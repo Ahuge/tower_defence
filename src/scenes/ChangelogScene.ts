@@ -124,8 +124,8 @@ export class ChangelogScene extends Phaser.Scene {
     }).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
 
-    // Scrollable content
-    const contentY = 55;
+    // Scrollable content (extra top padding to avoid title overlap)
+    const contentY = 60;
     const contentH = totalH - 70;
     const mask = this.add.graphics();
     mask.fillRect(0, contentY, CANVAS_WIDTH, contentH);
