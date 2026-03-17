@@ -1169,32 +1169,46 @@ export class GameScene extends Phaser.Scene {
   /** Overlay opponent's towers on the main grid when viewing their board */
   private opponentOverlay: Phaser.GameObjects.Graphics | null = null;
 
+  private opponentLabel: Phaser.GameObjects.Text | null = null;
+
   drawOpponentView(): void {
     if (!this.opponentOverlay) {
-      this.opponentOverlay = this.add.graphics().setDepth(18);
+      this.opponentOverlay = this.add.graphics().setDepth(22);
     }
     this.opponentOverlay.clear();
 
-    if (!this.viewingOpponent || !this.versus) return;
+    if (!this.viewingOpponent || !this.versus) {
+      if (this.opponentLabel) this.opponentLabel.setVisible(false);
+      return;
+    }
 
-    // Dim own towers
+    // Dim the grid background
+    this.opponentOverlay.fillStyle(0x000000, 0.3);
+    this.opponentOverlay.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, GAME_HEIGHT);
+
     // Draw opponent towers as colored squares on the main grid
     for (const t of this.versus.opponentTowers) {
       const towerDef = TOWER_TYPES[t.towerId];
       const color = towerDef?.color ?? 0xffffff;
-      const s = TILE_SIZE * 0.35;
+      const s = TILE_SIZE * 0.4;
       const x = gridLeftX(t.col) + TILE_SIZE / 2;
       const y = t.row * TILE_SIZE + TILE_SIZE / 2;
-      this.opponentOverlay.fillStyle(color, 0.7);
+      this.opponentOverlay.fillStyle(color, 0.9);
       this.opponentOverlay.fillRect(x - s, y - s, s * 2, s * 2);
-      this.opponentOverlay.lineStyle(1, 0xff4444, 0.5);
+      this.opponentOverlay.lineStyle(2, 0xffffff, 0.5);
       this.opponentOverlay.strokeRect(x - s, y - s, s * 2, s * 2);
     }
 
-    // Label
-    this.opponentOverlay.fillStyle(0xff4444, 0.8);
-    this.opponentOverlay.fillRect(gridLeftX(0), 0, 160, 18);
-    // Can't easily draw text on graphics, the label is in the minimap
+    // "VIEWING OPPONENT" banner
+    this.opponentOverlay.fillStyle(0xff2222, 0.8);
+    this.opponentOverlay.fillRect(GRID_OFFSET_X, 0, 220, 22);
+
+    if (!this.opponentLabel) {
+      this.opponentLabel = this.add.text(GRID_OFFSET_X + 8, 3, 'VIEWING OPPONENT', {
+        fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+      }).setDepth(23);
+    }
+    this.opponentLabel.setVisible(true);
   }
 
   drawPath(): void {
