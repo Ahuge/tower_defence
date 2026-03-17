@@ -270,10 +270,10 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   nature_spore: def({
-    id: 'nature_spore', name: 'Spore', description: 'Poison AoE: 2% max HP/s for 3s. Melts tanks.',
+    id: 'nature_spore', name: 'Spore', description: 'Poisons ALL creeps near tower. 2% HP/s. Area denial.',
     faction: 'nature', damageType: 'magic', cost: 100, damage: 5, range: 3, fireRate: 1500,
     color: 0x88cc22, projectileSpeed: 200, projectileColor: 0x66aa00, hotkey: '4',
-    traits: [{ id: 'splash_damage', radius: 40 }, { id: 'poison_dot', percentPerSec: 0.02, duration: 3000 }],
+    traits: [{ id: 'tower_aura_damage', radius: 96 }, { id: 'poison_dot', percentPerSec: 0.02, duration: 3000 }],
     upgrades: [
       { level: 2, cost: 90, damage: 8, range: 3.5, fireRate: 1300 },
       { level: 3, cost: 150, damage: 12, range: 4, fireRate: 1100 },

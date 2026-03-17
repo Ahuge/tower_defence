@@ -32,6 +32,8 @@ import { FrontierPanel } from '../ui/FrontierPanel';
 import { FighterPanel } from '../ui/FighterPanel';
 import { EventLog } from '../ui/EventLog';
 import { CreepInfoPanel } from '../ui/CreepInfoPanel';
+import { UpcomingWaves } from '../ui/UpcomingWaves';
+import { StatsTracker } from '../systems/StatsTracker';
 import { FighterManager } from '../systems/FighterManager';
 import { FighterType } from '../data/FighterTypes';
 import { UpdateContext } from '../systems/traits/Trait';
@@ -63,6 +65,8 @@ export class GameScene extends Phaser.Scene {
   frontierPanel!: FrontierPanel;
   eventLog!: EventLog;
   creepInfo!: CreepInfoPanel;
+  upcomingWaves!: UpcomingWaves;
+  statsTracker!: StatsTracker;
   selectedCreep: Creep | null = null;
 
   // Game state
@@ -155,8 +159,6 @@ export class GameScene extends Phaser.Scene {
     // Systems
     this.economy = new EconomyManager(this.eventBus);
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints);
-    // Set flying path (direct line from first entry to first exit)
-    this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
     this.inputMgr = new InputManager(this, this.eventBus);
     this.ui = new UIOverlay(this, this.eventBus);
 
@@ -183,13 +185,25 @@ export class GameScene extends Phaser.Scene {
       this.incomeMgr.baseIncome += this.modifier.extraIncome;
     }
     this.sendMgr = new SendManager(this, this.eventBus);
+    this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
+
+    // Stats tracker
+    this.statsTracker = new StatsTracker();
+
+    // Upcoming waves (top of sidebar)
+    this.upcomingWaves = new UpcomingWaves(this);
+    this.upcomingWaves.update(this.currentWave, this.waves);
+
+    const sidebarTopOffset = UpcomingWaves.HEIGHT;
     this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
       if (this.betweenWaves && this.economy.spend(opt.cost)) {
         this.sendMgr.queueSend(opt);
         this.incomeMgr.addSendBonus(opt.incomeReward);
         this.eventLog.sendQueued(opt.name, opt.cost);
+        this.statsTracker.recordSendSpent(opt.cost);
+        this.statsTracker.recordSendIncome(opt.incomeReward);
       }
-    });
+    }, sidebarTopOffset);
     this.incomeDisplay = new IncomeDisplay(this);
 
     // Frontier (with action callbacks)
@@ -202,6 +216,7 @@ export class GameScene extends Phaser.Scene {
           this.frontierMgr.purchaseBuilding(building);
           this.frontierPanel.updateOwned();
           this.eventLog.frontierPurchased(building.name, building.cost);
+          this.statsTracker.recordFrontierSpent(building.cost);
         }
       },
       (action: string, idx: number) => {
@@ -213,8 +228,10 @@ export class GameScene extends Phaser.Scene {
     );
 
     // Event log (bottom of sidebar)
-    this.eventLog = new EventLog(this, 420);
+    this.eventLog = new EventLog(this, 480);
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1.');
+    const h = this.difficultyHints;
+    this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
 
     // Fighter system (only with faction)
     if (this.faction) {
@@ -457,6 +474,8 @@ export class GameScene extends Phaser.Scene {
     this.towers.push(tower);
     this.totalTowersBuilt++;
     this.eventLog.towerBuilt(towerType.name, cost);
+    this.statsTracker.recordTowerBuilt(towerType.id);
+    this.statsTracker.recordGoldSpent(cost);
     this.eventBus.emit('towerPlaced', col, row, towerType.id);
 
     // Update existing creep paths
@@ -559,7 +578,12 @@ export class GameScene extends Phaser.Scene {
     for (const tower of this.towers) {
       if (tower.goldEarned > 0) {
         this.economy.addGold(tower.goldEarned);
+        this.statsTracker.recordTowerGold(tower.typeId, tower.goldEarned);
         tower.goldEarned = 0;
+      }
+      if (tower.damageDealt > 0) {
+        this.statsTracker.recordDamage(tower.typeId, tower.damageDealt);
+        tower.damageDealt = 0;
       }
     }
 
@@ -580,6 +604,7 @@ export class GameScene extends Phaser.Scene {
         this.lives--;
         this.eventBus.emit('livesChanged', this.lives);
         this.eventLog.creepReached();
+        this.statsTracker.recordLeak();
         creep.reached = false;
         creep.alive = false;
       }
@@ -591,6 +616,7 @@ export class GameScene extends Phaser.Scene {
         const killGold = Math.round(this.economy.getKillGold() * killGoldMult);
         this.eventBus.emit('creepKilled', 0, killGold);
         this.totalCreepsKilled++;
+        this.statsTracker.recordKill();
         creep.hp = -999;
       }
     }
@@ -605,13 +631,18 @@ export class GameScene extends Phaser.Scene {
       this.betweenWaves = true;
       // Frontier mechanic bonuses (growth, dig, gamble)
       const frontierBonus = this.frontierMgr.onWaveEnd(this.currentWave);
-      if (frontierBonus > 0) this.economy.addGold(frontierBonus);
+      if (frontierBonus > 0) {
+        this.economy.addGold(frontierBonus);
+        this.statsTracker.recordFrontierEarned(frontierBonus);
+      }
       this.frontierPanel.updateOwned();
       // Wave income (includes base + sends + frontier base)
       const income = this.incomeMgr.collectWaveIncome();
       this.economy.addGold(income);
       this.eventBus.emit('waveCleared', this.currentWave);
       this.eventLog.waveCleared(this.currentWave, income + (frontierBonus > 0 ? frontierBonus : 0));
+      this.statsTracker.recordWaveCompleted();
+      this.upcomingWaves.update(this.currentWave, this.waves);
       if (frontierBonus > 0) {
         this.eventLog.frontierIncome('Frontier bonus', frontierBonus);
       }
@@ -641,6 +672,13 @@ export class GameScene extends Phaser.Scene {
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
+    this.statsTracker.updateTime(delta);
+
+    // Update tower alive time for DPS calc
+    for (const tower of this.towers) {
+      const ts = this.statsTracker.stats.towerStats[tower.typeId];
+      if (ts) ts.timeAlive += delta;
+    }
   }
 
   // === Helpers ===
@@ -655,6 +693,7 @@ export class GameScene extends Phaser.Scene {
       creepsKilled: this.totalCreepsKilled,
       matchMode: this.matchMode,
       faction: this.faction,
+      stats: this.statsTracker.stats,
     };
     this.scene.start('GameOverScene', data);
   }
@@ -835,6 +874,7 @@ export class GameScene extends Phaser.Scene {
     // Log wave start with creep types
     const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
     this.eventLog.waveStarted(this.currentWave, this.waves.length, creepTypes);
+    this.upcomingWaves.update(this.currentWave, this.waves);
 
     const baseHp = wave.groups[0]?.hpScale || 30;
     const baseSpeed = wave.groups[0]?.speedScale || 1;

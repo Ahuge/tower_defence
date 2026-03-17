@@ -227,6 +227,26 @@ export const CREEP_TYPES: Record<string, CreepType> = {
     },
   },
 
+  mage_heal: {
+    id: 'mage_heal', name: 'Heal Mage', description: 'Aura: heals nearby creeps for flat HP periodically.',
+    hpMultiplier: 1.0, speedMultiplier: 0.85, armor: 'medium',
+    color: 0x44ffaa, size: 1.1, count: 1,
+    traits: [{ id: 'flat_heal_aura', range: 4, healAmount: 15, cooldown: 800 }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness,
+        speedMult: hints.speed,
+        countMult: 1,
+        goldMult: hints.goldMult,
+        // Toughness increases the heal amount
+        extraTraits: hints.toughness > 1
+          ? [{ id: 'flat_heal_aura', range: 4, healAmount: Math.round(15 * hints.toughness), cooldown: 800 }]
+          : [],
+      };
+    },
+  },
+
   evasive: {
     id: 'evasive', name: 'Evasive', description: '25% dodge chance. Attacks can miss entirely.',
     hpMultiplier: 0.7, speedMultiplier: 1.4, armor: 'light',

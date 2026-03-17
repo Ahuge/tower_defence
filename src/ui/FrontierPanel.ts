@@ -2,6 +2,7 @@ import { SIDEBAR_WIDTH, GAME_HEIGHT } from '../config';
 import { FrontierBuilding } from '../data/FrontierBuildings';
 import { FrontierManager, OwnedBuilding } from '../systems/FrontierManager';
 import { SendPanel } from './SendPanel';
+import { UpcomingWaves } from './UpcomingWaves';
 
 export class FrontierPanel {
   private scene: Phaser.Scene;
@@ -28,7 +29,7 @@ export class FrontierPanel {
     this.onAction = onAction;
     this.onBatchAction = onBatchAction;
 
-    const topY = SendPanel.HEIGHT;
+    const topY = UpcomingWaves.HEIGHT + SendPanel.HEIGHT;
     this.container = scene.add.container(0, topY).setDepth(28);
 
     this.buildPanel();
@@ -37,7 +38,7 @@ export class FrontierPanel {
 
   private buildPanel(): void {
     const panelW = SIDEBAR_WIDTH;
-    const panelH = GAME_HEIGHT - SendPanel.HEIGHT;
+    const panelH = GAME_HEIGHT - SendPanel.HEIGHT - UpcomingWaves.HEIGHT - 200; // leave room for event log
 
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x111118, 1);

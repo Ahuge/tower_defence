@@ -42,6 +42,7 @@ export class Tower {
   damageType: DamageType;
   traits: Trait[];
   goldEarned: number = 0;
+  damageDealt: number = 0; // accumulated for stats collection
   projectileColor: number;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
@@ -170,7 +171,7 @@ export class Tower {
   fire(target: Creep): void {
     const g = this.graphics.scene.add.graphics();
     g.setDepth(15);
-    const isLocationBased = hasTrait(this.traits, 'splash_damage') || hasTrait(this.traits, 'pierce_delivery');
+    const isLocationBased = hasTrait(this.traits, 'splash_damage') || hasTrait(this.traits, 'pierce_delivery') || hasTrait(this.traits, 'tower_aura_damage');
     this.projectiles.push({
       x: this.x,
       y: this.y,
@@ -245,6 +246,7 @@ export class Tower {
     resolveDelivery(this.traits, ctx);
     resolveHitEffects(this.traits, ctx);
     this.goldEarned += ctx.goldEarned;
+    this.damageDealt += ctx.damage * ctx.hitTargets.length;
   }
 
   /** Projectile arrived at location but original target is dead */
@@ -273,6 +275,7 @@ export class Tower {
     resolveDelivery(this.traits, ctx);
     resolveHitEffects(this.traits, ctx);
     this.goldEarned += ctx.goldEarned;
+    this.damageDealt += ctx.damage * ctx.hitTargets.length;
   }
 
   getSellValue(): number {

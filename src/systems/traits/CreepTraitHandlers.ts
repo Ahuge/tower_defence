@@ -56,6 +56,34 @@ registerCreepUpdate('heal_aura', (trait: Trait, creep: any, delta: number, nearb
 });
 
 // ============================================================
+// Flat Heal Aura (Heal Mage) — periodic flat HP heal
+// ============================================================
+
+registerCreepUpdate('flat_heal_aura', (trait: Trait, creep: any, delta: number, nearbyCreeps: any[]) => {
+  trait._cooldown = (trait._cooldown ?? 0) - delta;
+  if (trait._cooldown > 0) return;
+
+  trait._cooldown = trait.cooldown ?? 800;
+  const range = (trait.range ?? 4) * TILE_SIZE;
+  const healAmount = trait.healAmount ?? 15;
+
+  for (const other of nearbyCreeps) {
+    if (other === creep || !other.alive || other.reached) continue;
+    const dx = other.x - creep.x;
+    const dy = other.y - creep.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      other.hp = Math.min(other.maxHp, other.hp + healAmount);
+    }
+  }
+});
+
+registerCreepDraw('flat_heal_aura', (trait: Trait, creep: any, g: any) => {
+  const range = (trait.range ?? 4) * TILE_SIZE;
+  g.lineStyle(1, 0x44ffaa, 0.25);
+  g.strokeCircle(creep.x, creep.y, range);
+});
+
+// ============================================================
 // Armor Aura (Mage) — nearby creeps gain +1 armor tier
 // ============================================================
 

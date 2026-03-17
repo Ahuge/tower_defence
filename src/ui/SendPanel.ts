@@ -10,10 +10,10 @@ export class SendPanel {
 
   static readonly HEIGHT = 100;
 
-  constructor(scene: Phaser.Scene, onSend: (option: SendCreepOption) => void) {
+  constructor(scene: Phaser.Scene, onSend: (option: SendCreepOption) => void, yOffset: number = 0) {
     this.scene = scene;
     this.onSend = onSend;
-    this.container = scene.add.container(0, 0).setDepth(28);
+    this.container = scene.add.container(0, yOffset).setDepth(28);
 
     this.buildPanel();
     this.registerHotkeys();

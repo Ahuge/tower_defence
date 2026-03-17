@@ -86,6 +86,24 @@ registerDelivery('teleport_delivery', (trait: Trait, ctx: HitContext) => {
   ctx.hitTargets.push(target);
 });
 
+/** Tower-centered AoE: damages all creeps near the TOWER, not the target */
+registerDelivery('tower_aura_damage', (trait: Trait, ctx: HitContext) => {
+  const radius = levelScale(trait.radius ?? 96, ctx.towerLevel);
+  const towerX = (trait as any)._towerX ?? ctx.target.x;
+  const towerY = (trait as any)._towerY ?? ctx.target.y;
+
+  for (const creep of ctx.allTargets) {
+    if (!creep.alive || creep.reached) continue;
+    const dx = creep.x - towerX;
+    const dy = creep.y - towerY;
+    if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+      const dmg = calculateDamage(ctx.damage, ctx.damageType, creep.armor);
+      creep.takeDamage(dmg);
+      ctx.hitTargets.push(creep);
+    }
+  }
+});
+
 registerDelivery('pierce_delivery', (trait: Trait, ctx: HitContext) => {
   const towerX = (trait as any)._towerX ?? ctx.target.x;
   const towerY = (trait as any)._towerY ?? ctx.target.y;
@@ -204,6 +222,11 @@ registerOnFire('ramp_up', (trait: Trait, _tower: any, targetIdx: number) => {
 });
 
 registerOnFire('pierce_delivery', (trait: Trait, tower: any, _targetIdx: number) => {
+  trait._towerX = tower.x;
+  trait._towerY = tower.y;
+});
+
+registerOnFire('tower_aura_damage', (trait: Trait, tower: any, _targetIdx: number) => {
   trait._towerX = tower.x;
   trait._towerY = tower.y;
 });

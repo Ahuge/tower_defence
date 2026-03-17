@@ -74,7 +74,7 @@ function generateStandardWaves(count: number): WaveDefinition[] {
       if (waveNum >= 18) {
         groups.push({ creepType: 'healer', count: 1, hpScale: baseHp, speedScale: baseSpeed });
         // Mage type rotates
-        const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion'];
+        const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion', 'mage_heal'];
         groups.push({ creepType: mageTypes[waveNum % mageTypes.length], count: 1, hpScale: baseHp, speedScale: baseSpeed });
       }
       if (waveNum >= 19) {
