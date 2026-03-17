@@ -1,4 +1,4 @@
-export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'random';
+export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'random';
 
 export interface Faction {
   id: FactionId;
@@ -90,6 +90,14 @@ export const FACTIONS: Record<FactionId, Faction> = {
     secondaryColor: 0xee99ff,
     towerIds: ['psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike', 'psi_overmind'],
   },
+  harmonic: {
+    id: 'harmonic',
+    name: 'Harmonic',
+    description: 'Alone, a whisper. Together, a symphony. Aura network.',
+    primaryColor: 0xffcc44,
+    secondaryColor: 0xffee88,
+    towerIds: ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo'],
+  },
   random: {
     id: 'random',
     name: 'Random',
@@ -100,7 +108,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
   },
 };
 
-export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'random'];
+export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'random'];
 
 export function getFaction(id: FactionId): Faction {
   return FACTIONS[id];

@@ -382,7 +382,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mil_rifleman', name: 'Rifleman', description: 'Mobile ranged unit. Engages at medium range.',
     faction: 'military', damageType: 'physical', cost: 40, damage: 14, range: 3, fireRate: 700,
     color: 0x556b2f, projectileSpeed: 0, hotkey: '3',
-    traits: [{ id: 'mobile_unit', moveSpeed: 100, engageRange: 2.5, leashRange: 5, attackCooldown: 700 }],
+    traits: [{ id: 'mobile_unit', moveSpeed: 80, engageRange: 2.5, attackCooldown: 700 }],
     upgrades: [
       { level: 2, cost: 45, damage: 22, range: 3.5, fireRate: 600 },
       { level: 3, cost: 80, damage: 34, range: 4, fireRate: 500 },
@@ -390,17 +390,17 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   mil_brawler: def({
     id: 'mil_brawler', name: 'Brawler', description: 'Mobile melee. High damage, gets up close.',
-    faction: 'military', damageType: 'physical', cost: 55, damage: 30, range: 2, fireRate: 500,
+    faction: 'military', damageType: 'physical', cost: 55, damage: 22, range: 2, fireRate: 500,
     color: 0x8b4513, projectileSpeed: 0, hotkey: '4',
     traits: [{ id: 'mobile_unit', moveSpeed: 140, engageRange: 0.8, leashRange: 4, attackCooldown: 500 }],
     upgrades: [
-      { level: 2, cost: 60, damage: 48, range: 2, fireRate: 450 },
-      { level: 3, cost: 100, damage: 70, range: 2, fireRate: 400 },
+      { level: 2, cost: 60, damage: 35, range: 2, fireRate: 450 },
+      { level: 3, cost: 100, damage: 50, range: 2, fireRate: 400 },
     ],
   }),
   mil_heavy: def({
     id: 'mil_heavy', name: 'Heavy Gunner', description: 'Mobile AoE. Slower but hits everything nearby.',
-    faction: 'military', damageType: 'physical', cost: 120, damage: 20, range: 3, fireRate: 1200,
+    faction: 'military', damageType: 'physical', cost: 120, damage: 14, range: 3, fireRate: 1200,
     color: 0x4a6741, projectileSpeed: 0, hotkey: '5',
     traits: [{ id: 'mobile_unit', moveSpeed: 70, engageRange: 1, leashRange: 5, attackCooldown: 1200, attackSplash: 64 }],
     upgrades: [
@@ -410,7 +410,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   mil_commander: def({
     id: 'mil_commander', name: 'Commander', description: 'ULTIMATE. Mobile. Buffs all units in range. Strong melee.',
-    faction: 'military', damageType: 'physical', cost: 750, damage: 60, range: 5, fireRate: 800,
+    faction: 'military', damageType: 'physical', cost: 750, damage: 40, range: 5, fireRate: 800,
     color: 0xdaa520, projectileSpeed: 0, hotkey: '6', ultimate: true,
     traits: [
       { id: 'mobile_unit', moveSpeed: 90, engageRange: 1, leashRange: 6, attackCooldown: 800 },
@@ -470,7 +470,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   alien_swarmling: def({
     id: 'alien_swarmling', name: 'Swarmling', description: 'Mobile melee. Cheap, fast, disposable.',
-    faction: 'aliens', damageType: 'physical', cost: 15, damage: 6, range: 2, fireRate: 400,
+    faction: 'aliens', damageType: 'physical', cost: 15, damage: 4, range: 2, fireRate: 400,
     color: 0x99ee55, projectileSpeed: 0, hotkey: '6',
     traits: [{ id: 'mobile_unit', moveSpeed: 160, engageRange: 0.6, attackCooldown: 400 }],
     upgrades: [
@@ -586,7 +586,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   infernal_bomber: def({
     id: 'infernal_bomber', name: 'Fiend', description: 'Kamikaze. Runs to nearest creep and explodes for AoE damage. Single use.',
-    faction: 'infernal', damageType: 'magic', cost: 20, damage: 80, range: 10, fireRate: 99999,
+    faction: 'infernal', damageType: 'magic', cost: 20, damage: 60, range: 10, fireRate: 99999,
     color: 0xdd3300, projectileSpeed: 0, hotkey: '4',
     traits: [{ id: 'mobile_unit', moveSpeed: 180, engageRange: 0.5, attackCooldown: 100, attackSplash: 56, selfDestruct: true }],
   }),
@@ -715,6 +715,73 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { id: 'confuse_on_hit', duration: 2000 },
       { id: 'bonus_vs_mage', bonus: 1.0 },
     ],
+  }),
+  // ================================================================
+  // HARMONIC (7) — Aura network. Sharing, connection, synergy.
+  // ================================================================
+  harmonic_resonator: def({
+    id: 'harmonic_resonator', name: 'Resonator', description: 'Basic DPS. Weak alone, powerful with auras.',
+    faction: 'harmonic', damageType: 'magic', cost: 20, damage: 8, range: 3.5, fireRate: 700,
+    color: 0xffcc44, projectileSpeed: 350, hotkey: '1',
+    upgrades: [
+      { level: 2, cost: 25, damage: 14, range: 3.5, fireRate: 650 },
+      { level: 3, cost: 50, damage: 22, range: 4, fireRate: 580 },
+      { level: 4, cost: 85, damage: 32, range: 4, fireRate: 500 },
+    ],
+  }),
+  harmonic_amplifier: def({
+    id: 'harmonic_amplifier', name: 'Amplifier', description: 'No attack. +20% damage to towers in range. Stacks.',
+    faction: 'harmonic', damageType: 'magic', cost: 30, damage: 0, range: 4, fireRate: 99999,
+    color: 0xffdd66, projectileSpeed: 0, hotkey: '2',
+    traits: [{ id: 'damage_aura', percent: 0.2 }],
+    upgrades: [
+      { level: 2, cost: 35, damage: 0, range: 4.5, fireRate: 99999 },
+      { level: 3, cost: 60, damage: 0, range: 5, fireRate: 99999 },
+    ],
+  }),
+  harmonic_quickener: def({
+    id: 'harmonic_quickener', name: 'Quickener', description: 'No attack. +15% fire rate to towers in range.',
+    faction: 'harmonic', damageType: 'magic', cost: 40, damage: 0, range: 4, fireRate: 99999,
+    color: 0xeecc55, projectileSpeed: 0, hotkey: '3',
+    traits: [{ id: 'rate_aura', percent: 0.15 }],
+    upgrades: [
+      { level: 2, cost: 45, damage: 0, range: 4.5, fireRate: 99999 },
+    ],
+  }),
+  harmonic_reach: def({
+    id: 'harmonic_reach', name: 'Reach', description: 'No attack. +1.5 tile range to towers in range.',
+    faction: 'harmonic', damageType: 'magic', cost: 50, damage: 0, range: 4, fireRate: 99999,
+    color: 0xddbb44, projectileSpeed: 0, hotkey: '4',
+    traits: [{ id: 'range_aura', tiles: 1.5 }],
+    upgrades: [
+      { level: 2, cost: 55, damage: 0, range: 5, fireRate: 99999 },
+    ],
+  }),
+  harmonic_critical_mass: def({
+    id: 'harmonic_critical_mass', name: 'Critical Mass', description: 'No attack. Grants 15% crit (2x) to towers in range.',
+    faction: 'harmonic', damageType: 'magic', cost: 80, damage: 0, range: 4, fireRate: 99999,
+    color: 0xccaa33, projectileSpeed: 0, hotkey: '5',
+    traits: [{ id: 'crit_aura', chance: 0.15, multiplier: 2 }],
+    upgrades: [
+      { level: 2, cost: 75, damage: 0, range: 5, fireRate: 99999 },
+    ],
+  }),
+  harmonic_conduit: def({
+    id: 'harmonic_conduit', name: 'Conduit', description: 'Links 2 nearest aura towers. Shares their auras between them.',
+    faction: 'harmonic', damageType: 'magic', cost: 100, damage: 0, range: 6, fireRate: 99999,
+    color: 0xbb9922, projectileSpeed: 0, hotkey: '6',
+    traits: [{ id: 'conduit_link', maxLinks: 2, linkRange: 6 }],
+    upgrades: [
+      { level: 2, cost: 90, damage: 0, range: 7, fireRate: 99999 },
+      { level: 3, cost: 150, damage: 0, range: 8, fireRate: 99999 },
+    ],
+  }),
+  harmonic_crescendo: def({
+    id: 'harmonic_crescendo', name: 'Crescendo', description: 'ULTIMATE. Moderate DPS. All aura effects on this tower are doubled.',
+    faction: 'harmonic', damageType: 'magic', cost: 650, damage: 30, range: 5, fireRate: 800,
+    color: 0xffee88, projectileSpeed: 400, hotkey: '7', ultimate: true,
+    traits: [{ id: 'direct_damage' }],
+    // Aura doubling handled by checking for this tower type in aura handlers
   }),
 };
 

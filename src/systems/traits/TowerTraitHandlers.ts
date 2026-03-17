@@ -752,3 +752,208 @@ registerFireRateMod('_faction_rate_buff', (trait: Trait, rate: number, _tower: a
 registerTowerUpdate('_faction_rate_buff', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
 });
+
+// ============================================================
+// HARMONIC FACTION AURAS
+// ============================================================
+
+/** Damage aura: +X% damage to all towers in range (stacks) */
+registerTowerUpdate('damage_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const bonus = (trait.percent ?? 0.2) * tower.level;
+  const range = tower.range || (TILE_SIZE * 4);
+  for (const other of ctx.allTowers) {
+    if (other === tower) continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      addOrRefreshTrait(other.traits, {
+        id: '_harmonic_damage',
+        bonus,
+        _ttl: 200,
+        _source: `${tower.col},${tower.row}`,
+      });
+    }
+  }
+});
+
+registerDamageMod('_harmonic_damage', (trait: Trait, damage: number, _ctx: HitContext) => {
+  return Math.round(damage * (1 + (trait.bonus ?? 0)));
+});
+registerTowerUpdate('_harmonic_damage', (trait: Trait, _tower: any, ctx: UpdateContext) => {
+  trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+});
+
+/** Rate aura: +X% fire rate to all towers in range */
+registerTowerUpdate('rate_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const bonus = (trait.percent ?? 0.15) * tower.level;
+  const range = tower.range || (TILE_SIZE * 4);
+  for (const other of ctx.allTowers) {
+    if (other === tower) continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      addOrRefreshTrait(other.traits, {
+        id: '_harmonic_rate',
+        bonus,
+        _ttl: 200,
+      });
+    }
+  }
+});
+
+registerFireRateMod('_harmonic_rate', (trait: Trait, rate: number, _tower: any) => {
+  return Math.round(rate * (1 - (trait.bonus ?? 0)));
+});
+registerTowerUpdate('_harmonic_rate', (trait: Trait, _tower: any, ctx: UpdateContext) => {
+  trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+});
+
+/** Range aura: +X tiles range to all towers in range */
+registerTowerUpdate('range_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const bonus = (trait.tiles ?? 1.5) * tower.level;
+  const range = tower.range || (TILE_SIZE * 4);
+  for (const other of ctx.allTowers) {
+    if (other === tower) continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      addOrRefreshTrait(other.traits, {
+        id: '_harmonic_range',
+        bonus: bonus * TILE_SIZE,
+        _ttl: 200,
+      });
+    }
+  }
+});
+
+// Range bonus applied by recalculating each frame (not a fire rate mod)
+// Handled in Tower.getEffectiveRange() or as part of findTarget override
+registerTowerUpdate('_harmonic_range', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  // Temporarily boost tower range
+  const baseRange = tower.typeDef.range * TILE_SIZE;
+  const rangeBonus = trait.bonus ?? 0;
+  tower.range = baseRange + rangeBonus;
+  trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+});
+
+/** Crit aura: grants crit chance to towers in range */
+registerTowerUpdate('crit_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const chance = (trait.chance ?? 0.15) * tower.level;
+  const multiplier = trait.multiplier ?? 2;
+  const range = tower.range || (TILE_SIZE * 4);
+  for (const other of ctx.allTowers) {
+    if (other === tower) continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= range) {
+      addOrRefreshTrait(other.traits, {
+        id: '_harmonic_crit',
+        chance: Math.min(0.6, chance),
+        multiplier,
+        _ttl: 200,
+      });
+    }
+  }
+});
+
+registerDamageMod('_harmonic_crit', (trait: Trait, damage: number, _ctx: HitContext) => {
+  if (Math.random() < (trait.chance ?? 0.15)) {
+    return Math.round(damage * (trait.multiplier ?? 2));
+  }
+  return damage;
+});
+registerTowerUpdate('_harmonic_crit', (trait: Trait, _tower: any, ctx: UpdateContext) => {
+  trait._ttl = (trait._ttl ?? 0) - ctx.delta;
+});
+
+/** Conduit: links 2-3 nearest aura towers and shares their auras */
+registerTowerUpdate('conduit_link', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const maxLinks = trait.maxLinks ?? 2;
+  const linkRange = (trait.linkRange ?? 6) * TILE_SIZE;
+  const auraTraitIds = ['damage_aura', 'rate_aura', 'range_aura', 'crit_aura'];
+
+  // Find nearest aura towers
+  const auraTowers: any[] = [];
+  for (const other of ctx.allTowers) {
+    if (other === tower) continue;
+    const hasAura = other.traits.some((t: any) => auraTraitIds.includes(t.id));
+    if (!hasAura) continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= linkRange) {
+      auraTowers.push({ tower: other, dist });
+    }
+  }
+
+  // Sort by distance, take closest N
+  auraTowers.sort((a, b) => a.dist - b.dist);
+  const linked = auraTowers.slice(0, maxLinks);
+
+  // Store link positions for visual
+  trait._links = linked.map((l: any) => ({ x: l.tower.x, y: l.tower.y }));
+
+  // For each pair of linked towers, share auras between them
+  for (let i = 0; i < linked.length; i++) {
+    for (let j = i + 1; j < linked.length; j++) {
+      const towerA = linked[i].tower;
+      const towerB = linked[j].tower;
+
+      // Copy A's aura effects to B's position and vice versa
+      for (const traitA of towerA.traits) {
+        if (!auraTraitIds.includes(traitA.id)) continue;
+        // Simulate towerB having towerA's aura
+        // Apply towerA's aura effect from towerB's position
+        shareAura(traitA, towerB, ctx, tower.level);
+      }
+      for (const traitB of towerB.traits) {
+        if (!auraTraitIds.includes(traitB.id)) continue;
+        shareAura(traitB, towerA, ctx, tower.level);
+      }
+    }
+  }
+});
+
+function shareAura(auraTrait: Trait, fromTower: any, ctx: UpdateContext, conduitLevel: number): void {
+  const range = fromTower.range || (TILE_SIZE * 4);
+  const effectiveness = 0.7; // shared auras are 70% as strong
+
+  for (const other of ctx.allTowers) {
+    if (other === fromTower) continue;
+    const dx = other.x - fromTower.x;
+    const dy = other.y - fromTower.y;
+    if (Math.sqrt(dx * dx + dy * dy) > range) continue;
+
+    switch (auraTrait.id) {
+      case 'damage_aura':
+        addOrRefreshTrait(other.traits, {
+          id: '_harmonic_damage',
+          bonus: (auraTrait.percent ?? 0.2) * conduitLevel * effectiveness,
+          _ttl: 200,
+        });
+        break;
+      case 'rate_aura':
+        addOrRefreshTrait(other.traits, {
+          id: '_harmonic_rate',
+          bonus: (auraTrait.percent ?? 0.15) * conduitLevel * effectiveness,
+          _ttl: 200,
+        });
+        break;
+      case 'range_aura':
+        addOrRefreshTrait(other.traits, {
+          id: '_harmonic_range',
+          bonus: (auraTrait.tiles ?? 1.5) * conduitLevel * effectiveness * TILE_SIZE,
+          _ttl: 200,
+        });
+        break;
+      case 'crit_aura':
+        addOrRefreshTrait(other.traits, {
+          id: '_harmonic_crit',
+          chance: Math.min(0.5, (auraTrait.chance ?? 0.15) * conduitLevel * effectiveness),
+          multiplier: auraTrait.multiplier ?? 2,
+          _ttl: 200,
+        });
+        break;
+    }
+  }
+}

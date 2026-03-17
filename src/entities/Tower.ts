@@ -133,6 +133,22 @@ export class Tower {
       this.graphics.lineStyle(2, 0x00ffcc, 0.5);
       this.graphics.lineBetween(this.x, this.y, fwTrait._partnerX, fwTrait._partnerY);
     }
+
+    // Conduit link visuals
+    const conduit = getTrait(this.traits, 'conduit_link');
+    if (conduit && conduit._links) {
+      this.graphics.lineStyle(1, 0xffcc44, 0.4);
+      for (const link of conduit._links) {
+        this.graphics.lineBetween(this.x, this.y, link.x, link.y);
+      }
+    }
+
+    // Harmonic aura range indicator (for aura towers)
+    if (hasTrait(this.traits, 'damage_aura') || hasTrait(this.traits, 'rate_aura') ||
+        hasTrait(this.traits, 'range_aura') || hasTrait(this.traits, 'crit_aura')) {
+      this.graphics.lineStyle(1, 0xffcc44, 0.15);
+      this.graphics.strokeCircle(this.x, this.y, this.range);
+    }
   }
 
   canUpgrade(): boolean {
@@ -168,8 +184,8 @@ export class Tower {
   runTraitUpdates(ctx: UpdateContext): void {
     resolveTowerUpdates(this.traits, this, ctx);
     cleanupExpiredTraits(this.traits);
-    // Redraw firewall beam each frame
-    if (hasTrait(this.traits, 'firewall_link') && this.graphics.visible) {
+    // Redraw towers with dynamic visuals each frame
+    if ((hasTrait(this.traits, 'firewall_link') || hasTrait(this.traits, 'conduit_link')) && this.graphics.visible) {
       this.drawTower();
     }
   }

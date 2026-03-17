@@ -111,6 +111,12 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
     { id: 'mind_prison', name: 'Mind Prison', faction: 'psionic', cost: 95, baseIncome: 7,
       description: 'Overcharge for 3x psychic burst, dormant 2 waves.', mechanic: 'overcharge' },
   ],
+  harmonic: [
+    { id: 'resonance_chamber', name: 'Resonance Chamber', faction: 'harmonic', cost: 45, baseIncome: 4,
+      description: 'Grows +2 per wave. Harmonizes with your network.', mechanic: 'grow' },
+    { id: 'symphony_hall', name: 'Symphony Hall', faction: 'harmonic', cost: 110, baseIncome: 7,
+      description: 'Overcharge for 3x crescendo, dormant 2 waves.', mechanic: 'overcharge' },
+  ],
   random: [],
 };
 
