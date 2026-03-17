@@ -82,6 +82,9 @@ export class GameScene extends Phaser.Scene {
   waveActive: boolean = false;
   betweenWaves: boolean = true;
   paused: boolean = false;
+  gameSpeed: number = 1.0;
+  private static readonly SPEED_OPTIONS = [0, 0.5, 1.0, 1.5, 2.0, 3.0];
+  private speedIndex: number = 2; // default 1.0x
   totalTowersBuilt: number = 0;
   totalCreepsKilled: number = 0;
 
@@ -266,8 +269,11 @@ export class GameScene extends Phaser.Scene {
 
     this.inputMgr.onKey('ESC', () => this.enterNoneMode());
     this.inputMgr.onKey('P', () => this.togglePause());
+    this.inputMgr.onKey('TAB', () => this.cycleSpeed());
+    // Prevent TAB from changing browser focus
+    this.input.keyboard!.addCapture('TAB');
 
-    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves);
+    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed);
   }
 
   // === Selection Mode Management ===
@@ -547,6 +553,10 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.paused) return;
 
+    // Apply game speed
+    delta *= this.gameSpeed;
+    if (delta === 0) return; // speed 0 = paused
+
     const traitCtx: UpdateContext = {
       allTowers: this.towers,
       allCreeps: this.creeps,
@@ -653,7 +663,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves);
+    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
@@ -684,6 +694,12 @@ export class GameScene extends Phaser.Scene {
 
   // Pause menu
   private pauseOverlay: Phaser.GameObjects.Container | null = null;
+
+  private cycleSpeed(): void {
+    this.speedIndex = (this.speedIndex + 1) % GameScene.SPEED_OPTIONS.length;
+    this.gameSpeed = GameScene.SPEED_OPTIONS[this.speedIndex];
+    this.eventLog.gameMessage(`Speed: ${this.gameSpeed}x`);
+  }
 
   private togglePause(): void {
     this.paused = !this.paused;

@@ -2,6 +2,13 @@
 
 ## 2026-03-16
 
+### Game Speed Control
+- **TAB** cycles through speed: 0x (frozen), 0.5x, **1.0x** (default), 1.5x, 2.0x, 3.0x.
+- Speed indicator in bottom-right of HUD: `[TAB] 1.0x`. Red at 0x, yellow at fast speeds.
+- Multiplies delta time — all game systems (towers, creeps, spawning, DoTs, traits) scale uniformly.
+- Speed 0x acts as a soft pause (UI still responsive, can build/sell).
+- Speed logged in event log on change.
+
 ### Military Faction, Mobile Unit Towers, Fighter System Removed
 - **Military faction** (6 towers): Sandbag (8g wall), Barbed Wire (adjacent slow), Rifleman (mobile ranged), Brawler (mobile melee), Heavy Gunner (mobile AoE), Commander (750g ultimate, mobile + buff aura).
 - **Mobile unit tower trait** (`mobile_unit`): towers that physically move to engage nearby creeps, deal melee/short-range damage, then return to their placement position. Renders as diamond shape with home-position marker when away. Each unit has moveSpeed, engageRange, leashRange, attackCooldown, optional attackSplash.
