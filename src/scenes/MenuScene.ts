@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
@@ -23,7 +23,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
 
     this.add.text(cx, 40, 'TOWER DEFENCE', {
       fontSize: '36px', color: '#ffffff', fontFamily: 'monospace',
@@ -188,7 +188,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Version SHA
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-    this.add.text(CANVAS_WIDTH - 8, totalH - 8, `v${__GIT_SHA__}`, {
+    this.add.text(getCanvasWidth() - 8, totalH - 8, `v${__GIT_SHA__}`, {
       fontSize: '10px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(1, 1);
   }

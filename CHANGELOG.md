@@ -2,6 +2,15 @@
 
 ## 2026-03-18
 
+### Responsive Scaling & Tablet Support
+- **Dynamic grid offset**: `GRID_OFFSET_X` and `CANVAS_WIDTH` are now dynamic functions (`getGridOffsetX()`, `getCanvasWidth()`) that read from `ResponsiveManager`. On desktop (window >= 1200px), layout is unchanged. On tablet, grid offset is 0 and canvas shrinks to game area only.
+- **ResponsiveManager** (`src/systems/ResponsiveManager.ts`): Singleton that detects layout mode from `window.innerWidth`, fires resize events, exposes `isTablet()`, `canvasWidth()`, `gridOffsetX()`.
+- **Collapsible sidebar overlay** (`src/ui/SidebarOverlay.ts`): On tablet, sidebar panels (UpcomingWaves, SendPanel, FrontierPanel, EssencePanel, EventLog) slide in/out from the left via a hamburger toggle button. Desktop layout unchanged.
+- **Touch input**: Long-press (500ms) triggers right-click callback (sell/upgrade). Added tappable Sell/Upgrade buttons to TowerInfoPanel, tappable Start Wave and Speed buttons to UIOverlay. Works on both desktop and tablet.
+- **All scene centering** now uses `getCanvasWidth()` so menus fill the correct canvas size on any layout.
+- **GameMode.reparentSidebarPanels()**: Optional method on game modes to move their sidebar panels into the overlay on tablet. All 4 modes (Standard, Battle, HeroDefense, CircleCoop) implement it.
+- Added `getContainer()` to UpcomingWaves, EventLog, SendPanel, FrontierPanel, EssencePanel, ItemShopPanel for sidebar reparenting.
+
 ### Circle Co-op Fixes
 - **Individual gold**: kill credit now tracks which tower dealt the killing blow (`Creep.lastHitCol/Row`). Only the tower owner gets kill gold via `CircleDeathHandler`.
 - **Lobby sync fixes**: joiners now correctly receive their player index via targeted messages. Existing joiners are notified when new players connect (P2 knows about P3/P4).

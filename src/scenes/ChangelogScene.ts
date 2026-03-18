@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 // In-app changelog — recent changes shown to the player
@@ -182,10 +182,10 @@ export class ChangelogScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
 
-    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, CANVAS_WIDTH, totalH);
+    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
     this.add.text(cx, 25, 'CHANGELOG', {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
@@ -202,10 +202,10 @@ export class ChangelogScene extends Phaser.Scene {
     const contentH = totalH - 75;
     const marginL = 280;
     const marginR = 280;
-    const contentW = CANVAS_WIDTH - marginL - marginR;
+    const contentW = getCanvasWidth() - marginL - marginR;
 
     const mask = this.add.graphics();
-    mask.fillRect(0, contentY, CANVAS_WIDTH, contentH);
+    mask.fillRect(0, contentY, getCanvasWidth(), contentH);
     const maskGeo = mask.createGeometryMask();
 
     const container = this.add.container(0, contentY);

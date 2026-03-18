@@ -1,4 +1,4 @@
-import { TILE_SIZE, CANVAS_WIDTH, GRID_OFFSET_X } from '../config';
+import { TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { Tower } from '../entities/Tower';
 import { hasTrait, getTrait } from '../systems/traits/Trait';
 
@@ -11,8 +11,13 @@ export class TowerInfoPanel {
   private buffText: Phaser.GameObjects.Text;
   private traitsText: Phaser.GameObjects.Text;
   private upgradeText: Phaser.GameObjects.Text;
+  private upgradeBtn: Phaser.GameObjects.Text;
+  private sellBtn: Phaser.GameObjects.Text;
   private rangeCircle: Phaser.GameObjects.Graphics;
   private visible: boolean = false;
+  private onUpgrade: ((tower: Tower) => void) | null = null;
+  private onSell: ((tower: Tower) => void) | null = null;
+  private currentTower: Tower | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -28,11 +33,40 @@ export class TowerInfoPanel {
     this.upgradeText = scene.add.text(8, 66, '', { fontSize: '12px', color: '#88ff88', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.buffText, this.traitsText, this.upgradeText]);
 
+    // Tappable action buttons
+    this.upgradeBtn = scene.add.text(8, 0, '[ Upgrade ]', {
+      fontSize: '13px', color: '#44ff44', fontFamily: 'monospace',
+      backgroundColor: '#1a2a1a', padding: { x: 4, y: 2 },
+    }).setInteractive({ useHandCursor: true });
+    this.upgradeBtn.on('pointerdown', () => {
+      if (this.currentTower && this.onUpgrade) this.onUpgrade(this.currentTower);
+    });
+    this.upgradeBtn.on('pointerover', () => this.upgradeBtn.setColor('#88ff88'));
+    this.upgradeBtn.on('pointerout', () => this.upgradeBtn.setColor('#44ff44'));
+    this.container.add(this.upgradeBtn);
+
+    this.sellBtn = scene.add.text(120, 0, '[ Sell ]', {
+      fontSize: '13px', color: '#ff8844', fontFamily: 'monospace',
+      backgroundColor: '#2a1a1a', padding: { x: 4, y: 2 },
+    }).setInteractive({ useHandCursor: true });
+    this.sellBtn.on('pointerdown', () => {
+      if (this.currentTower && this.onSell) this.onSell(this.currentTower);
+    });
+    this.sellBtn.on('pointerover', () => this.sellBtn.setColor('#ffbb77'));
+    this.sellBtn.on('pointerout', () => this.sellBtn.setColor('#ff8844'));
+    this.container.add(this.sellBtn);
+
     this.rangeCircle = scene.add.graphics().setDepth(19);
+  }
+
+  setCallbacks(onUpgrade: (tower: Tower) => void, onSell: (tower: Tower) => void): void {
+    this.onUpgrade = onUpgrade;
+    this.onSell = onSell;
   }
 
   show(tower: Tower): void {
     this.visible = true;
+    this.currentTower = tower;
     this.container.setVisible(true);
 
     // Name + level
@@ -123,15 +157,21 @@ export class TowerInfoPanel {
       this.upgradeText.setText(`MAX | Sell: ${tower.getSellValue()}g (right-click)`);
     }
 
+    // Position action buttons
+    const btnY = upgradeY + (buffs.length > 0 ? 14 : 0) + 30;
+    this.upgradeBtn.setPosition(8, btnY);
+    this.sellBtn.setPosition(120, btnY);
+    this.upgradeBtn.setVisible(tower.canUpgrade());
+
     // Calculate panel size
     const panelW = 350;
-    const panelH = upgradeY + (buffs.length > 0 ? 14 : 0) + 36;
+    const panelH = btnY + 24;
 
     // Position near tower
     let px = tower.x + TILE_SIZE;
     let py = tower.y - panelH / 2;
-    if (px + panelW > CANVAS_WIDTH) px = tower.x - TILE_SIZE - panelW;
-    if (px < GRID_OFFSET_X) px = GRID_OFFSET_X;
+    if (px + panelW > getCanvasWidth()) px = tower.x - TILE_SIZE - panelW;
+    if (px < getGridOffsetX()) px = getGridOffsetX();
     if (py < 0) py = 0;
 
     this.container.setPosition(px, py);

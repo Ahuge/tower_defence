@@ -189,4 +189,8 @@ export class EssencePanel {
     this.container.add(summary);
     this.ownedItems.push(summary);
   }
+
+  getContainer(): Phaser.GameObjects.Container {
+    return this.container;
+  }
 }

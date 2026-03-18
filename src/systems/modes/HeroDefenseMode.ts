@@ -1,4 +1,5 @@
 import { GameMode, GameModeContext } from '../GameMode';
+import { SidebarOverlay } from '../../ui/SidebarOverlay';
 import { MatchMode } from '../../data/WaveDefinitions';
 import { SEND_OPTIONS, SendCreepOption } from '../../data/SendCreepTypes';
 import { ArenaManager } from '../ArenaManager';
@@ -56,6 +57,10 @@ export class HeroDefenseMode implements GameMode {
 
   canStartWave(): boolean {
     return true;
+  }
+
+  reparentSidebarPanels(overlay: SidebarOverlay): void {
+    overlay.addPanel(this.itemShop.getContainer());
   }
 
   handleSend(sendId: string): boolean {

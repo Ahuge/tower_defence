@@ -28,15 +28,17 @@ Build towers to create mazes, defend against 14 creep types across 30+ waves, ma
 | 1-8 | Select tower type |
 | Click tower button | Select/deselect tower type |
 | Left click (grid) | Build / Inspect tower / Inspect creep |
-| Right click | Sell tower |
+| Right click / Long-press | Sell tower |
 | Z/X/C/V | Buy sends (Standard/Fast/Armored/Swarm) |
-| SPACE | Start next wave / Vote ready (versus) |
-| TAB | Cycle game speed (0x/0.5x/1x/1.5x/2x/3x) |
+| SPACE / Start Wave btn | Start next wave / Vote ready (versus) |
+| TAB / Speed btn | Cycle game speed (0x/0.5x/1x/1.5x/2x/3x) |
 | P | Pause menu |
 | ENTER | Chat (versus mode) |
 | L | Link mode (Conduit tower) |
 | Q/W/E | Hero abilities (Hero Defense mode) |
 | ESC | Deselect / cancel link mode |
+
+**Tablet/Touch:** Sidebar is a collapsible overlay (hamburger menu). Upgrade/Sell buttons appear on tower info panel. Long-press (500ms) = right-click.
 
 ## Factions (12)
 
@@ -114,6 +116,7 @@ Easy/Normal/Hard. Each creep type interprets difficulty individually — armored
 - **TypeScript 5.9** — Type safety
 - **Vite 8** — Build + HMR
 - **WebRTC** — P2P multiplayer (no server)
+- **Responsive layout** — Desktop (sidebar inline) + tablet (collapsible sidebar overlay, touch controls)
 
 ## Deploy
 ```bash

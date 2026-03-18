@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT } from './config';
+import { GAME_HEIGHT } from './config';
+import { ResponsiveManager } from './systems/ResponsiveManager';
 import { MenuScene } from './scenes/MenuScene';
 import { FactionSelectScene } from './scenes/FactionSelectScene';
 import { DraftScene } from './scenes/DraftScene';
@@ -16,11 +17,14 @@ import { TowerSelectBar } from './ui/TowerSelectBar';
 import './systems/traits/TowerTraitHandlers';
 import './systems/traits/CreepTraitHandlers';
 
+// Initialize responsive detection before Phaser
+ResponsiveManager.init();
+
 const gameHeight = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
-  width: CANVAS_WIDTH,
+  width: ResponsiveManager.canvasWidth(),
   height: gameHeight,
   backgroundColor: '#111111',
   parent: document.body,
@@ -35,4 +39,9 @@ const config: Phaser.Types.Core.GameConfig = {
   },
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+// Resize canvas on layout mode change
+ResponsiveManager.onLayoutChange(() => {
+  game.scale.resize(ResponsiveManager.canvasWidth(), gameHeight);
+});

@@ -6,7 +6,23 @@ export const GAME_HEIGHT = GRID_ROWS * TILE_SIZE;
 
 // Sidebar
 export const SIDEBAR_WIDTH = 360;
+
+// Dynamic grid offset — reads from ResponsiveManager at runtime
+// On desktop: offset = SIDEBAR_WIDTH (sidebar inline). On tablet: offset = 0 (sidebar overlay).
+import { ResponsiveManager } from './systems/ResponsiveManager';
+
+/** @deprecated Use getGridOffsetX() for responsive layout */
 export const GRID_OFFSET_X = SIDEBAR_WIDTH;
+
+export function getGridOffsetX(): number {
+  return ResponsiveManager.gridOffsetX();
+}
+
+export function getCanvasWidth(): number {
+  return ResponsiveManager.canvasWidth();
+}
+
+/** Static canvas width for desktop (kept for backward compat in non-game scenes) */
 export const CANVAS_WIDTH = SIDEBAR_WIDTH + GAME_WIDTH;
 
 // Mutable grid Y offset (set by GameScene for hero defense arena above grid)
@@ -14,13 +30,13 @@ let _gridOffsetY = 0;
 export function setGridOffsetY(offset: number): void { _gridOffsetY = offset; }
 export function getGridOffsetY(): number { return _gridOffsetY; }
 
-// Grid-pixel conversion helpers
+// Grid-pixel conversion helpers — use dynamic offset
 export function gridX(col: number): number {
-  return col * TILE_SIZE + TILE_SIZE / 2 + GRID_OFFSET_X;
+  return col * TILE_SIZE + TILE_SIZE / 2 + getGridOffsetX();
 }
 
 export function gridLeftX(col: number): number {
-  return col * TILE_SIZE + GRID_OFFSET_X;
+  return col * TILE_SIZE + getGridOffsetX();
 }
 
 export function gridY(row: number): number {
@@ -28,7 +44,7 @@ export function gridY(row: number): number {
 }
 
 export function pixelToCol(x: number): number {
-  return Math.floor((x - GRID_OFFSET_X) / TILE_SIZE);
+  return Math.floor((x - getGridOffsetX()) / TILE_SIZE);
 }
 
 export function pixelToRow(y: number): number {

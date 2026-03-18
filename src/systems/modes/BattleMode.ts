@@ -1,4 +1,5 @@
 import { GameMode, GameModeContext } from '../GameMode';
+import { SidebarOverlay } from '../../ui/SidebarOverlay';
 import { MatchMode } from '../../data/WaveDefinitions';
 import { EssenceGenerator, EssenceSendOption, ESSENCE_SENDS } from '../../data/EssenceGenerators';
 import { EssencePanel } from '../../ui/EssencePanel';
@@ -54,6 +55,10 @@ export class BattleMode implements GameMode {
 
   canStartWave(): boolean {
     return true;
+  }
+
+  reparentSidebarPanels(overlay: SidebarOverlay): void {
+    overlay.addPanel(this.essencePanel.getContainer());
   }
 
   handleSend(sendId: string): boolean {

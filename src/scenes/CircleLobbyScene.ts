@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { GameMessage } from '../systems/multiplayer/MessageProtocol';
 import { MapId, CIRCLE_MAP_ORDER, MAPS } from '../data/Maps';
@@ -27,7 +27,7 @@ export class CircleLobbyScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
 
     this.playerFactions.clear();
@@ -36,7 +36,7 @@ export class CircleLobbyScene extends Phaser.Scene {
     this.pollTimer = null;
     this.assignedPlayerIndex = false;
 
-    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, CANVAS_WIDTH, totalH);
+    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
     this.add.text(cx, 30, 'CIRCLE CO-OP', {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
@@ -48,7 +48,7 @@ export class CircleLobbyScene extends Phaser.Scene {
 
     this.statusText = this.add.text(cx, 95, '', {
       fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
-      align: 'center', wordWrap: { width: CANVAS_WIDTH - 100 },
+      align: 'center', wordWrap: { width: getCanvasWidth() - 100 },
     }).setOrigin(0.5);
 
     this.rosterText = this.add.text(cx, 140, '', {
@@ -175,7 +175,7 @@ export class CircleLobbyScene extends Phaser.Scene {
   }
 
   private showHostControls(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
 
     const addBtn = this.add.text(cx - 100, 210, '[ ADD PLAYER ]', {
       fontSize: '14px', color: '#44ff44', fontFamily: 'monospace',
@@ -242,7 +242,7 @@ export class CircleLobbyScene extends Phaser.Scene {
         `Offer for Player ${playerIndex} copied!\nSend to them, then click PASTE ANSWER.`
       );
 
-      const cx = CANVAS_WIDTH / 2;
+      const cx = getCanvasWidth() / 2;
       const pasteBtn = this.add.text(cx, 245, '[ PASTE ANSWER ]', {
         fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -277,7 +277,7 @@ export class CircleLobbyScene extends Phaser.Scene {
     this.clearDynamic();
     this.statusText.setText('Paste the host\'s offer code:');
 
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const pasteBtn = this.add.text(cx, 210, '[ PASTE OFFER ]', {
       fontSize: '14px', color: '#4488ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -307,7 +307,7 @@ export class CircleLobbyScene extends Phaser.Scene {
   private showGameSetup(): void {
     this.stopPollTimer();
     this.clearDynamic();
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const playerCount = this.circle!.playerCount;
 
     // Auto-select appropriate circle map

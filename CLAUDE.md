@@ -21,12 +21,12 @@ After every commit, check and update these files:
 ## Project Structure
 ```
 src/
-  config.ts           — Constants (TILE_SIZE=28, GRID=36x26, SIDEBAR=360), grid helpers
-  main.ts             — Phaser WEBGL init, scene registration, trait handler imports
+  config.ts           — Constants (TILE_SIZE=28, GRID=36x26, SIDEBAR=360), dynamic grid helpers
+  main.ts             — Phaser WEBGL init, scene registration, responsive init
   data/               — Static game data (towers, creeps, factions, maps, difficulty)
   entities/           — Game objects (Tower, Creep, Fighter)
   scenes/             — Phaser scenes (Menu, FactionSelect, Draft, Game, GameOver, Lobby)
-  systems/            — Game logic (Grid, Pathfinding, EventBus, Economy, Spawn, etc.)
+  systems/            — Game logic (Grid, Pathfinding, EventBus, Economy, Spawn, ResponsiveManager, etc.)
   systems/traits/     — Trait system (core registry + tower/creep handlers)
   systems/multiplayer/ — WebRTC P2P (PeerConnection, VersusManager, MessageProtocol)
   ui/                 — UI components (panels, bars, displays, minimap)
@@ -36,7 +36,8 @@ src/
 - **Trait system**: All behaviors are composable traits. See `systems/traits/Trait.ts` for registry and pipeline. Add new behaviors by registering handlers in TowerTraitHandlers.ts or CreepTraitHandlers.ts.
 - **Event bus**: Typed EventBus for decoupled communication.
 - **Data-driven**: Tower/creep/faction definitions in `data/`. Add content by editing data files.
-- **Grid offset**: Game grid offset by SIDEBAR_WIDTH (360px). Use `gridX()`, `gridY()`, `pixelToCol()` helpers.
+- **Grid offset**: Dynamic via `getGridOffsetX()` — desktop=360px (sidebar inline), tablet=0 (sidebar overlay). Use `gridX()`, `gridY()`, `pixelToCol()` helpers. Never use `GRID_OFFSET_X` constant directly.
+- **Responsive**: `ResponsiveManager` singleton detects desktop/tablet. `SidebarOverlay` wraps sidebar panels on tablet. Use `getCanvasWidth()` instead of `CANVAS_WIDTH` constant.
 - **Multiplayer**: P2P WebRTC via manual SDP exchange. VersusManager handles state sync. Host controls speed, map, difficulty. Shared seed for mirrored waves.
 - **ResourceManager**: N-resource system. Gold always present. Battle mode adds Essence with real-time ticking.
 - **Decomposed GameScene**: TowerManager, CreepManager, WaveController extracted. Leak/Death handlers are pluggable interfaces.

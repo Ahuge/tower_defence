@@ -8,6 +8,7 @@ import { EventLog } from '../ui/EventLog';
 import { FactionId } from '../data/Factions';
 import { DraftModifier } from '../data/DraftModifiers';
 import { VersusManager } from './multiplayer/VersusManager';
+import { SidebarOverlay } from '../ui/SidebarOverlay';
 
 /**
  * Context passed to GameMode for initialization.
@@ -48,4 +49,7 @@ export interface GameMode {
 
   /** Handle a send purchase attempt. Returns true if handled. */
   handleSend(sendId: string): boolean;
+
+  /** Move mode-specific sidebar panels into the overlay (tablet mode) */
+  reparentSidebarPanels?(overlay: SidebarOverlay): void;
 }

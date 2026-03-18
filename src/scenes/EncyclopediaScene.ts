@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT, TILE_SIZE } from '../config';
+import { getCanvasWidth, GAME_HEIGHT, TILE_SIZE } from '../config';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { TOWER_TYPES, TowerType } from '../data/TowerTypes';
 import { CREEP_TYPES } from '../data/CreepTypes';
@@ -26,10 +26,10 @@ export class EncyclopediaScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
 
-    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, CANVAS_WIDTH, totalH);
+    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
     this.add.text(cx, 20, 'ENCYCLOPEDIA', {
       fontSize: '24px', color: '#ffffff', fontFamily: 'monospace',
@@ -75,7 +75,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const contentY = 68;
     const contentH = totalH - 78;
     const mask = this.add.graphics();
-    mask.fillRect(0, contentY, CANVAS_WIDTH, contentH);
+    mask.fillRect(0, contentY, getCanvasWidth(), contentH);
     const maskGeo = mask.createGeometryMask();
 
     this.contentContainer = this.add.container(0, contentY);
@@ -114,7 +114,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
   // ===================== FACTIONS TAB (CAROUSEL) =====================
   private buildFactionsTab(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const fid = this.playableFactions[this.factionIndex];
     const faction = FACTIONS[fid];
     if (!faction) return;
@@ -129,7 +129,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     });
     this.contentContainer.add(prevBtn);
 
-    const nextBtn = this.add.text(CANVAS_WIDTH - 40, 10, 'Next >', {
+    const nextBtn = this.add.text(getCanvasWidth() - 40, 10, 'Next >', {
       fontSize: '14px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
     nextBtn.on('pointerdown', () => {
@@ -161,7 +161,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     // Content margins — narrower centered card
     const marginL = 280;
     const marginR = 280;
-    const contentW = CANVAS_WIDTH - marginL - marginR;
+    const contentW = getCanvasWidth() - marginL - marginR;
 
     // Lore paragraph
     const lore = FACTION_LORE[fid] ?? faction.description;
@@ -201,7 +201,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         const txt = this.add.text(colX[i], y, vals[i], {
           fontSize: '10px', color: t.ultimate ? '#ffdd44' : '#cccccc',
           fontFamily: 'monospace',
-          wordWrap: i === 5 ? { width: CANVAS_WIDTH - marginR - colX[5] } : undefined,
+          wordWrap: i === 5 ? { width: getCanvasWidth() - marginR - colX[5] } : undefined,
         });
         this.contentContainer.add(txt);
       }
@@ -263,7 +263,7 @@ export class EncyclopediaScene extends Phaser.Scene {
 
   // ===================== TOWERS CAROUSEL =====================
   private buildTowersCarousel(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const tid = this.allTowerIds[this.towerIndex];
     const t = TOWER_TYPES[tid];
     if (!t) return;
@@ -280,7 +280,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     });
     this.contentContainer.add(prevBtn);
 
-    const nextBtn = this.add.text(CANVAS_WIDTH - 40, 10, 'Next >', {
+    const nextBtn = this.add.text(getCanvasWidth() - 40, 10, 'Next >', {
       fontSize: '14px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
     nextBtn.on('pointerdown', () => {
@@ -322,7 +322,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const loreText = this.add.text(cx, y, `"${lore}"`, {
       fontSize: '10px', color: '#999999', fontFamily: 'monospace',
       fontStyle: 'italic',
-      wordWrap: { width: CANVAS_WIDTH - 560 },
+      wordWrap: { width: getCanvasWidth() - 560 },
       align: 'center',
     }).setOrigin(0.5, 0);
     this.contentContainer.add(loreText);
@@ -395,7 +395,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     let y = 0;
     const marginL = 280;
     const marginR = 280;
-    const cardW = CANVAS_WIDTH - marginL - marginR;
+    const cardW = getCanvasWidth() - marginL - marginR;
 
     for (const [id, ct] of Object.entries(CREEP_TYPES)) {
       const cardH = 80;

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { GameMessage } from '../systems/multiplayer/MessageProtocol';
 import { MapId, MAP_ORDER, MAPS } from '../data/Maps';
@@ -24,10 +24,10 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
 
-    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, CANVAS_WIDTH, totalH);
+    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
     this.add.text(cx, 30, 'VERSUS LOBBY', {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
@@ -39,12 +39,12 @@ export class LobbyScene extends Phaser.Scene {
 
     this.statusText = this.add.text(cx, 95, '', {
       fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
-      align: 'center', wordWrap: { width: CANVAS_WIDTH - 100 },
+      align: 'center', wordWrap: { width: getCanvasWidth() - 100 },
     }).setOrigin(0.5);
 
     this.codeDisplay = this.add.text(cx, 200, '', {
       fontSize: '13px', color: '#88aacc', fontFamily: 'monospace',
-      align: 'center', wordWrap: { width: CANVAS_WIDTH - 100 },
+      align: 'center', wordWrap: { width: getCanvasWidth() - 100 },
     }).setOrigin(0.5, 0);
 
     const hostBtn = this.add.text(cx - 120, 130, '[ HOST GAME ]', {
@@ -115,7 +115,7 @@ export class LobbyScene extends Phaser.Scene {
       );
       this.codeDisplay.setText(`Offer (${offer.length} chars) on clipboard`);
 
-      const pasteBtn = this.add.text(CANVAS_WIDTH / 2, 170, '[ PASTE ANSWER ]', {
+      const pasteBtn = this.add.text(getCanvasWidth() / 2, 170, '[ PASTE ANSWER ]', {
         fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
       pasteBtn.on('pointerdown', async () => {
@@ -141,7 +141,7 @@ export class LobbyScene extends Phaser.Scene {
     this.statusText.setText('Paste the host\'s offer code:');
     this.versus = this.createVersus();
 
-    const pasteBtn = this.add.text(CANVAS_WIDTH / 2, 170, '[ PASTE OFFER ]', {
+    const pasteBtn = this.add.text(getCanvasWidth() / 2, 170, '[ PASTE OFFER ]', {
       fontSize: '14px', color: '#4488ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     pasteBtn.on('pointerdown', async () => {
@@ -164,7 +164,7 @@ export class LobbyScene extends Phaser.Scene {
 
   private showGameSetup(): void {
     this.codeDisplay.setText('');
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
 
     // Host picks map + difficulty
     if (this.isHost) {

@@ -91,4 +91,8 @@ export class EventLog {
   gameMessage(msg: string): void {
     this.log(msg);
   }
+
+  getContainer(): Phaser.GameObjects.Container {
+    return this.container;
+  }
 }

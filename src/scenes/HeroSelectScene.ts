@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { HeroId, HERO_ORDER, HERO_TYPES } from '../data/HeroTypes';
 import { MatchMode } from '../data/WaveDefinitions';
 import { FactionId } from '../data/Factions';
@@ -25,10 +25,10 @@ export class HeroSelectScene extends Phaser.Scene {
   }
 
   create(): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
 
-    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, CANVAS_WIDTH, totalH);
+    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
     this.add.text(cx, 35, 'Choose Your Hero', {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',

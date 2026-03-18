@@ -1,4 +1,4 @@
-import { TILE_SIZE, CANVAS_WIDTH, GRID_OFFSET_X } from '../config';
+import { TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { Creep } from '../entities/Creep';
 
 export class CreepInfoPanel {
@@ -90,8 +90,8 @@ export class CreepInfoPanel {
     // Position near creep
     let px = c.x + TILE_SIZE;
     let py = c.y - panelH / 2;
-    if (px + panelW > CANVAS_WIDTH) px = c.x - TILE_SIZE - panelW;
-    if (px < GRID_OFFSET_X) px = GRID_OFFSET_X;
+    if (px + panelW > getCanvasWidth()) px = c.x - TILE_SIZE - panelW;
+    if (px < getGridOffsetX()) px = getGridOffsetX();
     if (py < 0) py = 0;
 
     this.container.setPosition(px, py);

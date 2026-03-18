@@ -1,4 +1,5 @@
 import { GameMode, GameModeContext } from '../GameMode';
+import { SidebarOverlay } from '../../ui/SidebarOverlay';
 import { MatchMode } from '../../data/WaveDefinitions';
 import { FrontierManager } from '../FrontierManager';
 import { FrontierBuilding } from '../../data/FrontierBuildings';
@@ -124,6 +125,10 @@ export class CircleCoopMode implements GameMode {
       }
     }
     this.frontierPanel.updateOwned();
+  }
+
+  reparentSidebarPanels(overlay: SidebarOverlay): void {
+    overlay.addPanel(this.frontierPanel.getContainer());
   }
 
   handleSend(_sendId: string): boolean {

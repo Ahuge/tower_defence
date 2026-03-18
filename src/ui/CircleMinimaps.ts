@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH } from '../config';
+import { getCanvasWidth } from '../config';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 
 /**
@@ -21,7 +21,7 @@ export class CirclePlayerRoster {
     this.circle = circle;
     this.zoneColors = zoneColors;
 
-    const x = CANVAS_WIDTH - this.panelW - 8;
+    const x = getCanvasWidth() - this.panelW - 8;
     const y = 6;
 
     this.container = scene.add.container(x, y).setDepth(29);

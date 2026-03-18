@@ -1,4 +1,4 @@
-import { GRID_OFFSET_X } from '../config';
+import { getGridOffsetX } from '../config';
 import { Hero } from '../entities/Hero';
 import { ArenaCreep } from '../entities/ArenaCreep';
 import { HeroTypeDef } from '../data/HeroTypes';
@@ -47,7 +47,7 @@ export class ArenaManager {
     this.scene = scene;
     this.economy = economy;
     this.eventLog = eventLog;
-    this.arenaX = GRID_OFFSET_X;
+    this.arenaX = getGridOffsetX();
     this.arenaY = 0;
     this.arenaWidth = arenaWidth;
     this.arenaHeight = arenaHeight;
@@ -57,12 +57,13 @@ export class ArenaManager {
     this.graphics = scene.add.graphics().setDepth(10);
 
     // Spawn hero at center of arena (pixel coords relative to arena)
+    const offsetX = getGridOffsetX();
     this.hero = new Hero(
       scene,
-      arenaWidth / 2 + GRID_OFFSET_X,
+      arenaWidth / 2 + offsetX,
       arenaHeight / 2,
       heroType,
-      arenaWidth + GRID_OFFSET_X,
+      arenaWidth + offsetX,
       arenaHeight,
     );
 

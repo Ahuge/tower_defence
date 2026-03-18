@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
+import { GAME_HEIGHT, getCanvasWidth } from '../config';
 import { FighterType, getFighterTypesForFaction } from '../data/FighterTypes';
 import { FactionId } from '../data/Factions';
 import { TowerSelectBar } from './TowerSelectBar';
@@ -13,7 +13,7 @@ export class FighterPanel {
     this.scene = scene;
     this.onPurchase = onPurchase;
     this.fighterTypes = getFighterTypesForFaction(faction);
-    this.container = scene.add.container(CANVAS_WIDTH - 180, GAME_HEIGHT + 28).setDepth(30);
+    this.container = scene.add.container(getCanvasWidth() - 180, GAME_HEIGHT + 28).setDepth(30);
 
     this.buildPanel();
   }

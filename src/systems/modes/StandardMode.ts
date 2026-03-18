@@ -1,4 +1,5 @@
 import { GameMode, GameModeContext } from '../GameMode';
+import { SidebarOverlay } from '../../ui/SidebarOverlay';
 import { MatchMode } from '../../data/WaveDefinitions';
 import { SEND_OPTIONS, SendCreepOption } from '../../data/SendCreepTypes';
 import { FrontierManager } from '../FrontierManager';
@@ -154,6 +155,11 @@ export class StandardMode implements GameMode {
       }
     }
     this.frontierPanel.updateOwned();
+  }
+
+  reparentSidebarPanels(overlay: SidebarOverlay): void {
+    overlay.addPanel(this.sendPanel.getContainer());
+    overlay.addPanel(this.frontierPanel.getContainer());
   }
 
   handleSend(sendId: string): boolean {

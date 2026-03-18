@@ -69,4 +69,8 @@ export class SendPanel {
       });
     }
   }
+
+  getContainer(): Phaser.GameObjects.Container {
+    return this.container;
+  }
 }

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { GameStats } from '../systems/StatsTracker';
 import { TOWER_TYPES } from '../data/TowerTypes';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
@@ -31,11 +31,11 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   create(data: GameOverData): void {
-    const cx = CANVAS_WIDTH / 2;
+    const cx = getCanvasWidth() / 2;
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
 
     // Background
-    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, CANVAS_WIDTH, totalH);
+    this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
     const title = data.won ? 'VICTORY!' : 'DEFEAT';
     const titleColor = data.won ? '#44ff44' : '#ff4444';
@@ -86,7 +86,7 @@ export class GameOverScene extends Phaser.Scene {
       // Divider
       const divG = this.add.graphics();
       divG.lineStyle(1, 0x444444, 0.5);
-      divG.lineBetween(50, headerY + 14, CANVAS_WIDTH - 50, headerY + 14);
+      divG.lineBetween(50, headerY + 14, getCanvasWidth() - 50, headerY + 14);
 
       // Rows — sorted by total damage
       const entries = Object.entries(data.stats.towerStats)

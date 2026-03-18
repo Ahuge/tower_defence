@@ -100,4 +100,8 @@ export class UpcomingWaves {
       this.contentItems.push(text);
     }
   }
+
+  getContainer(): Phaser.GameObjects.Container {
+    return this.container;
+  }
 }

@@ -274,4 +274,8 @@ export class FrontierPanel {
   private createBatchButton(x: number, y: number, label: string, color: string, onClick: () => void): number {
     return this.createActionButton(x, y, label, color, onClick);
   }
+
+  getContainer(): Phaser.GameObjects.Container {
+    return this.container;
+  }
 }

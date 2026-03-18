@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
   TILE_SIZE, GRID_COLS, GRID_ROWS, GAME_WIDTH, GAME_HEIGHT,
-  CANVAS_WIDTH, GRID_OFFSET_X, SIDEBAR_WIDTH,
+  SIDEBAR_WIDTH, getGridOffsetX, getCanvasWidth,
   COLOR_GROUND, COLOR_GRID_LINE, COLOR_ENTRY, COLOR_EXIT,
   COLOR_HOVER_VALID, COLOR_HOVER_INVALID, STARTING_LIVES,
   gridX, gridY, gridLeftX, pixelToCol, setGridOffsetY,
@@ -48,6 +48,8 @@ import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { CirclePlayerRoster } from '../ui/CircleMinimaps';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
+import { SidebarOverlay } from '../ui/SidebarOverlay';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { CircleDeathHandler } from '../systems/CircleDeathHandler';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext } from '../systems/traits/Trait';
@@ -89,6 +91,7 @@ export class GameScene extends Phaser.Scene {
   /** Tower ownership: "col,row" → playerIndex */
   towerOwners: Map<string, number> = new Map();
   private _circleSyncTimer: number = 0;
+  sidebarOverlay: SidebarOverlay | null = null;
   opponentMinimap: OpponentMinimap | null = null;
   opponentSim: OpponentSimulation | null = null;
   viewingOpponent: boolean = false;
@@ -246,6 +249,23 @@ export class GameScene extends Phaser.Scene {
       this.inputMgr.setGridRows(this.layout.gridRows);
     }
     this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
+    this.ui.setCallbacks(
+      () => {
+        // Wave start (same as SPACE)
+        if (this.betweenWaves && this.currentWave < this.waves.length) {
+          if (this.circle) {
+            this.circle.voteReady();
+            this.eventLog.gameMessage('Ready! Waiting for other players...');
+          } else if (this.versus) {
+            this.versus.voteReady();
+            this.eventLog.gameMessage('Ready! Waiting for opponent...');
+          } else {
+            this.startWave();
+          }
+        }
+      },
+      () => this.cycleSpeed(),
+    );
 
     if (this.modifier && this.modifier.extraGold > 0) {
       this.economy.addGold(this.modifier.extraGold);
@@ -262,6 +282,24 @@ export class GameScene extends Phaser.Scene {
       }
     });
     this.towerInfo = new TowerInfoPanel(this);
+    this.towerInfo.setCallbacks(
+      (tower) => {
+        // Upgrade
+        if (tower.canUpgrade()) {
+          const cost = tower.getUpgradeCost();
+          if (this.economy.spend(cost)) {
+            tower.upgrade();
+            this.towerInfo.show(tower);
+            this.versus?.send({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
+            this.circle?.broadcast({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
+          }
+        }
+      },
+      (tower) => {
+        // Sell
+        this.handleRightClick(tower.col, tower.row);
+      },
+    );
     this.creepInfo = new CreepInfoPanel(this);
 
     // Economy systems
@@ -360,10 +398,18 @@ export class GameScene extends Phaser.Scene {
     this.hoverGraphics = this.add.graphics().setDepth(20);
     this.rangeGraphics = this.add.graphics().setDepth(19);
 
-    // Sidebar background
-    const sidebarBg = this.add.graphics().setDepth(0);
-    sidebarBg.fillStyle(0x0e0e12, 1);
-    sidebarBg.fillRect(0, 0, SIDEBAR_WIDTH, GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT);
+    // Sidebar background (desktop) or overlay (tablet)
+    if (ResponsiveManager.isTablet()) {
+      this.sidebarOverlay = new SidebarOverlay(this);
+      // Reparent sidebar panels into the overlay
+      this.sidebarOverlay.addPanel(this.upcomingWaves.getContainer());
+      this.sidebarOverlay.addPanel(this.eventLog.getContainer());
+      this.gameMode.reparentSidebarPanels?.(this.sidebarOverlay);
+    } else {
+      const sidebarBg = this.add.graphics().setDepth(0);
+      sidebarBg.fillStyle(0x0e0e12, 1);
+      sidebarBg.fillRect(0, 0, SIDEBAR_WIDTH, GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT);
+    }
 
     this.drawGrid();
     this.drawPath();
@@ -411,7 +457,7 @@ export class GameScene extends Phaser.Scene {
     // Hero defense: arena click + ability keys
     if (this.arenaManager) {
       this.inputMgr.onRawClick((px, py) => {
-        if (py < this.gridOffsetY && px >= GRID_OFFSET_X) {
+        if (py < this.gridOffsetY && px >= getGridOffsetX()) {
           this.arenaManager!.handleClick(px, py);
         }
       });
@@ -1110,7 +1156,7 @@ export class GameScene extends Phaser.Scene {
   private showPauseMenu(): void {
     if (this.pauseOverlay) return;
 
-    const cx = GRID_OFFSET_X + GAME_WIDTH / 2;
+    const cx = getGridOffsetX() + GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
 
     this.pauseOverlay = this.add.container(0, 0).setDepth(50);
@@ -1118,7 +1164,7 @@ export class GameScene extends Phaser.Scene {
     // Dim overlay
     const dim = this.add.graphics();
     dim.fillStyle(0x000000, 0.6);
-    dim.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, GAME_HEIGHT);
+    dim.fillRect(getGridOffsetX(), 0, GAME_WIDTH, GAME_HEIGHT);
     this.pauseOverlay.add(dim);
 
     // Panel
@@ -1200,7 +1246,7 @@ export class GameScene extends Phaser.Scene {
     const gridH = rows * TILE_SIZE;
 
     g.fillStyle(COLOR_GROUND, 1);
-    g.fillRect(GRID_OFFSET_X, oY, GAME_WIDTH, gridH);
+    g.fillRect(getGridOffsetX(), oY, GAME_WIDTH, gridH);
 
     g.lineStyle(1, COLOR_GRID_LINE, 0.3);
     for (let col = 0; col <= GRID_COLS; col++) {
@@ -1208,7 +1254,7 @@ export class GameScene extends Phaser.Scene {
     }
     for (let row = 0; row <= rows; row++) {
       // gridY already includes offset, but here we draw raw grid lines
-      g.lineBetween(GRID_OFFSET_X, oY + row * TILE_SIZE, GRID_OFFSET_X + GAME_WIDTH, oY + row * TILE_SIZE);
+      g.lineBetween(getGridOffsetX(), oY + row * TILE_SIZE, getGridOffsetX() + GAME_WIDTH, oY + row * TILE_SIZE);
     }
 
     // Blocked terrain — use gridY-based coords (includes offset)
@@ -1264,7 +1310,7 @@ export class GameScene extends Phaser.Scene {
 
     // Dim the grid background
     this.opponentOverlay.fillStyle(0x000000, 0.3);
-    this.opponentOverlay.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, GAME_HEIGHT);
+    this.opponentOverlay.fillRect(getGridOffsetX(), 0, GAME_WIDTH, GAME_HEIGHT);
 
     // Draw opponent towers as colored squares on the main grid
     for (const t of this.versus.opponentTowers) {
@@ -1281,7 +1327,7 @@ export class GameScene extends Phaser.Scene {
 
     // "VIEWING OPPONENT" banner
     this.opponentOverlay.fillStyle(0xff2222, 0.8);
-    this.opponentOverlay.fillRect(GRID_OFFSET_X, 0, 220, 22);
+    this.opponentOverlay.fillRect(getGridOffsetX(), 0, 220, 22);
 
     // Draw simulated opponent creeps
     if (this.opponentSim) {
@@ -1303,7 +1349,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (!this.opponentLabel) {
-      this.opponentLabel = this.add.text(GRID_OFFSET_X + 8, 3, 'VIEWING OPPONENT', {
+      this.opponentLabel = this.add.text(getGridOffsetX() + 8, 3, 'VIEWING OPPONENT', {
         fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
       }).setDepth(23);
     }

@@ -6,6 +6,9 @@ export interface GridCoord {
   row: number;
 }
 
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD = 10; // pixels
+
 export class InputManager {
   private scene: Phaser.Scene;
   private events: EventBus;
@@ -17,11 +20,26 @@ export class InputManager {
   private rawClickCallback: ((x: number, y: number) => void) | null = null;
   private gridRows: number = GRID_ROWS;
 
+  // Long-press state for touch
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private longPressFired = false;
+  private longPressStartX = 0;
+  private longPressStartY = 0;
+
   constructor(scene: Phaser.Scene, events: EventBus) {
     this.scene = scene;
     this.events = events;
 
     scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      // Cancel long-press if finger moved too far
+      if (pointer.isDown && this.longPressTimer) {
+        const dx = pointer.x - this.longPressStartX;
+        const dy = pointer.y - this.longPressStartY;
+        if (dx * dx + dy * dy > LONG_PRESS_MOVE_THRESHOLD * LONG_PRESS_MOVE_THRESHOLD) {
+          this.cancelLongPress();
+        }
+      }
+
       const coord = this.pointerToGrid(pointer);
       if (coord && this.hoverCallback) {
         this.hoverCallback(coord.col, coord.row);
@@ -32,6 +50,12 @@ export class InputManager {
       if (pointer.leftButtonDown() && this.rawClickCallback) {
         this.rawClickCallback(pointer.x, pointer.y);
       }
+
+      // Start long-press detection for touch
+      if (pointer.wasTouch) {
+        this.startLongPress(pointer);
+      }
+
       const coord = this.pointerToGrid(pointer);
       if (pointer.leftButtonDown()) {
         if (coord && this.clickCallback) {
@@ -44,11 +68,38 @@ export class InputManager {
       }
     });
 
+    scene.input.on('pointerup', () => {
+      this.cancelLongPress();
+    });
+
     scene.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     scene.input.keyboard!.on('keydown-SPACE', () => {
       if (this.spaceCallback) this.spaceCallback();
     });
+  }
+
+  private startLongPress(pointer: Phaser.Input.Pointer): void {
+    this.cancelLongPress();
+    this.longPressFired = false;
+    this.longPressStartX = pointer.x;
+    this.longPressStartY = pointer.y;
+    this.longPressTimer = setTimeout(() => {
+      this.longPressFired = true;
+      this.longPressTimer = null;
+      // Treat as right-click
+      const coord = this.pointerToGrid(pointer);
+      if (coord && this.rightClickCallback) {
+        this.rightClickCallback(coord.col, coord.row);
+      }
+    }, LONG_PRESS_MS);
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
   }
 
   onHover(cb: (col: number, row: number) => void): void {

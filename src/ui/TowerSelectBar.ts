@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, GAME_HEIGHT, GRID_OFFSET_X, TILE_SIZE } from '../config';
+import { GAME_HEIGHT, TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { getTowerType, TowerType } from '../data/TowerTypes';
 import { hasTrait } from '../systems/traits/Trait';
 
@@ -39,13 +39,15 @@ export class TowerSelectBar {
   private buildBar(): void {
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x1a1a1a, 1);
-    bg.fillRect(GRID_OFFSET_X, 0, CANVAS_WIDTH - GRID_OFFSET_X, TowerSelectBar.BAR_HEIGHT);
+    const offsetX = getGridOffsetX();
+    const canvasW = getCanvasWidth();
+    bg.fillRect(offsetX, 0, canvasW - offsetX, TowerSelectBar.BAR_HEIGHT);
     bg.lineStyle(1, 0x333333, 1);
-    bg.lineBetween(GRID_OFFSET_X, 0, CANVAS_WIDTH, 0);
+    bg.lineBetween(offsetX, 0, canvasW, 0);
     this.container.add(bg);
 
     const { BTN_SIZE, PADDING } = TowerSelectBar;
-    const startX = GRID_OFFSET_X + PADDING;
+    const startX = offsetX + PADDING;
 
     for (let i = 0; i < this.towerIds.length; i++) {
       const t = getTowerType(this.towerIds[i]);
@@ -101,12 +103,13 @@ export class TowerSelectBar {
 
     // Position above the button
     const { BTN_SIZE, PADDING } = TowerSelectBar;
-    const startX = GRID_OFFSET_X + PADDING;
+    const startX = getGridOffsetX() + PADDING;
     const btnX = startX + index * (BTN_SIZE + PADDING);
     const barY = GAME_HEIGHT + 28;
 
     let tx = btnX;
-    if (tx + textW > CANVAS_WIDTH) tx = CANVAS_WIDTH - textW;
+    const canvasW = getCanvasWidth();
+    if (tx + textW > canvasW) tx = canvasW - textW;
     const ty = barY - textH - 4;
 
     this.tooltip.setPosition(tx, ty);
@@ -200,7 +203,7 @@ export class TowerSelectBar {
 
   private redraw(): void {
     const { BTN_SIZE, PADDING } = TowerSelectBar;
-    const startX = GRID_OFFSET_X + PADDING;
+    const startX = getGridOffsetX() + PADDING;
 
     for (let i = 0; i < this.buttons.length; i++) {
       const t = getTowerType(this.towerIds[i]);

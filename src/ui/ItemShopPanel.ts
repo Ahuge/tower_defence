@@ -206,4 +206,8 @@ export class ItemShopPanel {
       this.rebuildDynamic();
     }
   }
+
+  getContainer(): Phaser.GameObjects.Container {
+    return this.container;
+  }
 }

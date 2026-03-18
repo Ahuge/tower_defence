@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, GRID_COLS, GRID_ROWS, TILE_SIZE, GAME_HEIGHT, GRID_OFFSET_X, gridLeftX } from '../config';
+import { GRID_COLS, GRID_ROWS, TILE_SIZE, GAME_HEIGHT, gridLeftX, getCanvasWidth } from '../config';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { TOWER_TYPES } from '../data/TowerTypes';
 
@@ -25,7 +25,7 @@ export class OpponentMinimap {
     this.cellW = this.mapW / GRID_COLS;
     this.cellH = this.mapH / GRID_ROWS;
 
-    const x = CANVAS_WIDTH - this.mapW - 10;
+    const x = getCanvasWidth() - this.mapW - 10;
     const y = 6;
 
     this.container = scene.add.container(x, y).setDepth(29);
