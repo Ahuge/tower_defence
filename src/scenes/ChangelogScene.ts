@@ -5,6 +5,16 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v18 — Responsive Scaling & Tablet Support',
+    changes: [
+      'Tablet layout: sidebar becomes a collapsible overlay with hamburger toggle',
+      'Touch input: long-press (500ms) to sell towers, tappable Upgrade/Sell buttons',
+      'Tappable Start Wave and Speed buttons in the status bar',
+      'Dynamic canvas sizing — game area fills available width on smaller screens',
+      'All menus and scenes adapt to the active canvas width',
+    ],
+  },
+  {
     version: 'v17 — Circle Co-op + Hero Combat + Menu Redesign',
     changes: [
       'New multiplayer mode: Circle Co-op — 2-4 players on one shared map',
