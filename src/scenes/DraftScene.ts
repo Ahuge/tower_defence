@@ -5,6 +5,7 @@ import { MatchMode } from '../data/WaveDefinitions';
 import { FactionId } from '../data/Factions';
 import { MapId } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
+import { HeroId } from '../data/HeroTypes';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 export class DraftScene extends Phaser.Scene {
@@ -12,16 +13,18 @@ export class DraftScene extends Phaser.Scene {
   private faction: FactionId | null = null;
   private mapId: MapId = 'plains';
   private difficulty: DifficultyLevel = 'normal';
+  private heroId: HeroId | null = null;
 
   constructor() {
     super('DraftScene');
   }
 
-  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId; difficulty?: DifficultyLevel }): void {
+  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId; difficulty?: DifficultyLevel; heroId?: HeroId }): void {
     this.matchMode = data.mode;
     this.faction = data.faction;
     this.mapId = data.map;
     this.difficulty = data.difficulty || 'normal';
+    this.heroId = data.heroId ?? null;
   }
 
   create(): void {
@@ -81,6 +84,7 @@ export class DraftScene extends Phaser.Scene {
           map: this.mapId,
           modifier: mod,
           difficulty: this.difficulty,
+          heroId: this.heroId,
         });
       });
     }
@@ -96,6 +100,7 @@ export class DraftScene extends Phaser.Scene {
           map: this.mapId,
           modifier: null,
           difficulty: this.difficulty,
+          heroId: this.heroId,
         });
       })
       .on('pointerover', function(this: Phaser.GameObjects.Text) { this.setColor('#aaaaaa'); })

@@ -1,6 +1,6 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 
-export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege';
+export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p';
 
 export interface MapDefinition {
   id: MapId;
@@ -10,6 +10,12 @@ export interface MapDefinition {
   exits: { col: number; row: number }[];
   blocked: { col: number; row: number }[];
   noBuild: { col: number; row: number }[];
+  /** Circle co-op: zone definitions. zones[i] = list of cells player i can build on. */
+  zones?: { col: number; row: number }[][];
+  /** Circle co-op: zone colors for rendering */
+  zoneColors?: number[];
+  /** Circle co-op: number of players this map supports */
+  circlePlayers?: number;
 }
 
 const MID_COL = Math.floor(GRID_COLS / 2);
@@ -285,6 +291,208 @@ export const MAPS: Record<MapId, MapDefinition> = {
     })(),
     noBuild: [],
   },
+  hero_plains: {
+    id: 'hero_plains',
+    name: 'Hero Plains',
+    description: 'Open field for Hero Defense. 12 rows.',
+    entries: [{ col: 0, row: 6 }],
+    exits: [{ col: GRID_COLS - 1, row: 6 }],
+    blocked: [
+      // Two small lakes
+      ...circle(10, 3, 2),
+      ...circle(GRID_COLS - 12, 9, 2),
+    ],
+    noBuild: [],
+  },
+  // === Circle Co-op Maps ===
+  // Creeps enter from each player's spawn, loop through all zones, exit where they entered.
+  // Each entry is also the exit for creeps completing the loop.
+  // The pathfinding routes from each entry through the map and back to that same entry.
+
+  circle_2p: (() => {
+    // 2-player: left half (P0) and right half (P1)
+    // Creeps enter left → travel right → loop back left, and vice versa
+    // Central wall with gaps forces a long path through both halves
+    const blocked: Pos[] = [];
+    // Central dividing wall (column 17-18) with gaps at top and bottom
+    for (let r = 3; r < GRID_ROWS - 3; r++) {
+      if (r >= MID_ROW - 2 && r <= MID_ROW + 2) continue; // center gap
+      blocked.push({ col: MID_COL, row: r });
+      blocked.push({ col: MID_COL - 1, row: r });
+    }
+    // Obstacles in each half to create interesting pathing
+    blocked.push(...circle(8, 6, 2));
+    blocked.push(...circle(8, GRID_ROWS - 7, 2));
+    blocked.push(...circle(GRID_COLS - 9, 6, 2));
+    blocked.push(...circle(GRID_COLS - 9, GRID_ROWS - 7, 2));
+
+    // Zones: left half = P0, right half = P1
+    const zone0: Pos[] = [];
+    const zone1: Pos[] = [];
+    for (let c = 0; c < GRID_COLS; c++) {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        if (blocked.some(b => b.col === c && b.row === r)) continue;
+        if (c < MID_COL - 1) zone0.push({ col: c, row: r });
+        else if (c > MID_COL) zone1.push({ col: c, row: r });
+      }
+    }
+
+    return {
+      id: 'circle_2p' as MapId,
+      name: 'Circle 2P',
+      description: '2-player co-op. Creeps loop through both halves.',
+      entries: [
+        { col: 0, row: MID_ROW },           // P0 spawn (left)
+        { col: GRID_COLS - 1, row: MID_ROW }, // P1 spawn (right)
+      ],
+      exits: [
+        { col: 0, row: MID_ROW },           // P0 exit (same as entry)
+        { col: GRID_COLS - 1, row: MID_ROW }, // P1 exit (same as entry)
+      ],
+      blocked,
+      noBuild: [] as Pos[],
+      zones: [zone0, zone1],
+      zoneColors: [0xff4444, 0x4488ff],
+      circlePlayers: 2,
+    };
+  })(),
+
+  circle_3p: (() => {
+    // 3-player: three zones arranged in a triangle-ish layout
+    // P0 = top-left, P1 = top-right, P2 = bottom
+    // Creeps enter from 3 edges and loop through all 3 zones
+    const blocked: Pos[] = [];
+
+    // Y-shaped walls creating 3 sectors with gaps for path flow
+    // Vertical wall from center upward
+    for (let r = 0; r < MID_ROW - 2; r++) {
+      if (r <= 1) continue;
+      blocked.push({ col: MID_COL, row: r });
+    }
+    // Diagonal walls from center to bottom-left and bottom-right
+    for (let i = 1; i < 10; i++) {
+      const r = MID_ROW + i;
+      if (r >= GRID_ROWS - 1) break;
+      const cL = MID_COL - i;
+      const cR = MID_COL + i;
+      if (i >= 3 && i <= 5) continue; // gaps in diagonals
+      if (cL >= 2) blocked.push({ col: cL, row: r });
+      if (cR < GRID_COLS - 2) blocked.push({ col: cR, row: r });
+    }
+
+    // Obstacles per zone
+    blocked.push(...circle(7, 5, 2));
+    blocked.push(...circle(GRID_COLS - 8, 5, 2));
+    blocked.push(...circle(MID_COL, GRID_ROWS - 6, 2));
+
+    // Zones: top-left (P0), top-right (P1), bottom (P2)
+    const zone0: Pos[] = [];
+    const zone1: Pos[] = [];
+    const zone2: Pos[] = [];
+    for (let c = 0; c < GRID_COLS; c++) {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        if (blocked.some(b => b.col === c && b.row === r)) continue;
+        if (r < MID_ROW && c < MID_COL) zone0.push({ col: c, row: r });
+        else if (r < MID_ROW && c >= MID_COL) zone1.push({ col: c, row: r });
+        else zone2.push({ col: c, row: r });
+      }
+    }
+
+    return {
+      id: 'circle_3p' as MapId,
+      name: 'Circle 3P',
+      description: '3-player co-op. Y-shaped paths through 3 zones.',
+      entries: [
+        { col: 0, row: 4 },                    // P0 spawn (top-left)
+        { col: GRID_COLS - 1, row: 4 },        // P1 spawn (top-right)
+        { col: MID_COL, row: GRID_ROWS - 1 },  // P2 spawn (bottom)
+      ],
+      exits: [
+        { col: 0, row: 4 },
+        { col: GRID_COLS - 1, row: 4 },
+        { col: MID_COL, row: GRID_ROWS - 1 },
+      ],
+      blocked,
+      noBuild: [] as Pos[],
+      zones: [zone0, zone1, zone2],
+      zoneColors: [0xff4444, 0x44ff44, 0x4488ff],
+      circlePlayers: 3,
+    };
+  })(),
+
+  circle_4p: (() => {
+    // 4-player: four quadrants (matching the user's image)
+    // P0 = top-left, P1 = top-right, P2 = bottom-right, P3 = bottom-left
+    // Central cross-shaped wall with gaps creates 4 connected quadrants
+    // Creeps loop: P0→P1→P2→P3→P0
+    const blocked: Pos[] = [];
+
+    // Horizontal wall across middle with gaps
+    for (let c = 3; c < GRID_COLS - 3; c++) {
+      if (c >= MID_COL - 2 && c <= MID_COL + 1) continue; // center gap
+      if (c >= 8 && c <= 10) continue; // left gap
+      if (c >= GRID_COLS - 11 && c <= GRID_COLS - 9) continue; // right gap
+      blocked.push({ col: c, row: MID_ROW });
+    }
+    // Vertical wall down middle with gaps
+    for (let r = 3; r < GRID_ROWS - 3; r++) {
+      if (r >= MID_ROW - 2 && r <= MID_ROW + 1) continue; // center gap
+      if (r >= 5 && r <= 7) continue; // top gap
+      if (r >= GRID_ROWS - 8 && r <= GRID_ROWS - 6) continue; // bottom gap
+      blocked.push({ col: MID_COL, row: r });
+    }
+
+    // Central island (like in the user's image)
+    blocked.push(...circle(MID_COL, MID_ROW, 3).filter(p =>
+      // Leave the gap corridors open
+      !(p.row >= MID_ROW - 1 && p.row <= MID_ROW + 1 && (p.col < MID_COL - 1 || p.col > MID_COL + 1)) &&
+      !(p.col >= MID_COL - 1 && p.col <= MID_COL + 1 && (p.row < MID_ROW - 1 || p.row > MID_ROW + 1))
+    ));
+
+    // Corner obstacles per quadrant
+    blocked.push(...circle(7, 5, 2));
+    blocked.push(...circle(GRID_COLS - 8, 5, 2));
+    blocked.push(...circle(7, GRID_ROWS - 6, 2));
+    blocked.push(...circle(GRID_COLS - 8, GRID_ROWS - 6, 2));
+
+    // Zones: 4 quadrants
+    const zones: Pos[][] = [[], [], [], []];
+    for (let c = 0; c < GRID_COLS; c++) {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        if (blocked.some(b => b.col === c && b.row === r)) continue;
+        const left = c < MID_COL;
+        const top = r < MID_ROW;
+        if (top && left) zones[0].push({ col: c, row: r });
+        else if (top && !left) zones[1].push({ col: c, row: r });
+        else if (!top && !left) zones[2].push({ col: c, row: r });
+        else zones[3].push({ col: c, row: r });
+      }
+    }
+
+    return {
+      id: 'circle_4p' as MapId,
+      name: 'Circle 4P',
+      description: '4-player co-op. Four quadrants, one big circle.',
+      entries: [
+        { col: 0, row: 4 },                        // P0 spawn (top-left)
+        { col: GRID_COLS - 1, row: 4 },             // P1 spawn (top-right)
+        { col: GRID_COLS - 1, row: GRID_ROWS - 5 }, // P2 spawn (bottom-right)
+        { col: 0, row: GRID_ROWS - 5 },             // P3 spawn (bottom-left)
+      ],
+      exits: [
+        { col: 0, row: 4 },
+        { col: GRID_COLS - 1, row: 4 },
+        { col: GRID_COLS - 1, row: GRID_ROWS - 5 },
+        { col: 0, row: GRID_ROWS - 5 },
+      ],
+      blocked,
+      noBuild: [] as Pos[],
+      zones,
+      zoneColors: [0xff4444, 0x44ff44, 0x44aaff, 0xaa44ff],
+      circlePlayers: 4,
+    };
+  })(),
 };
 
 export const MAP_ORDER: MapId[] = ['plains', 'crossroads', 'fortress', 'serpentine', 'islands', 'gauntlet', 'spiral', 'siege'];
+export const CIRCLE_MAP_ORDER: MapId[] = ['circle_2p', 'circle_3p', 'circle_4p'];

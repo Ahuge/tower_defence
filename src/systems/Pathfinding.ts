@@ -1,5 +1,5 @@
 import { Grid } from './Grid';
-import { GRID_COLS, GRID_ROWS } from '../config';
+import { GRID_COLS } from '../config';
 
 interface Node {
   col: number;
@@ -67,7 +67,7 @@ export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPo
       const nc = current.col + dc;
       const nr = current.row + dr;
 
-      if (nc < 0 || nc >= GRID_COLS || nr < 0 || nr >= GRID_ROWS) continue;
+      if (nc < 0 || nc >= GRID_COLS || nr < 0 || nr >= grid.rows) continue;
       if (!grid.isWalkable(nc, nr)) continue;
       if (closed.has(key(nc, nr))) continue;
 

@@ -7,8 +7,10 @@ export class UIOverlay {
   private waveText: Phaser.GameObjects.Text;
   private statusText: Phaser.GameObjects.Text;
   private speedText: Phaser.GameObjects.Text;
+  private livesMode: 'lives' | 'base_hp';
 
-  constructor(scene: Phaser.Scene, _events: EventBus) {
+  constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives') {
+    this.livesMode = livesMode;
     const uiStyle = { fontSize: '16px', color: '#ffffff', fontFamily: 'monospace' };
     const baseX = GRID_OFFSET_X;
     this.goldText = scene.add.text(baseX + 8, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
@@ -22,7 +24,7 @@ export class UIOverlay {
 
   update(gold: number, lives: number, currentWave: number, totalWaves: number, waveActive: boolean, betweenWaves: boolean, gameSpeed: number = 1, versusTimer: number = -1): void {
     this.goldText.setText(`Gold: ${Math.floor(gold)}`);
-    this.livesText.setText(`Lives: ${lives}`);
+    this.livesText.setText(this.livesMode === 'base_hp' ? `Base HP: ${lives}` : `Lives: ${lives}`);
     this.waveText.setText(`Wave: ${currentWave}/${totalWaves}`);
 
     if (betweenWaves && currentWave < totalWaves && lives > 0) {

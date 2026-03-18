@@ -9,6 +9,11 @@ export const SIDEBAR_WIDTH = 360;
 export const GRID_OFFSET_X = SIDEBAR_WIDTH;
 export const CANVAS_WIDTH = SIDEBAR_WIDTH + GAME_WIDTH;
 
+// Mutable grid Y offset (set by GameScene for hero defense arena above grid)
+let _gridOffsetY = 0;
+export function setGridOffsetY(offset: number): void { _gridOffsetY = offset; }
+export function getGridOffsetY(): number { return _gridOffsetY; }
+
 // Grid-pixel conversion helpers
 export function gridX(col: number): number {
   return col * TILE_SIZE + TILE_SIZE / 2 + GRID_OFFSET_X;
@@ -19,7 +24,7 @@ export function gridLeftX(col: number): number {
 }
 
 export function gridY(row: number): number {
-  return row * TILE_SIZE + TILE_SIZE / 2;
+  return row * TILE_SIZE + TILE_SIZE / 2 + _gridOffsetY;
 }
 
 export function pixelToCol(x: number): number {
@@ -27,8 +32,9 @@ export function pixelToCol(x: number): number {
 }
 
 export function pixelToRow(y: number): number {
-  return Math.floor(y / TILE_SIZE);
+  return Math.floor((y - _gridOffsetY) / TILE_SIZE);
 }
+
 
 // Colors
 export const COLOR_GROUND = 0x2d2d2d;

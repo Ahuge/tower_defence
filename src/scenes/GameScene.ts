@@ -4,7 +4,7 @@ import {
   CANVAS_WIDTH, GRID_OFFSET_X, SIDEBAR_WIDTH,
   COLOR_GROUND, COLOR_GRID_LINE, COLOR_ENTRY, COLOR_EXIT,
   COLOR_HOVER_VALID, COLOR_HOVER_INVALID, STARTING_LIVES,
-  gridX, gridY, gridLeftX, pixelToCol,
+  gridX, gridY, gridLeftX, pixelToCol, setGridOffsetY,
 } from '../config';
 import { Grid, CellType } from '../systems/Grid';
 import { findPath, PathPoint } from '../systems/Pathfinding';
@@ -24,6 +24,12 @@ import { SendManager } from '../systems/SendManager';
 import { GameMode, GameModeContext } from '../systems/GameMode';
 import { StandardMode } from '../systems/modes/StandardMode';
 import { BattleMode } from '../systems/modes/BattleMode';
+import { HeroDefenseMode } from '../systems/modes/HeroDefenseMode';
+import { HeroLeakHandler } from '../systems/HeroLeakHandler';
+import { ArenaManager } from '../systems/ArenaManager';
+import { AbilitySystem } from '../systems/AbilitySystem';
+import { getLayout, LayoutConfig } from '../systems/LayoutConfig';
+import { HeroId, HERO_TYPES } from '../data/HeroTypes';
 
 // Send options map moved to StandardMode
 import { TowerSelectBar } from '../ui/TowerSelectBar';
@@ -37,8 +43,12 @@ import { TowerManager } from '../systems/TowerManager';
 import { CreepManager, StandardLeakHandler, StandardDeathHandler } from '../systems/CreepManager';
 import { WaveController } from '../systems/WaveController';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
+import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
+import { CirclePlayerRoster } from '../ui/CircleMinimaps';
+import { CircleLeakHandler } from '../systems/CircleLeakHandler';
+import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
@@ -70,9 +80,21 @@ export class GameScene extends Phaser.Scene {
   creepMgr!: CreepManager;
   waveMgr!: WaveController;
   versus: VersusManager | null = null;
+  circle: CircleManager | null = null;
+  circleRoster: CirclePlayerRoster | null = null;
+  circleZoneOverlay: Phaser.GameObjects.Graphics | null = null;
+  /** Which zone cells can this player build on? null = no restriction */
+  private circleMyZone: Set<string> | null = null;
+  /** Tower ownership: "col,row" → playerIndex */
+  towerOwners: Map<string, number> = new Map();
   opponentMinimap: OpponentMinimap | null = null;
   opponentSim: OpponentSimulation | null = null;
   viewingOpponent: boolean = false;
+  arenaManager: ArenaManager | null = null;
+  abilitySystem: AbilitySystem | null = null;
+  heroId: HeroId | null = null;
+  layout!: LayoutConfig;
+  gridOffsetY: number = 0;
   selectedCreep: Creep | null = null;
   linkingConduit: Tower | null = null; // tower being linked in link mode
 
@@ -125,12 +147,19 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
     this.modifier = data.modifier ?? null;
     this.difficulty = data.difficulty || 'normal';
+    this.heroId = data.heroId ?? null;
+    // Hero defense requires its own map (12-row grid)
+    if (this.matchMode === 'hero_defense') {
+      this.mapId = 'hero_plains';
+    }
+    this.layout = getLayout(this.matchMode);
+    this.gridOffsetY = this.layout.gridOffsetY;
     this.difficultyHints = DIFFICULTIES[this.difficulty];
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
@@ -149,6 +178,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Set global grid Y offset for hero defense (arena above grid)
+    setGridOffsetY(this.gridOffsetY);
+
     this._towers = [];
     this._creeps = [];
     this.lives = STARTING_LIVES;
@@ -169,9 +201,24 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    this.arenaManager = null;
+    this.abilitySystem = null;
+
+    // Reset circle/multiplayer state
+    this.circle = null;
+    this.circleRoster = null;
+    this.circleZoneOverlay = null;
+    this.circleMyZone = null;
+    this.towerOwners.clear();
+    this.versus = null;
+    this.opponentMinimap = null;
+    this.opponentSim = null;
+    this.viewingOpponent = false;
+
     this.eventBus = new EventBus();
     const mapDef = MAPS[this.mapId];
-    this.grid = new Grid(mapDef);
+    const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
+    this.grid = new Grid(mapDef, gridRows);
     this.waves = getWavesForMode(this.matchMode);
     this.recalculatePaths();
 
@@ -181,7 +228,10 @@ export class GameScene extends Phaser.Scene {
     const waveSeed = versusRef?.sharedSeed ?? 0;
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
     this.inputMgr = new InputManager(this, this.eventBus);
-    this.ui = new UIOverlay(this, this.eventBus);
+    if (this.layout.gridRows !== GRID_ROWS) {
+      this.inputMgr.setGridRows(this.layout.gridRows);
+    }
+    this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
 
     if (this.modifier && this.modifier.extraGold > 0) {
       this.economy.addGold(this.modifier.extraGold);
@@ -218,9 +268,26 @@ export class GameScene extends Phaser.Scene {
     // Event log (bottom of sidebar)
     this.eventLog = new EventLog(this, 480);
 
+    // Hero defense: create ArenaManager before game mode
+    if (this.matchMode === 'hero_defense' && this.heroId) {
+      const heroType = HERO_TYPES[this.heroId];
+      this.arenaManager = new ArenaManager(
+        this, heroType, GAME_WIDTH, this.layout.arenaHeight,
+        this.economy, this.eventLog, 10000,
+      );
+      this.abilitySystem = new AbilitySystem(this);
+    }
+
+    // Circle co-op: get CircleManager from registry
+    this.circle = this.registry.get('circle') as CircleManager | null;
+
     // Game mode creates mode-specific UI (sends, frontier/essence panels)
-    if (this.matchMode === 'battle') {
+    if (this.matchMode === 'hero_defense' && this.arenaManager) {
+      this.gameMode = new HeroDefenseMode(this.arenaManager);
+    } else if (this.matchMode === 'battle') {
       this.gameMode = new BattleMode();
+    } else if (this.matchMode === 'circle_coop' && this.circle) {
+      this.gameMode = new CircleCoopMode();
     } else {
       this.gameMode = new StandardMode(this.matchMode);
     }
@@ -244,7 +311,11 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
-    const leakHandler = new StandardLeakHandler(this.eventLog, this.statsTracker);
+    const leakHandler = this.arenaManager
+      ? new HeroLeakHandler(this.arenaManager, this.statsTracker, this.eventLog)
+      : this.circle
+        ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
+        : new StandardLeakHandler(this.eventLog, this.statsTracker);
     const deathHandler = new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1);
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
 
@@ -290,7 +361,11 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onRightClick((col, row) => this.handleRightClick(col, row));
     this.inputMgr.onSpace(() => {
       if (this.betweenWaves && this.currentWave < this.waves.length) {
-        if (this.versus) {
+        if (this.circle) {
+          // Circle: vote ready, host checks all-ready
+          this.circle.voteReady();
+          this.eventLog.gameMessage('Ready! Waiting for other players...');
+        } else if (this.versus) {
           // Versus: vote ready instead of instant start
           this.versus.voteReady();
           this.eventLog.gameMessage('Ready! Waiting for opponent...');
@@ -316,6 +391,18 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onKey('ENTER', () => this.openChat());
     this.inputMgr.onKey('L', () => this.enterLinkMode());
     this.input.keyboard!.addCapture('TAB');
+
+    // Hero defense: arena click + ability keys
+    if (this.arenaManager) {
+      this.inputMgr.onRawClick((px, py) => {
+        if (py < this.gridOffsetY && px >= GRID_OFFSET_X) {
+          this.arenaManager!.handleClick(px, py);
+        }
+      });
+      this.inputMgr.onKey('Q', () => this.arenaManager!.handleAbilityKey(0));
+      this.inputMgr.onKey('W', () => this.arenaManager!.handleAbilityKey(1));
+      this.inputMgr.onKey('E', () => this.arenaManager!.handleAbilityKey(2));
+    }
 
     // Versus mode setup
     this.versus = this.registry.get('versus') as VersusManager | null;
@@ -398,7 +485,70 @@ export class GameScene extends Phaser.Scene {
       gameModeCtx.versus = this.versus;
     }
 
-    const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
+    // Circle co-op setup
+    if (this.circle) {
+      this.towerOwners.clear();
+
+      // Build zone restriction set for this player
+      const mapDef = MAPS[this.mapId];
+      if (mapDef.zones && mapDef.zones[this.circle.playerIndex]) {
+        this.circleMyZone = new Set(
+          mapDef.zones[this.circle.playerIndex].map(p => `${p.col},${p.row}`)
+        );
+      }
+
+      // Wire message handler
+      this.circle.onGameMessage = (msg, fromPlayer) => {
+        switch (msg.type) {
+          case 'wave_ready':
+            this.eventLog.gameMessage(`Player ${fromPlayer} is ready!`);
+            break;
+          case 'all_waves_cleared':
+            break;
+          case 'speed_change':
+            this.gameSpeed = msg.speed;
+            this.speedIndex = GameScene.SPEED_OPTIONS.indexOf(msg.speed);
+            if (this.speedIndex === -1) this.speedIndex = 2;
+            this.eventLog.gameMessage(`Host set speed: ${msg.speed}x`);
+            break;
+          case 'lives_update':
+            // Joiner: sync shared lives from host
+            if (!this.circle!.isHost) {
+              this.lives = msg.lives;
+            }
+            break;
+          case 'circle_victory':
+            this.goToGameOver(true);
+            break;
+          case 'chat':
+            this.eventLog.gameMessage(`[P${fromPlayer}] ${msg.text}`);
+            break;
+        }
+      };
+
+      // Create player roster UI
+      const zoneColors = mapDef.zoneColors ?? [];
+      this.circleRoster = new CirclePlayerRoster(this, this.circle, zoneColors);
+
+      // Draw zone overlay on grid
+      this.drawCircleZones();
+
+      this.eventLog.gameMessage(`CIRCLE CO-OP — Player ${this.circle.playerIndex} of ${this.circle.playerCount}`);
+      this.eventLog.gameMessage('Build in your zone (highlighted). Shared lives!');
+
+      // Start initial 60s countdown
+      this.circle.startWaveCountdown(60000);
+      if (this.circle.isHost) {
+        this.circle.broadcast({ type: 'countdown_start', duration: 60000 });
+        this.circle.broadcast({ type: 'speed_change', speed: this.gameSpeed });
+      }
+    }
+
+    const versusTimer = this.versus?.waveTimerActive
+      ? this.versus.getWaveTimerSeconds()
+      : this.circle?.waveTimerActive
+        ? this.circle.getWaveTimerSeconds()
+        : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
   }
 
@@ -512,16 +662,17 @@ export class GameScene extends Phaser.Scene {
 
     if (this.selectionMode !== 'build' || !this.selectedBuildType) return;
 
-    if (this.grid.canPlaceTower(col, row)) {
+    if (this.grid.canPlaceTower(col, row) && this.canBuildInZone(col, row)) {
       const towerType = getTowerType(this.selectedBuildType);
       const cost = this.towerMgr.getEffectiveCost(towerType.cost);
       const canPlace = this.economy.canAfford(cost);
       const color = canPlace ? COLOR_HOVER_VALID : COLOR_HOVER_INVALID;
 
+      // gridY() already includes gridOffsetY
       this.hoverGraphics.fillStyle(color, 0.2);
-      this.hoverGraphics.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this.hoverGraphics.fillRect(gridLeftX(col), gridY(row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
       this.hoverGraphics.lineStyle(1, color, 0.6);
-      this.hoverGraphics.strokeRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this.hoverGraphics.strokeRect(gridLeftX(col), gridY(row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
 
       if (canPlace) {
         let range = towerType.range;
@@ -565,6 +716,7 @@ export class GameScene extends Phaser.Scene {
               existingTower.upgrade();
               this.towerInfo.show(existingTower);
               this.versus?.send({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
+              this.circle?.broadcast({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
             }
           } else {
             this.enterInspectMode(existingTower);
@@ -605,10 +757,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleRightClick(col: number, row: number): void {
+    // Circle co-op: can only sell your own towers
+    if (this.circle) {
+      const owner = this.towerOwners.get(`${col},${row}`);
+      if (owner !== undefined && owner !== this.circle.playerIndex) return;
+    }
+
     const result = this.towerMgr.sellTower(col, row);
     if (!result) return;
 
     if (this.selectedTower === result.tower) this.enterNoneMode();
+    if (this.circle) {
+      this.towerOwners.delete(`${col},${row}`);
+      this.circle.broadcast({ type: 'tower_sold', col, row });
+    }
     this.versus?.send({ type: 'tower_sold', col, row });
 
     if (!result.tower.isMobile) {
@@ -619,6 +781,9 @@ export class GameScene extends Phaser.Scene {
 
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
+    // Circle co-op: zone restriction
+    if (!this.canBuildInZone(col, row)) return;
+
     const towerType = getTowerType(this.selectedBuildType);
 
     const result = this.towerMgr.placeTower(col, row, towerType, this.allPaths, () => {
@@ -627,6 +792,12 @@ export class GameScene extends Phaser.Scene {
     });
 
     if (!result) return;
+
+    // Track tower ownership for circle co-op
+    if (this.circle) {
+      this.towerOwners.set(`${col},${row}`, this.circle.playerIndex);
+      this.circle.broadcast({ type: 'tower_placed', towerId: towerType.id, col, row });
+    }
 
     this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
 
@@ -666,7 +837,10 @@ export class GameScene extends Phaser.Scene {
 
     // Creep updates: movement, leak handling, kill processing, cleanup
     const leakResult = this.creepMgr.update(delta);
-    this.lives -= leakResult.totalLeakDamage;
+    // Circle co-op: host deducts shared lives via CircleLeakHandler; joiners sync via message
+    if (!this.circle || this.circle.isHost) {
+      this.lives -= leakResult.totalLeakDamage;
+    }
 
     // Clean up expired towers
     this.towerMgr.cleanupExpired();
@@ -675,11 +849,17 @@ export class GameScene extends Phaser.Scene {
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
     this.waveMgr.checkWaveComplete(this.creeps.length);
 
-    if (this.lives <= 0) {
+    // Hero defense: check arena base HP instead of lives
+    const isHeroDead = this.arenaManager && this.arenaManager.baseHp <= 0;
+    if (this.lives <= 0 || isHeroDead) {
       this.lives = 0;
       this.eventBus.emit('gameOver');
       if (this.versus) {
         this.versus.notifyGameOver(false, this.statsTracker.stats, this.currentWave, 0);
+      }
+      // Circle co-op: all lose together
+      if (this.circle) {
+        this.circle.broadcast({ type: 'circle_victory', winnerIndex: -1 });
       }
       this.goToGameOver(false);
       return;
@@ -697,18 +877,29 @@ export class GameScene extends Phaser.Scene {
       if (this.versus) {
         this.versus.notifyGameOver(true, this.statsTracker.stats, this.currentWave, this.lives);
       }
+      if (this.circle) {
+        this.circle.broadcast({ type: 'circle_victory', winnerIndex: this.circle.playerIndex });
+      }
       this.goToGameOver(true);
       return;
     }
 
-        const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
-    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    const versusTimer = this.versus?.waveTimerActive
+      ? this.versus.getWaveTimerSeconds()
+      : this.circle?.waveTimerActive
+        ? this.circle.getWaveTimerSeconds()
+        : -1;
+    const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
+    this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
 
-    // Mode-specific per-frame update (essence ticking, etc.)
+    // Mode-specific per-frame update (essence ticking, arena, etc.)
     this.gameMode.update(delta);
+
+    // Ability VFX
+    if (this.abilitySystem) this.abilitySystem.update(delta);
 
     // Versus: wave timer, minimap, incoming sends, ping, disconnect, chat
     if (this.versus) {
@@ -753,6 +944,63 @@ export class GameScene extends Phaser.Scene {
       this.versus?.send({ type: 'lives_update', lives: this.lives });
     }
 
+    // Circle co-op: wave timer, incoming tower events, roster, chat
+    if (this.circle) {
+      // Wave timer
+      if (this.circle.waveTimerActive) {
+        if (this.circle.updateWaveTimer(delta)) {
+          this.startWave();
+        }
+      }
+
+      // Process incoming tower events from other players
+      const towerEvents = this.circle.drainTowerEvents();
+      for (const { from, msg } of towerEvents) {
+        if (msg.type === 'tower_placed') {
+          // Place other player's tower on the shared grid
+          const tt = getTowerType(msg.towerId);
+          if (tt) {
+            const placeResult = this.towerMgr.placeTower(msg.col, msg.row, tt, this.allPaths, () => {
+              this.recalculatePaths();
+              return this.allPaths;
+            });
+            if (placeResult) {
+              this.towerOwners.set(`${msg.col},${msg.row}`, from);
+              if (placeResult.pathsChanged) {
+                this.drawPath();
+              }
+            }
+          }
+        } else if (msg.type === 'tower_sold') {
+          this.towerMgr.sellTower(msg.col, msg.row);
+          this.towerOwners.delete(`${msg.col},${msg.row}`);
+          this.recalculatePaths();
+          this.drawPath();
+        } else if (msg.type === 'tower_upgraded') {
+          const tower = this.towers.find(t => t.col === msg.col && t.row === msg.row);
+          if (tower && tower.canUpgrade()) {
+            tower.upgrade();
+          }
+        }
+      }
+
+      // Incoming chats
+      const chats = this.circle.drainChats();
+      for (const { from: fromIdx, text } of chats) {
+        this.eventLog.gameMessage(`[P${fromIdx}] ${text}`);
+      }
+
+      // Sync shared lives (host is authoritative, joiners read from circle)
+      if (this.circle.isHost) {
+        this.circle.sharedLives = this.lives;
+      } else {
+        this.lives = this.circle.sharedLives;
+      }
+
+      // Update roster UI
+      this.circleRoster?.update(this.lives);
+    }
+
     // Update tower alive time for DPS calc
     for (const tower of this.towers) {
       const ts = this.statsTracker.stats.towerStats[tower.typeId];
@@ -763,6 +1011,9 @@ export class GameScene extends Phaser.Scene {
   // === Helpers ===
 
   private goToGameOver(won: boolean): void {
+    // Reset global grid offset
+    setGridOffsetY(0);
+
     const data: GameOverData = {
       won,
       wave: this.currentWave,
@@ -780,9 +1031,19 @@ export class GameScene extends Phaser.Scene {
       opponentStats: this.versus?.opponentEndStats ?? null,
       opponentLives: this.versus?.opponentLives ?? 0,
       lives: this.lives,
+      // Hero defense data
+      heroStats: this.arenaManager ? {
+        kills: this.arenaManager.hero.kills,
+        deaths: this.arenaManager.hero.deaths,
+        damageDealt: this.arenaManager.hero.totalDamageDealt,
+        abilitiesUsed: this.arenaManager.hero.abilitiesUsed,
+        heroName: this.arenaManager.hero.typeDef.name,
+      } : null,
     };
     this.versus?.close();
     this.registry.remove('versus');
+    this.circle?.close();
+    this.registry.remove('circle');
     this.scene.start('GameOverScene', data);
   }
 
@@ -872,6 +1133,7 @@ export class GameScene extends Phaser.Scene {
     exitBtn.setInteractive({ useHandCursor: true });
     exitBtn.on('pointerdown', () => {
       this.hidePauseMenu();
+      setGridOffsetY(0);
       this.scene.start('MenuScene');
     });
     exitBtn.on('pointerover', () => exitBtn.setColor('#ffbb77'));
@@ -905,50 +1167,54 @@ export class GameScene extends Phaser.Scene {
     const g = this.gridGraphics;
     g.clear();
 
+    const oY = this.gridOffsetY;
+    const rows = this.grid.rows;
+    const gridH = rows * TILE_SIZE;
+
     g.fillStyle(COLOR_GROUND, 1);
-    g.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, GAME_HEIGHT);
+    g.fillRect(GRID_OFFSET_X, oY, GAME_WIDTH, gridH);
 
     g.lineStyle(1, COLOR_GRID_LINE, 0.3);
     for (let col = 0; col <= GRID_COLS; col++) {
-      g.lineBetween(gridLeftX(col), 0, gridLeftX(col), GAME_HEIGHT);
+      g.lineBetween(gridLeftX(col), oY, gridLeftX(col), oY + gridH);
     }
-    for (let row = 0; row <= GRID_ROWS; row++) {
-      g.lineBetween(GRID_OFFSET_X, row * TILE_SIZE, GRID_OFFSET_X + GAME_WIDTH, row * TILE_SIZE);
+    for (let row = 0; row <= rows; row++) {
+      // gridY already includes offset, but here we draw raw grid lines
+      g.lineBetween(GRID_OFFSET_X, oY + row * TILE_SIZE, GRID_OFFSET_X + GAME_WIDTH, oY + row * TILE_SIZE);
     }
 
-    // Blocked terrain
+    // Blocked terrain — use gridY-based coords (includes offset)
     g.fillStyle(0x1a1a1a, 1);
-    for (let row = 0; row < GRID_ROWS; row++) {
+    for (let row = 0; row < rows; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const cell = this.grid.cells[row][col];
+        const cellY = oY + row * TILE_SIZE;
         if (cell === CellType.Blocked) {
           g.fillStyle(0x1a1a1a, 1);
-          g.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.fillRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, 0x333333, 0.5);
-          g.strokeRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.strokeRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
         } else if (cell === CellType.NoBuild) {
-          // Walkable but unbuildable — subtle X pattern
           g.fillStyle(0x2a2222, 1);
-          g.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.fillRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, 0x442222, 0.3);
           const lx = gridLeftX(col);
-          const ty = row * TILE_SIZE;
-          g.lineBetween(lx + 4, ty + 4, lx + TILE_SIZE - 4, ty + TILE_SIZE - 4);
-          g.lineBetween(lx + TILE_SIZE - 4, ty + 4, lx + 4, ty + TILE_SIZE - 4);
+          g.lineBetween(lx + 4, cellY + 4, lx + TILE_SIZE - 4, cellY + TILE_SIZE - 4);
+          g.lineBetween(lx + TILE_SIZE - 4, cellY + 4, lx + 4, cellY + TILE_SIZE - 4);
         }
         if (cell === CellType.Blocked || cell === CellType.NoBuild) {
-          g.lineStyle(1, COLOR_GRID_LINE, 0.3); // restore
+          g.lineStyle(1, COLOR_GRID_LINE, 0.3);
         }
       }
     }
 
     for (const entry of this.grid.entries) {
       g.fillStyle(COLOR_ENTRY, 0.5);
-      g.fillRect(gridLeftX(entry.col), entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      g.fillRect(gridLeftX(entry.col), oY + entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
     for (const exit of this.grid.exits) {
       g.fillStyle(COLOR_EXIT, 0.5);
-      g.fillRect(gridLeftX(exit.col), exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      g.fillRect(gridLeftX(exit.col), oY + exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
   }
 
@@ -1046,6 +1312,42 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Check if player can build at this cell (zone restriction for circle co-op) */
+  private canBuildInZone(col: number, row: number): boolean {
+    if (!this.circleMyZone) return true; // no zone restriction
+    return this.circleMyZone.has(`${col},${row}`);
+  }
+
+  /** Draw zone tint overlay on the grid for circle co-op */
+  private drawCircleZones(): void {
+    if (!this.circle) return;
+    const mapDef = MAPS[this.mapId];
+    if (!mapDef.zones || !mapDef.zoneColors) return;
+
+    if (!this.circleZoneOverlay) {
+      this.circleZoneOverlay = this.add.graphics().setDepth(0.5);
+    }
+    const g = this.circleZoneOverlay;
+    g.clear();
+
+    for (let z = 0; z < mapDef.zones.length; z++) {
+      const color = mapDef.zoneColors[z];
+      const isMyZone = z === this.circle.playerIndex;
+      const alpha = isMyZone ? 0.12 : 0.06;
+      g.fillStyle(color, alpha);
+      for (const cell of mapDef.zones[z]) {
+        g.fillRect(gridLeftX(cell.col), gridY(cell.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+      }
+      // Draw zone border for my zone
+      if (isMyZone) {
+        g.lineStyle(1, color, 0.3);
+        for (const cell of mapDef.zones[z]) {
+          g.strokeRect(gridLeftX(cell.col), gridY(cell.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+  }
+
   startWave(): void {
     this.waveMgr.startWave(this.allPaths);
   }
@@ -1068,6 +1370,11 @@ export class GameScene extends Phaser.Scene {
     // Versus: notify
     if (this.versus) {
       this.versus.notifyWaveCleared(waveNum);
+    }
+
+    // Circle: notify
+    if (this.circle) {
+      this.circle.notifyWaveCleared(waveNum);
     }
 
     // Mode-specific wave-end (frontier income, essence, etc.)

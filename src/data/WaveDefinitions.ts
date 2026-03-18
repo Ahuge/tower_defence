@@ -1,4 +1,4 @@
-export type MatchMode = 'sprint' | 'standard' | 'marathon' | 'battle';
+export type MatchMode = 'sprint' | 'standard' | 'marathon' | 'battle' | 'hero_defense' | 'circle_coop';
 
 export interface WaveCreepGroup {
   creepType: string;
@@ -117,5 +117,13 @@ export function getWavesForMode(mode: MatchMode): WaveDefinition[] {
       return generateStandardWaves(100);
     case 'battle':
       return generateStandardWaves(30); // same wave structure, different economy
+    case 'hero_defense':
+      return generateStandardWaves(30).map(w => ({
+        ...w,
+        groups: w.groups.map(g => ({ ...g, count: g.count * 10 })),
+        spawnInterval: Math.max(80, Math.round(w.spawnInterval * 0.4)),
+      })); // 10x creeps, faster spawns — flood the arena
+    case 'circle_coop':
+      return generateStandardWaves(30); // same structure, leaked creeps forward to next player
   }
 }

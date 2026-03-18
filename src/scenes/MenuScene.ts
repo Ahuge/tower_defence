@@ -102,26 +102,34 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const modes: { mode: MatchMode; label: string; desc: string; y: number }[] = [
-      { mode: 'sprint', label: 'Sprint (15 waves)', desc: 'Quick game, fewer creep types', y: 250 },
-      { mode: 'standard', label: 'Standard (30 waves)', desc: 'Full experience, all creep types', y: 320 },
-      { mode: 'marathon', label: 'Marathon (Endless)', desc: 'Infinite scaling, how far can you go?', y: 390 },
-      { mode: 'battle', label: 'Battle (Dual Economy)', desc: 'Gold + Essence. Compound growth engine.', y: 430 },
+      { mode: 'sprint', label: 'Sprint (15 waves)', desc: 'Quick game, fewer creep types', y: 245 },
+      { mode: 'standard', label: 'Standard (30 waves)', desc: 'Full experience, all creep types', y: 300 },
+      { mode: 'marathon', label: 'Marathon (Endless)', desc: 'Infinite scaling, how far can you go?', y: 355 },
+      { mode: 'battle', label: 'Battle (Dual Economy)', desc: 'Gold + Essence. Compound growth engine.', y: 395 },
+      { mode: 'hero_defense', label: 'Hero Defense', desc: 'Control a hero! Leaked creeps enter the arena.', y: 435 },
     ];
 
-    // Multiplayer button
-    const mpBtn = this.add.text(cx, 450, '[ VERSUS MULTIPLAYER ]', {
+    // Multiplayer buttons
+    const mpBtn = this.add.text(cx - 120, 480, '[ VERSUS 1v1 ]', {
       fontSize: '14px', color: '#ff8844', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mpBtn.on('pointerdown', () => this.scene.start('LobbyScene'));
     mpBtn.on('pointerover', () => mpBtn.setColor('#ffbb77'));
     mpBtn.on('pointerout', () => mpBtn.setColor('#ff8844'));
 
-    this.add.text(cx, 468, 'P2P — no server required', {
+    const coopBtn = this.add.text(cx + 120, 480, '[ CIRCLE CO-OP ]', {
+      fontSize: '14px', color: '#44aaff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    coopBtn.on('pointerdown', () => this.scene.start('CircleLobbyScene'));
+    coopBtn.on('pointerover', () => coopBtn.setColor('#88ccff'));
+    coopBtn.on('pointerout', () => coopBtn.setColor('#44aaff'));
+
+    this.add.text(cx, 498, 'P2P — no server required', {
       fontSize: '13px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Encyclopedia + Changelog buttons
-    const bottomRowY = 490;
+    const bottomRowY = 520;
     const encBtn = this.add.text(cx - 120, bottomRowY, '[ Encyclopedia ]', {
       fontSize: '13px', color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });

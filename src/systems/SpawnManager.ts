@@ -166,6 +166,31 @@ export class SpawnManager {
     creeps.push(...newCreeps);
   }
 
+  /** Spawn a leaked creep mid-wave with specific HP. Used by Circle Co-op. */
+  spawnLeakedCreep(
+    scene: Phaser.Scene,
+    path: PathPoint[],
+    hp: number,
+    speed: number,
+    isBoss: boolean,
+    creepType: string,
+    creeps: Creep[],
+  ): void {
+    if (path.length < 2) return;
+    const creep = new Creep(
+      scene,
+      [...path],
+      1, // hpScale=1, we override HP directly
+      speed / 80, // convert back to speed multiplier (CREEP_BASE_SPEED = 80)
+      isBoss,
+      creepType,
+    );
+    // Override HP with the actual leaked value
+    creep.hp = Math.round(hp);
+    creep.maxHp = Math.round(hp);
+    creeps.push(creep);
+  }
+
   isSpawning(): boolean {
     return this.spawnQueue.length > 0;
   }

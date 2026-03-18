@@ -2,6 +2,42 @@
 
 ## 2026-03-17
 
+### Circle Co-op Mode
+- **New multiplayer mode: Circle Co-op** — 2-4 players share one map. Creeps loop through all player zones in a circle. If a creep completes the full loop, shared lives decrease.
+- **Zone system**: each player has a colored quadrant/sector where they can build towers. Other zones are visible but not buildable.
+- **Shared lives**: all players share a life pool (20). When creeps leak (complete the circle), everyone loses together. Win by surviving all 30 waves.
+- **Individual gold**: kill gold goes to the tower owner regardless of which zone the creep was in. Standard frontier buildings available.
+- **3 new circle maps**: Circle 2P (left/right halves), Circle 3P (Y-shaped 3 sectors), Circle 4P (4 quadrants with central island).
+- **Star topology networking**: host maintains N-1 PeerConnections. All tower operations (place/sell/upgrade) go through host relay to keep all players in sync.
+- **Wave sync**: all players must be ready (SPACE) or timer expires before next wave starts. Host is authoritative for shared lives.
+- **Player roster UI**: top-right panel shows all players with zone color indicators and ready status.
+- **Zone overlay**: your buildable zone is highlighted with a color tint on the grid. Zone colors match player roster.
+- **No sends** in co-op (may be added later).
+- **New files**: CircleManager, CircleLobbyScene, CircleLeakHandler, CircleCoopMode, CirclePlayerRoster.
+- **Modified files**: Maps (3 circle maps + zone data), WaveDefinitions (circle_coop mode), MessageProtocol (circle messages), GameScene (zone restriction, tower ownership, shared lives sync), MenuScene (co-op button), main.ts (scene registration).
+
+### Hero Defense Mode
+- **New game mode: Hero Defense** — split-screen layout with hero arena (top, 400px) and smaller TD grid (bottom, 36×12).
+- **3 heroes**: Warden (tank, 500 HP, melee), Arcanist (mage, 280 HP, ranged), Shadow (assassin, 320 HP, fast melee).
+- **Click-to-move hero micro**: click arena to move, click creeps to focus. Q/W/E ability keys with cooldowns.
+- **Warden abilities**: Shield Bash (stun 1.5s), War Cry (+40% AS), Ground Slam (AoE 120 dmg + slow).
+- **Arcanist abilities**: Fireball (100+60 splash), Frost Nova (AoE slow), Blink (teleport).
+- **Shadow abilities**: Shadow Strike (dash+mark +25% amp), Evasion (100% dodge 2s), Execute (200 dmg if <30% HP).
+- **Hero item shop**: 3 slots (Weapon, Armor, Boots) × 3 tiers each. Weapon gives damage/crit, Armor gives flat armor + HP, Boots give speed/dodge.
+- **Arena system**: leaked TD creeps spawn at left edge of arena, walk right toward the Base. Hero fights them. Base HP replaces lives.
+- **Death/Respawn**: hero dies → 10s respawn timer → full HP at arena center. Creeps walk to base unimpeded while dead.
+- **Economy**: arena kills award 50% gold. Hero heals 20% on wave clear.
+- **Hero Select scene**: 3 hero cards with stat breakdowns and ability descriptions. Routes through draft to game.
+- **Hero Plains map**: designed for 12-row grid with entry left, exit right.
+- **Layout system**: `LayoutConfig.ts` returns grid dimensions per mode. Mutable `_gridOffsetY` in config offsets all grid rendering.
+- **HeroLeakHandler**: intercepts TD leaks, spawns ArenaCreep with 60% HP at arena left edge. Returns 0 damage (no life loss).
+- **HeroDefenseMode**: GameMode implementation with ItemShopPanel and ArenaManager integration.
+- **AbilitySystem**: manages visual effects for hero abilities.
+- **Game over screen**: shows hero kills, deaths, K/D ratio, damage dealt, abilities used.
+- **Menu**: "Hero Defense" button added to match mode list.
+- **Changelog scene**: v16 entry added.
+- **11 new files**: LayoutConfig, HeroTypes, HeroItems, Hero, ArenaCreep, ArenaManager, HeroSelectScene, HeroLeakHandler, HeroDefenseMode, ItemShopPanel, AbilitySystem.
+
 ### GameMode Interface System
 - **Pluggable GameMode interface**: each match mode (Standard, Battle) is a self-contained class implementing `createUI()`, `update()`, `onWaveCleared()`, `canStartWave()`, `handleSend()`.
 - **StandardMode**: owns SendPanel, FrontierManager, FrontierPanel, and all frontier actions (overcharge, dig, harvest — both individual and batch).

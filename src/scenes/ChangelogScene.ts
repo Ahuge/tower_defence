@@ -5,6 +5,37 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v17 — Circle Co-op Mode',
+    changes: [
+      'New multiplayer mode: Circle Co-op — 2-4 players on one shared map',
+      'Creeps loop through all player zones; survive the circle or lose shared lives',
+      'Each player builds towers only in their own quadrant/zone',
+      'Individual gold economy — kill gold goes to the tower owner',
+      '3 new circle maps: 2P (halves), 3P (Y-sectors), 4P (quadrants)',
+      'Star topology networking: host relays tower ops between players',
+      'Zone overlay shows your buildable area with color tinting',
+      'Player roster panel with zone colors and wave sync status',
+      'Shared wave timer with all-players-ready vote system',
+      'Standard frontier buildings available (no sends in co-op)',
+    ],
+  },
+  {
+    version: 'v16 — Hero Defense Mode',
+    changes: [
+      'New game mode: Hero Defense — leaked creeps enter a hero arena',
+      'Split-screen layout: hero arena (top) + smaller TD grid (bottom)',
+      '3 heroes: Warden (tank), Arcanist (mage), Shadow (assassin)',
+      'Click-to-move hero micro, Q/W/E abilities with cooldowns',
+      'Hero item shop: Weapon, Armor, Boots with 3 upgrade tiers each',
+      'Arena creeps walk left→right, hero fights them before they hit the base',
+      'Base HP replaces lives — creeps past the hero damage the base',
+      'Hero death/respawn: 10s timer, full HP on respawn',
+      'Arena kills award 50% gold, hero heals 20% on wave clear',
+      'Hero select screen with stat cards and ability descriptions',
+      'Hero Plains map designed for 12-row grid',
+    ],
+  },
+  {
     version: 'v15 — GameMode Interface',
     changes: [
       'Pluggable GameMode system: each mode is a self-contained class',
