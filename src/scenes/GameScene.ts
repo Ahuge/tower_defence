@@ -206,16 +206,28 @@ export class GameScene extends Phaser.Scene {
     this.arenaManager = null;
     this.abilitySystem = null;
 
-    // Reset circle/multiplayer state
+    // Reset circle/multiplayer state and clean registry
     this.circle = null;
     this.circleRoster = null;
     this.circleZoneOverlay = null;
     this.circleMyZone = null;
     this.towerOwners.clear();
+    this._circleSyncTimer = 0;
     this.versus = null;
     this.opponentMinimap = null;
     this.opponentSim = null;
     this.viewingOpponent = false;
+    // Only keep registry entries for the current mode
+    if (this.matchMode !== 'circle_coop') {
+      const oldCircle = this.registry.get('circle');
+      if (oldCircle) { oldCircle.close?.(); }
+      this.registry.remove('circle');
+    }
+    if (this.matchMode === 'circle_coop') {
+      const oldVersus = this.registry.get('versus');
+      if (oldVersus) { oldVersus.close?.(); }
+      this.registry.remove('versus');
+    }
 
     this.eventBus = new EventBus();
     const mapDef = MAPS[this.mapId];
@@ -1146,6 +1158,10 @@ export class GameScene extends Phaser.Scene {
     exitBtn.on('pointerdown', () => {
       this.hidePauseMenu();
       setGridOffsetY(0);
+      this.versus?.close();
+      this.circle?.close();
+      this.registry.remove('versus');
+      this.registry.remove('circle');
       this.scene.start('MenuScene');
     });
     exitBtn.on('pointerover', () => exitBtn.setColor('#ffbb77'));
