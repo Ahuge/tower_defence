@@ -329,6 +329,10 @@ export class Tower {
   }
 
   private onProjectileHit(p: Projectile, allCreeps: Creep[]): void {
+    // Stamp kill credit for co-op tower ownership
+    p.target.lastHitCol = this.col;
+    p.target.lastHitRow = this.row;
+
     const stats = createHitStats();
     const ctx: HitContext = {
       towerLevel: this.level,

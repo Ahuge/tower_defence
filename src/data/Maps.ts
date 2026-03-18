@@ -386,15 +386,28 @@ export const MAPS: Record<MapId, MapDefinition> = {
     blocked.push(...circle(MID_COL, GRID_ROWS - 6, 2));
 
     // Zones: top-left (P0), top-right (P1), bottom (P2)
+    // Use Y-wall diagonals to determine zone boundaries below MID_ROW
     const zone0: Pos[] = [];
     const zone1: Pos[] = [];
     const zone2: Pos[] = [];
     for (let c = 0; c < GRID_COLS; c++) {
       for (let r = 0; r < GRID_ROWS; r++) {
         if (blocked.some(b => b.col === c && b.row === r)) continue;
-        if (r < MID_ROW && c < MID_COL) zone0.push({ col: c, row: r });
-        else if (r < MID_ROW && c >= MID_COL) zone1.push({ col: c, row: r });
-        else zone2.push({ col: c, row: r });
+        if (r <= MID_ROW) {
+          // Above or at center: split left/right
+          if (c < MID_COL) zone0.push({ col: c, row: r });
+          else zone1.push({ col: c, row: r });
+        } else {
+          // Below center: use diagonal lines from center
+          // Left diagonal: col = MID_COL - (r - MID_ROW)
+          // Right diagonal: col = MID_COL + (r - MID_ROW)
+          const distFromCenter = r - MID_ROW;
+          const leftBound = MID_COL - distFromCenter;
+          const rightBound = MID_COL + distFromCenter;
+          if (c < leftBound) zone0.push({ col: c, row: r });
+          else if (c > rightBound) zone1.push({ col: c, row: r });
+          else zone2.push({ col: c, row: r });
+        }
       }
     }
 

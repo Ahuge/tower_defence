@@ -28,6 +28,9 @@ export class Creep {
   color: number;
   size: number;
   traits: Trait[];
+  /** Col/row of the tower that last dealt damage (for kill credit in co-op) */
+  lastHitCol: number = -1;
+  lastHitRow: number = -1;
 
   constructor(scene: Phaser.Scene, path: PathPoint[], hp: number, speedMultiplier: number, isBoss: boolean, creepTypeId: string = 'standard') {
     this.creepType = CREEP_TYPES[creepTypeId] || CREEP_TYPES.standard;
@@ -142,7 +145,11 @@ export class Creep {
     this.draw();
   }
 
-  takeDamage(amount: number): void {
+  takeDamage(amount: number, towerCol?: number, towerRow?: number): void {
+    if (towerCol !== undefined && towerRow !== undefined) {
+      this.lastHitCol = towerCol;
+      this.lastHitRow = towerRow;
+    }
     // Check evasion buff from mage auras
     const auraEvasion = this.statusEffects.getEvasionChance();
     if (auraEvasion > 0 && Math.random() < auraEvasion) {

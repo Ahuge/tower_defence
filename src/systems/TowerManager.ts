@@ -45,18 +45,25 @@ export class TowerManager {
   }
 
   /** Place a tower. Returns the tower if successful, null if blocked. */
-  placeTower(col: number, row: number, towerType: TowerType, allPaths: (PathPoint[] | null)[], recalcPaths: () => (PathPoint[] | null)[]): { tower: Tower; pathsChanged: boolean } | null {
+  /**
+   * Place a tower on the grid. If `free` is true, skip economy checks
+   * (used for remote tower placements in circle co-op).
+   */
+  placeTower(col: number, row: number, towerType: TowerType, allPaths: (PathPoint[] | null)[], recalcPaths: () => (PathPoint[] | null)[], free: boolean = false): { tower: Tower; pathsChanged: boolean } | null {
     const isMobile = towerType.traits.some(t => t.id === 'mobile_unit');
     const cost = this.getEffectiveCost(towerType.cost);
 
-    if (!this.economy.canAfford(cost)) return null;
+    if (!free && !this.economy.canAfford(cost)) return null;
 
     if (isMobile) {
       if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return null;
       const cell = this.grid.cells[row][col];
       if (cell === CellType.Blocked) return null;
 
-      this.economy.spend(cost);
+      if (!free) {
+        this.economy.spend(cost);
+        this.statsTracker.recordGoldSpent(cost);
+      }
       const tower = new Tower(this.scene, col, row, towerType);
       tower.isMobile = true;
       this.applyModifierTraits(tower);
@@ -64,7 +71,6 @@ export class TowerManager {
       this.totalTowersBuilt++;
       this.eventLog.towerBuilt(towerType.name, cost);
       this.statsTracker.recordTowerBuilt(towerType.id);
-      this.statsTracker.recordGoldSpent(cost);
       return { tower, pathsChanged: false };
     }
 
@@ -80,14 +86,16 @@ export class TowerManager {
       return null;
     }
 
-    this.economy.spend(cost);
+    if (!free) {
+      this.economy.spend(cost);
+      this.statsTracker.recordGoldSpent(cost);
+    }
     const tower = new Tower(this.scene, col, row, towerType);
     this.applyModifierTraits(tower);
     this.towers.push(tower);
     this.totalTowersBuilt++;
     this.eventLog.towerBuilt(towerType.name, cost);
     this.statsTracker.recordTowerBuilt(towerType.id);
-    this.statsTracker.recordGoldSpent(cost);
     this.eventBus.emit('towerPlaced', col, row, towerType.id);
     return { tower, pathsChanged: true };
   }

@@ -24,7 +24,8 @@ export type GameMessage =
   | { type: 'circle_game_start'; players: { index: number; faction: string }[]; map: string; difficulty: string; seed: number }
   | { type: 'player_joined'; playerIndex: number; totalPlayers: number }
   | { type: 'all_waves_cleared'; wave: number }
-  | { type: 'circle_victory'; winnerIndex: number };
+  | { type: 'circle_victory'; winnerIndex: number }
+  | { type: 'tower_sync'; towers: { towerId: string; col: number; row: number; level: number }[] };
 
 /** Envelope wrapper for CircleManager routing */
 export interface CircleEnvelope {

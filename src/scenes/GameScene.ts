@@ -48,6 +48,7 @@ import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { CirclePlayerRoster } from '../ui/CircleMinimaps';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
+import { CircleDeathHandler } from '../systems/CircleDeathHandler';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
@@ -87,6 +88,7 @@ export class GameScene extends Phaser.Scene {
   private circleMyZone: Set<string> | null = null;
   /** Tower ownership: "col,row" → playerIndex */
   towerOwners: Map<string, number> = new Map();
+  private _circleSyncTimer: number = 0;
   opponentMinimap: OpponentMinimap | null = null;
   opponentSim: OpponentSimulation | null = null;
   viewingOpponent: boolean = false;
@@ -316,7 +318,9 @@ export class GameScene extends Phaser.Scene {
       : this.circle
         ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
         : new StandardLeakHandler(this.eventLog, this.statsTracker);
-    const deathHandler = new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1);
+    const deathHandler = this.circle
+      ? new CircleDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex)
+      : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1);
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
 
     // Wave controller
@@ -957,20 +961,7 @@ export class GameScene extends Phaser.Scene {
       const towerEvents = this.circle.drainTowerEvents();
       for (const { from, msg } of towerEvents) {
         if (msg.type === 'tower_placed') {
-          // Place other player's tower on the shared grid
-          const tt = getTowerType(msg.towerId);
-          if (tt) {
-            const placeResult = this.towerMgr.placeTower(msg.col, msg.row, tt, this.allPaths, () => {
-              this.recalculatePaths();
-              return this.allPaths;
-            });
-            if (placeResult) {
-              this.towerOwners.set(`${msg.col},${msg.row}`, from);
-              if (placeResult.pathsChanged) {
-                this.drawPath();
-              }
-            }
-          }
+          this.placeRemoteTower(msg.towerId, msg.col, msg.row, from);
         } else if (msg.type === 'tower_sold') {
           this.towerMgr.sellTower(msg.col, msg.row);
           this.towerOwners.delete(`${msg.col},${msg.row}`);
@@ -980,6 +971,14 @@ export class GameScene extends Phaser.Scene {
           const tower = this.towers.find(t => t.col === msg.col && t.row === msg.row);
           if (tower && tower.canUpgrade()) {
             tower.upgrade();
+          }
+        } else if (msg.type === 'tower_sync') {
+          // Reconcile — add any towers we're missing from this player
+          for (const rt of msg.towers) {
+            const existing = this.towers.find(t => t.col === rt.col && t.row === rt.row);
+            if (!existing) {
+              this.placeRemoteTower(rt.towerId, rt.col, rt.row, from);
+            }
           }
         }
       }
@@ -995,6 +994,19 @@ export class GameScene extends Phaser.Scene {
         this.circle.sharedLives = this.lives;
       } else {
         this.lives = this.circle.sharedLives;
+      }
+
+      // Periodic tower sync — broadcast our tower state every 5s
+      this._circleSyncTimer += delta;
+      if (this._circleSyncTimer >= 5000) {
+        this._circleSyncTimer = 0;
+        const myTowers = this.towers
+          .filter(t => {
+            const owner = this.towerOwners.get(`${t.col},${t.row}`);
+            return owner === this.circle!.playerIndex || owner === undefined;
+          })
+          .map(t => ({ towerId: t.typeId, col: t.col, row: t.row, level: t.level }));
+        this.circle.broadcast({ type: 'tower_sync', towers: myTowers });
       }
 
       // Update roster UI
@@ -1309,6 +1321,20 @@ export class GameScene extends Phaser.Scene {
           this.startWave();
         }
       });
+    }
+  }
+
+  /** Place a tower from a remote player (free, no economy check) */
+  private placeRemoteTower(towerId: string, col: number, row: number, fromPlayer: number): void {
+    const tt = getTowerType(towerId);
+    if (!tt) return;
+    const placeResult = this.towerMgr.placeTower(col, row, tt, this.allPaths, () => {
+      this.recalculatePaths();
+      return this.allPaths;
+    }, true);
+    if (placeResult) {
+      this.towerOwners.set(`${col},${row}`, fromPlayer);
+      if (placeResult.pathsChanged) this.drawPath();
     }
   }
 

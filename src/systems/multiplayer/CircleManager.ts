@@ -173,6 +173,7 @@ export class CircleManager {
       case 'tower_placed':
       case 'tower_sold':
       case 'tower_upgraded':
+      case 'tower_sync':
         // Queue for GameScene to process
         this.incomingTowerEvents.push({ from: fromPlayer, msg });
         break;

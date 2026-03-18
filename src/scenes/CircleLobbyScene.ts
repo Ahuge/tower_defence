@@ -19,6 +19,8 @@ export class CircleLobbyScene extends Phaser.Scene {
   private playerFactions: Map<number, FactionId> = new Map();
   private pendingPlayerIndex: number = -1;
   private dynamicElements: Phaser.GameObjects.GameObject[] = [];
+  private pollTimer: Phaser.Time.TimerEvent | null = null;
+  private assignedPlayerIndex: boolean = false; // joiner: have we received our index?
 
   constructor() {
     super('CircleLobbyScene');
@@ -31,6 +33,8 @@ export class CircleLobbyScene extends Phaser.Scene {
     this.playerFactions.clear();
     this.myFaction = null;
     this.dynamicElements = [];
+    this.pollTimer = null;
+    this.assignedPlayerIndex = false;
 
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, CANVAS_WIDTH, totalH);
 
@@ -88,6 +92,18 @@ export class CircleLobbyScene extends Phaser.Scene {
       (playerIndex, state) => {
         if (state === 'connected') {
           this.updateRoster();
+          if (this.isHost) {
+            // Delay slightly to ensure joiner's data channel is fully open
+            this.time.delayedCall(300, () => {
+              if (!this.circle) return;
+              // Tell the new joiner their assigned index
+              this.circle.send({
+                type: 'player_joined',
+                playerIndex,
+                totalPlayers: this.circle.playerCount,
+              }, playerIndex);
+            });
+          }
         }
       },
     );
@@ -95,6 +111,7 @@ export class CircleLobbyScene extends Phaser.Scene {
 
   private handleMessage(msg: GameMessage, fromPlayer: number): void {
     if (msg.type === 'circle_game_start') {
+      // Host broadcasts this when all factions are picked
       for (const p of msg.players) {
         this.playerFactions.set(p.index, p.faction as FactionId);
       }
@@ -105,11 +122,32 @@ export class CircleLobbyScene extends Phaser.Scene {
       }
       this.launchGame();
     } else if (msg.type === 'game_start') {
-      this.playerFactions.set(fromPlayer, msg.faction as FactionId);
-      this.updateRoster();
-      this.checkAllPicked();
+      if (msg.faction === '') {
+        // Host signaling "show game setup" — empty faction means setup phase start
+        if (!this.isHost) {
+          this.selectedMap = msg.map as MapId;
+          this.selectedDifficulty = msg.difficulty as DifficultyLevel;
+          this.circle!.sharedSeed = msg.seed;
+          this.showGameSetup();
+        }
+      } else {
+        // Individual faction pick from another player
+        this.playerFactions.set(fromPlayer, msg.faction as FactionId);
+        this.updateRoster();
+        this.checkAllPicked();
+      }
     } else if (msg.type === 'player_joined') {
-      this.circle!.playerCount = msg.totalPlayers;
+      if (!this.isHost && this.circle) {
+        if (!this.assignedPlayerIndex) {
+          // First player_joined we receive — this is OUR assignment from the host
+          this.assignedPlayerIndex = true;
+          this.circle.setPlayerInfo(msg.playerIndex, msg.totalPlayers);
+          this.statusText.setText(`Connected as Player ${msg.playerIndex}! (${msg.totalPlayers} players)\nWaiting for host to start setup...`);
+        } else {
+          // Subsequent messages — just update player count
+          this.circle.playerCount = msg.totalPlayers;
+        }
+      }
       this.updateRoster();
     }
   }
@@ -139,18 +177,43 @@ export class CircleLobbyScene extends Phaser.Scene {
       fontSize: '14px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.dynamicElements.push(startBtn);
+    let startBtnActive = false;
 
-    this.time.addEvent({
+    // Poll for enough players to enable start button
+    this.pollTimer = this.time.addEvent({
       delay: 500, loop: true,
       callback: () => {
+        if (startBtnActive) return;
         const count = this.circle?.getConnectedCount() ?? 0;
-        if (count >= 2 && !startBtn.input) {
+        if (count >= 2) {
+          startBtnActive = true;
           startBtn.setColor('#ffaa44');
           startBtn.setInteractive({ useHandCursor: true });
-          startBtn.on('pointerdown', () => this.showGameSetup());
+          startBtn.on('pointerdown', () => {
+            this.stopPollTimer();
+            this.showGameSetup();
+            // Tell joiners to show faction picker (empty faction = setup signal)
+            this.circle!.broadcast({
+              type: 'game_start',
+              faction: '',
+              matchMode: 'circle_coop',
+              map: this.selectedMap,
+              difficulty: this.selectedDifficulty,
+              seed: this.circle!.sharedSeed,
+            });
+          });
+          startBtn.on('pointerover', () => startBtn.setColor('#ffffff'));
+          startBtn.on('pointerout', () => startBtn.setColor('#ffaa44'));
         }
       },
     });
+  }
+
+  private stopPollTimer(): void {
+    if (this.pollTimer) {
+      this.pollTimer.remove();
+      this.pollTimer = null;
+    }
   }
 
   private async hostAddPlayer(): Promise<void> {
@@ -169,8 +232,6 @@ export class CircleLobbyScene extends Phaser.Scene {
         `Offer for Player ${playerIndex} copied!\nSend to them, then click PASTE ANSWER.`
       );
 
-      this.circle.broadcast({ type: 'player_joined', playerIndex, totalPlayers: this.circle.playerCount });
-
       const cx = CANVAS_WIDTH / 2;
       const pasteBtn = this.add.text(cx, 245, '[ PASTE ANSWER ]', {
         fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
@@ -185,6 +246,7 @@ export class CircleLobbyScene extends Phaser.Scene {
           }
           await this.circle!.acceptAnswer(this.pendingPlayerIndex, answer);
           pasteBtn.destroy();
+          this.dynamicElements = this.dynamicElements.filter(e => e !== pasteBtn);
           const count = this.circle!.getConnectedCount();
           this.statusText.setText(`Player ${this.pendingPlayerIndex} connected! (${count} players)`);
           this.updateRoster();
@@ -221,8 +283,9 @@ export class CircleLobbyScene extends Phaser.Scene {
         this.statusText.setText('Creating answer...');
         const answer = await this.circle!.joinAsClient(offer);
         await navigator.clipboard.writeText(answer);
-        this.statusText.setText('Answer copied! Send to host. Waiting for game setup...');
+        this.statusText.setText('Answer copied! Send to host. Waiting for connection...');
         pasteBtn.destroy();
+        this.dynamicElements = this.dynamicElements.filter(e => e !== pasteBtn);
       } catch (e) {
         this.statusText.setText('Failed: ' + (e as Error).message);
       }
@@ -232,18 +295,19 @@ export class CircleLobbyScene extends Phaser.Scene {
   // === GAME SETUP ===
 
   private showGameSetup(): void {
+    this.stopPollTimer();
     this.clearDynamic();
     const cx = CANVAS_WIDTH / 2;
-    const playerCount = this.circle!.getConnectedCount();
+    const playerCount = this.circle!.playerCount;
 
     // Auto-select appropriate circle map
     if (playerCount === 2) this.selectedMap = 'circle_2p';
     else if (playerCount === 3) this.selectedMap = 'circle_3p';
     else this.selectedMap = 'circle_4p';
 
-    this.statusText.setText(`${playerCount} players — Map: ${MAPS[this.selectedMap].name}`);
+    this.statusText.setText(`${playerCount} players — Pick your faction!`);
 
-    // Map selection (host picks from circle maps matching player count)
+    // Map + difficulty selection (host only)
     if (this.isHost) {
       const availableMaps = CIRCLE_MAP_ORDER.filter(m => {
         const mapDef = MAPS[m];
@@ -269,7 +333,6 @@ export class CircleLobbyScene extends Phaser.Scene {
         }
       }
 
-      // Difficulty
       const diffLabel = this.add.text(cx, 248, 'Difficulty:', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
       this.dynamicElements.push(diffLabel);
 
@@ -288,15 +351,10 @@ export class CircleLobbyScene extends Phaser.Scene {
         });
         diffBtns.push({ btn, id: did });
       }
-    } else {
-      const waitText = this.add.text(cx, 230, 'Host is choosing settings...', {
-        fontSize: '14px', color: '#888888', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      this.dynamicElements.push(waitText);
     }
 
     // Faction cards
-    const factionY = this.isHost ? 295 : 260;
+    const factionY = this.isHost ? 295 : 220;
     const factionLabel = this.add.text(cx, factionY, 'Pick your faction:', {
       fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
@@ -344,6 +402,7 @@ export class CircleLobbyScene extends Phaser.Scene {
         this.playerFactions.set(this.circle!.playerIndex, fid);
         this.statusText.setText(`You picked ${faction.name}! Waiting for others...`);
 
+        // Tell everyone our pick
         this.circle!.broadcast({
           type: 'game_start',
           faction: fid,
@@ -364,6 +423,7 @@ export class CircleLobbyScene extends Phaser.Scene {
     const connected = this.circle.getConnectedCount();
     if (this.playerFactions.size < connected) return;
 
+    // All players have picked — broadcast circle_game_start to launch
     const players = Array.from(this.playerFactions.entries()).map(([index, faction]) => ({
       index, faction,
     }));
@@ -381,6 +441,8 @@ export class CircleLobbyScene extends Phaser.Scene {
 
   private launchGame(): void {
     if (!this.myFaction || !this.circle) return;
+
+    this.stopPollTimer();
 
     // Store player factions in circle manager
     for (const [idx, fac] of this.playerFactions) {
@@ -410,6 +472,7 @@ export class CircleLobbyScene extends Phaser.Scene {
   }
 
   private clearDynamic(): void {
+    this.stopPollTimer();
     for (const el of this.dynamicElements) el.destroy();
     this.dynamicElements = [];
   }
