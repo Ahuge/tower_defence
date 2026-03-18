@@ -94,6 +94,7 @@ export class GameScene extends Phaser.Scene {
   betweenWaves: boolean = true;
   paused: boolean = false;
   gameSpeed: number = 1.0;
+  autoPlay: boolean = false;
   private static readonly SPEED_OPTIONS = [0, 0.5, 1.0, 1.5, 2.0, 3.0];
   private speedIndex: number = 2; // default 1.0x
   totalTowersBuilt: number = 0;
@@ -202,7 +203,7 @@ export class GameScene extends Phaser.Scene {
     this.statsTracker = new StatsTracker();
 
     // Upcoming waves (top of sidebar)
-    this.upcomingWaves = new UpcomingWaves(this);
+    this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
 
     const sidebarTopOffset = UpcomingWaves.HEIGHT;
@@ -249,7 +250,7 @@ export class GameScene extends Phaser.Scene {
 
     // Event log (bottom of sidebar)
     this.eventLog = new EventLog(this, 480);
-    this.eventLog.gameMessage('Game started. Press SPACE for wave 1.');
+    this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
 
@@ -297,6 +298,7 @@ export class GameScene extends Phaser.Scene {
 
     this.inputMgr.onKey('ESC', () => this.enterNoneMode());
     this.inputMgr.onKey('P', () => this.togglePause());
+    this.inputMgr.onKey('A', () => this.toggleAutoPlay());
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
     this.inputMgr.onKey('ENTER', () => this.openChat());
     this.inputMgr.onKey('L', () => this.enterLinkMode());
@@ -874,6 +876,15 @@ export class GameScene extends Phaser.Scene {
       this.waveActive = false;
       this.betweenWaves = true;
 
+      // Auto-play: schedule next wave automatically
+      if (this.autoPlay && this.currentWave < this.waves.length && !this.versus) {
+        this.time.delayedCall(1500, () => {
+          if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
+            this.startWave();
+          }
+        });
+      }
+
       // Snap mobile units back home + process wave-end tower effects
       for (const tower of this.towers) {
         if (tower.isMobile) {
@@ -1345,6 +1356,19 @@ export class GameScene extends Phaser.Scene {
         g.lineTo(gridX(path[i].col), gridY(path[i].row));
       }
       g.strokePath();
+    }
+  }
+
+  toggleAutoPlay(): void {
+    this.autoPlay = !this.autoPlay;
+    this.upcomingWaves.setAutoPlay(this.autoPlay);
+    this.eventLog.gameMessage(this.autoPlay ? 'Auto-play ON' : 'Auto-play OFF');
+    if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
+      this.time.delayedCall(1500, () => {
+        if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
+          this.startWave();
+        }
+      });
     }
   }
 

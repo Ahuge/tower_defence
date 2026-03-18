@@ -5,10 +5,12 @@ export class UpcomingWaves {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
   private contentItems: Phaser.GameObjects.GameObject[] = [];
+  private autoPlayBtn!: Phaser.GameObjects.Text;
+  private autoPlayBg!: Phaser.GameObjects.Graphics;
 
   static readonly HEIGHT = 80;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, onAutoPlayToggle?: () => void) {
     this.scene = scene;
     this.container = scene.add.container(0, 0).setDepth(28);
 
@@ -23,6 +25,39 @@ export class UpcomingWaves {
       fontSize: '12px', color: '#6688aa', fontFamily: 'monospace',
     });
     this.container.add(title);
+
+    // Auto-play button
+    this.autoPlayBg = scene.add.graphics();
+    this.drawAutoPlayBg(false);
+    this.container.add(this.autoPlayBg);
+
+    this.autoPlayBtn = scene.add.text(SIDEBAR_WIDTH - 8, 4, '[A] AUTO', {
+      fontSize: '12px', color: '#666666', fontFamily: 'monospace',
+    }).setOrigin(1, 0);
+    this.container.add(this.autoPlayBtn);
+
+    this.autoPlayBtn.setInteractive({ useHandCursor: true });
+    this.autoPlayBtn.on('pointerdown', () => onAutoPlayToggle?.());
+    this.autoPlayBtn.on('pointerover', () => this.autoPlayBtn.setAlpha(0.7));
+    this.autoPlayBtn.on('pointerout', () => this.autoPlayBtn.setAlpha(1));
+  }
+
+  private drawAutoPlayBg(active: boolean): void {
+    const btnW = 72;
+    const btnH = 18;
+    const btnX = SIDEBAR_WIDTH - btnW - 4;
+    const btnY = 2;
+    this.autoPlayBg.clear();
+    this.autoPlayBg.fillStyle(active ? 0x224422 : 0x1a1a22, 1);
+    this.autoPlayBg.fillRoundedRect(btnX, btnY, btnW, btnH, 3);
+    this.autoPlayBg.lineStyle(1, active ? 0x44aa44 : 0x444444, 1);
+    this.autoPlayBg.strokeRoundedRect(btnX, btnY, btnW, btnH, 3);
+  }
+
+  setAutoPlay(active: boolean): void {
+    this.drawAutoPlayBg(active);
+    this.autoPlayBtn.setColor(active ? '#44cc44' : '#666666');
+    this.autoPlayBtn.setText(active ? '[A] AUTO ▶' : '[A] AUTO');
   }
 
   update(currentWave: number, waves: WaveDefinition[]): void {
