@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-18
+
+### Circle Co-op Fixes
+- **Individual gold**: kill credit now tracks which tower dealt the killing blow (`Creep.lastHitCol/Row`). Only the tower owner gets kill gold via `CircleDeathHandler`.
+- **Lobby sync fixes**: joiners now correctly receive their player index via targeted messages. Existing joiners are notified when new players connect (P2 knows about P3/P4).
+- **3P zone fix**: bottom-half zones now follow Y-shaped diagonal walls correctly instead of dumping all bottom cells into P2's zone.
+- **Tower relay fix**: remote tower placements skip economy checks (`TowerManager.placeTower` `free` param) — was silently failing because the host couldn't afford other players' towers.
+- **Periodic tower sync**: every 5s each player broadcasts their tower state; other players reconcile any missed placements.
+- **Registry cleanup**: stale `circle`/`versus` entries are cleaned from the Phaser registry when switching modes or exiting to menu. Prevents hero defense from thinking it's in co-op.
+
+### Harmonic Conduit Re-emit
+- **Conduit-linked aura towers now re-emit inherited buffs to their neighbors.** Previously, if a Quickener's rate aura was shared to an Amplifier via conduit, the Amplifier received the buff but didn't pass it on. Now inherited harmonic buffs re-emit at 50% of received value (35% of original). Linked towers and conduits excluded from re-emit to prevent loops.
+
 ## 2026-03-17
 
 ### Circle Co-op Mode
@@ -13,7 +26,7 @@
 - **Player roster UI**: top-right panel shows all players with zone color indicators and ready status.
 - **Zone overlay**: your buildable zone is highlighted with a color tint on the grid. Zone colors match player roster.
 - **No sends** in co-op (may be added later).
-- **New files**: CircleManager, CircleLobbyScene, CircleLeakHandler, CircleCoopMode, CirclePlayerRoster.
+- **New files**: CircleManager, CircleLobbyScene, CircleLeakHandler, CircleCoopMode, CirclePlayerRoster, CircleDeathHandler.
 - **Modified files**: Maps (3 circle maps + zone data), WaveDefinitions (circle_coop mode), MessageProtocol (circle messages), GameScene (zone restriction, tower ownership, shared lives sync), MenuScene (co-op button), main.ts (scene registration).
 
 ### Hero Defense Mode

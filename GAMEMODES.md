@@ -166,7 +166,8 @@ Cooperative mode on a shared map. All players build towers together to survive.
 - **Zones**: Each player has a colored zone (quadrant/sector) where they can build. Other zones are visible but not buildable.
 - **Creeps**: Loop through all player zones in a circle. A creep that completes the full loop exits and costs shared lives.
 - **Shared lives**: All players share 20 lives. Everyone wins or loses together.
-- **Individual gold**: Kill gold goes to the tower owner, regardless of which zone the creep was in. Standard frontier buildings available per player.
+- **Individual gold**: Kill credit tracks which tower dealt the killing blow. Only the tower owner gets gold. Wave income and frontier remain individual per player.
+- **Tower sync**: All tower placements are relayed through the host. A periodic sync every 5s reconciles any missed messages.
 - **No sends**: Co-op mode has no send system (may be added later).
 - **Wave timer**: 60s first wave, 30s between waves. All players must be ready (SPACE) or timer expires.
 - **Speed**: Host controls game speed.
