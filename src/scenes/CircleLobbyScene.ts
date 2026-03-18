@@ -102,6 +102,16 @@ export class CircleLobbyScene extends Phaser.Scene {
                 playerIndex,
                 totalPlayers: this.circle.playerCount,
               }, playerIndex);
+              // Tell existing joiners about the updated player count
+              // Send each their OWN index so they don't overwrite it
+              for (let i = 1; i < this.circle.playerCount; i++) {
+                if (i === playerIndex) continue; // already sent above
+                this.circle.send({
+                  type: 'player_joined',
+                  playerIndex: i,
+                  totalPlayers: this.circle.playerCount,
+                }, i);
+              }
             });
           }
         }
