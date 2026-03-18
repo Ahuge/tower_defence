@@ -21,6 +21,8 @@ export interface GameOverData {
   sendsReceived?: number;
   opponentStats?: { stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number } | null;
   opponentLives?: number;
+  // Hero defense fields
+  heroStats?: { kills: number; deaths: number; damageDealt: number; abilitiesUsed: number; heroName: string } | null;
 }
 
 export class GameOverScene extends Phaser.Scene {
@@ -171,6 +173,25 @@ export class GameOverScene extends Phaser.Scene {
       this.add.text(cx, funY, funLines.join('  |  '), {
         fontSize: '11px', color: '#88aacc', fontFamily: 'monospace',
       }).setOrigin(0.5);
+    }
+
+    // Hero defense stats
+    if (data.heroStats) {
+      const hs = data.heroStats;
+      const heroY = 490;
+      this.add.text(cx, heroY, 'HERO PERFORMANCE', {
+        fontSize: '13px', color: '#ff44aa', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
+      const heroLines = [
+        `Hero: ${hs.heroName}`,
+        `Kills: ${hs.kills}  |  Deaths: ${hs.deaths}  |  K/D: ${hs.deaths > 0 ? (hs.kills / hs.deaths).toFixed(1) : hs.kills}`,
+        `Damage Dealt: ${hs.damageDealt.toLocaleString()}  |  Abilities Used: ${hs.abilitiesUsed}`,
+      ];
+      this.add.text(cx, heroY + 18, heroLines.join('\n'), {
+        fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
+        align: 'center', lineSpacing: 4,
+      }).setOrigin(0.5, 0);
     }
 
     // Versus summary

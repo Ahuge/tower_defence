@@ -1,6 +1,84 @@
 # Changelog
 
+## 2026-03-18
+
+### Circle Co-op Fixes
+- **Individual gold**: kill credit now tracks which tower dealt the killing blow (`Creep.lastHitCol/Row`). Only the tower owner gets kill gold via `CircleDeathHandler`.
+- **Lobby sync fixes**: joiners now correctly receive their player index via targeted messages. Existing joiners are notified when new players connect (P2 knows about P3/P4).
+- **3P zone fix**: bottom-half zones now follow Y-shaped diagonal walls correctly instead of dumping all bottom cells into P2's zone.
+- **Tower relay fix**: remote tower placements skip economy checks (`TowerManager.placeTower` `free` param) — was silently failing because the host couldn't afford other players' towers.
+- **Periodic tower sync**: every 5s each player broadcasts their tower state; other players reconcile any missed placements.
+- **Registry cleanup**: stale `circle`/`versus` entries are cleaned from the Phaser registry when switching modes or exiting to menu. Prevents hero defense from thinking it's in co-op.
+
+### Harmonic Conduit Re-emit
+- **Conduit-linked aura towers now re-emit inherited buffs to their neighbors.** Previously, if a Quickener's rate aura was shared to an Amplifier via conduit, the Amplifier received the buff but didn't pass it on. Now inherited harmonic buffs re-emit at 50% of received value (35% of original). Linked towers and conduits excluded from re-emit to prevent loops.
+
 ## 2026-03-17
+
+### Circle Co-op Mode
+- **New multiplayer mode: Circle Co-op** — 2-4 players share one map. Creeps loop through all player zones in a circle. If a creep completes the full loop, shared lives decrease.
+- **Zone system**: each player has a colored quadrant/sector where they can build towers. Other zones are visible but not buildable.
+- **Shared lives**: all players share a life pool (20). When creeps leak (complete the circle), everyone loses together. Win by surviving all 30 waves.
+- **Individual gold**: kill gold goes to the tower owner regardless of which zone the creep was in. Standard frontier buildings available.
+- **3 new circle maps**: Circle 2P (left/right halves), Circle 3P (Y-shaped 3 sectors), Circle 4P (4 quadrants with central island).
+- **Star topology networking**: host maintains N-1 PeerConnections. All tower operations (place/sell/upgrade) go through host relay to keep all players in sync.
+- **Wave sync**: all players must be ready (SPACE) or timer expires before next wave starts. Host is authoritative for shared lives.
+- **Player roster UI**: top-right panel shows all players with zone color indicators and ready status.
+- **Zone overlay**: your buildable zone is highlighted with a color tint on the grid. Zone colors match player roster.
+- **No sends** in co-op (may be added later).
+- **New files**: CircleManager, CircleLobbyScene, CircleLeakHandler, CircleCoopMode, CirclePlayerRoster, CircleDeathHandler.
+- **Modified files**: Maps (3 circle maps + zone data), WaveDefinitions (circle_coop mode), MessageProtocol (circle messages), GameScene (zone restriction, tower ownership, shared lives sync), MenuScene (co-op button), main.ts (scene registration).
+
+### Hero Defense Mode
+- **New game mode: Hero Defense** — split-screen layout with hero arena (top, 400px) and smaller TD grid (bottom, 36×12).
+- **3 heroes**: Warden (tank, 500 HP, melee), Arcanist (mage, 280 HP, ranged), Shadow (assassin, 320 HP, fast melee).
+- **Click-to-move hero micro**: click arena to move, click creeps to focus. Q/W/E ability keys with cooldowns.
+- **Warden abilities**: Shield Bash (stun 1.5s), War Cry (+40% AS), Ground Slam (AoE 15 dmg + slow).
+- **Arcanist abilities**: Fireball (100+60 splash), Frost Nova (AoE slow), Blink (teleport).
+- **Shadow abilities**: Shadow Strike (dash+mark +25% amp), Evasion (100% dodge 2s), Execute (200 dmg if <30% HP).
+- **Hero item shop**: 3 slots (Weapon, Armor, Boots) × 3 tiers each. Weapon gives damage/crit, Armor gives flat armor + HP, Boots give speed/dodge.
+- **Arena system**: leaked TD creeps spawn at left edge of arena with full HP, walk right toward the Base (10k HP). Hero fights them.
+- **Arena creeps fight back**: creeps aggro on the hero (240px range, bosses 360px), chase, and attack in melee. Creeps that reach the base park there and repeatedly attack it.
+- **Ranged heroes fire projectiles**: Arcanist auto-attacks launch visible projectiles that fly to target.
+- **10x creep waves**: hero defense spawns 10x the normal creep count with faster spawn intervals for intense arena pressure.
+- **Death/Respawn**: hero dies → 10s respawn timer → full HP at arena center. Creeps walk to base unimpeded while dead.
+- **Economy**: arena kills award 10% gold (balanced for 10x creep count). Hero heals 20% on wave clear.
+- **Hero Select scene**: 3 hero cards with stat breakdowns and ability descriptions. Routes through draft to game.
+- **Hero Plains map**: designed for 12-row grid with entry left, exit right. Auto-selected for hero defense mode.
+- **Layout system**: `LayoutConfig.ts` returns grid dimensions per mode. Mutable `_gridOffsetY` in config offsets all grid rendering.
+- **HeroLeakHandler**: intercepts TD leaks, spawns ArenaCreep with full HP at arena left edge. Returns 0 damage (no life loss).
+- **HeroDefenseMode**: GameMode implementation with ItemShopPanel and ArenaManager integration.
+- **AbilitySystem**: manages visual effects for hero abilities.
+- **Game over screen**: shows hero kills, deaths, K/D ratio, damage dealt, abilities used.
+- **Menu**: "Hero Defense" button added to match mode list.
+- **Changelog scene**: v16 entry added.
+- **11 new files**: LayoutConfig, HeroTypes, HeroItems, Hero, ArenaCreep, ArenaManager, HeroSelectScene, HeroLeakHandler, HeroDefenseMode, ItemShopPanel, AbilitySystem.
+
+### GameMode Interface System
+- **Pluggable GameMode interface**: each match mode (Standard, Battle) is a self-contained class implementing `createUI()`, `update()`, `onWaveCleared()`, `canStartWave()`, `handleSend()`.
+- **StandardMode**: owns SendPanel, FrontierManager, FrontierPanel, and all frontier actions (overcharge, dig, harvest — both individual and batch).
+- **BattleMode**: owns EssencePanel, essence resource registration, generator purchases, and essence sends.
+- GameScene delegates to `this.gameMode` instead of inline if/else checks per mode.
+- Fixed: `eventLog` was passed to game mode context before being created (was null).
+- Fixed: `versus` reference now properly wired into `GameModeContext` after versus initialization.
+- Random faction frontier rotation goes through `StandardMode.rotateRandomFrontier()`.
+- Removed ~130 lines of mode-specific code from GameScene (now ~1070 lines).
+
+### Dual Economy (Battle) Game Mode
+- **New match mode: Battle** — two resources: Gold (towers) + Essence (sends).
+- **Essence generators**: buy with gold (Tap 30g/+1/s, Well 80g/+3/s, Conduit 200g/+8/s, Nexus 500g/+20/s). Essence ticks in real-time.
+- **Sends cost Essence**: Standard 10e, Fast 15e, Armored 30e, Swarm 8e. Each gives gold income per wave.
+- **Compound growth loop**: Gold → Generators → Essence/sec → Sends → Gold income/wave → more Generators or towers.
+- EssencePanel replaces Send+Frontier in Battle mode. Shows essence counter, rate, generators, sends.
+- Z/X/C/V hotkeys work for essence sends.
+
+### Architecture Decomposition
+- **TowerManager** (282 lines): tower placement, selling, upgrades, trait updates, expired cleanup, wave-end processing, brood mother spawning.
+- **CreepManager** (120 lines): creep movement, leak/death handling via pluggable interfaces, cleanup, proximity search.
+- **WaveController** (88 lines): wave start/clear detection, spawning delegation, callback-driven side effects.
+- **Leak/Death handlers**: `LeakHandler` and `DeathHandler` interfaces with `StandardLeakHandler` and `StandardDeathHandler` implementations. Future Hero Defense mode swaps these.
+- **ResourceManager** (120 lines): N-resource system with real-time ticking. Gold is default. Battle mode adds Essence.
+- GameScene reduced from 1376 to ~1200 lines via extraction.
 
 ### Manual Conduit Linking + Encyclopedia + Changelog Viewer
 - **Manual Conduit linking**: Conduit no longer auto-links. Click Conduit → press L → click aura towers to link/unlink. Only links different aura types. Max 2-3 links based on level. Visual: colored lines per aura type (red=damage, green=rate, blue=range, magenta=crit). Linked towers show gold outline.

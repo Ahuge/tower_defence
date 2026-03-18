@@ -1,15 +1,32 @@
 import { STARTING_GOLD, KILL_GOLD, WAVE_CLEAR_BONUS } from '../config';
 import { EventBus } from './EventBus';
+import { ResourceManager } from './ResourceManager';
 
+/**
+ * Backward-compatible gold economy. Wraps ResourceManager('gold').
+ * All existing code that calls economy.gold, economy.spend(), etc.
+ * continues to work unchanged.
+ */
 export class EconomyManager {
-  gold: number;
+  resources: ResourceManager;
   private events: EventBus;
 
-  constructor(events: EventBus) {
+  constructor(events: EventBus, resourceMgr?: ResourceManager) {
     this.events = events;
-    this.gold = STARTING_GOLD;
+    this.resources = resourceMgr ?? new ResourceManager(events);
 
-    events.on('creepKilled', (_id, reward) => {
+    // Register gold as the primary resource
+    if (!this.resources.has('gold')) {
+      this.resources.addResource({
+        id: 'gold',
+        name: 'Gold',
+        startingAmount: STARTING_GOLD,
+        tickRate: 0,
+        color: '#ffdd44',
+      });
+    }
+
+    events.on('creepKilled', (_id: number, reward: number) => {
       this.addGold(reward);
     });
 
@@ -18,20 +35,25 @@ export class EconomyManager {
     });
   }
 
+  get gold(): number {
+    return this.resources.get('gold');
+  }
+
+  set gold(v: number) {
+    const r = this.resources.getState('gold');
+    if (r) r.current = v;
+  }
+
   canAfford(cost: number): boolean {
-    return this.gold >= cost;
+    return this.resources.canAfford('gold', cost);
   }
 
   spend(cost: number): boolean {
-    if (!this.canAfford(cost)) return false;
-    this.gold -= cost;
-    this.events.emit('goldChanged', -cost, this.gold);
-    return true;
+    return this.resources.spend('gold', cost);
   }
 
   addGold(amount: number): void {
-    this.gold += amount;
-    this.events.emit('goldChanged', amount, this.gold);
+    this.resources.add('gold', amount);
   }
 
   getKillGold(): number {

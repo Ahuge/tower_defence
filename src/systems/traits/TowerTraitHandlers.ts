@@ -936,6 +936,62 @@ registerTowerUpdate('conduit_link', (trait: Trait, tower: any, ctx: UpdateContex
       }
     }
   }
+
+  // Re-emit: each linked aura tower re-emits inherited buffs to its own neighbors.
+  // This makes the Amplifier emit the Quickener's rate aura it received, etc.
+  // Use 50% of the inherited value (70% * 50% = 35% of original) to prevent overpowering.
+  const linkedSet = new Set(linkedTowers);
+  const reEmitEffectiveness = 0.5;
+  const harmonicBuffIds: Record<string, string> = {
+    '_harmonic_damage': 'damage_aura',
+    '_harmonic_rate': 'rate_aura',
+    '_harmonic_range': 'range_aura',
+    '_harmonic_crit': 'crit_aura',
+  };
+
+  for (const lt of linkedTowers) {
+    const ltRange = lt.range || (TILE_SIZE * 4);
+    for (const buff of lt.traits) {
+      if (!harmonicBuffIds[buff.id]) continue;
+      // Only re-emit if this buff was inherited (the tower doesn't have the source aura itself)
+      const sourceAuraId = harmonicBuffIds[buff.id];
+      if (lt.traits.some((t: any) => t.id === sourceAuraId)) continue;
+
+      for (const other of ctx.allTowers) {
+        if (other === lt || linkedSet.has(other) || other === tower) continue;
+        const dx = other.x - lt.x;
+        const dy = other.y - lt.y;
+        if (Math.sqrt(dx * dx + dy * dy) > ltRange) continue;
+
+        if (buff.id === '_harmonic_damage') {
+          addOrRefreshTrait(other.traits, {
+            id: '_harmonic_damage',
+            bonus: (buff.bonus ?? 0) * reEmitEffectiveness,
+            _ttl: 200,
+          });
+        } else if (buff.id === '_harmonic_rate') {
+          addOrRefreshTrait(other.traits, {
+            id: '_harmonic_rate',
+            bonus: (buff.bonus ?? 0) * reEmitEffectiveness,
+            _ttl: 200,
+          });
+        } else if (buff.id === '_harmonic_range') {
+          addOrRefreshTrait(other.traits, {
+            id: '_harmonic_range',
+            bonus: (buff.bonus ?? 0) * reEmitEffectiveness,
+            _ttl: 200,
+          });
+        } else if (buff.id === '_harmonic_crit') {
+          addOrRefreshTrait(other.traits, {
+            id: '_harmonic_crit',
+            chance: Math.min(0.5, (buff.chance ?? 0) * reEmitEffectiveness),
+            multiplier: buff.multiplier ?? 2,
+            _ttl: 200,
+          });
+        }
+      }
+    }
+  }
 });
 
 function shareAura(auraTrait: Trait, fromTower: any, ctx: UpdateContext, conduitLevel: number): void {

@@ -16,6 +16,7 @@ After every commit, check and update these files:
 1. **CHANGELOG.md** — Add entry for every feature, fix, or change. Write in the same conversational summary style used in chat. Group by date.
 2. **README.md** — Update if systems, controls, file structure, or tech changes.
 3. **FACTIONS.md** — Update if any faction's towers, costs, traits, or identity changes. Include ALL factions.
+4. **GAMEMODES.md** — Update if any game mode's rules, economy, heroes, items, or strategy changes.
 
 ## Project Structure
 ```
@@ -37,6 +38,8 @@ src/
 - **Data-driven**: Tower/creep/faction definitions in `data/`. Add content by editing data files.
 - **Grid offset**: Game grid offset by SIDEBAR_WIDTH (360px). Use `gridX()`, `gridY()`, `pixelToCol()` helpers.
 - **Multiplayer**: P2P WebRTC via manual SDP exchange. VersusManager handles state sync. Host controls speed, map, difficulty. Shared seed for mirrored waves.
+- **ResourceManager**: N-resource system. Gold always present. Battle mode adds Essence with real-time ticking.
+- **Decomposed GameScene**: TowerManager, CreepManager, WaveController extracted. Leak/Death handlers are pluggable interfaces.
 
 ## Conventions
 - Compile check (`npx tsc --noEmit`) after every change
@@ -63,3 +66,5 @@ src/
 - Kamikaze units (Infernal Fiend): self-destruct after first attack
 - Multi-spawn: creeps distribute round-robin across all map entry points
 - 8 maps with varied layouts and strategic constraints
+- Battle mode: Dual Economy with Gold + Essence, compound growth loop
+- LeakHandler/DeathHandler interfaces enable future game modes (Hero Defense, Circle Co-op)

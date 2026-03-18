@@ -1,8 +1,8 @@
 # Tower Defence
 
-A grid-based maze-building tower defence game with 12 factions, P2P multiplayer, and deep economic strategy. Built with Phaser 3 + TypeScript + Vite.
+A grid-based maze-building tower defence game with 12 factions, P2P multiplayer (1v1 and 2-4 player co-op), and deep economic strategy. Built with Phaser 3 + TypeScript + Vite.
 
-**[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Changelog](CHANGELOG.md)
+**[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Game Modes](GAMEMODES.md) | [Changelog](CHANGELOG.md)
 
 ## Quick Start
 ```bash
@@ -15,11 +15,12 @@ npm run dev
 Build towers to create mazes, defend against 14 creep types across 30+ waves, manage your economy across three channels (towers, sends, frontier), and leverage your faction's unique strengths. Play solo or versus a friend via peer-to-peer WebRTC.
 
 ### Match Flow
-1. **Menu** — Choose map (8 options), difficulty (Easy/Normal/Hard), match mode (Sprint/Standard/Marathon)
+1. **Menu** — Choose map, difficulty, match mode, or multiplayer (Versus 1v1 / Circle Co-op)
 2. **Faction Select** — Pick from 12 factions with unique tower rosters
-3. **Draft** — Choose 1 of 3 random modifiers (Gold Rush, Glass Cannon, etc.)
-4. **Game** — Build, defend, invest. Press SPACE to start waves. TAB to change speed.
-5. **Score Screen** — Tower DPS tables, economy breakdown, gold efficiency, MVP awards
+3. **Hero Select** (Hero Defense only) — Choose from 3 heroes: Warden, Arcanist, Shadow
+4. **Draft** — Choose 1 of 3 random modifiers (Gold Rush, Glass Cannon, etc.)
+5. **Game** — Build, defend, invest. Press SPACE to start waves. TAB to change speed.
+6. **Score Screen** — Tower DPS tables, economy breakdown, gold efficiency, MVP awards, hero stats
 
 ### Controls
 | Key | Action |
@@ -34,6 +35,7 @@ Build towers to create mazes, defend against 14 creep types across 30+ waves, ma
 | P | Pause menu |
 | ENTER | Chat (versus mode) |
 | L | Link mode (Conduit tower) |
+| Q/W/E | Hero abilities (Hero Defense mode) |
 | ESC | Deselect / cancel link mode |
 
 ## Factions (12)
@@ -57,6 +59,17 @@ See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.
 
 ## Major Systems
 
+### Match Modes (7)
+- **Sprint** (15 waves) — Quick game
+- **Standard** (30 waves) — Full experience
+- **Marathon** (Endless) — Infinite scaling
+- **Battle** (Dual Economy) — Gold + Essence compound growth loop
+- **Hero Defense** (30 waves) — Control a hero in an arena. 10x creeps, 3 heroes, item shop.
+- **Versus 1v1** — P2P multiplayer. Sends go to opponent.
+- **Circle Co-op** (2-4 players) — Shared map, zone building, shared lives.
+
+See [GAMEMODES.md](GAMEMODES.md) for detailed rules, strategies, and controls per mode.
+
 ### Trait System
 All behaviors are composable traits — data objects with registered handler functions:
 ```
@@ -78,15 +91,23 @@ Easy/Normal/Hard. Each creep type interprets difficulty individually — armored
 
 ### Multiplayer (P2P WebRTC)
 - No server required — manual SDP exchange via clipboard
+
+**Versus 1v1:**
 - Host picks map + difficulty, both pick factions
 - Sends go to opponent as extra creeps
-- 30s wave countdown (60s for first wave), vote ready with SPACE
-- Opponent minimap with click-to-swap full view
-- In-game chat via ENTER
+- 30s wave countdown, opponent minimap, in-game chat
 - Mirrored waves (shared seed)
 
-### Maps (8)
-Plains, Crossroads, Fortress, Serpentine, Islands, Gauntlet, Spiral, Siege.
+**Circle Co-op (2-4 players):**
+- All players share one map with zone-restricted building
+- Creeps loop through all zones; completing the circle costs shared lives
+- Individual gold — kill gold goes to tower owner
+- Star topology: host relays tower ops to all players
+- 3 dedicated circle maps (2P, 3P, 4P)
+
+### Maps (8 + 3 circle)
+**Standard:** Plains, Crossroads, Fortress, Serpentine, Islands, Gauntlet, Spiral, Siege.
+**Circle Co-op:** Circle 2P, Circle 3P, Circle 4P.
 
 ## Tech Stack
 - **Phaser 3.90** — WebGL rendering, scene management, input

@@ -14,6 +14,8 @@ export class InputManager {
   private clickMissCallback: (() => void) | null = null;
   private rightClickCallback: ((col: number, row: number) => void) | null = null;
   private spaceCallback: (() => void) | null = null;
+  private rawClickCallback: ((x: number, y: number) => void) | null = null;
+  private gridRows: number = GRID_ROWS;
 
   constructor(scene: Phaser.Scene, events: EventBus) {
     this.scene = scene;
@@ -27,6 +29,9 @@ export class InputManager {
     });
 
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.leftButtonDown() && this.rawClickCallback) {
+        this.rawClickCallback(pointer.x, pointer.y);
+      }
       const coord = this.pointerToGrid(pointer);
       if (pointer.leftButtonDown()) {
         if (coord && this.clickCallback) {
@@ -67,14 +72,24 @@ export class InputManager {
     this.spaceCallback = cb;
   }
 
+  /** Raw pixel-level click handler (for arena, before grid conversion) */
+  onRawClick(cb: (x: number, y: number) => void): void {
+    this.rawClickCallback = cb;
+  }
+
   onKey(key: string, cb: () => void): void {
     this.scene.input.keyboard!.on(`keydown-${key}`, cb);
   }
 
+  /** Set grid rows for hero defense (reduced grid) */
+  setGridRows(rows: number): void {
+    this.gridRows = rows;
+  }
+
   private pointerToGrid(pointer: Phaser.Input.Pointer): GridCoord | null {
     const col = pixelToCol(pointer.x);
-    const row = pixelToRow(pointer.y);
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return null;
+    const row = pixelToRow(pointer.y); // pixelToRow already accounts for _gridOffsetY
+    if (col < 0 || col >= GRID_COLS || row < 0 || row >= this.gridRows) return null;
     return { col, row };
   }
 }

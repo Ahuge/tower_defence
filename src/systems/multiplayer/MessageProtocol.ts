@@ -17,7 +17,34 @@ export type GameMessage =
   | { type: 'game_over'; won: boolean; stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number }
   | { type: 'game_start'; faction: string; matchMode: string; map: string; difficulty: string; seed: number }
   | { type: 'ping'; timestamp: number }
-  | { type: 'pong'; timestamp: number };
+  | { type: 'pong'; timestamp: number }
+  // Circle co-op messages
+  | { type: 'circle_leak'; creepType: string; hp: number; speed: number; isBoss: boolean; color: number; size: number }
+  | { type: 'player_eliminated'; playerIndex: number }
+  | { type: 'circle_game_start'; players: { index: number; faction: string }[]; map: string; difficulty: string; seed: number }
+  | { type: 'player_joined'; playerIndex: number; totalPlayers: number }
+  | { type: 'all_waves_cleared'; wave: number }
+  | { type: 'circle_victory'; winnerIndex: number }
+  | { type: 'tower_sync'; towers: { towerId: string; col: number; row: number; level: number }[] };
+
+/** Envelope wrapper for CircleManager routing */
+export interface CircleEnvelope {
+  from: number;
+  to: number | 'all';
+  payload: GameMessage;
+}
+
+export function decodeEnvelope(data: string): CircleEnvelope | null {
+  try {
+    const obj = JSON.parse(data);
+    if (obj && typeof obj.from === 'number' && obj.payload) {
+      return obj as CircleEnvelope;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export function decodeMessage(data: string): GameMessage | null {
   try {

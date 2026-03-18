@@ -16,9 +16,11 @@ export class Grid {
   exit: { col: number; row: number };
   entries: { col: number; row: number }[];
   exits: { col: number; row: number }[];
+  readonly rows: number;
 
-  constructor(mapDef?: MapDefinition) {
-    this.cells = Array.from({ length: GRID_ROWS }, () =>
+  constructor(mapDef?: MapDefinition, rows?: number) {
+    this.rows = rows ?? GRID_ROWS;
+    this.cells = Array.from({ length: this.rows }, () =>
       Array(GRID_COLS).fill(CellType.Empty)
     );
 
@@ -29,25 +31,29 @@ export class Grid {
       this.exit = mapDef.exits[0];
 
       for (const e of mapDef.entries) {
-        this.cells[e.row][e.col] = CellType.Entry;
+        if (e.row >= 0 && e.row < this.rows && e.col >= 0 && e.col < GRID_COLS) {
+          this.cells[e.row][e.col] = CellType.Entry;
+        }
       }
       for (const e of mapDef.exits) {
-        this.cells[e.row][e.col] = CellType.Exit;
+        if (e.row >= 0 && e.row < this.rows && e.col >= 0 && e.col < GRID_COLS) {
+          this.cells[e.row][e.col] = CellType.Exit;
+        }
       }
       for (const b of mapDef.blocked) {
-        if (b.row >= 0 && b.row < GRID_ROWS && b.col >= 0 && b.col < GRID_COLS) {
+        if (b.row >= 0 && b.row < this.rows && b.col >= 0 && b.col < GRID_COLS) {
           this.cells[b.row][b.col] = CellType.Blocked;
         }
       }
       for (const b of (mapDef.noBuild || [])) {
-        if (b.row >= 0 && b.row < GRID_ROWS && b.col >= 0 && b.col < GRID_COLS) {
+        if (b.row >= 0 && b.row < this.rows && b.col >= 0 && b.col < GRID_COLS) {
           this.cells[b.row][b.col] = CellType.NoBuild;
         }
       }
     } else {
       // Default: plains
-      this.entry = { col: 0, row: Math.floor(GRID_ROWS / 2) };
-      this.exit = { col: GRID_COLS - 1, row: Math.floor(GRID_ROWS / 2) };
+      this.entry = { col: 0, row: Math.floor(this.rows / 2) };
+      this.exit = { col: GRID_COLS - 1, row: Math.floor(this.rows / 2) };
       this.entries = [this.entry];
       this.exits = [this.exit];
 
@@ -57,14 +63,14 @@ export class Grid {
   }
 
   isWalkable(col: number, row: number): boolean {
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return false;
+    if (col < 0 || col >= GRID_COLS || row < 0 || row >= this.rows) return false;
     const cell = this.cells[row][col];
     return cell !== CellType.Tower && cell !== CellType.Blocked;
     // NoBuild IS walkable (creeps can walk through, towers can't be placed)
   }
 
   canPlaceTower(col: number, row: number): boolean {
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return false;
+    if (col < 0 || col >= GRID_COLS || row < 0 || row >= this.rows) return false;
     return this.cells[row][col] === CellType.Empty;
     // NoBuild, Blocked, Tower, Entry, Exit all return false
   }

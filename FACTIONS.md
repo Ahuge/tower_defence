@@ -177,7 +177,9 @@
 
 **How Conduit works:** Click Conduit → press L → click aura towers to link. Only links different aura types. Linked towers share their effects with each other at 70% strength. Click a linked tower to unlink. Max 2 links (3 at level 3).
 
-**Identity:** The placement puzzle faction. Individual towers are weak — the power comes from overlapping aura coverage. Two Amplifiers + Quickener on a Resonator = massive DPS. Conduit extends the network across the map.
+**Re-emit:** Aura towers that receive inherited buffs from a conduit link will re-emit those buffs to their own neighbors at 50% of the received value (35% of original). Example: link a Quickener to an Amplifier — the Amplifier gains attack speed AND re-emits that speed buff to towers around it.
+
+**Identity:** The placement puzzle faction. Individual towers are weak — the power comes from overlapping aura coverage. Two Amplifiers + Quickener on a Resonator = massive DPS. Conduit extends the network across the map, and re-emit means linked towers amplify each other's reach.
 
 **Frontier:** Resonance Chamber (growth) / Symphony Hall (overcharge).
 

@@ -4,7 +4,7 @@ import {
   CANVAS_WIDTH, GRID_OFFSET_X, SIDEBAR_WIDTH,
   COLOR_GROUND, COLOR_GRID_LINE, COLOR_ENTRY, COLOR_EXIT,
   COLOR_HOVER_VALID, COLOR_HOVER_INVALID, STARTING_LIVES,
-  gridX, gridY, gridLeftX, pixelToCol,
+  gridX, gridY, gridLeftX, pixelToCol, setGridOffsetY,
 } from '../config';
 import { Grid, CellType } from '../systems/Grid';
 import { findPath, PathPoint } from '../systems/Pathfinding';
@@ -21,24 +21,35 @@ import { DifficultyLevel, DIFFICULTIES, DifficultyHints } from '../data/Difficul
 import { DraftModifier } from '../data/DraftModifiers';
 import { IncomeManager } from '../systems/IncomeManager';
 import { SendManager } from '../systems/SendManager';
-import { FrontierManager } from '../systems/FrontierManager';
-import { FrontierBuilding } from '../data/FrontierBuildings';
-import { SEND_OPTIONS, SendCreepOption } from '../data/SendCreepTypes';
+import { GameMode, GameModeContext } from '../systems/GameMode';
+import { StandardMode } from '../systems/modes/StandardMode';
+import { BattleMode } from '../systems/modes/BattleMode';
+import { HeroDefenseMode } from '../systems/modes/HeroDefenseMode';
+import { HeroLeakHandler } from '../systems/HeroLeakHandler';
+import { ArenaManager } from '../systems/ArenaManager';
+import { AbilitySystem } from '../systems/AbilitySystem';
+import { getLayout, LayoutConfig } from '../systems/LayoutConfig';
+import { HeroId, HERO_TYPES } from '../data/HeroTypes';
 
-const SEND_OPTIONS_MAP: Record<string, SendCreepOption> = {};
-for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
+// Send options map moved to StandardMode
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { TowerInfoPanel } from '../ui/TowerInfoPanel';
-import { SendPanel } from '../ui/SendPanel';
 import { IncomeDisplay } from '../ui/IncomeDisplay';
-import { FrontierPanel } from '../ui/FrontierPanel';
 import { EventLog } from '../ui/EventLog';
 import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
+import { TowerManager } from '../systems/TowerManager';
+import { CreepManager, StandardLeakHandler, StandardDeathHandler } from '../systems/CreepManager';
+import { WaveController } from '../systems/WaveController';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
+import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
+import { CirclePlayerRoster } from '../ui/CircleMinimaps';
+import { CircleLeakHandler } from '../systems/CircleLeakHandler';
+import { CircleDeathHandler } from '../systems/CircleDeathHandler';
+import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
@@ -60,24 +71,42 @@ export class GameScene extends Phaser.Scene {
   towerInfo!: TowerInfoPanel;
   incomeMgr!: IncomeManager;
   sendMgr!: SendManager;
-  sendPanel!: SendPanel;
   incomeDisplay!: IncomeDisplay;
-  frontierMgr!: FrontierManager;
-  frontierPanel!: FrontierPanel;
+  gameMode!: GameMode;
   eventLog!: EventLog;
   creepInfo!: CreepInfoPanel;
   upcomingWaves!: UpcomingWaves;
   statsTracker!: StatsTracker;
+  towerMgr!: TowerManager;
+  creepMgr!: CreepManager;
+  waveMgr!: WaveController;
   versus: VersusManager | null = null;
+  circle: CircleManager | null = null;
+  circleRoster: CirclePlayerRoster | null = null;
+  circleZoneOverlay: Phaser.GameObjects.Graphics | null = null;
+  /** Which zone cells can this player build on? null = no restriction */
+  private circleMyZone: Set<string> | null = null;
+  /** Tower ownership: "col,row" → playerIndex */
+  towerOwners: Map<string, number> = new Map();
+  private _circleSyncTimer: number = 0;
   opponentMinimap: OpponentMinimap | null = null;
   opponentSim: OpponentSimulation | null = null;
   viewingOpponent: boolean = false;
+  arenaManager: ArenaManager | null = null;
+  abilitySystem: AbilitySystem | null = null;
+  heroId: HeroId | null = null;
+  layout!: LayoutConfig;
+  gridOffsetY: number = 0;
   selectedCreep: Creep | null = null;
   linkingConduit: Tower | null = null; // tower being linked in link mode
 
-  // Game state
-  towers: Tower[] = [];
-  creeps: Creep[] = [];
+  // Game state — towers and creeps live in managers, these are accessors
+  get towers(): Tower[] { return this.towerMgr?.towers ?? this._towers; }
+  set towers(v: Tower[]) { if (this.towerMgr) this.towerMgr.towers = v; else this._towers = v; }
+  private _towers: Tower[] = [];
+  get creeps(): Creep[] { return this.creepMgr?.creeps ?? this._creeps; }
+  set creeps(v: Creep[]) { if (this.creepMgr) this.creepMgr.creeps = v; else this._creeps = v; }
+  private _creeps: Creep[] = [];
   currentPath: PathPoint[] | null = null;
   allPaths: (PathPoint[] | null)[] = [];
   waves!: WaveDefinition[];
@@ -89,16 +118,21 @@ export class GameScene extends Phaser.Scene {
   modifier: DraftModifier | null = null;
   activeTowerIds: string[] = TOWER_ORDER;
   lives: number = STARTING_LIVES;
-  currentWave: number = 0;
-  waveActive: boolean = false;
-  betweenWaves: boolean = true;
+  // Wave state delegated to WaveController — getters for backward compat
+  get currentWave(): number { return this.waveMgr?.currentWave ?? this._currentWave; }
+  set currentWave(v: number) { if (this.waveMgr) this.waveMgr.currentWave = v; else this._currentWave = v; }
+  private _currentWave: number = 0;
+  get waveActive(): boolean { return this.waveMgr?.waveActive ?? this._waveActive; }
+  set waveActive(v: boolean) { if (this.waveMgr) this.waveMgr.waveActive = v; else this._waveActive = v; }
+  private _waveActive: boolean = false;
+  get betweenWaves(): boolean { return this.waveMgr?.betweenWaves ?? this._betweenWaves; }
+  set betweenWaves(v: boolean) { if (this.waveMgr) this.waveMgr.betweenWaves = v; else this._betweenWaves = v; }
+  private _betweenWaves: boolean = true;
   paused: boolean = false;
   gameSpeed: number = 1.0;
   autoPlay: boolean = false;
   private static readonly SPEED_OPTIONS = [0, 0.5, 1.0, 1.5, 2.0, 3.0];
-  private speedIndex: number = 2; // default 1.0x
-  totalTowersBuilt: number = 0;
-  totalCreepsKilled: number = 0;
+  private speedIndex: number = 2;
 
   // Selection state
   selectionMode: SelectionMode = 'none';
@@ -115,12 +149,19 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
     this.modifier = data.modifier ?? null;
     this.difficulty = data.difficulty || 'normal';
+    this.heroId = data.heroId ?? null;
+    // Hero defense requires its own map (12-row grid)
+    if (this.matchMode === 'hero_defense') {
+      this.mapId = 'hero_plains';
+    }
+    this.layout = getLayout(this.matchMode);
+    this.gridOffsetY = this.layout.gridOffsetY;
     this.difficultyHints = DIFFICULTIES[this.difficulty];
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
@@ -139,8 +180,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.towers = [];
-    this.creeps = [];
+    // Set global grid Y offset for hero defense (arena above grid)
+    setGridOffsetY(this.gridOffsetY);
+
+    this._towers = [];
+    this._creeps = [];
     this.lives = STARTING_LIVES;
     this.currentWave = 0;
     this.waveActive = false;
@@ -149,8 +193,7 @@ export class GameScene extends Phaser.Scene {
     this.selectionMode = 'none';
     this.selectedBuildType = null;
     this.selectedTower = null;
-    this.totalTowersBuilt = 0;
-    this.totalCreepsKilled = 0;
+    // totalTowersBuilt and totalCreepsKilled tracked by managers
 
     // Apply one-time modifier effects
     if (this.modifier) {
@@ -160,9 +203,36 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    this.arenaManager = null;
+    this.abilitySystem = null;
+
+    // Reset circle/multiplayer state and clean registry
+    this.circle = null;
+    this.circleRoster = null;
+    this.circleZoneOverlay = null;
+    this.circleMyZone = null;
+    this.towerOwners.clear();
+    this._circleSyncTimer = 0;
+    this.versus = null;
+    this.opponentMinimap = null;
+    this.opponentSim = null;
+    this.viewingOpponent = false;
+    // Only keep registry entries for the current mode
+    if (this.matchMode !== 'circle_coop') {
+      const oldCircle = this.registry.get('circle');
+      if (oldCircle) { oldCircle.close?.(); }
+      this.registry.remove('circle');
+    }
+    if (this.matchMode === 'circle_coop') {
+      const oldVersus = this.registry.get('versus');
+      if (oldVersus) { oldVersus.close?.(); }
+      this.registry.remove('versus');
+    }
+
     this.eventBus = new EventBus();
     const mapDef = MAPS[this.mapId];
-    this.grid = new Grid(mapDef);
+    const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
+    this.grid = new Grid(mapDef, gridRows);
     this.waves = getWavesForMode(this.matchMode);
     this.recalculatePaths();
 
@@ -172,7 +242,10 @@ export class GameScene extends Phaser.Scene {
     const waveSeed = versusRef?.sharedSeed ?? 0;
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
     this.inputMgr = new InputManager(this, this.eventBus);
-    this.ui = new UIOverlay(this, this.eventBus);
+    if (this.layout.gridRows !== GRID_ROWS) {
+      this.inputMgr.setGridRows(this.layout.gridRows);
+    }
+    this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
 
     if (this.modifier && this.modifier.extraGold > 0) {
       this.economy.addGold(this.modifier.extraGold);
@@ -206,50 +279,77 @@ export class GameScene extends Phaser.Scene {
     this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
 
-    const sidebarTopOffset = UpcomingWaves.HEIGHT;
-    this.sendPanel = new SendPanel(this, (opt: SendCreepOption) => {
-      if (this.betweenWaves && this.economy.spend(opt.cost)) {
-        if (this.versus && this.versus.isConnected()) {
-          // Versus: sends go to opponent, not to self
-          this.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
-          this.versus.sendsSent++;
-          this.eventLog.gameMessage(`Sent ${opt.name} to opponent!`);
-        } else {
-          this.sendMgr.queueSend(opt);
-        }
-        this.incomeMgr.addSendBonus(opt.incomeReward);
-        this.eventLog.sendQueued(opt.name, opt.cost);
-        this.statsTracker.recordSendSpent(opt.cost);
-        this.statsTracker.recordSendIncome(opt.incomeReward);
-        this.statsTracker.recordGoldSpent(opt.cost);
-      }
-    }, sidebarTopOffset);
-    this.incomeDisplay = new IncomeDisplay(this);
-
-    // Frontier (with action callbacks)
-    this.frontierMgr = new FrontierManager(this.eventBus, this.incomeMgr, this.faction);
-    this.frontierPanel = new FrontierPanel(
-      this,
-      this.frontierMgr,
-      (building: FrontierBuilding) => {
-        if (this.economy.spend(building.cost)) {
-          this.frontierMgr.purchaseBuilding(building);
-          this.frontierPanel.updateOwned();
-          this.eventLog.frontierPurchased(building.name, building.cost);
-          this.statsTracker.recordFrontierSpent(building.cost);
-          this.statsTracker.recordGoldSpent(building.cost);
-        }
-      },
-      (action: string, idx: number) => {
-        this.handleFrontierAction(action, idx);
-      },
-      (action: string, defId: string) => {
-        this.handleFrontierBatchAction(action, defId);
-      },
-    );
-
     // Event log (bottom of sidebar)
     this.eventLog = new EventLog(this, 480);
+
+    // Hero defense: create ArenaManager before game mode
+    if (this.matchMode === 'hero_defense' && this.heroId) {
+      const heroType = HERO_TYPES[this.heroId];
+      this.arenaManager = new ArenaManager(
+        this, heroType, GAME_WIDTH, this.layout.arenaHeight,
+        this.economy, this.eventLog, 10000,
+      );
+      this.abilitySystem = new AbilitySystem(this);
+    }
+
+    // Circle co-op: get CircleManager from registry
+    this.circle = this.registry.get('circle') as CircleManager | null;
+
+    // Game mode creates mode-specific UI (sends, frontier/essence panels)
+    if (this.matchMode === 'hero_defense' && this.arenaManager) {
+      this.gameMode = new HeroDefenseMode(this.arenaManager);
+    } else if (this.matchMode === 'battle') {
+      this.gameMode = new BattleMode();
+    } else if (this.matchMode === 'circle_coop' && this.circle) {
+      this.gameMode = new CircleCoopMode();
+    } else {
+      this.gameMode = new StandardMode(this.matchMode);
+    }
+
+    const gameModeCtx: GameModeContext = {
+      scene: this,
+      economy: this.economy,
+      incomeMgr: this.incomeMgr,
+      sendMgr: this.sendMgr,
+      statsTracker: this.statsTracker,
+      eventBus: this.eventBus,
+      eventLog: this.eventLog,
+      faction: this.faction,
+      modifier: this.modifier,
+      versus: null, // set after versus init
+      sidebarTopY: UpcomingWaves.HEIGHT,
+    };
+    this.gameMode.createUI(gameModeCtx);
+
+    this.incomeDisplay = new IncomeDisplay(this);
+
+    // Core managers
+    this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
+    const leakHandler = this.arenaManager
+      ? new HeroLeakHandler(this.arenaManager, this.statsTracker, this.eventLog)
+      : this.circle
+        ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
+        : new StandardLeakHandler(this.eventLog, this.statsTracker);
+    const deathHandler = this.circle
+      ? new CircleDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex)
+      : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1);
+    this.creepMgr = new CreepManager(leakHandler, deathHandler);
+
+    // Wave controller
+    this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {
+      canStartWave: () => !!this.currentPath,
+      onWaveStart: (wave, waveNum, totalWaves) => {
+        this.towerMgr.spawnBroodMotherSwarmlings();
+        this.opponentSim?.startWave(wave);
+        const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
+        this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
+        this.upcomingWaves.update(waveNum, this.waves);
+        this.eventBus.emit('waveStarted', waveNum);
+      },
+      onWaveCleared: (waveNum) => {
+        this.onWaveCleared(waveNum);
+      },
+    });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
@@ -277,7 +377,11 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onRightClick((col, row) => this.handleRightClick(col, row));
     this.inputMgr.onSpace(() => {
       if (this.betweenWaves && this.currentWave < this.waves.length) {
-        if (this.versus) {
+        if (this.circle) {
+          // Circle: vote ready, host checks all-ready
+          this.circle.voteReady();
+          this.eventLog.gameMessage('Ready! Waiting for other players...');
+        } else if (this.versus) {
           // Versus: vote ready instead of instant start
           this.versus.voteReady();
           this.eventLog.gameMessage('Ready! Waiting for opponent...');
@@ -303,6 +407,18 @@ export class GameScene extends Phaser.Scene {
     this.inputMgr.onKey('ENTER', () => this.openChat());
     this.inputMgr.onKey('L', () => this.enterLinkMode());
     this.input.keyboard!.addCapture('TAB');
+
+    // Hero defense: arena click + ability keys
+    if (this.arenaManager) {
+      this.inputMgr.onRawClick((px, py) => {
+        if (py < this.gridOffsetY && px >= GRID_OFFSET_X) {
+          this.arenaManager!.handleClick(px, py);
+        }
+      });
+      this.inputMgr.onKey('Q', () => this.arenaManager!.handleAbilityKey(0));
+      this.inputMgr.onKey('W', () => this.arenaManager!.handleAbilityKey(1));
+      this.inputMgr.onKey('E', () => this.arenaManager!.handleAbilityKey(2));
+    }
 
     // Versus mode setup
     this.versus = this.registry.get('versus') as VersusManager | null;
@@ -380,9 +496,75 @@ export class GameScene extends Phaser.Scene {
       if (this.versus.isHost) {
         this.versus.send({ type: 'speed_change', speed: this.gameSpeed });
       }
+
+      // Wire versus into game mode context (was null at createUI time)
+      gameModeCtx.versus = this.versus;
     }
 
-        const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
+    // Circle co-op setup
+    if (this.circle) {
+      this.towerOwners.clear();
+
+      // Build zone restriction set for this player
+      const mapDef = MAPS[this.mapId];
+      if (mapDef.zones && mapDef.zones[this.circle.playerIndex]) {
+        this.circleMyZone = new Set(
+          mapDef.zones[this.circle.playerIndex].map(p => `${p.col},${p.row}`)
+        );
+      }
+
+      // Wire message handler
+      this.circle.onGameMessage = (msg, fromPlayer) => {
+        switch (msg.type) {
+          case 'wave_ready':
+            this.eventLog.gameMessage(`Player ${fromPlayer} is ready!`);
+            break;
+          case 'all_waves_cleared':
+            break;
+          case 'speed_change':
+            this.gameSpeed = msg.speed;
+            this.speedIndex = GameScene.SPEED_OPTIONS.indexOf(msg.speed);
+            if (this.speedIndex === -1) this.speedIndex = 2;
+            this.eventLog.gameMessage(`Host set speed: ${msg.speed}x`);
+            break;
+          case 'lives_update':
+            // Joiner: sync shared lives from host
+            if (!this.circle!.isHost) {
+              this.lives = msg.lives;
+            }
+            break;
+          case 'circle_victory':
+            this.goToGameOver(true);
+            break;
+          case 'chat':
+            this.eventLog.gameMessage(`[P${fromPlayer}] ${msg.text}`);
+            break;
+        }
+      };
+
+      // Create player roster UI
+      const zoneColors = mapDef.zoneColors ?? [];
+      this.circleRoster = new CirclePlayerRoster(this, this.circle, zoneColors);
+
+      // Draw zone overlay on grid
+      this.drawCircleZones();
+
+      this.eventLog.gameMessage(`CIRCLE CO-OP — Player ${this.circle.playerIndex} of ${this.circle.playerCount}`);
+      this.eventLog.gameMessage('Build in your zone (highlighted). Shared lives!');
+
+      // Start initial 60s countdown
+      this.circle.startWaveCountdown(60000);
+      if (this.circle.isHost) {
+        this.circle.broadcast({ type: 'countdown_start', duration: 60000 });
+        this.circle.broadcast({ type: 'speed_change', speed: this.gameSpeed });
+      }
+    }
+
+    const versusTimer = this.versus?.waveTimerActive
+      ? this.versus.getWaveTimerSeconds()
+      : this.circle?.waveTimerActive
+        ? this.circle.getWaveTimerSeconds()
+        : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
   }
 
@@ -496,16 +678,17 @@ export class GameScene extends Phaser.Scene {
 
     if (this.selectionMode !== 'build' || !this.selectedBuildType) return;
 
-    if (this.grid.canPlaceTower(col, row)) {
+    if (this.grid.canPlaceTower(col, row) && this.canBuildInZone(col, row)) {
       const towerType = getTowerType(this.selectedBuildType);
-      const cost = this.getEffectiveCost(towerType.cost);
+      const cost = this.towerMgr.getEffectiveCost(towerType.cost);
       const canPlace = this.economy.canAfford(cost);
       const color = canPlace ? COLOR_HOVER_VALID : COLOR_HOVER_INVALID;
 
+      // gridY() already includes gridOffsetY
       this.hoverGraphics.fillStyle(color, 0.2);
-      this.hoverGraphics.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this.hoverGraphics.fillRect(gridLeftX(col), gridY(row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
       this.hoverGraphics.lineStyle(1, color, 0.6);
-      this.hoverGraphics.strokeRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this.hoverGraphics.strokeRect(gridLeftX(col), gridY(row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
 
       if (canPlace) {
         let range = towerType.range;
@@ -549,6 +732,7 @@ export class GameScene extends Phaser.Scene {
               existingTower.upgrade();
               this.towerInfo.show(existingTower);
               this.versus?.send({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
+              this.circle?.broadcast({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
             }
           } else {
             this.enterInspectMode(existingTower);
@@ -575,19 +759,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private findCreepNear(px: number, py: number): Creep | null {
-    let closest: Creep | null = null;
-    let closestDist = TILE_SIZE; // detection radius
-    for (const creep of this.creeps) {
-      if (!creep.alive || creep.reached) continue;
-      const dx = creep.x - px;
-      const dy = creep.y - py;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < closestDist) {
-        closest = creep;
-        closestDist = dist;
-      }
-    }
-    return closest;
+    return this.creepMgr.findCreepNear(px, py, TILE_SIZE);
   }
 
   private enterCreepInspect(creep: Creep): void {
@@ -601,22 +773,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleRightClick(col: number, row: number): void {
-    // Find tower at this cell (could be grid-blocking or mobile)
-    const idx = this.towers.findIndex(t => t.col === col && t.row === row);
-    if (idx === -1) return;
+    // Circle co-op: can only sell your own towers
+    if (this.circle) {
+      const owner = this.towerOwners.get(`${col},${row}`);
+      if (owner !== undefined && owner !== this.circle.playerIndex) return;
+    }
 
-    const tower = this.towers[idx];
-    const refund = tower.getSellValue();
-    this.economy.addGold(refund);
-    this.eventLog.towerSold(tower.typeDef.name, refund);
-    if (this.selectedTower === tower) this.enterNoneMode();
-    tower.destroy();
-    this.towers.splice(idx, 1);
+    const result = this.towerMgr.sellTower(col, row);
+    if (!result) return;
 
+    if (this.selectedTower === result.tower) this.enterNoneMode();
+    if (this.circle) {
+      this.towerOwners.delete(`${col},${row}`);
+      this.circle.broadcast({ type: 'tower_sold', col, row });
+    }
     this.versus?.send({ type: 'tower_sold', col, row });
-    if (!tower.isMobile) {
-      this.grid.removeTower(col, row);
-      this.eventBus.emit('towerSold', col, row);
+
+    if (!result.tower.isMobile) {
       this.recalculatePaths();
       this.drawPath();
     }
@@ -624,148 +797,46 @@ export class GameScene extends Phaser.Scene {
 
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
+    // Circle co-op: zone restriction
+    if (!this.canBuildInZone(col, row)) return;
+
     const towerType = getTowerType(this.selectedBuildType);
-    const cost = this.getEffectiveCost(towerType.cost);
-    const isMobile = towerType.traits.some(t => t.id === 'mobile_unit');
 
-    if (!this.economy.canAfford(cost)) return;
+    const result = this.towerMgr.placeTower(col, row, towerType, this.allPaths, () => {
+      this.recalculatePaths();
+      return this.allPaths;
+    });
 
-    if (isMobile) {
-      // Mobile units: don't block grid, allow stacking, no path check
-      // Just need a valid grid cell (not blocked terrain)
-      if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return;
-      const cell = this.grid.cells[row][col];
-      if (cell === CellType.Blocked) return;
+    if (!result) return;
 
-      this.economy.spend(cost);
-      const tower = new Tower(this, col, row, towerType);
-      tower.isMobile = true;
-      if (this.modifier) {
-        for (const t of this.modifier.towerTraits) {
-          tower.traits.push({ ...t });
-        }
-      }
-      this.towers.push(tower);
-      this.totalTowersBuilt++;
-      this.eventLog.towerBuilt(towerType.name, cost);
-      this.statsTracker.recordTowerBuilt(towerType.id);
-      this.statsTracker.recordGoldSpent(cost);
-      this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
-      return;
+    // Track tower ownership for circle co-op
+    if (this.circle) {
+      this.towerOwners.set(`${col},${row}`, this.circle.playerIndex);
+      this.circle.broadcast({ type: 'tower_placed', towerId: towerType.id, col, row });
     }
 
-    // Normal tower placement
-    if (!this.grid.canPlaceTower(col, row)) return;
-
-    this.grid.placeTower(col, row);
-
-    const oldPaths = this.allPaths;
-    this.recalculatePaths();
-    const anyBlocked = this.allPaths.some(p => p === null);
-
-    if (anyBlocked || !this.currentPath) {
-      this.grid.removeTower(col, row);
-      this.allPaths = oldPaths;
-      this.currentPath = oldPaths.find(p => p !== null) ?? null;
-      return;
-    }
-
-    this.economy.spend(cost);
-    const tower = new Tower(this, col, row, towerType);
-
-    if (this.modifier) {
-      for (const t of this.modifier.towerTraits) {
-        tower.traits.push({ ...t });
-      }
-    }
-
-    this.towers.push(tower);
-    this.totalTowersBuilt++;
-    this.eventLog.towerBuilt(towerType.name, cost);
-    this.statsTracker.recordTowerBuilt(towerType.id);
-    this.statsTracker.recordGoldSpent(cost);
-    this.eventBus.emit('towerPlaced', col, row, towerType.id);
     this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
 
-    // Update existing creep paths
-    for (const creep of this.creeps) {
-      if (!creep.alive || creep.reached) continue;
-      const creepCol = pixelToCol(creep.x);
-      const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
-      let bestPath: PathPoint[] | null = null;
-      for (const exit of this.grid.exits) {
-        const p = findPath(this.grid, { col: creepCol, row: creepRow }, exit);
-        if (p && (!bestPath || p.length < bestPath.length)) {
-          bestPath = p;
+    if (result.pathsChanged) {
+      // Update existing creep paths
+      for (const creep of this.creepMgr.creeps) {
+        if (!creep.alive || creep.reached) continue;
+        const creepCol = pixelToCol(creep.x);
+        const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+        let bestPath: PathPoint[] | null = null;
+        for (const exit of this.grid.exits) {
+          const p = findPath(this.grid, { col: creepCol, row: creepRow }, exit);
+          if (p && (!bestPath || p.length < bestPath.length)) {
+            bestPath = p;
+          }
+        }
+        if (bestPath) {
+          creep.path = bestPath;
+          creep.pathIndex = 1;
         }
       }
-      if (bestPath) {
-        creep.path = bestPath;
-        creep.pathIndex = 1;
-      }
+      this.drawPath();
     }
-
-    this.drawPath();
-  }
-
-  // === Frontier Actions ===
-
-  private handleFrontierAction(action: string, idx: number): void {
-    switch (action) {
-      case 'overcharge': {
-        const gold = this.frontierMgr.overchargeBuilding(idx);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Overcharge', `+${gold}g burst, dormant 2 waves`);
-        }
-        break;
-      }
-      case 'dig': {
-        const result = this.frontierMgr.digDeeper(idx);
-        if (result.collapsed) {
-          this.eventLog.frontierAction('Dig Deeper', 'CAVE-IN! Mine destroyed');
-        } else if (result.success) {
-          this.eventLog.frontierAction('Dig Deeper', 'Success! +1 depth');
-        }
-        break;
-      }
-      case 'harvest': {
-        const gold = this.frontierMgr.harvestGrowth(idx);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Harvest', `+${gold}g collected`);
-        }
-        break;
-      }
-    }
-    this.frontierPanel.updateOwned();
-  }
-
-  private handleFrontierBatchAction(action: string, defId: string): void {
-    switch (action) {
-      case 'overcharge': {
-        const gold = this.frontierMgr.overchargeAllOfType(defId);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Overcharge All', `+${gold}g burst`);
-        }
-        break;
-      }
-      case 'dig': {
-        const result = this.frontierMgr.digAllOfType(defId);
-        this.eventLog.frontierAction('Dig All', `${result.successes} ok, ${result.collapses} collapsed`);
-        break;
-      }
-      case 'harvest': {
-        const gold = this.frontierMgr.harvestAllOfType(defId);
-        if (gold > 0) {
-          this.economy.addGold(gold);
-          this.eventLog.frontierAction('Harvest All', `+${gold}g collected`);
-        }
-        break;
-      }
-    }
-    this.frontierPanel.updateOwned();
   }
 
   // === Game Loop ===
@@ -777,202 +848,34 @@ export class GameScene extends Phaser.Scene {
     delta *= this.gameSpeed;
     if (delta === 0) return; // speed 0 = paused
 
-    const traitCtx: UpdateContext = {
-      allTowers: this.towers,
-      allCreeps: this.creeps,
-      time,
-      delta,
-    };
+    // Tower updates: aura resets, trait updates, gold/damage collection, fire
+    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps);
 
-    // Reset harmonic aura accumulators + conduit link flags
-    for (const tower of this.towers) {
-      (tower as any)._linkedByConduit = false;
-      (tower as any)._conduitX = undefined;
-      (tower as any)._conduitY = undefined;
-      for (const trait of tower.traits) {
-        if (trait.id === '_harmonic_damage' || trait.id === '_harmonic_rate') {
-          trait.bonus = 0;
-        } else if (trait.id === '_harmonic_range') {
-          trait.bonus = 0;
-          tower.range = tower.typeDef.range * TILE_SIZE; // reset to base
-        } else if (trait.id === '_harmonic_crit') {
-          trait.chance = 0;
-        }
-      }
+    // Creep updates: movement, leak handling, kill processing, cleanup
+    const leakResult = this.creepMgr.update(delta);
+    // Circle co-op: host deducts shared lives via CircleLeakHandler; joiners sync via message
+    if (!this.circle || this.circle.isHost) {
+      this.lives -= leakResult.totalLeakDamage;
     }
 
-    for (const tower of this.towers) {
-      tower.runTraitUpdates(traitCtx);
-    }
+    // Clean up expired towers
+    this.towerMgr.cleanupExpired();
 
-    for (const tower of this.towers) {
-      if (tower.goldEarned > 0) {
-        this.economy.addGold(tower.goldEarned);
-        this.statsTracker.recordTowerGold(tower.typeId, tower.goldEarned);
-        this.statsTracker.recordGoldEarned(tower.goldEarned);
-        tower.goldEarned = 0;
-      }
-      if (tower.damageDealt > 0) {
-        this.statsTracker.recordDamage(tower.typeId, tower.damageDealt);
-        this.statsTracker.recordHitStats(tower.typeId, tower.hitStatsAccum);
-        tower.damageDealt = 0;
-        // Reset granular stats
-        for (const key of Object.keys(tower.hitStatsAccum)) {
-          tower.hitStatsAccum[key] = 0;
-        }
-      }
-    }
+    // Spawning + wave clear detection
+    this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
+    this.waveMgr.checkWaveComplete(this.creeps.length);
 
-    for (const tower of this.towers) {
-      tower.update(time, delta, this.creeps);
-    }
-
-    for (const creep of this.creeps) {
-      creep.update(delta, this.creeps);
-    }
-
-    for (const creep of this.creeps) {
-      if (creep.reached) {
-        const leakDamage = creep.isBoss ? 5 : 1;
-        this.lives -= leakDamage;
-        this.eventBus.emit('livesChanged', this.lives);
-        this.eventLog.gameMessage(leakDamage > 1 ? `BOSS leaked! -${leakDamage} lives` : 'Creep reached exit! -1 life');
-        this.statsTracker.recordLeak();
-        creep.reached = false;
-        creep.alive = false;
-      }
-    }
-
-    const killGoldMult = this.modifier?.killGoldMult ?? 1;
-    for (const creep of this.creeps) {
-      if (!creep.alive && !creep.reached && creep.hp <= 0) {
-        const killGold = Math.round(this.economy.getKillGold() * killGoldMult);
-        this.eventBus.emit('creepKilled', 0, killGold);
-        this.totalCreepsKilled++;
-        this.statsTracker.recordKill();
-        this.statsTracker.recordGoldEarned(killGold);
-        creep.hp = -999;
-      }
-    }
-
-    this.creeps = this.creeps.filter(c => c.alive);
-
-    // Clean up expired towers (Infernal Fiend kamikaze, expired Imps, etc.)
-    for (let i = this.towers.length - 1; i >= 0; i--) {
-      const tower = this.towers[i];
-      if ((tower as any)._expired) {
-        tower.destroy();
-        if (!tower.isMobile) {
-          this.grid.removeTower(tower.col, tower.row);
-        }
-        this.towers.splice(i, 1);
-      }
-    }
-
-    this.spawner.update(delta, this.allPaths, this.creeps);
-    this.sendMgr.update(delta, this.currentPath, this.creeps);
-
-    if (this.waveActive && !this.spawner.isSpawning() && !this.sendMgr.isSpawning() && this.creeps.length === 0) {
-      this.waveActive = false;
-      this.betweenWaves = true;
-
-      // Auto-play: schedule next wave automatically
-      if (this.autoPlay && this.currentWave < this.waves.length && !this.versus) {
-        this.time.delayedCall(1500, () => {
-          if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
-            this.startWave();
-          }
-        });
-      }
-
-      // Snap mobile units back home + process wave-end tower effects
-      for (const tower of this.towers) {
-        if (tower.isMobile) {
-          tower.x = tower.homeX;
-          tower.y = tower.homeY;
-          tower.drawTower();
-        }
-        // Infernal: decrement expires_after_waves
-        for (const trait of tower.traits) {
-          if (trait.id === 'expires_after_waves') {
-            if (trait._wavesRemaining === undefined) trait._wavesRemaining = trait.waves ?? 4;
-            trait._wavesRemaining--;
-            if (trait._wavesRemaining <= 0) {
-              (tower as any)._expired = true;
-              this.eventLog.gameMessage(`${tower.typeDef.name} expired!`);
-            }
-          }
-          // Infernal: decay_per_wave reduces damage
-          if (trait.id === 'decay_per_wave') {
-            const decayPercent = trait.decayPercent ?? 0.15;
-            tower.damage = Math.max(1, Math.round(tower.damage * (1 - decayPercent)));
-            tower.drawTower();
-          }
-        }
-        // Celestial: life_on_kill — collect earned lives
-        if ((tower as any)._livesEarned > 0) {
-          this.lives += (tower as any)._livesEarned;
-          this.eventLog.gameMessage(`+${(tower as any)._livesEarned} life from ${tower.typeDef.name}!`);
-          (tower as any)._livesEarned = 0;
-        }
-        // Celestial: leak_absorb recharge
-        for (const trait of tower.traits) {
-          if (trait.id === 'leak_absorb') {
-            if (trait._rechargeCounter === undefined) trait._rechargeCounter = 0;
-            trait._rechargeCounter++;
-            if (trait._rechargeCounter >= (trait.rechargeWaves ?? 10)) {
-              trait._charges = Math.min((trait._charges ?? 0) + 1, trait.maxCharges ?? 1);
-              trait._rechargeCounter = 0;
-            }
-          }
-        }
-      }
-
-      // Versus: notify wave cleared (host manages countdown timing)
-      if (this.versus) {
-        this.versus.notifyWaveCleared(this.currentWave);
-      }
-
-      // Frontier mechanic bonuses (growth, dig, gamble)
-      const frontierBonus = this.frontierMgr.onWaveEnd(this.currentWave);
-      if (frontierBonus > 0) {
-        this.economy.addGold(frontierBonus);
-        this.statsTracker.recordFrontierEarned(frontierBonus);
-        this.statsTracker.recordGoldEarned(frontierBonus);
-      }
-      this.frontierPanel.updateOwned();
-      // Wave income (includes base + sends + frontier base)
-      const income = this.incomeMgr.collectWaveIncome();
-      this.economy.addGold(income);
-      this.statsTracker.recordGoldEarned(income);
-      this.eventBus.emit('waveCleared', this.currentWave);
-      this.eventLog.waveCleared(this.currentWave, income + (frontierBonus > 0 ? frontierBonus : 0));
-      this.statsTracker.recordWaveCompleted();
-      this.upcomingWaves.update(this.currentWave, this.waves);
-      if (frontierBonus > 0) {
-        this.eventLog.frontierIncome('Frontier bonus', frontierBonus);
-      }
-
-      // Random faction: rotate available towers each wave
-      if (this.faction === 'random') {
-        this.activeTowerIds = this.rollRandomTowers();
-        this.towerBar.setTowerIds(this.activeTowerIds);
-        this.frontierMgr.rotateRandomFrontier();
-        this.frontierPanel.rebuildPurchaseList();
-        this.eventLog.gameMessage('Tower + frontier pool rotated!');
-        this.enterNoneMode();
-        // Versus: host sends tower pool to joiner
-        if (this.versus?.isHost) {
-          this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
-        }
-      }
-    }
-
-    if (this.lives <= 0) {
+    // Hero defense: check arena base HP instead of lives
+    const isHeroDead = this.arenaManager && this.arenaManager.baseHp <= 0;
+    if (this.lives <= 0 || isHeroDead) {
       this.lives = 0;
       this.eventBus.emit('gameOver');
       if (this.versus) {
         this.versus.notifyGameOver(false, this.statsTracker.stats, this.currentWave, 0);
+      }
+      // Circle co-op: all lose together
+      if (this.circle) {
+        this.circle.broadcast({ type: 'circle_victory', winnerIndex: -1 });
       }
       this.goToGameOver(false);
       return;
@@ -985,20 +888,34 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.currentWave >= this.waves.length && this.creeps.length === 0 && !this.waveActive) {
+    if (this.waveMgr.isComplete() && this.creeps.length === 0) {
       this.eventBus.emit('gameWon');
       if (this.versus) {
         this.versus.notifyGameOver(true, this.statsTracker.stats, this.currentWave, this.lives);
+      }
+      if (this.circle) {
+        this.circle.broadcast({ type: 'circle_victory', winnerIndex: this.circle.playerIndex });
       }
       this.goToGameOver(true);
       return;
     }
 
-        const versusTimer = this.versus?.waveTimerActive ? this.versus.getWaveTimerSeconds() : -1;
-    this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    const versusTimer = this.versus?.waveTimerActive
+      ? this.versus.getWaveTimerSeconds()
+      : this.circle?.waveTimerActive
+        ? this.circle.getWaveTimerSeconds()
+        : -1;
+    const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
+    this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
+
+    // Mode-specific per-frame update (essence ticking, arena, etc.)
+    this.gameMode.update(delta);
+
+    // Ability VFX
+    if (this.abilitySystem) this.abilitySystem.update(delta);
 
     // Versus: wave timer, minimap, incoming sends, ping, disconnect, chat
     if (this.versus) {
@@ -1020,11 +937,7 @@ export class GameScene extends Phaser.Scene {
       // Incoming sends
       const incoming = this.versus.drainIncomingSends();
       for (const sendId of incoming) {
-        const opt = SEND_OPTIONS_MAP[sendId];
-        if (opt) {
-          this.sendMgr.queueSend(opt);
-          this.eventLog.gameMessage(`Incoming send: ${opt.name}!`);
-        }
+        this.gameMode.handleSend(sendId);
       }
 
       // Incoming chat
@@ -1047,6 +960,71 @@ export class GameScene extends Phaser.Scene {
       this.versus?.send({ type: 'lives_update', lives: this.lives });
     }
 
+    // Circle co-op: wave timer, incoming tower events, roster, chat
+    if (this.circle) {
+      // Wave timer
+      if (this.circle.waveTimerActive) {
+        if (this.circle.updateWaveTimer(delta)) {
+          this.startWave();
+        }
+      }
+
+      // Process incoming tower events from other players
+      const towerEvents = this.circle.drainTowerEvents();
+      for (const { from, msg } of towerEvents) {
+        if (msg.type === 'tower_placed') {
+          this.placeRemoteTower(msg.towerId, msg.col, msg.row, from);
+        } else if (msg.type === 'tower_sold') {
+          this.towerMgr.sellTower(msg.col, msg.row);
+          this.towerOwners.delete(`${msg.col},${msg.row}`);
+          this.recalculatePaths();
+          this.drawPath();
+        } else if (msg.type === 'tower_upgraded') {
+          const tower = this.towers.find(t => t.col === msg.col && t.row === msg.row);
+          if (tower && tower.canUpgrade()) {
+            tower.upgrade();
+          }
+        } else if (msg.type === 'tower_sync') {
+          // Reconcile — add any towers we're missing from this player
+          for (const rt of msg.towers) {
+            const existing = this.towers.find(t => t.col === rt.col && t.row === rt.row);
+            if (!existing) {
+              this.placeRemoteTower(rt.towerId, rt.col, rt.row, from);
+            }
+          }
+        }
+      }
+
+      // Incoming chats
+      const chats = this.circle.drainChats();
+      for (const { from: fromIdx, text } of chats) {
+        this.eventLog.gameMessage(`[P${fromIdx}] ${text}`);
+      }
+
+      // Sync shared lives (host is authoritative, joiners read from circle)
+      if (this.circle.isHost) {
+        this.circle.sharedLives = this.lives;
+      } else {
+        this.lives = this.circle.sharedLives;
+      }
+
+      // Periodic tower sync — broadcast our tower state every 5s
+      this._circleSyncTimer += delta;
+      if (this._circleSyncTimer >= 5000) {
+        this._circleSyncTimer = 0;
+        const myTowers = this.towers
+          .filter(t => {
+            const owner = this.towerOwners.get(`${t.col},${t.row}`);
+            return owner === this.circle!.playerIndex || owner === undefined;
+          })
+          .map(t => ({ towerId: t.typeId, col: t.col, row: t.row, level: t.level }));
+        this.circle.broadcast({ type: 'tower_sync', towers: myTowers });
+      }
+
+      // Update roster UI
+      this.circleRoster?.update(this.lives);
+    }
+
     // Update tower alive time for DPS calc
     for (const tower of this.towers) {
       const ts = this.statsTracker.stats.towerStats[tower.typeId];
@@ -1057,13 +1035,16 @@ export class GameScene extends Phaser.Scene {
   // === Helpers ===
 
   private goToGameOver(won: boolean): void {
+    // Reset global grid offset
+    setGridOffsetY(0);
+
     const data: GameOverData = {
       won,
       wave: this.currentWave,
       totalWaves: this.waves.length,
       gold: this.economy.gold,
-      towersBuilt: this.totalTowersBuilt,
-      creepsKilled: this.totalCreepsKilled,
+      towersBuilt: this.towerMgr.totalTowersBuilt,
+      creepsKilled: this.creepMgr.totalCreepsKilled,
       matchMode: this.matchMode,
       faction: this.faction,
       stats: this.statsTracker.stats,
@@ -1074,9 +1055,19 @@ export class GameScene extends Phaser.Scene {
       opponentStats: this.versus?.opponentEndStats ?? null,
       opponentLives: this.versus?.opponentLives ?? 0,
       lives: this.lives,
+      // Hero defense data
+      heroStats: this.arenaManager ? {
+        kills: this.arenaManager.hero.kills,
+        deaths: this.arenaManager.hero.deaths,
+        damageDealt: this.arenaManager.hero.totalDamageDealt,
+        abilitiesUsed: this.arenaManager.hero.abilitiesUsed,
+        heroName: this.arenaManager.hero.typeDef.name,
+      } : null,
     };
     this.versus?.close();
     this.registry.remove('versus');
+    this.circle?.close();
+    this.registry.remove('circle');
     this.scene.start('GameOverScene', data);
   }
 
@@ -1166,6 +1157,11 @@ export class GameScene extends Phaser.Scene {
     exitBtn.setInteractive({ useHandCursor: true });
     exitBtn.on('pointerdown', () => {
       this.hidePauseMenu();
+      setGridOffsetY(0);
+      this.versus?.close();
+      this.circle?.close();
+      this.registry.remove('versus');
+      this.registry.remove('circle');
       this.scene.start('MenuScene');
     });
     exitBtn.on('pointerover', () => exitBtn.setColor('#ffbb77'));
@@ -1185,38 +1181,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private spawnBroodMotherSwarmlings(): void {
-    const swarmlingType = getTowerType('alien_swarmling');
-    for (const tower of this.towers) {
-      const trait = tower.traits.find(t => t.id === 'spawn_swarmlings_per_wave');
-      if (!trait) continue;
-      const count = trait.count ?? 2;
-      // Find empty adjacent cells to spawn in
-      const offsets = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
-      let spawned = 0;
-      for (const [dc, dr] of offsets) {
-        if (spawned >= count) break;
-        const sc = tower.col + dc;
-        const sr = tower.row + dr;
-        if (sc < 0 || sc >= GRID_COLS || sr < 0 || sr >= GRID_ROWS) continue;
-        // Spawn as mobile (non-blocking)
-        const swarmling = new Tower(this, sc, sr, swarmlingType);
-        swarmling.isMobile = true;
-        // Expires after 1 wave
-        swarmling.traits.push({ id: 'expires_after_waves', waves: 1, _wavesRemaining: 1 });
-        this.towers.push(swarmling);
-        spawned++;
-      }
-      if (spawned > 0) {
-        this.eventLog.gameMessage(`Brood Mother spawned ${spawned} Swarmlings!`);
-      }
-    }
-  }
-
-  private getEffectiveCost(baseCost: number): number {
-    return Math.round(baseCost * (this.modifier?.costMult ?? 1));
-  }
-
   recalculatePaths(): void {
     this.allPaths = [];
     for (const entry of this.grid.entries) {
@@ -1231,50 +1195,54 @@ export class GameScene extends Phaser.Scene {
     const g = this.gridGraphics;
     g.clear();
 
+    const oY = this.gridOffsetY;
+    const rows = this.grid.rows;
+    const gridH = rows * TILE_SIZE;
+
     g.fillStyle(COLOR_GROUND, 1);
-    g.fillRect(GRID_OFFSET_X, 0, GAME_WIDTH, GAME_HEIGHT);
+    g.fillRect(GRID_OFFSET_X, oY, GAME_WIDTH, gridH);
 
     g.lineStyle(1, COLOR_GRID_LINE, 0.3);
     for (let col = 0; col <= GRID_COLS; col++) {
-      g.lineBetween(gridLeftX(col), 0, gridLeftX(col), GAME_HEIGHT);
+      g.lineBetween(gridLeftX(col), oY, gridLeftX(col), oY + gridH);
     }
-    for (let row = 0; row <= GRID_ROWS; row++) {
-      g.lineBetween(GRID_OFFSET_X, row * TILE_SIZE, GRID_OFFSET_X + GAME_WIDTH, row * TILE_SIZE);
+    for (let row = 0; row <= rows; row++) {
+      // gridY already includes offset, but here we draw raw grid lines
+      g.lineBetween(GRID_OFFSET_X, oY + row * TILE_SIZE, GRID_OFFSET_X + GAME_WIDTH, oY + row * TILE_SIZE);
     }
 
-    // Blocked terrain
+    // Blocked terrain — use gridY-based coords (includes offset)
     g.fillStyle(0x1a1a1a, 1);
-    for (let row = 0; row < GRID_ROWS; row++) {
+    for (let row = 0; row < rows; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const cell = this.grid.cells[row][col];
+        const cellY = oY + row * TILE_SIZE;
         if (cell === CellType.Blocked) {
           g.fillStyle(0x1a1a1a, 1);
-          g.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.fillRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, 0x333333, 0.5);
-          g.strokeRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.strokeRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
         } else if (cell === CellType.NoBuild) {
-          // Walkable but unbuildable — subtle X pattern
           g.fillStyle(0x2a2222, 1);
-          g.fillRect(gridLeftX(col), row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          g.fillRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
           g.lineStyle(1, 0x442222, 0.3);
           const lx = gridLeftX(col);
-          const ty = row * TILE_SIZE;
-          g.lineBetween(lx + 4, ty + 4, lx + TILE_SIZE - 4, ty + TILE_SIZE - 4);
-          g.lineBetween(lx + TILE_SIZE - 4, ty + 4, lx + 4, ty + TILE_SIZE - 4);
+          g.lineBetween(lx + 4, cellY + 4, lx + TILE_SIZE - 4, cellY + TILE_SIZE - 4);
+          g.lineBetween(lx + TILE_SIZE - 4, cellY + 4, lx + 4, cellY + TILE_SIZE - 4);
         }
         if (cell === CellType.Blocked || cell === CellType.NoBuild) {
-          g.lineStyle(1, COLOR_GRID_LINE, 0.3); // restore
+          g.lineStyle(1, COLOR_GRID_LINE, 0.3);
         }
       }
     }
 
     for (const entry of this.grid.entries) {
       g.fillStyle(COLOR_ENTRY, 0.5);
-      g.fillRect(gridLeftX(entry.col), entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      g.fillRect(gridLeftX(entry.col), oY + entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
     for (const exit of this.grid.exits) {
       g.fillStyle(COLOR_EXIT, 0.5);
-      g.fillRect(gridLeftX(exit.col), exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      g.fillRect(gridLeftX(exit.col), oY + exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
   }
 
@@ -1372,29 +1340,106 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Place a tower from a remote player (free, no economy check) */
+  private placeRemoteTower(towerId: string, col: number, row: number, fromPlayer: number): void {
+    const tt = getTowerType(towerId);
+    if (!tt) return;
+    const placeResult = this.towerMgr.placeTower(col, row, tt, this.allPaths, () => {
+      this.recalculatePaths();
+      return this.allPaths;
+    }, true);
+    if (placeResult) {
+      this.towerOwners.set(`${col},${row}`, fromPlayer);
+      if (placeResult.pathsChanged) this.drawPath();
+    }
+  }
+
+  /** Check if player can build at this cell (zone restriction for circle co-op) */
+  private canBuildInZone(col: number, row: number): boolean {
+    if (!this.circleMyZone) return true; // no zone restriction
+    return this.circleMyZone.has(`${col},${row}`);
+  }
+
+  /** Draw zone tint overlay on the grid for circle co-op */
+  private drawCircleZones(): void {
+    if (!this.circle) return;
+    const mapDef = MAPS[this.mapId];
+    if (!mapDef.zones || !mapDef.zoneColors) return;
+
+    if (!this.circleZoneOverlay) {
+      this.circleZoneOverlay = this.add.graphics().setDepth(0.5);
+    }
+    const g = this.circleZoneOverlay;
+    g.clear();
+
+    for (let z = 0; z < mapDef.zones.length; z++) {
+      const color = mapDef.zoneColors[z];
+      const isMyZone = z === this.circle.playerIndex;
+      const alpha = isMyZone ? 0.12 : 0.06;
+      g.fillStyle(color, alpha);
+      for (const cell of mapDef.zones[z]) {
+        g.fillRect(gridLeftX(cell.col), gridY(cell.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+      }
+      // Draw zone border for my zone
+      if (isMyZone) {
+        g.lineStyle(1, color, 0.3);
+        for (const cell of mapDef.zones[z]) {
+          g.strokeRect(gridLeftX(cell.col), gridY(cell.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+  }
+
   startWave(): void {
-    if (!this.currentPath) return;
+    this.waveMgr.startWave(this.allPaths);
+  }
 
-    this.betweenWaves = false;
-    this.waveActive = true;
-    const wave = this.waves[this.currentWave];
-    this.currentWave++;
-    this.eventBus.emit('waveStarted', this.currentWave);
-    this.spawner.startWave(wave, this.allPaths.filter(p => p !== null).length);
+  /** Called by WaveController when a wave clears */
+  private onWaveCleared(waveNum: number): void {
+    // Auto-play: schedule next wave automatically
+    if (this.autoPlay && this.currentWave < this.waves.length && !this.versus) {
+      this.time.delayedCall(1500, () => {
+        if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
+          this.startWave();
+        }
+      });
+    }
 
-    // Brood Mother: spawn temporary swarmlings
-    this.spawnBroodMotherSwarmlings();
+    // Tower wave-end processing
+    const livesGained = this.towerMgr.onWaveEnd();
+    this.lives += livesGained;
 
-    // Start opponent simulation wave
-    this.opponentSim?.startWave(wave);
+    // Versus: notify
+    if (this.versus) {
+      this.versus.notifyWaveCleared(waveNum);
+    }
 
-    // Log wave start with creep types
-    const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
-    this.eventLog.waveStarted(this.currentWave, this.waves.length, creepTypes);
-    this.upcomingWaves.update(this.currentWave, this.waves);
+    // Circle: notify
+    if (this.circle) {
+      this.circle.notifyWaveCleared(waveNum);
+    }
 
-    const baseHp = wave.groups[0]?.hpScale || 30;
-    const baseSpeed = wave.groups[0]?.speedScale || 1;
-    this.sendMgr.activateSends(baseHp, baseSpeed);
+    // Mode-specific wave-end (frontier income, essence, etc.)
+    this.gameMode.onWaveCleared(waveNum);
+
+    // Events + UI
+    this.eventBus.emit('waveCleared', waveNum);
+    this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
+    this.statsTracker.recordWaveCompleted();
+    this.upcomingWaves.update(waveNum, this.waves);
+
+    // Random faction rotation
+    if (this.faction === 'random') {
+      this.activeTowerIds = this.rollRandomTowers();
+      this.towerBar.setTowerIds(this.activeTowerIds);
+      if (this.gameMode instanceof StandardMode) {
+        (this.gameMode as StandardMode).rotateRandomFrontier();
+      }
+      this.eventLog.gameMessage('Tower + frontier pool rotated!');
+      this.enterNoneMode();
+      if (this.versus?.isHost) {
+        this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
+      }
+    }
   }
 }
