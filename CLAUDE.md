@@ -16,6 +16,7 @@ After every commit, check and update these files:
 1. **CHANGELOG.md** — Add entry for every feature, fix, or change. Write in the same conversational summary style used in chat. Group by date.
 2. **README.md** — Update if systems, controls, file structure, or tech changes.
 3. **FACTIONS.md** — Update if any faction's towers, costs, traits, or identity changes. Include ALL factions.
+4. **GAMEMODES.md** — Update if any game mode's rules, economy, heroes, items, or strategy changes.
 
 ## Project Structure
 ```

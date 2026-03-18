@@ -20,17 +20,20 @@
 - **New game mode: Hero Defense** — split-screen layout with hero arena (top, 400px) and smaller TD grid (bottom, 36×12).
 - **3 heroes**: Warden (tank, 500 HP, melee), Arcanist (mage, 280 HP, ranged), Shadow (assassin, 320 HP, fast melee).
 - **Click-to-move hero micro**: click arena to move, click creeps to focus. Q/W/E ability keys with cooldowns.
-- **Warden abilities**: Shield Bash (stun 1.5s), War Cry (+40% AS), Ground Slam (AoE 120 dmg + slow).
+- **Warden abilities**: Shield Bash (stun 1.5s), War Cry (+40% AS), Ground Slam (AoE 15 dmg + slow).
 - **Arcanist abilities**: Fireball (100+60 splash), Frost Nova (AoE slow), Blink (teleport).
 - **Shadow abilities**: Shadow Strike (dash+mark +25% amp), Evasion (100% dodge 2s), Execute (200 dmg if <30% HP).
 - **Hero item shop**: 3 slots (Weapon, Armor, Boots) × 3 tiers each. Weapon gives damage/crit, Armor gives flat armor + HP, Boots give speed/dodge.
-- **Arena system**: leaked TD creeps spawn at left edge of arena, walk right toward the Base. Hero fights them. Base HP replaces lives.
+- **Arena system**: leaked TD creeps spawn at left edge of arena with full HP, walk right toward the Base (10k HP). Hero fights them.
+- **Arena creeps fight back**: creeps aggro on the hero (240px range, bosses 360px), chase, and attack in melee. Creeps that reach the base park there and repeatedly attack it.
+- **Ranged heroes fire projectiles**: Arcanist auto-attacks launch visible projectiles that fly to target.
+- **10x creep waves**: hero defense spawns 10x the normal creep count with faster spawn intervals for intense arena pressure.
 - **Death/Respawn**: hero dies → 10s respawn timer → full HP at arena center. Creeps walk to base unimpeded while dead.
-- **Economy**: arena kills award 50% gold. Hero heals 20% on wave clear.
+- **Economy**: arena kills award 10% gold (balanced for 10x creep count). Hero heals 20% on wave clear.
 - **Hero Select scene**: 3 hero cards with stat breakdowns and ability descriptions. Routes through draft to game.
-- **Hero Plains map**: designed for 12-row grid with entry left, exit right.
+- **Hero Plains map**: designed for 12-row grid with entry left, exit right. Auto-selected for hero defense mode.
 - **Layout system**: `LayoutConfig.ts` returns grid dimensions per mode. Mutable `_gridOffsetY` in config offsets all grid rendering.
-- **HeroLeakHandler**: intercepts TD leaks, spawns ArenaCreep with 60% HP at arena left edge. Returns 0 damage (no life loss).
+- **HeroLeakHandler**: intercepts TD leaks, spawns ArenaCreep with full HP at arena left edge. Returns 0 damage (no life loss).
 - **HeroDefenseMode**: GameMode implementation with ItemShopPanel and ArenaManager integration.
 - **AbilitySystem**: manages visual effects for hero abilities.
 - **Game over screen**: shows hero kills, deaths, K/D ratio, damage dealt, abilities used.

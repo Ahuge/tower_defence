@@ -2,7 +2,7 @@
 
 A grid-based maze-building tower defence game with 12 factions, P2P multiplayer (1v1 and 2-4 player co-op), and deep economic strategy. Built with Phaser 3 + TypeScript + Vite.
 
-**[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Changelog](CHANGELOG.md)
+**[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Game Modes](GAMEMODES.md) | [Changelog](CHANGELOG.md)
 
 ## Quick Start
 ```bash
@@ -59,13 +59,16 @@ See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.
 
 ## Major Systems
 
-### Match Modes
+### Match Modes (7)
 - **Sprint** (15 waves) — Quick game
 - **Standard** (30 waves) — Full experience
 - **Marathon** (Endless) — Infinite scaling
-- **Battle** (Dual Economy) — Gold + Essence. Buy generators with gold to produce essence in real-time. Spend essence on sends for gold income. Compound growth loop.
-- **Hero Defense** (30 waves) — Split-screen: hero arena (top) + smaller TD grid (bottom). Leaked creeps enter the arena where your hero fights them. Base HP replaces lives. 3 heroes with unique abilities and an item shop.
-- **Circle Co-op** (30 waves) — 2-4 players on one shared map. Each player builds in their zone. Creeps loop through all zones. Shared lives, individual gold.
+- **Battle** (Dual Economy) — Gold + Essence compound growth loop
+- **Hero Defense** (30 waves) — Control a hero in an arena. 10x creeps, 3 heroes, item shop.
+- **Versus 1v1** — P2P multiplayer. Sends go to opponent.
+- **Circle Co-op** (2-4 players) — Shared map, zone building, shared lives.
+
+See [GAMEMODES.md](GAMEMODES.md) for detailed rules, strategies, and controls per mode.
 
 ### Trait System
 All behaviors are composable traits — data objects with registered handler functions:
