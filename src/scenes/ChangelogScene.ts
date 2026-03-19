@@ -5,6 +5,22 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v19 — Difficulty Scaling & Bug Fixes',
+    changes: [
+      'Fixed DoT/beam rounding bug: Virus, burn, and Firewall beam were dealing 0 damage at 60fps',
+      'Quadratic HP scaling: late-wave creeps are much tougher (wave 20: 340 HP, wave 30: 620 HP)',
+      'Themed late-wave compositions: healer+tank packs, speed rushes, regen DPS checks, flying bypasses',
+      'Kill gold decays over time (5g → 4g → 3g → 2g floor) to prevent income snowball',
+      'New creep type: Regenerator — heavy armor, 2% HP/s regen, appears wave 25+',
+      'New regeneration trait with green pulse visual effect',
+      'Hard difficulty retuned: toughness 2.0×, count 1.6×, speed 1.2×, gold 0.6×',
+      'New Insane difficulty: 3.5× toughness, 2× count, 1.35× speed, 0.4× gold. Good luck.',
+      'Insane extras: boss damage-cap shields, armored regen, 45% evasion, 5% regenerator regen',
+      'Hard-mode bosses now regenerate 1% HP/s',
+      'Faster late-wave spawns (floor lowered to 150ms)',
+    ],
+  },
+  {
     version: 'v18 — Responsive Scaling & Tablet Support',
     changes: [
       'Tablet layout: sidebar becomes a collapsible overlay with hamburger toggle',
@@ -126,7 +142,7 @@ const CHANGELOG_ENTRIES = [
   {
     version: 'v9 — Creep Variety & Difficulty',
     changes: [
-      'Difficulty system: Easy/Normal/Hard with per-creep-type scaling',
+      'Difficulty system: Easy/Normal/Hard/Insane with per-creep-type scaling',
       '7 new creep types: Group, Splitter, Shielded, Evasive, Flying, 4 Mage types',
       'Flying creeps bypass maze entirely (straight line to exit)',
       'Shielded creeps: max 1 damage per hit until shield breaks',

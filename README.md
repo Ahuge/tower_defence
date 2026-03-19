@@ -89,7 +89,7 @@ Standard, Fast, Armored, Swarm, Healer, Boss, Group, Splitter, Shielded, Evasive
 - **Frontier** — Invest in passive income buildings with faction-flavored mechanics
 
 ### Difficulty System
-Easy/Normal/Hard. Each creep type interprets difficulty individually — armored gets tankier, swarms multiply, fast creeps get faster.
+Easy/Normal/Hard/Insane. Each creep type interprets difficulty individually — armored gets tankier, swarms multiply, fast creeps get faster. Insane mode adds extra traits (boss damage-cap shields, armored regen, 45% evasion) and is probably not winnable.
 
 ### Multiplayer (P2P WebRTC)
 - No server required — manual SDP exchange via clipboard
