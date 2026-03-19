@@ -5,8 +5,11 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
-    version: 'v19 — Difficulty Scaling & Bug Fixes',
+    version: 'v19 — Difficulty Scaling, Send Tiers & Bug Fixes',
     changes: [
+      'Send cost scaling: costs rise +10% per 5 waves, income rewards scale slightly to compensate',
+      'Tier 2 sends: Healer (w10+), Shielded (w10+), Flying (w15+), Regen (w20+) — hotkeys 1/2/3/4',
+      'Send panel updates each wave with current costs and unlock status',
       'Fixed DoT/beam rounding bug: Virus, burn, and Firewall beam were dealing 0 damage at 60fps',
       'Quadratic HP scaling: late-wave creeps are much tougher (wave 20: 340 HP, wave 30: 620 HP)',
       'Themed late-wave compositions: healer+tank packs, speed rushes, regen DPS checks, flying bypasses',

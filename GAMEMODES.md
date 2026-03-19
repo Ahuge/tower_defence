@@ -17,7 +17,7 @@ The core experience. All creep types appear progressively. Full economic depth.
 
 - **Waves**: 30. Boss every 10th wave. Mages from wave 18, flying from wave 19. Regenerators from wave 25. Late waves (21+) have themed synergistic compositions.
 - **Economy**: Standard gold. Kills + wave income + frontier. Kill gold decays by 1 per 10 waves (5g→4g→3g→2g floor).
-- **Sends**: Available. Income bonus compounds over 30 waves.
+- **Sends**: Available. Income bonus compounds over 30 waves. Costs scale +10% per 5 waves. Tier 2 sends (healer, shielded, flying, regen) unlock at waves 10/15/20.
 - **Frontier**: Faction-specific buildings with overcharge/dig/harvest actions.
 - **Difficulty scaling**: HP scales quadratically — waves 1-10 feel familiar, but wave 20+ creeps are significantly tougher. Hard mode is genuinely punishing. Insane mode is probably not winnable.
 - **Win condition**: Survive all 30 waves.

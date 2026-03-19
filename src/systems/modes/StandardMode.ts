@@ -18,6 +18,7 @@ export class StandardMode implements GameMode {
   readonly id: MatchMode;
   private ctx!: GameModeContext;
   private sendPanel!: SendPanel;
+  private currentWave: number = 0;
   frontierMgr!: FrontierManager;
   frontierPanel!: FrontierPanel;
 
@@ -29,9 +30,10 @@ export class StandardMode implements GameMode {
     this.ctx = ctx;
 
     // Send panel
-    this.sendPanel = new SendPanel(ctx.scene, (opt: SendCreepOption) => {
+    this.sendPanel = new SendPanel(ctx.scene, (opt: SendCreepOption, scaledCost: number, scaledIncome: number) => {
       if (!this.canStartWave()) return; // only between waves
-      if (!ctx.economy.spend(opt.cost)) return;
+      if (this.currentWave < opt.unlockWave) return; // not unlocked yet
+      if (!ctx.economy.spend(scaledCost)) return;
 
       if (ctx.versus && ctx.versus.isConnected()) {
         ctx.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
@@ -40,12 +42,18 @@ export class StandardMode implements GameMode {
       } else {
         ctx.sendMgr.queueSend(opt);
       }
-      ctx.incomeMgr.addSendBonus(opt.incomeReward);
-      ctx.eventLog.sendQueued(opt.name, opt.cost);
-      ctx.statsTracker.recordSendSpent(opt.cost);
-      ctx.statsTracker.recordSendIncome(opt.incomeReward);
-      ctx.statsTracker.recordGoldSpent(opt.cost);
+      ctx.incomeMgr.addSendBonus(scaledIncome);
+      ctx.eventLog.sendQueued(opt.name, scaledCost);
+      ctx.statsTracker.recordSendSpent(scaledCost);
+      ctx.statsTracker.recordSendIncome(scaledIncome);
+      ctx.statsTracker.recordGoldSpent(scaledCost);
     }, ctx.sidebarTopY);
+
+    // Track wave for send scaling/unlocks
+    ctx.eventBus.on('waveStarted', (waveNum: number) => {
+      this.currentWave = waveNum;
+      this.sendPanel.setWave(waveNum);
+    });
 
     // Frontier
     this.frontierMgr = new FrontierManager(ctx.eventBus, ctx.incomeMgr, ctx.faction);
