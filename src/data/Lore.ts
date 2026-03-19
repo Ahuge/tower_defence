@@ -125,5 +125,6 @@ export const CREEP_LORE: Record<string, string> = {
   mage_evasion: 'Grants nearby creeps a chance to dodge attacks entirely. Extremely frustrating.',
   mage_heal: 'Periodically heals nearby creeps for a flat amount. Sustained, reliable, dangerous.',
   evasive: 'One in four attacks simply misses. High fire-rate towers improve the odds.',
+  regenerator: 'Thick-skinned and self-healing. Chip damage means nothing — you need sustained, overwhelming firepower.',
   flying: 'Ignores your carefully constructed maze. Flies in a straight line to the exit. Plan accordingly.',
 };
