@@ -436,6 +436,7 @@ export class EncyclopediaScene extends Phaser.Scene {
           case 'evasion_aura': return `${Math.round((t.evasionBonus ?? 0.15) * 100)}% Evasion Aura`;
           case 'evasion': return `${Math.round((t.chance ?? 0.25) * 100)}% Evasion`;
           case 'split_on_death': return `Splits into ${t.splitCount}`;
+          case 'regeneration': return `Regen(${Math.round((t.regenPercent ?? 0.02) * 100)}%hp/s)`;
           default: return t.id;
         }
       }).join(', ') || 'None';

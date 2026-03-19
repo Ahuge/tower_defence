@@ -2,6 +2,23 @@
 
 ## 2026-03-18
 
+### Difficulty Scaling Overhaul
+- **Quadratic HP scaling**: Creep HP now scales as `20 + wave*8 + wave²*0.4`. Waves 1-10 feel nearly the same, but wave 20+ creeps have roughly double the old HP (340 vs 180 at wave 20, 620 vs 260 at wave 30). Late game is no longer trivially won.
+- **Late-wave themed compositions**: Waves 21+ now have synergistic themes instead of "everything at once" — healer+armored packs (21-22), speed+swarm rushes (23-24), shielded+regen DPS checks (25-26), flying+evasion maze bypasses (27-28), and full mixed chaos (29+).
+- **Kill gold decay**: Kill gold decreases by 1 per 10 waves (5g→4g→3g→2g floor). Prevents infinite income snowball in late waves.
+- **Hard difficulty tuned up**: Toughness 1.5→2.0, count 1.4→1.6, speed 1.15→1.2, gold mult 0.75→0.6. Hard mode wave 25+ is now genuinely punishing.
+- **New Insane difficulty**: Toughness 3.5×, count 2.0×, speed 1.35×, gold 0.4×. Probably not winnable. Bosses get damage-cap shields (40 hits). Armored creeps regenerate. Evasive creeps dodge 45%. Shielded creeps have 40-hit shields. Regenerators heal 5%/s. Good luck.
+- **Faster late spawns**: Spawn interval floor lowered from 200ms to 150ms, scaling steeper (wave 30: 240ms vs old 300ms).
+
+### New Creep Type: Regenerator
+- **Regenerator**: Heavy armor, 1.8× HP, 0.85× speed, regenerates 2% max HP/s. Appears in waves 25+. On hard mode (toughness ≥ 2.0), regen increases to 3%. Forces sustained DPS rather than burst.
+- **Boss regen on hard**: Hard-mode bosses gain 1% HP/s regeneration, making them much more threatening.
+- New `regeneration` creep trait with green pulse visual effect when healing.
+
+### Bug Fix: DoT/Beam Rounding
+- **Fixed zero-damage DoTs**: At 60fps, per-frame DoT damage (e.g. Virus 10 DPS × 0.016s = 0.16) was rounded to 0 by `Math.round()`. Added accumulator pattern — fractional damage carries between frames, only applied when ≥1 HP. Virus, burn, and poison effects now deal correct damage.
+- **Fixed Firewall beam zero damage**: Same rounding bug caused `Math.round(20 * 0.016) = 0`. Removed rounding — beam now applies raw float damage. HP checks (`<= 0`) work fine with floats.
+
 ### Responsive Scaling & Tablet Support
 - **Dynamic grid offset**: `GRID_OFFSET_X` and `CANVAS_WIDTH` are now dynamic functions (`getGridOffsetX()`, `getCanvasWidth()`) that read from `ResponsiveManager`. On desktop (window >= 1200px), layout is unchanged. On tablet, grid offset is 0 and canvas shrinks to game area only.
 - **ResponsiveManager** (`src/systems/ResponsiveManager.ts`): Singleton that detects layout mode from `window.innerWidth`, fires resize events, exposes `isTablet()`, `canvasWidth()`, `gridOffsetX()`.

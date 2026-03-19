@@ -658,8 +658,8 @@ registerTowerUpdate('firewall_link', (trait: Trait, tower: any, ctx: UpdateConte
     const perpY = cy - proj * ny;
     const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
     if (perpDist <= TILE_SIZE * 0.6) {
-      creep.takeDamage(Math.round(damage));
-      tower.damageDealt += Math.round(damage);
+      creep.takeDamage(damage);
+      tower.damageDealt += damage;
     }
   }
 

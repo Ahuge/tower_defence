@@ -82,7 +82,9 @@ export const CREEP_TYPES: Record<string, CreepType> = {
         speedMult: hints.speed * 0.9, // barely speeds up
         countMult: Math.max(1, hints.count * 0.6), // fewer extras — each one is a problem
         goldMult: hints.goldMult,
-        extraTraits: [],
+        extraTraits: hints.toughness >= 3.0
+          ? [{ id: 'regeneration', regenPercent: 0.01 }] // insane: armored also regen
+          : [],
       };
     },
   },
@@ -132,9 +134,11 @@ export const CREEP_TYPES: Record<string, CreepType> = {
         speedMult: hints.speed * 0.95,
         countMult: 1, // always exactly 1 boss
         goldMult: hints.goldMult,
-        extraTraits: hints.toughness >= 1.5
-          ? [{ id: 'shield', hpPercent: 0.5 }] // harder difficulty = bigger shield
-          : [],
+        extraTraits: [
+          ...(hints.toughness >= 1.5 ? [{ id: 'shield', hpPercent: 0.5 }] : []),
+          ...(hints.toughness >= 2.0 ? [{ id: 'regeneration', regenPercent: 0.01 }] : []),
+          ...(hints.toughness >= 3.0 ? [{ id: 'damage_cap_shield', shieldHits: 40 }] : []),
+        ],
       };
     },
   },
@@ -259,9 +263,11 @@ export const CREEP_TYPES: Record<string, CreepType> = {
         speedMult: hints.speed,
         countMult: Math.max(1, hints.count * 0.7),
         goldMult: hints.goldMult,
-        extraTraits: hints.toughness >= 1.5
-          ? [{ id: 'damage_cap_shield', shieldHits: 25 }]
-          : [],
+        extraTraits: hints.toughness >= 3.0
+          ? [{ id: 'damage_cap_shield', shieldHits: 40 }] // insane: absurd shield
+          : hints.toughness >= 1.5
+            ? [{ id: 'damage_cap_shield', shieldHits: 25 }]
+            : [],
       };
     },
   },
@@ -278,9 +284,32 @@ export const CREEP_TYPES: Record<string, CreepType> = {
         speedMult: hints.speed * 1.1,
         countMult: hints.count,
         goldMult: hints.goldMult,
-        extraTraits: hints.toughness >= 1.5
-          ? [{ id: 'evasion', chance: 0.35 }] // harder = more evasion
-          : [],
+        extraTraits: hints.toughness >= 3.0
+          ? [{ id: 'evasion', chance: 0.45 }] // insane: nearly half dodged
+          : hints.toughness >= 1.5
+            ? [{ id: 'evasion', chance: 0.35 }]
+            : [],
+      };
+    },
+  },
+
+  regenerator: {
+    id: 'regenerator', name: 'Regenerator', description: 'Heavy armor, regenerates 2% max HP/s. DPS check.',
+    hpMultiplier: 1.8, speedMultiplier: 0.85, armor: 'heavy',
+    color: 0x22cc44, size: 1.15, count: 1,
+    traits: [{ id: 'regeneration', regenPercent: 0.02 }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 1.2,
+        speedMult: hints.speed * 0.95,
+        countMult: Math.max(1, hints.count * 0.7),
+        goldMult: hints.goldMult,
+        extraTraits: hints.toughness >= 3.0
+          ? [{ id: 'regeneration', regenPercent: 0.05 }] // insane = 5% regen
+          : hints.toughness >= 2.0
+            ? [{ id: 'regeneration', regenPercent: 0.03 }] // hard = 3% regen
+            : [],
       };
     },
   },

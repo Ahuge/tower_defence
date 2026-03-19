@@ -165,6 +165,28 @@ registerCreepUpdate('evasion_aura', (trait: Trait, creep: any, _delta: number, n
 });
 
 // ============================================================
+// Regeneration — heals percentage of max HP per second
+// ============================================================
+
+registerCreepUpdate('regeneration', (trait: Trait, creep: any, delta: number, _nearbyCreeps: any[]) => {
+  if (!creep.alive || creep.reached) return;
+  if (creep.hp >= creep.maxHp) return;
+
+  const regenPercent = trait.regenPercent ?? 0.02;
+  const healAmount = creep.maxHp * regenPercent * (delta / 1000);
+  creep.hp = Math.min(creep.maxHp, creep.hp + healAmount);
+});
+
+registerCreepDraw('regeneration', (_trait: Trait, creep: any, g: any) => {
+  if (creep.hp >= creep.maxHp) return;
+  // Green pulse when regenerating
+  const pulse = 0.3 + 0.2 * Math.sin(Date.now() * 0.005);
+  const baseSize = creep.isBoss ? TILE_SIZE * 0.45 : TILE_SIZE * 0.3;
+  g.lineStyle(2, 0x44ff44, pulse);
+  g.strokeCircle(creep.x, creep.y, baseSize * creep.size + 3);
+});
+
+// ============================================================
 // Visual overlays
 // ============================================================
 

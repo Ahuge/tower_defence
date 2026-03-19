@@ -15,10 +15,11 @@ Quick game with fewer creep types. Good for learning tower synergies and testing
 
 The core experience. All creep types appear progressively. Full economic depth.
 
-- **Waves**: 30. Boss every 10th wave. Mages from wave 18, flying from wave 19.
-- **Economy**: Standard gold. Kills + wave income + frontier.
+- **Waves**: 30. Boss every 10th wave. Mages from wave 18, flying from wave 19. Regenerators from wave 25. Late waves (21+) have themed synergistic compositions.
+- **Economy**: Standard gold. Kills + wave income + frontier. Kill gold decays by 1 per 10 waves (5g→4g→3g→2g floor).
 - **Sends**: Available. Income bonus compounds over 30 waves.
 - **Frontier**: Faction-specific buildings with overcharge/dig/harvest actions.
+- **Difficulty scaling**: HP scales quadratically — waves 1-10 feel familiar, but wave 20+ creeps are significantly tougher. Hard mode is genuinely punishing. Insane mode is probably not winnable.
 - **Win condition**: Survive all 30 waves.
 
 ### Strategy Tips
@@ -26,6 +27,8 @@ The core experience. All creep types appear progressively. Full economic depth.
 - Invest in frontier buildings early for compound income.
 - Save sends for after wave 10 when income matters most.
 - Build a maze before bosses at waves 10, 20, 30.
+- Waves 25-26 bring regenerators — you need sustained DPS, not burst.
+- Hard mode bosses regenerate HP. You need overwhelming firepower.
 
 ---
 
@@ -33,7 +36,7 @@ The core experience. All creep types appear progressively. Full economic depth.
 
 Infinite scaling. How far can you go?
 
-- **Waves**: 100+ (generated). All creep types from wave 20+. HP and speed scale continuously.
+- **Waves**: 100+ (generated). All creep types from wave 20+, regenerators from 25+. HP scales quadratically, speed scales continuously.
 - **Economy**: Standard gold. Same as Standard but the income window is much longer.
 - **Win condition**: None — play until you lose. Score based on wave reached.
 

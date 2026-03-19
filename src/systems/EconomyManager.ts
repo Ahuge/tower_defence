@@ -10,6 +10,7 @@ import { ResourceManager } from './ResourceManager';
 export class EconomyManager {
   resources: ResourceManager;
   private events: EventBus;
+  private currentWave = 0;
 
   constructor(events: EventBus, resourceMgr?: ResourceManager) {
     this.events = events;
@@ -32,6 +33,10 @@ export class EconomyManager {
 
     events.on('waveCleared', () => {
       this.addGold(WAVE_CLEAR_BONUS);
+    });
+
+    events.on('waveStarted', (waveNum: number) => {
+      this.currentWave = waveNum;
     });
   }
 
@@ -57,6 +62,6 @@ export class EconomyManager {
   }
 
   getKillGold(): number {
-    return KILL_GOLD;
+    return Math.max(2, KILL_GOLD - Math.floor(this.currentWave / 10));
   }
 }

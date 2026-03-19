@@ -12,7 +12,7 @@ npm run dev
 
 ## Game Overview
 
-Build towers to create mazes, defend against 14 creep types across 30+ waves, manage your economy across three channels (towers, sends, frontier), and leverage your faction's unique strengths. Play solo or versus a friend via peer-to-peer WebRTC.
+Build towers to create mazes, defend against 15 creep types across 30+ waves, manage your economy across three channels (towers, sends, frontier), and leverage your faction's unique strengths. Play solo or versus a friend via peer-to-peer WebRTC.
 
 ### Match Flow
 1. **Menu** — Choose map, difficulty, match mode, or multiplayer (Versus 1v1 / Circle Co-op)
@@ -89,7 +89,7 @@ Standard, Fast, Armored, Swarm, Healer, Boss, Group, Splitter, Shielded, Evasive
 - **Frontier** — Invest in passive income buildings with faction-flavored mechanics
 
 ### Difficulty System
-Easy/Normal/Hard. Each creep type interprets difficulty individually — armored gets tankier, swarms multiply, fast creeps get faster.
+Easy/Normal/Hard/Insane. Each creep type interprets difficulty individually — armored gets tankier, swarms multiply, fast creeps get faster. Insane mode adds extra traits (boss damage-cap shields, armored regen, 45% evasion) and is probably not winnable.
 
 ### Multiplayer (P2P WebRTC)
 - No server required — manual SDP exchange via clipboard

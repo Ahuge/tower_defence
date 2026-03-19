@@ -6,6 +6,7 @@ export interface StatusEffect {
 
 export class StatusEffectManager {
   effects: StatusEffect[] = [];
+  private _dotAccum = 0;
 
   apply(type: string, duration: number, magnitude: number): void {
     const existing = this.effects.find(e => e.type === type);
@@ -49,15 +50,16 @@ export class StatusEffectManager {
 
   /** Total DoT damage this frame (flat burn + % poison + virus) */
   getDotDamage(delta: number, maxHp: number): number {
-    let total = 0;
     for (const e of this.effects) {
       if (e.type === 'burn' || e.type === 'virus') {
-        total += e.magnitude * (delta / 1000);
+        this._dotAccum += e.magnitude * (delta / 1000);
       } else if (e.type === 'poison') {
-        total += maxHp * e.magnitude * (delta / 1000);
+        this._dotAccum += maxHp * e.magnitude * (delta / 1000);
       }
     }
-    return Math.round(total);
+    const dmg = Math.floor(this._dotAccum);
+    this._dotAccum -= dmg;
+    return dmg;
   }
 
   /** Is this creep confused (walking backward)? */
