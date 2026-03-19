@@ -186,8 +186,8 @@ export class LobbyScene extends Phaser.Scene {
 
       this.add.text(cx, 230, 'Difficulty:', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
 
-      const diffs: DifficultyLevel[] = ['easy', 'normal', 'hard'];
-      const diffColors: Record<string, string> = { easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444' };
+      const diffs: DifficultyLevel[] = ['easy', 'normal', 'hard', 'insane'];
+      const diffColors: Record<string, string> = { easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444', insane: '#ff00ff' };
       const diffBtns: { btn: Phaser.GameObjects.Text; id: DifficultyLevel }[] = [];
       const diffStartX = cx - (diffs.length * 80) / 2;
       for (let i = 0; i < diffs.length; i++) {

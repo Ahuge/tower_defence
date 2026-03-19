@@ -9,7 +9,7 @@ export interface DifficultyHints {
   goldMult: number;   // 1.0 = normal, 0.8 = 20% less gold
 }
 
-export type DifficultyLevel = 'easy' | 'normal' | 'hard';
+export type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
 
 export const DIFFICULTIES: Record<DifficultyLevel, DifficultyHints> = {
   easy: {
@@ -25,9 +25,15 @@ export const DIFFICULTIES: Record<DifficultyLevel, DifficultyHints> = {
     goldMult: 1.0,
   },
   hard: {
-    toughness: 1.5,
-    count: 1.4,
-    speed: 1.15,
-    goldMult: 0.75,
+    toughness: 2.0,
+    count: 1.6,
+    speed: 1.2,
+    goldMult: 0.6,
+  },
+  insane: {
+    toughness: 3.5,
+    count: 2.0,
+    speed: 1.35,
+    goldMult: 0.4,
   },
 };

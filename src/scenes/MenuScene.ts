@@ -75,6 +75,7 @@ export class MenuScene extends Phaser.Scene {
       { id: 'easy', label: 'Easy', color: '#44ff44' },
       { id: 'normal', label: 'Normal', color: '#ffaa44' },
       { id: 'hard', label: 'Hard', color: '#ff4444' },
+      { id: 'insane', label: 'Insane', color: '#ff00ff' },
     ];
     const diffBtnW = 90;
     const diffGap = 8;

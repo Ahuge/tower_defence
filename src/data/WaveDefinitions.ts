@@ -19,9 +19,9 @@ function generateStandardWaves(count: number): WaveDefinition[] {
 
   for (let i = 0; i < count; i++) {
     const waveNum = i + 1;
-    const baseHp = 20 + waveNum * 8;
+    const baseHp = Math.round(20 + waveNum * 8 + waveNum * waveNum * 0.4);
     const baseSpeed = 1 + waveNum * 0.02;
-    const interval = Math.max(200, 600 - waveNum * 10);
+    const interval = Math.max(150, 600 - waveNum * 12);
 
     // Boss waves every 10
     if (waveNum % 10 === 0) {
@@ -84,20 +84,51 @@ function generateStandardWaves(count: number): WaveDefinition[] {
       if (waveNum >= 19) {
         groups.push({ creepType: 'flying', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       }
-    } else {
-      // Late game: everything
+    } else if (waveNum <= 22) {
+      // Wave 21-22: Healer + Armored packs (healers keep tanks alive)
+      groups.push({ creepType: 'armored', count: 6, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'healer', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.4), hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'shielded', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'mage_armor', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'mage_heal', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+    } else if (waveNum <= 24) {
+      // Wave 23-24: Speed + Swarm rush (overwhelming numbers)
+      groups.push({ creepType: 'fast', count: 8, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'swarm', count: 6, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'evasive', count: 4, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'mage_speed', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'group', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+    } else if (waveNum <= 26) {
+      // Wave 25-26: Shielded + Heal + Regenerator (DPS check)
+      groups.push({ creepType: 'shielded', count: 4, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'regenerator', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'healer', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'mage_heal', count: 1, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'armored', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'splitter', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+    } else if (waveNum <= 28) {
+      // Wave 27-28: Flying + Healer + Evasion (bypass maze + sustain)
+      groups.push({ creepType: 'flying', count: 5, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'healer', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'evasive', count: 4, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'mage_evasion', count: 1, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 5, hpScale: baseHp, speedScale: baseSpeed });
-      groups.push({ creepType: 'armored', count: 4, hpScale: baseHp, speedScale: baseSpeed });
-      groups.push({ creepType: 'swarm', count: 4, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'regenerator', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+    } else {
+      // Wave 29+: Everything mixed, maximum threat
+      groups.push({ creepType: 'armored', count: 5, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'fast', count: 6, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'swarm', count: 5, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'shielded', count: 4, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'regenerator', count: 3, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'healer', count: 2, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'flying', count: 4, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'evasive', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'splitter', count: 2, hpScale: baseHp, speedScale: baseSpeed });
-      groups.push({ creepType: 'shielded', count: 3, hpScale: baseHp, speedScale: baseSpeed });
-      groups.push({ creepType: 'healer', count: 1, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'group', count: 3, hpScale: baseHp, speedScale: baseSpeed });
-      groups.push({ creepType: 'flying', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       // Rotating mage
-      const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion'];
+      const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion', 'mage_heal'];
       groups.push({ creepType: mageTypes[waveNum % mageTypes.length], count: 1, hpScale: baseHp, speedScale: baseSpeed });
     }
 

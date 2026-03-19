@@ -346,8 +346,8 @@ export class CircleLobbyScene extends Phaser.Scene {
       const diffLabel = this.add.text(cx, 248, 'Difficulty:', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
       this.dynamicElements.push(diffLabel);
 
-      const diffs: DifficultyLevel[] = ['easy', 'normal', 'hard'];
-      const diffColors: Record<string, string> = { easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444' };
+      const diffs: DifficultyLevel[] = ['easy', 'normal', 'hard', 'insane'];
+      const diffColors: Record<string, string> = { easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444', insane: '#ff00ff' };
       const diffBtns: { btn: Phaser.GameObjects.Text; id: DifficultyLevel }[] = [];
       for (let i = 0; i < diffs.length; i++) {
         const did = diffs[i];

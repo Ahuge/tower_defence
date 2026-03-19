@@ -12,7 +12,7 @@ npm run dev
 
 ## Game Overview
 
-Build towers to create mazes, defend against 14 creep types across 30+ waves, manage your economy across three channels (towers, sends, frontier), and leverage your faction's unique strengths. Play solo or versus a friend via peer-to-peer WebRTC.
+Build towers to create mazes, defend against 15 creep types across 30+ waves, manage your economy across three channels (towers, sends, frontier), and leverage your faction's unique strengths. Play solo or versus a friend via peer-to-peer WebRTC.
 
 ### Match Flow
 1. **Menu** — Choose map, difficulty, match mode, or multiplayer (Versus 1v1 / Circle Co-op)
