@@ -68,7 +68,7 @@ export class BattleMode implements GameMode {
       this.ctx.sendMgr.queueSend({
         id: send.id, name: send.name, creepType: send.creepType,
         count: send.count, cost: 0, incomeReward: send.incomeReward,
-        description: send.description,
+        description: send.description, tier: 1, unlockWave: 0,
       });
       this.ctx.eventLog.gameMessage(`Incoming send: ${send.name}!`);
       return true;
@@ -105,7 +105,7 @@ export class BattleMode implements GameMode {
       this.ctx.sendMgr.queueSend({
         id: send.id, name: send.name, creepType: send.creepType,
         count: send.count, cost: 0, incomeReward: send.incomeReward,
-        description: send.description,
+        description: send.description, tier: 1, unlockWave: 0,
       });
     }
 

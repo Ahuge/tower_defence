@@ -30,6 +30,7 @@ Build towers to create mazes, defend against 15 creep types across 30+ waves, ma
 | Left click (grid) | Build / Inspect tower / Inspect creep |
 | Right click / Long-press | Sell tower |
 | Z/X/C/V | Buy sends (Standard/Fast/Armored/Swarm) |
+| 1/2/3/4 | Buy tier 2 sends (Healer/Shielded/Flying/Regen — unlock mid-game) |
 | SPACE / Start Wave btn | Start next wave / Vote ready (versus) |
 | TAB / Speed btn | Cycle game speed (0x/0.5x/1x/1.5x/2x/3x) |
 | P | Pause menu |
@@ -85,7 +86,7 @@ Standard, Fast, Armored, Swarm, Healer, Boss, Group, Splitter, Shielded, Evasive
 
 ### Economy Triangle
 - **Towers** — Direct defence
-- **Sends** — Spend gold to add creeps to your wave for permanent income bonus (in versus: sends go to opponent)
+- **Sends** — Spend gold to add creeps to your wave for permanent income bonus (in versus: sends go to opponent). Tier 1 always available (Z/X/C/V), tier 2 unlocks at waves 10/15/20 (1/2/3/4). Costs scale with wave progression.
 - **Frontier** — Invest in passive income buildings with faction-flavored mechanics
 
 ### Difficulty System

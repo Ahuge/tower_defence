@@ -2,6 +2,16 @@
 
 ## 2026-03-18
 
+### Send Scaling & Tier 2 Sends
+- **Send cost scaling**: Send costs now increase +10% per 5 waves (rounded to nearest 5g). Income rewards also scale slightly (+0.5 per 10 waves) to compensate.
+- **Tier 2 sends**: 4 new send types that unlock as the game progresses:
+  - **Healer Pack** (70g, wave 10+): +2 healers that sustain nearby creeps
+  - **Shielded Pack** (80g, wave 10+): +2 shielded creeps (1 dmg/hit cap)
+  - **Flying Squad** (90g, wave 15+): +3 flying creeps that bypass the maze
+  - **Regen Pack** (100g, wave 20+): +2 regenerators with 2% HP/s regen
+- Send panel now shows locked tier 2 sends with unlock wave, and updates costs/availability each wave.
+- Hotkeys 1-4 mapped to tier 2 sends (Z/X/C/V remain for tier 1).
+
 ### Difficulty Scaling Overhaul
 - **Quadratic HP scaling**: Creep HP now scales as `20 + wave*8 + wave²*0.4`. Waves 1-10 feel nearly the same, but wave 20+ creeps have roughly double the old HP (340 vs 180 at wave 20, 620 vs 260 at wave 30). Late game is no longer trivially won.
 - **Late-wave themed compositions**: Waves 21+ now have synergistic themes instead of "everything at once" — healer+armored packs (21-22), speed+swarm rushes (23-24), shielded+regen DPS checks (25-26), flying+evasion maze bypasses (27-28), and full mixed chaos (29+).
