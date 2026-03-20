@@ -133,7 +133,8 @@ Buy items in the left sidebar. Each slot has 3 upgrade tiers.
 Peer-to-peer competitive mode. No server required — uses WebRTC with manual SDP exchange.
 
 - **Connection**: Host creates offer code (clipboard) → send to opponent → opponent pastes, gets answer code → host pastes answer → connected.
-- **Setup**: Host picks map + difficulty. Both pick factions. Then draft modifiers.
+- **Setup**: Host picks map + difficulty (including Random). Both pick factions. Then draft modifiers.
+- **Random maps in versus**: When host selects Random, both players generate the identical map from the shared seed.
 - **Waves**: 30. Mirrored via shared seed — both players face identical spawn patterns.
 - **Sends go to opponent**: Your send purchases (Z/X/C/V) spawn extra creeps in the opponent's game. Their sends come to you.
 - **Wave timer**: 60s for first wave, 30s between subsequent waves. Press SPACE to vote ready — wave starts when both ready OR timer expires.

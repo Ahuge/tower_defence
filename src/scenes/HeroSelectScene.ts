@@ -12,16 +12,20 @@ export class HeroSelectScene extends Phaser.Scene {
   private faction: FactionId | null = null;
   private mapId: MapId = 'hero_plains';
   private difficulty: DifficultyLevel = 'normal';
+  private randomSeed: number = 0;
+  private dailySeed: boolean = false;
 
   constructor() {
     super('HeroSelectScene');
   }
 
-  init(data: { mode: MatchMode; faction: FactionId | null; map?: MapId; difficulty?: DifficultyLevel }): void {
+  init(data: { mode: MatchMode; faction: FactionId | null; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean }): void {
     this.matchMode = data.mode;
     this.faction = data.faction;
     this.mapId = data.map || 'hero_plains';
     this.difficulty = data.difficulty || 'normal';
+    this.randomSeed = data.randomSeed ?? 0;
+    this.dailySeed = data.dailySeed ?? false;
   }
 
   create(): void {
@@ -167,6 +171,8 @@ export class HeroSelectScene extends Phaser.Scene {
       mode: this.matchMode,
       map: this.mapId,
       difficulty: this.difficulty,
+      randomSeed: this.randomSeed,
+      dailySeed: this.dailySeed,
     }));
     backBtn.on('pointerover', () => backBtn.setColor('#ffffff'));
     backBtn.on('pointerout', () => backBtn.setColor('#888888'));
@@ -179,6 +185,8 @@ export class HeroSelectScene extends Phaser.Scene {
       map: this.mapId,
       difficulty: this.difficulty,
       heroId,
+      randomSeed: this.randomSeed,
+      dailySeed: this.dailySeed,
     });
   }
 }

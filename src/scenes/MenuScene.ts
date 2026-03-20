@@ -3,6 +3,7 @@ import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
+import { getDailySeed } from '../data/MapGenerator';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 interface ModeCard {
@@ -15,6 +16,8 @@ interface ModeCard {
 export class MenuScene extends Phaser.Scene {
   private selectedMap: MapId = 'plains';
   private selectedDifficulty: DifficultyLevel = 'normal';
+  private dailySeed: boolean = true;
+  private dailyToggle: Phaser.GameObjects.Text | null = null;
   private mapButtons: { btn: Phaser.GameObjects.Graphics; id: MapId; x: number; y: number; w: number; h: number }[] = [];
   private diffButtons: { btn: Phaser.GameObjects.Graphics; id: DifficultyLevel; x: number; y: number; w: number; h: number }[] = [];
 
@@ -49,8 +52,9 @@ export class MenuScene extends Phaser.Scene {
       const btn = this.add.graphics();
       this.mapButtons.push({ btn, id: mapId, x, y, w: mapBtnW, h });
 
+      const nameColor = mapId === 'random' ? '#ff44ff' : '#ffffff';
       this.add.text(x + mapBtnW / 2, y + 10, map.name, {
-        fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+        fontSize: '13px', color: nameColor, fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       this.add.text(x + mapBtnW / 2, y + 28, map.description.substring(0, 24), {
@@ -61,13 +65,24 @@ export class MenuScene extends Phaser.Scene {
       zone.on('pointerdown', () => {
         this.selectedMap = mapId;
         this.drawMapButtons();
+        this.updateDailyToggle();
       });
     }
 
     this.drawMapButtons();
 
+    // Daily seed toggle (visible when Random map selected)
+    this.dailyToggle = this.add.text(cx, 154, '', {
+      fontSize: '9px', color: '#ff44ff', fontFamily: 'monospace',
+    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    this.dailyToggle.on('pointerdown', () => {
+      this.dailySeed = !this.dailySeed;
+      this.updateDailyToggle();
+    });
+    this.updateDailyToggle();
+
     // Difficulty selection
-    this.add.text(cx, 165, 'Difficulty', {
+    this.add.text(cx, 177, 'Difficulty', {
       fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
@@ -85,7 +100,7 @@ export class MenuScene extends Phaser.Scene {
     for (let i = 0; i < diffs.length; i++) {
       const d = diffs[i];
       const x = diffStartX + i * (diffBtnW + diffGap);
-      const y = 180;
+      const y = 192;
       const h = 28;
 
       const btn = this.add.graphics();
@@ -105,12 +120,18 @@ export class MenuScene extends Phaser.Scene {
     this.drawDiffButtons();
 
     // === Mode selection — 2x3 grid ===
-    this.add.text(cx, 222, 'Select Mode', {
+    this.add.text(cx, 234, 'Select Mode', {
       fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const goFaction = (mode: MatchMode) => {
-      this.scene.start('FactionSelectScene', { mode, map: this.selectedMap, difficulty: this.selectedDifficulty });
+      const seed = this.selectedMap === 'random'
+        ? (this.dailySeed ? getDailySeed() : Math.floor(Math.random() * 999999999))
+        : 0;
+      this.scene.start('FactionSelectScene', {
+        mode, map: this.selectedMap, difficulty: this.selectedDifficulty,
+        randomSeed: seed, dailySeed: this.dailySeed,
+      });
     };
 
     const modes: ModeCard[] = [
@@ -130,7 +151,7 @@ export class MenuScene extends Phaser.Scene {
     const gapY = 10;
     const gridW = cols * cardW + (cols - 1) * gapX;
     const gridStartX = cx - gridW / 2;
-    const gridStartY = 242;
+    const gridStartY = 254;
 
     for (let i = 0; i < modes.length; i++) {
       const m = modes[i];
@@ -214,17 +235,32 @@ export class MenuScene extends Phaser.Scene {
   private drawMapButtons(): void {
     for (const mb of this.mapButtons) {
       mb.btn.clear();
+      const isRandom = mb.id === 'random';
       if (mb.id === this.selectedMap) {
-        mb.btn.fillStyle(0x444444, 1);
+        mb.btn.fillStyle(isRandom ? 0x3a2a3a : 0x444444, 1);
         mb.btn.fillRect(mb.x, mb.y, mb.w, mb.h);
-        mb.btn.lineStyle(2, 0xffffff, 1);
+        mb.btn.lineStyle(2, isRandom ? 0xff44ff : 0xffffff, 1);
         mb.btn.strokeRect(mb.x, mb.y, mb.w, mb.h);
       } else {
         mb.btn.fillStyle(0x2a2a2a, 1);
         mb.btn.fillRect(mb.x, mb.y, mb.w, mb.h);
-        mb.btn.lineStyle(1, 0x555555, 0.6);
+        mb.btn.lineStyle(1, isRandom ? 0x884488 : 0x555555, 0.6);
         mb.btn.strokeRect(mb.x, mb.y, mb.w, mb.h);
       }
+    }
+  }
+
+  private updateDailyToggle(): void {
+    if (!this.dailyToggle) return;
+    if (this.selectedMap === 'random') {
+      const seed = getDailySeed();
+      this.dailyToggle.setVisible(true);
+      this.dailyToggle.setText(
+        this.dailySeed ? `[ Daily: ON — seed ${seed} ]` : '[ Daily: OFF — random seed ]'
+      );
+      this.dailyToggle.setColor(this.dailySeed ? '#ffaa44' : '#886688');
+    } else {
+      this.dailyToggle.setVisible(false);
     }
   }
 }

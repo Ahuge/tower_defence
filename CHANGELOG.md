@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-03-20
+
+### Procedural Random Map Generator
+- **New "Random" map option** in the map picker (menu, lobby, versus). Generates a unique map from a seed using chunk-based terrain features.
+- **6 layout templates** (classic, dual_entry, siege, gauntlet, diagonal, corridor) define entry/exit positions. The generator picks one randomly and fills terrain procedurally.
+- **Terrain feature library**: Lakes (circles), ridges (vertical walls with gaps), pillars (clusters), walls (horizontal with gaps), islands (blocked core + NoBuild ring), and boulder clusters. Features are randomly placed and validated via A* to guarantee all paths remain passable.
+- **Difficulty-linked terrain**: Easy maps are open (8-10% blocked), Insane maps are cramped (18-22% blocked) with more NoBuild zones and longer minimum paths. Each difficulty level feels structurally different.
+- **Daily seed toggle**: When Random is selected, a "Daily" toggle appears. ON = everyone gets the same map that day (seed = YYYYMMDD). OFF = fresh random seed each game.
+- **Versus integration**: Random maps in 1v1 use the existing shared seed mechanism — both players generate identical maps from the same seed.
+- **Seed display**: The active seed is shown in the top-right corner during gameplay so players can share/compare maps.
+- **Seeded PRNG**: Uses mulberry32 for fast, deterministic generation. Same seed + same difficulty = identical map every time.
+
 ## 2026-03-18
 
 ### Send Scaling & Tier 2 Sends

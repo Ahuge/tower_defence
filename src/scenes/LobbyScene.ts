@@ -174,12 +174,18 @@ export class LobbyScene extends Phaser.Scene {
       const mapStartX = cx - (MAP_ORDER.length * 80) / 2;
       for (let i = 0; i < MAP_ORDER.length; i++) {
         const mid = MAP_ORDER[i];
+        const isRandom = mid === 'random';
+        const activeColor = isRandom ? '#ff44ff' : '#ffffff';
+        const inactiveColor = isRandom ? '#884488' : '#666666';
         const btn = this.add.text(mapStartX + i * 80 + 40, 212, MAPS[mid].name, {
-          fontSize: '13px', color: mid === this.selectedMap ? '#ffffff' : '#666666', fontFamily: 'monospace',
+          fontSize: '13px', color: mid === this.selectedMap ? activeColor : inactiveColor, fontFamily: 'monospace',
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {
           this.selectedMap = mid;
-          mapBtns.forEach(b => b.btn.setColor(b.id === mid ? '#ffffff' : '#666666'));
+          mapBtns.forEach(b => {
+            const isR = b.id === 'random';
+            b.btn.setColor(b.id === mid ? (isR ? '#ff44ff' : '#ffffff') : (isR ? '#884488' : '#666666'));
+          });
         });
         mapBtns.push({ btn, id: mid });
       }

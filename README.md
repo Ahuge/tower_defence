@@ -108,8 +108,9 @@ Easy/Normal/Hard/Insane. Each creep type interprets difficulty individually — 
 - Star topology: host relays tower ops to all players
 - 3 dedicated circle maps (2P, 3P, 4P)
 
-### Maps (8 + 3 circle)
+### Maps (8 + Random + 3 circle)
 **Standard:** Plains, Crossroads, Fortress, Serpentine, Islands, Gauntlet, Spiral, Siege.
+**Random:** Procedurally generated map from a seed. 6 layout templates × terrain features scaled by difficulty. Daily seed toggle locks the same map for all players that day. Versus uses shared seed for identical maps.
 **Circle Co-op:** Circle 2P, Circle 3P, Circle 4P.
 
 ## Tech Stack

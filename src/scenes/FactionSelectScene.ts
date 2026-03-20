@@ -11,15 +11,19 @@ export class FactionSelectScene extends Phaser.Scene {
   private matchMode: MatchMode = 'standard';
   private mapId: MapId = 'plains';
   private difficulty: DifficultyLevel = 'normal';
+  private randomSeed: number = 0;
+  private dailySeed: boolean = false;
 
   constructor() {
     super('FactionSelectScene');
   }
 
-  init(data: { mode: MatchMode; map?: MapId; difficulty?: DifficultyLevel }): void {
+  init(data: { mode: MatchMode; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean }): void {
     this.matchMode = data.mode;
     this.mapId = data.map || 'plains';
     this.difficulty = data.difficulty || 'normal';
+    this.randomSeed = data.randomSeed ?? 0;
+    this.dailySeed = data.dailySeed ?? false;
   }
 
   create(): void {
@@ -119,9 +123,9 @@ export class FactionSelectScene extends Phaser.Scene {
       });
       zone.on('pointerdown', () => {
         if (this.matchMode === 'hero_defense') {
-          this.scene.start('HeroSelectScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty });
+          this.scene.start('HeroSelectScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed });
         } else {
-          this.scene.start('DraftScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty });
+          this.scene.start('DraftScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed });
         }
       });
     }
