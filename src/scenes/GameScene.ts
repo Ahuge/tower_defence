@@ -16,7 +16,8 @@ import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction } from '../data/Factions';
 import { MatchMode, WaveDefinition, getWavesForMode } from '../data/WaveDefinitions';
-import { MapId, MAPS } from '../data/Maps';
+import { MapId, MAPS, MapDefinition } from '../data/Maps';
+import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
 import { DifficultyLevel, DIFFICULTIES, DifficultyHints } from '../data/Difficulty';
 import { DraftModifier } from '../data/DraftModifiers';
 import { IncomeManager } from '../systems/IncomeManager';
@@ -115,6 +116,9 @@ export class GameScene extends Phaser.Scene {
   waves!: WaveDefinition[];
   matchMode: MatchMode = 'standard';
   mapId: MapId = 'plains';
+  randomSeed: number = 0;
+  dailySeed: boolean = false;
+  private generatedMapDef: MapDefinition | null = null;
   difficulty: DifficultyLevel = 'normal';
   difficultyHints!: DifficultyHints;
   faction: FactionId | null = null;
@@ -152,13 +156,16 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
     this.modifier = data.modifier ?? null;
     this.difficulty = data.difficulty || 'normal';
     this.heroId = data.heroId ?? null;
+    this.dailySeed = data.dailySeed ?? false;
+    this.randomSeed = data.randomSeed ?? 0;
+    this.generatedMapDef = null;
     // Hero defense requires its own map (12-row grid)
     if (this.matchMode === 'hero_defense') {
       this.mapId = 'hero_plains';
@@ -174,6 +181,11 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.activeTowerIds = TOWER_ORDER;
     }
+  }
+
+  /** Get the active map definition (generated for random, static otherwise) */
+  getMapDef(): MapDefinition {
+    return this.generatedMapDef ?? MAPS[this.mapId];
   }
 
   private rollRandomTowers(): string[] {
@@ -233,7 +245,25 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.eventBus = new EventBus();
-    const mapDef = MAPS[this.mapId];
+
+    // Resolve map definition — generate for random maps
+    let mapDef: MapDefinition;
+    if (this.mapId === 'random') {
+      // For versus, use sharedSeed from VersusManager
+      const versusRef2 = this.registry.get('versus') as VersusManager | null;
+      if (versusRef2 && this.randomSeed === 0) {
+        this.randomSeed = versusRef2.sharedSeed;
+      }
+      // If still no seed, generate one (single player)
+      if (this.randomSeed === 0) {
+        this.randomSeed = this.dailySeed ? getDailySeed() : Math.floor(Math.random() * 999999999);
+      }
+      mapDef = generateRandomMap(this.randomSeed, this.difficulty);
+      this.generatedMapDef = mapDef;
+    } else {
+      mapDef = MAPS[this.mapId];
+    }
+
     const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
     this.grid = new Grid(mapDef, gridRows);
     this.waves = getWavesForMode(this.matchMode);
@@ -269,6 +299,11 @@ export class GameScene extends Phaser.Scene {
 
     if (this.modifier && this.modifier.extraGold > 0) {
       this.economy.addGold(this.modifier.extraGold);
+    }
+
+    // Show seed for random maps
+    if (this.mapId === 'random' && this.randomSeed) {
+      this.ui.showSeed(this.randomSeed);
     }
 
     // Tower bar (starts deselected)
@@ -531,8 +566,7 @@ export class GameScene extends Phaser.Scene {
         this.drawOpponentView();
       });
       // Create opponent simulation
-      const mapDef = MAPS[this.mapId];
-      this.opponentSim = new OpponentSimulation(this.versus, mapDef, this.difficultyHints);
+      this.opponentSim = new OpponentSimulation(this.versus, this.getMapDef(), this.difficultyHints);
 
       this.eventLog.gameMessage('VERSUS MODE — sends go to opponent!');
       // Start initial 60s countdown for first wave
@@ -552,10 +586,10 @@ export class GameScene extends Phaser.Scene {
       this.towerOwners.clear();
 
       // Build zone restriction set for this player
-      const mapDef = MAPS[this.mapId];
-      if (mapDef.zones && mapDef.zones[this.circle.playerIndex]) {
+      const circleMapDef = this.getMapDef();
+      if (circleMapDef.zones && circleMapDef.zones[this.circle.playerIndex]) {
         this.circleMyZone = new Set(
-          mapDef.zones[this.circle.playerIndex].map(p => `${p.col},${p.row}`)
+          circleMapDef.zones[this.circle.playerIndex].map(p => `${p.col},${p.row}`)
         );
       }
 
@@ -1409,8 +1443,8 @@ export class GameScene extends Phaser.Scene {
   /** Draw zone tint overlay on the grid for circle co-op */
   private drawCircleZones(): void {
     if (!this.circle) return;
-    const mapDef = MAPS[this.mapId];
-    if (!mapDef.zones || !mapDef.zoneColors) return;
+    const zoneMapDef = this.getMapDef();
+    if (!zoneMapDef.zones || !zoneMapDef.zoneColors) return;
 
     if (!this.circleZoneOverlay) {
       this.circleZoneOverlay = this.add.graphics().setDepth(0.5);
@@ -1418,18 +1452,18 @@ export class GameScene extends Phaser.Scene {
     const g = this.circleZoneOverlay;
     g.clear();
 
-    for (let z = 0; z < mapDef.zones.length; z++) {
-      const color = mapDef.zoneColors[z];
+    for (let z = 0; z < zoneMapDef.zones.length; z++) {
+      const color = zoneMapDef.zoneColors[z];
       const isMyZone = z === this.circle.playerIndex;
       const alpha = isMyZone ? 0.12 : 0.06;
       g.fillStyle(color, alpha);
-      for (const cell of mapDef.zones[z]) {
+      for (const cell of zoneMapDef.zones[z]) {
         g.fillRect(gridLeftX(cell.col), gridY(cell.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
       }
       // Draw zone border for my zone
       if (isMyZone) {
         g.lineStyle(1, color, 0.3);
-        for (const cell of mapDef.zones[z]) {
+        for (const cell of zoneMapDef.zones[z]) {
           g.strokeRect(gridLeftX(cell.col), gridY(cell.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
         }
       }

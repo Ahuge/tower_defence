@@ -1,6 +1,6 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 
-export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p';
+export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p';
 
 export interface MapDefinition {
   id: MapId;
@@ -291,6 +291,15 @@ export const MAPS: Record<MapId, MapDefinition> = {
     })(),
     noBuild: [],
   },
+  random: {
+    id: 'random',
+    name: 'Random',
+    description: 'Procedurally generated — unique every time.',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [],
+    noBuild: [],
+  },
   hero_plains: {
     id: 'hero_plains',
     name: 'Hero Plains',
@@ -507,5 +516,5 @@ export const MAPS: Record<MapId, MapDefinition> = {
   })(),
 };
 
-export const MAP_ORDER: MapId[] = ['plains', 'crossroads', 'fortress', 'serpentine', 'islands', 'gauntlet', 'spiral', 'siege'];
+export const MAP_ORDER: MapId[] = ['plains', 'crossroads', 'fortress', 'serpentine', 'islands', 'gauntlet', 'spiral', 'siege', 'random'];
 export const CIRCLE_MAP_ORDER: MapId[] = ['circle_2p', 'circle_3p', 'circle_4p'];

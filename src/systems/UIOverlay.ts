@@ -9,6 +9,7 @@ export class UIOverlay {
   private speedText: Phaser.GameObjects.Text;
   private waveBtn: Phaser.GameObjects.Text;
   private speedBtn: Phaser.GameObjects.Text;
+  private seedText: Phaser.GameObjects.Text;
   private livesMode: 'lives' | 'base_hp';
   private onWaveStart: (() => void) | null = null;
   private onSpeedCycle: (() => void) | null = null;
@@ -42,6 +43,11 @@ export class UIOverlay {
     this.speedBtn.on('pointerdown', () => this.onSpeedCycle?.());
     this.speedBtn.on('pointerover', () => this.speedBtn.setAlpha(0.7));
     this.speedBtn.on('pointerout', () => this.speedBtn.setAlpha(1));
+
+    // Seed display (shown for random maps)
+    this.seedText = scene.add.text(getCanvasWidth() - 8, 4, '', {
+      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+    }).setDepth(30).setOrigin(1, 0).setVisible(false);
   }
 
   setCallbacks(onWaveStart: () => void, onSpeedCycle: () => void): void {
@@ -82,5 +88,9 @@ export class UIOverlay {
 
   setStatus(text: string): void {
     this.statusText.setText(text);
+  }
+
+  showSeed(seed: number): void {
+    this.seedText.setText(`Seed: ${seed}`).setVisible(true);
   }
 }

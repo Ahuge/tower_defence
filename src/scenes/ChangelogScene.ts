@@ -5,6 +5,18 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v20 — Procedural Random Maps',
+    changes: [
+      'New "Random" map in the map picker — procedurally generated from a seed',
+      '6 layout templates (classic, dual entry, siege, gauntlet, diagonal, corridor)',
+      'Terrain features: lakes, ridges, pillars, walls, islands, boulder clusters',
+      'Difficulty-linked density: Easy = open, Insane = cramped with NoBuild zones',
+      'Daily seed toggle: same map for everyone that day (seed = YYYYMMDD)',
+      'Versus uses shared seed — both players get identical random maps',
+      'Seed displayed in top-right corner during gameplay',
+    ],
+  },
+  {
     version: 'v19 — Difficulty Scaling, Send Tiers & Bug Fixes',
     changes: [
       'Send cost scaling: costs rise +10% per 5 waves, income rewards scale slightly to compensate',
