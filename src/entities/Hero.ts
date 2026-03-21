@@ -1,6 +1,9 @@
 import { HeroTypeDef, AbilityDef } from '../data/HeroTypes';
 import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../data/HeroItems';
+import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
+import { DamageNumberEntry, DMG_COLOR } from '../systems/FloatingDamage';
+import { ArenaEffect, FX } from '../systems/ArenaEffects';
 
 export interface AbilityState {
   def: AbilityDef;
@@ -19,6 +22,7 @@ interface HeroProjectile {
   damage: number;
   speed: number;      // pixels per second
   color: number;
+  dmgColor: string;   // floating damage text color
   graphics: Phaser.GameObjects.Graphics;
 }
 
@@ -46,10 +50,51 @@ export class Hero {
   totalDamageDealt: number = 0;
   abilitiesUsed: number = 0;
 
+  // Leveling
+  level: number = 1;
+  xp: number = 0;
+  static readonly MAX_LEVEL = 999; // effectively uncapped
+  static readonly ULTIMATE_UNLOCK_LEVEL = 6;
+  pendingUpgrades: number = 0; // queued upgrade choices
+  abilityUpgrades: number[] = [0, 0, 0, 0]; // Q, W, E, R upgrade counts
+
+  // Accessories (up to 3)
+  static readonly MAX_ACCESSORIES = 3;
+  accessories: AccessoryDef[] = [];
+  accessoryCooldowns: Map<string, number> = new Map(); // id → seconds remaining
+  guardianAngelUsed: boolean = false;
+  phasing: number = 0; // seconds remaining
+
   // Projectiles (ranged auto-attacks)
   private projectiles: HeroProjectile[] = [];
   private static readonly MELEE_THRESHOLD = 50; // attackRange <= this = melee (instant damage)
   private static readonly PROJECTILE_SPEED = 400; // pixels per second
+
+  // Ultimate ability
+  ultimate: AbilityState | null = null;
+
+  // Ultimate state
+  invulnerable: number = 0; // seconds remaining
+  meteorStorm: { remaining: number; interval: number; timer: number; damage: number; radius: number } | null = null;
+  deathMark: { remaining: number; damageDealt: number; bonusPct: number; targets: Set<ArenaCreep> } | null = null;
+
+  // Ability targeting mode
+  pendingAbilityIndex: number | null = null; // index into abilities, or -1 for ultimate
+
+  // Visual effects queue (drained by ArenaManager each frame)
+  pendingEffects: ArenaEffect[] = [];
+
+  // Pending meteor (processed by ArenaManager which knows all creep positions)
+  pendingMeteor: { damage: number; radius: number } | null = null;
+  // Pending chain lightning (processed by ArenaManager)
+  pendingChainLightning: { x: number; y: number; damage: number } | null = null;
+  // Pending splash attacks (processed by ArenaManager)
+  pendingSplash: { x: number; y: number; radius: number; damage: number }[] = [];
+  // Pending reflect damage (processed by ArenaManager on attacking creeps)
+  pendingReflectDamage: number = 0;
+
+  // Floating damage numbers queue (drained by ArenaManager each frame)
+  pendingDamageNumbers: DamageNumberEntry[] = [];
 
   // Temporary buffs
   private buffs: { stat: string; amount: number; remaining: number }[] = [];
@@ -88,6 +133,10 @@ export class Hero {
       tier: 0,
     })) as [ItemState, ItemState, ItemState];
 
+    if (typeDef.ultimate) {
+      this.ultimate = { def: typeDef.ultimate, cooldownRemaining: 0 };
+    }
+
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(15);
   }
@@ -101,6 +150,12 @@ export class Hero {
         const stats = ITEM_SLOTS[item.slot].tiers[item.tier - 1].stats;
         dmg += stats.damage ?? 0;
       }
+    }
+    // Berserker Band: +X% damage per 1% missing HP
+    const berserk = this.accSum('berserkerScaling');
+    if (berserk > 0) {
+      const missingPct = 1 - (this.hp / this.maxHp);
+      dmg = Math.round(dmg * (1 + missingPct * berserk));
     }
     return dmg;
   }
@@ -121,6 +176,10 @@ export class Hero {
         if (stats.speedMult) speed *= (1 + stats.speedMult);
       }
     }
+    if (this.phasing > 0) {
+      const phaseMult = this.accSum('phaseSpeedMult');
+      if (phaseMult > 0) speed *= (1 + phaseMult);
+    }
     return speed;
   }
 
@@ -136,7 +195,7 @@ export class Hero {
   }
 
   getArmorFlat(): number {
-    let armor = 0;
+    let armor = this.typeDef.baseArmor ?? 0;
     for (const item of this.items) {
       if (item.tier > 0) {
         const stats = ITEM_SLOTS[item.slot].tiers[item.tier - 1].stats;
@@ -198,6 +257,55 @@ export class Hero {
     // Tick cooldowns
     for (const ab of this.abilities) {
       if (ab.cooldownRemaining > 0) ab.cooldownRemaining = Math.max(0, ab.cooldownRemaining - dt);
+    }
+    if (this.ultimate && this.ultimate.cooldownRemaining > 0) {
+      this.ultimate.cooldownRemaining = Math.max(0, this.ultimate.cooldownRemaining - dt);
+    }
+
+    // Tick invulnerability
+    if (this.invulnerable > 0) this.invulnerable -= dt;
+
+    // Tick accessory cooldowns and phasing
+    for (const [id, cd] of this.accessoryCooldowns) {
+      if (cd > 0) this.accessoryCooldowns.set(id, Math.max(0, cd - dt));
+    }
+    if (this.phasing > 0) this.phasing -= dt;
+
+    // Tick meteor storm — only fire next if previous was consumed
+    if (this.meteorStorm) {
+      this.meteorStorm.timer -= dt;
+      if (this.meteorStorm.timer <= 0 && this.meteorStorm.remaining > 0 && !this.pendingMeteor) {
+        this.meteorStorm.remaining--;
+        this.meteorStorm.timer = this.meteorStorm.interval / 1000;
+        this.pendingMeteor = {
+          damage: this.meteorStorm.damage,
+          radius: this.meteorStorm.radius,
+        };
+      }
+      if (this.meteorStorm.remaining <= 0 && !this.pendingMeteor) {
+        this.meteorStorm = null;
+      }
+    }
+
+    // Tick death mark
+    if (this.deathMark) {
+      this.deathMark.remaining -= dt;
+      if (this.deathMark.remaining <= 0) {
+        // Apply bonus damage to all marked targets
+        const bonus = Math.round(this.deathMark.damageDealt * this.deathMark.bonusPct / 100);
+        if (bonus > 0) {
+          for (const c of this.deathMark.targets) {
+            if (c.alive) {
+              c.takeDamage(bonus);
+              this.totalDamageDealt += bonus;
+              this.pendingDamageNumbers.push({ x: c.x, y: c.y - 10, text: String(bonus), color: DMG_COLOR.ABILITY, duration: 1.0 });
+              this.pendingEffects.push(FX.execute(c.x, c.y));
+              if (!c.alive) this.kills++;
+            }
+          }
+        }
+        this.deathMark = null;
+      }
     }
 
     // Tick buffs
@@ -299,17 +407,25 @@ export class Hero {
   private attack(target: ArenaCreep): void {
     let dmg = this.getEffectiveDamage();
     // Crit
-    if (Math.random() < this.getCritChance()) dmg = Math.round(dmg * 1.5);
+    let isCrit = false;
+    const critChance = this.getCritChance();
+    if (Math.random() < critChance) {
+      let critMult = 1.5;
+      critMult += this.accSum('critDmgBonus');
+      dmg = Math.round(dmg * critMult);
+      isCrit = true;
+    }
     // Amp mark
     if (this.ampTarget === target && this.ampRemaining > 0) {
       dmg = Math.round(dmg * (1 + this.ampPercent / 100));
     }
 
+    const dmgColor = isCrit ? DMG_COLOR.CRIT : DMG_COLOR.NORMAL;
+
     if (this.baseAttackRange <= Hero.MELEE_THRESHOLD) {
-      // Melee: instant damage
-      this.applyDamage(target, dmg);
+      this.applyDamage(target, dmg, dmgColor);
+      this.applyOnHitEffects(target, dmg);
     } else {
-      // Ranged: spawn projectile
       const g = this.scene.add.graphics().setDepth(16);
       this.projectiles.push({
         x: this.x,
@@ -318,14 +434,64 @@ export class Hero {
         damage: dmg,
         speed: Hero.PROJECTILE_SPEED,
         color: this.typeDef.color,
+        dmgColor,
         graphics: g,
       });
     }
   }
 
-  private applyDamage(target: ArenaCreep, dmg: number): void {
+  /** Apply accessory on-hit effects (aggregated across all equipped) */
+  private applyOnHitEffects(target: ArenaCreep, dmg: number): void {
+    if (this.accessories.length === 0) return;
+    // Lifesteal (sum)
+    const ls = this.accSum('lifestealPct');
+    if (ls > 0) {
+      const heal = Math.round(dmg * ls);
+      if (heal > 0 && this.hp < this.maxHp) {
+        this.hp = Math.min(this.maxHp, this.hp + heal);
+        this.pendingDamageNumbers.push({ x: this.x, y: this.y - 20, text: `+${heal}`, color: DMG_COLOR.HEAL, duration: 0.6 });
+      }
+    }
+    // Frost slow (use strongest)
+    const slowPct = this.accSum('slowPct');
+    const slowDur = this.accSum('slowDuration');
+    if (slowPct > 0 && slowDur > 0 && target.alive) {
+      target.slowed = slowDur;
+      target.slowFactor = slowPct;
+    }
+    // Chain lightning (sum chance)
+    const clChance = this.accSum('chainLightningChance');
+    if (clChance > 0 && Math.random() < clChance) {
+      this.pendingChainLightning = {
+        x: target.x, y: target.y,
+        damage: this.accSum('chainLightningDmg') || 30,
+      };
+    }
+    // Splash AoE (use best equipped)
+    const splashRadius = this.accSum('splashRadius');
+    const splashPct = this.accSum('splashPct');
+    if (splashRadius > 0 && splashPct > 0) {
+      this.pendingSplash.push({
+        x: target.x, y: target.y,
+        radius: splashRadius,
+        damage: Math.round(dmg * splashPct),
+      });
+    }
+  }
+
+  private applyDamage(target: ArenaCreep, dmg: number, color?: string): void {
     target.takeDamage(dmg);
     this.totalDamageDealt += dmg;
+    // Track death mark damage
+    if (this.deathMark && this.deathMark.targets.has(target)) {
+      this.deathMark.damageDealt += dmg;
+    }
+    this.pendingDamageNumbers.push({
+      x: target.x, y: target.y - 10,
+      text: String(dmg),
+      color: color ?? DMG_COLOR.NORMAL,
+      duration: 0.8,
+    });
     if (!target.alive) {
       this.kills++;
       if (this.target === target) this.target = null;
@@ -348,7 +514,8 @@ export class Hero {
 
       if (dist <= move + 5) {
         // Hit!
-        this.applyDamage(proj.target, proj.damage);
+        this.applyDamage(proj.target, proj.damage, proj.dmgColor);
+        this.applyOnHitEffects(proj.target, proj.damage);
         proj.graphics.destroy();
         proj.damage = 0; // mark for cleanup
       } else {
@@ -371,22 +538,30 @@ export class Hero {
 
   // === Abilities ===
 
-  useAbility(index: number, arenaCreeps: ArenaCreep[], targetX?: number, targetY?: number): boolean {
-    const ab = this.abilities[index];
-    if (!ab || ab.cooldownRemaining > 0 || !this.alive) return false;
-
-    ab.cooldownRemaining = ab.def.cooldown;
-    this.abilitiesUsed++;
-    const def = ab.def;
+  useAbility(index: number, arenaCreeps: ArenaCreep[], targetX?: number, targetY?: number, overrideDef?: AbilityDef): boolean {
+    let def: AbilityDef;
+    if (overrideDef) {
+      // Ultimate — cooldown managed by ArenaManager
+      def = overrideDef;
+      if (!this.alive) return false;
+    } else {
+      const ab = this.abilities[index];
+      if (!ab || ab.cooldownRemaining > 0 || !this.alive) return false;
+      ab.cooldownRemaining = ab.def.cooldown;
+      this.abilitiesUsed++;
+      def = ab.def;
+    }
 
     switch (def.type) {
       case 'stun': {
-        // Stun nearest target
         const target = this.target ?? this.findTarget(arenaCreeps);
         if (target) {
-          target.takeDamage(def.damage ?? 0);
-          this.totalDamageDealt += def.damage ?? 0;
+          const d = def.damage ?? 0;
+          target.takeDamage(d);
+          this.totalDamageDealt += d;
           target.stunned = def.stunDuration ?? 1;
+          if (d > 0) this.pendingDamageNumbers.push({ x: target.x, y: target.y - 10, text: String(d), color: DMG_COLOR.ABILITY, duration: 0.8 });
+          this.pendingEffects.push(FX.stun(target.x, target.y));
           if (!target.alive) this.kills++;
         }
         break;
@@ -398,17 +573,24 @@ export class Hero {
         if (def.dodgeChance && def.dodgeDuration) {
           this.dodgeRemaining = def.dodgeDuration;
         }
+        this.pendingEffects.push(FX.buffRing(this.x, this.y, this.typeDef.color));
         break;
       }
       case 'aoe': {
+        const aoeDmg = def.damage ?? 0;
+        const aoeRadius = def.splashRadius ?? 100;
+        const aoeColor = def.slowAmount ? 0x44aaff : 0xff6644; // blue if slow, orange otherwise
+        this.pendingEffects.push(FX.aoeBlast(this.x, this.y, aoeRadius, aoeColor));
+        if (def.slowAmount) this.pendingEffects.push(FX.shockwave(this.x, this.y, aoeRadius, 0x44aaff));
         for (const c of arenaCreeps) {
           if (!c.alive) continue;
           const dx = c.x - this.x;
           const dy = c.y - this.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist <= (def.splashRadius ?? 100)) {
-            c.takeDamage(def.damage ?? 0);
-            this.totalDamageDealt += def.damage ?? 0;
+          if (dist <= aoeRadius) {
+            c.takeDamage(aoeDmg);
+            this.totalDamageDealt += aoeDmg;
+            if (aoeDmg > 0) this.pendingDamageNumbers.push({ x: c.x, y: c.y - 10, text: String(aoeDmg), color: DMG_COLOR.ABILITY, duration: 0.8 });
             if (def.slowAmount && def.slowDuration) {
               c.slowed = def.slowDuration;
               c.slowFactor = def.slowAmount;
@@ -419,22 +601,26 @@ export class Hero {
         break;
       }
       case 'skillshot': {
-        // Damage target + splash
         const target = this.target ?? this.findTarget(arenaCreeps);
         if (target) {
-          target.takeDamage(def.damage ?? 0);
-          this.totalDamageDealt += def.damage ?? 0;
+          const d = def.damage ?? 0;
+          target.takeDamage(d);
+          this.totalDamageDealt += d;
+          if (d > 0) this.pendingDamageNumbers.push({ x: target.x, y: target.y - 10, text: String(d), color: DMG_COLOR.ABILITY, duration: 0.8 });
+          // Projectile trail + impact
+          this.pendingEffects.push(FX.dashTrail(this.x, this.y, target.x, target.y, this.typeDef.color));
+          this.pendingEffects.push(FX.aoeBlast(target.x, target.y, def.splashRadius ?? 60, 0xff6622));
           if (!target.alive) this.kills++;
-          // Splash
           if (def.splashRadius) {
             for (const c of arenaCreeps) {
               if (!c.alive || c === target) continue;
               const dx = c.x - target.x;
               const dy = c.y - target.y;
               if (Math.sqrt(dx * dx + dy * dy) <= def.splashRadius) {
-                const splashDmg = Math.round((def.damage ?? 0) * 0.6);
+                const splashDmg = Math.round(d * 0.6);
                 c.takeDamage(splashDmg);
                 this.totalDamageDealt += splashDmg;
+                if (splashDmg > 0) this.pendingDamageNumbers.push({ x: c.x, y: c.y - 10, text: String(splashDmg), color: DMG_COLOR.ABILITY, duration: 0.8 });
                 if (!c.alive) this.kills++;
               }
             }
@@ -445,19 +631,23 @@ export class Hero {
       case 'dash': {
         const target = this.target ?? this.findTarget(arenaCreeps);
         if (target) {
-          // Dash to target
+          const startX = this.x, startY = this.y;
           const dx = target.x - this.x;
           const dy = target.y - this.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist <= (def.dashRange ?? 200)) {
             this.x = target.x - 20;
             this.y = target.y;
-            target.takeDamage(def.damage ?? 0);
-            this.totalDamageDealt += def.damage ?? 0;
+            const d = def.damage ?? 0;
+            target.takeDamage(d);
+            this.totalDamageDealt += d;
+            if (d > 0) this.pendingDamageNumbers.push({ x: target.x, y: target.y - 10, text: String(d), color: DMG_COLOR.ABILITY, duration: 0.8 });
+            this.pendingEffects.push(FX.dashTrail(startX, startY, this.x, this.y, this.typeDef.color));
+            this.pendingEffects.push(FX.stun(target.x, target.y));
             if (def.ampPercent) {
               this.ampTarget = target;
               this.ampPercent = def.ampPercent;
-              this.ampRemaining = 5; // 5 second amp duration
+              this.ampRemaining = 5;
             }
             if (!target.alive) this.kills++;
           }
@@ -470,8 +660,10 @@ export class Hero {
           const dy = targetY - this.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist <= (def.range ?? 300)) {
+            this.pendingEffects.push(FX.teleportFlash(this.x, this.y, this.typeDef.color));
             this.x = targetX;
             this.y = targetY;
+            this.pendingEffects.push(FX.teleportFlash(this.x, this.y, this.typeDef.color));
           }
         }
         break;
@@ -483,8 +675,47 @@ export class Hero {
           const dmg = hpRatio < (def.hpThreshold ?? 0.3) ? (def.damageBelow ?? 200) : (def.damageAbove ?? 50);
           target.takeDamage(dmg);
           this.totalDamageDealt += dmg;
+          this.pendingDamageNumbers.push({ x: target.x, y: target.y - 10, text: String(dmg), color: DMG_COLOR.ABILITY, duration: 0.8 });
+          this.pendingEffects.push(FX.execute(target.x, target.y));
+          if (hpRatio < (def.hpThreshold ?? 0.3)) {
+            this.pendingEffects.push(FX.shockwave(target.x, target.y, 40, 0xff4444));
+          }
           if (!target.alive) this.kills++;
         }
+        break;
+      }
+      case 'taunt': {
+        this.invulnerable = def.invulnDuration ?? 5;
+        for (const c of arenaCreeps) {
+          if (c.alive) c.forcedTarget = true;
+        }
+        this.pendingEffects.push(FX.shockwave(this.x, this.y, 200, 0xffdd44));
+        this.pendingEffects.push(FX.buffRing(this.x, this.y, 0xffdd44));
+        this.pendingDamageNumbers.push({ x: this.x, y: this.y - 30, text: 'FORTRESS!', color: DMG_COLOR.ABILITY, duration: 1.5 });
+        break;
+      }
+      case 'meteor_storm': {
+        const interval = def.meteorInterval ?? 1000;
+        this.meteorStorm = {
+          remaining: (def.meteorCount ?? 3) - 1,
+          interval,
+          timer: interval / 1000,
+          damage: def.meteorDamage ?? 150,
+          radius: def.meteorRadius ?? 100,
+        };
+        this.pendingMeteor = { damage: def.meteorDamage ?? 150, radius: def.meteorRadius ?? 100 };
+        this.pendingEffects.push(FX.shockwave(this.x, this.y, 150, 0xff6622));
+        this.pendingDamageNumbers.push({ x: this.x, y: this.y - 30, text: 'METEOR STORM!', color: DMG_COLOR.ABILITY, duration: 1.5 });
+        break;
+      }
+      case 'death_mark': {
+        this.deathMark = {
+          remaining: def.markDuration ?? 3,
+          damageDealt: 0,
+          bonusPct: def.markBonusPct ?? 30,
+          targets: new Set(arenaCreeps.filter(c => c.alive)),
+        };
+        this.pendingDamageNumbers.push({ x: this.x, y: this.y - 30, text: 'DEATH MARK!', color: DMG_COLOR.ABILITY, duration: 1.5 });
         break;
       }
     }
@@ -496,14 +727,38 @@ export class Hero {
 
   takeDamage(amount: number): void {
     if (!this.alive) return;
+    // Invulnerability check
+    if (this.invulnerable > 0) return;
     // Dodge check
-    if (Math.random() < this.getDodgeChance()) return;
+    if (Math.random() < this.getDodgeChance()) {
+      this.pendingDamageNumbers.push({
+        x: this.x, y: this.y - 20, text: 'DODGE', color: DMG_COLOR.NORMAL, duration: 0.6,
+      });
+      return;
+    }
     // Armor reduction
     const armor = this.getArmorFlat();
     const reduction = armor / (armor + 50); // diminishing returns
-    const dmg = Math.round(amount * (1 - reduction));
-    this.hp -= Math.max(1, dmg);
+    const dmg = Math.max(1, Math.round(amount * (1 - reduction)));
+    this.hp -= dmg;
+    this.pendingDamageNumbers.push({
+      x: this.x, y: this.y - 20, text: String(dmg), color: DMG_COLOR.HERO_DAMAGE, duration: 0.8,
+    });
+    // Thorns Mail: reflect damage (sum)
+    const reflect = this.accSum('reflectPct');
+    if (reflect > 0) {
+      this.pendingReflectDamage = Math.round(dmg * reflect);
+    }
     if (this.hp <= 0) {
+      // Guardian Angel: revive once
+      if (this.accHas('guardianAngel') && !this.guardianAngelUsed) {
+        this.guardianAngelUsed = true;
+        this.hp = Math.round(this.maxHp * 0.5);
+        this.pendingDamageNumbers.push({
+          x: this.x, y: this.y - 30, text: 'REVIVED!', color: DMG_COLOR.HEAL, duration: 1.5,
+        });
+        return;
+      }
       this.die();
     }
   }
@@ -535,7 +790,181 @@ export class Hero {
 
   healPercent(pct: number): void {
     if (!this.alive) return;
-    this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * pct));
+    const heal = Math.round(this.maxHp * pct);
+    const oldHp = this.hp;
+    this.hp = Math.min(this.maxHp, this.hp + heal);
+    const actual = this.hp - oldHp;
+    if (actual > 0) {
+      this.pendingDamageNumbers.push({
+        x: this.x, y: this.y - 20, text: `+${actual}`, color: DMG_COLOR.HEAL, duration: 1.0,
+      });
+    }
+  }
+
+  // === Accessories ===
+
+  /** Get sum/first value of a numeric accessory property across all equipped */
+  accSum(key: keyof AccessoryDef): number {
+    let total = 0;
+    for (const a of this.accessories) {
+      const v = a[key];
+      if (typeof v === 'number') total += v;
+    }
+    return total;
+  }
+
+  /** Check if any accessory has a truthy property */
+  accHas(key: keyof AccessoryDef): boolean {
+    return this.accessories.some(a => !!a[key]);
+  }
+
+  equipAccessory(acc: AccessoryDef): void {
+    if (this.accessories.length >= Hero.MAX_ACCESSORIES) return; // full
+    this.accessories.push(acc);
+    this.accessoryCooldowns.set(acc.id, 0);
+    if (acc.guardianAngel) this.guardianAngelUsed = false;
+  }
+
+  useAccessory(arenaCreeps: ArenaCreep[]): boolean {
+    if (!this.alive) return false;
+    // Find first active accessory that's off cooldown
+    const active = this.accessories.find(a => !a.passive && (this.accessoryCooldowns.get(a.id) ?? 0) <= 0);
+    if (!active) return false;
+    this.accessoryCooldowns.set(active.id, active.cooldown ?? 30);
+
+    if (active.healPct) {
+      this.healPercent(active.healPct);
+    }
+    if (active.phaseDuration) {
+      this.phasing = active.phaseDuration;
+      this.pendingDamageNumbers.push({ x: this.x, y: this.y - 20, text: 'PHASE!', color: DMG_COLOR.ABILITY, duration: 0.8 });
+    }
+    if (active.stunDuration && active.stunRadius) {
+      for (const c of arenaCreeps) {
+        if (!c.alive) continue;
+        const dx = c.x - this.x;
+        const dy = c.y - this.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= active.stunRadius) {
+          c.stunned = active.stunDuration;
+        }
+      }
+      this.pendingDamageNumbers.push({ x: this.x, y: this.y - 20, text: 'HORN!', color: DMG_COLOR.ABILITY, duration: 0.8 });
+    }
+    return true;
+  }
+
+  // === Leveling ===
+
+  /** XP needed to reach NEXT level from current (level * 15) */
+  xpToNextLevel(): number {
+    if (this.level >= Hero.MAX_LEVEL) return Infinity;
+    return this.level * 15;
+  }
+
+  /** Total XP needed from 0 to reach a given level */
+  xpForLevel(lvl: number): number {
+    return ((lvl - 1) * lvl / 2) * 15;
+  }
+
+  grantXP(amount: number): void {
+    if (this.level >= Hero.MAX_LEVEL) return;
+    this.xp += amount;
+    while (this.level < Hero.MAX_LEVEL && this.xp >= this.xpToNextLevel()) {
+      this.xp -= this.xpToNextLevel();
+      this.level++;
+      this.applyLevelUp();
+    }
+    if (this.level >= Hero.MAX_LEVEL) this.xp = 0;
+  }
+
+  private applyLevelUp(): void {
+    this.pendingUpgrades++;
+    this.pendingDamageNumbers.push({
+      x: this.x, y: this.y - 30, text: `LEVEL ${this.level}!`, color: DMG_COLOR.LEVEL_UP, duration: 1.5,
+    });
+    if (this.level === Hero.ULTIMATE_UNLOCK_LEVEL && this.ultimate) {
+      this.pendingDamageNumbers.push({
+        x: this.x, y: this.y - 45, text: '[R] UNLOCKED!', color: DMG_COLOR.ABILITY, duration: 2.0,
+      });
+    }
+  }
+
+  /** Available upgrade choices (shown in sidebar) */
+  getUpgradeOptions(): { id: string; label: string; desc: string }[] {
+    return [
+      { id: 'hp', label: '+30 Max HP', desc: `${this.maxHp} → ${this.maxHp + 30}` },
+      { id: 'damage', label: '+5 Damage', desc: `${this.baseDamage} → ${this.baseDamage + 5}` },
+      { id: 'attackSpeed', label: '+0.05 Attack Speed', desc: `${this.baseAttackSpeed.toFixed(2)} → ${(this.baseAttackSpeed + 0.05).toFixed(2)}` },
+      { id: 'cooldown', label: '-10% Ability CDs', desc: 'All Q/W/E cooldowns' },
+    ];
+  }
+
+  /** Apply a chosen upgrade */
+  applyUpgrade(id: string): void {
+    if (this.pendingUpgrades <= 0) return;
+    this.pendingUpgrades--;
+    switch (id) {
+      case 'hp':
+        this.maxHp += 30;
+        this.hp = Math.min(this.hp + 30, this.maxHp);
+        break;
+      case 'damage':
+        this.baseDamage += 5;
+        break;
+      case 'attackSpeed':
+        this.baseAttackSpeed += 0.05;
+        break;
+      case 'cooldown':
+        for (const ab of this.abilities) {
+          ab.def = { ...ab.def, cooldown: Math.round(ab.def.cooldown * 0.9 * 10) / 10 };
+        }
+        break;
+    }
+  }
+
+  /** Upgrade a specific ability (Q=0, W=1, E=2, R=3). Costs 1 pending upgrade point.
+   *  Each upgrade: +20% damage/effect, -5% cooldown */
+  upgradeAbility(index: number): void {
+    if (this.pendingUpgrades <= 0) return;
+    const ab = index === 3 ? this.ultimate : this.abilities[index];
+    if (!ab) return;
+    // R requires unlock
+    if (index === 3 && this.level < Hero.ULTIMATE_UNLOCK_LEVEL) return;
+
+    this.pendingUpgrades--;
+    this.abilityUpgrades[index]++;
+
+    const def = ab.def;
+    const boosted = { ...def };
+
+    // -5% cooldown
+    boosted.cooldown = Math.round(def.cooldown * 0.95 * 10) / 10;
+
+    // +20% to damage values
+    if (boosted.damage) boosted.damage = Math.round(boosted.damage * 1.2);
+    if (boosted.damageBelow) boosted.damageBelow = Math.round(boosted.damageBelow * 1.2);
+    if (boosted.damageAbove) boosted.damageAbove = Math.round(boosted.damageAbove * 1.2);
+    if (boosted.meteorDamage) boosted.meteorDamage = Math.round(boosted.meteorDamage * 1.2);
+
+    // +20% to buff/effect values
+    if (boosted.buffAmount) boosted.buffAmount = boosted.buffAmount * 1.2;
+    if (boosted.buffDuration) boosted.buffDuration = Math.round(boosted.buffDuration * 1.2 * 10) / 10;
+    if (boosted.stunDuration) boosted.stunDuration = Math.round(boosted.stunDuration * 1.2 * 10) / 10;
+    if (boosted.slowAmount) boosted.slowAmount = Math.min(0.9, boosted.slowAmount * 1.2);
+    if (boosted.slowDuration) boosted.slowDuration = Math.round(boosted.slowDuration * 1.2 * 10) / 10;
+    if (boosted.dodgeDuration) boosted.dodgeDuration = Math.round(boosted.dodgeDuration * 1.2 * 10) / 10;
+    if (boosted.invulnDuration) boosted.invulnDuration = Math.round(boosted.invulnDuration * 1.2 * 10) / 10;
+    if (boosted.markBonusPct) boosted.markBonusPct = Math.round(boosted.markBonusPct * 1.2);
+    if (boosted.splashRadius) boosted.splashRadius = Math.round(boosted.splashRadius * 1.1);
+    if (boosted.meteorRadius) boosted.meteorRadius = Math.round(boosted.meteorRadius * 1.1);
+    if (boosted.ampPercent) boosted.ampPercent = Math.round(boosted.ampPercent * 1.2);
+
+    ab.def = boosted;
+
+    const key = index === 3 ? 'R' : ['Q', 'W', 'E'][index];
+    this.pendingDamageNumbers.push({
+      x: this.x, y: this.y - 30, text: `${key} UPGRADED!`, color: DMG_COLOR.ABILITY, duration: 1.2,
+    });
   }
 
   // === Rendering ===

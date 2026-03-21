@@ -37,7 +37,9 @@ Build towers to create mazes, defend against 15 creep types across 30+ waves, ma
 | ENTER | Chat (versus mode) |
 | L | Link mode (Conduit tower) |
 | Q/W/E | Hero abilities (Hero Defense mode) |
-| ESC | Deselect / cancel link mode |
+| R | Ultimate ability (Hero Defense mode) |
+| T | Use active accessory (Hero Defense mode) |
+| ESC | Deselect / cancel link mode / cancel ability targeting |
 
 **Tablet/Touch:** Sidebar is a collapsible overlay (hamburger menu). Upgrade/Sell buttons appear on tower info panel. Long-press (500ms) = right-click.
 
@@ -67,7 +69,7 @@ See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.
 - **Standard** (30 waves) — Full experience
 - **Marathon** (Endless) — Infinite scaling
 - **Battle** (Dual Economy) — Gold + Essence compound growth loop
-- **Hero Defense** (30 waves) — Control a hero in an arena. 10x creeps, 3 heroes, item shop.
+- **Hero Defense** (30 waves) — Control a hero in an arena. 10x creeps, 11 heroes (3 offered per game), leveling (1-15), ultimate abilities (R), item shop, accessory shop (rotating), elite enemies at wave 10/20/30, floating damage numbers.
 - **Versus 1v1** — P2P multiplayer. Sends go to opponent.
 - **Circle Co-op** (2-4 players) — Shared map, zone building, shared lives.
 

@@ -21,9 +21,9 @@ export class HeroLeakHandler implements LeakHandler {
   }
 
   onCreepLeaked(creep: Creep): number {
-    // Convert TD creep to arena creep data — full HP so arena is a real threat
+    // Convert TD creep to arena creep data — carry over tower damage
     this.arenaManager.spawnArenaCreep({
-      hp: Math.round(creep.maxHp * 1.0),
+      hp: Math.round(creep.hp),
       speed: creep.baseSpeed * 0.5,
       isBoss: creep.isBoss,
       color: creep.color,

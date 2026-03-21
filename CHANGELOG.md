@@ -2,6 +2,75 @@
 
 ## 2026-03-20
 
+### Hero Defense Enhancement — 8 Features
+
+Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has real progression now.
+
+**Foundation:**
+- **Tower Assists**: Leaked creeps now enter the arena with their current HP instead of full HP. Tower damage finally matters — a half-dead creep is a half-dead arena creep.
+- **Floating Damage Numbers**: Pool of 30 text objects that float up and fade. Every hit, heal, crit, ability, and level-up shows colored text (white=normal, yellow=crit, purple=ability, red=hero damage, green=heal, orange=level up). Dodge shows "DODGE" text.
+
+**Progression:**
+- **Hero Leveling (1-15)**: Arena kills grant XP (10 normal, 50 boss, 100 elite). Each level gives +15 maxHP, +3 damage, +0.02 attack speed. Milestones: Level 5 = Q cooldown -20%, Level 10 = W effect +30%, Level 15 = E damage +50%. XP bar shown in sidebar.
+
+**Combat Depth:**
+- **Ultimate Abilities (R key)**: Warden gets Fortress (invuln 5s + taunt all creeps, 90s CD), Arcanist gets Meteor Storm (3 meteors × 150 dmg AoE, 120s CD), Shadow gets Death Mark (mark all → 30% bonus damage after 3s, 100s CD). Cooldowns shown in sidebar.
+- **Visual Indicators**: Ground-targeted abilities (Blink) enter targeting mode with preview circles. Range ring around hero, crosshair at cursor. Click to cast, same key or ESC to cancel. Death Mark shows purple rings on marked targets. Fortress shows golden invulnerability ring.
+- **Arena Creep Waves**: Each TD wave now also spawns 3-6 arena creeps matching the wave composition, independent of leaks. The arena always has action. Count scales with wave number.
+
+**Content & Economy:**
+- **Elite Arena Events**: Special enemies at wave milestones. Shield Guardian (wave 10, 8x HP, shields nearby creeps every 8s), Base Charger (wave 20, 12x HP, ignores hero and rushes base), Necromancer (wave 30, 6x HP, resurrects dead creeps every 5s). Orange indicator, 100 XP each.
+- **Accessories with Rotating Shop**: 1 accessory slot, 12 accessories total. 3 random offers rotate every 5 waves. Actives use T key (Healing Potion, Phase Boots, Battle Horn). Passives include lifesteal, frost slow, chain lightning, berserker scaling, guardian angel revive, thorns reflect, bonus gold per kill. Buying replaces current accessory.
+
+### Faction Heroes & Melee Balance
+- **Each hero belongs to a faction**: Warden=Military, Arcanist=Arcane, Shadow=Void, Paladin=Celestial, Ranger=Harmonic, Berserker=Infernal, Necromancer=Aliens, Monk=Psionic, Engineer=Mechanical, Duelist=Cypherpunk, Druid=Nature.
+- **Faction hero guaranteed**: If you pick a non-random faction, your faction's hero is always one of the 3 offered. Faction name shown on hero cards (highlighted gold for your faction's hero).
+- **Melee heroes buffed**: All 6 melee heroes got significant HP increases (+100-150) and innate base armor (2-8). Warden is the tankiest (650 HP, 8 armor), Shadow the lightest melee (420 HP, 3 armor).
+- **Hero descriptions updated** to reflect faction identity (e.g. "Void assassin", "Celestial champion", "Psionic adept").
+
+### Hero Level Cap Removed & AoE Accessories
+- **No max hero level**: Heroes can now level indefinitely past 15. Each level still queues an upgrade point.
+- **3 new splash accessories**: Cleave Axe (900g, 40% splash in 50px), Inferno Blade (1400g, 60% in 70px), Tempest Hammer (2000g, 80% in 90px). Attacks deal % of damage as AoE around the target with an expanding ring VFX.
+- **Arena kill gold**: All arena kills now give 0.33x base kill gold (unified for leaked and wave-spawned creeps).
+
+### Ability Visual Effects
+- **Full VFX system** for hero abilities: expanding rings for AoE, dash trails, teleport flashes, stun impacts, meteor impacts with shockwaves, chain lightning bolts, execute flashes, buff rings, and death mark detonation effects.
+- New `ArenaEffects.ts` module with 7 effect types (circle_expand, circle_pulse, flash, dash_trail, ring, lightning, shockwave), each with proper fade-out and animation.
+- Meteor Storm now shows fiery impact circles and shockwaves at each landing zone.
+- Chain lightning shows jagged lightning bolts between targets.
+
+### Ability Upgrades via [+] Buttons
+- Each level-up point can now be spent on upgrading a specific ability instead of just stats.
+- `[+]` buttons appear inline next to each ability (Q/W/E/R) when upgrade points are available.
+- Each ability upgrade: +20% damage/effects, -5% cooldown, +10% AoE radius. Upgrade count shown as `+N`.
+- Ultimate (R) can be upgraded once unlocked at level 6.
+
+### Healer Creep Balancing
+- **Diminishing returns on heal stacking**: Each additional heal source on the same creep per tick is halved (1st=100%, 2nd=50%, 3rd=25%...). 5 stacked healers now give ~194% instead of 500%.
+- **Healers receive only 10% healing**: Creeps with heal_aura or flat_heal_aura traits get 90% reduced incoming heals, preventing healer balls from being unkillable.
+
+### Hero Defense Economy Nerf
+- TD kill gold reduced to 30% (was 100%) — 10x creep count was generating too much income.
+- Wave income halved.
+- Arena kill gold reduced to 5% of base (was 10%).
+- Boss waves spawn half as many arena creeps.
+
+### Heroes Encyclopedia Page
+- New "Heroes" tab in the Encyclopedia with a carousel browser for all 11 heroes.
+- Shows hero icon, stats, all abilities (Q/W/E), ultimate (R), cooldowns, and playstyle tags (Melee/Ranged, Fast/Slow, Tanky/Squishy).
+
+### Accessory & Leveling Rework
+- **3 accessory slots** (up from 1). No duplicates. Costs increased ~10x (600-2000g) to make them meaningful investments.
+- **Skill upgrades on level-up**: Instead of auto-applying stats, each level queues an upgrade choice: +30 HP, +5 damage, +0.05 attack speed, or -10% ability cooldowns. Multiple pending upgrades stack.
+- **Ultimate locked until level 6**: R ability grayed out in sidebar until hero reaches level 6, then shows "[R] UNLOCKED!".
+- **XP rebalance**: 1 XP per normal kill, 5 per boss, 10 per elite. XP curve = level × 15.
+
+### 8 New Heroes + Random Draft
+- **11 heroes total** (up from 3): Warden, Arcanist, Shadow, Paladin, Ranger, Berserker, Necromancer, Monk, Engineer, Duelist, Druid.
+- **Random draft**: Each game offers 3 random heroes to choose from. Reroll button available.
+- Hero cards now show ultimate ability (R) in purple alongside Q/W/E abilities.
+- New heroes cover all playstyles: tanks (Paladin, Berserker), ranged (Ranger, Engineer), melee DPS (Monk, Duelist), casters (Necromancer, Druid).
+
 ### Procedural Random Map Generator
 - **New "Random" map option** in the map picker (menu, lobby, versus). Generates a unique map from a seed using chunk-based terrain features.
 - **6 layout templates** (classic, dual_entry, siege, gauntlet, diagonal, corridor) define entry/exit positions. The generator picks one randomly and fills terrain procedurally.

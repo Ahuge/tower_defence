@@ -1,4 +1,4 @@
-import { MatchMode } from '../data/WaveDefinitions';
+import { MatchMode, WaveDefinition } from '../data/WaveDefinitions';
 import { EconomyManager } from './EconomyManager';
 import { IncomeManager } from './IncomeManager';
 import { SendManager } from './SendManager';
@@ -49,6 +49,9 @@ export interface GameMode {
 
   /** Handle a send purchase attempt. Returns true if handled. */
   handleSend(sendId: string): boolean;
+
+  /** Called when a new wave starts spawning */
+  onWaveStart?(wave: WaveDefinition, waveNum: number): void;
 
   /** Move mode-specific sidebar panels into the overlay (tablet mode) */
   reparentSidebarPanels?(overlay: SidebarOverlay): void;

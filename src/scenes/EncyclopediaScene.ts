@@ -6,8 +6,9 @@ import { CREEP_TYPES } from '../data/CreepTypes';
 import { FACTIONS, FACTION_ORDER, FactionId } from '../data/Factions';
 import { FRONTIER_BUILDINGS } from '../data/FrontierBuildings';
 import { FACTION_LORE, TOWER_LORE, CREEP_LORE } from '../data/Lore';
+import { HERO_ORDER, HERO_TYPES, HeroId } from '../data/HeroTypes';
 
-type Tab = 'factions' | 'towers' | 'creeps';
+type Tab = 'factions' | 'towers' | 'creeps' | 'heroes';
 
 export class EncyclopediaScene extends Phaser.Scene {
   private activeTab: Tab = 'factions';
@@ -19,6 +20,7 @@ export class EncyclopediaScene extends Phaser.Scene {
   private allTowerIds: string[] = [];
   private towerIndex: number = 0;
   private factionIndex: number = 0;
+  private heroIndex: number = 0;
   private playableFactions: FactionId[] = [];
 
   constructor() {
@@ -44,6 +46,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       { label: 'Factions', tab: 'factions' },
       { label: 'Towers', tab: 'towers' },
       { label: 'Creeps', tab: 'creeps' },
+      { label: 'Heroes', tab: 'heroes' },
     ];
 
     const tabY = 48;
@@ -84,7 +87,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.rebuildContent();
 
     this.input.on('wheel', (_p: any, _g: any, _dx: number, dy: number) => {
-      if (this.activeTab === 'towers' || this.activeTab === 'factions') return; // carousels
+      if (this.activeTab === 'towers' || this.activeTab === 'factions' || this.activeTab === 'heroes') return; // carousels
       this.scrollY = Phaser.Math.Clamp(
         this.scrollY - dy * 0.5,
         -(this.contentHeight - contentH + 40),
@@ -109,6 +112,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       case 'factions': this.buildFactionsTab(); break;
       case 'towers': this.buildTowersCarousel(); break;
       case 'creeps': this.buildCreepsTab(); break;
+      case 'heroes': this.buildHeroesCarousel(); break;
     }
   }
 
@@ -530,5 +534,142 @@ export class EncyclopediaScene extends Phaser.Scene {
       }
     }
     return parts.join(', ') || '-';
+  }
+
+  // ===================== HEROES TAB (CAROUSEL) =====================
+
+  private buildHeroesCarousel(): void {
+    const cx = getCanvasWidth() / 2;
+    const heroId = HERO_ORDER[this.heroIndex];
+    const hero = HERO_TYPES[heroId];
+
+    // Navigation arrows
+    const leftArr = this.add.text(60, 200, '<', {
+      fontSize: '40px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    leftArr.on('pointerdown', () => {
+      this.heroIndex = (this.heroIndex - 1 + HERO_ORDER.length) % HERO_ORDER.length;
+      this.rebuildContent();
+    });
+    this.contentContainer.add(leftArr);
+
+    const rightArr = this.add.text(getCanvasWidth() - 60, 200, '>', {
+      fontSize: '40px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    rightArr.on('pointerdown', () => {
+      this.heroIndex = (this.heroIndex + 1) % HERO_ORDER.length;
+      this.rebuildContent();
+    });
+    this.contentContainer.add(rightArr);
+
+    // Counter
+    this.contentContainer.add(this.add.text(cx, 8, `${this.heroIndex + 1} / ${HERO_ORDER.length}`, {
+      fontSize: '12px', color: '#666666', fontFamily: 'monospace',
+    }).setOrigin(0.5));
+
+    // Hero diamond icon
+    const iconY = 50;
+    const iconSize = 22;
+    const g = this.add.graphics();
+    g.fillStyle(hero.color, 1);
+    g.beginPath();
+    g.moveTo(cx, iconY - iconSize);
+    g.lineTo(cx + iconSize, iconY);
+    g.lineTo(cx, iconY + iconSize);
+    g.lineTo(cx - iconSize, iconY);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(2, 0xffffff, 0.4);
+    g.beginPath();
+    g.moveTo(cx, iconY - iconSize);
+    g.lineTo(cx + iconSize, iconY);
+    g.lineTo(cx, iconY + iconSize);
+    g.lineTo(cx - iconSize, iconY);
+    g.closePath();
+    g.strokePath();
+    this.contentContainer.add(g);
+
+    // Name
+    this.contentContainer.add(this.add.text(cx, iconY + 30, hero.name, {
+      fontSize: '22px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5));
+
+    // Description
+    this.contentContainer.add(this.add.text(cx, iconY + 55, hero.description, {
+      fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
+      wordWrap: { width: 500 }, align: 'center',
+    }).setOrigin(0.5, 0));
+
+    // Stats block
+    const statsX = cx - 200;
+    let y = iconY + 85;
+
+    const statLines = [
+      ['HP', String(hero.hp), '#44ff44'],
+      ['Damage', String(hero.damage), '#ff6644'],
+      ['Attack Speed', `${hero.attackSpeed}/s`, '#ffaa44'],
+      ['Range', hero.attackRange <= 50 ? 'Melee' : `${hero.attackRange}px`, '#44aaff'],
+      ['Move Speed', String(hero.moveSpeed), '#44ff88'],
+    ];
+
+    for (const [label, val, col] of statLines) {
+      this.contentContainer.add(this.add.text(statsX, y, `${label}:`, {
+        fontSize: '13px', color: '#888888', fontFamily: 'monospace',
+      }));
+      this.contentContainer.add(this.add.text(statsX + 150, y, val, {
+        fontSize: '13px', color: col, fontFamily: 'monospace',
+      }));
+      y += 18;
+    }
+
+    // Abilities
+    y += 10;
+    this.contentContainer.add(this.add.text(statsX, y, 'ABILITIES', {
+      fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
+    }));
+    y += 22;
+
+    for (const ab of hero.abilities) {
+      this.contentContainer.add(this.add.text(statsX, y, `[${ab.key}] ${ab.name}`, {
+        fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+      }));
+      y += 16;
+      this.contentContainer.add(this.add.text(statsX + 16, y, `${ab.description}`, {
+        fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace',
+      }));
+      this.contentContainer.add(this.add.text(statsX + 350, y, `${ab.cooldown}s cd`, {
+        fontSize: '11px', color: '#666666', fontFamily: 'monospace',
+      }));
+      y += 18;
+    }
+
+    // Ultimate
+    if (hero.ultimate) {
+      y += 6;
+      this.contentContainer.add(this.add.text(statsX, y, 'ULTIMATE (unlocks Lv.6)', {
+        fontSize: '14px', color: '#cc66ff', fontFamily: 'monospace',
+      }));
+      y += 22;
+      this.contentContainer.add(this.add.text(statsX, y, `[R] ${hero.ultimate.name}`, {
+        fontSize: '13px', color: '#cc66ff', fontFamily: 'monospace',
+      }));
+      y += 16;
+      this.contentContainer.add(this.add.text(statsX + 16, y, hero.ultimate.description, {
+        fontSize: '11px', color: '#aa88aa', fontFamily: 'monospace',
+      }));
+      this.contentContainer.add(this.add.text(statsX + 350, y, `${hero.ultimate.cooldown}s cd`, {
+        fontSize: '11px', color: '#666666', fontFamily: 'monospace',
+      }));
+      y += 18;
+    }
+
+    // Playstyle hint
+    y += 12;
+    const rangeType = hero.attackRange <= 50 ? 'Melee' : 'Ranged';
+    const speedTier = hero.moveSpeed >= 170 ? 'Fast' : hero.moveSpeed >= 140 ? 'Medium' : 'Slow';
+    const hpTier = hero.hp >= 400 ? 'Tanky' : hero.hp >= 300 ? 'Medium' : 'Squishy';
+    this.contentContainer.add(this.add.text(cx, y, `${rangeType} | ${speedTier} | ${hpTier}`, {
+      fontSize: '12px', color: '#555555', fontFamily: 'monospace',
+    }).setOrigin(0.5));
   }
 }

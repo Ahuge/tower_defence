@@ -56,7 +56,25 @@ registerCreepDamage('evasion', (trait: Trait, damage: number) => {
 
 // ============================================================
 // Heal Aura — periodically heal nearby creeps
+// Diminishing returns: each additional heal source on the same
+// creep in the same tick is reduced by 50% (1st=100%, 2nd=50%, 3rd=25%...)
+// Healers themselves only receive 10% of healing.
 // ============================================================
+
+/** Apply heal with diminishing returns and healer penalty */
+function applyHeal(target: any, amount: number): void {
+  // Healers receive only 10% healing
+  const isHealer = target.traits?.some((t: Trait) => t.id === 'heal_aura' || t.id === 'flat_heal_aura');
+  if (isHealer) amount = Math.floor(amount * 0.1);
+
+  // Diminishing returns: 50% reduction per additional source this tick
+  const sources = (target._healSourcesThisTick ?? 0);
+  const multiplier = Math.pow(0.5, sources);
+  const finalHeal = Math.max(1, Math.floor(amount * multiplier));
+
+  target.hp = Math.min(target.maxHp, target.hp + finalHeal);
+  target._healSourcesThisTick = sources + 1;
+}
 
 registerCreepUpdate('heal_aura', (trait: Trait, creep: any, delta: number, nearbyCreeps: any[]) => {
   trait._cooldown = (trait._cooldown ?? 0) - delta;
@@ -71,7 +89,7 @@ registerCreepUpdate('heal_aura', (trait: Trait, creep: any, delta: number, nearb
     const dx = other.x - creep.x;
     const dy = other.y - creep.y;
     if (Math.sqrt(dx * dx + dy * dy) <= healRange) {
-      other.hp = Math.min(other.maxHp, other.hp + Math.floor(other.maxHp * healPercent));
+      applyHeal(other, Math.floor(other.maxHp * healPercent));
     }
   }
 });
@@ -93,7 +111,7 @@ registerCreepUpdate('flat_heal_aura', (trait: Trait, creep: any, delta: number, 
     const dx = other.x - creep.x;
     const dy = other.y - creep.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      other.hp = Math.min(other.maxHp, other.hp + healAmount);
+      applyHeal(other, healAmount);
     }
   }
 });

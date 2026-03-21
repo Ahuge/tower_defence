@@ -1,6 +1,6 @@
 import { GameMode, GameModeContext } from '../GameMode';
 import { SidebarOverlay } from '../../ui/SidebarOverlay';
-import { MatchMode } from '../../data/WaveDefinitions';
+import { MatchMode, WaveDefinition } from '../../data/WaveDefinitions';
 import { SEND_OPTIONS, SendCreepOption } from '../../data/SendCreepTypes';
 import { ArenaManager } from '../ArenaManager';
 import { ItemShopPanel } from '../../ui/ItemShopPanel';
@@ -32,6 +32,7 @@ export class HeroDefenseMode implements GameMode {
       ctx.economy,
       ctx.eventLog,
       ctx.sidebarTopY,
+      this.arenaManager,
     );
 
     ctx.eventLog.gameMessage('HERO DEFENSE: Leaked creeps enter the arena!');
@@ -44,15 +45,22 @@ export class HeroDefenseMode implements GameMode {
     this.itemShop.update();
   }
 
+  onWaveStart(wave: WaveDefinition, waveNum: number): void {
+    this.arenaManager.spawnWaveCreeps(wave, waveNum);
+  }
+
   onWaveCleared(waveNum: number): void {
-    // Wave income
-    const income = this.ctx.incomeMgr.collectWaveIncome();
+    // Wave income (halved — 10x creeps already provide plenty of kill gold)
+    const income = Math.round(this.ctx.incomeMgr.collectWaveIncome() * 0.5);
     this.ctx.economy.addGold(income);
     this.ctx.statsTracker.recordGoldEarned(income);
 
     // Heal hero 20% on wave clear
     this.arenaManager.hero.healPercent(0.2);
     this.ctx.eventLog.gameMessage('Wave cleared! Hero healed 20%.');
+
+    // Rotate accessory shop
+    this.arenaManager.rotateAccessories(waveNum + 1);
   }
 
   canStartWave(): boolean {

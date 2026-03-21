@@ -90,6 +90,9 @@ export class Creep {
     // Speed (slow + root)
     this.speed = this.baseSpeed * this.statusEffects.getSlowFactor();
 
+    // Reset heal stacking counter for diminishing returns
+    (this as any)._healSourcesThisTick = 0;
+
     // Trait updates (heal_aura, etc.) — suppressed when muted
     if (!this.statusEffects.isMuted()) {
       resolveCreepUpdates(this.traits, this, delta, nearbyCreeps ?? []);
