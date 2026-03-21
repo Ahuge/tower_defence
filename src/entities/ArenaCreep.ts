@@ -14,10 +14,15 @@ export class ArenaCreep {
   graphics: Phaser.GameObjects.Graphics;
   scene: Phaser.Scene;
 
+  // Elite type (null = normal creep)
+  eliteType: string | null = null;
+
   // Status effects
   stunned: number = 0;   // seconds remaining
   slowed: number = 0;    // seconds remaining
   slowFactor: number = 0; // 0-1, reduces speed by this fraction
+  forcedTarget: boolean = false; // taunt — always chase hero
+  shielded: number = 0;  // seconds remaining — damage cap 1
 
   // Combat — creeps fight back
   readonly aggroRange: number;    // pixels — detect hero and move toward them
@@ -25,6 +30,10 @@ export class ArenaCreep {
   readonly attackDamage: number;  // per hit
   readonly attackInterval: number; // ms between attacks
   private lastAttackTime: number = 0;
+
+  // Elite mechanic timer
+  eliteTimer: number = 0; // seconds until next mechanic activation
+  pendingEliteAction: string | null = null; // action for ArenaManager to process
 
   private arenaWidth: number;
 
@@ -77,6 +86,17 @@ export class ArenaCreep {
     if (this.slowed > 0) {
       this.slowed -= dt;
     }
+    if (this.shielded > 0) {
+      this.shielded -= dt;
+    }
+
+    // Elite mechanic timer
+    if (this.eliteType && this.eliteTimer > 0) {
+      this.eliteTimer -= dt;
+      if (this.eliteTimer <= 0) {
+        this.pendingEliteAction = this.eliteType;
+      }
+    }
 
     let moveSpeed = this.speed;
     if (this.slowed > 0) moveSpeed *= (1 - this.slowFactor);
@@ -87,20 +107,29 @@ export class ArenaCreep {
       return false;
     }
 
-    // Check hero proximity — chase if in aggro range, stop if in attack range
+    // Base charger ignores hero — heads straight for base
+    if (this.eliteType === 'base_charger') {
+      this.x += moveSpeed * dt;
+      if (this.x >= this.arenaWidth - 40) {
+        this.x = this.arenaWidth - 45 + Math.random() * 10;
+        this.atBase = true;
+      }
+      this.draw();
+      return false;
+    }
+
+    // Check hero proximity — chase if in aggro range (or taunted), stop if in attack range
     if (heroX !== undefined && heroY !== undefined && heroAlive) {
       const dx = heroX - this.x;
       const dy = heroY - this.y;
       const distToHero = Math.sqrt(dx * dx + dy * dy);
 
       if (distToHero <= this.attackRange) {
-        // In melee range — stop and attack (damage handled by ArenaManager)
         this.draw();
         return false;
       }
 
-      if (distToHero <= this.aggroRange) {
-        // In aggro range — move toward hero instead of toward base
+      if (this.forcedTarget || distToHero <= this.aggroRange) {
         const step = moveSpeed * dt;
         this.x += (dx / distToHero) * step;
         this.y += (dy / distToHero) * step;
@@ -147,7 +176,8 @@ export class ArenaCreep {
 
   takeDamage(amount: number): void {
     if (!this.alive) return;
-    this.hp -= amount;
+    const dmg = this.shielded > 0 ? Math.min(amount, 1) : amount;
+    this.hp -= dmg;
     if (this.hp <= 0) {
       this.hp = 0;
       this.alive = false;
@@ -175,6 +205,18 @@ export class ArenaCreep {
     // Slow indicator
     if (this.slowed > 0) {
       this.graphics.lineStyle(1, 0x44aaff, 0.6);
+      this.graphics.strokeCircle(this.x, this.y, drawSize + 2);
+    }
+
+    // Elite indicator — larger outline
+    if (this.eliteType) {
+      this.graphics.lineStyle(2, 0xff6600, 0.8);
+      this.graphics.strokeCircle(this.x, this.y, drawSize + 4);
+    }
+
+    // Shield indicator
+    if (this.shielded > 0) {
+      this.graphics.lineStyle(2, 0x44aaff, 0.8);
       this.graphics.strokeCircle(this.x, this.y, drawSize + 2);
     }
 

@@ -7,6 +7,16 @@ import { MapId } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
+/** Pick N random unique elements from an array */
+function pickRandom<T>(arr: T[], count: number): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}
+
 export class HeroSelectScene extends Phaser.Scene {
   private matchMode: MatchMode = 'hero_defense';
   private faction: FactionId | null = null;
@@ -38,44 +48,33 @@ export class HeroSelectScene extends Phaser.Scene {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    this.add.text(cx, 65, 'Your hero fights leaked creeps in the arena', {
+    this.add.text(cx, 65, 'Three heroes offered at random — pick wisely', {
       fontSize: '13px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
+
+    // Pick 3 random heroes from the full pool
+    const offered = pickRandom(HERO_ORDER, 3);
 
     const cardW = 260;
     const cardH = 420;
     const gap = 20;
-    const totalW = HERO_ORDER.length * cardW + (HERO_ORDER.length - 1) * gap;
+    const totalW = 3 * cardW + 2 * gap;
     const startX = cx - totalW / 2;
 
-    for (let i = 0; i < HERO_ORDER.length; i++) {
-      const heroId = HERO_ORDER[i];
+    for (let i = 0; i < offered.length; i++) {
+      const heroId = offered[i];
       const hero = HERO_TYPES[heroId];
       const x = startX + i * (cardW + gap);
       const y = 90;
 
       const card = this.add.graphics();
-      card.fillStyle(0x1a1a22, 1);
-      card.fillRect(x, y, cardW, cardH);
-      card.lineStyle(2, hero.color, 0.8);
-      card.strokeRect(x, y, cardW, cardH);
-
-      // Color strip
-      card.fillStyle(hero.color, 0.6);
-      card.fillRect(x, y, cardW, 6);
+      this.drawCard(card, x, y, cardW, cardH, hero.color, false);
 
       // Hero icon (diamond)
       const iconX = x + cardW / 2;
       const iconY = y + 40;
       const iconSize = 18;
-      card.fillStyle(hero.color, 1);
-      card.beginPath();
-      card.moveTo(iconX, iconY - iconSize);
-      card.lineTo(iconX + iconSize, iconY);
-      card.lineTo(iconX, iconY + iconSize);
-      card.lineTo(iconX - iconSize, iconY);
-      card.closePath();
-      card.fillPath();
+      this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
 
       // Name
       this.add.text(x + cardW / 2, y + 70, hero.name, {
@@ -94,7 +93,7 @@ export class HeroSelectScene extends Phaser.Scene {
         `HP: ${hero.hp}`,
         `Damage: ${hero.damage}`,
         `Attack Speed: ${hero.attackSpeed}/s`,
-        `Range: ${hero.attackRange === 36 ? 'Melee' : `${hero.attackRange}px`}`,
+        `Range: ${hero.attackRange <= 50 ? 'Melee' : `${hero.attackRange}px`}`,
         `Move Speed: ${hero.moveSpeed}`,
       ];
       this.add.text(x + 16, statsY, statsLines.join('\n'), {
@@ -121,47 +120,42 @@ export class HeroSelectScene extends Phaser.Scene {
         ay += 20;
       }
 
+      // Ultimate
+      if (hero.ultimate) {
+        this.add.text(x + 16, ay, `[R] ${hero.ultimate.name}`, {
+          fontSize: '12px', color: '#cc66ff', fontFamily: 'monospace',
+        });
+        ay += 16;
+        this.add.text(x + 28, ay, `${hero.ultimate.description} (${hero.ultimate.cooldown}s cd)`, {
+          fontSize: '10px', color: '#886688', fontFamily: 'monospace',
+          wordWrap: { width: cardW - 40 },
+        });
+      }
+
       // Click zone
       const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });
       zone.on('pointerover', () => {
         card.clear();
-        card.fillStyle(0x252530, 1);
-        card.fillRect(x, y, cardW, cardH);
-        card.lineStyle(3, hero.color, 1);
-        card.strokeRect(x, y, cardW, cardH);
-        card.fillStyle(hero.color, 0.8);
-        card.fillRect(x, y, cardW, 6);
-        // Redraw icon
-        card.fillStyle(hero.color, 1);
-        card.beginPath();
-        card.moveTo(iconX, iconY - iconSize);
-        card.lineTo(iconX + iconSize, iconY);
-        card.lineTo(iconX, iconY + iconSize);
-        card.lineTo(iconX - iconSize, iconY);
-        card.closePath();
-        card.fillPath();
+        this.drawCard(card, x, y, cardW, cardH, hero.color, true);
+        this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
       });
       zone.on('pointerout', () => {
         card.clear();
-        card.fillStyle(0x1a1a22, 1);
-        card.fillRect(x, y, cardW, cardH);
-        card.lineStyle(2, hero.color, 0.8);
-        card.strokeRect(x, y, cardW, cardH);
-        card.fillStyle(hero.color, 0.6);
-        card.fillRect(x, y, cardW, 6);
-        card.fillStyle(hero.color, 1);
-        card.beginPath();
-        card.moveTo(iconX, iconY - iconSize);
-        card.lineTo(iconX + iconSize, iconY);
-        card.lineTo(iconX, iconY + iconSize);
-        card.lineTo(iconX - iconSize, iconY);
-        card.closePath();
-        card.fillPath();
+        this.drawCard(card, x, y, cardW, cardH, hero.color, false);
+        this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
       });
       zone.on('pointerdown', () => {
         this.selectHero(heroId);
       });
     }
+
+    // Reroll button
+    const rerollBtn = this.add.text(cx, totalH - 40, '[ Reroll Heroes ]', {
+      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    rerollBtn.on('pointerdown', () => this.scene.restart());
+    rerollBtn.on('pointerover', () => rerollBtn.setColor('#ffffff'));
+    rerollBtn.on('pointerout', () => rerollBtn.setColor('#888888'));
 
     // Back button
     const backBtn = this.add.text(50, 25, '[ Back ]', {
@@ -176,6 +170,26 @@ export class HeroSelectScene extends Phaser.Scene {
     }));
     backBtn.on('pointerover', () => backBtn.setColor('#ffffff'));
     backBtn.on('pointerout', () => backBtn.setColor('#888888'));
+  }
+
+  private drawCard(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, color: number, hovered: boolean): void {
+    g.fillStyle(hovered ? 0x252530 : 0x1a1a22, 1);
+    g.fillRect(x, y, w, h);
+    g.lineStyle(hovered ? 3 : 2, color, hovered ? 1 : 0.8);
+    g.strokeRect(x, y, w, h);
+    g.fillStyle(color, hovered ? 0.8 : 0.6);
+    g.fillRect(x, y, w, 6);
+  }
+
+  private drawDiamond(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, color: number): void {
+    g.fillStyle(color, 1);
+    g.beginPath();
+    g.moveTo(x, y - size);
+    g.lineTo(x + size, y);
+    g.lineTo(x, y + size);
+    g.lineTo(x - size, y);
+    g.closePath();
+    g.fillPath();
   }
 
   private selectHero(heroId: HeroId): void {

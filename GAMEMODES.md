@@ -76,37 +76,92 @@ Split-screen mode: your hero fights leaked creeps in an arena while you build to
 - **Base HP**: 10,000. Replaces lives. Creeps that reach the base park there and attack it repeatedly.
 - **Creep count**: 10x normal — massive waves flood the grid, ensuring plenty leak into the arena.
 - **Spawn rate**: 40% faster than standard intervals (min 80ms).
-- **Arena creeps**: Leaked TD creeps spawn at the left edge of the arena with full HP.
+- **Tower assists**: Leaked TD creeps enter the arena with their current HP (tower damage carries over), not full HP.
+- **Arena creeps**: Leaked TD creeps spawn at the left edge of the arena.
   - **Aggro**: Creeps detect the hero at 240px (bosses 360px) and chase.
   - **Attack**: Melee range (35px, bosses 50px). Damage scales with creep HP (4%, bosses 8%). Attack every 1.5s (bosses 1.2s).
   - **At base**: Creeps that reach the right edge park and repeatedly attack the base until killed.
-- **Kill gold**: Arena kills award 10% of normal kill gold (balanced for 10x creep count).
+- **Wave creeps**: Each TD wave also spawns 3-6 arena creeps matching the wave's composition (independent of leaks). Count scales: `3 + floor(wave/10)`. Arena HP = 60% of TD HP.
+- **Kill gold**: Arena kills award 10% of normal kill gold (balanced for 10x creep count). Soul Harvester accessory adds +2g/kill.
+- **Kill XP**: Normal kills = 1 XP, bosses = 5 XP, elites = 10 XP.
 - **Wave clear**: Hero heals 20% HP on wave clear.
+- **Floating damage numbers**: All hits, heals, crits, ability damage, and level-ups show floating text that fades upward. Color-coded: white=normal, yellow=crit, purple=ability, red=hero damage, green=heal, orange=level up.
 
-### Heroes
+### Heroes (11 total, 3 offered per game)
 
-| Hero | HP | Damage | Attack Speed | Range | Speed | Style |
-|------|----|--------|-------------|-------|-------|-------|
+Each game randomly offers 3 heroes to choose from. You can reroll for a different set.
+
+| Hero | HP | Damage | AS | Range | Speed | Style |
+|------|----|--------|----|-------|-------|-------|
 | **Warden** | 500 | 25 | 1.0/s | Melee | 140 | Tank. Stun, buff, AoE slow. |
-| **Arcanist** | 280 | 40 | 0.8/s | 200px | 120 | Ranged caster. Fireball, frost, blink. Fires projectiles. |
+| **Arcanist** | 280 | 40 | 0.8/s | 200px | 120 | Ranged caster. Fireball, frost, blink. |
 | **Shadow** | 320 | 55 | 1.5/s | Melee | 180 | Fast assassin. Dash, dodge, execute. |
+| **Paladin** | 450 | 30 | 0.9/s | Melee | 130 | Holy warrior. Stun, dodge, AoE slow. |
+| **Ranger** | 250 | 45 | 1.2/s | 240px | 150 | Sharpshooter. Skillshot, frost, disengage. |
+| **Berserker** | 400 | 45 | 1.3/s | Melee | 160 | Reckless brawler. Cleave, rage, leap. |
+| **Necromancer** | 260 | 35 | 0.9/s | 180px | 110 | Dark caster. Drain, curse, execute. |
+| **Monk** | 350 | 40 | 1.8/s | Melee | 190 | Martial artist. Fast stun, dodge, dash. |
+| **Engineer** | 300 | 50 | 0.7/s | 220px | 115 | Tactician. Grenade, tar, grapple. |
+| **Duelist** | 340 | 50 | 1.6/s | Melee | 170 | Fencer. Riposte, parry, lunge. |
+| **Druid** | 380 | 30 | 1.0/s | 160px | 135 | Nature mage. Root, thorns, wild shift. |
 
-### Abilities
+### Hero Leveling
 
-**Warden (Q/W/E):**
-- **Shield Bash** (Q, 8s cd) — Stun target 1.5s + 40 damage.
-- **War Cry** (W, 20s cd) — +40% attack speed for 6s.
-- **Ground Slam** (E, 30s cd) — AoE 15 damage + 30% slow for 1.5s in 70px radius.
+Heroes gain XP from arena kills and level up to 15. Each level-up queues an upgrade choice — pick one:
 
-**Arcanist (Q/W/E):**
-- **Fireball** (Q, 6s cd) — 100 damage to target + 60% splash in 80px radius.
-- **Frost Nova** (W, 15s cd) — 30 AoE damage + 60% slow for 4s in 120px radius.
-- **Blink** (E, 25s cd) — Teleport to target location (300px range).
+- **+30 Max HP** (and heal 30)
+- **+5 Damage**
+- **+0.05 Attack Speed**
+- **-10% Ability Cooldowns** (all Q/W/E)
 
-**Shadow (Q/W/E):**
-- **Shadow Strike** (Q, 5s cd) — Dash to target (200px range), 60 damage, mark for +25% amp for 5s.
-- **Evasion** (W, 12s cd) — 100% dodge for 2s.
-- **Execute** (E, 20s cd) — 200 damage if target <30% HP, else 50 damage.
+XP to next level = `current_level * 15`. (L2=15, L3=30, L4=45...). Normal kills give 1 XP, bosses 5, elites 10.
+
+**Ultimate unlock**: The R ability is locked until **level 6**. Reaching level 6 shows "[R] UNLOCKED!" floating text.
+
+### Abilities (Q/W/E) & Ultimates (R)
+
+Each hero has 3 basic abilities (Q/W/E) and 1 ultimate (R) with a long cooldown.
+
+**Warden** — Q: Shield Bash (stun 1.5s + 40 dmg, 8s) | W: War Cry (+40% AS 6s, 20s) | E: Ground Slam (AoE 15 + slow, 30s) | R: Fortress (invuln 5s + taunt, 90s)
+
+**Arcanist** — Q: Fireball (100 dmg + splash, 6s) | W: Frost Nova (AoE 30 + 60% slow, 15s) | E: Blink (teleport 300px, 25s) | R: Meteor Storm (3×150 AoE, 120s)
+
+**Shadow** — Q: Shadow Strike (dash + 60 dmg + amp, 5s) | W: Evasion (100% dodge 2s, 12s) | E: Execute (200/<30% or 50, 20s) | R: Death Mark (30% bonus after 3s, 100s)
+
+**Paladin** — Q: Smite (stun 1s + 60 dmg, 7s) | W: Holy Shield (50% dodge 3s, 18s) | E: Consecration (AoE 40 + slow, 22s) | R: Divine Judgment (invuln 4s + taunt, 100s)
+
+**Ranger** — Q: Power Shot (120 dmg + splash, 5s) | W: Frost Arrow (AoE 20 + 50% slow, 12s) | E: Disengage (teleport 200px, 15s) | R: Arrow Storm (5×80 AoE, 90s)
+
+**Berserker** — Q: Cleave (AoE 50 dmg, 5s) | W: Blood Rage (+60% AS 5s, 16s) | E: Leap (dash + 80 dmg, 10s) | R: Rampage (invuln 3s + taunt, 80s)
+
+**Necromancer** — Q: Soul Siphon (90 dmg + splash, 6s) | W: Curse (AoE 25 + 40% slow, 14s) | E: Drain Life (150/<40% or 40, 18s) | R: Soul Harvest (35% bonus after 3s, 95s)
+
+**Monk** — Q: Palm Strike (stun 0.8s + 50 dmg, 4s) | W: Inner Focus (100% dodge 1.5s, 10s) | E: Flying Kick (dash + 70 dmg + amp, 7s) | R: Thousand Fists (4×100 AoE, 75s)
+
+**Engineer** — Q: Frag Grenade (110 dmg + wide splash, 7s) | W: Tar Bomb (AoE 15 + 70% slow 4s, 18s) | E: Grapple (teleport 250px, 20s) | R: Carpet Bomb (6×90 AoE, 110s)
+
+**Duelist** — Q: Riposte (stun 1.2s + 55 dmg, 6s) | W: Parry (100% dodge 1.5s + 30% AS, 14s) | E: Lunge (dash + 90 dmg + 30% amp, 8s) | R: Perfect Storm (40% bonus after 3s, 85s)
+
+**Druid** — Q: Entangle (stun 2s + 30 dmg, 9s) | W: Thornburst (AoE 45 + slow, 13s) | E: Wild Shift (+80% AS 6s, 24s) | R: Wrath of Nature (3×130 AoE, 100s)
+
+### Visual Indicators
+
+- Ground-targeted abilities (Blink) enter targeting mode: press key → preview circle at cursor + range ring around hero → click to cast, press same key or ESC to cancel.
+- Death Mark shows purple rings around marked creeps.
+- Fortress shows golden invulnerability ring.
+- Taunted creeps have forced aggro on the hero.
+
+### Elite Arena Events
+
+Special elite enemies spawn at wave milestones with unique mechanics:
+
+| Elite | Wave | HP | Mechanic |
+|-------|------|-----|----------|
+| **Shield Guardian** | 10 | 8x base | Every 8s: shields nearby creeps (damage capped at 1) for 3s |
+| **Base Charger** | 20 | 12x base | Ignores hero, charges straight to base at 2x speed, 25 base damage/hit |
+| **Necromancer** | 30 | 6x base | Every 5s: resurrects a dead arena creep at 50% HP |
+
+Elites have an orange indicator ring and grant 100 XP on kill.
 
 ### Item Shop
 
@@ -118,13 +173,39 @@ Buy items in the left sidebar. Each slot has 3 upgrade tiers.
 | **Armor** | Chain Mail (40g, +2 armor, +50 HP) | Plate Armor (100g, +5 armor, +120 HP) | Guardian Plate (220g, +10 armor, +200 HP) |
 | **Boots** | Leather Boots (30g, +20% speed) | Swift Greaves (80g, +40% speed) | Windrunners (180g, +60% speed, +10% dodge) |
 
+### Accessory Shop
+
+Up to 3 accessory slots with a rotating shop. 3 random accessories offered, rotating every 5 waves (wave 1, 6, 11, 16...). No duplicates allowed.
+
+**Active accessories (T key to use):**
+| Accessory | Cost | Cooldown | Effect |
+|-----------|------|----------|--------|
+| Healing Potion | 800g | 45s | Heal 30% max HP |
+| Phase Boots | 800g | 30s | Phase through creeps 3s + 50% speed |
+| Battle Horn | 900g | 40s | Stun all creeps in 150px for 1s |
+
+**Passive accessories:**
+| Accessory | Cost | Effect |
+|-----------|------|--------|
+| Ward Stone | 600g | +20% aggro range |
+| Vampiric Fang | 1200g | 8% lifesteal |
+| Frost Amulet | 1000g | Attacks slow 20% for 1s |
+| Thunder Cloak | 900g | 15% chance: chain lightning 30 dmg in 80px |
+| Berserker Band | 1100g | +1% damage per 1% missing HP |
+| Guardian Angel | 2000g | Revive once at 50% HP (consumed on use) |
+| Scout Lens | 700g | +30% crit damage |
+| Thorns Mail | 1000g | Reflect 15% damage taken to attackers |
+| Soul Harvester | 1500g | +2 gold per arena kill |
+
 ### Strategy Tips
-- Build a tight maze to slow creeps, but expect most to leak — that's by design.
+- Build a tight maze to slow creeps — tower damage now carries into the arena, so towers matter more.
 - Position your hero near the base to intercept creeps before they park.
-- Warden is safest for beginners — high HP and stun keep you alive.
-- Shadow excels at killing high-HP targets fast with dash + amp mark + execute combo.
-- Arcanist can kite from range but is fragile — buy armor early.
-- Dead hero = 10s of uncontested base damage. Buy armor to survive.
+- Level up early by clearing wave creeps — stat growth compounds significantly by mid-game.
+- Warden is safest for beginners — Fortress ultimate makes you invincible for clutch saves.
+- Shadow excels at killing high-HP targets fast with dash + amp mark + execute + Death Mark combo.
+- Arcanist can kite from range but is fragile — Meteor Storm clears groups, buy armor early.
+- Save gold for Guardian Angel before wave 20 — Base Charger can end runs fast.
+- Dead hero = 10s of uncontested base damage. Buy armor and use accessories to survive.
 
 ---
 

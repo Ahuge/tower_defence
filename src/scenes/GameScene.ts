@@ -405,7 +405,9 @@ export class GameScene extends Phaser.Scene {
         : new StandardLeakHandler(this.eventLog, this.statsTracker);
     const deathHandler = this.circle
       ? new CircleDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex)
-      : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1);
+      : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
+          // Hero Defense: 10x creeps so reduce kill gold to 30%
+          this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
 
     // Wave controller
@@ -418,6 +420,7 @@ export class GameScene extends Phaser.Scene {
         this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
         this.upcomingWaves.update(waveNum, this.waves);
         this.eventBus.emit('waveStarted', waveNum);
+        this.gameMode.onWaveStart?.(wave, waveNum);
       },
       onWaveCleared: (waveNum) => {
         this.onWaveCleared(waveNum);
@@ -481,7 +484,10 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    this.inputMgr.onKey('ESC', () => this.enterNoneMode());
+    this.inputMgr.onKey('ESC', () => {
+      this.arenaManager?.cancelTargeting();
+      this.enterNoneMode();
+    });
     this.inputMgr.onKey('P', () => this.togglePause());
     this.inputMgr.onKey('A', () => this.toggleAutoPlay());
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
@@ -499,6 +505,8 @@ export class GameScene extends Phaser.Scene {
       this.inputMgr.onKey('Q', () => this.arenaManager!.handleAbilityKey(0));
       this.inputMgr.onKey('W', () => this.arenaManager!.handleAbilityKey(1));
       this.inputMgr.onKey('E', () => this.arenaManager!.handleAbilityKey(2));
+      this.inputMgr.onKey('R', () => this.arenaManager!.handleAbilityKey(3));
+      this.inputMgr.onKey('T', () => this.arenaManager!.handleAccessoryKey());
     }
 
     // Versus mode setup
