@@ -22,6 +22,12 @@ Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has 
 - **Elite Arena Events**: Special enemies at wave milestones. Shield Guardian (wave 10, 8x HP, shields nearby creeps every 8s), Base Charger (wave 20, 12x HP, ignores hero and rushes base), Necromancer (wave 30, 6x HP, resurrects dead creeps every 5s). Orange indicator, 100 XP each.
 - **Accessories with Rotating Shop**: 1 accessory slot, 12 accessories total. 3 random offers rotate every 5 waves. Actives use T key (Healing Potion, Phase Boots, Battle Horn). Passives include lifesteal, frost slow, chain lightning, berserker scaling, guardian angel revive, thorns reflect, bonus gold per kill. Buying replaces current accessory.
 
+### Faction Heroes & Melee Balance
+- **Each hero belongs to a faction**: Warden=Military, Arcanist=Arcane, Shadow=Void, Paladin=Celestial, Ranger=Harmonic, Berserker=Infernal, Necromancer=Aliens, Monk=Psionic, Engineer=Mechanical, Duelist=Cypherpunk, Druid=Nature.
+- **Faction hero guaranteed**: If you pick a non-random faction, your faction's hero is always one of the 3 offered. Faction name shown on hero cards (highlighted gold for your faction's hero).
+- **Melee heroes buffed**: All 6 melee heroes got significant HP increases (+100-150) and innate base armor (2-8). Warden is the tankiest (650 HP, 8 armor), Shadow the lightest melee (420 HP, 3 armor).
+- **Hero descriptions updated** to reflect faction identity (e.g. "Void assassin", "Celestial champion", "Psionic adept").
+
 ### Hero Level Cap Removed & AoE Accessories
 - **No max hero level**: Heroes can now level indefinitely past 15. Each level still queues an upgrade point.
 - **3 new splash accessories**: Cleave Axe (900g, 40% splash in 50px), Inferno Blade (1400g, 60% in 70px), Tempest Hammer (2000g, 80% in 90px). Attacks deal % of damage as AoE around the target with an expanding ring VFX.

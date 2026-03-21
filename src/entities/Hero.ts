@@ -195,7 +195,7 @@ export class Hero {
   }
 
   getArmorFlat(): number {
-    let armor = 0;
+    let armor = this.typeDef.baseArmor ?? 0;
     for (const item of this.items) {
       if (item.tier > 0) {
         const stats = ITEM_SLOTS[item.slot].tiers[item.tier - 1].stats;

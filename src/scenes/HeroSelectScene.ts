@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { getCanvasWidth, GAME_HEIGHT } from '../config';
-import { HeroId, HERO_ORDER, HERO_TYPES } from '../data/HeroTypes';
+import { HeroId, HERO_ORDER, HERO_TYPES, getHeroForFaction } from '../data/HeroTypes';
 import { MatchMode } from '../data/WaveDefinitions';
-import { FactionId } from '../data/Factions';
+import { FactionId, FACTIONS } from '../data/Factions';
 import { MapId } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
@@ -52,8 +52,20 @@ export class HeroSelectScene extends Phaser.Scene {
       fontSize: '13px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    // Pick 3 random heroes from the full pool
-    const offered = pickRandom(HERO_ORDER, 3);
+    // Pick 3 heroes: guarantee faction hero if non-random faction selected
+    let offered: HeroId[];
+    const factionHero = this.faction && this.faction !== 'random'
+      ? getHeroForFaction(this.faction) : null;
+
+    if (factionHero) {
+      // Faction hero guaranteed + 2 random others
+      const others = HERO_ORDER.filter(h => h !== factionHero);
+      const randomOthers = pickRandom(others, 2);
+      // Put faction hero first
+      offered = [factionHero, ...randomOthers];
+    } else {
+      offered = pickRandom(HERO_ORDER, 3);
+    }
 
     const cardW = 260;
     const cardH = 420;
@@ -76,25 +88,33 @@ export class HeroSelectScene extends Phaser.Scene {
       const iconSize = 18;
       this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
 
+      // Faction tag
+      const factionName = FACTIONS[hero.faction as FactionId]?.name ?? hero.faction;
+      const isFactionHero = heroId === factionHero;
+      this.add.text(x + cardW / 2, y + 63, factionName.toUpperCase(), {
+        fontSize: '9px', color: isFactionHero ? '#ffaa44' : '#555555', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
       // Name
-      this.add.text(x + cardW / 2, y + 70, hero.name, {
+      this.add.text(x + cardW / 2, y + 76, hero.name, {
         fontSize: '20px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Description
-      this.add.text(x + cardW / 2, y + 92, hero.description, {
+      this.add.text(x + cardW / 2, y + 98, hero.description, {
         fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
         wordWrap: { width: cardW - 20 }, align: 'center',
       }).setOrigin(0.5, 0);
 
       // Stats
-      const statsY = y + 130;
+      const statsY = y + 138;
       const statsLines = [
         `HP: ${hero.hp}`,
         `Damage: ${hero.damage}`,
         `Attack Speed: ${hero.attackSpeed}/s`,
         `Range: ${hero.attackRange <= 50 ? 'Melee' : `${hero.attackRange}px`}`,
         `Move Speed: ${hero.moveSpeed}`,
+        ...(hero.baseArmor ? [`Armor: ${hero.baseArmor}`] : []),
       ];
       this.add.text(x + 16, statsY, statsLines.join('\n'), {
         fontSize: '12px', color: '#cccccc', fontFamily: 'monospace',

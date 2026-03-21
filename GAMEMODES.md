@@ -91,19 +91,19 @@ Split-screen mode: your hero fights leaked creeps in an arena while you build to
 
 Each game randomly offers 3 heroes to choose from. You can reroll for a different set.
 
-| Hero | HP | Damage | AS | Range | Speed | Style |
-|------|----|--------|----|-------|-------|-------|
-| **Warden** | 500 | 25 | 1.0/s | Melee | 140 | Tank. Stun, buff, AoE slow. |
-| **Arcanist** | 280 | 40 | 0.8/s | 200px | 120 | Ranged caster. Fireball, frost, blink. |
-| **Shadow** | 320 | 55 | 1.5/s | Melee | 180 | Fast assassin. Dash, dodge, execute. |
-| **Paladin** | 450 | 30 | 0.9/s | Melee | 130 | Holy warrior. Stun, dodge, AoE slow. |
-| **Ranger** | 250 | 45 | 1.2/s | 240px | 150 | Sharpshooter. Skillshot, frost, disengage. |
-| **Berserker** | 400 | 45 | 1.3/s | Melee | 160 | Reckless brawler. Cleave, rage, leap. |
-| **Necromancer** | 260 | 35 | 0.9/s | 180px | 110 | Dark caster. Drain, curse, execute. |
-| **Monk** | 350 | 40 | 1.8/s | Melee | 190 | Martial artist. Fast stun, dodge, dash. |
-| **Engineer** | 300 | 50 | 0.7/s | 220px | 115 | Tactician. Grenade, tar, grapple. |
-| **Duelist** | 340 | 50 | 1.6/s | Melee | 170 | Fencer. Riposte, parry, lunge. |
-| **Druid** | 380 | 30 | 1.0/s | 160px | 135 | Nature mage. Root, thorns, wild shift. |
+| Hero | Faction | HP | Armor | Damage | AS | Range | Speed | Style |
+|------|---------|-----|-------|--------|----|-------|-------|-------|
+| **Warden** | Military | 650 | 8 | 25 | 1.0/s | Melee | 140 | Heavy tank. Stun, buff, AoE slow. |
+| **Arcanist** | Arcane | 280 | - | 40 | 0.8/s | 200px | 120 | Ranged caster. Fireball, frost, blink. |
+| **Shadow** | Void | 420 | 3 | 55 | 1.5/s | Melee | 180 | Fast assassin. Dash, dodge, execute. |
+| **Paladin** | Celestial | 600 | 6 | 30 | 0.9/s | Melee | 130 | Holy tank. Stun, dodge, AoE slow. |
+| **Ranger** | Harmonic | 250 | - | 45 | 1.2/s | 240px | 150 | Sharpshooter. Skillshot, frost, disengage. |
+| **Berserker** | Infernal | 550 | 2 | 45 | 1.3/s | Melee | 160 | Glass cannon. Cleave, rage, leap. |
+| **Necromancer** | Aliens | 260 | - | 35 | 0.9/s | 180px | 110 | Dark caster. Drain, curse, execute. |
+| **Monk** | Psionic | 480 | 4 | 40 | 1.8/s | Melee | 190 | Combo fighter. Fast stun, dodge, dash. |
+| **Engineer** | Mechanical | 300 | - | 50 | 0.7/s | 220px | 115 | Tactician. Grenade, tar, grapple. |
+| **Duelist** | Cypherpunk | 440 | 5 | 50 | 1.6/s | Melee | 170 | Fencer. Riposte, parry, lunge. |
+| **Druid** | Nature | 380 | - | 30 | 1.0/s | 160px | 135 | Nature mage. Root, thorns, wild shift. |
 
 ### Hero Leveling
 

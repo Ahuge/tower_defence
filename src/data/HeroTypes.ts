@@ -38,6 +38,7 @@ export interface AbilityDef {
 export interface HeroTypeDef {
   id: HeroId;
   name: string;
+  faction: string;      // faction ID this hero belongs to
   description: string;
   hp: number;
   damage: number;
@@ -45,6 +46,7 @@ export interface HeroTypeDef {
   attackRange: number;  // pixels
   moveSpeed: number;    // pixels per second
   color: number;
+  baseArmor?: number;    // innate armor (flat damage reduction)
   abilities: [AbilityDef, AbilityDef, AbilityDef]; // Q, W, E
   ultimate?: AbilityDef; // R
 }
@@ -53,13 +55,15 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   warden: {
     id: 'warden',
     name: 'Warden',
-    description: 'Tanky frontliner. Stuns, rallies allies, slams the ground.',
-    hp: 500,
+    faction: 'military',
+    description: 'Military commander. Stuns, rallies troops, slams the ground.',
+    hp: 650,
     damage: 25,
     attackSpeed: 1.0,
     attackRange: 36,
     moveSpeed: 140,
     color: 0x4488ff,
+    baseArmor: 8,
     abilities: [
       {
         name: 'Shield Bash',
@@ -104,7 +108,8 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   arcanist: {
     id: 'arcanist',
     name: 'Arcanist',
-    description: 'Ranged caster. Fireballs, frost novas, and blink escapes.',
+    faction: 'arcane',
+    description: 'Arcane spellweaver. Fireballs, frost novas, and blink escapes.',
     hp: 280,
     damage: 40,
     attackSpeed: 0.8,
@@ -156,13 +161,15 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   shadow: {
     id: 'shadow',
     name: 'Shadow',
-    description: 'Fast assassin. Dashes, dodges, and executes low-HP targets.',
-    hp: 320,
+    faction: 'void',
+    description: 'Void assassin. Dashes through shadows, dodges, and executes the weak.',
+    hp: 420,
     damage: 55,
     attackSpeed: 1.5,
     attackRange: 36,
     moveSpeed: 180,
     color: 0xff4488,
+    baseArmor: 3,
     abilities: [
       {
         name: 'Shadow Strike',
@@ -207,13 +214,15 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   paladin: {
     id: 'paladin',
     name: 'Paladin',
-    description: 'Holy warrior. Heals, shields, and smites the wicked.',
-    hp: 450,
+    faction: 'celestial',
+    description: 'Celestial champion. Channels divine light to shield and smite.',
+    hp: 600,
     damage: 30,
     attackSpeed: 0.9,
     attackRange: 36,
     moveSpeed: 130,
     color: 0xffdd44,
+    baseArmor: 6,
     abilities: [
       {
         name: 'Smite',
@@ -257,7 +266,8 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   ranger: {
     id: 'ranger',
     name: 'Ranger',
-    description: 'Long-range sharpshooter. Kites, slows, and picks off targets.',
+    faction: 'harmonic',
+    description: 'Harmonic marksman. Balances precision and rhythm to pick off targets.',
     hp: 250,
     damage: 45,
     attackSpeed: 1.2,
@@ -309,13 +319,15 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   berserker: {
     id: 'berserker',
     name: 'Berserker',
-    description: 'Reckless brawler. Gets stronger as HP drops. High risk, high reward.',
-    hp: 400,
+    faction: 'infernal',
+    description: 'Infernal fiend. Burns hotter as health drops. High risk, high reward.',
+    hp: 550,
     damage: 45,
     attackSpeed: 1.3,
     attackRange: 36,
     moveSpeed: 160,
     color: 0xff4444,
+    baseArmor: 2,
     abilities: [
       {
         name: 'Cleave',
@@ -358,7 +370,8 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   necromancer: {
     id: 'necromancer',
     name: 'Necromancer',
-    description: 'Dark caster. Drains life, curses enemies, and marks for death.',
+    faction: 'aliens',
+    description: 'Spawn host. Drains life force, curses prey, and marks for harvest.',
     hp: 260,
     damage: 35,
     attackSpeed: 0.9,
@@ -410,13 +423,15 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   monk: {
     id: 'monk',
     name: 'Monk',
-    description: 'Swift martial artist. Combos, dodges, and dashes through enemies.',
-    hp: 350,
+    faction: 'psionic',
+    description: 'Psionic adept. Channels inner focus into devastating combos.',
+    hp: 480,
     damage: 40,
     attackSpeed: 1.8,
     attackRange: 36,
     moveSpeed: 190,
     color: 0xff8844,
+    baseArmor: 4,
     abilities: [
       {
         name: 'Palm Strike',
@@ -462,7 +477,8 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   engineer: {
     id: 'engineer',
     name: 'Engineer',
-    description: 'Ranged tactician. Bombards, slows, and controls the battlefield.',
+    faction: 'mechanical',
+    description: 'Mechanical genius. Bombards with gadgets and controls the battlefield.',
     hp: 300,
     damage: 50,
     attackSpeed: 0.7,
@@ -514,13 +530,15 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   duelist: {
     id: 'duelist',
     name: 'Duelist',
-    description: 'Graceful fencer. Parries, ripostes, and dismantles single targets.',
-    hp: 340,
+    faction: 'cypherpunk',
+    description: 'Cypherpunk blade dancer. Parries, ripostes, and dismantles targets with precision.',
+    hp: 440,
     damage: 50,
     attackSpeed: 1.6,
     attackRange: 36,
     moveSpeed: 170,
     color: 0xcc44cc,
+    baseArmor: 5,
     abilities: [
       {
         name: 'Riposte',
@@ -567,7 +585,8 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   druid: {
     id: 'druid',
     name: 'Druid',
-    description: 'Nature mage. AoE roots, healing thorns, and wild transformations.',
+    faction: 'nature',
+    description: 'Nature guardian. Entangles with roots, bursts thorns, and shifts form.',
     hp: 380,
     damage: 30,
     attackSpeed: 1.0,
@@ -624,3 +643,11 @@ export const HERO_ORDER: HeroId[] = [
   'warden', 'arcanist', 'shadow', 'paladin', 'ranger',
   'berserker', 'necromancer', 'monk', 'engineer', 'duelist', 'druid',
 ];
+
+/** Get the hero belonging to a faction, if any */
+export function getHeroForFaction(factionId: string): HeroId | null {
+  for (const id of HERO_ORDER) {
+    if (HERO_TYPES[id].faction === factionId) return id;
+  }
+  return null;
+}
