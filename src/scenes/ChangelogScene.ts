@@ -5,6 +5,29 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v21 — Hero Defense Overhaul',
+    changes: [
+      '11 heroes (up from 3): Paladin, Ranger, Berserker, Necromancer, Monk, Engineer, Duelist, Druid',
+      'Random draft: 3 heroes offered per game, reroll available',
+      'Each hero belongs to a faction — picking a non-random faction guarantees that hero',
+      'Hero leveling (uncapped): XP from arena kills, choose stat or ability upgrades per level',
+      'Ability upgrades: [+] buttons next to Q/W/E/R — each gives +20% damage/effects, -5% CD',
+      'Ultimate abilities (R key): one per hero, unlocks at level 6, long cooldown',
+      'Floating damage numbers: color-coded hits, crits, heals, ability damage, level ups',
+      'Ability VFX: AoE rings, dash trails, teleport flashes, meteor impacts, lightning bolts',
+      'Visual targeting mode for ground abilities (Blink) — preview circle + range ring',
+      'Arena creep waves: 3-6 creeps spawn per TD wave (halved on boss waves)',
+      'Elite enemies at waves 10/20/30: Shield Guardian, Base Charger, Necromancer',
+      '3 accessory slots (up from 1): 15 accessories total, rotating shop every 5 waves',
+      'New AoE accessories: Cleave Axe, Inferno Blade, Tempest Hammer — attacks splash in radius',
+      'Tower assists: leaked creeps enter arena with current HP (tower damage carries over)',
+      'Melee heroes buffed: +100-150 HP and innate armor (2-8) varying by hero',
+      'Healer diminishing returns: stacked heals halved per source, healers receive only 10%',
+      'Economy rebalanced: reduced kill gold, wave income, and arena rewards',
+      'Heroes encyclopedia page with carousel browser',
+    ],
+  },
+  {
     version: 'v20 — Procedural Random Maps',
     changes: [
       'New "Random" map in the map picker — procedurally generated from a seed',
