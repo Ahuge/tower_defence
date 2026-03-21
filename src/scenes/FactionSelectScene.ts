@@ -33,11 +33,12 @@ export class FactionSelectScene extends Phaser.Scene {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const cardW = 140;
-    const cardH = 280;
-    const gap = 6;
+    const isPhone = getCanvasWidth() < 600;
+    const cardW = isPhone ? 90 : 140;
+    const cardH = isPhone ? 160 : 280;
+    const gap = isPhone ? 4 : 6;
     const factions = FACTION_ORDER;
-    const cols = 6;
+    const cols = isPhone ? 3 : 6;
     const rows = Math.ceil(factions.length / cols);
 
     for (let i = 0; i < factions.length; i++) {
@@ -62,23 +63,24 @@ export class FactionSelectScene extends Phaser.Scene {
       card.fillRect(x, y, cardW, 6);
 
       // Name
-      this.add.text(x + cardW / 2, y + 22, faction.name, {
-        fontSize: '16px', color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 16 : 22), faction.name, {
+        fontSize: isPhone ? '12px' : '16px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Tower count badge
       const tCount = faction.towerIds.length > 0 ? `${faction.towerIds.length} towers` : '6/wave';
-      this.add.text(x + cardW / 2, y + 40, tCount, {
-        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 30 : 40), tCount, {
+        fontSize: isPhone ? '9px' : '10px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Description
-      this.add.text(x + 8, y + 55, faction.description, {
-        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
-        wordWrap: { width: cardW - 16 },
+      this.add.text(x + 6, y + (isPhone ? 42 : 55), faction.description, {
+        fontSize: isPhone ? '8px' : '10px', color: '#aaaaaa', fontFamily: 'monospace',
+        wordWrap: { width: cardW - 12 },
       });
 
-      // Tower list
+      // Tower list (skip on phone — cards too small)
+      if (isPhone) { /* skip tower list */ } else {
       const towerY = y + 100;
       if (factionId === 'random') {
         this.add.text(x + 8, towerY, 'Each wave: 6 random\ntowers from all factions.\nBought towers persist.\nAdapt to what you get.', {
@@ -100,6 +102,7 @@ export class FactionSelectScene extends Phaser.Scene {
           ty += 13;
         }
       }
+      } // end if !isPhone tower list
 
       // Click zone
       const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });

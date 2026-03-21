@@ -6,6 +6,7 @@ import { FactionId, FACTIONS } from '../data/Factions';
 import { MapId } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 /** Pick N random unique elements from an array */
 function pickRandom<T>(arr: T[], count: number): T[] {
@@ -24,6 +25,8 @@ export class HeroSelectScene extends Phaser.Scene {
   private difficulty: DifficultyLevel = 'normal';
   private randomSeed: number = 0;
   private dailySeed: boolean = false;
+  private phoneCardIndex: number = 0;
+  private phoneOffered: HeroId[] = [];
 
   constructor() {
     super('HeroSelectScene');
@@ -65,6 +68,15 @@ export class HeroSelectScene extends Phaser.Scene {
       offered = [factionHero, ...randomOthers];
     } else {
       offered = pickRandom(HERO_ORDER, 3);
+    }
+
+    const isPhone = ResponsiveManager.isPhone();
+
+    if (isPhone) {
+      this.phoneOffered = offered;
+      this.phoneCardIndex = 0;
+      this.buildPhoneCard(cx);
+      return;
     }
 
     const cardW = 260;
@@ -190,6 +202,113 @@ export class HeroSelectScene extends Phaser.Scene {
     }));
     backBtn.on('pointerover', () => backBtn.setColor('#ffffff'));
     backBtn.on('pointerout', () => backBtn.setColor('#888888'));
+  }
+
+  private buildPhoneCard(cx: number): void {
+    const cw = getCanvasWidth();
+    const heroId = this.phoneOffered[this.phoneCardIndex];
+    const hero = HERO_TYPES[heroId];
+    const factionHero = this.faction && this.faction !== 'random'
+      ? getHeroForFaction(this.faction) : null;
+    const isFactionHero = heroId === factionHero;
+
+    const cardW = cw - 40;
+    const cardH = 380;
+    const x = 20;
+    const y = 80;
+
+    const card = this.add.graphics();
+    this.drawCard(card, x, y, cardW, cardH, hero.color, false);
+    this.drawDiamond(card, x + cardW / 2, y + 30, 14, hero.color);
+
+    // Faction tag
+    const factionName = FACTIONS[hero.faction as FactionId]?.name ?? hero.faction;
+    this.add.text(x + cardW / 2, y + 50, factionName.toUpperCase(), {
+      fontSize: '9px', color: isFactionHero ? '#ffaa44' : '#555555', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    // Name
+    this.add.text(x + cardW / 2, y + 62, hero.name, {
+      fontSize: '18px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    // Description
+    this.add.text(x + cardW / 2, y + 82, hero.description, {
+      fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      wordWrap: { width: cardW - 20 }, align: 'center',
+    }).setOrigin(0.5, 0);
+
+    // Stats (compact)
+    const statsY = y + 110;
+    const lines = [
+      `HP:${hero.hp}  DMG:${hero.damage}  AS:${hero.attackSpeed}/s`,
+      `Range:${hero.attackRange <= 50 ? 'Melee' : hero.attackRange + 'px'}  SPD:${hero.moveSpeed}${hero.baseArmor ? '  ARM:' + hero.baseArmor : ''}`,
+    ];
+    this.add.text(x + 12, statsY, lines.join('\n'), {
+      fontSize: '11px', color: '#cccccc', fontFamily: 'monospace', lineSpacing: 4,
+    });
+
+    // Abilities (compact)
+    let ay = statsY + 38;
+    for (const ab of hero.abilities) {
+      this.add.text(x + 12, ay, `[${ab.key}] ${ab.name} — ${ab.description} (${ab.cooldown}s)`, {
+        fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
+        wordWrap: { width: cardW - 24 },
+      });
+      ay += 24;
+    }
+    if (hero.ultimate) {
+      this.add.text(x + 12, ay, `[R] ${hero.ultimate.name} — ${hero.ultimate.description} (${hero.ultimate.cooldown}s)`, {
+        fontSize: '10px', color: '#cc66ff', fontFamily: 'monospace',
+        wordWrap: { width: cardW - 24 },
+      });
+    }
+
+    // Select button
+    const selBtn = this.add.text(x + cardW / 2, y + cardH - 30, '[ SELECT ]', {
+      fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
+      backgroundColor: '#1a2a1a', padding: { x: 20, y: 6 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    selBtn.on('pointerdown', () => this.selectHero(heroId));
+    selBtn.on('pointerover', () => selBtn.setColor('#ffffff'));
+    selBtn.on('pointerout', () => selBtn.setColor('#44ff44'));
+
+    // Prev/Next arrows
+    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    if (this.phoneOffered.length > 1) {
+      const prevBtn = this.add.text(20, y + cardH / 2, '<', {
+        fontSize: '30px', color: '#888888', fontFamily: 'monospace',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      prevBtn.on('pointerdown', () => {
+        this.phoneCardIndex = (this.phoneCardIndex - 1 + this.phoneOffered.length) % this.phoneOffered.length;
+        this.scene.restart();
+      });
+
+      const nextBtn = this.add.text(cw - 20, y + cardH / 2, '>', {
+        fontSize: '30px', color: '#888888', fontFamily: 'monospace',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      nextBtn.on('pointerdown', () => {
+        this.phoneCardIndex = (this.phoneCardIndex + 1) % this.phoneOffered.length;
+        this.scene.restart();
+      });
+
+      // Dots indicator
+      for (let i = 0; i < this.phoneOffered.length; i++) {
+        const dotColor = i === this.phoneCardIndex ? '#ffffff' : '#444444';
+        this.add.text(cx - 10 + i * 15, totalH - 30, '●', {
+          fontSize: '12px', color: dotColor, fontFamily: 'monospace',
+        }).setOrigin(0.5);
+      }
+    }
+
+    // Back button
+    const backBtn = this.add.text(50, 25, '[ Back ]', {
+      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    }).setInteractive({ useHandCursor: true });
+    backBtn.on('pointerdown', () => this.scene.start('FactionSelectScene', {
+      mode: this.matchMode, map: this.mapId, difficulty: this.difficulty,
+      randomSeed: this.randomSeed, dailySeed: this.dailySeed,
+    }));
   }
 
   private drawCard(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, color: number, hovered: boolean): void {

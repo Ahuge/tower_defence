@@ -5,6 +5,7 @@ import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { getDailySeed } from '../data/MapGenerator';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 interface ModeCard {
   label: string;
@@ -37,16 +38,20 @@ export class MenuScene extends Phaser.Scene {
       fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const mapBtnW = 140;
-    const mapGap = 10;
-    const mapTotalW = MAP_ORDER.length * mapBtnW + (MAP_ORDER.length - 1) * mapGap;
+    const isPhone = ResponsiveManager.isPhone();
+    const mapBtnW = isPhone ? 100 : 140;
+    const mapGap = isPhone ? 4 : 10;
+    const cols = isPhone ? Math.floor((getCanvasWidth() - 20) / (mapBtnW + mapGap)) : MAP_ORDER.length;
+    const mapTotalW = Math.min(MAP_ORDER.length, cols) * mapBtnW + (Math.min(MAP_ORDER.length, cols) - 1) * mapGap;
     const mapStartX = cx - mapTotalW / 2;
 
     for (let i = 0; i < MAP_ORDER.length; i++) {
       const mapId = MAP_ORDER[i];
       const map = MAPS[mapId];
-      const x = mapStartX + i * (mapBtnW + mapGap);
-      const y = 112;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = mapStartX + col * (mapBtnW + mapGap);
+      const y = 112 + row * 48;
       const h = 40;
 
       const btn = this.add.graphics();
@@ -72,7 +77,11 @@ export class MenuScene extends Phaser.Scene {
     this.drawMapButtons();
 
     // Daily seed toggle (visible when Random map selected)
-    this.dailyToggle = this.add.text(cx, 154, '', {
+    // Extra Y offset for phone multi-row maps
+    const mapRows = Math.ceil(MAP_ORDER.length / cols);
+    const phoneYShift = isPhone ? (mapRows - 1) * 48 : 0;
+
+    this.dailyToggle = this.add.text(cx, 154 + phoneYShift, '', {
       fontSize: '9px', color: '#ff44ff', fontFamily: 'monospace',
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
     this.dailyToggle.on('pointerdown', () => {
@@ -82,7 +91,7 @@ export class MenuScene extends Phaser.Scene {
     this.updateDailyToggle();
 
     // Difficulty selection
-    this.add.text(cx, 177, 'Difficulty', {
+    this.add.text(cx, 177 + phoneYShift, 'Difficulty', {
       fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
@@ -92,15 +101,15 @@ export class MenuScene extends Phaser.Scene {
       { id: 'hard', label: 'Hard', color: '#ff4444' },
       { id: 'insane', label: 'Insane', color: '#ff00ff' },
     ];
-    const diffBtnW = 90;
-    const diffGap = 8;
+    const diffBtnW = isPhone ? 60 : 90;
+    const diffGap = isPhone ? 4 : 8;
     const diffTotalW = diffs.length * diffBtnW + (diffs.length - 1) * diffGap;
     const diffStartX = cx - diffTotalW / 2;
 
     for (let i = 0; i < diffs.length; i++) {
       const d = diffs[i];
       const x = diffStartX + i * (diffBtnW + diffGap);
-      const y = 192;
+      const y = 192 + phoneYShift;
       const h = 28;
 
       const btn = this.add.graphics();
@@ -120,7 +129,7 @@ export class MenuScene extends Phaser.Scene {
     this.drawDiffButtons();
 
     // === Mode selection — 2x3 grid ===
-    this.add.text(cx, 234, 'Select Mode', {
+    this.add.text(cx, 234 + phoneYShift, 'Select Mode', {
       fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
@@ -144,21 +153,21 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Circle Co-op',     desc: '2-4 players — shared map',        accent: 0x44aaff, action: () => this.scene.start('CircleLobbyScene') },
     ];
 
-    const cols = 3;
-    const cardW = 200;
-    const cardH = 56;
-    const gapX = 12;
-    const gapY = 10;
-    const gridW = cols * cardW + (cols - 1) * gapX;
+    const modeCols = isPhone ? 2 : 3;
+    const cardW = isPhone ? Math.floor((getCanvasWidth() - 30) / modeCols - 6) : 200;
+    const cardH = isPhone ? 48 : 56;
+    const gapX = isPhone ? 6 : 12;
+    const gapY = isPhone ? 6 : 10;
+    const gridW = modeCols * cardW + (modeCols - 1) * gapX;
     const gridStartX = cx - gridW / 2;
-    const gridStartY = 254;
+    const gridStartY = 254 + phoneYShift;
 
     for (let i = 0; i < modes.length; i++) {
       const m = modes[i];
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const x = gridStartX + col * (cardW + gapX);
-      const y = gridStartY + row * (cardH + gapY);
+      const mCol = i % modeCols;
+      const mRow = Math.floor(i / modeCols);
+      const x = gridStartX + mCol * (cardW + gapX);
+      const y = gridStartY + mRow * (cardH + gapY);
 
       const card = this.add.graphics();
       const drawCard = (hover: boolean) => {
@@ -173,12 +182,13 @@ export class MenuScene extends Phaser.Scene {
       };
       drawCard(false);
 
-      this.add.text(x + 14, y + 12, m.label, {
-        fontSize: '15px', color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x + 10, y + (isPhone ? 8 : 12), m.label, {
+        fontSize: isPhone ? '13px' : '15px', color: '#ffffff', fontFamily: 'monospace',
       });
 
-      this.add.text(x + 14, y + 34, m.desc, {
-        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+      this.add.text(x + 10, y + (isPhone ? 26 : 34), m.desc, {
+        fontSize: isPhone ? '8px' : '10px', color: '#888888', fontFamily: 'monospace',
+        wordWrap: { width: cardW - 16 },
       });
 
       const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });
@@ -188,12 +198,13 @@ export class MenuScene extends Phaser.Scene {
     }
 
     // Multiplayer note
-    this.add.text(cx, gridStartY + 3 * (cardH + gapY) - 2, 'Multiplayer modes use P2P WebRTC — no server required', {
+    const modeRows = Math.ceil(modes.length / modeCols);
+    this.add.text(cx, gridStartY + modeRows * (cardH + gapY) - 2, 'Multiplayer modes use P2P WebRTC — no server required', {
       fontSize: '10px', color: '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Encyclopedia + Changelog buttons
-    const bottomRowY = gridStartY + 3 * (cardH + gapY) + 18;
+    const bottomRowY = gridStartY + modeRows * (cardH + gapY) + 18;
     const encBtn = this.add.text(cx - 120, bottomRowY, '[ Encyclopedia ]', {
       fontSize: '13px', color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });

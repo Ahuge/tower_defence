@@ -1,6 +1,7 @@
 import { GAME_HEIGHT, TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { getTowerType, TowerType } from '../data/TowerTypes';
 import { hasTrait } from '../systems/traits/Trait';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 export class TowerSelectBar {
   private scene: Phaser.Scene;
@@ -14,13 +15,15 @@ export class TowerSelectBar {
   private tooltipText: Phaser.GameObjects.Text;
 
   static readonly BAR_HEIGHT = 68;
-  private static readonly BTN_SIZE = 52;
-  private static readonly PADDING = 10;
+  private readonly btnSize: number;
+  private readonly padding: number;
 
   constructor(scene: Phaser.Scene, towerIds: string[], onSelect: (typeId: string | null) => void) {
     this.scene = scene;
     this.towerIds = towerIds;
     this.onSelect = onSelect;
+    this.btnSize = ResponsiveManager.isPhone() ? 42 : 52;
+    this.padding = ResponsiveManager.isPhone() ? 4 : 10;
     this.container = scene.add.container(0, GAME_HEIGHT + 28).setDepth(30);
 
     // Tooltip (rendered above the bar)
@@ -46,12 +49,16 @@ export class TowerSelectBar {
     bg.lineBetween(offsetX, 0, canvasW, 0);
     this.container.add(bg);
 
-    const { BTN_SIZE, PADDING } = TowerSelectBar;
-    const startX = offsetX + PADDING;
+    const bs = this.btnSize;
+    const pad = this.padding;
+    const startX = offsetX + pad;
+    const isPhone = ResponsiveManager.isPhone();
+    const fontSize = isPhone ? '10px' : '12px';
+    const costSize = isPhone ? '9px' : '11px';
 
     for (let i = 0; i < this.towerIds.length; i++) {
       const t = getTowerType(this.towerIds[i]);
-      const x = startX + i * (BTN_SIZE + PADDING);
+      const x = startX + i * (bs + pad);
       const y = 6;
 
       const btn = this.scene.add.graphics();
@@ -59,26 +66,28 @@ export class TowerSelectBar {
       this.buttons.push(btn);
 
       const idx = i;
-      const zone = this.scene.add.zone(x + BTN_SIZE / 2, y + BTN_SIZE / 2, BTN_SIZE, BTN_SIZE);
+      const zone = this.scene.add.zone(x + bs / 2, y + bs / 2, bs, bs);
       this.container.add(zone);
       zone.setInteractive({ useHandCursor: true });
       zone.on('pointerdown', () => this.highlight(idx));
       zone.on('pointerover', () => this.showTooltip(idx));
       zone.on('pointerout', () => this.hideTooltip());
 
-      const hotkeyNum = String(i + 1);
-      const label = this.scene.add.text(x + 2, y + 1, hotkeyNum, {
-        fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace'
-      });
-      this.container.add(label);
+      if (!isPhone) {
+        const hotkeyNum = String(i + 1);
+        const label = this.scene.add.text(x + 2, y + 1, hotkeyNum, {
+          fontSize, color: '#aaaaaa', fontFamily: 'monospace'
+        });
+        this.container.add(label);
+      }
 
-      const costLabel = this.scene.add.text(x + BTN_SIZE / 2, y + BTN_SIZE - 2, `${t.cost}g`, {
-        fontSize: '11px', color: '#ffdd44', fontFamily: 'monospace'
+      const costLabel = this.scene.add.text(x + bs / 2, y + bs - 2, `${t.cost}g`, {
+        fontSize: costSize, color: '#ffdd44', fontFamily: 'monospace'
       }).setOrigin(0.5, 1);
       this.container.add(costLabel);
 
-      const nameLabel = this.scene.add.text(x + BTN_SIZE / 2, y + BTN_SIZE / 2 - 2, t.name.substring(0, 5), {
-        fontSize: '12px', color: '#ffffff', fontFamily: 'monospace'
+      const nameLabel = this.scene.add.text(x + bs / 2, y + bs / 2 - 2, t.name.substring(0, isPhone ? 4 : 5), {
+        fontSize, color: '#ffffff', fontFamily: 'monospace'
       }).setOrigin(0.5, 0.5);
       this.container.add(nameLabel);
     }
@@ -102,9 +111,8 @@ export class TowerSelectBar {
     this.tooltipBg.strokeRect(0, 0, textW, textH);
 
     // Position above the button
-    const { BTN_SIZE, PADDING } = TowerSelectBar;
-    const startX = getGridOffsetX() + PADDING;
-    const btnX = startX + index * (BTN_SIZE + PADDING);
+    const startX = getGridOffsetX() + this.padding;
+    const btnX = startX + index * (this.btnSize + this.padding);
     const barY = GAME_HEIGHT + 28;
 
     let tx = btnX;
@@ -202,26 +210,26 @@ export class TowerSelectBar {
   }
 
   private redraw(): void {
-    const { BTN_SIZE, PADDING } = TowerSelectBar;
-    const startX = getGridOffsetX() + PADDING;
+    const bs = this.btnSize;
+    const startX = getGridOffsetX() + this.padding;
 
     for (let i = 0; i < this.buttons.length; i++) {
       const t = getTowerType(this.towerIds[i]);
-      const x = startX + i * (BTN_SIZE + PADDING);
+      const x = startX + i * (bs + this.padding);
       const y = 6;
 
       const btn = this.buttons[i];
       btn.clear();
       if (i === this.selectedIndex) {
         btn.fillStyle(t.color, 0.9);
-        btn.fillRect(x, y, BTN_SIZE, BTN_SIZE);
+        btn.fillRect(x, y, bs, bs);
         btn.lineStyle(2, 0xffffff, 1);
-        btn.strokeRect(x, y, BTN_SIZE, BTN_SIZE);
+        btn.strokeRect(x, y, bs, bs);
       } else {
         btn.fillStyle(t.color, 0.4);
-        btn.fillRect(x, y, BTN_SIZE, BTN_SIZE);
+        btn.fillRect(x, y, bs, bs);
         btn.lineStyle(1, 0x555555, 0.6);
-        btn.strokeRect(x, y, BTN_SIZE, BTN_SIZE);
+        btn.strokeRect(x, y, bs, bs);
       }
     }
   }

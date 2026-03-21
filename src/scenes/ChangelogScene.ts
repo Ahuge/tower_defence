@@ -5,6 +5,17 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v22 — Mobile Phone Support',
+    changes: [
+      'Phone layout (<600px): reduced canvas, touch controls, compact UI for all game modes',
+      'GameControlBar: touch buttons for wave/speed/pause + ability buttons (Q/W/E/R/T)',
+      'Full-screen sidebar overlay on phone with larger close button',
+      'Smaller tower buttons, responsive menu/faction/hero select scenes',
+      'Hero select: single-card carousel with prev/next navigation on phone',
+      'Dynamic grid dimensions: 20 cols on phone, 16 rows standard, 8 rows hero defense',
+    ],
+  },
+  {
     version: 'v21 — Hero Defense Overhaul',
     changes: [
       '11 heroes (up from 3): Paladin, Ranger, Berserker, Necromancer, Monk, Engineer, Duelist, Druid',
