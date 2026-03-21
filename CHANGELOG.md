@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-21
+
+### Hero Defense Polish
+- **2% interest** on gold at end of each wave — rewards saving for bigger purchases.
+- **Stat accessories**: War Gauntlet (+15 dmg, 800g), Heart of Iron (+200 HP, 900g), Rapid Quiver (+25% AS, 1000g), Hawk Eye (+60px range, 1100g).
+- **Removed Phase Boots** accessory.
+- **Sidebar shows attack speed** (AS: X.XX/s) instead of move speed.
+- **In-game changelog** updated to v21 with all Hero Defense changes.
+
 ## 2026-03-20
 
 ### Hero Defense Enhancement — 8 Features
