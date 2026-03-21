@@ -29,6 +29,10 @@ export interface AccessoryDef {
   goldPerKill?: number;       // Soul Harvester
   splashRadius?: number;      // Cleave/splash AoE radius in pixels
   splashPct?: number;         // % of attack damage dealt as splash (0-1)
+  bonusDamage?: number;       // flat bonus attack damage
+  bonusHp?: number;           // flat bonus max HP
+  attackSpeedPct?: number;    // % bonus attack speed (0.2 = +20%)
+  bonusRange?: number;        // flat bonus attack range in pixels
 }
 
 export const ACCESSORIES: AccessoryDef[] = [
@@ -41,16 +45,6 @@ export const ACCESSORIES: AccessoryDef[] = [
     passive: false,
     cooldown: 45,
     healPct: 0.3,
-  },
-  {
-    id: 'phase_boots',
-    name: 'Phase Boots',
-    cost: 800,
-    description: 'Phase through creeps 3s +50% speed (30s CD)',
-    passive: false,
-    cooldown: 30,
-    phaseDuration: 3,
-    phaseSpeedMult: 0.5,
   },
   {
     id: 'battle_horn',
@@ -136,6 +130,39 @@ export const ACCESSORIES: AccessoryDef[] = [
     description: '+2 gold per arena kill',
     passive: true,
     goldPerKill: 2,
+  },
+  // === STAT ACCESSORIES ===
+  {
+    id: 'war_gauntlet',
+    name: 'War Gauntlet',
+    cost: 800,
+    description: '+15 attack damage',
+    passive: true,
+    bonusDamage: 15,
+  },
+  {
+    id: 'heart_of_iron',
+    name: 'Heart of Iron',
+    cost: 900,
+    description: '+200 max HP',
+    passive: true,
+    bonusHp: 200,
+  },
+  {
+    id: 'rapid_quiver',
+    name: 'Rapid Quiver',
+    cost: 1000,
+    description: '+25% attack speed',
+    passive: true,
+    attackSpeedPct: 0.25,
+  },
+  {
+    id: 'hawk_eye',
+    name: 'Hawk Eye',
+    cost: 1100,
+    description: '+60px attack range',
+    passive: true,
+    bonusRange: 60,
   },
   // === SPLASH / AOE ===
   {

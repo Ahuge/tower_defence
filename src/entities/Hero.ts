@@ -151,6 +151,7 @@ export class Hero {
         dmg += stats.damage ?? 0;
       }
     }
+    dmg += this.accSum('bonusDamage');
     // Berserker Band: +X% damage per 1% missing HP
     const berserk = this.accSum('berserkerScaling');
     if (berserk > 0) {
@@ -165,6 +166,8 @@ export class Hero {
     for (const buff of this.buffs) {
       if (buff.stat === 'attackSpeed') as *= (1 + buff.amount);
     }
+    const accBonus = this.accSum('attackSpeedPct');
+    if (accBonus > 0) as *= (1 + accBonus);
     return as;
   }
 
@@ -183,6 +186,10 @@ export class Hero {
     return speed;
   }
 
+  getEffectiveRange(): number {
+    return this.baseAttackRange + this.accSum('bonusRange');
+  }
+
   getEffectiveMaxHp(): number {
     let hp = this.typeDef.hp;
     for (const item of this.items) {
@@ -191,6 +198,7 @@ export class Hero {
         hp += stats.bonusHp ?? 0;
       }
     }
+    hp += this.accSum('bonusHp');
     return hp;
   }
 
@@ -366,7 +374,7 @@ export class Hero {
       const dy = this.target.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist <= this.baseAttackRange) {
+      if (dist <= this.getEffectiveRange()) {
         const attackInterval = 1000 / this.getEffectiveAttackSpeed();
         const now = this.scene.time.now;
         if (now - this.lastAttackTime >= attackInterval) {

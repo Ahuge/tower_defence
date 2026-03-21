@@ -101,7 +101,7 @@ export class ItemShopPanel {
 
     // Hero stats
     const statsText = this.scene.add.text(8, y,
-      `HP: ${this.hero.hp}/${this.hero.maxHp}  DMG: ${this.hero.getEffectiveDamage()}  SPD: ${Math.round(this.hero.getEffectiveSpeed())}`,
+      `HP: ${this.hero.hp}/${this.hero.maxHp}  DMG: ${this.hero.getEffectiveDamage()}  AS: ${this.hero.getEffectiveAttackSpeed().toFixed(2)}/s`,
       { fontSize: '11px', color: '#888888', fontFamily: 'monospace' }
     );
     this.container.add(statsText);
