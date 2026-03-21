@@ -157,8 +157,8 @@ export class ArenaManager {
           size: creep.size,
         });
         if (this.graveyard.length > 10) this.graveyard.shift();
-        // 5% gold for arena kills (10x creeps = need low per-kill reward)
-        let gold = Math.round(this.economy.getKillGold() * 0.05);
+        // Arena kill gold: 0.33x of base kill gold
+        let gold = Math.round(this.economy.getKillGold() * 0.33);
         // Soul Harvester bonus (sum across accessories)
         gold += this.hero.accSum('goldPerKill');
         if (gold > 0) {
@@ -196,6 +196,23 @@ export class ArenaManager {
       }
       this.hero.pendingMeteor = null;
     }
+
+    // Process splash attacks
+    for (const splash of this.hero.pendingSplash) {
+      this.effects.push(FX.aoeBlast(splash.x, splash.y, splash.radius, 0xff8844));
+      for (const creep of this.arenaCreeps) {
+        if (!creep.alive) continue;
+        const dx = creep.x - splash.x;
+        const dy = creep.y - splash.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= splash.radius) {
+          creep.takeDamage(splash.damage);
+          this.hero.totalDamageDealt += splash.damage;
+          this.hero.pendingDamageNumbers.push({ x: creep.x, y: creep.y - 10, text: String(splash.damage), color: '#ff8844', duration: 0.6 });
+          if (!creep.alive) this.hero.kills++;
+        }
+      }
+    }
+    this.hero.pendingSplash.length = 0;
 
     // Process chain lightning
     if (this.hero.pendingChainLightning) {
@@ -275,7 +292,7 @@ export class ArenaManager {
     }
   }
 
-  spawnArenaCreep(data: ArenaCreepData): void {
+  spawnArenaCreep(data: ArenaCreepData, waveSpawned: boolean = false): void {
     // Spawn at left edge of arena, random Y
     const x = this.arenaX + 20;
     const y = 30 + Math.random() * (this.arenaHeight - 60);
@@ -293,6 +310,7 @@ export class ArenaManager {
       data.size,
       this.arenaX + this.arenaWidth,
     );
+    creep.isWaveSpawned = waveSpawned;
     this.arenaCreeps.push(creep);
   }
 
@@ -319,7 +337,7 @@ export class ArenaManager {
         const isBoss = group.creepType === 'boss';
 
         this.scene.time.delayedCall(delay, () => {
-          this.spawnArenaCreep({ hp, speed, isBoss, color, size });
+          this.spawnArenaCreep({ hp, speed, isBoss, color, size }, true);
         });
         spawned++;
       }

@@ -22,6 +22,11 @@ Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has 
 - **Elite Arena Events**: Special enemies at wave milestones. Shield Guardian (wave 10, 8x HP, shields nearby creeps every 8s), Base Charger (wave 20, 12x HP, ignores hero and rushes base), Necromancer (wave 30, 6x HP, resurrects dead creeps every 5s). Orange indicator, 100 XP each.
 - **Accessories with Rotating Shop**: 1 accessory slot, 12 accessories total. 3 random offers rotate every 5 waves. Actives use T key (Healing Potion, Phase Boots, Battle Horn). Passives include lifesteal, frost slow, chain lightning, berserker scaling, guardian angel revive, thorns reflect, bonus gold per kill. Buying replaces current accessory.
 
+### Hero Level Cap Removed & AoE Accessories
+- **No max hero level**: Heroes can now level indefinitely past 15. Each level still queues an upgrade point.
+- **3 new splash accessories**: Cleave Axe (900g, 40% splash in 50px), Inferno Blade (1400g, 60% in 70px), Tempest Hammer (2000g, 80% in 90px). Attacks deal % of damage as AoE around the target with an expanding ring VFX.
+- **Arena kill gold**: All arena kills now give 0.33x base kill gold (unified for leaked and wave-spawned creeps).
+
 ### Ability Visual Effects
 - **Full VFX system** for hero abilities: expanding rings for AoE, dash trails, teleport flashes, stun impacts, meteor impacts with shockwaves, chain lightning bolts, execute flashes, buff rings, and death mark detonation effects.
 - New `ArenaEffects.ts` module with 7 effect types (circle_expand, circle_pulse, flash, dash_trail, ring, lightning, shockwave), each with proper fade-out and animation.

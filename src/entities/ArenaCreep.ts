@@ -16,6 +16,8 @@ export class ArenaCreep {
 
   // Elite type (null = normal creep)
   eliteType: string | null = null;
+  // Wave-spawned creeps (not leaked) get reduced gold
+  isWaveSpawned: boolean = false;
 
   // Status effects
   stunned: number = 0;   // seconds remaining

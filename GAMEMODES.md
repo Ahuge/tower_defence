@@ -196,6 +196,9 @@ Up to 3 accessory slots with a rotating shop. 3 random accessories offered, rota
 | Scout Lens | 700g | +30% crit damage |
 | Thorns Mail | 1000g | Reflect 15% damage taken to attackers |
 | Soul Harvester | 1500g | +2 gold per arena kill |
+| Cleave Axe | 900g | Attacks splash 40% dmg in 50px |
+| Inferno Blade | 1400g | Attacks splash 60% dmg in 70px |
+| Tempest Hammer | 2000g | Attacks splash 80% dmg in 90px |
 
 ### Strategy Tips
 - Build a tight maze to slow creeps — tower damage now carries into the arena, so towers matter more.

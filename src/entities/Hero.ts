@@ -53,7 +53,7 @@ export class Hero {
   // Leveling
   level: number = 1;
   xp: number = 0;
-  static readonly MAX_LEVEL = 15;
+  static readonly MAX_LEVEL = 999; // effectively uncapped
   static readonly ULTIMATE_UNLOCK_LEVEL = 6;
   pendingUpgrades: number = 0; // queued upgrade choices
   abilityUpgrades: number[] = [0, 0, 0, 0]; // Q, W, E, R upgrade counts
@@ -88,6 +88,8 @@ export class Hero {
   pendingMeteor: { damage: number; radius: number } | null = null;
   // Pending chain lightning (processed by ArenaManager)
   pendingChainLightning: { x: number; y: number; damage: number } | null = null;
+  // Pending splash attacks (processed by ArenaManager)
+  pendingSplash: { x: number; y: number; radius: number; damage: number }[] = [];
   // Pending reflect damage (processed by ArenaManager on attacking creeps)
   pendingReflectDamage: number = 0;
 
@@ -464,6 +466,16 @@ export class Hero {
         x: target.x, y: target.y,
         damage: this.accSum('chainLightningDmg') || 30,
       };
+    }
+    // Splash AoE (use best equipped)
+    const splashRadius = this.accSum('splashRadius');
+    const splashPct = this.accSum('splashPct');
+    if (splashRadius > 0 && splashPct > 0) {
+      this.pendingSplash.push({
+        x: target.x, y: target.y,
+        radius: splashRadius,
+        damage: Math.round(dmg * splashPct),
+      });
     }
   }
 

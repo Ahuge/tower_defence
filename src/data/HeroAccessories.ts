@@ -27,6 +27,8 @@ export interface AccessoryDef {
   critDmgBonus?: number;      // Scout Lens: +crit damage multiplier
   reflectPct?: number;        // Thorns Mail
   goldPerKill?: number;       // Soul Harvester
+  splashRadius?: number;      // Cleave/splash AoE radius in pixels
+  splashPct?: number;         // % of attack damage dealt as splash (0-1)
 }
 
 export const ACCESSORIES: AccessoryDef[] = [
@@ -134,6 +136,34 @@ export const ACCESSORIES: AccessoryDef[] = [
     description: '+2 gold per arena kill',
     passive: true,
     goldPerKill: 2,
+  },
+  // === SPLASH / AOE ===
+  {
+    id: 'cleave_axe',
+    name: 'Cleave Axe',
+    cost: 900,
+    description: 'Attacks splash 40% dmg in 50px',
+    passive: true,
+    splashRadius: 50,
+    splashPct: 0.4,
+  },
+  {
+    id: 'inferno_blade',
+    name: 'Inferno Blade',
+    cost: 1400,
+    description: 'Attacks splash 60% dmg in 70px',
+    passive: true,
+    splashRadius: 70,
+    splashPct: 0.6,
+  },
+  {
+    id: 'tempest_hammer',
+    name: 'Tempest Hammer',
+    cost: 2000,
+    description: 'Attacks splash 80% dmg in 90px',
+    passive: true,
+    splashRadius: 90,
+    splashPct: 0.8,
   },
 ];
 
