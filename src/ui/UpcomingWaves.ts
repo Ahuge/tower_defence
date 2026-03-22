@@ -9,7 +9,7 @@ export class UpcomingWaves {
   private autoPlayBtn!: Phaser.GameObjects.Text;
   private autoPlayBg!: Phaser.GameObjects.Graphics;
 
-  static readonly HEIGHT = UIScale.isPhone ? 200 : 80;
+  static readonly HEIGHT = UIScale.isPhone ? 300 : 80;
 
   constructor(scene: Phaser.Scene, onAutoPlayToggle?: () => void) {
     this.scene = scene;
@@ -75,7 +75,7 @@ export class UpcomingWaves {
     this.contentItems = [];
 
     const rh = UIScale.current.rowHeight;
-    let y = UIScale.isPhone ? 22 : 18;
+    let y = UIScale.current.panelContentY;
     for (let i = 0; i < 3; i++) {
       const waveIdx = currentWave + i; // currentWave is 1-indexed after starting
       if (waveIdx >= waves.length) break;

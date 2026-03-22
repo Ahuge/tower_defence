@@ -42,6 +42,13 @@ interface ScaleValues {
   factionCardH: number;  // faction card height
   factionCols: number;   // columns in faction grid
 
+  // Encyclopedia
+  encyclopediaMargin: number;  // left/right margin for encyclopedia content
+  creepCardH: number;          // creep card height in encyclopedia
+
+  // Sidebar panels
+  panelContentY: number;  // Y offset where content starts below panel title
+
   // Touch targets
   minTouchTarget: number;
 }
@@ -75,6 +82,10 @@ const DESKTOP: ScaleValues = {
   factionCardH: 280,
   factionCols: 6,
 
+  encyclopediaMargin: 280,
+  creepCardH: 80,
+
+  panelContentY: 22,
   minTouchTarget: 24,
 };
 
@@ -107,6 +118,10 @@ const PHONE: ScaleValues = {
   factionCardH: 260,
   factionCols: 3,
 
+  encyclopediaMargin: 30,
+  creepCardH: 280,
+
+  panelContentY: 50,
   minTouchTarget: 60,
 };
 

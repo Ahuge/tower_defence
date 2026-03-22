@@ -12,7 +12,7 @@ export class SendPanel {
   private labels: { text: Phaser.GameObjects.Text; opt: SendCreepOption; hotkey: string }[] = [];
   private hotkeyListeners: (() => void)[] = [];
 
-  static readonly HEIGHT = UIScale.isPhone ? 260 : 100;
+  static readonly HEIGHT = UIScale.isPhone ? 450 : 100;
 
   constructor(
     scene: Phaser.Scene,
@@ -61,7 +61,8 @@ export class SendPanel {
     for (let i = 0; i < SEND_OPTIONS.length; i++) {
       const opt = SEND_OPTIONS[i];
       const hotkey = SEND_HOTKEYS[i] || '';
-      const y = 24 + i * rowH;
+      const startY = UIScale.current.panelContentY;
+      const y = startY + i * rowH;
 
       const text = this.scene.add.text(8, y, '', {
         fontSize, color: '#cccccc', fontFamily: 'monospace',
@@ -96,7 +97,7 @@ export class SendPanel {
     // Position unlocked sends first
     let idx = 0;
     for (const l of unlocked) {
-      const y = 24 + idx * rh;
+      const y = (UIScale.current.panelContentY) + idx * rh;
       const cost = getSendCost(l.opt.cost, this.currentWave);
       const income = getSendIncome(l.opt.incomeReward, this.currentWave);
       const tierTag = l.opt.tier >= 2 ? ' T2' : '';
@@ -112,7 +113,7 @@ export class SendPanel {
 
     // Show next unlock hint if any locked sends exist
     for (const l of locked) {
-      const y = 24 + idx * rh;
+      const y = (UIScale.current.panelContentY) + idx * rh;
       l.text.setText(`  ${l.opt.name} — unlocks wave ${l.opt.unlockWave}`);
       l.text.setY(y);
       l.text.setVisible(true);

@@ -64,7 +64,8 @@ export class FrontierPanel {
     });
     this.container.add(title);
 
-    let y = 26;
+    const rh = UIScale.current.rowHeight;
+    let y = UIScale.current.panelContentY;
     for (const building of this.frontier.availableBuildings) {
       const text = this.scene.add.text(8, y, `[Buy] ${building.name} (${building.cost}g)`, {
         fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',
@@ -74,7 +75,7 @@ export class FrontierPanel {
       text.on('pointerdown', () => this.onPurchase(building));
       text.on('pointerover', () => text.setColor('#ffffff'));
       text.on('pointerout', () => text.setColor('#cccccc'));
-      y += 14;
+      y += rh;
 
       const desc = this.scene.add.text(12, y, building.description, {
         fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
@@ -188,7 +189,7 @@ export class FrontierPanel {
       });
       this.container.add(nameText);
       this.ownedItems.push(nameText);
-      y += 14;
+      y += UIScale.current.rowHeight;
 
       // Batch action button
       if (first.def.mechanic === 'overcharge' && activeCount > 0) {
@@ -237,7 +238,7 @@ export class FrontierPanel {
       });
       this.container.add(nameText);
       this.ownedItems.push(nameText);
-      y += 14;
+      y += UIScale.current.rowHeight;
 
       const idx = i;
       if (b.def.mechanic === 'overcharge' && b.dormantWaves === 0) {
