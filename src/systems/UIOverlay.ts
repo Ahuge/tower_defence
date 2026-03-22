@@ -1,6 +1,7 @@
 import { GAME_HEIGHT, getGridOffsetX, getCanvasWidth } from '../config';
 import { ResponsiveManager } from './ResponsiveManager';
 import { UIScale } from './UIScale';
+import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { EventBus } from './EventBus';
 
 export class UIOverlay {
@@ -24,7 +25,11 @@ export class UIOverlay {
     const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
     const cw = getCanvasWidth();
-    const barY = GAME_HEIGHT + 4;
+    // On phone: anchor status bar above the tower bar (near bottom of canvas)
+    const canvasH = ResponsiveManager.canvasHeight();
+    const barY = isPhone
+      ? canvasH - TowerSelectBar.BAR_HEIGHT - 70 - 36 // above tower bar + control bar + margin
+      : GAME_HEIGHT + 4;
 
     // Spread columns evenly across available width
     const col1 = baseX + 8;

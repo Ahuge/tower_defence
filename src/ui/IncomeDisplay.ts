@@ -1,5 +1,6 @@
 import { GAME_HEIGHT, getCanvasWidth } from '../config';
 import { UIScale } from '../systems/UIScale';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { TowerSelectBar } from './TowerSelectBar';
 
 export class IncomeDisplay {
@@ -8,12 +9,15 @@ export class IncomeDisplay {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    // Position in the tower bar area, top-right
-    const barY = GAME_HEIGHT + 28;
-    // Use capped font to fit in tower bar without overlapping buttons
-    this.text = scene.add.text(getCanvasWidth() - 10, barY + 8, '', {
-      fontSize: UIScale.fontCapped(11, 22), color: '#88ff88', fontFamily: 'monospace',
-    }).setDepth(31).setOrigin(1, 0);
+    const isPhone = UIScale.isPhone;
+    const canvasH = ResponsiveManager.canvasHeight();
+    // On phone: own line above status bar. On desktop: in tower bar area top-right.
+    const incY = isPhone
+      ? canvasH - TowerSelectBar.BAR_HEIGHT - 70 - 4
+      : GAME_HEIGHT + 28 + 8;
+    this.text = scene.add.text(isPhone ? 8 : getCanvasWidth() - 10, incY, '', {
+      fontSize: isPhone ? '22px' : '11px', color: '#88ff88', fontFamily: 'monospace',
+    }).setDepth(31).setOrigin(isPhone ? 0 : 1, 0);
   }
 
   update(breakdown: { base: number; sends: number; frontier: number; total: number }): void {

@@ -103,8 +103,8 @@ const PHONE: ScaleValues = {
   diffBtnW: 150,
   diffBtnH: 55,
   modeBtnH: 100,
-  factionCardW: 220,
-  factionCardH: 240,
+  factionCardW: 230,
+  factionCardH: 260,
   factionCols: 3,
 
   minTouchTarget: 60,

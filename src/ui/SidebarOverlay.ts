@@ -23,7 +23,7 @@ export class SidebarOverlay {
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.isPhone = ResponsiveManager.isPhone();
-    this.totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    this.totalH = this.isPhone ? ResponsiveManager.canvasHeight() : GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
     this.panelW = this.isPhone ? ResponsiveManager.canvasWidth() : SIDEBAR_WIDTH;
 
     // Semi-transparent scrim behind sidebar — covers game area

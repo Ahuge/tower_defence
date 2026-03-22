@@ -186,16 +186,17 @@ export class CameraController {
       this.velocityY *= MOMENTUM_FRICTION;
     }
 
-    // Elastic bounds: allow panning so any map edge reaches screen center
+    // Elastic bounds: allow any map edge to reach ~center of screen
     const cam = this.camera;
     const viewW = cam.width / cam.zoom;
     const viewH = cam.height / cam.zoom;
-    const overscrollX = viewW * 0.4; // 40% of viewport past each edge
-    const overscrollY = viewH * 0.3;
-    const minX = -overscrollX;
-    const minY = -overscrollY;
-    const maxX = Math.max(0, this.worldW - viewW) + overscrollX;
-    const maxY = Math.max(0, this.worldH - viewH) + overscrollY;
+    // Allow scrolling half a view past each world edge
+    const padX = viewW * 0.35;
+    const padY = viewH * 0.25;
+    const minX = -padX;
+    const minY = -padY;
+    const maxX = this.worldW - viewW + padX;
+    const maxY = this.worldH - viewH + padY;
 
     // If actively dragging, allow elastic overscroll
     if (this.isPanning) {

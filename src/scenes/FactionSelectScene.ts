@@ -68,19 +68,19 @@ export class FactionSelectScene extends Phaser.Scene {
       card.fillRect(x, y, cardW, 6);
 
       // Name
-      this.add.text(x + cardW / 2, y + (isPhone ? 22 : 22), faction.name, {
-        fontSize: isPhone ? '28px' : '16px', color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 24 : 22), faction.name, {
+        fontSize: isPhone ? '32px' : '16px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Tower count badge
       const tCount = faction.towerIds.length > 0 ? `${faction.towerIds.length} towers` : '6/wave';
-      this.add.text(x + cardW / 2, y + (isPhone ? 52 : 40), tCount, {
-        fontSize: isPhone ? '20px' : '10px', color: '#888888', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 58 : 40), tCount, {
+        fontSize: isPhone ? '22px' : '10px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Description
-      this.add.text(x + 6, y + (isPhone ? 76 : 55), faction.description, {
-        fontSize: isPhone ? '18px' : '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      this.add.text(x + 8, y + (isPhone ? 84 : 55), faction.description, {
+        fontSize: isPhone ? '20px' : '10px', color: '#aaaaaa', fontFamily: 'monospace',
         wordWrap: { width: cardW - 12 },
       });
 
