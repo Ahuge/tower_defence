@@ -6,7 +6,7 @@ import { MapId, MAP_ORDER, MAPS } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
-import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 
 export class LobbyScene extends Phaser.Scene {
   private versus: VersusManager | null = null;
@@ -166,15 +166,15 @@ export class LobbyScene extends Phaser.Scene {
   private showGameSetup(): void {
     this.codeDisplay.setText('');
     const cx = getCanvasWidth() / 2;
-    const isPhone = ResponsiveManager.isPhone();
+    const isPhone = UIScale.isPhone;
 
     // Host picks map + difficulty
     if (this.isHost) {
-      this.add.text(cx, 195, 'Map:', { fontSize: isPhone ? '11px' : '13px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
+      this.add.text(cx, 195, 'Map:', { fontSize: UIScale.fontCapped(13, 11), color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
 
       const mapBtns: { btn: Phaser.GameObjects.Text; id: MapId }[] = [];
-      const mapSpacing = isPhone ? 55 : 80;
-      const mapCols = isPhone ? Math.min(MAP_ORDER.length, Math.floor((getCanvasWidth() - 20) / mapSpacing)) : MAP_ORDER.length;
+      const mapSpacing = isPhone ? 55 : 80; // TODO: centralize in UIScale
+      const mapCols = isPhone ? Math.min(MAP_ORDER.length, Math.floor((getCanvasWidth() - 20) / mapSpacing)) : MAP_ORDER.length; // TODO: centralize in UIScale
       for (let i = 0; i < MAP_ORDER.length; i++) {
         const mid = MAP_ORDER[i];
         const isRandom = mid === 'random';
@@ -184,7 +184,7 @@ export class LobbyScene extends Phaser.Scene {
         const row = Math.floor(i / mapCols);
         const rowStartX = cx - (Math.min(mapCols, MAP_ORDER.length - row * mapCols) * mapSpacing) / 2;
         const btn = this.add.text(rowStartX + col * mapSpacing + mapSpacing / 2, 212 + row * 18, MAPS[mid].name, {
-          fontSize: isPhone ? '10px' : '13px', color: mid === this.selectedMap ? activeColor : inactiveColor, fontFamily: 'monospace',
+          fontSize: UIScale.fontCapped(13, 10), color: mid === this.selectedMap ? activeColor : inactiveColor, fontFamily: 'monospace',
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {
           this.selectedMap = mid;
@@ -198,18 +198,18 @@ export class LobbyScene extends Phaser.Scene {
 
       const mapRows = Math.ceil(MAP_ORDER.length / mapCols);
       const diffLabelY = 230 + (mapRows - 1) * 18;
-      this.add.text(cx, diffLabelY, 'Difficulty:', { fontSize: isPhone ? '11px' : '13px', color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
+      this.add.text(cx, diffLabelY, 'Difficulty:', { fontSize: UIScale.fontCapped(13, 11), color: '#aaaaaa', fontFamily: 'monospace' }).setOrigin(0.5);
 
       const diffs: DifficultyLevel[] = ['easy', 'normal', 'hard', 'insane'];
       const diffColors: Record<string, string> = { easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444', insane: '#ff00ff' };
       const diffBtns: { btn: Phaser.GameObjects.Text; id: DifficultyLevel }[] = [];
-      const diffSpacing = isPhone ? 60 : 80;
+      const diffSpacing = isPhone ? 60 : 80; // TODO: centralize in UIScale
       const diffStartX = cx - (diffs.length * diffSpacing) / 2;
       for (let i = 0; i < diffs.length; i++) {
         const did = diffs[i];
         const isSelected = did === this.selectedDifficulty;
         const btn = this.add.text(diffStartX + i * diffSpacing + diffSpacing / 2, diffLabelY + 18, did.charAt(0).toUpperCase() + did.slice(1), {
-          fontSize: isPhone ? '11px' : '13px', color: isSelected ? diffColors[did] : '#444444', fontFamily: 'monospace',
+          fontSize: UIScale.fontCapped(13, 11), color: isSelected ? diffColors[did] : '#444444', fontFamily: 'monospace',
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         btn.on('pointerdown', () => {
           this.selectedDifficulty = did;
@@ -219,21 +219,21 @@ export class LobbyScene extends Phaser.Scene {
       }
     } else {
       this.add.text(cx, 215, 'Host is choosing map & difficulty...', {
-        fontSize: isPhone ? '12px' : '14px', color: '#888888', fontFamily: 'monospace',
+        fontSize: UIScale.fontCapped(14, 12), color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
     }
 
     // Faction cards
     const factionY = this.isHost ? 275 : 245;
     this.add.text(cx, factionY, 'Pick your faction:', {
-      fontSize: isPhone ? '12px' : '14px', color: '#ffffff', fontFamily: 'monospace',
+      fontSize: UIScale.fontCapped(14, 12), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const playable = FACTION_ORDER;
-    const cardW = isPhone ? 80 : 120;
-    const cardH = isPhone ? 40 : 50;
-    const gap = isPhone ? 4 : 6;
-    const cols = isPhone ? 3 : 6;
+    const cardW = isPhone ? 80 : 120; // TODO: centralize in UIScale
+    const cardH = isPhone ? 40 : 50; // TODO: centralize in UIScale
+    const gap = isPhone ? 4 : 6; // TODO: centralize in UIScale
+    const cols = isPhone ? 3 : 6; // TODO: centralize in UIScale
 
     for (let i = 0; i < playable.length; i++) {
       const fid = playable[i];
@@ -253,13 +253,13 @@ export class LobbyScene extends Phaser.Scene {
       card.lineStyle(2, faction.primaryColor, 0.8);
       card.strokeRect(x, y, cardW, h);
 
-      this.add.text(x + cardW / 2, y + (isPhone ? 12 : 15), faction.name, {
-        fontSize: isPhone ? '10px' : '13px', color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 12 : 15), faction.name, { // TODO: centralize in UIScale
+        fontSize: UIScale.fontCapped(13, 10), color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const tCount = fid === 'random' ? '6/wave' : `${faction.towerIds.length} towers`;
-      this.add.text(x + cardW / 2, y + (isPhone ? 28 : 35), tCount, {
-        fontSize: isPhone ? '9px' : '13px', color: '#888888', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 28 : 35), tCount, { // TODO: centralize in UIScale
+        fontSize: UIScale.fontCapped(13, 9), color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(x + cardW / 2, y + h / 2, cardW, h).setInteractive({ useHandCursor: true });

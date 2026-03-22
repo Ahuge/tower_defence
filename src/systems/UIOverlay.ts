@@ -21,7 +21,7 @@ export class UIOverlay {
     this.livesMode = livesMode;
     const isPhone = UIScale.isPhone;
     // Status bar: use a smaller scale than body text to fit 3 values in a row
-    const fs = isPhone ? '28px' : '16px';
+    const fs = UIScale.fontCapped(16, 28);
     const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
     const cw = getCanvasWidth();

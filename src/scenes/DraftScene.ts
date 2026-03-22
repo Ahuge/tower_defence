@@ -38,20 +38,20 @@ export class DraftScene extends Phaser.Scene {
     const modifiers = getRandomModifiers(3);
     const isPhone = UIScale.isPhone;
 
-    this.add.text(cx, isPhone ? 40 : 60, 'Choose a Modifier', {
-      fontSize: isPhone ? '50px' : '24px', color: '#ffffff', fontFamily: 'monospace',
+    this.add.text(cx, UIScale.y(60), 'Choose a Modifier', {
+      fontSize: UIScale.font(24), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    this.add.text(cx, isPhone ? 90 : 100, 'Pick one to apply for this game', {
-      fontSize: isPhone ? '28px' : '14px', color: '#888888', fontFamily: 'monospace',
+    this.add.text(cx, UIScale.y(100), 'Pick one to apply for this game', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Phone: 2 columns (top row 2, bottom row 1 centered); Desktop: 3 across
     const cols = isPhone ? 2 : 3;
     const w = isPhone ? Math.floor((getCanvasWidth() - 24) / cols - 4) : 180;
-    const h = isPhone ? 180 : 100;
-    const gap = isPhone ? 12 : 20;
-    const startY = isPhone ? 140 : 160;
+    const h = UIScale.y(100);
+    const gap = UIScale.space(10);
+    const startY = UIScale.y(160);
 
     for (let i = 0; i < modifiers.length; i++) {
       const mod = modifiers[i];
@@ -76,12 +76,12 @@ export class DraftScene extends Phaser.Scene {
       card.lineStyle(2, 0xffaa44, 0.8);
       card.strokeRect(x - w / 2, y, w, h);
 
-      this.add.text(x, y + (isPhone ? 25 : 15), mod.name, {
-        fontSize: isPhone ? '30px' : '14px', color: '#ffaa44', fontFamily: 'monospace',
+      this.add.text(x, y + UIScale.y(15), mod.name, {
+        fontSize: UIScale.font(14), color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
-      this.add.text(x, y + (isPhone ? 65 : 45), mod.description, {
-        fontSize: isPhone ? '24px' : '14px', color: '#cccccc', fontFamily: 'monospace',
+      this.add.text(x, y + UIScale.y(45), mod.description, {
+        fontSize: UIScale.font(14), color: '#cccccc', fontFamily: 'monospace',
         wordWrap: { width: w - 20 },
         align: 'center',
       }).setOrigin(0.5, 0);
@@ -120,7 +120,7 @@ export class DraftScene extends Phaser.Scene {
     const skipY = isPhone ? startY + totalRows * (h + gap) + 10 : 300;
 
     this.add.text(cx, skipY, '[ Skip - No modifier ]', {
-      fontSize: isPhone ? '28px' : '14px', color: '#666666', fontFamily: 'monospace',
+      fontSize: UIScale.font(14), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         this.scene.start('GameScene', {
