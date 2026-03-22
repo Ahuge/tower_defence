@@ -1,5 +1,7 @@
 import { TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { Creep } from '../entities/Creep';
+import { UIScale } from '../systems/UIScale';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 export class CreepInfoPanel {
   private scene: Phaser.Scene;
@@ -18,10 +20,24 @@ export class CreepInfoPanel {
     this.bg = scene.add.graphics();
     this.container.add(this.bg);
 
-    this.nameText = scene.add.text(8, 4, '', { fontSize: '14px', color: '#ff8888', fontFamily: 'monospace' });
-    this.statsText = scene.add.text(8, 20, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' });
-    this.effectsText = scene.add.text(8, 48, '', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' });
+    const s = UIScale.current;
+    const pad = s.padding;
+    this.nameText = scene.add.text(pad, pad, '', { fontSize: s.fontHeading, color: '#ff8888', fontFamily: 'monospace' });
+    this.statsText = scene.add.text(pad, pad + UIScale.space(18), '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace' });
+    this.effectsText = scene.add.text(pad, pad + UIScale.space(48), '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.effectsText]);
+
+    // Close button on phone
+    if (UIScale.isPhone) {
+      const closeBtn = scene.add.text(0, 0, '[ Close ]', {
+        fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace',
+        backgroundColor: '#222222', padding: { x: 16, y: 8 },
+      }).setInteractive({ useHandCursor: true });
+      closeBtn.on('pointerdown', () => this.hide());
+      this.container.add(closeBtn);
+      // Position set in refresh() after panel size is known
+      (this as any)._closeBtn = closeBtn;
+    }
   }
 
   show(creep: Creep): void {
@@ -84,25 +100,32 @@ export class CreepInfoPanel {
     this.effectsText.setText(allEffects.length > 0 ? allEffects.join('\n') : 'No effects');
 
     // Panel size
-    const panelW = 280;
-    const panelH = 52 + allEffects.length * 13 + 8;
+    const rh = UIScale.current.rowHeight;
+    const panelW = UIScale.isPhone ? 700 : 280;
+    const panelH = UIScale.space(52) + allEffects.length * rh + UIScale.space(8);
 
-    // Position near creep — screen coords on phone
-    const cam = this.scene.cameras.main;
-    const sx = (c.x - cam.scrollX) * cam.zoom;
-    const sy = (c.y - cam.scrollY) * cam.zoom;
-    const useScreen = cam.zoom !== 1;
-    let px = (useScreen ? sx : c.x) + TILE_SIZE;
-    let py = (useScreen ? sy : c.y) - panelH / 2;
-    if (px + panelW > getCanvasWidth()) px = (useScreen ? sx : c.x) - TILE_SIZE - panelW;
-    if (px < getGridOffsetX()) px = getGridOffsetX();
-    if (py < 0) py = 0;
+    // Position: centered on phone, near creep on desktop
+    if (UIScale.isPhone) {
+      const cw = getCanvasWidth();
+      const ch = ResponsiveManager.canvasHeight();
+      this.container.setPosition((cw - panelW) / 2, (ch - panelH) / 2 - 50);
+    } else {
+      let px = c.x + TILE_SIZE;
+      let py = c.y - panelH / 2;
+      if (px + panelW > getCanvasWidth()) px = c.x - TILE_SIZE - panelW;
+      if (px < getGridOffsetX()) px = getGridOffsetX();
+      if (py < 0) py = 0;
+      this.container.setPosition(px, py);
+    }
 
-    this.container.setPosition(px, py);
+    // Position close button at bottom of panel
+    const closeBtn = (this as any)._closeBtn;
+    if (closeBtn) closeBtn.setPosition(panelW / 2 - 60, panelH - UIScale.space(20));
+
     this.bg.clear();
     this.bg.fillStyle(0x111111, 0.95);
     this.bg.fillRect(0, 0, panelW, panelH);
-    this.bg.lineStyle(1, 0x884444, 1);
+    this.bg.lineStyle(UIScale.isPhone ? 2 : 1, 0x884444, 1);
     this.bg.strokeRect(0, 0, panelW, panelH);
   }
 

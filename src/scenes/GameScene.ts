@@ -536,6 +536,7 @@ export class GameScene extends Phaser.Scene {
       const canvasH = ResponsiveManager.canvasHeight();
       this.cameraCtrl = new CameraController(this, canvasW, canvasH);
       this.inputMgr.setCameraController(this.cameraCtrl);
+      this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
     }
 
     // Versus mode setup
@@ -705,12 +706,16 @@ export class GameScene extends Phaser.Scene {
     for (const child of this.children.list) {
       this.uiCamera.ignore(child);
     }
-    // Note: we do NOT auto-ignore new objects via addedtoscene —
-    // that breaks UI components that rebuild their children (TowerSelectBar).
-    // New game objects (towers, creeps, projectiles) render on both cameras
-    // but are positioned in world space, so they only appear correct on the
-    // main camera. The UI camera shows them too but they're harmless since
-    // they're behind the UI elements at higher depth.
+    // Auto-ignore new GAME objects (depth < 28) from UI camera.
+    // UI objects (depth >= 28) are NOT ignored — they may be rebuilt
+    // by TowerSelectBar etc. and need to stay visible on UI camera.
+    this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
+      if (!this.uiCamera) return;
+      const d = (go as any).depth ?? 0;
+      if (d < 28) {
+        this.uiCamera.ignore(go);
+      }
+    });
 
     // Now explicitly register known UI objects:
     // remove from main camera, add to UI camera
