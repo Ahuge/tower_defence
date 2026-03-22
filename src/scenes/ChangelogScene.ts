@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { getCanvasWidth, GAME_HEIGHT } from '../config';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
+import { getCanvasWidth } from '../config';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
@@ -266,25 +267,25 @@ export class ChangelogScene extends Phaser.Scene {
 
   create(): void {
     const cx = getCanvasWidth() / 2;
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = ResponsiveManager.canvasHeight();
 
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
-    this.add.text(cx, 25, 'CHANGELOG', {
-      fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
+    this.add.text(cx, UIScale.space(25), 'CHANGELOG', {
+      fontSize: UIScale.font(28), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Back button
-    const backBtn = this.add.text(50, 25, '[ Back ]', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    const backBtn = this.add.text(UIScale.space(50), UIScale.space(25), '[ Back ]', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
 
     // Scrollable content
-    const contentY = 65;
-    const contentH = totalH - 75;
-    const marginL = 280;
-    const marginR = 280;
+    const contentY = UIScale.space(65);
+    const contentH = totalH - UIScale.space(75);
+    const marginL = UIScale.space(80);
+    const marginR = UIScale.space(80);
     const contentW = getCanvasWidth() - marginL - marginR;
 
     const mask = this.add.graphics();
@@ -294,23 +295,23 @@ export class ChangelogScene extends Phaser.Scene {
     const container = this.add.container(0, contentY);
     container.setMask(maskGeo);
 
-    let y = 10; // top spacer
+    let y = UIScale.space(10); // top spacer
     for (const section of CHANGELOG_ENTRIES) {
       const header = this.add.text(cx, y, section.version, {
-        fontSize: '16px', color: '#ffaa44', fontFamily: 'monospace',
+        fontSize: UIScale.font(16), color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
       container.add(header);
-      y += 24;
+      y += UIScale.space(24);
 
       for (const change of section.changes) {
         const text = this.add.text(marginL, y, `• ${change}`, {
-          fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
+          fontSize: UIScale.font(11), color: '#cccccc', fontFamily: 'monospace',
           wordWrap: { width: contentW },
         });
         container.add(text);
-        y += text.height + 6;
+        y += text.height + UIScale.space(6);
       }
-      y += 16;
+      y += UIScale.space(16);
     }
 
     this.contentHeight = y;

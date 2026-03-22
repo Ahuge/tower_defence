@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
-import { getCanvasWidth, GAME_HEIGHT, TILE_SIZE } from '../config';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
+import { getCanvasWidth, TILE_SIZE } from '../config';
 import { TOWER_TYPES, TowerType } from '../data/TowerTypes';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { FACTIONS, FACTION_ORDER, FactionId } from '../data/Factions';
 import { FRONTIER_BUILDINGS } from '../data/FrontierBuildings';
 import { FACTION_LORE, TOWER_LORE, CREEP_LORE } from '../data/Lore';
 import { HERO_ORDER, HERO_TYPES, HeroId } from '../data/HeroTypes';
+import { UIScale } from '../systems/UIScale';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 type Tab = 'factions' | 'towers' | 'creeps' | 'heroes';
 
@@ -33,16 +34,17 @@ export class EncyclopediaScene extends Phaser.Scene {
 
   create(): void {
     const cx = getCanvasWidth() / 2;
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = ResponsiveManager.canvasHeight();
+    const phone = UIScale.isPhone;
 
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
-    this.add.text(cx, 20, 'ENCYCLOPEDIA', {
-      fontSize: '24px', color: '#ffffff', fontFamily: 'monospace',
+    this.add.text(cx, phone ? 30 : 20, 'ENCYCLOPEDIA', {
+      fontSize: UIScale.font(24), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const backBtn = this.add.text(50, 20, '[ Back ]', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    const backBtn = this.add.text(phone ? 20 : 50, phone ? 30 : 20, '[ Back ]', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
 
@@ -53,14 +55,23 @@ export class EncyclopediaScene extends Phaser.Scene {
       { label: 'Heroes', tab: 'heroes' },
     ];
 
-    const tabY = 48;
-    const tabW = 130;
+    const tabY = phone ? 70 : 48;
+    const tabW = phone ? getCanvasWidth() / tabs.length : 130;
+    const tabH = UIScale.current.minTouchTarget;
     const tabStartX = cx - (tabs.length * tabW) / 2;
     for (let i = 0; i < tabs.length; i++) {
       const t = tabs[i];
       const tx = tabStartX + i * tabW + tabW / 2;
+      // Draw tab background on phone for bigger touch target
+      if (phone) {
+        const bg = this.add.graphics();
+        bg.fillStyle(t.tab === this.activeTab ? 0x332211 : 0x111118, 1);
+        bg.fillRect(tabStartX + i * tabW, tabY - tabH / 2, tabW - 2, tabH);
+        bg.lineStyle(1, 0x333344, 0.5);
+        bg.strokeRect(tabStartX + i * tabW, tabY - tabH / 2, tabW - 2, tabH);
+      }
       const text = this.add.text(tx, tabY, `[ ${t.label} ]`, {
-        fontSize: '14px', color: t.tab === this.activeTab ? '#ffaa44' : '#666666',
+        fontSize: UIScale.font(14), color: t.tab === this.activeTab ? '#ffaa44' : '#666666',
         fontFamily: 'monospace',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
       text.on('pointerdown', () => {
@@ -79,8 +90,8 @@ export class EncyclopediaScene extends Phaser.Scene {
       for (const tid of FACTIONS[fid].towerIds) this.allTowerIds.push(tid);
     }
 
-    const contentY = 68;
-    const contentH = totalH - 78;
+    const contentY = phone ? tabY + tabH / 2 + 10 : 68;
+    const contentH = totalH - contentY - 10;
     const mask = this.add.graphics();
     mask.fillRect(0, contentY, getCanvasWidth(), contentH);
     const maskGeo = mask.createGeometryMask();
@@ -97,7 +108,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         -(this.contentHeight - contentH + 40),
         0,
       );
-      this.contentContainer.setY(68 + this.scrollY);
+      this.contentContainer.setY(contentY + this.scrollY);
     });
 
     // Touch drag scrolling (for non-carousel tabs)
@@ -115,7 +126,7 @@ export class EncyclopediaScene extends Phaser.Scene {
         -(this.contentHeight - contentH + 40),
         0,
       );
-      this.contentContainer.setY(68 + this.scrollY);
+      this.contentContainer.setY(contentY + this.scrollY);
     });
     this.input.on('pointerup', () => { this.isDragging = false; });
   }
@@ -126,10 +137,16 @@ export class EncyclopediaScene extends Phaser.Scene {
     }
   }
 
+  private getContentY(): number {
+    const phone = UIScale.isPhone;
+    const tabH = UIScale.current.minTouchTarget;
+    return phone ? (70 + tabH / 2 + 10) : 68;
+  }
+
   private rebuildContent(): void {
     this.contentContainer.removeAll(true);
     this.scrollY = 0;
-    this.contentContainer.setY(68);
+    this.contentContainer.setY(this.getContentY());
 
     switch (this.activeTab) {
       case 'factions': this.buildFactionsTab(); break;
@@ -142,13 +159,14 @@ export class EncyclopediaScene extends Phaser.Scene {
   // ===================== FACTIONS TAB (CAROUSEL) =====================
   private buildFactionsTab(): void {
     const cx = getCanvasWidth() / 2;
+    const phone = UIScale.isPhone;
     const fid = this.playableFactions[this.factionIndex];
     const faction = FACTIONS[fid];
     if (!faction) return;
 
     // Navigation
-    const prevBtn = this.add.text(40, 10, '< Prev', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    const prevBtn = this.add.text(phone ? 20 : 40, 10, '< Prev', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
     prevBtn.on('pointerdown', () => {
       this.factionIndex = (this.factionIndex - 1 + this.playableFactions.length) % this.playableFactions.length;
@@ -156,8 +174,8 @@ export class EncyclopediaScene extends Phaser.Scene {
     });
     this.contentContainer.add(prevBtn);
 
-    const nextBtn = this.add.text(getCanvasWidth() - 40, 10, 'Next >', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    const nextBtn = this.add.text(getCanvasWidth() - (phone ? 20 : 40), 10, 'Next >', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
     nextBtn.on('pointerdown', () => {
       this.factionIndex = (this.factionIndex + 1) % this.playableFactions.length;
@@ -166,7 +184,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.contentContainer.add(nextBtn);
 
     const counter = this.add.text(cx, 12, `${this.factionIndex + 1} / ${this.playableFactions.length}`, {
-      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+      fontSize: UIScale.font(12), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.contentContainer.add(counter);
 
@@ -174,102 +192,150 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Faction name + tower count
     const header = this.add.text(cx, y, faction.name, {
-      fontSize: '22px', color: '#ffaa44', fontFamily: 'monospace',
+      fontSize: UIScale.font(22), color: '#ffaa44', fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.contentContainer.add(header);
-    y += 24;
+    y += phone ? 50 : 24;
 
     const tCount = this.add.text(cx, y, `${faction.towerIds.length} towers`, {
-      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(10), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.contentContainer.add(tCount);
-    y += 18;
+    y += phone ? 36 : 18;
 
-    // Content margins — narrower centered card
-    const marginL = 280;
-    const marginR = 280;
+    // Content margins — narrower centered card (much smaller margins on phone)
+    const marginL = phone ? 30 : 280;
+    const marginR = phone ? 30 : 280;
     const contentW = getCanvasWidth() - marginL - marginR;
 
     // Lore paragraph
     const lore = FACTION_LORE[fid] ?? faction.description;
     const loreText = this.add.text(marginL, y, lore, {
-      fontSize: '10px', color: '#999999', fontFamily: 'monospace',
+      fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
       wordWrap: { width: contentW },
-      lineSpacing: 3,
+      lineSpacing: phone ? 8 : 3,
     });
     this.contentContainer.add(loreText);
-    y += loreText.height + 16;
+    y += loreText.height + (phone ? 30 : 16);
 
-    // Tower table
-    const colX = [marginL, marginL + 120, marginL + 170, marginL + 220, marginL + 280, marginL + 350];
-    const headers = ['Tower', 'Cost', 'DMG', 'Range', 'Upgrades', 'Key Traits'];
-    for (let i = 0; i < headers.length; i++) {
-      const h = this.add.text(colX[i], y, headers[i], {
-        fontSize: '10px', color: '#666666', fontFamily: 'monospace',
-      });
-      this.contentContainer.add(h);
-    }
-    y += 14;
+    // Tower table — on phone show simplified stacked layout
+    if (phone) {
+      // Stacked layout for phone: each tower as a mini card
+      for (const tid of faction.towerIds) {
+        const t = TOWER_TYPES[tid];
+        if (!t) continue;
+        const traits = this.summarizeTraits(t);
+        const upgCount = t.upgrades.length > 0 ? `${t.upgrades.length} lvl` : 'none';
 
-    for (const tid of faction.towerIds) {
-      const t = TOWER_TYPES[tid];
-      if (!t) continue;
-      const traits = this.summarizeTraits(t);
-      const upgCount = t.upgrades.length > 0 ? `${t.upgrades.length} lvl` : 'none';
-      const vals = [
-        t.name + (t.ultimate ? ' *' : ''),
-        `${t.cost}g`,
-        t.damage > 0 ? `${t.damage}` : '-',
-        `${t.range}`,
-        upgCount,
-        traits,
-      ];
-      for (let i = 0; i < vals.length; i++) {
-        const txt = this.add.text(colX[i], y, vals[i], {
-          fontSize: '10px', color: t.ultimate ? '#ffdd44' : '#cccccc',
-          fontFamily: 'monospace',
-          wordWrap: i === 5 ? { width: getCanvasWidth() - marginR - colX[5] } : undefined,
+        const nameStr = t.name + (t.ultimate ? ' *' : '');
+        const nameT = this.add.text(marginL, y, nameStr, {
+          fontSize: UIScale.font(12), color: t.ultimate ? '#ffdd44' : '#ffffff', fontFamily: 'monospace',
         });
-        this.contentContainer.add(txt);
+        this.contentContainer.add(nameT);
+        y += 32;
+
+        const statsStr = `${t.cost}g | DMG: ${t.damage > 0 ? t.damage : '-'} | RNG: ${t.range} | Upg: ${upgCount}`;
+        const statsT = this.add.text(marginL + 10, y, statsStr, {
+          fontSize: UIScale.font(9), color: '#aaaaaa', fontFamily: 'monospace',
+        });
+        this.contentContainer.add(statsT);
+        y += 26;
+
+        if (traits && traits !== '-') {
+          const traitsT = this.add.text(marginL + 10, y, traits, {
+            fontSize: UIScale.font(9), color: '#888888', fontFamily: 'monospace',
+            wordWrap: { width: contentW - 20 },
+          });
+          this.contentContainer.add(traitsT);
+          y += traitsT.height + 8;
+        }
+
+        const tLore = TOWER_LORE[tid];
+        if (tLore) {
+          const fl = this.add.text(marginL + 10, y, tLore, {
+            fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
+            fontStyle: 'italic',
+            wordWrap: { width: contentW - 20 },
+          });
+          this.contentContainer.add(fl);
+          y += fl.height + 12;
+        } else {
+          y += 8;
+        }
       }
-
-      // Tower flavor text on next line
-      const tLore = TOWER_LORE[tid];
-      if (tLore) {
-        y += 14;
-        const fl = this.add.text(colX[0] + 10, y, tLore, {
-          fontSize: '10px', color: '#666666', fontFamily: 'monospace',
-          fontStyle: 'italic',
-          wordWrap: { width: contentW - 20 },
+    } else {
+      // Desktop: table layout
+      const colX = [marginL, marginL + 120, marginL + 170, marginL + 220, marginL + 280, marginL + 350];
+      const headers = ['Tower', 'Cost', 'DMG', 'Range', 'Upgrades', 'Key Traits'];
+      for (let i = 0; i < headers.length; i++) {
+        const h = this.add.text(colX[i], y, headers[i], {
+          fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
         });
-        this.contentContainer.add(fl);
-        y += fl.height + 4;
-      } else {
-        y += 15;
+        this.contentContainer.add(h);
+      }
+      y += 14;
+
+      for (const tid of faction.towerIds) {
+        const t = TOWER_TYPES[tid];
+        if (!t) continue;
+        const traits = this.summarizeTraits(t);
+        const upgCount = t.upgrades.length > 0 ? `${t.upgrades.length} lvl` : 'none';
+        const vals = [
+          t.name + (t.ultimate ? ' *' : ''),
+          `${t.cost}g`,
+          t.damage > 0 ? `${t.damage}` : '-',
+          `${t.range}`,
+          upgCount,
+          traits,
+        ];
+        for (let i = 0; i < vals.length; i++) {
+          const txt = this.add.text(colX[i], y, vals[i], {
+            fontSize: UIScale.font(10), color: t.ultimate ? '#ffdd44' : '#cccccc',
+            fontFamily: 'monospace',
+            wordWrap: i === 5 ? { width: getCanvasWidth() - marginR - colX[5] } : undefined,
+          });
+          this.contentContainer.add(txt);
+        }
+
+        // Tower flavor text on next line
+        const tLore = TOWER_LORE[tid];
+        if (tLore) {
+          y += 14;
+          const fl = this.add.text(colX[0] + 10, y, tLore, {
+            fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
+            fontStyle: 'italic',
+            wordWrap: { width: contentW - 20 },
+          });
+          this.contentContainer.add(fl);
+          y += fl.height + 4;
+        } else {
+          y += 15;
+        }
       }
     }
 
     // Frontier buildings
     const buildings = FRONTIER_BUILDINGS[fid];
     if (buildings && buildings.length > 0) {
-      y += 8;
+      y += phone ? 16 : 8;
       const fLabel = this.add.text(marginL, y, 'FRONTIER BUILDINGS', {
-        fontSize: '11px', color: '#888844', fontFamily: 'monospace',
+        fontSize: UIScale.font(11), color: '#888844', fontFamily: 'monospace',
       });
       this.contentContainer.add(fLabel);
-      y += 16;
+      y += phone ? 36 : 16;
       for (const b of buildings) {
-        const bText = this.add.text(marginL + 20, y, `${b.name} (${b.cost}g) — ${b.mechanic}`, {
-          fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+        const bText = this.add.text(marginL + (phone ? 10 : 20), y, `${b.name} (${b.cost}g) — ${b.mechanic}`, {
+          fontSize: UIScale.font(10), color: '#aaaaaa', fontFamily: 'monospace',
+          wordWrap: phone ? { width: contentW - 20 } : undefined,
         });
         this.contentContainer.add(bText);
-        y += 14;
-        const bDesc = this.add.text(marginL + 40, y, b.description, {
-          fontSize: '9px', color: '#777777', fontFamily: 'monospace',
-          wordWrap: { width: contentW - 60 },
+        y += phone ? bText.height + 8 : 14;
+        const bDesc = this.add.text(marginL + (phone ? 20 : 40), y, b.description, {
+          fontSize: UIScale.font(9), color: '#777777', fontFamily: 'monospace',
+          wordWrap: { width: contentW - (phone ? 30 : 60) },
         });
         this.contentContainer.add(bDesc);
-        y += bDesc.height + 6;
+        y += bDesc.height + (phone ? 12 : 6);
       }
     }
 
@@ -291,6 +357,7 @@ export class EncyclopediaScene extends Phaser.Scene {
   // ===================== TOWERS CAROUSEL =====================
   private buildTowersCarousel(): void {
     const cx = getCanvasWidth() / 2;
+    const phone = UIScale.isPhone;
     const tid = this.allTowerIds[this.towerIndex];
     const t = TOWER_TYPES[tid];
     if (!t) return;
@@ -298,8 +365,8 @@ export class EncyclopediaScene extends Phaser.Scene {
     const faction = FACTIONS[t.faction as FactionId];
 
     // Navigation
-    const prevBtn = this.add.text(40, 10, '< Prev', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    const prevBtn = this.add.text(phone ? 20 : 40, 10, '< Prev', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
     prevBtn.on('pointerdown', () => {
       this.towerIndex = (this.towerIndex - 1 + this.allTowerIds.length) % this.allTowerIds.length;
@@ -307,8 +374,8 @@ export class EncyclopediaScene extends Phaser.Scene {
     });
     this.contentContainer.add(prevBtn);
 
-    const nextBtn = this.add.text(getCanvasWidth() - 40, 10, 'Next >', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    const nextBtn = this.add.text(getCanvasWidth() - (phone ? 20 : 40), 10, 'Next >', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
     nextBtn.on('pointerdown', () => {
       this.towerIndex = (this.towerIndex + 1) % this.allTowerIds.length;
@@ -317,66 +384,86 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.contentContainer.add(nextBtn);
 
     const counter = this.add.text(cx, 12, `${this.towerIndex + 1} / ${this.allTowerIds.length}`, {
-      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+      fontSize: UIScale.font(12), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.contentContainer.add(counter);
 
     // Tower title card
     let y = 35;
     const factionLabel = this.add.text(cx, y, faction?.name ?? '', {
-      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(10), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.contentContainer.add(factionLabel);
-    y += 16;
+    y += phone ? 32 : 16;
 
     const nameText = this.add.text(cx, y, t.name + (t.ultimate ? ' [ULTIMATE]' : ''), {
-      fontSize: '22px', color: t.ultimate ? '#ffdd44' : '#ffffff', fontFamily: 'monospace',
+      fontSize: UIScale.font(22), color: t.ultimate ? '#ffdd44' : '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.contentContainer.add(nameText);
-    y += 28;
+    y += phone ? 56 : 28;
 
     // Tower icon (colored square)
+    const iconSz = phone ? 50 : 30;
     const iconG = this.add.graphics();
     iconG.fillStyle(t.color, 1);
-    iconG.fillRect(cx - 15, y, 30, 30);
+    iconG.fillRect(cx - iconSz / 2, y, iconSz, iconSz);
     iconG.lineStyle(2, 0xffffff, 0.3);
-    iconG.strokeRect(cx - 15, y, 30, 30);
+    iconG.strokeRect(cx - iconSz / 2, y, iconSz, iconSz);
     this.contentContainer.add(iconG);
-    y += 40;
+    y += iconSz + 10;
 
     // Flavor text
     const lore = TOWER_LORE[tid] ?? t.description;
+    const loreWrapW = phone ? getCanvasWidth() - 80 : getCanvasWidth() - 560;
     const loreText = this.add.text(cx, y, `"${lore}"`, {
-      fontSize: '10px', color: '#999999', fontFamily: 'monospace',
+      fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
       fontStyle: 'italic',
-      wordWrap: { width: getCanvasWidth() - 560 },
+      wordWrap: { width: loreWrapW },
       align: 'center',
     }).setOrigin(0.5, 0);
     this.contentContainer.add(loreText);
-    y += loreText.height + 16;
+    y += loreText.height + (phone ? 24 : 16);
 
-    // Stats
-    const statsLines = [
-      `Cost: ${t.cost}g  |  Damage: ${t.damage}  |  Range: ${t.range}  |  Fire Rate: ${t.fireRate < 90000 ? t.fireRate + 'ms' : 'N/A'}`,
-      `Damage Type: ${t.damageType}  |  Projectile Speed: ${t.projectileSpeed || 'N/A'}`,
-      `Traits: ${this.summarizeTraits(t) || 'None'}`,
-    ];
-    for (const line of statsLines) {
-      const st = this.add.text(cx, y, line, {
-        fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      this.contentContainer.add(st);
-      y += 16;
+    // Stats — on phone, stack vertically instead of long single lines
+    const lineGap = phone ? 32 : 16;
+    if (phone) {
+      const statPairs = [
+        `Cost: ${t.cost}g  |  Damage: ${t.damage}`,
+        `Range: ${t.range}  |  Fire Rate: ${t.fireRate < 90000 ? t.fireRate + 'ms' : 'N/A'}`,
+        `Damage Type: ${t.damageType}  |  Proj Speed: ${t.projectileSpeed || 'N/A'}`,
+        `Traits: ${this.summarizeTraits(t) || 'None'}`,
+      ];
+      for (const line of statPairs) {
+        const st = this.add.text(cx, y, line, {
+          fontSize: UIScale.font(11), color: '#cccccc', fontFamily: 'monospace',
+          wordWrap: { width: getCanvasWidth() - 80 }, align: 'center',
+        }).setOrigin(0.5, 0);
+        this.contentContainer.add(st);
+        y += st.height + 8;
+      }
+    } else {
+      const statsLines = [
+        `Cost: ${t.cost}g  |  Damage: ${t.damage}  |  Range: ${t.range}  |  Fire Rate: ${t.fireRate < 90000 ? t.fireRate + 'ms' : 'N/A'}`,
+        `Damage Type: ${t.damageType}  |  Projectile Speed: ${t.projectileSpeed || 'N/A'}`,
+        `Traits: ${this.summarizeTraits(t) || 'None'}`,
+      ];
+      for (const line of statsLines) {
+        const st = this.add.text(cx, y, line, {
+          fontSize: UIScale.font(11), color: '#cccccc', fontFamily: 'monospace',
+        }).setOrigin(0.5);
+        this.contentContainer.add(st);
+        y += lineGap;
+      }
     }
-    y += 8;
+    y += phone ? 16 : 8;
 
     // Upgrades
     if (t.upgrades.length > 0) {
       const upgHeader = this.add.text(cx, y, `UPGRADES (${t.upgrades.length} levels)`, {
-        fontSize: '13px', color: '#ffaa44', fontFamily: 'monospace',
+        fontSize: UIScale.font(13), color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
       this.contentContainer.add(upgHeader);
-      y += 18;
+      y += phone ? 40 : 18;
 
       let prevDmg = t.damage, prevRange = t.range, prevRate = t.fireRate;
       for (const upg of t.upgrades) {
@@ -387,19 +474,19 @@ export class EncyclopediaScene extends Phaser.Scene {
         const diffStr = diffs.length > 0 ? diffs.join(', ') : 'No stat change';
 
         const upgText = this.add.text(cx, y, `Lv${upg.level} (${upg.cost}g): ${diffStr}`, {
-          fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+          fontSize: UIScale.font(10), color: '#aaaaaa', fontFamily: 'monospace',
         }).setOrigin(0.5, 0);
         this.contentContainer.add(upgText);
-        y += 14;
+        y += phone ? 30 : 14;
 
         prevDmg = upg.damage; prevRange = upg.range; prevRate = upg.fireRate;
       }
     } else {
       const noUpg = this.add.text(cx, y, 'No upgrades available', {
-        fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+        fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
       }).setOrigin(0.5);
       this.contentContainer.add(noUpg);
-      y += 14;
+      y += phone ? 30 : 14;
     }
 
     // Keyboard navigation
@@ -419,36 +506,37 @@ export class EncyclopediaScene extends Phaser.Scene {
 
   // ===================== CREEPS TAB =====================
   private buildCreepsTab(): void {
+    const phone = UIScale.isPhone;
     let y = 0;
-    const marginL = 280;
-    const marginR = 280;
+    const marginL = phone ? 20 : 280;
+    const marginR = phone ? 20 : 280;
     const cardW = getCanvasWidth() - marginL - marginR;
 
     for (const [id, ct] of Object.entries(CREEP_TYPES)) {
-      const cardH = 80;
+      const cardH = phone ? 200 : 80;
       const cardY = y;
 
       // Background card
       const cardBg = this.add.graphics();
       cardBg.fillStyle(0x151520, 1);
-      cardBg.fillRect(marginL - 40, cardY, cardW + 80, cardH);
+      cardBg.fillRect(marginL - (phone ? 10 : 40), cardY, cardW + (phone ? 20 : 80), cardH);
       cardBg.lineStyle(1, 0x333344, 0.6);
-      cardBg.strokeRect(marginL - 40, cardY, cardW + 80, cardH);
+      cardBg.strokeRect(marginL - (phone ? 10 : 40), cardY, cardW + (phone ? 20 : 80), cardH);
       this.contentContainer.add(cardBg);
 
       // Creep icon (colored circle)
-      const iconX = marginL - 10;
-      const iconY = cardY + cardH / 2;
-      const iconSize = ct.id === 'boss' ? 18 : (ct.size ?? 1) * 14;
+      const iconX = marginL + (phone ? 20 : -10);
+      const iconY = cardY + (phone ? 30 : cardH / 2);
+      const iconSize = ct.id === 'boss' ? (phone ? 24 : 18) : (ct.size ?? 1) * (phone ? 20 : 14);
       const iconG = this.add.graphics();
       iconG.fillStyle(ct.color, 1);
       iconG.fillCircle(iconX, iconY, iconSize);
       this.contentContainer.add(iconG);
 
-      // Stats (left of center)
-      const statsX = marginL + 20;
-      const nameText = this.add.text(statsX, cardY + 6, ct.name, {
-        fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
+      // Stats
+      const statsX = marginL + (phone ? 50 : 20);
+      const nameText = this.add.text(statsX, cardY + (phone ? 10 : 6), ct.name, {
+        fontSize: UIScale.font(14), color: '#ffffff', fontFamily: 'monospace',
       });
       this.contentContainer.add(nameText);
 
@@ -473,29 +561,54 @@ export class EncyclopediaScene extends Phaser.Scene {
         ct.count > 1 ? `Swarm (x${ct.count})` : 'Normal';
 
       const statsStr = `HP: ${ct.hpMultiplier}x  |  SPD: ${ct.speedMultiplier}x  |  Armor: ${ct.armor}  |  ${spawn}`;
-      const statsText = this.add.text(statsX, cardY + 24, statsStr, {
-        fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace',
+      const statsYOff = phone ? 44 : 24;
+      const statsText = this.add.text(phone ? marginL + 10 : statsX, cardY + statsYOff, statsStr, {
+        fontSize: UIScale.font(11), color: '#aaaaaa', fontFamily: 'monospace',
+        wordWrap: phone ? { width: cardW - 20 } : undefined,
       });
       this.contentContainer.add(statsText);
 
-      const traitsText = this.add.text(statsX, cardY + 40, `Traits: ${traits}`, {
-        fontSize: '10px', color: '#888888', fontFamily: 'monospace',
-        wordWrap: { width: cardW * 0.45 },
+      const traitsYOff = phone ? 80 : 40;
+      const traitsText = this.add.text(phone ? marginL + 10 : statsX, cardY + traitsYOff, `Traits: ${traits}`, {
+        fontSize: UIScale.font(10), color: '#888888', fontFamily: 'monospace',
+        wordWrap: { width: phone ? cardW - 20 : cardW * 0.45 },
       });
       this.contentContainer.add(traitsText);
 
-      // Flavor text (right side of card)
+      // Flavor text — on phone below traits, on desktop right side
       const lore = CREEP_LORE[id] ?? ct.description;
-      const flavorX = marginL + cardW * 0.5;
-      const flavor = this.add.text(flavorX, cardY + 8, lore, {
-        fontSize: '10px', color: '#777777', fontFamily: 'monospace',
-        fontStyle: 'italic',
-        wordWrap: { width: cardW * 0.45 },
-        lineSpacing: 3,
-      });
-      this.contentContainer.add(flavor);
-
-      y += cardH + 8;
+      if (phone) {
+        const flavorYOff = traitsYOff + traitsText.height + 12;
+        const flavor = this.add.text(marginL + 10, cardY + flavorYOff, lore, {
+          fontSize: UIScale.font(9), color: '#777777', fontFamily: 'monospace',
+          fontStyle: 'italic',
+          wordWrap: { width: cardW - 20 },
+          lineSpacing: 6,
+        });
+        this.contentContainer.add(flavor);
+        // Adjust card height to fit content
+        const actualH = flavorYOff + flavor.height + 16;
+        if (actualH > cardH) {
+          cardBg.clear();
+          cardBg.fillStyle(0x151520, 1);
+          cardBg.fillRect(marginL - 10, cardY, cardW + 20, actualH);
+          cardBg.lineStyle(1, 0x333344, 0.6);
+          cardBg.strokeRect(marginL - 10, cardY, cardW + 20, actualH);
+          y += actualH + 12;
+        } else {
+          y += cardH + 12;
+        }
+      } else {
+        const flavorX = marginL + cardW * 0.5;
+        const flavor = this.add.text(flavorX, cardY + 8, lore, {
+          fontSize: UIScale.font(10), color: '#777777', fontFamily: 'monospace',
+          fontStyle: 'italic',
+          wordWrap: { width: cardW * 0.45 },
+          lineSpacing: 3,
+        });
+        this.contentContainer.add(flavor);
+        y += cardH + 8;
+      }
     }
 
     this.contentHeight = y;
@@ -563,12 +676,14 @@ export class EncyclopediaScene extends Phaser.Scene {
 
   private buildHeroesCarousel(): void {
     const cx = getCanvasWidth() / 2;
+    const phone = UIScale.isPhone;
     const heroId = HERO_ORDER[this.heroIndex];
     const hero = HERO_TYPES[heroId];
 
     // Navigation arrows
-    const leftArr = this.add.text(60, 200, '<', {
-      fontSize: '40px', color: '#888888', fontFamily: 'monospace',
+    const arrowY = phone ? 160 : 200;
+    const leftArr = this.add.text(phone ? 20 : 60, arrowY, '<', {
+      fontSize: UIScale.font(40), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     leftArr.on('pointerdown', () => {
       this.heroIndex = (this.heroIndex - 1 + HERO_ORDER.length) % HERO_ORDER.length;
@@ -576,8 +691,8 @@ export class EncyclopediaScene extends Phaser.Scene {
     });
     this.contentContainer.add(leftArr);
 
-    const rightArr = this.add.text(getCanvasWidth() - 60, 200, '>', {
-      fontSize: '40px', color: '#888888', fontFamily: 'monospace',
+    const rightArr = this.add.text(getCanvasWidth() - (phone ? 20 : 60), arrowY, '>', {
+      fontSize: UIScale.font(40), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     rightArr.on('pointerdown', () => {
       this.heroIndex = (this.heroIndex + 1) % HERO_ORDER.length;
@@ -587,12 +702,12 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Counter
     this.contentContainer.add(this.add.text(cx, 8, `${this.heroIndex + 1} / ${HERO_ORDER.length}`, {
-      fontSize: '12px', color: '#666666', fontFamily: 'monospace',
+      fontSize: UIScale.font(12), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5));
 
     // Hero diamond icon
-    const iconY = 50;
-    const iconSize = 22;
+    const iconY = phone ? 60 : 50;
+    const iconSize = phone ? 32 : 22;
     const g = this.add.graphics();
     g.fillStyle(hero.color, 1);
     g.beginPath();
@@ -613,19 +728,23 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.contentContainer.add(g);
 
     // Name
-    this.contentContainer.add(this.add.text(cx, iconY + 30, hero.name, {
-      fontSize: '22px', color: '#ffffff', fontFamily: 'monospace',
+    const nameYOff = phone ? 44 : 30;
+    this.contentContainer.add(this.add.text(cx, iconY + nameYOff, hero.name, {
+      fontSize: UIScale.font(22), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5));
 
     // Description
-    this.contentContainer.add(this.add.text(cx, iconY + 55, hero.description, {
-      fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
-      wordWrap: { width: 500 }, align: 'center',
+    const descYOff = phone ? 78 : 55;
+    const descWrap = phone ? getCanvasWidth() - 80 : 500;
+    this.contentContainer.add(this.add.text(cx, iconY + descYOff, hero.description, {
+      fontSize: UIScale.font(12), color: '#aaaaaa', fontFamily: 'monospace',
+      wordWrap: { width: descWrap }, align: 'center',
     }).setOrigin(0.5, 0));
 
     // Stats block
-    const statsX = cx - 200;
-    let y = iconY + 85;
+    const statsX = phone ? 40 : cx - 200;
+    const valOffset = phone ? 250 : 150;
+    let y = iconY + (phone ? 130 : 85);
 
     const statLines = [
       ['HP', String(hero.hp), '#44ff44'],
@@ -635,64 +754,84 @@ export class EncyclopediaScene extends Phaser.Scene {
       ['Move Speed', String(hero.moveSpeed), '#44ff88'],
     ];
 
+    const statRowH = phone ? 36 : 18;
     for (const [label, val, col] of statLines) {
       this.contentContainer.add(this.add.text(statsX, y, `${label}:`, {
-        fontSize: '13px', color: '#888888', fontFamily: 'monospace',
+        fontSize: UIScale.font(13), color: '#888888', fontFamily: 'monospace',
       }));
-      this.contentContainer.add(this.add.text(statsX + 150, y, val, {
-        fontSize: '13px', color: col, fontFamily: 'monospace',
+      this.contentContainer.add(this.add.text(statsX + valOffset, y, val, {
+        fontSize: UIScale.font(13), color: col, fontFamily: 'monospace',
       }));
-      y += 18;
+      y += statRowH;
     }
 
     // Abilities
-    y += 10;
+    y += phone ? 20 : 10;
     this.contentContainer.add(this.add.text(statsX, y, 'ABILITIES', {
-      fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
+      fontSize: UIScale.font(14), color: '#ffaa44', fontFamily: 'monospace',
     }));
-    y += 22;
+    y += phone ? 44 : 22;
 
+    const cdOffset = phone ? getCanvasWidth() - 200 : statsX + 350;
     for (const ab of hero.abilities) {
       this.contentContainer.add(this.add.text(statsX, y, `[${ab.key}] ${ab.name}`, {
-        fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+        fontSize: UIScale.font(13), color: '#ffffff', fontFamily: 'monospace',
       }));
-      y += 16;
-      this.contentContainer.add(this.add.text(statsX + 16, y, `${ab.description}`, {
-        fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace',
-      }));
-      this.contentContainer.add(this.add.text(statsX + 350, y, `${ab.cooldown}s cd`, {
-        fontSize: '11px', color: '#666666', fontFamily: 'monospace',
-      }));
-      y += 18;
+      y += phone ? 34 : 16;
+      const descText = this.add.text(statsX + (phone ? 20 : 16), y, `${ab.description}`, {
+        fontSize: UIScale.font(11), color: '#aaaaaa', fontFamily: 'monospace',
+        wordWrap: phone ? { width: getCanvasWidth() - 100 } : undefined,
+      });
+      this.contentContainer.add(descText);
+      if (!phone) {
+        this.contentContainer.add(this.add.text(cdOffset, y, `${ab.cooldown}s cd`, {
+          fontSize: UIScale.font(11), color: '#666666', fontFamily: 'monospace',
+        }));
+      } else {
+        y += descText.height + 4;
+        this.contentContainer.add(this.add.text(statsX + 20, y, `${ab.cooldown}s cooldown`, {
+          fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
+        }));
+      }
+      y += phone ? 32 : 18;
     }
 
     // Ultimate
     if (hero.ultimate) {
-      y += 6;
+      y += phone ? 12 : 6;
       this.contentContainer.add(this.add.text(statsX, y, 'ULTIMATE (unlocks Lv.6)', {
-        fontSize: '14px', color: '#cc66ff', fontFamily: 'monospace',
+        fontSize: UIScale.font(14), color: '#cc66ff', fontFamily: 'monospace',
       }));
-      y += 22;
+      y += phone ? 44 : 22;
       this.contentContainer.add(this.add.text(statsX, y, `[R] ${hero.ultimate.name}`, {
-        fontSize: '13px', color: '#cc66ff', fontFamily: 'monospace',
+        fontSize: UIScale.font(13), color: '#cc66ff', fontFamily: 'monospace',
       }));
-      y += 16;
-      this.contentContainer.add(this.add.text(statsX + 16, y, hero.ultimate.description, {
-        fontSize: '11px', color: '#aa88aa', fontFamily: 'monospace',
-      }));
-      this.contentContainer.add(this.add.text(statsX + 350, y, `${hero.ultimate.cooldown}s cd`, {
-        fontSize: '11px', color: '#666666', fontFamily: 'monospace',
-      }));
-      y += 18;
+      y += phone ? 34 : 16;
+      const ultDesc = this.add.text(statsX + (phone ? 20 : 16), y, hero.ultimate.description, {
+        fontSize: UIScale.font(11), color: '#aa88aa', fontFamily: 'monospace',
+        wordWrap: phone ? { width: getCanvasWidth() - 100 } : undefined,
+      });
+      this.contentContainer.add(ultDesc);
+      if (!phone) {
+        this.contentContainer.add(this.add.text(cdOffset, y, `${hero.ultimate.cooldown}s cd`, {
+          fontSize: UIScale.font(11), color: '#666666', fontFamily: 'monospace',
+        }));
+      } else {
+        y += ultDesc.height + 4;
+        this.contentContainer.add(this.add.text(statsX + 20, y, `${hero.ultimate.cooldown}s cooldown`, {
+          fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
+        }));
+      }
+      y += phone ? 32 : 18;
     }
 
     // Playstyle hint
-    y += 12;
+    y += phone ? 20 : 12;
     const rangeType = hero.attackRange <= 50 ? 'Melee' : 'Ranged';
     const speedTier = hero.moveSpeed >= 170 ? 'Fast' : hero.moveSpeed >= 140 ? 'Medium' : 'Slow';
     const hpTier = hero.hp >= 400 ? 'Tanky' : hero.hp >= 300 ? 'Medium' : 'Squishy';
     this.contentContainer.add(this.add.text(cx, y, `${rangeType} | ${speedTier} | ${hpTier}`, {
-      fontSize: '12px', color: '#555555', fontFamily: 'monospace',
+      fontSize: UIScale.font(12), color: '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5));
   }
 }

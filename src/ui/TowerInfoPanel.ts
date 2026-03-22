@@ -30,11 +30,12 @@ export class TowerInfoPanel {
 
     const s = UIScale.current;
     const pad = s.padding;
+    const lineH = s.rowHeight + 8; // generous line spacing
     this.nameText = scene.add.text(pad, pad, '', { fontSize: s.fontHeading, color: '#ffdd44', fontFamily: 'monospace' });
-    this.statsText = scene.add.text(pad, pad + UIScale.space(18), '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace' });
-    this.buffText = scene.add.text(pad, pad + UIScale.space(32), '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
-    this.traitsText = scene.add.text(pad, pad + UIScale.space(46), '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
-    this.upgradeText = scene.add.text(pad, pad + UIScale.space(62), '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
+    this.statsText = scene.add.text(pad, pad + lineH, '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace', lineSpacing: 6 });
+    this.buffText = scene.add.text(pad, pad + lineH * 4, '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
+    this.traitsText = scene.add.text(pad, pad + lineH * 5, '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
+    this.upgradeText = scene.add.text(pad, pad + lineH * 6, '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.buffText, this.traitsText, this.upgradeText]);
 
     // Action buttons
@@ -147,9 +148,10 @@ export class TowerInfoPanel {
     }
     this.traitsText.setText(traitNames.length > 0 ? traitNames.join(', ') : '');
 
-    // Upgrade info
-    let upgradeY = 50 + (traitNames.length > 0 ? 14 : 0);
-    this.upgradeText.setPosition(8, upgradeY + (buffs.length > 0 ? 14 : 0));
+    // Upgrade info — position below traits with generous spacing
+    const rh = UIScale.current.rowHeight + 8;
+    let upgradeY = rh * 7 + (traitNames.length > 0 ? rh : 0);
+    this.upgradeText.setPosition(UIScale.current.padding, upgradeY + (buffs.length > 0 ? rh : 0));
 
     if (tower.canUpgrade()) {
       const next = tower.typeDef.upgrades[tower.level - 1];
@@ -168,10 +170,11 @@ export class TowerInfoPanel {
       this.upgradeText.setText(`MAX | Sell: ${tower.getSellValue()}g (right-click)`);
     }
 
-    // Position action buttons
-    const btnY = upgradeY + (buffs.length > 0 ? 14 : 0) + 30;
-    this.upgradeBtn.setPosition(8, btnY);
-    this.sellBtn.setPosition(120, btnY);
+    // Position action buttons below upgrade text
+    const s2 = UIScale.current;
+    const btnY = upgradeY + (buffs.length > 0 ? s2.rowHeight : 0) + s2.rowHeight * 2;
+    this.upgradeBtn.setPosition(s2.padding, btnY);
+    this.sellBtn.setPosition(UIScale.space(140), btnY);
     this.upgradeBtn.setVisible(tower.canUpgrade());
 
     // Calculate panel size

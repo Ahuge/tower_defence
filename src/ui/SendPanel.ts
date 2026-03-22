@@ -12,7 +12,7 @@ export class SendPanel {
   private labels: { text: Phaser.GameObjects.Text; opt: SendCreepOption; hotkey: string }[] = [];
   private hotkeyListeners: (() => void)[] = [];
 
-  static readonly HEIGHT = 100;
+  static readonly HEIGHT = UIScale.isPhone ? 260 : 100;
 
   constructor(
     scene: Phaser.Scene,

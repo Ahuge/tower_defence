@@ -4,6 +4,7 @@ import { ITEM_SLOTS, ITEM_SLOT_ORDER, ItemSlot } from '../data/HeroItems';
 import { EconomyManager } from '../systems/EconomyManager';
 import { ArenaManager } from '../systems/ArenaManager';
 import { UIScale } from '../systems/UIScale';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { EventLog } from './EventLog';
 
 export class ItemShopPanel {
@@ -37,7 +38,7 @@ export class ItemShopPanel {
 
   private buildPanel(): void {
     const panelW = getSidebarWidth();
-    const panelH = 440;
+    const panelH = UIScale.isPhone ? ResponsiveManager.canvasHeight() - 200 : 440;
 
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x111118, 1);

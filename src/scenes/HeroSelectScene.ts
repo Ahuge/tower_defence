@@ -44,7 +44,7 @@ export class HeroSelectScene extends Phaser.Scene {
 
   create(): void {
     const cx = getCanvasWidth() / 2;
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = ResponsiveManager.canvasHeight();
 
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
@@ -274,9 +274,22 @@ export class HeroSelectScene extends Phaser.Scene {
     selBtn.on('pointerover', () => selBtn.setColor('#ffffff'));
     selBtn.on('pointerout', () => selBtn.setColor('#44ff44'));
 
-    // Prev/Next arrows
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    // Swipe detection + Prev/Next arrows
+    const ph_totalH = ResponsiveManager.canvasHeight();
     if (this.phoneOffered.length > 1) {
+      // Swipe gesture
+      let swipeStartX = 0;
+      this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { swipeStartX = p.x; });
+      this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+        const dx = p.x - swipeStartX;
+        if (Math.abs(dx) > 60) {
+          this.phoneCardIndex = dx < 0
+            ? (this.phoneCardIndex + 1) % this.phoneOffered.length
+            : (this.phoneCardIndex - 1 + this.phoneOffered.length) % this.phoneOffered.length;
+          this.scene.restart();
+        }
+      });
+
       const prevBtn = this.add.text(20, y + cardH / 2, '<', {
         fontSize: UIScale.font(30), color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -294,9 +307,10 @@ export class HeroSelectScene extends Phaser.Scene {
       });
 
       // Dots indicator
+      const dotSpacing = UIScale.space(15);
       for (let i = 0; i < this.phoneOffered.length; i++) {
         const dotColor = i === this.phoneCardIndex ? '#ffffff' : '#444444';
-        this.add.text(cx - 10 + i * 15, totalH - 30, '●', {
+        this.add.text(cx - dotSpacing + i * dotSpacing, ph_totalH - UIScale.space(30), '●', {
           fontSize: UIScale.font(12), color: dotColor, fontFamily: 'monospace',
         }).setOrigin(0.5);
       }
