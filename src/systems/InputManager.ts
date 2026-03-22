@@ -47,7 +47,9 @@ export class InputManager {
     });
 
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.leftButtonDown() && this.rawClickCallback) {
+      const isLeftOrTouch = pointer.leftButtonDown() || pointer.wasTouch;
+
+      if (isLeftOrTouch && this.rawClickCallback) {
         this.rawClickCallback(pointer.x, pointer.y);
       }
 
@@ -57,7 +59,11 @@ export class InputManager {
       }
 
       const coord = this.pointerToGrid(pointer);
-      if (pointer.leftButtonDown()) {
+      // On touch, trigger hover on tap so build preview shows
+      if (pointer.wasTouch && coord && this.hoverCallback) {
+        this.hoverCallback(coord.col, coord.row);
+      }
+      if (isLeftOrTouch) {
         if (coord && this.clickCallback) {
           this.clickCallback(coord.col, coord.row);
         } else if (!coord && this.clickMissCallback) {
