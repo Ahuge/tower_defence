@@ -58,6 +58,7 @@ import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
 import { GameControlBar } from '../ui/GameControlBar';
+import { CameraController } from '../systems/CameraController';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -100,6 +101,8 @@ export class GameScene extends Phaser.Scene {
   arenaManager: ArenaManager | null = null;
   abilitySystem: AbilitySystem | null = null;
   private controlBar: GameControlBar | null = null;
+  private cameraCtrl: CameraController | null = null;
+  private uiCamera: Phaser.Cameras.Scene2D.Camera | null = null;
   heroId: HeroId | null = null;
   layout!: LayoutConfig;
   gridOffsetY: number = 0;
@@ -524,6 +527,14 @@ export class GameScene extends Phaser.Scene {
         () => this.cycleSpeed(),
         () => this.togglePause(),
       );
+    }
+
+    // Phone: pinch-to-zoom + pan on the game world
+    if (ResponsiveManager.isPhone()) {
+      const canvasW = getCanvasWidth();
+      const canvasH = ResponsiveManager.canvasHeight();
+      this.cameraCtrl = new CameraController(this, canvasW, canvasH);
+      this.inputMgr.setCameraController(this.cameraCtrl);
     }
 
     // Versus mode setup

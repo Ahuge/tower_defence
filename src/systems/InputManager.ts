@@ -1,5 +1,6 @@
 import { GRID_COLS, GRID_ROWS, pixelToCol, pixelToRow, getGridCols } from '../config';
 import { EventBus } from './EventBus';
+import { CameraController } from './CameraController';
 
 export interface GridCoord {
   col: number;
@@ -19,6 +20,7 @@ export class InputManager {
   private spaceCallback: (() => void) | null = null;
   private rawClickCallback: ((x: number, y: number) => void) | null = null;
   private gridRows: number = GRID_ROWS;
+  private cameraCtrl: CameraController | null = null;
 
   // Long-press state for touch
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -49,33 +51,56 @@ export class InputManager {
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       const isLeftOrTouch = pointer.leftButtonDown() || pointer.wasTouch;
 
-      if (isLeftOrTouch && this.rawClickCallback) {
-        this.rawClickCallback(pointer.x, pointer.y);
-      }
-
       // Start long-press detection for touch
       if (pointer.wasTouch) {
         this.startLongPress(pointer);
       }
 
-      const coord = this.pointerToGrid(pointer);
-      // On touch, trigger hover on tap so build preview shows
-      if (pointer.wasTouch && coord && this.hoverCallback) {
-        this.hoverCallback(coord.col, coord.row);
-      }
-      if (isLeftOrTouch) {
-        if (coord && this.clickCallback) {
-          this.clickCallback(coord.col, coord.row);
-        } else if (!coord && this.clickMissCallback) {
-          this.clickMissCallback();
+      // Non-touch: handle immediately
+      if (!pointer.wasTouch) {
+        const wx = pointer.worldX ?? pointer.x;
+        const wy = pointer.worldY ?? pointer.y;
+        if (isLeftOrTouch && this.rawClickCallback) {
+          this.rawClickCallback(wx, wy);
         }
-      } else if (pointer.rightButtonDown() && coord && this.rightClickCallback) {
-        this.rightClickCallback(coord.col, coord.row);
+        const coord = this.pointerToGrid(pointer);
+        if (isLeftOrTouch) {
+          if (coord && this.clickCallback) {
+            this.clickCallback(coord.col, coord.row);
+          } else if (!coord && this.clickMissCallback) {
+            this.clickMissCallback();
+          }
+        } else if (pointer.rightButtonDown() && coord && this.rightClickCallback) {
+          this.rightClickCallback(coord.col, coord.row);
+        }
       }
     });
 
-    scene.input.on('pointerup', () => {
+    // Touch: handle click on pointerup (after pan detection)
+    scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       this.cancelLongPress();
+
+      if (!pointer.wasTouch) return;
+      if (this.longPressFired) return; // was a long-press (right-click)
+      if (this.cameraCtrl?.wasPan) return; // was a pan gesture
+
+      const wx = pointer.worldX ?? pointer.x;
+      const wy = pointer.worldY ?? pointer.y;
+
+      if (this.rawClickCallback) {
+        this.rawClickCallback(wx, wy);
+      }
+
+      const coord = this.pointerToGrid(pointer);
+      // Trigger hover so build preview shows
+      if (coord && this.hoverCallback) {
+        this.hoverCallback(coord.col, coord.row);
+      }
+      if (coord && this.clickCallback) {
+        this.clickCallback(coord.col, coord.row);
+      } else if (!coord && this.clickMissCallback) {
+        this.clickMissCallback();
+      }
     });
 
     scene.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -143,9 +168,17 @@ export class InputManager {
     this.gridRows = rows;
   }
 
+  /** Link camera controller for pan-suppression */
+  setCameraController(ctrl: CameraController): void {
+    this.cameraCtrl = ctrl;
+  }
+
   private pointerToGrid(pointer: Phaser.Input.Pointer): GridCoord | null {
-    const col = pixelToCol(pointer.x);
-    const row = pixelToRow(pointer.y); // pixelToRow already accounts for _gridOffsetY
+    // Use worldX/worldY to account for camera zoom/scroll
+    const wx = pointer.worldX ?? pointer.x;
+    const wy = pointer.worldY ?? pointer.y;
+    const col = pixelToCol(wx);
+    const row = pixelToRow(wy);
     if (col < 0 || col >= getGridCols() || row < 0 || row >= this.gridRows) return null;
     return { col, row };
   }
