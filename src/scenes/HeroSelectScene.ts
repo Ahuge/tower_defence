@@ -7,6 +7,7 @@ import { MapId } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 
 /** Pick N random unique elements from an array */
 function pickRandom<T>(arr: T[], count: number): T[] {
@@ -48,11 +49,11 @@ export class HeroSelectScene extends Phaser.Scene {
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 
     this.add.text(cx, 35, 'Choose Your Hero', {
-      fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
+      fontSize: UIScale.font(28), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     this.add.text(cx, 65, 'Three heroes offered at random — pick wisely', {
-      fontSize: '13px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Pick 3 heroes: guarantee faction hero if non-random faction selected
@@ -212,62 +213,62 @@ export class HeroSelectScene extends Phaser.Scene {
       ? getHeroForFaction(this.faction) : null;
     const isFactionHero = heroId === factionHero;
 
-    const cardW = cw - 40;
-    const cardH = 380;
-    const x = 20;
+    const cardW = cw - 20;
+    const cardH = 480;
+    const x = 10;
     const y = 80;
 
     const card = this.add.graphics();
     this.drawCard(card, x, y, cardW, cardH, hero.color, false);
-    this.drawDiamond(card, x + cardW / 2, y + 30, 14, hero.color);
+    this.drawDiamond(card, x + cardW / 2, y + 35, 18, hero.color);
 
     // Faction tag
     const factionName = FACTIONS[hero.faction as FactionId]?.name ?? hero.faction;
-    this.add.text(x + cardW / 2, y + 50, factionName.toUpperCase(), {
-      fontSize: '9px', color: isFactionHero ? '#ffaa44' : '#555555', fontFamily: 'monospace',
+    this.add.text(x + cardW / 2, y + 58, factionName.toUpperCase(), {
+      fontSize: UIScale.font(11), color: isFactionHero ? '#ffaa44' : '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Name
-    this.add.text(x + cardW / 2, y + 62, hero.name, {
-      fontSize: '18px', color: '#ffffff', fontFamily: 'monospace',
+    this.add.text(x + cardW / 2, y + 76, hero.name, {
+      fontSize: UIScale.font(20), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Description
-    this.add.text(x + cardW / 2, y + 82, hero.description, {
-      fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
-      wordWrap: { width: cardW - 20 }, align: 'center',
+    this.add.text(x + cardW / 2, y + 100, hero.description, {
+      fontSize: UIScale.font(11), color: '#aaaaaa', fontFamily: 'monospace',
+      wordWrap: { width: cardW - 30 }, align: 'center',
     }).setOrigin(0.5, 0);
 
-    // Stats (compact)
-    const statsY = y + 110;
+    // Stats
+    const statsY = y + 130;
     const lines = [
       `HP:${hero.hp}  DMG:${hero.damage}  AS:${hero.attackSpeed}/s`,
       `Range:${hero.attackRange <= 50 ? 'Melee' : hero.attackRange + 'px'}  SPD:${hero.moveSpeed}${hero.baseArmor ? '  ARM:' + hero.baseArmor : ''}`,
     ];
-    this.add.text(x + 12, statsY, lines.join('\n'), {
-      fontSize: '11px', color: '#cccccc', fontFamily: 'monospace', lineSpacing: 4,
+    this.add.text(x + 16, statsY, lines.join('\n'), {
+      fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace', lineSpacing: 6,
     });
 
-    // Abilities (compact)
-    let ay = statsY + 38;
+    // Abilities
+    let ay = statsY + 50;
     for (const ab of hero.abilities) {
-      this.add.text(x + 12, ay, `[${ab.key}] ${ab.name} — ${ab.description} (${ab.cooldown}s)`, {
-        fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
-        wordWrap: { width: cardW - 24 },
+      this.add.text(x + 16, ay, `[${ab.key}] ${ab.name} — ${ab.description} (${ab.cooldown}s)`, {
+        fontSize: UIScale.font(11), color: '#ffffff', fontFamily: 'monospace',
+        wordWrap: { width: cardW - 32 },
       });
-      ay += 24;
+      ay += 30;
     }
     if (hero.ultimate) {
-      this.add.text(x + 12, ay, `[R] ${hero.ultimate.name} — ${hero.ultimate.description} (${hero.ultimate.cooldown}s)`, {
-        fontSize: '10px', color: '#cc66ff', fontFamily: 'monospace',
-        wordWrap: { width: cardW - 24 },
+      this.add.text(x + 16, ay, `[R] ${hero.ultimate.name} — ${hero.ultimate.description} (${hero.ultimate.cooldown}s)`, {
+        fontSize: UIScale.font(11), color: '#cc66ff', fontFamily: 'monospace',
+        wordWrap: { width: cardW - 32 },
       });
     }
 
     // Select button
-    const selBtn = this.add.text(x + cardW / 2, y + cardH - 30, '[ SELECT ]', {
-      fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
-      backgroundColor: '#1a2a1a', padding: { x: 20, y: 6 },
+    const selBtn = this.add.text(x + cardW / 2, y + cardH - 40, '[ SELECT ]', {
+      fontSize: UIScale.font(18), color: '#44ff44', fontFamily: 'monospace',
+      backgroundColor: '#1a2a1a', padding: { x: 30, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     selBtn.on('pointerdown', () => this.selectHero(heroId));
     selBtn.on('pointerover', () => selBtn.setColor('#ffffff'));
@@ -277,7 +278,7 @@ export class HeroSelectScene extends Phaser.Scene {
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
     if (this.phoneOffered.length > 1) {
       const prevBtn = this.add.text(20, y + cardH / 2, '<', {
-        fontSize: '30px', color: '#888888', fontFamily: 'monospace',
+        fontSize: UIScale.font(30), color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
       prevBtn.on('pointerdown', () => {
         this.phoneCardIndex = (this.phoneCardIndex - 1 + this.phoneOffered.length) % this.phoneOffered.length;
@@ -285,7 +286,7 @@ export class HeroSelectScene extends Phaser.Scene {
       });
 
       const nextBtn = this.add.text(cw - 20, y + cardH / 2, '>', {
-        fontSize: '30px', color: '#888888', fontFamily: 'monospace',
+        fontSize: UIScale.font(30), color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
       nextBtn.on('pointerdown', () => {
         this.phoneCardIndex = (this.phoneCardIndex + 1) % this.phoneOffered.length;

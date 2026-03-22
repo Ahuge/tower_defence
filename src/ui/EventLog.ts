@@ -1,4 +1,5 @@
 import { SIDEBAR_WIDTH, GAME_HEIGHT } from '../config';
+import { UIScale } from '../systems/UIScale';
 import { TowerSelectBar } from './TowerSelectBar';
 
 const MAX_LINES = 12;
@@ -28,14 +29,14 @@ export class EventLog {
 
     // Title
     const title = scene.add.text(8, 4, 'EVENT LOG', {
-      fontSize: '10px', color: '#666688', fontFamily: 'monospace',
+      fontSize: UIScale.font(10), color: '#666688', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     // Log text
     this.textObj = scene.add.text(8, 20, '', {
-      fontSize: '10px', color: '#999999', fontFamily: 'monospace',
-      lineSpacing: 2,
+      fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
+      lineSpacing: UIScale.isPhone ? 4 : 2,
       wordWrap: { width: SIDEBAR_WIDTH - 16 },
     });
     this.container.add(this.textObj);

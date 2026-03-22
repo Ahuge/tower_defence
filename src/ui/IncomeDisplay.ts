@@ -1,4 +1,5 @@
 import { GAME_HEIGHT, getCanvasWidth } from '../config';
+import { UIScale } from '../systems/UIScale';
 import { TowerSelectBar } from './TowerSelectBar';
 
 export class IncomeDisplay {
@@ -10,7 +11,7 @@ export class IncomeDisplay {
     // Position in the tower bar area, top-right
     const barY = GAME_HEIGHT + 28;
     this.text = scene.add.text(getCanvasWidth() - 10, barY + 8, '', {
-      fontSize: '11px', color: '#88ff88', fontFamily: 'monospace',
+      fontSize: UIScale.font(11), color: '#88ff88', fontFamily: 'monospace',
     }).setDepth(31).setOrigin(1, 0);
   }
 

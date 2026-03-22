@@ -1,6 +1,6 @@
 import { SIDEBAR_WIDTH } from '../config';
 import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../data/SendCreepTypes';
-import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 
 const SEND_HOTKEYS = ['Z', 'X', 'C', 'V', '1', '2', '3', '4'];
 
@@ -46,19 +46,18 @@ export class SendPanel {
     this.container.add(bg);
 
     const title = this.scene.add.text(8, 6, 'SENDS', {
-      fontSize: '13px', color: '#ff8844', fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color: '#ff8844', fontFamily: 'monospace',
     });
     this.container.add(title);
 
-    const subtitle = this.scene.add.text(60, 7, '(between waves)', {
-      fontSize: '13px', color: '#666666', fontFamily: 'monospace',
+    const subtitle = this.scene.add.text(UIScale.isPhone ? 80 : 60, 7, '(between waves)', {
+      fontSize: UIScale.font(13), color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(subtitle);
 
     this.labels = [];
-    const isPhone = ResponsiveManager.isPhone();
-    const rowH = isPhone ? 26 : 17;
-    const fontSize = isPhone ? '13px' : '10px';
+    const rowH = UIScale.current.rowHeight;
+    const fontSize = UIScale.font(10);
     for (let i = 0; i < SEND_OPTIONS.length; i++) {
       const opt = SEND_OPTIONS[i];
       const hotkey = SEND_HOTKEYS[i] || '';
@@ -92,11 +91,12 @@ export class SendPanel {
     // Partition into unlocked and locked
     const unlocked = this.labels.filter(l => this.currentWave >= l.opt.unlockWave);
     const locked = this.labels.filter(l => this.currentWave < l.opt.unlockWave);
+    const rh = UIScale.current.rowHeight;
 
     // Position unlocked sends first
     let idx = 0;
     for (const l of unlocked) {
-      const y = 24 + idx * 14;
+      const y = 24 + idx * rh;
       const cost = getSendCost(l.opt.cost, this.currentWave);
       const income = getSendIncome(l.opt.incomeReward, this.currentWave);
       const tierTag = l.opt.tier >= 2 ? ' T2' : '';
@@ -112,7 +112,7 @@ export class SendPanel {
 
     // Show next unlock hint if any locked sends exist
     for (const l of locked) {
-      const y = 24 + idx * 14;
+      const y = 24 + idx * rh;
       l.text.setText(`  ${l.opt.name} — unlocks wave ${l.opt.unlockWave}`);
       l.text.setY(y);
       l.text.setVisible(true);
@@ -121,7 +121,7 @@ export class SendPanel {
     }
 
     // Resize panel height dynamically
-    const neededH = Math.max(SendPanel.HEIGHT, 28 + idx * 14);
+    const neededH = Math.max(SendPanel.HEIGHT, 28 + idx * rh);
     if (neededH !== this._currentH) {
       this._currentH = neededH;
       // Redraw background

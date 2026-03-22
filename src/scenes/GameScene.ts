@@ -690,7 +690,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Create a UI camera that renders HUD elements at 1x zoom, no scroll.
-   *  Main camera ignores HUD objects; UI camera ignores game objects. */
+   *  Main camera ignores known UI objects; UI camera ignores everything else. */
   private setupUiCamera(): void {
     const canvasW = getCanvasWidth();
     const canvasH = ResponsiveManager.canvasHeight();
@@ -698,29 +698,63 @@ export class GameScene extends Phaser.Scene {
     this.uiCamera.setScroll(0, 0);
     this.uiCamera.setName('ui');
 
-    // Split all existing children by depth:
-    // depth < 28 = game world (ignore from UI camera)
-    // depth >= 28 = UI (ignore from main camera)
     const mainCam = this.cameras.main;
-    for (const child of this.children.list) {
-      const d = (child as any).depth ?? 0;
-      if (d >= 28) {
-        mainCam.ignore(child);
-      } else {
-        this.uiCamera.ignore(child);
-      }
-    }
 
-    // Auto-categorize newly added objects
+    // UI camera ignores ALL objects by default
+    for (const child of this.children.list) {
+      this.uiCamera.ignore(child);
+    }
+    // New objects also default to game-only
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
-      if (!this.uiCamera) return;
-      const d = (go as any).depth ?? 0;
-      if (d >= 28) {
-        mainCam.ignore(go);
-      } else {
-        this.uiCamera.ignore(go);
-      }
+      if (this.uiCamera) this.uiCamera.ignore(go);
     });
+
+    // Now explicitly register known UI objects:
+    // remove from main camera, add to UI camera
+    const uiObjects = this.collectUiObjects();
+    for (const obj of uiObjects) {
+      mainCam.ignore(obj);
+      // Clear the UI camera's ignore bit so it renders this object
+      obj.cameraFilter &= ~this.uiCamera.id;
+    }
+  }
+
+  /** Collect all known UI game objects that should be fixed on screen */
+  private collectUiObjects(): Phaser.GameObjects.GameObject[] {
+    const objs: Phaser.GameObjects.GameObject[] = [];
+    // UIOverlay — individual text objects
+    const uiAny = this.ui as any;
+    for (const key of ['goldText', 'livesText', 'waveText', 'statusText', 'speedText', 'waveBtn', 'speedBtn', 'seedText']) {
+      if (uiAny[key]) objs.push(uiAny[key]);
+    }
+    // Tower select bar (container + tooltip)
+    if (this.towerBar) {
+      objs.push((this.towerBar as any).container);
+      objs.push((this.towerBar as any).tooltip);
+    }
+    // Info panels
+    if (this.towerInfo) objs.push((this.towerInfo as any).container);
+    if (this.creepInfo) objs.push((this.creepInfo as any).container);
+    // Game control bar
+    if (this.controlBar) {
+      const cb = this.controlBar as any;
+      if (cb.graphics) objs.push(cb.graphics);
+      for (const btn of (cb.buttons ?? [])) { if (btn.zone) objs.push(btn.zone); }
+      for (const lbl of (cb.labels ?? [])) objs.push(lbl);
+    }
+    // Sidebar overlay
+    if (this.sidebarOverlay) {
+      const so = this.sidebarOverlay as any;
+      if (so.container) objs.push(so.container);
+      if (so.scrim) objs.push(so.scrim);
+      if (so.toggleBtn) objs.push(so.toggleBtn);
+    }
+    // Income display
+    if (this.incomeDisplay) {
+      const id = this.incomeDisplay as any;
+      if (id.text) objs.push(id.text);
+    }
+    return objs.filter(Boolean);
   }
 
   // === Selection Mode Management ===

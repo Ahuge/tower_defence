@@ -47,6 +47,8 @@ export class CameraController {
 
   /** True if the last pointer interaction was a pan (suppress click) */
   wasPan: boolean = false;
+  /** True if currently in a pinch gesture */
+  pinching: boolean = false;
 
   constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number) {
     this.scene = scene;
@@ -88,6 +90,8 @@ export class CameraController {
       // Pinch-to-zoom: two fingers
       if (input.pointer1.isDown && input.pointer2.isDown) {
         this.isPanning = false;
+        this.pinching = true;
+        this.wasPan = true; // suppress click after pinch
         const p1 = input.pointer1;
         const p2 = input.pointer2;
         const dist = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
@@ -146,6 +150,7 @@ export class CameraController {
       }
       this.isPanning = false;
       this.pinchStartDist = 0;
+      this.pinching = false;
       // Momentum continues in update()
     });
   }

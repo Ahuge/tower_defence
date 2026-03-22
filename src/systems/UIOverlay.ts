@@ -1,5 +1,6 @@
 import { GAME_HEIGHT, getGridOffsetX, getCanvasWidth } from '../config';
 import { ResponsiveManager } from './ResponsiveManager';
+import { UIScale } from './UIScale';
 import { EventBus } from './EventBus';
 
 export class UIOverlay {
@@ -17,18 +18,18 @@ export class UIOverlay {
 
   constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives') {
     this.livesMode = livesMode;
-    const isPhone = ResponsiveManager.isPhone();
-    const fs = isPhone ? '14px' : '16px';
+    const isPhone = UIScale.isPhone;
+    const fs = UIScale.font(16);
     const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
     const cw = getCanvasWidth();
     const barY = GAME_HEIGHT + 4;
 
-    // Compact layout for phone: tighter spacing
+    // Wider spacing on phone to accommodate bigger text
     const col1 = baseX + 8;
-    const col2 = isPhone ? baseX + 100 : baseX + 160;
-    const col3 = isPhone ? baseX + 210 : baseX + 300;
-    const col4 = isPhone ? baseX + 320 : baseX + 480;
+    const col2 = isPhone ? baseX + 130 : baseX + 160;
+    const col3 = isPhone ? baseX + 270 : baseX + 300;
+    const col4 = isPhone ? baseX + 400 : baseX + 480;
 
     this.goldText = scene.add.text(col1, barY, '', uiStyle).setDepth(30);
     this.livesText = scene.add.text(col2, barY, '', uiStyle).setDepth(30);
@@ -61,9 +62,9 @@ export class UIOverlay {
     this.speedBtn.on('pointerout', () => this.speedBtn.setAlpha(1));
     if (isPhone) this.speedBtn.setVisible(false);
 
-    // Seed display (shown for random maps)
+    // Seed display — hidden on phone (doesn't fit), smaller on desktop
     this.seedText = scene.add.text(cw - 8, 4, '', {
-      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+      fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
     }).setDepth(30).setOrigin(1, 0).setVisible(false);
   }
 
@@ -110,6 +111,8 @@ export class UIOverlay {
   }
 
   showSeed(seed: number): void {
+    // Hide seed on phone — not enough room
+    if (UIScale.isPhone) return;
     this.seedText.setText(`Seed: ${seed}`).setVisible(true);
   }
 }
