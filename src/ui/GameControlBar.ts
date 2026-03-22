@@ -29,9 +29,7 @@ export class GameControlBar {
   private labels: Phaser.GameObjects.Text[] = [];
   private arenaManager: ArenaManager | null;
 
-  static get BAR_HEIGHT(): number {
-    return UIScale.isPhone ? 68 : 48;
-  }
+  static readonly BAR_HEIGHT = 70; // phone-only bar, fixed height
   private static get BTN_SIZE(): number {
     return UIScale.current.btnSize;
   }

@@ -1,5 +1,6 @@
 import { SIDEBAR_WIDTH, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE } from '../config';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
+import { GameControlBar } from '../ui/GameControlBar';
 
 const TABLET_BREAKPOINT = 1200;
 const PHONE_BREAKPOINT = 600;
@@ -66,7 +67,7 @@ class ResponsiveManagerClass {
   /** Full canvas height including status bar, tower select bar, and phone control bar */
   canvasHeight(): number {
     const base = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-    return this._mode === 'phone' ? base + 70 : base; // 70 = phone GameControlBar height
+    return this._mode === 'phone' ? base + GameControlBar.BAR_HEIGHT : base;
   }
 
   onLayoutChange(cb: LayoutChangeCallback): void {
