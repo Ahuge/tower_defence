@@ -9,7 +9,7 @@ export class UpcomingWaves {
   private autoPlayBtn!: Phaser.GameObjects.Text;
   private autoPlayBg!: Phaser.GameObjects.Graphics;
 
-  static readonly HEIGHT = 80;
+  static readonly HEIGHT = UIScale.isPhone ? 200 : 80;
 
   constructor(scene: Phaser.Scene, onAutoPlayToggle?: () => void) {
     this.scene = scene;
