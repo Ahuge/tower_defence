@@ -19,23 +19,23 @@ export class UIOverlay {
   constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives') {
     this.livesMode = livesMode;
     const isPhone = UIScale.isPhone;
-    const fs = UIScale.font(16);
+    // Status bar: use a smaller scale than body text to fit 3 values in a row
+    const fs = isPhone ? '28px' : '16px';
     const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
     const cw = getCanvasWidth();
     const barY = GAME_HEIGHT + 4;
 
-    // Wider spacing on phone to accommodate bigger text
+    // Spread columns evenly across available width
     const col1 = baseX + 8;
-    const col2 = isPhone ? baseX + 130 : baseX + 160;
-    const col3 = isPhone ? baseX + 270 : baseX + 300;
-    const col4 = isPhone ? baseX + 400 : baseX + 480;
+    const col2 = isPhone ? baseX + 240 : baseX + 160;
+    const col3 = isPhone ? baseX + 500 : baseX + 300;
+    const col4 = isPhone ? baseX + 700 : baseX + 480;
 
     this.goldText = scene.add.text(col1, barY, '', uiStyle).setDepth(30);
     this.livesText = scene.add.text(col2, barY, '', uiStyle).setDepth(30);
     this.waveText = scene.add.text(col3, barY, '', uiStyle).setDepth(30);
     this.statusText = scene.add.text(col4, barY, '', uiStyle).setDepth(30);
-    // On phone, hide status text (wave/speed handled by control bar)
     if (isPhone) this.statusText.setVisible(false);
 
     this.speedText = scene.add.text(cw - 8, barY, '', {

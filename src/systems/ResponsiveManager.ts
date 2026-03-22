@@ -64,10 +64,18 @@ class ResponsiveManagerClass {
     return this._mode === 'desktop' ? SIDEBAR_WIDTH + GAME_WIDTH : this.gameWidth();
   }
 
-  /** Full canvas height including status bar, tower select bar, and phone control bar */
+  /** Full canvas height including status bar, tower select bar, and phone control bar.
+   *  On phone: expand to fill viewport aspect ratio so less vertical space is wasted. */
   canvasHeight(): number {
     const base = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-    return this._mode === 'phone' ? base + GameControlBar.BAR_HEIGHT : base;
+    if (this._mode !== 'phone') return base;
+
+    // Match phone viewport aspect ratio to minimize letterboxing
+    const cw = this.canvasWidth();
+    const vpAspect = window.innerHeight / window.innerWidth;
+    const targetH = Math.round(cw * vpAspect);
+    // At minimum, fit the game + control bar. At maximum, fill the viewport.
+    return Math.max(base + GameControlBar.BAR_HEIGHT, targetH);
   }
 
   onLayoutChange(cb: LayoutChangeCallback): void {
