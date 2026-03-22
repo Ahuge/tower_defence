@@ -55,7 +55,7 @@ export class EncyclopediaScene extends Phaser.Scene {
       { label: 'Heroes', tab: 'heroes' },
     ];
 
-    const tabY = phone ? 70 : 48;
+    const tabY = phone ? 110 : 48;
     const tabW = phone ? getCanvasWidth() / tabs.length : 130;
     const tabH = UIScale.current.minTouchTarget;
     const tabStartX = cx - (tabs.length * tabW) / 2;
@@ -513,7 +513,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const cardW = getCanvasWidth() - marginL - marginR;
 
     for (const [id, ct] of Object.entries(CREEP_TYPES)) {
-      const cardH = phone ? 200 : 80;
+      const cardH = phone ? 280 : 80;
       const cardY = y;
 
       // Background card
