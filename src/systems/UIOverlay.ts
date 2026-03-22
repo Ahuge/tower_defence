@@ -1,4 +1,5 @@
 import { GAME_HEIGHT, getGridOffsetX, getCanvasWidth } from '../config';
+import { ResponsiveManager } from './ResponsiveManager';
 import { EventBus } from './EventBus';
 
 export class UIOverlay {
@@ -16,36 +17,51 @@ export class UIOverlay {
 
   constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives') {
     this.livesMode = livesMode;
-    const uiStyle = { fontSize: '16px', color: '#ffffff', fontFamily: 'monospace' };
+    const isPhone = ResponsiveManager.isPhone();
+    const fs = isPhone ? '13px' : '16px';
+    const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
-    this.goldText = scene.add.text(baseX + 8, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.livesText = scene.add.text(baseX + 160, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.waveText = scene.add.text(baseX + 300, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.statusText = scene.add.text(baseX + 480, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.speedText = scene.add.text(getCanvasWidth() - 8, GAME_HEIGHT + 4, '', {
-      ...uiStyle, fontSize: '16px', color: '#aaaaaa',
-    }).setDepth(30).setOrigin(1, 0);
+    const cw = getCanvasWidth();
 
-    // Tappable wave start button
-    this.waveBtn = scene.add.text(baseX + 480, GAME_HEIGHT + 4, '', {
-      fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
+    // Compact layout for phone: tighter spacing
+    const col1 = baseX + 8;
+    const col2 = isPhone ? baseX + 100 : baseX + 160;
+    const col3 = isPhone ? baseX + 210 : baseX + 300;
+    const col4 = isPhone ? baseX + 320 : baseX + 480;
+
+    this.goldText = scene.add.text(col1, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    this.livesText = scene.add.text(col2, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    this.waveText = scene.add.text(col3, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    this.statusText = scene.add.text(col4, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    // On phone, hide status text (wave/speed handled by control bar)
+    if (isPhone) this.statusText.setVisible(false);
+
+    this.speedText = scene.add.text(cw - 8, GAME_HEIGHT + 4, '', {
+      ...uiStyle, color: '#aaaaaa',
+    }).setDepth(30).setOrigin(1, 0);
+    if (isPhone) this.speedText.setVisible(false);
+
+    // Tappable wave start button (hidden on phone — control bar handles it)
+    this.waveBtn = scene.add.text(col4, GAME_HEIGHT + 4, '', {
+      fontSize: fs, color: '#44ff44', fontFamily: 'monospace',
       backgroundColor: '#1a2a1a', padding: { x: 6, y: 1 },
     }).setDepth(31).setInteractive({ useHandCursor: true }).setVisible(false);
     this.waveBtn.on('pointerdown', () => this.onWaveStart?.());
     this.waveBtn.on('pointerover', () => this.waveBtn.setColor('#88ff88'));
     this.waveBtn.on('pointerout', () => this.waveBtn.setColor('#44ff44'));
 
-    // Tappable speed button
-    this.speedBtn = scene.add.text(getCanvasWidth() - 8, GAME_HEIGHT + 4, '', {
-      fontSize: '16px', color: '#aaaaaa', fontFamily: 'monospace',
+    // Tappable speed button (hidden on phone)
+    this.speedBtn = scene.add.text(cw - 8, GAME_HEIGHT + 4, '', {
+      fontSize: fs, color: '#aaaaaa', fontFamily: 'monospace',
       backgroundColor: '#1a1a2a', padding: { x: 6, y: 1 },
     }).setDepth(31).setOrigin(1, 0).setInteractive({ useHandCursor: true });
     this.speedBtn.on('pointerdown', () => this.onSpeedCycle?.());
     this.speedBtn.on('pointerover', () => this.speedBtn.setAlpha(0.7));
     this.speedBtn.on('pointerout', () => this.speedBtn.setAlpha(1));
+    if (isPhone) this.speedBtn.setVisible(false);
 
     // Seed display (shown for random maps)
-    this.seedText = scene.add.text(getCanvasWidth() - 8, 4, '', {
+    this.seedText = scene.add.text(cw - 8, 4, '', {
       fontSize: '10px', color: '#666666', fontFamily: 'monospace',
     }).setDepth(30).setOrigin(1, 0).setVisible(false);
   }
@@ -66,9 +82,11 @@ export class UIOverlay {
       } else {
         this.statusText.setText('[SPACE] Start Next Wave');
       }
-      // Show tappable wave button
-      this.waveBtn.setText(versusTimer >= 0 ? `Ready (${versusTimer}s)` : 'Start Wave');
-      this.waveBtn.setVisible(true);
+      // Show tappable wave button (not on phone — control bar handles it)
+      if (!ResponsiveManager.isPhone()) {
+        this.waveBtn.setText(versusTimer >= 0 ? `Ready (${versusTimer}s)` : 'Start Wave');
+        this.waveBtn.setVisible(true);
+      }
     } else if (waveActive) {
       this.statusText.setText('Wave in progress...');
       this.waveBtn.setVisible(false);

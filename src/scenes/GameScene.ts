@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
   TILE_SIZE, GRID_COLS, GRID_ROWS, GAME_WIDTH, GAME_HEIGHT,
-  SIDEBAR_WIDTH, getGridOffsetX, getCanvasWidth,
+  SIDEBAR_WIDTH, getGridOffsetX, getCanvasWidth, getGameWidth, getGridCols,
   COLOR_GROUND, COLOR_GRID_LINE, COLOR_ENTRY, COLOR_EXIT,
   COLOR_HOVER_VALID, COLOR_HOVER_INVALID, STARTING_LIVES,
   gridX, gridY, gridLeftX, pixelToCol, setGridOffsetY,
@@ -57,6 +57,7 @@ import { UpdateContext } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
+import { GameControlBar } from '../ui/GameControlBar';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -98,6 +99,7 @@ export class GameScene extends Phaser.Scene {
   viewingOpponent: boolean = false;
   arenaManager: ArenaManager | null = null;
   abilitySystem: AbilitySystem | null = null;
+  private controlBar: GameControlBar | null = null;
   heroId: HeroId | null = null;
   layout!: LayoutConfig;
   gridOffsetY: number = 0;
@@ -359,7 +361,7 @@ export class GameScene extends Phaser.Scene {
     if (this.matchMode === 'hero_defense' && this.heroId) {
       const heroType = HERO_TYPES[this.heroId];
       this.arenaManager = new ArenaManager(
-        this, heroType, GAME_WIDTH, this.layout.arenaHeight,
+        this, heroType, getGameWidth(), this.layout.arenaHeight,
         this.economy, this.eventLog, 10000,
       );
       this.abilitySystem = new AbilitySystem(this);
@@ -507,6 +509,23 @@ export class GameScene extends Phaser.Scene {
       this.inputMgr.onKey('E', () => this.arenaManager!.handleAbilityKey(2));
       this.inputMgr.onKey('R', () => this.arenaManager!.handleAbilityKey(3));
       this.inputMgr.onKey('T', () => this.arenaManager!.handleAccessoryKey());
+    }
+
+    // Phone: touch control bar with wave/speed/pause + ability buttons
+    if (ResponsiveManager.isPhone()) {
+      const controlBarY = this.layout.totalHeight + 28; // below status bar
+      this.controlBar = new GameControlBar(this, controlBarY, this.arenaManager);
+      this.controlBar.setCallbacks(
+        () => {
+          if (this.betweenWaves && this.currentWave < this.waves.length) {
+            if (this.circle) this.circle.voteReady();
+            else if (this.versus) this.versus.voteReady();
+            else this.startWave();
+          }
+        },
+        () => this.cycleSpeed(),
+        () => this.togglePause(),
+      );
     }
 
     // Versus mode setup
@@ -1002,6 +1021,12 @@ export class GameScene extends Phaser.Scene {
     // Mode-specific per-frame update (essence ticking, arena, etc.)
     this.gameMode.update(delta);
 
+    // Phone control bar
+    if (this.controlBar) {
+      this.controlBar.setState(this.waveActive, this.betweenWaves, this.currentWave < this.waves.length, this.gameSpeed);
+      this.controlBar.update();
+    }
+
     // Ability VFX
     if (this.abilitySystem) this.abilitySystem.update(delta);
 
@@ -1198,7 +1223,8 @@ export class GameScene extends Phaser.Scene {
   private showPauseMenu(): void {
     if (this.pauseOverlay) return;
 
-    const cx = getGridOffsetX() + GAME_WIDTH / 2;
+    const gw = getGameWidth();
+    const cx = getGridOffsetX() + gw / 2;
     const cy = GAME_HEIGHT / 2;
 
     this.pauseOverlay = this.add.container(0, 0).setDepth(50);
@@ -1206,7 +1232,7 @@ export class GameScene extends Phaser.Scene {
     // Dim overlay
     const dim = this.add.graphics();
     dim.fillStyle(0x000000, 0.6);
-    dim.fillRect(getGridOffsetX(), 0, GAME_WIDTH, GAME_HEIGHT);
+    dim.fillRect(getGridOffsetX(), 0, gw, GAME_HEIGHT);
     this.pauseOverlay.add(dim);
 
     // Panel
@@ -1287,22 +1313,24 @@ export class GameScene extends Phaser.Scene {
     const rows = this.grid.rows;
     const gridH = rows * TILE_SIZE;
 
+    const cols = getGridCols();
+    const gw = getGameWidth();
+
     g.fillStyle(COLOR_GROUND, 1);
-    g.fillRect(getGridOffsetX(), oY, GAME_WIDTH, gridH);
+    g.fillRect(getGridOffsetX(), oY, gw, gridH);
 
     g.lineStyle(1, COLOR_GRID_LINE, 0.3);
-    for (let col = 0; col <= GRID_COLS; col++) {
+    for (let col = 0; col <= cols; col++) {
       g.lineBetween(gridLeftX(col), oY, gridLeftX(col), oY + gridH);
     }
     for (let row = 0; row <= rows; row++) {
-      // gridY already includes offset, but here we draw raw grid lines
-      g.lineBetween(getGridOffsetX(), oY + row * TILE_SIZE, getGridOffsetX() + GAME_WIDTH, oY + row * TILE_SIZE);
+      g.lineBetween(getGridOffsetX(), oY + row * TILE_SIZE, getGridOffsetX() + gw, oY + row * TILE_SIZE);
     }
 
     // Blocked terrain — use gridY-based coords (includes offset)
     g.fillStyle(0x1a1a1a, 1);
     for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < GRID_COLS; col++) {
+      for (let col = 0; col < cols; col++) {
         const cell = this.grid.cells[row][col];
         const cellY = oY + row * TILE_SIZE;
         if (cell === CellType.Blocked) {
@@ -1352,7 +1380,7 @@ export class GameScene extends Phaser.Scene {
 
     // Dim the grid background
     this.opponentOverlay.fillStyle(0x000000, 0.3);
-    this.opponentOverlay.fillRect(getGridOffsetX(), 0, GAME_WIDTH, GAME_HEIGHT);
+    this.opponentOverlay.fillRect(getGridOffsetX(), 0, getGameWidth(), GAME_HEIGHT);
 
     // Draw opponent towers as colored squares on the main grid
     for (const t of this.versus.opponentTowers) {

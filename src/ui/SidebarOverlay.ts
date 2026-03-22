@@ -3,9 +3,10 @@ import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { TowerSelectBar } from './TowerSelectBar';
 
 /**
- * Collapsible sidebar overlay for tablet mode.
- * On tablet, sidebar panels slide in/out from the left edge.
- * On desktop, this is not created — panels remain inline.
+ * Collapsible sidebar overlay for tablet/phone mode.
+ * On tablet: slides in from the left (360px wide).
+ * On phone: full-screen overlay for maximum readability.
+ * On desktop: not created — panels remain inline.
  */
 export class SidebarOverlay {
   private scene: Phaser.Scene;
@@ -15,14 +16,18 @@ export class SidebarOverlay {
   private _visible = false;
 
   private readonly totalH: number;
+  private readonly isPhone: boolean;
+  private readonly panelW: number;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+    this.isPhone = ResponsiveManager.isPhone();
     this.totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    this.panelW = this.isPhone ? ResponsiveManager.canvasWidth() : SIDEBAR_WIDTH;
 
     // Semi-transparent scrim behind sidebar — covers game area
     this.scrim = scene.add.graphics().setDepth(39).setVisible(false);
-    this.scrim.fillStyle(0x000000, 0.4);
+    this.scrim.fillStyle(0x000000, this.isPhone ? 0.7 : 0.4);
     this.scrim.fillRect(0, 0, scene.scale.width, this.totalH);
     this.scrim.setInteractive(
       new Phaser.Geom.Rectangle(0, 0, scene.scale.width, this.totalH),
@@ -30,22 +35,38 @@ export class SidebarOverlay {
     );
     this.scrim.on('pointerdown', () => this.hide());
 
-    // Sidebar container — starts off-screen to the left
-    this.container = scene.add.container(-SIDEBAR_WIDTH, 0).setDepth(40);
+    // Sidebar container — starts off-screen
+    this.container = scene.add.container(-this.panelW, 0).setDepth(40);
 
     // Background
     const bg = scene.add.graphics();
     bg.fillStyle(0x0e0e12, 1);
-    bg.fillRect(0, 0, SIDEBAR_WIDTH, this.totalH);
-    bg.lineStyle(1, 0x333333, 1);
-    bg.lineBetween(SIDEBAR_WIDTH, 0, SIDEBAR_WIDTH, this.totalH);
+    bg.fillRect(0, 0, this.panelW, this.totalH);
+    if (!this.isPhone) {
+      bg.lineStyle(1, 0x333333, 1);
+      bg.lineBetween(this.panelW, 0, this.panelW, this.totalH);
+    }
     this.container.add(bg);
 
+    // Close button (phone: larger, top-right)
+    if (this.isPhone) {
+      const closeBtn = scene.add.text(this.panelW - 48, 8, '✕', {
+        fontSize: '24px', color: '#aaaaaa', fontFamily: 'monospace',
+        backgroundColor: '#2a1a1a',
+        padding: { x: 8, y: 4 },
+      }).setInteractive({ useHandCursor: true });
+      closeBtn.on('pointerdown', () => this.hide());
+      closeBtn.on('pointerover', () => closeBtn.setColor('#ffffff'));
+      closeBtn.on('pointerout', () => closeBtn.setColor('#aaaaaa'));
+      this.container.add(closeBtn);
+    }
+
     // Toggle button — always visible on game area
+    const btnSize = this.isPhone ? '26px' : '22px';
     this.toggleBtn = scene.add.text(8, 8, '\u2630', {
-      fontSize: '22px', color: '#aaaaaa', fontFamily: 'monospace',
+      fontSize: btnSize, color: '#aaaaaa', fontFamily: 'monospace',
       backgroundColor: '#1a1a1a',
-      padding: { x: 6, y: 2 },
+      padding: { x: this.isPhone ? 8 : 6, y: this.isPhone ? 4 : 2 },
     }).setDepth(41).setInteractive({ useHandCursor: true });
     this.toggleBtn.on('pointerdown', () => this.toggle());
     this.toggleBtn.on('pointerover', () => this.toggleBtn.setColor('#ffffff'));
@@ -75,7 +96,7 @@ export class SidebarOverlay {
     this.scrim.setVisible(false);
     this.scene.tweens.add({
       targets: this.container,
-      x: -SIDEBAR_WIDTH,
+      x: -this.panelW,
       duration: 200,
       ease: 'Power2',
     });

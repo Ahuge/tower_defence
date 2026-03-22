@@ -1,11 +1,15 @@
-import { SIDEBAR_WIDTH, GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { SIDEBAR_WIDTH, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE } from '../config';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
 const TABLET_BREAKPOINT = 1200;
+const PHONE_BREAKPOINT = 600;
 
-export type LayoutMode = 'desktop' | 'tablet';
+export type LayoutMode = 'desktop' | 'tablet' | 'phone';
 
 type LayoutChangeCallback = (mode: LayoutMode) => void;
+
+/** Phone grid: fewer columns so the canvas is smaller and scales better */
+const PHONE_GRID_COLS = 20;
 
 class ResponsiveManagerClass {
   private _mode: LayoutMode = 'desktop';
@@ -26,23 +30,37 @@ class ResponsiveManagerClass {
   }
 
   private detectMode(): LayoutMode {
-    return window.innerWidth < TABLET_BREAKPOINT ? 'tablet' : 'desktop';
+    const w = window.innerWidth;
+    if (w < PHONE_BREAKPOINT) return 'phone';
+    if (w < TABLET_BREAKPOINT) return 'tablet';
+    return 'desktop';
   }
 
   get mode(): LayoutMode { return this._mode; }
 
-  isTablet(): boolean { return this._mode === 'tablet'; }
+  isPhone(): boolean { return this._mode === 'phone'; }
+  isTablet(): boolean { return this._mode === 'tablet' || this._mode === 'phone'; }
 
   sidebarInline(): boolean { return this._mode === 'desktop'; }
 
-  /** Grid offset X: on desktop the sidebar is inline, on tablet grid uses full width */
+  /** Grid columns: reduced on phone for a smaller canvas */
+  gridCols(): number {
+    return this._mode === 'phone' ? PHONE_GRID_COLS : 36;
+  }
+
+  /** Game area width (grid only, no sidebar) */
+  gameWidth(): number {
+    return this.gridCols() * TILE_SIZE;
+  }
+
+  /** Grid offset X: on desktop the sidebar is inline, on tablet/phone grid uses full width */
   gridOffsetX(): number {
     return this._mode === 'desktop' ? SIDEBAR_WIDTH : 0;
   }
 
-  /** Canvas width: desktop includes inline sidebar, tablet is just the game area */
+  /** Canvas width: desktop includes inline sidebar, tablet/phone is just the game area */
   canvasWidth(): number {
-    return this._mode === 'desktop' ? SIDEBAR_WIDTH + GAME_WIDTH : GAME_WIDTH;
+    return this._mode === 'desktop' ? SIDEBAR_WIDTH + GAME_WIDTH : this.gameWidth();
   }
 
   /** Full canvas height including status bar and tower select bar */

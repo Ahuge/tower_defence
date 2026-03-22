@@ -1,4 +1,4 @@
-import { GRID_COLS, GRID_ROWS, pixelToCol, pixelToRow } from '../config';
+import { GRID_COLS, GRID_ROWS, pixelToCol, pixelToRow, getGridCols } from '../config';
 import { EventBus } from './EventBus';
 
 export interface GridCoord {
@@ -140,7 +140,7 @@ export class InputManager {
   private pointerToGrid(pointer: Phaser.Input.Pointer): GridCoord | null {
     const col = pixelToCol(pointer.x);
     const row = pixelToRow(pointer.y); // pixelToRow already accounts for _gridOffsetY
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= this.gridRows) return null;
+    if (col < 0 || col >= getGridCols() || row < 0 || row >= this.gridRows) return null;
     return { col, row };
   }
 }

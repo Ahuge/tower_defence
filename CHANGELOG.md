@@ -2,6 +2,17 @@
 
 ## 2026-03-21
 
+### Mobile Phone Support
+- **Phone breakpoint** (<600px): New layout mode with reduced canvas (20 cols × 28px = 560px) for ~71% scale on phones instead of crushing 40%.
+- **GameControlBar**: Touch buttons for wave start, speed, pause + hero ability buttons (Q/W/E/R/T) with cooldown overlays. Replaces keyboard controls on phone.
+- **SidebarOverlay full-screen on phone**: Full canvas overlay instead of side panel, larger close button, darker scrim.
+- **TowerSelectBar phone sizing**: Smaller buttons (42px vs 52px), tighter padding, no hotkey numbers on phone.
+- **UIOverlay compact**: Tighter column spacing, hidden wave/speed buttons (control bar handles them), smaller font.
+- **HeroSelectScene carousel**: Single-card view on phone with prev/next navigation and dot indicators instead of 3-across.
+- **MenuScene responsive**: Map buttons in multi-row grid, 2-column mode cards, smaller difficulty buttons, dynamic Y offsets.
+- **FactionSelectScene responsive**: 3-column layout (vs 6), smaller cards (90px vs 140px), condensed text, tower list hidden on phone.
+- **Dynamic grid dimensions**: Grid cols/rows, game width, and layout config all respond to phone mode. Grid, Pathfinding, and InputManager use dynamic cols.
+
 ### Hero Defense Polish
 - **2% interest** on gold at end of each wave — rewards saving for bigger purchases.
 - **Stat accessories**: War Gauntlet (+15 dmg, 800g), Heart of Iron (+200 HP, 900g), Rapid Quiver (+25% AS, 1000g), Hawk Eye (+60px range, 1100g).
