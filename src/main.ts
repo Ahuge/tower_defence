@@ -20,7 +20,7 @@ import './systems/traits/CreepTraitHandlers';
 // Initialize responsive detection before Phaser
 ResponsiveManager.init();
 
-const gameHeight = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+const gameHeight = ResponsiveManager.canvasHeight();
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
@@ -43,5 +43,5 @@ const game = new Phaser.Game(config);
 
 // Resize canvas on layout mode change
 ResponsiveManager.onLayoutChange(() => {
-  game.scale.resize(ResponsiveManager.canvasWidth(), gameHeight);
+  game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
 });

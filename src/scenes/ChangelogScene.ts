@@ -7,12 +7,13 @@ const CHANGELOG_ENTRIES = [
   {
     version: 'v22 — Mobile Phone Support',
     changes: [
-      'Phone layout (<600px): reduced canvas, touch controls, compact UI for all game modes',
+      'Pinch-to-zoom (1x–3x) + drag-to-pan on phone — camera starts at 1.8x zoom',
+      'Touch controls: tap to place towers, drag to pan, pinch to zoom',
       'GameControlBar: touch buttons for wave/speed/pause + ability buttons (Q/W/E/R/T)',
+      'Touch clicks deferred to pointerup — panning never accidentally places towers',
       'Full-screen sidebar overlay on phone with larger close button',
-      'Smaller tower buttons, responsive menu/faction/hero select scenes',
+      'Smaller tower buttons (42px), responsive menu/faction/hero select scenes',
       'Hero select: single-card carousel with prev/next navigation on phone',
-      'Dynamic grid dimensions: 20 cols on phone, 16 rows standard, 8 rows hero defense',
     ],
   },
   {

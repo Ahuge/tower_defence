@@ -1,6 +1,5 @@
 import { GRID_ROWS, TILE_SIZE } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
-import { ResponsiveManager } from './ResponsiveManager';
 
 export interface LayoutConfig {
   gridRows: number;
@@ -11,11 +10,9 @@ export interface LayoutConfig {
 
 /** Returns layout dimensions for a given match mode */
 export function getLayout(mode: MatchMode): LayoutConfig {
-  const isPhone = ResponsiveManager.isPhone();
-
   if (mode === 'hero_defense') {
-    const gridRows = isPhone ? 8 : 12;
-    const arenaHeight = isPhone ? 200 : 400;
+    const gridRows = 12;
+    const arenaHeight = 400;
     return {
       gridRows,
       gridOffsetY: arenaHeight,
@@ -24,12 +21,11 @@ export function getLayout(mode: MatchMode): LayoutConfig {
     };
   }
 
-  // Standard / Sprint / Marathon / Battle / Circle
-  const gridRows = isPhone ? 16 : GRID_ROWS;
+  // Standard / Sprint / Marathon / Battle / Circle — full 26-row grid, no arena
   return {
-    gridRows,
+    gridRows: GRID_ROWS,
     gridOffsetY: 0,
     arenaHeight: 0,
-    totalHeight: gridRows * TILE_SIZE,
+    totalHeight: GRID_ROWS * TILE_SIZE,
   };
 }

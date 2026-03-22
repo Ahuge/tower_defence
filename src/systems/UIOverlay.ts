@@ -15,14 +15,14 @@ export class UIOverlay {
   private onWaveStart: (() => void) | null = null;
   private onSpeedCycle: (() => void) | null = null;
 
-  constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives', statusBarY?: number) {
+  constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives') {
     this.livesMode = livesMode;
     const isPhone = ResponsiveManager.isPhone();
-    const fs = isPhone ? '13px' : '16px';
+    const fs = isPhone ? '14px' : '16px';
     const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
     const cw = getCanvasWidth();
-    const barY = (statusBarY ?? GAME_HEIGHT) + 4;
+    const barY = GAME_HEIGHT + 4;
 
     // Compact layout for phone: tighter spacing
     const col1 = baseX + 8;

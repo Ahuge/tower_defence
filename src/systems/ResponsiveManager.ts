@@ -8,8 +8,8 @@ export type LayoutMode = 'desktop' | 'tablet' | 'phone';
 
 type LayoutChangeCallback = (mode: LayoutMode) => void;
 
-/** Phone grid: fewer columns so the canvas is smaller and scales better */
-const PHONE_GRID_COLS = 20;
+// Phone uses same grid dimensions as desktop — maps are designed for 36 cols.
+// Phaser Scale.FIT handles the scaling. UI elements are sized for touch.
 
 class ResponsiveManagerClass {
   private _mode: LayoutMode = 'desktop';
@@ -43,14 +43,14 @@ class ResponsiveManagerClass {
 
   sidebarInline(): boolean { return this._mode === 'desktop'; }
 
-  /** Grid columns: reduced on phone for a smaller canvas */
+  /** Grid columns — always 36 (maps require full grid) */
   gridCols(): number {
-    return this._mode === 'phone' ? PHONE_GRID_COLS : 36;
+    return 36;
   }
 
-  /** Game area width (grid only, no sidebar) */
+  /** Game area width (grid only, no sidebar) — always full width */
   gameWidth(): number {
-    return this.gridCols() * TILE_SIZE;
+    return GAME_WIDTH;
   }
 
   /** Grid offset X: on desktop the sidebar is inline, on tablet/phone grid uses full width */
@@ -63,9 +63,10 @@ class ResponsiveManagerClass {
     return this._mode === 'desktop' ? SIDEBAR_WIDTH + GAME_WIDTH : this.gameWidth();
   }
 
-  /** Full canvas height including status bar and tower select bar */
+  /** Full canvas height including status bar, tower select bar, and phone control bar */
   canvasHeight(): number {
-    return GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const base = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    return this._mode === 'phone' ? base + 48 : base; // 48 = GameControlBar.BAR_HEIGHT
   }
 
   onLayoutChange(cb: LayoutChangeCallback): void {
