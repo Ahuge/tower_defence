@@ -7,6 +7,11 @@ export const GAME_HEIGHT = GRID_ROWS * TILE_SIZE;
 // Sidebar
 export const SIDEBAR_WIDTH = 360;
 
+/** Sidebar panel content width — full canvas on phone, SIDEBAR_WIDTH on desktop/tablet */
+export function getSidebarWidth(): number {
+  return ResponsiveManager.isPhone() ? ResponsiveManager.canvasWidth() : SIDEBAR_WIDTH;
+}
+
 // Dynamic grid offset — reads from ResponsiveManager at runtime
 // On desktop: offset = SIDEBAR_WIDTH (sidebar inline). On tablet/phone: offset = 0 (sidebar overlay).
 import { ResponsiveManager } from './systems/ResponsiveManager';

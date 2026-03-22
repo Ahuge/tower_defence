@@ -1,4 +1,4 @@
-import { SIDEBAR_WIDTH } from '../config';
+import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
 import { Hero } from '../entities/Hero';
 import { ITEM_SLOTS, ITEM_SLOT_ORDER, ItemSlot } from '../data/HeroItems';
 import { EconomyManager } from '../systems/EconomyManager';
@@ -36,7 +36,7 @@ export class ItemShopPanel {
   }
 
   private buildPanel(): void {
-    const panelW = SIDEBAR_WIDTH;
+    const panelW = getSidebarWidth();
     const panelH = 440;
 
     const bg = this.scene.add.graphics();
@@ -83,7 +83,7 @@ export class ItemShopPanel {
       const xpNeeded = this.hero.xpToNextLevel();
       const xpRatio = xpNeeded > 0 ? this.hero.xp / xpNeeded : 0;
       const barX = UIScale.isPhone ? 90 : 70;
-      const barW = SIDEBAR_WIDTH - barX - 12;
+      const barW = getSidebarWidth() - barX - 12;
       const barH = UIScale.isPhone ? 14 : 10;
       const xpBarBg = this.scene.add.graphics();
       xpBarBg.fillStyle(0x222222, 1);
@@ -127,7 +127,7 @@ export class ItemShopPanel {
         });
         this.container.add(btn);
         this.dynamicItems.push(btn);
-        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, SIDEBAR_WIDTH - 24, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, getSidebarWidth() - 24, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         btn.on('pointerdown', () => {
           this.hero.applyUpgrade(opt.id);
           this.lastSnapshot = '';
@@ -174,7 +174,7 @@ export class ItemShopPanel {
         const btnLabel = `[${cost}g]`;
         const btnColor = canAfford ? '#44ff44' : '#664444';
 
-        const btn = this.scene.add.text(SIDEBAR_WIDTH - 60, y, btnLabel, {
+        const btn = this.scene.add.text(getSidebarWidth() - 60, y, btnLabel, {
           fontSize: UIScale.font(11), color: btnColor, fontFamily: 'monospace',
         });
         this.container.add(btn);
@@ -188,7 +188,7 @@ export class ItemShopPanel {
           btn.on('pointerout', () => btn.setColor('#44ff44'));
         }
       } else {
-        const maxText = this.scene.add.text(SIDEBAR_WIDTH - 50, y, '(MAX)', {
+        const maxText = this.scene.add.text(getSidebarWidth() - 50, y, '(MAX)', {
           fontSize: UIScale.font(10), color: '#ffaa44', fontFamily: 'monospace',
         });
         this.container.add(maxText);
@@ -211,7 +211,7 @@ export class ItemShopPanel {
     this.dynamicItems.push(accTitle);
 
     // Rotation countdown
-    const rotText = this.scene.add.text(SIDEBAR_WIDTH - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`, {
+    const rotText = this.scene.add.text(getSidebarWidth() - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`, {
       fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(rotText);
@@ -258,7 +258,7 @@ export class ItemShopPanel {
       this.dynamicItems.push(offerText);
 
       if (canAfford) {
-        offerText.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, SIDEBAR_WIDTH - 16, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+        offerText.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, getSidebarWidth() - 16, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         const idx = i;
         offerText.on('pointerdown', () => this.purchaseAccessory(idx));
         offerText.on('pointerover', () => offerText.setColor('#ffffff'));
@@ -303,7 +303,7 @@ export class ItemShopPanel {
       this.dynamicItems.push(text);
 
       if (hasPending) {
-        const plusBtn = this.scene.add.text(SIDEBAR_WIDTH - 30, y, '[+]', {
+        const plusBtn = this.scene.add.text(getSidebarWidth() - 30, y, '[+]', {
           fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
         }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         this.container.add(plusBtn);
@@ -338,7 +338,7 @@ export class ItemShopPanel {
       this.dynamicItems.push(ultText);
 
       if (hasPending && unlocked) {
-        const plusBtn = this.scene.add.text(SIDEBAR_WIDTH - 30, y, '[+]', {
+        const plusBtn = this.scene.add.text(getSidebarWidth() - 30, y, '[+]', {
           fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
         }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         this.container.add(plusBtn);
@@ -354,7 +354,7 @@ export class ItemShopPanel {
   private addDivider(y: number): void {
     const div = this.scene.add.graphics();
     div.lineStyle(1, 0x444444, 0.5);
-    div.lineBetween(8, y, SIDEBAR_WIDTH - 8, y);
+    div.lineBetween(8, y, getSidebarWidth() - 8, y);
     this.container.add(div);
     this.dynamicItems.push(div);
   }

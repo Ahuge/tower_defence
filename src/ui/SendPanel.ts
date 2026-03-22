@@ -1,4 +1,4 @@
-import { SIDEBAR_WIDTH } from '../config';
+import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
 import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../data/SendCreepTypes';
 import { UIScale } from '../systems/UIScale';
 
@@ -35,7 +35,7 @@ export class SendPanel {
   }
 
   private buildPanel(): void {
-    const panelW = SIDEBAR_WIDTH;
+    const panelW = getSidebarWidth();
     const panelH = SendPanel.HEIGHT;
 
     const bg = this.scene.add.graphics();
@@ -128,9 +128,9 @@ export class SendPanel {
       const bg = this.container.getAt(0) as Phaser.GameObjects.Graphics;
       bg.clear();
       bg.fillStyle(0x151515, 1);
-      bg.fillRect(0, 0, SIDEBAR_WIDTH, neededH);
+      bg.fillRect(0, 0, getSidebarWidth(), neededH);
       bg.lineStyle(1, 0x333333, 1);
-      bg.strokeRect(0, 0, SIDEBAR_WIDTH, neededH);
+      bg.strokeRect(0, 0, getSidebarWidth(), neededH);
     }
   }
 
