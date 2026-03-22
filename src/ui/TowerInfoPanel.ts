@@ -21,7 +21,7 @@ export class TowerInfoPanel {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    this.container = scene.add.container(0, 0).setDepth(25).setVisible(false);
+    this.container = scene.add.container(0, 0).setDepth(29).setVisible(false);
 
     this.bg = scene.add.graphics();
     this.container.add(this.bg);
@@ -167,12 +167,18 @@ export class TowerInfoPanel {
     const panelW = 350;
     const panelH = btnY + 24;
 
-    // Position near tower
-    let px = tower.x + TILE_SIZE;
-    let py = tower.y - panelH / 2;
-    if (px + panelW > getCanvasWidth()) px = tower.x - TILE_SIZE - panelW;
+    // Position near tower — convert to screen coords on phone (UI camera is at 1x)
+    const cam = this.scene.cameras.main;
+    const screenTowerX = (tower.x - cam.scrollX) * cam.zoom;
+    const screenTowerY = (tower.y - cam.scrollY) * cam.zoom;
+    const useScreen = cam.zoom !== 1; // phone with zoom
+
+    let px = (useScreen ? screenTowerX : tower.x) + TILE_SIZE;
+    let py = (useScreen ? screenTowerY : tower.y) - panelH / 2;
+    if (px + panelW > getCanvasWidth()) px = (useScreen ? screenTowerX : tower.x) - TILE_SIZE - panelW;
     if (px < getGridOffsetX()) px = getGridOffsetX();
     if (py < 0) py = 0;
+    if (py + panelH > getCanvasWidth()) py = getCanvasWidth() - panelH;
 
     this.container.setPosition(px, py);
     this.bg.clear();

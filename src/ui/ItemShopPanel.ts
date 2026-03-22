@@ -3,6 +3,7 @@ import { Hero } from '../entities/Hero';
 import { ITEM_SLOTS, ITEM_SLOT_ORDER, ItemSlot } from '../data/HeroItems';
 import { EconomyManager } from '../systems/EconomyManager';
 import { ArenaManager } from '../systems/ArenaManager';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { EventLog } from './EventLog';
 
 export class ItemShopPanel {
@@ -59,11 +60,19 @@ export class ItemShopPanel {
     this.rebuildDynamic();
   }
 
+  /** Phone-aware font size: adds 2px on phone */
+  private fs(base: number): string {
+    return `${base + (ResponsiveManager.isPhone() ? 2 : 0)}px`;
+  }
+
   private rebuildDynamic(): void {
     for (const obj of this.dynamicItems) {
       this.container.remove(obj, true);
     }
     this.dynamicItems = [];
+    const ph = ResponsiveManager.isPhone();
+    const rh = ph ? 18 : 14; // row height
+    const gap = ph ? 4 : 2;  // gap between sections
 
     let y = 42;
 

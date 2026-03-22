@@ -3,6 +3,7 @@ import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { GameStats } from '../systems/StatsTracker';
 import { TOWER_TYPES } from '../data/TowerTypes';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 export interface GameOverData {
   won: boolean;
@@ -33,6 +34,16 @@ export class GameOverScene extends Phaser.Scene {
   create(data: GameOverData): void {
     const cx = getCanvasWidth() / 2;
     const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const isPhone = ResponsiveManager.isPhone();
+
+    // Phone-adaptive sizes
+    const titleFontSize = isPhone ? '26px' : '32px';
+    const sectionFontSize = isPhone ? '11px' : '13px';
+    const bodyFontSize = isPhone ? '10px' : '13px';
+    const smallFontSize = isPhone ? '9px' : '11px';
+    const btnFontSize = isPhone ? '12px' : '14px';
+    const rowH = isPhone ? 12 : 14;
+    const leftMargin = isPhone ? 20 : 60;
 
     // Background
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
@@ -40,8 +51,8 @@ export class GameOverScene extends Phaser.Scene {
     const title = data.won ? 'VICTORY!' : 'DEFEAT';
     const titleColor = data.won ? '#44ff44' : '#ff4444';
 
-    this.add.text(cx, 25, title, {
-      fontSize: '32px', color: titleColor, fontFamily: 'monospace',
+    this.add.text(cx, isPhone ? 18 : 25, title, {
+      fontSize: titleFontSize, color: titleColor, fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Overview
@@ -61,45 +72,52 @@ export class GameOverScene extends Phaser.Scene {
       `Score: ${score}${score >= highScore ? ' (NEW HIGH!)' : `  |  High: ${highScore}`}`,
     ];
 
-    this.add.text(cx, 65, overviewLines.join('\n'), {
-      fontSize: '13px', color: '#cccccc', fontFamily: 'monospace',
-      align: 'center', lineSpacing: 4,
+    this.add.text(cx, isPhone ? 50 : 65, overviewLines.join('\n'), {
+      fontSize: isPhone ? '11px' : '13px', color: '#cccccc', fontFamily: 'monospace',
+      align: 'center', lineSpacing: isPhone ? 2 : 4,
     }).setOrigin(0.5, 0);
 
     // Tower Performance Table
     if (data.stats && Object.keys(data.stats.towerStats).length > 0) {
-      const tableY = 155;
+      const tableY = isPhone ? 130 : 155;
       this.add.text(cx, tableY, 'TOWER PERFORMANCE', {
-        fontSize: '13px', color: '#ffaa44', fontFamily: 'monospace',
+        fontSize: sectionFontSize, color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Header
-      const headerY = tableY + 20;
-      const colX = [60, 210, 310, 400, 500, 600];
+      const headerY = tableY + (isPhone ? 16 : 20);
+      const colX = isPhone
+        ? [leftMargin, 160, 260, 350, 440, 520]
+        : [60, 210, 310, 400, 500, 600];
       const headers = ['Tower', 'Total DMG', 'Avg DPS', 'Gold Earned', 'Shots', 'Built'];
-      headers.forEach((h, i) => {
+      // On phone, abbreviate headers
+      const displayHeaders = isPhone
+        ? ['Tower', 'DMG', 'DPS', 'Gold', 'Shots', 'Built']
+        : headers;
+      displayHeaders.forEach((h, i) => {
         this.add.text(colX[i], headerY, h, {
-          fontSize: '13px', color: '#888888', fontFamily: 'monospace',
+          fontSize: bodyFontSize, color: '#888888', fontFamily: 'monospace',
         });
       });
 
       // Divider
       const divG = this.add.graphics();
       divG.lineStyle(1, 0x444444, 0.5);
-      divG.lineBetween(50, headerY + 14, getCanvasWidth() - 50, headerY + 14);
+      divG.lineBetween(leftMargin - 10, headerY + rowH, getCanvasWidth() - (isPhone ? 20 : 50), headerY + rowH);
 
       // Rows — sorted by total damage
       const entries = Object.entries(data.stats.towerStats)
         .sort(([, a], [, b]) => b.totalDamage - a.totalDamage);
 
-      let rowY = headerY + 20;
+      let rowY = headerY + rowH + 6;
       for (const [typeId, ts] of entries) {
         const towerDef = TOWER_TYPES[typeId];
         const name = towerDef?.name ?? typeId;
         const avgDps = ts.timeAlive > 0 ? Math.round(ts.totalDamage / (ts.timeAlive / 1000)) : 0;
 
+        const displayName = isPhone && name.length > 12 ? name.substring(0, 11) + '.' : name;
         const values = [
-          name,
+          displayName,
           ts.totalDamage.toLocaleString(),
           `${avgDps}/s`,
           ts.totalGoldEarned > 0 ? `+${ts.totalGoldEarned}g` : '-',
@@ -110,26 +128,26 @@ export class GameOverScene extends Phaser.Scene {
         const rowColor = ts.totalDamage > 0 ? '#cccccc' : '#666666';
         values.forEach((v, i) => {
           this.add.text(colX[i], rowY, v, {
-            fontSize: '13px', color: rowColor, fontFamily: 'monospace',
+            fontSize: bodyFontSize, color: rowColor, fontFamily: 'monospace',
           });
         });
-        rowY += 14;
+        rowY += rowH;
       }
 
       // Economy table — positioned dynamically after tower table
-      const econY = rowY + 16;
+      const econY = rowY + (isPhone ? 10 : 16);
       this.add.text(cx, econY, 'ECONOMY', {
-        fontSize: '13px', color: '#ffaa44', fontFamily: 'monospace',
+        fontSize: sectionFontSize, color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const s = data.stats;
       const towerBonusGold = Object.values(s.towerStats).reduce((sum, t) => sum + t.totalGoldEarned, 0);
-      const econHeaderY = econY + 18;
-      const econColX = [60, 250, 500];
+      const econHeaderY = econY + (isPhone ? 14 : 18);
+      const econColX = isPhone ? [leftMargin, 200, 400] : [60, 250, 500];
       const econHeaders = ['Stat', 'Value', 'Detail'];
       econHeaders.forEach((h, i) => {
         this.add.text(econColX[i], econHeaderY, h, {
-          fontSize: '11px', color: '#888888', fontFamily: 'monospace',
+          fontSize: smallFontSize, color: '#888888', fontFamily: 'monospace',
         });
       });
 
@@ -143,18 +161,18 @@ export class GameOverScene extends Phaser.Scene {
         ['Kill Efficiency', `${s.creepsKilled > 0 ? (s.totalGoldEarned / s.creepsKilled).toFixed(1) : 0}g/kill`, ''],
       ];
 
-      let econRowY = econHeaderY + 16;
+      let econRowY = econHeaderY + (isPhone ? 12 : 16);
       for (const row of econRows) {
         row.forEach((v, i) => {
           this.add.text(econColX[i], econRowY, v, {
-            fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
+            fontSize: smallFontSize, color: '#cccccc', fontFamily: 'monospace',
           });
         });
-        econRowY += 14;
+        econRowY += rowH;
       }
 
       // Fun stats
-      const funY = econRowY + 8;
+      const funY = econRowY + (isPhone ? 4 : 8);
       const topDamage = entries[0];
       const topGold = entries.reduce((best, e) =>
         e[1].totalGoldEarned > (best?.[1]?.totalGoldEarned ?? 0) ? e : best, entries[0]);
@@ -170,17 +188,18 @@ export class GameOverScene extends Phaser.Scene {
       }
       funLines.push(`Overall DPS: ${gameTime > 0 ? Math.round(entries.reduce((s, e) => s + e[1].totalDamage, 0) / gameTime) : 0}/s`);
 
-      this.add.text(cx, funY, funLines.join('  |  '), {
-        fontSize: '11px', color: '#88aacc', fontFamily: 'monospace',
+      this.add.text(cx, funY, isPhone ? funLines.join('\n') : funLines.join('  |  '), {
+        fontSize: smallFontSize, color: '#88aacc', fontFamily: 'monospace',
+        align: 'center',
       }).setOrigin(0.5);
     }
 
     // Hero defense stats
     if (data.heroStats) {
       const hs = data.heroStats;
-      const heroY = 490;
+      const heroY = isPhone ? 460 : 490;
       this.add.text(cx, heroY, 'HERO PERFORMANCE', {
-        fontSize: '13px', color: '#ff44aa', fontFamily: 'monospace',
+        fontSize: sectionFontSize, color: '#ff44aa', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const heroLines = [
@@ -188,23 +207,23 @@ export class GameOverScene extends Phaser.Scene {
         `Kills: ${hs.kills}  |  Deaths: ${hs.deaths}  |  K/D: ${hs.deaths > 0 ? (hs.kills / hs.deaths).toFixed(1) : hs.kills}`,
         `Damage Dealt: ${hs.damageDealt.toLocaleString()}  |  Abilities Used: ${hs.abilitiesUsed}`,
       ];
-      this.add.text(cx, heroY + 18, heroLines.join('\n'), {
-        fontSize: '11px', color: '#cccccc', fontFamily: 'monospace',
-        align: 'center', lineSpacing: 4,
+      this.add.text(cx, heroY + (isPhone ? 14 : 18), heroLines.join('\n'), {
+        fontSize: smallFontSize, color: '#cccccc', fontFamily: 'monospace',
+        align: 'center', lineSpacing: isPhone ? 2 : 4,
       }).setOrigin(0.5, 0);
     }
 
     // Versus summary
     if (data.isVersus) {
-      const vsY = 520;
+      const vsY = isPhone ? 490 : 520;
       this.add.text(cx, vsY, 'VERSUS RESULTS', {
-        fontSize: '14px', color: '#ff8844', fontFamily: 'monospace',
+        fontSize: btnFontSize, color: '#ff8844', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const winner = data.won ? 'YOU WON!' : 'YOU LOST';
       const winColor = data.won ? '#44ff44' : '#ff4444';
-      this.add.text(cx, vsY + 22, winner, {
-        fontSize: '18px', color: winColor, fontFamily: 'monospace',
+      this.add.text(cx, vsY + (isPhone ? 18 : 22), winner, {
+        fontSize: isPhone ? '16px' : '18px', color: winColor, fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const myLives = data.lives ?? 0;
@@ -223,24 +242,25 @@ export class GameOverScene extends Phaser.Scene {
         vsLines.push(`Opponent Wave: ${os.wave}  |  Opponent Kills: ${os.stats.creepsKilled}`);
       }
 
-      this.add.text(cx, vsY + 50, vsLines.join('\n'), {
-        fontSize: '14px', color: '#cccccc', fontFamily: 'monospace',
-        align: 'center', lineSpacing: 4,
+      this.add.text(cx, vsY + (isPhone ? 40 : 50), vsLines.join('\n'), {
+        fontSize: isPhone ? '11px' : '14px', color: '#cccccc', fontFamily: 'monospace',
+        align: 'center', lineSpacing: isPhone ? 2 : 4,
       }).setOrigin(0.5, 0);
     }
 
     // Buttons
-    const btnY = totalH - 50;
+    const btnY = totalH - (isPhone ? 40 : 50);
+    const btnSpacing = isPhone ? 80 : 100;
 
-    const retryBtn = this.add.text(cx - 100, btnY, '[ Play Again ]', {
-      fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
+    const retryBtn = this.add.text(cx - btnSpacing, btnY, '[ Play Again ]', {
+      fontSize: btnFontSize, color: '#ffaa44', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     retryBtn.on('pointerdown', () => this.scene.start('MenuScene'));
     retryBtn.on('pointerover', () => retryBtn.setColor('#ffffff'));
     retryBtn.on('pointerout', () => retryBtn.setColor('#ffaa44'));
 
-    const menuBtn = this.add.text(cx + 100, btnY, '[ Menu ]', {
-      fontSize: '14px', color: '#4488ff', fontFamily: 'monospace',
+    const menuBtn = this.add.text(cx + btnSpacing, btnY, '[ Menu ]', {
+      fontSize: btnFontSize, color: '#4488ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
     menuBtn.on('pointerover', () => menuBtn.setColor('#ffffff'));
