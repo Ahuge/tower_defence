@@ -196,21 +196,9 @@ export class GameScene extends Phaser.Scene {
     return shuffled.slice(0, 6);
   }
 
-  /** Actual game height based on layout (phone uses reduced rows) */
-  private getActualGameHeight(): number {
-    return this.layout.totalHeight;
-  }
-
   create(): void {
     // Set global grid Y offset for hero defense (arena above grid)
     setGridOffsetY(this.gridOffsetY);
-
-    // On phone, resize canvas to fit actual content (not full 26-row GAME_HEIGHT)
-    if (ResponsiveManager.isPhone()) {
-      const controlH = this.arenaManager ? GameControlBar.BAR_HEIGHT : GameControlBar.BAR_HEIGHT;
-      const totalH = this.layout.totalHeight + 28 + controlH + TowerSelectBar.BAR_HEIGHT;
-      this.scale.resize(ResponsiveManager.canvasWidth(), totalH);
-    }
 
     this._towers = [];
     this._creeps = [];
@@ -292,8 +280,7 @@ export class GameScene extends Phaser.Scene {
     if (this.layout.gridRows !== GRID_ROWS) {
       this.inputMgr.setGridRows(this.layout.gridRows);
     }
-    const statusBarY = ResponsiveManager.isPhone() ? this.layout.totalHeight : GAME_HEIGHT;
-    this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives', statusBarY);
+    this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
     this.ui.setCallbacks(
       () => {
         // Wave start (same as SPACE)
@@ -322,16 +309,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Tower bar (starts deselected)
-    const towerBarY = ResponsiveManager.isPhone()
-      ? this.layout.totalHeight + 28 + GameControlBar.BAR_HEIGHT
-      : GAME_HEIGHT + 28;
     this.towerBar = new TowerSelectBar(this, this.activeTowerIds, (typeId) => {
       if (typeId) {
         this.enterBuildMode(typeId);
       } else if (this.selectionMode === 'build') {
         this.enterNoneMode();
       }
-    }, towerBarY);
+    });
     this.towerInfo = new TowerInfoPanel(this);
     this.towerInfo.setCallbacks(
       (tower) => {
@@ -527,7 +511,7 @@ export class GameScene extends Phaser.Scene {
 
     // Phone: touch control bar with wave/speed/pause + ability buttons
     if (ResponsiveManager.isPhone()) {
-      const controlBarY = statusBarY + 28; // below status bar
+      const controlBarY = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT; // below tower bar
       this.controlBar = new GameControlBar(this, controlBarY, this.arenaManager);
       this.controlBar.setCallbacks(
         () => {

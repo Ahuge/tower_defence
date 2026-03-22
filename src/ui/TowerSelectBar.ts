@@ -18,13 +18,13 @@ export class TowerSelectBar {
   private readonly btnSize: number;
   private readonly padding: number;
 
-  constructor(scene: Phaser.Scene, towerIds: string[], onSelect: (typeId: string | null) => void, barY?: number) {
+  constructor(scene: Phaser.Scene, towerIds: string[], onSelect: (typeId: string | null) => void) {
     this.scene = scene;
     this.towerIds = towerIds;
     this.onSelect = onSelect;
     this.btnSize = ResponsiveManager.isPhone() ? 42 : 52;
     this.padding = ResponsiveManager.isPhone() ? 4 : 10;
-    this.container = scene.add.container(0, barY ?? (GAME_HEIGHT + 28)).setDepth(30);
+    this.container = scene.add.container(0, GAME_HEIGHT + 28).setDepth(30);
 
     // Tooltip (rendered above the bar)
     this.tooltip = scene.add.container(0, 0).setDepth(35).setVisible(false);
