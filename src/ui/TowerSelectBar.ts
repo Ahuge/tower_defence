@@ -72,6 +72,17 @@ export class TowerSelectBar {
       zone.on('pointerdown', () => this.highlight(idx));
       zone.on('pointerover', () => this.showTooltip(idx));
       zone.on('pointerout', () => this.hideTooltip());
+      // Touch: long-press shows tooltip (since there's no hover on touch)
+      if (isPhone) {
+        let holdTimer: ReturnType<typeof setTimeout> | null = null;
+        zone.on('pointerdown', () => {
+          holdTimer = setTimeout(() => { this.showTooltip(idx); holdTimer = null; }, 400);
+        });
+        zone.on('pointerup', () => {
+          if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+          this.scene.time.delayedCall(2000, () => this.hideTooltip());
+        });
+      }
 
       if (!isPhone) {
         const hotkeyNum = String(i + 1);

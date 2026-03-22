@@ -1,5 +1,6 @@
 import { SIDEBAR_WIDTH } from '../config';
 import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../data/SendCreepTypes';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 const SEND_HOTKEYS = ['Z', 'X', 'C', 'V', '1', '2', '3', '4'];
 
@@ -55,14 +56,16 @@ export class SendPanel {
     this.container.add(subtitle);
 
     this.labels = [];
+    const isPhone = ResponsiveManager.isPhone();
+    const rowH = isPhone ? 26 : 17;
+    const fontSize = isPhone ? '13px' : '10px';
     for (let i = 0; i < SEND_OPTIONS.length; i++) {
       const opt = SEND_OPTIONS[i];
       const hotkey = SEND_HOTKEYS[i] || '';
-      const y = 24 + i * 17;
+      const y = 24 + i * rowH;
 
-      // Scrollable area check — if more than 4 sends, we need tighter spacing
       const text = this.scene.add.text(8, y, '', {
-        fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
+        fontSize, color: '#cccccc', fontFamily: 'monospace',
       });
 
       this.container.add(text);

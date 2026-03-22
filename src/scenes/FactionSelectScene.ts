@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { getCanvasWidth, GAME_HEIGHT } from '../config';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { TOWER_TYPES } from '../data/TowerTypes';
 import { MatchMode } from '../data/WaveDefinitions';
@@ -33,7 +34,7 @@ export class FactionSelectScene extends Phaser.Scene {
       fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const isPhone = getCanvasWidth() < 600;
+    const isPhone = ResponsiveManager.isPhone();
     const cardW = isPhone ? 90 : 140;
     const cardH = isPhone ? 160 : 280;
     const gap = isPhone ? 4 : 6;

@@ -13,7 +13,7 @@ export class CreepInfoPanel {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    this.container = scene.add.container(0, 0).setDepth(25).setVisible(false);
+    this.container = scene.add.container(0, 0).setDepth(29).setVisible(false);
 
     this.bg = scene.add.graphics();
     this.container.add(this.bg);
@@ -87,10 +87,14 @@ export class CreepInfoPanel {
     const panelW = 280;
     const panelH = 52 + allEffects.length * 13 + 8;
 
-    // Position near creep
-    let px = c.x + TILE_SIZE;
-    let py = c.y - panelH / 2;
-    if (px + panelW > getCanvasWidth()) px = c.x - TILE_SIZE - panelW;
+    // Position near creep — screen coords on phone
+    const cam = this.scene.cameras.main;
+    const sx = (c.x - cam.scrollX) * cam.zoom;
+    const sy = (c.y - cam.scrollY) * cam.zoom;
+    const useScreen = cam.zoom !== 1;
+    let px = (useScreen ? sx : c.x) + TILE_SIZE;
+    let py = (useScreen ? sy : c.y) - panelH / 2;
+    if (px + panelW > getCanvasWidth()) px = (useScreen ? sx : c.x) - TILE_SIZE - panelW;
     if (px < getGridOffsetX()) px = getGridOffsetX();
     if (py < 0) py = 0;
 

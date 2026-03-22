@@ -22,6 +22,10 @@ export class EncyclopediaScene extends Phaser.Scene {
   private factionIndex: number = 0;
   private heroIndex: number = 0;
   private playableFactions: FactionId[] = [];
+  // Touch drag scrolling
+  private isDragging: boolean = false;
+  private dragStartY: number = 0;
+  private dragStartScrollY: number = 0;
 
   constructor() {
     super('EncyclopediaScene');
@@ -95,6 +99,25 @@ export class EncyclopediaScene extends Phaser.Scene {
       );
       this.contentContainer.setY(68 + this.scrollY);
     });
+
+    // Touch drag scrolling (for non-carousel tabs)
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.activeTab === 'towers' || this.activeTab === 'factions' || this.activeTab === 'heroes') return;
+      this.isDragging = true;
+      this.dragStartY = pointer.y;
+      this.dragStartScrollY = this.scrollY;
+    });
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (!this.isDragging) return;
+      const dy = pointer.y - this.dragStartY;
+      this.scrollY = Phaser.Math.Clamp(
+        this.dragStartScrollY + dy,
+        -(this.contentHeight - contentH + 40),
+        0,
+      );
+      this.contentContainer.setY(68 + this.scrollY);
+    });
+    this.input.on('pointerup', () => { this.isDragging = false; });
   }
 
   private updateTabColors(): void {

@@ -256,6 +256,9 @@ const CHANGELOG_ENTRIES = [
 export class ChangelogScene extends Phaser.Scene {
   private scrollY: number = 0;
   private contentHeight: number = 0;
+  private isDragging: boolean = false;
+  private dragStartY: number = 0;
+  private dragStartScrollY: number = 0;
 
   constructor() {
     super('ChangelogScene');
@@ -321,5 +324,23 @@ export class ChangelogScene extends Phaser.Scene {
       );
       container.setY(contentY + this.scrollY);
     });
+
+    // Touch drag scrolling
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.isDragging = true;
+      this.dragStartY = pointer.y;
+      this.dragStartScrollY = this.scrollY;
+    });
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (!this.isDragging) return;
+      const dy = pointer.y - this.dragStartY;
+      this.scrollY = Phaser.Math.Clamp(
+        this.dragStartScrollY + dy,
+        -(this.contentHeight - contentH + 20),
+        0,
+      );
+      container.setY(contentY + this.scrollY);
+    });
+    this.input.on('pointerup', () => { this.isDragging = false; });
   }
 }

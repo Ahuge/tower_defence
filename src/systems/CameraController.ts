@@ -3,19 +3,30 @@ import { ResponsiveManager } from './ResponsiveManager';
 const MIN_ZOOM = 1.0;
 const MAX_ZOOM = 3.0;
 const DEFAULT_PHONE_ZOOM = 1.8;
-const PAN_THRESHOLD = 8; // pixels moved before it counts as a pan (vs tap)
+const PAN_THRESHOLD = 12;       // screen pixels moved before it counts as a pan
+const MOMENTUM_FRICTION = 0.92; // velocity multiplier per frame (< 1 = deceleration)
+const MOMENTUM_MIN = 0.5;       // stop momentum below this velocity
+const ELASTIC_FACTOR = 0.3;     // how far past bounds you can drag (0-1)
+const ELASTIC_SNAP = 0.15;      // snap-back speed per frame
+const DOUBLE_TAP_MS = 300;      // max ms between taps for double-tap
 
 /**
- * Handles pinch-to-zoom and drag-to-pan for the game camera on phone.
- * UI elements should be on a separate camera (uiCamera) that doesn't zoom.
+ * Handles pinch-to-zoom, drag-to-pan, momentum, elastic bounds,
+ * and double-tap-to-zoom for the game camera on phone.
  */
 export class CameraController {
   private scene: Phaser.Scene;
-  private camera: Phaser.Cameras.Scene2D.Camera;
+  camera: Phaser.Cameras.Scene2D.Camera;
+  private worldW: number;
+  private worldH: number;
 
   // Pinch state
   private pinchStartDist: number = 0;
   private pinchStartZoom: number = 1;
+  private pinchMidX: number = 0;
+  private pinchMidY: number = 0;
+  private pinchStartScrollX: number = 0;
+  private pinchStartScrollY: number = 0;
 
   // Pan state
   private isPanning: boolean = false;
@@ -23,7 +34,16 @@ export class CameraController {
   private panStartY: number = 0;
   private panStartScrollX: number = 0;
   private panStartScrollY: number = 0;
-  private totalMoved: number = 0;
+  private prevPointerX: number = 0;
+  private prevPointerY: number = 0;
+  private movedDist: number = 0; // total distance moved from start (not accumulated per frame)
+
+  // Momentum
+  private velocityX: number = 0;
+  private velocityY: number = 0;
+
+  // Double-tap
+  private lastTapTime: number = 0;
 
   /** True if the last pointer interaction was a pan (suppress click) */
   wasPan: boolean = false;
@@ -31,13 +51,12 @@ export class CameraController {
   constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number) {
     this.scene = scene;
     this.camera = scene.cameras.main;
+    this.worldW = worldWidth;
+    this.worldH = worldHeight;
 
-    // Set camera bounds to the game world
-    this.camera.setBounds(0, 0, worldWidth, worldHeight);
-
+    // Don't use setBounds — we handle elastic bounds manually
     if (ResponsiveManager.isPhone()) {
       this.camera.setZoom(DEFAULT_PHONE_ZOOM);
-      // Center camera on the middle of the grid
       this.camera.centerOn(worldWidth / 2, worldHeight / 2);
     }
 
@@ -50,14 +69,17 @@ export class CameraController {
     const input = this.scene.input;
 
     input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      // Only handle single-finger for panning (pinch handled separately)
       if (input.pointer1.isDown && input.pointer2.isDown) return;
 
       this.isPanning = true;
       this.wasPan = false;
-      this.totalMoved = 0;
+      this.movedDist = 0;
+      this.velocityX = 0;
+      this.velocityY = 0;
       this.panStartX = pointer.x;
       this.panStartY = pointer.y;
+      this.prevPointerX = pointer.x;
+      this.prevPointerY = pointer.y;
       this.panStartScrollX = this.camera.scrollX;
       this.panStartScrollY = this.camera.scrollY;
     });
@@ -68,20 +90,25 @@ export class CameraController {
         this.isPanning = false;
         const p1 = input.pointer1;
         const p2 = input.pointer2;
-        const dist = Math.sqrt(
-          (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2,
-        );
+        const dist = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 
         if (this.pinchStartDist === 0) {
           this.pinchStartDist = dist;
           this.pinchStartZoom = this.camera.zoom;
+          // Record midpoint in world coords for centered zoom
+          this.pinchMidX = (p1.x + p2.x) / 2;
+          this.pinchMidY = (p1.y + p2.y) / 2;
+          this.pinchStartScrollX = this.camera.scrollX;
+          this.pinchStartScrollY = this.camera.scrollY;
         } else {
           const scale = dist / this.pinchStartDist;
-          const newZoom = Phaser.Math.Clamp(
-            this.pinchStartZoom * scale,
-            MIN_ZOOM, MAX_ZOOM,
-          );
+          const newZoom = Phaser.Math.Clamp(this.pinchStartZoom * scale, MIN_ZOOM, MAX_ZOOM);
+          // Zoom centered on pinch midpoint
+          const midWorldX = this.pinchMidX / this.pinchStartZoom + this.pinchStartScrollX;
+          const midWorldY = this.pinchMidY / this.pinchStartZoom + this.pinchStartScrollY;
           this.camera.setZoom(newZoom);
+          this.camera.scrollX = midWorldX - this.pinchMidX / newZoom;
+          this.camera.scrollY = midWorldY - this.pinchMidY / newZoom;
         }
         return;
       }
@@ -90,35 +117,98 @@ export class CameraController {
       if (this.isPanning && pointer.isDown) {
         const dx = pointer.x - this.panStartX;
         const dy = pointer.y - this.panStartY;
-        this.totalMoved += Math.abs(dx) + Math.abs(dy);
+        this.movedDist = Math.sqrt(dx * dx + dy * dy);
 
-        if (this.totalMoved > PAN_THRESHOLD) {
+        // Track velocity from frame-to-frame movement
+        this.velocityX = (pointer.x - this.prevPointerX) / this.camera.zoom;
+        this.velocityY = (pointer.y - this.prevPointerY) / this.camera.zoom;
+        this.prevPointerX = pointer.x;
+        this.prevPointerY = pointer.y;
+
+        if (this.movedDist > PAN_THRESHOLD) {
           this.wasPan = true;
-          // Pan inversely to zoom (moving finger 10px at 2x zoom = 5px scroll)
           this.camera.scrollX = this.panStartScrollX - dx / this.camera.zoom;
           this.camera.scrollY = this.panStartScrollY - dy / this.camera.zoom;
         }
       }
     });
 
-    input.on('pointerup', () => {
+    input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (this.isPanning && !this.wasPan) {
+        // Check double-tap
+        const now = Date.now();
+        if (now - this.lastTapTime < DOUBLE_TAP_MS) {
+          this.doubleTapZoom(pointer.x, pointer.y);
+          this.lastTapTime = 0;
+        } else {
+          this.lastTapTime = now;
+        }
+      }
       this.isPanning = false;
       this.pinchStartDist = 0;
+      // Momentum continues in update()
     });
   }
 
-  /** Get current zoom level */
-  get zoom(): number {
-    return this.camera.zoom;
+  /** Double-tap: toggle between default zoom and 1x */
+  private doubleTapZoom(screenX: number, screenY: number): void {
+    const targetZoom = this.camera.zoom > 1.2 ? 1.0 : DEFAULT_PHONE_ZOOM;
+    // Zoom toward tap point
+    const worldX = screenX / this.camera.zoom + this.camera.scrollX;
+    const worldY = screenY / this.camera.zoom + this.camera.scrollY;
+    this.camera.setZoom(targetZoom);
+    this.camera.scrollX = worldX - screenX / targetZoom;
+    this.camera.scrollY = worldY - screenY / targetZoom;
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this.wasPan = true; // suppress the tap click
   }
 
-  /** Convert screen coords to world coords (for input handling) */
-  screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
+  /** Call each frame to apply momentum and elastic bounds */
+  update(delta: number): void {
+    if (!ResponsiveManager.isPhone()) return;
+
+    // Apply momentum when not actively panning
+    if (!this.isPanning && (Math.abs(this.velocityX) > MOMENTUM_MIN || Math.abs(this.velocityY) > MOMENTUM_MIN)) {
+      this.camera.scrollX -= this.velocityX;
+      this.camera.scrollY -= this.velocityY;
+      this.velocityX *= MOMENTUM_FRICTION;
+      this.velocityY *= MOMENTUM_FRICTION;
+    }
+
+    // Elastic bounds: calculate where camera should be clamped
     const cam = this.camera;
-    return {
-      x: screenX / cam.zoom + cam.scrollX,
-      y: screenY / cam.zoom + cam.scrollY,
-    };
+    const viewW = cam.width / cam.zoom;
+    const viewH = cam.height / cam.zoom;
+    const minX = 0;
+    const minY = 0;
+    const maxX = Math.max(0, this.worldW - viewW);
+    const maxY = Math.max(0, this.worldH - viewH);
+
+    // If actively dragging, allow elastic overscroll
+    if (this.isPanning) {
+      // Soft clamp: resist going past bounds
+      if (cam.scrollX < minX) {
+        cam.scrollX = minX - (minX - cam.scrollX) * (1 - ELASTIC_FACTOR);
+      } else if (cam.scrollX > maxX) {
+        cam.scrollX = maxX + (cam.scrollX - maxX) * ELASTIC_FACTOR;
+      }
+      if (cam.scrollY < minY) {
+        cam.scrollY = minY - (minY - cam.scrollY) * (1 - ELASTIC_FACTOR);
+      } else if (cam.scrollY > maxY) {
+        cam.scrollY = maxY + (cam.scrollY - maxY) * ELASTIC_FACTOR;
+      }
+    } else {
+      // Snap back to bounds
+      if (cam.scrollX < minX) cam.scrollX += (minX - cam.scrollX) * ELASTIC_SNAP;
+      else if (cam.scrollX > maxX) cam.scrollX -= (cam.scrollX - maxX) * ELASTIC_SNAP;
+      if (cam.scrollY < minY) cam.scrollY += (minY - cam.scrollY) * ELASTIC_SNAP;
+      else if (cam.scrollY > maxY) cam.scrollY -= (cam.scrollY - maxY) * ELASTIC_SNAP;
+    }
+  }
+
+  get zoom(): number {
+    return this.camera.zoom;
   }
 
   destroy(): void {

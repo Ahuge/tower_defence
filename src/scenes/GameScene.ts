@@ -682,6 +682,45 @@ export class GameScene extends Phaser.Scene {
         ? this.circle.getWaveTimerSeconds()
         : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+
+    // Phone: set up UI camera so HUD stays fixed while game camera zooms/pans
+    if (ResponsiveManager.isPhone()) {
+      this.setupUiCamera();
+    }
+  }
+
+  /** Create a UI camera that renders HUD elements at 1x zoom, no scroll.
+   *  Main camera ignores HUD objects; UI camera ignores game objects. */
+  private setupUiCamera(): void {
+    const canvasW = getCanvasWidth();
+    const canvasH = ResponsiveManager.canvasHeight();
+    this.uiCamera = this.cameras.add(0, 0, canvasW, canvasH);
+    this.uiCamera.setScroll(0, 0);
+    this.uiCamera.setName('ui');
+
+    // Split all existing children by depth:
+    // depth < 28 = game world (ignore from UI camera)
+    // depth >= 28 = UI (ignore from main camera)
+    const mainCam = this.cameras.main;
+    for (const child of this.children.list) {
+      const d = (child as any).depth ?? 0;
+      if (d >= 28) {
+        mainCam.ignore(child);
+      } else {
+        this.uiCamera.ignore(child);
+      }
+    }
+
+    // Auto-categorize newly added objects
+    this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
+      if (!this.uiCamera) return;
+      const d = (go as any).depth ?? 0;
+      if (d >= 28) {
+        mainCam.ignore(go);
+      } else {
+        this.uiCamera.ignore(go);
+      }
+    });
   }
 
   // === Selection Mode Management ===
@@ -1038,6 +1077,7 @@ export class GameScene extends Phaser.Scene {
 
     // Ability VFX
     if (this.abilitySystem) this.abilitySystem.update(delta);
+    if (this.cameraCtrl) this.cameraCtrl.update(delta);
 
     // Versus: wave timer, minimap, incoming sends, ping, disconnect, chat
     if (this.versus) {
