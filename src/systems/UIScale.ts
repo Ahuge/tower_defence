@@ -1,9 +1,13 @@
 /**
  * Centralized UI scaling constants for all layout modes.
  * One source of truth for font sizes, spacing, button sizes, etc.
- * Eliminates scattered `isPhone ? X : Y` ternaries across the codebase.
+ *
+ * Phone canvas is ~1008px displayed on ~400px screen = ~40% physical size.
+ * Scale factor 2.5x makes canvas text → readable physical text.
  */
 import { ResponsiveManager } from './ResponsiveManager';
+
+const SCALE = 2.5; // phone canvas → physical multiplier
 
 interface ScaleValues {
   // Font sizes (as CSS strings)
@@ -15,22 +19,31 @@ interface ScaleValues {
   fontHuge: string;
 
   // Spacing
-  rowHeight: number;      // standard text row height
-  rowHeightTight: number; // compact rows
-  sectionGap: number;     // gap between sections
-  padding: number;        // standard padding
+  rowHeight: number;
+  rowHeightTight: number;
+  sectionGap: number;
+  padding: number;
   paddingSmall: number;
 
   // Buttons
-  btnSize: number;        // tower bar / control bar button size
-  btnPadding: number;     // gap between buttons
+  btnSize: number;
+  btnPadding: number;
   btnFontSize: string;
 
-  // Cards
+  // Cards / Menus
   cardGap: number;
+  mapBtnW: number;       // map button width
+  mapBtnH: number;       // map button height
+  mapRowH: number;       // row height in map grid
+  diffBtnW: number;      // difficulty button width
+  diffBtnH: number;      // difficulty button height
+  modeBtnH: number;      // mode card height
+  factionCardW: number;  // faction card width
+  factionCardH: number;  // faction card height
+  factionCols: number;   // columns in faction grid
 
   // Touch targets
-  minTouchTarget: number; // minimum height for tappable rows
+  minTouchTarget: number;
 }
 
 const DESKTOP: ScaleValues = {
@@ -52,6 +65,15 @@ const DESKTOP: ScaleValues = {
   btnFontSize: '12px',
 
   cardGap: 10,
+  mapBtnW: 140,
+  mapBtnH: 40,
+  mapRowH: 48,
+  diffBtnW: 90,
+  diffBtnH: 28,
+  modeBtnH: 56,
+  factionCardW: 140,
+  factionCardH: 280,
+  factionCols: 6,
 
   minTouchTarget: 24,
 };
@@ -66,7 +88,7 @@ const PHONE: ScaleValues = {
 
   rowHeight: 36,
   rowHeightTight: 28,
-  sectionGap: 18,
+  sectionGap: 24,
   padding: 16,
   paddingSmall: 10,
 
@@ -75,6 +97,15 @@ const PHONE: ScaleValues = {
   btnFontSize: '28px',
 
   cardGap: 12,
+  mapBtnW: 190,
+  mapBtnH: 55,
+  mapRowH: 65,
+  diffBtnW: 150,
+  diffBtnH: 55,
+  modeBtnH: 100,
+  factionCardW: 220,
+  factionCardH: 240,
+  factionCols: 3,
 
   minTouchTarget: 60,
 };
@@ -84,20 +115,27 @@ class UIScaleClass {
     return ResponsiveManager.isPhone() ? PHONE : DESKTOP;
   }
 
-  // Convenience accessors
   get isPhone(): boolean { return ResponsiveManager.isPhone(); }
 
-  // Font helpers that return CSS font size string
-  // Phone canvas is ~1008px displayed on ~400px screen = ~40% physical size
-  // 2.5x scaling makes 12px canvas → 30px canvas → 12px physical (readable)
+  /** Scale a desktop font size for the current layout */
   font(desktopPx: number): string {
-    const scale = this.isPhone ? 2.5 : 1;
-    return `${Math.round(desktopPx * scale)}px`;
+    return `${Math.round(desktopPx * (this.isPhone ? SCALE : 1))}px`;
   }
 
-  // Spacing helper — scales up on phone
+  /** Scale a desktop font size, but capped for constrained areas (status bars, labels) */
+  fontCapped(desktopPx: number, maxPhonePx: number): string {
+    if (!this.isPhone) return `${desktopPx}px`;
+    return `${Math.min(Math.round(desktopPx * SCALE), maxPhonePx)}px`;
+  }
+
+  /** Scale a desktop spacing value */
   space(desktopPx: number): number {
     return this.isPhone ? Math.round(desktopPx * 2) : desktopPx;
+  }
+
+  /** Y position helper — scales vertical offsets for phone layout */
+  y(desktopY: number): number {
+    return this.isPhone ? Math.round(desktopY * 1.6) : desktopY;
   }
 }
 

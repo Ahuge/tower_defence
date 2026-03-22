@@ -32,16 +32,18 @@ export class FactionSelectScene extends Phaser.Scene {
     const cx = getCanvasWidth() / 2;
     const ph = UIScale.isPhone;
 
-    this.add.text(cx, ph ? 20 : 30, 'Choose Your Faction', {
-      fontSize: UIScale.font(28), color: '#ffffff', fontFamily: 'monospace',
+    this.add.text(cx, ph ? 30 : 30, 'Choose Your Faction', {
+      fontSize: ph ? '50px' : '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const isPhone = ph;
-    const cardW = isPhone ? Math.floor((getCanvasWidth() - 16) / 3 - 3) : 140;
-    const cardH = isPhone ? 170 : 280;
-    const gap = isPhone ? 3 : 6;
+    const s = UIScale.current;
+    const fCols = s.factionCols;
+    const cardW = isPhone ? Math.floor((getCanvasWidth() - 16) / fCols - 4) : s.factionCardW;
+    const cardH = s.factionCardH;
+    const gap = isPhone ? 4 : 6;
     const factions = FACTION_ORDER;
-    const cols = isPhone ? 3 : 6;
+    const cols = fCols;
     const rows = Math.ceil(factions.length / cols);
 
     for (let i = 0; i < factions.length; i++) {
@@ -53,7 +55,7 @@ export class FactionSelectScene extends Phaser.Scene {
       const rowW = rowCount * cardW + (rowCount - 1) * gap;
       const rowStartX = cx - rowW / 2;
       const x = rowStartX + col * (cardW + gap);
-      const y = (isPhone ? 48 : 55) + row * (cardH + gap);
+      const y = (isPhone ? 70 : 55) + row * (cardH + gap);
 
       const card = this.add.graphics();
       card.fillStyle(0x222222, 1);
@@ -66,19 +68,19 @@ export class FactionSelectScene extends Phaser.Scene {
       card.fillRect(x, y, cardW, 6);
 
       // Name
-      this.add.text(x + cardW / 2, y + (isPhone ? 16 : 22), faction.name, {
-        fontSize: UIScale.font(isPhone ? 13 : 16), color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 22 : 22), faction.name, {
+        fontSize: isPhone ? '28px' : '16px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Tower count badge
       const tCount = faction.towerIds.length > 0 ? `${faction.towerIds.length} towers` : '6/wave';
-      this.add.text(x + cardW / 2, y + (isPhone ? 32 : 40), tCount, {
-        fontSize: UIScale.font(10), color: '#888888', fontFamily: 'monospace',
+      this.add.text(x + cardW / 2, y + (isPhone ? 52 : 40), tCount, {
+        fontSize: isPhone ? '20px' : '10px', color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Description
-      this.add.text(x + 6, y + (isPhone ? 46 : 55), faction.description, {
-        fontSize: UIScale.font(isPhone ? 9 : 10), color: '#aaaaaa', fontFamily: 'monospace',
+      this.add.text(x + 6, y + (isPhone ? 76 : 55), faction.description, {
+        fontSize: isPhone ? '18px' : '10px', color: '#aaaaaa', fontFamily: 'monospace',
         wordWrap: { width: cardW - 12 },
       });
 

@@ -1,4 +1,4 @@
-import { SIDEBAR_WIDTH } from '../config';
+import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
 import { WaveDefinition } from '../data/WaveDefinitions';
 import { UIScale } from '../systems/UIScale';
 
@@ -17,9 +17,9 @@ export class UpcomingWaves {
 
     const bg = scene.add.graphics();
     bg.fillStyle(0x121218, 1);
-    bg.fillRect(0, 0, SIDEBAR_WIDTH, UpcomingWaves.HEIGHT);
+    bg.fillRect(0, 0, getSidebarWidth(), UpcomingWaves.HEIGHT);
     bg.lineStyle(1, 0x333333, 1);
-    bg.strokeRect(0, 0, SIDEBAR_WIDTH, UpcomingWaves.HEIGHT);
+    bg.strokeRect(0, 0, getSidebarWidth(), UpcomingWaves.HEIGHT);
     this.container.add(bg);
 
     const title = scene.add.text(8, 4, 'UPCOMING WAVES', {
@@ -33,7 +33,7 @@ export class UpcomingWaves {
     this.container.add(this.autoPlayBg);
 
     const touch = UIScale.current.minTouchTarget;
-    this.autoPlayBtn = scene.add.text(SIDEBAR_WIDTH - 8, UIScale.isPhone ? 6 : 4, '[A] AUTO', {
+    this.autoPlayBtn = scene.add.text(getSidebarWidth() - 8, UIScale.isPhone ? 6 : 4, '[A] AUTO', {
       fontSize: UIScale.font(13), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(1, 0);
     this.container.add(this.autoPlayBtn);
@@ -52,7 +52,7 @@ export class UpcomingWaves {
     const phone = UIScale.isPhone;
     const btnW = phone ? 100 : 72;
     const btnH = phone ? 32 : 18;
-    const btnX = SIDEBAR_WIDTH - btnW - 4;
+    const btnX = getSidebarWidth() - btnW - 4;
     const btnY = 2;
     this.autoPlayBg.clear();
     this.autoPlayBg.fillStyle(active ? 0x224422 : 0x1a1a22, 1);
@@ -93,7 +93,7 @@ export class UpcomingWaves {
         fontSize: UIScale.font(13),
         color: wave.isBoss ? '#ff4444' : (i === 0 ? '#cccccc' : '#888888'),
         fontFamily: 'monospace',
-        wordWrap: { width: SIDEBAR_WIDTH - 16 },
+        wordWrap: { width: getSidebarWidth() - 16 },
       });
       this.container.add(text);
       this.contentItems.push(text);

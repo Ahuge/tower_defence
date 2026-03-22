@@ -1,4 +1,4 @@
-import { SIDEBAR_WIDTH, GAME_HEIGHT } from '../config';
+import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
 import { FrontierBuilding } from '../data/FrontierBuildings';
 import { FrontierManager, OwnedBuilding } from '../systems/FrontierManager';
 import { SendPanel } from './SendPanel';
@@ -46,7 +46,7 @@ export class FrontierPanel {
   }
 
   private buildPanel(): void {
-    const panelW = SIDEBAR_WIDTH;
+    const panelW = getSidebarWidth();
     const panelH = GAME_HEIGHT - SendPanel.HEIGHT - UpcomingWaves.HEIGHT - 200; // leave room for event log
 
     const bg = this.scene.add.graphics();

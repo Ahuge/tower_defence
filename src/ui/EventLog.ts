@@ -1,4 +1,4 @@
-import { SIDEBAR_WIDTH, GAME_HEIGHT } from '../config';
+import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
 import { UIScale } from '../systems/UIScale';
 import { TowerSelectBar } from './TowerSelectBar';
 
@@ -22,9 +22,9 @@ export class EventLog {
     // Background
     const bg = scene.add.graphics();
     bg.fillStyle(0x0a0a10, 1);
-    bg.fillRect(0, 0, SIDEBAR_WIDTH, this.panelH);
+    bg.fillRect(0, 0, getSidebarWidth(), this.panelH);
     bg.lineStyle(1, 0x333333, 1);
-    bg.strokeRect(0, 0, SIDEBAR_WIDTH, this.panelH);
+    bg.strokeRect(0, 0, getSidebarWidth(), this.panelH);
     this.container.add(bg);
 
     // Title
@@ -37,7 +37,7 @@ export class EventLog {
     this.textObj = scene.add.text(8, 20, '', {
       fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
       lineSpacing: UIScale.isPhone ? 4 : 2,
-      wordWrap: { width: SIDEBAR_WIDTH - 16 },
+      wordWrap: { width: getSidebarWidth() - 16 },
     });
     this.container.add(this.textObj);
   }

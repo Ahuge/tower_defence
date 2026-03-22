@@ -10,8 +10,9 @@ export class IncomeDisplay {
     this.scene = scene;
     // Position in the tower bar area, top-right
     const barY = GAME_HEIGHT + 28;
+    // Use capped font to fit in tower bar without overlapping buttons
     this.text = scene.add.text(getCanvasWidth() - 10, barY + 8, '', {
-      fontSize: UIScale.font(11), color: '#88ff88', fontFamily: 'monospace',
+      fontSize: UIScale.fontCapped(11, 22), color: '#88ff88', fontFamily: 'monospace',
     }).setDepth(31).setOrigin(1, 0);
   }
 

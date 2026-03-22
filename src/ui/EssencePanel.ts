@@ -1,4 +1,4 @@
-import { SIDEBAR_WIDTH, GAME_HEIGHT } from '../config';
+import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
 import { ResourceManager } from '../systems/ResourceManager';
 import { EssenceGenerator, ESSENCE_GENERATORS, EssenceSendOption, ESSENCE_SENDS } from '../data/EssenceGenerators';
 import { UpcomingWaves } from './UpcomingWaves';
@@ -41,7 +41,7 @@ export class EssencePanel {
   }
 
   private buildPanel(): void {
-    const panelW = SIDEBAR_WIDTH;
+    const panelW = getSidebarWidth();
     const panelH = GAME_HEIGHT - UpcomingWaves.HEIGHT - 200; // leave room for event log
 
     const bg = this.scene.add.graphics();
