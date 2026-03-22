@@ -38,11 +38,13 @@ export class GameControlBar {
   private onWaveStart: (() => void) | null = null;
   private onSpeedCycle: (() => void) | null = null;
   private onPause: (() => void) | null = null;
+  private onAutoPlay: (() => void) | null = null;
 
   // State for display
   private waveActive = false;
   private betweenWaves = false;
   private canStart = false;
+  private autoPlay = false;
   private gameSpeed = 1;
 
   constructor(
@@ -75,6 +77,12 @@ export class GameControlBar {
       this.onPause?.();
     });
     x += BTN_SIZE + BTN_GAP;
+
+    // Auto-play button
+    this.addButton(x, barY + 2, BTN_SIZE + 10, BTN_SIZE, 'Auto', 0x224422, () => {
+      this.onAutoPlay?.();
+    });
+    x += BTN_SIZE + 10 + BTN_GAP;
 
     // Hero defense ability buttons
     if (arenaManager) {
@@ -125,17 +133,19 @@ export class GameControlBar {
     this.buttons.push({ x, y, w, h, label, color, action, cooldown, locked, zone });
   }
 
-  setCallbacks(onWaveStart: () => void, onSpeedCycle: () => void, onPause: () => void): void {
+  setCallbacks(onWaveStart: () => void, onSpeedCycle: () => void, onPause: () => void, onAutoPlay?: () => void): void {
     this.onWaveStart = onWaveStart;
     this.onSpeedCycle = onSpeedCycle;
     this.onPause = onPause;
+    this.onAutoPlay = onAutoPlay ?? null;
   }
 
-  setState(waveActive: boolean, betweenWaves: boolean, canStart: boolean, gameSpeed: number): void {
+  setState(waveActive: boolean, betweenWaves: boolean, canStart: boolean, gameSpeed: number, autoPlay: boolean = false): void {
     this.waveActive = waveActive;
     this.betweenWaves = betweenWaves;
     this.canStart = canStart;
     this.gameSpeed = gameSpeed;
+    this.autoPlay = autoPlay;
   }
 
   update(): void {
@@ -181,6 +191,10 @@ export class GameControlBar {
           const speedLabel = this.gameSpeed === 0 ? '⏸' : `${this.gameSpeed}x`;
           label.setText(speedLabel);
           label.setColor(this.gameSpeed > 1 ? '#ffdd44' : '#aaaaaa');
+        } else if (i === 3) {
+          // Auto button
+          label.setText(this.autoPlay ? 'AUTO' : 'Auto');
+          label.setColor(this.autoPlay ? '#44ff44' : '#888888');
         } else {
           label.setText(btn.label);
           label.setColor('#ffffff');

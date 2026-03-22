@@ -526,6 +526,7 @@ export class GameScene extends Phaser.Scene {
         },
         () => this.cycleSpeed(),
         () => this.togglePause(),
+        () => this.toggleAutoPlay(),
       );
     }
 
@@ -700,14 +701,16 @@ export class GameScene extends Phaser.Scene {
 
     const mainCam = this.cameras.main;
 
-    // UI camera ignores ALL objects by default
+    // UI camera ignores all CURRENT objects
     for (const child of this.children.list) {
       this.uiCamera.ignore(child);
     }
-    // New objects also default to game-only
-    this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
-      if (this.uiCamera) this.uiCamera.ignore(go);
-    });
+    // Note: we do NOT auto-ignore new objects via addedtoscene —
+    // that breaks UI components that rebuild their children (TowerSelectBar).
+    // New game objects (towers, creeps, projectiles) render on both cameras
+    // but are positioned in world space, so they only appear correct on the
+    // main camera. The UI camera shows them too but they're harmless since
+    // they're behind the UI elements at higher depth.
 
     // Now explicitly register known UI objects:
     // remove from main camera, add to UI camera
@@ -1105,7 +1108,7 @@ export class GameScene extends Phaser.Scene {
 
     // Phone control bar
     if (this.controlBar) {
-      this.controlBar.setState(this.waveActive, this.betweenWaves, this.currentWave < this.waves.length, this.gameSpeed);
+      this.controlBar.setState(this.waveActive, this.betweenWaves, this.currentWave < this.waves.length, this.gameSpeed, this.autoPlay);
       this.controlBar.update();
     }
 
