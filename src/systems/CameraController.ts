@@ -68,10 +68,13 @@ export class CameraController {
   private setupInput(): void {
     if (!ResponsiveManager.isPhone()) return;
 
-    const input = this.scene.input;
+    const scene = this.scene;
 
-    input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (input.pointer1.isDown && input.pointer2.isDown) return;
+    scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      // If two pointers are down, let pointermove handle pinch
+      const pointers = scene.input.manager.pointers;
+      const activeCount = pointers.filter(p => p.isDown).length;
+      if (activeCount >= 2) return;
 
       this.isPanning = true;
       this.wasPan = false;
@@ -86,14 +89,16 @@ export class CameraController {
       this.panStartScrollY = this.camera.scrollY;
     });
 
-    input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+    scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       // Pinch-to-zoom: two fingers
-      if (input.pointer1.isDown && input.pointer2.isDown) {
+      const pointers = scene.input.manager.pointers;
+      const downPointers = pointers.filter(p => p.isDown);
+      if (downPointers.length >= 2) {
         this.isPanning = false;
         this.pinching = true;
         this.wasPan = true; // suppress click after pinch
-        const p1 = input.pointer1;
-        const p2 = input.pointer2;
+        const p1 = downPointers[0];
+        const p2 = downPointers[1];
         const dist = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 
         if (this.pinchStartDist === 0) {
@@ -137,7 +142,7 @@ export class CameraController {
       }
     });
 
-    input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+    scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       if (this.isPanning && !this.wasPan) {
         // Check double-tap
         const now = Date.now();

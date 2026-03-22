@@ -15,7 +15,7 @@ export class TowerSelectBar {
   private tooltipBg: Phaser.GameObjects.Graphics;
   private tooltipText: Phaser.GameObjects.Text;
 
-  static readonly BAR_HEIGHT = 80; // fits both phone (62px btns) and desktop (52px btns)
+  static readonly BAR_HEIGHT = 96; // fits phone (80px btns) and desktop (52px btns)
   private readonly btnSize: number;
   private readonly padding: number;
 

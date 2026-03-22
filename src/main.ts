@@ -33,6 +33,10 @@ const config: Phaser.Types.Core.GameConfig = {
     antialias: true,
     pixelArt: false,
   },
+  input: {
+    touch: true,
+    activePointers: 3, // support pinch (2 fingers) + 1 extra
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

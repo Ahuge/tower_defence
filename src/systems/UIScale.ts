@@ -57,26 +57,26 @@ const DESKTOP: ScaleValues = {
 };
 
 const PHONE: ScaleValues = {
-  fontTiny: '13px',
-  fontSmall: '15px',
-  fontBody: '17px',
-  fontHeading: '21px',
-  fontTitle: '30px',
-  fontHuge: '42px',
+  fontTiny: '22px',
+  fontSmall: '26px',
+  fontBody: '30px',
+  fontHeading: '38px',
+  fontTitle: '56px',
+  fontHuge: '80px',
 
-  rowHeight: 24,
-  rowHeightTight: 18,
-  sectionGap: 12,
-  padding: 12,
-  paddingSmall: 8,
+  rowHeight: 36,
+  rowHeightTight: 28,
+  sectionGap: 18,
+  padding: 16,
+  paddingSmall: 10,
 
-  btnSize: 62,
-  btnPadding: 6,
-  btnFontSize: '16px',
+  btnSize: 80,
+  btnPadding: 8,
+  btnFontSize: '28px',
 
-  cardGap: 8,
+  cardGap: 12,
 
-  minTouchTarget: 40,
+  minTouchTarget: 60,
 };
 
 class UIScaleClass {
@@ -88,14 +88,16 @@ class UIScaleClass {
   get isPhone(): boolean { return ResponsiveManager.isPhone(); }
 
   // Font helpers that return CSS font size string
+  // Phone canvas is ~1008px displayed on ~400px screen = ~40% physical size
+  // 2.5x scaling makes 12px canvas → 30px canvas → 12px physical (readable)
   font(desktopPx: number): string {
-    const scale = this.isPhone ? 1.4 : 1;
+    const scale = this.isPhone ? 2.5 : 1;
     return `${Math.round(desktopPx * scale)}px`;
   }
 
   // Spacing helper — scales up on phone
   space(desktopPx: number): number {
-    return this.isPhone ? Math.round(desktopPx * 1.3) : desktopPx;
+    return this.isPhone ? Math.round(desktopPx * 2) : desktopPx;
   }
 }
 
