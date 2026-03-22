@@ -3,15 +3,17 @@
 ## 2026-03-21
 
 ### Mobile Phone Support
-- **Phone breakpoint** (<600px): New layout mode with reduced canvas (20 cols × 28px = 560px) for ~71% scale on phones instead of crushing 40%.
-- **GameControlBar**: Touch buttons for wave start, speed, pause + hero ability buttons (Q/W/E/R/T) with cooldown overlays. Replaces keyboard controls on phone.
+- **Phone breakpoint** (<600px): New `phone` layout mode in ResponsiveManager. Full 36-col grid preserved (maps require it), Phaser Scale.FIT handles scaling.
+- **Pinch-to-zoom**: Two-finger gesture zooms the camera 1x–3x. Phone starts at 1.8x zoom so grid details and text are readable.
+- **Drag to pan**: Single-finger drag pans the camera when zoomed. 8px threshold distinguishes taps from pans — no accidental tower placements.
+- **Touch input rework**: Clicks deferred to pointerup on touch (after pan detection). Uses `pointer.worldX/worldY` for accurate grid coords at any zoom level.
+- **GameControlBar**: Touch buttons for wave start, speed, pause + hero ability buttons (Q/W/E/R/T) with cooldown overlays. Placed below the tower bar.
 - **SidebarOverlay full-screen on phone**: Full canvas overlay instead of side panel, larger close button, darker scrim.
 - **TowerSelectBar phone sizing**: Smaller buttons (42px vs 52px), tighter padding, no hotkey numbers on phone.
-- **UIOverlay compact**: Tighter column spacing, hidden wave/speed buttons (control bar handles them), smaller font.
 - **HeroSelectScene carousel**: Single-card view on phone with prev/next navigation and dot indicators instead of 3-across.
 - **MenuScene responsive**: Map buttons in multi-row grid, 2-column mode cards, smaller difficulty buttons, dynamic Y offsets.
 - **FactionSelectScene responsive**: 3-column layout (vs 6), smaller cards (90px vs 140px), condensed text, tower list hidden on phone.
-- **Dynamic grid dimensions**: Grid cols/rows, game width, and layout config all respond to phone mode. Grid, Pathfinding, and InputManager use dynamic cols.
+- **Dynamic grid**: Grid, Pathfinding, and InputManager use dynamic `grid.cols` for bounds checking.
 
 ### Hero Defense Polish
 - **2% interest** on gold at end of each wave — rewards saving for bigger purchases.
