@@ -65,7 +65,7 @@ export class FrontierPanel {
     this.container.add(title);
 
     const rh = UIScale.current.rowHeight;
-    let y = UIScale.isPhone ? 50 : 26;
+    let y = UIScale.current.panelContentY;
     for (const building of this.frontier.availableBuildings) {
       const text = this.scene.add.text(8, y, `[Buy] ${building.name} (${building.cost}g)`, {
         fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',

@@ -61,7 +61,7 @@ export class SendPanel {
     for (let i = 0; i < SEND_OPTIONS.length; i++) {
       const opt = SEND_OPTIONS[i];
       const hotkey = SEND_HOTKEYS[i] || '';
-      const startY = UIScale.isPhone ? 50 : 24;
+      const startY = UIScale.current.panelContentY;
       const y = startY + i * rowH;
 
       const text = this.scene.add.text(8, y, '', {
@@ -97,7 +97,7 @@ export class SendPanel {
     // Position unlocked sends first
     let idx = 0;
     for (const l of unlocked) {
-      const y = (UIScale.isPhone ? 50 : 24) + idx * rh;
+      const y = (UIScale.current.panelContentY) + idx * rh;
       const cost = getSendCost(l.opt.cost, this.currentWave);
       const income = getSendIncome(l.opt.incomeReward, this.currentWave);
       const tierTag = l.opt.tier >= 2 ? ' T2' : '';
@@ -113,7 +113,7 @@ export class SendPanel {
 
     // Show next unlock hint if any locked sends exist
     for (const l of locked) {
-      const y = (UIScale.isPhone ? 50 : 24) + idx * rh;
+      const y = (UIScale.current.panelContentY) + idx * rh;
       l.text.setText(`  ${l.opt.name} — unlocks wave ${l.opt.unlockWave}`);
       l.text.setY(y);
       l.text.setVisible(true);

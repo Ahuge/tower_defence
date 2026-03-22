@@ -75,7 +75,7 @@ export class UpcomingWaves {
     this.contentItems = [];
 
     const rh = UIScale.current.rowHeight;
-    let y = UIScale.isPhone ? 50 : 18;
+    let y = UIScale.current.panelContentY;
     for (let i = 0; i < 3; i++) {
       const waveIdx = currentWave + i; // currentWave is 1-indexed after starting
       if (waveIdx >= waves.length) break;
