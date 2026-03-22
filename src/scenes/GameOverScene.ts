@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { getCanvasWidth, GAME_HEIGHT } from '../config';
+import { getCanvasWidth } from '../config';
 import { GameStats } from '../systems/StatsTracker';
 import { TOWER_TYPES } from '../data/TowerTypes';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 
 export interface GameOverData {
@@ -33,17 +33,15 @@ export class GameOverScene extends Phaser.Scene {
 
   create(data: GameOverData): void {
     const cx = getCanvasWidth() / 2;
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-    const isPhone = UIScale.isPhone;
+    const totalH = ResponsiveManager.canvasHeight();
 
-    // Phone-adaptive sizes
-    const titleFontSize = UIScale.fontCapped(32, 26);
-    const sectionFontSize = UIScale.fontCapped(13, 11);
-    const bodyFontSize = UIScale.fontCapped(13, 10);
-    const smallFontSize = UIScale.fontCapped(11, 9);
-    const btnFontSize = UIScale.fontCapped(14, 12);
-    const rowH = isPhone ? 12 : 14; // TODO: centralize in UIScale
-    const leftMargin = isPhone ? 20 : 60; // TODO: centralize in UIScale
+    const titleFontSize = UIScale.font(32);
+    const sectionFontSize = UIScale.font(13);
+    const bodyFontSize = UIScale.font(13);
+    const smallFontSize = UIScale.font(11);
+    const btnFontSize = UIScale.font(14);
+    const rowH = UIScale.space(14);
+    const leftMargin = UIScale.space(60);
 
     // Background
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
@@ -51,7 +49,7 @@ export class GameOverScene extends Phaser.Scene {
     const title = data.won ? 'VICTORY!' : 'DEFEAT';
     const titleColor = data.won ? '#44ff44' : '#ff4444';
 
-    this.add.text(cx, isPhone ? 18 : 25, title, { // TODO: centralize Y in UIScale
+    this.add.text(cx, UIScale.y(25), title, {
       fontSize: titleFontSize, color: titleColor, fontFamily: 'monospace',
     }).setOrigin(0.5);
 
@@ -72,30 +70,30 @@ export class GameOverScene extends Phaser.Scene {
       `Score: ${score}${score >= highScore ? ' (NEW HIGH!)' : `  |  High: ${highScore}`}`,
     ];
 
-    this.add.text(cx, isPhone ? 50 : 65, overviewLines.join('\n'), { // TODO: centralize Y in UIScale
+    this.add.text(cx, UIScale.y(65), overviewLines.join('\n'), {
       fontSize: sectionFontSize, color: '#cccccc', fontFamily: 'monospace',
-      align: 'center', lineSpacing: isPhone ? 2 : 4, // TODO: centralize in UIScale
+      align: 'center', lineSpacing: UIScale.space(4),
     }).setOrigin(0.5, 0);
 
     // Tower Performance Table
     if (data.stats && Object.keys(data.stats.towerStats).length > 0) {
-      const tableY = isPhone ? 130 : 155; // TODO: centralize Y in UIScale
+      const tableY = UIScale.y(155);
       this.add.text(cx, tableY, 'TOWER PERFORMANCE', {
         fontSize: sectionFontSize, color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Header
-      const headerY = tableY + (isPhone ? 16 : 20); // TODO: centralize in UIScale
-      // TODO: centralize column positions in UIScale
-      const colX = isPhone
-        ? [leftMargin, 160, 260, 350, 440, 520]
-        : [60, 210, 310, 400, 500, 600];
+      const headerY = tableY + UIScale.space(20);
+      const colX = [
+        leftMargin,
+        UIScale.space(210),
+        UIScale.space(310),
+        UIScale.space(400),
+        UIScale.space(500),
+        UIScale.space(600),
+      ];
       const headers = ['Tower', 'Total DMG', 'Avg DPS', 'Gold Earned', 'Shots', 'Built'];
-      // On phone, abbreviate headers
-      const displayHeaders = isPhone
-        ? ['Tower', 'DMG', 'DPS', 'Gold', 'Shots', 'Built']
-        : headers;
-      displayHeaders.forEach((h, i) => {
+      headers.forEach((h, i) => {
         this.add.text(colX[i], headerY, h, {
           fontSize: bodyFontSize, color: '#888888', fontFamily: 'monospace',
         });
@@ -104,21 +102,20 @@ export class GameOverScene extends Phaser.Scene {
       // Divider
       const divG = this.add.graphics();
       divG.lineStyle(1, 0x444444, 0.5);
-      divG.lineBetween(leftMargin - 10, headerY + rowH, getCanvasWidth() - (isPhone ? 20 : 50), headerY + rowH); // TODO: centralize in UIScale
+      divG.lineBetween(leftMargin - 10, headerY + rowH, getCanvasWidth() - UIScale.space(50), headerY + rowH);
 
       // Rows — sorted by total damage
       const entries = Object.entries(data.stats.towerStats)
         .sort(([, a], [, b]) => b.totalDamage - a.totalDamage);
 
-      let rowY = headerY + rowH + 6;
+      let rowY = headerY + rowH + UIScale.space(6);
       for (const [typeId, ts] of entries) {
         const towerDef = TOWER_TYPES[typeId];
         const name = towerDef?.name ?? typeId;
         const avgDps = ts.timeAlive > 0 ? Math.round(ts.totalDamage / (ts.timeAlive / 1000)) : 0;
 
-        const displayName = isPhone && name.length > 12 ? name.substring(0, 11) + '.' : name;
         const values = [
-          displayName,
+          name,
           ts.totalDamage.toLocaleString(),
           `${avgDps}/s`,
           ts.totalGoldEarned > 0 ? `+${ts.totalGoldEarned}g` : '-',
@@ -136,16 +133,15 @@ export class GameOverScene extends Phaser.Scene {
       }
 
       // Economy table — positioned dynamically after tower table
-      const econY = rowY + (isPhone ? 10 : 16); // TODO: centralize in UIScale
+      const econY = rowY + UIScale.space(16);
       this.add.text(cx, econY, 'ECONOMY', {
         fontSize: sectionFontSize, color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const s = data.stats;
       const towerBonusGold = Object.values(s.towerStats).reduce((sum, t) => sum + t.totalGoldEarned, 0);
-      const econHeaderY = econY + (isPhone ? 14 : 18); // TODO: centralize in UIScale
-      // TODO: centralize column positions in UIScale
-      const econColX = isPhone ? [leftMargin, 200, 400] : [60, 250, 500];
+      const econHeaderY = econY + UIScale.space(18);
+      const econColX = [leftMargin, UIScale.space(250), UIScale.space(500)];
       const econHeaders = ['Stat', 'Value', 'Detail'];
       econHeaders.forEach((h, i) => {
         this.add.text(econColX[i], econHeaderY, h, {
@@ -163,7 +159,7 @@ export class GameOverScene extends Phaser.Scene {
         ['Kill Efficiency', `${s.creepsKilled > 0 ? (s.totalGoldEarned / s.creepsKilled).toFixed(1) : 0}g/kill`, ''],
       ];
 
-      let econRowY = econHeaderY + (isPhone ? 12 : 16); // TODO: centralize in UIScale
+      let econRowY = econHeaderY + UIScale.space(16);
       for (const row of econRows) {
         row.forEach((v, i) => {
           this.add.text(econColX[i], econRowY, v, {
@@ -174,7 +170,7 @@ export class GameOverScene extends Phaser.Scene {
       }
 
       // Fun stats
-      const funY = econRowY + (isPhone ? 4 : 8); // TODO: centralize in UIScale
+      const funY = econRowY + UIScale.space(8);
       const topDamage = entries[0];
       const topGold = entries.reduce((best, e) =>
         e[1].totalGoldEarned > (best?.[1]?.totalGoldEarned ?? 0) ? e : best, entries[0]);
@@ -190,7 +186,7 @@ export class GameOverScene extends Phaser.Scene {
       }
       funLines.push(`Overall DPS: ${gameTime > 0 ? Math.round(entries.reduce((s, e) => s + e[1].totalDamage, 0) / gameTime) : 0}/s`);
 
-      this.add.text(cx, funY, isPhone ? funLines.join('\n') : funLines.join('  |  '), {
+      this.add.text(cx, funY, funLines.join('\n'), {
         fontSize: smallFontSize, color: '#88aacc', fontFamily: 'monospace',
         align: 'center',
       }).setOrigin(0.5);
@@ -199,7 +195,7 @@ export class GameOverScene extends Phaser.Scene {
     // Hero defense stats
     if (data.heroStats) {
       const hs = data.heroStats;
-      const heroY = isPhone ? 460 : 490; // TODO: centralize Y in UIScale
+      const heroY = UIScale.y(490);
       this.add.text(cx, heroY, 'HERO PERFORMANCE', {
         fontSize: sectionFontSize, color: '#ff44aa', fontFamily: 'monospace',
       }).setOrigin(0.5);
@@ -209,23 +205,23 @@ export class GameOverScene extends Phaser.Scene {
         `Kills: ${hs.kills}  |  Deaths: ${hs.deaths}  |  K/D: ${hs.deaths > 0 ? (hs.kills / hs.deaths).toFixed(1) : hs.kills}`,
         `Damage Dealt: ${hs.damageDealt.toLocaleString()}  |  Abilities Used: ${hs.abilitiesUsed}`,
       ];
-      this.add.text(cx, heroY + (isPhone ? 14 : 18), heroLines.join('\n'), { // TODO: centralize in UIScale
+      this.add.text(cx, heroY + UIScale.space(18), heroLines.join('\n'), {
         fontSize: smallFontSize, color: '#cccccc', fontFamily: 'monospace',
-        align: 'center', lineSpacing: isPhone ? 2 : 4, // TODO: centralize in UIScale
+        align: 'center', lineSpacing: UIScale.space(4),
       }).setOrigin(0.5, 0);
     }
 
     // Versus summary
     if (data.isVersus) {
-      const vsY = isPhone ? 490 : 520; // TODO: centralize Y in UIScale
+      const vsY = UIScale.y(520);
       this.add.text(cx, vsY, 'VERSUS RESULTS', {
         fontSize: btnFontSize, color: '#ff8844', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const winner = data.won ? 'YOU WON!' : 'YOU LOST';
       const winColor = data.won ? '#44ff44' : '#ff4444';
-      this.add.text(cx, vsY + (isPhone ? 18 : 22), winner, { // TODO: centralize in UIScale
-        fontSize: UIScale.fontCapped(18, 16), color: winColor, fontFamily: 'monospace',
+      this.add.text(cx, vsY + UIScale.space(22), winner, {
+        fontSize: UIScale.font(18), color: winColor, fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const myLives = data.lives ?? 0;
@@ -244,18 +240,19 @@ export class GameOverScene extends Phaser.Scene {
         vsLines.push(`Opponent Wave: ${os.wave}  |  Opponent Kills: ${os.stats.creepsKilled}`);
       }
 
-      this.add.text(cx, vsY + (isPhone ? 40 : 50), vsLines.join('\n'), { // TODO: centralize in UIScale
-        fontSize: UIScale.fontCapped(14, 11), color: '#cccccc', fontFamily: 'monospace',
-        align: 'center', lineSpacing: isPhone ? 2 : 4, // TODO: centralize in UIScale
+      this.add.text(cx, vsY + UIScale.space(50), vsLines.join('\n'), {
+        fontSize: UIScale.font(14), color: '#cccccc', fontFamily: 'monospace',
+        align: 'center', lineSpacing: UIScale.space(4),
       }).setOrigin(0.5, 0);
     }
 
-    // Buttons
-    const btnY = totalH - (isPhone ? 40 : 50); // TODO: centralize in UIScale
-    const btnSpacing = isPhone ? 80 : 100; // TODO: centralize in UIScale
+    // Buttons — big touch targets on phone
+    const btnY = totalH - UIScale.space(50);
+    const btnSpacing = UIScale.space(100);
 
     const retryBtn = this.add.text(cx - btnSpacing, btnY, '[ Play Again ]', {
       fontSize: btnFontSize, color: '#ffaa44', fontFamily: 'monospace',
+      padding: { x: UIScale.space(8), y: UIScale.space(6) },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     retryBtn.on('pointerdown', () => this.scene.start('MenuScene'));
     retryBtn.on('pointerover', () => retryBtn.setColor('#ffffff'));
@@ -263,6 +260,7 @@ export class GameOverScene extends Phaser.Scene {
 
     const menuBtn = this.add.text(cx + btnSpacing, btnY, '[ Menu ]', {
       fontSize: btnFontSize, color: '#4488ff', fontFamily: 'monospace',
+      padding: { x: UIScale.space(8), y: UIScale.space(6) },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
     menuBtn.on('pointerover', () => menuBtn.setColor('#ffffff'));
