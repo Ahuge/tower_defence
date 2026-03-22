@@ -1,4 +1,5 @@
 import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
+import { UIScale } from '../systems/UIScale';
 import { FrontierBuilding } from '../data/FrontierBuildings';
 import { FrontierManager, OwnedBuilding } from '../systems/FrontierManager';
 import { SendPanel } from './SendPanel';
@@ -57,14 +58,14 @@ export class FrontierPanel {
     this.container.add(bg);
 
     const title = this.scene.add.text(8, 6, 'FRONTIER', {
-      fontSize: '13px', color: '#ffaa44', fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color: '#ffaa44', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     let y = 26;
     for (const building of this.frontier.availableBuildings) {
       const text = this.scene.add.text(8, y, `[Buy] ${building.name} (${building.cost}g)`, {
-        fontSize: '12px', color: '#cccccc', fontFamily: 'monospace',
+        fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',
       });
       this.container.add(text);
       text.setInteractive({ useHandCursor: true });
@@ -74,7 +75,7 @@ export class FrontierPanel {
       y += 14;
 
       const desc = this.scene.add.text(12, y, building.description, {
-        fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+        fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
         wordWrap: { width: panelW - 20 },
       });
       this.container.add(desc);
@@ -89,12 +90,12 @@ export class FrontierPanel {
 
     // "Owned Buildings:" label + group toggle
     const ownedLabel = this.scene.add.text(8, y, 'Owned Buildings:', {
-      fontSize: '13px', color: '#88ff88', fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color: '#88ff88', fontFamily: 'monospace',
     });
     this.container.add(ownedLabel);
 
     this.groupToggle = this.scene.add.text(panelW - 8, y, this.grouped ? '[v] Group' : '[ ] Group', {
-      fontSize: '13px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(1, 0);
     this.container.add(this.groupToggle);
     this.groupToggle.setInteractive({ useHandCursor: true });
@@ -120,7 +121,7 @@ export class FrontierPanel {
 
     if (active.length === 0) {
       const empty = this.scene.add.text(12, y, '(none)', {
-        fontSize: '13px', color: '#555555', fontFamily: 'monospace',
+        fontSize: UIScale.font(13), color: '#555555', fontFamily: 'monospace',
       });
       this.container.add(empty);
       this.ownedItems.push(empty);
@@ -135,7 +136,7 @@ export class FrontierPanel {
 
     const totalIncome = active.reduce((sum, b) => sum + b.def.baseIncome, 0);
     const summary = this.scene.add.text(8, y + 4, `Frontier base income: +${totalIncome}/w`, {
-      fontSize: '13px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color: '#888888', fontFamily: 'monospace',
     });
     this.container.add(summary);
     this.ownedItems.push(summary);
@@ -181,7 +182,7 @@ export class FrontierPanel {
       }
 
       const nameText = this.scene.add.text(12, y, `${label}${status}`, {
-        fontSize: '13px', color: statusColor, fontFamily: 'monospace',
+        fontSize: UIScale.font(13), color: statusColor, fontFamily: 'monospace',
       });
       this.container.add(nameText);
       this.ownedItems.push(nameText);
@@ -230,7 +231,7 @@ export class FrontierPanel {
       if (b.def.mechanic === 'dig') status = ` (depth: ${b.digLevel})`;
 
       const nameText = this.scene.add.text(12, y, `${b.def.name}${status}`, {
-        fontSize: '13px', color: statusColor, fontFamily: 'monospace',
+        fontSize: UIScale.font(13), color: statusColor, fontFamily: 'monospace',
       });
       this.container.add(nameText);
       this.ownedItems.push(nameText);
@@ -260,7 +261,7 @@ export class FrontierPanel {
 
   private createActionButton(x: number, y: number, label: string, color: string, onClick: () => void): number {
     const btn = this.scene.add.text(x, y, label, {
-      fontSize: '13px', color, fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color, fontFamily: 'monospace',
     });
     this.container.add(btn);
     btn.setInteractive({ useHandCursor: true });
