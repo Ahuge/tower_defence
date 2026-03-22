@@ -15,13 +15,14 @@ export class UIOverlay {
   private onWaveStart: (() => void) | null = null;
   private onSpeedCycle: (() => void) | null = null;
 
-  constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives') {
+  constructor(scene: Phaser.Scene, _events: EventBus, livesMode: 'lives' | 'base_hp' = 'lives', statusBarY?: number) {
     this.livesMode = livesMode;
     const isPhone = ResponsiveManager.isPhone();
     const fs = isPhone ? '13px' : '16px';
     const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
     const cw = getCanvasWidth();
+    const barY = (statusBarY ?? GAME_HEIGHT) + 4;
 
     // Compact layout for phone: tighter spacing
     const col1 = baseX + 8;
@@ -29,20 +30,20 @@ export class UIOverlay {
     const col3 = isPhone ? baseX + 210 : baseX + 300;
     const col4 = isPhone ? baseX + 320 : baseX + 480;
 
-    this.goldText = scene.add.text(col1, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.livesText = scene.add.text(col2, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.waveText = scene.add.text(col3, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
-    this.statusText = scene.add.text(col4, GAME_HEIGHT + 4, '', uiStyle).setDepth(30);
+    this.goldText = scene.add.text(col1, barY, '', uiStyle).setDepth(30);
+    this.livesText = scene.add.text(col2, barY, '', uiStyle).setDepth(30);
+    this.waveText = scene.add.text(col3, barY, '', uiStyle).setDepth(30);
+    this.statusText = scene.add.text(col4, barY, '', uiStyle).setDepth(30);
     // On phone, hide status text (wave/speed handled by control bar)
     if (isPhone) this.statusText.setVisible(false);
 
-    this.speedText = scene.add.text(cw - 8, GAME_HEIGHT + 4, '', {
+    this.speedText = scene.add.text(cw - 8, barY, '', {
       ...uiStyle, color: '#aaaaaa',
     }).setDepth(30).setOrigin(1, 0);
     if (isPhone) this.speedText.setVisible(false);
 
     // Tappable wave start button (hidden on phone — control bar handles it)
-    this.waveBtn = scene.add.text(col4, GAME_HEIGHT + 4, '', {
+    this.waveBtn = scene.add.text(col4, barY, '', {
       fontSize: fs, color: '#44ff44', fontFamily: 'monospace',
       backgroundColor: '#1a2a1a', padding: { x: 6, y: 1 },
     }).setDepth(31).setInteractive({ useHandCursor: true }).setVisible(false);
@@ -51,7 +52,7 @@ export class UIOverlay {
     this.waveBtn.on('pointerout', () => this.waveBtn.setColor('#44ff44'));
 
     // Tappable speed button (hidden on phone)
-    this.speedBtn = scene.add.text(cw - 8, GAME_HEIGHT + 4, '', {
+    this.speedBtn = scene.add.text(cw - 8, barY, '', {
       fontSize: fs, color: '#aaaaaa', fontFamily: 'monospace',
       backgroundColor: '#1a1a2a', padding: { x: 6, y: 1 },
     }).setDepth(31).setOrigin(1, 0).setInteractive({ useHandCursor: true });
