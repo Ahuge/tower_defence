@@ -2,6 +2,7 @@ import { GAME_HEIGHT, TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../confi
 import { getTowerType, TowerType } from '../data/TowerTypes';
 import { hasTrait } from '../systems/traits/Trait';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 
 export class TowerSelectBar {
   private scene: Phaser.Scene;
@@ -14,7 +15,9 @@ export class TowerSelectBar {
   private tooltipBg: Phaser.GameObjects.Graphics;
   private tooltipText: Phaser.GameObjects.Text;
 
-  static readonly BAR_HEIGHT = 68;
+  static get BAR_HEIGHT(): number {
+    return UIScale.isPhone ? 80 : 68;
+  }
   private readonly btnSize: number;
   private readonly padding: number;
 
@@ -22,8 +25,8 @@ export class TowerSelectBar {
     this.scene = scene;
     this.towerIds = towerIds;
     this.onSelect = onSelect;
-    this.btnSize = ResponsiveManager.isPhone() ? 42 : 52;
-    this.padding = ResponsiveManager.isPhone() ? 4 : 10;
+    this.btnSize = UIScale.current.btnSize;
+    this.padding = UIScale.current.btnPadding;
     this.container = scene.add.container(0, GAME_HEIGHT + 28).setDepth(30);
 
     // Tooltip (rendered above the bar)
@@ -52,9 +55,9 @@ export class TowerSelectBar {
     const bs = this.btnSize;
     const pad = this.padding;
     const startX = offsetX + pad;
-    const isPhone = ResponsiveManager.isPhone();
-    const fontSize = isPhone ? '10px' : '12px';
-    const costSize = isPhone ? '9px' : '11px';
+    const isPhone = UIScale.isPhone;
+    const fontSize = UIScale.font(12);
+    const costSize = UIScale.font(11);
 
     for (let i = 0; i < this.towerIds.length; i++) {
       const t = getTowerType(this.towerIds[i]);

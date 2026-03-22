@@ -33,6 +33,9 @@ export class InputManager {
     this.events = events;
 
     scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      // Skip hover if camera is panning or pinching
+      if (this.cameraCtrl?.wasPan || this.cameraCtrl?.pinching) return;
+
       // Cancel long-press if finger moved too far
       if (pointer.isDown && this.longPressTimer) {
         const dx = pointer.x - this.longPressStartX;

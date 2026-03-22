@@ -3,7 +3,7 @@ import { Hero } from '../entities/Hero';
 import { ITEM_SLOTS, ITEM_SLOT_ORDER, ItemSlot } from '../data/HeroItems';
 import { EconomyManager } from '../systems/EconomyManager';
 import { ArenaManager } from '../systems/ArenaManager';
-import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 import { EventLog } from './EventLog';
 
 export class ItemShopPanel {
@@ -47,22 +47,17 @@ export class ItemShopPanel {
     this.container.add(bg);
 
     const title = this.scene.add.text(8, 6, 'HERO ITEMS', {
-      fontSize: '13px', color: '#ff44aa', fontFamily: 'monospace',
+      fontSize: UIScale.font(13), color: '#ff44aa', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     // Hero stats summary
     const heroInfo = this.scene.add.text(8, 24, `${this.hero.typeDef.name}`, {
-      fontSize: '12px', color: '#cccccc', fontFamily: 'monospace',
+      fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',
     });
     this.container.add(heroInfo);
 
     this.rebuildDynamic();
-  }
-
-  /** Phone-aware font size: adds 2px on phone */
-  private fs(base: number): string {
-    return `${base + (ResponsiveManager.isPhone() ? 2 : 0)}px`;
   }
 
   private rebuildDynamic(): void {
@@ -70,16 +65,16 @@ export class ItemShopPanel {
       this.container.remove(obj, true);
     }
     this.dynamicItems = [];
-    const ph = ResponsiveManager.isPhone();
-    const rh = ph ? 18 : 14; // row height
-    const gap = ph ? 4 : 2;  // gap between sections
+    const rh = UIScale.current.rowHeight; // 24 on phone, 16 on desktop
+    const gap = UIScale.isPhone ? 4 : 2;  // gap between sections
 
     let y = 42;
+    const touch = UIScale.current.minTouchTarget;
 
     // Level / XP bar
     const lvlText = this.scene.add.text(8, y,
       `Lv.${this.hero.level}${this.hero.level >= 15 ? ' (MAX)' : ''}`,
-      { fontSize: '12px', color: '#ffaa44', fontFamily: 'monospace' }
+      { fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace' }
     );
     this.container.add(lvlText);
     this.dynamicItems.push(lvlText);
@@ -87,9 +82,9 @@ export class ItemShopPanel {
     if (this.hero.level < 15) {
       const xpNeeded = this.hero.xpToNextLevel();
       const xpRatio = xpNeeded > 0 ? this.hero.xp / xpNeeded : 0;
-      const barX = 70;
+      const barX = UIScale.isPhone ? 90 : 70;
       const barW = SIDEBAR_WIDTH - barX - 12;
-      const barH = 10;
+      const barH = UIScale.isPhone ? 14 : 10;
       const xpBarBg = this.scene.add.graphics();
       xpBarBg.fillStyle(0x222222, 1);
       xpBarBg.fillRect(barX, y + 2, barW, barH);
@@ -101,47 +96,47 @@ export class ItemShopPanel {
       this.dynamicItems.push(xpBarBg);
 
       const xpLabel = this.scene.add.text(barX + barW / 2, y + 2, `${this.hero.xp}/${xpNeeded}`, {
-        fontSize: '8px', color: '#cccccc', fontFamily: 'monospace',
+        fontSize: UIScale.font(8), color: '#cccccc', fontFamily: 'monospace',
       }).setOrigin(0.5, 0);
       this.container.add(xpLabel);
       this.dynamicItems.push(xpLabel);
     }
-    y += 16;
+    y += rh;
 
     // Hero stats
     const statsText = this.scene.add.text(8, y,
       `HP: ${this.hero.hp}/${this.hero.maxHp}  DMG: ${this.hero.getEffectiveDamage()}  AS: ${this.hero.getEffectiveAttackSpeed().toFixed(2)}/s`,
-      { fontSize: '11px', color: '#888888', fontFamily: 'monospace' }
+      { fontSize: UIScale.font(11), color: '#888888', fontFamily: 'monospace' }
     );
     this.container.add(statsText);
     this.dynamicItems.push(statsText);
-    y += 16;
+    y += rh;
 
     // Pending upgrade picker
     if (this.hero.pendingUpgrades > 0) {
       const upLabel = this.scene.add.text(8, y, `LEVEL UP! (${this.hero.pendingUpgrades} point${this.hero.pendingUpgrades > 1 ? 's' : ''})`, {
-        fontSize: '12px', color: '#ffaa44', fontFamily: 'monospace',
+        fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace',
       });
       this.container.add(upLabel);
       this.dynamicItems.push(upLabel);
-      y += 14;
+      y += rh;
 
       for (const opt of this.hero.getUpgradeOptions()) {
         const btn = this.scene.add.text(16, y, `[${opt.label}] ${opt.desc}`, {
-          fontSize: '10px', color: '#44ff44', fontFamily: 'monospace',
+          fontSize: UIScale.font(10), color: '#44ff44', fontFamily: 'monospace',
         });
         this.container.add(btn);
         this.dynamicItems.push(btn);
-        btn.setInteractive({ useHandCursor: true });
+        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, SIDEBAR_WIDTH - 24, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         btn.on('pointerdown', () => {
           this.hero.applyUpgrade(opt.id);
           this.lastSnapshot = '';
         });
         btn.on('pointerover', () => btn.setColor('#ffffff'));
         btn.on('pointerout', () => btn.setColor('#44ff44'));
-        y += 13;
+        y += Math.max(rh, touch);
       }
-      y += 2;
+      y += gap;
     }
 
     // Divider
@@ -166,7 +161,7 @@ export class ItemShopPanel {
       }
 
       const nameText = this.scene.add.text(8, y, label, {
-        fontSize: '11px', color: labelColor, fontFamily: 'monospace',
+        fontSize: UIScale.font(11), color: labelColor, fontFamily: 'monospace',
       });
       this.container.add(nameText);
       this.dynamicItems.push(nameText);
@@ -180,13 +175,13 @@ export class ItemShopPanel {
         const btnColor = canAfford ? '#44ff44' : '#664444';
 
         const btn = this.scene.add.text(SIDEBAR_WIDTH - 60, y, btnLabel, {
-          fontSize: '11px', color: btnColor, fontFamily: 'monospace',
+          fontSize: UIScale.font(11), color: btnColor, fontFamily: 'monospace',
         });
         this.container.add(btn);
         this.dynamicItems.push(btn);
 
         if (canAfford) {
-          btn.setInteractive({ useHandCursor: true });
+          btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
           const idx = i;
           btn.on('pointerdown', () => this.purchaseItem(idx));
           btn.on('pointerover', () => btn.setColor('#ffffff'));
@@ -194,34 +189,34 @@ export class ItemShopPanel {
         }
       } else {
         const maxText = this.scene.add.text(SIDEBAR_WIDTH - 50, y, '(MAX)', {
-          fontSize: '10px', color: '#ffaa44', fontFamily: 'monospace',
+          fontSize: UIScale.font(10), color: '#ffaa44', fontFamily: 'monospace',
         });
         this.container.add(maxText);
         this.dynamicItems.push(maxText);
       }
-      y += 14;
+      y += rh;
     }
 
     // Divider
-    y += 2;
+    y += gap;
     this.addDivider(y);
     y += 6;
 
     // Accessory section
     const accCount = this.hero.accessories.length;
     const accTitle = this.scene.add.text(8, y, `ACCESSORIES (${accCount}/3)`, {
-      fontSize: '11px', color: '#cc66ff', fontFamily: 'monospace',
+      fontSize: UIScale.font(11), color: '#cc66ff', fontFamily: 'monospace',
     });
     this.container.add(accTitle);
     this.dynamicItems.push(accTitle);
 
     // Rotation countdown
     const rotText = this.scene.add.text(SIDEBAR_WIDTH - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`, {
-      fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+      fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(rotText);
     this.dynamicItems.push(rotText);
-    y += 14;
+    y += rh;
 
     // Current equipped accessories
     if (accCount > 0) {
@@ -230,22 +225,22 @@ export class ItemShopPanel {
         const cdStr = !acc.passive && cd > 0 ? ` (${Math.ceil(cd)}s)` : '';
         const keyStr = acc.passive ? '' : ' [T]';
         const equipped = this.scene.add.text(8, y, `${acc.name}${keyStr}${cdStr}`, {
-          fontSize: '10px', color: '#cc66ff', fontFamily: 'monospace',
+          fontSize: UIScale.font(10), color: '#cc66ff', fontFamily: 'monospace',
         });
         this.container.add(equipped);
         this.dynamicItems.push(equipped);
-        y += 12;
+        y += rh;
       }
     } else {
       const noAcc = this.scene.add.text(8, y, 'None equipped', {
-        fontSize: '10px', color: '#555555', fontFamily: 'monospace',
+        fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace',
       });
       this.container.add(noAcc);
       this.dynamicItems.push(noAcc);
-      y += 12;
+      y += rh;
     }
 
-    y += 2;
+    y += gap;
 
     // Shop offers
     const offers = this.arenaManager.currentAccessoryOffers;
@@ -257,40 +252,40 @@ export class ItemShopPanel {
 
       const offerText = this.scene.add.text(8, y,
         `[${typeTag}] ${acc.name} — ${acc.cost}g`,
-        { fontSize: '11px', color: btnColor, fontFamily: 'monospace' }
+        { fontSize: UIScale.font(11), color: btnColor, fontFamily: 'monospace' }
       );
       this.container.add(offerText);
       this.dynamicItems.push(offerText);
 
       if (canAfford) {
-        offerText.setInteractive({ useHandCursor: true });
+        offerText.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, SIDEBAR_WIDTH - 16, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         const idx = i;
         offerText.on('pointerdown', () => this.purchaseAccessory(idx));
         offerText.on('pointerover', () => offerText.setColor('#ffffff'));
         offerText.on('pointerout', () => offerText.setColor('#44ff44'));
       }
-      y += 12;
+      y += rh;
 
       const descText = this.scene.add.text(16, y, acc.description, {
-        fontSize: '9px', color: '#666666', fontFamily: 'monospace',
+        fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
       });
       this.container.add(descText);
       this.dynamicItems.push(descText);
-      y += 12;
+      y += rh;
     }
 
     // Divider
-    y += 2;
+    y += gap;
     this.addDivider(y);
     y += 6;
 
     // Ability cooldowns
     const abTitle = this.scene.add.text(8, y, 'Abilities:', {
-      fontSize: '11px', color: '#ffaa44', fontFamily: 'monospace',
+      fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
     });
     this.container.add(abTitle);
     this.dynamicItems.push(abTitle);
-    y += 14;
+    y += rh;
 
     const hasPending = this.hero.pendingUpgrades > 0;
 
@@ -302,15 +297,15 @@ export class ItemShopPanel {
       const ups = this.hero.abilityUpgrades[i];
       const upsTag = ups > 0 ? ` +${ups}` : '';
       const text = this.scene.add.text(16, y, `[${ab.def.key}] ${ab.def.name}${upsTag}: ${cdText}`, {
-        fontSize: '11px', color, fontFamily: 'monospace',
+        fontSize: UIScale.font(11), color, fontFamily: 'monospace',
       });
       this.container.add(text);
       this.dynamicItems.push(text);
 
       if (hasPending) {
         const plusBtn = this.scene.add.text(SIDEBAR_WIDTH - 30, y, '[+]', {
-          fontSize: '11px', color: '#ffaa44', fontFamily: 'monospace',
-        }).setInteractive({ useHandCursor: true });
+          fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
+        }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         this.container.add(plusBtn);
         this.dynamicItems.push(plusBtn);
         const idx = i;
@@ -318,7 +313,7 @@ export class ItemShopPanel {
         plusBtn.on('pointerover', () => plusBtn.setColor('#ffffff'));
         plusBtn.on('pointerout', () => plusBtn.setColor('#ffaa44'));
       }
-      y += 14;
+      y += rh;
     }
     // Ultimate — show locked status if below level 6
     if (this.hero.ultimate) {
@@ -337,22 +332,22 @@ export class ItemShopPanel {
         ultColor = ready ? '#cc66ff' : '#664466';
       }
       const ultText = this.scene.add.text(16, y, ultLabel, {
-        fontSize: '11px', color: ultColor, fontFamily: 'monospace',
+        fontSize: UIScale.font(11), color: ultColor, fontFamily: 'monospace',
       });
       this.container.add(ultText);
       this.dynamicItems.push(ultText);
 
       if (hasPending && unlocked) {
         const plusBtn = this.scene.add.text(SIDEBAR_WIDTH - 30, y, '[+]', {
-          fontSize: '11px', color: '#ffaa44', fontFamily: 'monospace',
-        }).setInteractive({ useHandCursor: true });
+          fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
+        }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         this.container.add(plusBtn);
         this.dynamicItems.push(plusBtn);
         plusBtn.on('pointerdown', () => { this.hero.upgradeAbility(3); this.lastSnapshot = ''; });
         plusBtn.on('pointerover', () => plusBtn.setColor('#ffffff'));
         plusBtn.on('pointerout', () => plusBtn.setColor('#ffaa44'));
       }
-      y += 14;
+      y += rh;
     }
   }
 

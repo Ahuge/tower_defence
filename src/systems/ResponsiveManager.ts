@@ -66,7 +66,7 @@ class ResponsiveManagerClass {
   /** Full canvas height including status bar, tower select bar, and phone control bar */
   canvasHeight(): number {
     const base = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-    return this._mode === 'phone' ? base + 48 : base; // 48 = GameControlBar.BAR_HEIGHT
+    return this._mode === 'phone' ? base + 70 : base; // 70 = phone GameControlBar height
   }
 
   onLayoutChange(cb: LayoutChangeCallback): void {

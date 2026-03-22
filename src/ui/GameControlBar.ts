@@ -1,6 +1,7 @@
 import { getCanvasWidth, getGameWidth, getGridOffsetX } from '../config';
 import { ArenaManager } from '../systems/ArenaManager';
 import { Hero } from '../entities/Hero';
+import { UIScale } from '../systems/UIScale';
 
 interface ControlButton {
   x: number;
@@ -28,8 +29,12 @@ export class GameControlBar {
   private labels: Phaser.GameObjects.Text[] = [];
   private arenaManager: ArenaManager | null;
 
-  static readonly BAR_HEIGHT = 48;
-  private static readonly BTN_SIZE = 44;
+  static get BAR_HEIGHT(): number {
+    return UIScale.isPhone ? 68 : 48;
+  }
+  private static get BTN_SIZE(): number {
+    return UIScale.current.btnSize;
+  }
   private static readonly BTN_GAP = 4;
 
   private onWaveStart: (() => void) | null = null;
@@ -115,7 +120,7 @@ export class GameControlBar {
     zone.on('pointerdown', action);
 
     const textObj = this.scene.add.text(x + w / 2, y + h / 2, label, {
-      fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
+      fontSize: UIScale.font(14), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(34);
     this.labels.push(textObj);
 

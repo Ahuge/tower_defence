@@ -1,5 +1,6 @@
 import { SIDEBAR_WIDTH, GAME_HEIGHT } from '../config';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 import { TowerSelectBar } from './TowerSelectBar';
 
 /**
@@ -50,10 +51,10 @@ export class SidebarOverlay {
 
     // Close button (phone: larger, top-right)
     if (this.isPhone) {
-      const closeBtn = scene.add.text(this.panelW - 48, 8, '✕', {
-        fontSize: '24px', color: '#aaaaaa', fontFamily: 'monospace',
+      const closeBtn = scene.add.text(this.panelW - 56, 8, '✕', {
+        fontSize: UIScale.font(24), color: '#aaaaaa', fontFamily: 'monospace',
         backgroundColor: '#2a1a1a',
-        padding: { x: 8, y: 4 },
+        padding: { x: 12, y: 6 },
       }).setInteractive({ useHandCursor: true });
       closeBtn.on('pointerdown', () => this.hide());
       closeBtn.on('pointerover', () => closeBtn.setColor('#ffffff'));
@@ -62,11 +63,10 @@ export class SidebarOverlay {
     }
 
     // Toggle button — always visible on game area
-    const btnSize = this.isPhone ? '26px' : '22px';
     this.toggleBtn = scene.add.text(8, 8, '\u2630', {
-      fontSize: btnSize, color: '#aaaaaa', fontFamily: 'monospace',
+      fontSize: UIScale.font(22), color: '#aaaaaa', fontFamily: 'monospace',
       backgroundColor: '#1a1a1a',
-      padding: { x: this.isPhone ? 8 : 6, y: this.isPhone ? 4 : 2 },
+      padding: { x: this.isPhone ? 10 : 6, y: this.isPhone ? 6 : 2 },
     }).setDepth(41).setInteractive({ useHandCursor: true });
     this.toggleBtn.on('pointerdown', () => this.toggle());
     this.toggleBtn.on('pointerover', () => this.toggleBtn.setColor('#ffffff'));

@@ -8,6 +8,7 @@ import { DifficultyLevel } from '../data/Difficulty';
 import { HeroId } from '../data/HeroTypes';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 
 export class DraftScene extends Phaser.Scene {
   private matchMode: MatchMode = 'standard';
@@ -35,26 +36,22 @@ export class DraftScene extends Phaser.Scene {
   create(): void {
     const cx = getCanvasWidth() / 2;
     const modifiers = getRandomModifiers(3);
-    const isPhone = ResponsiveManager.isPhone();
+    const isPhone = UIScale.isPhone;
 
-    const titleSize = isPhone ? '22px' : '24px';
-    const subtitleSize = isPhone ? '12px' : '14px';
-    const cardFontSize = isPhone ? '12px' : '14px';
-
-    this.add.text(cx, isPhone ? 50 : 60, 'Choose a Modifier', {
-      fontSize: titleSize, color: '#ffffff', fontFamily: 'monospace',
+    this.add.text(cx, isPhone ? 40 : 60, 'Choose a Modifier', {
+      fontSize: UIScale.font(24), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    this.add.text(cx, isPhone ? 82 : 100, 'Pick one to apply for this game', {
-      fontSize: subtitleSize, color: '#888888', fontFamily: 'monospace',
+    this.add.text(cx, isPhone ? 74 : 100, 'Pick one to apply for this game', {
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Phone: 2 columns (top row 2, bottom row 1 centered); Desktop: 3 across
     const cols = isPhone ? 2 : 3;
-    const w = isPhone ? 150 : 180;
-    const h = isPhone ? 110 : 100;
-    const gap = isPhone ? 12 : 20;
-    const startY = isPhone ? 110 : 160;
+    const w = isPhone ? Math.floor((getCanvasWidth() - 24) / cols - 4) : 180;
+    const h = isPhone ? 120 : 100;
+    const gap = isPhone ? 8 : 20;
+    const startY = isPhone ? 100 : 160;
 
     for (let i = 0; i < modifiers.length; i++) {
       const mod = modifiers[i];
@@ -80,11 +77,11 @@ export class DraftScene extends Phaser.Scene {
       card.strokeRect(x - w / 2, y, w, h);
 
       this.add.text(x, y + 15, mod.name, {
-        fontSize: cardFontSize, color: '#ffaa44', fontFamily: 'monospace',
+        fontSize: UIScale.font(14), color: '#ffaa44', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
-      this.add.text(x, y + (isPhone ? 40 : 45), mod.description, {
-        fontSize: cardFontSize, color: '#cccccc', fontFamily: 'monospace',
+      this.add.text(x, y + (isPhone ? 42 : 45), mod.description, {
+        fontSize: UIScale.font(14), color: '#cccccc', fontFamily: 'monospace',
         wordWrap: { width: w - 16 },
         align: 'center',
       }).setOrigin(0.5);
@@ -123,7 +120,7 @@ export class DraftScene extends Phaser.Scene {
     const skipY = isPhone ? startY + totalRows * (h + gap) + 10 : 300;
 
     this.add.text(cx, skipY, '[ Skip - No modifier ]', {
-      fontSize: subtitleSize, color: '#666666', fontFamily: 'monospace',
+      fontSize: UIScale.font(14), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         this.scene.start('GameScene', {
