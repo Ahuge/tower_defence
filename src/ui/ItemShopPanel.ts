@@ -66,7 +66,7 @@ export class ItemShopPanel {
     }
     this.dynamicItems = [];
     const rh = UIScale.current.rowHeight; // 24 on phone, 16 on desktop
-    const gap = UIScale.isPhone ? 4 : 2;  // gap between sections
+    const gap = UIScale.space(2);  // gap between sections
 
     let y = 42;
     const touch = UIScale.current.minTouchTarget;

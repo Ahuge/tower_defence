@@ -38,14 +38,14 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Map selection
-    yPos += ph ? 70 : 55;
+    yPos += UIScale.y(55);
     this.add.text(cx, yPos, 'Select Map', {
       fontSize: s.fontHeading, color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
-    yPos += ph ? 45 : 20;
+    yPos += UIScale.y(20);
 
     const mapBtnW = s.mapBtnW;
-    const mapGap = ph ? 6 : 10;
+    const mapGap = UIScale.isPhone ? 6 : 10;
     const cols = ph ? Math.floor((getCanvasWidth() - 12) / (mapBtnW + mapGap)) : MAP_ORDER.length;
     const mapTotalW = Math.min(MAP_ORDER.length, cols) * mapBtnW + (Math.min(MAP_ORDER.length, cols) - 1) * mapGap;
     const mapStartX = cx - mapTotalW / 2;
@@ -63,7 +63,7 @@ export class MenuScene extends Phaser.Scene {
 
       const nameColor = mapId === 'random' ? '#ff44ff' : '#ffffff';
       this.add.text(x + mapBtnW / 2, y + s.mapBtnH / 2, map.name, {
-        fontSize: ph ? s.fontBody : s.fontBody, color: nameColor, fontFamily: 'monospace',
+        fontSize: s.fontBody, color: nameColor, fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(x + mapBtnW / 2, y + s.mapBtnH / 2, mapBtnW, s.mapBtnH).setInteractive({ useHandCursor: true });
@@ -88,13 +88,13 @@ export class MenuScene extends Phaser.Scene {
       this.updateDailyToggle();
     });
     this.updateDailyToggle();
-    yPos += ph ? 40 : 22;
+    yPos += UIScale.y(22);
 
     // Difficulty selection
     this.add.text(cx, yPos, 'Difficulty', {
       fontSize: s.fontHeading, color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
-    yPos += ph ? 45 : 18;
+    yPos += UIScale.y(18);
 
     const diffs: { id: DifficultyLevel; label: string; color: string }[] = [
       { id: 'easy', label: 'Easy', color: '#44ff44' },
@@ -135,7 +135,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(cx, yPos, 'Select Mode', {
       fontSize: s.fontHeading, color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
-    yPos += ph ? 45 : 20;
+    yPos += UIScale.y(20);
 
     const goFaction = (mode: MatchMode) => {
       const seed = this.selectedMap === 'random'
@@ -158,10 +158,10 @@ export class MenuScene extends Phaser.Scene {
     ];
 
     const modeCols = ph ? 2 : 3;
-    const cardW = ph ? Math.floor((getCanvasWidth() - 16) / modeCols - 4) : 200;
+    const cardW = UIScale.isPhone ? Math.floor((getCanvasWidth() - 16) / modeCols - 4) : 200;
     const cardH = s.modeBtnH;
-    const gapX = ph ? 6 : 12;
-    const gapY = ph ? 8 : 10;
+    const gapX = UIScale.isPhone ? 6 : 12;
+    const gapY = UIScale.isPhone ? 8 : 10;
     const gridW = modeCols * cardW + (modeCols - 1) * gapX;
     const gridStartX = cx - gridW / 2;
     const gridStartY = yPos;
@@ -186,12 +186,12 @@ export class MenuScene extends Phaser.Scene {
       };
       drawCard(false);
 
-      this.add.text(x + 10, y + (ph ? 14 : 12), m.label, {
-        fontSize: ph ? s.fontBody : '15px', color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x + 10, y + UIScale.y(12), m.label, {
+        fontSize: UIScale.font(15), color: '#ffffff', fontFamily: 'monospace',
       });
 
-      this.add.text(x + 10, y + (ph ? 50 : 34), m.desc, {
-        fontSize: ph ? s.fontSmall : '10px', color: '#888888', fontFamily: 'monospace',
+      this.add.text(x + 10, y + UIScale.y(34), m.desc, {
+        fontSize: UIScale.font(10), color: '#888888', fontFamily: 'monospace',
         wordWrap: { width: cardW - 16 },
       });
 

@@ -37,10 +37,36 @@ src/
 - **Event bus**: Typed EventBus for decoupled communication.
 - **Data-driven**: Tower/creep/faction definitions in `data/`. Add content by editing data files.
 - **Grid offset**: Dynamic via `getGridOffsetX()` — desktop=360px (sidebar inline), tablet=0 (sidebar overlay). Use `gridX()`, `gridY()`, `pixelToCol()` helpers. Never use `GRID_OFFSET_X` constant directly.
-- **Responsive**: `ResponsiveManager` singleton detects desktop/tablet. `SidebarOverlay` wraps sidebar panels on tablet. Use `getCanvasWidth()` instead of `CANVAS_WIDTH` constant.
+- **Responsive**: `ResponsiveManager` singleton detects desktop/tablet/phone. `SidebarOverlay` wraps sidebar panels on tablet/phone. Use `getCanvasWidth()` instead of `CANVAS_WIDTH` constant.
+- **UIScale system**: `systems/UIScale.ts` is the single source of truth for all phone-responsive sizing. See **Mobile/Phone UI** section below.
 - **Multiplayer**: P2P WebRTC via manual SDP exchange. VersusManager handles state sync. Host controls speed, map, difficulty. Shared seed for mirrored waves.
 - **ResourceManager**: N-resource system. Gold always present. Battle mode adds Essence with real-time ticking.
 - **Decomposed GameScene**: TowerManager, CreepManager, WaveController extracted. Leak/Death handlers are pluggable interfaces.
+
+## Mobile/Phone UI — ALWAYS FOLLOW
+The game supports phone screens (<600px viewport). All UI sizing MUST go through the centralized `UIScale` system in `systems/UIScale.ts`. **Never** use raw `isPhone ? X : Y` ternaries for sizing.
+
+**Preferred patterns:**
+- **Font sizes**: `UIScale.font(12)` — returns `'12px'` on desktop, `'30px'` on phone (2.5x scale)
+- **Constrained fonts** (status bars, labels in tight spaces): `UIScale.fontCapped(12, 24)` — caps at 24px on phone
+- **Layout constants**: `UIScale.current.btnSize`, `.rowHeight`, `.mapBtnW`, `.diffBtnH`, etc.
+- **Spacing**: `UIScale.space(10)` — returns `10` on desktop, `20` on phone (2x)
+- **Y positions**: `UIScale.y(100)` — returns `100` on desktop, `160` on phone (1.6x)
+- **Sidebar panel width**: `getSidebarWidth()` from config — returns `360` desktop, `1008` phone
+
+**Anti-patterns (DO NOT USE):**
+- `ResponsiveManager.isPhone() ? '28px' : '14px'` — put in UIScale instead
+- `const isPhone = ResponsiveManager.isPhone(); ... isPhone ? 190 : 140` — use UIScale.current
+- Hardcoded pixel values that differ between phone/desktop — centralize in UIScale
+
+**Phone-specific architecture:**
+- Canvas is always 1008px wide (full grid). Phaser `Scale.FIT` scales to viewport.
+- Canvas height matches viewport aspect ratio to minimize letterboxing.
+- `CameraController` handles pinch-to-zoom (1x-3x), drag-to-pan, momentum, elastic bounds, double-tap zoom.
+- UI camera (separate from game camera) renders HUD at 1x — status bar, tower bar, control bar, sidebar, info panels.
+- `GameControlBar` provides touch buttons for wave/speed/pause + hero abilities (Q/W/E/R/T).
+- Tower bar, control bar, status bar anchor to canvas bottom (not `GAME_HEIGHT`).
+- Sidebar panels use `getSidebarWidth()` for full-screen overlay on phone.
 
 ## Conventions
 - Compile check (`npx tsc --noEmit`) after every change

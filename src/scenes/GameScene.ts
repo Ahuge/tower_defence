@@ -514,7 +514,7 @@ export class GameScene extends Phaser.Scene {
 
     // Phone: touch control bar with wave/speed/pause + ability buttons
     if (ResponsiveManager.isPhone()) {
-      const controlBarY = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT; // below tower bar
+      const controlBarY = ResponsiveManager.canvasHeight() - GameControlBar.BAR_HEIGHT; // bottom of canvas
       this.controlBar = new GameControlBar(this, controlBarY, this.arenaManager);
       this.controlBar.setCallbacks(
         () => {

@@ -2,6 +2,7 @@ import { GAME_HEIGHT, TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../confi
 import { getTowerType, TowerType } from '../data/TowerTypes';
 import { hasTrait } from '../systems/traits/Trait';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { GameControlBar } from './GameControlBar';
 import { UIScale } from '../systems/UIScale';
 
 export class TowerSelectBar {
@@ -25,7 +26,12 @@ export class TowerSelectBar {
     this.onSelect = onSelect;
     this.btnSize = UIScale.current.btnSize;
     this.padding = UIScale.current.btnPadding;
-    this.container = scene.add.container(0, GAME_HEIGHT + 28).setDepth(30);
+    // On phone: anchor to bottom of canvas. On desktop: below game area.
+    const canvasH = ResponsiveManager.canvasHeight();
+    const barY = UIScale.isPhone
+      ? canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT
+      : GAME_HEIGHT + 28;
+    this.container = scene.add.container(0, barY).setDepth(30);
 
     // Tooltip (rendered above the bar)
     this.tooltip = scene.add.container(0, 0).setDepth(35).setVisible(false);

@@ -105,17 +105,17 @@ export class HeroSelectScene extends Phaser.Scene {
       const factionName = FACTIONS[hero.faction as FactionId]?.name ?? hero.faction;
       const isFactionHero = heroId === factionHero;
       this.add.text(x + cardW / 2, y + 63, factionName.toUpperCase(), {
-        fontSize: '9px', color: isFactionHero ? '#ffaa44' : '#555555', fontFamily: 'monospace',
+        fontSize: UIScale.font(9), color: isFactionHero ? '#ffaa44' : '#555555', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Name
       this.add.text(x + cardW / 2, y + 76, hero.name, {
-        fontSize: '20px', color: '#ffffff', fontFamily: 'monospace',
+        fontSize: UIScale.font(20), color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // Description
       this.add.text(x + cardW / 2, y + 98, hero.description, {
-        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+        fontSize: UIScale.font(10), color: '#aaaaaa', fontFamily: 'monospace',
         wordWrap: { width: cardW - 20 }, align: 'center',
       }).setOrigin(0.5, 0);
 
@@ -130,24 +130,24 @@ export class HeroSelectScene extends Phaser.Scene {
         ...(hero.baseArmor ? [`Armor: ${hero.baseArmor}`] : []),
       ];
       this.add.text(x + 16, statsY, statsLines.join('\n'), {
-        fontSize: '12px', color: '#cccccc', fontFamily: 'monospace',
+        fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',
         lineSpacing: 4,
       });
 
       // Abilities
       const abY = statsY + 95;
       this.add.text(x + 16, abY, 'Abilities:', {
-        fontSize: '12px', color: '#ffaa44', fontFamily: 'monospace',
+        fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace',
       });
 
       let ay = abY + 18;
       for (const ab of hero.abilities) {
         this.add.text(x + 16, ay, `[${ab.key}] ${ab.name}`, {
-          fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+          fontSize: UIScale.font(12), color: '#ffffff', fontFamily: 'monospace',
         });
         ay += 16;
         this.add.text(x + 28, ay, `${ab.description} (${ab.cooldown}s cd)`, {
-          fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+          fontSize: UIScale.font(10), color: '#888888', fontFamily: 'monospace',
           wordWrap: { width: cardW - 40 },
         });
         ay += 20;
@@ -156,11 +156,11 @@ export class HeroSelectScene extends Phaser.Scene {
       // Ultimate
       if (hero.ultimate) {
         this.add.text(x + 16, ay, `[R] ${hero.ultimate.name}`, {
-          fontSize: '12px', color: '#cc66ff', fontFamily: 'monospace',
+          fontSize: UIScale.font(12), color: '#cc66ff', fontFamily: 'monospace',
         });
         ay += 16;
         this.add.text(x + 28, ay, `${hero.ultimate.description} (${hero.ultimate.cooldown}s cd)`, {
-          fontSize: '10px', color: '#886688', fontFamily: 'monospace',
+          fontSize: UIScale.font(10), color: '#886688', fontFamily: 'monospace',
           wordWrap: { width: cardW - 40 },
         });
       }
@@ -184,7 +184,7 @@ export class HeroSelectScene extends Phaser.Scene {
 
     // Reroll button
     const rerollBtn = this.add.text(cx, totalH - 40, '[ Reroll Heroes ]', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     rerollBtn.on('pointerdown', () => this.scene.restart());
     rerollBtn.on('pointerover', () => rerollBtn.setColor('#ffffff'));
@@ -192,7 +192,7 @@ export class HeroSelectScene extends Phaser.Scene {
 
     // Back button
     const backBtn = this.add.text(50, 25, '[ Back ]', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.scene.start('FactionSelectScene', {
       mode: this.matchMode,
@@ -297,14 +297,14 @@ export class HeroSelectScene extends Phaser.Scene {
       for (let i = 0; i < this.phoneOffered.length; i++) {
         const dotColor = i === this.phoneCardIndex ? '#ffffff' : '#444444';
         this.add.text(cx - 10 + i * 15, totalH - 30, '●', {
-          fontSize: '12px', color: dotColor, fontFamily: 'monospace',
+          fontSize: UIScale.font(12), color: dotColor, fontFamily: 'monospace',
         }).setOrigin(0.5);
       }
     }
 
     // Back button
     const backBtn = this.add.text(50, 25, '[ Back ]', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+      fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.scene.start('FactionSelectScene', {
       mode: this.matchMode, map: this.mapId, difficulty: this.difficulty,
