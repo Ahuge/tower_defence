@@ -1,6 +1,8 @@
 import { TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { Tower } from '../entities/Tower';
 import { hasTrait, getTrait } from '../systems/traits/Trait';
+import { UIScale } from '../systems/UIScale';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 export class TowerInfoPanel {
   private scene: Phaser.Scene;
@@ -26,34 +28,43 @@ export class TowerInfoPanel {
     this.bg = scene.add.graphics();
     this.container.add(this.bg);
 
-    this.nameText = scene.add.text(8, 4, '', { fontSize: '13px', color: '#ffdd44', fontFamily: 'monospace' });
-    this.statsText = scene.add.text(8, 22, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' });
-    this.buffText = scene.add.text(8, 36, '', { fontSize: '12px', color: '#88ff88', fontFamily: 'monospace' });
-    this.traitsText = scene.add.text(8, 50, '', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace' });
-    this.upgradeText = scene.add.text(8, 66, '', { fontSize: '12px', color: '#88ff88', fontFamily: 'monospace' });
+    const s = UIScale.current;
+    const pad = s.padding;
+    this.nameText = scene.add.text(pad, pad, '', { fontSize: s.fontHeading, color: '#ffdd44', fontFamily: 'monospace' });
+    this.statsText = scene.add.text(pad, pad + UIScale.space(18), '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace' });
+    this.buffText = scene.add.text(pad, pad + UIScale.space(32), '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
+    this.traitsText = scene.add.text(pad, pad + UIScale.space(46), '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
+    this.upgradeText = scene.add.text(pad, pad + UIScale.space(62), '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.buffText, this.traitsText, this.upgradeText]);
 
-    // Tappable action buttons
-    this.upgradeBtn = scene.add.text(8, 0, '[ Upgrade ]', {
-      fontSize: '13px', color: '#44ff44', fontFamily: 'monospace',
-      backgroundColor: '#1a2a1a', padding: { x: 4, y: 2 },
+    // Action buttons
+    const btnPadding = { x: UIScale.space(8), y: UIScale.space(4) };
+    this.upgradeBtn = scene.add.text(pad, 0, '[ Upgrade ]', {
+      fontSize: s.fontHeading, color: '#44ff44', fontFamily: 'monospace',
+      backgroundColor: '#1a2a1a', padding: btnPadding,
     }).setInteractive({ useHandCursor: true });
     this.upgradeBtn.on('pointerdown', () => {
       if (this.currentTower && this.onUpgrade) this.onUpgrade(this.currentTower);
     });
-    this.upgradeBtn.on('pointerover', () => this.upgradeBtn.setColor('#88ff88'));
-    this.upgradeBtn.on('pointerout', () => this.upgradeBtn.setColor('#44ff44'));
     this.container.add(this.upgradeBtn);
 
-    this.sellBtn = scene.add.text(120, 0, '[ Sell ]', {
-      fontSize: '13px', color: '#ff8844', fontFamily: 'monospace',
-      backgroundColor: '#2a1a1a', padding: { x: 4, y: 2 },
+    this.sellBtn = scene.add.text(UIScale.space(120), 0, '[ Sell ]', {
+      fontSize: s.fontHeading, color: '#ff8844', fontFamily: 'monospace',
+      backgroundColor: '#2a1a1a', padding: btnPadding,
     }).setInteractive({ useHandCursor: true });
     this.sellBtn.on('pointerdown', () => {
       if (this.currentTower && this.onSell) this.onSell(this.currentTower);
     });
-    this.sellBtn.on('pointerover', () => this.sellBtn.setColor('#ffbb77'));
-    this.sellBtn.on('pointerout', () => this.sellBtn.setColor('#ff8844'));
+
+    // Close button (phone only)
+    if (UIScale.isPhone) {
+      const closeBtn = scene.add.text(UIScale.space(240), 0, '[ Close ]', {
+        fontSize: s.fontHeading, color: '#aaaaaa', fontFamily: 'monospace',
+        backgroundColor: '#222222', padding: btnPadding,
+      }).setInteractive({ useHandCursor: true });
+      closeBtn.on('pointerdown', () => this.hide());
+      this.container.add(closeBtn);
+    }
     this.container.add(this.sellBtn);
 
     this.rangeCircle = scene.add.graphics().setDepth(19);
@@ -164,27 +175,28 @@ export class TowerInfoPanel {
     this.upgradeBtn.setVisible(tower.canUpgrade());
 
     // Calculate panel size
-    const panelW = 350;
-    const panelH = btnY + 24;
+    const panelW = UIScale.isPhone ? 700 : 350;
+    const panelH = btnY + UIScale.space(24);
 
-    // Position near tower — convert to screen coords on phone (UI camera is at 1x)
-    const cam = this.scene.cameras.main;
-    const screenTowerX = (tower.x - cam.scrollX) * cam.zoom;
-    const screenTowerY = (tower.y - cam.scrollY) * cam.zoom;
-    const useScreen = cam.zoom !== 1; // phone with zoom
+    if (UIScale.isPhone) {
+      // Phone: centered modal dialog
+      const cw = getCanvasWidth();
+      const ch = ResponsiveManager.canvasHeight();
+      this.container.setPosition((cw - panelW) / 2, (ch - panelH) / 2 - 50);
+    } else {
+      // Desktop: position near tower
+      let px = tower.x + TILE_SIZE;
+      let py = tower.y - panelH / 2;
+      if (px + panelW > getCanvasWidth()) px = tower.x - TILE_SIZE - panelW;
+      if (px < getGridOffsetX()) px = getGridOffsetX();
+      if (py < 0) py = 0;
+      this.container.setPosition(px, py);
+    }
 
-    let px = (useScreen ? screenTowerX : tower.x) + TILE_SIZE;
-    let py = (useScreen ? screenTowerY : tower.y) - panelH / 2;
-    if (px + panelW > getCanvasWidth()) px = (useScreen ? screenTowerX : tower.x) - TILE_SIZE - panelW;
-    if (px < getGridOffsetX()) px = getGridOffsetX();
-    if (py < 0) py = 0;
-    if (py + panelH > getCanvasWidth()) py = getCanvasWidth() - panelH;
-
-    this.container.setPosition(px, py);
     this.bg.clear();
     this.bg.fillStyle(0x111111, 0.95);
     this.bg.fillRect(0, 0, panelW, panelH);
-    this.bg.lineStyle(1, 0x555555, 1);
+    this.bg.lineStyle(UIScale.isPhone ? 2 : 1, 0x555555, 1);
     this.bg.strokeRect(0, 0, panelW, panelH);
 
     // Aura buff border

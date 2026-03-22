@@ -21,6 +21,7 @@ export class InputManager {
   private rawClickCallback: ((x: number, y: number) => void) | null = null;
   private gridRows: number = GRID_ROWS;
   private cameraCtrl: CameraController | null = null;
+  private sidebarVisibleCheck: (() => boolean) | null = null;
 
   // Long-press state for touch
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -33,6 +34,8 @@ export class InputManager {
     this.events = events;
 
     scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      // Skip if sidebar overlay is open
+      if (this.sidebarVisibleCheck?.()) return;
       // Skip hover if camera is panning or pinching
       if (this.cameraCtrl?.wasPan || this.cameraCtrl?.pinching) return;
 
@@ -52,6 +55,8 @@ export class InputManager {
     });
 
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      // Skip if sidebar overlay is open
+      if (this.sidebarVisibleCheck?.()) return;
       const isLeftOrTouch = pointer.leftButtonDown() || pointer.wasTouch;
 
       // Start long-press detection for touch
@@ -84,6 +89,7 @@ export class InputManager {
       this.cancelLongPress();
 
       if (!pointer.wasTouch) return;
+      if (this.sidebarVisibleCheck?.()) return; // sidebar open
       if (this.longPressFired) return; // was a long-press (right-click)
       if (this.cameraCtrl?.wasPan) return; // was a pan gesture
 
@@ -174,6 +180,11 @@ export class InputManager {
   /** Link camera controller for pan-suppression */
   setCameraController(ctrl: CameraController): void {
     this.cameraCtrl = ctrl;
+  }
+
+  /** Set a callback to check if sidebar is visible (blocks game input) */
+  setSidebarCheck(check: () => boolean): void {
+    this.sidebarVisibleCheck = check;
   }
 
   private pointerToGrid(pointer: Phaser.Input.Pointer): GridCoord | null {
