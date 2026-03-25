@@ -124,8 +124,17 @@ export class BuildingManager {
     for (const b of this.buildings) {
       if (b.destroyed) continue;
 
-      // Construction
+      // Construction — only progresses if a builder is actively working on it
       if (!b.isBuilt) {
+        // Check if any builder is assigned to this building
+        const hasBuilder = allUnits?.some(u => {
+          if (!u.alive || u.state !== 'building') return false;
+          const bu = u as any;
+          return bu.activeConstruction?.col === b.col && bu.activeConstruction?.row === b.row;
+        }) ?? false;
+
+        if (!hasBuilder) continue; // no builder present — construction paused
+
         const justCompleted = b.tickBuild(deltaSec);
         if (justCompleted) {
           if (b.def.supplyProvided > 0) {
