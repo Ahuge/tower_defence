@@ -54,6 +54,9 @@ export class UnitManager {
 
   spawnBuilder(owner: UnitOwner, col: number, row: number, color: number): BuilderUnit {
     const builder = new BuilderUnit(this.grid, owner, col, row, color);
+    // Military builders construct 20% faster
+    const faction = owner === 'player' ? this.playerFaction : this.cpuFaction;
+    if (faction === 'military') builder.buildSpeedMult = 1.2;
     this.units.push(builder);
     return builder;
   }
@@ -575,6 +578,15 @@ export class UnitManager {
       }
     }
 
+    // Apply build speed bonus (Military builders construct faster)
+    if (unit.state === 'building' && unit.activeConstruction && unit.buildSpeedMult > 1) {
+      const bonus = unit.buildSpeedMult - 1; // e.g., 0.2 for 20% faster
+      const b = this.buildingMgr.getBuildingAt(unit.activeConstruction.col, unit.activeConstruction.row);
+      if (b && !b.isBuilt) {
+        b.tickBuild(deltaSec * bonus); // extra progress
+      }
+    }
+
     // Check construction completion
     if (unit.state === 'building' && unit.activeConstruction) {
       const isTower = unit.buildOrder?.buildingId.startsWith('tower:');
@@ -621,7 +633,7 @@ export class UnitManager {
       if (b.def.category === 'base') {
         if (b.trainingQueue[0] !== 'builder') { b.trainingQueue.shift(); continue; }
         const rate = 1 / UnitManager.BUILDER_TRAIN_TIME;
-        b.trainingProgress += rate * deltaSec;
+        b.trainingProgress += rate * deltaSec * b.trainingSpeedMult;
         if (b.trainingProgress >= 1) {
           b.trainingProgress = 0;
           b.trainingQueue.shift();
@@ -659,7 +671,7 @@ export class UnitManager {
       if (!unitDef) { b.trainingQueue.shift(); continue; }
 
       const rate = unitDef.trainTime > 0 ? 1 / unitDef.trainTime : 1;
-      b.trainingProgress += rate * deltaSec;
+      b.trainingProgress += rate * deltaSec * b.trainingSpeedMult;
 
       if (b.trainingProgress >= 1) {
         b.trainingProgress = 0;

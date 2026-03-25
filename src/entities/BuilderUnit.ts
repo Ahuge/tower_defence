@@ -43,6 +43,9 @@ export class BuilderUnit extends RtsUnit {
   /** Set to true when builder needs deposit location updated (before walking to base) */
   needsDepositUpdate: boolean = false;
 
+  /** Construction speed multiplier (Military gets 1.2) */
+  buildSpeedMult: number = 1.0;
+
   /** Prepaid build cost (for refund if cancelled before construction starts) */
   prepaidGold: number = 0;
   prepaidGas: number = 0;

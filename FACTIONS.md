@@ -189,3 +189,80 @@
 *"Adapt or die." — 6 random towers + 2 frontier buildings each wave.*
 
 Each wave, 6 non-ultimate towers are randomly chosen from all faction pools. Bought towers stay permanently. Frontier buildings also rotate. Forces adaptive strategy.
+
+---
+---
+
+# Base Defence Mode — Faction Lore & Mechanics
+
+The following describes each faction's identity, history, and unique mechanics in the Base Defence RTS game mode. These factions share their tower pools with the standard TD modes but have additional buildings, units, and faction-specific abilities.
+
+---
+
+## Military — "Hold the Line"
+
+The Military faction represents the remnants of a unified planetary defense force — disciplined, organized, and relentlessly pragmatic. When the Breach opened and chaos flooded in from beyond, it was the Military that held the line at Bastion Prime, buying time for the other factions to mobilize. Their doctrine is simple: boots on the ground, steel in hand, victory through superior logistics. They don't dabble in magic or experimental tech — they rely on tried-and-true doctrine, overwhelming firepower, and an unshakeable chain of command.
+
+In gameplay, Military is the "standard" faction — the benchmark that all others are measured against. They have the most balanced stat lines, moderate costs, and no gimmicks. Their strength is reliability: their units always do exactly what you expect, their buildings are tough, and their economy is steady. A Military player wins through solid macro — expand early, keep production running, and push with a well-rounded army. Their Troopers are the tankiest melee unit, their Marines are consistent ranged DPS, and their Heavy Tanks hit like freight trains from long range.
+
+**Faction-specific mechanics:**
+- **Fortifications:** Can build Sandbag Walls (cheap, low HP, blocks pathing) and Bunkers (garrison units inside for protection + attack bonus). Creates kill zones at chokepoints.
+- **Fast Construction:** Builders construct 20% faster than other factions (discipline and training).
+- **Radar:** Command Center detects all enemy units within a large radius, even through fog of war.
+
+| Building | Cost | HP | Notes |
+|----------|------|----|-------|
+| Command Center | 400g | 2000 | +10 supply, resource drop-off, radar |
+| Refinery | 75g | 400 | Gold mining building |
+| Gas Pump | 100g | 350 | Gas extraction |
+| Supply Depot | 50g | 300 | +8 supply |
+| Barracks | 150g | 600 | Trains infantry and vehicles |
+| Sandbag Wall | 15g | 150 | Blocks pathing, cheap barrier |
+| Bunker | 100g | 500 | Garrison up to 4 units |
+
+| Unit | Cost | HP | Damage | Role |
+|------|------|----|--------|------|
+| Trooper | 30g | 100 | 12 | Melee — tanky frontline |
+| Marine | 50g | 80 | 8 | Ranged — consistent DPS |
+| Heavy Tank | 120g+50v | 350 | 35 | Heavy — long range, slow |
+
+---
+
+## Mechanical — "Steel Endures"
+
+The Mechanical faction emerged from the industrial megacorps that survived the Breach by retreating into their automated factories. They worship efficiency above all else — every bolt, every circuit, every calorie of energy is accounted for and optimized. Their units are mass-produced drones, walking mechs, and siege engines — none of them feel pain, none of them retreat, and none of them question orders. The Mechanical philosophy is that flesh is a liability; steel endures.
+
+In gameplay, Mechanical is the "late-game powerhouse" faction. Their buildings are tougher and their income is slightly better (Auto-Drills mine 10% more), but everything takes longer to build and costs a bit more upfront. A Mechanical player who survives the early game becomes nearly unstoppable — their Siege Engines have the longest range in the game, and their Factory can queue units faster than other barracks. They trade early vulnerability for crushing mid-to-late dominance.
+
+**Faction-specific mechanics:**
+- **Overclock:** Mechanical buildings can be temporarily Overclocked (hotkey O) — doubling production speed for 15 seconds at the cost of 50 HP damage to the building. Burst production in emergencies.
+- **Repair Bay:** Unique building that slowly heals all friendly units and buildings in a radius.
+- **Fast Scouts:** Attack Drones are the fastest unit in the game — excellent for harassment and scouting.
+
+| Building | Cost | HP | Notes |
+|----------|------|----|-------|
+| Core Nexus | 400g | 2200 | +10 supply, resource drop-off, toughest base |
+| Auto-Drill | 80g | 500 | Gold mining, +10% yield |
+| Vapor Condenser | 110g | 450 | Gas extraction |
+| Power Pylon | 55g | 250 | +8 supply |
+| Factory | 160g | 700 | Trains mech units, fast queue |
+| Repair Bay | 120g+30v | 400 | Heals units/buildings in radius |
+
+| Unit | Cost | HP | Damage | Role |
+|------|------|----|--------|------|
+| Mech Walker | 55g | 140 | 15 | Melee — sturdy, slow |
+| Attack Drone | 35g | 60 | 10 | Ranged — fastest unit, fragile |
+| Siege Engine | 150g+75v | 400 | 50 | Heavy — extreme range, very slow |
+
+---
+
+## Arcane — "Knowledge is Power"
+
+The Arcane faction are the scholars, mystics, and rogue mages who tapped into the same dimensional energy that caused the Breach — but learned to control it rather than fear it. They operate from floating spires and crystal-laced towers, channeling raw mana through sigils etched into the earth itself. To the Military, they're dangerous idealists. To the Mechanical, they're inefficient dreamers. To themselves, they are the only ones who truly understand what's coming next. Their power is immense but fragile — a glass cannon faction that rewards precision and punishes mistakes.
+
+In gameplay, Arcane is the "high-skill" faction. Their units are cheap and fast to train but have the lowest HP. They compensate with higher damage output and unique abilities. Their Apprentices deal more damage per gold than any other ranged unit, but die to a stiff breeze. Their Arcane Golems are tanky exceptions — slow, expensive, but nearly indestructible. The Arcane player wins by controlling engagements, picking fights they can win, and retreating from ones they can't.
+
+**Faction-specific mechanics:**
+- **Blink:** Arcane combat units can short-range teleport (8 tiles) on a 30-second cooldown (hotkey B). Bypass walls, escape fights, or ambush miners.
+- **Mana Well:** Unique building that generates gas passively (no geyser required). Reflects their ability to pull energy from thin air.
+- **Glass Cannon Identity:** Fastest build times, cheapest units, but lowest HP across the board.

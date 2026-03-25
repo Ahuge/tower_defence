@@ -29,6 +29,10 @@ export class Building {
   rallyCol: number = 0;
   rallyRow: number = 0;
 
+  /** Overclock state (Mechanical faction ability) */
+  overclockTimer: number = 0; // seconds remaining, 0 = not active
+  overclockCooldown: number = 0; // seconds until can overclock again
+
   constructor(def: BuildingDef, owner: BuildingOwner, col: number, row: number, originalCellType: number, startBuilt: boolean = false) {
     this.def = def;
     this.owner = owner;
@@ -61,5 +65,34 @@ export class Building {
       return true;
     }
     return false;
+  }
+
+  /** Is this building currently overclocked? */
+  get isOverclocked(): boolean { return this.overclockTimer > 0; }
+
+  /** Training speed multiplier (2× when overclocked) */
+  get trainingSpeedMult(): number { return this.overclockTimer > 0 ? 2 : 1; }
+
+  /** Activate overclock — 2× production for 15s, costs 50 HP */
+  activateOverclock(): boolean {
+    if (!this.isBuilt || this.destroyed) return false;
+    if (this.overclockTimer > 0 || this.overclockCooldown > 0) return false;
+    if (this.def.faction !== 'mechanical') return false;
+    if (this.hp <= 50) return false; // don't kill yourself
+
+    this.overclockTimer = 15;
+    this.overclockCooldown = 30; // can't overclock again for 30s after it ends
+    this.hp -= 50;
+    return true;
+  }
+
+  /** Tick overclock timers each frame */
+  tickOverclock(deltaSec: number): void {
+    if (this.overclockTimer > 0) {
+      this.overclockTimer = Math.max(0, this.overclockTimer - deltaSec);
+    }
+    if (this.overclockCooldown > 0 && this.overclockTimer <= 0) {
+      this.overclockCooldown = Math.max(0, this.overclockCooldown - deltaSec);
+    }
   }
 }

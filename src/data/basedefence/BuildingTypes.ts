@@ -1,7 +1,7 @@
 import { FactionId } from '../Factions';
 
 /** Functional category of a building */
-export type BuildingCategory = 'base' | 'miner' | 'extractor' | 'supply' | 'barracks';
+export type BuildingCategory = 'base' | 'miner' | 'extractor' | 'supply' | 'barracks' | 'wall' | 'bunker' | 'repair_bay' | 'mana_well';
 
 export interface BuildingDef {
   id: string;
@@ -28,6 +28,20 @@ export interface BuildingDef {
   color: number;
   /** Description */
   desc: string;
+  /** Does this building block pathing? (walls) */
+  blocksPathing?: boolean;
+  /** Heal rate for repair buildings (HP/sec to nearby units/buildings) */
+  healRate?: number;
+  /** Heal radius in tiles */
+  healRadius?: number;
+  /** Passive resource generation (mana wells) — resource per second */
+  passiveRate?: number;
+  /** Passive resource ID */
+  passiveResource?: string;
+  /** Max units that can garrison (bunkers) */
+  garrisonCapacity?: number;
+  /** Garrison attack damage bonus multiplier */
+  garrisonDamageBonus?: number;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -74,6 +88,24 @@ const MIL_BARRACKS: BuildingDef = {
   desc: 'Trains infantry and vehicles.',
 };
 
+const MIL_WALL: BuildingDef = {
+  id: 'mil_wall', name: 'Sandbag Wall', category: 'wall',
+  faction: 'military', costGold: 15, costGas: 0,
+  hp: 150, buildTime: 3, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 1, color: 0x887755,
+  desc: 'Cheap barrier. Blocks unit pathing.',
+  blocksPathing: true,
+};
+
+const MIL_BUNKER: BuildingDef = {
+  id: 'mil_bunker', name: 'Bunker', category: 'bunker',
+  faction: 'military', costGold: 100, costGas: 0,
+  hp: 500, buildTime: 10, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 2, color: 0x556644,
+  desc: 'Garrison up to 4 units. Garrisoned units attack from safety with +50% damage.',
+  garrisonCapacity: 4, garrisonDamageBonus: 1.5,
+};
+
 // ════════════════════════════════════════════════════════════
 // MECHANICAL
 // ════════════════════════════════════════════════════════════
@@ -116,6 +148,15 @@ const MECH_BARRACKS: BuildingDef = {
   hp: 700, buildTime: 14, incomeRate: 0, incomeResource: '',
   supplyProvided: 0, footprint: 2, color: 0xcc7733,
   desc: 'Produces mechanical units.',
+};
+
+const MECH_REPAIR: BuildingDef = {
+  id: 'mech_repair', name: 'Repair Bay', category: 'repair_bay',
+  faction: 'mechanical', costGold: 120, costGas: 30,
+  hp: 400, buildTime: 12, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 2, color: 0x88aa44,
+  desc: 'Heals nearby friendly units and buildings. 5 HP/sec in 8-tile radius.',
+  healRate: 5, healRadius: 8,
 };
 
 // ════════════════════════════════════════════════════════════
@@ -162,6 +203,15 @@ const ARC_BARRACKS: BuildingDef = {
   desc: 'Conjures arcane units.',
 };
 
+const ARC_MANA_WELL: BuildingDef = {
+  id: 'arc_mana_well', name: 'Mana Well', category: 'mana_well',
+  faction: 'arcane', costGold: 80, costGas: 0,
+  hp: 200, buildTime: 8, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 1, color: 0x6644cc,
+  desc: 'Generates 1 gas/sec passively. No geyser required.',
+  passiveRate: 1, passiveResource: 'gas',
+};
+
 // ════════════════════════════════════════════════════════════
 // LOOKUP
 // ════════════════════════════════════════════════════════════
@@ -170,19 +220,31 @@ export const BUILDING_TYPES: Record<string, BuildingDef> = {
   // Military
   mil_base: MIL_BASE, mil_miner: MIL_MINER, mil_extractor: MIL_EXTRACTOR,
   mil_supply: MIL_SUPPLY, mil_barracks: MIL_BARRACKS,
+  mil_wall: MIL_WALL, mil_bunker: MIL_BUNKER,
   // Mechanical
   mech_base: MECH_BASE, mech_miner: MECH_MINER, mech_extractor: MECH_EXTRACTOR,
   mech_supply: MECH_SUPPLY, mech_barracks: MECH_BARRACKS,
+  mech_repair: MECH_REPAIR,
   // Arcane
   arc_base: ARC_BASE, arc_miner: ARC_MINER, arc_extractor: ARC_EXTRACTOR,
   arc_supply: ARC_SUPPLY, arc_barracks: ARC_BARRACKS,
+  arc_mana_well: ARC_MANA_WELL,
 };
 
-/** Get building IDs for a faction, ordered: base, miner, extractor, supply, barracks */
+/** Extra faction-specific building IDs (beyond the standard 5) */
+const FACTION_EXTRAS: Record<string, string[]> = {
+  mil: ['mil_wall', 'mil_bunker'],
+  mech: ['mech_repair'],
+  arc: ['arc_mana_well'],
+};
+
+/** Get building IDs for a faction — standard buildings + faction-specific extras */
 export function getFactionBuildingIds(faction: FactionId): string[] {
   const prefix = factionPrefix(faction);
   if (!prefix) return [];
-  return [`${prefix}_base`, `${prefix}_miner`, `${prefix}_extractor`, `${prefix}_supply`, `${prefix}_barracks`];
+  const standard = [`${prefix}_base`, `${prefix}_miner`, `${prefix}_extractor`, `${prefix}_supply`, `${prefix}_barracks`];
+  const extras = FACTION_EXTRAS[prefix] || [];
+  return [...standard, ...extras];
 }
 
 /** Get the base building ID for a faction */

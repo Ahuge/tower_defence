@@ -17,6 +17,8 @@ const UNIT_VISION = 8;
 const BUILDER_VISION = 6;
 const BUILDING_VISION = 10;
 const TOWER_VISION = 8;
+/** Military radar — Command Centers reveal a huge radius */
+const RADAR_VISION = 20;
 
 /**
  * Fog of War system for Base Defence mode.
@@ -49,7 +51,7 @@ export class FogOfWar {
     );
 
     // Pre-compute vision circles
-    for (const r of [BUILDER_VISION, UNIT_VISION, BUILDING_VISION, TOWER_VISION]) {
+    for (const r of [BUILDER_VISION, UNIT_VISION, BUILDING_VISION, TOWER_VISION, RADAR_VISION]) {
       this.precomputeCircle(r);
     }
   }
@@ -97,10 +99,12 @@ export class FogOfWar {
 
     for (const b of playerBuildings) {
       if (b.destroyed || b.owner !== 'player') continue;
-      // Reveal from center of building footprint
       const centerCol = b.col + Math.floor(b.def.footprint / 2);
       const centerRow = b.row + Math.floor(b.def.footprint / 2);
-      this.reveal(centerCol, centerRow, BUILDING_VISION);
+      // Military base buildings have radar (much larger vision)
+      const radius = b.def.category === 'base' && b.def.faction === 'military'
+        ? RADAR_VISION : BUILDING_VISION;
+      this.reveal(centerCol, centerRow, radius);
     }
 
     for (const t of playerTowers) {

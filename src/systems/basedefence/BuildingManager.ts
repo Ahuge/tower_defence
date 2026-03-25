@@ -120,7 +120,7 @@ export class BuildingManager {
    * - Clean up destroyed buildings
    * NOTE: Income is NOT auto-ticked. Builders must actively mine at a miner/extractor.
    */
-  update(deltaSec: number): void {
+  update(deltaSec: number, allUnits?: import('../../entities/RtsUnit').RtsUnit[]): void {
     for (const b of this.buildings) {
       if (b.destroyed) continue;
 
@@ -131,9 +131,57 @@ export class BuildingManager {
           if (b.def.supplyProvided > 0) {
             this.supply[b.owner].max += b.def.supplyProvided;
           }
+          // Walls block pathing when complete
+          if (b.def.blocksPathing) {
+            for (let dr = 0; dr < b.def.footprint; dr++) {
+              for (let dc = 0; dc < b.def.footprint; dc++) {
+                this.grid.cells[b.row + dr][b.col + dc] = CellType.Blocked;
+              }
+            }
+          }
           this.events.emit('buildingCompleted', b.def.id, b.col, b.row);
         }
         continue;
+      }
+
+      // Tick overclock timers
+      b.tickOverclock(deltaSec);
+
+      // Passive resource generation (Mana Wells) — player buildings only
+      // CPU passive income handled by CpuAI
+      if (b.def.passiveRate && b.def.passiveResource && b.owner === 'player') {
+        this.resources.add(b.def.passiveResource, b.def.passiveRate * deltaSec);
+      }
+
+      // Repair Bay — heal nearby friendly units and buildings
+      if (b.def.healRate && b.def.healRadius && allUnits) {
+        const hpPerFrame = b.def.healRate * deltaSec;
+        const radiusPx = b.def.healRadius * 28; // TILE_SIZE
+        const bx = (b.col + b.def.footprint / 2) * 28;
+        const by = (b.row + b.def.footprint / 2) * 28;
+        const r2 = radiusPx * radiusPx;
+
+        // Heal nearby units
+        for (const u of allUnits) {
+          if (!u.alive || u.owner !== b.owner) continue;
+          const dx = u.x - bx;
+          const dy = u.y - by;
+          if (dx * dx + dy * dy < r2 && u.hp < u.maxHp) {
+            u.hp = Math.min(u.maxHp, u.hp + hpPerFrame);
+          }
+        }
+
+        // Heal nearby buildings
+        for (const ob of this.buildings) {
+          if (ob.destroyed || ob.owner !== b.owner || !ob.isBuilt) continue;
+          const obx = (ob.col + ob.def.footprint / 2) * 28;
+          const oby = (ob.row + ob.def.footprint / 2) * 28;
+          const ddx = obx - bx;
+          const ddy = oby - by;
+          if (ddx * ddx + ddy * ddy < r2 && ob.hp < ob.maxHp) {
+            ob.hp = Math.min(ob.maxHp, ob.hp + hpPerFrame);
+          }
+        }
       }
     }
 

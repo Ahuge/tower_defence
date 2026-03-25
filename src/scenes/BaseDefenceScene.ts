@@ -93,6 +93,8 @@ export class BaseDefenceScene extends Phaser.Scene {
 
   // Attack mode (A key — next click issues attack-move)
   private attackMode: boolean = false;
+  // Blink mode (B key — Arcane units teleport to clicked location)
+  private blinkMode: boolean = false;
 
   // Selected building (any player building, for info display + barracks training)
   private selectedBuilding: Building | null = null;
@@ -399,6 +401,49 @@ export class BaseDefenceScene extends Phaser.Scene {
         this.unitMgr.cancelBuilderTraining(this.selectedBuilding, 'player');
       }
     });
+
+    // O key: Overclock (Mechanical faction — selected building)
+    this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O).on('down', () => {
+      if (this.selectedBuilding?.def.faction === 'mechanical') {
+        this.selectedBuilding.activateOverclock();
+      }
+    });
+
+    // B key: Blink (Arcane faction — selected combat units)
+    this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B).on('down', () => {
+      if (this.faction === 'arcane') {
+        this.blinkMode = true;
+        this.buildMode = { active: false };
+      }
+    });
+  }
+
+  /** Blink selected Arcane combat units to target location (8 tile max range, 30s cooldown) */
+  private performBlink(wx: number, wy: number): void {
+    const maxRange = TILE_SIZE * 8;
+    const sel = this.unitMgr.selected;
+    for (const u of sel) {
+      if (!(u instanceof CombatUnit) || !u.alive) continue;
+      if (u.def.faction !== 'arcane') continue;
+      if (u.blinkCooldown > 0) continue;
+
+      const dx = wx - u.x;
+      const dy = wy - u.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= maxRange) {
+        // Teleport to exact position
+        u.x = wx;
+        u.y = wy;
+      } else {
+        // Blink max range in the target direction
+        u.x += (dx / dist) * maxRange;
+        u.y += (dy / dist) * maxRange;
+      }
+      u.blinkCooldown = 30;
+      u.state = 'idle';
+      u.attackTarget = null;
+    }
   }
 
   /** Convert pointer screen coords to world coords using the main (game) camera */
@@ -426,6 +471,13 @@ export class BaseDefenceScene extends Phaser.Scene {
 
       // Left click
       const world = this.pointerWorld(pointer);
+
+      // Blink mode: B was pressed, now clicking teleports Arcane units
+      if (this.blinkMode) {
+        this.performBlink(world.x, world.y);
+        this.blinkMode = false;
+        return;
+      }
 
       // Attack mode: A was pressed, now clicking issues attack-move
       if (this.attackMode) {
@@ -1192,7 +1244,7 @@ export class BaseDefenceScene extends Phaser.Scene {
     this.handleCameraScroll(delta);
 
     // Tick systems
-    this.buildingMgr.update(deltaSec);
+    this.buildingMgr.update(deltaSec, this.unitMgr.units);
     this.unitMgr.update(deltaSec, time);
     this.cpuAI.update(deltaSec);
     this.waves.update(deltaSec);
@@ -1256,10 +1308,13 @@ export class BaseDefenceScene extends Phaser.Scene {
     let context = 'none';
     if (this.buildMode.active) context = 'buildmode';
     else if (hasBuilder) context = 'builder';
-    else if (selBldg?.def.category === 'barracks') context = `barracks:${selBldg.trainingQueue.length}:${Math.floor(selBldg.trainingProgress * 10)}`;
-    else if (selBldg?.def.category === 'base') context = `base:${selBldg.trainingQueue.length}:${Math.floor(selBldg.trainingProgress * 10)}`;
+    else if (selBldg?.def.category === 'barracks') context = `barracks:${selBldg.trainingQueue.length}:${Math.floor(selBldg.trainingProgress * 10)}:oc${Math.floor(selBldg.overclockTimer)}`;
+    else if (selBldg?.def.category === 'base') context = `base:${selBldg.trainingQueue.length}:${Math.floor(selBldg.trainingProgress * 10)}:oc${Math.floor(selBldg.overclockTimer)}`;
     else if (selBldg) context = `building:${selBldg.def.id}:${selBldg.hp}`;
-    else if (hasCombat) context = `combat:${sel.length}`;
+    else if (hasCombat) {
+      const blinkCd = sel.filter(u => u instanceof CombatUnit).map(u => Math.floor((u as CombatUnit).blinkCooldown)).join(',');
+      context = `combat:${sel.length}:b${blinkCd}`;
+    }
     else if (sel.length > 0) context = 'units';
 
     // Only rebuild if context changed
@@ -1338,6 +1393,15 @@ export class BaseDefenceScene extends Phaser.Scene {
         const pBar = `[${'='.repeat(Math.floor(selBldg.trainingProgress * 10))}${'.'.repeat(10 - Math.floor(selBldg.trainingProgress * 10))}]`;
         items.push({ label: `${pBar}\n    ${queueNames.join(' → ')}`, color: '#88aaff', bg: '#222233' });
       }
+      // Overclock for Mechanical
+      if (selBldg.def.faction === 'mechanical') {
+        const canOC = selBldg.overclockCooldown <= 0 && !selBldg.isOverclocked && selBldg.hp > 50;
+        const ocLabel = selBldg.isOverclocked ? `OVERCLOCKED!\n    ${Math.ceil(selBldg.overclockTimer)}s left`
+          : selBldg.overclockCooldown > 0 ? `[O] Overclock\n    CD: ${Math.ceil(selBldg.overclockCooldown)}s`
+          : `[O] Overclock\n    2× speed, -50HP`;
+        items.push({ label: ocLabel, color: selBldg.isOverclocked ? '#ffaa00' : canOC ? '#ffcc44' : '#666644', bg: '#332200',
+          action: canOC ? () => { selBldg.activateOverclock(); } : undefined });
+      }
     } else if (context.startsWith('base') && selBldg) {
       items.push({
         label: `[Q] Train Builder\n    50g 6s HP:60 (1 supply)`,
@@ -1355,13 +1419,22 @@ export class BaseDefenceScene extends Phaser.Scene {
         items.push({ label: `${pBar}\n    Queue: ${selBldg.trainingQueue.length} builder(s)`, color: '#88aaff', bg: '#222233' });
       }
     } else if (context.startsWith('combat')) {
-      // Show selected combat unit stats
       const combat = sel.filter(u => u instanceof CombatUnit) as CombatUnit[];
       if (combat.length === 1) {
         const u = combat[0];
         items.push({ label: `${u.def.name}\nHP:${u.hp}/${u.maxHp} DMG:${u.damage} SPD:${u.moveSpeed} RNG:${Math.round(u.attackRange / TILE_SIZE)}`, color: '#cccccc', bg: '#333333' });
       } else {
         items.push({ label: `${combat.length} units selected\n[A] Attack-move  [RMB] Move`, color: '#cccccc', bg: '#333333' });
+      }
+      // Blink for Arcane
+      if (this.faction === 'arcane') {
+        const blinkReady = combat.filter(u => u.def.faction === 'arcane' && u.blinkCooldown <= 0);
+        if (blinkReady.length > 0) {
+          items.push({ label: `[B] Blink\n    Teleport 8 tiles`, color: '#aa88ff', bg: '#332244' });
+        } else {
+          const minCd = Math.min(...combat.filter(u => u.def.faction === 'arcane').map(u => u.blinkCooldown));
+          items.push({ label: `[B] Blink\n    CD: ${Math.ceil(minCd)}s`, color: '#665588', bg: '#222233' });
+        }
       }
     } else if (context.startsWith('building:') && selBldg) {
       items.push({ label: `${selBldg.def.name}\nHP:${selBldg.hp}/${selBldg.maxHp}`, color: '#cccccc', bg: '#333333' });

@@ -20,6 +20,9 @@ export class CombatUnit extends RtsUnit {
   private lastAttackTime: number = 0;
   private lastRepathTime: number = 0;
 
+  /** Blink cooldown in seconds remaining (Arcane only) */
+  blinkCooldown: number = 0;
+
   /** Building target (for attacking enemy base/buildings) */
   buildingTarget: Building | null = null;
 
@@ -42,6 +45,9 @@ export class CombatUnit extends RtsUnit {
     enemyBuildings: Building[],
   ): { unit: RtsUnit | null; building: Building | null } {
     if (!this.alive) return { unit: null, building: null };
+
+    // Tick blink cooldown
+    if (this.blinkCooldown > 0) this.blinkCooldown = Math.max(0, this.blinkCooldown - deltaSec);
 
     // 1. If attacking a building, pursue it
     if (this.buildingTarget && !this.buildingTarget.destroyed) {
