@@ -9,12 +9,15 @@ import { MapId } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
+export type RtsMapSize = 'small' | 'medium' | 'large';
+
 export class FactionSelectScene extends Phaser.Scene {
   private matchMode: MatchMode = 'standard';
   private mapId: MapId = 'plains';
   private difficulty: DifficultyLevel = 'normal';
   private randomSeed: number = 0;
   private dailySeed: boolean = false;
+  private rtsMapSize: RtsMapSize = 'medium';
 
   constructor() {
     super('FactionSelectScene');
@@ -36,6 +39,60 @@ export class FactionSelectScene extends Phaser.Scene {
       fontSize: UIScale.font(28), color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
+    let topOffset = 0;
+
+    // Map size selector for Base Defence mode
+    if (this.matchMode === 'base_defence') {
+      topOffset = 50;
+      this.add.text(cx, 60, 'Map Size', {
+        fontSize: UIScale.font(14), color: '#aaaaaa', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
+      const sizes: { id: RtsMapSize; label: string; desc: string }[] = [
+        { id: 'small', label: 'Small', desc: '3×3 chunks' },
+        { id: 'medium', label: 'Medium', desc: '5×4 chunks' },
+        { id: 'large', label: 'Large', desc: '7×6 chunks' },
+      ];
+      const btnW = 100;
+      const btnGap = 8;
+      const totalW = sizes.length * btnW + (sizes.length - 1) * btnGap;
+      const startX = cx - totalW / 2;
+      const sizeButtons: { g: Phaser.GameObjects.Graphics; id: RtsMapSize; x: number }[] = [];
+
+      for (let i = 0; i < sizes.length; i++) {
+        const sz = sizes[i];
+        const bx = startX + i * (btnW + btnGap);
+        const by = 78;
+        const g = this.add.graphics();
+        sizeButtons.push({ g, id: sz.id, x: bx });
+
+        this.add.text(bx + btnW / 2, by + 10, sz.label, {
+          fontSize: UIScale.font(13), color: '#ffffff', fontFamily: 'monospace',
+        }).setOrigin(0.5);
+        this.add.text(bx + btnW / 2, by + 26, sz.desc, {
+          fontSize: UIScale.font(9), color: '#888888', fontFamily: 'monospace',
+        }).setOrigin(0.5);
+
+        const zone = this.add.zone(bx + btnW / 2, by + 16, btnW, 34).setInteractive({ useHandCursor: true });
+        zone.on('pointerdown', () => {
+          this.rtsMapSize = sz.id;
+          drawSizeButtons();
+        });
+      }
+
+      const drawSizeButtons = () => {
+        for (const sb of sizeButtons) {
+          sb.g.clear();
+          const selected = sb.id === this.rtsMapSize;
+          sb.g.fillStyle(selected ? 0x444444 : 0x2a2a2a, 1);
+          sb.g.fillRect(sb.x, 78, btnW, 34);
+          sb.g.lineStyle(2, selected ? 0xff4444 : 0x555555, selected ? 1 : 0.5);
+          sb.g.strokeRect(sb.x, 78, btnW, 34);
+        }
+      };
+      drawSizeButtons();
+    }
+
     const isPhone = ph;
     const s = UIScale.current;
     const fCols = s.factionCols;
@@ -56,7 +113,7 @@ export class FactionSelectScene extends Phaser.Scene {
       const rowW = rowCount * cardW + (rowCount - 1) * gap;
       const rowStartX = cx - rowW / 2;
       const x = rowStartX + col * (cardW + gap);
-      const y = UIScale.y(55) + row * (cardH + gap);
+      const y = UIScale.y(55) + topOffset + row * (cardH + gap);
 
       const card = this.add.graphics();
       card.fillStyle(0x222222, 1);
@@ -131,10 +188,11 @@ export class FactionSelectScene extends Phaser.Scene {
         card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerdown', () => {
-        const sceneData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed };
+        const sceneData: any = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed };
         if (this.matchMode === 'hero_defense') {
           this.scene.start('HeroSelectScene', sceneData);
         } else if (this.matchMode === 'base_defence') {
+          sceneData.rtsMapSize = this.rtsMapSize;
           this.scene.start('BaseDefenceScene', sceneData);
         } else {
           this.scene.start('DraftScene', sceneData);

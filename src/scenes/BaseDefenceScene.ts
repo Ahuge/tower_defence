@@ -29,9 +29,7 @@ const COLOR_GEYSER = 0x22cc88;
 const COLOR_BLOCKED = 0x111111;
 const COLOR_NOBUILD = 0x222222;
 
-/** Map size */
-const MAP_CHUNKS_X = 5;
-const MAP_CHUNKS_Y = 4;
+// Map size configured via MAP_SIZE_CONFIG
 
 /** Camera */
 const SCROLL_SPEED = 600;
@@ -49,6 +47,14 @@ type BuildMode =
   | { active: true; buildingId: string; isTower?: false }
   | { active: true; buildingId: string; isTower: true };
 
+type RtsMapSize = 'small' | 'medium' | 'large';
+
+const MAP_SIZE_CONFIG: Record<RtsMapSize, { chunksX: number; chunksY: number; zoom: number }> = {
+  small:  { chunksX: 3, chunksY: 3, zoom: 1.0 },
+  medium: { chunksX: 5, chunksY: 4, zoom: 0.8 },
+  large:  { chunksX: 7, chunksY: 6, zoom: 0.6 },
+};
+
 interface BaseDefenceInit {
   mode: MatchMode;
   faction: FactionId;
@@ -56,6 +62,7 @@ interface BaseDefenceInit {
   difficulty?: DifficultyLevel;
   randomSeed?: number;
   dailySeed?: boolean;
+  rtsMapSize?: RtsMapSize;
 }
 
 export class BaseDefenceScene extends Phaser.Scene {
@@ -63,6 +70,7 @@ export class BaseDefenceScene extends Phaser.Scene {
   private cpuFaction!: FactionId;
   private difficulty: DifficultyLevel = 'normal';
   private seed: number = 0;
+  private mapSize: RtsMapSize = 'medium';
 
   // Map
   private mapResult!: BaseDefenceMapResult;
@@ -137,6 +145,7 @@ export class BaseDefenceScene extends Phaser.Scene {
     this.faction = data.faction;
     this.difficulty = data.difficulty || 'normal';
     this.seed = data.randomSeed || Math.floor(Math.random() * 999999);
+    this.mapSize = data.rtsMapSize || 'medium';
 
     const cpuOptions: FactionId[] = (['military', 'mechanical', 'arcane'] as FactionId[]).filter(f => f !== this.faction);
     this.cpuFaction = cpuOptions[Math.floor(Math.random() * cpuOptions.length)];
@@ -150,7 +159,8 @@ export class BaseDefenceScene extends Phaser.Scene {
     this.eventBus = new EventBus();
 
     // Generate map
-    this.mapResult = generateBaseDefenceMap(this.seed, MAP_CHUNKS_X, MAP_CHUNKS_Y);
+    const sizeConfig = MAP_SIZE_CONFIG[this.mapSize];
+    this.mapResult = generateBaseDefenceMap(this.seed, sizeConfig.chunksX, sizeConfig.chunksY, this.faction, this.cpuFaction);
 
     // Resources (separate pools for player and CPU)
     this.setupResources();
@@ -274,7 +284,7 @@ export class BaseDefenceScene extends Phaser.Scene {
     const grid = this.mapResult.grid;
     const cam = this.cameras.main;
     cam.setBounds(0, 0, grid.cols * TILE_SIZE, grid.rows * TILE_SIZE);
-    cam.setZoom(DEFAULT_ZOOM);
+    cam.setZoom(MAP_SIZE_CONFIG[this.mapSize].zoom);
 
     const pb = this.mapResult.playerBase;
     cam.centerOn(pb.col * TILE_SIZE + TILE_SIZE / 2, pb.row * TILE_SIZE + TILE_SIZE / 2);

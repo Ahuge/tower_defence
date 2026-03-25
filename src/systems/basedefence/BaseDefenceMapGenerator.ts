@@ -5,6 +5,7 @@ import {
   ChunkTemplate,
   ChunkEdges,
   BASE_CHUNKS,
+  FACTION_BASE_CHUNKS,
   OPEN_CHUNKS,
   RESOURCE_CHUNKS,
   parseChunkLayout,
@@ -37,6 +38,8 @@ export function generateBaseDefenceMap(
   seed: number,
   chunksX: number = 5,
   chunksY: number = 4,
+  playerFaction?: string,
+  cpuFaction?: string,
 ): BaseDefenceMapResult {
   const rng = seededRandom(seed);
   const totalCols = chunksX * CHUNK_SIZE;
@@ -66,9 +69,11 @@ export function generateBaseDefenceMap(
   const cpuChunkX = chunksX - 1 - Math.floor(rng() * Math.min(2, chunksX - 1));
   const cpuChunkY = Math.floor(rng() * Math.min(2, chunksY - 1));
 
-  // Assign base chunks with appropriate rotation
-  const playerBaseTemplate = pickRandom(BASE_CHUNKS, rng);
-  const cpuBaseTemplate = pickRandom(BASE_CHUNKS, rng);
+  // Assign base chunks — use faction-specific if available, fallback to generic
+  const playerBasePool = (playerFaction && FACTION_BASE_CHUNKS[playerFaction]) || BASE_CHUNKS;
+  const cpuBasePool = (cpuFaction && FACTION_BASE_CHUNKS[cpuFaction]) || BASE_CHUNKS;
+  const playerBaseTemplate = pickRandom(playerBasePool, rng);
+  const cpuBaseTemplate = pickRandom(cpuBasePool, rng);
 
   // Player base: open edges should face toward center (north+east for bottom-left)
   // Base chunks default to open south+east, so we need rotation based on position
