@@ -12,6 +12,10 @@ export interface GameEvents {
   gameOver: () => void;
   gameWon: () => void;
   pathUpdated: (path: { col: number; row: number }[] | null) => void;
+  // Base Defence events
+  buildingPlaced: (buildingId: string, col: number, row: number) => void;
+  buildingCompleted: (buildingId: string, col: number, row: number) => void;
+  buildingDestroyed: (buildingId: string, col: number, row: number, owner: string) => void;
 }
 
 export class EventBus {

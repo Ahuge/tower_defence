@@ -16,6 +16,10 @@ export interface MapDefinition {
   zoneColors?: number[];
   /** Circle co-op: number of players this map supports */
   circlePlayers?: number;
+  /** Base Defence: gold deposit tiles (place Miner buildings here) */
+  goldDeposits?: { col: number; row: number }[];
+  /** Base Defence: geyser tiles (place Extractor buildings here) */
+  geysers?: { col: number; row: number }[];
 }
 
 const MID_COL = Math.floor(GRID_COLS / 2);

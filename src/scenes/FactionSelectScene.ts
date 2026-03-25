@@ -42,7 +42,8 @@ export class FactionSelectScene extends Phaser.Scene {
     const cardW = isPhone ? Math.floor((getCanvasWidth() - 16) / fCols - 4) : s.factionCardW;
     const cardH = s.factionCardH;
     const gap = UIScale.isPhone ? 4 : 6;
-    const factions = FACTION_ORDER;
+    const BASE_DEFENCE_FACTIONS: FactionId[] = ['military', 'mechanical', 'arcane'];
+    const factions = this.matchMode === 'base_defence' ? BASE_DEFENCE_FACTIONS : FACTION_ORDER;
     const cols = fCols;
     const rows = Math.ceil(factions.length / cols);
 
@@ -130,10 +131,13 @@ export class FactionSelectScene extends Phaser.Scene {
         card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerdown', () => {
+        const sceneData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed };
         if (this.matchMode === 'hero_defense') {
-          this.scene.start('HeroSelectScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed });
+          this.scene.start('HeroSelectScene', sceneData);
+        } else if (this.matchMode === 'base_defence') {
+          this.scene.start('BaseDefenceScene', sceneData);
         } else {
-          this.scene.start('DraftScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed });
+          this.scene.start('DraftScene', sceneData);
         }
       });
     }

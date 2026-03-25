@@ -8,6 +8,9 @@ export enum CellType {
   Exit,
   Blocked,  // can't walk or build
   NoBuild,  // can walk through, can't build on
+  GoldDeposit, // walkable, not tower-buildable — place Miner here
+  Geyser,      // walkable, not tower-buildable — place Extractor here
+  Building,    // occupied by a non-tower building (Base Defence mode)
 }
 
 export class Grid {
@@ -52,6 +55,16 @@ export class Grid {
           this.cells[b.row][b.col] = CellType.NoBuild;
         }
       }
+      for (const g of (mapDef.goldDeposits || [])) {
+        if (g.row >= 0 && g.row < this.rows && g.col >= 0 && g.col < this.cols) {
+          this.cells[g.row][g.col] = CellType.GoldDeposit;
+        }
+      }
+      for (const g of (mapDef.geysers || [])) {
+        if (g.row >= 0 && g.row < this.rows && g.col >= 0 && g.col < this.cols) {
+          this.cells[g.row][g.col] = CellType.Geyser;
+        }
+      }
     } else {
       // Default: plains
       this.entry = { col: 0, row: Math.floor(this.rows / 2) };
@@ -67,14 +80,46 @@ export class Grid {
   isWalkable(col: number, row: number): boolean {
     if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
     const cell = this.cells[row][col];
-    return cell !== CellType.Tower && cell !== CellType.Blocked;
-    // NoBuild IS walkable (creeps can walk through, towers can't be placed)
+    return cell !== CellType.Tower && cell !== CellType.Blocked && cell !== CellType.Building;
+    // NoBuild, GoldDeposit, Geyser ARE walkable
   }
 
   canPlaceTower(col: number, row: number): boolean {
     if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
     return this.cells[row][col] === CellType.Empty;
-    // NoBuild, Blocked, Tower, Entry, Exit all return false
+    // NoBuild, Blocked, Tower, Entry, Exit, GoldDeposit, Geyser, Building all return false
+  }
+
+  /** Check if a Miner can be placed on this cell (must be GoldDeposit) */
+  canPlaceMiner(col: number, row: number): boolean {
+    if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+    return this.cells[row][col] === CellType.GoldDeposit;
+  }
+
+  /** Check if an Extractor can be placed on this cell (must be Geyser) */
+  canPlaceExtractor(col: number, row: number): boolean {
+    if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+    return this.cells[row][col] === CellType.Geyser;
+  }
+
+  /** Check if a generic building can be placed (must be Empty) */
+  canPlaceBuilding(col: number, row: number): boolean {
+    if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
+    return this.cells[row][col] === CellType.Empty;
+  }
+
+  placeBuilding(col: number, row: number): boolean {
+    const cell = this.cells[row]?.[col];
+    if (cell === undefined) return false;
+    if (cell !== CellType.Empty && cell !== CellType.GoldDeposit && cell !== CellType.Geyser) return false;
+    this.cells[row][col] = CellType.Building;
+    return true;
+  }
+
+  removeBuilding(col: number, row: number, restoreTo: CellType = CellType.Empty): boolean {
+    if (this.cells[row]?.[col] !== CellType.Building) return false;
+    this.cells[row][col] = restoreTo;
+    return true;
   }
 
   placeTower(col: number, row: number): boolean {

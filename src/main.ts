@@ -11,6 +11,7 @@ import { CircleLobbyScene } from './scenes/CircleLobbyScene';
 import { ChangelogScene } from './scenes/ChangelogScene';
 import { EncyclopediaScene } from './scenes/EncyclopediaScene';
 import { HeroSelectScene } from './scenes/HeroSelectScene';
+import { BaseDefenceScene } from './scenes/BaseDefenceScene';
 import { TowerSelectBar } from './ui/TowerSelectBar';
 
 // Register trait handlers (side-effect imports)
@@ -28,7 +29,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: gameHeight,
   backgroundColor: '#111111',
   parent: document.body,
-  scene: [MenuScene, FactionSelectScene, DraftScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, EncyclopediaScene, HeroSelectScene],
+  scene: [MenuScene, FactionSelectScene, DraftScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, EncyclopediaScene, HeroSelectScene, BaseDefenceScene],
   render: {
     antialias: true,
     pixelArt: false,

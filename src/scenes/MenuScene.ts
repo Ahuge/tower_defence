@@ -13,6 +13,7 @@ interface ModeCard {
   desc: string;
   accent: number;      // border color
   action: () => void;
+  disabled?: boolean;  // grayed out and unclickable
 }
 
 export class MenuScene extends Phaser.Scene {
@@ -155,6 +156,7 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Hero Defense',     desc: 'Control a hero in the arena',     accent: 0xff44aa, action: () => goFaction('hero_defense') },
       { label: 'Versus 1v1',       desc: 'P2P competitive — sends attack',  accent: 0xff8844, action: () => this.scene.start('LobbyScene') },
       { label: 'Circle Co-op',     desc: '2-4 players — shared map',        accent: 0x44aaff, action: () => this.scene.start('CircleLobbyScene') },
+      { label: 'Base Defence',     desc: ph ? 'Desktop only' : 'RTS — build, mine, destroy', accent: 0xff4444, action: () => goFaction('base_defence'), disabled: ph },
     ];
 
     const modeCols = ph ? 2 : 3;
@@ -173,32 +175,43 @@ export class MenuScene extends Phaser.Scene {
       const x = gridStartX + mCol * (cardW + gapX);
       const y = gridStartY + mRow * (cardH + gapY);
 
+      const disabled = m.disabled === true;
       const card = this.add.graphics();
       const drawCard = (hover: boolean) => {
         card.clear();
-        card.fillStyle(hover ? 0x3a3a44 : 0x2a2a33, 1);
-        card.fillRect(x, y, cardW, cardH);
-        card.lineStyle(2, hover ? 0xffffff : m.accent, hover ? 1 : 0.6);
-        card.strokeRect(x, y, cardW, cardH);
-        // Accent strip on left
-        card.fillStyle(m.accent, hover ? 0.9 : 0.5);
-        card.fillRect(x, y, 4, cardH);
+        if (disabled) {
+          card.fillStyle(0x1a1a1a, 1);
+          card.fillRect(x, y, cardW, cardH);
+          card.lineStyle(1, 0x333333, 0.4);
+          card.strokeRect(x, y, cardW, cardH);
+          card.fillStyle(0x333333, 0.3);
+          card.fillRect(x, y, 4, cardH);
+        } else {
+          card.fillStyle(hover ? 0x3a3a44 : 0x2a2a33, 1);
+          card.fillRect(x, y, cardW, cardH);
+          card.lineStyle(2, hover ? 0xffffff : m.accent, hover ? 1 : 0.6);
+          card.strokeRect(x, y, cardW, cardH);
+          card.fillStyle(m.accent, hover ? 0.9 : 0.5);
+          card.fillRect(x, y, 4, cardH);
+        }
       };
       drawCard(false);
 
       this.add.text(x + 10, y + UIScale.y(12), m.label, {
-        fontSize: UIScale.font(15), color: '#ffffff', fontFamily: 'monospace',
+        fontSize: UIScale.font(15), color: disabled ? '#555555' : '#ffffff', fontFamily: 'monospace',
       });
 
       this.add.text(x + 10, y + UIScale.y(34), m.desc, {
-        fontSize: UIScale.font(10), color: '#888888', fontFamily: 'monospace',
+        fontSize: UIScale.font(10), color: disabled ? '#444444' : '#888888', fontFamily: 'monospace',
         wordWrap: { width: cardW - 16 },
       });
 
-      const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });
-      zone.on('pointerover', () => drawCard(true));
-      zone.on('pointerout', () => drawCard(false));
-      zone.on('pointerdown', () => m.action());
+      if (!disabled) {
+        const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });
+        zone.on('pointerover', () => drawCard(true));
+        zone.on('pointerout', () => drawCard(false));
+        zone.on('pointerdown', () => m.action());
+      }
     }
 
     // Multiplayer note

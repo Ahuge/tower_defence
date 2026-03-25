@@ -1,93 +1,119 @@
 import { Grid } from './Grid';
-import { GRID_COLS } from '../config';
-
-interface Node {
-  col: number;
-  row: number;
-  g: number;
-  h: number;
-  f: number;
-  parent: Node | null;
-}
 
 export interface PathPoint {
   col: number;
   row: number;
 }
 
+/**
+ * A* pathfinding with binary heap open list and flat array closed/g tracking.
+ * Optimized for large grids (120×96+).
+ */
 export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPoint[] | null {
   const s = start ?? grid.entry;
   const e = end ?? grid.exit;
+  const cols = grid.cols;
+  const rows = grid.rows;
 
-  const open: Node[] = [];
-  const closed = new Set<string>();
+  if (s.col === e.col && s.row === e.row) return [{ col: s.col, row: s.row }];
 
-  const key = (col: number, row: number) => `${col},${row}`;
+  // Flat index for O(1) lookups
+  const idx = (col: number, row: number) => row * cols + col;
+  const totalCells = cols * rows;
+
+  // g-scores and parent tracking (flat arrays — no string keys)
+  const gScore = new Float32Array(totalCells).fill(Infinity);
+  const parentIdx = new Int32Array(totalCells).fill(-1);
+  const inClosed = new Uint8Array(totalCells);
+
+  // Binary min-heap on f-score
+  const heap: number[] = []; // stores flat indices
+  const fScore = new Float32Array(totalCells).fill(Infinity);
+
   const heuristic = (col: number, row: number) =>
     Math.abs(col - e.col) + Math.abs(row - e.row);
 
-  const startNode: Node = {
-    col: s.col,
-    row: s.row,
-    g: 0,
-    h: heuristic(s.col, s.row),
-    f: heuristic(s.col, s.row),
-    parent: null,
+  const startIdx = idx(s.col, s.row);
+  const endIdx = idx(e.col, e.row);
+  gScore[startIdx] = 0;
+  fScore[startIdx] = heuristic(s.col, s.row);
+  heap.push(startIdx);
+
+  // Heap operations
+  const heapSwap = (i: number, j: number) => {
+    const tmp = heap[i]; heap[i] = heap[j]; heap[j] = tmp;
+  };
+  const heapUp = (i: number) => {
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (fScore[heap[i]] < fScore[heap[p]]) { heapSwap(i, p); i = p; }
+      else break;
+    }
+  };
+  const heapDown = (i: number) => {
+    const len = heap.length;
+    while (true) {
+      let smallest = i;
+      const l = 2 * i + 1;
+      const r = 2 * i + 2;
+      if (l < len && fScore[heap[l]] < fScore[heap[smallest]]) smallest = l;
+      if (r < len && fScore[heap[r]] < fScore[heap[smallest]]) smallest = r;
+      if (smallest !== i) { heapSwap(i, smallest); i = smallest; }
+      else break;
+    }
+  };
+  const heapPop = (): number => {
+    const top = heap[0];
+    const last = heap.pop()!;
+    if (heap.length > 0) { heap[0] = last; heapDown(0); }
+    return top;
+  };
+  const heapPush = (val: number) => {
+    heap.push(val);
+    heapUp(heap.length - 1);
   };
 
-  open.push(startNode);
+  const dirs = [0, -1, 0, 1, -1, 0, 1, 0]; // pairs: dc, dr
 
-  // 4-directional movement
-  const dirs = [
-    [0, -1], [0, 1], [-1, 0], [1, 0],
-  ];
-
-  while (open.length > 0) {
-    // Find lowest f
-    let bestIdx = 0;
-    for (let i = 1; i < open.length; i++) {
-      if (open[i].f < open[bestIdx].f) bestIdx = i;
-    }
-    const current = open.splice(bestIdx, 1)[0];
-
-    if (current.col === e.col && current.row === e.row) {
+  while (heap.length > 0) {
+    const currentIdx = heapPop();
+    if (currentIdx === endIdx) {
       // Reconstruct path
       const path: PathPoint[] = [];
-      let node: Node | null = current;
-      while (node) {
-        path.unshift({ col: node.col, row: node.row });
-        node = node.parent;
+      let ci = currentIdx;
+      while (ci !== -1) {
+        path.push({ col: ci % cols, row: (ci / cols) | 0 });
+        ci = parentIdx[ci];
       }
+      path.reverse();
       return path;
     }
 
-    closed.add(key(current.col, current.row));
+    if (inClosed[currentIdx]) continue;
+    inClosed[currentIdx] = 1;
 
-    for (const [dc, dr] of dirs) {
-      const nc = current.col + dc;
-      const nr = current.row + dr;
+    const cc = currentIdx % cols;
+    const cr = (currentIdx / cols) | 0;
+    const cg = gScore[currentIdx];
 
-      if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) continue;
+    for (let d = 0; d < 8; d += 2) {
+      const nc = cc + dirs[d];
+      const nr = cr + dirs[d + 1];
+      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+
+      const ni = idx(nc, nr);
+      if (inClosed[ni]) continue;
       if (!grid.isWalkable(nc, nr)) continue;
-      if (closed.has(key(nc, nr))) continue;
 
-      const g = current.g + 1;
-      const h = heuristic(nc, nr);
-      const f = g + h;
-
-      const existing = open.find(n => n.col === nc && n.row === nr);
-      if (existing) {
-        if (g < existing.g) {
-          existing.g = g;
-          existing.f = f;
-          existing.parent = current;
-        }
-        continue;
+      const ng = cg + 1;
+      if (ng < gScore[ni]) {
+        gScore[ni] = ng;
+        fScore[ni] = ng + heuristic(nc, nr);
+        parentIdx[ni] = currentIdx;
+        heapPush(ni);
       }
-
-      open.push({ col: nc, row: nr, g, h, f, parent: current });
     }
   }
 
-  return null; // No path found
+  return null;
 }
