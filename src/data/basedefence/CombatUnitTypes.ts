@@ -104,6 +104,81 @@ const ARC_GOLEM: CombatUnitDef = {
 };
 
 // ═══════════════════════════════════════════
+// NATURE
+// ═══════════════════════════════════════════
+
+const NAT_CRAWLER: CombatUnitDef = {
+  id: 'nat_crawler', name: 'Thorn Crawler', faction: 'nature',
+  costGold: 20, costGas: 0, supply: 1, trainTime: 2,
+  hp: 45, damage: 8, attackSpeed: 900, attackRange: 28,
+  moveSpeed: 95, color: 0x55aa22, role: 'melee',
+};
+
+const NAT_SPORE: CombatUnitDef = {
+  id: 'nat_spore', name: 'Spore Walker', faction: 'nature',
+  costGold: 35, costGas: 0, supply: 1, trainTime: 3,
+  hp: 40, damage: 6, attackSpeed: 1000, attackRange: 28 * 3,
+  moveSpeed: 80, color: 0x44bb33, role: 'ranged',
+};
+
+const NAT_BROOD: CombatUnitDef = {
+  id: 'nat_brood', name: 'Brood Mother', faction: 'nature',
+  costGold: 90, costGas: 40, supply: 3, trainTime: 8,
+  hp: 280, damage: 20, attackSpeed: 1400, attackRange: 28,
+  moveSpeed: 55, color: 0x227711, role: 'heavy',
+};
+
+// ═══════════════════════════════════════════
+// INFERNAL
+// ═══════════════════════════════════════════
+
+const INF_FIEND: CombatUnitDef = {
+  id: 'inf_fiend', name: 'Fiend', faction: 'infernal',
+  costGold: 25, costGas: 0, supply: 1, trainTime: 2,
+  hp: 60, damage: 0, attackSpeed: 9999, attackRange: 28,
+  moveSpeed: 100, color: 0xff6633, role: 'melee',
+};
+
+const INF_HELLFIRE: CombatUnitDef = {
+  id: 'inf_hellfire', name: 'Hellfire Caster', faction: 'infernal',
+  costGold: 45, costGas: 0, supply: 1, trainTime: 4,
+  hp: 55, damage: 16, attackSpeed: 900, attackRange: 28 * 4,
+  moveSpeed: 75, color: 0xff4411, role: 'ranged',
+};
+
+const INF_DOOM: CombatUnitDef = {
+  id: 'inf_doom', name: 'Doom Guard', faction: 'infernal',
+  costGold: 130, costGas: 60, supply: 3, trainTime: 12,
+  hp: 320, damage: 22, attackSpeed: 1200, attackRange: 28,
+  moveSpeed: 60, color: 0xaa1100, role: 'heavy',
+};
+
+// ═══════════════════════════════════════════
+// VOID
+// ═══════════════════════════════════════════
+
+const VOID_RIFT: CombatUnitDef = {
+  id: 'void_rift', name: 'Rift Walker', faction: 'void',
+  costGold: 50, costGas: 0, supply: 1, trainTime: 5,
+  hp: 70, damage: 10, attackSpeed: 1000, attackRange: 28,
+  moveSpeed: 85, color: 0x9933cc, role: 'melee',
+};
+
+const VOID_PHASE: CombatUnitDef = {
+  id: 'void_phase', name: 'Phase Stalker', faction: 'void',
+  costGold: 55, costGas: 0, supply: 1, trainTime: 5,
+  hp: 65, damage: 12, attackSpeed: 900, attackRange: 28 * 3,
+  moveSpeed: 75, color: 0x7744bb, role: 'ranged',
+};
+
+const VOID_TITAN: CombatUnitDef = {
+  id: 'void_titan', name: 'Void Titan', faction: 'void',
+  costGold: 160, costGas: 80, supply: 4, trainTime: 15,
+  hp: 450, damage: 45, attackSpeed: 2500, attackRange: 28 * 8,
+  moveSpeed: 0, color: 0x5511aa, role: 'heavy',
+};
+
+// ═══════════════════════════════════════════
 // LOOKUP
 // ═══════════════════════════════════════════
 
@@ -111,6 +186,9 @@ export const COMBAT_UNIT_TYPES: Record<string, CombatUnitDef> = {
   mil_marine: MIL_MARINE, mil_trooper: MIL_TROOPER, mil_tank: MIL_TANK,
   mech_drone: MECH_DRONE, mech_walker: MECH_WALKER, mech_siege: MECH_SIEGE,
   arc_apprentice: ARC_APPRENTICE, arc_blade: ARC_BLADE, arc_golem: ARC_GOLEM,
+  nat_crawler: NAT_CRAWLER, nat_spore: NAT_SPORE, nat_brood: NAT_BROOD,
+  inf_fiend: INF_FIEND, inf_hellfire: INF_HELLFIRE, inf_doom: INF_DOOM,
+  void_rift: VOID_RIFT, void_phase: VOID_PHASE, void_titan: VOID_TITAN,
 };
 
 /** Get combat unit IDs for a faction, ordered: melee, ranged, heavy */

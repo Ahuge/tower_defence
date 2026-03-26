@@ -99,7 +99,7 @@ export class FactionSelectScene extends Phaser.Scene {
     const cardW = isPhone ? Math.floor((getCanvasWidth() - 16) / fCols - 4) : s.factionCardW;
     const cardH = s.factionCardH;
     const gap = UIScale.isPhone ? 4 : 6;
-    const BASE_DEFENCE_FACTIONS: FactionId[] = ['military', 'mechanical', 'arcane'];
+    const BASE_DEFENCE_FACTIONS: FactionId[] = ['military', 'mechanical', 'arcane', 'nature', 'infernal', 'void'];
     const factions = this.matchMode === 'base_defence' ? BASE_DEFENCE_FACTIONS : FACTION_ORDER;
     const cols = fCols;
     const rows = Math.ceil(factions.length / cols);

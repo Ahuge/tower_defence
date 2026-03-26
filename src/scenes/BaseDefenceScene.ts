@@ -147,7 +147,7 @@ export class BaseDefenceScene extends Phaser.Scene {
     this.seed = data.randomSeed || Math.floor(Math.random() * 999999);
     this.mapSize = data.rtsMapSize || 'medium';
 
-    const cpuOptions: FactionId[] = (['military', 'mechanical', 'arcane'] as FactionId[]).filter(f => f !== this.faction);
+    const cpuOptions: FactionId[] = (['military', 'mechanical', 'arcane', 'nature', 'infernal', 'void'] as FactionId[]).filter(f => f !== this.faction);
     this.cpuFaction = cpuOptions[Math.floor(Math.random() * cpuOptions.length)];
   }
 

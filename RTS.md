@@ -114,6 +114,89 @@ Base Defence is a full RTS experience within the tower defence game. Players bui
 
 ---
 
+### Nature — "The Hive Grows"
+*Swarm economy. Weak units in overwhelming numbers. Attrition warfare.*
+
+**Identity:** Macro monster. Cheapest units, unique passive economy via Bloom Nodes with adjacency bonuses. Wins by flooding the map and out-resourcing opponents. Fragile individually but relentless collectively.
+
+**Unique Mechanics:**
+- **Bloom Nodes** [30g] — passive 0.5g/sec income, +0.3g/sec per adjacent Bloom Node. No gold deposit needed. Fragile (100 HP).
+- **Spawn on Death** — Brood Mothers spawn 2 Thorn Crawlers when killed.
+- **Creep Spread** — Nature buildings spread decorative creep tiles in a small radius.
+
+| Building | Cost | HP | Build Time | Category | Notes |
+|----------|------|----|------------|----------|-------|
+| Hive Core | 400g | 1600 | 16s | Base | +10 supply, drop-off. Lowest HP base. |
+| Root Tap | 60g | 250 | 5s | Miner | Gold mining. Cheap and fast. |
+| Spore Extractor | 80g | 200 | 7s | Extractor | Gas mining |
+| Growth Pod | 40g | 180 | 3s | Supply | +8 supply. Cheapest. |
+| Hatchery | 120g | 400 | 8s | Barracks | Spawns units in PAIRS (2 per queue slot for Thorn Crawlers) |
+| Bloom Node | 30g | 100 | 4s | Special | 0.5g/sec passive + adjacency bonus |
+
+| Unit | Cost | Supply | Train Time | HP | Damage | Range | Speed | Role |
+|------|------|--------|------------|----|--------|-------|-------|------|
+| Thorn Crawler | 20g | 1 | 2s | 45 | 8 | Melee | 95 | Cheapest unit. Swarm fodder. |
+| Spore Walker | 35g | 1 | 3s | 40 | 6+poison | 3 tiles | 80 | Ranged. Poison: 3 DPS for 4s |
+| Brood Mother | 90g+40v | 3 | 8s | 280 | 20 | Melee | 55 | Spawns 2 Thorn Crawlers on death |
+
+---
+
+### Infernal — "Burn Bright, Burn Fast"
+*Sacrifice and aggression. Buildings decay. Units self-destruct. Power at a price.*
+
+**Identity:** Ultimate aggressor — cannot turtle. Buildings decay at 1 HP/sec. Must constantly attack and expand. Unique blood economy via Soul Pyre. Doom Guards get stronger as they die.
+
+**Unique Mechanics:**
+- **Building Decay** — All non-base buildings lose 1 HP/sec. Forces aggressive tempo.
+- **Soul Pyre** [60g] — Drains 3 HP/sec from nearby units, generates 2g/sec. Blood economy.
+- **Doom Scaling** — Doom Guards deal up to 2× damage at low HP.
+- **Fiend Detonation** — Fiends explode on death for 40 AoE damage.
+
+| Building | Cost | HP | Build Time | Category | Notes |
+|----------|------|----|------------|----------|-------|
+| Hellgate | 400g | 2000 | 20s | Base | +10 supply, drop-off. Does NOT decay. |
+| Flame Drill | 65g | 350 | 7s | Miner | Gold mining. Decays. |
+| Brimstone Tap | 85g | 300 | 9s | Extractor | Gas mining. Decays. |
+| Obelisk | 45g | 250 | 5s | Supply | +8 supply. Decays. |
+| Demon Pit | 130g | 550 | 10s | Barracks | Trains demons. Decays. |
+| Soul Pyre | 60g | 300 | 6s | Special | Drains 3 HP/sec from nearby units → 2g/sec income |
+
+| Unit | Cost | Supply | Train Time | HP | Damage | Range | Speed | Role |
+|------|------|--------|------------|----|--------|-------|-------|------|
+| Fiend | 25g | 1 | 2s | 60 | 0 (explodes) | Melee | 100 | Suicide. 40 AoE on death. No regular attack. |
+| Hellfire Caster | 45g | 1 | 4s | 55 | 16 | 4 tiles | 75 | Ranged. Self-damage: -5 HP per shot. |
+| Doom Guard | 130g+60v | 3 | 12s | 320 | 22-44 | Melee | 60 | Damage scales 1×-2× as HP drops |
+
+---
+
+### Void — "Reality is Negotiable"
+*Chaos and displacement. Random events. Global teleportation. Economy theft.*
+
+**Identity:** Unpredictable and disruptive. Probability Engines create high-variance economy. Siphon miners steal enemy gold. Rift Walkers teleport anywhere. Phase Stalkers survive burst. Every game feels different.
+
+**Unique Mechanics:**
+- **Probability Engine** [100g] — Random event every 30s: double gold / lose 25% / free unit / 200 damage to enemy building.
+- **Siphon Mining** — Void miners steal 1g from enemy per trip.
+- **Rift Walk** — Rift Walkers teleport anywhere visible on the map (45s cooldown).
+- **Phase Shift** — Phase Stalkers become invulnerable 2s after taking damage (30s cooldown).
+
+| Building | Cost | HP | Build Time | Category | Notes |
+|----------|------|----|------------|----------|-------|
+| Void Nexus | 400g | 1900 | 19s | Base | +10 supply, drop-off |
+| Siphon | 75g | 300 | 8s | Miner | Steals 1g from enemy per trip |
+| Void Tap | 95g | 280 | 9s | Extractor | Gas mining |
+| Rift Pylon | 50g | 220 | 5s | Supply | +8 supply |
+| Warp Gate | 145g | 550 | 12s | Barracks | Trains void units |
+| Probability Engine | 100g | 150 | 8s | Special | Random event every 30s |
+
+| Unit | Cost | Supply | Train Time | HP | Damage | Range | Speed | Role |
+|------|------|--------|------------|----|--------|-------|-------|------|
+| Rift Walker | 50g | 1 | 5s | 70 | 10 | Melee | 85 | Teleport anywhere visible (45s CD) |
+| Phase Stalker | 55g | 1 | 5s | 65 | 12 | 3 tiles | 75 | Invulnerable 2s after hit (30s CD) |
+| Void Titan | 160g+80v | 4 | 15s | 450 | 45 | 8 tiles | 0 | Immobile. Massive range. Map-wide threat. |
+
+---
+
 ## Controls
 
 | Key | Action |

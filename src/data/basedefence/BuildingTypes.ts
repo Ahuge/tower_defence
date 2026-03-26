@@ -213,6 +213,149 @@ const ARC_MANA_WELL: BuildingDef = {
 };
 
 // ════════════════════════════════════════════════════════════
+// NATURE
+// ════════════════════════════════════════════════════════════
+
+const NAT_BASE: BuildingDef = {
+  id: 'nat_base', name: 'Hive Core', category: 'base',
+  faction: 'nature', costGold: 400, costGas: 0,
+  hp: 1600, buildTime: 16, incomeRate: 0, incomeResource: '',
+  supplyProvided: 10, footprint: 3, color: 0x33aa44,
+  desc: 'Organic base. +10 supply. Lowest HP base.',
+};
+const NAT_MINER: BuildingDef = {
+  id: 'nat_miner', name: 'Root Tap', category: 'miner',
+  faction: 'nature', costGold: 60, costGas: 0,
+  hp: 250, buildTime: 5, incomeRate: 5, incomeResource: 'gold',
+  supplyProvided: 0, footprint: 1, color: 0x55882a,
+  desc: 'Cheap gold mining.',
+};
+const NAT_EXTRACTOR: BuildingDef = {
+  id: 'nat_extractor', name: 'Spore Extractor', category: 'extractor',
+  faction: 'nature', costGold: 80, costGas: 0,
+  hp: 200, buildTime: 7, incomeRate: 2, incomeResource: 'gas',
+  supplyProvided: 0, footprint: 1, color: 0x44aa33,
+  desc: 'Gas extraction.',
+};
+const NAT_SUPPLY: BuildingDef = {
+  id: 'nat_supply', name: 'Growth Pod', category: 'supply',
+  faction: 'nature', costGold: 40, costGas: 0,
+  hp: 180, buildTime: 3, incomeRate: 0, incomeResource: '',
+  supplyProvided: 8, footprint: 1, color: 0x338822,
+  desc: '+8 supply. Cheapest and fastest.',
+};
+const NAT_BARRACKS: BuildingDef = {
+  id: 'nat_barracks', name: 'Hatchery', category: 'barracks',
+  faction: 'nature', costGold: 120, costGas: 0,
+  hp: 400, buildTime: 8, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 2, color: 0x44aa22,
+  desc: 'Spawns organic units.',
+};
+const NAT_BLOOM: BuildingDef = {
+  id: 'nat_bloom', name: 'Bloom Node', category: 'mana_well',
+  faction: 'nature', costGold: 30, costGas: 0,
+  hp: 100, buildTime: 4, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 1, color: 0x66cc33,
+  desc: 'Passive 0.5g/sec + adjacency bonus. No gold deposit needed.',
+  passiveRate: 0.5, passiveResource: 'gold',
+};
+
+// ════════════════════════════════════════════════════════════
+// INFERNAL
+// ════════════════════════════════════════════════════════════
+
+const INF_BASE: BuildingDef = {
+  id: 'inf_base', name: 'Hellgate', category: 'base',
+  faction: 'infernal', costGold: 400, costGas: 0,
+  hp: 2000, buildTime: 20, incomeRate: 0, incomeResource: '',
+  supplyProvided: 10, footprint: 3, color: 0xff4422,
+  desc: 'Infernal base. Does NOT decay.',
+};
+const INF_MINER: BuildingDef = {
+  id: 'inf_miner', name: 'Flame Drill', category: 'miner',
+  faction: 'infernal', costGold: 65, costGas: 0,
+  hp: 350, buildTime: 7, incomeRate: 5, incomeResource: 'gold',
+  supplyProvided: 0, footprint: 1, color: 0xcc3311,
+  desc: 'Gold mining. Decays at 1 HP/sec.',
+};
+const INF_EXTRACTOR: BuildingDef = {
+  id: 'inf_extractor', name: 'Brimstone Tap', category: 'extractor',
+  faction: 'infernal', costGold: 85, costGas: 0,
+  hp: 300, buildTime: 9, incomeRate: 2, incomeResource: 'gas',
+  supplyProvided: 0, footprint: 1, color: 0xaa2211,
+  desc: 'Gas mining. Decays at 1 HP/sec.',
+};
+const INF_SUPPLY: BuildingDef = {
+  id: 'inf_supply', name: 'Obelisk', category: 'supply',
+  faction: 'infernal', costGold: 45, costGas: 0,
+  hp: 250, buildTime: 5, incomeRate: 0, incomeResource: '',
+  supplyProvided: 8, footprint: 1, color: 0x882211,
+  desc: '+8 supply. Decays at 1 HP/sec.',
+};
+const INF_BARRACKS: BuildingDef = {
+  id: 'inf_barracks', name: 'Demon Pit', category: 'barracks',
+  faction: 'infernal', costGold: 130, costGas: 0,
+  hp: 550, buildTime: 10, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 2, color: 0xcc4422,
+  desc: 'Trains demons. Decays at 1 HP/sec.',
+};
+const INF_SOUL_PYRE: BuildingDef = {
+  id: 'inf_soul_pyre', name: 'Soul Pyre', category: 'mana_well',
+  faction: 'infernal', costGold: 60, costGas: 0,
+  hp: 300, buildTime: 6, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 1, color: 0xff6633,
+  desc: 'Drains 3 HP/sec from nearby units → 2g/sec income.',
+  healRate: -3, healRadius: 6, passiveRate: 2, passiveResource: 'gold',
+};
+
+// ════════════════════════════════════════════════════════════
+// VOID
+// ════════════════════════════════════════════════════════════
+
+const VOID_BASE: BuildingDef = {
+  id: 'void_base', name: 'Void Nexus', category: 'base',
+  faction: 'void', costGold: 400, costGas: 0,
+  hp: 1900, buildTime: 19, incomeRate: 0, incomeResource: '',
+  supplyProvided: 10, footprint: 3, color: 0x8822aa,
+  desc: 'Void base. +10 supply.',
+};
+const VOID_MINER: BuildingDef = {
+  id: 'void_miner', name: 'Siphon', category: 'miner',
+  faction: 'void', costGold: 75, costGas: 0,
+  hp: 300, buildTime: 8, incomeRate: 5, incomeResource: 'gold',
+  supplyProvided: 0, footprint: 1, color: 0x6622aa,
+  desc: 'Mining. Steals 1g from enemy per trip.',
+};
+const VOID_EXTRACTOR: BuildingDef = {
+  id: 'void_extractor', name: 'Void Tap', category: 'extractor',
+  faction: 'void', costGold: 95, costGas: 0,
+  hp: 280, buildTime: 9, incomeRate: 2, incomeResource: 'gas',
+  supplyProvided: 0, footprint: 1, color: 0x7722bb,
+  desc: 'Gas mining.',
+};
+const VOID_SUPPLY: BuildingDef = {
+  id: 'void_supply', name: 'Rift Pylon', category: 'supply',
+  faction: 'void', costGold: 50, costGas: 0,
+  hp: 220, buildTime: 5, incomeRate: 0, incomeResource: '',
+  supplyProvided: 8, footprint: 1, color: 0x5522aa,
+  desc: '+8 supply.',
+};
+const VOID_BARRACKS: BuildingDef = {
+  id: 'void_barracks', name: 'Warp Gate', category: 'barracks',
+  faction: 'void', costGold: 145, costGas: 0,
+  hp: 550, buildTime: 12, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 2, color: 0x9933cc,
+  desc: 'Trains void units.',
+};
+const VOID_PROB_ENGINE: BuildingDef = {
+  id: 'void_prob_engine', name: 'Probability Engine', category: 'mana_well',
+  faction: 'void', costGold: 100, costGas: 0,
+  hp: 150, buildTime: 8, incomeRate: 0, incomeResource: '',
+  supplyProvided: 0, footprint: 1, color: 0xaa44dd,
+  desc: 'Random event every 30s: double gold / lose 25% / free unit / damage enemy.',
+};
+
+// ════════════════════════════════════════════════════════════
 // LOOKUP
 // ════════════════════════════════════════════════════════════
 
@@ -229,6 +372,18 @@ export const BUILDING_TYPES: Record<string, BuildingDef> = {
   arc_base: ARC_BASE, arc_miner: ARC_MINER, arc_extractor: ARC_EXTRACTOR,
   arc_supply: ARC_SUPPLY, arc_barracks: ARC_BARRACKS,
   arc_mana_well: ARC_MANA_WELL,
+  // Nature
+  nat_base: NAT_BASE, nat_miner: NAT_MINER, nat_extractor: NAT_EXTRACTOR,
+  nat_supply: NAT_SUPPLY, nat_barracks: NAT_BARRACKS,
+  nat_bloom: NAT_BLOOM,
+  // Infernal
+  inf_base: INF_BASE, inf_miner: INF_MINER, inf_extractor: INF_EXTRACTOR,
+  inf_supply: INF_SUPPLY, inf_barracks: INF_BARRACKS,
+  inf_soul_pyre: INF_SOUL_PYRE,
+  // Void
+  void_base: VOID_BASE, void_miner: VOID_MINER, void_extractor: VOID_EXTRACTOR,
+  void_supply: VOID_SUPPLY, void_barracks: VOID_BARRACKS,
+  void_prob_engine: VOID_PROB_ENGINE,
 };
 
 /** Extra faction-specific building IDs (beyond the standard 5) */
@@ -236,6 +391,9 @@ const FACTION_EXTRAS: Record<string, string[]> = {
   mil: ['mil_wall', 'mil_bunker'],
   mech: ['mech_repair'],
   arc: ['arc_mana_well'],
+  nat: ['nat_bloom'],
+  inf: ['inf_soul_pyre'],
+  void: ['void_prob_engine'],
 };
 
 /** Get building IDs for a faction — standard buildings + faction-specific extras */
@@ -258,6 +416,9 @@ function factionPrefix(faction: FactionId): string {
     case 'military': return 'mil';
     case 'mechanical': return 'mech';
     case 'arcane': return 'arc';
+    case 'nature': return 'nat';
+    case 'infernal': return 'inf';
+    case 'void': return 'void';
     default: return '';
   }
 }

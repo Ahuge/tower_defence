@@ -266,3 +266,50 @@ In gameplay, Arcane is the "high-skill" faction. Their units are cheap and fast 
 - **Blink:** Arcane combat units can short-range teleport (8 tiles) on a 30-second cooldown (hotkey B). Bypass walls, escape fights, or ambush miners.
 - **Mana Well:** Unique building that generates gas passively (no geyser required). Reflects their ability to pull energy from thin air.
 - **Glass Cannon Identity:** Fastest build times, cheapest units, but lowest HP across the board.
+
+---
+
+## Nature — "The Hive Grows"
+
+The Nature faction is not a faction in the traditional sense — it is an organism. When the Breach tore open, it wasn't just chaos that poured through. Seeds came too, carried on winds from a dimension where evolution runs at impossible speed. Within weeks, entire forests had erupted from barren rock, and within those forests, something was thinking. The Nature faction is that thinking forest: a collective intelligence spread across root networks, spore clouds, and fungal highways. It doesn't build — it grows. It doesn't recruit soldiers — it births them.
+
+The Nature player is a macro monster. Their units are individually weak but come in overwhelming numbers. Thorn Crawlers are the cheapest combat unit in the game, costing just 20 gold, and their Hatchery spawns them in pairs. Their economy is unique: Bloom Nodes don't mine gold — they grow on any empty tile and generate income passively over time, getting more efficient the more Bloom Nodes are clustered together. A Nature player who secures a large territory and fills it with Bloom Nodes will out-earn any other faction. But each node is fragile and easily raided.
+
+Their combat philosophy is attrition. Spore Walkers are ranged units that apply poison — enemies take damage over time even after the Spore Walker dies. Brood Mothers are their heavy unit: slow, expensive, but they spawn 2 Thorn Crawlers on death. The Nature army is like a hydra — cut off a head, two more grow back. They lose fights but win wars.
+
+**Faction-specific mechanics:**
+- **Bloom Nodes:** Unique economy building (30g) — generates 0.5 gold/sec passively. Bonus +0.3g/sec for each adjacent Bloom Node (adjacency synergy). No gold deposit required. Fragile (100 HP).
+- **Spawn on Death:** Brood Mothers spawn 2 Thorn Crawlers when killed, making them terrifying to engage.
+- **Creep Spread:** Nature buildings slowly spread "creep" tiles (NoBuild terrain) in a small radius, giving visual territory control. Future: units move faster on creep.
+
+---
+
+## Infernal — "Burn Bright, Burn Fast"
+
+The Infernal faction is what happens when you cut a deal with the wrong side of the Breach. They are warlocks, blood mages, and desperate survivors who traded their humanity for raw, unstable power. Their magic is fueled by sacrifice — their own hit points, their own buildings, even their own units serve as fuel for devastating abilities. Every Infernal player walks a tightrope between overwhelming power and catastrophic self-destruction. Their motto isn't "victory at any cost" — it's "the cost IS the victory."
+
+In gameplay, Infernal is the ultimate aggressor. They cannot turtle. Their buildings slowly decay, losing HP over time (1 HP/sec for all non-base buildings). This means an Infernal player who sits back and farms will watch their empire crumble. They must be constantly attacking, constantly expanding, constantly sacrificing. Their Soul Pyre building converts HP from nearby friendly units into bonus gold — literally bleeding your army for money. An Infernal player with good micro can fund an endless war machine by cycling expendable units through the Soul Pyre.
+
+Their units reflect this philosophy. Fiends are suicide bombers — melee units that deal massive AoE damage on death but have no regular attack. Hellfire Casters are ranged glass cannons that damage themselves with every shot (5 HP self-damage per attack). Doom Guards are their heavy: brutal melee fighters that get stronger as their HP drops (damage scales inversely with HP percentage). A half-dead Doom Guard hits twice as hard.
+
+**Faction-specific mechanics:**
+- **Building Decay:** All non-base Infernal buildings lose 1 HP/sec. Must be actively repaired or rebuilt. Forces aggressive play.
+- **Soul Pyre:** Unique building (60g) — drains 3 HP/sec from all friendly units in range, converts to 2 gold/sec income. Blood economy.
+- **Doom Scaling:** Doom Guards deal up to 2× damage at low HP. A nearly-dead Doom Guard is the most dangerous unit in the game.
+- **Fiend Detonation:** Fiends explode on death dealing 40 AoE damage. Designed to be sacrificed.
+
+---
+
+## Void — "Reality is Negotiable"
+
+The Void faction are the gamblers, the dimension-hoppers, and the reality hackers. They discovered that the Breach wasn't a wound — it was a door, and on the other side, the laws of physics are more like guidelines. Void practitioners learned to fold space, rewrite probability, and steal resources from parallel timelines. They are unpredictable, infuriating to play against, and deeply rewarding to master. Every game as Void feels different because their core mechanic involves randomness.
+
+The Void economy is built on the Probability Engine — a unique building that, every 30 seconds, triggers a random event: double your current gold, lose 25% of your gold, spawn a free combat unit, or damage a random enemy building. It's a slot machine that can make or break your game. Skilled Void players build multiple Probability Engines to average out the variance, while reckless ones build one and pray. Their miners, called Siphons, steal a small amount of gold from the enemy's income when mining — not enough to cripple, but enough to tilt.
+
+In combat, Void units are all about displacement and confusion. Rift Walkers can teleport anywhere on the map with a 45-second cooldown (no range limit, unlike Arcane blink). Phase Stalkers are ranged units that become briefly invulnerable for 2 seconds after taking damage (30-second cooldown). Void Titans are their heavy — they don't move, but they have massive range and can target any visible tile on the map. A Void player wins by being everywhere and nowhere, striking where the enemy is weakest and vanishing before the response arrives.
+
+**Faction-specific mechanics:**
+- **Probability Engine:** Unique building (100g, 150 HP) — triggers a random event every 30 seconds. Outcomes: double gold (25%), lose 25% gold (25%), free unit (25%), damage random enemy building for 200 HP (25%).
+- **Siphon Mining:** Void miners (Siphons) steal 1g from enemy income per mining trip in addition to normal yield.
+- **Rift Walk:** Rift Walkers can teleport to any visible tile on the map (45s cooldown). True global mobility.
+- **Phase Shift:** Phase Stalkers become invulnerable for 2 seconds after taking damage (30s cooldown). Survives burst.
