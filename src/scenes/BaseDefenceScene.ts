@@ -419,40 +419,42 @@ export class BaseDefenceScene extends Phaser.Scene {
       }
     });
 
-    // B key: Blink (Arcane faction — selected combat units)
+    // B key: Blink (Arcane) or Rift Walk (Void)
     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B).on('down', () => {
-      if (this.faction === 'arcane') {
+      if (this.faction === 'arcane' || this.faction === 'void') {
         this.blinkMode = true;
         this.buildMode = { active: false };
       }
     });
   }
 
-  /** Blink selected Arcane combat units to target location (8 tile max range, 30s cooldown) */
+  /** Blink (Arcane, 8 tiles) or Rift Walk (Void, global range) */
   private performBlink(wx: number, wy: number): void {
-    const maxRange = TILE_SIZE * 8;
     const sel = this.unitMgr.selected;
     for (const u of sel) {
       if (!(u instanceof CombatUnit) || !u.alive) continue;
-      if (u.def.faction !== 'arcane') continue;
-      if (u.blinkCooldown > 0) continue;
 
-      const dx = wx - u.x;
-      const dy = wy - u.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      // Arcane Blink: 8-tile range, 30s cooldown
+      if (u.def.faction === 'arcane' && u.blinkCooldown <= 0) {
+        const maxRange = TILE_SIZE * 8;
+        const dx = wx - u.x;
+        const dy = wy - u.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= maxRange) { u.x = wx; u.y = wy; }
+        else { u.x += (dx / dist) * maxRange; u.y += (dy / dist) * maxRange; }
+        u.blinkCooldown = 30;
+        u.state = 'idle';
+        u.attackTarget = null;
+      }
 
-      if (dist <= maxRange) {
-        // Teleport to exact position
+      // Void Rift Walk: global range, 45s cooldown
+      if (u.def.special === 'rift_walk' && u.riftWalkCooldown <= 0) {
         u.x = wx;
         u.y = wy;
-      } else {
-        // Blink max range in the target direction
-        u.x += (dx / dist) * maxRange;
-        u.y += (dy / dist) * maxRange;
+        u.riftWalkCooldown = 45;
+        u.state = 'idle';
+        u.attackTarget = null;
       }
-      u.blinkCooldown = 30;
-      u.state = 'idle';
-      u.attackTarget = null;
     }
   }
 
@@ -1403,6 +1405,12 @@ export class BaseDefenceScene extends Phaser.Scene {
         const pBar = `[${'='.repeat(Math.floor(selBldg.trainingProgress * 10))}${'.'.repeat(10 - Math.floor(selBldg.trainingProgress * 10))}]`;
         items.push({ label: `${pBar}\n    ${queueNames.join(' → ')}`, color: '#88aaff', bg: '#222233' });
       }
+      // Egg display for Nature hatchery
+      if (selBldg.maxEggs > 0) {
+        const eggStr = '●'.repeat(selBldg.eggs) + '○'.repeat(selBldg.maxEggs - selBldg.eggs);
+        const regenStr = selBldg.eggs < selBldg.maxEggs ? ` (${Math.ceil(Building.EGG_REGEN_TIME - selBldg.eggRegenTimer)}s)` : '';
+        items.push({ label: `Eggs: ${eggStr}${regenStr}\n    Instant spawn!`, color: '#88ff44', bg: '#223322' });
+      }
       // Overclock for Mechanical
       if (selBldg.def.faction === 'mechanical') {
         const canOC = selBldg.overclockCooldown <= 0 && !selBldg.isOverclocked && selBldg.hp > 50;
@@ -1444,6 +1452,19 @@ export class BaseDefenceScene extends Phaser.Scene {
         } else {
           const minCd = Math.min(...combat.filter(u => u.def.faction === 'arcane').map(u => u.blinkCooldown));
           items.push({ label: `[B] Blink\n    CD: ${Math.ceil(minCd)}s`, color: '#665588', bg: '#222233' });
+        }
+      }
+      // Rift Walk for Void
+      if (this.faction === 'void') {
+        const riftReady = combat.filter(u => u.def.special === 'rift_walk' && u.riftWalkCooldown <= 0);
+        if (riftReady.length > 0) {
+          items.push({ label: `[B] Rift Walk\n    Teleport anywhere`, color: '#aa44dd', bg: '#332244' });
+        } else {
+          const riftUnits = combat.filter(u => u.def.special === 'rift_walk');
+          if (riftUnits.length > 0) {
+            const minCd = Math.min(...riftUnits.map(u => u.riftWalkCooldown));
+            items.push({ label: `[B] Rift Walk\n    CD: ${Math.ceil(minCd)}s`, color: '#665588', bg: '#222233' });
+          }
         }
       }
     } else if (context.startsWith('building:') && selBldg) {

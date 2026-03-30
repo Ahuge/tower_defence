@@ -22,6 +22,11 @@ export class CombatUnit extends RtsUnit {
 
   /** Blink cooldown in seconds remaining (Arcane only) */
   blinkCooldown: number = 0;
+  /** Phase Shift: invulnerability timer (Void Phase Stalker) */
+  phaseShiftTimer: number = 0;
+  phaseShiftCooldown: number = 0;
+  /** Rift Walk cooldown (Void Rift Walker — global teleport) */
+  riftWalkCooldown: number = 0;
 
   /** Building target (for attacking enemy base/buildings) */
   buildingTarget: Building | null = null;
@@ -46,8 +51,11 @@ export class CombatUnit extends RtsUnit {
   ): { unit: RtsUnit | null; building: Building | null } {
     if (!this.alive) return { unit: null, building: null };
 
-    // Tick blink cooldown
+    // Tick cooldowns
     if (this.blinkCooldown > 0) this.blinkCooldown = Math.max(0, this.blinkCooldown - deltaSec);
+    if (this.riftWalkCooldown > 0) this.riftWalkCooldown = Math.max(0, this.riftWalkCooldown - deltaSec);
+    if (this.phaseShiftTimer > 0) this.phaseShiftTimer = Math.max(0, this.phaseShiftTimer - deltaSec);
+    if (this.phaseShiftCooldown > 0) this.phaseShiftCooldown = Math.max(0, this.phaseShiftCooldown - deltaSec);
 
     // 1. If attacking a building, pursue it
     if (this.buildingTarget && !this.buildingTarget.destroyed) {
@@ -206,5 +214,31 @@ export class CombatUnit extends RtsUnit {
     }
 
     return best;
+  }
+
+  /** Override takeDamage for Phase Shift invulnerability and phase trigger */
+  takeDamage(amount: number): boolean {
+    // Phase Shift: invulnerable while active
+    if (this.phaseShiftTimer > 0) return false;
+
+    const killed = super.takeDamage(amount);
+
+    // Phase Shift trigger: become invulnerable on taking damage
+    if (!killed && this.def.special === 'phase_shift' && this.phaseShiftCooldown <= 0) {
+      this.phaseShiftTimer = 2; // 2s invulnerability
+      this.phaseShiftCooldown = 30;
+    }
+
+    return killed;
+  }
+
+  /** Get effective damage (Doom Guard scaling: up to 2× at low HP) */
+  getEffectiveDamage(): number {
+    if (this.def.special === 'doom_scaling') {
+      const hpRatio = this.hp / this.maxHp;
+      const mult = 1 + (1 - hpRatio); // 1× at full HP, 2× at 0 HP
+      return Math.round(this.damage * mult);
+    }
+    return this.damage;
   }
 }

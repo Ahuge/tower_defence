@@ -30,8 +30,17 @@ export class Building {
   rallyRow: number = 0;
 
   /** Overclock state (Mechanical faction ability) */
-  overclockTimer: number = 0; // seconds remaining, 0 = not active
-  overclockCooldown: number = 0; // seconds until can overclock again
+  overclockTimer: number = 0;
+  overclockCooldown: number = 0;
+
+  /** Probability Engine timer (Void — fires every 30s) */
+  probEngineTimer: number = 0;
+
+  /** Egg/charge system (Nature hatchery) — max 5 eggs, regen 1 per 15s */
+  eggs: number = 0;
+  maxEggs: number = 0;
+  eggRegenTimer: number = 0;
+  static readonly EGG_REGEN_TIME = 15; // seconds per egg
 
   constructor(def: BuildingDef, owner: BuildingOwner, col: number, row: number, originalCellType: number, startBuilt: boolean = false) {
     this.def = def;
@@ -44,6 +53,12 @@ export class Building {
     this.originalCellType = originalCellType;
     this.rallyCol = col + def.footprint;
     this.rallyRow = row + def.footprint;
+
+    // Nature hatchery starts with 5 eggs
+    if (def.faction === 'nature' && def.category === 'barracks') {
+      this.maxEggs = 5;
+      this.eggs = 5;
+    }
   }
 
   /** Advance construction. Returns true when just completed. */
@@ -86,13 +101,22 @@ export class Building {
     return true;
   }
 
-  /** Tick overclock timers each frame */
+  /** Tick overclock timers and egg regeneration each frame */
   tickOverclock(deltaSec: number): void {
     if (this.overclockTimer > 0) {
       this.overclockTimer = Math.max(0, this.overclockTimer - deltaSec);
     }
     if (this.overclockCooldown > 0 && this.overclockTimer <= 0) {
       this.overclockCooldown = Math.max(0, this.overclockCooldown - deltaSec);
+    }
+
+    // Egg regeneration (Nature hatchery)
+    if (this.maxEggs > 0 && this.eggs < this.maxEggs) {
+      this.eggRegenTimer += deltaSec;
+      if (this.eggRegenTimer >= Building.EGG_REGEN_TIME) {
+        this.eggRegenTimer = 0;
+        this.eggs = Math.min(this.maxEggs, this.eggs + 1);
+      }
     }
   }
 }

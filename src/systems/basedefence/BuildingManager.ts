@@ -156,27 +156,81 @@ export class BuildingManager {
       // Tick overclock timers
       b.tickOverclock(deltaSec);
 
-      // Passive resource generation (Mana Wells) — player buildings only
-      // CPU passive income handled by CpuAI
+      // Passive resource generation (Mana Wells, Bloom Nodes) — player buildings only
       if (b.def.passiveRate && b.def.passiveResource && b.owner === 'player') {
-        this.resources.add(b.def.passiveResource, b.def.passiveRate * deltaSec);
+        let rate = b.def.passiveRate;
+        // Bloom Node adjacency bonus: +0.3g/sec per adjacent Bloom Node
+        if (b.def.id === 'nat_bloom') {
+          for (const other of this.buildings) {
+            if (other === b || other.destroyed || !other.isBuilt || other.def.id !== 'nat_bloom') continue;
+            const dc = Math.abs(other.col - b.col);
+            const dr = Math.abs(other.row - b.row);
+            if (dc <= 1 && dr <= 1 && (dc + dr) > 0) rate += 0.3;
+          }
+        }
+        this.resources.add(b.def.passiveResource, rate * deltaSec);
       }
 
-      // Repair Bay — heal nearby friendly units and buildings
+      // Infernal building decay — non-base infernal buildings lose 1 HP/sec
+      if (b.def.faction === 'infernal' && b.def.category !== 'base' && b.isBuilt) {
+        b.hp -= 1 * deltaSec;
+        if (b.hp <= 0) { b.hp = 0; b.destroyed = true; }
+      }
+
+      // Probability Engine (Void) — random event every 30s
+      if (b.def.id === 'void_prob_engine' && b.owner === 'player') {
+        b.probEngineTimer += deltaSec;
+        if (b.probEngineTimer >= 30) {
+          b.probEngineTimer = 0;
+          const roll = Math.random();
+          if (roll < 0.25) {
+            // Double current gold
+            const current = this.resources.get('gold');
+            this.resources.add('gold', current);
+            this.events.emit('buildingCompleted', 'prob_double_gold', b.col, b.row);
+          } else if (roll < 0.5) {
+            // Lose 25% gold
+            const current = this.resources.get('gold');
+            this.resources.spend('gold', Math.floor(current * 0.25));
+            this.events.emit('buildingCompleted', 'prob_lose_gold', b.col, b.row);
+          } else if (roll < 0.75) {
+            // Free unit — spawn a random cheap unit (handled by event listener)
+            this.events.emit('buildingCompleted', 'prob_free_unit', b.col, b.row);
+          } else {
+            // Damage random enemy building for 200 HP
+            const enemyOwner = b.owner === 'player' ? 'cpu' : 'player';
+            const enemyBldgs = this.getByOwner(enemyOwner);
+            if (enemyBldgs.length > 0) {
+              const target = enemyBldgs[Math.floor(Math.random() * enemyBldgs.length)];
+              target.takeDamage(200);
+            }
+            this.events.emit('buildingCompleted', 'prob_damage_enemy', b.col, b.row);
+          }
+        }
+      }
+
+      // Repair Bay (positive heal) / Soul Pyre (negative heal = drain)
       if (b.def.healRate && b.def.healRadius && allUnits) {
         const hpPerFrame = b.def.healRate * deltaSec;
-        const radiusPx = b.def.healRadius * 28; // TILE_SIZE
+        const isHeal = b.def.healRate > 0;
+        const radiusPx = b.def.healRadius * 28;
         const bx = (b.col + b.def.footprint / 2) * 28;
         const by = (b.row + b.def.footprint / 2) * 28;
         const r2 = radiusPx * radiusPx;
 
-        // Heal nearby units
         for (const u of allUnits) {
           if (!u.alive || u.owner !== b.owner) continue;
           const dx = u.x - bx;
           const dy = u.y - by;
-          if (dx * dx + dy * dy < r2 && u.hp < u.maxHp) {
-            u.hp = Math.min(u.maxHp, u.hp + hpPerFrame);
+          if (dx * dx + dy * dy < r2) {
+            if (isHeal) {
+              // Repair: only heal damaged units
+              if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + hpPerFrame);
+            } else {
+              // Drain: damage all units in range (Soul Pyre)
+              u.hp += hpPerFrame; // negative = damage
+              if (u.hp <= 0) { u.hp = 0; u.alive = false; }
+            }
           }
         }
 

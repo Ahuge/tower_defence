@@ -26,6 +26,16 @@ export interface CombatUnitDef {
   color: number;
   /** Unit role hint */
   role: 'melee' | 'ranged' | 'heavy';
+  /** Special mechanic tag */
+  special?: 'spawn_on_death' | 'fiend_detonate' | 'doom_scaling' | 'hellfire_self_damage' | 'phase_shift' | 'rift_walk';
+  /** For spawn_on_death: what unit ID to spawn */
+  spawnOnDeathId?: string;
+  /** For spawn_on_death: how many to spawn */
+  spawnOnDeathCount?: number;
+  /** For fiend_detonate: AoE damage on death */
+  detonateDamage?: number;
+  /** For fiend_detonate: AoE radius in pixels */
+  detonateRadius?: number;
 }
 
 // ═══════════════════════════════════════════
@@ -126,6 +136,7 @@ const NAT_BROOD: CombatUnitDef = {
   costGold: 90, costGas: 40, supply: 3, trainTime: 8,
   hp: 280, damage: 20, attackSpeed: 1400, attackRange: 28,
   moveSpeed: 55, color: 0x227711, role: 'heavy',
+  special: 'spawn_on_death', spawnOnDeathId: 'nat_crawler', spawnOnDeathCount: 2,
 };
 
 // ═══════════════════════════════════════════
@@ -137,6 +148,7 @@ const INF_FIEND: CombatUnitDef = {
   costGold: 25, costGas: 0, supply: 1, trainTime: 2,
   hp: 60, damage: 0, attackSpeed: 9999, attackRange: 28,
   moveSpeed: 100, color: 0xff6633, role: 'melee',
+  special: 'fiend_detonate', detonateDamage: 40, detonateRadius: 28 * 3,
 };
 
 const INF_HELLFIRE: CombatUnitDef = {
@@ -144,6 +156,7 @@ const INF_HELLFIRE: CombatUnitDef = {
   costGold: 45, costGas: 0, supply: 1, trainTime: 4,
   hp: 55, damage: 16, attackSpeed: 900, attackRange: 28 * 4,
   moveSpeed: 75, color: 0xff4411, role: 'ranged',
+  special: 'hellfire_self_damage',
 };
 
 const INF_DOOM: CombatUnitDef = {
@@ -151,6 +164,7 @@ const INF_DOOM: CombatUnitDef = {
   costGold: 130, costGas: 60, supply: 3, trainTime: 12,
   hp: 320, damage: 22, attackSpeed: 1200, attackRange: 28,
   moveSpeed: 60, color: 0xaa1100, role: 'heavy',
+  special: 'doom_scaling',
 };
 
 // ═══════════════════════════════════════════
@@ -162,6 +176,7 @@ const VOID_RIFT: CombatUnitDef = {
   costGold: 50, costGas: 0, supply: 1, trainTime: 5,
   hp: 70, damage: 10, attackSpeed: 1000, attackRange: 28,
   moveSpeed: 85, color: 0x9933cc, role: 'melee',
+  special: 'rift_walk',
 };
 
 const VOID_PHASE: CombatUnitDef = {
@@ -169,6 +184,7 @@ const VOID_PHASE: CombatUnitDef = {
   costGold: 55, costGas: 0, supply: 1, trainTime: 5,
   hp: 65, damage: 12, attackSpeed: 900, attackRange: 28 * 3,
   moveSpeed: 75, color: 0x7744bb, role: 'ranged',
+  special: 'phase_shift',
 };
 
 const VOID_TITAN: CombatUnitDef = {

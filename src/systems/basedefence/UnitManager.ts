@@ -455,12 +455,21 @@ export class UnitManager {
         const enemies = unit.owner === 'player' ? cpuUnits : playerUnits;
         const enemyBldgs = unit.owner === 'player' ? cpuBuildings : playerBuildings;
         const result = unit.updateCombat(deltaSec, time, enemies, enemyBldgs);
+        const dmg = unit.getEffectiveDamage(); // Doom Guard scaling
         if (result.unit) {
-          result.unit.takeDamage(unit.damage);
-          // Supply freed in dead unit cleanup below
+          result.unit.takeDamage(dmg);
+          // Hellfire self-damage: lose 5 HP per shot
+          if (unit.def.special === 'hellfire_self_damage') {
+            unit.hp -= 5;
+            if (unit.hp <= 0) { unit.hp = 0; unit.alive = false; }
+          }
         }
         if (result.building) {
-          result.building.takeDamage(unit.damage);
+          result.building.takeDamage(dmg);
+          if (unit.def.special === 'hellfire_self_damage') {
+            unit.hp -= 5;
+            if (unit.hp <= 0) { unit.hp = 0; unit.alive = false; }
+          }
         }
       } else {
         unit.updateMovement(deltaSec);
@@ -480,6 +489,43 @@ export class UnitManager {
           this.buildingMgr.freeSupply(u.owner, UnitManager.BUILDER_SUPPLY);
         } else if (u instanceof CombatUnit) {
           this.buildingMgr.freeSupply(u.owner, u.def.supply);
+
+          // Spawn on death (Nature Brood Mother → 2 Thorn Crawlers)
+          if (u.def.special === 'spawn_on_death' && u.def.spawnOnDeathId && u.def.spawnOnDeathCount) {
+            const childDef = COMBAT_UNIT_TYPES[u.def.spawnOnDeathId];
+            if (childDef) {
+              for (let s = 0; s < u.def.spawnOnDeathCount; s++) {
+                const offset = (s - 0.5) * TILE_SIZE;
+                this.spawnCombatUnit(u.owner, childDef, u.col + s, u.row);
+              }
+            }
+          }
+
+          // Fiend detonation (Infernal — AoE damage on death)
+          if (u.def.special === 'fiend_detonate' && u.def.detonateDamage && u.def.detonateRadius) {
+            const r2 = u.def.detonateRadius * u.def.detonateRadius;
+            for (const target of this.units) {
+              if (!target.alive || target.owner === u.owner) continue;
+              const dx = target.x - u.x;
+              const dy = target.y - u.y;
+              if (dx * dx + dy * dy < r2) {
+                target.takeDamage(u.def.detonateDamage);
+              }
+            }
+            // Also damage enemy buildings
+            const enemyBldgs = u.owner === 'player'
+              ? this.buildingMgr.getByOwner('cpu')
+              : this.buildingMgr.getByOwner('player');
+            for (const eb of enemyBldgs) {
+              const bx = (eb.col + eb.def.footprint / 2) * TILE_SIZE;
+              const by = (eb.row + eb.def.footprint / 2) * TILE_SIZE;
+              const dx = bx - u.x;
+              const dy = by - u.y;
+              if (dx * dx + dy * dy < r2) {
+                eb.takeDamage(u.def.detonateDamage);
+              }
+            }
+          }
         }
         const selIdx = this._selected.indexOf(u);
         if (selIdx !== -1) this._selected.splice(selIdx, 1);
@@ -573,6 +619,16 @@ export class UnitManager {
             if (cell === CellType.GoldDeposit) {
               this.getResources(unit.owner).add('gold', MINE_TRIP_GOLD);
             }
+          }
+        }
+
+        // Void Siphon steal: steal 1g from enemy per mining trip
+        const faction = unit.owner === 'player' ? this.playerFaction : this.cpuFaction;
+        if (faction === 'void') {
+          const enemyRes = unit.owner === 'player' ? this.cpuResources : this.playerResources;
+          if (enemyRes && enemyRes.get('gold') >= 1) {
+            enemyRes.spend('gold', 1);
+            this.getResources(unit.owner).add('gold', 1);
           }
         }
       }
@@ -670,13 +726,27 @@ export class UnitManager {
       const unitDef = COMBAT_UNIT_TYPES[unitId];
       if (!unitDef) { b.trainingQueue.shift(); continue; }
 
+      // Nature hatchery: instant spawn using eggs, no train time
+      if (b.maxEggs > 0) {
+        if (b.eggs > 0) {
+          b.eggs--;
+          b.trainingQueue.shift();
+          const spawnCol = b.col + b.def.footprint;
+          const spawnRow = b.row + Math.floor(b.def.footprint / 2);
+          const unit = this.spawnCombatUnit(b.owner, unitDef, spawnCol, spawnRow);
+          unit.attackMoveTo(b.rallyCol, b.rallyRow);
+        }
+        // else: no eggs, wait for regen (queue stays, blocks further spawns)
+        continue;
+      }
+
+      // Standard barracks: timed training
       const rate = unitDef.trainTime > 0 ? 1 / unitDef.trainTime : 1;
       b.trainingProgress += rate * deltaSec * b.trainingSpeedMult;
 
       if (b.trainingProgress >= 1) {
         b.trainingProgress = 0;
         b.trainingQueue.shift();
-        // Spawn at building, then walk to rally
         const spawnCol = b.col + b.def.footprint;
         const spawnRow = b.row + Math.floor(b.def.footprint / 2);
         const unit = this.spawnCombatUnit(b.owner, unitDef, spawnCol, spawnRow);
