@@ -15,6 +15,20 @@ export interface TowerSpriteConfig {
   rows: { idle: number; charge: number; fire: number; cooldown: number };
 }
 
+/**
+ * Mobile unit sprite config — separate mini-spritesheet per unit.
+ * Sheet: 128×128px, 32×32 cells, 4 cols × 4 rows.
+ * Cols: frame 0-3 of animation cycle.
+ * Rows: 0=down, 1=right, 2=up, 3=attack.
+ * Right row flips for left.
+ */
+export interface MobileUnitSpriteConfig {
+  sheetKey: string;
+  frameWidth: number;
+  frameHeight: number;
+  cols: number; // frames per direction
+}
+
 /** Projectile sprite animation config */
 export interface ProjectileSpriteConfig {
   sheetKey: string;
@@ -85,14 +99,29 @@ const MOBILE_TOWER_IDS = new Set([
   'infernal_bomber',
 ]);
 
+/** Mobile unit sprite configs — each gets its own small spritesheet */
+const MOBILE_SPRITE_CONFIGS: Record<string, MobileUnitSpriteConfig> = {
+  mil_rifleman:    { sheetKey: 'mobile_mil_rifleman',  frameWidth: 32, frameHeight: 32, cols: 4 },
+  mil_brawler:     { sheetKey: 'mobile_mil_brawler',   frameWidth: 32, frameHeight: 32, cols: 4 },
+  mil_heavy:       { sheetKey: 'mobile_mil_heavy',     frameWidth: 32, frameHeight: 32, cols: 4 },
+  mil_commander:   { sheetKey: 'mobile_mil_commander', frameWidth: 32, frameHeight: 32, cols: 4 },
+  alien_swarmling: { sheetKey: 'mobile_alien_swarmling', frameWidth: 32, frameHeight: 32, cols: 4 },
+  infernal_bomber: { sheetKey: 'mobile_infernal_fiend', frameWidth: 32, frameHeight: 32, cols: 4 },
+};
+
 /** Check if a tower ID has sprite art available */
 export function hasTowerSprite(towerId: string): boolean {
-  return towerId in TOWER_SPRITE_CONFIGS;
+  return towerId in TOWER_SPRITE_CONFIGS || towerId in MOBILE_SPRITE_CONFIGS;
 }
 
 /** Check if a tower is a mobile unit (needs walk-cycle rendering) */
 export function isMobileTowerSprite(towerId: string): boolean {
-  return MOBILE_TOWER_IDS.has(towerId);
+  return towerId in MOBILE_SPRITE_CONFIGS;
+}
+
+/** Get mobile unit sprite config */
+export function getMobileSpriteConfig(towerId: string): MobileUnitSpriteConfig | undefined {
+  return MOBILE_SPRITE_CONFIGS[towerId];
 }
 
 /** Check if a tower's projectiles have sprite art */
@@ -154,6 +183,19 @@ export function preloadSprites(scene: Phaser.Scene): void {
     scene.load.spritesheet(f.proj, `assets/${f.dir}/${f.dir}_projectiles.png`, { frameWidth: 32, frameHeight: 32 });
     scene.load.spritesheet(f.hero, `assets/${f.dir}/${f.dir}_hero.png`, { frameWidth: 64, frameHeight: 128 });
   }
+
+  // Mobile unit mini-spritesheets (128×128, 32×32 cells)
+  for (const [towerId, cfg] of Object.entries(MOBILE_SPRITE_CONFIGS)) {
+    const faction = towerId.startsWith('mil_') ? 'military'
+      : towerId.startsWith('alien_') ? 'aliens'
+      : towerId.startsWith('infernal_') ? 'infernal' : '';
+    if (faction) {
+      const name = towerId.replace(/^(mil_|alien_|infernal_)/, '');
+      scene.load.spritesheet(cfg.sheetKey, `assets/${faction}/${name}_mobile.png`, {
+        frameWidth: cfg.frameWidth, frameHeight: cfg.frameHeight,
+      });
+    }
+  }
 }
 
 /**
@@ -208,6 +250,27 @@ export function createSpriteAnimations(scene: Phaser.Scene): void {
       });
     }
   }
+
+  // Mobile unit walk-cycle animations
+  // Sheet: 4 cols × 4 rows. Rows: 0=down, 1=right, 2=up, 3=attack
+  const dirNames = ['down', 'right', 'up', 'attack'];
+  for (const [towerId, cfg] of Object.entries(MOBILE_SPRITE_CONFIGS)) {
+    if (!scene.textures.exists(cfg.sheetKey)) continue;
+    for (let row = 0; row < 4; row++) {
+      const animKey = `mobile_${towerId}_${dirNames[row]}`;
+      if (scene.anims.exists(animKey)) continue;
+      const frames: Phaser.Types.Animations.AnimationFrame[] = [];
+      for (let col = 0; col < cfg.cols; col++) {
+        frames.push({ key: cfg.sheetKey, frame: row * cfg.cols + col });
+      }
+      scene.anims.create({
+        key: animKey,
+        frames,
+        frameRate: row === 3 ? 10 : 8, // attack slightly faster
+        repeat: row === 3 ? 0 : -1, // attack plays once, walk/idle loop
+      });
+    }
+  }
 }
 
 /**
@@ -216,6 +279,21 @@ export function createSpriteAnimations(scene: Phaser.Scene): void {
 export function createTowerSprite(
   scene: Phaser.Scene, towerId: string, x: number, y: number,
 ): Phaser.GameObjects.Sprite | null {
+  // Mobile unit — use separate mini-spritesheet
+  const mobileCfg = MOBILE_SPRITE_CONFIGS[towerId];
+  if (mobileCfg && scene.textures.exists(mobileCfg.sheetKey)) {
+    const sprite = scene.add.sprite(x, y, mobileCfg.sheetKey, 0);
+    sprite.setDepth(5);
+    // 32×32 sprite → scale to ~24px (slightly smaller than tiles, they're units not buildings)
+    sprite.setScale(24 / 32);
+    sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    // Start idle animation
+    const idleAnim = `mobile_${towerId}_down`;
+    if (scene.anims.exists(idleAnim)) sprite.play(idleAnim);
+    return sprite;
+  }
+
+  // Static tower
   const config = TOWER_SPRITE_CONFIGS[towerId];
   if (!config) return null;
 
@@ -249,38 +327,43 @@ export function setTowerSpriteState(
 
 /**
  * Update a mobile unit sprite based on movement direction and state.
- * Mobile unit sheets use rows: 0=idle, 1=walk, 2=attack, 3=special/death
- * Within each row, the column is the tower's column in the sheet.
- *
- * @param dx - movement delta X this frame (positive = right)
- * @param dy - movement delta Y this frame (positive = down)
- * @param isAttacking - whether the unit is currently attacking
- * @param animTimer - incremented timer for walk cycle frame selection
+ * Uses the mini-spritesheet with walk cycle animations.
+ * Rows: 0=down, 1=right (flip for left), 2=up, 3=attack
  */
 export function updateMobileTowerSprite(
   sprite: Phaser.GameObjects.Sprite, towerId: string,
-  dx: number, dy: number, isAttacking: boolean, animTimer: number,
+  dx: number, dy: number, isAttacking: boolean,
 ): void {
-  const config = TOWER_SPRITE_CONFIGS[towerId];
-  if (!config) return;
+  if (!(towerId in MOBILE_SPRITE_CONFIGS)) return;
 
   const isMoving = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
-  let row: number;
 
   if (isAttacking) {
-    row = 2; // attack row
-  } else if (isMoving) {
-    row = 1; // walk row
-    // Flip sprite based on horizontal direction
-    if (Math.abs(dx) > Math.abs(dy)) {
-      sprite.setFlipX(dx < 0);
-    }
-  } else {
-    row = 0; // idle row
+    const key = `mobile_${towerId}_attack`;
+    if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
+    return;
   }
 
-  const frameIndex = row * config.totalCols + config.column;
-  sprite.setFrame(frameIndex);
+  if (isMoving) {
+    // Determine direction
+    let dir: string;
+    sprite.setFlipX(false);
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal movement
+      dir = 'right';
+      if (dx < 0) sprite.setFlipX(true); // flip right anim for left
+    } else {
+      dir = dy > 0 ? 'down' : 'up';
+    }
+
+    const key = `mobile_${towerId}_${dir}`;
+    if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
+  } else {
+    // Idle — show first frame of down animation
+    const key = `mobile_${towerId}_down`;
+    if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
+  }
 }
 
 /**

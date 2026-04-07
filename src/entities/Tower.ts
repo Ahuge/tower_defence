@@ -59,10 +59,9 @@ export class Tower {
   sprite: Phaser.GameObjects.Sprite | null = null;
   private _scene: Phaser.Scene;
 
-  /** Mobile unit sprite animation state */
+  /** Mobile unit sprite — track previous position for direction detection */
   private _prevX: number = 0;
   private _prevY: number = 0;
-  private _mobileAnimTimer: number = 0;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
@@ -114,13 +113,12 @@ export class Tower {
     if (this.sprite) {
       this.sprite.setPosition(this.x, this.y);
 
-      // Mobile unit sprites need directional walk-cycle frames
+      // Mobile unit sprites need directional walk-cycle animations
       if (isMobileTowerSprite(this.typeId)) {
         const dx = this.x - this._prevX;
         const dy = this.y - this._prevY;
         const isAttacking = this.lastFired > 0 && (Date.now() - this.lastFired < 300);
-        this._mobileAnimTimer += 0.1;
-        updateMobileTowerSprite(this.sprite, this.typeId, dx, dy, isAttacking, this._mobileAnimTimer);
+        updateMobileTowerSprite(this.sprite, this.typeId, dx, dy, isAttacking);
         this._prevX = this.x;
         this._prevY = this.y;
       }
