@@ -393,12 +393,21 @@ export function createProjectileSprite(
 /**
  * Play impact animation on a projectile sprite, then destroy it.
  */
+/**
+ * Play impact animation on a projectile sprite, then destroy it.
+ * @param splashRadius — if provided, scale impact to match the AoE radius
+ */
 export function playProjectileImpact(
-  sprite: Phaser.GameObjects.Sprite, towerId: string,
+  sprite: Phaser.GameObjects.Sprite, towerId: string, splashRadius?: number,
 ): void {
   const impactKey = `proj_${towerId}_impact`;
-  const scale = 26 / 32; // impact is bigger + more dramatic
-  sprite.setScale(scale);
+  if (splashRadius && splashRadius > 40) {
+    // Scale impact to match AoE — splashRadius is in pixels, sprite is 32px base
+    const scale = (splashRadius * 2) / 32;
+    sprite.setScale(scale);
+  } else {
+    sprite.setScale(26 / 32);
+  }
   sprite.play(impactKey);
   sprite.once('animationcomplete', () => {
     sprite.destroy();

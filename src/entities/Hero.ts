@@ -1062,8 +1062,9 @@ export class Hero {
           col = 2 + Math.floor(this._animTimer * 6) % 4;
           break;
         case 'attack':
-          // Alternate frames 6-7 at attack speed
-          col = 6 + Math.floor(this._animTimer * 4) % 2;
+          // Slow attack cycle: frame 6 (windup) holds longer, frame 7 (strike) flashes
+          // ~1.5fps gives a deliberate, weighty feel
+          col = 6 + Math.floor(this._animTimer * 1.5) % 2;
           break;
         case 'ability':
           // Show ability frame from row 3

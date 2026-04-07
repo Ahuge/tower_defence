@@ -107,7 +107,7 @@ export const HERO_TYPES: Record<HeroId, HeroTypeDef> = {
   },
   arcanist: {
     id: 'arcanist',
-    name: 'Arcanist',
+    name: 'Mage',
     faction: 'arcane',
     description: 'Arcane spellweaver. Fireballs, frost novas, and blink escapes.',
     hp: 280,

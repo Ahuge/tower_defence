@@ -350,7 +350,8 @@ export class Tower {
       const ty = (p.target.alive && !p.locationBased) ? p.target.y : p.destY;
 
       // Update destination if target is still alive (track moving targets)
-      if (p.target.alive) {
+      // Location-based projectiles (splash/meteor) lock their destination at fire time
+      if (p.target.alive && !p.locationBased) {
         p.destX = p.target.x;
         p.destY = p.target.y;
       }
@@ -374,9 +375,11 @@ export class Tower {
           this.onProjectileHitLocation(p, allCreeps);
         }
         p.graphics.destroy();
-        // Play impact animation or destroy sprite
+        // Play impact animation — scale to splash radius for AoE towers
         if (p.sprite && p.towerId) {
-          playProjectileImpact(p.sprite, p.towerId);
+          const splashTrait = getTrait(this.traits, 'splash_damage');
+          const splashRadius = splashTrait?.radius as number | undefined;
+          playProjectileImpact(p.sprite, p.towerId, splashRadius);
         } else if (p.sprite) {
           p.sprite.destroy();
         }
