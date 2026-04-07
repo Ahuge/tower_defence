@@ -123,6 +123,17 @@ export function isMobileTowerSprite(towerId: string): boolean {
   return towerId in MOBILE_SPRITE_CONFIGS;
 }
 
+/** Towers that should rotate to face their target (have directional barrels/weapons) */
+const ROTATING_TOWER_PREFIXES = new Set(['mech_', 'mil_', 'cyber_']);
+
+/** Check if a tower sprite should rotate to face targets */
+export function shouldTowerRotate(towerId: string): boolean {
+  for (const prefix of ROTATING_TOWER_PREFIXES) {
+    if (towerId.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 /** Get mobile unit sprite config */
 export function getMobileSpriteConfig(towerId: string): MobileUnitSpriteConfig | undefined {
   return MOBILE_SPRITE_CONFIGS[towerId];
@@ -383,8 +394,9 @@ export function createProjectileSprite(
   const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
   sprite.setDepth(15);
 
-  // Scale projectile (32px sprite → ~20px display — needs to be visible)
-  const scale = 20 / 32;
+  // Scale projectile — larger for flame/splash towers
+  const isFlame = towerId.includes('flame');
+  const scale = isFlame ? 28 / 32 : 20 / 32;
   sprite.setScale(scale);
 
   // Start travel animation
