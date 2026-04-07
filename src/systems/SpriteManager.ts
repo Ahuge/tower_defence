@@ -125,9 +125,12 @@ export function isMobileTowerSprite(towerId: string): boolean {
 
 /** Towers that should rotate to face their target (have directional barrels/weapons) */
 const ROTATING_TOWER_PREFIXES = new Set(['mech_', 'mil_', 'cyber_']);
+/** Towers that should NOT rotate even if their prefix matches */
+const NON_ROTATING_TOWERS = new Set(['mil_sandbag', 'mil_wire', 'mech_wall']);
 
 /** Check if a tower sprite should rotate to face targets */
 export function shouldTowerRotate(towerId: string): boolean {
+  if (NON_ROTATING_TOWERS.has(towerId)) return false;
   for (const prefix of ROTATING_TOWER_PREFIXES) {
     if (towerId.startsWith(prefix)) return true;
   }
@@ -395,8 +398,12 @@ export function createProjectileSprite(
   sprite.setDepth(15);
 
   // Scale projectile — larger for flame/splash towers
+  // Tower-specific projectile sizes
   const isFlame = towerId.includes('flame');
-  const scale = isFlame ? 38 / 32 : 20 / 32;
+  const isUltimate = towerId.includes('nova') || towerId.includes('elder') || towerId.includes('titan') ||
+    towerId.includes('oblivion') || towerId.includes('apocalypse') || towerId.includes('absolution') ||
+    towerId.includes('overmind') || towerId.includes('crescendo') || towerId.includes('zeroday');
+  const scale = isFlame ? 38 / 32 : isUltimate ? 28 / 32 : 20 / 32;
   sprite.setScale(scale);
 
   // Start travel animation

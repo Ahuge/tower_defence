@@ -402,7 +402,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mil_heavy', name: 'Heavy Gunner', description: 'Mobile AoE. Slower but hits everything nearby.',
     faction: 'military', damageType: 'physical', cost: 120, damage: 14, range: 3, fireRate: 1200,
     color: 0x4a6741, projectileSpeed: 0, hotkey: '5',
-    traits: [{ id: 'mobile_unit', moveSpeed: 70, engageRange: 1, leashRange: 5, attackCooldown: 1200, attackSplash: 64 }],
+    traits: [{ id: 'mobile_unit', moveSpeed: 70, engageRange: 3.5, leashRange: 6, attackCooldown: 1200, attackSplash: 64 }],
     upgrades: [
       { level: 2, cost: 100, damage: 32, range: 3.5, fireRate: 1000 },
       { level: 3, cost: 160, damage: 48, range: 4, fireRate: 800 },

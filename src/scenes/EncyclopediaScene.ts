@@ -8,6 +8,7 @@ import { FACTION_LORE, TOWER_LORE, CREEP_LORE } from '../data/Lore';
 import { HERO_ORDER, HERO_TYPES, HeroId } from '../data/HeroTypes';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { hasTowerSprite, getTowerSpriteConfig, getHeroSheetKey, preloadSprites } from '../systems/SpriteManager';
 
 type Tab = 'factions' | 'towers' | 'creeps' | 'heroes';
 
@@ -30,6 +31,10 @@ export class EncyclopediaScene extends Phaser.Scene {
 
   constructor() {
     super('EncyclopediaScene');
+  }
+
+  preload(): void {
+    preloadSprites(this);
   }
 
   create(): void {
@@ -404,14 +409,23 @@ export class EncyclopediaScene extends Phaser.Scene {
     this.contentContainer.add(nameText);
     y += UIScale.space(28);
 
-    // Tower icon (colored square)
+    // Tower icon — sprite if available, colored square fallback
     const iconSz = UIScale.isPhone ? 50 : 30;
-    const iconG = this.add.graphics();
-    iconG.fillStyle(t.color, 1);
-    iconG.fillRect(cx - iconSz / 2, y, iconSz, iconSz);
-    iconG.lineStyle(2, 0xffffff, 0.3);
-    iconG.strokeRect(cx - iconSz / 2, y, iconSz, iconSz);
-    this.contentContainer.add(iconG);
+    const towerCfg = getTowerSpriteConfig(t.id);
+    if (towerCfg && this.textures.exists(towerCfg.sheetKey)) {
+      const frameIdx = towerCfg.rows.idle * towerCfg.totalCols + towerCfg.column;
+      const icon = this.add.sprite(cx, y + iconSz / 2, towerCfg.sheetKey, frameIdx);
+      icon.setScale(iconSz / 64);
+      icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.contentContainer.add(icon);
+    } else {
+      const iconG = this.add.graphics();
+      iconG.fillStyle(t.color, 1);
+      iconG.fillRect(cx - iconSz / 2, y, iconSz, iconSz);
+      iconG.lineStyle(2, 0xffffff, 0.3);
+      iconG.strokeRect(cx - iconSz / 2, y, iconSz, iconSz);
+      this.contentContainer.add(iconG);
+    }
     y += iconSz + 10;
 
     // Flavor text
@@ -710,18 +724,28 @@ export class EncyclopediaScene extends Phaser.Scene {
       fontSize: UIScale.font(12), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5));
 
-    // Hero diamond icon
+    // Hero icon — sprite if available, diamond fallback
     const iconY = UIScale.y(50);
     const iconSize = UIScale.isPhone ? 32 : 22;
+    const heroSheetKey = getHeroSheetKey(heroId);
+    if (heroSheetKey && this.textures.exists(heroSheetKey)) {
+      const icon = this.add.sprite(cx, iconY, heroSheetKey, 0);
+      icon.setScale((iconSize * 2) / 64);
+      icon.setOrigin(0.5, 0.5);
+      icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.contentContainer.add(icon);
+    }
     const g = this.add.graphics();
-    g.fillStyle(hero.color, 1);
-    g.beginPath();
-    g.moveTo(cx, iconY - iconSize);
-    g.lineTo(cx + iconSize, iconY);
-    g.lineTo(cx, iconY + iconSize);
-    g.lineTo(cx - iconSize, iconY);
-    g.closePath();
-    g.fillPath();
+    if (!heroSheetKey || !this.textures.exists(heroSheetKey)) {
+      g.fillStyle(hero.color, 1);
+      g.beginPath();
+      g.moveTo(cx, iconY - iconSize);
+      g.lineTo(cx + iconSize, iconY);
+      g.lineTo(cx, iconY + iconSize);
+      g.lineTo(cx - iconSize, iconY);
+      g.closePath();
+      g.fillPath();
+    }
     g.lineStyle(2, 0xffffff, 0.4);
     g.beginPath();
     g.moveTo(cx, iconY - iconSize);
