@@ -379,7 +379,7 @@ export class Tower {
         if (p.sprite && p.towerId) {
           const splashTrait = getTrait(this.traits, 'splash_damage');
           const splashRadius = splashTrait?.radius as number | undefined;
-          playProjectileImpact(p.sprite, p.towerId, splashRadius);
+          playProjectileImpact(p.sprite, p.towerId, splashRadius, this._scene);
         } else if (p.sprite) {
           p.sprite.destroy();
         }
