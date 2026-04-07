@@ -69,6 +69,8 @@ export class Tower {
   /** Mobile unit sprite — track previous position for direction detection */
   private _prevX: number = 0;
   private _prevY: number = 0;
+  /** Last rotation applied to sprite (preserved when no target) */
+  private _lastSpriteRotation: number = 0;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
@@ -278,9 +280,10 @@ export class Tower {
     if (this.sprite && !isMobileTowerSprite(this.typeId) && shouldTowerRotate(this.typeId)) {
       const nearest = this.findTarget(creeps);
       if (nearest) {
-        const angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
-        this.sprite.setRotation(angle + Math.PI / 2);
+        this._lastSpriteRotation = Math.atan2(nearest.y - this.y, nearest.x - this.x) + Math.PI / 2;
       }
+      // Always apply the saved rotation (persists when no target)
+      this.sprite.setRotation(this._lastSpriteRotation);
     }
 
     const effectiveRate = this.getEffectiveFireRate();

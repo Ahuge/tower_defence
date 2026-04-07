@@ -396,7 +396,7 @@ export function createProjectileSprite(
 
   // Scale projectile — larger for flame/splash towers
   const isFlame = towerId.includes('flame');
-  const scale = isFlame ? 28 / 32 : 20 / 32;
+  const scale = isFlame ? 38 / 32 : 20 / 32;
   sprite.setScale(scale);
 
   // Start travel animation
