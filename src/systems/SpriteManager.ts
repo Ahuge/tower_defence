@@ -146,9 +146,12 @@ export function createTowerSprite(
   const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
   sprite.setDepth(5);
 
-  // Scale to fit tile size (64px sprite → ~20px tile display)
-  const scale = 28 * 0.8 / 64; // TILE_SIZE * 0.8 / spriteWidth
+  // Scale sprite to fill ~1.3 tiles (64px sprite on 28px grid)
+  const scale = (28 * 1.3) / 64;
   sprite.setScale(scale);
+
+  // Crisp pixel rendering
+  sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
   return sprite;
 }
@@ -179,8 +182,8 @@ export function createProjectileSprite(
   const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
   sprite.setDepth(15);
 
-  // Scale projectile (32px sprite → ~8px display)
-  const scale = 8 / 32;
+  // Scale projectile (32px sprite → ~14px display)
+  const scale = 14 / 32;
   sprite.setScale(scale);
 
   // Start travel animation
@@ -197,7 +200,7 @@ export function playProjectileImpact(
   sprite: Phaser.GameObjects.Sprite, towerId: string,
 ): void {
   const impactKey = `proj_${towerId}_impact`;
-  const scale = 12 / 32; // impact is slightly bigger
+  const scale = 18 / 32; // impact is slightly bigger than travel
   sprite.setScale(scale);
   sprite.play(impactKey);
   sprite.once('animationcomplete', () => {

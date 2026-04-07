@@ -43,6 +43,7 @@ export class Hero {
   respawnTimer: number = 0; // seconds remaining
   typeDef: HeroTypeDef;
   graphics: Phaser.GameObjects.Graphics;
+  sprite: Phaser.GameObjects.Sprite | null = null;
   scene: Phaser.Scene;
   lastAttackTime: number = 0;
   kills: number = 0;
@@ -139,6 +140,17 @@ export class Hero {
 
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(15);
+
+    // Create hero sprite if available (Shadow hero = void faction)
+    if (typeDef.id === 'shadow' && scene.textures.exists('void_hero')) {
+      // Row 0 col 0 = facing down idle frame 1
+      this.sprite = scene.add.sprite(x, y, 'void_hero', 0);
+      this.sprite.setDepth(15);
+      // 64×128 sprite → scale to ~28px wide (hero-sized)
+      this.sprite.setScale(28 / 64);
+      // Adjust origin to feet (sprite is tall — 64×128, character fills upper portion)
+      this.sprite.setOrigin(0.5, 0.75);
+    }
   }
 
   // === Effective stats (base + items + buffs) ===
@@ -981,31 +993,60 @@ export class Hero {
     this.graphics.clear();
 
     if (!this.alive) {
-      // Show respawn timer
+      if (this.sprite) this.sprite.setVisible(false);
       return;
+    }
+
+    // Update sprite position and animation
+    if (this.sprite) {
+      this.sprite.setVisible(true);
+      this.sprite.setPosition(this.x, this.y);
+
+      // Determine facing direction based on movement or target
+      const dx = this.moveTarget ? this.moveTarget.x - this.x : (this.target ? this.target.x - this.x : 0);
+      const dy = this.moveTarget ? this.moveTarget.y - this.y : (this.target ? this.target.y - this.y : 0);
+
+      // 8 cols per row: idle(2), walk(4), attack(2)
+      // Row 0 = down, Row 1 = side, Row 2 = up
+      const isMoving = this.moveTarget !== null;
+      const isAttacking = this.target !== null && !isMoving;
+      let row = 0; // default: down
+      if (Math.abs(dy) > Math.abs(dx)) {
+        row = dy < 0 ? 2 : 0; // up or down
+      } else if (dx !== 0) {
+        row = 1; // side
+        this.sprite.setFlipX(dx < 0);
+      }
+
+      let col = 0; // idle
+      if (isAttacking) col = 6; // attack frame
+      else if (isMoving) col = 2; // walk frame
+
+      this.sprite.setFrame(row * 8 + col);
     }
 
     const size = 14;
 
-    // Hero body — larger than fighters
-    this.graphics.fillStyle(this.typeDef.color, 1);
-    this.graphics.beginPath();
-    this.graphics.moveTo(this.x, this.y - size);
-    this.graphics.lineTo(this.x + size, this.y);
-    this.graphics.lineTo(this.x, this.y + size);
-    this.graphics.lineTo(this.x - size, this.y);
-    this.graphics.closePath();
-    this.graphics.fillPath();
+    // Only draw Graphics body if no sprite
+    if (!this.sprite) {
+      this.graphics.fillStyle(this.typeDef.color, 1);
+      this.graphics.beginPath();
+      this.graphics.moveTo(this.x, this.y - size);
+      this.graphics.lineTo(this.x + size, this.y);
+      this.graphics.lineTo(this.x, this.y + size);
+      this.graphics.lineTo(this.x - size, this.y);
+      this.graphics.closePath();
+      this.graphics.fillPath();
 
-    // Outline
-    this.graphics.lineStyle(2, 0xffffff, 0.6);
-    this.graphics.beginPath();
-    this.graphics.moveTo(this.x, this.y - size);
-    this.graphics.lineTo(this.x + size, this.y);
-    this.graphics.lineTo(this.x, this.y + size);
-    this.graphics.lineTo(this.x - size, this.y);
-    this.graphics.closePath();
-    this.graphics.strokePath();
+      this.graphics.lineStyle(2, 0xffffff, 0.6);
+      this.graphics.beginPath();
+      this.graphics.moveTo(this.x, this.y - size);
+      this.graphics.lineTo(this.x + size, this.y);
+      this.graphics.lineTo(this.x, this.y + size);
+      this.graphics.lineTo(this.x - size, this.y);
+      this.graphics.closePath();
+      this.graphics.strokePath();
+    }
 
     // HP bar
     const barW = 40;
@@ -1029,6 +1070,7 @@ export class Hero {
 
   destroy(): void {
     this.graphics.destroy();
+    if (this.sprite) { this.sprite.destroy(); this.sprite = null; }
     for (const p of this.projectiles) p.graphics.destroy();
     this.projectiles = [];
   }
