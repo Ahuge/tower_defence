@@ -2,7 +2,7 @@ import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
 import { TowerType } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
 import { HitTarget } from '../systems/traits/Trait';
-import { hasTowerSprite, createTowerSprite, setTowerSpriteState, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
+import { hasTowerSprite, isMobileTowerSprite, createTowerSprite, setTowerSpriteState, updateMobileTowerSprite, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
 import {
   Trait, HitContext, HitStats, createHitStats, hasTrait, getTrait,
   resolveDelivery, resolveDamageModifiers, resolveFireRate,
@@ -59,6 +59,11 @@ export class Tower {
   sprite: Phaser.GameObjects.Sprite | null = null;
   private _scene: Phaser.Scene;
 
+  /** Mobile unit sprite animation state */
+  private _prevX: number = 0;
+  private _prevY: number = 0;
+  private _mobileAnimTimer: number = 0;
+
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
@@ -89,6 +94,8 @@ export class Tower {
     }
 
     this._scene = scene;
+    this._prevX = this.x;
+    this._prevY = this.y;
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(5);
 
@@ -103,9 +110,20 @@ export class Tower {
   drawTower(): void {
     this.graphics.clear();
 
-    // Update sprite position if it exists
+    // Update sprite position and animation
     if (this.sprite) {
       this.sprite.setPosition(this.x, this.y);
+
+      // Mobile unit sprites need directional walk-cycle frames
+      if (isMobileTowerSprite(this.typeId)) {
+        const dx = this.x - this._prevX;
+        const dy = this.y - this._prevY;
+        const isAttacking = this.lastFired > 0 && (Date.now() - this.lastFired < 300);
+        this._mobileAnimTimer += 0.1;
+        updateMobileTowerSprite(this.sprite, this.typeId, dx, dy, isAttacking, this._mobileAnimTimer);
+        this._prevX = this.x;
+        this._prevY = this.y;
+      }
     }
 
     const isMobile = hasTrait(this.traits, 'mobile_unit');

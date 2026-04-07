@@ -78,9 +78,21 @@ const PROJECTILE_SPRITE_CONFIGS: Record<string, ProjectileSpriteConfig> = {
   ...factionProj('harmonic_proj', ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo']),
 };
 
+/** Tower IDs that are mobile units (need walk-cycle frames instead of tower states) */
+const MOBILE_TOWER_IDS = new Set([
+  'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander',
+  'alien_swarmling',
+  'infernal_bomber',
+]);
+
 /** Check if a tower ID has sprite art available */
 export function hasTowerSprite(towerId: string): boolean {
   return towerId in TOWER_SPRITE_CONFIGS;
+}
+
+/** Check if a tower is a mobile unit (needs walk-cycle rendering) */
+export function isMobileTowerSprite(towerId: string): boolean {
+  return MOBILE_TOWER_IDS.has(towerId);
 }
 
 /** Check if a tower's projectiles have sprite art */
@@ -223,6 +235,7 @@ export function createTowerSprite(
 
 /**
  * Set tower sprite to the correct animation frame based on attack state.
+ * For static towers only.
  */
 export function setTowerSpriteState(
   sprite: Phaser.GameObjects.Sprite, towerId: string,
@@ -231,6 +244,42 @@ export function setTowerSpriteState(
   const config = TOWER_SPRITE_CONFIGS[towerId];
   if (!config) return;
   const frameIndex = config.rows[state] * config.totalCols + config.column;
+  sprite.setFrame(frameIndex);
+}
+
+/**
+ * Update a mobile unit sprite based on movement direction and state.
+ * Mobile unit sheets use rows: 0=idle, 1=walk, 2=attack, 3=special/death
+ * Within each row, the column is the tower's column in the sheet.
+ *
+ * @param dx - movement delta X this frame (positive = right)
+ * @param dy - movement delta Y this frame (positive = down)
+ * @param isAttacking - whether the unit is currently attacking
+ * @param animTimer - incremented timer for walk cycle frame selection
+ */
+export function updateMobileTowerSprite(
+  sprite: Phaser.GameObjects.Sprite, towerId: string,
+  dx: number, dy: number, isAttacking: boolean, animTimer: number,
+): void {
+  const config = TOWER_SPRITE_CONFIGS[towerId];
+  if (!config) return;
+
+  const isMoving = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
+  let row: number;
+
+  if (isAttacking) {
+    row = 2; // attack row
+  } else if (isMoving) {
+    row = 1; // walk row
+    // Flip sprite based on horizontal direction
+    if (Math.abs(dx) > Math.abs(dy)) {
+      sprite.setFlipX(dx < 0);
+    }
+  } else {
+    row = 0; // idle row
+  }
+
+  const frameIndex = row * config.totalCols + config.column;
   sprite.setFrame(frameIndex);
 }
 
