@@ -389,10 +389,11 @@ export class Tower {
         p.y += (dy / dist) * move;
 
         if (p.sprite) {
-          // Position the sprite, skip Graphics drawing
           p.sprite.setPosition(p.x, p.y);
-          // Rotate sprite to face movement direction
-          p.sprite.setRotation(Math.atan2(dy, dx));
+          // Rotate tracking projectiles to face direction; location-based fall straight
+          if (!p.locationBased) {
+            p.sprite.setRotation(Math.atan2(dy, dx));
+          }
         } else {
           p.graphics.clear();
           const hasSplash = hasTrait(this.traits, 'splash_damage');
