@@ -4,6 +4,7 @@ import { hasTrait } from '../systems/traits/Trait';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { GameControlBar } from './GameControlBar';
 import { UIScale } from '../systems/UIScale';
+import { hasTowerSprite, getTowerSpriteConfig, isMobileTowerSprite, getMobileSpriteConfig } from '../systems/SpriteManager';
 
 export class TowerSelectBar {
   private scene: Phaser.Scene;
@@ -104,10 +105,31 @@ export class TowerSelectBar {
       }).setOrigin(0.5, 1);
       this.container.add(costLabel);
 
-      const nameLabel = this.scene.add.text(x + bs / 2, y + bs / 2 - 2, t.name.substring(0, isPhone ? 4 : 5), {
-        fontSize, color: '#ffffff', fontFamily: 'monospace'
-      }).setOrigin(0.5, 0.5);
-      this.container.add(nameLabel);
+      // Show tower sprite icon if available, otherwise text label
+      const towerId = this.towerIds[i];
+      if (hasTowerSprite(towerId) && !isMobileTowerSprite(towerId)) {
+        const cfg = getTowerSpriteConfig(towerId);
+        if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
+          const frameIndex = cfg.rows.idle * cfg.totalCols + cfg.column;
+          const icon = this.scene.add.sprite(x + bs / 2, y + bs / 2 - 4, cfg.sheetKey, frameIndex);
+          icon.setScale((bs - 12) / 64); // fit within button with some margin
+          icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+          this.container.add(icon);
+        }
+      } else if (isMobileTowerSprite(towerId)) {
+        const cfg = getMobileSpriteConfig(towerId);
+        if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
+          const icon = this.scene.add.sprite(x + bs / 2, y + bs / 2 - 4, cfg.sheetKey, 0);
+          icon.setScale((bs - 12) / cfg.frameWidth);
+          icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+          this.container.add(icon);
+        }
+      } else {
+        const nameLabel = this.scene.add.text(x + bs / 2, y + bs / 2 - 2, t.name.substring(0, isPhone ? 4 : 5), {
+          fontSize, color: '#ffffff', fontFamily: 'monospace'
+        }).setOrigin(0.5, 0.5);
+        this.container.add(nameLabel);
+      }
     }
 
     this.redraw();

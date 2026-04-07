@@ -8,6 +8,7 @@ import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
+import { getHeroSheetKey, preloadSprites, createSpriteAnimations } from '../systems/SpriteManager';
 
 /** Pick N random unique elements from an array */
 function pickRandom<T>(arr: T[], count: number): T[] {
@@ -40,6 +41,10 @@ export class HeroSelectScene extends Phaser.Scene {
     this.difficulty = data.difficulty || 'normal';
     this.randomSeed = data.randomSeed ?? 0;
     this.dailySeed = data.dailySeed ?? false;
+  }
+
+  preload(): void {
+    preloadSprites(this);
   }
 
   create(): void {
@@ -95,11 +100,21 @@ export class HeroSelectScene extends Phaser.Scene {
       const card = this.add.graphics();
       this.drawCard(card, x, y, cardW, cardH, hero.color, false);
 
-      // Hero icon (diamond)
+      // Hero icon — sprite portrait if available, diamond fallback
       const iconX = x + cardW / 2;
       const iconY = y + 40;
-      const iconSize = 18;
-      this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
+      const heroSheetKey = getHeroSheetKey(heroId);
+      if (heroSheetKey && this.textures.exists(heroSheetKey)) {
+        // Row 4 col 3 = portrait frame (8 cols per row, row 4 = frame 32+3=35)
+        // But row 0 col 0 idle also works as a good preview
+        const icon = this.add.sprite(iconX, iconY, heroSheetKey, 0);
+        icon.setScale(40 / 64); // ~40px wide
+        icon.setOrigin(0.5, 0.5);
+        icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      } else {
+        const iconSize = 18;
+        this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
+      }
 
       // Faction tag
       const factionName = FACTIONS[hero.faction as FactionId]?.name ?? hero.faction;
@@ -167,15 +182,16 @@ export class HeroSelectScene extends Phaser.Scene {
 
       // Click zone
       const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });
+      const hasSprite = !!(heroSheetKey && this.textures.exists(heroSheetKey));
       zone.on('pointerover', () => {
         card.clear();
         this.drawCard(card, x, y, cardW, cardH, hero.color, true);
-        this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
+        if (!hasSprite) this.drawDiamond(card, iconX, iconY, 18, hero.color);
       });
       zone.on('pointerout', () => {
         card.clear();
         this.drawCard(card, x, y, cardW, cardH, hero.color, false);
-        this.drawDiamond(card, iconX, iconY, iconSize, hero.color);
+        if (!hasSprite) this.drawDiamond(card, iconX, iconY, 18, hero.color);
       });
       zone.on('pointerdown', () => {
         this.selectHero(heroId);

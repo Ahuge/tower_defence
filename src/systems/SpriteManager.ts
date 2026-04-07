@@ -230,7 +230,7 @@ export function createSpriteAnimations(scene: Phaser.Scene): void {
       scene.anims.create({
         key: travelKey,
         frames: travelFrames,
-        frameRate: 8,
+        frameRate: 6, // slower so each frame is readable
         repeat: -1,
       });
     }
@@ -379,8 +379,8 @@ export function createProjectileSprite(
   const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
   sprite.setDepth(15);
 
-  // Scale projectile (32px sprite → ~14px display)
-  const scale = 14 / 32;
+  // Scale projectile (32px sprite → ~20px display — needs to be visible)
+  const scale = 20 / 32;
   sprite.setScale(scale);
 
   // Start travel animation
@@ -397,7 +397,7 @@ export function playProjectileImpact(
   sprite: Phaser.GameObjects.Sprite, towerId: string,
 ): void {
   const impactKey = `proj_${towerId}_impact`;
-  const scale = 18 / 32; // impact is slightly bigger than travel
+  const scale = 26 / 32; // impact is bigger + more dramatic
   sprite.setScale(scale);
   sprite.play(impactKey);
   sprite.once('animationcomplete', () => {

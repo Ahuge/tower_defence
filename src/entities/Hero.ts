@@ -45,6 +45,13 @@ export class Hero {
   typeDef: HeroTypeDef;
   graphics: Phaser.GameObjects.Graphics;
   sprite: Phaser.GameObjects.Sprite | null = null;
+  /** Animation state for sprite: tracks current action + frame cycling */
+  private _animState: 'idle' | 'walk' | 'attack' | 'ability' = 'idle';
+  private _animTimer: number = 0;
+  private _animFrame: number = 0;
+  private _abilityIndex: number = -1; // which ability was just used (for row 3 frame)
+  private _abilityAnimTimer: number = 0;
+  private _facingRow: number = 0; // 0=down, 1=side, 2=up
   scene: Phaser.Scene;
   lastAttackTime: number = 0;
   kills: number = 0;
@@ -571,6 +578,13 @@ export class Hero {
       def = ab.def;
     }
 
+    // Trigger ability animation
+    if (this.sprite) {
+      this._animState = 'ability';
+      this._abilityIndex = overrideDef ? 3 : index; // ultimate = slot 3
+      this._abilityAnimTimer = 0.5; // show ability frame for 0.5s
+    }
+
     switch (def.type) {
       case 'stun': {
         const target = this.target ?? this.findTarget(arenaCreeps);
@@ -1001,27 +1015,67 @@ export class Hero {
       this.sprite.setVisible(true);
       this.sprite.setPosition(this.x, this.y);
 
-      // Determine facing direction based on movement or target
+      // Determine facing direction
       const dx = this.moveTarget ? this.moveTarget.x - this.x : (this.target ? this.target.x - this.x : 0);
       const dy = this.moveTarget ? this.moveTarget.y - this.y : (this.target ? this.target.y - this.y : 0);
 
-      // 8 cols per row: idle(2), walk(4), attack(2)
-      // Row 0 = down, Row 1 = side, Row 2 = up
-      const isMoving = this.moveTarget !== null;
-      const isAttacking = this.target !== null && !isMoving;
-      let row = 0; // default: down
+      // Row: 0=down, 1=side, 2=up
       if (Math.abs(dy) > Math.abs(dx)) {
-        row = dy < 0 ? 2 : 0; // up or down
+        this._facingRow = dy < 0 ? 2 : 0;
+        this.sprite.setFlipX(false);
       } else if (dx !== 0) {
-        row = 1; // side
+        this._facingRow = 1;
         this.sprite.setFlipX(dx < 0);
       }
 
-      let col = 0; // idle
-      if (isAttacking) col = 6; // attack frame
-      else if (isMoving) col = 2; // walk frame
+      // Animation state machine
+      // Sheet layout per row: idle(0,1), walk(2,3,4,5), attack(6,7)
+      const isMoving = this.moveTarget !== null;
+      const isAttacking = this.target !== null && !isMoving;
 
-      this.sprite.setFrame(row * 8 + col);
+      // Tick ability animation timer
+      if (this._abilityAnimTimer > 0) {
+        this._abilityAnimTimer -= 1 / 60; // approximate delta
+        if (this._abilityAnimTimer <= 0) {
+          this._animState = 'idle';
+        }
+      }
+
+      // Update animation state (ability takes priority)
+      if (this._animState !== 'ability') {
+        if (isAttacking) this._animState = 'attack';
+        else if (isMoving) this._animState = 'walk';
+        else this._animState = 'idle';
+      }
+
+      // Tick frame animation
+      this._animTimer += 1 / 60;
+
+      let col = 0;
+      switch (this._animState) {
+        case 'idle':
+          // Alternate between frames 0-1 slowly
+          col = Math.floor(this._animTimer * 2) % 2;
+          break;
+        case 'walk':
+          // Cycle through frames 2-5
+          col = 2 + Math.floor(this._animTimer * 6) % 4;
+          break;
+        case 'attack':
+          // Alternate frames 6-7 at attack speed
+          col = 6 + Math.floor(this._animTimer * 4) % 2;
+          break;
+        case 'ability':
+          // Show ability frame from row 3
+          // Row 3 has 8 frames: abilities 0-3 use pairs of frames
+          const abilityCol = Math.min(this._abilityIndex, 3) * 2;
+          this.sprite.setFrame(3 * 8 + abilityCol);
+          break; // skip normal row selection
+      }
+
+      if (this._animState !== 'ability') {
+        this.sprite.setFrame(this._facingRow * 8 + col);
+      }
     }
 
     const size = 14;
