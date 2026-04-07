@@ -16,5 +16,8 @@
     "phaser": "^3.90.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.0"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.3"
   }
 }

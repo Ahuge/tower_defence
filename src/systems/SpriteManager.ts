@@ -25,22 +25,57 @@ export interface ProjectileSpriteConfig {
   impactRows: number[];
 }
 
+/** Helper: generate tower configs for a faction */
+function factionTowers(sheetKey: string, towerIds: string[]): Record<string, TowerSpriteConfig> {
+  const cfg: Record<string, TowerSpriteConfig> = {};
+  for (let i = 0; i < towerIds.length; i++) {
+    cfg[towerIds[i]] = {
+      sheetKey, column: i, totalCols: towerIds.length,
+      rows: { idle: 0, charge: 1, fire: 2, cooldown: 3 },
+    };
+  }
+  return cfg;
+}
+
+/** Helper: generate projectile configs for a faction */
+function factionProj(sheetKey: string, towerIds: string[]): Record<string, ProjectileSpriteConfig> {
+  const cfg: Record<string, ProjectileSpriteConfig> = {};
+  for (let i = 0; i < towerIds.length; i++) {
+    cfg[towerIds[i]] = {
+      sheetKey, column: i, totalCols: towerIds.length,
+      travelRows: [0, 1, 2], impactRows: [3, 4, 5],
+    };
+  }
+  return cfg;
+}
+
 /** Map of tower ID → sprite config */
 const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
-  // Void faction towers: 5 columns, 4 rows (idle/charge/fire/cooldown)
-  void_gambler:  { sheetKey: 'void_towers', column: 0, totalCols: 5, rows: { idle: 0, charge: 1, fire: 2, cooldown: 3 } },
-  void_spike:    { sheetKey: 'void_towers', column: 1, totalCols: 5, rows: { idle: 0, charge: 1, fire: 2, cooldown: 3 } },
-  void_siphon:   { sheetKey: 'void_towers', column: 2, totalCols: 5, rows: { idle: 0, charge: 1, fire: 2, cooldown: 3 } },
-  void_rift:     { sheetKey: 'void_towers', column: 3, totalCols: 5, rows: { idle: 0, charge: 1, fire: 2, cooldown: 3 } },
-  void_oblivion: { sheetKey: 'void_towers', column: 4, totalCols: 5, rows: { idle: 0, charge: 1, fire: 2, cooldown: 3 } },
+  ...factionTowers('void_towers', ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion']),
+  ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova']),
+  ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan']),
+  ...factionTowers('nature_towers', ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder']),
+  ...factionTowers('mil_towers', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander']),
+  ...factionTowers('alien_towers', ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind']),
+  ...factionTowers('cyber_towers', ['cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor', 'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday']),
+  ...factionTowers('infernal_towers', ['infernal_imp', 'infernal_hellfire', 'infernal_soul_drain', 'infernal_bomber', 'infernal_immolate', 'infernal_apocalypse']),
+  ...factionTowers('celestial_towers', ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_sanctuary', 'celestial_absolution']),
+  ...factionTowers('psionic_towers', ['psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike', 'psi_overmind']),
+  ...factionTowers('harmonic_towers', ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo']),
 };
 
 const PROJECTILE_SPRITE_CONFIGS: Record<string, ProjectileSpriteConfig> = {
-  void_gambler:  { sheetKey: 'void_proj', column: 0, totalCols: 5, travelRows: [0, 1, 2], impactRows: [3, 4, 5] },
-  void_spike:    { sheetKey: 'void_proj', column: 1, totalCols: 5, travelRows: [0, 1, 2], impactRows: [3, 4, 5] },
-  void_siphon:   { sheetKey: 'void_proj', column: 2, totalCols: 5, travelRows: [0, 1, 2], impactRows: [3, 4, 5] },
-  void_rift:     { sheetKey: 'void_proj', column: 3, totalCols: 5, travelRows: [0, 1, 2], impactRows: [3, 4, 5] },
-  void_oblivion: { sheetKey: 'void_proj', column: 4, totalCols: 5, travelRows: [0, 1, 2], impactRows: [3, 4, 5] },
+  ...factionProj('void_proj', ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion']),
+  ...factionProj('arcane_proj', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova']),
+  ...factionProj('mech_proj', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan']),
+  ...factionProj('nature_proj', ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder']),
+  ...factionProj('mil_proj', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander']),
+  ...factionProj('alien_proj', ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind']),
+  ...factionProj('cyber_proj', ['cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor', 'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday']),
+  ...factionProj('infernal_proj', ['infernal_imp', 'infernal_hellfire', 'infernal_soul_drain', 'infernal_bomber', 'infernal_immolate', 'infernal_apocalypse']),
+  ...factionProj('celestial_proj', ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_sanctuary', 'celestial_absolution']),
+  ...factionProj('psionic_proj', ['psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike', 'psi_overmind']),
+  ...factionProj('harmonic_proj', ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo']),
 };
 
 /** Check if a tower ID has sprite art available */
@@ -66,17 +101,47 @@ export function getProjectileSpriteConfig(towerId: string): ProjectileSpriteConf
 /**
  * Load all sprite assets. Call in scene preload().
  */
+/** Faction asset definitions: sheet keys, file paths, cell sizes */
+const FACTION_SHEETS: { towers: string; proj: string; hero: string; dir: string; towerCols: number; projCols: number }[] = [
+  { towers: 'void_towers', proj: 'void_proj', hero: 'void_hero', dir: 'void', towerCols: 5, projCols: 5 },
+  { towers: 'arcane_towers', proj: 'arcane_proj', hero: 'arcane_hero', dir: 'arcane', towerCols: 7, projCols: 7 },
+  { towers: 'mech_towers', proj: 'mech_proj', hero: 'mech_hero', dir: 'mechanical', towerCols: 8, projCols: 8 },
+  { towers: 'nature_towers', proj: 'nature_proj', hero: 'nature_hero', dir: 'nature', towerCols: 6, projCols: 6 },
+  { towers: 'mil_towers', proj: 'mil_proj', hero: 'mil_hero', dir: 'military', towerCols: 6, projCols: 6 },
+  { towers: 'alien_towers', proj: 'alien_proj', hero: 'alien_hero', dir: 'aliens', towerCols: 8, projCols: 8 },
+  { towers: 'cyber_towers', proj: 'cyber_proj', hero: 'cyber_hero', dir: 'cypherpunk', towerCols: 7, projCols: 7 },
+  { towers: 'infernal_towers', proj: 'infernal_proj', hero: 'infernal_hero', dir: 'infernal', towerCols: 6, projCols: 6 },
+  { towers: 'celestial_towers', proj: 'celestial_proj', hero: 'celestial_hero', dir: 'celestial', towerCols: 5, projCols: 5 },
+  { towers: 'psionic_towers', proj: 'psionic_proj', hero: 'psionic_hero', dir: 'psionic', towerCols: 5, projCols: 5 },
+  { towers: 'harmonic_towers', proj: 'harmonic_proj', hero: 'harmonic_hero', dir: 'harmonic', towerCols: 7, projCols: 7 },
+];
+
+/** Hero ID → sheet key mapping */
+const HERO_SPRITE_SHEETS: Record<string, string> = {
+  shadow: 'void_hero',
+  arcanist: 'arcane_hero',
+  engineer: 'mech_hero',
+  druid: 'nature_hero',
+  warden: 'mil_hero',
+  necromancer: 'alien_hero',
+  duelist: 'cyber_hero',
+  berserker: 'infernal_hero',
+  paladin: 'celestial_hero',
+  monk: 'psionic_hero',
+  ranger: 'harmonic_hero',
+};
+
+/** Get hero sheet key for a hero ID */
+export function getHeroSheetKey(heroId: string): string | undefined {
+  return HERO_SPRITE_SHEETS[heroId];
+}
+
 export function preloadSprites(scene: Phaser.Scene): void {
-  // Void faction
-  scene.load.spritesheet('void_towers', 'assets/void/void_towers_animated.png', {
-    frameWidth: 64, frameHeight: 64,
-  });
-  scene.load.spritesheet('void_proj', 'assets/void/void_projectiles_animated.png', {
-    frameWidth: 32, frameHeight: 32,
-  });
-  scene.load.spritesheet('void_hero', 'assets/void/shadow_hero_directional.png', {
-    frameWidth: 64, frameHeight: 128,
-  });
+  for (const f of FACTION_SHEETS) {
+    scene.load.spritesheet(f.towers, `assets/${f.dir}/${f.dir}_towers.png`, { frameWidth: 64, frameHeight: 64 });
+    scene.load.spritesheet(f.proj, `assets/${f.dir}/${f.dir}_projectiles.png`, { frameWidth: 32, frameHeight: 32 });
+    scene.load.spritesheet(f.hero, `assets/${f.dir}/${f.dir}_hero.png`, { frameWidth: 64, frameHeight: 128 });
+  }
 }
 
 /**

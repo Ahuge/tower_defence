@@ -1,4 +1,5 @@
 import { HeroTypeDef, AbilityDef } from '../data/HeroTypes';
+import { getHeroSheetKey } from '../systems/SpriteManager';
 import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../data/HeroItems';
 import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
@@ -141,14 +142,12 @@ export class Hero {
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(15);
 
-    // Create hero sprite if available (Shadow hero = void faction)
-    if (typeDef.id === 'shadow' && scene.textures.exists('void_hero')) {
-      // Row 0 col 0 = facing down idle frame 1
-      this.sprite = scene.add.sprite(x, y, 'void_hero', 0);
+    // Create hero sprite if available
+    const heroSheetKey = getHeroSheetKey(typeDef.id);
+    if (heroSheetKey && scene.textures.exists(heroSheetKey)) {
+      this.sprite = scene.add.sprite(x, y, heroSheetKey, 0);
       this.sprite.setDepth(15);
-      // 64×128 sprite → scale to ~40px wide (hero should stand out)
       this.sprite.setScale(40 / 64);
-      // Adjust origin to feet (sprite is tall — 64×128, character fills upper portion)
       this.sprite.setOrigin(0.5, 0.75);
     }
   }
