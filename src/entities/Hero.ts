@@ -146,8 +146,8 @@ export class Hero {
       // Row 0 col 0 = facing down idle frame 1
       this.sprite = scene.add.sprite(x, y, 'void_hero', 0);
       this.sprite.setDepth(15);
-      // 64×128 sprite → scale to ~28px wide (hero-sized)
-      this.sprite.setScale(28 / 64);
+      // 64×128 sprite → scale to ~40px wide (hero should stand out)
+      this.sprite.setScale(40 / 64);
       // Adjust origin to feet (sprite is tall — 64×128, character fills upper portion)
       this.sprite.setOrigin(0.5, 0.75);
     }
