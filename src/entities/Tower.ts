@@ -2,6 +2,7 @@ import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
 import { TowerType } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
 import { HitTarget } from '../systems/traits/Trait';
+import { hasTowerSprite, createTowerSprite, setTowerSpriteState, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
 import {
   Trait, HitContext, HitStats, createHitStats, hasTrait, getTrait,
   resolveDelivery, resolveDamageModifiers, resolveFireRate,
@@ -19,7 +20,11 @@ interface Projectile {
   speed: number;
   graphics: Phaser.GameObjects.Graphics;
   locationBased: boolean;
-  age: number; // seconds alive — tracking projectiles accelerate over time
+  age: number;
+  /** Optional sprite (replaces Graphics circle when present) */
+  sprite?: Phaser.GameObjects.Sprite;
+  /** Tower ID that fired this (for impact animation lookup) */
+  towerId?: string;
 }
 
 export class Tower {
@@ -50,6 +55,10 @@ export class Tower {
   homeY: number = 0;
   isMobile: boolean = false;
 
+  /** Optional sprite (for factions with art). When set, Graphics drawing is skipped. */
+  sprite: Phaser.GameObjects.Sprite | null = null;
+  private _scene: Phaser.Scene;
+
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
@@ -79,40 +88,57 @@ export class Tower {
       this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
     }
 
+    this._scene = scene;
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(5);
+
+    // Try to create a sprite for this tower (if spritesheet available)
+    if (hasTowerSprite(this.typeId)) {
+      this.sprite = createTowerSprite(scene, this.typeId, this.x, this.y);
+    }
+
     this.drawTower();
   }
 
   drawTower(): void {
     this.graphics.clear();
 
-    const isMobile = hasTrait(this.traits, 'mobile_unit');
+    // Update sprite position if it exists
+    if (this.sprite) {
+      this.sprite.setPosition(this.x, this.y);
+    }
 
-    // Mobile units draw as diamonds, static towers as squares
-    this.graphics.fillStyle(this.color, 1);
+    const isMobile = hasTrait(this.traits, 'mobile_unit');
     const s = TILE_SIZE * 0.35;
+
+    // Only draw Graphics body if no sprite
+    if (!this.sprite) {
+      this.graphics.fillStyle(this.color, 1);
+      if (isMobile) {
+        this.graphics.beginPath();
+        this.graphics.moveTo(this.x, this.y - s);
+        this.graphics.lineTo(this.x + s, this.y);
+        this.graphics.lineTo(this.x, this.y + s);
+        this.graphics.lineTo(this.x - s, this.y);
+        this.graphics.closePath();
+        this.graphics.fillPath();
+        this.graphics.lineStyle(1, 0xffffff, 0.4);
+        this.graphics.strokePath();
+      } else {
+        this.graphics.fillRect(this.x - s, this.y - s, s * 2, s * 2);
+        this.graphics.lineStyle(1, 0xffffff, 0.3);
+        this.graphics.strokeRect(this.x - s, this.y - s, s * 2, s * 2);
+      }
+    }
+
+    // Mobile home marker (draw even with sprites)
     if (isMobile) {
-      this.graphics.beginPath();
-      this.graphics.moveTo(this.x, this.y - s);
-      this.graphics.lineTo(this.x + s, this.y);
-      this.graphics.lineTo(this.x, this.y + s);
-      this.graphics.lineTo(this.x - s, this.y);
-      this.graphics.closePath();
-      this.graphics.fillPath();
-      this.graphics.lineStyle(1, 0xffffff, 0.4);
-      this.graphics.strokePath();
-      // Draw home position marker when away
       const dx = this.x - this.homeX;
       const dy = this.y - this.homeY;
       if (Math.sqrt(dx * dx + dy * dy) > 4) {
         this.graphics.lineStyle(1, this.color, 0.2);
         this.graphics.strokeCircle(this.homeX, this.homeY, TILE_SIZE * 0.25);
       }
-    } else {
-      this.graphics.fillRect(this.x - s, this.y - s, s * 2, s * 2);
-      this.graphics.lineStyle(1, 0xffffff, 0.3);
-      this.graphics.strokeRect(this.x - s, this.y - s, s * 2, s * 2);
     }
 
     if (this.level > 1) {
@@ -258,9 +284,16 @@ export class Tower {
   }
 
   fire(target: Creep): void {
-    const g = this.graphics.scene.add.graphics();
+    const scene = this._scene;
+    const g = scene.add.graphics();
     g.setDepth(15);
     const isLocationBased = hasTrait(this.traits, 'splash_damage') || hasTrait(this.traits, 'pierce_delivery') || hasTrait(this.traits, 'tower_aura_damage');
+
+    // Try to create a projectile sprite
+    const projSprite = hasProjectileSprite(this.typeId)
+      ? createProjectileSprite(scene, this.typeId, this.x, this.y)
+      : null;
+
     this.projectiles.push({
       x: this.x,
       y: this.y,
@@ -271,7 +304,17 @@ export class Tower {
       graphics: g,
       locationBased: isLocationBased,
       age: 0,
+      sprite: projSprite ?? undefined,
+      towerId: this.typeId,
     });
+
+    // Set tower sprite to fire state briefly
+    if (this.sprite) {
+      setTowerSpriteState(this.sprite, this.typeId, 'fire');
+      scene.time.delayedCall(200, () => {
+        if (this.sprite) setTowerSpriteState(this.sprite, this.typeId, 'idle');
+      });
+    }
   }
 
   updateProjectiles(delta: number, allCreeps: Creep[]): void {
@@ -281,6 +324,7 @@ export class Tower {
       // If target died: location-based projectiles continue, tracking ones disappear
       if (!p.target.alive && !p.locationBased) {
         p.graphics.destroy();
+        if (p.sprite) p.sprite.destroy();
         this.projectiles.splice(i, 1);
         continue;
       }
@@ -311,19 +355,31 @@ export class Tower {
         if (p.target.alive) {
           this.onProjectileHit(p, allCreeps);
         } else {
-          // Location-based: hit whatever's at the destination
           this.onProjectileHitLocation(p, allCreeps);
         }
         p.graphics.destroy();
+        // Play impact animation or destroy sprite
+        if (p.sprite && p.towerId) {
+          playProjectileImpact(p.sprite, p.towerId);
+        } else if (p.sprite) {
+          p.sprite.destroy();
+        }
         this.projectiles.splice(i, 1);
       } else {
         p.x += (dx / dist) * move;
         p.y += (dy / dist) * move;
 
-        p.graphics.clear();
-        const hasSplash = hasTrait(this.traits, 'splash_damage');
-        p.graphics.fillStyle(this.projectileColor, 1);
-        p.graphics.fillCircle(p.x, p.y, hasSplash ? 4 : 3);
+        if (p.sprite) {
+          // Position the sprite, skip Graphics drawing
+          p.sprite.setPosition(p.x, p.y);
+          // Rotate sprite to face movement direction
+          p.sprite.setRotation(Math.atan2(dy, dx));
+        } else {
+          p.graphics.clear();
+          const hasSplash = hasTrait(this.traits, 'splash_damage');
+          p.graphics.fillStyle(this.projectileColor, 1);
+          p.graphics.fillCircle(p.x, p.y, hasSplash ? 4 : 3);
+        }
       }
     }
   }
@@ -394,8 +450,10 @@ export class Tower {
 
   destroy(): void {
     this.graphics.destroy();
+    if (this.sprite) { this.sprite.destroy(); this.sprite = null; }
     for (const p of this.projectiles) {
       p.graphics.destroy();
+      if (p.sprite) p.sprite.destroy();
     }
     this.projectiles = [];
   }
