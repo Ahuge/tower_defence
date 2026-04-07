@@ -37,6 +37,10 @@ export interface ProjectileSpriteConfig {
   /** First 3 rows = travel, last 3 rows = impact */
   travelRows: number[];
   impactRows: number[];
+  /** Optional high-res impact sheet (128×128 cells) for AoE towers */
+  impactHiResKey?: string;
+  impactHiResCols?: number;
+  impactHiResRows?: number[];
 }
 
 /** Helper: generate tower configs for a faction */
@@ -395,8 +399,7 @@ export function createProjectileSprite(
  */
 /**
  * Play impact animation on a projectile sprite, then destroy it.
- * For large AoE (splash), draws a crisp programmatic ring effect instead
- * of scaling up the tiny sprite.
+ * For large AoE (splash), scale the impact to match the AoE diameter.
  */
 export function playProjectileImpact(
   sprite: Phaser.GameObjects.Sprite, towerId: string, splashRadius?: number,
@@ -404,89 +407,18 @@ export function playProjectileImpact(
 ): void {
   const impactKey = `proj_${towerId}_impact`;
 
-  if (splashRadius && splashRadius > 40 && scene) {
-    // Large AoE: keep sprite at normal size for center detail,
-    // draw programmatic expanding ring for the AoE boundary
-    sprite.setScale(30 / 32); // center explosion sprite stays small
-    sprite.play(impactKey);
+  // Ensure crisp pixel art scaling (not blurry interpolation)
+  sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
-    // Get tower color for the ring effect
-    const config = TOWER_SPRITE_CONFIGS[towerId];
-    const towerColor = TOWER_COLORS[towerId] ?? 0xffffff;
-
-    // Expanding ring effect using Graphics
-    const gfx = scene.add.graphics();
-    gfx.setDepth(16); // above projectiles
-    const x = sprite.x;
-    const y = sprite.y;
-    let progress = 0;
-    const duration = 400; // ms
-
-    const timer = scene.time.addEvent({
-      delay: 16,
-      repeat: Math.ceil(duration / 16),
-      callback: () => {
-        progress += 16 / duration;
-        gfx.clear();
-        const r = splashRadius * progress;
-        const alpha = 1 - progress;
-
-        // Filled circle (fading)
-        gfx.fillStyle(towerColor, alpha * 0.15);
-        gfx.fillCircle(x, y, r);
-
-        // Ring outline
-        gfx.lineStyle(2, towerColor, alpha * 0.7);
-        gfx.strokeCircle(x, y, r);
-
-        // Inner bright ring
-        gfx.lineStyle(1, 0xffffff, alpha * 0.4);
-        gfx.strokeCircle(x, y, r * 0.7);
-
-        if (progress >= 1) {
-          gfx.destroy();
-          timer.destroy();
-        }
-      },
-    });
-
-    sprite.once('animationcomplete', () => {
-      sprite.destroy();
-    });
+  if (splashRadius && splashRadius > 40) {
+    // Scale impact to match AoE diameter — NEAREST filter keeps pixels crisp
+    const scale = (splashRadius * 2) / 32;
+    sprite.setScale(scale);
   } else {
-    // Normal impact: just scale up slightly
     sprite.setScale(26 / 32);
-    sprite.play(impactKey);
-    sprite.once('animationcomplete', () => {
-      sprite.destroy();
-    });
   }
+  sprite.play(impactKey);
+  sprite.once('animationcomplete', () => {
+    sprite.destroy();
+  });
 }
-
-/** Tower ID → color for AoE ring effects */
-const TOWER_COLORS: Record<string, number> = {
-  // Arcane
-  arcane_bolt: 0x6644ff, arcane_frost: 0x88ccff, arcane_storm: 0xffff44,
-  arcane_focus: 0x9988ff, arcane_drain: 0x440066, arcane_meteor: 0xff6644,
-  arcane_nova: 0xcc88ff,
-  // Void
-  void_gambler: 0xdd44ff, void_spike: 0x8822aa, void_siphon: 0xbb55dd,
-  void_rift: 0x440066, void_oblivion: 0xff00ff,
-  // Mechanical
-  mech_flamethrower: 0xff6622, mech_tesla: 0x44aaff, mech_mortar: 0xcc8833,
-  mech_titan: 0xff4400,
-  // Nature
-  nature_spore: 0x44cc22, nature_elder: 0x33aa44,
-  // Infernal
-  infernal_hellfire: 0xff4422, infernal_immolate: 0xff6600, infernal_apocalypse: 0xff2200,
-  // Military
-  mil_heavy: 0x556b2f,
-  // Aliens
-  alien_acid: 0x88ff44, alien_hive_spire: 0xaaff66, alien_overmind: 0x88ff44,
-  // Celestial
-  celestial_smite: 0xffffaa, celestial_absolution: 0xffffff,
-  // Psionic
-  psi_terror: 0xdd88ff, psi_overmind: 0xee99ff,
-  // Harmonic
-  harmonic_crescendo: 0xffcc44,
-};
