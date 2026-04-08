@@ -303,8 +303,7 @@ export class CameraController {
     // Elastic bounds (phone only — desktop uses hard clamp)
     if (isPhone) {
       this.applyElasticBounds();
-    } else if (this.camera.zoom > 1.01) {
-      this.applyDesktopBounds();
+    // No bounds on desktop — free pan
     }
   }
 
