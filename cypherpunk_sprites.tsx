@@ -329,57 +329,60 @@ function drawTowers(ctx){
       if(s===3){b(sx+1,11,sw-2,6,C.BLK);p(scx+1,13,C.DKTEAL);p(scx+4,13,C.DKTEAL);}
     },
 
-    // 4: DDoS — Overloaded server tower with multiple screens (3 levels)
+    // 4: DDoS — Heavy overloaded server tower, purple-tinted, multiple screens (3 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,24,22,s===1?1:s===2?2:0,lvl);
+      const DP='#8844cc',DLP='#aa66ee',DDP='#552288',DDKP='#331155';
+      tBase(p,b,24,24,s===1?1:s===2?2:0,lvl);
       const br=s>=1,fl=s===2;
-      // Server rack — taller at higher levels, more screens
+      // Server rack — wider & heavier, taller at higher levels
       const rackH=16+lvl*2;const rackTop=24-rackH;
-      const rackW=8+lvl*2;const rackX=16-Math.floor(rackW/2);
-      b(rackX,rackTop,rackW,rackH,C.DARK);b(rackX+1,rackTop,rackW-2,rackH-1,C.DKTEAL);b(rackX+1,rackTop,rackW-2,1,C.TEAL);
+      const rackW=12+lvl*2;const rackX=16-Math.floor(rackW/2);
+      b(rackX,rackTop,rackW,rackH,DDKP);b(rackX+1,rackTop,rackW-2,rackH-1,DDP);b(rackX+1,rackTop,rackW-2,1,DP);
+      // Purple frame edges
+      b(rackX,rackTop,1,rackH,C.DARK);b(rackX+rackW-1,rackTop,1,rackH,C.DARK);
       // Screens — more at higher levels
       const screenCount=1+lvl;const screenH=3;const screenGap=Math.floor((rackH-2)/(screenCount+1));
       for(let si=0;si<screenCount;si++){
         const sy=rackTop+2+si*screenGap;
         if(sy+screenH+1<24){
-          b(rackX+2,sy,rackW-4,screenH+1,C.BLK);b(rackX+3,sy+1,rackW-6,screenH-1,fl?C.BCYN:br?C.CYAN:C.DKNEON);
+          b(rackX+2,sy,rackW-4,screenH+1,C.BLK);b(rackX+3,sy+1,rackW-6,screenH-1,fl?DLP:br?DP:DDP);
           // Screen data
           if(br){
-            for(let y=sy+1;y<sy+screenH;y++){p(rackX+3,y,C.LTCYN);p(rackX+5,y,C.CYAN);p(rackX+rackW-5,y,C.LTCYN);}
+            for(let y=sy+1;y<sy+screenH;y++){p(rackX+3,y,DLP);p(rackX+5,y,DP);p(rackX+rackW-5,y,DLP);}
           }
           if(fl){
             b(rackX+3,sy+1,rackW-6,screenH-1,C.WHITE);
           }
           // Status LED per screen
-          p(rackX+rackW-3,sy,fl?C.RED:br?C.NEON:C.DKNEON);
+          p(rackX+rackW-3,sy,fl?C.RED:br?DLP:DDP);
         }
       }
       if(fl){
-        // Data flood particles — more at higher levels
-        const pts=[[7,5,C.CYAN],[24,6,C.BCYN],[6,10,C.CYAN],[25,11,C.BCYN],
-         [5,14,C.LTCYN],[26,15,C.LTCYN],[8,18,C.CYAN],[23,17,C.BCYN],
-         [4,8,C.DKNEON],[27,9,C.DKNEON],[3,13,C.DKNEON],[28,13,C.DKNEON]];
-        if(lvl>=2)pts.push([3,6,C.CYAN],[28,7,C.BCYN],[2,11,C.DKNEON],[29,12,C.DKNEON]);
-        if(lvl>=3)pts.push([1,8,C.CYAN],[30,9,C.BCYN],[2,16,C.LTCYN],[29,15,C.LTCYN]);
-        pts.forEach(([x,y,cl])=>p(x,y,cl));
-        // Glitch blocks — more at higher levels
+        // Data flood particles — purple-tinted
+        const pts:number[][]=[[7,5],[24,6],[6,10],[25,11],
+         [5,14],[26,15],[8,18],[23,17],
+         [4,8],[27,9],[3,13],[28,13]];
+        if(lvl>=2)pts.push([3,6],[28,7],[2,11],[29,12]);
+        if(lvl>=3)pts.push([1,8],[30,9],[2,16],[29,15]);
+        pts.forEach(([x,y],i)=>p(x,y,i%2===0?DP:DLP));
+        // Glitch blocks — purple overload
         b(5,7,3,2,C.MAG);b(24,12,3,2,C.MAG);
-        p(7,16,C.DKMAG);p(24,18,C.DKMAG);
-        if(lvl>=2){b(3,10,2,2,C.DKMAG);b(27,16,2,2,C.DKMAG);}
+        p(7,16,DP);p(24,18,DP);
+        if(lvl>=2){b(3,10,2,2,DDP);b(27,16,2,2,DDP);}
         if(lvl>=3){b(1,5,2,3,C.MAG);b(29,6,2,3,C.MAG);}
       }
-      // Server rack details
-      for(let y=rackTop+1;y<23;y+=5){p(rackX+1,y,C.SCRN);p(rackX+rackW-2,y,C.SCRN);}
-      // Side vents — taller at higher levels
-      b(rackX-2,rackTop+2,2,rackH-4,C.DKTEAL);b(rackX+rackW,rackTop+2,2,rackH-4,C.DKTEAL);
-      for(let y=rackTop+3;y<rackTop+rackH-2;y+=2){p(rackX-2,y,C.SCRN);p(rackX+rackW+1,y,C.SCRN);}
-      // Top exhaust
-      p(14,rackTop-1,fl?C.BCYN:C.DKNEON);p(16,rackTop-1,fl?C.BCYN:C.DKNEON);p(18,rackTop-1,fl?C.LTCYN:C.SCRN);
-      if(fl){p(14,rackTop-2,C.CYAN);p(16,rackTop-2,C.CYAN);p(15,rackTop-3,C.DKNEON);}
+      // Server rack details — purple bolts
+      for(let y=rackTop+1;y<23;y+=5){p(rackX+1,y,DDP);p(rackX+rackW-2,y,DDP);}
+      // Side vents — wider/heavier, purple tint
+      b(rackX-3,rackTop+2,3,rackH-4,DDP);b(rackX+rackW,rackTop+2,3,rackH-4,DDP);
+      for(let y=rackTop+3;y<rackTop+rackH-2;y+=2){p(rackX-3,y,DP);p(rackX+rackW+2,y,DP);}
+      // Top exhaust — purple glow
+      p(13,rackTop-1,fl?DLP:DDP);p(15,rackTop-1,fl?DLP:DDP);p(17,rackTop-1,fl?DLP:DDP);p(19,rackTop-1,fl?DLP:DDP);
+      if(fl){p(13,rackTop-2,DP);p(16,rackTop-2,DP);p(19,rackTop-2,DP);p(16,rackTop-3,DDP);}
       // Extra exhaust at higher levels
-      if(lvl>=2&&fl){p(12,rackTop-2,C.DKNEON);p(20,rackTop-2,C.DKNEON);}
-      if(lvl>=3){p(10,rackTop-1,fl?C.BCYN:C.SCRN);p(22,rackTop-1,fl?C.BCYN:C.SCRN);}
-      if(s===3){for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)b(rackX+3,sy+1,rackW-6,screenH-1,C.DKTEAL);}for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)p(rackX+rackW-3,sy,C.DARK);}}
+      if(lvl>=2&&fl){p(11,rackTop-2,DDP);p(21,rackTop-2,DDP);}
+      if(lvl>=3){p(9,rackTop-1,fl?DLP:DDP);p(23,rackTop-1,fl?DLP:DDP);}
+      if(s===3){for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)b(rackX+3,sy+1,rackW-6,screenH-1,DDKP);}for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)p(rackX+rackW-3,sy,C.DARK);}}
     },
 
     // 5: Rootkit — Sleek stealth device, nearly invisible idle, reveals on fire (2 levels)

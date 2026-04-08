@@ -87,67 +87,58 @@ const T_TOTAL_ROWS=T_MAX_LEVEL*T_STATES_PER_LEVEL; // 20
 // States: 0=idle, 1=charge, 2=fire, 3=cooldown
 function drawTowers(ctx:any){
   const fns=[
-    // Probe — Floating psychic eye/orb, true damage, pulsing iris (5 levels)
+    // Probe — Floating geometric sensor diamond, true damage, pulsing core (5 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
-      // Level-scaled parameters
-      const orbR=3+lv;              // orb radius: 4..8
-      const irisR=1+lv*0.4;        // iris size grows
-      const tendCount=Math.min(lv,4);// tendril pairs
-      const baseW=14+lv*2;         // base width grows
+      const sz=3+lv;                 // diamond half-size: 4..8
+      const beamCount=Math.min(lv,4);// energy beams to base
+      const baseW=14+lv*2;
       const glowInt=lv>=3?2:lv>=2?1:0;
       tBase(p,b,22,baseW,s===1?Math.min(glowInt+1,2):s===2?2:glowInt);
       const ey=fl?4:br?5:6,cx=16;
-      // Floating orb body — grows with level
-      for(let y=-orbR;y<=orbR;y++)for(let x=-orbR;x<=orbR;x++){
-        const d=Math.sqrt(x*x+y*y);
-        if(d<=orbR){
-          const col=d<orbR*0.3?C.VOID:d<orbR*0.6?(br?C.DKPUR:C.DPPUR):C.MIND3;
+      // Floating diamond body — clean geometric shape
+      for(let y=-sz;y<=sz;y++){
+        const hw=sz-Math.abs(y);
+        for(let x=-hw;x<=hw;x++){
+          const d=(Math.abs(x)+Math.abs(y))/sz;
+          const col=d<0.3?(fl?C.WHITE:C.WHLAV):d<0.55?(br?C.PLPUR:C.LTPUR):d<0.8?C.BRPUR:C.MDPUR;
           p(cx+x,ey+y,col);
         }
       }
-      // Iris — grows brighter/larger with level
-      for(let y=-Math.ceil(irisR);y<=Math.ceil(irisR);y++)for(let x=-Math.ceil(irisR*1.5);x<=Math.ceil(irisR*1.5);x++){
-        const d=Math.sqrt(x*x*0.6+y*y);
-        if(d<=irisR){
-          p(cx+x,ey+y,d<irisR*0.35?C.WHITE:d<irisR*0.6?(fl?C.LTPNK:C.PINK):(fl?C.PINK:C.DKPNK));
-        }
-      }
-      // Pupil
-      p(cx,ey,fl?C.WHITE:C.LTPNK);
-      if(lv>=2){p(cx-1,ey,fl?C.PAPNK:C.PINK);p(cx+1,ey,fl?C.PAPNK:C.PINK);}
-      // Eyelid top/bottom
-      const lidW=4+lv;
-      b(cx-lidW,ey-orbR+1,lidW*2,1,br?C.LTPUR:C.BRPUR);b(cx-lidW,ey+orbR-1,lidW*2,1,br?C.LTPUR:C.BRPUR);
-      // Secondary eyes at higher levels
+      // Central energy core — clean bright point
+      p(cx,ey,fl?C.WHITE:C.WHLAV);
+      if(lv>=2){p(cx-1,ey,fl?C.WHLAV:C.PLPUR);p(cx+1,ey,fl?C.WHLAV:C.PLPUR);}
+      // Diamond edge highlights
+      p(cx,ey-sz,br?C.WHITE:C.WHLAV);p(cx,ey+sz,br?C.WHLAV:C.LTPUR);
+      p(cx-sz,ey,br?C.WHLAV:C.LTPUR);p(cx+sz,ey,br?C.WHLAV:C.LTPUR);
+      // Floating satellite nodes at higher levels
       if(lv>=3){
-        // Small side eyes
-        p(cx-orbR+1,ey-2,C.PINK);p(cx-orbR+1,ey-1,C.DKPNK);
-        p(cx+orbR-1,ey-2,C.PINK);p(cx+orbR-1,ey-1,C.DKPNK);
+        // Small diamonds orbiting
+        p(cx-sz-1,ey-2,C.LTPUR);p(cx-sz-1,ey-1,C.PLPUR);
+        p(cx+sz+1,ey-2,C.LTPUR);p(cx+sz+1,ey-1,C.PLPUR);
       }
       if(lv>=4){
-        // Third eye above
-        p(cx,ey-orbR+2,C.WHITE);p(cx-1,ey-orbR+2,C.PINK);p(cx+1,ey-orbR+2,C.PINK);
+        // Top sensor node
+        p(cx,ey-sz-1,C.WHITE);p(cx-1,ey-sz,C.PLPUR);p(cx+1,ey-sz,C.PLPUR);
       }
       if(lv>=5){
-        // Bottom eye + full ring of mini-eyes
-        p(cx,ey+orbR-2,C.LTPNK);p(cx-1,ey+orbR-2,C.DKPNK);p(cx+1,ey+orbR-2,C.DKPNK);
+        // Full ring of small geometric nodes
         for(let i=0;i<6;i++){const a=i*Math.PI/3;
-          const ex=cx+Math.round(Math.cos(a)*(orbR+2)),eey=ey+Math.round(Math.sin(a)*(orbR+1));
-          if(ex>=0&&ex<32&&eey>=0&&eey<32){p(ex,eey,C.PINK);p(ex,eey-1,C.DKPNK);}
+          const ex=cx+Math.round(Math.cos(a)*(sz+2)),eey=ey+Math.round(Math.sin(a)*(sz+1));
+          if(ex>=0&&ex<32&&eey>=0&&eey<32){p(ex,eey,C.PLPUR);p(ex,eey-1,C.LTPUR);}
         }
       }
-      // Psychic glow particles — more at higher levels
-      if(br){p(cx-orbR-2,ey-2,C.PLPUR);p(cx+orbR+2,ey-1,C.PLPUR);if(lv>=2)p(cx-orbR-1,ey+3,C.MIND2);}
+      // Clean energy field particles
+      if(br){p(cx-sz-2,ey-2,C.PLPUR);p(cx+sz+2,ey-1,C.PLPUR);if(lv>=2)p(cx-sz-1,ey+3,C.MIND2);}
       if(fl){
         const ring=6+lv;
         for(let i=0;i<4+lv*2;i++){const a=i*Math.PI/(2+lv);p(cx+Math.round(Math.cos(a)*ring),ey+Math.round(Math.sin(a)*(ring-1)),i%2?C.PLPUR:C.LTPUR);}
-        p(cx,ey-orbR-1,C.WHITE);
+        p(cx,ey-sz-1,C.WHITE);
       }
-      // Neural tendrils to base — more at higher levels
-      for(let t=0;t<tendCount;t++){
+      // Clean energy beams to base
+      for(let t=0;t<beamCount;t++){
         const tx=3+t*2,sign=t%2===0?-1:1;
-        tTendril(p,cx+sign*tx,ey+orbR,cx+sign*(tx+1),22,br?C.BRPUR:C.MIND2,fl);
+        tEnergyBeam(p,cx+sign*tx,ey+sz,cx+sign*(tx+1),22,br?C.BRPUR:C.MIND2,fl);
       }
       if(s===3){p(cx-2,ey,C.MIND3);p(cx+2,ey,C.MIND3);p(cx,ey-2,C.DKPUR);}
     },

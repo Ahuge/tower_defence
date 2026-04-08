@@ -168,60 +168,56 @@ function drawTowers(ctx:any){
       if(lv>=1){p(bdx+3,bdy+1,C.NGRN);}
       if(s===3){p(tx,bdy-4,C.DGRN);p(stx-1,sty+1,C.DGRN);}
     },
-    // 3. Swarm Node — pulsing hive node (3 levels)
+    // 3. Swarm Node — MULTIPLE FLOATING BLOBS/ORBS clustered together (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      const bw=[16,18,20][lv];
-      aBase(p,b,23,bw,s===1?1:s===2?2:0);
+      const bw=[14,16,18][lv];
+      aBase(p,b,27,bw,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
-      // Organic node sphere — grows with level
-      const baseR=[4,6,7][lv];
-      const r=fl?baseR+1:br?baseR:baseR-1;
-      const cy=13,cxx=16;
-      for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++){
-        if(x*x+y*y<=r*r){
-          const d=Math.sqrt(x*x+y*y);
-          p(cxx+x,cy+y,d<r*0.3?C.LIME:d<r*0.6?C.NGRN:d<r*0.85?C.DGRN:C.VDGRN);
-        }
-      }
-      // Hex pattern on surface — more at higher levels
-      const hexN=[4,6,8][lv];
-      const hexPos=[[cxx-2,cy-2],[cxx+1,cy-1],[cxx-1,cy+1],[cxx+2,cy],[cxx,cy-3],[cxx-2,cy+2],[cxx+3,cy-1],[cxx-3,cy+1]];
-      for(let i=0;i<hexN;i++){
-        const [hpx,hpy]=hexPos[i%hexPos.length];
-        p(hpx,hpy,fl?C.ACID:br?C.LIME:C.BGRN);
-      }
-      // Pulse rings — more and brighter at higher levels
-      if(fl){
-        const ringN=[8,12,16][lv];
-        for(let i=0;i<ringN;i++){
-          const a=i*Math.PI*2/ringN;
-          p(cxx+Math.round(Math.cos(a)*(r+2)),cy+Math.round(Math.sin(a)*(r+2)),i%2?C.LIME:C.BGRN);
-        }
-        if(lv>=2){
-          for(let i=0;i<8;i++){
-            const a=i*Math.PI/4;
-            p(cxx+Math.round(Math.cos(a)*(r+3)),cy+Math.round(Math.sin(a)*(r+3)),C.ACID);
+      // Helper to draw a small floating orb
+      const orb=(ox:number,oy:number,r:number,bright:boolean)=>{
+        for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++){
+          if(x*x+y*y<=r*r){
+            const d=Math.sqrt(x*x+y*y);
+            p(ox+x,oy+y,d<r*0.4?(bright?C.ACID:C.LIME):d<r*0.75?(bright?C.LIME:C.NGRN):C.DGRN);
           }
         }
-      }
-      if(br){
-        const ringN=[6,8,10][lv];
-        for(let i=0;i<ringN;i++){
-          const a=i*Math.PI*2/ringN;
-          p(cxx+Math.round(Math.cos(a)*(r+1)),cy+Math.round(Math.sin(a)*(r+1)),C.NGRN);
+        p(ox,oy,bright?C.WHITE:fl?C.ACID:C.LIME); // bright center
+      };
+      // Orb positions — scattered, NOT touching, like a swarm cluster
+      // lv0: 3 orbs, lv1: 5 orbs, lv2: 7 orbs
+      const orbData:{x:number,y:number,r:number}[][] = [
+        // lv0: 3 small orbs in loose triangle
+        [{x:16,y:12,r:3},{x:10,y:18,r:2},{x:22,y:17,r:2}],
+        // lv1: 5 orbs in wider spread
+        [{x:16,y:10,r:3},{x:9,y:16,r:2},{x:23,y:15,r:2},{x:12,y:22,r:2},{x:21,y:21,r:2}],
+        // lv2: 7 orbs filling the space
+        [{x:16,y:8,r:3},{x:8,y:14,r:2},{x:24,y:13,r:2},{x:11,y:21,r:2},{x:21,y:20,r:2},{x:6,y:20,r:2},{x:26,y:18,r:2}],
+      ];
+      const orbs=orbData[lv];
+      orbs.forEach((od,i)=>orb(od.x,od.y,od.r,fl&&i===0));
+      // Energy threads between orbs (faint connections)
+      if(br||fl){
+        for(let i=1;i<orbs.length;i++){
+          const o0=orbs[0],oi=orbs[i];
+          const mx=Math.round((o0.x+oi.x)/2),my=Math.round((o0.y+oi.y)/2);
+          p(mx,my,fl?C.LIME:C.DGRN);
         }
       }
-      // Glow center — brighter at higher levels
-      p(cxx,cy,fl?C.WHITE:br?C.ACID:C.LIME);
-      p(cxx-1,cy,fl?C.ACID:C.LIME);p(cxx+1,cy,fl?C.ACID:C.LIME);
-      if(lv>=1){p(cxx,cy-1,fl?C.ACID:C.LIME);p(cxx,cy+1,fl?C.ACID:C.LIME);}
-      if(lv>=2){p(cxx-1,cy-1,C.LIME);p(cxx+1,cy-1,C.LIME);p(cxx-1,cy+1,C.LIME);p(cxx+1,cy+1,C.LIME);}
-      // Tendrils to base — more at higher levels
-      aTendril(p,cxx-2,cy+r,cxx-3,23,C.DGRN,fl);
-      aTendril(p,cxx+2,cy+r,cxx+3,23,C.DGRN,fl);
-      if(lv>=1){aTendril(p,cxx,cy+r,cxx,23,C.NGRN,fl);}
-      if(lv>=2){aTendril(p,cxx-4,cy+r-1,cxx-5,23,C.DGRN,fl);aTendril(p,cxx+4,cy+r-1,cxx+5,23,C.DGRN,fl);}
-      if(s===3){p(cxx,cy-1,C.DGRN);p(cxx+1,cy+1,C.DGRN);}
+      // Floating particles around orbs (fire state)
+      if(fl){
+        const partN=[4,6,8][lv];
+        for(let i=0;i<partN;i++){
+          const a=i*Math.PI*2/partN;
+          p(16+Math.round(Math.cos(a)*12),14+Math.round(Math.sin(a)*8),i%2?C.BGRN:C.LIME);
+        }
+      }
+      // Subtle glow halos on idle/ready
+      if(br&&!fl){
+        orbs.forEach(od=>{
+          p(od.x-od.r-1,od.y,C.VDGRN);p(od.x+od.r+1,od.y,C.VDGRN);
+        });
+      }
+      if(s===3){p(16,12,C.DGRN);p(10,17,C.DGRN);}
     },
     // 4. Acid Sprayer — acid gland spraying green cloud (4 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);

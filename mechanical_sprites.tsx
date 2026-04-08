@@ -439,8 +439,8 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       // Barrel mouth (top)
       b(17,3+recoil,barrelW,2,C.DKBRN);b(18,3+recoil,barrelW-2,2,C.BLACK);
       // Barrel reinforcing rings — more at higher levels
-      b(13,12+recoil,barrelW+2,1,C.BRONZE);b(15,8+recoil,barrelW+1,1,C.BRONZE);
-      if(L>=3)b(14,10+recoil,barrelW+1,1,C.BRONZE);
+      b(13,12+recoil,barrelW+2,1,C.LTOLV);b(15,8+recoil,barrelW+1,1,C.LTOLV);
+      if(L>=3)b(14,10+recoil,barrelW+1,1,C.LTOLV);
       // Rivets
       lvlRivets(p,16,17,L,4);
       p(mountX-plateW+1,17,C.RIVET);p(mountX+mountW+plateW-2,17,C.RIVET);
@@ -470,7 +470,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       lvlRivets(p,16,19,L,Math.floor(motorW/2)-1);
       // Blade axle — taller at higher levels
       const axleH=12+Math.min(L-1,2)*1;const axleTop=18-axleH;
-      b(15,axleTop,2,axleH,C.DKSTL);b(15,axleTop,1,axleH,C.STEEL);
+      b(15,axleTop,2,axleH,C.SILVR);b(15,axleTop,1,axleH,C.WSILV);
       // Spinning blades — more and longer at higher levels
       const bladePhase=s===2?1:s===1?0.5:0;
       const bladeCount=4+Math.min(L-1,2);
@@ -482,12 +482,12 @@ function drawTowers(ctx:CanvasRenderingContext2D){
           const bx_=16+Math.round(Math.cos(a)*r);
           const by_=hubY+Math.round(Math.sin(a)*r);
           if(bx_>=0&&bx_<32&&by_>=0&&by_<32){
-            p(bx_,by_,r<3?C.LTSTL:r<bladeLen-1?C.STEEL:C.DKSTL);
+            p(bx_,by_,r<3?C.WSILV:r<bladeLen-1?C.SILVR:C.LTSILV);
           }
         }
         const ex=16+Math.round(Math.cos(a)*bladeLen);
         const ey=hubY+Math.round(Math.sin(a)*bladeLen);
-        if(ex>=0&&ex<32&&ey>=0&&ey<32)p(ex,ey,C.WTSTL);
+        if(ex>=0&&ex<32&&ey>=0&&ey<32)p(ex,ey,C.WHITE);
       }
       // Center hub — bigger at higher levels
       const hubR=1+Math.min(L-1,2);
@@ -512,7 +512,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
           for(let r=3;r<=bladeLen;r++){
             const bx_=16+Math.round(Math.cos(ang)*r);
             const by_=hubY+Math.round(Math.sin(ang)*r);
-            if(bx_>=0&&bx_<32&&by_>=0&&by_<32)p(bx_,by_,r%2?C.LTSTL:C.STEEL);
+            if(bx_>=0&&bx_<32&&by_>=0&&by_<32)p(bx_,by_,r%2?C.WSILV:C.SILVR);
           }
         }
         p(16-bladeLen-2,hubY-2,C.SPARK);p(16+bladeLen+2,hubY+1,C.SPARK);
