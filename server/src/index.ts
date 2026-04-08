@@ -193,7 +193,19 @@ async function handleAnalytics(request: Request, env: Env, origin: string): Prom
     return error('Expected 1-50 events', 400, origin);
   }
 
-  const day = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const day = new Date().toISOString().split('T')[0];
+
+  // Capture geo data from Cloudflare's cf object
+  const cf = (request as any).cf as { country?: string; city?: string; continent?: string; latitude?: string; longitude?: string } | undefined;
+  if (cf?.country) {
+    const geoKey = `geo:${day}:${cf.country}`;
+    const geoCount = parseInt(await env.ANALYTICS.get(geoKey) ?? '0');
+    await env.ANALYTICS.put(geoKey, String(geoCount + 1), { expirationTtl: 365 * 86400 });
+    // All-time country total
+    const geoTotalKey = `geo_total:${cf.country}`;
+    const geoTotal = parseInt(await env.ANALYTICS.get(geoTotalKey) ?? '0');
+    await env.ANALYTICS.put(geoTotalKey, String(geoTotal + 1));
+  }
 
   for (const event of events) {
     if (!event.type) continue;
@@ -209,6 +221,11 @@ async function handleAnalytics(request: Request, env: Env, origin: string): Prom
     const counterKey = `count:${day}:${event.type}`;
     const current = parseInt(await env.ANALYTICS.get(counterKey) ?? '0');
     await env.ANALYTICS.put(counterKey, String(current + 1), { expirationTtl: 365 * 86400 });
+
+    // Increment all-time counter
+    const totalKey = `total:${event.type}`;
+    const totalCurrent = parseInt(await env.ANALYTICS.get(totalKey) ?? '0');
+    await env.ANALYTICS.put(totalKey, String(totalCurrent + 1));
 
     // Increment per-value counters for important dimensions
     for (const dim of ['faction', 'mode', 'difficulty', 'map', 'result']) {
@@ -258,7 +275,21 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
     dimensions[q.key] = dim;
   }
 
-  return json({ date: today, summary, ...dimensions }, 200, origin);
+  // All-time totals
+  const totals: Record<string, number> = {};
+  for (const type of eventTypes) {
+    totals[type] = parseInt(await env.ANALYTICS.get(`total:${type}`) ?? '0');
+  }
+
+  // Geo data — all-time country counts
+  const geoList = await env.ANALYTICS.list({ prefix: 'geo_total:' });
+  const geo: Record<string, number> = {};
+  for (const k of geoList.keys) {
+    const country = k.name.replace('geo_total:', '');
+    geo[country] = parseInt(await env.ANALYTICS.get(k.name) ?? '0');
+  }
+
+  return json({ date: today, summary, totals, geo, ...dimensions }, 200, origin);
 }
 
 async function handleAnalyticsHistory(env: Env, origin: string): Promise<Response> {
