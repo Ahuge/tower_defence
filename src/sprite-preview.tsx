@@ -19,6 +19,7 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   psionic: () => import('../psionic_sprites'),
   harmonic: () => import('../harmonic_sprites'),
   mobile_units: () => import('../mobile_unit_sprites'),
+  terrain: () => import('../terrain_sprites'),
 };
 
 /** Maps faction → directory name and expected canvas names */
