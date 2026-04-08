@@ -219,78 +219,85 @@ function drawTowers(ctx:any){
       }
       if(s===3){p(16,12,C.DGRN);p(10,17,C.DGRN);}
     },
-    // 4. Acid Sprayer — acid gland spraying green cloud (4 levels)
+    // 4. Acid Sprayer — CRESCENT/ARC shaped nozzle spraying in arc (4 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      const bw=[18,20,22,24][lv];
-      aBase(p,b,23,bw,s===1?1:s===2?2:0);
+      const bw=[16,18,20,22][lv];
+      aBase(p,b,27,bw,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
-      // Gland body — grows with level
-      const gw=[6,7,8,10][lv], gh=[6,7,8,10][lv], gx=16-Math.floor(gw/2), gy=12;
-      b(gx,gy,gw,gh,C.CHIT);b(gx+1,gy-1,gw-2,gh+1,C.CHLT);b(gx+1,gy-2,gw-2,1,C.OLIV);
-      // Nozzle — wider at higher levels
-      const nw=[2,3,4,4][lv];
-      b(16-Math.floor(nw/2),8,nw,3,C.CHIT);b(16-Math.floor((nw-1)/2),7,Math.max(2,nw-1),2,C.CHLT);b(16-Math.floor((nw-1)/2),6,Math.max(2,nw-1),1,C.OLIV);
-      if(lv>=3){b(16-Math.floor(nw/2)-1,9,nw+2,1,C.OLIV);}
-      // Acid veins on gland — more at higher levels
-      p(gx+1,gy+1,C.NGRN);p(gx+2,gy+3,C.LIME);p(gx+gw-2,gy+2,C.NGRN);p(gx+gw-1,gy+4,C.LIME);
-      p(gx+Math.floor(gw/2),gy+gh-1,C.DGRN);p(gx+Math.floor(gw/2)+1,gy,C.NGRN);
-      if(lv>=1){p(gx,gy+2,C.NGRN);p(gx+gw-1,gy+1,C.LIME);}
-      if(lv>=2){p(gx+1,gy+gh-2,C.LIME);p(gx+gw-2,gy+gh-2,C.LIME);p(gx+Math.floor(gw/2),gy+1,C.ACID);}
-      if(lv>=3){
-        // Pulsing acid sacs
-        p(gx-1,gy+2,C.LIME);p(gx+gw,gy+2,C.LIME);p(gx-1,gy+4,C.NGRN);p(gx+gw,gy+4,C.NGRN);
-        p(gx+Math.floor(gw/2),gy+Math.floor(gh/2),fl?C.WHITE:C.ACID);
-      }
-      // Acid spray cloud — bigger at higher levels
-      if(fl){
-        const sprayN=[4,5,6,8][lv];
-        for(let i=0;i<sprayN;i++){
-          p(14+Math.round(Math.sin(i)*2),3+Math.floor(i*6/sprayN),i<sprayN/3?C.ACID:i<sprayN*2/3?C.LIME:C.BGRN);
-          p(16+Math.round(Math.cos(i)*2),2+Math.floor(i*6/sprayN),i<sprayN/3?C.YGRN:i<sprayN*2/3?C.LIME:C.NGRN);
+      // Crescent body — drawn as an arc/C-shape opening upward
+      const outerR=[6,7,8,10][lv], innerR=[3,4,5,6][lv];
+      const cy=19, cx=16;
+      for(let y=-outerR;y<=outerR;y++)for(let x=-outerR;x<=outerR;x++){
+        const d2=x*x+y*y;
+        if(d2<=outerR*outerR && d2>=innerR*innerR && y>=(-outerR*0.3)){ // bottom arc only (crescent)
+          const d=Math.sqrt(d2);
+          p(cx+x,cy+y,d<(innerR+1)?C.CHLT:d<(outerR-1)?C.CHIT:C.DKOLV);
         }
-        p(13,2,C.BGRN);p(18,1,C.LIME);p(12,4,C.NGRN);p(19,3,C.NGRN);
-        p(15,0,C.ACID);p(16,1,C.YGRN);
-        if(lv>=2){p(11,3,C.LIME);p(20,2,C.LIME);p(13,0,C.NGRN);p(18,0,C.NGRN);}
-        if(lv>=3){p(10,2,C.YGRN);p(21,1,C.ACID);p(14,0,C.WHITE);p(17,0,C.ACID);p(12,1,C.BGRN);p(19,0,C.BGRN);}
-      } else if(br){
-        p(15,5,C.LIME);p(16,4,C.NGRN);p(14,5,C.BGRN);
-        if(lv>=2){p(13,5,C.NGRN);p(17,4,C.LIME);}
       }
-      // Support tubes — more at higher levels
-      p(gx-1,gy+2,C.DKOLV);p(gx-2,gy+3,C.CHIT);p(gx+gw,gy+2,C.DKOLV);p(gx+gw+1,gy+3,C.CHIT);
-      if(lv>=2){p(gx-2,gy+5,C.DKOLV);p(gx+gw+1,gy+5,C.DKOLV);}
-      if(lv>=3){p(gx-3,gy+4,C.CHIT);p(gx+gw+2,gy+4,C.CHIT);}
-      // Dripping acid
-      p(15,20,br?C.LIME:C.NGRN);p(16,21,C.DGRN);
-      if(lv>=1){p(14,21,C.DGRN);}
-      if(lv>=3){p(13,20,C.NGRN);p(17,20,C.NGRN);p(15,22,C.VDGRN);}
-      if(s===3){p(14,10,C.DGRN);p(17,11,C.DGRN);}
+      // Crescent tips — the horns of the arc pointing up
+      const tipY=cy-Math.floor(outerR*0.3);
+      p(cx-outerR,tipY,C.CHLT);p(cx-outerR+1,tipY-1,C.OLIV);
+      p(cx+outerR,tipY,C.CHLT);p(cx+outerR-1,tipY-1,C.OLIV);
+      if(lv>=1){p(cx-outerR,tipY-1,C.CHIT);p(cx+outerR,tipY-1,C.CHIT);}
+      if(lv>=2){p(cx-outerR+1,tipY-2,C.LIME);p(cx+outerR-1,tipY-2,C.LIME);}
+      if(lv>=3){p(cx-outerR-1,tipY,C.OLIV);p(cx+outerR+1,tipY,C.OLIV);p(cx-outerR,tipY-2,C.NGRN);p(cx+outerR,tipY-2,C.NGRN);}
+      // Acid veins on crescent surface
+      p(cx-2,cy+1,C.NGRN);p(cx+2,cy+1,C.NGRN);p(cx,cy+2,br?C.LIME:C.DGRN);
+      if(lv>=1){p(cx-3,cy,C.LIME);p(cx+3,cy,C.LIME);}
+      if(lv>=2){p(cx-4,cy-1,C.NGRN);p(cx+4,cy-1,C.NGRN);}
+      if(lv>=3){p(cx,cy+3,fl?C.WHITE:C.ACID);p(cx-1,cy+2,C.LIME);p(cx+1,cy+2,C.LIME);}
+      // Nozzle opening at center-top of arc (inside the crescent)
+      const nw=[2,3,3,4][lv];
+      b(cx-Math.floor(nw/2),cy-innerR+1,nw,2,C.DKBIO); // nozzle hole
+      p(cx-Math.floor(nw/2),cy-innerR,C.OLIV);p(cx+Math.ceil(nw/2)-1,cy-innerR,C.OLIV);
+      // Acid spray — fans out in an ARC from the crescent opening
+      if(fl){
+        // Wide arc spray — particles fan out left and right
+        const sprayN=[5,7,9,12][lv];
+        for(let i=0;i<sprayN;i++){
+          const a=Math.PI*0.2+i*Math.PI*0.6/sprayN; // spread across ~110 degrees upward
+          const r1=innerR+2+Math.floor(i%3);
+          const r2=innerR+4+Math.floor(i%2);
+          p(cx+Math.round(Math.cos(a)*r1-outerR*0.5),cy-Math.round(Math.sin(a)*r1),i<sprayN/3?C.ACID:i<sprayN*2/3?C.LIME:C.BGRN);
+          p(cx+Math.round(Math.cos(a)*r2-outerR*0.3),cy-Math.round(Math.sin(a)*r2),i<sprayN/3?C.YGRN:C.NGRN);
+        }
+        // Extra spray particles at high levels
+        if(lv>=2){p(cx-6,cy-6,C.LIME);p(cx+4,cy-7,C.LIME);p(cx-3,cy-8,C.NGRN);p(cx+2,cy-8,C.ACID);}
+        if(lv>=3){p(cx-8,cy-5,C.BGRN);p(cx+6,cy-6,C.YGRN);p(cx,cy-9,C.WHITE);p(cx-5,cy-8,C.ACID);}
+      } else if(br){
+        p(cx,cy-innerR-1,C.LIME);p(cx-1,cy-innerR-2,C.NGRN);p(cx+1,cy-innerR-2,C.BGRN);
+        if(lv>=2){p(cx-2,cy-innerR-1,C.NGRN);p(cx+2,cy-innerR-1,C.LIME);}
+      }
+      // Dripping acid from crescent bottom
+      p(cx,cy+outerR-1,br?C.LIME:C.NGRN);p(cx-1,cy+outerR,C.DGRN);
+      if(lv>=2){p(cx+1,cy+outerR,C.DGRN);}
+      if(s===3){p(cx-2,cy,C.DGRN);p(cx+2,cy+1,C.DGRN);}
     },
     // 5. Hive Spire — tall spore-releasing tower (4 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const bw=[16,18,20,24][lv];
-      aBase(p,b,24,bw,s===1?1:s===2?2:0);
+      aBase(p,b,27,bw,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
       // Main spire — taller/wider at higher levels
-      const sw=[3,4,4,5][lv], sh=[16,18,20,22][lv], sy=24-sh;
+      const sw=[3,4,4,5][lv], sh=[18,20,22,25][lv], sy=27-sh;
       aSpire(p,b,16-Math.floor(sw/2),sy,sh,sw,C.CHIT,C.CHLT,C.OLIV);
       // Side spires — more and taller at higher levels
       if(lv>=0){
-        const ssh=[10,12,14,16][lv], ssw=[2,2,3,3][lv];
-        aSpire(p,b,16-Math.floor(sw/2)-ssw-2,24-ssh+2,ssh,ssw,C.DKOLV,C.CHIT,C.CHLT);
-        aSpire(p,b,16+Math.ceil(sw/2)+2,24-ssh,ssh,ssw,C.DKOLV,C.CHIT,C.CHLT);
+        const ssh=[12,14,16,18][lv], ssw=[2,2,3,3][lv];
+        aSpire(p,b,16-Math.floor(sw/2)-ssw-2,27-ssh+2,ssh,ssw,C.DKOLV,C.CHIT,C.CHLT);
+        aSpire(p,b,16+Math.ceil(sw/2)+2,27-ssh,ssh,ssw,C.DKOLV,C.CHIT,C.CHLT);
       }
       if(lv>=2){
-        aSpire(p,b,16-Math.floor(sw/2)-6,24-8,8,2,C.DKOLV,C.CHIT,C.CHLT);
-        aSpire(p,b,16+Math.ceil(sw/2)+5,24-8,8,2,C.DKOLV,C.CHIT,C.CHLT);
+        aSpire(p,b,16-Math.floor(sw/2)-6,27-10,10,2,C.DKOLV,C.CHIT,C.CHLT);
+        aSpire(p,b,16+Math.ceil(sw/2)+5,27-10,10,2,C.DKOLV,C.CHIT,C.CHLT);
       }
       if(lv>=3){
-        aSpire(p,b,16-Math.floor(sw/2)-8,24-6,6,2,C.VDGRN,C.DKOLV,C.CHIT);
-        aSpire(p,b,16+Math.ceil(sw/2)+7,24-6,6,2,C.VDGRN,C.DKOLV,C.CHIT);
+        aSpire(p,b,16-Math.floor(sw/2)-8,27-8,8,2,C.VDGRN,C.DKOLV,C.CHIT);
+        aSpire(p,b,16+Math.ceil(sw/2)+7,27-8,8,2,C.VDGRN,C.DKOLV,C.CHIT);
       }
       // Hex pattern on spires
       const hexN=[3,4,5,6][lv];
-      for(let i=0;i<hexN;i++){const yy=sy+2+i*3;if(yy<24){p(16,yy,C.NGRN);p(16+1,yy+1,C.DGRN);}}
+      for(let i=0;i<hexN;i++){const yy=sy+2+i*3;if(yy<27){p(16,yy,C.NGRN);p(16+1,yy+1,C.DGRN);}}
       // Spore caps at top — bigger at higher levels
       const capW=[2,3,4,6][lv];
       b(16-Math.floor(capW/2),sy,capW,2,fl?C.LIME:C.NGRN);b(16-Math.floor((capW-2)/2),sy-1,Math.max(2,capW-2),1,br?C.ACID:C.LIME);
@@ -309,10 +316,10 @@ function drawTowers(ctx:any){
       }
       // Bioluminescent nodes — more at higher levels
       p(16,sy+2,br?C.ACID:C.LIME);
-      if(lv>=1){p(10,16,br?C.LIME:C.NGRN);p(22,14,br?C.LIME:C.NGRN);}
-      if(lv>=2){p(8,18,C.NGRN);p(24,16,C.NGRN);}
-      if(lv>=3){p(6,20,br?C.LIME:C.DGRN);p(26,18,br?C.LIME:C.DGRN);p(16,sy+1,fl?C.WHITE:C.ACID);}
-      if(s===3){p(16,sy+1,C.DGRN);p(10,15,C.DGRN);}
+      if(lv>=1){p(10,18,br?C.LIME:C.NGRN);p(22,16,br?C.LIME:C.NGRN);}
+      if(lv>=2){p(8,20,C.NGRN);p(24,18,C.NGRN);}
+      if(lv>=3){p(6,22,br?C.LIME:C.DGRN);p(26,20,br?C.LIME:C.DGRN);p(16,sy+1,fl?C.WHITE:C.ACID);}
+      if(s===3){p(16,sy+1,C.DGRN);p(10,17,C.DGRN);}
     },
     // 6. Brood Mother — bloated egg-laying creature (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);

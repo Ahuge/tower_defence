@@ -41,7 +41,7 @@ const mk = (c: CanvasRenderingContext2D, o: number[], gw: number, gh: number, ps
 const PX = 2, GR = 16, CELL = GR * PX; // 32px cells
 
 // ===== 1. RIFLEMAN =====
-function drawRifleman(ctx: CanvasRenderingContext2D) {
+function drawRifleman(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -49,42 +49,45 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
     const cx = 8;
 
     if (row < 3) {
-      // WALK frames — row0=down, row1=right, row2=up
-      // col 0-3: walk cycle. 0,2=contact(leg fwd), 1,3=passing(legs together)
       const lOff = col === 0 ? -1 : col === 1 ? 0 : col === 2 ? 1 : 0;
       const rOff = col === 0 ? 1 : col === 1 ? 0 : col === 2 ? -1 : 0;
       const bob = (col === 0 || col === 2) ? 0 : -1;
 
-      // Helmet
-      if (row === 0) { // down
+      // Helmet — L2+: upgraded helmet with visor ridge
+      if (row === 0) {
         b(cx - 2, 1 + bob, 4, 3, W.OLIVE); b(cx - 1, 1 + bob, 2, 2, W.SAGE);
         p(cx - 2, 1 + bob, W.DKOLV); p(cx + 1, 1 + bob, W.DKOLV);
-        // face
+        if (level >= 2) { p(cx - 2, 2 + bob, W.GUN); p(cx + 1, 2 + bob, W.GUN); } // visor
+        if (level >= 4) { p(cx - 2, 0 + bob, W.DKOLV); p(cx + 1, 0 + bob, W.DKOLV); } // taller helmet
         b(cx - 1, 3 + bob, 3, 2, W.SKIN); p(cx - 1, 4 + bob, W.DKSKIN);
-        p(cx, 3 + bob, W.DKSKIN); // eyes
-      } else if (row === 1) { // right
+        p(cx, 3 + bob, W.DKSKIN);
+      } else if (row === 1) {
         b(cx - 1, 1 + bob, 3, 3, W.OLIVE); b(cx, 1 + bob, 2, 2, W.SAGE);
         p(cx - 1, 1 + bob, W.DKOLV);
+        if (level >= 2) { p(cx + 1, 2 + bob, W.GUN); } // visor
         b(cx, 3 + bob, 2, 2, W.SKIN); p(cx + 1, 3 + bob, W.DKSKIN);
-      } else { // up
+      } else {
         b(cx - 2, 1 + bob, 4, 3, W.OLIVE); b(cx - 1, 1 + bob, 2, 2, W.DKOLV);
         p(cx - 2, 2 + bob, W.DKOLV); p(cx + 1, 2 + bob, W.DKOLV);
         b(cx - 1, 3 + bob, 3, 2, W.DKSKIN);
       }
 
-      // Torso
+      // Torso — L3+: vest/armor plating
       b(cx - 2, 5 + bob, 4, 4, W.OLIVE); b(cx - 1, 5 + bob, 2, 3, W.SAGE);
+      if (level >= 3) { p(cx - 2, 5 + bob, W.DKARM); p(cx + 1, 5 + bob, W.DKARM); p(cx - 2, 6 + bob, W.DKARM); p(cx + 1, 6 + bob, W.DKARM); } // armor vest
+      if (level >= 5) { b(cx - 2, 5 + bob, 4, 2, W.DKARM); b(cx - 1, 5 + bob, 2, 1, W.GUN); } // full plate
       p(cx - 2, 8 + bob, W.BELT); p(cx + 1, 8 + bob, W.BELT);
       b(cx - 1, 8 + bob, 2, 1, W.BELT);
 
-      // Rifle across chest (down/right) or on back (up)
+      // Rifle — L2+: scope on rifle
       if (row === 0) {
-        // rifle diagonal across chest
         p(cx - 3, 5 + bob, W.GUN); p(cx - 2, 6 + bob, W.DKGUN);
         p(cx + 2, 7 + bob, W.GUN); p(cx + 3, 8 + bob, W.DKGUN);
+        if (level >= 2) { p(cx + 3, 6 + bob, W.LTGUN); } // scope
       } else if (row === 1) {
         p(cx + 2, 5 + bob, W.GUN); p(cx + 2, 6 + bob, W.DKGUN);
         p(cx + 2, 7 + bob, W.GUN); p(cx + 3, 5 + bob, W.LTGUN);
+        if (level >= 2) { p(cx + 3, 4 + bob, W.LTGUN); } // scope
       } else {
         p(cx + 1, 3 + bob, W.GUN); p(cx + 1, 4 + bob, W.DKGUN);
         p(cx + 1, 5 + bob, W.GUN); p(cx + 1, 6 + bob, W.GUN);
@@ -101,38 +104,41 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
       b(cx - 2 + lOff, 9 + bob, 2, 4, W.OLIVE);
       b(cx + rOff, 9 + bob, 2, 4, W.OLIVE);
       p(cx - 2 + lOff, 12 + bob, W.DKOLV); p(cx + rOff, 12 + bob, W.DKOLV);
-      // Boots
       b(cx - 2 + lOff, 13 + bob, 2, 1, W.BOOT);
       b(cx + rOff, 13 + bob, 2, 1, W.BOOT);
 
     } else {
-      // ATTACK row (row 3): col0=raise, col1=fire, col2=recoil, col3=lower
       const bob = col === 2 ? 1 : 0;
 
       // Helmet
       b(cx - 2, 1 + bob, 4, 3, W.OLIVE); b(cx - 1, 1 + bob, 2, 2, W.SAGE);
       p(cx - 2, 1 + bob, W.DKOLV); p(cx + 1, 1 + bob, W.DKOLV);
+      if (level >= 2) { p(cx - 2, 2 + bob, W.GUN); p(cx + 1, 2 + bob, W.GUN); }
+      if (level >= 4) { p(cx - 2, 0 + bob, W.DKOLV); p(cx + 1, 0 + bob, W.DKOLV); }
       b(cx - 1, 3 + bob, 3, 2, W.SKIN); p(cx, 3 + bob, W.DKSKIN);
 
       // Torso
       b(cx - 2, 5 + bob, 4, 4, W.OLIVE); b(cx - 1, 5 + bob, 2, 3, W.SAGE);
+      if (level >= 3) { p(cx - 2, 5 + bob, W.DKARM); p(cx + 1, 5 + bob, W.DKARM); p(cx - 2, 6 + bob, W.DKARM); p(cx + 1, 6 + bob, W.DKARM); }
+      if (level >= 5) { b(cx - 2, 5 + bob, 4, 2, W.DKARM); b(cx - 1, 5 + bob, 2, 1, W.GUN); }
       b(cx - 1, 8 + bob, 2, 1, W.BELT);
 
-      // Rifle position per frame
-      if (col === 0) { // raise
+      // Rifle position per frame — L2+: scope visible
+      if (col === 0) {
         p(cx + 2, 3, W.GUN); p(cx + 2, 4, W.GUN); p(cx + 2, 5, W.DKGUN);
         p(cx + 3, 2, W.GUN); p(cx + 3, 1, W.LTGUN);
-      } else if (col === 1) { // fire
+        if (level >= 2) { p(cx + 3, 0, W.LTGUN); } // scope
+      } else if (col === 1) {
         p(cx + 2, 3, W.GUN); p(cx + 3, 3, W.GUN); p(cx + 4, 3, W.DKGUN);
         p(cx + 5, 3, W.LTGUN);
-        // muzzle flash
+        if (level >= 2) { p(cx + 5, 2, W.LTGUN); } // scope
         p(cx + 6, 2, W.FLASH); p(cx + 6, 3, W.FLASH); p(cx + 6, 4, W.FLASH);
         p(cx + 7, 3, W.WHITE);
-      } else if (col === 2) { // recoil
+      } else if (col === 2) {
         p(cx + 1, 4 + bob, W.GUN); p(cx + 1, 5 + bob, W.GUN);
         p(cx + 2, 3 + bob, W.DKGUN); p(cx + 2, 4 + bob, W.GUN);
         p(cx + 3, 4 + bob, W.LTGUN);
-      } else { // lower
+      } else {
         p(cx + 2, 5, W.GUN); p(cx + 2, 6, W.DKGUN); p(cx + 2, 7, W.GUN);
         p(cx + 3, 5, W.LTGUN);
       }
@@ -140,7 +146,7 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
       // Arms
       p(cx - 3, 6 + bob, W.SAGE); p(cx + 2, 5 + bob, W.SAGE);
 
-      // Legs (standing)
+      // Legs
       b(cx - 2, 9 + bob, 2, 4, W.OLIVE); b(cx, 9 + bob, 2, 4, W.OLIVE);
       b(cx - 2, 13 + bob, 2, 1, W.BOOT); b(cx, 13 + bob, 2, 1, W.BOOT);
     }
@@ -152,7 +158,7 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 2. BRAWLER =====
-function drawBrawler(ctx: CanvasRenderingContext2D) {
+function drawBrawler(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -165,29 +171,35 @@ function drawBrawler(ctx: CanvasRenderingContext2D) {
       const bob = (col === 0 || col === 2) ? 0 : -1;
       const lean = 1; // forward lean
 
-      // Beret
+      // Beret — L2+: headband
       if (row === 0) {
         b(cx - 2, 1 + bob, 5, 2, W.BERET); p(cx + 2, 1 + bob, W.DKBER);
+        if (level >= 2) { b(cx - 2, 2 + bob, 5, 1, W.DKBER); } // headband
         b(cx - 1, 2 + bob, 3, 2, W.SKIN); p(cx, 3 + bob, W.DKSKIN);
         p(cx - 1, 2 + bob, W.DKSKIN); p(cx + 1, 2 + bob, W.DKSKIN);
       } else if (row === 1) {
         b(cx - 1, 1 + bob, 4, 2, W.BERET); p(cx + 2, 1 + bob, W.DKBER);
+        if (level >= 2) { b(cx - 1, 2 + bob, 4, 1, W.DKBER); }
         b(cx, 2 + bob, 2, 2, W.SKIN); p(cx + 1, 3 + bob, W.DKSKIN);
       } else {
         b(cx - 2, 1 + bob, 5, 2, W.BERET); p(cx + 2, 1 + bob, W.DKBER);
+        if (level >= 2) { b(cx - 2, 2 + bob, 5, 1, W.DKBER); }
         b(cx - 1, 2 + bob, 3, 2, W.DKSKIN);
       }
 
-      // Muscular torso (wider)
+      // Muscular torso (wider) — L3+: shoulder pads
       b(cx - 3, 4 + bob, 6, 5, W.OLIVE); b(cx - 2, 4 + bob, 4, 4, W.SAGE);
       p(cx - 3, 4 + bob, W.DKOLV); p(cx + 2, 4 + bob, W.DKOLV);
+      if (level >= 3) { p(cx - 4, 4 + bob, W.DKARM); p(cx + 3, 4 + bob, W.DKARM); p(cx - 4, 5 + bob, W.DKARM); p(cx + 3, 5 + bob, W.DKARM); } // shoulder pads
+      if (level >= 5) { b(cx - 3, 4 + bob, 6, 2, W.DKARM); b(cx - 2, 4 + bob, 4, 1, W.GUN); } // full armor
       b(cx - 2, 8 + bob, 4, 1, W.BELT);
 
-      // Arms swinging (skin colored fists)
+      // Arms swinging — L2+: knuckle guards on fists
       const armSwF = col === 0 ? 1 : col === 1 ? 0 : col === 2 ? -1 : 0;
       const armSwB = -armSwF;
       p(cx - 4, 5 + bob + armSwF, W.SAGE); p(cx - 4, 6 + bob + armSwF, W.SKIN);
       p(cx + 3, 5 + bob + armSwB, W.SAGE); p(cx + 3, 6 + bob + armSwB, W.SKIN);
+      if (level >= 2) { p(cx - 4, 6 + bob + armSwF, W.GUN); p(cx + 3, 6 + bob + armSwB, W.GUN); } // knuckle guards
 
       // Legs (heavy steps)
       b(cx - 2 + lOff, 9 + bob, 2, 4, W.OLIVE);
@@ -197,28 +209,32 @@ function drawBrawler(ctx: CanvasRenderingContext2D) {
 
     } else {
       // ATTACK: col0=wind up, col1=strike, col2=follow through, col3=recover
-      // Beret
+      // Beret — L2+: headband
       b(cx - 2, 1, 5, 2, W.BERET); p(cx + 2, 1, W.DKBER);
+      if (level >= 2) { b(cx - 2, 2, 5, 1, W.DKBER); }
       b(cx - 1, 2, 3, 2, W.SKIN); p(cx, 3, W.DKSKIN);
 
-      // Torso
+      // Torso — L3+: shoulder pads, L5+: full armor
       b(cx - 3, 4, 6, 5, W.OLIVE); b(cx - 2, 4, 4, 4, W.SAGE);
+      if (level >= 3) { p(cx - 4, 4, W.DKARM); p(cx + 3, 4, W.DKARM); p(cx - 4, 5, W.DKARM); p(cx + 3, 5, W.DKARM); }
+      if (level >= 5) { b(cx - 3, 4, 6, 2, W.DKARM); b(cx - 2, 4, 4, 1, W.GUN); }
       b(cx - 2, 8, 4, 1, W.BELT);
 
-      // Fist positions
+      // Fist positions — L2+: knuckle guards (GUN colored fists)
+      const fistCol = level >= 2 ? W.GUN : W.SKIN;
       if (col === 0) { // wind up — fist pulled back
-        p(cx - 4, 4, W.SAGE); p(cx - 5, 4, W.SKIN); p(cx - 5, 5, W.SKIN);
+        p(cx - 4, 4, W.SAGE); p(cx - 5, 4, fistCol); p(cx - 5, 5, fistCol);
         p(cx + 3, 6, W.SAGE);
       } else if (col === 1) { // strike — fist forward
-        p(cx + 3, 5, W.SAGE); p(cx + 4, 5, W.SKIN); p(cx + 5, 5, W.SKIN);
+        p(cx + 3, 5, W.SAGE); p(cx + 4, 5, fistCol); p(cx + 5, 5, fistCol);
         p(cx + 6, 4, W.FLASH); p(cx + 6, 5, W.FLASH); p(cx + 6, 6, W.FLASH); // impact
         p(cx - 4, 6, W.SAGE);
       } else if (col === 2) { // follow through
-        p(cx + 3, 6, W.SAGE); p(cx + 4, 6, W.SKIN); p(cx + 5, 7, W.SKIN);
+        p(cx + 3, 6, W.SAGE); p(cx + 4, 6, fistCol); p(cx + 5, 7, fistCol);
         p(cx - 4, 5, W.SAGE);
       } else { // recover
-        p(cx - 4, 5, W.SAGE); p(cx - 4, 6, W.SKIN);
-        p(cx + 3, 5, W.SAGE); p(cx + 3, 6, W.SKIN);
+        p(cx - 4, 5, W.SAGE); p(cx - 4, 6, fistCol);
+        p(cx + 3, 5, W.SAGE); p(cx + 3, 6, fistCol);
       }
 
       // Legs

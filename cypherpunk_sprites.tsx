@@ -385,68 +385,117 @@ function drawTowers(ctx){
       if(s===3){for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)b(rackX+3,sy+1,rackW-6,screenH-1,DDKP);}for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)p(rackX+rackW-3,sy,C.DARK);}}
     },
 
-    // 5: Rootkit — Sleek stealth device, nearly invisible idle, reveals on fire (2 levels)
+    // 5: Rootkit — Angular stealth device, triangular/diamond shape, dark with hidden blade (2 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,18,s===1?1:s===2?2:0,lvl);
+      const RDK='#0a1a1a',RDKTL='#112222',RSCR='#1a3333',RTEAL='#004444';
+      tBase(p,b,23,20,s===1?1:s===2?2:0,lvl);
       const br=s>=1,fl=s===2;
-      // At idle: very faint outline only — slightly more visible at level 2
+      const cx=16,triTop=4+lvl,triBot=22,triW=5+lvl*2;
+      // Draw angular diamond/triangle shape — distinctive from rounded others
+      // Idle: faint angular outline with cloaking field shimmer
       if(s===0){
-        for(let y=8;y<22;y++){
-          p(12,y,y%3===0?C.DKTEAL:undefined);
-          p(19,y,y%3===1?C.DKTEAL:undefined);
+        // Faint triangular outline pointing up
+        for(let y=triTop;y<=triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*triW);
+          if(y%2===0){p(cx-hw,y,RDKTL);p(cx+hw,y,RDKTL);}
         }
-        p(14,7,C.DKTEAL);p(17,7,C.DKTEAL);
-        b(14,15,4,1,C.DKTEAL);
-        p(16,12,C.DKNEON);
+        // Apex point
+        p(cx,triTop,C.DKNEON);p(cx,triTop+1,RDKTL);
+        // Hidden blade hint — vertical line down center
+        for(let y=triTop+2;y<triBot;y+=3)p(cx,y,RDKTL);
+        // Faint eye
+        p(cx,14,C.DKNEON);
         if(lvl>=2){
-          // Level 2: second faint LED, slightly more outline
-          p(15,10,C.DKNEON);
-          for(let y=9;y<21;y+=2){p(11,y,C.BLK);p(20,y,C.BLK);}
-          p(13,8,C.DKTEAL);p(18,8,C.DKTEAL);
+          p(cx,12,C.DKNEON);
+          // More visible angular edges
+          for(let y=triTop;y<=triBot;y++){
+            const prog=(y-triTop)/(triBot-triTop);
+            const hw=Math.floor(prog*triW);
+            if(y%2===1){p(cx-hw,y,RDK);p(cx+hw,y,RDK);}
+          }
+          // Cloak field dots
+          p(cx-3,10,RDKTL);p(cx+3,10,RDKTL);p(cx-2,17,RDKTL);p(cx+2,17,RDKTL);
         }
       }
       if(s===1){
-        b(12,8,8,14,C.BLK);
-        for(let y=8;y<22;y++){
-          p(12,y,y%2===0?C.DKTEAL:C.BLK);
-          p(19,y,y%2===1?C.DKTEAL:C.BLK);
+        // Charging — angular shape partially visible, darker fill
+        for(let y=triTop;y<=triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*triW);
+          b(cx-hw,y,hw*2+1,1,RDK);
+          p(cx-hw,y,RDKTL);p(cx+hw,y,RDKTL);
         }
-        b(14,10,4,6,C.DARK);b(15,11,2,4,C.DKTEAL);
-        p(16,13,C.CYAN);p(15,12,C.DKNEON);
-        for(let y=9;y<21;y+=2)b(13,y,6,1,C.DKTEAL);
+        // Internal structure lines — angular
+        for(let y=triTop+2;y<triBot-2;y+=2){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.max(1,Math.floor(prog*triW)-1);
+          b(cx-hw,y,hw*2+1,1,RSCR);
+        }
+        // Eye
+        p(cx,13,C.CYAN);p(cx-1,13,C.DKNEON);p(cx+1,13,C.DKNEON);
+        // Blade line
+        for(let y=triTop;y<triBot;y+=2)p(cx,y,RTEAL);
         if(lvl>=2){
-          // Level 2: more scanlines, second eye
-          p(15,14,C.CYAN);
-          b(11,9,1,12,C.DKTEAL);b(20,9,1,12,C.DKTEAL);
-          for(let y=10;y<20;y+=2)b(13,y,6,1,C.SCRN);
+          p(cx,11,C.CYAN);
+          // Side edge glow
+          for(let y=triTop+1;y<triBot;y+=3){
+            const prog=(y-triTop)/(triBot-triTop);
+            const hw=Math.floor(prog*triW);
+            p(cx-hw+1,y,RTEAL);p(cx+hw-1,y,RTEAL);
+          }
         }
       }
       if(fl){
-        // Full reveal — sleek angular device
-        const devW=6+lvl*2;const devX=16-Math.floor(devW/2);
-        b(devX,6,devW,16,C.DARK);b(devX+1,7,devW-2,14,C.DKTEAL);b(devX+2,8,devW-4,12,C.SCRN);
-        // Angular top
-        p(15,5,C.TEAL);p(16,5,C.TEAL);b(14,6,4,1,C.SCRN);
-        // Central eye(s)
-        b(14,12,4,3,C.BLK);b(15,12,2,3,C.CYAN);p(15,13,C.WHITE);p(16,13,C.BCYN);
-        if(lvl>=2){
-          // Level 2: second eye above, more circuits
-          b(14,9,4,2,C.BLK);b(15,9,2,2,C.CYAN);p(15,9,C.BCYN);p(16,10,C.LTCYN);
+        // Full reveal — solid angular diamond with blade extended
+        const bw=triW+2;
+        for(let y=triTop;y<=triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*bw);
+          b(cx-hw,y,hw*2+1,1,C.DARK);
+          // Sharp angular edges
+          p(cx-hw,y,C.TEAL);p(cx+hw,y,C.TEAL);
         }
-        // Active circuits
-        p(devX+1,9,C.CYAN);p(devX+devW-2,9,C.CYAN);p(devX+1,16,C.CYAN);p(devX+devW-2,16,C.CYAN);
-        tCircuit(p,devX+1,9,devX,6,C.CYAN,true);tCircuit(p,devX+devW-2,9,devX+devW-1,6,C.CYAN,true);
-        // Reveal flash — bigger at level 2
+        // Inner fill — darker panels
+        for(let y=triTop+1;y<triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.max(0,Math.floor(prog*bw)-1);
+          if(hw>0)b(cx-hw,y,hw*2+1,1,RSCR);
+        }
+        // Central blade — bright vertical line
+        for(let y=triTop;y<=triBot;y++)p(cx,y,fl?C.CYAN:RTEAL);
+        p(cx,triTop-1,C.BCYN);p(cx,triTop,C.WHITE);
+        // Eyes
+        b(cx-2,12,2,3,C.BLK);b(cx+1,12,2,3,C.BLK);
+        p(cx-1,13,C.WHITE);p(cx+1,13,C.BCYN);
+        if(lvl>=2){
+          b(cx-2,9,2,2,C.BLK);b(cx+1,9,2,2,C.BLK);
+          p(cx-1,9,C.BCYN);p(cx+1,10,C.LTCYN);
+        }
+        // Angular circuit traces along edges
+        for(let y=triTop+2;y<triBot;y+=3){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*bw);
+          p(cx-hw+1,y,C.CYAN);p(cx+hw-1,y,C.CYAN);
+        }
+        // Cloak field burst — angular rays
         const flashR=5+lvl*2;
-        for(let i=0;i<6+lvl*2;i++){const a=i*Math.PI/(3+lvl);p(16+Math.round(Math.cos(a)*flashR),13+Math.round(Math.sin(a)*(flashR-2)),C.DKNEON);}
-        p(10,10,C.DKNEON);p(21,10,C.DKNEON);p(10,16,C.DKNEON);p(21,16,C.DKNEON);
-        if(lvl>=2){p(8,12,C.DKNEON);p(23,12,C.DKNEON);p(9,8,C.DKTEAL);p(22,8,C.DKTEAL);}
+        for(let i=0;i<8+lvl*2;i++){
+          const a=i*Math.PI/(4+lvl);
+          p(cx+Math.round(Math.cos(a)*flashR),13+Math.round(Math.sin(a)*(flashR-2)),C.DKNEON);
+        }
+        p(9,10,C.DKNEON);p(22,10,C.DKNEON);p(9,17,C.DKNEON);p(22,17,C.DKNEON);
+        if(lvl>=2){p(7,13,C.DKNEON);p(24,13,C.DKNEON);p(8,8,C.DKTEAL);p(23,8,C.DKTEAL);}
       }
       if(s===3){
-        b(13,8,6,13,C.DARK);
-        for(let y=8;y<21;y+=3)p(15,y,C.DKTEAL);
-        p(16,13,C.DKTEAL);
-        if(lvl>=2){for(let y=9;y<20;y+=3)p(16,y,C.DKTEAL);}
+        // Cooldown — fading angular outline
+        for(let y=triTop;y<=triBot;y+=2){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*triW);
+          p(cx-hw,y,RDKTL);p(cx+hw,y,RDKTL);
+        }
+        p(cx,13,RDKTL);
+        if(lvl>=2){p(cx,11,RDKTL);for(let y=triTop;y<triBot;y+=4)p(cx,y,RTEAL);}
       }
     },
 
