@@ -4,8 +4,6 @@
  * Canvas-based line charts with configurable time ranges.
  */
 
-import { getWorldMapSVG } from './worldmap';
-
 export function getDashboardHTML(baseUrl: string): string {
   return `<!DOCTYPE html>
 <html>
@@ -32,8 +30,7 @@ export function getDashboardHTML(baseUrl: string): string {
     .bar-track { flex: 1; height: 14px; background: #1a1a22; border-radius: 3px; overflow: hidden; }
     .bar-fill { height: 100%; border-radius: 3px; }
     .bar-value { width: 32px; font-size: 11px; color: #999; }
-    #world-map { width: 100%; height: auto; }
-    #world-map path:hover { opacity: 0.8; cursor: pointer; }
+    #geomap { image-rendering: auto; }
     .btn { background: #1a1a22; border: 1px solid #333; color: #ccc; padding: 5px 12px;
            border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 11px; }
     .btn:hover { background: #252530; }
@@ -60,7 +57,6 @@ export function getDashboardHTML(baseUrl: string): string {
 
   <div id="charts"><p class="loading">Loading charts...</p></div>
   <div id="summary"><p class="loading">Loading summary...</p></div>
-  <div id="svgmap-data" style="display:none;">${getWorldMapSVG()}</div>
 
   <script>
     const API = '${baseUrl}';
@@ -301,18 +297,22 @@ export function getDashboardHTML(baseUrl: string): string {
         // Country bar chart
         html += barCard('Countries', geo, {});
 
-        // World map visualization (SVG — injected from hidden div)
+        // World map visualization (canvas — rendered from TopoJSON)
         html += '<div class="card" style="grid-column: 1 / -1;"><h2>World Map</h2>';
-        html += '<div id="geomap-container" style="position:relative;width:100%;"></div>';
+        html += '<canvas id="geomap" style="width:100%;height:300px;"></canvas>';
         html += '</div>';
         html += '</div>';
       }
 
       el.innerHTML = html;
 
-      // Color the SVG map countries
+      // Draw geo map
       if (geoEntries.length > 0) {
-        requestAnimationFrame(() => colorGeoMap(geo));
+        if (!topoData) {
+          loadTopoJSON().then(() => requestAnimationFrame(() => drawGeoMap(geo)));
+        } else {
+          requestAnimationFrame(() => drawGeoMap(geo));
+        }
       }
     }
 
@@ -338,33 +338,140 @@ export function getDashboardHTML(baseUrl: string): string {
       return html;
     }
 
-    function colorGeoMap(geo) {
-      // Move SVG from hidden div into the map container
-      const container = document.getElementById('geomap-container');
-      const svgSource = document.getElementById('svgmap-data');
-      if (container && svgSource && !container.querySelector('svg')) {
-        container.innerHTML = svgSource.innerHTML;
-      }
+    // ===================== World Map (TopoJSON → Canvas) =====================
 
+    let topoData = null;
+    const TOPO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+    // ISO numeric → 2-letter mapping for major countries
+    const NUM_TO_ISO = {
+      840:'US',124:'CA',484:'MX',76:'BR',32:'AR',152:'CL',170:'CO',604:'PE',
+      826:'GB',250:'FR',276:'DE',724:'ES',380:'IT',528:'NL',56:'BE',752:'SE',578:'NO',
+      246:'FI',208:'DK',616:'PL',203:'CZ',40:'AT',756:'CH',620:'PT',372:'IE',
+      643:'RU',804:'UA',642:'RO',348:'HU',300:'GR',100:'BG',191:'HR',688:'RS',
+      792:'TR',376:'IL',682:'SA',784:'AE',356:'IN',156:'CN',392:'JP',410:'KR',
+      158:'TW',764:'TH',704:'VN',608:'PH',360:'ID',458:'MY',702:'SG',
+      36:'AU',554:'NZ',710:'ZA',566:'NG',404:'KE',818:'EG',504:'MA',
+      586:'PK',50:'BD',144:'LK',524:'NP',
+      862:'VE',68:'BO',218:'EC',320:'GT',192:'CU',388:'JM',
+      364:'IR',368:'IQ',12:'DZ',178:'CG',180:'CD',231:'ET',834:'TZ',
+      398:'KZ',496:'MN',104:'MM',116:'KH',
+    };
+
+    async function loadTopoJSON() {
+      try {
+        const res = await fetch(TOPO_URL);
+        topoData = await res.json();
+      } catch (e) { console.error('Failed to load world map:', e); }
+    }
+
+    function drawGeoMap(geo) {
+      const canvas = document.getElementById('geomap');
+      if (!canvas || !topoData) return;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * devicePixelRatio;
+      canvas.height = rect.height * devicePixelRatio;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      const W = rect.width, H = rect.height;
+
+      ctx.fillStyle = '#0d0d14';
+      ctx.fillRect(0, 0, W, H);
+
+      // Decode TopoJSON arcs
+      const topo = topoData;
+      const arcs = decodeArcs(topo.arcs, topo.transform);
+
+      // Build country geometries
+      const countries = topo.objects.countries;
       const entries = Object.entries(geo);
       const maxCount = Math.max(...entries.map(e => e[1]), 1);
+      const geoMap = {};
+      for (const [code, count] of entries) geoMap[code] = count;
 
-      for (const [code, count] of entries) {
-        const el = document.getElementById(code);
-        if (!el) continue;
-        // Color intensity based on count
-        const intensity = 0.3 + (count / maxCount) * 0.7;
-        const r = Math.round(30 + intensity * 38);
-        const g = Math.round(80 + intensity * 175);
-        const b = Math.round(30 + intensity * 38);
-        el.style.fill = 'rgb(' + r + ',' + g + ',' + b + ')';
-        el.style.stroke = '#44ff44';
-        el.style.strokeWidth = '1';
-        // Tooltip via title element
-        const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-        title.textContent = code + ': ' + count + ' games';
-        el.appendChild(title);
+      for (const feat of countries.geometries) {
+        const isoNum = feat.id;
+        const iso2 = NUM_TO_ISO[isoNum] || '';
+        const count = geoMap[iso2] || 0;
+
+        // Color: dark default, green intensity for players
+        if (count > 0) {
+          const intensity = 0.3 + (count / maxCount) * 0.7;
+          ctx.fillStyle = 'rgb(' + Math.round(20+intensity*48) + ',' + Math.round(60+intensity*195) + ',' + Math.round(20+intensity*48) + ')';
+          ctx.strokeStyle = '#44ff44';
+          ctx.lineWidth = 1;
+        } else {
+          ctx.fillStyle = '#181822';
+          ctx.strokeStyle = '#252530';
+          ctx.lineWidth = 0.5;
+        }
+
+        // Draw polygons
+        const rings = feat.type === 'Polygon' ? [feat.arcs] : feat.arcs;
+        for (const poly of rings) {
+          for (const ring of poly) {
+            ctx.beginPath();
+            const coords = resolveRing(ring, arcs);
+            for (let i = 0; i < coords.length; i++) {
+              const [lon, lat] = coords[i];
+              const x = ((lon + 180) / 360) * W;
+              const y = ((90 - lat) / 180) * H;
+              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+
+        // Label for active countries
+        if (count > 0 && iso2) {
+          const centroid = getPolygonCentroid(feat, arcs, W, H);
+          if (centroid) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(iso2 + ' (' + count + ')', centroid[0], centroid[1]);
+          }
+        }
       }
+    }
+
+    // Decode delta-encoded TopoJSON arcs
+    function decodeArcs(encodedArcs, transform) {
+      const sx = transform.scale[0], sy = transform.scale[1];
+      const tx = transform.translate[0], ty = transform.translate[1];
+      return encodedArcs.map(arc => {
+        let x = 0, y = 0;
+        return arc.map(pt => {
+          x += pt[0]; y += pt[1];
+          return [x * sx + tx, y * sy + ty];
+        });
+      });
+    }
+
+    // Resolve a ring (array of arc indices) to coordinates
+    function resolveRing(ring, arcs) {
+      const coords = [];
+      for (const idx of ring) {
+        const arc = idx >= 0 ? arcs[idx] : arcs[~idx].slice().reverse();
+        for (let i = (coords.length === 0 ? 0 : 1); i < arc.length; i++) {
+          coords.push(arc[i]);
+        }
+      }
+      return coords;
+    }
+
+    // Get approximate centroid for labeling
+    function getPolygonCentroid(feat, arcs, W, H) {
+      const rings = feat.type === 'Polygon' ? [feat.arcs] : feat.arcs;
+      let sumX = 0, sumY = 0, count = 0;
+      const firstRing = resolveRing(rings[0][0], arcs);
+      for (const [lon, lat] of firstRing) {
+        sumX += ((lon + 180) / 360) * W;
+        sumY += ((90 - lat) / 180) * H;
+        count++;
+      }
+      return count > 0 ? [sumX / count, sumY / count] : null;
     }
 
     loadAll();
