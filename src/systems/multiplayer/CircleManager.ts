@@ -1,4 +1,5 @@
 import { PeerConnection, ConnectionState } from './PeerConnection';
+import { SignalingClient } from './SignalingClient';
 import { GameMessage, CircleEnvelope, decodeEnvelope } from './MessageProtocol';
 
 /**
@@ -90,7 +91,43 @@ export class CircleManager {
     await peer.acceptAnswer(answer);
   }
 
-  // === Joiner Methods ===
+  // === Signaling Server Methods ===
+
+  /** HOST: connect to a joiner via signaling server */
+  async hostConnectPlayer(signaling: SignalingClient, joinerIndex: number): Promise<void> {
+    const peer = new PeerConnection(
+      (data) => this.handleHostMessage(data, joinerIndex),
+      (state) => {
+        this.onConnectionChange?.(joinerIndex, state);
+        if (state === 'connected') {
+          this.connectedPlayers.add(joinerIndex);
+          this.onPlayerConnected?.(joinerIndex);
+        }
+        if (state === 'failed') {
+          this.connectedPlayers.delete(joinerIndex);
+        }
+      },
+    );
+    this.hostPeers.set(joinerIndex, peer);
+    await peer.connectAsHost(signaling, joinerIndex);
+  }
+
+  /** JOINER: connect to host via signaling server */
+  async joinViaSignaling(signaling: SignalingClient): Promise<void> {
+    this.isHost = false;
+    this.joinerPeer = new PeerConnection(
+      (data) => this.handleJoinerMessage(data),
+      (state) => {
+        this.onConnectionChange?.(0, state);
+        if (state === 'connected') {
+          this.connectedPlayers.add(0);
+        }
+      },
+    );
+    await this.joinerPeer.connectAsJoiner(signaling, 0);
+  }
+
+  // === Manual Methods (Fallback) ===
 
   async joinAsClient(offer: string): Promise<string> {
     this.isHost = false;
