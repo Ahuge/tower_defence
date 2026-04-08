@@ -460,7 +460,7 @@ export class GameScene extends Phaser.Scene {
       this.sidebarOverlay.addPanel(this.eventLog.getContainer());
       this.gameMode.reparentSidebarPanels?.(this.sidebarOverlay);
     } else {
-      const sidebarBg = this.add.graphics().setDepth(0);
+      const sidebarBg = this.add.graphics().setDepth(28);
       sidebarBg.fillStyle(0x0e0e12, 1);
       sidebarBg.fillRect(0, 0, SIDEBAR_WIDTH, GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT);
     }
@@ -704,10 +704,8 @@ export class GameScene extends Phaser.Scene {
         : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
 
-    // Phone: set up UI camera so HUD stays fixed while game camera zooms/pans
-    if (ResponsiveManager.isPhone()) {
-      this.setupUiCamera();
-    }
+    // Set up UI camera so HUD stays fixed while game camera zooms/pans
+    this.setupUiCamera();
   }
 
   /** Create a UI camera that renders HUD elements at 1x zoom, no scroll.
@@ -747,42 +745,13 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Collect all known UI game objects that should be fixed on screen */
+  /** Collect all UI game objects (depth >= 28) that should stay fixed on screen.
+   *  Convention: game objects use depth < 28, UI objects use depth >= 28. */
   private collectUiObjects(): Phaser.GameObjects.GameObject[] {
-    const objs: Phaser.GameObjects.GameObject[] = [];
-    // UIOverlay — individual text objects
-    const uiAny = this.ui as any;
-    for (const key of ['goldText', 'livesText', 'waveText', 'statusText', 'speedText', 'waveBtn', 'speedBtn', 'seedText']) {
-      if (uiAny[key]) objs.push(uiAny[key]);
-    }
-    // Tower select bar (container + tooltip)
-    if (this.towerBar) {
-      objs.push((this.towerBar as any).container);
-      objs.push((this.towerBar as any).tooltip);
-    }
-    // Info panels
-    if (this.towerInfo) objs.push((this.towerInfo as any).container);
-    if (this.creepInfo) objs.push((this.creepInfo as any).container);
-    // Game control bar
-    if (this.controlBar) {
-      const cb = this.controlBar as any;
-      if (cb.graphics) objs.push(cb.graphics);
-      for (const btn of (cb.buttons ?? [])) { if (btn.zone) objs.push(btn.zone); }
-      for (const lbl of (cb.labels ?? [])) objs.push(lbl);
-    }
-    // Sidebar overlay
-    if (this.sidebarOverlay) {
-      const so = this.sidebarOverlay as any;
-      if (so.container) objs.push(so.container);
-      if (so.scrim) objs.push(so.scrim);
-      if (so.toggleBtn) objs.push(so.toggleBtn);
-    }
-    // Income display
-    if (this.incomeDisplay) {
-      const id = this.incomeDisplay as any;
-      if (id.text) objs.push(id.text);
-    }
-    return objs.filter(Boolean);
+    return this.children.list.filter(child => {
+      const d = (child as any).depth ?? 0;
+      return d >= 28;
+    });
   }
 
   /** After tower bar rebuild (Random rotation, versus pool sync),
