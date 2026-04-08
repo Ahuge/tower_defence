@@ -116,7 +116,7 @@ export class TowerSelectBar {
       }
 
       // Cost label at bottom of button
-      const costH = isPhone ? 20 : 12; // reserve space for cost text
+      const costH = UIScale.current.costLabelH;
       const costLabel = uiText(this.scene,x + bs / 2, y + bs - 2, `${t.cost}g`, {
         fontSize: costSize, color: '#ffdd44', fontFamily: 'monospace'
       }).setOrigin(0.5, 1);
@@ -146,7 +146,7 @@ export class TowerSelectBar {
           this.container.add(icon);
         }
       } else {
-        const nameLabel = uiText(this.scene,x + bs / 2, iconCenterY, t.name.substring(0, isPhone ? 4 : 5), {
+        const nameLabel = uiText(this.scene,x + bs / 2, iconCenterY, t.name.substring(0, UIScale.current.towerNameLen), {
           fontSize, color: '#ffffff', fontFamily: 'monospace'
         }).setOrigin(0.5, 0.5);
         this.container.add(nameLabel);

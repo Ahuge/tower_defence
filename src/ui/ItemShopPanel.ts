@@ -74,9 +74,9 @@ export class ItemShopPanel extends PanelBase {
     if (this.hero.level < 15) {
       const xpNeeded = this.hero.xpToNextLevel();
       const xpRatio = xpNeeded > 0 ? this.hero.xp / xpNeeded : 0;
-      const barX = UIScale.isPhone ? 90 : 70;
+      const barX = UIScale.current.xpBarX;
       const barW = pw - barX - 12;
-      const barH = UIScale.isPhone ? 14 : 10;
+      const barH = UIScale.current.xpBarH;
       const g = this.dGraphics();
       g.fillStyle(0x222222, 1).fillRect(barX, y + 2, barW, barH);
       g.fillStyle(0xffaa44, 0.8).fillRect(barX, y + 2, barW * xpRatio, barH);

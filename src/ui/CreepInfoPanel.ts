@@ -102,7 +102,7 @@ export class CreepInfoPanel {
 
     // Panel size — account for name + 3 stat lines + effects
     const rh = UIScale.current.rowHeight;
-    const panelW = UIScale.isPhone ? 700 : 280;
+    const panelW = UIScale.current.infoPanelW;
     const statsLines = 3; // HP, Armor, Speed
     const panelH = UIScale.space(22) + statsLines * rh + UIScale.space(12) + Math.max(1, allEffects.length) * rh + UIScale.space(16);
 
@@ -127,7 +127,7 @@ export class CreepInfoPanel {
     this.bg.clear();
     this.bg.fillStyle(0x111111, 0.95);
     this.bg.fillRect(0, 0, panelW, panelH);
-    this.bg.lineStyle(UIScale.isPhone ? 2 : 1, 0x884444, 1);
+    this.bg.lineStyle(UIScale.current.infoPanelBorder, 0x884444, 1);
     this.bg.strokeRect(0, 0, panelW, panelH);
   }
 

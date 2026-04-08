@@ -34,9 +34,9 @@ export class UIOverlay {
 
     // Spread columns evenly across available width
     const col1 = baseX + 8;
-    const col2 = isPhone ? baseX + 240 : baseX + 160;
-    const col3 = isPhone ? baseX + 500 : baseX + 300;
-    const col4 = isPhone ? baseX + 700 : baseX + 480;
+    const col2 = baseX + UIScale.current.statusCol2;
+    const col3 = baseX + UIScale.current.statusCol3;
+    const col4 = baseX + UIScale.current.statusCol4;
 
     this.goldText = uiText(scene,col1, barY, '', uiStyle).setDepth(30);
     this.livesText = uiText(scene,col2, barY, '', uiStyle).setDepth(30);

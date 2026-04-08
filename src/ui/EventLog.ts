@@ -37,7 +37,7 @@ export class EventLog {
     // Log text — anchored to bottom of panel so newest lines are always visible
     this.textObj = uiText(scene, 8, this.panelH - 8, '', {
       fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
-      lineSpacing: UIScale.isPhone ? 4 : 2,
+      lineSpacing: UIScale.current.lineSpacing,
       wordWrap: { width: getSidebarWidth() - 16 },
     }).setOrigin(0, 1); // anchor to bottom-left
     this.container.add(this.textObj);

@@ -179,7 +179,7 @@ export class TowerInfoPanel {
     this.upgradeBtn.setVisible(tower.canUpgrade());
 
     // Calculate panel size
-    const panelW = UIScale.isPhone ? 700 : 350;
+    const panelW = UIScale.current.infoPanelW;
     const panelH = btnY + UIScale.space(24);
 
     if (UIScale.isPhone) {
@@ -200,7 +200,7 @@ export class TowerInfoPanel {
     this.bg.clear();
     this.bg.fillStyle(0x111111, 0.95);
     this.bg.fillRect(0, 0, panelW, panelH);
-    this.bg.lineStyle(UIScale.isPhone ? 2 : 1, 0x555555, 1);
+    this.bg.lineStyle(UIScale.current.infoPanelBorder, 0x555555, 1);
     this.bg.strokeRect(0, 0, panelW, panelH);
 
     // Aura buff border
