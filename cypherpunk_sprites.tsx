@@ -116,7 +116,7 @@ function drawTowers(ctx){
       if(lvl>=4){
         b(22,poleTop+2,1,poleH-4,C.DKTEAL);p(22,poleTop+2,C.SCRN);p(22,poleTop+1,br?C.CYAN:C.DKNEON);
         // Second dish ring
-        if(fl)for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*(maxR+4||12)),dy+Math.round(Math.sin(a)*6),C.DKNEON);}
+        {const mr=4+lvl*2;if(fl)for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*(mr+4)),dy+Math.round(Math.sin(a)*6),C.DKNEON);}}
       }
       // Circuit connections to base
       tCircuit(p,13,poleTop+2,10,22,C.SCRN,fl);
@@ -179,62 +179,92 @@ function drawTowers(ctx){
       if(s===3){b(10,Math.floor((pilTop+20)/2)-1,12,2,C.DKTEAL);p(7,pilTop+2,C.DKTEAL);p(rPilX+1,pilTop+2,C.DKTEAL);}
     },
 
-    // 2: Virus — Corrupt data node with spreading tendrils (5 levels)
+    // 2: Virus — Organic amoeba/blob with irregular edges, green tint (5 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const VG='#00ff88',VB='#44ff66',VD='#008844',VDD='#004422',VL='#88ffaa';
       tBase(p,b,23,20,s===1?1:s===2?2:0,lvl);
       const br=s>=1,fl=s===2;
-      // Central corrupt node — larger at higher levels
-      const nSz=4+lvl;const nX=16-Math.floor(nSz/2);const nY=12-Math.floor(nSz/2);
-      b(nX-1,nY-1,nSz+2,nSz+2,C.DARK);b(nX,nY,nSz,nSz,C.DKTEAL);b(nX,nY,nSz,1,fl?C.NEON:C.DKNEON);
-      b(nX+1,nY+1,nSz-2,nSz-2,fl?C.NEON:br?C.DKNEON:C.SCRN);
-      p(16,12,fl?C.WHITE:br?C.LTNEON:C.NEON);p(15,13,br?C.NEON:C.DKNEON);
-      // Corruption pattern on node — more at higher levels
-      p(nX,nY+1,C.DKMAG);p(nX+nSz-1,nY+2,fl?C.MAG:C.DKMAG);p(nX,nY+nSz-2,C.DKMAG);p(nX+nSz,nY+1,C.DPMAG);
-      if(lvl>=3){p(nX+1,nY+nSz-1,C.DKMAG);p(nX+nSz-2,nY,C.DPMAG);}
-      if(lvl>=4){p(16,nY,C.MAG);p(16,nY+nSz-1,C.DKMAG);}
-      if(lvl>=5){b(nX-1,nY+Math.floor(nSz/2),1,2,C.MAG);b(nX+nSz,nY+Math.floor(nSz/2),1,2,C.MAG);}
-      // Spreading tendrils — more and longer at higher levels
-      const tc=fl?C.NEON:br?C.DKNEON:C.SCRN;
-      const tLen=3+lvl*2;
-      // Left tendril
-      for(let i=0;i<Math.min(tLen,8);i++){const x=nX-2-i,y=nY+1-Math.floor(i/2);if(x>=0&&y>=0)p(x,y,i<2?tc:i<4?(br?C.NEON:tc):(fl?C.NEON:tc));}
-      // Right tendril
-      for(let i=0;i<Math.min(tLen,8);i++){const x=nX+nSz+1+i,y=nY+2+Math.floor(i/2);if(x<32&&y<32)p(x,y,i<2?tc:i<4?(br?C.NEON:tc):(fl?C.LTNEON:tc));}
-      // Upper tendril
-      for(let i=0;i<Math.min(tLen,6);i++){const y=nY-2-i;if(y>=0)p(15+i%2,y,i<2?tc:(br?C.NEON:tc));}
-      // Lower tendrils
-      for(let i=0;i<Math.min(tLen,5);i++){const y=nY+nSz+1+i;if(y<32){p(16+i%2,y,tc);p(14-i%2,y,tc);}}
-      // Extra tendrils at level 4+
+      // Amoeba blob body — irregular organic shape, grows with level
+      const cx=16,cy=12,rad=3+lvl;
+      // Draw irregular blob using offset ring — NOT a clean circle
+      const blobPts:number[][]=[];
+      const offsets=[0,1,0,-1,1,0,-1,1,0,1,-1,0,1,0,-1,1];
+      for(let a=0;a<16;a++){
+        const ang=a*Math.PI*2/16;
+        const wobble=offsets[a];
+        const r=rad+wobble;
+        const bx=Math.round(cx+Math.cos(ang)*r);
+        const by=Math.round(cy+Math.sin(ang)*r);
+        blobPts.push([bx,by]);
+      }
+      // Fill blob interior
+      for(let y=cy-rad-1;y<=cy+rad+1;y++){
+        for(let x=cx-rad-1;x<=cx+rad+1;x++){
+          const dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
+          if(dist<rad-0.5)p(x,y,fl?VG:br?VD:VDD);
+          else if(dist<rad+0.5){
+            // Irregular edge — skip some pixels for organic feel
+            const idx=Math.floor(Math.atan2(dy,dx)/(Math.PI*2)*16+16)%16;
+            const edgeR=rad+offsets[idx];
+            if(dist<edgeR+0.8)p(x,y,fl?VB:br?VD:'#003322');
+          }
+        }
+      }
+      // Outer membrane — bumpy organic edge
+      for(let a=0;a<32;a++){
+        const ang=a*Math.PI*2/32;
+        const wobble=offsets[a%16]*0.7+(a%3===0?1:0);
+        const r=rad+wobble+0.5;
+        const bx=Math.round(cx+Math.cos(ang)*r);
+        const by=Math.round(cy+Math.sin(ang)*r);
+        p(bx,by,fl?VL:br?VG:VD);
+      }
+      // Nucleus / core
+      p(cx,cy,fl?C.WHITE:br?VL:VG);p(cx-1,cy,fl?VL:br?VG:VD);p(cx+1,cy+1,fl?VL:VG);
+      if(lvl>=2){p(cx,cy-1,fl?VL:VG);p(cx+1,cy-1,fl?VB:VD);}
+      // Organelle spots — more at higher levels
+      p(cx-2,cy+2,C.DKMAG);p(cx+2,cy-1,fl?C.MAG:C.DKMAG);
+      if(lvl>=3){p(cx-3,cy-1,C.DKMAG);p(cx+3,cy+2,C.DPMAG);p(cx-1,cy+3,fl?C.MAG:C.DKMAG);}
+      if(lvl>=4){p(cx+1,cy-3,C.MAG);p(cx-2,cy-3,C.DKMAG);}
+      if(lvl>=5){p(cx-3,cy+3,C.MAG);p(cx+4,cy-2,C.MAG);}
+      // Pseudopod tendrils — organic, curving outward
+      const tc=fl?VG:br?VD:'#003322';
+      const tLen=2+lvl*2;
+      // Left pseudopod (curves down)
+      for(let i=0;i<Math.min(tLen,7);i++){const x=cx-rad-1-i,y=cy+1+Math.floor(i*0.7);if(x>=0&&y<32)p(x,y,i<2?tc:(fl?VG:tc));}
+      // Right pseudopod (curves up)
+      for(let i=0;i<Math.min(tLen,7);i++){const x=cx+rad+1+i,y=cy-Math.floor(i*0.7);if(x<32&&y>=0)p(x,y,i<2?tc:(fl?VB:tc));}
+      // Upper pseudopod
+      for(let i=0;i<Math.min(tLen,5);i++){const y=cy-rad-1-i;if(y>=0)p(cx-1+(i%2)*2,y,fl?VG:tc);}
+      // Lower pseudopod (forked)
+      for(let i=0;i<Math.min(tLen,5);i++){const y=cy+rad+1+i;if(y<32){p(cx+1+i%2,y,tc);p(cx-1-i%2,y,tc);}}
       if(lvl>=4){
-        // Diagonal tendrils
-        for(let i=0;i<4;i++){p(nX-2-i,nY+nSz+i,fl?C.NEON:tc);p(nX+nSz+1+i,nY-1-i,fl?C.NEON:tc);}
+        // Diagonal pseudopods
+        for(let i=0;i<4;i++){p(cx-rad-i,cy+rad+i-1,fl?VG:tc);p(cx+rad+i,cy-rad-i+1,fl?VG:tc);}
       }
       if(lvl>=5){
-        // Even more tendrils reaching edges
-        for(let i=0;i<3;i++){p(2+i,6+i*2,fl?C.LTNEON:C.DKNEON);p(28-i,6+i*2,fl?C.LTNEON:C.DKNEON);}
-        for(let i=0;i<3;i++){p(3+i,18+i,fl?C.NEON:C.DKNEON);p(27-i,18+i,fl?C.NEON:C.DKNEON);}
+        for(let i=0;i<3;i++){p(2+i,6+i*2,fl?VL:VD);p(28-i,6+i*2,fl?VL:VD);}
+        for(let i=0;i<3;i++){p(3+i,18+i,fl?VG:VD);p(27-i,18+i,fl?VG:VD);}
       }
-      // Infection particles (fire state)
+      // Spore particles (fire state)
       if(fl){
-        const pts=[[5,5,C.NEON],[26,10,C.NEON],[8,15,C.LTNEON],[24,6,C.LTNEON],
-         [4,12,C.DKNEON],[27,16,C.DKNEON],[3,8,C.NEON],[28,12,C.NEON]];
-        // More particles at higher levels
-        if(lvl>=3)pts.push([2,6,C.NEON],[29,8,C.NEON],[6,19,C.LTNEON],[25,3,C.LTNEON]);
-        if(lvl>=4)pts.push([1,10,C.NEON],[30,14,C.NEON],[4,20,C.DKNEON],[27,2,C.DKNEON]);
-        if(lvl>=5)pts.push([0,8,C.LTNEON],[31,10,C.LTNEON],[2,18,C.NEON],[29,4,C.NEON]);
-        pts.forEach(([x,y,cl])=>p(x,y,cl));
-        // Glitch magenta particles — more at higher levels
+        const pts:number[][]=[[5,5],[26,10],[8,15],[24,6],[4,12],[27,16],[3,8],[28,12]];
+        if(lvl>=3)pts.push([2,6],[29,8],[6,19],[25,3]);
+        if(lvl>=4)pts.push([1,10],[30,14],[4,20],[27,2]);
+        if(lvl>=5)pts.push([0,8],[31,10],[2,18],[29,4]);
+        pts.forEach(([x,y])=>p(x,y,Math.random()>0.5?VG:VB));
+        // Toxic magenta spores
         p(7,4,C.MAG);p(25,8,C.MAG);p(6,14,C.DKMAG);p(26,5,C.DKMAG);
         if(lvl>=3){p(3,10,C.MAG);p(28,7,C.MAG);}
         if(lvl>=5){p(1,14,C.MAG);p(30,6,C.DKMAG);b(4,16,2,1,C.MAG);b(26,3,2,1,C.DKMAG);}
       }
       if(br&&!fl){
-        p(6,6,C.DKNEON);p(24,13,C.DKNEON);p(8,16,C.SCRN);p(22,5,C.SCRN);
-        if(lvl>=3){p(4,8,C.DKNEON);p(26,11,C.DKNEON);}
+        p(6,6,VD);p(24,13,VD);p(8,16,'#003322');p(22,5,'#003322');
+        if(lvl>=3){p(4,8,VD);p(26,11,VD);}
       }
       // Base circuit nodes
-      p(11,24,br?C.NEON:C.DKNEON);p(20,24,br?C.NEON:C.DKNEON);
-      if(s===3){p(15,11,C.DKTEAL);p(16,13,C.DKTEAL);p(nX-1,nY+1,C.SCRN);p(nX+nSz,nY+2,C.SCRN);}
+      p(11,24,br?VG:VD);p(20,24,br?VG:VD);
+      if(s===3){p(cx,cy,VDD);p(cx-1,cy+1,VDD);p(cx-rad,cy,VDD);p(cx+rad,cy,VDD);}
     },
 
     // 3: Backdoor — Hidden terminal/console with screen flicker (4 levels)
