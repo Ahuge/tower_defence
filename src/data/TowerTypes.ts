@@ -382,7 +382,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mil_rifleman', name: 'Rifleman', description: 'Mobile ranged unit. Engages at medium range.',
     faction: 'military', damageType: 'physical', cost: 40, damage: 14, range: 3, fireRate: 700,
     color: 0x556b2f, projectileSpeed: 0, hotkey: '3',
-    traits: [{ id: 'mobile_unit', moveSpeed: 80, engageRange: 2.5, attackCooldown: 700 }],
+    traits: [{ id: 'mobile_unit', moveSpeed: 110, engageRange: 2.5, leashRange: 8, attackCooldown: 700 }],
     upgrades: [
       { level: 2, cost: 45, damage: 22, range: 3.5, fireRate: 600 },
       { level: 3, cost: 80, damage: 34, range: 4, fireRate: 500 },
@@ -402,7 +402,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mil_heavy', name: 'Tank', description: 'Mobile AoE. Slow but long range. Fires explosive shells.',
     faction: 'military', damageType: 'physical', cost: 120, damage: 30, range: 5, fireRate: 2000,
     color: 0x4a6741, projectileSpeed: 180, hotkey: '5',
-    traits: [{ id: 'mobile_unit', moveSpeed: 45, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 48 }],
+    traits: [{ id: 'mobile_unit', moveSpeed: 60, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 48 }],
     upgrades: [
       { level: 2, cost: 100, damage: 45, range: 5.5, fireRate: 1800 },
       { level: 3, cost: 160, damage: 65, range: 6, fireRate: 1500 },
@@ -413,7 +413,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     faction: 'military', damageType: 'physical', cost: 750, damage: 40, range: 5, fireRate: 800,
     color: 0xdaa520, projectileSpeed: 0, hotkey: '6', ultimate: true,
     traits: [
-      { id: 'mobile_unit', moveSpeed: 90, engageRange: 1, leashRange: 6, attackCooldown: 800 },
+      { id: 'mobile_unit', moveSpeed: 110, engageRange: 1, leashRange: 6, attackCooldown: 800 },
       { id: 'adjacency_buff', damagePercent: 0.2, ratePercent: 0.1 },
     ],
     // No upgrades — the Commander leads by presence
@@ -481,7 +481,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'alien_swarmling', name: 'Swarmling', description: 'Mobile melee. Cheap, fast, disposable.',
     faction: 'aliens', damageType: 'physical', cost: 15, damage: 4, range: 2, fireRate: 400,
     color: 0x99ee55, projectileSpeed: 0, hotkey: '7',
-    traits: [{ id: 'mobile_unit', moveSpeed: 160, engageRange: 0.6, attackCooldown: 400 }],
+    traits: [{ id: 'mobile_unit', moveSpeed: 160, engageRange: 0.6, leashRange: 5, attackCooldown: 400 }],
     upgrades: [
       { level: 2, cost: 15, damage: 10, range: 2, fireRate: 350 },
     ],
