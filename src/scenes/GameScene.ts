@@ -552,10 +552,11 @@ export class GameScene extends Phaser.Scene {
         this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
         this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
       } else {
-        // Desktop: world = full canvas (sidebar + game grid + tower bar area)
+        // Desktop: world = full canvas, but bounds centered on grid area
         const canvasH = ResponsiveManager.canvasHeight();
         this.cameraCtrl = new CameraController(this, canvasW, canvasH);
         this.cameraCtrl.setCanPanCheck(() => this.selectionMode === 'none');
+        this.cameraCtrl.setGridOffset(getGridOffsetX());
       }
       this.inputMgr.setCameraController(this.cameraCtrl);
     }
@@ -713,31 +714,34 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Set up camera system for zoom support.
-   *  Phone: dual camera (main = game with zoom, UI camera = HUD overlay at 1x).
-   *  Desktop: single camera (main renders everything). No UI camera needed —
-   *  zoom is modest and the sidebar zooming with the game is acceptable. */
+  /** Set up dual camera: main camera zooms game objects, UI camera stays at 1x.
+   *  Works the same on phone and desktop. Sidebar bg at depth 0 zooms with
+   *  the game (invisible — it's a solid color), while sidebar panels (depth 28)
+   *  stay crisp at 1x on the UI camera. */
   private setupUiCamera(): void {
-    if (!ResponsiveManager.isPhone()) return; // Desktop: no UI camera needed
-
     const canvasW = getCanvasWidth();
     const canvasH = ResponsiveManager.canvasHeight();
 
-    // Phone: UI camera overlay for HUD at 1x
+    // UI camera: full canvas, 1x zoom, no scroll — renders depth >= 28 objects
     this.uiCamera = this.cameras.add(0, 0, canvasW, canvasH);
     this.uiCamera.setScroll(0, 0);
     this.uiCamera.setName('ui');
     this.uiCamera.transparent = true;
 
+    // Step 1: UI camera ignores all existing objects
     for (const child of this.children.list) {
       this.uiCamera.ignore(child);
     }
+
+    // Step 2: new game objects (depth < 28) auto-ignored by UI camera
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
       if (!this.uiCamera) return;
       if (((go as any).depth ?? 0) < 28) {
         this.uiCamera.ignore(go);
       }
     });
+
+    // Step 3: depth >= 28 objects → hide from main camera, show on UI camera
     for (const child of this.children.list) {
       if (((child as any).depth ?? 0) >= 28) {
         this.cameras.main.ignore(child);

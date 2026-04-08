@@ -59,6 +59,8 @@ export class CameraController {
   pinching: boolean = false;
   /** Desktop: callback to check if left-click pan is allowed (no tower selected) */
   private canPanCheck: (() => boolean) | null = null;
+  /** Desktop: X offset where the game grid starts (sidebar width) */
+  private gridOffsetX: number = 0;
 
   constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number, viewportHeight?: number) {
     this.scene = scene;
@@ -333,9 +335,10 @@ export class CameraController {
     const cam = this.camera;
     const viewW = cam.width / cam.zoom;
     const viewH = cam.height / cam.zoom;
-    // Simple bounds: keep the world visible with a small margin
-    const margin = 20;
-    const minX = -margin;
+    // Bounds centered on the game grid area (excludes sidebar from pan range)
+    // gridOffsetX is 360 on desktop (sidebar width)
+    const margin = 40;
+    const minX = this.gridOffsetX - margin;
     const minY = -margin;
     const maxX = Math.max(this.worldW - viewW + margin, minX);
     const maxY = Math.max(this.worldH - viewH + margin, minY);
@@ -350,6 +353,11 @@ export class CameraController {
   /** Set a callback that returns true when left-click pan is allowed (desktop) */
   setCanPanCheck(check: () => boolean): void {
     this.canPanCheck = check;
+  }
+
+  /** Set the grid X offset so desktop bounds are centered on the grid, not the sidebar */
+  setGridOffset(x: number): void {
+    this.gridOffsetX = x;
   }
 
 
