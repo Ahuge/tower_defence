@@ -196,11 +196,13 @@ export class CameraController {
     // Bounds: the camera viewport can show any part of the world
     // At high zoom, the viewport is small so scroll range is large
     // At low zoom, the viewport covers most of the world so range is small
-    const margin = 20; // small margin past world edges (in world coords)
-    const minX = -margin;
-    const minY = -margin;
-    const maxX = Math.max(this.worldW - viewW + margin, minX);
-    const maxY = Math.max(this.worldH - viewH + margin, minY);
+    // Very relaxed bounds — allow panning well outside the map (2x world size)
+    const marginX = this.worldW;
+    const marginY = this.worldH;
+    const minX = -marginX;
+    const minY = -marginY;
+    const maxX = Math.max(this.worldW - viewW + marginX, minX);
+    const maxY = Math.max(this.worldH - viewH + marginY, minY);
 
     // If actively dragging, allow elastic overscroll
     if (this.isPanning) {
