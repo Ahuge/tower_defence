@@ -13,8 +13,10 @@ export type TerrainType = GroundType | BlockedTerrainType | 'entry' | 'exit' | '
 export interface TerrainRule {
   minSize?: number;
   maxSize?: number;
-  /** If true, only matches clusters with bounding box aspect ratio > 3:1 */
+  /** If true, only matches clusters with bounding box aspect ratio > 2.5:1 */
   elongated?: boolean;
+  /** Maximum aspect ratio — only match roughly circular/square clusters */
+  maxAspect?: number;
   terrain: BlockedTerrainType;
 }
 
@@ -47,8 +49,9 @@ export const THEMES: Record<string, TerrainTheme> = {
     id: 'water',
     ground: 'grass',
     rules: [
-      { elongated: true, terrain: 'mountain' },
-      { minSize: 6, terrain: 'water' },
+      { elongated: true, terrain: 'mountain' },         // ridges/walls → rock
+      { minSize: 6, maxAspect: 2, terrain: 'water' },   // round-ish clusters → water
+      { minSize: 4, terrain: 'mountain' },               // rectangular medium → rock
       { terrain: 'trees' },
     ],
   },
@@ -72,7 +75,7 @@ export const THEMES: Record<string, TerrainTheme> = {
     ground: 'grass',
     rules: [
       { elongated: true, terrain: 'mountain' },
-      { minSize: 12, terrain: 'water' },
+      { minSize: 12, maxAspect: 2, terrain: 'water' },
       { minSize: 6, terrain: 'mountain' },
       { terrain: 'trees' },
     ],
@@ -136,23 +139,29 @@ export function findClusters(
   return clusters;
 }
 
-/** Check if a cluster is elongated (aspect ratio > 3:1) */
-function isElongated(cluster: Cluster): boolean {
+/** Get the aspect ratio of a cluster's bounding box */
+function getAspectRatio(cluster: Cluster): number {
   const w = cluster.maxCol - cluster.minCol + 1;
   const h = cluster.maxRow - cluster.minRow + 1;
-  const ratio = Math.max(w, h) / Math.max(1, Math.min(w, h));
-  return ratio > 3;
+  return Math.max(w, h) / Math.max(1, Math.min(w, h));
+}
+
+/** Check if a cluster is elongated (aspect ratio > 2.5:1) */
+function isElongated(cluster: Cluster): boolean {
+  return getAspectRatio(cluster) > 2.5;
 }
 
 /** Match a cluster against theme rules, return terrain type */
 export function matchCluster(cluster: Cluster, theme: TerrainTheme): BlockedTerrainType {
   const size = cluster.cells.length;
   const elong = isElongated(cluster);
+  const aspect = getAspectRatio(cluster);
 
   for (const rule of theme.rules) {
     if (rule.elongated !== undefined && rule.elongated !== elong) continue;
     if (rule.minSize !== undefined && size < rule.minSize) continue;
     if (rule.maxSize !== undefined && size > rule.maxSize) continue;
+    if (rule.maxAspect !== undefined && aspect > rule.maxAspect) continue;
     return rule.terrain;
   }
 

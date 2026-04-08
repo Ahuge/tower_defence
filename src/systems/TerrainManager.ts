@@ -15,10 +15,10 @@ import {
 
 /** Colors for each terrain type (used for programmatic rendering) */
 const TERRAIN_COLORS: Record<BlockedTerrainType, { fill: number; edge: number; accent?: number }> = {
-  mountain: { fill: 0x555555, edge: 0x777777, accent: 0x444444 },
+  mountain: { fill: 0x4a3828, edge: 0x6b5040, accent: 0x3a2818 },
   water:    { fill: 0x2244aa, edge: 0x3366cc, accent: 0x1133aa },
   trees:    { fill: 0x226622, edge: 0x338833, accent: 0x114411 },
-  stone:    { fill: 0x666666, edge: 0x888888, accent: 0x555555 },
+  stone:    { fill: 0x606068, edge: 0x808088, accent: 0x505058 },
   lava:     { fill: 0x331100, edge: 0x552200, accent: 0xff4400 },
 };
 
@@ -126,6 +126,9 @@ export class TerrainManager {
       }
     }
 
+    // Ground decorations — scattered doodads on walkable tiles
+    this.drawGroundDoodads(g, grid, oY, rows, cols);
+
     // Entry/exit markers (kept as colored squares)
     for (const entry of grid.entries) {
       g.fillStyle(0x44ff44, 0.5);
@@ -134,6 +137,89 @@ export class TerrainManager {
     for (const exit of grid.exits) {
       g.fillStyle(0xff4444, 0.5);
       g.fillRect(gridLeftX(exit.col), oY + exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+
+  /** Simple seeded random for consistent decoration placement */
+  private seededRand(x: number, y: number, seed: number = 0): number {
+    let h = (x * 374761393 + y * 668265263 + seed * 1274126177) | 0;
+    h = ((h ^ (h >> 13)) * 1103515245) | 0;
+    return ((h ^ (h >> 16)) & 0x7fffffff) / 0x7fffffff;
+  }
+
+  /** Draw scattered ground decorations on walkable tiles */
+  private drawGroundDoodads(
+    g: Phaser.GameObjects.Graphics,
+    grid: Grid,
+    oY: number,
+    rows: number,
+    cols: number,
+  ): void {
+    const isGrass = this.groundType === 'grass';
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = grid.cells[r][c];
+        if (cell === CellType.Blocked || cell === CellType.NoBuild) continue;
+
+        const x = gridLeftX(c);
+        const y = oY + r * TILE_SIZE;
+        const rand = this.seededRand(c, r);
+
+        // ~20% of tiles get a decoration
+        if (rand > 0.20) continue;
+
+        const rand2 = this.seededRand(c, r, 1);
+        const rand3 = this.seededRand(c, r, 2);
+        const dx = 4 + Math.floor(rand2 * (TILE_SIZE - 8));
+        const dy = 4 + Math.floor(rand3 * (TILE_SIZE - 8));
+
+        if (isGrass) {
+          const doodadType = Math.floor(this.seededRand(c, r, 3) * 4);
+          if (doodadType === 0) {
+            // Small bush
+            g.fillStyle(0x2a5a2a, 0.4);
+            g.fillCircle(x + dx, y + dy, 3);
+            g.fillStyle(0x3a7a3a, 0.3);
+            g.fillCircle(x + dx + 1, y + dy - 1, 2);
+          } else if (doodadType === 1) {
+            // Grass tuft
+            g.lineStyle(1, 0x3a6a3a, 0.35);
+            g.lineBetween(x + dx, y + dy, x + dx - 2, y + dy - 5);
+            g.lineBetween(x + dx, y + dy, x + dx + 1, y + dy - 6);
+            g.lineBetween(x + dx, y + dy, x + dx + 3, y + dy - 4);
+          } else if (doodadType === 2) {
+            // Small flower
+            g.fillStyle(0x4a8a4a, 0.3);
+            g.fillCircle(x + dx, y + dy, 2);
+            const flowerColor = [0xffaa44, 0xff6688, 0xaabb55, 0xdddd44][Math.floor(this.seededRand(c, r, 4) * 4)];
+            g.fillStyle(flowerColor, 0.4);
+            g.fillCircle(x + dx, y + dy - 2, 1.5);
+          } else {
+            // Small pebble
+            g.fillStyle(0x555544, 0.25);
+            g.fillCircle(x + dx, y + dy, 1.5);
+          }
+        } else {
+          // Dirt/sand ground: small rocks and cracks
+          const doodadType = Math.floor(this.seededRand(c, r, 3) * 3);
+          if (doodadType === 0) {
+            // Small rock
+            g.fillStyle(0x444438, 0.3);
+            g.fillCircle(x + dx, y + dy, 2);
+          } else if (doodadType === 1) {
+            // Crack
+            g.lineStyle(1, 0x1a1810, 0.25);
+            g.lineBetween(x + dx, y + dy, x + dx + 4, y + dy + 3);
+            g.lineBetween(x + dx + 4, y + dy + 3, x + dx + 6, y + dy + 1);
+          } else {
+            // Tiny pebbles
+            g.fillStyle(0x3a3830, 0.2);
+            g.fillCircle(x + dx, y + dy, 1);
+            g.fillCircle(x + dx + 3, y + dy + 2, 1);
+          }
+        }
+      }
     }
   }
 
@@ -165,15 +251,26 @@ export class TerrainManager {
 
     // Terrain-specific detail
     if (terrain === 'mountain') {
-      // Rocky texture — small darker squares
-      g.fillStyle(colors.accent ?? 0x444444, 0.4);
-      g.fillRect(x + 4, y + 6, 5, 4);
-      g.fillRect(x + 14, y + 3, 6, 5);
-      g.fillRect(x + 8, y + 16, 7, 4);
-      // Peak highlight on top edge
+      // Rocky crag texture
+      g.fillStyle(colors.accent ?? 0x3a2818, 0.5);
+      g.fillRect(x + 3, y + 5, 6, 5);
+      g.fillRect(x + 16, y + 2, 7, 6);
+      g.fillRect(x + 7, y + 15, 8, 5);
+      // Lighter rock highlights
+      g.fillStyle(0x7a6850, 0.35);
+      g.fillRect(x + 10, y + 8, 4, 3);
+      g.fillRect(x + 2, y + 18, 5, 3);
+      // Peak/ridge highlight on exposed top edge
       if (!hasN) {
-        g.fillStyle(0x888888, 0.3);
-        g.fillRect(x + 6, y + 1, s - 12, 2);
+        g.fillStyle(0x8a7860, 0.5);
+        const peakW = 8 + ((x * 7 + y * 3) % 6);
+        const peakX = x + 4 + ((x * 3) % 5);
+        g.beginPath();
+        g.moveTo(peakX, y + 4);
+        g.lineTo(peakX + peakW / 2, y);
+        g.lineTo(peakX + peakW, y + 4);
+        g.closePath();
+        g.fillPath();
       }
     } else if (terrain === 'water') {
       // Wave lines
