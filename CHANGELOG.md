@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-04-07
+
+### Sprite Art System
+- **Hybrid sprite rendering**: Factions with pixel art use Phaser Sprites; others use Graphics primitives. Clean migration path per faction.
+- **All 11 factions** have complete spritesheets: towers (with per-level upgrade art), projectiles (travel + impact animations), and heroes (directional walk/attack/ability frames).
+- **6 mobile unit walk-cycle sheets**: Rifleman, Brawler, Tank, Commander, Swarmling, Fiend — each with 4-direction walk + attack animations.
+- **Tower picker icons**: Tower select bar shows sprite icons instead of truncated text labels.
+- **Hero select portraits**: Hero picker shows sprite idle frame instead of colored diamond (desktop + phone).
+- **Encyclopedia icons**: Tower and hero detail pages display sprite art.
+- **Per-level tower art**: Towers visually progress as they upgrade (more detail, glow, particles per level). Extended tower sheets with 4 rows × maxLevels per faction.
+- **Sprite preview tool**: `sprites.html` page renders all generators with "Download All (ZIP)" button for batch export.
+
+### Gameplay Balance
+- **Heavy Gunner → Tank**: Renamed, rethemed as armored vehicle. Slower (moveSpeed 45), longer range (4.5-6 tiles), fires AoE explosive shells.
+- **Brood Mother buff**: Now provides +20% damage, +15% attack speed aura to nearby towers.
+- **Firewall buff**: DPS increased to 35, adds 65% slow to creeps crossing the beam.
+- **Hero Defense Tomes**: Three new purchasable tomes in the item shop:
+  - XP Tome (100g): Grants 50 + level×5 XP
+  - Stat Tome (250g+): +5 DMG, +30 HP, +0.1 AS (cost scales +50g per purchase)
+  - Interest Tome (200/400/800g): Upgrades interest rate from 2% → 3% → 4% → 5%
+
+### Visual Polish
+- **Meteor ground-targeting**: Splash projectiles lock destination at fire time (don't track moving targets). No rotation on splash projectiles.
+- **AoE impact scaling**: Splash impacts scale to match AoE radius with NEAREST filtering for crisp pixel art.
+- **Flamethrower**: Larger projectile sprite (38px) for visible flame burst.
+- **Tower rotation disabled**: Whole-tower rotation looked bad; will revisit with directional sprite art.
+- **Mobile unit attack effects**: Melee impact bursts, bullet trails, AoE flash rings for military units.
+
+### UI Fixes
+- **Mobile zoom/pan**: Elastic bounds scale properly with zoom level. Pinch anchors to touch midpoint via getWorldPoint().
+- **Pause menu**: Centers on screen (not world) — works at any zoom level.
+- **Tower tooltip**: Positioned relative to actual bar Y on mobile (not hardcoded desktop value).
+- **Send panel**: Expanded to 190px on desktop for T2 sends. Sizing moved to UIScale.
+- **Event log**: Text bottom-anchored so newest entries always visible.
+- **Creep info panel**: Height now accounts for all stat lines + effects (shield/slow no longer clipped).
+- **Scene cleanup**: GameScene shutdown handler destroys towers/creeps/listeners on exit.
+
 ## 2026-03-21
 
 ### Mobile Phone Support
