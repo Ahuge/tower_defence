@@ -269,7 +269,7 @@ export function getDashboardHTML(baseUrl: string): string {
       html += '</div>';
 
       // Breakdowns
-      html += '<p class="section-title">Today\'s Breakdowns</p>';
+      html += '<p class="section-title">Todays Breakdowns</p>';
       html += '<div class="grid">';
       html += barCard('Factions', factions, FACTION_COLORS);
       html += barCard('Game Modes', modes, { standard: '#44ff44', hero_defense: '#ff44aa', battle: '#ffaa44', marathon: '#4488ff', sprint: '#88ff88', circle_coop: '#aa44ff' });
