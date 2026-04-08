@@ -1,21 +1,21 @@
-import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
+import { getSidebarWidth } from '../config';
 import { Hero } from '../entities/Hero';
-import { ITEM_SLOTS, ITEM_SLOT_ORDER, ItemSlot } from '../data/HeroItems';
+import { ITEM_SLOTS, ITEM_SLOT_ORDER } from '../data/HeroItems';
 import { EconomyManager } from '../systems/EconomyManager';
 import { ArenaManager } from '../systems/ArenaManager';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { EventLog } from './EventLog';
-import { uiText, uiGraphics, uiZone } from '../systems/UILayer';
+import { uiText, uiGraphics } from '../systems/UILayer';
+import { PanelBase } from './PanelBase';
 
-export class ItemShopPanel {
-  private scene: Phaser.Scene;
-  private container: Phaser.GameObjects.Container;
+export class ItemShopPanel extends PanelBase {
   private hero: Hero;
   private economy: EconomyManager;
   private arenaManager: ArenaManager;
   private eventLog: EventLog;
-  private dynamicItems: Phaser.GameObjects.GameObject[] = [];
+  private grouped: boolean = false;
+  private groupToggle!: Phaser.GameObjects.Text;
 
   constructor(
     scene: Phaser.Scene,
@@ -25,19 +25,18 @@ export class ItemShopPanel {
     sidebarTopY: number,
     arenaManager: ArenaManager,
   ) {
-    this.scene = scene;
+    super(scene, 0, sidebarTopY, 28);
     this.hero = hero;
     this.economy = economy;
     this.arenaManager = arenaManager;
     this.eventLog = eventLog;
 
-    const topY = sidebarTopY;
-    this.container = scene.add.container(0, topY).setDepth(28);
-
-    this.buildPanel();
+    this.buildStatic();
+    this.rebuildDynamic();
   }
 
-  private buildPanel(): void {
+  /** Static elements that never change */
+  private buildStatic(): void {
     const panelW = getSidebarWidth();
     const panelH = UIScale.isPhone ? ResponsiveManager.canvasHeight() - 200 : 440;
 
@@ -48,92 +47,62 @@ export class ItemShopPanel {
     bg.strokeRect(0, 0, panelW, panelH);
     this.container.add(bg);
 
-    const title = uiText(this.scene,8, 6, 'HERO ITEMS', {
+    const title = uiText(this.scene, 8, 6, 'HERO ITEMS', {
       fontSize: UIScale.font(13), color: '#ff44aa', fontFamily: 'monospace',
     });
     this.container.add(title);
 
-    // Hero stats summary
-    const heroInfo = uiText(this.scene,8, 24, `${this.hero.typeDef.name}`, {
+    const heroInfo = uiText(this.scene, 8, 24, `${this.hero.typeDef.name}`, {
       fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',
     });
     this.container.add(heroInfo);
-
-    this.rebuildDynamic();
   }
 
+  /** Dynamic elements rebuilt when state changes */
   private rebuildDynamic(): void {
-    for (const obj of this.dynamicItems) {
-      this.container.remove(obj, true);
-    }
-    this.dynamicItems = [];
-    const rh = UIScale.current.rowHeight; // 24 on phone, 16 on desktop
-    const gap = UIScale.space(2);  // gap between sections
-
-    let y = 42;
+    this.clearDynamic();
+    const rh = UIScale.current.rowHeight;
+    const gap = UIScale.space(2);
     const touch = UIScale.current.minTouchTarget;
+    const pw = getSidebarWidth();
+    let y = 42;
 
     // Level / XP bar
-    const lvlText = uiText(this.scene,8, y,
-      `Lv.${this.hero.level}${this.hero.level >= 15 ? ' (MAX)' : ''}`,
-      { fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace' }
-    );
-    this.container.add(lvlText);
-    this.dynamicItems.push(lvlText);
+    this.dText(8, y, `Lv.${this.hero.level}${this.hero.level >= 15 ? ' (MAX)' : ''}`,
+      { fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace' });
 
     if (this.hero.level < 15) {
       const xpNeeded = this.hero.xpToNextLevel();
       const xpRatio = xpNeeded > 0 ? this.hero.xp / xpNeeded : 0;
       const barX = UIScale.isPhone ? 90 : 70;
-      const barW = getSidebarWidth() - barX - 12;
+      const barW = pw - barX - 12;
       const barH = UIScale.isPhone ? 14 : 10;
-      const xpBarBg = uiGraphics(this.scene);
-      xpBarBg.fillStyle(0x222222, 1);
-      xpBarBg.fillRect(barX, y + 2, barW, barH);
-      xpBarBg.fillStyle(0xffaa44, 0.8);
-      xpBarBg.fillRect(barX, y + 2, barW * xpRatio, barH);
-      xpBarBg.lineStyle(1, 0x555555, 1);
-      xpBarBg.strokeRect(barX, y + 2, barW, barH);
-      this.container.add(xpBarBg);
-      this.dynamicItems.push(xpBarBg);
-
-      const xpLabel = uiText(this.scene,barX + barW / 2, y + 2, `${this.hero.xp}/${xpNeeded}`, {
-        fontSize: UIScale.font(8), color: '#cccccc', fontFamily: 'monospace',
-      }).setOrigin(0.5, 0);
-      this.container.add(xpLabel);
-      this.dynamicItems.push(xpLabel);
+      const g = this.dGraphics();
+      g.fillStyle(0x222222, 1).fillRect(barX, y + 2, barW, barH);
+      g.fillStyle(0xffaa44, 0.8).fillRect(barX, y + 2, barW * xpRatio, barH);
+      g.lineStyle(1, 0x555555, 1).strokeRect(barX, y + 2, barW, barH);
+      this.dText(barX + barW / 2, y + 2, `${this.hero.xp}/${xpNeeded}`,
+        { fontSize: UIScale.font(8), color: '#cccccc', fontFamily: 'monospace' }).setOrigin(0.5, 0);
     }
     y += rh;
 
     // Hero stats
-    const statsText = uiText(this.scene,8, y,
+    this.dText(8, y,
       `HP: ${this.hero.hp}/${this.hero.maxHp}  DMG: ${this.hero.getEffectiveDamage()}  AS: ${this.hero.getEffectiveAttackSpeed().toFixed(2)}/s`,
-      { fontSize: UIScale.font(11), color: '#888888', fontFamily: 'monospace' }
-    );
-    this.container.add(statsText);
-    this.dynamicItems.push(statsText);
+      { fontSize: UIScale.font(11), color: '#888888', fontFamily: 'monospace' });
     y += rh;
 
     // Pending upgrade picker
     if (this.hero.pendingUpgrades > 0) {
-      const upLabel = uiText(this.scene,8, y, `LEVEL UP! (${this.hero.pendingUpgrades} point${this.hero.pendingUpgrades > 1 ? 's' : ''})`, {
-        fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace',
-      });
-      this.container.add(upLabel);
-      this.dynamicItems.push(upLabel);
+      this.dText(8, y, `LEVEL UP! (${this.hero.pendingUpgrades} point${this.hero.pendingUpgrades > 1 ? 's' : ''})`,
+        { fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace' });
       y += rh;
 
       for (const opt of this.hero.getUpgradeOptions()) {
-        const btn = uiText(this.scene,16, y, `[${opt.label}] ${opt.desc}`, {
-          fontSize: UIScale.font(10), color: '#44ff44', fontFamily: 'monospace',
-        });
-        this.container.add(btn);
-        this.dynamicItems.push(btn);
-        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, getSidebarWidth() - 24, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
-        btn.on('pointerdown', () => {
-          this.hero.applyUpgrade(opt.id);
-          this.lastSnapshot = '';
-        });
+        const btn = this.dText(16, y, `[${opt.label}] ${opt.desc}`,
+          { fontSize: UIScale.font(10), color: '#44ff44', fontFamily: 'monospace' });
+        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, pw - 24, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+        btn.on('pointerdown', () => { this.hero.applyUpgrade(opt.id); this.invalidate(); });
         btn.on('pointerover', () => btn.setColor('#ffffff'));
         btn.on('pointerout', () => btn.setColor('#44ff44'));
         y += Math.max(rh, touch);
@@ -141,47 +110,26 @@ export class ItemShopPanel {
       y += gap;
     }
 
-    // Divider
-    this.addDivider(y);
-    y += 6;
+    this.dDivider(y); y += 6;
 
-    // Item slots (compact)
+    // Item slots
     for (let i = 0; i < ITEM_SLOT_ORDER.length; i++) {
       const slotId = ITEM_SLOT_ORDER[i];
       const slotDef = ITEM_SLOTS[slotId];
       const item = this.hero.items[i];
 
-      let label: string;
-      let labelColor: string;
-      if (item.tier === 0) {
-        label = `${slotDef.name}: (empty)`;
-        labelColor = '#666666';
-      } else {
-        const tierDef = slotDef.tiers[item.tier - 1];
-        label = `${slotDef.name}: ${tierDef.label} (T${item.tier})`;
-        labelColor = slotDef.color;
-      }
+      const label = item.tier === 0
+        ? `${slotDef.name}: (empty)`
+        : `${slotDef.name}: ${slotDef.tiers[item.tier - 1].label} (T${item.tier})`;
+      const labelColor = item.tier === 0 ? '#666666' : slotDef.color;
+      this.dText(8, y, label, { fontSize: UIScale.font(11), color: labelColor, fontFamily: 'monospace' });
 
-      const nameText = uiText(this.scene,8, y, label, {
-        fontSize: UIScale.font(11), color: labelColor, fontFamily: 'monospace',
-      });
-      this.container.add(nameText);
-      this.dynamicItems.push(nameText);
-
-      // Upgrade button on same line
       if (item.tier < 3) {
         const nextTier = slotDef.tiers[item.tier];
         const cost = nextTier.cost;
         const canAfford = this.economy.canAfford(cost);
-        const btnLabel = `[${cost}g]`;
-        const btnColor = canAfford ? '#44ff44' : '#664444';
-
-        const btn = uiText(this.scene,getSidebarWidth() - 60, y, btnLabel, {
-          fontSize: UIScale.font(11), color: btnColor, fontFamily: 'monospace',
-        });
-        this.container.add(btn);
-        this.dynamicItems.push(btn);
-
+        const btn = this.dText(pw - 60, y, `[${cost}g]`,
+          { fontSize: UIScale.font(11), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace' });
         if (canAfford) {
           btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
           const idx = i;
@@ -190,257 +138,114 @@ export class ItemShopPanel {
           btn.on('pointerout', () => btn.setColor('#44ff44'));
         }
       } else {
-        const maxText = uiText(this.scene,getSidebarWidth() - 50, y, '(MAX)', {
-          fontSize: UIScale.font(10), color: '#ffaa44', fontFamily: 'monospace',
-        });
-        this.container.add(maxText);
-        this.dynamicItems.push(maxText);
+        this.dText(pw - 50, y, '(MAX)', { fontSize: UIScale.font(10), color: '#ffaa44', fontFamily: 'monospace' });
       }
       y += rh;
     }
 
-    // Tomes section
-    y += gap;
-    this.addDivider(y);
-    y += 6;
-
-    const tomeTitle = uiText(this.scene,8, y, 'TOMES', {
-      fontSize: UIScale.font(11), color: '#ffcc44', fontFamily: 'monospace',
-    });
-    this.container.add(tomeTitle);
-    this.dynamicItems.push(tomeTitle);
+    // Tomes
+    y += gap; this.dDivider(y); y += 6;
+    this.dText(8, y, 'TOMES', { fontSize: UIScale.font(11), color: '#ffcc44', fontFamily: 'monospace' });
     y += rh;
 
-    // XP Tome — grants XP to the hero
-    const xpTomeCost = 100;
-    const xpAmount = 50 + this.hero.level * 5;
-    {
-      const canAfford = this.economy.canAfford(xpTomeCost);
-      const label = uiText(this.scene,8, y, `XP Tome: +${xpAmount} XP`, {
-        fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
-      });
-      this.container.add(label);
-      this.dynamicItems.push(label);
+    y = this.buildTomeRow(y, `XP Tome: +${50 + this.hero.level * 5} XP`, 100, () => {
+      this.hero.grantXP(50 + this.hero.level * 5);
+      this.eventLog.gameMessage(`XP Tome: +${50 + this.hero.level * 5} XP!`);
+    });
 
-      const btn = uiText(this.scene,getSidebarWidth() - 60, y, `[${xpTomeCost}g]`, {
-        fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
+    const attrCost = 250 + this.hero.tomeCount * 50;
+    y = this.buildTomeRow(y, `Stat Tome: +5 DMG +30 HP +0.1 AS`, attrCost, () => {
+      this.hero.tomeBonusDamage += 5;
+      this.hero.tomeBonusHp += 30;
+      this.hero.tomeBonusAttackSpeed += 0.1;
+      this.hero.tomeCount++;
+      this.hero.hp = Math.min(this.hero.hp + 30, this.hero.getEffectiveMaxHp());
+      this.eventLog.gameMessage(`Stat Tome #${this.hero.tomeCount}: +5 DMG, +30 HP, +0.1 AS`);
+    });
+
+    const interestTier = (this.hero as any)._interestTier ?? 0;
+    if (interestTier < 3) {
+      const costs = [200, 400, 800];
+      const rates = [3, 4, 5];
+      y = this.buildTomeRow(y, `Interest Tome: → ${rates[interestTier]}%/wave`, costs[interestTier], () => {
+        (this.hero as any)._interestTier = interestTier + 1;
+        (this.hero as any)._interestRate = rates[interestTier] / 100;
+        this.eventLog.gameMessage(`Interest Tome: rate now ${rates[interestTier]}%!`);
       });
-      this.container.add(btn);
-      this.dynamicItems.push(btn);
-      if (canAfford) {
-        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
-        btn.on('pointerdown', () => {
-          if (this.economy.spend(xpTomeCost)) {
-            this.hero.grantXP(xpAmount);
-            this.eventLog.gameMessage(`XP Tome: +${xpAmount} XP!`);
-            this.lastSnapshot = '';
-          }
-        });
-        btn.on('pointerover', () => btn.setColor('#ffffff'));
-        btn.on('pointerout', () => btn.setColor('#44ff44'));
-      }
-      y += rh;
     }
 
-    // Attribute Tome — +5 damage, +30 HP, +0.1 attack speed (scaling cost)
-    {
-      const baseCost = 250;
-      const attrTomeCost = baseCost + this.hero.tomeCount * 50; // gets more expensive each time
-      const canAfford = this.economy.canAfford(attrTomeCost);
-      const label = uiText(this.scene,8, y, `Stat Tome: +5 DMG +30 HP +0.1 AS`, {
-        fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
-      });
-      this.container.add(label);
-      this.dynamicItems.push(label);
-
-      const btn = uiText(this.scene,getSidebarWidth() - 60, y, `[${attrTomeCost}g]`, {
-        fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
-      });
-      this.container.add(btn);
-      this.dynamicItems.push(btn);
-      if (canAfford) {
-        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
-        btn.on('pointerdown', () => {
-          if (this.economy.spend(attrTomeCost)) {
-            this.hero.tomeBonusDamage += 5;
-            this.hero.tomeBonusHp += 30;
-            this.hero.tomeBonusAttackSpeed += 0.1;
-            this.hero.tomeCount++;
-            // Heal for the HP bonus
-            this.hero.hp = Math.min(this.hero.hp + 30, this.hero.getEffectiveMaxHp());
-            this.eventLog.gameMessage(`Stat Tome #${this.hero.tomeCount}: +5 DMG, +30 HP, +0.1 AS (next: ${baseCost + this.hero.tomeCount * 50}g)`);
-            this.lastSnapshot = '';
-          }
-        });
-        btn.on('pointerover', () => btn.setColor('#ffffff'));
-        btn.on('pointerout', () => btn.setColor('#44ff44'));
-      }
-      y += rh;
-    }
-
-    // Interest Tome — permanently increases interest rate by 1% (one-time purchase per tier)
-    {
-      const interestTier = (this.hero as any)._interestTier ?? 0;
-      if (interestTier < 3) {
-        const costs = [200, 400, 800];
-        const rates = [3, 4, 5];
-        const interestCost = costs[interestTier];
-        const newRate = rates[interestTier];
-        const canAfford = this.economy.canAfford(interestCost);
-        const label = uiText(this.scene,8, y, `Interest Tome: → ${newRate}%/wave`, {
-          fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
-        });
-        this.container.add(label);
-        this.dynamicItems.push(label);
-
-        const btn = uiText(this.scene,getSidebarWidth() - 60, y, `[${interestCost}g]`, {
-          fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
-        });
-        this.container.add(btn);
-        this.dynamicItems.push(btn);
-        if (canAfford) {
-          btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
-          btn.on('pointerdown', () => {
-            if (this.economy.spend(interestCost)) {
-              (this.hero as any)._interestTier = interestTier + 1;
-              (this.hero as any)._interestRate = newRate / 100;
-              this.eventLog.gameMessage(`Interest Tome: rate now ${newRate}%!`);
-              this.lastSnapshot = '';
-            }
-          });
-          btn.on('pointerover', () => btn.setColor('#ffffff'));
-          btn.on('pointerout', () => btn.setColor('#44ff44'));
-        }
-        y += rh;
-      }
-    }
-
-    // Divider
-    y += gap;
-    this.addDivider(y);
-    y += 6;
-
-    // Accessory section
+    // Accessories
+    y += gap; this.dDivider(y); y += 6;
     const accCount = this.hero.accessories.length;
-    const accTitle = uiText(this.scene,8, y, `ACCESSORIES (${accCount}/3)`, {
-      fontSize: UIScale.font(11), color: '#cc66ff', fontFamily: 'monospace',
-    });
-    this.container.add(accTitle);
-    this.dynamicItems.push(accTitle);
-
-    // Rotation countdown
-    const rotText = uiText(this.scene,getSidebarWidth() - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`, {
-      fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
-    });
-    this.container.add(rotText);
-    this.dynamicItems.push(rotText);
+    this.dText(8, y, `ACCESSORIES (${accCount}/3)`, { fontSize: UIScale.font(11), color: '#cc66ff', fontFamily: 'monospace' });
+    this.dText(pw - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`,
+      { fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace' });
     y += rh;
 
-    // Current equipped accessories
     if (accCount > 0) {
       for (const acc of this.hero.accessories) {
         const cd = this.hero.accessoryCooldowns.get(acc.id) ?? 0;
         const cdStr = !acc.passive && cd > 0 ? ` (${Math.ceil(cd)}s)` : '';
         const keyStr = acc.passive ? '' : ' [T]';
-        const equipped = uiText(this.scene,8, y, `${acc.name}${keyStr}${cdStr}`, {
-          fontSize: UIScale.font(10), color: '#cc66ff', fontFamily: 'monospace',
-        });
-        this.container.add(equipped);
-        this.dynamicItems.push(equipped);
+        this.dText(8, y, `${acc.name}${keyStr}${cdStr}`, { fontSize: UIScale.font(10), color: '#cc66ff', fontFamily: 'monospace' });
         y += rh;
       }
     } else {
-      const noAcc = uiText(this.scene,8, y, 'None equipped', {
-        fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace',
-      });
-      this.container.add(noAcc);
-      this.dynamicItems.push(noAcc);
+      this.dText(8, y, 'None equipped', { fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace' });
       y += rh;
     }
-
     y += gap;
 
     // Shop offers
-    const offers = this.arenaManager.currentAccessoryOffers;
-    for (let i = 0; i < offers.length; i++) {
-      const acc = offers[i];
+    for (let i = 0; i < this.arenaManager.currentAccessoryOffers.length; i++) {
+      const acc = this.arenaManager.currentAccessoryOffers[i];
       const canAfford = this.economy.canAfford(acc.cost);
-      const btnColor = canAfford ? '#44ff44' : '#664444';
       const typeTag = acc.passive ? 'P' : 'A';
-
-      const offerText = uiText(this.scene,8, y,
-        `[${typeTag}] ${acc.name} — ${acc.cost}g`,
-        { fontSize: UIScale.font(11), color: btnColor, fontFamily: 'monospace' }
-      );
-      this.container.add(offerText);
-      this.dynamicItems.push(offerText);
-
+      const offerText = this.dText(8, y, `[${typeTag}] ${acc.name} — ${acc.cost}g`,
+        { fontSize: UIScale.font(11), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace' });
       if (canAfford) {
-        offerText.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, getSidebarWidth() - 16, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+        offerText.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(0, 0, pw - 16, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         const idx = i;
         offerText.on('pointerdown', () => this.purchaseAccessory(idx));
         offerText.on('pointerover', () => offerText.setColor('#ffffff'));
         offerText.on('pointerout', () => offerText.setColor('#44ff44'));
       }
       y += rh;
-
-      const descText = uiText(this.scene,16, y, acc.description, {
-        fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
-      });
-      this.container.add(descText);
-      this.dynamicItems.push(descText);
+      this.dText(16, y, acc.description, { fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace' });
       y += rh;
     }
 
-    // Divider
-    y += gap;
-    this.addDivider(y);
-    y += 6;
-
-    // Ability cooldowns
-    const abTitle = uiText(this.scene,8, y, 'Abilities:', {
-      fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
-    });
-    this.container.add(abTitle);
-    this.dynamicItems.push(abTitle);
+    // Abilities
+    y += gap; this.dDivider(y); y += 6;
+    this.dText(8, y, 'Abilities:', { fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace' });
     y += rh;
 
     const hasPending = this.hero.pendingUpgrades > 0;
-
     for (let i = 0; i < this.hero.abilities.length; i++) {
       const ab = this.hero.abilities[i];
       const ready = ab.cooldownRemaining <= 0;
-      const cdText = ready ? 'READY' : `${Math.ceil(ab.cooldownRemaining)}s`;
-      const color = ready ? '#44ff44' : '#ff4444';
       const ups = this.hero.abilityUpgrades[i];
       const upsTag = ups > 0 ? ` +${ups}` : '';
-      const text = uiText(this.scene,16, y, `[${ab.def.key}] ${ab.def.name}${upsTag}: ${cdText}`, {
-        fontSize: UIScale.font(11), color, fontFamily: 'monospace',
-      });
-      this.container.add(text);
-      this.dynamicItems.push(text);
-
+      this.dText(16, y, `[${ab.def.key}] ${ab.def.name}${upsTag}: ${ready ? 'READY' : `${Math.ceil(ab.cooldownRemaining)}s`}`,
+        { fontSize: UIScale.font(11), color: ready ? '#44ff44' : '#ff4444', fontFamily: 'monospace' });
       if (hasPending) {
-        const plusBtn = uiText(this.scene,getSidebarWidth() - 30, y, '[+]', {
-          fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
-        }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
-        this.container.add(plusBtn);
-        this.dynamicItems.push(plusBtn);
+        const plus = this.dText(pw - 30, y, '[+]', { fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace' })
+          .setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         const idx = i;
-        plusBtn.on('pointerdown', () => { this.hero.upgradeAbility(idx); this.lastSnapshot = ''; });
-        plusBtn.on('pointerover', () => plusBtn.setColor('#ffffff'));
-        plusBtn.on('pointerout', () => plusBtn.setColor('#ffaa44'));
+        plus.on('pointerdown', () => { this.hero.upgradeAbility(idx); this.invalidate(); });
+        plus.on('pointerover', () => plus.setColor('#ffffff'));
+        plus.on('pointerout', () => plus.setColor('#ffaa44'));
       }
       y += rh;
     }
-    // Ultimate — show locked status if below level 6
+
+    // Ultimate
     if (this.hero.ultimate) {
       const ult = this.hero.ultimate;
       const unlocked = this.hero.level >= 6;
-      let ultLabel: string;
-      let ultColor: string;
       const ups = this.hero.abilityUpgrades[3];
       const upsTag = ups > 0 ? ` +${ups}` : '';
+      let ultLabel: string, ultColor: string;
       if (!unlocked) {
         ultLabel = `[R] ${ult.def.name}: LV${6} REQ`;
         ultColor = '#555555';
@@ -449,32 +254,36 @@ export class ItemShopPanel {
         ultLabel = `[R] ${ult.def.name}${upsTag}: ${ready ? 'READY' : `${Math.ceil(ult.cooldownRemaining)}s`}`;
         ultColor = ready ? '#cc66ff' : '#664466';
       }
-      const ultText = uiText(this.scene,16, y, ultLabel, {
-        fontSize: UIScale.font(11), color: ultColor, fontFamily: 'monospace',
-      });
-      this.container.add(ultText);
-      this.dynamicItems.push(ultText);
-
+      this.dText(16, y, ultLabel, { fontSize: UIScale.font(11), color: ultColor, fontFamily: 'monospace' });
       if (hasPending && unlocked) {
-        const plusBtn = uiText(this.scene,getSidebarWidth() - 30, y, '[+]', {
-          fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
-        }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
-        this.container.add(plusBtn);
-        this.dynamicItems.push(plusBtn);
-        plusBtn.on('pointerdown', () => { this.hero.upgradeAbility(3); this.lastSnapshot = ''; });
-        plusBtn.on('pointerover', () => plusBtn.setColor('#ffffff'));
-        plusBtn.on('pointerout', () => plusBtn.setColor('#ffaa44'));
+        const plus = this.dText(pw - 30, y, '[+]', { fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace' })
+          .setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+        plus.on('pointerdown', () => { this.hero.upgradeAbility(3); this.invalidate(); });
+        plus.on('pointerover', () => plus.setColor('#ffffff'));
+        plus.on('pointerout', () => plus.setColor('#ffaa44'));
       }
       y += rh;
     }
   }
 
-  private addDivider(y: number): void {
-    const div = uiGraphics(this.scene);
-    div.lineStyle(1, 0x444444, 0.5);
-    div.lineBetween(8, y, getSidebarWidth() - 8, y);
-    this.container.add(div);
-    this.dynamicItems.push(div);
+  /** Helper to build a purchasable tome row */
+  private buildTomeRow(y: number, label: string, cost: number, onBuy: () => void): number {
+    const rh = UIScale.current.rowHeight;
+    const touch = UIScale.current.minTouchTarget;
+    const pw = getSidebarWidth();
+    const canAfford = this.economy.canAfford(cost);
+    this.dText(8, y, label, { fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace' });
+    const btn = this.dText(pw - 60, y, `[${cost}g]`,
+      { fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace' });
+    if (canAfford) {
+      btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+      btn.on('pointerdown', () => {
+        if (this.economy.spend(cost)) { onBuy(); this.invalidate(); }
+      });
+      btn.on('pointerover', () => btn.setColor('#ffffff'));
+      btn.on('pointerout', () => btn.setColor('#44ff44'));
+    }
+    return y + rh;
   }
 
   private purchaseItem(slotIndex: number): void {
@@ -483,19 +292,17 @@ export class ItemShopPanel {
     const slotDef = ITEM_SLOTS[item.slot];
     const nextTier = slotDef.tiers[item.tier];
     if (!this.economy.spend(nextTier.cost)) return;
-
     this.hero.upgradeItem(slotIndex);
     this.eventLog.gameMessage(`Bought ${nextTier.label}!`);
-    this.lastSnapshot = ''; // force rebuild
+    this.invalidate();
   }
 
   private purchaseAccessory(offerIndex: number): void {
     if (this.arenaManager.buyAccessory(offerIndex)) {
-      this.lastSnapshot = ''; // force rebuild
+      this.invalidate();
     }
   }
 
-  /** Snapshot key to detect when UI actually needs rebuilding */
   private lastSnapshot: string = '';
 
   update(): void {
@@ -519,9 +326,5 @@ export class ItemShopPanel {
       this.lastSnapshot = snap;
       this.rebuildDynamic();
     }
-  }
-
-  getContainer(): Phaser.GameObjects.Container {
-    return this.container;
   }
 }
