@@ -99,10 +99,11 @@ export class CreepInfoPanel {
     const allEffects = [...effects, ...traits];
     this.effectsText.setText(allEffects.length > 0 ? allEffects.join('\n') : 'No effects');
 
-    // Panel size
+    // Panel size — account for name + 3 stat lines + effects
     const rh = UIScale.current.rowHeight;
     const panelW = UIScale.isPhone ? 700 : 280;
-    const panelH = UIScale.space(52) + allEffects.length * rh + UIScale.space(8);
+    const statsLines = 3; // HP, Armor, Speed
+    const panelH = UIScale.space(22) + statsLines * rh + UIScale.space(12) + Math.max(1, allEffects.length) * rh + UIScale.space(16);
 
     // Position: centered on phone, near creep on desktop
     if (UIScale.isPhone) {
