@@ -567,6 +567,7 @@ export class GameScene extends Phaser.Scene {
             if (this.faction === 'random') {
               this.activeTowerIds = msg.towerIds;
               this.towerBar.setTowerIds(this.activeTowerIds);
+              this.fixTowerBarCamera();
               this.enterNoneMode();
               this.eventLog.gameMessage('Tower pool updated!');
             }
@@ -775,6 +776,20 @@ export class GameScene extends Phaser.Scene {
       if (id.text) objs.push(id.text);
     }
     return objs.filter(Boolean);
+  }
+
+  /** After tower bar rebuild (Random rotation, versus pool sync),
+   *  re-register its children with the UI camera on phone.
+   *  New children get default cameraFilter from addedtoscene handler
+   *  which incorrectly ignores them (depth 0 < 28). */
+  private fixTowerBarCamera(): void {
+    if (!this.uiCamera || !this.towerBar) return;
+    const container = (this.towerBar as any).container as Phaser.GameObjects.Container;
+    const mainCam = this.cameras.main;
+    for (const child of container.list) {
+      child.cameraFilter &= ~this.uiCamera.id; // visible on UI camera
+      child.cameraFilter |= mainCam.id;         // hidden on main camera
+    }
   }
 
   // === Selection Mode Management ===
@@ -1661,6 +1676,7 @@ export class GameScene extends Phaser.Scene {
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds);
+      this.fixTowerBarCamera();
       if (this.gameMode instanceof StandardMode) {
         (this.gameMode as StandardMode).rotateRandomFrontier();
       }
