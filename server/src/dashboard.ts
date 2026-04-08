@@ -4,6 +4,8 @@
  * Canvas-based line charts with configurable time ranges.
  */
 
+import { getWorldMapSVG } from './worldmap';
+
 export function getDashboardHTML(baseUrl: string): string {
   return `<!DOCTYPE html>
 <html>
@@ -30,6 +32,8 @@ export function getDashboardHTML(baseUrl: string): string {
     .bar-track { flex: 1; height: 14px; background: #1a1a22; border-radius: 3px; overflow: hidden; }
     .bar-fill { height: 100%; border-radius: 3px; }
     .bar-value { width: 32px; font-size: 11px; color: #999; }
+    #world-map { width: 100%; height: auto; }
+    #world-map path:hover { opacity: 0.8; cursor: pointer; }
     .btn { background: #1a1a22; border: 1px solid #333; color: #ccc; padding: 5px 12px;
            border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 11px; }
     .btn:hover { background: #252530; }
@@ -296,18 +300,18 @@ export function getDashboardHTML(baseUrl: string): string {
         // Country bar chart
         html += barCard('Countries', geo, {});
 
-        // World map visualization
-        html += '<div class="card"><h2>World Map</h2>';
-        html += '<canvas id="geomap" height="260" style="width:100%;height:260px;"></canvas>';
+        // World map visualization (SVG)
+        html += '<div class="card" style="grid-column: 1 / -1;"><h2>World Map</h2>';
+        html += '<div id="geomap-container" style="position:relative;width:100%;">${getWorldMapSVG()}</div>';
         html += '</div>';
         html += '</div>';
       }
 
       el.innerHTML = html;
 
-      // Draw geo map after DOM update
+      // Color the SVG map countries
       if (geoEntries.length > 0) {
-        requestAnimationFrame(() => drawGeoMap(geo));
+        requestAnimationFrame(() => colorGeoMap(geo));
       }
     }
 
@@ -333,80 +337,25 @@ export function getDashboardHTML(baseUrl: string): string {
       return html;
     }
 
-    // Country centroids (ISO 2-letter → [lat, lon]) — major countries
-    const COUNTRY_POS = {
-      US:[39,-98],CA:[56,-106],MX:[23,-102],BR:[-14,-51],AR:[-38,-63],CL:[-35,-71],CO:[4,-72],PE:[-9,-75],
-      GB:[54,-2],FR:[46,2],DE:[51,10],ES:[40,-4],IT:[42,12],NL:[52,5],BE:[50,4],SE:[62,15],NO:[62,10],
-      FI:[64,26],DK:[56,10],PL:[52,20],CZ:[49,15],AT:[47,14],CH:[47,8],PT:[39,-8],IE:[53,-8],
-      RU:[61,105],UA:[49,32],RO:[46,25],HU:[47,20],GR:[39,22],BG:[43,25],HR:[45,16],RS:[44,21],
-      TR:[39,35],IL:[31,35],SA:[24,45],AE:[24,54],IN:[20,77],CN:[35,105],JP:[36,138],KR:[36,128],
-      TW:[23,121],TH:[15,101],VN:[14,108],PH:[12,122],ID:[-5,120],MY:[4,109],SG:[1,104],
-      AU:[-25,134],NZ:[-41,174],ZA:[-30,22],NG:[10,8],KE:[-1,38],EG:[27,30],MA:[32,-5],
-      PK:[30,69],BD:[24,90],LK:[7,81],NP:[28,84],MM:[19,96],KH:[13,105],
-    };
-
-    function drawGeoMap(geo) {
-      const canvas = document.getElementById('geomap');
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * devicePixelRatio;
-      canvas.height = rect.height * devicePixelRatio;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(devicePixelRatio, devicePixelRatio);
-      const W = rect.width, H = rect.height;
-
-      // Background
-      ctx.fillStyle = '#0d0d14';
-      ctx.fillRect(0, 0, W, H);
-
-      // Simple world outline (continental blobs)
-      ctx.fillStyle = '#181822';
-      // Rough continent shapes as rectangles
-      const continents = [
-        [0.1,0.1,0.15,0.25],  // North America
-        [0.15,0.35,0.1,0.25], // South America
-        [0.42,0.08,0.15,0.35],// Europe+Africa
-        [0.58,0.05,0.25,0.35],// Asia
-        [0.75,0.55,0.12,0.15],// Australia
-      ];
-      for (const [rx,ry,rw,rh] of continents) {
-        ctx.fillRect(rx*W, ry*H, rw*W, rh*H);
-      }
-
-      // Convert lat/lon to screen coords (simple equirectangular)
-      function toScreen(lat, lon) {
-        const x = ((lon + 180) / 360) * W;
-        const y = ((90 - lat) / 180) * H;
-        return [x, y];
-      }
-
-      // Find max for scaling
+    function colorGeoMap(geo) {
       const entries = Object.entries(geo);
       const maxCount = Math.max(...entries.map(e => e[1]), 1);
 
-      // Draw dots
       for (const [code, count] of entries) {
-        const pos = COUNTRY_POS[code];
-        if (!pos) continue;
-        const [x, y] = toScreen(pos[0], pos[1]);
-        const radius = 3 + (count / maxCount) * 12;
-        const alpha = 0.4 + (count / maxCount) * 0.6;
-
-        // Glow
-        ctx.fillStyle = 'rgba(68, 255, 68, ' + (alpha * 0.3) + ')';
-        ctx.beginPath(); ctx.arc(x, y, radius + 4, 0, Math.PI * 2); ctx.fill();
-
-        // Dot
-        ctx.fillStyle = 'rgba(68, 255, 68, ' + alpha + ')';
-        ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
-
-        // Label
-        if (count > 0) {
-          ctx.fillStyle = '#aaa';
-          ctx.font = '9px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(code, x, y - radius - 3);
-        }
+        const el = document.getElementById(code);
+        if (!el) continue;
+        // Color intensity based on count
+        const intensity = 0.3 + (count / maxCount) * 0.7;
+        const r = Math.round(30 + intensity * 38);
+        const g = Math.round(80 + intensity * 175);
+        const b = Math.round(30 + intensity * 38);
+        el.style.fill = 'rgb(' + r + ',' + g + ',' + b + ')';
+        el.style.stroke = '#44ff44';
+        el.style.strokeWidth = '1';
+        // Tooltip via title element
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        title.textContent = code + ': ' + count + ' games';
+        el.appendChild(title);
       }
     }
 
