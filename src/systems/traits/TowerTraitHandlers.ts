@@ -728,6 +728,9 @@ registerTowerUpdate('firewall_link', (trait: Trait, tower: any, ctx: UpdateConte
     if (perpDist <= TILE_SIZE * 0.6) {
       creep.takeDamage(damage);
       tower.damageDealt += damage;
+      // Heavy slow while crossing the beam
+      const slowFactor = trait.slowFactor ?? 0.4;
+      creep.applySlow(500, slowFactor);
     }
   }
 
