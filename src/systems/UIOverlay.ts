@@ -21,14 +21,14 @@ export class UIOverlay {
     this.livesMode = livesMode;
     const isPhone = UIScale.isPhone;
     // Status bar: use a smaller scale than body text to fit 3 values in a row
-    const fs = UIScale.fontCapped(16, 28);
+    const fs = UIScale.font(14);
     const uiStyle = { fontSize: fs, color: '#ffffff', fontFamily: 'monospace' };
     const baseX = getGridOffsetX();
     const cw = getCanvasWidth();
     // On phone: anchor status bar above the tower bar (near bottom of canvas)
     const canvasH = ResponsiveManager.canvasHeight();
     const barY = isPhone
-      ? canvasH - TowerSelectBar.BAR_HEIGHT - 70 - 36 // above tower bar + control bar + margin
+      ? canvasH - TowerSelectBar.BAR_HEIGHT - 70 - UIScale.current.bottomSafeMargin - 36
       : GAME_HEIGHT + 4;
 
     // Spread columns evenly across available width
