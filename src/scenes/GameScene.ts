@@ -553,6 +553,8 @@ export class GameScene extends Phaser.Scene {
         this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
       } else {
         this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT);
+        // Allow left-click pan when no tower is selected
+        this.cameraCtrl.setCanPanCheck(() => this.selectionMode === 'none');
       }
       this.inputMgr.setCameraController(this.cameraCtrl);
     }
@@ -704,8 +706,10 @@ export class GameScene extends Phaser.Scene {
         : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
 
-    // Set up UI camera so HUD stays fixed while game camera zooms/pans
-    this.setupUiCamera();
+    // Set up UI camera so HUD stays fixed while game camera zooms/pans (once)
+    if (!this.uiCamera) {
+      this.setupUiCamera();
+    }
   }
 
   /** Create a UI camera that renders HUD elements at 1x zoom, no scroll.

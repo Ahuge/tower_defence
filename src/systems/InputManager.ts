@@ -57,41 +57,32 @@ export class InputManager {
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       // Skip if sidebar overlay is open
       if (this.sidebarVisibleCheck?.()) return;
-      const isLeftOrTouch = pointer.leftButtonDown() || pointer.wasTouch;
 
       // Start long-press detection for touch
       if (pointer.wasTouch) {
         this.startLongPress(pointer);
       }
 
-      // Non-touch: handle immediately
-      if (!pointer.wasTouch) {
-        const wx = pointer.worldX ?? pointer.x;
-        const wy = pointer.worldY ?? pointer.y;
-        if (isLeftOrTouch && this.rawClickCallback) {
-          this.rawClickCallback(wx, wy);
-        }
+      // Desktop right-click: handle immediately (sell tower)
+      if (!pointer.wasTouch && pointer.rightButtonDown()) {
         const coord = this.pointerToGrid(pointer);
-        if (isLeftOrTouch) {
-          if (coord && this.clickCallback) {
-            this.clickCallback(coord.col, coord.row);
-          } else if (!coord && this.clickMissCallback) {
-            this.clickMissCallback();
-          }
-        } else if (pointer.rightButtonDown() && coord && this.rightClickCallback) {
+        if (coord && this.rightClickCallback) {
           this.rightClickCallback(coord.col, coord.row);
         }
       }
     });
 
-    // Touch: handle click on pointerup (after pan detection)
+    // Handle left-click and touch on pointerup (after pan detection)
     scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       this.cancelLongPress();
 
-      if (!pointer.wasTouch) return;
-      if (this.sidebarVisibleCheck?.()) return; // sidebar open
+      if (this.sidebarVisibleCheck?.()) return;
       if (this.longPressFired) return; // was a long-press (right-click)
       if (this.cameraCtrl?.wasPan) return; // was a pan gesture
+
+      // Only handle left button / touch
+      const isLeftOrTouch = pointer.button === 0 || pointer.wasTouch;
+      if (!isLeftOrTouch) return;
 
       const wx = pointer.worldX ?? pointer.x;
       const wy = pointer.worldY ?? pointer.y;

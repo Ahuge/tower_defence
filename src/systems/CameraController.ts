@@ -57,6 +57,8 @@ export class CameraController {
   wasPan: boolean = false;
   /** True if currently in a pinch gesture */
   pinching: boolean = false;
+  /** Desktop: callback to check if left-click pan is allowed (no tower selected) */
+  private canPanCheck: (() => boolean) | null = null;
 
   constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number, viewportHeight?: number) {
     this.scene = scene;
@@ -182,8 +184,7 @@ export class CameraController {
     const scene = this.scene;
 
     // Scroll wheel zoom — zoom toward cursor position
-    scene.input.on('wheel', (_p: any, _g: any, _dx: number, dy: number, _dz: number) => {
-      const pointer = scene.input.activePointer;
+    scene.input.on('wheel', (pointer: Phaser.Input.Pointer, _g: any, _dx: number, dy: number, _dz: number) => {
       const wpBefore = this.camera.getWorldPoint(pointer.x, pointer.y);
       const factor = dy > 0 ? (1 - ZOOM_STEP) : (1 + ZOOM_STEP);
       const newZoom = Phaser.Math.Clamp(this.camera.zoom * factor, MIN_ZOOM, MAX_ZOOM);
@@ -194,9 +195,11 @@ export class CameraController {
       this.camera.scrollY += wpBefore.y - wpAfter.y;
     });
 
-    // Middle-mouse-button drag to pan
+    // Drag to pan: middle-mouse always, left-click when canPan allows it (no tower selected)
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.middleButtonDown()) {
+      const middlePan = pointer.middleButtonDown();
+      const leftPan = pointer.leftButtonDown() && this.camera.zoom > 1.01 && (this.canPanCheck?.() ?? false);
+      if (middlePan || leftPan) {
         this.isPanning = true;
         this.wasPan = false;
         this.movedDist = 0;
@@ -341,6 +344,11 @@ export class CameraController {
 
   get zoom(): number {
     return this.camera.zoom;
+  }
+
+  /** Set a callback that returns true when left-click pan is allowed (desktop) */
+  setCanPanCheck(check: () => boolean): void {
+    this.canPanCheck = check;
   }
 
   destroy(): void {
