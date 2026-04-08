@@ -3,6 +3,7 @@ import { ResponsiveManager } from './ResponsiveManager';
 import { UIScale } from './UIScale';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { EventBus } from './EventBus';
+import { uiText } from './UILayer';
 
 export class UIOverlay {
   private goldText: Phaser.GameObjects.Text;
@@ -33,23 +34,23 @@ export class UIOverlay {
 
     // Spread columns evenly across available width
     const col1 = baseX + 8;
-    const col2 = isPhone ? baseX + 240 : baseX + 160;
-    const col3 = isPhone ? baseX + 500 : baseX + 300;
-    const col4 = isPhone ? baseX + 700 : baseX + 480;
+    const col2 = baseX + UIScale.current.statusCol2;
+    const col3 = baseX + UIScale.current.statusCol3;
+    const col4 = baseX + UIScale.current.statusCol4;
 
-    this.goldText = scene.add.text(col1, barY, '', uiStyle).setDepth(30);
-    this.livesText = scene.add.text(col2, barY, '', uiStyle).setDepth(30);
-    this.waveText = scene.add.text(col3, barY, '', uiStyle).setDepth(30);
-    this.statusText = scene.add.text(col4, barY, '', uiStyle).setDepth(30);
+    this.goldText = uiText(scene,col1, barY, '', uiStyle).setDepth(30);
+    this.livesText = uiText(scene,col2, barY, '', uiStyle).setDepth(30);
+    this.waveText = uiText(scene,col3, barY, '', uiStyle).setDepth(30);
+    this.statusText = uiText(scene,col4, barY, '', uiStyle).setDepth(30);
     if (isPhone) this.statusText.setVisible(false);
 
-    this.speedText = scene.add.text(cw - 8, barY, '', {
+    this.speedText = uiText(scene,cw - 8, barY, '', {
       ...uiStyle, color: '#aaaaaa',
     }).setDepth(30).setOrigin(1, 0);
     if (isPhone) this.speedText.setVisible(false);
 
     // Tappable wave start button (hidden on phone — control bar handles it)
-    this.waveBtn = scene.add.text(col4, barY, '', {
+    this.waveBtn = uiText(scene,col4, barY, '', {
       fontSize: fs, color: '#44ff44', fontFamily: 'monospace',
       backgroundColor: '#1a2a1a', padding: { x: 6, y: 1 },
     }).setDepth(31).setInteractive({ useHandCursor: true }).setVisible(false);
@@ -58,7 +59,7 @@ export class UIOverlay {
     this.waveBtn.on('pointerout', () => this.waveBtn.setColor('#44ff44'));
 
     // Tappable speed button (hidden on phone)
-    this.speedBtn = scene.add.text(cw - 8, barY, '', {
+    this.speedBtn = uiText(scene,cw - 8, barY, '', {
       fontSize: fs, color: '#aaaaaa', fontFamily: 'monospace',
       backgroundColor: '#1a1a2a', padding: { x: 6, y: 1 },
     }).setDepth(31).setOrigin(1, 0).setInteractive({ useHandCursor: true });
@@ -68,7 +69,7 @@ export class UIOverlay {
     if (isPhone) this.speedBtn.setVisible(false);
 
     // Seed display — hidden on phone (doesn't fit), smaller on desktop
-    this.seedText = scene.add.text(cw - 8, 4, '', {
+    this.seedText = uiText(scene,cw - 8, 4, '', {
       fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
     }).setDepth(30).setOrigin(1, 0).setVisible(false);
   }

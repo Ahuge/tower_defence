@@ -55,4 +55,7 @@ export interface GameMode {
 
   /** Move mode-specific sidebar panels into the overlay (tablet mode) */
   reparentSidebarPanels?(overlay: SidebarOverlay): void;
+
+  /** Clean up mode-specific resources (panels, keyboard listeners) on scene shutdown */
+  destroy?(): void;
 }

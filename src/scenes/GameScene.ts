@@ -24,6 +24,7 @@ import { IncomeManager } from '../systems/IncomeManager';
 import { SendManager } from '../systems/SendManager';
 import { GameMode, GameModeContext } from '../systems/GameMode';
 import { StandardMode } from '../systems/modes/StandardMode';
+import { BaseFrontierMode } from '../systems/modes/BaseFrontierMode';
 import { BattleMode } from '../systems/modes/BattleMode';
 import { HeroDefenseMode } from '../systems/modes/HeroDefenseMode';
 import { HeroLeakHandler } from '../systems/HeroLeakHandler';
@@ -61,6 +62,7 @@ import { Tower } from '../entities/Tower';
 import { GameControlBar } from '../ui/GameControlBar';
 import { preloadSprites, createSpriteAnimations } from '../systems/SpriteManager';
 import { CameraController } from '../systems/CameraController';
+import { UILayer } from '../systems/UILayer';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -106,6 +108,7 @@ export class GameScene extends Phaser.Scene {
   private controlBar: GameControlBar | null = null;
   private cameraCtrl: CameraController | null = null;
   private uiCamera: Phaser.Cameras.Scene2D.Camera | null = null;
+  uiLayer: UILayer | null = null;
   heroId: HeroId | null = null;
   layout!: LayoutConfig;
   gridOffsetY: number = 0;
@@ -731,58 +734,40 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Set up dual camera: main camera zooms game objects, UI camera stays at 1x.
-   *  Works the same on phone and desktop. Sidebar bg at depth 0 zooms with
-   *  the game (invisible — it's a solid color), while sidebar panels (depth 28)
-   *  stay crisp at 1x on the UI camera. */
+   *  UILayer provides factory methods that set camera filters at creation time,
+   *  eliminating the need for per-frame fixes or depth-threshold hacks. */
   private setupUiCamera(): void {
     const canvasW = getCanvasWidth();
     const canvasH = ResponsiveManager.canvasHeight();
 
-    // UI camera: full canvas, 1x zoom, no scroll — renders depth >= 28 objects
+    // UI camera: full canvas, 1x zoom, no scroll
     this.uiCamera = this.cameras.add(0, 0, canvasW, canvasH);
     this.uiCamera.setScroll(0, 0);
     this.uiCamera.setName('ui');
     this.uiCamera.transparent = true;
 
-    // Step 1: UI camera ignores all existing objects
+    // Create UILayer — the single API for creating UI objects with correct camera filters
+    this.uiLayer = new UILayer(this, this.uiCamera);
+
+    // UI camera ignores all existing objects (they're game objects by default)
     for (const child of this.children.list) {
       this.uiCamera.ignore(child);
     }
 
-    // Step 2: new game objects (depth < 28) auto-ignored by UI camera.
-    // Objects that end up in UI containers get fixed by fixUiContainers() each frame.
+    // New game objects auto-ignored by UI camera
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
       if (!this.uiCamera) return;
-      if (((go as any).depth ?? 0) < 28) {
-        this.uiCamera.ignore(go);
-      }
+      this.uiCamera.ignore(go);
     });
 
-    // Step 3: depth >= 28 objects → hide from main camera, show on UI camera
+    // Existing UI objects (depth >= 28) → register with UILayer
     for (const child of this.children.list) {
       if (((child as any).depth ?? 0) >= 28) {
-        this.cameras.main.ignore(child);
-        child.cameraFilter &= ~this.uiCamera.id;
-      }
-    }
-  }
-
-  /** Fix camera filters for all children inside UI containers (depth >= 28).
-   *  Called each frame to handle dynamic rebuilds (item shop, frontier panel, etc.)
-   *  New children get depth 0 from addedtoscene → incorrectly ignored by UI camera. */
-  private fixUiContainerChildren(): void {
-    if (!this.uiCamera) return;
-    const mainCam = this.cameras.main;
-    const uiId = this.uiCamera.id;
-    const mainId = mainCam.id;
-    for (const child of this.children.list) {
-      if (((child as any).depth ?? 0) >= 28 && (child as any).list) {
-        // It's a UI container — fix all its children
-        for (const inner of (child as any).list) {
-          if (inner.cameraFilter & uiId) {
-            // Currently ignored by UI camera — fix it
-            inner.cameraFilter &= ~uiId;
-            inner.cameraFilter |= mainId;
+        this.uiLayer.register(child);
+        // Also register children of UI containers
+        if ((child as any).list) {
+          for (const inner of (child as any).list) {
+            this.uiLayer.register(inner);
           }
         }
       }
@@ -1134,10 +1119,6 @@ export class GameScene extends Phaser.Scene {
 
     // Mode-specific per-frame update (essence ticking, arena, etc.)
     this.gameMode.update(delta);
-
-    // Fix camera filters for dynamically rebuilt UI container children
-    // Must run AFTER gameMode.update() which triggers panel rebuilds
-    this.fixUiContainerChildren();
 
     // Phone control bar
     if (this.controlBar) {
@@ -1683,8 +1664,8 @@ export class GameScene extends Phaser.Scene {
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds);
-      if (this.gameMode instanceof StandardMode) {
-        (this.gameMode as StandardMode).rotateRandomFrontier();
+      if (this.gameMode instanceof BaseFrontierMode) {
+        this.gameMode.rotateRandomFrontier();
       }
       this.eventLog.gameMessage('Tower + frontier pool rotated!');
       this.enterNoneMode();
@@ -1702,8 +1683,16 @@ export class GameScene extends Phaser.Scene {
     // Destroy all creeps
     for (const c of this._creeps) c.graphics?.destroy();
     this._creeps = [];
-    // Reset UI camera so it's re-created on next game
+    // Clean up game mode (panels, keyboard listeners)
+    this.gameMode.destroy?.();
+    // Clean up event bus
+    this.eventBus.clear();
+    // Reset UI camera + layer so they're re-created on next game
+    if (this.uiCamera) {
+      this.cameras.remove(this.uiCamera);
+    }
     this.uiCamera = null;
+    this.uiLayer = null;
     // Clear event listeners
     this.events.off('shutdown');
     this.events.off('addedtoscene');

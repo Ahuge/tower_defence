@@ -2,6 +2,7 @@ import { TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { Creep } from '../entities/Creep';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { uiText, uiGraphics } from '../systems/UILayer';
 
 export class CreepInfoPanel {
   private scene: Phaser.Scene;
@@ -17,19 +18,19 @@ export class CreepInfoPanel {
     this.scene = scene;
     this.container = scene.add.container(0, 0).setDepth(29).setVisible(false);
 
-    this.bg = scene.add.graphics();
+    this.bg = uiGraphics(scene);
     this.container.add(this.bg);
 
     const s = UIScale.current;
     const pad = s.padding;
-    this.nameText = scene.add.text(pad, pad, '', { fontSize: s.fontHeading, color: '#ff8888', fontFamily: 'monospace' });
-    this.statsText = scene.add.text(pad, pad + UIScale.space(18), '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace' });
-    this.effectsText = scene.add.text(pad, pad + UIScale.space(48), '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
+    this.nameText = uiText(scene, pad, pad, '', { fontSize: s.fontHeading, color: '#ff8888', fontFamily: 'monospace' });
+    this.statsText = uiText(scene, pad, pad + UIScale.space(18), '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace' });
+    this.effectsText = uiText(scene, pad, pad + UIScale.space(48), '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.effectsText]);
 
     // Close button on phone
     if (UIScale.isPhone) {
-      const closeBtn = scene.add.text(0, 0, '[ Close ]', {
+      const closeBtn = uiText(scene, 0, 0, '[ Close ]', {
         fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace',
         backgroundColor: '#222222', padding: { x: 16, y: 8 },
       }).setInteractive({ useHandCursor: true });
@@ -101,7 +102,7 @@ export class CreepInfoPanel {
 
     // Panel size — account for name + 3 stat lines + effects
     const rh = UIScale.current.rowHeight;
-    const panelW = UIScale.isPhone ? 700 : 280;
+    const panelW = UIScale.current.infoPanelW;
     const statsLines = 3; // HP, Armor, Speed
     const panelH = UIScale.space(22) + statsLines * rh + UIScale.space(12) + Math.max(1, allEffects.length) * rh + UIScale.space(16);
 
@@ -126,7 +127,7 @@ export class CreepInfoPanel {
     this.bg.clear();
     this.bg.fillStyle(0x111111, 0.95);
     this.bg.fillRect(0, 0, panelW, panelH);
-    this.bg.lineStyle(UIScale.isPhone ? 2 : 1, 0x884444, 1);
+    this.bg.lineStyle(UIScale.current.infoPanelBorder, 0x884444, 1);
     this.bg.strokeRect(0, 0, panelW, panelH);
   }
 

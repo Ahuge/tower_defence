@@ -61,6 +61,26 @@ interface ScaleValues {
 
   // Safe area
   bottomSafeMargin: number;  // extra margin above system chrome on phones
+
+  // Info panels
+  infoPanelW: number;        // tower/creep info panel width
+  infoPanelBorder: number;   // border thickness on info panels
+
+  // Status bar column offsets (relative to baseX)
+  statusCol2: number;        // lives column X offset
+  statusCol3: number;        // wave column X offset
+  statusCol4: number;        // status text X offset
+
+  // XP bar (hero defense)
+  xpBarX: number;            // XP bar left edge
+  xpBarH: number;            // XP bar height
+
+  // Tower picker
+  costLabelH: number;        // space reserved for cost text below icon
+  towerNameLen: number;      // max characters for tower name fallback
+
+  // Misc
+  lineSpacing: number;       // default line spacing for text blocks
 }
 
 const DESKTOP: ScaleValues = {
@@ -105,6 +125,21 @@ const DESKTOP: ScaleValues = {
   sendSubtitleX: 60,
   minTouchTarget: 24,
   bottomSafeMargin: 0,
+
+  infoPanelW: 350,
+  infoPanelBorder: 1,
+
+  statusCol2: 160,
+  statusCol3: 300,
+  statusCol4: 480,
+
+  xpBarX: 70,
+  xpBarH: 10,
+
+  costLabelH: 12,
+  towerNameLen: 5,
+
+  lineSpacing: 2,
 };
 
 const PHONE: ScaleValues = {
@@ -149,6 +184,21 @@ const PHONE: ScaleValues = {
   sendSubtitleX: 80,
   minTouchTarget: 60,
   bottomSafeMargin: 40,
+
+  infoPanelW: 700,
+  infoPanelBorder: 2,
+
+  statusCol2: 240,
+  statusCol3: 500,
+  statusCol4: 700,
+
+  xpBarX: 90,
+  xpBarH: 14,
+
+  costLabelH: 20,
+  towerNameLen: 4,
+
+  lineSpacing: 4,
 };
 
 class UIScaleClass {

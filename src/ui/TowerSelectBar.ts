@@ -5,6 +5,7 @@ import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { GameControlBar } from './GameControlBar';
 import { UIScale } from '../systems/UIScale';
 import { hasTowerSprite, getTowerSpriteConfig, isMobileTowerSprite, getMobileSpriteConfig } from '../systems/SpriteManager';
+import { uiText, uiGraphics, uiZone, uiSprite } from '../systems/UILayer';
 
 export class TowerSelectBar {
   private scene: Phaser.Scene;
@@ -49,10 +50,10 @@ export class TowerSelectBar {
 
     // Tooltip (rendered above the bar)
     this.tooltip = scene.add.container(0, 0).setDepth(35).setVisible(false);
-    this.tooltipBg = scene.add.graphics();
+    this.tooltipBg = uiGraphics(scene);
     this.tooltip.add(this.tooltipBg);
     const ttPad = UIScale.space(8);
-    this.tooltipText = scene.add.text(ttPad, ttPad - 2, '', {
+    this.tooltipText = uiText(scene, ttPad, ttPad - 2, '', {
       fontSize: UIScale.font(14), color: '#dddddd', fontFamily: 'monospace',
       lineSpacing: UIScale.space(3),
     });
@@ -62,7 +63,7 @@ export class TowerSelectBar {
   }
 
   private buildBar(): void {
-    const bg = this.scene.add.graphics();
+    const bg = uiGraphics(this.scene);
     bg.fillStyle(0x1a1a1a, 1);
     const offsetX = getGridOffsetX();
     const canvasW = getCanvasWidth();
@@ -83,12 +84,12 @@ export class TowerSelectBar {
       const x = startX + i * (bs + pad);
       const y = 6;
 
-      const btn = this.scene.add.graphics();
+      const btn = uiGraphics(this.scene);
       this.container.add(btn);
       this.buttons.push(btn);
 
       const idx = i;
-      const zone = this.scene.add.zone(x + bs / 2, y + bs / 2, bs, bs);
+      const zone = uiZone(this.scene,x + bs / 2, y + bs / 2, bs, bs);
       this.container.add(zone);
       zone.setInteractive({ useHandCursor: true });
       zone.on('pointerdown', () => this.highlight(idx));
@@ -108,15 +109,15 @@ export class TowerSelectBar {
 
       if (!isPhone) {
         const hotkeyNum = String(i + 1);
-        const label = this.scene.add.text(x + 2, y + 1, hotkeyNum, {
+        const label = uiText(this.scene,x + 2, y + 1, hotkeyNum, {
           fontSize, color: '#aaaaaa', fontFamily: 'monospace'
         });
         this.container.add(label);
       }
 
       // Cost label at bottom of button
-      const costH = isPhone ? 20 : 12; // reserve space for cost text
-      const costLabel = this.scene.add.text(x + bs / 2, y + bs - 2, `${t.cost}g`, {
+      const costH = UIScale.current.costLabelH;
+      const costLabel = uiText(this.scene,x + bs / 2, y + bs - 2, `${t.cost}g`, {
         fontSize: costSize, color: '#ffdd44', fontFamily: 'monospace'
       }).setOrigin(0.5, 1);
       this.container.add(costLabel);
@@ -131,7 +132,7 @@ export class TowerSelectBar {
         const cfg = getTowerSpriteConfig(towerId);
         if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
           const frameIndex = cfg.rows.idle * cfg.totalCols + cfg.column;
-          const icon = this.scene.add.sprite(x + bs / 2, iconCenterY, cfg.sheetKey, frameIndex);
+          const icon = uiSprite(this.scene,x + bs / 2, iconCenterY, cfg.sheetKey, frameIndex);
           icon.setScale(iconMaxSz / 64);
           icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
           this.container.add(icon);
@@ -139,13 +140,13 @@ export class TowerSelectBar {
       } else if (isMobileTowerSprite(towerId)) {
         const cfg = getMobileSpriteConfig(towerId);
         if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
-          const icon = this.scene.add.sprite(x + bs / 2, iconCenterY, cfg.sheetKey, 0);
+          const icon = uiSprite(this.scene,x + bs / 2, iconCenterY, cfg.sheetKey, 0);
           icon.setScale(iconMaxSz / cfg.frameWidth);
           icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
           this.container.add(icon);
         }
       } else {
-        const nameLabel = this.scene.add.text(x + bs / 2, iconCenterY, t.name.substring(0, isPhone ? 4 : 5), {
+        const nameLabel = uiText(this.scene,x + bs / 2, iconCenterY, t.name.substring(0, UIScale.current.towerNameLen), {
           fontSize, color: '#ffffff', fontFamily: 'monospace'
         }).setOrigin(0.5, 0.5);
         this.container.add(nameLabel);
