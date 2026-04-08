@@ -713,24 +713,34 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Create a UI camera that renders HUD elements at 1x zoom, no scroll.
-   *  Main camera ignores known UI objects; UI camera ignores everything else. */
+   *  Main camera viewport is clipped to just the game grid area.
+   *  UI camera covers the full canvas and renders all depth >= 28 objects. */
   private setupUiCamera(): void {
     const canvasW = getCanvasWidth();
     const canvasH = ResponsiveManager.canvasHeight();
+    const isPhone = ResponsiveManager.isPhone();
+
+    // On desktop: clip main camera to just the game grid area (exclude sidebar)
+    // On phone: viewport already set by CameraController
+    if (!isPhone) {
+      const gridOffset = getGridOffsetX();
+      const gridW = canvasW - gridOffset;
+      this.cameras.main.setViewport(gridOffset, 0, gridW, canvasH);
+    }
+
+    // UI camera: full canvas, 1x zoom, no scroll — renders all UI elements
     this.uiCamera = this.cameras.add(0, 0, canvasW, canvasH);
     this.uiCamera.setScroll(0, 0);
     this.uiCamera.setName('ui');
-    this.uiCamera.transparent = true; // don't paint over main camera output
+    this.uiCamera.transparent = true;
 
-    const mainCam = this.cameras.main;
-
-    // UI camera ignores all CURRENT objects
+    // UI camera ignores all CURRENT objects (game objects)
     for (const child of this.children.list) {
       this.uiCamera.ignore(child);
     }
+
     // Auto-ignore new GAME objects (depth < 28) from UI camera.
-    // UI objects (depth >= 28) are NOT ignored — they may be rebuilt
-    // by TowerSelectBar etc. and need to stay visible on UI camera.
+    // UI objects (depth >= 28) are NOT ignored — they stay visible on UI camera.
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
       if (!this.uiCamera) return;
       const d = (go as any).depth ?? 0;
@@ -739,23 +749,14 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Now explicitly register known UI objects:
-    // remove from main camera, add to UI camera
-    const uiObjects = this.collectUiObjects();
-    for (const obj of uiObjects) {
-      mainCam.ignore(obj);
-      // Clear the UI camera's ignore bit so it renders this object
-      obj.cameraFilter &= ~this.uiCamera.id;
-    }
-  }
-
-  /** Collect all UI game objects (depth >= 28) that should stay fixed on screen.
-   *  Convention: game objects use depth < 28, UI objects use depth >= 28. */
-  private collectUiObjects(): Phaser.GameObjects.GameObject[] {
-    return this.children.list.filter(child => {
+    // Register UI objects: show on UI camera, hide from main camera
+    for (const child of this.children.list) {
       const d = (child as any).depth ?? 0;
-      return d >= 28;
-    });
+      if (d >= 28) {
+        this.cameras.main.ignore(child);
+        child.cameraFilter &= ~this.uiCamera.id;
+      }
+    }
   }
 
   /** After tower bar rebuild (Random rotation, versus pool sync),

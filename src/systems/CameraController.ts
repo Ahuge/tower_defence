@@ -197,11 +197,12 @@ export class CameraController {
 
     // Drag to pan: middle-mouse always, left-click when canPan allows it (no tower selected)
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      // Always reset wasPan on new click so previous pan state doesn't block tower placement
+      this.wasPan = false;
       const middlePan = pointer.middleButtonDown();
       const leftPan = pointer.leftButtonDown() && this.camera.zoom > 1.01 && (this.canPanCheck?.() ?? false);
       if (middlePan || leftPan) {
         this.isPanning = true;
-        this.wasPan = false;
         this.movedDist = 0;
         this.panStartX = pointer.x;
         this.panStartY = pointer.y;
