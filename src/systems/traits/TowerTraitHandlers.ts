@@ -570,7 +570,7 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
 
 /** Barbed wire: passively slows adjacent creeps (1-tile radius) */
 /** Swarm Commander: buffs specific tower types within a large radius */
-registerTowerUpdate('swarm_commander', (trait: Trait, tower: any, ctx: UpdateContext) => {
+registerTowerUpdate('commander_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
   const dmgPercent = trait.damagePercent ?? 0.20;
   const ratePercent = trait.ratePercent ?? 0.15;
   const buffRange = (trait.buffRange ?? 6) * TILE_SIZE;
