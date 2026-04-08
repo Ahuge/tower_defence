@@ -733,12 +733,24 @@ export class GameScene extends Phaser.Scene {
       this.uiCamera.ignore(child);
     }
 
-    // Step 2: new game objects (depth < 28) auto-ignored by UI camera
+    // Step 2: new objects auto-categorized on next frame.
+    // Objects at depth < 28 that are NOT inside a UI container → ignore from UI camera.
+    // Objects inside a depth >= 28 container → show on UI camera, hide from main camera.
+    const mainCam = this.cameras.main;
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
       if (!this.uiCamera) return;
-      if (((go as any).depth ?? 0) < 28) {
-        this.uiCamera.ignore(go);
-      }
+      // Defer check to next tick — by then the object has been added to its container
+      this.time.delayedCall(0, () => {
+        const parent = (go as any).parentContainer;
+        if (parent && ((parent as any).depth ?? 0) >= 28) {
+          // Inside a UI container — show on UI camera, hide from main camera
+          go.cameraFilter &= ~this.uiCamera!.id;
+          go.cameraFilter |= mainCam.id;
+        } else if (((go as any).depth ?? 0) < 28) {
+          // Standalone game object — ignore from UI camera
+          this.uiCamera!.ignore(go);
+        }
+      });
     });
 
     // Step 3: depth >= 28 objects → hide from main camera, show on UI camera
