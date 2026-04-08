@@ -249,7 +249,7 @@ function drawBrawler(ctx: CanvasRenderingContext2D, level: number = 1) {
 }
 
 // ===== 3. HEAVY GUNNER =====
-function drawHeavy(ctx: CanvasRenderingContext2D) {
+function drawHeavy(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -275,26 +275,31 @@ function drawHeavy(ctx: CanvasRenderingContext2D) {
         b(cx - 2, 2 + bob, 4, 2, W.DKSKIN);
       }
 
-      // Heavy armor torso
+      // Heavy armor torso — L2+: extra armor plating
       b(cx - 3, 4 + bob, 7, 5, W.DKARM); b(cx - 2, 4 + bob, 5, 4, W.OLIVE);
       b(cx - 1, 5 + bob, 3, 2, W.SAGE);
+      if (level >= 2) { p(cx - 3, 5 + bob, W.DKGUN); p(cx + 3, 5 + bob, W.DKGUN); p(cx - 3, 6 + bob, W.DKGUN); p(cx + 3, 6 + bob, W.DKGUN); } // extra plating
+      if (level >= 3) { b(cx - 3, 4 + bob, 7, 2, W.DKGUN); b(cx - 2, 4 + bob, 5, 1, W.LTGUN); } // full heavy plate
       b(cx - 2, 8 + bob, 5, 1, W.BELT);
 
-      // Machine gun
+      // Machine gun — L2+: larger barrel
       if (row === 0 || row === 2) {
         p(cx + 3, 4 + bob, W.GUN); p(cx + 4, 4 + bob, W.GUN);
         p(cx + 3, 5 + bob, W.DKGUN); p(cx + 4, 5 + bob, W.DKGUN);
+        if (level >= 2) { p(cx + 5, 4 + bob, W.DKGUN); p(cx + 5, 5 + bob, W.DKGUN); } // bigger barrel
       } else {
         p(cx + 3, 4 + bob, W.GUN); p(cx + 4, 4 + bob, W.GUN);
         p(cx + 5, 4 + bob, W.DKGUN);
         p(cx + 3, 5 + bob, W.DKGUN);
+        if (level >= 2) { p(cx + 6, 4 + bob, W.DKGUN); } // longer barrel
       }
 
-      // Ammo belt sway
+      // Ammo belt sway — L3+: double ammo belt
       const beltOff = (col === 1 || col === 3) ? 1 : 0;
       p(cx - 4, 5 + bob + beltOff, W.DKGOLD);
       p(cx - 4, 6 + bob + beltOff, W.GOLD);
       p(cx - 4, 7 + bob, W.DKGOLD);
+      if (level >= 3) { p(cx - 5, 5 + bob + beltOff, W.GOLD); p(cx - 5, 6 + bob + beltOff, W.DKGOLD); } // double belt
 
       // Arms
       p(cx - 4, 4 + bob, W.OLIVE); p(cx + 3, 6 + bob, W.OLIVE);
@@ -312,36 +317,43 @@ function drawHeavy(ctx: CanvasRenderingContext2D) {
       b(cx - 3, 0, 6, 3, W.DKARM); b(cx - 2, 0, 4, 2, W.GUN);
       b(cx - 2, 2, 4, 2, W.SKIN); p(cx, 2, W.DKSKIN);
 
-      // Torso
+      // Torso — L2+: extra plating, L3+: heavy plate
       b(cx - 3, 4, 7, 5, W.DKARM); b(cx - 2, 4, 5, 4, W.OLIVE);
-      b(cx - 1, 5, 3, 2, W.SAGE); b(cx - 2, 8, 5, 1, W.BELT);
+      b(cx - 1, 5, 3, 2, W.SAGE);
+      if (level >= 2) { p(cx - 3, 5, W.DKGUN); p(cx + 3, 5, W.DKGUN); p(cx - 3, 6, W.DKGUN); p(cx + 3, 6, W.DKGUN); }
+      if (level >= 3) { b(cx - 3, 4, 7, 2, W.DKGUN); b(cx - 2, 4, 5, 1, W.LTGUN); }
+      b(cx - 2, 8, 5, 1, W.BELT);
 
-      // Gun forward
+      // Gun forward — L2+: larger barrel
+      const gunLen = level >= 2 ? 4 : 3;
       if (col === 0) { // brace
-        b(cx + 3, 4, 3, 1, W.GUN); b(cx + 3, 5, 3, 1, W.DKGUN);
+        b(cx + 3, 4, gunLen, 1, W.GUN); b(cx + 3, 5, gunLen, 1, W.DKGUN);
         p(cx - 4, 5, W.OLIVE);
       } else if (col === 1) { // fire burst
-        b(cx + 3, 4, 3, 1, W.GUN); b(cx + 3, 5, 3, 1, W.DKGUN);
+        b(cx + 3, 4, gunLen, 1, W.GUN); b(cx + 3, 5, gunLen, 1, W.DKGUN);
         // big muzzle flash
-        p(cx + 6, 3, W.FLASH); p(cx + 7, 4, W.WHITE); p(cx + 6, 5, W.FLASH);
-        p(cx + 7, 3, W.FLASH); p(cx + 7, 5, W.FLASH);
+        const mz = cx + 3 + gunLen;
+        p(mz, 3, W.FLASH); p(mz + 1, 4, W.WHITE); p(mz, 5, W.FLASH);
+        p(mz + 1, 3, W.FLASH); p(mz + 1, 5, W.FLASH);
         // shell casing
         p(cx + 2, 2, W.DKGOLD); p(cx + 1, 1, W.GOLD);
         p(cx - 4, 5, W.OLIVE);
       } else if (col === 2) { // sustained
-        b(cx + 3, 4, 3, 1, W.GUN); b(cx + 3, 5, 3, 1, W.DKGUN);
-        p(cx + 6, 4, W.FLASH); p(cx + 7, 4, W.FLASH);
-        p(cx + 6, 3, W.FLASH); p(cx + 6, 5, W.FLASH);
+        b(cx + 3, 4, gunLen, 1, W.GUN); b(cx + 3, 5, gunLen, 1, W.DKGUN);
+        const mz2 = cx + 3 + gunLen;
+        p(mz2, 4, W.FLASH); p(mz2 + 1, 4, W.FLASH);
+        p(mz2, 3, W.FLASH); p(mz2, 5, W.FLASH);
         p(cx + 3, 2, W.GOLD); p(cx + 2, 3, W.DKGOLD); // casing
         p(cx - 4, 5, W.OLIVE);
       } else { // cease
-        b(cx + 3, 5, 3, 1, W.GUN); b(cx + 3, 6, 2, 1, W.DKGUN);
+        b(cx + 3, 5, gunLen, 1, W.GUN); b(cx + 3, 6, Math.max(2, gunLen - 1), 1, W.DKGUN);
         p(cx - 4, 5, W.OLIVE);
-        p(cx + 5, 4, W.GUN); // barrel cooling
+        p(cx + 2 + gunLen, 4, W.GUN); // barrel cooling
       }
 
-      // Ammo belt
+      // Ammo belt — L3+: double belt
       p(cx - 4, 5, W.DKGOLD); p(cx - 4, 6, W.GOLD); p(cx - 4, 7, W.DKGOLD);
+      if (level >= 3) { p(cx - 5, 5, W.GOLD); p(cx - 5, 6, W.DKGOLD); }
 
       // Legs braced
       b(cx - 3, 9, 2, 4, W.DKARM); b(cx + 1, 9, 2, 4, W.DKARM);
@@ -355,7 +367,7 @@ function drawHeavy(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 4. COMMANDER =====
-function drawCommander(ctx: CanvasRenderingContext2D) {
+function drawCommander(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -387,16 +399,19 @@ function drawCommander(ctx: CanvasRenderingContext2D) {
         b(cx - 1, 2 + bob, 3, 2, W.DKSKIN);
       }
 
-      // Epaulettes + torso
+      // Epaulettes + torso — L2+: golden trim, L3+: medals
       b(cx - 3, 4 + bob, 6, 5, W.OLIVE); b(cx - 2, 4 + bob, 4, 4, W.SAGE);
       p(cx - 3, 4 + bob, W.GOLD); p(cx + 2, 4 + bob, W.GOLD); // epaulettes
+      if (level >= 2) { p(cx - 3, 5 + bob, W.DKGOLD); p(cx + 2, 5 + bob, W.DKGOLD); } // golden trim
+      if (level >= 3) { p(cx - 1, 5 + bob, W.GOLD); p(cx, 6 + bob, W.GOLD); p(cx + 1, 5 + bob, W.DKGOLD); } // medals
       b(cx - 2, 8 + bob, 4, 1, W.BELT);
 
-      // Cape flowing behind
+      // Cape flowing behind — L2+: longer cape
       const capeOff = col === 1 ? 1 : col === 3 ? -1 : 0;
       if (row === 0 || row === 1) {
         p(cx - 4, 5 + bob + capeOff, W.CAPE); p(cx - 4, 6 + bob, W.DKCAPE);
         p(cx - 4, 7 + bob - capeOff, W.CAPE);
+        if (level >= 2) { p(cx - 4, 8 + bob + capeOff, W.CAPE); p(cx - 5, 7 + bob, W.DKCAPE); } // longer cape
       }
 
       // Sword at side
@@ -421,9 +436,11 @@ function drawCommander(ctx: CanvasRenderingContext2D) {
       b(cx - 2, -1, 4, 1, W.OLIVE);
       b(cx - 1, 2, 3, 2, W.SKIN); p(cx, 2, W.DKSKIN);
 
-      // Torso
+      // Torso — L2+: golden trim, L3+: medals
       b(cx - 3, 4, 6, 5, W.OLIVE); b(cx - 2, 4, 4, 4, W.SAGE);
       p(cx - 3, 4, W.GOLD); p(cx + 2, 4, W.GOLD);
+      if (level >= 2) { p(cx - 3, 5, W.DKGOLD); p(cx + 2, 5, W.DKGOLD); }
+      if (level >= 3) { p(cx - 1, 5, W.GOLD); p(cx, 6, W.GOLD); p(cx + 1, 5, W.DKGOLD); }
       b(cx - 2, 8, 4, 1, W.BELT);
 
       if (col === 0) { // sword slash forward
@@ -460,7 +477,7 @@ function drawCommander(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 5. SWARMLING =====
-function drawSwarmling(ctx: CanvasRenderingContext2D) {
+function drawSwarmling(ctx: CanvasRenderingContext2D, level: number = 1) {
   const A = ALN;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {

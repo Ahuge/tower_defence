@@ -321,70 +321,84 @@ function drawTowers(ctx:any){
       if(lv>=3){p(6,22,br?C.LIME:C.DGRN);p(26,20,br?C.LIME:C.DGRN);p(16,sy+1,fl?C.WHITE:C.ACID);}
       if(s===3){p(16,sy+1,C.DGRN);p(10,17,C.DGRN);}
     },
-    // 6. Brood Mother — bloated egg-laying creature (3 levels)
+    // 6. Brood Mother — WIDE maternal creature with wing-like carapace sheltering eggs (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      const bw=[20,22,24][lv];
-      aBase(p,b,24,bw,s===1?1:s===2?2:0);
+      const bw=[18,20,22][lv];
+      aBase(p,b,27,bw,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
-      // Bloated abdomen — grows with level
-      const rx=[5,6,7][lv], ry=[4,5,5][lv];
+      // Wide body — horizontal oval, much wider than tall
+      const rx=[7,9,11][lv], ry=[3,4,4][lv], bcy=16;
       for(let y=-ry;y<=ry;y++)for(let x=-rx;x<=rx;x++){
         if((x*x)/(rx*rx)+(y*y)/(ry*ry)<=1){
-          const d=Math.sqrt(x*x+y*y);
-          p(16+x,15+y,d<3?C.CHLT:d<5?C.CHIT:C.DKOLV);
+          const d=Math.sqrt((x*x)/(rx*rx)+(y*y)/(ry*ry));
+          p(16+x,bcy+y,d<0.4?C.CHLT:d<0.7?C.CHIT:C.DKOLV);
         }
       }
-      // Chitin plating at higher levels
+      // Wing-like carapace extensions — curve down on sides to shelter eggs below
+      const wingW=[3,4,5][lv];
+      // Left wing — extends from body, curves down
+      for(let i=0;i<wingW;i++){
+        const wx=16-rx-1-i, wy=bcy-ry+1+i;
+        b(wx,wy,2,2,C.CHIT);p(wx,wy,C.CHLT);
+        if(wy+2<27)p(wx,wy+2,C.DKOLV);
+      }
+      // Right wing — mirror
+      for(let i=0;i<wingW;i++){
+        const wx=16+rx-1+i, wy=bcy-ry+1+i;
+        b(wx,wy,2,2,C.CHIT);p(wx+1,wy,C.CHLT);
+        if(wy+2<27)p(wx+1,wy+2,C.DKOLV);
+      }
+      // Wing membrane patterns at higher levels
       if(lv>=1){
-        for(let x=-rx+2;x<=rx-2;x+=3)p(16+x,15-ry,C.OLIV);
-        p(16-rx,15,C.OLIV);p(16+rx,15,C.OLIV);
+        p(16-rx-2,bcy-ry+2,C.OLIV);p(16+rx+2,bcy-ry+2,C.OLIV);
+        p(16-rx-3,bcy,C.NGRN);p(16+rx+3,bcy,C.NGRN);
       }
       if(lv>=2){
-        for(let x=-rx+1;x<=rx-1;x+=2){p(16+x,15-ry+1,C.OLIV);p(16+x,15+ry-1,C.DKOLV);}
-        p(16-rx+1,15-ry,C.CHLT);p(16+rx-1,15-ry,C.CHLT);
+        p(16-rx-4,bcy-ry+4,C.OLIV);p(16+rx+4,bcy-ry+4,C.OLIV);
+        p(16-rx-3,bcy+1,C.DGRN);p(16+rx+3,bcy+1,C.DGRN);
       }
-      // Head — slightly larger at higher levels
-      const hw=[3,4,4][lv];
-      b(16-Math.floor(hw/2),7,hw,4,C.CHLT);b(16-Math.floor((hw-2)/2),6,Math.max(2,hw-2),1,C.OLIV);
-      p(16-Math.floor(hw/2),8,fl?C.ACID:C.LIME);p(16+Math.ceil(hw/2)-1,8,fl?C.ACID:C.LIME);
-      if(lv>=2){p(16,7,fl?C.ACID:C.LIME);}
-      // Mandibles — larger at higher levels
-      p(16-Math.floor(hw/2)-1,7,C.CHIT);p(16+Math.ceil(hw/2),7,C.CHIT);
-      p(16-Math.floor(hw/2)-2,6,C.OLIV);p(16+Math.ceil(hw/2)+1,6,C.OLIV);
-      if(lv>=1){p(16-Math.floor(hw/2)-2,7,C.CHIT);p(16+Math.ceil(hw/2)+1,7,C.CHIT);}
-      if(lv>=2){p(16-Math.floor(hw/2)-3,6,C.CHLT);p(16+Math.ceil(hw/2)+2,6,C.CHLT);}
-      // Legs — more at higher levels
-      const legPos=[[16-rx-1,14],[16-rx-2,16],[16-rx-1,18],[16+rx+1,14],[16+rx+2,16],[16+rx+1,18],[16-rx-2,20],[16+rx+2,20]];
-      const legN=[4,6,8][lv];
-      for(let i=0;i<legN;i++){
-        const [lx,ly]=legPos[i%legPos.length];
-        p(lx,ly,C.CHIT);p(lx+(lx<16?-1:1),ly+1,C.DKOLV);
-      }
-      // Eggs on/around body — more at higher levels
-      const eggPos=[[11,20],[13,21],[15,22],[18,21],[20,20],[16,20],[10,22],[21,22]];
-      const eggN=[4,5,6][lv];
+      // Small head at top — tiny compared to body
+      const hw=[3,3,4][lv];
+      b(16-Math.floor(hw/2),bcy-ry-3,hw,3,C.CHLT);b(16-Math.floor((hw-2)/2),bcy-ry-4,Math.max(2,hw-2),1,C.OLIV);
+      // Eyes
+      p(16-Math.floor(hw/2),bcy-ry-2,fl?C.ACID:C.LIME);p(16+Math.ceil(hw/2)-1,bcy-ry-2,fl?C.ACID:C.LIME);
+      // Antennae
+      p(16-Math.floor(hw/2)-1,bcy-ry-4,C.CHIT);p(16+Math.ceil(hw/2),bcy-ry-4,C.CHIT);
+      // EGGS underneath body — visible between legs, sheltered by wings
+      const eggY=bcy+ry+1;
+      const eggPositions=[
+        [12,eggY],[14,eggY],[16,eggY],[18,eggY],[20,eggY],
+        [13,eggY+2],[15,eggY+2],[17,eggY+2],[19,eggY+2],
+        [11,eggY+1],[21,eggY+1],
+      ];
+      const eggN=[4,7,10][lv];
       for(let i=0;i<eggN;i++){
-        const [ex,ey]=eggPos[i%eggPos.length];
-        b(ex,ey,2,2,fl?C.LTYEL:br?C.ACID:C.YGRN);
-        p(ex,ey,fl?C.WHITE:C.ACID);
+        const [ex,ey]=eggPositions[i%eggPositions.length];
+        if(ey<27){
+          p(ex,ey,fl?C.LTYEL:br?C.ACID:C.YGRN);p(ex,ey+1,fl?C.YGRN:C.DGRN);
+        }
       }
-      if(lv>=2){
-        // Extra egg cluster
-        b(12,19,2,2,C.YGRN);p(12,19,C.ACID);b(19,19,2,2,C.YGRN);p(19,19,C.ACID);
+      // Legs — short, wide stance to straddle eggs
+      const legPairs=[3,4,4][lv];
+      for(let i=0;i<legPairs;i++){
+        const ly=bcy+1+i, lSpread=rx+1+i;
+        if(ly<27){
+          p(16-lSpread,ly,C.CHIT);p(16-lSpread-1,ly+1,C.DKOLV);
+          p(16+lSpread,ly,C.CHIT);p(16+lSpread+1,ly+1,C.DKOLV);
+        }
       }
       // Egg launching (fire state)
       if(fl){
-        p(16,5,C.ACID);p(15,3,C.YGRN);p(17,2,C.LTYEL);
-        p(14,4,C.LIME);p(18,3,C.LIME);
-        if(lv>=1){p(13,3,C.NGRN);p(19,2,C.NGRN);}
-        if(lv>=2){p(12,2,C.YGRN);p(20,1,C.LTYEL);p(16,1,C.ACID);}
+        p(16,bcy-ry-5,C.ACID);p(15,bcy-ry-7,C.YGRN);p(17,bcy-ry-8,C.LTYEL);
+        p(14,bcy-ry-6,C.LIME);p(18,bcy-ry-7,C.LIME);
+        if(lv>=1){p(13,bcy-ry-7,C.NGRN);p(19,bcy-ry-8,C.NGRN);}
+        if(lv>=2){p(12,bcy-ry-8,C.YGRN);p(20,bcy-ry-9,C.LTYEL);p(16,bcy-ry-9,C.ACID);}
       }
-      // Pulsing abdomen veins — more at higher levels
-      p(16-rx+2,13,br?C.LIME:C.NGRN);p(16+rx-2,13,br?C.LIME:C.NGRN);
-      p(16-2,17,br?C.NGRN:C.DGRN);p(16+2,17,br?C.NGRN:C.DGRN);
-      if(lv>=1){p(16,14,C.NGRN);p(16,16,C.NGRN);}
-      if(lv>=2){p(16-rx+1,15,br?C.LIME:C.NGRN);p(16+rx-1,15,br?C.LIME:C.NGRN);}
-      if(s===3){p(15,12,C.DGRN);p(17,16,C.DGRN);}
+      // Pulsing veins on carapace
+      p(16-rx+2,bcy-1,br?C.LIME:C.NGRN);p(16+rx-2,bcy-1,br?C.LIME:C.NGRN);
+      if(lv>=1){p(16,bcy,C.NGRN);}
+      if(lv>=2){p(16-rx+1,bcy,br?C.LIME:C.NGRN);p(16+rx-1,bcy,br?C.LIME:C.NGRN);}
+      if(s===3){p(15,bcy-1,C.DGRN);p(17,bcy+1,C.DGRN);}
     },
     // 7. Swarmling (MOBILE UNIT) — 2 levels, Row0=idle, Row1=walk, Row2=attack, Row3=death
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -484,22 +498,22 @@ function drawTowers(ctx:any){
     // 8. Overmind (Ultimate) — giant alien brain/eye on organic throne (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const bw=[22,24,26][lv];
-      aBase(p,b,24,bw,s===1?1:s===2?2:0);
+      aBase(p,b,27,bw,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
       // Organic throne structure — grows with level
       const tw=[16,18,20][lv], th=[6,7,8][lv], tx=16-Math.floor(tw/2);
-      b(tx,24-th,tw,th,C.CHIT);b(tx+1,24-th-1,tw-2,th,C.CHLT);
-      b(tx-1,24-th+2,2,th,C.DKOLV);b(tx+tw-1,24-th+2,2,th,C.DKOLV);
+      b(tx,27-th,tw,th,C.CHIT);b(tx+1,27-th-1,tw-2,th,C.CHLT);
+      b(tx-1,27-th+2,2,th,C.DKOLV);b(tx+tw-1,27-th+2,2,th,C.DKOLV);
       // Throne spires — taller at higher levels
       const tsh=[6,8,10][lv];
-      aSpire(p,b,tx,24-th-tsh,tsh,2,C.CHIT,C.CHLT,C.OLIV);
-      aSpire(p,b,tx+tw-2,24-th-tsh,tsh,2,C.CHIT,C.CHLT,C.OLIV);
+      aSpire(p,b,tx,27-th-tsh,tsh,2,C.CHIT,C.CHLT,C.OLIV);
+      aSpire(p,b,tx+tw-2,27-th-tsh,tsh,2,C.CHIT,C.CHLT,C.OLIV);
       if(lv>=2){
-        aSpire(p,b,tx-2,24-th-tsh+4,tsh-4,2,C.DKOLV,C.CHIT,C.CHLT);
-        aSpire(p,b,tx+tw,24-th-tsh+4,tsh-4,2,C.DKOLV,C.CHIT,C.CHLT);
+        aSpire(p,b,tx-2,27-th-tsh+4,tsh-4,2,C.DKOLV,C.CHIT,C.CHLT);
+        aSpire(p,b,tx+tw,27-th-tsh+4,tsh-4,2,C.DKOLV,C.CHIT,C.CHLT);
       }
       // Brain dome — larger at higher levels
-      const brx=[5,6,7][lv], bry=[4,5,5][lv], bcy=[11,10,10][lv];
+      const brx=[5,6,7][lv], bry=[4,5,5][lv], bcy=[9,8,7][lv];
       for(let y=-bry;y<=3;y++)for(let x=-brx;x<=brx;x++){
         if((x*x)/(brx*brx)+(y*y)/(bry*bry)<=1){
           const d=Math.sqrt(x*x+y*y);
@@ -544,13 +558,13 @@ function drawTowers(ctx:any){
         }
       }
       // Nerve tendrils from brain to throne — more at higher levels
-      aTendril(p,16-brx+2,bcy+bry,tx+2,24-th,C.DGRN,fl);
-      aTendril(p,16+brx-2,bcy+bry,tx+tw-2,24-th,C.DGRN,fl);
-      aTendril(p,16,bcy+bry,16,24-th,C.NGRN,fl);
-      if(lv>=1){aTendril(p,16-brx+4,bcy+bry,tx+4,24-th,C.NGRN,fl);}
-      if(lv>=2){aTendril(p,16+brx-4,bcy+bry,tx+tw-4,24-th,C.NGRN,fl);aTendril(p,16-brx,bcy+bry-2,tx,24-th+2,C.DGRN,fl);}
+      aTendril(p,16-brx+2,bcy+bry,tx+2,27-th,C.DGRN,fl);
+      aTendril(p,16+brx-2,bcy+bry,tx+tw-2,27-th,C.DGRN,fl);
+      aTendril(p,16,bcy+bry,16,27-th,C.NGRN,fl);
+      if(lv>=1){aTendril(p,16-brx+4,bcy+bry,tx+4,27-th,C.NGRN,fl);}
+      if(lv>=2){aTendril(p,16+brx-4,bcy+bry,tx+tw-4,27-th,C.NGRN,fl);aTendril(p,16-brx,bcy+bry-2,tx,27-th+2,C.DGRN,fl);}
       // Hex cells on throne — more at higher levels
-      const hexPos=[[tx+2,24-th+2],[tx+6,24-th+3],[tx+tw-3,24-th+2],[tx+tw-7,24-th+3],[tx+4,24-th+5],[tx+tw-5,24-th+5]];
+      const hexPos=[[tx+2,27-th+2],[tx+6,27-th+3],[tx+tw-3,27-th+2],[tx+tw-7,27-th+3],[tx+4,27-th+5],[tx+tw-5,27-th+5]];
       const hexN=[4,5,6][lv];
       for(let i=0;i<hexN;i++){
         const [hpx,hpy]=hexPos[i%hexPos.length];

@@ -328,84 +328,95 @@ function drawTowers(ctx:any){
       particles.forEach(([x,y,cl]:any)=>{if(x>=0&&x<32&&y>=0&&y<32)p(x,y,cl);});
       if(s===3){p(cx,Math.max(1,23-mainH),C.MIND3);p(cx-7,Math.max(3,24-secH),C.DKPUR);}
     },
-    // Overmind (Ultimate) — Massive brain/neural network, tendrils everywhere, mass confusion (4 levels)
+    // Overmind (Ultimate) — Floating geometric nexus, interlocking crystalline network (4 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
       const baseW=12+lv*2;
       const glowInt=lv>=3?2:lv>=2?1:0;
       tBase(p,b,24,baseW,s===1?Math.min(glowInt+1,2):s===2?2:glowInt);
       const cx=16,cy=10;
-      // Brain dome — radius grows with level
-      const brainR=4+lv;
-      const brainH=Math.round(brainR*0.85);
-      for(let y=-brainR;y<=brainH;y++)for(let x=-brainR-1;x<=brainR+1;x++){
-        const d=Math.sqrt(x*x*0.8+y*y);
-        if(d<=brainR){
-          // Brain fold pattern — more complex at higher levels
-          const fold=Math.sin(x*(0.5+lv*0.15)+y*0.3)*Math.cos(y*(0.4+lv*0.15));
-          const col=fold>0.3?(fl?C.PLPUR:C.LTPUR):fold>-0.2?(fl?C.BRPUR:C.MIND2):(fl?C.MIND2:C.DKPUR);
+      // Central nexus — interlocking diamond shapes, grows with level
+      const nexR=4+lv;
+      // Outer diamond shell
+      for(let y=-nexR;y<=nexR;y++){
+        const hw=nexR-Math.abs(y);
+        for(let x=-hw;x<=hw;x++){
+          const d=(Math.abs(x)+Math.abs(y))/nexR;
+          const col=d<0.25?(fl?C.WHITE:C.WHLAV):d<0.5?(fl?C.PLPUR:C.LTPUR):d<0.75?(fl?C.LTPUR:C.BRPUR):C.MDPUR;
           p(cx+x,cy+y,col);
         }
       }
-      // Brain outline
-      for(let y=-brainR;y<=brainH;y++)for(let x=-brainR-1;x<=brainR+1;x++){
-        const d=Math.sqrt(x*x*0.8+y*y);
-        if(d<=brainR&&d>brainR-1) p(cx+x,cy+y,br?C.LTPUR:C.BRPUR);
+      // Inner rotated diamond (45 degrees) — creates interlocking pattern
+      const innerR=Math.max(2,nexR-2);
+      for(let y=-innerR;y<=innerR;y++)for(let x=-innerR;x<=innerR;x++){
+        if(Math.abs(x)+Math.abs(y)<=innerR){
+          const d=Math.max(Math.abs(x),Math.abs(y))/innerR;
+          if(d>0.3&&d<0.7) p(cx+x,cy+y,fl?C.WHLAV:C.PLPUR);
+        }
       }
-      // Central third eye — grows with level
-      const eyeR=1+Math.floor(lv/2);
-      b(cx-eyeR,cy-1,eyeR*2,eyeR+2,C.DKPSY);b(cx-1,cy,2,1,fl?C.WHITE:C.PINK);
-      p(cx,cy,fl?C.WHITE:C.LTPNK);
-      if(lv>=2){p(cx-1,cy-1,C.DKPNK);p(cx+1,cy-1,C.DKPNK);p(cx-eyeR,cy,C.PINK);p(cx+eyeR,cy,C.PINK);}
-      // Additional eyes at higher levels
+      // Nexus outline — clean geometric edge
+      for(let y=-nexR;y<=nexR;y++){
+        const hw=nexR-Math.abs(y);
+        p(cx-hw,cy+y,br?C.WHLAV:C.LTPUR);p(cx+hw,cy+y,br?C.WHLAV:C.LTPUR);
+      }
+      // Central core — pure energy hub
+      const coreR=1+Math.floor(lv/2);
+      b(cx-coreR,cy-coreR,coreR*2+1,coreR*2+1,fl?C.WHITE:C.PLPUR);
+      p(cx,cy,C.WHITE);
+      if(lv>=2){p(cx-1,cy,C.WHLAV);p(cx+1,cy,C.WHLAV);p(cx,cy-1,C.WHLAV);p(cx,cy+1,C.WHLAV);}
+      // Satellite nodes at higher levels
       if(lv>=3){
-        // Side consciousness nodes
-        p(cx-brainR+2,cy-1,C.PINK);p(cx-brainR+2,cy,C.DKPNK);
-        p(cx+brainR-2,cy-1,C.PINK);p(cx+brainR-2,cy,C.DKPNK);
+        // Floating geometric nodes at cardinal points
+        const nodeR=nexR+2;
+        for(let i=0;i<4;i++){
+          const a=i*Math.PI/2;
+          const nx=cx+Math.round(Math.cos(a)*nodeR),ny=cy+Math.round(Math.sin(a)*nodeR);
+          if(nx>=1&&nx<31&&ny>=1&&ny<31){p(nx,ny,C.PLPUR);p(nx,ny-1,C.LTPUR);}
+        }
       }
       if(lv>=4){
-        // Crown of eyes around brain top
+        // Crown of geometric nodes around top
         for(let i=0;i<5;i++){
-          const a=-Math.PI*0.2+i*Math.PI*0.1;
-          const ex=cx+Math.round(Math.cos(a)*(brainR-1)),eey=cy+Math.round(Math.sin(a)*(brainR-1));
-          if(ex>=0&&ex<32&&eey>=0&&eey<32){p(ex,eey,C.WHITE);p(ex,eey+1,C.PINK);}
+          const a=-Math.PI*0.6+i*Math.PI*0.3;
+          const ex=cx+Math.round(Math.cos(a)*(nexR+1)),eey=cy+Math.round(Math.sin(a)*(nexR+1));
+          if(ex>=0&&ex<32&&eey>=0&&eey<32){p(ex,eey,C.WHITE);p(ex,eey+1,C.PLPUR);}
         }
       }
-      // Neural tendrils spreading out — more tendrils at higher levels
-      const tendCount=2+lv;
-      for(let t=0;t<tendCount;t++){
-        const spread=t/(tendCount-1||1);
-        const tx1=cx-Math.round(brainR*0.8*(1-spread)),ty1=cy+brainH;
+      // Clean energy conduits to base — straight geometric lines
+      const linkCount=2+lv;
+      for(let t=0;t<linkCount;t++){
+        const spread=t/(linkCount-1||1);
+        const tx1=cx-Math.round(nexR*0.8*(1-spread)),ty1=cy+nexR;
         const tx2=Math.round(2+spread*(28)),ty2=22+Math.round(spread*2);
-        tNeuralVein(p,tx1,ty1,tx2,ty2,t<2?(br?C.BRPUR:C.MIND2):C.MIND3,fl);
+        tEnergyLink(p,tx1,ty1,tx2,ty2,t<2?(br?C.LTPUR:C.BRPUR):C.MIND3,fl);
       }
-      // Center tendril always
-      tNeuralVein(p,cx,cy+brainH,cx,24,br?C.MIND2:C.MIND3,fl);
-      // Additional tendrils on fire — more dramatic at higher levels
+      // Center conduit
+      tEnergyLink(p,cx,cy+nexR,cx,24,br?C.BRPUR:C.MIND3,fl);
+      // Energy beams on fire
       if(fl){
-        tNeuralVein(p,cx-brainR,cy,0,12,C.PLPUR,true);
-        tNeuralVein(p,cx+brainR,cy,31,12,C.PLPUR,true);
+        tEnergyLink(p,cx-nexR,cy,0,12,C.PLPUR,true);
+        tEnergyLink(p,cx+nexR,cy,31,12,C.PLPUR,true);
         if(lv>=3){
-          tNeuralVein(p,cx-brainR+2,cy-brainR+1,2,2,C.LTPUR,true);
-          tNeuralVein(p,cx+brainR-2,cy-brainR+1,29,2,C.LTPUR,true);
+          tEnergyLink(p,cx-nexR+2,cy-nexR+1,2,2,C.LTPUR,true);
+          tEnergyLink(p,cx+nexR-2,cy-nexR+1,29,2,C.LTPUR,true);
         }
-        // Confusion pulse rings — more at higher levels
-        for(let i=0;i<8+lv*2;i++){const a=i*Math.PI/(4+lv),r=brainR+4;
+        // Energy pulse rings
+        for(let i=0;i<8+lv*2;i++){const a=i*Math.PI/(4+lv),r=nexR+4;
           const px_=cx+Math.round(Math.cos(a)*r),py_=cy+Math.round(Math.sin(a)*r);
           if(px_>=0&&px_<32&&py_>=0&&py_<32)p(px_,py_,i%2?C.PLPUR:C.LTPUR);
         }
       }
-      // Brain stem — thicker at higher levels
-      const stemW=2+Math.floor(lv/2);
-      b(cx-stemW,cy+brainH,stemW*2,5,C.DKPUR);b(cx-1,cy+brainH,2,5,C.MIND3);
-      // Pulsing glow — more particles at higher levels
+      // Energy column to base
+      const colW=2+Math.floor(lv/2);
+      b(cx-colW,cy+nexR,colW*2,5,C.MDPUR);b(cx-1,cy+nexR,2,5,C.LTPUR);
+      // Ambient glow particles
       if(br){
-        p(cx-brainR-2,cy-2,C.MIND2);p(cx+brainR+2,cy-1,C.MIND2);p(cx,cy-brainR-1,C.PLPUR);
-        if(lv>=3){p(cx-brainR-3,cy+3,C.BRPUR);p(cx+brainR+3,cy+4,C.BRPUR);}
+        p(cx-nexR-2,cy-2,C.BRPUR);p(cx+nexR+2,cy-1,C.BRPUR);p(cx,cy-nexR-1,C.PLPUR);
+        if(lv>=3){p(cx-nexR-3,cy+3,C.LTPUR);p(cx+nexR+3,cy+4,C.LTPUR);}
       }
-      // Energy sparks at base
-      p(cx-3,cy+brainH+5,fl?C.PLPUR:C.BRPUR);p(cx+3,cy+brainH+5,fl?C.PLPUR:C.BRPUR);
-      if(s===3){b(cx-eyeR,cy,eyeR*2,1,C.MIND3);p(cx,cy-2,C.DKPUR);}
+      // Energy points at base
+      p(cx-3,cy+nexR+5,fl?C.PLPUR:C.LTPUR);p(cx+3,cy+nexR+5,fl?C.PLPUR:C.LTPUR);
+      if(s===3){b(cx-coreR,cy,coreR*2+1,1,C.MIND3);p(cx,cy-2,C.DKPUR);}
     },
   ];
   const cols=5,rows=T_TOTAL_ROWS;
