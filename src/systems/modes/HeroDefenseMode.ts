@@ -61,12 +61,16 @@ export class HeroDefenseMode implements GameMode {
     if (interest > 0) {
       this.ctx.economy.addGold(interest);
       this.ctx.statsTracker.recordGoldEarned(interest);
-      this.ctx.eventLog.gameMessage(`+${interest}g interest (${Math.round(interestRate * 100)}%)`);
     }
+
+    // Combined wave clear message
+    const parts = [`+${income}g income`];
+    if (interest > 0) parts.push(`+${interest}g interest (${Math.round(interestRate * 100)}%)`);
+    parts.push('Hero healed 20%');
+    this.ctx.eventLog.gameMessage(`Wave cleared! ${parts.join(', ')}`);
 
     // Heal hero 20% on wave clear
     this.arenaManager.hero.healPercent(0.2);
-    this.ctx.eventLog.gameMessage('Wave cleared! Hero healed 20%.');
 
     // Rotate accessory shop
     this.arenaManager.rotateAccessories(waveNum + 1);

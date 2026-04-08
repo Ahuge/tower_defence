@@ -114,10 +114,16 @@ export class TowerSelectBar {
         this.container.add(label);
       }
 
+      // Cost label at bottom of button
+      const costH = isPhone ? 20 : 12; // reserve space for cost text
       const costLabel = this.scene.add.text(x + bs / 2, y + bs - 2, `${t.cost}g`, {
         fontSize: costSize, color: '#ffdd44', fontFamily: 'monospace'
       }).setOrigin(0.5, 1);
       this.container.add(costLabel);
+
+      // Icon area: button minus cost label space
+      const iconMaxSz = bs - costH - 8; // leave room for cost + margin
+      const iconCenterY = y + (bs - costH) / 2;
 
       // Show tower sprite icon if available, otherwise text label
       const towerId = this.towerIds[i];
@@ -125,21 +131,21 @@ export class TowerSelectBar {
         const cfg = getTowerSpriteConfig(towerId);
         if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
           const frameIndex = cfg.rows.idle * cfg.totalCols + cfg.column;
-          const icon = this.scene.add.sprite(x + bs / 2, y + bs / 2 - 4, cfg.sheetKey, frameIndex);
-          icon.setScale((bs - 12) / 64); // fit within button with some margin
+          const icon = this.scene.add.sprite(x + bs / 2, iconCenterY, cfg.sheetKey, frameIndex);
+          icon.setScale(iconMaxSz / 64);
           icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
           this.container.add(icon);
         }
       } else if (isMobileTowerSprite(towerId)) {
         const cfg = getMobileSpriteConfig(towerId);
         if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
-          const icon = this.scene.add.sprite(x + bs / 2, y + bs / 2 - 4, cfg.sheetKey, 0);
-          icon.setScale((bs - 12) / cfg.frameWidth);
+          const icon = this.scene.add.sprite(x + bs / 2, iconCenterY, cfg.sheetKey, 0);
+          icon.setScale(iconMaxSz / cfg.frameWidth);
           icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
           this.container.add(icon);
         }
       } else {
-        const nameLabel = this.scene.add.text(x + bs / 2, y + bs / 2 - 2, t.name.substring(0, isPhone ? 4 : 5), {
+        const nameLabel = this.scene.add.text(x + bs / 2, iconCenterY, t.name.substring(0, isPhone ? 4 : 5), {
           fontSize, color: '#ffffff', fontFamily: 'monospace'
         }).setOrigin(0.5, 0.5);
         this.container.add(nameLabel);
