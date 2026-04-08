@@ -206,6 +206,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Clean up previous run if scene is being restarted
+    this.events.once('shutdown', () => this.shutdown());
+
     // Create sprite animations from loaded sheets
     createSpriteAnimations(this);
 
@@ -1657,5 +1660,20 @@ export class GameScene extends Phaser.Scene {
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
     }
+  }
+
+  /** Clean up on scene shutdown (returning to menu, restarting) */
+  shutdown(): void {
+    // Destroy all towers and their sprites
+    for (const t of this._towers) t.destroy();
+    this._towers = [];
+    // Destroy all creeps
+    for (const c of this._creeps) c.graphics?.destroy();
+    this._creeps = [];
+    // Clear event listeners
+    this.events.off('shutdown');
+    this.input.off('pointerdown');
+    this.input.off('pointermove');
+    this.input.off('pointerup');
   }
 }
