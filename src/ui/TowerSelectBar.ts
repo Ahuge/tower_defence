@@ -17,7 +17,8 @@ export class TowerSelectBar {
   private tooltipBg: Phaser.GameObjects.Graphics;
   private tooltipText: Phaser.GameObjects.Text;
 
-  static readonly BAR_HEIGHT = 96; // fits phone (80px btns) and desktop (52px btns)
+  private static _barHeight: number = 96;
+  static get BAR_HEIGHT(): number { return TowerSelectBar._barHeight; }
   private readonly btnSize: number;
   private readonly padding: number;
 
@@ -25,8 +26,20 @@ export class TowerSelectBar {
     this.scene = scene;
     this.towerIds = towerIds;
     this.onSelect = onSelect;
-    this.btnSize = UIScale.current.btnSize;
-    this.padding = UIScale.current.btnPadding;
+
+    if (UIScale.isPhone) {
+      // Responsive: size buttons to fill available width
+      const availW = getCanvasWidth() - getGridOffsetX();
+      const pad = 6;
+      const bs = Math.floor((availW - pad) / towerIds.length) - pad;
+      this.btnSize = Math.min(bs, 160); // cap so they don't get absurdly large
+      this.padding = pad;
+      TowerSelectBar._barHeight = this.btnSize + 24; // btn + top/bottom margin
+    } else {
+      this.btnSize = UIScale.current.btnSize;
+      this.padding = UIScale.current.btnPadding;
+      TowerSelectBar._barHeight = 96;
+    }
     // On phone: anchor to bottom of canvas. On desktop: below game area.
     const canvasH = ResponsiveManager.canvasHeight();
     const barY = UIScale.isPhone
