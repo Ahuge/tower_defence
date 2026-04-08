@@ -552,10 +552,10 @@ export class GameScene extends Phaser.Scene {
         this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
         this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
       } else {
-        this.cameraCtrl = new CameraController(this, GAME_WIDTH, GAME_HEIGHT);
+        // Desktop: world = full canvas (sidebar + game grid + tower bar area)
+        const canvasH = ResponsiveManager.canvasHeight();
+        this.cameraCtrl = new CameraController(this, canvasW, canvasH);
         this.cameraCtrl.setCanPanCheck(() => this.selectionMode === 'none');
-        // Set base scroll to grid offset so camera starts at the grid, not the sidebar
-        this.cameraCtrl.setBaseScrollX(getGridOffsetX());
       }
       this.inputMgr.setCameraController(this.cameraCtrl);
     }
@@ -713,44 +713,31 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Set up dual camera system: main camera for game (zoom/pan),
-   *  UI camera overlay for HUD elements (depth >= 28). Same approach
-   *  for both phone and desktop — only viewport dimensions differ.
-   *  On desktop, main camera viewport = grid area (excludes sidebar).
-   *  On phone, main camera viewport = area above bottom UI bars. */
+  /** Set up camera system for zoom support.
+   *  Phone: dual camera (main = game with zoom, UI camera = HUD overlay at 1x).
+   *  Desktop: single camera (main renders everything). No UI camera needed —
+   *  zoom is modest and the sidebar zooming with the game is acceptable. */
   private setupUiCamera(): void {
+    if (!ResponsiveManager.isPhone()) return; // Desktop: no UI camera needed
+
     const canvasW = getCanvasWidth();
     const canvasH = ResponsiveManager.canvasHeight();
-    const isPhone = ResponsiveManager.isPhone();
 
-    // On desktop: clip main camera to the grid area (sidebar rendered by UI camera only)
-    if (!isPhone) {
-      const gridOffset = getGridOffsetX();
-      const gridW = canvasW - gridOffset;
-      const gridH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-      this.cameras.main.setViewport(gridOffset, 0, gridW, gridH);
-    }
-
-    // UI camera: full canvas, 1x zoom, no scroll — renders all depth >= 28 objects
+    // Phone: UI camera overlay for HUD at 1x
     this.uiCamera = this.cameras.add(0, 0, canvasW, canvasH);
     this.uiCamera.setScroll(0, 0);
     this.uiCamera.setName('ui');
     this.uiCamera.transparent = true;
 
-    // UI camera starts by ignoring everything
     for (const child of this.children.list) {
       this.uiCamera.ignore(child);
     }
-
-    // Auto-ignore new game objects (depth < 28) from UI camera
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
       if (!this.uiCamera) return;
       if (((go as any).depth ?? 0) < 28) {
         this.uiCamera.ignore(go);
       }
     });
-
-    // Register UI objects (depth >= 28): hide from main camera, show on UI camera
     for (const child of this.children.list) {
       if (((child as any).depth ?? 0) >= 28) {
         this.cameras.main.ignore(child);
