@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sprite Sheet Renderer</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    import React from 'react';
+    import ReactDOM from 'react-dom/client';
+    import SpritePreview from './src/sprite-preview.tsx';
+
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      React.createElement(SpritePreview)
+    );
+  </script>
+</body>
+</html>

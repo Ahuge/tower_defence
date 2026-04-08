@@ -1,4 +1,5 @@
 import { HeroTypeDef, AbilityDef } from '../data/HeroTypes';
+import { getHeroSheetKey } from '../systems/SpriteManager';
 import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../data/HeroItems';
 import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
@@ -43,6 +44,14 @@ export class Hero {
   respawnTimer: number = 0; // seconds remaining
   typeDef: HeroTypeDef;
   graphics: Phaser.GameObjects.Graphics;
+  sprite: Phaser.GameObjects.Sprite | null = null;
+  /** Animation state for sprite: tracks current action + frame cycling */
+  private _animState: 'idle' | 'walk' | 'attack' | 'ability' = 'idle';
+  private _animTimer: number = 0;
+  private _animFrame: number = 0;
+  private _abilityIndex: number = -1; // which ability was just used (for row 3 frame)
+  private _abilityAnimTimer: number = 0;
+  private _facingRow: number = 0; // 0=down, 1=side, 2=up
   scene: Phaser.Scene;
   lastAttackTime: number = 0;
   kills: number = 0;
@@ -139,6 +148,15 @@ export class Hero {
 
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(15);
+
+    // Create hero sprite if available
+    const heroSheetKey = getHeroSheetKey(typeDef.id);
+    if (heroSheetKey && scene.textures.exists(heroSheetKey)) {
+      this.sprite = scene.add.sprite(x, y, heroSheetKey, 0);
+      this.sprite.setDepth(15);
+      this.sprite.setScale(40 / 64);
+      this.sprite.setOrigin(0.5, 0.75);
+    }
   }
 
   // === Effective stats (base + items + buffs) ===
@@ -558,6 +576,13 @@ export class Hero {
       ab.cooldownRemaining = ab.def.cooldown;
       this.abilitiesUsed++;
       def = ab.def;
+    }
+
+    // Trigger ability animation
+    if (this.sprite) {
+      this._animState = 'ability';
+      this._abilityIndex = overrideDef ? 3 : index; // ultimate = slot 3
+      this._abilityAnimTimer = 0.5; // show ability frame for 0.5s
     }
 
     switch (def.type) {
@@ -981,31 +1006,101 @@ export class Hero {
     this.graphics.clear();
 
     if (!this.alive) {
-      // Show respawn timer
+      if (this.sprite) this.sprite.setVisible(false);
       return;
+    }
+
+    // Update sprite position and animation
+    if (this.sprite) {
+      this.sprite.setVisible(true);
+      this.sprite.setPosition(this.x, this.y);
+
+      // Determine facing direction
+      const dx = this.moveTarget ? this.moveTarget.x - this.x : (this.target ? this.target.x - this.x : 0);
+      const dy = this.moveTarget ? this.moveTarget.y - this.y : (this.target ? this.target.y - this.y : 0);
+
+      // Row: 0=down, 1=side, 2=up
+      if (Math.abs(dy) > Math.abs(dx)) {
+        this._facingRow = dy < 0 ? 2 : 0;
+        this.sprite.setFlipX(false);
+      } else if (dx !== 0) {
+        this._facingRow = 1;
+        this.sprite.setFlipX(dx < 0);
+      }
+
+      // Animation state machine
+      // Sheet layout per row: idle(0,1), walk(2,3,4,5), attack(6,7)
+      const isMoving = this.moveTarget !== null;
+      const isAttacking = this.target !== null && !isMoving;
+
+      // Tick ability animation timer
+      if (this._abilityAnimTimer > 0) {
+        this._abilityAnimTimer -= 1 / 60; // approximate delta
+        if (this._abilityAnimTimer <= 0) {
+          this._animState = 'idle';
+        }
+      }
+
+      // Update animation state (ability takes priority)
+      if (this._animState !== 'ability') {
+        if (isAttacking) this._animState = 'attack';
+        else if (isMoving) this._animState = 'walk';
+        else this._animState = 'idle';
+      }
+
+      // Tick frame animation
+      this._animTimer += 1 / 60;
+
+      let col = 0;
+      switch (this._animState) {
+        case 'idle':
+          // Alternate between frames 0-1 slowly
+          col = Math.floor(this._animTimer * 2) % 2;
+          break;
+        case 'walk':
+          // Cycle through frames 2-5
+          col = 2 + Math.floor(this._animTimer * 6) % 4;
+          break;
+        case 'attack':
+          // Slow attack cycle: frame 6 (windup) holds longer, frame 7 (strike) flashes
+          // ~1.5fps gives a deliberate, weighty feel
+          col = 6 + Math.floor(this._animTimer * 1.5) % 2;
+          break;
+        case 'ability':
+          // Show ability frame from row 3
+          // Row 3 has 8 frames: abilities 0-3 use pairs of frames
+          const abilityCol = Math.min(this._abilityIndex, 3) * 2;
+          this.sprite.setFrame(3 * 8 + abilityCol);
+          break; // skip normal row selection
+      }
+
+      if (this._animState !== 'ability') {
+        this.sprite.setFrame(this._facingRow * 8 + col);
+      }
     }
 
     const size = 14;
 
-    // Hero body — larger than fighters
-    this.graphics.fillStyle(this.typeDef.color, 1);
-    this.graphics.beginPath();
-    this.graphics.moveTo(this.x, this.y - size);
-    this.graphics.lineTo(this.x + size, this.y);
-    this.graphics.lineTo(this.x, this.y + size);
-    this.graphics.lineTo(this.x - size, this.y);
-    this.graphics.closePath();
-    this.graphics.fillPath();
+    // Only draw Graphics body if no sprite
+    if (!this.sprite) {
+      this.graphics.fillStyle(this.typeDef.color, 1);
+      this.graphics.beginPath();
+      this.graphics.moveTo(this.x, this.y - size);
+      this.graphics.lineTo(this.x + size, this.y);
+      this.graphics.lineTo(this.x, this.y + size);
+      this.graphics.lineTo(this.x - size, this.y);
+      this.graphics.closePath();
+      this.graphics.fillPath();
 
-    // Outline
-    this.graphics.lineStyle(2, 0xffffff, 0.6);
-    this.graphics.beginPath();
-    this.graphics.moveTo(this.x, this.y - size);
-    this.graphics.lineTo(this.x + size, this.y);
-    this.graphics.lineTo(this.x, this.y + size);
-    this.graphics.lineTo(this.x - size, this.y);
-    this.graphics.closePath();
-    this.graphics.strokePath();
+      this.graphics.lineStyle(2, 0xffffff, 0.6);
+      this.graphics.beginPath();
+      this.graphics.moveTo(this.x, this.y - size);
+      this.graphics.lineTo(this.x + size, this.y);
+      this.graphics.lineTo(this.x, this.y + size);
+      this.graphics.lineTo(this.x - size, this.y);
+      this.graphics.closePath();
+      this.graphics.strokePath();
+    }
 
     // HP bar
     const barW = 40;
@@ -1029,6 +1124,7 @@ export class Hero {
 
   destroy(): void {
     this.graphics.destroy();
+    if (this.sprite) { this.sprite.destroy(); this.sprite = null; }
     for (const p of this.projectiles) p.graphics.destroy();
     this.projectiles = [];
   }

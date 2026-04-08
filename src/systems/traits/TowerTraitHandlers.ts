@@ -6,6 +6,70 @@ import {
   Trait, HitContext, UpdateContext, addOrRefreshTrait,
 } from './Trait';
 
+/**
+ * Spawn a visual attack effect for mobile units.
+ * Melee: impact flash at target. Ranged: bullet trail. AoE: splash ring.
+ */
+function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: UpdateContext): void {
+  const scene = tower.graphics?.scene;
+  if (!scene) return;
+
+  const towerTypeId: string = tower.typeId ?? '';
+  const isMelee = towerTypeId.includes('brawler');
+  const isHeavy = towerTypeId.includes('heavy') || towerTypeId.includes('commander');
+
+  if (splashRadius > 0) {
+    // AoE flash ring (Heavy Gunner)
+    const gfx = scene.add.graphics();
+    gfx.setDepth(14);
+    const color = isHeavy ? 0xff8844 : 0xffffff;
+    let progress = 0;
+    const timer = scene.time.addEvent({
+      delay: 16, repeat: 12,
+      callback: () => {
+        progress += 1 / 12;
+        gfx.clear();
+        gfx.lineStyle(2, color, 1 - progress);
+        gfx.strokeCircle(tower.x, tower.y, splashRadius * progress);
+        gfx.fillStyle(color, (1 - progress) * 0.1);
+        gfx.fillCircle(tower.x, tower.y, splashRadius * progress);
+        if (progress >= 1) { gfx.destroy(); timer.destroy(); }
+      },
+    });
+  } else if (target && isMelee) {
+    // Melee impact burst at target
+    const gfx = scene.add.graphics();
+    gfx.setDepth(14);
+    let progress = 0;
+    const timer = scene.time.addEvent({
+      delay: 16, repeat: 8,
+      callback: () => {
+        progress += 1 / 8;
+        gfx.clear();
+        const size = 8 + 10 * progress;
+        gfx.fillStyle(0xffff44, 1 - progress);
+        // Star burst
+        for (let a = 0; a < 4; a++) {
+          const angle = (a / 4) * Math.PI * 2 + progress * 2;
+          gfx.fillRect(target.x + Math.cos(angle) * size - 1, target.y + Math.sin(angle) * size - 1, 3, 3);
+        }
+        if (progress >= 1) { gfx.destroy(); timer.destroy(); }
+      },
+    });
+  } else if (target) {
+    // Ranged bullet trail (Rifleman, Commander)
+    const gfx = scene.add.graphics();
+    gfx.setDepth(14);
+    const color = towerTypeId.includes('commander') ? 0xffcc44 : 0xffffaa;
+    gfx.lineStyle(2, color, 0.8);
+    gfx.lineBetween(tower.x, tower.y, target.x, target.y);
+    // Small impact circle
+    gfx.fillStyle(color, 0.9);
+    gfx.fillCircle(target.x, target.y, 4);
+    scene.time.delayedCall(100, () => gfx.destroy());
+  }
+}
+
 // Helper: scale a value by tower level (10% per level above 1)
 function levelScale(base: number, level: number, perLevel: number = 0.1): number {
   return base * (1 + perLevel * (level - 1));
@@ -485,9 +549,13 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
               tower.damageDealt += attackDamage;
             }
           }
+          // Visual: AoE flash
+          spawnAttackEffect(tower, null, attackSplash, ctx);
         } else {
           target.takeDamage(attackDamage);
           tower.damageDealt += attackDamage;
+          // Visual: hit effect at target
+          spawnAttackEffect(tower, target, 0, ctx);
         }
 
         // Self-destruct: destroy tower after first attack (kamikaze)

@@ -58,6 +58,7 @@ import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
 import { GameControlBar } from '../ui/GameControlBar';
+import { preloadSprites, createSpriteAnimations } from '../systems/SpriteManager';
 import { CameraController } from '../systems/CameraController';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
@@ -199,7 +200,15 @@ export class GameScene extends Phaser.Scene {
     return shuffled.slice(0, 6);
   }
 
+  preload(): void {
+    // Load sprite assets (only downloads what's needed)
+    preloadSprites(this);
+  }
+
   create(): void {
+    // Create sprite animations from loaded sheets
+    createSpriteAnimations(this);
+
     // Set global grid Y offset for hero defense (arena above grid)
     setGridOffsetY(this.gridOffsetY);
 

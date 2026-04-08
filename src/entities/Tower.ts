@@ -2,6 +2,7 @@ import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
 import { TowerType } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
 import { HitTarget } from '../systems/traits/Trait';
+import { hasTowerSprite, isMobileTowerSprite, shouldTowerRotate, createTowerSprite, setTowerSpriteState, updateMobileTowerSprite, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
 import {
   Trait, HitContext, HitStats, createHitStats, hasTrait, getTrait,
   resolveDelivery, resolveDamageModifiers, resolveFireRate,
@@ -19,7 +20,18 @@ interface Projectile {
   speed: number;
   graphics: Phaser.GameObjects.Graphics;
   locationBased: boolean;
-  age: number; // seconds alive — tracking projectiles accelerate over time
+  age: number;
+  /** Optional sprite (replaces Graphics circle when present) */
+  sprite?: Phaser.GameObjects.Sprite;
+  /** Tower ID that fired this (for impact animation lookup) */
+  towerId?: string;
+  /** Pierce beam: travels to map edge, damages creeps as it passes */
+  isPierce?: boolean;
+  /** Direction vector (normalized) for pierce beams */
+  dirX?: number;
+  dirY?: number;
+  /** Set of creeps already damaged by this pierce beam */
+  piercedCreeps?: Set<Creep>;
 }
 
 export class Tower {
@@ -50,6 +62,16 @@ export class Tower {
   homeY: number = 0;
   isMobile: boolean = false;
 
+  /** Optional sprite (for factions with art). When set, Graphics drawing is skipped. */
+  sprite: Phaser.GameObjects.Sprite | null = null;
+  private _scene: Phaser.Scene;
+
+  /** Mobile unit sprite — track previous position for direction detection */
+  private _prevX: number = 0;
+  private _prevY: number = 0;
+  /** Last rotation applied to sprite (preserved when no target) */
+  private _lastSpriteRotation: number = 0;
+
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
@@ -79,40 +101,74 @@ export class Tower {
       this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
     }
 
+    this._scene = scene;
+    this._prevX = this.x;
+    this._prevY = this.y;
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(5);
+
+    // Try to create a sprite for this tower (if spritesheet available)
+    if (hasTowerSprite(this.typeId)) {
+      this.sprite = createTowerSprite(scene, this.typeId, this.x, this.y);
+    }
+
     this.drawTower();
   }
 
   drawTower(): void {
     this.graphics.clear();
 
-    const isMobile = hasTrait(this.traits, 'mobile_unit');
+    // Update sprite position and animation
+    if (this.sprite) {
+      this.sprite.setPosition(this.x, this.y);
 
-    // Mobile units draw as diamonds, static towers as squares
-    this.graphics.fillStyle(this.color, 1);
+      // Set idle frame for current upgrade level (non-mobile towers)
+      if (!isMobileTowerSprite(this.typeId)) {
+        setTowerSpriteState(this.sprite, this.typeId, 'idle', this.level);
+      }
+
+      // Mobile unit sprites need directional walk-cycle animations
+      if (isMobileTowerSprite(this.typeId)) {
+        const dx = this.x - this._prevX;
+        const dy = this.y - this._prevY;
+        const isAttacking = this.lastFired > 0 && (Date.now() - this.lastFired < 300);
+        updateMobileTowerSprite(this.sprite, this.typeId, dx, dy, isAttacking);
+        this._prevX = this.x;
+        this._prevY = this.y;
+      }
+    }
+
+    const isMobile = hasTrait(this.traits, 'mobile_unit');
     const s = TILE_SIZE * 0.35;
+
+    // Only draw Graphics body if no sprite
+    if (!this.sprite) {
+      this.graphics.fillStyle(this.color, 1);
+      if (isMobile) {
+        this.graphics.beginPath();
+        this.graphics.moveTo(this.x, this.y - s);
+        this.graphics.lineTo(this.x + s, this.y);
+        this.graphics.lineTo(this.x, this.y + s);
+        this.graphics.lineTo(this.x - s, this.y);
+        this.graphics.closePath();
+        this.graphics.fillPath();
+        this.graphics.lineStyle(1, 0xffffff, 0.4);
+        this.graphics.strokePath();
+      } else {
+        this.graphics.fillRect(this.x - s, this.y - s, s * 2, s * 2);
+        this.graphics.lineStyle(1, 0xffffff, 0.3);
+        this.graphics.strokeRect(this.x - s, this.y - s, s * 2, s * 2);
+      }
+    }
+
+    // Mobile home marker (draw even with sprites)
     if (isMobile) {
-      this.graphics.beginPath();
-      this.graphics.moveTo(this.x, this.y - s);
-      this.graphics.lineTo(this.x + s, this.y);
-      this.graphics.lineTo(this.x, this.y + s);
-      this.graphics.lineTo(this.x - s, this.y);
-      this.graphics.closePath();
-      this.graphics.fillPath();
-      this.graphics.lineStyle(1, 0xffffff, 0.4);
-      this.graphics.strokePath();
-      // Draw home position marker when away
       const dx = this.x - this.homeX;
       const dy = this.y - this.homeY;
       if (Math.sqrt(dx * dx + dy * dy) > 4) {
         this.graphics.lineStyle(1, this.color, 0.2);
         this.graphics.strokeCircle(this.homeX, this.homeY, TILE_SIZE * 0.25);
       }
-    } else {
-      this.graphics.fillRect(this.x - s, this.y - s, s * 2, s * 2);
-      this.graphics.lineStyle(1, 0xffffff, 0.3);
-      this.graphics.strokeRect(this.x - s, this.y - s, s * 2, s * 2);
     }
 
     if (this.level > 1) {
@@ -225,6 +281,16 @@ export class Tower {
       return;
     }
 
+    // Rotate tower sprite to face nearest target (mechanical/military towers with barrels)
+    if (this.sprite && !isMobileTowerSprite(this.typeId) && shouldTowerRotate(this.typeId)) {
+      const nearest = this.findTarget(creeps);
+      if (nearest) {
+        this._lastSpriteRotation = Math.atan2(nearest.y - this.y, nearest.x - this.x) + Math.PI / 2;
+      }
+      // Always apply the saved rotation (persists when no target)
+      this.sprite.setRotation(this._lastSpriteRotation);
+    }
+
     const effectiveRate = this.getEffectiveFireRate();
     if (time - this.lastFired >= effectiveRate) {
       const target = this.findTarget(creeps);
@@ -258,20 +324,59 @@ export class Tower {
   }
 
   fire(target: Creep): void {
-    const g = this.graphics.scene.add.graphics();
+    const scene = this._scene;
+    const g = scene.add.graphics();
     g.setDepth(15);
-    const isLocationBased = hasTrait(this.traits, 'splash_damage') || hasTrait(this.traits, 'pierce_delivery') || hasTrait(this.traits, 'tower_aura_damage');
+    const isPierce = hasTrait(this.traits, 'pierce_delivery');
+    const isLocationBased = hasTrait(this.traits, 'splash_damage') || isPierce || hasTrait(this.traits, 'tower_aura_damage');
+
+    // For pierce beams: calculate direction and destination at map edge
+    let destX = target.x;
+    let destY = target.y;
+    let dirX = 0;
+    let dirY = 0;
+    if (isPierce) {
+      const dx = target.x - this.x;
+      const dy = target.y - this.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len > 0) {
+        dirX = dx / len;
+        dirY = dy / len;
+        // Extend to a far distance (well past map edge)
+        destX = this.x + dirX * 2000;
+        destY = this.y + dirY * 2000;
+      }
+    }
+
+    // Try to create a projectile sprite
+    const projSprite = hasProjectileSprite(this.typeId)
+      ? createProjectileSprite(scene, this.typeId, this.x, this.y)
+      : null;
+
     this.projectiles.push({
       x: this.x,
       y: this.y,
       target,
-      destX: target.x,
-      destY: target.y,
+      destX,
+      destY,
       speed: this.typeDef.projectileSpeed,
       graphics: g,
       locationBased: isLocationBased,
       age: 0,
+      sprite: projSprite ?? undefined,
+      isPierce,
+      dirX, dirY,
+      piercedCreeps: isPierce ? new Set() : undefined,
+      towerId: this.typeId,
     });
+
+    // Set tower sprite to fire state briefly
+    if (this.sprite) {
+      setTowerSpriteState(this.sprite, this.typeId, 'fire', this.level);
+      scene.time.delayedCall(200, () => {
+        if (this.sprite) setTowerSpriteState(this.sprite, this.typeId, 'idle', this.level);
+      });
+    }
   }
 
   updateProjectiles(delta: number, allCreeps: Creep[]): void {
@@ -281,6 +386,7 @@ export class Tower {
       // If target died: location-based projectiles continue, tracking ones disappear
       if (!p.target.alive && !p.locationBased) {
         p.graphics.destroy();
+        if (p.sprite) p.sprite.destroy();
         this.projectiles.splice(i, 1);
         continue;
       }
@@ -290,7 +396,8 @@ export class Tower {
       const ty = (p.target.alive && !p.locationBased) ? p.target.y : p.destY;
 
       // Update destination if target is still alive (track moving targets)
-      if (p.target.alive) {
+      // Location-based projectiles (splash/meteor) lock their destination at fire time
+      if (p.target.alive && !p.locationBased) {
         p.destX = p.target.x;
         p.destY = p.target.y;
       }
@@ -307,23 +414,85 @@ export class Tower {
         : p.speed * (1 + p.age * p.age * 2);
       const move = effectiveSpeed * (delta / 1000);
 
+      // Pierce beam: damage creeps as the beam passes them
+      if (p.isPierce && p.piercedCreeps && p.dirX !== undefined && p.dirY !== undefined) {
+        const pierceTrait = getTrait(this.traits, 'pierce_delivery');
+        const lineWidth = (pierceTrait?.lineWidth ?? 24) / 2;
+        for (const creep of allCreeps) {
+          if (!creep.alive || creep.reached || p.piercedCreeps.has(creep)) continue;
+          // Check if creep is behind the beam's current position (already passed)
+          const cx = creep.x - this.x;
+          const cy = creep.y - this.y;
+          const proj = cx * p.dirX + cy * p.dirY;
+          // Beam front = distance from tower to projectile
+          const beamFront = (p.x - this.x) * p.dirX + (p.y - this.y) * p.dirY;
+          if (proj < 0 || proj > beamFront) continue; // not yet reached or behind tower
+          const perpX = cx - proj * p.dirX;
+          const perpY = cy - proj * p.dirY;
+          const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
+          if (perpDist <= lineWidth) {
+            const stats = createHitStats();
+            const dmg = this.damage; // simplified — full damage to each
+            creep.takeDamage(dmg);
+            creep.lastHitCol = this.col;
+            creep.lastHitRow = this.row;
+            p.piercedCreeps.add(creep);
+          }
+        }
+      }
+
+      // Pierce beams: remove when they've gone far off-screen
+      if (p.isPierce && (p.x < -100 || p.x > 2000 || p.y < -100 || p.y > 2000)) {
+        p.graphics.destroy();
+        if (p.sprite) p.sprite.destroy();
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
       if (dist <= move) {
+        // Pierce beams don't stop at target — they keep going
+        if (p.isPierce) {
+          // Don't remove, just keep moving (removed by off-screen check above)
+          p.x += (dx / dist) * move;
+          p.y += (dy / dist) * move;
+          if (p.sprite) {
+            p.sprite.setPosition(p.x, p.y);
+            if (!p.locationBased) p.sprite.setRotation(Math.atan2(dy, dx));
+          }
+          continue;
+        }
+
         if (p.target.alive) {
           this.onProjectileHit(p, allCreeps);
         } else {
-          // Location-based: hit whatever's at the destination
           this.onProjectileHitLocation(p, allCreeps);
         }
         p.graphics.destroy();
+        // Play impact animation — scale to splash radius for AoE towers
+        if (p.sprite && p.towerId) {
+          const splashTrait = getTrait(this.traits, 'splash_damage');
+          const splashRadius = splashTrait?.radius as number | undefined;
+          playProjectileImpact(p.sprite, p.towerId, splashRadius);
+        } else if (p.sprite) {
+          p.sprite.destroy();
+        }
         this.projectiles.splice(i, 1);
       } else {
         p.x += (dx / dist) * move;
         p.y += (dy / dist) * move;
 
-        p.graphics.clear();
-        const hasSplash = hasTrait(this.traits, 'splash_damage');
-        p.graphics.fillStyle(this.projectileColor, 1);
-        p.graphics.fillCircle(p.x, p.y, hasSplash ? 4 : 3);
+        if (p.sprite) {
+          p.sprite.setPosition(p.x, p.y);
+          // Rotate tracking projectiles to face direction; location-based fall straight
+          if (!p.locationBased) {
+            p.sprite.setRotation(Math.atan2(dy, dx));
+          }
+        } else {
+          p.graphics.clear();
+          const hasSplash = hasTrait(this.traits, 'splash_damage');
+          p.graphics.fillStyle(this.projectileColor, 1);
+          p.graphics.fillCircle(p.x, p.y, hasSplash ? 4 : 3);
+        }
       }
     }
   }
@@ -394,8 +563,10 @@ export class Tower {
 
   destroy(): void {
     this.graphics.destroy();
+    if (this.sprite) { this.sprite.destroy(); this.sprite = null; }
     for (const p of this.projectiles) {
       p.graphics.destroy();
+      if (p.sprite) p.sprite.destroy();
     }
     this.projectiles = [];
   }
