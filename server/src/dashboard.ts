@@ -388,24 +388,8 @@ export function getDashboardHTML(baseUrl: string): string {
       const geoMap = {};
       for (const [code, count] of entries) geoMap[code] = count;
 
-      for (const feat of countries.geometries) {
-        const isoNum = feat.id;
-        const iso2 = NUM_TO_ISO[isoNum] || '';
-        const count = geoMap[iso2] || 0;
-
-        // Color: dark default, green intensity for players
-        if (count > 0) {
-          const intensity = 0.3 + (count / maxCount) * 0.7;
-          ctx.fillStyle = 'rgb(' + Math.round(20+intensity*48) + ',' + Math.round(60+intensity*195) + ',' + Math.round(20+intensity*48) + ')';
-          ctx.strokeStyle = '#44ff44';
-          ctx.lineWidth = 1;
-        } else {
-          ctx.fillStyle = '#181822';
-          ctx.strokeStyle = '#252530';
-          ctx.lineWidth = 0.5;
-        }
-
-        // Draw polygons
+      // Helper to build path for a country feature
+      function tracePaths(feat) {
         const rings = feat.type === 'Polygon' ? [feat.arcs] : feat.arcs;
         for (const poly of rings) {
           for (const ring of poly) {
@@ -418,12 +402,48 @@ export function getDashboardHTML(baseUrl: string): string {
               if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             }
             ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
           }
         }
+      }
 
-        // Label for active countries
+      // Pass 1: fill all countries (no strokes — avoids border bleed)
+      for (const feat of countries.geometries) {
+        const iso2 = NUM_TO_ISO[feat.id] || '';
+        const count = geoMap[iso2] || 0;
+        if (count > 0) {
+          const intensity = 0.3 + (count / maxCount) * 0.7;
+          ctx.fillStyle = 'rgb(' + Math.round(20+intensity*48) + ',' + Math.round(60+intensity*195) + ',' + Math.round(20+intensity*48) + ')';
+        } else {
+          ctx.fillStyle = '#181822';
+        }
+        tracePaths(feat);
+        ctx.fill();
+      }
+
+      // Pass 2: stroke borders on top
+      ctx.strokeStyle = '#252530';
+      ctx.lineWidth = 0.5;
+      for (const feat of countries.geometries) {
+        tracePaths(feat);
+        ctx.stroke();
+      }
+
+      // Pass 3: highlight borders for active countries
+      ctx.strokeStyle = '#44ff44';
+      ctx.lineWidth = 1;
+      for (const feat of countries.geometries) {
+        const iso2 = NUM_TO_ISO[feat.id] || '';
+        const count = geoMap[iso2] || 0;
+        if (count > 0) {
+          tracePaths(feat);
+          ctx.stroke();
+        }
+      }
+
+      // Pass 4: labels for active countries
+      for (const feat of countries.geometries) {
+        const iso2 = NUM_TO_ISO[feat.id] || '';
+        const count = geoMap[iso2] || 0;
         if (count > 0 && iso2) {
           const centroid = getPolygonCentroid(feat, arcs, W, H);
           if (centroid) {
