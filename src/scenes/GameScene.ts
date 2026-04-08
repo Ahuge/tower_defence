@@ -577,7 +577,7 @@ export class GameScene extends Phaser.Scene {
             if (this.faction === 'random') {
               this.activeTowerIds = msg.towerIds;
               this.towerBar.setTowerIds(this.activeTowerIds);
-              this.fixTowerBarCamera();
+              this.fixContainerCamera((this.towerBar as any).container);
               this.enterNoneMode();
               this.eventLog.gameMessage('Tower pool updated!');
             }
@@ -750,13 +750,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** After tower bar rebuild (Random rotation, versus pool sync),
-   *  re-register its children with the UI camera on phone.
-   *  New children get default cameraFilter from addedtoscene handler
-   *  which incorrectly ignores them (depth 0 < 28). */
-  private fixTowerBarCamera(): void {
-    if (!this.uiCamera || !this.towerBar) return;
-    const container = (this.towerBar as any).container as Phaser.GameObjects.Container;
+  /** After a UI container rebuild (e.g. Random rotation), re-register its
+   *  children with the UI camera. New children created via scene.add.*() get
+   *  default depth 0, which the addedtoscene handler incorrectly marks as
+   *  game objects (ignored by UI camera). This fixes all children in a container. */
+  private fixContainerCamera(container: Phaser.GameObjects.Container): void {
+    if (!this.uiCamera) return;
     const mainCam = this.cameras.main;
     for (const child of container.list) {
       child.cameraFilter &= ~this.uiCamera.id; // visible on UI camera
@@ -1648,9 +1647,11 @@ export class GameScene extends Phaser.Scene {
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds);
-      this.fixTowerBarCamera();
+      this.fixContainerCamera((this.towerBar as any).container);
       if (this.gameMode instanceof StandardMode) {
         (this.gameMode as StandardMode).rotateRandomFrontier();
+        // Fix frontier panel camera after rebuild
+        this.fixContainerCamera((this.gameMode as StandardMode).frontierPanel.getContainer());
       }
       this.eventLog.gameMessage('Tower + frontier pool rotated!');
       this.enterNoneMode();
