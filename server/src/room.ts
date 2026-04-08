@@ -1,16 +1,16 @@
 /**
  * GameRoom Durable Object — manages a single multiplayer room.
  *
- * Handles player join/leave, WebSocket signaling for SDP exchange,
- * faction selection relay, and room lifecycle (auto-expiry).
+ * Persists room config and player tokens to storage so state survives
+ * between requests (Durable Objects may be evicted from memory).
+ * WebSocket connections are transient (managed via Hibernation API).
  */
 import { generateToken } from './utils';
 
-interface PlayerState {
+interface PlayerRecord {
   index: number;
   token: string;
-  ws: WebSocket | null;
-  ready: boolean;        // WebRTC connection established
+  ready: boolean;
   faction: string | null;
 }
 
@@ -21,6 +21,7 @@ interface RoomConfig {
   hostToken: string;
   createdAt: number;
   status: 'waiting' | 'signaling' | 'playing' | 'closed';
+  players: PlayerRecord[];
 }
 
 /** Messages from client → server */
@@ -46,24 +47,31 @@ type ServerMessage =
 
 export class GameRoom {
   private state: DurableObjectState;
-  private config: RoomConfig | null = null;
-  private players: Map<number, PlayerState> = new Map();
-  private expiryAlarm: number | null = null;
 
   constructor(state: DurableObjectState, _env: unknown) {
     this.state = state;
   }
 
+  // ===================== Storage Helpers =====================
+
+  private async getConfig(): Promise<RoomConfig | null> {
+    return await this.state.storage.get<RoomConfig>('config') ?? null;
+  }
+
+  private async saveConfig(config: RoomConfig): Promise<void> {
+    await this.state.storage.put('config', config);
+  }
+
+  // ===================== Request Router =====================
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // WebSocket upgrade for signaling
     if (request.headers.get('Upgrade') === 'websocket') {
       return this.handleWebSocket(url);
     }
 
-    // REST endpoints
     if (request.method === 'POST' && path.endsWith('/create')) {
       return this.handleCreate(request);
     }
@@ -83,7 +91,8 @@ export class GameRoom {
   // ===================== REST Handlers =====================
 
   private async handleCreate(request: Request): Promise<Response> {
-    if (this.config) {
+    const existing = await this.getConfig();
+    if (existing) {
       return jsonResponse({ error: 'Room already exists' }, 409);
     }
 
@@ -92,29 +101,28 @@ export class GameRoom {
     const maxPlayers = mode === 'versus' ? 2 : Math.min(body.maxPlayers ?? 4, 4);
     const hostToken = generateToken();
 
-    this.config = {
+    const config: RoomConfig = {
       code: body.code ?? '????',
       mode,
       maxPlayers,
       hostToken,
       createdAt: Date.now(),
       status: 'waiting',
+      players: [{
+        index: 0,
+        token: hostToken,
+        ready: false,
+        faction: null,
+      }],
     };
 
-    // Host is player 0
-    this.players.set(0, {
-      index: 0,
-      token: hostToken,
-      ws: null,
-      ready: false,
-      faction: null,
-    });
+    await this.saveConfig(config);
 
     // Auto-expire if no one joins in 10 minutes
-    await this.setExpiry(10 * 60 * 1000);
+    await this.state.storage.setAlarm(Date.now() + 10 * 60 * 1000);
 
     return jsonResponse({
-      code: this.config.code,
+      code: config.code,
       hostToken,
       playerIndex: 0,
       mode,
@@ -122,81 +130,81 @@ export class GameRoom {
     });
   }
 
-  private handleJoin(): Response {
-    if (!this.config) {
+  private async handleJoin(): Promise<Response> {
+    const config = await this.getConfig();
+    if (!config) {
       return jsonResponse({ error: 'Room not found' }, 404);
     }
-    if (this.config.status === 'closed') {
+    if (config.status === 'closed') {
       return jsonResponse({ error: 'Room closed' }, 410);
     }
-    if (this.players.size >= this.config.maxPlayers) {
+    if (config.players.length >= config.maxPlayers) {
       return jsonResponse({ error: 'Room full' }, 409);
     }
 
-    const playerIndex = this.players.size;
+    const playerIndex = config.players.length;
     const token = generateToken();
 
-    this.players.set(playerIndex, {
+    config.players.push({
       index: playerIndex,
       token,
-      ws: null,
       ready: false,
       faction: null,
     });
+    config.status = 'signaling';
+    await this.saveConfig(config);
 
-    this.config.status = 'signaling';
-
-    // Notify connected players about the new joiner
+    // Notify connected players
     this.broadcast({
       type: 'player_joined',
       playerIndex,
-      playerCount: this.players.size,
+      playerCount: config.players.length,
     });
 
     return jsonResponse({
       playerIndex,
       joinToken: token,
-      playerCount: this.players.size,
-      mode: this.config.mode,
-      maxPlayers: this.config.maxPlayers,
+      playerCount: config.players.length,
+      mode: config.mode,
+      maxPlayers: config.maxPlayers,
     });
   }
 
-  private handleInfo(): Response {
-    if (!this.config) {
+  private async handleInfo(): Promise<Response> {
+    const config = await this.getConfig();
+    if (!config) {
       return jsonResponse({ error: 'Room not found' }, 404);
     }
     return jsonResponse({
-      code: this.config.code,
-      mode: this.config.mode,
-      maxPlayers: this.config.maxPlayers,
-      playerCount: this.players.size,
-      status: this.config.status,
+      code: config.code,
+      mode: config.mode,
+      maxPlayers: config.maxPlayers,
+      playerCount: config.players.length,
+      status: config.status,
     });
   }
 
-  private handleClose(request: Request): Response {
+  private async handleClose(request: Request): Promise<Response> {
+    const config = await this.getConfig();
     const token = new URL(request.url).searchParams.get('token');
-    if (!this.config || token !== this.config.hostToken) {
+    if (!config || token !== config.hostToken) {
       return jsonResponse({ error: 'Unauthorized' }, 403);
     }
-    this.closeRoom();
+    await this.closeRoom();
     return jsonResponse({ closed: true });
   }
 
   // ===================== WebSocket Handler =====================
 
-  private handleWebSocket(url: URL): Response {
+  private async handleWebSocket(url: URL): Promise<Response> {
     const token = url.searchParams.get('token');
-    if (!this.config || !token) {
+    const config = await this.getConfig();
+    if (!config || !token) {
       return new Response('Unauthorized', { status: 401 });
     }
 
     // Find player by token
-    let player: PlayerState | null = null;
-    for (const p of this.players.values()) {
-      if (p.token === token) { player = p; break; }
-    }
+    const player = config.players.find(p => p.token === token);
     if (!player) {
       return new Response('Invalid token', { status: 403 });
     }
@@ -205,17 +213,15 @@ export class GameRoom {
     const [client, server] = Object.values(pair);
 
     this.state.acceptWebSocket(server);
-    // Tag the WebSocket with player index for identification
     server.serializeAttachment(player.index);
-    player.ws = server;
 
-    // Send room info to the connecting player
+    // Send room info
     server.send(JSON.stringify({
       type: 'room_info',
       playerIndex: player.index,
-      playerCount: this.players.size,
-      mode: this.config.mode,
-      maxPlayers: this.config.maxPlayers,
+      playerCount: config.players.length,
+      mode: config.mode,
+      maxPlayers: config.maxPlayers,
     } satisfies ServerMessage));
 
     return new Response(null, { status: 101, webSocket: client });
@@ -240,21 +246,17 @@ export class GameRoom {
         this.relaySdp(playerIndex, msg);
         break;
       case 'ready':
-        this.handleReady(playerIndex);
+        await this.handleReady(playerIndex);
         break;
       case 'faction':
-        this.handleFaction(playerIndex, msg.faction ?? 'random');
+        await this.handleFaction(playerIndex, msg.faction ?? 'random');
         break;
     }
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
     const playerIndex = ws.deserializeAttachment() as number;
-    const player = this.players.get(playerIndex);
-    if (player) {
-      player.ws = null;
-      this.broadcast({ type: 'player_left', playerIndex }, playerIndex);
-    }
+    this.broadcast({ type: 'player_left', playerIndex }, playerIndex);
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
@@ -263,81 +265,83 @@ export class GameRoom {
 
   // ===================== Signaling Logic =====================
 
-  /** Relay SDP offer/answer/ICE from one player to another */
   private relaySdp(fromPlayer: number, msg: ClientMessage): void {
     const target = msg.targetPlayer;
     if (target === undefined) return;
 
-    const targetPlayer = this.players.get(target);
-    if (!targetPlayer?.ws) return;
-
-    let relayMsg: ServerMessage;
-    if (msg.type === 'offer') {
-      relayMsg = { type: 'offer', sdp: msg.sdp!, fromPlayer };
-    } else if (msg.type === 'answer') {
-      relayMsg = { type: 'answer', sdp: msg.sdp!, fromPlayer };
-    } else {
-      relayMsg = { type: 'ice', candidate: msg.candidate!, fromPlayer };
+    const sockets = this.state.getWebSockets();
+    for (const sock of sockets) {
+      const idx = sock.deserializeAttachment() as number;
+      if (idx === target) {
+        let relayMsg: ServerMessage;
+        if (msg.type === 'offer') {
+          relayMsg = { type: 'offer', sdp: msg.sdp!, fromPlayer };
+        } else if (msg.type === 'answer') {
+          relayMsg = { type: 'answer', sdp: msg.sdp!, fromPlayer };
+        } else {
+          relayMsg = { type: 'ice', candidate: msg.candidate!, fromPlayer };
+        }
+        sock.send(JSON.stringify(relayMsg));
+        return;
+      }
     }
-
-    targetPlayer.ws.send(JSON.stringify(relayMsg));
   }
 
-  /** Mark player as WebRTC-connected, check if all ready */
-  private handleReady(playerIndex: number): void {
-    const player = this.players.get(playerIndex);
+  private async handleReady(playerIndex: number): Promise<void> {
+    const config = await this.getConfig();
+    if (!config) return;
+
+    const player = config.players.find(p => p.index === playerIndex);
     if (player) player.ready = true;
+    await this.saveConfig(config);
 
-    // Check if all players are ready
-    const allReady = this.players.size >= 2 &&
-      Array.from(this.players.values()).every(p => p.ready);
-
+    const allReady = config.players.length >= 2 && config.players.every(p => p.ready);
     if (allReady) {
-      this.config!.status = 'playing';
+      config.status = 'playing';
+      await this.saveConfig(config);
       this.broadcast({ type: 'all_ready' });
     }
   }
 
-  /** Relay faction selection to all other players */
-  private handleFaction(playerIndex: number, faction: string): void {
-    const player = this.players.get(playerIndex);
+  private async handleFaction(playerIndex: number, faction: string): Promise<void> {
+    const config = await this.getConfig();
+    if (!config) return;
+
+    const player = config.players.find(p => p.index === playerIndex);
     if (player) player.faction = faction;
+    await this.saveConfig(config);
 
     this.broadcast({ type: 'faction', playerIndex, faction }, playerIndex);
   }
 
   // ===================== Helpers =====================
 
-  /** Send a message to all connected players (optionally exclude one) */
   private broadcast(msg: ServerMessage, excludePlayer?: number): void {
     const data = JSON.stringify(msg);
-    for (const player of this.players.values()) {
-      if (player.index === excludePlayer) continue;
-      if (player.ws) {
-        try { player.ws.send(data); } catch { /* disconnected */ }
-      }
+    const sockets = this.state.getWebSockets();
+    for (const sock of sockets) {
+      const idx = sock.deserializeAttachment() as number;
+      if (idx === excludePlayer) continue;
+      try { sock.send(data); } catch { /* disconnected */ }
     }
   }
 
-  private closeRoom(): void {
-    if (this.config) this.config.status = 'closed';
-    for (const player of this.players.values()) {
-      if (player.ws) {
-        try { player.ws.close(1000, 'Room closed'); } catch { /* ignore */ }
-      }
+  private async closeRoom(): Promise<void> {
+    const config = await this.getConfig();
+    if (config) {
+      config.status = 'closed';
+      await this.saveConfig(config);
     }
-    this.players.clear();
-  }
-
-  private async setExpiry(ms: number): Promise<void> {
-    this.expiryAlarm = Date.now() + ms;
-    await this.state.storage.setAlarm(this.expiryAlarm);
+    const sockets = this.state.getWebSockets();
+    for (const sock of sockets) {
+      try { sock.close(1000, 'Room closed'); } catch { /* ignore */ }
+    }
   }
 
   async alarm(): Promise<void> {
-    // Auto-expire room if not playing
-    if (this.config && this.config.status !== 'playing') {
-      this.closeRoom();
+    const config = await this.getConfig();
+    if (config && config.status !== 'playing') {
+      await this.closeRoom();
     }
   }
 }

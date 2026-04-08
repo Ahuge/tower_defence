@@ -25,6 +25,7 @@ export class LobbyScene extends Phaser.Scene {
 
   // DOM input for room code (Phaser doesn't have native text input)
   private codeInput: HTMLInputElement | null = null;
+  private initialButtons: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super('LobbyScene');
@@ -49,7 +50,7 @@ export class LobbyScene extends Phaser.Scene {
     const hostBtn = this.add.text(cx - UIScale.space(80), UIScale.y(90), '[ HOST GAME ]', {
       fontSize: UIScale.font(14), color: '#44ff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    hostBtn.on('pointerdown', () => this.startHost());
+    hostBtn.on('pointerdown', () => { this.clearInitialButtons(); this.startHost(); });
     hostBtn.on('pointerover', () => hostBtn.setColor('#88ff88'));
     hostBtn.on('pointerout', () => hostBtn.setColor('#44ff44'));
 
@@ -57,7 +58,7 @@ export class LobbyScene extends Phaser.Scene {
     const joinBtn = this.add.text(cx + UIScale.space(80), UIScale.y(90), '[ JOIN GAME ]', {
       fontSize: UIScale.font(14), color: '#4488ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    joinBtn.on('pointerdown', () => this.startJoin());
+    joinBtn.on('pointerdown', () => { this.clearInitialButtons(); this.startJoin(); });
     joinBtn.on('pointerover', () => joinBtn.setColor('#88bbff'));
     joinBtn.on('pointerout', () => joinBtn.setColor('#4488ff'));
 
@@ -68,6 +69,8 @@ export class LobbyScene extends Phaser.Scene {
     manualBtn.on('pointerdown', () => { this.useManual = true; this.statusText.setText('Manual mode: use clipboard codes'); });
     manualBtn.on('pointerover', () => manualBtn.setColor('#888888'));
     manualBtn.on('pointerout', () => manualBtn.setColor('#555555'));
+
+    this.initialButtons = [hostBtn, joinBtn, manualBtn];
 
     // Back button
     const backBtn = this.add.text(UIScale.space(30), totalH - UIScale.space(20), '[ Back ]', {
@@ -432,6 +435,11 @@ export class LobbyScene extends Phaser.Scene {
       map: this.selectedMap,
       difficulty: this.selectedDifficulty,
     });
+  }
+
+  private clearInitialButtons(): void {
+    for (const btn of this.initialButtons) btn.destroy();
+    this.initialButtons = [];
   }
 
   private removeCodeInput(): void {

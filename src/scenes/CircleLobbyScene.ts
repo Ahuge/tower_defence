@@ -27,6 +27,7 @@ export class CircleLobbyScene extends Phaser.Scene {
   private pollTimer: Phaser.Time.TimerEvent | null = null;
   private assignedPlayerIndex: boolean = false;
   private codeInput: HTMLInputElement | null = null;
+  private initialButtons: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super('CircleLobbyScene');
@@ -66,7 +67,7 @@ export class CircleLobbyScene extends Phaser.Scene {
     const hostBtn = this.add.text(cx - UIScale.space(80), UIScale.y(130), '[ HOST GAME ]', {
       fontSize: UIScale.font(14), color: '#44ff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    hostBtn.on('pointerdown', () => this.startHost());
+    hostBtn.on('pointerdown', () => { this.clearInitialButtons(); this.startHost(); });
     hostBtn.on('pointerover', () => hostBtn.setColor('#88ff88'));
     hostBtn.on('pointerout', () => hostBtn.setColor('#44ff44'));
 
@@ -74,7 +75,7 @@ export class CircleLobbyScene extends Phaser.Scene {
     const joinBtn = this.add.text(cx + UIScale.space(80), UIScale.y(130), '[ JOIN GAME ]', {
       fontSize: UIScale.font(14), color: '#4488ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    joinBtn.on('pointerdown', () => this.startJoin());
+    joinBtn.on('pointerdown', () => { this.clearInitialButtons(); this.startJoin(); });
     joinBtn.on('pointerover', () => joinBtn.setColor('#88bbff'));
     joinBtn.on('pointerout', () => joinBtn.setColor('#4488ff'));
 
@@ -83,6 +84,8 @@ export class CircleLobbyScene extends Phaser.Scene {
       fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     manualBtn.on('pointerdown', () => { this.useManual = true; this.statusText.setText('Manual mode: use clipboard codes'); });
+
+    this.initialButtons = [hostBtn, joinBtn, manualBtn];
 
     // Back button
     const backBtn = this.add.text(UIScale.space(30), totalH - UIScale.space(20), '[ Back ]', {
@@ -564,6 +567,11 @@ export class CircleLobbyScene extends Phaser.Scene {
     this.stopPollTimer();
     for (const el of this.dynamicElements) el.destroy();
     this.dynamicElements = [];
+  }
+
+  private clearInitialButtons(): void {
+    for (const btn of this.initialButtons) btn.destroy();
+    this.initialButtons = [];
   }
 
   private removeCodeInput(): void {
