@@ -226,18 +226,28 @@ export class EncyclopediaScene extends Phaser.Scene {
     // Tower table — on phone show simplified stacked layout
     if (phone) {
       // Stacked layout for phone: each tower as a mini card
+      const fiSz = UIScale.current.factionTowerIconSz;
       for (const tid of faction.towerIds) {
         const t = TOWER_TYPES[tid];
         if (!t) continue;
         const traits = this.summarizeTraits(t);
         const upgCount = t.upgrades.length > 0 ? `${t.upgrades.length} lvl` : 'none';
 
+        // Inline tower icon
+        const tCfg = getTowerSpriteConfig(tid);
+        if (tCfg && this.textures.exists(tCfg.sheetKey)) {
+          const fi = this.add.sprite(marginL + fiSz / 2, y + fiSz / 2, tCfg.sheetKey, tCfg.rows.idle * tCfg.totalCols + tCfg.column);
+          fi.setScale(fiSz / 64);
+          fi.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+          this.contentContainer.add(fi);
+        }
+
         const nameStr = t.name + (t.ultimate ? ' *' : '');
-        const nameT = this.add.text(marginL, y, nameStr, {
+        const nameT = this.add.text(marginL + fiSz + 8, y + fiSz / 2 - 8, nameStr, {
           fontSize: UIScale.font(12), color: t.ultimate ? '#ffdd44' : '#ffffff', fontFamily: 'monospace',
         });
         this.contentContainer.add(nameT);
-        y += 32;
+        y += Math.max(fiSz, 32) + 4;
 
         const statsStr = `${t.cost}g | DMG: ${t.damage > 0 ? t.damage : '-'} | RNG: ${t.range} | Upg: ${upgCount}`;
         const statsT = this.add.text(marginL + 10, y, statsStr, {
@@ -269,8 +279,10 @@ export class EncyclopediaScene extends Phaser.Scene {
         }
       }
     } else {
-      // Desktop: table layout
-      const colX = [marginL, marginL + 120, marginL + 170, marginL + 220, marginL + 280, marginL + 350];
+      // Desktop: table layout with inline tower icons
+      const fiSz = UIScale.current.factionTowerIconSz;
+      const iconCol = marginL;
+      const colX = [marginL + fiSz + 6, marginL + fiSz + 126, marginL + fiSz + 176, marginL + fiSz + 226, marginL + fiSz + 286, marginL + fiSz + 356];
       const headers = ['Tower', 'Cost', 'DMG', 'Range', 'Upgrades', 'Key Traits'];
       for (let i = 0; i < headers.length; i++) {
         const h = this.add.text(colX[i], y, headers[i], {
@@ -285,6 +297,16 @@ export class EncyclopediaScene extends Phaser.Scene {
         if (!t) continue;
         const traits = this.summarizeTraits(t);
         const upgCount = t.upgrades.length > 0 ? `${t.upgrades.length} lvl` : 'none';
+
+        // Inline tower icon
+        const tCfg = getTowerSpriteConfig(tid);
+        if (tCfg && this.textures.exists(tCfg.sheetKey)) {
+          const fi = this.add.sprite(iconCol + fiSz / 2, y + fiSz / 2 - 2, tCfg.sheetKey, tCfg.rows.idle * tCfg.totalCols + tCfg.column);
+          fi.setScale(fiSz / 64);
+          fi.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+          this.contentContainer.add(fi);
+        }
+
         const vals = [
           t.name + (t.ultimate ? ' *' : ''),
           `${t.cost}g`,
@@ -314,7 +336,7 @@ export class EncyclopediaScene extends Phaser.Scene {
           this.contentContainer.add(fl);
           y += fl.height + 4;
         } else {
-          y += 15;
+          y += Math.max(15, fiSz + 2);
         }
       }
     }
@@ -410,7 +432,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     y += UIScale.space(28);
 
     // Tower icon — sprite if available, colored square fallback
-    const iconSz = UIScale.isPhone ? 50 : 30;
+    const iconSz = UIScale.current.towerIconSz;
     const towerCfg = getTowerSpriteConfig(t.id);
     if (towerCfg && this.textures.exists(towerCfg.sheetKey)) {
       const frameIdx = towerCfg.rows.idle * towerCfg.totalCols + towerCfg.column;
@@ -726,11 +748,11 @@ export class EncyclopediaScene extends Phaser.Scene {
 
     // Hero icon — sprite if available, diamond fallback
     const iconY = UIScale.y(50);
-    const iconSize = UIScale.isPhone ? 32 : 22;
+    const iconSize = UIScale.current.heroIconSz;
     const heroSheetKey = getHeroSheetKey(heroId);
     if (heroSheetKey && this.textures.exists(heroSheetKey)) {
       const icon = this.add.sprite(cx, iconY, heroSheetKey, 0);
-      icon.setScale((iconSize * 2) / 64);
+      icon.setScale(iconSize / 64);
       icon.setOrigin(0.5, 0.5);
       icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
       this.contentContainer.add(icon);

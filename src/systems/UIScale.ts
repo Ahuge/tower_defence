@@ -45,6 +45,9 @@ interface ScaleValues {
   // Encyclopedia
   encyclopediaMargin: number;  // left/right margin for encyclopedia content
   creepCardH: number;          // creep card height in encyclopedia
+  towerIconSz: number;         // tower detail page icon size
+  heroIconSz: number;          // hero detail page icon size
+  factionTowerIconSz: number;  // inline tower icon on factions page
 
   // Sidebar panels
   panelContentY: number;  // Y offset where content starts below panel title
@@ -86,6 +89,9 @@ const DESKTOP: ScaleValues = {
 
   encyclopediaMargin: 280,
   creepCardH: 80,
+  towerIconSz: 60,
+  heroIconSz: 50,
+  factionTowerIconSz: 24,
 
   panelContentY: 22,
   sendPanelH: 190,
@@ -124,6 +130,9 @@ const PHONE: ScaleValues = {
 
   encyclopediaMargin: 30,
   creepCardH: 280,
+  towerIconSz: 80,
+  heroIconSz: 64,
+  factionTowerIconSz: 40,
 
   panelContentY: 50,
   sendPanelH: 450,
