@@ -150,14 +150,15 @@ export class TowerSelectBar {
     this.tooltipBg.lineStyle(1, 0x555555, 1);
     this.tooltipBg.strokeRect(0, 0, textW, textH);
 
-    // Position above the button
+    // Position above the button — use the actual container Y, not hardcoded GAME_HEIGHT
     const startX = getGridOffsetX() + this.padding;
     const btnX = startX + index * (this.btnSize + this.padding);
-    const barY = GAME_HEIGHT + 28;
+    const barY = this.container.y; // actual bar position (different on phone vs desktop)
 
     let tx = btnX;
     const canvasW = getCanvasWidth();
-    if (tx + textW > canvasW) tx = canvasW - textW;
+    if (tx + textW > canvasW) tx = canvasW - textW - 4;
+    if (tx < 4) tx = 4;
     const ty = barY - textH - 4;
 
     this.tooltip.setPosition(tx, ty);
