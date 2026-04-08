@@ -66,11 +66,12 @@ function iLavaCrack(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bri
 
 // ===== TOWER LEVEL COUNTS =====
 const T_LEVELS=[3,4,3,2,2,3]; // Imp, Hellfire, Soul Drain, Fiend, Immolate, Apocalypse
-const T_MAX_LVL=4; // max across all towers → 16 rows
+const T_MAX_LVL=4; // max across all towers -> 16 rows
 const T_STATES_PER_LVL=4; // idle, charge, fire, cooldown
 
-// ===== TOWERS (6×16 at 64×64) — 4 levels × 4 states =====
+// ===== TOWERS (6x16 at 64x64) — 4 levels x 4 states =====
 function drawTowers(ctx:any){
+  // Each tower fn receives (ctx, offset, state 0-3, level 1-based)
   const fns=[
     // 1. Imp — Small demon perched on base (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -120,283 +121,375 @@ function drawTowers(ctx:any){
         p(15,fy+2,C.CHAR);p(16,fy+2,C.CHAR);
       }
     },
-    // 2. Hellfire — Flaming brazier/pyre, AoE fire
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      iBase(p,b,23,22,s===1?1:s===2?2:0);
+    // 2. Hellfire — Flaming brazier/pyre, AoE fire (4 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const glow=s===1?1:s===2?2:0;
+      const baseW=lv>=4?26:lv>=3?24:lv>=2?22:20;
+      iBase(p,b,23,baseW,glow);
       const br=s>=1,fl=s===2;
-      // Brazier bowl
+      // Brazier bowl — wider at higher levels
+      const bowlW=lv>=4?14:lv>=3?12:lv>=2?11:10;
       for(let i=0;i<6;i++){
-        const bw=10+Math.floor(i*1.5),sx=16-Math.floor(bw/2);
-        b(sx,17+i,bw,1,i<2?C.ASH:i<4?C.DKASH:C.CHAR);
+        const bw=bowlW+Math.floor(i*1.5),sx=16-Math.floor(bw/2);
+        b(sx,17+i,bw,1,i<2?C.ASH:i<4?C.DKASH:i<8?C.CHAR:C.OBSID);
       }
-      b(8,17,16,1,C.SMOKE);b(9,16,14,1,C.LTSMK);
-      // Coals inside
-      b(10,18,12,2,C.DPRED);b(11,18,10,1,fl?C.LAVA:C.EMBR);
-      p(12,19,C.ORNG);p(15,19,br?C.LAVA:C.EMBR);p(18,19,C.ORNG);
+      b(16-Math.floor(bowlW/2)-1,17,bowlW+2,1,C.SMOKE);b(16-Math.floor(bowlW/2),16,bowlW,1,C.LTSMK);
+      // Coals inside — more intense at higher levels
+      const coalW=bowlW+2;
+      b(16-Math.floor(coalW/2),18,coalW,2,lv>=3?C.HELL:C.DPRED);
+      b(16-Math.floor(coalW/2)+1,18,coalW-2,1,lv>=4?C.BRGHT:fl?C.LAVA:lv>=3?C.LAVA:C.EMBR);
+      p(12,19,lv>=3?C.LAVA:C.ORNG);p(15,19,br||lv>=2?C.LAVA:C.EMBR);p(18,19,lv>=3?C.LAVA:C.ORNG);
+      if(lv>=4){p(10,19,C.LAVA);p(20,19,C.LAVA);}
       // Pedestal legs
       b(11,23,3,1,C.DKASH);b(18,23,3,1,C.DKASH);b(12,24,1,2,C.ASH);b(19,24,1,2,C.ASH);
-      // Fire — grows with state
-      const fh=s===0?8:s===1?11:s===2?14:6;
-      const fw_=s===0?4:s===1?6:s===2?8:3;
-      iFlame(p,16,17-fh,fh,fw_,fl);
-      // Side flames
-      if(br){
-        iFlame(p,12,14,5,2,false);
-        iFlame(p,20,14,5,2,false);
+      if(lv>=3){b(9,23,2,1,C.DKASH);b(21,23,2,1,C.DKASH);}
+      // Fire — grows with state AND level
+      const fhBase=s===0?8:s===1?11:s===2?14:6;
+      const fh=fhBase+Math.floor((lv-1)*2);
+      const fwBase=s===0?4:s===1?6:s===2?8:3;
+      const fw_=fwBase+Math.floor((lv-1)*1.5);
+      iFlame(p,16,17-fh,fh,fw_,fl||lv>=4);
+      // Side flames — appear earlier at higher levels
+      if(br||lv>=2){
+        iFlame(p,12,14,5+(lv-1),2,lv>=3);
+        iFlame(p,20,14,5+(lv-1),2,lv>=3);
       }
-      if(fl){
-        iFlame(p,9,12,6,3,true);
-        iFlame(p,23,12,6,3,true);
-        // Ember particles
+      if(fl||lv>=3){
+        iFlame(p,9,12-lv,6+lv,3,lv>=4);
+        iFlame(p,23,12-lv,6+lv,3,lv>=4);
         p(6,8,C.ORNG);p(25,6,C.FLAME);p(4,10,C.EMBR);p(27,9,C.EMBR);
       }
+      if(lv>=4){
+        iFlame(p,6,10,8,3,true);iFlame(p,26,10,8,3,true);
+        p(3,6,C.FLAME);p(28,5,C.BRGHT);p(2,8,C.ORNG);p(29,7,C.ORNG);
+      }
       // Heat shimmer
-      if(br){p(14,5,C.ORNG);p(18,4,C.FLAME);p(16,3,fl?C.BRGHT:C.ORNG);}
-      if(s===3){b(10,18,12,2,C.DKASH);p(14,19,C.DPRED);}
+      if(br||lv>=2){p(14,5,lv>=3?C.FLAME:C.ORNG);p(18,4,lv>=3?C.BRGHT:C.FLAME);p(16,3,fl||lv>=4?C.BRGHT:C.ORNG);}
+      if(lv>=3){p(12,3,C.ORNG);p(20,2,C.FLAME);}
+      if(lv>=4){p(10,2,C.FLAME);p(22,1,C.BRGHT);p(16,1,C.WHITE);}
+      if(s===3){b(16-Math.floor(coalW/2),18,coalW,2,C.DKASH);p(14,19,C.DPRED);}
     },
-    // 3. Soul Drain — Dark crystal/skull pulling soul wisps
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      iBase(p,b,23,20,s===1?1:s===2?2:0);const br=s>=1;
-      // Skull on pedestal
-      b(13,10,6,6,C.SKULL);b(14,10,4,5,C.BONE);
-      // Eye sockets
-      b(14,11,2,2,C.DKBLD);b(17,11,2,2,C.DKBLD);
-      // Green glow in eyes
-      p(14,11,br?C.LTGRN:C.GRNSOL);p(17,11,br?C.LTGRN:C.GRNSOL);
-      if(s===2){p(15,11,C.PLGRN);p(18,11,C.PLGRN);}
+    // 3. Soul Drain — Dark crystal/skull pulling soul wisps (3 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const glow=s===1?1:s===2?2:0;
+      const baseW=lv>=3?24:lv>=2?22:20;
+      iBase(p,b,23,baseW,glow);const br=s>=1;
+      // Skull on pedestal — bigger at higher levels
+      const skW=lv>=3?8:lv>=2?7:6;
+      const skH=lv>=3?8:lv>=2?7:6;
+      const skX=16-Math.floor(skW/2);
+      const skY=lv>=3?8:lv>=2?9:10;
+      b(skX,skY,skW,skH,C.SKULL);b(skX+1,skY,skW-2,skH-1,C.BONE);
+      // Eye sockets — more intense glow at higher levels
+      const eyeGlow=lv>=3?C.PLGRN:lv>=2?C.LTGRN:C.GRNSOL;
+      b(skX+1,skY+1,2,2,C.DKBLD);b(skX+skW-3,skY+1,2,2,C.DKBLD);
+      p(skX+1,skY+1,br?C.LTGRN:eyeGlow);p(skX+skW-3,skY+1,br?C.LTGRN:eyeGlow);
+      if(s===2||lv>=3){p(skX+2,skY+1,C.PLGRN);p(skX+skW-2,skY+1,C.PLGRN);}
+      if(lv>=3){p(skX+1,skY,C.GRNSOL);p(skX+skW-3,skY,C.GRNSOL);}
       // Nose
-      p(15,13,C.DKBONE);p(16,13,C.DKBONE);
+      p(15,skY+skH-3,C.DKBONE);p(16,skY+skH-3,C.DKBONE);
       // Jaw
-      b(13,14,6,2,C.BONE);b(14,15,4,1,C.DKBONE);
-      p(14,14,C.DKBLD);p(15,14,C.SKULL);p(16,14,C.DKBLD);p(17,14,C.SKULL);
-      // Dark crystal base
-      b(12,16,8,4,C.CHAR);b(13,16,6,3,C.OBSID);
-      p(14,17,C.DPRED);p(17,17,C.DPRED);
+      b(skX,skY+skH-2,skW,2,C.BONE);b(skX+1,skY+skH-1,skW-2,1,C.DKBONE);
+      p(skX+1,skY+skH-2,C.DKBLD);p(skX+2,skY+skH-2,C.SKULL);p(skX+skW-3,skY+skH-2,C.DKBLD);p(skX+skW-2,skY+skH-2,C.SKULL);
+      // Extra horns/spikes on skull at higher levels
+      if(lv>=2){p(skX-1,skY-1,C.BONE);p(skX+skW,skY-1,C.BONE);p(skX-2,skY-2,C.DKBONE);p(skX+skW+1,skY-2,C.DKBONE);}
+      if(lv>=3){p(skX-3,skY-3,C.BONE);p(skX+skW+2,skY-3,C.BONE);p(16,skY-1,C.DKBONE);p(16,skY-2,C.BONE);}
+      // Dark crystal base — bigger at higher levels
+      const crW=lv>=3?10:lv>=2?9:8;
+      b(16-Math.floor(crW/2),skY+skH,crW,lv>=3?5:4,C.CHAR);b(16-Math.floor(crW/2)+1,skY+skH,crW-2,lv>=3?4:3,C.OBSID);
+      p(14,skY+skH+1,C.DPRED);p(17,skY+skH+1,C.DPRED);
+      if(lv>=2){p(13,skY+skH+2,C.DPRED);p(18,skY+skH+2,C.DPRED);}
+      if(lv>=3){p(12,skY+skH+1,C.EMBR);p(19,skY+skH+1,C.EMBR);}
       // Pedestal
       b(14,20,4,3,C.DKASH);b(15,20,2,3,C.ASH);
-      // Green soul wisps — being pulled in
-      const wisps=br?
-        [[5,8],[7,6],[9,9],[23,7],[25,9],[21,6],[4,12],[27,11],[6,14],[26,13]]:
-        [[6,9],[8,7],[24,8],[22,10],[5,13],[27,12]];
-      wisps.forEach(([x,y],i)=>p(x,y,i%3===0?C.PLGRN:i%2===0?C.LTGRN:C.GRNSOL));
+      // Green soul wisps — more at higher levels
+      const wispCount=lv>=3?14:lv>=2?10:br?10:6;
+      const allWisps=[[5,8],[7,6],[9,9],[23,7],[25,9],[21,6],[4,12],[27,11],[6,14],[26,13],[3,6],[28,5],[2,10],[29,8]];
+      allWisps.slice(0,wispCount).forEach(([x,y],i)=>p(x,y,i%3===0?C.PLGRN:i%2===0?C.LTGRN:C.GRNSOL));
       // Wisp trails toward skull
-      if(br){
+      if(br||lv>=2){
         const trail=[[9,9],[10,9],[11,10],[12,10],[22,8],[21,9],[20,9],[19,10]];
         trail.forEach(([x,y],i)=>p(x,y,i%2===0?C.DKGRN:C.GRNSOL));
+        if(lv>=3){
+          [[8,8],[7,8],[6,9],[25,7],[26,8],[27,9]].forEach(([x,y],i)=>p(x,y,i%2===0?C.GRNSOL:C.LTGRN));
+        }
       }
-      if(s===2){
-        // Intense soul absorption
-        for(let i=0;i<12;i++){const a=i*Math.PI/6;p(16+Math.round(Math.cos(a)*8),12+Math.round(Math.sin(a)*6),i%2?C.GRNSOL:C.LTGRN);}
+      if(s===2||lv>=3){
+        const ringR=lv>=3?10:8;
+        for(let i=0;i<12;i++){const a=i*Math.PI/6;p(16+Math.round(Math.cos(a)*ringR),12+Math.round(Math.sin(a)*(ringR*0.75)),i%2?C.GRNSOL:C.LTGRN);}
         p(16,12,C.WHITE);p(15,12,C.PLGRN);p(17,12,C.PLGRN);
+        if(lv>=3){p(14,12,C.LTGRN);p(18,12,C.LTGRN);p(16,11,C.PLGRN);p(16,13,C.PLGRN);}
       }
-      if(s===3){p(14,11,C.DKGRN);p(17,11,C.DKGRN);b(13,10,6,6,C.DKBONE);}
+      if(s===3){p(skX+1,skY+1,C.DKGRN);p(skX+skW-3,skY+1,C.DKGRN);b(skX,skY,skW,skH,C.DKBONE);}
     },
-    // 4. Fiend (MOBILE/KAMIKAZE) — Row0=idle, Row1=run, Row2=about-to-explode, Row3=explosion
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 4. Fiend (MOBILE/KAMIKAZE) — idle/run/glow/explode (2 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const big=lv>=2;
       if(s===0){
         // IDLE — crouched demon ready to spring
-        const bx=16,by=10;
-        // Body
-        b(bx-3,by+2,6,8,C.DPRED);b(bx-2,by+2,4,7,C.HELL);
+        const bx=16,by=big?9:10;
+        const bw=big?8:6,bh=big?10:8;
+        b(bx-Math.floor(bw/2),by+2,bw,bh,C.DPRED);b(bx-Math.floor(bw/2)+1,by+2,bw-2,bh-1,C.HELL);
         // Head
-        b(bx-3,by-2,6,4,C.HELL);b(bx-2,by-2,4,3,C.ORNG);
-        // Horns — forward-curving
+        const hw=big?8:6;
+        b(bx-Math.floor(hw/2),by-2,hw,big?5:4,C.HELL);b(bx-Math.floor(hw/2)+1,by-2,hw-2,big?4:3,C.ORNG);
+        // Horns — forward-curving, longer at lv2
         p(bx-4,by-3,C.DKASH);p(bx-5,by-4,C.CHAR);p(bx+3,by-3,C.DKASH);p(bx+4,by-4,C.CHAR);
-        // Eyes — fierce
-        p(bx-2,by-1,C.FLAME);p(bx+1,by-1,C.FLAME);
+        if(big){p(bx-6,by-5,C.DKASH);p(bx+5,by-5,C.DKASH);}
+        // Eyes — brighter at lv2
+        p(bx-2,by-1,big?C.BRGHT:C.FLAME);p(bx+1,by-1,big?C.BRGHT:C.FLAME);
         // Mouth — snarl
         b(bx-1,by+1,2,1,C.DKBLD);p(bx-2,by+1,C.EMBR);p(bx+1,by+1,C.EMBR);
         // Claws
         p(bx-4,by+4,C.DKASH);p(bx-5,by+5,C.DKASH);p(bx+3,by+4,C.DKASH);p(bx+4,by+5,C.DKASH);
+        if(big){p(bx-6,by+6,C.CHAR);p(bx+5,by+6,C.CHAR);}
         // Legs — crouched
-        b(bx-3,by+10,3,4,C.DPRED);b(bx+1,by+10,3,4,C.DPRED);
+        b(bx-3,by+10,3,big?5:4,C.DPRED);b(bx+1,by+10,3,big?5:4,C.DPRED);
         b(bx-4,by+14,4,2,C.CHAR);b(bx+1,by+14,4,2,C.CHAR);
         // Tail
         p(bx+3,by+8,C.DPRED);p(bx+4,by+9,C.EMBR);p(bx+5,by+10,C.EMBR);
+        if(big){p(bx+6,by+11,C.DPRED);p(bx+7,by+10,C.EMBR);}
+        // Glowing cracks at lv2
+        if(big){p(bx-1,by+4,C.ORNG);p(bx+1,by+6,C.FLAME);p(bx,by+8,C.EMBR);p(bx-2,by+7,C.ORNG);}
         // Fire wisps
         p(bx-1,by-4,C.ORNG);p(bx+2,by-5,C.FLAME);
+        if(big){p(bx-3,by-5,C.FLAME);p(bx+4,by-6,C.ORNG);p(bx-5,by+3,C.ORNG);p(bx+5,by+3,C.FLAME);}
       } else if(s===1){
         // RUN — lunging forward, arms out
-        const bx=14,by=8;
-        // Body — leaning forward
-        b(bx-2,by+2,5,7,C.DPRED);b(bx-1,by+2,3,6,C.HELL);
+        const bx=14,by=big?7:8;
+        const bw=big?7:5,bh=big?9:7;
+        b(bx-Math.floor(bw/2),by+2,bw,bh,C.DPRED);b(bx-Math.floor(bw/2)+1,by+2,bw-2,bh-1,C.HELL);
         // Head — forward
-        b(bx+1,by-2,5,4,C.HELL);b(bx+2,by-2,3,3,C.ORNG);
+        const hw=big?7:5;
+        b(bx+1,by-2,hw,big?5:4,C.HELL);b(bx+2,by-2,hw-2,big?4:3,C.ORNG);
         // Horns
         p(bx+6,by-3,C.DKASH);p(bx+7,by-4,C.CHAR);p(bx,by-3,C.DKASH);
+        if(big){p(bx+8,by-5,C.DKASH);}
         // Eyes — blazing
         p(bx+2,by-1,C.BRGHT);p(bx+4,by-1,C.BRGHT);
         // Mouth — open, fire
         p(bx+3,by+1,C.FLAME);p(bx+4,by+1,C.ORNG);
+        if(big){p(bx+5,by+1,C.FLAME);}
         // Arms — reaching forward
-        b(bx+3,by+3,4,2,C.HELL);p(bx+7,by+3,C.DKASH);p(bx+7,by+4,C.DKASH);p(bx+8,by+3,C.DKASH);
+        b(bx+3,by+3,big?5:4,2,C.HELL);p(bx+7,by+3,C.DKASH);p(bx+7,by+4,C.DKASH);p(bx+8,by+3,C.DKASH);
+        if(big){p(bx+9,by+3,C.DKASH);p(bx+9,by+4,C.CHAR);}
         // Legs — running stride
-        b(bx-3,by+9,3,5,C.DPRED);b(bx+2,by+9,3,3,C.DPRED);
+        b(bx-3,by+9,3,big?6:5,C.DPRED);b(bx+2,by+9,3,big?4:3,C.DPRED);
         b(bx-4,by+14,4,2,C.CHAR);b(bx+3,by+12,4,2,C.CHAR);
-        // Fire trail behind
+        // Fire trail behind — more intense at lv2
         p(bx-5,by+4,C.ORNG);p(bx-6,by+5,C.FLAME);p(bx-7,by+6,C.EMBR);
         p(bx-4,by+3,C.HELL);p(bx-6,by+7,C.DPRED);
+        if(big){p(bx-8,by+5,C.FLAME);p(bx-9,by+6,C.ORNG);p(bx-7,by+4,C.BRGHT);}
         // Speed lines
         p(bx-8,by+2,C.ORNG);p(bx-9,by+5,C.EMBR);p(bx-7,by+8,C.DPRED);
+        // Glowing cracks at lv2
+        if(big){p(bx,by+4,C.ORNG);p(bx-1,by+6,C.FLAME);p(bx+1,by+5,C.BRGHT);}
       } else if(s===2){
         // ABOUT TO EXPLODE — glowing, pulsing, body cracking with light
-        const bx=16,by=8;
-        // Body — glowing cracks
-        b(bx-3,by+2,6,8,C.HELL);b(bx-2,by+2,4,7,C.ORNG);
-        // Glow cracks
+        const bx=16,by=big?7:8;
+        const bw=big?8:6,bh=big?10:8;
+        b(bx-Math.floor(bw/2),by+2,bw,bh,C.HELL);b(bx-Math.floor(bw/2)+1,by+2,bw-2,bh-1,C.ORNG);
+        // Glow cracks — more at lv2
         p(bx-1,by+3,C.BRGHT);p(bx+1,by+5,C.FLAME);p(bx-2,by+6,C.BRGHT);p(bx+2,by+4,C.FLAME);
         p(bx,by+7,C.WHITE);
+        if(big){p(bx-1,by+5,C.WHITE);p(bx+1,by+3,C.WHITE);p(bx,by+9,C.BRGHT);p(bx-2,by+8,C.FLAME);}
         // Head — eyes blazing white
         b(bx-3,by-2,6,4,C.ORNG);b(bx-2,by-2,4,3,C.FLAME);
+        if(big){b(bx-4,by-2,8,5,C.ORNG);b(bx-3,by-2,6,4,C.FLAME);}
         p(bx-2,by-1,C.WHITE);p(bx+1,by-1,C.WHITE);
         // Horns glowing
         p(bx-4,by-3,C.ORNG);p(bx-5,by-4,C.FLAME);p(bx+3,by-3,C.ORNG);p(bx+4,by-4,C.FLAME);
-        // Aura glow
+        if(big){p(bx-6,by-5,C.BRGHT);p(bx+5,by-5,C.BRGHT);}
+        // Aura glow — bigger at lv2
+        const auraR=big?8:6;
         for(let i=0;i<12;i++){const a=i*Math.PI/6;
-          p(bx+Math.round(Math.cos(a)*6),by+4+Math.round(Math.sin(a)*6),i%2?C.ORNG:C.FLAME);
-          p(bx+Math.round(Math.cos(a)*7),by+4+Math.round(Math.sin(a)*7),i%3===0?C.FLAME:C.EMBR);
+          p(bx+Math.round(Math.cos(a)*auraR),by+4+Math.round(Math.sin(a)*auraR),i%2?C.ORNG:C.FLAME);
+          p(bx+Math.round(Math.cos(a)*(auraR+1)),by+4+Math.round(Math.sin(a)*(auraR+1)),i%3===0?C.FLAME:C.EMBR);
+        }
+        if(big){
+          for(let i=0;i<8;i++){const a=i*Math.PI/4;
+            p(bx+Math.round(Math.cos(a)*(auraR+2)),by+4+Math.round(Math.sin(a)*(auraR+2)),i%2?C.BRGHT:C.FLAME);
+          }
         }
         // Legs — braced
         b(bx-3,by+10,3,4,C.ORNG);b(bx+1,by+10,3,4,C.ORNG);
         p(bx-2,by+12,C.FLAME);p(bx+2,by+12,C.FLAME);
         // Ground glow
         b(bx-5,by+15,10,1,C.EMBR);b(bx-4,by+16,8,1,C.DPRED);
+        if(big){b(bx-6,by+14,12,1,C.ORNG);b(bx-7,by+15,14,1,C.EMBR);}
       } else {
-        // EXPLOSION — massive blast ring
+        // EXPLOSION — massive blast ring, bigger at lv2
         const bx=16,by=16;
-        // Explosion rings
-        for(let r=12;r>0;r--){
+        const maxR=big?14:12;
+        for(let r=maxR;r>0;r--){
           for(let i=0;i<24;i++){
             const a=i*Math.PI/12;
             const x=bx+Math.round(Math.cos(a)*r);
             const y=by+Math.round(Math.sin(a)*r);
             if(x>=0&&x<32&&y>=0&&y<32){
-              const cl=r>10?C.DPRED:r>8?C.EMBR:r>6?C.HELL:r>4?C.ORNG:r>2?C.FLAME:C.WHITE;
+              const cl=r>maxR-2?C.DPRED:r>maxR-4?C.EMBR:r>maxR-6?C.HELL:r>maxR-8?C.ORNG:r>maxR-10?C.FLAME:C.WHITE;
               p(x,y,cl);
             }
           }
         }
-        // Core
-        b(bx-2,by-2,4,4,C.WHITE);b(bx-1,by-1,2,2,C.BRGHT);
-        // Debris
+        const coreR=big?3:2;
+        b(bx-coreR,by-coreR,coreR*2,coreR*2,C.WHITE);b(bx-1,by-1,2,2,C.BRGHT);
         p(3,4,C.DKASH);p(28,3,C.CHAR);p(5,27,C.ASH);p(27,26,C.DKASH);
         p(2,14,C.EMBR);p(29,12,C.EMBR);p(8,2,C.ORNG);p(24,28,C.ORNG);
+        if(big){p(1,8,C.FLAME);p(30,10,C.FLAME);p(4,28,C.ORNG);p(28,28,C.ORNG);}
       }
     },
-    // 5. Immolate — Self-immolating figure in flame cage
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      iBase(p,b,24,20,s===1?1:s===2?2:0);const br=s>=1,fl=s===2;
-      // Figure — humanoid shape in center
-      b(14,8,4,10,C.DPRED);b(15,8,2,9,C.EMBR);
+    // 5. Immolate — Self-immolating figure in flame cage (2 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const glow=s===1?1:s===2?2:0;
+      const big=lv>=2;
+      iBase(p,b,24,big?24:20,glow);const br=s>=1,fl=s===2;
+      // Figure — humanoid shape in center, bigger at lv2
+      const figW=big?6:4,figH=big?12:10;
+      b(16-Math.floor(figW/2),big?6:8,figW,figH,C.DPRED);b(15,big?6:8,Math.min(figW-1,3),figH-1,C.EMBR);
       // Head
-      b(14,5,4,3,C.DPRED);b(15,5,2,2,C.EMBR);
-      // Eyes — glowing
-      p(14,6,br?C.FLAME:C.ORNG);p(17,6,br?C.FLAME:C.ORNG);
-      // Arms raised
-      b(11,8,3,2,C.DPRED);b(18,8,3,2,C.DPRED);
-      p(10,7,C.DPRED);p(21,7,C.DPRED);
-      p(10,6,br?C.EMBR:C.DPRED);p(21,6,br?C.EMBR:C.DPRED);
+      b(14,big?3:5,big?6:4,big?4:3,C.DPRED);b(15,big?3:5,big?4:2,big?3:2,C.EMBR);
+      // Eyes — brighter at lv2
+      const eyeY=big?4:6;
+      p(14,eyeY,big?(br?C.BRGHT:C.FLAME):(br?C.FLAME:C.ORNG));p(big?19:17,eyeY,big?(br?C.BRGHT:C.FLAME):(br?C.FLAME:C.ORNG));
+      // Arms raised — longer at lv2
+      b(big?9:11,big?6:8,big?4:3,2,C.DPRED);b(big?19:18,big?6:8,big?4:3,2,C.DPRED);
+      p(big?8:10,big?5:7,C.DPRED);p(big?23:21,big?5:7,C.DPRED);
+      p(big?8:10,big?4:6,br?C.EMBR:C.DPRED);p(big?23:21,big?4:6,br?C.EMBR:C.DPRED);
+      if(big){p(7,3,C.DPRED);p(24,3,C.DPRED);}
       // Legs
       b(13,18,3,4,C.DPRED);b(17,18,3,4,C.DPRED);
-      // Flame cage — vertical bars of fire
-      const cageH=fl?18:br?14:10;
-      const cageW=fl?10:br?8:6;
+      if(big){b(12,18,1,4,C.DPRED);b(20,18,1,4,C.DPRED);}
+      // Flame cage — bigger at lv2
+      const cageH_=fl?(big?22:18):br?(big?18:14):(big?14:10);
+      const cageW_=fl?(big?12:10):br?(big?10:8):(big?8:6);
       for(let side=-1;side<=1;side+=2){
-        const cx_=16+side*(cageW);
-        for(let i=0;i<cageH;i++){
+        const cx_=16+side*(cageW_);
+        for(let i=0;i<cageH_;i++){
           const jitter=Math.round(Math.sin(i*1.2)*0.8);
-          const cl=i<cageH*0.2?C.EMBR:i<cageH*0.5?(fl?C.ORNG:C.HELL):i<cageH*0.8?C.ORNG:C.FLAME;
+          const cl=i<cageH_*0.2?C.EMBR:i<cageH_*0.5?(fl?C.ORNG:C.HELL):i<cageH_*0.8?C.ORNG:C.FLAME;
           p(cx_+jitter,22-i,br&&i%2===0?C.FLAME:cl);
+          if(big)p(cx_+jitter+(side>0?1:-1),22-i,i%3===0?(fl?C.BRGHT:C.ORNG):C.EMBR);
         }
       }
       // Horizontal flame bars
-      if(br){
-        for(let x=16-cageW;x<=16+cageW;x++){
-          p(x,22-cageH,fl?C.BRGHT:C.FLAME);
-          if(fl)p(x,22-cageH+1,C.ORNG);
+      if(br||big){
+        for(let x=16-cageW_;x<=16+cageW_;x++){
+          p(x,22-cageH_,fl||big?C.BRGHT:C.FLAME);
+          if(fl||big)p(x,22-cageH_+1,C.ORNG);
         }
       }
-      // Self-immolation flames on body
-      iFlame(p,16,2,6,3,fl);
-      if(br){p(13,7,C.FLAME);p(19,7,C.FLAME);p(12,10,C.ORNG);p(20,10,C.ORNG);}
+      // Self-immolation flames on body — taller at lv2
+      iFlame(p,16,big?-1:2,big?8:6,big?4:3,fl||big);
+      if(br||big){p(13,7,C.FLAME);p(19,7,C.FLAME);p(12,10,C.ORNG);p(20,10,C.ORNG);}
+      if(big){p(11,6,C.FLAME);p(21,6,C.FLAME);p(10,9,C.ORNG);p(22,9,C.ORNG);}
       // Sacrifice state = massive glow
-      if(fl){
+      if(fl||big){
+        const glowR=big?14:12;
         for(let i=0;i<16;i++){const a=i*Math.PI/8;
-          p(16+Math.round(Math.cos(a)*12),14+Math.round(Math.sin(a)*10),i%2?C.ORNG:C.FLAME);
+          p(16+Math.round(Math.cos(a)*glowR),14+Math.round(Math.sin(a)*(glowR*0.8)),i%2?C.ORNG:C.FLAME);
         }
         p(16,0,C.BRGHT);p(15,1,C.FLAME);p(17,1,C.FLAME);
+        if(big){p(14,0,C.ORNG);p(18,0,C.ORNG);}
       }
-      if(s===3){b(14,8,4,10,C.DKASH);p(15,6,C.DPRED);p(16,6,C.DPRED);}
+      if(s===3){b(16-Math.floor(figW/2),big?6:8,figW,figH,C.DKASH);p(15,eyeY,C.DPRED);p(16,eyeY,C.DPRED);}
     },
-    // 6. Apocalypse (Ultimate) — Demonic gate/portal with flames
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 6. Apocalypse (Ultimate) — Demonic gate/portal with flames (3 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
-      // Gate pillars
-      b(4,4,4,24,C.CHAR);b(5,4,2,24,C.DKASH);b(4,4,4,1,C.ASH);
-      b(24,4,4,24,C.CHAR);b(25,4,2,24,C.DKASH);b(24,4,4,1,C.ASH);
-      // Archway top
-      for(let i=0;i<6;i++){
-        const aw=20-i*2,sx=16-Math.floor(aw/2);
+      // Gate pillars — wider/taller at higher levels
+      const pilW=lv>=3?6:lv>=2?5:4;
+      const pilH=lv>=3?26:lv>=2?25:24;
+      const pilLX=lv>=3?2:lv>=2?3:4;
+      const pilRX=lv>=3?24:lv>=2?24:24;
+      b(pilLX,4,pilW,pilH,C.CHAR);b(pilLX+1,4,pilW-2,pilH,C.DKASH);b(pilLX,4,pilW,1,C.ASH);
+      b(pilRX,4,pilW,pilH,C.CHAR);b(pilRX+1,4,pilW-2,pilH,C.DKASH);b(pilRX,4,pilW,1,C.ASH);
+      // Archway top — grander at higher levels
+      const archSpan=lv>=3?24:lv>=2?22:20;
+      for(let i=0;i<(lv>=3?8:6);i++){
+        const aw=archSpan-i*2,sx=16-Math.floor(aw/2);
         b(sx,4-i,aw,1,i<2?C.DKASH:i<4?C.CHAR:C.OBSID);
       }
-      b(8,4,16,1,fl?C.EMBR:C.ASH);
-      // Runes on pillars
-      for(let y=6;y<26;y+=3){
-        p(5,y,br?C.ORNG:C.EMBR);p(26,y,br?C.ORNG:C.EMBR);
-        if(fl){p(6,y+1,C.FLAME);p(25,y+1,C.FLAME);}
+      b(16-Math.floor(archSpan/2)+2,4,archSpan-4,1,fl||lv>=3?C.EMBR:C.ASH);
+      // Runes on pillars — denser at higher levels
+      for(let y=6;y<26;y+=lv>=3?2:3){
+        p(pilLX+1,y,br||lv>=2?C.ORNG:C.EMBR);p(pilRX+pilW-2,y,br||lv>=2?C.ORNG:C.EMBR);
+        if(fl||lv>=3){p(pilLX+2,y+1,C.FLAME);p(pilRX+pilW-3,y+1,C.FLAME);}
       }
-      // Skull keystone
-      b(14,0,4,3,C.SKULL);b(15,0,2,2,C.BONE);
-      p(14,1,C.HELL);p(17,1,C.HELL);
+      // Skull keystone — bigger at higher levels
+      const skW=lv>=3?6:4;
+      b(16-Math.floor(skW/2),lv>=3?-2:0,skW,lv>=3?4:3,C.SKULL);b(15,lv>=3?-2:0,2,lv>=3?3:2,C.BONE);
+      p(16-Math.floor(skW/2),1,C.HELL);p(16+Math.floor(skW/2)-1,1,C.HELL);
       p(15,2,C.DKBLD);p(16,2,C.DKBLD);
-      // Portal interior — hellfire void
-      const pw=fl?14:br?12:10;
+      if(lv>=2){p(16-Math.floor(skW/2)-1,0,C.DKASH);p(16+Math.floor(skW/2),0,C.DKASH);}
+      if(lv>=3){p(16-Math.floor(skW/2)-2,-1,C.CHAR);p(16+Math.floor(skW/2)+1,-1,C.CHAR);p(16,-3,C.BONE);}
+      // Portal interior — wider at higher levels
+      const pw=fl||lv>=3?16:br||lv>=2?14:10;
       for(let y=5;y<26;y++){
         const w=Math.min(pw,pw-Math.abs(y-15)*0.3);
         const sw=Math.max(2,Math.round(w));
         b(16-Math.floor(sw/2),y,sw,1,C.DKBLD);
       }
-      // Fire pouring out of portal
-      for(let y=6;y<25;y++){
-        const x=14+Math.round(Math.sin(y*0.5)*2);
-        p(x,y,fl?C.FLAME:br?C.ORNG:C.HELL);
-        p(x+1,y,fl?C.ORNG:C.EMBR);
-        if(fl)p(x-1,y,C.BRGHT);
+      // Fire pouring out — more streams at higher levels
+      const fireStreams=lv>=3?3:lv>=2?2:1;
+      for(let fs=0;fs<fireStreams;fs++){
+        const fOff=(fs-Math.floor(fireStreams/2))*3;
+        for(let y=6;y<25;y++){
+          const x=14+fOff+Math.round(Math.sin(y*0.5+fs)*2);
+          p(x,y,fl||lv>=3?C.FLAME:br||lv>=2?C.ORNG:C.HELL);
+          p(x+1,y,fl||lv>=3?C.ORNG:C.EMBR);
+          if(fl||lv>=3)p(x-1,y,C.BRGHT);
+        }
       }
-      // Lava eyes in the void
-      p(13,12,br?C.FLAME:C.ORNG);p(18,12,br?C.FLAME:C.ORNG);
-      if(fl){p(13,12,C.BRGHT);p(18,12,C.BRGHT);p(14,13,C.ORNG);p(17,13,C.ORNG);}
+      // Lava eyes in the void — more at higher levels
+      p(13,12,br||lv>=2?C.FLAME:C.ORNG);p(18,12,br||lv>=2?C.FLAME:C.ORNG);
+      if(fl||lv>=3){p(13,12,C.BRGHT);p(18,12,C.BRGHT);p(14,13,C.ORNG);p(17,13,C.ORNG);}
+      if(lv>=2){p(12,15,C.ORNG);p(19,15,C.ORNG);}
+      if(lv>=3){p(11,18,C.FLAME);p(20,18,C.FLAME);p(13,20,C.EMBR);p(18,20,C.EMBR);}
       // Flames pouring from top
-      if(br){
-        iFlame(p,10,0,6,3,false);iFlame(p,22,0,6,3,false);
+      if(br||lv>=2){
+        iFlame(p,10,0,6+(lv-1)*2,3,lv>=3);iFlame(p,22,0,6+(lv-1)*2,3,lv>=3);
       }
-      if(fl){
-        iFlame(p,8,-1,8,4,true);iFlame(p,24,-1,8,4,true);
-        iFlame(p,16,-2,6,3,true);
+      if(fl||lv>=3){
+        iFlame(p,8,-1,8+lv,4,true);iFlame(p,24,-1,8+lv,4,true);
+        iFlame(p,16,-2,6+lv,3,true);
+      }
+      if(lv>=3){
+        iFlame(p,5,-1,6,3,true);iFlame(p,27,-1,6,3,true);
       }
       // Base — charred ground
-      b(3,27,26,4,C.CHAR);b(4,27,24,1,C.DKASH);
+      b(lv>=3?1:3,27,lv>=3?30:26,4,C.CHAR);b(lv>=3?2:4,27,lv>=3?28:24,1,C.DKASH);
       // Lava cracks in base
-      iLavaCrack(p,8,28,12,30,C.EMBR,fl);
-      iLavaCrack(p,20,27,24,30,C.EMBR,fl);
-      if(fl){p(10,28,C.LAVA);p(22,28,C.LAVA);p(16,29,C.ORNG);}
+      iLavaCrack(p,8,28,12,30,lv>=3?C.LAVA:C.EMBR,fl||lv>=3);
+      iLavaCrack(p,20,27,24,30,lv>=3?C.LAVA:C.EMBR,fl||lv>=3);
+      if(fl||lv>=2){p(10,28,C.LAVA);p(22,28,C.LAVA);p(16,29,C.ORNG);}
+      if(lv>=3){iLavaCrack(p,4,28,8,31,C.LAVA,true);iLavaCrack(p,24,28,28,31,C.LAVA,true);}
       if(s===3){
         for(let y=6;y<25;y++)b(10,y,12,1,C.OBSID);
         p(14,12,C.DPRED);p(17,12,C.DPRED);
       }
     },
   ];
-  const cols=6,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  const cols=6,rows=T_MAX_LVL*T_STATES_PER_LVL; // 16 rows
+  for(let col=0;col<cols;col++){
+    const maxLv=T_LEVELS[col];
+    for(let lv=1;lv<=T_MAX_LVL;lv++){
+      const effectiveLv=Math.min(lv,maxLv); // clamp to tower's max level
+      for(let st=0;st<T_STATES_PER_LVL;st++){
+        const row=(lv-1)*T_STATES_PER_LVL+st;
+        fns[col](ctx,[col*T_CELL,row*T_CELL],st,effectiveLv);
+      }
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
-// ===== PROJECTILES (6×6 at 32×32) =====
+// ===== PROJECTILES (6x6 at 32x32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
 function drawProjectiles(ctx:any){
   const fns=[
-    // 1. Imp: small fireball → fire puff
+    // 1. Imp: small fireball -> fire puff
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Small fireball in flight — rotating
@@ -432,7 +525,7 @@ function drawProjectiles(ctx:any){
         p(cx,cy,C.DPRED);
       }
     },
-    // 2. Hellfire: flame wave → fire burst
+    // 2. Hellfire: flame wave -> fire burst
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Flame wave — arc shape moving forward
@@ -469,7 +562,7 @@ function drawProjectiles(ctx:any){
         p(cx,cy,C.DPRED);
       }
     },
-    // 3. Soul Drain: green soul wisp → soul absorbed flash
+    // 3. Soul Drain: green soul wisp -> soul absorbed flash
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Green soul wisp — ethereal
@@ -502,7 +595,7 @@ function drawProjectiles(ctx:any){
         [[5,5],[10,6],[7,11],[4,9],[12,8]].forEach(([x,y],i)=>p(x,y,i%2?C.DKGRN:C.GRNSOL));
       }
     },
-    // 4. Fiend: running fire trail → massive explosion ring
+    // 4. Fiend: running fire trail -> massive explosion ring
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Running fire trail — streaking flames
@@ -551,7 +644,7 @@ function drawProjectiles(ctx:any){
         p(cx,cy,C.DPRED);p(cx+1,cy-1,C.ASH);
       }
     },
-    // 5. Immolate: flame pillar → immolation nova
+    // 5. Immolate: flame pillar -> immolation nova
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Flame pillar — vertical column
@@ -589,7 +682,7 @@ function drawProjectiles(ctx:any){
         [[4,4],[12,5],[6,11],[10,3],[3,8],[13,9]].forEach(([x,y],i)=>p(x,y,i%2?C.DPRED:C.EMBR));
       }
     },
-    // 6. Apocalypse: apocalyptic meteor → hellfire explosion (biggest, most dramatic)
+    // 6. Apocalypse: apocalyptic meteor -> hellfire explosion (biggest, most dramatic)
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Apocalyptic meteor — huge fireball with debris
@@ -614,7 +707,6 @@ function drawProjectiles(ctx:any){
         if(phase>1){b(cx-3,13,6,1,C.OBSID);b(cx-2,14,4,1,C.CHAR);}
       } else if(f===3){
         // HELLFIRE EXPLOSION — maximum drama
-        // Fill with explosion
         for(let r=7;r>0;r--){
           for(let i=0;i<24;i++){
             const a=i*Math.PI/12;
@@ -663,7 +755,7 @@ function drawProjectiles(ctx:any){
   return{cols,rows,cell:P_CELL};
 }
 
-// ===== HERO (8×5 at 64×128) =====
+// ===== HERO (8x5 at 64x128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
 function drawHero(ctx:any){
@@ -1005,7 +1097,9 @@ function drawHero(ctx:any){
 
 // ===== LABELS =====
 const T_NAMES=['Imp','Hellfire','Soul Drain','Fiend','Immolate','Apocalypse'];
-const T_STATES=['Idle','Charge','Fire','Cooldown'];
+const T_STATE_LABELS=['Idle','Charge','Fire','Cooldown'];
+const T_ROW_LABELS:string[]=[];
+for(let lv=1;lv<=T_MAX_LVL;lv++)for(const st of T_STATE_LABELS)T_ROW_LABELS.push(`L${lv} ${st}`);
 const P_NAMES=['Imp','Hellfire','Soul Drain','Fiend','Immolate','Apocalypse'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -1021,16 +1115,17 @@ export default function App(){
   const [view,setView]=useState('preview');
 
   useEffect(()=>{
-    // Towers
-    const tc=tRef.current!;tc.width=6*T_CELL;tc.height=4*T_CELL;
+    // Towers — now 6 cols x 16 rows
+    const tRows=T_MAX_LVL*T_STATES_PER_LVL;
+    const tc=tRef.current!;tc.width=6*T_CELL;tc.height=tRows*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
-    const tpv=tPv.current!;const tS=2,tLW=66,tLH=13;
-    tpv.width=tLW+6*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
+    tpv.width=tLW+6*T_CELL*tS;tpv.height=tRows*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#0a0000';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#cc4400';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
+    for(let r=0;r<tRows;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#cc4400';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
       for(let cc=0;cc<6;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a0800';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#cc8866';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
 
     // Projectiles
@@ -1063,13 +1158,14 @@ export default function App(){
 
   const dl=(ref:any,name:string)=>()=>{const a=document.createElement('a');a.download=name;a.href=ref.current.toDataURL('image/png');a.click();};
 
+  const tRows=T_MAX_LVL*T_STATES_PER_LVL;
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'infernal_towers_animated.png',
-      info:{sz:'384×256',cell:'64×64',loader:"this.load.spritesheet('infernal_towers','infernal_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'6 cols (towers) × 4 rows (idle, charge, fire, cooldown). Fiend col uses rows as: idle, run, glow, explode'}},
+      info:{sz:`384x${tRows*T_CELL}`,cell:'64x64',loader:"this.load.spritesheet('infernal_towers','infernal_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`6 cols (towers) x ${tRows} rows (${T_MAX_LVL} levels x 4 states). Levels: ${T_LEVELS.map((l,i)=>T_NAMES[i]+':'+l).join(', ')}. Fiend col uses rows as: idle, run, glow, explode per level`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'infernal_projectiles_animated.png',
-      info:{sz:'192×192',cell:'32×32',loader:"this.load.spritesheet('infernal_proj','infernal_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'6 cols × 6 rows (3 travel + 3 impact)'}},
+      info:{sz:'192x192',cell:'32x32',loader:"this.load.spritesheet('infernal_proj','infernal_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'6 cols x 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Berserker',ref:hRef,pvRef:hPv,dl:'berserker_hero_directional.png',
-      info:{sz:'512×640',cell:'64×128',loader:"this.load.spritesheet('berserker','berserker_hero_directional.png',{frameWidth:64,frameHeight:128})",note:'Row 0-2: Down/Side/Up (idle×2, walk×4, atk×2) · Row 3: Abilities (Cleave, Rage, Leap, Rampage) · Row 4: States'}},
+      info:{sz:'512x640',cell:'64x128',loader:"this.load.spritesheet('berserker','berserker_hero_directional.png',{frameWidth:64,frameHeight:128})",note:'Row 0-2: Down/Side/Up (idle x2, walk x4, atk x2) . Row 3: Abilities (Cleave, Rage, Leap, Rampage) . Row 4: States'}},
   ];
   const cur=tabs.find(t=>t.id===tab)!;
 
@@ -1090,7 +1186,7 @@ export default function App(){
           <button key={v} onClick={()=>setView(v)} style={{background:view===v?'#1a0800':'#111',color:view===v?C.FLAME:'#665533',border:`1px solid ${view===v?'#443300':'#222'}`,padding:'4px 8px',borderRadius:3,cursor:'pointer',fontFamily:'monospace',fontSize:10,textTransform:'capitalize'}}>{v==='actual'?'Actual Size':v}</button>
         ))}
       </div>
-      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'70vh'}}>
+      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'85vh'}}>
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
             <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}}/>
@@ -1099,7 +1195,7 @@ export default function App(){
         ))}
       </div>
       {cur&&<div style={{color:'#885544',fontSize:9,marginTop:10,maxWidth:600}}>
-        <p style={{margin:'2px 0'}}><b style={{color:'#cc6633'}}>Sheet:</b> {cur.info.sz}px · {cur.info.cell} cells</p>
+        <p style={{margin:'2px 0'}}><b style={{color:'#cc6633'}}>Sheet:</b> {cur.info.sz}px . {cur.info.cell} cells</p>
         <p style={{margin:'2px 0'}}><b style={{color:'#cc6633'}}>Phaser:</b> <code style={{color:C.FLAME}}>{cur.info.loader}</code></p>
         <p style={{margin:'2px 0'}}><b style={{color:'#cc6633'}}>Layout:</b> {cur.info.note}</p>
       </div>}
