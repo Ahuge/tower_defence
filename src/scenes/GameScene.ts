@@ -306,6 +306,15 @@ export class GameScene extends Phaser.Scene {
     if (this.layout.gridRows !== GRID_ROWS) {
       this.inputMgr.setGridRows(this.layout.gridRows);
     }
+    // Tower bar first — sets BAR_HEIGHT which UIOverlay needs for positioning
+    this.towerBar = new TowerSelectBar(this, this.activeTowerIds, (typeId) => {
+      if (typeId) {
+        this.enterBuildMode(typeId);
+      } else if (this.selectionMode === 'build') {
+        this.enterNoneMode();
+      }
+    });
+
     this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
     this.ui.setCallbacks(
       () => {
@@ -333,15 +342,6 @@ export class GameScene extends Phaser.Scene {
     if (this.mapId === 'random' && this.randomSeed) {
       this.ui.showSeed(this.randomSeed);
     }
-
-    // Tower bar (starts deselected)
-    this.towerBar = new TowerSelectBar(this, this.activeTowerIds, (typeId) => {
-      if (typeId) {
-        this.enterBuildMode(typeId);
-      } else if (this.selectionMode === 'build') {
-        this.enterNoneMode();
-      }
-    });
     this.towerInfo = new TowerInfoPanel(this);
     this.towerInfo.setCallbacks(
       (tower) => {
