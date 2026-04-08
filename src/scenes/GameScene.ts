@@ -543,15 +543,18 @@ export class GameScene extends Phaser.Scene {
       );
     }
 
-    // Phone: pinch-to-zoom + pan on the game world
-    if (ResponsiveManager.isPhone()) {
+    // Camera controller: phone gets pinch-to-zoom + viewport clip, desktop gets scroll wheel + buttons
+    {
       const canvasW = getCanvasWidth();
-      const canvasH = ResponsiveManager.canvasHeight();
-      // Viewport height = canvas minus bottom UI bars (tower bar + control bar + safe margin)
-      const viewportH = canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin;
-      this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
+      if (ResponsiveManager.isPhone()) {
+        const canvasH = ResponsiveManager.canvasHeight();
+        const viewportH = canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin;
+        this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
+        this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
+      } else {
+        this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT);
+      }
       this.inputMgr.setCameraController(this.cameraCtrl);
-      this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
     }
 
     // Versus mode setup
