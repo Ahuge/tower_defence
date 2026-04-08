@@ -212,7 +212,7 @@ export class ItemShopPanel {
 
     // XP Tome — grants XP to the hero
     const xpTomeCost = 100;
-    const xpAmount = 50 + this.hero.level * 10;
+    const xpAmount = this.hero.level * 5;
     {
       const canAfford = this.economy.canAfford(xpTomeCost);
       const label = this.scene.add.text(8, y, `XP Tome: +${xpAmount} XP`, {
@@ -243,8 +243,8 @@ export class ItemShopPanel {
 
     // Attribute Tome — +5 damage, +30 HP, +0.1 attack speed (scaling cost)
     {
-      const baseCost = 150;
-      const attrTomeCost = baseCost + this.hero.tomeCount * 75; // gets more expensive each time
+      const baseCost = 250;
+      const attrTomeCost = baseCost + this.hero.tomeCount * 50; // gets more expensive each time
       const canAfford = this.economy.canAfford(attrTomeCost);
       const label = this.scene.add.text(8, y, `Stat Tome: +5 DMG +30 HP +0.1 AS`, {
         fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
@@ -267,7 +267,7 @@ export class ItemShopPanel {
             this.hero.tomeCount++;
             // Heal for the HP bonus
             this.hero.hp = Math.min(this.hero.hp + 30, this.hero.getEffectiveMaxHp());
-            this.eventLog.gameMessage(`Stat Tome #${this.hero.tomeCount}: +5 DMG, +30 HP, +0.1 AS (next: ${baseCost + this.hero.tomeCount * 75}g)`);
+            this.eventLog.gameMessage(`Stat Tome #${this.hero.tomeCount}: +5 DMG, +30 HP, +0.1 AS (next: ${baseCost + this.hero.tomeCount * 50}g)`);
             this.lastSnapshot = '';
           }
         });
