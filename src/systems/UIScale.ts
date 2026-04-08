@@ -44,6 +44,8 @@ interface ScaleValues {
 
   // Encyclopedia
   encyclopediaMargin: number;  // left/right margin for encyclopedia content
+  encyclopediaBody: string;    // body text font size in encyclopedia
+  encyclopediaSmall: string;   // small text font size in encyclopedia
   creepCardH: number;          // creep card height in encyclopedia
   towerIconSz: number;         // tower detail page icon size
   heroIconSz: number;          // hero detail page icon size
@@ -56,6 +58,9 @@ interface ScaleValues {
 
   // Touch targets
   minTouchTarget: number;
+
+  // Safe area
+  bottomSafeMargin: number;  // extra margin above system chrome on phones
 }
 
 const DESKTOP: ScaleValues = {
@@ -88,6 +93,8 @@ const DESKTOP: ScaleValues = {
   factionCols: 6,
 
   encyclopediaMargin: 280,
+  encyclopediaBody: '12px',
+  encyclopediaSmall: '10px',
   creepCardH: 80,
   towerIconSz: 60,
   heroIconSz: 50,
@@ -97,6 +104,7 @@ const DESKTOP: ScaleValues = {
   sendPanelH: 190,
   sendSubtitleX: 60,
   minTouchTarget: 24,
+  bottomSafeMargin: 0,
 };
 
 const PHONE: ScaleValues = {
@@ -129,15 +137,18 @@ const PHONE: ScaleValues = {
   factionCols: 3,
 
   encyclopediaMargin: 30,
+  encyclopediaBody: '38px',    // ~25% bigger than fontBody (30px)
+  encyclopediaSmall: '32px',   // ~25% bigger than fontSmall (26px)
   creepCardH: 280,
-  towerIconSz: 80,
-  heroIconSz: 64,
-  factionTowerIconSz: 40,
+  towerIconSz: 110,
+  heroIconSz: 120,
+  factionTowerIconSz: 50,
 
   panelContentY: 50,
   sendPanelH: 450,
   sendSubtitleX: 80,
   minTouchTarget: 60,
+  bottomSafeMargin: 40,
 };
 
 class UIScaleClass {

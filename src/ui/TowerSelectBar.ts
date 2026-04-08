@@ -30,7 +30,7 @@ export class TowerSelectBar {
     // On phone: anchor to bottom of canvas. On desktop: below game area.
     const canvasH = ResponsiveManager.canvasHeight();
     const barY = UIScale.isPhone
-      ? canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT
+      ? canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin
       : GAME_HEIGHT + 28;
     this.container = scene.add.container(0, barY).setDepth(30);
 
@@ -38,9 +38,10 @@ export class TowerSelectBar {
     this.tooltip = scene.add.container(0, 0).setDepth(35).setVisible(false);
     this.tooltipBg = scene.add.graphics();
     this.tooltip.add(this.tooltipBg);
-    this.tooltipText = scene.add.text(8, 6, '', {
-      fontSize: '12px', color: '#dddddd', fontFamily: 'monospace',
-      lineSpacing: 3,
+    const ttPad = UIScale.space(8);
+    this.tooltipText = scene.add.text(ttPad, ttPad - 2, '', {
+      fontSize: UIScale.font(14), color: '#dddddd', fontFamily: 'monospace',
+      lineSpacing: UIScale.space(3),
     });
     this.tooltip.add(this.tooltipText);
 
@@ -141,8 +142,9 @@ export class TowerSelectBar {
 
     this.tooltipText.setText(lines);
 
-    const textW = this.tooltipText.width + 16;
-    const textH = this.tooltipText.height + 12;
+    const ttPad = UIScale.space(8);
+    const textW = this.tooltipText.width + ttPad * 2;
+    const textH = this.tooltipText.height + ttPad * 2 - 4;
 
     this.tooltipBg.clear();
     this.tooltipBg.fillStyle(0x111111, 0.95);

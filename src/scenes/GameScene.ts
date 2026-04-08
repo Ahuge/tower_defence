@@ -51,6 +51,7 @@ import { CirclePlayerRoster } from '../ui/CircleMinimaps';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
 import { SidebarOverlay } from '../ui/SidebarOverlay';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { UIScale } from '../systems/UIScale';
 import { CircleDeathHandler } from '../systems/CircleDeathHandler';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext } from '../systems/traits/Trait';
@@ -526,7 +527,7 @@ export class GameScene extends Phaser.Scene {
 
     // Phone: touch control bar with wave/speed/pause + ability buttons
     if (ResponsiveManager.isPhone()) {
-      const controlBarY = ResponsiveManager.canvasHeight() - GameControlBar.BAR_HEIGHT; // bottom of canvas
+      const controlBarY = ResponsiveManager.canvasHeight() - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin;
       this.controlBar = new GameControlBar(this, controlBarY, this.arenaManager);
       this.controlBar.setCallbacks(
         () => {
@@ -545,8 +546,7 @@ export class GameScene extends Phaser.Scene {
     // Phone: pinch-to-zoom + pan on the game world
     if (ResponsiveManager.isPhone()) {
       const canvasW = getCanvasWidth();
-      const canvasH = ResponsiveManager.canvasHeight();
-      this.cameraCtrl = new CameraController(this, canvasW, canvasH);
+      this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT);
       this.inputMgr.setCameraController(this.cameraCtrl);
       this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
     }

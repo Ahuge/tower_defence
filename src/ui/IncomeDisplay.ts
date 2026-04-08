@@ -12,7 +12,7 @@ export class IncomeDisplay {
     const canvasH = ResponsiveManager.canvasHeight();
     // On phone: own line above status bar. On desktop: in tower bar area top-right.
     const incY = UIScale.isPhone
-      ? canvasH - TowerSelectBar.BAR_HEIGHT - 70 - 4
+      ? canvasH - TowerSelectBar.BAR_HEIGHT - 70 - 4 - UIScale.current.bottomSafeMargin
       : GAME_HEIGHT + 28 + 8;
     const incX = UIScale.isPhone ? 8 : getCanvasWidth() - 10;
     this.text = scene.add.text(incX, incY, '', {
