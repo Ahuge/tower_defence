@@ -231,9 +231,7 @@ export class TerrainManager {
         if (cell === CellType.Blocked || cell === CellType.NoBuild) continue;
 
         const rand = this.seededRand(c, r);
-        const isGrass = this.groundType === 'grass';
-        if (isGrass && rand > 0.70) continue;   // ~70% of grass tiles get a doodad
-        if (!isGrass && rand > 0.18) continue;   // ~18% of dirt/sand tiles
+        if (rand > 0.13) continue; // ~13% of tiles get a doodad
 
         const doodadIdx = Math.floor(this.seededRand(c, r, 3) * DOODAD_COLS);
         const x = gridLeftX(c) + TILE_SIZE / 2;
