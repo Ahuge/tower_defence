@@ -59,53 +59,94 @@ function camoPatch(p:any,x:number,y:number,s:number){
   if(s>1){p(x-1,y,C.SAGE);p(x+2,y+1,C.DKOLV);}
 }
 
-// ===== TOWERS (6×4 at 64×64) =====
+// ===== TOWER LEVEL COUNTS =====
+const T_LEVELS=[2,4,5,5,3,3]; // Sandbag, Wire, Rifleman, Brawler, HeavyGunner, Commander
+const T_MAX_LVL=5; // max across all towers
+const T_ROWS=T_MAX_LVL*4; // 20 rows: 4 states per level
+const T_COLS=6;
+
+// ===== TOWERS (6x20 at 64x64) =====
 function drawTowers(ctx:any){
   const fns=[
-    // 0: Sandbag — low sandbag wall emplacement
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      // Base sandbag pile
-      const by=18;
-      // Bottom row of bags
-      for(let row=0;row<4;row++){
-        const rw=20-row*2,rx=16-Math.floor(rw/2),ry=by+row*3;
-        b(rx,ry,rw,3,row<2?C.SAND:C.DKSAND);
+    // 0: Sandbag — static tower, level progression = more bags, reinforced
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      // lv: 1=basic sandbag pile, 2=reinforced double-stack with metal plates
+      const by=lv===1?20:16;
+      const layers=lv===1?3:5;
+      // Sandbag rows
+      for(let row=0;row<layers;row++){
+        const rw=18-row*2+(lv>=2?2:0),rx=16-Math.floor(rw/2),ry=by+row*3;
+        b(rx,ry,rw,3,row<2?C.SAND:row<4?C.DKSAND:C.BROWN);
         b(rx+1,ry,rw-2,1,row<2?C.LTSAND:C.SAND);
-        // Bag seam lines
         for(let i=0;i<rw;i+=4)p(rx+i,ry+1,C.DKSAND);
+      }
+      // Lv2: metal reinforcement plates on front
+      if(lv>=2){
+        b(10,by+6,12,2,C.METAL);b(11,by+6,10,1,C.LGRAY);
+        // Corner rivets
+        p(10,by+6,C.DGRAY);p(21,by+6,C.DGRAY);p(10,by+7,C.DGRAY);p(21,by+7,C.DGRAY);
+        // Extra top bags
+        b(8,by-2,16,2,C.SAND);b(9,by-2,14,1,C.LTSAND);
+        // Ammo box behind
+        b(6,by+2,4,3,C.DKOLV);b(7,by+2,2,2,C.OLIVE);
       }
       // Ground shadow
       b(5,30,22,1,C.DKBRN);
-      // Sandbag texture
-      p(8,20,C.BROWN);p(14,19,C.BROWN);p(20,20,C.BROWN);p(11,22,C.BROWN);p(17,23,C.BROWN);
-      // Star insignia on front bag
-      if(s>=1){p(16,22,C.BLUE);p(15,23,C.BLUE);p(16,23,C.DKBLUE);p(17,23,C.BLUE);}
-      if(s===2){p(16,22,C.LTBLUE);p(15,23,C.LTBLUE);p(17,23,C.LTBLUE);
-        // Glow around bags
-        p(5,19,C.DKBLUE);p(26,19,C.DKBLUE);p(4,22,C.DKBLUE);p(27,22,C.DKBLUE);
+      // Texture
+      p(8,by+2,C.BROWN);p(14,by+1,C.BROWN);p(20,by+2,C.BROWN);
+      // Star insignia
+      if(s>=1){p(16,by+4,C.BLUE);p(15,by+5,C.BLUE);p(16,by+5,C.DKBLUE);p(17,by+5,C.BLUE);}
+      if(s===2){p(16,by+4,C.LTBLUE);p(15,by+5,C.LTBLUE);p(17,by+5,C.LTBLUE);
+        p(5,by+1,C.DKBLUE);p(26,by+1,C.DKBLUE);p(4,by+4,C.DKBLUE);p(27,by+4,C.DKBLUE);
       }
-      if(s===3){p(16,21,C.DGRAY);p(15,22,C.DGRAY);}
+      if(s===3){p(12,by-2,C.DGRAY);p(15,by+4,C.DGRAY);}
     },
-    // 1: Barbed Wire — wire fence with glint
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 1: Barbed Wire — static tower, level progression = more coils/posts/electrification
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
-      // Posts
-      b(8,8,2,20,C.DGRAY);b(9,8,1,20,C.MGRAY);
-      b(22,8,2,20,C.DGRAY);b(23,8,1,20,C.MGRAY);
-      // Post caps
-      b(7,7,4,2,C.METAL);b(21,7,4,2,C.METAL);
-      // Horizontal wires
-      for(let wy of [12,17,22]){
-        for(let x=10;x<22;x++){
+      const posts=lv>=3?3:2;
+      const postXs=posts===3?[6,15,24]:[8,22];
+      // Posts — taller and thicker at higher levels
+      const postH=lv>=2?22:20, postW=lv>=4?3:2, postTop=lv>=2?6:8;
+      for(const px_ of postXs){
+        b(px_,postTop,postW,postH,C.DGRAY);b(px_+1,postTop,1,postH,C.MGRAY);
+        // Post caps
+        b(px_-1,postTop-1,postW+2,2,lv>=3?C.LGRAY:C.METAL);
+      }
+      // Horizontal wires — more at higher levels
+      const wireYs=lv>=2?[10,14,18,22]:[12,17,22];
+      const wireX0=postXs[0]+postW, wireX1=postXs[postXs.length-1];
+      for(const wy of wireYs){
+        for(let x=wireX0;x<wireX1;x++){
           p(x,wy,x%3===0?C.LGRAY:C.METAL);
-          // Barbs
           if(x%4===0){p(x,wy-1,C.LGRAY);p(x+1,wy+1,C.LGRAY);}
         }
       }
-      // Coiled wire on top
-      for(let i=0;i<8;i++){
-        const wx=10+i*1.5,wy=9+Math.round(Math.sin(i*1.2)*2);
+      // Coiled wire — more coils at higher levels
+      const coilCount=lv>=3?12:lv>=2?10:8;
+      for(let i=0;i<coilCount;i++){
+        const wx=wireX0+i*((wireX1-wireX0)/coilCount),wy=postTop+1+Math.round(Math.sin(i*1.2)*2);
         p(Math.round(wx),Math.round(wy),fl?C.WHITE:C.LGRAY);
+      }
+      // Lv3+: razor wire coils at base
+      if(lv>=3){
+        for(let i=0;i<10;i++){
+          const bx_=8+i*1.6,bby=25+Math.round(Math.sin(i*0.9)*1.5);
+          p(Math.round(bx_),bby,C.LGRAY);
+          if(i%2===0)p(Math.round(bx_)+1,bby-1,C.METAL);
+        }
+      }
+      // Lv4: electrified — sparking insulators on posts
+      if(lv>=4){
+        for(const px_ of postXs){
+          p(px_+1,postTop-2,C.LTBLUE);p(px_,postTop-2,C.FLASH);
+          // Arcing between posts
+          if(px_!==postXs[postXs.length-1]){
+            const nx=postXs[postXs.indexOf(px_)+1];
+            const mid=Math.round((px_+nx)/2);
+            p(mid,postTop-1,C.LTBLUE);p(mid-1,postTop,C.FLASH);p(mid+1,postTop,C.FLASH);
+          }
+        }
       }
       // Wire glint on charge/fire
       if(br){
@@ -113,290 +154,409 @@ function drawTowers(ctx:any){
         p(20,12,C.LTBLUE);p(16,17,C.LTBLUE);
       }
       if(fl){
-        // Spark effect
         for(let i=0;i<6;i++){
           const a=i*Math.PI/3;
           p(16+Math.round(Math.cos(a)*3),15+Math.round(Math.sin(a)*3),i%2?C.FLASH:C.LTBLUE);
         }
         p(16,15,C.WHITE);
       }
-      // Ground
-      b(6,28,20,1,C.DKBRN);
+      b(4,28,24,1,C.DKBRN);
       if(s===3){p(12,13,C.DGRAY);p(18,18,C.DGRAY);}
     },
-    // 2: Rifleman — soldier with rifle (mobile unit, walk frames)
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 2: Rifleman — mobile unit, level = gear progression (1-5)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const cx=16;
-      // s: 0=idle, 1=walk, 2=attack(shooting), 3=special
       const legOff=s===1?1:0, legOff2=s===1?-1:0;
       const bodyLean=s===2?1:0;
       const headY=6,torY=13,legY=22;
 
-      // Helmet
-      b(cx-3+bodyLean,headY,6,4,C.OLIVE);b(cx-2+bodyLean,headY,4,3,C.SAGE);
-      b(cx-4+bodyLean,headY+3,8,1,C.DKOLV); // brim
-      p(cx-2+bodyLean,headY+1,C.DKSAGE); // camo spot
-      p(cx+1+bodyLean,headY,C.DKOLV);
+      // Helmet — improves with level
+      const helmColor=lv>=4?C.DKSAGE:C.OLIVE;
+      const helmLight=lv>=4?C.SAGE:C.SAGE;
+      b(cx-3+bodyLean,headY,6,4,helmColor);b(cx-2+bodyLean,headY,4,3,helmLight);
+      b(cx-4+bodyLean,headY+3,8,1,C.DKOLV);
+      p(cx-2+bodyLean,headY+1,C.DKSAGE);p(cx+1+bodyLean,headY,C.DKOLV);
+      // Lv3+: NVG mount on helmet
+      if(lv>=3){p(cx+bodyLean,headY-1,C.DGRAY);p(cx+1+bodyLean,headY-1,C.DGRAY);}
+      // Lv5: elite helmet stripe
+      if(lv>=5){b(cx-1+bodyLean,headY,2,3,C.GOLD);}
       // Face
       b(cx-2+bodyLean,headY+4,4,2,C.SKIN);
-      p(cx-1+bodyLean,headY+4,C.DKSKIN); // eye
-      p(cx+1+bodyLean,headY+4,C.DKSKIN); // eye
+      p(cx-1+bodyLean,headY+4,C.DKSKIN);p(cx+1+bodyLean,headY+4,C.DKSKIN);
+      // Lv4+: face paint
+      if(lv>=4){p(cx-2+bodyLean,headY+4,C.DKOLV);p(cx+2+bodyLean,headY+4,C.DKOLV);}
 
-      // Torso (olive drab uniform)
+      // Torso
       b(cx-3+bodyLean,torY,6,8,C.OLIVE);b(cx-2+bodyLean,torY,4,7,C.SAGE);
-      // Camo patches
       p(cx-2+bodyLean,torY+2,C.DKOLV);p(cx+1+bodyLean,torY+4,C.DKOLV);
       p(cx+bodyLean,torY+1,C.DKSAGE);
+      // Lv2+: chest webbing/pouches
+      if(lv>=2){
+        b(cx-2+bodyLean,torY+1,4,1,C.BROWN);
+        p(cx-1+bodyLean,torY+2,C.DKBRN);p(cx+1+bodyLean,torY+2,C.DKBRN);
+      }
+      // Lv4+: body armor vest overlay
+      if(lv>=4){
+        b(cx-2+bodyLean,torY+1,4,5,C.DKSAGE);b(cx-1+bodyLean,torY+2,2,3,C.OLIVE);
+      }
+      // Lv5: rank chevrons on sleeve
+      if(lv>=5){p(cx-3+bodyLean,torY+2,C.GOLD);p(cx-3+bodyLean,torY+3,C.GOLD);}
       // Belt
       b(cx-3+bodyLean,torY+7,6,1,C.BROWN);p(cx+bodyLean,torY+7,C.DKGOLD);
 
-      // Arms + Rifle
+      // Arms + Rifle — bigger weapon at higher levels
       if(s===2){
-        // Shooting pose — arms forward with rifle
-        b(cx+3,torY+1,4,2,C.OLIVE); // right arm extended
-        b(cx+4,torY,1,2,C.SKIN); // hand
-        // Rifle
-        b(cx+5,torY-1,6,1,C.DGRAY);b(cx+5,torY,6,1,C.BROWN);
-        b(cx+11,torY-1,2,1,C.DGRAY); // barrel
+        b(cx+3,torY+1,4,2,C.OLIVE);b(cx+4,torY,1,2,C.SKIN);
+        const rifleLen=lv>=3?8:6;
+        b(cx+5,torY-1,rifleLen,1,C.DGRAY);b(cx+5,torY,rifleLen,1,C.BROWN);
+        b(cx+5+rifleLen,torY-1,2,1,C.DGRAY);
+        // Lv3+: scope
+        if(lv>=3){p(cx+7,torY-2,C.DGRAY);p(cx+8,torY-2,C.LGRAY);}
+        // Lv5: suppressor
+        if(lv>=5){b(cx+5+rifleLen+2,torY-1,2,1,C.MGRAY);}
         // Muzzle flash
-        p(cx+13,torY-2,C.FLASH);p(cx+13,torY-1,C.ORANGE);p(cx+14,torY-1,C.FLASH);p(cx+13,torY,C.ORANGE);
-        // Left arm support
+        const mzX=cx+5+rifleLen+(lv>=5?4:2);
+        p(mzX,torY-2,C.FLASH);p(mzX,torY-1,C.ORANGE);p(mzX+1,torY-1,C.FLASH);p(mzX,torY,C.ORANGE);
         b(cx-5,torY+2,2,3,C.OLIVE);
       } else {
-        // Rifle at side
         b(cx+3,torY+1,2,5,C.OLIVE);p(cx+4,torY+5,C.SKIN);
         b(cx+4,torY-2,1,7,C.DGRAY);b(cx+4,torY+5,1,3,C.BROWN);
-        // Left arm
+        // Lv3+: scope on idle rifle
+        if(lv>=3){p(cx+5,torY-1,C.LGRAY);}
         b(cx-5,torY+1+(s===1?1:0),2,5,C.OLIVE);p(cx-5,torY+5+(s===1?1:0),C.SKIN);
       }
+      // Lv2+: sidearm holster on leg
+      if(lv>=2){b(cx+2+legOff2+bodyLean,legY+1,1,3,C.DGRAY);}
 
       // Legs
       b(cx-2+legOff+bodyLean,legY,2,7,C.OLIVE);
       b(cx+1+legOff2+bodyLean,legY,2,7,C.OLIVE);
-      // Boots
-      b(cx-3+legOff+bodyLean,legY+7,3,2,C.DKBRN);
-      b(cx+legOff2+bodyLean,legY+7,3,2,C.DKBRN);
+      // Lv3+: knee pads
+      if(lv>=3){p(cx-2+legOff+bodyLean,legY+4,C.DKSAGE);p(cx+2+legOff2+bodyLean,legY+4,C.DKSAGE);}
+      // Boots — heavier at higher levels
+      const bootW=lv>=4?4:3;
+      b(cx-3+legOff+bodyLean,legY+7,bootW,2,lv>=4?C.BLACK:C.DKBRN);
+      b(cx+legOff2+bodyLean,legY+7,bootW,2,lv>=4?C.BLACK:C.DKBRN);
 
-      // Special effect (s===3)
+      // Special effect
       if(s===3){
-        // Prone/crouch — lower everything
         p(cx-4,torY-1,C.BLUE);p(cx+5,torY-1,C.BLUE);
         b(cx-6,torY,2,1,C.DKBLUE);b(cx+5,torY,2,1,C.DKBLUE);
-        // Scope glint
         p(cx+5,torY-3,C.WHITE);p(cx+6,torY-3,C.LTBLUE);
+        // Lv5: elite scope glint brighter
+        if(lv>=5){p(cx+7,torY-3,C.FLASH);}
       }
-      // Ground shadow
       b(cx-4,legY+9,8,1,C.DKBRN);
     },
-    // 3: Brawler — muscular melee soldier
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 3: Brawler — mobile unit, level = muscle/armor progression (1-5)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const cx=16;
       const legOff=s===1?1:0, legOff2=s===1?-1:0;
       const headY=5,torY=12,legY=22;
       const punchExt=s===2?4:0;
 
-      // Head — beret
-      b(cx-3,headY,6,2,C.DKRED);b(cx-2,headY-1,5,1,C.RED);
-      p(cx+2,headY-1,C.DKRED); // beret fold
+      // Head — beret improves
+      const beretColor=lv>=4?C.BLACK:C.DKRED;
+      const beretLight=lv>=4?C.DGRAY:C.RED;
+      b(cx-3,headY,6,2,beretColor);b(cx-2,headY-1,5,1,beretLight);
+      p(cx+2,headY-1,beretColor);
+      // Lv3+: beret badge
+      if(lv>=3){p(cx-1,headY,C.GOLD);}
+      // Lv5: elite beret with gold trim
+      if(lv>=5){b(cx-3,headY+1,6,1,C.GOLD);}
       // Face
       b(cx-2,headY+2,4,3,C.SKIN);
-      p(cx-1,headY+2,C.DKSKIN);p(cx+1,headY+2,C.DKSKIN); // eyes
-      p(cx,headY+4,C.DKSKIN); // chin
+      p(cx-1,headY+2,C.DKSKIN);p(cx+1,headY+2,C.DKSKIN);
+      p(cx,headY+4,C.DKSKIN);
+      // Lv4+: war paint / scar
+      if(lv>=4){p(cx+1,headY+3,C.DKRED);}
 
-      // Torso — wider, muscular, tank top
-      b(cx-4,torY,8,9,C.OLIVE);b(cx-3,torY,6,8,C.SAGE);
+      // Torso — gets bulkier and more armored
+      const torsoW=lv>=3?10:8, torsoOff=Math.floor(torsoW/2);
+      b(cx-torsoOff,torY,torsoW,9,C.OLIVE);b(cx-torsoOff+1,torY,torsoW-2,8,C.SAGE);
       // Dog tags
       p(cx,torY+1,C.LGRAY);p(cx,torY+2,C.METAL);
-      // Belt with ammo pouches
-      b(cx-4,torY+8,8,1,C.BROWN);
-      p(cx-3,torY+8,C.DKGOLD);p(cx+2,torY+8,C.DKGOLD);
-
-      // Arms — big and beefy
-      if(s===2){
-        // Punch forward
-        b(cx+4,torY+1,2+punchExt,2,C.SKIN);b(cx+4,torY,2,2,C.OLIVE);
-        // Fist
-        b(cx+7,torY,3,3,C.SKIN);b(cx+8,torY,2,2,C.LTSKIN);
-        // Impact lines
-        p(cx+11,torY-1,C.FLASH);p(cx+11,torY+1,C.FLASH);p(cx+12,torY,C.FLASH);
-        // Left arm back
-        b(cx-6,torY+2,2,4,C.SKIN);b(cx-6,torY+1,2,2,C.OLIVE);
+      // Lv2+: tactical vest
+      if(lv>=2){
+        b(cx-3,torY+1,6,2,C.DKSAGE);
+        p(cx-2,torY+1,C.BROWN);p(cx+2,torY+1,C.BROWN); // pouches
+      }
+      // Lv3+: shoulder pads
+      if(lv>=3){
+        b(cx-torsoOff-1,torY,2,3,C.DKSAGE);b(cx+torsoOff-1,torY,2,3,C.DKSAGE);
+      }
+      // Lv4+: armored plates on chest
+      if(lv>=4){
+        b(cx-2,torY+2,4,4,C.METAL);b(cx-1,torY+3,2,2,C.LGRAY);
+      }
+      // Lv5: gold championship belt
+      if(lv>=5){
+        b(cx-torsoOff,torY+8,torsoW,1,C.DKGOLD);p(cx,torY+8,C.GOLD);p(cx-1,torY+8,C.LTGOLD);p(cx+1,torY+8,C.LTGOLD);
       } else {
-        // Arms at sides, massive
-        b(cx-6,torY+1+(s===1?1:0),3,6,C.SKIN);b(cx-6,torY+(s===1?1:0),2,2,C.OLIVE);
-        b(cx+4,torY+1-(s===1?1:0),3,6,C.SKIN);b(cx+4,torY-(s===1?1:0),2,2,C.OLIVE);
-        // Fists
-        p(cx-6,torY+6+(s===1?1:0),C.LTSKIN);p(cx+5,torY+6-(s===1?1:0),C.LTSKIN);
+        b(cx-torsoOff,torY+8,torsoW,1,C.BROWN);
+        p(cx-3,torY+8,C.DKGOLD);p(cx+2,torY+8,C.DKGOLD);
       }
 
-      // Legs — cargo pants
+      // Arms — bigger with level
+      const armW=lv>=3?4:3;
+      if(s===2){
+        b(cx+4,torY+1,2+punchExt,2,C.SKIN);b(cx+4,torY,2,2,C.OLIVE);
+        // Fist — bigger at high levels
+        const fistSz=lv>=4?4:3;
+        b(cx+7,torY,fistSz,fistSz,C.SKIN);b(cx+8,torY,fistSz-1,fistSz-1,C.LTSKIN);
+        // Lv3+: brass knuckles
+        if(lv>=3){b(cx+7,torY,fistSz,1,C.METAL);p(cx+8,torY,C.LGRAY);}
+        // Lv5: spiked gauntlet
+        if(lv>=5){p(cx+7+fistSz,torY-1,C.METAL);p(cx+7+fistSz,torY+1,C.METAL);}
+        // Impact lines
+        p(cx+11,torY-1,C.FLASH);p(cx+11,torY+1,C.FLASH);p(cx+12,torY,C.FLASH);
+        b(cx-6,torY+2,2,4,C.SKIN);b(cx-6,torY+1,2,2,C.OLIVE);
+      } else {
+        b(cx-6,torY+1+(s===1?1:0),armW,6,C.SKIN);b(cx-6,torY+(s===1?1:0),2,2,C.OLIVE);
+        b(cx+4,torY+1-(s===1?1:0),armW,6,C.SKIN);b(cx+4,torY-(s===1?1:0),2,2,C.OLIVE);
+        p(cx-6,torY+6+(s===1?1:0),C.LTSKIN);p(cx+armW+1,torY+6-(s===1?1:0),C.LTSKIN);
+      }
+
+      // Legs — cargo pants, heavier boots at higher levels
       b(cx-3+legOff,legY,3,7,C.DKSAGE);
       b(cx+1+legOff2,legY,3,7,C.DKSAGE);
-      // Cargo pockets
       p(cx-2+legOff,legY+3,C.OLIVE);p(cx+2+legOff2,legY+3,C.OLIVE);
-      // Boots
-      b(cx-4+legOff,legY+7,4,2,C.DKBRN);
-      b(cx+legOff2,legY+7,4,2,C.DKBRN);
+      // Lv3+: shin guards
+      if(lv>=3){p(cx-2+legOff,legY+5,C.METAL);p(cx+2+legOff2,legY+5,C.METAL);}
+      const bootW=lv>=3?5:4;
+      b(cx-4+legOff,legY+7,bootW,2,lv>=4?C.BLACK:C.DKBRN);
+      b(cx+legOff2,legY+7,bootW,2,lv>=4?C.BLACK:C.DKBRN);
 
       // Special (s===3) — battle cry
       if(s===3){
-        // Arms raised
         p(cx-5,torY-2,C.SKIN);p(cx-5,torY-3,C.SKIN);
         p(cx+5,torY-2,C.SKIN);p(cx+5,torY-3,C.SKIN);
-        // Shout lines
-        for(let i=0;i<3;i++){p(cx+7+i,torY-4+i,C.LTRED);p(cx-7-i,torY-4+i,C.LTRED);}
-        // Red aura
-        p(cx,headY-2,C.RED);p(cx-1,headY-2,C.DKRED);p(cx+1,headY-2,C.DKRED);
+        const cryRange=lv>=3?4:3;
+        for(let i=0;i<cryRange;i++){p(cx+7+i,torY-4+i,C.LTRED);p(cx-7-i,torY-4+i,C.LTRED);}
+        p(cx,headY-2,lv>=5?C.GOLD:C.RED);
+        p(cx-1,headY-2,lv>=5?C.LTGOLD:C.DKRED);p(cx+1,headY-2,lv>=5?C.LTGOLD:C.DKRED);
       }
       b(cx-4,legY+9,9,1,C.DKBRN);
     },
-    // 4: Heavy Gunner — large soldier with machine gun
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 4: Heavy Gunner — mobile unit, level = bigger armor/weapon (1-3)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const cx=16;
       const legOff=s===1?1:0, legOff2=s===1?-1:0;
       const headY=4,torY=11,legY=21;
 
-      // Helmet — heavy, with visor
-      b(cx-4,headY,8,4,C.OLIVE);b(cx-3,headY,6,3,C.SAGE);
-      b(cx-5,headY+3,10,1,C.DKOLV); // wide brim
-      p(cx-3,headY+1,C.DKOLV);p(cx+2,headY,C.DKOLV); // camo
-      // Visor
-      b(cx-3,headY+4,6,1,C.DGRAY);
-      // Face peeking below visor
+      // Helmet — heavier with level
+      const helmW=lv>=2?10:8;
+      b(cx-Math.floor(helmW/2),headY,helmW,4,C.OLIVE);b(cx-Math.floor(helmW/2)+1,headY,helmW-2,3,C.SAGE);
+      b(cx-Math.floor(helmW/2)-1,headY+3,helmW+2,1,C.DKOLV);
+      p(cx-3,headY+1,C.DKOLV);p(cx+2,headY,C.DKOLV);
+      // Lv2+: reinforced helmet with face shield
+      if(lv>=2){
+        b(cx-4,headY-1,8,1,C.METAL); // top plate
+        p(cx-4,headY+4,C.METAL);p(cx+3,headY+4,C.METAL); // cheek guards
+      }
+      // Lv3: full face visor + HUD
+      if(lv>=3){
+        b(cx-3,headY+4,6,1,C.DGRAY);
+        p(cx-1,headY+4,C.LTBLUE); // HUD glow
+        p(cx+1,headY+4,C.LTBLUE);
+      } else {
+        b(cx-3,headY+4,6,1,C.DGRAY);
+      }
+      // Face
       b(cx-2,headY+5,4,2,C.SKIN);
       p(cx-1,headY+5,C.DKSKIN);p(cx+1,headY+5,C.DKSKIN);
 
-      // Torso — bulky body armor
-      b(cx-5,torY,10,9,C.OLIVE);b(cx-4,torY,8,8,C.SAGE);
+      // Torso — bulkier body armor with level
+      const armorW=lv>=2?12:10;
+      b(cx-Math.floor(armorW/2),torY,armorW,9,C.OLIVE);b(cx-Math.floor(armorW/2)+1,torY,armorW-2,8,C.SAGE);
       // Body armor plates
       b(cx-3,torY+1,6,5,C.DKSAGE);b(cx-2,torY+2,4,3,C.OLIVE);
-      // Ammo belt across chest
+      // Lv2+: extra plate carrier
+      if(lv>=2){
+        b(cx-4,torY+1,8,6,C.DKSAGE);b(cx-3,torY+2,6,4,C.OLIVE);
+        // Side armor plates
+        b(cx-Math.floor(armorW/2),torY+1,2,5,C.METAL);
+        b(cx+Math.floor(armorW/2)-2,torY+1,2,5,C.METAL);
+      }
+      // Lv3: heavy exo-frame hints
+      if(lv>=3){
+        b(cx-Math.floor(armorW/2)-1,torY,2,8,C.DGRAY);
+        b(cx+Math.floor(armorW/2)-1,torY,2,8,C.DGRAY);
+        p(cx-Math.floor(armorW/2)-1,torY+1,C.LTBLUE); // power indicator
+      }
+      // Ammo belt
       for(let i=0;i<6;i++)p(cx-3+i,torY+1+Math.floor(i*0.5),i%2?C.DKGOLD:C.BROWN);
-      // Belt
-      b(cx-5,torY+8,10,1,C.BROWN);p(cx,torY+8,C.METAL);
+      b(cx-Math.floor(armorW/2),torY+8,armorW,1,C.BROWN);p(cx,torY+8,C.METAL);
 
-      // Machine gun
+      // Machine gun — bigger with level
+      const gunLen=lv>=2?10:8, barrelLen=lv>=3?4:3;
       if(s===2){
-        // Firing — gun forward with muzzle flash
-        b(cx+5,torY+2,8,2,C.DGRAY);b(cx+5,torY+3,8,1,C.MGRAY);
-        b(cx+13,torY+1,3,1,C.DGRAY); // barrel
-        b(cx+13,torY+2,3,1,C.MGRAY);
-        // Muzzle flash (big!)
-        p(cx+16,torY,C.FLASH);p(cx+16,torY+1,C.ORANGE);p(cx+17,torY+1,C.FLASH);
-        p(cx+16,torY+2,C.ORANGE);p(cx+17,torY+2,C.FLASH);p(cx+16,torY+3,C.FLASH);
-        p(cx+15,torY,C.ORANGE);p(cx+15,torY+3,C.ORANGE);
-        // Arms holding
+        b(cx+5,torY+2,gunLen,2,C.DGRAY);b(cx+5,torY+3,gunLen,1,C.MGRAY);
+        b(cx+5+gunLen,torY+1,barrelLen,1,C.DGRAY);
+        b(cx+5+gunLen,torY+2,barrelLen,1,C.MGRAY);
+        // Lv3: double barrel
+        if(lv>=3){b(cx+5+gunLen,torY,barrelLen,1,C.DGRAY);}
+        // Muzzle flash
+        const mzX=cx+5+gunLen+barrelLen;
+        p(mzX,torY,C.FLASH);p(mzX,torY+1,C.ORANGE);p(mzX+1,torY+1,C.FLASH);
+        p(mzX,torY+2,C.ORANGE);p(mzX+1,torY+2,C.FLASH);p(mzX,torY+3,C.FLASH);
+        p(mzX-1,torY,C.ORANGE);p(mzX-1,torY+3,C.ORANGE);
         b(cx+4,torY+1,2,3,C.OLIVE);p(cx+5,torY+4,C.SKIN);
         b(cx-6,torY+2,2,3,C.OLIVE);
-        // Shell casings
         p(cx+8,torY-1,C.DKGOLD);p(cx+9,torY-2,C.GOLD);
       } else {
-        // Gun at side / carried
         b(cx+5,torY+1,2,6,C.DGRAY);b(cx+5,torY+2,2,4,C.MGRAY);
-        b(cx+5,torY-1,1,3,C.DGRAY); // barrel up
-        // Arms
+        b(cx+5,torY-1,1,3,C.DGRAY);
         b(cx+4,torY+1+(s===1?1:0),2,5,C.OLIVE);p(cx+5,torY+5+(s===1?1:0),C.SKIN);
         b(cx-6,torY+1-(s===1?1:0),2,5,C.OLIVE);p(cx-6,torY+5-(s===1?1:0),C.SKIN);
       }
 
-      // Legs — heavy boots
+      // Legs — heavier boots with level
       b(cx-3+legOff,legY,3,8,C.DKSAGE);
       b(cx+1+legOff2,legY,3,8,C.DKSAGE);
-      // Heavy boots
-      b(cx-4+legOff,legY+8,4,2,C.DKBRN);b(cx-4+legOff,legY+8,3,1,C.BROWN);
-      b(cx+legOff2,legY+8,4,2,C.DKBRN);b(cx+1+legOff2,legY+8,3,1,C.BROWN);
+      // Lv2+: knee armor
+      if(lv>=2){b(cx-3+legOff,legY+4,3,2,C.METAL);b(cx+1+legOff2,legY+4,3,2,C.METAL);}
+      const bootH=lv>=2?3:2;
+      b(cx-4+legOff,legY+8,4,bootH,C.DKBRN);b(cx-4+legOff,legY+8,3,1,C.BROWN);
+      b(cx+legOff2,legY+8,4,bootH,C.DKBRN);b(cx+1+legOff2,legY+8,3,1,C.BROWN);
+      // Lv3: armored boots
+      if(lv>=3){
+        b(cx-4+legOff,legY+8,4,bootH,C.DGRAY);b(cx-3+legOff,legY+8,2,1,C.METAL);
+        b(cx+legOff2,legY+8,4,bootH,C.DGRAY);b(cx+1+legOff2,legY+8,2,1,C.METAL);
+      }
 
-      // Special (s===3) — deploy stance
+      // Special
       if(s===3){
-        // Bipod deployed, crouching
         b(cx+6,torY+6,1,4,C.METAL);b(cx+8,torY+6,1,4,C.METAL);
-        // Shield effect
-        for(let i=0;i<5;i++)p(cx-7,torY+i,C.BLUE);
+        const shieldH=lv>=2?7:5;
+        for(let i=0;i<shieldH;i++)p(cx-7,torY+i,C.BLUE);
         p(cx-8,torY+2,C.LTBLUE);
+        // Lv3: energy shield wider
+        if(lv>=3){for(let i=0;i<shieldH;i++)p(cx-8,torY+i,C.DKBLUE);}
       }
       b(cx-5,legY+10,10,1,C.DKBRN);
     },
-    // 5: Commander (Ultimate) — officer with sword + pistol
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 5: Commander (Ultimate) — mobile unit, level = rank/decoration progression (1-3)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const cx=16;
       const legOff=s===1?1:0, legOff2=s===1?-1:0;
       const headY=4,torY=12,legY=22;
 
-      // Officer cap
+      // Officer cap — fancier with level
       b(cx-3,headY,6,3,C.OLIVE);b(cx-2,headY,4,2,C.SAGE);
-      b(cx-4,headY+2,8,1,C.DKOLV); // visor
-      b(cx-1,headY,2,1,C.GOLD); // gold badge on cap
-      p(cx,headY,C.LTGOLD);
+      b(cx-4,headY+2,8,1,C.DKOLV);
+      b(cx-1,headY,2,1,C.GOLD);p(cx,headY,C.LTGOLD);
+      // Lv2+: peak cap with gold braid
+      if(lv>=2){
+        b(cx-4,headY+2,8,1,C.GOLD); // gold visor
+        p(cx-2,headY-1,C.GOLD);p(cx+2,headY-1,C.GOLD); // side badges
+      }
+      // Lv3: ornate ceremonial cap
+      if(lv>=3){
+        b(cx-2,headY-1,4,1,C.GOLD); // full gold band
+        p(cx,headY-2,C.LTGOLD); // crown pip
+      }
       // Face
       b(cx-2,headY+3,4,3,C.SKIN);
       p(cx-1,headY+3,C.DKSKIN);p(cx+1,headY+3,C.DKSKIN);
-      // Jaw
       p(cx,headY+5,C.DKSKIN);
 
-      // Torso — officer uniform, decorated
+      // Torso — officer uniform
       b(cx-4,torY,8,9,C.OLIVE);b(cx-3,torY,6,8,C.SAGE);
-      // Epaulettes
-      b(cx-5,torY,2,2,C.GOLD);b(cx+4,torY,2,2,C.GOLD);
-      // Medals/ribbons
+      // Epaulettes — fancier with level
+      const epColor=lv>=2?C.LTGOLD:C.GOLD;
+      b(cx-5,torY,2,2,epColor);b(cx+4,torY,2,2,epColor);
+      // Lv2+: epaulette fringe
+      if(lv>=2){p(cx-5,torY+2,C.GOLD);p(cx+5,torY+2,C.GOLD);}
+      // Lv3: ornate shoulder boards with stars
+      if(lv>=3){
+        b(cx-6,torY,3,2,C.GOLD);b(cx+4,torY,3,2,C.GOLD);
+        p(cx-5,torY,C.WHITE);p(cx+5,torY,C.WHITE); // stars
+      }
+      // Medals — more with level
       p(cx-2,torY+2,C.RED);p(cx-1,torY+2,C.BLUE);p(cx,torY+2,C.GOLD);
       p(cx-2,torY+3,C.DKGOLD);p(cx-1,torY+3,C.METAL);
-      // Belt with holster
-      b(cx-4,torY+8,8,1,C.BROWN);p(cx,torY+8,C.GOLD);
-      b(cx+3,torY+6,2,3,C.BROWN); // holster
+      if(lv>=2){p(cx+1,torY+2,C.RED);p(cx+1,torY+3,C.BLUE);}
+      if(lv>=3){p(cx+2,torY+2,C.LTGOLD);p(cx+2,torY+3,C.GOLD);p(cx,torY+4,C.RED);}
+      // Belt
+      b(cx-4,torY+8,8,1,lv>=2?C.DKGOLD:C.BROWN);p(cx,torY+8,C.GOLD);
+      b(cx+3,torY+6,2,3,C.BROWN);
 
-      // Arms + weapons
+      // Arms + weapons — sword gets fancier
       if(s===2){
-        // Attack — sword slash + pistol
-        // Sword arm (right) — sweeping arc
         b(cx+4,torY,2,3,C.OLIVE);p(cx+5,torY+2,C.SKIN);
-        for(let i=0;i<8;i++)p(cx+6+i,torY-2-Math.floor(i*0.4),i===0?C.GOLD:i<3?C.LTGOLD:C.METAL);
-        // Slash trail
+        const swordLen=lv>=2?10:8;
+        for(let i=0;i<swordLen;i++)p(cx+6+i,torY-2-Math.floor(i*0.4),i===0?C.GOLD:i<3?C.LTGOLD:lv>=3?C.LGRAY:C.METAL);
+        // Lv3: sword glow
+        if(lv>=3){
+          for(let i=3;i<swordLen;i++)p(cx+6+i,torY-3-Math.floor(i*0.4),C.FLASH);
+        }
         for(let i=0;i<5;i++)p(cx+5+i,torY-1+Math.floor(i*0.6),C.FLASH);
-        // Pistol arm (left)
         b(cx-6,torY+1,2,3,C.OLIVE);p(cx-6,torY+3,C.SKIN);
-        b(cx-8,torY+1,2,1,C.DGRAY); // pistol
-        p(cx-9,torY,C.FLASH); // muzzle
+        b(cx-8,torY+1,2,1,C.DGRAY);p(cx-9,torY,C.FLASH);
       } else {
-        // Sword at side, pistol holstered
         b(cx-5,torY+1+(s===1?1:0),2,5,C.OLIVE);p(cx-5,torY+5+(s===1?1:0),C.SKIN);
         b(cx+4,torY+1-(s===1?1:0),2,5,C.OLIVE);p(cx+5,torY+5-(s===1?1:0),C.SKIN);
-        // Sword at right side
-        for(let i=0;i<6;i++)p(cx+6,torY+2-(s===1?1:0)+i,i===0?C.GOLD:i<2?C.LTGOLD:C.METAL);
+        const swordLen=lv>=2?8:6;
+        for(let i=0;i<swordLen;i++)p(cx+6,torY+2-(s===1?1:0)+i,i===0?C.GOLD:i<2?C.LTGOLD:lv>=3?C.LGRAY:C.METAL);
       }
 
-      // Legs — pressed trousers
+      // Legs
       b(cx-2+legOff,legY,2,7,C.DKSAGE);
       b(cx+1+legOff2,legY,2,7,C.DKSAGE);
-      // Officer boots (polished)
+      // Lv2+: pressed trouser stripes
+      if(lv>=2){p(cx-2+legOff,legY+1,C.GOLD);p(cx+2+legOff2,legY+1,C.GOLD);}
       b(cx-3+legOff,legY+7,3,2,C.BLACK);b(cx-2+legOff,legY+7,2,1,C.DGRAY);
       b(cx+legOff2,legY+7,3,2,C.BLACK);b(cx+1+legOff2,legY+7,2,1,C.DGRAY);
+      // Lv3: polished tall boots
+      if(lv>=3){
+        b(cx-3+legOff,legY+5,3,4,C.BLACK);b(cx-2+legOff,legY+5,2,1,C.DGRAY);
+        b(cx+legOff2,legY+5,3,4,C.BLACK);b(cx+1+legOff2,legY+5,2,1,C.DGRAY);
+      }
 
-      // Special (s===3) — command aura glow
+      // Special (s===3) — command aura
       if(s===3){
-        // Blue command aura ring
+        const auraR=lv>=2?12:10;
         for(let i=0;i<12;i++){
           const a=i*Math.PI/6;
-          p(cx+Math.round(Math.cos(a)*10),torY+4+Math.round(Math.sin(a)*8),i%2?C.LTBLUE:C.BLUE);
-          p(cx+Math.round(Math.cos(a)*9),torY+4+Math.round(Math.sin(a)*7),C.DKBLUE);
+          p(cx+Math.round(Math.cos(a)*auraR),torY+4+Math.round(Math.sin(a)*(auraR-2)),i%2?C.LTBLUE:C.BLUE);
+          p(cx+Math.round(Math.cos(a)*(auraR-1)),torY+4+Math.round(Math.sin(a)*(auraR-3)),C.DKBLUE);
         }
-        // Star burst above
+        // Lv3: double aura ring
+        if(lv>=3){
+          for(let i=0;i<8;i++){
+            const a=i*Math.PI/4;
+            p(cx+Math.round(Math.cos(a)*(auraR+2)),torY+4+Math.round(Math.sin(a)*auraR),C.GOLD);
+          }
+        }
         p(cx,headY-3,C.GOLD);p(cx-1,headY-2,C.LTGOLD);p(cx+1,headY-2,C.LTGOLD);
         p(cx,headY-4,C.LTGOLD);
+        // Lv2+: extra star
+        if(lv>=2){p(cx-2,headY-3,C.GOLD);p(cx+2,headY-3,C.GOLD);}
       }
       b(cx-4,legY+9,8,1,C.DKBRN);
     },
   ];
-  const cols=6,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  const cols=T_COLS,rows=T_ROWS;
+  for(let col=0;col<cols;col++){
+    const maxLv=T_LEVELS[col];
+    for(let row=0;row<rows;row++){
+      const lvIdx=Math.floor(row/4); // 0-based level index (0..4)
+      const state=row%4;             // 0=idle,1=walk,2=attack,3=special
+      const lv=lvIdx+1;              // 1-based level
+      if(lv>maxLv) continue;         // skip rows beyond this tower's max level
+      fns[col](ctx,[col*T_CELL,row*T_CELL],state,lv);
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
-// ===== PROJECTILES (6×6 at 32×32) =====
+// ===== PROJECTILES (6x6 at 32x32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
 function drawProjectiles(ctx:any){
   const fns=[
-    // 0: Sandbag — pebble → dust puff
+    // 0: Sandbag — pebble -> dust puff
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Tiny pebble traveling
@@ -417,7 +577,7 @@ function drawProjectiles(ctx:any){
         [[4,10],[11,9],[7,12],[9,7],[13,11]].forEach(([x,y],i)=>p(x,y,i%2?C.DKSAND:C.SAND));
       }
     },
-    // 1: Wire — spark → spark fade
+    // 1: Wire — spark -> spark fade
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Electric spark traveling
@@ -439,7 +599,7 @@ function drawProjectiles(ctx:any){
         [[5,7],[10,9],[8,5],[12,8]].forEach(([x,y],i)=>p(x,y,i%2?C.DKBLUE:C.BLUE));
       }
     },
-    // 2: Rifleman — bullet tracer → small impact
+    // 2: Rifleman — bullet tracer -> small impact
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Bullet tracer
@@ -462,7 +622,7 @@ function drawProjectiles(ctx:any){
         [[6,7],[10,8],[8,6],[9,10]].forEach(([x,y],i)=>p(x,y,i%2?C.MGRAY:C.DGRAY));
       }
     },
-    // 3: Brawler — fist impact wave → shockwave ring
+    // 3: Brawler — fist impact wave -> shockwave ring
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Fist impact wave
@@ -483,7 +643,7 @@ function drawProjectiles(ctx:any){
         [[4,6],[11,10],[6,11],[10,5],[8,8]].forEach(([x,y],i)=>p(x,y,i%2?C.DKSAND:C.SAND));
       }
     },
-    // 4: Heavy Gunner — large bullet stream → explosion
+    // 4: Heavy Gunner — large bullet stream -> explosion
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Bullet stream (multiple tracers)
@@ -511,7 +671,7 @@ function drawProjectiles(ctx:any){
         p(cx,cy,C.DGRAY);p(cx-1,cy+1,C.DGRAY);
       }
     },
-    // 5: Commander — golden slash → command burst
+    // 5: Commander — golden slash -> command burst
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Golden slash arc
@@ -548,7 +708,7 @@ function drawProjectiles(ctx:any){
   return{cols,rows,cell:P_CELL};
 }
 
-// ===== HERO (8×5 at 64×128) =====
+// ===== HERO (8x5 at 64x128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
 function drawHero(ctx:any){
@@ -896,13 +1056,19 @@ function drawHero(ctx:any){
 
 // ===== LABELS =====
 const T_NAMES=['Sandbag','Barbed Wire','Rifleman','Brawler','Heavy Gunner','Commander'];
-const T_STATES=['Idle','Walk/Charge','Attack/Fire','Special/Cooldown'];
+const T_STATE_NAMES=['Idle','Walk/Charge','Attack/Fire','Special/Cooldown'];
 const P_NAMES=['Pebble','Spark','Bullet','Fist Wave','Burst','Gold Slash'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
 const H_ROW_LABELS=['Down','Side','Up','Abilities','States'];
 const H_R3=['Shield Bash 1','Shield Bash 2','War Cry 1','War Cry 2','Ground Slam 1','Ground Slam 2','Fortress 1','Fortress 2'];
 const H_R4=['Hurt','Death 1','Death 2','Portrait','','','',''];
+
+// Build tower row labels: "Lv1 Idle", "Lv1 Walk", ... "Lv5 Special"
+const T_ROW_LABELS:string[]=[];
+for(let lv=1;lv<=T_MAX_LVL;lv++){
+  for(let si=0;si<4;si++) T_ROW_LABELS.push(`Lv${lv} ${T_STATE_NAMES[si]}`);
+}
 
 // ===== COMPONENT =====
 export default function App(){
@@ -913,16 +1079,33 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=6*T_CELL;tc.height=4*T_CELL;
+    const tc=tRef.current!;tc.width=T_COLS*T_CELL;tc.height=T_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
-    const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
-    tpv.width=tLW+6*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    const tpv=tPv.current!;const tS=2,tLW=100,tLH=13;
+    tpv.width=tLW+T_COLS*T_CELL*tS;tpv.height=T_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#0a0f06';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#8fbc8f';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
-      for(let cc=0;cc<6;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a2a1a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#8a9a6a';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
+    for(let r=0;r<T_ROWS;r++){
+      const by=r*(T_CELL*tS+tLH)+5;
+      tpc.fillStyle='#8fbc8f';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
+      for(let cc=0;cc<T_COLS;cc++){
+        const bx_=tLW+cc*T_CELL*tS;
+        // Check if this tower has this level
+        const lvIdx=Math.floor(r/4);
+        const lv=lvIdx+1;
+        const maxLv=T_LEVELS[cc];
+        tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();
+        tpc.strokeStyle=lv>maxLv?'#331111':'#1a2a1a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);
+        // Mark empty cells
+        if(lv>maxLv){
+          tpc.fillStyle='rgba(50,20,20,0.6)';tpc.fillRect(bx_+1,by+1,T_CELL*tS-2,T_CELL*tS-2);
+          tpc.fillStyle='#553333';tpc.font='8px monospace';tpc.fillText('--',bx_+T_CELL*tS/2-6,by+T_CELL*tS/2+3);
+        }
+        if(r===0){tpc.fillStyle='#8a9a6a';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc]+` (${maxLv}lv)`,bx_+2,by-2);}
+      }
+    }
 
     // Projectiles
     const pc_=pRef.current!;pc_.width=6*P_CELL;pc_.height=6*P_CELL;
@@ -956,11 +1139,11 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'military_towers_animated.png',
-      info:{sz:'384×256',cell:'64×64',loader:"this.load.spritesheet('military_towers','military_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'6 cols (towers) × 4 rows (idle/walk/attack/special)'}},
+      info:{sz:`${T_COLS*T_CELL}x${T_ROWS*T_CELL}`,cell:'64x64',loader:"this.load.spritesheet('military_towers','military_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`${T_COLS} cols (towers) x ${T_ROWS} rows (${T_MAX_LVL} levels x 4 states). Levels: ${T_NAMES.map((n,i)=>`${n}=${T_LEVELS[i]}`).join(', ')}`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'military_projectiles_animated.png',
-      info:{sz:'192×192',cell:'32×32',loader:"this.load.spritesheet('military_proj','military_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'6 cols × 6 rows (3 travel + 3 impact)'}},
+      info:{sz:'192x192',cell:'32x32',loader:"this.load.spritesheet('military_proj','military_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'6 cols x 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Warden',ref:hRef,pvRef:hPv,dl:'warden_hero_directional.png',
-      info:{sz:'512×640',cell:'64×128',loader:"this.load.spritesheet('warden','warden_hero_directional.png',{frameWidth:64,frameHeight:128})",note:'Row 0-2: Down/Side/Up (idle×2, walk×4, atk×2) · Row 3: Abilities · Row 4: States'}},
+      info:{sz:'512x640',cell:'64x128',loader:"this.load.spritesheet('warden','warden_hero_directional.png',{frameWidth:64,frameHeight:128})",note:'Row 0-2: Down/Side/Up (idle x2, walk x4, atk x2) - Row 3: Abilities - Row 4: States'}},
   ];
   const cur=tabs.find(t=>t.id===tab)!;
 
@@ -981,16 +1164,16 @@ export default function App(){
           <button key={v} onClick={()=>setView(v)} style={{background:view===v?'#1a2a1a':'#111',color:view===v?C.BLUE:'#445566',border:`1px solid ${view===v?'#334':'#222'}`,padding:'4px 8px',borderRadius:3,cursor:'pointer',fontFamily:'monospace',fontSize:10,textTransform:'capitalize'}}>{v==='actual'?'Actual Size':v}</button>
         ))}
       </div>
-      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'70vh'}}>
+      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'85vh'}}>
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
             <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}}/>
-            <canvas ref={t.ref} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?6*P_CELL*3:6*T_CELL*2,border:'1px solid #1a2a1a'}}/>
+            <canvas ref={t.ref} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?6*P_CELL*3:T_COLS*T_CELL*2,border:'1px solid #1a2a1a'}}/>
           </div>
         ))}
       </div>
-      {cur&&<div style={{color:'#556644',fontSize:9,marginTop:10,maxWidth:600}}>
-        <p style={{margin:'2px 0'}}><b style={{color:C.SAGE}}>Sheet:</b> {cur.info.sz}px · {cur.info.cell} cells</p>
+      {cur&&<div style={{color:'#556644',fontSize:9,marginTop:10,maxWidth:700}}>
+        <p style={{margin:'2px 0'}}><b style={{color:C.SAGE}}>Sheet:</b> {cur.info.sz}px - {cur.info.cell} cells</p>
         <p style={{margin:'2px 0'}}><b style={{color:C.SAGE}}>Phaser:</b> <code style={{color:C.BLUE}}>{cur.info.loader}</code></p>
         <p style={{margin:'2px 0'}}><b style={{color:C.SAGE}}>Layout:</b> {cur.info.note}</p>
       </div>}

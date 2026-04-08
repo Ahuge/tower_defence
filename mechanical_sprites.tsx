@@ -95,412 +95,595 @@ function mSteam(p:any,x:number,y:number,size:number){
   }
 }
 
-// ===== TOWERS (8×4 at 64×64) =====
+// ===== TOWER LEVEL DATA =====
+// levels per tower: Wall=4, Turret=6, Flamethrower=5, Tesla=4, Mortar=4, Shredder=5, Railgun=3, Titan=3
+const T_LEVELS=[4,6,5,4,4,5,3,3];
+const T_MAX_LVL=6; // max across all towers → rows = T_MAX_LVL * 4 states = 24
+const T_ROWS=T_MAX_LVL*4; // 24 rows total
+
+// ===== LEVEL VISUAL HELPERS =====
+// Extra rivets drawn at higher levels (positions are offsets from center)
+function lvlRivets(p:any,cx:number,cy:number,lvl:number,spread:number){
+  if(lvl<2)return;
+  const rv=lvl>=4?C.WTSTL:C.LTSTL;
+  const pts:number[][]=[];
+  if(lvl>=2){pts.push([-spread,-(spread-1)],[spread,-(spread-1)]);}
+  if(lvl>=3){pts.push([-spread,(spread-1)],[spread,(spread-1)]);}
+  if(lvl>=4){pts.push([0,-spread],[0,spread]);}
+  if(lvl>=5){pts.push([-(spread+1),0],[(spread+1),0]);}
+  pts.forEach(([dx,dy])=>p(cx+dx,cy+dy,rv));
+}
+
+// Extra exhaust pipes for high levels
+function lvlExhaust(p:any,b:any,x:number,y:number,lvl:number){
+  if(lvl<3)return;
+  b(x,y,2,1,C.DKSTL);b(x,y,1,1,C.STEEL);
+  if(lvl>=4){b(x,y-1,2,1,C.DKSTL);p(x,y-2,C.SMOKE);}
+  if(lvl>=5){b(x+2,y,2,1,C.DKSTL);p(x+3,y-1,C.LTSMK);}
+}
+
+// Extra gear decoration for higher levels
+function lvlGears(p:any,cx:number,cy:number,lvl:number){
+  if(lvl<3)return;
+  mGear(p,cx,cy,1,C.DKGEAR,4);
+  if(lvl>=4)mGear(p,cx+6,cy,1,C.GEAR,4);
+  if(lvl>=5){mGear(p,cx-6,cy,1,C.GEAR,4);mGear(p,cx+3,cy-3,1,C.DKGEAR,4);}
+  if(lvl>=6){mGear(p,cx-3,cy-3,1,C.LTGEAR,4);mGear(p,cx,cy+3,1,C.GEAR,4);}
+}
+
+// Reinforced plating overlay — extra armor layers at higher levels
+function lvlArmor(p:any,b:any,x:number,y:number,w:number,h:number,lvl:number){
+  if(lvl<2)return;
+  // lvl2: edge highlight
+  b(x,y,w,1,lvl>=4?C.TAN:C.LTBRZ);
+  if(lvl>=3){
+    // extra horizontal seam
+    b(x,y+Math.floor(h/2),w,1,C.DKSTL);
+  }
+  if(lvl>=4){
+    // corner brackets
+    p(x,y,C.WTSTL);p(x+w-1,y,C.WTSTL);p(x,y+h-1,C.WTSTL);p(x+w-1,y+h-1,C.WTSTL);
+  }
+  if(lvl>=5){
+    // double plating lines
+    b(x+1,y+Math.floor(h/3),w-2,1,C.DKSTL);
+    b(x+1,y+Math.floor(h*2/3),w-2,1,C.DKSTL);
+  }
+  if(lvl>=6){
+    // full reinforcement grid
+    b(x+Math.floor(w/3),y+1,1,h-2,C.DKSTL);
+    b(x+Math.floor(w*2/3),y+1,1,h-2,C.DKSTL);
+  }
+}
+
+// Steam effects for high-level towers
+function lvlSteam(p:any,x:number,y:number,lvl:number){
+  if(lvl<4)return;
+  mSteam(p,x,y,lvl>=5?4:2);
+  if(lvl>=6)mSteam(p,x+4,y-1,3);
+}
+
+// ===== TOWERS (8 cols × 24 rows at 64×64) =====
+// Layout: for each tower level, 4 rows (idle/charge/fire/cooldown)
+// Towers with fewer levels than T_MAX_LVL have empty rows at the end
 function drawTowers(ctx:CanvasRenderingContext2D){
   const fns=[
     // 0: Wall — Short solid armored metal block
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      mBase(p,b,22,22,s===1?1:s===2?2:0);
-      // Main wall body - thick armored block
-      b(6,8,20,14,C.DKSTL);b(7,8,18,13,C.STEEL);b(8,8,16,12,C.LTSTL);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
+      // Base grows with level
+      const baseW=20+Math.min(L-1,3)*1;
+      mBase(p,b,22,baseW,s===1?1:s===2?2:0);
+      // Main wall body - size increases with level
+      const wallW=16+Math.min(L-1,4)*2;const wallX=16-Math.floor(wallW/2);
+      const wallH=10+Math.min(L-1,3)*1;const wallY=20-wallH;
+      b(wallX-1,wallY,wallW+2,wallH+2,C.DKSTL);b(wallX,wallY,wallW,wallH+1,C.STEEL);b(wallX+1,wallY,wallW-2,wallH,C.LTSTL);
       // Top armor plate
-      b(7,7,18,2,C.BRONZE);b(8,7,16,1,C.LTBRZ);
-      // Vertical armor seams
-      b(11,9,1,10,C.DKSTL);b(16,9,1,10,C.DKSTL);b(21,9,1,10,C.DKSTL);
-      // Horizontal plate line
-      b(7,14,18,1,C.DKSTL);
+      b(wallX,wallY-1,wallW,2,C.BRONZE);b(wallX+1,wallY-1,wallW-2,1,C.LTBRZ);
+      // Vertical armor seams — more at higher levels
+      const seams=Math.min(L+1,5);
+      for(let i=1;i<=seams;i++){
+        const sx=wallX+Math.floor(i*wallW/(seams+1));
+        b(sx,wallY+1,1,wallH-1,C.DKSTL);
+      }
+      // Horizontal plate lines — more at higher levels
+      if(L>=2)b(wallX,wallY+Math.floor(wallH/2),wallW,1,C.DKSTL);
+      if(L>=4)b(wallX,wallY+Math.floor(wallH/3),wallW,1,C.DKSTL);
       // Rivets on plates
       const rv=s>=1?C.WTSTL:C.LTSTL;
-      p(9,10,rv);p(14,10,rv);p(19,10,rv);p(9,17,rv);p(14,17,rv);p(19,17,rv);
-      p(24,11,C.RIVET);p(24,16,C.RIVET);
-      // Side reinforcement brackets
-      b(5,10,2,8,C.DKBRZ);b(25,10,2,8,C.DKBRZ);
-      p(5,10,C.BRONZE);p(5,17,C.BRONZE);p(26,10,C.BRONZE);p(26,17,C.BRONZE);
+      p(wallX+2,wallY+2,rv);p(wallX+wallW-3,wallY+2,rv);
+      p(wallX+2,wallY+wallH-2,rv);p(wallX+wallW-3,wallY+wallH-2,rv);
+      lvlRivets(p,16,wallY+Math.floor(wallH/2),L,4);
+      // Side reinforcement brackets — bigger at higher levels
+      const bracketH=6+Math.min(L-1,3)*1;
+      b(wallX-2,wallY+1,2,bracketH,C.DKBRZ);b(wallX+wallW,wallY+1,2,bracketH,C.DKBRZ);
+      p(wallX-2,wallY+1,C.BRONZE);p(wallX-2,wallY+bracketH,C.BRONZE);
+      p(wallX+wallW+1,wallY+1,C.BRONZE);p(wallX+wallW+1,wallY+bracketH,C.BRONZE);
+      // Level 3+: extra gear decoration
+      if(L>=3){mGear(p,wallX-1,wallY+Math.floor(wallH/2),1,C.GEAR,4);}
+      if(L>=4){mGear(p,wallX+wallW,wallY+Math.floor(wallH/2),1,C.GEAR,4);}
+      // Level 2+: armor overlay
+      lvlArmor(p,b,wallX+1,wallY+1,wallW-2,wallH-2,L);
       // State variations
-      if(s===1){
-        // Charge: slight glow on armor
-        b(8,9,16,1,C.TAN);p(12,11,C.LTBRZ);p(17,11,C.LTBRZ);
-      }
+      if(s===1){b(wallX+1,wallY+1,wallW-2,1,C.TAN);p(wallX+4,wallY+3,C.LTBRZ);p(wallX+wallW-5,wallY+3,C.LTBRZ);}
       if(s===2){
-        // Fire: impact sparks on surface
-        p(10,9,C.SPARK);p(15,12,C.SPARK);p(20,10,C.WSPARK);
-        p(8,15,C.ORANGE);p(18,16,C.ORANGE);
+        p(wallX+2,wallY+1,C.SPARK);p(wallX+Math.floor(wallW/2),wallY+4,C.SPARK);p(wallX+wallW-3,wallY+2,C.WSPARK);
+        p(wallX+1,wallY+wallH-3,C.ORANGE);p(wallX+wallW-4,wallY+wallH-2,C.ORANGE);
       }
-      if(s===3){
-        // Cooldown: steam from top
-        mSteam(p,10,7,4);mSteam(p,20,7,3);
-        p(12,6,C.SMOKE);p(18,5,C.LTSMK);
-      }
+      if(s===3){mSteam(p,wallX+2,wallY-1,4);mSteam(p,wallX+wallW-3,wallY-1,3);p(wallX+4,wallY-2,C.SMOKE);}
+      // High-level steam vents
+      lvlSteam(p,wallX-3,wallY+2,L);
     },
     // 1: Turret — Rotating barrel on swivel mount
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
       mBase(p,b,23,20,s===1?1:s===2?2:0);
-      // Swivel mount base
-      b(12,18,8,5,C.DKSTL);b(13,18,6,4,C.STEEL);
-      b(14,18,4,1,C.LTSTL);
+      // Swivel mount base — reinforced at higher levels
+      const mountW=6+Math.min(L-1,3)*1;const mountX=16-Math.floor(mountW/2);
+      b(mountX-1,18,mountW+2,5,C.DKSTL);b(mountX,18,mountW,4,C.STEEL);
+      b(mountX+1,18,mountW-2,1,C.LTSTL);
       // Rotation ring
-      for(let i=0;i<8;i++){
-        const a=i*Math.PI/4;
-        p(16+Math.round(Math.cos(a)*5),20+Math.round(Math.sin(a)*2),C.BRONZE);
-      }
-      // Turret body
-      const rot=s===1?1:s===2?-1:s===3?0:0;
-      b(11+rot,11,10,7,C.DKSTL);b(12+rot,11,8,6,C.STEEL);b(13+rot,11,6,5,C.LTSTL);
+      const ringR=4+Math.min(L-1,2);
+      for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*ringR),20+Math.round(Math.sin(a)*2),C.BRONZE);}
+      // Turret body — grows with level
+      const rot=s===1?1:s===2?-1:0;
+      const tW=8+Math.min(L-1,4)*1;const tH=5+Math.min(L-1,3)*1;
+      const tX=16-Math.floor(tW/2)+rot;const tY=16-Math.floor(tH/2);
+      b(tX-1,tY,tW+2,tH+2,C.DKSTL);b(tX,tY,tW,tH+1,C.STEEL);b(tX+1,tY,tW-2,tH,C.LTSTL);
       // Top plate
-      b(12+rot,10,8,1,C.BRONZE);b(13+rot,10,6,1,C.LTBRZ);
-      // Barrel
-      const blen=s===2?12:10;
-      b(21+rot,13,blen,2,C.DKSTL);b(21+rot,13,blen,1,C.STEEL);
-      p(21+rot+blen-1,13,C.LTSTL);
+      b(tX,tY-1,tW,1,C.BRONZE);b(tX+1,tY-1,tW-2,1,C.LTBRZ);
+      lvlArmor(p,b,tX+1,tY+1,tW-2,tH-2,L);
+      // Barrel — longer at higher levels
+      const blen=(s===2?12:10)+Math.min(L-1,4)*1;
+      const barrelY=tY+Math.floor(tH/2);
+      // Additional barrels at high levels
+      if(L>=5){
+        b(tX+tW+rot,barrelY-2,blen-2,1,C.DKSTL);b(tX+tW+rot,barrelY-2,blen-3,1,C.STEEL);
+        b(tX+tW+rot,barrelY+2,blen-2,1,C.DKSTL);b(tX+tW+rot,barrelY+2,blen-3,1,C.STEEL);
+      }
+      if(L>=6){
+        b(tX+tW+rot,barrelY-3,blen-4,1,C.DKSTL);
+        b(tX+tW+rot,barrelY+3,blen-4,1,C.DKSTL);
+      }
+      // Main barrel
+      b(tX+tW+rot,barrelY,blen,2,C.DKSTL);b(tX+tW+rot,barrelY,blen,1,C.STEEL);
+      p(tX+tW+rot+blen-1,barrelY,C.LTSTL);
       // Barrel muzzle
-      b(21+rot+blen-1,12,1,4,C.DKBRN);
+      const muzzleX=tX+tW+rot+blen-1;
+      b(muzzleX,barrelY-1,1,4,C.DKBRN);
       // Rivets on turret
-      p(13+rot,13,C.RIVET);p(18+rot,13,C.RIVET);
-      // Ammo belt hint
-      b(10+rot,15,3,2,C.DKBRZ);p(10+rot,15,C.BRONZE);p(11+rot,16,C.BRONZE);
+      lvlRivets(p,16+rot,tY+Math.floor(tH/2),L,3);
+      p(tX+1+rot,barrelY,C.RIVET);p(tX+tW-2+rot,barrelY,C.RIVET);
+      // Ammo belt hint — bigger at higher levels
+      b(tX-2+rot,tY+tH-1,3,2,C.DKBRZ);p(tX-2+rot,tY+tH-1,C.BRONZE);
+      if(L>=3){b(tX-3+rot,tY+tH,2,2,C.DKBRZ);p(tX-3+rot,tY+tH,C.BRONZE);}
+      // Level 3+: exhaust
+      lvlExhaust(p,b,tX-1+rot,tY-2,L);
+      // Level 3+: gears
+      lvlGears(p,tX+rot,tY+tH+2,L);
       if(s===2){
-        // Fire: muzzle flash
-        const mx=21+rot+blen;
-        p(mx,12,C.WSPARK);p(mx,14,C.WSPARK);p(mx+1,13,C.SPARK);
-        p(mx-1,11,C.ORANGE);p(mx-1,15,C.ORANGE);
-        b(mx,13,2,1,C.WHITE);
-        mSteam(p,mx-2,11,3);
+        const mx=muzzleX+1;
+        p(mx,barrelY-1,C.WSPARK);p(mx,barrelY+1,C.WSPARK);p(mx+1,barrelY,C.SPARK);
+        p(mx-1,barrelY-2,C.ORANGE);p(mx-1,barrelY+2,C.ORANGE);
+        b(mx,barrelY,2,1,C.WHITE);mSteam(p,mx-2,barrelY-2,3);
+        if(L>=5){p(mx,barrelY-3,C.SPARK);p(mx,barrelY+3,C.SPARK);}
       }
-      if(s===1){
-        // Charge: barrel warming
-        p(25+rot,13,C.ORANGE);p(26+rot,13,C.DKORG);
-      }
-      if(s===3){
-        // Cooldown: smoke from barrel
-        mSteam(p,28,11,4);p(27,12,C.SMOKE);
-      }
+      if(s===1){p(muzzleX-2,barrelY,C.ORANGE);p(muzzleX-1,barrelY,C.DKORG);}
+      if(s===3){mSteam(p,muzzleX-1,barrelY-3,4);p(muzzleX-2,barrelY-1,C.SMOKE);}
+      lvlSteam(p,tX-4+rot,tY,L);
     },
     // 2: Flamethrower — Nozzle/pipe with pilot flame
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
       mBase(p,b,23,20,s===1?1:s===2?2:0);
-      // Fuel tank (back)
-      b(6,10,6,12,C.DKBRZ);b(7,10,4,11,C.BRONZE);b(8,10,2,10,C.LTBRZ);
-      b(6,10,6,1,C.TAN);b(7,21,4,1,C.DKBRN);
-      // Tank bands
-      b(6,13,6,1,C.DKSTL);b(6,17,6,1,C.DKSTL);
-      p(7,13,C.RIVET);p(11,13,C.RIVET);
+      // Fuel tank (back) — bigger at higher levels
+      const tankW=4+Math.min(L-1,3)*1;const tankH=10+Math.min(L-1,3)*1;
+      const tankX=8-Math.floor(tankW/2);const tankY=22-tankH;
+      b(tankX-1,tankY,tankW+2,tankH+2,C.DKBRZ);b(tankX,tankY,tankW+1,tankH+1,C.BRONZE);b(tankX+1,tankY,tankW-1,tankH,C.LTBRZ);
+      b(tankX-1,tankY,tankW+2,1,C.TAN);b(tankX,tankY+tankH,tankW,1,C.DKBRN);
+      // Tank bands — more at higher levels
+      const bands=Math.min(L+1,4);
+      for(let i=0;i<bands;i++){
+        const by_=tankY+2+Math.floor(i*(tankH-2)/bands);
+        b(tankX-1,by_,tankW+2,1,C.DKSTL);p(tankX,by_,C.RIVET);p(tankX+tankW,by_,C.RIVET);
+      }
+      // Extra tank at lvl 4+
+      if(L>=4){
+        b(tankX-3,tankY+2,2,tankH-4,C.DKBRZ);b(tankX-2,tankY+2,1,tankH-5,C.BRONZE);
+        b(tankX-3,tankY+Math.floor(tankH/2),2,1,C.DKSTL);
+      }
       // Pipe from tank to nozzle
-      b(12,14,4,2,C.DKSTL);b(12,14,4,1,C.STEEL);
-      // Nozzle housing
-      b(16,11,6,6,C.DKSTL);b(17,11,4,5,C.STEEL);b(18,11,2,4,C.LTSTL);
-      b(16,11,6,1,C.BRONZE);
-      // Nozzle opening
-      b(22,12,3,4,C.DKBRN);b(22,13,3,2,C.BLACK);
-      // Pilot flame (always on)
-      p(25,13,s===0?C.ORANGE:C.FLAME);p(25,14,C.DKORG);
+      const pipeLen=3+Math.min(L-1,2);
+      b(tankX+tankW+1,14,pipeLen,2,C.DKSTL);b(tankX+tankW+1,14,pipeLen,1,C.STEEL);
+      // Nozzle housing — bigger at higher levels
+      const nozW=4+Math.min(L-1,2)*1;const nozH=4+Math.min(L-1,2)*1;
+      const nozX=22-nozW;const nozY=14-Math.floor(nozH/3);
+      b(nozX,nozY,nozW,nozH,C.DKSTL);b(nozX+1,nozY,nozW-2,nozH-1,C.STEEL);b(nozX+2,nozY,nozW-4,nozH-2,C.LTSTL);
+      b(nozX,nozY,nozW,1,C.BRONZE);
+      lvlArmor(p,b,nozX+1,nozY+1,nozW-2,nozH-2,L);
+      // Nozzle opening — wider at higher levels
+      const nozOpenW=2+Math.min(L-1,2);const nozOpenH=2+Math.min(L-1,2);
+      b(22,nozY+1,nozOpenW,nozOpenH+1,C.DKBRN);b(22,nozY+2,nozOpenW,nozOpenH-1,C.BLACK);
+      // Pilot flame
+      p(22+nozOpenW,nozY+2,s===0?C.ORANGE:C.FLAME);p(22+nozOpenW,nozY+3,C.DKORG);
+      // Level 3+: exhaust vent on tank
+      lvlExhaust(p,b,tankX-2,tankY-1,L);
+      // Level 3+: gears on nozzle
+      if(L>=3)mGear(p,nozX-1,nozY+nozH,1,C.GEAR,4);
+      if(L>=5)mGear(p,nozX+nozW+1,nozY-1,1,C.DKGEAR,4);
       if(s===1){
-        // Charge: pilot flame grows
-        p(26,12,C.FLAME);p(26,13,C.LTFLM);p(26,14,C.FLAME);p(27,13,C.ORANGE);
-        p(24,11,C.DKORG);
+        p(23+nozOpenW,nozY+1,C.FLAME);p(23+nozOpenW,nozY+2,C.LTFLM);p(23+nozOpenW,nozY+3,C.FLAME);p(24+nozOpenW,nozY+2,C.ORANGE);
+        p(21+nozOpenW,nozY,C.DKORG);
       }
       if(s===2){
-        // Fire: full flame cone!
-        for(let i=0;i<8;i++){
+        // Fire: full flame cone — wider at higher levels
+        const flameLen=6+Math.min(L-1,3)*1;
+        for(let i=0;i<flameLen;i++){
           const w=1+Math.floor(i*0.8);
-          const yc=13;
+          const yc=nozY+2;
           for(let dy=-w;dy<=w;dy++){
-            const px=25+i,py=yc+dy;
-            if(px<32&&py>=0&&py<32){
+            const px_=22+nozOpenW+i,py_=yc+dy;
+            if(px_<32&&py_>=0&&py_<32){
               const d=Math.abs(dy);
-              p(px,py,d===0?C.WFLM:d<=w/2?C.LTFLM:d<=w*0.7?C.FLAME:C.DKFLM);
+              p(px_,py_,d===0?C.WFLM:d<=w/2?C.LTFLM:d<=w*0.7?C.FLAME:C.DKFLM);
             }
           }
         }
-        p(26,13,C.WHITE);p(27,13,C.WSPARK);
-        // Heat shimmer above
-        p(22,9,C.DKORG);p(24,8,C.ORANGE);p(20,10,C.DKFLM);
+        p(23+nozOpenW,nozY+2,C.WHITE);p(24+nozOpenW,nozY+2,C.WSPARK);
+        p(nozX-1,nozY-2,C.DKORG);p(nozX+1,nozY-3,C.ORANGE);p(nozX-2,nozY,C.DKFLM);
       }
-      if(s===3){
-        // Cooldown: residual smoke
-        mSteam(p,24,10,5);mSteam(p,22,9,3);
-        p(25,13,C.DKORG);p(25,14,C.DKFLM);
-      }
+      if(s===3){mSteam(p,21+nozOpenW,nozY-2,5);mSteam(p,nozX,nozY-2,3);p(22+nozOpenW,nozY+2,C.DKORG);}
+      lvlSteam(p,tankX-3,tankY-2,L);
     },
     // 3: Tesla — Tesla coil with arcing electricity
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
       mBase(p,b,23,20,s===1?1:s===2?2:0);
-      // Coil base housing
-      b(12,18,8,5,C.DKBRZ);b(13,18,6,4,C.BRONZE);b(14,18,4,1,C.TAN);
-      // Coil stem
-      b(15,6,2,12,C.DKSTL);b(15,6,1,12,C.STEEL);
-      // Coil windings
-      for(let i=0;i<6;i++){
-        const y=8+i*2;
-        b(13,y,6,1,C.DKBRZ);p(13,y,C.BRONZE);p(18,y,C.BRONZE);
+      // Coil base housing — bigger at higher levels
+      const houseW=6+Math.min(L-1,2)*1;const houseX=16-Math.floor(houseW/2);
+      b(houseX-1,18,houseW+2,5,C.DKBRZ);b(houseX,18,houseW,4,C.BRONZE);b(houseX+1,18,houseW-2,1,C.TAN);
+      // Coil stem — taller at higher levels
+      const stemH=10+Math.min(L-1,2)*1;const stemTop=18-stemH;
+      b(15,stemTop,2,stemH,C.DKSTL);b(15,stemTop,1,stemH,C.STEEL);
+      // Coil windings — more at higher levels
+      const windings=4+Math.min(L-1,3);const windW=4+Math.min(L-1,2)*1;
+      for(let i=0;i<windings;i++){
+        const y_=stemTop+2+Math.floor(i*(stemH-2)/windings);
+        const wx=16-Math.floor(windW/2);
+        b(wx,y_,windW,1,C.DKBRZ);p(wx,y_,C.BRONZE);p(wx+windW-1,y_,C.BRONZE);
       }
-      // Top sphere/electrode
-      for(let y=-2;y<=2;y++)for(let x=-2;x<=2;x++){
-        if(x*x+y*y<=5){
+      // Additional coils at level 3+
+      if(L>=3){
+        b(16-Math.floor(windW/2)-1,stemTop+3,1,stemH-5,C.DKSTL);
+        b(16+Math.floor(windW/2),stemTop+3,1,stemH-5,C.DKSTL);
+      }
+      if(L>=4){
+        // Side capacitor nodes
+        b(16-Math.floor(windW/2)-3,stemTop+Math.floor(stemH/2),2,3,C.DKBRZ);
+        b(16+Math.floor(windW/2)+1,stemTop+Math.floor(stemH/2),2,3,C.DKBRZ);
+      }
+      // Top sphere/electrode — bigger at higher levels
+      const sphereR=2+Math.min(L-1,2);const sphereY=stemTop-1;
+      for(let y=-sphereR;y<=sphereR;y++)for(let x=-sphereR;x<=sphereR;x++){
+        if(x*x+y*y<=sphereR*sphereR){
           const d=Math.sqrt(x*x+y*y);
-          p(16+x,5+y,d<1?C.WTSTL:d<2?C.LTSTL:C.STEEL);
+          p(16+x,sphereY+y,d<1?C.WTSTL:d<sphereR*0.5?C.LTSTL:C.STEEL);
         }
       }
-      p(15,3,C.LTSTL);p(17,3,C.LTSTL);
+      p(15,sphereY-sphereR,C.LTSTL);p(17,sphereY-sphereR,C.LTSTL);
+      // Level 3+: extra electrode tips
+      if(L>=3){p(16-sphereR-1,sphereY,C.LTSTL);p(16+sphereR+1,sphereY,C.LTSTL);}
+      lvlRivets(p,16,18+2,L,3);
       // Sparks based on state
-      if(s===0){
-        // Idle: tiny static sparks
-        p(13,5,C.SPARK);p(19,6,C.SPARK);
-      }
+      if(s===0){p(16-sphereR-1,sphereY+1,C.SPARK);p(16+sphereR+1,sphereY-1,C.SPARK);}
       if(s===1){
-        // Charge: arcs building
-        p(12,4,C.SPARK);p(20,5,C.SPARK);p(11,6,C.LTSPARK);p(21,4,C.LTSPARK);
-        // Small arcs
-        p(13,3,C.BLUE);p(14,2,C.LTBLU);p(18,3,C.BLUE);p(19,2,C.LTBLU);
+        p(16-sphereR-2,sphereY-1,C.SPARK);p(16+sphereR+2,sphereY,C.SPARK);
+        p(16-sphereR-3,sphereY+1,C.LTSPARK);p(16+sphereR+3,sphereY-1,C.LTSPARK);
+        p(16-2,sphereY-sphereR-1,C.BLUE);p(16-1,sphereY-sphereR-2,C.LTBLU);
+        p(16+2,sphereY-sphereR-1,C.BLUE);p(16+1,sphereY-sphereR-2,C.LTBLU);
       }
       if(s===2){
-        // Fire: full lightning arcs
-        // Left arc
-        const larc=[[12,4],[11,3],[10,2],[9,3],[8,4],[7,3],[6,2],[5,3],[4,4]];
-        larc.forEach(([x,y],i)=>p(x,y,i%2===0?C.LTBLU:C.WBLU));
-        // Right arc
-        const rarc=[[20,5],[21,4],[22,3],[23,4],[24,5],[25,4],[26,3]];
-        rarc.forEach(([x,y],i)=>p(x,y,i%2===0?C.LTBLU:C.WBLU));
-        // Top discharge
-        p(16,1,C.WSPARK);p(15,0,C.SPARK);p(17,0,C.SPARK);
-        p(16,2,C.WHITE);
-        // Glow on coil
-        p(14,5,C.LTBLU);p(18,5,C.LTBLU);
-        // Ground sparks
+        // Lightning arcs — more extensive at higher levels
+        const arcLen=4+Math.min(L-1,3)*2;
+        for(let i=0;i<arcLen;i++){
+          const lx=16-sphereR-1-i,ly=sphereY-1+(i%2===0?-1:1);
+          if(lx>=0)p(lx,ly,i%2===0?C.LTBLU:C.WBLU);
+          const rx=16+sphereR+1+i,ry=sphereY+(i%2===0?1:-1);
+          if(rx<32)p(rx,ry,i%2===0?C.LTBLU:C.WBLU);
+        }
+        p(16,sphereY-sphereR-1,C.WSPARK);p(15,sphereY-sphereR-2,C.SPARK);p(17,sphereY-sphereR-2,C.SPARK);
+        p(16,sphereY-sphereR,C.WHITE);
+        p(16-2,sphereY,C.LTBLU);p(16+2,sphereY,C.LTBLU);
         p(10,22,C.SPARK);p(22,21,C.SPARK);
       }
       if(s===3){
-        // Cooldown: fading sparks
-        p(14,4,C.DKBLU);p(18,6,C.DKBLU);p(12,7,C.DKBLU);p(20,8,C.DKBLU);
-        mSteam(p,14,3,3);
+        p(16-2,sphereY-1,C.DKBLU);p(16+2,sphereY+1,C.DKBLU);p(16-4,stemTop+2,C.DKBLU);p(16+4,stemTop+3,C.DKBLU);
+        mSteam(p,16-2,sphereY-sphereR-1,3);
       }
+      lvlSteam(p,houseX-3,17,L);
     },
     // 4: Mortar — Heavy cannon tilted upward
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
       mBase(p,b,23,22,s===1?1:s===2?2:0);
-      // Heavy base mount
-      b(10,19,12,4,C.DKBRZ);b(11,19,10,3,C.BRONZE);b(12,19,8,1,C.TAN);
-      // Elevation mechanism (side plates)
-      b(9,16,3,4,C.DKSTL);b(10,16,1,3,C.STEEL);
-      b(20,16,3,4,C.DKSTL);b(21,16,1,3,C.STEEL);
-      // Barrel (angled upward) - thick mortar tube
+      // Heavy base mount — bigger at higher levels
+      const mountW=10+Math.min(L-1,2)*1;const mountX=16-Math.floor(mountW/2);
+      b(mountX,19,mountW,4,C.DKBRZ);b(mountX+1,19,mountW-2,3,C.BRONZE);b(mountX+2,19,mountW-4,1,C.TAN);
+      // Elevation mechanism (side plates) — reinforced at higher levels
+      const plateW=2+Math.min(L-1,2);
+      b(mountX-plateW,16,plateW+1,4,C.DKSTL);b(mountX-plateW+1,16,1,3,C.STEEL);
+      b(mountX+mountW-1,16,plateW+1,4,C.DKSTL);b(mountX+mountW,16,1,3,C.STEEL);
+      // Level 3+: extra support struts
+      if(L>=3){
+        b(mountX-plateW-1,18,1,4,C.DKBRZ);
+        b(mountX+mountW+plateW,18,1,4,C.DKBRZ);
+      }
+      // Barrel (angled upward) — thicker at higher levels
       const recoil=s===2?2:0;
+      const barrelW=4+Math.min(L-1,2)*1;
       for(let i=0;i<12;i++){
-        const bx=12+Math.floor(i*0.5),by=15-i+recoil;
-        if(by>=0&&by<32){
-          b(bx,by,6,1,C.DKSTL);
-          p(bx+1,by,C.STEEL);p(bx+4,by,C.STEEL);
-          p(bx+2,by,C.LTSTL);p(bx+3,by,C.LTSTL);
+        const bx_=12+Math.floor(i*0.5),by_=15-i+recoil;
+        if(by_>=0&&by_<32){
+          b(bx_,by_,barrelW+2,1,C.DKSTL);
+          p(bx_+1,by_,C.STEEL);p(bx_+barrelW,by_,C.STEEL);
+          for(let j=2;j<barrelW;j++)p(bx_+j,by_,C.LTSTL);
         }
       }
       // Barrel mouth (top)
-      b(17,3+recoil,4,2,C.DKBRN);b(18,3+recoil,2,2,C.BLACK);
-      // Barrel reinforcing rings
-      b(13,12+recoil,6,1,C.BRONZE);b(15,8+recoil,5,1,C.BRONZE);
+      b(17,3+recoil,barrelW,2,C.DKBRN);b(18,3+recoil,barrelW-2,2,C.BLACK);
+      // Barrel reinforcing rings — more at higher levels
+      b(13,12+recoil,barrelW+2,1,C.BRONZE);b(15,8+recoil,barrelW+1,1,C.BRONZE);
+      if(L>=3)b(14,10+recoil,barrelW+1,1,C.BRONZE);
       // Rivets
-      p(10,17,C.RIVET);p(22,17,C.RIVET);p(14,13+recoil,C.RIVET);
-      if(s===1){
-        // Charge: loading
-        p(18,4,C.ORANGE);p(17,5,C.DKORG);
-        mSteam(p,11,15,3);
-      }
+      lvlRivets(p,16,17,L,4);
+      p(mountX-plateW+1,17,C.RIVET);p(mountX+mountW+plateW-2,17,C.RIVET);
+      // Level 3+: side gears
+      if(L>=3)mGear(p,mountX-2,20,1,C.GEAR,4);
+      if(L>=4)mGear(p,mountX+mountW+1,20,1,C.GEAR,4);
+      lvlExhaust(p,b,mountX-plateW-2,15,L);
+      if(s===1){p(18,4+recoil,C.ORANGE);p(17,5+recoil,C.DKORG);mSteam(p,mountX-1,15,3);}
       if(s===2){
-        // Fire: muzzle blast + recoil
-        b(17,0,4,3,C.SPARK);p(18,0,C.WSPARK);p(19,0,C.WSPARK);
-        p(16,1,C.FLAME);p(21,1,C.FLAME);p(17,1,C.LTFLM);p(20,1,C.LTFLM);
-        // Smoke cloud at muzzle
-        p(15,2,C.SMOKE);p(22,2,C.SMOKE);p(16,0,C.LTSMK);p(21,0,C.LTSMK);
-        // Recoil piston compression
-        b(10,18,2,2,C.DKSTL);b(20,18,2,2,C.DKSTL);
+        b(17,0,barrelW,3,C.SPARK);p(18,0,C.WSPARK);p(19,0,C.WSPARK);
+        p(16,1,C.FLAME);p(17+barrelW,1,C.FLAME);p(17,1,C.LTFLM);p(16+barrelW,1,C.LTFLM);
+        p(15,2,C.SMOKE);p(18+barrelW,2,C.SMOKE);p(16,0,C.LTSMK);p(17+barrelW,0,C.LTSMK);
+        b(mountX-1,18,2,2,C.DKSTL);b(mountX+mountW-1,18,2,2,C.DKSTL);
       }
-      if(s===3){
-        // Cooldown: barrel smoking
-        mSteam(p,18,2,6);mSteam(p,16,3,4);
-        p(19,4,C.DKSMK);
-      }
+      if(s===3){mSteam(p,18,2+recoil,6);mSteam(p,16,3+recoil,4);p(19,4+recoil,C.DKSMK);}
+      lvlSteam(p,mountX+mountW+2,14,L);
     },
     // 5: Shredder — Spinning blade array
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
       mBase(p,b,24,20,s===1?1:s===2?2:0);
       // Central axle housing
       b(13,16,6,8,C.DKBRZ);b(14,16,4,7,C.BRONZE);b(15,16,2,1,C.TAN);
-      // Motor housing
-      b(11,18,10,4,C.DKSTL);b(12,18,8,3,C.STEEL);
-      p(12,19,C.RIVET);p(19,19,C.RIVET);
-      // Blade axle
-      b(15,4,2,14,C.DKSTL);b(15,4,1,14,C.STEEL);
-      // Spinning blades - position depends on state
+      // Motor housing — bigger at higher levels
+      const motorW=8+Math.min(L-1,3)*1;const motorX=16-Math.floor(motorW/2);
+      b(motorX-1,18,motorW+2,4,C.DKSTL);b(motorX,18,motorW,3,C.STEEL);
+      lvlRivets(p,16,19,L,Math.floor(motorW/2)-1);
+      // Blade axle — taller at higher levels
+      const axleH=12+Math.min(L-1,2)*1;const axleTop=18-axleH;
+      b(15,axleTop,2,axleH,C.DKSTL);b(15,axleTop,1,axleH,C.STEEL);
+      // Spinning blades — more and longer at higher levels
       const bladePhase=s===2?1:s===1?0.5:0;
-      const bladeAngles=s===2?[0,45,90,135]:[0,60,120,180];
-      // Draw 4 blades as elongated shapes
-      for(let bi=0;bi<4;bi++){
-        const a=(bi*90+bladePhase*45)*Math.PI/180;
-        for(let r=2;r<=7;r++){
-          const bx=16+Math.round(Math.cos(a)*r);
-          const by=10+Math.round(Math.sin(a)*r);
-          if(bx>=0&&bx<32&&by>=0&&by<32){
-            p(bx,by,r<4?C.LTSTL:r<6?C.STEEL:C.DKSTL);
+      const bladeCount=4+Math.min(L-1,2);
+      const bladeLen=5+Math.min(L-1,3)*1;
+      const hubY=axleTop+Math.floor(axleH/3);
+      for(let bi=0;bi<bladeCount;bi++){
+        const a=(bi*(360/bladeCount)+bladePhase*45)*Math.PI/180;
+        for(let r=2;r<=bladeLen;r++){
+          const bx_=16+Math.round(Math.cos(a)*r);
+          const by_=hubY+Math.round(Math.sin(a)*r);
+          if(bx_>=0&&bx_<32&&by_>=0&&by_<32){
+            p(bx_,by_,r<3?C.LTSTL:r<bladeLen-1?C.STEEL:C.DKSTL);
           }
         }
-        // Blade edge highlight
-        const ex=16+Math.round(Math.cos(a)*7);
-        const ey=10+Math.round(Math.sin(a)*7);
+        const ex=16+Math.round(Math.cos(a)*bladeLen);
+        const ey=hubY+Math.round(Math.sin(a)*bladeLen);
         if(ex>=0&&ex<32&&ey>=0&&ey<32)p(ex,ey,C.WTSTL);
       }
-      // Center hub
-      mGear(p,16,10,2,C.BRONZE,6);
-      p(16,10,C.DKBRN);
+      // Center hub — bigger at higher levels
+      const hubR=1+Math.min(L-1,2);
+      mGear(p,16,hubY,hubR,C.BRONZE,4+L);
+      p(16,hubY,C.DKBRN);
+      // Level 3+: extra decorative gears
+      if(L>=3)mGear(p,motorX-1,20,1,C.GEAR,4);
+      if(L>=4)mGear(p,motorX+motorW,20,1,C.GEAR,4);
+      if(L>=5){mGear(p,16,axleTop-1,1,C.DKGEAR,4);}
+      lvlArmor(p,b,motorX,18,motorW,3,L);
       if(s===1){
-        // Charge: blades start spinning, motion blur hint
-        p(10,10,C.DKSTL);p(22,10,C.DKSTL);p(16,4,C.DKSTL);p(16,16,C.DKSTL);
+        for(let i=0;i<bladeCount;i++){
+          const a_=i*(360/bladeCount)*Math.PI/180;
+          const bx_=16+Math.round(Math.cos(a_)*(bladeLen+2));
+          const by_=hubY+Math.round(Math.sin(a_)*(bladeLen+2));
+          if(bx_>=0&&bx_<32&&by_>=0&&by_<32)p(bx_,by_,C.DKSTL);
+        }
       }
       if(s===2){
-        // Fire: full spin, motion arcs
-        for(let a=0;a<8;a++){
-          const ang=a*Math.PI/4;
-          for(let r=3;r<=7;r++){
-            const bx=16+Math.round(Math.cos(ang)*r);
-            const by=10+Math.round(Math.sin(ang)*r);
-            if(bx>=0&&bx<32&&by>=0&&by<32)p(bx,by,r%2?C.LTSTL:C.STEEL);
+        for(let a_=0;a_<bladeCount*2;a_++){
+          const ang=a_*Math.PI/bladeCount;
+          for(let r=3;r<=bladeLen;r++){
+            const bx_=16+Math.round(Math.cos(ang)*r);
+            const by_=hubY+Math.round(Math.sin(ang)*r);
+            if(bx_>=0&&bx_<32&&by_>=0&&by_<32)p(bx_,by_,r%2?C.LTSTL:C.STEEL);
           }
         }
-        // Sparks flying off
-        p(7,6,C.SPARK);p(25,8,C.SPARK);p(8,14,C.SPARK);p(24,12,C.SPARK);
-        p(5,4,C.LTSPARK);p(27,15,C.LTSPARK);
+        p(16-bladeLen-2,hubY-2,C.SPARK);p(16+bladeLen+2,hubY+1,C.SPARK);
+        p(16-bladeLen,hubY+3,C.SPARK);p(16+bladeLen,hubY-3,C.SPARK);
+        p(16-bladeLen-3,hubY-4,C.LTSPARK);p(16+bladeLen+3,hubY+4,C.LTSPARK);
       }
       if(s===3){
-        // Cooldown: blades slowing, metal shavings
-        p(9,11,C.RIVET);p(23,9,C.RIVET);p(11,7,C.DKSTL);
-        mSteam(p,14,3,3);
+        p(16-bladeLen+2,hubY+1,C.RIVET);p(16+bladeLen-2,hubY-1,C.RIVET);
+        mSteam(p,14,axleTop-2,3);
       }
+      lvlSteam(p,motorX-3,17,L);
     },
     // 6: Railgun — Long sleek barrel with energy buildup
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
       mBase(p,b,24,20,s===1?1:s===2?2:0);
-      // Capacitor banks (sides)
-      b(5,14,4,9,C.DKBRZ);b(6,14,2,8,C.BRONZE);b(6,14,2,1,C.TAN);
-      b(23,14,4,9,C.DKBRZ);b(24,14,2,8,C.BRONZE);b(24,14,2,1,C.TAN);
+      // Capacitor banks (sides) — bigger at higher levels
+      const capW=3+Math.min(L-1,1);const capH=7+Math.min(L-1,2)*1;
+      b(5,14,capW+1,capH,C.DKBRZ);b(6,14,capW-1,capH-1,C.BRONZE);b(6,14,capW-1,1,C.TAN);
+      b(32-6-capW,14,capW+1,capH,C.DKBRZ);b(32-5-capW+1,14,capW-1,capH-1,C.BRONZE);b(32-5-capW+1,14,capW-1,1,C.TAN);
+      // Extra capacitor at lvl 3
+      if(L>=3){
+        b(3,16,2,capH-4,C.DKBRZ);b(3,16,1,capH-5,C.BRONZE);
+        b(28,16,2,capH-4,C.DKBRZ);b(29,16,1,capH-5,C.BRONZE);
+      }
       // Energy conduits to barrel
       b(9,17,3,1,C.DKBLU);b(20,17,3,1,C.DKBLU);
       if(s>=1){b(9,17,3,1,C.BLUE);b(20,17,3,1,C.BLUE);}
-      // Main barrel - long and sleek
-      b(8,12,18,4,C.DKSTL);b(9,12,16,3,C.STEEL);b(10,12,14,2,C.LTSTL);
-      // Barrel extension (long)
-      b(26,13,5,2,C.DKSTL);b(26,13,5,1,C.STEEL);
+      // Main barrel — longer at higher levels
+      const barrelW=16+Math.min(L-1,1)*2;const barrelX=16-Math.floor(barrelW/2);
+      b(barrelX,12,barrelW,4,C.DKSTL);b(barrelX+1,12,barrelW-2,3,C.STEEL);b(barrelX+2,12,barrelW-4,2,C.LTSTL);
+      // Barrel extension
+      const extLen=4+Math.min(L-1,1);
+      b(barrelX+barrelW,13,extLen,2,C.DKSTL);b(barrelX+barrelW,13,extLen,1,C.STEEL);
       // Barrel tip
-      b(31,12,1,4,C.DKBRN);
+      const tipX=Math.min(barrelX+barrelW+extLen,31);
+      b(tipX,12,1,4,C.DKBRN);
       // Rail grooves along barrel
-      b(10,12,16,1,C.DKSTL);b(10,15,16,1,C.DKSTL);
+      b(barrelX+2,12,barrelW-4,1,C.DKSTL);b(barrelX+2,15,barrelW-4,1,C.DKSTL);
       // Barrel shroud
-      b(8,11,4,6,C.DKBRZ);b(9,11,2,5,C.BRONZE);
+      b(barrelX,11,4,6,C.DKBRZ);b(barrelX+1,11,2,5,C.BRONZE);
+      lvlArmor(p,b,barrelX+2,12,barrelW-4,3,L);
       // Scope/sensor on top
       b(14,10,4,2,C.DKSTL);b(15,9,2,1,C.STEEL);
       p(15,9,s>=1?C.BLUE:C.DKBLU);
       // Rivets
-      p(11,14,C.RIVET);p(18,14,C.RIVET);p(25,14,C.RIVET);
+      lvlRivets(p,16,14,L,4);
+      // Level 2+: extra scope or sensor
+      if(L>=2){b(18,10,2,1,C.DKSTL);p(19,9,s>=1?C.BLUE:C.DKBLU);}
+      if(L>=3)mGear(p,barrelX-1,16,1,C.GEAR,4);
+      lvlExhaust(p,b,4,13,L);
       if(s===1){
-        // Charge: blue energy building along rails
-        for(let i=0;i<12;i++){
-          p(12+i,12,i%2?C.LTBLU:C.BLUE);
-          p(12+i,15,i%2?C.BLUE:C.DKBLU);
+        for(let i=0;i<barrelW-4;i++){
+          p(barrelX+2+i,12,i%2?C.LTBLU:C.BLUE);
+          p(barrelX+2+i,15,i%2?C.BLUE:C.DKBLU);
         }
-        p(15,9,C.LTBLU);
-        // Capacitor glow
-        p(7,16,C.BLUE);p(25,16,C.BLUE);
+        p(15,9,C.LTBLU);p(7,16,C.BLUE);p(25,16,C.BLUE);
       }
       if(s===2){
-        // Fire: beam discharge
-        for(let i=0;i<12;i++){
-          p(12+i,12,C.WBLU);p(12+i,15,C.WBLU);
-          p(12+i,13,C.WHITE);p(12+i,14,C.LTBLU);
+        for(let i=0;i<barrelW-4;i++){
+          p(barrelX+2+i,12,C.WBLU);p(barrelX+2+i,15,C.WBLU);
+          p(barrelX+2+i,13,C.WHITE);p(barrelX+2+i,14,C.LTBLU);
         }
-        // Muzzle flash (blue)
-        b(30,11,2,6,C.LTBLU);p(31,13,C.WHITE);p(31,14,C.WHITE);
-        p(29,10,C.BLUE);p(29,17,C.BLUE);
-        // Capacitor discharge
+        b(tipX-1,11,2,6,C.LTBLU);p(tipX,13,C.WHITE);p(tipX,14,C.WHITE);
+        p(tipX-2,10,C.BLUE);p(tipX-2,17,C.BLUE);
         p(7,15,C.LTBLU);p(7,17,C.LTBLU);p(25,15,C.LTBLU);p(25,17,C.LTBLU);
         p(15,9,C.WHITE);
       }
       if(s===3){
-        // Cooldown: residual blue glow fading
         p(20,13,C.DKBLU);p(24,14,C.DKBLU);p(16,12,C.DKBLU);
-        mSteam(p,28,10,4);
+        mSteam(p,tipX-2,10,4);
         p(7,16,C.DKBLU);p(25,16,C.DKBLU);
       }
+      lvlSteam(p,3,12,L);
     },
     // 7: Titan Cannon (Ultimate) — Massive multi-barrel artillery
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
       mBase(p,b,24,26,s===1?1:s===2?2:0);
-      // Massive base platform
-      b(3,21,26,3,C.DKBRZ);b(4,21,24,2,C.BRONZE);b(5,21,22,1,C.TAN);
-      // Side structural supports
-      b(4,14,4,8,C.DKSTL);b(5,14,2,7,C.STEEL);
-      b(24,14,4,8,C.DKSTL);b(25,14,2,7,C.STEEL);
-      // Central turret housing - large
-      b(8,10,16,12,C.DKSTL);b(9,10,14,11,C.STEEL);b(10,10,12,10,C.LTSTL);
+      // Massive base platform — grows with level
+      const platW=24+Math.min(L-1,1)*2;const platX=16-Math.floor(platW/2);
+      b(platX,21,platW,3,C.DKBRZ);b(platX+1,21,platW-2,2,C.BRONZE);b(platX+2,21,platW-4,1,C.TAN);
+      // Side structural supports — bigger at higher levels
+      const supW=3+Math.min(L-1,1);
+      b(platX,14,supW+1,8,C.DKSTL);b(platX+1,14,supW-1,7,C.STEEL);
+      b(platX+platW-supW-1,14,supW+1,8,C.DKSTL);b(platX+platW-supW,14,supW-1,7,C.STEEL);
+      // Central turret housing — larger at higher levels
+      const turW=14+Math.min(L-1,1)*2;const turH=10+Math.min(L-1,1)*1;
+      const turX=16-Math.floor(turW/2);const turY=21-turH;
+      b(turX,turY,turW,turH,C.DKSTL);b(turX+1,turY,turW-2,turH-1,C.STEEL);b(turX+2,turY,turW-4,turH-2,C.LTSTL);
       // Top armor
-      b(8,9,16,2,C.DKBRZ);b(9,9,14,1,C.BRONZE);b(10,9,12,1,C.LTBRZ);
+      b(turX,turY-1,turW,2,C.DKBRZ);b(turX+1,turY-1,turW-2,1,C.BRONZE);b(turX+2,turY-1,turW-4,1,C.LTBRZ);
+      lvlArmor(p,b,turX+2,turY+1,turW-4,turH-3,L);
       // Triple barrel array
       const recoil=s===2?1:0;
+      const barrelLen=6+Math.min(L-1,1)*1;
+      const barrelX=turX+turW;
       // Top barrel
-      b(24,11+recoil,7,2,C.DKSTL);b(24,11+recoil,7,1,C.STEEL);
+      b(barrelX,turY+1+recoil,barrelLen,2,C.DKSTL);b(barrelX,turY+1+recoil,barrelLen,1,C.STEEL);
       // Middle barrel (main, largest)
-      b(24,14+recoil,8,3,C.DKSTL);b(24,14+recoil,8,1,C.STEEL);b(25,15+recoil,6,1,C.LTSTL);
+      b(barrelX,turY+4+recoil,barrelLen+1,3,C.DKSTL);b(barrelX,turY+4+recoil,barrelLen+1,1,C.STEEL);b(barrelX+1,turY+5+recoil,barrelLen-1,1,C.LTSTL);
       // Bottom barrel
-      b(24,18+recoil,7,2,C.DKSTL);b(24,18+recoil,7,1,C.STEEL);
+      b(barrelX,turY+8+recoil,barrelLen,2,C.DKSTL);b(barrelX,turY+8+recoil,barrelLen,1,C.STEEL);
       // Barrel reinforcing rings
-      b(27,10+recoil,1,12,C.BRONZE);
+      b(barrelX+3,turY+recoil,1,turH,C.BRONZE);
+      if(L>=2)b(barrelX+5,turY+recoil,1,turH,C.BRONZE);
       // Muzzle caps
-      b(30,11+recoil,1,2,C.DKBRN);b(31,14+recoil,1,3,C.DKBRN);b(30,18+recoil,1,2,C.DKBRN);
+      const muz=barrelX+barrelLen-1;
+      b(muz,turY+1+recoil,1,2,C.DKBRN);b(muz+1,turY+4+recoil,1,3,C.DKBRN);b(muz,turY+8+recoil,1,2,C.DKBRN);
+      // Level 2+: extra barrels
+      if(L>=2){
+        // Side skirt barrels
+        b(barrelX,turY-1+recoil,barrelLen-2,1,C.DKSTL);
+        b(barrelX,turY+turH+recoil,barrelLen-2,1,C.DKSTL);
+      }
+      if(L>=3){
+        // Heavy reinforcement plates on turret sides
+        b(turX-1,turY+2,2,turH-4,C.DKBRZ);b(turX-1,turY+2,1,turH-5,C.BRONZE);
+      }
       // Gear mechanism visible on side
-      mGear(p,7,17,2,C.GEAR,6);
-      mGear(p,25,17,2,C.GEAR,6);
+      mGear(p,turX+2,turY+turH-2,2,C.GEAR,6);
+      mGear(p,turX+turW-3,turY+turH-2,2,C.GEAR,6);
+      if(L>=2)mGear(p,turX+Math.floor(turW/2),turY+turH-1,1,C.DKGEAR,4);
       // Exhaust pipes (back/left side)
-      b(3,11,3,2,C.DKSTL);b(3,11,3,1,C.STEEL);
-      b(3,15,3,2,C.DKSTL);b(3,15,3,1,C.STEEL);
+      const exhCount=1+Math.min(L-1,1);
+      for(let i=0;i<exhCount;i++){
+        b(platX-1,turY+1+i*4,3,2,C.DKSTL);b(platX-1,turY+1+i*4,3,1,C.STEEL);
+      }
+      b(platX-1,turY+turH-3,3,2,C.DKSTL);b(platX-1,turY+turH-3,3,1,C.STEEL);
       // Rivets everywhere
-      p(10,12,C.RIVET);p(15,12,C.RIVET);p(20,12,C.RIVET);
-      p(10,18,C.RIVET);p(15,18,C.RIVET);p(20,18,C.RIVET);
-      p(5,15,C.RIVET);p(27,15,C.RIVET);
+      lvlRivets(p,16,turY+Math.floor(turH/2),L,5);
+      p(turX+2,turY+2,C.RIVET);p(turX+turW-3,turY+2,C.RIVET);
+      p(turX+2,turY+turH-3,C.RIVET);p(turX+turW-3,turY+turH-3,C.RIVET);
+      p(platX+1,15,C.RIVET);p(platX+platW-2,15,C.RIVET);
       // Ammo feed
-      b(8,19,5,3,C.DKBRZ);b(9,19,3,2,C.BRONZE);
-      p(9,19,C.ORANGE);p(11,20,C.ORANGE);
+      b(turX,turY+turH-2,5,3,C.DKBRZ);b(turX+1,turY+turH-2,3,2,C.BRONZE);
+      p(turX+1,turY+turH-2,C.ORANGE);p(turX+3,turY+turH-1,C.ORANGE);
       if(s===1){
-        // Charge: barrels heating, energy building
-        p(29,12,C.ORANGE);p(30,15,C.ORANGE);p(29,19,C.ORANGE);
-        b(10,10,12,1,C.TAN);
-        // Exhaust steam
-        mSteam(p,2,10,4);mSteam(p,2,14,3);
-        p(7,17,C.LTGEAR);p(25,17,C.LTGEAR);
+        p(muz,turY+2+recoil,C.ORANGE);p(muz+1,turY+5+recoil,C.ORANGE);p(muz,turY+9+recoil,C.ORANGE);
+        b(turX+2,turY,turW-4,1,C.TAN);
+        mSteam(p,platX-2,turY,4);mSteam(p,platX-2,turY+turH-4,3);
+        p(turX+2,turY+turH-2,C.LTGEAR);p(turX+turW-3,turY+turH-2,C.LTGEAR);
       }
       if(s===2){
         // Fire: massive triple muzzle flash
-        // Top barrel flash
-        b(30,9,2,4,C.SPARK);p(31,10,C.WSPARK);p(30,8,C.FLAME);
-        // Middle barrel flash (biggest)
-        b(31,12,1,7,C.SPARK);p(31,14,C.WSPARK);p(31,15,C.WHITE);p(31,16,C.WSPARK);
-        b(30,13,1,5,C.LTFLM);
-        // Bottom barrel flash
-        b(30,18,2,4,C.SPARK);p(31,19,C.WSPARK);p(30,22,C.FLAME);
-        // Smoke clouds
-        p(28,8,C.SMOKE);p(29,7,C.LTSMK);p(28,22,C.SMOKE);p(29,23,C.LTSMK);
-        // Exhaust backblast
-        b(1,10,2,3,C.SMOKE);b(1,14,2,3,C.SMOKE);
-        p(0,11,C.LTSMK);p(0,15,C.LTSMK);
-        // Recoil pistons visible
-        b(5,16,2,1,C.WTSTL);b(26,16,2,1,C.WTSTL);
+        b(muz-1,turY-1+recoil,2,4,C.SPARK);p(muz,turY+recoil,C.WSPARK);p(muz-1,turY-2+recoil,C.FLAME);
+        b(muz,turY+2+recoil,1,7,C.SPARK);p(muz,turY+4+recoil,C.WSPARK);p(muz,turY+5+recoil,C.WHITE);p(muz,turY+6+recoil,C.WSPARK);
+        b(muz-1,turY+3+recoil,1,5,C.LTFLM);
+        b(muz-1,turY+8+recoil,2,4,C.SPARK);p(muz,turY+9+recoil,C.WSPARK);p(muz-1,turY+12+recoil,C.FLAME);
+        p(muz-3,turY-2+recoil,C.SMOKE);p(muz-2,turY-3+recoil,C.LTSMK);p(muz-3,turY+12+recoil,C.SMOKE);
+        b(platX-3,turY,2,3,C.SMOKE);b(platX-3,turY+turH-4,2,3,C.SMOKE);
+        p(platX-4,turY+1,C.LTSMK);p(platX-4,turY+turH-3,C.LTSMK);
+        b(platX+1,turY+turH-3,2,1,C.WTSTL);b(platX+platW-3,turY+turH-3,2,1,C.WTSTL);
       }
       if(s===3){
-        // Cooldown: heavy smoke, heat dissipation
-        mSteam(p,29,8,6);mSteam(p,30,14,5);mSteam(p,29,18,6);
-        mSteam(p,2,9,5);mSteam(p,2,13,4);
-        p(28,11,C.DKSMK);p(28,15,C.DKSMK);p(28,19,C.DKSMK);
-        // Gears cooling
-        p(7,17,C.DKSTL);p(25,17,C.DKSTL);
+        mSteam(p,muz-2,turY-2+recoil,6);mSteam(p,muz-1,turY+4+recoil,5);mSteam(p,muz-2,turY+8+recoil,6);
+        mSteam(p,platX-2,turY-1,5);mSteam(p,platX-2,turY+turH-5,4);
+        p(muz-3,turY+1,C.DKSMK);p(muz-3,turY+5,C.DKSMK);p(muz-3,turY+9,C.DKSMK);
+        p(turX+2,turY+turH-2,C.DKSTL);p(turX+turW-3,turY+turH-2,C.DKSTL);
       }
     },
   ];
-  const cols=8,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  // Layout: 24 rows × 8 cols
+  // For each tower (col), for each level (0..T_MAX_LVL-1), for each state (0..3)
+  // Row = lvlIndex * 4 + state
+  const cols=8,rows=T_ROWS;
+  for(let col=0;col<cols;col++){
+    const maxLvl=T_LEVELS[col];
+    for(let lvlIdx=0;lvlIdx<T_MAX_LVL;lvlIdx++){
+      for(let state=0;state<4;state++){
+        const row=lvlIdx*4+state;
+        if(lvlIdx<maxLvl){
+          fns[col](ctx,[col*T_CELL,row*T_CELL],state,lvlIdx+1);
+        }
+        // else: leave empty (tower doesn't have this level)
+      }
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
@@ -1177,6 +1360,7 @@ function drawHero(ctx:CanvasRenderingContext2D){
 // ===== LABELS =====
 const T_NAMES=['Wall','Turret','Flamethrower','Tesla','Mortar','Shredder','Railgun','Titan Cannon'];
 const T_STATES=['Idle','Charge','Fire','Cooldown'];
+const T_LVL_LABELS=Array.from({length:T_MAX_LVL},(_,i)=>`Lv${i+1}`);
 const P_NAMES=['Ricochet','Bullet','Flame','Lightning','Shell','Blade','Rail Beam','Titan Shell'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -1193,16 +1377,38 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=8*T_CELL;tc.height=4*T_CELL;
+    const tc=tRef.current!;tc.width=8*T_CELL;tc.height=T_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
-    // Tower preview
-    const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
-    tpv.width=tLW+8*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    // Tower preview — grouped by level, 4 state rows per level
+    const tpv=tPv.current!;const tS=2,tLW=80,tLH=13,tLvlGap=6;
+    const tRowsPerLvl=4;
+    tpv.width=tLW+8*T_CELL*tS;tpv.height=T_MAX_LVL*(tRowsPerLvl*(T_CELL*tS+tLH)+tLvlGap)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#1a1008';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#cc8833';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
-      for(let cc=0;cc<8;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#332211';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#eebb66';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
+    for(let lvl=0;lvl<T_MAX_LVL;lvl++){
+      const lvlBaseY=lvl*(tRowsPerLvl*(T_CELL*tS+tLH)+tLvlGap)+5;
+      // Level header
+      tpc.fillStyle='#ffdd88';tpc.font='bold 10px monospace';
+      tpc.fillText(`── Level ${lvl+1} ──`,3,lvlBaseY-1);
+      for(let sr=0;sr<tRowsPerLvl;sr++){
+        const row=lvl*4+sr;
+        const by=lvlBaseY+sr*(T_CELL*tS+tLH)+10;
+        tpc.fillStyle='#cc8833';tpc.font='bold 9px monospace';
+        tpc.fillText(T_STATES[sr],3,by+T_CELL*tS/2+3);
+        for(let cc=0;cc<8;cc++){
+          const bx_=tLW+cc*T_CELL*tS;
+          // Only draw if this tower has this level
+          if(lvl<T_LEVELS[cc]){
+            tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);
+            tpc.drawImage(tc,cc*T_CELL,row*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);
+            tpc.restore();
+          }
+          tpc.strokeStyle='#332211';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);
+          if(sr===0&&lvl===0){tpc.fillStyle='#eebb66';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}
+        }
+      }
+    }
 
     // Projectiles
     const pc_=pRef.current!;pc_.width=8*P_CELL;pc_.height=6*P_CELL;
@@ -1236,7 +1442,7 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'mechanical_towers_animated.png',
-      info:{sz:'512×256',cell:'64×64',loader:"this.load.spritesheet('mech_towers','mechanical_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'8 cols (towers) × 4 rows (idle, charge, fire, cooldown)'}},
+      info:{sz:'512×1536',cell:'64×64',loader:"this.load.spritesheet('mech_towers','mechanical_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`8 cols (towers) × ${T_ROWS} rows (${T_MAX_LVL} levels × 4 states). Levels: ${T_NAMES.map((n,i)=>`${n}=${T_LEVELS[i]}`).join(', ')}`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'mechanical_projectiles_animated.png',
       info:{sz:'256×192',cell:'32×32',loader:"this.load.spritesheet('mech_proj','mechanical_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'8 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Engineer',ref:hRef,pvRef:hPv,dl:'engineer_hero_directional.png',
@@ -1261,7 +1467,7 @@ export default function App(){
           <button key={v} onClick={()=>setView(v)} style={{background:view===v?'#221108':'#111',color:view===v?C.TAN:'#665533',border:`1px solid ${view===v?'#553311':'#222'}`,padding:'4px 8px',borderRadius:3,cursor:'pointer',fontFamily:'monospace',fontSize:10,textTransform:'capitalize'}}>{v==='actual'?'Actual Size':v}</button>
         ))}
       </div>
-      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'70vh'}}>
+      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'85vh'}}>
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
             <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}}/>

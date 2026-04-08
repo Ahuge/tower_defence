@@ -83,152 +83,238 @@ function tBeam(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bright:s
   }
 }
 
-// ===== TOWERS (7×4 at 64×64) =====
+// ===== TOWER LEVEL COUNTS =====
+const T_LEVELS=[6,4,3,3,4,3,1]; // Resonator,Amplifier,Quickener,Reach,CritMass,Conduit,Crescendo
+const T_MAX_LVL=6;
+const T_STATES_PER_LVL=4; // idle,charge,fire,cooldown
+const T_TOTAL_ROWS=T_MAX_LVL*T_STATES_PER_LVL; // 24
+
+// Level-based intensity helpers (level 1-6, returns 0.0-1.0)
+function lvlF(level:number,maxLvl:number){return Math.min(1,(level-1)/Math.max(1,maxLvl-1));}
+
+// ===== TOWERS (7×24 at 64×64, 6 levels × 4 states) =====
 function drawTowers(ctx:any){
   const fns=[
-    // 0: Resonator — basic gold crystal with sound waves
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,18,s===1?1:s===2?2:0);
-      // Main crystal
-      tCrystal(p,b,13,4,17,6,C.DKGLD,s>=1?C.LTGLD:C.GOLD,s===2?C.WHITE:C.LTGLD);
-      // Crystal facets
-      p(15,6,C.WHITE);p(16,8,C.CREAM);p(14,10,s>=1?C.WHITE:C.CREAM);
-      // Sound wave arcs emanating
+    // 0: Resonator — basic gold crystal with sound waves (6 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const f=lvlF(lv,6);// 0..1
+      const baseW=14+Math.round(f*6);// 14→20
+      tBase(p,b,22,baseW,s===1?1:s===2?2:0);
+      // Main crystal — grows taller and wider with level
+      const cH=12+Math.round(f*8);// 12→20
+      const cW=4+Math.round(f*4);// 4→8
+      const cY=Math.max(1,21-cH);
+      const bright=f>0.3;
+      tCrystal(p,b,16-Math.floor(cW/2),cY,cH,cW,C.DKGLD,bright?C.LTGLD:C.GOLD,s===2?C.WHITE:C.LTGLD);
+      // Crystal facets — more visible at higher levels
+      p(15,cY+2,C.WHITE);
+      if(lv>=2){p(16,cY+4,C.CREAM);}
+      if(lv>=3){p(14,cY+6,C.WHITE);}
+      if(lv>=4){p(17,cY+3,C.CREAM);p(13,cY+5,C.LTGLD);}
+      if(lv>=5){p(18,cY+5,C.WHITE);p(12,cY+4,C.CREAM);}
+      if(lv>=6){p(15,cY+1,C.WHITE);p(17,cY+7,C.WHITE);}
+      // Sound wave arcs — more arcs at higher levels
+      const waveCount=Math.min(3,Math.ceil(lv/2));
       if(s>=1){
-        for(let i=0;i<6;i++){const a=-Math.PI/3+i*Math.PI/15;p(20+Math.round(Math.cos(a)*3),12+Math.round(Math.sin(a)*3),C.LTGLD);}
-        for(let i=0;i<6;i++){const a=Math.PI+Math.PI/3-i*Math.PI/15;p(11-Math.round(Math.cos(a)*3),12-Math.round(Math.sin(a)*3),C.LTGLD);}
+        for(let w=0;w<waveCount;w++){
+          const rad=3+w*2;const cnt=6+w*2;
+          for(let i=0;i<cnt;i++){const a=-Math.PI/3+i*Math.PI/(cnt*2.5);p(20+Math.round(Math.cos(a)*rad),12+Math.round(Math.sin(a)*rad),w===0?C.LTGLD:C.GOLD);}
+          for(let i=0;i<cnt;i++){const a=Math.PI+Math.PI/3-i*Math.PI/(cnt*2.5);p(11-Math.round(Math.cos(a)*rad),12-Math.round(Math.sin(a)*rad),w===0?C.LTGLD:C.GOLD);}
+        }
       }
       if(s===2){
-        // Bright sound blast
-        for(let i=0;i<8;i++){const a=-Math.PI/3+i*Math.PI/20;p(22+Math.round(Math.cos(a)*5),12+Math.round(Math.sin(a)*5),C.WHITE);}
-        for(let i=0;i<8;i++){const a=-Math.PI/3+i*Math.PI/20;p(9-Math.round(Math.cos(a)*5),12-Math.round(Math.sin(a)*5),C.WHITE);}
-        b(14,3,4,1,C.WHITE);
+        const blastR=4+Math.round(f*3);
+        for(let i=0;i<8+lv;i++){const a=-Math.PI/3+i*Math.PI/20;p(22+Math.round(Math.cos(a)*blastR),12+Math.round(Math.sin(a)*blastR),i%3===0?C.WHITE:C.LTGLD);}
+        for(let i=0;i<8+lv;i++){const a=-Math.PI/3+i*Math.PI/20;p(9-Math.round(Math.cos(a)*blastR),12-Math.round(Math.sin(a)*blastR),i%3===0?C.WHITE:C.LTGLD);}
+        b(14,cY-1,4,1,C.WHITE);
+      }
+      // Aura ring at level 3+
+      if(lv>=3&&s>=1){tRings(p,16,14,6+Math.round(f*3),C.GOLD,C.DKGLD,Math.min(3,lv-2));}
+      // Secondary crystal shards at level 3+
+      if(lv>=3){tCrystal(p,b,8,12,6+Math.round(f*3),2,C.DKGLD,C.GOLD,C.LTGLD);}
+      if(lv>=4){tCrystal(p,b,22,11,7+Math.round(f*2),2,C.DKGLD,C.GOLD,C.LTGLD);}
+      if(lv>=5){tCrystal(p,b,6,14,5,2,C.DKGLD,C.LTGLD,C.WHITE);tCrystal(p,b,24,13,5,2,C.DKGLD,C.LTGLD,C.WHITE);}
+      if(lv>=6){
+        // Full orchestral: crystal cluster + multi-color aura swirl
+        tCrystal(p,b,4,15,4,2,C.DKGLD,C.LTGLD,C.WHITE);tCrystal(p,b,26,14,4,2,C.DKGLD,C.LTGLD,C.WHITE);
+        const mcols=[C.RED,C.GRN,C.BLUE,C.MAG];
+        for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*10),12+Math.round(Math.sin(a)*8),mcols[i%4]);}
       }
       // Base glow dots
       p(10,24,s>=1?C.LTGLD:C.GOLD);p(21,24,s>=1?C.LTGLD:C.GOLD);
-      if(s===3){p(14,6,C.DPGLD);p(17,8,C.DPGLD);}
+      if(s===3){p(14,cY+2,C.DPGLD);p(17,cY+4,C.DPGLD);}
     },
-    // 1: Amplifier — red-tinted crystal, damage aura
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,18,s===1?1:s===2?2:0,C.RED);
+    // 1: Amplifier — red-tinted crystal, damage aura (4 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const f=lvlF(lv,4);
+      const baseW=16+Math.round(f*4);
+      tBase(p,b,22,baseW,s===1?1:s===2?2:0,C.RED);
       const br=s>=1,fl=s===2;
-      // Main crystal — red tinted
-      tCrystal(p,b,13,5,16,6,C.DKRED,br?C.LTRED:C.RED,fl?C.WHITE:C.LTRED);
-      // Side crystals
-      tCrystal(p,b,8,10,10,3,C.DKRED,C.RED,C.LTRED);
-      tCrystal(p,b,21,9,11,3,C.DKRED,C.RED,C.LTRED);
-      // Crystal highlights
-      p(15,7,C.WHITE);p(16,9,fl?C.WHITE:C.PAPRED);p(10,12,C.LTRED);p(22,11,C.LTRED);
-      // Red aura rings
-      if(br){
-        tRings(p,16,14,7,C.RED,C.DKRED,1);
+      // Main crystal — grows with level
+      const cH=12+Math.round(f*6);const cW=4+Math.round(f*4);
+      const cY=Math.max(2,21-cH);
+      tCrystal(p,b,16-Math.floor(cW/2),cY,cH,cW,C.DKRED,br?C.LTRED:C.RED,fl?C.WHITE:C.LTRED);
+      // Side crystals — grow with level
+      if(lv>=2){
+        tCrystal(p,b,8,10,8+Math.round(f*4),3,C.DKRED,C.RED,C.LTRED);
+        tCrystal(p,b,21,9,9+Math.round(f*3),3,C.DKRED,C.RED,C.LTRED);
       }
+      if(lv>=3){
+        tCrystal(p,b,5,13,6,2,C.DKRED,C.LTRED,C.WHITE);
+        tCrystal(p,b,25,12,6,2,C.DKRED,C.LTRED,C.WHITE);
+      }
+      if(lv>=4){
+        tCrystal(p,b,3,15,4,2,C.DKRED,C.LTRED,C.PAPRED);
+        tCrystal(p,b,27,14,4,2,C.DKRED,C.LTRED,C.PAPRED);
+      }
+      // Crystal highlights
+      p(15,cY+2,C.WHITE);if(lv>=2){p(16,cY+4,fl?C.WHITE:C.PAPRED);}
+      if(lv>=2){p(10,12,C.LTRED);p(22,11,C.LTRED);}
+      // Red aura rings — more rings at higher levels
+      if(br){tRings(p,16,14,6+Math.round(f*2),C.RED,C.DKRED,Math.min(3,lv));}
       if(fl){
-        tRings(p,16,14,7,C.LTRED,C.RED,2);
+        tRings(p,16,14,7,C.LTRED,C.RED,1+Math.min(2,lv-1));
         p(16,2,C.WHITE);p(15,3,C.LTRED);p(17,3,C.LTRED);
+        if(lv>=3){p(14,2,C.LTRED);p(18,2,C.LTRED);}
       }
       p(10,24,br?C.LTRED:C.RED);p(21,24,br?C.LTRED:C.RED);
-      if(s===3){p(14,7,C.DKRED);p(17,9,C.DKRED);b(13,14,6,1,C.DKRED);}
+      if(s===3){p(14,cY+2,C.DKRED);p(17,cY+4,C.DKRED);b(13,14,6,1,C.DKRED);}
     },
-    // 2: Quickener — green-tinted crystal, fire rate aura
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,18,s===1?1:s===2?2:0,C.GRN);
+    // 2: Quickener — green-tinted crystal, fire rate aura (3 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const f=lvlF(lv,3);
+      tBase(p,b,22,16+Math.round(f*4),s===1?1:s===2?2:0,C.GRN);
       const br=s>=1,fl=s===2;
-      // Main crystal — green tint
-      tCrystal(p,b,13,4,17,6,C.DKGRN,br?C.LTGRN:C.GRN,fl?C.WHITE:C.LTGRN);
-      // Speed lines (vertical streaks)
-      for(let i=0;i<3;i++){
-        const sx=9+i*7;
+      // Main crystal
+      const cH=13+Math.round(f*6);const cW=4+Math.round(f*3);
+      const cY=Math.max(2,21-cH);
+      tCrystal(p,b,16-Math.floor(cW/2),cY,cH,cW,C.DKGRN,br?C.LTGRN:C.GRN,fl?C.WHITE:C.LTGRN);
+      // Speed lines — more at higher levels
+      const lineCount=2+lv;
+      for(let i=0;i<lineCount;i++){
+        const sx=7+Math.round(i*(18/lineCount));
         for(let y=6;y<18;y+=2)p(sx,y,fl?C.LTGRN:br?C.GRN:C.DKGRN);
       }
+      // Secondary shards
+      if(lv>=2){tCrystal(p,b,7,11,8,2,C.DKGRN,C.GRN,C.LTGRN);tCrystal(p,b,23,10,8,2,C.DKGRN,C.GRN,C.LTGRN);}
+      if(lv>=3){tCrystal(p,b,5,14,5,2,C.DKGRN,C.LTGRN,C.WHITE);tCrystal(p,b,25,13,5,2,C.DKGRN,C.LTGRN,C.WHITE);}
       // Crystal highlights
-      p(15,6,C.WHITE);p(16,8,fl?C.WHITE:C.PAPGRN);
+      p(15,cY+2,C.WHITE);if(lv>=2)p(16,cY+4,fl?C.WHITE:C.PAPGRN);
       // Green aura rings
-      if(br){
-        tRings(p,16,14,7,C.GRN,C.DKGRN,1);
-      }
+      if(br){tRings(p,16,14,6+Math.round(f*3),C.GRN,C.DKGRN,lv);}
       if(fl){
-        tRings(p,16,14,7,C.LTGRN,C.GRN,2);
-        // Extra speed particles
-        p(6,8,C.LTGRN);p(25,7,C.LTGRN);p(4,12,C.GRN);p(27,11,C.GRN);
+        tRings(p,16,14,7,C.LTGRN,C.GRN,1+lv);
+        // Speed particles — more at higher levels
+        const pts=[[6,8],[25,7],[4,12],[27,11],[3,6],[28,5]];
+        for(let i=0;i<lv*2;i++)if(pts[i])p(pts[i][0],pts[i][1],i%2?C.GRN:C.LTGRN);
       }
       p(10,24,br?C.LTGRN:C.GRN);p(21,24,br?C.LTGRN:C.GRN);
-      if(s===3){p(14,6,C.DKGRN);p(17,8,C.DKGRN);}
+      if(s===3){p(14,cY+2,C.DKGRN);p(17,cY+4,C.DKGRN);}
     },
-    // 3: Reach — blue-tinted crystal, range aura
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,18,s===1?1:s===2?2:0,C.BLUE);
+    // 3: Reach — blue-tinted crystal, range aura (3 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const f=lvlF(lv,3);
+      tBase(p,b,22,16+Math.round(f*4),s===1?1:s===2?2:0,C.BLUE);
       const br=s>=1,fl=s===2;
-      // Main crystal — blue tint, tall and thin
-      tCrystal(p,b,14,2,19,4,C.DKBLU,br?C.LTBLU:C.BLUE,fl?C.WHITE:C.LTBLU);
-      // Extended antenna crystals (reach theme)
-      tCrystal(p,b,7,8,12,3,C.DKBLU,C.BLUE,C.LTBLU);
-      tCrystal(p,b,22,7,13,3,C.DKBLU,C.BLUE,C.LTBLU);
-      // Crystal highlights
-      p(15,5,C.WHITE);p(16,7,fl?C.WHITE:C.PAPBLU);p(9,11,C.LTBLU);p(23,10,C.LTBLU);
-      // Blue range rings (larger radius)
-      if(br){
-        tRings(p,16,14,8,C.BLUE,C.DKBLU,1);
+      // Main crystal — tall and thin, taller with level
+      const cH=15+Math.round(f*6);const cW=3+Math.round(f*2);
+      const cY=Math.max(1,21-cH);
+      tCrystal(p,b,16-Math.floor(cW/2),cY,cH,cW,C.DKBLU,br?C.LTBLU:C.BLUE,fl?C.WHITE:C.LTBLU);
+      // Extended antenna crystals — taller with level
+      if(lv>=1){
+        tCrystal(p,b,7,8,10+Math.round(f*4),3,C.DKBLU,C.BLUE,C.LTBLU);
+        tCrystal(p,b,22,7,11+Math.round(f*3),3,C.DKBLU,C.BLUE,C.LTBLU);
       }
+      if(lv>=2){tCrystal(p,b,4,12,6,2,C.DKBLU,C.LTBLU,C.WHITE);tCrystal(p,b,26,11,6,2,C.DKBLU,C.LTBLU,C.WHITE);}
+      if(lv>=3){tCrystal(p,b,2,14,4,2,C.DKBLU,C.LTBLU,C.PAPBLU);tCrystal(p,b,28,13,4,2,C.DKBLU,C.LTBLU,C.PAPBLU);}
+      // Crystal highlights
+      p(15,cY+3,C.WHITE);if(lv>=2)p(16,cY+5,fl?C.WHITE:C.PAPBLU);
+      if(lv>=1){p(9,11,C.LTBLU);p(23,10,C.LTBLU);}
+      // Blue range rings — larger radius at higher levels
+      const ringR=7+Math.round(f*3);
+      if(br){tRings(p,16,14,ringR,C.BLUE,C.DKBLU,lv);}
       if(fl){
-        tRings(p,16,14,8,C.LTBLU,C.BLUE,2);
-        p(2,10,C.LTBLU);p(29,9,C.LTBLU);p(3,16,C.BLUE);p(28,15,C.BLUE);
+        tRings(p,16,14,ringR,C.LTBLU,C.BLUE,1+lv);
+        const pts=[[2,10],[29,9],[3,16],[28,15],[1,8],[30,7]];
+        for(let i=0;i<lv*2;i++)if(pts[i])p(pts[i][0],pts[i][1],i%2?C.BLUE:C.LTBLU);
       }
       p(10,24,br?C.LTBLU:C.BLUE);p(21,24,br?C.LTBLU:C.BLUE);
-      if(s===3){p(15,4,C.DKBLU);p(16,6,C.DKBLU);}
+      if(s===3){p(15,cY+2,C.DKBLU);p(16,cY+4,C.DKBLU);}
     },
-    // 4: Critical Mass — magenta crystal, crit aura
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,18,s===1?1:s===2?2:0,C.MAG);
+    // 4: Critical Mass — magenta crystal, crit aura (4 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const f=lvlF(lv,4);
+      tBase(p,b,22,16+Math.round(f*4),s===1?1:s===2?2:0,C.MAG);
       const br=s>=1,fl=s===2;
-      // Main crystal — magenta, angular/sharp
-      tCrystal(p,b,12,4,17,8,C.DKMAG,br?C.LTMAG:C.MAG,fl?C.WHITE:C.LTMAG);
-      // Sharp shard fragments floating
+      // Main crystal — wider/sharper with level
+      const cH=13+Math.round(f*6);const cW=6+Math.round(f*4);
+      const cY=Math.max(2,21-cH);
+      tCrystal(p,b,16-Math.floor(cW/2),cY,cH,cW,C.DKMAG,br?C.LTMAG:C.MAG,fl?C.WHITE:C.LTMAG);
+      // Floating shard fragments — more at higher levels
       p(7,8,fl?C.LTMAG:C.MAG);p(8,7,C.DKMAG);
       p(24,7,fl?C.LTMAG:C.MAG);p(23,8,C.DKMAG);
-      p(6,14,br?C.MAG:C.DKMAG);p(25,13,br?C.MAG:C.DKMAG);
+      if(lv>=2){p(6,14,C.MAG);p(25,13,C.MAG);p(5,10,C.DKMAG);p(26,9,C.DKMAG);}
+      if(lv>=3){p(4,12,C.LTMAG);p(27,11,C.LTMAG);tCrystal(p,b,3,14,5,2,C.DKMAG,C.MAG,C.LTMAG);tCrystal(p,b,27,13,5,2,C.DKMAG,C.MAG,C.LTMAG);}
+      if(lv>=4){tCrystal(p,b,1,16,3,2,C.DKMAG,C.LTMAG,C.WHITE);tCrystal(p,b,29,15,3,2,C.DKMAG,C.LTMAG,C.WHITE);}
       // Crystal highlights — crit sparkle
-      p(15,6,C.WHITE);p(16,8,fl?C.WHITE:C.PAPMAG);p(14,10,C.LTMAG);
-      // Star burst pattern (crit)
+      p(15,cY+2,C.WHITE);if(lv>=2)p(16,cY+4,fl?C.WHITE:C.PAPMAG);if(lv>=2)p(14,cY+6,C.LTMAG);
+      // Star burst pattern — more points at higher levels
       if(br){
-        p(16,3,C.LTMAG);p(12,6,C.MAG);p(20,6,C.MAG);p(10,10,C.MAG);p(22,10,C.MAG);
+        const pts=Math.min(8,3+lv*2);
+        for(let i=0;i<pts;i++){const a=i*Math.PI*2/pts;p(16+Math.round(Math.cos(a)*(5+f*3)),12+Math.round(Math.sin(a)*(4+f*3)),i%2?C.LTMAG:C.MAG);}
       }
       if(fl){
-        // Big crit burst
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*8),12+Math.round(Math.sin(a)*8),i%2?C.LTMAG:C.WHITE);}
-        for(let i=0;i<8;i++){const a=i*Math.PI/4+Math.PI/8;p(16+Math.round(Math.cos(a)*6),12+Math.round(Math.sin(a)*6),C.MAG);}
+        // Crit burst — larger at higher levels
+        const burstR=6+Math.round(f*3);
+        for(let i=0;i<8+lv*2;i++){const a=i*Math.PI*2/(8+lv*2);p(16+Math.round(Math.cos(a)*burstR),12+Math.round(Math.sin(a)*burstR),i%2?C.LTMAG:C.WHITE);}
+        for(let i=0;i<8;i++){const a=i*Math.PI/4+Math.PI/8;p(16+Math.round(Math.cos(a)*(burstR-2)),12+Math.round(Math.sin(a)*(burstR-2)),C.MAG);}
         p(16,1,C.WHITE);b(15,2,2,1,C.LTMAG);
       }
       // Magenta aura rings
-      if(br)tRings(p,16,14,7,C.MAG,C.DKMAG,1);
+      if(br)tRings(p,16,14,6+Math.round(f*2),C.MAG,C.DKMAG,Math.min(3,lv));
       p(10,24,br?C.LTMAG:C.MAG);p(21,24,br?C.LTMAG:C.MAG);
-      if(s===3){p(14,6,C.DKMAG);p(17,8,C.DKMAG);p(16,3,C.DKMAG);}
+      if(s===3){p(14,cY+2,C.DKMAG);p(17,cY+4,C.DKMAG);p(16,3,C.DKMAG);}
     },
-    // 5: Conduit — multi-colored crystal hub with connecting beam lines
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,20,s===1?1:s===2?2:0);
+    // 5: Conduit — multi-colored crystal hub with connecting beam lines (3 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const f=lvlF(lv,3);
+      tBase(p,b,22,18+Math.round(f*4),s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
-      // Central hub crystal — gold
-      tCrystal(p,b,13,6,14,6,C.DKGLD,br?C.LTGLD:C.GOLD,fl?C.WHITE:C.LTGLD);
-      // Node crystals at cardinal points (4 colors)
-      tCrystal(p,b,5,10,8,3,C.DKRED,C.RED,C.LTRED);// left red
-      tCrystal(p,b,24,9,9,3,C.DKGRN,C.GRN,C.LTGRN);// right green
-      tCrystal(p,b,14,1,6,4,C.DKBLU,C.BLUE,C.LTBLU);// top blue
-      tCrystal(p,b,14,17,5,4,C.DKMAG,C.MAG,C.LTMAG);// bottom magenta
-      // Connection beams from hub to nodes
+      // Central hub crystal — grows with level
+      const hubH=11+Math.round(f*5);const hubW=4+Math.round(f*3);
+      tCrystal(p,b,16-Math.floor(hubW/2),Math.max(3,20-hubH),hubH,hubW,C.DKGLD,br?C.LTGLD:C.GOLD,fl?C.WHITE:C.LTGLD);
+      // Node crystals at cardinal points — grow with level
+      const nH=6+Math.round(f*4);const nW=2+Math.round(f*1);
+      tCrystal(p,b,5,Math.max(8,18-nH),nH,nW,C.DKRED,C.RED,C.LTRED);
+      tCrystal(p,b,24,Math.max(7,17-nH),nH,nW,C.DKGRN,C.GRN,C.LTGRN);
+      tCrystal(p,b,14,1,4+Math.round(f*3),3+Math.round(f*1),C.DKBLU,C.BLUE,C.LTBLU);
+      tCrystal(p,b,14,17,3+Math.round(f*3),3+Math.round(f*1),C.DKMAG,C.MAG,C.LTMAG);
+      // Extra node shards at higher levels
+      if(lv>=2){
+        tCrystal(p,b,2,14,4,2,C.DKRED,C.LTRED,C.WHITE);
+        tCrystal(p,b,28,13,4,2,C.DKGRN,C.LTGRN,C.WHITE);
+      }
+      if(lv>=3){
+        tCrystal(p,b,10,2,4,2,C.DKBLU,C.LTBLU,C.WHITE);
+        tCrystal(p,b,20,2,4,2,C.DKBLU,C.LTBLU,C.PAPBLU);
+      }
+      // Connection beams — brighter/thicker at higher levels
       if(br){
         tBeam(p,13,12,7,13,C.DKRED,C.RED);
         tBeam(p,19,12,25,12,C.DKGRN,C.GRN);
         tBeam(p,16,8,16,4,C.DKBLU,C.BLUE);
         tBeam(p,16,16,16,19,C.DKMAG,C.MAG);
+        if(lv>=2){
+          tBeam(p,12,13,5,14,C.DKRED,C.RED);
+          tBeam(p,20,13,27,13,C.DKGRN,C.GRN);
+        }
       }
       if(fl){
-        // Bright beam flash
         tBeam(p,13,12,6,13,C.RED,C.LTRED);
         tBeam(p,19,12,26,12,C.GRN,C.LTGRN);
         tBeam(p,16,8,16,3,C.BLUE,C.LTBLU);
         tBeam(p,16,16,16,20,C.MAG,C.LTMAG);
-        // Hub flash
+        if(lv>=2){tBeam(p,12,13,4,14,C.RED,C.LTRED);tBeam(p,20,13,28,13,C.GRN,C.LTGRN);}
         p(16,10,C.WHITE);p(15,11,C.WHITE);
       }
       // Hub highlights
@@ -238,8 +324,8 @@ function drawTowers(ctx:any){
       p(15,2,br?C.LTBLU:C.BLUE);p(15,18,br?C.LTMAG:C.MAG);
       if(s===3){p(15,8,C.DPGLD);p(16,10,C.DPGLD);}
     },
-    // 6: Crescendo (Ultimate) — massive orchestral formation, all 4 aura colors swirling
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 6: Crescendo (Ultimate) — massive orchestral formation, all 4 aura colors swirling (1 level)
+    (c:any,o:number[],s:number,_lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       tBase(p,b,23,24,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
       // Central massive crystal
@@ -289,8 +375,18 @@ function drawTowers(ctx:any){
       }
     },
   ];
-  const cols=7,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  const cols=7,rows=T_TOTAL_ROWS;
+  // Layout: for each level (1..maxLvl), 4 state rows. Towers with fewer levels leave rows empty.
+  for(let col=0;col<cols;col++){
+    const maxLv=T_LEVELS[col];
+    for(let lv=1;lv<=T_MAX_LVL;lv++){
+      if(lv>maxLv)continue;
+      for(let st=0;st<T_STATES_PER_LVL;st++){
+        const row=(lv-1)*T_STATES_PER_LVL+st;
+        fns[col](ctx,[col*T_CELL,row*T_CELL],st,lv);
+      }
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
@@ -783,7 +879,10 @@ function drawHero(ctx:any){
 
 // ===== LABELS =====
 const T_NAMES=['Resonator','Amplifier','Quickener','Reach','Critical Mass','Conduit','Crescendo'];
-const T_STATES=['Idle','Charge','Fire','Cooldown'];
+const T_STATE_NAMES=['Idle','Charge','Fire','Cooldown'];
+// Build row labels: "L1 Idle", "L1 Charge", ... "L6 Cooldown"
+const T_ROW_LABELS:string[]=[];
+for(let lv=1;lv<=T_MAX_LVL;lv++)for(let st=0;st<T_STATES_PER_LVL;st++)T_ROW_LABELS.push(`L${lv} ${T_STATE_NAMES[st]}`);
 const P_NAMES=['Resonator','Amplifier','Quickener','Reach','Crit Mass','Conduit','Crescendo'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -799,17 +898,25 @@ export default function App(){
   const [view,setView]=useState('preview');
 
   useEffect(()=>{
-    // Towers
-    const tc=tRef.current!;tc.width=7*T_CELL;tc.height=4*T_CELL;
+    // Towers — 7 cols × 24 rows (6 levels × 4 states)
+    const tc=tRef.current!;tc.width=7*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
     const tpv=tPv.current!;const tS=2,tLW=66,tLH=13;
-    tpv.width=tLW+7*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    tpv.width=tLW+7*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#0d0800';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#aa8822';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
-      for(let cc=0;cc<7;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#2a1a00';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#ccaa44';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
+    for(let r=0;r<T_TOTAL_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;
+      // Level separator line every 4 rows
+      if(r%T_STATES_PER_LVL===0&&r>0){tpc.fillStyle='#443300';tpc.fillRect(0,by-3,tpv.width,1);}
+      tpc.fillStyle='#aa8822';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
+      for(let cc=0;cc<7;cc++){const bx_=tLW+cc*T_CELL*tS;
+        // Only draw cells for towers that have this level
+        const lv=Math.floor(r/T_STATES_PER_LVL)+1;
+        if(lv>T_LEVELS[cc]){continue;}
+        tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#2a1a00';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);
+        if(r===0){tpc.fillStyle='#ccaa44';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
 
     // Projectiles
     const pc_=pRef.current!;pc_.width=7*P_CELL;pc_.height=6*P_CELL;
@@ -843,7 +950,7 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'harmonic_towers_animated.png',
-      info:{sz:'448×256',cell:'64×64',loader:"this.load.spritesheet('harmonic_towers','harmonic_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'7 cols (towers) × 4 rows (idle, charge, fire, cooldown)'}},
+      info:{sz:'448×1536',cell:'64×64',loader:"this.load.spritesheet('harmonic_towers','harmonic_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'7 cols (towers) × 24 rows (6 levels × 4 states: idle,charge,fire,cooldown). Levels: Resonator=6, Amplifier=4, Quickener=3, Reach=3, CritMass=4, Conduit=3, Crescendo=1'}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'harmonic_projectiles_animated.png',
       info:{sz:'224×192',cell:'32×32',loader:"this.load.spritesheet('harmonic_proj','harmonic_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'7 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Ranger',ref:hRef,pvRef:hPv,dl:'ranger_hero_directional.png',

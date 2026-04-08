@@ -79,242 +79,335 @@ function arcaneOrbit(p:(x:number,y:number,cl:string)=>void,cx:number,cy:number,p
   p(ox,oy-1,C.PLLAV);
 }
 
-// ===== TOWERS (7×4 at 64×64) =====
+// ===== TOWER LEVEL COUNTS =====
+// Bolt:4, Frost:3, Storm:5, Focus:4, ManaDrain:4, Meteor:3, ArcaneNova:1
+const T_LEVELS=[4,3,5,4,4,3,1];
+const T_MAX_LVL=5; // max across all towers — sheet has this many level-groups
+const T_ROWS_PER_LVL=4; // idle/charge/fire/cooldown per level
+const T_TOTAL_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 20
+
+// ===== TOWERS (7 cols × 20 rows at 64×64) =====
+// Layout: for each upgrade level (1-5), 4 animation rows (idle/charge/fire/cooldown).
+// Towers with fewer levels repeat their max level for remaining rows.
+
+// --- Per-tower draw functions accepting (ctx, offset, animState 0-3, level 1-5) ---
+
+function drawBolt(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  const glow=level>=3?2:level>=2?1:0;
+  arcaneBase(p,b,23,18,glow);
+  const cy=12-Math.min(level,4);
+  // Crystal body - diamond shape, grows with level
+  const cSize=4+level;
+  for(let i=0;i<cSize;i++){const hw=i<Math.ceil(cSize/2)?i+1:cSize-i;b(16-hw,cy-Math.floor(cSize/2)+i,hw*2,1,i<2?C.PLLAV:i<Math.ceil(cSize*0.6)?C.LTVIO:C.BRVIO);}
+  // Inner glow — brighter at higher levels
+  const coreCol=level>=4?C.WHITE:level>=3?C.PLLAV:level>=2?C.LTVIO:C.BRVIO;
+  b(15,cy-1,2,2,coreCol);
+  p(16,cy,level>=3?C.WHITE:C.LTVIO);
+  // Tendrils — more complex at higher levels
+  const tCol=level>=3?C.LTVIO:C.BRVIO;
+  arcaneTendril(p,14,cy+3,13,23,tCol,level>=4);
+  arcaneTendril(p,18,cy+3,19,23,tCol,level>=4);
+  if(level>=3){arcaneTendril(p,12,cy+4,10,23,C.MDVIO,level>=4);arcaneTendril(p,20,cy+4,22,23,C.MDVIO,level>=4);}
+  // Orbiting crystals — more at higher levels
+  arcaneOrbit(p,16,cy-5,s*1.5,C.LAV);
+  if(level>=2){arcaneOrbit(p,12,cy-3,s*1.5+2,C.PLLAV);}
+  if(level>=3){arcaneOrbit(p,20,cy-3,s*1.5+4,C.LTVIO);}
+  if(level>=4){arcaneOrbit(p,16,cy-7,s*1.0+1,C.WHITE);}
+  // Pulse particles — more with level
+  if(level>=2){p(10,cy-1,C.LAV);p(22,cy,C.LAV);}
+  if(level>=3){p(8,cy+1,C.PLLAV);p(24,cy-1,C.PLLAV);}
+  if(level>=4){
+    for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*6),cy+Math.round(Math.sin(a)*5),C.PLLAV);}
+    p(16,cy-5,C.WHITE);p(16,cy+5,C.WHITE);
+  }
+  // Glow aura at high levels
+  if(level>=3){
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;const r=level>=4?8:6;p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),level>=4?C.LTVIO:C.MDVIO);}
+  }
+  // Base runes brighter at higher levels
+  if(level>=2){p(10,22,C.BRVIO);p(22,22,C.BRVIO);}
+  if(level>=3){p(8,21,C.LAV);p(24,21,C.LAV);}
+  if(s===3){p(15,cy,C.MDVIO);p(17,cy,C.MDVIO);}
+}
+
+function drawFrost(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  const glow=level>=3?2:level>=2?1:0;
+  arcaneBase(p,b,23,20,glow);
+  const cy=11-Math.min(level,3);
+  // Main ice crystal — taller/wider at higher levels
+  const mainH=10+level*1,mainW=3+Math.min(level,3);
+  crystalSpire(p,b,14,cy-Math.floor(mainH/3),mainH,mainW,C.DKICE,level>=3?C.LTICE:C.ICE,level>=3?C.WHITE:C.LTICE);
+  // Side ice shards — appear at level 2+, grow
+  if(level>=2){
+    const sH=6+level,sW=2+Math.min(level-1,2);
+    crystalSpire(p,b,9,cy-1,sH,sW,C.DKICE,level>=3?C.ICE:C.DKICE,level>=3?C.LTICE:C.ICE);
+    crystalSpire(p,b,21,cy-2,sH+1,sW,C.DKICE,level>=3?C.ICE:C.DKICE,level>=3?C.LTICE:C.ICE);
+  }
+  // Extra crystal formations at level 3
+  if(level>=3){
+    crystalSpire(p,b,6,cy+2,5,2,C.DKICE,C.ICE,C.LTICE);
+    crystalSpire(p,b,24,cy+1,6,2,C.DKICE,C.ICE,C.LTICE);
+  }
+  // Cold mist
+  if(level>=2){for(let i=0;i<5;i++){p(8+i*3,cy+10,C.DKICE);p(9+i*3,cy+11,C.PLBLU);}}
+  if(level>=3){for(let i=0;i<7;i++){p(6+i*3,cy+12,C.PLBLU);}}
+  // Frost particles
+  p(12,cy-2,level>=3?C.WHITE:C.LTICE);p(20,cy-1,level>=3?C.WHITE:C.LTICE);
+  if(level>=3){
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*6),cy+3+Math.round(Math.sin(a)*5),i%2?C.WHITE:C.LTICE);}
+    b(14,cy-5,4,1,C.WHITE);
+  }
+  // Tendrils
+  arcaneTendril(p,14,cy+8,13,23,C.DKICE,level>=3);
+  arcaneTendril(p,18,cy+8,19,23,C.DKICE,level>=3);
+  // Orbiting crystal
+  arcaneOrbit(p,16,cy-6,s*1.2,C.LTICE);
+  if(level>=2){arcaneOrbit(p,12,cy-4,s*1.2+2,C.ICE);}
+  if(level>=3){arcaneOrbit(p,20,cy-4,s*1.2+4,C.WHITE);}
+  if(s===3){p(15,cy,C.DKICE);p(16,cy+1,C.DKICE);}
+}
+
+function drawStorm(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  const glow=level>=4?2:level>=2?1:0;
+  arcaneBase(p,b,23,20,glow);
+  const cy=12-Math.min(level,5);
+  // Crackling orb — grows with level
+  const orbR=3+Math.min(level,4);
+  for(let r=orbR;r>0;r--)for(let i=0;i<8;i++){
+    const a=i*Math.PI/4;
+    p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),r>orbR-1?C.DKYEL:r>orbR*0.5?C.YEL:r>1?C.LTYEL:C.WHITE);
+  }
+  b(15,cy-1,2,2,level>=4?C.WHITE:C.LTYEL);
+  p(16,cy,C.WHITE);
+  // Sparks — more at higher levels
+  const sparkCount=2+level*2;
+  for(let i=0;i<sparkCount;i++){
+    const a=i*Math.PI*2/sparkCount,r=orbR+2+Math.floor(i%3);
+    p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%3===0?C.WHITE:i%2?C.LTYEL:C.YEL);
+  }
+  // Jagged lightning lines — more at higher levels
+  if(level>=2){
+    p(13,cy-3,C.YEL);p(12,cy-4,C.LTYEL);p(14,cy-5,C.YEL);
+    p(19,cy-2,C.YEL);p(20,cy-3,C.LTYEL);p(18,cy-4,C.YEL);
+  }
+  if(level>=3){
+    p(10,cy-1,C.LTYEL);p(22,cy,C.LTYEL);p(8,cy+2,C.YEL);p(24,cy+1,C.YEL);
+  }
+  if(level>=4){
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*8),cy+Math.round(Math.sin(a)*7),i%2?C.LTYEL:C.WHITE);}
+  }
+  if(level>=5){
+    // Particle storm — intense discharge
+    for(let i=0;i<16;i++){const a=i*Math.PI/8;
+      p(16+Math.round(Math.cos(a)*10),cy+Math.round(Math.sin(a)*8),i%3===0?C.WHITE:i%2?C.LTYEL:C.YEL);
+    }
+    p(16,cy-8,C.WHITE);p(16,cy+8,C.WHITE);p(8,cy,C.WHITE);p(24,cy,C.WHITE);
+  }
+  // Tendrils
+  arcaneTendril(p,14,cy+4,13,23,level>=3?C.YEL:C.DKYEL,level>=4);
+  arcaneTendril(p,18,cy+4,19,23,level>=3?C.YEL:C.DKYEL,level>=4);
+  if(level>=4){arcaneTendril(p,12,cy+5,10,23,C.DKYEL,level>=5);arcaneTendril(p,20,cy+5,22,23,C.DKYEL,level>=5);}
+  // Orbiting crystals
+  arcaneOrbit(p,16,cy-7,s*1.8,C.LTYEL);
+  if(level>=2){arcaneOrbit(p,12,cy-5,s*1.8+2,C.YEL);}
+  if(level>=3){arcaneOrbit(p,20,cy-5,s*1.8+4,C.LTYEL);}
+  if(level>=4){arcaneOrbit(p,16,cy-9,s*1.0+1,C.WHITE);}
+  if(level>=5){arcaneOrbit(p,10,cy-3,s*2.0+3,C.PLYEL);arcaneOrbit(p,22,cy-3,s*2.0+5,C.PLYEL);}
+  if(s===3){b(14,cy-1,4,3,C.DKYEL);p(16,cy,C.YEL);}
+}
+
+function drawFocus(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  const glow=level>=3?2:level>=2?1:0;
+  arcaneBase(p,b,24,18,glow);
+  const topY=5-Math.min(level,4);
+  // Main crystal lens — taller at higher levels
+  const lensH=16+level*1,lensW=1+Math.min(level,3);
+  crystalSpire(p,b,16-Math.floor(lensW/2),topY,lensH,lensW,C.DKVIO,level>=3?C.LTVIO:C.BRVIO,level>=3?C.PLLAV:C.LTVIO);
+  // Lens facets — wider at higher levels
+  const facetW=4+level;
+  b(16-Math.floor(facetW/2),topY+8,facetW,3,C.MDVIO);
+  b(16-Math.floor((facetW-2)/2),topY+9,facetW-2,1,level>=3?C.PLLAV:level>=2?C.LTVIO:C.BRVIO);
+  // Lens center glow
+  p(16,topY+9,level>=3?C.WHITE:level>=2?C.PLLAV:C.LTVIO);
+  p(15,topY+9,level>=3?C.PLLAV:C.LTVIO);
+  // Side facet lines
+  p(12,topY+7,C.BRVIO);p(19,topY+7,C.BRVIO);
+  p(12,topY+10,C.MDVIO);p(19,topY+10,C.MDVIO);
+  // Side secondary crystals at level 3+
+  if(level>=3){
+    crystalSpire(p,b,9,topY+4,8,2,C.DKVIO,C.BRVIO,C.LTVIO);
+    crystalSpire(p,b,22,topY+3,9,2,C.DKVIO,C.BRVIO,C.LTVIO);
+  }
+  if(level>=4){
+    crystalSpire(p,b,6,topY+7,6,2,C.DKVIO,C.MDVIO,C.BRVIO);
+    crystalSpire(p,b,25,topY+6,7,2,C.DKVIO,C.MDVIO,C.BRVIO);
+  }
+  // Focus beam indicator — stronger at higher levels
+  if(level>=2){p(16,topY-1,C.PLLAV);p(16,topY-2,C.LAV);}
+  if(level>=3){
+    for(let i=0;i<4;i++)p(16,topY-1-i,i===0?C.WHITE:C.PLLAV);
+    p(15,topY-2,C.LAV);p(17,topY-2,C.LAV);
+  }
+  if(level>=4){
+    for(let i=0;i<6;i++)p(16,topY-1-i,i<2?C.WHITE:i<4?C.PLLAV:C.LAV);
+    p(14,topY-3,C.LTVIO);p(18,topY-3,C.LTVIO);
+  }
+  // Tendrils
+  arcaneTendril(p,15,topY+16,14,24,level>=3?C.LTVIO:C.BRVIO,level>=4);
+  arcaneTendril(p,17,topY+16,18,24,level>=3?C.LTVIO:C.BRVIO,level>=4);
+  if(level>=3){arcaneTendril(p,13,topY+14,11,24,C.MDVIO,level>=4);}
+  // Orbiting crystals
+  arcaneOrbit(p,16,topY-3,s*1.0,C.LAV);
+  if(level>=2){arcaneOrbit(p,12,topY,s*1.0+2,C.LTVIO);}
+  if(level>=3){arcaneOrbit(p,20,topY,s*1.0+4,C.PLLAV);}
+  if(level>=4){arcaneOrbit(p,16,topY-5,s*0.8+1,C.WHITE);}
+  if(s===3){p(16,topY+9,C.MDVIO);}
+}
+
+function drawManaDrain(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  const glow=level>=3?2:level>=2?1:0;
+  arcaneBase(p,b,23,20,glow);
+  const cy=12-Math.min(level,4);
+  // Dark crystal — grows with level
+  const cSize=6+level;
+  for(let i=0;i<cSize;i++){const hw=i<Math.floor(cSize/2)?i+1:cSize-i;b(16-hw,cy-Math.floor(cSize/2)+i,hw*2,1,C.BRVIO);}
+  for(let i=1;i<cSize-1;i++){const hw=i<Math.floor(cSize/2)?i:cSize-1-i;b(16-hw+1,cy-Math.floor(cSize/2)+i,Math.max(1,hw*2-2),1,C.DVIO);}
+  // Void core
+  b(15,cy-1,2,2,C.VOID);p(16,cy,C.SHAD);
+  // Sucking effect — more particles at higher levels
+  const particleCount=4+level*2;
+  for(let i=0;i<particleCount;i++){
+    const a=i*Math.PI*2/particleCount,r=5+level+(i%3);
+    p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),i%2?C.LTVIO:C.LAV);
+  }
+  // Drain tendrils reaching outward
+  if(level>=2){
+    arcaneTendril(p,12,cy,8,cy-2,C.DKVIO,false);
+    arcaneTendril(p,20,cy,24,cy-1,C.DKVIO,false);
+    p(9,cy-3,C.MDVIO);p(23,cy-2,C.MDVIO);
+  }
+  if(level>=3){
+    arcaneTendril(p,10,cy+2,5,cy,C.DKVIO,false);
+    arcaneTendril(p,22,cy+2,27,cy,C.DKVIO,false);
+  }
+  if(level>=4){
+    // Implosion ring
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;
+      p(16+Math.round(Math.cos(a)*8),cy+Math.round(Math.sin(a)*7),C.LAV);
+      p(16+Math.round(Math.cos(a)*6),cy+Math.round(Math.sin(a)*5),C.LTVIO);
+    }
+  }
+  // Base tendrils
+  arcaneTendril(p,14,cy+4,13,23,C.MDVIO,level>=4);
+  arcaneTendril(p,18,cy+4,19,23,C.MDVIO,level>=4);
+  if(level>=3){arcaneTendril(p,16,cy+5,16,23,C.DVIO,level>=4);}
+  // Orbiting crystals
+  arcaneOrbit(p,16,cy-6,s*1.3,C.DVIO);
+  if(level>=2){arcaneOrbit(p,12,cy-4,s*1.3+2,C.MDVIO);}
+  if(level>=3){arcaneOrbit(p,20,cy-4,s*1.3+4,C.BRVIO);}
+  if(level>=4){arcaneOrbit(p,16,cy-8,s*1.0+1,C.LTVIO);}
+  if(s===3){p(15,cy-1,C.DVIO);p(16,cy,C.DVIO);}
+}
+
+function drawMeteor(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  const glow=level>=3?2:level>=2?1:0;
+  arcaneBase(p,b,24,20,glow);
+  const cy=11-Math.min(level,3);
+  // Burning crystal — grows with level
+  const cSize=8+level*1;
+  for(let i=0;i<cSize;i++){const hw=i<Math.floor(cSize/2)?i+1:cSize-i;b(16-hw,cy-Math.floor(cSize/2)+i,hw*2,1,i<Math.floor(cSize*0.3)?C.LTRED:i<Math.floor(cSize*0.6)?C.RED:i<Math.floor(cSize*0.8)?C.DKRED:C.DVIO);}
+  // Inner fire
+  const iSize=cSize-2;
+  for(let i=1;i<iSize;i++){const hw=i<Math.floor(iSize/2)?i:iSize-i;b(16-hw+1,cy-Math.floor(cSize/2)+1+i,Math.max(1,hw*2-2),1,i<Math.floor(iSize*0.3)?C.LTORG:i<Math.floor(iSize*0.6)?C.ORG:C.RED);}
+  // Hot core
+  b(15,cy-1,2,2,level>=3?C.WHITE:level>=2?C.LTYEL:C.ORG);
+  p(16,cy,level>=3?C.WHITE:C.LTYEL);
+  // Falling star trail
+  if(level>=2){
+    p(16,cy-Math.floor(cSize/2)-1,C.LTORG);p(15,cy-Math.floor(cSize/2)-2,C.ORG);p(17,cy-Math.floor(cSize/2)-2,C.ORG);
+    p(16,cy-Math.floor(cSize/2)-3,C.RED);
+  }
+  if(level>=3){
+    // Fire burst
+    for(let i=0;i<10;i++){const a=i*Math.PI/5;
+      p(16+Math.round(Math.cos(a)*7),cy+Math.round(Math.sin(a)*6),i%2?C.LTRED:C.ORG);
+      p(16+Math.round(Math.cos(a)*5),cy+Math.round(Math.sin(a)*4),C.LTYEL);
+    }
+    p(16,cy-Math.floor(cSize/2)-2,C.WHITE);
+  }
+  // Ember particles
+  p(10,cy-3,level>=2?C.ORG:C.RED);p(22,cy-2,level>=2?C.ORG:C.RED);
+  p(8,cy+2,C.DKRED);p(24,cy+1,C.DKRED);
+  if(level>=2){p(6,cy,C.RED);p(26,cy-1,C.RED);}
+  // Tendrils
+  arcaneTendril(p,14,cy+5,13,24,level>=2?C.RED:C.DKRED,level>=3);
+  arcaneTendril(p,18,cy+5,19,24,level>=2?C.RED:C.DKRED,level>=3);
+  if(level>=3){arcaneTendril(p,12,cy+6,10,24,C.DKRED,true);}
+  // Orbiting crystals
+  arcaneOrbit(p,16,cy-Math.floor(cSize/2)-2,s*1.6,C.LTORG);
+  if(level>=2){arcaneOrbit(p,12,cy-Math.floor(cSize/3),s*1.6+2,C.ORG);}
+  if(level>=3){arcaneOrbit(p,20,cy-Math.floor(cSize/3),s*1.6+4,C.LTYEL);}
+  if(s===3){b(14,cy-2,4,4,C.DKRED);p(16,cy,C.RED);}
+}
+
+function drawArcaneNova(c:CanvasRenderingContext2D,o:number[],s:number,_level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  // Ultimate — always max visuals (single level)
+  arcaneBase(p,b,24,24,2);
+  const cy=7;
+  // Central massive crystal
+  for(let i=0;i<12;i++){const hw=i<6?i+2:14-i;b(16-hw,cy-6+i,hw*2,1,i<3?C.PLLAV:i<6?C.LTVIO:i<9?C.BRVIO:C.MDVIO);}
+  // Inner rainbow core
+  for(let i=2;i<10;i++){const hw=i<5?i-1:10-i;if(hw>0)b(16-hw+1,cy-4+i,Math.max(1,hw*2-2),1,
+    i<4?C.LTICE:i<6?C.LTYEL:i<8?C.LTRED:C.LAV);}
+  // Bright core
+  b(15,cy-1,2,3,C.WHITE);
+  p(16,cy,C.WHITE);
+  // Side crystal formations
+  crystalSpire(p,b,7,cy-2,10,3,C.DKICE,C.ICE,C.LTICE);
+  crystalSpire(p,b,23,cy-1,9,3,C.DKRED,C.RED,C.LTRED);
+  crystalSpire(p,b,5,cy+2,7,2,C.DKYEL,C.YEL,C.LTYEL);
+  crystalSpire(p,b,25,cy+1,8,2,C.DKVIO,C.BRVIO,C.LTVIO);
+  // Multi-color glow particles
+  const colors=[C.LAV,C.LTICE,C.LTYEL,C.LTRED,C.LTVIO,C.PLLAV,C.PLBLU,C.PLYEL];
+  // Rainbow nova ring
+  for(let i=0;i<16;i++){const a=i*Math.PI/8;
+    p(16+Math.round(Math.cos(a)*10),cy+Math.round(Math.sin(a)*8),colors[i%8]);
+    p(16+Math.round(Math.cos(a)*8),cy+Math.round(Math.sin(a)*6),C.WHITE);
+  }
+  b(14,cy-7,4,1,C.WHITE);b(13,cy-8,6,1,C.PLLAV);
+  // Multiple tendrils
+  arcaneTendril(p,13,cy+6,11,24,C.LTVIO,true);
+  arcaneTendril(p,16,cy+6,16,24,C.LAV,true);
+  arcaneTendril(p,19,cy+6,21,24,C.LTVIO,true);
+  // Multiple orbiting crystals
+  arcaneOrbit(p,16,cy-8,s*1.0,C.LTICE);
+  arcaneOrbit(p,12,cy-6,s*1.5+2,C.LTYEL);
+  arcaneOrbit(p,20,cy-6,s*1.5+4,C.LTRED);
+  if(s===3){
+    b(13,cy-3,6,6,C.MDVIO);b(14,cy-2,4,4,C.DKVIO);p(16,cy,C.BRVIO);
+  }
+}
+
 function drawTowers(ctx:CanvasRenderingContext2D){
-  const fns=[
-    // 1. Bolt — Small crystal that fires rapid pulses
-    (c:CanvasRenderingContext2D,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      arcaneBase(p,b,23,18,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      // Small floating crystal
-      const cy=fl?10:br?11:12;
-      // Crystal body - diamond shape
-      for(let i=0;i<6;i++){const hw=i<3?i+1:6-i;b(16-hw,cy-3+i,hw*2,1,i<2?C.PLLAV:i<4?C.LTVIO:C.BRVIO);}
-      // Inner glow
-      b(15,cy-1,2,2,fl?C.WHITE:br?C.PLLAV:C.LTVIO);
-      p(16,cy,fl?C.WHITE:C.LTVIO);
-      // Tendrils
-      arcaneTendril(p,14,cy+3,13,23,br?C.LTVIO:C.BRVIO,fl);
-      arcaneTendril(p,18,cy+3,19,23,br?C.LTVIO:C.BRVIO,fl);
-      // Orbiting crystal
-      arcaneOrbit(p,16,cy-5,s*1.5,C.LAV);
-      // Pulse particles
-      if(br){p(10,cy-1,C.LAV);p(22,cy,C.LAV);}
-      if(fl){
-        // Outward burst
-        for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*5),cy+Math.round(Math.sin(a)*4),C.PLLAV);}
-        p(16,cy-4,C.WHITE);p(16,cy+4,C.WHITE);
+  const towerFns=[drawBolt,drawFrost,drawStorm,drawFocus,drawManaDrain,drawMeteor,drawArcaneNova];
+  const cols=7,rows=T_TOTAL_ROWS;
+  for(let col=0;col<cols;col++){
+    const maxLvl=T_LEVELS[col];
+    for(let lvl=1;lvl<=T_MAX_LVL;lvl++){
+      const effectiveLvl=Math.min(lvl,maxLvl);
+      for(let anim=0;anim<T_ROWS_PER_LVL;anim++){
+        const row=(lvl-1)*T_ROWS_PER_LVL+anim;
+        towerFns[col](ctx,[col*T_CELL,row*T_CELL],anim,effectiveLvl);
       }
-      if(s===3){p(15,cy,C.MDVIO);p(17,cy,C.MDVIO);} // dim
-    },
-    // 2. Frost — Ice crystal formation with cold mist
-    (c:CanvasRenderingContext2D,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      arcaneBase(p,b,23,20,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      // Main ice crystal - tall hexagonal
-      const cy=fl?8:br?9:10;
-      crystalSpire(p,b,14,cy-4,12,4,C.DKICE,fl?C.LTICE:C.ICE,fl?C.WHITE:C.LTICE);
-      // Side ice shards
-      crystalSpire(p,b,9,cy,8,3,C.DKICE,br?C.ICE:C.DKICE,br?C.LTICE:C.ICE);
-      crystalSpire(p,b,21,cy-1,9,3,C.DKICE,br?C.ICE:C.DKICE,br?C.LTICE:C.ICE);
-      // Cold mist - blue-white tint
-      if(br){
-        for(let i=0;i<5;i++){p(8+i*3,cy+10,C.DKICE);p(9+i*3,cy+11,C.PLBLU);}
-      }
-      // Frost particles
-      p(12,cy-2,fl?C.WHITE:C.LTICE);p(20,cy-1,fl?C.WHITE:C.LTICE);
-      if(fl){
-        // Blizzard burst
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*6),cy+3+Math.round(Math.sin(a)*5),i%2?C.WHITE:C.LTICE);}
-        b(14,cy-5,4,1,C.WHITE);
-      }
-      // Tendrils (icy blue)
-      arcaneTendril(p,14,cy+8,13,23,C.DKICE,fl);
-      arcaneTendril(p,18,cy+8,19,23,C.DKICE,fl);
-      // Orbiting crystal
-      arcaneOrbit(p,16,cy-6,s*1.2,C.LTICE);
-      if(s===3){p(15,cy,C.DKICE);p(16,cy+1,C.DKICE);} // dim
-    },
-    // 3. Storm — Crackling orb of lightning
-    (c:CanvasRenderingContext2D,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      arcaneBase(p,b,23,20,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      const cy=fl?9:br?10:11;
-      // Crackling orb
-      for(let r=4;r>0;r--)for(let i=0;i<8;i++){
-        const a=i*Math.PI/4;
-        p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),r>3?C.DKYEL:r>2?C.YEL:r>1?C.LTYEL:C.WHITE);
-      }
-      b(15,cy-1,2,2,fl?C.WHITE:C.LTYEL);
-      p(16,cy,C.WHITE);
-      // Lightning bolts/sparks
-      const sparks=fl?[[8,cy-2],[24,cy-3],[7,cy+2],[25,cy+1],[12,cy-5],[20,cy-4]]:
-        br?[[10,cy-1],[22,cy],[9,cy+3],[23,cy+2]]:
-        [[11,cy],[21,cy+1]];
-      sparks.forEach(([x,y])=>p(x,y,C.LTYEL));
-      // Jagged lightning lines
-      if(br){
-        // Left bolt
-        p(13,cy-3,C.YEL);p(12,cy-4,C.LTYEL);p(14,cy-5,C.YEL);
-        // Right bolt
-        p(19,cy-2,C.YEL);p(20,cy-3,C.LTYEL);p(18,cy-4,C.YEL);
-      }
-      if(fl){
-        // Electric discharge burst
-        for(let i=0;i<12;i++){const a=i*Math.PI/6;p(16+Math.round(Math.cos(a)*7),cy+Math.round(Math.sin(a)*6),i%3===0?C.WHITE:i%2?C.LTYEL:C.YEL);}
-        p(16,cy-6,C.WHITE);p(16,cy+6,C.WHITE);
-      }
-      // Tendrils
-      arcaneTendril(p,14,cy+4,13,23,br?C.YEL:C.DKYEL,fl);
-      arcaneTendril(p,18,cy+4,19,23,br?C.YEL:C.DKYEL,fl);
-      arcaneOrbit(p,16,cy-7,s*1.8,C.LTYEL);
-      if(s===3){b(14,cy-1,4,3,C.DKYEL);p(16,cy,C.YEL);} // dim
-    },
-    // 4. Focus — Tall thin crystal lens
-    (c:CanvasRenderingContext2D,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      arcaneBase(p,b,24,18,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      // Tall thin crystal lens
-      const topY=fl?2:br?3:4;
-      crystalSpire(p,b,15,topY,18,2,C.DKVIO,fl?C.LTVIO:C.BRVIO,fl?C.PLLAV:C.LTVIO);
-      // Lens facets - wider middle section
-      b(13,topY+8,6,3,C.MDVIO);b(14,topY+9,4,1,fl?C.PLLAV:br?C.LTVIO:C.BRVIO);
-      // Lens center glow
-      p(16,topY+9,fl?C.WHITE:br?C.PLLAV:C.LTVIO);
-      p(15,topY+9,fl?C.PLLAV:C.LTVIO);
-      // Side facet lines
-      p(12,topY+7,C.BRVIO);p(19,topY+7,C.BRVIO);
-      p(12,topY+10,C.MDVIO);p(19,topY+10,C.MDVIO);
-      // Focus beam indicator
-      if(br){
-        p(16,topY-1,C.PLLAV);p(16,topY-2,C.LAV);
-      }
-      if(fl){
-        // Focused beam upward
-        for(let i=0;i<4;i++)p(16,topY-1-i,i===0?C.WHITE:C.PLLAV);
-        p(15,topY-2,C.LAV);p(17,topY-2,C.LAV);
-      }
-      // Tendrils
-      arcaneTendril(p,15,topY+16,14,24,br?C.LTVIO:C.BRVIO,fl);
-      arcaneTendril(p,17,topY+16,18,24,br?C.LTVIO:C.BRVIO,fl);
-      arcaneOrbit(p,16,topY-3,s*1.0,C.LAV);
-      if(s===3){p(16,topY+9,C.MDVIO);} // dim
-    },
-    // 5. Mana Drain — Dark crystal that pulls energy (inverse glow)
-    (c:CanvasRenderingContext2D,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      arcaneBase(p,b,23,20,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      const cy=fl?9:br?10:11;
-      // Dark crystal - inverted colors (dark core, bright edges)
-      for(let i=0;i<8;i++){const hw=i<4?i+1:8-i;b(16-hw,cy-4+i,hw*2,1,C.BRVIO);}
-      for(let i=1;i<7;i++){const hw=i<4?i:7-i;b(16-hw+1,cy-4+i,Math.max(1,hw*2-2),1,C.DVIO);}
-      // Void core
-      b(15,cy-1,2,2,C.VOID);p(16,cy,C.SHAD);
-      // Sucking effect - particles moving inward
-      const succ=fl?[[6,cy-2],[26,cy-1],[8,cy+4],[24,cy+3],[5,cy+1],[27,cy],[10,cy-4],[22,cy-3]]:
-        br?[[8,cy-1],[24,cy],[9,cy+3],[23,cy+2],[7,cy+1],[25,cy]]:
-        [[10,cy],[22,cy+1],[11,cy+2],[21,cy+2]];
-      succ.forEach(([x,y],i)=>p(x,y,i%2?C.LTVIO:C.LAV));
-      // Drain tendrils (reaching outward to pull)
-      if(br){
-        p(9,cy-3,C.MDVIO);p(23,cy-2,C.MDVIO);
-        arcaneTendril(p,12,cy,8,cy-2,C.DKVIO,false);
-        arcaneTendril(p,20,cy,24,cy-1,C.DKVIO,false);
-      }
-      if(fl){
-        // Implosion lines
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;
-          p(16+Math.round(Math.cos(a)*7),cy+Math.round(Math.sin(a)*6),C.LAV);
-          p(16+Math.round(Math.cos(a)*5),cy+Math.round(Math.sin(a)*4),C.LTVIO);
-        }
-      }
-      arcaneTendril(p,14,cy+4,13,23,C.MDVIO,fl);
-      arcaneTendril(p,18,cy+4,19,23,C.MDVIO,fl);
-      arcaneOrbit(p,16,cy-6,s*1.3,C.DVIO);
-      if(s===3){p(15,cy-1,C.DVIO);p(16,cy,C.DVIO);} // dim
-    },
-    // 6. Meteor — Large burning crystal, red-orange glow, falling star motif
-    (c:CanvasRenderingContext2D,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      arcaneBase(p,b,24,20,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      const cy=fl?8:br?9:10;
-      // Large burning crystal
-      for(let i=0;i<10;i++){const hw=i<5?i+1:10-i;b(16-hw,cy-5+i,hw*2,1,i<3?C.LTRED:i<6?C.RED:i<8?C.DKRED:C.DVIO);}
-      // Inner fire
-      for(let i=1;i<8;i++){const hw=i<4?i:8-i;b(16-hw+1,cy-4+i,Math.max(1,hw*2-2),1,i<3?C.LTORG:i<5?C.ORG:C.RED);}
-      // Hot core
-      b(15,cy-1,2,2,fl?C.WHITE:br?C.LTYEL:C.ORG);
-      p(16,cy,fl?C.WHITE:C.LTYEL);
-      // Falling star trail at top
-      if(br){
-        p(16,cy-6,C.LTORG);p(15,cy-7,C.ORG);p(17,cy-7,C.ORG);
-        p(16,cy-8,C.RED);
-      }
-      if(fl){
-        // Massive fire burst
-        for(let i=0;i<10;i++){const a=i*Math.PI/5;
-          p(16+Math.round(Math.cos(a)*7),cy+Math.round(Math.sin(a)*6),i%2?C.LTRED:C.ORG);
-          p(16+Math.round(Math.cos(a)*5),cy+Math.round(Math.sin(a)*4),C.LTYEL);
-        }
-        p(16,cy-7,C.WHITE);p(15,cy-8,C.LTYEL);p(17,cy-8,C.LTYEL);
-      }
-      // Ember particles
-      p(10,cy-3,br?C.ORG:C.RED);p(22,cy-2,br?C.ORG:C.RED);
-      p(8,cy+2,C.DKRED);p(24,cy+1,C.DKRED);
-      arcaneTendril(p,14,cy+5,13,24,br?C.RED:C.DKRED,fl);
-      arcaneTendril(p,18,cy+5,19,24,br?C.RED:C.DKRED,fl);
-      arcaneOrbit(p,16,cy-9,s*1.6,C.LTORG);
-      if(s===3){b(14,cy-2,4,4,C.DKRED);p(16,cy,C.RED);} // dim
-    },
-    // 7. Arcane Nova (Ultimate) — Massive multi-crystal formation, all colors combined
-    (c:CanvasRenderingContext2D,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      arcaneBase(p,b,24,24,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      const cy=fl?7:br?8:9;
-      // Central massive crystal
-      for(let i=0;i<12;i++){const hw=i<6?i+2:14-i;b(16-hw,cy-6+i,hw*2,1,i<3?C.PLLAV:i<6?C.LTVIO:i<9?C.BRVIO:C.MDVIO);}
-      // Inner rainbow core
-      for(let i=2;i<10;i++){const hw=i<5?i-1:10-i;if(hw>0)b(16-hw+1,cy-4+i,Math.max(1,hw*2-2),1,
-        i<4?C.LTICE:i<6?C.LTYEL:i<8?C.LTRED:C.LAV);}
-      // Bright core
-      b(15,cy-1,2,3,fl?C.WHITE:br?C.PLLAV:C.LTVIO);
-      p(16,cy,C.WHITE);
-      // Side crystal formations
-      crystalSpire(p,b,7,cy-2,10,3,C.DKICE,C.ICE,C.LTICE);
-      crystalSpire(p,b,23,cy-1,9,3,C.DKRED,C.RED,C.LTRED);
-      crystalSpire(p,b,5,cy+2,7,2,C.DKYEL,C.YEL,C.LTYEL);
-      crystalSpire(p,b,25,cy+1,8,2,C.DKVIO,C.BRVIO,C.LTVIO);
-      // Multi-color glow particles
-      const colors=[C.LAV,C.LTICE,C.LTYEL,C.LTRED,C.LTVIO,C.PLLAV,C.PLBLU,C.PLYEL];
-      if(br){
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;
-          p(16+Math.round(Math.cos(a)*8),cy+Math.round(Math.sin(a)*7),colors[i]);
-        }
-      }
-      if(fl){
-        // Rainbow nova blast
-        for(let i=0;i<16;i++){const a=i*Math.PI/8;
-          p(16+Math.round(Math.cos(a)*10),cy+Math.round(Math.sin(a)*8),colors[i%8]);
-          p(16+Math.round(Math.cos(a)*8),cy+Math.round(Math.sin(a)*6),C.WHITE);
-        }
-        b(14,cy-7,4,1,C.WHITE);b(13,cy-8,6,1,C.PLLAV);
-      }
-      // Multiple tendrils
-      arcaneTendril(p,13,cy+6,11,24,br?C.LTVIO:C.BRVIO,fl);
-      arcaneTendril(p,16,cy+6,16,24,br?C.LAV:C.MDVIO,fl);
-      arcaneTendril(p,19,cy+6,21,24,br?C.LTVIO:C.BRVIO,fl);
-      // Multiple orbiting crystals
-      arcaneOrbit(p,16,cy-8,s*1.0,C.LTICE);
-      arcaneOrbit(p,12,cy-6,s*1.5+2,C.LTYEL);
-      arcaneOrbit(p,20,cy-6,s*1.5+4,C.LTRED);
-      if(s===3){
-        // Dim all
-        b(13,cy-3,6,6,C.MDVIO);b(14,cy-2,4,4,C.DKVIO);p(16,cy,C.BRVIO);
-      }
-    },
-  ];
-  const cols=7,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
@@ -817,7 +910,8 @@ function drawHero(ctx:CanvasRenderingContext2D){
 
 // ===== LABELS =====
 const T_NAMES=['Bolt','Frost','Storm','Focus','Mana Drain','Meteor','Arcane Nova'];
-const T_STATES=['Idle','Charge','Fire','Cooldown'];
+const T_STATES:string[]=[];
+for(let lvl=1;lvl<=T_MAX_LVL;lvl++){for(const st of['Idle','Charge','Fire','Cooldown'])T_STATES.push(`L${lvl} ${st}`);};
 const P_NAMES=['Bolt','Frost','Storm','Focus','Mana Drain','Meteor','Arcane Nova'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -834,15 +928,15 @@ export default function ArcaneSprites(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=7*T_CELL;tc.height=4*T_CELL;
+    const tc=tRef.current!;tc.width=7*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
     const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
-    tpv.width=tLW+7*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    tpv.width=tLW+7*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#07050c';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#6644ff';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
+    for(let r=0;r<T_TOTAL_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#6644ff';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
       for(let cc=0;cc<7;cc++){const bx=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a1a2a';tpc.strokeRect(bx,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#9988ff';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx+2,by-2);}}}
 
     // Projectiles
@@ -877,7 +971,7 @@ export default function ArcaneSprites(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'arcane_towers_animated.png',
-      info:{sz:'448×256',cell:'64×64',loader:"this.load.spritesheet('arcane_towers','arcane_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'7 cols (towers) × 4 rows (idle, charge, fire, cooldown)'}},
+      info:{sz:'448×1280',cell:'64×64',loader:"this.load.spritesheet('arcane_towers','arcane_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`7 cols (towers) × ${T_TOTAL_ROWS} rows (5 upgrade levels × 4 anim states). Levels: Bolt=4, Frost=3, Storm=5, Focus=4, ManaDrain=4, Meteor=3, ArcaneNova=1. Towers with fewer levels repeat max for remaining rows.`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'arcane_projectiles_animated.png',
       info:{sz:'224×192',cell:'32×32',loader:"this.load.spritesheet('arcane_proj','arcane_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'7 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Arcanist',ref:hRef,pvRef:hPv,dl:'arcanist_hero_directional.png',

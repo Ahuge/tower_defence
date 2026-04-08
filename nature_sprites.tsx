@@ -24,26 +24,8 @@ const mk=(c,o,gw,gh,ps)=>{
 // ===== TOWER HELPERS =====
 const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
-function tBase(p,b,topY,w,glow){
-  const cx=16;
-  // Gnarled root/stump base with moss
-  for(let i=0;i<10;i++){
-    const cw=w-6+Math.floor(i*0.8)+Math.round(Math.sin(i*0.7)*1.2),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.LTBARK:i<5?C.BARK:i<8?C.DKBARK:C.STUMP);
-  }
-  // Top rim bark highlight
-  b(cx-Math.floor((w-6)/2),topY,w-6,1,C.PLBARK);
-  // Spiral vine whorl (signature mark)
-  p(cx-3,topY+3,glow>1?C.LTGRN:C.GREEN);p(cx-2,topY+4,glow>1?C.LTGRN:C.GREEN);
-  p(cx-2,topY+5,glow>0?C.GREEN:C.MDGRN);p(cx-3,topY+6,C.DKFOR);
-  p(cx-1,topY+3,glow>1?C.LTVINE:C.VINE);p(cx,topY+4,glow>0?C.VINE:C.DKVINE);
-  // Moss patches
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.DKMOSS);
-  if(glow>0){p(cx-4,topY+2,C.MOSS);p(cx+2,topY+3,C.MOSS);}
-  // Root tendrils at bottom
-  p(cx-5,topY+8,C.DKBARK);p(cx+4,topY+8,C.DKBARK);
-  p(cx-6,topY+9,C.STUMP);p(cx+5,topY+9,C.STUMP);
-}
+// Legacy tBase kept for compatibility (used nowhere after refactor)
+// Replaced by tBaseLv which accepts level parameter
 
 function tVine(p,x1,y1,x2,y2,col,bright){
   const dy=y2-y1,dx=x2-x1;
@@ -62,129 +44,264 @@ function tStalk(p,b,x,y,h,w,c1,c2,ct){
   }
 }
 
-// ===== TOWERS (6×4 at 64×64) =====
+// ===== TOWER LEVEL COUNTS =====
+const T_LEVELS=[6,4,5,5,3,1]; // Thorn, Root, Blossom, Spore, Vine, Elder Treant
+const T_MAX_LV=6;
+const T_ROWS=T_MAX_LV*4; // 24 rows total (max levels × 4 states)
+
+// ===== LEVEL-SCALED BASE =====
+// lv: 1-6, grows root mass, moss, glow
+function tBaseLv(p,b,topY,w,glow,lv){
+  const cx=16;
+  const rootH=Math.min(10,6+lv);
+  const bw=w-6+Math.floor(lv*0.8);
+  for(let i=0;i<rootH;i++){
+    const cw=bw+Math.round(Math.sin(i*0.7)*1.2*Math.min(lv/3,1));
+    const sx=cx-Math.floor(cw/2);
+    b(sx,topY+i,cw,1,i<2?C.LTBARK:i<4?C.BARK:i<7?C.DKBARK:C.STUMP);
+  }
+  b(cx-Math.floor(bw/2),topY,bw,1,C.PLBARK);
+  // Spiral vine whorl — more prominent at high level
+  if(lv>=2){
+    p(cx-3,topY+3,glow>1?C.LTGRN:C.GREEN);p(cx-2,topY+4,glow>1?C.LTGRN:C.GREEN);
+    p(cx-2,topY+5,glow>0?C.GREEN:C.MDGRN);p(cx-3,topY+6,C.DKFOR);
+    p(cx-1,topY+3,glow>1?C.LTVINE:C.VINE);p(cx,topY+4,glow>0?C.VINE:C.DKVINE);
+  }
+  // Moss — grows with level
+  if(lv>=1)b(cx-Math.floor((bw-2)/2),topY+Math.min(rootH-1,9),bw-2,1,C.DKMOSS);
+  if(lv>=3&&glow>0){p(cx-4,topY+2,C.MOSS);p(cx+2,topY+3,C.MOSS);}
+  if(lv>=4){p(cx-5,topY+2,C.LTMOSS);p(cx+3,topY+2,C.LTMOSS);}
+  // Root tendrils — more at high level
+  if(lv>=2){p(cx-5,topY+rootH-2,C.DKBARK);p(cx+4,topY+rootH-2,C.DKBARK);}
+  if(lv>=3){p(cx-6,topY+rootH-1,C.STUMP);p(cx+5,topY+rootH-1,C.STUMP);}
+  if(lv>=5){p(cx-7,topY+rootH-1,C.DKBARK);p(cx+6,topY+rootH-1,C.DKBARK);p(cx-6,topY+rootH-2,C.BARK);}
+  // Nature energy glow at max levels
+  if(lv>=6){p(cx-4,topY+1,C.LTGRN);p(cx+3,topY+1,C.LTGRN);p(cx,topY+rootH,C.GREEN);}
+}
+
+// ===== TOWERS (6 cols × 24 rows at 64×64) — per-level sprites =====
 function drawTowers(ctx){
   const fns=[
-    // 1. Thorn — Spiky plant shooting thorns
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,20,s===1?1:s===2?2:0);
+    // 1. Thorn — Spiky plant shooting thorns (6 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,22,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
-      // Central stalk
-      b(15,8,2,14,C.DKFOR);b(15,8,1,14,C.MDGRN);
-      // Sharp angular leaves / thorns
+      // Central stalk — thicker at higher levels
+      const sw=Math.min(3,1+Math.floor(lv/3));
+      const sh=Math.min(16,10+lv);
+      const stY=22-sh;
+      b(16-Math.floor(sw/2),stY,sw,sh,C.DKFOR);b(16-Math.floor(sw/2),stY,Math.max(1,sw-1),sh,C.MDGRN);
+      // Bark texture on stalk at high levels
+      if(lv>=4)for(let y=stY;y<stY+sh;y+=3){p(16-Math.floor(sw/2)-1,y,C.DKFOR);}
+      if(lv>=5){b(16-Math.floor(sw/2)-1,stY+2,1,sh-4,C.FOREST);b(16+Math.ceil(sw/2),stY+2,1,sh-4,C.FOREST);}
+      // Sharp angular leaves / thorns — count grows with level
       const spread=fl?3:br?2:1;
+      const thornCount=Math.min(6,1+lv);
       // Left thorns
-      for(let i=0;i<4;i++){
-        const ty=10+i*3,tx=14-spread-i;
+      for(let i=0;i<thornCount;i++){
+        const ty=stY+2+i*Math.floor(sh/thornCount),tx=14-spread-Math.min(i,3);
         p(tx,ty,fl?C.LTTHRN:C.THORN);p(tx+1,ty-1,fl?C.LTGRN:C.GREEN);p(tx-1,ty+1,C.DKTHRN);
+        if(lv>=4){p(tx-1,ty,C.THORN);} // extra width
+        if(lv>=6){p(tx-2,ty+1,C.LTTHRN);p(tx,ty-1,C.LTGRN);} // glow tips
       }
       // Right thorns
-      for(let i=0;i<4;i++){
-        const ty=11+i*3,tx=17+spread+i;
+      for(let i=0;i<thornCount;i++){
+        const ty=stY+3+i*Math.floor(sh/thornCount),tx=17+spread+Math.min(i,3);
         p(tx,ty,fl?C.LTTHRN:C.THORN);p(tx-1,ty-1,fl?C.LTGRN:C.GREEN);p(tx+1,ty+1,C.DKTHRN);
+        if(lv>=4){p(tx+1,ty,C.THORN);}
+        if(lv>=6){p(tx+2,ty+1,C.LTTHRN);p(tx,ty-1,C.LTGRN);}
       }
-      // Top spike cluster
-      p(15,6,br?C.LTTHRN:C.THORN);p(16,5,fl?C.WHITE:C.LTTHRN);p(16,7,C.THORN);
-      p(14,7,br?C.LTGRN:C.GREEN);p(17,6,br?C.LTGRN:C.GREEN);
-      if(fl){p(13,4,C.LTTHRN);p(18,4,C.LTTHRN);p(15,3,C.WHITE);p(16,3,C.LTGRN);}
-      // Fire state: thorns launched outward
+      // Top spike cluster — grows with level
+      const topY=stY-1;
+      p(15,topY+1,br?C.LTTHRN:C.THORN);p(16,topY,fl?C.WHITE:C.LTTHRN);p(16,topY+2,C.THORN);
+      p(14,topY+2,br?C.LTGRN:C.GREEN);p(17,topY+1,br?C.LTGRN:C.GREEN);
+      if(lv>=2){p(13,topY+1,C.THORN);p(18,topY,C.THORN);}
+      if(lv>=3){p(13,topY-1,C.LTTHRN);p(18,topY-1,C.LTTHRN);}
+      if(lv>=4){p(12,topY,C.THORN);p(19,topY+1,C.THORN);p(15,topY-2,fl?C.WHITE:C.LTTHRN);}
+      if(lv>=5){p(11,topY-1,C.LTTHRN);p(20,topY-1,C.LTTHRN);p(14,topY-2,C.GREEN);p(17,topY-2,C.GREEN);p(16,topY-3,C.LTGRN);}
+      if(lv>=6){
+        // Ancient crown of thorns with nature energy glow
+        p(10,topY-2,C.LTTHRN);p(21,topY-2,C.LTTHRN);p(15,topY-4,C.WHITE);p(16,topY-4,C.LTGRN);
+        p(12,topY-3,C.GREEN);p(19,topY-3,C.GREEN);
+        // Glow aura
+        for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*3),topY-1+Math.round(Math.sin(a)*2),C.LTGRN);}
+      }
+      if(fl){p(13,topY-1,C.LTTHRN);p(18,topY-1,C.LTTHRN);p(15,topY-2,C.WHITE);p(16,topY-2,C.LTGRN);}
+      // Fire state: thorns launched outward — more at higher levels
       if(fl){
-        for(let i=0;i<3;i++){p(8-i,8+i,C.THORN);p(24+i,9+i,C.THORN);}
-        p(6,7,C.LTTHRN);p(27,8,C.LTTHRN);
+        const launchN=Math.min(5,1+lv);
+        for(let i=0;i<launchN;i++){p(8-i,8+i,C.THORN);p(24+i,9+i,C.THORN);}
+        p(8-launchN,7,C.LTTHRN);p(24+launchN,8,C.LTTHRN);
+        if(lv>=4){p(6,10,C.THORN);p(26,11,C.THORN);}
       }
-      // Leaf accents
-      p(12,14,C.GREEN);p(20,16,C.GREEN);p(11,18,br?C.LTGRN:C.GREEN);
+      // Leaf accents — more at higher levels
+      p(12,14,C.GREEN);p(20,16,C.GREEN);
+      if(lv>=2)p(11,18,br?C.LTGRN:C.GREEN);
+      if(lv>=3){p(21,14,C.MDGRN);p(10,16,C.MDGRN);}
+      if(lv>=5){p(9,12,C.GREEN);p(22,18,C.GREEN);p(10,20,C.LTGRN);}
       // Cooldown: retracted
-      if(s===3){p(14,10,C.DKTHRN);p(17,11,C.DKTHRN);b(15,9,2,2,C.DKFOR);}
+      if(s===3){p(14,stY+2,C.DKTHRN);p(17,stY+3,C.DKTHRN);b(15,stY+1,2,2,C.DKFOR);}
     },
-    // 2. Root — Twisted root mass
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,22,s===1?1:s===2?2:0);
+    // 2. Root — Twisted root mass (4 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,23,22,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
-      // Central root mass
-      for(let y=8;y<22;y++){
-        const w=Math.max(3,Math.round(8+Math.sin((y-8)*0.4)*3));
+      // Central root mass — wider and taller at higher levels
+      const massW=Math.min(12,6+lv*2);
+      const massTop=Math.max(6,10-lv);
+      for(let y=massTop;y<22;y++){
+        const w=Math.max(3,Math.round(massW+Math.sin((y-massTop)*0.4)*3));
         const sx=16-Math.floor(w/2)+Math.round(Math.sin(y*0.6)*1);
-        b(sx,y,w,1,y<12?C.BARK:y<18?C.DKBARK:C.STUMP);
+        b(sx,y,w,1,y<massTop+4?C.BARK:y<massTop+10?C.DKBARK:C.STUMP);
       }
-      // Inner texture
-      for(let y=10;y<20;y++){
+      // Inner texture — more detail at higher levels
+      const texCount=Math.min(12,6+lv*2);
+      for(let i=0;i<texCount;i++){
+        const y=massTop+2+Math.floor(i*(22-massTop-4)/texCount);
         const x=15+Math.round(Math.sin(y*0.5)*1.5);
-        p(x,y,y%2===0?C.PLBARK:C.LTBARK);
+        p(x,y,i%2===0?C.PLBARK:C.LTBARK);
+        if(lv>=3)p(x+1,y,C.LTBARK);
       }
-      // Tendrils reaching outward
-      const reach=fl?6:br?4:2;
+      // Bark patterns at high levels
+      if(lv>=3){for(let y=massTop;y<22;y+=2){p(16-Math.floor(massW/2),y,C.DKBARK);p(16+Math.floor(massW/2)-1,y+1,C.BARK);}}
+      // Tendrils reaching outward — more and longer at higher levels
+      const reach=fl?4+lv:br?2+lv:lv;
       tVine(p,12,14,12-reach,10,C.BARK,fl);
       tVine(p,20,14,20+reach,10,C.BARK,fl);
-      tVine(p,14,20,14-reach,23,C.DKBARK,fl);
-      tVine(p,18,20,18+reach,23,C.DKBARK,fl);
-      // Top root knot
-      b(14,7,4,3,C.BARK);b(15,7,2,2,C.LTBARK);p(14,7,C.PLBARK);
+      if(lv>=2){tVine(p,14,20,14-reach,23,C.DKBARK,fl);tVine(p,18,20,18+reach,23,C.DKBARK,fl);}
+      if(lv>=3){tVine(p,13,16,13-Math.floor(reach*0.7),12,C.BARK,fl);tVine(p,19,16,19+Math.floor(reach*0.7),12,C.BARK,fl);}
+      if(lv>=4){tVine(p,11,18,11-reach,22,C.DKBARK,fl);tVine(p,21,18,21+reach,22,C.DKBARK,fl);}
+      // Top root knot — larger at higher levels
+      const knotW=2+lv;
+      b(16-Math.floor(knotW/2),massTop-2,knotW,3,C.BARK);b(16-Math.floor((knotW-2)/2),massTop-2,Math.max(2,knotW-2),2,C.LTBARK);p(16-Math.floor(knotW/2),massTop-2,C.PLBARK);
+      if(lv>=3){p(16-Math.floor(knotW/2)-1,massTop-1,C.BARK);p(16+Math.ceil(knotW/2),massTop-1,C.BARK);}
+      if(lv>=4){b(16-Math.floor(knotW/2),massTop-3,knotW,1,C.PLBARK);}
       // Fire state: tendrils burst out
       if(fl){
-        for(let i=0;i<4;i++){p(5-i,8+i*2,C.LTBARK);p(27+i,9+i*2,C.LTBARK);}
-        p(3,7,C.PLBARK);p(29,8,C.PLBARK);
+        const burstN=2+lv;
+        for(let i=0;i<burstN;i++){p(5-i,8+i*2,C.LTBARK);p(27+i,9+i*2,C.LTBARK);}
+        p(5-burstN,7,C.PLBARK);p(27+burstN,8,C.PLBARK);
       }
-      // Moss highlights
-      p(13,12,C.MOSS);p(19,15,C.LTMOSS);p(11,18,br?C.LTMOSS:C.MOSS);
-      if(s===3){b(14,10,4,2,C.DKBARK);p(15,12,C.STUMP);}
+      // Moss highlights — more at higher levels
+      p(13,12,C.MOSS);
+      if(lv>=2){p(19,15,C.LTMOSS);p(11,18,br?C.LTMOSS:C.MOSS);}
+      if(lv>=3){p(10,14,C.MOSS);p(21,17,C.LTMOSS);}
+      if(lv>=4){p(9,16,C.LTMOSS);p(22,13,C.MOSS);p(12,20,C.MOSS);}
+      if(s===3){b(14,massTop+2,4,2,C.DKBARK);p(15,massTop+4,C.STUMP);}
     },
-    // 3. Blossom — Pink/magenta flower bloom on stalk
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,20,s===1?1:s===2?2:0);
+    // 3. Blossom — Pink/magenta flower bloom on stalk (5 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,22,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
-      // Stalk
-      tStalk(p,b,15,8,14,2,C.MDGRN,C.GREEN,C.LTGRN);
-      // Small leaves on stalk
-      p(14,14,C.GREEN);p(17,16,C.GREEN);p(13,18,C.MDGRN);p(18,12,C.MDGRN);
-      // Flower bloom - petals open wider on charge/fire
-      const petalR=fl?6:br?5:4;
-      const pCol=fl?C.LTPNK:br?C.PINK:C.MAGENTA;
-      const pCol2=fl?C.PINK:br?C.MAGENTA:C.DKPNK;
+      // Stalk — thicker at higher levels
+      const stalkW=Math.min(3,1+Math.floor(lv/2));
+      const stalkH=Math.min(16,10+lv);
+      tStalk(p,b,16-Math.floor(stalkW/2),22-stalkH,stalkH,stalkW,C.MDGRN,C.GREEN,C.LTGRN);
+      // Leaves on stalk — more at higher levels
+      const leafCount=Math.min(6,lv+1);
+      for(let i=0;i<leafCount;i++){
+        const ly=22-stalkH+2+Math.floor(i*stalkH/(leafCount+1));
+        const lx=i%2===0?14-Math.floor(lv/2):17+Math.floor(lv/2);
+        p(lx,ly,i%3===0?C.MDGRN:C.GREEN);
+        if(lv>=3)p(lx+(i%2===0?-1:1),ly-1,C.LTGRN);
+        if(lv>=5)p(lx+(i%2===0?-1:1),ly,C.GREEN);
+      }
+      // Flower bloom — petals grow with level
+      const baseR=2+lv;
+      const petalR=fl?baseR+2:br?baseR+1:baseR;
+      const pCol=fl?C.LTPNK:br?C.PINK:(lv>=3?C.PINK:C.MAGENTA);
+      const pCol2=fl?C.PINK:br?C.MAGENTA:(lv>=3?C.MAGENTA:C.DKPNK);
+      const flowerY=22-stalkH-1;
       // Top petal
-      for(let i=0;i<petalR;i++){b(16-1,5-i,2,1,i<1?pCol:pCol2);}
+      for(let i=0;i<petalR;i++){b(15,flowerY-2-i,2,1,i<1?pCol:pCol2);}
       // Bottom petal
-      for(let i=0;i<petalR-1;i++){b(16-1,9+i,2,1,i<1?pCol:pCol2);}
+      for(let i=0;i<petalR-1;i++){b(15,flowerY+2+i,2,1,i<1?pCol:pCol2);}
       // Left petal
-      for(let i=0;i<petalR;i++){b(15-petalR+i,7,1,2,i<2?pCol2:pCol);}
+      for(let i=0;i<petalR;i++){b(16-petalR+i-1,flowerY,1,2,i<2?pCol2:pCol);}
       // Right petal
-      for(let i=0;i<petalR;i++){b(17+i,7,1,2,i<petalR-2?pCol:pCol2);}
-      // Center / pollen
-      b(15,7,2,2,fl?C.LTAMB:C.AMBER);p(15,7,fl?C.WHITE:C.LTAMB);p(16,8,C.DKAMB);
+      for(let i=0;i<petalR;i++){b(17+i,flowerY,1,2,i<petalR-2?pCol:pCol2);}
+      // Secondary petals at high levels (diagonal)
+      if(lv>=3){
+        const dr=Math.floor(petalR*0.7);
+        for(let i=0;i<dr;i++){
+          p(16-1-i,flowerY-1-i,pCol2);p(17+i,flowerY-1-i,pCol2);
+          p(16-1-i,flowerY+1+i,pCol2);p(17+i,flowerY+1+i,pCol2);
+        }
+      }
+      // Multiple flower heads at level 5
+      if(lv>=5){
+        // Small secondary blooms
+        const sx1=10,sy1=flowerY+3,sx2=22,sy2=flowerY+2;
+        for(let i=0;i<3;i++){b(sx1-i,sy1-1,1,2,C.MAGENTA);b(sx1+1+i,sy1-1,1,2,C.MAGENTA);b(sx1,sy1-2-i,2,1,C.PINK);b(sx1,sy1+1+Math.min(i,1),2,1,C.PINK);}
+        p(sx1,sy1,C.AMBER);p(sx1+1,sy1,C.LTAMB);
+        for(let i=0;i<3;i++){b(sx2-i,sy2-1,1,2,C.MAGENTA);b(sx2+1+i,sy2-1,1,2,C.MAGENTA);b(sx2,sy2-2-i,2,1,C.PINK);b(sx2,sy2+1+Math.min(i,1),2,1,C.PINK);}
+        p(sx2,sy2,C.AMBER);p(sx2+1,sy2,C.LTAMB);
+        // Connecting stems
+        tStalk(p,b,sx1+1,flowerY+5,4,1,C.MDGRN,C.GREEN,C.LTGRN);
+        tStalk(p,b,sx2,flowerY+4,5,1,C.MDGRN,C.GREEN,C.LTGRN);
+      }
+      // Center / pollen — larger at higher levels
+      const ctrR=lv>=4?2:1;
+      b(16-ctrR,flowerY+1-ctrR,ctrR*2,ctrR*2,fl?C.LTAMB:C.AMBER);
+      p(16-ctrR,flowerY+1-ctrR,fl?C.WHITE:C.LTAMB);p(16+ctrR-1,flowerY+ctrR,C.DKAMB);
       // Extra petals for fire state
       if(fl){
-        p(12,4,C.PINK);p(20,4,C.PINK);p(10,9,C.PINK);p(22,9,C.PINK);
-        p(16,2,C.LTPNK);p(16,1,C.PINK);
+        p(16-petalR-2,flowerY-2,C.PINK);p(16+petalR+1,flowerY-2,C.PINK);
+        p(16-petalR-1,flowerY+2,C.PINK);p(16+petalR,flowerY+2,C.PINK);
+        p(16,flowerY-petalR-2,C.LTPNK);p(16,flowerY-petalR-3,C.PINK);
       }
-      // Pollen particles
-      if(br){p(10,3,C.AMBER);p(22,5,C.LTAMB);p(8,7,C.DKAMB);}
-      if(fl){p(7,2,C.LTAMB);p(24,3,C.AMBER);p(6,9,C.DKAMB);p(25,6,C.LTAMB);}
-      if(s===3){b(15,6,2,3,C.DKPNK);p(14,7,C.MAGENTA);p(17,7,C.MAGENTA);}
+      // Pollen particles — more at higher levels
+      if(br){
+        p(10,flowerY-3,C.AMBER);p(22,flowerY-1,C.LTAMB);
+        if(lv>=2)p(8,flowerY+1,C.DKAMB);
+        if(lv>=4){p(7,flowerY-2,C.LTAMB);p(24,flowerY,C.AMBER);}
+      }
+      if(fl){
+        p(7,flowerY-4,C.LTAMB);p(24,flowerY-3,C.AMBER);p(6,flowerY+3,C.DKAMB);p(25,flowerY,C.LTAMB);
+        if(lv>=3){p(5,flowerY-1,C.AMBER);p(26,flowerY-2,C.LTAMB);}
+      }
+      if(s===3){b(15,flowerY-1,2,3,C.DKPNK);p(14,flowerY,C.MAGENTA);p(17,flowerY,C.MAGENTA);}
     },
-    // 4. Spore — Mushroom cap releasing spore cloud
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,20,s===1?1:s===2?2:0);
+    // 4. Spore — Mushroom cap releasing spore cloud (5 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,23,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
-      // Mushroom stem
-      b(14,14,4,9,C.PLBARK);b(15,14,2,9,C.LTBARK);
-      // Mushroom cap
-      const capW=fl?14:br?12:10;
-      for(let y=0;y<6;y++){
-        const w=Math.max(2,Math.round(capW*(1-Math.abs(y-2.5)/5)));
+      // Mushroom stem — thicker at higher levels
+      const stemW=2+Math.floor(lv/2);
+      const stemH=Math.min(12,7+lv);
+      b(16-Math.floor(stemW/2),23-stemH,stemW,stemH,C.PLBARK);b(16-Math.floor((stemW-2)/2),23-stemH,Math.max(2,stemW-2),stemH,C.LTBARK);
+      // Stem rings at high levels
+      if(lv>=3)for(let i=0;i<Math.floor(stemH/3);i++){b(16-Math.floor(stemW/2)-1,23-stemH+i*3+1,stemW+2,1,C.BARK);}
+      // Mushroom cap — wider at higher levels
+      const baseCapW=6+lv*2;
+      const capW=fl?baseCapW+4:br?baseCapW+2:baseCapW;
+      const capH=Math.min(8,4+lv);
+      for(let y=0;y<capH;y++){
+        const w=Math.max(2,Math.round(capW*(1-Math.abs(y-capH*0.4)/capH)));
         const sx=16-Math.floor(w/2);
-        b(sx,6+y,w,1,y<1?C.LTSPOR:y<3?C.SPORE:y<5?C.DKSPOR:C.DKFOR);
+        const capY=23-stemH-capH+2;
+        b(sx,capY+y,w,1,y<1?C.LTSPOR:y<Math.ceil(capH*0.4)?C.SPORE:y<Math.ceil(capH*0.8)?C.DKSPOR:C.DKFOR);
       }
+      const capTopY=23-stemH-capH+2;
       // Cap highlight
-      b(14,6,4,1,C.LTSPOR);p(13,7,fl?C.WHITE:C.LTSPOR);
-      // Cap spots
-      p(12,8,C.LTAMB);p(18,7,C.LTAMB);p(15,6,fl?C.WHITE:C.LTAMB);
-      // Spore cloud — grows with states
-      const sporeR=fl?7:br?4:0;
+      b(14,capTopY,4,1,C.LTSPOR);p(13,capTopY+1,fl?C.WHITE:C.LTSPOR);
+      // Cap spots — more at higher levels
+      p(12,capTopY+2,C.LTAMB);p(18,capTopY+1,C.LTAMB);p(15,capTopY,fl?C.WHITE:C.LTAMB);
+      if(lv>=2){p(10,capTopY+2,C.LTAMB);p(20,capTopY+2,C.LTAMB);}
+      if(lv>=4){p(9,capTopY+3,C.AMBER);p(22,capTopY+1,C.AMBER);}
+      if(lv>=5){
+        // Cap pattern rings
+        for(let i=0;i<4;i++){const a=i*Math.PI/2;p(16+Math.round(Math.cos(a)*3),capTopY+2+Math.round(Math.sin(a)*1),C.LTAMB);}
+      }
+      // Spore cloud — grows with states AND level
+      const baseSporeR=Math.floor(lv*0.8);
+      const sporeR=fl?baseSporeR+6:br?baseSporeR+3:baseSporeR;
       if(sporeR>0){
-        for(let i=0;i<8;i++){
-          const a=i*Math.PI/4;
+        const sporeN=Math.min(12,6+lv);
+        for(let i=0;i<sporeN;i++){
+          const a=i*Math.PI*2/sporeN;
           const r=sporeR-i%2;
-          const sx=16+Math.round(Math.cos(a)*r),sy=4+Math.round(Math.sin(a)*r);
+          const sx=16+Math.round(Math.cos(a)*r),sy=capTopY-1+Math.round(Math.sin(a)*r);
           if(sy>=0&&sy<32&&sx>=0&&sx<32)p(sx,sy,i%2===0?C.TOXIC:C.LTSPOR);
         }
       }
@@ -192,53 +309,81 @@ function drawTowers(ctx){
         for(let i=0;i<12;i++){
           const a=i*Math.PI/6;
           const r=sporeR+2;
-          const sx=16+Math.round(Math.cos(a)*r),sy=4+Math.round(Math.sin(a)*r);
+          const sx=16+Math.round(Math.cos(a)*r),sy=capTopY-1+Math.round(Math.sin(a)*r);
           if(sy>=0&&sy<32&&sx>=0&&sx<32)p(sx,sy,i%3===0?C.TOXIC:C.DKSPOR);
         }
       }
       // Gills under cap
-      p(13,11,C.DKFOR);p(15,11,C.DKFOR);p(17,11,C.DKFOR);p(19,11,C.DKFOR);
-      // Small mushrooms at base
-      p(10,21,C.SPORE);p(11,20,C.LTSPOR);p(21,21,C.SPORE);p(22,20,C.LTSPOR);
-      if(s===3){b(14,7,4,2,C.DKSPOR);p(16,5,C.DKFOR);}
+      const gillY=capTopY+capH-1;
+      for(let x=16-Math.floor(capW/3);x<=16+Math.floor(capW/3);x+=2)if(x>=0&&x<32)p(x,gillY,C.DKFOR);
+      // Small mushrooms at base — more at higher levels
+      const miniCount=Math.min(4,lv);
+      const miniPos=[[10,21],[21,21],[7,22],[24,22]];
+      for(let i=0;i<miniCount;i++){
+        const[mx,my]=miniPos[i];
+        p(mx,my,C.SPORE);p(mx+1,my-1,C.LTSPOR);
+        if(lv>=4)p(mx-1,my,C.DKSPOR);
+      }
+      if(s===3){b(14,capTopY+1,4,2,C.DKSPOR);p(16,capTopY-1,C.DKFOR);}
     },
-    // 5. Vine — Whipping vine tendril
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,20,s===1?1:s===2?2:0);
+    // 5. Vine — Whipping vine tendril (3 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,22,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
-      // Central vine stalk
+      // Central vine stalk — thicker at higher levels
+      const vineW=1+Math.floor(lv/2);
       for(let y=6;y<22;y++){
         const x=16+Math.round(Math.sin((y-6)*0.4)*2);
-        p(x,y,C.VINE);p(x-1,y,C.DKVINE);p(x+1,y,y%3===0?C.LTVINE:C.VINE);
+        for(let w=0;w<vineW;w++){
+          p(x-w,y,w===0?C.VINE:C.DKVINE);
+          p(x+1+w,y,(w===0&&y%3===0)?C.LTVINE:C.VINE);
+        }
       }
-      // Vine tip / whip
-      const whipExtend=fl?8:br?5:2;
+      // Secondary vines at high level
+      if(lv>=3){
+        for(let y=8;y<20;y++){
+          const x=14+Math.round(Math.sin((y-8)*0.5)*1.5);
+          p(x,y,C.DKVINE);
+          const x2=18+Math.round(Math.sin((y-8)*0.6)*1.5);
+          p(x2,y,C.VINE);
+        }
+      }
+      // Vine tip / whip — longer at higher levels
+      const baseWhip=2+lv*2;
+      const whipExtend=fl?baseWhip+4:br?baseWhip+2:baseWhip;
       for(let i=0;i<whipExtend;i++){
         const wx=fl?16+i*1.2:16+i*0.8;
         const wy=5-i+Math.sin(i*0.8)*1.5;
         const ix=Math.round(wx),iy=Math.round(wy);
         if(ix>=0&&ix<32&&iy>=0&&iy<32)p(ix,iy,i<2?C.LTVINE:C.VINE);
       }
-      // Fire: vine lashes outward
+      // Fire: vine lashes outward — more tendrils at higher levels
       if(fl){
-        for(let i=0;i<6;i++){p(22+i,4+Math.round(Math.sin(i)*2),i<3?C.LTGRN:C.GREEN);}
-        p(28,3,C.LTVINE);p(29,4,C.VINE);
+        const lashN=4+lv*2;
+        for(let i=0;i<lashN;i++){p(22+Math.floor(i*0.8),4+Math.round(Math.sin(i)*2),i<lashN/2?C.LTGRN:C.GREEN);}
+        p(22+Math.floor(lashN*0.8),3,C.LTVINE);p(23+Math.floor(lashN*0.8),4,C.VINE);
       }
-      // Curling tendrils
-      for(let i=0;i<3;i++){
-        const ty=10+i*4;
-        p(13-i,ty,br?C.LTGRN:C.GREEN);p(19+i,ty+2,br?C.LTGRN:C.GREEN);
+      // Curling tendrils — more at higher levels
+      const tendrilCount=1+lv;
+      for(let i=0;i<tendrilCount;i++){
+        const ty=8+i*Math.floor(12/tendrilCount);
+        p(13-Math.min(i,3),ty,br?C.LTGRN:C.GREEN);p(19+Math.min(i,3),ty+2,br?C.LTGRN:C.GREEN);
+        if(lv>=2){p(12-Math.min(i,3),ty+1,C.DKVINE);p(20+Math.min(i,3),ty+1,C.DKVINE);}
       }
-      // Small leaves
-      p(12,9,C.GREEN);p(20,13,C.LTGRN);p(11,17,C.MDGRN);p(21,11,C.MDGRN);
-      // Thorns on vine
-      p(14,10,C.THORN);p(18,14,C.THORN);p(13,18,C.DKTHRN);
+      // Leaves — more at higher levels
+      p(12,9,C.GREEN);p(20,13,C.LTGRN);
+      if(lv>=2){p(11,17,C.MDGRN);p(21,11,C.MDGRN);}
+      if(lv>=3){p(10,13,C.GREEN);p(22,9,C.LTGRN);p(9,19,C.MDGRN);p(23,15,C.GREEN);}
+      // Thorns on vine — more at higher levels
+      p(14,10,C.THORN);
+      if(lv>=2){p(18,14,C.THORN);p(13,18,C.DKTHRN);}
+      if(lv>=3){p(12,12,C.THORN);p(20,16,C.THORN);p(14,20,C.DKTHRN);}
       if(s===3){
         for(let y=6;y<12;y++){const x=16+Math.round(Math.sin((y-6)*0.4)*2);p(x,y,C.DKVINE);}
       }
     },
-    // 6. Elder Treant (Ultimate) — Ancient tree face/trunk
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // 6. Elder Treant (Ultimate) — Ancient tree face/trunk (1 level)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
       // Massive root base — custom for ultimate
       for(let i=0;i<12;i++){
@@ -289,8 +434,17 @@ function drawTowers(ctx){
       if(s===3){b(13,9,2,2,C.DKAMB);b(17,9,2,2,C.DKAMB);p(15,6,C.DKBARK);}
     },
   ];
-  const cols=6,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  // Layout: 6 cols × 24 rows. Per tower column, levels stack: lv1 states 0-3, lv2 states 0-3, ...
+  const cols=6,rows=T_ROWS;
+  for(let col=0;col<cols;col++){
+    const maxLv=T_LEVELS[col];
+    for(let lv=1;lv<=maxLv;lv++){
+      for(let state=0;state<4;state++){
+        const row=(lv-1)*4+state;
+        fns[col](ctx,[col*T_CELL,row*T_CELL],state,lv);
+      }
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
@@ -764,6 +918,9 @@ function drawHero(ctx){
 // ===== LABELS =====
 const T_NAMES=['Thorn','Root','Blossom','Spore','Vine','Elder Treant'];
 const T_STATES=['Idle','Charge','Fire','Cooldown'];
+// Generate row labels: "Lv1 Idle", "Lv1 Charge", ..., "Lv6 Cooldown"
+const T_ROW_LABELS:string[]=[];
+for(let lv=1;lv<=T_MAX_LV;lv++)for(const st of T_STATES)T_ROW_LABELS.push(`Lv${lv} ${st}`);
 const P_NAMES=['Thorn','Root','Blossom','Spore','Vine','Elder'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -780,16 +937,18 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=6*T_CELL;tc.height=4*T_CELL;
+    const tc=tRef.current!;tc.width=6*T_CELL;tc.height=T_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
-    const tpv=tPv.current!;const tS=2,tLW=66,tLH=13;
-    tpv.width=tLW+6*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
+    tpv.width=tLW+6*T_CELL*tS;tpv.height=T_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#0a1108';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#33aa44';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
-      for(let cc=0;cc<6;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a2a1a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#88aa77';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
+    for(let r=0;r<T_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#33aa44';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
+      // Separator line between level groups
+      if(r>0&&r%4===0){tpc.fillStyle='#33aa44';tpc.fillRect(tLW,by-2,6*T_CELL*tS,1);}
+      for(let cc=0;cc<6;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a2a1a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#88aa77';tpc.font='9px monospace';const lvInfo=`${T_NAMES[cc]} (${T_LEVELS[cc]}lv)`;tpc.fillText(lvInfo,bx_+2,by-2);}}}
 
     // Projectiles
     const pc_=pRef.current!;pc_.width=6*P_CELL;pc_.height=6*P_CELL;
@@ -823,7 +982,7 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'nature_towers_animated.png',
-      info:{sz:'384×256',cell:'64×64',loader:"this.load.spritesheet('nature_towers','nature_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'6 cols (towers) × 4 rows (idle, charge, fire, cooldown)'}},
+      info:{sz:'384×1536',cell:'64×64',loader:"this.load.spritesheet('nature_towers','nature_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`6 cols (towers) × ${T_ROWS} rows (${T_MAX_LV} levels × 4 states). Levels: ${T_NAMES.map((n,i)=>`${n}=${T_LEVELS[i]}`).join(', ')}`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'nature_projectiles_animated.png',
       info:{sz:'192×192',cell:'32×32',loader:"this.load.spritesheet('nature_proj','nature_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'6 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Druid',ref:hRef,pvRef:hPv,dl:'druid_hero_directional.png',

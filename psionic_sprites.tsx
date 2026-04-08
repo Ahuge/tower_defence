@@ -71,192 +71,345 @@ function tSpire(p:any,b:any,x:number,y:number,h:number,w:number,c1:string,c2:str
   }
 }
 
-// ===== TOWERS (5×4 at 64×64) =====
+// ===== TOWER LEVEL CONFIGS =====
+// Each tower: [name, maxLevel]
+// Probe:5, Mesmer:4, Terror:4, Mind Spike:3, Overmind:4
+const T_LEVELS=[5,4,4,3,4];
+const T_MAX_LEVEL=5;
+const T_STATES_PER_LEVEL=4; // idle, charge, fire, cooldown
+const T_TOTAL_ROWS=T_MAX_LEVEL*T_STATES_PER_LEVEL; // 20
+
+// ===== TOWERS (5×20 at 64×64) =====
+// Layout: 5 cols (towers) × 20 rows (5 levels × 4 states)
+// Row mapping: level L, state S → row = (L-1)*4 + S
+// States: 0=idle, 1=charge, 2=fire, 3=cooldown
 function drawTowers(ctx:any){
   const fns=[
-    // Probe — Floating psychic eye/orb, true damage, pulsing iris
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,20,s===1?1:s===2?2:0);
+    // Probe — Floating psychic eye/orb, true damage, pulsing iris (5 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
+      // Level-scaled parameters
+      const orbR=3+lv;              // orb radius: 4..8
+      const irisR=1+lv*0.4;        // iris size grows
+      const tendCount=Math.min(lv,4);// tendril pairs
+      const baseW=14+lv*2;         // base width grows
+      const glowInt=lv>=3?2:lv>=2?1:0;
+      tBase(p,b,22,baseW,s===1?Math.min(glowInt+1,2):s===2?2:glowInt);
       const ey=fl?4:br?5:6,cx=16;
-      // Floating orb body
-      for(let y=-5;y<=5;y++)for(let x=-5;x<=5;x++){
+      // Floating orb body — grows with level
+      for(let y=-orbR;y<=orbR;y++)for(let x=-orbR;x<=orbR;x++){
         const d=Math.sqrt(x*x+y*y);
-        if(d<=5){
-          const col=d<2?C.VOID:d<3.5?(br?C.DKPUR:C.DPPUR):C.MIND3;
+        if(d<=orbR){
+          const col=d<orbR*0.3?C.VOID:d<orbR*0.6?(br?C.DKPUR:C.DPPUR):C.MIND3;
           p(cx+x,ey+y,col);
         }
       }
-      // Iris
-      for(let y=-2;y<=2;y++)for(let x=-3;x<=3;x++){
+      // Iris — grows brighter/larger with level
+      for(let y=-Math.ceil(irisR);y<=Math.ceil(irisR);y++)for(let x=-Math.ceil(irisR*1.5);x<=Math.ceil(irisR*1.5);x++){
         const d=Math.sqrt(x*x*0.6+y*y);
-        if(d<=2){
-          p(cx+x,ey+y,d<0.8?C.WHITE:d<1.3?(fl?C.LTPNK:C.PINK):(fl?C.PINK:C.DKPNK));
+        if(d<=irisR){
+          p(cx+x,ey+y,d<irisR*0.35?C.WHITE:d<irisR*0.6?(fl?C.LTPNK:C.PINK):(fl?C.PINK:C.DKPNK));
         }
       }
       // Pupil
-      p(cx,ey,fl?C.WHITE:C.LTPNK);p(cx-1,ey,fl?C.PAPNK:C.PINK);p(cx+1,ey,fl?C.PAPNK:C.PINK);
+      p(cx,ey,fl?C.WHITE:C.LTPNK);
+      if(lv>=2){p(cx-1,ey,fl?C.PAPNK:C.PINK);p(cx+1,ey,fl?C.PAPNK:C.PINK);}
       // Eyelid top/bottom
-      b(cx-4,ey-4,8,1,br?C.LTPUR:C.BRPUR);b(cx-4,ey+4,8,1,br?C.LTPUR:C.BRPUR);
-      // Psychic glow particles
-      if(br){p(cx-7,ey-2,C.PLPUR);p(cx+7,ey-1,C.PLPUR);p(cx-6,ey+3,C.MIND2);}
-      if(fl){
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;p(cx+Math.round(Math.cos(a)*7),ey+Math.round(Math.sin(a)*6),i%2?C.PLPUR:C.LTPUR);}
-        p(cx,ey-6,C.WHITE);
+      const lidW=4+lv;
+      b(cx-lidW,ey-orbR+1,lidW*2,1,br?C.LTPUR:C.BRPUR);b(cx-lidW,ey+orbR-1,lidW*2,1,br?C.LTPUR:C.BRPUR);
+      // Secondary eyes at higher levels
+      if(lv>=3){
+        // Small side eyes
+        p(cx-orbR+1,ey-2,C.PINK);p(cx-orbR+1,ey-1,C.DKPNK);
+        p(cx+orbR-1,ey-2,C.PINK);p(cx+orbR-1,ey-1,C.DKPNK);
       }
-      // Neural tendrils to base
-      tTendril(p,cx-3,ey+5,cx-4,22,br?C.BRPUR:C.MIND2,fl);
-      tTendril(p,cx+3,ey+5,cx+4,22,br?C.BRPUR:C.MIND2,fl);
+      if(lv>=4){
+        // Third eye above
+        p(cx,ey-orbR+2,C.WHITE);p(cx-1,ey-orbR+2,C.PINK);p(cx+1,ey-orbR+2,C.PINK);
+      }
+      if(lv>=5){
+        // Bottom eye + full ring of mini-eyes
+        p(cx,ey+orbR-2,C.LTPNK);p(cx-1,ey+orbR-2,C.DKPNK);p(cx+1,ey+orbR-2,C.DKPNK);
+        for(let i=0;i<6;i++){const a=i*Math.PI/3;
+          const ex=cx+Math.round(Math.cos(a)*(orbR+2)),eey=ey+Math.round(Math.sin(a)*(orbR+1));
+          if(ex>=0&&ex<32&&eey>=0&&eey<32){p(ex,eey,C.PINK);p(ex,eey-1,C.DKPNK);}
+        }
+      }
+      // Psychic glow particles — more at higher levels
+      if(br){p(cx-orbR-2,ey-2,C.PLPUR);p(cx+orbR+2,ey-1,C.PLPUR);if(lv>=2)p(cx-orbR-1,ey+3,C.MIND2);}
+      if(fl){
+        const ring=6+lv;
+        for(let i=0;i<4+lv*2;i++){const a=i*Math.PI/(2+lv);p(cx+Math.round(Math.cos(a)*ring),ey+Math.round(Math.sin(a)*(ring-1)),i%2?C.PLPUR:C.LTPUR);}
+        p(cx,ey-orbR-1,C.WHITE);
+      }
+      // Neural tendrils to base — more at higher levels
+      for(let t=0;t<tendCount;t++){
+        const tx=3+t*2,sign=t%2===0?-1:1;
+        tTendril(p,cx+sign*tx,ey+orbR,cx+sign*(tx+1),22,br?C.BRPUR:C.MIND2,fl);
+      }
       if(s===3){p(cx-2,ey,C.MIND3);p(cx+2,ey,C.MIND3);p(cx,ey-2,C.DKPUR);}
     },
-    // Mesmer — Hypnotic spiral/pattern tower, confuses targets
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,22,s===1?1:s===2?2:0);
+    // Mesmer — Hypnotic spiral/pattern tower, confuses targets (4 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
+      const baseW=16+lv*2;
+      const glowInt=lv>=3?2:lv>=2?1:0;
+      tBase(p,b,23,baseW,s===1?Math.min(glowInt+1,2):s===2?2:glowInt);
       const cx=16,cy=12;
-      // Spiral tower body
-      for(let y=-8;y<=8;y++)for(let x=-6;x<=6;x++){
+      // Spiral body — radius and complexity grow with level
+      const spiralR=4+lv;
+      const innerR=Math.max(1,spiralR-4);
+      for(let y=-spiralR;y<=spiralR;y++)for(let x=-spiralR;x<=spiralR;x++){
         const d=Math.sqrt(x*x+y*y);
-        if(d<=7&&d>3){
-          const ang=Math.atan2(y,x)+d*0.8+(s===1?0.5:s===2?1.0:0);
-          const stripe=Math.sin(ang*3)>0;
+        if(d<=spiralR&&d>innerR){
+          const ang=Math.atan2(y,x)+d*0.8+(s===1?0.5:s===2?1.0:0)+lv*0.2;
+          const stripe=Math.sin(ang*(2+lv*0.5))>0;
           p(cx+x,cy+y,stripe?(fl?C.PLPUR:C.LTPUR):(fl?C.MIND2:C.DKPUR));
         }
       }
-      // Center eye/gem
-      for(let y=-2;y<=2;y++)for(let x=-2;x<=2;x++){
+      // Center eye/gem — grows with level
+      const gemR=1+lv*0.5;
+      for(let y=-Math.ceil(gemR);y<=Math.ceil(gemR);y++)for(let x=-Math.ceil(gemR);x<=Math.ceil(gemR);x++){
         const d=Math.sqrt(x*x+y*y);
-        if(d<=2.5) p(cx+x,cy+y,d<1?C.WHITE:d<1.8?(fl?C.PAPNK:C.PINK):C.DKPNK);
+        if(d<=gemR) p(cx+x,cy+y,d<gemR*0.4?C.WHITE:d<gemR*0.7?(fl?C.PAPNK:C.PINK):C.DKPNK);
+      }
+      // Additional confusion nodes at higher levels
+      if(lv>=2){
+        // Secondary spiral nodes
+        const nodes=[[cx-spiralR+1,cy-2],[cx+spiralR-1,cy+2]];
+        nodes.forEach(([nx,ny])=>{p(nx,ny,C.PINK);p(nx,ny-1,C.DKPNK);});
+      }
+      if(lv>=3){
+        // Confusion spiral marks become full mini-spirals
+        for(let i=0;i<4;i++){
+          const a=i*Math.PI/2+0.4;
+          const nr=spiralR+2;
+          const nx=cx+Math.round(Math.cos(a)*nr),ny=cy+Math.round(Math.sin(a)*nr);
+          if(nx>=1&&nx<31&&ny>=1&&ny<31){
+            p(nx,ny,C.PLPUR);p(nx+1,ny,C.MIND2);p(nx,ny+1,C.LTPUR);
+          }
+        }
+      }
+      if(lv>=4){
+        // Full confusion aura — outer dotted ring
+        for(let i=0;i<20;i++){const a=i*Math.PI/10,r=spiralR+3;
+          const px_=cx+Math.round(Math.cos(a)*r),py_=cy+Math.round(Math.sin(a)*r);
+          if(px_>=0&&px_<32&&py_>=0&&py_<32)p(px_,py_,i%3===0?C.WHITE:i%2?C.PLPUR:C.LTPUR);
+        }
       }
       // Hypnotic rings
       if(br){
-        for(let i=0;i<12;i++){const a=i*Math.PI/6,r=9;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%2?C.PLPUR:C.LTPUR);}
+        for(let i=0;i<8+lv*2;i++){const a=i*Math.PI/(4+lv),r=spiralR+2;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%2?C.PLPUR:C.LTPUR);}
       }
       if(fl){
-        for(let i=0;i<16;i++){const a=i*Math.PI/8,r=10;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%3===0?C.WHITE:C.PLPUR);}
-        b(cx-1,cy-9,2,1,C.WHLAV);
+        for(let i=0;i<12+lv*2;i++){const a=i*Math.PI/(6+lv),r=spiralR+3;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%3===0?C.WHITE:C.PLPUR);}
+        b(cx-1,cy-spiralR-1,2,1,C.WHLAV);
       }
       // Confusion spiral marks
-      p(cx-8,cy-3,C.MIND2);p(cx+8,cy-2,C.MIND2);p(cx-7,cy+4,C.MIND3);p(cx+7,cy+5,C.MIND3);
-      // Tendrils
-      tTendril(p,cx-4,cy+8,cx-5,23,C.BRPUR,fl);tTendril(p,cx+4,cy+8,cx+5,23,C.BRPUR,fl);
-      if(s===3){for(let i=0;i<6;i++){const a=i*Math.PI/3;p(cx+Math.round(Math.cos(a)*5),cy+Math.round(Math.sin(a)*5),C.MIND3);}}
+      p(cx-spiralR-1,cy-3,C.MIND2);p(cx+spiralR+1,cy-2,C.MIND2);
+      // Tendrils — more at higher levels
+      const tendPairs=Math.min(lv,3);
+      for(let t=0;t<tendPairs;t++){
+        const off=3+t*2;
+        tTendril(p,cx-off,cy+spiralR,cx-off-1,23,C.BRPUR,fl);
+        tTendril(p,cx+off,cy+spiralR,cx+off+1,23,C.BRPUR,fl);
+      }
+      if(s===3){for(let i=0;i<4+lv;i++){const a=i*Math.PI/(2+lv*0.5);p(cx+Math.round(Math.cos(a)*5),cy+Math.round(Math.sin(a)*5),C.MIND3);}}
     },
-    // Terror — Menacing psychic presence, dark aura, fear eyes, slow field
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,24,20,s===1?1:s===2?2:0);
+    // Terror — Menacing psychic presence, dark aura, fear eyes, slow field (4 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
+      const baseW=14+lv*2;
+      const glowInt=lv>=3?2:lv>=2?1:0;
+      tBase(p,b,24,baseW,s===1?Math.min(glowInt+1,2):s===2?2:glowInt);
       const cx=16,cy=11;
-      // Dark aura body
-      for(let y=-8;y<=10;y++)for(let x=-7;x<=7;x++){
+      // Dark aura body — radius grows with level
+      const auraR=5+lv;
+      for(let y=-auraR;y<=auraR+2;y++)for(let x=-auraR;x<=auraR;x++){
         const d=Math.sqrt(x*x+y*y*0.7);
-        if(d<=8){
-          const col=d<3?C.VOID:d<5?C.DKPSY:d<7?(fl?C.DPPUR:C.SHAD):C.SHAD;
+        if(d<=auraR){
+          const col=d<auraR*0.3?C.VOID:d<auraR*0.5?C.DKPSY:d<auraR*0.8?(fl?C.DPPUR:C.SHAD):C.SHAD;
           p(cx+x,cy+y,col);
         }
       }
-      // Fear eyes — two glowing menacing eyes
+      // Fear eyes — more eyes at higher levels
       const eyeY=cy-1;
-      // Left eye
+      // Primary eyes always present
       b(cx-4,eyeY,3,2,C.DKPNK);p(cx-3,eyeY,fl?C.WHITE:C.PINK);p(cx-4,eyeY+1,C.DPNK);
-      // Right eye
       b(cx+2,eyeY,3,2,C.DKPNK);p(cx+3,eyeY,fl?C.WHITE:C.PINK);p(cx+2,eyeY+1,C.DPNK);
-      // Angry brow marks
-      p(cx-5,eyeY-1,br?C.PINK:C.DKPNK);p(cx-3,eyeY-1,br?C.DKPNK:C.DPNK);
-      p(cx+5,eyeY-1,br?C.PINK:C.DKPNK);p(cx+3,eyeY-1,br?C.DKPNK:C.DPNK);
-      // Mouth/grimace
-      b(cx-2,cy+3,5,1,C.DKPNK);p(cx-3,cy+2,C.DPNK);p(cx+3,cy+2,C.DPNK);
-      // Dark aura particles
+      if(lv>=2){
+        // Angry brow marks intensify
+        p(cx-5,eyeY-1,C.PINK);p(cx-3,eyeY-1,C.DKPNK);
+        p(cx+5,eyeY-1,C.PINK);p(cx+3,eyeY-1,C.DKPNK);
+      }
+      if(lv>=3){
+        // Third eye above — menacing
+        b(cx-1,eyeY-3,3,2,C.DKPNK);p(cx,eyeY-3,fl?C.WHITE:C.PINK);
+        // Eyes glow brighter
+        p(cx-3,eyeY,C.WHITE);p(cx+3,eyeY,C.WHITE);
+      }
+      if(lv>=4){
+        // Additional side eyes on the aura body
+        p(cx-auraR+2,cy,C.PINK);p(cx-auraR+2,cy+1,C.DPNK);
+        p(cx+auraR-2,cy,C.PINK);p(cx+auraR-2,cy+1,C.DPNK);
+        // Fear wave rings always visible
+        for(let i=0;i<10;i++){const a=i*Math.PI/5,r=auraR+2;const px_=cx+Math.round(Math.cos(a)*r),py_=cy+Math.round(Math.sin(a)*r);if(px_>=0&&px_<32&&py_>=0&&py_<32)p(px_,py_,C.DKPNK);}
+      }
+      // Mouth/grimace — wider at higher levels
+      const mouthW=3+lv;
+      b(cx-Math.floor(mouthW/2),cy+3,mouthW,1,C.DKPNK);p(cx-Math.floor(mouthW/2)-1,cy+2,C.DPNK);p(cx+Math.floor(mouthW/2),cy+2,C.DPNK);
+      // Dark aura particles — more at higher levels
       if(br){
-        [[cx-9,cy-4],[cx+9,cy-3],[cx-8,cy+6],[cx+8,cy+7],[cx-6,cy-7],[cx+6,cy-6]].forEach(([x,y])=>p(x,y,C.DPPUR));
+        const pts:number[][]=[[cx-auraR-1,cy-4],[cx+auraR+1,cy-3],[cx-auraR,cy+6],[cx+auraR,cy+7]];
+        if(lv>=2){pts.push([cx-auraR+2,cy-auraR+1],[cx+auraR-2,cy-auraR+1]);}
+        pts.forEach(([x,y])=>{if(x>=0&&x<32&&y>=0&&y<32)p(x,y,C.DPPUR);});
       }
       if(fl){
-        for(let i=0;i<10;i++){const a=i*Math.PI/5,r=10;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%2?C.DKPNK:C.DPPUR);}
+        for(let i=0;i<6+lv*2;i++){const a=i*Math.PI/(3+lv),r=auraR+2;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%2?C.DKPNK:C.DPPUR);}
         p(cx-3,eyeY,C.WHITE);p(cx+3,eyeY,C.WHITE);
-        // Fear wave rings
-        for(let i=0;i<8;i++){const a=i*Math.PI/4,r=12;const px=cx+Math.round(Math.cos(a)*r),py=cy+Math.round(Math.sin(a)*r);if(px>=0&&px<32&&py>=0&&py<32)p(px,py,C.DKPNK);}
       }
-      // Slow field indicator — ground wisps
-      for(let x=-5;x<=5;x++){if(Math.abs(x)%2===0)p(cx+x,cy+10,fl?C.MIND3:C.DPPUR);}
+      // Slow field indicator — ground wisps, wider at higher levels
+      const wispW=3+lv*2;
+      for(let x=-wispW;x<=wispW;x++){if(Math.abs(x)%2===0){const wy=cy+auraR;if(wy<32)p(cx+x,wy,fl?C.MIND3:C.DPPUR);}}
       if(s===3){p(cx-3,eyeY,C.MIND3);p(cx+3,eyeY,C.MIND3);b(cx-2,cy+3,5,1,C.DPPUR);}
     },
-    // Mind Spike — Sharp crystal/spear of mental energy, long range
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,22,s===1?1:s===2?2:0);
+    // Mind Spike — Sharp crystal/spear of mental energy, long range (3 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
+      const baseW=16+lv*2;
+      const glowInt=lv>=2?2:lv>=1?1:0;
+      tBase(p,b,23,baseW,s===1?Math.min(glowInt+1,2):s===2?2:glowInt);
       const cx=16;
-      // Main crystal spear — tall and sharp
-      tSpire(p,b,14,1,21,4,C.DKPUR,fl?C.PLPUR:C.LTPUR,fl?C.WHITE:C.WHLAV);
-      // Secondary crystal shards
-      tSpire(p,b,8,6,16,3,C.MIND3,br?C.BRPUR:C.MIND2,br?C.LTPUR:C.BRPUR);
-      tSpire(p,b,20,4,18,3,C.DPPUR,br?C.MIND2:C.MIND3,br?C.BRPUR:C.MIND2);
+      // Main crystal spear — taller and wider with level
+      const mainH=15+lv*3,mainW=2+lv;
+      tSpire(p,b,cx-Math.floor(mainW/2),Math.max(1,22-mainH),mainH,mainW,C.DKPUR,fl?C.PLPUR:C.LTPUR,fl?C.WHITE:C.WHLAV);
+      // Secondary crystal shards — more and taller with level
+      const secH=10+lv*3,secW=2+Math.floor(lv/2);
+      tSpire(p,b,cx-8,Math.max(2,22-secH+2),secH,secW,C.MIND3,br?C.BRPUR:C.MIND2,br?C.LTPUR:C.BRPUR);
+      tSpire(p,b,cx+4,Math.max(1,22-secH),secH+1,secW,C.DPPUR,br?C.MIND2:C.MIND3,br?C.BRPUR:C.MIND2);
       // Small flanking crystals
-      tSpire(p,b,5,11,11,2,C.MIND3,C.MIND2,C.BRPUR);
-      tSpire(p,b,24,9,13,2,C.DPPUR,fl?C.BRPUR:C.MIND2,fl?C.LTPUR:C.BRPUR);
-      // Crystal tips glow
-      if(br){p(15,2,C.WHITE);p(16,1,C.PLPUR);p(9,7,C.LTPUR);p(21,5,C.PLPUR);}
+      if(lv>=1){
+        tSpire(p,b,cx-12,11,11,2,C.MIND3,C.MIND2,C.BRPUR);
+        tSpire(p,b,cx+8,9,13,2,C.DPPUR,fl?C.BRPUR:C.MIND2,fl?C.LTPUR:C.BRPUR);
+      }
+      if(lv>=2){
+        // Additional outer crystal shards
+        tSpire(p,b,2,13,9,2,C.DPPUR,C.MIND3,C.BRPUR);
+        tSpire(p,b,27,11,11,2,C.MIND3,fl?C.LTPUR:C.MIND2,fl?C.PLPUR:C.BRPUR);
+      }
+      if(lv>=3){
+        // Full crystal forest — tiny shards everywhere
+        tSpire(p,b,0,16,6,2,C.DPPUR,C.MIND3,C.MIND2);
+        tSpire(p,b,30,14,8,2,C.MIND3,C.MIND2,C.BRPUR);
+        // Energy arc between main and secondary
+        for(let i=0;i<5;i++){p(cx-4+i,3+i,C.PLPUR);p(cx+1+i,2+i,C.LTPUR);}
+      }
+      // Crystal tips glow — brighter at higher levels
+      if(br){p(cx,Math.max(1,23-mainH),C.WHITE);p(cx+1,Math.max(0,22-mainH),C.PLPUR);if(lv>=2){p(cx-7,Math.max(3,24-secH),C.LTPUR);p(cx+5,Math.max(2,23-secH),C.PLPUR);}}
       if(fl){
-        b(14,0,4,2,C.WHITE);b(13,1,6,1,C.PLPUR);
-        // Energy discharge lines
-        for(let i=0;i<5;i++){p(5-i,8+i,C.LTPUR);p(27+i,6+i,C.LTPUR);}
+        b(cx-1,Math.max(0,22-mainH),mainW+1,2,C.WHITE);b(cx-2,Math.max(1,23-mainH),mainW+3,1,C.PLPUR);
+        // Energy discharge lines — more at higher levels
+        for(let i=0;i<3+lv*2;i++){p(cx-6-i,6+i,C.LTPUR);p(cx+7+i,5+i,C.LTPUR);}
       }
       // Base energy connection
-      p(10,21,br?C.PLPUR:C.BRPUR);p(22,21,br?C.PLPUR:C.MIND2);
-      // Ambient particles
-      [[4,8,C.MIND2],[27,6,C.BRPUR],[3,14,C.MIND3],[28,11,C.MIND2]].forEach(([x,y,cl]:any)=>p(x,y,cl));
-      if(s===3){p(15,2,C.MIND3);p(9,7,C.DPPUR);}
+      p(cx-6,21,br?C.PLPUR:C.BRPUR);p(cx+6,21,br?C.PLPUR:C.MIND2);
+      // Ambient particles — more at higher levels
+      const particles:any[]=[[cx-12,8,C.MIND2],[cx+11,6,C.BRPUR]];
+      if(lv>=2)particles.push([cx-13,14,C.MIND3],[cx+12,11,C.MIND2]);
+      if(lv>=3)particles.push([1,10,C.BRPUR],[30,8,C.MIND2]);
+      particles.forEach(([x,y,cl]:any)=>{if(x>=0&&x<32&&y>=0&&y<32)p(x,y,cl);});
+      if(s===3){p(cx,Math.max(1,23-mainH),C.MIND3);p(cx-7,Math.max(3,24-secH),C.DPPUR);}
     },
-    // Overmind (Ultimate) — Massive brain/neural network, tendrils everywhere, mass confusion
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,24,18,s===1?1:s===2?2:0);
+    // Overmind (Ultimate) — Massive brain/neural network, tendrils everywhere, mass confusion (4 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
+      const baseW=12+lv*2;
+      const glowInt=lv>=3?2:lv>=2?1:0;
+      tBase(p,b,24,baseW,s===1?Math.min(glowInt+1,2):s===2?2:glowInt);
       const cx=16,cy=10;
-      // Brain dome
-      for(let y=-7;y<=5;y++)for(let x=-8;x<=8;x++){
+      // Brain dome — radius grows with level
+      const brainR=4+lv;
+      const brainH=Math.round(brainR*0.85);
+      for(let y=-brainR;y<=brainH;y++)for(let x=-brainR-1;x<=brainR+1;x++){
         const d=Math.sqrt(x*x*0.8+y*y);
-        if(d<=7){
-          // Brain fold pattern
-          const fold=Math.sin(x*0.8+y*0.3)*Math.cos(y*0.7);
+        if(d<=brainR){
+          // Brain fold pattern — more complex at higher levels
+          const fold=Math.sin(x*(0.5+lv*0.15)+y*0.3)*Math.cos(y*(0.4+lv*0.15));
           const col=fold>0.3?(fl?C.PLPUR:C.LTPUR):fold>-0.2?(fl?C.BRPUR:C.MIND2):(fl?C.MIND2:C.DKPUR);
           p(cx+x,cy+y,col);
         }
       }
       // Brain outline
-      for(let y=-7;y<=5;y++)for(let x=-8;x<=8;x++){
+      for(let y=-brainR;y<=brainH;y++)for(let x=-brainR-1;x<=brainR+1;x++){
         const d=Math.sqrt(x*x*0.8+y*y);
-        if(d<=7&&d>6) p(cx+x,cy+y,br?C.LTPUR:C.BRPUR);
+        if(d<=brainR&&d>brainR-1) p(cx+x,cy+y,br?C.LTPUR:C.BRPUR);
       }
-      // Central third eye
-      b(cx-2,cy-1,4,3,C.DKPSY);b(cx-1,cy,2,1,fl?C.WHITE:C.PINK);
-      p(cx,cy,fl?C.WHITE:C.LTPNK);p(cx-1,cy-1,C.DKPNK);p(cx+1,cy-1,C.DKPNK);
-      p(cx-2,cy,C.PINK);p(cx+2,cy,C.PINK);
-      // Neural tendrils spreading out
-      tNeuralVein(p,cx-6,cy+4,2,20,br?C.BRPUR:C.MIND2,fl);
-      tNeuralVein(p,cx+6,cy+4,29,20,br?C.BRPUR:C.MIND2,fl);
-      tNeuralVein(p,cx-4,cy+5,5,24,C.MIND3,fl);
-      tNeuralVein(p,cx+4,cy+5,27,24,C.MIND3,fl);
-      tNeuralVein(p,cx,cy+5,cx,24,br?C.MIND2:C.MIND3,fl);
-      // Additional tendrils on fire
-      if(fl){
-        tNeuralVein(p,cx-7,cy,0,12,C.PLPUR,true);
-        tNeuralVein(p,cx+7,cy,31,12,C.PLPUR,true);
-        // Confusion pulse rings
-        for(let i=0;i<12;i++){const a=i*Math.PI/6,r=12;
-          const px=cx+Math.round(Math.cos(a)*r),py=cy+Math.round(Math.sin(a)*r);
-          if(px>=0&&px<32&&py>=0&&py<32)p(px,py,i%2?C.PLPUR:C.LTPUR);
+      // Central third eye — grows with level
+      const eyeR=1+Math.floor(lv/2);
+      b(cx-eyeR,cy-1,eyeR*2,eyeR+2,C.DKPSY);b(cx-1,cy,2,1,fl?C.WHITE:C.PINK);
+      p(cx,cy,fl?C.WHITE:C.LTPNK);
+      if(lv>=2){p(cx-1,cy-1,C.DKPNK);p(cx+1,cy-1,C.DKPNK);p(cx-eyeR,cy,C.PINK);p(cx+eyeR,cy,C.PINK);}
+      // Additional eyes at higher levels
+      if(lv>=3){
+        // Side consciousness nodes
+        p(cx-brainR+2,cy-1,C.PINK);p(cx-brainR+2,cy,C.DKPNK);
+        p(cx+brainR-2,cy-1,C.PINK);p(cx+brainR-2,cy,C.DKPNK);
+      }
+      if(lv>=4){
+        // Crown of eyes around brain top
+        for(let i=0;i<5;i++){
+          const a=-Math.PI*0.2+i*Math.PI*0.1;
+          const ex=cx+Math.round(Math.cos(a)*(brainR-1)),eey=cy+Math.round(Math.sin(a)*(brainR-1));
+          if(ex>=0&&ex<32&&eey>=0&&eey<32){p(ex,eey,C.WHITE);p(ex,eey+1,C.PINK);}
         }
       }
-      // Brain stem
-      b(cx-2,cy+5,4,5,C.DKPUR);b(cx-1,cy+5,2,5,C.MIND3);
-      // Pulsing glow
-      if(br){p(cx-9,cy-2,C.MIND2);p(cx+9,cy-1,C.MIND2);p(cx,cy-8,C.PLPUR);}
+      // Neural tendrils spreading out — more tendrils at higher levels
+      const tendCount=2+lv;
+      for(let t=0;t<tendCount;t++){
+        const spread=t/(tendCount-1||1);
+        const tx1=cx-Math.round(brainR*0.8*(1-spread)),ty1=cy+brainH;
+        const tx2=Math.round(2+spread*(28)),ty2=22+Math.round(spread*2);
+        tNeuralVein(p,tx1,ty1,tx2,ty2,t<2?(br?C.BRPUR:C.MIND2):C.MIND3,fl);
+      }
+      // Center tendril always
+      tNeuralVein(p,cx,cy+brainH,cx,24,br?C.MIND2:C.MIND3,fl);
+      // Additional tendrils on fire — more dramatic at higher levels
+      if(fl){
+        tNeuralVein(p,cx-brainR,cy,0,12,C.PLPUR,true);
+        tNeuralVein(p,cx+brainR,cy,31,12,C.PLPUR,true);
+        if(lv>=3){
+          tNeuralVein(p,cx-brainR+2,cy-brainR+1,2,2,C.LTPUR,true);
+          tNeuralVein(p,cx+brainR-2,cy-brainR+1,29,2,C.LTPUR,true);
+        }
+        // Confusion pulse rings — more at higher levels
+        for(let i=0;i<8+lv*2;i++){const a=i*Math.PI/(4+lv),r=brainR+4;
+          const px_=cx+Math.round(Math.cos(a)*r),py_=cy+Math.round(Math.sin(a)*r);
+          if(px_>=0&&px_<32&&py_>=0&&py_<32)p(px_,py_,i%2?C.PLPUR:C.LTPUR);
+        }
+      }
+      // Brain stem — thicker at higher levels
+      const stemW=2+Math.floor(lv/2);
+      b(cx-stemW,cy+brainH,stemW*2,5,C.DKPUR);b(cx-1,cy+brainH,2,5,C.MIND3);
+      // Pulsing glow — more particles at higher levels
+      if(br){
+        p(cx-brainR-2,cy-2,C.MIND2);p(cx+brainR+2,cy-1,C.MIND2);p(cx,cy-brainR-1,C.PLPUR);
+        if(lv>=3){p(cx-brainR-3,cy+3,C.BRPUR);p(cx+brainR+3,cy+4,C.BRPUR);}
+      }
       // Energy sparks at base
-      p(cx-3,cy+10,fl?C.PLPUR:C.BRPUR);p(cx+3,cy+10,fl?C.PLPUR:C.BRPUR);
-      if(s===3){b(cx-2,cy,4,1,C.MIND3);p(cx,cy-2,C.DKPUR);}
+      p(cx-3,cy+brainH+5,fl?C.PLPUR:C.BRPUR);p(cx+3,cy+brainH+5,fl?C.PLPUR:C.BRPUR);
+      if(s===3){b(cx-eyeR,cy,eyeR*2,1,C.MIND3);p(cx,cy-2,C.DKPUR);}
     },
   ];
-  const cols=5,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  const cols=5,rows=T_TOTAL_ROWS;
+  for(let col=0;col<cols;col++){
+    const maxLv=T_LEVELS[col];
+    for(let lv=1;lv<=maxLv;lv++){
+      for(let state=0;state<T_STATES_PER_LEVEL;state++){
+        const row=(lv-1)*T_STATES_PER_LEVEL+state;
+        fns[col](ctx,[col*T_CELL,row*T_CELL],state,lv);
+      }
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
@@ -798,7 +951,9 @@ function drawHero(ctx:any){
 
 // ===== LABELS =====
 const T_NAMES=['Probe','Mesmer','Terror','Mind Spike','Overmind'];
-const T_STATES=['Idle','Charge','Fire','Cooldown'];
+const T_STATE_NAMES=['Idle','Charge','Fire','Cooldown'];
+const T_ROW_LABELS:string[]=[];
+for(let lv=1;lv<=T_MAX_LEVEL;lv++)for(let si=0;si<T_STATES_PER_LEVEL;si++)T_ROW_LABELS.push(`L${lv} ${T_STATE_NAMES[si]}`);
 const P_NAMES=['Psy Beam','Hypno Ring','Fear Wave','Mind Spear','Neural Pulse'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -815,16 +970,22 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=5*T_CELL;tc.height=4*T_CELL;
+    const tc=tRef.current!;tc.width=5*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
-    const tpv=tPv.current!;const tS=2,tLW=66,tLH=13;
-    tpv.width=tLW+5*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
+    tpv.width=tLW+5*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#07050c';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#bb66dd';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
-      for(let cc=0;cc<5;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a1a2a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#aa88cc';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
+    for(let r=0;r<T_TOTAL_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#bb66dd';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
+      // Draw level separator line at start of each level group
+      if(r%T_STATES_PER_LEVEL===0&&r>0){tpc.strokeStyle='#442266';tpc.beginPath();tpc.moveTo(0,by-3);tpc.lineTo(tpv.width,by-3);tpc.stroke();}
+      for(let cc=0;cc<5;cc++){
+        // Skip rows beyond this tower's max level
+        const lv=Math.floor(r/T_STATES_PER_LEVEL)+1;
+        if(lv>T_LEVELS[cc])continue;
+        const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a1a2a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#aa88cc';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
 
     // Projectiles
     const pc_=pRef.current!;pc_.width=5*P_CELL;pc_.height=6*P_CELL;
@@ -858,7 +1019,7 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'psionic_towers_animated.png',
-      info:{sz:'320×256',cell:'64×64',loader:"this.load.spritesheet('psionic_towers','psionic_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'5 cols (towers) × 4 rows (idle, charge, fire, cooldown)'}},
+      info:{sz:'320×1280',cell:'64×64',loader:"this.load.spritesheet('psionic_towers','psionic_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'5 cols (towers) × 20 rows (5 levels × 4 states: idle/charge/fire/cooldown). Probe:5lv, Mesmer:4lv, Terror:4lv, Mind Spike:3lv, Overmind:4lv'}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'psionic_projectiles_animated.png',
       info:{sz:'160×192',cell:'32×32',loader:"this.load.spritesheet('psionic_proj','psionic_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'5 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Monk',ref:hRef,pvRef:hPv,dl:'monk_hero_directional.png',
@@ -883,7 +1044,7 @@ export default function App(){
           <button key={v} onClick={()=>setView(v)} style={{background:view===v?'#1a1a2a':'#111',color:view===v?C.LTPUR:'#556677',border:`1px solid ${view===v?'#334':'#222'}`,padding:'4px 8px',borderRadius:3,cursor:'pointer',fontFamily:'monospace',fontSize:10,textTransform:'capitalize'}}>{v==='actual'?'Actual Size':v}</button>
         ))}
       </div>
-      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'70vh'}}>
+      <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'85vh'}}>
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
             <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}}/>

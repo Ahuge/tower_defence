@@ -50,76 +50,139 @@ function tSpire(p,b,x,y,h,w,c1,c2,ct){
   }
 }
 
-// ===== TOWERS (5×4 at 64×64) =====
+// ===== TOWERS (5 cols × 24 rows at 64×64) =====
+// 6 upgrade levels × 4 anim states (idle/charge/fire/cooldown) per level
+// Tower level counts: Gambler=4, Spike=6, Siphon=6, Rift=3, Oblivion=1
+const T_LEVELS=[4,6,6,3,1];
+const T_MAX_LVL=6;
+const T_ROWS=T_MAX_LVL*4; // 24 rows total
+
 function drawTowers(ctx){
   const fns=[
-    // Gambler
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,22,20,s===1?1:s===2?2:0);
+    // Gambler (4 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      // lv: 1-6 upgrade level, s: 0-3 anim state
+      const glow=s===1?1:s===2?2:0;
+      const bw=20+Math.min(lv-1,3)*1; // base widens slightly
+      tBase(p,b,22,bw,glow);
       const fy=s===1?3:s===2?2:4,dx=12;
-      for(let i=0;i<8;i++){const hw=i<4?i+1:8-i;b(dx+4-hw,fy+i,hw*2,1,s===2?C.LTPNK:C.CRIM);}
-      for(let i=1;i<7;i++){const hw=i<4?i:7-i;b(dx+4-hw+1,fy+i,Math.max(1,hw*2-2),1,s===2?C.PAPNK:C.PINK);}
-      p(15,fy+3,C.WHITE);p(17,fy+5,C.WHITE);p(16,fy+4,s>=1?C.LTGLD:C.GOLD);
+      // Diamond - grows with level
+      const dsz=8+Math.min(lv-1,3)*1; // diamond height grows
+      for(let i=0;i<dsz;i++){const hw=i<dsz/2?Math.floor(i*(lv>2?1.2:1))+1:dsz-i;b(dx+4-hw,fy+i,hw*2,1,s===2||lv>=4?C.LTPNK:C.CRIM);}
+      for(let i=1;i<dsz-1;i++){const hw=i<dsz/2?Math.floor(i*(lv>2?1.1:0.9)):dsz-1-i;b(dx+4-hw+1,fy+i,Math.max(1,hw*2-2),1,s===2||lv>=3?C.PAPNK:C.PINK);}
+      // Center gems
+      p(15,fy+3,C.WHITE);p(17,fy+5,C.WHITE);p(16,fy+4,s>=1||lv>=2?C.LTGLD:C.GOLD);
       p(15,fy+4,C.WHITE);p(16,fy+3,C.WHITE);
-      tTendril(p,14,fy+8,13,22,s===2?C.LTPNK:C.PINK,s===2);
-      tTendril(p,18,fy+8,19,22,s>=1?C.PINK:C.DKPNK,s===2);
+      if(lv>=3){p(14,fy+4,C.LTGLD);p(18,fy+4,C.LTGLD);}
+      if(lv>=4){p(15,fy+2,C.WHITE);p(17,fy+6,C.WHITE);}
+      // Tendrils - more at higher levels
+      tTendril(p,14,fy+dsz,13,22,s===2||lv>=3?C.LTPNK:C.PINK,s===2||lv>=4);
+      tTendril(p,18,fy+dsz,19,22,s>=1||lv>=2?C.PINK:C.DKPNK,s===2||lv>=3);
+      if(lv>=3){tTendril(p,12,fy+dsz-1,10,22,C.DKPNK,lv>=4);tTendril(p,20,fy+dsz-1,22,22,C.DKPNK,lv>=4);}
+      // Sparkles - more with level
       const sp=[[8,3,C.GOLD],[23,5,C.GOLD],[6,8,C.LTGLD],[25,2,C.WHITE]];
-      if(s>=1)sp.push([10,1,C.LTGLD],[22,7,C.GOLD],[4,6,C.WHITE],[27,4,C.LTGLD]);
-      if(s===2){sp.push([5,1,C.WHITE],[26,1,C.WHITE]);b(12,fy-1,8,1,C.WHITE);b(14,fy-2,4,1,C.LTGLD);}
+      if(s>=1||lv>=2)sp.push([10,1,C.LTGLD],[22,7,C.GOLD],[4,6,C.WHITE],[27,4,C.LTGLD]);
+      if(s===2||lv>=3){sp.push([5,1,C.WHITE],[26,1,C.WHITE]);b(12,fy-1,8,1,C.WHITE);b(14,fy-2,4,1,C.LTGLD);}
+      if(lv>=4){sp.push([3,4,C.LTGLD],[28,3,C.LTGLD],[7,1,C.WHITE],[24,1,C.WHITE]);}
       sp.forEach(([x,y,cl])=>p(x,y,cl));
-      p(11,24,s>=1?C.LTGLD:C.GOLD);p(20,24,s>=1?C.LTGLD:C.GOLD);
+      p(11,24,s>=1||lv>=2?C.LTGLD:C.GOLD);p(20,24,s>=1||lv>=2?C.LTGLD:C.GOLD);
+      if(lv>=3){p(9,24,C.GOLD);p(22,24,C.GOLD);}
       if(s===3){p(14,fy+2,C.DKPNK);p(18,fy+6,C.DKPNK);}
     },
-    // Spike
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,22,s===1?1:s===2?2:0);
-      const br=s>=1,fl=s===2;
-      tSpire(p,b,14,2,20,4,C.DKCYN,fl?C.LTCYN:C.CYAN,fl?C.WHITE:C.LTCYN);
-      tSpire(p,b,8,7,15,3,C.DKPNK,br?C.LTPNK:C.PINK,br?C.PAPNK:C.LTPNK);
-      tSpire(p,b,20,5,17,3,C.DEPUR,br?C.LTPUR:C.BRPUR,br?C.PLPUR:C.LTPUR);
-      tSpire(p,b,5,12,10,2,C.MDPUR,C.BRPUR,C.LTPUR);
-      tSpire(p,b,24,9,13,2,C.DKCYN,fl?C.LTCYN:C.CYAN,fl?C.WHITE:C.LTCYN);
-      if(s>=1){p(12,5,C.WHITE);p(13,4,C.LTCYN);p(18,4,C.LTPNK);p(19,5,C.PINK);}
-      if(fl){b(14,0,4,2,C.WHITE);b(13,1,6,1,C.LTCYN);for(let i=0;i<5;i++){p(5-i,8+i,C.CYAN);p(27+i,6+i,C.CYAN);}}
+    // Spike (6 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const bw=22+Math.min(lv-1,3)*1;
+      tBase(p,b,23,bw,s===1?1:s===2?2:0);
+      const br=s>=1||lv>=2,fl=s===2||lv>=5;
+      // Main spire - taller with level
+      const mh=20+Math.min(lv-1,5)*1,mw=4+Math.floor((lv-1)/3);
+      tSpire(p,b,14,Math.max(0,22-mh),mh,mw,C.DKCYN,fl?C.LTCYN:C.CYAN,fl?C.WHITE:C.LTCYN);
+      // Side spires - taller and more numerous
+      const sh1=15+Math.min(lv-1,4)*1,sh2=17+Math.min(lv-1,4)*1;
+      tSpire(p,b,8,23-sh1,sh1,3,C.DKPNK,br?C.LTPNK:C.PINK,br?C.PAPNK:C.LTPNK);
+      tSpire(p,b,20,23-sh2,sh2,3,C.DEPUR,br?C.LTPUR:C.BRPUR,br?C.PLPUR:C.LTPUR);
+      tSpire(p,b,5,12,10+Math.min(lv-1,3),2,C.MDPUR,C.BRPUR,C.LTPUR);
+      tSpire(p,b,24,9,13+Math.min(lv-1,3),2,C.DKCYN,fl?C.LTCYN:C.CYAN,fl?C.WHITE:C.LTCYN);
+      // Extra spires at high levels
+      if(lv>=3){tSpire(p,b,3,14,8,2,C.DKPNK,C.PINK,C.LTPNK);}
+      if(lv>=4){tSpire(p,b,27,11,10,2,C.DEPUR,C.BRPUR,C.LTPUR);}
+      if(lv>=5){tSpire(p,b,11,4,18,3,C.DKCYN,C.CYAN,C.LTCYN);}
+      if(lv>=6){tSpire(p,b,19,3,19,3,C.DKPNK,C.LTPNK,C.PAPNK);}
+      // Tip highlights
+      if(br){p(12,5,C.WHITE);p(13,4,C.LTCYN);p(18,4,C.LTPNK);p(19,5,C.PINK);}
+      if(lv>=3){p(10,6,C.WHITE);p(21,5,C.WHITE);}
+      if(lv>=5){p(8,7,C.WHITE);p(23,6,C.WHITE);}
+      if(fl){b(14,0,mw,2,C.WHITE);b(13,1,mw+2,1,C.LTCYN);for(let i=0;i<5+Math.min(lv-1,3);i++){p(5-i,8+i,C.CYAN);p(27+i,6+i,C.CYAN);}}
       p(9,21,br?C.LTCYN:C.CYAN);p(22,21,br?C.LTPNK:C.PINK);
       [[4,9,C.BRPUR],[27,7,C.CYAN],[3,15,C.DKCYN],[28,12,C.PINK]].forEach(([x,y,cl])=>p(x,y,cl));
+      // Energy particles at high levels
+      if(lv>=4)for(let i=0;i<lv-2;i++){const a=i*Math.PI/(lv-2||1);p(16+Math.round(Math.cos(a)*8),10+Math.round(Math.sin(a)*4),i%2?C.LTCYN:C.CYAN);}
       if(s===3){p(15,3,C.DKCYN);p(9,8,C.DKPNK);}
     },
-    // Siphon
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,20,s===1?1:s===2?2:0);const br=s>=1;
-      for(let i=0;i<8;i++){const cw=Math.max(2,Math.round(14-i*1.5));b(16-Math.floor(cw/2),4+i,cw,1,i<2?br?C.LTPUR:C.BRPUR:i<5?C.MDPUR:C.DEPUR);}
-      b(9,4,14,1,br?C.PLPUR:C.LTPUR);b(10,3,12,1,C.BRPUR);b(15,12,2,6,C.DEPUR);b(15,12,1,6,C.MDPUR);
-      const gc=br?C.LTGLD:C.GOLD,gc2=br?C.GOLD:C.DKGLD;
-      const st=s===2?[[5,4],[6,5],[7,6],[8,7],[9,8],[10,9],[11,10],[26,3],[25,4],[24,5],[23,6],[22,7],[21,8],[20,9]]:
-        [[6,5],[7,6],[8,7],[9,8],[10,9],[25,4],[24,5],[23,6],[22,7],[21,8],[20,9]];
+    // Siphon (6 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const bw=20+Math.min(lv-1,3)*1;
+      tBase(p,b,23,bw,s===1?1:s===2?2:0);const br=s>=1||lv>=2;
+      // Funnel - wider with level
+      const fw=14+Math.min(lv-1,4)*1;
+      for(let i=0;i<8;i++){const cw=Math.max(2,Math.round(fw-i*1.5));b(16-Math.floor(cw/2),4+i,cw,1,i<2?br?C.LTPUR:C.BRPUR:i<5?C.MDPUR:C.DEPUR);}
+      b(16-Math.floor(fw/2),4,fw,1,br||lv>=2?C.PLPUR:C.LTPUR);b(16-Math.floor((fw-2)/2),3,fw-2,1,lv>=3?C.PLPUR:C.BRPUR);
+      // Stem
+      const stemW=2+Math.floor((lv-1)/3);
+      b(16-Math.floor(stemW/2),12,stemW,6,C.DEPUR);b(16-Math.floor(stemW/2),12,Math.max(1,stemW-1),6,C.MDPUR);
+      // Siphon streams - more with level
+      const gc=br||lv>=2?C.LTGLD:C.GOLD,gc2=br||lv>=2?C.GOLD:C.DKGLD;
+      const baseStreams=[[6,5],[7,6],[8,7],[9,8],[10,9],[25,4],[24,5],[23,6],[22,7],[21,8],[20,9]];
+      const extraStreams=s===2||lv>=3?[[5,4],[26,3]]:[];
+      const lvStreams=lv>=4?[[4,3],[27,2]]:[];
+      const lv5Streams=lv>=5?[[3,2],[28,1]]:[];
+      const lv6Streams=lv>=6?[[2,1],[29,0],[11,10],[20,10]]:[];
+      const st=[...baseStreams,...extraStreams,...lvStreams,...lv5Streams,...lv6Streams];
       st.forEach(([x,y],i)=>p(x,y,i%2===0?gc:gc2));
-      if(s>=1)[[3,3,C.GOLD],[28,2,C.GOLD],[2,7,C.LTGLD],[29,6,C.LTGLD]].forEach(([x,y,cl])=>p(x,y,cl));
-      if(s===2){[[1,5,C.LTGLD],[30,4,C.LTGLD]].forEach(([x,y,cl])=>p(x,y,cl));b(14,3,4,1,C.WHITE);}
-      p(15,18,s===2?C.LTGLD:C.GOLD);p(16,19,C.DKGLD);p(15,20,s===2?C.LTGLD:C.GOLD);
-      b(12,25,8,1,s>=1?C.GOLD:C.DKGLD);b(13,24,6,1,s>=1?C.LTGLD:C.GOLD);b(14,24,4,1,s===2?C.WHITE:C.LTGLD);
-      tTendril(p,14,12,12,23,C.DKPNK,s===2);tTendril(p,18,12,20,23,C.DKPNK,s===2);
+      // Side sparkles
+      if(s>=1||lv>=2)[[3,3,C.GOLD],[28,2,C.GOLD],[2,7,C.LTGLD],[29,6,C.LTGLD]].forEach(([x,y,cl])=>p(x,y,cl));
+      if(s===2||lv>=4){[[1,5,C.LTGLD],[30,4,C.LTGLD]].forEach(([x,y,cl])=>p(x,y,cl));b(14,3,4,1,C.WHITE);}
+      if(lv>=5){[[0,4,C.GOLD],[31,3,C.GOLD],[1,8,C.LTGLD],[30,7,C.LTGLD]].forEach(([x,y,cl])=>p(x,y,cl));}
+      if(lv>=6){b(13,2,6,1,C.WHITE);[[0,6,C.WHITE],[31,5,C.WHITE]].forEach(([x,y,cl])=>p(x,y,cl));}
+      // Bottom orb - larger with level
+      const orbR=lv>=4?2:1;
+      p(15,18,s===2||lv>=4?C.LTGLD:C.GOLD);p(16,19,C.DKGLD);p(15,20,s===2||lv>=3?C.LTGLD:C.GOLD);
+      if(orbR>=2){p(14,18,C.GOLD);p(17,18,C.GOLD);p(14,20,C.GOLD);p(17,20,C.GOLD);}
+      // Base plate - wider with level
+      const bpw=8+Math.min(lv-1,4)*1;
+      b(16-Math.floor(bpw/2),25,bpw,1,s>=1||lv>=2?C.GOLD:C.DKGLD);b(16-Math.floor((bpw-2)/2),24,bpw-2,1,s>=1||lv>=2?C.LTGLD:C.GOLD);b(16-Math.floor((bpw-4)/2),24,bpw-4,1,s===2||lv>=4?C.WHITE:C.LTGLD);
+      tTendril(p,14,12,12,23,lv>=3?C.PINK:C.DKPNK,s===2||lv>=5);tTendril(p,18,12,20,23,lv>=3?C.PINK:C.DKPNK,s===2||lv>=5);
+      if(lv>=4){tTendril(p,13,12,10,23,C.DKPNK,lv>=6);tTendril(p,19,12,22,23,C.DKPNK,lv>=6);}
     },
-    // Rift
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      const br=s>=1,fl=s===2;
-      b(5,6,3,24,C.DKPUR);b(6,6,1,24,C.DEPUR);b(5,6,3,1,C.MDPUR);p(5,6,C.BRPUR);p(7,6,C.BRPUR);
-      b(24,6,3,24,C.DKPUR);b(25,6,1,24,C.DEPUR);b(24,6,3,1,C.MDPUR);p(24,6,C.BRPUR);p(26,6,C.BRPUR);
+    // Rift (3 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const br=s>=1||lv>=2,fl=s===2||lv>=3;
+      // Pillars - taller with level
+      const ph=24+Math.min(lv-1,2)*2,pw=3+Math.floor((lv-1)/2);
+      b(5,30-ph,pw,ph,C.DKPUR);b(6,30-ph,Math.max(1,pw-2),ph,C.DEPUR);b(5,30-ph,pw,1,C.MDPUR);p(5,30-ph,C.BRPUR);p(5+pw-1,30-ph,C.BRPUR);
+      b(27-pw,30-ph,pw,ph,C.DKPUR);b(28-pw,30-ph,Math.max(1,pw-2),ph,C.DEPUR);b(27-pw,30-ph,pw,1,C.MDPUR);p(27-pw,30-ph,C.BRPUR);p(26,30-ph,C.BRPUR);
       b(4,29,24,2,C.SHAD);b(5,29,22,1,C.DKPUR);
-      const rw=fl?5:br?4:3;
+      // Rift tear - wider with level
+      const rw=(fl?5:br?4:3)+Math.min(lv-1,2);
       for(let y=5;y<26;y++){const w=rw+Math.floor(Math.sin((y-5)*0.3)*2);b(16-Math.floor(w/2),y,w,1,C.VOID);}
       for(let y=4;y<26;y++){const x=14+Math.round(Math.sin(y*0.4)*1.5);p(x,y,fl?C.LTCYN:C.CYAN);p(x-1,y,fl?C.CYAN:C.DKCYN);p(x+1,y,fl?C.CYAN:C.DKCYN);}
       for(let y=6;y<25;y+=2)p(15+(y%3===0?1:0),y,fl?C.PLCYN:C.WHITE);
-      if(fl){for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*6),15+Math.round(Math.sin(a)*6),C.LTCYN);}b(10,14,12,3,C.DKCYN);}
+      // Energy ring at high level
+      if(fl){for(let i=0;i<8+Math.min(lv-1,2)*2;i++){const a=i*Math.PI/(4+Math.min(lv-1,2));p(16+Math.round(Math.cos(a)*6),15+Math.round(Math.sin(a)*6),C.LTCYN);}b(10,14,12,3,C.DKCYN);}
+      if(lv>=3){for(let i=0;i<12;i++){const a=i*Math.PI/6;p(16+Math.round(Math.cos(a)*8),15+Math.round(Math.sin(a)*8),i%2?C.DKCYN:C.CYAN);}}
+      // Rune marks on pillars
       const pe=br?C.LTPNK:C.PINK;
       p(6,10,pe);p(6,16,pe);p(6,22,br?C.PINK:C.CRIM);p(25,12,pe);p(25,18,pe);p(25,24,br?C.PINK:C.CRIM);
+      if(lv>=2){p(6,8,pe);p(25,9,pe);p(6,13,C.PINK);p(25,15,C.PINK);}
+      if(lv>=3){p(6,6,C.LTPNK);p(25,7,C.LTPNK);p(4,10,C.DKPNK);p(27,12,C.DKPNK);}
       p(8,4,C.PINK);p(9,3,C.PINK);p(22,4,C.PINK);p(21,3,C.PINK);
       if(br){p(14,1,C.WHITE);p(15,0,fl?C.PLCYN:C.LTCYN);p(16,1,C.CYAN);}
+      if(lv>=2){p(13,0,C.CYAN);p(17,0,C.CYAN);}
       p(5,12,pe);p(26,15,pe);
       if(s===3)for(let y=8;y<24;y+=3)p(15,y,C.DKCYN);
     },
-    // Oblivion
-    (c,o,s)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+    // Oblivion (1 level - ultimate)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       tBase(p,b,24,18,s===1?1:s===2?2:0);const br=s>=1,fl=s===2;
       for(let y=0;y<12;y++){const hw=y<2?y+3:y>9?12-y:6;b(16-hw,3+y,hw*2,1,C.DKPUR);}
       for(let y=1;y<11;y++){const hw=y<2?y+1:y>8?10-y:4;b(16-hw,3+y,hw*2,1,C.VOID);}
@@ -137,8 +200,17 @@ function drawTowers(ctx){
       if(s===3){b(11,8,10,1,C.DEPUR);b(11,10,10,1,C.DEPUR);}
     },
   ];
-  const cols=5,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  const cols=5,rows=T_ROWS; // 5 cols × 24 rows
+  for(let col=0;col<cols;col++){
+    const maxLv=T_LEVELS[col];
+    for(let lv=1;lv<=T_MAX_LVL;lv++){
+      const effectiveLv=Math.min(lv,maxLv); // clamp to tower's max level
+      for(let s=0;s<4;s++){
+        const row=(lv-1)*4+s;
+        fns[col](ctx,[col*T_CELL,row*T_CELL],s,effectiveLv);
+      }
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
@@ -442,7 +514,8 @@ function drawHero(ctx){
 
 // ===== LABELS =====
 const T_NAMES=['Gambler','Spike','Siphon','Rift','Oblivion'];
-const T_STATES=['Idle','Charge','Fire','Cooldown'];
+const T_STATES_BASE=['Idle','Charge','Fire','Cooldown'];
+const T_STATES=[];for(let lv=1;lv<=T_MAX_LVL;lv++)T_STATES_BASE.forEach(s=>T_STATES.push(`L${lv} ${s}`));
 const P_NAMES=['Coin','Shard','Gold Orb','Portal','Void Eye'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -459,15 +532,15 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current;tc.width=5*T_CELL;tc.height=4*T_CELL;
+    const tc=tRef.current;tc.width=5*T_CELL;tc.height=T_ROWS*T_CELL;
     const tCtx=tc.getContext('2d');tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
     const tpv=tPv.current;const tS=2,tLW=66,tLH=13;
-    tpv.width=tLW+5*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    tpv.width=tLW+5*T_CELL*tS;tpv.height=T_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d');tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#07050c';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#6644aa';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
+    for(let r=0;r<T_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#6644aa';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
       for(let cc=0;cc<5;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a1a2a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#887799';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
 
     // Projectiles
@@ -502,7 +575,7 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'void_towers_animated.png',
-      info:{sz:'320×256',cell:'64×64',loader:"this.load.spritesheet('void_towers','void_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'5 cols (towers) × 4 rows (idle, charge, fire, cooldown)'}},
+      info:{sz:'320×1536',cell:'64×64',loader:"this.load.spritesheet('void_towers','void_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'5 cols (towers) × 24 rows (6 levels × 4 states: idle/charge/fire/cooldown). Gambler=4lvl, Spike=6, Siphon=6, Rift=3, Oblivion=1'}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'void_projectiles_animated.png',
       info:{sz:'160×192',cell:'32×32',loader:"this.load.spritesheet('void_proj','void_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'5 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Shadow',ref:hRef,pvRef:hPv,dl:'shadow_hero_directional.png',

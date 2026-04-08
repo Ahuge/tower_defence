@@ -67,201 +67,333 @@ function tSpire(p:any,b:any,x:number,y:number,h:number,w:number,c1:string,c2:str
   }
 }
 
-// ===== TOWERS (5×4 at 64×64) =====
+// ===== LEVEL COUNTS PER TOWER =====
+const T_LEVELS=[5,5,4,2,2]; // Acolyte, Ward, Smite, Sanctuary, Absolution
+const T_MAX_LVL=5;
+const T_STATES_PER_LVL=4; // idle, charge, fire, cooldown
+const T_TOTAL_ROWS=T_MAX_LVL*T_STATES_PER_LVL; // 20
+
+// ===== LEVEL-BASED VISUAL HELPERS =====
+// Returns glow intensity 0-4 based on level (1-indexed)
+function lvlGlow(lvl:number){return Math.min(lvl-1,4);}
+// Returns pedestal width scaling with level
+function lvlPedW(base:number,lvl:number){return base+Math.floor((lvl-1)*0.8);}
+// Returns number of halo rings for level
+function lvlHalos(lvl:number){return lvl>=5?3:lvl>=4?2:lvl>=3?1:0;}
+// Returns wing size scaling 0-3
+function lvlWings(lvl:number){return lvl>=5?3:lvl>=4?2:lvl>=3?1:0;}
+
+function tMultiHalo(p:any,cx:number,cy:number,count:number,bright:boolean){
+  tHalo(p,cx,cy,4,bright);
+  if(count>=2)tHalo(p,cx,cy,6,false);
+  if(count>=3){for(let i=0;i<16;i++){const a=i*Math.PI/8;p(cx+Math.round(Math.cos(a)*8),cy+Math.round(Math.sin(a)*5),i%3===0?C.WHITE:C.PGOLD);}}
+}
+
+function tWings(p:any,b:any,cx:number,fy:number,size:number,bright:boolean){
+  if(size<=0)return;
+  // Wing base
+  const w=2+size,h=3+size;
+  b(cx-6-size,fy+1,w,h,C.WHOLY);b(cx+5,fy+1,w,h,C.WHOLY);
+  p(cx-6-size,fy+1,C.WHITE);p(cx+4+size,fy+1,C.WHITE);
+  if(size>=2){
+    // Extended feathers
+    for(let i=0;i<size;i++){p(cx-8-i,fy+i,bright?C.WHITE:C.PGOLD);p(cx+7+i,fy+i,bright?C.WHITE:C.PGOLD);}
+    b(cx-7-size,fy+2,size,2,C.HOLY);b(cx+6+1,fy+2,size,2,C.HOLY);
+  }
+  if(size>=3){
+    // Grand wing rays
+    for(let i=0;i<4;i++){p(cx-10-i,fy-1+i,C.PGOLD);p(cx+9+i,fy-1+i,C.PGOLD);}
+    p(cx-12,fy,C.LTYEL);p(cx+11,fy,C.LTYEL);
+  }
+}
+
+function tLevelGlowParticles(p:any,cx:number,fy:number,lvl:number,bright:boolean){
+  if(lvl>=2){p(cx-6,fy-1,C.PGOLD);p(cx+6,fy,C.PGOLD);p(cx-8,fy+3,C.LTYEL);p(cx+8,fy+2,C.LTYEL);}
+  if(lvl>=3){p(cx-9,fy-2,C.WHITE);p(cx+9,fy-3,C.WHITE);p(cx-10,fy+5,C.PGOLD);p(cx+10,fy+4,C.PGOLD);}
+  if(lvl>=4){
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;p(cx+Math.round(Math.cos(a)*7),fy+3+Math.round(Math.sin(a)*5),C.LTYEL);}
+    if(bright){for(let i=0;i<8;i++){const a=i*Math.PI/4+0.4;p(cx+Math.round(Math.cos(a)*9),fy+3+Math.round(Math.sin(a)*7),C.PGOLD);}}
+  }
+  if(lvl>=5){
+    for(let i=0;i<12;i++){const a=i*Math.PI/6;p(cx+Math.round(Math.cos(a)*10),fy+2+Math.round(Math.sin(a)*8),i%2?C.WHITE:C.BRIGHTYEL);}
+    // Blinding radiance rays
+    for(let r=6;r<13;r+=2){p(cx,fy-r+3,C.WHITE);p(cx-1,fy-r+4,C.PGOLD);p(cx+1,fy-r+4,C.PGOLD);}
+  }
+}
+
+// Golden trim detail level
+function tLevelTrim(p:any,b:any,topY:number,w:number,lvl:number){
+  if(lvl>=2){p(16-Math.floor(w/2)+2,topY+2,C.LTGLD);p(16+Math.floor(w/2)-3,topY+2,C.LTGLD);}
+  if(lvl>=3){b(16-Math.floor(w/2)+1,topY+1,2,1,C.BRIGHTYEL);b(16+Math.floor(w/2)-3,topY+1,2,1,C.BRIGHTYEL);}
+  if(lvl>=4){for(let i=0;i<w-6;i+=2)p(16-Math.floor(w/2)+3+i,topY,C.WHITE);}
+}
+
+// ===== TOWERS (5 cols × 20 rows at 64×64) =====
 function drawTowers(ctx:any){
   const fns=[
-    // Acolyte — kneeling holy figure on pedestal, gentle glow
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tPedestal(p,b,23,20,s===1?1:s===2?2:0);
+    // Acolyte — kneeling holy figure on pedestal (5 levels)
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const pw=lvlPedW(20,lvl);
+      tPedestal(p,b,23,pw,s===1?1:s===2?2:0);
+      tLevelTrim(p,b,23,pw,lvl);
       const br=s>=1,fl=s===2;
-      // Kneeling figure body
       const fy=12;
-      b(14,fy+4,4,6,C.WHOLY);b(15,fy+4,2,6,C.WHITE); // robes
-      b(14,fy,4,4,C.HOLY);b(15,fy+1,2,2,C.WHITE); // head
-      p(15,fy+1,C.SKIN);p(16,fy+1,C.SKIN); // face
+      // Kneeling figure body — robes get brighter with level
+      const robeCol=lvl>=4?C.WHITE:lvl>=3?C.WHOLY:C.HOLY;
+      const robeBright=lvl>=3?C.WHITE:C.WHOLY;
+      b(14,fy+4,4,6,robeCol);b(15,fy+4,2,6,robeBright);
+      b(14,fy,4,4,C.HOLY);b(15,fy+1,2,2,C.WHITE);
+      p(15,fy+1,C.SKIN);p(16,fy+1,C.SKIN);
       // Kneeling legs
-      b(13,fy+8,2,3,C.WHOLY);b(17,fy+8,2,3,C.WHOLY);
+      b(13,fy+8,2,3,robeCol);b(17,fy+8,2,3,robeCol);
       b(12,fy+10,3,1,C.DKMARB);b(17,fy+10,3,1,C.DKMARB);
-      // Arms in prayer
+      // Arms in prayer — golden trim at higher levels
       b(13,fy+5,2,3,C.HOLY);b(17,fy+5,2,3,C.HOLY);
-      p(14,fy+5,C.PGOLD);p(17,fy+5,C.PGOLD);
-      // Halo
-      tHalo(p,16,fy-2,4,fl);
-      // Gentle glow particles
-      if(br){p(10,fy-1,C.PGOLD);p(22,fy,C.PGOLD);p(8,fy+3,C.LTYEL);p(24,fy+2,C.LTYEL);}
-      if(fl){
-        p(7,fy-2,C.WHITE);p(25,fy-3,C.WHITE);p(6,fy+5,C.PGOLD);p(26,fy+4,C.PGOLD);
-        // Bright glow burst
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*7),fy+3+Math.round(Math.sin(a)*5),C.LTYEL);}
+      p(14,fy+5,lvl>=3?C.BRIGHTYEL:C.PGOLD);p(17,fy+5,lvl>=3?C.BRIGHTYEL:C.PGOLD);
+      // Halo(s)
+      const hCount=lvlHalos(lvl);
+      if(hCount>0)tMultiHalo(p,16,fy-2,hCount,fl);
+      else tHalo(p,16,fy-2,4,fl);
+      // Glow particles scaled by level
+      if(br)tLevelGlowParticles(p,16,fy,lvl,fl);
+      // Wings scaled by level
+      const ws=lvlWings(lvl);
+      tWings(p,b,16,fy,ws,fl);
+      // Basic wing hints for low levels
+      if(ws===0){
+        b(9,fy+2,3,4,C.WHOLY);b(20,fy+2,3,4,C.WHOLY);
+        p(9,fy+2,C.WHITE);p(22,fy+2,C.WHITE);
+        p(8,fy+3,br?C.PGOLD:C.HOLY);p(23,fy+3,br?C.PGOLD:C.HOLY);
       }
-      // Wing hints
-      b(9,fy+2,3,4,C.WHOLY);b(20,fy+2,3,4,C.WHOLY);
-      p(9,fy+2,C.WHITE);p(22,fy+2,C.WHITE);
-      p(8,fy+3,br?C.PGOLD:C.HOLY);p(23,fy+3,br?C.PGOLD:C.HOLY);
       // Pedestal golden trim
       p(11,25,br?C.LTGLD:C.GOLD);p(20,25,br?C.LTGLD:C.GOLD);
-      if(s===3){p(15,fy+2,C.DKMARB);p(16,fy+6,C.DKMARB);} // cooldown dim
+      if(s===3){p(15,fy+2,C.DKMARB);p(16,fy+6,C.DKMARB);}
     },
-    // Ward — protective barrier pillar with rune circle
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tPedestal(p,b,24,22,s===1?1:s===2?2:0);
+    // Ward — protective barrier pillar with rune circle (5 levels)
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const pw=lvlPedW(22,lvl);
+      tPedestal(p,b,24,pw,s===1?1:s===2?2:0);
+      tLevelTrim(p,b,24,pw,lvl);
       const br=s>=1,fl=s===2;
-      // Central pillar
-      b(14,4,4,20,C.MARBLE);b(15,4,2,20,C.LTMARB);
-      b(14,4,4,1,C.WHITE);p(14,4,C.GOLD);p(17,4,C.GOLD);
-      // Pillar runes
-      for(let i=0;i<6;i++){p(14,6+i*3,br?C.GOLD:C.DKGLD);p(17,7+i*3,br?C.GOLD:C.DKGLD);}
-      // Rune circle on ground
-      const rcY=22,rcR=fl?8:br?7:6;
-      for(let i=0;i<16;i++){
-        const a=i*Math.PI/8;
-        const rx=16+Math.round(Math.cos(a)*rcR);
-        const ry=rcY+Math.round(Math.sin(a)*Math.floor(rcR*0.4));
+      // Central pillar — wider/brighter at higher levels
+      const pilW=lvl>=4?6:4,pilX=16-Math.floor(pilW/2);
+      b(pilX,4,pilW,20,C.MARBLE);b(pilX+1,4,pilW-2,20,C.LTMARB);
+      b(pilX,4,pilW,1,C.WHITE);p(pilX,4,C.GOLD);p(pilX+pilW-1,4,C.GOLD);
+      // Pillar runes — more runes at higher levels
+      const runeCount=3+lvl;
+      for(let i=0;i<runeCount;i++){p(pilX,6+i*Math.floor(14/runeCount),br?C.GOLD:C.DKGLD);p(pilX+pilW-1,7+i*Math.floor(14/runeCount),br?C.GOLD:C.DKGLD);}
+      // Rune circle on ground — larger at higher levels
+      const rcY=22,rcR=fl?6+lvl:br?5+lvl:4+lvl;
+      const runeCirclePts=12+lvl*2;
+      for(let i=0;i<runeCirclePts;i++){
+        const a=i*Math.PI*2/runeCirclePts;
+        const rx=16+Math.round(Math.cos(a)*Math.min(rcR,14));
+        const ry=rcY+Math.round(Math.sin(a)*Math.floor(Math.min(rcR,14)*0.4));
         p(rx,ry,i%2===0?C.GOLD:C.LTGLD);
       }
-      // Shield effect emanating
+      // Shield effect — more particles at higher levels
       if(br){
-        for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*5),12+Math.round(Math.sin(a)*5),C.PGOLD);}
+        const shieldR=3+lvl;
+        for(let i=0;i<6+lvl*2;i++){const a=i*Math.PI*2/(6+lvl*2);p(16+Math.round(Math.cos(a)*shieldR),12+Math.round(Math.sin(a)*shieldR),C.PGOLD);}
       }
       if(fl){
-        // Bright barrier dome
-        for(let i=0;i<12;i++){
-          const a=i*Math.PI/6;
-          p(16+Math.round(Math.cos(a)*6),10+Math.round(Math.sin(a)*4),C.WHITE);
-          p(16+Math.round(Math.cos(a)*7),10+Math.round(Math.sin(a)*5),C.PGOLD);
+        // Bright barrier dome — bigger with level
+        const domeR=4+lvl;
+        for(let i=0;i<10+lvl*2;i++){
+          const a=i*Math.PI*2/(10+lvl*2);
+          p(16+Math.round(Math.cos(a)*domeR),10+Math.round(Math.sin(a)*Math.floor(domeR*0.7)),C.WHITE);
+          p(16+Math.round(Math.cos(a)*(domeR+1)),10+Math.round(Math.sin(a)*Math.floor((domeR+1)*0.7)),C.PGOLD);
         }
         b(14,3,4,1,C.WHITE);b(13,2,6,1,C.LTYEL);
       }
-      // Cross on pillar top
+      // Cross on pillar top — bigger at high level
       p(15,5,C.GOLD);p(16,5,C.GOLD);p(15,6,C.LTGLD);p(16,6,C.LTGLD);
       p(14,5,C.DKGLD);p(17,5,C.DKGLD);
+      if(lvl>=4){p(15,4,C.WHITE);p(16,4,C.WHITE);p(14,6,C.GOLD);p(17,6,C.GOLD);}
+      if(lvl>=5){p(15,3,C.BRIGHTYEL);p(16,3,C.BRIGHTYEL);}
+      // Halo(s) above pillar at higher levels
+      if(lvl>=3)tMultiHalo(p,16,2,lvlHalos(lvl),fl);
       // Mute wave particles
       if(fl){p(6,14,C.PGOLD);p(26,14,C.PGOLD);p(4,16,C.LTYEL);p(28,16,C.LTYEL);}
       if(s===3){p(15,8,C.DKMARB);p(16,12,C.DKMARB);}
     },
-    // Smite — raised sword/hammer of judgment, lightning strike
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tPedestal(p,b,24,20,s===1?1:s===2?2:0);
+    // Smite — raised sword/hammer of judgment (4 levels)
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const pw=lvlPedW(20,lvl);
+      tPedestal(p,b,24,pw,s===1?1:s===2?2:0);
+      tLevelTrim(p,b,24,pw,lvl);
       const br=s>=1,fl=s===2;
       // Hammer handle
       b(15,6,2,16,C.DKBRN);b(15,6,2,1,C.GOLD);
       p(15,7,C.DEEPGLD);p(16,7,C.DEEPGLD);
-      // Hammer head
-      b(11,3,10,4,C.GOLD);b(12,3,8,4,C.LTGLD);
-      b(11,3,10,1,C.WHITE);b(12,4,8,1,C.BRIGHTYEL);
-      p(11,3,C.DKGLD);p(20,3,C.DKGLD);p(11,6,C.DKGLD);p(20,6,C.DKGLD);
+      // Hammer head — grows with level
+      const hw=8+lvl*1,hx=16-Math.floor(hw/2);
+      b(hx,3,hw,4,C.GOLD);b(hx+1,3,hw-2,4,C.LTGLD);
+      b(hx,3,hw,1,C.WHITE);b(hx+1,4,hw-2,1,C.BRIGHTYEL);
+      p(hx,3,C.DKGLD);p(hx+hw-1,3,C.DKGLD);p(hx,6,C.DKGLD);p(hx+hw-1,6,C.DKGLD);
       // Hammer face details
-      p(13,4,C.WHITE);p(18,4,C.WHITE);
-      p(13,5,C.PGOLD);p(18,5,C.PGOLD);
-      // Lightning bolt on fire
+      p(hx+2,4,C.WHITE);p(hx+hw-3,4,C.WHITE);
+      p(hx+2,5,C.PGOLD);p(hx+hw-3,5,C.PGOLD);
+      // Extra ornate details at high levels
+      if(lvl>=3){for(let i=1;i<hw-1;i+=2)p(hx+i,3,C.WHITE);}
+      if(lvl>=4){p(16,2,C.WHITE);p(15,2,C.BRIGHTYEL);p(17,2,C.BRIGHTYEL);}
+      // Lightning bolt on fire — more bolts at higher levels
       if(fl){
-        // Lightning from hammer downward
         const lx=[16,15,17,14,16,15,17,16,15,16];
         for(let i=0;i<10;i++){
           p(lx[i],8+i,i<2?C.WHITE:i<5?C.BRIGHTYEL:i<8?C.GOLD:C.LTGLD);
           if(i>0)p(lx[i]-1,8+i,C.PGOLD);
         }
+        // Extra lightning at high levels
+        if(lvl>=3){for(let i=0;i<8;i++){p(12+Math.round(Math.sin(i)*2),9+i,C.BRIGHTYEL);}}
+        if(lvl>=4){for(let i=0;i<8;i++){p(20-Math.round(Math.sin(i)*2),9+i,C.BRIGHTYEL);}}
         // Impact sparks
-        for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*4),20+Math.round(Math.sin(a)*2),C.WHITE);}
+        const sparkCount=4+lvl;
+        for(let i=0;i<sparkCount;i++){const a=i*Math.PI*2/sparkCount;p(16+Math.round(Math.cos(a)*(3+lvl)),20+Math.round(Math.sin(a)*2),C.WHITE);}
         p(16,19,C.WHITE);p(15,20,C.BRIGHTYEL);p(17,20,C.BRIGHTYEL);
       }
       // Charge glow
       if(br&&!fl){
         p(16,2,C.LTYEL);p(15,1,C.PGOLD);p(17,1,C.PGOLD);
         p(10,4,C.PGOLD);p(21,4,C.PGOLD);
+        if(lvl>=3){p(16,0,C.WHITE);p(9,3,C.LTYEL);p(22,3,C.LTYEL);}
       }
-      // Light rays from hammer
-      if(br){tLightRay(p,9,1,5,C.PGOLD,C.LTYEL);tLightRay(p,23,1,5,C.PGOLD,C.LTYEL);}
-      if(fl){tLightRay(p,7,0,4,C.LTGLD,C.WHITE);tLightRay(p,25,0,4,C.LTGLD,C.WHITE);}
+      // Light rays from hammer — more rays at higher levels
+      if(br){tLightRay(p,9,1,5,C.PGOLD,C.LTYEL);tLightRay(p,23,1,5,C.PGOLD,C.LTYEL);
+        if(lvl>=3){tLightRay(p,7,0,4,C.PGOLD,C.LTYEL);tLightRay(p,25,0,4,C.PGOLD,C.LTYEL);}
+      }
+      if(fl){tLightRay(p,7,0,4,C.LTGLD,C.WHITE);tLightRay(p,25,0,4,C.LTGLD,C.WHITE);
+        if(lvl>=3){tLightRay(p,5,0,3,C.PGOLD,C.BRIGHTYEL);tLightRay(p,27,0,3,C.PGOLD,C.BRIGHTYEL);}
+      }
       if(s===3){p(14,4,C.DKGLD);p(17,5,C.DKGLD);b(15,6,2,1,C.SHADOW);}
     },
-    // Sanctuary — small temple/shrine with absorbing light
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tPedestal(p,b,25,24,s===1?1:s===2?2:0);
+    // Sanctuary — small temple/shrine with absorbing light (2 levels)
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const pw=lvlPedW(24,lvl);
+      tPedestal(p,b,25,pw,s===1?1:s===2?2:0);
+      tLevelTrim(p,b,25,pw,lvl);
       const br=s>=1,fl=s===2;
-      // Temple base structure
-      b(8,14,16,10,C.MARBLE);b(9,14,14,10,C.LTMARB);
-      // Pillars
-      b(8,10,2,14,C.MARBLE);b(9,10,1,14,C.LTMARB);
-      b(22,10,2,14,C.MARBLE);b(22,10,1,14,C.LTMARB);
-      // Roof / triangle top
-      for(let i=0;i<6;i++){
-        const rw=16-i*2;
-        b(16-Math.floor(rw/2),9-i,rw,1,i<2?C.GOLD:i<4?C.LTGLD:C.PGOLD);
+      const isHigh=lvl>=2;
+      // Temple base structure — larger at level 2
+      const tw=isHigh?18:16,tx=16-Math.floor(tw/2);
+      b(tx,14,tw,10,C.MARBLE);b(tx+1,14,tw-2,10,C.LTMARB);
+      // Pillars — extra pillars at level 2
+      b(tx,10,2,14,C.MARBLE);b(tx+1,10,1,14,C.LTMARB);
+      b(tx+tw-2,10,2,14,C.MARBLE);b(tx+tw-2,10,1,14,C.LTMARB);
+      if(isHigh){b(tx+Math.floor(tw/3),10,2,14,C.DKMARB);b(tx+tw-Math.floor(tw/3)-2,10,2,14,C.DKMARB);}
+      // Roof / triangle top — taller at level 2
+      const roofH=isHigh?8:6;
+      for(let i=0;i<roofH;i++){
+        const rw=tw-i*2;
+        b(16-Math.floor(rw/2),9-i,rw,1,i<2?C.GOLD:i<Math.floor(roofH*0.6)?C.LTGLD:C.PGOLD);
       }
-      p(16,3,C.WHITE); // peak
-      // Cross at peak
-      p(16,2,C.GOLD);p(15,3,C.GOLD);p(17,3,C.GOLD);p(16,4,C.GOLD);
+      p(16,9-roofH+1,C.WHITE);
+      // Cross at peak — bigger at level 2
+      p(16,9-roofH,C.GOLD);p(15,9-roofH+1,C.GOLD);p(17,9-roofH+1,C.GOLD);p(16,9-roofH+2,C.GOLD);
+      if(isHigh){p(14,9-roofH+1,C.LTGLD);p(18,9-roofH+1,C.LTGLD);p(16,9-roofH-1,C.WHITE);}
       // Door/opening
-      b(13,17,6,7,C.SHADOW);b(14,17,4,7,C.DKSHADOW);
+      const dw=isHigh?8:6,dh=isHigh?8:7;
+      b(16-Math.floor(dw/2),17,dw,dh,C.SHADOW);b(16-Math.floor(dw/2)+1,17,dw-2,dh,C.DKSHADOW);
       // Absorbing light inside
       if(br){
         b(14,18,4,4,fl?C.BRIGHTYEL:C.PGOLD);b(15,18,2,4,fl?C.WHITE:C.LTYEL);
         p(15,19,C.WHITE);p(16,20,fl?C.WHITE:C.PGOLD);
+        if(isHigh){b(13,19,6,3,fl?C.BRIGHTYEL:C.PGOLD);b(14,19,4,2,fl?C.WHITE:C.LTYEL);}
       }
       // Light spiral inward
       if(fl){
         const pts=[[5,12],[27,11],[3,18],[29,17],[6,22],[26,21],[10,8],[22,7]];
         pts.forEach(([x,y],i)=>p(x,y,i%2===0?C.PGOLD:C.LTYEL));
-        // Converging lines
         p(11,15,C.PGOLD);p(21,15,C.PGOLD);p(12,13,C.LTYEL);p(20,13,C.LTYEL);
+        if(isHigh){
+          for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*12),16+Math.round(Math.sin(a)*8),C.PGOLD);}
+        }
       }
       // Charge particles
       if(br&&!fl){p(6,10,C.PGOLD);p(26,10,C.PGOLD);p(5,15,C.LTYEL);p(27,15,C.LTYEL);}
-      // Golden window accents
-      p(11,12,C.GOLD);p(21,12,C.GOLD);p(11,15,C.DKGLD);p(21,15,C.DKGLD);
+      // Golden window accents — more at level 2
+      p(tx+3,12,C.GOLD);p(tx+tw-4,12,C.GOLD);p(tx+3,15,C.DKGLD);p(tx+tw-4,15,C.DKGLD);
+      if(isHigh){p(tx+5,13,C.LTGLD);p(tx+tw-6,13,C.LTGLD);}
+      // Halo above temple at level 2
+      if(isHigh)tHalo(p,16,9-roofH-2,5,fl);
       if(s===3){b(14,18,4,4,C.SHADOW);p(15,19,C.DKGLD);}
     },
-    // Absolution (Ultimate) — grand cathedral spire with radiating light
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tPedestal(p,b,25,26,s===1?1:s===2?2:0);
+    // Absolution (Ultimate) — grand cathedral spire (2 levels)
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const pw=lvlPedW(26,lvl);
+      tPedestal(p,b,25,pw,s===1?1:s===2?2:0);
+      tLevelTrim(p,b,25,pw,lvl);
       const br=s>=1,fl=s===2;
+      const isHigh=lvl>=2;
       // Main cathedral spire
-      tSpire(p,b,14,1,22,4,C.MARBLE,C.LTMARB,C.WHITE);
+      tSpire(p,b,14,1,isHigh?24:22,isHigh?5:4,C.MARBLE,C.LTMARB,C.WHITE);
       // Side spires
-      tSpire(p,b,7,8,14,3,C.DKMARB,C.MARBLE,C.LTMARB);
-      tSpire(p,b,22,8,14,3,C.DKMARB,C.MARBLE,C.LTMARB);
+      tSpire(p,b,7,8,isHigh?16:14,isHigh?4:3,C.DKMARB,C.MARBLE,C.LTMARB);
+      tSpire(p,b,22,8,isHigh?16:14,isHigh?4:3,C.DKMARB,C.MARBLE,C.LTMARB);
+      // Extra flanking spires at level 2
+      if(isHigh){
+        tSpire(p,b,4,12,10,2,C.GRAYMARB,C.DKMARB,C.MARBLE);
+        tSpire(p,b,26,12,10,2,C.GRAYMARB,C.DKMARB,C.MARBLE);
+        p(4,12,C.GOLD);p(27,12,C.GOLD);
+      }
       // Spire tips - golden
       p(15,1,C.GOLD);p(16,1,C.GOLD);p(15,0,C.WHITE);
       p(8,8,C.GOLD);p(23,8,C.GOLD);
-      // Cathedral body
-      b(8,22,16,3,C.MARBLE);b(9,22,14,3,C.LTMARB);
-      // Rose window
-      b(14,16,4,4,C.GOLD);b(15,17,2,2,fl?C.WHITE:br?C.BRIGHTYEL:C.LTGLD);
-      p(14,16,C.DKGLD);p(17,16,C.DKGLD);p(14,19,C.DKGLD);p(17,19,C.DKGLD);
+      if(isHigh){p(16,0,C.BRIGHTYEL);p(15,-1<0?0:0,C.WHITE);}
+      // Cathedral body — wider at level 2
+      const bw=isHigh?18:16,bbx=16-Math.floor(bw/2);
+      b(bbx,22,bw,3,C.MARBLE);b(bbx+1,22,bw-2,3,C.LTMARB);
+      // Rose window — brighter at level 2
+      const rwS=isHigh?6:4,rwX=16-Math.floor(rwS/2);
+      b(rwX,16,rwS,rwS,C.GOLD);b(rwX+1,17,rwS-2,rwS-2,fl?C.WHITE:br?C.BRIGHTYEL:C.LTGLD);
+      p(rwX,16,C.DKGLD);p(rwX+rwS-1,16,C.DKGLD);p(rwX,16+rwS-1,C.DKGLD);p(rwX+rwS-1,16+rwS-1,C.DKGLD);
       // Radiating light beams
       if(br){
-        // Diagonal light rays
         for(let i=1;i<6;i++){p(16-i,1+i,C.PGOLD);p(16+i,1+i,C.PGOLD);}
         for(let i=1;i<4;i++){p(8-i,8+i,C.LTYEL);p(24+i,8+i,C.LTYEL);}
+        if(isHigh){for(let i=1;i<5;i++){p(4-i,12+i,C.PGOLD);p(28+i,12+i,C.PGOLD);}}
       }
       if(fl){
-        // Full holy nova
+        // Full holy nova — larger at level 2
+        const novaR1=isHigh?10:8,novaR2=isHigh?12:10;
         for(let i=0;i<16;i++){
           const a=i*Math.PI/8;
-          const r1=8,r2=10;
-          p(16+Math.round(Math.cos(a)*r1),13+Math.round(Math.sin(a)*r1),C.WHITE);
-          p(16+Math.round(Math.cos(a)*r2),13+Math.round(Math.sin(a)*r2),C.PGOLD);
+          p(16+Math.round(Math.cos(a)*novaR1),13+Math.round(Math.sin(a)*novaR1),C.WHITE);
+          p(16+Math.round(Math.cos(a)*novaR2),13+Math.round(Math.sin(a)*novaR2),C.PGOLD);
         }
-        // Cross pattern light
         tLightRay(p,16,0,5,C.LTYEL,C.WHITE);
         for(let x=5;x<28;x+=2)p(x,13,x%4===0?C.WHITE:C.PGOLD);
         b(15,0,2,2,C.WHITE);
-        // Expanding ring
-        for(let i=0;i<12;i++){const a=i*Math.PI/6;p(16+Math.round(Math.cos(a)*12),13+Math.round(Math.sin(a)*10),C.LTYEL);}
+        const ringR=isHigh?14:12;
+        for(let i=0;i<12;i++){const a=i*Math.PI/6;p(16+Math.round(Math.cos(a)*ringR),13+Math.round(Math.sin(a)*Math.floor(ringR*0.8)),C.LTYEL);}
+        if(isHigh){for(let i=0;i<16;i++){const a=i*Math.PI/8;p(16+Math.round(Math.cos(a)*15),13+Math.round(Math.sin(a)*12),C.PGOLD);}}
       }
-      // Halo above main spire
-      tHalo(p,16,3,3,fl);
+      // Halo above main spire — multiple at level 2
+      if(isHigh)tMultiHalo(p,16,3,3,fl);
+      else tHalo(p,16,3,3,fl);
       // Golden trim on body
-      b(8,22,16,1,C.GOLD);p(8,22,C.LTGLD);p(23,22,C.LTGLD);
+      b(bbx,22,bw,1,C.GOLD);p(bbx,22,C.LTGLD);p(bbx+bw-1,22,C.LTGLD);
       // Buttress details
       b(6,18,2,6,C.DKMARB);b(24,18,2,6,C.DKMARB);
       p(6,18,C.GOLD);p(25,18,C.GOLD);
+      if(isHigh){b(4,20,2,4,C.DKMARB);b(26,20,2,4,C.DKMARB);p(4,20,C.GOLD);p(27,20,C.GOLD);}
       if(s===3){p(15,17,C.DKGLD);p(16,18,C.DKGLD);b(15,0,2,2,C.SHADOW);}
     },
   ];
-  const cols=5,rows=4;
-  for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*T_CELL,row*T_CELL],row);
+  const cols=5,rows=T_TOTAL_ROWS;
+  // Layout: for each level (1..T_MAX_LVL), 4 state rows; towers with fewer levels get blank cells
+  for(let col=0;col<cols;col++){
+    const maxLvl=T_LEVELS[col];
+    for(let lvl=1;lvl<=T_MAX_LVL;lvl++){
+      for(let st=0;st<T_STATES_PER_LVL;st++){
+        const row=(lvl-1)*T_STATES_PER_LVL+st;
+        if(lvl<=maxLvl){
+          fns[col](ctx,[col*T_CELL,row*T_CELL],st,lvl);
+        }
+        // else: leave blank for towers that don't have this level
+      }
+    }
+  }
   return{cols,rows,cell:T_CELL};
 }
 
@@ -783,7 +915,9 @@ function drawHero(ctx:any){
 
 // ===== LABELS =====
 const T_NAMES=['Acolyte','Ward','Smite','Sanctuary','Absolution'];
-const T_STATES=['Idle','Charge','Fire','Cooldown'];
+const T_STATE_NAMES=['Idle','Charge','Fire','Cooldown'];
+const T_ROW_LABELS:string[]=[];
+for(let lvl=1;lvl<=T_MAX_LVL;lvl++)for(const st of T_STATE_NAMES)T_ROW_LABELS.push(`L${lvl} ${st}`);
 const P_NAMES=['Light Mote','Barrier Pulse','Holy Bolt','Absorb Spiral','Holy Beam'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
 const H_COL_LABELS=['Idle 1','Idle 2','Walk 1','Walk 2','Walk 3','Walk 4','Atk 1','Atk 2'];
@@ -800,16 +934,24 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=5*T_CELL;tc.height=4*T_CELL;
+    const tc=tRef.current!;tc.width=5*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
     const tpv=tPv.current!;const tS=2,tLW=66,tLH=13;
-    tpv.width=tLW+5*T_CELL*tS;tpv.height=4*(T_CELL*tS+tLH)+10;
+    tpv.width=tLW+5*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#0a0808';tpc.fillRect(0,0,tpv.width,tpv.height);
-    for(let r=0;r<4;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#ccaa44';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
-      for(let cc=0;cc<5;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#332200';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#aa9966';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx_+2,by-2);}}}
+    for(let r=0;r<T_TOTAL_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle=r%T_STATES_PER_LVL===0?'#ddbb44':'#ccaa44';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
+      // Draw level separator line
+      if(r%T_STATES_PER_LVL===0&&r>0){tpc.strokeStyle='#665500';tpc.beginPath();tpc.moveTo(0,by-2);tpc.lineTo(tpv.width,by-2);tpc.stroke();}
+      for(let cc=0;cc<5;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#332200';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);
+        // Show tower names above the first row of level 1
+        if(r===0){tpc.fillStyle='#aa9966';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc]+` (${T_LEVELS[cc]}lvl)`,bx_+2,by-2);}
+        // Grey out cells for towers that don't have this level
+        const lvl=Math.floor(r/T_STATES_PER_LVL)+1;
+        if(lvl>T_LEVELS[cc]){tpc.fillStyle='rgba(10,8,8,0.7)';tpc.fillRect(bx_,by,T_CELL*tS,T_CELL*tS);tpc.fillStyle='#443322';tpc.font='8px monospace';tpc.fillText('N/A',bx_+T_CELL*tS/2-8,by+T_CELL*tS/2+3);}
+      }}
 
     // Projectiles
     const pc_=pRef.current!;pc_.width=5*P_CELL;pc_.height=6*P_CELL;
@@ -843,7 +985,7 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'celestial_towers_animated.png',
-      info:{sz:'320×256',cell:'64×64',loader:"this.load.spritesheet('celestial_towers','celestial_towers_animated.png',{frameWidth:64,frameHeight:64})",note:'5 cols (towers) × 4 rows (idle, charge, fire, cooldown)'}},
+      info:{sz:'320×1280',cell:'64×64',loader:"this.load.spritesheet('celestial_towers','celestial_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`5 cols (towers) × ${T_TOTAL_ROWS} rows (${T_MAX_LVL} levels × 4 states). Levels: ${T_NAMES.map((n,i)=>`${n}=${T_LEVELS[i]}`).join(', ')}`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'celestial_projectiles_animated.png',
       info:{sz:'160×192',cell:'32×32',loader:"this.load.spritesheet('celestial_proj','celestial_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'5 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Paladin',ref:hRef,pvRef:hPv,dl:'paladin_hero_directional.png',

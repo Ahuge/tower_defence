@@ -64,42 +64,58 @@ function iLavaCrack(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bri
   }
 }
 
-// ===== TOWERS (6×4 at 64×64) =====
+// ===== TOWER LEVEL COUNTS =====
+const T_LEVELS=[3,4,3,2,2,3]; // Imp, Hellfire, Soul Drain, Fiend, Immolate, Apocalypse
+const T_MAX_LVL=4; // max across all towers → 16 rows
+const T_STATES_PER_LVL=4; // idle, charge, fire, cooldown
+
+// ===== TOWERS (6×16 at 64×64) — 4 levels × 4 states =====
 function drawTowers(ctx:any){
   const fns=[
-    // 1. Imp — Small demon perched on base
-    (c:any,o:number[],s:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      iBase(p,b,22,20,s===1?1:s===2?2:0);
+    // 1. Imp — Small demon perched on base (3 levels)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const glow=s===1?1:s===2?2:0;
+      const baseW=lv>=3?24:lv>=2?22:20;
+      iBase(p,b,22,baseW,glow);
       const fy=s===1?5:s===2?4:6;
-      // Body — small crouching imp
-      b(14,fy+4,4,5,C.DPRED);b(15,fy+4,2,5,C.HELL);
-      // Head
-      b(13,fy,6,4,C.HELL);b(14,fy,4,3,C.ORNG);
-      // Horns
+      // Body — grows with level
+      const bw=lv>=3?6:lv>=2?5:4;
+      const bh=lv>=3?7:lv>=2?6:5;
+      b(16-Math.floor(bw/2),fy+4,bw,bh,C.DPRED);b(15,fy+4,Math.min(bw-1,3),bh,C.HELL);
+      // Head — grows
+      const hw=lv>=3?8:lv>=2?7:6;
+      b(16-Math.floor(hw/2),fy,hw,lv>=2?5:4,C.HELL);b(14,fy,lv>=2?5:4,lv>=2?4:3,C.ORNG);
+      // Horns — longer at higher levels
       p(12,fy-1,C.DKASH);p(11,fy-2,C.DKASH);p(19,fy-1,C.DKASH);p(20,fy-2,C.DKASH);
-      // Eyes — mischievous
-      p(14,fy+1,C.FLAME);p(17,fy+1,C.FLAME);
-      if(s>=1){p(14,fy+1,C.BRGHT);p(17,fy+1,C.BRGHT);}
+      if(lv>=2){p(10,fy-3,C.CHAR);p(21,fy-3,C.CHAR);}
+      if(lv>=3){p(9,fy-4,C.DKASH);p(22,fy-4,C.DKASH);p(8,fy-5,C.CHAR);p(23,fy-5,C.CHAR);}
+      // Eyes — brighter at higher levels
+      const eyeCol=lv>=3?C.WHITE:lv>=2?C.BRGHT:C.FLAME;
+      p(14,fy+1,s>=1?eyeCol:C.FLAME);p(17,fy+1,s>=1?eyeCol:C.FLAME);
       // Mouth — grin
       p(15,fy+2,C.DKBLD);p(16,fy+2,C.DKBLD);
-      // Tail
+      if(lv>=3){p(14,fy+2,C.DKBLD);p(17,fy+2,C.DKBLD);}
+      // Tail — longer at higher levels
       p(18,fy+6,C.DPRED);p(19,fy+7,C.DPRED);p(20,fy+8,C.EMBR);p(21,fy+9,C.EMBR);p(22,fy+8,C.DPRED);
-      if(s>=1)p(23,fy+7,C.HELL);
-      // Wings — small bat wings
+      if(s>=1||lv>=2)p(23,fy+7,C.HELL);
+      if(lv>=3){p(24,fy+6,C.DPRED);p(25,fy+5,C.EMBR);}
+      // Wings — grow with level
       b(10,fy+3,3,1,C.DPRED);b(9,fy+2,2,1,C.DPRED);p(8,fy+1,C.DPRED);
       b(19,fy+3,3,1,C.DPRED);b(21,fy+2,2,1,C.DPRED);p(23,fy+1,C.DPRED);
-      if(s===2){p(7,fy,C.DPRED);p(24,fy,C.DPRED);}
+      if(lv>=2){p(7,fy,C.DPRED);p(24,fy,C.DPRED);b(7,fy+1,2,1,C.DPRED);b(23,fy+1,2,1,C.DPRED);}
+      if(lv>=3){p(6,fy-1,C.DPRED);p(25,fy-1,C.DPRED);p(5,fy-2,C.DPRED);p(26,fy-2,C.DPRED);}
       // Arms
       b(12,fy+5,2,2,C.HELL);b(18,fy+5,2,2,C.HELL);
+      if(lv>=2){b(11,fy+5,1,2,C.DPRED);b(20,fy+5,1,2,C.DPRED);}
       // Feet
       p(13,fy+9,C.DPRED);p(14,fy+9,C.DPRED);p(17,fy+9,C.DPRED);p(18,fy+9,C.DPRED);
-      // Fire wisps around (state dependent)
-      if(s>=1){p(10,fy-1,C.ORNG);p(22,fy,C.ORNG);p(9,fy+5,C.FLAME);}
-      if(s===2){p(7,fy-2,C.FLAME);p(25,fy-1,C.FLAME);p(6,fy+3,C.ORNG);p(26,fy+4,C.ORNG);}
+      // Fire wisps — more at higher levels
+      if(s>=1||lv>=2){p(10,fy-1,C.ORNG);p(22,fy,C.ORNG);p(9,fy+5,C.FLAME);}
+      if(s===2||lv>=3){p(7,fy-2,C.FLAME);p(25,fy-1,C.FLAME);p(6,fy+3,C.ORNG);p(26,fy+4,C.ORNG);}
+      if(lv>=3){p(4,fy-3,C.ORNG);p(27,fy-2,C.ORNG);p(5,fy+6,C.FLAME);p(27,fy+7,C.FLAME);}
       // Expired (s===3) = fading
       if(s===3){
-        // Faded colors — ghostly
-        b(14,fy+4,4,5,C.DKASH);b(13,fy,6,4,C.ASH);
+        b(16-Math.floor(bw/2),fy+4,bw,bh,C.DKASH);b(16-Math.floor(hw/2),fy,hw,4,C.ASH);
         p(14,fy+1,C.EMBR);p(17,fy+1,C.EMBR);
         p(15,fy+2,C.CHAR);p(16,fy+2,C.CHAR);
       }
