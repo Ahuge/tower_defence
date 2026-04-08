@@ -71,6 +71,11 @@ export class OpponentMinimap {
     this.showingOpponent = val;
   }
 
+  /** Make minimap semi-transparent when placing towers so it doesn't block clicks */
+  setFaded(faded: boolean): void {
+    this.container.setAlpha(faded ? 0.3 : 1);
+  }
+
   update(myTowers?: { col: number; row: number; color: number }[]): void {
     const g = this.boardGraphics;
     g.clear();

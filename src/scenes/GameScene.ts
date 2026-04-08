@@ -659,12 +659,13 @@ export class GameScene extends Phaser.Scene {
       // Create opponent simulation
       this.opponentSim = new OpponentSimulation(this.versus, this.getMapDef(), this.difficultyHints);
 
+      // Wire versus into the game mode context so sends go to opponent
+      gameModeCtx.versus = this.versus;
       this.eventLog.gameMessage('VERSUS MODE — sends go to opponent!');
       // Start initial 60s countdown for first wave
-      this.versus.waveTimer = 60000;
-      this.versus.waveTimerActive = true;
-      // Sync initial speed from host
+      this.versus.startWaveCountdown(60000);
       if (this.versus.isHost) {
+        this.versus.send({ type: 'countdown_start', duration: 60000 });
         this.versus.send({ type: 'speed_change', speed: this.gameSpeed });
       }
 
@@ -792,6 +793,7 @@ export class GameScene extends Phaser.Scene {
     this.selectedBuildType = typeId;
     this.selectedTower = null;
     this.towerInfo?.hide();
+    this.opponentMinimap?.setFaded(true);
   }
 
   private enterInspectMode(tower: Tower): void {
@@ -812,6 +814,7 @@ export class GameScene extends Phaser.Scene {
     this.linkingConduit = null;
     this.towerBar.deselect();
     this.towerInfo.hide();
+    this.opponentMinimap?.setFaded(false);
     this.creepInfo.hide();
     this.hoverGraphics.clear();
     this.rangeGraphics.clear();
