@@ -398,12 +398,9 @@ registerTowerUpdate('adjacency_buff', (trait: Trait, tower: any, ctx: UpdateCont
   // Percentage-based: damagePercent and ratePercent
   const dmgPercent = trait.damagePercent ?? 0.15;
   const ratePercent = trait.ratePercent ?? 0.08;
-  // Optional: only buff specific tower IDs (e.g., Brood Mother only buffs Swarmlings)
-  const targetIds: string[] | undefined = trait.targetIds as string[] | undefined;
 
   for (const other of ctx.allTowers) {
     if (other === tower) continue;
-    if (targetIds && !targetIds.includes(other.typeId)) continue;
     const dc = Math.abs(other.col - tower.col);
     const dr = Math.abs(other.row - tower.row);
     if (dc <= 1 && dr <= 1) {
@@ -572,6 +569,33 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
 });
 
 /** Barbed wire: passively slows adjacent creeps (1-tile radius) */
+/** Swarm Commander: buffs specific tower types within a large radius */
+registerTowerUpdate('swarm_commander', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const dmgPercent = trait.damagePercent ?? 0.20;
+  const ratePercent = trait.ratePercent ?? 0.15;
+  const buffRange = (trait.buffRange ?? 6) * TILE_SIZE;
+  const targetIds: string[] = (trait.targetIds as string[]) ?? [];
+
+  for (const other of ctx.allTowers) {
+    if (other === tower) continue;
+    if (targetIds.length > 0 && !targetIds.includes(other.typeId)) continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= buffRange) {
+      addOrRefreshTrait(other.traits, {
+        id: '_adj_damage_buff',
+        bonus: Math.round(other.damage * dmgPercent * tower.level),
+        _ttl: 200,
+      });
+      addOrRefreshTrait(other.traits, {
+        id: '_adj_rate_buff',
+        bonus: ratePercent * tower.level,
+        _ttl: 200,
+      });
+    }
+  }
+});
+
 registerTowerUpdate('barbed_wire', (trait: Trait, tower: any, ctx: UpdateContext) => {
   const factor = trait.factor ?? 0.6;
   const range = TILE_SIZE * 1.5; // adjacent cells only
