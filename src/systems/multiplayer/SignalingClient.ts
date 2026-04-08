@@ -23,6 +23,8 @@ export class SignalingClient {
   private ws: WebSocket | null = null;
   private token: string = '';
   private roomCode: string = '';
+  /** Buffer messages received before handlers are registered */
+  private pendingMessages: any[] = [];
 
   // Event callbacks
   onPlayerJoined: ((playerIndex: number, playerCount: number) => void) | null = null;
@@ -101,6 +103,18 @@ export class SignalingClient {
   }
 
   private handleMessage(msg: any): void {
+    // Buffer offer/answer/ice if handlers aren't registered yet
+    if ((msg.type === 'offer' && !this.onOffer) ||
+        (msg.type === 'answer' && !this.onAnswer) ||
+        (msg.type === 'ice' && !this.onIce)) {
+      this.pendingMessages.push(msg);
+      return;
+    }
+
+    this.dispatchMessage(msg);
+  }
+
+  private dispatchMessage(msg: any): void {
     switch (msg.type) {
       case 'player_joined':
         this.onPlayerJoined?.(msg.playerIndex, msg.playerCount);
@@ -129,6 +143,14 @@ export class SignalingClient {
       case 'error':
         this.onError?.(msg.message);
         break;
+    }
+  }
+
+  /** Replay any buffered messages (call after registering handlers) */
+  flushPending(): void {
+    const pending = this.pendingMessages.splice(0);
+    for (const msg of pending) {
+      this.dispatchMessage(msg);
     }
   }
 

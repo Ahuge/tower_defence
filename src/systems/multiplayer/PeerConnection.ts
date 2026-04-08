@@ -99,7 +99,8 @@ export class PeerConnection {
       }
     };
 
-    // Create and send offer
+    // Replay any buffered messages, then create and send offer
+    signaling.flushPending();
     const offer = await this.pc.createOffer();
     await this.pc.setLocalDescription(offer);
     signaling.sendOffer(JSON.stringify(this.pc.localDescription), targetPlayer);
@@ -154,6 +155,9 @@ export class PeerConnection {
           reject(e);
         }
       };
+
+      // Replay any messages that arrived before handlers were set
+      signaling.flushPending();
     });
   }
 
