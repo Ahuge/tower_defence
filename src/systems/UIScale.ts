@@ -48,6 +48,8 @@ interface ScaleValues {
 
   // Sidebar panels
   panelContentY: number;  // Y offset where content starts below panel title
+  sendPanelH: number;     // Send panel height
+  sendSubtitleX: number;  // X offset for send panel subtitle
 
   // Touch targets
   minTouchTarget: number;
@@ -86,6 +88,8 @@ const DESKTOP: ScaleValues = {
   creepCardH: 80,
 
   panelContentY: 22,
+  sendPanelH: 190,
+  sendSubtitleX: 60,
   minTouchTarget: 24,
 };
 
@@ -122,6 +126,8 @@ const PHONE: ScaleValues = {
   creepCardH: 280,
 
   panelContentY: 50,
+  sendPanelH: 450,
+  sendSubtitleX: 80,
   minTouchTarget: 60,
 };
 
