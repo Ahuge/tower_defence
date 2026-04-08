@@ -1,4 +1,5 @@
 import { PeerConnection, ConnectionState } from './PeerConnection';
+import { SignalingClient } from './SignalingClient';
 import { GameMessage, decodeMessage } from './MessageProtocol';
 import { GameStats } from '../StatsTracker';
 
@@ -62,6 +63,23 @@ export class VersusManager {
     );
   }
 
+  // ===================== Signaling Server Mode =====================
+
+  /** HOST: connect via signaling server */
+  async hostViaSignaling(signaling: SignalingClient): Promise<void> {
+    this.isHost = true;
+    this.sharedSeed = Math.floor(Math.random() * 999999);
+    await this.peer.connectAsHost(signaling, 1);
+  }
+
+  /** JOINER: connect via signaling server */
+  async joinViaSignaling(signaling: SignalingClient): Promise<void> {
+    this.isHost = false;
+    await this.peer.connectAsJoiner(signaling, 0);
+  }
+
+  // ===================== Manual Mode (Fallback) =====================
+
   async host(): Promise<string> {
     this.isHost = true;
     this.sharedSeed = Math.floor(Math.random() * 999999);
@@ -78,12 +96,17 @@ export class VersusManager {
   }
 
   send(msg: GameMessage): void {
+    if (this.peer.state !== 'connected') {
+      console.warn('[Versus] Cannot send — peer not connected:', this.peer.state, msg.type);
+      return;
+    }
     this.peer.sendJSON(msg);
   }
 
   private handleMessage(data: string): void {
     const msg = decodeMessage(data);
     if (!msg) return;
+    console.log('[Versus] Received:', msg.type);
 
     switch (msg.type) {
       case 'tower_placed':
