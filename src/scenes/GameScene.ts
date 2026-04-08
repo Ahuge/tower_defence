@@ -101,6 +101,7 @@ export class GameScene extends Phaser.Scene {
   opponentSim: OpponentSimulation | null = null;
   viewingOpponent: boolean = false;
   arenaManager: ArenaManager | null = null;
+  private creepCounter: Phaser.GameObjects.Text | null = null;
   abilitySystem: AbilitySystem | null = null;
   private controlBar: GameControlBar | null = null;
   private cameraCtrl: CameraController | null = null;
@@ -397,6 +398,12 @@ export class GameScene extends Phaser.Scene {
     // Game mode creates mode-specific UI (sends, frontier/essence panels)
     if (this.matchMode === 'hero_defense' && this.arenaManager) {
       this.gameMode = new HeroDefenseMode(this.arenaManager);
+      // Creep counter for hero defense — bottom-left of game area
+      const counterY = GAME_HEIGHT - UIScale.space(12);
+      const counterX = getGridOffsetX() + UIScale.space(8);
+      this.creepCounter = this.add.text(counterX, counterY, '', {
+        fontSize: UIScale.font(11), color: '#ff8888', fontFamily: 'monospace',
+      }).setDepth(25).setOrigin(0, 1);
     } else if (this.matchMode === 'battle') {
       this.gameMode = new BattleMode();
     } else if (this.matchMode === 'circle_coop' && this.circle) {
@@ -1139,6 +1146,12 @@ export class GameScene extends Phaser.Scene {
     // Ability VFX
     if (this.abilitySystem) this.abilitySystem.update(delta);
     if (this.cameraCtrl) this.cameraCtrl.update(delta);
+
+    // Hero Defense creep counter
+    if (this.creepCounter && this.arenaManager) {
+      const alive = this.arenaManager.arenaCreeps.filter(c => c.alive).length;
+      this.creepCounter.setText(alive > 0 ? `Creeps: ${alive}` : '');
+    }
 
     // Versus: wave timer, minimap, incoming sends, ping, disconnect, chat
     if (this.versus) {
