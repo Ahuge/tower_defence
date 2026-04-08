@@ -9,8 +9,10 @@
  *   WS     /api/rooms/:code/signal   → WebSocket signaling
  *   POST   /api/analytics            → Game telemetry events
  *   GET    /api/analytics/summary    → Aggregated stats (admin)
+ *   GET    /dashboard                → Analytics dashboard UI
  */
 import { GameRoom } from './room';
+import { getDashboardHTML } from './dashboard';
 import { generateRoomCode, corsHeaders, json, error } from './utils';
 
 export { GameRoom };
@@ -80,6 +82,16 @@ export default {
 
       if (path === '/api/health') {
         return json({ status: 'ok', timestamp: Date.now() }, 200, origin);
+      }
+
+      // Dashboard UI
+      if (path === '/dashboard' || path === '/') {
+        const proto = request.headers.get('x-forwarded-proto') ?? 'https';
+        const host = request.headers.get('host') ?? url.host;
+        const baseUrl = `${proto}://${host}`;
+        return new Response(getDashboardHTML(baseUrl), {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
       }
 
       return error('Not found', 404, origin);
@@ -221,13 +233,25 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
     };
   }
 
-  // Popular factions today
-  const factionList = await env.ANALYTICS.list({ prefix: `dim:${today}:faction_pick:faction:` });
-  const factions: Record<string, number> = {};
-  for (const key of factionList.keys) {
-    const faction = key.name.split(':').pop()!;
-    factions[faction] = parseInt(await env.ANALYTICS.get(key.name) ?? '0');
+  // Dimension breakdowns for today
+  const dimensions: Record<string, Record<string, number>> = {};
+  const dimQueries = [
+    { prefix: `dim:${today}:faction_pick:faction:`, key: 'factions' },
+    { prefix: `dim:${today}:game_start:mode:`, key: 'modes' },
+    { prefix: `dim:${today}:game_start:difficulty:`, key: 'difficulties' },
+    { prefix: `dim:${today}:game_start:map:`, key: 'maps' },
+    { prefix: `dim:${today}:game_end:result:`, key: 'results' },
+  ];
+
+  for (const q of dimQueries) {
+    const list = await env.ANALYTICS.list({ prefix: q.prefix });
+    const dim: Record<string, number> = {};
+    for (const k of list.keys) {
+      const val = k.name.split(':').pop()!;
+      dim[val] = parseInt(await env.ANALYTICS.get(k.name) ?? '0');
+    }
+    dimensions[q.key] = dim;
   }
 
-  return json({ date: today, summary, factions }, 200, origin);
+  return json({ date: today, summary, ...dimensions }, 200, origin);
 }
