@@ -275,54 +275,84 @@ function drawTowers(ctx:any){
       p(10,24,br?C.LTMAG:C.MAG);p(21,24,br?C.LTMAG:C.MAG);
       if(s===3){p(14,cY+2,C.DKMAG);p(17,cY+4,C.DKMAG);p(16,3,C.DKMAG);}
     },
-    // 5: Conduit — multi-colored crystal hub with connecting beam lines (3 levels)
+    // 5: Conduit — circular disk/ring hub with radiating connection beams (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const f=lvlF(lv,3);
       tBase(p,b,22,18+Math.round(f*4),s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
-      // Central hub crystal — grows with level
-      const hubH=11+Math.round(f*5);const hubW=4+Math.round(f*3);
-      tCrystal(p,b,16-Math.floor(hubW/2),Math.max(3,20-hubH),hubH,hubW,C.DKGLD,br?C.LTGLD:C.GOLD,fl?C.WHITE:C.LTGLD);
-      // Node crystals at cardinal points — grow with level
-      const nH=6+Math.round(f*4);const nW=2+Math.round(f*1);
-      tCrystal(p,b,5,Math.max(8,18-nH),nH,nW,C.DKRED,C.RED,C.LTRED);
-      tCrystal(p,b,24,Math.max(7,17-nH),nH,nW,C.DKGRN,C.GRN,C.LTGRN);
-      tCrystal(p,b,14,1,4+Math.round(f*3),3+Math.round(f*1),C.DKBLU,C.BLUE,C.LTBLU);
-      tCrystal(p,b,14,17,3+Math.round(f*3),3+Math.round(f*1),C.DKMAG,C.MAG,C.LTMAG);
-      // Extra node shards at higher levels
-      if(lv>=2){
-        tCrystal(p,b,2,14,4,2,C.DKRED,C.LTRED,C.WHITE);
-        tCrystal(p,b,28,13,4,2,C.DKGRN,C.LTGRN,C.WHITE);
+      const cx=16,cy=13;
+      // Central disk — flat horizontal ellipse, grows with level
+      const diskRx=5+Math.round(f*3);// horizontal radius 5→8
+      const diskRy=2+Math.round(f*1);// vertical radius 2→3 (flat)
+      // Disk fill (ellipse scan-line)
+      for(let dy=-diskRy;dy<=diskRy;dy++){
+        const rowW=Math.round(diskRx*Math.sqrt(1-(dy*dy)/(diskRy*diskRy)));
+        if(rowW<1)continue;
+        const cl=dy<0?C.LTGLD:dy===0?(fl?C.WHITE:C.GOLD):C.DKGLD;
+        b(cx-rowW,cy+dy,rowW*2,1,cl);
       }
-      if(lv>=3){
-        tCrystal(p,b,10,2,4,2,C.DKBLU,C.LTBLU,C.WHITE);
-        tCrystal(p,b,20,2,4,2,C.DKBLU,C.LTBLU,C.PAPBLU);
+      // Disk rim highlight
+      for(let i=0;i<diskRx*4;i++){
+        const a=i*Math.PI*2/(diskRx*4);
+        const rx=cx+Math.round(Math.cos(a)*diskRx);
+        const ry=cy+Math.round(Math.sin(a)*diskRy);
+        p(rx,ry,fl?C.WHITE:br?C.LTGLD:C.AMBER);
       }
-      // Connection beams — brighter/thicker at higher levels
+      // Center gem on disk
+      b(cx-1,cy-1,2,2,fl?C.WHITE:br?C.LTGLD:C.GOLD);
+      p(cx,cy,C.WHITE);
+      // Outer ring — grows with level
+      const ringR=8+Math.round(f*3);
+      const ringRy=Math.round(ringR*0.5);
+      for(let i=0;i<ringR*6;i++){
+        const a=i*Math.PI*2/(ringR*6);
+        const rx=cx+Math.round(Math.cos(a)*ringR);
+        const ry=cy+Math.round(Math.sin(a)*ringRy);
+        if(rx>=0&&rx<32&&ry>=0&&ry<32)p(rx,ry,i%3===0?(fl?C.WHITE:C.LTGLD):C.DKGLD);
+      }
+      if(lv>=2){// Second outer ring
+        const r2=ringR+2;const r2y=Math.round(r2*0.45);
+        for(let i=0;i<r2*6;i++){const a=i*Math.PI*2/(r2*6);const rx=cx+Math.round(Math.cos(a)*r2);const ry=cy+Math.round(Math.sin(a)*r2y);if(rx>=0&&rx<32&&ry>=0&&ry<32)p(rx,ry,i%4===0?C.LTGLD:C.DPGLD);}
+      }
+      // Colored node dots around the disk at cardinal positions
+      const nR=diskRx+2;const nRy=diskRy+1;
+      const nodes:[number,number,string,string][]=[[0,C.DKRED],[Math.PI/2,C.DKBLU],[Math.PI,C.DKGRN],[Math.PI*1.5,C.DKMAG]].map(
+        ([a,dc])=>[cx+Math.round(Math.cos(a as number)*(nR)),cy+Math.round(Math.sin(a as number)*(nRy)),dc as string,
+          a===0?C.RED:a===Math.PI/2?C.BLUE:a===Math.PI?C.GRN:C.MAG]) as [number,number,string,string][];
+      const nodePositions=[[cx+nR,cy,C.DKRED,C.RED,C.LTRED],[cx-nR,cy,C.DKGRN,C.GRN,C.LTGRN],
+        [cx,cy-nRy-1,C.DKBLU,C.BLUE,C.LTBLU],[cx,cy+nRy+1,C.DKMAG,C.MAG,C.LTMAG]] as const;
+      for(const [nx,ny,dk,mid,lt] of nodePositions){
+        b(nx-1,ny-1,2,2,br?mid:dk);p(nx,ny,fl?lt:mid);
+        if(lv>=2){p(nx-1,ny,dk);p(nx+1,ny,dk);}// bigger nodes
+        if(lv>=3){b(nx-1,ny-2,2,1,dk);b(nx-1,ny+1,2,1,dk);}// even bigger
+      }
+      // Radiating connection beams from center to nodes
       if(br){
-        tBeam(p,13,12,7,13,C.DKRED,C.RED);
-        tBeam(p,19,12,25,12,C.DKGRN,C.GRN);
-        tBeam(p,16,8,16,4,C.DKBLU,C.BLUE);
-        tBeam(p,16,16,16,19,C.DKMAG,C.MAG);
-        if(lv>=2){
-          tBeam(p,12,13,5,14,C.DKRED,C.RED);
-          tBeam(p,20,13,27,13,C.DKGRN,C.GRN);
+        tBeam(p,cx+2,cy,cx+nR-2,cy,C.DKRED,C.RED);
+        tBeam(p,cx-2,cy,cx-nR+2,cy,C.DKGRN,C.GRN);
+        tBeam(p,cx,cy-2,cx,cy-nRy-1,C.DKBLU,C.BLUE);
+        tBeam(p,cx,cy+2,cx,cy+nRy+1,C.DKMAG,C.MAG);
+        if(lv>=2){// Diagonal beams
+          tBeam(p,cx+2,cy-1,cx+nR-1,cy-nRy,C.DKGLD,C.GOLD);
+          tBeam(p,cx-2,cy-1,cx-nR+1,cy-nRy,C.DKGLD,C.GOLD);
+          tBeam(p,cx+2,cy+1,cx+nR-1,cy+nRy,C.DKGLD,C.GOLD);
+          tBeam(p,cx-2,cy+1,cx-nR+1,cy+nRy,C.DKGLD,C.GOLD);
         }
       }
       if(fl){
-        tBeam(p,13,12,6,13,C.RED,C.LTRED);
-        tBeam(p,19,12,26,12,C.GRN,C.LTGRN);
-        tBeam(p,16,8,16,3,C.BLUE,C.LTBLU);
-        tBeam(p,16,16,16,20,C.MAG,C.LTMAG);
-        if(lv>=2){tBeam(p,12,13,4,14,C.RED,C.LTRED);tBeam(p,20,13,28,13,C.GRN,C.LTGRN);}
-        p(16,10,C.WHITE);p(15,11,C.WHITE);
+        tBeam(p,cx+2,cy,cx+nR-1,cy,C.RED,C.LTRED);
+        tBeam(p,cx-2,cy,cx-nR+1,cy,C.GRN,C.LTGRN);
+        tBeam(p,cx,cy-2,cx,cy-nRy-1,C.BLUE,C.LTBLU);
+        tBeam(p,cx,cy+2,cx,cy+nRy+1,C.MAG,C.LTMAG);
+        if(lv>=2){
+          tBeam(p,cx+2,cy-1,cx+nR-1,cy-nRy,C.GOLD,C.LTGLD);
+          tBeam(p,cx-2,cy-1,cx-nR+1,cy-nRy,C.GOLD,C.LTGLD);
+          tBeam(p,cx+2,cy+1,cx+nR-1,cy+nRy,C.GOLD,C.LTGLD);
+          tBeam(p,cx-2,cy+1,cx-nR+1,cy+nRy,C.GOLD,C.LTGLD);
+        }
+        p(cx,cy,C.WHITE);p(cx-1,cy,C.WHITE);p(cx+1,cy,C.WHITE);
       }
-      // Hub highlights
-      p(15,8,C.WHITE);p(16,10,fl?C.WHITE:C.CREAM);
-      // Node glow dots
-      p(6,11,br?C.LTRED:C.RED);p(25,10,br?C.LTGRN:C.GRN);
-      p(15,2,br?C.LTBLU:C.BLUE);p(15,18,br?C.LTMAG:C.MAG);
-      if(s===3){p(15,8,C.DPGLD);p(16,10,C.DPGLD);}
+      if(s===3){p(cx,cy,C.DPGLD);p(cx-1,cy,C.DPGLD);p(cx+1,cy,C.DPGLD);}
     },
     // 6: Crescendo (Ultimate) — massive orchestral formation, all 4 aura colors swirling (1 level)
     (c:any,o:number[],s:number,_lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);

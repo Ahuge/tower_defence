@@ -2,13 +2,13 @@ import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
 const C={
-  DKPSY:'#220033',DPPUR:'#330044',DKPUR:'#441166',MDPUR:'#9944bb',
-  BRPUR:'#bb66dd',LTPUR:'#dd88ff',PLPUR:'#ee99ff',WHLAV:'#f5ccff',
+  DKPSY:'#2a1544',DPPUR:'#3d2255',DKPUR:'#553388',MDPUR:'#aa66cc',
+  BRPUR:'#cc88ee',LTPUR:'#ddaaff',PLPUR:'#eeccff',WHLAV:'#f5ddff',
   PINK:'#ff44aa',LTPNK:'#ff77cc',PAPNK:'#ffaadd',DKPNK:'#aa2277',DPNK:'#661144',
   CYAN:'#88ddff',LTCYN:'#bbf0ff',DKCYN:'#447799',
-  MIND:'#bb66dd',MIND2:'#9944bb',MIND3:'#7733aa',
-  WHITE:'#ffffff',GRAY:'#665577',DKGRAY:'#332244',
-  VOID:'#110022',SHAD:'#1a0033',
+  MIND:'#cc88ee',MIND2:'#aa66cc',MIND3:'#8855bb',
+  WHITE:'#ffffff',GRAY:'#776688',DKGRAY:'#443355',
+  VOID:'#1a0e2e',SHAD:'#221440',
   GOLD:'#ffcc00',DKGLD:'#aa8800',LTGLD:'#ffee88',
   SKIN:'#e8c8a0',DKSKIN:'#c4a47a',LTSKIN:'#f0dcc0',
   ROBE:'#ddddcc',DKROBE:'#aaaaaa',LTROBE:'#f0f0e8',
@@ -26,40 +26,42 @@ const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 function tBase(p:any,b:any,topY:number,w:number,glow:number){
   const cx=16;
-  // Crystalline brain/neural structure base
+  // Clean crystalline pedestal — geometric stepped platform
   for(let i=0;i<10;i++){
-    const cw=w-6+Math.floor(i*0.8),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.BRPUR:i<5?C.MDPUR:i<8?C.DKPUR:C.DPPUR);
+    const cw=w-6+Math.floor(i*0.6),sx=cx-Math.floor(cw/2);
+    b(sx,topY+i,cw,1,i<2?C.PLPUR:i<4?C.LTPUR:i<7?C.BRPUR:C.MDPUR);
   }
-  b(cx-Math.floor((w-6)/2),topY,w-6,1,C.LTPUR);
-  // Neural network pattern / third eye
-  p(cx,topY+2,glow>1?C.WHITE:C.PINK);p(cx-1,topY+3,glow>1?C.LTPNK:C.PINK);
-  p(cx+1,topY+3,glow>1?C.LTPNK:C.PINK);p(cx,topY+4,glow>0?C.PINK:C.DKPNK);
-  // Neural veins on base
+  b(cx-Math.floor((w-6)/2),topY,w-6,1,C.WHLAV);
+  // Geometric energy core in base — clean diamond
+  p(cx,topY+2,glow>1?C.WHITE:C.PLPUR);p(cx-1,topY+3,glow>1?C.WHLAV:C.LTPUR);
+  p(cx+1,topY+3,glow>1?C.WHLAV:C.LTPUR);p(cx,topY+4,glow>0?C.LTPUR:C.BRPUR);
+  // Symmetric energy lines
   p(cx-3,topY+4,C.MIND3);p(cx+3,topY+4,C.MIND3);
   p(cx-4,topY+6,glow>0?C.MIND2:C.MIND3);p(cx+4,topY+6,glow>0?C.MIND2:C.MIND3);
-  // Purple energy veins pulsing
-  p(cx-2,topY+5,glow>1?C.PLPUR:C.BRPUR);p(cx+2,topY+5,glow>1?C.PLPUR:C.BRPUR);
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.DKPSY);
-  if(glow>0){p(cx-5,topY+3,C.DPNK);p(cx+5,topY+3,C.DPNK);}
+  // Clean energy channels
+  p(cx-2,topY+5,glow>1?C.PLPUR:C.LTPUR);p(cx+2,topY+5,glow>1?C.PLPUR:C.LTPUR);
+  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.DKPUR);
+  if(glow>0){p(cx-5,topY+3,C.MIND3);p(cx+5,topY+3,C.MIND3);}
 }
 
-function tTendril(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bright:boolean){
-  const dy=y2-y1,dx=x2-x1;
-  for(let i=0;i<=Math.abs(dy);i++){
-    const t=i/Math.max(1,Math.abs(dy));
-    const yy=y1+Math.round(i*Math.sign(dy));
-    const xx=Math.round(x1+dx*t+Math.sin(t*Math.PI*2)*1.5);
+function tEnergyBeam(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bright:boolean){
+  // Clean straight energy beam — no sinuous tendrils
+  const dy=y2-y1,dx=x2-x1,steps=Math.max(Math.abs(dx),Math.abs(dy));
+  for(let i=0;i<=steps;i++){
+    const t=i/Math.max(1,steps);
+    const xx=Math.round(x1+dx*t);
+    const yy=Math.round(y1+dy*t);
     p(xx,yy,bright&&i%2===0?C.PLPUR:col);
   }
 }
 
-function tNeuralVein(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bright:boolean){
+function tEnergyLink(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bright:boolean){
+  // Clean geometric energy conduit — straight line
   const dy=y2-y1,dx=x2-x1,steps=Math.max(Math.abs(dx),Math.abs(dy));
   for(let i=0;i<=steps;i++){
     const t=i/Math.max(1,steps);
-    const xx=Math.round(x1+dx*t+Math.sin(t*Math.PI*3)*1.2);
-    const yy=Math.round(y1+dy*t+Math.cos(t*Math.PI*2)*0.8);
+    const xx=Math.round(x1+dx*t);
+    const yy=Math.round(y1+dy*t);
     p(xx,yy,bright&&i%3===0?C.PLPUR:col);
   }
 }

@@ -94,41 +94,43 @@ const T_TOTAL_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 20
 
 function drawBolt(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
   const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  // Bolt colors: blue-white electric palette
+  const BOLT_DK='#2255aa',BOLT_MD='#4488ff',BOLT_LT='#88bbff',BOLT_PL='#ccddff',BOLT_BR='#aaccff';
   const glow=level>=3?2:level>=2?1:0;
   arcaneBase(p,b,23,18,glow);
   const cy=12-Math.min(level,4);
   // Crystal body - diamond shape, grows with level
   const cSize=4+level;
-  for(let i=0;i<cSize;i++){const hw=i<Math.ceil(cSize/2)?i+1:cSize-i;b(16-hw,cy-Math.floor(cSize/2)+i,hw*2,1,i<2?C.PLLAV:i<Math.ceil(cSize*0.6)?C.LTVIO:C.BRVIO);}
+  for(let i=0;i<cSize;i++){const hw=i<Math.ceil(cSize/2)?i+1:cSize-i;b(16-hw,cy-Math.floor(cSize/2)+i,hw*2,1,i<2?BOLT_PL:i<Math.ceil(cSize*0.6)?BOLT_LT:BOLT_MD);}
   // Inner glow — brighter at higher levels
-  const coreCol=level>=4?C.WHITE:level>=3?C.PLLAV:level>=2?C.LTVIO:C.BRVIO;
+  const coreCol=level>=4?C.WHITE:level>=3?BOLT_PL:level>=2?BOLT_LT:BOLT_MD;
   b(15,cy-1,2,2,coreCol);
-  p(16,cy,level>=3?C.WHITE:C.LTVIO);
+  p(16,cy,level>=3?C.WHITE:BOLT_LT);
   // Tendrils — more complex at higher levels
-  const tCol=level>=3?C.LTVIO:C.BRVIO;
+  const tCol=level>=3?BOLT_LT:BOLT_MD;
   arcaneTendril(p,14,cy+3,13,23,tCol,level>=4);
   arcaneTendril(p,18,cy+3,19,23,tCol,level>=4);
-  if(level>=3){arcaneTendril(p,12,cy+4,10,23,C.MDVIO,level>=4);arcaneTendril(p,20,cy+4,22,23,C.MDVIO,level>=4);}
+  if(level>=3){arcaneTendril(p,12,cy+4,10,23,BOLT_DK,level>=4);arcaneTendril(p,20,cy+4,22,23,BOLT_DK,level>=4);}
   // Orbiting crystals — more at higher levels
-  arcaneOrbit(p,16,cy-5,s*1.5,C.LAV);
-  if(level>=2){arcaneOrbit(p,12,cy-3,s*1.5+2,C.PLLAV);}
-  if(level>=3){arcaneOrbit(p,20,cy-3,s*1.5+4,C.LTVIO);}
+  arcaneOrbit(p,16,cy-5,s*1.5,BOLT_BR);
+  if(level>=2){arcaneOrbit(p,12,cy-3,s*1.5+2,BOLT_PL);}
+  if(level>=3){arcaneOrbit(p,20,cy-3,s*1.5+4,BOLT_LT);}
   if(level>=4){arcaneOrbit(p,16,cy-7,s*1.0+1,C.WHITE);}
   // Pulse particles — more with level
-  if(level>=2){p(10,cy-1,C.LAV);p(22,cy,C.LAV);}
-  if(level>=3){p(8,cy+1,C.PLLAV);p(24,cy-1,C.PLLAV);}
+  if(level>=2){p(10,cy-1,BOLT_BR);p(22,cy,BOLT_BR);}
+  if(level>=3){p(8,cy+1,BOLT_PL);p(24,cy-1,BOLT_PL);}
   if(level>=4){
-    for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*6),cy+Math.round(Math.sin(a)*5),C.PLLAV);}
+    for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*6),cy+Math.round(Math.sin(a)*5),BOLT_PL);}
     p(16,cy-5,C.WHITE);p(16,cy+5,C.WHITE);
   }
   // Glow aura at high levels
   if(level>=3){
-    for(let i=0;i<8;i++){const a=i*Math.PI/4;const r=level>=4?8:6;p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),level>=4?C.LTVIO:C.MDVIO);}
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;const r=level>=4?8:6;p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),level>=4?BOLT_LT:BOLT_DK);}
   }
   // Base runes brighter at higher levels
-  if(level>=2){p(10,22,C.BRVIO);p(22,22,C.BRVIO);}
-  if(level>=3){p(8,21,C.LAV);p(24,21,C.LAV);}
-  if(s===3){p(15,cy,C.MDVIO);p(17,cy,C.MDVIO);}
+  if(level>=2){p(10,22,BOLT_MD);p(22,22,BOLT_MD);}
+  if(level>=3){p(8,21,BOLT_BR);p(24,21,BOLT_BR);}
+  if(s===3){p(15,cy,BOLT_DK);p(17,cy,BOLT_DK);}
 }
 
 function drawFrost(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
@@ -221,51 +223,56 @@ function drawStorm(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
 
 function drawFocus(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
   const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  // Focus colors: gray/silver precision palette
+  const F_DK='#555566',F_MD='#888899',F_LT='#aaaacc',F_PL='#ccccdd',F_BR='#ddddee',F_ACC='#bbbbdd';
   const glow=level>=3?2:level>=2?1:0;
   arcaneBase(p,b,24,18,glow);
   const topY=5-Math.min(level,4);
-  // Main crystal lens — taller at higher levels
+  // Main crystal lens — taller at higher levels, angular gray
   const lensH=16+level*1,lensW=1+Math.min(level,3);
-  crystalSpire(p,b,16-Math.floor(lensW/2),topY,lensH,lensW,C.DKVIO,level>=3?C.LTVIO:C.BRVIO,level>=3?C.PLLAV:C.LTVIO);
+  crystalSpire(p,b,16-Math.floor(lensW/2),topY,lensH,lensW,F_DK,level>=3?F_LT:F_MD,level>=3?F_PL:F_LT);
   // Lens facets — wider at higher levels
   const facetW=4+level;
-  b(16-Math.floor(facetW/2),topY+8,facetW,3,C.MDVIO);
-  b(16-Math.floor((facetW-2)/2),topY+9,facetW-2,1,level>=3?C.PLLAV:level>=2?C.LTVIO:C.BRVIO);
-  // Lens center glow
-  p(16,topY+9,level>=3?C.WHITE:level>=2?C.PLLAV:C.LTVIO);
-  p(15,topY+9,level>=3?C.PLLAV:C.LTVIO);
-  // Side facet lines
-  p(12,topY+7,C.BRVIO);p(19,topY+7,C.BRVIO);
-  p(12,topY+10,C.MDVIO);p(19,topY+10,C.MDVIO);
+  b(16-Math.floor(facetW/2),topY+8,facetW,3,F_MD);
+  b(16-Math.floor((facetW-2)/2),topY+9,facetW-2,1,level>=3?F_PL:level>=2?F_LT:F_MD);
+  // Lens center glow — bright white crosshair dot
+  p(16,topY+9,level>=3?C.WHITE:level>=2?F_PL:F_LT);
+  p(15,topY+9,level>=3?F_PL:F_LT);
+  // Side facet lines — angular precision marks
+  p(12,topY+7,F_MD);p(19,topY+7,F_MD);
+  p(12,topY+10,F_DK);p(19,topY+10,F_DK);
+  // Crosshair marks on lens
+  p(16,topY+7,level>=3?C.WHITE:F_BR);p(16,topY+11,level>=3?C.WHITE:F_BR);
+  p(14,topY+9,level>=2?F_BR:F_LT);p(18,topY+9,level>=2?F_BR:F_LT);
   // Side secondary crystals at level 3+
   if(level>=3){
-    crystalSpire(p,b,9,topY+4,8,2,C.DKVIO,C.BRVIO,C.LTVIO);
-    crystalSpire(p,b,22,topY+3,9,2,C.DKVIO,C.BRVIO,C.LTVIO);
+    crystalSpire(p,b,9,topY+4,8,2,F_DK,F_MD,F_LT);
+    crystalSpire(p,b,22,topY+3,9,2,F_DK,F_MD,F_LT);
   }
   if(level>=4){
-    crystalSpire(p,b,6,topY+7,6,2,C.DKVIO,C.MDVIO,C.BRVIO);
-    crystalSpire(p,b,25,topY+6,7,2,C.DKVIO,C.MDVIO,C.BRVIO);
+    crystalSpire(p,b,6,topY+7,6,2,F_DK,F_DK,F_MD);
+    crystalSpire(p,b,25,topY+6,7,2,F_DK,F_DK,F_MD);
   }
-  // Focus beam indicator — stronger at higher levels
-  if(level>=2){p(16,topY-1,C.PLLAV);p(16,topY-2,C.LAV);}
+  // Focus beam indicator — thin precise silver beam
+  if(level>=2){p(16,topY-1,F_PL);p(16,topY-2,F_ACC);}
   if(level>=3){
-    for(let i=0;i<4;i++)p(16,topY-1-i,i===0?C.WHITE:C.PLLAV);
-    p(15,topY-2,C.LAV);p(17,topY-2,C.LAV);
+    for(let i=0;i<4;i++)p(16,topY-1-i,i===0?C.WHITE:F_PL);
+    p(15,topY-2,F_ACC);p(17,topY-2,F_ACC);
   }
   if(level>=4){
-    for(let i=0;i<6;i++)p(16,topY-1-i,i<2?C.WHITE:i<4?C.PLLAV:C.LAV);
-    p(14,topY-3,C.LTVIO);p(18,topY-3,C.LTVIO);
+    for(let i=0;i<6;i++)p(16,topY-1-i,i<2?C.WHITE:i<4?F_PL:F_ACC);
+    p(14,topY-3,F_LT);p(18,topY-3,F_LT);
   }
   // Tendrils
-  arcaneTendril(p,15,topY+16,14,24,level>=3?C.LTVIO:C.BRVIO,level>=4);
-  arcaneTendril(p,17,topY+16,18,24,level>=3?C.LTVIO:C.BRVIO,level>=4);
-  if(level>=3){arcaneTendril(p,13,topY+14,11,24,C.MDVIO,level>=4);}
+  arcaneTendril(p,15,topY+16,14,24,level>=3?F_LT:F_MD,level>=4);
+  arcaneTendril(p,17,topY+16,18,24,level>=3?F_LT:F_MD,level>=4);
+  if(level>=3){arcaneTendril(p,13,topY+14,11,24,F_DK,level>=4);}
   // Orbiting crystals
-  arcaneOrbit(p,16,topY-3,s*1.0,C.LAV);
-  if(level>=2){arcaneOrbit(p,12,topY,s*1.0+2,C.LTVIO);}
-  if(level>=3){arcaneOrbit(p,20,topY,s*1.0+4,C.PLLAV);}
+  arcaneOrbit(p,16,topY-3,s*1.0,F_ACC);
+  if(level>=2){arcaneOrbit(p,12,topY,s*1.0+2,F_LT);}
+  if(level>=3){arcaneOrbit(p,20,topY,s*1.0+4,F_PL);}
   if(level>=4){arcaneOrbit(p,16,topY-5,s*0.8+1,C.WHITE);}
-  if(s===3){p(16,topY+9,C.MDVIO);}
+  if(s===3){p(16,topY+9,F_DK);}
 }
 
 function drawManaDrain(c:CanvasRenderingContext2D,o:number[],s:number,level:number){
@@ -279,33 +286,52 @@ function drawManaDrain(c:CanvasRenderingContext2D,o:number[],s:number,level:numb
   for(let i=1;i<cSize-1;i++){const hw=i<Math.floor(cSize/2)?i:cSize-1-i;b(16-hw+1,cy-Math.floor(cSize/2)+i,Math.max(1,hw*2-2),1,C.DVIO);}
   // Void core
   b(15,cy-1,2,2,C.VOID);p(16,cy,C.SHAD);
-  // Sucking effect — more particles at higher levels
+  // Inward-pulling vortex spirals instead of zig-zag tendrils
+  const spiralArms=2+Math.min(level,3);
+  const spiralR=5+level;
+  for(let arm=0;arm<spiralArms;arm++){
+    const baseA=arm*Math.PI*2/spiralArms;
+    for(let t=0;t<spiralR;t++){
+      const pr=1-t/spiralR; // 1 at outer edge, 0 at center
+      const angle=baseA+pr*Math.PI*1.5; // spiral inward ~1.5 turns
+      const r=pr*(spiralR+1);
+      const sx=16+Math.round(Math.cos(angle)*r);
+      const sy=cy+Math.round(Math.sin(angle)*(r*0.85));
+      p(sx,sy,t<2?C.DKVIO:t<spiralR-2?C.MDVIO:C.LTVIO);
+    }
+  }
+  // Dark void particles being sucked inward
   const particleCount=4+level*2;
   for(let i=0;i<particleCount;i++){
-    const a=i*Math.PI*2/particleCount,r=5+level+(i%3);
-    p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),i%2?C.LTVIO:C.LAV);
+    const a=i*Math.PI*2/particleCount,r=4+level+(i%3);
+    const px=16+Math.round(Math.cos(a)*r),py=cy+Math.round(Math.sin(a)*(r-1));
+    p(px,py,i%3===0?C.DKPUR:i%2?C.DVIO:C.SHAD);
   }
-  // Drain tendrils reaching outward
+  // Outer drain wisps — curved, not zig-zag
   if(level>=2){
-    arcaneTendril(p,12,cy,8,cy-2,C.DKVIO,false);
-    arcaneTendril(p,20,cy,24,cy-1,C.DKVIO,false);
-    p(9,cy-3,C.MDVIO);p(23,cy-2,C.MDVIO);
+    for(let i=0;i<6;i++){const a=i*Math.PI/3,r=spiralR+2+i%2;
+      p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),C.DKVIO);
+    }
   }
   if(level>=3){
-    arcaneTendril(p,10,cy+2,5,cy,C.DKVIO,false);
-    arcaneTendril(p,22,cy+2,27,cy,C.DKVIO,false);
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,r=spiralR+3;
+      p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),C.MDVIO);
+    }
   }
   if(level>=4){
     // Implosion ring
-    for(let i=0;i<8;i++){const a=i*Math.PI/4;
-      p(16+Math.round(Math.cos(a)*8),cy+Math.round(Math.sin(a)*7),C.LAV);
-      p(16+Math.round(Math.cos(a)*6),cy+Math.round(Math.sin(a)*5),C.LTVIO);
+    for(let i=0;i<12;i++){const a=i*Math.PI/6;
+      p(16+Math.round(Math.cos(a)*9),cy+Math.round(Math.sin(a)*8),C.DKVIO);
+      p(16+Math.round(Math.cos(a)*7),cy+Math.round(Math.sin(a)*6),C.MDVIO);
     }
   }
-  // Base tendrils
-  arcaneTendril(p,14,cy+4,13,23,C.MDVIO,level>=4);
-  arcaneTendril(p,18,cy+4,19,23,C.MDVIO,level>=4);
-  if(level>=3){arcaneTendril(p,16,cy+5,16,23,C.DVIO,level>=4);}
+  // Base connection — straight vertical drain lines (not zig-zag tendrils)
+  for(let y=cy+Math.floor(cSize/2)+1;y<=23;y++){
+    const pr=(y-(cy+Math.floor(cSize/2)+1))/(23-(cy+Math.floor(cSize/2)+1));
+    p(14+Math.round(Math.sin(pr*Math.PI*2)*1),y,C.DKVIO);
+    p(18-Math.round(Math.sin(pr*Math.PI*2)*1),y,C.DKVIO);
+  }
+  if(level>=3){for(let y=cy+Math.floor(cSize/2)+2;y<=23;y++){p(16,y,C.DVIO);}}
   // Orbiting crystals
   arcaneOrbit(p,16,cy-6,s*1.3,C.DVIO);
   if(level>=2){arcaneOrbit(p,12,cy-4,s*1.3+2,C.MDVIO);}

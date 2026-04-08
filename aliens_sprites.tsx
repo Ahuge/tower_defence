@@ -24,22 +24,22 @@ const mk=(c:any,o:number[],gw:number,gh:number,ps:number)=>{
 // ===== TOWER HELPERS =====
 const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
-// Organic hive base with hex cell texture
+// Organic hive base with hex cell texture — compact version
 function aBase(p:any,b:any,topY:number,w:number,glow:number){
   const cx=16;
-  // Mound shape
-  for(let i=0;i<10;i++){
-    const cw=w-6+Math.floor(i*0.8),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.CHLT:i<5?C.CHIT:i<8?C.DKOLV:C.DKBIO);
+  // Slim mound shape (5 rows instead of 10)
+  for(let i=0;i<5;i++){
+    const cw=w-8+Math.floor(i*1.2),sx=cx-Math.floor(cw/2);
+    b(sx,topY+i,cw,1,i<1?C.CHLT:i<3?C.CHIT:C.DKOLV);
   }
-  b(cx-Math.floor((w-6)/2),topY,w-6,1,C.OLIV);
+  b(cx-Math.floor((w-8)/2),topY,w-8,1,C.OLIV);
   // Hexagonal cell pattern
-  const hx=[[cx-4,topY+2],[cx-2,topY+3],[cx,topY+2],[cx+2,topY+3],[cx-3,topY+5],[cx-1,topY+5],[cx+1,topY+5]];
+  const hx=[[cx-3,topY+1],[cx,topY+1],[cx+2,topY+2],[cx-2,topY+3]];
   hx.forEach(([x,y])=>{p(x,y,glow>1?C.LIME:C.NGRN);p(x+1,y,glow>1?C.BGRN:C.DGRN);});
   // Acid drips
-  if(glow>0){p(cx-3,topY+7,C.LIME);p(cx-3,topY+8,C.NGRN);p(cx+2,topY+8,C.SLIME);}
-  if(glow>1){p(cx-4,topY+9,C.DGRN);p(cx+3,topY+7,C.LIME);p(cx+3,topY+8,C.NGRN);p(cx+3,topY+9,C.DGRN);}
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.DKBIO);
+  if(glow>0){p(cx-2,topY+4,C.LIME);p(cx+2,topY+4,C.SLIME);}
+  if(glow>1){p(cx-3,topY+4,C.DGRN);p(cx+3,topY+4,C.NGRN);}
+  b(cx-Math.floor((w-4)/2),topY+4,w-4,1,C.DKBIO);
 }
 
 // Chitin spire
@@ -67,97 +67,106 @@ const TOWER_LEVELS=[4,3,3,4,4,3,2,3];
 
 function drawTowers(ctx:any){
   const fns=[
-    // 1. Spitter — small bug mouth spitting acid (4 levels)
+    // 1. Spitter — small round bug with open mouth spitting upward (4 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      const bw=[16,18,20,24][lv];
-      aBase(p,b,22,bw,s===1?1:s===2?2:0);
+      const bw=[14,16,18,22][lv];
+      aBase(p,b,27,bw,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
-      // Bug body — grows with level
-      const bdy=[4,5,6,8][lv], bdx=16-Math.floor(bdy/2);
-      b(bdx-1,10,bdy+2,bdy+2,C.CHIT);b(bdx,10,bdy,bdy+1,C.CHLT);b(bdx,9,bdy,1,C.OLIV);
-      // Head with mandibles
-      const hw=[3,4,4,6][lv], hx=16-Math.floor(hw/2);
-      b(hx,6,hw,Math.min(3+lv,5),C.CHLT);b(hx+1,5,Math.max(2,hw-2),1,C.OLIV);
-      // Eyes — more eyes at higher levels
-      p(hx,7,fl?C.ACID:C.LIME);p(hx+hw-1,7,fl?C.ACID:C.LIME);
-      if(lv>=2){p(hx+1,6,fl?C.ACID:C.LIME);p(hx+hw-2,6,fl?C.ACID:C.LIME);}
-      if(lv>=3){p(hx,6,C.ACID);p(hx+hw-1,6,C.ACID);p(16,5,fl?C.WHITE:C.ACID);}
-      // Mandibles — larger at higher levels
-      p(hx-1,6,br?C.LIME:C.CHLT);p(hx+hw,6,br?C.LIME:C.CHLT);
-      p(hx-2,5,C.CHIT);p(hx+hw+1,5,C.CHIT);
-      if(lv>=2){p(hx-2,6,C.CHIT);p(hx+hw+1,6,C.CHIT);}
-      if(lv>=3){p(hx-3,5,C.OLIV);p(hx+hw+2,5,C.OLIV);p(hx-3,4,br?C.LIME:C.CHLT);p(hx+hw+2,4,br?C.LIME:C.CHLT);}
-      // Legs — more pairs at higher levels
-      const legPairs=2+lv;
+      // Round bug body — compact oval
+      const bdy=[4,5,6,7][lv], bdx=16-Math.floor(bdy/2);
+      const bodyTop=18-bdy;
+      b(bdx,bodyTop,bdy,bdy+2,C.CHIT);b(bdx+1,bodyTop,bdy-2,bdy+1,C.CHLT);
+      // Wide open mouth at top — this is the spitter's defining feature
+      const mw=[4,5,6,8][lv], mx=16-Math.floor(mw/2);
+      b(mx,bodyTop-3,mw,3,C.DKBIO); // mouth cavity
+      p(mx,bodyTop-1,C.CHIT);p(mx+mw-1,bodyTop-1,C.CHIT); // jaw edges
+      // Teeth around mouth
+      for(let i=0;i<mw;i+=2){p(mx+i,bodyTop-3,fl?C.ACID:C.LIME);} // top teeth
+      for(let i=1;i<mw;i+=2){p(mx+i,bodyTop-1,C.OLIV);} // bottom teeth
+      if(lv>=2){p(mx-1,bodyTop-2,C.CHIT);p(mx+mw,bodyTop-2,C.CHIT);} // wider jaw
+      if(lv>=3){p(mx-1,bodyTop-3,C.OLIV);p(mx+mw,bodyTop-3,C.OLIV);}
+      // Small eyes beside mouth
+      p(mx-1,bodyTop-1,fl?C.ACID:C.LIME);p(mx+mw,bodyTop-1,fl?C.ACID:C.LIME);
+      if(lv>=2){p(mx-2,bodyTop,C.LIME);p(mx+mw+1,bodyTop,C.LIME);}
+      // Short stubby legs — 2-3 pairs
+      const legPairs=[2,2,3,3][lv];
       for(let i=0;i<legPairs;i++){
-        const ly=11+i*2,lx=bdx-2,rx=bdx+bdy+2;
-        if(ly<22){p(lx,ly,C.CHIT);p(lx-1,ly+1,C.DKOLV);p(rx,ly,C.CHIT);p(rx+1,ly+1,C.DKOLV);}
+        const ly=bodyTop+2+i*2;
+        if(ly<27){p(bdx-1,ly,C.CHIT);p(bdx-2,ly+1,C.DKOLV);p(bdx+bdy,ly,C.CHIT);p(bdx+bdy+1,ly+1,C.DKOLV);}
       }
-      // Acid spit (fire state) — bigger at higher levels
+      // Acid spit (fire state)
       if(s===2){
-        p(15,4,C.ACID);p(16,3,C.LIME);p(15,2,C.BGRN);p(16,1,C.NGRN);
-        p(14,3,C.YGRN);p(17,2,C.YGRN);
-        if(lv>=2){p(13,2,C.LIME);p(18,1,C.ACID);p(14,1,C.BGRN);p(17,0,C.NGRN);}
-        if(lv>=3){p(12,1,C.YGRN);p(19,0,C.LIME);p(15,0,C.WHITE);p(16,0,C.ACID);}
+        p(15,bodyTop-4,C.ACID);p(16,bodyTop-5,C.LIME);p(15,bodyTop-6,C.BGRN);p(16,bodyTop-7,C.NGRN);
+        p(14,bodyTop-5,C.YGRN);p(17,bodyTop-6,C.YGRN);
+        if(lv>=2){p(13,bodyTop-6,C.LIME);p(18,bodyTop-7,C.ACID);}
+        if(lv>=3){p(12,bodyTop-7,C.YGRN);p(19,bodyTop-8,C.LIME);p(15,bodyTop-8,C.WHITE);}
       }
-      if(s===1){p(15,5,C.LIME);p(16,4,C.NGRN);if(lv>=2)p(14,4,C.BGRN);}
-      // Bioluminescent spots — more at higher levels
-      p(bdx,12,br?C.LIME:C.NGRN);p(bdx+bdy-1,14,br?C.LIME:C.NGRN);
-      if(lv>=1){p(bdx+1,14,C.NGRN);p(bdx+bdy-2,12,C.NGRN);}
-      if(lv>=2){p(bdx+Math.floor(bdy/2),11,br?C.LIME:C.DGRN);}
-      if(lv>=3){p(bdx-1,13,C.LIME);p(bdx+bdy,13,C.LIME);p(16,10,fl?C.ACID:C.LIME);}
-      // Chitin plating at higher levels
-      if(lv>=1){b(bdx,9,bdy,1,C.OLIV);}
-      if(lv>=2){p(bdx-1,11,C.OLIV);p(bdx+bdy,11,C.OLIV);}
-      if(lv>=3){b(bdx-1,10,1,3,C.OLIV);b(bdx+bdy,10,1,3,C.OLIV);}
-      if(s===3){p(15,7,C.DGRN);p(16,8,C.DGRN);}
+      if(s===1){p(15,bodyTop-4,C.LIME);p(16,bodyTop-5,C.NGRN);}
+      // Glow spots on body
+      p(bdx+1,bodyTop+1,br?C.LIME:C.NGRN);
+      if(lv>=1){p(bdx+bdy-2,bodyTop+2,C.NGRN);}
+      if(lv>=3){p(16,bodyTop+1,fl?C.ACID:C.LIME);}
+      if(s===3){p(15,bodyTop,C.DGRN);p(16,bodyTop+1,C.DGRN);}
     },
-    // 2. Stinger — scorpion tail strikes down (3 levels)
+    // 2. Stinger — SHORT and WIDE scorpion/spider with curving tail (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      const bw=[18,20,22][lv];
-      aBase(p,b,23,bw,s===1?1:s===2?2:0);
+      const bw=[16,18,20][lv];
+      aBase(p,b,27,bw,s===1?1:s===2?2:0);
       const br=s>=1,fl=s===2;
-      // Scorpion body — grows with level
-      const bdw=[6,8,10][lv], bdx=16-Math.floor(bdw/2);
-      b(bdx,14,bdw,6,C.CHIT);b(bdx+1,14,bdw-2,5,C.CHLT);
-      // Chitin armor plating
-      if(lv>=1){b(bdx,13,bdw,1,C.OLIV);p(bdx+1,13,C.CHLT);}
-      if(lv>=2){b(bdx-1,14,1,4,C.OLIV);b(bdx+bdw,14,1,4,C.OLIV);}
-      // Pincers — larger at higher levels
-      const pw=[2,3,4][lv];
-      b(bdx-pw-2,15,pw,2,C.CHIT);b(bdx+bdw+2,15,pw,2,C.CHIT);
-      p(bdx-pw-3,15,C.OLIV);p(bdx+bdw+pw+2,15,C.OLIV);
-      p(bdx-pw-3,14,C.CHLT);p(bdx+bdw+pw+2,14,C.CHLT);
-      if(lv>=2){p(bdx-pw-3,16,C.LIME);p(bdx+bdw+pw+2,16,C.LIME);}
-      // Tail - curving up and over
-      p(16,13,C.CHIT);p(17,12,C.CHIT);p(18,11,C.CHLT);p(19,10,C.CHLT);
-      p(20,9,C.CHIT);p(20,8,C.CHLT);p(19,7,C.OLIV);p(18,6,C.OLIV);
-      p(17,5,C.CHLT);p(16,4,C.CHIT);
-      // Tail thickness at higher levels
-      if(lv>=1){p(17,11,C.CHLT);p(19,9,C.CHLT);p(18,7,C.CHIT);}
-      if(lv>=2){p(21,9,C.CHIT);p(21,8,C.OLIV);p(16,5,C.OLIV);}
-      // Stinger tip
+      // WIDE flat body — emphasis on horizontal spread
+      const bdw=[12,16,20][lv], bdh=[3,3,4][lv], bdy=21, bdx=16-Math.floor(bdw/2);
+      b(bdx,bdy,bdw,bdh,C.CHIT);b(bdx+1,bdy,bdw-2,bdh-1,C.CHLT);
+      b(bdx+2,bdy-1,bdw-4,1,C.OLIV); // carapace top ridge
+      if(lv>=1){b(bdx,bdy-1,bdw,1,C.OLIV);}
+      if(lv>=2){b(bdx-1,bdy+1,bdw+2,bdh-1,C.CHIT);} // extra-wide
+      // Small head at front — flat and wide
+      const hw=[4,5,6][lv];
+      b(16-Math.floor(hw/2),bdy-2,hw,2,C.CHLT);
+      // Eyes on head
+      p(16-Math.floor(hw/2),bdy-2,fl?C.ACID:C.LIME);p(16+Math.ceil(hw/2)-1,bdy-2,fl?C.ACID:C.LIME);
+      // Large pincers extending far to each side
+      const pw=[3,4,5][lv];
+      // Left pincer — curved
+      b(bdx-pw-1,bdy,pw,2,C.CHIT);p(bdx-pw-2,bdy,C.OLIV);p(bdx-pw-2,bdy+1,C.CHLT);
+      p(bdx-pw-2,bdy-1,C.CHLT); // pincer tip up
+      // Right pincer — curved
+      b(bdx+bdw+1,bdy,pw,2,C.CHIT);p(bdx+bdw+pw+1,bdy,C.OLIV);p(bdx+bdw+pw+1,bdy+1,C.CHLT);
+      p(bdx+bdw+pw+1,bdy-1,C.CHLT); // pincer tip up
+      if(lv>=2){p(bdx-pw-3,bdy,C.LIME);p(bdx+bdw+pw+2,bdy,C.LIME);} // glowing pincer tips
+      // Splayed legs — 3-4 pairs, spreading wide
+      const legPairs=[3,4,4][lv];
+      for(let i=0;i<legPairs;i++){
+        const ly=bdy+1+Math.floor(i*0.5), spread=3+i*2;
+        if(ly<27){
+          p(bdx-spread,ly+1,C.CHIT);p(bdx-spread-1,ly+2,C.DKOLV);
+          p(bdx+bdw-1+spread,ly+1,C.CHIT);p(bdx+bdw+spread,ly+2,C.DKOLV);
+        }
+      }
+      // TAIL — curves up from right side of body, arcs over, stinger hangs down
+      // Tail segment: rises from body right-center, curves up and left
+      const tx=16+Math.floor(bdw/4); // start right of center
+      p(tx,bdy-1,C.CHIT);p(tx+1,bdy-2,C.CHIT);p(tx+2,bdy-3,C.CHLT);
+      p(tx+2,bdy-4,C.CHLT);p(tx+1,bdy-5,C.CHIT);p(tx,bdy-6,C.OLIV);
+      p(tx-1,bdy-7,C.CHLT);p(tx-2,bdy-8,C.CHLT);
+      // Tail thickens at higher levels
+      if(lv>=1){p(tx+1,bdy-3,C.CHLT);p(tx+2,bdy-5,C.CHIT);p(tx-1,bdy-6,C.CHIT);}
+      if(lv>=2){p(tx+3,bdy-3,C.CHIT);p(tx+3,bdy-4,C.OLIV);p(tx-2,bdy-7,C.CHIT);}
+      // Stinger tip — curving down at end
+      const stx=tx-2, sty=bdy-8;
+      p(stx-1,sty+1,C.OLIV);p(stx-1,sty+2,br?C.ACID:C.LIME); // stinger point down
       if(fl){
-        p(16,4,C.ACID);p(16,5,C.ACID);p(16,6,C.LIME);
-        for(let i=0;i<5;i++)p(16,7+i,i<2?C.ACID:C.LIME);
-        p(15,10,C.YGRN);p(17,9,C.YGRN);
-        if(lv>=1){p(15,8,C.YGRN);p(17,7,C.LIME);}
-        if(lv>=2){p(14,9,C.NGRN);p(18,8,C.NGRN);p(16,11,C.ACID);}
-      } else {
-        p(15,4,fl?C.ACID:C.LIME);p(16,3,br?C.ACID:C.LIME);p(15,3,C.NGRN);
-        if(lv>=2){p(16,2,br?C.WHITE:C.ACID);}
+        // Venom dripping from stinger
+        p(stx-1,sty+2,C.ACID);p(stx-1,sty+3,C.LIME);p(stx-2,sty+3,C.YGRN);
+        p(stx,sty+3,C.ACID);p(stx-1,sty+4,C.NGRN);
+        if(lv>=1){p(stx-2,sty+4,C.YGRN);p(stx,sty+4,C.LIME);}
+        if(lv>=2){p(stx-1,sty+5,C.ACID);p(stx-2,sty+2,C.NGRN);p(stx+1,sty+3,C.NGRN);}
+      } else if(br){
+        p(stx-1,sty+2,C.ACID);p(stx-1,sty+3,C.NGRN);
       }
-      // Eyes — more at higher levels
-      p(bdx+1,15,br?C.ACID:C.LIME);p(bdx+bdw-2,15,br?C.ACID:C.LIME);
-      if(lv>=1){p(bdx+2,14,C.LIME);}
-      if(lv>=2){p(bdx+Math.floor(bdw/2),14,fl?C.ACID:C.LIME);p(bdx+Math.floor(bdw/2)+1,14,C.LIME);}
-      // Legs
-      const legCount=[3,4,5][lv];
-      for(let i=0;i<legCount;i++){
-        const ly=18+Math.floor(i*1.2),lx=bdx-1, rx=bdx+bdw;
-        if(ly<24){p(lx,ly,C.DKOLV);p(rx,ly,C.DKOLV);}
-      }
-      if(s===3){p(17,6,C.DGRN);p(18,7,C.DGRN);}
+      // Glow spots on carapace
+      p(16,bdy,br?C.LIME:C.NGRN);
+      if(lv>=1){p(bdx+3,bdy+1,C.NGRN);}
+      if(s===3){p(tx,bdy-4,C.DGRN);p(stx-1,sty+1,C.DGRN);}
     },
     // 3. Swarm Node — pulsing hive node (3 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
