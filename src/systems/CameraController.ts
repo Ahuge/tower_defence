@@ -58,6 +58,11 @@ export class CameraController {
 
     // Don't use setBounds — we handle elastic bounds manually
     if (ResponsiveManager.isPhone()) {
+      // Resize main camera viewport to just the game grid area.
+      // The full canvas is much taller (includes tower bar, control bar, etc.)
+      // but those are rendered by the UI camera. Without this, the main camera's
+      // viewport extends into the UI area, causing confusing pan/zoom behavior.
+      this.camera.setViewport(0, 0, worldWidth, worldHeight);
       this.camera.setZoom(DEFAULT_PHONE_ZOOM);
       this.camera.centerOn(worldWidth / 2, worldHeight / 2);
     }
