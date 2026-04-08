@@ -212,7 +212,7 @@ export class ItemShopPanel {
 
     // XP Tome — grants XP to the hero
     const xpTomeCost = 100;
-    const xpAmount = this.hero.level * 5;
+    const xpAmount = 50 + this.hero.level * 5;
     {
       const canAfford = this.economy.canAfford(xpTomeCost);
       const label = this.scene.add.text(8, y, `XP Tome: +${xpAmount} XP`, {
