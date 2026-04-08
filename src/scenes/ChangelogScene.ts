@@ -6,6 +6,27 @@ import { UIScale } from '../systems/UIScale';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v23 — Sprite Art + Balance',
+    changes: [
+      'Pixel art sprites for all 11 factions — towers, projectiles, and heroes',
+      'Per-level tower art: towers visually evolve as they upgrade (up to 6 levels)',
+      'Tower picker shows sprite icons instead of text labels',
+      'Hero select shows sprite portraits (desktop + phone)',
+      'Encyclopedia displays tower and hero sprite art',
+      'Mobile unit walk-cycle sprites: Rifleman, Brawler, Tank, Commander, Swarmling, Fiend',
+      'Heavy Gunner → Tank: slower (45 speed), longer range (4.5-6 tiles), AoE explosive shells',
+      'Brood Mother: commander_aura buffs Swarmlings +20% DMG +15% AS within 6 tiles',
+      'Firewall: 35 DPS + 65% slow through beam',
+      'Meteor: true ground-targeting — hits where the creep was, not where it moved',
+      'Railgun: projectile travels to map edge, damages creeps as the beam passes',
+      'Arcanist renamed to Mage',
+      'Hero Defense tomes: XP Tome (100g), Stat Tome (250g+), Interest Tome (2%→5%)',
+      'Mobile: zoom bounds scale with zoom level, pause menu centers on screen',
+      'Send panel expanded for T2 sends, event log bottom-anchored',
+      'Creep info panel properly sized for shield/effects display',
+    ],
+  },
+  {
     version: 'v22 — Mobile Phone Support',
     changes: [
       'Pinch-to-zoom (1x–3x) + drag-to-pan on phone — camera starts at 1.8x zoom',
