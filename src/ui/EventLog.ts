@@ -33,12 +33,12 @@ export class EventLog {
     });
     this.container.add(title);
 
-    // Log text
-    this.textObj = scene.add.text(8, 20, '', {
+    // Log text — anchored to bottom of panel so newest lines are always visible
+    this.textObj = scene.add.text(8, this.panelH - 8, '', {
       fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
       lineSpacing: UIScale.isPhone ? 4 : 2,
       wordWrap: { width: getSidebarWidth() - 16 },
-    });
+    }).setOrigin(0, 1); // anchor to bottom-left
     this.container.add(this.textObj);
   }
 
