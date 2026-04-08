@@ -7,7 +7,7 @@ import JSZip from 'jszip';
 
 // Import all sprite generators
 const modules: Record<string, () => Promise<{ default: React.ComponentType }>> = {
-  void: () => import('../void_sprits'),
+  void: () => import('../void_sprites'),
   arcane: () => import('../arcane_sprites'),
   mechanical: () => import('../mechanical_sprites'),
   nature: () => import('../nature_sprites'),
