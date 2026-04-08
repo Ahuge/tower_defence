@@ -757,8 +757,9 @@ export class EncyclopediaScene extends Phaser.Scene {
       icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
       this.contentContainer.add(icon);
     }
-    const g = this.add.graphics();
+    // Diamond fallback only when no sprite
     if (!heroSheetKey || !this.textures.exists(heroSheetKey)) {
+      const g = this.add.graphics();
       g.fillStyle(hero.color, 1);
       g.beginPath();
       g.moveTo(cx, iconY - iconSize);
@@ -767,16 +768,10 @@ export class EncyclopediaScene extends Phaser.Scene {
       g.lineTo(cx - iconSize, iconY);
       g.closePath();
       g.fillPath();
+      g.lineStyle(2, 0xffffff, 0.4);
+      g.strokePath();
+      this.contentContainer.add(g);
     }
-    g.lineStyle(2, 0xffffff, 0.4);
-    g.beginPath();
-    g.moveTo(cx, iconY - iconSize);
-    g.lineTo(cx + iconSize, iconY);
-    g.lineTo(cx, iconY + iconSize);
-    g.lineTo(cx - iconSize, iconY);
-    g.closePath();
-    g.strokePath();
-    this.contentContainer.add(g);
 
     // Name
     const nameYOff = UIScale.space(30);
