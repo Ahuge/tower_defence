@@ -1,7 +1,7 @@
 import { ResponsiveManager } from './ResponsiveManager';
 
 const MIN_ZOOM = 1.0;
-const MAX_ZOOM = 3.0;
+const MAX_ZOOM = 5.0;
 const DEFAULT_PHONE_ZOOM = 1.8;
 const PAN_THRESHOLD = 12;       // screen pixels moved before it counts as a pan
 const MOMENTUM_FRICTION = 0.92; // velocity multiplier per frame (< 1 = deceleration)
@@ -58,11 +58,6 @@ export class CameraController {
 
     // Don't use setBounds — we handle elastic bounds manually
     if (ResponsiveManager.isPhone()) {
-      // Resize main camera viewport to just the game grid area.
-      // The full canvas is much taller (includes tower bar, control bar, etc.)
-      // but those are rendered by the UI camera. Without this, the main camera's
-      // viewport extends into the UI area, causing confusing pan/zoom behavior.
-      this.camera.setViewport(0, 0, worldWidth, worldHeight);
       this.camera.setZoom(DEFAULT_PHONE_ZOOM);
       this.camera.centerOn(worldWidth / 2, worldHeight / 2);
     }
@@ -201,9 +196,9 @@ export class CameraController {
     // Bounds: the camera viewport can show any part of the world
     // At high zoom, the viewport is small so scroll range is large
     // At low zoom, the viewport covers most of the world so range is small
-    // Very relaxed bounds — allow panning well outside the map (2x world size)
-    const marginX = this.worldW;
-    const marginY = this.worldH;
+    // Relaxed bounds — allow panning half a world-size past edges
+    const marginX = this.worldW * 0.5;
+    const marginY = this.worldH * 0.5;
     const minX = -marginX;
     const minY = -marginY;
     const maxX = Math.max(this.worldW - viewW + marginX, minX);
