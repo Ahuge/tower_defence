@@ -728,8 +728,6 @@ export class GameScene extends Phaser.Scene {
     if (!this.uiCamera) {
       this.setupUiCamera();
     }
-    // Fix camera filters for dynamically rebuilt UI container children
-    this.fixUiContainerChildren();
   }
 
   /** Set up dual camera: main camera zooms game objects, UI camera stays at 1x.
@@ -1136,6 +1134,10 @@ export class GameScene extends Phaser.Scene {
 
     // Mode-specific per-frame update (essence ticking, arena, etc.)
     this.gameMode.update(delta);
+
+    // Fix camera filters for dynamically rebuilt UI container children
+    // Must run AFTER gameMode.update() which triggers panel rebuilds
+    this.fixUiContainerChildren();
 
     // Phone control bar
     if (this.controlBar) {
