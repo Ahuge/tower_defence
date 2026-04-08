@@ -1682,7 +1682,14 @@ export class GameScene extends Phaser.Scene {
     // Destroy all creeps
     for (const c of this._creeps) c.graphics?.destroy();
     this._creeps = [];
+    // Clean up game mode (panels, keyboard listeners)
+    this.gameMode.destroy?.();
+    // Clean up event bus
+    this.eventBus.clear();
     // Reset UI camera + layer so they're re-created on next game
+    if (this.uiCamera) {
+      this.cameras.remove(this.uiCamera);
+    }
     this.uiCamera = null;
     this.uiLayer = null;
     // Clear event listeners

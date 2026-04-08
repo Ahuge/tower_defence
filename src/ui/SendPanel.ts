@@ -176,4 +176,10 @@ export class SendPanel {
   getHeight(): number {
     return this._currentH;
   }
+
+  destroy(): void {
+    for (const cleanup of this.hotkeyListeners) cleanup();
+    this.hotkeyListeners = [];
+    this.container.destroy();
+  }
 }

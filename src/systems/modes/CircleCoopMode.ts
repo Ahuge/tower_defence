@@ -134,4 +134,8 @@ export class CircleCoopMode implements GameMode {
   handleSend(_sendId: string): boolean {
     return false; // No sends in circle co-op
   }
+
+  destroy(): void {
+    this.frontierPanel.destroy();
+  }
 }

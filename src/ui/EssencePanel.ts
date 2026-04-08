@@ -22,6 +22,7 @@ export class EssencePanel {
   private ownedText!: Phaser.GameObjects.Text;
   private ownedItems: Phaser.GameObjects.GameObject[] = [];
   private ownedStartY: number = 0;
+  private hotkeyCleanups: (() => void)[] = [];
 
   // Track owned generators
   generators: { def: EssenceGenerator; count: number }[] = [];
@@ -125,9 +126,10 @@ export class EssencePanel {
     // Register send hotkeys (first 4 only)
     for (let i = 0; i < ESSENCE_SENDS.length && i < hotkeys.length; i++) {
       const send = ESSENCE_SENDS[i];
-      this.scene.input.keyboard!.on(`keydown-${hotkeys[i]}`, () => {
-        this.onSend(send);
-      });
+      const key = hotkeys[i];
+      const handler = () => { this.onSend(send); };
+      this.scene.input.keyboard!.on(`keydown-${key}`, handler);
+      this.hotkeyCleanups.push(() => this.scene.input.keyboard!.off(`keydown-${key}`, handler));
     }
 
     y += 8;
@@ -194,5 +196,11 @@ export class EssencePanel {
 
   getContainer(): Phaser.GameObjects.Container {
     return this.container;
+  }
+
+  destroy(): void {
+    for (const cleanup of this.hotkeyCleanups) cleanup();
+    this.hotkeyCleanups = [];
+    this.container.destroy();
   }
 }

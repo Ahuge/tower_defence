@@ -180,4 +180,9 @@ export class StandardMode implements GameMode {
     }
     return false;
   }
+
+  destroy(): void {
+    this.sendPanel.destroy();
+    this.frontierPanel.destroy();
+  }
 }

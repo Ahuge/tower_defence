@@ -93,4 +93,8 @@ export class HeroDefenseMode implements GameMode {
     }
     return false;
   }
+
+  destroy(): void {
+    this.itemShop.destroy();
+  }
 }

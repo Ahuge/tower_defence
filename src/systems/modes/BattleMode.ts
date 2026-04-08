@@ -113,4 +113,8 @@ export class BattleMode implements GameMode {
     this.ctx.eventLog.gameMessage(`${send.name} (${send.essenceCost}e) → +${send.incomeReward}g/w`);
     this.ctx.statsTracker.recordSendIncome(send.incomeReward);
   }
+
+  destroy(): void {
+    this.essencePanel.destroy();
+  }
 }
