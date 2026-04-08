@@ -486,11 +486,14 @@ registerTowerUpdate('growth_scaling', (trait: Trait, tower: any, ctx: UpdateCont
   }
 });
 
-/** Mobile unit: full map awareness, moves to engage, returns home when idle.
- *  Ranged units stop at engageRange, melee units close to 0.8 tiles. */
+/** Mobile unit: full map awareness, moves to engage, re-aggros if target escapes.
+ *  Ranged units stop at engageRange, melee units close to 0.8 tiles.
+ *  leashRange (default: engageRange × 4) — if target gets this far, drop it and
+ *  find a closer creep so units don't chase forever. */
 registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext) => {
   const moveSpeed = (trait.moveSpeed ?? 120) * (ctx.delta / 1000);
   const engageRange = (trait.engageRange ?? 0.8) * TILE_SIZE;
+  const leashRange = (trait.leashRange ?? (trait.engageRange ?? 0.8) * 4) * TILE_SIZE;
   const attackDamage = tower.damage;
   const attackCooldown = trait.attackCooldown ?? 600;
   const attackSplash = trait.attackSplash ?? 0;
@@ -505,6 +508,17 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
   if (target && (!target.alive || target.reached)) {
     target = null;
     trait._target = null;
+  }
+
+  // Leash check: if target has moved too far away, drop it and re-aggro
+  if (target) {
+    const ldx = target.x - tower.x;
+    const ldy = target.y - tower.y;
+    const lDist = Math.sqrt(ldx * ldx + ldy * ldy);
+    if (lDist > leashRange) {
+      target = null;
+      trait._target = null;
+    }
   }
 
   // Full map awareness: find closest creep anywhere on the map

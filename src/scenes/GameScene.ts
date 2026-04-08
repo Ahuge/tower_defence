@@ -196,9 +196,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private rollRandomTowers(): string[] {
-    const all = getAllFactionTowerIds().filter(id => !getTowerType(id).ultimate);
-    const shuffled = [...all].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 6);
+    const nonUlt = getAllFactionTowerIds().filter(id => !getTowerType(id).ultimate);
+    const shuffled = [...nonUlt].sort(() => Math.random() - 0.5);
+    const pool = shuffled.slice(0, 6);
+
+    // 5% chance to replace the last slot with a random ultimate tower
+    if (Math.random() < 0.05) {
+      const ultimates = getAllFactionTowerIds().filter(id => getTowerType(id).ultimate);
+      if (ultimates.length > 0) {
+        pool[5] = ultimates[Math.floor(Math.random() * ultimates.length)];
+      }
+    }
+
+    return pool;
   }
 
   preload(): void {
@@ -543,12 +553,22 @@ export class GameScene extends Phaser.Scene {
       );
     }
 
-    // Phone: pinch-to-zoom + pan on the game world
-    if (ResponsiveManager.isPhone()) {
+    // Camera controller: phone gets pinch-to-zoom + viewport clip, desktop gets scroll wheel + buttons
+    {
       const canvasW = getCanvasWidth();
-      this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT);
+      if (ResponsiveManager.isPhone()) {
+        const canvasH = ResponsiveManager.canvasHeight();
+        const viewportH = canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin;
+        this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
+        this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
+      } else {
+        // Desktop: full canvas for bounds, grid offset for zoom center
+        const canvasH = ResponsiveManager.canvasHeight();
+        this.cameraCtrl = new CameraController(this, canvasW, canvasH);
+        this.cameraCtrl.setCanPanCheck(() => this.selectionMode !== 'build');
+        this.cameraCtrl.setGridOffset(getGridOffsetX());
+      }
       this.inputMgr.setCameraController(this.cameraCtrl);
-      this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
     }
 
     // Versus mode setup
@@ -567,7 +587,7 @@ export class GameScene extends Phaser.Scene {
             if (this.faction === 'random') {
               this.activeTowerIds = msg.towerIds;
               this.towerBar.setTowerIds(this.activeTowerIds);
-              this.fixTowerBarCamera();
+              this.fixContainerCamera((this.towerBar as any).container);
               this.enterNoneMode();
               this.eventLog.gameMessage('Tower pool updated!');
             }
@@ -698,93 +718,66 @@ export class GameScene extends Phaser.Scene {
         : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
 
-    // Phone: set up UI camera so HUD stays fixed while game camera zooms/pans
-    if (ResponsiveManager.isPhone()) {
+    // Set up UI camera so HUD stays fixed while game camera zooms/pans (once)
+    if (!this.uiCamera) {
       this.setupUiCamera();
     }
   }
 
-  /** Create a UI camera that renders HUD elements at 1x zoom, no scroll.
-   *  Main camera ignores known UI objects; UI camera ignores everything else. */
+  /** Set up dual camera: main camera zooms game objects, UI camera stays at 1x.
+   *  Works the same on phone and desktop. Sidebar bg at depth 0 zooms with
+   *  the game (invisible — it's a solid color), while sidebar panels (depth 28)
+   *  stay crisp at 1x on the UI camera. */
   private setupUiCamera(): void {
     const canvasW = getCanvasWidth();
     const canvasH = ResponsiveManager.canvasHeight();
+
+    // UI camera: full canvas, 1x zoom, no scroll — renders depth >= 28 objects
     this.uiCamera = this.cameras.add(0, 0, canvasW, canvasH);
     this.uiCamera.setScroll(0, 0);
     this.uiCamera.setName('ui');
+    this.uiCamera.transparent = true;
 
-    const mainCam = this.cameras.main;
-
-    // UI camera ignores all CURRENT objects
+    // Step 1: UI camera ignores all existing objects
     for (const child of this.children.list) {
       this.uiCamera.ignore(child);
     }
-    // Auto-ignore new GAME objects (depth < 28) from UI camera.
-    // UI objects (depth >= 28) are NOT ignored — they may be rebuilt
-    // by TowerSelectBar etc. and need to stay visible on UI camera.
+
+    // Step 2: new objects auto-categorized on next frame.
+    // Objects at depth < 28 that are NOT inside a UI container → ignore from UI camera.
+    // Objects inside a depth >= 28 container → show on UI camera, hide from main camera.
+    const mainCam = this.cameras.main;
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
       if (!this.uiCamera) return;
-      const d = (go as any).depth ?? 0;
-      if (d < 28) {
-        this.uiCamera.ignore(go);
-      }
+      // Defer check to next tick — by then the object has been added to its container
+      this.time.delayedCall(0, () => {
+        const parent = (go as any).parentContainer;
+        if (parent && ((parent as any).depth ?? 0) >= 28) {
+          // Inside a UI container — show on UI camera, hide from main camera
+          go.cameraFilter &= ~this.uiCamera!.id;
+          go.cameraFilter |= mainCam.id;
+        } else if (((go as any).depth ?? 0) < 28) {
+          // Standalone game object — ignore from UI camera
+          this.uiCamera!.ignore(go);
+        }
+      });
     });
 
-    // Now explicitly register known UI objects:
-    // remove from main camera, add to UI camera
-    const uiObjects = this.collectUiObjects();
-    for (const obj of uiObjects) {
-      mainCam.ignore(obj);
-      // Clear the UI camera's ignore bit so it renders this object
-      obj.cameraFilter &= ~this.uiCamera.id;
+    // Step 3: depth >= 28 objects → hide from main camera, show on UI camera
+    for (const child of this.children.list) {
+      if (((child as any).depth ?? 0) >= 28) {
+        this.cameras.main.ignore(child);
+        child.cameraFilter &= ~this.uiCamera.id;
+      }
     }
   }
 
-  /** Collect all known UI game objects that should be fixed on screen */
-  private collectUiObjects(): Phaser.GameObjects.GameObject[] {
-    const objs: Phaser.GameObjects.GameObject[] = [];
-    // UIOverlay — individual text objects
-    const uiAny = this.ui as any;
-    for (const key of ['goldText', 'livesText', 'waveText', 'statusText', 'speedText', 'waveBtn', 'speedBtn', 'seedText']) {
-      if (uiAny[key]) objs.push(uiAny[key]);
-    }
-    // Tower select bar (container + tooltip)
-    if (this.towerBar) {
-      objs.push((this.towerBar as any).container);
-      objs.push((this.towerBar as any).tooltip);
-    }
-    // Info panels
-    if (this.towerInfo) objs.push((this.towerInfo as any).container);
-    if (this.creepInfo) objs.push((this.creepInfo as any).container);
-    // Game control bar
-    if (this.controlBar) {
-      const cb = this.controlBar as any;
-      if (cb.graphics) objs.push(cb.graphics);
-      for (const btn of (cb.buttons ?? [])) { if (btn.zone) objs.push(btn.zone); }
-      for (const lbl of (cb.labels ?? [])) objs.push(lbl);
-    }
-    // Sidebar overlay
-    if (this.sidebarOverlay) {
-      const so = this.sidebarOverlay as any;
-      if (so.container) objs.push(so.container);
-      if (so.scrim) objs.push(so.scrim);
-      if (so.toggleBtn) objs.push(so.toggleBtn);
-    }
-    // Income display
-    if (this.incomeDisplay) {
-      const id = this.incomeDisplay as any;
-      if (id.text) objs.push(id.text);
-    }
-    return objs.filter(Boolean);
-  }
-
-  /** After tower bar rebuild (Random rotation, versus pool sync),
-   *  re-register its children with the UI camera on phone.
-   *  New children get default cameraFilter from addedtoscene handler
-   *  which incorrectly ignores them (depth 0 < 28). */
-  private fixTowerBarCamera(): void {
-    if (!this.uiCamera || !this.towerBar) return;
-    const container = (this.towerBar as any).container as Phaser.GameObjects.Container;
+  /** After a UI container rebuild (e.g. Random rotation), re-register its
+   *  children with the UI camera. New children created via scene.add.*() get
+   *  default depth 0, which the addedtoscene handler incorrectly marks as
+   *  game objects (ignored by UI camera). This fixes all children in a container. */
+  private fixContainerCamera(container: Phaser.GameObjects.Container): void {
+    if (!this.uiCamera) return;
     const mainCam = this.cameras.main;
     for (const child of container.list) {
       child.cameraFilter &= ~this.uiCamera.id; // visible on UI camera
@@ -1676,9 +1669,11 @@ export class GameScene extends Phaser.Scene {
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds);
-      this.fixTowerBarCamera();
+      this.fixContainerCamera((this.towerBar as any).container);
       if (this.gameMode instanceof StandardMode) {
         (this.gameMode as StandardMode).rotateRandomFrontier();
+        // Fix frontier panel camera after rebuild
+        this.fixContainerCamera((this.gameMode as StandardMode).frontierPanel.getContainer());
       }
       this.eventLog.gameMessage('Tower + frontier pool rotated!');
       this.enterNoneMode();
