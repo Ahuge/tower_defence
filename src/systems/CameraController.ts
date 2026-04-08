@@ -22,6 +22,7 @@ export class CameraController {
   camera: Phaser.Cameras.Scene2D.Camera;
   private worldW: number;
   private worldH: number;
+  private baseScrollX: number = 0; // desktop: grid offset (360)
 
   // Pinch state
   private pinchStartDist: number = 0;
@@ -256,7 +257,7 @@ export class CameraController {
       .setInteractive({ useHandCursor: true });
     this.zoomResetBtn.on('pointerdown', () => {
       this.camera.setZoom(1);
-      this.camera.setScroll(0, 0);
+      this.camera.setScroll(this.baseScrollX, 0);
     });
   }
 
@@ -333,11 +334,11 @@ export class CameraController {
     const cam = this.camera;
     const viewW = cam.width / cam.zoom;
     const viewH = cam.height / cam.zoom;
-    // Hard clamp — don't let viewport go past world + small margin
+    // Bounds relative to baseScrollX (grid offset on desktop)
     const margin = 50;
-    const minX = -margin;
+    const minX = this.baseScrollX - margin;
     const minY = -margin;
-    const maxX = Math.max(this.worldW - viewW + margin, minX);
+    const maxX = Math.max(this.baseScrollX + this.worldW - viewW + margin, minX);
     const maxY = Math.max(this.worldH - viewH + margin, minY);
     cam.scrollX = Phaser.Math.Clamp(cam.scrollX, minX, maxX);
     cam.scrollY = Phaser.Math.Clamp(cam.scrollY, minY, maxY);
@@ -350,6 +351,12 @@ export class CameraController {
   /** Set a callback that returns true when left-click pan is allowed (desktop) */
   setCanPanCheck(check: () => boolean): void {
     this.canPanCheck = check;
+  }
+
+  /** Set the base scroll X offset (desktop: grid offset so sidebar is excluded) */
+  setBaseScrollX(x: number): void {
+    this.baseScrollX = x;
+    this.camera.scrollX = x;
   }
 
   destroy(): void {
