@@ -94,7 +94,7 @@ Each game randomly offers 3 heroes to choose from. You can reroll for a differen
 | Hero | Faction | HP | Armor | Damage | AS | Range | Speed | Style |
 |------|---------|-----|-------|--------|----|-------|-------|-------|
 | **Warden** | Military | 650 | 8 | 25 | 1.0/s | Melee | 140 | Heavy tank. Stun, buff, AoE slow. |
-| **Arcanist** | Arcane | 280 | - | 40 | 0.8/s | 200px | 120 | Ranged caster. Fireball, frost, blink. |
+| **Mage** | Arcane | 280 | - | 40 | 0.8/s | 200px | 120 | Ranged caster. Fireball, frost, blink. |
 | **Shadow** | Void | 420 | 3 | 55 | 1.5/s | Melee | 180 | Fast assassin. Dash, dodge, execute. |
 | **Paladin** | Celestial | 600 | 6 | 30 | 0.9/s | Melee | 130 | Holy tank. Stun, dodge, AoE slow. |
 | **Ranger** | Harmonic | 250 | - | 45 | 1.2/s | 240px | 150 | Sharpshooter. Skillshot, frost, disengage. |
@@ -124,7 +124,7 @@ Each hero has 3 basic abilities (Q/W/E) and 1 ultimate (R) with a long cooldown.
 
 **Warden** — Q: Shield Bash (stun 1.5s + 40 dmg, 8s) | W: War Cry (+40% AS 6s, 20s) | E: Ground Slam (AoE 15 + slow, 30s) | R: Fortress (invuln 5s + taunt, 90s)
 
-**Arcanist** — Q: Fireball (100 dmg + splash, 6s) | W: Frost Nova (AoE 30 + 60% slow, 15s) | E: Blink (teleport 300px, 25s) | R: Meteor Storm (3×150 AoE, 120s)
+**Mage** — Q: Fireball (100 dmg + splash, 6s) | W: Frost Nova (AoE 30 + 60% slow, 15s) | E: Blink (teleport 300px, 25s) | R: Meteor Storm (3×150 AoE, 120s)
 
 **Shadow** — Q: Shadow Strike (dash + 60 dmg + amp, 5s) | W: Evasion (100% dodge 2s, 12s) | E: Execute (200/<30% or 50, 20s) | R: Death Mark (30% bonus after 3s, 100s)
 
@@ -206,7 +206,7 @@ Up to 3 accessory slots with a rotating shop. 3 random accessories offered, rota
 - Level up early by clearing wave creeps — stat growth compounds significantly by mid-game.
 - Warden is safest for beginners — Fortress ultimate makes you invincible for clutch saves.
 - Shadow excels at killing high-HP targets fast with dash + amp mark + execute + Death Mark combo.
-- Arcanist can kite from range but is fragile — Meteor Storm clears groups, buy armor early.
+- Mage can kite from range but is fragile — Meteor Storm clears groups, buy armor early.
 - Save gold for Guardian Angel before wave 20 — Base Charger can end runs fast.
 - Dead hero = 10s of uncontested base damage. Buy armor and use accessories to survive.
 

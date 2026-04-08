@@ -75,7 +75,7 @@
 | Barbed Wire | 25g | Slows adjacent creeps 40%. No attack. |
 | Rifleman | 40g | Mobile ranged unit. Moves to engage. |
 | Brawler | 55g | Mobile melee. High damage up close. |
-| Heavy Gunner | 120g | Mobile AoE. Slower, damages everything nearby. |
+| Tank | 120g | Mobile AoE. Slow but long range, fires explosive shells. |
 | **Commander** | **750g** | Ultimate. Mobile fighter + adjacency buff aura. |
 
 **Frontier:** Supply Depot / Forward Base (steady income).

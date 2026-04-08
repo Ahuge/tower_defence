@@ -19,7 +19,7 @@ function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: U
   const isHeavy = towerTypeId.includes('heavy') || towerTypeId.includes('commander');
 
   if (splashRadius > 0) {
-    // AoE flash ring (Heavy Gunner)
+    // AoE flash ring (Tank / splash mobile units)
     const gfx = scene.add.graphics();
     gfx.setDepth(14);
     const color = isHeavy ? 0xff8844 : 0xffffff;
