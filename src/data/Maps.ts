@@ -10,6 +10,9 @@ export interface MapDefinition {
   exits: { col: number; row: number }[];
   blocked: { col: number; row: number }[];
   noBuild: { col: number; row: number }[];
+  /** Terrain theme — determines how blocked cells are rendered.
+   *  'generic' is used for random maps (automatic assignment). */
+  theme?: string;
   /** Circle co-op: zone definitions. zones[i] = list of cells player i can build on. */
   zones?: { col: number; row: number }[][];
   /** Circle co-op: zone colors for rendering */
@@ -56,6 +59,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'plains',
     name: 'Plains',
     description: 'Open field. Two lakes force creative pathing.',
+    theme: 'forest',
     entries: [{ col: 0, row: MID_ROW }],
     exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
     blocked: [
@@ -70,6 +74,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'crossroads',
     name: 'Crossroads',
     description: 'Two entries. Mountain range divides the map.',
+    theme: 'mountain',
     entries: [
       { col: 0, row: 4 },
       { col: 0, row: GRID_ROWS - 5 },
@@ -95,6 +100,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'fortress',
     name: 'Fortress',
     description: 'Three entries. Stone walls around the center exit.',
+    theme: 'stone',
     entries: [
       { col: 0, row: MID_ROW },
       { col: GRID_COLS - 1, row: MID_ROW },
@@ -128,6 +134,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'serpentine',
     name: 'Serpentine',
     description: 'Canyon walls force a winding path.',
+    theme: 'mountain',
     entries: [{ col: 0, row: 2 }],
     exits: [{ col: GRID_COLS - 1, row: GRID_ROWS - 3 }],
     blocked: (() => {
@@ -153,6 +160,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'islands',
     name: 'Islands',
     description: 'Build zones separated by mountain ridges and lakes.',
+    theme: 'water',
     entries: [{ col: 0, row: MID_ROW }],
     exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
     blocked: (() => {
@@ -182,6 +190,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'gauntlet',
     name: 'Gauntlet',
     description: 'Four entries. Volcanic pillars block the field.',
+    theme: 'volcanic',
     entries: [
       { col: 0, row: MID_ROW },
       { col: GRID_COLS - 1, row: MID_ROW },
@@ -218,6 +227,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'spiral',
     name: 'Spiral',
     description: 'Concentric walls spiral to the center.',
+    theme: 'stone',
     entries: [{ col: 0, row: 0 }],
     exits: [{ col: MID_COL, row: MID_ROW }],
     blocked: (() => {
@@ -263,6 +273,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'siege',
     name: 'Siege',
     description: 'Mirrored halves. River divides with bridge gaps.',
+    theme: 'water',
     entries: [
       { col: 0, row: Math.floor(GRID_ROWS / 4) },
       { col: 0, row: Math.floor(GRID_ROWS * 3 / 4) },
@@ -295,6 +306,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'random',
     name: 'Random',
     description: 'Procedurally generated — unique every time.',
+    theme: 'generic',
     entries: [{ col: 0, row: MID_ROW }],
     exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
     blocked: [],
@@ -304,6 +316,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'hero_plains',
     name: 'Hero Plains',
     description: 'Open field for Hero Defense. 12 rows.',
+    theme: 'forest',
     entries: [{ col: 0, row: 6 }],
     exits: [{ col: GRID_COLS - 1, row: 6 }],
     blocked: [
@@ -350,6 +363,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
       id: 'circle_2p' as MapId,
       name: 'Circle 2P',
       description: '2-player co-op. Creeps loop through both halves.',
+      theme: 'forest',
       entries: [
         { col: 0, row: MID_ROW },           // P0 spawn (left)
         { col: GRID_COLS - 1, row: MID_ROW }, // P1 spawn (right)
@@ -424,6 +438,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
       id: 'circle_3p' as MapId,
       name: 'Circle 3P',
       description: '3-player co-op. Y-shaped paths through 3 zones.',
+      theme: 'forest',
       entries: [
         { col: 0, row: 4 },                    // P0 spawn (top-left)
         { col: GRID_COLS - 1, row: 4 },        // P1 spawn (top-right)
@@ -495,6 +510,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
       id: 'circle_4p' as MapId,
       name: 'Circle 4P',
       description: '4-player co-op. Four quadrants, one big circle.',
+      theme: 'forest',
       entries: [
         { col: 0, row: 4 },                        // P0 spawn (top-left)
         { col: GRID_COLS - 1, row: 4 },             // P1 spawn (top-right)

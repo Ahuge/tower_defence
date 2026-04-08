@@ -63,6 +63,7 @@ import { GameControlBar } from '../ui/GameControlBar';
 import { preloadSprites, createSpriteAnimations } from '../systems/SpriteManager';
 import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
+import { TerrainManager } from '../systems/TerrainManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -160,6 +161,8 @@ export class GameScene extends Phaser.Scene {
   // Graphics layers
   gridGraphics!: Phaser.GameObjects.Graphics;
   pathGraphics!: Phaser.GameObjects.Graphics;
+  private terrainMgr!: TerrainManager;
+  private mapDef!: MapDefinition;
   hoverGraphics!: Phaser.GameObjects.Graphics;
   rangeGraphics!: Phaser.GameObjects.Graphics;
 
@@ -296,6 +299,7 @@ export class GameScene extends Phaser.Scene {
       mapDef = MAPS[this.mapId];
     }
 
+    this.mapDef = mapDef;
     const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
     this.grid = new Grid(mapDef, gridRows);
     this.waves = getWavesForMode(this.matchMode);
@@ -467,7 +471,8 @@ export class GameScene extends Phaser.Scene {
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
 
     // Graphics layers
-    this.gridGraphics = this.add.graphics().setDepth(0);
+    this.terrainMgr = new TerrainManager(this);
+    this.gridGraphics = this.add.graphics().setDepth(0); // kept for compatibility
     this.pathGraphics = this.add.graphics().setDepth(1);
     this.hoverGraphics = this.add.graphics().setDepth(20);
     this.rangeGraphics = this.add.graphics().setDepth(19);
@@ -1422,60 +1427,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawGrid(): void {
-    const g = this.gridGraphics;
-    g.clear();
-
-    const oY = this.gridOffsetY;
-    const rows = this.grid.rows;
-    const gridH = rows * TILE_SIZE;
-
-    const cols = getGridCols();
-    const gw = getGameWidth();
-
-    g.fillStyle(COLOR_GROUND, 1);
-    g.fillRect(getGridOffsetX(), oY, gw, gridH);
-
-    g.lineStyle(1, COLOR_GRID_LINE, 0.3);
-    for (let col = 0; col <= cols; col++) {
-      g.lineBetween(gridLeftX(col), oY, gridLeftX(col), oY + gridH);
-    }
-    for (let row = 0; row <= rows; row++) {
-      g.lineBetween(getGridOffsetX(), oY + row * TILE_SIZE, getGridOffsetX() + gw, oY + row * TILE_SIZE);
-    }
-
-    // Blocked terrain — use gridY-based coords (includes offset)
-    g.fillStyle(0x1a1a1a, 1);
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const cell = this.grid.cells[row][col];
-        const cellY = oY + row * TILE_SIZE;
-        if (cell === CellType.Blocked) {
-          g.fillStyle(0x1a1a1a, 1);
-          g.fillRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
-          g.lineStyle(1, 0x333333, 0.5);
-          g.strokeRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
-        } else if (cell === CellType.NoBuild) {
-          g.fillStyle(0x2a2222, 1);
-          g.fillRect(gridLeftX(col), cellY, TILE_SIZE, TILE_SIZE);
-          g.lineStyle(1, 0x442222, 0.3);
-          const lx = gridLeftX(col);
-          g.lineBetween(lx + 4, cellY + 4, lx + TILE_SIZE - 4, cellY + TILE_SIZE - 4);
-          g.lineBetween(lx + TILE_SIZE - 4, cellY + 4, lx + 4, cellY + TILE_SIZE - 4);
-        }
-        if (cell === CellType.Blocked || cell === CellType.NoBuild) {
-          g.lineStyle(1, COLOR_GRID_LINE, 0.3);
-        }
-      }
-    }
-
-    for (const entry of this.grid.entries) {
-      g.fillStyle(COLOR_ENTRY, 0.5);
-      g.fillRect(gridLeftX(entry.col), oY + entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    }
-    for (const exit of this.grid.exits) {
-      g.fillStyle(COLOR_EXIT, 0.5);
-      g.fillRect(gridLeftX(exit.col), oY + exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    }
+    // Use terrain manager for themed rendering
+    const themeId = this.mapDef?.theme ?? 'generic';
+    this.terrainMgr.compute(this.grid, themeId, this.gridOffsetY);
+    this.terrainMgr.render(this.grid, this.gridOffsetY);
   }
 
   /** Overlay opponent's towers on the main grid when viewing their board */
