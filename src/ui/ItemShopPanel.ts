@@ -6,6 +6,7 @@ import { ArenaManager } from '../systems/ArenaManager';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { EventLog } from './EventLog';
+import { uiText, uiGraphics, uiZone } from '../systems/UILayer';
 
 export class ItemShopPanel {
   private scene: Phaser.Scene;
@@ -40,20 +41,20 @@ export class ItemShopPanel {
     const panelW = getSidebarWidth();
     const panelH = UIScale.isPhone ? ResponsiveManager.canvasHeight() - 200 : 440;
 
-    const bg = this.scene.add.graphics();
+    const bg = uiGraphics(this.scene);
     bg.fillStyle(0x111118, 1);
     bg.fillRect(0, 0, panelW, panelH);
     bg.lineStyle(1, 0x333333, 1);
     bg.strokeRect(0, 0, panelW, panelH);
     this.container.add(bg);
 
-    const title = this.scene.add.text(8, 6, 'HERO ITEMS', {
+    const title = uiText(this.scene,8, 6, 'HERO ITEMS', {
       fontSize: UIScale.font(13), color: '#ff44aa', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     // Hero stats summary
-    const heroInfo = this.scene.add.text(8, 24, `${this.hero.typeDef.name}`, {
+    const heroInfo = uiText(this.scene,8, 24, `${this.hero.typeDef.name}`, {
       fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',
     });
     this.container.add(heroInfo);
@@ -73,7 +74,7 @@ export class ItemShopPanel {
     const touch = UIScale.current.minTouchTarget;
 
     // Level / XP bar
-    const lvlText = this.scene.add.text(8, y,
+    const lvlText = uiText(this.scene,8, y,
       `Lv.${this.hero.level}${this.hero.level >= 15 ? ' (MAX)' : ''}`,
       { fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace' }
     );
@@ -86,7 +87,7 @@ export class ItemShopPanel {
       const barX = UIScale.isPhone ? 90 : 70;
       const barW = getSidebarWidth() - barX - 12;
       const barH = UIScale.isPhone ? 14 : 10;
-      const xpBarBg = this.scene.add.graphics();
+      const xpBarBg = uiGraphics(this.scene);
       xpBarBg.fillStyle(0x222222, 1);
       xpBarBg.fillRect(barX, y + 2, barW, barH);
       xpBarBg.fillStyle(0xffaa44, 0.8);
@@ -96,7 +97,7 @@ export class ItemShopPanel {
       this.container.add(xpBarBg);
       this.dynamicItems.push(xpBarBg);
 
-      const xpLabel = this.scene.add.text(barX + barW / 2, y + 2, `${this.hero.xp}/${xpNeeded}`, {
+      const xpLabel = uiText(this.scene,barX + barW / 2, y + 2, `${this.hero.xp}/${xpNeeded}`, {
         fontSize: UIScale.font(8), color: '#cccccc', fontFamily: 'monospace',
       }).setOrigin(0.5, 0);
       this.container.add(xpLabel);
@@ -105,7 +106,7 @@ export class ItemShopPanel {
     y += rh;
 
     // Hero stats
-    const statsText = this.scene.add.text(8, y,
+    const statsText = uiText(this.scene,8, y,
       `HP: ${this.hero.hp}/${this.hero.maxHp}  DMG: ${this.hero.getEffectiveDamage()}  AS: ${this.hero.getEffectiveAttackSpeed().toFixed(2)}/s`,
       { fontSize: UIScale.font(11), color: '#888888', fontFamily: 'monospace' }
     );
@@ -115,7 +116,7 @@ export class ItemShopPanel {
 
     // Pending upgrade picker
     if (this.hero.pendingUpgrades > 0) {
-      const upLabel = this.scene.add.text(8, y, `LEVEL UP! (${this.hero.pendingUpgrades} point${this.hero.pendingUpgrades > 1 ? 's' : ''})`, {
+      const upLabel = uiText(this.scene,8, y, `LEVEL UP! (${this.hero.pendingUpgrades} point${this.hero.pendingUpgrades > 1 ? 's' : ''})`, {
         fontSize: UIScale.font(12), color: '#ffaa44', fontFamily: 'monospace',
       });
       this.container.add(upLabel);
@@ -123,7 +124,7 @@ export class ItemShopPanel {
       y += rh;
 
       for (const opt of this.hero.getUpgradeOptions()) {
-        const btn = this.scene.add.text(16, y, `[${opt.label}] ${opt.desc}`, {
+        const btn = uiText(this.scene,16, y, `[${opt.label}] ${opt.desc}`, {
           fontSize: UIScale.font(10), color: '#44ff44', fontFamily: 'monospace',
         });
         this.container.add(btn);
@@ -161,7 +162,7 @@ export class ItemShopPanel {
         labelColor = slotDef.color;
       }
 
-      const nameText = this.scene.add.text(8, y, label, {
+      const nameText = uiText(this.scene,8, y, label, {
         fontSize: UIScale.font(11), color: labelColor, fontFamily: 'monospace',
       });
       this.container.add(nameText);
@@ -175,7 +176,7 @@ export class ItemShopPanel {
         const btnLabel = `[${cost}g]`;
         const btnColor = canAfford ? '#44ff44' : '#664444';
 
-        const btn = this.scene.add.text(getSidebarWidth() - 60, y, btnLabel, {
+        const btn = uiText(this.scene,getSidebarWidth() - 60, y, btnLabel, {
           fontSize: UIScale.font(11), color: btnColor, fontFamily: 'monospace',
         });
         this.container.add(btn);
@@ -189,7 +190,7 @@ export class ItemShopPanel {
           btn.on('pointerout', () => btn.setColor('#44ff44'));
         }
       } else {
-        const maxText = this.scene.add.text(getSidebarWidth() - 50, y, '(MAX)', {
+        const maxText = uiText(this.scene,getSidebarWidth() - 50, y, '(MAX)', {
           fontSize: UIScale.font(10), color: '#ffaa44', fontFamily: 'monospace',
         });
         this.container.add(maxText);
@@ -203,7 +204,7 @@ export class ItemShopPanel {
     this.addDivider(y);
     y += 6;
 
-    const tomeTitle = this.scene.add.text(8, y, 'TOMES', {
+    const tomeTitle = uiText(this.scene,8, y, 'TOMES', {
       fontSize: UIScale.font(11), color: '#ffcc44', fontFamily: 'monospace',
     });
     this.container.add(tomeTitle);
@@ -215,13 +216,13 @@ export class ItemShopPanel {
     const xpAmount = 50 + this.hero.level * 5;
     {
       const canAfford = this.economy.canAfford(xpTomeCost);
-      const label = this.scene.add.text(8, y, `XP Tome: +${xpAmount} XP`, {
+      const label = uiText(this.scene,8, y, `XP Tome: +${xpAmount} XP`, {
         fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
       });
       this.container.add(label);
       this.dynamicItems.push(label);
 
-      const btn = this.scene.add.text(getSidebarWidth() - 60, y, `[${xpTomeCost}g]`, {
+      const btn = uiText(this.scene,getSidebarWidth() - 60, y, `[${xpTomeCost}g]`, {
         fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
       });
       this.container.add(btn);
@@ -246,13 +247,13 @@ export class ItemShopPanel {
       const baseCost = 250;
       const attrTomeCost = baseCost + this.hero.tomeCount * 50; // gets more expensive each time
       const canAfford = this.economy.canAfford(attrTomeCost);
-      const label = this.scene.add.text(8, y, `Stat Tome: +5 DMG +30 HP +0.1 AS`, {
+      const label = uiText(this.scene,8, y, `Stat Tome: +5 DMG +30 HP +0.1 AS`, {
         fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
       });
       this.container.add(label);
       this.dynamicItems.push(label);
 
-      const btn = this.scene.add.text(getSidebarWidth() - 60, y, `[${attrTomeCost}g]`, {
+      const btn = uiText(this.scene,getSidebarWidth() - 60, y, `[${attrTomeCost}g]`, {
         fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
       });
       this.container.add(btn);
@@ -286,13 +287,13 @@ export class ItemShopPanel {
         const interestCost = costs[interestTier];
         const newRate = rates[interestTier];
         const canAfford = this.economy.canAfford(interestCost);
-        const label = this.scene.add.text(8, y, `Interest Tome: → ${newRate}%/wave`, {
+        const label = uiText(this.scene,8, y, `Interest Tome: → ${newRate}%/wave`, {
           fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
         });
         this.container.add(label);
         this.dynamicItems.push(label);
 
-        const btn = this.scene.add.text(getSidebarWidth() - 60, y, `[${interestCost}g]`, {
+        const btn = uiText(this.scene,getSidebarWidth() - 60, y, `[${interestCost}g]`, {
           fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
         });
         this.container.add(btn);
@@ -321,14 +322,14 @@ export class ItemShopPanel {
 
     // Accessory section
     const accCount = this.hero.accessories.length;
-    const accTitle = this.scene.add.text(8, y, `ACCESSORIES (${accCount}/3)`, {
+    const accTitle = uiText(this.scene,8, y, `ACCESSORIES (${accCount}/3)`, {
       fontSize: UIScale.font(11), color: '#cc66ff', fontFamily: 'monospace',
     });
     this.container.add(accTitle);
     this.dynamicItems.push(accTitle);
 
     // Rotation countdown
-    const rotText = this.scene.add.text(getSidebarWidth() - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`, {
+    const rotText = uiText(this.scene,getSidebarWidth() - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`, {
       fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(rotText);
@@ -341,7 +342,7 @@ export class ItemShopPanel {
         const cd = this.hero.accessoryCooldowns.get(acc.id) ?? 0;
         const cdStr = !acc.passive && cd > 0 ? ` (${Math.ceil(cd)}s)` : '';
         const keyStr = acc.passive ? '' : ' [T]';
-        const equipped = this.scene.add.text(8, y, `${acc.name}${keyStr}${cdStr}`, {
+        const equipped = uiText(this.scene,8, y, `${acc.name}${keyStr}${cdStr}`, {
           fontSize: UIScale.font(10), color: '#cc66ff', fontFamily: 'monospace',
         });
         this.container.add(equipped);
@@ -349,7 +350,7 @@ export class ItemShopPanel {
         y += rh;
       }
     } else {
-      const noAcc = this.scene.add.text(8, y, 'None equipped', {
+      const noAcc = uiText(this.scene,8, y, 'None equipped', {
         fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace',
       });
       this.container.add(noAcc);
@@ -367,7 +368,7 @@ export class ItemShopPanel {
       const btnColor = canAfford ? '#44ff44' : '#664444';
       const typeTag = acc.passive ? 'P' : 'A';
 
-      const offerText = this.scene.add.text(8, y,
+      const offerText = uiText(this.scene,8, y,
         `[${typeTag}] ${acc.name} — ${acc.cost}g`,
         { fontSize: UIScale.font(11), color: btnColor, fontFamily: 'monospace' }
       );
@@ -383,7 +384,7 @@ export class ItemShopPanel {
       }
       y += rh;
 
-      const descText = this.scene.add.text(16, y, acc.description, {
+      const descText = uiText(this.scene,16, y, acc.description, {
         fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
       });
       this.container.add(descText);
@@ -397,7 +398,7 @@ export class ItemShopPanel {
     y += 6;
 
     // Ability cooldowns
-    const abTitle = this.scene.add.text(8, y, 'Abilities:', {
+    const abTitle = uiText(this.scene,8, y, 'Abilities:', {
       fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
     });
     this.container.add(abTitle);
@@ -413,14 +414,14 @@ export class ItemShopPanel {
       const color = ready ? '#44ff44' : '#ff4444';
       const ups = this.hero.abilityUpgrades[i];
       const upsTag = ups > 0 ? ` +${ups}` : '';
-      const text = this.scene.add.text(16, y, `[${ab.def.key}] ${ab.def.name}${upsTag}: ${cdText}`, {
+      const text = uiText(this.scene,16, y, `[${ab.def.key}] ${ab.def.name}${upsTag}: ${cdText}`, {
         fontSize: UIScale.font(11), color, fontFamily: 'monospace',
       });
       this.container.add(text);
       this.dynamicItems.push(text);
 
       if (hasPending) {
-        const plusBtn = this.scene.add.text(getSidebarWidth() - 30, y, '[+]', {
+        const plusBtn = uiText(this.scene,getSidebarWidth() - 30, y, '[+]', {
           fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
         }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         this.container.add(plusBtn);
@@ -448,14 +449,14 @@ export class ItemShopPanel {
         ultLabel = `[R] ${ult.def.name}${upsTag}: ${ready ? 'READY' : `${Math.ceil(ult.cooldownRemaining)}s`}`;
         ultColor = ready ? '#cc66ff' : '#664466';
       }
-      const ultText = this.scene.add.text(16, y, ultLabel, {
+      const ultText = uiText(this.scene,16, y, ultLabel, {
         fontSize: UIScale.font(11), color: ultColor, fontFamily: 'monospace',
       });
       this.container.add(ultText);
       this.dynamicItems.push(ultText);
 
       if (hasPending && unlocked) {
-        const plusBtn = this.scene.add.text(getSidebarWidth() - 30, y, '[+]', {
+        const plusBtn = uiText(this.scene,getSidebarWidth() - 30, y, '[+]', {
           fontSize: UIScale.font(11), color: '#ffaa44', fontFamily: 'monospace',
         }).setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, -4, 46, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
         this.container.add(plusBtn);
@@ -469,7 +470,7 @@ export class ItemShopPanel {
   }
 
   private addDivider(y: number): void {
-    const div = this.scene.add.graphics();
+    const div = uiGraphics(this.scene);
     div.lineStyle(1, 0x444444, 0.5);
     div.lineBetween(8, y, getSidebarWidth() - 8, y);
     this.container.add(div);

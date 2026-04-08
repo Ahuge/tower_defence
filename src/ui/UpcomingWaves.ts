@@ -1,6 +1,7 @@
 import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
 import { WaveDefinition } from '../data/WaveDefinitions';
 import { UIScale } from '../systems/UIScale';
+import { uiText, uiGraphics } from '../systems/UILayer';
 
 export class UpcomingWaves {
   private scene: Phaser.Scene;
@@ -15,25 +16,25 @@ export class UpcomingWaves {
     this.scene = scene;
     this.container = scene.add.container(0, 0).setDepth(28);
 
-    const bg = scene.add.graphics();
+    const bg = uiGraphics(scene);
     bg.fillStyle(0x121218, 1);
     bg.fillRect(0, 0, getSidebarWidth(), UpcomingWaves.HEIGHT);
     bg.lineStyle(1, 0x333333, 1);
     bg.strokeRect(0, 0, getSidebarWidth(), UpcomingWaves.HEIGHT);
     this.container.add(bg);
 
-    const title = scene.add.text(8, 4, 'UPCOMING WAVES', {
+    const title = uiText(scene, 8, 4, 'UPCOMING WAVES', {
       fontSize: UIScale.font(12), color: '#6688aa', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     // Auto-play button — must be large enough to tap on phone
-    this.autoPlayBg = scene.add.graphics();
+    this.autoPlayBg = uiGraphics(scene);
     this.drawAutoPlayBg(false);
     this.container.add(this.autoPlayBg);
 
     const touch = UIScale.current.minTouchTarget;
-    this.autoPlayBtn = scene.add.text(getSidebarWidth() - 8, UIScale.isPhone ? 6 : 4, '[A] AUTO', {
+    this.autoPlayBtn = uiText(scene, getSidebarWidth() - 8, UIScale.isPhone ? 6 : 4, '[A] AUTO', {
       fontSize: UIScale.font(13), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(1, 0);
     this.container.add(this.autoPlayBtn);
@@ -89,7 +90,7 @@ export class UpcomingWaves {
       const bossTag = wave.isBoss ? ' [BOSS]' : '';
       const typeStr = types.join(', ');
 
-      const text = this.scene.add.text(8, y, `${prefix} W${waveNum}: ${typeStr}${bossTag} (${totalCount})`, {
+      const text = uiText(this.scene,8, y, `${prefix} W${waveNum}: ${typeStr}${bossTag} (${totalCount})`, {
         fontSize: UIScale.font(13),
         color: wave.isBoss ? '#ff4444' : (i === 0 ? '#cccccc' : '#888888'),
         fontFamily: 'monospace',
@@ -101,7 +102,7 @@ export class UpcomingWaves {
     }
 
     if (currentWave >= waves.length) {
-      const text = this.scene.add.text(8, y, 'Final wave!', {
+      const text = uiText(this.scene,8, y, 'Final wave!', {
         fontSize: UIScale.font(13), color: '#ffdd44', fontFamily: 'monospace',
       });
       this.container.add(text);

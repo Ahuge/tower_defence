@@ -1,6 +1,7 @@
 import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
 import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../data/SendCreepTypes';
 import { UIScale } from '../systems/UIScale';
+import { uiText, uiGraphics } from '../systems/UILayer';
 
 const SEND_HOTKEYS = ['Z', 'X', 'C', 'V', '1', '2', '3', '4'];
 
@@ -38,19 +39,19 @@ export class SendPanel {
     const panelW = getSidebarWidth();
     const panelH = SendPanel.HEIGHT;
 
-    const bg = this.scene.add.graphics();
+    const bg = uiGraphics(this.scene);
     bg.fillStyle(0x151515, 1);
     bg.fillRect(0, 0, panelW, panelH);
     bg.lineStyle(1, 0x333333, 1);
     bg.strokeRect(0, 0, panelW, panelH);
     this.container.add(bg);
 
-    const title = this.scene.add.text(8, 6, 'SENDS', {
+    const title = uiText(this.scene,8, 6, 'SENDS', {
       fontSize: UIScale.font(13), color: '#ff8844', fontFamily: 'monospace',
     });
     this.container.add(title);
 
-    const subtitle = this.scene.add.text(UIScale.current.sendSubtitleX, 7, '(between waves)', {
+    const subtitle = uiText(this.scene,UIScale.current.sendSubtitleX, 7, '(between waves)', {
       fontSize: UIScale.font(13), color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(subtitle);
@@ -64,7 +65,7 @@ export class SendPanel {
       const startY = UIScale.current.panelContentY;
       const y = startY + i * rowH;
 
-      const text = this.scene.add.text(8, y, '', {
+      const text = uiText(this.scene,8, y, '', {
         fontSize, color: '#cccccc', fontFamily: 'monospace',
       });
 

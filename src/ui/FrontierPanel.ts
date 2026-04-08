@@ -1,6 +1,7 @@
 import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { uiText, uiGraphics } from '../systems/UILayer';
 import { FrontierBuilding } from '../data/FrontierBuildings';
 import { FrontierManager, OwnedBuilding } from '../systems/FrontierManager';
 import { SendPanel } from './SendPanel';
@@ -52,14 +53,14 @@ export class FrontierPanel {
     const totalSidebarH = ResponsiveManager.canvasHeight();
     const panelH = totalSidebarH - SendPanel.HEIGHT - UpcomingWaves.HEIGHT - UIScale.space(200);
 
-    const bg = this.scene.add.graphics();
+    const bg = uiGraphics(this.scene);
     bg.fillStyle(0x111118, 1);
     bg.fillRect(0, 0, panelW, panelH);
     bg.lineStyle(1, 0x333333, 1);
     bg.strokeRect(0, 0, panelW, panelH);
     this.container.add(bg);
 
-    const title = this.scene.add.text(8, 6, 'FRONTIER', {
+    const title = uiText(this.scene,8, 6, 'FRONTIER', {
       fontSize: UIScale.font(13), color: '#ffaa44', fontFamily: 'monospace',
     });
     this.container.add(title);
@@ -67,7 +68,7 @@ export class FrontierPanel {
     const rh = UIScale.current.rowHeight;
     let y = UIScale.current.panelContentY;
     for (const building of this.frontier.availableBuildings) {
-      const text = this.scene.add.text(8, y, `[Buy] ${building.name} (${building.cost}g)`, {
+      const text = uiText(this.scene,8, y, `[Buy] ${building.name} (${building.cost}g)`, {
         fontSize: UIScale.font(12), color: '#cccccc', fontFamily: 'monospace',
       });
       this.container.add(text);
@@ -77,7 +78,7 @@ export class FrontierPanel {
       text.on('pointerout', () => text.setColor('#cccccc'));
       y += rh;
 
-      const desc = this.scene.add.text(12, y, building.description, {
+      const desc = uiText(this.scene,12, y, building.description, {
         fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
         wordWrap: { width: panelW - 20 },
       });
@@ -85,19 +86,19 @@ export class FrontierPanel {
       y += desc.height + 8;
     }
 
-    const divider = this.scene.add.graphics();
+    const divider = uiGraphics(this.scene);
     divider.lineStyle(1, 0x444444, 0.5);
     divider.lineBetween(8, y, panelW - 8, y);
     this.container.add(divider);
     y += 6;
 
     // "Owned Buildings:" label + group toggle
-    const ownedLabel = this.scene.add.text(8, y, 'Owned Buildings:', {
+    const ownedLabel = uiText(this.scene,8, y, 'Owned Buildings:', {
       fontSize: UIScale.font(13), color: '#88ff88', fontFamily: 'monospace',
     });
     this.container.add(ownedLabel);
 
-    this.groupToggle = this.scene.add.text(panelW - 8, y, this.grouped ? '[v] Group' : '[ ] Group', {
+    this.groupToggle = uiText(this.scene,panelW - 8, y, this.grouped ? '[v] Group' : '[ ] Group', {
       fontSize: UIScale.font(13), color: '#888888', fontFamily: 'monospace',
     }).setOrigin(1, 0);
     this.container.add(this.groupToggle);
@@ -123,7 +124,7 @@ export class FrontierPanel {
     let y = this.ownedStartY;
 
     if (active.length === 0) {
-      const empty = this.scene.add.text(12, y, '(none)', {
+      const empty = uiText(this.scene,12, y, '(none)', {
         fontSize: UIScale.font(13), color: '#555555', fontFamily: 'monospace',
       });
       this.container.add(empty);
@@ -138,7 +139,7 @@ export class FrontierPanel {
     }
 
     const totalIncome = active.reduce((sum, b) => sum + b.def.baseIncome, 0);
-    const summary = this.scene.add.text(8, y + 4, `Frontier base income: +${totalIncome}/w`, {
+    const summary = uiText(this.scene,8, y + 4, `Frontier base income: +${totalIncome}/w`, {
       fontSize: UIScale.font(13), color: '#888888', fontFamily: 'monospace',
     });
     this.container.add(summary);
@@ -184,7 +185,7 @@ export class FrontierPanel {
         status = ` (avg depth: ${avgDepth})`;
       }
 
-      const nameText = this.scene.add.text(12, y, `${label}${status}`, {
+      const nameText = uiText(this.scene,12, y, `${label}${status}`, {
         fontSize: UIScale.font(13), color: statusColor, fontFamily: 'monospace',
       });
       this.container.add(nameText);
@@ -233,7 +234,7 @@ export class FrontierPanel {
       if (b.def.mechanic === 'grow') status = ` (growth: ${b.growthStacks})`;
       if (b.def.mechanic === 'dig') status = ` (depth: ${b.digLevel})`;
 
-      const nameText = this.scene.add.text(12, y, `${b.def.name}${status}`, {
+      const nameText = uiText(this.scene,12, y, `${b.def.name}${status}`, {
         fontSize: UIScale.font(13), color: statusColor, fontFamily: 'monospace',
       });
       this.container.add(nameText);
@@ -263,7 +264,7 @@ export class FrontierPanel {
   }
 
   private createActionButton(x: number, y: number, label: string, color: string, onClick: () => void): number {
-    const btn = this.scene.add.text(x, y, label, {
+    const btn = uiText(this.scene,x, y, label, {
       fontSize: UIScale.font(13), color, fontFamily: 'monospace',
     });
     this.container.add(btn);

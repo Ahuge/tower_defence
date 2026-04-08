@@ -4,6 +4,7 @@ import { ResourceManager } from '../systems/ResourceManager';
 import { EssenceGenerator, ESSENCE_GENERATORS, EssenceSendOption, ESSENCE_SENDS } from '../data/EssenceGenerators';
 import { UpcomingWaves } from './UpcomingWaves';
 import { SendPanel } from './SendPanel';
+import { uiText, uiGraphics } from '../systems/UILayer';
 
 /**
  * Dual Economy mode UI panel — replaces Sends + Frontier panels.
@@ -45,7 +46,7 @@ export class EssencePanel {
     const panelW = getSidebarWidth();
     const panelH = GAME_HEIGHT - UpcomingWaves.HEIGHT - 200; // leave room for event log
 
-    const bg = this.scene.add.graphics();
+    const bg = uiGraphics(this.scene);
     bg.fillStyle(0x0e1118, 1);
     bg.fillRect(0, 0, panelW, panelH);
     bg.lineStyle(1, 0x334455, 1);
@@ -53,12 +54,12 @@ export class EssencePanel {
     this.container.add(bg);
 
     // Essence counter (updates each frame)
-    this.essenceText = this.scene.add.text(8, 6, '', {
+    this.essenceText = uiText(this.scene,8, 6, '', {
       fontSize: UIScale.font(14), color: '#44ddff', fontFamily: 'monospace',
     });
     this.container.add(this.essenceText);
 
-    this.rateText = this.scene.add.text(panelW - 8, 6, '', {
+    this.rateText = uiText(this.scene,panelW - 8, 6, '', {
       fontSize: UIScale.font(10), color: '#44aacc', fontFamily: 'monospace',
     }).setOrigin(1, 0);
     this.container.add(this.rateText);
@@ -66,14 +67,14 @@ export class EssencePanel {
     let y = 28;
 
     // Generator purchases
-    const genLabel = this.scene.add.text(8, y, 'GENERATORS (buy with Gold)', {
+    const genLabel = uiText(this.scene,8, y, 'GENERATORS (buy with Gold)', {
       fontSize: UIScale.font(10), color: '#ffaa44', fontFamily: 'monospace',
     });
     this.container.add(genLabel);
     y += 16;
 
     for (const gen of ESSENCE_GENERATORS) {
-      const text = this.scene.add.text(8, y, `[Buy] ${gen.name} (${gen.cost}g) +${gen.essencePerSec}/s`, {
+      const text = uiText(this.scene,8, y, `[Buy] ${gen.name} (${gen.cost}g) +${gen.essencePerSec}/s`, {
         fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
       });
       this.container.add(text);
@@ -83,7 +84,7 @@ export class EssencePanel {
       text.on('pointerout', () => text.setColor('#cccccc'));
       y += 14;
 
-      const desc = this.scene.add.text(16, y, gen.description, {
+      const desc = uiText(this.scene,16, y, gen.description, {
         fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
       });
       this.container.add(desc);
@@ -93,14 +94,14 @@ export class EssencePanel {
     y += 8;
 
     // Divider
-    const div1 = this.scene.add.graphics();
+    const div1 = uiGraphics(this.scene);
     div1.lineStyle(1, 0x334455, 0.5);
     div1.lineBetween(8, y, panelW - 8, y);
     this.container.add(div1);
     y += 6;
 
     // Essence sends
-    const sendLabel = this.scene.add.text(8, y, 'SENDS (cost Essence → Gold income)', {
+    const sendLabel = uiText(this.scene,8, y, 'SENDS (cost Essence → Gold income)', {
       fontSize: UIScale.font(10), color: '#ff8844', fontFamily: 'monospace',
     });
     this.container.add(sendLabel);
@@ -110,7 +111,7 @@ export class EssencePanel {
     for (let i = 0; i < ESSENCE_SENDS.length; i++) {
       const send = ESSENCE_SENDS[i];
       const hk = i < hotkeys.length ? `[${hotkeys[i]}] ` : '';
-      const text = this.scene.add.text(8, y, `${hk}${send.name} (${send.essenceCost}e) +${send.incomeReward}g/w`, {
+      const text = uiText(this.scene,8, y, `${hk}${send.name} (${send.essenceCost}e) +${send.incomeReward}g/w`, {
         fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
       });
       this.container.add(text);
@@ -132,14 +133,14 @@ export class EssencePanel {
     y += 8;
 
     // Divider
-    const div2 = this.scene.add.graphics();
+    const div2 = uiGraphics(this.scene);
     div2.lineStyle(1, 0x334455, 0.5);
     div2.lineBetween(8, y, panelW - 8, y);
     this.container.add(div2);
     y += 6;
 
     // Owned generators section
-    const ownedLabel = this.scene.add.text(8, y, 'Owned Generators:', {
+    const ownedLabel = uiText(this.scene,8, y, 'Owned Generators:', {
       fontSize: UIScale.font(10), color: '#88ff88', fontFamily: 'monospace',
     });
     this.container.add(ownedLabel);
@@ -166,7 +167,7 @@ export class EssencePanel {
     let y = this.ownedStartY;
 
     if (this.generators.length === 0) {
-      const empty = this.scene.add.text(12, y, '(none)', {
+      const empty = uiText(this.scene,12, y, '(none)', {
         fontSize: UIScale.font(9), color: '#555555', fontFamily: 'monospace',
       });
       this.container.add(empty);
@@ -175,7 +176,7 @@ export class EssencePanel {
     }
 
     for (const g of this.generators) {
-      const text = this.scene.add.text(12, y, `${g.def.name} x${g.count} (+${(g.def.essencePerSec * g.count).toFixed(1)}/s)`, {
+      const text = uiText(this.scene,12, y, `${g.def.name} x${g.count} (+${(g.def.essencePerSec * g.count).toFixed(1)}/s)`, {
         fontSize: UIScale.font(10), color: '#aaffaa', fontFamily: 'monospace',
       });
       this.container.add(text);
@@ -184,7 +185,7 @@ export class EssencePanel {
     }
 
     const totalRate = this.generators.reduce((s, g) => s + g.def.essencePerSec * g.count, 0);
-    const summary = this.scene.add.text(12, y + 4, `Total: +${totalRate.toFixed(1)} essence/s`, {
+    const summary = uiText(this.scene,12, y + 4, `Total: +${totalRate.toFixed(1)} essence/s`, {
       fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(summary);

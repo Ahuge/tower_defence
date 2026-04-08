@@ -3,6 +3,7 @@ import { Tower } from '../entities/Tower';
 import { hasTrait, getTrait } from '../systems/traits/Trait';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { uiText, uiGraphics } from '../systems/UILayer';
 
 export class TowerInfoPanel {
   private scene: Phaser.Scene;
@@ -25,22 +26,22 @@ export class TowerInfoPanel {
     this.scene = scene;
     this.container = scene.add.container(0, 0).setDepth(29).setVisible(false);
 
-    this.bg = scene.add.graphics();
+    this.bg = uiGraphics(scene);
     this.container.add(this.bg);
 
     const s = UIScale.current;
     const pad = s.padding;
     const lineH = s.rowHeight + 8; // generous line spacing
-    this.nameText = scene.add.text(pad, pad, '', { fontSize: s.fontHeading, color: '#ffdd44', fontFamily: 'monospace' });
-    this.statsText = scene.add.text(pad, pad + lineH, '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace', lineSpacing: 6 });
-    this.buffText = scene.add.text(pad, pad + lineH * 4, '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
-    this.traitsText = scene.add.text(pad, pad + lineH * 5, '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
-    this.upgradeText = scene.add.text(pad, pad + lineH * 6, '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
+    this.nameText = uiText(scene, pad, pad, '', { fontSize: s.fontHeading, color: '#ffdd44', fontFamily: 'monospace' });
+    this.statsText = uiText(scene, pad, pad + lineH, '', { fontSize: s.fontBody, color: '#ffffff', fontFamily: 'monospace', lineSpacing: 6 });
+    this.buffText = uiText(scene, pad, pad + lineH * 4, '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
+    this.traitsText = uiText(scene, pad, pad + lineH * 5, '', { fontSize: s.fontBody, color: '#aaaaaa', fontFamily: 'monospace' });
+    this.upgradeText = uiText(scene, pad, pad + lineH * 6, '', { fontSize: s.fontBody, color: '#88ff88', fontFamily: 'monospace' });
     this.container.add([this.nameText, this.statsText, this.buffText, this.traitsText, this.upgradeText]);
 
     // Action buttons
     const btnPadding = { x: UIScale.space(8), y: UIScale.space(4) };
-    this.upgradeBtn = scene.add.text(pad, 0, '[ Upgrade ]', {
+    this.upgradeBtn = uiText(scene, pad, 0, '[ Upgrade ]', {
       fontSize: s.fontHeading, color: '#44ff44', fontFamily: 'monospace',
       backgroundColor: '#1a2a1a', padding: btnPadding,
     }).setInteractive({ useHandCursor: true });
@@ -49,7 +50,7 @@ export class TowerInfoPanel {
     });
     this.container.add(this.upgradeBtn);
 
-    this.sellBtn = scene.add.text(UIScale.space(120), 0, '[ Sell ]', {
+    this.sellBtn = uiText(scene, UIScale.space(120), 0, '[ Sell ]', {
       fontSize: s.fontHeading, color: '#ff8844', fontFamily: 'monospace',
       backgroundColor: '#2a1a1a', padding: btnPadding,
     }).setInteractive({ useHandCursor: true });
@@ -59,7 +60,7 @@ export class TowerInfoPanel {
 
     // Close button (phone only)
     if (UIScale.isPhone) {
-      const closeBtn = scene.add.text(UIScale.space(240), 0, '[ Close ]', {
+      const closeBtn = uiText(scene, UIScale.space(240), 0, '[ Close ]', {
         fontSize: s.fontHeading, color: '#aaaaaa', fontFamily: 'monospace',
         backgroundColor: '#222222', padding: btnPadding,
       }).setInteractive({ useHandCursor: true });
@@ -68,7 +69,7 @@ export class TowerInfoPanel {
     }
     this.container.add(this.sellBtn);
 
-    this.rangeCircle = scene.add.graphics().setDepth(19);
+    this.rangeCircle = uiGraphics(scene).setDepth(19);
   }
 
   setCallbacks(onUpgrade: (tower: Tower) => void, onSell: (tower: Tower) => void): void {

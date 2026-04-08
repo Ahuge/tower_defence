@@ -1,6 +1,7 @@
 import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
 import { UIScale } from '../systems/UIScale';
 import { TowerSelectBar } from './TowerSelectBar';
+import { uiText, uiGraphics } from '../systems/UILayer';
 
 const MAX_LINES = 12;
 
@@ -20,7 +21,7 @@ export class EventLog {
     this.container = scene.add.container(0, topY).setDepth(28);
 
     // Background
-    const bg = scene.add.graphics();
+    const bg = uiGraphics(scene);
     bg.fillStyle(0x0a0a10, 1);
     bg.fillRect(0, 0, getSidebarWidth(), this.panelH);
     bg.lineStyle(1, 0x333333, 1);
@@ -28,13 +29,13 @@ export class EventLog {
     this.container.add(bg);
 
     // Title
-    const title = scene.add.text(8, 4, 'EVENT LOG', {
+    const title = uiText(scene, 8, 4, 'EVENT LOG', {
       fontSize: UIScale.font(10), color: '#666688', fontFamily: 'monospace',
     });
     this.container.add(title);
 
     // Log text — anchored to bottom of panel so newest lines are always visible
-    this.textObj = scene.add.text(8, this.panelH - 8, '', {
+    this.textObj = uiText(scene, 8, this.panelH - 8, '', {
       fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
       lineSpacing: UIScale.isPhone ? 4 : 2,
       wordWrap: { width: getSidebarWidth() - 16 },
