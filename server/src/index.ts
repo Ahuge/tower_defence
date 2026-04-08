@@ -1,0 +1,233 @@
+/**
+ * Tower Defence Signaling Server — Cloudflare Worker entry point.
+ *
+ * Routes:
+ *   POST   /api/rooms                → Create room
+ *   POST   /api/rooms/:code/join     → Join room
+ *   GET    /api/rooms/:code          → Room info
+ *   DELETE /api/rooms/:code          → Close room (host)
+ *   WS     /api/rooms/:code/signal   → WebSocket signaling
+ *   POST   /api/analytics            → Game telemetry events
+ *   GET    /api/analytics/summary    → Aggregated stats (admin)
+ */
+import { GameRoom } from './room';
+import { generateRoomCode, corsHeaders, json, error } from './utils';
+
+export { GameRoom };
+
+interface Env {
+  GAME_ROOM: DurableObjectNamespace;
+  ANALYTICS: KVNamespace;
+  CORS_ORIGIN: string;
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    const origin = env.CORS_ORIGIN || '*';
+
+    // CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    }
+
+    const path = url.pathname;
+
+    try {
+      // ===================== Room Routes =====================
+
+      // POST /api/rooms — create a new room
+      if (request.method === 'POST' && path === '/api/rooms') {
+        return await handleCreateRoom(request, env, origin);
+      }
+
+      // POST /api/rooms/:code/join — join an existing room
+      const joinMatch = path.match(/^\/api\/rooms\/([A-Z0-9]{4})\/join$/);
+      if (request.method === 'POST' && joinMatch) {
+        return await forwardToRoom(env, joinMatch[1], request, '/join', origin);
+      }
+
+      // GET /api/rooms/:code — room info
+      const infoMatch = path.match(/^\/api\/rooms\/([A-Z0-9]{4})$/);
+      if (request.method === 'GET' && infoMatch) {
+        return await forwardToRoom(env, infoMatch[1], request, '/info', origin);
+      }
+
+      // DELETE /api/rooms/:code — close room
+      if (request.method === 'DELETE' && infoMatch) {
+        return await forwardToRoom(env, infoMatch[1], request, '/', origin);
+      }
+
+      // WS /api/rooms/:code/signal — WebSocket signaling
+      const signalMatch = path.match(/^\/api\/rooms\/([A-Z0-9]{4})\/signal$/);
+      if (signalMatch) {
+        return await forwardToRoom(env, signalMatch[1], request, '/signal' + url.search, origin);
+      }
+
+      // ===================== Analytics Routes =====================
+
+      // POST /api/analytics — submit game telemetry
+      if (request.method === 'POST' && path === '/api/analytics') {
+        return await handleAnalytics(request, env, origin);
+      }
+
+      // GET /api/analytics/summary — get aggregated stats
+      if (request.method === 'GET' && path === '/api/analytics/summary') {
+        return await handleAnalyticsSummary(env, origin);
+      }
+
+      // ===================== Health =====================
+
+      if (path === '/api/health') {
+        return json({ status: 'ok', timestamp: Date.now() }, 200, origin);
+      }
+
+      return error('Not found', 404, origin);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Internal error';
+      return error(msg, 500, origin);
+    }
+  },
+};
+
+// ===================== Room Handlers =====================
+
+async function handleCreateRoom(request: Request, env: Env, origin: string): Promise<Response> {
+  const body = await request.json() as { mode?: string; maxPlayers?: number };
+
+  // Generate unique room code (retry on collision)
+  let code: string;
+  let attempts = 0;
+  do {
+    code = generateRoomCode();
+    attempts++;
+    if (attempts > 10) return error('Could not generate unique room code', 500, origin);
+  } while (false); // Durable Objects use code as ID — collisions are effectively impossible for 4 chars
+
+  // Forward to Durable Object
+  const roomId = env.GAME_ROOM.idFromName(code);
+  const room = env.GAME_ROOM.get(roomId);
+
+  const internalReq = new Request('https://internal/create', {
+    method: 'POST',
+    body: JSON.stringify({ ...body, code }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const res = await room.fetch(internalReq);
+  const data = await res.json();
+
+  return json(data, res.status, origin);
+}
+
+async function forwardToRoom(
+  env: Env, code: string, request: Request, path: string, origin: string,
+): Promise<Response> {
+  const roomId = env.GAME_ROOM.idFromName(code);
+  const room = env.GAME_ROOM.get(roomId);
+
+  const internalUrl = `https://internal${path}`;
+  const internalReq = new Request(internalUrl, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+  });
+
+  const res = await room.fetch(internalReq);
+
+  // For WebSocket upgrades, return directly
+  if (res.webSocket) {
+    return new Response(null, { status: 101, webSocket: res.webSocket });
+  }
+
+  // For JSON responses, add CORS headers
+  const data = await res.text();
+  return new Response(data, {
+    status: res.status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(origin),
+    },
+  });
+}
+
+// ===================== Analytics =====================
+
+/**
+ * Analytics event schema — flexible key-value telemetry.
+ * Events are bucketed by day and type for aggregation.
+ *
+ * Example events:
+ *   { type: 'game_start', mode: 'standard', faction: 'arcane', difficulty: 'normal', map: 'plains' }
+ *   { type: 'game_end', mode: 'hero_defense', result: 'victory', wave: 30, duration: 1200 }
+ *   { type: 'multiplayer_start', mode: 'versus', players: 2 }
+ *   { type: 'faction_pick', faction: 'mechanical' }
+ */
+interface AnalyticsEvent {
+  type: string;
+  [key: string]: string | number | boolean;
+}
+
+async function handleAnalytics(request: Request, env: Env, origin: string): Promise<Response> {
+  const body = await request.json() as AnalyticsEvent | AnalyticsEvent[];
+  const events = Array.isArray(body) ? body : [body];
+
+  if (events.length === 0 || events.length > 50) {
+    return error('Expected 1-50 events', 400, origin);
+  }
+
+  const day = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  for (const event of events) {
+    if (!event.type) continue;
+
+    // Store individual event with timestamp
+    const eventKey = `event:${day}:${event.type}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+    await env.ANALYTICS.put(eventKey, JSON.stringify({
+      ...event,
+      timestamp: Date.now(),
+    }), { expirationTtl: 90 * 86400 }); // 90 day retention
+
+    // Increment daily counter for this event type
+    const counterKey = `count:${day}:${event.type}`;
+    const current = parseInt(await env.ANALYTICS.get(counterKey) ?? '0');
+    await env.ANALYTICS.put(counterKey, String(current + 1), { expirationTtl: 365 * 86400 });
+
+    // Increment per-value counters for important dimensions
+    for (const dim of ['faction', 'mode', 'difficulty', 'map', 'result']) {
+      if (event[dim] !== undefined) {
+        const dimKey = `dim:${day}:${event.type}:${dim}:${event[dim]}`;
+        const dimCount = parseInt(await env.ANALYTICS.get(dimKey) ?? '0');
+        await env.ANALYTICS.put(dimKey, String(dimCount + 1), { expirationTtl: 365 * 86400 });
+      }
+    }
+  }
+
+  return json({ accepted: events.length }, 200, origin);
+}
+
+async function handleAnalyticsSummary(env: Env, origin: string): Promise<Response> {
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  // Gather daily counts for common event types
+  const eventTypes = ['game_start', 'game_end', 'multiplayer_start', 'faction_pick'];
+  const summary: Record<string, Record<string, number>> = {};
+
+  for (const type of eventTypes) {
+    summary[type] = {
+      today: parseInt(await env.ANALYTICS.get(`count:${today}:${type}`) ?? '0'),
+      yesterday: parseInt(await env.ANALYTICS.get(`count:${yesterday}:${type}`) ?? '0'),
+    };
+  }
+
+  // Popular factions today
+  const factionList = await env.ANALYTICS.list({ prefix: `dim:${today}:faction_pick:faction:` });
+  const factions: Record<string, number> = {};
+  for (const key of factionList.keys) {
+    const faction = key.name.split(':').pop()!;
+    factions[faction] = parseInt(await env.ANALYTICS.get(key.name) ?? '0');
+  }
+
+  return json({ date: today, summary, factions }, 200, origin);
+}
