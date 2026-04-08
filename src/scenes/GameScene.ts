@@ -196,9 +196,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private rollRandomTowers(): string[] {
-    const all = getAllFactionTowerIds().filter(id => !getTowerType(id).ultimate);
-    const shuffled = [...all].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 6);
+    const nonUlt = getAllFactionTowerIds().filter(id => !getTowerType(id).ultimate);
+    const shuffled = [...nonUlt].sort(() => Math.random() - 0.5);
+    const pool = shuffled.slice(0, 6);
+
+    // 5% chance to replace the last slot with a random ultimate tower
+    if (Math.random() < 0.05) {
+      const ultimates = getAllFactionTowerIds().filter(id => getTowerType(id).ultimate);
+      if (ultimates.length > 0) {
+        pool[5] = ultimates[Math.floor(Math.random() * ultimates.length)];
+      }
+    }
+
+    return pool;
   }
 
   preload(): void {
