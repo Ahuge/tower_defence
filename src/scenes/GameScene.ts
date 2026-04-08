@@ -587,7 +587,6 @@ export class GameScene extends Phaser.Scene {
             if (this.faction === 'random') {
               this.activeTowerIds = msg.towerIds;
               this.towerBar.setTowerIds(this.activeTowerIds);
-              this.fixContainerCamera((this.towerBar as any).container);
               this.enterNoneMode();
               this.eventLog.gameMessage('Tower pool updated!');
             }
@@ -722,6 +721,8 @@ export class GameScene extends Phaser.Scene {
     if (!this.uiCamera) {
       this.setupUiCamera();
     }
+    // Fix camera filters for dynamically rebuilt UI container children
+    this.fixUiContainerChildren();
   }
 
   /** Set up dual camera: main camera zooms game objects, UI camera stays at 1x.
@@ -743,24 +744,13 @@ export class GameScene extends Phaser.Scene {
       this.uiCamera.ignore(child);
     }
 
-    // Step 2: new objects auto-categorized on next frame.
-    // Objects at depth < 28 that are NOT inside a UI container → ignore from UI camera.
-    // Objects inside a depth >= 28 container → show on UI camera, hide from main camera.
-    const mainCam = this.cameras.main;
+    // Step 2: new game objects (depth < 28) auto-ignored by UI camera.
+    // Objects that end up in UI containers get fixed by fixUiContainers() each frame.
     this.events.on('addedtoscene', (go: Phaser.GameObjects.GameObject) => {
       if (!this.uiCamera) return;
-      // Defer check to next tick — by then the object has been added to its container
-      this.time.delayedCall(0, () => {
-        const parent = (go as any).parentContainer;
-        if (parent && ((parent as any).depth ?? 0) >= 28) {
-          // Inside a UI container — show on UI camera, hide from main camera
-          go.cameraFilter &= ~this.uiCamera!.id;
-          go.cameraFilter |= mainCam.id;
-        } else if (((go as any).depth ?? 0) < 28) {
-          // Standalone game object — ignore from UI camera
-          this.uiCamera!.ignore(go);
-        }
-      });
+      if (((go as any).depth ?? 0) < 28) {
+        this.uiCamera.ignore(go);
+      }
     });
 
     // Step 3: depth >= 28 objects → hide from main camera, show on UI camera
@@ -772,16 +762,25 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** After a UI container rebuild (e.g. Random rotation), re-register its
-   *  children with the UI camera. New children created via scene.add.*() get
-   *  default depth 0, which the addedtoscene handler incorrectly marks as
-   *  game objects (ignored by UI camera). This fixes all children in a container. */
-  private fixContainerCamera(container: Phaser.GameObjects.Container): void {
+  /** Fix camera filters for all children inside UI containers (depth >= 28).
+   *  Called each frame to handle dynamic rebuilds (item shop, frontier panel, etc.)
+   *  New children get depth 0 from addedtoscene → incorrectly ignored by UI camera. */
+  private fixUiContainerChildren(): void {
     if (!this.uiCamera) return;
     const mainCam = this.cameras.main;
-    for (const child of container.list) {
-      child.cameraFilter &= ~this.uiCamera.id; // visible on UI camera
-      child.cameraFilter |= mainCam.id;         // hidden on main camera
+    const uiId = this.uiCamera.id;
+    const mainId = mainCam.id;
+    for (const child of this.children.list) {
+      if (((child as any).depth ?? 0) >= 28 && (child as any).list) {
+        // It's a UI container — fix all its children
+        for (const inner of (child as any).list) {
+          if (inner.cameraFilter & uiId) {
+            // Currently ignored by UI camera — fix it
+            inner.cameraFilter &= ~uiId;
+            inner.cameraFilter |= mainId;
+          }
+        }
+      }
     }
   }
 
@@ -1669,11 +1668,8 @@ export class GameScene extends Phaser.Scene {
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds);
-      this.fixContainerCamera((this.towerBar as any).container);
       if (this.gameMode instanceof StandardMode) {
         (this.gameMode as StandardMode).rotateRandomFrontier();
-        // Fix frontier panel camera after rebuild
-        this.fixContainerCamera((this.gameMode as StandardMode).frontierPanel.getContainer());
       }
       this.eventLog.gameMessage('Tower + frontier pool rotated!');
       this.enterNoneMode();
