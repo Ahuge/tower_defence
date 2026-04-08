@@ -24,6 +24,7 @@ import { IncomeManager } from '../systems/IncomeManager';
 import { SendManager } from '../systems/SendManager';
 import { GameMode, GameModeContext } from '../systems/GameMode';
 import { StandardMode } from '../systems/modes/StandardMode';
+import { BaseFrontierMode } from '../systems/modes/BaseFrontierMode';
 import { BattleMode } from '../systems/modes/BattleMode';
 import { HeroDefenseMode } from '../systems/modes/HeroDefenseMode';
 import { HeroLeakHandler } from '../systems/HeroLeakHandler';
@@ -1663,8 +1664,8 @@ export class GameScene extends Phaser.Scene {
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds);
-      if (this.gameMode instanceof StandardMode) {
-        (this.gameMode as StandardMode).rotateRandomFrontier();
+      if (this.gameMode instanceof BaseFrontierMode) {
+        this.gameMode.rotateRandomFrontier();
       }
       this.eventLog.gameMessage('Tower + frontier pool rotated!');
       this.enterNoneMode();
