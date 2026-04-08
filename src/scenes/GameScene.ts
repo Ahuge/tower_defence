@@ -64,6 +64,7 @@ import { preloadSprites, createSpriteAnimations } from '../systems/SpriteManager
 import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
+import { Analytics } from '../systems/AnalyticsClient';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -163,6 +164,7 @@ export class GameScene extends Phaser.Scene {
   pathGraphics!: Phaser.GameObjects.Graphics;
   private terrainMgr!: TerrainManager;
   private mapDef!: MapDefinition;
+  private _gameStartTime: number = 0;
   hoverGraphics!: Phaser.GameObjects.Graphics;
   rangeGraphics!: Phaser.GameObjects.Graphics;
 
@@ -469,6 +471,8 @@ export class GameScene extends Phaser.Scene {
       },
     });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
+    Analytics.gameStart(this.matchMode, this.faction ?? 'unknown', this.difficulty, this.mapId);
+    this._gameStartTime = Date.now();
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
 
@@ -1290,6 +1294,9 @@ export class GameScene extends Phaser.Scene {
         heroName: this.arenaManager.hero.typeDef.name,
       } : null,
     };
+    const duration = Math.round((Date.now() - this._gameStartTime) / 1000);
+    Analytics.gameEnd(this.matchMode, this.lives > 0 ? 'victory' : 'defeat', this.currentWave, duration);
+
     this.versus?.close();
     this.registry.remove('versus');
     this.circle?.close();

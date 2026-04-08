@@ -1,7 +1,12 @@
 /**
- * WebRTC data channel wrapper for serverless P2P.
- * Manual signaling via copy-paste of SDP strings.
+ * WebRTC data channel wrapper for P2P game communication.
+ *
+ * Two connection modes:
+ * 1. Signaling server (preferred): automatic SDP exchange via SignalingClient
+ *    with trickle ICE for faster connection.
+ * 2. Manual (fallback): copy-paste base64 SDP strings.
  */
+import { SignalingClient } from './SignalingClient';
 
 export type ConnectionState = 'idle' | 'hosting' | 'joining' | 'connected' | 'failed';
 
@@ -55,6 +60,105 @@ export class PeerConnection {
     };
   }
 
+  // ===================== Signaling Server Mode =====================
+
+  /**
+   * HOST: Create offer and send via signaling server.
+   * Uses trickle ICE for faster connection establishment.
+   */
+  async connectAsHost(signaling: SignalingClient, targetPlayer: number): Promise<void> {
+    this.pc = this.createPeerConnection();
+    this.setState('hosting');
+
+    const dc = this.pc.createDataChannel('game', { ordered: true });
+    this.setupDataChannel(dc);
+
+    // Trickle ICE: send candidates as they're discovered
+    this.pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        signaling.sendIce(JSON.stringify(event.candidate), targetPlayer);
+      }
+    };
+
+    // Listen for answer and ICE from joiner
+    signaling.onAnswer = async (sdp: string, fromPlayer: number) => {
+      if (fromPlayer !== targetPlayer || !this.pc) return;
+      try {
+        await this.pc.setRemoteDescription(JSON.parse(sdp));
+      } catch (e) {
+        console.error('Failed to set remote description:', e);
+      }
+    };
+
+    signaling.onIce = async (candidate: string, fromPlayer: number) => {
+      if (fromPlayer !== targetPlayer || !this.pc) return;
+      try {
+        await this.pc.addIceCandidate(JSON.parse(candidate));
+      } catch (e) {
+        console.error('Failed to add ICE candidate:', e);
+      }
+    };
+
+    // Create and send offer
+    const offer = await this.pc.createOffer();
+    await this.pc.setLocalDescription(offer);
+    signaling.sendOffer(JSON.stringify(this.pc.localDescription), targetPlayer);
+  }
+
+  /**
+   * JOINER: Accept offer from signaling server and send answer back.
+   * Uses trickle ICE for faster connection establishment.
+   */
+  async connectAsJoiner(signaling: SignalingClient, hostPlayer: number = 0): Promise<void> {
+    this.pc = this.createPeerConnection();
+    this.setState('joining');
+
+    // Listen for data channel from host
+    this.pc.ondatachannel = (event) => {
+      this.setupDataChannel(event.channel);
+    };
+
+    // Trickle ICE
+    this.pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        signaling.sendIce(JSON.stringify(event.candidate), hostPlayer);
+      }
+    };
+
+    // Listen for ICE from host
+    signaling.onIce = async (candidate: string, fromPlayer: number) => {
+      if (fromPlayer !== hostPlayer || !this.pc) return;
+      try {
+        await this.pc.addIceCandidate(JSON.parse(candidate));
+      } catch (e) {
+        console.error('Failed to add ICE candidate:', e);
+      }
+    };
+
+    // Wait for offer from host
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timed out waiting for offer'));
+      }, 30000);
+
+      signaling.onOffer = async (sdp: string, fromPlayer: number) => {
+        if (fromPlayer !== hostPlayer || !this.pc) return;
+        clearTimeout(timeout);
+        try {
+          await this.pc.setRemoteDescription(JSON.parse(sdp));
+          const answer = await this.pc.createAnswer();
+          await this.pc.setLocalDescription(answer);
+          signaling.sendAnswer(JSON.stringify(this.pc.localDescription), hostPlayer);
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      };
+    });
+  }
+
+  // ===================== Manual Mode (Fallback) =====================
+
   /**
    * HOST: Create offer. Returns a base64 string to share with the joiner.
    * Call acceptAnswer() with the joiner's response.
@@ -69,7 +173,6 @@ export class PeerConnection {
     const offer = await this.pc.createOffer();
     await this.pc.setLocalDescription(offer);
 
-    // Wait for ICE gathering to complete
     await this.waitForIceComplete();
 
     const sdp = JSON.stringify(this.pc.localDescription);
@@ -92,7 +195,6 @@ export class PeerConnection {
     this.pc = this.createPeerConnection();
     this.setState('joining');
 
-    // Listen for data channel from host
     this.pc.ondatachannel = (event) => {
       this.setupDataChannel(event.channel);
     };
@@ -107,6 +209,8 @@ export class PeerConnection {
     const sdp = JSON.stringify(this.pc.localDescription);
     return btoa(sdp);
   }
+
+  // ===================== Common =====================
 
   send(data: string): void {
     if (this.dc && this.dc.readyState === 'open') {
@@ -137,7 +241,6 @@ export class PeerConnection {
         }
       };
       this.pc.addEventListener('icegatheringstatechange', check);
-      // Timeout fallback — don't wait forever
       setTimeout(resolve, 5000);
     });
   }
