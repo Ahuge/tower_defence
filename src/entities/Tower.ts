@@ -122,6 +122,11 @@ export class Tower {
     if (this.sprite) {
       this.sprite.setPosition(this.x, this.y);
 
+      // Set idle frame for current upgrade level (non-mobile towers)
+      if (!isMobileTowerSprite(this.typeId)) {
+        setTowerSpriteState(this.sprite, this.typeId, 'idle', this.level);
+      }
+
       // Mobile unit sprites need directional walk-cycle animations
       if (isMobileTowerSprite(this.typeId)) {
         const dx = this.x - this._prevX;
@@ -367,9 +372,9 @@ export class Tower {
 
     // Set tower sprite to fire state briefly
     if (this.sprite) {
-      setTowerSpriteState(this.sprite, this.typeId, 'fire');
+      setTowerSpriteState(this.sprite, this.typeId, 'fire', this.level);
       scene.time.delayedCall(200, () => {
-        if (this.sprite) setTowerSpriteState(this.sprite, this.typeId, 'idle');
+        if (this.sprite) setTowerSpriteState(this.sprite, this.typeId, 'idle', this.level);
       });
     }
   }

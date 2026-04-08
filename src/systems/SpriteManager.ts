@@ -11,8 +11,12 @@ export interface TowerSpriteConfig {
   column: number;
   /** Total columns in the sheet */
   totalCols: number;
-  /** Row indices: idle, charge, fire, cooldown */
+  /** Row indices: idle, charge, fire, cooldown (for level 1) */
   rows: { idle: number; charge: number; fire: number; cooldown: number };
+  /** Number of upgrade levels this tower has (1 = no upgrades) */
+  maxLevel: number;
+  /** Rows per level (default 4: idle/charge/fire/cooldown) */
+  rowsPerLevel: number;
 }
 
 /**
@@ -43,13 +47,19 @@ export interface ProjectileSpriteConfig {
   impactHiResRows?: number[];
 }
 
-/** Helper: generate tower configs for a faction */
-function factionTowers(sheetKey: string, towerIds: string[]): Record<string, TowerSpriteConfig> {
+/**
+ * Helper: generate tower configs for a faction.
+ * @param levels — array of max level per tower (same order as towerIds)
+ */
+function factionTowers(sheetKey: string, towerIds: string[], levels?: number[]): Record<string, TowerSpriteConfig> {
   const cfg: Record<string, TowerSpriteConfig> = {};
   for (let i = 0; i < towerIds.length; i++) {
+    const maxLevel = levels?.[i] ?? 1;
     cfg[towerIds[i]] = {
       sheetKey, column: i, totalCols: towerIds.length,
       rows: { idle: 0, charge: 1, fire: 2, cooldown: 3 },
+      maxLevel,
+      rowsPerLevel: 4,
     };
   }
   return cfg;
@@ -69,17 +79,29 @@ function factionProj(sheetKey: string, towerIds: string[]): Record<string, Proje
 
 /** Map of tower ID → sprite config */
 const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
-  ...factionTowers('void_towers', ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion']),
-  ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova']),
-  ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan']),
-  ...factionTowers('nature_towers', ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder']),
-  ...factionTowers('mil_towers', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander']),
-  ...factionTowers('alien_towers', ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind']),
-  ...factionTowers('cyber_towers', ['cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor', 'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday']),
-  ...factionTowers('infernal_towers', ['infernal_imp', 'infernal_hellfire', 'infernal_soul_drain', 'infernal_bomber', 'infernal_immolate', 'infernal_apocalypse']),
-  ...factionTowers('celestial_towers', ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_sanctuary', 'celestial_absolution']),
-  ...factionTowers('psionic_towers', ['psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike', 'psi_overmind']),
-  ...factionTowers('harmonic_towers', ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo']),
+  // Level counts: how many upgrade levels each tower has (matches TowerTypes.ts)
+  ...factionTowers('void_towers', ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion'],
+    [4, 6, 6, 3, 1]),
+  ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
+    [4, 3, 5, 4, 4, 3, 1]),
+  ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
+    [4, 6, 5, 4, 4, 5, 3, 3]),
+  ...factionTowers('nature_towers', ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder'],
+    [6, 4, 5, 5, 3, 1]),
+  ...factionTowers('mil_towers', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander'],
+    [2, 4, 5, 5, 3, 3]),
+  ...factionTowers('alien_towers', ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind'],
+    [4, 3, 3, 4, 4, 3, 2, 3]),
+  ...factionTowers('cyber_towers', ['cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor', 'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday'],
+    [4, 4, 5, 4, 3, 2, 1]),
+  ...factionTowers('infernal_towers', ['infernal_imp', 'infernal_hellfire', 'infernal_soul_drain', 'infernal_bomber', 'infernal_immolate', 'infernal_apocalypse'],
+    [3, 4, 3, 2, 2, 3]),
+  ...factionTowers('celestial_towers', ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_sanctuary', 'celestial_absolution'],
+    [5, 5, 4, 2, 2]),
+  ...factionTowers('psionic_towers', ['psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike', 'psi_overmind'],
+    [5, 4, 4, 3, 4]),
+  ...factionTowers('harmonic_towers', ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo'],
+    [6, 4, 3, 3, 4, 3, 1]),
 };
 
 const PROJECTILE_SPRITE_CONFIGS: Record<string, ProjectileSpriteConfig> = {
@@ -330,16 +352,22 @@ export function createTowerSprite(
 }
 
 /**
- * Set tower sprite to the correct animation frame based on attack state.
+ * Set tower sprite to the correct animation frame based on attack state and level.
  * For static towers only.
+ * @param level — tower upgrade level (1-based). Level 1 = rows 0-3, Level 2 = rows 4-7, etc.
  */
 export function setTowerSpriteState(
   sprite: Phaser.GameObjects.Sprite, towerId: string,
   state: 'idle' | 'charge' | 'fire' | 'cooldown',
+  level: number = 1,
 ): void {
   const config = TOWER_SPRITE_CONFIGS[towerId];
   if (!config) return;
-  const frameIndex = config.rows[state] * config.totalCols + config.column;
+  // Clamp level to available range
+  const effectiveLevel = Math.min(level, config.maxLevel);
+  const levelOffset = (effectiveLevel - 1) * config.rowsPerLevel;
+  const stateRow = config.rows[state];
+  const frameIndex = (levelOffset + stateRow) * config.totalCols + config.column;
   sprite.setFrame(frameIndex);
 }
 
