@@ -78,6 +78,11 @@ export default {
         return await handleAnalyticsSummary(env, origin);
       }
 
+      // GET /api/analytics/history — last 30 days time series
+      if (request.method === 'GET' && path === '/api/analytics/history') {
+        return await handleAnalyticsHistory(env, origin);
+      }
+
       // ===================== Health =====================
 
       if (path === '/api/health') {
@@ -254,4 +259,34 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
   }
 
   return json({ date: today, summary, ...dimensions }, 200, origin);
+}
+
+async function handleAnalyticsHistory(env: Env, origin: string): Promise<Response> {
+  const days = 90;
+  const eventTypes = ['game_start', 'game_end', 'multiplayer_start', 'faction_pick'];
+  const series: Record<string, { date: string; count: number }[]> = {};
+
+  for (const type of eventTypes) {
+    series[type] = [];
+  }
+
+  // Also track per-mode history
+  const modes = ['standard', 'hero_defense', 'battle', 'marathon', 'sprint', 'circle_coop'];
+  for (const mode of modes) {
+    series[`mode_${mode}`] = [];
+  }
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    for (const type of eventTypes) {
+      const count = parseInt(await env.ANALYTICS.get(`count:${date}:${type}`) ?? '0');
+      series[type].push({ date, count });
+    }
+    for (const mode of modes) {
+      const count = parseInt(await env.ANALYTICS.get(`dim:${date}:game_start:mode:${mode}`) ?? '0');
+      series[`mode_${mode}`].push({ date, count });
+    }
+  }
+
+  return json({ days, series }, 200, origin);
 }
