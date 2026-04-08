@@ -6,7 +6,7 @@
  */
 
 /** Server URL — override via localStorage for local dev */
-const DEFAULT_SERVER_URL = 'https://td-signaling.YOUR_SUBDOMAIN.workers.dev';
+const DEFAULT_SERVER_URL = 'https://signal.streamingsplats.com';
 
 export interface RoomInfo {
   code: string;

@@ -7,7 +7,7 @@
  *   Analytics.event('game_end', { mode: 'hero_defense', result: 'victory', wave: 30 });
  */
 
-const DEFAULT_SERVER_URL = 'https://td-signaling.YOUR_SUBDOMAIN.workers.dev';
+const DEFAULT_SERVER_URL = 'https://signal.streamingsplats.com';
 
 interface AnalyticsEvent {
   type: string;
