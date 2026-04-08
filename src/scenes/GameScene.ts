@@ -206,6 +206,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Clean up previous run if scene is being restarted
+    this.events.once('shutdown', () => this.shutdown());
+
     // Create sprite animations from loaded sheets
     createSpriteAnimations(this);
 
@@ -1323,16 +1326,21 @@ export class GameScene extends Phaser.Scene {
   private showPauseMenu(): void {
     if (this.pauseOverlay) return;
 
-    const gw = getGameWidth();
-    const cx = getGridOffsetX() + gw / 2;
-    const cy = GAME_HEIGHT / 2;
+    // Use full canvas dimensions so the menu is screen-centered (not world-centered)
+    const canvasW = getCanvasWidth();
+    const canvasH = ResponsiveManager.canvasHeight();
+    const cx = canvasW / 2;
+    const cy = canvasH / 2;
 
     this.pauseOverlay = this.add.container(0, 0).setDepth(50);
 
-    // Dim overlay
+    // Pause overlay should render on UI camera (screen-space, no scroll/zoom)
+    this.cameras.main.ignore(this.pauseOverlay);
+
+    // Dim overlay — covers entire canvas
     const dim = this.add.graphics();
     dim.fillStyle(0x000000, 0.6);
-    dim.fillRect(getGridOffsetX(), 0, gw, GAME_HEIGHT);
+    dim.fillRect(0, 0, canvasW, canvasH);
     this.pauseOverlay.add(dim);
 
     // Panel
@@ -1386,6 +1394,11 @@ export class GameScene extends Phaser.Scene {
       fontSize: '10px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(hint);
+
+    // Ensure all children are also ignored by main camera
+    for (const child of this.pauseOverlay.list) {
+      this.cameras.main.ignore(child as Phaser.GameObjects.GameObject);
+    }
   }
 
   private hidePauseMenu(): void {
@@ -1657,5 +1670,20 @@ export class GameScene extends Phaser.Scene {
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
     }
+  }
+
+  /** Clean up on scene shutdown (returning to menu, restarting) */
+  shutdown(): void {
+    // Destroy all towers and their sprites
+    for (const t of this._towers) t.destroy();
+    this._towers = [];
+    // Destroy all creeps
+    for (const c of this._creeps) c.graphics?.destroy();
+    this._creeps = [];
+    // Clear event listeners
+    this.events.off('shutdown');
+    this.input.off('pointerdown');
+    this.input.off('pointermove');
+    this.input.off('pointerup');
   }
 }

@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-04-07
+
+### Sprite Art System
+- **Hybrid sprite rendering**: Factions with pixel art use Phaser Sprites; others use Graphics primitives. Clean migration path per faction.
+- **All 11 factions** have complete spritesheets: towers (with per-level upgrade art), projectiles (travel + impact animations), and heroes (directional walk/attack/ability frames).
+- **6 mobile unit walk-cycle sheets**: Rifleman, Brawler, Tank, Commander, Swarmling, Fiend — each with 4-direction walk + attack animations.
+- **Tower picker icons**: Tower select bar shows sprite icons instead of truncated text labels.
+- **Hero select portraits**: Hero picker shows sprite idle frame instead of colored diamond (desktop + phone).
+- **Encyclopedia icons**: Tower and hero detail pages display sprite art.
+- **Per-level tower art**: Towers visually progress as they upgrade (more detail, glow, particles per level). Extended tower sheets with 4 rows × maxLevels per faction.
+- **Sprite preview tool**: `sprites.html` page renders all generators with "Download All (ZIP)" button for batch export.
+
+### Gameplay Balance
+- **Heavy Gunner → Tank**: Renamed, rethemed as armored vehicle. Slower (moveSpeed 45), longer range (4.5-6 tiles), fires AoE explosive shells.
+- **Brood Mother**: New `commander_aura` — +20% damage, +15% attack speed to Swarmlings within 6 tiles.
+- **Firewall buff**: DPS increased to 35, adds 65% slow to creeps crossing the beam.
+- **Hero Defense Tomes**: Three new purchasable tomes in the item shop:
+  - XP Tome (100g): Grants 50 + level×5 XP
+  - Stat Tome (250g+): +5 DMG, +30 HP, +0.1 AS (cost scales +50g per purchase)
+  - Interest Tome (200/400/800g): Upgrades interest rate from 2% → 3% → 4% → 5%
+
+### Visual Polish
+- **Meteor ground-targeting**: Splash projectiles lock destination at fire time (don't track moving targets). No rotation on splash projectiles.
+- **AoE impact scaling**: Splash impacts scale to match AoE radius with NEAREST filtering for crisp pixel art.
+- **Flamethrower**: Larger projectile sprite (38px) for visible flame burst.
+- **Tower rotation disabled**: Whole-tower rotation looked bad; will revisit with directional sprite art.
+- **Mobile unit attack effects**: Melee impact bursts, bullet trails, AoE flash rings for military units.
+
+### UI Fixes
+- **Mobile zoom/pan**: Elastic bounds scale properly with zoom level. Pinch anchors to touch midpoint via getWorldPoint().
+- **Pause menu**: Centers on screen (not world) — works at any zoom level.
+- **Tower tooltip**: Positioned relative to actual bar Y on mobile (not hardcoded desktop value).
+- **Send panel**: Expanded to 190px on desktop for T2 sends. Sizing moved to UIScale.
+- **Event log**: Text bottom-anchored so newest entries always visible.
+- **Creep info panel**: Height now accounts for all stat lines + effects (shield/slow no longer clipped).
+- **Scene cleanup**: GameScene shutdown handler destroys towers/creeps/listeners on exit.
+
 ## 2026-03-21
 
 ### Mobile Phone Support
@@ -36,7 +73,7 @@ Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has 
 - **Hero Leveling (1-15)**: Arena kills grant XP (10 normal, 50 boss, 100 elite). Each level gives +15 maxHP, +3 damage, +0.02 attack speed. Milestones: Level 5 = Q cooldown -20%, Level 10 = W effect +30%, Level 15 = E damage +50%. XP bar shown in sidebar.
 
 **Combat Depth:**
-- **Ultimate Abilities (R key)**: Warden gets Fortress (invuln 5s + taunt all creeps, 90s CD), Arcanist gets Meteor Storm (3 meteors × 150 dmg AoE, 120s CD), Shadow gets Death Mark (mark all → 30% bonus damage after 3s, 100s CD). Cooldowns shown in sidebar.
+- **Ultimate Abilities (R key)**: Warden gets Fortress (invuln 5s + taunt all creeps, 90s CD), Mage gets Meteor Storm (3 meteors × 150 dmg AoE, 120s CD), Shadow gets Death Mark (mark all → 30% bonus damage after 3s, 100s CD). Cooldowns shown in sidebar.
 - **Visual Indicators**: Ground-targeted abilities (Blink) enter targeting mode with preview circles. Range ring around hero, crosshair at cursor. Click to cast, same key or ESC to cancel. Death Mark shows purple rings on marked targets. Fortress shows golden invulnerability ring.
 - **Arena Creep Waves**: Each TD wave now also spawns 3-6 arena creeps matching the wave composition, independent of leaks. The arena always has action. Count scales with wave number.
 
@@ -45,7 +82,7 @@ Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has 
 - **Accessories with Rotating Shop**: 1 accessory slot, 12 accessories total. 3 random offers rotate every 5 waves. Actives use T key (Healing Potion, Phase Boots, Battle Horn). Passives include lifesteal, frost slow, chain lightning, berserker scaling, guardian angel revive, thorns reflect, bonus gold per kill. Buying replaces current accessory.
 
 ### Faction Heroes & Melee Balance
-- **Each hero belongs to a faction**: Warden=Military, Arcanist=Arcane, Shadow=Void, Paladin=Celestial, Ranger=Harmonic, Berserker=Infernal, Necromancer=Aliens, Monk=Psionic, Engineer=Mechanical, Duelist=Cypherpunk, Druid=Nature.
+- **Each hero belongs to a faction**: Warden=Military, Mage=Arcane, Shadow=Void, Paladin=Celestial, Ranger=Harmonic, Berserker=Infernal, Necromancer=Aliens, Monk=Psionic, Engineer=Mechanical, Duelist=Cypherpunk, Druid=Nature.
 - **Faction hero guaranteed**: If you pick a non-random faction, your faction's hero is always one of the 3 offered. Faction name shown on hero cards (highlighted gold for your faction's hero).
 - **Melee heroes buffed**: All 6 melee heroes got significant HP increases (+100-150) and innate base armor (2-8). Warden is the tankiest (650 HP, 8 armor), Shadow the lightest melee (420 HP, 3 armor).
 - **Hero descriptions updated** to reflect faction identity (e.g. "Void assassin", "Celestial champion", "Psionic adept").
@@ -88,7 +125,7 @@ Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has 
 - **XP rebalance**: 1 XP per normal kill, 5 per boss, 10 per elite. XP curve = level × 15.
 
 ### 8 New Heroes + Random Draft
-- **11 heroes total** (up from 3): Warden, Arcanist, Shadow, Paladin, Ranger, Berserker, Necromancer, Monk, Engineer, Duelist, Druid.
+- **11 heroes total** (up from 3): Warden, Mage, Shadow, Paladin, Ranger, Berserker, Necromancer, Monk, Engineer, Duelist, Druid.
 - **Random draft**: Each game offers 3 random heroes to choose from. Reroll button available.
 - Hero cards now show ultimate ability (R) in purple alongside Q/W/E abilities.
 - New heroes cover all playstyles: tanks (Paladin, Berserker), ranged (Ranger, Engineer), melee DPS (Monk, Duelist), casters (Necromancer, Druid).
@@ -170,15 +207,15 @@ Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has 
 
 ### Hero Defense Mode
 - **New game mode: Hero Defense** — split-screen layout with hero arena (top, 400px) and smaller TD grid (bottom, 36×12).
-- **3 heroes**: Warden (tank, 500 HP, melee), Arcanist (mage, 280 HP, ranged), Shadow (assassin, 320 HP, fast melee).
+- **3 heroes**: Warden (tank, 500 HP, melee), Mage (mage, 280 HP, ranged), Shadow (assassin, 320 HP, fast melee).
 - **Click-to-move hero micro**: click arena to move, click creeps to focus. Q/W/E ability keys with cooldowns.
 - **Warden abilities**: Shield Bash (stun 1.5s), War Cry (+40% AS), Ground Slam (AoE 15 dmg + slow).
-- **Arcanist abilities**: Fireball (100+60 splash), Frost Nova (AoE slow), Blink (teleport).
+- **Mage abilities**: Fireball (100+60 splash), Frost Nova (AoE slow), Blink (teleport).
 - **Shadow abilities**: Shadow Strike (dash+mark +25% amp), Evasion (100% dodge 2s), Execute (200 dmg if <30% HP).
 - **Hero item shop**: 3 slots (Weapon, Armor, Boots) × 3 tiers each. Weapon gives damage/crit, Armor gives flat armor + HP, Boots give speed/dodge.
 - **Arena system**: leaked TD creeps spawn at left edge of arena with full HP, walk right toward the Base (10k HP). Hero fights them.
 - **Arena creeps fight back**: creeps aggro on the hero (240px range, bosses 360px), chase, and attack in melee. Creeps that reach the base park there and repeatedly attack it.
-- **Ranged heroes fire projectiles**: Arcanist auto-attacks launch visible projectiles that fly to target.
+- **Ranged heroes fire projectiles**: Mage auto-attacks launch visible projectiles that fly to target.
 - **10x creep waves**: hero defense spawns 10x the normal creep count with faster spawn intervals for intense arena pressure.
 - **Death/Respawn**: hero dies → 10s respawn timer → full HP at arena center. Creeps walk to base unimpeded while dead.
 - **Economy**: arena kills award 10% gold (balanced for 10x creep count). Hero heals 20% on wave clear.
@@ -316,7 +353,7 @@ Major overhaul of Hero Defense mode. Combat is deeper, more responsive, and has 
 - Speed logged in event log on change.
 
 ### Military Faction, Mobile Unit Towers, Fighter System Removed
-- **Military faction** (6 towers): Sandbag (8g wall), Barbed Wire (adjacent slow), Rifleman (mobile ranged), Brawler (mobile melee), Heavy Gunner (mobile AoE), Commander (750g ultimate, mobile + buff aura).
+- **Military faction** (6 towers): Sandbag (8g wall), Barbed Wire (adjacent slow), Rifleman (mobile ranged), Brawler (mobile melee), Tank (mobile AoE, long range), Commander (750g ultimate, mobile + buff aura).
 - **Mobile unit tower trait** (`mobile_unit`): towers that physically move to engage nearby creeps, deal melee/short-range damage, then return to their placement position. Renders as diamond shape with home-position marker when away. Each unit has moveSpeed, engageRange, leashRange, attackCooldown, optional attackSplash.
 - **Barbed Wire trait** (`barbed_wire`): passively slows all creeps within 1.5 tiles of the tower.
 - **Removed old Fighter system** from all factions. FighterPanel, FighterManager no longer wired in GameScene. Mobile combat is now handled through the tower trait system, giving better UI integration (tooltips, upgrades, stats tracking all work automatically).

@@ -17,7 +17,7 @@ Build towers to create mazes, defend against 15 creep types across 30+ waves, ma
 ### Match Flow
 1. **Menu** — Choose map, difficulty, match mode, or multiplayer (Versus 1v1 / Circle Co-op)
 2. **Faction Select** — Pick from 12 factions with unique tower rosters
-3. **Hero Select** (Hero Defense only) — Choose from 3 heroes: Warden, Arcanist, Shadow
+3. **Hero Select** (Hero Defense only) — Choose from 3 heroes: Warden, Mage, Shadow (+ 8 more unlockable)
 4. **Draft** — Choose 1 of 3 random modifiers (Gold Rush, Glass Cannon, etc.)
 5. **Game** — Build, defend, invest. Press SPACE to start waves. TAB to change speed.
 6. **Score Screen** — Tower DPS tables, economy breakdown, gold efficiency, MVP awards, hero stats

@@ -236,7 +236,16 @@ export class HeroSelectScene extends Phaser.Scene {
 
     const card = this.add.graphics();
     this.drawCard(card, x, y, cardW, cardH, hero.color, false);
-    this.drawDiamond(card, x + cardW / 2, y + 35, 18, hero.color);
+    // Hero icon — sprite if available
+    const heroSheetKey = getHeroSheetKey(heroId);
+    if (heroSheetKey && this.textures.exists(heroSheetKey)) {
+      const icon = this.add.sprite(x + cardW / 2, y + 35, heroSheetKey, 0);
+      icon.setScale(50 / 64);
+      icon.setOrigin(0.5, 0.5);
+      icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    } else {
+      this.drawDiamond(card, x + cardW / 2, y + 35, 18, hero.color);
+    }
 
     // Faction tag
     const factionName = FACTIONS[hero.faction as FactionId]?.name ?? hero.faction;

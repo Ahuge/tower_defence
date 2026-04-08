@@ -41,7 +41,7 @@ const mk = (c: CanvasRenderingContext2D, o: number[], gw: number, gh: number, ps
 const PX = 2, GR = 16, CELL = GR * PX; // 32px cells
 
 // ===== 1. RIFLEMAN =====
-function drawRifleman(ctx: CanvasRenderingContext2D) {
+function drawRifleman(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -49,42 +49,45 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
     const cx = 8;
 
     if (row < 3) {
-      // WALK frames — row0=down, row1=right, row2=up
-      // col 0-3: walk cycle. 0,2=contact(leg fwd), 1,3=passing(legs together)
       const lOff = col === 0 ? -1 : col === 1 ? 0 : col === 2 ? 1 : 0;
       const rOff = col === 0 ? 1 : col === 1 ? 0 : col === 2 ? -1 : 0;
       const bob = (col === 0 || col === 2) ? 0 : -1;
 
-      // Helmet
-      if (row === 0) { // down
+      // Helmet — L2+: upgraded helmet with visor ridge
+      if (row === 0) {
         b(cx - 2, 1 + bob, 4, 3, W.OLIVE); b(cx - 1, 1 + bob, 2, 2, W.SAGE);
         p(cx - 2, 1 + bob, W.DKOLV); p(cx + 1, 1 + bob, W.DKOLV);
-        // face
+        if (level >= 2) { p(cx - 2, 2 + bob, W.GUN); p(cx + 1, 2 + bob, W.GUN); } // visor
+        if (level >= 4) { p(cx - 2, 0 + bob, W.DKOLV); p(cx + 1, 0 + bob, W.DKOLV); } // taller helmet
         b(cx - 1, 3 + bob, 3, 2, W.SKIN); p(cx - 1, 4 + bob, W.DKSKIN);
-        p(cx, 3 + bob, W.DKSKIN); // eyes
-      } else if (row === 1) { // right
+        p(cx, 3 + bob, W.DKSKIN);
+      } else if (row === 1) {
         b(cx - 1, 1 + bob, 3, 3, W.OLIVE); b(cx, 1 + bob, 2, 2, W.SAGE);
         p(cx - 1, 1 + bob, W.DKOLV);
+        if (level >= 2) { p(cx + 1, 2 + bob, W.GUN); } // visor
         b(cx, 3 + bob, 2, 2, W.SKIN); p(cx + 1, 3 + bob, W.DKSKIN);
-      } else { // up
+      } else {
         b(cx - 2, 1 + bob, 4, 3, W.OLIVE); b(cx - 1, 1 + bob, 2, 2, W.DKOLV);
         p(cx - 2, 2 + bob, W.DKOLV); p(cx + 1, 2 + bob, W.DKOLV);
         b(cx - 1, 3 + bob, 3, 2, W.DKSKIN);
       }
 
-      // Torso
+      // Torso — L3+: vest/armor plating
       b(cx - 2, 5 + bob, 4, 4, W.OLIVE); b(cx - 1, 5 + bob, 2, 3, W.SAGE);
+      if (level >= 3) { p(cx - 2, 5 + bob, W.DKARM); p(cx + 1, 5 + bob, W.DKARM); p(cx - 2, 6 + bob, W.DKARM); p(cx + 1, 6 + bob, W.DKARM); } // armor vest
+      if (level >= 5) { b(cx - 2, 5 + bob, 4, 2, W.DKARM); b(cx - 1, 5 + bob, 2, 1, W.GUN); } // full plate
       p(cx - 2, 8 + bob, W.BELT); p(cx + 1, 8 + bob, W.BELT);
       b(cx - 1, 8 + bob, 2, 1, W.BELT);
 
-      // Rifle across chest (down/right) or on back (up)
+      // Rifle — L2+: scope on rifle
       if (row === 0) {
-        // rifle diagonal across chest
         p(cx - 3, 5 + bob, W.GUN); p(cx - 2, 6 + bob, W.DKGUN);
         p(cx + 2, 7 + bob, W.GUN); p(cx + 3, 8 + bob, W.DKGUN);
+        if (level >= 2) { p(cx + 3, 6 + bob, W.LTGUN); } // scope
       } else if (row === 1) {
         p(cx + 2, 5 + bob, W.GUN); p(cx + 2, 6 + bob, W.DKGUN);
         p(cx + 2, 7 + bob, W.GUN); p(cx + 3, 5 + bob, W.LTGUN);
+        if (level >= 2) { p(cx + 3, 4 + bob, W.LTGUN); } // scope
       } else {
         p(cx + 1, 3 + bob, W.GUN); p(cx + 1, 4 + bob, W.DKGUN);
         p(cx + 1, 5 + bob, W.GUN); p(cx + 1, 6 + bob, W.GUN);
@@ -101,38 +104,41 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
       b(cx - 2 + lOff, 9 + bob, 2, 4, W.OLIVE);
       b(cx + rOff, 9 + bob, 2, 4, W.OLIVE);
       p(cx - 2 + lOff, 12 + bob, W.DKOLV); p(cx + rOff, 12 + bob, W.DKOLV);
-      // Boots
       b(cx - 2 + lOff, 13 + bob, 2, 1, W.BOOT);
       b(cx + rOff, 13 + bob, 2, 1, W.BOOT);
 
     } else {
-      // ATTACK row (row 3): col0=raise, col1=fire, col2=recoil, col3=lower
       const bob = col === 2 ? 1 : 0;
 
       // Helmet
       b(cx - 2, 1 + bob, 4, 3, W.OLIVE); b(cx - 1, 1 + bob, 2, 2, W.SAGE);
       p(cx - 2, 1 + bob, W.DKOLV); p(cx + 1, 1 + bob, W.DKOLV);
+      if (level >= 2) { p(cx - 2, 2 + bob, W.GUN); p(cx + 1, 2 + bob, W.GUN); }
+      if (level >= 4) { p(cx - 2, 0 + bob, W.DKOLV); p(cx + 1, 0 + bob, W.DKOLV); }
       b(cx - 1, 3 + bob, 3, 2, W.SKIN); p(cx, 3 + bob, W.DKSKIN);
 
       // Torso
       b(cx - 2, 5 + bob, 4, 4, W.OLIVE); b(cx - 1, 5 + bob, 2, 3, W.SAGE);
+      if (level >= 3) { p(cx - 2, 5 + bob, W.DKARM); p(cx + 1, 5 + bob, W.DKARM); p(cx - 2, 6 + bob, W.DKARM); p(cx + 1, 6 + bob, W.DKARM); }
+      if (level >= 5) { b(cx - 2, 5 + bob, 4, 2, W.DKARM); b(cx - 1, 5 + bob, 2, 1, W.GUN); }
       b(cx - 1, 8 + bob, 2, 1, W.BELT);
 
-      // Rifle position per frame
-      if (col === 0) { // raise
+      // Rifle position per frame — L2+: scope visible
+      if (col === 0) {
         p(cx + 2, 3, W.GUN); p(cx + 2, 4, W.GUN); p(cx + 2, 5, W.DKGUN);
         p(cx + 3, 2, W.GUN); p(cx + 3, 1, W.LTGUN);
-      } else if (col === 1) { // fire
+        if (level >= 2) { p(cx + 3, 0, W.LTGUN); } // scope
+      } else if (col === 1) {
         p(cx + 2, 3, W.GUN); p(cx + 3, 3, W.GUN); p(cx + 4, 3, W.DKGUN);
         p(cx + 5, 3, W.LTGUN);
-        // muzzle flash
+        if (level >= 2) { p(cx + 5, 2, W.LTGUN); } // scope
         p(cx + 6, 2, W.FLASH); p(cx + 6, 3, W.FLASH); p(cx + 6, 4, W.FLASH);
         p(cx + 7, 3, W.WHITE);
-      } else if (col === 2) { // recoil
+      } else if (col === 2) {
         p(cx + 1, 4 + bob, W.GUN); p(cx + 1, 5 + bob, W.GUN);
         p(cx + 2, 3 + bob, W.DKGUN); p(cx + 2, 4 + bob, W.GUN);
         p(cx + 3, 4 + bob, W.LTGUN);
-      } else { // lower
+      } else {
         p(cx + 2, 5, W.GUN); p(cx + 2, 6, W.DKGUN); p(cx + 2, 7, W.GUN);
         p(cx + 3, 5, W.LTGUN);
       }
@@ -140,7 +146,7 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
       // Arms
       p(cx - 3, 6 + bob, W.SAGE); p(cx + 2, 5 + bob, W.SAGE);
 
-      // Legs (standing)
+      // Legs
       b(cx - 2, 9 + bob, 2, 4, W.OLIVE); b(cx, 9 + bob, 2, 4, W.OLIVE);
       b(cx - 2, 13 + bob, 2, 1, W.BOOT); b(cx, 13 + bob, 2, 1, W.BOOT);
     }
@@ -152,7 +158,7 @@ function drawRifleman(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 2. BRAWLER =====
-function drawBrawler(ctx: CanvasRenderingContext2D) {
+function drawBrawler(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -165,29 +171,35 @@ function drawBrawler(ctx: CanvasRenderingContext2D) {
       const bob = (col === 0 || col === 2) ? 0 : -1;
       const lean = 1; // forward lean
 
-      // Beret
+      // Beret — L2+: headband
       if (row === 0) {
         b(cx - 2, 1 + bob, 5, 2, W.BERET); p(cx + 2, 1 + bob, W.DKBER);
+        if (level >= 2) { b(cx - 2, 2 + bob, 5, 1, W.DKBER); } // headband
         b(cx - 1, 2 + bob, 3, 2, W.SKIN); p(cx, 3 + bob, W.DKSKIN);
         p(cx - 1, 2 + bob, W.DKSKIN); p(cx + 1, 2 + bob, W.DKSKIN);
       } else if (row === 1) {
         b(cx - 1, 1 + bob, 4, 2, W.BERET); p(cx + 2, 1 + bob, W.DKBER);
+        if (level >= 2) { b(cx - 1, 2 + bob, 4, 1, W.DKBER); }
         b(cx, 2 + bob, 2, 2, W.SKIN); p(cx + 1, 3 + bob, W.DKSKIN);
       } else {
         b(cx - 2, 1 + bob, 5, 2, W.BERET); p(cx + 2, 1 + bob, W.DKBER);
+        if (level >= 2) { b(cx - 2, 2 + bob, 5, 1, W.DKBER); }
         b(cx - 1, 2 + bob, 3, 2, W.DKSKIN);
       }
 
-      // Muscular torso (wider)
+      // Muscular torso (wider) — L3+: shoulder pads
       b(cx - 3, 4 + bob, 6, 5, W.OLIVE); b(cx - 2, 4 + bob, 4, 4, W.SAGE);
       p(cx - 3, 4 + bob, W.DKOLV); p(cx + 2, 4 + bob, W.DKOLV);
+      if (level >= 3) { p(cx - 4, 4 + bob, W.DKARM); p(cx + 3, 4 + bob, W.DKARM); p(cx - 4, 5 + bob, W.DKARM); p(cx + 3, 5 + bob, W.DKARM); } // shoulder pads
+      if (level >= 5) { b(cx - 3, 4 + bob, 6, 2, W.DKARM); b(cx - 2, 4 + bob, 4, 1, W.GUN); } // full armor
       b(cx - 2, 8 + bob, 4, 1, W.BELT);
 
-      // Arms swinging (skin colored fists)
+      // Arms swinging — L2+: knuckle guards on fists
       const armSwF = col === 0 ? 1 : col === 1 ? 0 : col === 2 ? -1 : 0;
       const armSwB = -armSwF;
       p(cx - 4, 5 + bob + armSwF, W.SAGE); p(cx - 4, 6 + bob + armSwF, W.SKIN);
       p(cx + 3, 5 + bob + armSwB, W.SAGE); p(cx + 3, 6 + bob + armSwB, W.SKIN);
+      if (level >= 2) { p(cx - 4, 6 + bob + armSwF, W.GUN); p(cx + 3, 6 + bob + armSwB, W.GUN); } // knuckle guards
 
       // Legs (heavy steps)
       b(cx - 2 + lOff, 9 + bob, 2, 4, W.OLIVE);
@@ -197,28 +209,32 @@ function drawBrawler(ctx: CanvasRenderingContext2D) {
 
     } else {
       // ATTACK: col0=wind up, col1=strike, col2=follow through, col3=recover
-      // Beret
+      // Beret — L2+: headband
       b(cx - 2, 1, 5, 2, W.BERET); p(cx + 2, 1, W.DKBER);
+      if (level >= 2) { b(cx - 2, 2, 5, 1, W.DKBER); }
       b(cx - 1, 2, 3, 2, W.SKIN); p(cx, 3, W.DKSKIN);
 
-      // Torso
+      // Torso — L3+: shoulder pads, L5+: full armor
       b(cx - 3, 4, 6, 5, W.OLIVE); b(cx - 2, 4, 4, 4, W.SAGE);
+      if (level >= 3) { p(cx - 4, 4, W.DKARM); p(cx + 3, 4, W.DKARM); p(cx - 4, 5, W.DKARM); p(cx + 3, 5, W.DKARM); }
+      if (level >= 5) { b(cx - 3, 4, 6, 2, W.DKARM); b(cx - 2, 4, 4, 1, W.GUN); }
       b(cx - 2, 8, 4, 1, W.BELT);
 
-      // Fist positions
+      // Fist positions — L2+: knuckle guards (GUN colored fists)
+      const fistCol = level >= 2 ? W.GUN : W.SKIN;
       if (col === 0) { // wind up — fist pulled back
-        p(cx - 4, 4, W.SAGE); p(cx - 5, 4, W.SKIN); p(cx - 5, 5, W.SKIN);
+        p(cx - 4, 4, W.SAGE); p(cx - 5, 4, fistCol); p(cx - 5, 5, fistCol);
         p(cx + 3, 6, W.SAGE);
       } else if (col === 1) { // strike — fist forward
-        p(cx + 3, 5, W.SAGE); p(cx + 4, 5, W.SKIN); p(cx + 5, 5, W.SKIN);
+        p(cx + 3, 5, W.SAGE); p(cx + 4, 5, fistCol); p(cx + 5, 5, fistCol);
         p(cx + 6, 4, W.FLASH); p(cx + 6, 5, W.FLASH); p(cx + 6, 6, W.FLASH); // impact
         p(cx - 4, 6, W.SAGE);
       } else if (col === 2) { // follow through
-        p(cx + 3, 6, W.SAGE); p(cx + 4, 6, W.SKIN); p(cx + 5, 7, W.SKIN);
+        p(cx + 3, 6, W.SAGE); p(cx + 4, 6, fistCol); p(cx + 5, 7, fistCol);
         p(cx - 4, 5, W.SAGE);
       } else { // recover
-        p(cx - 4, 5, W.SAGE); p(cx - 4, 6, W.SKIN);
-        p(cx + 3, 5, W.SAGE); p(cx + 3, 6, W.SKIN);
+        p(cx - 4, 5, W.SAGE); p(cx - 4, 6, fistCol);
+        p(cx + 3, 5, W.SAGE); p(cx + 3, 6, fistCol);
       }
 
       // Legs
@@ -233,12 +249,58 @@ function drawBrawler(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 3. HEAVY GUNNER =====
-function drawHeavy(ctx: CanvasRenderingContext2D) {
+function drawHeavy(ctx: CanvasRenderingContext2D, level: number = 1) {
+  // TANK — chunky armored vehicle, not a soldier
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
     const { p, b } = mk(c, o, GR, GR, PX);
     const cx = 8;
+    const treadAnim = col % 2; // alternate tread segments
+
+    // Tank hull dimensions scale with level
+    const hullW = 10 + Math.min(level - 1, 2) * 2;
+    const hullH = 5 + Math.min(level - 1, 2);
+    const hx = cx - Math.floor(hullW / 2);
+    const hy = 6;
+
+    // Treads
+    const ty = hy + hullH;
+    b(hx - 1, ty, hullW + 2, 3, W.DKGUN);
+    for (let i = 0; i < hullW + 1; i += 2) p(hx - 1 + i + treadAnim, ty + 1, W.GUN);
+    p(hx - 1, ty, W.GUN); p(hx + hullW, ty, W.GUN);
+    p(hx - 1, ty + 2, W.GUN); p(hx + hullW, ty + 2, W.GUN);
+
+    // Hull
+    b(hx, hy, hullW, hullH, W.DKARM);
+    b(hx + 1, hy, hullW - 2, hullH - 1, W.OLIVE);
+    p(hx + 2, hy + 1, W.DKGUN); p(hx + hullW - 3, hy + 1, W.DKGUN);
+    if (level >= 2) { b(hx, hy, hullW, 1, W.DKGUN); }
+    if (level >= 3) { p(hx - 1, hy + 1, W.DKARM); p(hx + hullW, hy + 1, W.DKARM); p(hx - 1, hy + 2, W.DKARM); p(hx + hullW, hy + 2, W.DKARM); }
+
+    // Turret
+    const tW = 6 + Math.min(level - 1, 2);
+    const tH = 3;
+    const ttx = cx - Math.floor(tW / 2);
+    const tty = hy - tH + 1;
+    b(ttx, tty, tW, tH, W.DKARM); b(ttx + 1, tty, tW - 2, tH - 1, W.GUN);
+    p(cx, tty, W.LTGUN);
+
+    // Barrel — direction based on row
+    const bLen = 4 + Math.min(level - 1, 2);
+    if (row === 0) { b(cx - 1, hy + hullH - 1, 2, bLen, W.GUN); p(cx - 1, hy + hullH + bLen - 2, W.DKGUN); p(cx, hy + hullH + bLen - 2, W.DKGUN); }
+    else if (row === 1) { b(cx + Math.floor(tW / 2), tty + 1, bLen, 2, W.GUN); p(cx + Math.floor(tW / 2) + bLen - 1, tty + 1, W.DKGUN); }
+    else if (row === 2) { b(cx - 1, tty - bLen + 1, 2, bLen, W.GUN); p(cx - 1, tty - bLen + 1, W.DKGUN); p(cx, tty - bLen + 1, W.DKGUN); }
+    else {
+      // Attack row: firing right
+      b(cx + Math.floor(tW / 2), tty + 1, bLen, 2, W.GUN);
+      const mz = cx + Math.floor(tW / 2) + bLen;
+      if (col === 1 || col === 2) { p(mz, tty, W.FLASH); p(mz + 1, tty + 1, W.WHITE); p(mz, tty + 2, W.FLASH); p(mz + 1, tty, W.FLASH); p(mz + 1, tty + 2, W.FLASH); }
+      if (col === 3) { p(mz, tty + 1, W.GUN); p(mz + 1, tty, W.DKGUN); }
+    }
+
+    // Star emblem
+    p(cx, hy + 1, W.GOLD);
 
     if (row < 3) {
       const lOff = col === 0 ? -1 : col === 1 ? 0 : col === 2 ? 1 : 0;
@@ -259,26 +321,31 @@ function drawHeavy(ctx: CanvasRenderingContext2D) {
         b(cx - 2, 2 + bob, 4, 2, W.DKSKIN);
       }
 
-      // Heavy armor torso
+      // Heavy armor torso — L2+: extra armor plating
       b(cx - 3, 4 + bob, 7, 5, W.DKARM); b(cx - 2, 4 + bob, 5, 4, W.OLIVE);
       b(cx - 1, 5 + bob, 3, 2, W.SAGE);
+      if (level >= 2) { p(cx - 3, 5 + bob, W.DKGUN); p(cx + 3, 5 + bob, W.DKGUN); p(cx - 3, 6 + bob, W.DKGUN); p(cx + 3, 6 + bob, W.DKGUN); } // extra plating
+      if (level >= 3) { b(cx - 3, 4 + bob, 7, 2, W.DKGUN); b(cx - 2, 4 + bob, 5, 1, W.LTGUN); } // full heavy plate
       b(cx - 2, 8 + bob, 5, 1, W.BELT);
 
-      // Machine gun
+      // Machine gun — L2+: larger barrel
       if (row === 0 || row === 2) {
         p(cx + 3, 4 + bob, W.GUN); p(cx + 4, 4 + bob, W.GUN);
         p(cx + 3, 5 + bob, W.DKGUN); p(cx + 4, 5 + bob, W.DKGUN);
+        if (level >= 2) { p(cx + 5, 4 + bob, W.DKGUN); p(cx + 5, 5 + bob, W.DKGUN); } // bigger barrel
       } else {
         p(cx + 3, 4 + bob, W.GUN); p(cx + 4, 4 + bob, W.GUN);
         p(cx + 5, 4 + bob, W.DKGUN);
         p(cx + 3, 5 + bob, W.DKGUN);
+        if (level >= 2) { p(cx + 6, 4 + bob, W.DKGUN); } // longer barrel
       }
 
-      // Ammo belt sway
+      // Ammo belt sway — L3+: double ammo belt
       const beltOff = (col === 1 || col === 3) ? 1 : 0;
       p(cx - 4, 5 + bob + beltOff, W.DKGOLD);
       p(cx - 4, 6 + bob + beltOff, W.GOLD);
       p(cx - 4, 7 + bob, W.DKGOLD);
+      if (level >= 3) { p(cx - 5, 5 + bob + beltOff, W.GOLD); p(cx - 5, 6 + bob + beltOff, W.DKGOLD); } // double belt
 
       // Arms
       p(cx - 4, 4 + bob, W.OLIVE); p(cx + 3, 6 + bob, W.OLIVE);
@@ -296,36 +363,43 @@ function drawHeavy(ctx: CanvasRenderingContext2D) {
       b(cx - 3, 0, 6, 3, W.DKARM); b(cx - 2, 0, 4, 2, W.GUN);
       b(cx - 2, 2, 4, 2, W.SKIN); p(cx, 2, W.DKSKIN);
 
-      // Torso
+      // Torso — L2+: extra plating, L3+: heavy plate
       b(cx - 3, 4, 7, 5, W.DKARM); b(cx - 2, 4, 5, 4, W.OLIVE);
-      b(cx - 1, 5, 3, 2, W.SAGE); b(cx - 2, 8, 5, 1, W.BELT);
+      b(cx - 1, 5, 3, 2, W.SAGE);
+      if (level >= 2) { p(cx - 3, 5, W.DKGUN); p(cx + 3, 5, W.DKGUN); p(cx - 3, 6, W.DKGUN); p(cx + 3, 6, W.DKGUN); }
+      if (level >= 3) { b(cx - 3, 4, 7, 2, W.DKGUN); b(cx - 2, 4, 5, 1, W.LTGUN); }
+      b(cx - 2, 8, 5, 1, W.BELT);
 
-      // Gun forward
+      // Gun forward — L2+: larger barrel
+      const gunLen = level >= 2 ? 4 : 3;
       if (col === 0) { // brace
-        b(cx + 3, 4, 3, 1, W.GUN); b(cx + 3, 5, 3, 1, W.DKGUN);
+        b(cx + 3, 4, gunLen, 1, W.GUN); b(cx + 3, 5, gunLen, 1, W.DKGUN);
         p(cx - 4, 5, W.OLIVE);
       } else if (col === 1) { // fire burst
-        b(cx + 3, 4, 3, 1, W.GUN); b(cx + 3, 5, 3, 1, W.DKGUN);
+        b(cx + 3, 4, gunLen, 1, W.GUN); b(cx + 3, 5, gunLen, 1, W.DKGUN);
         // big muzzle flash
-        p(cx + 6, 3, W.FLASH); p(cx + 7, 4, W.WHITE); p(cx + 6, 5, W.FLASH);
-        p(cx + 7, 3, W.FLASH); p(cx + 7, 5, W.FLASH);
+        const mz = cx + 3 + gunLen;
+        p(mz, 3, W.FLASH); p(mz + 1, 4, W.WHITE); p(mz, 5, W.FLASH);
+        p(mz + 1, 3, W.FLASH); p(mz + 1, 5, W.FLASH);
         // shell casing
         p(cx + 2, 2, W.DKGOLD); p(cx + 1, 1, W.GOLD);
         p(cx - 4, 5, W.OLIVE);
       } else if (col === 2) { // sustained
-        b(cx + 3, 4, 3, 1, W.GUN); b(cx + 3, 5, 3, 1, W.DKGUN);
-        p(cx + 6, 4, W.FLASH); p(cx + 7, 4, W.FLASH);
-        p(cx + 6, 3, W.FLASH); p(cx + 6, 5, W.FLASH);
+        b(cx + 3, 4, gunLen, 1, W.GUN); b(cx + 3, 5, gunLen, 1, W.DKGUN);
+        const mz2 = cx + 3 + gunLen;
+        p(mz2, 4, W.FLASH); p(mz2 + 1, 4, W.FLASH);
+        p(mz2, 3, W.FLASH); p(mz2, 5, W.FLASH);
         p(cx + 3, 2, W.GOLD); p(cx + 2, 3, W.DKGOLD); // casing
         p(cx - 4, 5, W.OLIVE);
       } else { // cease
-        b(cx + 3, 5, 3, 1, W.GUN); b(cx + 3, 6, 2, 1, W.DKGUN);
+        b(cx + 3, 5, gunLen, 1, W.GUN); b(cx + 3, 6, Math.max(2, gunLen - 1), 1, W.DKGUN);
         p(cx - 4, 5, W.OLIVE);
-        p(cx + 5, 4, W.GUN); // barrel cooling
+        p(cx + 2 + gunLen, 4, W.GUN); // barrel cooling
       }
 
-      // Ammo belt
+      // Ammo belt — L3+: double belt
       p(cx - 4, 5, W.DKGOLD); p(cx - 4, 6, W.GOLD); p(cx - 4, 7, W.DKGOLD);
+      if (level >= 3) { p(cx - 5, 5, W.GOLD); p(cx - 5, 6, W.DKGOLD); }
 
       // Legs braced
       b(cx - 3, 9, 2, 4, W.DKARM); b(cx + 1, 9, 2, 4, W.DKARM);
@@ -339,7 +413,7 @@ function drawHeavy(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 4. COMMANDER =====
-function drawCommander(ctx: CanvasRenderingContext2D) {
+function drawCommander(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -371,16 +445,19 @@ function drawCommander(ctx: CanvasRenderingContext2D) {
         b(cx - 1, 2 + bob, 3, 2, W.DKSKIN);
       }
 
-      // Epaulettes + torso
+      // Epaulettes + torso — L2+: golden trim, L3+: medals
       b(cx - 3, 4 + bob, 6, 5, W.OLIVE); b(cx - 2, 4 + bob, 4, 4, W.SAGE);
       p(cx - 3, 4 + bob, W.GOLD); p(cx + 2, 4 + bob, W.GOLD); // epaulettes
+      if (level >= 2) { p(cx - 3, 5 + bob, W.DKGOLD); p(cx + 2, 5 + bob, W.DKGOLD); } // golden trim
+      if (level >= 3) { p(cx - 1, 5 + bob, W.GOLD); p(cx, 6 + bob, W.GOLD); p(cx + 1, 5 + bob, W.DKGOLD); } // medals
       b(cx - 2, 8 + bob, 4, 1, W.BELT);
 
-      // Cape flowing behind
+      // Cape flowing behind — L2+: longer cape
       const capeOff = col === 1 ? 1 : col === 3 ? -1 : 0;
       if (row === 0 || row === 1) {
         p(cx - 4, 5 + bob + capeOff, W.CAPE); p(cx - 4, 6 + bob, W.DKCAPE);
         p(cx - 4, 7 + bob - capeOff, W.CAPE);
+        if (level >= 2) { p(cx - 4, 8 + bob + capeOff, W.CAPE); p(cx - 5, 7 + bob, W.DKCAPE); } // longer cape
       }
 
       // Sword at side
@@ -405,9 +482,11 @@ function drawCommander(ctx: CanvasRenderingContext2D) {
       b(cx - 2, -1, 4, 1, W.OLIVE);
       b(cx - 1, 2, 3, 2, W.SKIN); p(cx, 2, W.DKSKIN);
 
-      // Torso
+      // Torso — L2+: golden trim, L3+: medals
       b(cx - 3, 4, 6, 5, W.OLIVE); b(cx - 2, 4, 4, 4, W.SAGE);
       p(cx - 3, 4, W.GOLD); p(cx + 2, 4, W.GOLD);
+      if (level >= 2) { p(cx - 3, 5, W.DKGOLD); p(cx + 2, 5, W.DKGOLD); }
+      if (level >= 3) { p(cx - 1, 5, W.GOLD); p(cx, 6, W.GOLD); p(cx + 1, 5, W.DKGOLD); }
       b(cx - 2, 8, 4, 1, W.BELT);
 
       if (col === 0) { // sword slash forward
@@ -444,7 +523,7 @@ function drawCommander(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 5. SWARMLING =====
-function drawSwarmling(ctx: CanvasRenderingContext2D) {
+function drawSwarmling(ctx: CanvasRenderingContext2D, level: number = 1) {
   const A = ALN;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -469,22 +548,25 @@ function drawSwarmling(ctx: CanvasRenderingContext2D) {
         p(cx + 1, 3 + antBob, A.DKLIME); p(cx + 2, 2 + antBob, A.LIME);
       }
 
-      // Head
+      // Head — L2+: larger mandibles
       if (row === 0) {
         b(cx - 2, 4 + bob, 4, 2, A.CHITIN); b(cx - 1, 4 + bob, 2, 2, A.LTCHI);
         p(cx - 1, 4 + bob, A.EYE); p(cx + 1, 4 + bob, A.EYE);
         p(cx, 5 + bob, A.MAND);
+        if (level >= 2) { p(cx - 1, 5 + bob, A.MAND); p(cx + 1, 5 + bob, A.MAND); } // bigger mandibles
       } else if (row === 1) {
         b(cx - 1, 4 + bob, 3, 2, A.CHITIN); b(cx, 4 + bob, 2, 2, A.LTCHI);
         p(cx + 1, 4 + bob, A.EYE);
+        if (level >= 2) { p(cx + 2, 5 + bob, A.MAND); } // bigger mandible
       } else {
         b(cx - 2, 4 + bob, 4, 2, A.CHITIN); b(cx - 1, 4 + bob, 2, 2, A.DKCHI);
       }
 
-      // Body (oval)
+      // Body (oval) — L2+: extra chitin plating
       b(cx - 3, 6 + bob, 6, 4, A.CHITIN); b(cx - 2, 6 + bob, 4, 3, A.LIME);
       b(cx - 1, 7 + bob, 2, 2, A.LTLIME);
       p(cx - 3, 6 + bob, A.DKCHI); p(cx + 2, 6 + bob, A.DKCHI);
+      if (level >= 2) { p(cx - 3, 7 + bob, A.DKCHI); p(cx + 2, 7 + bob, A.DKCHI); p(cx - 3, 8 + bob, A.DKCHI); p(cx + 2, 8 + bob, A.DKCHI); } // extra plating
 
       // 6 legs in 3 pairs — phase shifts per col
       const lP1 = legPhase === 0 ? -1 : legPhase === 1 ? 0 : legPhase === 2 ? 1 : 0;
@@ -517,19 +599,23 @@ function drawSwarmling(ctx: CanvasRenderingContext2D) {
       b(cx - 2, by - 2, 4, 2, A.CHITIN); b(cx - 1, by - 2, 2, 2, A.LTCHI);
       p(cx - 1, by - 2, A.EYE); p(cx + 1, by - 2, A.EYE);
 
-      // Mandibles open/closed
+      // Mandibles open/closed — L2+: larger mandibles
       if (col === 1) { // bite — mandibles wide
         p(cx - 3, by - 1, A.MAND); p(cx + 2, by - 1, A.MAND);
         p(cx - 3, by, A.LIME); p(cx + 2, by, A.LIME);
+        if (level >= 2) { p(cx - 4, by - 1, A.MAND); p(cx + 3, by - 1, A.MAND); } // wider bite
       } else if (col === 0) { // lunge — opening
         p(cx - 2, by - 1, A.MAND); p(cx + 1, by - 1, A.MAND);
+        if (level >= 2) { p(cx - 3, by - 1, A.MAND); p(cx + 2, by - 1, A.MAND); }
       } else {
         p(cx, by - 1, A.MAND);
+        if (level >= 2) { p(cx - 1, by - 1, A.MAND); p(cx + 1, by - 1, A.MAND); }
       }
 
-      // Body
+      // Body — L2+: extra chitin plating
       b(cx - 3, by, 6, 4, A.CHITIN); b(cx - 2, by, 4, 3, A.LIME);
       b(cx - 1, by + 1, 2, 2, A.LTLIME);
+      if (level >= 2) { p(cx - 3, by + 1, A.DKCHI); p(cx + 2, by + 1, A.DKCHI); p(cx - 3, by + 2, A.DKCHI); p(cx + 2, by + 2, A.DKCHI); }
 
       // Legs (braced)
       for (let i = 0; i < 3; i++) {
@@ -548,7 +634,7 @@ function drawSwarmling(ctx: CanvasRenderingContext2D) {
 }
 
 // ===== 6. FIEND (Kamikaze) =====
-function drawFiend(ctx: CanvasRenderingContext2D) {
+function drawFiend(ctx: CanvasRenderingContext2D, level: number = 1) {
   const F = INF;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -562,16 +648,19 @@ function drawFiend(ctx: CanvasRenderingContext2D) {
       const bob = (col === 0 || col === 2) ? 0 : -1;
       const lean = 1; // hunched forward
 
-      // Horns
+      // Horns — L2+: larger horns
       if (row === 0) {
         p(cx - 2, 1 + bob, F.HORN); p(cx - 3, 0 + bob, F.DKHORN);
         p(cx + 1, 1 + bob, F.HORN); p(cx + 2, 0 + bob, F.DKHORN);
+        if (level >= 2) { p(cx - 4, 0 + bob, F.HORN); p(cx + 3, 0 + bob, F.HORN); } // taller horns
       } else if (row === 1) {
         p(cx, 1 + bob, F.HORN); p(cx + 1, 0 + bob, F.DKHORN);
         p(cx + 2, 1 + bob, F.HORN);
+        if (level >= 2) { p(cx + 3, 0 + bob, F.HORN); } // bigger horn
       } else {
         p(cx - 2, 1 + bob, F.DKHORN); p(cx - 3, 0 + bob, F.HORN);
         p(cx + 1, 1 + bob, F.DKHORN); p(cx + 2, 0 + bob, F.HORN);
+        if (level >= 2) { p(cx - 4, 0 + bob, F.DKHORN); p(cx + 3, 0 + bob, F.DKHORN); }
       }
 
       // Head (glowing)
@@ -586,9 +675,10 @@ function drawFiend(ctx: CanvasRenderingContext2D) {
         b(cx - 2, 2 + bob, 4, 2, F.DKRED); b(cx - 1, 2 + bob, 2, 2, F.RED);
       }
 
-      // Hunched torso
+      // Hunched torso — L2+: more glowing cracks
       b(cx - 2, 4 + bob, 5, 4, F.RED); b(cx - 1, 4 + bob, 3, 3, F.ORANGE);
       p(cx, 5 + bob, F.GLOW); // inner glow
+      if (level >= 2) { p(cx - 1, 4 + bob, F.GLOW); p(cx + 1, 6 + bob, F.GLOW); p(cx - 2, 5 + bob, F.YELLOW); } // extra glow cracks
       b(cx - 2, 7 + bob, 4, 1, F.DKRED);
 
       // Arms back (sprinting pose)
@@ -624,23 +714,26 @@ function drawFiend(ctx: CanvasRenderingContext2D) {
     } else {
       // ATTACK: col0=crouch, col1=swell/glow, col2=EXPLODE, col3=aftermath smoke
       if (col === 0) { // crouch
-        // Horns
+        // Horns — L2+: larger
         p(cx - 2, 4, F.HORN); p(cx - 3, 3, F.DKHORN);
         p(cx + 1, 4, F.HORN); p(cx + 2, 3, F.DKHORN);
+        if (level >= 2) { p(cx - 4, 2, F.HORN); p(cx + 3, 2, F.HORN); }
         // Head crouched low
         b(cx - 2, 5, 4, 2, F.RED); b(cx - 1, 5, 2, 2, F.LTRED);
         p(cx - 1, 5, F.GLOW); p(cx + 1, 5, F.GLOW);
-        // Body compact
+        // Body compact — L2+: more glow cracks
         b(cx - 2, 7, 5, 3, F.RED); b(cx - 1, 7, 3, 2, F.ORANGE);
         p(cx, 8, F.GLOW);
+        if (level >= 2) { p(cx - 1, 7, F.GLOW); p(cx + 1, 8, F.YELLOW); }
         // Legs tucked
         b(cx - 2, 10, 2, 3, F.DKRED); b(cx + 1, 10, 2, 3, F.DKRED);
         b(cx - 2, 13, 2, 1, F.DARK); b(cx + 1, 13, 2, 1, F.DARK);
 
       } else if (col === 1) { // swell — body glowing bright
-        // Horns
+        // Horns — L2+: larger
         p(cx - 2, 3, F.HORN); p(cx - 3, 2, F.DKHORN);
         p(cx + 1, 3, F.HORN); p(cx + 2, 2, F.DKHORN);
+        if (level >= 2) { p(cx - 4, 1, F.HORN); p(cx + 3, 1, F.HORN); }
         // Head glowing
         b(cx - 2, 4, 4, 2, F.ORANGE); b(cx - 1, 4, 2, 2, F.YELLOW);
         p(cx - 1, 4, F.GLOW); p(cx + 1, 4, F.GLOW);
@@ -697,14 +790,15 @@ function drawFiend(ctx: CanvasRenderingContext2D) {
 
 // ===== UNIT DEFINITIONS =====
 const UNITS = [
-  { name: 'Rifleman', file: 'rifleman_mobile.png', draw: drawRifleman },
-  { name: 'Brawler', file: 'brawler_mobile.png', draw: drawBrawler },
-  { name: 'Heavy Gunner', file: 'heavy_mobile.png', draw: drawHeavy },
-  { name: 'Commander', file: 'commander_mobile.png', draw: drawCommander },
-  { name: 'Swarmling', file: 'swarmling_mobile.png', draw: drawSwarmling },
-  { name: 'Fiend', file: 'fiend_mobile.png', draw: drawFiend },
+  { name: 'Rifleman', file: 'rifleman_mobile.png', draw: drawRifleman, levels: 5 },
+  { name: 'Brawler', file: 'brawler_mobile.png', draw: drawBrawler, levels: 5 },
+  { name: 'Tank', file: 'heavy_mobile.png', draw: drawHeavy, levels: 3 },
+  { name: 'Commander', file: 'commander_mobile.png', draw: drawCommander, levels: 3 },
+  { name: 'Swarmling', file: 'swarmling_mobile.png', draw: drawSwarmling, levels: 2 },
+  { name: 'Fiend', file: 'fiend_mobile.png', draw: drawFiend, levels: 2 },
 ];
 
+const ROWS_PER_LEVEL = 4; // walk down, walk right, walk up, attack
 const ROW_LABELS = ['Walk DOWN', 'Walk RIGHT', 'Walk UP', 'ATTACK'];
 const COL_LABELS = ['Frame 0', 'Frame 1', 'Frame 2', 'Frame 3'];
 
@@ -717,12 +811,22 @@ export default function MobileUnitSprites() {
     UNITS.forEach((unit, i) => {
       const canvas = canvasRefs.current[i];
       if (!canvas) return;
+      const totalRows = unit.levels * ROWS_PER_LEVEL;
       canvas.width = 4 * CELL;  // 128
-      canvas.height = 4 * CELL; // 128
+      canvas.height = totalRows * CELL;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingEnabled = false;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      unit.draw(ctx);
+      // Draw each level's 4 rows, offset vertically
+      for (let lv = 1; lv <= unit.levels; lv++) {
+        const yOff = (lv - 1) * ROWS_PER_LEVEL * CELL;
+        // Create an offset wrapper canvas context approach:
+        // Save transform, translate, draw, restore
+        ctx.save();
+        ctx.translate(0, yOff);
+        unit.draw(ctx, lv);
+        ctx.restore();
+      }
     });
     setReady(true);
   }, []);
@@ -739,10 +843,10 @@ export default function MobileUnitSprites() {
   return (
     <div style={{ background: '#0a0a0a', minHeight: '100vh', padding: 16, fontFamily: 'monospace' }}>
       <h2 style={{ color: '#88cc44', margin: '0 0 12px 0', fontSize: 16 }}>
-        Mobile Unit Spritesheets (128x128, 32x32 cells)
+        Mobile Unit Spritesheets (128xN, 32x32 cells, per-level)
       </h2>
       <p style={{ color: '#666', fontSize: 11, margin: '0 0 16px 0' }}>
-        4 cols x 4 rows per sheet. Row 0: Walk Down, Row 1: Walk Right (flip for Left), Row 2: Walk Up, Row 3: Attack.
+        4 cols x (4 rows per level). Row 0-3: Level 1 (Walk Down/Right/Up, Attack). Row 4-7: Level 2, etc.
         Internal grid: 16x16 at 2px/pixel.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
@@ -765,16 +869,18 @@ export default function MobileUnitSprites() {
             <div style={{ position: 'relative' }}>
               <canvas
                 ref={el => { canvasRefs.current[i] = el; }}
-                style={{ imageRendering: 'pixelated', width: 256, height: 256, display: 'block', background: '#000' }}
+                style={{ imageRendering: 'pixelated', width: 256, height: 256 * unit.levels, display: 'block', background: '#000' }}
               />
-              {/* Row labels overlay */}
-              <div style={{ position: 'absolute', top: 0, left: -60, width: 56, height: 256 }}>
-                {ROW_LABELS.map((lbl, r) => (
-                  <div key={r} style={{
-                    position: 'absolute', top: r * 64 + 22, left: 0, color: '#666',
-                    fontSize: 8, width: 56, textAlign: 'right'
-                  }}>{lbl}</div>
-                ))}
+              {/* Row labels overlay — per level */}
+              <div style={{ position: 'absolute', top: 0, left: -70, width: 66, height: 256 * unit.levels }}>
+                {Array.from({ length: unit.levels }, (_, lv) =>
+                  ROW_LABELS.map((lbl, r) => (
+                    <div key={`${lv}-${r}`} style={{
+                      position: 'absolute', top: (lv * 4 + r) * 64 + 22, left: 0, color: r === 0 ? '#aad466' : '#666',
+                      fontSize: 8, width: 66, textAlign: 'right'
+                    }}>{r === 0 ? `L${lv + 1} ${lbl}` : lbl}</div>
+                  ))
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
@@ -783,7 +889,7 @@ export default function MobileUnitSprites() {
               ))}
             </div>
             <div style={{ color: '#555', fontSize: 9, marginTop: 4 }}>
-              {unit.file} — 128x128px
+              {unit.file} — 128x{unit.levels * ROWS_PER_LEVEL * CELL}px ({unit.levels} level{unit.levels > 1 ? 's' : ''})
             </div>
           </div>
         ))}

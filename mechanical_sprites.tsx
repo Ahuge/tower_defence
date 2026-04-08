@@ -16,6 +16,12 @@ const C={
   SMOKE:'#665555',LTSMK:'#887777',DKSMK:'#443333',
   GEAR:'#997744',DKGEAR:'#775533',LTGEAR:'#bbaa66',
   RED:'#cc3333',LTRED:'#ff5555',DKRED:'#882222',
+  // Tower-specific accent colors
+  TBRN:'#aa7744',DKTBRN:'#886633',LTTBRN:'#bb8855', // Turret brown/tan
+  FORG:'#ff4400',DFORG:'#cc3300',LFORG:'#ff6622', // Flamethrower red-orange
+  TYELW:'#ffdd44',LTYELW:'#ffee88', // Tesla yellow/electric
+  OLIVE:'#556b2f',DKOLV:'#3a4a20',LTOLV:'#6b8a3a', // Mortar olive/military
+  SILVR:'#ccccdd',WSILV:'#eeeeee',LTSILV:'#ddddee', // Shredder silver
 };
 
 // ===== DRAWING HELPERS =====
@@ -225,32 +231,32 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       // Rotation ring
       const ringR=4+Math.min(L-1,2);
       for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*ringR),20+Math.round(Math.sin(a)*2),C.BRONZE);}
-      // Turret body — grows with level
+      // Turret body — grows with level (warm brown tones)
       const rot=s===1?1:s===2?-1:0;
       const tW=8+Math.min(L-1,4)*1;const tH=5+Math.min(L-1,3)*1;
       const tX=16-Math.floor(tW/2)+rot;const tY=16-Math.floor(tH/2);
-      b(tX-1,tY,tW+2,tH+2,C.DKSTL);b(tX,tY,tW,tH+1,C.STEEL);b(tX+1,tY,tW-2,tH,C.LTSTL);
+      b(tX-1,tY,tW+2,tH+2,C.DKTBRN);b(tX,tY,tW,tH+1,C.TBRN);b(tX+1,tY,tW-2,tH,C.LTTBRN);
       // Top plate
-      b(tX,tY-1,tW,1,C.BRONZE);b(tX+1,tY-1,tW-2,1,C.LTBRZ);
+      b(tX,tY-1,tW,1,C.TBRN);b(tX+1,tY-1,tW-2,1,C.LTTBRN);
       lvlArmor(p,b,tX+1,tY+1,tW-2,tH-2,L);
       // Barrel — longer at higher levels
       const blen=(s===2?12:10)+Math.min(L-1,4)*1;
       const barrelY=tY+Math.floor(tH/2);
       // Additional barrels at high levels
       if(L>=5){
-        b(tX+tW+rot,barrelY-2,blen-2,1,C.DKSTL);b(tX+tW+rot,barrelY-2,blen-3,1,C.STEEL);
-        b(tX+tW+rot,barrelY+2,blen-2,1,C.DKSTL);b(tX+tW+rot,barrelY+2,blen-3,1,C.STEEL);
+        b(tX+tW+rot,barrelY-2,blen-2,1,C.DKTBRN);b(tX+tW+rot,barrelY-2,blen-3,1,C.TBRN);
+        b(tX+tW+rot,barrelY+2,blen-2,1,C.DKTBRN);b(tX+tW+rot,barrelY+2,blen-3,1,C.TBRN);
       }
       if(L>=6){
-        b(tX+tW+rot,barrelY-3,blen-4,1,C.DKSTL);
-        b(tX+tW+rot,barrelY+3,blen-4,1,C.DKSTL);
+        b(tX+tW+rot,barrelY-3,blen-4,1,C.DKTBRN);
+        b(tX+tW+rot,barrelY+3,blen-4,1,C.DKTBRN);
       }
-      // Main barrel
-      b(tX+tW+rot,barrelY,blen,2,C.DKSTL);b(tX+tW+rot,barrelY,blen,1,C.STEEL);
-      p(tX+tW+rot+blen-1,barrelY,C.LTSTL);
+      // Main barrel (warm brown)
+      b(tX+tW+rot,barrelY,blen,2,C.DKTBRN);b(tX+tW+rot,barrelY,blen,1,C.TBRN);
+      p(tX+tW+rot+blen-1,barrelY,C.LTTBRN);
       // Barrel muzzle
       const muzzleX=tX+tW+rot+blen-1;
-      b(muzzleX,barrelY-1,1,4,C.DKBRN);
+      b(muzzleX,barrelY-1,1,4,C.DKTBRN);
       // Rivets on turret
       lvlRivets(p,16+rot,tY+Math.floor(tH/2),L,3);
       p(tX+1+rot,barrelY,C.RIVET);p(tX+tW-2+rot,barrelY,C.RIVET);
@@ -279,8 +285,8 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       // Fuel tank (back) — bigger at higher levels
       const tankW=4+Math.min(L-1,3)*1;const tankH=10+Math.min(L-1,3)*1;
       const tankX=8-Math.floor(tankW/2);const tankY=22-tankH;
-      b(tankX-1,tankY,tankW+2,tankH+2,C.DKBRZ);b(tankX,tankY,tankW+1,tankH+1,C.BRONZE);b(tankX+1,tankY,tankW-1,tankH,C.LTBRZ);
-      b(tankX-1,tankY,tankW+2,1,C.TAN);b(tankX,tankY+tankH,tankW,1,C.DKBRN);
+      b(tankX-1,tankY,tankW+2,tankH+2,C.DFORG);b(tankX,tankY,tankW+1,tankH+1,C.FORG);b(tankX+1,tankY,tankW-1,tankH,C.LFORG);
+      b(tankX-1,tankY,tankW+2,1,C.LFORG);b(tankX,tankY+tankH,tankW,1,C.DFORG);
       // Tank bands — more at higher levels
       const bands=Math.min(L+1,4);
       for(let i=0;i<bands;i++){
@@ -289,7 +295,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       }
       // Extra tank at lvl 4+
       if(L>=4){
-        b(tankX-3,tankY+2,2,tankH-4,C.DKBRZ);b(tankX-2,tankY+2,1,tankH-5,C.BRONZE);
+        b(tankX-3,tankY+2,2,tankH-4,C.DFORG);b(tankX-2,tankY+2,1,tankH-5,C.FORG);
         b(tankX-3,tankY+Math.floor(tankH/2),2,1,C.DKSTL);
       }
       // Pipe from tank to nozzle
@@ -299,13 +305,14 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       const nozW=4+Math.min(L-1,2)*1;const nozH=4+Math.min(L-1,2)*1;
       const nozX=22-nozW;const nozY=14-Math.floor(nozH/3);
       b(nozX,nozY,nozW,nozH,C.DKSTL);b(nozX+1,nozY,nozW-2,nozH-1,C.STEEL);b(nozX+2,nozY,nozW-4,nozH-2,C.LTSTL);
-      b(nozX,nozY,nozW,1,C.BRONZE);
+      b(nozX,nozY,nozW,1,C.DFORG);b(nozX,nozY+nozH-1,nozW,1,C.DFORG);
       lvlArmor(p,b,nozX+1,nozY+1,nozW-2,nozH-2,L);
       // Nozzle opening — wider at higher levels
       const nozOpenW=2+Math.min(L-1,2);const nozOpenH=2+Math.min(L-1,2);
       b(22,nozY+1,nozOpenW,nozOpenH+1,C.DKBRN);b(22,nozY+2,nozOpenW,nozOpenH-1,C.BLACK);
-      // Pilot flame
-      p(22+nozOpenW,nozY+2,s===0?C.ORANGE:C.FLAME);p(22+nozOpenW,nozY+3,C.DKORG);
+      // Pilot flame (more visible at idle)
+      p(22+nozOpenW,nozY+2,s===0?C.FORG:C.FLAME);p(22+nozOpenW,nozY+3,s===0?C.LFORG:C.DKORG);
+      if(s===0){p(22+nozOpenW+1,nozY+2,C.LFORG);p(22+nozOpenW,nozY+1,C.DKORG);}
       // Level 3+: exhaust vent on tank
       lvlExhaust(p,b,tankX-2,tankY-1,L);
       // Level 3+: gears on nozzle
@@ -345,12 +352,12 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       // Coil stem — taller at higher levels
       const stemH=10+Math.min(L-1,2)*1;const stemTop=18-stemH;
       b(15,stemTop,2,stemH,C.DKSTL);b(15,stemTop,1,stemH,C.STEEL);
-      // Coil windings — more at higher levels
+      // Coil windings — more at higher levels (yellow/electric)
       const windings=4+Math.min(L-1,3);const windW=4+Math.min(L-1,2)*1;
       for(let i=0;i<windings;i++){
         const y_=stemTop+2+Math.floor(i*(stemH-2)/windings);
         const wx=16-Math.floor(windW/2);
-        b(wx,y_,windW,1,C.DKBRZ);p(wx,y_,C.BRONZE);p(wx+windW-1,y_,C.BRONZE);
+        b(wx,y_,windW,1,C.TYELW);p(wx,y_,C.LTYELW);p(wx+windW-1,y_,C.LTYELW);
       }
       // Additional coils at level 3+
       if(L>=3){
@@ -367,7 +374,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       for(let y=-sphereR;y<=sphereR;y++)for(let x=-sphereR;x<=sphereR;x++){
         if(x*x+y*y<=sphereR*sphereR){
           const d=Math.sqrt(x*x+y*y);
-          p(16+x,sphereY+y,d<1?C.WTSTL:d<sphereR*0.5?C.LTSTL:C.STEEL);
+          p(16+x,sphereY+y,d<1?C.LTYELW:d<sphereR*0.5?C.TYELW:C.STEEL);
         }
       }
       p(15,sphereY-sphereR,C.LTSTL);p(17,sphereY-sphereR,C.LTSTL);
@@ -375,21 +382,21 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       if(L>=3){p(16-sphereR-1,sphereY,C.LTSTL);p(16+sphereR+1,sphereY,C.LTSTL);}
       lvlRivets(p,16,18+2,L,3);
       // Sparks based on state
-      if(s===0){p(16-sphereR-1,sphereY+1,C.SPARK);p(16+sphereR+1,sphereY-1,C.SPARK);}
+      if(s===0){p(16-sphereR-1,sphereY+1,C.TYELW);p(16+sphereR+1,sphereY-1,C.TYELW);p(16,sphereY-sphereR-1,C.LTYELW);}
       if(s===1){
-        p(16-sphereR-2,sphereY-1,C.SPARK);p(16+sphereR+2,sphereY,C.SPARK);
-        p(16-sphereR-3,sphereY+1,C.LTSPARK);p(16+sphereR+3,sphereY-1,C.LTSPARK);
-        p(16-2,sphereY-sphereR-1,C.BLUE);p(16-1,sphereY-sphereR-2,C.LTBLU);
-        p(16+2,sphereY-sphereR-1,C.BLUE);p(16+1,sphereY-sphereR-2,C.LTBLU);
+        p(16-sphereR-2,sphereY-1,C.TYELW);p(16+sphereR+2,sphereY,C.TYELW);
+        p(16-sphereR-3,sphereY+1,C.LTYELW);p(16+sphereR+3,sphereY-1,C.LTYELW);
+        p(16-2,sphereY-sphereR-1,C.TYELW);p(16-1,sphereY-sphereR-2,C.LTYELW);
+        p(16+2,sphereY-sphereR-1,C.TYELW);p(16+1,sphereY-sphereR-2,C.LTYELW);
       }
       if(s===2){
         // Lightning arcs — more extensive at higher levels
         const arcLen=4+Math.min(L-1,3)*2;
         for(let i=0;i<arcLen;i++){
           const lx=16-sphereR-1-i,ly=sphereY-1+(i%2===0?-1:1);
-          if(lx>=0)p(lx,ly,i%2===0?C.LTBLU:C.WBLU);
+          if(lx>=0)p(lx,ly,i%2===0?C.TYELW:C.LTYELW);
           const rx=16+sphereR+1+i,ry=sphereY+(i%2===0?1:-1);
-          if(rx<32)p(rx,ry,i%2===0?C.LTBLU:C.WBLU);
+          if(rx<32)p(rx,ry,i%2===0?C.TYELW:C.LTYELW);
         }
         p(16,sphereY-sphereR-1,C.WSPARK);p(15,sphereY-sphereR-2,C.SPARK);p(17,sphereY-sphereR-2,C.SPARK);
         p(16,sphereY-sphereR,C.WHITE);
@@ -408,15 +415,15 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       mBase(p,b,23,22,s===1?1:s===2?2:0);
       // Heavy base mount — bigger at higher levels
       const mountW=10+Math.min(L-1,2)*1;const mountX=16-Math.floor(mountW/2);
-      b(mountX,19,mountW,4,C.DKBRZ);b(mountX+1,19,mountW-2,3,C.BRONZE);b(mountX+2,19,mountW-4,1,C.TAN);
+      b(mountX,19,mountW,4,C.DKOLV);b(mountX+1,19,mountW-2,3,C.OLIVE);b(mountX+2,19,mountW-4,1,C.LTOLV);
       // Elevation mechanism (side plates) — reinforced at higher levels
       const plateW=2+Math.min(L-1,2);
-      b(mountX-plateW,16,plateW+1,4,C.DKSTL);b(mountX-plateW+1,16,1,3,C.STEEL);
-      b(mountX+mountW-1,16,plateW+1,4,C.DKSTL);b(mountX+mountW,16,1,3,C.STEEL);
+      b(mountX-plateW,16,plateW+1,4,C.DKOLV);b(mountX-plateW+1,16,1,3,C.OLIVE);
+      b(mountX+mountW-1,16,plateW+1,4,C.DKOLV);b(mountX+mountW,16,1,3,C.OLIVE);
       // Level 3+: extra support struts
       if(L>=3){
-        b(mountX-plateW-1,18,1,4,C.DKBRZ);
-        b(mountX+mountW+plateW,18,1,4,C.DKBRZ);
+        b(mountX-plateW-1,18,1,4,C.DKOLV);
+        b(mountX+mountW+plateW,18,1,4,C.DKOLV);
       }
       // Barrel (angled upward) — thicker at higher levels
       const recoil=s===2?2:0;
@@ -424,16 +431,16 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       for(let i=0;i<12;i++){
         const bx_=12+Math.floor(i*0.5),by_=15-i+recoil;
         if(by_>=0&&by_<32){
-          b(bx_,by_,barrelW+2,1,C.DKSTL);
-          p(bx_+1,by_,C.STEEL);p(bx_+barrelW,by_,C.STEEL);
-          for(let j=2;j<barrelW;j++)p(bx_+j,by_,C.LTSTL);
+          b(bx_,by_,barrelW+2,1,C.DKOLV);
+          p(bx_+1,by_,C.OLIVE);p(bx_+barrelW,by_,C.OLIVE);
+          for(let j=2;j<barrelW;j++)p(bx_+j,by_,C.LTOLV);
         }
       }
       // Barrel mouth (top)
       b(17,3+recoil,barrelW,2,C.DKBRN);b(18,3+recoil,barrelW-2,2,C.BLACK);
       // Barrel reinforcing rings — more at higher levels
-      b(13,12+recoil,barrelW+2,1,C.BRONZE);b(15,8+recoil,barrelW+1,1,C.BRONZE);
-      if(L>=3)b(14,10+recoil,barrelW+1,1,C.BRONZE);
+      b(13,12+recoil,barrelW+2,1,C.LTOLV);b(15,8+recoil,barrelW+1,1,C.LTOLV);
+      if(L>=3)b(14,10+recoil,barrelW+1,1,C.LTOLV);
       // Rivets
       lvlRivets(p,16,17,L,4);
       p(mountX-plateW+1,17,C.RIVET);p(mountX+mountW+plateW-2,17,C.RIVET);
@@ -463,7 +470,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
       lvlRivets(p,16,19,L,Math.floor(motorW/2)-1);
       // Blade axle — taller at higher levels
       const axleH=12+Math.min(L-1,2)*1;const axleTop=18-axleH;
-      b(15,axleTop,2,axleH,C.DKSTL);b(15,axleTop,1,axleH,C.STEEL);
+      b(15,axleTop,2,axleH,C.SILVR);b(15,axleTop,1,axleH,C.WSILV);
       // Spinning blades — more and longer at higher levels
       const bladePhase=s===2?1:s===1?0.5:0;
       const bladeCount=4+Math.min(L-1,2);
@@ -475,12 +482,12 @@ function drawTowers(ctx:CanvasRenderingContext2D){
           const bx_=16+Math.round(Math.cos(a)*r);
           const by_=hubY+Math.round(Math.sin(a)*r);
           if(bx_>=0&&bx_<32&&by_>=0&&by_<32){
-            p(bx_,by_,r<3?C.LTSTL:r<bladeLen-1?C.STEEL:C.DKSTL);
+            p(bx_,by_,r<3?C.WSILV:r<bladeLen-1?C.SILVR:C.LTSILV);
           }
         }
         const ex=16+Math.round(Math.cos(a)*bladeLen);
         const ey=hubY+Math.round(Math.sin(a)*bladeLen);
-        if(ex>=0&&ex<32&&ey>=0&&ey<32)p(ex,ey,C.WTSTL);
+        if(ex>=0&&ex<32&&ey>=0&&ey<32)p(ex,ey,C.WHITE);
       }
       // Center hub — bigger at higher levels
       const hubR=1+Math.min(L-1,2);
@@ -505,7 +512,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
           for(let r=3;r<=bladeLen;r++){
             const bx_=16+Math.round(Math.cos(ang)*r);
             const by_=hubY+Math.round(Math.sin(ang)*r);
-            if(bx_>=0&&bx_<32&&by_>=0&&by_<32)p(bx_,by_,r%2?C.LTSTL:C.STEEL);
+            if(bx_>=0&&bx_<32&&by_>=0&&by_<32)p(bx_,by_,r%2?C.WSILV:C.SILVR);
           }
         }
         p(16-bladeLen-2,hubY-2,C.SPARK);p(16+bladeLen+2,hubY+1,C.SPARK);

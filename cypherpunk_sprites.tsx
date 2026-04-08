@@ -116,7 +116,7 @@ function drawTowers(ctx){
       if(lvl>=4){
         b(22,poleTop+2,1,poleH-4,C.DKTEAL);p(22,poleTop+2,C.SCRN);p(22,poleTop+1,br?C.CYAN:C.DKNEON);
         // Second dish ring
-        if(fl)for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*(maxR+4||12)),dy+Math.round(Math.sin(a)*6),C.DKNEON);}
+        {const mr=4+lvl*2;if(fl)for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*(mr+4)),dy+Math.round(Math.sin(a)*6),C.DKNEON);}}
       }
       // Circuit connections to base
       tCircuit(p,13,poleTop+2,10,22,C.SCRN,fl);
@@ -179,62 +179,92 @@ function drawTowers(ctx){
       if(s===3){b(10,Math.floor((pilTop+20)/2)-1,12,2,C.DKTEAL);p(7,pilTop+2,C.DKTEAL);p(rPilX+1,pilTop+2,C.DKTEAL);}
     },
 
-    // 2: Virus — Corrupt data node with spreading tendrils (5 levels)
+    // 2: Virus — Organic amoeba/blob with irregular edges, green tint (5 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const VG='#00ff88',VB='#44ff66',VD='#008844',VDD='#004422',VL='#88ffaa';
       tBase(p,b,23,20,s===1?1:s===2?2:0,lvl);
       const br=s>=1,fl=s===2;
-      // Central corrupt node — larger at higher levels
-      const nSz=4+lvl;const nX=16-Math.floor(nSz/2);const nY=12-Math.floor(nSz/2);
-      b(nX-1,nY-1,nSz+2,nSz+2,C.DARK);b(nX,nY,nSz,nSz,C.DKTEAL);b(nX,nY,nSz,1,fl?C.NEON:C.DKNEON);
-      b(nX+1,nY+1,nSz-2,nSz-2,fl?C.NEON:br?C.DKNEON:C.SCRN);
-      p(16,12,fl?C.WHITE:br?C.LTNEON:C.NEON);p(15,13,br?C.NEON:C.DKNEON);
-      // Corruption pattern on node — more at higher levels
-      p(nX,nY+1,C.DKMAG);p(nX+nSz-1,nY+2,fl?C.MAG:C.DKMAG);p(nX,nY+nSz-2,C.DKMAG);p(nX+nSz,nY+1,C.DPMAG);
-      if(lvl>=3){p(nX+1,nY+nSz-1,C.DKMAG);p(nX+nSz-2,nY,C.DPMAG);}
-      if(lvl>=4){p(16,nY,C.MAG);p(16,nY+nSz-1,C.DKMAG);}
-      if(lvl>=5){b(nX-1,nY+Math.floor(nSz/2),1,2,C.MAG);b(nX+nSz,nY+Math.floor(nSz/2),1,2,C.MAG);}
-      // Spreading tendrils — more and longer at higher levels
-      const tc=fl?C.NEON:br?C.DKNEON:C.SCRN;
-      const tLen=3+lvl*2;
-      // Left tendril
-      for(let i=0;i<Math.min(tLen,8);i++){const x=nX-2-i,y=nY+1-Math.floor(i/2);if(x>=0&&y>=0)p(x,y,i<2?tc:i<4?(br?C.NEON:tc):(fl?C.NEON:tc));}
-      // Right tendril
-      for(let i=0;i<Math.min(tLen,8);i++){const x=nX+nSz+1+i,y=nY+2+Math.floor(i/2);if(x<32&&y<32)p(x,y,i<2?tc:i<4?(br?C.NEON:tc):(fl?C.LTNEON:tc));}
-      // Upper tendril
-      for(let i=0;i<Math.min(tLen,6);i++){const y=nY-2-i;if(y>=0)p(15+i%2,y,i<2?tc:(br?C.NEON:tc));}
-      // Lower tendrils
-      for(let i=0;i<Math.min(tLen,5);i++){const y=nY+nSz+1+i;if(y<32){p(16+i%2,y,tc);p(14-i%2,y,tc);}}
-      // Extra tendrils at level 4+
+      // Amoeba blob body — irregular organic shape, grows with level
+      const cx=16,cy=12,rad=3+lvl;
+      // Draw irregular blob using offset ring — NOT a clean circle
+      const blobPts:number[][]=[];
+      const offsets=[0,1,0,-1,1,0,-1,1,0,1,-1,0,1,0,-1,1];
+      for(let a=0;a<16;a++){
+        const ang=a*Math.PI*2/16;
+        const wobble=offsets[a];
+        const r=rad+wobble;
+        const bx=Math.round(cx+Math.cos(ang)*r);
+        const by=Math.round(cy+Math.sin(ang)*r);
+        blobPts.push([bx,by]);
+      }
+      // Fill blob interior
+      for(let y=cy-rad-1;y<=cy+rad+1;y++){
+        for(let x=cx-rad-1;x<=cx+rad+1;x++){
+          const dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
+          if(dist<rad-0.5)p(x,y,fl?VG:br?VD:VDD);
+          else if(dist<rad+0.5){
+            // Irregular edge — skip some pixels for organic feel
+            const idx=Math.floor(Math.atan2(dy,dx)/(Math.PI*2)*16+16)%16;
+            const edgeR=rad+offsets[idx];
+            if(dist<edgeR+0.8)p(x,y,fl?VB:br?VD:'#003322');
+          }
+        }
+      }
+      // Outer membrane — bumpy organic edge
+      for(let a=0;a<32;a++){
+        const ang=a*Math.PI*2/32;
+        const wobble=offsets[a%16]*0.7+(a%3===0?1:0);
+        const r=rad+wobble+0.5;
+        const bx=Math.round(cx+Math.cos(ang)*r);
+        const by=Math.round(cy+Math.sin(ang)*r);
+        p(bx,by,fl?VL:br?VG:VD);
+      }
+      // Nucleus / core
+      p(cx,cy,fl?C.WHITE:br?VL:VG);p(cx-1,cy,fl?VL:br?VG:VD);p(cx+1,cy+1,fl?VL:VG);
+      if(lvl>=2){p(cx,cy-1,fl?VL:VG);p(cx+1,cy-1,fl?VB:VD);}
+      // Organelle spots — more at higher levels
+      p(cx-2,cy+2,C.DKMAG);p(cx+2,cy-1,fl?C.MAG:C.DKMAG);
+      if(lvl>=3){p(cx-3,cy-1,C.DKMAG);p(cx+3,cy+2,C.DPMAG);p(cx-1,cy+3,fl?C.MAG:C.DKMAG);}
+      if(lvl>=4){p(cx+1,cy-3,C.MAG);p(cx-2,cy-3,C.DKMAG);}
+      if(lvl>=5){p(cx-3,cy+3,C.MAG);p(cx+4,cy-2,C.MAG);}
+      // Pseudopod tendrils — organic, curving outward
+      const tc=fl?VG:br?VD:'#003322';
+      const tLen=2+lvl*2;
+      // Left pseudopod (curves down)
+      for(let i=0;i<Math.min(tLen,7);i++){const x=cx-rad-1-i,y=cy+1+Math.floor(i*0.7);if(x>=0&&y<32)p(x,y,i<2?tc:(fl?VG:tc));}
+      // Right pseudopod (curves up)
+      for(let i=0;i<Math.min(tLen,7);i++){const x=cx+rad+1+i,y=cy-Math.floor(i*0.7);if(x<32&&y>=0)p(x,y,i<2?tc:(fl?VB:tc));}
+      // Upper pseudopod
+      for(let i=0;i<Math.min(tLen,5);i++){const y=cy-rad-1-i;if(y>=0)p(cx-1+(i%2)*2,y,fl?VG:tc);}
+      // Lower pseudopod (forked)
+      for(let i=0;i<Math.min(tLen,5);i++){const y=cy+rad+1+i;if(y<32){p(cx+1+i%2,y,tc);p(cx-1-i%2,y,tc);}}
       if(lvl>=4){
-        // Diagonal tendrils
-        for(let i=0;i<4;i++){p(nX-2-i,nY+nSz+i,fl?C.NEON:tc);p(nX+nSz+1+i,nY-1-i,fl?C.NEON:tc);}
+        // Diagonal pseudopods
+        for(let i=0;i<4;i++){p(cx-rad-i,cy+rad+i-1,fl?VG:tc);p(cx+rad+i,cy-rad-i+1,fl?VG:tc);}
       }
       if(lvl>=5){
-        // Even more tendrils reaching edges
-        for(let i=0;i<3;i++){p(2+i,6+i*2,fl?C.LTNEON:C.DKNEON);p(28-i,6+i*2,fl?C.LTNEON:C.DKNEON);}
-        for(let i=0;i<3;i++){p(3+i,18+i,fl?C.NEON:C.DKNEON);p(27-i,18+i,fl?C.NEON:C.DKNEON);}
+        for(let i=0;i<3;i++){p(2+i,6+i*2,fl?VL:VD);p(28-i,6+i*2,fl?VL:VD);}
+        for(let i=0;i<3;i++){p(3+i,18+i,fl?VG:VD);p(27-i,18+i,fl?VG:VD);}
       }
-      // Infection particles (fire state)
+      // Spore particles (fire state)
       if(fl){
-        const pts=[[5,5,C.NEON],[26,10,C.NEON],[8,15,C.LTNEON],[24,6,C.LTNEON],
-         [4,12,C.DKNEON],[27,16,C.DKNEON],[3,8,C.NEON],[28,12,C.NEON]];
-        // More particles at higher levels
-        if(lvl>=3)pts.push([2,6,C.NEON],[29,8,C.NEON],[6,19,C.LTNEON],[25,3,C.LTNEON]);
-        if(lvl>=4)pts.push([1,10,C.NEON],[30,14,C.NEON],[4,20,C.DKNEON],[27,2,C.DKNEON]);
-        if(lvl>=5)pts.push([0,8,C.LTNEON],[31,10,C.LTNEON],[2,18,C.NEON],[29,4,C.NEON]);
-        pts.forEach(([x,y,cl])=>p(x,y,cl));
-        // Glitch magenta particles — more at higher levels
+        const pts:number[][]=[[5,5],[26,10],[8,15],[24,6],[4,12],[27,16],[3,8],[28,12]];
+        if(lvl>=3)pts.push([2,6],[29,8],[6,19],[25,3]);
+        if(lvl>=4)pts.push([1,10],[30,14],[4,20],[27,2]);
+        if(lvl>=5)pts.push([0,8],[31,10],[2,18],[29,4]);
+        pts.forEach(([x,y])=>p(x,y,Math.random()>0.5?VG:VB));
+        // Toxic magenta spores
         p(7,4,C.MAG);p(25,8,C.MAG);p(6,14,C.DKMAG);p(26,5,C.DKMAG);
         if(lvl>=3){p(3,10,C.MAG);p(28,7,C.MAG);}
         if(lvl>=5){p(1,14,C.MAG);p(30,6,C.DKMAG);b(4,16,2,1,C.MAG);b(26,3,2,1,C.DKMAG);}
       }
       if(br&&!fl){
-        p(6,6,C.DKNEON);p(24,13,C.DKNEON);p(8,16,C.SCRN);p(22,5,C.SCRN);
-        if(lvl>=3){p(4,8,C.DKNEON);p(26,11,C.DKNEON);}
+        p(6,6,VD);p(24,13,VD);p(8,16,'#003322');p(22,5,'#003322');
+        if(lvl>=3){p(4,8,VD);p(26,11,VD);}
       }
       // Base circuit nodes
-      p(11,24,br?C.NEON:C.DKNEON);p(20,24,br?C.NEON:C.DKNEON);
-      if(s===3){p(15,11,C.DKTEAL);p(16,13,C.DKTEAL);p(nX-1,nY+1,C.SCRN);p(nX+nSz,nY+2,C.SCRN);}
+      p(11,24,br?VG:VD);p(20,24,br?VG:VD);
+      if(s===3){p(cx,cy,VDD);p(cx-1,cy+1,VDD);p(cx-rad,cy,VDD);p(cx+rad,cy,VDD);}
     },
 
     // 3: Backdoor — Hidden terminal/console with screen flicker (4 levels)
@@ -299,121 +329,173 @@ function drawTowers(ctx){
       if(s===3){b(sx+1,11,sw-2,6,C.BLK);p(scx+1,13,C.DKTEAL);p(scx+4,13,C.DKTEAL);}
     },
 
-    // 4: DDoS — Overloaded server tower with multiple screens (3 levels)
+    // 4: DDoS — Heavy overloaded server tower, purple-tinted, multiple screens (3 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,24,22,s===1?1:s===2?2:0,lvl);
+      const DP='#8844cc',DLP='#aa66ee',DDP='#552288',DDKP='#331155';
+      tBase(p,b,24,24,s===1?1:s===2?2:0,lvl);
       const br=s>=1,fl=s===2;
-      // Server rack — taller at higher levels, more screens
+      // Server rack — wider & heavier, taller at higher levels
       const rackH=16+lvl*2;const rackTop=24-rackH;
-      const rackW=8+lvl*2;const rackX=16-Math.floor(rackW/2);
-      b(rackX,rackTop,rackW,rackH,C.DARK);b(rackX+1,rackTop,rackW-2,rackH-1,C.DKTEAL);b(rackX+1,rackTop,rackW-2,1,C.TEAL);
+      const rackW=12+lvl*2;const rackX=16-Math.floor(rackW/2);
+      b(rackX,rackTop,rackW,rackH,DDKP);b(rackX+1,rackTop,rackW-2,rackH-1,DDP);b(rackX+1,rackTop,rackW-2,1,DP);
+      // Purple frame edges
+      b(rackX,rackTop,1,rackH,C.DARK);b(rackX+rackW-1,rackTop,1,rackH,C.DARK);
       // Screens — more at higher levels
       const screenCount=1+lvl;const screenH=3;const screenGap=Math.floor((rackH-2)/(screenCount+1));
       for(let si=0;si<screenCount;si++){
         const sy=rackTop+2+si*screenGap;
         if(sy+screenH+1<24){
-          b(rackX+2,sy,rackW-4,screenH+1,C.BLK);b(rackX+3,sy+1,rackW-6,screenH-1,fl?C.BCYN:br?C.CYAN:C.DKNEON);
+          b(rackX+2,sy,rackW-4,screenH+1,C.BLK);b(rackX+3,sy+1,rackW-6,screenH-1,fl?DLP:br?DP:DDP);
           // Screen data
           if(br){
-            for(let y=sy+1;y<sy+screenH;y++){p(rackX+3,y,C.LTCYN);p(rackX+5,y,C.CYAN);p(rackX+rackW-5,y,C.LTCYN);}
+            for(let y=sy+1;y<sy+screenH;y++){p(rackX+3,y,DLP);p(rackX+5,y,DP);p(rackX+rackW-5,y,DLP);}
           }
           if(fl){
             b(rackX+3,sy+1,rackW-6,screenH-1,C.WHITE);
           }
           // Status LED per screen
-          p(rackX+rackW-3,sy,fl?C.RED:br?C.NEON:C.DKNEON);
+          p(rackX+rackW-3,sy,fl?C.RED:br?DLP:DDP);
         }
       }
       if(fl){
-        // Data flood particles — more at higher levels
-        const pts=[[7,5,C.CYAN],[24,6,C.BCYN],[6,10,C.CYAN],[25,11,C.BCYN],
-         [5,14,C.LTCYN],[26,15,C.LTCYN],[8,18,C.CYAN],[23,17,C.BCYN],
-         [4,8,C.DKNEON],[27,9,C.DKNEON],[3,13,C.DKNEON],[28,13,C.DKNEON]];
-        if(lvl>=2)pts.push([3,6,C.CYAN],[28,7,C.BCYN],[2,11,C.DKNEON],[29,12,C.DKNEON]);
-        if(lvl>=3)pts.push([1,8,C.CYAN],[30,9,C.BCYN],[2,16,C.LTCYN],[29,15,C.LTCYN]);
-        pts.forEach(([x,y,cl])=>p(x,y,cl));
-        // Glitch blocks — more at higher levels
+        // Data flood particles — purple-tinted
+        const pts:number[][]=[[7,5],[24,6],[6,10],[25,11],
+         [5,14],[26,15],[8,18],[23,17],
+         [4,8],[27,9],[3,13],[28,13]];
+        if(lvl>=2)pts.push([3,6],[28,7],[2,11],[29,12]);
+        if(lvl>=3)pts.push([1,8],[30,9],[2,16],[29,15]);
+        pts.forEach(([x,y],i)=>p(x,y,i%2===0?DP:DLP));
+        // Glitch blocks — purple overload
         b(5,7,3,2,C.MAG);b(24,12,3,2,C.MAG);
-        p(7,16,C.DKMAG);p(24,18,C.DKMAG);
-        if(lvl>=2){b(3,10,2,2,C.DKMAG);b(27,16,2,2,C.DKMAG);}
+        p(7,16,DP);p(24,18,DP);
+        if(lvl>=2){b(3,10,2,2,DDP);b(27,16,2,2,DDP);}
         if(lvl>=3){b(1,5,2,3,C.MAG);b(29,6,2,3,C.MAG);}
       }
-      // Server rack details
-      for(let y=rackTop+1;y<23;y+=5){p(rackX+1,y,C.SCRN);p(rackX+rackW-2,y,C.SCRN);}
-      // Side vents — taller at higher levels
-      b(rackX-2,rackTop+2,2,rackH-4,C.DKTEAL);b(rackX+rackW,rackTop+2,2,rackH-4,C.DKTEAL);
-      for(let y=rackTop+3;y<rackTop+rackH-2;y+=2){p(rackX-2,y,C.SCRN);p(rackX+rackW+1,y,C.SCRN);}
-      // Top exhaust
-      p(14,rackTop-1,fl?C.BCYN:C.DKNEON);p(16,rackTop-1,fl?C.BCYN:C.DKNEON);p(18,rackTop-1,fl?C.LTCYN:C.SCRN);
-      if(fl){p(14,rackTop-2,C.CYAN);p(16,rackTop-2,C.CYAN);p(15,rackTop-3,C.DKNEON);}
+      // Server rack details — purple bolts
+      for(let y=rackTop+1;y<23;y+=5){p(rackX+1,y,DDP);p(rackX+rackW-2,y,DDP);}
+      // Side vents — wider/heavier, purple tint
+      b(rackX-3,rackTop+2,3,rackH-4,DDP);b(rackX+rackW,rackTop+2,3,rackH-4,DDP);
+      for(let y=rackTop+3;y<rackTop+rackH-2;y+=2){p(rackX-3,y,DP);p(rackX+rackW+2,y,DP);}
+      // Top exhaust — purple glow
+      p(13,rackTop-1,fl?DLP:DDP);p(15,rackTop-1,fl?DLP:DDP);p(17,rackTop-1,fl?DLP:DDP);p(19,rackTop-1,fl?DLP:DDP);
+      if(fl){p(13,rackTop-2,DP);p(16,rackTop-2,DP);p(19,rackTop-2,DP);p(16,rackTop-3,DDP);}
       // Extra exhaust at higher levels
-      if(lvl>=2&&fl){p(12,rackTop-2,C.DKNEON);p(20,rackTop-2,C.DKNEON);}
-      if(lvl>=3){p(10,rackTop-1,fl?C.BCYN:C.SCRN);p(22,rackTop-1,fl?C.BCYN:C.SCRN);}
-      if(s===3){for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)b(rackX+3,sy+1,rackW-6,screenH-1,C.DKTEAL);}for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)p(rackX+rackW-3,sy,C.DARK);}}
+      if(lvl>=2&&fl){p(11,rackTop-2,DDP);p(21,rackTop-2,DDP);}
+      if(lvl>=3){p(9,rackTop-1,fl?DLP:DDP);p(23,rackTop-1,fl?DLP:DDP);}
+      if(s===3){for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)b(rackX+3,sy+1,rackW-6,screenH-1,DDKP);}for(let si=0;si<screenCount;si++){const sy=rackTop+2+si*screenGap;if(sy+screenH+1<24)p(rackX+rackW-3,sy,C.DARK);}}
     },
 
-    // 5: Rootkit — Sleek stealth device, nearly invisible idle, reveals on fire (2 levels)
+    // 5: Rootkit — Angular stealth device, triangular/diamond shape, dark with hidden blade (2 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      tBase(p,b,23,18,s===1?1:s===2?2:0,lvl);
+      const RDK='#0a1a1a',RDKTL='#112222',RSCR='#1a3333',RTEAL='#004444';
+      tBase(p,b,23,20,s===1?1:s===2?2:0,lvl);
       const br=s>=1,fl=s===2;
-      // At idle: very faint outline only — slightly more visible at level 2
+      const cx=16,triTop=4+lvl,triBot=22,triW=5+lvl*2;
+      // Draw angular diamond/triangle shape — distinctive from rounded others
+      // Idle: faint angular outline with cloaking field shimmer
       if(s===0){
-        for(let y=8;y<22;y++){
-          p(12,y,y%3===0?C.DKTEAL:undefined);
-          p(19,y,y%3===1?C.DKTEAL:undefined);
+        // Faint triangular outline pointing up
+        for(let y=triTop;y<=triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*triW);
+          if(y%2===0){p(cx-hw,y,RDKTL);p(cx+hw,y,RDKTL);}
         }
-        p(14,7,C.DKTEAL);p(17,7,C.DKTEAL);
-        b(14,15,4,1,C.DKTEAL);
-        p(16,12,C.DKNEON);
+        // Apex point
+        p(cx,triTop,C.DKNEON);p(cx,triTop+1,RDKTL);
+        // Hidden blade hint — vertical line down center
+        for(let y=triTop+2;y<triBot;y+=3)p(cx,y,RDKTL);
+        // Faint eye
+        p(cx,14,C.DKNEON);
         if(lvl>=2){
-          // Level 2: second faint LED, slightly more outline
-          p(15,10,C.DKNEON);
-          for(let y=9;y<21;y+=2){p(11,y,C.BLK);p(20,y,C.BLK);}
-          p(13,8,C.DKTEAL);p(18,8,C.DKTEAL);
+          p(cx,12,C.DKNEON);
+          // More visible angular edges
+          for(let y=triTop;y<=triBot;y++){
+            const prog=(y-triTop)/(triBot-triTop);
+            const hw=Math.floor(prog*triW);
+            if(y%2===1){p(cx-hw,y,RDK);p(cx+hw,y,RDK);}
+          }
+          // Cloak field dots
+          p(cx-3,10,RDKTL);p(cx+3,10,RDKTL);p(cx-2,17,RDKTL);p(cx+2,17,RDKTL);
         }
       }
       if(s===1){
-        b(12,8,8,14,C.BLK);
-        for(let y=8;y<22;y++){
-          p(12,y,y%2===0?C.DKTEAL:C.BLK);
-          p(19,y,y%2===1?C.DKTEAL:C.BLK);
+        // Charging — angular shape partially visible, darker fill
+        for(let y=triTop;y<=triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*triW);
+          b(cx-hw,y,hw*2+1,1,RDK);
+          p(cx-hw,y,RDKTL);p(cx+hw,y,RDKTL);
         }
-        b(14,10,4,6,C.DARK);b(15,11,2,4,C.DKTEAL);
-        p(16,13,C.CYAN);p(15,12,C.DKNEON);
-        for(let y=9;y<21;y+=2)b(13,y,6,1,C.DKTEAL);
+        // Internal structure lines — angular
+        for(let y=triTop+2;y<triBot-2;y+=2){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.max(1,Math.floor(prog*triW)-1);
+          b(cx-hw,y,hw*2+1,1,RSCR);
+        }
+        // Eye
+        p(cx,13,C.CYAN);p(cx-1,13,C.DKNEON);p(cx+1,13,C.DKNEON);
+        // Blade line
+        for(let y=triTop;y<triBot;y+=2)p(cx,y,RTEAL);
         if(lvl>=2){
-          // Level 2: more scanlines, second eye
-          p(15,14,C.CYAN);
-          b(11,9,1,12,C.DKTEAL);b(20,9,1,12,C.DKTEAL);
-          for(let y=10;y<20;y+=2)b(13,y,6,1,C.SCRN);
+          p(cx,11,C.CYAN);
+          // Side edge glow
+          for(let y=triTop+1;y<triBot;y+=3){
+            const prog=(y-triTop)/(triBot-triTop);
+            const hw=Math.floor(prog*triW);
+            p(cx-hw+1,y,RTEAL);p(cx+hw-1,y,RTEAL);
+          }
         }
       }
       if(fl){
-        // Full reveal — sleek angular device
-        const devW=6+lvl*2;const devX=16-Math.floor(devW/2);
-        b(devX,6,devW,16,C.DARK);b(devX+1,7,devW-2,14,C.DKTEAL);b(devX+2,8,devW-4,12,C.SCRN);
-        // Angular top
-        p(15,5,C.TEAL);p(16,5,C.TEAL);b(14,6,4,1,C.SCRN);
-        // Central eye(s)
-        b(14,12,4,3,C.BLK);b(15,12,2,3,C.CYAN);p(15,13,C.WHITE);p(16,13,C.BCYN);
-        if(lvl>=2){
-          // Level 2: second eye above, more circuits
-          b(14,9,4,2,C.BLK);b(15,9,2,2,C.CYAN);p(15,9,C.BCYN);p(16,10,C.LTCYN);
+        // Full reveal — solid angular diamond with blade extended
+        const bw=triW+2;
+        for(let y=triTop;y<=triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*bw);
+          b(cx-hw,y,hw*2+1,1,C.DARK);
+          // Sharp angular edges
+          p(cx-hw,y,C.TEAL);p(cx+hw,y,C.TEAL);
         }
-        // Active circuits
-        p(devX+1,9,C.CYAN);p(devX+devW-2,9,C.CYAN);p(devX+1,16,C.CYAN);p(devX+devW-2,16,C.CYAN);
-        tCircuit(p,devX+1,9,devX,6,C.CYAN,true);tCircuit(p,devX+devW-2,9,devX+devW-1,6,C.CYAN,true);
-        // Reveal flash — bigger at level 2
+        // Inner fill — darker panels
+        for(let y=triTop+1;y<triBot;y++){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.max(0,Math.floor(prog*bw)-1);
+          if(hw>0)b(cx-hw,y,hw*2+1,1,RSCR);
+        }
+        // Central blade — bright vertical line
+        for(let y=triTop;y<=triBot;y++)p(cx,y,fl?C.CYAN:RTEAL);
+        p(cx,triTop-1,C.BCYN);p(cx,triTop,C.WHITE);
+        // Eyes
+        b(cx-2,12,2,3,C.BLK);b(cx+1,12,2,3,C.BLK);
+        p(cx-1,13,C.WHITE);p(cx+1,13,C.BCYN);
+        if(lvl>=2){
+          b(cx-2,9,2,2,C.BLK);b(cx+1,9,2,2,C.BLK);
+          p(cx-1,9,C.BCYN);p(cx+1,10,C.LTCYN);
+        }
+        // Angular circuit traces along edges
+        for(let y=triTop+2;y<triBot;y+=3){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*bw);
+          p(cx-hw+1,y,C.CYAN);p(cx+hw-1,y,C.CYAN);
+        }
+        // Cloak field burst — angular rays
         const flashR=5+lvl*2;
-        for(let i=0;i<6+lvl*2;i++){const a=i*Math.PI/(3+lvl);p(16+Math.round(Math.cos(a)*flashR),13+Math.round(Math.sin(a)*(flashR-2)),C.DKNEON);}
-        p(10,10,C.DKNEON);p(21,10,C.DKNEON);p(10,16,C.DKNEON);p(21,16,C.DKNEON);
-        if(lvl>=2){p(8,12,C.DKNEON);p(23,12,C.DKNEON);p(9,8,C.DKTEAL);p(22,8,C.DKTEAL);}
+        for(let i=0;i<8+lvl*2;i++){
+          const a=i*Math.PI/(4+lvl);
+          p(cx+Math.round(Math.cos(a)*flashR),13+Math.round(Math.sin(a)*(flashR-2)),C.DKNEON);
+        }
+        p(9,10,C.DKNEON);p(22,10,C.DKNEON);p(9,17,C.DKNEON);p(22,17,C.DKNEON);
+        if(lvl>=2){p(7,13,C.DKNEON);p(24,13,C.DKNEON);p(8,8,C.DKTEAL);p(23,8,C.DKTEAL);}
       }
       if(s===3){
-        b(13,8,6,13,C.DARK);
-        for(let y=8;y<21;y+=3)p(15,y,C.DKTEAL);
-        p(16,13,C.DKTEAL);
-        if(lvl>=2){for(let y=9;y<20;y+=3)p(16,y,C.DKTEAL);}
+        // Cooldown — fading angular outline
+        for(let y=triTop;y<=triBot;y+=2){
+          const prog=(y-triTop)/(triBot-triTop);
+          const hw=Math.floor(prog*triW);
+          p(cx-hw,y,RDKTL);p(cx+hw,y,RDKTL);
+        }
+        p(cx,13,RDKTL);
+        if(lvl>=2){p(cx,11,RDKTL);for(let y=triTop;y<triBot;y+=4)p(cx,y,RTEAL);}
       }
     },
 

@@ -145,10 +145,10 @@ export function isMobileTowerSprite(towerId: string): boolean {
   return towerId in MOBILE_SPRITE_CONFIGS;
 }
 
-/** Towers that should rotate to face their target (have directional barrels/weapons) */
-const ROTATING_TOWER_PREFIXES = new Set(['mech_', 'mil_', 'cyber_']);
-/** Towers that should NOT rotate even if their prefix matches */
-const NON_ROTATING_TOWERS = new Set(['mil_sandbag', 'mil_wire', 'mech_wall']);
+/** Towers that should rotate to face their target — DISABLED for now */
+/** Rotation looked bad (whole tower rotates, not just barrel). May revisit with directional sprites. */
+const ROTATING_TOWER_PREFIXES = new Set<string>([]); // empty = no rotation
+const NON_ROTATING_TOWERS = new Set<string>([]);
 
 /** Check if a tower sprite should rotate to face targets */
 export function shouldTowerRotate(towerId: string): boolean {

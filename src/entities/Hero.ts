@@ -67,6 +67,13 @@ export class Hero {
   pendingUpgrades: number = 0; // queued upgrade choices
   abilityUpgrades: number[] = [0, 0, 0, 0]; // Q, W, E, R upgrade counts
 
+  // Tome bonuses (cumulative from purchased tomes)
+  tomeBonusDamage: number = 0;
+  tomeBonusHp: number = 0;
+  tomeBonusSpeed: number = 0;
+  tomeBonusAttackSpeed: number = 0;
+  tomeCount: number = 0; // how many attribute tomes purchased (for scaling cost)
+
   // Accessories (up to 3)
   static readonly MAX_ACCESSORIES = 3;
   accessories: AccessoryDef[] = [];
@@ -170,6 +177,7 @@ export class Hero {
       }
     }
     dmg += this.accSum('bonusDamage');
+    dmg += this.tomeBonusDamage;
     // Berserker Band: +X% damage per 1% missing HP
     const berserk = this.accSum('berserkerScaling');
     if (berserk > 0) {
@@ -186,6 +194,7 @@ export class Hero {
     }
     const accBonus = this.accSum('attackSpeedPct');
     if (accBonus > 0) as *= (1 + accBonus);
+    as += this.tomeBonusAttackSpeed;
     return as;
   }
 
@@ -217,6 +226,7 @@ export class Hero {
       }
     }
     hp += this.accSum('bonusHp');
+    hp += this.tomeBonusHp;
     return hp;
   }
 

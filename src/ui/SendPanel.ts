@@ -12,7 +12,7 @@ export class SendPanel {
   private labels: { text: Phaser.GameObjects.Text; opt: SendCreepOption; hotkey: string }[] = [];
   private hotkeyListeners: (() => void)[] = [];
 
-  static readonly HEIGHT = UIScale.isPhone ? 450 : 100;
+  static readonly HEIGHT = UIScale.current.sendPanelH;
 
   constructor(
     scene: Phaser.Scene,
@@ -50,7 +50,7 @@ export class SendPanel {
     });
     this.container.add(title);
 
-    const subtitle = this.scene.add.text(UIScale.isPhone ? 80 : 60, 7, '(between waves)', {
+    const subtitle = this.scene.add.text(UIScale.current.sendSubtitleX, 7, '(between waves)', {
       fontSize: UIScale.font(13), color: '#666666', fontFamily: 'monospace',
     });
     this.container.add(subtitle);

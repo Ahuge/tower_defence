@@ -399,13 +399,13 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   mil_heavy: def({
-    id: 'mil_heavy', name: 'Heavy Gunner', description: 'Mobile AoE. Slower but hits everything nearby.',
-    faction: 'military', damageType: 'physical', cost: 120, damage: 14, range: 3, fireRate: 1200,
-    color: 0x4a6741, projectileSpeed: 0, hotkey: '5',
-    traits: [{ id: 'mobile_unit', moveSpeed: 70, engageRange: 3.5, leashRange: 6, attackCooldown: 1200, attackSplash: 64 }],
+    id: 'mil_heavy', name: 'Tank', description: 'Mobile AoE. Slow but long range. Fires explosive shells.',
+    faction: 'military', damageType: 'physical', cost: 120, damage: 30, range: 5, fireRate: 2000,
+    color: 0x4a6741, projectileSpeed: 180, hotkey: '5',
+    traits: [{ id: 'mobile_unit', moveSpeed: 45, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 48 }],
     upgrades: [
-      { level: 2, cost: 100, damage: 32, range: 3.5, fireRate: 1000 },
-      { level: 3, cost: 160, damage: 48, range: 4, fireRate: 800 },
+      { level: 2, cost: 100, damage: 45, range: 5.5, fireRate: 1800 },
+      { level: 3, cost: 160, damage: 65, range: 6, fireRate: 1500 },
     ],
   }),
   mil_commander: def({
@@ -469,10 +469,10 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   alien_brood_mother: def({
-    id: 'alien_brood_mother', name: 'Brood Mother', description: 'Each wave spawns 2 temporary Swarmlings nearby.',
+    id: 'alien_brood_mother', name: 'Brood Mother', description: 'Spawns 2 Swarmlings/wave. Buffs nearby Swarmlings +20% damage, +15% speed.',
     faction: 'aliens', damageType: 'physical', cost: 80, damage: 6, range: 3, fireRate: 600,
     color: 0x55aa22, projectileSpeed: 300, hotkey: '6',
-    traits: [{ id: 'direct_damage' }, { id: 'spawn_swarmlings_per_wave', count: 2 }],
+    traits: [{ id: 'direct_damage' }, { id: 'spawn_swarmlings_per_wave', count: 2 }, { id: 'commander_aura', buffRange: 6, damagePercent: 0.20, ratePercent: 0.15, targetIds: ['alien_swarmling'] }],
     upgrades: [
       { level: 2, cost: 70, damage: 10, range: 3.5, fireRate: 550 },
     ],
@@ -506,10 +506,10 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   cyber_firewall: def({
-    id: 'cyber_firewall', name: 'Firewall', description: 'No attack. Links to another Firewall. Beam damages creeps crossing.',
+    id: 'cyber_firewall', name: 'Firewall', description: 'Links to another Firewall. Beam damages + heavily slows creeps crossing.',
     faction: 'cypherpunk', damageType: 'magic', cost: 35, damage: 0, range: 8, fireRate: 99999,
     color: 0x0088aa, projectileSpeed: 0, hotkey: '2',
-    traits: [{ id: 'firewall_link', linkRange: 8, dps: 20 }],
+    traits: [{ id: 'firewall_link', linkRange: 8, dps: 35, slowFactor: 0.35 }],
     upgrades: [
       { level: 2, cost: 40, damage: 0, range: 10, fireRate: 99999 },
     ],

@@ -338,103 +338,69 @@ function drawTowers(ctx:any){
       }
       b(cx-4,legY+9,9,1,C.DKBRN);
     },
-    // 4: Heavy Gunner — mobile unit, level = bigger armor/weapon (1-3)
+    // 4: Tank — mobile armored vehicle (was Heavy Gunner), level = bigger hull/armor (1-3)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const cx=16;
-      const legOff=s===1?1:0, legOff2=s===1?-1:0;
-      const headY=4,torY=11,legY=21;
+      const treadAnim=s%2;
 
-      // Helmet — heavier with level
-      const helmW=lv>=2?10:8;
-      b(cx-Math.floor(helmW/2),headY,helmW,4,C.OLIVE);b(cx-Math.floor(helmW/2)+1,headY,helmW-2,3,C.SAGE);
-      b(cx-Math.floor(helmW/2)-1,headY+3,helmW+2,1,C.DKOLV);
-      p(cx-3,headY+1,C.DKOLV);p(cx+2,headY,C.DKOLV);
-      // Lv2+: reinforced helmet with face shield
-      if(lv>=2){
-        b(cx-4,headY-1,8,1,C.METAL); // top plate
-        p(cx-4,headY+4,C.METAL);p(cx+3,headY+4,C.METAL); // cheek guards
-      }
-      // Lv3: full face visor + HUD
+      // Tank hull — wider and heavier with level
+      const hullW=16+Math.min(lv-1,2)*4;
+      const hullH=8+Math.min(lv-1,2)*2;
+      const hx=cx-Math.floor(hullW/2);
+      const hy=12;
+
+      // Treads
+      const tY=hy+hullH;
+      b(hx-2,tY,hullW+4,4,C.DGRAY);
+      for(let i=0;i<hullW+3;i+=2)p(hx-2+i+treadAnim,tY+1,C.MGRAY);
+      for(let i=0;i<hullW+3;i+=2)p(hx-2+i+(1-treadAnim),tY+2,C.MGRAY);
+      // Drive wheels
+      p(hx-2,tY,C.MGRAY);p(hx+hullW+1,tY,C.MGRAY);
+      p(hx-2,tY+3,C.MGRAY);p(hx+hullW+1,tY+3,C.MGRAY);
+
+      // Hull body
+      b(hx,hy,hullW,hullH,C.DKOLV);
+      b(hx+1,hy+1,hullW-2,hullH-2,C.OLIVE);
+      b(hx+2,hy+2,hullW-4,hullH-4,C.SAGE);
+      // Armor seams
+      p(hx+3,hy+2,C.DKOLV);p(hx+hullW-4,hy+2,C.DKOLV);
+      // Lv2+: reinforced top plate
+      if(lv>=2){b(hx,hy,hullW,2,C.DKOLV);b(hx+1,hy,hullW-2,1,C.METAL);}
+      // Lv3: reactive armor blocks on sides
       if(lv>=3){
-        b(cx-3,headY+4,6,1,C.DGRAY);
-        p(cx-1,headY+4,C.LTBLUE); // HUD glow
-        p(cx+1,headY+4,C.LTBLUE);
-      } else {
-        b(cx-3,headY+4,6,1,C.DGRAY);
-      }
-      // Face
-      b(cx-2,headY+5,4,2,C.SKIN);
-      p(cx-1,headY+5,C.DKSKIN);p(cx+1,headY+5,C.DKSKIN);
-
-      // Torso — bulkier body armor with level
-      const armorW=lv>=2?12:10;
-      b(cx-Math.floor(armorW/2),torY,armorW,9,C.OLIVE);b(cx-Math.floor(armorW/2)+1,torY,armorW-2,8,C.SAGE);
-      // Body armor plates
-      b(cx-3,torY+1,6,5,C.DKSAGE);b(cx-2,torY+2,4,3,C.OLIVE);
-      // Lv2+: extra plate carrier
-      if(lv>=2){
-        b(cx-4,torY+1,8,6,C.DKSAGE);b(cx-3,torY+2,6,4,C.OLIVE);
-        // Side armor plates
-        b(cx-Math.floor(armorW/2),torY+1,2,5,C.METAL);
-        b(cx+Math.floor(armorW/2)-2,torY+1,2,5,C.METAL);
-      }
-      // Lv3: heavy exo-frame hints
-      if(lv>=3){
-        b(cx-Math.floor(armorW/2)-1,torY,2,8,C.DGRAY);
-        b(cx+Math.floor(armorW/2)-1,torY,2,8,C.DGRAY);
-        p(cx-Math.floor(armorW/2)-1,torY+1,C.LTBLUE); // power indicator
-      }
-      // Ammo belt
-      for(let i=0;i<6;i++)p(cx-3+i,torY+1+Math.floor(i*0.5),i%2?C.DKGOLD:C.BROWN);
-      b(cx-Math.floor(armorW/2),torY+8,armorW,1,C.BROWN);p(cx,torY+8,C.METAL);
-
-      // Machine gun — bigger with level
-      const gunLen=lv>=2?10:8, barrelLen=lv>=3?4:3;
-      if(s===2){
-        b(cx+5,torY+2,gunLen,2,C.DGRAY);b(cx+5,torY+3,gunLen,1,C.MGRAY);
-        b(cx+5+gunLen,torY+1,barrelLen,1,C.DGRAY);
-        b(cx+5+gunLen,torY+2,barrelLen,1,C.MGRAY);
-        // Lv3: double barrel
-        if(lv>=3){b(cx+5+gunLen,torY,barrelLen,1,C.DGRAY);}
-        // Muzzle flash
-        const mzX=cx+5+gunLen+barrelLen;
-        p(mzX,torY,C.FLASH);p(mzX,torY+1,C.ORANGE);p(mzX+1,torY+1,C.FLASH);
-        p(mzX,torY+2,C.ORANGE);p(mzX+1,torY+2,C.FLASH);p(mzX,torY+3,C.FLASH);
-        p(mzX-1,torY,C.ORANGE);p(mzX-1,torY+3,C.ORANGE);
-        b(cx+4,torY+1,2,3,C.OLIVE);p(cx+5,torY+4,C.SKIN);
-        b(cx-6,torY+2,2,3,C.OLIVE);
-        p(cx+8,torY-1,C.DKGOLD);p(cx+9,torY-2,C.GOLD);
-      } else {
-        b(cx+5,torY+1,2,6,C.DGRAY);b(cx+5,torY+2,2,4,C.MGRAY);
-        b(cx+5,torY-1,1,3,C.DGRAY);
-        b(cx+4,torY+1+(s===1?1:0),2,5,C.OLIVE);p(cx+5,torY+5+(s===1?1:0),C.SKIN);
-        b(cx-6,torY+1-(s===1?1:0),2,5,C.OLIVE);p(cx-6,torY+5-(s===1?1:0),C.SKIN);
+        b(hx-2,hy+2,2,hullH-3,C.DGRAY);b(hx+hullW,hy+2,2,hullH-3,C.DGRAY);
+        p(hx-1,hy+3,C.METAL);p(hx+hullW,hy+3,C.METAL);
       }
 
-      // Legs — heavier boots with level
-      b(cx-3+legOff,legY,3,8,C.DKSAGE);
-      b(cx+1+legOff2,legY,3,8,C.DKSAGE);
-      // Lv2+: knee armor
-      if(lv>=2){b(cx-3+legOff,legY+4,3,2,C.METAL);b(cx+1+legOff2,legY+4,3,2,C.METAL);}
-      const bootH=lv>=2?3:2;
-      b(cx-4+legOff,legY+8,4,bootH,C.DKBRN);b(cx-4+legOff,legY+8,3,1,C.BROWN);
-      b(cx+legOff2,legY+8,4,bootH,C.DKBRN);b(cx+1+legOff2,legY+8,3,1,C.BROWN);
-      // Lv3: armored boots
-      if(lv>=3){
-        b(cx-4+legOff,legY+8,4,bootH,C.DGRAY);b(cx-3+legOff,legY+8,2,1,C.METAL);
-        b(cx+legOff2,legY+8,4,bootH,C.DGRAY);b(cx+1+legOff2,legY+8,2,1,C.METAL);
+      // Turret
+      const turrW=10+Math.min(lv-1,2)*2;
+      const turrH=5;
+      const ttx=cx-Math.floor(turrW/2);
+      const tty=hy-turrH+2;
+      b(ttx,tty,turrW,turrH,C.DKOLV);b(ttx+1,tty+1,turrW-2,turrH-2,C.DGRAY);
+      b(ttx+2,tty+1,turrW-4,turrH-3,C.MGRAY);
+      p(cx,tty,C.METAL); // hatch
+
+      // Barrel — direction based on state
+      const bLen=6+Math.min(lv-1,2)*2;
+      if(s===0){ // idle: barrel right
+        b(cx+Math.floor(turrW/2),tty+1,bLen,2,C.DGRAY);b(cx+Math.floor(turrW/2),tty+2,bLen,1,C.MGRAY);
+      } else if(s===1){ // walk: barrel right, slight movement
+        b(cx+Math.floor(turrW/2),tty+1+(treadAnim?0:1),bLen,2,C.DGRAY);
+      } else if(s===2){ // fire: barrel right with muzzle flash
+        b(cx+Math.floor(turrW/2),tty+1,bLen,2,C.DGRAY);
+        const mz=cx+Math.floor(turrW/2)+bLen;
+        p(mz,tty,C.FLASH);p(mz+1,tty+1,C.WHITE);p(mz,tty+2,C.FLASH);
+        p(mz+1,tty,C.ORANGE);p(mz+1,tty+2,C.ORANGE);p(mz+2,tty+1,C.FLASH);
+      } else { // cooldown: barrel with smoke
+        b(cx+Math.floor(turrW/2),tty+1,bLen,2,C.DGRAY);
+        const mz2=cx+Math.floor(turrW/2)+bLen;
+        p(mz2,tty+1,C.MGRAY);p(mz2+1,tty,C.DGRAY);
       }
 
-      // Special
-      if(s===3){
-        b(cx+6,torY+6,1,4,C.METAL);b(cx+8,torY+6,1,4,C.METAL);
-        const shieldH=lv>=2?7:5;
-        for(let i=0;i<shieldH;i++)p(cx-7,torY+i,C.BLUE);
-        p(cx-8,torY+2,C.LTBLUE);
-        // Lv3: energy shield wider
-        if(lv>=3){for(let i=0;i<shieldH;i++)p(cx-8,torY+i,C.DKBLUE);}
-      }
-      b(cx-5,legY+10,10,1,C.DKBRN);
+      // Star emblem on hull
+      p(cx,hy+Math.floor(hullH/2),C.GOLD);
+      if(lv>=2){p(cx-1,hy+Math.floor(hullH/2),C.DKGOLD);p(cx+1,hy+Math.floor(hullH/2),C.DKGOLD);}
     },
     // 5: Commander (Ultimate) — mobile unit, level = rank/decoration progression (1-3)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -643,7 +609,7 @@ function drawProjectiles(ctx:any){
         [[4,6],[11,10],[6,11],[10,5],[8,8]].forEach(([x,y],i)=>p(x,y,i%2?C.DKSAND:C.SAND));
       }
     },
-    // 4: Heavy Gunner — large bullet stream -> explosion
+    // 4: Tank — explosive shell -> AoE explosion
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         // Bullet stream (multiple tracers)
@@ -1055,7 +1021,7 @@ function drawHero(ctx:any){
 }
 
 // ===== LABELS =====
-const T_NAMES=['Sandbag','Barbed Wire','Rifleman','Brawler','Heavy Gunner','Commander'];
+const T_NAMES=['Sandbag','Barbed Wire','Rifleman','Brawler','Tank','Commander'];
 const T_STATE_NAMES=['Idle','Walk/Charge','Attack/Fire','Special/Cooldown'];
 const P_NAMES=['Pebble','Spark','Bullet','Fist Wave','Burst','Gold Slash'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];

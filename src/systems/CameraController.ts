@@ -104,20 +104,22 @@ export class CameraController {
         if (this.pinchStartDist === 0) {
           this.pinchStartDist = dist;
           this.pinchStartZoom = this.camera.zoom;
-          // Record midpoint in world coords for centered zoom
+          // Record midpoint in screen coords
           this.pinchMidX = (p1.x + p2.x) / 2;
           this.pinchMidY = (p1.y + p2.y) / 2;
-          this.pinchStartScrollX = this.camera.scrollX;
-          this.pinchStartScrollY = this.camera.scrollY;
+          // Convert to world coords using camera's proper transform
+          const wp = this.camera.getWorldPoint(this.pinchMidX, this.pinchMidY);
+          this.pinchStartScrollX = wp.x;
+          this.pinchStartScrollY = wp.y;
         } else {
           const scale = dist / this.pinchStartDist;
           const newZoom = Phaser.Math.Clamp(this.pinchStartZoom * scale, MIN_ZOOM, MAX_ZOOM);
-          // Zoom centered on pinch midpoint
-          const midWorldX = this.pinchMidX / this.pinchStartZoom + this.pinchStartScrollX;
-          const midWorldY = this.pinchMidY / this.pinchStartZoom + this.pinchStartScrollY;
+          // Zoom centered on the world point under the pinch midpoint
           this.camera.setZoom(newZoom);
-          this.camera.scrollX = midWorldX - this.pinchMidX / newZoom;
-          this.camera.scrollY = midWorldY - this.pinchMidY / newZoom;
+          // Reposition so the same world point stays under the pinch midpoint
+          const wp = this.camera.getWorldPoint(this.pinchMidX, this.pinchMidY);
+          this.camera.scrollX += this.pinchStartScrollX - wp.x;
+          this.camera.scrollY += this.pinchStartScrollY - wp.y;
         }
         return;
       }
@@ -163,12 +165,13 @@ export class CameraController {
   /** Double-tap: toggle between default zoom and 1x */
   private doubleTapZoom(screenX: number, screenY: number): void {
     const targetZoom = this.camera.zoom > 1.2 ? 1.0 : DEFAULT_PHONE_ZOOM;
-    // Zoom toward tap point
-    const worldX = screenX / this.camera.zoom + this.camera.scrollX;
-    const worldY = screenY / this.camera.zoom + this.camera.scrollY;
+    // Get world point under tap before zoom change
+    const wp = this.camera.getWorldPoint(screenX, screenY);
     this.camera.setZoom(targetZoom);
-    this.camera.scrollX = worldX - screenX / targetZoom;
-    this.camera.scrollY = worldY - screenY / targetZoom;
+    // Reposition so the same world point stays under the tap
+    const wpAfter = this.camera.getWorldPoint(screenX, screenY);
+    this.camera.scrollX += wp.x - wpAfter.x;
+    this.camera.scrollY += wp.y - wpAfter.y;
     this.velocityX = 0;
     this.velocityY = 0;
     this.wasPan = true; // suppress the tap click
@@ -186,15 +189,18 @@ export class CameraController {
       this.velocityY *= MOMENTUM_FRICTION;
     }
 
-    // Elastic bounds: generous overscroll — any part of map reachable
+    // Elastic bounds: allow scrolling to see any part of the world at any zoom
     const cam = this.camera;
     const viewW = cam.width / cam.zoom;
     const viewH = cam.height / cam.zoom;
-    // Allow full viewport of overscroll past each world edge
-    const minX = -viewW * 0.8;
-    const minY = -viewH * 0.5;
-    const maxX = this.worldW - viewW * 0.2;
-    const maxY = this.worldH - viewH * 0.5;
+    // Bounds: the camera viewport can show any part of the world
+    // At high zoom, the viewport is small so scroll range is large
+    // At low zoom, the viewport covers most of the world so range is small
+    const margin = 20; // small margin past world edges (in world coords)
+    const minX = -margin;
+    const minY = -margin;
+    const maxX = Math.max(this.worldW - viewW + margin, minX);
+    const maxY = Math.max(this.worldH - viewH + margin, minY);
 
     // If actively dragging, allow elastic overscroll
     if (this.isPanning) {
