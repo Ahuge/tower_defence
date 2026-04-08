@@ -1,7 +1,7 @@
 import { ResponsiveManager } from './ResponsiveManager';
 
 const MIN_ZOOM = 1.0;
-const MAX_ZOOM = 5.0;
+const MAX_ZOOM = 6.0;
 const DEFAULT_PHONE_ZOOM = 1.8;
 const PAN_THRESHOLD = 12;       // screen pixels moved before it counts as a pan
 const MOMENTUM_FRICTION = 0.92; // velocity multiplier per frame (< 1 = deceleration)
@@ -50,7 +50,7 @@ export class CameraController {
   /** True if currently in a pinch gesture */
   pinching: boolean = false;
 
-  constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number) {
+  constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number, viewportHeight?: number) {
     this.scene = scene;
     this.camera = scene.cameras.main;
     this.worldW = worldWidth;
@@ -58,6 +58,12 @@ export class CameraController {
 
     // Don't use setBounds — we handle elastic bounds manually
     if (ResponsiveManager.isPhone()) {
+      // Clip the main camera viewport to the area above the UI bars.
+      // Without this, the main camera renders into the full canvas (~2142px)
+      // and the dark background below the game grid shows as a black overlay.
+      if (viewportHeight) {
+        this.camera.setViewport(0, 0, worldWidth, viewportHeight);
+      }
       this.camera.setZoom(DEFAULT_PHONE_ZOOM);
       this.camera.centerOn(worldWidth / 2, worldHeight / 2);
     }

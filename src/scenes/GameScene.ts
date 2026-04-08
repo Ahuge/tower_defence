@@ -546,7 +546,10 @@ export class GameScene extends Phaser.Scene {
     // Phone: pinch-to-zoom + pan on the game world
     if (ResponsiveManager.isPhone()) {
       const canvasW = getCanvasWidth();
-      this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT);
+      const canvasH = ResponsiveManager.canvasHeight();
+      // Viewport height = canvas minus bottom UI bars (tower bar + control bar + safe margin)
+      const viewportH = canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin;
+      this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
       this.inputMgr.setCameraController(this.cameraCtrl);
       this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
     }
@@ -712,6 +715,7 @@ export class GameScene extends Phaser.Scene {
     this.uiCamera = this.cameras.add(0, 0, canvasW, canvasH);
     this.uiCamera.setScroll(0, 0);
     this.uiCamera.setName('ui');
+    this.uiCamera.transparent = true; // don't paint over main camera output
 
     const mainCam = this.cameras.main;
 
