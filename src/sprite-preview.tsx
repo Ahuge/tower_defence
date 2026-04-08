@@ -96,8 +96,14 @@ export default function SpritePreview() {
         // Wait for canvases to render
         await new Promise(r => setTimeout(r, 500));
 
-        // Grab all canvases
-        const canvases = container.querySelectorAll('canvas');
+        // Grab actual-size canvases (skip preview canvases which are larger/scaled)
+        // Each generator renders pairs: [preview, actual, preview, actual, ...]
+        // Actual canvases have style imageRendering='pixelated' or are the smaller of each pair
+        const allCanvases = Array.from(container.querySelectorAll('canvas'));
+        // Pick every other canvas starting from index 1 (actual), or filter by smallest dimension
+        const canvases = allCanvases.filter((c, i) => i % 2 === 1);
+        // Fallback: if odd count, use size-based filter
+        if (canvases.length === 0) canvases.push(...allCanvases);
         for (let ci = 0; ci < canvases.length && ci < mapping.canvases.length; ci++) {
           const canvas = canvases[ci];
           const blob = await new Promise<Blob | null>(resolve =>
@@ -131,7 +137,9 @@ export default function SpritePreview() {
       root.render(<Comp />);
       await new Promise(r => setTimeout(r, 500));
 
-      const canvases = container.querySelectorAll('canvas');
+      const allMobileCanvases = Array.from(container.querySelectorAll('canvas'));
+      const canvases = allMobileCanvases.filter((c, i) => i % 2 === 1);
+      if (canvases.length === 0) canvases.push(...allMobileCanvases);
       const mobileNames = Object.keys(MOBILE_FILES);
       for (let ci = 0; ci < canvases.length && ci < mobileNames.length; ci++) {
         const blob = await new Promise<Blob | null>(resolve =>
