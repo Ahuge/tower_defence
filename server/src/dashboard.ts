@@ -60,6 +60,7 @@ export function getDashboardHTML(baseUrl: string): string {
 
   <div id="charts"><p class="loading">Loading charts...</p></div>
   <div id="summary"><p class="loading">Loading summary...</p></div>
+  <div id="svgmap-data" style="display:none;">${getWorldMapSVG()}</div>
 
   <script>
     const API = '${baseUrl}';
@@ -300,9 +301,9 @@ export function getDashboardHTML(baseUrl: string): string {
         // Country bar chart
         html += barCard('Countries', geo, {});
 
-        // World map visualization (SVG)
+        // World map visualization (SVG — injected from hidden div)
         html += '<div class="card" style="grid-column: 1 / -1;"><h2>World Map</h2>';
-        html += '<div id="geomap-container" style="position:relative;width:100%;">${getWorldMapSVG()}</div>';
+        html += '<div id="geomap-container" style="position:relative;width:100%;"></div>';
         html += '</div>';
         html += '</div>';
       }
@@ -338,6 +339,13 @@ export function getDashboardHTML(baseUrl: string): string {
     }
 
     function colorGeoMap(geo) {
+      // Move SVG from hidden div into the map container
+      const container = document.getElementById('geomap-container');
+      const svgSource = document.getElementById('svgmap-data');
+      if (container && svgSource && !container.querySelector('svg')) {
+        container.innerHTML = svgSource.innerHTML;
+      }
+
       const entries = Object.entries(geo);
       const maxCount = Math.max(...entries.map(e => e[1]), 1);
 
