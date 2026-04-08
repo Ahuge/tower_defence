@@ -555,7 +555,7 @@ export class GameScene extends Phaser.Scene {
         // Desktop: full canvas for bounds, grid offset for zoom center
         const canvasH = ResponsiveManager.canvasHeight();
         this.cameraCtrl = new CameraController(this, canvasW, canvasH);
-        this.cameraCtrl.setCanPanCheck(() => this.selectionMode === 'none');
+        this.cameraCtrl.setCanPanCheck(() => this.selectionMode !== 'build');
         this.cameraCtrl.setGridOffset(getGridOffsetX());
       }
       this.inputMgr.setCameraController(this.cameraCtrl);
