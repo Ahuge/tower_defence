@@ -154,12 +154,8 @@ export class GameRoom {
     config.status = 'signaling';
     await this.saveConfig(config);
 
-    // Notify connected players
-    this.broadcast({
-      type: 'player_joined',
-      playerIndex,
-      playerCount: config.players.length,
-    });
+    // Don't broadcast player_joined here — wait until their WebSocket connects.
+    // This prevents the host from sending an offer before the joiner's WS is ready.
 
     return jsonResponse({
       playerIndex,
@@ -215,7 +211,7 @@ export class GameRoom {
     this.state.acceptWebSocket(server);
     server.serializeAttachment(player.index);
 
-    // Send room info
+    // Send room info to the connecting player
     server.send(JSON.stringify({
       type: 'room_info',
       playerIndex: player.index,
@@ -223,6 +219,18 @@ export class GameRoom {
       mode: config.mode,
       maxPlayers: config.maxPlayers,
     } satisfies ServerMessage));
+
+    // Notify OTHER players that this player's WebSocket is ready.
+    // This is when the host should start the WebRTC handshake.
+    if (player.index > 0) {
+      // Use a small delay to ensure the joiner's WS message handler is ready
+      // (the broadcast uses getWebSockets which includes this new socket)
+      this.broadcast({
+        type: 'player_joined',
+        playerIndex: player.index,
+        playerCount: config.players.length,
+      }, player.index);
+    }
 
     return new Response(null, { status: 101, webSocket: client });
   }
