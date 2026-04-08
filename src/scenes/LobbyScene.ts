@@ -47,7 +47,11 @@ export class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.showConnectionPhase();
-    this.events.once('shutdown', () => this.cleanup());
+    this.events.once('shutdown', () => {
+      this.removeCodeInput();
+      this.signaling?.disconnect();
+      // Don't close versus here — it's passed to GameScene via registry
+    });
   }
 
   // ===================== Phase 1: Connect =====================

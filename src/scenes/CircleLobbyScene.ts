@@ -96,7 +96,12 @@ export class CircleLobbyScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    this.events.once('shutdown', () => this.cleanup());
+    this.events.once('shutdown', () => {
+      this.removeCodeInput();
+      this.stopPollTimer();
+      this.signaling?.disconnect();
+      // Don't close circle here — it's passed to GameScene via registry
+    });
   }
 
   private createCircle(): CircleManager {
