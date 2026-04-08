@@ -2,6 +2,9 @@ import { DamageType } from './CreepTypes';
 import { FactionId } from './Factions';
 import { Trait } from '../systems/traits/Trait';
 
+/** Targeting priority for towers */
+export type TargetingMode = 'first' | 'closest' | 'strongest' | 'weakest' | 'fastest';
+
 export interface TowerType {
   id: string;
   name: string;
@@ -20,6 +23,8 @@ export interface TowerType {
   faction?: FactionId;
   traits: Trait[];
   ultimate?: boolean;
+  /** Targeting priority. Default: 'first' (closest to exit) */
+  targeting?: TargetingMode;
 }
 
 export interface TowerUpgrade {
@@ -68,6 +73,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'sniper', name: 'Sniper', description: 'Long range, high damage, very slow',
     damageType: 'magic', cost: 50, damage: 60, range: 6, fireRate: 3000,
     color: 0xaa44ff, projectileSpeed: 500, hotkey: '3',
+    targeting: 'strongest',
     upgrades: [
       { level: 2, cost: 65, damage: 95, range: 6.5, fireRate: 2800 },
       { level: 3, cost: 110, damage: 150, range: 7, fireRate: 2500 },
@@ -77,6 +83,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'slow', name: 'Frost Trap', description: 'No damage, slows enemies',
     damageType: 'magic', cost: 25, damage: 0, range: 3, fireRate: 800,
     color: 0x44dddd, projectileSpeed: 250, hotkey: '4',
+    targeting: 'fastest',
     traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 2000, factor: 0.4 }],
     upgrades: [
       { level: 2, cost: 35, damage: 0, range: 3.5, fireRate: 700 },
@@ -100,6 +107,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'arcane_frost', name: 'Frost', description: 'Applies 65% slow for 2.5s. No upgrades needed.',
     faction: 'arcane', damageType: 'magic', cost: 35, damage: 4, range: 3, fireRate: 900,
     color: 0x88bbff, projectileSpeed: 280, hotkey: '2',
+    targeting: 'fastest',
     traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 2500, factor: 0.35 }],
     // No upgrades — it's balanced as a pure utility tower
   }),
@@ -117,6 +125,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'arcane_focus', name: 'Focus', description: 'Long range sniper. 25% chance for 3x crit.',
     faction: 'arcane', damageType: 'magic', cost: 90, damage: 55, range: 7, fireRate: 2800,
     color: 0xccaaff, projectileSpeed: 500, hotkey: '4',
+    targeting: 'strongest',
     traits: [{ id: 'direct_damage' }, { id: 'crit_chance', chance: 0.25, multiplier: 3 }],
     upgrades: [
       { level: 2, cost: 100, damage: 85, range: 7.5, fireRate: 2600 },
@@ -127,6 +136,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'arcane_drain', name: 'Mana Drain', description: 'Strips boss shields on hit. Essential for wave 10+.',
     faction: 'arcane', damageType: 'magic', cost: 120, damage: 10, range: 4.5, fireRate: 1000,
     color: 0x44aaff, projectileSpeed: 350, hotkey: '5',
+    targeting: 'strongest',
     traits: [{ id: 'direct_damage' }, { id: 'strip_shield' }],
     upgrades: [
       { level: 2, cost: 80, damage: 18, range: 5, fireRate: 900 },
@@ -179,6 +189,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mech_flamethrower', name: 'Flame', description: 'Short range AoE. Burns for 8 DPS over 3s.',
     faction: 'mechanical', damageType: 'physical', cost: 40, damage: 10, range: 2, fireRate: 500,
     color: 0xff4400, projectileSpeed: 200, projectileColor: 0xff6622, hotkey: '3',
+    targeting: 'closest',
     traits: [{ id: 'splash_damage', radius: 32 }, { id: 'burn_dot', dps: 8, duration: 3000 }],
     upgrades: [
       { level: 2, cost: 50, damage: 16, range: 2.5, fireRate: 450 },
@@ -189,6 +200,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mech_tesla', name: 'Tesla', description: 'Chain lightning. Jumps to nearby targets.',
     faction: 'mechanical', damageType: 'magic', cost: 80, damage: 18, range: 3, fireRate: 1400,
     color: 0xeebb44, projectileSpeed: 400, hotkey: '4',
+    targeting: 'closest',
     traits: [{ id: 'chain_damage', chainCount: 2, chainRange: 96, falloff: 0.7 }],
     upgrades: [
       { level: 2, cost: 75, damage: 28, range: 3.5, fireRate: 1200 },
@@ -208,6 +220,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mech_shredder', name: 'Shredder', description: 'Very fast. Shreds armor tier for 4s per hit.',
     faction: 'mechanical', damageType: 'physical', cost: 150, damage: 6, range: 3, fireRate: 350,
     color: 0xbbaa88, projectileSpeed: 400, hotkey: '6',
+    targeting: 'strongest',
     traits: [{ id: 'direct_damage' }, { id: 'armor_shred_on_hit', shredAmount: 1, duration: 4000 }],
     upgrades: [
       { level: 2, cost: 120, damage: 10, range: 3.5, fireRate: 300 },
@@ -254,6 +267,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'nature_root', name: 'Root', description: 'Strongest slow in game: 70% for 3s.',
     faction: 'nature', damageType: 'magic', cost: 35, damage: 3, range: 3, fireRate: 1000,
     color: 0x886633, projectileSpeed: 200, hotkey: '2',
+    targeting: 'fastest',
     traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 3000, factor: 0.3 }],
     upgrades: [
       { level: 2, cost: 40, damage: 5, range: 3.5, fireRate: 900 },
@@ -309,6 +323,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 8% instant kill, 25% whiff.',
     faction: 'void', damageType: 'magic', cost: 15, damage: 25, range: 3, fireRate: 1000,
     color: 0xdd44ff, projectileSpeed: 300, hotkey: '1',
+    targeting: 'weakest',
     traits: [{ id: 'direct_damage' }, { id: 'jackpot', killChance: 0.08, missChance: 0.25 }],
     upgrades: [
       { level: 2, cost: 30, damage: 45, range: 3.5, fireRate: 900 },
@@ -349,6 +364,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'void_oblivion', name: 'Oblivion', description: 'ULTIMATE. 15% instakill, +3g/hit, extreme variance.',
     faction: 'void', damageType: 'magic', cost: 900, damage: 80, range: 5, fireRate: 600,
     color: 0x220044, projectileSpeed: 400, projectileColor: 0xff00ff, hotkey: '5', ultimate: true,
+    targeting: 'weakest',
     traits: [
       { id: 'direct_damage' },
       { id: 'jackpot', killChance: 0.15, missChance: 0.1 },
@@ -453,6 +469,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'alien_acid', name: 'Acid Sprayer', description: 'Short range AoE + armor shred + poison.',
     faction: 'aliens', damageType: 'physical', cost: 100, damage: 8, range: 2.5, fireRate: 500,
     color: 0x44bb00, projectileSpeed: 250, projectileColor: 0x66ff00, hotkey: '4',
+    targeting: 'closest',
     traits: [{ id: 'splash_damage', radius: 40 }, { id: 'armor_shred_on_hit', shredAmount: 1, duration: 3000 }, { id: 'poison_dot', percentPerSec: 0.015, duration: 2500 }],
     upgrades: [
       { level: 2, cost: 90, damage: 12, range: 3, fireRate: 450 },
@@ -462,6 +479,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'alien_hive_spire', name: 'Hive Spire', description: 'Very fast chain. Chains to 5 targets.',
     faction: 'aliens', damageType: 'physical', cost: 180, damage: 12, range: 4, fireRate: 400,
     color: 0x77ee33, projectileSpeed: 450, hotkey: '5',
+    targeting: 'closest',
     traits: [{ id: 'chain_damage', chainCount: 4, chainRange: 80, falloff: 0.8 }],
     upgrades: [
       { level: 2, cost: 150, damage: 18, range: 4.5, fireRate: 350 },
@@ -547,6 +565,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'cyber_rootkit', name: 'Rootkit', description: 'Mutes creep abilities in range. Strong armor shred per hit.',
     faction: 'cypherpunk', damageType: 'magic', cost: 300, damage: 12, range: 5, fireRate: 1000,
     color: 0x2266aa, projectileSpeed: 350, hotkey: '6',
+    targeting: 'strongest',
     traits: [{ id: 'direct_damage' }, { id: 'mute_mage_aura' }, { id: 'armor_shred_on_hit', shredAmount: 2, duration: 6000 }],
     upgrades: [
       { level: 2, cost: 250, damage: 18, range: 5.5, fireRate: 900 },
@@ -578,6 +597,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'infernal_hellfire', name: 'Hellfire', description: 'Strong AoE + burn. Loses 15% damage each wave.',
     faction: 'infernal', damageType: 'magic', cost: 45, damage: 35, range: 3, fireRate: 1500,
     color: 0xff6600, projectileSpeed: 250, hotkey: '2',
+    targeting: 'closest',
     traits: [{ id: 'splash_damage', radius: 48 }, { id: 'burn_dot', dps: 12, duration: 3000 }, { id: 'decay_per_wave', decayPercent: 0.15 }],
     upgrades: [
       { level: 2, cost: 50, damage: 55, range: 3.5, fireRate: 1300 },
@@ -646,6 +666,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'celestial_smite', name: 'Smite', description: 'High damage. +50% vs bosses and shielded creeps.',
     faction: 'celestial', damageType: 'magic', cost: 80, damage: 45, range: 5, fireRate: 1800,
     color: 0xffeecc, projectileSpeed: 400, hotkey: '3',
+    targeting: 'strongest',
     traits: [{ id: 'direct_damage' }, { id: 'bonus_vs_boss', bonus: 0.5 }],
     upgrades: [
       { level: 2, cost: 90, damage: 70, range: 5.5, fireRate: 1600 },
@@ -700,6 +721,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'psi_terror', name: 'Terror', description: 'Fear aura: 50% slow field. Plus true damage.',
     faction: 'psionic', damageType: 'magic', cost: 80, damage: 12, range: 3.5, fireRate: 900,
     color: 0xbb44ee, projectileSpeed: 300, hotkey: '3',
+    targeting: 'closest',
     traits: [{ id: 'true_damage' }, { id: 'slow_aura', factor: 0.5 }],
     upgrades: [
       { level: 2, cost: 75, damage: 20, range: 4, fireRate: 800 },
@@ -709,6 +731,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'psi_mind_spike', name: 'Mind Spike', description: 'Long range true damage. +50% vs mage creeps.',
     faction: 'psionic', damageType: 'magic', cost: 150, damage: 55, range: 7, fireRate: 2500,
     color: 0xaa22dd, projectileSpeed: 500, hotkey: '4',
+    targeting: 'strongest',
     traits: [{ id: 'true_damage' }, { id: 'bonus_vs_mage', bonus: 0.5 }],
     upgrades: [
       { level: 2, cost: 130, damage: 85, range: 8, fireRate: 2200 },

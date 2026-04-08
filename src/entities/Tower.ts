@@ -1,5 +1,5 @@
 import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
-import { TowerType } from '../data/TowerTypes';
+import { TowerType, TargetingMode } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
 import { HitTarget } from '../systems/traits/Trait';
 import { hasTowerSprite, isMobileTowerSprite, shouldTowerRotate, createTowerSprite, setTowerSpriteState, updateMobileTowerSprite, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
@@ -306,21 +306,35 @@ export class Tower {
   }
 
   findTarget(creeps: Creep[]): Creep | null {
-    let closest: Creep | null = null;
-    let closestDist = Infinity;
+    const mode: TargetingMode = this.typeDef.targeting ?? 'first';
+    let best: Creep | null = null;
+    let bestScore = mode === 'weakest' ? Infinity : -Infinity;
 
     for (const creep of creeps) {
       if (!creep.alive || creep.reached) continue;
       const dx = creep.x - this.x;
       const dy = creep.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= this.range && dist < closestDist) {
-        closest = creep;
-        closestDist = dist;
+      if (dist > this.range) continue;
+
+      let score: number;
+      switch (mode) {
+        case 'first':     score = creep.pathIndex; break;  // highest pathIndex = closest to exit
+        case 'closest':   score = -dist; break;            // shortest distance to tower
+        case 'strongest': score = creep.hp; break;         // highest current HP
+        case 'weakest':   score = creep.hp; break;         // lowest current HP (uses < below)
+        case 'fastest':   score = creep.speed; break;      // fastest current speed
+        default:          score = creep.pathIndex; break;
+      }
+
+      const isBetter = mode === 'weakest' ? score < bestScore : score > bestScore;
+      if (isBetter) {
+        best = creep;
+        bestScore = score;
       }
     }
 
-    return closest;
+    return best;
   }
 
   fire(target: Creep): void {

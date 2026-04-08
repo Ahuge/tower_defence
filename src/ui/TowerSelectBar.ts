@@ -218,6 +218,17 @@ export class TowerSelectBar {
       lines.push('Traits: ' + traitNames.join(', '));
     }
 
+    // Targeting mode (only show if non-default)
+    if (t.targeting && t.targeting !== 'first') {
+      const labels: Record<string, string> = {
+        closest: 'Targets: Nearest',
+        strongest: 'Targets: Strongest',
+        weakest: 'Targets: Weakest',
+        fastest: 'Targets: Fastest',
+      };
+      lines.push(labels[t.targeting] ?? `Targets: ${t.targeting}`);
+    }
+
     if (t.upgrades.length > 0) {
       lines.push(`Upgrades: ${t.upgrades.length} levels`);
     }
