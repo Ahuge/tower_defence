@@ -198,6 +198,122 @@ export class ItemShopPanel {
       y += rh;
     }
 
+    // Tomes section
+    y += gap;
+    this.addDivider(y);
+    y += 6;
+
+    const tomeTitle = this.scene.add.text(8, y, 'TOMES', {
+      fontSize: UIScale.font(11), color: '#ffcc44', fontFamily: 'monospace',
+    });
+    this.container.add(tomeTitle);
+    this.dynamicItems.push(tomeTitle);
+    y += rh;
+
+    // XP Tome — grants XP to the hero
+    const xpTomeCost = 100;
+    const xpAmount = 50 + this.hero.level * 10;
+    {
+      const canAfford = this.economy.canAfford(xpTomeCost);
+      const label = this.scene.add.text(8, y, `XP Tome: +${xpAmount} XP`, {
+        fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
+      });
+      this.container.add(label);
+      this.dynamicItems.push(label);
+
+      const btn = this.scene.add.text(getSidebarWidth() - 60, y, `[${xpTomeCost}g]`, {
+        fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
+      });
+      this.container.add(btn);
+      this.dynamicItems.push(btn);
+      if (canAfford) {
+        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+        btn.on('pointerdown', () => {
+          if (this.economy.spend(xpTomeCost)) {
+            this.hero.grantXP(xpAmount);
+            this.eventLog.gameMessage(`XP Tome: +${xpAmount} XP!`);
+            this.lastSnapshot = '';
+          }
+        });
+        btn.on('pointerover', () => btn.setColor('#ffffff'));
+        btn.on('pointerout', () => btn.setColor('#44ff44'));
+      }
+      y += rh;
+    }
+
+    // Attribute Tome — +5 damage, +30 HP, +0.1 attack speed (scaling cost)
+    {
+      const baseCost = 150;
+      const attrTomeCost = baseCost + this.hero.tomeCount * 75; // gets more expensive each time
+      const canAfford = this.economy.canAfford(attrTomeCost);
+      const label = this.scene.add.text(8, y, `Stat Tome: +5 DMG +30 HP +0.1 AS`, {
+        fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
+      });
+      this.container.add(label);
+      this.dynamicItems.push(label);
+
+      const btn = this.scene.add.text(getSidebarWidth() - 60, y, `[${attrTomeCost}g]`, {
+        fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
+      });
+      this.container.add(btn);
+      this.dynamicItems.push(btn);
+      if (canAfford) {
+        btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+        btn.on('pointerdown', () => {
+          if (this.economy.spend(attrTomeCost)) {
+            this.hero.tomeBonusDamage += 5;
+            this.hero.tomeBonusHp += 30;
+            this.hero.tomeBonusAttackSpeed += 0.1;
+            this.hero.tomeCount++;
+            // Heal for the HP bonus
+            this.hero.hp = Math.min(this.hero.hp + 30, this.hero.getEffectiveMaxHp());
+            this.eventLog.gameMessage(`Stat Tome #${this.hero.tomeCount}: +5 DMG, +30 HP, +0.1 AS (next: ${baseCost + this.hero.tomeCount * 75}g)`);
+            this.lastSnapshot = '';
+          }
+        });
+        btn.on('pointerover', () => btn.setColor('#ffffff'));
+        btn.on('pointerout', () => btn.setColor('#44ff44'));
+      }
+      y += rh;
+    }
+
+    // Interest Tome — permanently increases interest rate by 1% (one-time purchase per tier)
+    {
+      const interestTier = (this.hero as any)._interestTier ?? 0;
+      if (interestTier < 3) {
+        const costs = [200, 400, 800];
+        const rates = [3, 4, 5];
+        const interestCost = costs[interestTier];
+        const newRate = rates[interestTier];
+        const canAfford = this.economy.canAfford(interestCost);
+        const label = this.scene.add.text(8, y, `Interest Tome: → ${newRate}%/wave`, {
+          fontSize: UIScale.font(10), color: '#cccccc', fontFamily: 'monospace',
+        });
+        this.container.add(label);
+        this.dynamicItems.push(label);
+
+        const btn = this.scene.add.text(getSidebarWidth() - 60, y, `[${interestCost}g]`, {
+          fontSize: UIScale.font(10), color: canAfford ? '#44ff44' : '#664444', fontFamily: 'monospace',
+        });
+        this.container.add(btn);
+        this.dynamicItems.push(btn);
+        if (canAfford) {
+          btn.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-8, 0, 68, touch), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
+          btn.on('pointerdown', () => {
+            if (this.economy.spend(interestCost)) {
+              (this.hero as any)._interestTier = interestTier + 1;
+              (this.hero as any)._interestRate = newRate / 100;
+              this.eventLog.gameMessage(`Interest Tome: rate now ${newRate}%!`);
+              this.lastSnapshot = '';
+            }
+          });
+          btn.on('pointerover', () => btn.setColor('#ffffff'));
+          btn.on('pointerout', () => btn.setColor('#44ff44'));
+        }
+        y += rh;
+      }
+    }
+
     // Divider
     y += gap;
     this.addDivider(y);
