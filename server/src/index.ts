@@ -262,29 +262,45 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
 }
 
 async function handleAnalyticsHistory(env: Env, origin: string): Promise<Response> {
-  const days = 90;
+  const url = new URL('https://dummy');
+  const days = 30; // Fixed 30 days — keeps KV reads manageable
+
   const eventTypes = ['game_start', 'game_end', 'multiplayer_start', 'faction_pick'];
-  const series: Record<string, { date: string; count: number }[]> = {};
-
-  for (const type of eventTypes) {
-    series[type] = [];
-  }
-
-  // Also track per-mode history
   const modes = ['standard', 'hero_defense', 'battle', 'marathon', 'sprint', 'circle_coop'];
-  for (const mode of modes) {
-    series[`mode_${mode}`] = [];
-  }
+  const allKeys: string[] = [];
+  const dates: string[] = [];
 
+  // Build all KV keys we need
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    dates.push(date);
+    for (const type of eventTypes) allKeys.push(`count:${date}:${type}`);
+    for (const mode of modes) allKeys.push(`dim:${date}:game_start:mode:${mode}`);
+  }
+
+  // Batch fetch all keys (KV supports getWithMetadata but not batch get,
+  // so we parallelize with Promise.all in chunks)
+  const CHUNK = 50;
+  const values = new Map<string, number>();
+  for (let i = 0; i < allKeys.length; i += CHUNK) {
+    const chunk = allKeys.slice(i, i + CHUNK);
+    const results = await Promise.all(chunk.map(k => env.ANALYTICS.get(k)));
+    for (let j = 0; j < chunk.length; j++) {
+      values.set(chunk[j], parseInt(results[j] ?? '0'));
+    }
+  }
+
+  // Build series from cached values
+  const series: Record<string, { date: string; count: number }[]> = {};
+  for (const type of eventTypes) series[type] = [];
+  for (const mode of modes) series[`mode_${mode}`] = [];
+
+  for (const date of dates) {
     for (const type of eventTypes) {
-      const count = parseInt(await env.ANALYTICS.get(`count:${date}:${type}`) ?? '0');
-      series[type].push({ date, count });
+      series[type].push({ date, count: values.get(`count:${date}:${type}`) ?? 0 });
     }
     for (const mode of modes) {
-      const count = parseInt(await env.ANALYTICS.get(`dim:${date}:game_start:mode:${mode}`) ?? '0');
-      series[`mode_${mode}`].push({ date, count });
+      series[`mode_${mode}`].push({ date, count: values.get(`dim:${date}:game_start:mode:${mode}`) ?? 0 });
     }
   }
 

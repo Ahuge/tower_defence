@@ -60,7 +60,7 @@ export function getDashboardHTML(baseUrl: string): string {
   <script>
     const API = '${baseUrl}';
     let historyData = null;
-    let currentRange = 14;
+    let currentRange = 7;
 
     const COLORS = {
       game_start: '#44ff44',
@@ -123,7 +123,7 @@ export function getDashboardHTML(baseUrl: string): string {
     function renderCharts() {
       if (!historyData) return;
       const el = document.getElementById('charts');
-      const ranges = [7, 14, 30, 90];
+      const ranges = [7, 14, 30];
 
       let rangeHtml = '<div class="range-btns">';
       for (const r of ranges) {
