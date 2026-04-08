@@ -460,7 +460,7 @@ export class GameScene extends Phaser.Scene {
       this.sidebarOverlay.addPanel(this.eventLog.getContainer());
       this.gameMode.reparentSidebarPanels?.(this.sidebarOverlay);
     } else {
-      const sidebarBg = this.add.graphics().setDepth(28);
+      const sidebarBg = this.add.graphics().setDepth(0);
       sidebarBg.fillStyle(0x0e0e12, 1);
       sidebarBg.fillRect(0, 0, SIDEBAR_WIDTH, GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT);
     }
