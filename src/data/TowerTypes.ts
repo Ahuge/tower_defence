@@ -472,7 +472,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'alien_brood_mother', name: 'Brood Mother', description: 'Spawns 2 Swarmlings/wave. Buffs nearby Swarmlings +20% damage, +15% speed.',
     faction: 'aliens', damageType: 'physical', cost: 80, damage: 6, range: 3, fireRate: 600,
     color: 0x55aa22, projectileSpeed: 300, hotkey: '6',
-    traits: [{ id: 'direct_damage' }, { id: 'spawn_swarmlings_per_wave', count: 2 }, { id: 'adjacency_buff', damagePercent: 0.20, ratePercent: 0.15 }],
+    traits: [{ id: 'direct_damage' }, { id: 'spawn_swarmlings_per_wave', count: 2 }, { id: 'adjacency_buff', damagePercent: 0.20, ratePercent: 0.15, targetIds: ['alien_swarmling'] }],
     upgrades: [
       { level: 2, cost: 70, damage: 10, range: 3.5, fireRate: 550 },
     ],

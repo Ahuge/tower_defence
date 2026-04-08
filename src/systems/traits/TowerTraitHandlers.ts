@@ -398,9 +398,12 @@ registerTowerUpdate('adjacency_buff', (trait: Trait, tower: any, ctx: UpdateCont
   // Percentage-based: damagePercent and ratePercent
   const dmgPercent = trait.damagePercent ?? 0.15;
   const ratePercent = trait.ratePercent ?? 0.08;
+  // Optional: only buff specific tower IDs (e.g., Brood Mother only buffs Swarmlings)
+  const targetIds: string[] | undefined = trait.targetIds as string[] | undefined;
 
   for (const other of ctx.allTowers) {
     if (other === tower) continue;
+    if (targetIds && !targetIds.includes(other.typeId)) continue;
     const dc = Math.abs(other.col - tower.col);
     const dr = Math.abs(other.row - tower.row);
     if (dc <= 1 && dr <= 1) {
