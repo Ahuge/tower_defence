@@ -96,12 +96,17 @@ export class VersusManager {
   }
 
   send(msg: GameMessage): void {
+    if (this.peer.state !== 'connected') {
+      console.warn('[Versus] Cannot send — peer not connected:', this.peer.state, msg.type);
+      return;
+    }
     this.peer.sendJSON(msg);
   }
 
   private handleMessage(data: string): void {
     const msg = decodeMessage(data);
     if (!msg) return;
+    console.log('[Versus] Received:', msg.type);
 
     switch (msg.type) {
       case 'tower_placed':
