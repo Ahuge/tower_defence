@@ -60,7 +60,7 @@ import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
 import { GameControlBar } from '../ui/GameControlBar';
-import { preloadSprites, createSpriteAnimations } from '../systems/SpriteManager';
+import { preloadSprites, createSpriteAnimations, getTowerSpriteConfig } from '../systems/SpriteManager';
 import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
@@ -1449,6 +1449,7 @@ export class GameScene extends Phaser.Scene {
   private opponentOverlay: Phaser.GameObjects.Graphics | null = null;
 
   private opponentLabel: Phaser.GameObjects.Text | null = null;
+  private _opponentSprites: Phaser.GameObjects.Sprite[] = [];
 
   drawOpponentView(): void {
     if (!this.opponentOverlay) {
@@ -1458,6 +1459,9 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.viewingOpponent || !this.versus) {
       if (this.opponentLabel) this.opponentLabel.setVisible(false);
+      // Clean up opponent tower sprites
+      for (const spr of this._opponentSprites) spr.destroy();
+      this._opponentSprites = [];
       return;
     }
 
@@ -1465,17 +1469,37 @@ export class GameScene extends Phaser.Scene {
     this.opponentOverlay.fillStyle(0x000000, 0.3);
     this.opponentOverlay.fillRect(getGridOffsetX(), 0, getGameWidth(), GAME_HEIGHT);
 
-    // Draw opponent towers as colored squares on the main grid
+    // Draw opponent towers — use sprites if available, colored squares as fallback
+    // Clean up previous opponent sprites
+    if (this._opponentSprites) {
+      for (const spr of this._opponentSprites) spr.destroy();
+    }
+    this._opponentSprites = [];
+
     for (const t of this.versus.opponentTowers) {
       const towerDef = TOWER_TYPES[t.towerId];
-      const color = towerDef?.color ?? 0xffffff;
-      const s = TILE_SIZE * 0.4;
       const x = gridLeftX(t.col) + TILE_SIZE / 2;
       const y = t.row * TILE_SIZE + TILE_SIZE / 2;
-      this.opponentOverlay.fillStyle(color, 0.9);
-      this.opponentOverlay.fillRect(x - s, y - s, s * 2, s * 2);
-      this.opponentOverlay.lineStyle(2, 0xffffff, 0.5);
-      this.opponentOverlay.strokeRect(x - s, y - s, s * 2, s * 2);
+
+      const cfg = getTowerSpriteConfig(t.towerId);
+      if (cfg && this.textures.exists(cfg.sheetKey)) {
+        // Calculate frame for this tower's level
+        const levelOffset = Math.min(t.level - 1, (cfg.maxLevel ?? 1) - 1) * (cfg.rowsPerLevel ?? 4);
+        const frameIdx = (levelOffset + cfg.rows.idle) * cfg.totalCols + cfg.column;
+        const spr = this.add.sprite(x, y, cfg.sheetKey, frameIdx).setDepth(22);
+        spr.setScale(TILE_SIZE / 64 * 0.85);
+        spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        spr.setAlpha(0.85);
+        this._opponentSprites.push(spr);
+      } else {
+        // Fallback: colored square
+        const color = towerDef?.color ?? 0xffffff;
+        const s = TILE_SIZE * 0.4;
+        this.opponentOverlay.fillStyle(color, 0.9);
+        this.opponentOverlay.fillRect(x - s, y - s, s * 2, s * 2);
+        this.opponentOverlay.lineStyle(2, 0xffffff, 0.5);
+        this.opponentOverlay.strokeRect(x - s, y - s, s * 2, s * 2);
+      }
     }
 
     // "VIEWING OPPONENT" banner

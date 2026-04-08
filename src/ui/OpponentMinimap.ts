@@ -71,9 +71,15 @@ export class OpponentMinimap {
     this.showingOpponent = val;
   }
 
-  /** Make minimap semi-transparent when placing towers so it doesn't block clicks */
+  /** Make minimap semi-transparent and non-interactive when placing towers */
   setFaded(faded: boolean): void {
     this.container.setAlpha(faded ? 0.3 : 1);
+    // Disable/enable the click zone
+    const zone = this.container.list.find(c => c instanceof Phaser.GameObjects.Zone) as Phaser.GameObjects.Zone | undefined;
+    if (zone) {
+      if (faded) zone.disableInteractive();
+      else zone.setInteractive({ useHandCursor: true });
+    }
   }
 
   update(myTowers?: { col: number; row: number; color: number }[]): void {
