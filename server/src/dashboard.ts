@@ -388,12 +388,12 @@ export function getDashboardHTML(baseUrl: string): string {
       const geoMap = {};
       for (const [code, count] of entries) geoMap[code] = count;
 
-      // Helper to build path for a country feature
+      // Helper to build path for a country feature (single beginPath for all rings)
       function tracePaths(feat) {
+        ctx.beginPath();
         const rings = feat.type === 'Polygon' ? [feat.arcs] : feat.arcs;
         for (const poly of rings) {
           for (const ring of poly) {
-            ctx.beginPath();
             const coords = resolveRing(ring, arcs);
             for (let i = 0; i < coords.length; i++) {
               const [lon, lat] = coords[i];
