@@ -1691,10 +1691,14 @@ export class GameScene extends Phaser.Scene {
     // Destroy all creeps
     for (const c of this._creeps) c.graphics?.destroy();
     this._creeps = [];
+    // Reset UI camera so it's re-created on next game
+    this.uiCamera = null;
     // Clear event listeners
     this.events.off('shutdown');
+    this.events.off('addedtoscene');
     this.input.off('pointerdown');
     this.input.off('pointermove');
     this.input.off('pointerup');
+    this.input.off('wheel');
   }
 }
