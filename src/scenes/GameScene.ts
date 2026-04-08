@@ -552,7 +552,7 @@ export class GameScene extends Phaser.Scene {
         this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
         this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
       } else {
-        // Desktop: world = full canvas, but bounds centered on grid area
+        // Desktop: full canvas for bounds, grid offset for zoom center
         const canvasH = ResponsiveManager.canvasHeight();
         this.cameraCtrl = new CameraController(this, canvasW, canvasH);
         this.cameraCtrl.setCanPanCheck(() => this.selectionMode === 'none');

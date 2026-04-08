@@ -1,5 +1,5 @@
 import { ResponsiveManager } from './ResponsiveManager';
-import { getGridOffsetX, getCanvasWidth } from '../config';
+import { getGridOffsetX, getCanvasWidth, GAME_HEIGHT } from '../config';
 
 const MIN_ZOOM = 1.0;
 const MAX_ZOOM = 8.0;
@@ -262,10 +262,11 @@ export class CameraController {
     });
   }
 
-  /** Zoom by a multiplicative factor, centered on screen center */
+  /** Zoom by a multiplicative factor, centered on the game grid area */
   private zoomBy(factor: number): void {
-    const cx = this.camera.width / 2;
-    const cy = this.camera.height / 2;
+    // Center on the game grid area, not the full canvas (which includes sidebar + tower bar)
+    const cx = this.gridOffsetX + (this.camera.width - this.gridOffsetX) / 2;
+    const cy = GAME_HEIGHT / 2; // center of game grid vertically
     const wpBefore = this.camera.getWorldPoint(cx, cy);
     const newZoom = Phaser.Math.Clamp(this.camera.zoom * factor, MIN_ZOOM, MAX_ZOOM);
     this.camera.setZoom(newZoom);
@@ -335,10 +336,10 @@ export class CameraController {
     const cam = this.camera;
     const viewW = cam.width / cam.zoom;
     const viewH = cam.height / cam.zoom;
-    // Bounds centered on the game grid area (excludes sidebar from pan range)
-    // gridOffsetX is 360 on desktop (sidebar width)
+    // Allow seeing the full world. At 1x zoom, scroll stays near 0.
+    // At higher zoom, pan freely across the full canvas.
     const margin = 40;
-    const minX = this.gridOffsetX - margin;
+    const minX = -margin;
     const minY = -margin;
     const maxX = Math.max(this.worldW - viewW + margin, minX);
     const maxY = Math.max(this.worldH - viewH + margin, minY);
