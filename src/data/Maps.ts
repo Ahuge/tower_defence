@@ -271,35 +271,12 @@ export const MAPS: Record<MapId, MapDefinition> = {
   },
   siege: {
     id: 'siege',
-    name: 'Siege',
-    description: 'Mirrored halves. River divides with bridge gaps.',
-    theme: 'water',
-    entries: [
-      { col: 0, row: Math.floor(GRID_ROWS / 4) },
-      { col: 0, row: Math.floor(GRID_ROWS * 3 / 4) },
-    ],
-    exits: [
-      { col: GRID_COLS - 1, row: Math.floor(GRID_ROWS / 4) },
-      { col: GRID_COLS - 1, row: Math.floor(GRID_ROWS * 3 / 4) },
-    ],
-    blocked: (() => {
-      const b: Pos[] = [];
-      // River across middle (2 tiles wide) with 3 bridge gaps
-      const bridgeCols = [6, MID_COL, GRID_COLS - 7];
-      for (let c = 0; c < GRID_COLS; c++) {
-        const isBridge = bridgeCols.some(bc => Math.abs(c - bc) <= 1);
-        if (!isBridge) {
-          b.push({ col: c, row: MID_ROW });
-          b.push({ col: c, row: MID_ROW - 1 });
-        }
-      }
-      // Boulder clusters near bridges
-      for (const bc of bridgeCols) {
-        b.push(...circle(bc - 3, MID_ROW - 4, 1));
-        b.push(...circle(bc + 3, MID_ROW + 3, 1));
-      }
-      return b.filter(p => inBounds(p.col, p.row));
-    })(),
+    name: 'Empty',
+    description: 'Wide open. No obstacles — pure mazing.',
+    theme: 'forest',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [],
     noBuild: [],
   },
   random: {

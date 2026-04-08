@@ -207,14 +207,16 @@ export class TerrainManager {
     // Doodads on walkable ground
     this.renderDoodads(grid, oY, rows, cols);
 
-    // Entry/exit markers
+    // Entry/exit markers — rendered above ground tiles and doodads
+    const markers = this.scene.add.graphics().setDepth(3);
+    this.terrainSprites.push(markers as any); // track for cleanup
     for (const entry of grid.entries) {
-      this.groundGraphics.fillStyle(0x44ff44, 0.5);
-      this.groundGraphics.fillRect(gridLeftX(entry.col), oY + entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      markers.fillStyle(0x44ff44, 0.5);
+      markers.fillRect(gridLeftX(entry.col), oY + entry.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
     for (const exit of grid.exits) {
-      this.groundGraphics.fillStyle(0xff4444, 0.5);
-      this.groundGraphics.fillRect(gridLeftX(exit.col), oY + exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      markers.fillStyle(0xff4444, 0.5);
+      markers.fillRect(gridLeftX(exit.col), oY + exit.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
   }
 
@@ -229,7 +231,9 @@ export class TerrainManager {
         if (cell === CellType.Blocked || cell === CellType.NoBuild) continue;
 
         const rand = this.seededRand(c, r);
-        if (rand > 0.18) continue; // ~18% of tiles get a doodad
+        const isGrass = this.groundType === 'grass';
+        if (isGrass && rand > 0.70) continue;   // ~70% of grass tiles get a doodad
+        if (!isGrass && rand > 0.18) continue;   // ~18% of dirt/sand tiles
 
         const doodadIdx = Math.floor(this.seededRand(c, r, 3) * DOODAD_COLS);
         const x = gridLeftX(c) + TILE_SIZE / 2;
