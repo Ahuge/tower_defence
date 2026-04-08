@@ -311,8 +311,8 @@ export class CameraController {
     const cam = this.camera;
     const viewW = cam.width / cam.zoom;
     const viewH = cam.height / cam.zoom;
-    const marginX = this.worldW * 0.5;
-    const marginY = this.worldH * 0.5;
+    const marginX = this.worldW * 2;
+    const marginY = this.worldH * 2;
     const minX = -marginX;
     const minY = -marginY;
     const maxX = Math.max(this.worldW - viewW + marginX, minX);
