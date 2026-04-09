@@ -1127,6 +1127,16 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.waveMgr.isComplete() && this.creeps.length === 0) {
+      // Gauntlet: stage transition instead of game over
+      if (this.matchMode === 'gauntlet' && this.gameMode instanceof GauntletMode) {
+        const gauntlet = this.gameMode as GauntletMode;
+        if (gauntlet.hasNextStage()) {
+          this.startGauntletTransition(gauntlet);
+          return;
+        }
+        // All stages complete — true victory!
+      }
+
       this.eventBus.emit('gameWon');
       if (this.versus) {
         this.versus.notifyGameOver(true, this.statsTracker.stats, this.currentWave, this.lives);
@@ -1668,19 +1678,6 @@ export class GameScene extends Phaser.Scene {
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
     this.upcomingWaves.update(waveNum, this.waves);
-
-    // Gauntlet: check for stage transition
-    if (this.matchMode === 'gauntlet' && this.gameMode instanceof GauntletMode) {
-      const gauntlet = this.gameMode as GauntletMode;
-      if (this.currentWave >= this.waves.length) {
-        // Stage complete!
-        if (gauntlet.hasNextStage()) {
-          this.startGauntletTransition(gauntlet);
-          return;
-        }
-        // All stages complete — victory!
-      }
-    }
 
     // Random faction rotation
     if (this.faction === 'random') {
