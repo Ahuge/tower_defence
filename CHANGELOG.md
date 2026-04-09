@@ -5,10 +5,11 @@
 ### Faction Gauntlet Mode
 - **NEW GAME MODE**: Faction Gauntlet — fight all 10 enemy factions in 10-wave stages across unique homeworld maps. 100 waves total.
 - **10 faction homeworld maps**: Crystal Caverns (Arcane), Iron Foundry (Mechanical), Ancient Grove (Nature), Rift Dimension (Void), Warzone Outpost (Military), Hive Tunnels (Aliens), Data Grid (Cypherpunk), Hellscape (Infernal), Sky Citadel (Celestial), Mind Palace (Psionic), Concert Hall (Harmonic).
-- **Custom terrain sprites**: Cypherpunk (circuit board with animated scan lines) and Infernal (lava pools with animated flow/bubbles) have full custom tilesets.
-- **Preview screen**: Shows full stage order, faction names, homeworld maps, and wave ranges before starting.
-- **Stage transitions**: Fade to black → faction banner → fade in new map. Towers destroyed, lives reset to 10, gold reset, frontier persists.
+- **10 custom terrain sprite generators**: Every faction homeworld has unique pixel art terrain with auto-tiled edges (16 NESW variants), animated blocked tiles (lava flow, acid bubbles, scan lines, rune swirls, thought ripples, sound waves, steam vents, enchanted sparkles, burning rubble, void rift energy), and 8 faction-specific ground doodads.
+- **Preview screen**: Shows full randomized stage order with faction names, map names, and wave ranges before starting.
+- **Stage transitions**: Fade to black → "Stage N: [Faction Name]" banner → fade in new map. Towers destroyed, lives reset to 10, gold reset, frontier persists.
 - **Stage scaling**: HP 1x-4x, speed 1x-1.5x, extra count ramp across 10 stages.
+- **HUD**: Shows "Stage N/10: [Faction Name]" during gauntlet gameplay.
 
 ### Creep Sprites
 - **176 unique creature sprites** across all 11 factions — each creep type gets a faction-specific creature design with 4-frame walk cycle + 3-frame death animation.
