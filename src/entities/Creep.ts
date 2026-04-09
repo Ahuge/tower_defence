@@ -120,6 +120,8 @@ export class Creep {
     if (this.pathIndex >= this.path.length) {
       this.reached = true;
       this.graphics.destroy();
+      this.sprite?.destroy();
+      this.sprite = null;
       return;
     }
 
@@ -217,6 +219,12 @@ export class Creep {
       if (this.x < this._prevX) this.sprite.setFlipX(true);
       else if (this.x > this._prevX) this.sprite.setFlipX(false);
       this._prevX = this.x;
+
+      // Ground shadow
+      const shadowW = drawSize * 1.6;
+      const shadowH = drawSize * 0.5;
+      this.graphics.fillStyle(0x000000, 0.2);
+      this.graphics.fillEllipse(this.x, this.y + drawSize * 0.8, shadowW, shadowH);
 
       // Apply status tint
       if (this.statusEffects.has('confused')) this.sprite.setTint(0xff00ff);
