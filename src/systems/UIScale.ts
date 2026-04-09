@@ -79,6 +79,10 @@ interface ScaleValues {
   costLabelH: number;        // space reserved for cost text below icon
   towerNameLen: number;      // max characters for tower name fallback
 
+  // Compact cards (creep faction picker)
+  compactCardW: number;
+  compactCardH: number;
+
   // Misc
   lineSpacing: number;       // default line spacing for text blocks
 }
@@ -139,6 +143,9 @@ const DESKTOP: ScaleValues = {
   costLabelH: 12,
   towerNameLen: 5,
 
+  compactCardW: 120,
+  compactCardH: 44,
+
   lineSpacing: 2,
 };
 
@@ -197,6 +204,9 @@ const PHONE: ScaleValues = {
 
   costLabelH: 20,
   towerNameLen: 4,
+
+  compactCardW: 160,
+  compactCardH: 60,
 
   lineSpacing: 4,
 };

@@ -17,7 +17,6 @@ export class CreepFactionSelectScene extends Phaser.Scene {
   create(data: any): void {
     const cx = getCanvasWidth() / 2;
     const totalH = ResponsiveManager.canvasHeight();
-    const isPhone = UIScale.isPhone;
     const s = UIScale.current;
 
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
@@ -44,10 +43,10 @@ export class CreepFactionSelectScene extends Phaser.Scene {
 
     // Faction grid
     const playable = FACTION_ORDER.filter(f => f !== 'random');
-    const fCols = isPhone ? s.factionCols : 6;
-    const cardW = isPhone ? Math.floor((getCanvasWidth() - 16) / fCols - 4) : 120;
-    const cardH = isPhone ? UIScale.space(30) : 44;
-    const gap = isPhone ? 4 : 6;
+    const fCols = s.factionCols;
+    const cardW = s.compactCardW;
+    const cardH = s.compactCardH;
+    const gap = s.cardGap;
     const rows = Math.ceil(playable.length / fCols);
     const startY = UIScale.y(80);
 
