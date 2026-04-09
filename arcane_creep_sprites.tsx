@@ -719,7 +719,7 @@ export default function ArcaneCreepSprites() {
           data-label="Arcane Creeps (Preview)"
           data-frame-size="32x32"
           data-direction="right"
-          data-columns='["Stone Golem","Spark Wisp","Obelisk Guardian","Mana Mite","Arcane Font","Crystal Titan","Construct Troop","Fractured Golem","Warded Construct","Phase Crystal","Living Crystal","Arcane Hawk","Stoneskin Mage","Chrono Mage","Illusionist","Lifestone Mage"]'
+          data-columns='["Stone Golem (Standard)","Spark Wisp (Fast)","Obelisk Guardian (Armored)","Mana Mite (Swarm)","Arcane Font (Healer)","Crystal Titan (Boss)","Construct Troop (Group)","Fractured Golem (Splitter)","Warded Construct (Shielded)","Phase Crystal (Evasive)","Living Crystal (Regen)","Arcane Hawk (Flying)","Stoneskin Mage (Iron)","Chrono Mage (Haste)","Illusionist (Mist)","Lifestone Mage (Heal)"]'
           data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]'
           data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]'
           style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }}
@@ -729,7 +729,7 @@ export default function ArcaneCreepSprites() {
           data-label="Arcane Creeps"
           data-frame-size="32x32"
           data-direction="right"
-          data-columns='["Stone Golem","Spark Wisp","Obelisk Guardian","Mana Mite","Arcane Font","Crystal Titan","Construct Troop","Fractured Golem","Warded Construct","Phase Crystal","Living Crystal","Arcane Hawk","Stoneskin Mage","Chrono Mage","Illusionist","Lifestone Mage"]'
+          data-columns='["Stone Golem (Standard)","Spark Wisp (Fast)","Obelisk Guardian (Armored)","Mana Mite (Swarm)","Arcane Font (Healer)","Crystal Titan (Boss)","Construct Troop (Group)","Fractured Golem (Splitter)","Warded Construct (Shielded)","Phase Crystal (Evasive)","Living Crystal (Regen)","Arcane Hawk (Flying)","Stoneskin Mage (Iron)","Chrono Mage (Haste)","Illusionist (Mist)","Lifestone Mage (Heal)"]'
           data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]'
           data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]'
           style={{
