@@ -25,6 +25,12 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'creeps-nature': () => import('../nature_creep_sprites'),
   'creeps-void': () => import('../void_creep_sprites'),
   'creeps-military': () => import('../military_creep_sprites'),
+  'creeps-aliens': () => import('../aliens_creep_sprites'),
+  'creeps-cypherpunk': () => import('../cypherpunk_creep_sprites'),
+  'creeps-infernal': () => import('../infernal_creep_sprites'),
+  'creeps-celestial': () => import('../celestial_creep_sprites'),
+  'creeps-psionic': () => import('../psionic_creep_sprites'),
+  'creeps-harmonic': () => import('../harmonic_creep_sprites'),
 };
 
 /** Maps faction → directory name and expected canvas names */
