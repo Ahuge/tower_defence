@@ -21,6 +21,9 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   mobile_units: () => import('../mobile_unit_sprites'),
   terrain: () => import('../terrain_sprites'),
   'creeps-arcane': () => import('../arcane_creep_sprites'),
+  'creeps-mechanical': () => import('../mechanical_creep_sprites'),
+  'creeps-nature': () => import('../nature_creep_sprites'),
+  'creeps-void': () => import('../void_creep_sprites'),
   'creeps-military': () => import('../military_creep_sprites'),
 };
 
