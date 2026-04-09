@@ -17,6 +17,7 @@ export interface ArenaCreepData {
   isBoss: boolean;
   color: number;
   size: number;
+  creepTypeId?: string;
 }
 
 export class ArenaManager {
@@ -299,6 +300,7 @@ export class ArenaManager {
     const speed = data.speed * 0.5; // Slower in arena so hero can fight them
     const baseDamage = data.isBoss ? 15 : 3;
 
+    const creepFaction = (this.scene as any).creepFaction;
     const creep = new ArenaCreep(
       this.scene,
       x, y,
@@ -309,6 +311,8 @@ export class ArenaManager {
       data.color,
       data.size,
       this.arenaX + this.arenaWidth,
+      data.creepTypeId,
+      creepFaction,
     );
     creep.isWaveSpawned = waveSpawned;
     this.arenaCreeps.push(creep);
@@ -336,8 +340,9 @@ export class ArenaManager {
         const size = ct.size;
         const isBoss = group.creepType === 'boss';
 
+        const creepTypeId = group.creepType;
         this.scene.time.delayedCall(delay, () => {
-          this.spawnArenaCreep({ hp, speed, isBoss, color, size }, true);
+          this.spawnArenaCreep({ hp, speed, isBoss, color, size, creepTypeId }, true);
         });
         spawned++;
       }
@@ -425,6 +430,7 @@ export class ArenaManager {
       hp, speed, baseDmg, false,
       eliteDef.color, eliteDef.size,
       this.arenaX + this.arenaWidth,
+      undefined, (this.scene as any).creepFaction,
     );
     creep.eliteType = eliteDef.mechanic;
 

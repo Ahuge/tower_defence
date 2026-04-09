@@ -1,3 +1,6 @@
+import { FactionId } from '../data/Factions';
+import { createCreepSprite, getCreepSpriteScale, playCreepDeath, hasCreepSprites } from '../systems/CreepSpriteManager';
+
 /** Simplified creep for the hero arena. Moves left→right, attacks hero if in range. */
 export class ArenaCreep {
   x: number;
@@ -38,6 +41,10 @@ export class ArenaCreep {
   pendingEliteAction: string | null = null; // action for ArenaManager to process
 
   private arenaWidth: number;
+  sprite: Phaser.GameObjects.Sprite | null = null;
+  private _prevX: number = 0;
+  private _creepTypeId: string = 'standard';
+  private _creepFaction: FactionId | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -50,6 +57,8 @@ export class ArenaCreep {
     color: number,
     size: number,
     arenaWidth: number,
+    creepTypeId?: string,
+    creepFaction?: FactionId,
   ) {
     this.scene = scene;
     this.x = x;
@@ -71,6 +80,18 @@ export class ArenaCreep {
 
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(14);
+
+    this._creepTypeId = creepTypeId ?? 'standard';
+    this._creepFaction = creepFaction ?? null;
+    this._prevX = x;
+
+    if (creepFaction && creepTypeId && hasCreepSprites(creepFaction, scene)) {
+      this.sprite = createCreepSprite(scene, creepFaction, creepTypeId, x, y);
+      if (this.sprite) {
+        this.sprite.setScale(getCreepSpriteScale(creepTypeId) * 1.5); // arena creeps slightly larger
+        this.sprite.setDepth(14);
+      }
+    }
   }
 
   /** Update creep. Pass hero position for aggro. Returns true if reached base. */
@@ -184,6 +205,13 @@ export class ArenaCreep {
       this.hp = 0;
       this.alive = false;
       this.graphics.destroy();
+      if (this.sprite && this._creepFaction) {
+        playCreepDeath(this.scene, this.sprite, this._creepFaction, this._creepTypeId);
+        this.sprite = null;
+      } else if (this.sprite) {
+        this.sprite.destroy();
+        this.sprite = null;
+      }
     }
   }
 
@@ -194,9 +222,26 @@ export class ArenaCreep {
     const baseSize = this.isBoss ? 12 : 7;
     const drawSize = baseSize * this.size;
 
-    // Body
-    this.graphics.fillStyle(this.color, 1);
-    this.graphics.fillCircle(this.x, this.y, drawSize);
+    // Position and flip sprite
+    if (this.sprite) {
+      this.sprite.setPosition(this.x, this.y);
+      if (this.x < this._prevX) this.sprite.setFlipX(true);
+      else if (this.x > this._prevX) this.sprite.setFlipX(false);
+      this._prevX = this.x;
+
+      // Status tints
+      if (this.stunned > 0) this.sprite.setTint(0xffff44);
+      else if (this.slowed > 0) this.sprite.setTint(0x44aaff);
+      else this.sprite.clearTint();
+
+      // Ground shadow
+      this.graphics.fillStyle(0x000000, 0.2);
+      this.graphics.fillEllipse(this.x, this.y + drawSize * 0.8, drawSize * 1.6, drawSize * 0.5);
+    } else {
+      // Fallback: colored circle
+      this.graphics.fillStyle(this.color, 1);
+      this.graphics.fillCircle(this.x, this.y, drawSize);
+    }
 
     // Stun indicator
     if (this.stunned > 0) {
@@ -237,5 +282,6 @@ export class ArenaCreep {
 
   destroy(): void {
     if (this.graphics) this.graphics.destroy();
+    if (this.sprite) { this.sprite.destroy(); this.sprite = null; }
   }
 }
