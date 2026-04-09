@@ -455,8 +455,8 @@ export default function SpritePreview() {
       root.render(<Comp />);
       await new Promise(r => setTimeout(r, 500));
       const allMobileCanvases = Array.from(container.querySelectorAll('canvas'));
-      const canvases = allMobileCanvases.filter((_, i) => i % 2 === 1);
-      if (canvases.length === 0) canvases.push(...allMobileCanvases);
+      // Mobile units have 1 canvas per unit (no preview/actual pairs)
+      const canvases = allMobileCanvases;
       const mobileNames = Object.keys(MOBILE_FILES);
       for (let ci = 0; ci < canvases.length && ci < mobileNames.length; ci++) {
         const blob = await new Promise<Blob | null>(resolve =>
