@@ -451,7 +451,7 @@ const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
   {
     faction: 'arcane', name: 'Crystal Caverns',
     description: 'Winding corridors around a crystal nexus. Wizard towers guard the corners.',
-    theme: 'stone', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }],
+    theme: 'arcane_crystal', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }],
     builder: buildArcane,
   },
   {
@@ -469,7 +469,7 @@ const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
   {
     faction: 'void', name: 'Rift Dimension',
     description: 'Floating islands over the void. Narrow bridges are your only path.',
-    theme: 'water',
+    theme: 'void_rift',
     entries: [{ col: 0, row: MID_R }, { col: MID_C, row: 0 }],
     exits: [{ col: GRID_COLS - 1, row: MID_R }],
     builder: buildVoid,
@@ -477,13 +477,13 @@ const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
   {
     faction: 'military', name: 'Warzone Outpost',
     description: 'Ruined city grid. Buildings and rubble create urban choke points.',
-    theme: 'mountain', entries: [{ col: GRID_COLS - 1, row: MID_R }], exits: [{ col: 0, row: MID_R }],
+    theme: 'urban', entries: [{ col: GRID_COLS - 1, row: MID_R }], exits: [{ col: 0, row: MID_R }],
     builder: buildMilitary,
   },
   {
     faction: 'aliens', name: 'Hive Tunnels',
     description: 'Carved tunnel network through the hive. Acid pools at junctions.',
-    theme: 'forest',
+    theme: 'hive',
     entries: [{ col: 0, row: 5 }, { col: 0, row: MID_R }, { col: 0, row: 20 }],
     exits: [{ col: GRID_COLS - 1, row: MID_R }],
     builder: buildAliens,
@@ -491,31 +491,31 @@ const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
   {
     faction: 'cypherpunk', name: 'Data Grid',
     description: 'Symmetric circuit board. Processor blocks and data bus traces.',
-    theme: 'stone', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }],
+    theme: 'circuit', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }],
     builder: buildCypherpunk,
   },
   {
     faction: 'infernal', name: 'Hellscape',
     description: 'Lava rivers with bridge crossings. Stalagmites and brimstone.',
-    theme: 'volcanic', entries: [{ col: MID_C, row: 0 }], exits: [{ col: MID_C, row: GRID_ROWS - 1 }],
+    theme: 'hellscape', entries: [{ col: MID_C, row: 0 }], exits: [{ col: MID_C, row: GRID_ROWS - 1 }],
     builder: buildInfernal,
   },
   {
     faction: 'celestial', name: 'Sky Citadel',
     description: 'Marble pillars and open courtyards above the clouds.',
-    theme: 'stone', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 2 }],
+    theme: 'marble', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 2 }],
     builder: buildCelestial,
   },
   {
     faction: 'psionic', name: 'Mind Palace',
     description: 'Spiral corridors converging to the core thought. Brain tanks pulse.',
-    theme: 'water', entries: [{ col: 0, row: 0 }], exits: [{ col: MID_C, row: MID_R }],
+    theme: 'neural', entries: [{ col: 0, row: 0 }], exits: [{ col: MID_C, row: MID_R }],
     builder: buildPsionic,
   },
   {
     faction: 'harmonic', name: 'Concert Hall',
     description: 'Amphitheater with curved rows and orchestra pit. Center stage awaits.',
-    theme: 'stone',
+    theme: 'concert',
     entries: [{ col: MID_C, row: 0 }],
     exits: [{ col: MID_C, row: GRID_ROWS - 1 }],
     builder: buildHarmonic,

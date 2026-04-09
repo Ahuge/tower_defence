@@ -70,6 +70,76 @@ export const THEMES: Record<string, TerrainTheme> = {
       { terrain: 'mountain' },
     ],
   },
+  // Faction-specific themes (use custom terrain spritesheets when available)
+  circuit: {
+    id: 'circuit',
+    ground: 'dirt', // dark circuit board floor
+    rules: [
+      { minSize: 6, maxAspect: 2, terrain: 'water' },  // data pits (animated)
+      { terrain: 'stone' },  // processor blocks
+    ],
+  },
+  hellscape: {
+    id: 'hellscape',
+    ground: 'dirt', // brimstone floor
+    rules: [
+      { elongated: true, terrain: 'lava' },   // lava rivers
+      { minSize: 6, maxAspect: 2, terrain: 'lava' },  // lava pools
+      { terrain: 'mountain' },  // obsidian rocks/stalagmites
+    ],
+  },
+  // Hybrid faction themes (use existing terrain types with faction colors)
+  arcane_crystal: {
+    id: 'arcane_crystal',
+    ground: 'dirt',
+    rules: [
+      { terrain: 'stone' },  // crystal walls
+    ],
+  },
+  void_rift: {
+    id: 'void_rift',
+    ground: 'dirt',
+    rules: [
+      { minSize: 8, terrain: 'water' },  // void pools
+      { terrain: 'mountain' },
+    ],
+  },
+  urban: {
+    id: 'urban',
+    ground: 'dirt',
+    rules: [
+      { terrain: 'stone' },  // buildings
+    ],
+  },
+  hive: {
+    id: 'hive',
+    ground: 'grass',
+    rules: [
+      { terrain: 'trees' },  // organic walls
+    ],
+  },
+  marble: {
+    id: 'marble',
+    ground: 'sand',
+    rules: [
+      { terrain: 'stone' },  // marble pillars
+    ],
+  },
+  neural: {
+    id: 'neural',
+    ground: 'dirt',
+    rules: [
+      { minSize: 6, maxAspect: 2, terrain: 'water' },  // thought pools
+      { terrain: 'stone' },  // brain tanks
+    ],
+  },
+  concert: {
+    id: 'concert',
+    ground: 'dirt',
+    rules: [
+      { terrain: 'stone' },  // seating/instruments
+    ],
+  },
   generic: {
     id: 'generic',
     ground: 'grass',

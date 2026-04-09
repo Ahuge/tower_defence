@@ -20,6 +20,8 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   harmonic: () => import('../harmonic_sprites'),
   mobile_units: () => import('../mobile_unit_sprites'),
   terrain: () => import('../terrain_sprites'),
+  'terrain-cypherpunk': () => import('../cypherpunk_terrain_sprites'),
+  'terrain-infernal': () => import('../infernal_terrain_sprites'),
   'creeps-arcane': () => import('../arcane_creep_sprites'),
   'creeps-mechanical': () => import('../mechanical_creep_sprites'),
   'creeps-nature': () => import('../nature_creep_sprites'),
