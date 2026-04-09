@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-04-09
+
+### Faction Gauntlet Mode
+- **NEW GAME MODE**: Faction Gauntlet — fight all 10 enemy factions in 10-wave stages across unique homeworld maps. 100 waves total.
+- **10 faction homeworld maps**: Crystal Caverns (Arcane), Iron Foundry (Mechanical), Ancient Grove (Nature), Rift Dimension (Void), Warzone Outpost (Military), Hive Tunnels (Aliens), Data Grid (Cypherpunk), Hellscape (Infernal), Sky Citadel (Celestial), Mind Palace (Psionic), Concert Hall (Harmonic).
+- **Custom terrain sprites**: Cypherpunk (circuit board with animated scan lines) and Infernal (lava pools with animated flow/bubbles) have full custom tilesets.
+- **Preview screen**: Shows full stage order, faction names, homeworld maps, and wave ranges before starting.
+- **Stage transitions**: Fade to black → faction banner → fade in new map. Towers destroyed, lives reset to 10, gold reset, frontier persists.
+- **Stage scaling**: HP 1x-4x, speed 1x-1.5x, extra count ramp across 10 stages.
+
+### Creep Sprites
+- **176 unique creature sprites** across all 11 factions — each creep type gets a faction-specific creature design with 4-frame walk cycle + 3-frame death animation.
+- **Creep Faction Select**: New screen after faction select lets you choose which enemy faction's creatures you face.
+- **Art feedback applied**: Non-directional designs (spiders, embers), gambling motifs (void dice), blood priest, speaker bass drop, brain-dome mages, angel wings, floating musical pips, and more.
+- **Hero Defense**: Arena creeps now use faction sprites too.
+
+### Terrain System
+- **Themed terrain**: 6 terrain themes (forest, mountain, water, stone, volcanic, generic) with auto-tiled sprites.
+- **10 faction terrain themes** for gauntlet maps (circuit, hellscape, arcane_crystal, void_rift, urban, hive, marble, neural, concert).
+- **Ground doodads**: ~13% of walkable tiles get scattered decorations (bushes, flowers, pebbles, mushrooms).
+- **Animated water + lava**: 3-frame ripple/flow animations.
+
+### Tower Targeting Priority
+- **5 targeting modes**: first (closest to exit), closest (to tower), strongest (highest HP), weakest (lowest HP), fastest.
+- **17 towers** assigned thematic targeting: snipers → strongest, frost → fastest, chain → closest, gamblers → weakest.
+- Targeting mode shown in tower dock tooltip.
+
+### Desktop Zoom + Pan
+- **Scroll wheel zoom** toward cursor position, **+/-/⊙ buttons**, max 8x zoom.
+- **Middle-click drag** or **left-click drag** (no tower selected) to pan.
+- **Dual camera**: UI stays at 1x while game zooms.
+
+### Mobile Improvements
+- **Responsive tower bar**: Buttons size to fill available width.
+- **Camera fixes**: Viewport clipped above UI bars, elastic bounds, bottom safe margin.
+- **Larger tooltips**, encyclopedia text ~25% bigger, gold/lives visible.
+
+### Multiplayer
+- **Signaling server** (Cloudflare Workers): Room codes replace clipboard SDP exchange. Host creates room → 4-letter code → joiner types code → auto-connects.
+- **Analytics dashboard** at signal.streamingsplats.com: Line charts, faction popularity, world map, game mode tracking.
+- **Versus fixes**: Sends go to opponent (not self), wave sync, minimap fades during build, opponent tower sprites.
+
+### Code Quality
+- **UILayer**: Centralized UI object factory, eliminated per-frame camera filter hack.
+- **PanelBase**: Reusable sidebar panel class with dynamic item management.
+- **BaseFrontierMode**: Shared frontier logic, eliminated ~120 lines of duplication.
+- **Proper shutdown**: destroy() on all modes/panels, event bus cleared, camera removed.
+- **UIScale**: 11 new centralized properties replacing scattered isPhone ternaries.
+
 ## 2026-04-07
 
 ### Sprite Art System

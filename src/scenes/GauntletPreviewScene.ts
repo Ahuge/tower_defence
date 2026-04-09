@@ -44,8 +44,8 @@ export class GauntletPreviewScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const startY = UIScale.y(72);
-    const rowH = UIScale.space(22);
-    const listW = Math.min(getCanvasWidth() - 40, 600);
+    const rowH = UIScale.space(28);
+    const listW = Math.min(getCanvasWidth() - 40, 700);
     const listX = cx - listW / 2;
 
     for (let i = 0; i < stageOrder.length; i++) {
@@ -54,56 +54,55 @@ export class GauntletPreviewScene extends Phaser.Scene {
       const mapDef = getGauntletMap(fid);
       const y = startY + i * rowH;
 
+      // Row background for first stage
+      if (i === 0) {
+        const highlight = this.add.graphics();
+        highlight.fillStyle(0xff4444, 0.08);
+        highlight.fillRect(listX - 4, y - 4, listW + 8, rowH);
+        highlight.lineStyle(1, 0xff4444, 0.4);
+        highlight.strokeRect(listX - 4, y - 4, listW + 8, rowH);
+      }
+
       // Stage number
-      const numColor = i === 0 ? '#ff4444' : '#555555';
+      const numColor = i === 0 ? '#ff4444' : '#666666';
       this.add.text(listX, y, `${i + 1}.`, {
-        fontSize: UIScale.font(12), color: numColor, fontFamily: 'monospace',
+        fontSize: UIScale.font(14), color: numColor, fontFamily: 'monospace',
       });
 
       // Faction color bar
-      const barX = listX + UIScale.space(20);
+      const barX = listX + UIScale.space(22);
       const barG = this.add.graphics();
-      barG.fillStyle(faction.primaryColor, i === 0 ? 1 : 0.5);
-      barG.fillRect(barX, y + 2, 4, UIScale.space(14));
+      barG.fillStyle(faction.primaryColor, i === 0 ? 1 : 0.6);
+      barG.fillRect(barX, y + 1, 5, UIScale.space(16));
 
       // Faction name
-      const nameColor = i === 0 ? '#ffffff' : '#aaaaaa';
-      this.add.text(barX + UIScale.space(10), y, faction.name, {
-        fontSize: UIScale.font(12), color: nameColor, fontFamily: 'monospace',
+      const nameColor = i === 0 ? '#ffffff' : '#cccccc';
+      this.add.text(barX + UIScale.space(12), y, faction.name, {
+        fontSize: UIScale.font(14), color: nameColor, fontFamily: 'monospace',
       });
 
       // Map name
-      this.add.text(barX + UIScale.space(90), y, `— ${mapDef.name}`, {
-        fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
+      this.add.text(barX + UIScale.space(100), y, `— ${mapDef.name}`, {
+        fontSize: UIScale.font(12), color: '#888888', fontFamily: 'monospace',
       });
 
       // Waves label
       const wavesLabel = i === 0 ? 'Waves 1-10' : `Waves ${i * 10 + 1}-${(i + 1) * 10}`;
       this.add.text(listX + listW, y, wavesLabel, {
-        fontSize: UIScale.font(9), color: '#555555', fontFamily: 'monospace',
+        fontSize: UIScale.font(11), color: i === 0 ? '#ff8888' : '#666666', fontFamily: 'monospace',
       }).setOrigin(1, 0);
-
-      // First stage highlight
-      if (i === 0) {
-        const highlight = this.add.graphics();
-        highlight.lineStyle(1, 0xff4444, 0.3);
-        highlight.strokeRect(listX - 4, y - 2, listW + 8, rowH - 2);
-        this.add.text(listX + listW, y + UIScale.space(10), '◄ FIRST', {
-          fontSize: UIScale.font(8), color: '#ff4444', fontFamily: 'monospace',
-        }).setOrigin(1, 0);
-      }
     }
 
     // Summary
     const summaryY = startY + stageOrder.length * rowH + UIScale.space(10);
-    this.add.text(cx, summaryY, `100 waves • 10 lives per stage • Frontier persists`, {
-      fontSize: UIScale.font(9), color: '#555555', fontFamily: 'monospace',
+    this.add.text(cx, summaryY, `100 waves  •  10 lives per stage  •  Frontier persists`, {
+      fontSize: UIScale.font(11), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    // BEGIN button
+    // BEGIN button (large, wide)
     const btnY = summaryY + UIScale.space(24);
-    const btnW = UIScale.space(100);
-    const btnH = UIScale.space(24);
+    const btnW = UIScale.space(160);
+    const btnH = UIScale.space(32);
     const btnG = this.add.graphics();
     btnG.fillStyle(0x881111, 1);
     btnG.fillRect(cx - btnW / 2, btnY, btnW, btnH);
@@ -111,7 +110,7 @@ export class GauntletPreviewScene extends Phaser.Scene {
     btnG.strokeRect(cx - btnW / 2, btnY, btnW, btnH);
 
     const btnText = this.add.text(cx, btnY + btnH / 2, 'BEGIN GAUNTLET', {
-      fontSize: UIScale.font(14), color: '#ff4444', fontFamily: 'monospace',
+      fontSize: UIScale.font(16), color: '#ff4444', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const btnZone = this.add.zone(cx, btnY + btnH / 2, btnW, btnH).setInteractive({ useHandCursor: true });
