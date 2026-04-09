@@ -1,33 +1,34 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== VOID CREEP PALETTE =====
+// Shifted away from Arcane's purple/blue toward black/magenta/teal
 const C = {
-  VOID_DK: '#110022',   // deepest void
-  BODY: '#2a1848',       // main body purple
-  MID: '#3a2860',        // mid-tone
-  LIGHT: '#5a3880',      // light body
-  ENERGY: '#dd44ff',     // void energy
-  BRIGHT: '#ff88ff',     // bright energy
-  EYE: '#ff4488',        // eye pink
-  CORE: '#ffaadd',       // core glow
-  TENT: '#4a2868',       // tentacle
-  HI: '#8855aa',         // highlight
-  SHADOW: '#1a0832',     // shadow
-  PINK: '#ff66aa',       // pink accent
-  MAGENTA: '#cc33cc',    // magenta
-  RIFT: '#6622aa',       // rift color
-  GLOW: '#aa55dd',       // glow
+  VOID_DK: '#080012',   // deepest void (near black)
+  BODY: '#1a1030',       // very dark body (blacker than arcane)
+  MID: '#2a1840',        // mid-tone (darker)
+  LIGHT: '#3a2858',      // light body
+  ENERGY: '#ff33cc',     // void energy (hot magenta, not purple)
+  BRIGHT: '#ff77dd',     // bright energy
+  EYE: '#ff2266',        // eye (hotter red-pink)
+  CORE: '#ff99cc',       // core glow
+  TENT: '#2a1838',       // tentacle (very dark)
+  HI: '#5a3868',         // highlight (muted)
+  SHADOW: '#0a0418',     // shadow (near black)
+  PINK: '#ff4488',       // pink accent
+  MAGENTA: '#ee22aa',    // magenta (shifted from purple)
+  RIFT: '#22ccaa',       // rift color (TEAL — distinctive from arcane)
+  GLOW: '#44ddbb',       // glow (teal-green)
   WHITE: '#ffffff',
   // Extra shading
-  DKBODY: '#1e1038',     // dark body
-  DKRIFT: '#440088',     // dark rift
-  FRAG: '#553388',       // fragment
-  DUST: '#331155',       // fading dust
-  DKENERGY: '#9933cc',   // dark energy
-  GRAY: '#555566',       // iron mage gray
-  DKGRAY: '#333344',     // dark gray
-  LTGRAY: '#777788',     // light gray
-  TEAL: '#4466aa',       // haste accents
+  DKBODY: '#100820',     // dark body
+  DKRIFT: '#118866',     // dark rift (teal)
+  FRAG: '#332244',       // fragment
+  DUST: '#221133',       // fading dust
+  DKENERGY: '#cc2299',   // dark energy (magenta)
+  GRAY: '#444455',       // iron mage gray
+  DKGRAY: '#222233',     // dark gray
+  LTGRAY: '#666677',     // light gray
+  TEAL: '#33bbaa',       // haste accents (teal)
   LTTEAL: '#6688cc',     // light teal
   MIST: '#443366',       // mist color
   LTMIST: '#665588',     // light mist

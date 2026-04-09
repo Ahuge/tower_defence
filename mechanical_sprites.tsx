@@ -1477,8 +1477,8 @@ export default function App(){
       <div style={{overflowX:'auto',overflowY:'auto',maxHeight:'85vh'}}>
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
-            <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}}/>
-            <canvas ref={t.ref} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?8*P_CELL*3:8*T_CELL*2,border:'1px solid #332211'}}/>
+            <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}} data-label={`Mechanical ${t.label} (Preview)`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'}/>
+            <canvas ref={t.ref} data-label={`Mechanical ${t.label}`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?8*P_CELL*3:8*T_CELL*2,border:'1px solid #332211'}}/>
           </div>
         ))}
       </div>
