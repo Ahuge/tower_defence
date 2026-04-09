@@ -436,6 +436,9 @@ export class GameScene extends Phaser.Scene {
       this.mapDef = gauntlet.getCurrentMap();
       this.waves = gauntlet.getStageWaves();
       this.lives = gauntlet.getLivesPerStage();
+      // Rebuild grid with the gauntlet map (was built from default mapId)
+      this.grid = new Grid(this.mapDef);
+      this.recalculatePaths();
       createCreepAnimations(this, this.creepFaction);
     } else {
       this.gameMode = new StandardMode(this.matchMode);
