@@ -73,14 +73,14 @@ export default {
         return await handleAnalytics(request, env, origin);
       }
 
-      // GET /api/analytics/summary — get aggregated stats
+      // GET /api/analytics/summary — get aggregated stats (cached 2 min)
       if (request.method === 'GET' && path === '/api/analytics/summary') {
-        return await handleAnalyticsSummary(env, origin);
+        return await cachedResponse(request, () => handleAnalyticsSummary(env, origin), 120);
       }
 
-      // GET /api/analytics/history — last 30 days time series
+      // GET /api/analytics/history — last 30 days time series (cached 5 min)
       if (request.method === 'GET' && path === '/api/analytics/history') {
-        return await handleAnalyticsHistory(env, origin);
+        return await cachedResponse(request, () => handleAnalyticsHistory(env, origin), 300);
       }
 
       // ===================== Health =====================
@@ -106,6 +106,24 @@ export default {
     }
   },
 };
+
+// ===================== Response Caching =====================
+
+/** Cache GET responses using Cloudflare Cache API to reduce KV reads */
+async function cachedResponse(request: Request, handler: () => Promise<Response>, ttlSeconds: number): Promise<Response> {
+  const cache = caches.default;
+  const cacheKey = new Request(request.url, { method: 'GET' });
+
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const response = await handler();
+  const cacheable = new Response(response.body, response);
+  cacheable.headers.set('Cache-Control', `public, max-age=${ttlSeconds}`);
+  // Don't await — cache in background
+  cache.put(cacheKey, cacheable.clone());
+  return cacheable;
+}
 
 // ===================== Room Handlers =====================
 

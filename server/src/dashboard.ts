@@ -495,7 +495,7 @@ export function getDashboardHTML(baseUrl: string): string {
     }
 
     loadAll();
-    setInterval(loadAll, 60000);
+    setInterval(loadAll, 300000); // refresh every 5 minutes (was 60s)
     window.addEventListener('resize', () => { if (historyData) renderCharts(); });
   </script>
 </body>
