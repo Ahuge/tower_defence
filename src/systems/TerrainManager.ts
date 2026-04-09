@@ -19,7 +19,7 @@ const TILESET_KEY = 'terrain_tileset';
 const DOODAD_KEY = 'terrain_doodads';
 const COLS = 16; // auto-tile variants per row
 
-/** Row index in the tileset for each terrain type */
+/** Row index in the default tileset for each terrain type */
 const TERRAIN_ROW: Record<string, number> = {
   grass: 0,
   dirt: 1,
@@ -32,6 +32,48 @@ const TERRAIN_ROW: Record<string, number> = {
 
 const DOODAD_COLS = 8;
 
+/**
+ * Faction-specific terrain tilesets.
+ * Each defines a spritesheet key, row layout, and which theme it applies to.
+ * Row layout: 0=ground, 1=blocked1(static), 2-4=blocked2(animated 3 frames), 5=nobuild
+ */
+interface FactionTerrain {
+  themeId: string;
+  tilesetKey: string;
+  doodadKey: string;
+  path: string;        // asset path for tileset
+  doodadPath: string;  // asset path for doodads
+  groundRow: number;
+  blockedRow: number;     // static blocked type (e.g. processor, obsidian)
+  animatedRow: number;    // first row of animated blocked (e.g. data pit, lava)
+  animatedFrames: number; // number of animation frames
+  noBuildRow: number;
+  animFps: number;
+  /** Which BlockedTerrainType maps to which row */
+  typeMapping: Record<string, 'blocked' | 'animated'>;
+}
+
+const FACTION_TERRAINS: FactionTerrain[] = [
+  {
+    themeId: 'circuit',
+    tilesetKey: 'terrain_cypherpunk',
+    doodadKey: 'terrain_cypherpunk_doodads',
+    path: 'assets/terrain/cypherpunk_terrain_tileset.png',
+    doodadPath: 'assets/terrain/cypherpunk_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 2,
+    typeMapping: { stone: 'blocked', water: 'animated' },
+  },
+  {
+    themeId: 'hellscape',
+    tilesetKey: 'terrain_infernal',
+    doodadKey: 'terrain_infernal_doodads',
+    path: 'assets/terrain/infernal_terrain_tileset.png',
+    doodadPath: 'assets/terrain/infernal_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.7,
+    typeMapping: { mountain: 'blocked', lava: 'animated' },
+  },
+];
+
 export class TerrainManager {
   private scene: Phaser.Scene;
   private terrainMap = new Map<string, BlockedTerrainType>();
@@ -40,6 +82,8 @@ export class TerrainManager {
   private doodadSprites: Phaser.GameObjects.Image[] = [];
   private groundGraphics: Phaser.GameObjects.Graphics | null = null;
   private useSpritesheet = false;
+  private factionTerrain: FactionTerrain | null = null;
+  private themeId: string = 'generic';
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -55,6 +99,11 @@ export class TerrainManager {
       frameWidth: TILE_SIZE,
       frameHeight: TILE_SIZE,
     });
+    // Faction-specific terrain tilesets
+    for (const ft of FACTION_TERRAINS) {
+      scene.load.spritesheet(ft.tilesetKey, ft.path, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
+      scene.load.spritesheet(ft.doodadKey, ft.doodadPath, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
+    }
   }
 
   /** Create animations for water and lava — call in scene.create() */
@@ -89,12 +138,28 @@ export class TerrainManager {
         repeat: -1,
       });
     }
+
+    // Faction-specific animated terrain
+    for (const ft of FACTION_TERRAINS) {
+      if (!scene.textures.exists(ft.tilesetKey)) continue;
+      for (let v = 0; v < COLS; v++) {
+        const key = `${ft.tilesetKey}_anim_${v}`;
+        if (scene.anims.exists(key)) continue;
+        const frames = [];
+        for (let f = 0; f < ft.animatedFrames; f++) {
+          frames.push({ key: ft.tilesetKey, frame: (ft.animatedRow + f) * COLS + v });
+        }
+        scene.anims.create({ key, frames, frameRate: ft.animFps, repeat: -1 });
+      }
+    }
   }
 
   /** Compute terrain types for all cells based on grid and theme */
   compute(grid: Grid, themeId: string): void {
     const theme = THEMES[themeId] ?? THEMES.generic;
     this.groundType = theme.ground;
+    this.themeId = themeId;
+    this.factionTerrain = FACTION_TERRAINS.find(ft => ft.themeId === themeId) ?? null;
     this.terrainMap.clear();
 
     const rows = grid.rows;
@@ -142,19 +207,39 @@ export class TerrainManager {
       this.groundGraphics.lineBetween(gridLeftX(0), oY + r * TILE_SIZE, gridLeftX(0) + cols * TILE_SIZE, oY + r * TILE_SIZE);
     }
 
+    // Determine which tileset to use
+    const ft = this.factionTerrain;
+    const useFaction = ft && this.scene.textures.exists(ft.tilesetKey);
+    const tileKey = useFaction ? ft!.tilesetKey : TILESET_KEY;
+
     // Ground tiles (grass/dirt sprites on each walkable cell for texture)
-    if (this.useSpritesheet) {
-      const groundRow = TERRAIN_ROW[this.groundType] ?? 0;
+    if (this.useSpritesheet || useFaction) {
+      const groundRow = useFaction ? ft!.groundRow : (TERRAIN_ROW[this.groundType] ?? 0);
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (grid.cells[r][c] === CellType.Blocked) continue;
           const x = gridLeftX(c) + TILE_SIZE / 2;
           const y = oY + r * TILE_SIZE + TILE_SIZE / 2;
-          // Use variant 15 (center/full) for ground tiles
           const frame = groundRow * COLS + 15;
-          const spr = this.scene.add.image(x, y, TILESET_KEY, frame).setDepth(0);
+          const spr = this.scene.add.image(x, y, tileKey, frame).setDepth(0);
           spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-          this.doodadSprites.push(spr); // reuse array for cleanup
+          this.doodadSprites.push(spr);
+        }
+      }
+    }
+
+    // NoBuild cells with faction-specific sprites
+    if (useFaction) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid.cells[r][c] === CellType.NoBuild) {
+            const x = gridLeftX(c) + TILE_SIZE / 2;
+            const y = oY + r * TILE_SIZE + TILE_SIZE / 2;
+            const frame = ft!.noBuildRow * COLS + 15; // center variant
+            const spr = this.scene.add.image(x, y, ft!.tilesetKey, frame).setDepth(1);
+            spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+            this.doodadSprites.push(spr);
+          }
         }
       }
     }
@@ -169,21 +254,45 @@ export class TerrainManager {
         const y = oY + r * TILE_SIZE + TILE_SIZE / 2;
         const tileIdx = autoTileIndex(c, r, this.terrainMap, terrain);
 
-        if (this.useSpritesheet && (terrain === 'water' || terrain === 'lava')) {
-          // Animated sprite
+        // Faction-specific terrain rendering
+        if (useFaction) {
+          const mapping = ft!.typeMapping[terrain];
+          if (mapping === 'animated') {
+            // Animated faction terrain (data pits, lava pools)
+            const animKey = `${ft!.tilesetKey}_anim_${tileIdx}`;
+            if (this.scene.anims.exists(animKey)) {
+              const spr = this.scene.add.sprite(x, y, ft!.tilesetKey).setDepth(1);
+              spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+              spr.play(animKey);
+              this.terrainSprites.push(spr);
+            } else {
+              const frame = ft!.animatedRow * COLS + tileIdx;
+              const spr = this.scene.add.sprite(x, y, ft!.tilesetKey, frame).setDepth(1);
+              spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+              this.terrainSprites.push(spr);
+            }
+          } else {
+            // Static faction terrain (processor blocks, obsidian)
+            const frame = ft!.blockedRow * COLS + tileIdx;
+            const spr = this.scene.add.sprite(x, y, ft!.tilesetKey, frame).setDepth(1);
+            spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+            this.terrainSprites.push(spr);
+          }
+        } else if (this.useSpritesheet && (terrain === 'water' || terrain === 'lava')) {
+          // Default animated sprite
           const spr = this.scene.add.sprite(x, y, TILESET_KEY).setDepth(1);
           spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
           spr.play(`terrain_${terrain}_${tileIdx}`);
           this.terrainSprites.push(spr);
         } else if (this.useSpritesheet) {
-          // Static sprite
+          // Default static sprite
           const row = TERRAIN_ROW[terrain] ?? 2;
           const frame = row * COLS + tileIdx;
           const spr = this.scene.add.sprite(x, y, TILESET_KEY, frame).setDepth(1);
           spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
           this.terrainSprites.push(spr);
         } else {
-          // Fallback: programmatic (if spritesheet not loaded)
+          // Fallback: programmatic
           this.drawTerrainFallback(this.groundGraphics, gridLeftX(c), oY + r * TILE_SIZE, terrain, tileIdx);
         }
       }
@@ -222,8 +331,12 @@ export class TerrainManager {
 
   /** Scatter doodad sprites on walkable tiles */
   private renderDoodads(grid: Grid, oY: number, rows: number, cols: number): void {
-    const hasDoodadSheet = this.scene.textures.exists(DOODAD_KEY);
-    const doodadRow = this.groundType === 'dirt' || this.groundType === 'sand' ? 1 : 0;
+    // Use faction-specific doodads if available
+    const ft = this.factionTerrain;
+    const useFactionDoodads = ft && this.scene.textures.exists(ft.doodadKey);
+    const doodadKey = useFactionDoodads ? ft!.doodadKey : DOODAD_KEY;
+    const hasDoodadSheet = this.scene.textures.exists(doodadKey);
+    const doodadRow = useFactionDoodads ? 0 : (this.groundType === 'dirt' || this.groundType === 'sand' ? 1 : 0);
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -231,7 +344,7 @@ export class TerrainManager {
         if (cell === CellType.Blocked || cell === CellType.NoBuild) continue;
 
         const rand = this.seededRand(c, r);
-        if (rand > 0.13) continue; // ~13% of tiles get a doodad
+        if (rand > 0.13) continue;
 
         const doodadIdx = Math.floor(this.seededRand(c, r, 3) * DOODAD_COLS);
         const x = gridLeftX(c) + TILE_SIZE / 2;
@@ -239,11 +352,10 @@ export class TerrainManager {
 
         if (hasDoodadSheet) {
           const frame = doodadRow * DOODAD_COLS + doodadIdx;
-          const spr = this.scene.add.image(x, y, DOODAD_KEY, frame).setDepth(2);
+          const spr = this.scene.add.image(x, y, doodadKey, frame).setDepth(2);
           spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
           this.doodadSprites.push(spr);
         }
-        // No programmatic fallback needed — ground doodads are optional polish
       }
     }
   }
