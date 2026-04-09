@@ -70,24 +70,43 @@ function AnimationPreview() {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [loop, setLoop] = useState(true);
 
+  const [presets, setPresets] = useState<{ name: string; startRow: number; endRow: number }[]>([]);
+  const [flipped, setFlipped] = useState(false);
+
   const pickSheet = useCallback((sheet: HTMLCanvasElement) => {
     setSourceCanvas(sheet);
-    // Read column/row names from data attributes
+    // Read metadata from data attributes
     try { setColNames(JSON.parse(sheet.getAttribute('data-columns') ?? '[]')); } catch { setColNames([]); }
     try { setRowNames(JSON.parse(sheet.getAttribute('data-rows') ?? '[]')); } catch { setRowNames([]); }
-    // Auto-detect frame size from common sheet dimensions
+    try { setPresets(JSON.parse(sheet.getAttribute('data-presets') ?? '[]')); } catch { setPresets([]); }
+    setFlipped(sheet.getAttribute('data-direction') === 'left');
+
+    // Frame size: prefer explicit, then auto-detect
     const w = sheet.width, h = sheet.height;
-    let fw = 32, fh = 32;
-    for (const trySize of [32, 64, 28, 128]) {
-      if (w % trySize === 0 && h % trySize === 0) {
-        fw = trySize; fh = trySize; break;
+    const explicit = sheet.getAttribute('data-frame-size');
+    let fw: number, fh: number;
+    if (explicit) {
+      const parts = explicit.split('x').map(Number);
+      fw = parts[0] || 32; fh = parts[1] || fw;
+    } else {
+      fw = 32; fh = 32;
+      for (const trySize of [64, 32, 128, 28]) {
+        if (w % trySize === 0 && h % trySize === 0) {
+          fw = trySize; fh = trySize; break;
+        }
       }
     }
     setFrameW(fw); setFrameH(fh);
     const c = Math.floor(w / fw), r = Math.floor(h / fh);
     setCols(c); setRows(r);
     setSelectedCol(0); setStartRow(0);
-    setEndRow(Math.min(3, r - 1));
+    // Use first preset if available
+    const parsed = (() => { try { return JSON.parse(sheet.getAttribute('data-presets') ?? '[]'); } catch { return []; } })();
+    if (parsed.length > 0) {
+      setStartRow(parsed[0].startRow); setEndRow(parsed[0].endRow);
+    } else {
+      setEndRow(Math.min(3, r - 1));
+    }
     setCurrentFrame(0);
   }, []);
 
@@ -158,10 +177,17 @@ function AnimationPreview() {
     ctx.fillStyle = '#0a0a0f';
     ctx.fillRect(0, 0, sw, sh);
 
-    // Draw the current frame from spritesheet
+    // Draw the current frame from spritesheet (flip if direction is left)
     const srcX = selectedCol * frameW;
     const srcY = (startRow + currentFrame) * frameH;
-    ctx.drawImage(sourceCanvas, srcX, srcY, frameW, frameH, 0, 0, sw, sh);
+    if (flipped) {
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.drawImage(sourceCanvas, srcX, srcY, frameW, frameH, -sw, 0, sw, sh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(sourceCanvas, srcX, srcY, frameW, frameH, 0, 0, sw, sh);
+    }
   }, [sourceCanvas, selectedCol, startRow, currentFrame, frameW, frameH, scale]);
 
   const frameCount = Math.max(1, endRow - startRow + 1);
@@ -269,11 +295,22 @@ function AnimationPreview() {
               Sheet: {sourceCanvas.width}×{sourceCanvas.height} | Grid: {cols}×{rows}
             </div>
 
-            {/* Quick presets */}
+            {/* Animation presets (from generator or fallback) */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-              <button onClick={() => { setStartRow(0); setEndRow(3); setCurrentFrame(0); }} style={presetStyle}>Walk (0-3)</button>
-              <button onClick={() => { setStartRow(4); setEndRow(6); setCurrentFrame(0); }} style={presetStyle}>Death (4-6)</button>
-              <button onClick={() => { setStartRow(0); setEndRow(Math.max(0, rows - 1)); setCurrentFrame(0); }} style={presetStyle}>All Rows</button>
+              {presets.length > 0 ? presets.map((p, i) => (
+                <button key={i} onClick={() => { setStartRow(p.startRow); setEndRow(p.endRow); setCurrentFrame(0); }} style={presetStyle}>
+                  {p.name} ({p.startRow}-{p.endRow})
+                </button>
+              )) : (
+                <>
+                  <button onClick={() => { setStartRow(0); setEndRow(Math.min(3, rows - 1)); setCurrentFrame(0); }} style={presetStyle}>First 4</button>
+                  <button onClick={() => { setStartRow(4); setEndRow(Math.min(6, rows - 1)); setCurrentFrame(0); }} style={presetStyle}>Rows 4-6</button>
+                </>
+              )}
+              <button onClick={() => { setStartRow(0); setEndRow(Math.max(0, rows - 1)); setCurrentFrame(0); }} style={presetStyle}>All</button>
+              <button onClick={() => setFlipped(!flipped)} style={{ ...presetStyle, color: flipped ? '#ffaa44' : '#888' }}>
+                Flip: {flipped ? 'Yes' : 'No'}
+              </button>
             </div>
           </div>
 

@@ -717,15 +717,21 @@ export default function ArcaneCreepSprites() {
         <canvas
           ref={previewRef}
           data-label="Arcane Creeps (Preview)"
+          data-frame-size="32x32"
+          data-direction="right"
           data-columns='["Stone Golem","Spark Wisp","Obelisk Guardian","Mana Mite","Arcane Font","Crystal Titan","Construct Troop","Fractured Golem","Warded Construct","Phase Crystal","Living Crystal","Arcane Hawk","Stoneskin Mage","Chrono Mage","Illusionist","Lifestone Mage"]'
           data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]'
+          data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]'
           style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }}
         />
         <canvas
           ref={sheetRef}
           data-label="Arcane Creeps"
+          data-frame-size="32x32"
+          data-direction="right"
           data-columns='["Stone Golem","Spark Wisp","Obelisk Guardian","Mana Mite","Arcane Font","Crystal Titan","Construct Troop","Fractured Golem","Warded Construct","Phase Crystal","Living Crystal","Arcane Hawk","Stoneskin Mage","Chrono Mage","Illusionist","Lifestone Mage"]'
           data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]'
+          data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]'
           style={{
             display: view === 'actual' ? 'block' : 'none',
             imageRendering: 'pixelated',
