@@ -24,6 +24,13 @@ export interface TerrainTheme {
   id: string;
   ground: GroundType;
   rules: TerrainRule[];
+  /** Optional custom colors for programmatic rendering */
+  colors?: {
+    ground?: number;       // override ground fill color
+    gridLine?: number;     // override grid line color
+    noBuild?: number;      // override NoBuild fill
+    noBuildLine?: number;  // override NoBuild cross lines
+  };
 }
 
 // ===================== Theme Definitions =====================
@@ -69,6 +76,151 @@ export const THEMES: Record<string, TerrainTheme> = {
       { minSize: 6, terrain: 'lava' },
       { terrain: 'mountain' },
     ],
+  },
+  // Faction-specific themes (use custom terrain spritesheets when available)
+  circuit: {
+    id: 'circuit',
+    ground: 'dirt', // dark circuit board floor
+    rules: [
+      { minSize: 6, maxAspect: 2, terrain: 'water' },  // data pits (animated)
+      { terrain: 'stone' },  // processor blocks
+    ],
+  },
+  ancient_grove: {
+    id: 'ancient_grove',
+    ground: 'grass',
+    rules: [
+      { minSize: 8, terrain: 'trees' },  // ancient tree clusters
+      { minSize: 4, maxAspect: 2, terrain: 'water' }, // enchanted springs
+      { terrain: 'trees' },
+    ],
+    colors: {
+      ground: 0x1a2a12,
+      gridLine: 0x2a3a22,
+      noBuild: 0x223308,
+      noBuildLine: 0xaa6644,
+    },
+  },
+  factory: {
+    id: 'factory',
+    ground: 'dirt',
+    rules: [
+      { terrain: 'stone' },  // machine blocks
+    ],
+    colors: {
+      ground: 0x1a1a18,       // dark steel floor
+      gridLine: 0x2a2a28,     // riveted floor plates
+      noBuild: 0x222218,      // conveyor belt
+      noBuildLine: 0xaa8833,  // brass conveyor rail
+    },
+  },
+  hellscape: {
+    id: 'hellscape',
+    ground: 'dirt', // brimstone floor
+    rules: [
+      { elongated: true, terrain: 'lava' },   // lava rivers
+      { minSize: 6, maxAspect: 2, terrain: 'lava' },  // lava pools
+      { terrain: 'mountain' },  // obsidian rocks/stalagmites
+    ],
+  },
+  // Hybrid faction themes — custom colors make each map feel unique
+  arcane_crystal: {
+    id: 'arcane_crystal',
+    ground: 'dirt',
+    rules: [
+      { minSize: 8, maxAspect: 2, terrain: 'water' },  // arcane pools
+      { terrain: 'stone' },  // crystal walls / wizard towers
+    ],
+    colors: {
+      ground: 0x1a1828,       // dark purple-tinted floor
+      gridLine: 0x2a2838,     // subtle purple grid
+      noBuild: 0x2a1848,      // arcane circle glow
+      noBuildLine: 0x6644aa,  // purple rune lines
+    },
+  },
+  void_rift: {
+    id: 'void_rift',
+    ground: 'dirt',
+    rules: [
+      { minSize: 8, maxAspect: 2, terrain: 'water' },  // void pools
+      { terrain: 'mountain' },  // floating island edges
+    ],
+    colors: {
+      ground: 0x0a0816,       // near-black void
+      gridLine: 0x1a1428,     // very dark grid
+      noBuild: 0x110822,      // rift shimmer
+      noBuildLine: 0x22ccaa,  // teal rift energy
+    },
+  },
+  urban: {
+    id: 'urban',
+    ground: 'dirt',
+    rules: [
+      { minSize: 6, terrain: 'stone' },  // buildings
+      { terrain: 'mountain' },            // rubble piles
+    ],
+    colors: {
+      ground: 0x2a2828,       // cracked concrete/asphalt
+      gridLine: 0x3a3838,     // road markings
+      noBuild: 0x1a1a18,      // trench dirt
+      noBuildLine: 0x555544,  // sandbag outlines
+    },
+  },
+  hive: {
+    id: 'hive',
+    ground: 'grass',
+    rules: [
+      { minSize: 10, terrain: 'trees' },  // thick hive walls
+      { terrain: 'trees' },                // organic chitin
+    ],
+    colors: {
+      ground: 0x1a2a12,       // dark organic floor
+      gridLine: 0x2a3a22,     // chitin-textured grid
+      noBuild: 0x223308,      // acid pool edge
+      noBuildLine: 0x88ff22,  // acid green glow
+    },
+  },
+  marble: {
+    id: 'marble',
+    ground: 'sand',
+    rules: [
+      { minSize: 4, terrain: 'stone' },  // marble pillars / walls
+      { terrain: 'stone' },               // all structures are marble
+    ],
+    colors: {
+      ground: 0x2a2a30,       // polished marble floor (slightly blue-gray)
+      gridLine: 0x3a3a44,     // marble seam lines
+      noBuild: 0x222230,      // cloud shadow
+      noBuildLine: 0x8888aa,  // cloud wisps
+    },
+  },
+  neural: {
+    id: 'neural',
+    ground: 'dirt',
+    rules: [
+      { minSize: 6, maxAspect: 2, terrain: 'water' },  // thought pools
+      { terrain: 'stone' },  // brain tanks / spiral walls
+    ],
+    colors: {
+      ground: 0x18102a,       // deep psychic purple floor
+      gridLine: 0x281840,     // neural pathway hints
+      noBuild: 0x221440,      // neural corridor
+      noBuildLine: 0xaa44cc,  // pulsing psychic energy
+    },
+  },
+  concert: {
+    id: 'concert',
+    ground: 'dirt',
+    rules: [
+      { minSize: 4, terrain: 'stone' },  // seating rows / instrument pedestals
+      { terrain: 'stone' },               // theater walls
+    ],
+    colors: {
+      ground: 0x2a2018,       // polished wood stage floor
+      gridLine: 0x3a3028,     // wood grain lines
+      noBuild: 0x1a1420,      // orchestra pit (dark, recessed)
+      noBuildLine: 0x6688aa,  // metallic instrument hint
+    },
   },
   generic: {
     id: 'generic',

@@ -14,7 +14,7 @@ import { SpawnManager } from '../systems/SpawnManager';
 import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
-import { FactionId, getFaction } from '../data/Factions';
+import { FactionId, getFaction, FACTIONS } from '../data/Factions';
 import { MatchMode, WaveDefinition, getWavesForMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
 import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
@@ -27,6 +27,7 @@ import { StandardMode } from '../systems/modes/StandardMode';
 import { BaseFrontierMode } from '../systems/modes/BaseFrontierMode';
 import { BattleMode } from '../systems/modes/BattleMode';
 import { HeroDefenseMode } from '../systems/modes/HeroDefenseMode';
+import { GauntletMode } from '../systems/modes/GauntletMode';
 import { HeroLeakHandler } from '../systems/HeroLeakHandler';
 import { ArenaManager } from '../systems/ArenaManager';
 import { AbilitySystem } from '../systems/AbilitySystem';
@@ -174,8 +175,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   creepFaction: FactionId = 'arcane';
+  private _gauntletOrder: FactionId[] | undefined;
+  private _gauntletTransitioning: boolean = false;
+  private _gauntletHud: Phaser.GameObjects.Text | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -185,6 +189,8 @@ export class GameScene extends Phaser.Scene {
     this.dailySeed = data.dailySeed ?? false;
     this.randomSeed = data.randomSeed ?? 0;
     this.creepFaction = data.creepFaction ?? 'arcane';
+    this._gauntletOrder = (data as any).gauntletOrder ?? undefined;
+    this._gauntletTransitioning = false;
     this.generatedMapDef = null;
     // Hero defense requires its own map (12-row grid)
     if (this.matchMode === 'hero_defense') {
@@ -425,6 +431,25 @@ export class GameScene extends Phaser.Scene {
       this.gameMode = new BattleMode();
     } else if (this.matchMode === 'circle_coop' && this.circle) {
       this.gameMode = new CircleCoopMode();
+    } else if (this.matchMode === 'gauntlet') {
+      const gauntlet = new GauntletMode(this.faction ?? 'arcane', this.difficulty, this._gauntletOrder);
+      this.gameMode = gauntlet;
+      // Set initial creep faction and waves for stage 1
+      this.creepFaction = gauntlet.getCurrentFaction();
+      this.mapDef = gauntlet.getCurrentMap();
+      this.waves = gauntlet.getStageWaves();
+      this.lives = gauntlet.getLivesPerStage();
+      // Rebuild grid with the gauntlet map (was built from default mapId)
+      this.grid = new Grid(this.mapDef);
+      this.recalculatePaths();
+      createCreepAnimations(this, this.creepFaction);
+      // Gauntlet HUD: stage indicator
+      const factionName = FACTIONS[this.creepFaction]?.name ?? this.creepFaction;
+      this._gauntletHud = this.add.text(
+        getGridOffsetX() + 8, 4,
+        `Stage ${gauntlet.getStageNumber()}/${gauntlet.getTotalStages()}: ${factionName}`,
+        { fontSize: UIScale.font(11), color: '#ff6644', fontFamily: 'monospace' }
+      ).setDepth(30);
     } else {
       this.gameMode = new StandardMode(this.matchMode);
     }
@@ -1115,6 +1140,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.waveMgr.isComplete() && this.creeps.length === 0) {
+      // Gauntlet: stage transition instead of game over
+      if (this.matchMode === 'gauntlet' && !this._gauntletTransitioning) {
+        const gauntlet = this.gameMode as any;
+        if (gauntlet && typeof gauntlet.hasNextStage === 'function' && gauntlet.hasNextStage()) {
+          this._gauntletTransitioning = true;
+          this.startGauntletTransition(gauntlet);
+          return;
+        }
+      }
+      if (this._gauntletTransitioning) return; // still transitioning
+
       this.eventBus.emit('gameWon');
       if (this.versus) {
         this.versus.notifyGameOver(true, this.statsTracker.stats, this.currentWave, this.lives);
@@ -1670,6 +1706,101 @@ export class GameScene extends Phaser.Scene {
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
     }
+  }
+
+  /** Gauntlet: transition to the next stage */
+  private startGauntletTransition(gauntlet: GauntletMode): void {
+    const nextFaction = gauntlet.advanceStage();
+    if (!nextFaction) return; // shouldn't happen, checked hasNextStage
+
+    const stageNum = gauntlet.getStageNumber();
+    const factionName = FACTIONS[nextFaction]?.name ?? nextFaction;
+
+    // Fade to black
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      // Destroy all towers
+      for (const t of this._towers) t.destroy();
+      this._towers = [];
+      // Destroy all creeps
+      for (const c of this._creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
+      this._creeps = [];
+
+      // Load new stage
+      this.creepFaction = nextFaction;
+      this.mapDef = gauntlet.getCurrentMap();
+      this.waves = gauntlet.getStageWaves();
+      this.currentWave = 0;
+      this.lives = gauntlet.getLivesPerStage();
+      this.betweenWaves = true;
+      this.waveActive = false;
+      this.economy.gold = gauntlet.getStageStartingGold();
+
+      // Rebuild grid with new map
+      this.grid = new Grid(this.mapDef);
+      this.allPaths = this.grid.entries.map(e => {
+        const closest = this.grid.exits.reduce((best, ex) => {
+          const d = Math.abs(e.col - ex.col) + Math.abs(e.row - ex.row);
+          return d < best.d ? { ex, d } : best;
+        }, { ex: this.grid.exits[0], d: Infinity }).ex;
+        return findPath(this.grid, e, closest);
+      });
+      this.currentPath = this.allPaths.find(p => p !== null) ?? null;
+
+      // Create creep animations for new faction
+      createCreepAnimations(this, this.creepFaction);
+
+      // Redraw terrain + grid
+      this.drawGrid();
+      this.drawPath();
+
+      // Show stage banner
+      const cx = getCanvasWidth() / 2;
+      const cy = GAME_HEIGHT / 2;
+      const bannerBg = this.add.graphics().setDepth(50);
+      bannerBg.fillStyle(0x000000, 0.8);
+      bannerBg.fillRect(0, cy - 60, getCanvasWidth(), 120);
+
+      const stageText = this.add.text(cx, cy - 20, `STAGE ${stageNum}`, {
+        fontSize: UIScale.font(28), color: '#ff4444', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(51);
+
+      const factionText = this.add.text(cx, cy + 20, factionName, {
+        fontSize: UIScale.font(18), color: '#ffffff', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(51);
+
+      // Fade in
+      this.cameras.main.fadeIn(500, 0, 0, 0);
+
+      // Remove banner after 2 seconds, then allow gameplay
+      this.time.delayedCall(2500, () => {
+        bannerBg.destroy();
+        stageText.destroy();
+        factionText.destroy();
+        this._gauntletTransitioning = false;
+        // Rebuild wave controller for new stage
+        this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {
+          canStartWave: () => !!this.currentPath,
+          onWaveStart: (wave, waveNum, totalWaves) => {
+            this.towerMgr.spawnBroodMotherSwarmlings();
+            const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
+            this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
+            this.upcomingWaves.update(waveNum, this.waves);
+            this.eventBus.emit('waveStarted', waveNum);
+            this.gameMode.onWaveStart?.(wave, waveNum);
+          },
+          onWaveCleared: (waveNum) => {
+            this.onWaveCleared(waveNum);
+          },
+        });
+        // Update gauntlet HUD
+        if (this._gauntletHud) {
+          this._gauntletHud.setText(`Stage ${stageNum}/${gauntlet.getTotalStages()}: ${factionName}`);
+        }
+        this.eventLog.gameMessage(`Stage ${stageNum}: ${factionName} — 10 waves!`);
+        this.eventLog.gameMessage('Press SPACE to start wave 1.');
+      });
+    });
   }
 
   /** Clean up on scene shutdown (returning to menu, restarting) */

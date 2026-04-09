@@ -274,3 +274,41 @@ Cooperative mode on a shared map. All players build towers together to survive.
 - Frontier buildings still work individually — invest in your own economy.
 - Zone edges are critical choke points. Build your strongest towers there.
 - The central gaps are shared territory — consider which player defends each corridor.
+
+---
+
+## Faction Gauntlet (100 waves)
+
+A 10-stage campaign across every faction's homeworld. Each stage is 10 waves on a unique themed map with custom terrain art.
+
+- **Stages**: 10 stages, each representing a faction's homeworld. Order is randomized each run (excluding your chosen faction).
+- **Waves per stage**: 10. Creep composition matches the stage's faction theme. Wave 10 of each stage is a boss wave.
+- **Scaling**: HP scales from 1x (stage 1) to 4x (stage 10). Speed scales from 1x to 1.5x. Extra creep count increases +0-4 across stages.
+- **Economy**: Gold resets to starting amount each stage. Frontier towers persist across all stages.
+- **Lives**: 20 per stage. Reset each stage — you always start fresh.
+- **Maps**: Each faction has a custom homeworld map with unique blocked cells, NoBuild zones, entry/exit points, and terrain theme:
+  - **Arcane** — Crystal Caverns: glowing crystal clusters, arcane-infused ground
+  - **Military** — Iron Foundry: factory floors, conveyor belts, molten metal
+  - **Nature** — Ancient Grove: massive trees, moss-covered stones, forest canopy
+  - **Void** — Rift Dimension: floating islands, reality tears, void energy
+  - **Cypherpunk** — Warzone Outpost: urban rubble, sandbags, watchtowers
+  - **Aliens** — Hive Tunnels: organic corridors, egg clusters, slime pools
+  - **Mechanical** — Data Grid: circuit boards, server racks, holographic displays
+  - **Infernal** — Hellscape: lava flows, obsidian spires, fire vents
+  - **Celestial** — Sky Citadel: marble columns, cloud platforms, golden arches
+  - **Psionic** — Mind Palace: neural pathways, thought bubbles, synaptic nodes
+- **Terrain**: Each map uses a custom faction tileset with animated blocked tiles, themed NoBuild zones, and unique doodads. The terrain visually transforms between stages.
+- **Preview screen**: Before starting, you see the randomized stage order with faction names, map names, wave ranges, and color-coded bars. First stage is highlighted.
+- **HUD**: A persistent "Stage N/10: [Faction Name]" indicator shows your progress.
+- **Stage transitions**: Completing a stage triggers a fade-out, map/terrain rebuild, and a banner announcing the next faction before play resumes.
+- **Win condition**: Survive all 100 waves across 10 stages.
+- **Sends**: Available. Same rules as Standard.
+- **Frontier**: Buildings persist across stages — invest early for compound returns.
+
+### Strategy Tips
+- Frontier investment is critical — buildings carry over, gold doesn't.
+- Each stage resets lives to 20, so you can afford to take hits on tough maps.
+- Later stages have significantly tougher creeps (4x HP by stage 10) — plan your tower composition accordingly.
+- Boss waves (every 10th wave) are the biggest threat. Build maze choke points before them.
+- Some homeworld maps have unusual layouts — adapt your maze strategy to the terrain.
+- The preview screen lets you plan ahead. Note which factions appear early vs. late.

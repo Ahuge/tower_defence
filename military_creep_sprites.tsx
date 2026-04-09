@@ -1094,9 +1094,8 @@ const DRAW_FNS = [
 // ===== RENDER FULL SHEET =====
 function drawCreeps(ctx: any) {
   ctx.imageSmoothingEnabled = false;
-  // Clear
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+  // Clear to transparent
+  ctx.clearRect(0, 0, COLS * CELL, ROWS * CELL);
 
   for (let col = 0; col < COLS; col++) {
     for (let row = 0; row < ROWS; row++) {

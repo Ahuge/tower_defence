@@ -6,6 +6,35 @@ import { UIScale } from '../systems/UIScale';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v25 — Faction Gauntlet',
+    changes: [
+      'NEW MODE: Faction Gauntlet — 100 waves across 10 faction homeworlds',
+      '10 unique themed maps with custom pixel art terrain and animated tiles',
+      'Each faction homeworld: crystal caverns, iron foundry, ancient grove, rift dimension, warzone outpost, hive tunnels, data grid, hellscape, sky citadel, mind palace, concert hall',
+      'Preview screen shows full randomized stage order before starting',
+      'Stage transitions: fade to black, faction banner, new map loads',
+      'Frontier + send income persist, towers reset, lives reset to 10 per stage',
+      'Stage scaling: HP 1x-4x, speed 1x-1.5x, extra count ramp',
+      'HUD shows current stage and faction during gameplay',
+    ],
+  },
+  {
+    version: 'v24 — Creep Sprites + Terrain + Zoom',
+    changes: [
+      'Creep sprites for all 11 factions — 176 unique creatures with walk + death animations',
+      'Creep Faction Select: choose which enemy faction you face',
+      'Terrain system: themed auto-tiled terrain for all maps (mountain, water, trees, stone, lava)',
+      'Ground doodads: bushes, flowers, pebbles, mushrooms scattered on walkable tiles',
+      'Tower targeting priority: snipers target strongest, frost targets fastest, etc.',
+      'Desktop zoom: scroll wheel + middle-click pan + buttons',
+      'Mobile camera: pinch zoom, elastic bounds, responsive tower bar',
+      'UILayer system: eliminated camera filter bugs',
+      'PanelBase: reusable sidebar panel class',
+      'Multiplayer signaling server (Cloudflare Workers)',
+      'Analytics dashboard with world map',
+    ],
+  },
+  {
     version: 'v23 — Sprite Art + Balance',
     changes: [
       'Pixel art sprites for all 11 factions — towers, projectiles, and heroes',

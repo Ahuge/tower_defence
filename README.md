@@ -64,12 +64,13 @@ See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.
 
 ## Major Systems
 
-### Match Modes (7)
+### Match Modes (8)
 - **Sprint** (15 waves) — Quick game
 - **Standard** (30 waves) — Full experience
 - **Marathon** (Endless) — Infinite scaling
 - **Battle** (Dual Economy) — Gold + Essence compound growth loop
 - **Hero Defense** (30 waves) — Control a hero in an arena. 10x creeps, 11 heroes (3 offered per game), leveling (1-15), ultimate abilities (R), item shop, accessory shop (rotating), elite enemies at wave 10/20/30, floating damage numbers.
+- **Faction Gauntlet** (100 waves) — Fight all 10 enemy factions in 10-wave stages on unique themed homeworld maps. Towers reset between stages, frontier persists. Stage scaling ramps difficulty.
 - **Versus 1v1** — P2P multiplayer. Sends go to opponent.
 - **Circle Co-op** (2-4 players) — Shared map, zone building, shared lives.
 
