@@ -50,7 +50,7 @@ const mk = (c: any, o: number[], gw: number, gh: number, ps: number) => {
 };
 
 // ===== SHEET LAYOUT =====
-const PX = 2, GRID = 16, CELL = GRID * PX; // 32x32 pixel frames
+const PX = 2, GRID = 32, CELL = GRID * PX; // 64x64 pixel frames
 const COLS = 16; // 16 creep types
 const ROWS = 7;  // walk0-3, death0-2
 const NAMES = [
@@ -62,6 +62,7 @@ const ROW_LABELS = ['walk0', 'walk1', 'walk2', 'walk3', 'death0', 'death1', 'dea
 
 // ===== CREEP DRAWING FUNCTIONS =====
 // Each function: (ctx, origin, frame) where frame=0-6
+// Grid is now 32x32 (was 16x16), giving much more detail space
 
 // 0: Infantry — Soldier with helmet, rifle, backpack
 function drawInfantry(c: any, o: number[], frame: number) {
@@ -69,178 +70,229 @@ function drawInfantry(c: any, o: number[], frame: number) {
   if (frame >= 4) { // death
     if (frame === 4) {
       // stumbling backward
-      p(7, 5, C.HELM); p(8, 5, C.HELM);
-      p(7, 6, C.SKIN); p(8, 6, C.DKSKIN);
-      b(6, 7, 4, 3, C.BODY); p(7, 7, C.LTOLIVE);
-      p(10, 7, C.METAL); p(11, 7, C.DKMETAL); // rifle
-      p(5, 8, C.GEAR); // backpack
-      p(6, 10, C.BODY); p(7, 10, C.BODY);
-      p(8, 10, C.BROWN); p(9, 10, C.BROWN);
-      p(5, 11, C.BROWN); p(10, 11, C.BROWN);
+      b(13, 8, 6, 4, C.HELM); p(14, 9, C.DARK); p(18, 8, C.DARK);
+      b(14, 12, 4, 2, C.SKIN); p(15, 12, C.DKSKIN); p(17, 13, C.DKSKIN);
+      b(11, 14, 10, 6, C.BODY); p(12, 14, C.LTOLIVE); p(13, 15, C.LTOLIVE);
+      p(20, 19, C.DARK); p(20, 18, C.DARK);
+      // rifle flying off
+      b(21, 13, 4, 2, C.METAL); p(25, 13, C.DKMETAL); p(22, 15, C.BROWN);
+      // backpack
+      b(9, 15, 3, 4, C.GEAR); p(9, 14, C.DARK);
+      // belt
+      b(11, 20, 10, 1, C.KHAKI);
+      // legs stumbling
+      b(12, 21, 3, 3, C.BROWN); b(17, 21, 3, 3, C.BROWN);
+      p(10, 24, C.DARK); p(11, 24, C.DARK); p(20, 24, C.DARK); p(21, 24, C.DARK);
     } else if (frame === 5) {
       // falling horizontal
-      b(4, 9, 3, 2, C.BODY); p(4, 9, C.LTOLIVE);
-      p(3, 9, C.HELM); p(3, 10, C.SKIN);
-      p(7, 9, C.GEAR); p(8, 9, C.GEAR);
-      p(9, 10, C.BROWN); p(10, 10, C.BROWN);
-      p(11, 9, C.METAL); p(12, 9, C.DKMETAL); // rifle flying
-      p(5, 11, C.DARK);
+      b(7, 18, 8, 4, C.BODY); p(7, 18, C.LTOLIVE); p(8, 19, C.LTOLIVE);
+      b(5, 18, 3, 3, C.HELM); p(5, 21, C.SKIN); p(6, 21, C.DKSKIN);
+      b(15, 18, 4, 3, C.GEAR);
+      b(19, 19, 4, 2, C.BROWN); b(23, 19, 2, 2, C.DARK);
+      b(25, 17, 4, 2, C.METAL); p(29, 17, C.DKMETAL); // rifle flying
+      p(10, 22, C.DARK); p(11, 22, C.DARK);
+      b(7, 22, 8, 1, C.KHAKI);
     } else {
-      // helmet + scattered gear
-      p(5, 12, C.HELM); p(6, 12, C.HELM);
-      p(8, 11, C.METAL); p(9, 12, C.DKMETAL);
-      p(4, 13, C.GEAR); p(10, 13, C.BROWN);
-      p(7, 13, C.DARK);
+      // helmet + scattered gear on ground
+      b(9, 24, 4, 3, C.HELM); p(10, 25, C.DARK);
+      b(17, 23, 3, 2, C.METAL); p(20, 24, C.DKMETAL);
+      b(7, 26, 3, 2, C.GEAR); p(22, 27, C.BROWN); p(23, 27, C.BROWN);
+      p(14, 27, C.DARK); p(15, 27, C.DARK); p(16, 27, C.DARK);
     }
     return;
   }
   // Walk frames 0-3
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
+  const legOff = [0, 2, 0, -2][step];
   const armOff = [0, -1, 0, 1][step];
   const bobY = [0, 0, 0, 0][step];
 
-  // Helmet
-  b(7, 3 + bobY, 3, 2, C.HELM); p(6, 4 + bobY, C.HELM);
-  p(9, 3 + bobY, C.DARK); // helmet shadow
-  // Face
-  p(7, 5 + bobY, C.SKIN); p(8, 5 + bobY, C.DKSKIN);
+  // Helmet (3-4px tall, rounded)
+  b(13, 5 + bobY, 7, 4, C.HELM); p(12, 7 + bobY, C.HELM); p(20, 7 + bobY, C.HELM);
+  p(14, 5 + bobY, C.LTOLIVE); p(15, 5 + bobY, C.LTOLIVE); // helmet highlight
+  p(19, 6 + bobY, C.DARK); p(19, 7 + bobY, C.DARK); // helmet shadow
+  p(13, 8 + bobY, C.DARK); // helmet rim shadow
+  // Face under helmet
+  b(14, 9 + bobY, 4, 3, C.SKIN); p(17, 9 + bobY, C.DKSKIN); p(17, 10 + bobY, C.DKSKIN);
+  p(14, 10 + bobY, C.DKSKIN); // eye area
+  p(15, 11 + bobY, C.DKSKIN); // mouth
   // Body
-  b(6, 6 + bobY, 4, 3, C.BODY);
-  p(6, 6 + bobY, C.LTOLIVE); p(9, 8 + bobY, C.DARK);
-  // Backpack
-  p(5, 7 + bobY, C.GEAR); p(5, 8 + bobY, C.GEAR);
-  p(5, 6 + bobY, C.DARK);
+  b(12, 12 + bobY, 8, 7, C.BODY);
+  p(12, 12 + bobY, C.LTOLIVE); p(13, 13 + bobY, C.LTOLIVE); // highlight
+  p(19, 17 + bobY, C.DARK); p(19, 18 + bobY, C.DARK); // shadow
+  // Chest detail / pockets
+  b(14, 14 + bobY, 3, 2, C.GEAR); p(14, 14 + bobY, C.LTOLIVE);
+  // Backpack (tall, detailed)
+  b(9, 13 + bobY, 3, 6, C.GEAR); p(9, 12 + bobY, C.DARK); p(10, 12 + bobY, C.DARK);
+  p(10, 14 + bobY, C.DKOLIVE); p(10, 16 + bobY, C.DKOLIVE); // backpack straps
+  p(9, 18 + bobY, C.DARK); // backpack bottom shadow
   // Belt
-  b(6, 9 + bobY, 4, 1, C.KHAKI);
-  // Rifle (held forward)
-  p(10, 6 + bobY + armOff, C.METAL); p(11, 6 + bobY + armOff, C.METAL);
-  p(12, 6 + bobY + armOff, C.DKMETAL); p(10, 7 + bobY + armOff, C.BROWN);
+  b(12, 19 + bobY, 8, 1, C.KHAKI); p(15, 19 + bobY, C.METAL); // buckle
+  // Rifle (held forward, 2px wide barrel)
+  b(20, 12 + bobY + armOff, 2, 2, C.BROWN); // stock
+  b(22, 12 + bobY + armOff, 2, 1, C.METAL); // receiver
+  b(24, 12 + bobY + armOff, 3, 1, C.METAL); // barrel
+  p(27, 12 + bobY + armOff, C.DKMETAL); // muzzle
+  p(22, 13 + bobY + armOff, C.DKMETAL); // trigger guard
+  p(20, 14 + bobY + armOff, C.BODY); // front arm gripping
   // Arms
-  p(6, 7 + bobY + armOff, C.BODY); // rear arm
-  p(10, 7 + bobY, C.BODY); // front arm (by rifle)
-  // Legs
-  p(7, 10 + bobY, C.BROWN); p(8, 10 + bobY, C.BROWN);
-  p(7 - (legOff > 0 ? 1 : 0), 11 + bobY, C.BROWN);
-  p(8 + (legOff > 0 ? 1 : 0), 11 + bobY, C.BROWN);
+  p(11, 14 + bobY + armOff, C.BODY); p(11, 15 + bobY + armOff, C.BODY); // rear arm
+  p(20, 15 + bobY, C.BODY); p(20, 14 + bobY, C.BODY); // front arm near rifle
+  // Legs with clear alternation
+  b(13, 20 + bobY, 3, 4, C.BROWN); b(17, 20 + bobY, 3, 4, C.BROWN);
+  p(13 - (legOff > 0 ? 2 : 0), 22 + bobY, C.BROWN); p(14 - (legOff > 0 ? 2 : 0), 22 + bobY, C.BROWN);
+  p(17 + (legOff > 0 ? 2 : 0), 22 + bobY, C.BROWN); p(18 + (legOff > 0 ? 2 : 0), 22 + bobY, C.BROWN);
   // Boots
-  p(7 - (legOff > 0 ? 1 : 0), 12 + bobY, C.DARK);
-  p(8 + (legOff > 0 ? 1 : 0), 12 + bobY, C.DARK);
+  b(13 - (legOff > 0 ? 2 : 0), 24 + bobY, 3, 2, C.DARK);
+  b(17 + (legOff > 0 ? 2 : 0), 24 + bobY, 3, 2, C.DARK);
 }
 
-// 1: Scout — Lean sprinting soldier
+// 1: Scout — Lean sprinting soldier with visible stride
 function drawScout(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 6, C.HELM); p(8, 6, C.SKIN);
-      b(6, 7, 4, 2, C.BODY); p(6, 7, C.LTOLIVE);
-      p(7, 9, C.BROWN); p(9, 9, C.BROWN);
-      p(6, 10, C.DARK); p(10, 10, C.DARK);
+      b(14, 10, 5, 3, C.HELM); p(15, 11, C.DARK);
+      b(15, 13, 3, 2, C.SKIN); p(16, 13, C.DKSKIN);
+      b(12, 15, 8, 5, C.BODY); p(12, 15, C.LTOLIVE);
+      b(14, 20, 3, 2, C.BROWN); b(18, 20, 3, 2, C.BROWN);
+      p(12, 22, C.DARK); p(13, 22, C.DARK); p(21, 22, C.DARK);
     } else if (frame === 5) {
-      p(4, 10, C.HELM); p(5, 10, C.SKIN);
-      b(5, 10, 4, 1, C.BODY);
-      p(9, 10, C.BROWN); p(10, 11, C.DARK);
-      p(3, 11, C.DARK);
+      b(8, 20, 5, 3, C.HELM); p(9, 21, C.DARK);
+      p(10, 23, C.SKIN); p(11, 23, C.DKSKIN);
+      b(11, 20, 8, 3, C.BODY);
+      b(19, 21, 4, 2, C.BROWN); p(23, 22, C.DARK); p(24, 22, C.DARK);
+      p(7, 23, C.DARK);
     } else {
-      p(5, 12, C.HELM); p(8, 13, C.DARK);
-      p(10, 12, C.BROWN); p(3, 13, C.GEAR);
+      b(10, 25, 4, 3, C.HELM); p(11, 26, C.DARK);
+      p(17, 27, C.DARK); p(18, 27, C.DARK);
+      b(22, 25, 3, 2, C.BROWN);
+      p(6, 27, C.GEAR); p(7, 27, C.GEAR);
     }
     return;
   }
   const step = frame;
-  const stride = [-1, 0, 1, 0][step];
-  const lean = 1; // always leaning forward
+  const stride = [-2, 0, 2, 0][step];
+  const lean = 2; // always leaning forward
   // Head (leaning forward)
-  p(8 + lean, 4, C.HELM); p(9 + lean, 4, C.HELM);
-  p(8 + lean, 5, C.SKIN); p(9 + lean, 5, C.DKSKIN);
+  b(16 + lean, 6, 5, 3, C.HELM); p(17 + lean, 6, C.LTOLIVE);
+  p(20 + lean, 7, C.DARK);
+  b(16 + lean, 9, 4, 2, C.SKIN); p(19 + lean, 9, C.DKSKIN);
+  p(17 + lean, 10, C.DKSKIN);
   // Lean body
-  b(7, 6, 3, 3, C.BODY); p(7, 6, C.LTOLIVE);
-  p(10, 7, C.DARK);
+  b(13, 11, 7, 6, C.BODY); p(13, 11, C.LTOLIVE); p(14, 12, C.LTOLIVE);
+  p(19, 16, C.DARK);
+  // Light gear (no heavy backpack)
+  p(12, 13, C.GEAR); p(12, 14, C.GEAR);
   // Belt
-  p(7, 9, C.KHAKI); p(8, 9, C.KHAKI);
-  // Legs — extended stride
-  const lf = 8 + stride, lr = 7 - stride;
-  p(lf, 10, C.BROWN); p(lr, 10, C.BROWN);
-  p(lf + (stride > 0 ? 1 : 0), 11, C.DARK);
-  p(lr - (stride < 0 ? 1 : 0), 11, C.DARK);
-  // Arms pumping
-  p(6, 7 + (stride > 0 ? -1 : 0), C.BODY);
-  p(10, 7 + (stride < 0 ? -1 : 0), C.BODY);
+  b(13, 17, 7, 1, C.KHAKI);
+  // Arms pumping wide
+  b(11, 13 + (stride > 0 ? -2 : 0), 2, 3, C.BODY); p(11, 12 + (stride > 0 ? -2 : 0), C.SKIN);
+  b(20, 13 + (stride < 0 ? -2 : 0), 2, 3, C.BODY); p(21, 12 + (stride < 0 ? -2 : 0), C.SKIN);
+  // Legs — extended stride, clear alternation
+  const lf = 16 + stride, lr = 14 - stride;
+  b(lf, 18, 3, 4, C.BROWN); b(lr, 18, 3, 4, C.BROWN);
+  b(lf + (stride > 0 ? 2 : 0), 22, 3, 2, C.DARK);
+  b(lr - (stride < 0 ? 2 : 0), 22, 3, 2, C.DARK);
 }
 
-// 2: Heavy Trooper — Wide power armor
+// 2: Heavy Trooper — Wide power armor with layered plates
 function drawHeavy(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
       // tilting back
-      b(5, 4, 6, 2, C.METAL); p(5, 4, C.LTMETAL);
-      p(6, 3, C.HELM); p(7, 3, C.HELM);
-      b(4, 6, 8, 3, C.BODY); p(4, 6, C.LTOLIVE);
-      p(6, 9, C.BROWN); p(9, 9, C.BROWN);
-      p(5, 10, C.DARK); p(10, 10, C.DARK);
+      b(9, 6, 12, 4, C.METAL); p(9, 6, C.LTMETAL); p(10, 7, C.LTMETAL);
+      b(12, 4, 5, 3, C.HELM); p(13, 4, C.DARK);
+      b(7, 10, 16, 7, C.BODY); p(7, 10, C.LTOLIVE);
+      b(10, 12, 8, 4, C.METAL); p(10, 12, C.LTMETAL);
+      b(11, 17, 4, 3, C.BROWN); b(17, 17, 4, 3, C.BROWN);
+      p(9, 20, C.DARK); p(10, 20, C.DARK); p(21, 20, C.DARK); p(22, 20, C.DARK);
     } else if (frame === 5) {
-      b(3, 9, 8, 2, C.BODY);
-      p(3, 9, C.METAL); p(10, 9, C.METAL);
-      p(2, 10, C.HELM); p(11, 10, C.DARK);
-      p(5, 11, C.BROWN); p(8, 11, C.DARK);
+      b(5, 17, 18, 5, C.BODY); p(5, 17, C.LTOLIVE);
+      b(8, 17, 12, 4, C.METAL); p(8, 17, C.LTMETAL);
+      b(3, 18, 3, 3, C.METAL); b(22, 18, 3, 3, C.METAL);
+      p(3, 19, C.HELM); p(4, 19, C.HELM); p(25, 19, C.DKMETAL);
+      b(10, 22, 3, 2, C.BROWN); b(16, 22, 3, 2, C.DARK);
+      p(6, 23, C.DKMETAL);
     } else {
-      p(4, 12, C.HELM); p(5, 12, C.METAL);
-      p(7, 13, C.DARK); p(9, 12, C.BODY);
-      p(11, 13, C.DKMETAL); p(3, 13, C.BROWN);
+      b(8, 24, 4, 3, C.HELM); p(9, 25, C.DARK);
+      b(13, 24, 3, 2, C.METAL); p(16, 25, C.DKMETAL);
+      p(19, 25, C.BODY); p(20, 25, C.BODY);
+      b(23, 26, 3, 2, C.DKMETAL); p(6, 27, C.BROWN); p(7, 27, C.BROWN);
+      p(15, 27, C.DARK);
     }
     return;
   }
   const step = frame;
   const stomp = [0, 1, 0, 1][step];
   // Helmet (small on big body)
-  b(7, 2 + stomp, 3, 2, C.HELM); p(9, 2 + stomp, C.DARK);
-  p(7, 4 + stomp, C.SKIN);
-  // Massive shoulder pads
-  b(3, 4 + stomp, 4, 2, C.METAL); p(3, 4 + stomp, C.LTMETAL);
-  b(9, 4 + stomp, 4, 2, C.METAL); p(12, 4 + stomp, C.DKMETAL);
+  b(13, 3 + stomp, 6, 4, C.HELM); p(18, 3 + stomp, C.DARK); p(18, 4 + stomp, C.DARK);
+  p(14, 3 + stomp, C.LTOLIVE); // highlight
+  b(14, 7 + stomp, 4, 2, C.SKIN); p(17, 7 + stomp, C.DKSKIN);
+  // Massive shoulder pads (6-8px wide each)
+  b(4, 7 + stomp, 8, 4, C.METAL); p(4, 7 + stomp, C.LTMETAL); p(5, 8 + stomp, C.LTMETAL);
+  p(11, 10 + stomp, C.DKMETAL); // shadow
+  b(19, 7 + stomp, 8, 4, C.METAL); p(26, 7 + stomp, C.DKMETAL); p(26, 8 + stomp, C.DKMETAL);
+  p(19, 8 + stomp, C.LTMETAL);
+  // Layered plate detail on shoulders
+  p(6, 9 + stomp, C.DKMETAL); p(7, 10 + stomp, C.DKMETAL);
+  p(22, 9 + stomp, C.LTMETAL); p(23, 10 + stomp, C.LTMETAL);
   // Wide torso
-  b(4, 6 + stomp, 8, 4, C.BODY); p(4, 6 + stomp, C.LTOLIVE);
-  p(11, 9 + stomp, C.DARK);
-  // Chest plate
-  b(6, 7 + stomp, 4, 2, C.METAL); p(6, 7 + stomp, C.LTMETAL);
-  // Arms
-  p(3, 7 + stomp, C.BODY); p(12, 7 + stomp, C.BODY);
-  // Tiny legs
+  b(7, 11 + stomp, 18, 8, C.BODY); p(7, 11 + stomp, C.LTOLIVE); p(8, 12 + stomp, C.LTOLIVE);
+  p(24, 18 + stomp, C.DARK); p(24, 17 + stomp, C.DARK);
+  // Chest plate (layered)
+  b(11, 13 + stomp, 10, 4, C.METAL); p(11, 13 + stomp, C.LTMETAL); p(12, 14 + stomp, C.LTMETAL);
+  p(20, 16 + stomp, C.DKMETAL);
+  p(15, 15 + stomp, C.BLUE); p(16, 15 + stomp, C.BLUE); // power core
+  p(15, 16 + stomp, C.LTBLUE);
+  // Arms (thick)
+  b(5, 12 + stomp, 3, 4, C.BODY); b(24, 12 + stomp, 3, 4, C.BODY);
+  // Heavy legs
   const legSpread = step % 2 === 0 ? 0 : 1;
-  p(6 - legSpread, 10 + stomp, C.BROWN); p(9 + legSpread, 10 + stomp, C.BROWN);
-  p(6 - legSpread, 11 + stomp, C.DARK); p(9 + legSpread, 11 + stomp, C.DARK);
-  // Heavy weapon
-  b(12, 6 + stomp, 2, 1, C.METAL); p(13, 7 + stomp, C.DKMETAL);
+  b(10 - legSpread, 19 + stomp, 5, 5, C.BROWN); b(17 + legSpread, 19 + stomp, 5, 5, C.BROWN);
+  b(10 - legSpread, 24 + stomp, 5, 2, C.DARK); b(17 + legSpread, 24 + stomp, 5, 2, C.DARK);
+  // Heavy weapon on right shoulder
+  b(25, 10 + stomp, 4, 2, C.METAL); p(29, 10 + stomp, C.DKMETAL);
+  b(27, 12 + stomp, 2, 3, C.DKMETAL);
 }
 
-// 3: Recruit — Tiny figure
+// 3: Recruit — Tiny figure, minimal gear
 function drawRecruit(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 9, C.HELM); p(8, 10, C.BODY);
-      p(7, 10, C.SKIN); p(8, 11, C.DARK);
+      b(14, 17, 4, 3, C.HELM); p(15, 18, C.DARK);
+      b(15, 20, 3, 2, C.SKIN);
+      b(14, 22, 5, 3, C.BODY); p(14, 22, C.LTOLIVE);
+      p(15, 25, C.BROWN); p(17, 25, C.BROWN);
+      p(15, 26, C.DARK); p(18, 26, C.DARK);
     } else if (frame === 5) {
-      p(6, 11, C.HELM); p(7, 11, C.BODY);
-      p(8, 12, C.DARK);
+      b(11, 22, 4, 3, C.HELM); p(12, 23, C.DARK);
+      b(15, 22, 5, 2, C.BODY);
+      p(20, 24, C.DARK); p(21, 24, C.DARK);
     } else {
-      p(7, 12, C.HELM); p(9, 13, C.DARK);
+      b(13, 25, 4, 3, C.HELM); p(14, 26, C.DARK);
+      p(19, 27, C.DARK); p(20, 27, C.DARK);
     }
     return;
   }
   const step = frame;
   const shuffle = [0, 1, 0, -1][step];
-  // Helmet dot
-  p(8, 8, C.HELM);
+  // Helmet (small)
+  b(14, 14, 4, 3, C.HELM); p(15, 14, C.LTOLIVE); p(17, 15, C.DARK);
   // Face
-  p(8, 9, C.SKIN);
+  b(15, 17, 3, 2, C.SKIN); p(16, 17, C.DKSKIN);
   // Tiny body
-  p(8, 10, C.BODY); p(7, 10, C.GEAR);
+  b(14, 19, 5, 4, C.BODY); p(14, 19, C.LTOLIVE);
+  p(13, 20, C.GEAR); p(13, 21, C.GEAR); // small pack
+  // Belt
+  b(14, 23, 5, 1, C.KHAKI);
   // Legs (quick shuffle)
-  p(7 + shuffle, 11, C.BROWN);
-  p(8 - shuffle, 11, C.BROWN);
+  b(14 + shuffle, 24, 2, 2, C.BROWN);
+  b(17 - shuffle, 24, 2, 2, C.BROWN);
+  p(14 + shuffle, 26, C.DARK); p(15 + shuffle, 26, C.DARK);
+  p(17 - shuffle, 26, C.DARK); p(18 - shuffle, 26, C.DARK);
 }
 
 // 4: Medic — Red cross, medical gear
@@ -248,100 +300,120 @@ function drawMedic(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 5, C.HELM); p(8, 5, C.HELM);
-      p(7, 6, C.SKIN);
-      b(6, 7, 4, 3, C.BODY);
-      p(5, 8, C.WHITE); p(5, 7, C.RED); p(5, 9, C.RED); // cross falling
-      p(7, 10, C.BROWN); p(9, 10, C.BROWN);
+      b(13, 8, 6, 4, C.HELM); p(14, 9, C.DARK);
+      p(16, 8, C.RED); // cross on helmet
+      b(14, 12, 4, 2, C.SKIN);
+      b(11, 14, 10, 6, C.BODY);
+      // falling red cross
+      b(9, 15, 2, 4, C.WHITE); p(8, 16, C.RED); p(9, 16, C.RED); p(10, 16, C.RED);
+      p(9, 15, C.RED); p(9, 18, C.RED);
+      b(13, 20, 3, 3, C.BROWN); b(17, 20, 3, 3, C.BROWN);
     } else if (frame === 5) {
-      p(4, 10, C.HELM);
-      b(4, 10, 5, 1, C.BODY);
-      p(3, 11, C.SKIN);
-      p(9, 10, C.WHITE); p(9, 11, C.RED);
-      p(6, 11, C.DARK);
+      b(7, 20, 5, 3, C.HELM);
+      b(10, 20, 10, 3, C.BODY);
+      p(6, 22, C.SKIN); p(7, 22, C.DKSKIN);
+      b(20, 21, 3, 3, C.WHITE); p(21, 21, C.RED); p(21, 23, C.RED);
+      p(20, 22, C.RED); p(22, 22, C.RED);
+      p(12, 23, C.DARK); p(13, 23, C.DARK);
     } else {
-      p(5, 12, C.HELM); p(8, 12, C.RED); p(9, 13, C.WHITE);
-      p(4, 13, C.DARK); p(11, 12, C.BROWN);
+      b(10, 25, 4, 3, C.HELM); p(11, 26, C.DARK);
+      b(17, 25, 2, 2, C.RED); p(19, 26, C.WHITE);
+      p(7, 27, C.DARK); p(8, 27, C.DARK);
+      p(23, 25, C.BROWN);
     }
     return;
   }
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
+  const legOff = [0, 2, 0, -2][step];
   const armOff = [0, -1, 0, 1][step];
   // Helmet with cross
-  b(7, 3, 3, 2, C.HELM); p(8, 3, C.RED); // red cross on helmet
+  b(13, 5, 7, 4, C.HELM); p(12, 7, C.HELM);
+  p(14, 5, C.LTOLIVE); // highlight
+  p(16, 5, C.RED); p(17, 5, C.RED); // red cross on helmet top
+  p(19, 6, C.DARK);
   // Face
-  p(7, 5, C.SKIN); p(8, 5, C.DKSKIN);
+  b(14, 9, 4, 3, C.SKIN); p(17, 9, C.DKSKIN); p(15, 11, C.DKSKIN);
   // Body
-  b(6, 6, 4, 3, C.BODY); p(6, 6, C.LTOLIVE);
-  // Red cross armband
-  p(10, 7, C.WHITE); p(10, 6, C.RED); p(10, 8, C.RED);
-  p(11, 7, C.RED); p(9, 7, C.RED);
+  b(12, 12, 8, 7, C.BODY); p(12, 12, C.LTOLIVE); p(13, 13, C.LTOLIVE);
+  // Red cross armband (clear 2-3px cross)
+  b(20, 13, 3, 5, C.WHITE);
+  p(21, 13, C.RED); p(20, 15, C.RED); p(21, 15, C.RED); p(22, 15, C.RED);
+  p(21, 17, C.RED); p(21, 14, C.RED); p(21, 16, C.RED);
   // Medkit backpack (white with red cross)
-  p(5, 7, C.WHITE); p(5, 8, C.WHITE);
-  p(5, 7, C.RED); // cross center
-  p(5, 6, C.DKRED);
+  b(9, 13, 3, 5, C.WHITE);
+  p(10, 14, C.RED); p(9, 15, C.RED); p(10, 15, C.RED); p(11, 15, C.RED);
+  p(10, 16, C.RED);
+  p(9, 12, C.DKRED); p(10, 12, C.DKRED); p(11, 12, C.DKRED);
   // Belt
-  b(6, 9, 4, 1, C.KHAKI);
+  b(12, 19, 8, 1, C.KHAKI); p(16, 19, C.METAL);
   // Legs
-  p(7, 10 + Math.abs(legOff), C.BROWN); p(8, 10, C.BROWN);
-  p(7, 11, C.DARK); p(8, 11 + Math.abs(legOff), C.DARK);
+  b(13, 20 + Math.abs(legOff), 3, 3, C.BROWN); b(17, 20, 3, 3, C.BROWN);
+  b(13, 23, 3, 2, C.DARK); b(17, 23 + Math.abs(legOff), 3, 2, C.DARK);
   // Arms
-  p(6, 7 + armOff, C.BODY);
+  p(11, 14 + armOff, C.BODY); p(11, 15 + armOff, C.BODY);
 }
 
-// 5: Tank Commander — Large armored exosuit
+// 5: Tank Commander — Large armored exosuit (fills 24-28 grid units)
 function drawTankCommander(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
       // massive suit stumbling
-      b(3, 3, 8, 3, C.METAL); p(3, 3, C.LTMETAL);
-      p(7, 1, C.DKMETAL); // antenna
-      b(2, 6, 10, 4, C.BODY); p(2, 6, C.LTOLIVE);
-      b(5, 6, 4, 2, C.METAL);
-      p(4, 10, C.BROWN); p(9, 10, C.BROWN);
-      p(3, 11, C.DARK); p(10, 11, C.DARK);
+      b(7, 4, 14, 5, C.METAL); p(7, 4, C.LTMETAL); p(8, 5, C.LTMETAL);
+      p(14, 1, C.DKMETAL); p(14, 2, C.METAL); p(14, 3, C.METAL); // antenna
+      b(4, 9, 22, 8, C.BODY); p(4, 9, C.LTOLIVE); p(5, 10, C.LTOLIVE);
+      b(9, 11, 10, 4, C.METAL); p(9, 11, C.LTMETAL);
+      b(8, 17, 5, 4, C.BROWN); b(17, 17, 5, 4, C.BROWN);
+      p(6, 21, C.DARK); p(7, 21, C.DARK); p(22, 21, C.DARK); p(23, 21, C.DARK);
     } else if (frame === 5) {
-      b(2, 8, 10, 3, C.BODY); p(2, 8, C.LTOLIVE);
-      b(4, 8, 6, 2, C.METAL);
-      p(1, 9, C.HELM); p(12, 9, C.DKMETAL);
-      p(5, 11, C.BROWN); p(8, 11, C.DARK);
-      p(3, 12, C.DKMETAL); // weapon mount
+      b(3, 15, 22, 6, C.BODY); p(3, 15, C.LTOLIVE);
+      b(8, 15, 14, 4, C.METAL); p(8, 15, C.LTMETAL);
+      p(2, 17, C.HELM); p(3, 17, C.HELM); p(4, 17, C.HELM);
+      b(25, 16, 3, 3, C.DKMETAL);
+      b(10, 21, 4, 2, C.BROWN); b(17, 21, 4, 2, C.DARK);
+      p(6, 23, C.DKMETAL); p(7, 23, C.DKMETAL);
     } else {
-      p(3, 12, C.HELM); p(5, 12, C.METAL); p(7, 13, C.DKMETAL);
-      p(9, 12, C.BODY); p(11, 13, C.DARK);
-      p(4, 13, C.BROWN); p(13, 12, C.METAL);
+      b(6, 24, 5, 3, C.HELM); p(7, 25, C.DARK);
+      b(12, 24, 4, 2, C.METAL); p(16, 25, C.DKMETAL);
+      p(19, 25, C.BODY); p(20, 25, C.BODY); p(21, 25, C.BODY);
+      p(24, 26, C.DARK); p(25, 26, C.DARK);
+      b(8, 27, 3, 2, C.BROWN); p(27, 25, C.METAL); p(28, 25, C.METAL);
     }
     return;
   }
   const step = frame;
   const mech = [0, 1, 0, 1][step];
-  // Command antenna
-  p(7, 0 + mech, C.DKMETAL); p(7, 1 + mech, C.METAL);
-  // Armored head
-  b(5, 2 + mech, 5, 2, C.METAL); p(5, 2 + mech, C.LTMETAL);
-  p(9, 3 + mech, C.DKMETAL);
-  p(6, 3 + mech, C.SKIN); // visor slit
+  // Command antenna (tall)
+  p(14, 0 + mech, C.LTMETAL); p(14, 1 + mech, C.METAL); p(14, 2 + mech, C.METAL);
+  p(15, 0 + mech, C.LTBLUE); // antenna tip glow
+  // Armored head (visor slit)
+  b(10, 3 + mech, 10, 4, C.METAL); p(10, 3 + mech, C.LTMETAL); p(11, 4 + mech, C.LTMETAL);
+  p(19, 5 + mech, C.DKMETAL); p(19, 6 + mech, C.DKMETAL);
+  b(12, 6 + mech, 6, 1, C.SKIN); // visor slit with face
+  p(13, 6 + mech, C.DKSKIN);
   // Massive shoulder weapon mounts
-  b(1, 4 + mech, 4, 2, C.METAL); p(1, 4 + mech, C.LTMETAL);
-  p(2, 4 + mech, C.DKMETAL); // weapon barrel
-  b(10, 4 + mech, 4, 2, C.METAL); p(13, 4 + mech, C.DKMETAL);
-  p(13, 5 + mech, C.METAL);
+  b(1, 7 + mech, 8, 4, C.METAL); p(1, 7 + mech, C.LTMETAL); p(2, 8 + mech, C.LTMETAL);
+  p(3, 7 + mech, C.DKMETAL); p(4, 7 + mech, C.DKMETAL); // weapon barrels
+  b(2, 8 + mech, 2, 1, C.DKMETAL);
+  b(21, 7 + mech, 8, 4, C.METAL); p(28, 7 + mech, C.DKMETAL); p(28, 8 + mech, C.DKMETAL);
+  p(27, 10 + mech, C.METAL); p(28, 10 + mech, C.METAL); // barrel extension
   // Massive torso
-  b(3, 6 + mech, 9, 4, C.BODY); p(3, 6 + mech, C.LTOLIVE);
-  p(11, 9 + mech, C.DARK);
-  // Chest armor
-  b(5, 7 + mech, 5, 2, C.METAL); p(5, 7 + mech, C.LTMETAL);
-  p(7, 8 + mech, C.BLUE); // power core
-  // Side armor
-  p(2, 7 + mech, C.GEAR); p(12, 7 + mech, C.GEAR);
-  p(2, 8 + mech, C.GEAR); p(12, 8 + mech, C.GEAR);
+  b(5, 11 + mech, 20, 8, C.BODY); p(5, 11 + mech, C.LTOLIVE); p(6, 12 + mech, C.LTOLIVE);
+  p(24, 18 + mech, C.DARK); p(24, 17 + mech, C.DARK);
+  // Chest armor plate (layered)
+  b(9, 13 + mech, 12, 4, C.METAL); p(9, 13 + mech, C.LTMETAL); p(10, 14 + mech, C.LTMETAL);
+  p(20, 16 + mech, C.DKMETAL);
+  p(14, 15 + mech, C.BLUE); p(15, 15 + mech, C.BLUE); // power core
+  p(14, 16 + mech, C.LTBLUE); p(15, 16 + mech, C.LTBLUE);
+  // Side armor / reactive plates
+  b(3, 13 + mech, 3, 4, C.GEAR); p(3, 13 + mech, C.METAL);
+  b(24, 13 + mech, 3, 4, C.GEAR); p(26, 13 + mech, C.METAL);
+  // Command insignia
+  p(15, 14 + mech, C.ORANGE); p(16, 14 + mech, C.ORANGE);
   // Heavy legs
-  b(4, 10 + mech, 3, 2, C.BROWN); b(8, 10 + mech, 3, 2, C.BROWN);
+  b(7, 19 + mech, 7, 5, C.BROWN); b(16, 19 + mech, 7, 5, C.BROWN);
   const legS = step % 2;
-  p(4 - legS, 12 + mech, C.DARK); p(5, 12 + mech, C.DARK);
-  p(8 + legS, 12 + mech, C.DARK); p(9, 12 + mech, C.DARK);
+  b(7 - legS * 2, 24 + mech, 7, 2, C.DARK); b(16 + legS * 2, 24 + mech, 7, 2, C.DARK);
 }
 
 // 6: Fire Team — Smaller infantry
@@ -349,32 +421,37 @@ function drawFireTeam(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 6, C.HELM); p(8, 7, C.SKIN);
-      b(7, 8, 3, 2, C.BODY);
-      p(7, 10, C.BROWN); p(9, 10, C.DARK);
+      b(14, 11, 5, 3, C.HELM); p(15, 12, C.DARK);
+      b(15, 14, 3, 2, C.SKIN);
+      b(13, 16, 7, 5, C.BODY); p(13, 16, C.LTOLIVE);
+      b(14, 21, 3, 2, C.BROWN); b(18, 21, 2, 2, C.DARK);
     } else if (frame === 5) {
-      p(5, 10, C.HELM); b(5, 10, 4, 1, C.BODY);
-      p(9, 11, C.DARK);
+      b(10, 21, 4, 3, C.HELM); p(11, 22, C.DARK);
+      b(13, 21, 8, 2, C.BODY);
+      p(21, 23, C.DARK); p(22, 23, C.DARK);
     } else {
-      p(6, 12, C.HELM); p(9, 12, C.DARK); p(4, 13, C.GEAR);
+      b(12, 25, 4, 3, C.HELM); p(13, 26, C.DARK);
+      p(18, 26, C.DARK); p(8, 27, C.GEAR); p(9, 27, C.GEAR);
     }
     return;
   }
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
-  // Helmet (small)
-  p(8, 5, C.HELM); p(9, 5, C.HELM);
+  const legOff = [0, 2, 0, -2][step];
+  // Helmet (compact)
+  b(15, 8, 5, 3, C.HELM); p(16, 8, C.LTOLIVE); p(19, 9, C.DARK);
   // Face
-  p(8, 6, C.SKIN);
+  b(16, 11, 3, 2, C.SKIN); p(17, 11, C.DKSKIN);
   // Body (compact)
-  b(7, 7, 3, 2, C.BODY); p(7, 7, C.LTOLIVE);
+  b(14, 13, 6, 5, C.BODY); p(14, 13, C.LTOLIVE); p(15, 14, C.LTOLIVE);
+  p(19, 17, C.DARK);
   // Rifle
-  p(10, 7, C.METAL); p(11, 7, C.DKMETAL);
+  b(20, 14, 3, 1, C.METAL); p(23, 14, C.DKMETAL); p(24, 14, C.DKMETAL);
+  p(20, 15, C.BROWN); // grip
   // Belt
-  p(7, 9, C.KHAKI); p(8, 9, C.KHAKI);
+  b(14, 18, 6, 1, C.KHAKI);
   // Legs
-  p(7 + legOff, 10, C.BROWN); p(8 - legOff, 10, C.BROWN);
-  p(7 + legOff, 11, C.DARK); p(8 - legOff, 11, C.DARK);
+  b(14 + legOff, 19, 3, 3, C.BROWN); b(17 - legOff, 19, 3, 3, C.BROWN);
+  b(14 + legOff, 22, 3, 2, C.DARK); b(17 - legOff, 22, 3, 2, C.DARK);
 }
 
 // 7: Cargo Carrier — Two soldiers carrying crate
@@ -383,20 +460,24 @@ function drawCargo(c: any, o: number[], frame: number) {
   if (frame >= 4) {
     if (frame === 4) {
       // soldiers stumble, crate tips
-      p(4, 6, C.HELM); p(11, 6, C.HELM);
-      p(4, 7, C.SKIN); p(11, 7, C.SKIN);
-      b(3, 8, 3, 2, C.BODY); b(10, 8, 3, 2, C.BODY);
-      b(6, 7, 4, 3, C.KHAKI); p(7, 7, C.LTKHAKI); // tipping crate
-      p(4, 10, C.BROWN); p(11, 10, C.BROWN);
+      b(6, 10, 4, 3, C.HELM); b(22, 10, 4, 3, C.HELM);
+      p(7, 11, C.DARK); p(23, 11, C.DARK);
+      b(7, 13, 3, 2, C.SKIN); b(23, 13, 3, 2, C.SKIN);
+      b(5, 15, 5, 4, C.BODY); b(21, 15, 5, 4, C.BODY);
+      b(11, 13, 8, 6, C.KHAKI); p(12, 14, C.LTKHAKI); p(13, 14, C.LTKHAKI);
+      b(14, 15, 4, 2, C.DARK); // crate marking
+      b(7, 19, 3, 2, C.BROWN); b(22, 19, 3, 2, C.BROWN);
     } else if (frame === 5) {
-      b(3, 10, 10, 1, C.BODY);
-      p(3, 10, C.HELM); p(12, 10, C.HELM);
-      b(6, 9, 4, 2, C.KHAKI); // crate on ground
-      p(5, 11, C.DARK); p(10, 11, C.DARK);
+      b(5, 20, 22, 3, C.BODY);
+      b(4, 20, 3, 2, C.HELM); b(25, 20, 3, 2, C.HELM);
+      b(11, 18, 8, 5, C.KHAKI); p(12, 19, C.LTKHAKI);
+      b(14, 20, 4, 2, C.DARK);
+      p(9, 23, C.DARK); p(10, 23, C.DARK); p(21, 23, C.DARK); p(22, 23, C.DARK);
     } else {
-      p(4, 12, C.HELM); p(11, 12, C.HELM);
-      b(6, 11, 4, 2, C.KHAKI); p(7, 11, C.LTKHAKI);
-      p(3, 13, C.DARK); p(12, 13, C.DARK);
+      b(7, 24, 4, 3, C.HELM); b(22, 24, 4, 3, C.HELM);
+      b(12, 22, 8, 5, C.KHAKI); p(13, 23, C.LTKHAKI);
+      b(14, 24, 4, 2, C.DARK);
+      p(5, 27, C.DARK); p(6, 27, C.DARK); p(26, 27, C.DARK); p(27, 27, C.DARK);
     }
     return;
   }
@@ -404,64 +485,79 @@ function drawCargo(c: any, o: number[], frame: number) {
   const bob = [0, 0, 0, 0][step];
   const legOff = [0, 1, 0, -1][step];
   // Left soldier
-  p(4, 4 + bob, C.HELM); p(4, 5 + bob, C.SKIN);
-  b(3, 6 + bob, 3, 2, C.BODY); p(3, 6 + bob, C.LTOLIVE);
+  b(6, 7 + bob, 4, 3, C.HELM); p(7, 7 + bob, C.LTOLIVE);
+  b(7, 10 + bob, 3, 2, C.SKIN);
+  b(5, 12 + bob, 5, 4, C.BODY); p(5, 12 + bob, C.LTOLIVE);
   // Right soldier
-  p(11, 4 + bob, C.HELM); p(11, 5 + bob, C.SKIN);
-  b(10, 6 + bob, 3, 2, C.BODY); p(10, 6 + bob, C.LTOLIVE);
+  b(22, 7 + bob, 4, 3, C.HELM); p(23, 7 + bob, C.LTOLIVE);
+  b(23, 10 + bob, 3, 2, C.SKIN);
+  b(21, 12 + bob, 5, 4, C.BODY); p(21, 12 + bob, C.LTOLIVE);
   // Shared crate between them
-  b(6, 5 + bob, 4, 3, C.KHAKI); p(6, 5 + bob, C.LTKHAKI);
-  p(9, 7 + bob, C.BROWN); // shadow on crate
-  b(7, 6 + bob, 2, 1, C.DARK); // crate marking
+  b(11, 9 + bob, 8, 6, C.KHAKI); p(11, 9 + bob, C.LTKHAKI); p(12, 10 + bob, C.LTKHAKI);
+  p(18, 14 + bob, C.BROWN); p(18, 13 + bob, C.BROWN); // shadow
+  b(13, 11 + bob, 4, 2, C.DARK); // crate marking
   // Arms holding crate
-  p(5, 7 + bob, C.BODY); p(10, 7 + bob, C.BODY);
-  // Legs (synchronized)
-  p(3 + legOff, 8 + bob, C.BROWN); p(5 - legOff, 8 + bob, C.BROWN);
-  p(10 + legOff, 8 + bob, C.BROWN); p(12 - legOff, 8 + bob, C.BROWN);
-  p(3 + legOff, 9 + bob, C.DARK); p(5 - legOff, 9 + bob, C.DARK);
-  p(10 + legOff, 9 + bob, C.DARK); p(12 - legOff, 9 + bob, C.DARK);
+  b(10, 14 + bob, 2, 2, C.BODY); b(19, 14 + bob, 2, 2, C.BODY);
+  // Left soldier legs
+  b(6 + legOff, 16 + bob, 2, 3, C.BROWN); b(8 - legOff, 16 + bob, 2, 3, C.BROWN);
+  p(6 + legOff, 19 + bob, C.DARK); p(7 + legOff, 19 + bob, C.DARK);
+  p(8 - legOff, 19 + bob, C.DARK); p(9 - legOff, 19 + bob, C.DARK);
+  // Right soldier legs
+  b(22 + legOff, 16 + bob, 2, 3, C.BROWN); b(24 - legOff, 16 + bob, 2, 3, C.BROWN);
+  p(22 + legOff, 19 + bob, C.DARK); p(23 + legOff, 19 + bob, C.DARK);
+  p(24 - legOff, 19 + bob, C.DARK); p(25 - legOff, 19 + bob, C.DARK);
 }
 
-// 8: Riot Trooper — Shield bearer
+// 8: Riot Trooper — Shield bearer with distinct transparent panel
 function drawRiot(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(6, 5, C.HELM); p(7, 5, C.HELM);
-      p(6, 6, C.SKIN);
-      b(5, 7, 4, 3, C.BODY);
-      b(9, 5, 2, 5, C.SHIELD); p(9, 5, C.DKSHIELD); // shield tipping
-      p(5, 10, C.BROWN); p(8, 10, C.BROWN);
+      b(11, 8, 6, 4, C.HELM); p(12, 9, C.DARK);
+      b(12, 12, 4, 2, C.SKIN);
+      b(10, 14, 8, 6, C.BODY); p(10, 14, C.LTOLIVE);
+      b(19, 8, 4, 12, C.SHIELD); p(19, 8, C.DKSHIELD); p(22, 19, C.DKSHIELD);
+      p(20, 10, C.WHITE); p(21, 12, C.WHITE);
+      b(11, 20, 3, 3, C.BROWN); b(16, 20, 3, 3, C.BROWN);
     } else if (frame === 5) {
-      p(4, 10, C.HELM);
-      b(4, 10, 4, 1, C.BODY);
-      b(8, 9, 3, 2, C.SHIELD); // shield flat
-      p(3, 11, C.DARK); p(7, 11, C.DARK);
+      b(7, 20, 4, 3, C.HELM);
+      b(10, 20, 8, 3, C.BODY);
+      b(18, 18, 6, 4, C.SHIELD); p(18, 18, C.DKSHIELD);
+      p(6, 23, C.DARK); p(7, 23, C.DARK);
+      p(15, 23, C.DARK);
     } else {
-      p(5, 12, C.HELM); p(8, 11, C.SHIELD); p(9, 12, C.DKSHIELD);
-      p(3, 13, C.DARK); p(11, 13, C.BODY);
+      b(10, 25, 4, 3, C.HELM); p(11, 26, C.DARK);
+      b(17, 23, 5, 3, C.SHIELD); p(18, 24, C.DKSHIELD);
+      p(6, 27, C.DARK); p(7, 27, C.DARK);
+      p(23, 26, C.BODY);
     }
     return;
   }
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
-  // Helmet
-  b(6, 3, 3, 2, C.HELM); p(8, 3, C.DARK);
+  const legOff = [0, 2, 0, -2][step];
+  // Helmet (visor)
+  b(11, 5, 6, 4, C.HELM); p(16, 5, C.DARK); p(16, 6, C.DARK);
+  p(12, 5, C.LTOLIVE); // highlight
+  b(11, 8, 6, 1, C.DKMETAL); // visor rim
   // Face (peering over shield)
-  p(6, 5, C.SKIN); p(7, 5, C.DKSKIN);
+  b(12, 9, 4, 2, C.SKIN); p(15, 9, C.DKSKIN);
   // Body behind shield
-  b(5, 6, 4, 3, C.BODY); p(5, 6, C.LTOLIVE);
-  // Shield in front (transparent look — lighter colors)
-  b(10, 3, 2, 7, C.SHIELD); p(10, 3, C.DKSHIELD);
-  p(11, 9, C.DKSHIELD); p(10, 5, C.WHITE); // highlight
-  p(11, 4, C.WHITE);
-  // Shield arm
-  p(9, 6, C.BODY); p(9, 7, C.BODY);
+  b(10, 11, 8, 7, C.BODY); p(10, 11, C.LTOLIVE); p(11, 12, C.LTOLIVE);
+  p(17, 17, C.DARK);
+  // Shield in front (transparent panel, distinct)
+  b(20, 5, 4, 15, C.SHIELD);
+  p(20, 5, C.DKSHIELD); p(20, 6, C.DKSHIELD); // left edge
+  p(23, 18, C.DKSHIELD); p(23, 19, C.DKSHIELD); // bottom right shadow
+  // Shield highlights (transparency effect)
+  p(21, 7, C.WHITE); p(22, 8, C.WHITE); p(21, 10, C.WHITE);
+  p(22, 13, C.WHITE); p(21, 16, C.WHITE);
+  // Shield grip / arm
+  b(18, 12, 2, 4, C.BODY); p(19, 13, C.BODY);
   // Belt
-  b(5, 9, 4, 1, C.KHAKI);
+  b(10, 18, 8, 1, C.KHAKI);
   // Legs (slow advance)
-  p(6 + legOff, 10, C.BROWN); p(7 - legOff, 10, C.BROWN);
-  p(6 + legOff, 11, C.DARK); p(7 - legOff, 11, C.DARK);
+  b(12 + legOff, 19, 3, 4, C.BROWN); b(15 - legOff, 19, 3, 4, C.BROWN);
+  b(12 + legOff, 23, 3, 2, C.DARK); b(15 - legOff, 23, 3, 2, C.DARK);
 }
 
 // 9: Recon Operative — Stealth/camo, crouched
@@ -469,36 +565,44 @@ function drawRecon(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 7, C.DKOLIVE); p(8, 7, C.DKOLIVE);
-      p(7, 8, C.SKIN);
-      b(6, 9, 4, 2, C.DKOLIVE);
-      p(7, 11, C.DARK); p(9, 11, C.DARK);
+      b(13, 13, 5, 3, C.DKOLIVE); p(14, 14, C.DARK);
+      b(14, 16, 3, 2, C.SKIN);
+      b(12, 18, 8, 4, C.DKOLIVE); p(12, 18, C.BODY);
+      p(14, 22, C.DARK); p(15, 22, C.DARK); p(18, 22, C.DARK); p(19, 22, C.DARK);
     } else if (frame === 5) {
-      b(5, 10, 5, 1, C.DKOLIVE);
-      p(4, 10, C.DKOLIVE); p(10, 11, C.DARK);
+      b(9, 21, 10, 3, C.DKOLIVE); p(9, 21, C.BODY);
+      p(7, 22, C.DKOLIVE); p(8, 22, C.DKOLIVE);
+      p(20, 23, C.DARK); p(21, 23, C.DARK);
     } else {
-      p(6, 12, C.DKOLIVE); p(9, 12, C.DARK); p(4, 13, C.GEAR);
+      b(11, 25, 5, 3, C.DKOLIVE); p(12, 26, C.DARK);
+      p(18, 25, C.DARK); p(19, 25, C.DARK);
+      p(7, 27, C.GEAR); p(8, 27, C.GEAR);
     }
     return;
   }
   const step = frame;
   const sneak = [0, 0, 1, 0][step];
-  const legOff = [0, 1, 0, -1][step];
-  // Crouched lower in frame
-  // Head (small, camo)
-  p(8, 6 + sneak, C.DKOLIVE); p(9, 6 + sneak, C.DKOLIVE);
-  p(8, 7 + sneak, C.SKIN); // small face
-  // Crouched body (sparse camo pixels)
-  b(6, 8 + sneak, 4, 2, C.DKOLIVE);
-  p(7, 8 + sneak, C.GEAR); p(9, 9 + sneak, C.BODY);
-  // Camo effect — scattered lighter/darker pixels
-  p(6, 8 + sneak, C.LTOLIVE);
-  p(8, 9 + sneak, C.DARK);
+  const legOff = [0, 2, 0, -2][step];
+  // Crouched low in frame
+  // Head (small, camo-covered)
+  b(15, 11 + sneak, 5, 3, C.DKOLIVE); p(16, 11 + sneak, C.GEAR);
+  p(19, 12 + sneak, C.DARK);
+  b(16, 14 + sneak, 3, 2, C.SKIN); p(17, 14 + sneak, C.DKSKIN);
+  // Crouched body (camo pattern)
+  b(12, 16 + sneak, 8, 4, C.DKOLIVE);
+  p(13, 16 + sneak, C.GEAR); p(15, 17 + sneak, C.BODY);
+  p(19, 19 + sneak, C.DARK);
+  // Camo scatter pattern
+  p(12, 16 + sneak, C.LTOLIVE); p(14, 18 + sneak, C.LTOLIVE);
+  p(17, 17 + sneak, C.DARK); p(19, 18 + sneak, C.DARK);
+  p(13, 19 + sneak, C.BODY);
+  // Suppressed pistol
+  p(20, 17 + sneak, C.DKMETAL); p(21, 17 + sneak, C.DKMETAL); p(22, 17 + sneak, C.METAL);
   // Low legs (crouched)
-  p(6 + legOff, 10 + sneak, C.DKOLIVE);
-  p(8 - legOff, 10 + sneak, C.DKOLIVE);
-  p(6 + legOff, 11 + sneak, C.DARK);
-  p(8 - legOff, 11 + sneak, C.DARK);
+  b(12 + legOff, 20 + sneak, 3, 3, C.DKOLIVE);
+  b(16 - legOff, 20 + sneak, 3, 3, C.DKOLIVE);
+  b(12 + legOff, 23 + sneak, 3, 2, C.DARK);
+  b(16 - legOff, 23 + sneak, 3, 2, C.DARK);
 }
 
 // 10: Combat Engineer — Repair tools, wrench
@@ -506,288 +610,339 @@ function drawEngineer(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 5, C.HELM); p(8, 5, C.HELM);
-      p(7, 6, C.SKIN);
-      b(6, 7, 4, 3, C.BODY);
-      p(10, 6, C.METAL); p(11, 7, C.LTMETAL); // wrench falling
-      p(5, 8, C.GEAR);
-      p(7, 10, C.BROWN); p(9, 10, C.BROWN);
+      b(13, 8, 6, 4, C.HELM); p(14, 9, C.DARK);
+      b(15, 8, 3, 1, C.LTMETAL); // goggles
+      b(14, 12, 4, 2, C.SKIN);
+      b(12, 14, 8, 6, C.BODY);
+      // wrench falling
+      b(21, 11, 2, 4, C.METAL); p(23, 12, C.LTMETAL);
+      b(9, 15, 3, 4, C.GEAR);
+      b(14, 20, 3, 2, C.BROWN); b(18, 20, 3, 2, C.BROWN);
     } else if (frame === 5) {
-      p(4, 10, C.HELM);
-      b(4, 10, 5, 1, C.BODY);
-      p(3, 11, C.SKIN);
-      p(9, 10, C.METAL); p(10, 11, C.LTMETAL); // wrench on ground
+      b(7, 20, 5, 3, C.HELM);
+      b(11, 20, 10, 3, C.BODY);
+      p(6, 22, C.SKIN);
+      b(21, 21, 2, 3, C.METAL); p(23, 22, C.LTMETAL);
     } else {
-      p(5, 12, C.HELM); p(8, 12, C.METAL); p(10, 13, C.LTMETAL);
-      p(3, 13, C.DARK); p(6, 13, C.GEAR);
+      b(10, 25, 4, 3, C.HELM); p(11, 26, C.DARK);
+      b(17, 25, 2, 3, C.METAL); p(19, 26, C.LTMETAL);
+      p(6, 27, C.DARK); p(7, 27, C.DARK);
+      p(13, 27, C.GEAR);
     }
     return;
   }
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
+  const legOff = [0, 2, 0, -2][step];
   const armOff = [0, -1, 0, 1][step];
   // Helmet
-  b(7, 3, 3, 2, C.HELM); p(6, 4, C.HELM);
+  b(13, 5, 7, 4, C.HELM); p(12, 7, C.HELM);
+  p(14, 5, C.LTOLIVE);
   // Goggles on helmet
-  p(8, 3, C.LTMETAL); p(9, 3, C.LTMETAL);
+  b(16, 5, 3, 2, C.LTMETAL); p(17, 6, C.METAL);
+  p(19, 6, C.DARK);
   // Face
-  p(7, 5, C.SKIN); p(8, 5, C.DKSKIN);
-  // Body with patches
-  b(6, 6, 4, 3, C.BODY); p(6, 6, C.LTOLIVE);
-  p(7, 7, C.GEAR); p(8, 8, C.GEAR); // patches
-  // Tool belt
-  b(6, 9, 4, 1, C.KHAKI);
-  p(10, 9, C.METAL); // tools on belt
+  b(14, 9, 4, 3, C.SKIN); p(17, 9, C.DKSKIN); p(15, 11, C.DKSKIN);
+  // Body with utility patches
+  b(12, 12, 8, 7, C.BODY); p(12, 12, C.LTOLIVE);
+  p(14, 14, C.GEAR); p(15, 15, C.GEAR); p(17, 14, C.GEAR); // patches
+  // Tool belt (detailed)
+  b(12, 19, 8, 1, C.KHAKI);
+  p(20, 19, C.METAL); p(21, 19, C.METAL); // tools on belt
+  p(11, 19, C.DKMETAL);
   // Wrench held out
-  p(10, 6 + armOff, C.METAL); p(11, 6 + armOff, C.LTMETAL);
-  p(11, 5 + armOff, C.METAL); // wrench head
+  b(21, 11 + armOff, 2, 4, C.METAL); p(23, 12 + armOff, C.LTMETAL);
+  b(21, 10 + armOff, 3, 2, C.METAL); p(23, 10 + armOff, C.LTMETAL); // wrench head
+  p(22, 9 + armOff, C.LTMETAL);
   // Backpack with tools
-  p(5, 7, C.GEAR); p(5, 8, C.DKOLIVE);
-  p(5, 6, C.METAL); // tool sticking out
+  b(9, 13, 3, 6, C.GEAR); p(9, 12, C.DKOLIVE); p(10, 12, C.DKOLIVE);
+  p(10, 13, C.METAL); p(10, 14, C.LTMETAL); // tool sticking out
+  p(9, 18, C.DARK);
   // Legs
-  p(7, 10, C.BROWN); p(8, 10 + Math.abs(legOff), C.BROWN);
-  p(7, 11, C.DARK); p(8, 11, C.DARK);
+  b(13, 20, 3, 3 + Math.abs(legOff), C.BROWN); b(17, 20 + Math.abs(legOff), 3, 3, C.BROWN);
+  b(13, 23, 3, 2, C.DARK); b(17, 23, 3, 2, C.DARK);
+  // Arms
+  p(11, 14 + armOff, C.BODY); p(11, 15 + armOff, C.BODY);
 }
 
-// 11: Paratrooper — Jetpack with flames
+// 11: Paratrooper — Jetpack with visible flame particles
 function drawParatrooper(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 4, C.HELM); p(8, 4, C.HELM);
-      p(7, 5, C.SKIN);
-      b(6, 6, 4, 3, C.BODY);
-      p(5, 7, C.METAL); p(5, 8, C.DKMETAL); // jetpack sparking
-      p(5, 9, C.ORANGE);
-      p(7, 9, C.BROWN); p(9, 9, C.BROWN);
+      b(13, 6, 6, 4, C.HELM); p(14, 7, C.DARK);
+      b(14, 10, 4, 2, C.SKIN);
+      b(12, 12, 8, 6, C.BODY); p(12, 12, C.LTOLIVE);
+      // jetpack sparking
+      b(9, 13, 3, 5, C.METAL); p(9, 17, C.DKMETAL);
+      p(9, 18, C.ORANGE); p(10, 19, C.FLAME); p(8, 19, C.LTFLAME);
+      b(14, 18, 3, 2, C.BROWN); b(18, 18, 3, 2, C.BROWN);
     } else if (frame === 5) {
-      p(4, 9, C.HELM);
-      b(4, 9, 5, 1, C.BODY);
-      p(3, 10, C.METAL); p(3, 11, C.DKMETAL);
-      p(9, 10, C.DARK);
+      b(7, 18, 5, 3, C.HELM); p(8, 19, C.DARK);
+      b(11, 18, 10, 3, C.BODY);
+      b(5, 19, 3, 4, C.METAL); p(5, 22, C.DKMETAL);
+      p(21, 21, C.DARK); p(22, 21, C.DARK);
     } else {
-      p(5, 12, C.HELM); p(3, 12, C.METAL); p(8, 12, C.DARK);
-      p(10, 13, C.BROWN); p(4, 13, C.DKMETAL);
+      b(10, 25, 4, 3, C.HELM); p(11, 26, C.DARK);
+      b(6, 25, 3, 2, C.METAL); p(17, 25, C.DARK);
+      p(22, 27, C.BROWN); p(8, 27, C.DKMETAL);
     }
     return;
   }
   const step = frame;
-  const hover = [0, -1, 0, -1][step]; // floating up/down
+  const hover = [0, -2, 0, -2][step]; // floating up/down
   const flicker = step % 2;
   // Elevated position (floating)
   // Helmet
-  b(7, 2 + hover, 3, 2, C.HELM); p(9, 2 + hover, C.DARK);
+  b(13, 3 + hover, 6, 4, C.HELM); p(18, 3 + hover, C.DARK); p(18, 4 + hover, C.DARK);
+  p(14, 3 + hover, C.LTOLIVE);
   // Face
-  p(7, 4 + hover, C.SKIN); p(8, 4 + hover, C.DKSKIN);
+  b(14, 7 + hover, 4, 2, C.SKIN); p(17, 7 + hover, C.DKSKIN);
   // Body
-  b(6, 5 + hover, 4, 3, C.BODY); p(6, 5 + hover, C.LTOLIVE);
-  // Jetpack on back
-  b(4, 5 + hover, 2, 3, C.METAL); p(4, 5 + hover, C.LTMETAL);
-  p(5, 7 + hover, C.DKMETAL);
-  // Jet flames below
-  p(4, 8 + hover, C.FLAME); p(5, 8 + hover, C.FLAME);
-  p(4, 9 + hover, flicker ? C.LTFLAME : C.ORANGE);
-  p(5, 9 + hover, flicker ? C.ORANGE : C.LTFLAME);
-  if (flicker) { p(4, 10 + hover, C.ORANGE); }
-  else { p(5, 10 + hover, C.ORANGE); }
-  // Arms
-  p(6, 6 + hover, C.BODY); p(10, 6 + hover, C.BODY);
+  b(12, 9 + hover, 8, 6, C.BODY); p(12, 9 + hover, C.LTOLIVE); p(13, 10 + hover, C.LTOLIVE);
+  // Jetpack on back (detailed)
+  b(7, 9 + hover, 5, 6, C.METAL); p(7, 9 + hover, C.LTMETAL); p(8, 10 + hover, C.LTMETAL);
+  p(11, 14 + hover, C.DKMETAL); p(11, 13 + hover, C.DKMETAL);
+  // Nozzles
+  p(7, 15 + hover, C.DKMETAL); p(8, 15 + hover, C.DKMETAL);
+  p(10, 15 + hover, C.DKMETAL); p(11, 15 + hover, C.DKMETAL);
+  // Jet flames below (visible flame particles)
+  b(7, 16 + hover, 2, 2, C.FLAME); b(10, 16 + hover, 2, 2, C.FLAME);
+  b(7, 18 + hover, 2, 2, flicker ? C.LTFLAME : C.ORANGE);
+  b(10, 18 + hover, 2, 2, flicker ? C.ORANGE : C.LTFLAME);
+  if (flicker) {
+    p(7, 20 + hover, C.ORANGE); p(8, 20 + hover, C.LTFLAME);
+    p(10, 20 + hover, C.ORANGE); p(11, 21 + hover, C.LTFLAME);
+  } else {
+    p(8, 20 + hover, C.ORANGE); p(7, 21 + hover, C.LTFLAME);
+    p(11, 20 + hover, C.ORANGE); p(10, 21 + hover, C.LTFLAME);
+  }
+  // Arms (spread)
+  b(11, 11 + hover, 2, 3, C.BODY); b(20, 11 + hover, 2, 3, C.BODY);
   // Legs (dangling)
-  p(7, 8 + hover, C.BROWN); p(8, 8 + hover, C.BROWN);
-  p(7, 9 + hover, C.DARK); p(8, 9 + hover + flicker, C.DARK);
+  b(14, 15 + hover, 2, 4, C.BROWN); b(17, 15 + hover, 2, 4, C.BROWN);
+  p(14, 19 + hover, C.DARK); p(15, 19 + hover, C.DARK);
+  p(17, 19 + hover + flicker, C.DARK); p(18, 19 + hover + flicker, C.DARK);
 }
 
-// 13: Iron Mage (Armor Officer) — Heavy coat, rally gesture
+// 12: Iron Mage (Armor Officer) — Distinct cap/beret, longer coat, rally gesture
 function drawArmorOfficer(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 4, C.DARK); p(8, 4, C.DARK); // beret
-      p(7, 5, C.SKIN);
-      b(6, 6, 4, 4, C.DKOLIVE); p(6, 6, C.BODY);
-      p(7, 10, C.BROWN); p(9, 10, C.BROWN);
+      b(13, 6, 6, 3, C.DARK); p(14, 5, C.DARK); p(15, 5, C.DGRAY); // beret
+      b(14, 9, 4, 2, C.SKIN);
+      b(12, 11, 8, 9, C.DKOLIVE); p(12, 11, C.BODY);
+      p(11, 12, C.METAL); p(20, 12, C.METAL); // epaulettes
+      b(14, 20, 3, 3, C.BROWN); b(18, 20, 3, 3, C.BROWN);
     } else if (frame === 5) {
-      b(4, 10, 6, 1, C.DKOLIVE);
-      p(3, 10, C.DARK); p(10, 10, C.DARK);
-      p(5, 11, C.BROWN);
+      b(7, 20, 14, 3, C.DKOLIVE);
+      p(5, 21, C.DARK); p(6, 21, C.DARK); p(21, 21, C.DARK); p(22, 21, C.DARK);
+      p(10, 23, C.BROWN); p(11, 23, C.BROWN);
     } else {
-      p(5, 12, C.DARK); p(8, 12, C.DKOLIVE);
-      p(10, 13, C.BROWN); p(3, 13, C.DARK);
+      b(10, 25, 5, 3, C.DARK); p(11, 26, C.DGRAY);
+      b(17, 25, 4, 2, C.DKOLIVE);
+      p(22, 27, C.BROWN); p(6, 27, C.DARK);
     }
     return;
   }
   const step = frame;
-  const armOff = [0, -1, -1, 0][step]; // rally gesture
-  const legOff = [0, 1, 0, -1][step];
-  // Cap/beret
-  b(7, 3, 3, 1, C.DARK); p(6, 3, C.DARK);
-  p(7, 2, C.DARK); p(8, 2, C.DGRAY); // beret top
+  const armOff = [0, -2, -2, 0][step]; // rally gesture
+  const legOff = [0, 2, 0, -2][step];
+  // Cap/beret (distinct shape)
+  b(13, 4, 7, 2, C.DARK); p(12, 5, C.DARK); p(11, 5, C.DARK);
+  b(14, 2, 5, 2, C.DARK); p(15, 2, C.DGRAY); p(16, 2, C.DGRAY); // beret puff
+  p(14, 3, C.DGRAY);
   // Face
-  p(7, 4, C.SKIN); p(8, 4, C.DKSKIN);
-  // Officer coat (longer, darker olive)
-  b(6, 5, 4, 5, C.DKOLIVE); p(6, 5, C.BODY); // highlight
-  p(9, 9, C.DARK); // shadow
+  b(14, 6, 4, 3, C.SKIN); p(17, 6, C.DKSKIN); p(15, 8, C.DKSKIN);
+  // Officer coat (long, darker olive — extends further down)
+  b(12, 9, 8, 12, C.DKOLIVE); p(12, 9, C.BODY); p(13, 10, C.BODY);
+  p(19, 20, C.DARK); p(19, 19, C.DARK);
+  // Coat lapels
+  p(14, 10, C.DARK); p(17, 10, C.DARK);
+  p(14, 11, C.DARK); p(17, 11, C.DARK);
   // Epaulettes
-  p(5, 5, C.METAL); p(10, 5, C.METAL);
-  // Rally arm raised
-  p(10, 4 + armOff, C.BODY); p(11, 3 + armOff, C.BODY); // arm up
-  p(11, 2 + armOff, C.SKIN); // fist
+  b(10, 9, 2, 2, C.METAL); b(20, 9, 2, 2, C.METAL);
+  // Rally arm raised high
+  b(20, 7 + armOff, 2, 5, C.BODY);
+  p(21, 6 + armOff, C.BODY); p(22, 5 + armOff, C.BODY);
+  p(22, 4 + armOff, C.SKIN); p(23, 4 + armOff, C.SKIN); // fist
   // Belt with insignia
-  b(6, 8, 4, 1, C.KHAKI); p(8, 8, C.METAL);
-  // Legs under coat
-  p(7 + legOff, 10, C.BROWN); p(8 - legOff, 10, C.BROWN);
-  p(7 + legOff, 11, C.DARK); p(8 - legOff, 11, C.DARK);
+  b(12, 16, 8, 1, C.KHAKI); p(16, 16, C.METAL); p(17, 16, C.METAL);
+  // Legs under coat (visible below coat hem)
+  b(13 + legOff, 21, 3, 3, C.BROWN); b(17 - legOff, 21, 3, 3, C.BROWN);
+  b(13 + legOff, 24, 3, 2, C.DARK); b(17 - legOff, 24, 3, 2, C.DARK);
 }
 
-// 14: Haste Mage (Signals Officer) — Radio antenna, speed lines
+// 13: Haste Mage (Signals Officer) — Radio antenna, speed lines
 function drawSignalsOfficer(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 4, C.DARK); p(8, 4, C.DARK);
-      p(7, 5, C.SKIN);
-      b(6, 6, 4, 4, C.BODY); p(6, 6, C.LTOLIVE);
-      p(5, 5, C.METAL); p(5, 4, C.LTMETAL); // antenna breaking
-      p(7, 10, C.BROWN); p(9, 10, C.BROWN);
+      b(13, 6, 6, 3, C.DARK); p(14, 5, C.DGRAY);
+      b(14, 9, 4, 2, C.SKIN);
+      b(12, 11, 8, 8, C.BODY); p(12, 11, C.LTOLIVE);
+      // antenna breaking
+      p(9, 9, C.METAL); p(9, 8, C.LTMETAL); p(10, 7, C.LTMETAL);
+      b(14, 19, 3, 3, C.BROWN); b(18, 19, 3, 3, C.BROWN);
     } else if (frame === 5) {
-      b(4, 10, 6, 1, C.BODY);
-      p(3, 10, C.DARK); p(10, 10, C.DARK);
-      p(5, 11, C.METAL);
+      b(7, 20, 14, 3, C.BODY);
+      p(5, 21, C.DARK); p(6, 21, C.DARK); p(21, 21, C.DARK); p(22, 21, C.DARK);
+      p(10, 23, C.METAL);
     } else {
-      p(5, 12, C.DARK); p(8, 12, C.METAL);
-      p(3, 13, C.BODY); p(10, 13, C.DARK);
+      b(10, 25, 5, 3, C.DARK); p(11, 26, C.DGRAY);
+      b(17, 25, 3, 2, C.METAL);
+      p(6, 27, C.BODY); p(22, 27, C.DARK);
     }
     return;
   }
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
+  const legOff = [0, 2, 0, -2][step];
   const wave = step % 2;
   // Cap
-  b(7, 3, 3, 1, C.DARK); p(6, 3, C.DARK);
-  p(7, 2, C.DGRAY);
+  b(13, 4, 7, 2, C.DARK); p(12, 5, C.DARK);
+  b(14, 2, 5, 2, C.DGRAY); p(15, 3, C.DARK);
   // Face
-  p(7, 4, C.SKIN); p(8, 4, C.DKSKIN);
+  b(14, 6, 4, 3, C.SKIN); p(17, 6, C.DKSKIN);
   // Body
-  b(6, 5, 4, 4, C.BODY); p(6, 5, C.LTOLIVE);
-  // Radio antenna on back
-  p(5, 5, C.METAL); p(5, 4, C.METAL); p(5, 3, C.LTMETAL);
-  p(5, 2, C.LTMETAL); p(4, 1, C.LTBLUE); // antenna tip
+  b(12, 9, 8, 9, C.BODY); p(12, 9, C.LTOLIVE); p(13, 10, C.LTOLIVE);
+  // Radio antenna on back (tall)
+  p(9, 9, C.METAL); p(9, 8, C.METAL); p(9, 7, C.METAL);
+  p(9, 6, C.LTMETAL); p(9, 5, C.LTMETAL); p(9, 4, C.LTMETAL);
+  p(8, 3, C.LTBLUE); p(9, 3, C.LTBLUE); // antenna tip glow
+  // Radio backpack
+  b(9, 10, 3, 5, C.GEAR); p(10, 11, C.METAL); p(10, 12, C.DKMETAL);
   // Speed-wave lines (animated)
   if (wave) {
-    p(2, 6, C.LTBLUE); p(1, 7, C.BLUE); p(3, 8, C.LTBLUE);
+    p(3, 11, C.LTBLUE); p(4, 11, C.LTBLUE); p(2, 13, C.BLUE); p(3, 13, C.BLUE);
+    p(5, 15, C.LTBLUE); p(6, 15, C.LTBLUE);
   } else {
-    p(3, 6, C.BLUE); p(2, 7, C.LTBLUE); p(1, 8, C.BLUE);
+    p(5, 11, C.BLUE); p(6, 11, C.BLUE); p(3, 13, C.LTBLUE); p(4, 13, C.LTBLUE);
+    p(2, 15, C.BLUE); p(3, 15, C.BLUE);
   }
-  // Belt
-  b(6, 8, 4, 1, C.KHAKI);
   // Epaulettes
-  p(5, 5, C.METAL); p(10, 5, C.METAL);
+  b(10, 9, 2, 2, C.METAL); b(20, 9, 2, 2, C.METAL);
+  // Belt
+  b(12, 17, 8, 1, C.KHAKI);
   // Legs
-  p(7 + legOff, 9, C.BROWN); p(8 - legOff, 9, C.BROWN);
-  p(7 + legOff, 10, C.DARK); p(8 - legOff, 10, C.DARK);
+  b(13 + legOff, 18, 3, 4, C.BROWN); b(17 - legOff, 18, 3, 4, C.BROWN);
+  b(13 + legOff, 22, 3, 2, C.DARK); b(17 - legOff, 22, 3, 2, C.DARK);
 }
 
-// 15: Mist Mage (Smoke Operator) — Smoke cloud around body
+// 14: Mist Mage (Smoke Operator) — Smoke cloud around body
 function drawSmokeOperator(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 4, C.DARK); p(8, 4, C.DARK);
-      p(7, 5, C.SKIN);
-      b(6, 6, 4, 4, C.BODY);
-      p(4, 7, C.SMOKE); p(11, 6, C.LTSMOKE); // smoke dissipating
-      p(7, 10, C.BROWN); p(9, 10, C.BROWN);
+      b(13, 6, 6, 3, C.DARK); p(14, 5, C.DGRAY);
+      b(14, 9, 4, 2, C.SKIN);
+      b(12, 11, 8, 8, C.BODY);
+      p(8, 13, C.SMOKE); p(9, 13, C.SMOKE);
+      p(22, 12, C.LTSMOKE); p(23, 12, C.LTSMOKE);
+      b(14, 19, 3, 3, C.BROWN); b(18, 19, 3, 3, C.BROWN);
     } else if (frame === 5) {
-      b(4, 10, 6, 1, C.BODY);
-      p(3, 9, C.SMOKE); p(10, 9, C.LTSMOKE);
-      p(5, 11, C.DARK);
+      b(7, 20, 14, 3, C.BODY);
+      p(5, 19, C.SMOKE); p(6, 18, C.SMOKE); p(22, 19, C.LTSMOKE); p(23, 18, C.LTSMOKE);
+      p(10, 23, C.DARK);
     } else {
-      p(5, 12, C.DARK); p(8, 12, C.SMOKE);
-      p(3, 13, C.LTSMOKE); p(10, 13, C.BODY);
+      b(10, 25, 5, 3, C.DARK);
+      p(17, 25, C.SMOKE); p(18, 25, C.SMOKE);
+      p(6, 27, C.LTSMOKE); p(7, 27, C.LTSMOKE);
+      p(22, 27, C.BODY);
     }
     return;
   }
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
+  const legOff = [0, 2, 0, -2][step];
   const smokePhase = step;
   // Cap
-  b(7, 3, 3, 1, C.DARK); p(6, 3, C.DARK);
-  p(7, 2, C.DGRAY);
+  b(13, 4, 7, 2, C.DARK); p(12, 5, C.DARK);
+  b(14, 2, 5, 2, C.DGRAY); p(15, 3, C.DARK);
   // Face
-  p(7, 4, C.SKIN); p(8, 4, C.DKSKIN);
+  b(14, 6, 4, 3, C.SKIN); p(17, 6, C.DKSKIN);
   // Body
-  b(6, 5, 4, 4, C.BODY); p(6, 5, C.LTOLIVE);
-  // Smoke cloud pixels around body (shifting)
+  b(12, 9, 8, 9, C.BODY); p(12, 9, C.LTOLIVE); p(13, 10, C.LTOLIVE);
+  // Smoke cloud pixels around body (shifting, bigger clouds)
   const smokePositions = [
-    [[3, 5], [4, 3], [11, 6], [12, 4], [3, 8], [11, 9]],
-    [[4, 4], [3, 6], [12, 5], [11, 3], [2, 7], [12, 8]],
-    [[3, 3], [5, 4], [11, 5], [12, 6], [4, 9], [10, 8]],
-    [[4, 5], [3, 4], [12, 3], [11, 7], [3, 9], [11, 4]],
+    [[5, 8], [6, 8], [7, 6], [8, 5], [23, 10], [24, 10], [23, 7], [24, 6], [5, 16], [6, 16], [23, 17], [24, 17]],
+    [[7, 7], [8, 7], [5, 10], [6, 10], [24, 8], [25, 8], [22, 5], [23, 5], [4, 14], [5, 14], [24, 15], [25, 15]],
+    [[5, 5], [6, 5], [9, 7], [10, 7], [22, 9], [23, 9], [25, 11], [24, 12], [7, 17], [8, 17], [21, 16], [22, 16]],
+    [[8, 9], [9, 9], [5, 7], [6, 7], [25, 5], [24, 5], [22, 13], [23, 13], [5, 18], [6, 18], [22, 7], [23, 7]],
   ];
   const spos = smokePositions[smokePhase % 4];
   for (let i = 0; i < spos.length; i++) {
     p(spos[i][0], spos[i][1], i % 2 === 0 ? C.SMOKE : C.LTSMOKE);
   }
   // Smoke grenade in hand
-  p(10, 6, C.DGRAY); p(10, 7, C.MGRAY);
+  b(21, 11, 2, 3, C.DGRAY); p(22, 12, C.MGRAY);
+  p(21, 14, C.SMOKE); p(22, 14, C.LTSMOKE); // smoke emanating
+  // Epaulettes
+  b(10, 9, 2, 2, C.METAL); b(20, 9, 2, 2, C.METAL);
   // Belt
-  b(6, 8, 4, 1, C.KHAKI);
+  b(12, 17, 8, 1, C.KHAKI);
   // Legs
-  p(7 + legOff, 9, C.BROWN); p(8 - legOff, 9, C.BROWN);
-  p(7 + legOff, 10, C.DARK); p(8 - legOff, 10, C.DARK);
+  b(13 + legOff, 18, 3, 4, C.BROWN); b(17 - legOff, 18, 3, 4, C.BROWN);
+  b(13 + legOff, 22, 3, 2, C.DARK); b(17 - legOff, 22, 3, 2, C.DARK);
 }
 
-// 16: Heal Mage (Combat Surgeon) — Medical cross, healing glow
+// 15: Heal Mage (Combat Surgeon) — Medical cross, healing glow
 function drawCombatSurgeon(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      p(7, 4, C.DARK); p(8, 4, C.DARK);
-      p(7, 5, C.SKIN);
-      b(6, 6, 4, 4, C.BODY);
-      p(10, 6, C.RED); p(10, 7, C.WHITE); p(10, 8, C.RED); // cross falling
-      p(7, 10, C.BROWN); p(9, 10, C.BROWN);
+      b(13, 6, 6, 3, C.DARK); p(14, 5, C.DGRAY);
+      p(17, 5, C.RED); // red cross on cap
+      b(14, 9, 4, 2, C.SKIN);
+      b(12, 11, 8, 8, C.BODY);
+      // cross falling
+      b(21, 12, 2, 4, C.WHITE); p(20, 13, C.RED); p(21, 13, C.RED); p(22, 13, C.RED);
+      p(21, 12, C.RED); p(21, 15, C.RED);
+      b(14, 19, 3, 3, C.BROWN); b(18, 19, 3, 3, C.BROWN);
     } else if (frame === 5) {
-      b(4, 10, 6, 1, C.BODY);
-      p(3, 10, C.DARK);
-      p(9, 10, C.RED); p(10, 11, C.WHITE);
-      p(5, 11, C.DARK);
+      b(7, 20, 14, 3, C.BODY);
+      p(5, 21, C.DARK); p(6, 21, C.DARK);
+      b(20, 21, 2, 3, C.RED); p(22, 22, C.WHITE);
+      p(10, 23, C.DARK);
     } else {
-      p(5, 12, C.DARK); p(8, 12, C.RED); p(9, 13, C.WHITE);
-      p(3, 13, C.LTGREEN); p(11, 12, C.BODY);
+      b(10, 25, 5, 3, C.DARK); p(11, 26, C.DGRAY);
+      b(17, 25, 2, 2, C.RED); p(19, 26, C.WHITE);
+      p(6, 27, C.LTGREEN); p(7, 27, C.LTGREEN);
+      p(23, 25, C.BODY);
     }
     return;
   }
   const step = frame;
-  const legOff = [0, 1, 0, -1][step];
+  const legOff = [0, 2, 0, -2][step];
   const glow = step % 2;
-  // Cap
-  b(7, 3, 3, 1, C.DARK); p(6, 3, C.DARK);
-  p(7, 2, C.DGRAY); p(8, 2, C.RED); // red cross on cap
+  // Cap with red cross
+  b(13, 4, 7, 2, C.DARK); p(12, 5, C.DARK);
+  b(14, 2, 5, 2, C.DGRAY); p(17, 3, C.RED); p(18, 3, C.RED); // red cross on cap
   // Face
-  p(7, 4, C.SKIN); p(8, 4, C.DKSKIN);
+  b(14, 6, 4, 3, C.SKIN); p(17, 6, C.DKSKIN);
   // Body
-  b(6, 5, 4, 4, C.BODY); p(6, 5, C.LTOLIVE);
-  // Red cross on chest
-  p(8, 6, C.RED); p(7, 7, C.RED); p(8, 7, C.WHITE); p(9, 7, C.RED);
-  p(8, 8, C.RED);
-  // Healing glow around (green, pulsing)
+  b(12, 9, 8, 9, C.BODY); p(12, 9, C.LTOLIVE); p(13, 10, C.LTOLIVE);
+  // Red cross on chest (clear 3px cross)
+  p(16, 11, C.RED); p(15, 12, C.RED); p(16, 12, C.WHITE); p(17, 12, C.RED);
+  p(16, 13, C.RED);
+  p(16, 10, C.RED); p(16, 14, C.RED);
+  // Healing glow around (green, pulsing, bigger)
   if (glow) {
-    p(4, 5, C.LTGREEN); p(11, 5, C.GREEN); p(5, 9, C.LTGREEN);
-    p(12, 8, C.GREEN);
+    p(7, 9, C.LTGREEN); p(8, 9, C.LTGREEN); p(23, 9, C.GREEN); p(24, 9, C.GREEN);
+    p(9, 18, C.LTGREEN); p(10, 18, C.LTGREEN); p(25, 16, C.GREEN); p(26, 16, C.GREEN);
   } else {
-    p(5, 4, C.GREEN); p(12, 6, C.LTGREEN); p(4, 8, C.GREEN);
-    p(11, 9, C.LTGREEN);
+    p(9, 7, C.GREEN); p(10, 7, C.GREEN); p(25, 11, C.LTGREEN); p(26, 11, C.LTGREEN);
+    p(7, 16, C.GREEN); p(8, 16, C.GREEN); p(23, 18, C.LTGREEN); p(24, 18, C.LTGREEN);
   }
   // Epaulettes
-  p(5, 5, C.METAL); p(10, 5, C.METAL);
+  b(10, 9, 2, 2, C.METAL); b(20, 9, 2, 2, C.METAL);
   // Belt
-  b(6, 8, 4, 1, C.KHAKI);
-  // Medical bag
-  p(5, 6, C.WHITE); p(5, 7, C.RED);
+  b(12, 17, 8, 1, C.KHAKI);
+  // Medical bag on back
+  b(9, 11, 3, 4, C.WHITE);
+  p(10, 12, C.RED); p(9, 13, C.RED); p(10, 13, C.RED); p(11, 13, C.RED);
+  p(10, 14, C.RED);
   // Legs
-  p(7 + legOff, 9, C.BROWN); p(8 - legOff, 9, C.BROWN);
-  p(7 + legOff, 10, C.DARK); p(8 - legOff, 10, C.DARK);
+  b(13 + legOff, 18, 3, 4, C.BROWN); b(17 - legOff, 18, 3, 4, C.BROWN);
+  b(13 + legOff, 22, 3, 2, C.DARK); b(17 - legOff, 22, 3, 2, C.DARK);
 }
 
 // ===== MASTER DRAW ARRAY =====
@@ -899,12 +1054,12 @@ export default function App() {
         ))}
       </div>
       <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '85vh' }}>
-        <canvas ref={pvRef} data-label="Military Creeps (Preview)" data-frame-size="32x32" data-direction="right" data-columns='["Infantry (Standard)","Scout (Fast)","Heavy Trooper (Armored)","Recruit (Swarm)","Field Medic (Healer)","Tank Commander (Boss)","Fire Team (Group)","Cargo Carrier (Splitter)","Riot Trooper (Shielded)","Recon Operative (Evasive)","Combat Engineer (Regen)","Paratrooper (Flying)","Armor Officer (Iron)","Signals Officer (Haste)","Smoke Operator (Mist)","Combat Surgeon (Heal)"]' data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]' data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]' style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }} />
-        <canvas ref={cRef} data-label="Military Creeps" data-frame-size="32x32" data-direction="right" data-columns='["Infantry (Standard)","Scout (Fast)","Heavy Trooper (Armored)","Recruit (Swarm)","Field Medic (Healer)","Tank Commander (Boss)","Fire Team (Group)","Cargo Carrier (Splitter)","Riot Trooper (Shielded)","Recon Operative (Evasive)","Combat Engineer (Regen)","Paratrooper (Flying)","Armor Officer (Iron)","Signals Officer (Haste)","Smoke Operator (Mist)","Combat Surgeon (Heal)"]' data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]' data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]' style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', width: COLS * CELL * 2, border: '1px solid #1a2a1a' }} />
+        <canvas ref={pvRef} data-label="Military Creeps (Preview)" data-frame-size="64x64" data-direction="right" data-columns='["Infantry (Standard)","Scout (Fast)","Heavy Trooper (Armored)","Recruit (Swarm)","Field Medic (Healer)","Tank Commander (Boss)","Fire Team (Group)","Cargo Carrier (Splitter)","Riot Trooper (Shielded)","Recon Operative (Evasive)","Combat Engineer (Regen)","Paratrooper (Flying)","Armor Officer (Iron)","Signals Officer (Haste)","Smoke Operator (Mist)","Combat Surgeon (Heal)"]' data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]' data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]' style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }} />
+        <canvas ref={cRef} data-label="Military Creeps" data-frame-size="64x64" data-direction="right" data-columns='["Infantry (Standard)","Scout (Fast)","Heavy Trooper (Armored)","Recruit (Swarm)","Field Medic (Healer)","Tank Commander (Boss)","Fire Team (Group)","Cargo Carrier (Splitter)","Riot Trooper (Shielded)","Recon Operative (Evasive)","Combat Engineer (Regen)","Paratrooper (Flying)","Armor Officer (Iron)","Signals Officer (Haste)","Smoke Operator (Mist)","Combat Surgeon (Heal)"]' data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]' data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]' style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', width: COLS * CELL * 2, border: '1px solid #1a2a1a' }} />
       </div>
       <div style={{ color: '#556644', fontSize: 9, marginTop: 10, maxWidth: 700 }}>
         <p style={{ margin: '2px 0' }}><b style={{ color: '#8fbc8f' }}>Sheet:</b> {COLS * CELL}x{ROWS * CELL}px ({COLS * CELL / PX}x{ROWS * CELL / PX} logical) — {CELL}x{CELL} cells</p>
-        <p style={{ margin: '2px 0' }}><b style={{ color: '#8fbc8f' }}>Phaser:</b> <code style={{ color: '#4488ff' }}>{"this.load.spritesheet('military_creeps','military_creeps.png',{frameWidth:32,frameHeight:32})"}</code></p>
+        <p style={{ margin: '2px 0' }}><b style={{ color: '#8fbc8f' }}>Phaser:</b> <code style={{ color: '#4488ff' }}>{"this.load.spritesheet('military_creeps','military_creeps.png',{frameWidth:64,frameHeight:64})"}</code></p>
         <p style={{ margin: '2px 0' }}><b style={{ color: '#8fbc8f' }}>Layout:</b> {COLS} cols (creep types) x {ROWS} rows (4 walk + 3 death). Types: {NAMES.join(', ')}</p>
       </div>
     </div>
