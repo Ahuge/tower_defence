@@ -1131,13 +1131,18 @@ export class GameScene extends Phaser.Scene {
 
     if (this.waveMgr.isComplete() && this.creeps.length === 0) {
       // Gauntlet: stage transition instead of game over
-      if (this.matchMode === 'gauntlet' && this.gameMode instanceof GauntletMode) {
-        const gauntlet = this.gameMode as GauntletMode;
-        if (gauntlet.hasNextStage()) {
+      if (this.matchMode === 'gauntlet') {
+        const gauntlet = this.gameMode as any;
+        if (gauntlet && typeof gauntlet.hasNextStage === 'function' && gauntlet.hasNextStage()) {
+          console.log('[Gauntlet] Stage complete, transitioning to next...');
           this.startGauntletTransition(gauntlet);
           return;
         }
-        // All stages complete — true victory!
+        if (gauntlet && typeof gauntlet.hasNextStage === 'function') {
+          console.log('[Gauntlet] All stages complete — victory!');
+        } else {
+          console.warn('[Gauntlet] gameMode is not GauntletMode:', this.gameMode?.constructor?.name);
+        }
       }
 
       this.eventBus.emit('gameWon');
