@@ -716,10 +716,12 @@ export default function ArcaneCreepSprites() {
       <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh' }}>
         <canvas
           ref={previewRef}
+          data-label="Arcane Creeps (Preview)"
           style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }}
         />
         <canvas
           ref={sheetRef}
+          data-label="Arcane Creeps"
           style={{
             display: view === 'actual' ? 'block' : 'none',
             imageRendering: 'pixelated',

@@ -94,17 +94,18 @@ function AnimationPreview() {
     allCanvases.forEach(c => {
       if (c === canvasRef.current) return;
       if (c.width > 0 && c.height > 0) {
-        // Try to find a label: check for nearby heading, or parent's preceding text
-        let label = '';
-        // Check for a heading before this canvas (walk up to find h2/h3/h4 sibling)
-        let el: Element | null = c;
-        while (el && !label) {
-          const prev = el.previousElementSibling;
-          if (prev && /^H[1-6]$/.test(prev.tagName)) {
-            label = prev.textContent?.trim() ?? '';
-            break;
+        // Get label: prefer data-label attribute, then nearby heading, then dimensions
+        let label = c.getAttribute('data-label') ?? '';
+        if (!label) {
+          let el: Element | null = c;
+          while (el && !label) {
+            const prev = el.previousElementSibling;
+            if (prev && /^H[1-6]$/.test(prev.tagName)) {
+              label = prev.textContent?.trim() ?? '';
+              break;
+            }
+            el = el.parentElement;
           }
-          el = el.parentElement;
         }
         if (!label) label = `${c.width}×${c.height}`;
         else label += ` (${c.width}×${c.height})`;

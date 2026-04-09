@@ -899,8 +899,8 @@ export default function App() {
         ))}
       </div>
       <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '85vh' }}>
-        <canvas ref={pvRef} style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }} />
-        <canvas ref={cRef} style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', width: COLS * CELL * 2, border: '1px solid #1a2a1a' }} />
+        <canvas ref={pvRef} data-label="Military Creeps (Preview)" style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }} />
+        <canvas ref={cRef} data-label="Military Creeps" style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', width: COLS * CELL * 2, border: '1px solid #1a2a1a' }} />
       </div>
       <div style={{ color: '#556644', fontSize: 9, marginTop: 10, maxWidth: 700 }}>
         <p style={{ margin: '2px 0' }}><b style={{ color: '#8fbc8f' }}>Sheet:</b> {COLS * CELL}x{ROWS * CELL}px ({COLS * CELL / PX}x{ROWS * CELL / PX} logical) — {CELL}x{CELL} cells</p>
