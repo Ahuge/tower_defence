@@ -175,8 +175,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   creepFaction: FactionId = 'arcane';
+  private _gauntletOrder: FactionId[] | undefined;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -186,6 +187,7 @@ export class GameScene extends Phaser.Scene {
     this.dailySeed = data.dailySeed ?? false;
     this.randomSeed = data.randomSeed ?? 0;
     this.creepFaction = data.creepFaction ?? 'arcane';
+    this._gauntletOrder = (data as any).gauntletOrder ?? undefined;
     this.generatedMapDef = null;
     // Hero defense requires its own map (12-row grid)
     if (this.matchMode === 'hero_defense') {
@@ -427,7 +429,7 @@ export class GameScene extends Phaser.Scene {
     } else if (this.matchMode === 'circle_coop' && this.circle) {
       this.gameMode = new CircleCoopMode();
     } else if (this.matchMode === 'gauntlet') {
-      const gauntlet = new GauntletMode(this.faction ?? 'arcane', this.difficulty);
+      const gauntlet = new GauntletMode(this.faction ?? 'arcane', this.difficulty, this._gauntletOrder);
       this.gameMode = gauntlet;
       // Set initial creep faction and waves for stage 1
       this.creepFaction = gauntlet.getCurrentFaction();

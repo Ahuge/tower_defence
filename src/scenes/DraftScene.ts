@@ -104,7 +104,8 @@ export class DraftScene extends Phaser.Scene {
         card.strokeRect(x - w / 2, y, w, h);
       });
       zone.on('pointerdown', () => {
-        this.scene.start('GameScene', {
+        const nextScene = this.matchMode === 'gauntlet' ? 'GauntletPreviewScene' : 'GameScene';
+        this.scene.start(nextScene, {
           mode: this.matchMode,
           faction: this.faction,
           map: this.mapId,
@@ -126,7 +127,8 @@ export class DraftScene extends Phaser.Scene {
       fontSize: UIScale.font(14), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
-        this.scene.start('GameScene', {
+        const nextScene = this.matchMode === 'gauntlet' ? 'GauntletPreviewScene' : 'GameScene';
+        this.scene.start(nextScene, {
           mode: this.matchMode,
           faction: this.faction,
           map: this.mapId,

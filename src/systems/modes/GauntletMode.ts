@@ -40,12 +40,12 @@ export class GauntletMode extends BaseFrontierMode {
   /** Callback to trigger stage transition in GameScene */
   onStageTransition: ((nextFaction: FactionId, stageIndex: number, callback: () => void) => void) | null = null;
 
-  constructor(playerFaction: FactionId, difficulty: DifficultyLevel) {
+  constructor(playerFaction: FactionId, difficulty: DifficultyLevel, presetOrder?: FactionId[]) {
     super();
     this.playerFaction = playerFaction;
     this.difficulty = difficulty;
-    // Random order of all factions except player's
-    this.stageOrder = shuffleArray(getGauntletFactions(playerFaction));
+    // Use preset order from preview scene, or generate random
+    this.stageOrder = presetOrder ?? shuffleArray(getGauntletFactions(playerFaction));
   }
 
   createUI(ctx: GameModeContext): void {
