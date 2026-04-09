@@ -457,13 +457,13 @@ const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
   {
     faction: 'mechanical', name: 'Iron Foundry',
     description: 'Factory floor grid. Conveyor belts and machine blocks.',
-    theme: 'volcanic', entries: [{ col: 0, row: 0 }], exits: [{ col: GRID_COLS - 1, row: GRID_ROWS - 1 }],
+    theme: 'factory', entries: [{ col: 0, row: 0 }], exits: [{ col: GRID_COLS - 1, row: GRID_ROWS - 1 }],
     builder: buildMechanical,
   },
   {
     faction: 'nature', name: 'Ancient Grove',
     description: 'Organic clearings among ancient trees. Mushroom rings mark sacred ground.',
-    theme: 'forest', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 0 }],
+    theme: 'ancient_grove', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 0 }],
     builder: buildNature,
   },
   {

@@ -56,21 +56,73 @@ interface FactionTerrain {
 const FACTION_TERRAINS: FactionTerrain[] = [
   {
     themeId: 'circuit',
-    tilesetKey: 'terrain_cypherpunk',
-    doodadKey: 'terrain_cypherpunk_doodads',
-    path: 'assets/terrain/cypherpunk_terrain_tileset.png',
-    doodadPath: 'assets/terrain/cypherpunk_terrain_doodads.png',
+    tilesetKey: 'terrain_cypherpunk', doodadKey: 'terrain_cypherpunk_doodads',
+    path: 'assets/terrain/cypherpunk_terrain_tileset.png', doodadPath: 'assets/terrain/cypherpunk_terrain_doodads.png',
     groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 2,
     typeMapping: { stone: 'blocked', water: 'animated' },
   },
   {
     themeId: 'hellscape',
-    tilesetKey: 'terrain_infernal',
-    doodadKey: 'terrain_infernal_doodads',
-    path: 'assets/terrain/infernal_terrain_tileset.png',
-    doodadPath: 'assets/terrain/infernal_terrain_doodads.png',
+    tilesetKey: 'terrain_infernal', doodadKey: 'terrain_infernal_doodads',
+    path: 'assets/terrain/infernal_terrain_tileset.png', doodadPath: 'assets/terrain/infernal_terrain_doodads.png',
     groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.7,
     typeMapping: { mountain: 'blocked', lava: 'animated' },
+  },
+  {
+    themeId: 'ancient_grove',
+    tilesetKey: 'terrain_nature', doodadKey: 'terrain_nature_doodads',
+    path: 'assets/terrain/nature_terrain_tileset.png', doodadPath: 'assets/terrain/nature_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { trees: 'blocked', water: 'animated' },
+  },
+  {
+    themeId: 'arcane_crystal',
+    tilesetKey: 'terrain_arcane', doodadKey: 'terrain_arcane_doodads',
+    path: 'assets/terrain/arcane_terrain_tileset.png', doodadPath: 'assets/terrain/arcane_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { stone: 'blocked', water: 'animated' },
+  },
+  {
+    themeId: 'factory',
+    tilesetKey: 'terrain_mechanical', doodadKey: 'terrain_mechanical_doodads',
+    path: 'assets/terrain/mechanical_terrain_tileset.png', doodadPath: 'assets/terrain/mechanical_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { stone: 'blocked', water: 'animated' },
+  },
+  {
+    themeId: 'void_rift',
+    tilesetKey: 'terrain_void', doodadKey: 'terrain_void_doodads',
+    path: 'assets/terrain/void_terrain_tileset.png', doodadPath: 'assets/terrain/void_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { mountain: 'blocked', water: 'animated' },
+  },
+  {
+    themeId: 'urban',
+    tilesetKey: 'terrain_military', doodadKey: 'terrain_military_doodads',
+    path: 'assets/terrain/military_terrain_tileset.png', doodadPath: 'assets/terrain/military_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 2,
+    typeMapping: { stone: 'blocked', mountain: 'blocked' },
+  },
+  {
+    themeId: 'hive',
+    tilesetKey: 'terrain_aliens', doodadKey: 'terrain_aliens_doodads',
+    path: 'assets/terrain/aliens_terrain_tileset.png', doodadPath: 'assets/terrain/aliens_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { trees: 'blocked', water: 'animated' },
+  },
+  {
+    themeId: 'neural',
+    tilesetKey: 'terrain_psionic', doodadKey: 'terrain_psionic_doodads',
+    path: 'assets/terrain/psionic_terrain_tileset.png', doodadPath: 'assets/terrain/psionic_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { stone: 'blocked', water: 'animated' },
+  },
+  {
+    themeId: 'concert',
+    tilesetKey: 'terrain_harmonic', doodadKey: 'terrain_harmonic_doodads',
+    path: 'assets/terrain/harmonic_terrain_tileset.png', doodadPath: 'assets/terrain/harmonic_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { stone: 'blocked', water: 'animated' },
   },
 ];
 
@@ -84,6 +136,7 @@ export class TerrainManager {
   private useSpritesheet = false;
   private factionTerrain: FactionTerrain | null = null;
   private themeId: string = 'generic';
+  private themeColors: { ground?: number; gridLine?: number; noBuild?: number; noBuildLine?: number } = {};
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -160,6 +213,7 @@ export class TerrainManager {
     this.groundType = theme.ground;
     this.themeId = themeId;
     this.factionTerrain = FACTION_TERRAINS.find(ft => ft.themeId === themeId) ?? null;
+    this.themeColors = theme.colors ?? {};
     this.terrainMap.clear();
 
     const rows = grid.rows;
@@ -194,12 +248,13 @@ export class TerrainManager {
 
     // Ground layer (graphics for the base fill + grid lines)
     this.groundGraphics = this.scene.add.graphics().setDepth(0);
-    const groundColor = this.groundType === 'dirt' ? 0x2a2218 : this.groundType === 'sand' ? 0x3a3520 : 0x1a2a1a;
+    const defaultGroundColor = this.groundType === 'dirt' ? 0x2a2218 : this.groundType === 'sand' ? 0x3a3520 : 0x1a2a1a;
+    const groundColor = this.themeColors.ground ?? defaultGroundColor;
     this.groundGraphics.fillStyle(groundColor, 1);
     this.groundGraphics.fillRect(gridLeftX(0), oY, cols * TILE_SIZE, rows * TILE_SIZE);
 
     // Grid lines
-    this.groundGraphics.lineStyle(1, 0x333333, 0.15);
+    this.groundGraphics.lineStyle(1, this.themeColors.gridLine ?? 0x333333, 0.15);
     for (let c = 0; c <= cols; c++) {
       this.groundGraphics.lineBetween(gridLeftX(c), oY, gridLeftX(c), oY + rows * TILE_SIZE);
     }
@@ -298,17 +353,21 @@ export class TerrainManager {
       }
     }
 
-    // NoBuild cells
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (grid.cells[r][c] === CellType.NoBuild) {
-          const x = gridLeftX(c);
-          const y = oY + r * TILE_SIZE;
-          this.groundGraphics.fillStyle(0x2a2222, 0.6);
-          this.groundGraphics.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-          this.groundGraphics.lineStyle(1, 0x442222, 0.3);
-          this.groundGraphics.lineBetween(x + 4, y + 4, x + TILE_SIZE - 4, y + TILE_SIZE - 4);
-          this.groundGraphics.lineBetween(x + TILE_SIZE - 4, y + 4, x + 4, y + TILE_SIZE - 4);
+    // NoBuild cells (theme-colored)
+    const noBuildFill = this.themeColors.noBuild ?? 0x2a2222;
+    const noBuildLine = this.themeColors.noBuildLine ?? 0x442222;
+    if (!useFaction) { // faction terrain handles NoBuild separately
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid.cells[r][c] === CellType.NoBuild) {
+            const x = gridLeftX(c);
+            const y = oY + r * TILE_SIZE;
+            this.groundGraphics.fillStyle(noBuildFill, 0.6);
+            this.groundGraphics.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            this.groundGraphics.lineStyle(1, noBuildLine, 0.4);
+            this.groundGraphics.lineBetween(x + 4, y + 4, x + TILE_SIZE - 4, y + TILE_SIZE - 4);
+            this.groundGraphics.lineBetween(x + TILE_SIZE - 4, y + 4, x + 4, y + TILE_SIZE - 4);
+          }
         }
       }
     }
