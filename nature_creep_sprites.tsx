@@ -325,7 +325,7 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const bob = [0, 0, -1, 0][f];
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
-    const by = 0 + bob;
+    const by = 2 + bob;
     const leafSway = [0, 1, 0, -1][f];
 
     // === MASSIVE LEAF CANOPY (wide, multi-layered) ===

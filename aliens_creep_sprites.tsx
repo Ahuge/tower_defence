@@ -333,7 +333,7 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const bob = [0, 0, -1, 0][f];
     const legF = [0, 1, 0, -1][f];
     const legR = [0, -1, 0, 1][f];
-    const by = 1 + bob;
+    const by = 6 + bob;
     const pulse = f === 0 || f === 2;
 
     // === CROWN OF ANTENNAE (6 antennae, imposing) ===

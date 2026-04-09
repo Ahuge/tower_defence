@@ -326,7 +326,7 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const bob = [0, 0, -1, 0][f];
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
-    const by = 1 + bob;
+    const by = 6 + bob;
     const pulseShift = [0, 1, 0, -1][f];
 
     // === FLOATING DEBRIS (telekinesis - rocks hovering around) ===

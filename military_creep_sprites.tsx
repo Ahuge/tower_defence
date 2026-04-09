@@ -385,7 +385,7 @@ function drawTankCommander(c: any, o: number[], frame: number) {
     return;
   }
   const step = frame;
-  const mech = [0, 1, 0, 1][step];
+  const mech = [2, 3, 2, 3][step];
   const blinkLight = step % 2 === 0;
 
   // === COMMAND ANTENNA (tall, with blinking light) ===

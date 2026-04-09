@@ -317,7 +317,7 @@ function drawDemonLord(c: CanvasRenderingContext2D, o: number[], f: number) {
     const bob = [0, 0, -1, 0][f];
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
-    const by = 1 + bob;
+    const by = 6 + bob;
     const flameFlicker = [0, 1, 0, -1][f];
 
     // === CROWN OF FLAMES (animated, tall) ===

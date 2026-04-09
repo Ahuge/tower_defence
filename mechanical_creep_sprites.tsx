@@ -317,7 +317,7 @@ function drawWarEngine(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, 0, -1, 0][f];
-    const by = 1 + bob;
+    const by = 7 + bob;
     const smokeOff = [0, 2, 1, 3][f];
     const treadOff = f;
     const warnBlink = f % 2 === 0;

@@ -298,7 +298,7 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const bob = [0, 0, -1, 0][f];
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
-    const by = 1 + bob;
+    const by = 8 + bob;
     const tw = [0, 1, -1, 0][f]; // tentacle writhe
 
     // === REALITY DISTORTION (edge pixels that shift per frame) ===
