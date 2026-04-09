@@ -153,6 +153,7 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Marathon',         desc: 'Endless — infinite scaling',       accent: 0x44cc44, action: () => goFaction('marathon') },
       { label: 'Battle',           desc: 'Dual economy — Gold + Essence',   accent: 0xddaa22, action: () => goFaction('battle') },
       { label: 'Hero Defense',     desc: 'Control a hero in the arena',     accent: 0xff44aa, action: () => goFaction('hero_defense') },
+      { label: 'Faction Gauntlet', desc: '100 waves — fight all factions',  accent: 0xff4444, action: () => goFaction('gauntlet') },
       { label: 'Versus 1v1',       desc: 'P2P competitive — sends attack',  accent: 0xff8844, action: () => this.scene.start('LobbyScene') },
       { label: 'Circle Co-op',     desc: '2-4 players — shared map',        accent: 0x44aaff, action: () => this.scene.start('CircleLobbyScene') },
     ];

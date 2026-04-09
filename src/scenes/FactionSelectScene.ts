@@ -133,6 +133,9 @@ export class FactionSelectScene extends Phaser.Scene {
         const passData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed };
         if (this.matchMode === 'hero_defense') {
           this.scene.start('HeroSelectScene', passData);
+        } else if (this.matchMode === 'gauntlet') {
+          // Gauntlet skips creep faction select — it picks per stage
+          this.scene.start('DraftScene', passData);
         } else {
           this.scene.start('CreepFactionSelectScene', passData);
         }
