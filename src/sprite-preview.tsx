@@ -54,6 +54,7 @@ const MOBILE_FILES: Record<string, string> = {
 function AnimationPreview() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sourceCanvas, setSourceCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [detectedSheets, setDetectedSheets] = useState<{ canvas: HTMLCanvasElement; label: string }[]>([]);
   const [frameW, setFrameW] = useState(32);
   const [frameH, setFrameH] = useState(32);
   const [cols, setCols] = useState(1);
@@ -67,30 +68,42 @@ function AnimationPreview() {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [loop, setLoop] = useState(true);
 
+  const pickSheet = useCallback((sheet: HTMLCanvasElement) => {
+    setSourceCanvas(sheet);
+    // Auto-detect frame size from common sheet dimensions
+    const w = sheet.width, h = sheet.height;
+    let fw = 32, fh = 32;
+    // Try common frame sizes and pick the one that divides evenly
+    for (const trySize of [32, 64, 28, 128]) {
+      if (w % trySize === 0 && h % trySize === 0) {
+        fw = trySize; fh = trySize; break;
+      }
+    }
+    setFrameW(fw); setFrameH(fh);
+    const c = Math.floor(w / fw), r = Math.floor(h / fh);
+    setCols(c); setRows(r);
+    setSelectedCol(0); setStartRow(0);
+    setEndRow(Math.min(3, r - 1));
+    setCurrentFrame(0);
+  }, []);
+
   // Scan for spritesheets in the page
   const scanSheets = useCallback(() => {
     const allCanvases = document.querySelectorAll('canvas');
-    // Find actual-size canvases (not preview, not our animation canvas)
-    const sheets: HTMLCanvasElement[] = [];
+    const sheets: { canvas: HTMLCanvasElement; label: string }[] = [];
     allCanvases.forEach(c => {
       if (c === canvasRef.current) return;
-      if (c.width > 0 && c.height > 0 && c.width <= 2048) {
-        sheets.push(c);
+      if (c.width > 0 && c.height > 0) {
+        sheets.push({ canvas: c, label: `${c.width}×${c.height}` });
       }
     });
+    setDetectedSheets(sheets);
+    // Auto-pick: prefer the smallest canvas (actual size, not preview)
     if (sheets.length > 0) {
-      const sheet = sheets[0]; // pick the first actual-size one
-      setSourceCanvas(sheet);
-      // Auto-detect frame size for creep sheets (32×32)
-      const fw = sheet.width >= 512 ? 32 : 64;
-      const fh = sheet.height >= 224 ? 32 : 64;
-      setFrameW(fw);
-      setFrameH(fh);
-      setCols(Math.floor(sheet.width / fw));
-      setRows(Math.floor(sheet.height / fh));
-      setEndRow(Math.min(3, Math.floor(sheet.height / fh) - 1));
+      const sorted = [...sheets].sort((a, b) => (a.canvas.width * a.canvas.height) - (b.canvas.width * b.canvas.height));
+      pickSheet(sorted[0].canvas);
     }
-  }, []);
+  }, [pickSheet]);
 
   // Animation loop
   useEffect(() => {
@@ -140,6 +153,19 @@ function AnimationPreview() {
         <h3 style={{ color: '#ffaa44', margin: 0, fontSize: 14 }}>Animation Preview</h3>
         <button onClick={scanSheets} style={btnStyle}>Scan Sheets</button>
       </div>
+
+      {/* Sheet picker */}
+      {detectedSheets.length > 1 && (
+        <div style={{ marginBottom: 8, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: '#888', fontSize: 11 }}>Sheets found:</span>
+          {detectedSheets.map((s, i) => (
+            <button key={i} onClick={() => pickSheet(s.canvas)}
+              style={{ ...btnStyle, border: s.canvas === sourceCanvas ? '1px solid #ffaa44' : '1px solid #555' }}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {!sourceCanvas ? (
         <p style={{ color: '#666', fontSize: 12 }}>Click "Scan Sheets" after loading a sprite tab above</p>
