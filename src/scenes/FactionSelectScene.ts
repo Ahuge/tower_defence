@@ -130,10 +130,11 @@ export class FactionSelectScene extends Phaser.Scene {
         card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerdown', () => {
+        const passData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed };
         if (this.matchMode === 'hero_defense') {
-          this.scene.start('HeroSelectScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed });
+          this.scene.start('HeroSelectScene', passData);
         } else {
-          this.scene.start('DraftScene', { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed });
+          this.scene.start('CreepFactionSelectScene', passData);
         }
       });
     }

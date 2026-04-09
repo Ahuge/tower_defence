@@ -18,12 +18,13 @@ export class DraftScene extends Phaser.Scene {
   private heroId: HeroId | null = null;
   private randomSeed: number = 0;
   private dailySeed: boolean = false;
+  private creepFaction: FactionId | null = null;
 
   constructor() {
     super('DraftScene');
   }
 
-  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean }): void {
+  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId }): void {
     this.matchMode = data.mode;
     this.faction = data.faction;
     this.mapId = data.map;
@@ -31,6 +32,7 @@ export class DraftScene extends Phaser.Scene {
     this.heroId = data.heroId ?? null;
     this.randomSeed = data.randomSeed ?? 0;
     this.dailySeed = data.dailySeed ?? false;
+    this.creepFaction = data.creepFaction ?? null;
   }
 
   create(): void {
@@ -111,6 +113,7 @@ export class DraftScene extends Phaser.Scene {
           heroId: this.heroId,
           randomSeed: this.randomSeed,
           dailySeed: this.dailySeed,
+          creepFaction: this.creepFaction ?? undefined,
         });
       });
     }
@@ -132,6 +135,7 @@ export class DraftScene extends Phaser.Scene {
           heroId: this.heroId,
           randomSeed: this.randomSeed,
           dailySeed: this.dailySeed,
+          creepFaction: this.creepFaction ?? undefined,
         });
       })
       .on('pointerover', function(this: Phaser.GameObjects.Text) { this.setColor('#aaaaaa'); })

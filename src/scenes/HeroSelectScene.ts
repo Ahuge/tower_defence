@@ -372,7 +372,7 @@ export class HeroSelectScene extends Phaser.Scene {
   }
 
   private selectHero(heroId: HeroId): void {
-    this.scene.start('DraftScene', {
+    this.scene.start('CreepFactionSelectScene', {
       mode: this.matchMode,
       faction: this.faction,
       map: this.mapId,

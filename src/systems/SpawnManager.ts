@@ -117,6 +117,7 @@ export class SpawnManager {
           entry.speedScale,
           entry.isBoss,
           entry.creepType,
+          (this.scene as any).creepFaction,
         );
         creeps.push(creep);
       }
@@ -153,6 +154,7 @@ export class SpawnManager {
               creep.baseSpeed / 80,
               false,
               splitType,
+              (this.scene as any).creepFaction,
             );
             child.x = creep.x + (Math.random() - 0.5) * TILE_SIZE;
             child.y = creep.y + (Math.random() - 0.5) * TILE_SIZE;
@@ -184,6 +186,7 @@ export class SpawnManager {
       speed / 80, // convert back to speed multiplier (CREEP_BASE_SPEED = 80)
       isBoss,
       creepType,
+      (scene as any).creepFaction,
     );
     // Override HP with the actual leaked value
     creep.hp = Math.round(hp);

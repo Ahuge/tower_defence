@@ -869,6 +869,8 @@ export default function MobileUnitSprites() {
             <div style={{ position: 'relative' }}>
               <canvas
                 ref={el => { canvasRefs.current[i] = el; }}
+                data-label={`${unit.name} Mobile`}
+                data-frame-size="32x32"
                 style={{ imageRendering: 'pixelated', width: 256, height: 256 * unit.levels, display: 'block', background: '#000' }}
               />
               {/* Row labels overlay — per level */}
