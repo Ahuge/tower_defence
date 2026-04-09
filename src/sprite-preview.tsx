@@ -20,6 +20,8 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   harmonic: () => import('../harmonic_sprites'),
   mobile_units: () => import('../mobile_unit_sprites'),
   terrain: () => import('../terrain_sprites'),
+  'creeps-arcane': () => import('../arcane_creep_sprites'),
+  'creeps-military': () => import('../military_creep_sprites'),
 };
 
 /** Maps faction → directory name and expected canvas names */
