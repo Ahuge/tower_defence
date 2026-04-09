@@ -43,7 +43,6 @@ export class PeerConnection {
   }
 
   private setState(state: ConnectionState): void {
-    console.log('[PeerConnection] State:', state);
     this.state = state;
     this.onStateChange?.(state);
   }
@@ -51,14 +50,12 @@ export class PeerConnection {
   private setupDataChannel(dc: RTCDataChannel): void {
     this.dc = dc;
     dc.onopen = () => {
-      console.log('[PeerConnection] Data channel OPEN');
       this.setState('connected');
     };
     dc.onmessage = (event) => {
       this.onMessage?.(event.data);
     };
     dc.onclose = () => {
-      console.log('[PeerConnection] Data channel CLOSED');
       this.setState('failed');
     };
   }

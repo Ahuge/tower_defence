@@ -265,11 +265,6 @@ export class TerrainManager {
     // Determine which tileset to use
     const ft = this.factionTerrain;
     const useFaction = ft && this.scene.textures.exists(ft.tilesetKey);
-    if (ft) {
-      console.log(`[Terrain] Theme: ${this.themeId}, faction tileset: ${ft.tilesetKey}, loaded: ${this.scene.textures.exists(ft.tilesetKey)}`);
-    } else {
-      console.log(`[Terrain] Theme: ${this.themeId}, no faction terrain found`);
-    }
     const tileKey = useFaction ? ft!.tilesetKey : TILESET_KEY;
 
     // Ground tiles (grass/dirt sprites on each walkable cell for texture)

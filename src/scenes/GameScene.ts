@@ -177,6 +177,7 @@ export class GameScene extends Phaser.Scene {
   creepFaction: FactionId = 'arcane';
   private _gauntletOrder: FactionId[] | undefined;
   private _gauntletTransitioning: boolean = false;
+  private _gauntletHud: Phaser.GameObjects.Text | null = null;
 
   init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[] }): void {
     this.matchMode = data.mode || 'standard';
@@ -442,6 +443,13 @@ export class GameScene extends Phaser.Scene {
       this.grid = new Grid(this.mapDef);
       this.recalculatePaths();
       createCreepAnimations(this, this.creepFaction);
+      // Gauntlet HUD: stage indicator
+      const factionName = FACTIONS[this.creepFaction]?.name ?? this.creepFaction;
+      this._gauntletHud = this.add.text(
+        getGridOffsetX() + 8, 4,
+        `Stage ${gauntlet.getStageNumber()}/${gauntlet.getTotalStages()}: ${factionName}`,
+        { fontSize: UIScale.font(11), color: '#ff6644', fontFamily: 'monospace' }
+      ).setDepth(30);
     } else {
       this.gameMode = new StandardMode(this.matchMode);
     }
@@ -1785,6 +1793,10 @@ export class GameScene extends Phaser.Scene {
             this.onWaveCleared(waveNum);
           },
         });
+        // Update gauntlet HUD
+        if (this._gauntletHud) {
+          this._gauntletHud.setText(`Stage ${stageNum}/${gauntlet.getTotalStages()}: ${factionName}`);
+        }
         this.eventLog.gameMessage(`Stage ${stageNum}: ${factionName} — 10 waves!`);
         this.eventLog.gameMessage('Press SPACE to start wave 1.');
       });
