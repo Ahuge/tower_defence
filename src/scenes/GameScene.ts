@@ -176,6 +176,7 @@ export class GameScene extends Phaser.Scene {
 
   creepFaction: FactionId = 'arcane';
   private _gauntletOrder: FactionId[] | undefined;
+  private _gauntletTransitioning: boolean = false;
 
   init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[] }): void {
     this.matchMode = data.mode || 'standard';
@@ -188,6 +189,7 @@ export class GameScene extends Phaser.Scene {
     this.randomSeed = data.randomSeed ?? 0;
     this.creepFaction = data.creepFaction ?? 'arcane';
     this._gauntletOrder = (data as any).gauntletOrder ?? undefined;
+    this._gauntletTransitioning = false;
     this.generatedMapDef = null;
     // Hero defense requires its own map (12-row grid)
     if (this.matchMode === 'hero_defense') {
@@ -1131,19 +1133,15 @@ export class GameScene extends Phaser.Scene {
 
     if (this.waveMgr.isComplete() && this.creeps.length === 0) {
       // Gauntlet: stage transition instead of game over
-      if (this.matchMode === 'gauntlet') {
+      if (this.matchMode === 'gauntlet' && !this._gauntletTransitioning) {
         const gauntlet = this.gameMode as any;
         if (gauntlet && typeof gauntlet.hasNextStage === 'function' && gauntlet.hasNextStage()) {
-          console.log('[Gauntlet] Stage complete, transitioning to next...');
+          this._gauntletTransitioning = true;
           this.startGauntletTransition(gauntlet);
           return;
         }
-        if (gauntlet && typeof gauntlet.hasNextStage === 'function') {
-          console.log('[Gauntlet] All stages complete — victory!');
-        } else {
-          console.warn('[Gauntlet] gameMode is not GauntletMode:', this.gameMode?.constructor?.name);
-        }
       }
+      if (this._gauntletTransitioning) return; // still transitioning
 
       this.eventBus.emit('gameWon');
       if (this.versus) {
@@ -1766,11 +1764,27 @@ export class GameScene extends Phaser.Scene {
       // Fade in
       this.cameras.main.fadeIn(500, 0, 0, 0);
 
-      // Remove banner after 2 seconds
+      // Remove banner after 2 seconds, then allow gameplay
       this.time.delayedCall(2500, () => {
         bannerBg.destroy();
         stageText.destroy();
         factionText.destroy();
+        this._gauntletTransitioning = false;
+        // Rebuild wave controller for new stage
+        this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {
+          canStartWave: () => !!this.currentPath,
+          onWaveStart: (wave, waveNum, totalWaves) => {
+            this.towerMgr.spawnBroodMotherSwarmlings();
+            const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
+            this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
+            this.upcomingWaves.update(waveNum, this.waves);
+            this.eventBus.emit('waveStarted', waveNum);
+            this.gameMode.onWaveStart?.(wave, waveNum);
+          },
+          onWaveCleared: (waveNum) => {
+            this.onWaveCleared(waveNum);
+          },
+        });
         this.eventLog.gameMessage(`Stage ${stageNum}: ${factionName} — 10 waves!`);
         this.eventLog.gameMessage('Press SPACE to start wave 1.');
       });
