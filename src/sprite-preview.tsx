@@ -55,6 +55,8 @@ function AnimationPreview() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sourceCanvas, setSourceCanvas] = useState<HTMLCanvasElement | null>(null);
   const [detectedSheets, setDetectedSheets] = useState<{ canvas: HTMLCanvasElement; label: string }[]>([]);
+  const [colNames, setColNames] = useState<string[]>([]);
+  const [rowNames, setRowNames] = useState<string[]>([]);
   const [frameW, setFrameW] = useState(32);
   const [frameH, setFrameH] = useState(32);
   const [cols, setCols] = useState(1);
@@ -70,10 +72,12 @@ function AnimationPreview() {
 
   const pickSheet = useCallback((sheet: HTMLCanvasElement) => {
     setSourceCanvas(sheet);
+    // Read column/row names from data attributes
+    try { setColNames(JSON.parse(sheet.getAttribute('data-columns') ?? '[]')); } catch { setColNames([]); }
+    try { setRowNames(JSON.parse(sheet.getAttribute('data-rows') ?? '[]')); } catch { setRowNames([]); }
     // Auto-detect frame size from common sheet dimensions
     const w = sheet.width, h = sheet.height;
     let fw = 32, fh = 32;
-    // Try common frame sizes and pick the one that divides evenly
     for (const trySize of [32, 64, 28, 128]) {
       if (w % trySize === 0 && h % trySize === 0) {
         fw = trySize; fh = trySize; break;
@@ -192,8 +196,11 @@ function AnimationPreview() {
               ref={canvasRef}
               style={{ border: '1px solid #444', imageRendering: 'pixelated', background: '#0a0a0f' }}
             />
-            <div style={{ marginTop: 8, fontSize: 11, color: '#888' }}>
-              Col {selectedCol} | Row {startRow + currentFrame} | Frame {currentFrame + 1}/{frameCount}
+            <div style={{ marginTop: 8, fontSize: 12, color: '#ffaa44', fontWeight: 'bold' }}>
+              {colNames[selectedCol] ?? `Column ${selectedCol}`}
+            </div>
+            <div style={{ fontSize: 11, color: '#888' }}>
+              {rowNames[startRow + currentFrame] ?? `Row ${startRow + currentFrame}`} | Frame {currentFrame + 1}/{frameCount}
             </div>
           </div>
 
@@ -210,9 +217,10 @@ function AnimationPreview() {
             </div>
 
             <label style={{ color: '#aaa' }}>
-              Column (creature): <input type="range" min={0} max={Math.max(0, cols - 1)} value={selectedCol}
+              {colNames.length > 0 ? 'Creature' : 'Column'}:
+              <input type="range" min={0} max={Math.max(0, cols - 1)} value={selectedCol}
                 onChange={e => { setSelectedCol(parseInt(e.target.value)); setCurrentFrame(0); }} />
-              <span style={{ color: '#fff', marginLeft: 4 }}>{selectedCol}</span>
+              <span style={{ color: '#fff', marginLeft: 4 }}>{colNames[selectedCol] ?? selectedCol}</span>
             </label>
 
             <label style={{ color: '#aaa' }}>
@@ -272,27 +280,30 @@ function AnimationPreview() {
           {/* All columns preview strip */}
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
             <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>All columns (click to select):</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {Array.from({ length: cols }, (_, i) => (
-                <canvas
-                  key={i}
-                  width={frameW * 2}
-                  height={frameH * 2}
-                  style={{
-                    imageRendering: 'pixelated',
-                    border: i === selectedCol ? '2px solid #ffaa44' : '1px solid #333',
-                    cursor: 'pointer',
-                    background: '#0a0a0f',
-                  }}
-                  onClick={() => { setSelectedCol(i); setCurrentFrame(0); }}
-                  ref={el => {
-                    if (!el || !sourceCanvas) return;
-                    const ctx = el.getContext('2d')!;
-                    ctx.imageSmoothingEnabled = false;
-                    ctx.clearRect(0, 0, frameW * 2, frameH * 2);
-                    ctx.drawImage(sourceCanvas, i * frameW, 0, frameW, frameH, 0, 0, frameW * 2, frameH * 2);
-                  }}
-                />
+                <div key={i} style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => { setSelectedCol(i); setCurrentFrame(0); }}>
+                  <canvas
+                    width={frameW * 2}
+                    height={frameH * 2}
+                    style={{
+                      imageRendering: 'pixelated',
+                      border: i === selectedCol ? '2px solid #ffaa44' : '1px solid #333',
+                      background: '#0a0a0f',
+                      display: 'block',
+                    }}
+                    ref={el => {
+                      if (!el || !sourceCanvas) return;
+                      const ctx = el.getContext('2d')!;
+                      ctx.imageSmoothingEnabled = false;
+                      ctx.clearRect(0, 0, frameW * 2, frameH * 2);
+                      ctx.drawImage(sourceCanvas, i * frameW, 0, frameW, frameH, 0, 0, frameW * 2, frameH * 2);
+                    }}
+                  />
+                  <div style={{ fontSize: 9, color: i === selectedCol ? '#ffaa44' : '#666', marginTop: 2, maxWidth: frameW * 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {colNames[i] ?? i}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
