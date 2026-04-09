@@ -94,7 +94,21 @@ function AnimationPreview() {
     allCanvases.forEach(c => {
       if (c === canvasRef.current) return;
       if (c.width > 0 && c.height > 0) {
-        sheets.push({ canvas: c, label: `${c.width}×${c.height}` });
+        // Try to find a label: check for nearby heading, or parent's preceding text
+        let label = '';
+        // Check for a heading before this canvas (walk up to find h2/h3/h4 sibling)
+        let el: Element | null = c;
+        while (el && !label) {
+          const prev = el.previousElementSibling;
+          if (prev && /^H[1-6]$/.test(prev.tagName)) {
+            label = prev.textContent?.trim() ?? '';
+            break;
+          }
+          el = el.parentElement;
+        }
+        if (!label) label = `${c.width}×${c.height}`;
+        else label += ` (${c.width}×${c.height})`;
+        sheets.push({ canvas: c, label });
       }
     });
     setDetectedSheets(sheets);
