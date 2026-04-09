@@ -62,7 +62,9 @@ const FACTION_FILE_MAP: Record<string, { dir: string; canvases: string[] }> = {
   'creeps-psionic':     { dir: 'creeps', canvases: ['psionic_creeps'] },
   'creeps-harmonic':    { dir: 'creeps', canvases: ['harmonic_creeps'] },
   // Terrain sheets
-  terrain:    { dir: 'terrain', canvases: ['terrain_tileset', 'terrain_doodads'] },
+  terrain:              { dir: 'terrain', canvases: ['terrain_tileset', 'terrain_doodads'] },
+  'terrain-cypherpunk': { dir: 'terrain', canvases: ['cypherpunk_terrain_tileset', 'cypherpunk_terrain_doodads'] },
+  'terrain-infernal':   { dir: 'terrain', canvases: ['infernal_terrain_tileset', 'infernal_terrain_doodads'] },
 };
 
 /** Mobile unit file mapping */
