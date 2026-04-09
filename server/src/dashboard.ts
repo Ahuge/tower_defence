@@ -52,6 +52,7 @@ export function getDashboardHTML(baseUrl: string): string {
   <h1>Tower Defence Analytics</h1>
   <div class="subtitle">
     <button class="btn" onclick="loadAll()">Refresh</button>
+    <button class="btn" id="auto-btn" onclick="toggleAutoRefresh()">Auto: Off</button>
     <span id="last-update" class="timestamp"></span>
   </div>
 
@@ -494,8 +495,22 @@ export function getDashboardHTML(baseUrl: string): string {
       return count > 0 ? [sumX / count, sumY / count] : null;
     }
 
-    loadAll();
-    setInterval(loadAll, 300000); // refresh every 5 minutes (was 60s)
+    let autoRefreshId = null;
+    function toggleAutoRefresh() {
+      const btn = document.getElementById('auto-btn');
+      if (autoRefreshId) {
+        clearInterval(autoRefreshId);
+        autoRefreshId = null;
+        btn.textContent = 'Auto: Off';
+        btn.classList.remove('active');
+      } else {
+        autoRefreshId = setInterval(loadAll, 300000);
+        btn.textContent = 'Auto: 5m';
+        btn.classList.add('active');
+      }
+    }
+
+    loadAll(); // initial load only, no auto-refresh by default
     window.addEventListener('resize', () => { if (historyData) renderCharts(); });
   </script>
 </body>
