@@ -5,6 +5,8 @@ import { ArmorType, CreepType, CREEP_TYPES } from '../data/CreepTypes';
 import {
   Trait, getTrait, resolveCreepDamage, resolveCreepUpdates, resolveCreepDraw,
 } from '../systems/traits/Trait';
+import { FactionId } from '../data/Factions';
+import { createCreepSprite, getCreepSpriteScale, playCreepDeath, hasCreepSprites } from '../systems/CreepSpriteManager';
 
 const ARMOR_TIERS: ArmorType[] = ['light', 'medium', 'heavy'];
 
@@ -31,8 +33,13 @@ export class Creep {
   /** Col/row of the tower that last dealt damage (for kill credit in co-op) */
   lastHitCol: number = -1;
   lastHitRow: number = -1;
+  /** Optional sprite (used when creep faction sprites are loaded) */
+  sprite: Phaser.GameObjects.Sprite | null = null;
+  private _prevX: number = 0;
+  private _scene: Phaser.Scene;
+  private _creepTypeId: string = 'standard';
 
-  constructor(scene: Phaser.Scene, path: PathPoint[], hp: number, speedMultiplier: number, isBoss: boolean, creepTypeId: string = 'standard') {
+  constructor(scene: Phaser.Scene, path: PathPoint[], hp: number, speedMultiplier: number, isBoss: boolean, creepTypeId: string = 'standard', creepFaction?: FactionId) {
     this.creepType = CREEP_TYPES[creepTypeId] || CREEP_TYPES.standard;
     this.path = path;
     this.pathIndex = 0;
@@ -61,8 +68,20 @@ export class Creep {
     this.y = gridY(path[0].row);
     this.pathIndex = 1;
 
+    this._scene = scene;
+    this._creepTypeId = creepTypeId;
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(10);
+
+    // Create sprite if creep faction has sprites loaded
+    if (creepFaction && hasCreepSprites(creepFaction, scene)) {
+      this.sprite = createCreepSprite(scene, creepFaction, creepTypeId, this.x, this.y);
+      if (this.sprite) {
+        const scale = getCreepSpriteScale(creepTypeId);
+        this.sprite.setScale(scale);
+      }
+    }
+    this._prevX = this.x;
   }
 
   update(delta: number, nearbyCreeps?: Creep[]): void {
@@ -171,6 +190,10 @@ export class Creep {
     if (this.hp <= 0) {
       this.alive = false;
       this.graphics.destroy();
+      if (this.sprite) {
+        playCreepDeath(this._scene, this.sprite, (this._scene as any).creepFaction ?? 'arcane', this._creepTypeId);
+        this.sprite = null;
+      }
     }
   }
 
@@ -187,17 +210,35 @@ export class Creep {
     // Trait overlays (shield glow, heal aura ring)
     resolveCreepDraw(this.traits, this, this.graphics);
 
-    // Body color based on status
-    let bodyColor = this.color;
-    if (this.statusEffects.has('confused')) bodyColor = 0xff00ff;
-    else if (this.statusEffects.has('root')) bodyColor = 0xffffff;
-    else if (this.statusEffects.has('virus')) bodyColor = 0x00ff88;
-    else if (this.statusEffects.has('burn')) bodyColor = 0xff6622;
-    else if (this.statusEffects.has('poison')) bodyColor = 0x44cc22;
-    else if (this.statusEffects.has('slow')) bodyColor = 0x6688cc;
+    // Position and flip sprite based on movement direction
+    if (this.sprite) {
+      this.sprite.setPosition(this.x, this.y);
+      // Flip sprite when moving left
+      if (this.x < this._prevX) this.sprite.setFlipX(true);
+      else if (this.x > this._prevX) this.sprite.setFlipX(false);
+      this._prevX = this.x;
 
-    this.graphics.fillStyle(bodyColor, 1);
-    this.graphics.fillCircle(this.x, this.y, drawSize);
+      // Apply status tint
+      if (this.statusEffects.has('confused')) this.sprite.setTint(0xff00ff);
+      else if (this.statusEffects.has('root')) this.sprite.setTint(0xffffff);
+      else if (this.statusEffects.has('virus')) this.sprite.setTint(0x00ff88);
+      else if (this.statusEffects.has('burn')) this.sprite.setTint(0xff6622);
+      else if (this.statusEffects.has('poison')) this.sprite.setTint(0x44cc22);
+      else if (this.statusEffects.has('slow')) this.sprite.setTint(0x6688cc);
+      else this.sprite.clearTint();
+    } else {
+      // Fallback: colored circle (no sprite available)
+      let bodyColor = this.color;
+      if (this.statusEffects.has('confused')) bodyColor = 0xff00ff;
+      else if (this.statusEffects.has('root')) bodyColor = 0xffffff;
+      else if (this.statusEffects.has('virus')) bodyColor = 0x00ff88;
+      else if (this.statusEffects.has('burn')) bodyColor = 0xff6622;
+      else if (this.statusEffects.has('poison')) bodyColor = 0x44cc22;
+      else if (this.statusEffects.has('slow')) bodyColor = 0x6688cc;
+
+      this.graphics.fillStyle(bodyColor, 1);
+      this.graphics.fillCircle(this.x, this.y, drawSize);
+    }
 
     // Armor shred indicator
     if (this.statusEffects.has('armor_shred')) {

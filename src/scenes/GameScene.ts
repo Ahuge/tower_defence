@@ -65,6 +65,7 @@ import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
 import { Analytics } from '../systems/AnalyticsClient';
+import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -172,7 +173,9 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean }): void {
+  creepFaction: FactionId = 'arcane';
+
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -181,6 +184,7 @@ export class GameScene extends Phaser.Scene {
     this.heroId = data.heroId ?? null;
     this.dailySeed = data.dailySeed ?? false;
     this.randomSeed = data.randomSeed ?? 0;
+    this.creepFaction = data.creepFaction ?? 'arcane';
     this.generatedMapDef = null;
     // Hero defense requires its own map (12-row grid)
     if (this.matchMode === 'hero_defense') {
@@ -224,6 +228,7 @@ export class GameScene extends Phaser.Scene {
     // Load sprite assets (only downloads what's needed)
     preloadSprites(this);
     TerrainManager.preload(this);
+    preloadCreepSprites(this);
   }
 
   create(): void {
@@ -233,6 +238,7 @@ export class GameScene extends Phaser.Scene {
     // Create sprite animations from loaded sheets
     createSpriteAnimations(this);
     TerrainManager.createAnimations(this);
+    createCreepAnimations(this, this.creepFaction);
 
     // Set global grid Y offset for hero defense (arena above grid)
     setGridOffsetY(this.gridOffsetY);
@@ -1672,7 +1678,7 @@ export class GameScene extends Phaser.Scene {
     for (const t of this._towers) t.destroy();
     this._towers = [];
     // Destroy all creeps
-    for (const c of this._creeps) c.graphics?.destroy();
+    for (const c of this._creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
     this._creeps = [];
     // Clean up game mode (panels, keyboard listeners)
     this.gameMode.destroy?.();
