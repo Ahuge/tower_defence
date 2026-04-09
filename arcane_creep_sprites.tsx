@@ -63,7 +63,7 @@ const ROW_NAMES = ['Walk 0', 'Walk 1', 'Walk 2', 'Walk 3', 'Death 0', 'Death 1',
 // ===== CREEP DRAW FUNCTIONS =====
 // Each function: (ctx, offset, frame) where frame 0-3=walk, 4-6=death
 
-// 0: Standard - Stone Golem
+// 0: Standard - Stone Golem (with floating rune particles and arcane sigils)
 function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -71,6 +71,10 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 5 + bob;
+    // Floating rune particles (orbit around golem, shift per frame)
+    const runeOff = [[3, -2], [5, 0], [2, 1], [4, -1]][f];
+    p(8 + runeOff[0], by + runeOff[1], C.RUNE); p(22 - runeOff[0], by + 12 + runeOff[1], C.RUNE);
+    p(6 + runeOff[1], by + 6 + runeOff[0], C.ENERGY); p(24 - runeOff[1], by + 4 - runeOff[0], C.CRYST);
     // Head
     b(12, by, 8, 5, C.BODY); b(13, by, 6, 2, C.MID);
     b(13, by, 6, 1, C.ENERGY); p(12, by, C.HI); p(13, by, C.HI);
@@ -82,6 +86,8 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     p(14, by + 2, C.WHITE); p(18, by + 2, C.WHITE);
     // Brow ridge
     b(12, by + 1, 8, 1, C.DK);
+    // Arcane sigil on forehead
+    p(15, by + 1, C.RUNE); p(16, by + 1, C.DKRUNE);
     // Neck
     b(13, by + 5, 6, 1, C.DK);
     // Torso
@@ -92,6 +98,9 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Crystal core in chest
     b(14, by + 8, 4, 3, C.CRYST); b(15, by + 9, 2, 1, C.CORE);
     p(15, by + 8, C.WHITE); p(16, by + 10, C.ENERGY);
+    // Glowing arcane sigils on body
+    p(12, by + 7, C.RUNE); p(19, by + 7, C.DKRUNE); // shoulder sigils
+    p(13, by + 11, C.RUNE); p(18, by + 11, C.DKRUNE); // hip sigils
     // Chest detail lines
     p(12, by + 9, C.MID); p(19, by + 9, C.DK);
     b(11, by + 12, 10, 1, C.DK);
@@ -100,6 +109,8 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(7, by + 9, 1, 3, C.BODY); p(7, by + 9, C.HI);
     b(22, by + 7, 2, 6, C.BODY); b(23, by + 7, 1, 6, C.DK);
     b(24, by + 9, 1, 3, C.DK);
+    // Rune glow on arms
+    p(8, by + 10, C.RUNE); p(23, by + 10, C.DKRUNE);
     // Fists
     b(7, by + 12, 2, 2, C.BODY); p(7, by + 12, C.HI);
     b(23, by + 12, 2, 2, C.DK);
@@ -110,26 +121,35 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(17 + rOff, by + 14, 4, 6, C.BODY);
     b(20 + rOff, by + 14, 1, 6, C.DK);
     p(18 + rOff, by + 14, C.MID);
+    // Leg sigils
+    p(12 + lOff, by + 16, C.RUNE); p(18 + rOff, by + 16, C.DKRUNE);
     // Knees
     b(11 + lOff, by + 17, 4, 1, C.DK);
     b(17 + rOff, by + 17, 4, 1, C.DK);
     // Feet
     b(10 + lOff, by + 20, 5, 2, C.DK); b(10 + lOff, by + 20, 2, 1, C.BODY);
     b(17 + rOff, by + 20, 5, 2, C.DK); b(21 + rOff, by + 20, 1, 1, C.VOID);
-    // Top highlight glow
+    // Top highlight glow + floating rune dots above head
     p(14, by - 1, C.ENERGY); p(15, by - 1, C.CRYST); p(16, by - 1, C.ENERGY);
+    p(13, by - 2, C.RUNE); p(18, by - 2, C.DKRUNE);
   } else {
     drawDeathCrystal(p, b, f - 4, 16, 14);
   }
 }
 
-// 1: Fast - Spark Wisp
+// 1: Fast - Spark Wisp (magical spell projectile with sparkle trail)
 function drawFast(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, -2, 2, 0][f];
     const by = 9 + bob;
-    // Diamond/shard shape - larger with facets
+    // Outer magical aura (soft glow halo)
+    p(16, by - 3, C.ENERGY); p(15, by - 2, C.CRYST); p(17, by - 2, C.CRYST);
+    p(12, by + 1, C.DKENERGY); p(20, by + 1, C.DKENERGY);
+    p(11, by + 4, C.ENERGY); p(21, by + 4, C.ENERGY);
+    p(12, by + 7, C.DKENERGY); p(20, by + 7, C.DKENERGY);
+    p(15, by + 10, C.CRYST); p(17, by + 10, C.CRYST);
+    // Diamond/shard shape - spell projectile core
     p(16, by - 1, C.WHITE);
     b(15, by, 3, 1, C.HI);
     b(14, by + 1, 5, 1, C.ENERGY);
@@ -139,25 +159,34 @@ function drawFast(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(14, by + 8, 5, 1, C.ENERGY);
     b(15, by + 9, 3, 1, C.HI);
     p(16, by + 10, C.ENERGY);
-    // Bright core with inner glow
+    // Bright core with inner glow (pulsing)
     b(15, by + 3, 3, 3, C.ENERGY);
     p(16, by + 4, C.WHITE); p(15, by + 4, C.CORE); p(17, by + 4, C.CORE);
     p(16, by + 3, C.CORE); p(16, by + 5, C.CORE);
+    // Rune symbol inside core (shifts per frame)
+    const runeP = [[15, 4], [16, 3], [17, 4], [16, 5]][f];
+    p(runeP[0], by + runeP[1], C.RUNE);
     // Left facet highlight
     b(12, by + 4, 1, 2, C.HI); p(13, by + 3, C.HI);
     // Right facet shadow
     b(20, by + 4, 1, 2, C.DK); p(19, by + 6, C.DK);
-    // Trailing energy particles
+    // Magical sparkle trail (more particles, varied sizes)
     const trail = [1, 3, 0, 2][f];
     b(10, by + 4 + trail, 2, 1, C.ENERGY); p(9, by + 5, C.CRYST);
-    b(7, by + 4, 2, 1, C.DUST); p(6, by + 5 + trail, C.DUST);
-    b(4, by + 4, 2, 1, C.FRAG); p(3, by + 5, C.FRAG);
-    p(2, by + 4, C.DK);
+    p(9, by + 3 + trail, C.WHITE); // bright sparkle
+    b(7, by + 4, 2, 1, C.CRYST); p(6, by + 5 + trail, C.ENERGY);
+    p(7, by + 3, C.WHITE); // sparkle
+    b(4, by + 4, 2, 1, C.FRAG); p(3, by + 5, C.DKENERGY);
+    p(5, by + 2 + trail, C.HI); // high sparkle
+    p(2, by + 4, C.DUST);
     if (f % 2 === 0) {
-      p(1, by + 5, C.VOID); p(5, by + 3, C.DUST);
-      p(8, by + 6, C.FRAG);
+      p(1, by + 5, C.ENERGY); p(5, by + 3, C.WHITE);
+      p(8, by + 6, C.CRYST); p(3, by + 2, C.HI);
+      p(0, by + 4, C.FRAG);
     } else {
-      p(5, by + 6, C.DUST); p(8, by + 3, C.FRAG);
+      p(5, by + 6, C.CRYST); p(8, by + 3, C.WHITE);
+      p(1, by + 3, C.ENERGY); p(3, by + 6, C.HI);
+      p(6, by + 2, C.FRAG);
     }
   } else {
     drawDeathCrystal(p, b, f - 4, 16, 14);
@@ -242,42 +271,58 @@ function drawSwarm(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 4: Healer - Arcane Font
+// 4: Healer - Arcane Font (magical beacon/totem with rune inscriptions)
 function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    const bob = [0, -2, 0, 2][f];
-    const by = 8 + bob;
-    // Hovering orb - larger with gradient shading
-    b(12, by, 8, 2, C.ENERGY); b(13, by, 6, 1, C.HI);
-    b(10, by + 2, 12, 6, C.CRYST);
-    b(11, by + 2, 10, 1, C.ENERGY);
-    b(12, by + 8, 8, 2, C.ENERGY);
-    b(13, by + 9, 6, 1, C.DKENERGY);
-    // Inner bright glow
-    b(12, by + 3, 8, 4, C.ENERGY);
-    b(13, by + 4, 6, 2, C.HI);
-    b(14, by + 4, 4, 2, C.WHITE);
-    p(15, by + 5, C.CORE); p(16, by + 5, C.CORE);
-    p(15, by + 4, C.WHITE); p(16, by + 4, C.WHITE);
-    // Highlight / shadow on orb
-    b(10, by + 2, 2, 3, C.HI); p(10, by + 3, C.MID);
-    b(20, by + 5, 2, 3, C.DK); p(21, by + 6, C.VOID);
-    // Pulsing ring around orb
-    const pulse = [0, 1, 0, -1][f];
-    const ringR = 9;
-    for (let i = 0; i < 16; i++) {
-      const a = (i + f * 2) * Math.PI / 8;
-      const rx = 16 + Math.round(Math.cos(a) * ringR);
-      const ry = by + 5 + Math.round(Math.sin(a) * (ringR - 1));
-      p(rx, ry, i % 4 === 0 ? C.WHITE : C.ENERGY);
+    const bob = [0, -1, 0, 1][f];
+    const by = 5 + bob;
+    const pulse = f === 0 || f === 2;
+    // Totem base (stone pedestal)
+    b(11, by + 16, 10, 2, C.BODY); b(12, by + 16, 8, 1, C.MID);
+    b(11, by + 16, 2, 2, C.HI); b(19, by + 17, 2, 1, C.DK);
+    b(12, by + 18, 8, 1, C.DK);
+    // Totem pillar (stone column with rune inscriptions)
+    b(13, by + 7, 6, 9, C.BODY);
+    b(13, by + 7, 2, 9, C.HI); b(18, by + 8, 1, 8, C.DK);
+    b(14, by + 7, 4, 1, C.MID);
+    // Rune inscriptions on pillar (glowing golden)
+    p(14, by + 9, C.RUNE); p(17, by + 9, C.DKRUNE);
+    p(15, by + 11, C.RUNE); p(16, by + 11, C.DKRUNE);
+    p(14, by + 13, C.RUNE); p(17, by + 13, C.DKRUNE);
+    // Horizontal rune band
+    b(13, by + 10, 6, 1, C.DKRUNE); p(15, by + 10, C.RUNE); p(16, by + 10, C.RUNE);
+    // Glowing crystal cap (beacon top)
+    b(12, by + 3, 8, 4, C.CRYST);
+    b(12, by + 3, 2, 4, C.ENERGY); b(18, by + 4, 2, 3, C.DKENERGY);
+    b(14, by + 4, 4, 2, C.ENERGY);
+    b(15, by + 4, 2, 2, pulse ? C.WHITE : C.HI);
+    p(15, by + 5, pulse ? C.CORE : C.WHITE);
+    // Crystal point on top
+    b(14, by + 1, 4, 2, C.ENERGY); b(15, by + 1, 2, 1, C.HI);
+    p(15, by, pulse ? C.WHITE : C.CRYST); p(16, by, pulse ? C.WHITE : C.CRYST);
+    p(15, by - 1, pulse ? C.RUNE : C.ENERGY);
+    // Rune symbols floating around totem (orbit per frame)
+    const runeA = [
+      [[8, by + 4], [23, by + 8], [10, by + 14]],
+      [[9, by + 6], [22, by + 5], [8, by + 12]],
+      [[10, by + 3], [24, by + 7], [9, by + 13]],
+      [[8, by + 5], [23, by + 6], [10, by + 11]],
+    ][f];
+    for (const [rx, ry] of runeA) {
+      p(rx, ry, pulse ? C.RUNE : C.DKRUNE);
+      p(rx + 1, ry, pulse ? C.DKRUNE : C.ENERGY);
     }
-    // Cardinal barrier points
-    p(5, by + 4 + pulse, C.CRYST); p(26, by + 4 - pulse, C.CRYST);
-    p(16, by - 3 + pulse, C.CRYST); p(16, by + 12 - pulse, C.CRYST);
-    // Soft glow below
-    b(14, by + 11, 4, 1, C.DUST); b(13, by + 12, 6, 1, C.FRAG);
-    p(15, by + 13, C.DUST); p(16, by + 13, C.DUST);
+    // Pulsing energy ring around beacon
+    for (let i = 0; i < 12; i++) {
+      const a = (i + f * 2) * Math.PI / 6;
+      const rx = 16 + Math.round(Math.cos(a) * 10);
+      const ry = by + 9 + Math.round(Math.sin(a) * 7);
+      p(rx, ry, i % 3 === 0 ? (pulse ? C.WHITE : C.ENERGY) : C.CRYST);
+    }
+    // Ambient magic particles (floating dots)
+    p(6, by + 2, C.ENERGY); p(25, by + 10, C.CRYST);
+    p(7, by + 15, pulse ? C.HI : C.FRAG); p(24, by + 3, pulse ? C.HI : C.DUST);
   } else {
     drawDeathCrystal(p, b, f - 4, 16, 13);
   }

@@ -107,7 +107,7 @@ function drawDeathGlitch(
 
 // ===== CREEP DRAW FUNCTIONS =====
 
-// 0: Data Sprite (Standard) - humanoid of code lines
+// 0: Data Sprite (Standard) - humanoid of code lines, scan lines, glitch artifacts, code rain
 function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID_SZ, GRID_SZ, PX);
   if (f <= 3) {
@@ -121,11 +121,16 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     p(19, by + 4, C.DARK); p(19, by + 3, C.DARK);
     // Code line pattern on head
     p(14, by, C.BRIGHT); p(16, by, C.SCAN); p(17, by, C.CIRCUIT);
+    // Scan lines across head (horizontal distortion)
+    b(12, by + 1, 8, 1, C.DARK);
+    if (f % 2 === 0) { p(13, by + 1, C.SCAN); p(16, by + 1, C.SCAN); }
+    else { p(14, by + 1, C.SCAN); p(18, by + 1, C.SCAN); }
     // Eyes (glowing scan lines)
     b(13, by + 2, 2, 2, C.SCAN); b(17, by + 2, 2, 2, C.SCAN);
     p(14, by + 2, C.WHITE); p(18, by + 2, C.WHITE);
-    // Brow
-    b(12, by + 1, 8, 1, C.DARK);
+    // Glitch artifact: displaced pixels near head
+    if (f === 1) { p(11, by + 1, C.GLITCH); p(20, by + 3, C.ERROR); }
+    if (f === 3) { p(20, by + 1, C.GLITCH); p(11, by + 3, C.ERROR); }
     // Neck
     b(13, by + 5, 6, 1, C.DARK);
     // Torso (code-line body)
@@ -133,16 +138,29 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(10, by + 6, 2, 8, C.DIM); b(11, by + 6, 1, 6, C.GRID);
     b(20, by + 6, 2, 8, C.DARK);
     b(11, by + 6, 10, 1, C.CIRCUIT); b(12, by + 6, 8, 1, C.BRIGHT);
-    // Code lines scrolling on body
+    // Scan lines across torso (animated)
+    const scanY = (f % 3);
+    b(10, by + 7 + scanY * 2, 12, 1, C.SCAN);
+    if (scanY < 2) p(11 + f * 2, by + 8 + scanY * 2, C.BRIGHT);
+    // Code lines scrolling on body (matrix-style)
     p(12, by + 8, C.CODE); p(14, by + 8, C.CIRCUIT); p(16, by + 8, C.CODE);
     p(18, by + 8, C.HACK);
     p(13, by + 10, C.HACK); p(15, by + 10, C.CODE); p(17, by + 10, C.CIRCUIT);
     p(11, by + 12, C.CODE); p(14, by + 12, C.CIRCUIT); p(19, by + 12, C.CODE);
+    // Extra code rain pixels (shifting per frame)
+    p(12 + f, by + 7, C.PIXEL); p(18 - f, by + 9, C.PIXEL);
+    p(13, by + 11 + (f % 2), C.CODE); p(17, by + 11 - (f % 2), C.HACK);
     // Circuit core
     b(14, by + 8, 4, 3, C.CIRCUIT); b(15, by + 9, 2, 1, C.BRIGHT);
     p(15, by + 8, C.WHITE); p(16, by + 10, C.SCAN);
     // Belt
     b(11, by + 12, 10, 1, C.DARK);
+    // Glitch artifact: random pixel displacement on body
+    if (f === 0) { p(21, by + 8, C.GLITCH); p(9, by + 10, C.ERROR); }
+    if (f === 2) { p(9, by + 8, C.ERROR); p(21, by + 10, C.GLITCH); }
+    // Static noise pixels scattered
+    p(10 + (f * 3 % 4), by + 13, C.STATIC);
+    p(19 - (f * 2 % 3), by + 7, C.STATIC);
     // Arms
     b(8, by + 7, 2, 6, C.BODY); b(8, by + 7, 1, 6, C.DIM);
     b(7, by + 9, 1, 3, C.BODY); p(7, by + 9, C.DIM);
@@ -159,8 +177,15 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Feet
     b(10 + lOff, by + 20, 5, 2, C.DARK); b(10 + lOff, by + 20, 2, 1, C.BODY);
     b(17 + rOff, by + 20, 5, 2, C.DARK);
+    // Floating code rain particles (green dots trailing)
+    const rainOff = [0, 2, 1, 3][f];
+    p(8, by + 2 + rainOff, C.PIXEL); p(6, by + 5 + rainOff, C.CODE);
+    p(24, by + 3 + rainOff, C.PIXEL); p(26, by + 6 + rainOff, C.CODE);
+    p(5, by + 8 + (f % 2), C.HACK); p(27, by + 9 - (f % 2), C.HACK);
     // Scan line glow above
     p(14, by - 1, C.CIRCUIT); p(15, by - 1, C.SCAN); p(16, by - 1, C.CIRCUIT);
+    // Matrix code rain above head
+    p(13, by - 2 - (f % 2), C.PIXEL); p(18, by - 2 + (f % 2), C.CODE);
   } else {
     drawDeathGlitch(p, b, f - 4, 16, 14);
   }
@@ -279,7 +304,7 @@ function drawSwarm(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 4: Patch Daemon (Healer) - floating orb, green + icon
+// 4: Patch Daemon (Healer) - broadcasting orb, radiating circuit patterns, pixel plus-sign
 function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID_SZ, GRID_SZ, PX);
   if (f <= 3) {
@@ -294,25 +319,53 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Inner glow
     b(12, by + 3, 8, 4, C.DIM);
     b(13, by + 4, 6, 2, C.SCREEN);
-    // Green + symbol in center
-    b(15, by + 3, 2, 5, C.PIXEL); b(13, by + 5, 6, 1, C.PIXEL);
-    p(16, by + 5, C.WHITE); p(15, by + 5, C.BRIGHT);
-    p(15, by + 3, C.BRIGHT); p(16, by + 7, C.BRIGHT);
-    p(13, by + 5, C.SCAN); p(18, by + 5, C.SCAN);
+    // Pixel plus-sign in center (made of individual pixels for digital look)
+    // Vertical bar
+    p(15, by + 2, C.PIXEL); p(16, by + 2, C.PIXEL);
+    p(15, by + 3, C.BRIGHT); p(16, by + 3, C.BRIGHT);
+    p(15, by + 4, C.PIXEL); p(16, by + 4, C.PIXEL);
+    p(15, by + 5, C.WHITE); p(16, by + 5, C.WHITE);
+    p(15, by + 6, C.PIXEL); p(16, by + 6, C.PIXEL);
+    p(15, by + 7, C.BRIGHT); p(16, by + 7, C.BRIGHT);
+    p(15, by + 8, C.PIXEL); p(16, by + 8, C.PIXEL);
+    // Horizontal bar
+    p(12, by + 5, C.SCAN); p(13, by + 5, C.PIXEL); p(14, by + 5, C.BRIGHT);
+    p(17, by + 5, C.BRIGHT); p(18, by + 5, C.PIXEL); p(19, by + 5, C.SCAN);
     // Orb shading
     b(10, by + 2, 2, 3, C.DIM);
     b(20, by + 5, 2, 3, C.DARK);
-    // Orbiting data ring
+    // Radiating circuit patterns from orb (broadcast lines)
     const pulse = [0, 1, 0, -1][f];
+    // Top broadcast rays
+    p(14, by - 1, C.CIRCUIT); p(16, by - 1, C.CIRCUIT); p(18, by - 1, C.CIRCUIT);
+    p(13, by - 2 + pulse, C.SCAN); p(19, by - 2 - pulse, C.SCAN);
+    // Bottom broadcast rays
+    p(14, by + 10, C.CIRCUIT); p(16, by + 10, C.CIRCUIT); p(18, by + 10, C.CIRCUIT);
+    p(13, by + 11 - pulse, C.SCAN); p(19, by + 11 + pulse, C.SCAN);
+    // Side broadcast circuit lines
+    p(8, by + 4, C.CIRCUIT); p(7, by + 5, C.SCAN); p(6, by + 4 + pulse, C.CODE);
+    p(23, by + 4, C.CIRCUIT); p(24, by + 5, C.SCAN); p(25, by + 4 - pulse, C.CODE);
+    p(8, by + 6, C.CIRCUIT); p(7, by + 7, C.SCAN);
+    p(23, by + 6, C.CIRCUIT); p(24, by + 7, C.SCAN);
+    // Orbiting data ring with circuit pattern nodes
     for (let i = 0; i < 16; i++) {
       const a = (i + f * 2) * Math.PI / 8;
       const rx = 16 + Math.round(Math.cos(a) * 9);
       const ry = by + 5 + Math.round(Math.sin(a) * (8));
-      p(rx, ry, i % 4 === 0 ? C.WHITE : C.CIRCUIT);
+      if (i % 4 === 0) {
+        p(rx, ry, C.WHITE); p(rx + 1, ry, C.PIXEL); p(rx - 1, ry, C.PIXEL);
+      } else {
+        p(rx, ry, i % 2 === 0 ? C.CIRCUIT : C.CODE);
+      }
     }
-    // Cardinal heal points
-    p(5, by + 4 + pulse, C.PIXEL); p(26, by + 4 - pulse, C.PIXEL);
-    p(16, by - 3 + pulse, C.PIXEL); p(16, by + 12 - pulse, C.PIXEL);
+    // Cardinal heal points (pulsing broadcast markers)
+    p(4, by + 4 + pulse, C.PIXEL); p(3, by + 5 + pulse, C.CODE);
+    p(27, by + 4 - pulse, C.PIXEL); p(28, by + 5 - pulse, C.CODE);
+    p(16, by - 4 + pulse, C.PIXEL); p(15, by - 4 + pulse, C.CODE);
+    p(16, by + 13 - pulse, C.PIXEL); p(15, by + 13 - pulse, C.CODE);
+    // Floating green data particles
+    p(5, by + 2 + (f % 3), C.PIXEL); p(26, by + 3 - (f % 2), C.PIXEL);
+    p(9, by + 9 + (f % 2), C.PIXEL); p(22, by + 8 - (f % 2), C.PIXEL);
     // Soft glow below
     b(14, by + 11, 4, 1, C.CODE); b(13, by + 12, 6, 1, C.DIM);
   } else {
@@ -320,7 +373,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Mainframe Entity (Boss) - Server tower being, multiple screen-faces with different expressions, trailing data cables, floating error popups, scan lines across body, red error color, blue screen glow
+// 5: Mainframe Entity (Boss) - Server tower being, multiple screen-faces, error popups, cable tentacles, scan lines, glitch artifacts
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID_SZ, GRID_SZ, PX);
   if (f <= 3) {
@@ -331,15 +384,17 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const scanLine = f; // scan line offset
     const blinkErr = f % 2 === 0;
 
-    // === FLOATING ERROR POPUPS (per-frame positions) ===
+    // === FLOATING ERROR POPUPS (per-frame, more detailed with X button) ===
     const errPos = [
-      [[0, by + 2], [30, by + 4]],
-      [[1, by + 4], [29, by + 2]],
-      [[2, by + 3], [28, by + 3]],
-      [[0, by + 5], [31, by + 3]],
+      [[0, by + 1], [29, by + 3], [1, by + 18]],
+      [[1, by + 3], [28, by + 1], [0, by + 16]],
+      [[2, by + 2], [27, by + 2], [2, by + 17]],
+      [[0, by + 4], [30, by + 2], [1, by + 19]],
     ][f];
     for (const [ex, ey] of errPos) {
-      b(ex, ey, 3, 2, C.ERROR); p(ex, ey, C.GLITCH); p(ex + 2, ey + 1, C.DARK);
+      b(ex, ey, 4, 3, C.ERROR); b(ex, ey, 4, 1, C.GLITCH);
+      p(ex + 3, ey, C.WHITE); // X button
+      p(ex + 1, ey + 1, C.WHITE); p(ex + 2, ey + 2, C.DARK);
     }
 
     // === ANTENNA ARRAY (tall, multiple, blinking) ===
@@ -354,31 +409,38 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(7, by, 18, 2, C.DIM); b(8, by, 16, 1, C.CIRCUIT);
     b(7, by, 3, 6, C.DIM); b(8, by, 2, 4, C.GRID);
     b(22, by + 2, 3, 4, C.DARK);
-    // Main screen eyes (blue glow)
+    // Main screen eyes (blue glow, with pixel detail)
     b(9, by + 2, 4, 3, C.BSCREEN); b(10, by + 2, 2, 1, C.WHITE);
     p(9, by + 4, C.DKBSCREEN); p(12, by + 2, C.BRIGHT);
+    // Pupil/iris detail in eyes
+    p(10, by + 3, C.WHITE); p(11, by + 3, C.DKBSCREEN);
     b(19, by + 2, 4, 3, C.BSCREEN); b(20, by + 2, 2, 1, C.WHITE);
     p(19, by + 4, C.DKBSCREEN); p(22, by + 2, C.BRIGHT);
+    p(20, by + 3, C.WHITE); p(21, by + 3, C.DKBSCREEN);
     // Small status screen (center, showing expression per frame)
     b(14, by + 2, 4, 2, C.SCREEN);
-    // Different expressions per frame
-    if (f === 0) { p(15, by + 2, C.SCAN); p(16, by + 2, C.SCAN); p(15, by + 3, C.CODE); p(16, by + 3, C.CODE); }
-    if (f === 1) { p(15, by + 2, C.ERROR); p(16, by + 2, C.GLITCH); p(15, by + 3, C.ERROR); }
-    if (f === 2) { p(15, by + 2, C.PIXEL); p(16, by + 3, C.PIXEL); p(14, by + 3, C.HACK); }
-    if (f === 3) { p(14, by + 2, C.CIRCUIT); p(17, by + 2, C.CIRCUIT); p(15, by + 3, C.BRIGHT); p(16, by + 3, C.BRIGHT); }
-    // Status bar mouth
+    // Different expressions per frame (more detailed)
+    if (f === 0) { p(14, by + 2, C.SCAN); p(15, by + 2, C.SCAN); p(16, by + 2, C.SCAN); p(17, by + 2, C.SCAN); p(15, by + 3, C.CODE); p(16, by + 3, C.CODE); }
+    if (f === 1) { p(14, by + 2, C.ERROR); p(15, by + 2, C.ERROR); p(16, by + 2, C.GLITCH); p(17, by + 2, C.GLITCH); p(15, by + 3, C.ERROR); p(16, by + 3, C.ERROR); }
+    if (f === 2) { p(14, by + 2, C.PIXEL); p(15, by + 2, C.HACK); p(16, by + 3, C.PIXEL); p(17, by + 3, C.HACK); p(14, by + 3, C.HACK); }
+    if (f === 3) { p(14, by + 2, C.CIRCUIT); p(17, by + 2, C.CIRCUIT); p(15, by + 2, C.BRIGHT); p(16, by + 2, C.BRIGHT); p(15, by + 3, C.BRIGHT); p(16, by + 3, C.BRIGHT); }
+    // Status bar mouth (loading bar effect)
     b(11, by + 5, 10, 1, C.DARK);
-    p(12, by + 5, C.CIRCUIT); p(14, by + 5, C.PIXEL); p(16, by + 5, blinkErr ? C.ERROR : C.CIRCUIT);
-    p(18, by + 5, C.SCAN); p(20, by + 5, C.HACK);
+    const loadW = 2 + f * 2;
+    b(12, by + 5, loadW, 1, C.CIRCUIT);
+    p(12 + loadW, by + 5, blinkErr ? C.ERROR : C.SCAN);
 
     // === SHOULDER MODULES (server racks) ===
     b(3, by + 4, 4, 4, C.BODY); b(3, by + 4, 1, 4, C.DIM); b(6, by + 5, 1, 3, C.DARK);
     p(4, by + 3, C.CIRCUIT); p(5, by + 3, C.SCAN); p(3, by + 4, C.BSCREEN);
+    p(4, by + 6, C.SCAN); p(5, by + 7, C.CODE); // extra rack detail
     b(25, by + 4, 4, 4, C.BODY); b(28, by + 4, 1, 4, C.DARK);
     p(26, by + 3, C.CIRCUIT); p(27, by + 3, C.SCAN); p(28, by + 4, C.BSCREEN);
+    p(26, by + 6, C.SCAN); p(27, by + 7, C.CODE);
 
     // === NECK (data bus) ===
     b(11, by + 6, 10, 2, C.DARK); p(13, by + 6, C.CIRCUIT); p(18, by + 6, C.CIRCUIT);
+    p(15, by + 6, C.BSCREEN); p(16, by + 7, C.BSCREEN); // data flow
 
     // === MASSIVE SERVER TORSO ===
     b(5, by + 8, 22, 10, C.BODY);
@@ -386,30 +448,48 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(24, by + 8, 3, 10, C.DARK);
     b(7, by + 8, 18, 2, C.CIRCUIT); b(8, by + 8, 16, 1, C.SCAN);
 
-    // === SCAN LINES ACROSS BODY (animated) ===
+    // === SCAN LINES ACROSS BODY (animated, multiple) ===
     b(7, by + 9 + scanLine, 18, 1, C.BSCREEN);
     if (scanLine < 3) b(7, by + 12 + scanLine, 18, 1, C.DKBSCREEN);
+    // Extra scan line artifact
+    if (scanLine > 0) b(9, by + 8 + scanLine, 14, 1, C.SCAN);
 
     // === MULTIPLE DATA SCREENS ON TORSO ===
-    // Left screen (code readout)
+    // Left screen (code readout with scrolling text)
     b(8, by + 10, 4, 3, C.SCREEN); p(8, by + 10, C.SCAN); p(11, by + 12, C.CODE);
     p(9, by + 11, C.BRIGHT); p(10, by + 10, C.WHITE);
-    // Right screen (status)
+    p(8 + (f % 3), by + 11, C.CODE); // scrolling
+    // Right screen (status with bar graph)
     b(20, by + 10, 4, 3, C.SCREEN); p(23, by + 10, C.DARK);
     p(21, by + 11, C.SCAN); p(22, by + 10, C.WHITE);
+    p(20, by + 12, C.BSCREEN); p(21, by + 12, C.CIRCUIT); p(22, by + 12, C.BSCREEN); // bar graph
     // Center screen (main data core, large)
     b(13, by + 12, 6, 4, C.CIRCUIT); b(14, by + 13, 4, 2, C.BRIGHT);
     b(15, by + 13, 2, 2, C.WHITE); p(15, by + 12, C.WHITE); p(16, by + 12, C.BSCREEN);
-    // Error indicator on left
+    // Error indicator on left (blinking)
     p(8, by + 12, blinkErr ? C.ERROR : C.DARK);
+    p(23, by + 12, blinkErr ? C.ERROR : C.DARK); // right error too
     // Data flow lines
     b(8, by + 12, 14, 1, C.GRID); b(8, by + 15, 14, 1, C.DARK);
 
-    // === TRAILING DATA CABLES (from back/sides) ===
-    b(2, by + 9, 2, 1, C.DIM); p(1, by + 10, C.CODE); p(0, by + 11, C.GRID);
-    p(0, by + 12, C.DIM); p(1, by + 13, C.CODE);
-    b(28, by + 10, 2, 1, C.DIM); p(30, by + 11, C.CODE); p(31, by + 12, C.GRID);
-    p(31, by + 13, C.DIM);
+    // === CABLE TENTACLES (longer, more detailed, from sides and back) ===
+    // Left cables (3 strands)
+    b(2, by + 8, 2, 1, C.DIM); p(1, by + 9, C.CODE); p(0, by + 10, C.GRID);
+    p(0, by + 11, C.DIM); p(0, by + 12, C.CODE); p(1, by + 13, C.DIM);
+    p(0, by + 14, C.CODE); p(0, by + 15, C.GRID); // extends lower
+    // Second left cable
+    b(3, by + 10, 1, 2, C.DIM); p(2, by + 12, C.CODE); p(1, by + 14, C.GRID);
+    p(1, by + 15, C.CODE); p(0, by + 16, C.DIM);
+    // Right cables
+    b(28, by + 9, 2, 1, C.DIM); p(30, by + 10, C.CODE); p(31, by + 11, C.GRID);
+    p(31, by + 12, C.DIM); p(31, by + 13, C.CODE); p(30, by + 14, C.DIM);
+    p(31, by + 15, C.CODE); p(31, by + 16, C.GRID);
+    // Second right cable
+    b(28, by + 11, 1, 2, C.DIM); p(29, by + 13, C.CODE); p(30, by + 15, C.GRID);
+    p(30, by + 16, C.CODE); p(31, by + 17, C.DIM);
+    // Cable connector nodes (glowing)
+    p(0, by + 10, blinkErr ? C.BSCREEN : C.CODE);
+    p(31, by + 11, blinkErr ? C.BSCREEN : C.CODE);
 
     // Power bar (at waist)
     b(7, by + 17, 18, 2, C.DARK); b(8, by + 17, 16, 1, C.SCREEN);
@@ -422,23 +502,35 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(27, by + 9, 3, 8, C.BODY); b(29, by + 9, 1, 8, C.DARK);
     b(30, by + 11, 1, 5, C.DARK);
     b(31, by + 13, 1, 3, C.DARK);
-    // Fists (port-like)
+    // Fists (port-like, with LED)
     b(0, by + 16, 3, 3, C.BODY); b(0, by + 16, 1, 3, C.DIM); p(0, by + 16, C.CIRCUIT);
+    p(1, by + 17, blinkErr ? C.BSCREEN : C.CODE);
     b(29, by + 16, 3, 3, C.DARK); p(31, by + 16, C.CIRCUIT);
+    p(30, by + 17, blinkErr ? C.BSCREEN : C.CODE);
 
     // === LEGS (server rack pillars) ===
     b(7 + lOff, by + 19, 7, 7, C.BODY);
     b(7 + lOff, by + 19, 2, 7, C.DIM); b(13 + lOff, by + 19, 1, 7, C.DARK);
     b(18 + rOff, by + 19, 7, 7, C.BODY);
     b(24 + rOff, by + 19, 1, 7, C.DARK);
-    // LED indicators on legs
+    // LED indicators on legs (more detail)
     b(7 + lOff, by + 22, 7, 1, C.DARK); p(8 + lOff, by + 22, C.CIRCUIT); p(12 + lOff, by + 22, blinkErr ? C.ERROR : C.CIRCUIT);
+    p(10 + lOff, by + 20, C.BSCREEN); p(10 + lOff, by + 24, C.CODE);
     b(18 + rOff, by + 22, 7, 1, C.DARK); p(19 + rOff, by + 22, C.CIRCUIT); p(23 + rOff, by + 22, blinkErr ? C.ERROR : C.CIRCUIT);
+    p(20 + rOff, by + 20, C.BSCREEN); p(20 + rOff, by + 24, C.CODE);
     // Feet (heavy base units)
     b(5 + lOff, by + 26, 9, 3, C.DARK); b(6 + lOff, by + 26, 7, 2, C.BODY);
     p(5 + lOff, by + 28, C.DARK);
     b(17 + rOff, by + 26, 9, 3, C.DARK); b(18 + rOff, by + 26, 7, 2, C.BODY);
     p(25 + rOff, by + 28, C.DARK);
+
+    // === GLITCH ARTIFACTS (random per frame) ===
+    if (f === 0) { b(5, by + 10, 2, 1, C.GLITCH); p(26, by + 14, C.ERROR); }
+    if (f === 1) { p(6, by + 14, C.ERROR); b(25, by + 10, 2, 1, C.GLITCH); }
+    if (f === 2) { p(7, by + 16, C.GLITCH); p(24, by + 9, C.ERROR); b(14, by + 16, 3, 1, C.GLITCH); }
+    if (f === 3) { b(8, by + 9, 2, 1, C.ERROR); p(23, by + 16, C.GLITCH); }
+    // Static noise
+    p(6 + f * 2, by + 11, C.STATIC); p(25 - f * 2, by + 13, C.STATIC);
   } else {
     drawDeathGlitch(p, b, f - 4, 16, 14);
   }

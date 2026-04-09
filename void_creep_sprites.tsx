@@ -64,7 +64,7 @@ const ROW_NAMES = ['Walk 0', 'Walk 1', 'Walk 2', 'Walk 3', 'Death 0', 'Death 1',
 
 // ===== CREEP DRAW FUNCTIONS =====
 
-// 0: Void Walker (Standard) - Humanoid with wrong proportions, too-long arms, single pink eye
+// 0: Void Walker (Standard) - Humanoid with wrong proportions, floating card/rune symbols
 function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -72,6 +72,14 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 5 + bob;
+    // Floating card/rune symbols (orbit around walker, gambling motif)
+    const cardPos = [[6, by + 2], [24, by + 4], [7, by + 14], [25, by + 12]][f];
+    // Spade symbol (diamond pixel pattern)
+    p(cardPos[0], cardPos[1], C.ENERGY); p(cardPos[0], cardPos[1] - 1, C.BRIGHT);
+    p(cardPos[0] - 1, cardPos[1], C.GLOW); p(cardPos[0] + 1, cardPos[1], C.GLOW);
+    // Diamond symbol on opposite side
+    p(cardPos[1] > by + 8 ? 5 : 26, by + 8, C.RIFT);
+    p(cardPos[1] > by + 8 ? 4 : 27, by + 7, C.ENERGY);
     // Head (slightly misshapen)
     b(13, by, 6, 5, C.BODY); b(14, by, 4, 2, C.MID);
     b(12, by + 1, 1, 3, C.BODY); p(12, by + 1, C.LIGHT);
@@ -79,8 +87,9 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Single large eye (center of head)
     b(14, by + 2, 4, 2, C.EYE); b(15, by + 2, 2, 1, C.PINK);
     p(16, by + 2, C.WHITE); p(15, by + 3, C.CORE);
-    // Forehead void glow
+    // Forehead void glow with rune mark
     p(14, by, C.ENERGY); p(17, by, C.GLOW);
+    p(15, by, C.RIFT); p(16, by, C.RIFT); // rune mark
     // Neck
     b(14, by + 5, 4, 1, C.SHADOW);
     // Torso (narrow, wrong proportions)
@@ -108,8 +117,10 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Feet
     b(11 + lOff, by + 19, 4, 2, C.SHADOW); b(11 + lOff, by + 19, 2, 1, C.BODY);
     b(17 + rOff, by + 19, 4, 2, C.SHADOW);
-    // Void wisps
+    // Void wisps + gambling particle
     p(10, by + 5, C.GLOW); p(21, by + 9, C.RIFT);
+    // Extra ambient dice dot
+    p(4, by + 10, f % 2 === 0 ? C.ENERGY : C.GLOW);
   } else {
     drawDeathVoid(p, b, f - 4, 16, 14);
   }
@@ -155,7 +166,7 @@ function drawFast(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 2: Void Shell (Armored) - Thick spiral nautilus shell, dark carapace
+// 2: Void Shell (Armored) - Dice/cube shape with pips, slightly tilted, void energy
 function drawArmored(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -163,39 +174,48 @@ function drawArmored(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 0, 1, 0][f];
     const rOff = [0, 0, 0, 1][f];
     const by = 3 + bob;
-    // Large nautilus shell (spiral)
-    b(9, by, 14, 2, C.SHADOW); b(10, by, 12, 1, C.BODY);
-    b(7, by + 2, 18, 4, C.BODY);
-    b(6, by + 6, 20, 6, C.BODY);
-    b(7, by + 12, 18, 3, C.BODY);
-    b(9, by + 15, 14, 2, C.BODY);
-    // Carapace shading
-    b(6, by + 2, 2, 10, C.LIGHT); b(7, by + 3, 1, 8, C.MID);
-    b(24, by + 2, 2, 10, C.SHADOW); b(25, by + 4, 1, 8, C.VOID_DK);
-    b(9, by, 14, 2, C.MID);
-    b(9, by + 15, 14, 2, C.SHADOW);
-    // Spiral groove lines
-    b(10, by + 3, 12, 1, C.TENT); b(11, by + 3, 10, 1, C.RIFT);
-    b(10, by + 7, 12, 1, C.SHADOW);
-    b(10, by + 10, 12, 1, C.SHADOW);
-    // Spiral center
-    b(14, by + 5, 4, 4, C.RIFT); b(15, by + 6, 2, 2, C.ENERGY);
-    p(15, by + 6, C.BRIGHT); p(16, by + 7, C.GLOW);
-    // Ridge rivets
-    p(8, by + 4, C.ENERGY); p(23, by + 4, C.GLOW);
-    p(8, by + 8, C.ENERGY); p(23, by + 8, C.GLOW);
-    // Face/opening with eyes
-    b(11, by + 2, 2, 2, C.EYE); p(12, by + 2, C.WHITE);
-    b(19, by + 2, 2, 2, C.EYE); p(20, by + 2, C.WHITE);
-    b(12, by + 4, 8, 2, C.VOID_DK); b(13, by + 4, 6, 1, C.SHADOW);
+    // Dice cube body (slightly tilted - top face visible as parallelogram)
+    // Top face (lighter, shows pips)
+    b(10, by, 12, 3, C.MID); b(11, by, 10, 1, C.LIGHT);
+    b(9, by + 1, 1, 2, C.LIGHT); // left tilt edge
+    b(22, by + 1, 1, 2, C.SHADOW); // right tilt edge
+    // Top face pips (3 pips showing - like a die face)
+    p(12, by + 1, C.ENERGY); // top-left pip
+    p(16, by + 1, C.BRIGHT); // center pip
+    p(20, by + 1, C.ENERGY); // top-right pip
+    // Front face (main visible face, darker)
+    b(8, by + 3, 16, 12, C.BODY);
+    b(8, by + 3, 2, 12, C.LIGHT); b(9, by + 3, 1, 10, C.MID);
+    b(22, by + 3, 2, 12, C.SHADOW); b(23, by + 5, 1, 8, C.VOID_DK);
+    b(9, by + 3, 14, 1, C.MID);
+    b(9, by + 14, 14, 1, C.SHADOW);
+    // Front face pips (5 pips - like a 5-face)
+    b(11, by + 5, 2, 2, C.ENERGY); p(11, by + 5, C.BRIGHT); // top-left
+    b(19, by + 5, 2, 2, C.ENERGY); p(20, by + 5, C.BRIGHT); // top-right
+    b(15, by + 8, 2, 2, C.RIFT); p(15, by + 8, C.BRIGHT); p(16, by + 9, C.GLOW); // center (glowing core)
+    b(11, by + 11, 2, 2, C.ENERGY); p(11, by + 11, C.BRIGHT); // bottom-left
+    b(19, by + 11, 2, 2, C.ENERGY); p(20, by + 11, C.BRIGHT); // bottom-right
+    // Edge bevels
+    b(8, by + 3, 16, 1, C.MID); // top edge
+    b(8, by + 14, 16, 1, C.VOID_DK); // bottom edge
+    // Void energy around cube (swirling particles)
+    p(6, by + 5, C.RIFT); p(25, by + 7, C.RIFT);
+    p(7, by + 9, C.GLOW); p(24, by + 11, C.GLOW);
+    p(5, by + 12, C.ENERGY); p(26, by + 4, C.ENERGY);
+    // Animated void wisps
+    if (f % 2 === 0) {
+      p(6, by + 2, C.RIFT); p(25, by + 13, C.GLOW);
+    } else {
+      p(7, by + 1, C.GLOW); p(24, by + 14, C.RIFT);
+    }
     // Stubby legs/pseudopods
-    b(10 + lOff, by + 17, 4, 4, C.BODY);
-    b(10 + lOff, by + 17, 1, 4, C.LIGHT); b(13 + lOff, by + 17, 1, 4, C.SHADOW);
-    b(18 + rOff, by + 17, 4, 4, C.BODY);
-    b(21 + rOff, by + 17, 1, 4, C.SHADOW);
+    b(10 + lOff, by + 15, 4, 4, C.BODY);
+    b(10 + lOff, by + 15, 1, 4, C.LIGHT); b(13 + lOff, by + 15, 1, 4, C.SHADOW);
+    b(18 + rOff, by + 15, 4, 4, C.BODY);
+    b(21 + rOff, by + 15, 1, 4, C.SHADOW);
     // Feet
-    b(9 + lOff, by + 21, 6, 2, C.SHADOW); b(9 + lOff, by + 21, 2, 1, C.BODY);
-    b(17 + rOff, by + 21, 6, 2, C.SHADOW); b(22 + rOff, by + 21, 1, 1, C.VOID_DK);
+    b(9 + lOff, by + 19, 6, 2, C.SHADOW); b(9 + lOff, by + 19, 2, 1, C.BODY);
+    b(17 + rOff, by + 19, 6, 2, C.SHADOW); b(22 + rOff, by + 19, 1, 1, C.VOID_DK);
   } else {
     drawDeathVoid(p, b, f - 4, 16, 14);
   }

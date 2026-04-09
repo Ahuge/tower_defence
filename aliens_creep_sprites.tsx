@@ -158,47 +158,49 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 1: Skitter (Fast) - centipede, low flat
+// 1: Skitter (Fast) - Alien spider, 8 legs radiating outward (top-down), acid green, compound eyes
 function drawFast(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    const wave = [0, 1, 0, -1][f];
-    const by = 12;
-    // Long flat body segments
-    b(4, by, 24, 4, C.SHELL);
-    b(4, by, 24, 1, C.BRSHELL); b(4, by + 3, 24, 1, C.DKSHELL);
-    // Segment dividers
-    for (let i = 0; i < 6; i++) {
-      p(6 + i * 4, by + 1, C.DKSHELL); p(6 + i * 4, by + 2, C.CHITIN);
-    }
-    // Head (right side)
-    b(26, by - 1, 4, 6, C.SHELL); b(26, by - 1, 4, 1, C.BRSHELL);
-    b(29, by, 2, 4, C.DKSHELL);
-    // Mandibles
-    b(30, by + 1, 1, 2, C.MANDIBLE); p(31, by + 2, C.MANDIBLE);
-    // Eyes
-    p(28, by, C.EYE); p(28, by + 1, C.EYE); p(28, by, C.WHITE);
-    // Antennae
-    p(30, by - 2, C.LEG); p(31, by - 3, C.COMPEYE);
-    p(30, by + 5, C.LEG); p(31, by + 6, C.COMPEYE);
-    // Many legs (wave pattern)
-    for (let i = 0; i < 8; i++) {
-      const lx = 5 + i * 3;
-      const loff = (i + f) % 2 === 0 ? 1 : -1;
-      p(lx, by - 1 + loff, C.LEG);
-      p(lx, by + 4 - loff, C.LEG);
-      if (i % 2 === 0) {
-        p(lx, by - 2 + loff, C.CHITIN);
-        p(lx, by + 5 - loff, C.CHITIN);
-      }
-    }
-    // Underbelly glow
-    b(10, by + 1, 14, 2, C.DKACID);
-    b(12, by + 2, 10, 1, C.ACID);
-    // Tail
-    b(2, by + 1 + wave, 2, 2, C.DKSHELL); p(1, by + 2 + wave, C.CHITIN);
-    // Speed trail
-    p(0, by + 2, C.DKACID); p(1, by + 1, C.CHITIN);
+    const legA = [0, 1, 0, -1][f];
+    const legB = [0, -1, 0, 1][f];
+    const by = 8;
+    // Abdomen (large rear section, oval, top-down)
+    b(13, by + 6, 6, 8, C.SHELL); b(12, by + 7, 8, 6, C.SHELL);
+    b(13, by + 6, 2, 8, C.BRSHELL); b(18, by + 7, 2, 5, C.DKSHELL);
+    // Abdomen pattern (acid streaks)
+    p(15, by + 8, C.DKACID); p(16, by + 8, C.DKACID);
+    p(14, by + 10, C.ACID); p(17, by + 10, C.ACID);
+    p(15, by + 12, C.GLOW); // central acid glow
+    b(15, by + 9, 2, 2, C.DKACID); p(15, by + 9, C.ACID);
+    // Cephalothorax (front section, smaller)
+    b(14, by + 2, 4, 5, C.SHELL); b(13, by + 3, 6, 3, C.SHELL);
+    b(14, by + 2, 2, 3, C.BRSHELL); b(17, by + 4, 1, 2, C.DKSHELL);
+    // Compound eyes (6 eyes, alien)
+    p(14, by + 2, C.COMPEYE); p(17, by + 2, C.COMPEYE);
+    p(13, by + 3, C.EYE); p(18, by + 3, C.EYE);
+    p(14, by + 3, C.WHITE); p(17, by + 3, C.WHITE); // bright pair
+    p(15, by + 2, C.COMPEYE); p(16, by + 2, C.COMPEYE); // tiny center
+    // Fang mandibles
+    p(15, by + 1, C.MANDIBLE); p(16, by + 1, C.MANDIBLE);
+    p(14, by + 1, C.CHITIN); p(17, by + 1, C.CHITIN);
+    // 8 Legs radiating outward (top-down, non-directional)
+    // Front-left pair
+    b(11 + legA, by + 2, 2, 1, C.LEG); p(9 + legA, by + 1, C.LEG); p(7 + legA, by, C.CHITIN);
+    b(12 + legB, by + 4, 1, 1, C.LEG); p(10 + legB, by + 3, C.LEG); p(8 + legB, by + 2, C.CHITIN);
+    // Front-right pair
+    b(19 + legB, by + 2, 2, 1, C.LEG); p(21 + legB, by + 1, C.LEG); p(23 + legB, by, C.CHITIN);
+    b(19 + legA, by + 4, 1, 1, C.LEG); p(21 + legA, by + 3, C.LEG); p(23 + legA, by + 2, C.CHITIN);
+    // Rear-left pair
+    b(11 + legB, by + 9, 1, 1, C.LEG); p(9 + legB, by + 10, C.LEG); p(7 + legB, by + 11, C.CHITIN);
+    b(12 + legA, by + 11, 1, 1, C.LEG); p(10 + legA, by + 12, C.LEG); p(8 + legA, by + 13, C.CHITIN);
+    // Rear-right pair
+    b(20 + legA, by + 9, 1, 1, C.LEG); p(22 + legA, by + 10, C.LEG); p(24 + legA, by + 11, C.CHITIN);
+    b(19 + legB, by + 11, 1, 1, C.LEG); p(21 + legB, by + 12, C.LEG); p(23 + legB, by + 13, C.CHITIN);
+    // Acid drip trail
+    p(15, by + 15, C.ACID); p(16, by + 16, C.DKACID);
+    if (f % 2 === 0) { p(14, by + 16, C.ACID); p(17, by + 14, C.GLOW); }
+    else { p(17, by + 15, C.ACID); p(14, by + 14, C.GLOW); }
   } else {
     drawDeathInsect(p, b, f - 4, 16, 14);
   }

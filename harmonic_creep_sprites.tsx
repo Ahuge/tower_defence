@@ -123,7 +123,7 @@ function drawDeathHarmonic(
 
 // ===== CREEP DRAW FUNCTIONS =====
 
-// 0: Note Walker (Standard) - humanoid of sound waves, musical note head
+// 0: Note Walker (Standard) - musical humanoid, note symbols on body, sound wave rings, treble clef detail
 function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -131,27 +131,48 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 4 + bob;
-    // Musical note head (round)
+    // Musical note head (round, with treble clef curl detail)
     b(12, by, 8, 5, C.NOTE); b(13, by, 6, 2, C.GOLD);
     b(12, by, 2, 5, C.GOLD); b(18, by + 2, 2, 3, C.DKNOTE);
+    // Treble clef detail on head (small S-curve)
+    p(11, by + 1, C.WAVE); p(11, by + 2, C.BWAVE); p(12, by + 3, C.WAVE);
+    p(11, by + 4, C.BWAVE);
     // Note stem on head
     b(19, by - 2, 2, 4, C.DKNOTE); p(19, by - 3, C.NOTE);
     p(20, by - 3, C.GOLD); p(21, by - 3, C.GOLD);
+    // Note flag detail
+    p(21, by - 2, C.NOTE); p(22, by - 1, C.DKNOTE);
     // Eyes (wave-like)
     b(13, by + 2, 2, 2, C.WAVE); p(14, by + 2, C.WHITE);
     b(17, by + 2, 2, 2, C.WAVE); p(18, by + 2, C.WHITE);
     // Neck
     b(13, by + 5, 6, 1, C.DK);
-    // Sound-wave body
+    // Sound-wave body (more wave-shaped)
     b(10, by + 6, 12, 8, C.BODY);
     b(10, by + 6, 2, 8, C.LIGHT); b(20, by + 6, 2, 8, C.DK);
     b(11, by + 6, 10, 1, C.WAVE); b(12, by + 6, 8, 1, C.BWAVE);
-    // Sound wave lines on torso
+    // Musical note symbols visible on body
+    // Small eighth note on chest
+    p(12, by + 7, C.NOTE); p(12, by + 8, C.NOTE); p(13, by + 7, C.GOLD);
+    // Small quarter note on belly
+    p(18, by + 10, C.NOTE); p(19, by + 10, C.DKNOTE); p(19, by + 9, C.DKNOTE);
+    // Sound wave lines on torso (curved wave pattern)
     p(12, by + 8, C.WAVE); p(14, by + 9, C.RESO); p(16, by + 8, C.WAVE);
     p(18, by + 9, C.RESO); p(13, by + 11, C.VIBR); p(17, by + 11, C.VIBR);
+    p(11, by + 10, C.WAVE); p(20, by + 10, C.WAVE); // wider wave lines
     // Core resonance
     b(14, by + 9, 4, 2, C.WAVE); b(15, by + 10, 2, 1, C.BWAVE);
     p(15, by + 9, C.WHITE);
+    // Sound wave rings emanating (animated, expanding per frame)
+    const ringR = 8 + f;
+    for (let i = 0; i < 6; i++) {
+      const a = (i + f) * Math.PI / 3;
+      const rx = 16 + Math.round(Math.cos(a) * ringR);
+      const ry = by + 10 + Math.round(Math.sin(a) * (ringR - 2));
+      if (rx >= 0 && rx < 32 && ry >= 0 && ry < 32) {
+        p(rx, ry, i % 2 === 0 ? C.BWAVE : C.RESO);
+      }
+    }
     // Arms
     b(8, by + 7, 2, 6, C.BODY); b(8, by + 7, 1, 6, C.LIGHT);
     b(22, by + 7, 2, 6, C.DK);
@@ -166,8 +187,13 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Feet
     b(10 + lOff, by + 20, 5, 2, C.DK);
     b(17 + rOff, by + 20, 5, 2, C.DK);
-    // Sound glow
+    // Floating note pips around creature
+    const nOff = [0, 1, 2, 1][f];
+    p(6, by + 3 + nOff, C.NOTE); p(7, by + 2 + nOff, C.DKNOTE); // note pip left
+    p(25, by + 4 - nOff, C.NOTE); p(26, by + 3 - nOff, C.DKNOTE); // note pip right
+    // Sound glow above
     p(14, by - 1, C.WAVE); p(15, by - 1, C.BWAVE); p(16, by - 1, C.WAVE);
+    p(13, by - 2, C.RESO); p(17, by - 2, C.RESO);
   } else {
     drawDeathHarmonic(p, b, f - 4, 16, 14);
   }
@@ -212,7 +238,7 @@ function drawFast(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 2: Bass Drop (Armored) - heavy deep-frequency, thick resonance layers
+// 2: Bass Drop (Armored) - walking speaker/subwoofer with vibration lines
 function drawArmored(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -220,41 +246,70 @@ function drawArmored(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 0, 1, 0][f];
     const rOff = [0, 0, 0, 1][f];
     const by = 3 + bob;
-    // Wide heavy bass body
-    b(8, by, 16, 2, C.BASS); b(9, by, 14, 1, C.LIGHT);
-    b(7, by + 2, 18, 4, C.BASS);
-    b(6, by + 6, 20, 6, C.BODY);
-    b(7, by + 12, 18, 3, C.BODY);
-    b(9, by + 15, 14, 2, C.BODY);
-    // Resonance layer shading
-    b(6, by + 2, 2, 10, C.LIGHT); b(7, by + 3, 1, 8, C.MID);
-    b(24, by + 2, 2, 10, C.DK); b(25, by + 4, 1, 8, C.VOID);
-    b(8, by, 16, 2, C.LIGHT);
-    b(9, by + 15, 14, 2, C.DK);
-    // Resonance wave lines
-    b(10, by + 3, 12, 1, C.WAVE); b(11, by + 3, 10, 1, C.BWAVE);
-    b(10, by + 8, 12, 1, C.VIBR);
-    b(10, by + 11, 12, 1, C.VIBR);
-    // Bass rivets
-    p(8, by + 4, C.NOTE); p(23, by + 4, C.NOTE);
-    p(8, by + 6, C.NOTE); p(23, by + 6, C.NOTE);
-    // Eyes (deep frequency glow)
-    b(11, by + 2, 2, 2, C.WAVE); p(12, by + 2, C.WHITE);
-    b(19, by + 2, 2, 2, C.WAVE); p(20, by + 2, C.WHITE);
-    b(12, by + 4, 8, 2, C.VOID);
-    // Core
-    b(14, by + 7, 4, 3, C.WAVE); b(15, by + 8, 2, 1, C.BWAVE);
-    p(15, by + 7, C.WHITE);
-    // Sub-bass vibration marks
-    b(10, by + 6, 3, 1, C.RHYTHM); b(19, by + 6, 3, 1, C.RHYTHM);
-    // Stubby legs
-    b(10 + lOff, by + 17, 4, 4, C.BODY);
-    b(10 + lOff, by + 17, 1, 4, C.LIGHT); b(13 + lOff, by + 17, 1, 4, C.DK);
-    b(18 + rOff, by + 17, 4, 4, C.BODY);
-    b(21 + rOff, by + 17, 1, 4, C.DK);
+    const vibrOff = [0, 1, 0, -1][f]; // vibration offset for animation
+
+    // === SPEAKER CABINET BODY (rectangular, front-facing) ===
+    // Outer cabinet frame
+    b(7, by, 18, 16, C.BASS); // main cabinet
+    b(7, by, 18, 1, C.LIGHT); b(7, by + 15, 18, 1, C.DK); // top/bottom edges
+    b(7, by, 2, 16, C.LIGHT); b(23, by, 2, 16, C.DK); // left/right edges
+    // Inner panel
+    b(9, by + 1, 14, 14, C.BODY);
+    b(9, by + 1, 1, 14, C.MID); b(22, by + 1, 1, 14, C.VOID);
+
+    // === SPEAKER CONE (large circular cone in center) ===
+    // Outer ring of speaker cone
+    b(11, by + 2, 10, 1, C.DK); b(10, by + 3, 12, 1, C.DK);
+    b(10, by + 12, 12, 1, C.DK); b(11, by + 13, 10, 1, C.DK);
+    b(10, by + 3, 1, 10, C.DK); b(21, by + 3, 1, 10, C.DK);
+    // Speaker cone body (circular-ish)
+    b(11, by + 3, 10, 10, C.MID);
+    b(11, by + 3, 2, 10, C.LIGHT); b(19, by + 3, 2, 10, C.VOID);
+    // Cone ridges (concentric rings)
+    b(13, by + 5, 6, 1, C.VIBR); b(13, by + 10, 6, 1, C.VIBR);
+    b(12, by + 6, 1, 4, C.VIBR); b(19, by + 6, 1, 4, C.VIBR);
+    // Dust cap (center dome of speaker)
+    b(14, by + 6, 4, 4, C.WAVE); b(15, by + 7, 2, 2, C.BWAVE);
+    p(15, by + 7, C.WHITE); p(16, by + 8, C.WHITE);
+    // Speaker cone highlight
+    p(12, by + 4, C.LIGHT); p(20, by + 11, C.VOID);
+
+    // === EYES (small, on top edge of cabinet) ===
+    b(11, by + 1, 2, 2, C.WAVE); p(12, by + 1, C.WHITE);
+    b(19, by + 1, 2, 2, C.WAVE); p(20, by + 1, C.WHITE);
+
+    // === VIBRATION LINES (emanating from speaker, animated) ===
+    // Left side vibration
+    p(5, by + 5 + vibrOff, C.BWAVE); p(4, by + 7 + vibrOff, C.WAVE);
+    p(3, by + 9, C.RESO); p(5, by + 11 - vibrOff, C.BWAVE);
+    // Right side vibration
+    p(26, by + 5 - vibrOff, C.BWAVE); p(27, by + 7 - vibrOff, C.WAVE);
+    p(28, by + 9, C.RESO); p(26, by + 11 + vibrOff, C.BWAVE);
+    // Top/bottom vibration
+    p(14, by - 1 + vibrOff, C.WAVE); p(18, by - 1 - vibrOff, C.WAVE);
+    p(13, by + 16 - vibrOff, C.WAVE); p(19, by + 16 + vibrOff, C.WAVE);
+
+    // === CORNER BOLTS / RIVETS ===
+    p(8, by + 1, C.NOTE); p(23, by + 1, C.NOTE);
+    p(8, by + 14, C.NOTE); p(23, by + 14, C.NOTE);
+    p(8, by + 7, C.DKNOTE); p(23, by + 7, C.DKNOTE);
+
+    // === BASS PORT (slot at bottom of cabinet) ===
+    b(12, by + 14, 8, 1, C.VOID);
+    p(13, by + 14, C.DK); p(18, by + 14, C.DK);
+
+    // === STUBBY LEGS (carrying the speaker) ===
+    b(10 + lOff, by + 16, 4, 4, C.BODY);
+    b(10 + lOff, by + 16, 1, 4, C.LIGHT); b(13 + lOff, by + 16, 1, 4, C.DK);
+    b(18 + rOff, by + 16, 4, 4, C.BODY);
+    b(21 + rOff, by + 16, 1, 4, C.DK);
     // Feet
-    b(9 + lOff, by + 21, 6, 2, C.DK);
-    b(17 + rOff, by + 21, 6, 2, C.DK);
+    b(9 + lOff, by + 20, 6, 2, C.DK);
+    b(17 + rOff, by + 20, 6, 2, C.DK);
+
+    // === FLOATING NOTE PIPS ===
+    p(3, by + 3 + (f % 3), C.NOTE); p(4, by + 2 + (f % 3), C.DKNOTE);
+    p(28, by + 4 - (f % 2), C.NOTE); p(29, by + 3 - (f % 2), C.DKNOTE);
   } else {
     drawDeathHarmonic(p, b, f - 4, 16, 14);
   }
@@ -316,6 +371,10 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Cardinal harmony points
     p(4, by + 4 + pulse, C.NOTE); p(27, by + 4 - pulse, C.NOTE);
     p(16, by - 4 + pulse, C.GOLD); p(16, by + 13 - pulse, C.GOLD);
+    // Floating note pips
+    const nOff = [0, 1, 2, 1][f];
+    p(2, by + 2 + nOff, C.NOTE); p(3, by + 1 + nOff, C.DKNOTE);
+    p(29, by + 3 - nOff, C.NOTE); p(30, by + 2 - nOff, C.DKNOTE);
     // Soft glow below
     b(14, by + 11, 4, 1, C.DUST); b(13, by + 12, 6, 1, C.FRAG);
   } else {
@@ -486,6 +545,10 @@ function drawGroup(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Feet
     b(11 + lOff, by + 13, 4, 2, C.DK);
     b(17 + rOff, by + 13, 4, 2, C.DK);
+    // Floating note pips
+    const nOff = [0, 1, 0, -1][f];
+    p(7, by + 1 + nOff, C.NOTE); p(8, by + nOff, C.DKNOTE);
+    p(24, by + 2 - nOff, C.NOTE);
   } else {
     drawDeathHarmonic(p, b, f - 4, 16, 15);
   }
@@ -581,6 +644,10 @@ function drawShielded(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(27, by + 7, 2, 2, C.RESO); p(28, by + 8, C.WAVE);
     b(15, by - 3, 2, 2, C.RESO); p(15, by - 3, C.BWAVE);
     b(15, by + 20, 2, 2, C.RESO); p(16, by + 21, C.WAVE);
+    // Floating note pips
+    const nOff2 = [0, 1, 2, 1][f];
+    p(1, by + 5 + nOff2, C.NOTE); p(2, by + 4 + nOff2, C.DKNOTE);
+    p(30, by + 6 - nOff2, C.NOTE);
   } else {
     drawDeathHarmonic(p, b, f - 4, 16, 14);
   }

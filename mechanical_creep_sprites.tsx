@@ -119,44 +119,50 @@ function drawAutomaton(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 1: Dash Unit (Fast) - Low-slung wheeled bot, streamlined
+// 1: Dash Unit (Fast) - Low spider-mech with spread legs and engine pods
 function drawDashUnit(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    const bob = [0, -1, 1, 0][f];
-    const by = 12 + bob;
-    // Low body - streamlined wedge shape
-    b(8, by, 16, 3, C.BRASS); b(8, by, 16, 1, C.HI); b(9, by, 14, 1, C.LBRASS);
-    b(8, by + 3, 18, 3, C.BRASS); b(8, by + 3, 1, 3, C.HI); b(25, by + 3, 1, 3, C.DK);
-    b(10, by + 6, 14, 2, C.DK);
-    // Nose / front wedge
-    b(24, by - 1, 3, 3, C.BRASS); b(24, by - 1, 3, 1, C.HI);
-    b(26, by - 1, 1, 3, C.DK); p(27, by, C.STEEL);
-    // Amber headlight
-    b(26, by + 1, 2, 2, C.AMBER); p(27, by + 1, C.WHITE);
-    // Cockpit glass
-    b(18, by + 1, 5, 2, C.GLASS); b(18, by + 1, 5, 1, C.WHITE);
-    p(22, by + 2, C.DKSTEEL);
-    // Rivets
-    p(10, by + 1, C.RIVET); p(16, by + 1, C.RIVET);
-    p(10, by + 4, C.RIVET); p(24, by + 4, C.RIVET);
-    // Plate seam
-    b(8, by + 3, 18, 1, C.MID);
-    // Wheels (spinning)
-    const spin = [0, 1, 2, 3][f];
-    // Front wheel
-    b(21, by + 6, 4, 4, C.DKSTEEL); b(22, by + 7, 2, 2, C.STEEL);
-    p(22 + (spin % 2), by + 7 + (spin > 1 ? 1 : 0), C.RIVET);
-    // Rear wheel
-    b(9, by + 6, 4, 4, C.DKSTEEL); b(10, by + 7, 2, 2, C.STEEL);
-    p(10 + ((spin + 1) % 2), by + 7 + ((spin + 1) > 1 ? 1 : 0), C.RIVET);
-    // Exhaust trail behind
+    const bob = [0, -1, 0, -1][f];
+    const legA = [0, 1, 0, -1][f];
+    const legB = [0, -1, 0, 1][f];
+    const by = 10 + bob;
+    // Central body pod (low, flat, angular)
+    b(12, by, 8, 4, C.BRASS); b(12, by, 8, 1, C.HI); b(13, by, 6, 1, C.LBRASS);
+    b(12, by + 3, 8, 1, C.DK);
+    b(11, by + 1, 10, 2, C.BRASS); b(11, by + 1, 1, 2, C.HI); b(20, by + 2, 1, 1, C.DK);
+    // Sensor eye (top-center, non-directional)
+    b(15, by + 1, 2, 2, C.AMBER); p(15, by + 1, C.WHITE); p(16, by + 2, C.DKAMBER);
+    // Cockpit glass strip
+    b(13, by + 1, 2, 1, C.GLASS); b(17, by + 1, 2, 1, C.GLASS);
+    // Rivets on body
+    p(12, by + 2, C.RIVET); p(19, by + 2, C.RIVET);
+    // Side engine pods (left and right)
+    b(7, by + 1, 4, 2, C.STEEL); b(7, by + 1, 4, 1, C.LTSTEEL); b(10, by + 2, 1, 1, C.DKSTEEL);
+    b(21, by + 1, 4, 2, C.STEEL); b(21, by + 1, 4, 1, C.LTSTEEL); b(24, by + 2, 1, 1, C.DKSTEEL);
+    // Engine glow on pods
+    p(8, by + 2, C.AMBER); p(22, by + 2, C.AMBER);
+    p(7, by + 3, C.DKAMBER); p(24, by + 3, C.DKAMBER);
+    // Spider legs (6 legs radiating outward, top-down view)
+    // Front-left leg
+    b(9 + legA, by - 2, 2, 3, C.STEEL); p(8 + legA, by - 3, C.DKSTEEL); p(7 + legA, by - 4, C.RIVET);
+    // Front-right leg
+    b(21 + legB, by - 2, 2, 3, C.STEEL); p(22 + legB, by - 3, C.DKSTEEL); p(23 + legB, by - 4, C.RIVET);
+    // Mid-left leg
+    b(5 + legB, by, 2, 4, C.STEEL); p(4 + legB, by, C.DKSTEEL); p(3 + legB, by - 1, C.RIVET);
+    // Mid-right leg
+    b(25 + legA, by, 2, 4, C.STEEL); p(26 + legA, by, C.DKSTEEL); p(27 + legA, by - 1, C.RIVET);
+    // Rear-left leg
+    b(8 + legB, by + 4, 2, 3, C.STEEL); p(7 + legB, by + 6, C.DKSTEEL); p(6 + legB, by + 7, C.RIVET);
+    // Rear-right leg
+    b(22 + legA, by + 4, 2, 3, C.STEEL); p(23 + legA, by + 6, C.DKSTEEL); p(24 + legA, by + 7, C.RIVET);
+    // Exhaust trail behind body
     const trail = [1, 0, 2, 1][f];
-    b(5, by + 2 + trail, 3, 1, C.EXHAUST); p(4, by + 3, C.SMOKE);
-    b(2, by + 2, 2, 1, C.SMOKE); p(1, by + 3 + trail, C.SMOKE);
-    if (f % 2 === 0) { p(3, by + 1, C.SMOKE); p(0, by + 2, C.EXHAUST); }
-    // Speed lines
-    b(3, by + 5, 4, 1, C.DKSTEEL); b(1, by + 4, 3, 1, C.RIVET);
+    p(14, by + 5 + trail, C.EXHAUST); p(17, by + 5 + trail, C.EXHAUST);
+    p(15, by + 6, C.SMOKE); p(16, by + 7 + trail, C.SMOKE);
+    if (f % 2 === 0) { p(13, by + 6, C.SMOKE); p(18, by + 7, C.EXHAUST); }
+    // Spark particles from legs
+    p(6 + legA, by - 3, C.SPARK); p(25 + legB, by - 3, C.SPARK);
   } else {
     drawDeathMech(p, b, f - 4, 16, 14);
   }

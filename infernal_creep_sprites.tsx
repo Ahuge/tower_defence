@@ -51,7 +51,7 @@ const SHEET_W = COLS * CELL; // 1024
 const SHEET_H = ROWS * CELL; // 448
 
 const CREEP_NAMES = [
-  'Imp', 'Hell Hound', 'Pit Fiend', 'Ember Sprite', 'Infernal Priest', 'Demon Lord',
+  'Imp', 'Hell Hound', 'Pit Fiend', 'Ember Sprite', 'Blood Priest', 'Demon Lord',
   'Legion Squad', 'Magma Blob', 'Flame Ward', 'Shade Demon', 'Phoenix Spawn', 'Bat Demon',
   'Ashskin Warlock', 'Blaze Warlock', 'Smoke Warlock', 'Soulfire Warlock'
 ];
@@ -108,47 +108,51 @@ function drawImp(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 1: Hell Hound (Fast) - four-legged fire dog
+// 1: Hell Hound (Fast) - Burning ember creature, non-directional, rolling fire elemental
 function drawHellHound(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, -1, 1, 0][f];
-    const legOff = [0, 2, 0, -2][f];
-    const by = 10 + bob;
-    // Body (horizontal)
-    b(8, by + 2, 16, 6, C.SKIN); b(8, by + 2, 16, 2, C.BSKIN);
-    b(8, by + 6, 16, 2, C.DKSKIN);
-    // Head
-    b(22, by, 6, 5, C.SKIN); b(22, by, 6, 2, C.BSKIN);
-    p(22, by, C.LSKIN);
-    // Snout
-    b(27, by + 2, 3, 3, C.BSKIN); b(29, by + 3, 1, 1, C.DKHORN);
-    // Eyes
-    b(24, by + 1, 2, 1, C.EYE); p(24, by + 1, C.WHITE);
-    // Ears
-    p(23, by - 1, C.SKIN); p(26, by - 1, C.SKIN);
-    p(23, by - 2, C.DKSKIN); p(26, by - 2, C.DKSKIN);
-    // Front legs
-    b(20 + legOff, by + 8, 2, 5, C.SKIN); b(23, by + 8, 2, 5, C.DKSKIN);
-    b(19 + legOff, by + 13, 3, 2, C.DKSKIN);
-    b(22, by + 13, 3, 2, C.DKSKIN);
-    // Back legs
-    b(9 - legOff, by + 8, 2, 5, C.SKIN); b(12, by + 8, 2, 5, C.DKSKIN);
-    b(8 - legOff, by + 13, 3, 2, C.DKSKIN);
-    b(11, by + 13, 3, 2, C.DKSKIN);
-    // Burning paws
-    p(20 + legOff, by + 13, C.FIRE); p(23, by + 13, C.FIRE);
-    p(9 - legOff, by + 13, C.FIRE); p(12, by + 13, C.FIRE);
-    // Tail (fire)
-    b(5, by + 2, 3, 2, C.SKIN); b(3, by + 1, 2, 2, C.FIRE);
-    p(2, by, C.BFIRE); p(1, by - 1, C.FTIP);
-    // Fire trail
-    const trail = [0, 1, 2, 1][f];
-    p(4, by - 1 + trail, C.FIRE); p(2, by - 2 + trail, C.BFIRE);
-    p(6, by + 1, C.EMBER);
-    // Back flame
-    b(13, by, 4, 2, C.FIRE); b(14, by - 1, 2, 1, C.BFIRE);
-    p(15, by - 2, C.FTIP);
+    const pulse = f === 0 || f === 2;
+    const by = 9 + bob;
+    // Core ember body (roughly circular, top-down, non-directional)
+    b(12, by, 8, 2, C.DKSKIN); b(13, by, 6, 1, C.SKIN);
+    b(10, by + 2, 12, 4, C.DKSKIN);
+    b(9, by + 4, 14, 4, C.SKIN);
+    b(10, by + 8, 12, 4, C.DKSKIN);
+    b(12, by + 12, 8, 2, C.HELL);
+    // Shading (radial)
+    b(10, by + 2, 2, 4, C.BSKIN); b(20, by + 3, 2, 3, C.HELL);
+    b(9, by + 5, 2, 3, C.LSKIN); b(21, by + 6, 1, 2, C.DKSKIN);
+    // Inner fire core (bright center)
+    b(13, by + 4, 6, 4, C.FIRE); b(14, by + 5, 4, 2, C.BFIRE);
+    b(15, by + 5, 2, 2, pulse ? C.FTIP : C.BFIRE);
+    p(15, by + 6, pulse ? C.WHITE : C.FTIP); p(16, by + 5, pulse ? C.WHITE : C.FTIP);
+    // Ember eyes (symmetric, glowing)
+    b(12, by + 3, 2, 2, C.EYE); p(12, by + 3, C.WHITE);
+    b(18, by + 3, 2, 2, C.EYE); p(18, by + 3, C.WHITE);
+    // Fire tendrils radiating outward (non-directional, shift per frame)
+    // Top
+    b(14, by - 1, 4, 1, C.FIRE); p(15, by - 2, pulse ? C.BFIRE : C.FIRE);
+    p(16, by - 2, pulse ? C.FTIP : C.FIRE);
+    // Bottom
+    b(14, by + 13, 4, 1, C.DKFIRE); p(15, by + 14, pulse ? C.FIRE : C.DKFIRE);
+    p(16, by + 14, C.EMBER);
+    // Left
+    b(7, by + 5, 2, 2, C.FIRE); p(6, by + 5, pulse ? C.BFIRE : C.DKFIRE);
+    p(6, by + 6, C.EMBER);
+    // Right
+    b(23, by + 5, 2, 2, C.FIRE); p(24, by + 6, pulse ? C.BFIRE : C.DKFIRE);
+    p(24, by + 5, C.EMBER);
+    // Diagonal fire wisps
+    p(10, by, pulse ? C.FIRE : C.EMBER); p(21, by + 1, pulse ? C.EMBER : C.FIRE);
+    p(10, by + 11, pulse ? C.EMBER : C.FIRE); p(21, by + 10, pulse ? C.FIRE : C.EMBER);
+    // Flying ember particles
+    const ePos = [[7, by - 1], [24, by + 12], [8, by + 13], [23, by - 1]][f];
+    p(ePos[0], ePos[1], C.FTIP); p(ePos[0] + 1, ePos[1], C.BFIRE);
+    // Smoke trail
+    p(15, by + 15, C.SMOKE); p(16, by + 16, C.ASH);
+    if (f % 2 === 0) { p(14, by + 16, C.SMOKE); } else { p(17, by + 15, C.ASH); }
   } else {
     drawDeathInfernal(p, b, f - 4, 16, 14);
   }
@@ -235,7 +239,7 @@ function drawEmberSprite(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 4: Infernal Priest (Healer) - hooded demon with fire-staff
+// 4: Blood Priest (Healer) - Dark blood red robes, dripping blood, crimson staff, blood pool
 function drawInfernalPriest(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -243,46 +247,64 @@ function drawInfernalPriest(c: CanvasRenderingContext2D, o: number[], f: number)
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 4 + bob;
-    // Hood
-    b(14, by, 4, 1, C.DKSKIN);
-    b(13, by + 1, 6, 1, C.DKSKIN); b(14, by + 1, 4, 1, C.MID);
-    b(12, by + 2, 8, 3, C.DKSKIN);
-    b(12, by + 2, 2, 3, C.MID); b(19, by + 3, 1, 2, C.HELL);
+    const pulse = f === 0 || f === 2;
+    // Blood pool at feet (dark crimson puddle)
+    b(9, by + 20, 14, 1, C.HELL); b(10, by + 21, 12, 1, C.DKSKIN);
+    b(12, by + 22, 8, 1, C.HELL);
+    p(11, by + 21, pulse ? C.DKSKIN : C.HELL); p(20, by + 20, pulse ? C.HELL : C.DKSKIN);
+    // Hood (dark blood red)
+    b(14, by, 4, 1, C.HELL);
+    b(13, by + 1, 6, 1, C.HELL); b(14, by + 1, 4, 1, C.DKSKIN);
+    b(12, by + 2, 8, 3, C.HELL);
+    b(12, by + 2, 2, 3, C.DKSKIN); b(19, by + 3, 1, 2, C.DKHORN);
     // Hood fold
-    p(14, by + 2, C.SKIN); p(17, by + 2, C.SKIN);
-    // Face shadow
-    b(13, by + 3, 6, 2, C.HELL); b(14, by + 3, 4, 1, C.DKHORN);
-    // Eyes
-    b(14, by + 4, 2, 1, C.FIRE); p(14, by + 4, C.EYE);
-    b(17, by + 4, 2, 1, C.FIRE); p(17, by + 4, C.EYE);
-    // Robe body
-    b(12, by + 5, 8, 4, C.DKSKIN);
-    b(12, by + 5, 2, 4, C.MID); b(19, by + 5, 1, 4, C.HELL);
-    b(10, by + 9, 12, 4, C.SKIN);
-    b(10, by + 9, 2, 4, C.BSKIN); b(20, by + 9, 2, 4, C.DKSKIN);
-    b(9, by + 13, 14, 4, C.SKIN);
-    b(9, by + 13, 2, 4, C.BSKIN); b(21, by + 13, 2, 4, C.DKSKIN);
-    b(8, by + 17, 16, 2, C.DKSKIN);
-    b(8, by + 19, 16, 1, C.HELL);
-    // Robe detail
-    p(14, by + 9, C.FIRE); p(15, by + 10, C.FIRE);
-    p(16, by + 11, C.FIRE); p(16, by + 12, C.FIRE);
+    p(14, by + 2, C.DKSKIN); p(17, by + 2, C.DKSKIN);
+    // Face shadow (deep darkness)
+    b(13, by + 3, 6, 2, C.DKHORN); b(14, by + 3, 4, 1, C.DKHORN);
+    // Eyes (blood red glow)
+    b(14, by + 4, 2, 1, C.EMBER); p(14, by + 4, C.EYE);
+    b(17, by + 4, 2, 1, C.EMBER); p(17, by + 4, C.EYE);
+    // Robe body (dark blood red, deeper than normal infernal)
+    b(12, by + 5, 8, 4, C.HELL);
+    b(12, by + 5, 2, 4, C.DKSKIN); b(19, by + 5, 1, 4, C.DKHORN);
+    b(10, by + 9, 12, 4, C.DKSKIN);
+    b(10, by + 9, 2, 4, C.SKIN); b(20, by + 9, 2, 4, C.HELL);
+    b(9, by + 13, 14, 4, C.DKSKIN);
+    b(9, by + 13, 2, 4, C.SKIN); b(21, by + 13, 2, 4, C.HELL);
+    b(8, by + 17, 16, 2, C.HELL);
+    b(8, by + 19, 16, 1, C.DKHORN);
+    // Blood drip detail on robe (dripping crimson)
+    p(14, by + 9, C.EMBER); p(15, by + 10, C.EMBER);
+    p(16, by + 11, C.MAGMA); p(16, by + 12, C.EMBER);
+    // Blood drips running down robe
+    p(13, by + 14, C.EMBER); p(13, by + 15, C.DKFIRE);
+    p(18, by + 13, C.EMBER); p(18, by + 14, C.DKFIRE); p(18, by + 15, C.HELL);
+    p(11, by + 16, C.EMBER); p(20, by + 16, C.EMBER);
+    // Animated drips (fall per frame)
+    const dripY = [0, 1, 2, 1][f];
+    p(15, by + 17 + dripY, C.EMBER); p(16, by + 18 + dripY, C.DKFIRE);
     // Robe folds
-    p(12, by + 12, C.MID); p(19, by + 12, C.HELL);
-    // Staff
-    b(22, by + 1, 2, 16, C.HORN);
-    b(22, by + 1, 1, 16, C.DKHORN);
-    // Staff top fire
-    b(21, by - 1, 4, 2, C.FIRE); b(22, by - 1, 2, 1, C.BFIRE);
-    p(22, by - 3, C.FTIP); p(23, by - 3, C.BFIRE);
-    p(22, by - 2, C.BFIRE); p(23, by - 2, C.FIRE);
-    // Staff wrapping
-    p(22, by + 5, C.FIRE); p(22, by + 9, C.FIRE); p(22, by + 13, C.FIRE);
-    // Left arm
-    b(9, by + 7 + lOff, 3, 2, C.SKIN); b(9, by + 7 + lOff, 1, 2, C.BSKIN);
-    // Feet
-    b(11 + lOff, by + 19, 3, 2, C.SKIN); b(11 + lOff, by + 20, 3, 1, C.DKSKIN);
-    b(18 + rOff, by + 19, 3, 2, C.DKSKIN);
+    p(12, by + 12, C.DKSKIN); p(19, by + 12, C.DKHORN);
+    // Crimson staff (bone-like, blood-soaked)
+    b(22, by + 1, 2, 16, C.DKHORN);
+    b(22, by + 1, 1, 16, C.HELL);
+    // Staff top (blood orb instead of fire)
+    b(21, by - 1, 4, 2, C.EMBER); b(22, by - 1, 2, 1, C.MAGMA);
+    p(22, by - 3, pulse ? C.EYE : C.EMBER); p(23, by - 3, pulse ? C.EMBER : C.MAGMA);
+    p(22, by - 2, C.MAGMA); p(23, by - 2, C.EMBER);
+    // Blood drip from staff
+    p(22, by + 1, C.EMBER); p(23, by + 2, C.DKFIRE);
+    // Staff blood wrapping
+    p(22, by + 5, C.EMBER); p(22, by + 9, C.EMBER); p(22, by + 13, C.EMBER);
+    // Left arm (blood-stained)
+    b(9, by + 7 + lOff, 3, 2, C.DKSKIN); b(9, by + 7 + lOff, 1, 2, C.SKIN);
+    p(8, by + 8 + lOff, C.EMBER); // blood on hand
+    // Feet (in blood pool)
+    b(11 + lOff, by + 19, 3, 2, C.DKSKIN); b(11 + lOff, by + 20, 3, 1, C.HELL);
+    b(18 + rOff, by + 19, 3, 2, C.HELL);
+    // Blood particles floating
+    p(7, by + 5, pulse ? C.EMBER : C.DKFIRE); p(25, by + 8, pulse ? C.DKFIRE : C.EMBER);
+    p(8, by + 12, pulse ? C.EMBER : C.HELL);
   } else {
     drawDeathInfernal(p, b, f - 4, 16, 14);
   }
@@ -1015,7 +1037,7 @@ export default function InfernalCreepSprites() {
           data-label="Infernal Creeps (Preview)"
           data-frame-size="64x64"
           data-direction="right"
-          data-columns='["Imp (Standard)","Hell Hound (Fast)","Pit Fiend (Armored)","Ember Sprite (Swarm)","Infernal Priest (Healer)","Demon Lord (Boss)","Legion Squad (Group)","Magma Blob (Splitter)","Flame Ward (Shielded)","Shade Demon (Evasive)","Phoenix Spawn (Regen)","Bat Demon (Flying)","Ashskin Warlock (Iron)","Blaze Warlock (Haste)","Smoke Warlock (Mist)","Soulfire Warlock (Heal)"]'
+          data-columns='["Imp (Standard)","Hell Hound (Fast)","Pit Fiend (Armored)","Ember Sprite (Swarm)","Blood Priest (Healer)","Demon Lord (Boss)","Legion Squad (Group)","Magma Blob (Splitter)","Flame Ward (Shielded)","Shade Demon (Evasive)","Phoenix Spawn (Regen)","Bat Demon (Flying)","Ashskin Warlock (Iron)","Blaze Warlock (Haste)","Smoke Warlock (Mist)","Soulfire Warlock (Heal)"]'
           data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]'
           data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]'
           style={{ display: view === 'preview' ? 'block' : 'none', maxWidth: '100%' }}
@@ -1025,7 +1047,7 @@ export default function InfernalCreepSprites() {
           data-label="Infernal Creeps"
           data-frame-size="64x64"
           data-direction="right"
-          data-columns='["Imp (Standard)","Hell Hound (Fast)","Pit Fiend (Armored)","Ember Sprite (Swarm)","Infernal Priest (Healer)","Demon Lord (Boss)","Legion Squad (Group)","Magma Blob (Splitter)","Flame Ward (Shielded)","Shade Demon (Evasive)","Phoenix Spawn (Regen)","Bat Demon (Flying)","Ashskin Warlock (Iron)","Blaze Warlock (Haste)","Smoke Warlock (Mist)","Soulfire Warlock (Heal)"]'
+          data-columns='["Imp (Standard)","Hell Hound (Fast)","Pit Fiend (Armored)","Ember Sprite (Swarm)","Blood Priest (Healer)","Demon Lord (Boss)","Legion Squad (Group)","Magma Blob (Splitter)","Flame Ward (Shielded)","Shade Demon (Evasive)","Phoenix Spawn (Regen)","Bat Demon (Flying)","Ashskin Warlock (Iron)","Blaze Warlock (Haste)","Smoke Warlock (Mist)","Soulfire Warlock (Heal)"]'
           data-rows='["Walk 1","Walk 2","Walk 3","Walk 4","Death 1","Death 2","Death 3"]'
           data-presets='[{"name":"Walk","startRow":0,"endRow":3},{"name":"Death","startRow":4,"endRow":6}]'
           style={{

@@ -58,7 +58,7 @@ const ROW_NAMES = ['Walk 0', 'Walk 1', 'Walk 2', 'Walk 3', 'Death 0', 'Death 1',
 
 // ===== CREEP DRAW FUNCTIONS =====
 
-// 0: Acolyte (Standard) - simple robed figure with small halo
+// 0: Acolyte (Standard) - robed figure with small halo, folded wings, golden light particles
 function drawAcolyte(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -77,6 +77,13 @@ function drawAcolyte(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(17, by + 2, 2, 2, C.BLUE); p(18, by + 2, C.WHITE);
     // Neck
     b(13, by + 5, 6, 1, C.DKROBE);
+    // Small folded wings (2-3px bumps on back, behind shoulders)
+    // Left wing bump
+    p(8, by + 5, C.WING); p(7, by + 6, C.WING); p(8, by + 6, C.DIVINE);
+    p(7, by + 7, C.DKWING); p(8, by + 7, C.WING);
+    // Right wing bump
+    p(23, by + 5, C.DKWING); p(24, by + 6, C.DKWING); p(23, by + 6, C.WING);
+    p(24, by + 7, C.SHADOW); p(23, by + 7, C.DKWING);
     // Torso (robed)
     b(10, by + 6, 12, 8, C.ROBE);
     b(10, by + 6, 2, 8, C.LROBE); b(20, by + 6, 2, 8, C.DKROBE);
@@ -101,6 +108,12 @@ function drawAcolyte(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Feet
     b(11 + lOff, by + 19, 3, 2, C.DKROBE);
     b(18 + rOff, by + 19, 3, 2, C.SHADOW);
+    // Golden light particles (floating around the acolyte)
+    const pOff = [0, 1, 2, 1][f];
+    p(6, by + 2 + pOff, C.HOLY); p(25, by + 3 - pOff, C.HOLY);
+    p(9, by + 14 + (f % 2), C.BGOLD); p(22, by + 15 - (f % 2), C.BGOLD);
+    if (f % 2 === 0) { p(5, by + 8, C.HALO); p(26, by + 10, C.HALO); }
+    else { p(6, by + 10, C.HALO); p(25, by + 8, C.HALO); }
   } else {
     drawDeathCelestial(p, b, f - 4, 16, 14);
   }
@@ -144,7 +157,7 @@ function drawSeraphScout(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 2: Temple Guardian (Armored) - heavy gold/white plate with tower shield
+// 2: Temple Guardian (Armored) - paladin with heavy gold/white plate, light energy sword, heavier armor detail
 function drawTempleGuardian(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -152,7 +165,7 @@ function drawTempleGuardian(c: CanvasRenderingContext2D, o: number[], f: number)
     const lOff = [0, 0, 1, 0][f];
     const rOff = [0, 0, 0, 1][f];
     const by = 4 + bob;
-    // Wide hexagonal armored body
+    // Wide hexagonal armored body (heavier plate detail)
     b(8, by, 16, 2, C.PLATE); b(9, by, 14, 1, C.DIVINE);
     b(7, by + 2, 18, 4, C.ARMOR);
     b(6, by + 6, 20, 6, C.PLATE);
@@ -163,34 +176,61 @@ function drawTempleGuardian(c: CanvasRenderingContext2D, o: number[], f: number)
     b(24, by + 2, 2, 10, C.DKROBE); b(25, by + 4, 1, 8, C.SHADOW);
     b(8, by, 16, 2, C.LROBE);
     b(9, by + 15, 14, 2, C.DKROBE);
-    // Gold trim lines
+    // Gold trim lines (more ornate)
     b(10, by + 3, 12, 1, C.GOLD); b(11, by + 3, 10, 1, C.BGOLD);
     b(10, by + 8, 12, 1, C.DKGOLD);
     b(10, by + 11, 12, 1, C.DKGOLD);
-    // Gold rivets
+    // Additional plate lines for heavier armor feel
+    b(8, by + 5, 16, 1, C.DKPLATE); b(9, by + 5, 14, 1, C.ARMOR);
+    b(8, by + 10, 16, 1, C.DKPLATE);
+    // Gold rivets (more of them)
     p(8, by + 4, C.GOLD); p(23, by + 4, C.GOLD);
     p(8, by + 6, C.GOLD); p(23, by + 6, C.GOLD);
+    p(8, by + 9, C.GOLD); p(23, by + 9, C.GOLD);
+    p(10, by + 12, C.BGOLD); p(21, by + 12, C.BGOLD);
     // Face/visor
     b(11, by + 2, 2, 2, C.BLUE); p(12, by + 2, C.WHITE);
     b(19, by + 2, 2, 2, C.BLUE); p(20, by + 2, C.WHITE);
     b(12, by + 4, 8, 2, C.SHADOW); b(13, by + 4, 6, 1, C.DKROBE);
     // Halo
     b(12, by - 2, 8, 1, C.HALO); b(13, by - 3, 6, 1, C.BGOLD);
-    // Cross emblem on chest
+    // Cross emblem on chest (larger, more ornate)
     b(15, by + 6, 2, 4, C.CROSS); b(14, by + 7, 4, 2, C.CROSS);
     p(15, by + 7, C.BGOLD); p(16, by + 8, C.DKGOLD);
-    // Shield on left side
-    b(3, by + 5, 3, 6, C.GOLD); b(3, by + 5, 1, 6, C.BGOLD);
-    b(5, by + 6, 1, 4, C.DKGOLD);
-    p(4, by + 7, C.CROSS); p(4, by + 8, C.CROSS);
+    p(14, by + 6, C.DIVINE); p(17, by + 9, C.DKGOLD);
+    // Shield on left side (tower shield, bigger)
+    b(2, by + 4, 4, 8, C.GOLD); b(2, by + 4, 1, 8, C.BGOLD);
+    b(5, by + 5, 1, 6, C.DKGOLD);
+    p(3, by + 6, C.CROSS); p(4, by + 7, C.CROSS);
+    p(3, by + 8, C.CROSS); p(4, by + 9, C.CROSS);
+    b(3, by + 5, 2, 1, C.DIVINE); // shield top highlight
+    // === LIGHT ENERGY SWORD (held to the right side) ===
+    // Blade (bright gold/white, glowing)
+    b(26, by + 2, 2, 10, C.BGOLD); b(26, by + 2, 1, 10, C.DIVINE);
+    p(27, by + 3, C.HOLY); p(26, by + 4, C.WHITE);
+    p(27, by + 6, C.HOLY); p(26, by + 8, C.WHITE);
+    // Blade glow aura
+    p(25, by + 3, C.HALO); p(28, by + 5, C.HALO);
+    p(25, by + 7, C.HALO); p(28, by + 9, C.HALO);
+    // Blade tip
+    p(26, by + 1, C.WHITE); p(27, by + 1, C.DIVINE);
+    p(26, by, C.HOLY);
+    // Hilt (ornate gold)
+    b(25, by + 12, 4, 2, C.DKGOLD); b(26, by + 12, 2, 1, C.GOLD);
+    p(25, by + 12, C.BGOLD); p(28, by + 12, C.BGOLD);
     // Legs
     b(10 + lOff, by + 17, 4, 4, C.PLATE);
     b(10 + lOff, by + 17, 1, 4, C.LROBE); b(13 + lOff, by + 17, 1, 4, C.DKROBE);
     b(18 + rOff, by + 17, 4, 4, C.PLATE);
     b(21 + rOff, by + 17, 1, 4, C.DKROBE);
+    // Knee guards
+    p(11 + lOff, by + 19, C.GOLD); p(19 + rOff, by + 19, C.GOLD);
     // Feet
     b(9 + lOff, by + 21, 6, 2, C.DKROBE); b(9 + lOff, by + 21, 2, 1, C.PLATE);
     b(17 + rOff, by + 21, 6, 2, C.DKROBE);
+    // Light particles from sword
+    const sOff = [0, 1, 0, -1][f];
+    p(29, by + 4 + sOff, C.HOLY); p(24, by + 6 - sOff, C.HOLY);
   } else {
     drawDeathCelestial(p, b, f - 4, 16, 14);
   }
@@ -485,6 +525,11 @@ function drawFaithGuard(c: CanvasRenderingContext2D, o: number[], f: number) {
     // Eyes
     b(13, by + 2, 2, 2, C.BLUE); p(14, by + 2, C.WHITE);
     b(17, by + 2, 2, 2, C.BLUE); p(18, by + 2, C.WHITE);
+    // Small wing detail behind the shield (visible behind shoulders)
+    p(7, by + 5, C.WING); p(6, by + 6, C.WING); p(7, by + 6, C.DIVINE);
+    p(6, by + 7, C.DKWING); p(7, by + 7, C.WING); p(6, by + 8, C.DKWING);
+    p(24, by + 5, C.DKWING); p(25, by + 6, C.DKWING); p(24, by + 6, C.WING);
+    p(25, by + 7, C.SHADOW); p(24, by + 7, C.DKWING); p(25, by + 8, C.SHADOW);
     // Robe
     b(10, by + 6, 12, 8, C.ROBE);
     b(10, by + 6, 2, 8, C.LROBE); b(20, by + 6, 2, 8, C.DKROBE);

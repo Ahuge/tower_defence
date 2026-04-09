@@ -117,45 +117,56 @@ function drawDeathPsionic(
 
 // ===== CREEP DRAW FUNCTIONS =====
 
-// 0: Mind Drone (Standard) - floating humanoid, oversized head, small body
+// 0: Mind Drone (Standard) - floating humanoid, massive brain dome, pulsing neural pathways
 function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, -1, 0, -1][f];
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
-    const by = 4 + bob;
-    // Oversized head (brain-like)
-    b(10, by, 12, 3, C.BRAIN); b(11, by, 10, 1, C.GLOW);
-    b(9, by + 3, 14, 4, C.BRAIN); b(9, by + 3, 2, 4, C.GLOW);
-    b(21, by + 3, 2, 4, C.DKBRAIN);
-    // Brain folds
-    p(12, by + 1, C.DKBRAIN); p(15, by + 1, C.DKBRAIN); p(18, by + 1, C.DKBRAIN);
-    p(11, by + 3, C.DKBRAIN); p(14, by + 4, C.DKBRAIN); p(17, by + 3, C.DKBRAIN);
-    p(20, by + 5, C.DKBRAIN);
-    // Eyes
-    b(12, by + 5, 2, 2, C.EYE); p(13, by + 5, C.WHITE);
-    b(18, by + 5, 2, 2, C.EYE); p(19, by + 5, C.WHITE);
-    // Psychic energy crown
-    p(13, by - 1, C.ENERGY); p(16, by - 2, C.BRIGHT); p(19, by - 1, C.ENERGY);
-    p(15, by - 1, C.PULSE); p(17, by - 1, C.PULSE);
-    // Small thin body
-    b(13, by + 7, 6, 2, C.BODY); b(13, by + 7, 1, 2, C.LIGHT);
-    b(12, by + 9, 8, 5, C.BODY);
-    b(12, by + 9, 2, 5, C.LIGHT); b(18, by + 9, 2, 5, C.DK);
+    const by = 3 + bob;
+    // Massive brain dome (takes up most of upper frame)
+    b(8, by, 16, 4, C.BRAIN); b(9, by, 14, 1, C.GLOW);
+    b(7, by + 4, 18, 5, C.BRAIN); b(7, by + 4, 2, 5, C.GLOW);
+    b(23, by + 4, 2, 5, C.DKBRAIN);
+    b(9, by + 9, 14, 2, C.BRAIN); b(9, by + 9, 2, 2, C.GLOW);
+    b(21, by + 9, 2, 2, C.DKBRAIN);
+    // Visible brain wrinkles/folds (detailed, multiple rows)
+    p(10, by + 1, C.DKBRAIN); p(13, by + 1, C.DKBRAIN); p(16, by + 1, C.DKBRAIN); p(19, by + 1, C.DKBRAIN); p(22, by + 1, C.DKBRAIN);
+    p(9, by + 3, C.DKBRAIN); p(12, by + 2, C.DKBRAIN); p(15, by + 3, C.DKBRAIN); p(18, by + 2, C.DKBRAIN); p(21, by + 3, C.DKBRAIN);
+    p(8, by + 5, C.DKBRAIN); p(11, by + 5, C.DKBRAIN); p(14, by + 6, C.DKBRAIN); p(17, by + 5, C.DKBRAIN); p(20, by + 6, C.DKBRAIN); p(23, by + 5, C.DKBRAIN);
+    p(10, by + 7, C.DKBRAIN); p(13, by + 8, C.DKBRAIN); p(16, by + 7, C.DKBRAIN); p(19, by + 8, C.DKBRAIN); p(22, by + 7, C.DKBRAIN);
+    // Pulsing neural glow pathways (shift position per frame for animation)
+    const nShift = [0, 1, 0, -1][f];
+    p(10 + nShift, by + 2, C.NEURAL); p(14 - nShift, by + 4, C.NEURAL); p(18 + nShift, by + 3, C.NEURAL);
+    p(12, by + 6 + (f % 2), C.DKNEURAL); p(16, by + 5 - (f % 2), C.NEURAL); p(20, by + 7 + (f % 2), C.DKNEURAL);
+    p(9 + nShift, by + 8, C.NEURAL); p(15 - nShift, by + 9, C.NEURAL); p(21 + nShift, by + 8, C.NEURAL);
+    // Eyes (set lower on the big dome)
+    b(12, by + 8, 2, 2, C.EYE); p(13, by + 8, C.WHITE);
+    b(18, by + 8, 2, 2, C.EYE); p(19, by + 8, C.WHITE);
+    // Psychic energy crown (bigger, more spikes)
+    p(11, by - 1, C.ENERGY); p(13, by - 2, C.BRIGHT); p(16, by - 3, C.BRIGHT); p(19, by - 2, C.BRIGHT); p(21, by - 1, C.ENERGY);
+    p(14, by - 1, C.PULSE); p(15, by - 2, C.PULSE); p(17, by - 2, C.PULSE); p(18, by - 1, C.PULSE);
+    // Small thin body (below brain)
+    b(13, by + 11, 6, 2, C.BODY); b(13, by + 11, 1, 2, C.LIGHT);
+    b(12, by + 13, 8, 4, C.BODY);
+    b(12, by + 13, 2, 4, C.LIGHT); b(18, by + 13, 2, 4, C.DK);
     // Core glow in chest
-    b(15, by + 10, 2, 2, C.ENERGY); p(15, by + 10, C.CORE);
+    b(15, by + 14, 2, 2, C.ENERGY); p(15, by + 14, C.CORE);
     // Small arms
-    b(10, by + 9, 2, 4, C.BODY); p(10, by + 9, C.LIGHT);
-    b(20, by + 9, 2, 4, C.DK);
+    b(10, by + 13, 2, 3, C.BODY); p(10, by + 13, C.LIGHT);
+    b(20, by + 13, 2, 3, C.DK);
     // Thin legs
-    b(13 + lOff, by + 14, 3, 5, C.BODY); b(13 + lOff, by + 14, 1, 5, C.LIGHT);
-    b(17 + rOff, by + 14, 3, 5, C.BODY); b(19 + rOff, by + 14, 1, 5, C.DK);
+    b(13 + lOff, by + 17, 3, 4, C.BODY); b(13 + lOff, by + 17, 1, 4, C.LIGHT);
+    b(17 + rOff, by + 17, 3, 4, C.BODY); b(19 + rOff, by + 17, 1, 4, C.DK);
     // Feet
-    b(12 + lOff, by + 19, 4, 2, C.DK);
-    b(16 + rOff, by + 19, 4, 2, C.DK);
+    b(12 + lOff, by + 21, 4, 2, C.DK);
+    b(16 + rOff, by + 21, 4, 2, C.DK);
     // Floating psychic glow below
-    b(14, by + 22, 4, 1, C.DUST); p(15, by + 23, C.FRAG);
+    b(14, by + 24, 4, 1, C.DUST); p(15, by + 25, C.FRAG);
+    // Brain pulse particles (neural sparks floating around head)
+    p(6, by + 3 + (f % 2), C.PULSE); p(25, by + 4 - (f % 2), C.PULSE);
+    p(7, by + 7 + (f % 2), C.ENERGY); p(24, by + 6 - (f % 2), C.ENERGY);
   } else {
     drawDeathPsionic(p, b, f - 4, 16, 14);
   }
@@ -747,13 +758,21 @@ function drawMageBase(
   b(18 + rOff, by + 19, 3, 2, hoodC); b(18 + rOff, by + 20, 3, 1, C.VOID);
 }
 
-// 12: Mind Cage (Mage Iron) - mental armor, rigid
+// 12: Mind Cage (Mage Iron) - mental armor, rigid, oversized brain dome above hood
 function drawMageIron(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    drawMageBase(p, b, f, C.GLOW, C.BRAIN, 'iron');
     const bob = [0, -1, 0, -1][f];
     const by = 4 + bob;
+    // Oversized brain dome above hood
+    b(11, by - 5, 10, 3, C.BRAIN); b(12, by - 5, 8, 1, C.GLOW);
+    b(10, by - 2, 12, 2, C.BRAIN); b(10, by - 2, 2, 2, C.GLOW); b(20, by - 2, 2, 2, C.DKBRAIN);
+    // Brain wrinkles on dome
+    p(13, by - 4, C.DKBRAIN); p(16, by - 4, C.DKBRAIN); p(19, by - 4, C.DKBRAIN);
+    p(11, by - 2, C.DKBRAIN); p(15, by - 1, C.DKBRAIN); p(18, by - 2, C.DKBRAIN);
+    // Neural pulse on dome (animated)
+    p(12 + (f % 3), by - 3, C.NEURAL); p(17 - (f % 2), by - 1, C.DKNEURAL);
+    drawMageBase(p, b, f, C.GLOW, C.BRAIN, 'iron');
     // Heavy mental armor plates
     b(12, by + 7, 8, 2, C.DKBRAIN);
     b(13, by + 7, 6, 1, C.BRAIN);
@@ -769,13 +788,21 @@ function drawMageIron(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 13: Time Bender (Mage Haste) - time-distortion, purple speed lines
+// 13: Time Bender (Mage Haste) - time-distortion, purple speed lines, oversized brain dome
 function drawMageHaste(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    drawMageBase(p, b, f, C.ENERGY, C.BRIGHT, undefined);
     const bob = [0, -1, 0, -1][f];
     const by = 4 + bob;
+    // Oversized brain dome above hood
+    b(11, by - 5, 10, 3, C.BRAIN); b(12, by - 5, 8, 1, C.GLOW);
+    b(10, by - 2, 12, 2, C.BRAIN); b(10, by - 2, 2, 2, C.GLOW); b(20, by - 2, 2, 2, C.DKBRAIN);
+    // Brain wrinkles
+    p(13, by - 4, C.DKBRAIN); p(16, by - 4, C.DKBRAIN); p(19, by - 4, C.DKBRAIN);
+    p(11, by - 2, C.DKBRAIN); p(15, by - 1, C.DKBRAIN); p(18, by - 2, C.DKBRAIN);
+    // Neural pulse (animated)
+    p(14 - (f % 2), by - 3, C.ENERGY); p(18 + (f % 2), by - 1, C.BRIGHT);
+    drawMageBase(p, b, f, C.ENERGY, C.BRIGHT, undefined);
     // Purple speed/time lines
     b(5, by + 5, 3, 1, C.ENERGY); b(3, by + 5, 2, 1, C.BRIGHT);
     b(4, by + 9, 4, 1, C.PULSE); p(2, by + 9, C.ENERGY);
@@ -795,13 +822,21 @@ function drawMageHaste(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 14: Confusion Lord (Mage Mist) - scrambled outline, confusion waves
+// 14: Confusion Lord (Mage Mist) - scrambled outline, confusion waves, oversized brain dome
 function drawMageMist(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    drawMageBase(p, b, f, C.GLOW, C.MIND, 'mist');
     const bob = [0, -1, 0, -1][f];
     const by = 4 + bob;
+    // Oversized brain dome above hood
+    b(11, by - 5, 10, 3, C.BRAIN); b(12, by - 5, 8, 1, C.GLOW);
+    b(10, by - 2, 12, 2, C.BRAIN); b(10, by - 2, 2, 2, C.GLOW); b(20, by - 2, 2, 2, C.DKBRAIN);
+    // Brain wrinkles
+    p(13, by - 4, C.DKBRAIN); p(16, by - 4, C.DKBRAIN); p(19, by - 4, C.DKBRAIN);
+    p(11, by - 2, C.DKBRAIN); p(15, by - 1, C.DKBRAIN); p(18, by - 2, C.DKBRAIN);
+    // Neural pulse (animated)
+    p(12 + (f % 2), by - 3, C.PULSE); p(19 - (f % 3), by - 1, C.GLOW);
+    drawMageBase(p, b, f, C.GLOW, C.MIND, 'mist');
     const mx = [5, 7, 3, 8][f];
     const my = [7, 11, 5, 9][f];
     // Confusion wave particles
@@ -822,13 +857,21 @@ function drawMageMist(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 15: Psychic Surgeon (Mage Heal) - precise healing tendrils
+// 15: Psychic Surgeon (Mage Heal) - precise healing tendrils, oversized brain dome
 function drawMageHeal(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    drawMageBase(p, b, f, C.NEURON, C.SYNAPSE, undefined);
     const bob = [0, -1, 0, -1][f];
     const by = 4 + bob;
+    // Oversized brain dome above hood
+    b(11, by - 5, 10, 3, C.BRAIN); b(12, by - 5, 8, 1, C.GLOW);
+    b(10, by - 2, 12, 2, C.BRAIN); b(10, by - 2, 2, 2, C.GLOW); b(20, by - 2, 2, 2, C.DKBRAIN);
+    // Brain wrinkles
+    p(13, by - 4, C.DKBRAIN); p(16, by - 4, C.DKBRAIN); p(19, by - 4, C.DKBRAIN);
+    p(11, by - 2, C.DKBRAIN); p(15, by - 1, C.DKBRAIN); p(18, by - 2, C.DKBRAIN);
+    // Neural pulse (animated, pink-tinted for heal)
+    p(14 + (f % 2), by - 3, C.NEURON); p(17 - (f % 2), by - 1, C.SYNAPSE);
+    drawMageBase(p, b, f, C.NEURON, C.SYNAPSE, undefined);
     // Staff gem glow (pink healing)
     p(22, by - 3, C.NEURON); p(23, by - 3, C.NEURON);
     b(21, by - 1, 4, 1, C.NEURON); p(21, by - 2, C.SYNAPSE);

@@ -113,58 +113,55 @@ function drawStandard(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 1: Forest Fox (Fast) - Lean four-legged, leafy tail
+// 1: Forest Spider (Fast) - 8-legged top-down spider, earthy green/brown, web detail
 function drawFast(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    const bob = [0, -1, 1, -1][f];
-    const legF = [0, 2, 0, -2][f];
-    const legB = [0, -2, 0, 2][f];
-    const by = 13 + bob;
-    // Body (horizontal, sleek)
-    b(9, by, 14, 5, C.MOSS);
-    b(9, by, 14, 2, C.LEAF); b(9, by, 2, 5, C.BTLEAF);
-    b(21, by + 3, 2, 2, C.DKLEAF);
-    // Belly
-    b(11, by + 4, 10, 1, C.BTLEAF);
-    // Head
-    b(22, by - 2, 5, 4, C.MOSS); b(22, by - 2, 5, 1, C.LEAF);
-    b(27, by - 1, 2, 2, C.LEAF); // snout
-    p(28, by - 1, C.BTLEAF); p(28, by, C.DKLEAF);
-    // Nose
-    p(29, by - 1, C.DKBARK);
-    // Eye
-    p(24, by - 1, C.EYE); p(25, by - 1, C.EYEHI);
-    // Ears
-    p(23, by - 3, C.LEAF); p(24, by - 3, C.BTLEAF);
-    p(25, by - 3, C.MOSS);
-    // Leafy tail (flowing behind)
-    b(4, by - 1, 5, 2, C.LEAF); b(5, by - 1, 3, 1, C.BTLEAF);
-    b(2, by - 2, 3, 2, C.BTLEAF); p(1, by - 2, C.GLOW);
-    p(3, by - 3, C.LEAF); p(2, by - 3, C.BTLEAF);
-    // Back legs
-    b(11 + legB, by + 5, 3, 4, C.DKLEAF);
-    b(11 + legB, by + 5, 1, 4, C.MOSS);
-    b(14 + legB, by + 5, 3, 4, C.DKLEAF);
-    // Front legs
-    b(20 + legF, by + 5, 3, 4, C.DKLEAF);
-    b(20 + legF, by + 5, 1, 4, C.MOSS);
-    b(23 + legF, by + 5, 3, 4, C.DKLEAF);
-    // Paws
-    b(10 + legB, by + 9, 4, 1, C.DKBARK);
-    b(13 + legB, by + 9, 4, 1, C.DKBARK);
-    b(19 + legF, by + 9, 4, 1, C.DKBARK);
-    b(22 + legF, by + 9, 4, 1, C.DKBARK);
-    // Speed leaf particles
-    p(7, by + 1, C.LEAF); p(5, by + 2, C.BTLEAF);
-    if (f % 2 === 0) { p(3, by + 1, C.GLOW); p(6, by + 3, C.LEAF); }
-    else { p(4, by + 3, C.LEAF); p(6, by, C.GLOW); }
+    const legA = [0, 1, 0, -1][f];
+    const legB = [0, -1, 0, 1][f];
+    const by = 9;
+    // Abdomen (larger rear section, top-down)
+    b(13, by + 5, 6, 7, C.MOSS); b(12, by + 6, 8, 5, C.MOSS);
+    b(13, by + 5, 2, 7, C.BTLEAF); b(18, by + 6, 2, 5, C.DKLEAF);
+    // Abdomen markings (leaf pattern)
+    p(15, by + 7, C.BTLEAF); p(16, by + 7, C.BTLEAF);
+    p(14, by + 9, C.LEAF); p(17, by + 9, C.LEAF);
+    p(15, by + 10, C.GLOW); // central glow
+    // Cephalothorax (front section)
+    b(14, by + 2, 4, 4, C.BARK); b(13, by + 3, 6, 2, C.BARK);
+    b(14, by + 2, 2, 2, C.LTBARK); b(17, by + 4, 1, 1, C.DKBARK);
+    // Eyes (8 eyes in two rows, top-down)
+    p(14, by + 2, C.EYE); p(17, by + 2, C.EYE);
+    p(13, by + 3, C.EYE); p(18, by + 3, C.EYE);
+    p(15, by + 2, C.EYEHI); p(16, by + 2, C.EYEHI); // small center pair
+    p(14, by + 3, C.EYEHI); p(17, by + 3, C.EYEHI); // inner pair
+    // Fangs/mandibles
+    p(15, by + 1, C.DKBARK); p(16, by + 1, C.DKBARK);
+    // 8 Legs radiating outward (top-down, non-directional)
+    // Front-left pair
+    b(11 + legA, by + 2, 2, 1, C.BARK); p(9 + legA, by + 1, C.DKBARK); p(7 + legA, by, C.ROOT);
+    b(12 + legB, by + 4, 1, 1, C.BARK); p(10 + legB, by + 3, C.DKBARK); p(8 + legB, by + 2, C.ROOT);
+    // Front-right pair
+    b(19 + legB, by + 2, 2, 1, C.BARK); p(21 + legB, by + 1, C.DKBARK); p(23 + legB, by, C.ROOT);
+    b(19 + legA, by + 4, 1, 1, C.BARK); p(21 + legA, by + 3, C.DKBARK); p(23 + legA, by + 2, C.ROOT);
+    // Rear-left pair
+    b(11 + legB, by + 8, 1, 1, C.BARK); p(9 + legB, by + 9, C.DKBARK); p(7 + legB, by + 10, C.ROOT);
+    b(12 + legA, by + 10, 1, 1, C.BARK); p(10 + legA, by + 11, C.DKBARK); p(8 + legA, by + 12, C.ROOT);
+    // Rear-right pair
+    b(20 + legA, by + 8, 1, 1, C.BARK); p(22 + legA, by + 9, C.DKBARK); p(24 + legA, by + 10, C.ROOT);
+    b(19 + legB, by + 10, 1, 1, C.BARK); p(21 + legB, by + 11, C.DKBARK); p(23 + legB, by + 12, C.ROOT);
+    // Web silk trail behind
+    p(15, by + 13, C.WHITE); p(16, by + 14, C.LTLEAF);
+    if (f % 2 === 0) { p(14, by + 14, C.WHITE); p(17, by + 15, C.LTLEAF); }
+    else { p(17, by + 13, C.WHITE); p(14, by + 15, C.LTLEAF); }
+    // Small bee pixel ambient
+    p(6 + legA, by + 1, C.POLLEN); p(25 + legB, by + 11, C.POLLEN);
   } else {
-    drawDeathNature(p, b, f - 4, 16, 16);
+    drawDeathNature(p, b, f - 4, 16, 14);
   }
 }
 
-// 2: Bark Golem (Armored) - Massive tree trunk body, thick bark plates
+// 2: Bark Golem (Armored) - Walking tree stump with flat top, bark rings, root-feet
 function drawArmored(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -172,41 +169,55 @@ function drawArmored(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 0, 1, 0][f];
     const rOff = [0, 0, 0, 1][f];
     const by = 3 + bob;
-    // Mossy head
-    b(11, by, 10, 3, C.MOSS); b(12, by, 8, 1, C.BTLEAF);
-    p(11, by, C.LEAF); p(20, by + 2, C.DKLEAF);
-    // Wide armored body (thick bark plates)
+    // Flat stump top (cross-section with visible rings)
+    b(8, by, 16, 3, C.LTBARK); b(9, by, 14, 1, C.HIBARK);
+    b(8, by, 1, 3, C.HIBARK); b(23, by + 1, 1, 2, C.DKBARK);
+    // Tree rings on top surface (concentric)
+    b(11, by + 1, 10, 1, C.BARK); // outer ring
+    b(13, by + 1, 6, 1, C.MIDBARK); // middle ring
+    b(15, by + 1, 2, 1, C.AMBER); // heart/core ring (golden sap)
+    p(15, by + 1, C.POLLEN); // sap glow center
+    // Ring on second row
+    b(10, by + 2, 12, 1, C.BARK);
+    b(12, by + 2, 8, 1, C.MIDBARK);
+    b(14, by + 2, 4, 1, C.AMBER);
+    // Moss on stump top edge
+    p(9, by, C.MOSS); p(12, by, C.BTLEAF); p(19, by, C.MOSS); p(22, by, C.LEAF);
+    // Stump body (cylindrical bark, wider at base)
     b(7, by + 3, 18, 5, C.BARK);
     b(6, by + 8, 20, 6, C.BARK);
     b(7, by + 14, 18, 3, C.BARK);
-    // Plate shading
+    // Bark texture shading
     b(6, by + 3, 2, 14, C.LTBARK); b(7, by + 4, 1, 12, C.HIBARK);
     b(24, by + 3, 2, 14, C.DKBARK); b(25, by + 5, 1, 10, C.SHADOW);
-    b(8, by + 3, 16, 2, C.LTBARK);
-    b(8, by + 15, 16, 2, C.DKBARK);
-    // Bark plate lines
-    b(10, by + 5, 12, 1, C.DKBARK);
-    b(10, by + 9, 12, 1, C.DKBARK);
-    b(10, by + 12, 12, 1, C.DKBARK);
-    // Moss patches
-    b(9, by + 4, 3, 2, C.MOSS); p(10, by + 4, C.BTLEAF);
-    b(19, by + 6, 3, 2, C.MOSS); p(20, by + 6, C.BTLEAF);
-    b(12, by + 10, 2, 2, C.MOSS);
-    // Face
-    b(12, by + 3, 2, 2, C.EYE); p(13, by + 3, C.EYEHI);
-    b(18, by + 3, 2, 2, C.EYE); p(19, by + 3, C.EYEHI);
-    b(13, by + 5, 6, 1, C.SHADOW); b(14, by + 5, 4, 1, C.DKBARK);
-    // Core amber glow
-    b(14, by + 8, 4, 3, C.AMBER); b(15, by + 9, 2, 1, C.POLLEN);
-    p(15, by + 8, C.WHITE);
-    // Stubby legs
-    b(10 + lOff, by + 17, 4, 5, C.BARK);
-    b(10 + lOff, by + 17, 1, 5, C.LTBARK); b(13 + lOff, by + 17, 1, 5, C.DKBARK);
-    b(18 + rOff, by + 17, 4, 5, C.BARK);
-    b(21 + rOff, by + 17, 1, 5, C.DKBARK);
-    // Feet
-    b(9 + lOff, by + 22, 6, 2, C.ROOT); b(9 + lOff, by + 22, 2, 1, C.LTBARK);
-    b(17 + rOff, by + 22, 6, 2, C.ROOT); b(22 + rOff, by + 22, 1, 1, C.SHADOW);
+    // Vertical bark furrows (deep grooves)
+    b(11, by + 4, 1, 12, C.DKBARK); b(16, by + 3, 1, 13, C.DKBARK);
+    b(21, by + 4, 1, 12, C.DKBARK);
+    // Horizontal bark band lines
+    b(8, by + 7, 16, 1, C.DKBARK);
+    b(8, by + 11, 16, 1, C.DKBARK);
+    // Knot holes / face
+    b(12, by + 5, 2, 2, C.EYE); p(13, by + 5, C.EYEHI);
+    b(18, by + 5, 2, 2, C.EYE); p(19, by + 5, C.EYEHI);
+    b(14, by + 8, 4, 2, C.SHADOW); b(15, by + 8, 2, 1, C.DKBARK); // mouth knot
+    // Moss patches on bark
+    b(9, by + 6, 2, 2, C.MOSS); p(9, by + 6, C.BTLEAF);
+    b(22, by + 9, 2, 2, C.MOSS); p(23, by + 9, C.BTLEAF);
+    b(13, by + 12, 2, 1, C.MOSS); p(13, by + 12, C.LEAF);
+    // Amber sap drip
+    p(15, by + 9, C.AMBER); p(15, by + 10, C.POLLEN);
+    // Root-feet (thick, gnarled roots)
+    b(8 + lOff, by + 17, 5, 5, C.ROOT);
+    b(8 + lOff, by + 17, 2, 5, C.LTBARK); b(12 + lOff, by + 17, 1, 5, C.DKBARK);
+    b(19 + rOff, by + 17, 5, 5, C.ROOT);
+    b(23 + rOff, by + 17, 1, 5, C.DKBARK);
+    // Root tendrils at feet
+    b(7 + lOff, by + 22, 7, 2, C.ROOT); b(7 + lOff, by + 22, 2, 1, C.LTBARK);
+    p(6 + lOff, by + 23, C.ROOT); p(14 + lOff, by + 23, C.ROOT);
+    b(18 + rOff, by + 22, 7, 2, C.ROOT); b(24 + rOff, by + 22, 1, 1, C.SHADOW);
+    p(17 + rOff, by + 23, C.ROOT); p(25 + rOff, by + 23, C.ROOT);
+    // Small bee pixel on stump
+    p(22, by + 4, C.POLLEN); p(23, by + 3, C.POLLEN);
   } else {
     drawDeathNature(p, b, f - 4, 16, 14);
   }
@@ -241,34 +252,46 @@ function drawSwarm(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 4: Bloom Dryad (Healer) - Flower-headed figure, petal skirt
+// 4: Bloom Dryad (Healer) - Flower-headed figure, petal skirt, pollen particles, buzzing bee
 function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, -1, 0, 1][f];
     const by = 4 + bob;
-    // Flower petals around head
-    b(14, by - 1, 4, 1, C.PETAL);
-    b(12, by, 2, 2, C.PETAL); b(18, by, 2, 2, C.PETAL);
+    const pulse = f === 0 || f === 2;
+    // Flower petals around head (more detail, layered)
+    b(14, by - 2, 4, 1, C.PETAL); // top petal extra
+    b(14, by - 1, 4, 1, C.PETAL); p(15, by - 1, C.WHITE);
+    b(12, by, 2, 3, C.PETAL); p(12, by, C.WHITE); // left petal
+    b(18, by, 2, 3, C.PETAL); p(19, by + 1, C.PETAL); // right petal
     p(11, by + 1, C.PETAL); p(20, by + 1, C.PETAL);
-    b(14, by + 4, 4, 1, C.PETAL);
+    b(11, by - 1, 2, 1, C.PETAL); b(19, by - 1, 2, 1, C.PETAL); // diagonal petals
+    b(14, by + 4, 4, 1, C.PETAL); p(15, by + 4, C.WHITE); // bottom petal
     // Flower center (face)
     b(13, by + 1, 6, 3, C.POLLEN);
     b(13, by + 1, 6, 1, C.WHITE); p(13, by + 1, C.AMBER);
     // Eyes
     b(14, by + 2, 2, 1, C.DKLEAF); p(14, by + 2, C.LEAF);
     b(17, by + 2, 2, 1, C.DKLEAF); p(17, by + 2, C.LEAF);
-    // Pollen glow
-    p(15, by - 1, C.POLLEN); p(16, by - 1, C.WHITE);
-    p(11, by, C.POLLEN); p(20, by + 2, C.POLLEN);
+    // Pollen particles floating (more, animated)
+    p(15, by - 2, pulse ? C.POLLEN : C.WHITE); p(16, by - 3, pulse ? C.WHITE : C.POLLEN);
+    p(10, by, C.POLLEN); p(21, by + 2, C.POLLEN);
+    p(9, by - 1, pulse ? C.POLLEN : C.AMBER); p(22, by - 1, pulse ? C.AMBER : C.POLLEN);
+    // Buzzing bee (shifts position per frame)
+    const beePos = [[7, by - 2], [8, by - 1], [6, by - 1], [9, by - 2]][f];
+    p(beePos[0], beePos[1], C.POLLEN); p(beePos[0] + 1, beePos[1], C.DKBARK); // bee body
+    p(beePos[0], beePos[1] - 1, C.WHITE); // bee wing
     // Green body
     b(13, by + 5, 6, 4, C.LEAF);
     b(13, by + 5, 2, 4, C.BTLEAF); b(18, by + 6, 1, 3, C.DKLEAF);
-    // Petal skirt (wider)
+    // Small flower buds on body
+    p(14, by + 6, C.PETAL); p(17, by + 7, C.PETAL);
+    // Petal skirt (wider, more detailed)
     b(10, by + 9, 12, 3, C.PETAL);
     b(10, by + 9, 3, 3, C.PETAL); b(19, by + 10, 3, 2, C.PETAL);
-    // Skirt highlights
-    p(11, by + 9, C.WHITE); p(14, by + 10, C.PETAL); p(17, by + 10, C.PETAL);
+    // Skirt highlights and petal veins
+    p(11, by + 9, C.WHITE); p(14, by + 10, C.WHITE); p(17, by + 10, C.WHITE);
+    p(12, by + 10, C.PETAL); p(19, by + 9, C.PETAL);
     b(11, by + 12, 10, 2, C.LEAF);
     b(11, by + 12, 2, 2, C.BTLEAF); b(19, by + 13, 2, 1, C.DKLEAF);
     // Vine arms
@@ -276,10 +299,15 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
     b(9, by + 7, 2, 2, C.VINE); p(8, by + 8, C.LEAF);
     b(19, by + 6, 3, 2, C.VINE); p(21, by + 7, C.DKLEAF);
     b(22, by + 7, 2, 2, C.DKLEAF);
-    // Heal sparkles from hands
+    // Heal sparkles + pollen from hands
     const px_ = [7, 5, 8, 6][f];
     p(px_, by + 7, C.POLLEN); p(px_ + 1, by + 6, C.GLOW);
+    p(px_ - 1, by + 8, pulse ? C.POLLEN : C.GLOW); // extra pollen
     p(24, by + 7, C.POLLEN); p(23, by + 6, C.GLOW);
+    p(25, by + 8, pulse ? C.GLOW : C.POLLEN);
+    // Falling pollen particles around feet
+    p(11, by + 15, pulse ? C.POLLEN : C.AMBER); p(20, by + 14, pulse ? C.AMBER : C.POLLEN);
+    p(15, by + 16, pulse ? C.POLLEN : C.WHITE);
     // Legs
     b(13, by + 14, 3, 4, C.VINE);
     b(16, by + 14, 3, 4, C.VINE); b(18, by + 14, 1, 4, C.DKLEAF);

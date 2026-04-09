@@ -625,7 +625,7 @@ function drawRiot(c: any, o: number[], frame: number) {
   b(12 + legOff, 23, 3, 2, C.DARK); b(15 - legOff, 23, 3, 2, C.DARK);
 }
 
-// 9: Recon Operative — Stealth/camo, crouched
+// 9: Recon Operative — Commando crawling, flat on ground, very low profile
 function drawRecon(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
@@ -646,28 +646,89 @@ function drawRecon(c: any, o: number[], frame: number) {
     return;
   }
   const step = frame;
-  const sneak = [0, 0, 1, 0][step];
-  const legOff = [0, 2, 0, -2][step];
-  // Crouched low in frame
-  // Head (small, camo-covered)
-  b(15, 11 + sneak, 5, 3, C.DKOLIVE); p(16, 11 + sneak, C.GEAR);
-  p(19, 12 + sneak, C.DARK);
-  b(16, 14 + sneak, 3, 2, C.SKIN); p(17, 14 + sneak, C.DKSKIN);
-  // Crouched body (camo pattern)
-  b(12, 16 + sneak, 8, 4, C.DKOLIVE);
-  p(13, 16 + sneak, C.GEAR); p(15, 17 + sneak, C.BODY);
-  p(19, 19 + sneak, C.DARK);
-  // Camo scatter pattern
-  p(12, 16 + sneak, C.LTOLIVE); p(14, 18 + sneak, C.LTOLIVE);
-  p(17, 17 + sneak, C.DARK); p(19, 18 + sneak, C.DARK);
-  p(13, 19 + sneak, C.BODY);
-  // Suppressed pistol
-  p(20, 17 + sneak, C.DKMETAL); p(21, 17 + sneak, C.DKMETAL); p(22, 17 + sneak, C.METAL);
-  // Low legs (crouched)
-  b(12 + legOff, 20 + sneak, 3, 3, C.DKOLIVE);
-  b(16 - legOff, 20 + sneak, 3, 3, C.DKOLIVE);
-  b(12 + legOff, 23 + sneak, 3, 2, C.DARK);
-  b(16 - legOff, 23 + sneak, 3, 2, C.DARK);
+  // Commando crawling: body is horizontal, flat on ground
+  // Arms and legs alternate crawling motion per frame
+  const crawlY = 18; // body stays low (horizontal center-line)
+  // Arm positions: left arm forward on frames 0,2; right arm forward on 1,3
+  const lArmX = [4, 10, 4, 10][step];   // left arm reaches far forward then pulls back
+  const rArmX = [22, 16, 22, 16][step];  // right arm alternates opposite
+  const lArmFwd = step === 0 || step === 2;
+  const rArmFwd = step === 1 || step === 3;
+  // Leg positions: opposite to arms
+  const lLegX = lArmFwd ? 22 : 18;
+  const rLegX = rArmFwd ? 8 : 12;
+  const lLegBend = lArmFwd ? -1 : 0;  // knee bend
+  const rLegBend = rArmFwd ? -1 : 0;
+
+  // === HEAD (low, turned to side, camo helmet) ===
+  b(6, crawlY - 3, 5, 3, C.DKOLIVE); p(7, crawlY - 3, C.GEAR);
+  p(10, crawlY - 2, C.DARK);
+  // Face (small, looking forward)
+  b(7, crawlY - 1, 3, 2, C.SKIN); p(8, crawlY - 1, C.DKSKIN);
+  // Eye
+  p(9, crawlY - 1, C.DARK);
+
+  // === TORSO (horizontal, long and flat) ===
+  b(8, crawlY, 16, 3, C.DKOLIVE);
+  b(8, crawlY, 16, 1, C.GEAR); // top highlight
+  b(8, crawlY + 2, 16, 1, C.DARK); // bottom shadow
+  // Camo pattern on back
+  p(10, crawlY, C.LTOLIVE); p(14, crawlY + 1, C.LTOLIVE); p(18, crawlY, C.LTOLIVE);
+  p(12, crawlY + 1, C.DARK); p(16, crawlY, C.DARK); p(20, crawlY + 1, C.DARK);
+  p(11, crawlY + 2, C.BODY); p(15, crawlY + 2, C.BODY); p(19, crawlY + 2, C.BODY);
+  // Backpack bump
+  b(13, crawlY - 1, 4, 1, C.GEAR); p(14, crawlY - 1, C.BODY); p(16, crawlY - 1, C.DARK);
+
+  // === LEFT ARM (elbow crawl, reaching forward or pulling back) ===
+  if (lArmFwd) {
+    // Arm extended forward
+    b(lArmX, crawlY + 1, 4, 2, C.DKOLIVE); // upper arm
+    b(lArmX, crawlY, 2, 1, C.SKIN); // hand/elbow on ground
+    p(lArmX, crawlY, C.DKSKIN); p(lArmX + 1, crawlY + 1, C.GEAR);
+  } else {
+    // Arm pulled back, elbow bent
+    b(lArmX, crawlY + 1, 3, 2, C.DKOLIVE);
+    b(lArmX - 1, crawlY + 2, 2, 1, C.SKIN); // elbow
+    p(lArmX, crawlY + 1, C.GEAR);
+  }
+
+  // === RIGHT ARM (opposite phase) ===
+  if (rArmFwd) {
+    // Arm extended forward (reaching under body right side)
+    b(rArmX, crawlY + 1, 4, 2, C.DKOLIVE);
+    b(rArmX + 3, crawlY, 2, 1, C.SKIN); // hand
+    p(rArmX + 3, crawlY, C.DKSKIN); p(rArmX + 2, crawlY + 1, C.GEAR);
+  } else {
+    // Arm pulled back
+    b(rArmX, crawlY + 1, 3, 2, C.DKOLIVE);
+    b(rArmX + 2, crawlY + 2, 2, 1, C.SKIN);
+    p(rArmX + 1, crawlY + 1, C.GEAR);
+  }
+
+  // === LEFT LEG (knee crawl, alternating) ===
+  b(lLegX, crawlY + 2 + lLegBend, 3, 2, C.DKOLIVE); // thigh
+  b(lLegX + 1, crawlY + 4 + lLegBend, 2, 2, C.DKOLIVE); // lower leg
+  b(lLegX + 2, crawlY + 5 + lLegBend, 2, 1, C.DARK); // boot
+  p(lLegX, crawlY + 2 + lLegBend, C.BODY); // knee highlight
+
+  // === RIGHT LEG (opposite phase) ===
+  b(rLegX, crawlY + 2 + rLegBend, 3, 2, C.DKOLIVE);
+  b(rLegX - 1, crawlY + 4 + rLegBend, 2, 2, C.DKOLIVE);
+  b(rLegX - 2, crawlY + 5 + rLegBend, 2, 1, C.DARK);
+  p(rLegX + 2, crawlY + 2 + rLegBend, C.DARK);
+
+  // === RIFLE (slung alongside body) ===
+  b(8, crawlY + 3, 12, 1, C.DKMETAL); // rifle barrel alongside
+  p(6, crawlY + 3, C.METAL); p(7, crawlY + 3, C.METAL); // muzzle
+  p(19, crawlY + 3, C.DKMETAL); // stock
+
+  // === GROUND DUST (crawling kicks up dust) ===
+  if (step === 0 || step === 2) {
+    p(lLegX + 3, crawlY + 5, C.SAND); p(lLegX + 4, crawlY + 4, C.KHAKI);
+  }
+  if (step === 1 || step === 3) {
+    p(rLegX - 3, crawlY + 5, C.SAND); p(rLegX - 2, crawlY + 4, C.KHAKI);
+  }
 }
 
 // 10: Combat Engineer — Repair tools, wrench
