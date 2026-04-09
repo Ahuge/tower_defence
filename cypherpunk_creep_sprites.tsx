@@ -18,6 +18,9 @@ const C = {
   HACK: '#00ddaa',
   GRID: '#224433',
   WHITE: '#ffffff',
+  // Boss accent colors
+  BSCREEN: '#4488cc',  // blue screen glow
+  DKBSCREEN: '#336699', // dark blue screen
 };
 
 // ===== DRAWING HELPERS =====
@@ -317,7 +320,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Mainframe Entity (Boss) - massive, multiple screens
+// 5: Mainframe Entity (Boss) - Server tower being, multiple screen-faces with different expressions, trailing data cables, floating error popups, scan lines across body, red error color, blue screen glow
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID_SZ, GRID_SZ, PX);
   if (f <= 3) {
@@ -325,71 +328,117 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Antenna array on top
-    p(10, by - 2, C.CIRCUIT); b(10, by - 1, 1, 2, C.DIM);
-    p(14, by - 3, C.SCAN); b(14, by - 2, 1, 2, C.CODE);
-    p(18, by - 3, C.BRIGHT); b(18, by - 2, 1, 2, C.CODE);
-    p(22, by - 2, C.CIRCUIT); b(22, by - 1, 1, 2, C.DIM);
-    // Blinking lights
-    p(11, by - 1, C.SCAN); p(15, by - 2, C.BRIGHT); p(19, by - 2, C.WHITE);
-    // Massive head (server rack face)
-    b(9, by, 14, 5, C.BODY);
-    b(9, by, 14, 2, C.DIM); b(10, by, 12, 1, C.CIRCUIT);
-    b(9, by, 2, 5, C.DIM);
-    b(21, by + 2, 2, 3, C.DARK);
-    // Multiple screen eyes
-    b(11, by + 2, 3, 2, C.SCAN); b(12, by + 2, 1, 1, C.WHITE);
-    p(11, by + 3, C.BRIGHT);
-    b(18, by + 2, 3, 2, C.SCAN); b(19, by + 2, 1, 1, C.WHITE);
-    p(18, by + 3, C.BRIGHT);
+    const scanLine = f; // scan line offset
+    const blinkErr = f % 2 === 0;
+
+    // === FLOATING ERROR POPUPS (per-frame positions) ===
+    const errPos = [
+      [[0, by + 2], [30, by + 4]],
+      [[1, by + 4], [29, by + 2]],
+      [[2, by + 3], [28, by + 3]],
+      [[0, by + 5], [31, by + 3]],
+    ][f];
+    for (const [ex, ey] of errPos) {
+      b(ex, ey, 3, 2, C.ERROR); p(ex, ey, C.GLITCH); p(ex + 2, ey + 1, C.DARK);
+    }
+
+    // === ANTENNA ARRAY (tall, multiple, blinking) ===
+    b(8, by - 3, 1, 4, C.DIM); p(8, by - 4, C.CIRCUIT); p(9, by - 3, blinkErr ? C.SCAN : C.CODE);
+    b(12, by - 4, 1, 5, C.CODE); p(12, by - 5, C.SCAN); p(13, by - 4, blinkErr ? C.BRIGHT : C.DIM);
+    b(16, by - 5, 1, 6, C.CODE); p(16, by - 6, C.BRIGHT); p(17, by - 5, blinkErr ? C.WHITE : C.SCAN);
+    b(20, by - 4, 1, 5, C.CODE); p(20, by - 5, C.SCAN); p(21, by - 4, blinkErr ? C.BRIGHT : C.DIM);
+    b(24, by - 3, 1, 4, C.DIM); p(24, by - 4, C.CIRCUIT);
+
+    // === MASSIVE HEAD (server rack face with multiple screens) ===
+    b(7, by, 18, 6, C.BODY);
+    b(7, by, 18, 2, C.DIM); b(8, by, 16, 1, C.CIRCUIT);
+    b(7, by, 3, 6, C.DIM); b(8, by, 2, 4, C.GRID);
+    b(22, by + 2, 3, 4, C.DARK);
+    // Main screen eyes (blue glow)
+    b(9, by + 2, 4, 3, C.BSCREEN); b(10, by + 2, 2, 1, C.WHITE);
+    p(9, by + 4, C.DKBSCREEN); p(12, by + 2, C.BRIGHT);
+    b(19, by + 2, 4, 3, C.BSCREEN); b(20, by + 2, 2, 1, C.WHITE);
+    p(19, by + 4, C.DKBSCREEN); p(22, by + 2, C.BRIGHT);
+    // Small status screen (center, showing expression per frame)
+    b(14, by + 2, 4, 2, C.SCREEN);
+    // Different expressions per frame
+    if (f === 0) { p(15, by + 2, C.SCAN); p(16, by + 2, C.SCAN); p(15, by + 3, C.CODE); p(16, by + 3, C.CODE); }
+    if (f === 1) { p(15, by + 2, C.ERROR); p(16, by + 2, C.GLITCH); p(15, by + 3, C.ERROR); }
+    if (f === 2) { p(15, by + 2, C.PIXEL); p(16, by + 3, C.PIXEL); p(14, by + 3, C.HACK); }
+    if (f === 3) { p(14, by + 2, C.CIRCUIT); p(17, by + 2, C.CIRCUIT); p(15, by + 3, C.BRIGHT); p(16, by + 3, C.BRIGHT); }
     // Status bar mouth
-    b(13, by + 4, 6, 1, C.DARK);
-    p(14, by + 4, C.CIRCUIT); p(16, by + 4, C.PIXEL); p(18, by + 4, C.ERROR);
-    // Shoulder modules
-    b(5, by + 4, 3, 3, C.BODY); b(5, by + 4, 1, 3, C.DIM); b(7, by + 5, 1, 2, C.DARK);
-    p(5, by + 3, C.CIRCUIT); p(6, by + 3, C.SCAN);
-    b(24, by + 4, 3, 3, C.BODY); b(26, by + 4, 1, 3, C.DARK);
-    p(25, by + 3, C.CIRCUIT); p(26, by + 3, C.SCAN);
-    // Neck
-    b(12, by + 5, 8, 2, C.DARK);
-    // Massive server torso
-    b(6, by + 7, 20, 10, C.BODY);
-    b(6, by + 7, 3, 10, C.DIM); b(7, by + 7, 2, 8, C.GRID);
-    b(23, by + 7, 3, 10, C.DARK);
-    b(8, by + 7, 16, 2, C.CIRCUIT); b(9, by + 7, 14, 1, C.SCAN);
-    // Multiple data screens on torso
-    b(10, by + 9, 3, 3, C.SCREEN); p(10, by + 9, C.SCAN); p(12, by + 11, C.CODE);
-    p(11, by + 10, C.BRIGHT); p(11, by + 9, C.WHITE);
-    b(19, by + 9, 3, 3, C.SCREEN); p(21, by + 9, C.DARK);
-    p(20, by + 10, C.SCAN); p(20, by + 9, C.WHITE);
-    b(14, by + 12, 4, 3, C.CIRCUIT); b(15, by + 13, 2, 1, C.BRIGHT);
-    p(15, by + 12, C.WHITE); p(16, by + 14, C.SCAN);
+    b(11, by + 5, 10, 1, C.DARK);
+    p(12, by + 5, C.CIRCUIT); p(14, by + 5, C.PIXEL); p(16, by + 5, blinkErr ? C.ERROR : C.CIRCUIT);
+    p(18, by + 5, C.SCAN); p(20, by + 5, C.HACK);
+
+    // === SHOULDER MODULES (server racks) ===
+    b(3, by + 4, 4, 4, C.BODY); b(3, by + 4, 1, 4, C.DIM); b(6, by + 5, 1, 3, C.DARK);
+    p(4, by + 3, C.CIRCUIT); p(5, by + 3, C.SCAN); p(3, by + 4, C.BSCREEN);
+    b(25, by + 4, 4, 4, C.BODY); b(28, by + 4, 1, 4, C.DARK);
+    p(26, by + 3, C.CIRCUIT); p(27, by + 3, C.SCAN); p(28, by + 4, C.BSCREEN);
+
+    // === NECK (data bus) ===
+    b(11, by + 6, 10, 2, C.DARK); p(13, by + 6, C.CIRCUIT); p(18, by + 6, C.CIRCUIT);
+
+    // === MASSIVE SERVER TORSO ===
+    b(5, by + 8, 22, 10, C.BODY);
+    b(5, by + 8, 3, 10, C.DIM); b(6, by + 8, 2, 8, C.GRID);
+    b(24, by + 8, 3, 10, C.DARK);
+    b(7, by + 8, 18, 2, C.CIRCUIT); b(8, by + 8, 16, 1, C.SCAN);
+
+    // === SCAN LINES ACROSS BODY (animated) ===
+    b(7, by + 9 + scanLine, 18, 1, C.BSCREEN);
+    if (scanLine < 3) b(7, by + 12 + scanLine, 18, 1, C.DKBSCREEN);
+
+    // === MULTIPLE DATA SCREENS ON TORSO ===
+    // Left screen (code readout)
+    b(8, by + 10, 4, 3, C.SCREEN); p(8, by + 10, C.SCAN); p(11, by + 12, C.CODE);
+    p(9, by + 11, C.BRIGHT); p(10, by + 10, C.WHITE);
+    // Right screen (status)
+    b(20, by + 10, 4, 3, C.SCREEN); p(23, by + 10, C.DARK);
+    p(21, by + 11, C.SCAN); p(22, by + 10, C.WHITE);
+    // Center screen (main data core, large)
+    b(13, by + 12, 6, 4, C.CIRCUIT); b(14, by + 13, 4, 2, C.BRIGHT);
+    b(15, by + 13, 2, 2, C.WHITE); p(15, by + 12, C.WHITE); p(16, by + 12, C.BSCREEN);
+    // Error indicator on left
+    p(8, by + 12, blinkErr ? C.ERROR : C.DARK);
     // Data flow lines
-    b(10, by + 11, 12, 1, C.GRID); b(10, by + 14, 12, 1, C.DARK);
-    // Power bar
-    b(8, by + 16, 16, 2, C.DARK); b(9, by + 16, 14, 1, C.SCREEN);
-    p(12, by + 16, C.CIRCUIT); p(19, by + 16, C.CIRCUIT);
-    // Arms
-    b(3, by + 8, 3, 8, C.BODY); b(3, by + 8, 1, 8, C.DIM);
-    b(2, by + 10, 1, 5, C.BODY); p(2, by + 10, C.DIM);
-    b(1, by + 12, 1, 3, C.BODY);
-    b(26, by + 8, 3, 8, C.BODY); b(28, by + 8, 1, 8, C.DARK);
-    b(29, by + 10, 1, 5, C.DARK);
-    b(30, by + 12, 1, 3, C.DARK);
-    // Fists
-    b(1, by + 15, 3, 3, C.BODY); b(1, by + 15, 1, 3, C.DIM);
-    b(28, by + 15, 3, 3, C.DARK);
-    // Legs
-    b(8 + lOff, by + 18, 6, 7, C.BODY);
-    b(8 + lOff, by + 18, 2, 7, C.DIM); b(13 + lOff, by + 18, 1, 7, C.DARK);
-    b(18 + rOff, by + 18, 6, 7, C.BODY);
-    b(23 + rOff, by + 18, 1, 7, C.DARK);
-    // Knee indicators
-    b(8 + lOff, by + 21, 6, 1, C.DARK); p(9 + lOff, by + 21, C.CIRCUIT);
-    b(18 + rOff, by + 21, 6, 1, C.DARK); p(22 + rOff, by + 21, C.CIRCUIT);
-    // Feet
-    b(6 + lOff, by + 25, 8, 3, C.DARK); b(7 + lOff, by + 25, 6, 2, C.BODY);
-    b(17 + rOff, by + 25, 8, 3, C.DARK); b(18 + rOff, by + 25, 6, 2, C.BODY);
+    b(8, by + 12, 14, 1, C.GRID); b(8, by + 15, 14, 1, C.DARK);
+
+    // === TRAILING DATA CABLES (from back/sides) ===
+    b(2, by + 9, 2, 1, C.DIM); p(1, by + 10, C.CODE); p(0, by + 11, C.GRID);
+    p(0, by + 12, C.DIM); p(1, by + 13, C.CODE);
+    b(28, by + 10, 2, 1, C.DIM); p(30, by + 11, C.CODE); p(31, by + 12, C.GRID);
+    p(31, by + 13, C.DIM);
+
+    // Power bar (at waist)
+    b(7, by + 17, 18, 2, C.DARK); b(8, by + 17, 16, 1, C.SCREEN);
+    p(11, by + 17, C.CIRCUIT); p(14, by + 17, C.BSCREEN); p(17, by + 17, C.BSCREEN); p(20, by + 17, C.CIRCUIT);
+
+    // === ARMS (thick, cable-trailing) ===
+    b(2, by + 9, 3, 8, C.BODY); b(2, by + 9, 1, 8, C.DIM);
+    b(1, by + 11, 1, 5, C.BODY); p(1, by + 11, C.DIM);
+    b(0, by + 13, 1, 3, C.BODY);
+    b(27, by + 9, 3, 8, C.BODY); b(29, by + 9, 1, 8, C.DARK);
+    b(30, by + 11, 1, 5, C.DARK);
+    b(31, by + 13, 1, 3, C.DARK);
+    // Fists (port-like)
+    b(0, by + 16, 3, 3, C.BODY); b(0, by + 16, 1, 3, C.DIM); p(0, by + 16, C.CIRCUIT);
+    b(29, by + 16, 3, 3, C.DARK); p(31, by + 16, C.CIRCUIT);
+
+    // === LEGS (server rack pillars) ===
+    b(7 + lOff, by + 19, 7, 7, C.BODY);
+    b(7 + lOff, by + 19, 2, 7, C.DIM); b(13 + lOff, by + 19, 1, 7, C.DARK);
+    b(18 + rOff, by + 19, 7, 7, C.BODY);
+    b(24 + rOff, by + 19, 1, 7, C.DARK);
+    // LED indicators on legs
+    b(7 + lOff, by + 22, 7, 1, C.DARK); p(8 + lOff, by + 22, C.CIRCUIT); p(12 + lOff, by + 22, blinkErr ? C.ERROR : C.CIRCUIT);
+    b(18 + rOff, by + 22, 7, 1, C.DARK); p(19 + rOff, by + 22, C.CIRCUIT); p(23 + rOff, by + 22, blinkErr ? C.ERROR : C.CIRCUIT);
+    // Feet (heavy base units)
+    b(5 + lOff, by + 26, 9, 3, C.DARK); b(6 + lOff, by + 26, 7, 2, C.BODY);
+    p(5 + lOff, by + 28, C.DARK);
+    b(17 + rOff, by + 26, 9, 3, C.DARK); b(18 + rOff, by + 26, 7, 2, C.BODY);
+    p(25 + rOff, by + 28, C.DARK);
   } else {
     drawDeathGlitch(p, b, f - 4, 16, 14);
   }

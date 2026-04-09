@@ -33,8 +33,9 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'creeps-harmonic': () => import('../harmonic_creep_sprites'),
 };
 
-/** Maps faction → directory name and expected canvas names */
+/** Maps module → directory name and expected canvas names (for ZIP download) */
 const FACTION_FILE_MAP: Record<string, { dir: string; canvases: string[] }> = {
+  // Tower/projectile/hero sheets
   void:       { dir: 'void',       canvases: ['void_towers', 'void_projectiles', 'void_hero'] },
   arcane:     { dir: 'arcane',     canvases: ['arcane_towers', 'arcane_projectiles', 'arcane_hero'] },
   mechanical: { dir: 'mechanical', canvases: ['mechanical_towers', 'mechanical_projectiles', 'mechanical_hero'] },
@@ -46,6 +47,20 @@ const FACTION_FILE_MAP: Record<string, { dir: string; canvases: string[] }> = {
   celestial:  { dir: 'celestial',  canvases: ['celestial_towers', 'celestial_projectiles', 'celestial_hero'] },
   psionic:    { dir: 'psionic',    canvases: ['psionic_towers', 'psionic_projectiles', 'psionic_hero'] },
   harmonic:   { dir: 'harmonic',   canvases: ['harmonic_towers', 'harmonic_projectiles', 'harmonic_hero'] },
+  // Creep sheets (1 actual canvas each)
+  'creeps-arcane':      { dir: 'creeps', canvases: ['arcane_creeps'] },
+  'creeps-mechanical':  { dir: 'creeps', canvases: ['mechanical_creeps'] },
+  'creeps-nature':      { dir: 'creeps', canvases: ['nature_creeps'] },
+  'creeps-void':        { dir: 'creeps', canvases: ['void_creeps'] },
+  'creeps-military':    { dir: 'creeps', canvases: ['military_creeps'] },
+  'creeps-aliens':      { dir: 'creeps', canvases: ['aliens_creeps'] },
+  'creeps-cypherpunk':  { dir: 'creeps', canvases: ['cypherpunk_creeps'] },
+  'creeps-infernal':    { dir: 'creeps', canvases: ['infernal_creeps'] },
+  'creeps-celestial':   { dir: 'creeps', canvases: ['celestial_creeps'] },
+  'creeps-psionic':     { dir: 'creeps', canvases: ['psionic_creeps'] },
+  'creeps-harmonic':    { dir: 'creeps', canvases: ['harmonic_creeps'] },
+  // Terrain sheets
+  terrain:    { dir: 'terrain', canvases: ['terrain_tileset', 'terrain_doodads'] },
 };
 
 /** Mobile unit file mapping */

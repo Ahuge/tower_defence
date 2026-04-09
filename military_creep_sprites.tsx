@@ -35,6 +35,10 @@ const C = {
   DKSHIELD: '#7799aa',
   FLAME: '#ff6622',
   LTFLAME: '#ffaa44',
+  // Boss accent colors
+  POWERCORE: '#4488ff', // blue power core
+  DKCORE: '#2255cc',    // dark power core
+  TARGET: '#ff2222',    // red targeting laser
 };
 
 // ===== DRAWING HELPERS =====
@@ -353,14 +357,13 @@ function drawMedic(c: any, o: number[], frame: number) {
   p(11, 14 + armOff, C.BODY); p(11, 15 + armOff, C.BODY);
 }
 
-// 5: Tank Commander — Large armored exosuit (fills 24-28 grid units)
+// 5: Tank Commander — Massive powered exosuit, command antenna with blinking light, dual shoulder-mounted weapons, chest power core (blue glow), heavy treaded feet, targeting laser, red targeting, blue power core
 function drawTankCommander(c: any, o: number[], frame: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (frame >= 4) {
     if (frame === 4) {
-      // massive suit stumbling
       b(7, 4, 14, 5, C.METAL); p(7, 4, C.LTMETAL); p(8, 5, C.LTMETAL);
-      p(14, 1, C.DKMETAL); p(14, 2, C.METAL); p(14, 3, C.METAL); // antenna
+      p(14, 1, C.DKMETAL); p(14, 2, C.METAL); p(14, 3, C.METAL);
       b(4, 9, 22, 8, C.BODY); p(4, 9, C.LTOLIVE); p(5, 10, C.LTOLIVE);
       b(9, 11, 10, 4, C.METAL); p(9, 11, C.LTMETAL);
       b(8, 17, 5, 4, C.BROWN); b(17, 17, 5, 4, C.BROWN);
@@ -383,37 +386,99 @@ function drawTankCommander(c: any, o: number[], frame: number) {
   }
   const step = frame;
   const mech = [0, 1, 0, 1][step];
-  // Command antenna (tall)
-  p(14, 0 + mech, C.LTMETAL); p(14, 1 + mech, C.METAL); p(14, 2 + mech, C.METAL);
-  p(15, 0 + mech, C.LTBLUE); // antenna tip glow
-  // Armored head (visor slit)
-  b(10, 3 + mech, 10, 4, C.METAL); p(10, 3 + mech, C.LTMETAL); p(11, 4 + mech, C.LTMETAL);
-  p(19, 5 + mech, C.DKMETAL); p(19, 6 + mech, C.DKMETAL);
-  b(12, 6 + mech, 6, 1, C.SKIN); // visor slit with face
-  p(13, 6 + mech, C.DKSKIN);
-  // Massive shoulder weapon mounts
-  b(1, 7 + mech, 8, 4, C.METAL); p(1, 7 + mech, C.LTMETAL); p(2, 8 + mech, C.LTMETAL);
-  p(3, 7 + mech, C.DKMETAL); p(4, 7 + mech, C.DKMETAL); // weapon barrels
-  b(2, 8 + mech, 2, 1, C.DKMETAL);
-  b(21, 7 + mech, 8, 4, C.METAL); p(28, 7 + mech, C.DKMETAL); p(28, 8 + mech, C.DKMETAL);
-  p(27, 10 + mech, C.METAL); p(28, 10 + mech, C.METAL); // barrel extension
-  // Massive torso
-  b(5, 11 + mech, 20, 8, C.BODY); p(5, 11 + mech, C.LTOLIVE); p(6, 12 + mech, C.LTOLIVE);
-  p(24, 18 + mech, C.DARK); p(24, 17 + mech, C.DARK);
-  // Chest armor plate (layered)
-  b(9, 13 + mech, 12, 4, C.METAL); p(9, 13 + mech, C.LTMETAL); p(10, 14 + mech, C.LTMETAL);
-  p(20, 16 + mech, C.DKMETAL);
-  p(14, 15 + mech, C.BLUE); p(15, 15 + mech, C.BLUE); // power core
-  p(14, 16 + mech, C.LTBLUE); p(15, 16 + mech, C.LTBLUE);
-  // Side armor / reactive plates
-  b(3, 13 + mech, 3, 4, C.GEAR); p(3, 13 + mech, C.METAL);
-  b(24, 13 + mech, 3, 4, C.GEAR); p(26, 13 + mech, C.METAL);
-  // Command insignia
-  p(15, 14 + mech, C.ORANGE); p(16, 14 + mech, C.ORANGE);
-  // Heavy legs
-  b(7, 19 + mech, 7, 5, C.BROWN); b(16, 19 + mech, 7, 5, C.BROWN);
+  const blinkLight = step % 2 === 0;
+
+  // === COMMAND ANTENNA (tall, with blinking light) ===
+  b(14, 0 + mech, 1, 3, C.METAL); p(14, 0 + mech, C.LTMETAL);
+  p(15, 0 + mech, blinkLight ? C.TARGET : C.DKCORE); // blinking red/blue
+  p(13, 0 + mech, blinkLight ? C.LTBLUE : C.DKMETAL);
+  // Secondary antenna
+  b(18, 1 + mech, 1, 2, C.DKMETAL); p(19, 1 + mech, blinkLight ? C.LTBLUE : C.DKMETAL);
+
+  // === ARMORED HEAD (wide visor slit, menacing) ===
+  b(8, 3 + mech, 14, 5, C.METAL); p(8, 3 + mech, C.LTMETAL); p(9, 4 + mech, C.LTMETAL);
+  p(21, 5 + mech, C.DKMETAL); p(21, 6 + mech, C.DKMETAL); p(21, 7 + mech, C.DKMETAL);
+  b(10, 3 + mech, 10, 1, C.LTMETAL);
+  // Visor slit (wide, face barely visible)
+  b(10, 6 + mech, 10, 2, C.DARK);
+  b(11, 6 + mech, 8, 1, C.SKIN); p(12, 6 + mech, C.DKSKIN);
+  // Visor glow
+  p(10, 6 + mech, C.POWERCORE); p(19, 6 + mech, C.POWERCORE);
+  // Head armor detail
+  p(10, 4 + mech, C.DKMETAL); p(19, 4 + mech, C.DKMETAL);
+
+  // === DUAL SHOULDER-MOUNTED WEAPONS (massive, multi-barrel) ===
+  // Left shoulder weapon pod
+  b(0, 7 + mech, 7, 5, C.METAL); b(0, 7 + mech, 2, 5, C.LTMETAL); p(0, 7 + mech, C.LTMETAL);
+  b(6, 8 + mech, 1, 3, C.DKMETAL);
+  // Barrels (dual)
+  b(0, 8 + mech, 2, 1, C.DKMETAL); b(0, 10 + mech, 2, 1, C.DKMETAL);
+  p(0, 8 + mech, C.BLACK); p(0, 10 + mech, C.BLACK);
+  // Weapon detail
+  p(3, 7 + mech, C.DKMETAL); p(4, 7 + mech, C.LTMETAL);
+  p(2, 11 + mech, C.DKMETAL);
+
+  // Right shoulder weapon pod
+  b(23, 7 + mech, 7, 5, C.METAL); b(28, 7 + mech, 2, 5, C.DKMETAL);
+  b(29, 8 + mech, 1, 3, C.DARK);
+  // Barrels
+  b(29, 8 + mech, 2, 1, C.DKMETAL); b(29, 10 + mech, 2, 1, C.DKMETAL);
+  p(30, 8 + mech, C.BLACK); p(30, 10 + mech, C.BLACK);
+  p(27, 7 + mech, C.LTMETAL); p(28, 11 + mech, C.DARK);
+
+  // === TARGETING LASER (from right weapon, red line) ===
+  p(31, 9 + mech, C.TARGET); p(31, 8 + mech, C.TARGET);
+
+  // === MASSIVE TORSO ===
+  b(4, 11 + mech, 22, 8, C.BODY); p(4, 11 + mech, C.LTOLIVE); p(5, 12 + mech, C.LTOLIVE);
+  p(25, 18 + mech, C.DARK); p(25, 17 + mech, C.DARK);
+  b(4, 11 + mech, 2, 8, C.LTOLIVE);
+  b(24, 11 + mech, 2, 8, C.DARK);
+
+  // === CHEST ARMOR PLATE (layered, power core visible) ===
+  b(8, 13 + mech, 14, 5, C.METAL); b(8, 13 + mech, 14, 1, C.LTMETAL);
+  b(8, 13 + mech, 2, 5, C.LTMETAL); p(9, 14 + mech, C.LTMETAL);
+  b(20, 15 + mech, 2, 3, C.DKMETAL);
+  // Power core (blue glow, prominent)
+  b(13, 15 + mech, 4, 3, C.POWERCORE); b(14, 16 + mech, 2, 1, C.LTBLUE);
+  p(14, 15 + mech, C.WHITE); p(15, 15 + mech, C.WHITE);
+  p(13, 17 + mech, C.DKCORE); p(16, 17 + mech, C.DKCORE);
+  // Power core glow ring
+  p(12, 16 + mech, C.DKCORE); p(17, 16 + mech, C.DKCORE);
+
+  // === SIDE REACTIVE ARMOR PLATES ===
+  b(2, 13 + mech, 3, 5, C.GEAR); b(2, 13 + mech, 1, 5, C.METAL);
+  p(2, 13 + mech, C.LTMETAL);
+  b(25, 13 + mech, 3, 5, C.GEAR); p(27, 13 + mech, C.METAL);
+  // Armor rivets
+  p(3, 14 + mech, C.DGRAY); p(3, 16 + mech, C.DGRAY);
+  p(26, 14 + mech, C.DGRAY); p(26, 16 + mech, C.DGRAY);
+
+  // Command insignia (star/rank)
+  p(14, 14 + mech, C.ORANGE); p(15, 14 + mech, C.ORANGE); p(16, 14 + mech, C.ORANGE);
+  p(15, 13 + mech, C.ORANGE);
+
+  // === HEAVY LEGS (thick, armored, treaded feet) ===
+  b(6, 19 + mech, 8, 5, C.BROWN); b(6, 19 + mech, 2, 5, C.LTKHAKI);
+  b(13, 19 + mech, 1, 5, C.DARK);
+  b(16, 19 + mech, 8, 5, C.BROWN); b(23, 19 + mech, 1, 5, C.DARK);
+  b(16, 19 + mech, 2, 5, C.KHAKI);
+  // Knee joint armor
+  p(8, 21 + mech, C.METAL); p(9, 21 + mech, C.DKMETAL);
+  p(20, 21 + mech, C.METAL); p(21, 21 + mech, C.DKMETAL);
+
   const legS = step % 2;
-  b(7 - legS * 2, 24 + mech, 7, 2, C.DARK); b(16 + legS * 2, 24 + mech, 7, 2, C.DARK);
+  // Heavy treaded feet (wide, gripping)
+  b(4 - legS * 2, 24 + mech, 10, 3, C.DARK); b(5 - legS * 2, 24 + mech, 8, 2, C.DKMETAL);
+  p(4 - legS * 2, 26 + mech, C.BLACK);
+  b(15 + legS * 2, 24 + mech, 10, 3, C.DARK); b(16 + legS * 2, 24 + mech, 8, 2, C.DKMETAL);
+  p(24 + legS * 2, 26 + mech, C.BLACK);
+  // Tread detail
+  p(6 - legS * 2, 25 + mech, C.MGRAY); p(10 - legS * 2, 25 + mech, C.MGRAY);
+  p(17 + legS * 2, 25 + mech, C.MGRAY); p(21 + legS * 2, 25 + mech, C.MGRAY);
+
+  // === GROUND IMPACT DUST ===
+  p(5 - legS * 2, 27 + mech, C.SMOKE); p(22 + legS * 2, 27 + mech, C.SMOKE);
 }
 
 // 6: Fire Team — Smaller infantry

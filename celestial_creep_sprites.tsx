@@ -25,6 +25,9 @@ const C = {
   WHITE: '#ffffff',
   GREEN: '#88ff88', // heal color
   DKGREEN: '#44aa44',
+  // Boss accent colors
+  DIVFIRE: '#aaccff', // divine blue fire
+  DKDIVFIRE: '#6699cc', // dark divine fire
 };
 
 // ===== DRAWING HELPERS =====
@@ -275,7 +278,7 @@ function drawCleric(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Archangel (Boss) - massive winged warrior, full plate, flaming sword, multi-halo
+// 5: Archangel (Boss) - Massive winged warrior, multi-layered halo (3 rings), flaming golden sword, full plate with divine runes, extended wings reaching frame edges, blue divine fire
 function drawArchangel(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -283,60 +286,101 @@ function drawArchangel(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Multi-halo (3 rings)
-    b(10, by - 4, 12, 1, C.HALO); b(11, by - 5, 10, 1, C.BGOLD);
-    p(9, by - 3, C.BGOLD); p(22, by - 3, C.BGOLD);
-    b(12, by - 6, 8, 1, C.HOLY); p(12, by - 6, C.DIVINE);
-    p(19, by - 6, C.DIVINE);
-    // Head
-    b(11, by, 10, 5, C.SKIN);
-    b(11, by, 10, 2, C.SKIN);
-    b(11, by, 2, 5, C.SKIN);
-    b(19, by + 3, 2, 2, C.DKROBE);
-    // Eyes (glowing)
-    b(13, by + 2, 3, 2, C.BLUE); p(14, by + 2, C.WHITE); p(13, by + 3, C.DIVINE);
-    b(18, by + 2, 3, 2, C.BLUE); p(19, by + 2, C.WHITE); p(18, by + 3, C.DIVINE);
+    const haloGlow = f % 2 === 0;
+
+    // === MULTI-LAYERED HALO (3 concentric rings, glowing) ===
+    // Outer ring
+    b(8, by - 4, 16, 1, C.HALO); p(7, by - 3, C.DKGOLD); p(24, by - 3, C.DKGOLD);
+    // Middle ring
+    b(10, by - 5, 12, 1, C.BGOLD); p(9, by - 4, C.BGOLD); p(22, by - 4, C.BGOLD);
+    // Inner ring (brightest)
+    b(12, by - 6, 8, 1, haloGlow ? C.DIVINE : C.HOLY);
+    p(11, by - 5, haloGlow ? C.DIVINE : C.BGOLD); p(20, by - 5, haloGlow ? C.DIVINE : C.BGOLD);
+    // Halo top glow
+    p(15, by - 7, haloGlow ? C.DIVINE : C.HOLY); p(16, by - 7, haloGlow ? C.DIVINE : C.HOLY);
+
+    // === HEAD (noble, armored) ===
+    b(10, by, 12, 5, C.SKIN);
+    b(10, by, 12, 2, C.SKIN); b(10, by, 2, 5, C.SKIN);
+    b(20, by + 3, 2, 2, C.DKROBE);
+    // Eyes (glowing divine blue, prominent)
+    b(12, by + 2, 4, 2, C.BLUE); b(13, by + 2, 2, 1, C.WHITE);
+    p(12, by + 3, C.DIVINE); p(15, by + 2, C.DIVFIRE);
+    b(18, by + 2, 4, 2, C.BLUE); b(19, by + 2, 2, 1, C.WHITE);
+    p(18, by + 3, C.DIVINE); p(21, by + 2, C.DIVFIRE);
     // Brow
-    b(12, by + 1, 8, 1, C.DKROBE);
-    // Wings (large, folded behind)
-    b(1, by + 4, 8, 10, C.WING); b(1, by + 4, 3, 10, C.DIVINE); b(2, by + 4, 2, 8, C.WING);
-    b(7, by + 5, 2, 8, C.DKWING); p(0, by + 3, C.WING); p(0, by + 2, C.DIVINE);
-    b(23, by + 4, 8, 10, C.DKWING); b(28, by + 4, 3, 10, C.SHADOW);
-    p(31, by + 3, C.DKWING); p(31, by + 2, C.WING);
-    // Feather details
-    p(2, by + 6, C.DKWING); p(2, by + 9, C.DKWING); p(2, by + 12, C.DKWING);
-    p(29, by + 6, C.SHADOW); p(29, by + 9, C.SHADOW); p(29, by + 12, C.SHADOW);
-    // Neck
-    b(13, by + 5, 6, 2, C.DKROBE);
-    // Massive plate armor torso
-    b(8, by + 7, 16, 10, C.PLATE);
-    b(8, by + 7, 3, 10, C.DIVINE); b(9, by + 7, 2, 8, C.PLATE);
-    b(21, by + 7, 3, 10, C.DKROBE); b(22, by + 9, 2, 6, C.SHADOW);
-    b(10, by + 7, 12, 2, C.BGOLD); b(11, by + 7, 10, 1, C.DIVINE);
-    // Cross emblem (large)
-    b(14, by + 10, 4, 5, C.CROSS); b(12, by + 12, 8, 2, C.CROSS);
-    p(15, by + 11, C.BGOLD); p(16, by + 12, C.BGOLD);
-    p(15, by + 10, C.DIVINE); p(17, by + 14, C.DKGOLD);
-    // Flaming sword (right side)
-    b(25, by + 2, 2, 12, C.GOLD); b(25, by + 2, 1, 12, C.BGOLD);
-    // Sword flame
-    p(25, by + 1, C.BGOLD); p(26, by, C.CROSS); p(25, by - 1, C.HOLY);
-    p(26, by - 1, C.BGOLD);
-    b(24, by + 14, 4, 2, C.DKGOLD); // hilt
-    // Belt
-    b(10, by + 16, 12, 2, C.GOLD); b(11, by + 16, 10, 1, C.BGOLD);
-    p(14, by + 16, C.CROSS); p(17, by + 16, C.CROSS);
-    // Legs
-    b(10 + lOff, by + 18, 5, 7, C.PLATE);
-    b(10 + lOff, by + 18, 2, 7, C.DIVINE); b(14 + lOff, by + 18, 1, 7, C.DKROBE);
-    b(17 + rOff, by + 18, 5, 7, C.PLATE);
-    b(21 + rOff, by + 18, 1, 7, C.DKROBE);
-    // Knee guards
-    b(10 + lOff, by + 22, 5, 1, C.GOLD); p(11 + lOff, by + 22, C.BGOLD);
-    b(17 + rOff, by + 22, 5, 1, C.GOLD);
-    // Feet
-    b(8 + lOff, by + 25, 7, 3, C.DKROBE); b(9 + lOff, by + 25, 5, 2, C.PLATE);
-    b(16 + rOff, by + 25, 7, 3, C.DKROBE); b(17 + rOff, by + 25, 5, 2, C.PLATE);
+    b(11, by + 1, 10, 1, C.DKROBE);
+
+    // === EXTENDED WINGS (tips reach frame edges, layered feathers) ===
+    // Left wing (large, multi-layered)
+    b(0, by + 3, 9, 11, C.WING); b(0, by + 3, 3, 11, C.DIVINE); b(1, by + 3, 2, 9, C.WING);
+    b(7, by + 4, 2, 9, C.DKWING);
+    p(0, by + 2, C.DIVINE); p(0, by + 1, C.WING);
+    // Feather details (3 rows)
+    p(1, by + 5, C.DKWING); p(1, by + 8, C.DKWING); p(1, by + 11, C.DKWING);
+    p(3, by + 6, C.SHADOW); p(3, by + 9, C.SHADOW); p(3, by + 12, C.SHADOW);
+    p(5, by + 7, C.DKWING); p(5, by + 10, C.DKWING);
+    // Right wing
+    b(23, by + 3, 9, 11, C.DKWING); b(29, by + 3, 3, 11, C.SHADOW);
+    p(31, by + 2, C.DKWING); p(31, by + 1, C.WING);
+    p(30, by + 5, C.SHADOW); p(30, by + 8, C.SHADOW); p(30, by + 11, C.SHADOW);
+    p(28, by + 6, C.SHADOW); p(28, by + 9, C.SHADOW);
+    p(26, by + 7, C.SHADOW); p(26, by + 10, C.SHADOW);
+
+    // === NECK ===
+    b(12, by + 5, 8, 2, C.DKROBE); b(13, by + 5, 6, 1, C.ARMOR);
+
+    // === MASSIVE PLATE ARMOR TORSO ===
+    b(7, by + 7, 18, 10, C.PLATE);
+    b(7, by + 7, 3, 10, C.DIVINE); b(8, by + 7, 2, 8, C.PLATE);
+    b(22, by + 7, 3, 10, C.DKROBE); b(23, by + 9, 2, 6, C.SHADOW);
+    b(9, by + 7, 14, 2, C.BGOLD); b(10, by + 7, 12, 1, C.DIVINE);
+
+    // Divine rune lines on armor
+    p(10, by + 10, C.DIVFIRE); p(12, by + 11, C.DKDIVFIRE);
+    p(19, by + 10, C.DIVFIRE); p(21, by + 11, C.DKDIVFIRE);
+
+    // === CROSS EMBLEM (large, ornate) ===
+    b(13, by + 10, 6, 6, C.CROSS); b(11, by + 12, 10, 2, C.CROSS);
+    b(14, by + 11, 4, 4, C.BGOLD); p(15, by + 12, C.DIVINE); p(16, by + 13, C.DIVINE);
+    p(14, by + 10, C.DIVINE); p(17, by + 10, C.DIVINE);
+    p(13, by + 15, C.DKGOLD); p(18, by + 15, C.DKGOLD);
+
+    // === FLAMING GOLDEN SWORD (right hand, divine fire) ===
+    b(25, by + 1, 2, 14, C.GOLD); b(25, by + 1, 1, 14, C.BGOLD);
+    // Sword blade glow
+    p(24, by + 3, C.DIVFIRE); p(27, by + 5, C.DIVFIRE);
+    // Divine fire on blade
+    p(25, by, C.DIVFIRE); p(26, by - 1, C.CROSS); p(25, by - 1, C.HOLY);
+    p(26, by - 2, C.DIVINE); p(25, by - 2, C.DIVFIRE);
+    p(24, by, C.DKDIVFIRE); p(27, by, C.DKDIVFIRE);
+    // Hilt (ornate)
+    b(23, by + 15, 6, 2, C.DKGOLD); b(24, by + 15, 4, 1, C.BGOLD);
+    p(23, by + 15, C.GOLD); p(28, by + 15, C.GOLD);
+
+    // === BELT (ornate) ===
+    b(9, by + 16, 14, 2, C.GOLD); b(10, by + 16, 12, 1, C.BGOLD);
+    p(13, by + 16, C.CROSS); p(16, by + 16, C.DIVINE); p(19, by + 16, C.CROSS);
+
+    // === LEGS (armored, divine runes) ===
+    b(9 + lOff, by + 18, 6, 7, C.PLATE);
+    b(9 + lOff, by + 18, 2, 7, C.DIVINE); b(14 + lOff, by + 18, 1, 7, C.DKROBE);
+    p(11 + lOff, by + 20, C.DIVFIRE); p(12 + lOff, by + 21, C.DKDIVFIRE);
+    b(17 + rOff, by + 18, 6, 7, C.PLATE);
+    b(22 + rOff, by + 18, 1, 7, C.DKROBE);
+    p(19 + rOff, by + 20, C.DIVFIRE); p(20 + rOff, by + 21, C.DKDIVFIRE);
+    // Knee guards (golden)
+    b(9 + lOff, by + 22, 6, 1, C.GOLD); p(10 + lOff, by + 22, C.BGOLD); p(13 + lOff, by + 22, C.BGOLD);
+    b(17 + rOff, by + 22, 6, 1, C.GOLD); p(18 + rOff, by + 22, C.BGOLD);
+    // Feet (armored, massive)
+    b(7 + lOff, by + 25, 8, 3, C.DKROBE); b(8 + lOff, by + 25, 6, 2, C.PLATE);
+    p(7 + lOff, by + 27, C.SHADOW);
+    b(16 + rOff, by + 25, 8, 3, C.DKROBE); b(17 + rOff, by + 25, 6, 2, C.PLATE);
+    p(23 + rOff, by + 27, C.SHADOW);
+
+    // === DIVINE LIGHT PARTICLES ===
+    p(4, by + 1, C.HOLY); p(27, by + 2, C.HOLY);
+    p(2, by + 15, C.DIVFIRE); p(29, by + 16, C.DIVFIRE);
   } else {
     drawDeathCelestial(p, b, f - 4, 16, 14);
   }

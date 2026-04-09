@@ -271,7 +271,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Eldritch Horror (Boss) - Massive tentacles and eyes, imposing mouth
+// 5: Eldritch Horror (Boss) - Mass of tentacles and eyes, central gaping maw, reality distortion, teal rift cracks
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -279,66 +279,112 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Tentacle crown (writhing)
-    const tw = [0, 1, -1, 0][f];
-    p(10 + tw, by - 2, C.TENT); b(10 + tw, by - 1, 2, 2, C.TENT); p(9 + tw, by, C.BODY);
-    p(14 - tw, by - 3, C.TENT); b(14 - tw, by - 2, 2, 2, C.BODY); p(13 - tw, by - 1, C.TENT);
-    p(18 + tw, by - 3, C.BODY); b(18 + tw, by - 2, 2, 2, C.TENT); p(19 + tw, by - 1, C.TENT);
-    p(22 - tw, by - 2, C.TENT); b(22 - tw, by - 1, 2, 1, C.BODY);
-    // Tentacle tips glow
-    p(10 + tw, by - 2, C.ENERGY); p(14 - tw, by - 3, C.GLOW);
-    p(18 + tw, by - 3, C.BRIGHT); p(22 - tw, by - 2, C.ENERGY);
-    // Massive head
-    b(8, by + 1, 16, 6, C.BODY);
-    b(8, by + 1, 2, 6, C.LIGHT); b(22, by + 3, 2, 4, C.SHADOW);
-    b(9, by + 1, 14, 2, C.MID);
-    // Multiple eyes (3 across)
-    b(10, by + 3, 3, 2, C.EYE); p(11, by + 3, C.WHITE); p(10, by + 4, C.CORE);
-    b(15, by + 2, 3, 2, C.EYE); p(16, by + 2, C.WHITE); p(15, by + 3, C.PINK);
-    b(20, by + 3, 3, 2, C.EYE); p(21, by + 3, C.WHITE); p(20, by + 4, C.CORE);
-    // Maw (gaping mouth)
-    b(11, by + 5, 10, 2, C.VOID_DK); b(12, by + 5, 8, 1, C.SHADOW);
-    // Teeth
-    p(12, by + 5, C.LIGHT); p(14, by + 5, C.LIGHT); p(17, by + 5, C.LIGHT); p(19, by + 5, C.LIGHT);
-    // Massive body
-    b(5, by + 7, 22, 10, C.BODY);
-    b(5, by + 7, 3, 10, C.LIGHT); b(6, by + 7, 2, 8, C.MID);
-    b(24, by + 7, 3, 10, C.SHADOW); b(25, by + 9, 2, 6, C.VOID_DK);
-    b(7, by + 7, 18, 2, C.MID);
-    // Void core (massive rift)
-    b(12, by + 10, 8, 4, C.RIFT); b(13, by + 11, 6, 2, C.ENERGY);
-    b(14, by + 11, 4, 2, C.BRIGHT); p(15, by + 12, C.WHITE); p(16, by + 11, C.WHITE);
-    // Body eyes
-    b(8, by + 10, 2, 2, C.EYE); p(8, by + 10, C.PINK);
-    b(22, by + 11, 2, 2, C.EYE); p(22, by + 11, C.PINK);
-    // Belt detail
-    b(7, by + 16, 18, 2, C.SHADOW); b(8, by + 16, 16, 1, C.VOID_DK);
-    // Tentacle arms (thick, writhing)
-    b(2, by + 8, 3, 8, C.TENT); b(2, by + 8, 1, 8, C.BODY); b(4, by + 9, 1, 6, C.SHADOW);
-    b(1, by + 10, 1, 5, C.TENT); p(1, by + 10, C.BODY);
-    b(0, by + 13, 1, 4, C.TENT); p(0, by + 13, C.LIGHT);
-    b(27, by + 8, 3, 8, C.TENT); b(29, by + 8, 1, 8, C.SHADOW);
-    b(30, by + 10, 1, 5, C.SHADOW);
-    b(31, by + 13, 1, 3, C.VOID_DK);
-    // Tentacle tips (clawed)
-    b(0, by + 17, 2, 2, C.TENT); p(0, by + 17, C.ENERGY);
-    b(30, by + 16, 2, 2, C.TENT); p(31, by + 17, C.ENERGY);
-    // Legs (thick pillars)
-    b(7 + lOff, by + 18, 6, 7, C.BODY);
-    b(7 + lOff, by + 18, 2, 7, C.LIGHT); b(12 + lOff, by + 18, 1, 7, C.SHADOW);
-    b(19 + rOff, by + 18, 6, 7, C.BODY);
-    b(24 + rOff, by + 18, 1, 7, C.SHADOW);
-    // Knee growths
-    b(7 + lOff, by + 21, 6, 1, C.SHADOW); p(8 + lOff, by + 21, C.ENERGY);
-    b(19 + rOff, by + 21, 6, 1, C.SHADOW); p(23 + rOff, by + 21, C.ENERGY);
-    // Feet
-    b(5 + lOff, by + 25, 8, 3, C.SHADOW); b(6 + lOff, by + 25, 6, 2, C.BODY);
-    p(5 + lOff, by + 27, C.VOID_DK);
-    b(18 + rOff, by + 25, 8, 3, C.SHADOW); b(19 + rOff, by + 25, 6, 2, C.BODY);
-    p(25 + rOff, by + 27, C.VOID_DK);
-    // Ambient void particles
-    p(4, by + 5, C.RIFT); p(27, by + 5, C.GLOW);
-    p(16, by - 4, C.ENERGY);
+    const tw = [0, 1, -1, 0][f]; // tentacle writhe
+
+    // === REALITY DISTORTION (edge pixels that shift per frame) ===
+    const distort = [[1, by + 3], [30, by + 5], [2, by + 15], [29, by + 17],
+                     [0, by + 9], [31, by + 11]][f % 4 === 0 ? 0 : f % 4];
+    p(distort[0], distort[1], C.RIFT); p(distort[0], distort[1] + 1, C.DKRIFT);
+
+    // === WRITHING TENTACLE CROWN (6 tentacles, positions shift per frame) ===
+    // Tentacle 1 (far left)
+    b(7 + tw, by - 3, 2, 4, C.TENT); p(7 + tw, by - 4, C.ENERGY); p(8 + tw, by - 3, C.BODY);
+    // Tentacle 2
+    b(11 - tw, by - 4, 2, 5, C.TENT); p(11 - tw, by - 5, C.GLOW); p(12 - tw, by - 4, C.BODY);
+    p(11 - tw, by - 3, C.MID);
+    // Tentacle 3
+    b(15 + tw, by - 5, 2, 5, C.BODY); p(15 + tw, by - 6, C.BRIGHT); p(16 + tw, by - 5, C.TENT);
+    // Tentacle 4
+    b(19 - tw, by - 5, 2, 5, C.TENT); p(19 - tw, by - 6, C.ENERGY); p(20 - tw, by - 4, C.BODY);
+    // Tentacle 5
+    b(22 + tw, by - 4, 2, 5, C.BODY); p(22 + tw, by - 5, C.GLOW); p(23 + tw, by - 3, C.TENT);
+    // Tentacle 6 (far right)
+    b(25 - tw, by - 3, 2, 4, C.TENT); p(25 - tw, by - 4, C.BRIGHT); p(26 - tw, by - 3, C.BODY);
+
+    // === MASSIVE HEAD (bulbous, alien) ===
+    b(6, by, 20, 7, C.BODY);
+    b(6, by, 3, 7, C.LIGHT); b(7, by, 2, 5, C.MID);
+    b(23, by + 2, 3, 5, C.SHADOW); b(24, by + 3, 2, 3, C.VOID_DK);
+    b(8, by, 16, 2, C.MID);
+
+    // === MULTIPLE EYES (6 eyes of different sizes) ===
+    // Large left eye
+    b(8, by + 2, 4, 3, C.EYE); b(9, by + 2, 2, 1, C.WHITE); p(8, by + 4, C.CORE);
+    // Central eye (largest)
+    b(13, by + 1, 5, 4, C.EYE); b(14, by + 1, 3, 2, C.WHITE);
+    p(15, by + 1, C.WHITE); p(14, by + 3, C.PINK); p(16, by + 4, C.CORE);
+    // Large right eye
+    b(20, by + 2, 4, 3, C.EYE); b(21, by + 2, 2, 1, C.WHITE); p(20, by + 4, C.CORE);
+    // Small eyes (forehead)
+    b(11, by + 1, 2, 1, C.EYE); p(11, by + 1, C.WHITE);
+    b(19, by + 1, 2, 1, C.EYE); p(19, by + 1, C.WHITE);
+    // Tiny eye (body, lower)
+    b(10, by + 5, 2, 1, C.EYE); p(10, by + 5, C.PINK);
+
+    // === GAPING MAW (central, with teeth) ===
+    b(10, by + 5, 12, 3, C.VOID_DK); b(11, by + 5, 10, 1, C.SHADOW);
+    // Teeth rows
+    p(11, by + 5, C.LIGHT); p(13, by + 5, C.LIGHT); p(15, by + 5, C.LIGHT);
+    p(17, by + 5, C.LIGHT); p(19, by + 5, C.LIGHT); p(21, by + 5, C.LIGHT);
+    p(12, by + 7, C.LIGHT); p(14, by + 7, C.LIGHT); p(16, by + 7, C.LIGHT);
+    p(18, by + 7, C.LIGHT); p(20, by + 7, C.LIGHT);
+
+    // === MASSIVE BODY (amorphous, fills width) ===
+    b(4, by + 8, 24, 10, C.BODY);
+    b(4, by + 8, 3, 10, C.LIGHT); b(5, by + 8, 2, 8, C.MID);
+    b(25, by + 8, 3, 10, C.SHADOW); b(26, by + 10, 2, 6, C.VOID_DK);
+    b(6, by + 8, 20, 2, C.MID);
+
+    // === TEAL RIFT CRACKS across body ===
+    p(8, by + 10, C.RIFT); p(9, by + 11, C.DKRIFT); p(10, by + 12, C.RIFT);
+    p(22, by + 10, C.RIFT); p(23, by + 11, C.DKRIFT);
+    p(15, by + 16, C.RIFT); p(16, by + 17, C.DKRIFT);
+
+    // === VOID CORE (massive rift, pulsing) ===
+    b(11, by + 10, 10, 5, C.RIFT); b(12, by + 11, 8, 3, C.ENERGY);
+    b(13, by + 12, 6, 1, C.BRIGHT); b(14, by + 11, 4, 3, C.BRIGHT);
+    p(15, by + 12, C.WHITE); p(16, by + 12, C.WHITE);
+    p(14, by + 10, C.GLOW); p(17, by + 14, C.GLOW);
+
+    // === BODY EYES (scattered) ===
+    b(7, by + 11, 2, 2, C.EYE); p(7, by + 11, C.PINK);
+    b(23, by + 12, 2, 2, C.EYE); p(23, by + 12, C.PINK);
+    b(10, by + 15, 2, 1, C.EYE); p(10, by + 15, C.WHITE);
+    b(20, by + 15, 2, 1, C.EYE); p(20, by + 15, C.WHITE);
+
+    // Belt/lower body
+    b(6, by + 17, 20, 2, C.SHADOW); b(7, by + 17, 18, 1, C.VOID_DK);
+
+    // === TENTACLE ARMS (thick, writhing, 4 segments each) ===
+    // Left tentacle arm
+    b(1, by + 8, 3, 9, C.TENT); b(1, by + 8, 1, 9, C.BODY); b(3, by + 9, 1, 7, C.SHADOW);
+    b(0, by + 10, 1, 6, C.TENT); p(0, by + 10, C.BODY);
+    p(0, by + 16, C.ENERGY); p(1, by + 16, C.GLOW);
+    // Right tentacle arm
+    b(28, by + 8, 3, 9, C.TENT); b(30, by + 8, 1, 9, C.SHADOW);
+    b(31, by + 10, 1, 6, C.SHADOW);
+    p(31, by + 16, C.ENERGY); p(30, by + 16, C.GLOW);
+    // Extra writhing tentacle tips
+    p(0, by + 17, C.TENT); p(0, by + 18, C.ENERGY);
+    p(31, by + 17, C.TENT); p(31, by + 18, C.BRIGHT);
+
+    // === LEGS (thick tentacle-pillars) ===
+    b(6 + lOff, by + 19, 7, 7, C.BODY);
+    b(6 + lOff, by + 19, 2, 7, C.LIGHT); b(12 + lOff, by + 19, 1, 7, C.SHADOW);
+    b(19 + rOff, by + 19, 7, 7, C.BODY);
+    b(25 + rOff, by + 19, 1, 7, C.SHADOW);
+    // Knee growths (pulsing rift)
+    b(6 + lOff, by + 22, 7, 1, C.SHADOW); p(7 + lOff, by + 22, C.RIFT); p(11 + lOff, by + 22, C.ENERGY);
+    b(19 + rOff, by + 22, 7, 1, C.SHADOW); p(20 + rOff, by + 22, C.RIFT); p(24 + rOff, by + 22, C.ENERGY);
+    // Feet (massive, spreading)
+    b(4 + lOff, by + 26, 9, 3, C.SHADOW); b(5 + lOff, by + 26, 7, 2, C.BODY);
+    p(4 + lOff, by + 28, C.VOID_DK); p(12 + lOff, by + 28, C.VOID_DK);
+    b(18 + rOff, by + 26, 9, 3, C.SHADOW); b(19 + rOff, by + 26, 7, 2, C.BODY);
+    p(18 + rOff, by + 28, C.VOID_DK); p(26 + rOff, by + 28, C.VOID_DK);
+
+    // === AMBIENT VOID PARTICLES ===
+    p(3, by + 4, C.RIFT); p(28, by + 5, C.GLOW);
+    p(16, by - 7, C.ENERGY); p(2, by + 20, C.DKRIFT); p(29, by + 20, C.DKRIFT);
   } else {
     drawDeathVoid(p, b, f - 4, 16, 14);
   }

@@ -18,6 +18,9 @@ const C = {
   EGG: '#aaaa66',
   LARVA: '#ccddaa',
   WHITE: '#ffffff',
+  // Boss accent colors
+  PINK: '#ff88aa',     // egg glow / bioluminescent
+  DKPINK: '#cc5577',   // dark pink
 };
 
 // ===== DRAWING HELPERS =====
@@ -321,7 +324,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Hive Queen (Boss) - enormous, egg sac, antenna crown
+// 5: Hive Queen (Boss) - Enormous insectoid, crown of antennae, egg sac visible, dripping mandibles, compound eyes (multiple), chitinous armor plates, pulsing bioluminescent spots, pink egg glow
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -329,57 +332,104 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const legF = [0, 1, 0, -1][f];
     const legR = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Antenna crown
-    p(10, by - 2, C.COMPEYE); p(11, by - 1, C.LEG); p(12, by, C.LEG);
-    p(14, by - 3, C.COMPEYE); p(14, by - 2, C.LEG); p(15, by - 1, C.LEG);
-    p(17, by - 3, C.COMPEYE); p(17, by - 2, C.LEG); p(17, by - 1, C.LEG);
-    p(20, by - 2, C.COMPEYE); p(20, by - 1, C.LEG); p(19, by, C.LEG);
-    // Large head
-    b(10, by, 12, 5, C.SHELL);
-    b(10, by, 12, 2, C.BRSHELL); b(11, by, 10, 1, C.MEMBRANE);
-    b(10, by, 2, 5, C.BRSHELL);
-    b(20, by + 2, 2, 3, C.DKSHELL);
-    // Large compound eyes
-    b(11, by + 2, 3, 2, C.EYE); p(12, by + 2, C.WHITE); p(11, by + 3, C.COMPEYE);
-    b(18, by + 2, 3, 2, C.EYE); p(19, by + 2, C.WHITE); p(18, by + 3, C.COMPEYE);
-    // Massive mandibles
-    b(9, by + 4, 3, 2, C.MANDIBLE); p(8, by + 5, C.INNARD);
-    b(20, by + 4, 3, 2, C.MANDIBLE); p(22, by + 5, C.INNARD);
-    // Thorax
-    b(8, by + 5, 16, 5, C.SHELL);
-    b(8, by + 5, 3, 5, C.BRSHELL); b(9, by + 5, 2, 3, C.MEMBRANE);
-    b(21, by + 6, 3, 4, C.DKSHELL); b(22, by + 7, 2, 3, C.CHITIN);
-    b(10, by + 5, 12, 1, C.BRSHELL);
-    // Huge egg-laden abdomen
-    b(6, by + 10, 20, 10, C.SHELL);
-    b(6, by + 10, 3, 10, C.BRSHELL); b(7, by + 11, 2, 8, C.MEMBRANE);
-    b(23, by + 10, 3, 10, C.DKSHELL); b(24, by + 12, 2, 6, C.CHITIN);
-    // Egg sac visible through translucent abdomen
-    b(10, by + 12, 12, 6, C.DKACID);
-    b(11, by + 13, 4, 2, C.EGG); b(12, by + 13, 2, 1, C.LARVA);
-    b(17, by + 13, 4, 2, C.EGG); b(18, by + 13, 2, 1, C.LARVA);
-    b(13, by + 16, 6, 2, C.EGG); b(14, by + 16, 4, 1, C.LARVA);
+    const pulse = f === 0 || f === 2;
+
+    // === CROWN OF ANTENNAE (6 antennae, imposing) ===
+    p(8, by - 3, C.COMPEYE); p(9, by - 2, C.LEG); p(10, by - 1, C.LEG);
+    p(12, by - 4, C.COMPEYE); p(12, by - 3, C.LEG); p(13, by - 2, C.LEG); p(13, by - 1, C.LEG);
+    p(16, by - 5, C.COMPEYE); p(16, by - 4, C.LEG); p(16, by - 3, C.LEG); p(16, by - 2, C.LEG);
+    p(19, by - 4, C.COMPEYE); p(19, by - 3, C.LEG); p(19, by - 2, C.LEG);
+    p(22, by - 3, C.COMPEYE); p(22, by - 2, C.LEG); p(21, by - 1, C.LEG);
+    p(24, by - 2, C.COMPEYE); p(24, by - 1, C.LEG);
+
+    // === LARGE ARMORED HEAD ===
+    b(9, by, 14, 5, C.SHELL);
+    b(9, by, 14, 2, C.BRSHELL); b(10, by, 12, 1, C.MEMBRANE);
+    b(9, by, 2, 5, C.BRSHELL); b(21, by + 2, 2, 3, C.DKSHELL);
+    // Chitinous armor ridges on head
+    p(11, by + 1, C.DKSHELL); p(14, by, C.DKSHELL); p(17, by + 1, C.DKSHELL); p(20, by, C.DKSHELL);
+
+    // === MULTIPLE COMPOUND EYES (4 eyes) ===
+    b(10, by + 2, 4, 2, C.EYE); p(11, by + 2, C.WHITE); p(10, by + 3, C.COMPEYE); p(13, by + 2, C.COMPEYE);
+    b(18, by + 2, 4, 2, C.EYE); p(19, by + 2, C.WHITE); p(18, by + 3, C.COMPEYE); p(21, by + 2, C.COMPEYE);
+    // Small lower eyes
+    b(13, by + 3, 2, 1, C.EYE); p(13, by + 3, C.WHITE);
+    b(17, by + 3, 2, 1, C.EYE); p(17, by + 3, C.WHITE);
+
+    // === MASSIVE DRIPPING MANDIBLES ===
+    b(8, by + 4, 4, 3, C.MANDIBLE); p(7, by + 5, C.INNARD); p(7, by + 6, C.MANDIBLE);
+    b(20, by + 4, 4, 3, C.MANDIBLE); p(23, by + 5, C.INNARD); p(24, by + 6, C.MANDIBLE);
+    // Drip from mandibles
+    p(8, by + 7, C.DKACID); p(9, by + 8, C.ACID);
+    p(22, by + 7, C.DKACID); p(23, by + 8, C.ACID);
+
+    // === THORAX (armored, wide) ===
+    b(7, by + 5, 18, 5, C.SHELL);
+    b(7, by + 5, 3, 5, C.BRSHELL); b(8, by + 5, 2, 3, C.MEMBRANE);
+    b(22, by + 6, 3, 4, C.DKSHELL); b(23, by + 7, 2, 3, C.CHITIN);
+    b(9, by + 5, 14, 1, C.BRSHELL);
+    // Chitinous plate detail
+    b(12, by + 7, 8, 1, C.DKSHELL);
+
+    // === HUGE EGG-LADEN ABDOMEN (fills lower body) ===
+    b(5, by + 10, 22, 11, C.SHELL);
+    b(5, by + 10, 3, 11, C.BRSHELL); b(6, by + 11, 2, 9, C.MEMBRANE);
+    b(24, by + 10, 3, 11, C.DKSHELL); b(25, by + 12, 2, 7, C.CHITIN);
+
+    // Egg sac visible through translucent abdomen (pulsing pink glow)
+    b(9, by + 12, 14, 7, C.DKACID);
+    // Top row eggs
+    b(10, by + 13, 4, 2, pulse ? C.PINK : C.EGG); b(11, by + 13, 2, 1, C.LARVA);
+    b(18, by + 13, 4, 2, pulse ? C.PINK : C.EGG); b(19, by + 13, 2, 1, C.LARVA);
+    // Middle egg (large, prominent)
+    b(13, by + 14, 6, 3, pulse ? C.PINK : C.EGG); b(14, by + 15, 4, 1, C.LARVA);
+    p(15, by + 14, pulse ? C.WHITE : C.LARVA); p(16, by + 15, pulse ? C.WHITE : C.LARVA);
+    // Bottom eggs
+    b(10, by + 16, 3, 2, C.EGG); p(11, by + 16, pulse ? C.PINK : C.LARVA);
+    b(19, by + 16, 3, 2, C.EGG); p(20, by + 16, pulse ? C.PINK : C.LARVA);
+
     // Segment lines on abdomen
-    b(8, by + 13, 16, 1, C.DKSHELL);
-    b(8, by + 16, 16, 1, C.DKSHELL);
-    b(9, by + 19, 14, 1, C.DKSHELL);
-    // Acid drip
-    p(16, by + 20, C.ACID); p(15, by + 21, C.DKACID);
-    // Six thick legs
-    b(4 + legF, by + 7, 3, 7, C.LEG); b(4 + legF, by + 7, 1, 7, C.BRSHELL);
-    p(3 + legF, by + 13, C.CHITIN);
-    b(25 + legR, by + 7, 3, 7, C.LEG); b(27 + legR, by + 7, 1, 7, C.DKSHELL);
-    p(28 + legR, by + 13, C.CHITIN);
-    b(5 + legR, by + 13, 3, 8, C.LEG); p(4 + legR, by + 20, C.CHITIN);
-    b(24 + legF, by + 13, 3, 8, C.LEG); p(26 + legF, by + 20, C.CHITIN);
-    // Front feelers
-    b(3 + legF, by + 6, 2, 3, C.LEG); p(2 + legF, by + 8, C.CHITIN);
-    b(27 + legR, by + 6, 2, 3, C.LEG); p(28 + legR, by + 8, C.CHITIN);
-    // Feet
-    b(3 + legF, by + 14, 4, 2, C.CHITIN);
-    b(25 + legR, by + 14, 4, 2, C.CHITIN);
-    b(4 + legR, by + 21, 3, 2, C.CHITIN);
-    b(25 + legF, by + 21, 3, 2, C.CHITIN);
+    b(7, by + 13, 18, 1, C.DKSHELL);
+    b(7, by + 16, 18, 1, C.DKSHELL);
+    b(8, by + 19, 16, 1, C.DKSHELL);
+
+    // === PULSING BIOLUMINESCENT SPOTS on carapace ===
+    p(8, by + 11, pulse ? C.ACID : C.DKACID);
+    p(23, by + 11, pulse ? C.ACID : C.DKACID);
+    p(7, by + 15, pulse ? C.GLOW : C.DKACID);
+    p(24, by + 15, pulse ? C.GLOW : C.DKACID);
+    p(10, by + 19, pulse ? C.PINK : C.DKPINK);
+    p(21, by + 19, pulse ? C.PINK : C.DKPINK);
+
+    // Acid drip from abdomen
+    p(16, by + 21, C.ACID); p(15, by + 22, C.DKACID); p(17, by + 22, C.DKACID);
+
+    // === SIX THICK LEGS (3 pairs) ===
+    // Front pair
+    b(3 + legF, by + 7, 3, 7, C.LEG); b(3 + legF, by + 7, 1, 7, C.BRSHELL);
+    p(2 + legF, by + 13, C.CHITIN);
+    b(26 + legR, by + 7, 3, 7, C.LEG); b(28 + legR, by + 7, 1, 7, C.DKSHELL);
+    p(29 + legR, by + 13, C.CHITIN);
+    // Middle pair
+    b(4 + legR, by + 13, 3, 8, C.LEG); b(4 + legR, by + 13, 1, 8, C.BRSHELL);
+    p(3 + legR, by + 20, C.CHITIN);
+    b(25 + legF, by + 13, 3, 8, C.LEG); b(27 + legF, by + 13, 1, 8, C.DKSHELL);
+    p(28 + legF, by + 20, C.CHITIN);
+    // Rear pair
+    b(6 + legF, by + 18, 3, 6, C.LEG); p(5 + legF, by + 23, C.CHITIN);
+    b(23 + legR, by + 18, 3, 6, C.LEG); p(25 + legR, by + 23, C.CHITIN);
+
+    // Front feelers/palps
+    b(2 + legF, by + 5, 2, 4, C.LEG); p(1 + legF, by + 8, C.CHITIN);
+    b(28 + legR, by + 5, 2, 4, C.LEG); p(29 + legR, by + 8, C.CHITIN);
+
+    // Feet (clawed)
+    b(2 + legF, by + 14, 4, 2, C.CHITIN); p(1 + legF, by + 14, C.MANDIBLE);
+    b(26 + legR, by + 14, 4, 2, C.CHITIN); p(29 + legR, by + 14, C.MANDIBLE);
+    b(3 + legR, by + 21, 3, 2, C.CHITIN);
+    b(26 + legF, by + 21, 3, 2, C.CHITIN);
+    b(5 + legF, by + 24, 3, 2, C.CHITIN);
+    b(24 + legR, by + 24, 3, 2, C.CHITIN);
   } else {
     drawDeathInsect(p, b, f - 4, 16, 14);
   }

@@ -28,6 +28,8 @@ const C = {
   GEAR: '#777766',      // gear color
   DKGEAR: '#555544',    // dark gear
   ORANGE: '#ff8833',    // speed lines
+  WARN: '#ff2222',      // boss warning lights
+  DKWARN: '#aa1111',    // dark warning
 };
 
 // ===== DRAWING HELPERS =====
@@ -304,65 +306,107 @@ function drawRepairBot(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: War Engine (Boss) - Huge tank-treaded, smokestacks, weapons
+// 5: War Engine (Boss) - Huge tank-treaded war machine, dual smokestacks, rotating turret, multiple weapons, riveted armor, warning lights
 function drawWarEngine(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, 0, -1, 0][f];
-    const by = 2 + bob;
-    // Smokestacks (back, tall)
-    b(5, by, 2, 8, C.PIPE); b(5, by, 1, 8, C.HI); b(6, by + 2, 1, 6, C.DK);
-    b(8, by - 1, 2, 9, C.PIPE); b(8, by - 1, 1, 9, C.HI); b(9, by + 1, 1, 7, C.DK);
-    // Smoke puffs (animated)
+    const by = 1 + bob;
     const smokeOff = [0, 2, 1, 3][f];
-    b(4, by - 2 - smokeOff, 3, 2, C.SMOKE); p(5, by - 3 - smokeOff, C.EXHAUST);
-    b(7, by - 3 - smokeOff, 4, 2, C.SMOKE); p(9, by - 4 - smokeOff, C.EXHAUST);
-    if (f % 2 === 0) { p(3, by - 3 - smokeOff, C.EXHAUST); p(11, by - 4 - smokeOff, C.SMOKE); }
-    // Main hull (massive)
-    b(6, by + 8, 22, 8, C.BRASS);
-    b(6, by + 8, 2, 8, C.HI); b(7, by + 8, 1, 6, C.LBRASS);
-    b(26, by + 8, 2, 8, C.DK); b(27, by + 10, 1, 4, C.VOID);
-    b(7, by + 8, 20, 1, C.HI);
-    b(7, by + 15, 20, 1, C.DK);
-    // Upper turret
-    b(12, by + 4, 12, 4, C.STEEL); b(12, by + 4, 12, 1, C.LTSTEEL);
-    b(12, by + 4, 1, 4, C.LTSTEEL); b(23, by + 5, 1, 3, C.DKSTEEL);
-    b(12, by + 7, 12, 1, C.DKSTEEL);
-    // Turret viewing slit
-    b(15, by + 5, 6, 2, C.VOID); b(16, by + 5, 4, 1, C.DKSTEEL);
-    b(17, by + 5, 2, 1, C.AMBER); p(17, by + 5, C.WHITE);
-    // Gun barrel
-    b(24, by + 5, 5, 2, C.DKSTEEL); b(24, by + 5, 5, 1, C.STEEL);
-    p(28, by + 5, C.VOID); p(28, by + 6, C.VOID);
-    // Side weapons
-    b(26, by + 9, 3, 2, C.STEEL); b(28, by + 9, 1, 2, C.VOID);
-    b(26, by + 12, 3, 2, C.STEEL); b(28, by + 12, 1, 2, C.VOID);
-    // Armor plates on hull
-    b(10, by + 10, 14, 4, C.STEEL); b(10, by + 10, 14, 1, C.LTSTEEL);
-    b(10, by + 13, 14, 1, C.DKSTEEL);
-    // Rivets across hull
-    p(8, by + 9, C.RIVET); p(25, by + 9, C.RIVET);
-    p(8, by + 14, C.RIVET); p(25, by + 14, C.RIVET);
-    p(11, by + 11, C.RIVET); p(23, by + 11, C.RIVET);
-    p(14, by + 12, C.RIVET); p(20, by + 12, C.RIVET);
-    // Amber power core
-    b(16, by + 11, 3, 2, C.AMBER); b(17, by + 11, 1, 1, C.WHITE);
-    p(17, by + 12, C.DKAMBER);
-    // Treads (bottom)
-    b(4, by + 16, 24, 4, C.DKSTEEL);
-    b(5, by + 16, 22, 1, C.STEEL);
-    b(5, by + 19, 22, 1, C.VOID);
-    // Tread detail (rolling segments)
     const treadOff = f;
-    for (let i = 0; i < 10; i++) {
-      const tx = 5 + ((i * 2 + treadOff) % 22);
-      if (tx < 27) p(tx, by + 17, C.RIVET);
-      if (tx < 27) p(tx, by + 18, C.STEEL);
+    const warnBlink = f % 2 === 0;
+
+    // === DUAL SMOKESTACKS (tall, back) ===
+    b(3, by + 1, 3, 9, C.PIPE); b(3, by + 1, 1, 9, C.HI); b(5, by + 3, 1, 7, C.DK);
+    b(7, by, 3, 10, C.PIPE); b(7, by, 1, 10, C.HI); b(9, by + 2, 1, 8, C.DK);
+    // Stack caps
+    b(3, by + 1, 3, 1, C.STEEL); b(7, by, 3, 1, C.STEEL);
+    // Smoke puffs (animated, billowing)
+    b(2, by - 2 - smokeOff, 4, 2, C.SMOKE); p(3, by - 3 - smokeOff, C.EXHAUST);
+    b(1, by - 4 - smokeOff, 3, 1, C.EXHAUST); p(2, by - 5 - smokeOff, C.SMOKE);
+    b(6, by - 3 - smokeOff, 5, 2, C.SMOKE); p(8, by - 4 - smokeOff, C.EXHAUST);
+    b(5, by - 5 - smokeOff, 4, 1, C.EXHAUST); p(7, by - 6 - smokeOff, C.SMOKE);
+    if (warnBlink) { p(0, by - 3 - smokeOff, C.EXHAUST); p(11, by - 5 - smokeOff, C.SMOKE); }
+
+    // === MAIN HULL (massive, fills width) ===
+    b(4, by + 8, 26, 9, C.BRASS);
+    b(4, by + 8, 3, 9, C.HI); b(5, by + 8, 2, 7, C.LBRASS);
+    b(27, by + 8, 3, 9, C.DK); b(28, by + 10, 2, 5, C.VOID);
+    b(6, by + 8, 22, 2, C.HI); b(7, by + 8, 20, 1, C.LBRASS);
+    b(6, by + 16, 22, 1, C.DK);
+
+    // === ROTATING TURRET (upper) ===
+    b(10, by + 3, 16, 5, C.STEEL); b(10, by + 3, 16, 1, C.LTSTEEL);
+    b(10, by + 3, 2, 5, C.LTSTEEL); b(24, by + 4, 2, 4, C.DKSTEEL);
+    b(10, by + 7, 16, 1, C.DKSTEEL);
+    // Turret viewing slit (eyes)
+    b(14, by + 4, 8, 2, C.VOID); b(15, by + 4, 6, 1, C.DKSTEEL);
+    b(16, by + 4, 2, 2, C.AMBER); p(16, by + 4, C.WHITE); p(17, by + 5, C.DKAMBER);
+    b(20, by + 4, 2, 2, C.AMBER); p(20, by + 4, C.WHITE);
+    // Main gun barrel (long)
+    b(26, by + 4, 6, 3, C.DKSTEEL); b(26, by + 4, 6, 1, C.STEEL);
+    p(31, by + 4, C.VOID); p(31, by + 5, C.VOID); p(31, by + 6, C.VOID);
+    // Barrel muzzle detail
+    b(30, by + 4, 1, 3, C.RIVET);
+    // Secondary barrel
+    b(26, by + 6, 4, 1, C.STEEL); p(29, by + 6, C.VOID);
+
+    // === SIDE WEAPON PODS ===
+    b(28, by + 9, 4, 2, C.STEEL); b(31, by + 9, 1, 2, C.VOID);
+    p(28, by + 9, C.LTSTEEL);
+    b(28, by + 12, 4, 2, C.STEEL); b(31, by + 12, 1, 2, C.VOID);
+    p(28, by + 12, C.LTSTEEL);
+    // Left side weapon pod
+    b(0, by + 10, 3, 2, C.STEEL); b(0, by + 10, 1, 2, C.LTSTEEL);
+    p(0, by + 10, C.DKSTEEL);
+
+    // === ARMOR PLATES (riveted, damage marks) ===
+    b(9, by + 10, 16, 5, C.STEEL); b(9, by + 10, 16, 1, C.LTSTEEL);
+    b(9, by + 14, 16, 1, C.DKSTEEL);
+    // Damage marks (scratches)
+    p(12, by + 12, C.DKSTEEL); p(13, by + 11, C.DKSTEEL);
+    p(20, by + 13, C.DKSTEEL); p(21, by + 12, C.DKSTEEL);
+
+    // Rivets grid across hull
+    for (let rx = 0; rx < 4; rx++) {
+      p(7 + rx * 5, by + 9, C.RIVET); p(7 + rx * 5, by + 15, C.RIVET);
     }
-    // Front tread guard
-    b(26, by + 16, 3, 4, C.STEEL); b(28, by + 16, 1, 4, C.DKSTEEL);
+    p(11, by + 12, C.RIVET); p(23, by + 12, C.RIVET);
+    p(14, by + 11, C.RIVET); p(20, by + 11, C.RIVET);
+
+    // === AMBER POWER CORE (glowing) ===
+    b(15, by + 11, 4, 3, C.AMBER); b(16, by + 12, 2, 1, C.WHITE);
+    p(16, by + 11, C.WHITE); p(17, by + 13, C.DKAMBER);
+    p(15, by + 11, C.SPARK);
+
+    // === RED WARNING LIGHTS (blinking) ===
+    p(10, by + 3, warnBlink ? C.WARN : C.DKWARN);
+    p(25, by + 3, warnBlink ? C.WARN : C.DKWARN);
+    p(5, by + 9, warnBlink ? C.WARN : C.DKWARN);
+    p(27, by + 15, warnBlink ? C.WARN : C.DKWARN);
+
+    // === TREADS (wide, heavy, rolling) ===
+    b(2, by + 17, 28, 5, C.DKSTEEL);
+    b(3, by + 17, 26, 1, C.STEEL);
+    b(3, by + 21, 26, 1, C.VOID);
+    // Tread segments (rolling animation)
+    for (let i = 0; i < 12; i++) {
+      const tx = 3 + ((i * 2 + treadOff) % 26);
+      if (tx < 29) { p(tx, by + 18, C.RIVET); p(tx, by + 19, C.STEEL); p(tx, by + 20, C.RIVET); }
+    }
+    // Front tread guard (reinforced)
+    b(28, by + 17, 3, 5, C.STEEL); b(30, by + 17, 1, 5, C.DKSTEEL);
+    p(29, by + 17, C.LTSTEEL);
     // Rear tread guard
-    b(3, by + 16, 2, 4, C.STEEL); b(3, by + 16, 1, 4, C.LTSTEEL);
+    b(1, by + 17, 2, 5, C.STEEL); b(1, by + 17, 1, 5, C.LTSTEEL);
+
+    // === FRONT PLOW / RAM ===
+    b(29, by + 14, 3, 3, C.STEEL); b(31, by + 14, 1, 3, C.DKSTEEL);
+    p(29, by + 14, C.LTSTEEL);
+
+    // === EXHAUST SPARKS (animated) ===
+    const sparkX = [4, 3, 5, 2][f];
+    p(sparkX, by + 17, C.SPARK); p(sparkX + 1, by + 18, C.DKAMBER);
   } else {
     drawDeathMech(p, b, f - 4, 16, 14);
   }

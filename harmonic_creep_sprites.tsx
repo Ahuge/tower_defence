@@ -27,6 +27,10 @@ const C = {
   CRACK: '#88ddff',     // crack lines
   GREEN: '#66ff88',     // heal green
   DKGRN: '#338855',     // dark green
+  // Boss accent colors
+  BRASS: '#cc8844',     // brass instrument
+  DKBRASS: '#996633',   // dark brass
+  SHEET: '#eeeedd',     // sheet music white
 };
 
 // ===== DRAWING HELPERS =====
@@ -319,7 +323,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Symphony (Boss) - massive orchestral entity, conductor pose
+// 5: Symphony (Boss) - Orchestral entity, conductor pose with baton, instrument shapes merged into body (horn bell, string curves, drum), floating musical notes, sound wave rings, brass/sheet music accents
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -327,73 +331,122 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Conductor hat / crown of notes
-    b(10, by - 2, 2, 2, C.NOTE); p(10, by - 2, C.GOLD);
-    p(13, by - 3, C.GOLD); b(14, by - 2, 2, 2, C.NOTE);
-    b(17, by - 2, 2, 2, C.NOTE); p(17, by - 3, C.GOLD);
-    p(21, by - 1, C.NOTE); b(21, by - 1, 2, 1, C.DKNOTE);
-    // Note facet highlights
-    p(11, by - 1, C.WHITE); p(15, by - 2, C.WHITE); p(18, by - 1, C.WHITE);
-    // Head (imposing conductor)
-    b(9, by, 14, 5, C.BODY);
-    b(9, by, 14, 2, C.WAVE); b(10, by, 12, 1, C.BWAVE);
-    b(9, by, 2, 5, C.LIGHT);
-    b(21, by + 2, 2, 3, C.DK);
-    // Eyes (conducting intensity)
-    b(11, by + 2, 3, 2, C.NOTE); b(12, by + 2, 1, 1, C.WHITE);
-    p(11, by + 3, C.GOLD);
-    b(18, by + 2, 3, 2, C.NOTE); b(19, by + 2, 1, 1, C.WHITE);
-    p(18, by + 3, C.GOLD);
+    const noteFloat = [0, 1, 0, -1][f];
+
+    // === FLOATING MUSICAL NOTES (orbiting, per-frame) ===
+    const notePos = [
+      [[2, by + 1], [29, by + 3], [4, by + 17], [27, by + 19]],
+      [[3, by + 3], [28, by + 1], [5, by + 19], [26, by + 17]],
+      [[4, by + 2], [27, by + 2], [3, by + 18], [28, by + 18]],
+      [[2, by + 4], [29, by + 2], [5, by + 16], [27, by + 20]],
+    ][f];
+    for (const [nx, ny] of notePos) {
+      p(nx, ny, C.NOTE); p(nx + 1, ny - 1, C.GOLD); p(nx, ny + 1, C.DKNOTE);
+    }
+
+    // === SOUND WAVE RINGS (emanating from body, expanding per frame) ===
+    const ringR = 13 + f;
+    for (let i = 0; i < 8; i++) {
+      const a = (i + f) * Math.PI / 4;
+      const rx = 16 + Math.round(Math.cos(a) * ringR);
+      const ry = by + 13 + Math.round(Math.sin(a) * (ringR - 2));
+      if (rx >= 0 && rx < 32 && ry >= 0 && ry < 32) {
+        p(rx, ry, i % 2 === 0 ? C.BWAVE : C.WAVE);
+      }
+    }
+
+    // === CONDUCTOR CROWN (notes and sheet music flourish) ===
+    b(9, by - 2, 2, 2, C.NOTE); p(9, by - 3, C.GOLD); p(10, by - 2, C.WHITE);
+    b(13, by - 3, 2, 3, C.NOTE); p(13, by - 4, C.GOLD); p(14, by - 3, C.WHITE);
+    b(17, by - 3, 2, 3, C.NOTE); p(17, by - 4, C.GOLD); p(18, by - 2, C.WHITE);
+    b(21, by - 2, 2, 2, C.NOTE); p(22, by - 2, C.DKNOTE);
+    // Sheet music fragments floating
+    p(11, by - 1, C.SHEET); p(15, by - 2, C.SHEET); p(20, by - 1, C.SHEET);
+
+    // === HEAD (imposing conductor face) ===
+    b(8, by, 16, 6, C.BODY);
+    b(8, by, 16, 2, C.WAVE); b(9, by, 14, 1, C.BWAVE);
+    b(8, by, 3, 6, C.LIGHT); b(9, by, 2, 4, C.MID);
+    b(22, by + 2, 2, 4, C.DK); p(23, by + 5, C.VOID);
+    // Eyes (intense, conducting fervor)
+    b(10, by + 2, 4, 2, C.NOTE); b(11, by + 2, 2, 1, C.WHITE);
+    p(10, by + 3, C.GOLD); p(13, by + 2, C.BRASS);
+    b(18, by + 2, 4, 2, C.NOTE); b(19, by + 2, 2, 1, C.WHITE);
+    p(18, by + 3, C.GOLD); p(21, by + 2, C.BRASS);
     // Brow
-    b(10, by + 1, 12, 1, C.DK);
-    // Mouth
-    b(13, by + 4, 6, 1, C.VOID);
-    // Shoulder epaulets (ornate)
-    b(5, by + 4, 3, 3, C.NOTE); b(5, by + 4, 1, 3, C.GOLD); b(7, by + 5, 1, 2, C.DKNOTE);
-    p(5, by + 3, C.GOLD); p(6, by + 3, C.WAVE);
-    b(24, by + 4, 3, 3, C.NOTE); b(26, by + 4, 1, 3, C.DKNOTE);
-    p(25, by + 3, C.WAVE);
-    // Neck
-    b(12, by + 5, 8, 2, C.DK);
-    // Massive torso (formal coat)
-    b(6, by + 7, 20, 10, C.BODY);
-    b(6, by + 7, 3, 10, C.LIGHT); b(7, by + 7, 2, 8, C.MID);
-    b(23, by + 7, 3, 10, C.DK); b(24, by + 9, 2, 6, C.VOID);
-    b(8, by + 7, 16, 2, C.WAVE); b(9, by + 7, 14, 1, C.BWAVE);
-    // Sound wave ornaments on body
-    b(10, by + 9, 3, 2, C.WAVE); p(11, by + 10, C.BWAVE); p(11, by + 9, C.WHITE);
-    b(19, by + 9, 3, 2, C.WAVE); p(20, by + 10, C.BWAVE); p(20, by + 9, C.WHITE);
-    b(14, by + 12, 4, 3, C.NOTE); b(15, by + 13, 2, 1, C.GOLD);
-    p(15, by + 12, C.WHITE);
-    // Chest lines
-    b(10, by + 11, 12, 1, C.MID); b(10, by + 14, 12, 1, C.DK);
-    // Belt
-    b(8, by + 16, 16, 2, C.DK); b(9, by + 16, 14, 1, C.VOID);
-    p(12, by + 16, C.NOTE); p(19, by + 16, C.NOTE);
-    // Conductor arms (one raised with baton)
-    b(3, by + 8, 3, 8, C.BODY); b(3, by + 8, 1, 8, C.LIGHT);
-    b(2, by + 10, 1, 5, C.BODY); p(2, by + 10, C.LIGHT);
-    // Baton in right hand (raised)
-    b(1, by + 5, 1, 8, C.DKNOTE); p(1, by + 4, C.NOTE); p(1, by + 3, C.GOLD);
-    b(26, by + 8, 3, 8, C.BODY); b(28, by + 8, 1, 8, C.DK);
-    b(29, by + 10, 1, 5, C.DK);
-    // Fists
-    b(1, by + 12, 3, 3, C.BODY); b(1, by + 12, 1, 3, C.LIGHT);
-    b(28, by + 15, 3, 3, C.DK);
-    // Legs
-    b(8 + lOff, by + 18, 6, 7, C.BODY);
-    b(8 + lOff, by + 18, 2, 7, C.LIGHT);
-    b(18 + rOff, by + 18, 6, 7, C.BODY);
-    b(23 + rOff, by + 18, 1, 7, C.DK);
+    b(9, by + 1, 14, 1, C.DK);
+    // Mouth (open, conducting)
+    b(13, by + 4, 6, 2, C.VOID); b(14, by + 4, 4, 1, C.DK);
+
+    // === SHOULDER EPAULETS (ornate, with brass bell shapes) ===
+    // Left shoulder (horn bell shape)
+    b(4, by + 4, 4, 4, C.BRASS); b(4, by + 4, 1, 4, C.GOLD); b(7, by + 5, 1, 3, C.DKBRASS);
+    p(3, by + 5, C.GOLD); p(4, by + 3, C.NOTE); p(5, by + 3, C.WAVE);
+    // Right shoulder (drum shape)
+    b(24, by + 4, 4, 4, C.BRASS); b(27, by + 4, 1, 4, C.DKBRASS);
+    p(28, by + 5, C.DKNOTE); p(25, by + 3, C.WAVE); p(26, by + 3, C.NOTE);
+
+    // === NECK ===
+    b(11, by + 6, 10, 2, C.DK); b(12, by + 6, 8, 1, C.MID);
+
+    // === MASSIVE TORSO (formal coat, instrument shapes merged) ===
+    b(5, by + 8, 22, 10, C.BODY);
+    b(5, by + 8, 3, 10, C.LIGHT); b(6, by + 8, 2, 8, C.MID);
+    b(24, by + 8, 3, 10, C.DK); b(25, by + 10, 2, 6, C.VOID);
+    b(7, by + 8, 18, 2, C.WAVE); b(8, by + 8, 16, 1, C.BWAVE);
+
+    // Horn bell shape merged into left side
+    b(7, by + 10, 4, 4, C.BRASS); b(7, by + 10, 1, 4, C.GOLD); b(10, by + 11, 1, 2, C.DKBRASS);
+    p(8, by + 11, C.WAVE);
+    // String curve on right side
+    b(21, by + 10, 4, 4, C.DKNOTE); p(22, by + 11, C.NOTE); p(23, by + 12, C.NOTE);
+    p(21, by + 13, C.GOLD); p(24, by + 10, C.DKBRASS);
+    // Drum circle in center-bottom
+    b(13, by + 12, 6, 4, C.NOTE); b(14, by + 13, 4, 2, C.GOLD);
+    p(15, by + 13, C.WHITE); p(16, by + 14, C.DKNOTE);
+    p(13, by + 15, C.DKNOTE); p(18, by + 15, C.DKNOTE);
+
+    // Chest detail lines
+    b(9, by + 11, 14, 1, C.MID); b(9, by + 15, 14, 1, C.DK);
+
+    // Belt (ornate with note buckle)
+    b(7, by + 17, 18, 2, C.DK); b(8, by + 17, 16, 1, C.VOID);
+    p(11, by + 17, C.NOTE); p(14, by + 17, C.BRASS); p(17, by + 17, C.BRASS); p(20, by + 17, C.NOTE);
+
+    // === CONDUCTOR ARMS ===
+    // Left arm (raised with baton)
+    b(2, by + 8, 3, 8, C.BODY); b(2, by + 8, 1, 8, C.LIGHT); b(4, by + 9, 1, 6, C.MID);
+    b(1, by + 10, 1, 5, C.BODY); p(1, by + 10, C.LIGHT);
+    b(0, by + 12, 1, 3, C.BODY);
+    // Baton (held high, gleaming)
+    b(0, by + 3, 1, 10, C.DKNOTE); p(0, by + 2, C.NOTE); p(0, by + 1, C.GOLD);
+    p(0, by, C.WHITE); // baton tip glow
+    // Left fist
+    b(0, by + 13, 3, 3, C.BODY); b(0, by + 13, 1, 3, C.LIGHT);
+
+    // Right arm
+    b(27, by + 8, 3, 8, C.BODY); b(29, by + 8, 1, 8, C.DK);
+    b(30, by + 10, 1, 5, C.DK);
+    // Right fist
+    b(29, by + 16, 3, 3, C.DK);
+
+    // === LEGS (formal, heavy stomp) ===
+    b(7 + lOff, by + 19, 7, 7, C.BODY);
+    b(7 + lOff, by + 19, 2, 7, C.LIGHT); b(13 + lOff, by + 19, 1, 7, C.DK);
+    b(18 + rOff, by + 19, 7, 7, C.BODY);
+    b(24 + rOff, by + 19, 1, 7, C.DK);
     // Knee
-    b(8 + lOff, by + 21, 6, 1, C.DK);
-    b(18 + rOff, by + 21, 6, 1, C.DK);
-    // Feet
-    b(6 + lOff, by + 25, 8, 3, C.DK); b(7 + lOff, by + 25, 6, 2, C.BODY);
-    b(17 + rOff, by + 25, 8, 3, C.DK); b(18 + rOff, by + 25, 6, 2, C.BODY);
-    // Floating musical notes
-    p(4, by + 2, C.NOTE); p(27, by + 3, C.GOLD);
-    p(3, by + 17, C.WAVE); p(28, by + 18, C.WAVE);
+    b(7 + lOff, by + 22, 7, 1, C.DK); p(9 + lOff, by + 22, C.NOTE);
+    b(18 + rOff, by + 22, 7, 1, C.DK); p(22 + rOff, by + 22, C.NOTE);
+    // Feet (massive)
+    b(5 + lOff, by + 26, 9, 3, C.DK); b(6 + lOff, by + 26, 7, 2, C.BODY);
+    p(5 + lOff, by + 28, C.VOID);
+    b(17 + rOff, by + 26, 9, 3, C.DK); b(18 + rOff, by + 26, 7, 2, C.BODY);
+    p(25 + rOff, by + 28, C.VOID);
+
+    // === GROUND VIBRATION LINES ===
+    p(8 + lOff, by + 29, C.WAVE); p(11 + lOff, by + 29, C.RESO);
+    p(20 + rOff, by + 29, C.WAVE); p(23 + rOff, by + 29, C.RESO);
   } else {
     drawDeathHarmonic(p, b, f - 4, 16, 14);
   }

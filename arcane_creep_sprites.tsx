@@ -29,6 +29,9 @@ const C = {
   MID: '#5e4890',     // mid-tone body
   LBODY: '#6a58a0',   // light body
   DKENERGY: '#7755cc', // dark energy
+  // Boss accent colors
+  RUNE: '#ffcc44',    // golden rune glow
+  DKRUNE: '#cc9922',  // dark rune
 };
 
 // ===== DRAWING HELPERS =====
@@ -280,7 +283,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Boss - Crystal Titan
+// 5: Boss - Crystal Titan (enhanced - towering crystal golem, crown of shards, golden runes, floating fragments)
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -288,76 +291,145 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Crown of crystal shards (tall, imposing)
-    p(9, by - 1, C.HI); b(10, by - 2, 2, 2, C.CRYST); p(10, by - 2, C.WHITE);
-    p(13, by - 3, C.ENERGY); b(14, by - 2, 2, 2, C.CRYST); p(14, by - 3, C.HI);
-    b(17, by - 2, 2, 2, C.CRYST); p(17, by - 3, C.ENERGY); p(18, by - 2, C.WHITE);
-    p(21, by - 1, C.HI); b(21, by - 1, 2, 1, C.ENERGY);
-    // Crystal facet highlights on crown
-    p(11, by - 1, C.WHITE); p(15, by - 2, C.WHITE); p(18, by - 1, C.WHITE);
-    // Head (wide, imposing)
-    b(9, by, 14, 5, C.BODY);
-    b(9, by, 14, 2, C.ENERGY); b(10, by, 12, 1, C.HI);
-    b(9, by, 2, 5, C.HI); p(9, by, C.MID);
-    b(21, by + 2, 2, 3, C.DK); p(22, by + 4, C.VOID);
-    // Eyes (glowing, detailed)
-    b(11, by + 2, 3, 2, C.EYE); b(12, by + 2, 1, 1, C.WHITE);
-    p(11, by + 3, C.CORE);
-    b(18, by + 2, 3, 2, C.EYE); b(19, by + 2, 1, 1, C.WHITE);
-    p(18, by + 3, C.CORE);
+    const particleShift = [0, 1, 2, 1][f];
+
+    // === FLOATING CRYSTAL FRAGMENTS (orbiting, per-frame positions) ===
+    const fragPos = [
+      [[2, by + 2], [29, by + 4], [4, by + 16], [27, by + 18]],
+      [[3, by + 4], [28, by + 2], [5, by + 18], [26, by + 16]],
+      [[4, by + 3], [27, by + 3], [3, by + 17], [28, by + 17]],
+      [[2, by + 5], [29, by + 3], [5, by + 15], [27, by + 19]],
+    ][f];
+    for (const [fx, fy] of fragPos) {
+      p(fx, fy, C.CRYST); p(fx + 1, fy, C.ENERGY); p(fx, fy + 1, C.DKENERGY);
+    }
+
+    // === CROWN OF 6 CRYSTAL SHARDS (tall, imposing) ===
+    // Shard 1 (far left)
+    b(8, by - 2, 2, 3, C.CRYST); p(8, by - 3, C.HI); p(9, by - 2, C.WHITE);
+    // Shard 2
+    b(11, by - 4, 2, 4, C.CRYST); p(11, by - 5, C.WHITE); p(12, by - 4, C.HI);
+    p(11, by - 3, C.ENERGY);
+    // Shard 3 (center-left, tallest)
+    b(14, by - 5, 2, 5, C.CRYST); p(14, by - 6, C.WHITE); p(15, by - 5, C.ENERGY);
+    p(14, by - 4, C.HI);
+    // Shard 4 (center-right, tallest)
+    b(17, by - 5, 2, 5, C.CRYST); p(17, by - 6, C.ENERGY); p(18, by - 5, C.WHITE);
+    p(18, by - 4, C.HI);
+    // Shard 5
+    b(20, by - 4, 2, 4, C.CRYST); p(20, by - 5, C.HI); p(21, by - 4, C.WHITE);
+    // Shard 6 (far right)
+    b(23, by - 2, 2, 3, C.CRYST); p(23, by - 3, C.ENERGY); p(24, by - 2, C.WHITE);
+    // Crown base glow
+    b(10, by - 1, 12, 1, C.ENERGY); b(12, by - 1, 8, 1, C.HI);
+
+    // === HEAD (wide, imposing, rune-marked) ===
+    b(8, by, 16, 6, C.BODY);
+    b(8, by, 16, 2, C.ENERGY); b(9, by, 14, 1, C.HI);
+    b(8, by, 3, 6, C.HI); b(9, by, 2, 4, C.MID);
+    b(22, by + 2, 2, 4, C.DK); p(23, by + 5, C.VOID);
+    // Golden rune lines on forehead
+    p(12, by + 1, C.RUNE); p(14, by, C.RUNE); p(16, by + 1, C.RUNE);
+    p(18, by, C.RUNE); p(20, by + 1, C.RUNE);
+    // Eyes (glowing, large, menacing)
+    b(10, by + 2, 4, 3, C.EYE); b(11, by + 2, 2, 1, C.WHITE);
+    p(10, by + 4, C.CORE); p(13, by + 2, C.CORE);
+    b(18, by + 2, 4, 3, C.EYE); b(19, by + 2, 2, 1, C.WHITE);
+    p(18, by + 4, C.CORE); p(21, by + 2, C.CORE);
     // Brow ridge
-    b(10, by + 1, 12, 1, C.DK);
-    // Mouth/chin
-    b(13, by + 4, 6, 1, C.VOID);
-    // Shoulder crystals (large, multi-faceted)
-    b(5, by + 4, 3, 3, C.CRYST); b(5, by + 4, 1, 3, C.HI); b(7, by + 5, 1, 2, C.DK);
-    p(5, by + 3, C.HI); p(6, by + 3, C.ENERGY); p(4, by + 5, C.WHITE);
-    b(24, by + 4, 3, 3, C.CRYST); b(26, by + 4, 1, 3, C.DK);
-    p(25, by + 3, C.ENERGY); p(26, by + 3, C.HI); p(27, by + 5, C.FRAG);
-    // Neck
-    b(12, by + 5, 8, 2, C.DK);
-    // Massive torso
-    b(6, by + 7, 20, 10, C.BODY);
-    b(6, by + 7, 3, 10, C.HI); b(7, by + 7, 2, 8, C.MID);
-    b(23, by + 7, 3, 10, C.DK); b(24, by + 9, 2, 6, C.VOID);
-    b(8, by + 7, 16, 2, C.ENERGY); b(9, by + 7, 14, 1, C.HI);
-    // Multiple crystal growths on body
-    b(10, by + 9, 3, 3, C.CRYST); p(10, by + 9, C.HI); p(12, by + 11, C.DK);
-    p(11, by + 10, C.CORE); p(11, by + 9, C.WHITE);
-    b(19, by + 9, 3, 3, C.CRYST); p(21, by + 9, C.DK);
-    p(20, by + 10, C.CORE); p(20, by + 9, C.WHITE);
-    b(14, by + 12, 4, 3, C.CRYST); b(15, by + 13, 2, 1, C.CORE);
-    p(15, by + 12, C.WHITE); p(16, by + 14, C.ENERGY);
+    b(9, by + 1, 14, 1, C.DK);
+    // Mouth / chin void
+    b(13, by + 5, 6, 1, C.VOID); p(14, by + 5, C.DK); p(17, by + 5, C.DK);
+
+    // === SHOULDER CRYSTALS (massive, multi-faceted) ===
+    // Left shoulder cluster
+    b(4, by + 3, 4, 4, C.CRYST); b(4, by + 3, 1, 4, C.HI); b(7, by + 4, 1, 3, C.DK);
+    p(3, by + 4, C.WHITE); p(4, by + 3, C.ENERGY); p(5, by + 2, C.HI);
+    b(3, by + 5, 2, 2, C.ENERGY); p(3, by + 5, C.WHITE);
+    // Right shoulder cluster
+    b(24, by + 3, 4, 4, C.CRYST); b(27, by + 3, 1, 4, C.DK);
+    p(28, by + 4, C.FRAG); p(26, by + 2, C.ENERGY); p(25, by + 3, C.HI);
+    b(27, by + 5, 2, 2, C.DKENERGY); p(27, by + 5, C.CRYST);
+
+    // === NECK ===
+    b(12, by + 6, 8, 2, C.DK); b(13, by + 6, 6, 1, C.MID);
+
+    // === MASSIVE TORSO (fills nearly full width) ===
+    b(5, by + 8, 22, 10, C.BODY);
+    b(5, by + 8, 3, 10, C.HI); b(6, by + 8, 2, 8, C.MID);
+    b(24, by + 8, 3, 10, C.DK); b(25, by + 10, 2, 6, C.VOID);
+    b(7, by + 8, 18, 2, C.ENERGY); b(8, by + 8, 16, 1, C.HI);
+
+    // Golden rune lines across torso
+    p(9, by + 10, C.RUNE); p(11, by + 11, C.RUNE); p(13, by + 10, C.DKRUNE);
+    p(18, by + 10, C.RUNE); p(20, by + 11, C.RUNE); p(22, by + 10, C.DKRUNE);
+    p(15, by + 15, C.RUNE); p(16, by + 16, C.DKRUNE);
+
+    // Multiple crystal growths on chest
+    b(9, by + 10, 4, 3, C.CRYST); p(9, by + 10, C.HI); p(12, by + 12, C.DK);
+    p(10, by + 11, C.CORE); p(10, by + 10, C.WHITE); p(11, by + 10, C.ENERGY);
+    b(19, by + 10, 4, 3, C.CRYST); p(22, by + 10, C.DK);
+    p(20, by + 11, C.CORE); p(20, by + 10, C.WHITE); p(21, by + 10, C.ENERGY);
+    // Central chest crystal (large)
+    b(13, by + 13, 6, 4, C.CRYST); b(14, by + 14, 4, 2, C.ENERGY);
+    b(15, by + 14, 2, 2, C.CORE); p(15, by + 13, C.WHITE); p(16, by + 13, C.WHITE);
+    p(13, by + 16, C.DK); p(18, by + 16, C.DK);
+
     // Chest plate lines
-    b(10, by + 11, 12, 1, C.MID); b(10, by + 14, 12, 1, C.DK);
+    b(9, by + 12, 14, 1, C.MID); b(9, by + 16, 14, 1, C.DK);
+
     // Belt detail
-    b(8, by + 16, 16, 2, C.DK); b(9, by + 16, 14, 1, C.VOID);
-    p(12, by + 16, C.CRYST); p(19, by + 16, C.CRYST);
-    // Arms (thick, 3px wide)
-    b(3, by + 8, 3, 8, C.BODY); b(3, by + 8, 1, 8, C.HI); b(5, by + 8, 1, 8, C.MID);
-    b(2, by + 10, 1, 5, C.BODY); p(2, by + 10, C.HI);
-    b(1, by + 12, 1, 3, C.BODY); p(1, by + 12, C.HI);
-    b(26, by + 8, 3, 8, C.BODY); b(28, by + 8, 1, 8, C.DK);
-    b(29, by + 10, 1, 5, C.DK);
-    b(30, by + 12, 1, 3, C.VOID);
-    // Fists
-    b(1, by + 15, 3, 3, C.BODY); b(1, by + 15, 1, 3, C.HI); p(3, by + 17, C.DK);
-    b(28, by + 15, 3, 3, C.DK); p(30, by + 17, C.VOID);
-    // Legs (thick, 4-5px wide)
-    b(8 + lOff, by + 18, 6, 7, C.BODY);
-    b(8 + lOff, by + 18, 2, 7, C.HI); b(13 + lOff, by + 18, 1, 7, C.DK);
-    p(10 + lOff, by + 18, C.MID);
-    b(18 + rOff, by + 18, 6, 7, C.BODY);
-    b(23 + rOff, by + 18, 1, 7, C.DK);
-    p(20 + rOff, by + 18, C.MID);
-    // Knee guards
-    b(8 + lOff, by + 21, 6, 1, C.DK); p(9 + lOff, by + 21, C.CRYST);
-    b(18 + rOff, by + 21, 6, 1, C.DK); p(22 + rOff, by + 21, C.CRYST);
-    // Feet (massive)
-    b(6 + lOff, by + 25, 8, 3, C.DK); b(7 + lOff, by + 25, 6, 2, C.BODY);
-    p(6 + lOff, by + 27, C.VOID);
-    b(17 + rOff, by + 25, 8, 3, C.DK); b(18 + rOff, by + 25, 6, 2, C.BODY);
-    p(24 + rOff, by + 27, C.VOID);
+    b(7, by + 17, 18, 2, C.DK); b(8, by + 17, 16, 1, C.VOID);
+    p(11, by + 17, C.CRYST); p(14, by + 17, C.RUNE); p(17, by + 17, C.RUNE); p(20, by + 17, C.CRYST);
+
+    // === ARMS (thick, 3-4px wide, crystal-studded) ===
+    b(2, by + 9, 3, 8, C.BODY); b(2, by + 9, 1, 8, C.HI); b(4, by + 9, 1, 8, C.MID);
+    b(1, by + 11, 1, 5, C.BODY); p(1, by + 11, C.HI);
+    b(0, by + 13, 1, 3, C.BODY); p(0, by + 13, C.HI);
+    // Left arm crystal growth
+    p(1, by + 10, C.CRYST); p(2, by + 9, C.ENERGY);
+    b(27, by + 9, 3, 8, C.BODY); b(29, by + 9, 1, 8, C.DK);
+    b(30, by + 11, 1, 5, C.DK);
+    b(31, by + 13, 1, 3, C.VOID);
+    // Right arm crystal growth
+    p(30, by + 10, C.CRYST); p(29, by + 9, C.DKENERGY);
+
+    // Fists (crystal-encrusted)
+    b(0, by + 16, 3, 3, C.BODY); b(0, by + 16, 1, 3, C.HI); p(2, by + 18, C.DK);
+    p(0, by + 16, C.CRYST); p(1, by + 17, C.ENERGY);
+    b(29, by + 16, 3, 3, C.DK); p(31, by + 18, C.VOID);
+    p(31, by + 16, C.CRYST); p(30, by + 17, C.DKENERGY);
+
+    // === LEGS (thick, heavy stomp) ===
+    b(7 + lOff, by + 19, 7, 7, C.BODY);
+    b(7 + lOff, by + 19, 2, 7, C.HI); b(13 + lOff, by + 19, 1, 7, C.DK);
+    p(9 + lOff, by + 19, C.MID);
+    // Rune on left leg
+    p(9 + lOff, by + 21, C.RUNE); p(10 + lOff, by + 22, C.DKRUNE);
+    b(18 + rOff, by + 19, 7, 7, C.BODY);
+    b(24 + rOff, by + 19, 1, 7, C.DK);
+    p(20 + rOff, by + 19, C.MID);
+    // Rune on right leg
+    p(21 + rOff, by + 21, C.RUNE); p(22 + rOff, by + 22, C.DKRUNE);
+
+    // Knee guards (crystal-edged)
+    b(7 + lOff, by + 22, 7, 1, C.DK); p(8 + lOff, by + 22, C.CRYST); p(12 + lOff, by + 22, C.CRYST);
+    b(18 + rOff, by + 22, 7, 1, C.DK); p(19 + rOff, by + 22, C.CRYST); p(23 + rOff, by + 22, C.CRYST);
+
+    // Feet (massive, ground-shaking)
+    b(5 + lOff, by + 26, 9, 3, C.DK); b(6 + lOff, by + 26, 7, 2, C.BODY);
+    p(5 + lOff, by + 28, C.VOID); p(13 + lOff, by + 28, C.VOID);
+    b(17 + rOff, by + 26, 9, 3, C.DK); b(18 + rOff, by + 26, 7, 2, C.BODY);
+    p(17 + rOff, by + 28, C.VOID); p(25 + rOff, by + 28, C.VOID);
+
+    // === GROUND GLOW (impact from heavy steps) ===
+    p(8 + lOff, by + 29, C.ENERGY); p(10 + lOff, by + 29, C.DKENERGY);
+    p(20 + rOff, by + 29, C.ENERGY); p(22 + rOff, by + 29, C.DKENERGY);
+
+    // === AMBIENT ENERGY PARTICLES (frame-varying) ===
+    p(3 + particleShift, by + 1, C.ENERGY);
+    p(28 - particleShift, by + 2, C.CRYST);
+    p(16, by - 7 + particleShift, C.RUNE);
   } else {
     drawDeathCrystal(p, b, f - 4, 16, 14);
   }

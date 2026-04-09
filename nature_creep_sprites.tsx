@@ -27,6 +27,10 @@ const C = {
   GLOW: '#88ee88',
   EYE: '#ffcc00',
   EYEHI: '#ffee88',
+  // Boss accent colors
+  SAP: '#ddaa22',     // golden sap
+  DKSAP: '#aa7711',   // dark sap
+  NEST: '#885544',    // bird nest brown
 };
 
 // ===== DRAWING HELPERS =====
@@ -286,7 +290,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Ancient Oak (Boss) - Huge gnarled tree, face in trunk, root-legs
+// 5: Ancient Oak (Boss) - Massive gnarled tree, face in trunk, hanging moss/vines, branch-arms with leaves, root-feet, bird nest, golden sap
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -294,60 +298,113 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 0 + bob;
-    // Massive leaf canopy
-    b(8, by, 16, 3, C.LEAF); b(9, by, 14, 1, C.BTLEAF);
-    b(6, by + 3, 20, 3, C.LEAF);
-    b(6, by + 3, 3, 3, C.BTLEAF); b(23, by + 4, 3, 2, C.DKLEAF);
-    p(5, by + 4, C.BTLEAF); p(26, by + 4, C.DKLEAF);
-    // Leaf detail highlights
-    p(10, by, C.GLOW); p(14, by + 1, C.BTLEAF); p(18, by, C.GLOW);
-    p(8, by + 3, C.GLOW); p(13, by + 4, C.BTLEAF); p(20, by + 3, C.BTLEAF);
-    p(16, by + 5, C.GLOW); p(22, by + 5, C.DKLEAF);
-    // Massive trunk
-    b(9, by + 6, 14, 14, C.BARK);
-    b(9, by + 6, 3, 14, C.LTBARK); b(10, by + 6, 2, 12, C.HIBARK);
-    b(20, by + 6, 3, 14, C.DKBARK); b(21, by + 8, 2, 10, C.SHADOW);
-    b(11, by + 6, 10, 2, C.LTBARK);
-    // Gnarled bark texture
-    b(13, by + 9, 1, 3, C.DKBARK); b(18, by + 11, 1, 3, C.DKBARK);
-    p(15, by + 13, C.MIDBARK); p(12, by + 15, C.DKBARK);
-    p(17, by + 8, C.MIDBARK); p(14, by + 16, C.DKBARK);
-    // Face in trunk (large, ancient)
-    b(12, by + 8, 3, 2, C.EYE); b(13, by + 8, 1, 1, C.EYEHI);
-    p(12, by + 9, C.AMBER);
-    b(17, by + 8, 3, 2, C.EYE); b(18, by + 8, 1, 1, C.EYEHI);
-    p(17, by + 9, C.AMBER);
-    // Brow ridges
-    b(11, by + 7, 5, 1, C.DKBARK); b(16, by + 7, 5, 1, C.DKBARK);
-    // Mouth (gnarled opening)
-    b(13, by + 11, 6, 2, C.SHADOW); b(14, by + 11, 4, 1, C.DKBARK);
-    // Amber core glow
-    b(14, by + 14, 4, 3, C.AMBER); b(15, by + 15, 2, 1, C.POLLEN);
-    p(15, by + 14, C.WHITE); p(16, by + 16, C.AMBER);
-    // Massive branch arms
-    b(5, by + 8, 4, 3, C.BARK); b(5, by + 8, 1, 3, C.LTBARK);
-    b(3, by + 7, 3, 3, C.BARK); p(3, by + 7, C.LTBARK);
-    b(1, by + 6, 3, 2, C.BARK); p(1, by + 6, C.LTBARK);
-    p(0, by + 5, C.LEAF); p(1, by + 5, C.BTLEAF); p(2, by + 5, C.LEAF);
-    b(23, by + 8, 4, 3, C.BARK); b(26, by + 8, 1, 3, C.DKBARK);
-    b(26, by + 7, 3, 3, C.DKBARK);
-    b(28, by + 6, 3, 2, C.DKBARK);
-    p(29, by + 5, C.LEAF); p(30, by + 5, C.DKLEAF);
-    // Root legs
-    b(9 + lOff, by + 20, 6, 6, C.ROOT);
-    b(9 + lOff, by + 20, 2, 6, C.LTBARK); b(14 + lOff, by + 20, 1, 6, C.DKBARK);
-    p(11 + lOff, by + 20, C.MIDBARK);
-    b(17 + rOff, by + 20, 6, 6, C.ROOT);
-    b(22 + rOff, by + 20, 1, 6, C.DKBARK);
+    const leafSway = [0, 1, 0, -1][f];
+
+    // === MASSIVE LEAF CANOPY (wide, multi-layered) ===
+    // Top layer
+    b(10, by - 2, 12, 2, C.LEAF); b(11, by - 2, 10, 1, C.BTLEAF);
+    p(9, by - 1, C.BTLEAF); p(22, by - 1, C.DKLEAF);
+    // Middle layer (widest)
+    b(5, by, 22, 3, C.LEAF);
+    b(5, by, 4, 3, C.BTLEAF); b(24, by + 1, 3, 2, C.DKLEAF);
+    p(4, by + 1, C.BTLEAF); p(27, by + 1, C.DKLEAF);
+    // Lower canopy fringe
+    b(4, by + 3, 24, 3, C.LEAF);
+    b(4, by + 3, 3, 3, C.BTLEAF); b(25, by + 4, 3, 2, C.DKLEAF);
+    p(3, by + 4, C.LEAF); p(28, by + 4, C.DKLEAF);
+    // Leaf detail highlights & glow spots
+    p(8, by - 1, C.GLOW); p(13, by - 2, C.GLOW); p(18, by - 1, C.GLOW);
+    p(6, by + 1, C.GLOW); p(11, by + 2, C.BTLEAF); p(16, by, C.GLOW); p(21, by + 1, C.BTLEAF);
+    p(8, by + 3, C.GLOW); p(14, by + 4, C.BTLEAF); p(20, by + 3, C.GLOW);
+    p(24, by + 3, C.DKLEAF); p(5, by + 5, C.BTLEAF); p(26, by + 5, C.DKLEAF);
+
+    // === BIRD NEST (tucked in upper-right canopy) ===
+    b(22, by, 3, 2, C.NEST); p(22, by, C.LTBARK); p(24, by + 1, C.DKBARK);
+    p(23, by - 1, C.BTLEAF); // egg-like speck
+    p(22, by - 1, C.POLLEN);
+
+    // === HANGING MOSS / VINES (swaying per frame) ===
+    p(6 + leafSway, by + 5, C.MOSS); p(6 + leafSway, by + 6, C.MOSS); p(7 + leafSway, by + 7, C.DKLEAF);
+    p(25 - leafSway, by + 5, C.MOSS); p(25 - leafSway, by + 6, C.DKLEAF);
+    p(10 + leafSway, by + 5, C.VINE); p(10 + leafSway, by + 6, C.VINE); p(10 + leafSway, by + 7, C.DKLEAF);
+    p(21 - leafSway, by + 5, C.VINE); p(21 - leafSway, by + 6, C.DKLEAF);
+
+    // === MASSIVE TRUNK (fills center, gnarled bark) ===
+    b(8, by + 6, 16, 14, C.BARK);
+    b(8, by + 6, 3, 14, C.LTBARK); b(9, by + 6, 2, 12, C.HIBARK);
+    b(21, by + 6, 3, 14, C.DKBARK); b(22, by + 8, 2, 10, C.SHADOW);
+    b(10, by + 6, 12, 2, C.LTBARK); b(11, by + 6, 10, 1, C.HIBARK);
+
+    // Gnarled bark texture (extensive)
+    b(12, by + 9, 1, 3, C.DKBARK); b(19, by + 11, 1, 3, C.DKBARK);
+    p(14, by + 13, C.MIDBARK); p(11, by + 15, C.DKBARK); p(17, by + 8, C.MIDBARK);
+    p(13, by + 16, C.DKBARK); p(20, by + 9, C.MIDBARK); p(15, by + 10, C.DKBARK);
+    b(16, by + 14, 1, 2, C.MIDBARK); b(10, by + 12, 1, 2, C.LTBARK);
+
+    // === FACE IN TRUNK (large, ancient, glowing amber eyes) ===
+    // Eyes (wide, glowing)
+    b(11, by + 8, 4, 3, C.EYE); b(12, by + 8, 2, 1, C.EYEHI);
+    p(11, by + 10, C.AMBER); p(14, by + 8, C.SAP);
+    b(17, by + 8, 4, 3, C.EYE); b(18, by + 8, 2, 1, C.EYEHI);
+    p(17, by + 10, C.AMBER); p(20, by + 8, C.SAP);
+    // Heavy brow ridges
+    b(10, by + 7, 6, 1, C.DKBARK); b(16, by + 7, 6, 1, C.DKBARK);
+    p(10, by + 7, C.SHADOW); p(21, by + 7, C.SHADOW);
+    // Nose knot
+    b(15, by + 10, 2, 2, C.DKBARK); p(15, by + 10, C.MIDBARK);
+    // Mouth (gnarled opening, wide)
+    b(12, by + 12, 8, 2, C.SHADOW); b(13, by + 12, 6, 1, C.DKBARK);
+    p(13, by + 13, C.DKBARK); p(18, by + 13, C.DKBARK);
+
+    // === GOLDEN SAP LINES (running down trunk) ===
+    p(13, by + 14, C.SAP); p(13, by + 15, C.SAP); p(14, by + 16, C.DKSAP);
+    p(18, by + 14, C.SAP); p(19, by + 15, C.DKSAP);
+
+    // === AMBER CORE GLOW (heartwood) ===
+    b(14, by + 15, 4, 3, C.AMBER); b(15, by + 16, 2, 1, C.POLLEN);
+    p(15, by + 15, C.WHITE); p(16, by + 17, C.AMBER);
+    p(14, by + 15, C.SAP);
+
+    // === MASSIVE BRANCH ARMS (with leaf clusters at tips) ===
+    // Left arm
+    b(4, by + 8, 4, 3, C.BARK); b(4, by + 8, 1, 3, C.LTBARK);
+    b(2, by + 7, 3, 3, C.BARK); p(2, by + 7, C.LTBARK);
+    b(0, by + 6, 3, 2, C.BARK); p(0, by + 6, C.LTBARK);
+    // Left leaf cluster
+    b(0, by + 4, 3, 2, C.LEAF); p(0, by + 4, C.BTLEAF); p(2, by + 4, C.GLOW);
+    p(0, by + 3, C.BTLEAF); p(1, by + 3, C.LEAF);
+    // Right arm
+    b(24, by + 8, 4, 3, C.BARK); b(27, by + 8, 1, 3, C.DKBARK);
+    b(27, by + 7, 3, 3, C.DKBARK);
+    b(29, by + 6, 3, 2, C.DKBARK);
+    // Right leaf cluster
+    b(29, by + 4, 3, 2, C.LEAF); p(31, by + 4, C.DKLEAF); p(29, by + 4, C.BTLEAF);
+    p(30, by + 3, C.LEAF); p(31, by + 3, C.DKLEAF);
+    // Small branch twig off left arm
+    p(1, by + 9, C.BARK); p(0, by + 10, C.MOSS);
+
+    // === ROOT LEGS (thick, spreading, gripping ground) ===
+    b(8 + lOff, by + 20, 7, 6, C.ROOT);
+    b(8 + lOff, by + 20, 2, 6, C.LTBARK); b(14 + lOff, by + 20, 1, 6, C.DKBARK);
+    p(10 + lOff, by + 20, C.MIDBARK);
+    b(17 + rOff, by + 20, 7, 6, C.ROOT);
+    b(23 + rOff, by + 20, 1, 6, C.DKBARK);
     p(19 + rOff, by + 20, C.MIDBARK);
-    // Knee knots
-    b(9 + lOff, by + 23, 6, 1, C.DKBARK);
-    b(17 + rOff, by + 23, 6, 1, C.DKBARK);
-    // Root feet (spreading)
-    b(7 + lOff, by + 26, 9, 3, C.ROOT); b(8 + lOff, by + 26, 7, 2, C.MIDBARK);
-    p(7 + lOff, by + 28, C.SHADOW);
-    b(16 + rOff, by + 26, 9, 3, C.ROOT); b(17 + rOff, by + 26, 7, 2, C.MIDBARK);
-    p(24 + rOff, by + 28, C.SHADOW);
+    // Knee knots (gnarled)
+    b(8 + lOff, by + 23, 7, 1, C.DKBARK); p(10 + lOff, by + 23, C.MIDBARK);
+    b(17 + rOff, by + 23, 7, 1, C.DKBARK); p(20 + rOff, by + 23, C.MIDBARK);
+    // Root feet (wide, spreading, gripping earth)
+    b(6 + lOff, by + 26, 10, 3, C.ROOT); b(7 + lOff, by + 26, 8, 2, C.MIDBARK);
+    p(6 + lOff, by + 28, C.SHADOW); p(15 + lOff, by + 28, C.SHADOW);
+    // Extra root tendrils
+    p(5 + lOff, by + 27, C.ROOT); p(4 + lOff, by + 28, C.EARTH);
+    b(15 + rOff, by + 26, 10, 3, C.ROOT); b(16 + rOff, by + 26, 8, 2, C.MIDBARK);
+    p(15 + rOff, by + 28, C.SHADOW); p(24 + rOff, by + 28, C.SHADOW);
+    p(25 + rOff, by + 27, C.ROOT); p(26 + rOff, by + 28, C.EARTH);
+
+    // === GROUND MOSS (at base) ===
+    p(8 + lOff, by + 29, C.MOSS); p(12 + lOff, by + 29, C.MOSS);
+    p(19 + rOff, by + 29, C.MOSS); p(23 + rOff, by + 29, C.MOSS);
   } else {
     drawDeathNature(p, b, f - 4, 16, 14);
   }

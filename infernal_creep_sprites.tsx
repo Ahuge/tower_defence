@@ -25,6 +25,10 @@ const C = {
   WHITE: '#ffffff',
   GFIRE: '#88ff44', // green hellfire for soulfire warlock
   DKGFIRE: '#449922',
+  // Boss accent colors
+  PURPLE: '#8822aa',  // dark flame
+  DKPURPLE: '#551177', // deep dark flame
+  HOTFIRE: '#ffffff',  // white-hot fire core
 };
 
 // ===== DRAWING HELPERS =====
@@ -284,7 +288,7 @@ function drawInfernalPriest(c: CanvasRenderingContext2D, o: number[], f: number)
   }
 }
 
-// 5: Demon Lord (Boss) - huge horned demon with folded wings, crown of fire
+// 5: Demon Lord (Boss) - Huge horned demon, folded bat wings, crown of flames, chest hellfire cavity, clawed hands, tail, purple dark flame, white-hot fire
 function drawDemonLord(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -292,65 +296,103 @@ function drawDemonLord(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Crown of fire
-    p(12, by - 3, C.FTIP); b(13, by - 2, 2, 2, C.BFIRE);
-    p(16, by - 4, C.FTIP); b(15, by - 3, 2, 2, C.FIRE);
-    p(19, by - 3, C.FTIP); b(19, by - 2, 2, 2, C.BFIRE);
-    p(22, by - 2, C.FIRE);
-    // Horns (massive)
-    b(8, by - 2, 2, 4, C.HORN); p(7, by - 3, C.HORN); p(7, by - 4, C.DKHORN);
-    b(22, by - 2, 2, 4, C.HORN); p(23, by - 3, C.HORN); p(24, by - 4, C.DKHORN);
-    // Head
-    b(9, by + 1, 14, 5, C.SKIN);
-    b(9, by + 1, 14, 2, C.BSKIN); b(10, by + 1, 12, 1, C.LSKIN);
-    b(9, by + 1, 2, 5, C.LSKIN);
-    b(21, by + 3, 2, 3, C.DKSKIN);
-    // Eyes
-    b(11, by + 3, 3, 2, C.EYE); b(12, by + 3, 1, 1, C.WHITE); p(11, by + 4, C.FTIP);
-    b(18, by + 3, 3, 2, C.EYE); b(19, by + 3, 1, 1, C.WHITE); p(18, by + 4, C.FTIP);
-    // Brow
-    b(10, by + 2, 12, 1, C.DKSKIN);
-    // Mouth
-    b(13, by + 5, 6, 1, C.HELL);
-    // Folded wings behind shoulders
-    b(3, by + 5, 5, 8, C.DKSKIN); b(3, by + 5, 2, 8, C.SKIN); p(3, by + 5, C.MID);
-    b(24, by + 5, 5, 8, C.DKSKIN); b(27, by + 5, 2, 8, C.HELL);
-    // Wing tips
-    p(2, by + 4, C.SKIN); p(1, by + 3, C.DKSKIN);
-    p(29, by + 4, C.DKSKIN); p(30, by + 3, C.HELL);
-    // Neck
-    b(12, by + 6, 8, 2, C.DKSKIN);
-    // Massive torso
-    b(7, by + 8, 18, 10, C.SKIN);
-    b(7, by + 8, 3, 10, C.BSKIN); b(8, by + 8, 2, 8, C.MID);
-    b(22, by + 8, 3, 10, C.DKSKIN); b(23, by + 10, 2, 6, C.HELL);
-    b(9, by + 8, 14, 2, C.BSKIN); b(10, by + 8, 12, 1, C.LSKIN);
-    // Fire core in chest
-    b(13, by + 11, 6, 4, C.FIRE); b(14, by + 12, 4, 2, C.BFIRE);
-    p(15, by + 12, C.FTIP); p(16, by + 13, C.FTIP);
-    p(15, by + 11, C.WHITE); p(17, by + 14, C.DKFIRE);
+    const flameFlicker = [0, 1, 0, -1][f];
+
+    // === CROWN OF FLAMES (animated, tall) ===
+    p(11, by - 4 + flameFlicker, C.FTIP); b(12, by - 3, 2, 2, C.BFIRE); p(12, by - 4, C.PURPLE);
+    p(15, by - 5 + flameFlicker, C.HOTFIRE); b(15, by - 4, 2, 3, C.FIRE); p(16, by - 5, C.BFIRE);
+    p(19, by - 4 + flameFlicker, C.FTIP); b(19, by - 3, 2, 2, C.BFIRE); p(20, by - 4, C.PURPLE);
+    p(22, by - 3, C.FIRE); p(9, by - 3, C.DKFIRE);
+    // Purple dark flame wisps in crown
+    p(13, by - 4, C.PURPLE); p(17, by - 5, C.PURPLE); p(21, by - 3, C.DKPURPLE);
+
+    // === MASSIVE HORNS (curving outward) ===
+    b(6, by - 3, 3, 5, C.HORN); p(5, by - 4, C.HORN); p(5, by - 5, C.DKHORN);
+    p(6, by - 3, C.DKHORN); b(6, by - 2, 1, 3, C.DKHORN);
+    b(23, by - 3, 3, 5, C.HORN); p(25, by - 4, C.HORN); p(26, by - 5, C.DKHORN);
+    p(25, by - 3, C.DKHORN); b(25, by - 2, 1, 3, C.DKHORN);
+
+    // === HEAD (wide, menacing) ===
+    b(8, by + 1, 16, 5, C.SKIN);
+    b(8, by + 1, 16, 2, C.BSKIN); b(9, by + 1, 14, 1, C.LSKIN);
+    b(8, by + 1, 2, 5, C.LSKIN); b(22, by + 3, 2, 3, C.DKSKIN);
+    // Eyes (large, menacing, fiery)
+    b(10, by + 3, 4, 2, C.EYE); b(11, by + 3, 2, 1, C.WHITE); p(10, by + 4, C.FTIP);
+    p(13, by + 3, C.FIRE);
+    b(18, by + 3, 4, 2, C.EYE); b(19, by + 3, 2, 1, C.WHITE); p(18, by + 4, C.FTIP);
+    p(21, by + 3, C.FIRE);
+    // Heavy brow
+    b(9, by + 2, 14, 1, C.DKSKIN);
+    // Mouth (fanged snarl)
+    b(12, by + 5, 8, 1, C.HELL); p(13, by + 5, C.DKHORN); p(14, by + 5, C.SKIN);
+    p(17, by + 5, C.SKIN); p(18, by + 5, C.DKHORN);
+
+    // === FOLDED BAT WINGS (behind, spanning frame edges) ===
+    b(1, by + 4, 6, 10, C.DKSKIN); b(1, by + 4, 2, 10, C.SKIN); b(2, by + 4, 1, 8, C.MID);
+    b(5, by + 5, 2, 8, C.HELL);
+    p(0, by + 3, C.SKIN); p(0, by + 2, C.DKSKIN); p(0, by + 1, C.SKIN);
+    // Wing membrane detail
+    p(2, by + 7, C.HELL); p(2, by + 10, C.HELL); p(3, by + 8, C.MID);
+    b(25, by + 4, 6, 10, C.DKSKIN); b(29, by + 4, 2, 10, C.HELL);
+    b(28, by + 5, 1, 8, C.DKHORN);
+    p(31, by + 3, C.DKSKIN); p(31, by + 2, C.HELL); p(31, by + 1, C.DKSKIN);
+    p(29, by + 7, C.DKHORN); p(29, by + 10, C.DKHORN);
+
+    // === NECK ===
+    b(11, by + 6, 10, 2, C.DKSKIN); b(12, by + 6, 8, 1, C.SKIN);
+
+    // === MASSIVE TORSO ===
+    b(6, by + 8, 20, 10, C.SKIN);
+    b(6, by + 8, 3, 10, C.BSKIN); b(7, by + 8, 2, 8, C.MID);
+    b(23, by + 8, 3, 10, C.DKSKIN); b(24, by + 10, 2, 6, C.HELL);
+    b(8, by + 8, 16, 2, C.BSKIN); b(9, by + 8, 14, 1, C.LSKIN);
+
+    // === HELLFIRE CHEST CAVITY (glowing core) ===
+    b(12, by + 11, 8, 5, C.FIRE); b(13, by + 12, 6, 3, C.BFIRE);
+    b(14, by + 12, 4, 3, C.FTIP); b(15, by + 13, 2, 1, C.HOTFIRE);
+    p(15, by + 11, C.HOTFIRE); p(16, by + 11, C.HOTFIRE);
+    p(12, by + 15, C.DKFIRE); p(19, by + 15, C.DKFIRE);
+    // Purple flame wisps from cavity
+    p(11, by + 12, C.PURPLE); p(20, by + 13, C.PURPLE);
+    p(14, by + 15, C.DKPURPLE); p(17, by + 15, C.DKPURPLE);
+
     // Chest detail
-    b(10, by + 12, 3, 1, C.MID); b(19, by + 12, 3, 1, C.DKSKIN);
-    b(9, by + 16, 14, 2, C.DKSKIN); b(10, by + 16, 12, 1, C.HELL);
-    p(13, by + 16, C.FIRE); p(18, by + 16, C.FIRE);
-    // Arms
-    b(4, by + 9, 3, 7, C.SKIN); b(4, by + 9, 1, 7, C.BSKIN);
-    b(3, by + 11, 1, 4, C.SKIN); p(2, by + 13, C.BSKIN);
-    b(25, by + 9, 3, 7, C.DKSKIN); b(27, by + 11, 1, 4, C.HELL);
-    // Fists
-    b(2, by + 16, 3, 3, C.SKIN); p(2, by + 16, C.BSKIN); p(4, by + 18, C.DKSKIN);
-    b(27, by + 16, 3, 3, C.DKSKIN); p(29, by + 18, C.HELL);
-    // Legs
-    b(9 + lOff, by + 18, 5, 7, C.SKIN);
-    b(9 + lOff, by + 18, 2, 7, C.BSKIN); b(13 + lOff, by + 18, 1, 7, C.DKSKIN);
-    b(18 + rOff, by + 18, 5, 7, C.SKIN);
-    b(22 + rOff, by + 18, 1, 7, C.DKSKIN);
-    // Knee guards
-    b(9 + lOff, by + 22, 5, 1, C.DKSKIN); p(10 + lOff, by + 22, C.FIRE);
-    b(18 + rOff, by + 22, 5, 1, C.DKSKIN); p(21 + rOff, by + 22, C.FIRE);
-    // Feet
-    b(7 + lOff, by + 25, 7, 3, C.DKSKIN); b(8 + lOff, by + 25, 5, 2, C.SKIN);
-    b(17 + rOff, by + 25, 7, 3, C.DKSKIN); b(18 + rOff, by + 25, 5, 2, C.SKIN);
+    b(9, by + 12, 3, 1, C.MID); b(20, by + 12, 3, 1, C.DKSKIN);
+    // Belt
+    b(8, by + 17, 16, 2, C.DKSKIN); b(9, by + 17, 14, 1, C.HELL);
+    p(12, by + 17, C.FIRE); p(15, by + 17, C.EMBER); p(19, by + 17, C.FIRE);
+
+    // === ARMS (muscular, clawed) ===
+    b(3, by + 9, 3, 8, C.SKIN); b(3, by + 9, 1, 8, C.BSKIN); b(5, by + 9, 1, 6, C.MID);
+    b(2, by + 11, 1, 5, C.SKIN); p(1, by + 13, C.BSKIN);
+    b(26, by + 9, 3, 8, C.DKSKIN); b(28, by + 11, 1, 5, C.HELL);
+    // Clawed fists
+    b(1, by + 17, 3, 3, C.SKIN); p(1, by + 17, C.BSKIN);
+    p(0, by + 18, C.DKHORN); p(0, by + 19, C.HORN); p(1, by + 19, C.HORN); // claws
+    b(28, by + 17, 3, 3, C.DKSKIN);
+    p(31, by + 18, C.DKHORN); p(31, by + 19, C.HORN); p(30, by + 19, C.HORN); // claws
+
+    // === TAIL (curling from behind, ember tip) ===
+    b(24, by + 14, 2, 1, C.SKIN); b(26, by + 13, 2, 1, C.DKSKIN);
+    b(28, by + 12, 2, 1, C.DKSKIN); p(30, by + 11, C.DKSKIN);
+    p(31, by + 10, C.EMBER); p(31, by + 9, C.FIRE);
+
+    // === LEGS (thick, heavy stomp) ===
+    b(8 + lOff, by + 19, 6, 7, C.SKIN);
+    b(8 + lOff, by + 19, 2, 7, C.BSKIN); b(13 + lOff, by + 19, 1, 7, C.DKSKIN);
+    b(18 + rOff, by + 19, 6, 7, C.SKIN);
+    b(23 + rOff, by + 19, 1, 7, C.DKSKIN);
+    // Knee guards (fire-etched)
+    b(8 + lOff, by + 22, 6, 1, C.DKSKIN); p(9 + lOff, by + 22, C.FIRE); p(12 + lOff, by + 22, C.FIRE);
+    b(18 + rOff, by + 22, 6, 1, C.DKSKIN); p(19 + rOff, by + 22, C.FIRE); p(22 + rOff, by + 22, C.FIRE);
+    // Feet (massive, cloven)
+    b(6 + lOff, by + 26, 8, 3, C.DKSKIN); b(7 + lOff, by + 26, 6, 2, C.SKIN);
+    p(6 + lOff, by + 28, C.HELL); p(13 + lOff, by + 28, C.HELL);
+    b(17 + rOff, by + 26, 8, 3, C.DKSKIN); b(18 + rOff, by + 26, 6, 2, C.SKIN);
+    p(17 + rOff, by + 28, C.HELL); p(24 + rOff, by + 28, C.HELL);
+
+    // === GROUND EMBERS ===
+    p(8 + lOff, by + 29, C.EMBER); p(20 + rOff, by + 29, C.DKFIRE);
   } else {
     drawDeathInfernal(p, b, f - 4, 16, 14);
   }

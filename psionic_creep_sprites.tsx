@@ -25,6 +25,9 @@ const C = {
   DUST: '#553366',      // fading dust
   FRAG: '#7744aa',      // fragment mid
   CRACK: '#ee88ff',     // crack lines
+  // Boss accent colors
+  NEURAL: '#ffcc44',    // golden neural glow
+  DKNEURAL: '#cc9922',  // dark neural
 };
 
 // ===== DRAWING HELPERS =====
@@ -305,7 +308,7 @@ function drawHealer(c: CanvasRenderingContext2D, o: number[], f: number) {
   }
 }
 
-// 5: Overmind (Boss) - massive brain entity with psychic tendrils
+// 5: Overmind (Boss) - Giant floating brain, multiple psychic tendrils, pulsing neural pathways, central massive eye, floating debris (telekinesis), golden neural glow
 function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -313,54 +316,105 @@ function drawBoss(c: CanvasRenderingContext2D, o: number[], f: number) {
     const lOff = [0, 1, 0, -1][f];
     const rOff = [0, -1, 0, 1][f];
     const by = 1 + bob;
-    // Massive brain dome
-    b(8, by, 16, 3, C.BRAIN); b(9, by, 14, 1, C.GLOW);
-    b(6, by + 3, 20, 6, C.BRAIN);
-    b(6, by + 3, 2, 6, C.GLOW); b(24, by + 3, 2, 6, C.DKBRAIN);
-    b(8, by + 9, 16, 3, C.BRAIN);
-    // Brain fold detail (elaborate)
-    p(10, by + 1, C.DKBRAIN); p(13, by + 2, C.DKBRAIN); p(16, by + 1, C.DKBRAIN);
-    p(19, by + 2, C.DKBRAIN); p(22, by + 1, C.DKBRAIN);
-    p(8, by + 4, C.DKBRAIN); p(11, by + 5, C.DKBRAIN); p(14, by + 4, C.DKBRAIN);
-    p(17, by + 6, C.DKBRAIN); p(20, by + 5, C.DKBRAIN); p(23, by + 4, C.DKBRAIN);
-    p(9, by + 7, C.DKBRAIN); p(13, by + 8, C.DKBRAIN); p(18, by + 7, C.DKBRAIN);
-    // Crown psychic spikes
-    p(10, by - 2, C.ENERGY); b(11, by - 1, 2, 1, C.BRIGHT);
-    p(15, by - 3, C.BRIGHT); b(15, by - 2, 2, 1, C.ENERGY);
-    p(21, by - 2, C.ENERGY); b(20, by - 1, 2, 1, C.BRIGHT);
-    p(13, by - 1, C.PULSE); p(18, by - 1, C.PULSE);
-    // Massive eyes
-    b(10, by + 6, 3, 3, C.EYE); b(11, by + 6, 1, 1, C.WHITE);
-    p(10, by + 8, C.CORE);
-    b(19, by + 6, 3, 3, C.EYE); b(20, by + 6, 1, 1, C.WHITE);
-    p(19, by + 8, C.CORE);
-    // Third eye (center forehead)
-    b(15, by + 3, 2, 2, C.EYE); p(15, by + 3, C.WHITE);
-    // Body mass below brain
-    b(8, by + 12, 16, 6, C.BODY);
-    b(8, by + 12, 2, 6, C.LIGHT); b(22, by + 12, 2, 6, C.DK);
-    b(10, by + 12, 12, 1, C.ENERGY);
-    // Psychic core
-    b(14, by + 14, 4, 3, C.ENERGY); b(15, by + 15, 2, 1, C.CORE);
-    p(15, by + 14, C.WHITE);
-    // Psychic tendrils (arms)
-    b(3, by + 8, 3, 2, C.TENDRIL); b(3, by + 10, 2, 3, C.TENDRIL);
-    p(2, by + 11, C.ENERGY); p(3, by + 8, C.GLOW);
-    b(1, by + 12, 2, 3, C.TENDRIL); p(1, by + 14, C.ENERGY);
-    b(26, by + 8, 3, 2, C.TENDRIL); b(27, by + 10, 2, 3, C.DKTENDRIL);
-    p(28, by + 11, C.PULSE); p(28, by + 8, C.MIND);
-    b(29, by + 12, 2, 3, C.DKTENDRIL); p(30, by + 14, C.PULSE);
-    // Lower tendrils (legs)
-    b(9 + lOff, by + 18, 5, 7, C.BODY);
-    b(9 + lOff, by + 18, 2, 7, C.LIGHT); b(13 + lOff, by + 18, 1, 7, C.DK);
-    b(18 + rOff, by + 18, 5, 7, C.BODY);
-    b(22 + rOff, by + 18, 1, 7, C.DK);
-    // Tendril tips
-    b(8 + lOff, by + 25, 6, 2, C.TENDRIL); p(8 + lOff, by + 26, C.ENERGY);
-    b(17 + rOff, by + 25, 6, 2, C.DKTENDRIL); p(22 + rOff, by + 26, C.PULSE);
-    // Floating energy particles
-    p(5, by + 4, C.PULSE); p(26, by + 5, C.ENERGY);
+    const pulseShift = [0, 1, 0, -1][f];
+
+    // === FLOATING DEBRIS (telekinesis - rocks hovering around) ===
+    const debrisPos = [
+      [[1, by + 2], [30, by + 4], [3, by + 18], [28, by + 20]],
+      [[2, by + 4], [29, by + 2], [4, by + 20], [27, by + 18]],
+      [[3, by + 3], [28, by + 3], [2, by + 19], [29, by + 19]],
+      [[1, by + 5], [30, by + 3], [4, by + 17], [28, by + 21]],
+    ][f];
+    for (const [dx, dy] of debrisPos) {
+      b(dx, dy, 2, 2, C.DKTENDRIL); p(dx, dy, C.TENDRIL);
+    }
+
+    // === MASSIVE BRAIN DOME (fills upper half) ===
+    b(6, by, 20, 3, C.BRAIN); b(7, by, 18, 1, C.GLOW);
+    b(4, by + 3, 24, 7, C.BRAIN);
+    b(4, by + 3, 3, 7, C.GLOW); b(25, by + 3, 3, 7, C.DKBRAIN);
+    b(6, by + 10, 20, 3, C.BRAIN);
+    b(6, by + 10, 2, 3, C.GLOW); b(24, by + 10, 2, 3, C.DKBRAIN);
+
+    // Elaborate brain fold detail
+    p(8, by + 1, C.DKBRAIN); p(11, by + 2, C.DKBRAIN); p(14, by + 1, C.DKBRAIN);
+    p(17, by + 2, C.DKBRAIN); p(20, by + 1, C.DKBRAIN); p(23, by + 2, C.DKBRAIN);
+    p(6, by + 4, C.DKBRAIN); p(9, by + 5, C.DKBRAIN); p(12, by + 4, C.DKBRAIN);
+    p(15, by + 6, C.DKBRAIN); p(18, by + 5, C.DKBRAIN); p(21, by + 4, C.DKBRAIN);
+    p(24, by + 6, C.DKBRAIN); p(7, by + 7, C.DKBRAIN); p(10, by + 8, C.DKBRAIN);
+    p(16, by + 8, C.DKBRAIN); p(22, by + 7, C.DKBRAIN);
+    p(8, by + 10, C.DKBRAIN); p(14, by + 11, C.DKBRAIN); p(20, by + 10, C.DKBRAIN);
+
+    // === PULSING GOLDEN NEURAL PATHWAYS (visible through brain) ===
+    p(9, by + 3, C.NEURAL); p(11, by + 4, C.DKNEURAL); p(13, by + 3, C.NEURAL);
+    p(19, by + 3, C.NEURAL); p(21, by + 4, C.DKNEURAL); p(23, by + 3, C.NEURAL);
+    p(7, by + 6, C.NEURAL); p(10, by + 7, C.DKNEURAL);
+    p(22, by + 6, C.NEURAL); p(25, by + 7, C.DKNEURAL);
+    p(12, by + 9, C.NEURAL); p(19, by + 9, C.NEURAL);
+    // Pulse animation (shift per frame)
+    p(9 + pulseShift, by + 5, C.NEURAL); p(22 - pulseShift, by + 5, C.NEURAL);
+
+    // === PSYCHIC ENERGY CROWN (spikes above brain) ===
+    p(8, by - 2, C.ENERGY); b(9, by - 1, 2, 1, C.BRIGHT);
+    p(13, by - 3, C.BRIGHT); b(13, by - 2, 2, 2, C.ENERGY);
+    p(16, by - 4, C.NEURAL); b(16, by - 3, 2, 2, C.BRIGHT);
+    p(19, by - 3, C.BRIGHT); b(19, by - 2, 2, 2, C.ENERGY);
+    p(23, by - 2, C.ENERGY); b(22, by - 1, 2, 1, C.BRIGHT);
+    p(11, by - 1, C.PULSE); p(15, by - 2, C.PULSE); p(20, by - 1, C.PULSE);
+
+    // === CENTRAL MASSIVE EYE (forehead, dominant) ===
+    b(13, by + 3, 6, 5, C.EYE); b(14, by + 3, 4, 2, C.WHITE);
+    p(15, by + 3, C.WHITE); p(16, by + 4, C.WHITE);
+    p(13, by + 7, C.CORE); p(18, by + 7, C.CORE);
+    b(15, by + 5, 2, 2, C.BRIGHT); p(15, by + 5, C.WHITE);
+
+    // === SIDE EYES (smaller) ===
+    b(7, by + 6, 3, 3, C.EYE); b(8, by + 6, 1, 1, C.WHITE); p(7, by + 8, C.CORE);
+    b(22, by + 6, 3, 3, C.EYE); b(23, by + 6, 1, 1, C.WHITE); p(22, by + 8, C.CORE);
+
+    // === BODY MASS (below brain, transition to tendrils) ===
+    b(7, by + 13, 18, 5, C.BODY);
+    b(7, by + 13, 2, 5, C.LIGHT); b(23, by + 13, 2, 5, C.DK);
+    b(9, by + 13, 14, 1, C.ENERGY);
+    // Neural pathways on body
+    p(10, by + 14, C.NEURAL); p(13, by + 15, C.DKNEURAL);
+    p(18, by + 14, C.NEURAL); p(21, by + 15, C.DKNEURAL);
+
+    // === PSYCHIC CORE (large, bright) ===
+    b(13, by + 14, 6, 4, C.ENERGY); b(14, by + 15, 4, 2, C.BRIGHT);
+    b(15, by + 15, 2, 2, C.CORE); p(15, by + 14, C.WHITE); p(16, by + 14, C.WHITE);
+
+    // === PSYCHIC TENDRILS (4 arms, extending outward) ===
+    // Left upper tendril
+    b(2, by + 7, 3, 3, C.TENDRIL); b(2, by + 7, 1, 3, C.GLOW);
+    b(0, by + 9, 2, 4, C.TENDRIL); p(0, by + 9, C.ENERGY);
+    p(0, by + 12, C.BRIGHT);
+    // Left lower tendril
+    b(3, by + 11, 3, 3, C.TENDRIL); b(1, by + 13, 2, 4, C.TENDRIL);
+    p(1, by + 16, C.ENERGY); p(0, by + 15, C.PULSE);
+    // Right upper tendril
+    b(27, by + 7, 3, 3, C.DKTENDRIL); b(29, by + 7, 1, 3, C.MIND);
+    b(30, by + 9, 2, 4, C.DKTENDRIL); p(31, by + 9, C.PULSE);
+    p(31, by + 12, C.ENERGY);
+    // Right lower tendril
+    b(26, by + 11, 3, 3, C.DKTENDRIL); b(29, by + 13, 2, 4, C.DKTENDRIL);
+    p(30, by + 16, C.PULSE); p(31, by + 15, C.ENERGY);
+
+    // === LOWER TENDRILS (legs, spreading) ===
+    b(8 + lOff, by + 18, 6, 8, C.BODY);
+    b(8 + lOff, by + 18, 2, 8, C.LIGHT); b(13 + lOff, by + 18, 1, 8, C.DK);
+    b(18 + rOff, by + 18, 6, 8, C.BODY);
+    b(23 + rOff, by + 18, 1, 8, C.DK);
+    // Tendril tips (glowing)
+    b(6 + lOff, by + 26, 8, 2, C.TENDRIL); p(7 + lOff, by + 27, C.ENERGY);
+    p(13 + lOff, by + 27, C.BRIGHT);
+    b(17 + rOff, by + 26, 8, 2, C.DKTENDRIL); p(18 + rOff, by + 27, C.PULSE);
+    p(24 + rOff, by + 27, C.ENERGY);
+
+    // === AMBIENT PSYCHIC PARTICLES ===
+    p(5, by + 3, C.PULSE); p(26, by + 4, C.ENERGY);
     p(3, by + 16, C.MIND); p(28, by + 17, C.MIND);
+    p(16, by - 5, C.NEURAL);
   } else {
     drawDeathPsionic(p, b, f - 4, 16, 14);
   }
