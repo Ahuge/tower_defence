@@ -45,8 +45,8 @@ export class CreepFactionSelectScene extends Phaser.Scene {
     // Faction grid
     const playable = FACTION_ORDER.filter(f => f !== 'random');
     const fCols = isPhone ? s.factionCols : 6;
-    const cardW = isPhone ? Math.floor((getCanvasWidth() - 16) / fCols - 4) : s.factionCardW;
-    const cardH = isPhone ? UIScale.space(50) : s.factionCardH;
+    const cardW = isPhone ? Math.floor((getCanvasWidth() - 16) / fCols - 4) : 120;
+    const cardH = isPhone ? UIScale.space(30) : 44;
     const gap = isPhone ? 4 : 6;
     const rows = Math.ceil(playable.length / fCols);
     const startY = UIScale.y(80);
@@ -62,35 +62,19 @@ export class CreepFactionSelectScene extends Phaser.Scene {
       const x = rowStartX + col * (cardW + gap);
       const y = startY + row * (cardH + gap);
 
-      // Card background
+      // Compact card
       const card = this.add.graphics();
       card.fillStyle(0x1a1a22, 1);
       card.fillRect(x, y, cardW, cardH);
-      // Faction color strip on top
       card.fillStyle(faction.primaryColor, 1);
-      card.fillRect(x, y, cardW, 4);
+      card.fillRect(x, y, cardW, 3);
       card.lineStyle(1, 0x333344, 0.6);
       card.strokeRect(x, y, cardW, cardH);
 
-      // Faction name
-      this.add.text(x + cardW / 2, y + UIScale.y(18), faction.name, {
-        fontSize: UIScale.font(12), color: '#ffffff', fontFamily: 'monospace',
+      // Faction name centered
+      this.add.text(x + cardW / 2, y + cardH / 2, faction.name, {
+        fontSize: UIScale.font(11), color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
-
-      // Tower count
-      const tCount = `${faction.towerIds.length} towers`;
-      this.add.text(x + cardW / 2, y + UIScale.y(32), tCount, {
-        fontSize: UIScale.font(9), color: '#888888', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-
-      // Description snippet
-      if (!isPhone && cardH > 60) {
-        const desc = faction.description?.substring(0, 40) ?? '';
-        this.add.text(x + cardW / 2, y + UIScale.y(46), desc, {
-          fontSize: UIScale.font(8), color: '#555555', fontFamily: 'monospace',
-          wordWrap: { width: cardW - 8 },
-        }).setOrigin(0.5, 0);
-      }
 
       // Click zone
       const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH)
