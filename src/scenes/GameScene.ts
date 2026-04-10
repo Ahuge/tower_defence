@@ -1719,11 +1719,13 @@ export class GameScene extends Phaser.Scene {
     // Fade to black
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      // Destroy all towers
-      for (const t of this._towers) t.destroy();
+      // Destroy all towers (use towerMgr which owns the real array)
+      for (const t of this.towerMgr.towers) t.destroy();
+      this.towerMgr.towers = [];
       this._towers = [];
       // Destroy all creeps
-      for (const c of this._creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
+      for (const c of this.creepMgr.creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
+      this.creepMgr.creeps = [];
       this._creeps = [];
 
       // Load new stage
@@ -1738,6 +1740,7 @@ export class GameScene extends Phaser.Scene {
 
       // Rebuild grid with new map
       this.grid = new Grid(this.mapDef);
+      this.towerMgr.grid = this.grid;
       this.allPaths = this.grid.entries.map(e => {
         const closest = this.grid.exits.reduce((best, ex) => {
           const d = Math.abs(e.col - ex.col) + Math.abs(e.row - ex.row);
@@ -1746,6 +1749,9 @@ export class GameScene extends Phaser.Scene {
         return findPath(this.grid, e, closest);
       });
       this.currentPath = this.allPaths.find(p => p !== null) ?? null;
+
+      // Update flying path for new map entry/exit
+      this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
 
       // Create creep animations for new faction
       createCreepAnimations(this, this.creepFaction);
