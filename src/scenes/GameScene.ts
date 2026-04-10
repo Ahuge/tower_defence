@@ -165,6 +165,14 @@ export class GameScene extends Phaser.Scene {
   gridGraphics!: Phaser.GameObjects.Graphics;
   pathGraphics!: Phaser.GameObjects.Graphics;
   private terrainMgr!: TerrainManager;
+
+  // Path preview pips
+  private pathPips: Phaser.GameObjects.Arc[] = [];
+  private pathPipProgress: number[] = [];
+  private pathPipTimer: number = 0;
+  private pathPipActive: boolean = false;
+  private readonly PATH_PIP_INTERVAL = 10000; // ms between pip runs
+  private readonly PATH_PIP_SPEED = 0.15;     // progress per second (2x creep speed ~ 6-7s to traverse)
   private mapDef!: MapDefinition;
   private _gameStartTime: number = 0;
   hoverGraphics!: Phaser.GameObjects.Graphics;
@@ -1095,6 +1103,9 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.paused) return;
 
+    // Path preview pips (uses real delta, not speed-adjusted)
+    this.updatePathPips(delta);
+
     // Apply game speed
     delta *= this.gameSpeed;
     if (delta === 0) return; // speed 0 = paused
@@ -1590,6 +1601,83 @@ export class GameScene extends Phaser.Scene {
       }
       g.strokePath();
     }
+
+    // Reset pips when paths change
+    this.resetPathPips();
+  }
+
+  private resetPathPips(): void {
+    for (const pip of this.pathPips) pip.destroy();
+    this.pathPips = [];
+    this.pathPipProgress = [];
+    this.pathPipActive = false;
+    this.pathPipTimer = 0;
+  }
+
+  private startPathPips(): void {
+    this.resetPathPips();
+    const validPaths = this.allPaths.filter(p => p && p.length >= 2);
+    if (validPaths.length === 0) return;
+
+    for (const path of validPaths) {
+      if (!path) continue;
+      const pip = this.add.circle(gridX(path[0].col), gridY(path[0].row), 4, 0xffcc44, 0.8);
+      pip.setDepth(4);
+      this.pathPips.push(pip);
+      this.pathPipProgress.push(0);
+    }
+    this.pathPipActive = true;
+  }
+
+  private updatePathPips(realDelta: number): void {
+    this.pathPipTimer += realDelta;
+
+    if (!this.pathPipActive && this.pathPipTimer >= this.PATH_PIP_INTERVAL) {
+      this.pathPipTimer = 0;
+      this.startPathPips();
+      return;
+    }
+
+    if (!this.pathPipActive) return;
+
+    const validPaths = this.allPaths.filter(p => p && p.length >= 2);
+    let allDone = true;
+
+    for (let i = 0; i < this.pathPips.length; i++) {
+      const pip = this.pathPips[i];
+      const path = validPaths[i];
+      if (!pip || !path) continue;
+
+      this.pathPipProgress[i] += this.PATH_PIP_SPEED * (realDelta / 1000);
+      const progress = this.pathPipProgress[i];
+
+      if (progress >= 1) {
+        pip.setVisible(false);
+        continue;
+      }
+      allDone = false;
+
+      // Interpolate position along path
+      const totalSegments = path.length - 1;
+      const exactSeg = progress * totalSegments;
+      const segIdx = Math.floor(exactSeg);
+      const segT = exactSeg - segIdx;
+      const a = path[Math.min(segIdx, path.length - 1)];
+      const b = path[Math.min(segIdx + 1, path.length - 1)];
+      const px = gridX(a.col) + (gridX(b.col) - gridX(a.col)) * segT;
+      const py = gridY(a.row) + (gridY(b.row) - gridY(a.row)) * segT;
+      pip.setPosition(px, py);
+      pip.setVisible(true);
+      // Fade out near the end
+      pip.setAlpha(progress > 0.85 ? (1 - progress) / 0.15 * 0.8 : 0.8);
+    }
+
+    if (allDone) {
+      this.pathPipActive = false;
+      for (const pip of this.pathPips) pip.destroy();
+      this.pathPips = [];
+      this.pathPipProgress = [];
+    }
   }
 
   toggleAutoPlay(): void {
@@ -1817,6 +1905,8 @@ export class GameScene extends Phaser.Scene {
     // Destroy all creeps
     for (const c of this._creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
     this._creeps = [];
+    // Clean up path pips
+    this.resetPathPips();
     // Clean up game mode (panels, keyboard listeners)
     this.gameMode.destroy?.();
     // Clean up event bus

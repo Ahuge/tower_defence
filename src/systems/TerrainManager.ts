@@ -253,13 +253,24 @@ export class TerrainManager {
     this.groundGraphics.fillStyle(groundColor, 1);
     this.groundGraphics.fillRect(gridLeftX(0), oY, cols * TILE_SIZE, rows * TILE_SIZE);
 
-    // Grid lines
-    this.groundGraphics.lineStyle(1, this.themeColors.gridLine ?? 0x333333, 0.15);
-    for (let c = 0; c <= cols; c++) {
-      this.groundGraphics.lineBetween(gridLeftX(c), oY, gridLeftX(c), oY + rows * TILE_SIZE);
-    }
-    for (let r = 0; r <= rows; r++) {
-      this.groundGraphics.lineBetween(gridLeftX(0), oY + r * TILE_SIZE, gridLeftX(0) + cols * TILE_SIZE, oY + r * TILE_SIZE);
+    // Grid lines — only on buildable cells (skip Blocked + NoBuild)
+    const gridLineColor = this.themeColors.gridLine ?? 0x333333;
+    this.groundGraphics.lineStyle(1, gridLineColor, 0.15);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = grid.cells[r][c];
+        if (cell === CellType.Blocked || cell === CellType.NoBuild) continue;
+        const x = gridLeftX(c);
+        const y = oY + r * TILE_SIZE;
+        // Draw cell border lines (top and left edges; shared edges drawn once)
+        this.groundGraphics.lineBetween(x, y, x + TILE_SIZE, y); // top
+        this.groundGraphics.lineBetween(x, y, x, y + TILE_SIZE); // left
+        // Bottom/right only if neighbor is non-buildable or edge
+        if (r === rows - 1 || grid.cells[r + 1][c] === CellType.Blocked || grid.cells[r + 1][c] === CellType.NoBuild)
+          this.groundGraphics.lineBetween(x, y + TILE_SIZE, x + TILE_SIZE, y + TILE_SIZE);
+        if (c === cols - 1 || grid.cells[r][c + 1] === CellType.Blocked || grid.cells[r][c + 1] === CellType.NoBuild)
+          this.groundGraphics.lineBetween(x + TILE_SIZE, y, x + TILE_SIZE, y + TILE_SIZE);
+      }
     }
 
     // Determine which tileset to use

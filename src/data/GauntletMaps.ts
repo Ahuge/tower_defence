@@ -65,31 +65,42 @@ function buildArcane(): { blocked: Pos[]; noBuild: Pos[] } {
 }
 
 // =====================================================================
-// MECHANICAL — Iron Foundry: steampunk factory grid with conveyors
+// MECHANICAL — Iron Foundry: asymmetric factory with assembly line + furnaces
 // =====================================================================
 function buildMechanical(): { blocked: Pos[]; noBuild: Pos[] } {
   const blocked: Pos[] = [];
-  // Factory machine blocks (large squares in a grid)
-  blocked.push(...rect(4, 3, 8, 7));
-  blocked.push(...rect(14, 3, 18, 7));
-  blocked.push(...rect(24, 3, 28, 7));
-  blocked.push(...rect(4, 11, 8, 15));
-  blocked.push(...rect(14, 11, 18, 15));
-  blocked.push(...rect(24, 11, 28, 15));
-  blocked.push(...rect(9, 19, 13, 23));
-  blocked.push(...rect(19, 19, 23, 23));
-  // Smokestacks
-  blocked.push(...rect(6, 1, 6, 3));
-  blocked.push(...rect(16, 1, 16, 3));
-  blocked.push(...rect(26, 1, 26, 3));
+  // Main furnace (large, center-left)
+  blocked.push(...rect(3, 4, 8, 9));
+  // Secondary furnace (center-right)
+  blocked.push(...rect(27, 4, 32, 8));
+  // Stamping press (mid, large rectangle)
+  blocked.push(...rect(14, 10, 21, 14));
+  // Gear assembly stations (small scattered)
+  blocked.push(...rect(4, 16, 6, 18));
+  blocked.push(...rect(10, 19, 12, 21));
+  blocked.push(...rect(25, 17, 28, 19));
+  // Smokestacks (narrow tall)
+  blocked.push(...rect(1, 1, 2, 4));
+  blocked.push(...rect(33, 1, 34, 5));
+  // Cooling tanks (circles)
+  blocked.push(...circ(11, 5, 2));
+  blocked.push(...circ(24, 22, 2));
+  // Pipe junction (small)
+  blocked.push(...rect(19, 2, 20, 3));
+  // Scrap pile
+  blocked.push({ col: 30, row: 12 }); blocked.push({ col: 31, row: 12 }); blocked.push({ col: 30, row: 13 });
 
-  // NoBuild: conveyor belt paths (can walk but not build)
+  // NoBuild: conveyor belt segments (short runs, not full-width)
   const noBuild: Pos[] = [];
-  // Horizontal conveyors
-  for (let c = 0; c < GRID_COLS; c++) {
-    noBuild.push({ col: c, row: 9 });
-    noBuild.push({ col: c, row: 17 });
-  }
+  // Conveyor from furnace to press
+  for (let c = 9; c <= 13; c++) noBuild.push({ col: c, row: 12 });
+  // Conveyor from press to assembly
+  for (let c = 22; c <= 24; c++) noBuild.push({ col: c, row: 12 });
+  // Conveyor south run
+  for (let r = 15; r <= 18; r++) noBuild.push({ col: 17, row: r });
+  // Steam vent patches
+  noBuild.push(...circ(8, 22, 1));
+  noBuild.push(...circ(33, 15, 1));
 
   return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
 }
@@ -169,29 +180,48 @@ function buildVoid(): { blocked: Pos[]; noBuild: Pos[] } {
 }
 
 // =====================================================================
-// MILITARY — Warzone Outpost: ruined city grid, buildings + streets
+// MILITARY — Warzone Outpost: ruined forward operating base with varied structures
 // =====================================================================
 function buildMilitary(): { blocked: Pos[]; noBuild: Pos[] } {
   const blocked: Pos[] = [];
-  // Building blocks (city grid, 3×3 blocks with 2-wide streets)
-  const buildingPositions = [
-    [2, 2], [7, 2], [12, 2], [17, 2], [22, 2], [27, 2],
-    [2, 8], [7, 8], [17, 8], [22, 8], [27, 8],
-    [2, 14], [7, 14], [12, 14], [22, 14], [27, 14],
-    [2, 20], [7, 20], [12, 20], [17, 20], [27, 20],
-  ];
-  for (const [bc, br] of buildingPositions) {
-    blocked.push(...rect(bc, br, bc + 3, br + 3));
-  }
-  // Rubble piles (small blocked dots for ruined feeling)
-  blocked.push(...circ(15, 10, 1));
-  blocked.push(...circ(20, 16, 1));
-  blocked.push(...circ(25, 10, 1));
+  // HQ building (large, top-left)
+  blocked.push(...rect(2, 2, 6, 5));
+  // Barracks (medium, top-right)
+  blocked.push(...rect(27, 2, 31, 4));
+  // Motor pool / garage (wide, mid-left)
+  blocked.push(...rect(1, 11, 5, 14));
+  // Guard towers (small 2x2 pillboxes)
+  blocked.push(...rect(14, 2, 15, 3));
+  blocked.push(...rect(21, 2, 22, 3));
+  blocked.push(...rect(10, 22, 11, 23));
+  blocked.push(...rect(25, 22, 26, 23));
+  // Comms tower (tall narrow)
+  blocked.push(...rect(34, 9, 35, 13));
+  // Supply depot (mid-right)
+  blocked.push(...rect(28, 12, 32, 14));
+  // Ruined building (L-shaped, south)
+  blocked.push(...rect(15, 18, 19, 21));
+  blocked.push(...rect(20, 19, 22, 21));
+  // Sandbag bunkers (small scattered)
+  blocked.push(...rect(9, 8, 10, 9));
+  blocked.push(...rect(18, 9, 19, 10));
+  // Rubble piles (single cells)
+  blocked.push({ col: 12, row: 14 });
+  blocked.push({ col: 24, row: 8 });
+  blocked.push({ col: 7, row: 20 });
 
-  // NoBuild: trenches
+  // NoBuild: bomb craters + barbed wire clusters (small, scattered, maze-friendly)
   const noBuild: Pos[] = [];
-  for (let c = 0; c < GRID_COLS; c++) noBuild.push({ col: c, row: 6 });
-  for (let c = 0; c < GRID_COLS; c++) noBuild.push({ col: c, row: 19 });
+  // Crater NW
+  noBuild.push(...circ(8, 5, 1));
+  // Crater center
+  noBuild.push(...circ(17, 13, 1));
+  // Barbed wire patch SW
+  noBuild.push({ col: 3, row: 18 }); noBuild.push({ col: 4, row: 18 }); noBuild.push({ col: 5, row: 18 });
+  // Barbed wire patch E
+  noBuild.push({ col: 30, row: 8 }); noBuild.push({ col: 31, row: 8 }); noBuild.push({ col: 30, row: 9 });
+  // Crater SE
+  noBuild.push(...circ(27, 19, 1));
 
   return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
 }
@@ -243,70 +273,74 @@ function buildAliens(): { blocked: Pos[]; noBuild: Pos[] } {
 }
 
 // =====================================================================
-// CYPHERPUNK — Data Grid: symmetric circuit board, Tron-inspired
+// CYPHERPUNK — Data Grid: underground hacker lair with mainframes + fighting pit
 // =====================================================================
 function buildCypherpunk(): { blocked: Pos[]; noBuild: Pos[] } {
   const blocked: Pos[] = [];
-  // Processor blocks (perfectly symmetric large squares)
-  blocked.push(...rect(6, 4, 10, 8));
-  blocked.push(...rect(25, 4, 29, 8));
-  blocked.push(...rect(6, 17, 10, 21));
-  blocked.push(...rect(25, 17, 29, 21));
-  // Central processing unit
-  blocked.push(...rect(15, 10, 20, 15));
-  // Data bus nodes (small blocks)
-  blocked.push(...rect(2, 12, 3, 13));
-  blocked.push(...rect(32, 12, 33, 13));
-  blocked.push(...rect(MID_C - 1, 1, MID_C, 2));
-  blocked.push(...rect(MID_C - 1, 23, MID_C, 24));
+  // Server mainframes (tall narrow racks)
+  blocked.push(...rect(4, 2, 6, 7));
+  blocked.push(...rect(29, 2, 31, 7));
+  blocked.push(...rect(4, 17, 6, 22));
+  blocked.push(...rect(29, 17, 31, 22));
+  // Central data pit / fighting ring (circular arena)
+  blocked.push(...circ(MID_C, MID_R, 4));
+  // Terminal stations (small blocks)
+  blocked.push(...rect(12, 4, 14, 5));
+  blocked.push(...rect(21, 4, 23, 5));
+  blocked.push(...rect(12, 20, 14, 21));
+  blocked.push(...rect(21, 20, 23, 21));
+  // Network switches (tiny)
+  blocked.push(...rect(10, 12, 11, 13));
+  blocked.push(...rect(24, 12, 25, 13));
+  // Power supply (corner)
+  blocked.push(...rect(0, 0, 2, 2));
+  blocked.push(...rect(33, 23, 35, 25));
 
-  // NoBuild: data bus traces (circuit paths)
+  // NoBuild: data cable runs (short segments connecting mainframes to center)
   const noBuild: Pos[] = [];
-  for (let c = 0; c < GRID_COLS; c++) noBuild.push({ col: c, row: 2 });
-  for (let c = 0; c < GRID_COLS; c++) noBuild.push({ col: c, row: 23 });
-  for (let r = 0; r < GRID_ROWS; r++) noBuild.push({ col: 13, row: r });
-  for (let r = 0; r < GRID_ROWS; r++) noBuild.push({ col: 22, row: r });
+  // Cable run left mainframes → center
+  for (let c = 7; c <= 10; c++) { noBuild.push({ col: c, row: 10 }); noBuild.push({ col: c, row: 15 }); }
+  // Cable run right mainframes → center
+  for (let c = 25; c <= 28; c++) { noBuild.push({ col: c, row: 10 }); noBuild.push({ col: c, row: 15 }); }
+  // Holographic display pads
+  noBuild.push(...circ(MID_C, 3, 1));
+  noBuild.push(...circ(MID_C, 22, 1));
 
   return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
 }
 
 // =====================================================================
-// INFERNAL — Hellscape: lava rivers, brimstone, stalagmites
+// INFERNAL — Hellscape: demon's throne room with lava pools + obsidian spires
 // =====================================================================
 function buildInfernal(): { blocked: Pos[]; noBuild: Pos[] } {
   const blocked: Pos[] = [];
-  // Lava rivers (horizontal, 2-wide with bridge gaps)
-  for (let c = 0; c < GRID_COLS; c++) {
-    const isBridge = (c >= 8 && c <= 10) || (c >= MID_C - 1 && c <= MID_C + 1) || (c >= 26 && c <= 28);
-    if (!isBridge) {
-      blocked.push({ col: c, row: 8 });
-      blocked.push({ col: c, row: 9 });
-    }
-  }
-  for (let c = 0; c < GRID_COLS; c++) {
-    const isBridge = (c >= 5 && c <= 7) || (c >= MID_C - 1 && c <= MID_C + 1) || (c >= 29 && c <= 31);
-    if (!isBridge) {
-      blocked.push({ col: c, row: 17 });
-      blocked.push({ col: c, row: 18 });
-    }
-  }
-  // Stalagmite pillars
-  blocked.push(...circ(5, 4, 2));
-  blocked.push(...circ(30, 4, 2));
-  blocked.push(...circ(MID_C, 13, 2));
-  blocked.push(...circ(10, 22, 2));
-  blocked.push(...circ(25, 22, 2));
-  // Stalactite formations (smaller)
-  blocked.push(...circ(15, 2, 1));
-  blocked.push(...circ(22, 2, 1));
-  blocked.push(...circ(15, 24, 1));
+  // Central lava lake (large animated pool)
+  blocked.push(...circ(MID_C, MID_R, 4));
+  // Demon throne (large blocked platform, north)
+  blocked.push(...rect(MID_C - 3, 1, MID_C + 3, 4));
+  // Obsidian spires (tall narrow pillars scattered around)
+  blocked.push(...rect(4, 4, 5, 8));     // NW spire
+  blocked.push(...rect(30, 4, 31, 8));    // NE spire
+  blocked.push(...rect(4, 17, 5, 21));    // SW spire
+  blocked.push(...rect(30, 17, 31, 21));   // SE spire
+  // Bone piles / rubble
+  blocked.push(...circ(10, 7, 2));
+  blocked.push(...circ(25, 7, 2));
+  blocked.push(...circ(10, 19, 2));
+  blocked.push(...circ(25, 19, 2));
+  // Imp cages (small structures)
+  blocked.push(...rect(14, 8, 15, 9));
+  blocked.push(...rect(20, 8, 21, 9));
+  // Sacrifice altar (south)
+  blocked.push(...rect(MID_C - 2, 21, MID_C + 2, 23));
 
-  // NoBuild: brimstone patches
+  // NoBuild: lava seepage pools (small scattered, walkable but scorched)
   const noBuild: Pos[] = [];
-  noBuild.push(...circ(MID_C, 5, 1));
-  noBuild.push(...circ(MID_C, 21, 1));
-  noBuild.push(...circ(8, 13, 1));
-  noBuild.push(...circ(28, 13, 1));
+  noBuild.push(...circ(8, 12, 1));    // lava seep W
+  noBuild.push(...circ(27, 12, 1));   // lava seep E
+  noBuild.push(...circ(MID_C, 7, 1)); // lava drip N
+  noBuild.push(...circ(MID_C, 19, 1)); // lava drip S
+  noBuild.push({ col: 15, row: 15 }); noBuild.push({ col: 20, row: 15 }); // ember patches
 
   return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
 }
@@ -342,52 +376,39 @@ function buildCelestial(): { blocked: Pos[]; noBuild: Pos[] } {
 }
 
 // =====================================================================
-// PSIONIC — Mind Palace: spiral with brain tanks
+// PSIONIC — Mind Palace: brain vats, thought corridors, neural chambers
 // =====================================================================
 function buildPsionic(): { blocked: Pos[]; noBuild: Pos[] } {
   const blocked: Pos[] = [];
-  // Spiral walls converging to center (like Spiral map but with gaps)
-  const margin = 2;
-  let top = margin, bottom = GRID_ROWS - 1 - margin;
-  let left = margin, right = GRID_COLS - 1 - margin;
-  let layer = 0;
-  while (top < bottom - 3 && left < right - 3) {
-    // Top wall
-    for (let c = left; c <= right; c++) {
-      if (layer % 2 === 0 && c >= right - 3) continue;
-      if (layer % 2 === 1 && c <= left + 3) continue;
-      blocked.push({ col: c, row: top });
-    }
-    // Right wall
-    for (let r = top + 1; r <= bottom; r++) {
-      if (layer % 2 === 0 && r >= bottom - 3) continue;
-      if (layer % 2 === 1 && r <= top + 4) continue;
-      blocked.push({ col: right, row: r });
-    }
-    // Bottom wall
-    for (let c = left; c < right; c++) {
-      if (layer % 2 === 0 && c <= left + 3) continue;
-      if (layer % 2 === 1 && c >= right - 3) continue;
-      blocked.push({ col: c, row: bottom });
-    }
-    // Left wall
-    for (let r = top + 1; r < bottom; r++) {
-      if (layer % 2 === 0 && r <= top + 4) continue;
-      if (layer % 2 === 1 && r >= bottom - 3) continue;
-      blocked.push({ col: left, row: r });
-    }
-    top += 5; bottom -= 5; left += 5; right -= 5;
-    layer++;
-  }
-  // Brain tanks (blocked circles representing glass tanks)
-  blocked.push(...circ(7, 7, 2));
-  blocked.push(...circ(29, 7, 2));
-  blocked.push(...circ(7, 19, 2));
-  blocked.push(...circ(29, 19, 2));
+  // Brain vats — tall rectangular tanks (2-3 wide × 4-5 tall)
+  blocked.push(...rect(4, 3, 6, 7));     // Vat NW
+  blocked.push(...rect(29, 3, 31, 7));    // Vat NE
+  blocked.push(...rect(4, 17, 6, 21));    // Vat SW
+  blocked.push(...rect(29, 17, 31, 21));   // Vat SE
+  // Central consciousness core (large circle)
+  blocked.push(...circ(MID_C, MID_R, 3));
+  // Thought amplifier pillars
+  blocked.push(...rect(13, 5, 14, 7));
+  blocked.push(...rect(21, 5, 22, 7));
+  blocked.push(...rect(13, 18, 14, 20));
+  blocked.push(...rect(21, 18, 22, 20));
+  // Memory banks (small rectangles)
+  blocked.push(...rect(10, 11, 12, 13));
+  blocked.push(...rect(23, 11, 25, 13));
+  // Synapse nodes (single cells)
+  blocked.push({ col: 17, row: 3 }); blocked.push({ col: 18, row: 3 });
+  blocked.push({ col: 17, row: 22 }); blocked.push({ col: 18, row: 22 });
 
-  // NoBuild: neural pathway corridors
+  // NoBuild: neural pathway patches (small clusters, not full lines)
   const noBuild: Pos[] = [];
-  for (let r = 0; r < GRID_ROWS; r++) noBuild.push({ col: MID_C, row: r });
+  // Thought conduits (short segments connecting vats to core)
+  for (let c = 7; c <= 9; c++) noBuild.push({ col: c, row: MID_R });
+  for (let c = 26; c <= 28; c++) noBuild.push({ col: c, row: MID_R });
+  // Psionic field patches
+  noBuild.push(...circ(9, 4, 1));
+  noBuild.push(...circ(26, 4, 1));
+  noBuild.push(...circ(9, 21, 1));
+  noBuild.push(...circ(26, 21, 1));
 
   return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
 }
