@@ -1,8 +1,8 @@
 /**
- * Gauntlet Map Preview — renders all 10 faction homeworld maps as colored grid visualizations.
- * Shows blocked cells, NoBuild zones, entries, exits, and terrain theme for each map.
+ * Gauntlet Map Preview — renders all 10 faction homeworld maps using actual terrain sprites.
+ * Shows blocked cells, NoBuild zones, entries, exits with real tileset art.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 // Inline constants to avoid importing game code that depends on Phaser
 const GRID_COLS = 36;
@@ -238,38 +238,75 @@ function buildHarmonic(): { blocked: Pos[]; noBuild: Pos[] } {
   return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
 }
 
+// ===================== Terrain Sprite Modules =====================
+
+const terrainModules: Record<string, () => Promise<{ default: React.ComponentType }>> = {
+  arcane: () => import('../arcane_terrain_sprites'),
+  mechanical: () => import('../mechanical_terrain_sprites'),
+  nature: () => import('../nature_terrain_sprites'),
+  void: () => import('../void_terrain_sprites'),
+  military: () => import('../military_terrain_sprites'),
+  aliens: () => import('../aliens_terrain_sprites'),
+  cypherpunk: () => import('../cypherpunk_terrain_sprites'),
+  infernal: () => import('../infernal_terrain_sprites'),
+  celestial: () => import('../celestial_terrain_sprites'),
+  psionic: () => import('../psionic_terrain_sprites'),
+  harmonic: () => import('../harmonic_terrain_sprites'),
+};
+
+const TILE = 28; // sprite tile size
+const TILE_COLS = 16; // auto-tile variants per row
+// Row layout in each tileset: 0=ground, 1=blocked, 2-4=animated(3 frames), 5=nobuild
+
+/** Compute 4-bit auto-tile index (N=8, E=4, S=2, W=1) */
+function autoTile(c: number, r: number, set: Set<string>): number {
+  let idx = 0;
+  if (set.has(posKey(c, r - 1))) idx |= 8; // N
+  if (set.has(posKey(c + 1, r))) idx |= 4; // E
+  if (set.has(posKey(c, r + 1))) idx |= 2; // S
+  if (set.has(posKey(c - 1, r))) idx |= 1; // W
+  return idx;
+}
+
 // ===================== Map Configs =====================
 
 interface MapConfig {
   faction: string;
+  factionKey: string;   // key into terrainModules
   name: string;
   theme: string;
-  color: string;       // faction primary color
-  blockedColor: string; // darker shade for blocked
-  noBuildColor: string; // tinted shade for noBuild
-  groundColor: string;  // lighter ground
+  color: string;
   entries: Pos[];
   exits: Pos[];
   builder: () => { blocked: Pos[]; noBuild: Pos[] };
 }
 
 const MAPS: MapConfig[] = [
-  { faction: 'Arcane', name: 'Crystal Caverns', theme: 'arcane_crystal', color: '#6644ff', blockedColor: '#3322aa', noBuildColor: '#4433cc', groundColor: '#1a1533', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildArcane },
-  { faction: 'Mechanical', name: 'Iron Foundry', theme: 'factory', color: '#cc8833', blockedColor: '#885522', noBuildColor: '#aa7744', groundColor: '#2a2218', entries: [{ col: 0, row: 0 }], exits: [{ col: GRID_COLS - 1, row: GRID_ROWS - 1 }], builder: buildMechanical },
-  { faction: 'Nature', name: 'Ancient Grove', theme: 'ancient_grove', color: '#33aa44', blockedColor: '#226633', noBuildColor: '#339944', groundColor: '#152218', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 0 }], builder: buildNature },
-  { faction: 'Void', name: 'Rift Dimension', theme: 'void_rift', color: '#8822aa', blockedColor: '#551177', noBuildColor: '#662299', groundColor: '#180a22', entries: [{ col: 0, row: MID_R }, { col: MID_C, row: 0 }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildVoid },
-  { faction: 'Military', name: 'Warzone Outpost', theme: 'urban', color: '#556b2f', blockedColor: '#3a4a20', noBuildColor: '#4a5a28', groundColor: '#1a1e14', entries: [{ col: GRID_COLS - 1, row: MID_R }], exits: [{ col: 0, row: MID_R }], builder: buildMilitary },
-  { faction: 'Aliens', name: 'Hive Tunnels', theme: 'hive', color: '#88ff44', blockedColor: '#446622', noBuildColor: '#66cc33', groundColor: '#1a2a10', entries: [{ col: 0, row: 5 }, { col: 0, row: MID_R }, { col: 0, row: 20 }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildAliens },
-  { faction: 'Cypherpunk', name: 'Data Grid', theme: 'circuit', color: '#00ffcc', blockedColor: '#006655', noBuildColor: '#00aa88', groundColor: '#0a1a18', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildCypherpunk },
-  { faction: 'Infernal', name: 'Hellscape', theme: 'hellscape', color: '#ff4422', blockedColor: '#992211', noBuildColor: '#cc3318', groundColor: '#2a1008', entries: [{ col: MID_C, row: 0 }], exits: [{ col: MID_C, row: GRID_ROWS - 1 }], builder: buildInfernal },
-  { faction: 'Celestial', name: 'Sky Citadel', theme: 'marble', color: '#ffffaa', blockedColor: '#aaaa66', noBuildColor: '#ddddaa', groundColor: '#1e1e18', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 2 }], builder: buildCelestial },
-  { faction: 'Psionic', name: 'Mind Palace', theme: 'neural', color: '#dd88ff', blockedColor: '#8844aa', noBuildColor: '#bb66dd', groundColor: '#1e0a22', entries: [{ col: 0, row: 0 }], exits: [{ col: MID_C, row: MID_R }], builder: buildPsionic },
-  { faction: 'Harmonic', name: 'Concert Hall', theme: 'concert', color: '#ffcc44', blockedColor: '#aa8822', noBuildColor: '#ddaa33', groundColor: '#221e0a', entries: [{ col: MID_C, row: 0 }], exits: [{ col: MID_C, row: GRID_ROWS - 1 }], builder: buildHarmonic },
+  { faction: 'Arcane', factionKey: 'arcane', name: 'Crystal Caverns', theme: 'arcane_crystal', color: '#6644ff', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildArcane },
+  { faction: 'Mechanical', factionKey: 'mechanical', name: 'Iron Foundry', theme: 'factory', color: '#cc8833', entries: [{ col: 0, row: 0 }], exits: [{ col: GRID_COLS - 1, row: GRID_ROWS - 1 }], builder: buildMechanical },
+  { faction: 'Nature', factionKey: 'nature', name: 'Ancient Grove', theme: 'ancient_grove', color: '#33aa44', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 0 }], builder: buildNature },
+  { faction: 'Void', factionKey: 'void', name: 'Rift Dimension', theme: 'void_rift', color: '#8822aa', entries: [{ col: 0, row: MID_R }, { col: MID_C, row: 0 }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildVoid },
+  { faction: 'Military', factionKey: 'military', name: 'Warzone Outpost', theme: 'urban', color: '#556b2f', entries: [{ col: GRID_COLS - 1, row: MID_R }], exits: [{ col: 0, row: MID_R }], builder: buildMilitary },
+  { faction: 'Aliens', factionKey: 'aliens', name: 'Hive Tunnels', theme: 'hive', color: '#88ff44', entries: [{ col: 0, row: 5 }, { col: 0, row: MID_R }, { col: 0, row: 20 }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildAliens },
+  { faction: 'Cypherpunk', factionKey: 'cypherpunk', name: 'Data Grid', theme: 'circuit', color: '#00ffcc', entries: [{ col: 0, row: MID_R }], exits: [{ col: GRID_COLS - 1, row: MID_R }], builder: buildCypherpunk },
+  { faction: 'Infernal', factionKey: 'infernal', name: 'Hellscape', theme: 'hellscape', color: '#ff4422', entries: [{ col: MID_C, row: 0 }], exits: [{ col: MID_C, row: GRID_ROWS - 1 }], builder: buildInfernal },
+  { faction: 'Celestial', factionKey: 'celestial', name: 'Sky Citadel', theme: 'marble', color: '#ffffaa', entries: [{ col: MID_C, row: GRID_ROWS - 1 }], exits: [{ col: MID_C, row: 2 }], builder: buildCelestial },
+  { faction: 'Psionic', factionKey: 'psionic', name: 'Mind Palace', theme: 'neural', color: '#dd88ff', entries: [{ col: 0, row: 0 }], exits: [{ col: MID_C, row: MID_R }], builder: buildPsionic },
+  { faction: 'Harmonic', factionKey: 'harmonic', name: 'Concert Hall', theme: 'concert', color: '#ffcc44', entries: [{ col: MID_C, row: 0 }], exits: [{ col: MID_C, row: GRID_ROWS - 1 }], builder: buildHarmonic },
 ];
 
 // ===================== Single Map Renderer =====================
 
-function MapCanvas({ config }: { config: MapConfig }) {
+function drawTile(
+  ctx: CanvasRenderingContext2D, tileset: HTMLCanvasElement,
+  tileRow: number, tileCol: number, dx: number, dy: number, cellSize: number,
+) {
+  const sx = tileCol * TILE;
+  const sy = tileRow * TILE;
+  ctx.drawImage(tileset, sx, sy, TILE, TILE, dx, dy, cellSize, cellSize);
+}
+
+function MapCanvas({ config, tileset, doodadSheet }: { config: MapConfig; tileset: HTMLCanvasElement | null; doodadSheet: HTMLCanvasElement | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -277,74 +314,93 @@ function MapCanvas({ config }: { config: MapConfig }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, MAP_W, MAP_H);
 
     const { blocked, noBuild } = config.builder();
     const blockedSet = new Set(blocked.map(p => posKey(p.col, p.row)));
     const noBuildSet = new Set(noBuild.map(p => posKey(p.col, p.row)));
-    const entrySet = new Set(config.entries.map(p => posKey(p.col, p.row)));
-    const exitSet = new Set(config.exits.map(p => posKey(p.col, p.row)));
 
-    // Draw ground
-    ctx.fillStyle = config.groundColor;
-    ctx.fillRect(0, 0, MAP_W, MAP_H);
-
-    // Draw grid lines (very subtle)
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 0.5;
-    for (let c = 0; c <= GRID_COLS; c++) {
-      ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, MAP_H); ctx.stroke();
-    }
-    for (let r = 0; r <= GRID_ROWS; r++) {
-      ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(MAP_W, r * CELL); ctx.stroke();
-    }
-
-    // Draw cells
-    for (let c = 0; c < GRID_COLS; c++) {
+    if (tileset) {
+      // Draw ground tiles on every non-blocked cell
       for (let r = 0; r < GRID_ROWS; r++) {
-        const key = posKey(c, r);
-        const x = c * CELL, y = r * CELL;
-        if (blockedSet.has(key)) {
-          ctx.fillStyle = config.blockedColor;
-          ctx.fillRect(x, y, CELL, CELL);
-        } else if (noBuildSet.has(key)) {
-          ctx.fillStyle = config.noBuildColor;
-          ctx.fillRect(x, y, CELL, CELL);
-          // Diagonal stripe pattern
-          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-          ctx.lineWidth = 0.5;
-          ctx.beginPath(); ctx.moveTo(x, y + CELL); ctx.lineTo(x + CELL, y); ctx.stroke();
+        for (let c = 0; c < GRID_COLS; c++) {
+          const key = posKey(c, r);
+          if (blockedSet.has(key)) continue;
+          drawTile(ctx, tileset, 0, 15, c * CELL, r * CELL, CELL); // row 0 (ground), variant 15 (center)
         }
+      }
+
+      // Draw grid lines on buildable cells only
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 0.5;
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          if (blockedSet.has(posKey(c, r)) || noBuildSet.has(posKey(c, r))) continue;
+          const x = c * CELL, y = r * CELL;
+          ctx.strokeRect(x, y, CELL, CELL);
+        }
+      }
+
+      // Draw blocked tiles with auto-tiling
+      for (const p of blocked) {
+        const idx = autoTile(p.col, p.row, blockedSet);
+        drawTile(ctx, tileset, 1, idx, p.col * CELL, p.row * CELL, CELL); // row 1 (static blocked)
+      }
+
+      // Draw NoBuild tiles with auto-tiling
+      for (const p of noBuild) {
+        const idx = autoTile(p.col, p.row, noBuildSet);
+        drawTile(ctx, tileset, 5, idx, p.col * CELL, p.row * CELL, CELL); // row 5 (nobuild)
+      }
+
+      // Draw doodads on some ground cells
+      if (doodadSheet) {
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            if (blockedSet.has(posKey(c, r)) || noBuildSet.has(posKey(c, r))) continue;
+            // Seeded random for consistent placement
+            let h = (c * 374761 + r * 668265) | 0;
+            h = ((h ^ (h >> 13)) * 1103515) | 0;
+            const rand = ((h ^ (h >> 16)) & 0x7fff) / 0x7fff;
+            if (rand > 0.10) continue;
+            const dIdx = Math.floor(((c * 127 + r * 311) & 0x7fff) / 0x7fff * 8) % 8;
+            ctx.drawImage(doodadSheet, dIdx * TILE, 0, TILE, TILE, c * CELL, r * CELL, CELL, CELL);
+          }
+        }
+      }
+    } else {
+      // Fallback: colored rectangles (while tilesets load)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, MAP_W, MAP_H);
+      for (const p of blocked) {
+        ctx.fillStyle = '#444';
+        ctx.fillRect(p.col * CELL, p.row * CELL, CELL, CELL);
+      }
+      for (const p of noBuild) {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(p.col * CELL, p.row * CELL, CELL, CELL);
       }
     }
 
-    // Draw entries (green arrows)
+    // Draw entries (green)
     for (const e of config.entries) {
       const x = e.col * CELL, y = e.row * CELL;
-      ctx.fillStyle = '#44ff44';
+      ctx.fillStyle = 'rgba(68,255,68,0.6)';
       ctx.fillRect(x, y, CELL, CELL);
-      // Arrow indicator
-      ctx.fillStyle = '#000';
-      ctx.font = `${CELL - 1}px monospace`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('>', x + CELL / 2, y + CELL / 2);
     }
 
-    // Draw exits (red squares)
+    // Draw exits (red)
     for (const e of config.exits) {
       const x = e.col * CELL, y = e.row * CELL;
-      ctx.fillStyle = '#ff4444';
+      ctx.fillStyle = 'rgba(255,68,68,0.6)';
       ctx.fillRect(x, y, CELL, CELL);
-      ctx.fillStyle = '#000';
-      ctx.font = `${CELL - 1}px monospace`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('X', x + CELL / 2, y + CELL / 2);
     }
 
     // Border
     ctx.strokeStyle = config.color;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, MAP_W, MAP_H);
-  }, [config]);
+  }, [config, tileset, doodadSheet]);
 
   return (
     <div style={{ display: 'inline-block', margin: 8 }}>
@@ -371,9 +427,6 @@ function MapCanvas({ config }: { config: MapConfig }) {
 
 function Legend() {
   const items = [
-    { color: '#333', label: 'Ground (buildable)' },
-    { color: '#555', label: 'Blocked (impassable)' },
-    { color: '#777', label: 'NoBuild (walkable, unbuildable)', stripe: true },
     { color: '#44ff44', label: 'Entry (spawn)' },
     { color: '#ff4444', label: 'Exit (goal)' },
   ];
@@ -381,27 +434,107 @@ function Legend() {
     <div style={{ display: 'flex', gap: 16, marginBottom: 16, padding: 8, background: '#1a1a22', border: '1px solid #333', borderRadius: 4 }}>
       {items.map(item => (
         <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#aaa' }}>
-          <div style={{ width: 14, height: 14, background: item.color, border: '1px solid #555' }} />
+          <div style={{ width: 14, height: 14, background: item.color, border: '1px solid #555', opacity: 0.6 }} />
           {item.label}
         </div>
       ))}
+      <div style={{ fontSize: 11, color: '#666', marginLeft: 8 }}>
+        Maps rendered with actual terrain sprites (auto-tiled)
+      </div>
     </div>
   );
 }
 
 // ===================== Main Component =====================
 
+/** Render a terrain sprite component off-screen and extract its canvases */
+async function renderTerrainModule(key: string): Promise<{ tileset: HTMLCanvasElement; doodads: HTMLCanvasElement } | null> {
+  try {
+    const mod = await terrainModules[key]();
+    const Comp = mod.default;
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    document.body.appendChild(container);
+    const { createRoot } = await import('react-dom/client');
+    const root = createRoot(container);
+    root.render(<Comp />);
+    await new Promise(r => setTimeout(r, 600));
+    const allCanvases = Array.from(container.querySelectorAll('canvas'));
+    // Find the actual-size tileset canvas (not the scaled preview)
+    // Tileset: 16*28 = 448 wide, 6*28 = 168 tall
+    // Doodad: 8*28 = 224 wide, 1*28 = 28 tall
+    let tileset: HTMLCanvasElement | null = null;
+    let doodads: HTMLCanvasElement | null = null;
+    for (const c of allCanvases) {
+      if (c.width === TILE_COLS * TILE && c.height === 6 * TILE) tileset = c;
+      if (c.width === 8 * TILE && c.height === TILE) doodads = c;
+    }
+    root.unmount();
+    document.body.removeChild(container);
+    if (tileset && doodads) return { tileset, doodads };
+    return null;
+  } catch (e) {
+    console.error(`Failed to render terrain for ${key}:`, e);
+    return null;
+  }
+}
+
 export default function GauntletMapPreview() {
+  const [tilesets, setTilesets] = useState<Record<string, { tileset: HTMLCanvasElement; doodads: HTMLCanvasElement }>>({});
+  const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState('');
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    const result: Record<string, { tileset: HTMLCanvasElement; doodads: HTMLCanvasElement }> = {};
+    const keys = Object.keys(terrainModules);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      setLoadProgress(`Loading ${key} (${i + 1}/${keys.length})...`);
+      const sheets = await renderTerrainModule(key);
+      if (sheets) result[key] = sheets;
+    }
+    setTilesets(result);
+    setLoading(false);
+    setLoadProgress('');
+  }, []);
+
   return (
     <div style={{ padding: 16 }}>
       <h2 style={{ color: '#ff4444', marginBottom: 4 }}>Faction Gauntlet Maps</h2>
       <p style={{ color: '#888', fontSize: 12, marginBottom: 12 }}>
-        All 10 faction homeworld maps ({GRID_COLS}x{GRID_ROWS} grid, {CELL}px/cell preview).
-        Green = entry, Red = exit, Striped = NoBuild zone.
+        All 10 faction homeworld maps ({GRID_COLS}x{GRID_ROWS} grid) rendered with faction terrain sprites.
       </p>
+
+      <div style={{ marginBottom: 12 }}>
+        <button
+          onClick={loadAll}
+          disabled={loading && !!loadProgress}
+          style={{
+            padding: '8px 16px', background: '#335533', color: '#aaffaa', border: '1px solid #55aa55',
+            fontFamily: 'monospace', cursor: 'pointer', fontSize: 12,
+          }}
+        >
+          {loading && loadProgress ? loadProgress : 'Load Terrain Sprites'}
+        </button>
+        {!loading && Object.keys(tilesets).length > 0 && (
+          <span style={{ marginLeft: 12, color: '#55aa55', fontSize: 11 }}>
+            {Object.keys(tilesets).length} tilesets loaded
+          </span>
+        )}
+      </div>
+
       <Legend />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {MAPS.map(m => <MapCanvas key={m.faction} config={m} />)}
+        {MAPS.map(m => (
+          <MapCanvas
+            key={m.faction}
+            config={m}
+            tileset={tilesets[m.factionKey]?.tileset ?? null}
+            doodadSheet={tilesets[m.factionKey]?.doodads ?? null}
+          />
+        ))}
       </div>
     </div>
   );
