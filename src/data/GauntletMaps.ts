@@ -33,7 +33,7 @@ function notIn(positions: Pos[], exclude: Set<string>): Pos[] {
 // =====================================================================
 // ARCANE — Crystal Caverns: winding corridors around crystal nexus + wizard towers
 // =====================================================================
-function buildArcane(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildArcane(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Central crystal nexus (large blocked circle)
   blocked.push(...circ(MID_C, MID_R, 4));
@@ -61,13 +61,20 @@ function buildArcane(): { blocked: Pos[]; noBuild: Pos[] } {
   noBuild.push(...circ(MID_C, 5, 2));
   noBuild.push(...circ(MID_C, 21, 2));
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'arcane_wizard_tower', col: 5, row: 3 },
+    { structureId: 'arcane_wizard_tower', col: 29, row: 3 },
+    { structureId: 'arcane_wizard_tower', col: 5, row: 19 },
+    { structureId: 'arcane_wizard_tower', col: 29, row: 19 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
 // MECHANICAL — Iron Foundry: asymmetric factory with assembly line + furnaces
 // =====================================================================
-function buildMechanical(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildMechanical(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Main furnace (large, center-left)
   blocked.push(...rect(3, 4, 8, 9));
@@ -102,13 +109,18 @@ function buildMechanical(): { blocked: Pos[]; noBuild: Pos[] } {
   noBuild.push(...circ(8, 22, 1));
   noBuild.push(...circ(33, 15, 1));
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'mech_furnace', col: 3, row: 4 },
+    { structureId: 'mech_press', col: 14, row: 10 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
 // NATURE — Ancient Grove: organic clearings connected by forest paths
 // =====================================================================
-function buildNature(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildNature(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Large tree clusters (organic shapes)
   blocked.push(...circ(8, 6, 3));
@@ -133,7 +145,13 @@ function buildNature(): { blocked: Pos[]; noBuild: Pos[] } {
     if (inB(c, r)) noBuild.push({ col: c, row: r });
   }
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'nature_ancient_tree', col: 5, row: 3 },
+    { structureId: 'nature_ancient_tree', col: 25, row: 3 },
+    { structureId: 'nature_ancient_tree', col: 13, row: 17 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild, structures };
 }
 
 // =====================================================================
@@ -237,7 +255,7 @@ function buildMilitary(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeSt
 // =====================================================================
 // ALIENS — Hive Tunnels: narrow winding passages, acid pools
 // =====================================================================
-function buildAliens(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildAliens(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Thick organic hive walls — fill most of the map, then carve tunnels
   for (let c = 0; c < GRID_COLS; c++) for (let r = 0; r < GRID_ROWS; r++) {
@@ -274,16 +292,21 @@ function buildAliens(): { blocked: Pos[]; noBuild: Pos[] } {
   noBuild.push(...circ(18, 5, 1));
   noBuild.push(...circ(18, 20, 1));
 
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'alien_queen_chamber', col: MID_C - 3, row: MID_R - 3 },
+  ];
+
   return {
     blocked: blocked.filter(p => !tunnelSet.has(posKey(p.col, p.row))),
     noBuild: noBuild.filter(p => inB(p.col, p.row)),
+    structures,
   };
 }
 
 // =====================================================================
 // CYPHERPUNK — Data Grid: underground hacker lair with mainframes + fighting pit
 // =====================================================================
-function buildCypherpunk(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildCypherpunk(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Server mainframes (tall narrow racks)
   blocked.push(...rect(4, 2, 6, 7));
@@ -314,7 +337,14 @@ function buildCypherpunk(): { blocked: Pos[]; noBuild: Pos[] } {
   noBuild.push(...circ(MID_C, 3, 1));
   noBuild.push(...circ(MID_C, 22, 1));
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'cyber_mainframe', col: 4, row: 2 },
+    { structureId: 'cyber_mainframe', col: 29, row: 2 },
+    { structureId: 'cyber_mainframe', col: 4, row: 17 },
+    { structureId: 'cyber_mainframe', col: 29, row: 17 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
@@ -365,7 +395,7 @@ function buildInfernal(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeSt
 // =====================================================================
 // CELESTIAL — Sky Citadel: marble pillars, open courtyards, clouds
 // =====================================================================
-function buildCelestial(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildCelestial(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Grand pillars (evenly spaced in courtyard)
   const pillarCols = [5, 11, 17, 23, 29];
@@ -389,7 +419,13 @@ function buildCelestial(): { blocked: Pos[]; noBuild: Pos[] } {
   noBuild.push(...circ(33, 18, 2));
   noBuild.push(...circ(MID_C, MID_R, 2));
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'celestial_sanctum', col: MID_C - 5, row: 0 },
+    { structureId: 'celestial_gate_pillar', col: MID_C - 6, row: GRID_ROWS - 3 },
+    { structureId: 'celestial_gate_pillar', col: MID_C + 5, row: GRID_ROWS - 3 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
@@ -446,7 +482,7 @@ function buildPsionic(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStr
 // =====================================================================
 // HARMONIC — Concert Hall: amphitheater shape, stage, orchestra pit
 // =====================================================================
-function buildHarmonic(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildHarmonic(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Curved seating rows (blocked arcs)
   for (let row = 0; row < 3; row++) {
@@ -481,7 +517,12 @@ function buildHarmonic(): { blocked: Pos[]; noBuild: Pos[] } {
     if (inB(c, 18)) noBuild.push({ col: c, row: 18 });
   }
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'harmonic_grand_piano', col: MID_C - 8, row: 20 },
+    { structureId: 'harmonic_drum_kit', col: MID_C + 6, row: 20 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
