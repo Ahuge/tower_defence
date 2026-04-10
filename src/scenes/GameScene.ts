@@ -1494,7 +1494,7 @@ export class GameScene extends Phaser.Scene {
   drawGrid(): void {
     // Use terrain manager for themed rendering
     const themeId = this.mapDef?.theme ?? 'generic';
-    this.terrainMgr.compute(this.grid, themeId);
+    this.terrainMgr.compute(this.grid, themeId, this.mapDef?.structures);
     this.terrainMgr.render(this.grid, this.gridOffsetY);
   }
 

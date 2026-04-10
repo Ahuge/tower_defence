@@ -14,6 +14,8 @@ import {
   THEMES,
   findClusters, matchCluster, autoTileIndex,
 } from './TerrainTheme';
+import { LargeStructurePlacement } from '../data/Maps';
+import { getStructureDef, LARGE_STRUCTURES } from '../data/LargeStructures';
 
 const TILESET_KEY = 'terrain_tileset';
 const DOODAD_KEY = 'terrain_doodads';
@@ -144,6 +146,9 @@ export class TerrainManager {
   private factionTerrain: FactionTerrain | null = null;
   private themeId: string = 'generic';
   private themeColors: { ground?: number; gridLine?: number; noBuild?: number; noBuildLine?: number } = {};
+  private structureCells = new Set<string>();
+  private structureSprites: Phaser.GameObjects.Image[] = [];
+  private structures: LargeStructurePlacement[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -163,6 +168,12 @@ export class TerrainManager {
     for (const ft of FACTION_TERRAINS) {
       scene.load.spritesheet(ft.tilesetKey, ft.path, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
       scene.load.spritesheet(ft.doodadKey, ft.doodadPath, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
+    }
+    // Large structure images
+    for (const defs of Object.values(LARGE_STRUCTURES)) {
+      for (const def of defs) {
+        scene.load.image(def.textureKey, `assets/terrain/structures/${def.textureKey}.png`);
+      }
     }
   }
 
@@ -215,12 +226,13 @@ export class TerrainManager {
   }
 
   /** Compute terrain types for all cells based on grid and theme */
-  compute(grid: Grid, themeId: string): void {
+  compute(grid: Grid, themeId: string, structures?: LargeStructurePlacement[]): void {
     const theme = THEMES[themeId] ?? THEMES.generic;
     this.groundType = theme.ground;
     this.themeId = themeId;
     this.factionTerrain = FACTION_TERRAINS.find(ft => ft.themeId === themeId) ?? null;
     this.themeColors = theme.colors ?? {};
+    this.structures = structures ?? [];
     this.terrainMap.clear();
 
     const rows = grid.rows;
@@ -317,9 +329,30 @@ export class TerrainManager {
       }
     }
 
-    // Terrain tiles (blocked cells)
+    // Large structures — render as single sprites, mark cells to skip
+    this.structureCells.clear();
+    for (const placement of this.structures) {
+      const def = getStructureDef(placement.structureId);
+      if (!def) continue;
+      if (!this.scene.textures.exists(def.textureKey)) continue;
+      // Mark cells covered by this structure
+      for (let dc = 0; dc < def.widthCells; dc++) {
+        for (let dr = 0; dr < def.heightCells; dr++) {
+          this.structureCells.add(`${placement.col + dc},${placement.row + dr}`);
+        }
+      }
+      // Place the sprite centered on the structure's bounding box
+      const px = gridLeftX(placement.col) + (def.widthCells * TILE_SIZE) / 2;
+      const py = oY + placement.row * TILE_SIZE + (def.heightCells * TILE_SIZE) / 2;
+      const img = this.scene.add.image(px, py, def.textureKey).setDepth(1);
+      img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.structureSprites.push(img);
+    }
+
+    // Terrain tiles (blocked cells — skip cells covered by large structures)
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        if (this.structureCells.has(`${c},${r}`)) continue;
         const terrain = this.terrainMap.get(`${c},${r}`);
         if (!terrain) continue;
 
@@ -473,6 +506,9 @@ export class TerrainManager {
     this.terrainSprites = [];
     for (const spr of this.doodadSprites) spr.destroy();
     this.doodadSprites = [];
+    for (const spr of this.structureSprites) spr.destroy();
+    this.structureSprites = [];
+    this.structureCells.clear();
     this.groundGraphics?.destroy();
     this.groundGraphics = null;
   }

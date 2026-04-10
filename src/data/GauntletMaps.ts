@@ -3,7 +3,7 @@
  * Each map has unique terrain, layout, and strategic identity.
  */
 import { GRID_COLS, GRID_ROWS } from '../config';
-import { MapDefinition } from './Maps';
+import { MapDefinition, LargeStructurePlacement } from './Maps';
 import { FactionId } from './Factions';
 
 type Pos = { col: number; row: number };
@@ -182,7 +182,7 @@ function buildVoid(): { blocked: Pos[]; noBuild: Pos[] } {
 // =====================================================================
 // MILITARY — Warzone Outpost: ruined forward operating base with varied structures
 // =====================================================================
-function buildMilitary(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildMilitary(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // HQ building (large, top-left)
   blocked.push(...rect(2, 2, 6, 5));
@@ -223,7 +223,15 @@ function buildMilitary(): { blocked: Pos[]; noBuild: Pos[] } {
   // Crater SE
   noBuild.push(...circ(27, 19, 1));
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'military_hq', col: 2, row: 2 },
+    { structureId: 'military_barracks', col: 27, row: 2 },
+    { structureId: 'military_motor_pool', col: 1, row: 11 },
+    { structureId: 'military_supply_depot', col: 28, row: 12 },
+    { structureId: 'military_comms_tower', col: 34, row: 9 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
@@ -312,7 +320,7 @@ function buildCypherpunk(): { blocked: Pos[]; noBuild: Pos[] } {
 // =====================================================================
 // INFERNAL — Hellscape: demon's throne room with lava pools + obsidian spires
 // =====================================================================
-function buildInfernal(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildInfernal(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Central lava lake (large animated pool)
   blocked.push(...circ(MID_C, MID_R, 4));
@@ -342,7 +350,16 @@ function buildInfernal(): { blocked: Pos[]; noBuild: Pos[] } {
   noBuild.push(...circ(MID_C, 19, 1)); // lava drip S
   noBuild.push({ col: 15, row: 15 }); noBuild.push({ col: 20, row: 15 }); // ember patches
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'infernal_throne', col: MID_C - 3, row: 1 },
+    { structureId: 'infernal_spire', col: 4, row: 4 },
+    { structureId: 'infernal_spire', col: 30, row: 4 },
+    { structureId: 'infernal_spire', col: 4, row: 17 },
+    { structureId: 'infernal_spire', col: 30, row: 17 },
+    { structureId: 'infernal_altar', col: MID_C - 2, row: 21 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
@@ -378,7 +395,7 @@ function buildCelestial(): { blocked: Pos[]; noBuild: Pos[] } {
 // =====================================================================
 // PSIONIC — Mind Palace: brain vats, thought corridors, neural chambers
 // =====================================================================
-function buildPsionic(): { blocked: Pos[]; noBuild: Pos[] } {
+function buildPsionic(): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
   const blocked: Pos[] = [];
   // Brain vats — tall rectangular tanks (2-3 wide × 4-5 tall)
   blocked.push(...rect(4, 3, 6, 7));     // Vat NW
@@ -410,7 +427,20 @@ function buildPsionic(): { blocked: Pos[]; noBuild: Pos[] } {
   noBuild.push(...circ(9, 21, 1));
   noBuild.push(...circ(26, 21, 1));
 
-  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
+  const structures: LargeStructurePlacement[] = [
+    { structureId: 'psionic_brain_vat', col: 4, row: 3 },
+    { structureId: 'psionic_brain_vat', col: 29, row: 3 },
+    { structureId: 'psionic_brain_vat', col: 4, row: 17 },
+    { structureId: 'psionic_brain_vat', col: 29, row: 17 },
+    { structureId: 'psionic_thought_amp', col: 13, row: 5 },
+    { structureId: 'psionic_thought_amp', col: 21, row: 5 },
+    { structureId: 'psionic_thought_amp', col: 13, row: 18 },
+    { structureId: 'psionic_thought_amp', col: 21, row: 18 },
+    { structureId: 'psionic_memory_bank', col: 10, row: 11 },
+    { structureId: 'psionic_memory_bank', col: 23, row: 11 },
+  ];
+
+  return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)), structures };
 }
 
 // =====================================================================
@@ -465,7 +495,7 @@ interface GauntletMapConfig {
   theme: string;
   entries: Pos[];
   exits: Pos[];
-  builder: () => { blocked: Pos[]; noBuild: Pos[] };
+  builder: () => { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] };
 }
 
 const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
@@ -547,7 +577,7 @@ const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
 export function getGauntletMap(faction: FactionId): MapDefinition {
   const config = GAUNTLET_MAP_CONFIGS.find(m => m.faction === faction);
   if (!config) throw new Error(`No gauntlet map for faction: ${faction}`);
-  const { blocked, noBuild } = config.builder();
+  const { blocked, noBuild, structures } = config.builder();
   const mapId = `gauntlet_${config.faction}` as any;
   return {
     id: mapId,
@@ -558,6 +588,7 @@ export function getGauntletMap(faction: FactionId): MapDefinition {
     exits: config.exits,
     blocked,
     noBuild,
+    structures,
   };
 }
 

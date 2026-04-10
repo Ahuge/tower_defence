@@ -42,6 +42,7 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'creeps-celestial': () => import('../celestial_creep_sprites'),
   'creeps-psionic': () => import('../psionic_creep_sprites'),
   'creeps-harmonic': () => import('../harmonic_creep_sprites'),
+  'large-structures': () => import('../large_structure_sprites'),
   'gauntlet-maps': () => import('../gauntlet_map_preview'),
 };
 

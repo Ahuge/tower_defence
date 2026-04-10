@@ -2,6 +2,16 @@ import { GRID_COLS, GRID_ROWS } from '../config';
 
 export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p';
 
+/** A multi-tile structure rendered as a single large sprite */
+export interface LargeStructurePlacement {
+  /** Structure type key (matches a registered LargeStructureDef) */
+  structureId: string;
+  /** Top-left grid column */
+  col: number;
+  /** Top-left grid row */
+  row: number;
+}
+
 export interface MapDefinition {
   id: MapId;
   name: string;
@@ -13,6 +23,8 @@ export interface MapDefinition {
   /** Terrain theme — determines how blocked cells are rendered.
    *  'generic' is used for random maps (automatic assignment). */
   theme?: string;
+  /** Large structures that overlay multiple blocked cells with a single sprite */
+  structures?: LargeStructurePlacement[];
   /** Circle co-op: zone definitions. zones[i] = list of cells player i can build on. */
   zones?: { col: number; row: number }[][];
   /** Circle co-op: zone colors for rendering */
