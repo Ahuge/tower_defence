@@ -18,7 +18,7 @@ import { Creep } from '../entities/Creep';
 export class TowerManager {
   towers: Tower[] = [];
   private scene: Phaser.Scene;
-  private grid: Grid;
+  grid: Grid;
   private economy: EconomyManager;
   private statsTracker: StatsTracker;
   private eventLog: EventLog;
