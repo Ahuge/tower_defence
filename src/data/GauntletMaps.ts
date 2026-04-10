@@ -90,14 +90,14 @@ function buildMechanical(): { blocked: Pos[]; noBuild: Pos[] } {
   // Scrap pile
   blocked.push({ col: 30, row: 12 }); blocked.push({ col: 31, row: 12 }); blocked.push({ col: 30, row: 13 });
 
-  // NoBuild: conveyor belt segments (short runs, not full-width)
+  // NoBuild: horizontal conveyor belt segments (no vertical — sprite is horizontal)
   const noBuild: Pos[] = [];
   // Conveyor from furnace to press
   for (let c = 9; c <= 13; c++) noBuild.push({ col: c, row: 12 });
   // Conveyor from press to assembly
   for (let c = 22; c <= 24; c++) noBuild.push({ col: c, row: 12 });
-  // Conveyor south run
-  for (let r = 15; r <= 18; r++) noBuild.push({ col: 17, row: r });
+  // Conveyor south (horizontal run near assembly)
+  for (let c = 7; c <= 9; c++) noBuild.push({ col: c, row: 16 });
   // Steam vent patches
   noBuild.push(...circ(8, 22, 1));
   noBuild.push(...circ(33, 15, 1));

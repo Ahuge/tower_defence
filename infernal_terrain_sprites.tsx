@@ -41,19 +41,10 @@ const DOODAD_ROWS = 1;
 const PAL = {
   // Scorched stone ground
   ground: {
-    base: '#1a0a05',       // very dark charred stone
-    stone1: '#221008',     // dark volcanic stone
-    stone2: '#2a1410',     // medium volcanic
-    stone3: '#1e0c06',     // variation
-    crack: '#0d0503',      // deep crack shadow
-    crackGlow: '#cc3300',  // hot crack glow
-    crackBright: '#ff5500', // bright crack center
-    crackFaint: '#ff330022', // faint heat leak
-    bone: '#998877',       // bone fragment
-    boneDark: '#776655',   // bone shadow
-    scorch: '#110604',     // scorch mark
-    shimmer: '#ff220010',  // heat shimmer
-    grid: '#2a1508',
+    base: '#120805',
+    baseLt: '#160a07',
+    accent: '#1a0d08',
+    accentDk: '#0e0604',
   },
   // Obsidian / demon structure
   obsidian: {
@@ -141,112 +132,14 @@ function seededRand(seed: number) {
 
 function drawBrimstoneGround(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
   const c = PAL.ground;
-  const rng = seededRand(idx * 31 + 7);
-
-  // Dark volcanic stone base
+  // Very dark scorched stone base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-
-  // Stone texture — irregular patches of slightly different dark stone
-  for (let gy = 0; gy < G; gy++) {
-    for (let gx = 0; gx < G; gx++) {
-      const v = rng();
-      if (v < 0.25) p(ctx, ox, oy, gx, gy, c.stone1);
-      else if (v < 0.40) p(ctx, ox, oy, gx, gy, c.stone2);
-      else if (v < 0.50) p(ctx, ox, oy, gx, gy, c.stone3);
-    }
-  }
-
-  // Larger stone slab shapes — irregular rectangles
-  const slabSeed = idx * 13 + 3;
-  const slabRng = seededRand(slabSeed);
-  for (let i = 0; i < 3; i++) {
-    const sx = Math.floor(slabRng() * 10);
-    const sy = Math.floor(slabRng() * 10);
-    const sw = Math.floor(slabRng() * 4) + 2;
-    const sh = Math.floor(slabRng() * 3) + 2;
-    const col = slabRng() > 0.5 ? c.stone1 : c.stone2;
-    b(ctx, ox, oy, sx, sy, Math.min(sw, G - sx), Math.min(sh, G - sy), col);
-  }
-
-  // Deep crack network — branching cracks with orange/red glow underneath
-  const crackPaths = [
-    // Major diagonal crack
-    [[1 + (idx % 3), 0], [2 + (idx % 3), 1], [3 + (idx % 2), 2], [4, 3], [4, 4], [5, 5], [6, 6], [7, 7]],
-    // Secondary crack
-    [[9, 1], [10, 2], [10, 3], [11, 4], [12, 5], [12, 6]],
-    // Small branch
-    [[4, 3], [3, 4], [2, 5], [2, 6]],
-    // Bottom crack
-    [[6, 10], [7, 11], [8, 11], [9, 12], [10, 13]],
-    // Cross crack
-    [[0, 8], [1, 8], [2, 9], [3, 9], [4, 10]],
-  ];
-
-  for (const path of crackPaths) {
-    for (const [cx, cy] of path) {
-      if (cx >= 0 && cx < G && cy >= 0 && cy < G) {
-        // Dark crack shadow
-        p(ctx, ox, oy, cx, cy, c.crack);
-        // Glowing orange underneath — the hellfire below
-        if (rng() > 0.3) {
-          p(ctx, ox, oy, cx, cy, c.crackGlow);
-        }
-        // Some pixels extra bright
-        if (rng() > 0.7) {
-          p(ctx, ox, oy, cx, cy, c.crackBright);
-        }
-        // Glow bleeds to adjacent pixels
-        if (rng() > 0.5) p(ctx, ox, oy, cx + 1, cy, c.crackFaint);
-        if (rng() > 0.5) p(ctx, ox, oy, cx - 1, cy, c.crackFaint);
-        if (rng() > 0.6) p(ctx, ox, oy, cx, cy + 1, c.crackFaint);
-        if (rng() > 0.6) p(ctx, ox, oy, cx, cy - 1, c.crackFaint);
-      }
-    }
-  }
-
-  // Bone fragments scattered on certain variants
-  if (idx % 4 === 0) {
-    // Small bone shard
-    p(ctx, ox, oy, 8, 2, c.bone);
-    p(ctx, ox, oy, 9, 2, c.bone);
-    p(ctx, ox, oy, 10, 3, c.boneDark);
-  }
-  if (idx % 4 === 2) {
-    // Rib fragment
-    p(ctx, ox, oy, 2, 10, c.boneDark);
-    p(ctx, ox, oy, 3, 9, c.bone);
-    p(ctx, ox, oy, 4, 9, c.bone);
-    p(ctx, ox, oy, 5, 10, c.boneDark);
-  }
-  if (idx % 8 === 5) {
-    // Tiny skull
-    p(ctx, ox, oy, 11, 8, c.bone);
-    p(ctx, ox, oy, 12, 8, c.bone);
-    p(ctx, ox, oy, 11, 9, c.boneDark);
-    p(ctx, ox, oy, 12, 9, c.boneDark);
-  }
-
-  // Scorch marks — dark irregular blotches
-  for (let i = 0; i < 4; i++) {
-    const sx = Math.floor(rng() * (G - 2)) + 1;
-    const sy = Math.floor(rng() * (G - 2)) + 1;
-    p(ctx, ox, oy, sx, sy, c.scorch);
-    if (rng() > 0.4) p(ctx, ox, oy, sx + 1, sy, c.scorch);
-    if (rng() > 0.5) p(ctx, ox, oy, sx, sy + 1, c.scorch);
-  }
-
-  // Heat shimmer texture — very faint reddish overlay
-  for (let i = 0; i < 6; i++) {
-    const hx = Math.floor(rng() * G);
-    const hy = Math.floor(rng() * G);
-    p(ctx, ox, oy, hx, hy, c.shimmer);
-  }
-
-  // Grid hint
-  ctx.strokeStyle = c.grid;
-  ctx.globalAlpha = 0.12;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // A few subtle texture pixels (faint warm/red tint)
+  p(ctx, ox, oy, 5, 3, c.baseLt);
+  p(ctx, ox, oy, 10, 8, c.accent);
+  p(ctx, ox, oy, 2, 11, c.baseLt);
+  // One darker depression
+  p(ctx, ox, oy, 8, 6, c.accentDk);
 }
 
 function drawObsidianRock(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

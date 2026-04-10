@@ -33,18 +33,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#110a1e',
-    baseLt: '#16102a',
-    neural: '#241640',
-    neuralBright: '#2e1c50',
-    neuralFaint: '#1a0e30',
-    synapse: '#3a2060',
-    synapseDim: '#2a1848',
-    dot: '#44289a',
-    dotDim: '#301e5c',
-    dotBright: '#6644cc',
-    vein: '#1e1238',
-    veinBright: '#281a48',
+    base: '#0e081a',
+    baseLt: '#110a1e',
+    accent: '#140c22',
+    accentDk: '#0a0616',
   },
   tank: {
     metalDark: '#1a1228',
@@ -179,64 +171,14 @@ function seededRand(seed: number) {
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
-  // Base fill with slight variation
+  // Very dark cerebral floor base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-  // Subtle checkerboard texture
-  for (let gy = 0; gy < G; gy++) {
-    for (let gx = 0; gx < G; gx++) {
-      if ((gx + gy) % 2 === 0) p(ctx, ox, oy, gx, gy, c.baseLt);
-    }
-  }
-
-  // Neuron branching pattern — main dendrite from top-left to bottom-right
-  const dendrite = [[2,1],[3,2],[4,2],[5,3],[6,4],[7,5],[8,5],[9,6],[10,7],[11,8]];
-  for (const [gx, gy] of dendrite) {
-    p(ctx, ox, oy, gx, gy, c.neural);
-  }
-  // Branch 1 off main
-  p(ctx, ox, oy, 4, 1, c.neuralFaint); p(ctx, ox, oy, 5, 1, c.neuralFaint);
-  p(ctx, ox, oy, 3, 3, c.neuralFaint);
-  // Branch 2 off main
-  p(ctx, ox, oy, 7, 4, c.neuralFaint); p(ctx, ox, oy, 8, 3, c.neuralFaint);
-  p(ctx, ox, oy, 9, 3, c.neuralFaint);
-  // Branch 3
-  p(ctx, ox, oy, 10, 6, c.neuralFaint); p(ctx, ox, oy, 11, 6, c.neuralFaint);
-
-  // Secondary neuron — lower left
-  const dendrite2 = [[1,8],[2,9],[3,9],[4,10],[5,11],[6,11],[7,12]];
-  for (const [gx, gy] of dendrite2) {
-    p(ctx, ox, oy, gx, gy, c.neuralFaint);
-  }
-  // Branch off secondary
-  p(ctx, ox, oy, 2, 10, c.vein); p(ctx, ox, oy, 5, 10, c.vein);
-
-  // Synapse junction points (bright dots where neurons connect)
-  p(ctx, ox, oy, 5, 3, c.synapse);
-  p(ctx, ox, oy, 9, 6, c.synapseDim);
-  p(ctx, ox, oy, 3, 9, c.synapseDim);
-
-  // Thought-wave texture — subtle horizontal wave lines
-  for (let gx = 0; gx < G; gx += 3) {
-    p(ctx, ox, oy, gx, 5, c.vein);
-    p(ctx, ox, oy, gx + 1, 12, c.vein);
-  }
-
-  // Bioluminescent dots scattered
-  p(ctx, ox, oy, 1, 3, c.dot);
-  p(ctx, ox, oy, 6, 1, c.dotDim);
-  p(ctx, ox, oy, 12, 2, c.dotDim);
-  p(ctx, ox, oy, 3, 6, c.dotDim);
-  p(ctx, ox, oy, 11, 4, c.dot);
-  p(ctx, ox, oy, 8, 9, c.dotDim);
-  p(ctx, ox, oy, 0, 11, c.dotDim);
-  p(ctx, ox, oy, 13, 10, c.dot);
-  p(ctx, ox, oy, 5, 13, c.dotDim);
-  p(ctx, ox, oy, 10, 12, c.dotDim);
-
-  // Faint vein network along edges
-  p(ctx, ox, oy, 0, 4, c.veinBright); p(ctx, ox, oy, 0, 5, c.vein);
-  p(ctx, ox, oy, 13, 8, c.vein); p(ctx, ox, oy, 13, 9, c.veinBright);
-  p(ctx, ox, oy, 7, 0, c.vein); p(ctx, ox, oy, 6, 13, c.vein);
+  // A few subtle texture pixels (faint purple/psionic tint)
+  p(ctx, ox, oy, 5, 4, c.baseLt);
+  p(ctx, ox, oy, 11, 7, c.accent);
+  p(ctx, ox, oy, 3, 10, c.baseLt);
+  // One darker spot
+  p(ctx, ox, oy, 9, 2, c.accentDk);
 }
 
 function drawTank(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

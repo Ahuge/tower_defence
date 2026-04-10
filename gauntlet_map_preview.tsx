@@ -63,7 +63,7 @@ function buildMechanical(): { blocked: Pos[]; noBuild: Pos[] } {
   const noBuild: Pos[] = [];
   for (let c = 9; c <= 13; c++) noBuild.push({ col: c, row: 12 });
   for (let c = 22; c <= 24; c++) noBuild.push({ col: c, row: 12 });
-  for (let r = 15; r <= 18; r++) noBuild.push({ col: 17, row: r });
+  for (let c = 7; c <= 9; c++) noBuild.push({ col: c, row: 16 });
   noBuild.push(...circ(8, 22, 1)); noBuild.push(...circ(33, 15, 1));
   return { blocked: blocked.filter(p => inB(p.col, p.row)), noBuild: noBuild.filter(p => inB(p.col, p.row)) };
 }
@@ -241,17 +241,17 @@ function buildHarmonic(): { blocked: Pos[]; noBuild: Pos[] } {
 // ===================== Terrain Sprite Modules =====================
 
 const terrainModules: Record<string, () => Promise<{ default: React.ComponentType }>> = {
-  arcane: () => import('../arcane_terrain_sprites'),
-  mechanical: () => import('../mechanical_terrain_sprites'),
-  nature: () => import('../nature_terrain_sprites'),
-  void: () => import('../void_terrain_sprites'),
-  military: () => import('../military_terrain_sprites'),
-  aliens: () => import('../aliens_terrain_sprites'),
-  cypherpunk: () => import('../cypherpunk_terrain_sprites'),
-  infernal: () => import('../infernal_terrain_sprites'),
-  celestial: () => import('../celestial_terrain_sprites'),
-  psionic: () => import('../psionic_terrain_sprites'),
-  harmonic: () => import('../harmonic_terrain_sprites'),
+  arcane: () => import('./arcane_terrain_sprites'),
+  mechanical: () => import('./mechanical_terrain_sprites'),
+  nature: () => import('./nature_terrain_sprites'),
+  void: () => import('./void_terrain_sprites'),
+  military: () => import('./military_terrain_sprites'),
+  aliens: () => import('./aliens_terrain_sprites'),
+  cypherpunk: () => import('./cypherpunk_terrain_sprites'),
+  infernal: () => import('./infernal_terrain_sprites'),
+  celestial: () => import('./celestial_terrain_sprites'),
+  psionic: () => import('./psionic_terrain_sprites'),
+  harmonic: () => import('./harmonic_terrain_sprites'),
 };
 
 const TILE = 28; // sprite tile size

@@ -27,19 +27,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#151f0d',
-    baseDark: '#0f170a',
-    chitin: '#232f18',
-    chitinLight: '#2d3b20',
-    chitinBright: '#384a28',
-    vein: '#1e3015',
-    veinBright: '#264018',
-    membrane: '#1a2810',
-    biolum: '#33ff88',
-    biolumDim: '#22aa55',
-    biolumFaint: '#186633',
-    slime: '#1c2c12',
-    slimeSheen: '#283a1c',
+    base: '#0e160a',
+    baseLt: '#111a0d',
+    accent: '#141e10',
+    accentDk: '#0b120a',
   },
   wall: {
     core: '#2a3a15',
@@ -145,91 +136,14 @@ function hasW(idx: number) { return !!(idx & 1); }
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
-  const rng = seededRand(42);
-
-  // Base fill — dark organic floor
+  // Dark organic floor base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-
-  // Subtle texture variation — membrane patches
-  for (let gy = 0; gy < G; gy++) {
-    for (let gx = 0; gx < G; gx++) {
-      const r = rng();
-      if (r < 0.12) p(ctx, ox, oy, gx, gy, c.baseDark);
-      else if (r < 0.22) p(ctx, ox, oy, gx, gy, c.membrane);
-      else if (r < 0.28) p(ctx, ox, oy, gx, gy, c.slime);
-    }
-  }
-
-  // Chitinous plates — irregular polygonal patches
-  // Plate 1 (top-left)
-  b(ctx, ox, oy, 1, 1, 3, 2, c.chitin);
-  p(ctx, ox, oy, 2, 3, c.chitin);
-  p(ctx, ox, oy, 3, 1, c.chitinLight);
-  p(ctx, ox, oy, 2, 2, c.chitinBright);
-  p(ctx, ox, oy, 1, 3, c.chitin);
-
-  // Plate 2 (center-right)
-  b(ctx, ox, oy, 8, 5, 3, 2, c.chitin);
-  p(ctx, ox, oy, 9, 7, c.chitin);
-  p(ctx, ox, oy, 10, 5, c.chitinLight);
-  p(ctx, ox, oy, 9, 6, c.chitinBright);
-  p(ctx, ox, oy, 8, 7, c.chitin);
-  p(ctx, ox, oy, 11, 6, c.chitin);
-
-  // Plate 3 (bottom-left)
-  b(ctx, ox, oy, 2, 10, 2, 2, c.chitin);
-  p(ctx, ox, oy, 4, 10, c.chitin);
-  p(ctx, ox, oy, 3, 11, c.chitinBright);
-  p(ctx, ox, oy, 2, 12, c.chitin);
-
-  // Plate 4 (bottom-right)
-  p(ctx, ox, oy, 11, 10, c.chitin);
-  p(ctx, ox, oy, 12, 10, c.chitinLight);
-  p(ctx, ox, oy, 11, 11, c.chitinBright);
-  p(ctx, ox, oy, 12, 11, c.chitin);
-
-  // Vein network — branching lines through the floor
-  // Main vein (diagonal, top-right to bottom-left)
-  p(ctx, ox, oy, 10, 1, c.vein); p(ctx, ox, oy, 9, 2, c.vein);
-  p(ctx, ox, oy, 8, 3, c.veinBright); p(ctx, ox, oy, 7, 4, c.vein);
-  p(ctx, ox, oy, 6, 5, c.vein); p(ctx, ox, oy, 5, 6, c.veinBright);
-  p(ctx, ox, oy, 5, 7, c.vein); p(ctx, ox, oy, 4, 8, c.vein);
-  p(ctx, ox, oy, 3, 9, c.veinBright);
-
-  // Branch vein
-  p(ctx, ox, oy, 7, 5, c.vein); p(ctx, ox, oy, 8, 5, c.vein);
-  p(ctx, ox, oy, 9, 4, c.vein);
-
-  // Secondary vein (horizontal)
-  p(ctx, ox, oy, 1, 8, c.vein); p(ctx, ox, oy, 2, 8, c.veinBright);
-  p(ctx, ox, oy, 3, 8, c.vein); p(ctx, ox, oy, 4, 8, c.vein);
-
-  // Minor vein (right side)
-  p(ctx, ox, oy, 11, 7, c.vein); p(ctx, ox, oy, 12, 8, c.vein);
-  p(ctx, ox, oy, 12, 9, c.veinBright);
-
-  // Bioluminescent spots — glowing dots
-  p(ctx, ox, oy, 6, 2, c.biolumFaint);
-  p(ctx, ox, oy, 7, 2, c.biolumDim);
-
-  p(ctx, ox, oy, 12, 4, c.biolumFaint);
-
-  p(ctx, ox, oy, 1, 12, c.biolumDim);
-  p(ctx, ox, oy, 2, 12, c.biolumFaint);
-
-  p(ctx, ox, oy, 10, 12, c.biolumFaint);
-
-  // Slime sheen highlights
-  p(ctx, ox, oy, 5, 3, c.slimeSheen);
-  p(ctx, ox, oy, 0, 6, c.slimeSheen);
-  p(ctx, ox, oy, 13, 2, c.slimeSheen);
-  p(ctx, ox, oy, 7, 11, c.slimeSheen);
-
-  // Subtle tile border
-  ctx.strokeStyle = c.chitin;
-  ctx.globalAlpha = 0.15;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // A few subtle texture pixels (faint green-organic tint)
+  p(ctx, ox, oy, 5, 4, c.baseLt);
+  p(ctx, ox, oy, 10, 9, c.accent);
+  p(ctx, ox, oy, 2, 11, c.baseLt);
+  // One darker depression
+  p(ctx, ox, oy, 8, 2, c.accentDk);
 }
 
 function drawWall(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

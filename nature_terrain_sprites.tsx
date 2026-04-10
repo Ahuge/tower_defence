@@ -25,25 +25,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#1a2a12',
-    baseMid: '#1e2e16',
-    baseLt: '#222f1a',
-    moss: '#2d4420',
-    mossLt: '#3a5528',
-    mossDk: '#1f3318',
-    leaf: '#3a3018',
-    leafRed: '#4a2a14',
-    leafGold: '#5a4a1a',
-    leafOrange: '#4f3516',
-    grass: '#3a6628',
-    grassLt: '#4a7a30',
-    grassDk: '#2a5520',
-    root: '#3a2a18',
-    rootLt: '#4a3a22',
-    earth: '#2a2018',
-    earthLt: '#332a1c',
-    pebble: '#3a3a2a',
-    pebbleLt: '#4a4a36',
+    base: '#111a0e',
+    baseLt: '#141e11',
+    accent: '#182214',
+    accentDk: '#0e150b',
   },
   tree: {
     bark: '#553311',
@@ -169,78 +154,14 @@ function hasW(idx: number) { return !!(idx & 1); }
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
   const c = PAL.ground;
-  const rng = seeded(idx * 997 + 31);
-
-  // Base fill with subtle variation
+  // Dark forest floor base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-  // Dappled earth patches
-  for (let gy = 0; gy < G; gy++) {
-    for (let gx = 0; gx < G; gx++) {
-      const v = rng();
-      if (v < 0.08) p(ctx, ox, oy, gx, gy, c.baseMid);
-      else if (v < 0.14) p(ctx, ox, oy, gx, gy, c.baseLt);
-      else if (v < 0.18) p(ctx, ox, oy, gx, gy, c.earth);
-      else if (v < 0.21) p(ctx, ox, oy, gx, gy, c.earthLt);
-    }
-  }
-
-  // Moss patches — 2-3 per tile, organic shapes
-  const mossCount = 2 + (idx % 2);
-  for (let m = 0; m < mossCount; m++) {
-    const mx = Math.floor(rng() * 10) + 1;
-    const my = Math.floor(rng() * 10) + 1;
-    const mc = rng() > 0.5 ? c.moss : c.mossDk;
-    const ml = rng() > 0.5 ? c.mossLt : c.moss;
-    p(ctx, ox, oy, mx, my, mc);
-    p(ctx, ox, oy, mx + 1, my, ml);
-    p(ctx, ox, oy, mx, my + 1, mc);
-    if (rng() > 0.4) p(ctx, ox, oy, mx + 1, my + 1, mc);
-    if (rng() > 0.6) p(ctx, ox, oy, mx - 1, my, c.mossDk);
-  }
-
-  // Fallen leaves — scattered, varied colors
-  const leafColors = [c.leaf, c.leafRed, c.leafGold, c.leafOrange];
-  const leafCount = 3 + (idx % 3);
-  for (let l = 0; l < leafCount; l++) {
-    const lx = Math.floor(rng() * 12) + 1;
-    const ly = Math.floor(rng() * 12) + 1;
-    const lc = leafColors[Math.floor(rng() * leafColors.length)];
-    p(ctx, ox, oy, lx, ly, lc);
-    // Some leaves are 2px (L-shaped or line)
-    if (rng() > 0.5) {
-      p(ctx, ox, oy, lx + (rng() > 0.5 ? 1 : 0), ly + (rng() > 0.5 ? 1 : 0), lc);
-    }
-  }
-
-  // Grass tufts — small V shapes along edges or scattered
-  const grassCount = 2 + (idx % 3);
-  for (let g = 0; g < grassCount; g++) {
-    const gx = Math.floor(rng() * 12) + 1;
-    const gy = Math.floor(rng() * 10) + 2;
-    const gc = rng() > 0.4 ? c.grass : c.grassDk;
-    const gl = c.grassLt;
-    p(ctx, ox, oy, gx, gy, gc);
-    p(ctx, ox, oy, gx - 1, gy - 1, gl);
-    p(ctx, ox, oy, gx + 1, gy - 1, gc);
-    if (rng() > 0.5) p(ctx, ox, oy, gx, gy - 1, gl);
-  }
-
-  // Root tendrils — thin brown lines
-  if (idx % 4 < 2) {
-    const rx = Math.floor(rng() * 8) + 2;
-    const ry = Math.floor(rng() * 8) + 2;
-    for (let i = 0; i < 3 + Math.floor(rng() * 3); i++) {
-      p(ctx, ox, oy, rx + i, ry + Math.floor(rng() * 2), c.root);
-    }
-  }
-
-  // Small pebbles
-  if (rng() > 0.5) {
-    const px2 = Math.floor(rng() * 12) + 1;
-    const py2 = Math.floor(rng() * 12) + 1;
-    p(ctx, ox, oy, px2, py2, c.pebble);
-    if (rng() > 0.6) p(ctx, ox, oy, px2 + 1, py2, c.pebbleLt);
-  }
+  // A few subtle variation pixels (faint green tint)
+  p(ctx, ox, oy, 3, 4, c.baseLt);
+  p(ctx, ox, oy, 9, 8, c.accent);
+  p(ctx, ox, oy, 6, 12, c.baseLt);
+  // One darker spot
+  p(ctx, ox, oy, 11, 2, c.accentDk);
 }
 
 function drawTree(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

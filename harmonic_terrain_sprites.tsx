@@ -27,23 +27,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#3a2a1a',
-    baseDark: '#2e2214',
-    plank1: '#42301c',
-    plank2: '#3e2c18',
-    plank3: '#362616',
-    grain: '#4a3822',
-    grainFine: '#3d2e1a',
-    grainHighlight: '#523e28',
-    knot: '#2a1e10',
-    knotRing: '#332614',
-    spotlight: '#5a4830',
-    spotlightBright: '#6a5838',
-    spotlightSoft: '#4e3e26',
-    markingTape: '#887040',
-    markingDim: '#6a5832',
-    gap: '#1e1608',
-    varnish: '#4e3c24',
+    base: '#181410',
+    baseLt: '#1c1812',
+    accent: '#201a14',
+    accentDk: '#14100c',
   },
   seat: {
     velvetDeep: '#6a1818',
@@ -164,74 +151,14 @@ function hash(a: number, b2: number): number {
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
-
-  // Base fill
+  // Dark wood floor base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-
-  // Individual planks with alternating shades (horizontal boards)
-  const plankColors = [c.plank1, c.plank2, c.plank3, c.plank1, c.plank2];
-  const plankYs = [0, 3, 6, 9, 12];
-  for (let pi = 0; pi < 5; pi++) {
-    const py = plankYs[pi];
-    const ph = pi < 4 ? 3 : 2;
-    b(ctx, ox, oy, 0, py, G, ph, plankColors[pi]);
-  }
-
-  // Plank gaps (dark lines between boards)
-  for (const gy of [2, 5, 8, 11]) {
-    for (let gx = 0; gx < G; gx++) {
-      p(ctx, ox, oy, gx, gy, c.gap);
-    }
-  }
-
-  // Wood grain lines within each plank
-  for (let gy = 0; gy < G; gy++) {
-    if (gy === 2 || gy === 5 || gy === 8 || gy === 11) continue; // skip gaps
-    for (let gx = 0; gx < G; gx++) {
-      const h = hash(gx, gy);
-      if (h < 15) p(ctx, ox, oy, gx, gy, c.grain);
-      else if (h < 22) p(ctx, ox, oy, gx, gy, c.grainFine);
-      else if (h < 26) p(ctx, ox, oy, gx, gy, c.grainHighlight);
-    }
-  }
-
-  // Longer grain streaks (2-3px horizontal lines)
-  p(ctx, ox, oy, 2, 1, c.grain); p(ctx, ox, oy, 3, 1, c.grain); p(ctx, ox, oy, 4, 1, c.grain);
-  p(ctx, ox, oy, 8, 0, c.grainHighlight); p(ctx, ox, oy, 9, 0, c.grainHighlight);
-  p(ctx, ox, oy, 1, 4, c.grain); p(ctx, ox, oy, 2, 4, c.grain);
-  p(ctx, ox, oy, 10, 3, c.grainHighlight); p(ctx, ox, oy, 11, 3, c.grainHighlight); p(ctx, ox, oy, 12, 3, c.grainHighlight);
-  p(ctx, ox, oy, 5, 7, c.grain); p(ctx, ox, oy, 6, 7, c.grain); p(ctx, ox, oy, 7, 7, c.grain);
-  p(ctx, ox, oy, 0, 10, c.grainHighlight); p(ctx, ox, oy, 1, 10, c.grainHighlight);
-  p(ctx, ox, oy, 9, 9, c.grain); p(ctx, ox, oy, 10, 9, c.grain);
-  p(ctx, ox, oy, 3, 13, c.grain); p(ctx, ox, oy, 4, 13, c.grain); p(ctx, ox, oy, 5, 13, c.grain);
-  p(ctx, ox, oy, 11, 12, c.grainHighlight); p(ctx, ox, oy, 12, 12, c.grainHighlight);
-
-  // Wood knots
-  p(ctx, ox, oy, 10, 4, c.knot);
-  p(ctx, ox, oy, 9, 3, c.knotRing); p(ctx, ox, oy, 11, 3, c.knotRing);
-  p(ctx, ox, oy, 9, 4, c.knotRing); p(ctx, ox, oy, 11, 4, c.knotRing);
-  p(ctx, ox, oy, 4, 10, c.knot);
-  p(ctx, ox, oy, 3, 10, c.knotRing); p(ctx, ox, oy, 5, 10, c.knotRing);
-
-  // Spotlight reflection (soft warm glow, center-ish)
-  p(ctx, ox, oy, 6, 6, c.spotlightSoft); p(ctx, ox, oy, 7, 6, c.spotlightSoft);
-  p(ctx, ox, oy, 6, 7, c.spotlight); p(ctx, ox, oy, 7, 7, c.spotlightBright);
-  p(ctx, ox, oy, 8, 7, c.spotlight); p(ctx, ox, oy, 5, 7, c.spotlightSoft);
-  p(ctx, ox, oy, 7, 8, c.spotlightSoft);
-
-  // Stage marking tape (subtle line near bottom)
-  p(ctx, ox, oy, 2, 12, c.markingDim); p(ctx, ox, oy, 3, 12, c.markingTape);
-  p(ctx, ox, oy, 4, 12, c.markingTape); p(ctx, ox, oy, 5, 12, c.markingDim);
-
-  // Varnish sheen (top-left highlight)
-  p(ctx, ox, oy, 0, 0, c.varnish); p(ctx, ox, oy, 1, 0, c.varnish);
-  p(ctx, ox, oy, 0, 1, c.varnish);
-
-  // Subtle tile border
-  ctx.strokeStyle = c.gap;
-  ctx.globalAlpha = 0.15;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // A few subtle texture pixels (faint warm brown tint)
+  p(ctx, ox, oy, 4, 6, c.baseLt);
+  p(ctx, ox, oy, 11, 3, c.accent);
+  p(ctx, ox, oy, 2, 10, c.baseLt);
+  // One darker spot
+  p(ctx, ox, oy, 8, 8, c.accentDk);
 }
 
 function drawSeat(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

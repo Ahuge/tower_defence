@@ -124,6 +124,13 @@ const FACTION_TERRAINS: FactionTerrain[] = [
     groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
     typeMapping: { stone: 'blocked', water: 'animated' },
   },
+  {
+    themeId: 'marble',
+    tilesetKey: 'terrain_celestial', doodadKey: 'terrain_celestial_doodads',
+    path: 'assets/terrain/celestial_terrain_tileset.png', doodadPath: 'assets/terrain/celestial_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { stone: 'blocked', water: 'animated' },
+  },
 ];
 
 export class TerrainManager {
@@ -254,8 +261,8 @@ export class TerrainManager {
     this.groundGraphics.fillRect(gridLeftX(0), oY, cols * TILE_SIZE, rows * TILE_SIZE);
 
     // Grid lines — only on buildable cells (skip Blocked + NoBuild)
-    const gridLineColor = this.themeColors.gridLine ?? 0x333333;
-    this.groundGraphics.lineStyle(1, gridLineColor, 0.15);
+    const gridLineColor = this.themeColors.gridLine ?? 0x555555;
+    this.groundGraphics.lineStyle(1, gridLineColor, 0.25);
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = grid.cells[r][c];

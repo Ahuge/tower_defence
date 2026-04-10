@@ -25,23 +25,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#1a1a18',
-    baseLt: '#1e1e1c',
-    baseDk: '#141412',
-    plate1: '#1c1c1a',
-    plate2: '#181816',
-    joint: '#2a2a28',
-    jointDk: '#222220',
-    bolt: '#3a3a36',
-    boltHi: '#484844',
-    boltShadow: '#161614',
-    scratch: '#2e2e2a',
-    scratchHi: '#343430',
-    wear: '#252522',
-    oil: '#12120e',
-    oilSheen: '#1a1a14',
-    edgeLt: '#252524',
-    edgeDk: '#111110',
+    base: '#141413',
+    baseLt: '#181816',
+    accent: '#1c1c1a',
+    accentDk: '#101010',
   },
   machine: {
     fill: '#8a7a44',
@@ -170,65 +157,14 @@ function hasW(idx: number) { return !!(idx & 1); }
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
-  // Base fill with subtle variation — two plate sections
-  b(ctx, ox, oy, 0, 0, 7, 7, c.plate1);
-  b(ctx, ox, oy, 7, 0, 7, 7, c.plate2);
-  b(ctx, ox, oy, 0, 7, 7, 7, c.plate2);
-  b(ctx, ox, oy, 7, 7, 7, 7, c.plate1);
-
-  // Plate joint lines (horizontal and vertical)
-  for (let gy = 0; gy < G; gy++) {
-    p(ctx, ox, oy, 0, gy, c.joint);
-    p(ctx, ox, oy, 7, gy, c.jointDk);
-    p(ctx, ox, oy, 13, gy, c.joint);
-  }
-  for (let gx = 0; gx < G; gx++) {
-    p(ctx, ox, oy, gx, 0, c.joint);
-    p(ctx, ox, oy, gx, 7, c.jointDk);
-    p(ctx, ox, oy, gx, 13, c.joint);
-  }
-
-  // Bolt pattern — corner bolts of each plate quadrant
-  const boltPositions = [
-    [1, 1], [5, 1], [8, 1], [12, 1],
-    [1, 5], [5, 5], [8, 5], [12, 5],
-    [1, 8], [5, 8], [8, 8], [12, 8],
-    [1, 12], [5, 12], [8, 12], [12, 12],
-  ];
-  for (const [bx, by] of boltPositions) {
-    p(ctx, ox, oy, bx, by, c.bolt);
-    // Bolt highlight (top-left pixel shimmer)
-    if (((bx + by) % 3) === 0) p(ctx, ox, oy, bx, by, c.boltHi);
-  }
-
-  // Wear marks — subtle lighter scratches across plates
-  p(ctx, ox, oy, 2, 3, c.scratch); p(ctx, ox, oy, 3, 3, c.scratch); p(ctx, ox, oy, 4, 3, c.scratchHi);
-  p(ctx, ox, oy, 9, 2, c.scratch); p(ctx, ox, oy, 10, 2, c.scratch);
-  p(ctx, ox, oy, 3, 10, c.wear); p(ctx, ox, oy, 4, 10, c.scratch); p(ctx, ox, oy, 5, 10, c.scratch);
-  p(ctx, ox, oy, 10, 9, c.scratch); p(ctx, ox, oy, 11, 9, c.scratchHi); p(ctx, ox, oy, 11, 10, c.scratch);
-
-  // Oil stain — dark irregular patch on one plate
-  p(ctx, ox, oy, 9, 4, c.oil); p(ctx, ox, oy, 10, 4, c.oil);
-  p(ctx, ox, oy, 9, 5, c.oil); p(ctx, ox, oy, 10, 5, c.oilSheen);
-  p(ctx, ox, oy, 11, 5, c.oil);
-
-  // Diamond plate texture dots — subtle non-slip pattern
-  p(ctx, ox, oy, 3, 9, c.edgeLt);
-  p(ctx, ox, oy, 5, 11, c.edgeLt);
-  p(ctx, ox, oy, 2, 11, c.edgeDk);
-  p(ctx, ox, oy, 9, 11, c.edgeLt);
-  p(ctx, ox, oy, 11, 12, c.edgeDk);
-
-  // Edge highlight/shadow for depth
-  for (let i = 0; i < G; i++) {
-    p(ctx, ox, oy, i, 0, c.edgeLt);
-    p(ctx, ox, oy, 0, i, c.edgeLt);
-  }
-
-  ctx.strokeStyle = c.jointDk;
-  ctx.globalAlpha = 0.15;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // Dark steel plate base
+  b(ctx, ox, oy, 0, 0, G, G, c.base);
+  // A few subtle variation pixels (slight metallic warmth)
+  p(ctx, ox, oy, 4, 3, c.baseLt);
+  p(ctx, ox, oy, 11, 7, c.accent);
+  p(ctx, ox, oy, 2, 10, c.baseLt);
+  // One darker depression
+  p(ctx, ox, oy, 8, 5, c.accentDk);
 }
 
 function drawMachine(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
@@ -548,17 +484,17 @@ function drawNoBuild(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx:
   // Floor area above and below belt
   // Top floor
   for (let gx = 0; gx < G; gx += 7) {
-    for (let gy = 0; gy < 3; gy++) p(ctx, ox, oy, gx, gy, PAL.ground.joint);
+    for (let gy = 0; gy < 3; gy++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
   }
   for (let gy = 0; gy < 3; gy += 2) {
-    for (let gx = 0; gx < G; gx++) p(ctx, ox, oy, gx, gy, PAL.ground.joint);
+    for (let gx = 0; gx < G; gx++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
   }
   // Bottom floor
   for (let gx = 0; gx < G; gx += 7) {
-    for (let gy = 11; gy < G; gy++) p(ctx, ox, oy, gx, gy, PAL.ground.joint);
+    for (let gy = 11; gy < G; gy++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
   }
   for (let gy = 11; gy < G; gy += 2) {
-    for (let gx = 0; gx < G; gx++) p(ctx, ox, oy, gx, gy, PAL.ground.joint);
+    for (let gx = 0; gx < G; gx++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
   }
 
   // Vertical rail connections for N/S neighbors

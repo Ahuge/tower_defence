@@ -40,16 +40,9 @@ const PAL = {
   // Ground — circuit board floor
   ground: {
     base: '#080e12',
-    baseDark: '#060a0e',
-    trace: '#0e1a20',
-    traceHi: '#142228',
-    hex: '#0c1418',
-    hexEdge: '#101c22',
-    ledCyan: '#00ccff',
-    ledCyanDim: '#005566',
-    ledGreen: '#00ff88',
-    ledGreenDim: '#004422',
-    dot: '#0a1418',
+    baseLt: '#0a1115',
+    accent: '#0c1418',
+    accentDk: '#060a0e',
   },
   // Server mainframe (blocked type 1)
   server: {
@@ -147,102 +140,17 @@ function seededRand(seed: number): () => number {
 
 // ===================== TERRAIN DRAWERS =====================
 
-/** Row 0: Circuit board floor (ground) — dark floor with circuit traces, LED dots, hex patterns */
+/** Row 0: Circuit board floor (ground) — dark floor with barely-visible circuit texture */
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
   const c = PAL.ground;
-  const rng = seededRand(idx * 137 + 42);
-
-  // Dark base fill
+  // Very dark tech-floor base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-
-  // Subtle checkerboard base texture
-  for (let gx = 0; gx < G; gx++) {
-    for (let gy = 0; gy < G; gy++) {
-      if ((gx + gy) % 2 === 0) {
-        p(ctx, ox, oy, gx, gy, c.baseDark);
-      }
-    }
-  }
-
-  // Hexagonal pattern overlay (offset hex grid)
-  for (let gy = 1; gy < G - 1; gy += 4) {
-    const xOff = (Math.floor(gy / 4) % 2) * 3;
-    for (let gx = xOff; gx < G; gx += 6) {
-      // Hex outline points
-      const cx = gx + 2, cy = gy + 1;
-      if (cx >= 0 && cx < G - 2 && cy >= 0 && cy < G - 2) {
-        p(ctx, ox, oy, cx, cy - 1, c.hexEdge);
-        p(ctx, ox, oy, cx + 1, cy - 1, c.hexEdge);
-        p(ctx, ox, oy, cx - 1, cy, c.hex);
-        p(ctx, ox, oy, cx + 2, cy, c.hex);
-        p(ctx, ox, oy, cx - 1, cy + 1, c.hex);
-        p(ctx, ox, oy, cx + 2, cy + 1, c.hex);
-        p(ctx, ox, oy, cx, cy + 2, c.hexEdge);
-        p(ctx, ox, oy, cx + 1, cy + 2, c.hexEdge);
-      }
-    }
-  }
-
-  // Circuit trace lines — horizontal
-  for (let gy = 3; gy < G; gy += 5) {
-    for (let gx = 0; gx < G; gx++) {
-      p(ctx, ox, oy, gx, gy, c.trace);
-    }
-    // Brighter trace segments
-    const seg = Math.floor(rng() * 8) + 2;
-    for (let gx = seg; gx < Math.min(seg + 4, G); gx++) {
-      p(ctx, ox, oy, gx, gy, c.traceHi);
-    }
-  }
-
-  // Circuit trace lines — vertical
-  for (let gx = 4; gx < G; gx += 6) {
-    for (let gy = 0; gy < G; gy++) {
-      p(ctx, ox, oy, gx, gy, c.trace);
-    }
-  }
-
-  // Via/solder pad at trace intersections
-  for (let gx = 4; gx < G; gx += 6) {
-    for (let gy = 3; gy < G; gy += 5) {
-      p(ctx, ox, oy, gx, gy, c.traceHi);
-      if (gx > 0) p(ctx, ox, oy, gx - 1, gy, c.trace);
-      if (gx < G - 1) p(ctx, ox, oy, gx + 1, gy, c.trace);
-      if (gy > 0) p(ctx, ox, oy, gx, gy - 1, c.trace);
-      if (gy < G - 1) p(ctx, ox, oy, gx, gy + 1, c.trace);
-    }
-  }
-
-  // LED indicator dots — small colored points scattered
-  const ledPositions = [
-    [1, 1], [7, 2], [12, 5], [3, 10], [10, 11], [5, 7]
-  ];
-  for (let i = 0; i < ledPositions.length; i++) {
-    const lp = ledPositions[i];
-    const lx = (lp[0] + idx * 3) % G;
-    const ly = (lp[1] + idx * 2) % G;
-    if (rng() > 0.5) {
-      p(ctx, ox, oy, lx, ly, rng() > 0.5 ? c.ledCyanDim : c.ledGreenDim);
-    }
-  }
-
-  // One or two bright LEDs per tile
-  const bx = (2 + idx * 5) % (G - 2) + 1;
-  const by = (3 + idx * 3) % (G - 2) + 1;
-  p(ctx, ox, oy, bx, by, idx % 3 === 0 ? c.ledCyan : c.ledGreen);
-
-  // Tiny L-shaped trace fragments for detail
-  const fx = Math.floor(rng() * 10) + 1;
-  const fy = Math.floor(rng() * 10) + 1;
-  p(ctx, ox, oy, fx, fy, c.traceHi);
-  p(ctx, ox, oy, fx + 1, fy, c.traceHi);
-  p(ctx, ox, oy, fx + 1, fy + 1, c.traceHi);
-
-  // Faint border
-  ctx.strokeStyle = c.trace;
-  ctx.globalAlpha = 0.15;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // A few subtle texture pixels (faint cyan-teal tint)
+  p(ctx, ox, oy, 4, 7, c.baseLt);
+  p(ctx, ox, oy, 11, 3, c.accent);
+  p(ctx, ox, oy, 2, 12, c.baseLt);
+  // One darker spot
+  p(ctx, ox, oy, 9, 10, c.accentDk);
 }
 
 /** Row 1: Server mainframe (blocked type 1) — rack servers with LEDs, fans, cables */
@@ -518,7 +426,7 @@ function drawNoBuild(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx:
   // Subtle floor texture
   for (let gx = 0; gx < G; gx += 4) {
     for (let gy = 0; gy < G; gy++) {
-      p(ctx, ox, oy, gx, gy, PAL.ground.trace);
+      p(ctx, ox, oy, gx, gy, PAL.ground.accent);
     }
   }
 

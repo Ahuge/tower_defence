@@ -26,14 +26,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#2a2828',
-    baseLt: '#302e2e',
-    dirt: '#332e24',
-    crack: '#1e1e1c',
-    pebble: '#3a3836',
-    marking: '#3a3838',
-    markingBrt: '#444440',
-    puddle: '#252832',
+    base: '#1a1918',
+    baseLt: '#1e1d1c',
+    accent: '#211f1e',
+    accentDk: '#151414',
   },
   building: {
     wall: '#585550',
@@ -121,30 +117,14 @@ function tileRand(idx: number, seed: number): number {
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
+  // Dark concrete/dirt base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-  // Subtle concrete texture variation
-  for (let gx = 0; gx < G; gx += 2) {
-    for (let gy = 0; gy < G; gy += 2) {
-      if ((gx + gy) % 4 === 0) p(ctx, ox, oy, gx, gy, c.baseLt);
-    }
-  }
-  // Dirt patches
-  b(ctx, ox, oy, 1, 9, 3, 2, c.dirt);
-  p(ctx, ox, oy, 10, 3, c.dirt); p(ctx, ox, oy, 11, 4, c.dirt);
-  // Cracks (longer, more natural)
-  p(ctx, ox, oy, 3, 2, c.crack); p(ctx, ox, oy, 4, 3, c.crack);
-  p(ctx, ox, oy, 5, 3, c.crack); p(ctx, ox, oy, 5, 4, c.crack);
-  p(ctx, ox, oy, 9, 8, c.crack); p(ctx, ox, oy, 10, 9, c.crack);
-  p(ctx, ox, oy, 10, 10, c.crack); p(ctx, ox, oy, 11, 10, c.crack);
-  // Road marking (faded dashes)
-  for (let gx = 1; gx < G; gx += 4) {
-    b(ctx, ox, oy, gx, 6, 2, 1, c.marking);
-  }
-  // Pebbles and small debris
-  p(ctx, ox, oy, 1, 4, c.pebble); p(ctx, ox, oy, 7, 11, c.pebble);
-  p(ctx, ox, oy, 12, 2, c.pebble); p(ctx, ox, oy, 8, 1, c.pebble);
-  // Small puddle
-  p(ctx, ox, oy, 6, 12, c.puddle); p(ctx, ox, oy, 7, 12, c.puddle);
+  // A few subtle worn spots (neutral grey tint)
+  p(ctx, ox, oy, 5, 3, c.baseLt);
+  p(ctx, ox, oy, 10, 8, c.accent);
+  p(ctx, ox, oy, 2, 11, c.baseLt);
+  // One darker depression
+  p(ctx, ox, oy, 8, 5, c.accentDk);
 }
 
 function drawBuilding(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

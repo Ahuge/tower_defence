@@ -31,18 +31,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#f0ebe0',
-    baseWarm: '#ede6d4',
-    vein: '#d8d0c0',
-    veinLight: '#e2dbd0',
-    gold: '#c8a848',
-    goldDim: '#b89838',
-    goldBright: '#e0c868',
-    mosaic: '#d0c8b8',
-    mosaicDark: '#c0b8a8',
-    gridLine: '#e0d8cc',
-    shadow: '#cdc5b5',
-    highlight: '#faf6ee',
+    base: '#1e1c18',
+    baseLt: '#222019',
+    accent: '#25221c',
+    accentGold: '#2a2518',
   },
   pillar: {
     fill: '#ddd6c8',
@@ -126,53 +118,14 @@ function hasW(idx: number) { return !!(idx & 1); }
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
-  // Base marble fill
+  // Dark marble base (warm grey)
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-  // Alternating warm/cool marble patches for depth
-  for (let gy = 0; gy < G; gy += 2) {
-    for (let gx = (gy % 4 === 0 ? 0 : 1); gx < G; gx += 3) {
-      p(ctx, ox, oy, gx, gy, c.baseWarm);
-    }
-  }
-  // Marble vein pattern — diagonal streaks
-  p(ctx, ox, oy, 1, 2, c.vein); p(ctx, ox, oy, 2, 3, c.vein); p(ctx, ox, oy, 3, 4, c.veinLight);
-  p(ctx, ox, oy, 4, 4, c.vein);
-  p(ctx, ox, oy, 8, 1, c.veinLight); p(ctx, ox, oy, 9, 2, c.vein); p(ctx, ox, oy, 10, 3, c.vein);
-  p(ctx, ox, oy, 11, 3, c.veinLight);
-  p(ctx, ox, oy, 5, 8, c.vein); p(ctx, ox, oy, 6, 9, c.veinLight); p(ctx, ox, oy, 7, 10, c.vein);
-  p(ctx, ox, oy, 2, 10, c.veinLight); p(ctx, ox, oy, 3, 11, c.vein);
-  p(ctx, ox, oy, 10, 8, c.vein); p(ctx, ox, oy, 11, 9, c.veinLight); p(ctx, ox, oy, 12, 10, c.vein);
-  // Mosaic tile grid lines — classical geometric pattern
-  for (let i = 0; i < G; i += 7) {
-    for (let gy = 0; gy < G; gy++) p(ctx, ox, oy, i, gy, c.gridLine);
-    for (let gx = 0; gx < G; gx++) p(ctx, ox, oy, gx, i, c.gridLine);
-  }
-  // Gold inlay border around tile edges
-  for (let i = 0; i < G; i++) {
-    p(ctx, ox, oy, i, 0, c.goldDim);
-    p(ctx, ox, oy, i, G - 1, c.goldDim);
-    p(ctx, ox, oy, 0, i, c.goldDim);
-    p(ctx, ox, oy, G - 1, i, c.goldDim);
-  }
-  // Gold corner accents
-  p(ctx, ox, oy, 0, 0, c.gold); p(ctx, ox, oy, 1, 0, c.gold); p(ctx, ox, oy, 0, 1, c.gold);
-  p(ctx, ox, oy, G - 1, 0, c.gold); p(ctx, ox, oy, G - 2, 0, c.gold); p(ctx, ox, oy, G - 1, 1, c.gold);
-  p(ctx, ox, oy, 0, G - 1, c.gold); p(ctx, ox, oy, 1, G - 1, c.gold); p(ctx, ox, oy, 0, G - 2, c.gold);
-  p(ctx, ox, oy, G - 1, G - 1, c.gold); p(ctx, ox, oy, G - 2, G - 1, c.gold); p(ctx, ox, oy, G - 1, G - 2, c.gold);
-  // Gold inlay center diamond motif
-  p(ctx, ox, oy, 7, 5, c.goldDim); p(ctx, ox, oy, 6, 6, c.goldDim);
-  p(ctx, ox, oy, 8, 6, c.goldDim); p(ctx, ox, oy, 7, 7, c.goldDim);
-  p(ctx, ox, oy, 7, 6, c.goldBright);
-  // Subtle mosaic triangle in corner
-  p(ctx, ox, oy, 2, 2, c.mosaic); p(ctx, ox, oy, 3, 2, c.mosaicDark);
-  p(ctx, ox, oy, 2, 3, c.mosaicDark);
-  p(ctx, ox, oy, 10, 10, c.mosaic); p(ctx, ox, oy, 11, 10, c.mosaicDark);
-  p(ctx, ox, oy, 10, 11, c.mosaicDark);
-  // Highlight reflections
-  p(ctx, ox, oy, 5, 3, c.highlight); p(ctx, ox, oy, 9, 7, c.highlight);
-  p(ctx, ox, oy, 3, 9, c.highlight); p(ctx, ox, oy, 11, 5, c.highlight);
-  // Shadow specks
-  p(ctx, ox, oy, 4, 6, c.shadow); p(ctx, ox, oy, 9, 11, c.shadow);
+  // A few subtle variation pixels (faint warm/gold tint)
+  p(ctx, ox, oy, 4, 5, c.baseLt);
+  p(ctx, ox, oy, 10, 3, c.accent);
+  p(ctx, ox, oy, 7, 11, c.baseLt);
+  // One slightly warmer spot
+  p(ctx, ox, oy, 2, 9, c.accentGold);
 }
 
 function drawPillar(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

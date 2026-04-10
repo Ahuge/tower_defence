@@ -30,6 +30,7 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'terrain-infernal': () => import('../infernal_terrain_sprites'),
   'terrain-psionic': () => import('../psionic_terrain_sprites'),
   'terrain-harmonic': () => import('../harmonic_terrain_sprites'),
+  'terrain-celestial': () => import('../celestial_terrain_sprites'),
   'creeps-arcane': () => import('../arcane_creep_sprites'),
   'creeps-mechanical': () => import('../mechanical_creep_sprites'),
   'creeps-nature': () => import('../nature_creep_sprites'),
@@ -41,6 +42,7 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'creeps-celestial': () => import('../celestial_creep_sprites'),
   'creeps-psionic': () => import('../psionic_creep_sprites'),
   'creeps-harmonic': () => import('../harmonic_creep_sprites'),
+  'gauntlet-maps': () => import('../gauntlet_map_preview'),
 };
 
 /** Maps module → directory name and expected canvas names (for ZIP download) */
@@ -81,6 +83,7 @@ const FACTION_FILE_MAP: Record<string, { dir: string; canvases: string[] }> = {
   'terrain-infernal':   { dir: 'terrain', canvases: ['infernal_terrain_tileset', 'infernal_terrain_doodads'] },
   'terrain-psionic':    { dir: 'terrain', canvases: ['psionic_terrain_tileset', 'psionic_terrain_doodads'] },
   'terrain-harmonic':   { dir: 'terrain', canvases: ['harmonic_terrain_tileset', 'harmonic_terrain_doodads'] },
+  'terrain-celestial':  { dir: 'terrain', canvases: ['celestial_terrain_tileset', 'celestial_terrain_doodads'] },
 };
 
 /** Mobile unit file mapping */

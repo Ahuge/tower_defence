@@ -29,17 +29,9 @@ const DOODAD_ROWS = 1;
 const PAL = {
   ground: {
     base: '#08061a',
-    obsidian: '#0c0a1e',
-    obsidianLight: '#120e28',
-    crack: '#6622aa',
-    crackBright: '#9933dd',
-    crackGlow: '#44117788',
-    voidEnergy: '#cc44ff',
-    starDim: '#332255',
-    starBright: '#9966cc',
-    starTiny: '#554477',
-    instability: '#1a1133',
-    edgeDark: '#060412',
+    baseLt: '#0a081e',
+    accent: '#0e0b22',
+    accentDim: '#120e28',
   },
   rock: {
     base: '#0a0620',
@@ -138,66 +130,14 @@ function seeded(seed: number) {
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
-  const rng = seeded(ox * 7 + 31);
-
-  // Base obsidian surface
+  // Near-black obsidian base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-
-  // Obsidian texture variation — random dark patches
-  for (let gy = 0; gy < G; gy++) {
-    for (let gx = 0; gx < G; gx++) {
-      const r = rng();
-      if (r < 0.25) p(ctx, ox, oy, gx, gy, c.obsidian);
-      else if (r < 0.35) p(ctx, ox, oy, gx, gy, c.obsidianLight);
-      else if (r < 0.38) p(ctx, ox, oy, gx, gy, c.instability);
-    }
-  }
-
-  // Crack network — jagged lines with purple void energy underneath
-  // Main diagonal crack
-  const crackPts: [number, number][] = [
-    [1, 2], [2, 3], [3, 3], [4, 4], [5, 4], [5, 5], [6, 6], [7, 6],
-    [8, 7], [9, 7], [10, 8], [10, 9], [11, 10], [12, 10], [12, 11]
-  ];
-  for (const [cx, cy] of crackPts) {
-    p(ctx, ox, oy, cx, cy, c.crack);
-    // Glow around crack
-    if (rng() > 0.4) p(ctx, ox, oy, cx + 1, cy, c.starDim);
-    if (rng() > 0.5) p(ctx, ox, oy, cx, cy + 1, c.starDim);
-  }
-  // Bright energy spots in the crack
-  p(ctx, ox, oy, 3, 3, c.crackBright);
-  p(ctx, ox, oy, 6, 6, c.voidEnergy);
-  p(ctx, ox, oy, 10, 8, c.crackBright);
-
-  // Secondary crack (shorter, branching)
-  p(ctx, ox, oy, 5, 5, c.crack);
-  p(ctx, ox, oy, 4, 6, c.crackBright);
-  p(ctx, ox, oy, 3, 7, c.crack);
-  p(ctx, ox, oy, 3, 8, c.starDim);
-
-  // Another branch from main crack
-  p(ctx, ox, oy, 8, 7, c.crack);
-  p(ctx, ox, oy, 8, 8, c.crackBright);
-  p(ctx, ox, oy, 9, 9, c.crack);
-  p(ctx, ox, oy, 9, 10, c.starDim);
-
-  // Starfield particles — tiny points of light scattered on the obsidian
-  p(ctx, ox, oy, 1, 1, c.starBright);
-  p(ctx, ox, oy, 11, 2, c.starTiny);
-  p(ctx, ox, oy, 3, 10, c.starTiny);
-  p(ctx, ox, oy, 12, 5, c.starBright);
-  p(ctx, ox, oy, 0, 7, c.starTiny);
-  p(ctx, ox, oy, 8, 1, c.starDim);
-  p(ctx, ox, oy, 13, 12, c.starTiny);
-  p(ctx, ox, oy, 2, 12, c.starDim);
-  p(ctx, ox, oy, 7, 11, c.starTiny);
-
-  // Dimensional instability shimmer — faint edge glow
-  ctx.strokeStyle = c.edgeDark;
-  ctx.globalAlpha = 0.25;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // A few barely-visible texture pixels (faint purple tint)
+  p(ctx, ox, oy, 4, 3, c.baseLt);
+  p(ctx, ox, oy, 10, 9, c.accent);
+  p(ctx, ox, oy, 7, 6, c.baseLt);
+  // One slightly lighter worn spot
+  p(ctx, ox, oy, 1, 11, c.accentDim);
 }
 
 function drawRock(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {

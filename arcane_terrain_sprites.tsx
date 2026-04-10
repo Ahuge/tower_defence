@@ -31,19 +31,10 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#141020',
-    baseLt: '#181428',
-    stone1: '#1c1830',
-    stone2: '#201c38',
-    stone3: '#151225',
-    grout: '#100c1c',
-    vein: '#2a1848',
-    veinGlow: '#3d2068',
-    veinBright: '#5530a0',
-    crystalDust: '#2e2050',
-    gemShard: '#6644aa',
-    gemShardBright: '#8866dd',
-    shimmer: '#4a3878',
+    base: '#0e0b18',
+    baseLt: '#110e1c',
+    accent: '#161220',
+    accentLt: '#1a1525',
   },
   crystal: {
     base: '#2a1848',
@@ -148,72 +139,15 @@ function tileRng(seed: number) {
 
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
-  const rng = tileRng(ox * 31 + oy * 17);
-
-  // Base fill
+  // Dark base fill
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-
-  // Mosaic stone texture — irregular flagstone pattern
-  // Stone blocks with grout lines
-  const stoneColors = [c.base, c.baseLt, c.stone1, c.stone2, c.stone3];
-  for (let gy = 0; gy < G; gy++) {
-    for (let gx = 0; gx < G; gx++) {
-      // Grout lines at irregular intervals
-      const isGroutH = (gy === 0 || gy === 4 || gy === 7 || gy === 10 || gy === 13);
-      const isGroutV = (gy < 4) ? (gx === 0 || gx === 5 || gx === 9 || gx === 13)
-        : (gy < 7) ? (gx === 0 || gx === 3 || gx === 8 || gx === 12)
-        : (gy < 10) ? (gx === 0 || gx === 6 || gx === 10 || gx === 13)
-        : (gx === 0 || gx === 4 || gx === 9 || gx === 13);
-      if (isGroutH || isGroutV) {
-        p(ctx, ox, oy, gx, gy, c.grout);
-      } else {
-        // Each stone block gets a slightly different shade
-        const blockId = Math.floor(gy / 4) * 4 + Math.floor(gx / 4);
-        p(ctx, ox, oy, gx, gy, stoneColors[(blockId * 3 + 1) % stoneColors.length]);
-      }
-    }
-  }
-
-  // Magical vein cracks — glowing faint purple
-  // Diagonal vein from top-left area toward center
-  p(ctx, ox, oy, 2, 1, c.vein);
-  p(ctx, ox, oy, 3, 2, c.vein);
-  p(ctx, ox, oy, 4, 2, c.veinGlow);
-  p(ctx, ox, oy, 5, 3, c.vein);
-  p(ctx, ox, oy, 5, 4, c.veinGlow);
-  p(ctx, ox, oy, 6, 5, c.veinBright);
-  p(ctx, ox, oy, 6, 6, c.veinGlow);
-
-  // Second vein from bottom-right
-  p(ctx, ox, oy, 11, 12, c.vein);
-  p(ctx, ox, oy, 10, 11, c.veinGlow);
-  p(ctx, ox, oy, 9, 11, c.vein);
-  p(ctx, ox, oy, 9, 10, c.veinGlow);
-  p(ctx, ox, oy, 8, 9, c.veinBright);
-
-  // Crystal dust specks scattered
-  p(ctx, ox, oy, 1, 6, c.crystalDust);
-  p(ctx, ox, oy, 8, 2, c.crystalDust);
-  p(ctx, ox, oy, 12, 5, c.crystalDust);
-  p(ctx, ox, oy, 3, 11, c.crystalDust);
-  p(ctx, ox, oy, 10, 8, c.crystalDust);
-
-  // Tiny embedded gem shards — bright sparkle pixels
-  p(ctx, ox, oy, 3, 8, c.gemShard);
-  p(ctx, ox, oy, 11, 3, c.gemShardBright);
-  p(ctx, ox, oy, 7, 12, c.gemShard);
-
-  // Shimmer highlights on stone edges
-  p(ctx, ox, oy, 6, 1, c.shimmer);
-  p(ctx, ox, oy, 10, 5, c.shimmer);
-  p(ctx, ox, oy, 2, 9, c.shimmer);
-  p(ctx, ox, oy, 12, 11, c.shimmer);
-
-  // Subtle border
-  ctx.strokeStyle = c.grout;
-  ctx.globalAlpha = 0.3;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // A few subtle darker depression pixels
+  p(ctx, ox, oy, 3, 5, c.baseLt);
+  p(ctx, ox, oy, 10, 2, c.baseLt);
+  p(ctx, ox, oy, 7, 11, c.accent);
+  // A couple faint lighter worn spots (very subtle purple tint)
+  p(ctx, ox, oy, 5, 8, c.accentLt);
+  p(ctx, ox, oy, 12, 6, c.accent);
 }
 
 function drawCrystal(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
