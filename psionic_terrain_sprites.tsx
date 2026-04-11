@@ -320,6 +320,49 @@ function drawEnergy(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: 
   const c = PAL.energy;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
 
+  // Variant 15 (all NESW neighbors): seamless interior tile — no edges, no centered rings
+  if (idx === 15) {
+    // Smooth psionic energy surface filling entire tile
+    b(ctx, ox, oy, 0, 0, G, G, c.bg);
+
+    // Tiling-safe energy texture — uses modular coords so pattern wraps seamlessly
+    for (let gy = 0; gy < G; gy++) {
+      for (let gx = 0; gx < G; gx++) {
+        // Base energy field with tiling-safe pattern (no center bias)
+        if ((gx + gy + frame) % 3 === 0) p(ctx, ox, oy, gx, gy, c.bgLt);
+        if ((gx * 2 + gy * 5 + frame) % 7 === 0) p(ctx, ox, oy, gx, gy, c.ring0);
+        // Purple/cyan ripple bands that tile seamlessly
+        const wave = Math.sin((gx + frame * 2) * 0.45) + Math.cos((gy + frame * 1.7) * 0.45);
+        if (wave > 0.8) p(ctx, ox, oy, gx, gy, c.ring1);
+        if (wave > 1.2) p(ctx, ox, oy, gx, gy, c.ring2);
+        if (wave > 1.5) p(ctx, ox, oy, gx, gy, c.ring3);
+      }
+    }
+
+    // Scattered glow highlights — positions wrap-safe via modular arithmetic
+    for (let gy = 0; gy < G; gy++) {
+      for (let gx = 0; gx < G; gx++) {
+        if ((gx * 7 + gy * 13 + frame * 3) % 17 === 0) p(ctx, ox, oy, gx, gy, c.shimmer);
+        if ((gx * 11 + gy * 3 + frame * 5) % 23 === 0) p(ctx, ox, oy, gx, gy, c.ring4);
+        if ((gx * 5 + gy * 9 + frame * 7) % 29 === 0) p(ctx, ox, oy, gx, gy, c.particleBright);
+      }
+    }
+
+    // Soft animated glow patches (frame-dependent, no edge artifacts)
+    const glowSpots = [
+      { x: (3 + frame * 4) % G, y: (2 + frame * 3) % G },
+      { x: (10 - frame * 2 + G) % G, y: (8 + frame * 2) % G },
+      { x: (6 + frame) % G, y: (11 - frame + G) % G },
+    ];
+    for (const gs of glowSpots) {
+      p(ctx, ox, oy, gs.x, gs.y, c.ring5);
+      if (gs.x + 1 < G) p(ctx, ox, oy, gs.x + 1, gs.y, c.ring3);
+      if (gs.y + 1 < G) p(ctx, ox, oy, gs.x, gs.y + 1, c.ring3);
+    }
+
+    return;
+  }
+
   // Deep void background
   b(ctx, ox, oy, 0, 0, G, G, c.void);
 

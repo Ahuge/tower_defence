@@ -218,6 +218,47 @@ function drawPillar(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: 
 function drawDivine(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number, frame: number) {
   const c = PAL.divine;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
+
+  // Variant 15 (all NESW neighbors) — pure interior tile, seamless holy water surface
+  if (idx === 15) {
+    // Smooth golden/blessed water base — no edges, no borders
+    b(ctx, ox, oy, 0, 0, G, G, c.warmGlow);
+    // Subtle warm variation across the surface
+    b(ctx, ox, oy, 0, 0, G, 4, c.aura);
+    b(ctx, ox, oy, 0, 4, G, 4, c.auraDim);
+    b(ctx, ox, oy, 0, 8, G, 3, c.aura);
+    b(ctx, ox, oy, 0, 11, G, 3, c.warmGlow);
+    // Gentle wave-like color variation that tiles seamlessly (frame-dependent)
+    const waveOff = frame * 2;
+    for (let gy = 0; gy < G; gy++) {
+      for (let gx = 0; gx < G; gx++) {
+        const wave = ((gx + gy + waveOff) % 7);
+        if (wave === 0) p(ctx, ox, oy, gx, gy, c.beamDim);
+        else if (wave === 3) p(ctx, ox, oy, gx, gy, c.auraDim);
+      }
+    }
+    // Subtle shimmer sparkles — different positions per frame for animation
+    const sp: [number, number][] = [
+      [(2 + frame * 5) % G, (1 + frame * 3) % G],
+      [(8 + frame * 3) % G, (5 + frame * 4) % G],
+      [(4 + frame * 4) % G, (10 + frame * 2) % G],
+      [(11 + frame * 2) % G, (3 + frame * 5) % G],
+      [(1 + frame * 6) % G, (7 + frame * 3) % G],
+      [(9 + frame * 2) % G, (12 + frame * 4) % G],
+    ];
+    for (const [sx, sy] of sp) {
+      p(ctx, ox, oy, sx, sy, c.sparkDim);
+    }
+    // A couple of brighter sparkle points per frame
+    const bx = (6 + frame * 4) % G;
+    const by = (4 + frame * 5) % G;
+    p(ctx, ox, oy, bx, by, c.spark);
+    const bx2 = (10 + frame * 3) % G;
+    const by2 = (9 + frame * 2) % G;
+    p(ctx, ox, oy, bx2, by2, c.beamBright);
+    return;
+  }
+
   // Warm glowing base
   b(ctx, ox, oy, 0, 0, G, G, c.deep);
   // Radial glow gradient from center

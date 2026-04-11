@@ -165,65 +165,86 @@ function drawSeat(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: nu
   const c = PAL.seat;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
 
-  // Floor beneath seats
+  // Dark aisle floor between seats
   b(ctx, ox, oy, 0, 0, G, G, c.frameDark);
 
-  // Seat frame / structure
-  b(ctx, ox, oy, 0, 0, G, G, c.frame);
-  b(ctx, ox, oy, 1, 1, G - 2, G - 2, c.frameLight);
+  // We draw 2 rows of seats (top-down view), each row has 2 chairs side by side
+  // Each chair: backrest (2px tall strip at top), seat cushion (3px), gap between rows
+  // This tiles seamlessly when variant 15 (all neighbors present)
 
-  // Backrest (top portion of seat, viewed from above)
-  b(ctx, ox, oy, 2, 1, 10, 3, c.backrest);
-  b(ctx, ox, oy, 3, 1, 8, 2, c.backrestTop);
-  // Backrest stitching line
-  for (let gx = 3; gx <= 10; gx += 2) {
-    p(ctx, ox, oy, gx, 2, c.velvetShadow);
-  }
+  // === ROW 1 (top half: y=0..6) ===
+  // Aisle gap between rows
+  b(ctx, ox, oy, 0, 6, G, 1, c.frameDark);
 
-  // Seat cushion (main velvet area)
-  b(ctx, ox, oy, 2, 4, 10, 7, c.velvetDeep);
-  b(ctx, ox, oy, 3, 5, 8, 5, c.velvetMid);
-  b(ctx, ox, oy, 4, 6, 6, 3, c.velvetLight);
-  // Cushion highlight (center shine)
-  p(ctx, ox, oy, 6, 6, c.velvetHighlight); p(ctx, ox, oy, 7, 6, c.velvetHighlight);
-  p(ctx, ox, oy, 6, 7, c.velvetHighlight); p(ctx, ox, oy, 7, 7, c.velvetLight);
-  // Cushion crease lines
-  p(ctx, ox, oy, 3, 7, c.cushionCrease); p(ctx, ox, oy, 10, 7, c.cushionCrease);
-  p(ctx, ox, oy, 4, 5, c.cushionCrease); p(ctx, ox, oy, 9, 5, c.cushionCrease);
-  // Cushion shadow at bottom
-  b(ctx, ox, oy, 2, 10, 10, 1, c.velvetShadow);
-  b(ctx, ox, oy, 3, 9, 8, 1, c.velvetDeep);
+  // Chair A (left): x=0..6
+  // Backrest - dark wood strip at top of chair
+  b(ctx, ox, oy, 0, 0, 6, 2, c.backrest);
+  b(ctx, ox, oy, 1, 0, 4, 1, c.backrestTop);
+  // Backrest wood grain
+  p(ctx, ox, oy, 1, 1, c.velvetShadow); p(ctx, ox, oy, 3, 1, c.velvetShadow); p(ctx, ox, oy, 5, 1, c.velvetShadow);
+  // Seat cushion - red velvet from above
+  b(ctx, ox, oy, 0, 2, 6, 4, c.velvetDeep);
+  b(ctx, ox, oy, 1, 2, 4, 3, c.velvetMid);
+  b(ctx, ox, oy, 1, 3, 4, 2, c.velvetLight);
+  // Cushion highlight
+  p(ctx, ox, oy, 2, 3, c.velvetHighlight); p(ctx, ox, oy, 3, 3, c.velvetHighlight);
+  // Cushion crease (center dip)
+  p(ctx, ox, oy, 2, 4, c.cushionCrease); p(ctx, ox, oy, 3, 4, c.cushionCrease);
+  // Cushion shadow at front edge
+  b(ctx, ox, oy, 0, 5, 6, 1, c.velvetShadow);
+  // Armrest (right side of chair A) - gold accent
+  b(ctx, ox, oy, 6, 0, 1, 6, c.armrestDark);
+  p(ctx, ox, oy, 6, 1, c.armrest); p(ctx, ox, oy, 6, 3, c.armrestHighlight); p(ctx, ox, oy, 6, 5, c.armrest);
+  // Seat number on backrest
+  p(ctx, ox, oy, 2, 0, c.number);
 
-  // Left armrest
-  b(ctx, ox, oy, 1, 2, 1, 9, c.armrestDark);
-  p(ctx, ox, oy, 1, 2, c.armrestHighlight);
-  p(ctx, ox, oy, 1, 3, c.armrest);
-  p(ctx, ox, oy, 1, 5, c.armrest);
-  p(ctx, ox, oy, 1, 7, c.armrest);
-  p(ctx, ox, oy, 1, 10, c.armrestHighlight);
-  // Right armrest
-  b(ctx, ox, oy, 12, 2, 1, 9, c.armrestDark);
-  p(ctx, ox, oy, 12, 2, c.armrestHighlight);
-  p(ctx, ox, oy, 12, 3, c.armrest);
-  p(ctx, ox, oy, 12, 5, c.armrest);
-  p(ctx, ox, oy, 12, 7, c.armrest);
-  p(ctx, ox, oy, 12, 10, c.armrestHighlight);
+  // Chair B (right): x=7..13
+  // Backrest
+  b(ctx, ox, oy, 7, 0, 7, 2, c.backrest);
+  b(ctx, ox, oy, 8, 0, 5, 1, c.backrestTop);
+  p(ctx, ox, oy, 8, 1, c.velvetShadow); p(ctx, ox, oy, 10, 1, c.velvetShadow); p(ctx, ox, oy, 12, 1, c.velvetShadow);
+  // Seat cushion
+  b(ctx, ox, oy, 7, 2, 7, 4, c.velvetDeep);
+  b(ctx, ox, oy, 8, 2, 5, 3, c.velvetMid);
+  b(ctx, ox, oy, 8, 3, 5, 2, c.velvetLight);
+  p(ctx, ox, oy, 9, 3, c.velvetHighlight); p(ctx, ox, oy, 10, 3, c.velvetHighlight);
+  p(ctx, ox, oy, 9, 4, c.cushionCrease); p(ctx, ox, oy, 10, 4, c.cushionCrease);
+  b(ctx, ox, oy, 7, 5, 7, 1, c.velvetShadow);
+  // Seat number
+  p(ctx, ox, oy, 9, 0, c.numberDim);
 
-  // Armrest caps (decorative ends)
-  p(ctx, ox, oy, 1, 1, c.armrest); p(ctx, ox, oy, 12, 1, c.armrest);
-  p(ctx, ox, oy, 1, 11, c.armrest); p(ctx, ox, oy, 12, 11, c.armrest);
+  // === ROW 2 (bottom half: y=7..13) ===
+  // Chair C (left): x=0..6
+  b(ctx, ox, oy, 0, 7, 6, 2, c.backrest);
+  b(ctx, ox, oy, 1, 7, 4, 1, c.backrestTop);
+  p(ctx, ox, oy, 1, 8, c.velvetShadow); p(ctx, ox, oy, 3, 8, c.velvetShadow); p(ctx, ox, oy, 5, 8, c.velvetShadow);
+  b(ctx, ox, oy, 0, 9, 6, 4, c.velvetDeep);
+  b(ctx, ox, oy, 1, 9, 4, 3, c.velvetMid);
+  b(ctx, ox, oy, 1, 10, 4, 2, c.velvetLight);
+  p(ctx, ox, oy, 2, 10, c.velvetHighlight); p(ctx, ox, oy, 3, 10, c.velvetHighlight);
+  p(ctx, ox, oy, 2, 11, c.cushionCrease); p(ctx, ox, oy, 3, 11, c.cushionCrease);
+  b(ctx, ox, oy, 0, 12, 6, 1, c.velvetShadow);
+  b(ctx, ox, oy, 6, 7, 1, 6, c.armrestDark);
+  p(ctx, ox, oy, 6, 8, c.armrest); p(ctx, ox, oy, 6, 10, c.armrestHighlight); p(ctx, ox, oy, 6, 12, c.armrest);
+  p(ctx, ox, oy, 2, 7, c.number);
 
-  // Seat number (small gold detail in center of backrest)
-  p(ctx, ox, oy, 6, 1, c.number); p(ctx, ox, oy, 7, 1, c.numberDim);
+  // Chair D (right): x=7..13
+  b(ctx, ox, oy, 7, 7, 7, 2, c.backrest);
+  b(ctx, ox, oy, 8, 7, 5, 1, c.backrestTop);
+  p(ctx, ox, oy, 8, 8, c.velvetShadow); p(ctx, ox, oy, 10, 8, c.velvetShadow); p(ctx, ox, oy, 12, 8, c.velvetShadow);
+  b(ctx, ox, oy, 7, 9, 7, 4, c.velvetDeep);
+  b(ctx, ox, oy, 8, 9, 5, 3, c.velvetMid);
+  b(ctx, ox, oy, 8, 10, 5, 2, c.velvetLight);
+  p(ctx, ox, oy, 9, 10, c.velvetHighlight); p(ctx, ox, oy, 10, 10, c.velvetHighlight);
+  p(ctx, ox, oy, 9, 11, c.cushionCrease); p(ctx, ox, oy, 10, 11, c.cushionCrease);
+  b(ctx, ox, oy, 7, 12, 7, 1, c.velvetShadow);
+  p(ctx, ox, oy, 9, 7, c.numberDim);
 
-  // Hinge details at bottom
-  p(ctx, ox, oy, 4, 11, c.hinge); p(ctx, ox, oy, 9, 11, c.hinge);
+  // Bottom row foot space / hinge area
+  b(ctx, ox, oy, 0, 13, G, 1, c.seatBase);
+  p(ctx, ox, oy, 3, 13, c.hinge); p(ctx, ox, oy, 10, 13, c.hinge);
 
-  // Seat base/foot
-  b(ctx, ox, oy, 2, 11, 10, 2, c.seatBase);
-  b(ctx, ox, oy, 3, 12, 8, 1, c.frameDark);
-
-  // Auto-tile edges — when exposed, show ornate trim
+  // === AUTO-TILE EDGES — ornate trim where seating meets floor ===
   if (!n) {
     b(ctx, ox, oy, 0, 0, G, 1, c.edgeTrim);
     p(ctx, ox, oy, 3, 0, c.edgeTrimDim); p(ctx, ox, oy, 6, 0, c.armrestHighlight);
@@ -245,20 +266,30 @@ function drawSeat(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: nu
     p(ctx, ox, oy, G - 1, 11, c.armrestHighlight);
   }
 
-  // Continuous connection hints when neighbors exist
+  // Connection continuity when neighbors present (rows continue seamlessly)
   if (n) {
-    for (let px = 3; px < G - 2; px += 3) p(ctx, ox, oy, px, 0, c.armrestDark);
-    p(ctx, ox, oy, 1, 0, c.armrestDark); p(ctx, ox, oy, 12, 0, c.armrestDark);
+    // Row continues upward - show seat base continuing
+    b(ctx, ox, oy, 0, 0, G, 1, c.seatBase);
+    p(ctx, ox, oy, 3, 0, c.hinge); p(ctx, ox, oy, 10, 0, c.hinge);
   }
   if (s) {
-    for (let px = 3; px < G - 2; px += 3) p(ctx, ox, oy, px, G - 1, c.armrestDark);
-    p(ctx, ox, oy, 1, G - 1, c.armrestDark); p(ctx, ox, oy, 12, G - 1, c.armrestDark);
+    // Row continues downward - show backrest continuing
+    b(ctx, ox, oy, 0, G - 1, G, 1, c.backrest);
+    p(ctx, ox, oy, 1, G - 1, c.backrestTop); p(ctx, ox, oy, 8, G - 1, c.backrestTop);
   }
   if (w) {
-    for (let py = 3; py < G - 2; py += 3) p(ctx, ox, oy, 0, py, c.armrestDark);
+    // Chairs continue left - armrest connects
+    for (let py = 0; py < G; py++) {
+      if (py === 6) continue; // aisle gap
+      p(ctx, ox, oy, 0, py, c.armrestDark);
+    }
   }
   if (e) {
-    for (let py = 3; py < G - 2; py += 3) p(ctx, ox, oy, G - 1, py, c.armrestDark);
+    // Chairs continue right - armrest connects
+    for (let py = 0; py < G; py++) {
+      if (py === 6) continue; // aisle gap
+      p(ctx, ox, oy, G - 1, py, c.armrestDark);
+    }
   }
 }
 
@@ -266,113 +297,111 @@ function drawResonance(ctx: CanvasRenderingContext2D, ox: number, oy: number, id
   const c = PAL.resonance;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
 
-  // Dark stage floor base
+  // Dark base — represents vibrating air / sound field
   b(ctx, ox, oy, 0, 0, G, G, c.stage);
 
-  // Stage floor planks
-  for (let gy = 0; gy < G; gy += 3) {
-    b(ctx, ox, oy, 0, gy, G, 1, c.stagePlank);
-  }
-  // Subtle grain
+  // Subtle warm ambient glow across entire tile
   for (let gy = 0; gy < G; gy++) {
     for (let gx = 0; gx < G; gx++) {
-      if (hash(gx + frame, gy) < 8) p(ctx, ox, oy, gx, gy, c.stageGrain);
+      if (hash(gx, gy) < 12) p(ctx, ox, oy, gx, gy, c.stageGrain);
     }
   }
 
-  // Warm glow on floor from music energy
-  b(ctx, ox, oy, 4, 4, 6, 6, c.glowSoft);
-  b(ctx, ox, oy, 5, 5, 4, 4, c.glowBright);
-
+  // Center of the ripple pattern (tiles seamlessly — center is at 7,7 so
+  // adjacent tiles' rings connect at edges)
   const cx = 7, cy = 7;
 
-  // === EQUALIZER BARS (bottom half, animated) ===
-  const eqX = 1;
-  const barHeights0 = [3, 5, 7, 4, 6, 8, 5, 3, 6, 4, 7, 2];
-  const barHeights1 = [5, 7, 4, 6, 8, 5, 3, 6, 4, 7, 3, 5];
-  const barHeights2 = [4, 3, 6, 8, 5, 3, 7, 4, 8, 5, 6, 4];
-  const bars = frame === 0 ? barHeights0 : frame === 1 ? barHeights1 : barHeights2;
-  for (let i = 0; i < 12; i++) {
-    const bx = eqX + i;
-    const bh = Math.min(bars[i], 8);
-    const by = 13 - bh;
-    for (let j = 0; j < bh; j++) {
-      const ratio = j / bh;
-      const col = ratio > 0.7 ? c.waveOuter : ratio > 0.4 ? c.eqBar : c.eqBarMid;
-      p(ctx, ox, oy, bx, by + j, col);
-    }
-    // Bright cap on each bar
-    p(ctx, ox, oy, bx, by, c.waveInner);
-  }
+  // === CONCENTRIC SOUND WAVE RIPPLES ===
+  // Draw multiple rings expanding outward. Each frame shifts rings outward
+  // to create the animation of sound waves propagating.
+  // Ring radii shift by 1 pixel per frame for smooth expansion.
+  const baseRadii = [1.5, 3.5, 5.5, 7.5, 9.5, 11.5];
+  // Colors from bright center to dim edge
+  const ringColors = [c.waveInner, c.waveOuter, c.waveMid, c.waveDim, c.waveFaint, c.waveFaint];
+  const ringAlphaColors = [c.waveInner, c.waveOuter, c.eqBar, c.eqBarMid, c.waveDim, c.waveFaint];
 
-  // === SOUND WAVE RINGS expanding from center ===
-  const ringR = 2 + frame * 2;
-  for (let a = 0; a < 24; a++) {
-    const angle = a * Math.PI / 12;
-    const rx = cx + Math.round(ringR * Math.cos(angle));
-    const ry = cy + Math.round(ringR * Math.sin(angle));
-    if (rx >= 0 && rx < G && ry >= 0 && ry < G) {
-      p(ctx, ox, oy, rx, ry, c.waveMid);
-    }
-  }
-  // Inner ring
-  const innerR = Math.max(1, ringR - 2);
-  for (let a = 0; a < 16; a++) {
-    const angle = a * Math.PI / 8;
-    const rx = cx + Math.round(innerR * Math.cos(angle));
-    const ry = cy + Math.round(innerR * Math.sin(angle));
-    if (rx >= 0 && rx < G && ry >= 0 && ry < G) {
-      p(ctx, ox, oy, rx, ry, c.waveOuter);
+  for (let ri = 0; ri < baseRadii.length; ri++) {
+    // Each frame shifts rings outward by ~0.7 pixels, wrapping around
+    const r = ((baseRadii[ri] + frame * 0.8) % 12.0);
+    if (r < 0.5) continue;
+
+    // Determine color: inner rings are brighter
+    const col = r < 3 ? ringAlphaColors[0] : r < 5 ? ringAlphaColors[1] :
+                r < 7 ? ringAlphaColors[2] : r < 9 ? ringAlphaColors[3] :
+                r < 11 ? ringAlphaColors[4] : ringAlphaColors[5];
+
+    // Draw ring as circle of pixels (higher resolution for smoothness)
+    const steps = Math.max(24, Math.floor(r * 8));
+    for (let a = 0; a < steps; a++) {
+      const angle = (a / steps) * Math.PI * 2;
+      const rx = Math.round(cx + r * Math.cos(angle));
+      const ry = Math.round(cy + r * Math.sin(angle));
+      if (rx >= 0 && rx < G && ry >= 0 && ry < G) {
+        p(ctx, ox, oy, rx, ry, col);
+      }
     }
   }
 
-  // Center source (glowing core)
-  p(ctx, ox, oy, 6, 6, c.waveOuter); p(ctx, ox, oy, 7, 6, c.waveInner);
-  p(ctx, ox, oy, 6, 7, c.waveInner); p(ctx, ox, oy, 7, 7, c.waveOuter);
+  // === SECONDARY RIPPLE SET (offset, creates interference pattern) ===
+  // Fainter secondary rings between the primary ones
+  const secRadii = [2.5, 4.5, 6.5, 8.5, 10.5];
+  for (let ri = 0; ri < secRadii.length; ri++) {
+    const r = ((secRadii[ri] + frame * 0.8) % 12.0);
+    if (r < 0.5) continue;
+    const col = r < 4 ? c.glowBright : r < 7 ? c.glowSoft : c.stageGrain;
+    const steps = Math.max(16, Math.floor(r * 6));
+    for (let a = 0; a < steps; a++) {
+      const angle = (a / steps) * Math.PI * 2;
+      const rx = Math.round(cx + r * Math.cos(angle));
+      const ry = Math.round(cy + r * Math.sin(angle));
+      if (rx >= 0 && rx < G && ry >= 0 && ry < G) {
+        p(ctx, ox, oy, rx, ry, col);
+      }
+    }
+  }
 
-  // === FLOATING MUSICAL NOTES ===
-  // Note 1 (shifts position per frame)
-  const n1x = (2 + frame * 3) % 12 + 1;
-  const n1y = (1 + frame * 2) % 5 + 1;
-  p(ctx, ox, oy, n1x, n1y, c.noteGold);
-  p(ctx, ox, oy, n1x, n1y + 1, c.noteGold);
-  p(ctx, ox, oy, n1x - 1, n1y + 1, c.noteDim);
+  // === GLOWING CENTER SOURCE ===
+  // Warm amber/gold pulsing core — the "speaker" or vibration source
+  // Core brightness shifts slightly per frame
+  const coreColors = [c.waveInner, c.waveOuter, c.waveMid];
+  const coreBright = coreColors[frame];
+  const coreGlow = frame === 0 ? c.waveOuter : frame === 1 ? c.waveInner : c.waveOuter;
 
-  // Note 2 (opposite movement)
-  const n2x = (11 - frame * 2) % 12 + 1;
-  const n2y = (3 + frame * 3) % 6 + 1;
-  p(ctx, ox, oy, n2x, n2y, c.noteDim);
-  p(ctx, ox, oy, n2x, n2y + 1, c.noteGold);
-  p(ctx, ox, oy, n2x + 1, n2y + 1, c.noteDim);
-
-  // Sparkle accents (change position per frame)
-  p(ctx, ox, oy, (3 + frame * 5) % G, (2 + frame * 3) % G, c.sparkle);
-  p(ctx, ox, oy, (10 - frame * 2) % G, (11 - frame * 4) % G, c.sparkle);
-  p(ctx, ox, oy, (1 + frame * 4) % G, (9 + frame) % G, c.sparkle);
+  // 2x2 bright core
+  p(ctx, ox, oy, 6, 6, coreGlow); p(ctx, ox, oy, 7, 6, coreBright);
+  p(ctx, ox, oy, 6, 7, coreBright); p(ctx, ox, oy, 7, 7, coreGlow);
+  // 4x4 warm glow around core
+  p(ctx, ox, oy, 5, 6, c.eqBar); p(ctx, ox, oy, 8, 6, c.eqBar);
+  p(ctx, ox, oy, 5, 7, c.eqBar); p(ctx, ox, oy, 8, 7, c.eqBar);
+  p(ctx, ox, oy, 6, 5, c.eqBarMid); p(ctx, ox, oy, 7, 5, c.eqBarMid);
+  p(ctx, ox, oy, 6, 8, c.eqBarMid); p(ctx, ox, oy, 7, 8, c.eqBarMid);
+  // Diagonal glow
+  p(ctx, ox, oy, 5, 5, c.eqBarDim); p(ctx, ox, oy, 8, 5, c.eqBarDim);
+  p(ctx, ox, oy, 5, 8, c.eqBarDim); p(ctx, ox, oy, 8, 8, c.eqBarDim);
 
   // === EDGES ===
   if (!n) {
     b(ctx, ox, oy, 0, 0, G, 1, c.edgeDark);
-    for (let gx = 1; gx < G; gx += 2) p(ctx, ox, oy, gx, 0, c.waveDim);
+    for (let gx = 1; gx < G; gx += 3) p(ctx, ox, oy, gx, 0, c.waveDim);
   }
   if (!s) {
     b(ctx, ox, oy, 0, G - 1, G, 1, c.edgeDark);
-    for (let gx = 0; gx < G; gx += 2) p(ctx, ox, oy, gx, G - 1, c.waveDim);
+    for (let gx = 0; gx < G; gx += 3) p(ctx, ox, oy, gx, G - 1, c.waveDim);
   }
   if (!w) {
     b(ctx, ox, oy, 0, 0, 1, G, c.edgeDark);
-    for (let gy = 1; gy < G; gy += 2) p(ctx, ox, oy, 0, gy, c.waveDim);
+    for (let gy = 1; gy < G; gy += 3) p(ctx, ox, oy, 0, gy, c.waveDim);
   }
   if (!e) {
     b(ctx, ox, oy, G - 1, 0, 1, G, c.edgeDark);
-    for (let gy = 0; gy < G; gy += 2) p(ctx, ox, oy, G - 1, gy, c.waveDim);
+    for (let gy = 0; gy < G; gy += 3) p(ctx, ox, oy, G - 1, gy, c.waveDim);
   }
 
-  // Golden glow on edges when connected
-  if (n) { p(ctx, ox, oy, 6, 0, c.waveFaint); p(ctx, ox, oy, 7, 0, c.waveFaint); }
-  if (s) { p(ctx, ox, oy, 6, G - 1, c.waveFaint); p(ctx, ox, oy, 7, G - 1, c.waveFaint); }
-  if (w) { p(ctx, ox, oy, 0, 6, c.waveFaint); p(ctx, ox, oy, 0, 7, c.waveFaint); }
-  if (e) { p(ctx, ox, oy, G - 1, 6, c.waveFaint); p(ctx, ox, oy, G - 1, 7, c.waveFaint); }
+  // Warm glow bleeds at connected edges (ripples continue into neighbor)
+  if (n) { p(ctx, ox, oy, 6, 0, c.waveFaint); p(ctx, ox, oy, 7, 0, c.waveFaint); p(ctx, ox, oy, 5, 0, c.glowSoft); p(ctx, ox, oy, 8, 0, c.glowSoft); }
+  if (s) { p(ctx, ox, oy, 6, G - 1, c.waveFaint); p(ctx, ox, oy, 7, G - 1, c.waveFaint); p(ctx, ox, oy, 5, G - 1, c.glowSoft); p(ctx, ox, oy, 8, G - 1, c.glowSoft); }
+  if (w) { p(ctx, ox, oy, 0, 6, c.waveFaint); p(ctx, ox, oy, 0, 7, c.waveFaint); p(ctx, ox, oy, 0, 5, c.glowSoft); p(ctx, ox, oy, 0, 8, c.glowSoft); }
+  if (e) { p(ctx, ox, oy, G - 1, 6, c.waveFaint); p(ctx, ox, oy, G - 1, 7, c.waveFaint); p(ctx, ox, oy, G - 1, 5, c.glowSoft); p(ctx, ox, oy, G - 1, 8, c.glowSoft); }
 }
 
 function drawNoBuild(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
