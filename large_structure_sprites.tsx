@@ -199,67 +199,29 @@ function drawMilitaryBarracks(ctx: CanvasRenderingContext2D, frame: number) {
   else if (frame === 2) { p(ctx, 0, 0, vfx + 2, by - 3, '#555550'); p(ctx, 0, 0, vfx + 1, by - 2, '#555550'); }
 }
 
-function drawMilitaryMotorPool(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(5), H = gh(4);
-
-  // Main garage structure
-  const bx = 2, by = 3, bw = W - 4, bh = H - 6;
-  b(ctx, 0, 0, bx, by, bw, bh, '#5a5a52'); // corrugated metal walls
-  // Outline
-  b(ctx, 0, 0, bx, by, bw, 1, '#3a3a32');
-  b(ctx, 0, 0, bx, by + bh - 1, bw, 1, '#3a3a32');
-  b(ctx, 0, 0, bx, by, 1, bh, '#3a3a32');
-  b(ctx, 0, 0, bx + bw - 1, by, 1, bh, '#3a3a32');
-
-  // Corrugated wall texture (horizontal lines)
-  for (let y = by + 2; y < by + bh - 1; y += 2) {
-    b(ctx, 0, 0, bx + 1, y, bw - 2, 1, '#525248');
+function drawMilitaryTents(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(1);
+  const flapOff = frame === 0 ? 0 : frame === 1 ? 1 : -1;
+  // Left tent
+  for (let row = 0; row < 5; row++) {
+    const indent = row < 2 ? (2 - row) : 0;
+    const width = row < 2 ? (3 + row * 2) : 7;
+    b(ctx, 0, 0, 2 + indent, 2 + row, width, 1, row < 2 ? '#556633' : '#4a5a3a');
   }
-
-  // Roof
-  b(ctx, 0, 0, bx - 1, by - 1, bw + 2, 2, '#484840');
-  b(ctx, 0, 0, bx, by, bw, 1, '#505048');
-
-  // Three bay doors (large openings at bottom)
-  const bayW = 12, bayH = bh - 6;
-  const baySpacing = Math.floor((bw - 3 * bayW) / 4);
-  for (let i = 0; i < 3; i++) {
-    const bxOff = bx + baySpacing + i * (bayW + baySpacing);
-    const byOff = by + bh - bayH - 1;
-    // Door opening
-    b(ctx, 0, 0, bxOff, byOff, bayW, bayH, '#1a1a18');
-    // Door frame
-    b(ctx, 0, 0, bxOff, byOff, bayW, 1, '#666660');
-    b(ctx, 0, 0, bxOff, byOff, 1, bayH, '#555550');
-    b(ctx, 0, 0, bxOff + bayW - 1, byOff, 1, bayH, '#555550');
-    // Rolled-up door at top
-    b(ctx, 0, 0, bxOff + 1, byOff + 1, bayW - 2, 2, '#777770');
-    b(ctx, 0, 0, bxOff + 1, byOff + 1, bayW - 2, 1, '#888880');
-
-    // Tool rack visible inside (left wall of bay)
-    if (i === 0) {
-      b(ctx, 0, 0, bxOff + 2, byOff + 4, 1, 6, '#666660');
-      p(ctx, 0, 0, bxOff + 2, byOff + 5, '#884422'); // tool
-      p(ctx, 0, 0, bxOff + 2, byOff + 7, '#884422');
-      p(ctx, 0, 0, bxOff + 2, byOff + 9, '#aaaaaa');
-    }
-    // Vehicle silhouette inside
-    if (i === 1) {
-      b(ctx, 0, 0, bxOff + 3, byOff + bayH - 5, 6, 3, '#333330');
-      b(ctx, 0, 0, bxOff + 4, byOff + bayH - 7, 4, 2, '#2a2a28');
-    }
+  b(ctx, 0, 0, 4, 1, 3, 1, '#3a4a2a');
+  p(ctx, 0, 0, 5 + flapOff, 5, '#556633');
+  p(ctx, 0, 0, 1, 5, '#8a7a5a'); p(ctx, 0, 0, 9, 5, '#8a7a5a');
+  p(ctx, 0, 0, 0, 6, '#665544'); p(ctx, 0, 0, 10, 6, '#665544');
+  // Right tent
+  for (let row = 0; row < 5; row++) {
+    const indent = row < 2 ? (2 - row) : 0;
+    const width = row < 2 ? (3 + row * 2) : 7;
+    b(ctx, 0, 0, 16 + indent, 2 + row, width, 1, row < 2 ? '#556633' : '#4a5a3a');
   }
-
-  // Oil stains on floor
-  const floorY = by + bh;
-  b(ctx, 0, 0, 0, floorY, W, H - floorY, '#3a3830');
-  // Oil spots
-  b(ctx, 0, 0, 15, floorY + 1, 3, 2, '#222218');
-  p(ctx, 0, 0, 35, floorY + 1, '#222218');
-  b(ctx, 0, 0, 50, floorY + 1, 2, 1, '#1a1a14');
-  // Exhaust puff from roof
-  const puffY = by - 2 - frame * 3;
-  if (puffY > 0) { p(ctx, 0, 0, bx + bw - 4, puffY, '#66665544'); p(ctx, 0, 0, bx + bw - 3, puffY - 1, '#55554433'); }
+  b(ctx, 0, 0, 18, 1, 3, 1, '#3a4a2a');
+  p(ctx, 0, 0, 19 - flapOff, 5, '#556633');
+  p(ctx, 0, 0, 15, 5, '#8a7a5a'); p(ctx, 0, 0, 23, 5, '#8a7a5a');
+  p(ctx, 0, 0, 14, 6, '#665544'); p(ctx, 0, 0, 24, 6, '#665544');
 }
 
 function drawMilitarySupplyDepot(ctx: CanvasRenderingContext2D, frame: number) {
@@ -1923,59 +1885,40 @@ function drawMilitaryRadarDish(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawMilitaryTankHangar(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(6), H = gh(4);
-  b(ctx, 0, 0, 0, H - 6, W, 6, '#4a4a42');
-  b(ctx, 0, 0, 2, 6, W - 4, H - 12, '#5a5a52');
-  b(ctx, 0, 0, 4, 4, W - 8, 4, '#636357');
-  b(ctx, 0, 0, 8, 2, W - 16, 4, '#6b6b5f');
-  b(ctx, 0, 0, 14, 0, W - 28, 4, '#737367');
-  for (let xx = 6; xx < W - 6; xx += 4) b(ctx, 0, 0, xx, 4, 1, H - 16, '#4a4a42');
-  b(ctx, 0, 0, 0, 6, 4, H - 12, '#4a4a42');
-  b(ctx, 0, 0, W - 4, 6, 4, H - 12, '#4a4a42');
-  const doorX = 8, doorY = 10, doorW = W - 16, doorH = H - 26;
-  b(ctx, 0, 0, doorX - 2, doorY - 2, doorW + 4, doorH + 8, '#3a3a32');
+  const W = gw(4), H = gh(3);
+  b(ctx, 0, 0, 0, 0, W, 2, '#6b6b6b');
+  b(ctx, 0, 0, 0, 0, 2, H, '#6b6b6b'); b(ctx, 0, 0, W-2, 0, 2, H, '#6b6b6b');
+  for (let i = 0; i < W; i += 4) b(ctx, 0, 0, i, 0, 2, H, '#78787833');
+  const dx = Math.floor(W/2)-8, dy = H-8, dw = 16, dh = 8;
+  b(ctx, 0, 0, dx-1, dy-1, dw+2, dh+1, '#4a4a4a');
   if (frame === 0) {
-    b(ctx, 0, 0, doorX, doorY, doorW, doorH + 4, '#5a6a52');
-    for (let yy = doorY + 2; yy < doorY + doorH + 2; yy += 4) b(ctx, 0, 0, doorX, yy, doorW, 1, '#4a5a42');
-    b(ctx, 0, 0, doorX + doorW / 2 - 2, doorY + doorH / 2, 4, 2, '#888877');
+    b(ctx, 0, 0, dx, dy, dw, dh, '#7a8a6a');
+    for (let y = 0; y < dh; y += 2) b(ctx, 0, 0, dx, dy+y, dw, 1, '#6a7a5a');
   } else if (frame === 1) {
-    b(ctx, 0, 0, doorX, doorY, doorW, doorH / 2, '#1a1a14');
-    b(ctx, 0, 0, doorX + 8, doorY + doorH / 2 - 8, doorW - 16, 6, '#3a4a32');
-    b(ctx, 0, 0, doorX, doorY + doorH / 2, doorW, doorH / 2 + 4, '#5a6a52');
+    b(ctx, 0, 0, dx, dy, dw, dh/2, '#7a8a6a');
+    b(ctx, 0, 0, dx, dy+dh/2, dw, dh/2, '#333333');
+    b(ctx, 0, 0, dx+2, dy+dh-2, 4, 2, '#4a5a3a');
   } else {
-    b(ctx, 0, 0, doorX, doorY, doorW, doorH + 4, '#1a1a14');
-    b(ctx, 0, 0, doorX + 6, doorY + 14, doorW - 12, 10, '#4a5a3a');
-    b(ctx, 0, 0, doorX + 14, doorY + 8, 16, 8, '#5a6a4a');
-    b(ctx, 0, 0, doorX + 30, doorY + 10, 14, 3, '#3a4a32');
-    b(ctx, 0, 0, doorX, doorY - 2, doorW, 4, '#5a6a52');
+    b(ctx, 0, 0, dx, dy, dw, dh, '#333333');
+    b(ctx, 0, 0, dx+3, dy+2, 10, 4, '#5a6a4a');
+    b(ctx, 0, 0, dx+5, dy+3, 5, 2, '#4a5a3a');
+    b(ctx, 0, 0, dx+10, dy+3, 4, 1, '#3a3a3a');
   }
-  for (let yy = doorY; yy < doorY + doorH; yy += 6) { p(ctx, 0, 0, doorX - 3, yy, '#ccaa00'); p(ctx, 0, 0, doorX + doorW + 1, yy, '#ccaa00'); }
+  p(ctx, 0, 0, dx-1, dy+1, '#ccaa00'); p(ctx, 0, 0, dx+dw, dy+1, '#ccaa00');
 }
 
 function drawMilitaryLandingPad(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(5), H = gh(5);
-  const cx = W / 2, cy = H / 2;
-  b(ctx, 0, 0, 4, 4, W - 8, H - 8, '#6b6b63');
-  b(ctx, 0, 0, 6, 6, W - 12, H - 12, '#7a7a72');
-  b(ctx, 0, 0, 4, 4, W - 8, 2, '#ccaa00');
-  b(ctx, 0, 0, 4, H - 6, W - 8, 2, '#ccaa00');
-  b(ctx, 0, 0, 4, 4, 2, H - 8, '#ccaa00');
-  b(ctx, 0, 0, W - 6, 4, 2, H - 8, '#ccaa00');
-  // H marking
-  b(ctx, 0, 0, cx - 8, cy - 10, 3, 20, '#ffffff');
-  b(ctx, 0, 0, cx + 5, cy - 10, 3, 20, '#ffffff');
-  b(ctx, 0, 0, cx - 8, cy - 1, 16, 3, '#ffffff');
-  // Perimeter chase lights
-  const lps = [
-    { x: 10, y: 2 }, { x: W / 2, y: 2 }, { x: W - 12, y: 2 },
-    { x: W - 4, y: 10 }, { x: W - 4, y: H / 2 }, { x: W - 4, y: H - 12 },
-    { x: W - 12, y: H - 4 }, { x: W / 2, y: H - 4 }, { x: 10, y: H - 4 },
-    { x: 2, y: H - 12 }, { x: 2, y: H / 2 }, { x: 2, y: 10 },
-  ];
-  for (let i = 0; i < lps.length; i++) {
-    const on = Math.floor(i / 4) === frame % 3;
-    p(ctx, 0, 0, lps[i].x, lps[i].y, on ? '#00ff44' : '#334433');
-  }
+  const W = gw(3), H = gh(3); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#777777');
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#999999');
+  b(ctx, 0, 0, 2, 2, 3, 1, '#ccaa00'); b(ctx, 0, 0, 2, 2, 1, 3, '#ccaa00');
+  b(ctx, 0, 0, W-5, 2, 3, 1, '#ccaa00'); b(ctx, 0, 0, W-3, 2, 1, 3, '#ccaa00');
+  b(ctx, 0, 0, 2, H-4, 1, 3, '#ccaa00'); b(ctx, 0, 0, 2, H-3, 3, 1, '#ccaa00');
+  b(ctx, 0, 0, W-3, H-4, 1, 3, '#ccaa00'); b(ctx, 0, 0, W-5, H-3, 3, 1, '#ccaa00');
+  b(ctx, 0, 0, cx-4, cy-3, 1, 7, '#dddddd'); b(ctx, 0, 0, cx+3, cy-3, 1, 7, '#dddddd');
+  b(ctx, 0, 0, cx-3, cy, 6, 1, '#dddddd');
+  const lts: [number,number][] = [[1,0],[cx,0],[W-2,0],[0,cy],[W-1,cy],[1,H-1],[cx,H-1],[W-2,H-1]];
+  lts.forEach((l,i) => p(ctx, 0, 0, l[0], l[1], (i%3)===frame ? '#ffff66' : '#665500'));
 }
 
 // ===================== PSIONIC NEW =====================
@@ -2119,23 +2062,37 @@ function drawInfernalBoneCage(ctx: CanvasRenderingContext2D, frame: number) {
   p(ctx, 0, 0, 10, H - 5, '#880022');
 }
 
-function drawInfernalLavaFont(ctx: CanvasRenderingContext2D, frame: number) {
+function drawInfernalPentagram(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(3);
-  b(ctx, 0, 0, 0, H - 4, W, 4, '#2a1a14');
-  b(ctx, 0, 0, 2, H / 2 - 2, W - 4, H / 2 + 2, '#3a2a20');
-  b(ctx, 0, 0, 4, H / 2, W - 8, H / 2 - 6, '#1a0a04');
-  b(ctx, 0, 0, W / 2 - 4, H - 6, 8, 2, '#4a3830');
-  for (let xx = 6; xx < W - 6; xx += 5) p(ctx, 0, 0, xx, H / 2 - 2, '#5a4840');
-  const lavaY = H / 2 + 2;
-  if (frame === 0) {
-    b(ctx, 0, 0, 5, lavaY, W - 10, 6, '#cc4400'); b(ctx, 0, 0, 6, lavaY + 1, W - 12, 4, '#ff6622');
-  } else if (frame === 1) {
-    b(ctx, 0, 0, 5, lavaY - 3, W - 10, 9, '#cc4400'); b(ctx, 0, 0, 6, lavaY - 2, W - 12, 7, '#ff6622');
-    b(ctx, 0, 0, 2, H / 2 + 2, 2, 4, '#cc4400');
-  } else {
-    b(ctx, 0, 0, 5, lavaY + 2, W - 10, 4, '#cc4400'); b(ctx, 0, 0, 6, lavaY + 3, W - 12, 2, '#ff6622');
-    b(ctx, 0, 0, W - 4, H / 2 + 3, 2, 3, '#cc4400');
+  const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
+  // Outer circle
+  const r = Math.min(cx, cy) - 3;
+  const circleColor = frame === 1 ? '#882244' : '#661122';
+  for (let a = 0; a < 60; a++) {
+    const angle = (a / 60) * Math.PI * 2;
+    p(ctx, 0, 0, cx + Math.round(Math.cos(angle) * r), cy + Math.round(Math.sin(angle) * r), circleColor);
   }
+  // Inner circle
+  const ir = r - 4;
+  for (let a = 0; a < 40; a++) {
+    const angle = (a / 40) * Math.PI * 2;
+    p(ctx, 0, 0, cx + Math.round(Math.cos(angle) * ir), cy + Math.round(Math.sin(angle) * ir), frame === 1 ? '#aa3344' : '#661122');
+  }
+  // Pentagram star
+  const pts: [number, number][] = [];
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    pts.push([cx + Math.round(Math.cos(angle) * r), cy + Math.round(Math.sin(angle) * r)]);
+  }
+  const order = [0, 2, 4, 1, 3, 0];
+  for (let s = 0; s < 5; s++) {
+    const [x1, y1] = pts[order[s]], [x2, y2] = pts[order[s + 1]];
+    for (let t = 0; t <= 12; t++) p(ctx, 0, 0, Math.round(x1 + (x2 - x1) * t / 12), Math.round(y1 + (y2 - y1) * t / 12), '#cc2200');
+  }
+  // Runes at points
+  for (const [px_, py_] of pts) b(ctx, 0, 0, px_ - 1, py_ - 1, 2, 2, frame === 0 ? '#ff4400' : '#cc2200');
+  // Center eye (frame 2)
+  if (frame === 2) { b(ctx, 0, 0, cx - 1, cy - 1, 3, 2, '#ff4400'); p(ctx, 0, 0, cx, cy, '#ffcc00'); }
 }
 
 function drawInfernalDemonGate(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2338,24 +2295,19 @@ function drawMechGearAssembly(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawMechSteamBoiler(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(3), H = gh(4); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 2, H-6, W-4, 6, '#3a3838');
-  // Cylindrical body
-  b(ctx, 0, 0, 6, 10, W-12, H-16, '#666660');
-  b(ctx, 0, 0, 8, 12, W-16, H-20, '#777770');
-  // Rivets
-  for (let y = 14; y < H-8; y += 6) { p(ctx, 0, 0, 8, y, '#888880'); p(ctx, 0, 0, W-9, y, '#888880'); }
-  // Pressure gauge
-  b(ctx, 0, 0, cx-4, 6, 8, 6, '#555550');
-  const gaugePos = frame; // 0=low, 1=mid, 2=high
-  p(ctx, 0, 0, cx-2+gaugePos*2, 8, '#ff0000');
-  // Steam puff
-  if (frame >= 1) {
-    const puffH = frame === 1 ? 3 : 6;
-    for (let i = 0; i < puffH; i++) p(ctx, 0, 0, cx + 6 + (i%2), 8 - i, '#aaaaaa44');
-  }
-  // Pipe fittings
-  b(ctx, 0, 0, 4, 14, 3, 2, '#888877'); b(ctx, 0, 0, W-7, 14, 3, 2, '#888877');
+  const W = gw(2), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 1, H-2, 3, 2, '#8a6a2a'); b(ctx, 0, 0, W-4, H-2, 3, 2, '#8a6a2a');
+  b(ctx, 0, 0, 0, H-3, W, 1, '#996b33');
+  const bt = 4, bh = H-7;
+  b(ctx, 0, 0, 2, bt, W-4, bh, '#884422'); b(ctx, 0, 0, 3, bt, 2, bh, '#994433');
+  b(ctx, 0, 0, 1, bt+2, W-2, 1, '#ccaa44'); b(ctx, 0, 0, 1, bt+bh-2, W-2, 1, '#ccaa44');
+  p(ctx, 0, 0, 2, bt+2, '#ddbb55'); p(ctx, 0, 0, W-3, bt+2, '#ddbb55');
+  b(ctx, 0, 0, 3, bt-1, W-6, 2, '#995533'); b(ctx, 0, 0, 4, bt-2, W-8, 1, '#aa6644');
+  b(ctx, 0, 0, W-2, bt+3, 2, 2, '#555555'); p(ctx, 0, 0, W-2, bt+3, '#88ff88');
+  b(ctx, 0, 0, 0, bt+1, 2, 1, '#777777'); b(ctx, 0, 0, 0, bt+4, 2, 1, '#777777');
+  b(ctx, 0, 0, cx-2, H-5, 4, 2, '#553311'); p(ctx, 0, 0, cx-1, H-5, '#ff6622'); p(ctx, 0, 0, cx, H-5, '#ff4400');
+  if (frame===1) b(ctx, 0, 0, cx-1, bt-4, 2, 2, '#cccccc66');
+  if (frame===2) { b(ctx, 0, 0, cx-1, bt-4, 3, 2, '#dddddd77'); p(ctx, 0, 0, cx, bt-5, '#cccccc44'); }
 }
 
 function drawMechConveyorTerminal(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2409,20 +2361,18 @@ function drawMechScrapHeap(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawMechSmokestack(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(6); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 2, H-6, W-4, 6, '#3a3838');
-  // Stack body
-  b(ctx, 0, 0, cx-4, 10, 8, H-16, '#666666');
-  b(ctx, 0, 0, cx-3, 10, 6, H-16, '#777777');
-  // Bands
-  for (let y = 14; y < H-8; y += 10) b(ctx, 0, 0, cx-5, y, 10, 1, '#888888');
-  // Cap
-  b(ctx, 0, 0, cx-5, 8, 10, 3, '#888888');
-  // Smoke puffs rise per frame
-  const smokeY = 6 - frame * 3;
-  const smokeW = 2 + frame;
-  if (smokeY > 0) { b(ctx, 0, 0, cx-1, smokeY, smokeW, 2, '#66666644'); }
-  if (smokeY - 3 > 0) { b(ctx, 0, 0, cx-2, smokeY-3, smokeW+1, 2, '#55555533'); }
+  const W = gw(2), H = gh(4); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, H-5, W, 5, '#664422'); b(ctx, 0, 0, 1, H-4, W-2, 3, '#553311');
+  p(ctx, 0, 0, cx-1, H-3, '#ff5500'); p(ctx, 0, 0, cx, H-3, '#ff3300'); p(ctx, 0, 0, cx+1, H-3, '#ff5500');
+  const sx = cx-2, st = 3, sb = H-5;
+  b(ctx, 0, 0, sx, st, 5, sb-st, '#555555'); b(ctx, 0, 0, sx+1, st, 1, sb-st, '#666666'); b(ctx, 0, 0, sx+4, st, 1, sb-st, '#444444');
+  for (let by = st+2; by < sb; by += 4) b(ctx, 0, 0, sx-1, by, 7, 1, '#777777');
+  b(ctx, 0, 0, sx-1, st, 7, 2, '#666666'); b(ctx, 0, 0, sx, st-1, 5, 1, '#777777');
+  for (let ly = st+3; ly < sb-1; ly += 3) p(ctx, 0, 0, sx+5, ly, '#887744');
+  if (frame===0) { p(ctx, 0, 0, cx, st-2, '#aaaaaa66'); p(ctx, 0, 0, cx-1, st-3, '#99999944'); }
+  if (frame===1) { b(ctx, 0, 0, cx-1, st-2, 2, 1, '#aaaaaa77'); b(ctx, 0, 0, cx-1, st-3, 3, 1, '#99999955'); }
+  if (frame===2) { b(ctx, 0, 0, cx-1, st-2, 3, 1, '#bbbbbb88'); b(ctx, 0, 0, cx-2, st-3, 4, 1, '#aaaaaa66'); p(ctx, 0, 0, cx+1, st-4, '#99999944'); }
+  b(ctx, 0, 0, 0, H-6, 2, 1, '#666666'); b(ctx, 0, 0, W-2, H-6, 2, 1, '#666666');
 }
 
 // ===================== NATURE NEW =====================
@@ -2446,17 +2396,19 @@ function drawNatureSacredPond(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawNatureMushroomRing(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(4), H = gh(4); const cx = Math.floor(W/2), cy = Math.floor(H/2);
-  b(ctx, 0, 0, 0, 0, W, H, '#2a4422');
-  // 6 mushrooms in a ring
-  for (let i = 0; i < 6; i++) {
-    const a = (i/6)*Math.PI*2; const r = 16;
-    const mx = Math.round(cx+Math.cos(a)*r); const my = Math.round(cy+Math.sin(a)*r);
-    b(ctx, 0, 0, mx-1, my-1, 2, 4, '#ccbb99');
-    const glowing = (frame === 0 && i%2===0) || (frame === 1 && i%2===1) || frame === 2;
-    b(ctx, 0, 0, mx-3, my-4, 6, 3, glowing ? '#ff6644' : '#cc4433');
-    if (glowing) p(ctx, 0, 0, mx, my-4, '#ffaa88');
+  const W = gw(2), H = gh(2);
+  const mushrooms = [{ x: 4, y: 2 }, { x: W-8, y: 3 }, { x: 3, y: H-8 }, { x: W-7, y: H-7 }];
+  const glowing = frame === 0 ? [0, 2] : frame === 1 ? [1, 3] : [];
+  for (let i = 0; i < 4; i++) {
+    const m = mushrooms[i];
+    b(ctx, 0, 0, m.x + 1, m.y + 2, 2, 3, '#e8d8b0');
+    b(ctx, 0, 0, m.x, m.y, 4, 3, i % 2 === 0 ? '#cc3322' : '#dd6622');
+    p(ctx, 0, 0, m.x + 1, m.y, '#ffffff');
+    p(ctx, 0, 0, m.x + 3, m.y + 1, '#ffffff');
+    if (glowing.includes(i)) b(ctx, 0, 0, m.x - 1, m.y + 4, 6, 1, '#ffddaa44');
+    else if (frame === 2) p(ctx, 0, 0, m.x + 1, m.y + 4, '#ffddaa22');
   }
+  p(ctx, 0, 0, Math.floor(W/2), Math.floor(H/2), '#8a7a44');
 }
 
 function drawNatureHollowLog(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2546,21 +2498,20 @@ function drawNatureBeeHive(ctx: CanvasRenderingContext2D, frame: number) {
 // ===================== CYPHERPUNK NEW =====================
 
 function drawCyberServerFarm(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(5), H = gh(4);
-  b(ctx, 0, 0, 0, H-3, W, 3, '#1a1a22');
-  // Multiple racks
-  for (let r = 0; r < 3; r++) {
-    const rx = 4 + r * Math.floor((W-8)/3);
-    b(ctx, 0, 0, rx, 4, Math.floor((W-16)/3), H-8, '#2a2a33');
-    b(ctx, 0, 0, rx+1, 5, Math.floor((W-18)/3), H-10, '#333340');
-    // LEDs scroll per frame
-    for (let y = 6; y < H-6; y += 4) {
-      const ledRow = Math.floor(y/4);
-      const active = (ledRow + frame) % 3 === 0;
-      p(ctx, 0, 0, rx+2, y, active ? '#00ff44' : '#003311');
-      p(ctx, 0, 0, rx+4, y, active ? '#ffaa00' : '#332200');
+  const W = gw(3), H = gh(2);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1a2e');
+  const rw = 4, rh = H-4, gap = Math.floor((W - 4*rw) / 5);
+  for (let r = 0; r < 4; r++) {
+    const rx = Math.floor(gap + r*(rw+gap));
+    b(ctx, 0, 0, rx, 2, rw, rh, '#2a2a3e');
+    b(ctx, 0, 0, rx, 2, 1, rh, '#3a3a5e'); b(ctx, 0, 0, rx+rw-1, 2, 1, rh, '#3a3a5e');
+    for (let u = 0; u < rh-1; u += 2) b(ctx, 0, 0, rx+1, 2+u, rw-2, 1, '#1e1e30');
+    for (let led = 0; led < rh-1; led += 2) {
+      const on = ((led/2 + frame + r) % 3) !== 0;
+      p(ctx, 0, 0, rx+1, 2+led, on ? (r%2===0 ? '#00ffcc' : '#44ff44') : '#113322');
     }
   }
+  b(ctx, 0, 0, 1, 1, W-2, 1, '#444466');
 }
 
 function drawCyberHologramTable(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2692,22 +2643,18 @@ function drawCelestialOracleFountain(ctx: CanvasRenderingContext2D, frame: numbe
 }
 
 function drawCelestialMarbleColossus(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(3), H = gh(5); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 2, H-6, W-4, 6, '#c8c0b0');
-  // Body
-  b(ctx, 0, 0, cx-6, 16, 12, H-22, '#e0d8c8');
-  b(ctx, 0, 0, cx-8, 20, 16, H-28, '#d0c8b8');
-  // Head
-  b(ctx, 0, 0, cx-4, 8, 8, 10, '#ece4d4');
-  // Eyes glow per frame
-  const eyeGlow = frame === 0 ? '#ffdd88' : frame === 1 ? '#ffffff' : '#eebb66';
-  p(ctx, 0, 0, cx-2, 12, eyeGlow); p(ctx, 0, 0, cx+1, 12, eyeGlow);
-  // Held flame
-  b(ctx, 0, 0, cx+8, 18, 4, 3, frame===1 ? '#ffcc44' : '#ff8822');
-  p(ctx, 0, 0, cx+9, 17, frame===2 ? '#ffcc44' : '#ff6622');
-  // Arms
-  b(ctx, 0, 0, cx-10, 22, 4, 14, '#d0c8b8');
-  b(ctx, 0, 0, cx+6, 22, 4, 14, '#d0c8b8');
+  const W = gw(2), H = gh(4); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 1, H-3, W-2, 3, '#b0a890'); b(ctx, 0, 0, 0, H-2, W, 2, '#c0b8a0');
+  b(ctx, 0, 0, cx-3, H-10, 2, 7, '#e8e0d0'); b(ctx, 0, 0, cx+1, H-10, 2, 7, '#e0d8c8');
+  b(ctx, 0, 0, cx-4, H-14, 8, 5, '#f0ebe0');
+  b(ctx, 0, 0, cx-3, H-20, 6, 7, '#f0ebe0'); b(ctx, 0, 0, cx-2, H-19, 4, 4, '#f5f0e5');
+  b(ctx, 0, 0, cx-5, H-19, 2, 6, '#e8e0d0'); b(ctx, 0, 0, cx+3, H-19, 2, 6, '#e8e0d0');
+  b(ctx, 0, 0, cx+3, H-22, 2, 3, '#e8e0d0');
+  b(ctx, 0, 0, cx-2, H-24, 4, 4, '#f0ebe0'); b(ctx, 0, 0, cx-2, H-25, 4, 2, '#d4c8a0');
+  const ec = ['#ffffaa','#ffcc66','#ffeecc'][frame];
+  p(ctx, 0, 0, cx-1, H-23, ec); p(ctx, 0, 0, cx+1, H-23, ec);
+  p(ctx, 0, 0, cx+3, H-24, '#ff6600'); p(ctx, 0, 0, cx+4, H-24, '#ff9900');
+  p(ctx, 0, 0, cx+3, H-25, frame===0 ? '#ffcc00' : '#ff8800');
 }
 
 function drawCelestialCloudThrone(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2744,17 +2691,16 @@ function drawCelestialSunDial(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawCelestialAltarOfLight(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(3), H = gh(2); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 4, H-8, W-8, 8, '#d0c8b8');
-  b(ctx, 0, 0, 6, H-10, W-12, 4, '#e0d8c8');
-  b(ctx, 0, 0, cx-4, H-12, 8, 3, '#ece4d4');
-  // Light beam per frame
-  const beamW = frame === 0 ? 4 : frame === 1 ? 8 : 12;
-  const beamAlpha = frame === 0 ? '#ffdd8888' : frame === 1 ? '#ffdd8866' : '#ffdd8844';
-  b(ctx, 0, 0, cx-beamW/2, 0, beamW, H-12, beamAlpha);
-  // Gem on altar
-  b(ctx, 0, 0, cx-1, H-13, 2, 2, '#ffdd88');
-  p(ctx, 0, 0, cx, H-13, frame === 0 ? '#ffffff' : '#ffee99');
+  const W = gw(4), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, H-3, W, 3, '#c0b8a0'); b(ctx, 0, 0, 1, H-4, W-2, 1, '#b0a890');
+  b(ctx, 0, 0, cx-2, 3, 4, H-7, '#e8e0d0'); b(ctx, 0, 0, cx-1, 4, 2, H-8, '#f0ebe0');
+  b(ctx, 0, 0, 3, 1, W-6, 4, '#d4c8a0'); b(ctx, 0, 0, 4, 2, W-8, 2, '#e8d888');
+  b(ctx, 0, 0, 2, 1, 2, 4, '#c0b490'); b(ctx, 0, 0, W-4, 1, 2, 4, '#c0b490');
+  b(ctx, 0, 0, 3, 1, W-6, 1, '#ffdd66'); b(ctx, 0, 0, 3, 4, W-6, 1, '#ccaa44');
+  b(ctx, 0, 0, cx-1, 2, 2, 2, '#ffffff'); p(ctx, 0, 0, cx, 2, '#ffffcc');
+  const bw = frame===0 ? 2 : frame===1 ? 4 : 6;
+  b(ctx, 0, 0, cx-Math.floor(bw/2), 0, bw, 2, '#ffffe844');
+  p(ctx, 0, 0, 1, H-6, '#ff994488'); p(ctx, 0, 0, W-2, H-6, '#ff994488');
 }
 
 function drawCelestialAngelicStatue(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2916,42 +2862,39 @@ function drawHarmonicPipeOrgan(ctx: CanvasRenderingContext2D, frame: number) {
   if (frame === 2) { for (let i = 0; i < 3; i++) p(ctx, 0, 0, W-8-i*2, H-20-20-i*3, '#aa884444'); }
 }
 
-function drawHarmonicDjBooth(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(4), H = gh(3); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 2, H-6, W-4, 6, '#222222');
-  b(ctx, 0, 0, 4, 6, W-8, H-12, '#333333');
-  // Turntable
-  b(ctx, 0, 0, 6, 8, 16, 12, '#222222');
-  const discAngle = frame * 30;
-  b(ctx, 0, 0, 8, 10, 12, 8, '#111111');
-  p(ctx, 0, 0, 12 + (frame%2), 13, '#cccccc'); // label dot rotates
-  // EQ display
-  const eqBars = [3,5,7,4,6,8,5,3];
-  for (let i = 0; i < eqBars.length; i++) {
-    const bh = frame === 1 ? eqBars[i]+2 : frame === 2 ? eqBars[i] : eqBars[i]-1;
-    b(ctx, 0, 0, 28+i*3, H-12-Math.max(1,bh), 2, Math.max(1,bh), i<4 ? '#44aaff' : '#ff4488');
-  }
-  // Headphones
-  b(ctx, 0, 0, W-10, 6, 6, 4, '#444444');
+function drawHarmonicConductorPodium(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(2);
+  // Podium base
+  b(ctx, 0, 0, 2, H - 6, W - 4, 6, '#553322');
+  b(ctx, 0, 0, 3, H - 7, W - 6, 1, '#664433');
+  b(ctx, 0, 0, 4, H - 5, W - 8, 1, '#664433');
+  // Music stand pole
+  const cx = Math.floor(W / 2);
+  b(ctx, 0, 0, cx, 3, 1, H - 9, '#443322');
+  // Stand desk
+  b(ctx, 0, 0, cx - 4, 1, 8, 3, '#553322');
+  b(ctx, 0, 0, cx - 3, 1, 6, 2, '#eeeecc');
+  p(ctx, 0, 0, cx - 2, 1, '#333333'); p(ctx, 0, 0, cx, 2, '#333333'); p(ctx, 0, 0, cx + 1, 1, '#333333');
+  // Baton
+  if (frame === 0) { b(ctx, 0, 0, cx + 4, 3, 1, 4, '#dddddd'); p(ctx, 0, 0, cx + 4, 3, '#ffffff'); }
+  else if (frame === 1) { b(ctx, 0, 0, cx + 5, 0, 1, 4, '#dddddd'); p(ctx, 0, 0, cx + 5, 0, '#ffffff'); }
+  else { p(ctx, 0, 0, cx + 5, 2, '#dddddd'); p(ctx, 0, 0, cx + 6, 3, '#dddddd'); p(ctx, 0, 0, cx + 7, 4, '#ffffff'); }
+  // Steps
+  b(ctx, 0, 0, 1, H - 4, 2, 2, '#443322'); b(ctx, 0, 0, 1, H - 5, 1, 1, '#443322');
 }
 
 function drawHarmonicSpeakerStack(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(4); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 2, 2, W-4, H-4, '#333333');
-  // Speakers (3 stacked)
-  for (let i = 0; i < 3; i++) {
-    const sy = 4 + i * Math.floor((H-8)/3);
-    const sh = Math.floor((H-12)/3);
-    b(ctx, 0, 0, 4, sy, W-8, sh, '#222222');
-    // Cone
-    const coneR = 4 + (i === 2 ? 2 : 0); // bass bigger
-    const ccx = cx, ccy = sy + sh/2;
-    b(ctx, 0, 0, ccx-coneR, ccy-coneR, coneR*2, coneR*2, '#444444');
-    const pulse = frame === i ? 2 : 0;
-    b(ctx, 0, 0, ccx-coneR+1+pulse, ccy-coneR+1+pulse, (coneR-1-pulse)*2, (coneR-1-pulse)*2, '#555555');
-  }
-  // Bass wave
-  if (frame > 0) { b(ctx, 0, 0, 0, H/2-1, 2, 2, '#44444444'); b(ctx, 0, 0, W-2, H/2-1, 2, 2, '#44444444'); }
+  const W = gw(1), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#2a2a2a');
+  b(ctx, 0, 0, 0, 0, 1, H, '#3a3a3a'); b(ctx, 0, 0, W-1, 0, 1, H, '#3a3a3a');
+  b(ctx, 0, 0, 1, 1, W-2, H-2, '#1a1a1a');
+  for (let my = 1; my < H-1; my += 2) b(ctx, 0, 0, 1, my, W-2, 1, '#222222');
+  p(ctx, 0, 0, cx-1, 2, '#555555'); p(ctx, 0, 0, cx, 2, '#666666');
+  const wy = Math.floor(H/2)+1; const cs = frame === 1 ? 1 : 0;
+  b(ctx, 0, 0, cx-2-cs, wy-1-cs, 5+cs*2, 4+cs*2, '#444444');
+  b(ctx, 0, 0, cx-1, wy, 3, 2, '#555555'); p(ctx, 0, 0, cx, wy, '#666666');
+  b(ctx, 0, 0, cx-1, H-3, 3, 1, '#111111');
+  p(ctx, 0, 0, 0, H-1, '#3a3a3a'); p(ctx, 0, 0, W-1, H-1, '#3a3a3a');
 }
 
 function drawHarmonicHarp(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2974,16 +2917,14 @@ function drawHarmonicHarp(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawHarmonicMusicStand(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(2); const cx = Math.floor(W/2);
-  // Stand pole
-  b(ctx, 0, 0, cx-1, H/2, 2, H/2, '#444444');
-  b(ctx, 0, 0, cx-4, H-3, 8, 2, '#555555');
-  // Music holder
-  b(ctx, 0, 0, cx-8, 2, 16, 2, '#444444');
-  // Sheet music - page turns per frame
-  if (frame === 0) { b(ctx, 0, 0, cx-7, 4, 14, 10, '#eeeecc'); b(ctx, 0, 0, cx-5, 5, 4, 1, '#222222'); b(ctx, 0, 0, cx-5, 7, 6, 1, '#222222'); }
-  else if (frame === 1) { b(ctx, 0, 0, cx-4, 4, 8, 10, '#ddddbb'); b(ctx, 0, 0, cx+2, 4, 5, 10, '#eeeecc'); }
-  else { b(ctx, 0, 0, cx-7, 4, 14, 10, '#eeeecc'); b(ctx, 0, 0, cx+1, 5, 4, 1, '#222222'); b(ctx, 0, 0, cx, 7, 5, 1, '#222222'); }
+  const W = gw(1), H = gh(2); const cx = Math.floor(W/2);
+  p(ctx, 0, 0, cx-2, H-1, '#444444'); p(ctx, 0, 0, cx+2, H-1, '#444444'); p(ctx, 0, 0, cx, H-1, '#555555');
+  b(ctx, 0, 0, cx, 4, 1, H-5, '#555555');
+  b(ctx, 0, 0, cx-3, 1, 7, 4, '#2a2a2a'); b(ctx, 0, 0, cx-3, 5, 7, 1, '#3a3a3a');
+  if (frame === 0) { b(ctx, 0, 0, cx-2, 2, 5, 2, '#f0e8d0'); p(ctx, 0, 0, cx-1, 2, '#333333'); p(ctx, 0, 0, cx+1, 3, '#333333'); }
+  else if (frame === 1) { b(ctx, 0, 0, cx-2, 2, 3, 2, '#f0e8d0'); b(ctx, 0, 0, cx+1, 1, 2, 2, '#e8dfc8'); }
+  else { b(ctx, 0, 0, cx-2, 2, 5, 2, '#f0e8d0'); p(ctx, 0, 0, cx, 2, '#333333'); p(ctx, 0, 0, cx-1, 3, '#333333'); }
+  p(ctx, 0, 0, cx, 4, '#777777');
 }
 
 function drawHarmonicSpotlightRig(ctx: CanvasRenderingContext2D, frame: number) {
@@ -3134,20 +3075,55 @@ function drawVoidFortuneTeller(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 
+function drawInfernalSkullSmall(ctx: CanvasRenderingContext2D, frame: number) {
+  // Skull cranium
+  b(ctx, 0, 0, 1, 1, 5, 3, '#d4c8a0');
+  p(ctx, 0, 0, 2, 0, '#d4c8a0'); p(ctx, 0, 0, 3, 0, '#d4c8a0'); p(ctx, 0, 0, 4, 0, '#d4c8a0');
+  b(ctx, 0, 0, 1, 2, 5, 1, '#b0a478');
+  // Eye sockets
+  p(ctx, 0, 0, 2, 3, frame === 1 ? '#44ff44' : '#1a0a0a');
+  p(ctx, 0, 0, 4, 3, frame === 2 ? '#44ff44' : '#1a0a0a');
+  // Nose + jaw
+  p(ctx, 0, 0, 3, 4, '#8a7a58');
+  b(ctx, 0, 0, 1, 5, 5, 1, '#b0a478');
+  p(ctx, 0, 0, 2, 5, '#d4c8a0'); p(ctx, 0, 0, 4, 5, '#d4c8a0');
+  p(ctx, 0, 0, 0, 6, '#b0a478'); p(ctx, 0, 0, 6, 5, '#8a7a58');
+}
+
+function drawCyberCableH(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(1);
+  const midY = Math.floor(H / 2);
+  b(ctx, 0, 0, 0, midY - 2, W, 5, '#111118');
+  for (let x = 0; x < W; x++) { p(ctx, 0, 0, x, midY - 1, '#224488'); p(ctx, 0, 0, x, midY, '#228844'); p(ctx, 0, 0, x, midY + 1, '#884422'); }
+  for (let cx_ = 3; cx_ < W; cx_ += 7) b(ctx, 0, 0, cx_, midY - 2, 1, 5, '#333344');
+  const sparkX = frame === 0 ? 2 : frame === 1 ? Math.floor(W / 2) : W - 4;
+  b(ctx, 0, 0, sparkX, midY - 1, 2, 3, '#44ccaa'); p(ctx, 0, 0, sparkX, midY, '#ffffff'); p(ctx, 0, 0, sparkX + 1, midY, '#ffffff');
+}
+
+function drawCyberCableV(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(1), H = gh(3);
+  const midX = Math.floor(W / 2);
+  b(ctx, 0, 0, midX - 2, 0, 5, H, '#111118');
+  for (let y = 0; y < H; y++) { p(ctx, 0, 0, midX - 1, y, '#224488'); p(ctx, 0, 0, midX, y, '#228844'); p(ctx, 0, 0, midX + 1, y, '#884422'); }
+  for (let cy_ = 3; cy_ < H; cy_ += 7) b(ctx, 0, 0, midX - 2, cy_, 5, 1, '#333344');
+  const sparkY = frame === 0 ? 2 : frame === 1 ? Math.floor(H / 2) : H - 4;
+  b(ctx, 0, 0, midX - 1, sparkY, 3, 2, '#44ccaa'); p(ctx, 0, 0, midX, sparkY, '#ffffff'); p(ctx, 0, 0, midX, sparkY + 1, '#ffffff');
+}
+
 // ===================== Structure Registry =====================
 
 export const structures: StructureDef[] = [
   // Military (10)
   { key: 'military_hq', label: 'Military HQ (5x4)', faction: 'Military', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawMilitaryHQ },
   { key: 'military_barracks', label: 'Military Barracks (5x3)', faction: 'Military', widthCells: 5, heightCells: 3, animFrames: 3, draw: drawMilitaryBarracks },
-  { key: 'military_motor_pool', label: 'Military Motor Pool (5x4)', faction: 'Military', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawMilitaryMotorPool },
+  { key: 'military_tents', label: 'Military Tents (2x1)', faction: 'Military', widthCells: 2, heightCells: 1, animFrames: 3, draw: drawMilitaryTents },
   { key: 'military_supply_depot', label: 'Military Supply Depot (5x3)', faction: 'Military', widthCells: 5, heightCells: 3, animFrames: 3, draw: drawMilitarySupplyDepot },
   { key: 'military_comms_tower', label: 'Military Comms Tower (2x5)', faction: 'Military', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawMilitaryCommsTower },
   { key: 'military_guard_tower', label: 'Military Guard Tower (2x3)', faction: 'Military', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawMilitaryGuardTower },
   { key: 'military_ammo_bunker', label: 'Military Ammo Bunker (3x3)', faction: 'Military', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawMilitaryAmmoBunker },
   { key: 'military_radar_dish', label: 'Military Radar Dish (3x4)', faction: 'Military', widthCells: 3, heightCells: 4, animFrames: 4, draw: drawMilitaryRadarDish },
-  { key: 'military_tank_hangar', label: 'Military Tank Hangar (6x4)', faction: 'Military', widthCells: 6, heightCells: 4, animFrames: 3, draw: drawMilitaryTankHangar },
-  { key: 'military_landing_pad', label: 'Military Landing Pad (5x5)', faction: 'Military', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawMilitaryLandingPad },
+  { key: 'military_tank_hangar', label: 'Military Tank Hangar (4x3)', faction: 'Military', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawMilitaryTankHangar },
+  { key: 'military_landing_pad', label: 'Military Landing Pad (3x3)', faction: 'Military', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawMilitaryLandingPad },
   // Psionic (8)
   { key: 'psionic_brain_vat', label: 'Psionic Brain Vat (3x5)', faction: 'Psionic', widthCells: 3, heightCells: 5, animFrames: 3, draw: drawPsionicBrainVat },
   { key: 'psionic_thought_amp', label: 'Psionic Thought Amplifier (2x3)', faction: 'Psionic', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawPsionicThoughtAmp },
@@ -3162,9 +3138,10 @@ export const structures: StructureDef[] = [
   { key: 'infernal_spire', label: 'Infernal Spire (2x5)', faction: 'Infernal', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawInfernalSpire },
   { key: 'infernal_altar', label: 'Infernal Altar (5x3)', faction: 'Infernal', widthCells: 5, heightCells: 3, animFrames: 3, draw: drawInfernalAltar },
   { key: 'infernal_bone_cage', label: 'Infernal Bone Cage (3x4)', faction: 'Infernal', widthCells: 3, heightCells: 4, animFrames: 3, draw: drawInfernalBoneCage },
-  { key: 'infernal_lava_font', label: 'Infernal Lava Font (3x3)', faction: 'Infernal', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawInfernalLavaFont },
+  { key: 'infernal_pentagram', label: 'Infernal Pentagram (3x3)', faction: 'Infernal', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawInfernalPentagram },
   { key: 'infernal_demon_gate', label: 'Infernal Demon Gate (5x5)', faction: 'Infernal', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawInfernalDemonGate },
   { key: 'infernal_skull_pile', label: 'Infernal Skull Pile (3x2)', faction: 'Infernal', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawInfernalSkullPile },
+  { key: 'infernal_skull_small', label: 'Infernal Skull Small (1x1)', faction: 'Infernal', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawInfernalSkullSmall },
   { key: 'infernal_torture_rack', label: 'Infernal Torture Rack (2x3)', faction: 'Infernal', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawInfernalTortureRack },
   // Arcane (8)
   { key: 'arcane_wizard_tower', label: 'Arcane Wizard Tower (3x5)', faction: 'Arcane', widthCells: 3, heightCells: 5, animFrames: 3, draw: drawArcaneWizardTower },
@@ -3179,15 +3156,15 @@ export const structures: StructureDef[] = [
   { key: 'mech_furnace', label: 'Mech Furnace (6x6)', faction: 'Mechanical', widthCells: 6, heightCells: 6, animFrames: 3, draw: drawMechFurnace },
   { key: 'mech_press', label: 'Mech Press (8x5)', faction: 'Mechanical', widthCells: 8, heightCells: 5, animFrames: 3, draw: drawMechPress },
   { key: 'mech_gear_assembly', label: 'Mech Gear Assembly (4x4)', faction: 'Mechanical', widthCells: 4, heightCells: 4, animFrames: 4, draw: drawMechGearAssembly },
-  { key: 'mech_steam_boiler', label: 'Mech Steam Boiler (3x4)', faction: 'Mechanical', widthCells: 3, heightCells: 4, animFrames: 3, draw: drawMechSteamBoiler },
+  { key: 'mech_steam_boiler', label: 'Mech Steam Boiler (2x3)', faction: 'Mechanical', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawMechSteamBoiler },
   { key: 'mech_conveyor_terminal', label: 'Mech Conveyor Terminal (4x2)', faction: 'Mechanical', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawMechConveyorTerminal },
   { key: 'mech_crane_arm', label: 'Mech Crane Arm (2x5)', faction: 'Mechanical', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawMechCraneArm },
   { key: 'mech_scrap_heap', label: 'Mech Scrap Heap (3x3)', faction: 'Mechanical', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawMechScrapHeap },
-  { key: 'mech_smokestack', label: 'Mech Smokestack (2x6)', faction: 'Mechanical', widthCells: 2, heightCells: 6, animFrames: 3, draw: drawMechSmokestack },
+  { key: 'mech_smokestack', label: 'Mech Smokestack (2x4)', faction: 'Mechanical', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawMechSmokestack },
   // Nature (8)
   { key: 'nature_ancient_tree', label: 'Nature Ancient Tree (7x7)', faction: 'Nature', widthCells: 7, heightCells: 7, animFrames: 3, draw: drawNatureAncientTree },
   { key: 'nature_sacred_pond', label: 'Nature Sacred Pond (5x4)', faction: 'Nature', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawNatureSacredPond },
-  { key: 'nature_mushroom_ring', label: 'Nature Mushroom Ring (4x4)', faction: 'Nature', widthCells: 4, heightCells: 4, animFrames: 3, draw: drawNatureMushroomRing },
+  { key: 'nature_mushroom_ring', label: 'Nature Mushroom Ring (2x2)', faction: 'Nature', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawNatureMushroomRing },
   { key: 'nature_hollow_log', label: 'Nature Hollow Log (4x2)', faction: 'Nature', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawNatureHollowLog },
   { key: 'nature_berry_bush', label: 'Nature Berry Bush (2x2)', faction: 'Nature', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawNatureBerryBush },
   { key: 'nature_stone_shrine', label: 'Nature Stone Shrine (3x3)', faction: 'Nature', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawNatureStoneShrine },
@@ -3195,21 +3172,23 @@ export const structures: StructureDef[] = [
   { key: 'nature_bee_hive', label: 'Nature Bee Hive (1x2)', faction: 'Nature', widthCells: 1, heightCells: 2, animFrames: 3, draw: drawNatureBeeHive },
   // Cypherpunk (8)
   { key: 'cyber_mainframe', label: 'Cyber Mainframe (3x6)', faction: 'Cypherpunk', widthCells: 3, heightCells: 6, animFrames: 3, draw: drawCyberMainframe },
-  { key: 'cyber_server_farm', label: 'Cyber Server Farm (5x4)', faction: 'Cypherpunk', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawCyberServerFarm },
+  { key: 'cyber_server_farm', label: 'Cyber Server Farm (3x2)', faction: 'Cypherpunk', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawCyberServerFarm },
   { key: 'cyber_hologram_table', label: 'Cyber Hologram Table (4x3)', faction: 'Cypherpunk', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawCyberHologramTable },
   { key: 'cyber_cable_nest', label: 'Cyber Cable Nest (3x3)', faction: 'Cypherpunk', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawCyberCableNest },
   { key: 'cyber_crypto_miner', label: 'Cyber Crypto Miner (3x2)', faction: 'Cypherpunk', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawCyberCryptoMiner },
   { key: 'cyber_neon_sign', label: 'Cyber Neon Sign (4x2)', faction: 'Cypherpunk', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawCyberNeonSign },
   { key: 'cyber_hacker_station', label: 'Cyber Hacker Station (2x2)', faction: 'Cypherpunk', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawCyberHackerStation },
   { key: 'cyber_firewall_node', label: 'Cyber Firewall Node (5x5)', faction: 'Cypherpunk', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawCyberFirewallNode },
+  { key: 'cyber_cable_h', label: 'Cyber Cable Run H (3x1)', faction: 'Cypherpunk', widthCells: 3, heightCells: 1, animFrames: 3, draw: drawCyberCableH },
+  { key: 'cyber_cable_v', label: 'Cyber Cable Run V (1x3)', faction: 'Cypherpunk', widthCells: 1, heightCells: 3, animFrames: 3, draw: drawCyberCableV },
   // Celestial (8)
   { key: 'celestial_sanctum', label: 'Celestial Sanctum (12x2)', faction: 'Celestial', widthCells: 12, heightCells: 2, animFrames: 3, draw: drawCelestialSanctum },
   { key: 'celestial_gate_pillar', label: 'Celestial Gate Pillar (2x3)', faction: 'Celestial', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawCelestialGatePillar },
   { key: 'celestial_oracle_fountain', label: 'Celestial Oracle Fountain (4x4)', faction: 'Celestial', widthCells: 4, heightCells: 4, animFrames: 3, draw: drawCelestialOracleFountain },
-  { key: 'celestial_marble_colossus', label: 'Celestial Marble Colossus (3x5)', faction: 'Celestial', widthCells: 3, heightCells: 5, animFrames: 3, draw: drawCelestialMarbleColossus },
+  { key: 'celestial_marble_colossus', label: 'Celestial Marble Colossus (2x4)', faction: 'Celestial', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawCelestialMarbleColossus },
   { key: 'celestial_cloud_throne', label: 'Celestial Cloud Throne (4x3)', faction: 'Celestial', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawCelestialCloudThrone },
   { key: 'celestial_sun_dial', label: 'Celestial Sun Dial (2x2)', faction: 'Celestial', widthCells: 2, heightCells: 2, animFrames: 4, draw: drawCelestialSunDial },
-  { key: 'celestial_altar_of_light', label: 'Celestial Altar of Light (3x2)', faction: 'Celestial', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawCelestialAltarOfLight },
+  { key: 'celestial_altar_of_light', label: 'Celestial Altar of Light (4x2)', faction: 'Celestial', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawCelestialAltarOfLight },
   { key: 'celestial_angelic_statue', label: 'Celestial Angelic Statue (2x4)', faction: 'Celestial', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawCelestialAngelicStatue },
   // Aliens (8)
   { key: 'alien_queen_chamber', label: 'Alien Queen Chamber (7x7)', faction: 'Aliens', widthCells: 7, heightCells: 7, animFrames: 3, draw: drawAlienQueenChamber },
@@ -3224,10 +3203,10 @@ export const structures: StructureDef[] = [
   { key: 'harmonic_grand_piano', label: 'Harmonic Grand Piano (3x3)', faction: 'Harmonic', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawHarmonicGrandPiano },
   { key: 'harmonic_drum_kit', label: 'Harmonic Drum Kit (3x3)', faction: 'Harmonic', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawHarmonicDrumKit },
   { key: 'harmonic_pipe_organ', label: 'Harmonic Pipe Organ (5x5)', faction: 'Harmonic', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawHarmonicPipeOrgan },
-  { key: 'harmonic_dj_booth', label: 'Harmonic DJ Booth (4x3)', faction: 'Harmonic', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawHarmonicDjBooth },
-  { key: 'harmonic_speaker_stack', label: 'Harmonic Speaker Stack (2x4)', faction: 'Harmonic', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawHarmonicSpeakerStack },
+  { key: 'harmonic_conductor_podium', label: 'Harmonic Conductor Podium (2x2)', faction: 'Harmonic', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawHarmonicConductorPodium },
+  { key: 'harmonic_speaker_stack', label: 'Harmonic Speaker Stack (1x2)', faction: 'Harmonic', widthCells: 1, heightCells: 2, animFrames: 3, draw: drawHarmonicSpeakerStack },
   { key: 'harmonic_harp', label: 'Harmonic Harp (2x3)', faction: 'Harmonic', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawHarmonicHarp },
-  { key: 'harmonic_music_stand', label: 'Harmonic Music Stand (2x2)', faction: 'Harmonic', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawHarmonicMusicStand },
+  { key: 'harmonic_music_stand', label: 'Harmonic Music Stand (1x2)', faction: 'Harmonic', widthCells: 1, heightCells: 2, animFrames: 3, draw: drawHarmonicMusicStand },
   { key: 'harmonic_spotlight_rig', label: 'Harmonic Spotlight Rig (4x2)', faction: 'Harmonic', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawHarmonicSpotlightRig },
   // Void (8)
   { key: 'void_slot_machine', label: 'Void Slot Machine (3x4)', faction: 'Void', widthCells: 3, heightCells: 4, animFrames: 3, draw: drawVoidSlotMachine },
