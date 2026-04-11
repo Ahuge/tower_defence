@@ -2168,25 +2168,75 @@ function drawPsionicDreamChamber(ctx: CanvasRenderingContext2D, frame: number) {
 
 function drawInfernalBoneCage(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(4);
-  b(ctx, 0, 0, 2, H - 6, W - 4, 6, '#2a1a14');
-  b(ctx, 0, 0, 4, H - 8, W - 8, 4, '#3a2a20');
-  for (let i = 0; i < 6; i++) {
-    const bx_ = 6 + i * Math.floor((W - 14) / 5);
-    b(ctx, 0, 0, bx_, 6, 2, H - 14, '#d4c8a0');
-    p(ctx, 0, 0, bx_, 12, '#b0a478');
-    p(ctx, 0, 0, bx_, H / 2, '#b0a478');
+  const chainColor = '#666677', chainHi = '#8888aa', chainDk = '#444455';
+  const boneColor = '#ccbb99', boneDk = '#aa9977', boneHi = '#ddd4bb';
+  const sway = frame === 0 ? 0 : frame === 1 ? 2 : -2;
+  const cageCx = W / 2 + sway, cageTop = 16, cageBot = 38, cageW = 20, cageH = cageBot - cageTop;
+  // Chains from top - two chains
+  const chain1x = cageCx - 6, chain2x = cageCx + 6;
+  for (let y = 0; y < cageTop; y += 4) {
+    // Chain link pattern alternating
+    const linkSway = Math.round(Math.sin(y * 0.3 + frame) * 1);
+    b(ctx, 0, 0, chain1x + linkSway - 1, y, 4, 2, chainColor);
+    b(ctx, 0, 0, chain1x + linkSway, y + 2, 2, 2, chainHi);
+    b(ctx, 0, 0, chain2x + linkSway - 1, y, 4, 2, chainColor);
+    b(ctx, 0, 0, chain2x + linkSway, y + 2, 2, 2, chainHi);
   }
-  b(ctx, 0, 0, 4, 4, W - 8, 3, '#d4c8a0');
-  b(ctx, 0, 0, 4, H - 8, W - 8, 2, '#d4c8a0');
-  const px_ = W / 2, py_ = H / 2;
-  b(ctx, 0, 0, px_ - 3, py_ - 6, 6, 5, '#4a2a2a');
-  b(ctx, 0, 0, px_ - 4, py_, 8, 10, '#3a1a1a');
-  const eyeC = ['#22cc44', '#44ff66', '#114422'][frame];
-  p(ctx, 0, 0, px_ - 2, py_ - 4, eyeC);
-  p(ctx, 0, 0, px_ + 1, py_ - 4, eyeC);
-  const chainOff = frame === 1 ? -2 : frame === 2 ? 2 : 0;
-  b(ctx, 0, 0, px_ - 1 + chainOff, 6, 2, py_ - 8, '#666655');
-  p(ctx, 0, 0, 10, H - 5, '#880022');
+  // Chain attachment points at top
+  b(ctx, 0, 0, chain1x - 2, 0, 6, 4, chainDk); b(ctx, 0, 0, chain2x - 2, 0, 6, 4, chainDk);
+  // Cage frame - curved rib bones forming bars
+  // Top ring
+  b(ctx, 0, 0, cageCx - cageW / 2, cageTop, cageW, 2, boneColor);
+  b(ctx, 0, 0, cageCx - cageW / 2 + 1, cageTop, cageW - 2, 2, boneHi);
+  // Bottom ring
+  b(ctx, 0, 0, cageCx - cageW / 2 + 2, cageBot, cageW - 4, 2, boneColor);
+  b(ctx, 0, 0, cageCx - cageW / 2 + 3, cageBot, cageW - 6, 2, boneDk);
+  // Vertical rib bone bars - curved outward in middle
+  for (let bar = 0; bar < 5; bar++) {
+    const bx = cageCx - cageW / 2 + 2 + bar * 4;
+    for (let y = cageTop; y <= cageBot; y += 2) {
+      const t = (y - cageTop) / cageH;
+      const bulge = Math.round(Math.sin(t * Math.PI) * 2);
+      const xOff = bar < 2 ? -bulge : bar > 2 ? bulge : 0;
+      b(ctx, 0, 0, bx + xOff, y, 2, 2, boneColor);
+      if (y % 4 === 0) p(ctx, 0, 0, bx + xOff, y, boneHi);
+    }
+  }
+  // Middle ring (belt)
+  const midY = cageTop + Math.round(cageH / 2);
+  b(ctx, 0, 0, cageCx - cageW / 2 - 2, midY, cageW + 4, 2, boneDk);
+  b(ctx, 0, 0, cageCx - cageW / 2 - 1, midY, cageW + 2, 2, boneColor);
+  // Skull decorations at cage corners
+  const skulls = [[cageCx - cageW / 2 - 2, cageTop - 1], [cageCx + cageW / 2, cageTop - 1], [cageCx - cageW / 2, cageBot], [cageCx + cageW / 2 - 2, cageBot]];
+  for (const [sx, sy] of skulls) {
+    b(ctx, 0, 0, sx, sy, 4, 4, boneColor); // skull
+    b(ctx, 0, 0, sx, sy + 4, 4, 2, boneDk); // jaw
+    p(ctx, 0, 0, sx, sy + 1, '#222'); p(ctx, 0, 0, sx + 2, sy + 1, '#222'); // eyes
+    p(ctx, 0, 0, sx + 1, sy + 3, '#333'); // nose
+  }
+  // Dark prisoner silhouette inside cage
+  const prisCx = cageCx, prisY = cageTop + 4;
+  b(ctx, 0, 0, prisCx - 3, prisY, 6, 6, '#1a1111'); // head
+  b(ctx, 0, 0, prisCx - 4, prisY + 6, 8, 10, '#110a0a'); // body
+  b(ctx, 0, 0, prisCx - 6, prisY + 8, 4, 2, '#1a1111'); // left arm
+  b(ctx, 0, 0, prisCx + 4, prisY + 8, 4, 2, '#1a1111'); // right arm reaching out
+  // Glowing eyes that shift color per frame
+  const eyeColors = ['#ff2200', '#ffaa00', '#ff00ff'];
+  p(ctx, 0, 0, prisCx - 2, prisY + 2, eyeColors[frame]);
+  p(ctx, 0, 0, prisCx + 2, prisY + 2, eyeColors[frame]);
+  // Eye glow
+  b(ctx, 0, 0, prisCx - 3, prisY + 1, 2, 2, eyeColors[frame] + '44');
+  b(ctx, 0, 0, prisCx + 1, prisY + 1, 2, 2, eyeColors[frame] + '44');
+  // Blood stain on ground below cage
+  b(ctx, 0, 0, W / 2 - 6, H - 8, 12, 4, '#44110888');
+  b(ctx, 0, 0, W / 2 - 4, H - 6, 8, 4, '#661a0c');
+  b(ctx, 0, 0, W / 2 - 3, H - 5, 6, 2, '#881a0c');
+  p(ctx, 0, 0, W / 2 - 8, H - 5, '#44110866'); // splatter
+  p(ctx, 0, 0, W / 2 + 6, H - 7, '#44110866');
+  // Drip from cage bottom
+  const dripY = cageBot + 4 + frame * 2;
+  p(ctx, 0, 0, cageCx, dripY, '#661a0c');
+  p(ctx, 0, 0, cageCx, dripY + 2, '#44110888');
 }
 
 function drawInfernalPentagram(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2718,96 +2768,377 @@ function drawMechSmokestack(ctx: CanvasRenderingContext2D, frame: number) {
 // ===================== NATURE NEW =====================
 
 function drawNatureSacredPond(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(5), H = gh(4); const cx = Math.floor(W/2), cy = Math.floor(H/2);
-  // Earthy border
-  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) {
-    const d = Math.sqrt(((x-cx)/1.4)**2 + ((y-cy)/1)**2);
-    if (d < 22 && d > 18) p(ctx, 0, 0, x, y, (x+y)%3===0 ? '#5a3a22' : '#4a3018');
-    else if (d <= 18) p(ctx, 0, 0, x, y, '#224466');
+  const w = gw(5), h = gh(4); // 70x56
+  // Ground around pond
+  b(ctx, 0, 0, 0, 0, 70, 56, '#3a5a28');
+  b(ctx, 0, 0, 2, 2, 66, 52, '#4a6a34');
+  // Pond water — deep blue
+  b(ctx, 0, 0, 10, 12, 50, 32, '#1a3366');
+  b(ctx, 0, 0, 8, 16, 54, 24, '#1a3366');
+  b(ctx, 0, 0, 12, 10, 46, 4, '#1a3366');
+  b(ctx, 0, 0, 14, 42, 42, 4, '#1a3366');
+  // Water depth layers
+  b(ctx, 0, 0, 14, 16, 42, 24, '#223d77');
+  b(ctx, 0, 0, 18, 20, 34, 16, '#2a4a88');
+  // Sacred stones around edge
+  const stones = [[6,14,6,4],[56,12,6,4],[4,36,6,4],[58,34,6,4],[26,6,8,4],[30,44,8,4],[2,24,4,6],[62,22,4,6]];
+  for (const [sx, sy, sw, sh] of stones) {
+    b(ctx, 0, 0, sx, sy, sw, sh, '#8888aa');
+    b(ctx, 0, 0, sx + 1, sy, sw - 2, sh - 1, '#9999bb');
+    p(ctx, 0, 0, sx + 1, sy, '#aaaacc'); // highlight
   }
-  // Water surface
-  b(ctx, 0, 0, cx-16, cy-8, 32, 16, '#2a5577');
+  // Sacred glow aura on stones
+  for (const [sx, sy, sw, sh] of stones) {
+    p(ctx, 0, 0, sx + sw / 2, sy - 1, '#aaddff');
+    p(ctx, 0, 0, sx + sw / 2, sy + sh, '#88bbee');
+  }
   // Lily pads
-  b(ctx, 0, 0, cx-10+frame, cy-4, 4, 3, '#228844');
-  b(ctx, 0, 0, cx+6, cy+2-frame, 3, 2, '#228844');
-  // Fish per frame
-  if (frame === 1) { p(ctx, 0, 0, cx+2, cy+4, '#cc8844'); }
-  if (frame === 2) { p(ctx, 0, 0, cx+2, cy+3, '#cc8844'); p(ctx, 0, 0, cx+3, cy+2, '#4477aa'); }
+  const pads = [[20,22],[38,18],[28,34],[44,28],[16,30]];
+  for (let i = 0; i < pads.length; i++) {
+    const [lx, ly] = pads[i];
+    b(ctx, 0, 0, lx, ly, 6, 4, '#2a8a22');
+    b(ctx, 0, 0, lx + 1, ly, 4, 3, '#3a9a2e');
+    p(ctx, 0, 0, lx + 3, ly, '#1a3366'); // notch
+    // Flowers on first two pads
+    if (i < 2) {
+      p(ctx, 0, 0, lx + 2, ly - 1, '#ff88aa');
+      p(ctx, 0, 0, lx + 3, ly - 1, '#ff88aa');
+      p(ctx, 0, 0, lx + 1, ly - 1, '#ff99bb');
+      p(ctx, 0, 0, lx + 2, ly - 2, '#ffaacc');
+      p(ctx, 0, 0, lx + 2, ly - 1, '#ffee44'); // center
+    }
+  }
+  // Fish visible under water
+  const fishX = 30 + frame * 4;
+  b(ctx, 0, 0, fishX, 26, 6, 2, '#ee8844');
+  p(ctx, 0, 0, fishX - 1, 27, '#ee8844'); // tail
+  p(ctx, 0, 0, fishX + 5, 26, '#ee6622'); // nose
+  p(ctx, 0, 0, fishX + 4, 26, '#111111'); // eye
+  // Second fish
+  const fish2X = 46 - frame * 3;
+  b(ctx, 0, 0, fish2X, 32, 4, 2, '#ddaa55');
+  p(ctx, 0, 0, fish2X + 4, 33, '#ddaa55');
+  p(ctx, 0, 0, fish2X, 32, '#111111');
+  // Golden shimmer particles on water — animate
+  const shimmerPos = [[22,20],[36,16],[42,24],[18,28],[32,30],[48,20],[26,36],[40,32],[30,22],[50,26]];
+  for (let i = 0; i < shimmerPos.length; i++) {
+    const [sx, sy] = shimmerPos[i];
+    const active = (i + frame) % 3 === 0;
+    if (active) {
+      p(ctx, 0, 0, sx, sy, '#ffd740');
+      p(ctx, 0, 0, sx + 1, sy, '#ffee88');
+    } else if ((i + frame) % 3 === 1) {
+      p(ctx, 0, 0, sx, sy, '#ccaa30');
+    }
+  }
+  // Water ripple rings
+  const rOff = frame * 2;
+  b(ctx, 0, 0, 24 + rOff, 24, 4, 1, '#3a5a99');
+  b(ctx, 0, 0, 40 - rOff, 30, 4, 1, '#3a5a99');
+  // Moss on ground edges
+  for (let x = 6; x < 64; x += 8) {
+    p(ctx, 0, 0, x, 10 + (x % 4), '#5a8a38');
+    p(ctx, 0, 0, x + 2, 44 - (x % 3), '#5a8a38');
+  }
 }
 
 function drawNatureMushroomRing(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(2);
-  const mushrooms = [{ x: 4, y: 2 }, { x: W-8, y: 3 }, { x: 3, y: H-8 }, { x: W-7, y: H-7 }];
-  const glowing = frame === 0 ? [0, 2] : frame === 1 ? [1, 3] : [];
-  for (let i = 0; i < 4; i++) {
-    const m = mushrooms[i];
-    b(ctx, 0, 0, m.x + 1, m.y + 2, 2, 3, '#e8d8b0');
-    b(ctx, 0, 0, m.x, m.y, 4, 3, i % 2 === 0 ? '#cc3322' : '#dd6622');
-    p(ctx, 0, 0, m.x + 1, m.y, '#ffffff');
-    p(ctx, 0, 0, m.x + 3, m.y + 1, '#ffffff');
-    if (glowing.includes(i)) b(ctx, 0, 0, m.x - 1, m.y + 4, 6, 1, '#ffddaa44');
-    else if (frame === 2) p(ctx, 0, 0, m.x + 1, m.y + 4, '#ffddaa22');
+  const w = gw(2), h = gh(2); // 28x28
+  // Mossy ground base
+  b(ctx, 0, 0, 0, 20, 28, 8, '#3a5a28');
+  b(ctx, 0, 0, 2, 18, 24, 4, '#4a6a34');
+  b(ctx, 0, 0, 4, 22, 20, 4, '#325020');
+  // Ground texture
+  for (let i = 0; i < 12; i++) {
+    p(ctx, 0, 0, 3 + (i * 7) % 22, 21 + (i * 3) % 6, '#5a7a40');
   }
-  p(ctx, 0, 0, Math.floor(W/2), Math.floor(H/2), '#8a7a44');
+  // Grass tufts
+  p(ctx, 0, 0, 1, 19, '#5a8a38'); p(ctx, 0, 0, 14, 18, '#4a7a30');
+  p(ctx, 0, 0, 25, 20, '#5a8a38'); p(ctx, 0, 0, 8, 24, '#4a7a30');
+  // Ring of 8 mushrooms in a circle
+  const mushPos = [
+    [14, 6], [21, 8], [24, 14], [22, 20],
+    [14, 22], [6, 20], [4, 14], [6, 8]
+  ];
+  const capColors = ['#cc3322', '#dd5522', '#cc4422', '#bb3318', '#dd4422', '#cc3828', '#dd5528', '#cc3322'];
+  for (let i = 0; i < 8; i++) {
+    const [mx, my] = mushPos[i];
+    const isGlowing = (frame === 0 && i % 2 === 1) || (frame === 1 && i % 2 === 0);
+    const isDim = frame === 2;
+    // Stem
+    p(ctx, 0, 0, mx, my + 2, '#e8dcc0');
+    p(ctx, 0, 0, mx, my + 1, '#ddd0b0');
+    // Cap
+    b(ctx, 0, 0, mx - 1, my - 1, 4, 2, capColors[i]);
+    p(ctx, 0, 0, mx, my - 2, capColors[i]);
+    p(ctx, 0, 0, mx + 1, my - 2, capColors[i]);
+    // White spots on cap
+    p(ctx, 0, 0, mx, my - 1, '#ffffff');
+    p(ctx, 0, 0, mx + 1, my, '#eeeeee');
+    // Glow effect
+    if (isGlowing && !isDim) {
+      p(ctx, 0, 0, mx - 2, my, '#88ff8844');
+      p(ctx, 0, 0, mx + 3, my, '#88ff8844');
+      p(ctx, 0, 0, mx, my - 3, '#88ff8844');
+      p(ctx, 0, 0, mx + 1, my + 3, '#88ff8844');
+      // Brighter cap glow
+      p(ctx, 0, 0, mx - 1, my - 1, '#ee5544');
+      p(ctx, 0, 0, mx + 2, my - 1, '#ee5544');
+    }
+  }
+  // Center of ring — darker moss patch
+  b(ctx, 0, 0, 12, 12, 4, 4, '#2a4a1c');
+  p(ctx, 0, 0, 13, 13, '#3a5a28');
+  // Tiny fallen leaf
+  p(ctx, 0, 0, 10, 16, '#8a6a22'); p(ctx, 0, 0, 11, 15, '#9a7a30');
 }
 
 function drawNatureHollowLog(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(4), H = gh(2);
-  b(ctx, 0, 0, 0, H-3, W, 3, '#2a4422');
-  b(ctx, 0, 0, 2, 4, W-4, H-8, '#5a3a22');
-  b(ctx, 0, 0, 4, 6, W-8, H-12, '#6a4a2a');
-  // Hollow opening
-  b(ctx, 0, 0, 4, 6, 8, H-12, '#2a1808');
-  // Creature per frame
-  if (frame === 1) { p(ctx, 0, 0, 6, 8, '#ffaa22'); p(ctx, 0, 0, 8, 8, '#ffaa22'); }
-  if (frame === 2) { p(ctx, 0, 0, 6, 8, '#4a3018'); p(ctx, 0, 0, 8, 8, '#4a3018'); }
-  // Bark texture
-  for (let x = 14; x < W-4; x += 5) p(ctx, 0, 0, x, 5, '#4a2a18');
+  const w = gw(4), h = gh(2); // 56x28
+  // Ground
+  b(ctx, 0, 0, 0, 22, 56, 6, '#4a6a34');
+  b(ctx, 0, 0, 2, 24, 52, 4, '#3a5a28');
+  // Main log body
+  b(ctx, 0, 0, 6, 8, 48, 14, '#6a4a28');
+  b(ctx, 0, 0, 8, 6, 44, 4, '#7a5a34'); // top curve
+  b(ctx, 0, 0, 8, 18, 44, 4, '#5a3a1e'); // bottom shadow
+  // Bark texture — horizontal grain lines
+  for (let x = 10; x < 52; x += 4) {
+    b(ctx, 0, 0, x, 9, 3, 1, '#5a3a1e');
+    b(ctx, 0, 0, x + 2, 13, 3, 1, '#5a3a1e');
+    b(ctx, 0, 0, x, 17, 3, 1, '#4a2a14');
+  }
+  // Knots
+  b(ctx, 0, 0, 22, 10, 4, 4, '#5a3a1e'); b(ctx, 0, 0, 23, 11, 2, 2, '#4a2a14');
+  b(ctx, 0, 0, 38, 12, 3, 3, '#5a3a1e'); p(ctx, 0, 0, 39, 13, '#4a2a14');
+  // Moss patches on top
+  b(ctx, 0, 0, 12, 6, 6, 2, '#4a8a30'); b(ctx, 0, 0, 14, 5, 3, 2, '#5a9a38');
+  b(ctx, 0, 0, 28, 5, 8, 3, '#4a8a30'); b(ctx, 0, 0, 30, 4, 4, 2, '#5a9a38');
+  b(ctx, 0, 0, 44, 7, 6, 2, '#3a7a24'); p(ctx, 0, 0, 46, 6, '#5a9a38');
+  // Broken branch stubs
+  b(ctx, 0, 0, 18, 4, 2, 4, '#7a5a34'); p(ctx, 0, 0, 18, 3, '#8a6a40');
+  b(ctx, 0, 0, 34, 5, 2, 3, '#6a4a28'); p(ctx, 0, 0, 34, 4, '#7a5a34');
+  b(ctx, 0, 0, 48, 8, 3, 2, '#6a4a28'); // side stub
+  // Mushrooms growing on top
+  p(ctx, 0, 0, 24, 6, '#e8dcc0'); b(ctx, 0, 0, 23, 4, 4, 2, '#cc4422'); p(ctx, 0, 0, 24, 4, '#ffffff');
+  p(ctx, 0, 0, 42, 7, '#e8dcc0'); b(ctx, 0, 0, 41, 5, 4, 2, '#dd5522'); p(ctx, 0, 0, 42, 5, '#ffffff');
+  // Hollow opening on left end
+  b(ctx, 0, 0, 2, 8, 8, 14, '#6a4a28'); // log end
+  b(ctx, 0, 0, 3, 9, 6, 12, '#2a1a0a'); // dark hollow
+  b(ctx, 0, 0, 4, 10, 4, 10, '#1a0e04'); // deeper dark
+  // Bark rings inside hollow
+  for (let r = 2; r <= 5; r++) {
+    const rc = r < 4 ? '#3a2210' : '#4a3018';
+    p(ctx, 0, 0, 3, 9 + r, rc); p(ctx, 0, 0, 8, 9 + r, rc);
+    p(ctx, 0, 0, 3 + r, 9, rc); p(ctx, 0, 0, 3 + r, 20, rc);
+  }
+  // Creature eyes in hollow — blink per frame
+  if (frame !== 2) { // frame 2 = blink (eyes closed)
+    p(ctx, 0, 0, 5, 14, '#44ff44');
+    p(ctx, 0, 0, 7, 14, '#44ff44');
+    if (frame === 0) { // wide open
+      p(ctx, 0, 0, 5, 13, '#226622');
+      p(ctx, 0, 0, 7, 13, '#226622');
+    }
+  } else { // blink frame — thin line
+    p(ctx, 0, 0, 5, 14, '#226622');
+    p(ctx, 0, 0, 7, 14, '#226622');
+  }
+  // Right end cap
+  b(ctx, 0, 0, 50, 8, 4, 14, '#7a5a34');
+  b(ctx, 0, 0, 52, 10, 2, 10, '#6a4a28');
+  // Shadow under log
+  b(ctx, 0, 0, 8, 21, 44, 2, '#2a3a18');
+  // Ground details
+  p(ctx, 0, 0, 10, 23, '#5a8a38'); p(ctx, 0, 0, 30, 22, '#5a7a36');
+  p(ctx, 0, 0, 46, 23, '#4a7a30'); p(ctx, 0, 0, 20, 25, '#3a5a24');
 }
 
 function drawNatureBerryBush(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(2); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 2, H-3, W-4, 3, '#2a4422');
-  b(ctx, 0, 0, 4, 4, W-8, H-8, '#227733');
-  b(ctx, 0, 0, 6, 6, W-12, H-12, '#2a8844');
-  // Berries
-  for (const [bx,by] of [[6,8],[10,6],[W-8,8],[W-10,10]]) p(ctx, 0, 0, bx, by, '#cc2244');
-  // Butterfly per frame
-  if (frame === 0) { p(ctx, 0, 0, cx, 4, '#ffaa44'); p(ctx, 0, 0, cx-1, 3, '#ffcc66'); p(ctx, 0, 0, cx+1, 3, '#ffcc66'); }
-  if (frame === 1) { p(ctx, 0, 0, cx, 3, '#ffaa44'); p(ctx, 0, 0, cx-1, 2, '#ffcc66'); p(ctx, 0, 0, cx+1, 2, '#ffcc66'); }
-  if (frame === 2) { p(ctx, 0, 0, cx, 1, '#ffaa44'); p(ctx, 0, 0, cx-2, 0, '#ffcc66'); p(ctx, 0, 0, cx+2, 0, '#ffcc66'); }
+  const w = gw(2), h = gh(2); // 28x28
+  // Shadow on ground
+  b(ctx, 0, 0, 4, 24, 20, 4, '#2a4a18');
+  // Bush base/trunk
+  b(ctx, 0, 0, 12, 22, 4, 4, '#5a4020');
+  p(ctx, 0, 0, 10, 22, '#5a4020'); p(ctx, 0, 0, 17, 22, '#5a4020');
+  // Round bushy shape — layered circles of leaves
+  // Bottom layer (darker, wider)
+  b(ctx, 0, 0, 2, 14, 24, 10, '#2a6a1e');
+  b(ctx, 0, 0, 4, 12, 20, 2, '#2a6a1e');
+  // Middle layer
+  b(ctx, 0, 0, 4, 8, 20, 10, '#3a8a28');
+  b(ctx, 0, 0, 6, 6, 16, 4, '#3a8a28');
+  // Top layer (lighter, rounder)
+  b(ctx, 0, 0, 6, 4, 16, 8, '#4a9a34');
+  b(ctx, 0, 0, 8, 2, 12, 4, '#4a9a34');
+  b(ctx, 0, 0, 10, 0, 8, 4, '#4a9a34');
+  // Leaf highlights
+  p(ctx, 0, 0, 8, 4, '#5aaa40'); p(ctx, 0, 0, 18, 6, '#5aaa40');
+  p(ctx, 0, 0, 12, 2, '#5aaa40'); p(ctx, 0, 0, 6, 10, '#5aaa40');
+  p(ctx, 0, 0, 20, 8, '#5aaa40'); p(ctx, 0, 0, 14, 14, '#5aaa40');
+  b(ctx, 0, 0, 10, 3, 2, 1, '#60b048');
+  // Leaf shadows (depth)
+  p(ctx, 0, 0, 4, 16, '#1e5a14'); p(ctx, 0, 0, 22, 18, '#1e5a14');
+  p(ctx, 0, 0, 14, 20, '#1e5a14'); p(ctx, 0, 0, 8, 18, '#1e5a14');
+  b(ctx, 0, 0, 16, 16, 4, 2, '#226618'); b(ctx, 0, 0, 6, 12, 2, 2, '#226618');
+  // Berries — 10 bright red scattered
+  const berries = [[8,6],[16,4],[20,10],[6,14],[18,14],[10,10],[24,12],[4,8],[14,8],[12,18]];
+  for (const [bx, by] of berries) {
+    b(ctx, 0, 0, bx, by, 2, 2, '#dd2222');
+    p(ctx, 0, 0, bx, by, '#ee4444'); // highlight
+  }
+  // Butterfly — moves per frame
+  const bfPositions = [[20, 2], [4, 6], [22, 14]];
+  const [bfx, bfy] = bfPositions[frame % 3];
+  // Wings
+  p(ctx, 0, 0, bfx - 1, bfy - 1, '#eebb44');
+  p(ctx, 0, 0, bfx + 1, bfy - 1, '#eebb44');
+  p(ctx, 0, 0, bfx - 1, bfy, '#dd9922');
+  p(ctx, 0, 0, bfx + 1, bfy, '#dd9922');
+  // Body
+  p(ctx, 0, 0, bfx, bfy, '#332200');
+  p(ctx, 0, 0, bfx, bfy - 1, '#332200');
 }
 
 function drawNatureStoneShrine(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(3), H = gh(3); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 0, H-3, W, 3, '#2a4422');
-  b(ctx, 0, 0, cx-6, H-12, 12, 9, '#777770');
-  b(ctx, 0, 0, cx-4, H-16, 8, 5, '#888880');
-  b(ctx, 0, 0, cx-2, H-18, 4, 3, '#999990');
-  // Firefly orbits per frame
-  const a = (frame/3)*Math.PI*2; const r = 12;
-  const fx = Math.round(cx + Math.cos(a)*r); const fy = Math.round(H/2 + Math.sin(a)*r);
-  p(ctx, 0, 0, fx, fy, '#ffff44'); p(ctx, 0, 0, fx+1, fy, '#ffff4488');
+  const w = gw(3), h = gh(3); // 42x42
+  // Mossy base
+  b(ctx, 0, 0, 4, 34, 34, 8, '#3a5a28');
+  b(ctx, 0, 0, 6, 32, 30, 4, '#4a6a34');
+  b(ctx, 0, 0, 8, 36, 26, 4, '#325020');
+  // Base moss detail
+  p(ctx, 0, 0, 10, 33, '#5a8a38'); p(ctx, 0, 0, 28, 34, '#5a8a38');
+  p(ctx, 0, 0, 18, 35, '#4a7a30'); p(ctx, 0, 0, 32, 33, '#4a7a30');
+  // Stone pedestal
+  b(ctx, 0, 0, 12, 30, 18, 4, '#777788');
+  b(ctx, 0, 0, 10, 32, 22, 2, '#666678');
+  b(ctx, 0, 0, 14, 29, 14, 2, '#888899');
+  // Dryad figure — torso
+  b(ctx, 0, 0, 17, 14, 8, 16, '#777788');
+  b(ctx, 0, 0, 18, 12, 6, 4, '#888899');
+  b(ctx, 0, 0, 19, 16, 4, 12, '#6a6a7a');
+  // Head
+  b(ctx, 0, 0, 18, 4, 6, 8, '#888899');
+  b(ctx, 0, 0, 19, 2, 4, 4, '#999aaa');
+  b(ctx, 0, 0, 20, 0, 2, 3, '#8888aa'); // crown/top
+  // Face features
+  p(ctx, 0, 0, 19, 6, '#44cc44'); // left glowing eye
+  p(ctx, 0, 0, 22, 6, '#44cc44'); // right glowing eye
+  // Eye glow pulse per frame
+  if (frame % 2 === 0) {
+    p(ctx, 0, 0, 19, 5, '#33aa33'); p(ctx, 0, 0, 22, 5, '#33aa33');
+    p(ctx, 0, 0, 18, 6, '#22882244'); p(ctx, 0, 0, 23, 6, '#22882244');
+  }
+  p(ctx, 0, 0, 20, 9, '#666678'); p(ctx, 0, 0, 21, 9, '#666678'); // mouth
+  // Left arm outstretched
+  b(ctx, 0, 0, 8, 14, 10, 3, '#777788');
+  b(ctx, 0, 0, 4, 13, 6, 3, '#888899');
+  b(ctx, 0, 0, 2, 12, 4, 3, '#888899'); // hand
+  p(ctx, 0, 0, 2, 11, '#777788'); p(ctx, 0, 0, 4, 11, '#777788'); // fingers
+  // Right arm outstretched
+  b(ctx, 0, 0, 24, 14, 10, 3, '#777788');
+  b(ctx, 0, 0, 32, 13, 6, 3, '#888899');
+  b(ctx, 0, 0, 36, 12, 4, 3, '#888899'); // hand
+  p(ctx, 0, 0, 38, 11, '#777788'); p(ctx, 0, 0, 36, 11, '#777788'); // fingers
+  // Vine/moss growing on figure
+  p(ctx, 0, 0, 17, 18, '#4a8a30'); p(ctx, 0, 0, 17, 20, '#3a7a24');
+  p(ctx, 0, 0, 24, 16, '#4a8a30'); p(ctx, 0, 0, 24, 19, '#3a7a24');
+  b(ctx, 0, 0, 16, 22, 2, 6, '#3a7a24'); // vine down left
+  b(ctx, 0, 0, 24, 24, 2, 4, '#4a8a30'); // vine down right
+  p(ctx, 0, 0, 6, 14, '#5a9a38'); p(ctx, 0, 0, 8, 16, '#4a8a30'); // arm moss
+  p(ctx, 0, 0, 34, 14, '#5a9a38'); p(ctx, 0, 0, 32, 16, '#4a8a30');
+  // Vine leaves
+  p(ctx, 0, 0, 15, 22, '#5aaa40'); p(ctx, 0, 0, 25, 24, '#5aaa40');
+  p(ctx, 0, 0, 17, 26, '#5aaa40');
+  // Stone texture cracks
+  p(ctx, 0, 0, 20, 18, '#5a5a6a'); p(ctx, 0, 0, 18, 22, '#5a5a6a');
+  p(ctx, 0, 0, 21, 26, '#5a5a6a'); p(ctx, 0, 0, 19, 8, '#7777aa');
+  // Firefly orbiting — position changes per frame
+  const ffAngle = (frame * 90 + 45) * Math.PI / 180;
+  const ffR = 18;
+  const ffx = Math.round(21 + ffR * Math.cos(ffAngle));
+  const ffy = Math.round(16 + ffR * Math.sin(ffAngle));
+  if (ffx >= 0 && ffx < 42 && ffy >= 0 && ffy < 42) {
+    p(ctx, 0, 0, ffx, ffy, '#ddff44');
+    p(ctx, 0, 0, ffx + 1, ffy, '#aacc22');
+    // Glow around firefly
+    p(ctx, 0, 0, ffx - 1, ffy, '#88aa1144');
+    p(ctx, 0, 0, ffx, ffy - 1, '#88aa1144');
+  }
+  // Small ground details
+  p(ctx, 0, 0, 6, 38, '#5a8a38'); p(ctx, 0, 0, 34, 37, '#4a7a30');
+  p(ctx, 0, 0, 14, 39, '#3a5a20');
 }
 
 function drawNatureWaterfall(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(3), H = gh(5); const cx = Math.floor(W/2);
-  // Rock face
-  b(ctx, 0, 0, 0, 0, W, H, '#555548');
-  b(ctx, 0, 0, 2, 2, W-4, H-4, '#666658');
-  // Water channel
-  b(ctx, 0, 0, cx-6, 0, 12, H, '#2a5577');
-  // Water texture scrolls per frame
-  for (let y = frame*2; y < H; y += 6) {
-    b(ctx, 0, 0, cx-4, y, 8, 2, '#4488aa');
-    b(ctx, 0, 0, cx-2, y+1, 4, 1, '#66aacc');
+  const w = gw(3), h = gh(5); // 42x70
+  // Sky/background
+  b(ctx, 0, 0, 0, 0, 42, 10, '#556648');
+  // Left cliff rocks
+  b(ctx, 0, 0, 0, 0, 14, 50, '#555548');
+  b(ctx, 0, 0, 2, 2, 10, 46, '#666658');
+  b(ctx, 0, 0, 0, 10, 16, 6, '#555548');
+  b(ctx, 0, 0, 0, 28, 16, 6, '#5a5a4a');
+  b(ctx, 0, 0, 0, 44, 18, 6, '#555548');
+  // Right cliff rocks
+  b(ctx, 0, 0, 28, 0, 14, 50, '#555548');
+  b(ctx, 0, 0, 30, 2, 10, 46, '#666658');
+  b(ctx, 0, 0, 26, 14, 16, 6, '#555548');
+  b(ctx, 0, 0, 26, 32, 16, 6, '#5a5a4a');
+  b(ctx, 0, 0, 24, 46, 18, 6, '#555548');
+  // Rock shelves/ledges jutting in
+  b(ctx, 0, 0, 12, 16, 6, 3, '#666658'); b(ctx, 0, 0, 12, 17, 4, 2, '#777768');
+  b(ctx, 0, 0, 24, 22, 6, 3, '#666658'); b(ctx, 0, 0, 26, 23, 4, 2, '#777768');
+  b(ctx, 0, 0, 10, 34, 6, 3, '#5a5a4a'); b(ctx, 0, 0, 10, 35, 4, 2, '#6a6a5a');
+  b(ctx, 0, 0, 26, 40, 6, 3, '#666658');
+  // Moss on rocks
+  for (let y = 0; y < 48; y += 6) {
+    p(ctx, 0, 0, 13, y, '#4a7a30'); p(ctx, 0, 0, 14, y + 2, '#5a8a38');
+    p(ctx, 0, 0, 28, y + 1, '#4a7a30'); p(ctx, 0, 0, 27, y + 3, '#5a8a38');
   }
-  // Spray at bottom
-  const sprayOff = frame;
-  p(ctx, 0, 0, cx-4-sprayOff, H-4, '#88ccee44');
-  p(ctx, 0, 0, cx+4+sprayOff, H-4, '#88ccee44');
-  // Pool at base
-  b(ctx, 0, 0, cx-8, H-6, 16, 4, '#2a5577');
+  p(ctx, 0, 0, 12, 16, '#3a6a22'); p(ctx, 0, 0, 26, 22, '#3a6a22');
+  p(ctx, 0, 0, 10, 34, '#3a6a22'); p(ctx, 0, 0, 26, 40, '#3a6a22');
+  // Water stream — scrolls per frame
+  const woff = frame * 3;
+  for (let y = 2; y < 50; y += 2) {
+    const xjitter = ((y + woff) % 6 === 0) ? 1 : 0;
+    b(ctx, 0, 0, 17 + xjitter, y, 8, 2, '#4488cc');
+    b(ctx, 0, 0, 19, y, 4, 2, '#66aacc');
+    // Highlight streaks
+    if ((y + woff) % 8 < 3) {
+      p(ctx, 0, 0, 20, y, '#88ccee');
+      p(ctx, 0, 0, 21, y + 1, '#aaddee');
+    }
+  }
+  // Water splits around shelves
+  b(ctx, 0, 0, 15, 18, 4, 2, '#4488cc'); b(ctx, 0, 0, 24, 24, 4, 2, '#4488cc');
+  // Bottom pool
+  b(ctx, 0, 0, 4, 50, 34, 12, '#336699');
+  b(ctx, 0, 0, 6, 52, 30, 8, '#3377aa');
+  b(ctx, 0, 0, 8, 54, 26, 6, '#4488cc');
+  // Pool ripples — animate
+  const roff = frame * 4;
+  b(ctx, 0, 0, 14 + (roff % 6), 54, 6, 2, '#66aacc');
+  b(ctx, 0, 0, 10 + ((roff + 3) % 8), 56, 8, 2, '#5599bb');
+  b(ctx, 0, 0, 18 + ((roff + 1) % 4), 52, 4, 2, '#66aacc');
+  // Mist/spray at base of waterfall
+  const soff = frame * 2;
+  for (let i = 0; i < 6; i++) {
+    const sx = 14 + ((i * 5 + soff) % 14);
+    const sy = 48 + ((i * 3 + soff) % 4);
+    p(ctx, 0, 0, sx, sy, '#88ccee');
+    p(ctx, 0, 0, sx + 1, sy - 1, '#aaddee');
+  }
+  b(ctx, 0, 0, 16, 49, 10, 2, '#88ccee');
+  // Rock texture details
+  for (let i = 0; i < 8; i++) {
+    p(ctx, 0, 0, 4 + (i * 3) % 10, 8 + (i * 7) % 38, '#777768');
+    p(ctx, 0, 0, 30 + (i * 5) % 10, 6 + (i * 9) % 40, '#777768');
+  }
+  // Pool edge rocks
+  b(ctx, 0, 0, 2, 48, 6, 4, '#555548'); b(ctx, 0, 0, 34, 48, 6, 4, '#555548');
+  b(ctx, 0, 0, 0, 58, 42, 12, '#555548');
+  b(ctx, 0, 0, 4, 60, 8, 4, '#666658'); b(ctx, 0, 0, 30, 60, 8, 4, '#666658');
 }
 
 function drawNatureBeeHive(ctx: CanvasRenderingContext2D, frame: number) {
@@ -2855,33 +3186,133 @@ function drawCyberServerFarm(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawCyberHologramTable(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(4), H = gh(3); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 4, H-8, W-8, 8, '#2a2a33');
-  b(ctx, 0, 0, 6, H-6, W-12, 4, '#333340');
-  // Hologram projector
-  b(ctx, 0, 0, cx-2, H-10, 4, 2, '#444455');
-  // Hologram shape per frame
-  const hcolor = '#44ccaa66';
-  if (frame === 0) { b(ctx, 0, 0, cx-6, 6, 12, 12, hcolor); } // cube
-  else if (frame === 1) { for (let a = 0; a < 360; a += 30) { const r = 6; p(ctx, 0, 0, Math.round(cx+Math.cos(a*Math.PI/180)*r), Math.round(12+Math.sin(a*Math.PI/180)*r), '#44ccaa'); } }
-  else { b(ctx, 0, 0, cx-6, 12, 12, 8, hcolor); b(ctx, 0, 0, cx-3, 8, 6, 4, hcolor); p(ctx, 0, 0, cx, 6, '#44ccaa'); }
-  // Beam lines
-  b(ctx, 0, 0, cx-1, H-12, 2, 2, '#44ccaa88');
+  const W = gw(4), H = gh(3);
+  // Table legs
+  const legColor = '#1a1a2a', legHi = '#2a2a3a';
+  b(ctx, 0, 0, 4, H - 10, 4, 10, legColor); b(ctx, 0, 0, 5, H - 10, 2, 10, legHi);
+  b(ctx, 0, 0, W - 8, H - 10, 4, 10, legColor); b(ctx, 0, 0, W - 7, H - 10, 2, 10, legHi);
+  b(ctx, 0, 0, 4, H - 6, 2, 6, legColor); b(ctx, 0, 0, W - 6, H - 6, 2, 6, legColor);
+  // Table surface - sleek dark
+  b(ctx, 0, 0, 2, H - 14, W - 4, 6, '#111122');
+  b(ctx, 0, 0, 2, H - 14, W - 4, 2, '#222244'); // top edge highlight
+  b(ctx, 0, 0, 3, H - 13, W - 6, 2, '#1a1a33');
+  // Control panel on front edge
+  b(ctx, 0, 0, 8, H - 12, 20, 4, '#0a0a1a');
+  b(ctx, 0, 0, 9, H - 11, 18, 2, '#111133');
+  // Buttons
+  p(ctx, 0, 0, 10, H - 11, '#ff4444'); p(ctx, 0, 0, 14, H - 11, '#44ff44');
+  p(ctx, 0, 0, 18, H - 11, '#4488ff'); p(ctx, 0, 0, 22, H - 11, '#ffaa00');
+  b(ctx, 0, 0, 12, H - 11, 2, 2, '#333366'); // slider track
+  // Projector in center of table
+  const cx = W / 2, projY = H - 16;
+  b(ctx, 0, 0, cx - 4, projY - 2, 8, 4, '#222244');
+  b(ctx, 0, 0, cx - 3, projY - 3, 6, 2, '#334466');
+  b(ctx, 0, 0, cx - 2, projY - 4, 4, 2, '#44ccaa'); // lens glow
+  // Projection beam
+  b(ctx, 0, 0, cx - 1, projY - 8, 2, 4, '#44ccaa44');
+  b(ctx, 0, 0, cx - 3, projY - 12, 6, 4, '#44ccaa22');
+  // Hologram area
+  const holoY = 2, holoH = projY - 14, holoCx = cx, holoCy = holoY + holoH / 2;
+  // Scanlines over hologram area
+  for (let sy = holoY; sy < holoY + holoH + 6; sy += 4) {
+    b(ctx, 0, 0, cx - 16, sy, 32, 2, '#44ccaa11');
+  }
+  if (frame === 0) {
+    // Rotating 3D cube wireframe
+    const s = 10;
+    const cubeX = holoCx - s, cubeY = holoCy - s;
+    // Front face
+    b(ctx, 0, 0, cubeX, cubeY, s * 2, 2, '#00ffcc'); b(ctx, 0, 0, cubeX, cubeY + s * 2 - 2, s * 2, 2, '#00ffcc');
+    b(ctx, 0, 0, cubeX, cubeY, 2, s * 2, '#00ffcc'); b(ctx, 0, 0, cubeX + s * 2 - 2, cubeY, 2, s * 2, '#00ffcc');
+    // Back face offset
+    const off = 6;
+    b(ctx, 0, 0, cubeX + off, cubeY - off, s * 2, 2, '#44ccaa88'); b(ctx, 0, 0, cubeX + off, cubeY - off + s * 2 - 2, s * 2, 2, '#44ccaa88');
+    b(ctx, 0, 0, cubeX + off, cubeY - off, 2, s * 2, '#44ccaa88'); b(ctx, 0, 0, cubeX + off + s * 2 - 2, cubeY - off, 2, s * 2, '#44ccaa88');
+    // Connecting edges
+    b(ctx, 0, 0, cubeX, cubeY, 2, 2, '#00ffcc'); // corners to back
+    for (let d = 0; d < off; d += 2) { p(ctx, 0, 0, cubeX + d, cubeY - d, '#44ccaa'); p(ctx, 0, 0, cubeX + s * 2 + d - 2, cubeY - d, '#44ccaa'); p(ctx, 0, 0, cubeX + d, cubeY + s * 2 - d - 2, '#44ccaa'); p(ctx, 0, 0, cubeX + s * 2 + d - 2, cubeY + s * 2 - d - 2, '#44ccaa'); }
+  } else if (frame === 1) {
+    // Sphere with lat/long lines
+    const r = 11;
+    // Longitude lines (vertical ellipses)
+    for (let a = 0; a < 360; a += 12) { const rad = a * Math.PI / 180; const sx = holoCx + Math.round(Math.cos(rad) * r), sy = holoCy + Math.round(Math.sin(rad) * r); p(ctx, 0, 0, sx, sy, '#00ffcc'); }
+    // Equator
+    for (let i = -r; i <= r; i += 2) { p(ctx, 0, 0, holoCx + i, holoCy, '#00ffcc'); }
+    // Latitude lines
+    for (let lat = -6; lat <= 6; lat += 6) { const lr = Math.round(Math.sqrt(r * r - lat * lat)); for (let i = -lr; i <= lr; i += 2) { p(ctx, 0, 0, holoCx + i, holoCy + lat, '#44ccaa'); } }
+    // Vertical meridians
+    for (let j = -r; j <= r; j += 2) { p(ctx, 0, 0, holoCx, holoCy + j, '#00ffcc'); }
+    for (let j = -r; j <= r; j += 2) { const off = Math.round(Math.sqrt(Math.max(0, r * r - j * j)) * 0.5); p(ctx, 0, 0, holoCx + off, holoCy + j, '#44ccaa88'); p(ctx, 0, 0, holoCx - off, holoCy + j, '#44ccaa88'); }
+  } else {
+    // Pyramid with glowing edges
+    const baseY = holoCy + 10, topY = holoCy - 10;
+    const left = holoCx - 12, right = holoCx + 12;
+    // Base
+    b(ctx, 0, 0, left, baseY, right - left, 2, '#00ffcc');
+    // Left edge
+    for (let i = 0; i <= 20; i++) { const t = i / 20; p(ctx, 0, 0, Math.round(left + (holoCx - left) * t), Math.round(baseY + (topY - baseY) * t), '#00ffcc'); }
+    // Right edge
+    for (let i = 0; i <= 20; i++) { const t = i / 20; p(ctx, 0, 0, Math.round(right + (holoCx - right) * t), Math.round(baseY + (topY - baseY) * t), '#00ffcc'); }
+    // Glow at apex
+    b(ctx, 0, 0, holoCx - 2, topY - 2, 4, 4, '#88ffdd44');
+    p(ctx, 0, 0, holoCx, topY, '#ffffff');
+    // Internal edge (depth)
+    for (let i = 0; i <= 20; i++) { const t = i / 20; p(ctx, 0, 0, Math.round(holoCx + (holoCx - 4 - holoCx) * t), Math.round(baseY + (topY - baseY) * t), '#44ccaa66'); }
+  }
+  // Hologram flicker glow at base
+  b(ctx, 0, 0, cx - 8, projY - 6, 16, 2, '#44ccaa66');
 }
 
 function drawCyberCableNest(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(3);
+  // Floor base - dark metallic
   b(ctx, 0, 0, 0, 0, W, H, '#1a1a22');
-  // Cables
-  const cables = [[4,4,W-4,H-4,'#224488'],[W-6,6,6,H-6,'#228844'],[W/2,2,W/2,H-2,'#884422'],[4,H/2,W-4,H/2,'#448822']];
-  for (const [x1,y1,x2,y2,c] of cables) {
-    for (let s = 0; s <= 8; s++) { p(ctx, 0, 0, Math.round(x1 as number + ((x2 as number)-(x1 as number))*s/8), Math.round(y1 as number + ((y2 as number)-(y1 as number))*s/8), c as string); }
+  b(ctx, 0, 0, 1, 1, W - 4, H - 4, '#222230');
+  // Floor grating pattern
+  for (let i = 0; i < W; i += 6) {
+    b(ctx, 0, 0, i, 0, 2, H, '#2a2a38');
   }
-  // Spark per frame
-  const sparkCable = frame % cables.length;
-  const sc = cables[sparkCable];
-  const st = 0.3 + frame*0.2;
-  p(ctx, 0, 0, Math.round(sc[0] as number + ((sc[2] as number)-(sc[0] as number))*st), Math.round(sc[1] as number + ((sc[3] as number)-(sc[1] as number))*st), '#ffffff');
+  for (let j = 0; j < H; j += 6) {
+    b(ctx, 0, 0, 0, j, W, 2, '#2a2a38');
+  }
+  // Junction boxes at edges
+  b(ctx, 0, 0, 2, 2, 8, 6, '#333344'); b(ctx, 0, 0, 3, 3, 6, 4, '#444466');
+  p(ctx, 0, 0, 4, 4, '#66ff66'); p(ctx, 0, 0, 6, 4, '#ff4444');
+  b(ctx, 0, 0, W - 10, H - 8, 8, 6, '#333344'); b(ctx, 0, 0, W - 9, H - 7, 6, 4, '#444466');
+  p(ctx, 0, 0, W - 8, H - 6, '#ffaa00'); p(ctx, 0, 0, W - 6, H - 6, '#66ff66');
+  b(ctx, 0, 0, W - 10, 2, 8, 6, '#333344'); b(ctx, 0, 0, W - 9, 3, 6, 4, '#444466');
+  p(ctx, 0, 0, W - 7, 4, '#ff4444');
+  // Cable bundle 1 - blue, diagonal top-left to bottom-right
+  const blue = '#224488', blueLt = '#3366aa';
+  for (let i = 0; i < 18; i++) { const cx = 6 + i * 2, cy = 8 + i * 2 + Math.round(Math.sin(i * 0.8) * 3); b(ctx, 0, 0, cx, cy, 4, 4, blue); b(ctx, 0, 0, cx + 1, cy + 1, 2, 2, blueLt); }
+  // Cable tie on blue
+  b(ctx, 0, 0, 16, 18, 6, 2, '#888899'); b(ctx, 0, 0, 30, 30, 6, 2, '#888899');
+  // Cable bundle 2 - green, horizontal across middle
+  const green = '#228844', greenLt = '#33aa66';
+  for (let i = 0; i < 20; i++) { const cx = 2 + i * 2, cy = 18 + Math.round(Math.sin(i * 0.6) * 4); b(ctx, 0, 0, cx, cy, 4, 4, green); b(ctx, 0, 0, cx + 1, cy + 1, 2, 2, greenLt); }
+  b(ctx, 0, 0, 12, 17, 2, 6, '#888899'); b(ctx, 0, 0, 28, 15, 2, 6, '#888899');
+  // Cable bundle 3 - copper, bottom-left to top-right
+  const copper = '#884422', copperLt = '#aa6633';
+  for (let i = 0; i < 16; i++) { const cx = 4 + i * 2, cy = H - 10 - i * 2 + Math.round(Math.cos(i * 0.7) * 3); b(ctx, 0, 0, cx, cy, 4, 4, copper); b(ctx, 0, 0, cx + 1, cy + 1, 2, 2, copperLt); }
+  b(ctx, 0, 0, 14, H - 16, 6, 2, '#888899');
+  // Cable bundle 4 - cyan, vertical left side curving right
+  const cyan = '#44ccaa', cyanLt = '#66eebb';
+  for (let i = 0; i < 18; i++) { const cx = 10 + Math.round(Math.sin(i * 0.5) * 6), cy = 4 + i * 2; b(ctx, 0, 0, cx, cy, 4, 4, cyan); b(ctx, 0, 0, cx + 1, cy + 1, 2, 2, cyanLt); }
+  b(ctx, 0, 0, 9, 16, 6, 2, '#888899'); b(ctx, 0, 0, 12, 28, 6, 2, '#888899');
+  // Animated spark along cable per frame
+  const sparkPaths = [
+    () => { const i = 6 + frame; return { x: 6 + i * 2, y: 8 + i * 2 + Math.round(Math.sin(i * 0.8) * 3) }; },
+    () => { const i = 10 + frame; return { x: 2 + i * 2, y: 18 + Math.round(Math.sin(i * 0.6) * 4) }; },
+    () => { const i = 5 + frame; return { x: 10 + Math.round(Math.sin(i * 0.5) * 6), y: 4 + i * 2 }; },
+  ];
+  const sp = sparkPaths[frame]();
+  b(ctx, 0, 0, sp.x - 2, sp.y - 2, 8, 8, '#44ccff44'); // glow
+  b(ctx, 0, 0, sp.x - 1, sp.y - 1, 6, 6, '#88eeff88');
+  b(ctx, 0, 0, sp.x, sp.y, 4, 4, '#ffffff');
+  p(ctx, 0, 0, sp.x + 1, sp.y + 1, '#ffffff');
+  // Spark trail
+  const trail = frame === 0 ? blue : frame === 1 ? green : cyan;
+  b(ctx, 0, 0, sp.x - 4, sp.y, 2, 2, '#aaeeff'); b(ctx, 0, 0, sp.x - 6, sp.y + 1, 2, 2, trail);
 }
 
 function drawCyberCryptoMiner(ctx: CanvasRenderingContext2D, frame: number) {
@@ -3231,18 +3662,83 @@ function drawCelestialOracleFountain(ctx: CanvasRenderingContext2D, frame: numbe
 }
 
 function drawCelestialMarbleColossus(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(4); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 1, H-3, W-2, 3, '#b0a890'); b(ctx, 0, 0, 0, H-2, W, 2, '#c0b8a0');
-  b(ctx, 0, 0, cx-3, H-10, 2, 7, '#e8e0d0'); b(ctx, 0, 0, cx+1, H-10, 2, 7, '#e0d8c8');
-  b(ctx, 0, 0, cx-4, H-14, 8, 5, '#f0ebe0');
-  b(ctx, 0, 0, cx-3, H-20, 6, 7, '#f0ebe0'); b(ctx, 0, 0, cx-2, H-19, 4, 4, '#f5f0e5');
-  b(ctx, 0, 0, cx-5, H-19, 2, 6, '#e8e0d0'); b(ctx, 0, 0, cx+3, H-19, 2, 6, '#e8e0d0');
-  b(ctx, 0, 0, cx+3, H-22, 2, 3, '#e8e0d0');
-  b(ctx, 0, 0, cx-2, H-24, 4, 4, '#f0ebe0'); b(ctx, 0, 0, cx-2, H-25, 4, 2, '#d4c8a0');
-  const ec = ['#ffffaa','#ffcc66','#ffeecc'][frame];
-  p(ctx, 0, 0, cx-1, H-23, ec); p(ctx, 0, 0, cx+1, H-23, ec);
-  p(ctx, 0, 0, cx+3, H-24, '#ff6600'); p(ctx, 0, 0, cx+4, H-24, '#ff9900');
-  p(ctx, 0, 0, cx+3, H-25, frame===0 ? '#ffcc00' : '#ff8800');
+  const W = gw(2), H = gh(4);
+  const marble1 = '#e0d8c8', marble2 = '#ece4d4', marble3 = '#f0ebe0', marbleDk = '#c8bfae', marbleVein = '#d4cbb8';
+  const gold1 = '#ffdd88', gold2 = '#ccaa44', goldBr = '#ffeeaa';
+  // Pedestal
+  b(ctx, 0, 0, 2, H - 8, W - 4, 8, marbleDk);
+  b(ctx, 0, 0, 1, H - 10, W - 2, 4, marble1);
+  b(ctx, 0, 0, 3, H - 8, W - 6, 2, marble2); // pedestal top highlight
+  // Pedestal decorative trim
+  b(ctx, 0, 0, 2, H - 6, W - 4, 2, gold2);
+  for (let i = 4; i < W - 4; i += 4) p(ctx, 0, 0, i, H - 6, gold1);
+  // Feet/base of robe on pedestal
+  const figBase = H - 12;
+  b(ctx, 0, 0, 6, figBase, 16, 4, marble1);
+  b(ctx, 0, 0, 4, figBase + 2, 4, 2, marble2); // left robe drape
+  b(ctx, 0, 0, 20, figBase + 2, 4, 2, marble2); // right robe drape
+  // Robe body - tapers upward
+  const robeBot = figBase, robeTop = 16;
+  for (let y = robeBot; y >= robeTop; y -= 2) {
+    const t = (robeBot - y) / (robeBot - robeTop);
+    const halfW = Math.round(9 - t * 4);
+    const cx = W / 2;
+    b(ctx, 0, 0, cx - halfW, y, halfW * 2, 2, y % 4 === 0 ? marble1 : marble2);
+    // Drapery fold shadows
+    if (y % 6 === 0 && t < 0.8) {
+      p(ctx, 0, 0, cx - halfW + 2, y, marbleDk);
+      p(ctx, 0, 0, cx + halfW - 4, y, marbleDk);
+    }
+  }
+  // Marble veining texture
+  for (let y = robeTop + 4; y < robeBot; y += 8) {
+    const vx = W / 2 - 2 + (y % 3) * 2;
+    b(ctx, 0, 0, vx, y, 4, 2, marbleVein);
+  }
+  // Belt/sash
+  b(ctx, 0, 0, W / 2 - 5, 30, 10, 2, gold2);
+  b(ctx, 0, 0, W / 2 - 4, 30, 8, 2, gold1);
+  p(ctx, 0, 0, W / 2, 30, goldBr); // buckle
+  // Left arm - at side
+  b(ctx, 0, 0, 4, 22, 4, 12, marble1);
+  b(ctx, 0, 0, 3, 22, 2, 10, marbleDk); // shadow
+  b(ctx, 0, 0, 4, 34, 4, 2, marble2); // hand
+  // Right arm - raised holding flame
+  b(ctx, 0, 0, W - 8, 20, 4, 4, marble1);
+  b(ctx, 0, 0, W - 6, 16, 4, 4, marble1); // upper arm raised
+  b(ctx, 0, 0, W - 4, 12, 4, 4, marble2); // forearm up
+  b(ctx, 0, 0, W - 4, 10, 4, 2, marble1); // hand
+  // Golden flame in raised hand - flickers per frame
+  const flameX = W - 3, flameBase = 8;
+  const flameH = [8, 10, 7][frame];
+  for (let fy = 0; fy < flameH; fy += 2) {
+    const t = fy / flameH;
+    const fw = Math.max(2, Math.round((1 - t) * 6));
+    const color = t < 0.3 ? goldBr : t < 0.6 ? gold1 : gold2;
+    b(ctx, 0, 0, flameX - fw / 2 + (frame === 1 ? 1 : frame === 2 ? -1 : 0), flameBase - fy, fw, 2, color);
+  }
+  p(ctx, 0, 0, flameX, flameBase - flameH, '#ffffff'); // flame tip
+  // Glow around flame
+  b(ctx, 0, 0, flameX - 4, flameBase - flameH + 2, 10, 6, '#ffdd8822');
+  // Neck
+  b(ctx, 0, 0, W / 2 - 2, 14, 4, 4, marble2);
+  // Head
+  b(ctx, 0, 0, W / 2 - 4, 6, 8, 8, marble1);
+  b(ctx, 0, 0, W / 2 - 3, 7, 6, 6, marble2);
+  // Face features
+  p(ctx, 0, 0, W / 2 - 2, 9, marbleDk); p(ctx, 0, 0, W / 2 + 2, 9, marbleDk); // eyes carved
+  b(ctx, 0, 0, W / 2 - 1, 11, 2, 2, marbleDk); // nose
+  b(ctx, 0, 0, W / 2 - 2, 12, 4, 1, marbleDk); // mouth line
+  // Glowing eyes - shift intensity per frame
+  const eyeGlow = ['#aaddff', '#88bbee', '#cceeFF'][frame];
+  p(ctx, 0, 0, W / 2 - 2, 9, eyeGlow); p(ctx, 0, 0, W / 2 + 2, 9, eyeGlow);
+  // Crown/helm
+  b(ctx, 0, 0, W / 2 - 5, 4, 10, 4, gold2);
+  b(ctx, 0, 0, W / 2 - 4, 3, 8, 2, gold1);
+  // Crown points
+  b(ctx, 0, 0, W / 2 - 4, 1, 2, 4, gold1); b(ctx, 0, 0, W / 2, 0, 2, 4, goldBr); b(ctx, 0, 0, W / 2 + 4, 1, 2, 4, gold1);
+  // Gem on crown center
+  p(ctx, 0, 0, W / 2, 4, '#44aaff'); p(ctx, 0, 0, W / 2 + 1, 4, '#88ccff');
 }
 
 function drawCelestialCloudThrone(ctx: CanvasRenderingContext2D, frame: number) {
@@ -3909,24 +4405,72 @@ function drawVoidDiceAltar(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawVoidRouletteWheel(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(4), H = gh(4); const cx = Math.floor(W/2), cy = Math.floor(H/2);
-  b(ctx, 0, 0, 0, 0, W, H, '#1a1028');
-  // Wheel rim (gold)
-  for (let a = 0; a < 360; a += 8) { const r = 20; p(ctx, 0, 0, Math.round(cx+Math.cos(a*Math.PI/180)*r), Math.round(cy+Math.sin(a*Math.PI/180)*r), '#ccaa44'); }
-  // Segments rotate per frame
-  const segColors = ['#cc2222','#111111','#22cc22','#111111','#cc2222','#111111','#cc2222','#111111'];
-  for (let i = 0; i < 8; i++) {
-    const a = ((i + frame*2) / 8) * Math.PI * 2;
-    for (let d = 4; d < 18; d += 2) {
-      p(ctx, 0, 0, Math.round(cx+Math.cos(a)*d), Math.round(cy+Math.sin(a)*d), segColors[i]);
+  const w = gw(4), h = gh(4); // 56x56
+  const cx = 28, cy = 26;
+  // Felt table edge at bottom
+  b(ctx, 0, 0, 0, 46, 56, 10, '#1a5c2a');
+  b(ctx, 0, 0, 0, 48, 56, 8, '#147030');
+  b(ctx, 0, 0, 2, 50, 52, 4, '#1a5c2a');
+  // Gold outer rim
+  for (let a = 0; a < 360; a += 2) {
+    const r = 24; const rad = a * Math.PI / 180;
+    const gx = Math.round(cx + r * Math.cos(rad));
+    const gy = Math.round(cy + r * Math.sin(rad));
+    if (gx >= 0 && gx < 56 && gy >= 0 && gy < 54) p(ctx, 0, 0, gx, gy, '#d4a830');
+  }
+  for (let a = 0; a < 360; a += 2) {
+    const r = 25; const rad = a * Math.PI / 180;
+    const gx = Math.round(cx + r * Math.cos(rad));
+    const gy = Math.round(cy + r * Math.sin(rad));
+    if (gx >= 0 && gx < 56 && gy >= 0 && gy < 54) p(ctx, 0, 0, gx, gy, '#c49520');
+  }
+  // Numbered segments — 18 segments alternating red/black with 1 green
+  const segColors = ['#cc2222','#111111','#cc2222','#111111','#cc2222','#111111','#cc2222','#111111',
+    '#cc2222','#111111','#00882a','#111111','#cc2222','#111111','#cc2222','#111111','#cc2222','#111111'];
+  const offset = frame * 5; // rotation per frame (degrees)
+  for (let i = 0; i < 18; i++) {
+    const startA = i * 20 + offset;
+    for (let a = startA; a < startA + 18; a += 2) {
+      for (let r = 10; r < 23; r += 2) {
+        const rad = a * Math.PI / 180;
+        const gx = Math.round(cx + r * Math.cos(rad));
+        const gy = Math.round(cy + r * Math.sin(rad));
+        if (gx >= 0 && gx < 56 && gy >= 0 && gy < 54) p(ctx, 0, 0, gx, gy, segColors[i]);
+      }
+    }
+    // Segment divider lines (gold)
+    const drad = startA * Math.PI / 180;
+    for (let r = 10; r < 24; r += 2) {
+      const gx = Math.round(cx + r * Math.cos(drad));
+      const gy = Math.round(cy + r * Math.sin(drad));
+      if (gx >= 0 && gx < 56 && gy >= 0 && gy < 54) p(ctx, 0, 0, gx, gy, '#b8942a');
     }
   }
-  // Center hub
-  b(ctx, 0, 0, cx-2, cy-2, 4, 4, '#ccaa44');
-  p(ctx, 0, 0, cx, cy, '#eedd66');
-  // Ball
-  const ballAngle = (frame / 4) * Math.PI * 2 + 0.5;
-  p(ctx, 0, 0, Math.round(cx+Math.cos(ballAngle)*16), Math.round(cy+Math.sin(ballAngle)*16), '#ffffff');
+  // Inner track ring
+  for (let a = 0; a < 360; a += 3) {
+    const r = 9; const rad = a * Math.PI / 180;
+    const gx = Math.round(cx + r * Math.cos(rad));
+    const gy = Math.round(cy + r * Math.sin(rad));
+    if (gx >= 0 && gx < 56 && gy >= 0 && gy < 54) p(ctx, 0, 0, gx, gy, '#aa8822');
+  }
+  // Gold center hub
+  b(ctx, 0, 0, 25, 23, 6, 6, '#d4a830');
+  b(ctx, 0, 0, 26, 24, 4, 4, '#e8c040');
+  p(ctx, 0, 0, 27, 25, '#fff0a0'); // spindle highlight
+  p(ctx, 0, 0, 28, 26, '#c49520');
+  // White ball in track — orbits per frame
+  const ballAngle = (frame * 90 + 30) * Math.PI / 180;
+  const ballX = Math.round(cx + 21 * Math.cos(ballAngle));
+  const ballY = Math.round(cy + 21 * Math.sin(ballAngle));
+  b(ctx, 0, 0, ballX, ballY, 3, 3, '#ffffff');
+  p(ctx, 0, 0, ballX, ballY, '#eeeedd');
+  // Rim highlight
+  for (let a = 200; a < 260; a += 3) {
+    const r = 25; const rad = a * Math.PI / 180;
+    const gx = Math.round(cx + r * Math.cos(rad));
+    const gy = Math.round(cy + r * Math.sin(rad));
+    if (gx >= 0 && gx < 56 && gy >= 0 && gy < 54) p(ctx, 0, 0, gx, gy, '#f0d060');
+  }
 }
 
 function drawVoidCrystal(ctx: CanvasRenderingContext2D, frame: number) {
@@ -3946,71 +4490,99 @@ function drawVoidCrystal(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawVoidCardTable(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(3), H = gh(2); const cx = Math.floor(W / 2);
-
-  // Table legs (4 dark wood legs)
-  b(ctx, 0, 0, 5, H - 3, 2, 3, '#2a1844'); b(ctx, 0, 0, W - 7, H - 3, 2, 3, '#2a1844');
-  b(ctx, 0, 0, 8, H - 2, 1, 2, '#221438'); b(ctx, 0, 0, W - 9, H - 2, 1, 2, '#221438');
-  // Cross brace between legs
-  b(ctx, 0, 0, 7, H - 2, W - 14, 1, '#1a1028');
-
-  // Table surface — green felt with padded rail
-  b(ctx, 0, 0, 3, 3, W - 6, H - 6, '#1a3a1a'); // dark green wood edge
-  b(ctx, 0, 0, 4, 4, W - 8, H - 8, '#224422'); // rail
-  b(ctx, 0, 0, 5, 5, W - 10, H - 10, '#2a5a2a'); // felt surface
-  b(ctx, 0, 0, 6, 6, W - 12, H - 12, '#336633'); // inner felt (lighter)
-  // Felt texture
-  for (let x = 7; x < W - 7; x += 4) { p(ctx, 0, 0, x, 7, '#2a5a2a'); p(ctx, 0, 0, x + 2, 9, '#2a5a2a'); }
-  // Table edge highlight
-  b(ctx, 0, 0, 3, 3, W - 6, 1, '#2a4a2a');
-
-  // Dealer position marker (semicircle line)
-  for (let a = 0; a < 180; a += 20) {
-    const rad = a * Math.PI / 180;
-    p(ctx, 0, 0, Math.round(cx + Math.cos(rad) * 10), Math.round(8 + Math.sin(rad) * 4), '#448844');
+  const W = gw(3), H = gh(2);
+  const feltGreen = '#2a6e3f', feltDk = '#225533', feltLt = '#337a4a';
+  const woodColor = '#5a3a1a', woodHi = '#7a5a3a', woodDk = '#3a2210';
+  const railColor = '#6a2222', railHi = '#884444';
+  // Table legs
+  b(ctx, 0, 0, 4, H - 6, 4, 6, woodColor); b(ctx, 0, 0, 5, H - 6, 2, 6, woodHi);
+  b(ctx, 0, 0, W - 8, H - 6, 4, 6, woodColor); b(ctx, 0, 0, W - 7, H - 6, 2, 6, woodHi);
+  b(ctx, 0, 0, 14, H - 4, 4, 4, woodColor); b(ctx, 0, 0, 15, H - 4, 2, 4, woodHi);
+  b(ctx, 0, 0, W - 18, H - 4, 4, 4, woodColor); b(ctx, 0, 0, W - 17, H - 4, 2, 4, woodHi);
+  // Table apron (sides under top)
+  const tableTop = H - 12;
+  b(ctx, 0, 0, 2, tableTop + 4, W - 4, 4, woodDk);
+  b(ctx, 0, 0, 3, tableTop + 5, W - 6, 2, woodColor);
+  // Padded rail edge
+  b(ctx, 0, 0, 1, tableTop, W - 2, 6, railColor);
+  b(ctx, 0, 0, 2, tableTop, W - 4, 2, railHi); // highlight on rail top
+  b(ctx, 0, 0, 2, tableTop + 4, W - 4, 2, '#551818'); // rail bottom shadow
+  // Rounded corners of rail
+  p(ctx, 0, 0, 1, tableTop, '#551818'); p(ctx, 0, 0, W - 2, tableTop, '#551818');
+  // Felt surface with texture
+  b(ctx, 0, 0, 3, tableTop - 10, W - 6, 12, feltGreen);
+  b(ctx, 0, 0, 4, tableTop - 9, W - 8, 10, feltLt);
+  // Felt texture dots
+  for (let fx = 6; fx < W - 6; fx += 4) {
+    for (let fy = tableTop - 8; fy < tableTop; fy += 4) {
+      if ((fx + fy) % 8 === 0) p(ctx, 0, 0, fx, fy, feltDk);
+    }
   }
-
-  // Ace of spades — face up, left position
-  const aceX = cx - 10, aceY = 5;
-  b(ctx, 0, 0, aceX, aceY, 6, 8, '#e8e4dc'); // card white
-  b(ctx, 0, 0, aceX, aceY, 6, 1, '#cccccc'); // top edge
-  b(ctx, 0, 0, aceX, aceY, 1, 8, '#cccccc'); // left edge
-  // Spade symbol on ace
-  p(ctx, 0, 0, aceX + 3, aceY + 2, '#111111'); // spade top
-  p(ctx, 0, 0, aceX + 2, aceY + 3, '#111111'); p(ctx, 0, 0, aceX + 4, aceY + 3, '#111111');
-  b(ctx, 0, 0, aceX + 2, aceY + 4, 3, 1, '#111111'); // spade body
-  p(ctx, 0, 0, aceX + 3, aceY + 5, '#111111'); // stem
+  // Ace of spades (face up) - left side of table
+  const cardW = 10, cardH = 14;
+  const aceX = 8, aceY = tableTop - cardH + 1;
+  b(ctx, 0, 0, aceX, aceY, cardW, cardH, '#ffffff');
+  b(ctx, 0, 0, aceX, aceY, cardW, 2, '#eeeeee'); // top edge
+  b(ctx, 0, 0, aceX + cardW - 2, aceY, 2, cardH, '#cccccc'); // right shadow
+  // Spade symbol center
+  const spCx = aceX + 5, spCy = aceY + 7;
+  p(ctx, 0, 0, spCx, spCy - 2, '#000000'); // spade top
+  b(ctx, 0, 0, spCx - 1, spCy - 1, 4, 2, '#000000'); // spade body
+  b(ctx, 0, 0, spCx - 2, spCy + 1, 6, 2, '#000000');
+  p(ctx, 0, 0, spCx, spCy + 3, '#000000'); // stem
   // A in corner
-  p(ctx, 0, 0, aceX + 1, aceY + 1, '#111111');
-
-  // Second card — face down (void purple back) or flipping per frame
-  const card2X = cx + 2, card2Y = 5;
+  p(ctx, 0, 0, aceX + 2, aceY + 2, '#000000');
+  p(ctx, 0, 0, aceX + 1, aceY + 3, '#000000'); p(ctx, 0, 0, aceX + 3, aceY + 3, '#000000');
+  b(ctx, 0, 0, aceX + 1, aceY + 4, 4, 2, '#000000');
+  // Poker chips stacked - right side
+  const chipX = W - 16;
+  // Stack 1 - red
+  for (let i = 0; i < 3; i++) { b(ctx, 0, 0, chipX, tableTop - 4 - i * 2, 6, 2, '#cc2222'); p(ctx, 0, 0, chipX + 2, tableTop - 4 - i * 2, '#ff4444'); }
+  // Stack 2 - blue
+  for (let i = 0; i < 2; i++) { b(ctx, 0, 0, chipX + 8, tableTop - 4 - i * 2, 6, 2, '#2244cc'); p(ctx, 0, 0, chipX + 10, tableTop - 4 - i * 2, '#4466ff'); }
+  // Stack 3 - black
+  b(ctx, 0, 0, chipX + 4, tableTop - 8, 6, 2, '#222222'); p(ctx, 0, 0, chipX + 6, tableTop - 8, '#555555');
+  // Second card - animated
+  const card2X = 22, card2Y = tableTop - cardH + 2;
   if (frame === 0) {
-    // Face down — void pattern back
-    b(ctx, 0, 0, card2X, card2Y, 6, 8, '#6622aa');
-    b(ctx, 0, 0, card2X + 1, card2Y + 1, 4, 6, '#8844cc');
+    // Face down - purple back with pattern
+    b(ctx, 0, 0, card2X, card2Y, cardW, cardH, '#442266');
+    b(ctx, 0, 0, card2X + 1, card2Y + 1, cardW - 2, cardH - 2, '#553388');
     // Diamond pattern on back
-    p(ctx, 0, 0, card2X + 2, card2Y + 2, '#aa66ee'); p(ctx, 0, 0, card2X + 3, card2Y + 3, '#aa66ee');
-    p(ctx, 0, 0, card2X + 2, card2Y + 4, '#aa66ee'); p(ctx, 0, 0, card2X + 3, card2Y + 5, '#aa66ee');
+    for (let dy = card2Y + 2; dy < card2Y + cardH - 2; dy += 4) {
+      for (let dx = card2X + 2; dx < card2X + cardW - 2; dx += 4) {
+        p(ctx, 0, 0, dx, dy, '#664499');
+      }
+    }
+    b(ctx, 0, 0, card2X + 2, card2Y + 4, cardW - 4, cardH - 8, '#6644aa');
   } else if (frame === 1) {
-    // Mid-flip — narrow/tilted
-    b(ctx, 0, 0, card2X + 1, card2Y, 3, 8, '#8844cc');
-    b(ctx, 0, 0, card2X + 2, card2Y + 1, 1, 6, '#6622aa');
+    // Tilting/flipping - narrower card (mid-flip)
+    const flipW = 4;
+    const flipX = card2X + (cardW - flipW) / 2;
+    b(ctx, 0, 0, flipX, card2Y, flipW, cardH, '#997acc');
+    b(ctx, 0, 0, flipX, card2Y, 2, cardH, '#ffffff'); // white edge showing
+    b(ctx, 0, 0, flipX + 2, card2Y, 2, cardH, '#442266'); // purple back
+    // Motion blur lines
+    p(ctx, 0, 0, flipX - 2, card2Y + 2, '#ffffff44');
+    p(ctx, 0, 0, flipX + flipW + 2, card2Y + 2, '#44226644');
   } else {
-    // Revealed — King of hearts
-    b(ctx, 0, 0, card2X, card2Y, 6, 8, '#e8e4dc');
-    b(ctx, 0, 0, card2X, card2Y, 6, 1, '#cccccc');
-    // Heart symbol
-    p(ctx, 0, 0, card2X + 2, card2Y + 2, '#cc2244'); p(ctx, 0, 0, card2X + 4, card2Y + 2, '#cc2244');
-    b(ctx, 0, 0, card2X + 2, card2Y + 3, 3, 1, '#cc2244');
-    p(ctx, 0, 0, card2X + 3, card2Y + 4, '#cc2244');
+    // Face up - King
+    b(ctx, 0, 0, card2X, card2Y, cardW, cardH, '#ffffff');
+    b(ctx, 0, 0, card2X + cardW - 2, card2Y, 2, cardH, '#cccccc');
     // K in corner
-    p(ctx, 0, 0, card2X + 1, card2Y + 1, '#cc2244');
+    b(ctx, 0, 0, card2X + 1, card2Y + 2, 2, 4, '#000000');
+    p(ctx, 0, 0, card2X + 3, card2Y + 2, '#000000');
+    p(ctx, 0, 0, card2X + 3, card2Y + 4, '#000000');
+    // King figure in center
+    b(ctx, 0, 0, card2X + 3, card2Y + 4, 4, 2, '#ffdd44'); // crown
+    b(ctx, 0, 0, card2X + 3, card2Y + 6, 4, 4, '#cc2222'); // robe
+    b(ctx, 0, 0, card2X + 4, card2Y + 5, 2, 2, '#ffccaa'); // face
+    p(ctx, 0, 0, card2X + 2, card2Y + 7, '#222222'); // scepter
+    p(ctx, 0, 0, card2X + 2, card2Y + 8, '#222222');
+    // Spade suit mark
+    p(ctx, 0, 0, card2X + 7, card2Y + 10, '#000000');
+    b(ctx, 0, 0, card2X + 6, card2Y + 11, 4, 2, '#000000');
   }
-
-  // Chip stacks on table
-  b(ctx, 0, 0, cx - 14, 8, 3, 2, '#8844cc'); p(ctx, 0, 0, cx - 13, 7, '#aa66ee'); // purple chips
-  b(ctx, 0, 0, cx + 12, 9, 3, 2, '#ffdd44'); p(ctx, 0, 0, cx + 13, 8, '#ffee66'); // gold chips
 }
 
 function drawVoidFortuneTeller(ctx: CanvasRenderingContext2D, frame: number) {
