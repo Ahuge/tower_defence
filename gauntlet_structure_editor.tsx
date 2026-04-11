@@ -639,6 +639,12 @@ export default function GauntletStructureEditor() {
               a.click();
               URL.revokeObjectURL(a.href);
             }} style={{ ...btnStyle, color: '#44cc88', borderColor: '#44cc88' }}>Save JSON</button>
+            <button onClick={() => {
+              navigator.clipboard.writeText(exportFullJSON()).then(
+                () => alert('Map JSON copied to clipboard! Paste in Custom Maps → Import from Clipboard.'),
+                () => alert('Failed to copy — check clipboard permissions.')
+              );
+            }} style={{ ...btnStyle, color: '#88aaff', borderColor: '#88aaff' }}>Copy to Clipboard</button>
           </div>
         </div>
       </div>
