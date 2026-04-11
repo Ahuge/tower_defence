@@ -6,6 +6,20 @@ import { UIScale } from '../systems/UIScale';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v27 — Custom Maps',
+    changes: [
+      'NEW: Custom Maps — create, save, and play your own maps',
+      'Custom Maps menu: browse saved maps, import from clipboard, open map editor',
+      'Maps saved to browser localStorage — persist between sessions',
+      'Multiplayer: host\'s custom map auto-synced to all players via WebRTC',
+      'Works with Versus 1v1 and Circle Co-op lobbies',
+      '93 structures with detailed pixel art across all 11 factions',
+      'Terrain tile improvements: toned-down void, fixed lava/water/thought pool merging',
+      'Harmonic orchestra seating terrain, infernal terrain less intense',
+      'Automated sprite export via Puppeteer (node scripts/export-sprites.mjs)',
+    ],
+  },
+  {
     version: 'v26 — Animated Structures + Map Editor',
     changes: [
       '90 animated large structures across all 11 factions (8-10 per faction)',

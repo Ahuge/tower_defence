@@ -9,6 +9,7 @@ import { GameOverScene } from './scenes/GameOverScene';
 import { LobbyScene } from './scenes/LobbyScene';
 import { CircleLobbyScene } from './scenes/CircleLobbyScene';
 import { ChangelogScene } from './scenes/ChangelogScene';
+import { CustomMapScene } from './scenes/CustomMapScene';
 import { EncyclopediaScene } from './scenes/EncyclopediaScene';
 import { HeroSelectScene } from './scenes/HeroSelectScene';
 import { CreepFactionSelectScene } from './scenes/CreepFactionSelectScene';
@@ -30,7 +31,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: gameHeight,
   backgroundColor: '#111111',
   parent: document.body,
-  scene: [MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, EncyclopediaScene, HeroSelectScene],
+  scene: [MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
   render: {
     antialias: true,
     pixelArt: false,

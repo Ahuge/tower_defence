@@ -165,60 +165,71 @@ function drawSeat(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: nu
   const c = PAL.seat;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
 
-  // Single detailed chair — top-down/slight angle view filling the tile
-  // Dark floor visible around the chair
-  b(ctx, ox, oy, 0, 0, G, G, c.frameDark);
+  // 3/4 angle chair — backrest rises up, seat recedes down
+  // Dark floor
   b(ctx, ox, oy, 0, 0, G, G, c.frame);
 
-  // Chair backrest — curved wooden arc across top
-  b(ctx, ox, oy, 1, 0, 12, 3, c.backrest);
-  b(ctx, ox, oy, 2, 0, 10, 2, c.backrestTop);
-  b(ctx, ox, oy, 0, 1, 1, 2, c.backrest); // left curve
-  b(ctx, ox, oy, 13, 1, 1, 2, c.backrest); // right curve
-  // Wood grain on backrest
-  p(ctx, ox, oy, 3, 1, c.frameDark); p(ctx, ox, oy, 6, 1, c.frameDark);
-  p(ctx, ox, oy, 9, 1, c.frameDark); p(ctx, ox, oy, 12, 1, c.frameDark);
-  // Backrest highlight (top edge catches light)
-  b(ctx, ox, oy, 3, 0, 8, 1, c.armrest);
-
-  // Left armrest
-  b(ctx, ox, oy, 0, 3, 2, 8, c.armrestDark);
-  b(ctx, ox, oy, 0, 4, 1, 6, c.armrest);
-  p(ctx, ox, oy, 0, 5, c.armrestHighlight);
-  p(ctx, ox, oy, 0, 8, c.armrestHighlight);
-  // Right armrest
-  b(ctx, ox, oy, 12, 3, 2, 8, c.armrestDark);
-  b(ctx, ox, oy, 13, 4, 1, 6, c.armrest);
-  p(ctx, ox, oy, 13, 5, c.armrestHighlight);
-  p(ctx, ox, oy, 13, 8, c.armrestHighlight);
-
-  // Seat cushion — large red velvet square
-  b(ctx, ox, oy, 2, 3, 10, 8, c.velvetDeep);
-  b(ctx, ox, oy, 3, 3, 8, 7, c.velvetMid);
-  b(ctx, ox, oy, 3, 4, 8, 5, c.velvetLight);
-  // Cushion center highlight (puffy)
-  b(ctx, ox, oy, 5, 5, 4, 3, c.velvetHighlight);
-  p(ctx, ox, oy, 6, 5, c.velvetHighlight); p(ctx, ox, oy, 7, 6, c.velvetHighlight);
-  // Cushion button/tuft in center
-  p(ctx, ox, oy, 6, 6, c.cushionCrease);
-  p(ctx, ox, oy, 7, 7, c.cushionCrease);
-  // Cushion edge shadow (rounded look)
-  b(ctx, ox, oy, 2, 10, 10, 1, c.velvetShadow);
-  b(ctx, ox, oy, 2, 3, 1, 8, c.velvetShadow);
-  b(ctx, ox, oy, 11, 3, 1, 8, c.cushionCrease);
-  // Cushion wrinkle lines
-  p(ctx, ox, oy, 4, 8, c.cushionCrease); p(ctx, ox, oy, 9, 8, c.cushionCrease);
-  p(ctx, ox, oy, 3, 5, c.cushionCrease); p(ctx, ox, oy, 10, 5, c.cushionCrease);
-
-  // Chair front legs (just visible at bottom)
-  b(ctx, ox, oy, 2, 11, 2, 3, c.backrest);
-  b(ctx, ox, oy, 10, 11, 2, 3, c.backrest);
-  p(ctx, ox, oy, 2, 11, c.backrestTop); p(ctx, ox, oy, 10, 11, c.backrestTop);
   // Floor shadow under chair
-  b(ctx, ox, oy, 3, 13, 8, 1, c.frameDark);
+  b(ctx, ox, oy, 2, 11, 11, 3, c.frameDark);
+  b(ctx, ox, oy, 3, 12, 10, 2, c.frameDark);
 
-  // Seat number — small gold number on backrest
-  p(ctx, ox, oy, 5, 0, c.number); p(ctx, ox, oy, 8, 0, c.numberDim);
+  // Back legs (behind backrest, partially hidden)
+  b(ctx, ox, oy, 2, 2, 1, 5, c.backrest);
+  b(ctx, ox, oy, 11, 2, 1, 5, c.backrest);
+
+  // Front legs (visible, angled forward)
+  b(ctx, ox, oy, 1, 8, 1, 5, c.backrest);
+  b(ctx, ox, oy, 12, 8, 1, 5, c.backrest);
+  p(ctx, ox, oy, 1, 8, c.backrestTop);
+  p(ctx, ox, oy, 12, 8, c.backrestTop);
+
+  // Backrest — tall, facing us, the most visible part
+  // Back panel (dark wood)
+  b(ctx, ox, oy, 2, 0, 10, 7, c.backrest);
+  b(ctx, ox, oy, 3, 0, 8, 6, c.backrestTop);
+  // Curved top edge
+  b(ctx, ox, oy, 4, 0, 6, 1, c.armrest);
+  p(ctx, ox, oy, 3, 0, c.armrestDark); p(ctx, ox, oy, 10, 0, c.armrestDark);
+  // Vertical slats/detail on backrest
+  b(ctx, ox, oy, 4, 1, 1, 5, c.frameDark);
+  b(ctx, ox, oy, 7, 1, 1, 5, c.frameDark);
+  b(ctx, ox, oy, 10, 1, 1, 5, c.frameDark);
+  // Inner backrest panel — lighter wood
+  b(ctx, ox, oy, 5, 1, 2, 4, c.armrestDark);
+  b(ctx, ox, oy, 8, 1, 2, 4, c.armrestDark);
+  // Gold ornament on backrest center
+  p(ctx, ox, oy, 6, 2, c.number);
+  p(ctx, ox, oy, 7, 2, c.number);
+  p(ctx, ox, oy, 6, 3, c.numberDim);
+  p(ctx, ox, oy, 7, 3, c.numberDim);
+
+  // Seat cushion — receding in perspective (wider at front, narrower at back)
+  // Back edge of seat (narrow, touching backrest)
+  b(ctx, ox, oy, 3, 7, 8, 1, c.velvetDeep);
+  // Seat body — widens toward viewer
+  b(ctx, ox, oy, 2, 8, 10, 4, c.velvetDeep);
+  b(ctx, ox, oy, 3, 8, 8, 3, c.velvetMid);
+  b(ctx, ox, oy, 3, 8, 8, 2, c.velvetLight);
+  // Puffy highlight center
+  b(ctx, ox, oy, 5, 8, 4, 2, c.velvetHighlight);
+  p(ctx, ox, oy, 6, 9, c.velvetHighlight);
+  // Cushion tufts
+  p(ctx, ox, oy, 4, 9, c.cushionCrease);
+  p(ctx, ox, oy, 9, 9, c.cushionCrease);
+  // Front edge of seat (widest, closest to viewer) — rounded lip
+  b(ctx, ox, oy, 1, 11, 12, 1, c.velvetShadow);
+  b(ctx, ox, oy, 2, 11, 10, 1, c.velvetDeep);
+
+  // Armrests — short horizontal pieces on sides
+  b(ctx, ox, oy, 1, 6, 2, 3, c.armrestDark);
+  b(ctx, ox, oy, 1, 7, 1, 2, c.armrest);
+  p(ctx, ox, oy, 1, 7, c.armrestHighlight);
+  b(ctx, ox, oy, 11, 6, 2, 3, c.armrestDark);
+  b(ctx, ox, oy, 12, 7, 1, 2, c.armrest);
+  p(ctx, ox, oy, 12, 7, c.armrestHighlight);
+
+  // Cross brace between front legs
+  b(ctx, ox, oy, 2, 12, 10, 1, c.backrest);
 
   // === AUTO-TILE EDGES — ornate trim where seating meets floor ===
   if (!n) {

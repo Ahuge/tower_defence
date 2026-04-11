@@ -5,7 +5,7 @@ import { UIScale } from '../systems/UIScale';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { TOWER_TYPES } from '../data/TowerTypes';
 import { MatchMode } from '../data/WaveDefinitions';
-import { MapId } from '../data/Maps';
+import { MapId, MapDefinition } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 
@@ -15,17 +15,19 @@ export class FactionSelectScene extends Phaser.Scene {
   private difficulty: DifficultyLevel = 'normal';
   private randomSeed: number = 0;
   private dailySeed: boolean = false;
+  private customMapDef: MapDefinition | null = null;
 
   constructor() {
     super('FactionSelectScene');
   }
 
-  init(data: { mode: MatchMode; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean }): void {
+  init(data: { mode: MatchMode; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean; customMapDef?: MapDefinition }): void {
     this.matchMode = data.mode;
     this.mapId = data.map || 'plains';
     this.difficulty = data.difficulty || 'normal';
     this.randomSeed = data.randomSeed ?? 0;
     this.dailySeed = data.dailySeed ?? false;
+    this.customMapDef = data.customMapDef ?? null;
   }
 
   create(): void {
@@ -130,7 +132,7 @@ export class FactionSelectScene extends Phaser.Scene {
         card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerdown', () => {
-        const passData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed };
+        const passData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed, customMapDef: this.customMapDef ?? undefined };
         if (this.matchMode === 'hero_defense') {
           this.scene.start('HeroSelectScene', passData);
         } else if (this.matchMode === 'gauntlet') {

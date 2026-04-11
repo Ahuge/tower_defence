@@ -22,6 +22,7 @@
     "@types/react-dom": "^19.2.3",
     "canvas": "^3.2.3",
     "jszip": "^3.10.1",
+    "puppeteer": "^24.40.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   }

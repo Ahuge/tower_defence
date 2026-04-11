@@ -116,8 +116,12 @@ Easy/Normal/Hard/Insane. Each creep type interprets difficulty individually — 
 **Random:** Procedurally generated map from a seed. 6 layout templates × terrain features scaled by difficulty. Daily seed toggle locks the same map for all players that day. Versus uses shared seed for identical maps.
 **Circle Co-op:** Circle 2P, Circle 3P, Circle 4P.
 
-## Map Editor
-Visual map editor at `/editor.html` — paint terrain tiles, place/drag structures, import/export JSON maps. Maps stored as JSON in `src/data/maps/`. Deployed alongside the game.
+## Custom Maps
+Create and play custom maps:
+- **In-game**: Menu → Custom Maps → browse saved maps, import from clipboard, play
+- **Editor**: `/editor.html` — visual map painter with terrain tiles, structures, import/export JSON
+- **Storage**: Custom maps saved in browser localStorage. Built-in maps in `src/data/maps/`.
+- **Multiplayer**: Host's custom map auto-synced to all players via WebRTC.
 
 ## Tech Stack
 - **Phaser 3.90** — WebGL rendering, scene management, input

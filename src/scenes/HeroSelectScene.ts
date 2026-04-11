@@ -3,7 +3,7 @@ import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { HeroId, HERO_ORDER, HERO_TYPES, getHeroForFaction } from '../data/HeroTypes';
 import { MatchMode } from '../data/WaveDefinitions';
 import { FactionId, FACTIONS } from '../data/Factions';
-import { MapId } from '../data/Maps';
+import { MapId, MapDefinition } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
@@ -27,6 +27,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private difficulty: DifficultyLevel = 'normal';
   private randomSeed: number = 0;
   private dailySeed: boolean = false;
+  private customMapDef: MapDefinition | null = null;
   private phoneCardIndex: number = 0;
   private phoneOffered: HeroId[] = [];
 
@@ -34,13 +35,14 @@ export class HeroSelectScene extends Phaser.Scene {
     super('HeroSelectScene');
   }
 
-  init(data: { mode: MatchMode; faction: FactionId | null; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean }): void {
+  init(data: { mode: MatchMode; faction: FactionId | null; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean; customMapDef?: MapDefinition }): void {
     this.matchMode = data.mode;
     this.faction = data.faction;
     this.mapId = data.map || 'hero_plains';
     this.difficulty = data.difficulty || 'normal';
     this.randomSeed = data.randomSeed ?? 0;
     this.dailySeed = data.dailySeed ?? false;
+    this.customMapDef = data.customMapDef ?? null;
   }
 
   preload(): void {
@@ -216,6 +218,7 @@ export class HeroSelectScene extends Phaser.Scene {
       difficulty: this.difficulty,
       randomSeed: this.randomSeed,
       dailySeed: this.dailySeed,
+      customMapDef: this.customMapDef ?? undefined,
     }));
     backBtn.on('pointerover', () => backBtn.setColor('#ffffff'));
     backBtn.on('pointerout', () => backBtn.setColor('#888888'));
@@ -348,6 +351,7 @@ export class HeroSelectScene extends Phaser.Scene {
     backBtn.on('pointerdown', () => this.scene.start('FactionSelectScene', {
       mode: this.matchMode, map: this.mapId, difficulty: this.difficulty,
       randomSeed: this.randomSeed, dailySeed: this.dailySeed,
+      customMapDef: this.customMapDef ?? undefined,
     }));
   }
 
@@ -380,6 +384,7 @@ export class HeroSelectScene extends Phaser.Scene {
       heroId,
       randomSeed: this.randomSeed,
       dailySeed: this.dailySeed,
+      customMapDef: this.customMapDef ?? undefined,
     });
   }
 }
