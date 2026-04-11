@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-10
+
+### Animated Large Structures
+- **90 large multi-tile structures** across all 11 factions (up from 22). Each faction now has 8-10 structures ranging from 2x2 to 12x2 cells.
+- **3-4 frame animation** on every structure: brazier flames flicker, radar dishes rotate, neural threads pulse, lava overflows, crystal nexuses refract light, pipe organs play, roulette wheels spin, and dozens more.
+- **TerrainManager animation support**: Structures load as spritesheets when animated, with per-structure Phaser animation keys (`struct_anim_{id}`) at 1.5 fps.
+- **108 structure placements** across gauntlet maps — every faction homeworld now features 6-11 animated structures woven into the terrain.
+- **New structures by faction**: Military (guard tower, ammo bunker, radar dish, tank hangar, landing pad), Psionic (neural loom, stasis pod, synapse hub, psychic beacon, dream chamber), Infernal (bone cage, lava font, demon gate, skull pile, torture rack), Arcane (crystal nexus, rune circle, scrying pool, spell forge, crystal cluster, enchanting table, mana well), Mechanical (gear assembly, steam boiler, conveyor terminal, crane arm, scrap heap, smokestack), Nature (sacred pond, mushroom ring, hollow log, berry bush, stone shrine, waterfall, bee hive), Cypherpunk (server farm, hologram table, cable nest, crypto miner, neon sign, hacker station, firewall node), Celestial (oracle fountain, marble colossus, cloud throne, sun dial, altar of light, angelic statue), Aliens (egg cluster, acid pool, chitin wall, spore vent, cocoon cluster, feeding pit, tunnel mouth), Harmonic (pipe organ, DJ booth, speaker stack, harp, music stand, spotlight rig), Void (rift portal, chaos obelisk, dice altar, roulette wheel, void crystal, card table, fortune teller).
+
 ## 2026-04-09
 
 ### Faction Gauntlet Mode

@@ -147,7 +147,7 @@ export class TerrainManager {
   private themeId: string = 'generic';
   private themeColors: { ground?: number; gridLine?: number; noBuild?: number; noBuildLine?: number } = {};
   private structureCells = new Set<string>();
-  private structureSprites: Phaser.GameObjects.Image[] = [];
+  private structureSprites: (Phaser.GameObjects.Image | Phaser.GameObjects.Sprite)[] = [];
   private structures: LargeStructurePlacement[] = [];
 
   constructor(scene: Phaser.Scene) {
@@ -169,10 +169,18 @@ export class TerrainManager {
       scene.load.spritesheet(ft.tilesetKey, ft.path, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
       scene.load.spritesheet(ft.doodadKey, ft.doodadPath, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
     }
-    // Large structure images
+    // Large structure images / spritesheets
     for (const defs of Object.values(LARGE_STRUCTURES)) {
       for (const def of defs) {
-        scene.load.image(def.textureKey, `assets/terrain/structures/${def.textureKey}.png`);
+        const frames = def.animFrames ?? 1;
+        if (frames > 1) {
+          scene.load.spritesheet(def.textureKey, `assets/terrain/structures/${def.textureKey}.png`, {
+            frameWidth: def.widthCells * TILE_SIZE,
+            frameHeight: def.heightCells * TILE_SIZE,
+          });
+        } else {
+          scene.load.image(def.textureKey, `assets/terrain/structures/${def.textureKey}.png`);
+        }
       }
     }
   }
@@ -208,6 +216,27 @@ export class TerrainManager {
         frameRate: 1.7,
         repeat: -1,
       });
+    }
+
+    // Large structure animations
+    for (const defs of Object.values(LARGE_STRUCTURES)) {
+      for (const def of defs) {
+        const frames = def.animFrames ?? 1;
+        if (frames <= 1) continue;
+        const key = `struct_anim_${def.id}`;
+        if (scene.anims.exists(key)) continue;
+        if (!scene.textures.exists(def.textureKey)) continue;
+        const animFrames = [];
+        for (let f = 0; f < frames; f++) {
+          animFrames.push({ key: def.textureKey, frame: f });
+        }
+        scene.anims.create({
+          key,
+          frames: animFrames,
+          frameRate: def.animFps ?? 1.5,
+          repeat: -1,
+        });
+      }
     }
 
     // Faction-specific animated terrain
@@ -344,9 +373,18 @@ export class TerrainManager {
       // Place the sprite centered on the structure's bounding box
       const px = gridLeftX(placement.col) + (def.widthCells * TILE_SIZE) / 2;
       const py = oY + placement.row * TILE_SIZE + (def.heightCells * TILE_SIZE) / 2;
-      const img = this.scene.add.image(px, py, def.textureKey).setDepth(1);
-      img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-      this.structureSprites.push(img);
+      const frames = def.animFrames ?? 1;
+      const animKey = `struct_anim_${def.id}`;
+      if (frames > 1 && this.scene.anims.exists(animKey)) {
+        const spr = this.scene.add.sprite(px, py, def.textureKey, 0).setDepth(1);
+        spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        spr.play(animKey);
+        this.structureSprites.push(spr);
+      } else {
+        const img = this.scene.add.image(px, py, def.textureKey).setDepth(1);
+        img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        this.structureSprites.push(img);
+      }
     }
 
     // Terrain tiles (blocked cells — skip cells covered by large structures)

@@ -37,13 +37,14 @@ function b(ctx: CanvasRenderingContext2D, ox: number, oy: number, gx: number, gy
 
 // --- Structure definitions ---
 
-interface StructureDef {
+export interface StructureDef {
   key: string;
   label: string;
   faction: string;
   widthCells: number;
   heightCells: number;
-  draw: (ctx: CanvasRenderingContext2D) => void;
+  animFrames: number;
+  draw: (ctx: CanvasRenderingContext2D, frame: number) => void;
 }
 
 // Grid dimensions for each structure (in grid units, not pixels)
@@ -52,7 +53,7 @@ function gh(cells: number) { return cells * G; }
 
 // ===================== MILITARY =====================
 
-function drawMilitaryHQ(ctx: CanvasRenderingContext2D) {
+function drawMilitaryHQ(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(5), H = gh(4);
   // Sandbag perimeter at base (bottom 4 rows)
   b(ctx, 0, 0, 0, H - 4, W, 4, '#8a8060');
@@ -97,9 +98,17 @@ function drawMilitaryHQ(ctx: CanvasRenderingContext2D) {
   // Flag pole on roof (right side)
   const fpx = rx + rw - 2;
   b(ctx, 0, 0, fpx, 0, 1, ry + 2, '#aaaaaa'); // pole
-  // Flag
-  b(ctx, 0, 0, fpx + 1, 0, 3, 2, '#556633');
-  p(ctx, 0, 0, fpx + 2, 0, '#667744');
+  // Flag — waves per frame
+  if (frame === 0) {
+    b(ctx, 0, 0, fpx + 1, 0, 3, 2, '#556633');
+    p(ctx, 0, 0, fpx + 2, 0, '#667744');
+  } else if (frame === 1) {
+    b(ctx, 0, 0, fpx + 1, 1, 3, 2, '#556633');
+    p(ctx, 0, 0, fpx + 3, 1, '#667744');
+  } else {
+    b(ctx, 0, 0, fpx + 1, 0, 4, 2, '#556633');
+    p(ctx, 0, 0, fpx + 2, 1, '#667744');
+  }
 
   // Windows - Floor 1 (upper floor)
   for (let wx = bx + 3; wx < bx + bw - 4; wx += 6) {
@@ -140,7 +149,7 @@ function drawMilitaryHQ(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function drawMilitaryBarracks(ctx: CanvasRenderingContext2D) {
+function drawMilitaryBarracks(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(5), H = gh(3);
 
   // Main building - long low structure
@@ -184,9 +193,13 @@ function drawMilitaryBarracks(ctx: CanvasRenderingContext2D) {
   for (let x = 1; x < W; x += 5) {
     p(ctx, 0, 0, x, H - 2, '#444438');
   }
+  // Vent fan animation
+  const vfx = bx + 4;
+  if (frame === 1) { p(ctx, 0, 0, vfx + 1, by - 3, '#555550'); p(ctx, 0, 0, vfx + 2, by - 2, '#555550'); }
+  else if (frame === 2) { p(ctx, 0, 0, vfx + 2, by - 3, '#555550'); p(ctx, 0, 0, vfx + 1, by - 2, '#555550'); }
 }
 
-function drawMilitaryMotorPool(ctx: CanvasRenderingContext2D) {
+function drawMilitaryMotorPool(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(5), H = gh(4);
 
   // Main garage structure
@@ -244,9 +257,12 @@ function drawMilitaryMotorPool(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, 15, floorY + 1, 3, 2, '#222218');
   p(ctx, 0, 0, 35, floorY + 1, '#222218');
   b(ctx, 0, 0, 50, floorY + 1, 2, 1, '#1a1a14');
+  // Exhaust puff from roof
+  const puffY = by - 2 - frame * 3;
+  if (puffY > 0) { p(ctx, 0, 0, bx + bw - 4, puffY, '#66665544'); p(ctx, 0, 0, bx + bw - 3, puffY - 1, '#55554433'); }
 }
 
-function drawMilitarySupplyDepot(ctx: CanvasRenderingContext2D) {
+function drawMilitarySupplyDepot(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(5), H = gh(3);
 
   // Main warehouse
@@ -288,9 +304,11 @@ function drawMilitarySupplyDepot(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, 0, by + bh, W, H - by - bh, '#3a3830');
   // Dock platform
   b(ctx, 0, 0, ldx - 1, by + bh, 16, 2, '#505048');
+  // Loading dock light blinks
+  p(ctx, 0, 0, ldx + 6, ldy - 2, frame === 0 ? '#ffaa00' : frame === 1 ? '#885500' : '#332200');
 }
 
-function drawMilitaryCommsTower(ctx: CanvasRenderingContext2D) {
+function drawMilitaryCommsTower(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(2), H = gh(5);
 
   // Equipment shed at base
@@ -343,8 +361,8 @@ function drawMilitaryCommsTower(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, ax - 1, 3, '#bbbbbb');
   p(ctx, 0, 0, ax + 2, 3, '#bbbbbb');
 
-  // Red warning light at peak
-  p(ctx, 0, 0, tcx, 0, '#ff2222');
+  // Red warning light at peak — pulses per frame
+  p(ctx, 0, 0, tcx, 0, frame === 0 ? '#ff2222' : frame === 1 ? '#aa1111' : '#551111');
 
   // Cable runs down sides
   for (let y = 6; y < sy; y += 3) {
@@ -357,7 +375,7 @@ function drawMilitaryCommsTower(ctx: CanvasRenderingContext2D) {
 
 // ===================== PSIONIC =====================
 
-function drawPsionicBrainVat(ctx: CanvasRenderingContext2D) {
+function drawPsionicBrainVat(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(5);
   const cx = Math.floor(W / 2); // center x
 
@@ -435,12 +453,13 @@ function drawPsionicBrainVat(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, cx - 3, brainCy - 3, '#ccccff');
   p(ctx, 0, 0, cx + 2, brainCy - 3, '#ccccff');
 
-  // Bubbles in fluid
-  p(ctx, 0, 0, cx - 4, brainCy - 8, '#4488aa');
-  p(ctx, 0, 0, cx + 3, brainCy - 6, '#4488aa');
-  p(ctx, 0, 0, cx - 2, brainCy + 7, '#3377aa');
-  p(ctx, 0, 0, cx + 1, brainCy + 9, '#3377aa');
-  p(ctx, 0, 0, cx + 4, brainCy + 5, '#4488aa');
+  // Bubbles in fluid — shift per frame
+  const bubOff = frame;
+  p(ctx, 0, 0, cx - 4, brainCy - 8 - bubOff, '#4488aa');
+  p(ctx, 0, 0, cx + 3, brainCy - 6 - bubOff, '#4488aa');
+  p(ctx, 0, 0, cx - 2, brainCy + 7 - bubOff, '#3377aa');
+  p(ctx, 0, 0, cx + 1, brainCy + 9 - bubOff, '#3377aa');
+  p(ctx, 0, 0, cx + 4, brainCy + 5 - bubOff, '#4488aa');
 
   // Metal top cap
   b(ctx, 0, 0, cx - 9, topCapY, 18, 3, '#555560');
@@ -461,7 +480,7 @@ function drawPsionicBrainVat(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, 0, H - 2, W, 2, '#1a1520');
 }
 
-function drawPsionicThoughtAmp(ctx: CanvasRenderingContext2D) {
+function drawPsionicThoughtAmp(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(2), H = gh(3);
   const cx = Math.floor(W / 2);
 
@@ -491,8 +510,8 @@ function drawPsionicThoughtAmp(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, cx, Math.floor(H / 2), '#ff88ee');
   p(ctx, 0, 0, cx - 1, Math.floor(H / 2) - 2, '#ffaaee');
 
-  // Pulsing energy rings
-  const ringYs = [12, 20, 28, 36];
+  // Pulsing energy rings — shift per frame
+  const ringYs = [12 + frame, 20 + frame, 28 + frame, 36 + frame];
   for (const ry of ringYs) {
     if (ry < H - 8) {
       b(ctx, 0, 0, colLeft - 3, ry, colW + 6, 1, '#aa44cc');
@@ -513,7 +532,7 @@ function drawPsionicThoughtAmp(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, cx, 0, '#bbaaee');
 }
 
-function drawPsionicMemoryBank(ctx: CanvasRenderingContext2D) {
+function drawPsionicMemoryBank(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(3);
 
   // Metal shelving frame
@@ -563,10 +582,16 @@ function drawPsionicMemoryBank(ctx: CanvasRenderingContext2D) {
   const tx = Math.floor(W / 2) - 5;
   b(ctx, 0, 0, tx, H - 8, 10, 5, '#1a1520');
   b(ctx, 0, 0, tx + 1, H - 7, 8, 3, '#113322');
-  // Screen content (scrolling data)
-  b(ctx, 0, 0, tx + 2, H - 7, 5, 1, '#22aa55');
+  // Screen content (scrolling data) — shifts per frame
+  b(ctx, 0, 0, tx + 2 + frame, H - 7, 5 - frame, 1, '#22aa55');
   b(ctx, 0, 0, tx + 3, H - 6, 3, 1, '#22aa55');
-  b(ctx, 0, 0, tx + 2, H - 5, 4, 1, '#22aa55');
+  b(ctx, 0, 0, tx + 2, H - 5 + frame, 4, 1, '#22aa55');
+  // LED animation per frame
+  for (let row = 0; row < 4; row++) {
+    const ry = 3 + row * 8;
+    const ledX = 5 + ((frame + row) % 3) * 6;
+    if (ledX + 2 < W - 3) p(ctx, 0, 0, ledX, ry + 1, '#ffffff');
+  }
 
   // Base
   b(ctx, 0, 0, 0, H - 2, W, 2, '#1a1520');
@@ -574,7 +599,7 @@ function drawPsionicMemoryBank(ctx: CanvasRenderingContext2D) {
 
 // ===================== INFERNAL =====================
 
-function drawInfernalThrone(ctx: CanvasRenderingContext2D) {
+function drawInfernalThrone(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(7), H = gh(4);
   const cx = Math.floor(W / 2);
 
@@ -656,11 +681,20 @@ function drawInfernalThrone(ctx: CanvasRenderingContext2D) {
     b(ctx, 0, 0, bpx + 1, H - 18, 4, 1, '#664433');
     // Stand
     b(ctx, 0, 0, bpx + 2, H - 15, 2, 5, '#443322');
-    // Fire
-    b(ctx, 0, 0, bpx + 1, H - 21, 4, 3, '#ff6622');
-    b(ctx, 0, 0, bpx + 2, H - 22, 2, 1, '#ffcc44');
-    p(ctx, 0, 0, bpx + 2, H - 23, '#ffaa22');
-    p(ctx, 0, 0, bpx + 3, H - 22, '#ff8811');
+    // Fire — flickers per frame
+    if (frame === 0) {
+      b(ctx, 0, 0, bpx + 1, H - 21, 4, 3, '#ff6622');
+      b(ctx, 0, 0, bpx + 2, H - 22, 2, 1, '#ffcc44');
+      p(ctx, 0, 0, bpx + 2, H - 23, '#ffaa22');
+    } else if (frame === 1) {
+      b(ctx, 0, 0, bpx + 1, H - 22, 4, 4, '#ff6622');
+      p(ctx, 0, 0, bpx + 1, H - 23, '#ffcc44');
+      p(ctx, 0, 0, bpx + 3, H - 24, '#ffaa22');
+    } else {
+      b(ctx, 0, 0, bpx + 1, H - 20, 4, 2, '#ff6622');
+      b(ctx, 0, 0, bpx + 2, H - 21, 2, 1, '#ff8811');
+      p(ctx, 0, 0, bpx + 2, H - 22, '#ffcc44');
+    }
   }
 
   // Bone trophies scattered around base
@@ -676,7 +710,7 @@ function drawInfernalThrone(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, 0, H - 2, W, 2, '#110a0e');
 }
 
-function drawInfernalSpire(ctx: CanvasRenderingContext2D) {
+function drawInfernalSpire(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(2), H = gh(5);
   const cx = Math.floor(W / 2);
 
@@ -716,14 +750,16 @@ function drawInfernalSpire(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, cx - 1, H - 62, 2, 4, '#160a0e');
   p(ctx, 0, 0, cx, H - 63, '#140a0e');
 
-  // Orange glow from within (cracks)
-  p(ctx, 0, 0, cx, H - 18, '#ff6622');
-  p(ctx, 0, 0, cx - 1, H - 26, '#cc4411');
-  p(ctx, 0, 0, cx + 1, H - 30, '#ff6622');
-  p(ctx, 0, 0, cx, H - 38, '#cc4411');
-  p(ctx, 0, 0, cx - 1, H - 42, '#ff4400');
-  p(ctx, 0, 0, cx + 1, H - 48, '#cc4411');
-  p(ctx, 0, 0, cx, H - 54, '#ff6622');
+  // Orange glow from within (cracks) — pulses per frame
+  const glowA = frame === 0 ? '#ff6622' : frame === 1 ? '#ff8844' : '#cc4411';
+  const glowB = frame === 0 ? '#cc4411' : frame === 1 ? '#ff6622' : '#ff8844';
+  p(ctx, 0, 0, cx, H - 18, glowA);
+  p(ctx, 0, 0, cx - 1, H - 26, glowB);
+  p(ctx, 0, 0, cx + 1, H - 30, glowA);
+  p(ctx, 0, 0, cx, H - 38, glowB);
+  p(ctx, 0, 0, cx - 1, H - 42, glowA);
+  p(ctx, 0, 0, cx + 1, H - 48, glowB);
+  p(ctx, 0, 0, cx, H - 54, glowA);
   // Deeper glow spots
   p(ctx, 0, 0, cx + 2, H - 20, '#883311');
   p(ctx, 0, 0, cx - 2, H - 34, '#883311');
@@ -739,7 +775,7 @@ function drawInfernalSpire(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, 0, H - 2, W, 2, '#110a0a');
 }
 
-function drawInfernalAltar(ctx: CanvasRenderingContext2D) {
+function drawInfernalAltar(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(5), H = gh(3);
   const cx = Math.floor(W / 2);
 
@@ -801,9 +837,11 @@ function drawInfernalAltar(ctx: CanvasRenderingContext2D) {
     b(ctx, 0, 0, bpx + 1, bpy, 2, 1, '#664433');
     // Stand
     b(ctx, 0, 0, bpx + 1, bpy + 2, 2, 3, '#443322');
-    // Fire/candle
-    b(ctx, 0, 0, bpx + 1, bpy - 2, 2, 2, '#ff6622');
-    p(ctx, 0, 0, bpx + 1, bpy - 3, '#ffcc44');
+    // Fire/candle — frame-dependent
+    const fOff = (frame + brazierPos.indexOf(brazierPos.find(bp => bp[0] === bpx)!)) % 3;
+    if (fOff === 0) { b(ctx, 0, 0, bpx + 1, bpy - 2, 2, 2, '#ff6622'); p(ctx, 0, 0, bpx + 1, bpy - 3, '#ffcc44'); }
+    else if (fOff === 1) { b(ctx, 0, 0, bpx + 1, bpy - 3, 2, 3, '#ff6622'); p(ctx, 0, 0, bpx + 2, bpy - 4, '#ffcc44'); }
+    else { b(ctx, 0, 0, bpx + 1, bpy - 2, 2, 2, '#ff8833'); p(ctx, 0, 0, bpx + 1, bpy - 3, '#ff6622'); }
   }
 
   // Ground (dark stone)
@@ -813,7 +851,7 @@ function drawInfernalAltar(ctx: CanvasRenderingContext2D) {
 
 // ===================== ARCANE =====================
 
-function drawArcaneWizardTower(ctx: CanvasRenderingContext2D) {
+function drawArcaneWizardTower(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(5);
   const cx = Math.floor(W / 2);
 
@@ -854,11 +892,12 @@ function drawArcaneWizardTower(ctx: CanvasRenderingContext2D) {
       b(ctx, 0, 0, cx - 2, wy - 1, 4, 1, '#1a0a33');
       p(ctx, 0, 0, cx - 1, wy - 2, '#1a0a33');
       p(ctx, 0, 0, cx, wy - 2, '#1a0a33');
-      // Inner glow
-      b(ctx, 0, 0, cx - 2, wy + 1, 4, 2, '#6644cc');
+      // Inner glow — color cycles per frame
+      const wglow = frame === 0 ? '#6644cc' : frame === 1 ? '#4466cc' : '#44ccaa';
+      const whi = frame === 0 ? '#aa88ff' : frame === 1 ? '#88aaff' : '#88ffcc';
+      b(ctx, 0, 0, cx - 2, wy + 1, 4, 2, wglow);
       b(ctx, 0, 0, cx - 1, wy, 2, 1, '#8866ee');
-      // Glow highlight
-      p(ctx, 0, 0, cx, wy + 1, '#aa88ff');
+      p(ctx, 0, 0, cx, wy + 1, whi);
     }
   }
 
@@ -890,8 +929,8 @@ function drawArcaneWizardTower(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, cx - 3, 5, '#9966dd');
   p(ctx, 0, 0, cx - 1, 2, '#bb88ff');
 
-  // Crystal orb at peak
-  p(ctx, 0, 0, cx, 0, '#ccaaff');
+  // Crystal orb at peak — twinkles
+  p(ctx, 0, 0, cx, 0, frame === 1 ? '#ffffff' : '#ccaaff');
 
   // Door at base
   b(ctx, 0, 0, cx - 3, H - 10, 6, 4, '#1a0a33');
@@ -904,7 +943,7 @@ function drawArcaneWizardTower(ctx: CanvasRenderingContext2D) {
 
 // ===================== MECHANICAL =====================
 
-function drawMechFurnace(ctx: CanvasRenderingContext2D) {
+function drawMechFurnace(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(6), H = gh(6);
   const cx = Math.floor(W / 2);
 
@@ -957,8 +996,9 @@ function drawMechFurnace(ctx: CanvasRenderingContext2D) {
     // Band rings
     b(ctx, 0, 0, sx - 1, 6, 7, 1, '#777777');
     b(ctx, 0, 0, sx - 1, by - 2, 7, 1, '#777777');
-    // Smoke wisps
-    p(ctx, 0, 0, sx + 2, 0, '#555550');
+    // Smoke wisps — shift per frame
+    p(ctx, 0, 0, sx + 2 + frame, 0 - frame, '#555550');
+    if (frame > 0) p(ctx, 0, 0, sx + 1, 0, '#44444033');
   }
 
   // Pipe networks on sides
@@ -987,7 +1027,7 @@ function drawMechFurnace(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, bx + 7, by + bh - 5, '#ffaa00');
 }
 
-function drawMechPress(ctx: CanvasRenderingContext2D) {
+function drawMechPress(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(8), H = gh(5);
   const cx = Math.floor(W / 2);
 
@@ -1018,8 +1058,8 @@ function drawMechPress(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, cx - 3, fy + 20, 6, 8, '#aaaaaa');
   b(ctx, 0, 0, cx - 2, fy + 20, 4, 8, '#bbbbbb');
 
-  // Die / press head
-  const dieY = fy + 28;
+  // Die / press head — moves per frame
+  const dieY = fy + 28 + frame * 2;
   b(ctx, 0, 0, cx - 10, dieY, 20, 6, '#505050');
   b(ctx, 0, 0, cx - 9, dieY + 1, 18, 4, '#5a5a5a');
   b(ctx, 0, 0, cx - 8, dieY + 5, 16, 2, '#444444');
@@ -1075,7 +1115,7 @@ function drawMechPress(ctx: CanvasRenderingContext2D) {
 
 // ===================== NATURE =====================
 
-function drawNatureAncientTree(ctx: CanvasRenderingContext2D) {
+function drawNatureAncientTree(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(7), H = gh(7);
   const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
   const R = Math.min(cx, cy) - 2;
@@ -1133,11 +1173,13 @@ function drawNatureAncientTree(ctx: CanvasRenderingContext2D) {
     p(ctx, 0, 0, cx - 1, y + 2, '#6a4a2a');
   }
 
-  // Knotholes
+  // Knotholes — bird peeks out per frame
   b(ctx, 0, 0, cx - 3, cy - 2, 3, 2, '#3a2010');
   b(ctx, 0, 0, cx - 2, cy - 2, 1, 1, '#2a1808');
   b(ctx, 0, 0, cx + 2, cy + 4, 2, 3, '#3a2010');
   p(ctx, 0, 0, cx + 2, cy + 5, '#2a1808');
+  if (frame === 1) { p(ctx, 0, 0, cx - 3, cy - 2, '#222222'); p(ctx, 0, 0, cx - 2, cy - 2, '#222222'); } // eyes
+  if (frame === 2) { p(ctx, 0, 0, cx - 3, cy - 2, '#222222'); p(ctx, 0, 0, cx - 2, cy - 2, '#222222'); p(ctx, 0, 0, cx - 2, cy - 1, '#ffaa22'); } // eyes + beak
 
   // Major branches extending outward
   const branches = [
@@ -1210,7 +1252,7 @@ function drawNatureAncientTree(ctx: CanvasRenderingContext2D) {
 
 // ===================== CYPHERPUNK =====================
 
-function drawCyberMainframe(ctx: CanvasRenderingContext2D) {
+function drawCyberMainframe(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(6);
   const cx = Math.floor(W / 2);
 
@@ -1238,12 +1280,12 @@ function drawCyberMainframe(ctx: CanvasRenderingContext2D) {
     // Faceplate
     b(ctx, 0, 0, rackX + 2, uy, rackW - 4, 1, '#3a3a48');
 
-    // LED indicators (blinking lights pattern)
+    // LED indicators (blinking lights pattern) — frame dependent
     const ledColors = ['#00ff44', '#00ff44', '#ffaa00', '#00ff44', '#ff2222', '#00ff44'];
     for (let l = 0; l < 4; l++) {
       const lx = rackX + 4 + l * 3;
       if (lx < rackX + rackW - 4) {
-        p(ctx, 0, 0, lx, uy + 1, ledColors[(i + l) % ledColors.length]);
+        p(ctx, 0, 0, lx, uy + 1, ledColors[(i + l + frame) % ledColors.length]);
       }
     }
 
@@ -1293,7 +1335,7 @@ function drawCyberMainframe(ctx: CanvasRenderingContext2D) {
 
 // ===================== CELESTIAL =====================
 
-function drawCelestialSanctum(ctx: CanvasRenderingContext2D) {
+function drawCelestialSanctum(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(12), H = gh(2);
   const cx = Math.floor(W / 2);
 
@@ -1336,12 +1378,14 @@ function drawCelestialSanctum(ctx: CanvasRenderingContext2D) {
     b(ctx, 0, 0, x + 1, friezeY + 3, 4, 1, '#aa9966');
   }
 
-  // Central ornament (star / sunburst)
-  p(ctx, 0, 0, cx, 6, '#ffdd88');
-  p(ctx, 0, 0, cx - 1, 6, '#eebb66');
-  p(ctx, 0, 0, cx + 1, 6, '#eebb66');
-  p(ctx, 0, 0, cx, 5, '#eebb66');
-  p(ctx, 0, 0, cx, 7, '#eebb66');
+  // Central ornament (star / sunburst) — pulses per frame
+  const starBright = frame === 0 ? '#ffdd88' : frame === 1 ? '#ffffff' : '#eebb66';
+  const starDim = frame === 0 ? '#eebb66' : frame === 1 ? '#ffdd88' : '#ccaa55';
+  p(ctx, 0, 0, cx, 6, starBright);
+  p(ctx, 0, 0, cx - 1, 6, starDim);
+  p(ctx, 0, 0, cx + 1, 6, starDim);
+  p(ctx, 0, 0, cx, 5, starDim);
+  p(ctx, 0, 0, cx, 7, starDim);
   // Diagonal rays
   p(ctx, 0, 0, cx - 1, 5, '#ccaa55');
   p(ctx, 0, 0, cx + 1, 5, '#ccaa55');
@@ -1357,7 +1401,7 @@ function drawCelestialSanctum(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function drawCelestialGatePillar(ctx: CanvasRenderingContext2D) {
+function drawCelestialGatePillar(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(2), H = gh(3);
   const cx = Math.floor(W / 2);
 
@@ -1396,11 +1440,14 @@ function drawCelestialGatePillar(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, colX - 3, 4, colW + 6, 2, '#d8d0c0');
   b(ctx, 0, 0, colX - 3, 4, colW + 6, 1, '#e0d8c8');
 
-  // Ornamental top — small flame / orb
-  b(ctx, 0, 0, cx - 2, 1, 4, 3, '#ffdd88');
-  b(ctx, 0, 0, cx - 1, 0, 2, 2, '#ffee99');
-  p(ctx, 0, 0, cx, 0, '#ffffbb');
-  // Glow
+  // Ornamental top — flame flickers per frame
+  if (frame === 0) {
+    b(ctx, 0, 0, cx - 2, 1, 4, 3, '#ffdd88'); b(ctx, 0, 0, cx - 1, 0, 2, 2, '#ffee99'); p(ctx, 0, 0, cx, 0, '#ffffbb');
+  } else if (frame === 1) {
+    b(ctx, 0, 0, cx - 2, 0, 4, 4, '#ffdd88'); p(ctx, 0, 0, cx - 1, 0, '#ffffbb');
+  } else {
+    b(ctx, 0, 0, cx - 1, 1, 3, 3, '#ffdd88'); p(ctx, 0, 0, cx, 0, '#ffee99');
+  }
   p(ctx, 0, 0, cx - 2, 2, '#eebb66');
   p(ctx, 0, 0, cx + 1, 2, '#eebb66');
 
@@ -1411,7 +1458,7 @@ function drawCelestialGatePillar(ctx: CanvasRenderingContext2D) {
 
 // ===================== ALIENS =====================
 
-function drawAlienQueenChamber(ctx: CanvasRenderingContext2D) {
+function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(7), H = gh(7);
   const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
   const R = Math.min(cx, cy) - 2;
@@ -1491,11 +1538,12 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, cx - 2, cy - 6, '#88ffaa');
   p(ctx, 0, 0, cx + 1, cy - 6, '#88ffaa');
 
-  // Mandibles
-  b(ctx, 0, 0, cx - 4, cy - 3, 2, 3, '#331830');
-  b(ctx, 0, 0, cx + 2, cy - 3, 2, 3, '#331830');
-  p(ctx, 0, 0, cx - 5, cy - 1, '#442040');
-  p(ctx, 0, 0, cx + 4, cy - 1, '#442040');
+  // Mandibles — click per frame
+  const mandOff = frame === 1 ? 1 : 0;
+  b(ctx, 0, 0, cx - 4 - mandOff, cy - 3, 2, 3, '#331830');
+  b(ctx, 0, 0, cx + 2 + mandOff, cy - 3, 2, 3, '#331830');
+  p(ctx, 0, 0, cx - 5 - mandOff, cy - 1, '#442040');
+  p(ctx, 0, 0, cx + 4 + mandOff, cy - 1, '#442040');
 
   // Leg/arm shapes extending from body
   const limbs = [
@@ -1538,7 +1586,7 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D) {
 
 // ===================== HARMONIC =====================
 
-function drawHarmonicGrandPiano(ctx: CanvasRenderingContext2D) {
+function drawHarmonicGrandPiano(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(3);
   const cx = Math.floor(W / 2);
 
@@ -1595,6 +1643,11 @@ function drawHarmonicGrandPiano(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, cx - 2, H - 2, '#aa9944');
   p(ctx, 0, 0, cx, H - 2, '#aa9944');
   p(ctx, 0, 0, cx + 2, H - 2, '#aa9944');
+  // Keys depress + floating notes per frame
+  if (frame === 1) { b(ctx, 0, 0, keysX + 6, keysY + 1, 2, 3, '#c8c0b8'); }
+  if (frame === 2) { b(ctx, 0, 0, keysX + 14, keysY + 1, 2, 3, '#c8c0b8'); }
+  // Floating notes
+  if (frame > 0) { p(ctx, 0, 0, cx - 4, keysY - 8 - frame * 3, '#aa8866'); p(ctx, 0, 0, cx + 2, keysY - 6 - frame * 2, '#aa8866'); }
 
   // Bench in front
   b(ctx, 0, 0, cx - 8, H - 4, 16, 3, '#3a2828');
@@ -1602,7 +1655,7 @@ function drawHarmonicGrandPiano(ctx: CanvasRenderingContext2D) {
   b(ctx, 0, 0, cx - 7, H - 3, 14, 1, '#553838');
 }
 
-function drawHarmonicDrumKit(ctx: CanvasRenderingContext2D) {
+function drawHarmonicDrumKit(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(3);
   const cx = Math.floor(W / 2);
 
@@ -1691,11 +1744,15 @@ function drawHarmonicDrumKit(ctx: CanvasRenderingContext2D) {
   // Hardware / stands visible
   p(ctx, 0, 0, cx, 28, '#666666');
   p(ctx, 0, 0, cx, 29, '#666666');
+  // Drumstick hits per frame
+  if (frame === 0) { p(ctx, 0, 0, 7, 20, '#ffffff'); p(ctx, 0, 0, 8, 21, '#ddddcc'); } // snare hit
+  if (frame === 1) { p(ctx, 0, 0, cx, 17, '#ffffff'); p(ctx, 0, 0, cx + 1, 18, '#ddddcc'); } // bass hit
+  if (frame === 2) { p(ctx, 0, 0, W - 10, 16, '#ffffff'); p(ctx, 0, 0, W - 9, 17, '#ddddcc'); } // tom hit
 }
 
 // ===================== VOID =====================
 
-function drawVoidSlotMachine(ctx: CanvasRenderingContext2D) {
+function drawVoidSlotMachine(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(4);
   const cx = Math.floor(W / 2);
 
@@ -1733,13 +1790,14 @@ function drawVoidSlotMachine(ctx: CanvasRenderingContext2D) {
     b(ctx, 0, 0, 7 + i * reelW, reelY, 1, reelH, '#444466');
   }
 
-  // Symbols on reels (cherry, seven, bar)
+  // Symbols on reels (cherry, seven, bar) — scroll per frame
+  const reelScroll = frame * 3;
   // Reel 1 — cherry (red)
   const r1x = 8 + Math.floor(reelW / 2) - 2;
-  b(ctx, 0, 0, r1x, reelY + 5, 4, 4, '#cc2244');
-  p(ctx, 0, 0, r1x + 1, reelY + 4, '#22aa44'); // stem
-  p(ctx, 0, 0, r1x + 2, reelY + 4, '#22aa44');
-  p(ctx, 0, 0, r1x + 1, reelY + 6, '#ff4466'); // highlight
+  b(ctx, 0, 0, r1x, reelY + 5 + reelScroll, 4, 4, '#cc2244');
+  p(ctx, 0, 0, r1x + 1, reelY + 4 + reelScroll, '#22aa44');
+  p(ctx, 0, 0, r1x + 2, reelY + 4 + reelScroll, '#22aa44');
+  p(ctx, 0, 0, r1x + 1, reelY + 6 + reelScroll, '#ff4466');
 
   // Reel 2 — seven (gold)
   const r2x = 8 + reelW + Math.floor(reelW / 2) - 2;
@@ -1787,43 +1845,1442 @@ function drawVoidSlotMachine(ctx: CanvasRenderingContext2D) {
   p(ctx, 0, 0, W - 6, H - 10, '#6622aa');
 }
 
+
+// ===================== MILITARY NEW =====================
+
+function drawMilitaryGuardTower(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(3);
+  // Base foundation
+  b(ctx, 0, 0, 2, H - 6, W - 4, 6, '#4a4a42');
+  b(ctx, 0, 0, 4, H - 8, W - 8, 2, '#5a5a52');
+  // Tower body
+  b(ctx, 0, 0, 6, 12, W - 12, H - 20, '#5a5a52');
+  b(ctx, 0, 0, 8, 14, W - 16, H - 24, '#636357');
+  for (let yy = 16; yy < H - 10; yy += 4) b(ctx, 0, 0, 7, yy, W - 14, 1, '#4a4a42');
+  b(ctx, 0, 0, 10, 20, 2, 4, '#1a1a14');
+  b(ctx, 0, 0, W - 12, 20, 2, 4, '#1a1a14');
+  for (let xx = 4; xx < W - 4; xx += 5) b(ctx, 0, 0, xx, 8, 3, 4, '#5a5a52');
+  b(ctx, 0, 0, 3, 10, W - 6, 2, '#4a4a42');
+  // Searchlight
+  b(ctx, 0, 0, W / 2 - 3, 4, 6, 4, '#6b6b5f');
+  b(ctx, 0, 0, W / 2 - 2, 5, 4, 2, '#aaaaaa');
+  if (frame === 0) { b(ctx, 0, 0, 0, 0, 6, 3, '#ffff6633'); p(ctx, 0, 0, W / 2 - 5, 3, '#ffff66'); }
+  else if (frame === 1) { b(ctx, 0, 0, W / 2 - 4, 0, 8, 4, '#ffff6633'); }
+  else { b(ctx, 0, 0, W - 6, 0, 6, 3, '#ffff6633'); p(ctx, 0, 0, W / 2 + 5, 3, '#ffff66'); }
+  b(ctx, 0, 0, W / 2 - 3, H - 8, 6, 8, '#3a3830');
+  b(ctx, 0, 0, W / 2 - 2, H - 7, 4, 6, '#2a2820');
+  p(ctx, 0, 0, W / 2 + 1, H - 4, '#888877');
+}
+
+function drawMilitaryAmmoBunker(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3);
+  b(ctx, 0, 0, 0, H / 2, W, H / 2, '#4a4a3a');
+  b(ctx, 0, 0, 0, H / 2 - 2, W, 4, '#5a5a42');
+  b(ctx, 0, 0, 4, H / 2 - 6, W - 8, 8, '#6b6b63');
+  b(ctx, 0, 0, 6, H / 2 - 8, W - 12, 4, '#7a7a72');
+  b(ctx, 0, 0, 3, H / 2 - 6, 2, 8, '#5a5a52');
+  b(ctx, 0, 0, W - 5, H / 2 - 6, 2, 8, '#5a5a52');
+  b(ctx, 0, 0, W / 2 - 6, H / 2, 12, 10, '#3a3a32');
+  b(ctx, 0, 0, W / 2 - 5, H / 2 + 1, 10, 8, '#4a4a42');
+  p(ctx, 0, 0, W / 2 - 4, H / 2 + 2, '#888877');
+  p(ctx, 0, 0, W / 2 + 4, H / 2 + 2, '#888877');
+  b(ctx, 0, 0, W / 2 + 1, H / 2 + 4, 3, 2, '#666655');
+  for (let yy = H / 2; yy < H / 2 + 10; yy += 3) { p(ctx, 0, 0, W / 2 - 6, yy, '#ccaa00'); p(ctx, 0, 0, W / 2 + 5, yy, '#ccaa00'); }
+  b(ctx, 0, 0, W / 2 - 1, H / 2 - 10, 3, 3, '#444444');
+  if (frame === 0) { b(ctx, 0, 0, W / 2 - 1, H / 2 - 12, 3, 3, '#ff2200'); p(ctx, 0, 0, W / 2, H / 2 - 13, '#ff6644'); }
+  else if (frame === 1) { b(ctx, 0, 0, W / 2 - 1, H / 2 - 12, 3, 3, '#882200'); }
+  else { b(ctx, 0, 0, W / 2 - 1, H / 2 - 12, 3, 3, '#331100'); }
+  b(ctx, 0, 0, 8, H - 6, 5, 4, '#5a6a3a');
+  b(ctx, 0, 0, W - 14, H - 5, 4, 3, '#5a6a3a');
+  b(ctx, 0, 0, W - 10, H / 2 - 10, 4, 4, '#5a5a52');
+}
+
+function drawMilitaryRadarDish(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(4);
+  const cx = W / 2;
+  b(ctx, 0, 0, 4, H - 8, W - 8, 8, '#5a5a52');
+  b(ctx, 0, 0, 2, H - 6, W - 4, 6, '#4a4a42');
+  b(ctx, 0, 0, 6, H - 12, 6, 4, '#5a6a52');
+  const mastX = cx - 1;
+  b(ctx, 0, 0, mastX, 14, 3, H - 22, '#6b6b63');
+  b(ctx, 0, 0, mastX - 4, H - 14, 3, 2, '#5a5a52');
+  b(ctx, 0, 0, mastX + 3, H - 14, 3, 2, '#5a5a52');
+  const cy = 16;
+  if (frame === 0) {
+    b(ctx, 0, 0, cx - 12, cy - 6, 3, 12, '#7a7a72'); b(ctx, 0, 0, cx - 10, cy - 8, 3, 16, '#8a8a82');
+    b(ctx, 0, 0, cx - 8, cy - 9, 3, 18, '#9a9a92'); b(ctx, 0, 0, cx - 2, cy - 1, 6, 2, '#5a5a52');
+  } else if (frame === 1) {
+    b(ctx, 0, 0, cx - 10, cy - 4, 20, 3, '#9a9a92'); b(ctx, 0, 0, cx - 12, cy - 2, 24, 2, '#8a8a82');
+    b(ctx, 0, 0, cx - 1, cy - 8, 2, 5, '#5a5a52');
+  } else if (frame === 2) {
+    b(ctx, 0, 0, cx + 5, cy - 9, 3, 18, '#9a9a92'); b(ctx, 0, 0, cx + 7, cy - 8, 3, 16, '#8a8a82');
+    b(ctx, 0, 0, cx + 9, cy - 6, 3, 12, '#7a7a72'); b(ctx, 0, 0, cx - 4, cy - 1, 6, 2, '#5a5a52');
+  } else {
+    b(ctx, 0, 0, cx - 10, cy, 20, 2, '#7a7a72'); b(ctx, 0, 0, cx - 12, cy + 2, 24, 2, '#8a8a82');
+    b(ctx, 0, 0, cx - 10, cy + 4, 20, 3, '#9a9a92'); b(ctx, 0, 0, cx - 1, cy + 7, 2, 5, '#5a5a52');
+  }
+  p(ctx, 0, 0, mastX + 1, 13, frame % 2 === 0 ? '#00ff00' : '#006600');
+}
+
+function drawMilitaryTankHangar(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(6), H = gh(4);
+  b(ctx, 0, 0, 0, H - 6, W, 6, '#4a4a42');
+  b(ctx, 0, 0, 2, 6, W - 4, H - 12, '#5a5a52');
+  b(ctx, 0, 0, 4, 4, W - 8, 4, '#636357');
+  b(ctx, 0, 0, 8, 2, W - 16, 4, '#6b6b5f');
+  b(ctx, 0, 0, 14, 0, W - 28, 4, '#737367');
+  for (let xx = 6; xx < W - 6; xx += 4) b(ctx, 0, 0, xx, 4, 1, H - 16, '#4a4a42');
+  b(ctx, 0, 0, 0, 6, 4, H - 12, '#4a4a42');
+  b(ctx, 0, 0, W - 4, 6, 4, H - 12, '#4a4a42');
+  const doorX = 8, doorY = 10, doorW = W - 16, doorH = H - 26;
+  b(ctx, 0, 0, doorX - 2, doorY - 2, doorW + 4, doorH + 8, '#3a3a32');
+  if (frame === 0) {
+    b(ctx, 0, 0, doorX, doorY, doorW, doorH + 4, '#5a6a52');
+    for (let yy = doorY + 2; yy < doorY + doorH + 2; yy += 4) b(ctx, 0, 0, doorX, yy, doorW, 1, '#4a5a42');
+    b(ctx, 0, 0, doorX + doorW / 2 - 2, doorY + doorH / 2, 4, 2, '#888877');
+  } else if (frame === 1) {
+    b(ctx, 0, 0, doorX, doorY, doorW, doorH / 2, '#1a1a14');
+    b(ctx, 0, 0, doorX + 8, doorY + doorH / 2 - 8, doorW - 16, 6, '#3a4a32');
+    b(ctx, 0, 0, doorX, doorY + doorH / 2, doorW, doorH / 2 + 4, '#5a6a52');
+  } else {
+    b(ctx, 0, 0, doorX, doorY, doorW, doorH + 4, '#1a1a14');
+    b(ctx, 0, 0, doorX + 6, doorY + 14, doorW - 12, 10, '#4a5a3a');
+    b(ctx, 0, 0, doorX + 14, doorY + 8, 16, 8, '#5a6a4a');
+    b(ctx, 0, 0, doorX + 30, doorY + 10, 14, 3, '#3a4a32');
+    b(ctx, 0, 0, doorX, doorY - 2, doorW, 4, '#5a6a52');
+  }
+  for (let yy = doorY; yy < doorY + doorH; yy += 6) { p(ctx, 0, 0, doorX - 3, yy, '#ccaa00'); p(ctx, 0, 0, doorX + doorW + 1, yy, '#ccaa00'); }
+}
+
+function drawMilitaryLandingPad(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(5);
+  const cx = W / 2, cy = H / 2;
+  b(ctx, 0, 0, 4, 4, W - 8, H - 8, '#6b6b63');
+  b(ctx, 0, 0, 6, 6, W - 12, H - 12, '#7a7a72');
+  b(ctx, 0, 0, 4, 4, W - 8, 2, '#ccaa00');
+  b(ctx, 0, 0, 4, H - 6, W - 8, 2, '#ccaa00');
+  b(ctx, 0, 0, 4, 4, 2, H - 8, '#ccaa00');
+  b(ctx, 0, 0, W - 6, 4, 2, H - 8, '#ccaa00');
+  // H marking
+  b(ctx, 0, 0, cx - 8, cy - 10, 3, 20, '#ffffff');
+  b(ctx, 0, 0, cx + 5, cy - 10, 3, 20, '#ffffff');
+  b(ctx, 0, 0, cx - 8, cy - 1, 16, 3, '#ffffff');
+  // Perimeter chase lights
+  const lps = [
+    { x: 10, y: 2 }, { x: W / 2, y: 2 }, { x: W - 12, y: 2 },
+    { x: W - 4, y: 10 }, { x: W - 4, y: H / 2 }, { x: W - 4, y: H - 12 },
+    { x: W - 12, y: H - 4 }, { x: W / 2, y: H - 4 }, { x: 10, y: H - 4 },
+    { x: 2, y: H - 12 }, { x: 2, y: H / 2 }, { x: 2, y: 10 },
+  ];
+  for (let i = 0; i < lps.length; i++) {
+    const on = Math.floor(i / 4) === frame % 3;
+    p(ctx, 0, 0, lps[i].x, lps[i].y, on ? '#00ff44' : '#334433');
+  }
+}
+
+// ===================== PSIONIC NEW =====================
+
+function drawPsionicNeuralLoom(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(4);
+  b(ctx, 0, 0, 2, 2, W - 4, 3, '#4a2860');
+  b(ctx, 0, 0, 2, H - 5, W - 4, 3, '#4a2860');
+  b(ctx, 0, 0, 2, 2, 3, H - 4, '#4a2860');
+  b(ctx, 0, 0, W - 5, 2, 3, H - 4, '#4a2860');
+  b(ctx, 0, 0, 5, 5, W - 10, H - 10, '#1a0a24');
+  const nodes = [
+    { x: 8, y: 8 }, { x: W / 2, y: 6 }, { x: W - 10, y: 8 },
+    { x: 6, y: H / 2 }, { x: W / 2, y: H / 2 }, { x: W - 8, y: H / 2 },
+    { x: 8, y: H - 10 }, { x: W / 2, y: H - 8 }, { x: W - 10, y: H - 10 },
+  ];
+  const threads: [number, number][] = [[0,1],[1,2],[0,3],[2,5],[3,4],[4,5],[3,6],[5,8],[6,7],[7,8],[0,4],[4,8],[2,4],[4,6],[1,4],[4,7]];
+  for (const [a, b_] of threads) {
+    const na = nodes[a], nb = nodes[b_];
+    for (let s = 0; s <= 6; s++) {
+      const tx = Math.round(na.x + (nb.x - na.x) * s / 6);
+      const ty = Math.round(na.y + (nb.y - na.y) * s / 6);
+      p(ctx, 0, 0, tx, ty, '#6644aa');
+    }
+  }
+  const pulseIdx = [[0,4,8],[2,4,6],[1,4,7]][frame];
+  for (const tIdx of pulseIdx) {
+    if (tIdx < threads.length) {
+      const [a, b_] = threads[tIdx];
+      const na = nodes[a], nb = nodes[b_];
+      for (let s = 0; s <= 6; s++) { const tx = Math.round(na.x + (nb.x - na.x) * s / 6); const ty = Math.round(na.y + (nb.y - na.y) * s / 6); p(ctx, 0, 0, tx, ty, '#cc88ff'); }
+    }
+  }
+  for (const n of nodes) { b(ctx, 0, 0, n.x - 1, n.y - 1, 3, 3, '#aa66cc'); p(ctx, 0, 0, n.x, n.y, '#dd99ff'); }
+}
+
+function drawPsionicStasisPod(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(4);
+  const cx = Math.floor(W / 2);
+  b(ctx, 0, 0, 2, H - 8, W - 4, 8, '#4a2860');
+  b(ctx, 0, 0, 4, H - 6, W - 8, 4, '#5a3870');
+  b(ctx, 0, 0, 4, 8, W - 8, H - 16, '#5a3870');
+  b(ctx, 0, 0, 6, 4, W - 12, 6, '#5a3870');
+  b(ctx, 0, 0, 6, 10, W - 12, H - 22, '#224466');
+  // Figure
+  b(ctx, 0, 0, cx - 3, 16, 6, 4, '#445566');
+  b(ctx, 0, 0, cx - 4, 20, 8, 16, '#3a4a5a');
+  // Fluid level per frame
+  const fluidTop = frame === 0 ? H - 20 : frame === 1 ? H - 30 : H - 38;
+  b(ctx, 0, 0, 6, fluidTop, W - 12, H - 14 - fluidTop, '#2266aa44');
+  // Frost per frame
+  if (frame >= 1) { p(ctx, 0, 0, 7, 12, '#aaccee'); p(ctx, 0, 0, W - 8, 14, '#aaccee'); }
+  if (frame === 2) { b(ctx, 0, 0, 6, 10, 3, 3, '#bbddff'); b(ctx, 0, 0, W - 9, 10, 3, 3, '#bbddff'); }
+  p(ctx, 0, 0, 6, H - 4, '#00cc66');
+  p(ctx, 0, 0, 8, H - 4, '#00cc66');
+}
+
+function drawPsionicSynapseHub(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(2);
+  b(ctx, 0, 0, 2, H - 4, W - 4, 4, '#3a2050');
+  b(ctx, 0, 0, 0, H - 3, W, 3, '#2a1440');
+  const nds = [{ x: 8, y: 6 },{ x: W / 2, y: 4 },{ x: W - 10, y: 6 },{ x: 12, y: H - 8 },{ x: W / 2 + 2, y: H - 10 },{ x: W - 14, y: H - 8 }];
+  for (const n of nds) { b(ctx, 0, 0, n.x - 2, n.y - 2, 5, 5, '#6a3890'); p(ctx, 0, 0, n.x, n.y, '#bb88dd'); }
+  const conns: [number,number][] = [[0,1],[1,2],[0,3],[1,4],[2,5],[3,4],[4,5]];
+  for (const [a, b_] of conns) { const na = nds[a], nb = nds[b_]; for (let s = 1; s < 5; s++) { p(ctx, 0, 0, Math.round(na.x + (nb.x - na.x) * s / 5), Math.round(na.y + (nb.y - na.y) * s / 5), '#553377'); } }
+  // Arc per frame
+  const arcPairs: [number,number][] = [[0,5],[1,3],[2,4]];
+  const [aI, bI] = arcPairs[frame];
+  const na = nds[aI], nb = nds[bI];
+  for (let s = 0; s <= 8; s++) { let tx = Math.round(na.x + (nb.x - na.x) * s / 8); let ty = Math.round(na.y + (nb.y - na.y) * s / 8); if (s > 0 && s < 8) { tx += (s % 2 === 0 ? 2 : -2); } p(ctx, 0, 0, tx, ty, '#eeddff'); }
+  b(ctx, 0, 0, na.x - 1, na.y - 1, 3, 3, '#eeccff');
+  b(ctx, 0, 0, nb.x - 1, nb.y - 1, 3, 3, '#eeccff');
+}
+
+function drawPsionicPsychicBeacon(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(2);
+  const cx = W / 2, cy = H / 2;
+  b(ctx, 0, 0, cx - 6, H - 6, 12, 6, '#4a2860');
+  b(ctx, 0, 0, cx - 3, 8, 6, H - 14, '#6a4890');
+  b(ctx, 0, 0, cx - 2, 6, 4, H - 12, '#7a58a0');
+  b(ctx, 0, 0, cx - 2, 4, 4, 4, '#aa66cc');
+  p(ctx, 0, 0, cx, 4, '#dd99ff');
+  // Psi waves per frame
+  const r = 4 + frame * 3;
+  b(ctx, 0, 0, cx - r, cy - 1, 1, 2, '#8855aa55');
+  b(ctx, 0, 0, cx + r - 1, cy - 1, 1, 2, '#8855aa55');
+  b(ctx, 0, 0, cx - 2, cy - r, 4, 1, '#8855aa55');
+  b(ctx, 0, 0, cx - 2, cy + r - 1, 4, 1, '#8855aa55');
+  p(ctx, 0, 0, cx - 1 + frame, 3, '#ffffff');
+}
+
+function drawPsionicDreamChamber(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(4);
+  b(ctx, 0, 0, 0, H - 4, W, 4, '#2a1440');
+  b(ctx, 0, 0, 0, 0, 3, H, '#3a2050');
+  b(ctx, 0, 0, W - 3, 0, 3, H, '#3a2050');
+  b(ctx, 0, 0, 0, 0, W, 3, '#3a2050');
+  b(ctx, 0, 0, 3, H - 6, W - 6, 2, '#2a1844');
+  const slabX = W / 2 - 14, slabY = H - 14;
+  b(ctx, 0, 0, slabX, slabY, 28, 4, '#5a4870');
+  b(ctx, 0, 0, slabX + 2, slabY + 4, 24, 4, '#4a3860');
+  b(ctx, 0, 0, slabX + 4, slabY - 4, 6, 4, '#7a6890');
+  b(ctx, 0, 0, slabX + 8, slabY - 3, 16, 3, '#6a5880');
+  const auraColors = ['#4488cc', '#8844aa', '#cc4488'];
+  const ac = auraColors[frame];
+  b(ctx, 0, 0, slabX + 2, slabY - 8, 26, 2, ac);
+  b(ctx, 0, 0, slabX, slabY - 6, 2, 8, ac);
+  b(ctx, 0, 0, slabX + 26, slabY - 6, 2, 8, ac);
+  const pColors = ['#aa88ee', '#88aaff', '#ee88cc'];
+  for (let i = 0; i < 3; i++) {
+    const px_ = slabX + 8 + i * 6;
+    const py_ = slabY - 16 - frame * 2 + Math.round(Math.sin((i + frame) * 1.5) * 2);
+    p(ctx, 0, 0, px_, py_, pColors[i]);
+  }
+  p(ctx, 0, 0, 5, H / 2, '#aa66cc');
+  p(ctx, 0, 0, W - 6, H / 2, '#aa66cc');
+}
+
+// ===================== INFERNAL NEW =====================
+
+function drawInfernalBoneCage(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(4);
+  b(ctx, 0, 0, 2, H - 6, W - 4, 6, '#2a1a14');
+  b(ctx, 0, 0, 4, H - 8, W - 8, 4, '#3a2a20');
+  for (let i = 0; i < 6; i++) {
+    const bx_ = 6 + i * Math.floor((W - 14) / 5);
+    b(ctx, 0, 0, bx_, 6, 2, H - 14, '#d4c8a0');
+    p(ctx, 0, 0, bx_, 12, '#b0a478');
+    p(ctx, 0, 0, bx_, H / 2, '#b0a478');
+  }
+  b(ctx, 0, 0, 4, 4, W - 8, 3, '#d4c8a0');
+  b(ctx, 0, 0, 4, H - 8, W - 8, 2, '#d4c8a0');
+  const px_ = W / 2, py_ = H / 2;
+  b(ctx, 0, 0, px_ - 3, py_ - 6, 6, 5, '#4a2a2a');
+  b(ctx, 0, 0, px_ - 4, py_, 8, 10, '#3a1a1a');
+  const eyeC = ['#22cc44', '#44ff66', '#114422'][frame];
+  p(ctx, 0, 0, px_ - 2, py_ - 4, eyeC);
+  p(ctx, 0, 0, px_ + 1, py_ - 4, eyeC);
+  const chainOff = frame === 1 ? -2 : frame === 2 ? 2 : 0;
+  b(ctx, 0, 0, px_ - 1 + chainOff, 6, 2, py_ - 8, '#666655');
+  p(ctx, 0, 0, 10, H - 5, '#880022');
+}
+
+function drawInfernalLavaFont(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3);
+  b(ctx, 0, 0, 0, H - 4, W, 4, '#2a1a14');
+  b(ctx, 0, 0, 2, H / 2 - 2, W - 4, H / 2 + 2, '#3a2a20');
+  b(ctx, 0, 0, 4, H / 2, W - 8, H / 2 - 6, '#1a0a04');
+  b(ctx, 0, 0, W / 2 - 4, H - 6, 8, 2, '#4a3830');
+  for (let xx = 6; xx < W - 6; xx += 5) p(ctx, 0, 0, xx, H / 2 - 2, '#5a4840');
+  const lavaY = H / 2 + 2;
+  if (frame === 0) {
+    b(ctx, 0, 0, 5, lavaY, W - 10, 6, '#cc4400'); b(ctx, 0, 0, 6, lavaY + 1, W - 12, 4, '#ff6622');
+  } else if (frame === 1) {
+    b(ctx, 0, 0, 5, lavaY - 3, W - 10, 9, '#cc4400'); b(ctx, 0, 0, 6, lavaY - 2, W - 12, 7, '#ff6622');
+    b(ctx, 0, 0, 2, H / 2 + 2, 2, 4, '#cc4400');
+  } else {
+    b(ctx, 0, 0, 5, lavaY + 2, W - 10, 4, '#cc4400'); b(ctx, 0, 0, 6, lavaY + 3, W - 12, 2, '#ff6622');
+    b(ctx, 0, 0, W - 4, H / 2 + 3, 2, 3, '#cc4400');
+  }
+}
+
+function drawInfernalDemonGate(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(5);
+  const cx = Math.floor(W / 2);
+  b(ctx, 0, 0, 0, H - 6, W, 6, '#1a0a0a');
+  b(ctx, 0, 0, 4, 8, 8, H - 14, '#2a1014');
+  b(ctx, 0, 0, W - 12, 8, 8, H - 14, '#2a1014');
+  b(ctx, 0, 0, 4, 6, W - 8, 6, '#2a1014');
+  b(ctx, 0, 0, 8, 2, W - 16, 6, '#2a1014');
+  b(ctx, 0, 0, 14, 0, W - 28, 4, '#3a1a20');
+  b(ctx, 0, 0, 5, 12, 5, 4, '#d4c8a0'); p(ctx, 0, 0, 6, 13, '#1a0a0a'); p(ctx, 0, 0, 8, 13, '#1a0a0a');
+  b(ctx, 0, 0, W - 10, 12, 5, 4, '#d4c8a0'); p(ctx, 0, 0, W - 9, 13, '#1a0a0a'); p(ctx, 0, 0, W - 7, 13, '#1a0a0a');
+  const portalX = 12, portalY = 8, portalW = W - 24, portalH = H - 16;
+  b(ctx, 0, 0, portalX, portalY, portalW, portalH, '#0a0004');
+  const pcx = portalX + portalW / 2, pcy = portalY + portalH / 2;
+  const offsets = [
+    [[-8,-4],[6,-8],[8,4],[-6,8]],
+    [[-6,-8],[8,-4],[6,8],[-8,4]],
+    [[-8,6],[4,-8],[8,-2],[-4,8]],
+  ];
+  for (const [dx, dy] of offsets[frame]) {
+    b(ctx, 0, 0, pcx + dx - 2, pcy + dy - 2, 5, 5, '#cc4400');
+    b(ctx, 0, 0, pcx + dx - 1, pcy + dy - 1, 3, 3, '#ff6622');
+    p(ctx, 0, 0, pcx + dx, pcy + dy, '#ffaa44');
+  }
+  b(ctx, 0, 0, pcx - 4, pcy - 3, 8, 6, '#cc2200');
+  b(ctx, 0, 0, pcx - 3, pcy - 2, 6, 4, '#ff4400');
+  b(ctx, 0, 0, pcx - 1, pcy - 1, 3, 2, '#ffcc44');
+}
+
+function drawInfernalSkullPile(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(2);
+  b(ctx, 0, 0, 0, H - 3, W, 3, '#1a0a0a');
+  b(ctx, 0, 0, 2, H - 5, W - 4, 3, '#2a1a14');
+  const sps = [
+    { x: 4, y: H - 10 },{ x: 12, y: H - 10 },{ x: 20, y: H - 11 },{ x: 28, y: H - 10 },{ x: 36, y: H - 10 },
+    { x: 8, y: H - 16 },{ x: 18, y: H - 17 },{ x: 28, y: H - 16 },
+    { x: 14, y: H - 22 },{ x: 24, y: H - 21 },
+  ];
+  for (const sp of sps) {
+    b(ctx, 0, 0, sp.x, sp.y, 6, 5, '#d4c8a0');
+    b(ctx, 0, 0, sp.x + 1, sp.y + 5, 4, 2, '#b0a478');
+    p(ctx, 0, 0, sp.x + 1, sp.y + 2, '#1a0a0a');
+    p(ctx, 0, 0, sp.x + 4, sp.y + 2, '#1a0a0a');
+  }
+  const flickerIdx = [[0,1],[5,6],[3,4]][frame];
+  for (const si of flickerIdx) {
+    if (si < sps.length) { p(ctx, 0, 0, sps[si].x + 1, sps[si].y + 2, '#44ff44'); p(ctx, 0, 0, sps[si].x + 4, sps[si].y + 2, '#44ff44'); }
+  }
+}
+
+function drawInfernalTortureRack(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(3);
+  b(ctx, 0, 0, 0, H - 4, W, 4, '#1a0a0a');
+  b(ctx, 0, 0, 4, 4, 3, H - 10, '#5a3a1a');
+  b(ctx, 0, 0, W - 7, 4, 3, H - 10, '#5a3a1a');
+  b(ctx, 0, 0, 3, 2, W - 6, 4, '#5a3a1a');
+  b(ctx, 0, 0, 3, H - 8, W - 6, 3, '#5a3a1a');
+  const cx1 = 10, cx2 = W - 11;
+  const swOff = frame === 1 ? -1 : frame === 2 ? 1 : 0;
+  for (let yy = 6; yy < 28; yy += 3) {
+    const off = Math.min(Math.floor((yy - 6) / 8), 1) * swOff;
+    p(ctx, 0, 0, cx1 + off, yy, yy % 6 === 0 ? '#888877' : '#666655');
+    p(ctx, 0, 0, cx2 + off, yy, yy % 6 === 0 ? '#888877' : '#666655');
+  }
+  b(ctx, 0, 0, cx1 - 2, 27, 4, 3, '#555544');
+  b(ctx, 0, 0, cx2 - 2, 27, 4, 3, '#555544');
+  if (frame > 0) { p(ctx, 0, 0, W / 2 + frame, H - 14 - frame * 2, '#ff6622'); }
+  p(ctx, 0, 0, cx1, 30, '#660011');
+  p(ctx, 0, 0, cx2, 30, '#660011');
+}
+
+
+// ===================== ARCANE NEW =====================
+
+function drawArcaneCrystalNexus(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(5); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 4, H-6, W-8, 6, '#332255');
+  b(ctx, 0, 0, cx-12, cy-12, 24, 24, '#2a1855');
+  // Central crystal rotates highlights per frame
+  const angles = [0, 90, 180, 270]; const a = angles[frame % 4];
+  b(ctx, 0, 0, cx-6, cy-6, 12, 12, '#6644cc');
+  b(ctx, 0, 0, cx-4, cy-4, 8, 8, '#8866ee');
+  b(ctx, 0, 0, cx-2, cy-2, 4, 4, '#aa88ff');
+  // Refraction beams
+  const bx = a === 0 ? -10 : a === 180 ? 10 : 0;
+  const by = a === 90 ? -10 : a === 270 ? 10 : 0;
+  if (bx !== 0) b(ctx, 0, 0, cx + (bx < 0 ? bx : 2), cy-1, Math.abs(bx)-2, 2, '#aa88ff44');
+  if (by !== 0) b(ctx, 0, 0, cx-1, cy + (by < 0 ? by : 2), 2, Math.abs(by)-2, '#aa88ff44');
+  // Corner crystals
+  for (const [ox,oy] of [[-16,-16],[16,-16],[-16,16],[16,16]]) { b(ctx, 0, 0, cx+ox-2, cy+oy-3, 4, 6, '#7755bb'); p(ctx, 0, 0, cx+ox, cy+oy-2, '#aa88ff'); }
+}
+
+function drawArcaneRuneCircle(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#1a0a33');
+  // Circle outline
+  const rad = Math.min(cx,cy)-4;
+  for (let a = 0; a < 360; a += 12) { const rx = Math.round(cx + Math.cos(a*Math.PI/180)*rad); const ry = Math.round(cy + Math.sin(a*Math.PI/180)*rad); p(ctx, 0, 0, rx, ry, '#553388'); }
+  // 9 runes, 3 glow per frame
+  for (let i = 0; i < 9; i++) {
+    const a = (i/9)*Math.PI*2; const r2 = Math.min(cx,cy)-7;
+    const rx = Math.round(cx + Math.cos(a)*r2); const ry = Math.round(cy + Math.sin(a)*r2);
+    const active = Math.floor(i/3) === frame % 3;
+    b(ctx, 0, 0, rx-1, ry-1, 2, 2, active ? '#aa88ff' : '#443366');
+  }
+  b(ctx, 0, 0, cx-2, cy-2, 4, 4, '#6644cc');
+  p(ctx, 0, 0, cx, cy, '#8866ee');
+}
+
+function drawArcaneScryingPool(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 4, 4, W-8, H-8, '#443366');
+  b(ctx, 0, 0, 6, 6, W-12, H-12, '#1a1a44');
+  b(ctx, 0, 0, 8, 8, W-16, H-16, '#222266');
+  // Ripple rings expand per frame
+  const r = 3 + frame * 4;
+  for (let a = 0; a < 360; a += 30) { const rx = Math.round(cx + Math.cos(a*Math.PI/180)*r); const ry = Math.round(cy + Math.sin(a*Math.PI/180)*(r*0.7)); p(ctx, 0, 0, rx, ry, '#4466cc'); }
+  // Vision spots
+  const vx = cx - 4 + frame * 3; p(ctx, 0, 0, vx, cy, '#8866ee'); p(ctx, 0, 0, vx+2, cy-1, '#6644cc');
+}
+
+function drawArcaneSpellForge(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, H-4, W, 4, '#332255');
+  // Anvil
+  b(ctx, 0, 0, cx-8, H-14, 16, 6, '#555555'); b(ctx, 0, 0, cx-6, H-16, 12, 3, '#666666');
+  b(ctx, 0, 0, cx-4, H-18, 8, 3, '#777777');
+  // Hammer
+  b(ctx, 0, 0, cx+6, H-24, 4, 6, '#664433'); b(ctx, 0, 0, cx+4, H-26, 8, 3, '#888888');
+  // Sparks fly in direction per frame
+  const dirs = [[-1,0],[0,-1],[1,0]];
+  const [dx,dy] = dirs[frame];
+  for (let i = 1; i <= 4; i++) { p(ctx, 0, 0, cx + dx*i*3, H-18 + dy*i*3, '#ffaa44'); p(ctx, 0, 0, cx + dx*i*3+1, H-18 + dy*i*3-1, '#ff6622'); }
+  // Rune glow on hammer
+  p(ctx, 0, 0, cx+7, H-25, frame === 1 ? '#aa88ff' : '#6644cc');
+}
+
+function drawArcaneCrystalCluster(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-4, W-4, 4, '#332255');
+  // Three crystals
+  const crystals = [{x:cx-5,h:18,c:'#6644cc'},{x:cx-1,h:24,c:'#7755dd'},{x:cx+3,h:16,c:'#5533bb'}];
+  for (let i = 0; i < crystals.length; i++) {
+    const cr = crystals[i]; const bright = i === frame;
+    b(ctx, 0, 0, cr.x, H-4-cr.h, 4, cr.h, bright ? '#aa88ff' : cr.c);
+    b(ctx, 0, 0, cr.x+1, H-4-cr.h-2, 2, 2, bright ? '#ccaaff' : cr.c);
+    if (bright) p(ctx, 0, 0, cr.x+1, H-4-cr.h-1, '#ffffff');
+  }
+}
+
+function drawArcaneEnchantingTable(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 4, H-6, W-8, 6, '#443366');
+  b(ctx, 0, 0, 6, 4, W-12, H-10, '#554477');
+  // Book on table
+  if (frame === 0) { b(ctx, 0, 0, cx-6, 6, 12, 8, '#886644'); b(ctx, 0, 0, cx-5, 7, 5, 6, '#eeeecc'); p(ctx, 0, 0, cx-3, 8, '#6644cc'); }
+  else if (frame === 1) { b(ctx, 0, 0, cx-4, 6, 8, 8, '#886644'); b(ctx, 0, 0, cx-2, 7, 4, 6, '#ddddbb'); }
+  else { b(ctx, 0, 0, cx-6, 6, 12, 8, '#886644'); b(ctx, 0, 0, cx, 7, 5, 6, '#eeeecc'); p(ctx, 0, 0, cx+2, 9, '#8844cc'); }
+  // Floating rune
+  p(ctx, 0, 0, cx + frame*2, 2, '#aa88ff');
+}
+
+function drawArcaneManaWell(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, 4, W-4, H-6, '#443366');
+  b(ctx, 0, 0, 4, 6, W-8, H-10, '#1a1a44');
+  // Blue energy bubbles rise per frame
+  const bubY = H - 8 - frame * 4;
+  p(ctx, 0, 0, cx-2, bubY, '#4488ff'); p(ctx, 0, 0, cx+1, bubY+2, '#4488ff');
+  if (frame === 2) { p(ctx, 0, 0, cx, bubY-2, '#88aaff44'); }
+  b(ctx, 0, 0, 2, 2, W-4, 3, '#554477');
+}
+
+// ===================== MECHANICAL NEW =====================
+
+function drawMechGearAssembly(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(4); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 2, H-4, W-4, 4, '#3a3838');
+  b(ctx, 0, 0, 4, 4, W-8, H-8, '#444440');
+  // Large gear center
+  b(ctx, 0, 0, cx-10, cy-10, 20, 20, '#666666');
+  b(ctx, 0, 0, cx-8, cy-8, 16, 16, '#777777');
+  b(ctx, 0, 0, cx-3, cy-3, 6, 6, '#555555');
+  // Teeth rotate per frame
+  for (let i = 0; i < 8; i++) {
+    const a = ((i + frame) / 8) * Math.PI * 2;
+    const tx = Math.round(cx + Math.cos(a) * 11);
+    const ty = Math.round(cy + Math.sin(a) * 11);
+    b(ctx, 0, 0, tx-1, ty-1, 3, 3, '#888888');
+  }
+  // Small gear
+  const sx = cx + 14, sy = cy - 10;
+  b(ctx, 0, 0, sx-4, sy-4, 8, 8, '#777777');
+  for (let i = 0; i < 6; i++) {
+    const a = ((i - frame*0.5) / 6) * Math.PI * 2;
+    p(ctx, 0, 0, Math.round(sx + Math.cos(a)*5), Math.round(sy + Math.sin(a)*5), '#999999');
+  }
+}
+
+function drawMechSteamBoiler(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(4); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-6, W-4, 6, '#3a3838');
+  // Cylindrical body
+  b(ctx, 0, 0, 6, 10, W-12, H-16, '#666660');
+  b(ctx, 0, 0, 8, 12, W-16, H-20, '#777770');
+  // Rivets
+  for (let y = 14; y < H-8; y += 6) { p(ctx, 0, 0, 8, y, '#888880'); p(ctx, 0, 0, W-9, y, '#888880'); }
+  // Pressure gauge
+  b(ctx, 0, 0, cx-4, 6, 8, 6, '#555550');
+  const gaugePos = frame; // 0=low, 1=mid, 2=high
+  p(ctx, 0, 0, cx-2+gaugePos*2, 8, '#ff0000');
+  // Steam puff
+  if (frame >= 1) {
+    const puffH = frame === 1 ? 3 : 6;
+    for (let i = 0; i < puffH; i++) p(ctx, 0, 0, cx + 6 + (i%2), 8 - i, '#aaaaaa44');
+  }
+  // Pipe fittings
+  b(ctx, 0, 0, 4, 14, 3, 2, '#888877'); b(ctx, 0, 0, W-7, 14, 3, 2, '#888877');
+}
+
+function drawMechConveyorTerminal(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(2);
+  b(ctx, 0, 0, 0, 4, W, H-8, '#555550');
+  b(ctx, 0, 0, 2, 6, W-4, H-12, '#666660');
+  // Belt arrows scroll per frame
+  for (let x = 4 + (frame * 3) % 9; x < W - 4; x += 9) {
+    b(ctx, 0, 0, x, 8, 4, 2, '#888877');
+    p(ctx, 0, 0, x+4, 9, '#888877');
+  }
+  // Side frames
+  b(ctx, 0, 0, 0, 2, 3, H-4, '#444440'); b(ctx, 0, 0, W-3, 2, 3, H-4, '#444440');
+  // Rollers
+  for (let x = 6; x < W-6; x += 8) { b(ctx, 0, 0, x, H-6, 2, 2, '#777770'); }
+}
+
+function drawMechCraneArm(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(5); const cx = Math.floor(W/2);
+  // Base
+  b(ctx, 0, 0, 2, H-8, W-4, 8, '#555555');
+  // Mast
+  b(ctx, 0, 0, cx-2, 8, 4, H-16, '#777777');
+  // Arm direction per frame
+  const armDir = frame === 0 ? -1 : frame === 2 ? 1 : 0;
+  b(ctx, 0, 0, cx-1+armDir*4, 6, 8, 3, '#888888');
+  // Cable
+  const cableX = cx + armDir * 7;
+  for (let y = 9; y < 20; y += 2) p(ctx, 0, 0, cableX, y, '#666666');
+  // Hook
+  b(ctx, 0, 0, cableX-1, 20, 3, 2, '#aaaaaa');
+  // Top cap
+  b(ctx, 0, 0, cx-3, 4, 6, 4, '#666666');
+  p(ctx, 0, 0, cx, 4, '#ff4400');
+}
+
+function drawMechScrapHeap(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3);
+  b(ctx, 0, 0, 0, H-3, W, 3, '#3a3838');
+  // Scrap pile shape
+  b(ctx, 0, 0, 4, H-14, W-8, 11, '#555550');
+  b(ctx, 0, 0, 6, H-18, W-12, 6, '#666660');
+  b(ctx, 0, 0, 10, H-20, W-20, 4, '#777770');
+  // Metal pieces
+  b(ctx, 0, 0, 8, H-12, 6, 2, '#884422'); b(ctx, 0, 0, 20, H-16, 4, 3, '#666677');
+  b(ctx, 0, 0, 14, H-10, 8, 2, '#555566'); b(ctx, 0, 0, W-14, H-14, 3, 4, '#887766');
+  // Glint shifts per frame
+  const glintPositions = [[10, H-18], [22, H-14], [W-12, H-10]];
+  const [gx, gy] = glintPositions[frame];
+  p(ctx, 0, 0, gx, gy, '#ffffff'); p(ctx, 0, 0, gx+1, gy, '#cccccc');
+}
+
+function drawMechSmokestack(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(6); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-6, W-4, 6, '#3a3838');
+  // Stack body
+  b(ctx, 0, 0, cx-4, 10, 8, H-16, '#666666');
+  b(ctx, 0, 0, cx-3, 10, 6, H-16, '#777777');
+  // Bands
+  for (let y = 14; y < H-8; y += 10) b(ctx, 0, 0, cx-5, y, 10, 1, '#888888');
+  // Cap
+  b(ctx, 0, 0, cx-5, 8, 10, 3, '#888888');
+  // Smoke puffs rise per frame
+  const smokeY = 6 - frame * 3;
+  const smokeW = 2 + frame;
+  if (smokeY > 0) { b(ctx, 0, 0, cx-1, smokeY, smokeW, 2, '#66666644'); }
+  if (smokeY - 3 > 0) { b(ctx, 0, 0, cx-2, smokeY-3, smokeW+1, 2, '#55555533'); }
+}
+
+// ===================== NATURE NEW =====================
+
+function drawNatureSacredPond(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(4); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  // Earthy border
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) {
+    const d = Math.sqrt(((x-cx)/1.4)**2 + ((y-cy)/1)**2);
+    if (d < 22 && d > 18) p(ctx, 0, 0, x, y, (x+y)%3===0 ? '#5a3a22' : '#4a3018');
+    else if (d <= 18) p(ctx, 0, 0, x, y, '#224466');
+  }
+  // Water surface
+  b(ctx, 0, 0, cx-16, cy-8, 32, 16, '#2a5577');
+  // Lily pads
+  b(ctx, 0, 0, cx-10+frame, cy-4, 4, 3, '#228844');
+  b(ctx, 0, 0, cx+6, cy+2-frame, 3, 2, '#228844');
+  // Fish per frame
+  if (frame === 1) { p(ctx, 0, 0, cx+2, cy+4, '#cc8844'); }
+  if (frame === 2) { p(ctx, 0, 0, cx+2, cy+3, '#cc8844'); p(ctx, 0, 0, cx+3, cy+2, '#4477aa'); }
+}
+
+function drawNatureMushroomRing(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(4); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#2a4422');
+  // 6 mushrooms in a ring
+  for (let i = 0; i < 6; i++) {
+    const a = (i/6)*Math.PI*2; const r = 16;
+    const mx = Math.round(cx+Math.cos(a)*r); const my = Math.round(cy+Math.sin(a)*r);
+    b(ctx, 0, 0, mx-1, my-1, 2, 4, '#ccbb99');
+    const glowing = (frame === 0 && i%2===0) || (frame === 1 && i%2===1) || frame === 2;
+    b(ctx, 0, 0, mx-3, my-4, 6, 3, glowing ? '#ff6644' : '#cc4433');
+    if (glowing) p(ctx, 0, 0, mx, my-4, '#ffaa88');
+  }
+}
+
+function drawNatureHollowLog(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(2);
+  b(ctx, 0, 0, 0, H-3, W, 3, '#2a4422');
+  b(ctx, 0, 0, 2, 4, W-4, H-8, '#5a3a22');
+  b(ctx, 0, 0, 4, 6, W-8, H-12, '#6a4a2a');
+  // Hollow opening
+  b(ctx, 0, 0, 4, 6, 8, H-12, '#2a1808');
+  // Creature per frame
+  if (frame === 1) { p(ctx, 0, 0, 6, 8, '#ffaa22'); p(ctx, 0, 0, 8, 8, '#ffaa22'); }
+  if (frame === 2) { p(ctx, 0, 0, 6, 8, '#4a3018'); p(ctx, 0, 0, 8, 8, '#4a3018'); }
+  // Bark texture
+  for (let x = 14; x < W-4; x += 5) p(ctx, 0, 0, x, 5, '#4a2a18');
+}
+
+function drawNatureBerryBush(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-3, W-4, 3, '#2a4422');
+  b(ctx, 0, 0, 4, 4, W-8, H-8, '#227733');
+  b(ctx, 0, 0, 6, 6, W-12, H-12, '#2a8844');
+  // Berries
+  for (const [bx,by] of [[6,8],[10,6],[W-8,8],[W-10,10]]) p(ctx, 0, 0, bx, by, '#cc2244');
+  // Butterfly per frame
+  if (frame === 0) { p(ctx, 0, 0, cx, 4, '#ffaa44'); p(ctx, 0, 0, cx-1, 3, '#ffcc66'); p(ctx, 0, 0, cx+1, 3, '#ffcc66'); }
+  if (frame === 1) { p(ctx, 0, 0, cx, 3, '#ffaa44'); p(ctx, 0, 0, cx-1, 2, '#ffcc66'); p(ctx, 0, 0, cx+1, 2, '#ffcc66'); }
+  if (frame === 2) { p(ctx, 0, 0, cx, 1, '#ffaa44'); p(ctx, 0, 0, cx-2, 0, '#ffcc66'); p(ctx, 0, 0, cx+2, 0, '#ffcc66'); }
+}
+
+function drawNatureStoneShrine(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, H-3, W, 3, '#2a4422');
+  b(ctx, 0, 0, cx-6, H-12, 12, 9, '#777770');
+  b(ctx, 0, 0, cx-4, H-16, 8, 5, '#888880');
+  b(ctx, 0, 0, cx-2, H-18, 4, 3, '#999990');
+  // Firefly orbits per frame
+  const a = (frame/3)*Math.PI*2; const r = 12;
+  const fx = Math.round(cx + Math.cos(a)*r); const fy = Math.round(H/2 + Math.sin(a)*r);
+  p(ctx, 0, 0, fx, fy, '#ffff44'); p(ctx, 0, 0, fx+1, fy, '#ffff4488');
+}
+
+function drawNatureWaterfall(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(5); const cx = Math.floor(W/2);
+  // Rock face
+  b(ctx, 0, 0, 0, 0, W, H, '#555548');
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#666658');
+  // Water channel
+  b(ctx, 0, 0, cx-6, 0, 12, H, '#2a5577');
+  // Water texture scrolls per frame
+  for (let y = frame*2; y < H; y += 6) {
+    b(ctx, 0, 0, cx-4, y, 8, 2, '#4488aa');
+    b(ctx, 0, 0, cx-2, y+1, 4, 1, '#66aacc');
+  }
+  // Spray at bottom
+  const sprayOff = frame;
+  p(ctx, 0, 0, cx-4-sprayOff, H-4, '#88ccee44');
+  p(ctx, 0, 0, cx+4+sprayOff, H-4, '#88ccee44');
+  // Pool at base
+  b(ctx, 0, 0, cx-8, H-6, 16, 4, '#2a5577');
+}
+
+function drawNatureBeeHive(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(1), H = gh(2); const cx = Math.floor(W/2);
+  // Branch
+  b(ctx, 0, 0, 0, 1, W, 2, '#5a3a22');
+  // Hive body — compact teardrop
+  b(ctx, 0, 0, cx-4, 3, 8, 6, '#ccaa44');
+  b(ctx, 0, 0, cx-5, 5, 10, 8, '#ddbb55');
+  b(ctx, 0, 0, cx-4, 13, 8, 4, '#ccaa44');
+  b(ctx, 0, 0, cx-3, 17, 6, 2, '#bbaa33');
+  // Horizontal ridges
+  b(ctx, 0, 0, cx-4, 7, 8, 1, '#bb9933');
+  b(ctx, 0, 0, cx-5, 10, 10, 1, '#bb9933');
+  b(ctx, 0, 0, cx-4, 14, 8, 1, '#bb9933');
+  // Entrance hole
+  b(ctx, 0, 0, cx-1, 12, 3, 3, '#3a2a10');
+  // Bees circle per frame
+  const beeAngle = (frame / 3) * Math.PI * 2;
+  for (let i = 0; i < 2; i++) {
+    const a = beeAngle + (i / 2) * Math.PI * 2;
+    const bx_ = Math.round(cx + Math.cos(a) * 6);
+    const by_ = Math.round(13 + Math.sin(a) * 4);
+    p(ctx, 0, 0, bx_, by_, '#ffcc00');
+  }
+}
+
+// ===================== CYPHERPUNK NEW =====================
+
+function drawCyberServerFarm(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(4);
+  b(ctx, 0, 0, 0, H-3, W, 3, '#1a1a22');
+  // Multiple racks
+  for (let r = 0; r < 3; r++) {
+    const rx = 4 + r * Math.floor((W-8)/3);
+    b(ctx, 0, 0, rx, 4, Math.floor((W-16)/3), H-8, '#2a2a33');
+    b(ctx, 0, 0, rx+1, 5, Math.floor((W-18)/3), H-10, '#333340');
+    // LEDs scroll per frame
+    for (let y = 6; y < H-6; y += 4) {
+      const ledRow = Math.floor(y/4);
+      const active = (ledRow + frame) % 3 === 0;
+      p(ctx, 0, 0, rx+2, y, active ? '#00ff44' : '#003311');
+      p(ctx, 0, 0, rx+4, y, active ? '#ffaa00' : '#332200');
+    }
+  }
+}
+
+function drawCyberHologramTable(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 4, H-8, W-8, 8, '#2a2a33');
+  b(ctx, 0, 0, 6, H-6, W-12, 4, '#333340');
+  // Hologram projector
+  b(ctx, 0, 0, cx-2, H-10, 4, 2, '#444455');
+  // Hologram shape per frame
+  const hcolor = '#44ccaa66';
+  if (frame === 0) { b(ctx, 0, 0, cx-6, 6, 12, 12, hcolor); } // cube
+  else if (frame === 1) { for (let a = 0; a < 360; a += 30) { const r = 6; p(ctx, 0, 0, Math.round(cx+Math.cos(a*Math.PI/180)*r), Math.round(12+Math.sin(a*Math.PI/180)*r), '#44ccaa'); } }
+  else { b(ctx, 0, 0, cx-6, 12, 12, 8, hcolor); b(ctx, 0, 0, cx-3, 8, 6, 4, hcolor); p(ctx, 0, 0, cx, 6, '#44ccaa'); }
+  // Beam lines
+  b(ctx, 0, 0, cx-1, H-12, 2, 2, '#44ccaa88');
+}
+
+function drawCyberCableNest(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1a22');
+  // Cables
+  const cables = [[4,4,W-4,H-4,'#224488'],[W-6,6,6,H-6,'#228844'],[W/2,2,W/2,H-2,'#884422'],[4,H/2,W-4,H/2,'#448822']];
+  for (const [x1,y1,x2,y2,c] of cables) {
+    for (let s = 0; s <= 8; s++) { p(ctx, 0, 0, Math.round(x1 as number + ((x2 as number)-(x1 as number))*s/8), Math.round(y1 as number + ((y2 as number)-(y1 as number))*s/8), c as string); }
+  }
+  // Spark per frame
+  const sparkCable = frame % cables.length;
+  const sc = cables[sparkCable];
+  const st = 0.3 + frame*0.2;
+  p(ctx, 0, 0, Math.round(sc[0] as number + ((sc[2] as number)-(sc[0] as number))*st), Math.round(sc[1] as number + ((sc[3] as number)-(sc[1] as number))*st), '#ffffff');
+}
+
+function drawCyberCryptoMiner(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#2a2a33');
+  b(ctx, 0, 0, 4, 4, W-8, H-8, '#333340');
+  // Fans
+  b(ctx, 0, 0, 6, 6, 6, 6, '#1a1a22');
+  p(ctx, 0, 0, 8, 8, frame%2===0 ? '#444455' : '#555566');
+  b(ctx, 0, 0, W-12, 6, 6, 6, '#1a1a22');
+  p(ctx, 0, 0, W-10, 8, frame%2===1 ? '#444455' : '#555566');
+  // Display
+  b(ctx, 0, 0, cx-6, 4, 12, 6, '#001108');
+  const hexChars = ['A','F','3','C','9','1','7','E','5'];
+  const startIdx = frame * 3;
+  b(ctx, 0, 0, cx-4, 5, 8, 4, '#00aa44');
+  // Hash tick indicator
+  p(ctx, 0, 0, cx - 2 + frame*2, 6, '#00ff66');
+}
+
+function drawCyberNeonSign(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(2);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1a22');
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#222230');
+  // Letters: H A C K
+  const letters = [
+    {x:8, on: frame !== 1}, {x:18, on: frame !== 1},
+    {x:28, on: frame !== 2}, {x:38, on: frame !== 2},
+  ];
+  for (const l of letters) {
+    const c = l.on ? '#ff44cc' : '#331122';
+    b(ctx, 0, 0, l.x, 5, 6, 10, c);
+    if (l.on) { p(ctx, 0, 0, l.x+1, 6, '#ff88ee'); p(ctx, 0, 0, l.x+4, 6, '#ff88ee'); }
+  }
+  // Glow haze
+  if (frame === 0) b(ctx, 0, 0, 6, 3, W-12, 1, '#ff44cc22');
+}
+
+function drawCyberHackerStation(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-6, W-4, 6, '#2a2a33');
+  // Monitor
+  b(ctx, 0, 0, 4, 2, W-8, H-10, '#1a1a22');
+  b(ctx, 0, 0, 6, 4, W-12, H-14, '#001108');
+  // Screen content per frame
+  const lines = [['#00cc55','#00aa44','#00cc55'],['#0088ff','#00cc55','#0088ff'],['#ff4488','#00cc55','#ff4488']];
+  const screenLines = lines[frame];
+  for (let i = 0; i < 3; i++) b(ctx, 0, 0, 8, 5+i*3, W-18+i*2, 1, screenLines[i]);
+  // Cursor blink
+  if (frame !== 1) p(ctx, 0, 0, 8, 5+(frame===0?0:6), '#ffffff');
+  // Keyboard
+  b(ctx, 0, 0, 4, H-4, W-8, 2, '#333340');
+}
+
+function drawCyberFirewallNode(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(5); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 4, 4, W-8, H-8, '#1a1a22');
+  // Central core
+  b(ctx, 0, 0, cx-6, cy-6, 12, 12, '#333340');
+  b(ctx, 0, 0, cx-4, cy-4, 8, 8, '#0044aa');
+  b(ctx, 0, 0, cx-2, cy-2, 4, 4, '#0066cc');
+  // Shield hex pattern pulses outward per frame
+  const r = 10 + frame * 6;
+  for (let a = 0; a < 6; a++) {
+    const angle = (a/6)*Math.PI*2;
+    const hx = Math.round(cx+Math.cos(angle)*r);
+    const hy = Math.round(cy+Math.sin(angle)*r);
+    b(ctx, 0, 0, hx-2, hy-2, 4, 4, '#0044aa44');
+    // Connect to next hex
+    const nx = Math.round(cx+Math.cos(((a+1)/6)*Math.PI*2)*r);
+    const ny = Math.round(cy+Math.sin(((a+1)/6)*Math.PI*2)*r);
+    for (let s = 1; s < 4; s++) p(ctx, 0, 0, Math.round(hx+(nx-hx)*s/4), Math.round(hy+(ny-hy)*s/4), '#0044aa33');
+  }
+  // Data streams
+  for (let i = 0; i < 4; i++) {
+    const dy = 8 + i*12 + frame*2;
+    if (dy < H-8) { b(ctx, 0, 0, 6, dy, 4, 1, '#00ff4444'); b(ctx, 0, 0, W-10, dy+2, 4, 1, '#00ff4444'); }
+  }
+}
+
+// ===================== CELESTIAL NEW =====================
+
+function drawCelestialOracleFountain(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(4); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-6, W-4, 6, '#c8c0b0');
+  // Basin
+  b(ctx, 0, 0, 6, H-14, W-12, 8, '#d0c8b8');
+  b(ctx, 0, 0, 8, H-12, W-16, 4, '#2a5577');
+  // Central column
+  b(ctx, 0, 0, cx-3, 8, 6, H-22, '#e0d8c8');
+  b(ctx, 0, 0, cx-2, 6, 4, 4, '#ece4d4');
+  // Water arcs per frame
+  const arcH = frame === 0 ? 4 : frame === 1 ? 8 : 2;
+  b(ctx, 0, 0, cx-8, 6-arcH, 2, arcH, '#88aacc');
+  b(ctx, 0, 0, cx+6, 6-arcH, 2, arcH, '#88aacc');
+  // Golden shimmer
+  if (frame === 1) { p(ctx, 0, 0, cx-6, 4, '#ffdd88'); p(ctx, 0, 0, cx+4, 3, '#ffdd88'); }
+  if (frame === 2) { p(ctx, 0, 0, cx-4, H-12, '#88aacc'); p(ctx, 0, 0, cx+3, H-11, '#88aacc'); }
+}
+
+function drawCelestialMarbleColossus(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(5); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-6, W-4, 6, '#c8c0b0');
+  // Body
+  b(ctx, 0, 0, cx-6, 16, 12, H-22, '#e0d8c8');
+  b(ctx, 0, 0, cx-8, 20, 16, H-28, '#d0c8b8');
+  // Head
+  b(ctx, 0, 0, cx-4, 8, 8, 10, '#ece4d4');
+  // Eyes glow per frame
+  const eyeGlow = frame === 0 ? '#ffdd88' : frame === 1 ? '#ffffff' : '#eebb66';
+  p(ctx, 0, 0, cx-2, 12, eyeGlow); p(ctx, 0, 0, cx+1, 12, eyeGlow);
+  // Held flame
+  b(ctx, 0, 0, cx+8, 18, 4, 3, frame===1 ? '#ffcc44' : '#ff8822');
+  p(ctx, 0, 0, cx+9, 17, frame===2 ? '#ffcc44' : '#ff6622');
+  // Arms
+  b(ctx, 0, 0, cx-10, 22, 4, 14, '#d0c8b8');
+  b(ctx, 0, 0, cx+6, 22, 4, 14, '#d0c8b8');
+}
+
+function drawCelestialCloudThrone(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(3); const cx = Math.floor(W/2);
+  // Cloud base shifts per frame
+  const cloudOff = frame * 2;
+  b(ctx, 0, 0, 2+cloudOff, H-8, W-4, 6, '#dde8f0');
+  b(ctx, 0, 0, 4+cloudOff, H-10, W-8, 4, '#eef4f8');
+  b(ctx, 0, 0, 0, H-6, 6, 4, '#ccdde8');
+  // Throne
+  b(ctx, 0, 0, cx-8, 4, 16, H-12, '#e0d8c8');
+  b(ctx, 0, 0, cx-6, 2, 12, 4, '#ece4d4');
+  b(ctx, 0, 0, cx-10, 6, 4, H-14, '#d0c8b8');
+  b(ctx, 0, 0, cx+6, 6, 4, H-14, '#d0c8b8');
+  // Cushion
+  b(ctx, 0, 0, cx-6, H-14, 12, 4, '#8866aa');
+  // Cloud wisps
+  p(ctx, 0, 0, W-6-cloudOff, H-4, '#eef4f8');
+}
+
+function drawCelestialSunDial(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(2); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#c8c0b0');
+  // Dial face (circle)
+  for (let a = 0; a < 360; a += 20) { const r = 8; p(ctx, 0, 0, Math.round(cx+Math.cos(a*Math.PI/180)*r), Math.round(cy+Math.sin(a*Math.PI/180)*r), '#998866'); }
+  // Gnomon
+  p(ctx, 0, 0, cx, cy, '#666655');
+  // Shadow direction per frame (N,E,S,W)
+  const dirs = [[0,-1],[1,0],[0,1],[-1,0]];
+  const [dx,dy] = dirs[frame];
+  for (let i = 1; i <= 5; i++) p(ctx, 0, 0, cx+dx*i, cy+dy*i, '#44444488');
+  // Hour marks
+  for (let i = 0; i < 4; i++) { const a = (i/4)*Math.PI*2; p(ctx, 0, 0, Math.round(cx+Math.cos(a)*10), Math.round(cy+Math.sin(a)*10), '#aa9966'); }
+}
+
+function drawCelestialAltarOfLight(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 4, H-8, W-8, 8, '#d0c8b8');
+  b(ctx, 0, 0, 6, H-10, W-12, 4, '#e0d8c8');
+  b(ctx, 0, 0, cx-4, H-12, 8, 3, '#ece4d4');
+  // Light beam per frame
+  const beamW = frame === 0 ? 4 : frame === 1 ? 8 : 12;
+  const beamAlpha = frame === 0 ? '#ffdd8888' : frame === 1 ? '#ffdd8866' : '#ffdd8844';
+  b(ctx, 0, 0, cx-beamW/2, 0, beamW, H-12, beamAlpha);
+  // Gem on altar
+  b(ctx, 0, 0, cx-1, H-13, 2, 2, '#ffdd88');
+  p(ctx, 0, 0, cx, H-13, frame === 0 ? '#ffffff' : '#ffee99');
+}
+
+function drawCelestialAngelicStatue(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(4); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-6, W-4, 6, '#c8c0b0');
+  // Body
+  b(ctx, 0, 0, cx-4, 14, 8, H-20, '#e0d8c8');
+  // Head
+  b(ctx, 0, 0, cx-3, 8, 6, 6, '#ece4d4');
+  // Halo
+  b(ctx, 0, 0, cx-4, 5, 8, 2, '#ffdd88');
+  p(ctx, 0, 0, cx, 5, frame === 1 ? '#ffffff' : '#ffee99');
+  // Wings per frame
+  const wingSpread = frame === 0 ? 2 : frame === 1 ? 4 : 6;
+  b(ctx, 0, 0, cx-4-wingSpread, 12, wingSpread, 16, '#ddd5c5');
+  b(ctx, 0, 0, cx+4, 12, wingSpread, 16, '#ddd5c5');
+  p(ctx, 0, 0, cx-4-wingSpread, 14, '#ece4d4');
+  p(ctx, 0, 0, cx+3+wingSpread, 14, '#ece4d4');
+}
+
+// ===================== ALIENS NEW =====================
+
+function drawAlienEggCluster(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(4);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
+  // Eggs
+  const eggs = [[10,10],[20,8],[30,12],[14,22],[26,20],[18,32],[28,30],[8,34]];
+  for (let i = 0; i < eggs.length; i++) {
+    const [ex,ey] = eggs[i];
+    const pulse = (i + frame) % 3 === 0;
+    b(ctx, 0, 0, ex, ey, 5, 7, pulse ? '#778866' : '#556644');
+    b(ctx, 0, 0, ex, ey, 5, 1, '#667755');
+    p(ctx, 0, 0, ex+2, ey+2, '#889977');
+    if (i === 3 && frame >= 1) { p(ctx, 0, 0, ex+1, ey+3, '#333322'); if (frame === 2) { p(ctx, 0, 0, ex+2, ey+3, '#44ff88'); } }
+  }
+  // Slime
+  for (const [ex,ey] of eggs) p(ctx, 0, 0, ex+2, ey+7, '#44aa6644');
+}
+
+function drawAlienAcidPool(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(3); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
+  // Pool edge
+  for (let x = 4; x < W-4; x++) for (let y = 4; y < H-4; y++) {
+    const d = Math.sqrt(((x-cx)/1.4)**2 + ((y-cy)/1)**2);
+    if (d < 16) p(ctx, 0, 0, x, y, d < 12 ? '#44cc44' : '#2a4422');
+  }
+  // Bubble per frame
+  const bubSize = frame + 1;
+  b(ctx, 0, 0, cx-bubSize, cy-4-frame*2, bubSize*2, bubSize, '#66ee66');
+  if (frame === 2) { p(ctx, 0, 0, cx-3, cy-8, '#44cc4444'); p(ctx, 0, 0, cx+2, cy-9, '#44cc4444'); }
+}
+
+function drawAlienChitinWall(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(2);
+  b(ctx, 0, 0, 0, 0, W, H, '#3a2244');
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#442a55');
+  // Chitin plates
+  for (let x = 4; x < W-4; x += 8) { b(ctx, 0, 0, x, 4, 6, H-8, '#553366'); b(ctx, 0, 0, x+1, 5, 4, H-10, '#664477'); }
+  // Resin glisten shifts per frame
+  const glistenX = 6 + frame * Math.floor((W-12)/2);
+  p(ctx, 0, 0, glistenX, 6, '#88aacc'); p(ctx, 0, 0, glistenX+2, 7, '#88aacc88');
+  // Veins pulse
+  for (let x = 8; x < W-8; x += 6) { p(ctx, 0, 0, x, H/2, (x/6 + frame) % 2 === 0 ? '#44cc88' : '#339966'); }
+}
+
+function drawAlienSporeVent(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
+  // Vent organic tube
+  b(ctx, 0, 0, cx-5, H-14, 10, 12, '#3a2244');
+  b(ctx, 0, 0, cx-3, H-12, 6, 8, '#442a55');
+  // Opening
+  b(ctx, 0, 0, cx-4, H-16, 8, 4, '#553366');
+  b(ctx, 0, 0, cx-2, H-16, 4, 2, '#1a1022');
+  // Spore puff rises per frame
+  const sporeY = H - 18 - frame * 8;
+  if (sporeY > 0) {
+    b(ctx, 0, 0, cx-2-frame, sporeY, 4+frame*2, 3, '#44cc8844');
+    p(ctx, 0, 0, cx, sporeY, '#66ee88');
+    if (frame > 0) p(ctx, 0, 0, cx-2, sporeY-2, '#44cc8833');
+  }
+}
+
+function drawAlienCocoonCluster(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
+  // Cocoons
+  const cocoons = [[8,6,10,14],[22,4,8,16],[14,20,10,12]];
+  for (let i = 0; i < cocoons.length; i++) {
+    const [cx_,cy_,cw,ch] = cocoons[i];
+    b(ctx, 0, 0, cx_, cy_, cw, ch, '#444466');
+    b(ctx, 0, 0, cx_+1, cy_+1, cw-2, ch-2, '#555577');
+    // Web strands
+    p(ctx, 0, 0, cx_-1, cy_+2, '#666688'); p(ctx, 0, 0, cx_+cw, cy_+ch-3, '#666688');
+    // Squirm bulge shifts per frame
+    if (i === frame) {
+      const bulgeY = cy_ + Math.floor(ch/3) + frame;
+      b(ctx, 0, 0, cx_+cw-2, bulgeY, 3, 3, '#666688');
+    }
+  }
+}
+
+function drawAlienFeedingPit(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(5); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
+  // Pit
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) {
+    const d = Math.sqrt((x-cx)**2 + (y-cy)**2);
+    if (d < 24) p(ctx, 0, 0, x, y, d < 16 ? '#110818' : d < 20 ? '#221428' : '#332040');
+  }
+  // Acid at bottom
+  b(ctx, 0, 0, cx-8, cy-4, 16, 8, '#44cc44');
+  b(ctx, 0, 0, cx-6, cy-2, 12, 4, '#66ee66');
+  // Tentacles in different positions per frame
+  const tentAngles = [[30,150,270],[60,180,300],[0,120,240]];
+  for (const a of tentAngles[frame]) {
+    const rad = a*Math.PI/180;
+    for (let d = 8; d < 20; d += 2) {
+      p(ctx, 0, 0, Math.round(cx+Math.cos(rad)*d), Math.round(cy+Math.sin(rad)*d), '#442266');
+    }
+  }
+}
+
+function drawAlienTunnelMouth(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#3a2244');
+  // Opening
+  b(ctx, 0, 0, cx-10, 2, 20, H-4, '#110818');
+  b(ctx, 0, 0, cx-8, 4, 16, H-8, '#0a0410');
+  // Mandible edges per frame
+  const mandInset = frame === 0 ? 0 : frame === 1 ? 2 : 4;
+  b(ctx, 0, 0, cx-10, 2, 3, H-4, '#553366');
+  b(ctx, 0, 0, cx+7, 2, 3, H-4, '#553366');
+  b(ctx, 0, 0, cx-10+mandInset, 4, 2, H-8, '#664477');
+  b(ctx, 0, 0, cx+8-mandInset, 4, 2, H-8, '#664477');
+  // Slime drips
+  p(ctx, 0, 0, cx-6, H-4, '#44aa66'); p(ctx, 0, 0, cx+4, H-3, '#44aa66');
+}
+
+// ===================== HARMONIC NEW =====================
+
+function drawHarmonicPipeOrgan(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(5); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, H-6, W, 6, '#3a2a1a');
+  // Console
+  b(ctx, 0, 0, cx-12, H-16, 24, 10, '#664433');
+  b(ctx, 0, 0, cx-10, H-14, 20, 6, '#eeeecc'); // keyboard
+  // Pipes of varying heights
+  for (let i = 0; i < 9; i++) {
+    const px = 8 + i * 7; const ph = 20 + Math.abs(i-4)*6;
+    b(ctx, 0, 0, px, H-16-ph, 4, ph, '#ccaa44');
+    b(ctx, 0, 0, px+1, H-16-ph, 2, ph, '#ddbb55');
+    b(ctx, 0, 0, px, H-16-ph-2, 4, 2, '#eedd66');
+  }
+  // Sound waves per frame
+  if (frame === 0) { for (let i = 0; i < 3; i++) p(ctx, 0, 0, 6+i*2, H-20-20-i*3, '#aa884444'); }
+  if (frame === 1) { b(ctx, 0, 0, cx-8, H-16, 16, 1, '#eeeeaa'); } // keys pressed
+  if (frame === 2) { for (let i = 0; i < 3; i++) p(ctx, 0, 0, W-8-i*2, H-20-20-i*3, '#aa884444'); }
+}
+
+function drawHarmonicDjBooth(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-6, W-4, 6, '#222222');
+  b(ctx, 0, 0, 4, 6, W-8, H-12, '#333333');
+  // Turntable
+  b(ctx, 0, 0, 6, 8, 16, 12, '#222222');
+  const discAngle = frame * 30;
+  b(ctx, 0, 0, 8, 10, 12, 8, '#111111');
+  p(ctx, 0, 0, 12 + (frame%2), 13, '#cccccc'); // label dot rotates
+  // EQ display
+  const eqBars = [3,5,7,4,6,8,5,3];
+  for (let i = 0; i < eqBars.length; i++) {
+    const bh = frame === 1 ? eqBars[i]+2 : frame === 2 ? eqBars[i] : eqBars[i]-1;
+    b(ctx, 0, 0, 28+i*3, H-12-Math.max(1,bh), 2, Math.max(1,bh), i<4 ? '#44aaff' : '#ff4488');
+  }
+  // Headphones
+  b(ctx, 0, 0, W-10, 6, 6, 4, '#444444');
+}
+
+function drawHarmonicSpeakerStack(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(4); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#333333');
+  // Speakers (3 stacked)
+  for (let i = 0; i < 3; i++) {
+    const sy = 4 + i * Math.floor((H-8)/3);
+    const sh = Math.floor((H-12)/3);
+    b(ctx, 0, 0, 4, sy, W-8, sh, '#222222');
+    // Cone
+    const coneR = 4 + (i === 2 ? 2 : 0); // bass bigger
+    const ccx = cx, ccy = sy + sh/2;
+    b(ctx, 0, 0, ccx-coneR, ccy-coneR, coneR*2, coneR*2, '#444444');
+    const pulse = frame === i ? 2 : 0;
+    b(ctx, 0, 0, ccx-coneR+1+pulse, ccy-coneR+1+pulse, (coneR-1-pulse)*2, (coneR-1-pulse)*2, '#555555');
+  }
+  // Bass wave
+  if (frame > 0) { b(ctx, 0, 0, 0, H/2-1, 2, 2, '#44444444'); b(ctx, 0, 0, W-2, H/2-1, 2, 2, '#44444444'); }
+}
+
+function drawHarmonicHarp(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, cx-2, H-4, 4, 4, '#ccaa44');
+  // Frame
+  b(ctx, 0, 0, cx-8, 2, 3, H-6, '#ddbb55');
+  b(ctx, 0, 0, cx-8, 2, 16, 3, '#ddbb55');
+  b(ctx, 0, 0, cx+6, 4, 2, H-10, '#ccaa44');
+  // Strings
+  for (let i = 0; i < 7; i++) {
+    const sx = cx - 5 + i * 2;
+    b(ctx, 0, 0, sx, 5, 1, H-10, '#eedd66');
+    // Shimmer per frame
+    const shimmer = Math.floor(i/3) === frame;
+    if (shimmer) p(ctx, 0, 0, sx, 10+i*2, '#ffffff');
+  }
+  // Sound ornament
+  p(ctx, 0, 0, cx-8, 2, '#eedd66');
+}
+
+function drawHarmonicMusicStand(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(2); const cx = Math.floor(W/2);
+  // Stand pole
+  b(ctx, 0, 0, cx-1, H/2, 2, H/2, '#444444');
+  b(ctx, 0, 0, cx-4, H-3, 8, 2, '#555555');
+  // Music holder
+  b(ctx, 0, 0, cx-8, 2, 16, 2, '#444444');
+  // Sheet music - page turns per frame
+  if (frame === 0) { b(ctx, 0, 0, cx-7, 4, 14, 10, '#eeeecc'); b(ctx, 0, 0, cx-5, 5, 4, 1, '#222222'); b(ctx, 0, 0, cx-5, 7, 6, 1, '#222222'); }
+  else if (frame === 1) { b(ctx, 0, 0, cx-4, 4, 8, 10, '#ddddbb'); b(ctx, 0, 0, cx+2, 4, 5, 10, '#eeeecc'); }
+  else { b(ctx, 0, 0, cx-7, 4, 14, 10, '#eeeecc'); b(ctx, 0, 0, cx+1, 5, 4, 1, '#222222'); b(ctx, 0, 0, cx, 7, 5, 1, '#222222'); }
+}
+
+function drawHarmonicSpotlightRig(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(2);
+  // Metal rig
+  b(ctx, 0, 0, 0, 2, W, 3, '#888888');
+  b(ctx, 0, 0, 4, 0, 2, 4, '#777777');
+  b(ctx, 0, 0, W-6, 0, 2, 4, '#777777');
+  // Spotlights with colors per frame
+  const spotColors = [['#ff4444','#4444ff'],['#44ff44','#ffff44'],['#aa44ff','#44ffff']];
+  const [c1,c2] = spotColors[frame];
+  // Left spotlight
+  b(ctx, 0, 0, 8, 5, 4, 3, '#666666');
+  b(ctx, 0, 0, 6, 8, 8, H-10, c1 + '44');
+  p(ctx, 0, 0, 9, 5, c1);
+  // Right spotlight
+  b(ctx, 0, 0, W-12, 5, 4, 3, '#666666');
+  b(ctx, 0, 0, W-14, 8, 8, H-10, c2 + '44');
+  p(ctx, 0, 0, W-11, 5, c2);
+  // Center spotlight
+  const ccx = Math.floor(W/2);
+  b(ctx, 0, 0, ccx-2, 5, 4, 3, '#666666');
+  b(ctx, 0, 0, ccx-4, 8, 8, H-10, '#ffffff22');
+  p(ctx, 0, 0, ccx, 5, '#ffffff');
+}
+
+// ===================== VOID NEW =====================
+
+function drawVoidRiftPortal(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(5), H = gh(5); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#0a0418');
+  // Portal rim
+  for (let a = 0; a < 360; a += 5) { const r = 26; const rx = Math.round(cx+Math.cos(a*Math.PI/180)*r); const ry = Math.round(cy+Math.sin(a*Math.PI/180)*r); p(ctx, 0, 0, rx, ry, '#6622aa'); }
+  // Vortex spiral
+  const colors = ['#8844cc','#4466cc','#cc4466'];
+  const vc = colors[frame];
+  for (let a = 0; a < 360; a += 15) {
+    const angle = (a + frame*30) * Math.PI / 180;
+    const r = 4 + (a/360) * 20;
+    p(ctx, 0, 0, Math.round(cx+Math.cos(angle)*r), Math.round(cy+Math.sin(angle)*r), vc);
+  }
+  // Bright center
+  b(ctx, 0, 0, cx-3, cy-3, 6, 6, '#ffffff44');
+  b(ctx, 0, 0, cx-1, cy-1, 2, 2, '#ffffff');
+}
+
+function drawVoidChaosObelisk(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(5); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-4, W-4, 4, '#1a1028');
+  // Obelisk body
+  b(ctx, 0, 0, cx-4, 4, 8, H-8, '#221438');
+  b(ctx, 0, 0, cx-3, 2, 6, H-6, '#2a1844');
+  b(ctx, 0, 0, cx-2, 0, 4, 4, '#332255');
+  // Runes cycle per frame
+  const runeColors = ['#8844cc','#44ccaa','#44cc44'];
+  const rc = runeColors[frame];
+  for (let y = 10; y < H-8; y += 8) {
+    p(ctx, 0, 0, cx-1, y, rc); p(ctx, 0, 0, cx+1, y+1, rc); p(ctx, 0, 0, cx-1, y+2, rc);
+  }
+  p(ctx, 0, 0, cx, 1, rc);
+}
+
+function drawVoidDiceAltar(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 4, H-8, W-8, 8, '#332255');
+  b(ctx, 0, 0, 6, H-12, W-12, 5, '#443366');
+  // Die on top
+  b(ctx, 0, 0, cx-5, 6, 10, 10, '#e0d8c8');
+  b(ctx, 0, 0, cx-4, 7, 8, 8, '#ece4d4');
+  // Face per frame
+  if (frame === 0) { p(ctx, 0, 0, cx, 11, '#1a1028'); } // 1
+  else if (frame === 1) { p(ctx, 0, 0, cx-2, 9, '#1a1028'); p(ctx, 0, 0, cx+1, 9, '#1a1028'); p(ctx, 0, 0, cx-2, 12, '#1a1028'); p(ctx, 0, 0, cx+1, 12, '#1a1028'); } // 4
+  else { for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) p(ctx, 0, 0, cx-2+c*3, 8+r*3, '#1a1028'); } // 6
+  // Purple glow
+  p(ctx, 0, 0, cx-6, H-10, '#6622aa');
+  p(ctx, 0, 0, cx+5, H-10, '#6622aa');
+}
+
+function drawVoidRouletteWheel(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(4), H = gh(4); const cx = Math.floor(W/2), cy = Math.floor(H/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1028');
+  // Wheel rim (gold)
+  for (let a = 0; a < 360; a += 8) { const r = 20; p(ctx, 0, 0, Math.round(cx+Math.cos(a*Math.PI/180)*r), Math.round(cy+Math.sin(a*Math.PI/180)*r), '#ccaa44'); }
+  // Segments rotate per frame
+  const segColors = ['#cc2222','#111111','#22cc22','#111111','#cc2222','#111111','#cc2222','#111111'];
+  for (let i = 0; i < 8; i++) {
+    const a = ((i + frame*2) / 8) * Math.PI * 2;
+    for (let d = 4; d < 18; d += 2) {
+      p(ctx, 0, 0, Math.round(cx+Math.cos(a)*d), Math.round(cy+Math.sin(a)*d), segColors[i]);
+    }
+  }
+  // Center hub
+  b(ctx, 0, 0, cx-2, cy-2, 4, 4, '#ccaa44');
+  p(ctx, 0, 0, cx, cy, '#eedd66');
+  // Ball
+  const ballAngle = (frame / 4) * Math.PI * 2 + 0.5;
+  p(ctx, 0, 0, Math.round(cx+Math.cos(ballAngle)*16), Math.round(cy+Math.sin(ballAngle)*16), '#ffffff');
+}
+
+function drawVoidCrystal(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(2), H = gh(3); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-4, W-4, 4, '#1a1028');
+  // Crystal body — opacity per frame
+  const colors = ['#8844cc', '#aa88ee88', '#6644aa44'];
+  const c = colors[frame];
+  b(ctx, 0, 0, cx-4, 6, 8, H-10, c);
+  b(ctx, 0, 0, cx-3, 4, 6, 4, c);
+  b(ctx, 0, 0, cx-2, 2, 4, 4, c);
+  p(ctx, 0, 0, cx, 1, c);
+  // Outline always visible
+  if (frame >= 1) {
+    for (let y = 4; y < H-4; y += 3) { p(ctx, 0, 0, cx-4, y, '#6622aa'); p(ctx, 0, 0, cx+3, y, '#6622aa'); }
+  }
+}
+
+function drawVoidCardTable(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(2); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 2, H-4, W-4, 4, '#1a1028');
+  // Table
+  b(ctx, 0, 0, 4, 4, W-8, H-8, '#224422');
+  b(ctx, 0, 0, 6, 6, W-12, H-12, '#336633');
+  // Card per frame
+  if (frame === 0) { b(ctx, 0, 0, cx-3, 6, 6, 8, '#8844cc'); b(ctx, 0, 0, cx-2, 7, 4, 6, '#6622aa'); } // face down
+  else if (frame === 1) { b(ctx, 0, 0, cx-2, 6, 4, 8, '#8844cc'); } // tilting
+  else { b(ctx, 0, 0, cx-3, 6, 6, 8, '#e0d8c8'); p(ctx, 0, 0, cx-1, 8, '#1a1028'); b(ctx, 0, 0, cx-1, 10, 2, 2, '#cc2244'); } // face up with skull
+}
+
+function drawVoidFortuneTeller(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(4); const cx = Math.floor(W/2);
+  b(ctx, 0, 0, 0, 0, W, H, '#1a1028');
+  // Booth frame
+  b(ctx, 0, 0, 2, 2, W-4, H-4, '#442266');
+  b(ctx, 0, 0, 4, 4, W-8, H-8, '#553388');
+  // Drapes
+  b(ctx, 0, 0, 2, 2, 3, H-4, '#331855');
+  b(ctx, 0, 0, W-5, 2, 3, H-4, '#331855');
+  // Table inside
+  b(ctx, 0, 0, 6, H-14, W-12, 6, '#442266');
+  // Crystal ball
+  b(ctx, 0, 0, cx-4, H-22, 8, 8, '#333344');
+  b(ctx, 0, 0, cx-3, H-21, 6, 6, '#444466');
+  // Ball swirl color per frame
+  const ballColors = ['#4488ff', '#8844cc', '#44cc66'];
+  b(ctx, 0, 0, cx-2, H-20, 4, 4, ballColors[frame]);
+  p(ctx, 0, 0, cx, H-19, '#ffffff');
+  // Stand
+  b(ctx, 0, 0, cx-2, H-14, 4, 2, '#555555');
+}
+
+
 // ===================== Structure Registry =====================
 
-const structures: StructureDef[] = [
-  // Military
-  { key: 'military_hq', label: 'Military HQ (5x4)', faction: 'Military', widthCells: 5, heightCells: 4, draw: drawMilitaryHQ },
-  { key: 'military_barracks', label: 'Military Barracks (5x3)', faction: 'Military', widthCells: 5, heightCells: 3, draw: drawMilitaryBarracks },
-  { key: 'military_motor_pool', label: 'Military Motor Pool (5x4)', faction: 'Military', widthCells: 5, heightCells: 4, draw: drawMilitaryMotorPool },
-  { key: 'military_supply_depot', label: 'Military Supply Depot (5x3)', faction: 'Military', widthCells: 5, heightCells: 3, draw: drawMilitarySupplyDepot },
-  { key: 'military_comms_tower', label: 'Military Comms Tower (2x5)', faction: 'Military', widthCells: 2, heightCells: 5, draw: drawMilitaryCommsTower },
-  // Psionic
-  { key: 'psionic_brain_vat', label: 'Psionic Brain Vat (3x5)', faction: 'Psionic', widthCells: 3, heightCells: 5, draw: drawPsionicBrainVat },
-  { key: 'psionic_thought_amp', label: 'Psionic Thought Amplifier (2x3)', faction: 'Psionic', widthCells: 2, heightCells: 3, draw: drawPsionicThoughtAmp },
-  { key: 'psionic_memory_bank', label: 'Psionic Memory Bank (3x3)', faction: 'Psionic', widthCells: 3, heightCells: 3, draw: drawPsionicMemoryBank },
-  // Infernal
-  { key: 'infernal_throne', label: 'Infernal Throne (7x4)', faction: 'Infernal', widthCells: 7, heightCells: 4, draw: drawInfernalThrone },
-  { key: 'infernal_spire', label: 'Infernal Spire (2x5)', faction: 'Infernal', widthCells: 2, heightCells: 5, draw: drawInfernalSpire },
-  { key: 'infernal_altar', label: 'Infernal Altar (5x3)', faction: 'Infernal', widthCells: 5, heightCells: 3, draw: drawInfernalAltar },
-  // Arcane
-  { key: 'arcane_wizard_tower', label: 'Arcane Wizard Tower (3x5)', faction: 'Arcane', widthCells: 3, heightCells: 5, draw: drawArcaneWizardTower },
-  // Mechanical
-  { key: 'mech_furnace', label: 'Mech Furnace (6x6)', faction: 'Mechanical', widthCells: 6, heightCells: 6, draw: drawMechFurnace },
-  { key: 'mech_press', label: 'Mech Press (8x5)', faction: 'Mechanical', widthCells: 8, heightCells: 5, draw: drawMechPress },
-  // Nature
-  { key: 'nature_ancient_tree', label: 'Nature Ancient Tree (7x7)', faction: 'Nature', widthCells: 7, heightCells: 7, draw: drawNatureAncientTree },
-  // Cypherpunk
-  { key: 'cyber_mainframe', label: 'Cyber Mainframe (3x6)', faction: 'Cypherpunk', widthCells: 3, heightCells: 6, draw: drawCyberMainframe },
-  // Celestial
-  { key: 'celestial_sanctum', label: 'Celestial Sanctum (12x2)', faction: 'Celestial', widthCells: 12, heightCells: 2, draw: drawCelestialSanctum },
-  { key: 'celestial_gate_pillar', label: 'Celestial Gate Pillar (2x3)', faction: 'Celestial', widthCells: 2, heightCells: 3, draw: drawCelestialGatePillar },
-  // Aliens
-  { key: 'alien_queen_chamber', label: 'Alien Queen Chamber (7x7)', faction: 'Aliens', widthCells: 7, heightCells: 7, draw: drawAlienQueenChamber },
-  // Harmonic
-  { key: 'harmonic_grand_piano', label: 'Harmonic Grand Piano (3x3)', faction: 'Harmonic', widthCells: 3, heightCells: 3, draw: drawHarmonicGrandPiano },
-  { key: 'harmonic_drum_kit', label: 'Harmonic Drum Kit (3x3)', faction: 'Harmonic', widthCells: 3, heightCells: 3, draw: drawHarmonicDrumKit },
-  // Void
-  { key: 'void_slot_machine', label: 'Void Slot Machine (3x4)', faction: 'Void', widthCells: 3, heightCells: 4, draw: drawVoidSlotMachine },
+export const structures: StructureDef[] = [
+  // Military (10)
+  { key: 'military_hq', label: 'Military HQ (5x4)', faction: 'Military', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawMilitaryHQ },
+  { key: 'military_barracks', label: 'Military Barracks (5x3)', faction: 'Military', widthCells: 5, heightCells: 3, animFrames: 3, draw: drawMilitaryBarracks },
+  { key: 'military_motor_pool', label: 'Military Motor Pool (5x4)', faction: 'Military', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawMilitaryMotorPool },
+  { key: 'military_supply_depot', label: 'Military Supply Depot (5x3)', faction: 'Military', widthCells: 5, heightCells: 3, animFrames: 3, draw: drawMilitarySupplyDepot },
+  { key: 'military_comms_tower', label: 'Military Comms Tower (2x5)', faction: 'Military', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawMilitaryCommsTower },
+  { key: 'military_guard_tower', label: 'Military Guard Tower (2x3)', faction: 'Military', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawMilitaryGuardTower },
+  { key: 'military_ammo_bunker', label: 'Military Ammo Bunker (3x3)', faction: 'Military', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawMilitaryAmmoBunker },
+  { key: 'military_radar_dish', label: 'Military Radar Dish (3x4)', faction: 'Military', widthCells: 3, heightCells: 4, animFrames: 4, draw: drawMilitaryRadarDish },
+  { key: 'military_tank_hangar', label: 'Military Tank Hangar (6x4)', faction: 'Military', widthCells: 6, heightCells: 4, animFrames: 3, draw: drawMilitaryTankHangar },
+  { key: 'military_landing_pad', label: 'Military Landing Pad (5x5)', faction: 'Military', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawMilitaryLandingPad },
+  // Psionic (8)
+  { key: 'psionic_brain_vat', label: 'Psionic Brain Vat (3x5)', faction: 'Psionic', widthCells: 3, heightCells: 5, animFrames: 3, draw: drawPsionicBrainVat },
+  { key: 'psionic_thought_amp', label: 'Psionic Thought Amplifier (2x3)', faction: 'Psionic', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawPsionicThoughtAmp },
+  { key: 'psionic_memory_bank', label: 'Psionic Memory Bank (3x3)', faction: 'Psionic', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawPsionicMemoryBank },
+  { key: 'psionic_neural_loom', label: 'Psionic Neural Loom (4x4)', faction: 'Psionic', widthCells: 4, heightCells: 4, animFrames: 3, draw: drawPsionicNeuralLoom },
+  { key: 'psionic_stasis_pod', label: 'Psionic Stasis Pod (2x4)', faction: 'Psionic', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawPsionicStasisPod },
+  { key: 'psionic_synapse_hub', label: 'Psionic Synapse Hub (3x2)', faction: 'Psionic', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawPsionicSynapseHub },
+  { key: 'psionic_psychic_beacon', label: 'Psionic Psychic Beacon (2x2)', faction: 'Psionic', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawPsionicPsychicBeacon },
+  { key: 'psionic_dream_chamber', label: 'Psionic Dream Chamber (5x4)', faction: 'Psionic', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawPsionicDreamChamber },
+  // Infernal (8)
+  { key: 'infernal_throne', label: 'Infernal Throne (7x4)', faction: 'Infernal', widthCells: 7, heightCells: 4, animFrames: 3, draw: drawInfernalThrone },
+  { key: 'infernal_spire', label: 'Infernal Spire (2x5)', faction: 'Infernal', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawInfernalSpire },
+  { key: 'infernal_altar', label: 'Infernal Altar (5x3)', faction: 'Infernal', widthCells: 5, heightCells: 3, animFrames: 3, draw: drawInfernalAltar },
+  { key: 'infernal_bone_cage', label: 'Infernal Bone Cage (3x4)', faction: 'Infernal', widthCells: 3, heightCells: 4, animFrames: 3, draw: drawInfernalBoneCage },
+  { key: 'infernal_lava_font', label: 'Infernal Lava Font (3x3)', faction: 'Infernal', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawInfernalLavaFont },
+  { key: 'infernal_demon_gate', label: 'Infernal Demon Gate (5x5)', faction: 'Infernal', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawInfernalDemonGate },
+  { key: 'infernal_skull_pile', label: 'Infernal Skull Pile (3x2)', faction: 'Infernal', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawInfernalSkullPile },
+  { key: 'infernal_torture_rack', label: 'Infernal Torture Rack (2x3)', faction: 'Infernal', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawInfernalTortureRack },
+  // Arcane (8)
+  { key: 'arcane_wizard_tower', label: 'Arcane Wizard Tower (3x5)', faction: 'Arcane', widthCells: 3, heightCells: 5, animFrames: 3, draw: drawArcaneWizardTower },
+  { key: 'arcane_crystal_nexus', label: 'Arcane Crystal Nexus (5x5)', faction: 'Arcane', widthCells: 5, heightCells: 5, animFrames: 4, draw: drawArcaneCrystalNexus },
+  { key: 'arcane_rune_circle', label: 'Arcane Rune Circle (3x3)', faction: 'Arcane', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawArcaneRuneCircle },
+  { key: 'arcane_scrying_pool', label: 'Arcane Scrying Pool (3x3)', faction: 'Arcane', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawArcaneScryingPool },
+  { key: 'arcane_spell_forge', label: 'Arcane Spell Forge (4x3)', faction: 'Arcane', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawArcaneSpellForge },
+  { key: 'arcane_crystal_cluster', label: 'Arcane Crystal Cluster (2x3)', faction: 'Arcane', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawArcaneCrystalCluster },
+  { key: 'arcane_enchanting_table', label: 'Arcane Enchanting Table (3x2)', faction: 'Arcane', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawArcaneEnchantingTable },
+  { key: 'arcane_mana_well', label: 'Arcane Mana Well (2x2)', faction: 'Arcane', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawArcaneManaWell },
+  // Mechanical (8)
+  { key: 'mech_furnace', label: 'Mech Furnace (6x6)', faction: 'Mechanical', widthCells: 6, heightCells: 6, animFrames: 3, draw: drawMechFurnace },
+  { key: 'mech_press', label: 'Mech Press (8x5)', faction: 'Mechanical', widthCells: 8, heightCells: 5, animFrames: 3, draw: drawMechPress },
+  { key: 'mech_gear_assembly', label: 'Mech Gear Assembly (4x4)', faction: 'Mechanical', widthCells: 4, heightCells: 4, animFrames: 4, draw: drawMechGearAssembly },
+  { key: 'mech_steam_boiler', label: 'Mech Steam Boiler (3x4)', faction: 'Mechanical', widthCells: 3, heightCells: 4, animFrames: 3, draw: drawMechSteamBoiler },
+  { key: 'mech_conveyor_terminal', label: 'Mech Conveyor Terminal (4x2)', faction: 'Mechanical', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawMechConveyorTerminal },
+  { key: 'mech_crane_arm', label: 'Mech Crane Arm (2x5)', faction: 'Mechanical', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawMechCraneArm },
+  { key: 'mech_scrap_heap', label: 'Mech Scrap Heap (3x3)', faction: 'Mechanical', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawMechScrapHeap },
+  { key: 'mech_smokestack', label: 'Mech Smokestack (2x6)', faction: 'Mechanical', widthCells: 2, heightCells: 6, animFrames: 3, draw: drawMechSmokestack },
+  // Nature (8)
+  { key: 'nature_ancient_tree', label: 'Nature Ancient Tree (7x7)', faction: 'Nature', widthCells: 7, heightCells: 7, animFrames: 3, draw: drawNatureAncientTree },
+  { key: 'nature_sacred_pond', label: 'Nature Sacred Pond (5x4)', faction: 'Nature', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawNatureSacredPond },
+  { key: 'nature_mushroom_ring', label: 'Nature Mushroom Ring (4x4)', faction: 'Nature', widthCells: 4, heightCells: 4, animFrames: 3, draw: drawNatureMushroomRing },
+  { key: 'nature_hollow_log', label: 'Nature Hollow Log (4x2)', faction: 'Nature', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawNatureHollowLog },
+  { key: 'nature_berry_bush', label: 'Nature Berry Bush (2x2)', faction: 'Nature', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawNatureBerryBush },
+  { key: 'nature_stone_shrine', label: 'Nature Stone Shrine (3x3)', faction: 'Nature', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawNatureStoneShrine },
+  { key: 'nature_waterfall', label: 'Nature Waterfall (3x5)', faction: 'Nature', widthCells: 3, heightCells: 5, animFrames: 3, draw: drawNatureWaterfall },
+  { key: 'nature_bee_hive', label: 'Nature Bee Hive (1x2)', faction: 'Nature', widthCells: 1, heightCells: 2, animFrames: 3, draw: drawNatureBeeHive },
+  // Cypherpunk (8)
+  { key: 'cyber_mainframe', label: 'Cyber Mainframe (3x6)', faction: 'Cypherpunk', widthCells: 3, heightCells: 6, animFrames: 3, draw: drawCyberMainframe },
+  { key: 'cyber_server_farm', label: 'Cyber Server Farm (5x4)', faction: 'Cypherpunk', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawCyberServerFarm },
+  { key: 'cyber_hologram_table', label: 'Cyber Hologram Table (4x3)', faction: 'Cypherpunk', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawCyberHologramTable },
+  { key: 'cyber_cable_nest', label: 'Cyber Cable Nest (3x3)', faction: 'Cypherpunk', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawCyberCableNest },
+  { key: 'cyber_crypto_miner', label: 'Cyber Crypto Miner (3x2)', faction: 'Cypherpunk', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawCyberCryptoMiner },
+  { key: 'cyber_neon_sign', label: 'Cyber Neon Sign (4x2)', faction: 'Cypherpunk', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawCyberNeonSign },
+  { key: 'cyber_hacker_station', label: 'Cyber Hacker Station (2x2)', faction: 'Cypherpunk', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawCyberHackerStation },
+  { key: 'cyber_firewall_node', label: 'Cyber Firewall Node (5x5)', faction: 'Cypherpunk', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawCyberFirewallNode },
+  // Celestial (8)
+  { key: 'celestial_sanctum', label: 'Celestial Sanctum (12x2)', faction: 'Celestial', widthCells: 12, heightCells: 2, animFrames: 3, draw: drawCelestialSanctum },
+  { key: 'celestial_gate_pillar', label: 'Celestial Gate Pillar (2x3)', faction: 'Celestial', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawCelestialGatePillar },
+  { key: 'celestial_oracle_fountain', label: 'Celestial Oracle Fountain (4x4)', faction: 'Celestial', widthCells: 4, heightCells: 4, animFrames: 3, draw: drawCelestialOracleFountain },
+  { key: 'celestial_marble_colossus', label: 'Celestial Marble Colossus (3x5)', faction: 'Celestial', widthCells: 3, heightCells: 5, animFrames: 3, draw: drawCelestialMarbleColossus },
+  { key: 'celestial_cloud_throne', label: 'Celestial Cloud Throne (4x3)', faction: 'Celestial', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawCelestialCloudThrone },
+  { key: 'celestial_sun_dial', label: 'Celestial Sun Dial (2x2)', faction: 'Celestial', widthCells: 2, heightCells: 2, animFrames: 4, draw: drawCelestialSunDial },
+  { key: 'celestial_altar_of_light', label: 'Celestial Altar of Light (3x2)', faction: 'Celestial', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawCelestialAltarOfLight },
+  { key: 'celestial_angelic_statue', label: 'Celestial Angelic Statue (2x4)', faction: 'Celestial', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawCelestialAngelicStatue },
+  // Aliens (8)
+  { key: 'alien_queen_chamber', label: 'Alien Queen Chamber (7x7)', faction: 'Aliens', widthCells: 7, heightCells: 7, animFrames: 3, draw: drawAlienQueenChamber },
+  { key: 'alien_egg_cluster', label: 'Alien Egg Cluster (4x4)', faction: 'Aliens', widthCells: 4, heightCells: 4, animFrames: 3, draw: drawAlienEggCluster },
+  { key: 'alien_acid_pool', label: 'Alien Acid Pool (4x3)', faction: 'Aliens', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawAlienAcidPool },
+  { key: 'alien_chitin_wall', label: 'Alien Chitin Wall (5x2)', faction: 'Aliens', widthCells: 5, heightCells: 2, animFrames: 3, draw: drawAlienChitinWall },
+  { key: 'alien_spore_vent', label: 'Alien Spore Vent (2x3)', faction: 'Aliens', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawAlienSporeVent },
+  { key: 'alien_cocoon_cluster', label: 'Alien Cocoon Cluster (3x3)', faction: 'Aliens', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawAlienCocoonCluster },
+  { key: 'alien_feeding_pit', label: 'Alien Feeding Pit (5x5)', faction: 'Aliens', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawAlienFeedingPit },
+  { key: 'alien_tunnel_mouth', label: 'Alien Tunnel Mouth (3x2)', faction: 'Aliens', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawAlienTunnelMouth },
+  // Harmonic (8)
+  { key: 'harmonic_grand_piano', label: 'Harmonic Grand Piano (3x3)', faction: 'Harmonic', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawHarmonicGrandPiano },
+  { key: 'harmonic_drum_kit', label: 'Harmonic Drum Kit (3x3)', faction: 'Harmonic', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawHarmonicDrumKit },
+  { key: 'harmonic_pipe_organ', label: 'Harmonic Pipe Organ (5x5)', faction: 'Harmonic', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawHarmonicPipeOrgan },
+  { key: 'harmonic_dj_booth', label: 'Harmonic DJ Booth (4x3)', faction: 'Harmonic', widthCells: 4, heightCells: 3, animFrames: 3, draw: drawHarmonicDjBooth },
+  { key: 'harmonic_speaker_stack', label: 'Harmonic Speaker Stack (2x4)', faction: 'Harmonic', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawHarmonicSpeakerStack },
+  { key: 'harmonic_harp', label: 'Harmonic Harp (2x3)', faction: 'Harmonic', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawHarmonicHarp },
+  { key: 'harmonic_music_stand', label: 'Harmonic Music Stand (2x2)', faction: 'Harmonic', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawHarmonicMusicStand },
+  { key: 'harmonic_spotlight_rig', label: 'Harmonic Spotlight Rig (4x2)', faction: 'Harmonic', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawHarmonicSpotlightRig },
+  // Void (8)
+  { key: 'void_slot_machine', label: 'Void Slot Machine (3x4)', faction: 'Void', widthCells: 3, heightCells: 4, animFrames: 3, draw: drawVoidSlotMachine },
+  { key: 'void_rift_portal', label: 'Void Rift Portal (5x5)', faction: 'Void', widthCells: 5, heightCells: 5, animFrames: 3, draw: drawVoidRiftPortal },
+  { key: 'void_chaos_obelisk', label: 'Void Chaos Obelisk (2x5)', faction: 'Void', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawVoidChaosObelisk },
+  { key: 'void_dice_altar', label: 'Void Dice Altar (3x3)', faction: 'Void', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawVoidDiceAltar },
+  { key: 'void_roulette_wheel', label: 'Void Roulette Wheel (4x4)', faction: 'Void', widthCells: 4, heightCells: 4, animFrames: 4, draw: drawVoidRouletteWheel },
+  { key: 'void_crystal', label: 'Void Crystal (2x3)', faction: 'Void', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawVoidCrystal },
+  { key: 'void_card_table', label: 'Void Card Table (3x2)', faction: 'Void', widthCells: 3, heightCells: 2, animFrames: 3, draw: drawVoidCardTable },
+  { key: 'void_fortune_teller', label: 'Void Fortune Teller (3x4)', faction: 'Void', widthCells: 3, heightCells: 4, animFrames: 3, draw: drawVoidFortuneTeller },
 ];
+
+// Faction → tileset path mapping for ground tile baking
+const FACTION_TILESET: Record<string, string> = {
+  Military: 'assets/terrain/military_terrain_tileset.png',
+  Psionic: 'assets/terrain/psionic_terrain_tileset.png',
+  Infernal: 'assets/terrain/infernal_terrain_tileset.png',
+  Arcane: 'assets/terrain/arcane_terrain_tileset.png',
+  Mechanical: 'assets/terrain/mechanical_terrain_tileset.png',
+  Nature: 'assets/terrain/nature_terrain_tileset.png',
+  Cypherpunk: 'assets/terrain/cypherpunk_terrain_tileset.png',
+  Celestial: 'assets/terrain/celestial_terrain_tileset.png',
+  Aliens: 'assets/terrain/aliens_terrain_tileset.png',
+  Harmonic: 'assets/terrain/harmonic_terrain_tileset.png',
+  Void: 'assets/terrain/void_terrain_tileset.png',
+};
+
+/** Load a ground tile from a tileset image (row 0, col 15 = full center variant) */
+function loadGroundTile(tilesetPath: string): Promise<HTMLCanvasElement | null> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = T; c.height = T;
+      const ctx = c.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      // Ground tile is at row 0, column 15
+      ctx.drawImage(img, 15 * T, 0, T, T, 0, 0, T, T);
+      resolve(c);
+    };
+    img.onerror = () => resolve(null);
+    img.src = tilesetPath;
+  });
+}
+
+/** Tile a canvas with the ground tile pattern */
+function fillWithGroundTile(ctx: CanvasRenderingContext2D, groundTile: HTMLCanvasElement, pw: number, ph: number) {
+  for (let y = 0; y < ph; y += T) {
+    for (let x = 0; x < pw; x += T) {
+      ctx.drawImage(groundTile, x, y);
+    }
+  }
+}
 
 // ===================== Component =====================
 
@@ -1834,40 +3291,67 @@ export default function LargeStructureSprites() {
   const [view, setView] = useState<'preview' | 'actual'>('preview');
 
   useEffect(() => {
-    for (const s of structures) {
-      const canvas = canvasRefs.current.get(s.key);
-      if (!canvas) continue;
+    // Load all faction ground tiles, then render structures
+    const factions = [...new Set(structures.map(s => s.faction))];
+    const tilePromises = factions.map(async f => {
+      const path = FACTION_TILESET[f];
+      const tile = path ? await loadGroundTile(path) : null;
+      return [f, tile] as [string, HTMLCanvasElement | null];
+    });
 
-      const pw = s.widthCells * T;
-      const ph = s.heightCells * T;
-      canvas.width = pw;
-      canvas.height = ph;
-      const ctx = canvas.getContext('2d')!;
-      ctx.imageSmoothingEnabled = false;
-      ctx.clearRect(0, 0, pw, ph);
-      s.draw(ctx);
+    Promise.all(tilePromises).then(tiles => {
+      const groundTiles = new Map(tiles);
 
-      // Preview at 3x
-      const preview = previewRefs.current.get(s.key);
-      if (preview) {
-        const scale = 3;
-        preview.width = pw * scale;
-        preview.height = ph * scale;
-        const pCtx = preview.getContext('2d')!;
-        pCtx.imageSmoothingEnabled = false;
-        pCtx.fillStyle = '#111110';
-        pCtx.fillRect(0, 0, preview.width, preview.height);
-        pCtx.drawImage(canvas, 0, 0, pw * scale, ph * scale);
+      for (const s of structures) {
+        const canvas = canvasRefs.current.get(s.key);
+        if (!canvas) continue;
+
+        const pw = s.widthCells * T;
+        const ph = s.heightCells * T;
+        const totalH = ph * s.animFrames;
+        canvas.width = pw;
+        canvas.height = totalH;
+        const ctx = canvas.getContext('2d')!;
+        ctx.imageSmoothingEnabled = false;
+
+        const groundTile = groundTiles.get(s.faction);
+
+        for (let f = 0; f < s.animFrames; f++) {
+          ctx.save();
+          ctx.translate(0, f * ph);
+          // Bake ground tile as background
+          if (groundTile) {
+            fillWithGroundTile(ctx, groundTile, pw, ph);
+          } else {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, pw, ph);
+          }
+          s.draw(ctx, f);
+          ctx.restore();
+        }
+
+        // Preview at 3x (show first frame only)
+        const preview = previewRefs.current.get(s.key);
+        if (preview) {
+          const scale = 3;
+          preview.width = pw * scale;
+          preview.height = ph * scale;
+          const pCtx = preview.getContext('2d')!;
+          pCtx.imageSmoothingEnabled = false;
+          pCtx.fillStyle = '#111110';
+          pCtx.fillRect(0, 0, preview.width, preview.height);
+          pCtx.drawImage(canvas, 0, 0, pw, ph, 0, 0, pw * scale, ph * scale);
+        }
       }
-    }
-    setReady(true);
+      setReady(true);
+    });
   }, []);
 
   const download = (key: string) => {
     const canvas = canvasRefs.current.get(key);
     if (!canvas) return;
     const a = document.createElement('a');
-    a.download = `${key}.png`;
+    a.download = `struct_${key}.png`;
     a.href = canvas.toDataURL('image/png');
     a.click();
   };
@@ -1923,7 +3407,7 @@ export default function LargeStructureSprites() {
         )}
       </div>
       <p style={{ fontSize: '12px', color: '#665533' }}>
-        PX=2 | Tile=28x28 | Grid=14x14 per tile | {structures.length} structures across {factions.length} factions
+        PX=2 | Tile=28x28 | Grid=14x14 per tile | {structures.length} structures across {factions.length} factions | Animated ({structures[0]?.animFrames || 3} frames stacked vertically)
       </p>
 
       {factions.map(faction => (
@@ -1936,7 +3420,7 @@ export default function LargeStructureSprites() {
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
                 <span style={{ fontSize: '13px', color: '#888' }}>{s.label}</span>
                 <span style={{ fontSize: '10px', color: '#555', marginLeft: 8 }}>
-                  {s.widthCells * T}x{s.heightCells * T}px ({s.widthCells * G}x{s.heightCells * G} grid)
+                  {s.widthCells * T}x{s.heightCells * T * s.animFrames}px ({s.widthCells * G}x{s.heightCells * G} grid, {s.animFrames}f)
                 </span>
                 {ready && (
                   <button onClick={() => download(s.key)} style={{ ...btnStyle, marginLeft: 12, padding: '2px 8px', fontSize: '11px' }}>
