@@ -33,26 +33,26 @@ const PAL = {
     accentDk: '#14100c',
   },
   seat: {
-    velvetDeep: '#6a1818',
-    velvetMid: '#882222',
-    velvetLight: '#993030',
-    velvetHighlight: '#aa3838',
-    velvetShadow: '#4a1010',
-    cushionCrease: '#7a1e1e',
-    backrest: '#551414',
-    backrestTop: '#601818',
-    armrest: '#cc9933',
-    armrestDark: '#aa7722',
-    armrestHighlight: '#ddbb44',
-    frame: '#332222',
-    frameDark: '#221414',
-    frameLight: '#442828',
-    number: '#cc9944',
-    numberDim: '#997733',
-    seatBase: '#3a0e0e',
-    edgeTrim: '#bb8833',
-    edgeTrimDim: '#996622',
-    hinge: '#887744',
+    velvetDeep: '#881818',
+    velvetMid: '#aa2828',
+    velvetLight: '#cc3838',
+    velvetHighlight: '#dd4848',
+    velvetShadow: '#551010',
+    cushionCrease: '#992020',
+    backrest: '#3a2210',
+    backrestTop: '#4a3018',
+    armrest: '#ddaa33',
+    armrestDark: '#bb8822',
+    armrestHighlight: '#eedd55',
+    frame: '#1a1010',
+    frameDark: '#110808',
+    frameLight: '#2a1818',
+    number: '#ddaa44',
+    numberDim: '#aa8833',
+    seatBase: '#2a0808',
+    edgeTrim: '#ccaa33',
+    edgeTrimDim: '#aa8822',
+    hinge: '#998844',
   },
   resonance: {
     stage: '#1e1608',
@@ -165,84 +165,52 @@ function drawSeat(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: nu
   const c = PAL.seat;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
 
-  // Dark aisle floor between seats
+  // Dark aisle floor
   b(ctx, ox, oy, 0, 0, G, G, c.frameDark);
 
-  // We draw 2 rows of seats (top-down view), each row has 2 chairs side by side
-  // Each chair: backrest (2px tall strip at top), seat cushion (3px), gap between rows
-  // This tiles seamlessly when variant 15 (all neighbors present)
-
-  // === ROW 1 (top half: y=0..6) ===
-  // Aisle gap between rows
-  b(ctx, ox, oy, 0, 6, G, 1, c.frameDark);
-
-  // Chair A (left): x=0..6
-  // Backrest - dark wood strip at top of chair
-  b(ctx, ox, oy, 0, 0, 6, 2, c.backrest);
-  b(ctx, ox, oy, 1, 0, 4, 1, c.backrestTop);
-  // Backrest wood grain
-  p(ctx, ox, oy, 1, 1, c.velvetShadow); p(ctx, ox, oy, 3, 1, c.velvetShadow); p(ctx, ox, oy, 5, 1, c.velvetShadow);
-  // Seat cushion - red velvet from above
-  b(ctx, ox, oy, 0, 2, 6, 4, c.velvetDeep);
-  b(ctx, ox, oy, 1, 2, 4, 3, c.velvetMid);
-  b(ctx, ox, oy, 1, 3, 4, 2, c.velvetLight);
-  // Cushion highlight
-  p(ctx, ox, oy, 2, 3, c.velvetHighlight); p(ctx, ox, oy, 3, 3, c.velvetHighlight);
-  // Cushion crease (center dip)
-  p(ctx, ox, oy, 2, 4, c.cushionCrease); p(ctx, ox, oy, 3, 4, c.cushionCrease);
-  // Cushion shadow at front edge
-  b(ctx, ox, oy, 0, 5, 6, 1, c.velvetShadow);
-  // Armrest (right side of chair A) - gold accent
-  b(ctx, ox, oy, 6, 0, 1, 6, c.armrestDark);
-  p(ctx, ox, oy, 6, 1, c.armrest); p(ctx, ox, oy, 6, 3, c.armrestHighlight); p(ctx, ox, oy, 6, 5, c.armrest);
-  // Seat number on backrest
-  p(ctx, ox, oy, 2, 0, c.number);
-
-  // Chair B (right): x=7..13
-  // Backrest
-  b(ctx, ox, oy, 7, 0, 7, 2, c.backrest);
-  b(ctx, ox, oy, 8, 0, 5, 1, c.backrestTop);
-  p(ctx, ox, oy, 8, 1, c.velvetShadow); p(ctx, ox, oy, 10, 1, c.velvetShadow); p(ctx, ox, oy, 12, 1, c.velvetShadow);
-  // Seat cushion
-  b(ctx, ox, oy, 7, 2, 7, 4, c.velvetDeep);
-  b(ctx, ox, oy, 8, 2, 5, 3, c.velvetMid);
-  b(ctx, ox, oy, 8, 3, 5, 2, c.velvetLight);
-  p(ctx, ox, oy, 9, 3, c.velvetHighlight); p(ctx, ox, oy, 10, 3, c.velvetHighlight);
-  p(ctx, ox, oy, 9, 4, c.cushionCrease); p(ctx, ox, oy, 10, 4, c.cushionCrease);
-  b(ctx, ox, oy, 7, 5, 7, 1, c.velvetShadow);
+  // 2 chairs side by side, each taking full tile height
+  // Chair A (left): x=0..6, y=0..13
+  // Backrest — dark wood, 3px tall
+  b(ctx, ox, oy, 0, 0, 6, 3, c.backrest);
+  b(ctx, ox, oy, 1, 0, 4, 2, c.backrestTop);
+  // Wood grain on backrest
+  p(ctx, ox, oy, 1, 2, c.velvetShadow); p(ctx, ox, oy, 3, 2, c.velvetShadow); p(ctx, ox, oy, 5, 2, c.velvetShadow);
   // Seat number
-  p(ctx, ox, oy, 9, 0, c.numberDim);
+  p(ctx, ox, oy, 2, 1, c.number); p(ctx, ox, oy, 4, 1, c.numberDim);
+  // Seat cushion — red velvet, large and visible
+  b(ctx, ox, oy, 0, 3, 6, 8, c.velvetDeep);
+  b(ctx, ox, oy, 1, 4, 4, 6, c.velvetMid);
+  b(ctx, ox, oy, 1, 5, 4, 4, c.velvetLight);
+  // Cushion highlights
+  p(ctx, ox, oy, 2, 5, c.velvetHighlight); p(ctx, ox, oy, 3, 6, c.velvetHighlight);
+  p(ctx, ox, oy, 2, 7, c.velvetHighlight); p(ctx, ox, oy, 4, 5, c.velvetHighlight);
+  // Cushion crease
+  b(ctx, ox, oy, 2, 7, 2, 1, c.cushionCrease);
+  // Front shadow
+  b(ctx, ox, oy, 0, 10, 6, 1, c.velvetShadow);
+  // Foot space / seat base
+  b(ctx, ox, oy, 0, 11, 6, 3, c.seatBase);
+  p(ctx, ox, oy, 2, 12, c.hinge); p(ctx, ox, oy, 4, 12, c.hinge);
 
-  // === ROW 2 (bottom half: y=7..13) ===
-  // Chair C (left): x=0..6
-  b(ctx, ox, oy, 0, 7, 6, 2, c.backrest);
-  b(ctx, ox, oy, 1, 7, 4, 1, c.backrestTop);
-  p(ctx, ox, oy, 1, 8, c.velvetShadow); p(ctx, ox, oy, 3, 8, c.velvetShadow); p(ctx, ox, oy, 5, 8, c.velvetShadow);
-  b(ctx, ox, oy, 0, 9, 6, 4, c.velvetDeep);
-  b(ctx, ox, oy, 1, 9, 4, 3, c.velvetMid);
-  b(ctx, ox, oy, 1, 10, 4, 2, c.velvetLight);
-  p(ctx, ox, oy, 2, 10, c.velvetHighlight); p(ctx, ox, oy, 3, 10, c.velvetHighlight);
-  p(ctx, ox, oy, 2, 11, c.cushionCrease); p(ctx, ox, oy, 3, 11, c.cushionCrease);
-  b(ctx, ox, oy, 0, 12, 6, 1, c.velvetShadow);
-  b(ctx, ox, oy, 6, 7, 1, 6, c.armrestDark);
-  p(ctx, ox, oy, 6, 8, c.armrest); p(ctx, ox, oy, 6, 10, c.armrestHighlight); p(ctx, ox, oy, 6, 12, c.armrest);
-  p(ctx, ox, oy, 2, 7, c.number);
+  // Gold armrest between chairs
+  b(ctx, ox, oy, 6, 0, 1, 11, c.armrestDark);
+  p(ctx, ox, oy, 6, 2, c.armrest); p(ctx, ox, oy, 6, 5, c.armrestHighlight);
+  p(ctx, ox, oy, 6, 8, c.armrest); p(ctx, ox, oy, 6, 10, c.armrestHighlight);
 
-  // Chair D (right): x=7..13
-  b(ctx, ox, oy, 7, 7, 7, 2, c.backrest);
-  b(ctx, ox, oy, 8, 7, 5, 1, c.backrestTop);
-  p(ctx, ox, oy, 8, 8, c.velvetShadow); p(ctx, ox, oy, 10, 8, c.velvetShadow); p(ctx, ox, oy, 12, 8, c.velvetShadow);
-  b(ctx, ox, oy, 7, 9, 7, 4, c.velvetDeep);
-  b(ctx, ox, oy, 8, 9, 5, 3, c.velvetMid);
-  b(ctx, ox, oy, 8, 10, 5, 2, c.velvetLight);
-  p(ctx, ox, oy, 9, 10, c.velvetHighlight); p(ctx, ox, oy, 10, 10, c.velvetHighlight);
-  p(ctx, ox, oy, 9, 11, c.cushionCrease); p(ctx, ox, oy, 10, 11, c.cushionCrease);
-  b(ctx, ox, oy, 7, 12, 7, 1, c.velvetShadow);
-  p(ctx, ox, oy, 9, 7, c.numberDim);
-
-  // Bottom row foot space / hinge area
-  b(ctx, ox, oy, 0, 13, G, 1, c.seatBase);
-  p(ctx, ox, oy, 3, 13, c.hinge); p(ctx, ox, oy, 10, 13, c.hinge);
+  // Chair B (right): x=7..13, y=0..13
+  b(ctx, ox, oy, 7, 0, 7, 3, c.backrest);
+  b(ctx, ox, oy, 8, 0, 5, 2, c.backrestTop);
+  p(ctx, ox, oy, 8, 2, c.velvetShadow); p(ctx, ox, oy, 10, 2, c.velvetShadow); p(ctx, ox, oy, 12, 2, c.velvetShadow);
+  p(ctx, ox, oy, 9, 1, c.number); p(ctx, ox, oy, 11, 1, c.numberDim);
+  b(ctx, ox, oy, 7, 3, 7, 8, c.velvetDeep);
+  b(ctx, ox, oy, 8, 4, 5, 6, c.velvetMid);
+  b(ctx, ox, oy, 8, 5, 5, 4, c.velvetLight);
+  p(ctx, ox, oy, 9, 5, c.velvetHighlight); p(ctx, ox, oy, 10, 6, c.velvetHighlight);
+  p(ctx, ox, oy, 9, 7, c.velvetHighlight); p(ctx, ox, oy, 11, 5, c.velvetHighlight);
+  b(ctx, ox, oy, 9, 7, 2, 1, c.cushionCrease);
+  b(ctx, ox, oy, 7, 10, 7, 1, c.velvetShadow);
+  b(ctx, ox, oy, 7, 11, 7, 3, c.seatBase);
+  p(ctx, ox, oy, 9, 12, c.hinge); p(ctx, ox, oy, 11, 12, c.hinge);
 
   // === AUTO-TILE EDGES — ornate trim where seating meets floor ===
   if (!n) {
