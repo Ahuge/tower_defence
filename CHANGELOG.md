@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-04-11
+
+### Custom Maps
+- **Custom Maps menu**: browse, import, and play user-created maps from the main menu.
+- **Map editor integration**: "Open Map Editor" button opens `/editor.html` in a new tab for visual map design.
+- **Import from clipboard**: paste a Full Map JSON from the editor to save a custom map.
+- **localStorage persistence**: custom maps saved in browser storage, persist between sessions.
+- **Multiplayer sync**: host's custom map auto-sent to all peers via WebRTC — works in Versus 1v1 and Circle Co-op.
+- **Scene data flow**: `customMapDef` threaded through FactionSelect → Draft → HeroSelect → GameScene.
+
+### Structure Art Rework
+- **93 structures** (up from 90) with detailed pixel art across all 11 factions.
+- Resized: mushroom ring, tank hangar, landing pad, server farm, speaker stack, music stand, colossus, altar of light, steam boiler, smokestack.
+- Replaced: motor pool → military tents, lava font → pentagram, DJ booth → conductor podium.
+- Added: infernal skull small (1×1), cyber cable H/V runs.
+- All alien structures repainted from purple to green/organic palette.
+- 36 structures fully redrawn with 2-4x more detail (batch 3).
+- Automated sprite export via Puppeteer (`node scripts/export-sprites.mjs`).
+
+### Terrain Tile Fixes
+- Void terrain brightness toned down ~30-40% across all palettes.
+- Infernal terrain intensity reduced ~25%, lava pool center tiles merge seamlessly.
+- Celestial holy water center tiles merge seamlessly.
+- Psionic thought pool center tiles merge seamlessly.
+- Harmonic stage block redesigned as 3/4 angle orchestra chairs.
+- Harmonic sound pool redesigned as concentric bass wave ripples.
+
+### Map Editor & JSON Maps
+- Standalone map editor at `/editor.html` — deployed alongside the game.
+- Maps stored as JSON files in `src/data/maps/` (replaced procedural builder functions).
+- Editor features: terrain painting with real tileset tiles, structure placement with textures, drag to move, import/export JSON, save to file.
+- Structure sprites bake faction ground tiles as background.
+
 ## 2026-04-10
 
 ### Animated Large Structures
