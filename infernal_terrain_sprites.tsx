@@ -54,32 +54,32 @@ const PAL = {
     facetShine: '#442222',  // facet bright reflection
     facetGlint: '#553322', // crystal glint
     skullBone: '#887766',  // skull relief
-    skullEye: '#ff2200',   // skull eye glow
+    skullEye: '#cc1a00',   // skull eye glow (toned down)
     skullShadow: '#443322', // skull dark
     cage: '#554433',       // iron cage bars
     cageRust: '#663322',   // rusted cage
     altarTop: '#331818',   // altar surface
     altarBlood: '#880022',  // bloodstain
     altarBloodBright: '#aa0033',
-    glowEdge: '#ff330044', // lava light on edges
-    glowBright: '#ff550066',
+    glowEdge: '#cc280044', // lava light on edges (toned down)
+    glowBright: '#cc440066', // (toned down)
     dark: '#060203',       // deepest shadow
   },
   // Lava pool
   lava: {
-    core: '#ff4400',       // main lava orange
-    mid: '#ff6622',        // medium lava
-    bright: '#ffaa44',     // bright lava
-    white: '#ffdd88',      // near-white hotspot
-    yellow: '#ffcc33',     // yellow hot
-    darkEdge: '#cc2200',   // cooled edge
+    core: '#cc3300',       // main lava orange (toned down)
+    mid: '#cc5218',        // medium lava (toned down)
+    bright: '#cc8833',     // bright lava (toned down)
+    white: '#ccb066',      // near-white hotspot (toned down)
+    yellow: '#cca228',     // yellow hot (toned down)
+    darkEdge: '#991a00',   // cooled edge (toned down)
     crust: '#331100',      // cooled crust
     crustMid: '#552200',   // crust mid
     crustLight: '#663300',  // crust highlight
-    dim: '#991800',        // dim lava
-    bubble: '#ffcc66',     // bubble surface
-    bubbleHighlight: '#ffeebb', // bubble hot center
-    bubbleShadow: '#cc4400',  // bubble edge
+    dim: '#771300',        // dim lava (toned down)
+    bubble: '#cca250',     // bubble surface (toned down)
+    bubbleHighlight: '#ccbb88', // bubble hot center (toned down)
+    bubbleShadow: '#993300',  // bubble edge (toned down)
     impSkin: '#774433',    // drowning imp
     impHand: '#885544',    // imp hand
   },
@@ -89,11 +89,11 @@ const PAL = {
     baseMid: '#2a1410',    // ground variation
     crack: '#110604',      // crack shadow
     crackDeep: '#0a0302',  // deep crack
-    lavaSeep: '#ff4400',   // lava in crack
-    lavaGlow: '#ff660044', // glow around seep
-    ember: '#ff8833',      // ember particle
-    emberBright: '#ffaa44', // bright ember
-    emberDim: '#cc4400',   // dim ember
+    lavaSeep: '#cc3300',   // lava in crack (toned down)
+    lavaGlow: '#cc550044', // glow around seep (toned down)
+    ember: '#cc6b28',      // ember particle (toned down)
+    emberBright: '#cc8833', // bright ember (toned down)
+    emberDim: '#993300',   // dim ember (toned down)
     scorched: '#180a04',   // scorched earth
     transGround: '#2a1810', // transition to normal
     smoke: '#44333380',    // smoke wisps
@@ -294,29 +294,50 @@ function drawLavaPool(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
   const rng = seededRand(idx * 53 + frame * 17 + 11);
 
-  // Cooled crust base
-  b(ctx, ox, oy, 0, 0, G, G, c.crust);
+  // Fully interior tile (variant 15 = all NESW neighbors are lava):
+  // Fill entire tile as continuous lava surface — no crust, no edge treatment
+  const isInterior = idx === 15;
 
-  // Crust texture — irregular cooled patches
-  for (let gy = 0; gy < G; gy++) {
-    for (let gx = 0; gx < G; gx++) {
-      const dist = Math.min(gx, gy, G - 1 - gx, G - 1 - gy);
-      if (dist < 2) continue; // edges handled separately
-      const v = rng();
-      if (v < 0.1) p(ctx, ox, oy, gx, gy, c.crustMid);
-      else if (v < 0.15) p(ctx, ox, oy, gx, gy, c.crustLight);
+  if (isInterior) {
+    // Continuous molten lava — no crust base, no ring layering
+    b(ctx, ox, oy, 0, 0, G, G, c.core);
+    // Subtle variation across the surface
+    b(ctx, ox, oy, 1, 1, G - 2, G - 2, c.mid);
+    b(ctx, ox, oy, 3, 3, G - 6, G - 6, c.bright);
+    // Add some dim patches for texture (not edges, just natural variation)
+    for (let gy = 0; gy < G; gy++) {
+      for (let gx = 0; gx < G; gx++) {
+        const v = rng();
+        if (v < 0.08) p(ctx, ox, oy, gx, gy, c.dim);
+        else if (v < 0.14) p(ctx, ox, oy, gx, gy, c.core);
+        else if (v < 0.18) p(ctx, ox, oy, gx, gy, c.bright);
+      }
     }
-  }
+  } else {
+    // Non-interior tiles: cooled crust base with layered lava rings
+    b(ctx, ox, oy, 0, 0, G, G, c.crust);
 
-  // Lava core — layered glow from edge to center
-  // Outer ring: dim lava
-  b(ctx, ox, oy, 2, 2, G - 4, G - 4, c.dim);
-  // Middle ring: main orange
-  b(ctx, ox, oy, 3, 3, G - 6, G - 6, c.core);
-  // Inner ring: brighter
-  b(ctx, ox, oy, 4, 4, G - 8, G - 8, c.mid);
-  // Hot center
-  b(ctx, ox, oy, 5, 5, G - 10, G - 10, c.bright);
+    // Crust texture — irregular cooled patches
+    for (let gy = 0; gy < G; gy++) {
+      for (let gx = 0; gx < G; gx++) {
+        const dist = Math.min(gx, gy, G - 1 - gx, G - 1 - gy);
+        if (dist < 2) continue; // edges handled separately
+        const v = rng();
+        if (v < 0.1) p(ctx, ox, oy, gx, gy, c.crustMid);
+        else if (v < 0.15) p(ctx, ox, oy, gx, gy, c.crustLight);
+      }
+    }
+
+    // Lava core — layered glow from edge to center
+    // Outer ring: dim lava
+    b(ctx, ox, oy, 2, 2, G - 4, G - 4, c.dim);
+    // Middle ring: main orange
+    b(ctx, ox, oy, 3, 3, G - 6, G - 6, c.core);
+    // Inner ring: brighter
+    b(ctx, ox, oy, 4, 4, G - 8, G - 8, c.mid);
+    // Hot center
+    b(ctx, ox, oy, 5, 5, G - 10, G - 10, c.bright);
+  }
 
   // Surface crust forming and breaking per frame
   // Frame 0: more crust visible
@@ -449,50 +470,53 @@ function drawLavaPool(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx
     p(ctx, ox, oy, 8, 11, c.mid);
   }
 
-  // Dark cooled edges (where lava meets rock)
-  if (!n) {
-    b(ctx, ox, oy, 0, 0, G, 2, c.darkEdge);
-    b(ctx, ox, oy, 1, 0, G - 2, 1, c.crust);
-    // Jagged edge — some pixels of crust jut into lava
-    p(ctx, ox, oy, 3, 1, c.crustMid);
-    p(ctx, ox, oy, 7, 1, c.crustMid);
-    p(ctx, ox, oy, 10, 1, c.crustMid);
-  }
-  if (!s) {
-    b(ctx, ox, oy, 0, G - 2, G, 2, c.darkEdge);
-    b(ctx, ox, oy, 1, G - 1, G - 2, 1, c.crust);
-    p(ctx, ox, oy, 4, G - 2, c.crustMid);
-    p(ctx, ox, oy, 9, G - 2, c.crustMid);
-  }
-  if (!w) {
-    b(ctx, ox, oy, 0, 0, 2, G, c.darkEdge);
-    b(ctx, ox, oy, 0, 1, 1, G - 2, c.crust);
-    p(ctx, ox, oy, 1, 4, c.crustMid);
-    p(ctx, ox, oy, 1, 9, c.crustMid);
-  }
-  if (!e) {
-    b(ctx, ox, oy, G - 2, 0, 2, G, c.darkEdge);
-    b(ctx, ox, oy, G - 1, 1, 1, G - 2, c.crust);
-    p(ctx, ox, oy, G - 2, 3, c.crustMid);
-    p(ctx, ox, oy, G - 2, 8, c.crustMid);
-  }
+  // Edge treatments — skip entirely for fully interior tiles (variant 15)
+  if (!isInterior) {
+    // Dark cooled edges (where lava meets rock)
+    if (!n) {
+      b(ctx, ox, oy, 0, 0, G, 2, c.darkEdge);
+      b(ctx, ox, oy, 1, 0, G - 2, 1, c.crust);
+      // Jagged edge — some pixels of crust jut into lava
+      p(ctx, ox, oy, 3, 1, c.crustMid);
+      p(ctx, ox, oy, 7, 1, c.crustMid);
+      p(ctx, ox, oy, 10, 1, c.crustMid);
+    }
+    if (!s) {
+      b(ctx, ox, oy, 0, G - 2, G, 2, c.darkEdge);
+      b(ctx, ox, oy, 1, G - 1, G - 2, 1, c.crust);
+      p(ctx, ox, oy, 4, G - 2, c.crustMid);
+      p(ctx, ox, oy, 9, G - 2, c.crustMid);
+    }
+    if (!w) {
+      b(ctx, ox, oy, 0, 0, 2, G, c.darkEdge);
+      b(ctx, ox, oy, 0, 1, 1, G - 2, c.crust);
+      p(ctx, ox, oy, 1, 4, c.crustMid);
+      p(ctx, ox, oy, 1, 9, c.crustMid);
+    }
+    if (!e) {
+      b(ctx, ox, oy, G - 2, 0, 2, G, c.darkEdge);
+      b(ctx, ox, oy, G - 1, 1, 1, G - 2, c.crust);
+      p(ctx, ox, oy, G - 2, 3, c.crustMid);
+      p(ctx, ox, oy, G - 2, 8, c.crustMid);
+    }
 
-  // Glow on connected edges (lava meets lava — seamless)
-  if (n) {
-    b(ctx, ox, oy, 2, 0, G - 4, 1, c.core);
-    b(ctx, ox, oy, 3, 1, G - 6, 1, c.mid);
-  }
-  if (s) {
-    b(ctx, ox, oy, 2, G - 1, G - 4, 1, c.core);
-    b(ctx, ox, oy, 3, G - 2, G - 6, 1, c.mid);
-  }
-  if (w) {
-    b(ctx, ox, oy, 0, 2, 1, G - 4, c.core);
-    b(ctx, ox, oy, 1, 3, 1, G - 6, c.mid);
-  }
-  if (e) {
-    b(ctx, ox, oy, G - 1, 2, 1, G - 4, c.core);
-    b(ctx, ox, oy, G - 2, 3, 1, G - 6, c.mid);
+    // Glow on connected edges (lava meets lava — seamless)
+    if (n) {
+      b(ctx, ox, oy, 2, 0, G - 4, 1, c.core);
+      b(ctx, ox, oy, 3, 1, G - 6, 1, c.mid);
+    }
+    if (s) {
+      b(ctx, ox, oy, 2, G - 1, G - 4, 1, c.core);
+      b(ctx, ox, oy, 3, G - 2, G - 6, 1, c.mid);
+    }
+    if (w) {
+      b(ctx, ox, oy, 0, 2, 1, G - 4, c.core);
+      b(ctx, ox, oy, 1, 3, 1, G - 6, c.mid);
+    }
+    if (e) {
+      b(ctx, ox, oy, G - 1, 2, 1, G - 4, c.core);
+      b(ctx, ox, oy, G - 2, 3, 1, G - 6, c.mid);
+    }
   }
 }
 
