@@ -19,6 +19,7 @@ const TILE_COLS = 16; // auto-tile variants per row in tileset
 
 // Theme → tileset path mapping
 const THEME_TILESET: Record<string, { path: string; doodadPath: string; groundRow: number; blockedRow: number; animatedRow: number; noBuildRow: number }> = {
+  // Faction themes
   circuit:       { path: 'assets/terrain/cypherpunk_terrain_tileset.png', doodadPath: 'assets/terrain/cypherpunk_terrain_doodads.png', groundRow: 0, blockedRow: 1, animatedRow: 2, noBuildRow: 5 },
   hellscape:     { path: 'assets/terrain/infernal_terrain_tileset.png',  doodadPath: 'assets/terrain/infernal_terrain_doodads.png',  groundRow: 0, blockedRow: 1, animatedRow: 2, noBuildRow: 5 },
   ancient_grove: { path: 'assets/terrain/nature_terrain_tileset.png',    doodadPath: 'assets/terrain/nature_terrain_doodads.png',    groundRow: 0, blockedRow: 1, animatedRow: 2, noBuildRow: 5 },
@@ -30,6 +31,11 @@ const THEME_TILESET: Record<string, { path: string; doodadPath: string; groundRo
   neural:        { path: 'assets/terrain/psionic_terrain_tileset.png',    doodadPath: 'assets/terrain/psionic_terrain_doodads.png',   groundRow: 0, blockedRow: 1, animatedRow: 2, noBuildRow: 5 },
   concert:       { path: 'assets/terrain/harmonic_terrain_tileset.png',   doodadPath: 'assets/terrain/harmonic_terrain_doodads.png',  groundRow: 0, blockedRow: 1, animatedRow: 2, noBuildRow: 5 },
   marble:        { path: 'assets/terrain/celestial_terrain_tileset.png',  doodadPath: 'assets/terrain/celestial_terrain_doodads.png', groundRow: 0, blockedRow: 1, animatedRow: 2, noBuildRow: 5 },
+  // Generic themes (use base tileset with different blocked/animated rows)
+  generic:       { path: 'assets/terrain/terrain_tileset.png', doodadPath: 'assets/terrain/terrain_doodads.png', groundRow: 0, blockedRow: 2, animatedRow: 5, noBuildRow: 4 },
+  forest:        { path: 'assets/terrain/terrain_tileset.png', doodadPath: 'assets/terrain/terrain_doodads.png', groundRow: 0, blockedRow: 3, animatedRow: 5, noBuildRow: 4 },
+  mountain:      { path: 'assets/terrain/terrain_tileset.png', doodadPath: 'assets/terrain/terrain_doodads.png', groundRow: 0, blockedRow: 2, animatedRow: 5, noBuildRow: 4 },
+  volcanic:      { path: 'assets/terrain/terrain_tileset.png', doodadPath: 'assets/terrain/terrain_doodads.png', groundRow: 1, blockedRow: 2, animatedRow: 8, noBuildRow: 4 },
 };
 
 // Terrain type labels per theme
@@ -45,6 +51,10 @@ const TERRAIN_LABELS: Record<string, { blocked: string; animated: string; noBuil
   neural:        { blocked: 'Neural Block', animated: 'Thought Pool', noBuild: 'Synapse Path' },
   concert:       { blocked: 'Stage Block', animated: 'Sound Pool', noBuild: 'Orchestra Pit' },
   marble:        { blocked: 'Marble Block', animated: 'Holy Water', noBuild: 'Cloud Gap' },
+  generic:       { blocked: 'Mountain', animated: 'Water', noBuild: 'Stone' },
+  forest:        { blocked: 'Dense Trees', animated: 'Water', noBuild: 'Stone' },
+  mountain:      { blocked: 'Mountain', animated: 'Water', noBuild: 'Stone' },
+  volcanic:      { blocked: 'Mountain', animated: 'Lava', noBuild: 'Stone' },
 };
 
 // Cell terrain types
@@ -89,6 +99,7 @@ function autoTileIdx(col: number, row: number, grid: TerrainCell[][], matchType:
 
 export default function GauntletStructureEditor() {
   const [mapIdx, setMapIdx] = useState(0);
+  const [themeOverride, setThemeOverride] = useState<string | null>(null);
   const [cells, setCells] = useState<TerrainCell[][]>(() => makeGrid('empty'));
   const [entries, setEntries] = useState<Set<string>>(new Set());
   const [exits, setExits] = useState<Set<string>>(new Set());
@@ -113,8 +124,9 @@ export default function GauntletStructureEditor() {
   }
 
   const config = GAUNTLET_MAP_CONFIGS[mapIdx];
-  const themeInfo = THEME_TILESET[config.theme];
-  const terrainLabels = TERRAIN_LABELS[config.theme] || { blocked: 'Blocked', animated: 'Animated', noBuild: 'NoBuild' };
+  const activeTheme = themeOverride || config.theme;
+  const themeInfo = THEME_TILESET[activeTheme];
+  const terrainLabels = TERRAIN_LABELS[activeTheme] || { blocked: 'Blocked', animated: 'Animated', noBuild: 'NoBuild' };
 
   // Load tileset image when theme changes
   useEffect(() => {
@@ -127,7 +139,7 @@ export default function GauntletStructureEditor() {
     dImg.onload = () => setDoodadImg(dImg);
     dImg.onerror = () => setDoodadImg(null);
     dImg.src = themeInfo.doodadPath;
-  }, [config.theme]);
+  }, [activeTheme]);
 
   // Load map data when map changes
   useEffect(() => {
@@ -150,7 +162,7 @@ export default function GauntletStructureEditor() {
     setSelectedPalette(null); setDragIdx(null); setShowExport(false); setBrush('select');
   }, [mapIdx]);
 
-  const themeStructures = LARGE_STRUCTURES[config.theme] || [];
+  const themeStructures = LARGE_STRUCTURES[activeTheme] || [];
 
   const structFootprint = useMemo(() => {
     const set = new Set<string>();
@@ -402,7 +414,7 @@ export default function GauntletStructureEditor() {
     }
     return JSON.stringify({
       faction: config.faction,
-      theme: config.theme,
+      theme: activeTheme,
       name: config.name,
       entries: [...entries].map(k => { const [c, r] = k.split(',').map(Number); return { col: c, row: r }; }),
       exits: [...exits].map(k => { const [c, r] = k.split(',').map(Number); return { col: c, row: r }; }),
@@ -448,9 +460,31 @@ export default function GauntletStructureEditor() {
 
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-        <select value={mapIdx} onChange={e => setMapIdx(Number(e.target.value))}
+        <select value={mapIdx} onChange={e => { setMapIdx(Number(e.target.value)); setThemeOverride(null); }}
           style={{ background: '#222', color: '#aa8844', border: '1px solid #aa8844', padding: '5px 10px', fontFamily: 'monospace', fontSize: 12 }}>
           {GAUNTLET_MAP_CONFIGS.map((c, i) => <option key={i} value={i}>{c.faction} — {c.name}</option>)}
+        </select>
+        <select value={activeTheme} onChange={e => setThemeOverride(e.target.value)}
+          style={{ background: '#222', color: '#44cc88', border: '1px solid #44cc88', padding: '5px 10px', fontFamily: 'monospace', fontSize: 12 }}>
+          <optgroup label="Faction Tilesets">
+            <option value="arcane_crystal">Arcane Crystal</option>
+            <option value="factory">Mechanical Factory</option>
+            <option value="ancient_grove">Nature Grove</option>
+            <option value="void_rift">Void Rift</option>
+            <option value="urban">Military Urban</option>
+            <option value="hive">Aliens Hive</option>
+            <option value="circuit">Cypherpunk Circuit</option>
+            <option value="hellscape">Infernal Hellscape</option>
+            <option value="marble">Celestial Marble</option>
+            <option value="neural">Psionic Neural</option>
+            <option value="concert">Harmonic Concert</option>
+          </optgroup>
+          <optgroup label="Generic Tilesets">
+            <option value="generic">Generic (Grass)</option>
+            <option value="forest">Forest</option>
+            <option value="mountain">Mountain</option>
+            <option value="volcanic">Volcanic</option>
+          </optgroup>
         </select>
         <span style={{ color: '#555' }}>|</span>
         {brushBtn('select', '🖱 Select')}
@@ -488,7 +522,7 @@ export default function GauntletStructureEditor() {
         {/* Sidebar */}
         <div style={{ minWidth: 320, maxWidth: 400, flex: 1 }}>
           {/* Terrain palette */}
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 6, fontWeight: 'bold' }}>Terrain — {config.theme}</div>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 6, fontWeight: 'bold' }}>Terrain — {activeTheme}</div>
           <div style={{ border: '1px solid #333', padding: 6, marginBottom: 10 }}>
             {themeInfo && tilesetImg ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -527,12 +561,12 @@ export default function GauntletStructureEditor() {
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: 10, color: '#666' }}>No tileset loaded for {config.theme}</div>
+              <div style={{ fontSize: 10, color: '#666' }}>No tileset loaded for {activeTheme}</div>
             )}
           </div>
 
           {/* Structure palette */}
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 6, fontWeight: 'bold' }}>Structures — {config.theme}</div>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 6, fontWeight: 'bold' }}>Structures — {activeTheme}</div>
           <div style={{ maxHeight: 340, overflowY: 'auto', border: '1px solid #333', padding: 4, marginBottom: 10 }}>
             {themeStructures.map(def => {
               const isSelected = selectedPalette === def.id;
