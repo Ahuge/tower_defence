@@ -52,7 +52,6 @@ export class MenuScene extends Phaser.Scene {
 
     for (let i = 0; i < MAP_ORDER.length; i++) {
       const mapId = MAP_ORDER[i];
-      const map = MAPS[mapId];
       const col = i % cols;
       const row = Math.floor(i / cols);
       const x = mapStartX + col * (mapBtnW + mapGap);
@@ -61,13 +60,18 @@ export class MenuScene extends Phaser.Scene {
       const btn = this.add.graphics();
       this.mapButtons.push({ btn, id: mapId, x, y, w: mapBtnW, h: s.mapBtnH });
 
-      const nameColor = mapId === 'random' ? '#ff44ff' : '#ffffff';
-      this.add.text(x + mapBtnW / 2, y + s.mapBtnH / 2, map.name, {
+      const nameColor = mapId === 'random' ? '#ff44ff' : mapId === 'custom' ? '#ffaa22' : '#ffffff';
+      const displayName = mapId === 'custom' ? 'Custom' : (MAPS[mapId]?.name ?? mapId);
+      this.add.text(x + mapBtnW / 2, y + s.mapBtnH / 2, displayName, {
         fontSize: s.fontBody, color: nameColor, fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       const zone = this.add.zone(x + mapBtnW / 2, y + s.mapBtnH / 2, mapBtnW, s.mapBtnH).setInteractive({ useHandCursor: true });
       zone.on('pointerdown', () => {
+        if (mapId === 'custom') {
+          this.scene.start('CustomMapScene');
+          return;
+        }
         this.selectedMap = mapId;
         this.drawMapButtons();
         this.updateDailyToggle();
@@ -208,23 +212,16 @@ export class MenuScene extends Phaser.Scene {
       fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    // Encyclopedia + Custom Maps + Changelog buttons
+    // Encyclopedia + Changelog buttons
     const bottomRowY = gridStartY + modeRows * (cardH + gapY) + 18;
-    const encBtn = this.add.text(cx - 180, bottomRowY, '[ Encyclopedia ]', {
+    const encBtn = this.add.text(cx - 120, bottomRowY, '[ Encyclopedia ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     encBtn.on('pointerdown', () => this.scene.start('EncyclopediaScene'));
     encBtn.on('pointerover', () => encBtn.setColor('#bbddff'));
     encBtn.on('pointerout', () => encBtn.setColor('#88aacc'));
 
-    const customBtn = this.add.text(cx, bottomRowY, '[ Custom Maps ]', {
-      fontSize: UIScale.font(13), color: '#aa8844', fontFamily: 'monospace',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    customBtn.on('pointerdown', () => this.scene.start('CustomMapScene'));
-    customBtn.on('pointerover', () => customBtn.setColor('#ddbb66'));
-    customBtn.on('pointerout', () => customBtn.setColor('#aa8844'));
-
-    const logBtn = this.add.text(cx + 180, bottomRowY, '[ Changelog ]', {
+    const logBtn = this.add.text(cx + 120, bottomRowY, '[ Changelog ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     logBtn.on('pointerdown', () => this.scene.start('ChangelogScene'));
@@ -259,15 +256,16 @@ export class MenuScene extends Phaser.Scene {
     for (const mb of this.mapButtons) {
       mb.btn.clear();
       const isRandom = mb.id === 'random';
+      const isCustom = mb.id === 'custom';
       if (mb.id === this.selectedMap) {
         mb.btn.fillStyle(isRandom ? 0x3a2a3a : 0x444444, 1);
         mb.btn.fillRect(mb.x, mb.y, mb.w, mb.h);
         mb.btn.lineStyle(2, isRandom ? 0xff44ff : 0xffffff, 1);
         mb.btn.strokeRect(mb.x, mb.y, mb.w, mb.h);
       } else {
-        mb.btn.fillStyle(0x2a2a2a, 1);
+        mb.btn.fillStyle(isCustom ? 0x2a2210 : 0x2a2a2a, 1);
         mb.btn.fillRect(mb.x, mb.y, mb.w, mb.h);
-        mb.btn.lineStyle(1, isRandom ? 0x884488 : 0x555555, 0.6);
+        mb.btn.lineStyle(1, isCustom ? 0xaa8822 : isRandom ? 0x884488 : 0x555555, 0.6);
         mb.btn.strokeRect(mb.x, mb.y, mb.w, mb.h);
       }
     }

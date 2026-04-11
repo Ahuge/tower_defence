@@ -531,5 +531,5 @@ export const MAPS: Record<MapId, MapDefinition> = {
   })(),
 };
 
-export const MAP_ORDER: MapId[] = ['plains', 'crossroads', 'fortress', 'serpentine', 'islands', 'gauntlet', 'spiral', 'siege', 'random'];
+export const MAP_ORDER: MapId[] = ['plains', 'crossroads', 'fortress', 'serpentine', 'islands', 'gauntlet', 'spiral', 'siege', 'random', 'custom'];
 export const CIRCLE_MAP_ORDER: MapId[] = ['circle_2p', 'circle_3p', 'circle_4p'];
