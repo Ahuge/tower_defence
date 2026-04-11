@@ -1430,9 +1430,8 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
     for (let y = 0; y < H; y++) {
       const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
       if (dist <= R && dist > R - 5) {
-        // Chitin wall ring
         const noise = ((x * 13 + y * 7) % 9);
-        const color = noise < 3 ? '#3a2244' : noise < 6 ? '#442a55' : '#332040';
+        const color = noise < 3 ? '#2a3a15' : noise < 6 ? '#3a5020' : '#1e2c0e';
         p(ctx, 0, 0, x, y, color);
       }
     }
@@ -1444,20 +1443,20 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
       const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
       if (dist <= R - 5) {
         const noise = ((x * 3 + y * 11) % 13);
-        if (noise < 4) p(ctx, 0, 0, x, y, '#1a1022');
-        else if (noise < 7) p(ctx, 0, 0, x, y, '#221428');
-        else if (noise < 10) p(ctx, 0, 0, x, y, '#1e1225');
+        if (noise < 4) p(ctx, 0, 0, x, y, '#0e160a');
+        else if (noise < 7) p(ctx, 0, 0, x, y, '#111a0d');
+        else if (noise < 10) p(ctx, 0, 0, x, y, '#141e10');
       }
     }
   }
 
-  // Bioluminescent veins on floor
+  // Organic veins on floor (red)
   for (let angle = 0; angle < 360; angle += 30) {
     const rad = (angle * Math.PI) / 180;
     for (let d = 6; d < R - 5; d += 2) {
       const vx = Math.round(cx + Math.cos(rad) * d);
       const vy = Math.round(cy + Math.sin(rad) * d);
-      p(ctx, 0, 0, vx, vy, d % 4 === 0 ? '#44cc88' : '#339966');
+      p(ctx, 0, 0, vx, vy, d % 4 === 0 ? '#cc3322' : '#882218');
     }
   }
 
@@ -1470,30 +1469,29 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
   for (const [ex, ey] of eggPositions) {
     const dist = Math.sqrt((ex - cx) ** 2 + (ey - cy) ** 2);
     if (dist < R - 6) {
-      // Egg body
-      b(ctx, 0, 0, ex, ey, 3, 4, '#556644');
-      b(ctx, 0, 0, ex, ey, 3, 1, '#667755');
-      p(ctx, 0, 0, ex + 1, ey + 1, '#778866');
+      b(ctx, 0, 0, ex, ey, 3, 4, '#bbbb66');
+      b(ctx, 0, 0, ex, ey, 3, 1, '#ddddaa');
+      p(ctx, 0, 0, ex + 1, ey + 1, '#998844');
       // Egg slime
-      p(ctx, 0, 0, ex + 1, ey + 4, '#44aa66');
+      p(ctx, 0, 0, ex + 1, ey + 4, '#33aa11');
     }
   }
 
   // Queen silhouette (center) — large dark form
   // Body
-  b(ctx, 0, 0, cx - 8, cy - 6, 16, 14, '#1a0a18');
-  b(ctx, 0, 0, cx - 7, cy - 5, 14, 12, '#221022');
+  b(ctx, 0, 0, cx - 8, cy - 6, 16, 14, '#0b120a');
+  b(ctx, 0, 0, cx - 7, cy - 5, 14, 12, '#0e160a');
   // Crown / crest
-  b(ctx, 0, 0, cx - 6, cy - 10, 12, 5, '#1a0a18');
-  b(ctx, 0, 0, cx - 4, cy - 12, 8, 3, '#221022');
-  b(ctx, 0, 0, cx - 2, cy - 13, 4, 2, '#2a1428');
+  b(ctx, 0, 0, cx - 6, cy - 10, 12, 5, '#0b120a');
+  b(ctx, 0, 0, cx - 4, cy - 12, 8, 3, '#0e160a');
+  b(ctx, 0, 0, cx - 2, cy - 13, 4, 2, '#141e10');
   // Crown spikes
-  p(ctx, 0, 0, cx - 5, cy - 11, '#331830');
-  p(ctx, 0, 0, cx + 4, cy - 11, '#331830');
-  p(ctx, 0, 0, cx - 3, cy - 13, '#2a1428');
-  p(ctx, 0, 0, cx + 2, cy - 13, '#2a1428');
+  p(ctx, 0, 0, cx - 5, cy - 11, '#1e2c0e');
+  p(ctx, 0, 0, cx + 4, cy - 11, '#1e2c0e');
+  p(ctx, 0, 0, cx - 3, cy - 13, '#2a3a15');
+  p(ctx, 0, 0, cx + 2, cy - 13, '#2a3a15');
 
-  // Queen eyes (glowing green)
+  // Queen eyes (glowing bioluminescent green)
   p(ctx, 0, 0, cx - 3, cy - 6, '#44ff88');
   p(ctx, 0, 0, cx + 2, cy - 6, '#44ff88');
   // Inner eye glow
@@ -1502,10 +1500,10 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
 
   // Mandibles — click per frame
   const mandOff = frame === 1 ? 1 : 0;
-  b(ctx, 0, 0, cx - 4 - mandOff, cy - 3, 2, 3, '#331830');
-  b(ctx, 0, 0, cx + 2 + mandOff, cy - 3, 2, 3, '#331830');
-  p(ctx, 0, 0, cx - 5 - mandOff, cy - 1, '#442040');
-  p(ctx, 0, 0, cx + 4 + mandOff, cy - 1, '#442040');
+  b(ctx, 0, 0, cx - 4 - mandOff, cy - 3, 2, 3, '#2a3a15');
+  b(ctx, 0, 0, cx + 2 + mandOff, cy - 3, 2, 3, '#2a3a15');
+  p(ctx, 0, 0, cx - 5 - mandOff, cy - 1, '#3a5020');
+  p(ctx, 0, 0, cx + 4 + mandOff, cy - 1, '#3a5020');
 
   // Leg/arm shapes extending from body
   const limbs = [
@@ -1518,8 +1516,8 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
     for (let d = 0; d < 4; d++) {
       const lx = cx + l.sx + Math.round((l.dx / 4) * d);
       const ly = cy + l.sy + Math.round((l.dy / 4) * d);
-      p(ctx, 0, 0, lx, ly, '#221022');
-      p(ctx, 0, 0, lx, ly + 1, '#1a0a18');
+      p(ctx, 0, 0, lx, ly, '#0e160a');
+      p(ctx, 0, 0, lx, ly + 1, '#0b120a');
     }
   }
 
@@ -1529,8 +1527,8 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
     const ty = cy + 6 + Math.floor(d / 3);
     const dist = Math.sqrt((tx - cx) ** 2 + (ty - cy) ** 2);
     if (dist < R - 5) {
-      p(ctx, 0, 0, tx, ty, '#1a0a18');
-      if (d < 8) p(ctx, 0, 0, tx, ty + 1, '#221022');
+      p(ctx, 0, 0, tx, ty, '#0b120a');
+      if (d < 8) p(ctx, 0, 0, tx, ty + 1, '#0e160a');
     }
   }
 
@@ -1541,7 +1539,7 @@ function drawAlienQueenChamber(ctx: CanvasRenderingContext2D, frame: number) {
     [cx - 4, cy - R + 4], [cx + 2, cy + R - 5],
   ];
   for (const [gx, gy] of glowSpots) {
-    p(ctx, 0, 0, gx, gy, '#44ffaa');
+    p(ctx, 0, 0, gx, gy, '#44ff88');
     p(ctx, 0, 0, gx + 1, gy, '#33cc88');
   }
 }
@@ -2725,120 +2723,205 @@ function drawCelestialAngelicStatue(ctx: CanvasRenderingContext2D, frame: number
 
 function drawAlienEggCluster(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(4), H = gh(4);
-  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
+  // Organic floor
+  b(ctx, 0, 0, 0, 0, W, H, '#0e160a');
+  // Floor texture
+  for (let x = 0; x < W; x += 3) {
+    for (let y = 0; y < H; y += 3) {
+      if ((x + y) % 7 < 2) p(ctx, 0, 0, x, y, '#111a0d');
+    }
+  }
   // Eggs
   const eggs = [[10,10],[20,8],[30,12],[14,22],[26,20],[18,32],[28,30],[8,34]];
   for (let i = 0; i < eggs.length; i++) {
-    const [ex,ey] = eggs[i];
+    const [ex, ey] = eggs[i];
     const pulse = (i + frame) % 3 === 0;
-    b(ctx, 0, 0, ex, ey, 5, 7, pulse ? '#778866' : '#556644');
-    b(ctx, 0, 0, ex, ey, 5, 1, '#667755');
-    p(ctx, 0, 0, ex+2, ey+2, '#889977');
-    if (i === 3 && frame >= 1) { p(ctx, 0, 0, ex+1, ey+3, '#333322'); if (frame === 2) { p(ctx, 0, 0, ex+2, ey+3, '#44ff88'); } }
+    // Egg body — yellowish-green
+    b(ctx, 0, 0, ex, ey, 5, 7, pulse ? '#bbbb66' : '#998844');
+    b(ctx, 0, 0, ex, ey, 5, 1, '#ddddaa');
+    p(ctx, 0, 0, ex + 2, ey + 2, '#bbbb66');
+    // Crack with acid glow on one egg
+    if (i === 3 && frame >= 1) {
+      p(ctx, 0, 0, ex + 1, ey + 3, '#4a6628');
+      if (frame === 2) { p(ctx, 0, 0, ex + 2, ey + 3, '#99ff33'); }
+    }
   }
-  // Slime
-  for (const [ex,ey] of eggs) p(ctx, 0, 0, ex+2, ey+7, '#44aa6644');
+  // Slime puddles
+  for (const [ex, ey] of eggs) p(ctx, 0, 0, ex + 2, ey + 7, '#33aa11');
 }
 
 function drawAlienAcidPool(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(4), H = gh(3); const cx = Math.floor(W/2), cy = Math.floor(H/2);
-  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
-  // Pool edge
-  for (let x = 4; x < W-4; x++) for (let y = 4; y < H-4; y++) {
-    const d = Math.sqrt(((x-cx)/1.4)**2 + ((y-cy)/1)**2);
-    if (d < 16) p(ctx, 0, 0, x, y, d < 12 ? '#44cc44' : '#2a4422');
+  const W = gw(4), H = gh(3);
+  const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
+  // Ground
+  b(ctx, 0, 0, 0, 0, W, H, '#0e160a');
+  // Chitin edge ring
+  for (let x = 2; x < W - 2; x++) {
+    for (let y = 2; y < H - 2; y++) {
+      const d = Math.sqrt(((x - cx) / 1.4) ** 2 + ((y - cy) / 1) ** 2);
+      if (d < 18 && d >= 12) {
+        const noise = (x * 7 + y * 3) % 5;
+        p(ctx, 0, 0, x, y, noise < 2 ? '#2a3a15' : noise < 4 ? '#354a1c' : '#1e2c0e');
+      }
+    }
   }
-  // Bubble per frame
+  // Acid pool interior
+  for (let x = 4; x < W - 4; x++) {
+    for (let y = 4; y < H - 4; y++) {
+      const d = Math.sqrt(((x - cx) / 1.4) ** 2 + ((y - cy) / 1) ** 2);
+      if (d < 12) p(ctx, 0, 0, x, y, d < 8 ? '#44aa10' : '#66dd18');
+    }
+  }
+  // Surface sheen
+  for (let x = cx - 6; x < cx + 6; x += 2) {
+    p(ctx, 0, 0, x, cy - 2, '#99ff33');
+  }
+  // Bubbles per frame
   const bubSize = frame + 1;
-  b(ctx, 0, 0, cx-bubSize, cy-4-frame*2, bubSize*2, bubSize, '#66ee66');
-  if (frame === 2) { p(ctx, 0, 0, cx-3, cy-8, '#44cc4444'); p(ctx, 0, 0, cx+2, cy-9, '#44cc4444'); }
+  b(ctx, 0, 0, cx - bubSize, cy - 4 - frame * 2, bubSize * 2, bubSize, '#ccff66');
+  if (frame === 2) {
+    p(ctx, 0, 0, cx - 3, cy - 8, '#99ff33');
+    p(ctx, 0, 0, cx + 2, cy - 9, '#99ff33');
+  }
 }
 
 function drawAlienChitinWall(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(5), H = gh(2);
-  b(ctx, 0, 0, 0, 0, W, H, '#3a2244');
-  b(ctx, 0, 0, 2, 2, W-4, H-4, '#442a55');
+  // Base chitin
+  b(ctx, 0, 0, 0, 0, W, H, '#2a3a15');
+  b(ctx, 0, 0, 2, 2, W - 4, H - 4, '#3a5020');
   // Chitin plates
-  for (let x = 4; x < W-4; x += 8) { b(ctx, 0, 0, x, 4, 6, H-8, '#553366'); b(ctx, 0, 0, x+1, 5, 4, H-10, '#664477'); }
+  for (let x = 4; x < W - 4; x += 8) {
+    b(ctx, 0, 0, x, 4, 6, H - 8, '#4a6628');
+    b(ctx, 0, 0, x + 1, 5, 4, H - 10, '#507530');
+  }
+  // Ridge highlights
+  for (let x = 4; x < W - 4; x += 8) {
+    p(ctx, 0, 0, x + 2, 4, '#77cc44');
+  }
   // Resin glisten shifts per frame
-  const glistenX = 6 + frame * Math.floor((W-12)/2);
-  p(ctx, 0, 0, glistenX, 6, '#88aacc'); p(ctx, 0, 0, glistenX+2, 7, '#88aacc88');
-  // Veins pulse
-  for (let x = 8; x < W-8; x += 6) { p(ctx, 0, 0, x, H/2, (x/6 + frame) % 2 === 0 ? '#44cc88' : '#339966'); }
+  const glistenX = 6 + frame * Math.floor((W - 12) / 2);
+  p(ctx, 0, 0, glistenX, 6, '#77cc44');
+  p(ctx, 0, 0, glistenX + 2, 7, '#bbbb66');
+  // Veins pulse red
+  for (let x = 8; x < W - 8; x += 6) {
+    p(ctx, 0, 0, x, H / 2, (x / 6 + frame) % 2 === 0 ? '#cc3322' : '#882218');
+  }
 }
 
 function drawAlienSporeVent(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(3); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
-  // Vent organic tube
-  b(ctx, 0, 0, cx-5, H-14, 10, 12, '#3a2244');
-  b(ctx, 0, 0, cx-3, H-12, 6, 8, '#442a55');
+  const W = gw(2), H = gh(3);
+  const cx = Math.floor(W / 2);
+  // Ground
+  b(ctx, 0, 0, 0, 0, W, H, '#0e160a');
+  // Vent organic tube — chitin body
+  b(ctx, 0, 0, cx - 5, H - 14, 10, 12, '#2a3a15');
+  b(ctx, 0, 0, cx - 3, H - 12, 6, 8, '#3a5020');
+  // Ridge detail
+  p(ctx, 0, 0, cx - 4, H - 10, '#446628');
+  p(ctx, 0, 0, cx + 3, H - 10, '#446628');
   // Opening
-  b(ctx, 0, 0, cx-4, H-16, 8, 4, '#553366');
-  b(ctx, 0, 0, cx-2, H-16, 4, 2, '#1a1022');
-  // Spore puff rises per frame
+  b(ctx, 0, 0, cx - 4, H - 16, 8, 4, '#4a6628');
+  b(ctx, 0, 0, cx - 2, H - 16, 4, 2, '#0e160a');
+  // Spore puff rises per frame — acid green
   const sporeY = H - 18 - frame * 8;
   if (sporeY > 0) {
-    b(ctx, 0, 0, cx-2-frame, sporeY, 4+frame*2, 3, '#44cc8844');
-    p(ctx, 0, 0, cx, sporeY, '#66ee88');
-    if (frame > 0) p(ctx, 0, 0, cx-2, sporeY-2, '#44cc8833');
+    b(ctx, 0, 0, cx - 2 - frame, sporeY, 4 + frame * 2, 3, '#66dd18');
+    p(ctx, 0, 0, cx, sporeY, '#99ff33');
+    if (frame > 0) p(ctx, 0, 0, cx - 2, sporeY - 2, '#66dd18');
   }
 }
 
 function drawAlienCocoonCluster(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(3);
-  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
-  // Cocoons
-  const cocoons = [[8,6,10,14],[22,4,8,16],[14,20,10,12]];
+  // Organic floor
+  b(ctx, 0, 0, 0, 0, W, H, '#0e160a');
+  // Floor texture veins
+  for (let x = 2; x < W - 2; x += 5) {
+    for (let y = 2; y < H; y += 2) p(ctx, 0, 0, x, y, '#111a0d');
+  }
+  // Cocoons — chitin green
+  const cocoons = [[8, 6, 10, 14], [22, 4, 8, 16], [14, 20, 10, 12]];
   for (let i = 0; i < cocoons.length; i++) {
-    const [cx_,cy_,cw,ch] = cocoons[i];
-    b(ctx, 0, 0, cx_, cy_, cw, ch, '#444466');
-    b(ctx, 0, 0, cx_+1, cy_+1, cw-2, ch-2, '#555577');
-    // Web strands
-    p(ctx, 0, 0, cx_-1, cy_+2, '#666688'); p(ctx, 0, 0, cx_+cw, cy_+ch-3, '#666688');
+    const [cx_, cy_, cw, ch] = cocoons[i];
+    b(ctx, 0, 0, cx_, cy_, cw, ch, '#4a6628');
+    b(ctx, 0, 0, cx_ + 1, cy_ + 1, cw - 2, ch - 2, '#507530');
+    // Web strands — bright green
+    p(ctx, 0, 0, cx_ - 1, cy_ + 2, '#77cc44');
+    p(ctx, 0, 0, cx_ + cw, cy_ + ch - 3, '#77cc44');
+    p(ctx, 0, 0, cx_ - 2, cy_ + 5, '#77cc44');
+    p(ctx, 0, 0, cx_ + cw + 1, cy_ + ch - 6, '#77cc44');
     // Squirm bulge shifts per frame
     if (i === frame) {
-      const bulgeY = cy_ + Math.floor(ch/3) + frame;
-      b(ctx, 0, 0, cx_+cw-2, bulgeY, 3, 3, '#666688');
+      const bulgeY = cy_ + Math.floor(ch / 3) + frame;
+      b(ctx, 0, 0, cx_ + cw - 2, bulgeY, 3, 3, '#609838');
     }
   }
 }
 
 function drawAlienFeedingPit(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(5), H = gh(5); const cx = Math.floor(W/2), cy = Math.floor(H/2);
-  b(ctx, 0, 0, 0, 0, W, H, '#1a1022');
-  // Pit
-  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) {
-    const d = Math.sqrt((x-cx)**2 + (y-cy)**2);
-    if (d < 24) p(ctx, 0, 0, x, y, d < 16 ? '#110818' : d < 20 ? '#221428' : '#332040');
+  const W = gw(5), H = gh(5);
+  const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
+  // Ground
+  b(ctx, 0, 0, 0, 0, W, H, '#0e160a');
+  // Pit — concentric chitin rings
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) {
+      const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (d < 24) {
+        if (d < 16) p(ctx, 0, 0, x, y, '#0b120a');
+        else if (d < 20) p(ctx, 0, 0, x, y, '#1e2c0e');
+        else p(ctx, 0, 0, x, y, '#2a3a15');
+      }
+    }
+  }
+  // Chitin rim highlights
+  for (let a = 0; a < 360; a += 20) {
+    const rad = a * Math.PI / 180;
+    const rx = Math.round(cx + Math.cos(rad) * 22);
+    const ry = Math.round(cy + Math.sin(rad) * 22);
+    p(ctx, 0, 0, rx, ry, '#446628');
   }
   // Acid at bottom
-  b(ctx, 0, 0, cx-8, cy-4, 16, 8, '#44cc44');
-  b(ctx, 0, 0, cx-6, cy-2, 12, 4, '#66ee66');
-  // Tentacles in different positions per frame
-  const tentAngles = [[30,150,270],[60,180,300],[0,120,240]];
+  b(ctx, 0, 0, cx - 8, cy - 4, 16, 8, '#44aa10');
+  b(ctx, 0, 0, cx - 6, cy - 2, 12, 4, '#66dd18');
+  // Surface bubbles
+  p(ctx, 0, 0, cx - 3, cy - 1, '#99ff33');
+  p(ctx, 0, 0, cx + 2, cy, '#99ff33');
+  // Tentacles in different positions per frame — chitin green
+  const tentAngles = [[30, 150, 270], [60, 180, 300], [0, 120, 240]];
   for (const a of tentAngles[frame]) {
-    const rad = a*Math.PI/180;
+    const rad = a * Math.PI / 180;
     for (let d = 8; d < 20; d += 2) {
-      p(ctx, 0, 0, Math.round(cx+Math.cos(rad)*d), Math.round(cy+Math.sin(rad)*d), '#442266');
+      const color = d < 14 ? '#3a5020' : '#507530';
+      p(ctx, 0, 0, Math.round(cx + Math.cos(rad) * d), Math.round(cy + Math.sin(rad) * d), color);
     }
   }
 }
 
 function drawAlienTunnelMouth(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(3), H = gh(2); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 0, 0, W, H, '#3a2244');
-  // Opening
-  b(ctx, 0, 0, cx-10, 2, 20, H-4, '#110818');
-  b(ctx, 0, 0, cx-8, 4, 16, H-8, '#0a0410');
-  // Mandible edges per frame
+  const W = gw(3), H = gh(2);
+  const cx = Math.floor(W / 2);
+  // Organic rim
+  b(ctx, 0, 0, 0, 0, W, H, '#446628');
+  // Opening — dark void
+  b(ctx, 0, 0, cx - 10, 2, 20, H - 4, '#0b120a');
+  b(ctx, 0, 0, cx - 8, 4, 16, H - 8, '#0e160a');
+  // Mandible edges — chitin green, animate per frame
   const mandInset = frame === 0 ? 0 : frame === 1 ? 2 : 4;
-  b(ctx, 0, 0, cx-10, 2, 3, H-4, '#553366');
-  b(ctx, 0, 0, cx+7, 2, 3, H-4, '#553366');
-  b(ctx, 0, 0, cx-10+mandInset, 4, 2, H-8, '#664477');
-  b(ctx, 0, 0, cx+8-mandInset, 4, 2, H-8, '#664477');
+  b(ctx, 0, 0, cx - 10, 2, 3, H - 4, '#507530');
+  b(ctx, 0, 0, cx + 7, 2, 3, H - 4, '#507530');
+  b(ctx, 0, 0, cx - 10 + mandInset, 4, 2, H - 8, '#609838');
+  b(ctx, 0, 0, cx + 8 - mandInset, 4, 2, H - 8, '#609838');
+  // Mandible tips — bright highlight
+  p(ctx, 0, 0, cx - 10 + mandInset, 4, '#77cc44');
+  p(ctx, 0, 0, cx + 9 - mandInset, 4, '#77cc44');
+  p(ctx, 0, 0, cx - 10 + mandInset, H - 5, '#77cc44');
+  p(ctx, 0, 0, cx + 9 - mandInset, H - 5, '#77cc44');
   // Slime drips
-  p(ctx, 0, 0, cx-6, H-4, '#44aa66'); p(ctx, 0, 0, cx+4, H-3, '#44aa66');
+  p(ctx, 0, 0, cx - 6, H - 4, '#33aa11');
+  p(ctx, 0, 0, cx + 4, H - 3, '#33aa11');
+  p(ctx, 0, 0, cx - 2, H - 3, '#55cc22');
 }
 
 // ===================== HARMONIC NEW =====================
