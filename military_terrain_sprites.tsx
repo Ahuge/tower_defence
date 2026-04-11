@@ -1,17 +1,18 @@
 /**
- * Military Terrain Sprite Generator — Warzone Outpost terrain.
+ * Military Terrain Sprite Generator — Forward Operating Base terrain.
  *
  * Layout:
  *   Columns: 16 (auto-tile bitmask variants, bits = NESW)
  *   Row order:
- *   0: cracked concrete (ground)
- *   1: ruined buildings (blocked type 1)
- *   2: fire/destruction frame 0 (blocked type 2)
- *   3: fire/destruction frame 1 (blocked type 2, animated)
- *   4: fire/destruction frame 2 (blocked type 2, animated)
- *   5: trenches (NoBuild terrain)
+ *   0: cracked concrete + dirt (ground)
+ *   1: ruined buildings with interior detail (blocked type 1)
+ *   2: burning rubble frame 0 (blocked type 2)
+ *   3: burning rubble frame 1 (blocked type 2, animated)
+ *   4: burning rubble frame 2 (blocked type 2, animated)
+ *   5: bomb craters + barbed wire (NoBuild terrain)
  *
- * Doodads row 0: 8 types
+ * Doodads row 0: 8 types (sandbag wall, barbed wire coil, shell casings,
+ *   broken glass, tire tracks, crater, flag pole, ammo crate)
  */
 import React, { useRef, useEffect, useState } from 'react';
 
@@ -25,45 +26,69 @@ const DOODAD_ROWS = 1;
 
 const PAL = {
   ground: {
-    base: '#2a2828',
-    line: '#3a3838',
-    lineBright: '#444440',
-    crack: '#222220',
+    base: '#1a1918',
+    baseLt: '#1e1d1c',
+    accent: '#211f1e',
+    accentDk: '#151414',
   },
   building: {
-    fill: '#555550',
-    dark: '#3a3a38',
-    window: '#222222',
+    wall: '#585550',
+    wallDk: '#3e3c38',
+    wallLt: '#686560',
+    floor: '#353330',
+    window: '#1a1a1e',
+    windowFrame: '#4a4840',
     rubble: '#444440',
-    edge: '#666660',
-    highlight: '#777770',
-    beam: '#4a4a45',
+    rubbleDk: '#2a2a28',
+    beam: '#4a4a42',
+    beamLt: '#5a5a52',
+    roof: '#504e48',
+    door: '#302e28',
+    edge: '#6a6860',
+    pipe: '#667766',
   },
   fire: {
-    rubble: '#553322',
+    rubble: '#442820',
+    rubbleLt: '#553828',
     flame: '#ff6622',
     flameMid: '#cc4411',
     flameDim: '#883311',
+    flameHot: '#ffcc44',
     ember: '#ffaa44',
-    edge: '#442211',
-    smoke: '#444444',
+    emberDim: '#dd7722',
+    edge: '#332218',
+    smoke: '#444446',
+    smokeLt: '#555558',
+    ash: '#333330',
+    glow: '#664422',
   },
   noBuild: {
-    base: '#1a1a18',
-    sandbag: '#555544',
-    sandbagDim: '#3a3a30',
-    dirt: '#333328',
-    dirtDim: '#222218',
+    dirt: '#282420',
+    dirtLt: '#322e28',
+    dirtDk: '#1e1c18',
+    scorch: '#1a1818',
+    scorchRing: '#3a3028',
+    wire: '#666666',
+    wireDk: '#444444',
+    wireBarb: '#888888',
+    rubble: '#3a3630',
+    puddle: '#282830',
   },
   doodad: {
     olive: '#556633',
+    oliveLt: '#667744',
     steel: '#888888',
-    dark: '#333330',
+    steelDk: '#666666',
+    dark: '#2a2a28',
     rust: '#884422',
+    rustLt: '#aa5533',
     sand: '#aa9966',
+    sandLt: '#bbaa77',
     red: '#cc3322',
     glass: '#6688aa',
     wire: '#666666',
+    brass: '#ccaa44',
+    brassLt: '#ddbb55',
   },
 };
 
@@ -83,186 +108,278 @@ function hasE(idx: number) { return !!(idx & 4); }
 function hasS(idx: number) { return !!(idx & 2); }
 function hasW(idx: number) { return !!(idx & 1); }
 
+// Seeded random for consistent texture variation per tile
+function tileRand(idx: number, seed: number): number {
+  let h = (idx * 374761 + seed * 668265) | 0;
+  h = ((h ^ (h >> 13)) * 1103515) | 0;
+  return ((h ^ (h >> 16)) & 0x7fff) / 0x7fff;
+}
+
 function drawGround(ctx: CanvasRenderingContext2D, ox: number, oy: number) {
   const c = PAL.ground;
+  // Dark concrete/dirt base
   b(ctx, ox, oy, 0, 0, G, G, c.base);
-  // Road marking lines
-  b(ctx, ox, oy, 0, 6, G, 1, c.line);
-  b(ctx, ox, oy, 0, 7, G, 1, c.line);
-  // Cracks
-  p(ctx, ox, oy, 3, 3, c.crack); p(ctx, ox, oy, 4, 4, c.crack);
-  p(ctx, ox, oy, 5, 4, c.crack); p(ctx, ox, oy, 9, 9, c.crack);
-  p(ctx, ox, oy, 10, 10, c.crack); p(ctx, ox, oy, 10, 9, c.crack);
-  // Dashes on road
-  for (let gx = 2; gx < G; gx += 4) {
-    p(ctx, ox, oy, gx, 6, c.lineBright);
-    p(ctx, ox, oy, gx + 1, 6, c.lineBright);
-  }
-  // Scattered debris
-  p(ctx, ox, oy, 1, 2, c.line); p(ctx, ox, oy, 11, 4, c.line);
-  p(ctx, ox, oy, 7, 11, c.line); p(ctx, ox, oy, 2, 10, c.crack);
-  ctx.strokeStyle = c.line;
-  ctx.globalAlpha = 0.2;
-  ctx.strokeRect(ox, oy, T, T);
-  ctx.globalAlpha = 1;
+  // A few subtle worn spots (neutral grey tint)
+  p(ctx, ox, oy, 5, 3, c.baseLt);
+  p(ctx, ox, oy, 10, 8, c.accent);
+  p(ctx, ox, oy, 2, 11, c.baseLt);
+  // One darker depression
+  p(ctx, ox, oy, 8, 5, c.accentDk);
 }
 
 function drawBuilding(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
   const c = PAL.building;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
-  b(ctx, ox, oy, 0, 0, G, G, c.fill);
-  b(ctx, ox, oy, 1, 1, G - 2, G - 2, c.dark);
-  // Window holes
-  b(ctx, ox, oy, 3, 3, 2, 2, c.window);
-  b(ctx, ox, oy, 9, 3, 2, 2, c.window);
-  b(ctx, ox, oy, 3, 8, 2, 2, c.window);
-  b(ctx, ox, oy, 9, 8, 2, 2, c.window);
-  // Rubble texture
-  p(ctx, ox, oy, 6, 5, c.rubble); p(ctx, ox, oy, 7, 6, c.rubble);
-  p(ctx, ox, oy, 5, 7, c.rubble); p(ctx, ox, oy, 8, 7, c.rubble);
-  // Support beams
-  b(ctx, ox, oy, 6, 1, 2, G - 2, c.beam);
-  b(ctx, ox, oy, 1, 6, G - 2, 2, c.beam);
-  // Center
-  p(ctx, ox, oy, 6, 6, c.highlight); p(ctx, ox, oy, 7, 7, c.highlight);
-  // Edges
-  if (!n) b(ctx, ox, oy, 0, 0, G, 1, c.edge);
-  if (!s) b(ctx, ox, oy, 0, G - 1, G, 1, c.edge);
-  if (!w) b(ctx, ox, oy, 0, 0, 1, G, c.edge);
-  if (!e) b(ctx, ox, oy, G - 1, 0, 1, G, c.edge);
-  // Rubble on exposed edges
-  if (!n) { p(ctx, ox, oy, 4, 0, c.highlight); p(ctx, ox, oy, 10, 0, c.rubble); }
-  if (!s) { p(ctx, ox, oy, 3, G - 1, c.rubble); p(ctx, ox, oy, 9, G - 1, c.highlight); }
-  if (!w) { p(ctx, ox, oy, 0, 4, c.highlight); p(ctx, ox, oy, 0, 10, c.rubble); }
-  if (!e) { p(ctx, ox, oy, G - 1, 3, c.rubble); p(ctx, ox, oy, G - 1, 9, c.highlight); }
-  if (n) { for (let px = 3; px < G - 2; px += 4) p(ctx, ox, oy, px, 0, c.rubble); }
-  if (s) { for (let px = 3; px < G - 2; px += 4) p(ctx, ox, oy, px, G - 1, c.rubble); }
-  if (w) { for (let py = 3; py < G - 2; py += 4) p(ctx, ox, oy, 0, py, c.rubble); }
-  if (e) { for (let py = 3; py < G - 2; py += 4) p(ctx, ox, oy, G - 1, py, c.rubble); }
+  // Floor base
+  b(ctx, ox, oy, 0, 0, G, G, c.floor);
+  // Outer walls (thick, with damage)
+  b(ctx, ox, oy, 0, 0, G, G, c.wallDk);
+  b(ctx, ox, oy, 1, 1, G - 2, G - 2, c.wall);
+  b(ctx, ox, oy, 2, 2, G - 4, G - 4, c.floor);
+  // Interior detail: floor tiles
+  for (let gx = 3; gx < G - 3; gx += 2) {
+    for (let gy = 3; gy < G - 3; gy += 2) {
+      p(ctx, ox, oy, gx, gy, c.rubbleDk);
+    }
+  }
+  // Windows (with frames)
+  if (!n || idx % 3 === 0) {
+    b(ctx, ox, oy, 3, 2, 2, 2, c.windowFrame);
+    b(ctx, ox, oy, 3, 2, 1, 1, c.window);
+    b(ctx, ox, oy, 9, 2, 2, 2, c.windowFrame);
+    b(ctx, ox, oy, 9, 2, 1, 1, c.window);
+  }
+  if (!s || idx % 5 === 0) {
+    b(ctx, ox, oy, 3, G - 4, 2, 2, c.windowFrame);
+    b(ctx, ox, oy, 4, G - 3, 1, 1, c.window);
+    b(ctx, ox, oy, 9, G - 4, 2, 2, c.windowFrame);
+    b(ctx, ox, oy, 10, G - 3, 1, 1, c.window);
+  }
+  // Door (on one side based on variant)
+  if (!s && idx % 2 === 0) {
+    b(ctx, ox, oy, 6, G - 3, 2, 3, c.door);
+    p(ctx, ox, oy, 7, G - 2, c.beam);
+  }
+  // Support beams (cross pattern)
+  b(ctx, ox, oy, 6, 2, 1, G - 4, c.beam);
+  b(ctx, ox, oy, 2, 6, G - 4, 1, c.beam);
+  p(ctx, ox, oy, 6, 6, c.beamLt);
+  // Roof remnants
+  b(ctx, ox, oy, 2, 2, 3, 1, c.roof);
+  b(ctx, ox, oy, G - 5, 2, 3, 1, c.roof);
+  // Exposed pipe
+  if (idx % 4 < 2) {
+    p(ctx, ox, oy, 10, 5, c.pipe); p(ctx, ox, oy, 10, 6, c.pipe);
+    p(ctx, ox, oy, 10, 7, c.pipe);
+  }
+  // Rubble scatter on interior
+  p(ctx, ox, oy, 4, 5, c.rubble); p(ctx, ox, oy, 8, 8, c.rubble);
+  p(ctx, ox, oy, 5, 9, c.rubbleDk); p(ctx, ox, oy, 7, 4, c.rubble);
+  // Edges — raised wall on exposed sides, continuity on interior sides
+  if (!n) { b(ctx, ox, oy, 0, 0, G, 1, c.edge); p(ctx, ox, oy, 5, 0, c.wallLt); p(ctx, ox, oy, 8, 0, c.rubble); }
+  if (!s) { b(ctx, ox, oy, 0, G - 1, G, 1, c.edge); p(ctx, ox, oy, 4, G - 1, c.rubble); p(ctx, ox, oy, 11, G - 1, c.wallLt); }
+  if (!w) { b(ctx, ox, oy, 0, 0, 1, G, c.edge); p(ctx, ox, oy, 0, 5, c.wallLt); p(ctx, ox, oy, 0, 10, c.rubble); }
+  if (!e) { b(ctx, ox, oy, G - 1, 0, 1, G, c.edge); p(ctx, ox, oy, G - 1, 4, c.rubble); p(ctx, ox, oy, G - 1, 9, c.wallLt); }
+  // Connected-side seams
+  if (n) { for (let gx = 3; gx < G - 2; gx += 3) p(ctx, ox, oy, gx, 0, c.rubbleDk); }
+  if (s) { for (let gx = 4; gx < G - 2; gx += 3) p(ctx, ox, oy, gx, G - 1, c.rubbleDk); }
+  if (w) { for (let gy = 3; gy < G - 2; gy += 3) p(ctx, ox, oy, 0, gy, c.rubbleDk); }
+  if (e) { for (let gy = 4; gy < G - 2; gy += 3) p(ctx, ox, oy, G - 1, gy, c.rubbleDk); }
 }
 
 function drawFire(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number, frame: number) {
   const c = PAL.fire;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
+  // Scorched rubble base
   b(ctx, ox, oy, 0, 0, G, G, c.rubble);
-  // Scattered rubble base
-  for (let gy = 2; gy < G; gy += 3) {
-    b(ctx, ox, oy, 1, gy, G - 2, 1, c.edge);
+  // Rubble texture (broken chunks)
+  for (let gy = 1; gy < G - 1; gy += 2) {
+    for (let gx = 1; gx < G - 1; gx += 3) {
+      p(ctx, ox, oy, gx, gy, c.rubbleLt);
+      p(ctx, ox, oy, gx + 1, gy + 1, c.edge);
+    }
   }
-  // Animated fire flickering
-  const fOff = frame * 2;
-  // Flame 1 (tall)
-  const f1x = 4;
-  const f1h = 3 + (frame % 2);
-  const f1y = 7 - f1h - (frame % 2);
+  // Glow on ground
+  b(ctx, ox, oy, 3, 8, 3, 2, c.glow);
+  b(ctx, ox, oy, 8, 6, 3, 2, c.glow);
+  // Flame 1 (main fire — tall, flickers with frame)
+  const f1x = 3 + (frame % 2);
+  const f1base = 8;
+  const f1h = 4 + (frame === 1 ? 1 : 0);
   for (let fy = 0; fy < f1h; fy++) {
-    const col = fy === 0 ? c.ember : fy === 1 ? c.flame : c.flameMid;
-    p(ctx, ox, oy, f1x, f1y + fy, col);
-    p(ctx, ox, oy, f1x + 1, f1y + fy, col);
+    const y = f1base - fy;
+    const col = fy === 0 ? c.flameDim : fy === 1 ? c.flameMid : fy === 2 ? c.flame : c.flameHot;
+    p(ctx, ox, oy, f1x, y, col);
+    p(ctx, ox, oy, f1x + 1, y, col);
+    if (fy >= 2) p(ctx, ox, oy, f1x + 2, y, c.flameMid);
   }
-  p(ctx, ox, oy, f1x, f1y + f1h, c.flameDim);
-  // Flame 2
-  const f2x = 8 + (fOff % 2);
-  const f2y = 5 - frame;
-  p(ctx, ox, oy, f2x, f2y + 2, c.flameDim);
-  p(ctx, ox, oy, f2x, f2y + 1, c.flame);
-  p(ctx, ox, oy, f2x, f2y, c.ember);
-  p(ctx, ox, oy, f2x + 1, f2y + 1, c.flameMid);
-  // Smoke
-  p(ctx, ox, oy, 3 + frame, 2, c.smoke);
-  p(ctx, ox, oy, 10 - frame, 1, c.smoke);
-  // Embers
-  p(ctx, ox, oy, (6 + fOff) % G, (3 + frame) % G, c.ember);
-  p(ctx, ox, oy, (10 + fOff) % G, (8 + frame * 2) % G, c.ember);
+  // Flame tip
+  p(ctx, ox, oy, f1x + (frame === 2 ? 1 : 0), f1base - f1h, c.ember);
+  // Flame 2 (smaller, offset)
+  const f2x = 9 + (frame === 0 ? 0 : frame === 1 ? 1 : 0);
+  const f2base = 7;
+  for (let fy = 0; fy < 3; fy++) {
+    const y = f2base - fy;
+    const col = fy === 0 ? c.flameDim : fy === 1 ? c.flame : c.ember;
+    p(ctx, ox, oy, f2x, y, col);
+    if (fy < 2) p(ctx, ox, oy, f2x + 1, y, c.flameMid);
+  }
+  // Smoke wisps (drift with frame)
+  p(ctx, ox, oy, 2 + frame, 2, c.smoke);
+  p(ctx, ox, oy, 4 + frame, 1, c.smokeLt);
+  p(ctx, ox, oy, 10 - frame, 2, c.smoke);
+  p(ctx, ox, oy, 11 - frame, 1, c.smokeLt);
+  // Embers (scattered, shift with frame)
+  p(ctx, ox, oy, (5 + frame * 3) % G, (3 + frame) % G, c.ember);
+  p(ctx, ox, oy, (11 + frame * 2) % G, (5 + frame * 2) % G, c.emberDim);
+  p(ctx, ox, oy, (1 + frame * 4) % G, (9 - frame) % G, c.ember);
+  // Ash layer
+  p(ctx, ox, oy, 2, 10, c.ash); p(ctx, ox, oy, 7, 11, c.ash);
+  p(ctx, ox, oy, 11, 10, c.ash); p(ctx, ox, oy, 5, 12, c.ash);
   // Edges
-  if (!n) { b(ctx, ox, oy, 0, 0, G, 1, c.flameDim); }
-  if (!s) { b(ctx, ox, oy, 0, G - 1, G, 1, c.flameDim); }
-  if (!w) { b(ctx, ox, oy, 0, 0, 1, G, c.flameDim); }
-  if (!e) { b(ctx, ox, oy, G - 1, 0, 1, G, c.flameDim); }
+  if (!n) b(ctx, ox, oy, 0, 0, G, 1, c.edge);
+  if (!s) b(ctx, ox, oy, 0, G - 1, G, 1, c.edge);
+  if (!w) b(ctx, ox, oy, 0, 0, 1, G, c.edge);
+  if (!e) b(ctx, ox, oy, G - 1, 0, 1, G, c.edge);
 }
 
 function drawNoBuild(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
   const c = PAL.noBuild;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
-  b(ctx, ox, oy, 0, 0, G, G, c.base);
-  // Dirt texture
-  for (let gx = 0; gx < G; gx += 3) {
-    for (let gy = 0; gy < G; gy += 3) {
-      p(ctx, ox, oy, gx, gy, c.dirtDim);
+  // Disturbed dirt base
+  b(ctx, ox, oy, 0, 0, G, G, c.dirt);
+  // Texture variation
+  for (let gx = 1; gx < G - 1; gx += 2) {
+    for (let gy = 1; gy < G - 1; gy += 3) {
+      p(ctx, ox, oy, gx, gy, c.dirtLt);
     }
   }
-  // Sandbag outlines (rows)
-  b(ctx, ox, oy, 1, 4, 3, 2, c.sandbag);
-  b(ctx, ox, oy, 5, 4, 3, 2, c.sandbag);
-  b(ctx, ox, oy, 9, 4, 3, 2, c.sandbag);
-  b(ctx, ox, oy, 2, 8, 3, 2, c.sandbagDim);
-  b(ctx, ox, oy, 7, 8, 3, 2, c.sandbagDim);
-  // Trench depression
-  b(ctx, ox, oy, 0, 6, G, 2, c.dirt);
-  // Center
-  p(ctx, ox, oy, 6, 6, c.sandbag); p(ctx, ox, oy, 7, 7, c.sandbag);
-  if (n) { b(ctx, ox, oy, 6, 0, 2, 3, c.dirtDim); }
-  if (s) { b(ctx, ox, oy, 6, G - 3, 2, 3, c.dirtDim); }
-  if (w) { b(ctx, ox, oy, 0, 6, 3, 2, c.dirtDim); }
-  if (e) { b(ctx, ox, oy, G - 3, 6, 3, 2, c.dirtDim); }
-  if (!n) { p(ctx, ox, oy, 6, 0, c.sandbag); p(ctx, ox, oy, 7, 0, c.sandbag); }
-  if (!s) { p(ctx, ox, oy, 6, G - 1, c.sandbag); p(ctx, ox, oy, 7, G - 1, c.sandbag); }
-  if (!w) { p(ctx, ox, oy, 0, 6, c.sandbag); p(ctx, ox, oy, 0, 7, c.sandbag); }
-  if (!e) { p(ctx, ox, oy, G - 1, 6, c.sandbag); p(ctx, ox, oy, G - 1, 7, c.sandbag); }
+  // Central crater depression (dark circle)
+  b(ctx, ox, oy, 4, 4, 6, 6, c.scorch);
+  b(ctx, ox, oy, 5, 5, 4, 4, c.dirtDk);
+  // Scorch ring around crater
+  p(ctx, ox, oy, 3, 5, c.scorchRing); p(ctx, ox, oy, 3, 8, c.scorchRing);
+  p(ctx, ox, oy, 10, 5, c.scorchRing); p(ctx, ox, oy, 10, 8, c.scorchRing);
+  p(ctx, ox, oy, 5, 3, c.scorchRing); p(ctx, ox, oy, 8, 3, c.scorchRing);
+  p(ctx, ox, oy, 5, 10, c.scorchRing); p(ctx, ox, oy, 8, 10, c.scorchRing);
+  // Crater bottom
+  p(ctx, ox, oy, 6, 6, c.puddle); p(ctx, ox, oy, 7, 7, c.puddle);
+  // Rubble chunks ejected from blast
+  p(ctx, ox, oy, 2, 2, c.rubble); p(ctx, ox, oy, 11, 3, c.rubble);
+  p(ctx, ox, oy, 1, 10, c.rubble); p(ctx, ox, oy, 12, 11, c.rubble);
+  // Barbed wire fragments on edges
+  if (!n) {
+    b(ctx, ox, oy, 2, 0, 4, 1, c.wire);
+    p(ctx, ox, oy, 3, 0, c.wireBarb); p(ctx, ox, oy, 5, 0, c.wireBarb);
+    b(ctx, ox, oy, 9, 0, 3, 1, c.wireDk);
+  }
+  if (!s) {
+    b(ctx, ox, oy, 3, G - 1, 4, 1, c.wire);
+    p(ctx, ox, oy, 4, G - 1, c.wireBarb); p(ctx, ox, oy, 6, G - 1, c.wireBarb);
+  }
+  if (!w) {
+    b(ctx, ox, oy, 0, 3, 1, 3, c.wire);
+    p(ctx, ox, oy, 0, 4, c.wireBarb);
+    b(ctx, ox, oy, 0, 9, 1, 3, c.wireDk);
+  }
+  if (!e) {
+    b(ctx, ox, oy, G - 1, 4, 1, 3, c.wire);
+    p(ctx, ox, oy, G - 1, 5, c.wireBarb);
+  }
+  // Connected-side transitions
+  if (n) { b(ctx, ox, oy, 5, 0, 4, 2, c.scorch); }
+  if (s) { b(ctx, ox, oy, 5, G - 2, 4, 2, c.scorch); }
+  if (w) { b(ctx, ox, oy, 0, 5, 2, 4, c.scorch); }
+  if (e) { b(ctx, ox, oy, G - 2, 5, 2, 4, c.scorch); }
 }
 
 function drawDoodad(ctx: CanvasRenderingContext2D, ox: number, oy: number, type: number) {
   ctx.clearRect(ox, oy, T, T);
   const d = PAL.doodad;
   switch (type) {
-    case 0: // Sandbag
-      b(ctx, ox, oy, 4, 6, 6, 3, d.sand);
-      b(ctx, ox, oy, 4, 6, 6, 1, '#bbaa77');
-      p(ctx, ox, oy, 7, 7, d.dark);
+    case 0: // Sandbag wall (stacked)
+      b(ctx, ox, oy, 3, 7, 8, 2, d.sand);
+      b(ctx, ox, oy, 3, 7, 8, 1, d.sandLt);
+      b(ctx, ox, oy, 4, 5, 6, 2, d.sand);
+      b(ctx, ox, oy, 4, 5, 6, 1, d.sandLt);
+      // Gaps between sandbags
+      p(ctx, ox, oy, 6, 7, d.dark); p(ctx, ox, oy, 9, 7, d.dark);
+      p(ctx, ox, oy, 6, 5, d.dark); p(ctx, ox, oy, 8, 5, d.dark);
       break;
-    case 1: // Barbed wire
-      b(ctx, ox, oy, 3, 6, 8, 1, d.wire);
-      p(ctx, ox, oy, 4, 5, d.wire); p(ctx, ox, oy, 6, 5, d.wire);
-      p(ctx, ox, oy, 8, 5, d.wire); p(ctx, ox, oy, 10, 5, d.wire);
-      p(ctx, ox, oy, 5, 7, d.wire); p(ctx, ox, oy, 7, 7, d.wire);
-      p(ctx, ox, oy, 9, 7, d.wire);
+    case 1: // Barbed wire coil (3D spiral look)
+      b(ctx, ox, oy, 3, 5, 8, 1, d.wire);
+      b(ctx, ox, oy, 3, 7, 8, 1, d.wire);
+      // Cross wires
+      p(ctx, ox, oy, 4, 4, d.wire); p(ctx, ox, oy, 6, 4, d.wire);
+      p(ctx, ox, oy, 8, 4, d.wire); p(ctx, ox, oy, 10, 4, d.wire);
+      p(ctx, ox, oy, 5, 6, d.wire); p(ctx, ox, oy, 7, 6, d.wire);
+      p(ctx, ox, oy, 9, 6, d.wire);
+      p(ctx, ox, oy, 4, 8, d.wire); p(ctx, ox, oy, 6, 8, d.wire);
+      p(ctx, ox, oy, 8, 8, d.wire); p(ctx, ox, oy, 10, 8, d.wire);
+      // Barbs (bright spots)
+      p(ctx, ox, oy, 5, 5, '#aaaaaa'); p(ctx, ox, oy, 7, 5, '#aaaaaa');
+      p(ctx, ox, oy, 9, 5, '#aaaaaa'); p(ctx, ox, oy, 6, 7, '#aaaaaa');
+      p(ctx, ox, oy, 8, 7, '#aaaaaa');
       break;
-    case 2: // Bullet casings
-      p(ctx, ox, oy, 4, 7, '#ccaa44'); p(ctx, ox, oy, 6, 6, '#ccaa44');
-      p(ctx, ox, oy, 8, 7, '#ccaa44'); p(ctx, ox, oy, 9, 8, '#ccaa44');
-      p(ctx, ox, oy, 5, 8, '#aa8833');
+    case 2: // Shell casings (scattered brass)
+      p(ctx, ox, oy, 4, 6, d.brass); p(ctx, ox, oy, 5, 7, d.brassLt);
+      p(ctx, ox, oy, 6, 5, d.brass); p(ctx, ox, oy, 8, 7, d.brass);
+      p(ctx, ox, oy, 9, 8, d.brassLt); p(ctx, ox, oy, 7, 9, d.brass);
+      p(ctx, ox, oy, 10, 6, d.brass); p(ctx, ox, oy, 5, 9, d.brassLt);
       break;
-    case 3: // Broken glass
+    case 3: // Broken glass shards
       p(ctx, ox, oy, 5, 5, d.glass); p(ctx, ox, oy, 7, 6, d.glass);
       p(ctx, ox, oy, 6, 7, d.glass); p(ctx, ox, oy, 8, 5, d.glass);
-      p(ctx, ox, oy, 9, 8, d.glass); p(ctx, ox, oy, 6, 9, '#88aabb');
+      p(ctx, ox, oy, 9, 8, '#88aabb'); p(ctx, ox, oy, 6, 9, '#88aabb');
+      p(ctx, ox, oy, 4, 7, d.glass); p(ctx, ox, oy, 10, 7, '#88aabb');
       break;
-    case 4: // Tire track
-      b(ctx, ox, oy, 3, 5, 1, 5, d.dark);
-      b(ctx, ox, oy, 5, 5, 1, 5, d.dark);
-      for (let gy = 5; gy < 10; gy += 2) {
-        p(ctx, ox, oy, 4, gy, d.dark);
+    case 4: // Tire tracks (parallel ruts)
+      b(ctx, ox, oy, 3, 4, 1, 6, d.dark);
+      b(ctx, ox, oy, 6, 4, 1, 6, d.dark);
+      for (let gy = 4; gy < 10; gy += 2) {
+        p(ctx, ox, oy, 4, gy, d.dark); p(ctx, ox, oy, 5, gy + 1, d.dark);
       }
+      // Mud splatter
+      p(ctx, ox, oy, 2, 5, '#3a3422'); p(ctx, ox, oy, 7, 8, '#3a3422');
       break;
-    case 5: // Crater
-      p(ctx, ox, oy, 6, 5, d.dark); p(ctx, ox, oy, 7, 5, d.dark);
+    case 5: // Small crater
+      p(ctx, ox, oy, 5, 5, d.dark); p(ctx, ox, oy, 6, 5, d.dark); p(ctx, ox, oy, 7, 5, d.dark); p(ctx, ox, oy, 8, 5, d.dark);
       p(ctx, ox, oy, 5, 6, d.dark); p(ctx, ox, oy, 8, 6, d.dark);
       p(ctx, ox, oy, 5, 7, d.dark); p(ctx, ox, oy, 8, 7, d.dark);
-      p(ctx, ox, oy, 6, 8, d.dark); p(ctx, ox, oy, 7, 8, d.dark);
+      p(ctx, ox, oy, 5, 8, d.dark); p(ctx, ox, oy, 6, 8, d.dark); p(ctx, ox, oy, 7, 8, d.dark); p(ctx, ox, oy, 8, 8, d.dark);
+      // Crater depth
       p(ctx, ox, oy, 6, 6, '#1a1a18'); p(ctx, ox, oy, 7, 7, '#1a1a18');
-      p(ctx, ox, oy, 9, 5, d.rust); p(ctx, ox, oy, 5, 8, d.rust);
+      // Ejecta
+      p(ctx, ox, oy, 4, 4, d.rust); p(ctx, ox, oy, 9, 4, d.rustLt);
+      p(ctx, ox, oy, 4, 9, d.rustLt); p(ctx, ox, oy, 9, 9, d.rust);
+      // Scorch marks
+      p(ctx, ox, oy, 3, 6, '#332820'); p(ctx, ox, oy, 10, 7, '#332820');
       break;
-    case 6: // Flag pole
-      b(ctx, ox, oy, 7, 3, 1, 8, d.steel);
-      b(ctx, ox, oy, 8, 3, 3, 2, d.olive);
-      p(ctx, ox, oy, 8, 3, d.red);
+    case 6: // Flag pole with torn flag
+      b(ctx, ox, oy, 7, 2, 1, 9, d.steel);
+      p(ctx, ox, oy, 7, 2, d.steelDk);
+      // Torn flag
+      b(ctx, ox, oy, 8, 2, 3, 2, d.olive);
+      b(ctx, ox, oy, 8, 4, 2, 1, d.olive);
+      p(ctx, ox, oy, 8, 2, d.red);
+      p(ctx, ox, oy, 10, 3, d.oliveLt);
+      // Base
+      b(ctx, ox, oy, 6, 10, 3, 1, d.steelDk);
       break;
-    case 7: // Crate
+    case 7: // Ammo crate (detailed)
       b(ctx, ox, oy, 4, 4, 6, 6, d.olive);
       b(ctx, ox, oy, 5, 5, 4, 4, d.dark);
+      // Corner rivets
       p(ctx, ox, oy, 4, 4, d.steel); p(ctx, ox, oy, 9, 4, d.steel);
       p(ctx, ox, oy, 4, 9, d.steel); p(ctx, ox, oy, 9, 9, d.steel);
-      p(ctx, ox, oy, 6, 6, d.steel); p(ctx, ox, oy, 7, 7, d.steel);
+      // Cross straps
+      b(ctx, ox, oy, 4, 6, 6, 1, d.oliveLt);
+      b(ctx, ox, oy, 6, 4, 1, 6, d.oliveLt);
+      // Label marking
+      p(ctx, ox, oy, 5, 7, d.red); p(ctx, ox, oy, 6, 7, d.red);
+      p(ctx, ox, oy, 7, 7, d.red);
+      // Lid latch
+      p(ctx, ox, oy, 7, 5, d.steel);
       break;
   }
 }
@@ -299,7 +416,7 @@ export default function MilitaryTerrainSprites() {
     tpCtx.drawImage(tc, 140, 20, tc.width * scale, tc.height * scale);
     tpCtx.fillStyle = '#aa8844';
     tpCtx.font = '11px monospace';
-    const rowLabels = ['Ground', 'Ruin', 'Fire 0', 'Fire 1', 'Fire 2', 'NoBuild'];
+    const rowLabels = ['Ground', 'Building', 'Fire 0', 'Fire 1', 'Fire 2', 'Crater'];
     for (let r = 0; r < TERRAIN_ROWS; r++) {
       tpCtx.fillText(rowLabels[r], 4, 20 + r * T * scale + T * scale / 2 + 4);
     }
@@ -333,7 +450,7 @@ export default function MilitaryTerrainSprites() {
 
   return (
     <div style={{ padding: 20, fontFamily: 'monospace', color: '#aa8844', background: '#111110' }}>
-      <h2 data-label="Military Terrain">Military Terrain Sprites — Warzone Outpost</h2>
+      <h2 data-label="Military Terrain">Military Terrain Sprites — Forward Operating Base</h2>
       <div style={{ marginBottom: 10 }}>
         <button onClick={() => setView('preview')} style={{ marginRight: 8, background: view === 'preview' ? '#aa8844' : '#2a2828', color: view === 'preview' ? '#111110' : '#aa8844', border: '1px solid #aa8844', padding: '4px 12px', cursor: 'pointer' }}>Preview (3x)</button>
         <button onClick={() => setView('actual')} style={{ marginRight: 8, background: view === 'actual' ? '#aa8844' : '#2a2828', color: view === 'actual' ? '#111110' : '#aa8844', border: '1px solid #aa8844', padding: '4px 12px', cursor: 'pointer' }}>Actual Size</button>
@@ -347,10 +464,10 @@ export default function MilitaryTerrainSprites() {
       <p style={{ fontSize: '12px', color: '#665533' }} data-frame-size="28x28">Frame size: 28x28 | PX=2 | Grid=14x14 | 16 cols (NESW bitmask) x 6 rows</p>
       <h3 data-label="Military Terrain (Preview)">Terrain Tileset (16 auto-tile variants x 6 rows)</h3>
       <canvas ref={terrainPreviewRef} style={{ display: view === 'preview' ? 'block' : 'none', border: '1px solid #aa884433' }} />
-      <canvas ref={terrainRef} style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', border: '1px solid #aa884433' }} />
+      <canvas ref={terrainRef} style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', border: '1px solid #aa884433' }} data-label="military_terrain_tileset" />
       <h3>Warzone Doodads (8 types)</h3>
       <canvas ref={doodadPreviewRef} style={{ display: view === 'preview' ? 'block' : 'none', border: '1px solid #aa884433' }} />
-      <canvas ref={doodadRef} style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', border: '1px solid #aa884433' }} />
+      <canvas ref={doodadRef} style={{ display: view === 'actual' ? 'block' : 'none', imageRendering: 'pixelated', border: '1px solid #aa884433' }} data-label="military_terrain_doodads" />
     </div>
   );
 }

@@ -70,7 +70,7 @@ See [FACTIONS.md](FACTIONS.md) for detailed tower lists and strategies.
 - **Marathon** (Endless) — Infinite scaling
 - **Battle** (Dual Economy) — Gold + Essence compound growth loop
 - **Hero Defense** (30 waves) — Control a hero in an arena. 10x creeps, 11 heroes (3 offered per game), leveling (1-15), ultimate abilities (R), item shop, accessory shop (rotating), elite enemies at wave 10/20/30, floating damage numbers.
-- **Faction Gauntlet** (100 waves) — Fight all 10 enemy factions in 10-wave stages on unique themed homeworld maps. Towers reset between stages, frontier persists. Stage scaling ramps difficulty.
+- **Faction Gauntlet** (100 waves) — Fight all 10 enemy factions in 10-wave stages on unique themed homeworld maps with 90 animated large structures. Towers reset between stages, frontier persists. Stage scaling ramps difficulty. Maps stored as JSON in `src/data/maps/`.
 - **Versus 1v1** — P2P multiplayer. Sends go to opponent.
 - **Circle Co-op** (2-4 players) — Shared map, zone building, shared lives.
 
@@ -115,6 +115,9 @@ Easy/Normal/Hard/Insane. Each creep type interprets difficulty individually — 
 **Standard:** Plains, Crossroads, Fortress, Serpentine, Islands, Gauntlet, Spiral, Siege.
 **Random:** Procedurally generated map from a seed. 6 layout templates × terrain features scaled by difficulty. Daily seed toggle locks the same map for all players that day. Versus uses shared seed for identical maps.
 **Circle Co-op:** Circle 2P, Circle 3P, Circle 4P.
+
+## Map Editor
+Visual map editor at `/editor.html` — paint terrain tiles, place/drag structures, import/export JSON maps. Maps stored as JSON in `src/data/maps/`. Deployed alongside the game.
 
 ## Tech Stack
 - **Phaser 3.90** — WebGL rendering, scene management, input

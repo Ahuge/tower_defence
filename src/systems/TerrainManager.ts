@@ -14,6 +14,8 @@ import {
   THEMES,
   findClusters, matchCluster, autoTileIndex,
 } from './TerrainTheme';
+import { LargeStructurePlacement } from '../data/Maps';
+import { getStructureDef, LARGE_STRUCTURES } from '../data/LargeStructures';
 
 const TILESET_KEY = 'terrain_tileset';
 const DOODAD_KEY = 'terrain_doodads';
@@ -124,6 +126,13 @@ const FACTION_TERRAINS: FactionTerrain[] = [
     groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
     typeMapping: { stone: 'blocked', water: 'animated' },
   },
+  {
+    themeId: 'marble',
+    tilesetKey: 'terrain_celestial', doodadKey: 'terrain_celestial_doodads',
+    path: 'assets/terrain/celestial_terrain_tileset.png', doodadPath: 'assets/terrain/celestial_terrain_doodads.png',
+    groundRow: 0, blockedRow: 1, animatedRow: 2, animatedFrames: 3, noBuildRow: 5, animFps: 1.5,
+    typeMapping: { stone: 'blocked', water: 'animated' },
+  },
 ];
 
 export class TerrainManager {
@@ -137,6 +146,9 @@ export class TerrainManager {
   private factionTerrain: FactionTerrain | null = null;
   private themeId: string = 'generic';
   private themeColors: { ground?: number; gridLine?: number; noBuild?: number; noBuildLine?: number } = {};
+  private structureCells = new Set<string>();
+  private structureSprites: (Phaser.GameObjects.Image | Phaser.GameObjects.Sprite)[] = [];
+  private structures: LargeStructurePlacement[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -156,6 +168,20 @@ export class TerrainManager {
     for (const ft of FACTION_TERRAINS) {
       scene.load.spritesheet(ft.tilesetKey, ft.path, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
       scene.load.spritesheet(ft.doodadKey, ft.doodadPath, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
+    }
+    // Large structure images / spritesheets
+    for (const defs of Object.values(LARGE_STRUCTURES)) {
+      for (const def of defs) {
+        const frames = def.animFrames ?? 1;
+        if (frames > 1) {
+          scene.load.spritesheet(def.textureKey, `assets/terrain/structures/${def.textureKey}.png`, {
+            frameWidth: def.widthCells * TILE_SIZE,
+            frameHeight: def.heightCells * TILE_SIZE,
+          });
+        } else {
+          scene.load.image(def.textureKey, `assets/terrain/structures/${def.textureKey}.png`);
+        }
+      }
     }
   }
 
@@ -192,6 +218,27 @@ export class TerrainManager {
       });
     }
 
+    // Large structure animations
+    for (const defs of Object.values(LARGE_STRUCTURES)) {
+      for (const def of defs) {
+        const frames = def.animFrames ?? 1;
+        if (frames <= 1) continue;
+        const key = `struct_anim_${def.id}`;
+        if (scene.anims.exists(key)) continue;
+        if (!scene.textures.exists(def.textureKey)) continue;
+        const animFrames = [];
+        for (let f = 0; f < frames; f++) {
+          animFrames.push({ key: def.textureKey, frame: f });
+        }
+        scene.anims.create({
+          key,
+          frames: animFrames,
+          frameRate: def.animFps ?? 1.5,
+          repeat: -1,
+        });
+      }
+    }
+
     // Faction-specific animated terrain
     for (const ft of FACTION_TERRAINS) {
       if (!scene.textures.exists(ft.tilesetKey)) continue;
@@ -208,12 +255,13 @@ export class TerrainManager {
   }
 
   /** Compute terrain types for all cells based on grid and theme */
-  compute(grid: Grid, themeId: string): void {
+  compute(grid: Grid, themeId: string, structures?: LargeStructurePlacement[]): void {
     const theme = THEMES[themeId] ?? THEMES.generic;
     this.groundType = theme.ground;
     this.themeId = themeId;
     this.factionTerrain = FACTION_TERRAINS.find(ft => ft.themeId === themeId) ?? null;
     this.themeColors = theme.colors ?? {};
+    this.structures = structures ?? [];
     this.terrainMap.clear();
 
     const rows = grid.rows;
@@ -253,13 +301,24 @@ export class TerrainManager {
     this.groundGraphics.fillStyle(groundColor, 1);
     this.groundGraphics.fillRect(gridLeftX(0), oY, cols * TILE_SIZE, rows * TILE_SIZE);
 
-    // Grid lines
-    this.groundGraphics.lineStyle(1, this.themeColors.gridLine ?? 0x333333, 0.15);
-    for (let c = 0; c <= cols; c++) {
-      this.groundGraphics.lineBetween(gridLeftX(c), oY, gridLeftX(c), oY + rows * TILE_SIZE);
-    }
-    for (let r = 0; r <= rows; r++) {
-      this.groundGraphics.lineBetween(gridLeftX(0), oY + r * TILE_SIZE, gridLeftX(0) + cols * TILE_SIZE, oY + r * TILE_SIZE);
+    // Grid lines — only on buildable cells (skip Blocked + NoBuild)
+    const gridLineColor = this.themeColors.gridLine ?? 0x555555;
+    this.groundGraphics.lineStyle(1, gridLineColor, 0.25);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = grid.cells[r][c];
+        if (cell === CellType.Blocked || cell === CellType.NoBuild) continue;
+        const x = gridLeftX(c);
+        const y = oY + r * TILE_SIZE;
+        // Draw cell border lines (top and left edges; shared edges drawn once)
+        this.groundGraphics.lineBetween(x, y, x + TILE_SIZE, y); // top
+        this.groundGraphics.lineBetween(x, y, x, y + TILE_SIZE); // left
+        // Bottom/right only if neighbor is non-buildable or edge
+        if (r === rows - 1 || grid.cells[r + 1][c] === CellType.Blocked || grid.cells[r + 1][c] === CellType.NoBuild)
+          this.groundGraphics.lineBetween(x, y + TILE_SIZE, x + TILE_SIZE, y + TILE_SIZE);
+        if (c === cols - 1 || grid.cells[r][c + 1] === CellType.Blocked || grid.cells[r][c + 1] === CellType.NoBuild)
+          this.groundGraphics.lineBetween(x + TILE_SIZE, y, x + TILE_SIZE, y + TILE_SIZE);
+      }
     }
 
     // Determine which tileset to use
@@ -299,9 +358,39 @@ export class TerrainManager {
       }
     }
 
-    // Terrain tiles (blocked cells)
+    // Large structures — render as single sprites, mark cells to skip
+    this.structureCells.clear();
+    for (const placement of this.structures) {
+      const def = getStructureDef(placement.structureId);
+      if (!def) continue;
+      if (!this.scene.textures.exists(def.textureKey)) continue;
+      // Mark cells covered by this structure
+      for (let dc = 0; dc < def.widthCells; dc++) {
+        for (let dr = 0; dr < def.heightCells; dr++) {
+          this.structureCells.add(`${placement.col + dc},${placement.row + dr}`);
+        }
+      }
+      // Place the sprite centered on the structure's bounding box
+      const px = gridLeftX(placement.col) + (def.widthCells * TILE_SIZE) / 2;
+      const py = oY + placement.row * TILE_SIZE + (def.heightCells * TILE_SIZE) / 2;
+      const frames = def.animFrames ?? 1;
+      const animKey = `struct_anim_${def.id}`;
+      if (frames > 1 && this.scene.anims.exists(animKey)) {
+        const spr = this.scene.add.sprite(px, py, def.textureKey, 0).setDepth(1);
+        spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        spr.play(animKey);
+        this.structureSprites.push(spr);
+      } else {
+        const img = this.scene.add.image(px, py, def.textureKey).setDepth(1);
+        img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        this.structureSprites.push(img);
+      }
+    }
+
+    // Terrain tiles (blocked cells — skip cells covered by large structures)
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        if (this.structureCells.has(`${c},${r}`)) continue;
         const terrain = this.terrainMap.get(`${c},${r}`);
         if (!terrain) continue;
 
@@ -455,6 +544,9 @@ export class TerrainManager {
     this.terrainSprites = [];
     for (const spr of this.doodadSprites) spr.destroy();
     this.doodadSprites = [];
+    for (const spr of this.structureSprites) spr.destroy();
+    this.structureSprites = [];
+    this.structureCells.clear();
     this.groundGraphics?.destroy();
     this.groundGraphics = null;
   }

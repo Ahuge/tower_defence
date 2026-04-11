@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
+import { resolve } from 'path';
 
 // Get git SHA at build time
 const gitSha = (() => {
@@ -19,5 +20,11 @@ export default defineConfig({
 
   build: {
     chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        editor: resolve(__dirname, 'editor.html'),
+      },
+    },
   },
 });

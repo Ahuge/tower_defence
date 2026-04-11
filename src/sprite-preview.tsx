@@ -30,6 +30,7 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'terrain-infernal': () => import('../infernal_terrain_sprites'),
   'terrain-psionic': () => import('../psionic_terrain_sprites'),
   'terrain-harmonic': () => import('../harmonic_terrain_sprites'),
+  'terrain-celestial': () => import('../celestial_terrain_sprites'),
   'creeps-arcane': () => import('../arcane_creep_sprites'),
   'creeps-mechanical': () => import('../mechanical_creep_sprites'),
   'creeps-nature': () => import('../nature_creep_sprites'),
@@ -41,6 +42,9 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'creeps-celestial': () => import('../celestial_creep_sprites'),
   'creeps-psionic': () => import('../psionic_creep_sprites'),
   'creeps-harmonic': () => import('../harmonic_creep_sprites'),
+  'large-structures': () => import('../large_structure_sprites'),
+  'structure-editor': () => import('../gauntlet_structure_editor'),
+  'gauntlet-maps': () => import('../gauntlet_map_preview'),
 };
 
 /** Maps module → directory name and expected canvas names (for ZIP download) */
@@ -81,6 +85,7 @@ const FACTION_FILE_MAP: Record<string, { dir: string; canvases: string[] }> = {
   'terrain-infernal':   { dir: 'terrain', canvases: ['infernal_terrain_tileset', 'infernal_terrain_doodads'] },
   'terrain-psionic':    { dir: 'terrain', canvases: ['psionic_terrain_tileset', 'psionic_terrain_doodads'] },
   'terrain-harmonic':   { dir: 'terrain', canvases: ['harmonic_terrain_tileset', 'harmonic_terrain_doodads'] },
+  'terrain-celestial':  { dir: 'terrain', canvases: ['celestial_terrain_tileset', 'celestial_terrain_doodads'] },
 };
 
 /** Mobile unit file mapping */
@@ -459,6 +464,41 @@ export default function SpritePreview() {
       } catch (e) {
         console.error(`Failed to render ${faction}:`, e);
       }
+    }
+
+    // Large structures
+    setDownloadStatus('Rendering large structures...');
+    try {
+      const mod = await modules['large-structures']();
+      const Comp = mod.default;
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      document.body.appendChild(container);
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(container);
+      root.render(<Comp />);
+      // Wait for useEffect to draw all canvases — poll until we find labeled canvases with content
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await new Promise(r => setTimeout(r, 300));
+        const labeled = container.querySelectorAll('canvas[data-label]');
+        if (labeled.length > 0 && (labeled[0] as HTMLCanvasElement).width > 0) break;
+      }
+      const actualCanvases = Array.from(container.querySelectorAll('canvas[data-label]')) as HTMLCanvasElement[];
+      setDownloadStatus(`Packing ${actualCanvases.length} structures...`);
+      for (const c of actualCanvases) {
+        const label = c.getAttribute('data-label') ?? '';
+        if (!label || c.width === 0) continue;
+        const blob = await new Promise<Blob | null>(resolve =>
+          c.toBlob(resolve, 'image/png')
+        );
+        if (blob) zip.file(`terrain/structures/struct_${label}.png`, blob);
+      }
+      root.unmount();
+      document.body.removeChild(container);
+    } catch (e) {
+      console.error('Failed large structures:', e);
     }
 
     // Mobile units
