@@ -6,6 +6,17 @@ import { UIScale } from '../systems/UIScale';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v26 — Animated Structures + Map Editor',
+    changes: [
+      '90 animated large structures across all 11 factions (8-10 per faction)',
+      'Structures animate at 1.5 fps: flames flicker, gears rotate, portals swirl, crystals pulse',
+      'Gauntlet maps redesigned with faction-themed structure placements',
+      'Structure sprites bake faction ground tiles — seamless terrain blending',
+      'Visual map editor at /editor.html: paint terrain, place structures, export JSON',
+      'Maps now stored as JSON files — easy to edit and share',
+    ],
+  },
+  {
     version: 'v25 — Faction Gauntlet',
     changes: [
       'NEW MODE: Faction Gauntlet — 100 waves across 10 faction homeworlds',
