@@ -187,7 +187,9 @@ export class GameScene extends Phaser.Scene {
   private _gauntletTransitioning: boolean = false;
   private _gauntletHud: Phaser.GameObjects.Text | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[] }): void {
+  private customMapDef: MapDefinition | null = null;
+
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -200,6 +202,7 @@ export class GameScene extends Phaser.Scene {
     this._gauntletOrder = (data as any).gauntletOrder ?? undefined;
     this._gauntletTransitioning = false;
     this.generatedMapDef = null;
+    this.customMapDef = data.customMapDef ?? null;
     // Hero defense requires its own map (12-row grid)
     if (this.matchMode === 'hero_defense') {
       this.mapId = 'hero_plains';
@@ -217,9 +220,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Get the active map definition (generated for random, static otherwise) */
+  /** Get the active map definition (generated for random, custom, static otherwise) */
   getMapDef(): MapDefinition {
-    return this.generatedMapDef ?? MAPS[this.mapId];
+    return this.generatedMapDef ?? this.customMapDef ?? MAPS[this.mapId];
   }
 
   private rollRandomTowers(): string[] {
@@ -305,9 +308,12 @@ export class GameScene extends Phaser.Scene {
 
     this.eventBus = new EventBus();
 
-    // Resolve map definition — generate for random maps
+    // Resolve map definition — generate for random maps, use custom if provided
     let mapDef: MapDefinition;
-    if (this.mapId === 'random') {
+    if (this.mapId === 'custom' && this.customMapDef) {
+      mapDef = this.customMapDef;
+      this.generatedMapDef = mapDef;
+    } else if (this.mapId === 'random') {
       // For versus, use sharedSeed from VersusManager
       const versusRef2 = this.registry.get('versus') as VersusManager | null;
       if (versusRef2 && this.randomSeed === 0) {

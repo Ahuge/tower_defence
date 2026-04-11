@@ -1,6 +1,6 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 
-export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p';
+export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'custom';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -295,6 +295,16 @@ export const MAPS: Record<MapId, MapDefinition> = {
     id: 'random',
     name: 'Random',
     description: 'Procedurally generated — unique every time.',
+    theme: 'generic',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [],
+    noBuild: [],
+  },
+  custom: {
+    id: 'custom',
+    name: 'Custom',
+    description: 'User-created map loaded from JSON.',
     theme: 'generic',
     entries: [{ col: 0, row: MID_ROW }],
     exits: [{ col: GRID_COLS - 1, row: MID_ROW }],

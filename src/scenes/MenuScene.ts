@@ -208,16 +208,23 @@ export class MenuScene extends Phaser.Scene {
       fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    // Encyclopedia + Changelog buttons
+    // Encyclopedia + Custom Maps + Changelog buttons
     const bottomRowY = gridStartY + modeRows * (cardH + gapY) + 18;
-    const encBtn = this.add.text(cx - 120, bottomRowY, '[ Encyclopedia ]', {
+    const encBtn = this.add.text(cx - 180, bottomRowY, '[ Encyclopedia ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     encBtn.on('pointerdown', () => this.scene.start('EncyclopediaScene'));
     encBtn.on('pointerover', () => encBtn.setColor('#bbddff'));
     encBtn.on('pointerout', () => encBtn.setColor('#88aacc'));
 
-    const logBtn = this.add.text(cx + 120, bottomRowY, '[ Changelog ]', {
+    const customBtn = this.add.text(cx, bottomRowY, '[ Custom Maps ]', {
+      fontSize: UIScale.font(13), color: '#aa8844', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    customBtn.on('pointerdown', () => this.scene.start('CustomMapScene'));
+    customBtn.on('pointerover', () => customBtn.setColor('#ddbb66'));
+    customBtn.on('pointerout', () => customBtn.setColor('#aa8844'));
+
+    const logBtn = this.add.text(cx + 180, bottomRowY, '[ Changelog ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     logBtn.on('pointerdown', () => this.scene.start('ChangelogScene'));

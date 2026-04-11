@@ -3,7 +3,8 @@ import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { SignalingClient } from '../systems/multiplayer/SignalingClient';
 import { GameMessage } from '../systems/multiplayer/MessageProtocol';
-import { MapId, CIRCLE_MAP_ORDER, MAPS } from '../data/Maps';
+import { MapId, MapDefinition, CIRCLE_MAP_ORDER, MAPS } from '../data/Maps';
+import { MapStorage, MapJSON } from '../systems/MapStorage';
 import { DifficultyLevel } from '../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
@@ -20,6 +21,8 @@ export class CircleLobbyScene extends Phaser.Scene {
 
   private selectedMap: MapId = 'circle_2p';
   private selectedDifficulty: DifficultyLevel = 'normal';
+  private customMapDef: MapDefinition | null = null;
+  private customMapJSON: MapJSON | null = null;
   private myFaction: FactionId | null = null;
   private playerFactions: Map<number, FactionId> = new Map();
   private pendingPlayerIndex: number = -1;
@@ -142,6 +145,10 @@ export class CircleLobbyScene extends Phaser.Scene {
         this.selectedMap = msg.map as MapId;
         this.selectedDifficulty = msg.difficulty as DifficultyLevel;
         this.circle!.sharedSeed = msg.seed;
+        if (msg.customMapJSON) {
+          this.customMapJSON = msg.customMapJSON as MapJSON;
+          this.customMapDef = MapStorage.mapJSONToDefinition(this.customMapJSON);
+        }
       }
       this.launchGame();
     } else if (msg.type === 'game_start') {
@@ -150,6 +157,10 @@ export class CircleLobbyScene extends Phaser.Scene {
           this.selectedMap = msg.map as MapId;
           this.selectedDifficulty = msg.difficulty as DifficultyLevel;
           this.circle!.sharedSeed = msg.seed;
+          if (msg.customMapJSON) {
+            this.customMapJSON = msg.customMapJSON as MapJSON;
+            this.customMapDef = MapStorage.mapJSONToDefinition(this.customMapJSON);
+          }
           this.showGameSetup();
         }
       } else {
@@ -241,14 +252,18 @@ export class CircleLobbyScene extends Phaser.Scene {
           startBtn.on('pointerdown', () => {
             this.stopPollTimer();
             this.showGameSetup();
-            this.circle!.broadcast({
+            const setupMsg: GameMessage = {
               type: 'game_start',
               faction: '',
               matchMode: 'circle_coop',
               map: this.selectedMap,
               difficulty: this.selectedDifficulty,
               seed: this.circle!.sharedSeed,
-            });
+            };
+            if (this.selectedMap === 'custom' && this.customMapJSON) {
+              setupMsg.customMapJSON = this.customMapJSON;
+            }
+            this.circle!.broadcast(setupMsg);
           });
           startBtn.on('pointerover', () => startBtn.setColor('#ffffff'));
           startBtn.on('pointerout', () => startBtn.setColor('#ffaa44'));
@@ -497,14 +512,18 @@ export class CircleLobbyScene extends Phaser.Scene {
         this.myFaction = fid;
         this.playerFactions.set(this.circle!.playerIndex, fid);
         this.statusText.setText(`You picked ${faction.name}! Waiting for others...`);
-        this.circle!.broadcast({
+        const pickMsg: GameMessage = {
           type: 'game_start',
           faction: fid,
           matchMode: 'circle_coop',
           map: this.selectedMap,
           difficulty: this.selectedDifficulty,
           seed: this.circle!.sharedSeed,
-        });
+        };
+        if (this.selectedMap === 'custom' && this.customMapJSON) {
+          pickMsg.customMapJSON = this.customMapJSON;
+        }
+        this.circle!.broadcast(pickMsg);
         this.checkAllPicked();
       });
     }
@@ -516,13 +535,17 @@ export class CircleLobbyScene extends Phaser.Scene {
     if (this.playerFactions.size < connected) return;
 
     const players = Array.from(this.playerFactions.entries()).map(([index, faction]) => ({ index, faction }));
-    this.circle.broadcast({
+    const launchMsg: GameMessage = {
       type: 'circle_game_start',
       players,
       map: this.selectedMap,
       difficulty: this.selectedDifficulty,
       seed: this.circle.sharedSeed,
-    });
+    };
+    if (this.selectedMap === 'custom' && this.customMapJSON) {
+      launchMsg.customMapJSON = this.customMapJSON;
+    }
+    this.circle.broadcast(launchMsg);
     this.launchGame();
   }
 
@@ -543,6 +566,7 @@ export class CircleLobbyScene extends Phaser.Scene {
       faction: this.myFaction,
       map: this.selectedMap,
       difficulty: this.selectedDifficulty,
+      customMapDef: this.customMapDef ?? undefined,
     });
   }
 

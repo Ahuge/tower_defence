@@ -3,7 +3,8 @@ import { getCanvasWidth, GAME_HEIGHT } from '../config';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SignalingClient } from '../systems/multiplayer/SignalingClient';
 import { GameMessage } from '../systems/multiplayer/MessageProtocol';
-import { MapId, MAP_ORDER, MAPS } from '../data/Maps';
+import { MapId, MapDefinition, MAP_ORDER, MAPS } from '../data/Maps';
+import { MapStorage, MapJSON } from '../systems/MapStorage';
 import { DifficultyLevel } from '../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
@@ -23,6 +24,8 @@ export class LobbyScene extends Phaser.Scene {
   private myFaction: FactionId | null = null;
   private opponentFaction: FactionId | null = null;
   private opponentMsg: GameMessage | null = null;
+  private customMapDef: MapDefinition | null = null;
+  private customMapJSON: MapJSON | null = null;
 
   private codeInput: HTMLInputElement | null = null;
   /** All dynamic scene objects — destroyed on phase transitions */
@@ -113,6 +116,11 @@ export class LobbyScene extends Phaser.Scene {
       if (!this.isHost) {
         this.selectedMap = msg.map as MapId;
         this.selectedDifficulty = msg.difficulty as DifficultyLevel;
+        // If host sent a custom map JSON, convert it to a MapDefinition
+        if (msg.customMapJSON) {
+          this.customMapJSON = msg.customMapJSON as MapJSON;
+          this.customMapDef = MapStorage.mapJSONToDefinition(this.customMapJSON);
+        }
       }
       if (this.myFaction) this.launchGame();
     }
@@ -378,14 +386,19 @@ export class LobbyScene extends Phaser.Scene {
       zone.on('pointerdown', () => {
         this.myFaction = fid;
         this.statusText.setText(`You picked ${faction.name}! Waiting for opponent...`);
-        this.versus!.send({
+        const startMsg: GameMessage = {
           type: 'game_start',
           faction: fid,
           matchMode: 'standard',
           map: this.selectedMap,
           difficulty: this.selectedDifficulty,
           seed: this.versus!.sharedSeed,
-        });
+        };
+        // Include custom map JSON so the peer can reconstruct the MapDefinition
+        if (this.selectedMap === 'custom' && this.customMapJSON) {
+          startMsg.customMapJSON = this.customMapJSON;
+        }
+        this.versus!.send(startMsg);
         if (this.opponentFaction) this.launchGame();
       });
     }
@@ -401,6 +414,7 @@ export class LobbyScene extends Phaser.Scene {
       faction: this.myFaction,
       map: this.selectedMap,
       difficulty: this.selectedDifficulty,
+      customMapDef: this.customMapDef ?? undefined,
     });
   }
 
