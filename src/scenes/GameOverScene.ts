@@ -64,7 +64,7 @@ export class GameOverScene extends Phaser.Scene {
 
     const overviewLines = [
       `Mode: ${data.matchMode}${data.faction ? ` (${data.faction})` : ''}`,
-      `Waves: ${data.wave}/${data.totalWaves}  |  Time: ${minutes}m ${seconds}s`,
+      `Waves: ${data.matchMode === 'endless' || data.totalWaves > 200 ? `Survived ${data.wave} waves` : `${data.wave}/${data.totalWaves}`}  |  Time: ${minutes}m ${seconds}s`,
       `Creeps Killed: ${data.creepsKilled}  |  Leaked: ${data.stats?.creepsLeaked ?? 0}`,
       `Towers Built: ${data.towersBuilt}  |  Gold Remaining: ${data.gold}`,
       `Score: ${score}${score >= highScore ? ' (NEW HIGH!)' : `  |  High: ${highScore}`}`,

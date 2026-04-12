@@ -110,6 +110,7 @@ export class CreepFactionSelectScene extends Phaser.Scene {
     this.scene.start('DraftScene', {
       ...data,
       creepFaction,
+      waveCount: data.waveCount,
     });
   }
 }

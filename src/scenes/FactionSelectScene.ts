@@ -16,18 +16,20 @@ export class FactionSelectScene extends Phaser.Scene {
   private randomSeed: number = 0;
   private dailySeed: boolean = false;
   private customMapDef: MapDefinition | null = null;
+  private waveCount?: number;
 
   constructor() {
     super('FactionSelectScene');
   }
 
-  init(data: { mode: MatchMode; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean; customMapDef?: MapDefinition }): void {
+  init(data: { mode: MatchMode; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean; customMapDef?: MapDefinition; waveCount?: number }): void {
     this.matchMode = data.mode;
     this.mapId = data.map || 'plains';
     this.difficulty = data.difficulty || 'normal';
     this.randomSeed = data.randomSeed ?? 0;
     this.dailySeed = data.dailySeed ?? false;
     this.customMapDef = data.customMapDef ?? null;
+    this.waveCount = data.waveCount;
   }
 
   create(): void {
@@ -132,12 +134,17 @@ export class FactionSelectScene extends Phaser.Scene {
         card.fillRect(x, y, cardW, 6);
       });
       zone.on('pointerdown', () => {
-        const passData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed, customMapDef: this.customMapDef ?? undefined };
+        const passData = { mode: this.matchMode, faction: factionId, map: this.mapId, difficulty: this.difficulty, randomSeed: this.randomSeed, dailySeed: this.dailySeed, customMapDef: this.customMapDef ?? undefined, waveCount: this.waveCount };
         if (this.matchMode === 'hero_defense') {
           this.scene.start('HeroSelectScene', passData);
         } else if (this.matchMode === 'gauntlet') {
           // Gauntlet skips creep faction select — it picks per stage
           this.scene.start('DraftScene', passData);
+        } else if (this.matchMode === 'endless') {
+          // Endless skips creep faction select — random creep faction, rotates during play
+          const playable = FACTION_ORDER.filter(f => f !== 'random');
+          const randomCreep = playable[Math.floor(Math.random() * playable.length)];
+          this.scene.start('DraftScene', { ...passData, creepFaction: randomCreep });
         } else {
           this.scene.start('CreepFactionSelectScene', passData);
         }

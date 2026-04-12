@@ -22,6 +22,7 @@ export class MenuScene extends Phaser.Scene {
   private dailyToggle: Phaser.GameObjects.Text | null = null;
   private mapButtons: { btn: Phaser.GameObjects.Graphics; id: MapId; x: number; y: number; w: number; h: number }[] = [];
   private diffButtons: { btn: Phaser.GameObjects.Graphics; id: DifficultyLevel; x: number; y: number; w: number; h: number }[] = [];
+  private waveCountOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super('MenuScene');
@@ -141,23 +142,22 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     yPos += UIScale.y(20);
 
-    const goFaction = (mode: MatchMode) => {
+    const goFaction = (mode: MatchMode, waveCount?: number) => {
       const seed = this.selectedMap === 'random'
         ? (this.dailySeed ? getDailySeed() : Math.floor(Math.random() * 999999999))
         : 0;
       this.scene.start('FactionSelectScene', {
         mode, map: this.selectedMap, difficulty: this.selectedDifficulty,
-        randomSeed: seed, dailySeed: this.dailySeed,
+        randomSeed: seed, dailySeed: this.dailySeed, waveCount,
       });
     };
 
     const modes: ModeCard[] = [
-      { label: 'Sprint',          desc: '15 waves — quick game',            accent: 0x44cc44, action: () => goFaction('sprint') },
-      { label: 'Standard',        desc: '30 waves — full experience',       accent: 0x44cc44, action: () => goFaction('standard') },
-      { label: 'Marathon',         desc: 'Endless — infinite scaling',       accent: 0x44cc44, action: () => goFaction('marathon') },
+      { label: 'Standard',         desc: 'Classic tower defence',           accent: 0x44cc44, action: () => this.showWaveCountOverlay(goFaction) },
       { label: 'Battle',           desc: 'Dual economy — Gold + Essence',   accent: 0xddaa22, action: () => goFaction('battle') },
       { label: 'Hero Defense',     desc: 'Control a hero in the arena',     accent: 0xff44aa, action: () => goFaction('hero_defense') },
       { label: 'Faction Gauntlet', desc: '100 waves — fight all factions',  accent: 0xff4444, action: () => goFaction('gauntlet') },
+      { label: 'Endless',          desc: 'Infinite scaling — play until you fall', accent: 0xff6622, action: () => goFaction('endless') },
       { label: 'Versus 1v1',       desc: 'P2P competitive — sends attack',  accent: 0xff8844, action: () => this.scene.start('LobbyScene') },
       { label: 'Circle Co-op',     desc: '2-4 players — shared map',        accent: 0x44aaff, action: () => this.scene.start('CircleLobbyScene') },
     ];
@@ -233,6 +233,123 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(getCanvasWidth() - 8, totalH - 8, `v${__GIT_SHA__}`, {
       fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(1, 1);
+  }
+
+  private showWaveCountOverlay(goFaction: (mode: MatchMode, waveCount?: number) => void): void {
+    if (this.waveCountOverlay) return;
+
+    const canvasW = getCanvasWidth();
+    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+
+    const container = this.add.container(0, 0);
+    container.setDepth(1000);
+
+    // Semi-transparent dark background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.7);
+    bg.fillRect(0, 0, canvasW, totalH);
+    container.add(bg);
+
+    // Click-outside to dismiss
+    const bgZone = this.add.zone(canvasW / 2, totalH / 2, canvasW, totalH).setInteractive();
+    bgZone.on('pointerdown', () => this.dismissWaveCountOverlay());
+    container.add(bgZone);
+
+    // Panel dimensions
+    const panelW = UIScale.isPhone ? 800 : 420;
+    const panelH = UIScale.isPhone ? 400 : 260;
+    const panelX = (canvasW - panelW) / 2;
+    const panelY = (totalH - panelH) / 2;
+
+    // Panel background
+    const panel = this.add.graphics();
+    panel.fillStyle(0x1e1e28, 1);
+    panel.fillRect(panelX, panelY, panelW, panelH);
+    panel.lineStyle(2, 0xccaa44, 0.8);
+    panel.strokeRect(panelX, panelY, panelW, panelH);
+    container.add(panel);
+
+    // Block clicks on panel from reaching bgZone
+    const panelZone = this.add.zone(panelX + panelW / 2, panelY + panelH / 2, panelW, panelH).setInteractive();
+    container.add(panelZone);
+
+    // Title
+    const title = this.add.text(canvasW / 2, panelY + UIScale.y(28), 'Select Wave Count', {
+      fontSize: UIScale.font(18), color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    container.add(title);
+
+    // Wave count options
+    const options: { label: string; waves: number; desc: string }[] = [
+      { label: 'Quick', waves: 15, desc: '15 waves' },
+      { label: 'Standard', waves: 30, desc: '30 waves' },
+      { label: 'Extended', waves: 100, desc: '100 waves' },
+    ];
+
+    const btnW = UIScale.isPhone ? 220 : 120;
+    const btnH = UIScale.isPhone ? 100 : 70;
+    const btnGap = UIScale.isPhone ? 16 : 12;
+    const totalBtnW = options.length * btnW + (options.length - 1) * btnGap;
+    const btnStartX = canvasW / 2 - totalBtnW / 2;
+    const btnY = panelY + UIScale.y(70);
+
+    for (let i = 0; i < options.length; i++) {
+      const opt = options[i];
+      const bx = btnStartX + i * (btnW + btnGap);
+      const by = btnY;
+
+      const btnGfx = this.add.graphics();
+      const drawBtn = (hover: boolean) => {
+        btnGfx.clear();
+        btnGfx.fillStyle(hover ? 0x3a3a44 : 0x2a2a33, 1);
+        btnGfx.fillRect(bx, by, btnW, btnH);
+        btnGfx.lineStyle(2, hover ? 0xffffff : 0xccaa44, hover ? 1 : 0.6);
+        btnGfx.strokeRect(bx, by, btnW, btnH);
+        // Accent strip
+        btnGfx.fillStyle(0x44cc44, hover ? 0.9 : 0.5);
+        btnGfx.fillRect(bx, by, 4, btnH);
+      };
+      drawBtn(false);
+      container.add(btnGfx);
+
+      const labelText = this.add.text(bx + btnW / 2, by + UIScale.y(20), opt.label, {
+        fontSize: UIScale.font(14), color: '#ffffff', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+      container.add(labelText);
+
+      const descText = this.add.text(bx + btnW / 2, by + UIScale.y(42), opt.desc, {
+        fontSize: UIScale.font(11), color: '#888888', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+      container.add(descText);
+
+      const btnZone = this.add.zone(bx + btnW / 2, by + btnH / 2, btnW, btnH).setInteractive({ useHandCursor: true });
+      btnZone.on('pointerover', () => drawBtn(true));
+      btnZone.on('pointerout', () => drawBtn(false));
+      btnZone.on('pointerdown', () => {
+        this.dismissWaveCountOverlay();
+        goFaction('standard', opt.waves);
+      });
+      container.add(btnZone);
+    }
+
+    // Cancel button
+    const cancelY = btnY + btnH + UIScale.y(24);
+    const cancelText = this.add.text(canvasW / 2, cancelY, '[ Cancel ]', {
+      fontSize: UIScale.font(13), color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    cancelText.on('pointerover', () => cancelText.setColor('#ffffff'));
+    cancelText.on('pointerout', () => cancelText.setColor('#888888'));
+    cancelText.on('pointerdown', () => this.dismissWaveCountOverlay());
+    container.add(cancelText);
+
+    this.waveCountOverlay = container;
+  }
+
+  private dismissWaveCountOverlay(): void {
+    if (this.waveCountOverlay) {
+      this.waveCountOverlay.destroy();
+      this.waveCountOverlay = null;
+    }
   }
 
   private drawDiffButtons(): void {

@@ -10,7 +10,7 @@ for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
 
 /**
  * Standard game mode: gold-based sends, frontier buildings.
- * Used for Sprint, Standard, and Marathon.
+ * Used for Standard and Endless modes.
  */
 export class StandardMode extends BaseFrontierMode {
   readonly id: MatchMode;

@@ -14,8 +14,8 @@ import { SpawnManager } from '../systems/SpawnManager';
 import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
-import { FactionId, getFaction, FACTIONS } from '../data/Factions';
-import { MatchMode, WaveDefinition, getWavesForMode } from '../data/WaveDefinitions';
+import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
+import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
 import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
 import { DifficultyLevel, DIFFICULTIES, DifficultyHints } from '../data/Difficulty';
@@ -186,10 +186,11 @@ export class GameScene extends Phaser.Scene {
   private _gauntletOrder: FactionId[] | undefined;
   private _gauntletTransitioning: boolean = false;
   private _gauntletHud: Phaser.GameObjects.Text | null = null;
+  private waveCount?: number;
 
   private customMapDef: MapDefinition | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -199,6 +200,7 @@ export class GameScene extends Phaser.Scene {
     this.dailySeed = data.dailySeed ?? false;
     this.randomSeed = data.randomSeed ?? 0;
     this.creepFaction = data.creepFaction ?? 'arcane';
+    this.waveCount = data.waveCount;
     this._gauntletOrder = (data as any).gauntletOrder ?? undefined;
     this._gauntletTransitioning = false;
     this.generatedMapDef = null;
@@ -332,7 +334,7 @@ export class GameScene extends Phaser.Scene {
     this.mapDef = mapDef;
     const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
     this.grid = new Grid(mapDef, gridRows);
-    this.waves = getWavesForMode(this.matchMode);
+    this.waves = getWavesForMode(this.matchMode, this.waveCount);
     this.recalculatePaths();
 
     // Systems
@@ -1156,7 +1158,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.waveMgr.isComplete() && this.creeps.length === 0) {
+    if (this.waveMgr.isComplete() && this.creeps.length === 0 && this.matchMode !== 'endless') {
       // Gauntlet: stage transition instead of game over
       if (this.matchMode === 'gauntlet' && !this._gauntletTransitioning) {
         const gauntlet = this.gameMode as any;
@@ -1786,6 +1788,22 @@ export class GameScene extends Phaser.Scene {
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
     this.upcomingWaves.update(waveNum, this.waves);
+
+    // Endless mode: append more waves when running low, rotate creep faction every 10 waves
+    if (this.matchMode === 'endless') {
+      if (this.currentWave >= this.waves.length - 5) {
+        const nextStart = this.waves.length + 1;
+        const newWaves = generateEndlessWaves(nextStart, 10);
+        this.waves.push(...newWaves);
+        console.log(`[Endless] Appended waves ${nextStart}-${nextStart + 9}, total: ${this.waves.length}`);
+      }
+      if (waveNum % 10 === 0) {
+        const playable = FACTION_ORDER.filter(f => f !== 'random' && f !== this.creepFaction);
+        this.creepFaction = playable[Math.floor(Math.random() * playable.length)];
+        console.log(`[Endless] Creep faction rotated to: ${this.creepFaction}`);
+        this.eventLog.gameMessage(`Enemy faction changed to ${FACTIONS[this.creepFaction].name}!`);
+      }
+    }
 
     // Random faction rotation
     if (this.faction === 'random') {
