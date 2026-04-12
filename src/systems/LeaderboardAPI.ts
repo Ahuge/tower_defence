@@ -1,4 +1,4 @@
-const API_URL = 'https://td-leaderboard.alex-hughes.workers.dev';
+const API_URL = 'https://signal.streamingsplats.com';
 
 export interface LeaderboardEntry {
   id: string;
