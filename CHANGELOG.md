@@ -2,6 +2,13 @@
 
 ## 2026-04-11
 
+### Endless Mode + Streamlined Menu
+- **NEW MODE: Endless** — infinite wave scaling, play until you lose. Random creep faction every 10 waves, boss every 10 waves. HP scales cubically beyond wave 50, speed caps at 3x.
+- **Merged Sprint/Standard/Marathon** into a single "Standard" mode with wave count picker overlay (Quick 15 / Standard 30 / Extended 100).
+- **Menu streamlined** from 8 mode cards to 7. Endless card in orange.
+- GameOver shows "Survived X waves" for Endless instead of "Wave X/Y".
+- Endless skips creep faction select (auto-random since factions rotate).
+
 ### Custom Maps
 - **Custom Maps menu**: browse, import, and play user-created maps from the main menu.
 - **Map editor integration**: "Open Map Editor" button opens `/editor.html` in a new tab for visual map design.

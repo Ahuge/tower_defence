@@ -100,6 +100,7 @@ function autoTileIdx(col: number, row: number, grid: TerrainCell[][], matchType:
 export default function GauntletStructureEditor() {
   const [mapIdx, setMapIdx] = useState(0);
   const [themeOverride, setThemeOverride] = useState<string | null>(null);
+  const [mapName, setMapName] = useState('');
   const [cells, setCells] = useState<TerrainCell[][]>(() => makeGrid('empty'));
   const [entries, setEntries] = useState<Set<string>>(new Set());
   const [exits, setExits] = useState<Set<string>>(new Set());
@@ -160,6 +161,7 @@ export default function GauntletStructureEditor() {
     setExits(new Set(config.exits.map(p => `${p.col},${p.row}`)));
     setPlacements((data.structures || []).map(s => ({ ...s })));
     setSelectedPalette(null); setDragIdx(null); setShowExport(false); setBrush('select');
+    setMapName(config.name);
   }, [mapIdx]);
 
   const themeStructures = LARGE_STRUCTURES[activeTheme] || [];
@@ -415,7 +417,7 @@ export default function GauntletStructureEditor() {
     return JSON.stringify({
       faction: config.faction,
       theme: activeTheme,
-      name: config.name,
+      name: mapName || config.name,
       entries: [...entries].map(k => { const [c, r] = k.split(',').map(Number); return { col: c, row: r }; }),
       exits: [...exits].map(k => { const [c, r] = k.split(',').map(Number); return { col: c, row: r }; }),
       blocked,
@@ -460,6 +462,12 @@ export default function GauntletStructureEditor() {
 
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+        <input
+          value={mapName}
+          onChange={e => setMapName(e.target.value)}
+          placeholder="Map name..."
+          style={{ background: '#222', color: '#ffffff', border: '1px solid #666', padding: '5px 10px', fontFamily: 'monospace', fontSize: 12, width: 140 }}
+        />
         <select value={mapIdx} onChange={e => { setMapIdx(Number(e.target.value)); setThemeOverride(null); }}
           style={{ background: '#222', color: '#aa8844', border: '1px solid #aa8844', padding: '5px 10px', fontFamily: 'monospace', fontSize: 12 }}>
           {GAUNTLET_MAP_CONFIGS.map((c, i) => <option key={i} value={i}>{c.faction} — {c.name}</option>)}
@@ -656,6 +664,8 @@ export default function GauntletStructureEditor() {
                     setEntries(new Set((json.entries || []).map((p: any) => `${p.col},${p.row}`)));
                     setExits(new Set((json.exits || []).map((p: any) => `${p.col},${p.row}`)));
                     setPlacements((json.structures || []).map((s: any) => ({ structureId: s.structureId, col: s.col, row: s.row })));
+                    if (json.name) setMapName(json.name);
+                    if (json.theme && THEME_TILESET[json.theme]) setThemeOverride(json.theme);
                   } catch (e) {
                     alert('Invalid JSON: ' + (e as Error).message);
                   }
@@ -668,7 +678,7 @@ export default function GauntletStructureEditor() {
               const json = exportFullJSON();
               const blob = new Blob([json], { type: 'application/json' });
               const a = document.createElement('a');
-              a.download = `${config.faction}.json`;
+              a.download = `${(mapName || config.name).toLowerCase().replace(/\s+/g, '_')}.json`;
               a.href = URL.createObjectURL(blob);
               a.click();
               URL.revokeObjectURL(a.href);

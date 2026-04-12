@@ -20,12 +20,13 @@ export class DraftScene extends Phaser.Scene {
   private dailySeed: boolean = false;
   private creepFaction: FactionId | null = null;
   private customMapDef: MapDefinition | null = null;
+  private waveCount?: number;
 
   constructor() {
     super('DraftScene');
   }
 
-  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; customMapDef?: MapDefinition }): void {
+  init(data: { mode: MatchMode; faction: FactionId | null; map: MapId; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; customMapDef?: MapDefinition; waveCount?: number }): void {
     this.matchMode = data.mode;
     this.faction = data.faction;
     this.mapId = data.map;
@@ -35,6 +36,7 @@ export class DraftScene extends Phaser.Scene {
     this.dailySeed = data.dailySeed ?? false;
     this.creepFaction = data.creepFaction ?? null;
     this.customMapDef = data.customMapDef ?? null;
+    this.waveCount = data.waveCount;
   }
 
   create(): void {
@@ -118,6 +120,7 @@ export class DraftScene extends Phaser.Scene {
           dailySeed: this.dailySeed,
           creepFaction: this.creepFaction ?? undefined,
           customMapDef: this.customMapDef ?? undefined,
+          waveCount: this.waveCount,
         });
       });
     }
@@ -142,6 +145,7 @@ export class DraftScene extends Phaser.Scene {
           dailySeed: this.dailySeed,
           creepFaction: this.creepFaction ?? undefined,
           customMapDef: this.customMapDef ?? undefined,
+          waveCount: this.waveCount,
         });
       })
       .on('pointerover', function(this: Phaser.GameObjects.Text) { this.setColor('#aaaaaa'); })

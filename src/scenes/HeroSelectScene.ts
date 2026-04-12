@@ -28,6 +28,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private randomSeed: number = 0;
   private dailySeed: boolean = false;
   private customMapDef: MapDefinition | null = null;
+  private waveCount?: number;
   private phoneCardIndex: number = 0;
   private phoneOffered: HeroId[] = [];
 
@@ -35,7 +36,7 @@ export class HeroSelectScene extends Phaser.Scene {
     super('HeroSelectScene');
   }
 
-  init(data: { mode: MatchMode; faction: FactionId | null; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean; customMapDef?: MapDefinition }): void {
+  init(data: { mode: MatchMode; faction: FactionId | null; map?: MapId; difficulty?: DifficultyLevel; randomSeed?: number; dailySeed?: boolean; customMapDef?: MapDefinition; waveCount?: number }): void {
     this.matchMode = data.mode;
     this.faction = data.faction;
     this.mapId = data.map || 'hero_plains';
@@ -43,6 +44,7 @@ export class HeroSelectScene extends Phaser.Scene {
     this.randomSeed = data.randomSeed ?? 0;
     this.dailySeed = data.dailySeed ?? false;
     this.customMapDef = data.customMapDef ?? null;
+    this.waveCount = data.waveCount;
   }
 
   preload(): void {
@@ -385,6 +387,7 @@ export class HeroSelectScene extends Phaser.Scene {
       randomSeed: this.randomSeed,
       dailySeed: this.dailySeed,
       customMapDef: this.customMapDef ?? undefined,
+      waveCount: this.waveCount,
     });
   }
 }

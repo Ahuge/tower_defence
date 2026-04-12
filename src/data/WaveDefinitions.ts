@@ -1,4 +1,4 @@
-export type MatchMode = 'sprint' | 'standard' | 'marathon' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet';
+export type MatchMode = 'standard' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet';
 
 export interface WaveCreepGroup {
   creepType: string;
@@ -138,24 +138,66 @@ function generateStandardWaves(count: number): WaveDefinition[] {
   return waves;
 }
 
-export function getWavesForMode(mode: MatchMode): WaveDefinition[] {
+/** Generate waves for endless mode with aggressive scaling */
+export function generateEndlessWaves(startWave: number, count: number): WaveDefinition[] {
+  const waves: WaveDefinition[] = [];
+  const creepTypes = ['standard', 'fast', 'armored', 'swarm', 'evasive', 'shielded', 'splitter', 'regenerator', 'healer', 'flying', 'group'];
+  const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion', 'mage_heal'];
+
+  for (let i = 0; i < count; i++) {
+    const waveNum = startWave + i;
+    const baseHp = Math.round(20 + waveNum * 10 + waveNum * waveNum * 0.5 + Math.max(0, waveNum - 50) ** 2 * 0.3);
+    const baseSpeed = Math.min(3.0, 1 + waveNum * 0.015);
+    const creepCount = Math.min(30, 5 + Math.floor(waveNum * 0.5));
+    const interval = Math.max(100, 600 - waveNum * 8);
+
+    // Boss every 10 waves
+    if (waveNum % 10 === 0) {
+      waves.push({
+        wave: waveNum,
+        groups: [{ creepType: 'boss', count: 1, hpScale: baseHp * 2, speedScale: 1 }],
+        spawnInterval: 0,
+        isBoss: true,
+      });
+      continue;
+    }
+
+    const groups: WaveCreepGroup[] = [];
+
+    // Mix of creep types that scales with wave number
+    const availableTypes = creepTypes.slice(0, Math.min(creepTypes.length, 3 + Math.floor(waveNum / 5)));
+    for (const ct of availableTypes) {
+      const count = Math.max(1, Math.floor(creepCount / availableTypes.length));
+      groups.push({ creepType: ct, count, hpScale: baseHp, speedScale: baseSpeed });
+    }
+
+    // Add mages after wave 15
+    if (waveNum >= 15) {
+      groups.push({ creepType: mageTypes[waveNum % mageTypes.length], count: 1 + Math.floor(waveNum / 30), hpScale: baseHp, speedScale: baseSpeed });
+    }
+
+    waves.push({ wave: waveNum, groups, spawnInterval: interval, isBoss: false });
+  }
+
+  return waves;
+}
+
+export function getWavesForMode(mode: MatchMode, waveCount?: number): WaveDefinition[] {
   switch (mode) {
-    case 'sprint':
-      return generateStandardWaves(15);
     case 'standard':
-      return generateStandardWaves(30);
-    case 'marathon':
-      return generateStandardWaves(100);
+      return generateStandardWaves(waveCount ?? 30);
+    case 'endless':
+      return generateEndlessWaves(1, 20); // initial batch; more appended at runtime
     case 'battle':
-      return generateStandardWaves(30); // same wave structure, different economy
+      return generateStandardWaves(waveCount ?? 30); // same wave structure, different economy
     case 'hero_defense':
-      return generateStandardWaves(30).map(w => ({
+      return generateStandardWaves(waveCount ?? 30).map(w => ({
         ...w,
         groups: w.groups.map(g => ({ ...g, count: g.count * 10 })),
         spawnInterval: Math.max(80, Math.round(w.spawnInterval * 0.4)),
       })); // 10x creeps, faster spawns — flood the arena
     case 'circle_coop':
-      return generateStandardWaves(30); // same structure, leaked creeps forward to next player
+      return generateStandardWaves(waveCount ?? 30); // same structure, leaked creeps forward to next player
     case 'gauntlet':
       return generateStandardWaves(10); // placeholder — actual waves come from GauntletMode.getStageWaves()
   }
