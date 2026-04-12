@@ -6,6 +6,18 @@ import { UIScale } from '../systems/UIScale';
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
   {
+    version: 'v28 — Endless Mode + Streamlined Menu',
+    changes: [
+      'NEW MODE: Endless — infinite scaling, play until you fall',
+      'Random creep faction every 10 waves, boss every 10 waves',
+      'HP scales cubically beyond wave 50 — gets brutal',
+      'Game over shows "Survived X waves" — no victory, only glory',
+      'Sprint/Standard/Marathon merged into one Standard mode',
+      'Wave count picker: Quick (15), Standard (30), Extended (100)',
+      'Menu streamlined from 8 to 7 mode cards',
+    ],
+  },
+  {
     version: 'v27 — Custom Maps',
     changes: [
       'NEW: Custom Maps — create, save, and play your own maps',

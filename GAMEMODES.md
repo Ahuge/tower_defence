@@ -1,49 +1,40 @@
 # Game Modes
 
-## Sprint (15 waves)
+## Standard (15 / 30 / 100 waves)
 
-Quick game with fewer creep types. Good for learning tower synergies and testing new factions.
+The core tower defence experience. Pick your wave count from the overlay: Quick (15), Standard (30), or Extended (100).
 
-- **Waves**: 15 (early-game creep types only — no mages, no flying)
-- **Economy**: Standard gold. Kills + wave income + frontier.
-- **Sends**: Available (Z/X/C/V). Adds extra creeps to your own wave for permanent income bonus.
-- **Win condition**: Survive all 15 waves.
-
----
-
-## Standard (30 waves)
-
-The core experience. All creep types appear progressively. Full economic depth.
-
-- **Waves**: 30. Boss every 10th wave. Mages from wave 18, flying from wave 19. Regenerators from wave 25. Late waves (21+) have themed synergistic compositions.
+- **Waves**: Configurable. Boss every 10th wave. Mages from wave 18, flying from wave 19. Regenerators from wave 25. Late waves (21+) have themed synergistic compositions.
 - **Economy**: Standard gold. Kills + wave income + frontier. Kill gold decays by 1 per 10 waves (5g→4g→3g→2g floor).
-- **Sends**: Available. Income bonus compounds over 30 waves. Costs scale +10% per 5 waves. Tier 2 sends (healer, shielded, flying, regen) unlock at waves 10/15/20.
+- **Sends**: Available (Z/X/C/V). Income bonus compounds over time. Costs scale +10% per 5 waves. Tier 2 sends unlock at waves 10/15/20.
 - **Frontier**: Faction-specific buildings with overcharge/dig/harvest actions.
-- **Difficulty scaling**: HP scales quadratically — waves 1-10 feel familiar, but wave 20+ creeps are significantly tougher. Hard mode is genuinely punishing. Insane mode is probably not winnable.
-- **Win condition**: Survive all 30 waves.
+- **Difficulty scaling**: HP scales quadratically — waves 1-10 feel familiar, but wave 20+ creeps are significantly tougher.
+- **Win condition**: Survive all waves.
 
 ### Strategy Tips
 - First 3 waves are just standard creeps — get your economy started.
 - Invest in frontier buildings early for compound income.
-- Save sends for after wave 10 when income matters most.
 - Build a maze before bosses at waves 10, 20, 30.
 - Waves 25-26 bring regenerators — you need sustained DPS, not burst.
-- Hard mode bosses regenerate HP. You need overwhelming firepower.
 
 ---
 
-## Marathon (Endless)
+## Endless (Infinite)
 
-Infinite scaling. How far can you go?
+Infinite scaling. How far can you survive?
 
-- **Waves**: 100+ (generated). All creep types from wave 20+, regenerators from 25+. HP scales quadratically, speed scales continuously.
-- **Economy**: Standard gold. Same as Standard but the income window is much longer.
-- **Win condition**: None — play until you lose. Score based on wave reached.
+- **Waves**: Generated dynamically in batches, never runs out.
+- **Scaling**: HP scales cubically beyond wave 50. Speed caps at 3x. Creep count increases up to 30 per wave.
+- **Boss**: Every 10 waves.
+- **Creep factions**: Random faction rotation every 10 waves — new visuals and variety as you progress.
+- **Economy**: Standard gold. Same as Standard but the income window is unlimited.
+- **Win condition**: None — play until you lose. Game over shows "Survived X waves".
 
 ### Strategy Tips
 - Long-term income investment pays off massively.
-- Ultimates (600-900g) become essential in late waves.
-- Flying creeps and mages will eventually overwhelm even perfect mazes.
+- Ultimates (600-900g) become essential beyond wave 50.
+- The cubic HP scaling means even perfect mazes eventually fall — it's about how far you get.
+- Faction rotation is cosmetic — creep types/stats don't change with faction.
 
 ---
 
