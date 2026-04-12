@@ -4,6 +4,7 @@ import { GameStats } from '../systems/StatsTracker';
 import { TOWER_TYPES } from '../data/TowerTypes';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
+import { LeaderboardAPI } from '../systems/LeaderboardAPI';
 
 export interface GameOverData {
   won: boolean;
@@ -14,6 +15,7 @@ export interface GameOverData {
   creepsKilled: number;
   matchMode: string;
   faction: string | null;
+  difficulty: string;
   stats?: GameStats;
   // Versus fields
   isVersus?: boolean;
@@ -265,6 +267,50 @@ export class GameOverScene extends Phaser.Scene {
     menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
     menuBtn.on('pointerover', () => menuBtn.setColor('#ffffff'));
     menuBtn.on('pointerout', () => menuBtn.setColor('#4488ff'));
+
+    // Leaderboard submit for Endless mode
+    if (data.matchMode === 'endless') {
+      const submitY = btnY - UIScale.space(36);
+      const submitBtn = this.add.text(cx, submitY, '[ Submit Score ]', {
+        fontSize: btnFontSize, color: '#ffcc44', fontFamily: 'monospace',
+        padding: { x: UIScale.space(8), y: UIScale.space(6) },
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      submitBtn.on('pointerover', () => submitBtn.setColor('#ffffff'));
+      submitBtn.on('pointerout', () => submitBtn.setColor('#ffcc44'));
+      submitBtn.on('pointerdown', () => {
+        const name = window.prompt('Enter your name for the leaderboard:', 'Anonymous');
+        if (!name) return;
+        const trimmedName = name.trim().slice(0, 20) || 'Anonymous';
+        submitBtn.setText('Submitting...').removeInteractive();
+        submitBtn.setColor('#888888');
+        LeaderboardAPI.submitScore(
+          trimmedName,
+          data.wave,
+          data.faction || 'Random',
+          data.difficulty,
+          'endless',
+        ).then((result) => {
+          if (result.success && result.rank != null) {
+            submitBtn.setText(`Score submitted! Rank #${result.rank}`);
+            submitBtn.setColor('#44ff44');
+          } else {
+            submitBtn.setText(`Error: ${result.error || 'Unknown error'}`);
+            submitBtn.setColor('#ff4444');
+          }
+        });
+      });
+
+      // View Leaderboard link
+      const viewY = submitY - UIScale.space(26);
+      const viewBtn = this.add.text(cx, viewY, '[ View Leaderboard ]', {
+        fontSize: UIScale.font(12), color: '#88aacc', fontFamily: 'monospace',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      viewBtn.on('pointerover', () => viewBtn.setColor('#ffffff'));
+      viewBtn.on('pointerout', () => viewBtn.setColor('#88aacc'));
+      viewBtn.on('pointerdown', () => {
+        this.scene.start('LeaderboardScene');
+      });
+    }
   }
 
   private saveScore(mode: string, score: number): void {

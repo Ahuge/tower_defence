@@ -212,16 +212,24 @@ export class MenuScene extends Phaser.Scene {
       fontSize: UIScale.font(10), color: '#555555', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    // Encyclopedia + Changelog buttons
+    // Encyclopedia + Leaderboard + Changelog buttons
     const bottomRowY = gridStartY + modeRows * (cardH + gapY) + 18;
-    const encBtn = this.add.text(cx - 120, bottomRowY, '[ Encyclopedia ]', {
+    const bottomSpacing = ph ? 160 : 130;
+    const encBtn = this.add.text(cx - bottomSpacing, bottomRowY, '[ Encyclopedia ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     encBtn.on('pointerdown', () => this.scene.start('EncyclopediaScene'));
     encBtn.on('pointerover', () => encBtn.setColor('#bbddff'));
     encBtn.on('pointerout', () => encBtn.setColor('#88aacc'));
 
-    const logBtn = this.add.text(cx + 120, bottomRowY, '[ Changelog ]', {
+    const lbBtn = this.add.text(cx, bottomRowY, '[ Leaderboard ]', {
+      fontSize: UIScale.font(13), color: '#ffcc44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    lbBtn.on('pointerdown', () => this.scene.start('LeaderboardScene'));
+    lbBtn.on('pointerover', () => lbBtn.setColor('#ffeeaa'));
+    lbBtn.on('pointerout', () => lbBtn.setColor('#ffcc44'));
+
+    const logBtn = this.add.text(cx + bottomSpacing, bottomRowY, '[ Changelog ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     logBtn.on('pointerdown', () => this.scene.start('ChangelogScene'));

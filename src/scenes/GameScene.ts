@@ -1341,6 +1341,7 @@ export class GameScene extends Phaser.Scene {
       creepsKilled: this.creepMgr.totalCreepsKilled,
       matchMode: this.matchMode,
       faction: this.faction,
+      difficulty: this.difficulty,
       stats: this.statsTracker.stats,
       // Versus data
       isVersus: !!this.versus,
