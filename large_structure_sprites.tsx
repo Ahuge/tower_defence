@@ -2803,55 +2803,107 @@ function drawCornerArrow(ctx: CanvasRenderingContext2D, path: [number, number][]
   }
 }
 
+// Draw a bold entry marker (incoming) and exit marker (outgoing) on the tile edges
+// Entry = green inward-pointing arrow; exit = yellow outward-pointing arrow
+function drawCornerMarkers(ctx: CanvasRenderingContext2D, entry: 'N' | 'S' | 'E' | 'W', exit: 'N' | 'S' | 'E' | 'W') {
+  const entryC = '#44ff44';
+  const exitC = '#ffee44';
+
+  // Entry marker — green arrow pointing INWARD from the edge
+  if (entry === 'N') {
+    // Top edge, arrow pointing down
+    p(ctx, 0, 0, 6, 0, entryC); p(ctx, 0, 0, 7, 0, entryC);
+    p(ctx, 0, 0, 5, 1, entryC); p(ctx, 0, 0, 8, 1, entryC);
+    p(ctx, 0, 0, 6, 2, entryC); p(ctx, 0, 0, 7, 2, entryC);
+  } else if (entry === 'S') {
+    p(ctx, 0, 0, 6, 13, entryC); p(ctx, 0, 0, 7, 13, entryC);
+    p(ctx, 0, 0, 5, 12, entryC); p(ctx, 0, 0, 8, 12, entryC);
+    p(ctx, 0, 0, 6, 11, entryC); p(ctx, 0, 0, 7, 11, entryC);
+  } else if (entry === 'E') {
+    p(ctx, 0, 0, 13, 6, entryC); p(ctx, 0, 0, 13, 7, entryC);
+    p(ctx, 0, 0, 12, 5, entryC); p(ctx, 0, 0, 12, 8, entryC);
+    p(ctx, 0, 0, 11, 6, entryC); p(ctx, 0, 0, 11, 7, entryC);
+  } else { // W
+    p(ctx, 0, 0, 0, 6, entryC); p(ctx, 0, 0, 0, 7, entryC);
+    p(ctx, 0, 0, 1, 5, entryC); p(ctx, 0, 0, 1, 8, entryC);
+    p(ctx, 0, 0, 2, 6, entryC); p(ctx, 0, 0, 2, 7, entryC);
+  }
+
+  // Exit marker — yellow arrow pointing OUTWARD toward the edge
+  if (exit === 'N') {
+    p(ctx, 0, 0, 6, 0, exitC); p(ctx, 0, 0, 7, 0, exitC);
+    p(ctx, 0, 0, 5, 1, exitC); p(ctx, 0, 0, 8, 1, exitC);
+    p(ctx, 0, 0, 4, 2, exitC); p(ctx, 0, 0, 9, 2, exitC);
+  } else if (exit === 'S') {
+    p(ctx, 0, 0, 6, 13, exitC); p(ctx, 0, 0, 7, 13, exitC);
+    p(ctx, 0, 0, 5, 12, exitC); p(ctx, 0, 0, 8, 12, exitC);
+    p(ctx, 0, 0, 4, 11, exitC); p(ctx, 0, 0, 9, 11, exitC);
+  } else if (exit === 'E') {
+    p(ctx, 0, 0, 13, 6, exitC); p(ctx, 0, 0, 13, 7, exitC);
+    p(ctx, 0, 0, 12, 5, exitC); p(ctx, 0, 0, 12, 8, exitC);
+    p(ctx, 0, 0, 11, 4, exitC); p(ctx, 0, 0, 11, 9, exitC);
+  } else { // W
+    p(ctx, 0, 0, 0, 6, exitC); p(ctx, 0, 0, 0, 7, exitC);
+    p(ctx, 0, 0, 1, 5, exitC); p(ctx, 0, 0, 1, 8, exitC);
+    p(ctx, 0, 0, 2, 4, exitC); p(ctx, 0, 0, 2, 9, exitC);
+  }
+}
+
 // --- 8 directional corners ---
 // S_TO_E: enters from south (bottom), exits east (right). Flow: up then right.
 function drawMechConveyorSToE(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'ne');
-  // Flow direction path: bottom-center → center → right-center
-  const path: [number, number][] = [[6, 11], [7, 7], [10, 6]];
-  // Final direction is east
+  drawCornerMarkers(ctx, 'S', 'E');
+  const path: [number, number][] = [[6, 10], [7, 7], [10, 6]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'N' : 'E');
 }
 // E_TO_S: enters from east (right), exits south (bottom). Flow: left then down.
 function drawMechConveyorEToS(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'ne');
-  const path: [number, number][] = [[10, 6], [7, 7], [6, 11]];
+  drawCornerMarkers(ctx, 'E', 'S');
+  const path: [number, number][] = [[10, 6], [7, 7], [6, 10]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'W' : 'S');
 }
 // S_TO_W: enters from south, exits west (left). Flow: up then left.
 function drawMechConveyorSToW(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'nw');
-  const path: [number, number][] = [[7, 11], [6, 7], [3, 6]];
+  drawCornerMarkers(ctx, 'S', 'W');
+  const path: [number, number][] = [[7, 10], [6, 7], [3, 6]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'N' : 'W');
 }
 // W_TO_S: enters from west, exits south.
 function drawMechConveyorWToS(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'nw');
-  const path: [number, number][] = [[3, 6], [6, 7], [7, 11]];
+  drawCornerMarkers(ctx, 'W', 'S');
+  const path: [number, number][] = [[3, 6], [6, 7], [7, 10]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'E' : 'S');
 }
 // N_TO_E: enters from north (top), exits east. Flow: down then right.
 function drawMechConveyorNToE(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'se');
-  const path: [number, number][] = [[6, 2], [7, 6], [10, 7]];
+  drawCornerMarkers(ctx, 'N', 'E');
+  const path: [number, number][] = [[6, 3], [7, 6], [10, 7]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'S' : 'E');
 }
 // E_TO_N: enters east, exits north.
 function drawMechConveyorEToN(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'se');
-  const path: [number, number][] = [[10, 7], [7, 6], [6, 2]];
+  drawCornerMarkers(ctx, 'E', 'N');
+  const path: [number, number][] = [[10, 7], [7, 6], [6, 3]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'W' : 'N');
 }
 // N_TO_W: enters north, exits west.
 function drawMechConveyorNToW(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'sw');
-  const path: [number, number][] = [[7, 2], [6, 6], [3, 7]];
+  drawCornerMarkers(ctx, 'N', 'W');
+  const path: [number, number][] = [[7, 3], [6, 6], [3, 7]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'S' : 'W');
 }
 // W_TO_N: enters west, exits north.
 function drawMechConveyorWToN(ctx: CanvasRenderingContext2D, frame: number) {
   drawCornerBase(ctx, 'sw');
-  const path: [number, number][] = [[3, 7], [6, 6], [7, 2]];
+  drawCornerMarkers(ctx, 'W', 'N');
+  const path: [number, number][] = [[3, 7], [6, 6], [7, 3]];
   drawCornerArrow(ctx, path, frame, frame < 2 ? 'E' : 'N');
 }
 
@@ -4944,14 +4996,14 @@ export const structures: StructureDef[] = [
   { key: 'mech_conveyor_h_left', label: 'Mech Conveyor ← Left (3x1)', faction: 'Mechanical', widthCells: 3, heightCells: 1, animFrames: 3, draw: drawMechConveyorHLeft },
   { key: 'mech_conveyor_v_down', label: 'Mech Conveyor ↓ Down (1x3)', faction: 'Mechanical', widthCells: 1, heightCells: 3, animFrames: 3, draw: drawMechConveyorVDown },
   { key: 'mech_conveyor_v_up', label: 'Mech Conveyor ↑ Up (1x3)', faction: 'Mechanical', widthCells: 1, heightCells: 3, animFrames: 3, draw: drawMechConveyorVUp },
-  { key: 'mech_conveyor_s_to_e', label: 'Mech Conveyor S→E (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorSToE },
-  { key: 'mech_conveyor_e_to_s', label: 'Mech Conveyor E→S (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorEToS },
-  { key: 'mech_conveyor_s_to_w', label: 'Mech Conveyor S→W (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorSToW },
-  { key: 'mech_conveyor_w_to_s', label: 'Mech Conveyor W→S (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorWToS },
-  { key: 'mech_conveyor_n_to_e', label: 'Mech Conveyor N→E (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorNToE },
-  { key: 'mech_conveyor_e_to_n', label: 'Mech Conveyor E→N (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorEToN },
-  { key: 'mech_conveyor_n_to_w', label: 'Mech Conveyor N→W (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorNToW },
-  { key: 'mech_conveyor_w_to_n', label: 'Mech Conveyor W→N (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorWToN },
+  { key: 'mech_conveyor_s_to_e', label: 'Corner: Up from ↓ then → Right', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorSToE },
+  { key: 'mech_conveyor_e_to_s', label: 'Corner: Left from → then ↓ Down', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorEToS },
+  { key: 'mech_conveyor_s_to_w', label: 'Corner: Up from ↓ then ← Left', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorSToW },
+  { key: 'mech_conveyor_w_to_s', label: 'Corner: Right from ← then ↓ Down', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorWToS },
+  { key: 'mech_conveyor_n_to_e', label: 'Corner: Down from ↑ then → Right', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorNToE },
+  { key: 'mech_conveyor_e_to_n', label: 'Corner: Left from → then ↑ Up', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorEToN },
+  { key: 'mech_conveyor_n_to_w', label: 'Corner: Down from ↑ then ← Left', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorNToW },
+  { key: 'mech_conveyor_w_to_n', label: 'Corner: Right from ← then ↑ Up', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorWToN },
   // Nature (8)
   { key: 'nature_ancient_tree', label: 'Nature Ancient Tree (7x7)', faction: 'Nature', widthCells: 7, heightCells: 7, animFrames: 3, draw: drawNatureAncientTree },
   { key: 'nature_sacred_pond', label: 'Nature Sacred Pond (5x4)', faction: 'Nature', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawNatureSacredPond },

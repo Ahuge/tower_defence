@@ -68,17 +68,23 @@ interface Placement {
 }
 
 // Pre-render structure textures
-function buildTextureCache(): Map<string, HTMLCanvasElement> {
-  const cache = new Map<string, HTMLCanvasElement>();
+// Cache per-frame canvases: key = structureKey, value = array of canvases (one per animFrame)
+function buildTextureCache(): Map<string, HTMLCanvasElement[]> {
+  const cache = new Map<string, HTMLCanvasElement[]>();
   for (const s of spriteDefs) {
     const pw = s.widthCells * TS;
     const ph = s.heightCells * TS;
-    const c = document.createElement('canvas');
-    c.width = pw; c.height = ph;
-    const ctx = c.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    s.draw(ctx, 0);
-    cache.set(s.key, c);
+    const frames: HTMLCanvasElement[] = [];
+    const nFrames = s.animFrames ?? 1;
+    for (let f = 0; f < nFrames; f++) {
+      const c = document.createElement('canvas');
+      c.width = pw; c.height = ph;
+      const ctx = c.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      s.draw(ctx, f);
+      frames.push(c);
+    }
+    cache.set(s.key, frames);
   }
   return cache;
 }
@@ -113,12 +119,19 @@ export default function GauntletStructureEditor() {
   const [mouseDown, setMouseDown] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [textureCache, setTextureCache] = useState<Map<string, HTMLCanvasElement>>(new Map());
+  const [textureCache, setTextureCache] = useState<Map<string, HTMLCanvasElement[]>>(new Map());
+  const [animFrame, setAnimFrame] = useState(0);
   const [tilesetImg, setTilesetImg] = useState<HTMLImageElement | null>(null);
   const [doodadImg, setDoodadImg] = useState<HTMLImageElement | null>(null);
 
   // Build structure texture cache once
   useEffect(() => { setTextureCache(buildTextureCache()); }, []);
+
+  // Animate: cycle through frames at 1.5fps (667ms per frame)
+  useEffect(() => {
+    const interval = setInterval(() => setAnimFrame(f => f + 1), 500);
+    return () => clearInterval(interval);
+  }, []);
 
   function makeGrid(fill: TerrainCell): TerrainCell[][] {
     return Array.from({ length: ROWS }, () => Array(COLS).fill(fill));
@@ -312,8 +325,11 @@ export default function GauntletStructureEditor() {
       const pw = def.widthCells * CELL, ph = def.heightCells * CELL;
       const overlap = isOverlapping(i);
 
-      const tex = textureCache.get(p.structureId);
-      if (tex) ctx.drawImage(tex, 0, 0, tex.width, tex.height, x, y, pw, ph);
+      const frames = textureCache.get(p.structureId);
+      if (frames && frames.length > 0) {
+        const tex = frames[animFrame % frames.length];
+        ctx.drawImage(tex, 0, 0, tex.width, tex.height, x, y, pw, ph);
+      }
 
       ctx.strokeStyle = dragIdx === i ? '#ffcc44' : overlap ? '#ff4444' : '#44aaff55';
       ctx.lineWidth = dragIdx === i ? 2 : 1;
@@ -335,8 +351,13 @@ export default function GauntletStructureEditor() {
       if (def) {
         const x = hoveredCell.col * CELL, y = hoveredCell.row * CELL;
         const pw = def.widthCells * CELL, ph = def.heightCells * CELL;
-        const tex = textureCache.get(selectedPalette);
-        if (tex) { ctx.globalAlpha = 0.5; ctx.drawImage(tex, 0, 0, tex.width, tex.height, x, y, pw, ph); ctx.globalAlpha = 1; }
+        const frames = textureCache.get(selectedPalette);
+        if (frames && frames.length > 0) {
+          const tex = frames[animFrame % frames.length];
+          ctx.globalAlpha = 0.5;
+          ctx.drawImage(tex, 0, 0, tex.width, tex.height, x, y, pw, ph);
+          ctx.globalAlpha = 1;
+        }
         ctx.strokeStyle = '#44ff44'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
         ctx.strokeRect(x + 0.5, y + 0.5, pw - 1, ph - 1); ctx.setLineDash([]);
       }
@@ -589,7 +610,9 @@ export default function GauntletStructureEditor() {
                   }}>
                   <canvas ref={el => {
                     if (!el || !textureCache.has(def.id)) return;
-                    const tex = textureCache.get(def.id)!;
+                    const frames = textureCache.get(def.id)!;
+                    if (frames.length === 0) return;
+                    const tex = frames[animFrame % frames.length];
                     const maxW = 48, maxH = 36;
                     const scale = Math.min(maxW / (def.widthCells * TS), maxH / (def.heightCells * TS));
                     el.width = Math.ceil(def.widthCells * TS * scale); el.height = Math.ceil(def.heightCells * TS * scale);
@@ -597,8 +620,8 @@ export default function GauntletStructureEditor() {
                     c.drawImage(tex, 0, 0, el.width, el.height);
                   }} style={{ imageRendering: 'pixelated', flexShrink: 0, border: '1px solid #333' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: '#aa8844', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {def.id.replace(/^.*?_/, '')}
+                    <div style={{ fontSize: 11, color: '#aa8844', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={spriteDefs.find(s => s.key === def.id)?.label || def.id}>
+                      {spriteDefs.find(s => s.key === def.id)?.label?.replace(/\s*\(\d+x\d+\)$/, '') || def.id.replace(/^.*?_/, '')}
                     </div>
                     <div style={{ fontSize: 10, color: '#666' }}>
                       {def.widthCells}×{def.heightCells} cells
