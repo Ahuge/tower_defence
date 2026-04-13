@@ -1139,19 +1139,14 @@ function drawMechPress(ctx: CanvasRenderingContext2D, frame: number) {
   // Hydraulic cylinder top (fixed) + moving piston shaft
   const ramX = cx - 6, ramW = 12;
   b(ctx, 0, 0, ramX, ramRestY, ramW, 2, '#777777'); // cylinder cap (static)
-  // Piston shaft — now STRETCHES from ramRestY down to the die position
-  const shaftTop = ramRestY + 2;
-  const shaftBot = ramRestY + 6 + offsetY;
-  b(ctx, 0, 0, ramX + 2, shaftTop, ramW - 4, shaftBot - shaftTop, '#888888');
-  b(ctx, 0, 0, ramX + 3, shaftTop, ramW - 6, shaftBot - shaftTop, '#999999');
-  // Piston rod (narrower, connecting shaft to die)
-  const rodTop = shaftBot;
-  const rodBot = rodTop + 4;
-  b(ctx, 0, 0, cx - 3, rodTop, 6, rodBot - rodTop, '#aaaaaa');
-  b(ctx, 0, 0, cx - 2, rodTop, 4, rodBot - rodTop, '#bbbbbb');
-
   // Die / press head — position moves with offsetY
   const dieY = ramRestY + dieRestOffset + offsetY;
+  // Piston shaft — stretches continuously from below cylinder cap all the way to die top
+  const shaftTop = ramRestY + 2;
+  const shaftBot = dieY;
+  b(ctx, 0, 0, cx - 4, shaftTop, 8, shaftBot - shaftTop, '#888888');
+  b(ctx, 0, 0, cx - 3, shaftTop, 6, shaftBot - shaftTop, '#999999');
+  b(ctx, 0, 0, cx - 1, shaftTop, 2, shaftBot - shaftTop, '#aaaaaa'); // highlight
   b(ctx, 0, 0, cx - 10, dieY, 20, 6, '#505050');
   b(ctx, 0, 0, cx - 9, dieY + 1, 18, 4, '#5a5a5a');
   b(ctx, 0, 0, cx - 8, dieY + 5, 16, 2, '#444444');
