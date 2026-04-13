@@ -2571,102 +2571,247 @@ function drawMechSteamBoiler(ctx: CanvasRenderingContext2D, frame: number) {
   if (frame===2) { b(ctx, 0, 0, cx-1, bt-4, 3, 2, '#dddddd77'); p(ctx, 0, 0, cx, bt-5, '#cccccc44'); }
 }
 
-function drawMechConveyorTerminal(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(4), H = gh(2);
+function drawMechConveyorH(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(3), H = gh(1); // 42x14
 
-  // Heavy steel base plate with oil stains
-  b(ctx, 0, 0, 0, H - 3, W, 3, '#3a3838');
-  b(ctx, 0, 0, 1, H - 2, W - 2, 1, '#333030');
-  for (let x = 3; x < W - 3; x += 7) p(ctx, 0, 0, x, H - 1, '#2a2828');
-  // Oil drip stains on base
-  p(ctx, 0, 0, 12, H - 3, '#222220'); p(ctx, 0, 0, 13, H - 2, '#222220');
-  p(ctx, 0, 0, W - 16, H - 3, '#282825');
+  // Dark belt surface
+  b(ctx, 0, 0, 0, 2, W, H - 4, '#2a2a28');
+  b(ctx, 0, 0, 0, 3, W, H - 6, '#333330');
 
-  // Left side housing — heavy steel with drive gear
-  b(ctx, 0, 0, 0, 2, 6, H - 5, '#444440');
-  b(ctx, 0, 0, 1, 3, 4, H - 7, '#4e4e48');
-  b(ctx, 0, 0, 0, 2, 6, 1, '#383834');
-  b(ctx, 0, 0, 0, H - 4, 6, 1, '#383834');
-  // Bolts on left frame
-  p(ctx, 0, 0, 1, 4, '#888880'); p(ctx, 0, 0, 4, 4, '#888880');
-  p(ctx, 0, 0, 1, H - 6, '#888880'); p(ctx, 0, 0, 4, H - 6, '#888880');
-  // Drive gear — brass with visible teeth
-  const gy = Math.floor(H / 2);
-  b(ctx, 0, 0, 1, gy - 2, 4, 4, '#ccaa44');
-  b(ctx, 0, 0, 2, gy - 1, 2, 2, '#aa8833');
-  p(ctx, 0, 0, 3, gy - 3, '#ddbb55'); p(ctx, 0, 0, 0, gy, '#ddbb55');
-  p(ctx, 0, 0, 3, gy + 2, '#ddbb55'); p(ctx, 0, 0, 5, gy, '#ddbb55');
-  // Gear rotates per frame
-  if (frame === 1) { p(ctx, 0, 0, 1, gy - 2, '#ddbb55'); p(ctx, 0, 0, 5, gy + 2, '#ddbb55'); }
-  if (frame === 2) { p(ctx, 0, 0, 5, gy - 2, '#ddbb55'); p(ctx, 0, 0, 1, gy + 2, '#ddbb55'); }
+  // Top rail with hazard stripes
+  b(ctx, 0, 0, 0, 0, W, 2, '#444440');
+  for (let x = 0; x < W; x += 2) {
+    const stripe = (x % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, x, 0, 2, 1, stripe);
+  }
+  p(ctx, 0, 0, 0, 1, '#555550'); p(ctx, 0, 0, W - 1, 1, '#555550');
 
-  // Right side housing with gear
-  b(ctx, 0, 0, W - 6, 2, 6, H - 5, '#444440');
-  b(ctx, 0, 0, W - 5, 3, 4, H - 7, '#4e4e48');
-  b(ctx, 0, 0, W - 6, 2, 6, 1, '#383834');
-  b(ctx, 0, 0, W - 6, H - 4, 6, 1, '#383834');
-  p(ctx, 0, 0, W - 5, 4, '#888880'); p(ctx, 0, 0, W - 2, 4, '#888880');
-  p(ctx, 0, 0, W - 5, H - 6, '#888880'); p(ctx, 0, 0, W - 2, H - 6, '#888880');
-  b(ctx, 0, 0, W - 5, gy - 2, 4, 4, '#ccaa44');
-  b(ctx, 0, 0, W - 4, gy - 1, 2, 2, '#aa8833');
-  p(ctx, 0, 0, W - 3, gy - 3, '#ddbb55'); p(ctx, 0, 0, W - 1, gy, '#ddbb55');
-
-  // Belt bed — dark rubber surface with ridges
-  const bx = 6, by = 4, bw = W - 12, bh = H - 8;
-  b(ctx, 0, 0, bx, by, bw, bh, '#333330');
-  b(ctx, 0, 0, bx, by, bw, 1, '#2a2a28');
-  b(ctx, 0, 0, bx, by + bh - 1, bw, 1, '#2a2a28');
-  for (let x = bx + 1; x < bx + bw - 1; x += 2) {
-    b(ctx, 0, 0, x, by + 1, 1, bh - 2, '#3a3a36');
+  // Bottom rail with hazard stripes
+  b(ctx, 0, 0, 0, H - 2, W, 2, '#444440');
+  for (let x = 0; x < W; x += 2) {
+    const stripe = (x % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, x, H - 1, 2, 1, stripe);
   }
 
-  // Animated belt arrows — chevrons scrolling right
-  const off = (frame * 4) % 12;
-  for (let x = bx + 2 + off; x < bx + bw - 4; x += 12) {
-    b(ctx, 0, 0, x, by + 2, 5, bh - 4, '#888877');
-    b(ctx, 0, 0, x + 1, by + 3, 3, bh - 6, '#999988');
-    // Arrow head chevron pointing right
-    p(ctx, 0, 0, x + 5, by + Math.floor(bh / 2) - 1, '#aaa990');
-    p(ctx, 0, 0, x + 5, by + Math.floor(bh / 2), '#aaa990');
-    p(ctx, 0, 0, x + 6, by + Math.floor(bh / 2), '#999988');
+  // Rollers at corners
+  b(ctx, 0, 0, 0, 3, 1, H - 6, '#888888'); p(ctx, 0, 0, 0, 3, '#999999'); p(ctx, 0, 0, 0, H - 4, '#777777');
+  b(ctx, 0, 0, W - 1, 3, 1, H - 6, '#888888'); p(ctx, 0, 0, W - 1, 3, '#999999'); p(ctx, 0, 0, W - 1, H - 4, '#777777');
+
+  // Animated chevron arrows scrolling right
+  const off = frame * 3;
+  for (let x = off; x < W; x += 9) {
+    // Chevron arrow pointing right: > shape
+    const cy = Math.floor(H / 2);
+    if (x >= 0 && x < W - 1) p(ctx, 0, 0, x, cy - 2, '#aaaaaa');
+    if (x + 1 >= 0 && x + 1 < W) p(ctx, 0, 0, x + 1, cy - 1, '#aaaaaa');
+    if (x + 2 >= 0 && x + 2 < W) { p(ctx, 0, 0, x + 2, cy, '#ffffff'); p(ctx, 0, 0, x + 2, cy - 1, '#aaaaaa'); }
+    if (x + 1 >= 0 && x + 1 < W) p(ctx, 0, 0, x + 1, cy + 1, '#aaaaaa');
+    if (x >= 0 && x < W - 1) p(ctx, 0, 0, x, cy + 2, '#aaaaaa');
+    // Tail
+    if (x - 1 >= 0 && x - 1 < W) { p(ctx, 0, 0, x - 1, cy - 1, '#888888'); p(ctx, 0, 0, x - 1, cy + 1, '#888888'); }
   }
-
-  // Rollers underneath belt — visible at bottom
-  for (let x = bx + 2; x < bx + bw - 2; x += 6) {
-    b(ctx, 0, 0, x, H - 5, 3, 2, '#777770');
-    p(ctx, 0, 0, x + 1, H - 5, '#888880');
-    p(ctx, 0, 0, x, H - 4, '#555550'); p(ctx, 0, 0, x + 2, H - 4, '#555550');
-  }
-
-  // Control panel on top right corner
-  b(ctx, 0, 0, W - 5, 0, 4, 2, '#2a2828');
-  b(ctx, 0, 0, W - 4, 0, 2, 1, '#333030');
-  p(ctx, 0, 0, W - 4, 0, '#00ff44'); // green status LED
-  p(ctx, 0, 0, W - 3, 0, frame === 1 ? '#ff4400' : '#882200'); // blinking LED
-
-  // Safety rail along far edge
-  b(ctx, 0, 0, 6, 1, W - 12, 1, '#666660');
-  for (let x = 8; x < W - 8; x += 6) { b(ctx, 0, 0, x, 1, 1, 2, '#555550'); }
 }
 
-function drawMechCraneArm(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(5); const cx = Math.floor(W/2);
-  // Base
-  b(ctx, 0, 0, 2, H-8, W-4, 8, '#555555');
-  // Mast
-  b(ctx, 0, 0, cx-2, 8, 4, H-16, '#777777');
-  // Arm direction per frame
-  const armDir = frame === 0 ? -1 : frame === 2 ? 1 : 0;
-  b(ctx, 0, 0, cx-1+armDir*4, 6, 8, 3, '#888888');
-  // Cable
-  const cableX = cx + armDir * 7;
-  for (let y = 9; y < 20; y += 2) p(ctx, 0, 0, cableX, y, '#666666');
-  // Hook
-  b(ctx, 0, 0, cableX-1, 20, 3, 2, '#aaaaaa');
-  // Top cap
-  b(ctx, 0, 0, cx-3, 4, 6, 4, '#666666');
-  p(ctx, 0, 0, cx, 4, '#ff4400');
+function drawMechConveyorV(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(1), H = gh(3); // 14x42
+
+  // Dark belt surface
+  b(ctx, 0, 0, 2, 0, W - 4, H, '#2a2a28');
+  b(ctx, 0, 0, 3, 0, W - 6, H, '#333330');
+
+  // Left rail with hazard stripes
+  b(ctx, 0, 0, 0, 0, 2, H, '#444440');
+  for (let y = 0; y < H; y += 2) {
+    const stripe = (y % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, 0, y, 1, 2, stripe);
+  }
+
+  // Right rail with hazard stripes
+  b(ctx, 0, 0, W - 2, 0, 2, H, '#444440');
+  for (let y = 0; y < H; y += 2) {
+    const stripe = (y % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, W - 1, y, 1, 2, stripe);
+  }
+
+  // Rollers at top and bottom
+  b(ctx, 0, 0, 3, 0, W - 6, 1, '#888888'); p(ctx, 0, 0, 3, 0, '#999999'); p(ctx, 0, 0, W - 4, 0, '#777777');
+  b(ctx, 0, 0, 3, H - 1, W - 6, 1, '#888888'); p(ctx, 0, 0, 3, H - 1, '#999999'); p(ctx, 0, 0, W - 4, H - 1, '#777777');
+
+  // Animated chevron arrows scrolling down
+  const off = frame * 3;
+  for (let y = off; y < H; y += 9) {
+    const cx = Math.floor(W / 2);
+    // Chevron arrow pointing down: V shape
+    if (y >= 0 && y < H) p(ctx, 0, 0, cx - 2, y, '#aaaaaa');
+    if (y + 1 >= 0 && y + 1 < H) p(ctx, 0, 0, cx - 1, y + 1, '#aaaaaa');
+    if (y + 2 >= 0 && y + 2 < H) { p(ctx, 0, 0, cx, y + 2, '#ffffff'); p(ctx, 0, 0, cx - 1, y + 2, '#aaaaaa'); }
+    if (y + 1 >= 0 && y + 1 < H) p(ctx, 0, 0, cx + 1, y + 1, '#aaaaaa');
+    if (y >= 0 && y < H) p(ctx, 0, 0, cx + 2, y, '#aaaaaa');
+    // Tail
+    if (y - 1 >= 0 && y - 1 < H) { p(ctx, 0, 0, cx - 1, y - 1, '#888888'); p(ctx, 0, 0, cx + 1, y - 1, '#888888'); }
+  }
 }
+
+function drawMechConveyorNE(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(1), H = gh(1); // 14x14
+
+  // Background
+  b(ctx, 0, 0, 0, 0, W, H, '#2a2a28');
+
+  // L-shaped belt path: from top (N) curving to right (E)
+  // Vertical segment (top half)
+  b(ctx, 0, 0, 3, 0, W - 6, Math.floor(H / 2) + 1, '#333330');
+  // Horizontal segment (right half)
+  b(ctx, 0, 0, 3, Math.floor(H / 2) - 2, W - 3, 5, '#333330');
+
+  // Hazard rails: outer edges (top entry and right exit)
+  // Left rail of vertical segment
+  for (let y = 0; y < Math.floor(H / 2); y += 2) {
+    const stripe = (y % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, 1, y, 1, 2, stripe);
+  }
+  // Bottom rail of horizontal segment
+  for (let x = Math.floor(W / 2); x < W; x += 2) {
+    const stripe = (x % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, x, H - 3, 2, 1, stripe);
+  }
+
+  // Corner piece (inner curve)
+  b(ctx, 0, 0, W - 4, 3, 1, H - 6, '#444440');
+  b(ctx, 0, 0, 3, Math.floor(H / 2) + 2, W - 6, 1, '#444440');
+
+  // Rollers
+  p(ctx, 0, 0, 5, 0, '#888888'); p(ctx, 0, 0, 8, 0, '#888888');
+  p(ctx, 0, 0, W - 1, 5, '#888888'); p(ctx, 0, 0, W - 1, 8, '#888888');
+
+  // Animated chevron along the curve
+  const positions: [number, number][] = [[6, 2], [7, 6], [10, 8]];
+  const [cx, cy] = positions[frame];
+  p(ctx, 0, 0, cx, cy, '#ffffff');
+  p(ctx, 0, 0, cx - 1, cy - 1, '#aaaaaa');
+  p(ctx, 0, 0, cx + 1, cy + 1, '#aaaaaa');
+}
+
+function drawMechConveyorNW(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(1), H = gh(1); // 14x14
+
+  // Background
+  b(ctx, 0, 0, 0, 0, W, H, '#2a2a28');
+
+  // L-shaped belt path: from top (N) curving to left (W)
+  // Vertical segment (top half)
+  b(ctx, 0, 0, 3, 0, W - 6, Math.floor(H / 2) + 1, '#333330');
+  // Horizontal segment (left half)
+  b(ctx, 0, 0, 0, Math.floor(H / 2) - 2, W - 3, 5, '#333330');
+
+  // Hazard rails: outer edges
+  // Right rail of vertical segment
+  for (let y = 0; y < Math.floor(H / 2); y += 2) {
+    const stripe = (y % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, W - 2, y, 1, 2, stripe);
+  }
+  // Bottom rail of horizontal segment
+  for (let x = 0; x < Math.floor(W / 2); x += 2) {
+    const stripe = (x % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, x, H - 3, 2, 1, stripe);
+  }
+
+  // Corner piece (inner curve)
+  b(ctx, 0, 0, 3, 3, 1, H - 6, '#444440');
+  b(ctx, 0, 0, 3, Math.floor(H / 2) + 2, W - 6, 1, '#444440');
+
+  // Rollers
+  p(ctx, 0, 0, 5, 0, '#888888'); p(ctx, 0, 0, 8, 0, '#888888');
+  p(ctx, 0, 0, 0, 5, '#888888'); p(ctx, 0, 0, 0, 8, '#888888');
+
+  // Animated chevron along the curve
+  const positions: [number, number][] = [[7, 2], [6, 6], [3, 8]];
+  const [cx, cy] = positions[frame];
+  p(ctx, 0, 0, cx, cy, '#ffffff');
+  p(ctx, 0, 0, cx + 1, cy - 1, '#aaaaaa');
+  p(ctx, 0, 0, cx - 1, cy + 1, '#aaaaaa');
+}
+
+function drawMechConveyorSE(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(1), H = gh(1); // 14x14
+
+  // Background
+  b(ctx, 0, 0, 0, 0, W, H, '#2a2a28');
+
+  // L-shaped belt path: from bottom (S) curving to right (E)
+  // Vertical segment (bottom half)
+  b(ctx, 0, 0, 3, Math.floor(H / 2) - 1, W - 6, H - Math.floor(H / 2) + 1, '#333330');
+  // Horizontal segment (right half)
+  b(ctx, 0, 0, 3, Math.floor(H / 2) - 2, W - 3, 5, '#333330');
+
+  // Hazard rails: outer edges
+  // Left rail of vertical segment
+  for (let y = Math.floor(H / 2); y < H; y += 2) {
+    const stripe = (y % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, 1, y, 1, 2, stripe);
+  }
+  // Top rail of horizontal segment
+  for (let x = Math.floor(W / 2); x < W; x += 2) {
+    const stripe = (x % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, x, 2, 2, 1, stripe);
+  }
+
+  // Corner piece (inner curve)
+  b(ctx, 0, 0, W - 4, 3, 1, H - 6, '#444440');
+  b(ctx, 0, 0, 3, Math.floor(H / 2) - 3, W - 6, 1, '#444440');
+
+  // Rollers
+  p(ctx, 0, 0, 5, H - 1, '#888888'); p(ctx, 0, 0, 8, H - 1, '#888888');
+  p(ctx, 0, 0, W - 1, 5, '#888888'); p(ctx, 0, 0, W - 1, 8, '#888888');
+
+  // Animated chevron along the curve
+  const positions: [number, number][] = [[6, 11], [7, 7], [10, 5]];
+  const [cx, cy] = positions[frame];
+  p(ctx, 0, 0, cx, cy, '#ffffff');
+  p(ctx, 0, 0, cx - 1, cy + 1, '#aaaaaa');
+  p(ctx, 0, 0, cx + 1, cy - 1, '#aaaaaa');
+}
+
+function drawMechConveyorSW(ctx: CanvasRenderingContext2D, frame: number) {
+  const W = gw(1), H = gh(1); // 14x14
+
+  // Background
+  b(ctx, 0, 0, 0, 0, W, H, '#2a2a28');
+
+  // L-shaped belt path: from bottom (S) curving to left (W)
+  // Vertical segment (bottom half)
+  b(ctx, 0, 0, 3, Math.floor(H / 2) - 1, W - 6, H - Math.floor(H / 2) + 1, '#333330');
+  // Horizontal segment (left half)
+  b(ctx, 0, 0, 0, Math.floor(H / 2) - 2, W - 3, 5, '#333330');
+
+  // Hazard rails: outer edges
+  // Right rail of vertical segment
+  for (let y = Math.floor(H / 2); y < H; y += 2) {
+    const stripe = (y % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, W - 2, y, 1, 2, stripe);
+  }
+  // Top rail of horizontal segment
+  for (let x = 0; x < Math.floor(W / 2); x += 2) {
+    const stripe = (x % 4 < 2) ? '#ccaa00' : '#222222';
+    b(ctx, 0, 0, x, 2, 2, 1, stripe);
+  }
+
+  // Corner piece (inner curve)
+  b(ctx, 0, 0, 3, 3, 1, H - 6, '#444440');
+  b(ctx, 0, 0, 3, Math.floor(H / 2) - 3, W - 6, 1, '#444440');
+
+  // Rollers
+  p(ctx, 0, 0, 5, H - 1, '#888888'); p(ctx, 0, 0, 8, H - 1, '#888888');
+  p(ctx, 0, 0, 0, 5, '#888888'); p(ctx, 0, 0, 0, 8, '#888888');
+
+  // Animated chevron along the curve
+  const positions: [number, number][] = [[7, 11], [6, 7], [3, 5]];
+  const [cx, cy] = positions[frame];
+  p(ctx, 0, 0, cx, cy, '#ffffff');
+  p(ctx, 0, 0, cx + 1, cy + 1, '#aaaaaa');
+  p(ctx, 0, 0, cx - 1, cy - 1, '#aaaaaa');
+}
+
 
 function drawMechScrapHeap(ctx: CanvasRenderingContext2D, frame: number) {
   const W = gw(3), H = gh(3);
@@ -2750,20 +2895,6 @@ function drawMechScrapHeap(ctx: CanvasRenderingContext2D, frame: number) {
   p(ctx, 0, 0, g2[0] + 2, g2[1] + 1, '#cccccc');
 }
 
-function drawMechSmokestack(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(4); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 0, H-5, W, 5, '#664422'); b(ctx, 0, 0, 1, H-4, W-2, 3, '#553311');
-  p(ctx, 0, 0, cx-1, H-3, '#ff5500'); p(ctx, 0, 0, cx, H-3, '#ff3300'); p(ctx, 0, 0, cx+1, H-3, '#ff5500');
-  const sx = cx-2, st = 3, sb = H-5;
-  b(ctx, 0, 0, sx, st, 5, sb-st, '#555555'); b(ctx, 0, 0, sx+1, st, 1, sb-st, '#666666'); b(ctx, 0, 0, sx+4, st, 1, sb-st, '#444444');
-  for (let by = st+2; by < sb; by += 4) b(ctx, 0, 0, sx-1, by, 7, 1, '#777777');
-  b(ctx, 0, 0, sx-1, st, 7, 2, '#666666'); b(ctx, 0, 0, sx, st-1, 5, 1, '#777777');
-  for (let ly = st+3; ly < sb-1; ly += 3) p(ctx, 0, 0, sx+5, ly, '#887744');
-  if (frame===0) { p(ctx, 0, 0, cx, st-2, '#aaaaaa66'); p(ctx, 0, 0, cx-1, st-3, '#99999944'); }
-  if (frame===1) { b(ctx, 0, 0, cx-1, st-2, 2, 1, '#aaaaaa77'); b(ctx, 0, 0, cx-1, st-3, 3, 1, '#99999955'); }
-  if (frame===2) { b(ctx, 0, 0, cx-1, st-2, 3, 1, '#bbbbbb88'); b(ctx, 0, 0, cx-2, st-3, 4, 1, '#aaaaaa66'); p(ctx, 0, 0, cx+1, st-4, '#99999944'); }
-  b(ctx, 0, 0, 0, H-6, 2, 1, '#666666'); b(ctx, 0, 0, W-2, H-6, 2, 1, '#666666');
-}
 
 // ===================== NATURE NEW =====================
 
@@ -4765,10 +4896,13 @@ export const structures: StructureDef[] = [
   { key: 'mech_press', label: 'Mech Press (8x5)', faction: 'Mechanical', widthCells: 8, heightCells: 5, animFrames: 3, draw: drawMechPress },
   { key: 'mech_gear_assembly', label: 'Mech Gear Assembly (4x4)', faction: 'Mechanical', widthCells: 4, heightCells: 4, animFrames: 4, draw: drawMechGearAssembly },
   { key: 'mech_steam_boiler', label: 'Mech Steam Boiler (2x3)', faction: 'Mechanical', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawMechSteamBoiler },
-  { key: 'mech_conveyor_terminal', label: 'Mech Conveyor Terminal (4x2)', faction: 'Mechanical', widthCells: 4, heightCells: 2, animFrames: 3, draw: drawMechConveyorTerminal },
-  { key: 'mech_crane_arm', label: 'Mech Crane Arm (2x5)', faction: 'Mechanical', widthCells: 2, heightCells: 5, animFrames: 3, draw: drawMechCraneArm },
   { key: 'mech_scrap_heap', label: 'Mech Scrap Heap (3x3)', faction: 'Mechanical', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawMechScrapHeap },
-  { key: 'mech_smokestack', label: 'Mech Smokestack (2x4)', faction: 'Mechanical', widthCells: 2, heightCells: 4, animFrames: 3, draw: drawMechSmokestack },
+  { key: 'mech_conveyor_h', label: 'Mech Conveyor Horizontal (3x1)', faction: 'Mechanical', widthCells: 3, heightCells: 1, animFrames: 3, draw: drawMechConveyorH },
+  { key: 'mech_conveyor_v', label: 'Mech Conveyor Vertical (1x3)', faction: 'Mechanical', widthCells: 1, heightCells: 3, animFrames: 3, draw: drawMechConveyorV },
+  { key: 'mech_conveyor_ne', label: 'Mech Conveyor NE Corner (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorNE },
+  { key: 'mech_conveyor_nw', label: 'Mech Conveyor NW Corner (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorNW },
+  { key: 'mech_conveyor_se', label: 'Mech Conveyor SE Corner (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorSE },
+  { key: 'mech_conveyor_sw', label: 'Mech Conveyor SW Corner (1x1)', faction: 'Mechanical', widthCells: 1, heightCells: 1, animFrames: 3, draw: drawMechConveyorSW },
   // Nature (8)
   { key: 'nature_ancient_tree', label: 'Nature Ancient Tree (7x7)', faction: 'Nature', widthCells: 7, heightCells: 7, animFrames: 3, draw: drawNatureAncientTree },
   { key: 'nature_sacred_pond', label: 'Nature Sacred Pond (5x4)', faction: 'Nature', widthCells: 5, heightCells: 4, animFrames: 3, draw: drawNatureSacredPond },

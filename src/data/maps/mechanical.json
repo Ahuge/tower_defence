@@ -930,24 +930,9 @@
       "row": 17
     },
     {
-      "structureId": "mech_conveyor_terminal",
-      "col": 14,
-      "row": 2
-    },
-    {
-      "structureId": "mech_crane_arm",
-      "col": 33,
-      "row": 1
-    },
-    {
       "structureId": "mech_scrap_heap",
       "col": 30,
       "row": 12
-    },
-    {
-      "structureId": "mech_smokestack",
-      "col": 1,
-      "row": 1
     }
   ]
 }

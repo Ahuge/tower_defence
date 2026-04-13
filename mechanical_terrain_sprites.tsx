@@ -425,112 +425,66 @@ function drawSteam(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: n
 }
 
 function drawNoBuild(ctx: CanvasRenderingContext2D, ox: number, oy: number, idx: number) {
-  const c = PAL.noBuild;
   const n = hasN(idx), e = hasE(idx), s = hasS(idx), w = hasW(idx);
 
-  // Base
-  b(ctx, ox, oy, 0, 0, G, G, c.base);
+  // Dark concrete floor base
+  b(ctx, ox, oy, 0, 0, G, G, '#3a3a38');
 
-  // Side rails (top and bottom of belt channel)
-  b(ctx, ox, oy, 0, 3, G, 1, c.sideRail);
-  b(ctx, ox, oy, 0, 10, G, 1, c.sideRailDk);
-  // Rail highlight
-  for (let gx = 0; gx < G; gx += 3) {
-    p(ctx, ox, oy, gx, 3, c.sideRailLt);
-    p(ctx, ox, oy, gx + 1, 10, c.sideRail);
-  }
-  // Rail rivets
-  p(ctx, ox, oy, 2, 3, c.rivet); p(ctx, ox, oy, 6, 3, c.rivet); p(ctx, ox, oy, 11, 3, c.rivet);
-  p(ctx, ox, oy, 2, 10, c.rivet); p(ctx, ox, oy, 6, 10, c.rivet); p(ctx, ox, oy, 11, 10, c.rivet);
+  // Subtle floor texture variation
+  p(ctx, ox, oy, 3, 4, '#363634'); p(ctx, ox, oy, 8, 9, '#3e3e3c');
+  p(ctx, ox, oy, 11, 3, '#363634'); p(ctx, ox, oy, 5, 11, '#3e3e3c');
 
-  // Belt surface between rails
-  b(ctx, ox, oy, 0, 4, G, 6, c.belt);
-
-  // Belt segments (alternating shade for rubber belt look)
-  for (let gx = 0; gx < G; gx += 2) {
-    b(ctx, ox, oy, gx, 4, 1, 6, c.beltSegment);
-  }
-  // Belt highlight (top surface catches light)
-  for (let gx = 0; gx < G; gx++) {
-    p(ctx, ox, oy, gx, 4, c.beltLt);
-  }
-  // Belt shadow at bottom
-  for (let gx = 0; gx < G; gx++) {
-    p(ctx, ox, oy, gx, 9, c.beltDk);
+  // Diagonal hazard striping pattern (45-degree yellow/black)
+  for (let gy = 0; gy < G; gy++) {
+    for (let gx = 0; gx < G; gx++) {
+      // Diagonal stripe: every 3 pixels alternating
+      const diag = (gx + gy) % 4;
+      if (diag < 2) {
+        p(ctx, ox, oy, gx, gy, '#ccaa00');
+      } else {
+        p(ctx, ox, oy, gx, gy, '#222222');
+      }
+    }
   }
 
-  // Rollers visible at edges of belt
-  // Left roller
-  b(ctx, ox, oy, 0, 5, 1, 4, c.roller);
-  p(ctx, ox, oy, 0, 5, c.rollerLt); p(ctx, ox, oy, 0, 8, c.rollerDk);
-  p(ctx, ox, oy, 0, 6, c.rollerAxle); p(ctx, ox, oy, 0, 7, c.rollerAxle);
-  // Right roller
-  b(ctx, ox, oy, G - 1, 5, 1, 4, c.roller);
-  p(ctx, ox, oy, G - 1, 5, c.rollerLt); p(ctx, ox, oy, G - 1, 8, c.rollerDk);
-  p(ctx, ox, oy, G - 1, 6, c.rollerAxle); p(ctx, ox, oy, G - 1, 7, c.rollerAxle);
-
-  // Chevron direction markings (V-shaped pointing right)
-  for (let gx = 1; gx < G - 2; gx += 4) {
-    // V chevron shape
-    p(ctx, ox, oy, gx, 5, c.chevron);
-    p(ctx, ox, oy, gx + 1, 6, c.chevron);
-    p(ctx, ox, oy, gx + 1, 7, c.chevron);
-    p(ctx, ox, oy, gx, 8, c.chevron);
-    // Chevron shadow
-    p(ctx, ox, oy, gx, 6, c.chevronDim);
-    p(ctx, ox, oy, gx, 7, c.chevronDim);
+  // Yellow border stripes on exposed edges (1px wide)
+  if (!n) {
+    b(ctx, ox, oy, 0, 0, G, 1, '#ccaa00');
+    // Brighter highlight on exposed edge
+    for (let gx = 1; gx < G - 1; gx += 2) p(ctx, ox, oy, gx, 0, '#ddbb22');
+  }
+  if (!s) {
+    b(ctx, ox, oy, 0, G - 1, G, 1, '#ccaa00');
+    for (let gx = 1; gx < G - 1; gx += 2) p(ctx, ox, oy, gx, G - 1, '#ddbb22');
+  }
+  if (!w) {
+    b(ctx, ox, oy, 0, 0, 1, G, '#ccaa00');
+    for (let gy = 1; gy < G - 1; gy += 2) p(ctx, ox, oy, 0, gy, '#ddbb22');
+  }
+  if (!e) {
+    b(ctx, ox, oy, G - 1, 0, 1, G, '#ccaa00');
+    for (let gy = 1; gy < G - 1; gy += 2) p(ctx, ox, oy, G - 1, gy, '#ddbb22');
   }
 
-  // Floor area above and below belt
-  // Top floor
-  for (let gx = 0; gx < G; gx += 7) {
-    for (let gy = 0; gy < 3; gy++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
-  }
-  for (let gy = 0; gy < 3; gy += 2) {
-    for (let gx = 0; gx < G; gx++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
-  }
-  // Bottom floor
-  for (let gx = 0; gx < G; gx += 7) {
-    for (let gy = 11; gy < G; gy++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
-  }
-  for (let gy = 11; gy < G; gy += 2) {
-    for (let gx = 0; gx < G; gx++) p(ctx, ox, oy, gx, gy, PAL.ground.accent);
-  }
-
-  // Vertical rail connections for N/S neighbors
+  // Connected edges: continuous stripe pattern (dimmer, seamless)
   if (n) {
-    b(ctx, ox, oy, 5, 0, 1, 4, c.sideRailDk);
-    b(ctx, ox, oy, 8, 0, 1, 4, c.sideRailDk);
-    b(ctx, ox, oy, 6, 0, 2, 4, c.belt);
-    p(ctx, ox, oy, 6, 1, c.chevronDim); p(ctx, ox, oy, 7, 2, c.chevronDim);
+    b(ctx, ox, oy, 0, 0, G, 1, '#aa8800');
   }
   if (s) {
-    b(ctx, ox, oy, 5, 10, 1, 4, c.sideRailDk);
-    b(ctx, ox, oy, 8, 10, 1, 4, c.sideRailDk);
-    b(ctx, ox, oy, 6, 10, 2, 4, c.belt);
-    p(ctx, ox, oy, 6, 11, c.chevronDim); p(ctx, ox, oy, 7, 12, c.chevronDim);
+    b(ctx, ox, oy, 0, G - 1, G, 1, '#aa8800');
   }
   if (w) {
-    b(ctx, ox, oy, 0, 5, 1, 4, c.belt);
-    p(ctx, ox, oy, 0, 6, c.chevronDim);
+    b(ctx, ox, oy, 0, 0, 1, G, '#aa8800');
   }
   if (e) {
-    b(ctx, ox, oy, G - 1, 5, 1, 4, c.belt);
-    p(ctx, ox, oy, G - 1, 6, c.chevronDim);
+    b(ctx, ox, oy, G - 1, 0, 1, G, '#aa8800');
   }
 
-  // Center junction node (where belts cross)
-  b(ctx, ox, oy, 6, 6, 2, 2, c.rail);
-  p(ctx, ox, oy, 6, 6, c.railLt); p(ctx, ox, oy, 7, 7, c.railDk);
-
-  // End caps on non-connected sides
-  if (!n) { p(ctx, ox, oy, 6, 0, c.rail); p(ctx, ox, oy, 7, 0, c.rail); }
-  if (!s) { p(ctx, ox, oy, 6, G - 1, c.rail); p(ctx, ox, oy, 7, G - 1, c.railDk); }
-  if (!w) { p(ctx, ox, oy, 0, 6, c.rail); p(ctx, ox, oy, 0, 7, c.rail); }
-  if (!e) { p(ctx, ox, oy, G - 1, 6, c.railDk); p(ctx, ox, oy, G - 1, 7, c.railDk); }
-
-  // Subtle warning stripe at belt edges
-  p(ctx, ox, oy, 1, 3, c.rail); p(ctx, ox, oy, 4, 3, c.rail); p(ctx, ox, oy, 9, 3, c.rail);
+  // Corner treatments — bright corners where two exposed edges meet
+  if (!n && !w) p(ctx, ox, oy, 0, 0, '#ddbb22');
+  if (!n && !e) p(ctx, ox, oy, G - 1, 0, '#ddbb22');
+  if (!s && !w) p(ctx, ox, oy, 0, G - 1, '#ddbb22');
+  if (!s && !e) p(ctx, ox, oy, G - 1, G - 1, '#ddbb22');
 }
 
 function drawDoodad(ctx: CanvasRenderingContext2D, ox: number, oy: number, type: number) {
