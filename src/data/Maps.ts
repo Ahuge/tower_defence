@@ -20,6 +20,11 @@ export interface MapDefinition {
   exits: { col: number; row: number }[];
   blocked: { col: number; row: number }[];
   noBuild: { col: number; row: number }[];
+  /** Explicitly-animated blocked cells (crystal pools, lava pits, etc).
+   *  These cells are also included in `blocked` for pathfinding, but this list
+   *  tells TerrainManager to render them as the theme's "animated" terrain
+   *  instead of guessing from cluster shape. */
+  animated?: { col: number; row: number }[];
   /** Terrain theme — determines how blocked cells are rendered.
    *  'generic' is used for random maps (automatic assignment). */
   theme?: string;

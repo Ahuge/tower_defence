@@ -46,13 +46,14 @@ function toPosArray(arr: ([number, number] | Pos)[]): Pos[] {
 }
 
 /** Convert a JSON map to builder result */
-function fromJSON(json: MapJSON): { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] } {
+function fromJSON(json: MapJSON): { blocked: Pos[]; noBuild: Pos[]; animated: Pos[]; structures?: LargeStructurePlacement[] } {
+  const animated = toPosArray(json.animated || []);
   const blocked = [
     ...toPosArray(json.blocked),
-    ...toPosArray(json.animated || []),
+    ...animated,
   ];
   const noBuild = toPosArray(json.noBuild);
-  return { blocked, noBuild, structures: json.structures };
+  return { blocked, noBuild, animated, structures: json.structures };
 }
 
 // =====================================================================
@@ -66,7 +67,7 @@ export interface GauntletMapConfig {
   theme: string;
   entries: Pos[];
   exits: Pos[];
-  builder: () => { blocked: Pos[]; noBuild: Pos[]; structures?: LargeStructurePlacement[] };
+  builder: () => { blocked: Pos[]; noBuild: Pos[]; animated?: Pos[]; structures?: LargeStructurePlacement[] };
 }
 
 const MAP_DATA: Record<string, MapJSON> = {
@@ -113,7 +114,7 @@ export const GAUNTLET_MAP_CONFIGS: GauntletMapConfig[] = [
 export function getGauntletMap(faction: FactionId): MapDefinition {
   const config = GAUNTLET_MAP_CONFIGS.find(m => m.faction === faction);
   if (!config) throw new Error(`No gauntlet map for faction: ${faction}`);
-  const { blocked, noBuild, structures } = config.builder();
+  const { blocked, noBuild, animated, structures } = config.builder();
   const mapId = `gauntlet_${config.faction}` as any;
   return {
     id: mapId,
@@ -124,6 +125,7 @@ export function getGauntletMap(faction: FactionId): MapDefinition {
     exits: config.exits,
     blocked,
     noBuild,
+    animated,
     structures,
   };
 }
