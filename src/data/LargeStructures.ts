@@ -59,7 +59,7 @@ export const LARGE_STRUCTURES: Record<string, LargeStructureDef[]> = {
   ],
   factory: [
     { id: 'mech_furnace', widthCells: 6, heightCells: 6, textureKey: 'struct_mech_furnace', animFrames: 3, animFps: 1.5 },
-    { id: 'mech_press', widthCells: 8, heightCells: 5, textureKey: 'struct_mech_press', animFrames: 3, animFps: 1.5 },
+    { id: 'mech_press', widthCells: 8, heightCells: 5, textureKey: 'struct_mech_press', animFrames: 8, animFps: 4 },
     { id: 'mech_gear_assembly', widthCells: 4, heightCells: 4, textureKey: 'struct_mech_gear_assembly', animFrames: 4, animFps: 1.5 },
     { id: 'mech_steam_boiler', widthCells: 2, heightCells: 3, textureKey: 'struct_mech_steam_boiler', animFrames: 3, animFps: 1.5 },
     { id: 'mech_scrap_heap', widthCells: 3, heightCells: 3, textureKey: 'struct_mech_scrap_heap', animFrames: 3, animFps: 1.5 },

@@ -1097,66 +1097,89 @@ function drawMechPress(ctx: CanvasRenderingContext2D, frame: number) {
   b(ctx, 0, 0, fx, fy, fw, 4, '#555555');
   b(ctx, 0, 0, fx + 1, fy + 1, fw - 2, 2, '#666666');
 
-  // Hydraulic ram (center, coming down from top)
-  const ramW = 12, ramX = cx - 6;
-  b(ctx, 0, 0, ramX, fy + 4, ramW, 2, '#777777'); // hydraulic cylinder top
-  b(ctx, 0, 0, ramX + 2, fy + 6, ramW - 4, 14, '#888888'); // piston shaft
-  b(ctx, 0, 0, ramX + 3, fy + 6, ramW - 6, 14, '#999999'); // highlight
-  // Piston rod
-  b(ctx, 0, 0, cx - 3, fy + 20, 6, 8, '#aaaaaa');
-  b(ctx, 0, 0, cx - 2, fy + 20, 4, 8, '#bbbbbb');
-
-  // Die / press head — moves per frame
-  const dieY = fy + 28 + frame * 2;
-  b(ctx, 0, 0, cx - 10, dieY, 20, 6, '#505050');
-  b(ctx, 0, 0, cx - 9, dieY + 1, 18, 4, '#5a5a5a');
-  b(ctx, 0, 0, cx - 8, dieY + 5, 16, 2, '#444444');
-
-  // Work surface / anvil bed
+  // Work surface / anvil bed — fixed position at bottom
   const bedY = H - 16;
   b(ctx, 0, 0, cx - 14, bedY, 28, 4, '#555555');
   b(ctx, 0, 0, cx - 13, bedY, 26, 1, '#666666');
   b(ctx, 0, 0, cx - 14, bedY + 3, 28, 1, '#444444');
 
-  // Workpiece on bed (glowing hot metal)
-  b(ctx, 0, 0, cx - 6, bedY - 2, 12, 2, '#cc6622');
-  b(ctx, 0, 0, cx - 5, bedY - 2, 10, 1, '#ff8833');
-  p(ctx, 0, 0, cx, bedY - 2, '#ffaa44');
-
   // Conveyor feed (left side)
   b(ctx, 0, 0, 0, bedY, 6, 2, '#555550');
   b(ctx, 0, 0, 0, bedY + 1, 6, 1, '#444440');
-  // Conveyor rollers
-  for (let x = 1; x < 6; x += 2) {
-    p(ctx, 0, 0, x, bedY, '#666660');
-  }
-
+  for (let x = 1; x < 6; x += 2) p(ctx, 0, 0, x, bedY, '#666660');
   // Conveyor output (right side)
   b(ctx, 0, 0, W - 6, bedY, 6, 2, '#555550');
   b(ctx, 0, 0, W - 6, bedY + 1, 6, 1, '#444440');
-  for (let x = W - 5; x < W; x += 2) {
-    p(ctx, 0, 0, x, bedY, '#666660');
-  }
+  for (let x = W - 5; x < W; x += 2) p(ctx, 0, 0, x, bedY, '#666660');
 
-  // Hydraulic lines
+  // Hydraulic lines (static, on frame)
   b(ctx, 0, 0, fx + 7, fy + 2, 1, 20, '#993333');
   b(ctx, 0, 0, fx + fw - 8, fy + 2, 1, 20, '#993333');
-  // Connectors
   p(ctx, 0, 0, fx + 7, fy + 10, '#bb4444');
   p(ctx, 0, 0, fx + fw - 8, fy + 10, '#bb4444');
 
-  // Safety markings (yellow/black stripes)
+  // Safety markings (yellow/black stripes) on top crossbeam
   for (let x = fx + 8; x < fx + fw - 8; x += 4) {
     p(ctx, 0, 0, x, fy + 3, '#ccaa00');
     p(ctx, 0, 0, x + 1, fy + 3, '#222222');
   }
 
-  // Control panel (right side)
+  // Animated press assembly — 8 frames of full travel
+  // Die sits 4px above bed when fully pressed, starts at ramRestY when fully retracted
+  const ramRestY = fy + 4;           // top of piston when retracted
+  const dieRestOffset = 24;           // die starts 24px below ramRest
+  const travel = (bedY - 3) - (ramRestY + dieRestOffset); // total pixels to travel
+  // 8-frame cycle: 0-3 press down (fast), 4-5 hold at bottom, 6-7 retract
+  let pressPhase: number;
+  if (frame <= 3) pressPhase = frame / 3;         // 0.0 → 1.0 (press down)
+  else if (frame <= 5) pressPhase = 1;            // hold at bottom
+  else pressPhase = 1 - ((frame - 5) / 2);        // 1.0 → 0.0 (retract)
+  const offsetY = Math.round(travel * pressPhase);
+
+  // Hydraulic cylinder top (fixed) + moving piston shaft
+  const ramX = cx - 6, ramW = 12;
+  b(ctx, 0, 0, ramX, ramRestY, ramW, 2, '#777777'); // cylinder cap (static)
+  // Piston shaft — now STRETCHES from ramRestY down to the die position
+  const shaftTop = ramRestY + 2;
+  const shaftBot = ramRestY + 6 + offsetY;
+  b(ctx, 0, 0, ramX + 2, shaftTop, ramW - 4, shaftBot - shaftTop, '#888888');
+  b(ctx, 0, 0, ramX + 3, shaftTop, ramW - 6, shaftBot - shaftTop, '#999999');
+  // Piston rod (narrower, connecting shaft to die)
+  const rodTop = shaftBot;
+  const rodBot = rodTop + 4;
+  b(ctx, 0, 0, cx - 3, rodTop, 6, rodBot - rodTop, '#aaaaaa');
+  b(ctx, 0, 0, cx - 2, rodTop, 4, rodBot - rodTop, '#bbbbbb');
+
+  // Die / press head — position moves with offsetY
+  const dieY = ramRestY + dieRestOffset + offsetY;
+  b(ctx, 0, 0, cx - 10, dieY, 20, 6, '#505050');
+  b(ctx, 0, 0, cx - 9, dieY + 1, 18, 4, '#5a5a5a');
+  b(ctx, 0, 0, cx - 8, dieY + 5, 16, 2, '#444444');
+
+  // Workpiece on bed — glowing, flattens/sparks at bottom of stroke
+  const atBottom = frame >= 3 && frame <= 5;
+  if (atBottom) {
+    // Flattened + sparks
+    b(ctx, 0, 0, cx - 8, bedY - 1, 16, 1, '#ffaa44');
+    b(ctx, 0, 0, cx - 7, bedY - 1, 14, 1, '#ffcc66');
+    // Sparks
+    p(ctx, 0, 0, cx - 9, bedY - 2, '#ffff88');
+    p(ctx, 0, 0, cx + 8, bedY - 2, '#ffff88');
+    p(ctx, 0, 0, cx - 10, bedY - 3, '#ffcc44');
+    p(ctx, 0, 0, cx + 10, bedY - 3, '#ffcc44');
+  } else {
+    // Normal hot ingot
+    b(ctx, 0, 0, cx - 6, bedY - 2, 12, 2, '#cc6622');
+    b(ctx, 0, 0, cx - 5, bedY - 2, 10, 1, '#ff8833');
+    p(ctx, 0, 0, cx, bedY - 2, '#ffaa44');
+  }
+
+  // Control panel (right side) with status LED
   b(ctx, 0, 0, fx + fw - 4, fy + fh - 10, 6, 8, '#2a2828');
   b(ctx, 0, 0, fx + fw - 3, fy + fh - 9, 4, 6, '#333030');
   p(ctx, 0, 0, fx + fw - 3, fy + fh - 8, '#00ff44');
-  p(ctx, 0, 0, fx + fw - 1, fy + fh - 8, '#ff0000');
-  // Screen
+  // Active-press warning light
+  p(ctx, 0, 0, fx + fw - 1, fy + fh - 8, atBottom ? '#ff2222' : '#660000');
   b(ctx, 0, 0, fx + fw - 3, fy + fh - 6, 4, 3, '#113322');
   b(ctx, 0, 0, fx + fw - 2, fy + fh - 5, 2, 1, '#22aa55');
 }
@@ -2556,19 +2579,48 @@ function drawMechGearAssembly(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawMechSteamBoiler(ctx: CanvasRenderingContext2D, frame: number) {
-  const W = gw(2), H = gh(3); const cx = Math.floor(W/2);
-  b(ctx, 0, 0, 1, H-2, 3, 2, '#8a6a2a'); b(ctx, 0, 0, W-4, H-2, 3, 2, '#8a6a2a');
-  b(ctx, 0, 0, 0, H-3, W, 1, '#996b33');
-  const bt = 4, bh = H-7;
-  b(ctx, 0, 0, 2, bt, W-4, bh, '#884422'); b(ctx, 0, 0, 3, bt, 2, bh, '#994433');
-  b(ctx, 0, 0, 1, bt+2, W-2, 1, '#ccaa44'); b(ctx, 0, 0, 1, bt+bh-2, W-2, 1, '#ccaa44');
-  p(ctx, 0, 0, 2, bt+2, '#ddbb55'); p(ctx, 0, 0, W-3, bt+2, '#ddbb55');
-  b(ctx, 0, 0, 3, bt-1, W-6, 2, '#995533'); b(ctx, 0, 0, 4, bt-2, W-8, 1, '#aa6644');
-  b(ctx, 0, 0, W-2, bt+3, 2, 2, '#555555'); p(ctx, 0, 0, W-2, bt+3, '#88ff88');
-  b(ctx, 0, 0, 0, bt+1, 2, 1, '#777777'); b(ctx, 0, 0, 0, bt+4, 2, 1, '#777777');
-  b(ctx, 0, 0, cx-2, H-5, 4, 2, '#553311'); p(ctx, 0, 0, cx-1, H-5, '#ff6622'); p(ctx, 0, 0, cx, H-5, '#ff4400');
-  if (frame===1) b(ctx, 0, 0, cx-1, bt-4, 2, 2, '#cccccc66');
-  if (frame===2) { b(ctx, 0, 0, cx-1, bt-4, 3, 2, '#dddddd77'); p(ctx, 0, 0, cx, bt-5, '#cccccc44'); }
+  const W = gw(2), H = gh(3); const cx = Math.floor(W / 2);
+  // Legs/feet
+  b(ctx, 0, 0, 1, H - 2, 3, 2, '#8a6a2a'); b(ctx, 0, 0, W - 4, H - 2, 3, 2, '#8a6a2a');
+  b(ctx, 0, 0, 0, H - 3, W, 1, '#996b33');
+  // Shorter boiler body — bottom pushed down, top pushed down, leaves more room above for steam
+  const bt = H - 18, bh = 12;  // was bt=4, bh=H-7=14. Now body starts lower and is shorter.
+  b(ctx, 0, 0, 2, bt, W - 4, bh, '#884422');
+  b(ctx, 0, 0, 3, bt, 2, bh, '#994433');
+  // Brass bands
+  b(ctx, 0, 0, 1, bt + 2, W - 2, 1, '#ccaa44');
+  b(ctx, 0, 0, 1, bt + bh - 2, W - 2, 1, '#ccaa44');
+  p(ctx, 0, 0, 2, bt + 2, '#ddbb55'); p(ctx, 0, 0, W - 3, bt + 2, '#ddbb55');
+  // Dome top cap
+  b(ctx, 0, 0, 3, bt - 1, W - 6, 1, '#995533');
+  b(ctx, 0, 0, 4, bt - 2, W - 8, 1, '#aa6644');
+  // Pressure gauge
+  b(ctx, 0, 0, W - 2, bt + 3, 2, 2, '#555555');
+  p(ctx, 0, 0, W - 2, bt + 3, '#88ff88');
+  // Side pipes
+  b(ctx, 0, 0, 0, bt + 1, 2, 1, '#777777');
+  b(ctx, 0, 0, 0, bt + 4, 2, 1, '#777777');
+  // Firebox at base
+  b(ctx, 0, 0, cx - 2, H - 5, 4, 2, '#553311');
+  p(ctx, 0, 0, cx - 1, H - 5, '#ff6622');
+  p(ctx, 0, 0, cx, H - 5, '#ff4400');
+  // Steam chimney/pipe rising from boiler top
+  b(ctx, 0, 0, cx - 1, bt - 4, 2, 3, '#666666');
+  b(ctx, 0, 0, cx - 2, bt - 5, 4, 1, '#777777'); // chimney cap
+  // Steam puffs — lots of room now above the boiler
+  if (frame === 0) {
+    p(ctx, 0, 0, cx, bt - 7, '#cccccc88');
+    p(ctx, 0, 0, cx - 1, bt - 8, '#aaaaaa66');
+  } else if (frame === 1) {
+    b(ctx, 0, 0, cx - 1, bt - 7, 2, 2, '#cccccc99');
+    p(ctx, 0, 0, cx + 1, bt - 9, '#dddddd88');
+    p(ctx, 0, 0, cx - 2, bt - 10, '#bbbbbb77');
+  } else {
+    b(ctx, 0, 0, cx - 2, bt - 7, 4, 2, '#ddddddaa');
+    b(ctx, 0, 0, cx - 1, bt - 10, 3, 2, '#cccccc88');
+    p(ctx, 0, 0, cx, bt - 12, '#bbbbbb66');
+    p(ctx, 0, 0, cx + 2, bt - 13, '#aaaaaa44');
+  }
 }
 
 // Horizontal belt helper — draws common belt surface, rails, rollers
@@ -4988,7 +5040,7 @@ export const structures: StructureDef[] = [
   { key: 'arcane_mana_well', label: 'Arcane Mana Well (2x2)', faction: 'Arcane', widthCells: 2, heightCells: 2, animFrames: 3, draw: drawArcaneManaWell },
   // Mechanical (8)
   { key: 'mech_furnace', label: 'Mech Furnace (6x6)', faction: 'Mechanical', widthCells: 6, heightCells: 6, animFrames: 3, draw: drawMechFurnace },
-  { key: 'mech_press', label: 'Mech Press (8x5)', faction: 'Mechanical', widthCells: 8, heightCells: 5, animFrames: 3, draw: drawMechPress },
+  { key: 'mech_press', label: 'Mech Press (8x5)', faction: 'Mechanical', widthCells: 8, heightCells: 5, animFrames: 8, draw: drawMechPress },
   { key: 'mech_gear_assembly', label: 'Mech Gear Assembly (4x4)', faction: 'Mechanical', widthCells: 4, heightCells: 4, animFrames: 4, draw: drawMechGearAssembly },
   { key: 'mech_steam_boiler', label: 'Mech Steam Boiler (2x3)', faction: 'Mechanical', widthCells: 2, heightCells: 3, animFrames: 3, draw: drawMechSteamBoiler },
   { key: 'mech_scrap_heap', label: 'Mech Scrap Heap (3x3)', faction: 'Mechanical', widthCells: 3, heightCells: 3, animFrames: 3, draw: drawMechScrapHeap },
