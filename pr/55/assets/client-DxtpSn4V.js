@@ -1,1 +1,0 @@
-import{E as e}from"./hooks.module-DTgtUckU.js";import{a as t,i as n,o as r,r as i}from"./compat.module-DQQmDmPR.js";function a(e){return{render:function(t){n(t,e)},unmount:function(){t(e)}}}function o(e,t){return r(t,e),a(e)}var s,c=e((()=>{i(),s={createRoot:a,hydrateRoot:o}}));export{c as i,a as n,o as r,s as t};
