@@ -10,7 +10,8 @@ export function TowerInfoPanelDOM() {
   if (!tower) return null;
 
   return (
-    <div class="game-panel tower-info-panel">
+    <div class="game-panel tower-info-panel" style={{ border: '2px solid #ff00ff' }}>
+      <div style={{ fontSize: '8px', color: '#ff00ff', letterSpacing: '2px', marginBottom: '4px' }}>DOM PANEL (debug)</div>
       <div class="panel-header">
         <span class="tower-name">{tower.name}</span>
         <span class="tower-level">Lv{tower.level}</span>
