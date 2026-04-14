@@ -9,6 +9,7 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 import { getHeroSheetKey, preloadSprites, createSpriteAnimations } from '../systems/SpriteManager';
+import { PlayerInventory } from '../systems/monetization';
 
 /** Pick N random unique elements from an array */
 function pickRandom<T>(arr: T[], count: number): T[] {
@@ -70,14 +71,20 @@ export class HeroSelectScene extends Phaser.Scene {
     const factionHero = this.faction && this.faction !== 'random'
       ? getHeroForFaction(this.faction) : null;
 
+    // Only offer heroes from factions the player owns
+    const ownedFactions = PlayerInventory.getOwnedFactions();
+    const ownedHeroes = HERO_ORDER.filter(h => {
+      const hero = HERO_TYPES[h];
+      return ownedFactions.includes(hero.faction as FactionId);
+    });
+
     if (factionHero) {
-      // Faction hero guaranteed + 2 random others
-      const others = HERO_ORDER.filter(h => h !== factionHero);
+      // Faction hero guaranteed + 2 random others from owned pool
+      const others = ownedHeroes.filter(h => h !== factionHero);
       const randomOthers = pickRandom(others, 2);
-      // Put faction hero first
       offered = [factionHero, ...randomOthers];
     } else {
-      offered = pickRandom(HERO_ORDER, 3);
+      offered = pickRandom(ownedHeroes, 3);
     }
 
     const isPhone = ResponsiveManager.isPhone();

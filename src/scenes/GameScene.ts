@@ -15,6 +15,7 @@ import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
+import { PlayerInventory } from '../systems/monetization';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
 import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
@@ -229,13 +230,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private rollRandomTowers(): string[] {
-    const nonUlt = getAllFactionTowerIds().filter(id => !getTowerType(id).ultimate);
+    // Only roll towers from factions the player owns
+    const ownedFactions = PlayerInventory.getOwnedFactions();
+    const ownedTowerIds = getAllFactionTowerIds().filter(id => {
+      const t = getTowerType(id);
+      return t.faction && ownedFactions.includes(t.faction as FactionId);
+    });
+
+    const nonUlt = ownedTowerIds.filter(id => !getTowerType(id).ultimate);
     const shuffled = [...nonUlt].sort(() => Math.random() - 0.5);
     const pool = shuffled.slice(0, 6);
 
     // 5% chance to replace the last slot with a random ultimate tower
     if (Math.random() < 0.05) {
-      const ultimates = getAllFactionTowerIds().filter(id => getTowerType(id).ultimate);
+      const ultimates = ownedTowerIds.filter(id => getTowerType(id).ultimate);
       if (ultimates.length > 0) {
         pool[5] = ultimates[Math.floor(Math.random() * ultimates.length)];
       }
