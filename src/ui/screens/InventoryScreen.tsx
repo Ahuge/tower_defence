@@ -147,6 +147,9 @@ export function InventoryScreen() {
                         </div>
 
                         <div class="card-desc" style={{ marginTop: '4px' }}>{skin.description}</div>
+                        <div style={{ fontSize: '9px', marginTop: '2px', color: skin.target === 'tower_faction' ? '#aa88ff' : '#666' }}>
+                          {skin.target === 'tower_faction' ? 'Applies to ALL towers' : towerName ? `Applies to ${towerName} only` : ''}
+                        </div>
 
                         <div style={{ marginTop: '8px', fontSize: '11px' }}>
                           {eq ? (
