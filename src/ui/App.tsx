@@ -12,6 +12,8 @@ import { GameOverScreen } from './screens/GameOverScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
+import { GameSidebar } from './game/GameSidebar';
+import './styles/game-panels.css';
 
 export function App() {
   const [screen, setScreen] = useState<ScreenId>(UIBridge.getScreen());
@@ -30,22 +32,28 @@ export function App() {
     });
   }, []);
 
-  if (!screen) return null;
-
   return (
-    <div class="ui-screen">
-      {screen === 'menu' && <MenuScreen />}
-      {screen === 'store' && <StoreScreen />}
-      {screen === 'battlepass' && <BattlePassScreen />}
-      {screen === 'inventory' && <InventoryScreen />}
-      {screen === 'factionselect' && <FactionSelectScreen data={data} />}
-      {screen === 'heroselect' && <HeroSelectScreen data={data} />}
-      {screen === 'creepfactionselect' && <CreepFactionSelectScreen data={data} />}
-      {screen === 'draft' && <DraftScreen data={data} />}
-      {screen === 'gameover' && <GameOverScreen data={data} />}
-      {screen === 'changelog' && <ChangelogScreen />}
-      {screen === 'leaderboard' && <LeaderboardScreen />}
-      {screen === 'encyclopedia' && <EncyclopediaScreen />}
-    </div>
+    <>
+      {/* Full-screen UI screens (menu, store, etc.) */}
+      {screen && (
+        <div class="ui-screen">
+          {screen === 'menu' && <MenuScreen />}
+          {screen === 'store' && <StoreScreen />}
+          {screen === 'battlepass' && <BattlePassScreen />}
+          {screen === 'inventory' && <InventoryScreen />}
+          {screen === 'factionselect' && <FactionSelectScreen data={data} />}
+          {screen === 'heroselect' && <HeroSelectScreen data={data} />}
+          {screen === 'creepfactionselect' && <CreepFactionSelectScreen data={data} />}
+          {screen === 'draft' && <DraftScreen data={data} />}
+          {screen === 'gameover' && <GameOverScreen data={data} />}
+          {screen === 'changelog' && <ChangelogScreen />}
+          {screen === 'leaderboard' && <LeaderboardScreen />}
+          {screen === 'encyclopedia' && <EncyclopediaScreen />}
+        </div>
+      )}
+
+      {/* In-game sidebar — renders alongside Phaser canvas when no screen is active */}
+      {!screen && <GameSidebar />}
+    </>
   );
 }

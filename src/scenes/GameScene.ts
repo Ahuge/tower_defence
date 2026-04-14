@@ -16,6 +16,7 @@ import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
 import { PlayerInventory } from '../systems/monetization';
+import { GameUIStore, TowerStats } from '../ui/GameUIStore';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
 import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
@@ -263,6 +264,24 @@ export class GameScene extends Phaser.Scene {
     // Clean up previous run if scene is being restarted
     this.events.once('shutdown', () => this.shutdown());
 
+    // Activate DOM game UI
+    GameUIStore.activate(this.matchMode, this.waves?.length ?? 0);
+    GameUIStore.registerCallbacks({
+      onUpgrade: (tower) => {
+        if (tower.canUpgrade()) {
+          const cost = tower.typeDef.upgrades[tower.level - 1].cost;
+          if (this.economy.spend(cost)) {
+            tower.upgrade();
+            this.towerInfo.show(tower);
+            GameUIStore.selectTower(this.towerToStats(tower));
+          }
+        }
+      },
+      onSell: (tower) => {
+        this.handleRightClick(tower.col, tower.row);
+      },
+    });
+
     // Create sprite animations from loaded sheets
     createSpriteAnimations(this);
     TerrainManager.createAnimations(this);
@@ -400,6 +419,7 @@ export class GameScene extends Phaser.Scene {
           if (this.economy.spend(cost)) {
             tower.upgrade();
             this.towerInfo.show(tower);
+            GameUIStore.selectTower(this.towerToStats(tower)); // refresh DOM panel
             this.versus?.send({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
             this.circle?.broadcast({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
           }
@@ -844,11 +864,77 @@ export class GameScene extends Phaser.Scene {
 
   // === Selection Mode Management ===
 
+  /** Convert a Tower entity to a TowerStats snapshot for the DOM UI */
+  private towerToStats(tower: Tower): TowerStats {
+    const { TILE_SIZE } = require('../config');
+    const { hasTrait, getTrait } = require('../systems/traits/Trait');
+    const traits: string[] = [];
+    for (const t of tower.typeDef.traits) {
+      switch (t.id) {
+        case 'splash_damage': traits.push(`Splash ${((t.radius ?? 0) / TILE_SIZE).toFixed(1)}`); break;
+        case 'chain_damage': traits.push(`Chain ${(t.chainCount ?? 2) + 1}`); break;
+        case 'teleport_delivery': traits.push('Teleport'); break;
+        case 'slow_on_hit': traits.push(`Slow ${Math.round((1 - (t.factor ?? 1)) * 100)}%`); break;
+        case 'gold_on_hit': traits.push(`+${t.amount}g/hit`); break;
+        case 'crit_chance': traits.push(`${Math.round((t.chance ?? 0.25) * 100)}% crit x${t.multiplier ?? 3}`); break;
+        case 'burn_dot': traits.push(`Burn ${t.dps}dps`); break;
+        case 'poison_dot': traits.push(`Poison ${Math.round((t.percentPerSec ?? 0.02) * 100)}%/s`); break;
+        case 'pierce_delivery': traits.push('Pierce'); break;
+        case 'armor_shred_on_hit': traits.push('Armor shred'); break;
+        case 'damage_amp_on_hit': traits.push(`+${Math.round((t.ampAmount ?? 0.15) * 100)}% vuln`); break;
+        case 'root_on_hit': traits.push(`${Math.round((t.chance ?? 0.2) * 100)}% root`); break;
+        case 'adjacency_buff': traits.push('Adj. aura'); break;
+        case 'damage_variance': traits.push(`Var ${Math.round((t.min ?? 0.5) * 100)}-${Math.round((t.max ?? 1.5) * 100)}%`); break;
+        case 'direct_damage': break;
+        default: if (t.id && !t.id.startsWith('_')) traits.push(t.id.replace(/_/g, ' ')); break;
+      }
+    }
+    const auraBuffs: string[] = [];
+    const adjDmg = getTrait(tower.traits, '_adj_damage_buff');
+    const adjRate = getTrait(tower.traits, '_adj_rate_buff');
+    if (adjDmg?.bonus > 0) auraBuffs.push(`+${adjDmg.bonus} DMG`);
+    if (adjRate?.bonus > 0) auraBuffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD`);
+
+    let upgradePreview: TowerStats['upgradePreview'] = null;
+    if (tower.canUpgrade()) {
+      const next = tower.typeDef.upgrades[tower.level - 1];
+      const deltas: string[] = [];
+      const dd = next.damage - tower.damage;
+      const dr = next.range - tower.range / TILE_SIZE;
+      const ds = next.fireRate - tower.fireRate;
+      upgradePreview = {
+        dmg: dd !== 0 ? `${dd > 0 ? '+' : ''}${dd} DMG` : '',
+        rng: dr !== 0 ? `${dr > 0 ? '+' : ''}${dr.toFixed(1)} RNG` : '',
+        spd: ds !== 0 ? `${ds}ms SPD` : '',
+      };
+    }
+
+    return {
+      name: tower.typeDef.name,
+      level: tower.level,
+      maxLevel: tower.typeDef.upgrades.length + 1,
+      cost: tower.typeDef.cost,
+      sellValue: tower.getSellValue(),
+      damage: tower.damage,
+      range: tower.range / TILE_SIZE,
+      fireRate: tower.fireRate,
+      damageType: tower.damageType,
+      isUltimate: tower.typeDef.ultimate === true,
+      canUpgrade: tower.canUpgrade(),
+      upgradeCost: tower.canUpgrade() ? tower.typeDef.upgrades[tower.level - 1].cost : 0,
+      traits,
+      auraBuffs,
+      upgradePreview,
+      _tower: tower,
+    };
+  }
+
   private enterBuildMode(typeId: string): void {
     this.selectionMode = 'build';
     this.selectedBuildType = typeId;
     this.selectedTower = null;
     this.towerInfo?.hide();
+    GameUIStore.deselectTower();
     this.opponentMinimap?.setFaded(true);
   }
 
@@ -859,6 +945,7 @@ export class GameScene extends Phaser.Scene {
     this.selectedCreep = null;
     this.towerBar.deselect();
     this.towerInfo.show(tower);
+    GameUIStore.selectTower(this.towerToStats(tower));
     this.creepInfo.hide();
   }
 
@@ -870,6 +957,7 @@ export class GameScene extends Phaser.Scene {
     this.linkingConduit = null;
     this.towerBar.deselect();
     this.towerInfo.hide();
+    GameUIStore.deselectTower();
     this.opponentMinimap?.setFaded(false);
     this.creepInfo.hide();
     this.hoverGraphics.clear();
@@ -1933,6 +2021,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Clean up on scene shutdown (returning to menu, restarting) */
   shutdown(): void {
+    GameUIStore.deactivate();
     // Destroy all towers and their sprites
     for (const t of this._towers) t.destroy();
     this._towers = [];
