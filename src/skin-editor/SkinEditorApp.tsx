@@ -146,6 +146,7 @@ export default function SkinEditorApp() {
   const [allColors, setAllColors] = useState<string[]>([]);            // all unique colors sorted
   const [towerColorSets, setTowerColorSets] = useState<Set<string>[]>([]); // colors per tower column
   const [baseOnlyColors, setBaseOnlyColors] = useState<Set<string>>(new Set()); // colors ONLY in base region
+  const [mobileOnlyColors, setMobileOnlyColors] = useState<Set<string>>(new Set()); // colors unique to mobile units
   const [towerPalettes, setTowerPalettes] = useState<TowerPalettes>({});
   const [selectedTower, setSelectedTower] = useState(-1);
   const [loading, setLoading] = useState(false);
@@ -212,6 +213,14 @@ export default function SkinEditorApp() {
           for (const c of mColors) mobileColors.add(c);
         }
       }
+
+      // Track which colors are unique to mobile units (not in tower/proj sheets)
+      const towerAndProjColors = new Set([...tColors, ...pColors]);
+      const mobileOnly = new Set<string>();
+      for (const c of mobileColors) {
+        if (!towerAndProjColors.has(c)) mobileOnly.add(c);
+      }
+      setMobileOnlyColors(mobileOnly);
 
       // Merge all colors from all sheets
       const allUsed = new Set([...tColors, ...pColors, ...mobileColors]);
@@ -713,12 +722,24 @@ export default function SkinEditorApp() {
                   </>)}
                   {uniqueColors.length > 0 && (<>
                     <div style={{ fontSize: '9px', color: '#ffaa44', marginBottom: '4px', letterSpacing: '1px' }}>
-                      {selectedTower === -1 ? 'UNIQUE TO SPECIFIC TOWERS' : `${faction.towerNames[selectedTower]} ONLY`} ({uniqueColors.length})
+                      {selectedTower === -1 ? 'TOWER SPRITES' : `${faction.towerNames[selectedTower]} ONLY`} ({uniqueColors.length})
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '3px' }}>
                       {uniqueColors.map(renderSwatch)}
                     </div>
                   </>)}
+                  {/* Mobile unit colors — separate palette */}
+                  {selectedTower === -1 && mobileOnlyColors.size > 0 && (() => {
+                    const mobileColorArr = allColors.filter(c => mobileOnlyColors.has(c));
+                    return mobileColorArr.length > 0 ? (<>
+                      <div style={{ fontSize: '9px', color: '#ff8844', marginBottom: '4px', marginTop: '8px', letterSpacing: '1px' }}>
+                        MOBILE UNITS ({mobileColorArr.length}) — Rifleman, Brawler, etc.
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '3px' }}>
+                        {mobileColorArr.map(renderSwatch)}
+                      </div>
+                    </>) : null;
+                  })()}
                 </>);
               })()}
 
