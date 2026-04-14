@@ -2,6 +2,8 @@
  * SpriteManager — handles loading and creating sprites for factions that have art.
  * Factions without spritesheets continue using Graphics primitives.
  */
+import { SkinManager } from './monetization/SkinManager';
+import { FactionId } from '../data/Factions';
 
 /** Tower sprite animation config */
 export interface TowerSpriteConfig {
@@ -217,11 +219,30 @@ export function getHeroSheetKey(heroId: string): string | undefined {
   return HERO_SPRITE_SHEETS[heroId];
 }
 
+/** Known skin asset suffixes per faction directory. Add entries here when new skins are created. */
+const SKIN_ASSETS: Record<string, string[]> = {
+  arcane: ['_corrupted'],
+  // Add more as skins are created: mechanical: ['_gilded'], etc.
+};
+
 export function preloadSprites(scene: Phaser.Scene): void {
   for (const f of FACTION_SHEETS) {
     scene.load.spritesheet(f.towers, `assets/${f.dir}/${f.dir}_towers.png`, { frameWidth: 64, frameHeight: 64 });
     scene.load.spritesheet(f.proj, `assets/${f.dir}/${f.dir}_projectiles.png`, { frameWidth: 32, frameHeight: 32 });
     scene.load.spritesheet(f.hero, `assets/${f.dir}/${f.dir}_hero.png`, { frameWidth: 64, frameHeight: 128 });
+
+    // Load skin variant spritesheets
+    const skins = SKIN_ASSETS[f.dir] ?? [];
+    for (const suffix of skins) {
+      const towerKey = f.towers + suffix;
+      const projKey = f.proj + suffix;
+      if (!scene.textures.exists(towerKey)) {
+        scene.load.spritesheet(towerKey, `assets/${f.dir}/${f.dir}_towers${suffix}.png`, { frameWidth: 64, frameHeight: 64 });
+      }
+      if (!scene.textures.exists(projKey)) {
+        scene.load.spritesheet(projKey, `assets/${f.dir}/${f.dir}_projectiles${suffix}.png`, { frameWidth: 32, frameHeight: 32 });
+      }
+    }
   }
 
   // Mobile unit mini-spritesheets (128×128, 32×32 cells)
@@ -337,8 +358,25 @@ export function createTowerSprite(
   const config = TOWER_SPRITE_CONFIGS[towerId];
   if (!config) return null;
 
+  // Resolve skinned sheet key: if a skin is equipped for this tower's faction,
+  // use the skinned spritesheet (e.g. 'arcane_towers_corrupted') if it's loaded
+  const towerFaction = towerId.split('_')[0]; // 'arcane_bolt' → 'arcane'
+  const factionMap: Record<string, FactionId> = {
+    arcane:'arcane', mech:'mechanical', nature:'nature', void:'void',
+    mil:'military', alien:'aliens', cyber:'cypherpunk', infernal:'infernal',
+    celestial:'celestial', psi:'psionic', harmonic:'harmonic',
+  };
+  const fid = factionMap[towerFaction];
+  let sheetKey = config.sheetKey;
+  if (fid) {
+    const skinned = SkinManager.getTowerSheetKey(fid);
+    if (skinned && skinned !== sheetKey && scene.textures.exists(skinned)) {
+      sheetKey = skinned;
+    }
+  }
+
   const frameIndex = config.rows.idle * config.totalCols + config.column;
-  const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
+  const sprite = scene.add.sprite(x, y, sheetKey, frameIndex);
   sprite.setDepth(5);
 
   // Scale sprite to fill ~1.3 tiles (64px sprite on 28px grid)
@@ -421,8 +459,24 @@ export function createProjectileSprite(
   const config = PROJECTILE_SPRITE_CONFIGS[towerId];
   if (!config) return null;
 
+  // Resolve skinned projectile sheet key
+  const projFaction = towerId.split('_')[0];
+  const projFactionMap: Record<string, FactionId> = {
+    arcane:'arcane', mech:'mechanical', nature:'nature', void:'void',
+    mil:'military', alien:'aliens', cyber:'cypherpunk', infernal:'infernal',
+    celestial:'celestial', psi:'psionic', harmonic:'harmonic',
+  };
+  const pfid = projFactionMap[projFaction];
+  let projSheetKey = config.sheetKey;
+  if (pfid) {
+    const skinned = SkinManager.getProjectileSheetKey(pfid);
+    if (skinned && skinned !== projSheetKey && scene.textures.exists(skinned)) {
+      projSheetKey = skinned;
+    }
+  }
+
   const frameIndex = config.travelRows[0] * config.totalCols + config.column;
-  const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
+  const sprite = scene.add.sprite(x, y, projSheetKey, frameIndex);
   sprite.setDepth(15);
 
   // Scale projectile — larger for flame/splash towers
