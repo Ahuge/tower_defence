@@ -2,7 +2,7 @@
  * StoreDefinitions — static catalog of all purchasable items.
  * Pure data, no state. Used by ShardWallet, PlayerInventory, and UI.
  */
-import { FactionId } from '../../data/Factions';
+import { FactionId, FACTIONS } from '../../data/Factions';
 import { HeroId } from '../../data/HeroTypes';
 
 // ─── Rarity ────────────────────────────────────────────────
@@ -35,6 +35,7 @@ export const ROLL_WEIGHTS: Record<Rarity, number> = {
 
 export type SkinTarget =
   | 'tower_faction'   // reskins all towers + projectiles for a faction
+  | 'tower'           // reskins a single tower (used in rolls)
   | 'hero'            // reskins a specific hero
   | 'creep_faction'   // reskins all creeps for a faction
   | 'terrain';        // terrain tileset theme
@@ -45,13 +46,15 @@ export interface SkinDef {
   description: string;
   rarity: Rarity;
   target: SkinTarget;
-  /** Faction id (for tower_faction / creep_faction skins) */
+  /** Faction id (for tower_faction / creep_faction / tower skins) */
   faction?: FactionId;
+  /** Tower id (for individual tower skins) */
+  towerId?: string;
   /** Hero id (for hero skins) */
   heroId?: HeroId;
   /** Terrain theme id (for terrain skins) */
   themeId?: string;
-  /** Shard cost to purchase directly (0 = not directly purchasable) */
+  /** Shard cost to purchase directly (0 = not directly purchasable, roll-only) */
   shardCost: number;
   /** Asset key suffix appended to the base texture key */
   assetSuffix: string;
@@ -59,29 +62,74 @@ export interface SkinDef {
   exclusive?: boolean;
 }
 
+/** Skin theme definitions — used to generate per-tower rollable skins */
+interface SkinTheme {
+  suffix: string;
+  label: string;
+  description: string;
+  rarity: Rarity;
+}
+
+const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
+  arcane:     [{ suffix: 'neon', label: 'Neon', description: 'Cyberpunk neon', rarity: 'rare' }, { suffix: 'corrupted', label: 'Corrupted', description: 'Dark blighted magic', rarity: 'epic' }],
+  mechanical: [{ suffix: 'gilded', label: 'Gilded', description: 'Gold brass steampunk', rarity: 'rare' }, { suffix: 'rusted', label: 'Rusted', description: 'Abandoned factory', rarity: 'common' }],
+  nature:     [{ suffix: 'autumn', label: 'Autumn', description: 'Fall amber leaves', rarity: 'common' }, { suffix: 'corrupted', label: 'Blighted', description: 'Undead overgrowth', rarity: 'epic' }],
+  void:       [{ suffix: 'crimson', label: 'Crimson', description: 'Blood-red rift', rarity: 'rare' }],
+  military:   [{ suffix: 'desert', label: 'Desert', description: 'Sand-tone camo', rarity: 'common' }],
+  celestial:  [{ suffix: 'eclipse', label: 'Eclipse', description: 'Dark solar eclipse', rarity: 'epic' }],
+  infernal:   [{ suffix: 'frozen', label: 'Frozen', description: 'Ice-bound hellfire', rarity: 'rare' }],
+  psionic:    [{ suffix: 'glitch', label: 'Glitch', description: 'Digital artifact', rarity: 'rare' }],
+  aliens:     [{ suffix: 'toxic', label: 'Toxic', description: 'Radioactive glow', rarity: 'common' }],
+  cypherpunk: [{ suffix: 'retro', label: 'Retro', description: 'CRT green phosphor', rarity: 'common' }],
+  harmonic:   [{ suffix: 'jazz', label: 'Jazz', description: 'Smoky lounge style', rarity: 'rare' }],
+  random:     [],
+};
+
+/** Generate per-tower skins from themes + faction tower lists */
+function generateTowerSkins(): SkinDef[] {
+  const skins: SkinDef[] = [];
+  for (const [factionId, themes] of Object.entries(TOWER_SKIN_THEMES)) {
+    if (factionId === 'random' || !themes.length) continue;
+    const faction = FACTIONS[factionId as FactionId];
+    if (!faction) continue;
+    for (const theme of themes) {
+      for (const towerId of faction.towerIds) {
+        // Derive a display name from towerId: 'arcane_bolt' → 'Bolt'
+        const towerName = towerId.split('_').slice(1).map((w: string) => w[0].toUpperCase() + w.slice(1)).join(' ') || towerId;
+        skins.push({
+          id: `${towerId}_${theme.suffix}`,
+          name: `${theme.label} ${towerName}`,
+          description: theme.description,
+          rarity: theme.rarity,
+          target: 'tower',
+          faction: factionId as FactionId,
+          towerId,
+          shardCost: 0, // roll-only — not directly purchasable
+          assetSuffix: `_${theme.suffix}`,
+        });
+      }
+    }
+  }
+  return skins;
+}
+
+/** All per-tower skins (generated from themes) */
+export const TOWER_SKINS: SkinDef[] = generateTowerSkins();
+
 export const SKIN_DEFS: SkinDef[] = [
-  // ── Arcane faction skins ──
-  { id: 'arcane_tower_neon',       name: 'Neon Arcane',        description: 'Cyberpunk neon palette',         rarity: 'rare',      target: 'tower_faction', faction: 'arcane',      shardCost: 300, assetSuffix: '_neon' },
-  { id: 'arcane_tower_corrupted',  name: 'Corrupted Arcane',   description: 'Dark, blighted magic',           rarity: 'epic',      target: 'tower_faction', faction: 'arcane',      shardCost: 500, assetSuffix: '_corrupted' },
-  { id: 'arcane_creep_neon',       name: 'Neon Arcane Creeps', description: 'Neon-lit summoned creatures',     rarity: 'rare',      target: 'creep_faction', faction: 'arcane',      shardCost: 300, assetSuffix: '_neon' },
-  // ── Mechanical faction skins ──
-  { id: 'mech_tower_gilded',       name: 'Gilded Mechanical',  description: 'Gold and brass steampunk',       rarity: 'rare',      target: 'tower_faction', faction: 'mechanical',  shardCost: 300, assetSuffix: '_gilded' },
-  { id: 'mech_tower_rusted',       name: 'Rusted Mechanical',  description: 'Abandoned factory aesthetic',     rarity: 'common',    target: 'tower_faction', faction: 'mechanical',  shardCost: 200, assetSuffix: '_rusted' },
-  // ── Nature faction skins ──
-  { id: 'nature_tower_autumn',     name: 'Autumn Nature',      description: 'Fall colors, amber leaves',      rarity: 'common',    target: 'tower_faction', faction: 'nature',      shardCost: 200, assetSuffix: '_autumn' },
-  { id: 'nature_tower_corrupted',  name: 'Blighted Nature',    description: 'Undead overgrowth',              rarity: 'epic',      target: 'tower_faction', faction: 'nature',      shardCost: 500, assetSuffix: '_corrupted' },
-  // ── Void faction skins ──
-  { id: 'void_tower_crimson',      name: 'Crimson Void',       description: 'Blood-red rift energy',          rarity: 'rare',      target: 'tower_faction', faction: 'void',        shardCost: 300, assetSuffix: '_crimson' },
-  // ── Military faction skins ──
-  { id: 'mil_tower_desert',        name: 'Desert Camo',        description: 'Sand-tone military gear',        rarity: 'common',    target: 'tower_faction', faction: 'military',    shardCost: 200, assetSuffix: '_desert' },
-  // ── Celestial faction skins ──
-  { id: 'cel_tower_eclipse',       name: 'Eclipse Celestial',  description: 'Dark solar eclipse theme',       rarity: 'epic',      target: 'tower_faction', faction: 'celestial',   shardCost: 500, assetSuffix: '_eclipse' },
-  // ── Hero skins ──
-  { id: 'hero_arcanist_void',      name: 'Void Arcanist',      description: 'Arcanist corrupted by the Void', rarity: 'epic',      target: 'hero', heroId: 'arcanist',  shardCost: 500, assetSuffix: '_void' },
-  { id: 'hero_warden_golden',      name: 'Golden Warden',      description: 'Gilded armor commander',         rarity: 'rare',      target: 'hero', heroId: 'warden',    shardCost: 400, assetSuffix: '_golden' },
-  { id: 'hero_shadow_blood',       name: 'Blood Shadow',       description: 'Crimson assassin variant',       rarity: 'rare',      target: 'hero', heroId: 'shadow',    shardCost: 400, assetSuffix: '_blood' },
+  // ── Faction-wide skins (direct purchase) ──
+  { id: 'arcane_pack_neon',        name: 'Neon Arcane Pack',     description: 'All Arcane towers — neon palette',  rarity: 'rare',   target: 'tower_faction', faction: 'arcane',     shardCost: 800, assetSuffix: '_neon' },
+  { id: 'arcane_pack_corrupted',   name: 'Corrupted Arcane Pack', description: 'All Arcane towers — blighted',    rarity: 'epic',   target: 'tower_faction', faction: 'arcane',     shardCost: 1200, assetSuffix: '_corrupted' },
+  { id: 'mech_pack_gilded',        name: 'Gilded Mech Pack',     description: 'All Mechanical towers — brass',    rarity: 'rare',   target: 'tower_faction', faction: 'mechanical', shardCost: 800, assetSuffix: '_gilded' },
+  { id: 'nature_pack_autumn',      name: 'Autumn Nature Pack',   description: 'All Nature towers — fall colors',  rarity: 'rare',   target: 'tower_faction', faction: 'nature',     shardCost: 800, assetSuffix: '_autumn' },
+  // ── Hero skins (direct purchase) ──
+  { id: 'hero_arcanist_void',      name: 'Void Arcanist',        description: 'Arcanist corrupted by the Void', rarity: 'epic',      target: 'hero', heroId: 'arcanist',  shardCost: 500, assetSuffix: '_void' },
+  { id: 'hero_warden_golden',      name: 'Golden Warden',        description: 'Gilded armor commander',         rarity: 'rare',      target: 'hero', heroId: 'warden',    shardCost: 400, assetSuffix: '_golden' },
+  { id: 'hero_shadow_blood',       name: 'Blood Shadow',         description: 'Crimson assassin variant',       rarity: 'rare',      target: 'hero', heroId: 'shadow',    shardCost: 400, assetSuffix: '_blood' },
   // ── Legendary / seasonal (exclusive) ──
-  { id: 'arcane_tower_legendary',  name: 'Prismatic Arcane',   description: 'Rainbow-shifting crystal towers', rarity: 'legendary', target: 'tower_faction', faction: 'arcane',   shardCost: 0, assetSuffix: '_prismatic', exclusive: true },
+  { id: 'arcane_tower_legendary',  name: 'Prismatic Arcane',     description: 'Rainbow-shifting crystal towers', rarity: 'legendary', target: 'tower_faction', faction: 'arcane', shardCost: 0, assetSuffix: '_prismatic', exclusive: true },
+  // ── Per-tower skins (roll-only) ──
+  ...TOWER_SKINS,
 ];
 
 /** Lookup a skin definition by id */
@@ -89,8 +137,13 @@ export function getSkinDef(skinId: string): SkinDef | undefined {
   return SKIN_DEFS.find(s => s.id === skinId);
 }
 
-/** Get all skins that can appear in rolls (non-exclusive, non-zero cost) */
+/** Get all skins that can appear in rolls (per-tower skins only) */
 export function getRollableSkins(): SkinDef[] {
+  return TOWER_SKINS;
+}
+
+/** Get all skins available for direct purchase */
+export function getPurchasableSkins(): SkinDef[] {
   return SKIN_DEFS.filter(s => !s.exclusive && s.shardCost > 0);
 }
 
