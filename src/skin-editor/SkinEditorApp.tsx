@@ -7,9 +7,14 @@ import { createColorProxy, normalizeHex } from './ColorProxyContext';
 interface PaletteEntry { original: string; current: string; }
 interface FactionDrawFns {
   drawTowers: (ctx: CanvasRenderingContext2D) => { cols: number; rows: number; cell: number };
+  drawBase?: (ctx: CanvasRenderingContext2D, col: number, row: number) => void;
   drawProjectiles: (ctx: CanvasRenderingContext2D) => any;
   drawHero: (ctx: CanvasRenderingContext2D) => any;
   C: Record<string, string>;
+  /** Split palettes (new convention — only Arcane for now) */
+  C_base?: Record<string, string>;
+  C_tower?: Record<string, string>;
+  C_proj?: Record<string, string>;
 }
 type TowerPalettes = Record<number, Record<string, string>>;
 
@@ -41,7 +46,11 @@ async function loadFactionModule(id: string): Promise<FactionDrawFns> {
     harmonic: () => import('../../harmonic_sprites.tsx'),
   };
   const mod = await modules[id]!();
-  return { drawTowers: mod.drawTowers, drawProjectiles: mod.drawProjectiles, drawHero: mod.drawHero, C: mod.C };
+  return {
+    drawTowers: mod.drawTowers, drawBase: mod.drawBase,
+    drawProjectiles: mod.drawProjectiles, drawHero: mod.drawHero,
+    C: mod.C, C_base: mod.C_base, C_tower: mod.C_tower, C_proj: mod.C_proj,
+  };
 }
 
 // ─── Helpers ────────────────────────────────────────────
@@ -340,20 +349,24 @@ export default function SkinEditorApp() {
 
   // ─── Palette display — filtered by tower ───────────
 
-  // Base colors = colors that exist ONLY in the pedestal region (bottom 18px),
-  // never in the tower body, across ALL tower columns. Safe to edit without
-  // affecting any tower's actual sprite design.
+  // If the faction has split palettes (C_base/C_tower/C_proj), use them directly.
+  // Otherwise fall back to pixel-region detection.
+  const hasSplitPalettes = !!(drawFns?.C_base);
+  const splitBaseHexes = hasSplitPalettes
+    ? new Set(Object.values(drawFns!.C_base!).map(normalizeHex))
+    : baseOnlyColors;
+
   const getDisplayColors = (): { colors: string[]; baseColors: string[]; uniqueColors: string[] } => {
     if (selectedTower === -1) {
-      const base = allColors.filter(c => baseOnlyColors.has(c));
-      const unique = allColors.filter(c => !baseOnlyColors.has(c));
+      const base = allColors.filter(c => splitBaseHexes.has(c));
+      const unique = allColors.filter(c => !splitBaseHexes.has(c));
       return { colors: allColors, baseColors: base, uniqueColors: unique };
     }
     const towerSet = towerColorSets[selectedTower];
     if (!towerSet) return { colors: allColors, baseColors: [], uniqueColors: allColors };
     const filtered = allColors.filter(c => towerSet.has(c));
-    const base = filtered.filter(c => baseOnlyColors.has(c));
-    const unique = filtered.filter(c => !baseOnlyColors.has(c));
+    const base = filtered.filter(c => splitBaseHexes.has(c));
+    const unique = filtered.filter(c => !splitBaseHexes.has(c));
     return { colors: filtered, baseColors: base, uniqueColors: unique };
   };
 
@@ -584,7 +597,7 @@ export default function SkinEditorApp() {
                 return (<>
                   {baseColors.length > 0 && (<>
                     <div style={{ fontSize: '9px', color: '#aa88ff', marginBottom: '4px', marginTop: '4px', letterSpacing: '1px' }}>
-                      PEDESTAL ONLY ({baseColors.length}) — safe to edit, won't affect tower sprites
+                      PEDESTAL / BASE ({baseColors.length}){hasSplitPalettes ? '' : ' — estimated'}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '3px', marginBottom: '8px' }}>
                       {baseColors.map(renderSwatch)}
