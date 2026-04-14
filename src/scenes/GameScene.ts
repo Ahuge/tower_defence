@@ -272,13 +272,15 @@ export class GameScene extends Phaser.Scene {
           const cost = tower.typeDef.upgrades[tower.level - 1].cost;
           if (this.economy.spend(cost)) {
             tower.upgrade();
-            this.towerInfo.show(tower);
             GameUIStore.selectTower(this.towerToStats(tower));
           }
         }
       },
       onSell: (tower) => {
         this.handleRightClick(tower.col, tower.row);
+      },
+      onToggleAutoPlay: () => {
+        this.toggleAutoPlay();
       },
     });
 
@@ -418,7 +420,6 @@ export class GameScene extends Phaser.Scene {
           const cost = tower.getUpgradeCost();
           if (this.economy.spend(cost)) {
             tower.upgrade();
-            this.towerInfo.show(tower);
             GameUIStore.selectTower(this.towerToStats(tower)); // refresh DOM panel
             this.versus?.send({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
             this.circle?.broadcast({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
@@ -446,6 +447,7 @@ export class GameScene extends Phaser.Scene {
     // Upcoming waves (top of sidebar)
     this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
+    this.updateDOMWaves(this.currentWave);
 
     // Event log (bottom of sidebar)
     this.eventLog = new EventLog(this, 480);
@@ -539,6 +541,7 @@ export class GameScene extends Phaser.Scene {
         const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
         this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
         this.upcomingWaves.update(waveNum, this.waves);
+        this.updateDOMWaves(waveNum);
         this.eventBus.emit('waveStarted', waveNum);
         this.gameMode.onWaveStart?.(wave, waveNum);
       },
@@ -929,6 +932,27 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  /** Convert wave data to previews for the DOM UI */
+  private updateDOMWaves(currentWave: number): void {
+    const previews: { waveNum: number; label: string; creepTypes: string; count: number; isBoss: boolean }[] = [];
+    for (let i = 0; i < 3; i++) {
+      const idx = currentWave + i;
+      if (idx >= this.waves.length) break;
+      const w = this.waves[idx];
+      const types = w.groups.map(g => g.creepType).filter((v, j, a) => a.indexOf(v) === j).join(', ');
+      const count = w.groups.reduce((s, g) => s + g.count, 0);
+      const isBoss = w.groups.some(g => g.creepType === 'boss');
+      previews.push({
+        waveNum: idx + 1,
+        label: i === 0 ? `W${idx + 1}` : `+${i + 1} W${idx + 1}`,
+        creepTypes: types,
+        count,
+        isBoss,
+      });
+    }
+    GameUIStore.updateWaves(currentWave, previews);
+  }
+
   private enterBuildMode(typeId: string): void {
     this.selectionMode = 'build';
     this.selectedBuildType = typeId;
@@ -944,7 +968,7 @@ export class GameScene extends Phaser.Scene {
     this.selectedTower = tower;
     this.selectedCreep = null;
     this.towerBar.deselect();
-    this.towerInfo.show(tower);
+    // DOM panel handles display — Phaser panel disabled
     GameUIStore.selectTower(this.towerToStats(tower));
     this.creepInfo.hide();
   }
@@ -1094,7 +1118,7 @@ export class GameScene extends Phaser.Scene {
             const cost = existingTower.getUpgradeCost();
             if (this.economy.spend(cost)) {
               existingTower.upgrade();
-              this.towerInfo.show(existingTower);
+              GameUIStore.selectTower(this.towerToStats(existingTower));
               this.versus?.send({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
               this.circle?.broadcast({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
             }
@@ -1886,6 +1910,7 @@ export class GameScene extends Phaser.Scene {
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
     this.upcomingWaves.update(waveNum, this.waves);
+        this.updateDOMWaves(waveNum);
 
     // Endless mode: append more waves when running low, rotate creep faction every 10 waves
     if (this.matchMode === 'endless') {
@@ -2002,6 +2027,7 @@ export class GameScene extends Phaser.Scene {
             const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
             this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
             this.upcomingWaves.update(waveNum, this.waves);
+        this.updateDOMWaves(waveNum);
             this.eventBus.emit('waveStarted', waveNum);
             this.gameMode.onWaveStart?.(wave, waveNum);
           },
