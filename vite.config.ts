@@ -38,6 +38,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         editor: resolve(__dirname, 'editor.html'),
+        skinEditor: resolve(__dirname, 'skin-editor.html'),
       },
     },
   },
