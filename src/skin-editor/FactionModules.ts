@@ -53,6 +53,8 @@ export interface FactionSpriteInfo {
   modulePath: string;
   /** Tower names for labeling */
   towerNames: string[];
+  /** Mobile unit tower IDs (indices into towerNames that are mobile units) */
+  mobileUnits?: { towerId: string; name: string; unitIndex: number }[];
 }
 
 export const FACTION_SPRITES: FactionSpriteInfo[] = [
@@ -65,13 +67,21 @@ export const FACTION_SPRITES: FactionSpriteInfo[] = [
   { id: 'nature', name: 'Nature', towerCols: 6, towerRows: 24, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/nature_sprites.tsx',
     towerNames: ['Thorn', 'Root', 'Blossom', 'Spore', 'Vine', 'Elder Treant'] },
   { id: 'military', name: 'Military', towerCols: 6, towerRows: 20, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/military_sprites.tsx',
-    towerNames: ['Sandbag', 'Wire', 'Rifleman', 'Brawler', 'Tank', 'Commander'] },
+    towerNames: ['Sandbag', 'Wire', 'Rifleman', 'Brawler', 'Tank', 'Commander'],
+    mobileUnits: [
+      { towerId: 'mil_rifleman', name: 'Rifleman', unitIndex: 0 },
+      { towerId: 'mil_brawler', name: 'Brawler', unitIndex: 1 },
+      { towerId: 'mil_heavy', name: 'Tank', unitIndex: 2 },
+      { towerId: 'mil_commander', name: 'Commander', unitIndex: 3 },
+    ] },
   { id: 'aliens', name: 'Aliens', towerCols: 8, towerRows: 16, towerCell: 64, projCols: 8, projRows: 6, projCell: 32, modulePath: '/aliens_sprites.tsx',
-    towerNames: ['Spitter', 'Stinger', 'Swarm Node', 'Acid', 'Hive Spire', 'Brood Mother', 'Swarmling', 'Overmind'] },
+    towerNames: ['Spitter', 'Stinger', 'Swarm Node', 'Acid', 'Hive Spire', 'Brood Mother', 'Swarmling', 'Overmind'],
+    mobileUnits: [{ towerId: 'alien_swarmling', name: 'Swarmling', unitIndex: 4 }] },
   { id: 'cypherpunk', name: 'Cypherpunk', towerCols: 7, towerRows: 20, towerCell: 64, projCols: 7, projRows: 6, projCell: 32, modulePath: '/cypherpunk_sprites.tsx',
     towerNames: ['Ping', 'Firewall', 'Virus', 'Backdoor', 'DDoS', 'Rootkit', 'Zero Day'] },
   { id: 'infernal', name: 'Infernal', towerCols: 6, towerRows: 16, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/infernal_sprites.tsx',
-    towerNames: ['Imp', 'Hellfire', 'Soul Drain', 'Bomber', 'Immolate', 'Apocalypse'] },
+    towerNames: ['Imp', 'Hellfire', 'Soul Drain', 'Bomber', 'Immolate', 'Apocalypse'],
+    mobileUnits: [{ towerId: 'infernal_bomber', name: 'Fiend', unitIndex: 5 }] },
   { id: 'celestial', name: 'Celestial', towerCols: 5, towerRows: 20, towerCell: 64, projCols: 5, projRows: 6, projCell: 32, modulePath: '/celestial_sprites.tsx',
     towerNames: ['Acolyte', 'Ward', 'Smite', 'Sanctuary', 'Absolution'] },
   { id: 'psionic', name: 'Psionic', towerCols: 5, towerRows: 20, towerCell: 64, projCols: 5, projRows: 6, projCell: 32, modulePath: '/psionic_sprites.tsx',

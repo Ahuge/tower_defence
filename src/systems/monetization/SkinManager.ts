@@ -82,6 +82,19 @@ class SkinManagerClass {
     return factionSuffix ? base + factionSuffix : base;
   }
 
+  /**
+   * Get the skin asset suffix for a tower (per-tower first, then faction-wide).
+   * Returns the suffix string (e.g. '_desert_storm') or null if no skin equipped.
+   * Used by mobile unit skin resolution.
+   */
+  getSkinSuffix(faction: FactionId, towerId?: string): string | null {
+    if (towerId) {
+      const towerSuffix = this.getSuffix(`tower:${towerId}`);
+      if (towerSuffix) return towerSuffix;
+    }
+    return this.getSuffix(`towerfaction:${faction}`);
+  }
+
   getHeroSheetKey(heroId: HeroId | string): string {
     const base = FACTION_HERO_SHEET[HERO_FACTION[heroId] ?? ''];
     if (!base) return '';

@@ -5,16 +5,24 @@ import { createColorProxy, normalizeHex } from './ColorProxyContext';
 // ─── Types ──────────────────────────────────────────────
 
 interface PaletteEntry { original: string; current: string; }
+interface MobileUnitDraw {
+  name: string;
+  towerId: string;
+  draw: (ctx: CanvasRenderingContext2D, level?: number) => void;
+  levels: number;
+  palette: Record<string, string>;
+}
 interface FactionDrawFns {
   drawTowers: (ctx: CanvasRenderingContext2D) => { cols: number; rows: number; cell: number };
   drawBase?: (ctx: CanvasRenderingContext2D, col: number, row: number) => void;
   drawProjectiles: (ctx: CanvasRenderingContext2D) => any;
   drawHero: (ctx: CanvasRenderingContext2D) => any;
   C: Record<string, string>;
-  /** Split palettes (new convention — only Arcane for now) */
   C_base?: Record<string, string>;
   C_tower?: Record<string, string>;
   C_proj?: Record<string, string>;
+  /** Mobile unit draw functions (Military, Aliens, Infernal) */
+  mobileUnits?: MobileUnitDraw[];
 }
 type TowerPalettes = Record<number, Record<string, string>>;
 
@@ -46,10 +54,38 @@ async function loadFactionModule(id: string): Promise<FactionDrawFns> {
     harmonic: () => import('../../harmonic_sprites.tsx'),
   };
   const mod = await modules[id]!();
+
+  // Load mobile unit draw functions if this faction has them
+  const factionInfo = FACTION_SPRITES.find(f => f.id === id);
+  let mobileUnits: MobileUnitDraw[] | undefined;
+  if (factionInfo?.mobileUnits?.length) {
+    // @ts-expect-error
+    const mobileMod = await import('../../mobile_unit_sprites.tsx');
+    const paletteMap: Record<string, Record<string, string>> = {
+      military: mobileMod.MIL, aliens: mobileMod.ALN, infernal: mobileMod.INF,
+    };
+    const drawMap: Record<string, (ctx: CanvasRenderingContext2D, level?: number) => void> = {
+      mil_rifleman: mobileMod.drawRifleman, mil_brawler: mobileMod.drawBrawler,
+      mil_heavy: mobileMod.drawHeavy, mil_commander: mobileMod.drawCommander,
+      alien_swarmling: mobileMod.drawSwarmling, infernal_bomber: mobileMod.drawFiend,
+    };
+    const levelsMap: Record<string, number> = {
+      mil_rifleman: 5, mil_brawler: 5, mil_heavy: 3, mil_commander: 3,
+      alien_swarmling: 2, infernal_bomber: 2,
+    };
+    mobileUnits = factionInfo.mobileUnits.map(mu => ({
+      name: mu.name, towerId: mu.towerId,
+      draw: drawMap[mu.towerId],
+      levels: levelsMap[mu.towerId] ?? 1,
+      palette: paletteMap[id] ?? {},
+    }));
+  }
+
   return {
     drawTowers: mod.drawTowers, drawBase: mod.drawBase,
     drawProjectiles: mod.drawProjectiles, drawHero: mod.drawHero,
     C: mod.C, C_base: mod.C_base, C_tower: mod.C_tower, C_proj: mod.C_proj,
+    mobileUnits,
   };
 }
 
@@ -124,6 +160,9 @@ export default function SkinEditorApp() {
   const skinProjRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef<HTMLCanvasElement>(null);
   const zoomProjRef = useRef<HTMLCanvasElement>(null);
+  // Mobile unit canvases: one pair (orig + skinned) per mobile unit
+  const mobileOrigRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+  const mobileSkinRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
   const faction = factionInfo;
 
@@ -160,8 +199,22 @@ export default function SkinEditorApp() {
       const { proxy: pProxy, usedColors: pColors } = createColorProxy(tmpPCtx);
       fns.drawProjectiles(pProxy);
 
-      // Merge all colors from both sheets
-      const allUsed = new Set([...tColors, ...pColors]);
+      // Also render mobile units to capture their colors
+      const mobileColors = new Set<string>();
+      if (fns.mobileUnits) {
+        for (const mu of fns.mobileUnits) {
+          const tmpMob = document.createElement('canvas');
+          tmpMob.width = 128; tmpMob.height = mu.levels * 4 * 32;
+          const tmpMCtx = tmpMob.getContext('2d')!;
+          tmpMCtx.imageSmoothingEnabled = false;
+          const { proxy: mProxy, usedColors: mColors } = createColorProxy(tmpMCtx);
+          mu.draw(mProxy, 1);
+          for (const c of mColors) mobileColors.add(c);
+        }
+      }
+
+      // Merge all colors from all sheets
+      const allUsed = new Set([...tColors, ...pColors, ...mobileColors]);
       const sorted = Array.from(allUsed).sort((a, b) => hexLum(a) - hexLum(b));
       setAllColors(sorted);
 
@@ -229,6 +282,19 @@ export default function SkinEditorApp() {
       ctx.clearRect(0, 0, pc.width, pc.height);
       fns.drawProjectiles(ctx);
     }
+    // Mobile units
+    if (fns.mobileUnits) {
+      fns.mobileUnits.forEach((mu, i) => {
+        const mc = mobileOrigRefs.current[i];
+        if (!mc) return;
+        const totalRows = mu.levels * 4;
+        mc.width = 4 * 32; mc.height = totalRows * 32;
+        const ctx = mc.getContext('2d')!;
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, mc.width, mc.height);
+        for (let lvl = 1; lvl <= mu.levels; lvl++) mu.draw(ctx, lvl);
+      });
+    }
   };
 
   const buildColorMap = (towerCol: number): Map<string, string> => {
@@ -286,6 +352,27 @@ export default function SkinEditorApp() {
           drawFns.drawProjectiles(proxy); ctx.restore();
         }
       }
+    }
+
+    // Mobile units — use global color map (-1)
+    if (drawFns.mobileUnits) {
+      const globalCm = buildColorMap(-1);
+      drawFns.mobileUnits.forEach((mu, i) => {
+        const mc = mobileSkinRefs.current[i];
+        if (!mc) return;
+        const totalRows = mu.levels * 4;
+        mc.width = 4 * 32; mc.height = totalRows * 32;
+        const ctx = mc.getContext('2d')!;
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, mc.width, mc.height);
+        if (globalCm.size === 0) {
+          for (let lvl = 1; lvl <= mu.levels; lvl++) mu.draw(ctx, lvl);
+        } else {
+          const { proxy, colorMap: pm } = createColorProxy(ctx);
+          for (const [k, v] of globalCm) pm.set(k, v);
+          for (let lvl = 1; lvl <= mu.levels; lvl++) mu.draw(proxy, lvl);
+        }
+      });
     }
   }, [drawFns, factionInfo, towerPalettes]);
 
@@ -491,6 +578,17 @@ export default function SkinEditorApp() {
     dl(skinRef.current || origRef.current, `${factionId}_towers_${suffix}.png`);
     // Projectile spritesheet
     dl(skinProjRef.current || origProjRef.current, `${factionId}_projectiles_${suffix}.png`);
+    // Mobile unit spritesheets
+    if (drawFns?.mobileUnits) {
+      const mobileFileNames: Record<string, string> = {
+        mil_rifleman: 'rifleman', mil_brawler: 'brawler', mil_heavy: 'heavy',
+        mil_commander: 'commander', alien_swarmling: 'swarmling', infernal_bomber: 'fiend',
+      };
+      drawFns.mobileUnits.forEach((mu, i) => {
+        const fname = mobileFileNames[mu.towerId] ?? mu.towerId;
+        dl(mobileSkinRefs.current[i] || mobileOrigRefs.current[i], `${fname}_mobile_${suffix}.png`);
+      });
+    }
     // Palette JSON + dock style
     const dockStyle = (dockBorder !== '#555555' || dockGlow !== '#55555500' || dockBg !== '#1a1a28')
       ? { borderColor: dockBorder, glowColor: dockGlow + '66', bgTint: dockBg } : undefined;
@@ -740,6 +838,30 @@ export default function SkinEditorApp() {
                   style={{ imageRendering: 'pixelated' as any, maxWidth: '100%', border: '1px solid #1a1a2a', borderRadius: '4px' }} />
               </div>
             </div>
+
+            {/* Mobile Unit Spritesheets */}
+            {drawFns?.mobileUnits && drawFns.mobileUnits.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px' }}>Mobile Unit Spritesheets</div>
+                {drawFns.mobileUnits.map((mu, i) => (
+                  <div key={mu.towerId} style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '10px', color: '#aa88ff', marginBottom: '4px' }}>{mu.name} ({mu.levels} levels)</div>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontSize: '9px', color: '#666', marginBottom: '2px' }}>Original</div>
+                        <canvas ref={(el: HTMLCanvasElement | null) => { mobileOrigRefs.current[i] = el; }}
+                          style={{ imageRendering: 'pixelated' as any, border: '1px solid #1a1a2a', borderRadius: '4px' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '9px', color: '#ffaa44', marginBottom: '2px' }}>Modified</div>
+                        <canvas ref={(el: HTMLCanvasElement | null) => { mobileSkinRefs.current[i] = el; }}
+                          style={{ imageRendering: 'pixelated' as any, border: '1px solid #1a1a2a', borderRadius: '4px' }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

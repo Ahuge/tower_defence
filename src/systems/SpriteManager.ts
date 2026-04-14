@@ -268,6 +268,17 @@ export function preloadSprites(scene: Phaser.Scene): void {
       scene.load.spritesheet(cfg.sheetKey, `assets/${faction}/${name}_mobile.png`, {
         frameWidth: cfg.frameWidth, frameHeight: cfg.frameHeight,
       });
+
+      // Load skinned mobile unit spritesheets
+      const mobileSkins = SKIN_ASSETS[faction] ?? [];
+      for (const suffix of mobileSkins) {
+        const skinKey = cfg.sheetKey + suffix;
+        if (!scene.textures.exists(skinKey)) {
+          scene.load.spritesheet(skinKey, `assets/${faction}/${name}_mobile${suffix}.png`, {
+            frameWidth: cfg.frameWidth, frameHeight: cfg.frameHeight,
+          });
+        }
+      }
     }
   }
 }
@@ -353,18 +364,27 @@ export function createSpriteAnimations(scene: Phaser.Scene): void {
 export function createTowerSprite(
   scene: Phaser.Scene, towerId: string, x: number, y: number,
 ): Phaser.GameObjects.Sprite | null {
-  // Mobile unit — use separate mini-spritesheet
+  // Mobile unit — use separate mini-spritesheet (with skin resolution)
   const mobileCfg = MOBILE_SPRITE_CONFIGS[towerId];
-  if (mobileCfg && scene.textures.exists(mobileCfg.sheetKey)) {
-    const sprite = scene.add.sprite(x, y, mobileCfg.sheetKey, 0);
-    sprite.setDepth(5);
-    // 32×32 sprite → scale to ~24px (slightly smaller than tiles, they're units not buildings)
-    sprite.setScale(24 / 32);
-    sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-    // Start idle animation
-    const idleAnim = `mobile_${towerId}_down`;
-    if (scene.anims.exists(idleAnim)) sprite.play(idleAnim);
-    return sprite;
+  if (mobileCfg) {
+    const mfid = getTowerFaction(towerId);
+    let mobileKey = mobileCfg.sheetKey;
+    if (mfid) {
+      const suffix = SkinManager.getSkinSuffix(mfid, towerId);
+      if (suffix) {
+        const skinnedKey = mobileCfg.sheetKey + suffix;
+        if (scene.textures.exists(skinnedKey)) mobileKey = skinnedKey;
+      }
+    }
+    if (scene.textures.exists(mobileKey)) {
+      const sprite = scene.add.sprite(x, y, mobileKey, 0);
+      sprite.setDepth(5);
+      sprite.setScale(24 / 32);
+      sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      const idleAnim = `mobile_${towerId}_down`;
+      if (scene.anims.exists(idleAnim)) sprite.play(idleAnim);
+      return sprite;
+    }
   }
 
   // Static tower
