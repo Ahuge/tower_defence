@@ -259,7 +259,9 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
 function isEquipped(skin: SkinDef): boolean {
   const equipped = PlayerInventory.getEquippedSkins();
   let slotKey: string | null = null;
-  if (skin.target === 'tower_faction' && skin.faction) slotKey = `tower:${skin.faction}`;
+  if (skin.target === 'tower_faction' && skin.faction) slotKey = `towerfaction:${skin.faction}`;
+  else if (skin.target === 'tower' && skin.towerId) slotKey = `tower:${skin.towerId}`;
+  else if (skin.target === 'tower' && skin.faction) slotKey = `towerfaction:${skin.faction}`;
   else if (skin.target === 'creep_faction' && skin.faction) slotKey = `creep:${skin.faction}`;
   else if (skin.target === 'hero' && skin.heroId) slotKey = `hero:${skin.heroId}`;
   if (!slotKey) return false;

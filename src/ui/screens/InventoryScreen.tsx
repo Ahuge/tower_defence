@@ -35,7 +35,9 @@ export function InventoryScreen() {
   }
 
   const getSlotKey = (skin: SkinDef): string | null => {
-    if ((skin.target === 'tower_faction' || skin.target === 'tower') && skin.faction) return `tower:${skin.faction}`;
+    if (skin.target === 'tower_faction' && skin.faction) return `towerfaction:${skin.faction}`;
+    if (skin.target === 'tower' && skin.towerId) return `tower:${skin.towerId}`;
+    if (skin.target === 'tower' && skin.faction) return `towerfaction:${skin.faction}`;
     if (skin.target === 'creep_faction' && skin.faction) return `creep:${skin.faction}`;
     if (skin.target === 'hero' && skin.heroId) return `hero:${skin.heroId}`;
     return null;

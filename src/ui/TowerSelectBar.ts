@@ -137,7 +137,7 @@ export class TowerSelectBar {
           const fid = getTowerFaction(towerId);
           let sheetKey = cfg.sheetKey;
           if (fid) {
-            const skinned = SkinManager.getTowerSheetKey(fid);
+            const skinned = SkinManager.getTowerSheetKey(fid, towerId);
             if (skinned && skinned !== sheetKey && this.scene.textures.exists(skinned)) {
               sheetKey = skinned;
             }
@@ -298,11 +298,18 @@ export class TowerSelectBar {
 
   /** Get the DockStyle for a tower if its faction has an equipped skin with dock overrides */
   private getDockStyle(towerId: string): DockStyle | null {
+    // Check per-tower skin first
+    const perTowerSkinId = PlayerInventory.getEquippedSkin(`tower:${towerId}`);
+    if (perTowerSkinId) {
+      const def = getSkinDef(perTowerSkinId);
+      if (def?.dockStyle) return def.dockStyle;
+    }
+    // Fall back to faction-wide skin
     const fid = getTowerFaction(towerId);
     if (!fid) return null;
-    const skinId = PlayerInventory.getEquippedSkin(`tower:${fid}`);
-    if (!skinId) return null;
-    const def = getSkinDef(skinId);
+    const factionSkinId = PlayerInventory.getEquippedSkin(`towerfaction:${fid}`);
+    if (!factionSkinId) return null;
+    const def = getSkinDef(factionSkinId);
     return def?.dockStyle ?? null;
   }
 

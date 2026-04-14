@@ -51,18 +51,35 @@ class SkinManagerClass {
     return def?.assetSuffix ?? null;
   }
 
-  getTowerSheetKey(faction: FactionId): string {
+  /**
+   * Resolve the tower spritesheet key. Checks per-tower skin first,
+   * then faction-wide skin, then returns the default.
+   */
+  getTowerSheetKey(faction: FactionId, towerId?: string): string {
     const base = FACTION_TOWER_SHEET[faction];
     if (!base) return '';
-    const suffix = this.getSuffix(`tower:${faction}`);
-    return suffix ? base + suffix : base;
+    // Per-tower skin takes priority
+    if (towerId) {
+      const towerSuffix = this.getSuffix(`tower:${towerId}`);
+      if (towerSuffix) return base + towerSuffix;
+    }
+    // Faction-wide skin
+    const factionSuffix = this.getSuffix(`towerfaction:${faction}`);
+    return factionSuffix ? base + factionSuffix : base;
   }
 
-  getProjectileSheetKey(faction: FactionId): string {
+  /**
+   * Resolve the projectile spritesheet key. Same priority as towers.
+   */
+  getProjectileSheetKey(faction: FactionId, towerId?: string): string {
     const base = FACTION_PROJ_SHEET[faction];
     if (!base) return '';
-    const suffix = this.getSuffix(`tower:${faction}`);
-    return suffix ? base + suffix : base;
+    if (towerId) {
+      const towerSuffix = this.getSuffix(`tower:${towerId}`);
+      if (towerSuffix) return base + towerSuffix;
+    }
+    const factionSuffix = this.getSuffix(`towerfaction:${faction}`);
+    return factionSuffix ? base + factionSuffix : base;
   }
 
   getHeroSheetKey(heroId: HeroId | string): string {

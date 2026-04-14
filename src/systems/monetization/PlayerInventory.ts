@@ -135,8 +135,8 @@ class PlayerInventoryClass {
 
   private getSlotKey(def: SkinDef): string | null {
     switch (def.target) {
-      case 'tower_faction':  return def.faction ? `tower:${def.faction}` : null;
-      case 'tower':          return def.faction ? `tower:${def.faction}` : null;
+      case 'tower_faction':  return def.faction ? `towerfaction:${def.faction}` : null;
+      case 'tower':          return def.towerId ? `tower:${def.towerId}` : (def.faction ? `towerfaction:${def.faction}` : null);
       case 'creep_faction':  return def.faction ? `creep:${def.faction}` : null;
       case 'hero':           return def.heroId ? `hero:${def.heroId}` : null;
       case 'terrain':        return 'terrain';

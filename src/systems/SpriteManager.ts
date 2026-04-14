@@ -371,11 +371,11 @@ export function createTowerSprite(
   const config = TOWER_SPRITE_CONFIGS[towerId];
   if (!config) return null;
 
-  // Resolve skinned sheet key
+  // Resolve skinned sheet key (per-tower first, then faction-wide)
   const fid = getTowerFaction(towerId);
   let sheetKey = config.sheetKey;
   if (fid) {
-    const skinned = SkinManager.getTowerSheetKey(fid);
+    const skinned = SkinManager.getTowerSheetKey(fid, towerId);
     if (skinned && skinned !== sheetKey && scene.textures.exists(skinned)) {
       sheetKey = skinned;
     }
@@ -469,7 +469,7 @@ export function createProjectileSprite(
   const pfid = getTowerFaction(towerId);
   let projSheetKey = config.sheetKey;
   if (pfid) {
-    const skinned = SkinManager.getProjectileSheetKey(pfid);
+    const skinned = SkinManager.getProjectileSheetKey(pfid, towerId);
     if (skinned && skinned !== projSheetKey && scene.textures.exists(skinned)) {
       projSheetKey = skinned;
     }
