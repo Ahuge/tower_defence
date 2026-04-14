@@ -122,6 +122,7 @@ export const SKIN_DEFS: SkinDef[] = [
   { id: 'arcane_pack_corrupted',   name: 'Corrupted Arcane Pack', description: 'All Arcane towers — blighted',    rarity: 'epic',   target: 'tower_faction', faction: 'arcane',     shardCost: 1200, assetSuffix: '_corrupted' },
   { id: 'mech_pack_gilded',        name: 'Gilded Mech Pack',     description: 'All Mechanical towers — brass',    rarity: 'rare',   target: 'tower_faction', faction: 'mechanical', shardCost: 800, assetSuffix: '_gilded' },
   { id: 'nature_pack_autumn',      name: 'Autumn Nature Pack',   description: 'All Nature towers — fall colors',  rarity: 'rare',   target: 'tower_faction', faction: 'nature',     shardCost: 800, assetSuffix: '_autumn' },
+  { id: 'mil_pack_desert_storm',   name: 'Desert Storm Pack',    description: 'All Military towers — desert camo', rarity: 'rare',   target: 'tower_faction', faction: 'military',   shardCost: 800, assetSuffix: '_desert_storm' },
   // ── Hero skins (direct purchase) ──
   { id: 'hero_arcanist_void',      name: 'Void Arcanist',        description: 'Arcanist corrupted by the Void', rarity: 'epic',      target: 'hero', heroId: 'arcanist',  shardCost: 500, assetSuffix: '_void' },
   { id: 'hero_warden_golden',      name: 'Golden Warden',        description: 'Gilded armor commander',         rarity: 'rare',      target: 'hero', heroId: 'warden',    shardCost: 400, assetSuffix: '_golden' },

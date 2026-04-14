@@ -222,7 +222,7 @@ export function getHeroSheetKey(heroId: string): string | undefined {
 /** Known skin asset suffixes per faction directory. Add entries here when new skins are created. */
 const SKIN_ASSETS: Record<string, string[]> = {
   arcane: ['_corrupted'],
-  // Add more as skins are created: mechanical: ['_gilded'], etc.
+  military: ['_desert_storm'],
 };
 
 export function preloadSprites(scene: Phaser.Scene): void {
