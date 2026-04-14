@@ -7,6 +7,8 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    /* Phaser canvas must sit below the DOM UI layer */
+    canvas { position: relative; z-index: 1; }
   </style>
 </head>
 <body>
