@@ -96,7 +96,7 @@ const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
   infernal:   [],
   psionic:    [],
   aliens:     [],
-  cypherpunk: [],
+  cypherpunk: [{ suffix: 'cyber_sakura', label: 'Cyber Sakura', description: 'Pink sakura theme', rarity: 'epic' }],
   harmonic:   [],
   random:     [],
 };
@@ -138,6 +138,8 @@ export const SKIN_DEFS: SkinDef[] = [
     dockStyle: { borderColor: '#22aa44', glowColor: '#22aa4466', bgTint: '#0a1a0a' } },
   { id: 'mil_pack_desert_storm',   name: 'Desert Storm Pack',    description: 'All Military towers — desert camo',    rarity: 'rare', target: 'tower_faction', faction: 'military', shardCost: 800,  assetSuffix: '_desert_storm',
     dockStyle: { borderColor: '#ccaa66', glowColor: '#ccaa6644', bgTint: '#1a1508' } },
+  { id: 'cyber_pack_sakura',       name: 'Cyber Sakura Pack',    description: 'All Cypherpunk towers — pink sakura',  rarity: 'epic', target: 'tower_faction', faction: 'cypherpunk', shardCost: 1200, assetSuffix: '_cyber_sakura',
+    dockStyle: { borderColor: '#ff0088', glowColor: '#ff008866', bgTint: '#1a0a1a' } },
   // ── Per-tower skins (roll-only) ──
   ...TOWER_SKINS,
 ];

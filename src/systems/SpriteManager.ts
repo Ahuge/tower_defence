@@ -235,6 +235,7 @@ export function getTowerFaction(towerId: string): FactionId | undefined {
 const SKIN_ASSETS: Record<string, string[]> = {
   arcane: ['_corrupted'],
   military: ['_desert_storm'],
+  cypherpunk: ['_cyber_sakura'],
 };
 
 export function preloadSprites(scene: Phaser.Scene): void {
