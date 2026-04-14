@@ -40,6 +40,18 @@ export type SkinTarget =
   | 'creep_faction'   // reskins all creeps for a faction
   | 'terrain';        // terrain tileset theme
 
+/** Visual overrides for how a tower appears in the selection dock bar */
+export interface DockStyle {
+  /** Border color (hex string, e.g. '#44ff44') — replaces default gray border */
+  borderColor?: string;
+  /** Glow color (hex string) — adds a box-shadow glow around the card */
+  glowColor?: string;
+  /** Background tint (hex string) — subtle color wash on card background */
+  bgTint?: string;
+  /** Name label color (hex string) — overrides default white tower name */
+  nameColor?: string;
+}
+
 export interface SkinDef {
   id: string;
   name: string;
@@ -58,6 +70,8 @@ export interface SkinDef {
   shardCost: number;
   /** Asset key suffix appended to the base texture key */
   assetSuffix: string;
+  /** Dock card visual overrides — applied to the tower selection bar */
+  dockStyle?: DockStyle;
   /** Whether this skin is only available through battle pass / seasonal events */
   exclusive?: boolean;
 }
@@ -120,8 +134,10 @@ export const TOWER_SKINS: SkinDef[] = generateTowerSkins();
 
 export const SKIN_DEFS: SkinDef[] = [
   // ── Faction-wide skins (direct purchase) — only include skins with actual assets ──
-  { id: 'arcane_pack_corrupted',   name: 'Corrupted Arcane Pack', description: 'All Arcane towers — green corruption', rarity: 'epic', target: 'tower_faction', faction: 'arcane',   shardCost: 1200, assetSuffix: '_corrupted' },
-  { id: 'mil_pack_desert_storm',   name: 'Desert Storm Pack',    description: 'All Military towers — desert camo',    rarity: 'rare', target: 'tower_faction', faction: 'military', shardCost: 800,  assetSuffix: '_desert_storm' },
+  { id: 'arcane_pack_corrupted',   name: 'Corrupted Arcane Pack', description: 'All Arcane towers — green corruption', rarity: 'epic', target: 'tower_faction', faction: 'arcane',   shardCost: 1200, assetSuffix: '_corrupted',
+    dockStyle: { borderColor: '#22aa44', glowColor: '#22aa4466', bgTint: '#0a1a0a' } },
+  { id: 'mil_pack_desert_storm',   name: 'Desert Storm Pack',    description: 'All Military towers — desert camo',    rarity: 'rare', target: 'tower_faction', faction: 'military', shardCost: 800,  assetSuffix: '_desert_storm',
+    dockStyle: { borderColor: '#ccaa66', glowColor: '#ccaa6644', bgTint: '#1a1508' } },
   // ── Per-tower skins (roll-only) ──
   ...TOWER_SKINS,
 ];

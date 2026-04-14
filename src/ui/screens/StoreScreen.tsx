@@ -160,17 +160,16 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
     setStripItems(items);
     setRollResult(null);
     setRevealed(false);
-    setRolling(true);
-    setStripOffset(0);
+    setRolling(false); // briefly disable transition
+    setStripOffset(0); // reset to start
 
-    // Strip has padding-left: 300px (= half viewport max-width).
-    // Marker is at 50% of viewport. Card N's center is at:
-    //   300 + N * 120 + 58 (half of 116px card width)
-    // To align card N's center with the marker (300px), scroll by:
-    //   N * 120 + 58
+    // Wait two frames: first to flush offset=0 to DOM, second to start the animation
     const targetOffset = WIN_POS * CARD_TOTAL + 58;
     requestAnimationFrame(() => {
-      setStripOffset(targetOffset);
+      requestAnimationFrame(() => {
+        setRolling(true);
+        setStripOffset(targetOffset);
+      });
     });
 
     // After animation completes, reveal the result

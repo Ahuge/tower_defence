@@ -6,6 +6,7 @@ import { GameControlBar } from './GameControlBar';
 import { UIScale } from '../systems/UIScale';
 import { hasTowerSprite, getTowerSpriteConfig, isMobileTowerSprite, getMobileSpriteConfig, getTowerFaction } from '../systems/SpriteManager';
 import { SkinManager } from '../systems/monetization/SkinManager';
+import { PlayerInventory, getSkinDef, DockStyle } from '../systems/monetization';
 import { uiText, uiGraphics, uiZone, uiSprite } from '../systems/UILayer';
 
 export class TowerSelectBar {
@@ -295,6 +296,16 @@ export class TowerSelectBar {
     return this.selectedIndex;
   }
 
+  /** Get the DockStyle for a tower if its faction has an equipped skin with dock overrides */
+  private getDockStyle(towerId: string): DockStyle | null {
+    const fid = getTowerFaction(towerId);
+    if (!fid) return null;
+    const skinId = PlayerInventory.getEquippedSkin(`tower:${fid}`);
+    if (!skinId) return null;
+    const def = getSkinDef(skinId);
+    return def?.dockStyle ?? null;
+  }
+
   private redraw(): void {
     const bs = this.btnSize;
     const startX = getGridOffsetX() + this.padding;
@@ -303,19 +314,39 @@ export class TowerSelectBar {
       const t = getTowerType(this.towerIds[i]);
       const x = startX + i * (bs + this.padding);
       const y = 6;
+      const dock = this.getDockStyle(this.towerIds[i]);
 
       const btn = this.buttons[i];
       btn.clear();
+
       if (i === this.selectedIndex) {
-        btn.fillStyle(t.color, 0.9);
+        // Selected state
+        const bgColor = dock?.bgTint ? parseInt(dock.bgTint.replace('#', ''), 16) : t.color;
+        btn.fillStyle(bgColor, dock?.bgTint ? 1 : 0.9);
         btn.fillRect(x, y, bs, bs);
-        btn.lineStyle(2, 0xffffff, 1);
+        const borderColor = dock?.borderColor ? parseInt(dock.borderColor.replace('#', ''), 16) : 0xffffff;
+        btn.lineStyle(2, borderColor, 1);
         btn.strokeRect(x, y, bs, bs);
+        // Glow outline for skinned towers
+        if (dock?.glowColor) {
+          const gc = parseInt(dock.glowColor.replace('#', '').slice(0, 6), 16);
+          btn.lineStyle(1, gc, 0.4);
+          btn.strokeRect(x - 1, y - 1, bs + 2, bs + 2);
+        }
       } else {
-        btn.fillStyle(t.color, 0.4);
+        // Normal state
+        const bgColor = dock?.bgTint ? parseInt(dock.bgTint.replace('#', ''), 16) : t.color;
+        btn.fillStyle(bgColor, dock?.bgTint ? 0.8 : 0.4);
         btn.fillRect(x, y, bs, bs);
-        btn.lineStyle(1, 0x555555, 0.6);
+        const borderColor = dock?.borderColor ? parseInt(dock.borderColor.replace('#', ''), 16) : 0x555555;
+        btn.lineStyle(1, borderColor, dock?.borderColor ? 0.8 : 0.6);
         btn.strokeRect(x, y, bs, bs);
+        // Subtle glow for skinned towers even when unselected
+        if (dock?.glowColor) {
+          const gc = parseInt(dock.glowColor.replace('#', '').slice(0, 6), 16);
+          btn.lineStyle(1, gc, 0.2);
+          btn.strokeRect(x - 1, y - 1, bs + 2, bs + 2);
+        }
       }
     }
   }

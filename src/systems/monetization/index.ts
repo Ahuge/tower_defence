@@ -22,4 +22,4 @@ export {
   REMOVE_ADS_SHARD_COST, REMOVE_ADS_PRICE_CENTS,
   RARITY_COLORS, RARITY_LABELS,
 } from './StoreDefinitions';
-export type { SkinDef, SkinTarget, Rarity, TerrainThemeDef, ShardPack } from './StoreDefinitions';
+export type { SkinDef, SkinTarget, Rarity, TerrainThemeDef, ShardPack, DockStyle } from './StoreDefinitions';
