@@ -115,6 +115,9 @@ export default function SkinEditorApp() {
   const [loading, setLoading] = useState(false);
   const [skinName, setSkinName] = useState('');
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
+  const [dockBorder, setDockBorder] = useState('#555555');
+  const [dockGlow, setDockGlow] = useState('#55555500');
+  const [dockBg, setDockBg] = useState('#1a1a28');
   const origRef = useRef<HTMLCanvasElement>(null);
   const skinRef = useRef<HTMLCanvasElement>(null);
   const origProjRef = useRef<HTMLCanvasElement>(null);
@@ -488,8 +491,10 @@ export default function SkinEditorApp() {
     dl(skinRef.current || origRef.current, `${factionId}_towers_${suffix}.png`);
     // Projectile spritesheet
     dl(skinProjRef.current || origProjRef.current, `${factionId}_projectiles_${suffix}.png`);
-    // Palette JSON
-    const data = { factionId, skinName: skinName || 'Custom Skin', suffix, towerPalettes };
+    // Palette JSON + dock style
+    const dockStyle = (dockBorder !== '#555555' || dockGlow !== '#55555500' || dockBg !== '#1a1a28')
+      ? { borderColor: dockBorder, glowColor: dockGlow + '66', bgTint: dockBg } : undefined;
+    const data = { factionId, skinName: skinName || 'Custom Skin', suffix, towerPalettes, dockStyle };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const b = document.createElement('a'); b.download = `${factionId}_skin_${suffix}.json`; b.href = URL.createObjectURL(blob); b.click();
   };
@@ -502,6 +507,11 @@ export default function SkinEditorApp() {
       if (data.factionId && data.factionId !== factionId) await selectFaction(data.factionId);
       if (data.towerPalettes) setTowerPalettes(data.towerPalettes);
       if (data.skinName) setSkinName(data.skinName);
+      if (data.dockStyle) {
+        if (data.dockStyle.borderColor) setDockBorder(data.dockStyle.borderColor);
+        if (data.dockStyle.glowColor) setDockGlow(data.dockStyle.glowColor.slice(0, 7));
+        if (data.dockStyle.bgTint) setDockBg(data.dockStyle.bgTint);
+      }
     };
     input.click();
   };
@@ -613,6 +623,42 @@ export default function SkinEditorApp() {
                   </>)}
                 </>);
               })()}
+
+              {/* Dock card style */}
+              <div style={{ marginTop: '16px', borderTop: '1px solid #2a2a44', paddingTop: '12px' }}>
+                <div style={{ fontSize: '9px', color: '#aa88ff', marginBottom: '8px', letterSpacing: '1px' }}>DOCK CARD STYLE</div>
+                {/* Preview */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+                  <div style={{
+                    width: '64px', height: '64px', borderRadius: '4px',
+                    background: dockBg,
+                    border: `2px solid ${dockBorder}`,
+                    boxShadow: `0 0 10px ${dockGlow}66`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '8px', color: '#666',
+                  }}>
+                    Tower Icon
+                  </div>
+                </div>
+                {/* Pickers */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', fontSize: '9px' }}>
+                  <div>
+                    <div style={{ color: '#888', marginBottom: '2px' }}>Border</div>
+                    <input type="color" value={dockBorder} onChange={(e: any) => setDockBorder(e.target.value)}
+                      style={{ width: '100%', height: '24px', border: 'none', cursor: 'pointer', borderRadius: '3px', padding: 0 }} />
+                  </div>
+                  <div>
+                    <div style={{ color: '#888', marginBottom: '2px' }}>Glow</div>
+                    <input type="color" value={dockGlow} onChange={(e: any) => setDockGlow(e.target.value)}
+                      style={{ width: '100%', height: '24px', border: 'none', cursor: 'pointer', borderRadius: '3px', padding: 0 }} />
+                  </div>
+                  <div>
+                    <div style={{ color: '#888', marginBottom: '2px' }}>Background</div>
+                    <input type="color" value={dockBg} onChange={(e: any) => setDockBg(e.target.value)}
+                      style={{ width: '100%', height: '24px', border: 'none', cursor: 'pointer', borderRadius: '3px', padding: 0 }} />
+                  </div>
+                </div>
+              </div>
 
               <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button onClick={resetTower} style={btn}>Reset {selectedTower === -1 ? 'Global' : faction.towerNames[selectedTower]}</button>
