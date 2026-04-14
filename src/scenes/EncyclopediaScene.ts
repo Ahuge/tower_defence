@@ -9,6 +9,7 @@ import { HERO_ORDER, HERO_TYPES, HeroId } from '../data/HeroTypes';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { hasTowerSprite, getTowerSpriteConfig, getHeroSheetKey, preloadSprites } from '../systems/SpriteManager';
+import { goToMenu } from '../ui/navigation';
 
 type Tab = 'factions' | 'towers' | 'creeps' | 'heroes';
 
@@ -51,7 +52,7 @@ export class EncyclopediaScene extends Phaser.Scene {
     const backBtn = this.add.text(UIScale.isPhone ? 20 : 50, UIScale.y(20), '[ Back ]', {
       fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
-    backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    backBtn.on('pointerdown', () => goToMenu());
 
     const tabs: { label: string; tab: Tab }[] = [
       { label: 'Factions', tab: 'factions' },

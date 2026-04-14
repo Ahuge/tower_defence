@@ -3,6 +3,7 @@ import { getCanvasWidth } from '../config';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 import { LeaderboardAPI, LeaderboardEntry } from '../systems/LeaderboardAPI';
+import { goToMenu } from '../ui/navigation';
 
 export class LeaderboardScene extends Phaser.Scene {
   private scrollY: number = 0;
@@ -36,7 +37,7 @@ export class LeaderboardScene extends Phaser.Scene {
     const backBtn = this.add.text(UIScale.space(50), UIScale.space(25), '[ Back ]', {
       fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
-    backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    backBtn.on('pointerdown', () => goToMenu());
     backBtn.on('pointerover', () => backBtn.setColor('#ffffff'));
     backBtn.on('pointerout', () => backBtn.setColor('#888888'));
 

@@ -14,6 +14,20 @@ const gitSha = (() => {
 export default defineConfig({
   base: '/tower_defence/',
 
+  // Preact JSX
+  esbuild: {
+    jsxFactory: 'h',
+    jsxFragment: 'Fragment',
+    jsxImportSource: 'preact',
+  },
+
+  resolve: {
+    alias: {
+      'react': 'preact/compat',
+      'react-dom': 'preact/compat',
+    },
+  },
+
   define: {
     __GIT_SHA__: JSON.stringify(gitSha),
   },

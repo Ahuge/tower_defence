@@ -28,6 +28,7 @@ import { BaseFrontierMode } from '../systems/modes/BaseFrontierMode';
 import { BattleMode } from '../systems/modes/BattleMode';
 import { HeroDefenseMode } from '../systems/modes/HeroDefenseMode';
 import { GauntletMode } from '../systems/modes/GauntletMode';
+import { goToMenu } from '../ui/navigation';
 import { HeroLeakHandler } from '../systems/HeroLeakHandler';
 import { ArenaManager } from '../systems/ArenaManager';
 import { AbilitySystem } from '../systems/AbilitySystem';
@@ -1466,7 +1467,7 @@ export class GameScene extends Phaser.Scene {
       this.circle?.close();
       this.registry.remove('versus');
       this.registry.remove('circle');
-      this.scene.start('MenuScene');
+      goToMenu();
     });
     exitBtn.on('pointerover', () => exitBtn.setColor('#ffbb77'));
     exitBtn.on('pointerout', () => exitBtn.setColor('#ff8844'));

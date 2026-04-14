@@ -11,6 +11,7 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { UIScale } from '../systems/UIScale';
 import { Analytics } from '../systems/AnalyticsClient';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
+import { goToMenu } from '../ui/navigation';
 
 export class LobbyScene extends Phaser.Scene {
   private versus: VersusManager | null = null;
@@ -93,7 +94,7 @@ export class LobbyScene extends Phaser.Scene {
     const backBtn = this.add.text(UIScale.space(30), ResponsiveManager.canvasHeight() - UIScale.space(20), '[ Back ]', {
       fontSize: UIScale.font(12), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
-    backBtn.on('pointerdown', () => { this.cleanup(); this.scene.start('MenuScene'); });
+    backBtn.on('pointerdown', () => { this.cleanup(); goToMenu(); });
     this.dynamicElements.push(backBtn);
   }
 

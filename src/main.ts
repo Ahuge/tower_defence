@@ -16,6 +16,7 @@ import { CreepFactionSelectScene } from './scenes/CreepFactionSelectScene';
 import { GauntletPreviewScene } from './scenes/GauntletPreviewScene';
 import { LeaderboardScene } from './scenes/LeaderboardScene';
 import { TowerSelectBar } from './ui/TowerSelectBar';
+import { UIBridge } from './ui/UIBridge';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
@@ -26,28 +27,28 @@ ResponsiveManager.init();
 
 const gameHeight = ResponsiveManager.canvasHeight();
 
+class BootScene extends Phaser.Scene {
+  constructor() { super('BootScene'); }
+  create(): void { /* Phaser ready — menu shown from main.ts */ }
+}
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
   width: ResponsiveManager.canvasWidth(),
   height: gameHeight,
   backgroundColor: '#111111',
   parent: document.body,
-  scene: [MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
-  render: {
-    antialias: true,
-    pixelArt: false,
-  },
-  input: {
-    touch: true,
-    activePointers: 3, // support pinch (2 fingers) + 1 extra
-  },
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
+  scene: [BootScene, MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
+  render: { antialias: true, pixelArt: false },
+  input: { touch: true, activePointers: 3 },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
 };
 
 const game = new Phaser.Game(config);
+
+// Initialize DOM UI bridge, then show menu after Preact mounts
+UIBridge.init(game);
+requestAnimationFrame(() => UIBridge.show('menu'));
 
 // Resize canvas on layout mode change
 ResponsiveManager.onLayoutChange(() => {

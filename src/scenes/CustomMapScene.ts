@@ -4,6 +4,7 @@ import { MapId } from '../data/Maps';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 import { MapStorage, StoredCustomMap } from '../systems/MapStorage';
+import { goToMenu } from '../ui/navigation';
 
 export class CustomMapScene extends Phaser.Scene {
   private scrollY: number = 0;
@@ -33,7 +34,7 @@ export class CustomMapScene extends Phaser.Scene {
     const backBtn = this.add.text(UIScale.space(50), UIScale.space(25), '[ Back ]', {
       fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
-    backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    backBtn.on('pointerdown', () => goToMenu());
     backBtn.on('pointerover', () => backBtn.setColor('#cccccc'));
     backBtn.on('pointerout', () => backBtn.setColor('#888888'));
 
