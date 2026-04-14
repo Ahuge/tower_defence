@@ -82,15 +82,18 @@ export default function SkinEditorApp() {
       const fns = await loadFactionModule(id);
       setDrawFns(fns);
 
-      const entries: PaletteEntry[] = [];
-      const seen = new Set<string>();
-      for (const [, hex] of Object.entries(fns.C)) {
-        const norm = normalizeHex(hex);
-        if (seen.has(norm)) continue;
-        seen.add(norm);
-        entries.push({ original: norm, current: norm });
-      }
-      setBasePalette(entries);
+      // Extract ALL colors by rendering through a proxy that captures every fillStyle
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = info.towerCols * info.towerCell;
+      tmpCanvas.height = info.towerRows * info.towerCell;
+      const tmpCtx = tmpCanvas.getContext('2d')!;
+      tmpCtx.imageSmoothingEnabled = false;
+      const { proxy, usedColors } = createColorProxy(tmpCtx);
+      fns.drawTowers(proxy);
+
+      // Build palette from ALL intercepted colors (includes both C palette and per-tower locals)
+      const sorted = Array.from(usedColors).sort((a, b) => hexLum(a) - hexLum(b));
+      setBasePalette(sorted.map(c => ({ original: c, current: c })));
       renderOriginal(fns, info);
     } catch (err) {
       console.error('Failed to load faction:', err);
@@ -450,6 +453,11 @@ export default function SkinEditorApp() {
       )}
     </div>
   );
+}
+
+function hexLum(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
 const btn: Record<string, string | number> = {
