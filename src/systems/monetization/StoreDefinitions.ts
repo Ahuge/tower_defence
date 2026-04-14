@@ -4,6 +4,7 @@
  */
 import { FactionId, FACTIONS } from '../../data/Factions';
 import { HeroId } from '../../data/HeroTypes';
+import { TOWER_TYPES } from '../../data/TowerTypes';
 
 // ─── Rarity ────────────────────────────────────────────────
 
@@ -101,6 +102,10 @@ const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
   random:     [],
 };
 
+const RARITY_UP: Record<Rarity, Rarity> = {
+  common: 'rare', rare: 'epic', epic: 'legendary', legendary: 'legendary',
+};
+
 /** Generate per-tower skins from themes + faction tower lists */
 function generateTowerSkins(): SkinDef[] {
   const skins: SkinDef[] = [];
@@ -110,17 +115,17 @@ function generateTowerSkins(): SkinDef[] {
     if (!faction) continue;
     for (const theme of themes) {
       for (const towerId of faction.towerIds) {
-        // Derive a display name from towerId: 'arcane_bolt' → 'Bolt'
         const towerName = towerId.split('_').slice(1).map((w: string) => w[0].toUpperCase() + w.slice(1)).join(' ') || towerId;
+        const isUlt = TOWER_TYPES[towerId]?.ultimate === true;
         skins.push({
           id: `${towerId}_${theme.suffix}`,
           name: `${theme.label} ${towerName}`,
           description: theme.description,
-          rarity: theme.rarity,
+          rarity: isUlt ? RARITY_UP[theme.rarity] : theme.rarity,
           target: 'tower',
           faction: factionId as FactionId,
           towerId,
-          shardCost: 0, // roll-only — not directly purchasable
+          shardCost: 0,
           assetSuffix: `_${theme.suffix}`,
         });
       }
