@@ -37,7 +37,7 @@ const config: Phaser.Types.Core.GameConfig = {
   width: ResponsiveManager.canvasWidth(),
   height: gameHeight,
   backgroundColor: '#111111',
-  parent: document.body,
+  parent: 'game-root',
   scene: [BootScene, MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
   render: { antialias: true, pixelArt: false },
   input: { touch: true, activePointers: 3 },
