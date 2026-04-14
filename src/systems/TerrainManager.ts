@@ -255,7 +255,7 @@ export class TerrainManager {
   }
 
   /** Compute terrain types for all cells based on grid and theme */
-  compute(grid: Grid, themeId: string, structures?: LargeStructurePlacement[]): void {
+  compute(grid: Grid, themeId: string, structures?: LargeStructurePlacement[], animatedCells?: { col: number; row: number }[]): void {
     const theme = THEMES[themeId] ?? THEMES.generic;
     this.groundType = theme.ground;
     this.themeId = themeId;
@@ -267,11 +267,32 @@ export class TerrainManager {
     const rows = grid.rows;
     const cols = getGridCols();
 
+    // Build the explicit animated-cell set. These cells skip cluster heuristics
+    // and are directly assigned the theme's animated terrain type.
+    const animatedSet = new Set<string>();
+    const ft = this.factionTerrain;
+    let animatedTerrain: BlockedTerrainType | null = null;
+    if (ft) {
+      for (const [t, m] of Object.entries(ft.typeMapping)) {
+        if (m === 'animated') { animatedTerrain = t as BlockedTerrainType; break; }
+      }
+    }
+    if (animatedCells && animatedTerrain) {
+      for (const cell of animatedCells) {
+        const key = `${cell.col},${cell.row}`;
+        animatedSet.add(key);
+        this.terrainMap.set(key, animatedTerrain);
+      }
+    }
+
+    // Remaining blocked cells go through cluster detection to guess wall vs pool
     const blockedSet = new Set<string>();
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (grid.cells[r][c] === CellType.Blocked) {
-          blockedSet.add(`${c},${r}`);
+          const key = `${c},${r}`;
+          if (animatedSet.has(key)) continue;
+          blockedSet.add(key);
         }
       }
     }

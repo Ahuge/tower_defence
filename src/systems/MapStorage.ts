@@ -119,9 +119,10 @@ export class MapStorage {
   /** Convert a StoredCustomMap to a MapDefinition usable by GameScene */
   static toMapDefinition(stored: StoredCustomMap): MapDefinition {
     const json = stored.json;
+    const animated = toPosArray(json.animated || []);
     const blocked = [
       ...toPosArray(json.blocked),
-      ...toPosArray(json.animated || []),
+      ...animated,
     ];
     const noBuild = toPosArray(json.noBuild);
     const entries = json.entries.map(e => Array.isArray(e) ? { col: (e as unknown as number[])[0], row: (e as unknown as number[])[1] } : e);
@@ -136,6 +137,7 @@ export class MapStorage {
       exits,
       blocked,
       noBuild,
+      animated,
       structures: json.structures,
     };
   }
