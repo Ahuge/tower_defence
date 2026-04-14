@@ -1,7 +1,43 @@
 // @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by tMilBase() and camoPatch shared helper
+export const C_base={
+  BLUE:'#4488ff',BROWN:'#5c4033',DKBLUE:'#2266cc',DKBRN:'#3a2820',
+  DKOLV:'#1a2210',DKSAGE:'#6a9a6a',DKSAND:'#8a7a50',
+  LTBLUE:'#66aaff',LTSAND:'#d4c8a0',OLIVE:'#556b2f',SAGE:'#8fbc8f',SAND:'#c2b280',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  OLIVE:'#556b2f',SAGE:'#8fbc8f',BLUE:'#4488ff',DKOLV:'#1a2210',METAL:'#778899',
+  LTSAGE:'#a8d8a8',DKSAGE:'#6a9a6a',SAND:'#c2b280',DKSAND:'#8a7a50',LTSAND:'#d4c8a0',
+  KHAKI:'#bdb76b',DKKHAKI:'#8a8040',LTKHAKI:'#d4cf9a',
+  BROWN:'#5c4033',DKBRN:'#3a2820',LTBRN:'#7a5a45',
+  SKIN:'#d4a574',DKSKIN:'#b08050',LTSKIN:'#e8c8a0',
+  RUST:'#8b4513',DKRUST:'#5a2d0e',
+  BLACK:'#111111',DGRAY:'#333333',MGRAY:'#555555',LGRAY:'#999999',
+  WHITE:'#ffffff',LTBLUE:'#66aaff',DKBLUE:'#2266cc',PALEBLUE:'#aaccff',
+  RED:'#cc3333',DKRED:'#882222',LTRED:'#ee5555',
+  GOLD:'#ffcc00',DKGOLD:'#aa8800',LTGOLD:'#ffee88',
+  FLASH:'#ffff88',ORANGE:'#ff8844',DKORANGE:'#cc5522',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  SAND:'#c2b280',DKSAND:'#8a7a50',LTSAND:'#d4c8a0',
+  BROWN:'#5c4033',DKBRN:'#3a2820',
+  DGRAY:'#333333',MGRAY:'#555555',LGRAY:'#999999',
+  WHITE:'#ffffff',BLUE:'#4488ff',LTBLUE:'#66aaff',DKBLUE:'#2266cc',
+  METAL:'#778899',
+  GOLD:'#ffcc00',DKGOLD:'#aa8800',LTGOLD:'#ffee88',
+  FLASH:'#ffff88',ORANGE:'#ff8844',DKORANGE:'#cc5522',
+  RED:'#cc3333',DKRED:'#882222',
+};
+
+// Unified palette (backward compat — union of all three)
 export const C={
   OLIVE:'#556b2f',SAGE:'#8fbc8f',BLUE:'#4488ff',DKOLV:'#1a2210',METAL:'#778899',
   LTSAGE:'#a8d8a8',DKSAGE:'#6a9a6a',SAND:'#c2b280',DKSAND:'#8a7a50',LTSAND:'#d4c8a0',
@@ -28,43 +64,56 @@ const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 // Military sandbag base with camo netting
 function tMilBase(p:any,b:any,topY:number,w:number,glow:number){
-  const cx=16;
+  const B=C_base,cx=16;
   // Sandbag stack
   for(let i=0;i<10;i++){
     const cw=w-4+Math.floor(i*0.6),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<3?C.SAND:i<6?C.DKSAND:i<8?C.BROWN:C.DKBRN);
+    b(sx,topY+i,cw,1,i<3?B.SAND:i<6?B.DKSAND:i<8?B.BROWN:B.DKBRN);
   }
   // Sandbag top highlight
-  b(cx-Math.floor((w-4)/2),topY,w-4,1,C.LTSAND);
+  b(cx-Math.floor((w-4)/2),topY,w-4,1,B.LTSAND);
   // Sandbag texture lines
   for(let i=2;i<8;i+=3){
     const cw=w-6+Math.floor(i*0.4);
-    p(cx-Math.floor(cw/2)+2,topY+i,C.DKSAND);
-    p(cx+Math.floor(cw/2)-3,topY+i,C.DKSAND);
+    p(cx-Math.floor(cw/2)+2,topY+i,B.DKSAND);
+    p(cx+Math.floor(cw/2)-3,topY+i,B.DKSAND);
   }
   // Military star insignia
-  p(cx,topY+3,glow>1?C.LTBLUE:C.BLUE);
-  p(cx-1,topY+4,glow>1?C.LTBLUE:C.BLUE);p(cx,topY+4,glow>0?C.BLUE:C.DKBLUE);p(cx+1,topY+4,glow>1?C.LTBLUE:C.BLUE);
-  p(cx,topY+5,glow>0?C.BLUE:C.DKBLUE);
+  p(cx,topY+3,glow>1?B.LTBLUE:B.BLUE);
+  p(cx-1,topY+4,glow>1?B.LTBLUE:B.BLUE);p(cx,topY+4,glow>0?B.BLUE:B.DKBLUE);p(cx+1,topY+4,glow>1?B.LTBLUE:B.BLUE);
+  p(cx,topY+5,glow>0?B.BLUE:B.DKBLUE);
   // Chevron below star
-  p(cx-2,topY+6,C.DKBLUE);p(cx+2,topY+6,C.DKBLUE);
+  p(cx-2,topY+6,B.DKBLUE);p(cx+2,topY+6,B.DKBLUE);
   // Camo netting drape
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.DKOLV);
-  if(glow>0){p(cx-3,topY+2,C.DKBLUE);p(cx+3,topY+3,C.DKBLUE);}
+  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,B.DKOLV);
+  if(glow>0){p(cx-3,topY+2,B.DKBLUE);p(cx+3,topY+3,B.DKBLUE);}
 }
 
 // Camo pattern helper
 function camoPatch(p:any,x:number,y:number,s:number){
-  p(x,y,C.OLIVE);p(x+1,y,C.DKOLV);
-  if(s>0){p(x,y+1,C.DKSAGE);p(x+1,y+1,C.OLIVE);}
-  if(s>1){p(x-1,y,C.SAGE);p(x+2,y+1,C.DKOLV);}
+  p(x,y,C_base.OLIVE);p(x+1,y,C_base.DKOLV);
+  if(s>0){p(x,y+1,C_base.DKSAGE);p(x+1,y+1,C_base.OLIVE);}
+  if(s>1){p(x-1,y,C_base.SAGE);p(x+2,y+1,C_base.DKOLV);}
 }
 
 // ===== TOWER LEVEL COUNTS =====
 const T_LEVELS=[2,4,5,5,3,3]; // Sandbag, Wire, Rifleman, Brawler, HeavyGunner, Commander
 const T_MAX_LVL=5; // max across all towers
-const T_ROWS=T_MAX_LVL*4; // 20 rows: 4 states per level
+const T_ROWS_PER_LVL=4;
+const T_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 20 rows: 4 states per level
 const T_COLS=6;
+
+// Per-tower base parameters (tMilBase not called by towers, but drawBase provides pedestal-only rendering)
+const baseYs=[22,22,22,22,22,22];
+const baseWidths=[20,20,20,20,22,22];
+
+export function drawBase(ctx:any,col:number,row:number){
+  if(col<0||col>=T_COLS)return;
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_ROWS_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  tMilBase(p,b,baseYs[col],baseWidths[col],glow);
+}
 
 // ===== TOWERS (6x20 at 64x64) =====
 export function drawTowers(ctx:any){

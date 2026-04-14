@@ -1,7 +1,37 @@
 // @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by tPedestal()
+export const C_base={
+  BRIGHTYEL:'#ffff88',DKMARB:'#ccccaa',GOLD:'#ffdd44',GRAYMARB:'#aaaaaa',
+  LTGLD:'#ffee88',LTMARB:'#fffff0',LTYEL:'#ffffdd',MARBLE:'#eeeedd',
+  PGOLD:'#ffffaa',SHADOW:'#665544',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  PGOLD:'#ffffaa',WHITE:'#ffffff',GOLD:'#ffdd44',DKBRN:'#443300',HOLY:'#ffeecc',WHOLY:'#fff8ee',
+  LTGLD:'#ffee88',DKGLD:'#bb9922',DEEPGLD:'#886611',CREAM:'#fff5dd',
+  MARBLE:'#eeeedd',LTMARB:'#fffff0',DKMARB:'#ccccaa',GRAYMARB:'#aaaaaa',
+  BLUE:'#aaddff',LTBLUE:'#cceeFF',DKBLUE:'#6699cc',
+  AMBER:'#ffaa33',LTYEL:'#ffffdd',BRIGHTYEL:'#ffff88',
+  SKY:'#eeeeff',SHADOW:'#665544',DKSHADOW:'#332211',
+  ARMOR:'#ddcc88',LTARMOR:'#eedd99',DKARMOR:'#aa9955',DEEPARMOR:'#887733',
+  CAPE:'#eeeeee',DKCAPE:'#cccccc',DEESCAPE:'#aaaaaa',
+  SKIN:'#ffddbb',DKSKIN:'#ddbb99',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  PGOLD:'#ffffaa',WHITE:'#ffffff',GOLD:'#ffdd44',HOLY:'#ffeecc',
+  LTGLD:'#ffee88',DKGLD:'#bb9922',DEEPGLD:'#886611',
+  LTYEL:'#ffffdd',BRIGHTYEL:'#ffff88',
+  DKMARB:'#ccccaa',
+};
+
+// Unified palette (backward compat — union of all three)
 export const C={
   PGOLD:'#ffffaa',WHITE:'#ffffff',GOLD:'#ffdd44',DKBRN:'#443300',HOLY:'#ffeecc',WHOLY:'#fff8ee',
   LTGLD:'#ffee88',DKGLD:'#bb9922',DEEPGLD:'#886611',CREAM:'#fff5dd',
@@ -25,24 +55,24 @@ const mk=(c:any,o:number[],gw:number,gh:number,ps:number)=>{
 const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 function tPedestal(p:any,b:any,topY:number,w:number,glow:number){
-  const cx=16;
+  const B=C_base,cx=16;
   // White marble pedestal
   for(let i=0;i<8;i++){
     const cw=w-4+Math.floor(i*0.6),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.LTMARB:i<4?C.MARBLE:i<6?C.DKMARB:C.GRAYMARB);
+    b(sx,topY+i,cw,1,i<2?B.LTMARB:i<4?B.MARBLE:i<6?B.DKMARB:B.GRAYMARB);
   }
   // Golden trim on top
-  b(cx-Math.floor((w-4)/2),topY,w-4,1,C.GOLD);
-  b(cx-Math.floor((w-4)/2),topY+1,w-4,1,C.LTGLD);
+  b(cx-Math.floor((w-4)/2),topY,w-4,1,B.GOLD);
+  b(cx-Math.floor((w-4)/2),topY+1,w-4,1,B.LTGLD);
   // Golden accents on sides
-  p(cx-Math.floor(w/2)+1,topY+3,C.GOLD);p(cx+Math.floor(w/2)-2,topY+3,C.GOLD);
+  p(cx-Math.floor(w/2)+1,topY+3,B.GOLD);p(cx+Math.floor(w/2)-2,topY+3,B.GOLD);
   // Upward light rays
   if(glow>0){
-    p(cx-2,topY-1,C.LTYEL);p(cx+1,topY-1,C.LTYEL);
-    if(glow>1){p(cx,topY-2,C.BRIGHTYEL);p(cx-1,topY-2,C.PGOLD);}
+    p(cx-2,topY-1,B.LTYEL);p(cx+1,topY-1,B.LTYEL);
+    if(glow>1){p(cx,topY-2,B.BRIGHTYEL);p(cx-1,topY-2,B.PGOLD);}
   }
   // Base shadow
-  b(cx-Math.floor((w-2)/2),topY+7,w-2,1,C.SHADOW);
+  b(cx-Math.floor((w-2)/2),topY+7,w-2,1,B.SHADOW);
 }
 
 function tHalo(p:any,cx:number,cy:number,r:number,bright:boolean){
@@ -127,6 +157,17 @@ function tLevelTrim(p:any,b:any,topY:number,w:number,lvl:number){
   if(lvl>=2){p(16-Math.floor(w/2)+2,topY+2,C.LTGLD);p(16+Math.floor(w/2)-3,topY+2,C.LTGLD);}
   if(lvl>=3){b(16-Math.floor(w/2)+1,topY+1,2,1,C.BRIGHTYEL);b(16+Math.floor(w/2)-3,topY+1,2,1,C.BRIGHTYEL);}
   if(lvl>=4){for(let i=0;i<w-6;i+=2)p(16-Math.floor(w/2)+3+i,topY,C.WHITE);}
+}
+
+// ===== DRAW BASE (standalone pedestal) =====
+export function drawBase(ctx:any,col:number,row:number){
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_STATES_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  const baseWidths=[20,22,20,24,26]; // per tower (level-1 defaults)
+  const baseYs=[23,24,24,25,25];
+  const pw=lvlPedW(baseWidths[col]??20,level);
+  tPedestal(p,b,baseYs[col]??23,pw,glow);
 }
 
 // ===== TOWERS (5 cols × 20 rows at 64×64) =====

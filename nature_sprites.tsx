@@ -1,7 +1,42 @@
 // @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by tBaseLv() and vine shared helper
+export const C_base={
+  BARK:'#664422',DKBARK:'#3a2211',DKFOR:'#113311',DKMOSS:'#2a4422',DKVINE:'#226633',
+  GREEN:'#33aa44',LTBARK:'#885533',LTGRN:'#66dd77',LTMOSS:'#88aa66',LTVINE:'#55cc66',
+  MDGRN:'#226633',MOSS:'#446633',PLBARK:'#aa7744',STUMP:'#4a3318',VINE:'#339944',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  DKFOR:'#113311',FOREST:'#1a4422',MDGRN:'#226633',GREEN:'#33aa44',LTGRN:'#66dd77',PALGRN:'#aaffbb',
+  BARK:'#664422',LTBARK:'#885533',PLBARK:'#aa7744',DKBARK:'#3a2211',STUMP:'#4a3318',
+  AMBER:'#ffaa44',DKAMB:'#cc7722',LTAMB:'#ffcc88',GOLD:'#ffcc00',
+  PINK:'#ee55aa',LTPNK:'#ff88cc',MAGENTA:'#cc2288',DKPNK:'#882255',
+  MOSS:'#446633',DKMOSS:'#2a4422',LTMOSS:'#88aa66',
+  THORN:'#558833',DKTHRN:'#334422',LTTHRN:'#88cc55',
+  SPORE:'#88cc44',DKSPOR:'#668833',LTSPOR:'#bbee77',TOXIC:'#aaee33',
+  VINE:'#339944',DKVINE:'#226633',LTVINE:'#55cc66',
+  WHITE:'#ffffff',GRAY:'#556644',DKGRAY:'#2a3322',
+  VOID:'#0a1108',SHAD:'#0f1a0c',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  DKFOR:'#113311',MDGRN:'#226633',GREEN:'#33aa44',LTGRN:'#66dd77',
+  BARK:'#664422',LTBARK:'#885533',PLBARK:'#aa7744',DKBARK:'#3a2211',STUMP:'#4a3318',
+  AMBER:'#ffaa44',DKAMB:'#cc7722',LTAMB:'#ffcc88',
+  PINK:'#ee55aa',LTPNK:'#ff88cc',MAGENTA:'#cc2288',DKPNK:'#882255',
+  THORN:'#558833',DKTHRN:'#334422',LTTHRN:'#88cc55',
+  SPORE:'#88cc44',DKSPOR:'#668833',LTSPOR:'#bbee77',TOXIC:'#aaee33',
+  VINE:'#339944',DKVINE:'#226633',LTVINE:'#55cc66',
+  WHITE:'#ffffff',
+};
+
+// Unified palette (backward compat — union of all three)
 export const C={
   DKFOR:'#113311',FOREST:'#1a4422',MDGRN:'#226633',GREEN:'#33aa44',LTGRN:'#66dd77',PALGRN:'#aaffbb',
   BARK:'#664422',LTBARK:'#885533',PLBARK:'#aa7744',DKBARK:'#3a2211',STUMP:'#4a3318',
@@ -34,7 +69,7 @@ function tVine(p,x1,y1,x2,y2,col,bright){
     const t=i/Math.max(1,Math.abs(dy));
     const yy=y1+Math.round(i*Math.sign(dy));
     const xx=Math.round(x1+dx*t+Math.sin(t*Math.PI*2)*1.5);
-    p(xx,yy,bright&&i%2===0?C.LTGRN:col);
+    p(xx,yy,bright&&i%2===0?C_base.LTGRN:col);
   }
 }
 
@@ -48,36 +83,49 @@ function tStalk(p,b,x,y,h,w,c1,c2,ct){
 // ===== TOWER LEVEL COUNTS =====
 const T_LEVELS=[6,4,5,5,3,1]; // Thorn, Root, Blossom, Spore, Vine, Elder Treant
 const T_MAX_LV=6;
-const T_ROWS=T_MAX_LV*4; // 24 rows total (max levels × 4 states)
+const T_ROWS_PER_LVL=4;
+const T_ROWS=T_MAX_LV*T_ROWS_PER_LVL; // 24 rows total (max levels × 4 states)
 
 // ===== LEVEL-SCALED BASE =====
 // lv: 1-6, grows root mass, moss, glow
 function tBaseLv(p,b,topY,w,glow,lv){
-  const cx=16;
+  const B=C_base,cx=16;
   const rootH=Math.min(10,6+lv);
   const bw=w-6+Math.floor(lv*0.8);
   for(let i=0;i<rootH;i++){
     const cw=bw+Math.round(Math.sin(i*0.7)*1.2*Math.min(lv/3,1));
     const sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.LTBARK:i<4?C.BARK:i<7?C.DKBARK:C.STUMP);
+    b(sx,topY+i,cw,1,i<2?B.LTBARK:i<4?B.BARK:i<7?B.DKBARK:B.STUMP);
   }
-  b(cx-Math.floor(bw/2),topY,bw,1,C.PLBARK);
+  b(cx-Math.floor(bw/2),topY,bw,1,B.PLBARK);
   // Spiral vine whorl — more prominent at high level
   if(lv>=2){
-    p(cx-3,topY+3,glow>1?C.LTGRN:C.GREEN);p(cx-2,topY+4,glow>1?C.LTGRN:C.GREEN);
-    p(cx-2,topY+5,glow>0?C.GREEN:C.MDGRN);p(cx-3,topY+6,C.DKFOR);
-    p(cx-1,topY+3,glow>1?C.LTVINE:C.VINE);p(cx,topY+4,glow>0?C.VINE:C.DKVINE);
+    p(cx-3,topY+3,glow>1?B.LTGRN:B.GREEN);p(cx-2,topY+4,glow>1?B.LTGRN:B.GREEN);
+    p(cx-2,topY+5,glow>0?B.GREEN:B.MDGRN);p(cx-3,topY+6,B.DKFOR);
+    p(cx-1,topY+3,glow>1?B.LTVINE:B.VINE);p(cx,topY+4,glow>0?B.VINE:B.DKVINE);
   }
   // Moss — grows with level
-  if(lv>=1)b(cx-Math.floor((bw-2)/2),topY+Math.min(rootH-1,9),bw-2,1,C.DKMOSS);
-  if(lv>=3&&glow>0){p(cx-4,topY+2,C.MOSS);p(cx+2,topY+3,C.MOSS);}
-  if(lv>=4){p(cx-5,topY+2,C.LTMOSS);p(cx+3,topY+2,C.LTMOSS);}
+  if(lv>=1)b(cx-Math.floor((bw-2)/2),topY+Math.min(rootH-1,9),bw-2,1,B.DKMOSS);
+  if(lv>=3&&glow>0){p(cx-4,topY+2,B.MOSS);p(cx+2,topY+3,B.MOSS);}
+  if(lv>=4){p(cx-5,topY+2,B.LTMOSS);p(cx+3,topY+2,B.LTMOSS);}
   // Root tendrils — more at high level
-  if(lv>=2){p(cx-5,topY+rootH-2,C.DKBARK);p(cx+4,topY+rootH-2,C.DKBARK);}
-  if(lv>=3){p(cx-6,topY+rootH-1,C.STUMP);p(cx+5,topY+rootH-1,C.STUMP);}
-  if(lv>=5){p(cx-7,topY+rootH-1,C.DKBARK);p(cx+6,topY+rootH-1,C.DKBARK);p(cx-6,topY+rootH-2,C.BARK);}
+  if(lv>=2){p(cx-5,topY+rootH-2,B.DKBARK);p(cx+4,topY+rootH-2,B.DKBARK);}
+  if(lv>=3){p(cx-6,topY+rootH-1,B.STUMP);p(cx+5,topY+rootH-1,B.STUMP);}
+  if(lv>=5){p(cx-7,topY+rootH-1,B.DKBARK);p(cx+6,topY+rootH-1,B.DKBARK);p(cx-6,topY+rootH-2,B.BARK);}
   // Nature energy glow at max levels
-  if(lv>=6){p(cx-4,topY+1,C.LTGRN);p(cx+3,topY+1,C.LTGRN);p(cx,topY+rootH,C.GREEN);}
+  if(lv>=6){p(cx-4,topY+1,B.LTGRN);p(cx+3,topY+1,B.LTGRN);p(cx,topY+rootH,B.GREEN);}
+}
+
+// Per-tower base parameters
+const baseYs=[22,23,22,23,22,-1]; // -1 = Elder Treant (custom base)
+const baseWidths=[20,22,20,20,20,-1];
+
+export function drawBase(ctx,col,row){
+  if(col<0||col>=6||baseYs[col]<0)return; // skip Elder Treant
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_ROWS_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  tBaseLv(p,b,baseYs[col],baseWidths[col],glow,level);
 }
 
 // ===== TOWERS (6 cols × 24 rows at 64×64) — per-level sprites =====

@@ -1,7 +1,40 @@
 // @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by aBase() and aTendril shared helper
+export const C_base={
+  BGRN:'#aaff66',CHIT:'#445522',CHLT:'#667744',DGRN:'#44aa11',DKBIO:'#112200',
+  DKOLV:'#334411',LIME:'#88ff44',NGRN:'#66dd22',OLIV:'#556633',SLIME:'#77cc22',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  LIME:'#88ff44',BGRN:'#aaff66',ACID:'#ffff44',DKBIO:'#112200',
+  CHIT:'#445522',CHLT:'#667744',OLIV:'#556633',DKOLV:'#334411',
+  NGRN:'#66dd22',DGRN:'#44aa11',DDGRN:'#227700',VDGRN:'#115500',
+  LGRN:'#bbff88',PGRN:'#ccffaa',WGRN:'#eeffdd',
+  YGRN:'#ccff44',DYEL:'#aaaa00',LTYEL:'#ffff88',PALYEL:'#ffffcc',
+  SLIME:'#77cc22',DSLIM:'#558811',GLOW:'#aaffaa',
+  BRWN:'#554422',DBRWN:'#332211',RUST:'#665533',
+  RED:'#cc3322',DRED:'#881111',ORED:'#ff6644',
+  WHITE:'#ffffff',GRAY:'#667766',DKGRAY:'#334433',BLACK:'#000000',
+  PURP:'#8844aa',DPURP:'#552266',LPURP:'#aa66cc',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  LIME:'#88ff44',BGRN:'#aaff66',ACID:'#ffff44',DKBIO:'#112200',
+  CHIT:'#445522',CHLT:'#667744',OLIV:'#556633',DKOLV:'#334411',
+  NGRN:'#66dd22',DGRN:'#44aa11',VDGRN:'#115500',
+  YGRN:'#ccff44',LTYEL:'#ffff88',
+  SLIME:'#77cc22',
+  RED:'#cc3322',DRED:'#881111',ORED:'#ff6644',
+  WHITE:'#ffffff',
+};
+
+// Unified palette (backward compat — union of all three)
 export const C={
   LIME:'#88ff44',BGRN:'#aaff66',ACID:'#ffff44',DKBIO:'#112200',
   CHIT:'#445522',CHLT:'#667744',OLIV:'#556633',DKOLV:'#334411',
@@ -27,20 +60,20 @@ const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 // Organic hive base with hex cell texture — compact version
 function aBase(p:any,b:any,topY:number,w:number,glow:number){
-  const cx=16;
+  const B=C_base,cx=16;
   // Slim mound shape (5 rows instead of 10)
   for(let i=0;i<5;i++){
     const cw=w-8+Math.floor(i*1.2),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<1?C.CHLT:i<3?C.CHIT:C.DKOLV);
+    b(sx,topY+i,cw,1,i<1?B.CHLT:i<3?B.CHIT:B.DKOLV);
   }
-  b(cx-Math.floor((w-8)/2),topY,w-8,1,C.OLIV);
+  b(cx-Math.floor((w-8)/2),topY,w-8,1,B.OLIV);
   // Hexagonal cell pattern
   const hx=[[cx-3,topY+1],[cx,topY+1],[cx+2,topY+2],[cx-2,topY+3]];
-  hx.forEach(([x,y])=>{p(x,y,glow>1?C.LIME:C.NGRN);p(x+1,y,glow>1?C.BGRN:C.DGRN);});
+  hx.forEach(([x,y])=>{p(x,y,glow>1?B.LIME:B.NGRN);p(x+1,y,glow>1?B.BGRN:B.DGRN);});
   // Acid drips
-  if(glow>0){p(cx-2,topY+4,C.LIME);p(cx+2,topY+4,C.SLIME);}
-  if(glow>1){p(cx-3,topY+4,C.DGRN);p(cx+3,topY+4,C.NGRN);}
-  b(cx-Math.floor((w-4)/2),topY+4,w-4,1,C.DKBIO);
+  if(glow>0){p(cx-2,topY+4,B.LIME);p(cx+2,topY+4,B.SLIME);}
+  if(glow>1){p(cx-3,topY+4,B.DGRN);p(cx+3,topY+4,B.NGRN);}
+  b(cx-Math.floor((w-4)/2),topY+4,w-4,1,B.DKBIO);
 }
 
 // Chitin spire
@@ -58,13 +91,35 @@ function aTendril(p:any,x1:number,y1:number,x2:number,y2:number,col:string,brigh
     const t=i/Math.max(1,Math.abs(dy));
     const yy=y1+Math.round(i*Math.sign(dy));
     const xx=Math.round(x1+dx*t+Math.sin(t*Math.PI*2)*1.5);
-    p(xx,yy,bright&&i%2===0?C.LIME:col);
+    p(xx,yy,bright&&i%2===0?C_base.LIME:col);
   }
 }
 
 // ===== TOWERS (8 cols × 16 rows at 64×64, 4 levels × 4 states) =====
 // Max levels per tower: Spitter=4, Stinger=3, SwarmNode=3, AcidSprayer=4, HiveSpire=4, BroodMother=3, Swarmling=2, Overmind=3
 const TOWER_LEVELS=[4,3,3,4,4,3,2,3];
+const T_ROWS_PER_LVL=4;
+
+// Per-tower base widths at each level index (0-based). -1 = no aBase (Swarmling is mobile).
+const baseBwArrays:number[][]=[
+  [14,16,18,22], // Spitter
+  [16,18,20],    // Stinger
+  [14,16,18],    // SwarmNode
+  [16,18,20,22], // AcidSprayer
+  [16,18,20,24], // HiveSpire
+  [18,20,22],    // BroodMother
+  [],            // Swarmling (mobile, no aBase)
+  [22,24,26],    // Overmind
+];
+
+export function drawBase(ctx:any,col:number,row:number){
+  if(col<0||col>=8||baseBwArrays[col].length===0)return; // skip Swarmling
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const lvIdx=Math.min(Math.floor(row/T_ROWS_PER_LVL),TOWER_LEVELS[col]-1);
+  const glow=lvIdx>=2?2:lvIdx>=1?1:0;
+  const bw=baseBwArrays[col][Math.min(lvIdx,baseBwArrays[col].length-1)];
+  aBase(p,b,27,bw,glow);
+}
 
 export function drawTowers(ctx:any){
   const fns=[

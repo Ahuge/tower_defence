@@ -1,7 +1,38 @@
 // @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by iBase()
+export const C_base={
+  ASH:'#332211',CHAR:'#1a0800',DKASH:'#221100',DPRED:'#881100',
+  EMBR:'#cc2200',FLAME:'#ffcc00',LAVA:'#ff6600',OBSID:'#110400',
+  ORNG:'#ff8844',SMOKE:'#443322',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  HELL:'#ff4422',ORNG:'#ff8844',FLAME:'#ffcc00',DKBLD:'#220000',EMBR:'#cc2200',
+  DPRED:'#881100',LAVA:'#ff6600',BRGHT:'#ffee44',WHITE:'#ffffff',
+  CHAR:'#1a0800',OBSID:'#110400',ASH:'#332211',DKASH:'#221100',
+  SMOKE:'#443322',LTSMK:'#665544',GRAY:'#555544',DKGRAY:'#2a2218',
+  GRNSOL:'#44ff66',DKGRN:'#22aa44',LTGRN:'#88ffaa',PLGRN:'#ccffdd',
+  SKULL:'#ddccaa',BONE:'#aa9977',DKBONE:'#665544',
+  GLOW:'#ff8800',LTGLOW:'#ffaa44',DMGLOW:'#cc4400',
+  BLACK:'#000000',VOID:'#0a0000',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  HELL:'#ff4422',ORNG:'#ff8844',FLAME:'#ffcc00',EMBR:'#cc2200',
+  DPRED:'#881100',LAVA:'#ff6600',BRGHT:'#ffee44',WHITE:'#ffffff',
+  ASH:'#332211',DKASH:'#221100',
+  GRNSOL:'#44ff66',DKGRN:'#22aa44',LTGRN:'#88ffaa',PLGRN:'#ccffdd',
+  GLOW:'#ff8800',DMGLOW:'#cc4400',
+  BLACK:'#000000',VOID:'#0a0000',
+};
+
+// Unified palette (backward compat — union of all three)
 export const C={
   HELL:'#ff4422',ORNG:'#ff8844',FLAME:'#ffcc00',DKBLD:'#220000',EMBR:'#cc2200',
   DPRED:'#881100',LAVA:'#ff6600',BRGHT:'#ffee44',WHITE:'#ffffff',
@@ -24,21 +55,21 @@ const mk=(c:any,o:number[],gw:number,gh:number,ps:number)=>{
 const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 function iBase(p:any,b:any,topY:number,w:number,glow:number){
-  const cx=16;
+  const B=C_base,cx=16;
   // Charred obsidian platform
   for(let i=0;i<10;i++){
     const cw=w-6+Math.floor(i*0.8),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.ASH:i<5?C.DKASH:i<8?C.CHAR:C.OBSID);
+    b(sx,topY+i,cw,1,i<2?B.ASH:i<5?B.DKASH:i<8?B.CHAR:B.OBSID);
   }
-  b(cx-Math.floor((w-6)/2),topY,w-6,1,C.SMOKE);
+  b(cx-Math.floor((w-6)/2),topY,w-6,1,B.SMOKE);
   // Lava cracks
-  p(cx-3,topY+3,glow>1?C.LAVA:C.EMBR);p(cx-2,topY+4,glow>1?C.ORNG:C.EMBR);
-  p(cx-2,topY+5,glow>0?C.EMBR:C.DPRED);p(cx-3,topY+6,C.DPRED);
-  p(cx+2,topY+4,glow>1?C.LAVA:C.DPRED);p(cx+1,topY+5,glow>0?C.EMBR:C.DPRED);
+  p(cx-3,topY+3,glow>1?B.LAVA:B.EMBR);p(cx-2,topY+4,glow>1?B.ORNG:B.EMBR);
+  p(cx-2,topY+5,glow>0?B.EMBR:B.DPRED);p(cx-3,topY+6,B.DPRED);
+  p(cx+2,topY+4,glow>1?B.LAVA:B.DPRED);p(cx+1,topY+5,glow>0?B.EMBR:B.DPRED);
   // Ember particles
-  if(glow>0){p(cx-4,topY+2,C.DPRED);p(cx+3,topY+3,C.DPRED);p(cx-5,topY+1,C.ORNG);}
-  if(glow>1){p(cx+4,topY+1,C.FLAME);p(cx-6,topY,C.ORNG);}
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.OBSID);
+  if(glow>0){p(cx-4,topY+2,B.DPRED);p(cx+3,topY+3,B.DPRED);p(cx-5,topY+1,B.ORNG);}
+  if(glow>1){p(cx+4,topY+1,B.FLAME);p(cx-6,topY,B.ORNG);}
+  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,B.OBSID);
 }
 
 function iFlame(p:any,cx:number,topY:number,h:number,w:number,bright:boolean){
@@ -69,6 +100,18 @@ function iLavaCrack(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bri
 const T_LEVELS=[3,4,3,2,2,3]; // Imp, Hellfire, Soul Drain, Fiend, Immolate, Apocalypse
 const T_MAX_LVL=4; // max across all towers -> 16 rows
 const T_STATES_PER_LVL=4; // idle, charge, fire, cooldown
+
+// ===== DRAW BASE (standalone pedestal) =====
+export function drawBase(ctx:any,col:number,row:number){
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_STATES_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  // Per-tower base widths (level 1 defaults; towers 3,5 have no base)
+  const baseWidths=[20,20,20,0,20,0];
+  const baseYs=[22,23,23,0,24,0];
+  if(col===3||col===5)return; // Fiend (mobile) and Apocalypse (gate) have no pedestal
+  iBase(p,b,baseYs[col]??22,baseWidths[col]??20,glow);
+}
 
 // ===== TOWERS (6x16 at 64x64) — 4 levels x 4 states =====
 export function drawTowers(ctx:any){
