@@ -2,9 +2,9 @@
 
 #ui-root {
   position: fixed; inset: 0; z-index: 100; pointer-events: none;
-  font-family: 'Courier New', Consolas, monospace; color: #ccc; overflow: hidden;
+  font-family: 'Courier New', Consolas, monospace; color: #ccc;
 }
-#ui-root.active { pointer-events: auto; }
+#ui-root.active { pointer-events: auto; overflow: hidden; }
 
 :root {
   --bg-deep: #0a0a0f; --bg-surface: #141420; --bg-card: #1a1a28;
