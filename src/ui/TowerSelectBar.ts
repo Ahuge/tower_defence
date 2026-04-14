@@ -151,12 +151,30 @@ export class TowerSelectBar {
           }
         }
       } else if (isMobileTowerSprite(towerId)) {
-        const cfg = getMobileSpriteConfig(towerId);
-        if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
-          const icon = uiSprite(this.scene,x + bs / 2, iconCenterY, cfg.sheetKey, 0);
-          icon.setScale(iconMaxSz / cfg.frameWidth);
-          icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-          this.container.add(icon);
+        // Mobile units: try skinned tower sheet first (has static idle frame),
+        // fall back to mobile mini-spritesheet
+        const staticCfg = getTowerSpriteConfig(towerId);
+        const fid = getTowerFaction(towerId);
+        let usedSkinned = false;
+        if (staticCfg && fid) {
+          const skinned = SkinManager.getTowerSheetKey(fid, towerId);
+          if (skinned && skinned !== staticCfg.sheetKey && this.scene.textures.exists(skinned)) {
+            const frameIndex = staticCfg.rows.idle * staticCfg.totalCols + staticCfg.column;
+            const icon = uiSprite(this.scene, x + bs / 2, iconCenterY, skinned, frameIndex);
+            icon.setScale(iconMaxSz / 64);
+            icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+            this.container.add(icon);
+            usedSkinned = true;
+          }
+        }
+        if (!usedSkinned) {
+          const cfg = getMobileSpriteConfig(towerId);
+          if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
+            const icon = uiSprite(this.scene, x + bs / 2, iconCenterY, cfg.sheetKey, 0);
+            icon.setScale(iconMaxSz / cfg.frameWidth);
+            icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+            this.container.add(icon);
+          }
         }
       } else {
         const nameLabel = uiText(this.scene,x + bs / 2, iconCenterY, t.name.substring(0, UIScale.current.towerNameLen), {
