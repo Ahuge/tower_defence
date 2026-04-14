@@ -108,31 +108,47 @@ export function InventoryScreen() {
                     return (
                       <div
                         key={skin.id}
-                        class={`card ${eq ? 'owned' : ''}`}
+                        class="card"
                         style={{
                           cursor: 'pointer',
-                          borderColor: eq ? hexColor(rc) : undefined,
-                          borderWidth: eq ? '2px' : undefined,
+                          border: eq ? `2px solid ${hexColor(rc)}` : undefined,
+                          background: eq ? `${hexColor(rc)}15` : undefined,
+                          boxShadow: eq ? `0 0 12px ${hexColor(rc)}44, inset 0 0 20px ${hexColor(rc)}10` : undefined,
                         }}
                         onClick={() => toggleEquip(skin)}
                       >
-                        <div class="card-accent" style={{ background: hexColor(rc) }} />
+                        {/* Accent bar — thicker when equipped */}
+                        <div class="card-accent" style={{ background: hexColor(rc), height: eq ? '4px' : '3px' }} />
+
+                        {/* Equipped badge */}
+                        {eq && (
+                          <div style={{
+                            position: 'absolute', top: '6px', right: '8px',
+                            background: hexColor(rc), color: '#000', fontWeight: 'bold',
+                            fontSize: '8px', padding: '2px 6px', borderRadius: '3px',
+                            letterSpacing: '1px', textTransform: 'uppercase',
+                          }}>
+                            Equipped
+                          </div>
+                        )}
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '4px' }}>
                           <div>
-                            <div class="card-name">{skin.name}</div>
+                            <div class="card-name" style={{ color: eq ? hexColor(rc) : '#fff' }}>{skin.name}</div>
                             {towerName && <div class="text-dim text-xs">{towerName}</div>}
                           </div>
-                          <span class={`rarity-${skin.rarity}`} style={{ fontSize: '9px', fontWeight: 'bold' }}>
-                            {RARITY_LABELS[skin.rarity]}
-                          </span>
+                          {!eq && (
+                            <span class={`rarity-${skin.rarity}`} style={{ fontSize: '9px', fontWeight: 'bold' }}>
+                              {RARITY_LABELS[skin.rarity]}
+                            </span>
+                          )}
                         </div>
 
                         <div class="card-desc" style={{ marginTop: '4px' }}>{skin.description}</div>
 
                         <div style={{ marginTop: '8px', fontSize: '11px' }}>
                           {eq ? (
-                            <span style={{ color: 'var(--accent-green)', fontWeight: 'bold' }}>EQUIPPED — tap to remove</span>
+                            <span style={{ color: hexColor(rc), fontWeight: 'bold' }}>Tap to unequip</span>
                           ) : (
                             <span class="text-dim">Tap to equip</span>
                           )}
@@ -156,12 +172,18 @@ export function InventoryScreen() {
                 if (!skin) return null;
                 const rc = RARITY_COLORS[skin.rarity];
                 return (
-                  <div key={slot} style={{
-                    background: 'var(--bg-card)', border: `1px solid ${hexColor(rc)}`,
-                    borderRadius: '6px', padding: '6px 10px', fontSize: '11px',
-                  }}>
-                    <div style={{ color: '#999', fontSize: '9px' }}>{slot}</div>
-                    <div style={{ color: hexColor(rc) }}>{skin.name}</div>
+                  <div key={slot}
+                    onClick={() => { PlayerInventory.unequipSkin(skinId); rerender(); }}
+                    style={{
+                      background: `${hexColor(rc)}12`, border: `2px solid ${hexColor(rc)}`,
+                      borderRadius: '6px', padding: '8px 12px', fontSize: '11px', cursor: 'pointer',
+                      boxShadow: `0 0 8px ${hexColor(rc)}33`,
+                    }}>
+                    <div style={{ color: '#999', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{slot.replace(':', ' — ')}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: hexColor(rc) }}>{skin.name}</span>
+                      <span style={{ color: '#666', fontSize: '10px' }}>✕</span>
+                    </div>
                   </div>
                 );
               })}
