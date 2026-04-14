@@ -70,18 +70,20 @@ interface SkinTheme {
   rarity: Rarity;
 }
 
+// Per-tower roll themes — only include factions that have real skin assets.
+// Add new themes here as skins are created in the skin editor.
 const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
-  arcane:     [{ suffix: 'neon', label: 'Neon', description: 'Cyberpunk neon', rarity: 'rare' }, { suffix: 'corrupted', label: 'Corrupted', description: 'Dark blighted magic', rarity: 'epic' }],
-  mechanical: [{ suffix: 'gilded', label: 'Gilded', description: 'Gold brass steampunk', rarity: 'rare' }, { suffix: 'rusted', label: 'Rusted', description: 'Abandoned factory', rarity: 'common' }],
-  nature:     [{ suffix: 'autumn', label: 'Autumn', description: 'Fall amber leaves', rarity: 'common' }, { suffix: 'corrupted', label: 'Blighted', description: 'Undead overgrowth', rarity: 'epic' }],
-  void:       [{ suffix: 'crimson', label: 'Crimson', description: 'Blood-red rift', rarity: 'rare' }],
-  military:   [{ suffix: 'desert', label: 'Desert', description: 'Sand-tone camo', rarity: 'common' }],
-  celestial:  [{ suffix: 'eclipse', label: 'Eclipse', description: 'Dark solar eclipse', rarity: 'epic' }],
-  infernal:   [{ suffix: 'frozen', label: 'Frozen', description: 'Ice-bound hellfire', rarity: 'rare' }],
-  psionic:    [{ suffix: 'glitch', label: 'Glitch', description: 'Digital artifact', rarity: 'rare' }],
-  aliens:     [{ suffix: 'toxic', label: 'Toxic', description: 'Radioactive glow', rarity: 'common' }],
-  cypherpunk: [{ suffix: 'retro', label: 'Retro', description: 'CRT green phosphor', rarity: 'common' }],
-  harmonic:   [{ suffix: 'jazz', label: 'Jazz', description: 'Smoky lounge style', rarity: 'rare' }],
+  arcane:     [{ suffix: 'corrupted', label: 'Corrupted', description: 'Green corruption theme', rarity: 'epic' }],
+  mechanical: [],
+  nature:     [],
+  void:       [],
+  military:   [{ suffix: 'desert_storm', label: 'Desert Storm', description: 'Desert camo', rarity: 'rare' }],
+  celestial:  [],
+  infernal:   [],
+  psionic:    [],
+  aliens:     [],
+  cypherpunk: [],
+  harmonic:   [],
   random:     [],
 };
 
@@ -117,18 +119,9 @@ function generateTowerSkins(): SkinDef[] {
 export const TOWER_SKINS: SkinDef[] = generateTowerSkins();
 
 export const SKIN_DEFS: SkinDef[] = [
-  // ── Faction-wide skins (direct purchase) ──
-  { id: 'arcane_pack_neon',        name: 'Neon Arcane Pack',     description: 'All Arcane towers — neon palette',  rarity: 'rare',   target: 'tower_faction', faction: 'arcane',     shardCost: 800, assetSuffix: '_neon' },
-  { id: 'arcane_pack_corrupted',   name: 'Corrupted Arcane Pack', description: 'All Arcane towers — blighted',    rarity: 'epic',   target: 'tower_faction', faction: 'arcane',     shardCost: 1200, assetSuffix: '_corrupted' },
-  { id: 'mech_pack_gilded',        name: 'Gilded Mech Pack',     description: 'All Mechanical towers — brass',    rarity: 'rare',   target: 'tower_faction', faction: 'mechanical', shardCost: 800, assetSuffix: '_gilded' },
-  { id: 'nature_pack_autumn',      name: 'Autumn Nature Pack',   description: 'All Nature towers — fall colors',  rarity: 'rare',   target: 'tower_faction', faction: 'nature',     shardCost: 800, assetSuffix: '_autumn' },
-  { id: 'mil_pack_desert_storm',   name: 'Desert Storm Pack',    description: 'All Military towers — desert camo', rarity: 'rare',   target: 'tower_faction', faction: 'military',   shardCost: 800, assetSuffix: '_desert_storm' },
-  // ── Hero skins (direct purchase) ──
-  { id: 'hero_arcanist_void',      name: 'Void Arcanist',        description: 'Arcanist corrupted by the Void', rarity: 'epic',      target: 'hero', heroId: 'arcanist',  shardCost: 500, assetSuffix: '_void' },
-  { id: 'hero_warden_golden',      name: 'Golden Warden',        description: 'Gilded armor commander',         rarity: 'rare',      target: 'hero', heroId: 'warden',    shardCost: 400, assetSuffix: '_golden' },
-  { id: 'hero_shadow_blood',       name: 'Blood Shadow',         description: 'Crimson assassin variant',       rarity: 'rare',      target: 'hero', heroId: 'shadow',    shardCost: 400, assetSuffix: '_blood' },
-  // ── Legendary / seasonal (exclusive) ──
-  { id: 'arcane_tower_legendary',  name: 'Prismatic Arcane',     description: 'Rainbow-shifting crystal towers', rarity: 'legendary', target: 'tower_faction', faction: 'arcane', shardCost: 0, assetSuffix: '_prismatic', exclusive: true },
+  // ── Faction-wide skins (direct purchase) — only include skins with actual assets ──
+  { id: 'arcane_pack_corrupted',   name: 'Corrupted Arcane Pack', description: 'All Arcane towers — green corruption', rarity: 'epic', target: 'tower_faction', faction: 'arcane',   shardCost: 1200, assetSuffix: '_corrupted' },
+  { id: 'mil_pack_desert_storm',   name: 'Desert Storm Pack',    description: 'All Military towers — desert camo',    rarity: 'rare', target: 'tower_faction', faction: 'military', shardCost: 800,  assetSuffix: '_desert_storm' },
   // ── Per-tower skins (roll-only) ──
   ...TOWER_SKINS,
 ];
