@@ -147,7 +147,7 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
     // Build the strip: ~40 random skins with the winner placed at position 35
     const STRIP_LEN = 42;
     const WIN_POS = 35;
-    const CARD_W = 120; // px per card including gap
+    const CARD_TOTAL = 120; // card width (116) + gap (4)
     const items: SkinDef[] = [];
     for (let i = 0; i < STRIP_LEN; i++) {
       if (i === WIN_POS) {
@@ -163,8 +163,12 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
     setRolling(true);
     setStripOffset(0);
 
-    // Animate: start at 0, scroll to winning position
-    const targetOffset = WIN_POS * CARD_W - 200; // center the winner roughly
+    // Strip has padding-left: 300px (= half viewport max-width).
+    // Marker is at 50% of viewport. Card N's center is at:
+    //   300 + N * 120 + 58 (half of 116px card width)
+    // To align card N's center with the marker (300px), scroll by:
+    //   N * 120 + 58
+    const targetOffset = WIN_POS * CARD_TOTAL + 58;
     requestAnimationFrame(() => {
       setStripOffset(targetOffset);
     });

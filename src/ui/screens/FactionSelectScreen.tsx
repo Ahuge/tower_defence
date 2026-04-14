@@ -17,12 +17,12 @@ export function FactionSelectScreen({ data }: Props) {
 
   const selectFaction = (factionId: FactionId) => {
     const passData = { mode, faction: factionId, map: data.map, difficulty: data.difficulty, randomSeed: data.randomSeed, dailySeed: data.dailySeed, customMapDef: data.customMapDef, waveCount: data.waveCount };
-    if (mode === 'hero_defense') { UIBridge.startScene('HeroSelectScene', passData); }
+    if (mode === 'hero_defense') { UIBridge.show('heroselect', passData); }
     else if (mode === 'gauntlet' || mode === 'endless') {
       const playable = FACTION_ORDER.filter(f => f !== 'random');
       const randomCreep = playable[Math.floor(Math.random() * playable.length)];
       UIBridge.showDraft({ ...passData, creepFaction: mode === 'endless' ? randomCreep : undefined });
-    } else { UIBridge.startScene('CreepFactionSelectScene', passData); }
+    } else { UIBridge.show('creepfactionselect', passData); }
   };
 
   return (

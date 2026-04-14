@@ -115,7 +115,7 @@ export function MenuScreen() {
         <button class="btn btn-primary" onClick={() => UIBridge.show('battlepass')}>Battle Pass</button>
         <button class="btn" onClick={() => UIBridge.startScene('EncyclopediaScene')}>Encyclopedia</button>
         <button class="btn" onClick={() => UIBridge.startScene('LeaderboardScene')}>Leaderboard</button>
-        <button class="btn" onClick={() => UIBridge.startScene('ChangelogScene')}>Changelog</button>
+        <button class="btn" onClick={() => UIBridge.show('changelog')}>Changelog</button>
       </div>
       {waveOverlay && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}

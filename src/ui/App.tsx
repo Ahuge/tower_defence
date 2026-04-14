@@ -4,8 +4,11 @@ import { MenuScreen } from './screens/MenuScreen';
 import { StoreScreen } from './screens/StoreScreen';
 import { BattlePassScreen } from './screens/BattlePassScreen';
 import { FactionSelectScreen } from './screens/FactionSelectScreen';
+import { HeroSelectScreen } from './screens/HeroSelectScreen';
+import { CreepFactionSelectScreen } from './screens/CreepFactionSelectScreen';
 import { DraftScreen } from './screens/DraftScreen';
 import { GameOverScreen } from './screens/GameOverScreen';
+import { ChangelogScreen } from './screens/ChangelogScreen';
 
 export function App() {
   const [screen, setScreen] = useState<ScreenId>(UIBridge.getScreen());
@@ -32,8 +35,11 @@ export function App() {
       {screen === 'store' && <StoreScreen />}
       {screen === 'battlepass' && <BattlePassScreen />}
       {screen === 'factionselect' && <FactionSelectScreen data={data} />}
+      {screen === 'heroselect' && <HeroSelectScreen data={data} />}
+      {screen === 'creepfactionselect' && <CreepFactionSelectScreen data={data} />}
       {screen === 'draft' && <DraftScreen data={data} />}
       {screen === 'gameover' && <GameOverScreen data={data} />}
+      {screen === 'changelog' && <ChangelogScreen />}
     </div>
   );
 }
