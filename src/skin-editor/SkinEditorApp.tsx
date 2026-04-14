@@ -63,6 +63,35 @@ function scanCanvasColors(canvas: HTMLCanvasElement, x: number, y: number, w: nu
   return colors;
 }
 
+/**
+ * Identify "base-only" colors for a tower column.
+ * The pedestal/base occupies the bottom ~18px of each 64px cell frame.
+ * A color is "base-only" if it appears in the base region but NEVER in
+ * the body region (top ~46px) of that column — across all frames/rows.
+ */
+function scanBaseOnlyColors(canvas: HTMLCanvasElement, col: number, cell: number, totalRows: number): Set<string> {
+  const BASE_HEIGHT = 18; // bottom 18px of each cell = pedestal region
+  const bodyColors = new Set<string>();
+  const baseColors = new Set<string>();
+
+  for (let row = 0; row < totalRows; row++) {
+    const x = col * cell;
+    const frameY = row * cell;
+    // Body region (top portion of cell)
+    const bodyH = cell - BASE_HEIGHT;
+    for (const c of scanCanvasColors(canvas, x, frameY, cell, bodyH)) bodyColors.add(c);
+    // Base region (bottom portion of cell)
+    for (const c of scanCanvasColors(canvas, x, frameY + bodyH, cell, BASE_HEIGHT)) baseColors.add(c);
+  }
+
+  // Base-only = colors in base region that NEVER appear in body region
+  const baseOnly = new Set<string>();
+  for (const c of baseColors) {
+    if (!bodyColors.has(c)) baseOnly.add(c);
+  }
+  return baseOnly;
+}
+
 // ─── Main App ───────────────────────────────────────────
 
 export default function SkinEditorApp() {
@@ -71,6 +100,7 @@ export default function SkinEditorApp() {
   const [drawFns, setDrawFns] = useState<FactionDrawFns | null>(null);
   const [allColors, setAllColors] = useState<string[]>([]);            // all unique colors sorted
   const [towerColorSets, setTowerColorSets] = useState<Set<string>[]>([]); // colors per tower column
+  const [baseOnlyColors, setBaseOnlyColors] = useState<Set<string>>(new Set()); // colors ONLY in base region
   const [towerPalettes, setTowerPalettes] = useState<TowerPalettes>({});
   const [selectedTower, setSelectedTower] = useState(-1);
   const [loading, setLoading] = useState(false);
@@ -125,16 +155,36 @@ export default function SkinEditorApp() {
 
       // Per-tower: merge tower column colors + matching projectile column colors
       const perTower: Set<string>[] = [];
+      const allBaseOnly = new Set<string>();
       for (let col = 0; col < info.towerCols; col++) {
         const towerColors = scanCanvasColors(tmpTower, col * info.towerCell, 0, info.towerCell, tmpTower.height);
-        // Projectile column matches tower column (same index)
         if (col < info.projCols) {
           const projColors = scanCanvasColors(tmpProj, col * info.projCell, 0, info.projCell, tmpProj.height);
           for (const c of projColors) towerColors.add(c);
         }
         perTower.push(towerColors);
+
+        // Identify base-only colors for this tower column
+        const bo = scanBaseOnlyColors(tmpTower, col, info.towerCell, info.towerRows);
+        for (const c of bo) allBaseOnly.add(c);
       }
       setTowerColorSets(perTower);
+
+      // "True base" colors = base-only in ALL tower columns (not just some)
+      // A color must be base-only in every column to be a safe "edit base" target
+      const trueBase = new Set<string>();
+      for (const c of allBaseOnly) {
+        if (perTower.every(s => s.has(c))) {
+          // Verify it's base-only in ALL columns, not just present
+          let isBaseOnlyEverywhere = true;
+          for (let col = 0; col < info.towerCols; col++) {
+            const colBase = scanBaseOnlyColors(tmpTower, col, info.towerCell, info.towerRows);
+            if (!colBase.has(c)) { isBaseOnlyEverywhere = false; break; }
+          }
+          if (isBaseOnlyEverywhere) trueBase.add(c);
+        }
+      }
+      setBaseOnlyColors(trueBase);
 
       renderOriginal(fns, info);
     } catch (err) {
@@ -290,20 +340,20 @@ export default function SkinEditorApp() {
 
   // ─── Palette display — filtered by tower ───────────
 
-  // Colors shared across ALL towers = "base" colors (pedestal, shared glow, etc.)
-  const sharedBaseColors = allColors.filter(c => {
-    if (towerColorSets.length === 0) return false;
-    return towerColorSets.every(s => s.has(c));
-  });
-  const sharedBaseSet = new Set(sharedBaseColors);
-
+  // Base colors = colors that exist ONLY in the pedestal region (bottom 18px),
+  // never in the tower body, across ALL tower columns. Safe to edit without
+  // affecting any tower's actual sprite design.
   const getDisplayColors = (): { colors: string[]; baseColors: string[]; uniqueColors: string[] } => {
-    if (selectedTower === -1) return { colors: allColors, baseColors: sharedBaseColors, uniqueColors: allColors.filter(c => !sharedBaseSet.has(c)) };
+    if (selectedTower === -1) {
+      const base = allColors.filter(c => baseOnlyColors.has(c));
+      const unique = allColors.filter(c => !baseOnlyColors.has(c));
+      return { colors: allColors, baseColors: base, uniqueColors: unique };
+    }
     const towerSet = towerColorSets[selectedTower];
-    if (!towerSet) return { colors: allColors, baseColors: sharedBaseColors, uniqueColors: [] };
+    if (!towerSet) return { colors: allColors, baseColors: [], uniqueColors: allColors };
     const filtered = allColors.filter(c => towerSet.has(c));
-    const base = filtered.filter(c => sharedBaseSet.has(c));
-    const unique = filtered.filter(c => !sharedBaseSet.has(c));
+    const base = filtered.filter(c => baseOnlyColors.has(c));
+    const unique = filtered.filter(c => !baseOnlyColors.has(c));
     return { colors: filtered, baseColors: base, uniqueColors: unique };
   };
 
@@ -534,7 +584,7 @@ export default function SkinEditorApp() {
                 return (<>
                   {baseColors.length > 0 && (<>
                     <div style={{ fontSize: '9px', color: '#aa88ff', marginBottom: '4px', marginTop: '4px', letterSpacing: '1px' }}>
-                      SHARED BASE ({baseColors.length})
+                      PEDESTAL ONLY ({baseColors.length}) — safe to edit, won't affect tower sprites
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '3px', marginBottom: '8px' }}>
                       {baseColors.map(renderSwatch)}
