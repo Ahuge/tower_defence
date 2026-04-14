@@ -6,7 +6,7 @@ import { render } from 'preact';
 import { App } from './App';
 import './styles/ui.css';
 
-export type ScreenId = 'menu' | 'store' | 'battlepass' | 'factionselect' | 'heroselect' | 'creepfactionselect' | 'draft' | 'gameover' | 'changelog' | null;
+export type ScreenId = 'menu' | 'store' | 'battlepass' | 'inventory' | 'factionselect' | 'heroselect' | 'creepfactionselect' | 'draft' | 'gameover' | 'changelog' | 'leaderboard' | 'encyclopedia' | null;
 
 class UIBridgeClass {
   private root: HTMLElement | null = null;

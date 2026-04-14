@@ -3,12 +3,15 @@ import { UIBridge, ScreenId } from './UIBridge';
 import { MenuScreen } from './screens/MenuScreen';
 import { StoreScreen } from './screens/StoreScreen';
 import { BattlePassScreen } from './screens/BattlePassScreen';
+import { InventoryScreen } from './screens/InventoryScreen';
 import { FactionSelectScreen } from './screens/FactionSelectScreen';
 import { HeroSelectScreen } from './screens/HeroSelectScreen';
 import { CreepFactionSelectScreen } from './screens/CreepFactionSelectScreen';
 import { DraftScreen } from './screens/DraftScreen';
 import { GameOverScreen } from './screens/GameOverScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
+import { LeaderboardScreen } from './screens/LeaderboardScreen';
+import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
 
 export function App() {
   const [screen, setScreen] = useState<ScreenId>(UIBridge.getScreen());
@@ -34,12 +37,15 @@ export function App() {
       {screen === 'menu' && <MenuScreen />}
       {screen === 'store' && <StoreScreen />}
       {screen === 'battlepass' && <BattlePassScreen />}
+      {screen === 'inventory' && <InventoryScreen />}
       {screen === 'factionselect' && <FactionSelectScreen data={data} />}
       {screen === 'heroselect' && <HeroSelectScreen data={data} />}
       {screen === 'creepfactionselect' && <CreepFactionSelectScreen data={data} />}
       {screen === 'draft' && <DraftScreen data={data} />}
       {screen === 'gameover' && <GameOverScreen data={data} />}
       {screen === 'changelog' && <ChangelogScreen />}
+      {screen === 'leaderboard' && <LeaderboardScreen />}
+      {screen === 'encyclopedia' && <EncyclopediaScreen />}
     </div>
   );
 }

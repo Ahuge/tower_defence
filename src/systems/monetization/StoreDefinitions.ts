@@ -137,9 +137,10 @@ export function getSkinDef(skinId: string): SkinDef | undefined {
   return SKIN_DEFS.find(s => s.id === skinId);
 }
 
-/** Get all skins that can appear in rolls (per-tower skins only) */
-export function getRollableSkins(): SkinDef[] {
-  return TOWER_SKINS;
+/** Get all skins that can appear in rolls (per-tower skins for owned factions only) */
+export function getRollableSkins(ownedFactions?: FactionId[]): SkinDef[] {
+  if (!ownedFactions) return TOWER_SKINS;
+  return TOWER_SKINS.filter(s => s.faction && (ownedFactions as string[]).includes(s.faction));
 }
 
 /** Get all skins available for direct purchase */

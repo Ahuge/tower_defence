@@ -136,7 +136,7 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
   const freeRolls = BattlePass.getFreeRollsRemaining();
   const canRoll = (ShardWallet.canAfford(SKIN_ROLL_COST) || freeRolls > 0) && !rolling;
   const ownedCount = PlayerInventory.getOwnedSkins().length;
-  const pool = getRollableSkins();
+  const pool = getRollableSkins(PlayerInventory.getOwnedFactions());
   const totalCount = pool.length;
 
   const doRoll = () => {

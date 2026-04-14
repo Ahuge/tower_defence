@@ -77,7 +77,7 @@ class PlayerInventoryClass {
 
   rollSkin(): { skin: SkinDef; isDuplicate: boolean } | null {
     if (!ShardWallet.spend(SKIN_ROLL_COST, 'Skin roll')) return null;
-    const pool = getRollableSkins();
+    const pool = getRollableSkins(this.getOwnedFactions());
     if (pool.length === 0) return null;
     const rarity = this.rollRarity();
     const raritySkins = pool.filter(s => s.rarity === rarity);

@@ -113,8 +113,9 @@ export function MenuScreen() {
       <div class="ui-section" style={{ paddingTop: 0, display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <button class="btn btn-gold" onClick={() => UIBridge.show('store')}>Store</button>
         <button class="btn btn-primary" onClick={() => UIBridge.show('battlepass')}>Battle Pass</button>
-        <button class="btn" onClick={() => UIBridge.startScene('EncyclopediaScene')}>Encyclopedia</button>
-        <button class="btn" onClick={() => UIBridge.startScene('LeaderboardScene')}>Leaderboard</button>
+        <button class="btn btn-green" onClick={() => UIBridge.show('inventory')}>Inventory</button>
+        <button class="btn" onClick={() => UIBridge.show('encyclopedia')}>Encyclopedia</button>
+        <button class="btn" onClick={() => UIBridge.show('leaderboard')}>Leaderboard</button>
         <button class="btn" onClick={() => UIBridge.show('changelog')}>Changelog</button>
       </div>
       {waveOverlay && (
