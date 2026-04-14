@@ -219,6 +219,18 @@ export function getHeroSheetKey(heroId: string): string | undefined {
   return HERO_SPRITE_SHEETS[heroId];
 }
 
+/** Map tower ID prefix to faction ID (e.g. 'arcane' → 'arcane', 'mech' → 'mechanical') */
+export const TOWER_PREFIX_TO_FACTION: Record<string, FactionId> = {
+  arcane:'arcane', mech:'mechanical', nature:'nature', void:'void',
+  mil:'military', alien:'aliens', cyber:'cypherpunk', infernal:'infernal',
+  celestial:'celestial', psi:'psionic', harmonic:'harmonic',
+};
+
+/** Get the faction ID for a tower ID */
+export function getTowerFaction(towerId: string): FactionId | undefined {
+  return TOWER_PREFIX_TO_FACTION[towerId.split('_')[0]];
+}
+
 /** Known skin asset suffixes per faction directory. Add entries here when new skins are created. */
 const SKIN_ASSETS: Record<string, string[]> = {
   arcane: ['_corrupted'],
@@ -358,15 +370,8 @@ export function createTowerSprite(
   const config = TOWER_SPRITE_CONFIGS[towerId];
   if (!config) return null;
 
-  // Resolve skinned sheet key: if a skin is equipped for this tower's faction,
-  // use the skinned spritesheet (e.g. 'arcane_towers_corrupted') if it's loaded
-  const towerFaction = towerId.split('_')[0]; // 'arcane_bolt' → 'arcane'
-  const factionMap: Record<string, FactionId> = {
-    arcane:'arcane', mech:'mechanical', nature:'nature', void:'void',
-    mil:'military', alien:'aliens', cyber:'cypherpunk', infernal:'infernal',
-    celestial:'celestial', psi:'psionic', harmonic:'harmonic',
-  };
-  const fid = factionMap[towerFaction];
+  // Resolve skinned sheet key
+  const fid = getTowerFaction(towerId);
   let sheetKey = config.sheetKey;
   if (fid) {
     const skinned = SkinManager.getTowerSheetKey(fid);
@@ -460,13 +465,7 @@ export function createProjectileSprite(
   if (!config) return null;
 
   // Resolve skinned projectile sheet key
-  const projFaction = towerId.split('_')[0];
-  const projFactionMap: Record<string, FactionId> = {
-    arcane:'arcane', mech:'mechanical', nature:'nature', void:'void',
-    mil:'military', alien:'aliens', cyber:'cypherpunk', infernal:'infernal',
-    celestial:'celestial', psi:'psionic', harmonic:'harmonic',
-  };
-  const pfid = projFactionMap[projFaction];
+  const pfid = getTowerFaction(towerId);
   let projSheetKey = config.sheetKey;
   if (pfid) {
     const skinned = SkinManager.getProjectileSheetKey(pfid);

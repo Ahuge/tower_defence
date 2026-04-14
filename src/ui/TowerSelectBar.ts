@@ -4,7 +4,8 @@ import { hasTrait } from '../systems/traits/Trait';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { GameControlBar } from './GameControlBar';
 import { UIScale } from '../systems/UIScale';
-import { hasTowerSprite, getTowerSpriteConfig, isMobileTowerSprite, getMobileSpriteConfig } from '../systems/SpriteManager';
+import { hasTowerSprite, getTowerSpriteConfig, isMobileTowerSprite, getMobileSpriteConfig, getTowerFaction } from '../systems/SpriteManager';
+import { SkinManager } from '../systems/monetization/SkinManager';
 import { uiText, uiGraphics, uiZone, uiSprite } from '../systems/UILayer';
 
 export class TowerSelectBar {
@@ -130,12 +131,23 @@ export class TowerSelectBar {
       const towerId = this.towerIds[i];
       if (hasTowerSprite(towerId) && !isMobileTowerSprite(towerId)) {
         const cfg = getTowerSpriteConfig(towerId);
-        if (cfg && this.scene.textures.exists(cfg.sheetKey)) {
-          const frameIndex = cfg.rows.idle * cfg.totalCols + cfg.column;
-          const icon = uiSprite(this.scene,x + bs / 2, iconCenterY, cfg.sheetKey, frameIndex);
-          icon.setScale(iconMaxSz / 64);
-          icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-          this.container.add(icon);
+        if (cfg) {
+          // Resolve skinned sheet key
+          const fid = getTowerFaction(towerId);
+          let sheetKey = cfg.sheetKey;
+          if (fid) {
+            const skinned = SkinManager.getTowerSheetKey(fid);
+            if (skinned && skinned !== sheetKey && this.scene.textures.exists(skinned)) {
+              sheetKey = skinned;
+            }
+          }
+          if (this.scene.textures.exists(sheetKey)) {
+            const frameIndex = cfg.rows.idle * cfg.totalCols + cfg.column;
+            const icon = uiSprite(this.scene, x + bs / 2, iconCenterY, sheetKey, frameIndex);
+            icon.setScale(iconMaxSz / 64);
+            icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+            this.container.add(icon);
+          }
         }
       } else if (isMobileTowerSprite(towerId)) {
         const cfg = getMobileSpriteConfig(towerId);
