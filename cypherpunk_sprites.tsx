@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   CYAN:'#00ffcc',BCYN:'#44ffdd',LTCYN:'#88ffee',PLCYN:'#ccffee',
   MAG:'#ff00ff',LTMAG:'#ff66ff',PAMAG:'#ffaaff',DKMAG:'#aa00aa',DPMAG:'#660066',
   DARK:'#001a1a',SCRN:'#003333',TEAL:'#005544',DKTEAL:'#002a2a',
@@ -78,7 +79,7 @@ function tAntenna(p,b,x,y,h,w,c1,c2,ct){
 
 // ===== TOWERS (7 cols × 20 rows at 64×64) =====
 // Each tower drawn per (state, level). Towers with fewer levels leave higher-level rows empty.
-function drawTowers(ctx){
+export function drawTowers(ctx){
   const fns=[
     // 0: Ping — Small antenna/radar dish with pulse rings (4 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -564,7 +565,7 @@ function drawTowers(ctx){
 // ===== PROJECTILES (7×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx){
+export function drawProjectiles(ctx){
   const fns=[
     // 0: Ping — cyan pulse ring → ring dissipate
     (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -765,7 +766,7 @@ function drawProjectiles(ctx){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx){
+export function drawHero(ctx){
   // Duelist — sleek cyber-ninja with glowing blade, fitted bodysuit with circuit patterns, visor/mask
   // dir: 0=down,1=side,2=up | type: idle/walk/atk | frame: variant
   function drawChar(c,o,dir,opts={}){

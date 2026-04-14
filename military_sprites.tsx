@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   OLIVE:'#556b2f',SAGE:'#8fbc8f',BLUE:'#4488ff',DKOLV:'#1a2210',METAL:'#778899',
   LTSAGE:'#a8d8a8',DKSAGE:'#6a9a6a',SAND:'#c2b280',DKSAND:'#8a7a50',LTSAND:'#d4c8a0',
   KHAKI:'#bdb76b',DKKHAKI:'#8a8040',LTKHAKI:'#d4cf9a',
@@ -66,7 +67,7 @@ const T_ROWS=T_MAX_LVL*4; // 20 rows: 4 states per level
 const T_COLS=6;
 
 // ===== TOWERS (6x20 at 64x64) =====
-function drawTowers(ctx:any){
+export function drawTowers(ctx:any){
   const fns=[
     // 0: Sandbag — static tower, level progression = more bags, reinforced
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -520,7 +521,7 @@ function drawTowers(ctx:any){
 // ===== PROJECTILES (6x6 at 32x32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:any){
+export function drawProjectiles(ctx:any){
   const fns=[
     // 0: Sandbag — pebble -> dust puff
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -677,7 +678,7 @@ function drawProjectiles(ctx:any){
 // ===== HERO (8x5 at 64x128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:any){
+export function drawHero(ctx:any){
   // dir: 0=down,1=side,2=up | type: idle/walk/atk | frame: variant
   function drawWarden(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

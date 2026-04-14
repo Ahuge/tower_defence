@@ -15,5 +15,5 @@
     "jsxImportSource": "preact"
   },
   "include": ["src"],
-  "exclude": ["src/sprite-preview.tsx"]
+  "exclude": ["src/sprite-preview.tsx", "*_sprites.tsx", "*_creep_sprites.tsx", "*_terrain_sprites.tsx", "large_structure_sprites.tsx", "gauntlet_structure_editor.tsx"]
 }

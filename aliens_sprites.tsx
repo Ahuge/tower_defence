@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   LIME:'#88ff44',BGRN:'#aaff66',ACID:'#ffff44',DKBIO:'#112200',
   CHIT:'#445522',CHLT:'#667744',OLIV:'#556633',DKOLV:'#334411',
   NGRN:'#66dd22',DGRN:'#44aa11',DDGRN:'#227700',VDGRN:'#115500',
@@ -65,7 +66,7 @@ function aTendril(p:any,x1:number,y1:number,x2:number,y2:number,col:string,brigh
 // Max levels per tower: Spitter=4, Stinger=3, SwarmNode=3, AcidSprayer=4, HiveSpire=4, BroodMother=3, Swarmling=2, Overmind=3
 const TOWER_LEVELS=[4,3,3,4,4,3,2,3];
 
-function drawTowers(ctx:any){
+export function drawTowers(ctx:any){
   const fns=[
     // 1. Spitter — small round bug with open mouth spitting upward (4 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -591,7 +592,7 @@ function drawTowers(ctx:any){
 // ===== PROJECTILES (8×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:any){
+export function drawProjectiles(ctx:any){
   const fns=[
     // 1. Spitter: acid glob -> acid splash
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -859,7 +860,7 @@ function drawProjectiles(ctx:any){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:any){
+export function drawHero(ctx:any){
   // Necromancer: dark-robed figure with skull staff, green energy, skeletal hands
   // dir: 0=down, 1=side, 2=up
   function drawChar(c:any,o:number[],dir:number,opts:any={}){

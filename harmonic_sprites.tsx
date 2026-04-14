@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   GOLD:'#ffcc44',LTGLD:'#ffee88',DKGLD:'#aa8822',DPGLD:'#664400',DKAMB:'#332200',
   RED:'#ff4444',DKRED:'#cc2222',LTRED:'#ff7766',PAPRED:'#ffaaaa',
   GRN:'#44ff44',DKGRN:'#22aa22',LTGRN:'#88ff88',PAPGRN:'#bbffbb',
@@ -93,7 +94,7 @@ const T_TOTAL_ROWS=T_MAX_LVL*T_STATES_PER_LVL; // 24
 function lvlF(level:number,maxLvl:number){return Math.min(1,(level-1)/Math.max(1,maxLvl-1));}
 
 // ===== TOWERS (7×24 at 64×64, 6 levels × 4 states) =====
-function drawTowers(ctx:any){
+export function drawTowers(ctx:any){
   const fns=[
     // 0: Resonator — basic gold crystal with sound waves (6 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -423,7 +424,7 @@ function drawTowers(ctx:any){
 // ===== PROJECTILES (7×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:any){
+export function drawProjectiles(ctx:any){
   const fns=[
     // 0: Resonator — golden sound wave → gold burst
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -590,7 +591,7 @@ function drawProjectiles(ctx:any){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:any){
+export function drawHero(ctx:any){
   // Ranger hero — agile archer with golden bow, light leather armor, green hood/cloak
   function drawChar(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

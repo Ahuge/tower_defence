@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   DVIO:'#220044',DKVIO:'#331166',MDVIO:'#442288',BRVIO:'#6644ff',LTVIO:'#9988ff',PLVIO:'#bbaaff',
   LAV:'#cc88ff',LTLAV:'#dd99ff',PLLAV:'#eeccff',
   DKBLU:'#223388',MDBLU:'#4466cc',LTBLU:'#88aaff',PLBLU:'#bbddff',
@@ -421,7 +422,7 @@ function drawArcaneNova(c:CanvasRenderingContext2D,o:number[],s:number,_level:nu
   }
 }
 
-function drawTowers(ctx:CanvasRenderingContext2D){
+export function drawTowers(ctx:CanvasRenderingContext2D){
   const towerFns=[drawBolt,drawFrost,drawStorm,drawFocus,drawManaDrain,drawMeteor,drawArcaneNova];
   const cols=7,rows=T_TOTAL_ROWS;
   for(let col=0;col<cols;col++){
@@ -440,7 +441,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
 // ===== PROJECTILES (7×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:CanvasRenderingContext2D){
+export function drawProjectiles(ctx:CanvasRenderingContext2D){
   const fns=[
     // Bolt — purple energy ball → purple burst
     (c:CanvasRenderingContext2D,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -637,7 +638,7 @@ function drawProjectiles(ctx:CanvasRenderingContext2D){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:CanvasRenderingContext2D){
+export function drawHero(ctx:CanvasRenderingContext2D){
   // dir: 0=down,1=side,2=up | opts for animation variants
   function drawChar(c:CanvasRenderingContext2D,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

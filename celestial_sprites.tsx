@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   PGOLD:'#ffffaa',WHITE:'#ffffff',GOLD:'#ffdd44',DKBRN:'#443300',HOLY:'#ffeecc',WHOLY:'#fff8ee',
   LTGLD:'#ffee88',DKGLD:'#bb9922',DEEPGLD:'#886611',CREAM:'#fff5dd',
   MARBLE:'#eeeedd',LTMARB:'#fffff0',DKMARB:'#ccccaa',GRAYMARB:'#aaaaaa',
@@ -129,7 +130,7 @@ function tLevelTrim(p:any,b:any,topY:number,w:number,lvl:number){
 }
 
 // ===== TOWERS (5 cols × 20 rows at 64×64) =====
-function drawTowers(ctx:any){
+export function drawTowers(ctx:any){
   const fns=[
     // Acolyte — kneeling holy figure on pedestal (5 levels)
     (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -400,7 +401,7 @@ function drawTowers(ctx:any){
 // ===== PROJECTILES (5×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:any){
+export function drawProjectiles(ctx:any){
   const fns=[
     // Acolyte: golden light mote → gentle heal flash
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -579,7 +580,7 @@ function drawProjectiles(ctx:any){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:any){
+export function drawHero(ctx:any){
   // Paladin — armored holy knight, golden plate armor, white cape, glowing mace/hammer
   function drawChar(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

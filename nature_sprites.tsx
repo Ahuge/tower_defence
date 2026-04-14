@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   DKFOR:'#113311',FOREST:'#1a4422',MDGRN:'#226633',GREEN:'#33aa44',LTGRN:'#66dd77',PALGRN:'#aaffbb',
   BARK:'#664422',LTBARK:'#885533',PLBARK:'#aa7744',DKBARK:'#3a2211',STUMP:'#4a3318',
   AMBER:'#ffaa44',DKAMB:'#cc7722',LTAMB:'#ffcc88',GOLD:'#ffcc00',
@@ -80,7 +81,7 @@ function tBaseLv(p,b,topY,w,glow,lv){
 }
 
 // ===== TOWERS (6 cols × 24 rows at 64×64) — per-level sprites =====
-function drawTowers(ctx){
+export function drawTowers(ctx){
   const fns=[
     // 1. Thorn — Spiky plant shooting thorns (6 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -451,7 +452,7 @@ function drawTowers(ctx){
 // ===== PROJECTILES (6×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx){
+export function drawProjectiles(ctx){
   const fns=[
     // Thorn: flying thorn/spike → thorn shatter
     (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -648,7 +649,7 @@ function drawProjectiles(ctx){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx){
+export function drawHero(ctx){
   // Druid — nature-clad figure with staff, leaf/vine clothing
   function drawChar(c,o,dir,opts={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

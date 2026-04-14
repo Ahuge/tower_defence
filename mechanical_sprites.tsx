@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   BRONZE:'#cc8833',DKBRZ:'#995522',LTBRZ:'#ddaa55',
   TAN:'#eebb66',LTTAN:'#ffdd88',DKTAN:'#bb9944',
   ORANGE:'#ff9944',LTORG:'#ffbb77',DKORG:'#cc6622',
@@ -172,7 +173,7 @@ function lvlSteam(p:any,x:number,y:number,lvl:number){
 // ===== TOWERS (8 cols × 24 rows at 64×64) =====
 // Layout: for each tower level, 4 rows (idle/charge/fire/cooldown)
 // Towers with fewer levels than T_MAX_LVL have empty rows at the end
-function drawTowers(ctx:CanvasRenderingContext2D){
+export function drawTowers(ctx:CanvasRenderingContext2D){
   const fns=[
     // 0: Wall — Short solid armored metal block
     (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -697,7 +698,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
 // ===== PROJECTILES (8×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:CanvasRenderingContext2D){
+export function drawProjectiles(ctx:CanvasRenderingContext2D){
   const fns=[
     // 0: Wall — ricochet spark
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -1003,7 +1004,7 @@ function drawProjectiles(ctx:CanvasRenderingContext2D){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:CanvasRenderingContext2D){
+export function drawHero(ctx:CanvasRenderingContext2D){
   // Engineer hero: stocky figure with wrench, goggles, bronze armor, utility belt
   function drawChar(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

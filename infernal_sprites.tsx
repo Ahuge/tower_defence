@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   HELL:'#ff4422',ORNG:'#ff8844',FLAME:'#ffcc00',DKBLD:'#220000',EMBR:'#cc2200',
   DPRED:'#881100',LAVA:'#ff6600',BRGHT:'#ffee44',WHITE:'#ffffff',
   CHAR:'#1a0800',OBSID:'#110400',ASH:'#332211',DKASH:'#221100',
@@ -70,7 +71,7 @@ const T_MAX_LVL=4; // max across all towers -> 16 rows
 const T_STATES_PER_LVL=4; // idle, charge, fire, cooldown
 
 // ===== TOWERS (6x16 at 64x64) — 4 levels x 4 states =====
-function drawTowers(ctx:any){
+export function drawTowers(ctx:any){
   // Each tower fn receives (ctx, offset, state 0-3, level 1-based)
   const fns=[
     // 1. Imp — Small demon perched on base (3 levels)
@@ -487,7 +488,7 @@ function drawTowers(ctx:any){
 // ===== PROJECTILES (6x6 at 32x32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:any){
+export function drawProjectiles(ctx:any){
   const fns=[
     // 1. Imp: small fireball -> fire puff
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -758,7 +759,7 @@ function drawProjectiles(ctx:any){
 // ===== HERO (8x5 at 64x128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:any){
+export function drawHero(ctx:any){
   // Berserker — muscular demon-touched warrior, red skin/markings, huge axe, flames from eyes
   function drawChar(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

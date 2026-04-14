@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FACTION_SPRITES, FactionSpriteInfo } from './FactionModules';
-import { createColorProxy, normalizeHex, extractPalette } from './ColorProxyContext';
+import { createColorProxy, normalizeHex } from './ColorProxyContext';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -9,196 +9,176 @@ interface PaletteEntry {
   current: string;
 }
 
+interface FactionDrawFns {
+  drawTowers: (ctx: CanvasRenderingContext2D) => { cols: number; rows: number; cell: number };
+  drawProjectiles: (ctx: CanvasRenderingContext2D) => any;
+  drawHero: (ctx: CanvasRenderingContext2D) => any;
+  C: Record<string, string>;
+}
+
+// ─── Dynamic faction loader ─────────────────────────────
+
+async function loadFactionModule(id: string): Promise<FactionDrawFns> {
+  // Vite static import map — dynamic import() with string interpolation
+  // doesn't work well, so we map each faction to a static import
+  const modules: Record<string, () => Promise<any>> = {
+    // @ts-expect-error — sprite generators are untyped root TSX files
+    arcane:     () => import('../../arcane_sprites.tsx'),
+    // @ts-expect-error
+    void:       () => import('../../void_sprites.tsx'),
+    // @ts-expect-error
+    mechanical: () => import('../../mechanical_sprites.tsx'),
+    // @ts-expect-error
+    nature:     () => import('../../nature_sprites.tsx'),
+    // @ts-expect-error
+    military:   () => import('../../military_sprites.tsx'),
+    // @ts-expect-error
+    aliens:     () => import('../../aliens_sprites.tsx'),
+    // @ts-expect-error
+    cypherpunk: () => import('../../cypherpunk_sprites.tsx'),
+    // @ts-expect-error
+    infernal:   () => import('../../infernal_sprites.tsx'),
+    // @ts-expect-error
+    celestial:  () => import('../../celestial_sprites.tsx'),
+    // @ts-expect-error
+    psionic:    () => import('../../psionic_sprites.tsx'),
+    // @ts-expect-error
+    harmonic:   () => import('../../harmonic_sprites.tsx'),
+  };
+
+  const loader = modules[id];
+  if (!loader) throw new Error(`Unknown faction: ${id}`);
+  const mod = await loader();
+  return {
+    drawTowers: mod.drawTowers,
+    drawProjectiles: mod.drawProjectiles,
+    drawHero: mod.drawHero,
+    C: mod.C,
+  };
+}
+
 // ─── Main App ───────────────────────────────────────────
 
 export default function SkinEditorApp() {
   const [factionId, setFactionId] = useState<string | null>(null);
+  const [factionInfo, setFactionInfo] = useState<FactionSpriteInfo | null>(null);
+  const [drawFns, setDrawFns] = useState<FactionDrawFns | null>(null);
   const [palette, setPalette] = useState<PaletteEntry[]>([]);
-  const [originalCanvas, setOriginalCanvas] = useState<HTMLCanvasElement | null>(null);
-  const [skinnedCanvas, setSkinnedCanvas] = useState<HTMLCanvasElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [skinName, setSkinName] = useState('');
-  const [tab, setTab] = useState<'towers' | 'projectiles' | 'hero'>('towers');
-  const previewRef = useRef<HTMLCanvasElement>(null);
+  const origRef = useRef<HTMLCanvasElement>(null);
+  const skinRef = useRef<HTMLCanvasElement>(null);
 
-  const faction = FACTION_SPRITES.find(f => f.id === factionId);
-
-  // Load faction sprites by rendering the React component to a hidden container
-  const loadFaction = useCallback(async (id: string) => {
+  // Load faction
+  const selectFaction = useCallback(async (id: string) => {
     setLoading(true);
     setFactionId(id);
-    setPalette([]);
-    setOriginalCanvas(null);
-    setSkinnedCanvas(null);
+    const info = FACTION_SPRITES.find(f => f.id === id)!;
+    setFactionInfo(info);
 
     try {
-      // Dynamically import the faction sprite module
-      const info = FACTION_SPRITES.find(f => f.id === id);
-      if (!info) return;
+      const fns = await loadFactionModule(id);
+      setDrawFns(fns);
 
-      // The sprite modules are React components. We need to render them
-      // to get the canvas output. Create a hidden container.
-      const container = document.createElement('div');
-      container.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-      document.body.appendChild(container);
+      // Build palette from the exported C object
+      const entries: PaletteEntry[] = Object.entries(fns.C).map(([, hex]) => ({
+        original: normalizeHex(hex),
+        current: normalizeHex(hex),
+      }));
+      // Deduplicate by original color
+      const seen = new Set<string>();
+      const deduped = entries.filter(e => {
+        if (seen.has(e.original)) return false;
+        seen.add(e.original);
+        return true;
+      });
+      setPalette(deduped);
 
-      const React = await import('react');
-      const ReactDOM = await import('react-dom/client');
-
-      // Dynamic import of the sprite module
-      const mod = await import(/* @vite-ignore */ `../../${id}_sprites.tsx`);
-      const Component = mod.default;
-
-      const root = ReactDOM.createRoot(container);
-      root.render(React.createElement(Component));
-
-      // Wait for the component to render and populate canvases
-      await new Promise(r => setTimeout(r, 500));
-
-      // Grab the first canvas (towers spritesheet)
-      const canvases = container.querySelectorAll('canvas');
-      if (canvases.length > 0) {
-        // Canvas 0 = towers actual, 1 = towers preview
-        // Canvas 2 = projectiles actual, 3 = projectiles preview
-        // Canvas 4 = hero actual, 5 = hero preview
-        const towersCanvas = canvases[0] as HTMLCanvasElement;
-
-        // Extract palette by scanning all pixel colors
-        const colors = extractCanvasPalette(towersCanvas);
-        setPalette(colors.map(c => ({ original: c, current: c })));
-        setOriginalCanvas(cloneCanvas(towersCanvas));
-      }
-
-      // Clean up
-      root.unmount();
-      document.body.removeChild(container);
+      // Render original
+      renderOriginal(fns, info);
     } catch (err) {
-      console.error('Failed to load faction sprites:', err);
+      console.error('Failed to load faction:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Re-render with modified palette
-  const rerenderSkin = useCallback(async () => {
-    if (!factionId || !originalCanvas || palette.length === 0) return;
-
-    setLoading(true);
-    try {
-      const container = document.createElement('div');
-      container.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-      document.body.appendChild(container);
-
-      const React = await import('react');
-      const ReactDOM = await import('react-dom/client');
-      const mod = await import(/* @vite-ignore */ `../../${factionId}_sprites.tsx`);
-      const Component = mod.default;
-
-      // Intercept canvas creation to inject color proxy
-      const origGetContext = HTMLCanvasElement.prototype.getContext;
-      const colorMap = new Map<string, string>();
-      for (const entry of palette) {
-        if (entry.original !== entry.current) {
-          colorMap.set(normalizeHex(entry.original), normalizeHex(entry.current));
-        }
-      }
-
-      const hijack = function(this: HTMLCanvasElement, type: string, ...args: any[]) {
-        const ctx = origGetContext.call(this, type, ...args) as any;
-        if (type === '2d' && ctx) {
-          const proxyResult = createColorProxy(ctx);
-          for (const [k, v] of colorMap) proxyResult.colorMap.set(k, v);
-          return proxyResult.proxy;
-        }
-        return ctx;
-      };
-      HTMLCanvasElement.prototype.getContext = hijack as any;
-
-      const root = ReactDOM.createRoot(container);
-      root.render(React.createElement(Component));
-
-      await new Promise(r => setTimeout(r, 500));
-
-      // Restore original getContext
-      HTMLCanvasElement.prototype.getContext = origGetContext;
-
-      const canvases = container.querySelectorAll('canvas');
-      if (canvases.length > 0) {
-        setSkinnedCanvas(cloneCanvas(canvases[0] as HTMLCanvasElement));
-      }
-
-      root.unmount();
-      document.body.removeChild(container);
-    } catch (err) {
-      console.error('Failed to re-render skin:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [factionId, originalCanvas, palette]);
-
-  // Draw preview whenever skinned canvas changes
-  useEffect(() => {
-    const canvas = previewRef.current;
+  // Render original (no color changes)
+  const renderOriginal = (fns: FactionDrawFns, info: FactionSpriteInfo) => {
+    const canvas = origRef.current;
     if (!canvas) return;
-    const src = skinnedCanvas || originalCanvas;
-    if (!src) return;
-
-    const scale = 2;
-    canvas.width = src.width * scale;
-    canvas.height = Math.min(src.height * scale, 800);
+    canvas.width = info.towerCols * info.towerCell;
+    canvas.height = info.towerRows * info.towerCell;
     const ctx = canvas.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#0a0a14';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.scale(scale, scale);
-    ctx.drawImage(src, 0, 0);
-    ctx.restore();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    fns.drawTowers(ctx);
+  };
 
-    // Grid lines
-    const info = FACTION_SPRITES.find(f => f.id === factionId);
-    if (info) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x <= src.width; x += info.towerCell) {
-        ctx.beginPath(); ctx.moveTo(x * scale, 0); ctx.lineTo(x * scale, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y <= src.height; y += info.towerCell) {
-        ctx.beginPath(); ctx.moveTo(0, y * scale); ctx.lineTo(canvas.width, y * scale); ctx.stroke();
+  // Render skinned version with color proxy
+  const renderSkin = useCallback(() => {
+    if (!drawFns || !factionInfo) return;
+    setLoading(true);
+
+    const canvas = skinRef.current;
+    if (!canvas) { setLoading(false); return; }
+    canvas.width = factionInfo.towerCols * factionInfo.towerCell;
+    canvas.height = factionInfo.towerRows * factionInfo.towerCell;
+    const realCtx = canvas.getContext('2d')!;
+    realCtx.imageSmoothingEnabled = false;
+    realCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Create proxy with color map
+    const { proxy, colorMap } = createColorProxy(realCtx);
+    for (const entry of palette) {
+      if (entry.original !== entry.current) {
+        colorMap.set(entry.original, entry.current);
       }
     }
-  }, [skinnedCanvas, originalCanvas, factionId]);
 
-  // Export skin
+    drawFns.drawTowers(proxy);
+    setLoading(false);
+  }, [drawFns, factionInfo, palette]);
+
+  // Auto-render skin when palette changes (debounced)
+  useEffect(() => {
+    if (!drawFns || !factionInfo) return;
+    const timer = setTimeout(renderSkin, 100);
+    return () => clearTimeout(timer);
+  }, [palette, renderSkin]);
+
+  // Render original when drawFns loads
+  useEffect(() => {
+    if (drawFns && factionInfo) {
+      renderOriginal(drawFns, factionInfo);
+    }
+  }, [drawFns, factionInfo]);
+
+  // Export
   const exportSkin = () => {
-    const src = skinnedCanvas || originalCanvas;
-    if (!src || !factionId) return;
-
+    const canvas = skinRef.current || origRef.current;
+    if (!canvas || !factionId) return;
     const suffix = skinName.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'custom';
 
-    // Download spritesheet PNG
+    // PNG
     const a = document.createElement('a');
     a.download = `${factionId}_towers_${suffix}.png`;
-    a.href = src.toDataURL('image/png');
+    a.href = canvas.toDataURL('image/png');
     a.click();
 
-    // Download palette JSON
-    const paletteData = {
-      factionId,
-      skinName: skinName || 'Custom Skin',
-      suffix,
-      colorMap: Object.fromEntries(
-        palette.filter(e => e.original !== e.current).map(e => [e.original, e.current])
-      ),
+    // Palette JSON
+    const data = {
+      factionId, skinName: skinName || 'Custom Skin', suffix,
+      colorMap: Object.fromEntries(palette.filter(e => e.original !== e.current).map(e => [e.original, e.current])),
     };
-    const blob = new Blob([JSON.stringify(paletteData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const b = document.createElement('a');
     b.download = `${factionId}_skin_${suffix}.json`;
     b.href = URL.createObjectURL(blob);
     b.click();
   };
 
-  // Import palette JSON
+  // Import
   const importPalette = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -206,15 +186,13 @@ export default function SkinEditorApp() {
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      const text = await file.text();
-      const data = JSON.parse(text);
+      const data = JSON.parse(await file.text());
       if (data.factionId && data.factionId !== factionId) {
-        await loadFaction(data.factionId);
+        await selectFaction(data.factionId);
       }
       if (data.colorMap) {
         setPalette(prev => prev.map(e => ({
-          ...e,
-          current: data.colorMap[e.original] ?? e.current,
+          ...e, current: data.colorMap[e.original] ?? e.current,
         })));
         if (data.skinName) setSkinName(data.skinName);
       }
@@ -222,13 +200,15 @@ export default function SkinEditorApp() {
     input.click();
   };
 
+  const modifiedCount = palette.filter(e => e.original !== e.current).length;
+
   return (
     <div style={{ background: '#0a0a14', color: '#ccc', fontFamily: 'Courier New, monospace', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ padding: '16px 24px', background: '#111122', borderBottom: '1px solid #2a2a44', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ margin: 0, fontSize: '20px', color: '#ffaa44', letterSpacing: '2px' }}>SKIN EDITOR</h1>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={importPalette} style={btnStyle}>Import Palette</button>
+          <button onClick={importPalette} style={btn}>Import Palette</button>
         </div>
       </div>
 
@@ -238,16 +218,8 @@ export default function SkinEditorApp() {
           <h2 style={{ color: '#888', marginBottom: '24px' }}>Select a faction to edit</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
             {FACTION_SPRITES.map(f => (
-              <button
-                key={f.id}
-                onClick={() => loadFaction(f.id)}
-                style={{
-                  ...btnStyle,
-                  padding: '16px 24px',
-                  fontSize: '14px',
-                  minWidth: '140px',
-                }}
-              >
+              <button key={f.id} onClick={() => selectFaction(f.id)}
+                style={{ ...btn, padding: '16px 24px', fontSize: '14px', minWidth: '140px' }}>
                 {f.name}
                 <div style={{ fontSize: '10px', color: '#666', marginTop: '4px' }}>{f.towerCols} towers</div>
               </button>
@@ -257,40 +229,35 @@ export default function SkinEditorApp() {
       )}
 
       {/* Editor */}
-      {factionId && faction && (
+      {factionId && factionInfo && (
         <div style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>
-          {/* Left panel — palette editor */}
+          {/* Left — palette */}
           <div style={{ width: '320px', borderRight: '1px solid #2a2a44', overflow: 'auto', flexShrink: 0, padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, color: '#ffaa44', fontSize: '14px' }}>{faction.name} Palette</h3>
-              <button onClick={() => { setFactionId(null); setPalette([]); }} style={{ ...btnStyle, fontSize: '11px', padding: '3px 8px' }}>
+              <h3 style={{ margin: 0, color: '#ffaa44', fontSize: '14px' }}>{factionInfo.name} Palette</h3>
+              <button onClick={() => { setFactionId(null); setPalette([]); setDrawFns(null); }} style={{ ...btn, fontSize: '11px', padding: '3px 8px' }}>
                 Change
               </button>
             </div>
 
-            {/* Skin name */}
-            <input
-              type="text"
-              placeholder="Skin name..."
-              value={skinName}
-              onInput={(e) => setSkinName((e.target as HTMLInputElement).value)}
+            <input type="text" placeholder="Skin name..." value={skinName}
+              onInput={(e: any) => setSkinName(e.target.value)}
               style={{ width: '100%', padding: '8px', background: '#1a1a28', border: '1px solid #333', color: '#fff', fontFamily: 'inherit', fontSize: '12px', borderRadius: '4px', marginBottom: '12px' }}
             />
 
-            {/* Color swatches */}
             <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px' }}>
-              {palette.length} colors — click to edit
+              {palette.length} colors — click to edit, {modifiedCount} modified
             </div>
+
+            {/* Color grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
               {palette.map((entry, i) => (
                 <div key={i} style={{ position: 'relative' }}>
-                  <input
-                    type="color"
-                    value={entry.current}
-                    onChange={(e) => {
-                      const newPalette = [...palette];
-                      newPalette[i] = { ...entry, current: (e.target as HTMLInputElement).value };
-                      setPalette(newPalette);
+                  <input type="color" value={entry.current}
+                    onChange={(e: any) => {
+                      const np = [...palette];
+                      np[i] = { ...entry, current: e.target.value };
+                      setPalette(np);
                     }}
                     style={{
                       width: '100%', height: '32px', border: 'none', cursor: 'pointer',
@@ -299,14 +266,12 @@ export default function SkinEditorApp() {
                     }}
                   />
                   {entry.original !== entry.current && (
-                    <div
-                      onClick={() => {
-                        const newPalette = [...palette];
-                        newPalette[i] = { ...entry, current: entry.original };
-                        setPalette(newPalette);
+                    <div onClick={() => {
+                        const np = [...palette];
+                        np[i] = { ...entry, current: entry.original };
+                        setPalette(np);
                       }}
-                      style={{ position: 'absolute', top: '-2px', right: '-2px', width: '12px', height: '12px', background: '#ff4444', borderRadius: '50%', cursor: 'pointer', fontSize: '8px', textAlign: 'center', lineHeight: '12px', color: '#fff' }}
-                    >
+                      style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', background: '#ff4444', borderRadius: '50%', cursor: 'pointer', fontSize: '9px', textAlign: 'center', lineHeight: '14px', color: '#fff' }}>
                       ×
                     </div>
                   )}
@@ -316,69 +281,42 @@ export default function SkinEditorApp() {
 
             {/* Actions */}
             <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                onClick={rerenderSkin}
-                disabled={loading}
-                style={{ ...btnStyle, background: '#2a2040', borderColor: '#aa88ff', color: '#aa88ff', padding: '10px', fontSize: '13px' }}
-              >
-                {loading ? 'Rendering...' : 'Preview Skin'}
-              </button>
-              <button onClick={() => setPalette(p => p.map(e => ({ ...e, current: e.original })))} style={btnStyle}>
+              <button onClick={() => setPalette(p => p.map(e => ({ ...e, current: e.original })))} style={btn}>
                 Reset All Colors
               </button>
-              <button
-                onClick={exportSkin}
-                disabled={!skinnedCanvas && !originalCanvas}
-                style={{ ...btnStyle, background: '#1a2a1a', borderColor: '#44ff44', color: '#44ff44', padding: '10px', fontSize: '13px' }}
-              >
+              <button onClick={exportSkin} disabled={!skinRef.current && !origRef.current}
+                style={{ ...btn, background: '#1a2a1a', borderColor: '#44ff44', color: '#44ff44', padding: '10px', fontSize: '13px' }}>
                 Export Skin
               </button>
             </div>
-
-            {/* Modified count */}
-            <div style={{ marginTop: '12px', fontSize: '10px', color: '#666' }}>
-              {palette.filter(e => e.original !== e.current).length} colors modified
-            </div>
           </div>
 
-          {/* Right panel — preview */}
+          {/* Right — preview */}
           <div style={{ flex: 1, overflow: 'auto', padding: '16px', background: '#08080f' }}>
-            {/* Tower names legend */}
+            {loading && <div style={{ textAlign: 'center', padding: '60px', color: '#666' }}>Rendering...</div>}
+
+            {/* Tower names */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              {faction.towerNames.map((name, i) => (
+              {factionInfo.towerNames.map((name, i) => (
                 <span key={i} style={{ fontSize: '10px', color: '#888', background: '#1a1a28', padding: '2px 8px', borderRadius: '4px' }}>
-                  Col {i}: {name}
+                  {i}: {name}
                 </span>
               ))}
             </div>
 
-            {loading && (
-              <div style={{ textAlign: 'center', padding: '60px', color: '#666' }}>
-                Rendering sprites...
+            {/* Side-by-side: original + skinned */}
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>Original</div>
+                <canvas ref={origRef} style={{ imageRendering: 'pixelated', maxWidth: '100%', border: '1px solid #1a1a2a', borderRadius: '4px' }} />
               </div>
-            )}
-
-            <canvas
-              ref={previewRef}
-              style={{ maxWidth: '100%', imageRendering: 'pixelated', borderRadius: '8px' }}
-            />
-
-            {/* Side by side comparison */}
-            {skinnedCanvas && originalCanvas && (
-              <div style={{ marginTop: '24px' }}>
-                <h3 style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>Comparison (first row)</h3>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div>
-                    <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Original</div>
-                    <ComparisonRow canvas={originalCanvas} cols={faction.towerCols} cell={faction.towerCell} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '10px', color: '#ffaa44', marginBottom: '4px' }}>Modified</div>
-                    <ComparisonRow canvas={skinnedCanvas} cols={faction.towerCols} cell={faction.towerCell} />
-                  </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#ffaa44', marginBottom: '4px' }}>
+                  Modified {modifiedCount > 0 ? `(${modifiedCount} colors)` : ''}
                 </div>
+                <canvas ref={skinRef} style={{ imageRendering: 'pixelated', maxWidth: '100%', border: '1px solid #1a1a2a', borderRadius: '4px' }} />
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
@@ -386,65 +324,8 @@ export default function SkinEditorApp() {
   );
 }
 
-// ─── Helper components ──────────────────────────────────
-
-function ComparisonRow({ canvas, cols, cell }: { canvas: HTMLCanvasElement; cols: number; cell: number }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const c = ref.current;
-    if (!c) return;
-    const scale = 3;
-    c.width = cols * cell * scale;
-    c.height = cell * scale;
-    const ctx = c.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    ctx.save();
-    ctx.scale(scale, scale);
-    // Draw first row (idle, level 1)
-    ctx.drawImage(canvas, 0, 0, cols * cell, cell, 0, 0, cols * cell, cell);
-    ctx.restore();
-  }, [canvas, cols, cell]);
-
-  return <canvas ref={ref} style={{ imageRendering: 'pixelated', borderRadius: '4px', border: '1px solid #2a2a44' }} />;
-}
-
-// ─── Utilities ──────────────────────────────────────────
-
-function cloneCanvas(src: HTMLCanvasElement): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = src.width;
-  c.height = src.height;
-  c.getContext('2d')!.drawImage(src, 0, 0);
-  return c;
-}
-
-function extractCanvasPalette(canvas: HTMLCanvasElement): string[] {
-  const ctx = canvas.getContext('2d')!;
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-  const colors = new Set<string>();
-  for (let i = 0; i < data.length; i += 4) {
-    const a = data[i + 3];
-    if (a === 0) continue; // skip transparent
-    const hex = '#' + [data[i], data[i + 1], data[i + 2]].map(v => v.toString(16).padStart(2, '0')).join('');
-    colors.add(hex);
-  }
-  // Sort dark to light
-  return Array.from(colors).sort((a, b) => {
-    const lum = (h: string) => {
-      const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), bl = parseInt(h.slice(5, 7), 16);
-      return 0.299 * r + 0.587 * g + 0.114 * bl;
-    };
-    return lum(a) - lum(b);
-  });
-}
-
-const btnStyle = {
-  fontFamily: 'Courier New, monospace',
-  fontSize: '12px',
-  padding: '6px 14px',
-  borderRadius: '4px',
-  border: '1px solid #2a2a44',
-  background: '#1a1a28',
-  color: '#ccc',
-  cursor: 'pointer',
-} as const;
+const btn: Record<string, string | number> = {
+  fontFamily: 'Courier New, monospace', fontSize: '12px', padding: '6px 14px',
+  borderRadius: '4px', border: '1px solid #2a2a44', background: '#1a1a28',
+  color: '#ccc', cursor: 'pointer',
+};

@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
 // ===== PALETTE =====
-const C={
+export const C={
   VOID:'#08000f',SHAD:'#0f0019',DKPUR:'#1a0033',DEPUR:'#2a1155',
   MDPUR:'#442288',BRPUR:'#6644cc',LTPUR:'#8866ee',PLPUR:'#aa99dd',
   PINK:'#ff4488',LTPNK:'#ff77bb',PAPNK:'#ffaadd',CRIM:'#cc2255',DKPNK:'#881144',DPNK:'#55112a',
@@ -57,7 +58,7 @@ const T_LEVELS=[4,6,6,3,1];
 const T_MAX_LVL=6;
 const T_ROWS=T_MAX_LVL*4; // 24 rows total
 
-function drawTowers(ctx){
+export function drawTowers(ctx){
   const fns=[
     // Gambler (4 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -217,7 +218,7 @@ function drawTowers(ctx){
 // ===== PROJECTILES (5×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx){
+export function drawProjectiles(ctx){
   const fns=[
     // Coin
     (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -263,7 +264,7 @@ function drawProjectiles(ctx){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx){
+export function drawHero(ctx){
   // dir: 0=down,1=side,2=up | type: idle/walk/atk | frame: variant
   function drawChar(c,o,dir,opts={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);
