@@ -78,7 +78,10 @@ export default function SkinEditorApp() {
   const [highlightedColor, setHighlightedColor] = useState<string | null>(null);
   const origRef = useRef<HTMLCanvasElement>(null);
   const skinRef = useRef<HTMLCanvasElement>(null);
+  const origProjRef = useRef<HTMLCanvasElement>(null);
+  const skinProjRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef<HTMLCanvasElement>(null);
+  const zoomProjRef = useRef<HTMLCanvasElement>(null);
 
   const faction = factionInfo;
 
@@ -97,23 +100,39 @@ export default function SkinEditorApp() {
       const fns = await loadFactionModule(id);
       setDrawFns(fns);
 
-      // Render to a temp canvas to extract all colors + per-tower colors
-      const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width = info.towerCols * info.towerCell;
-      tmpCanvas.height = info.towerRows * info.towerCell;
-      const tmpCtx = tmpCanvas.getContext('2d')!;
-      tmpCtx.imageSmoothingEnabled = false;
-      const { proxy, usedColors } = createColorProxy(tmpCtx);
-      fns.drawTowers(proxy);
+      // Render towers to temp canvas to extract colors
+      const tmpTower = document.createElement('canvas');
+      tmpTower.width = info.towerCols * info.towerCell;
+      tmpTower.height = info.towerRows * info.towerCell;
+      const tmpTCtx = tmpTower.getContext('2d')!;
+      tmpTCtx.imageSmoothingEnabled = false;
+      const { proxy: tProxy, usedColors: tColors } = createColorProxy(tmpTCtx);
+      fns.drawTowers(tProxy);
 
-      // All colors sorted by luminance
-      const sorted = Array.from(usedColors).sort((a, b) => hexLum(a) - hexLum(b));
+      // Render projectiles to temp canvas too
+      const tmpProj = document.createElement('canvas');
+      tmpProj.width = info.projCols * info.projCell;
+      tmpProj.height = info.projRows * info.projCell;
+      const tmpPCtx = tmpProj.getContext('2d')!;
+      tmpPCtx.imageSmoothingEnabled = false;
+      const { proxy: pProxy, usedColors: pColors } = createColorProxy(tmpPCtx);
+      fns.drawProjectiles(pProxy);
+
+      // Merge all colors from both sheets
+      const allUsed = new Set([...tColors, ...pColors]);
+      const sorted = Array.from(allUsed).sort((a, b) => hexLum(a) - hexLum(b));
       setAllColors(sorted);
 
-      // Per-tower: scan pixel data for each column region
+      // Per-tower: merge tower column colors + matching projectile column colors
       const perTower: Set<string>[] = [];
       for (let col = 0; col < info.towerCols; col++) {
-        perTower.push(scanCanvasColors(tmpCanvas, col * info.towerCell, 0, info.towerCell, tmpCanvas.height));
+        const towerColors = scanCanvasColors(tmpTower, col * info.towerCell, 0, info.towerCell, tmpTower.height);
+        // Projectile column matches tower column (same index)
+        if (col < info.projCols) {
+          const projColors = scanCanvasColors(tmpProj, col * info.projCell, 0, info.projCell, tmpProj.height);
+          for (const c of projColors) towerColors.add(c);
+        }
+        perTower.push(towerColors);
       }
       setTowerColorSets(perTower);
 
@@ -128,14 +147,26 @@ export default function SkinEditorApp() {
   // ─── Render ────────────────────────────────────────
 
   const renderOriginal = (fns: FactionDrawFns, info: FactionSpriteInfo) => {
-    const canvas = origRef.current;
-    if (!canvas) return;
-    canvas.width = info.towerCols * info.towerCell;
-    canvas.height = info.towerRows * info.towerCell;
-    const ctx = canvas.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    fns.drawTowers(ctx);
+    // Towers
+    const tc = origRef.current;
+    if (tc) {
+      tc.width = info.towerCols * info.towerCell;
+      tc.height = info.towerRows * info.towerCell;
+      const ctx = tc.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, tc.width, tc.height);
+      fns.drawTowers(ctx);
+    }
+    // Projectiles
+    const pc = origProjRef.current;
+    if (pc) {
+      pc.width = info.projCols * info.projCell;
+      pc.height = info.projRows * info.projCell;
+      const ctx = pc.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, pc.width, pc.height);
+      fns.drawProjectiles(ctx);
+    }
   };
 
   const buildColorMap = (towerCol: number): Map<string, string> => {
@@ -149,25 +180,49 @@ export default function SkinEditorApp() {
 
   const renderSkin = useCallback(() => {
     if (!drawFns || !factionInfo) return;
-    const canvas = skinRef.current;
-    if (!canvas) return;
-    const { towerCols, towerRows, towerCell } = factionInfo;
-    canvas.width = towerCols * towerCell;
-    canvas.height = towerRows * towerCell;
-    const ctx = canvas.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const { towerCols, towerRows, towerCell, projCols, projRows, projCell } = factionInfo;
 
-    for (let col = 0; col < towerCols; col++) {
-      const colorMap = buildColorMap(col);
-      if (colorMap.size === 0) {
-        ctx.save(); ctx.beginPath(); ctx.rect(col * towerCell, 0, towerCell, towerRows * towerCell); ctx.clip();
-        drawFns.drawTowers(ctx); ctx.restore();
-      } else {
-        const { proxy, colorMap: proxyMap } = createColorProxy(ctx);
-        for (const [k, v] of colorMap) proxyMap.set(k, v);
-        ctx.save(); ctx.beginPath(); ctx.rect(col * towerCell, 0, towerCell, towerRows * towerCell); ctx.clip();
-        drawFns.drawTowers(proxy); ctx.restore();
+    // Towers
+    const tc = skinRef.current;
+    if (tc) {
+      tc.width = towerCols * towerCell;
+      tc.height = towerRows * towerCell;
+      const ctx = tc.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, tc.width, tc.height);
+      for (let col = 0; col < towerCols; col++) {
+        const cm = buildColorMap(col);
+        if (cm.size === 0) {
+          ctx.save(); ctx.beginPath(); ctx.rect(col * towerCell, 0, towerCell, towerRows * towerCell); ctx.clip();
+          drawFns.drawTowers(ctx); ctx.restore();
+        } else {
+          const { proxy, colorMap: pm } = createColorProxy(ctx);
+          for (const [k, v] of cm) pm.set(k, v);
+          ctx.save(); ctx.beginPath(); ctx.rect(col * towerCell, 0, towerCell, towerRows * towerCell); ctx.clip();
+          drawFns.drawTowers(proxy); ctx.restore();
+        }
+      }
+    }
+
+    // Projectiles — same per-tower color maps, same column index
+    const pc = skinProjRef.current;
+    if (pc) {
+      pc.width = projCols * projCell;
+      pc.height = projRows * projCell;
+      const ctx = pc.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, pc.width, pc.height);
+      for (let col = 0; col < projCols; col++) {
+        const cm = buildColorMap(col);
+        if (cm.size === 0) {
+          ctx.save(); ctx.beginPath(); ctx.rect(col * projCell, 0, projCell, projRows * projCell); ctx.clip();
+          drawFns.drawProjectiles(ctx); ctx.restore();
+        } else {
+          const { proxy, colorMap: pm } = createColorProxy(ctx);
+          for (const [k, v] of cm) pm.set(k, v);
+          ctx.save(); ctx.beginPath(); ctx.rect(col * projCell, 0, projCell, projRows * projCell); ctx.clip();
+          drawFns.drawProjectiles(proxy); ctx.restore();
+        }
       }
     }
   }, [drawFns, factionInfo, towerPalettes]);
@@ -182,50 +237,79 @@ export default function SkinEditorApp() {
     if (drawFns && factionInfo) renderOriginal(drawFns, factionInfo);
   }, [drawFns, factionInfo]);
 
-  // ─── Zoom view — render selected tower column large ──
+  // ─── Zoom view — render selected tower + projectile column large ──
 
   useEffect(() => {
-    const zc = zoomRef.current;
-    if (!zc || !factionInfo || selectedTower < 0) return;
-    // Source from the skinned canvas (or original if no mods)
-    const src = skinRef.current || origRef.current;
-    if (!src) return;
+    if (!factionInfo || selectedTower < 0) return;
 
-    const cell = factionInfo.towerCell;
-    const rows = factionInfo.towerRows;
-    const scale = 5;  // 5x zoom
-    const colsToShow = 1;
-    zc.width = cell * scale * colsToShow;
-    zc.height = rows * cell * scale;
-    const ctx = zc.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#08080f';
-    ctx.fillRect(0, 0, zc.width, zc.height);
-    ctx.save();
-    ctx.scale(scale, scale);
-    ctx.drawImage(src, selectedTower * cell, 0, cell, rows * cell, 0, 0, cell, rows * cell);
-    ctx.restore();
-    // Grid lines for each frame
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 1;
-    for (let r = 1; r < rows; r++) {
-      const y = r * cell * scale;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(zc.width, y); ctx.stroke();
+    // Tower zoom
+    const zc = zoomRef.current;
+    const tSrc = skinRef.current || origRef.current;
+    if (zc && tSrc) {
+      const cell = factionInfo.towerCell;
+      const rows = factionInfo.towerRows;
+      const scale = 5;
+      zc.width = cell * scale;
+      zc.height = rows * cell * scale;
+      const ctx = zc.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#08080f';
+      ctx.fillRect(0, 0, zc.width, zc.height);
+      ctx.save(); ctx.scale(scale, scale);
+      ctx.drawImage(tSrc, selectedTower * cell, 0, cell, rows * cell, 0, 0, cell, rows * cell);
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+      for (let r = 1; r < rows; r++) { const y = r * cell * scale; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(zc.width, y); ctx.stroke(); }
+    }
+
+    // Projectile zoom
+    const zp = zoomProjRef.current;
+    const pSrc = skinProjRef.current || origProjRef.current;
+    if (zp && pSrc && selectedTower < factionInfo.projCols) {
+      const cell = factionInfo.projCell;
+      const rows = factionInfo.projRows;
+      const scale = 8; // projectiles are smaller, zoom more
+      zp.width = cell * scale;
+      zp.height = rows * cell * scale;
+      const ctx = zp.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#08080f';
+      ctx.fillRect(0, 0, zp.width, zp.height);
+      ctx.save(); ctx.scale(scale, scale);
+      ctx.drawImage(pSrc, selectedTower * cell, 0, cell, rows * cell, 0, 0, cell, rows * cell);
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+      for (let r = 1; r < rows; r++) { const y = r * cell * scale; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(zp.width, y); ctx.stroke(); }
+      // Label rows
+      ctx.fillStyle = '#666'; ctx.font = '10px monospace';
+      ['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'].forEach((l, i) => {
+        ctx.fillText(l, 4, i * cell * scale + 12);
+      });
     }
   }, [selectedTower, factionInfo, towerPalettes]);
 
   // ─── Palette display — filtered by tower ───────────
 
-  const getDisplayColors = (): string[] => {
-    if (selectedTower === -1) return allColors;
+  // Colors shared across ALL towers = "base" colors (pedestal, shared glow, etc.)
+  const sharedBaseColors = allColors.filter(c => {
+    if (towerColorSets.length === 0) return false;
+    return towerColorSets.every(s => s.has(c));
+  });
+  const sharedBaseSet = new Set(sharedBaseColors);
+
+  const getDisplayColors = (): { colors: string[]; baseColors: string[]; uniqueColors: string[] } => {
+    if (selectedTower === -1) return { colors: allColors, baseColors: sharedBaseColors, uniqueColors: allColors.filter(c => !sharedBaseSet.has(c)) };
     const towerSet = towerColorSets[selectedTower];
-    if (!towerSet) return allColors;
-    return allColors.filter(c => towerSet.has(c));
+    if (!towerSet) return { colors: allColors, baseColors: sharedBaseColors, uniqueColors: [] };
+    const filtered = allColors.filter(c => towerSet.has(c));
+    const base = filtered.filter(c => sharedBaseSet.has(c));
+    const unique = filtered.filter(c => !sharedBaseSet.has(c));
+    return { colors: filtered, baseColors: base, uniqueColors: unique };
   };
 
   const getDisplayPalette = (): PaletteEntry[] => {
     const overrides = towerPalettes[selectedTower] ?? {};
-    return getDisplayColors().map(c => ({
+    return getDisplayColors().colors.map(c => ({
       original: c,
       current: overrides[c] ?? c,
     }));
@@ -303,6 +387,25 @@ export default function SkinEditorApp() {
     setHighlightedColor(hex);
   };
 
+  // ─── Zoom projectile eyedropper ─────────────────────
+
+  const handleZoomProjClick = (e: MouseEvent) => {
+    const zp = zoomProjRef.current;
+    if (!zp || !factionInfo || selectedTower < 0) return;
+    const rect = zp.getBoundingClientRect();
+    const sx = zp.width / rect.width, sy = zp.height / rect.height;
+    const zpx = Math.floor((e.clientX - rect.left) * sx);
+    const zpy = Math.floor((e.clientY - rect.top) * sy);
+    const scale = 8;
+    const srcX = selectedTower * factionInfo.projCell + Math.floor(zpx / scale);
+    const srcY = Math.floor(zpy / scale);
+    const src = origProjRef.current;
+    if (!src) return;
+    const pixel = src.getContext('2d')!.getImageData(srcX, srcY, 1, 1).data;
+    if (pixel[3] === 0) return;
+    setHighlightedColor('#' + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join(''));
+  };
+
   // ─── Stats ─────────────────────────────────────────
 
   const totalMods = Object.values(towerPalettes).reduce((sum, m) => sum + Object.keys(m).length, 0);
@@ -312,10 +415,17 @@ export default function SkinEditorApp() {
   // ─── Export / Import ───────────────────────────────
 
   const exportSkin = () => {
-    const canvas = skinRef.current || origRef.current;
-    if (!canvas || !factionId) return;
+    if (!factionId) return;
     const suffix = skinName.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'custom';
-    const a = document.createElement('a'); a.download = `${factionId}_towers_${suffix}.png`; a.href = canvas.toDataURL('image/png'); a.click();
+    const dl = (canvas: HTMLCanvasElement | null, name: string) => {
+      if (!canvas) return;
+      const a = document.createElement('a'); a.download = name; a.href = canvas.toDataURL('image/png'); a.click();
+    };
+    // Tower spritesheet
+    dl(skinRef.current || origRef.current, `${factionId}_towers_${suffix}.png`);
+    // Projectile spritesheet
+    dl(skinProjRef.current || origProjRef.current, `${factionId}_projectiles_${suffix}.png`);
+    // Palette JSON
     const data = { factionId, skinName: skinName || 'Custom Skin', suffix, towerPalettes };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const b = document.createElement('a'); b.download = `${factionId}_skin_${suffix}.json`; b.href = URL.createObjectURL(blob); b.click();
@@ -395,29 +505,51 @@ export default function SkinEditorApp() {
                 {totalMods > 0 && ` (${totalMods} total)`}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '3px' }}>
-                {displayPalette.map((entry) => {
-                  const isHighlighted = highlightedColor === entry.original;
-                  const isModified = entry.original !== entry.current;
+              {/* Shared base colors (appear in all towers) */}
+              {(() => {
+                const { baseColors, uniqueColors } = getDisplayColors();
+                const renderSwatch = (color: string) => {
+                  const overrides = towerPalettes[selectedTower] ?? {};
+                  const current = overrides[color] ?? color;
+                  const isHighlighted = highlightedColor === color;
+                  const isModified = color !== current;
                   return (
-                    <div key={entry.original} style={{ position: 'relative' }}
-                      onClick={() => setHighlightedColor(entry.original)}>
-                      <input type="color" value={entry.current}
+                    <div key={color} style={{ position: 'relative' }}
+                      onClick={() => setHighlightedColor(color)}>
+                      <input type="color" value={current}
                         ref={(el: HTMLInputElement | null) => { if (el && isHighlighted) el.click(); }}
-                        onChange={(e: any) => setColor(entry.original, e.target.value)}
+                        onChange={(e: any) => setColor(color, e.target.value)}
                         style={{
                           width: '100%', height: '28px', border: 'none', cursor: 'pointer', borderRadius: '3px', padding: 0,
                           outline: isHighlighted ? '3px solid #ffffff' : isModified ? '2px solid #ffaa44' : 'none',
                           boxShadow: isHighlighted ? '0 0 8px #ffffff88' : 'none',
                         }} />
                       {isModified && (
-                        <div onClick={(e: any) => { e.stopPropagation(); setColor(entry.original, entry.original); }}
+                        <div onClick={(e: any) => { e.stopPropagation(); setColor(color, color); }}
                           style={{ position: 'absolute', top: '-3px', right: '-3px', width: '12px', height: '12px', background: '#ff4444', borderRadius: '50%', cursor: 'pointer', fontSize: '8px', textAlign: 'center', lineHeight: '12px', color: '#fff' }}>×</div>
                       )}
                     </div>
                   );
-                })}
-              </div>
+                };
+                return (<>
+                  {baseColors.length > 0 && (<>
+                    <div style={{ fontSize: '9px', color: '#aa88ff', marginBottom: '4px', marginTop: '4px', letterSpacing: '1px' }}>
+                      SHARED BASE ({baseColors.length})
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '3px', marginBottom: '8px' }}>
+                      {baseColors.map(renderSwatch)}
+                    </div>
+                  </>)}
+                  {uniqueColors.length > 0 && (<>
+                    <div style={{ fontSize: '9px', color: '#ffaa44', marginBottom: '4px', letterSpacing: '1px' }}>
+                      {selectedTower === -1 ? 'UNIQUE TO SPECIFIC TOWERS' : `${faction.towerNames[selectedTower]} ONLY`} ({uniqueColors.length})
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '3px' }}>
+                      {uniqueColors.map(renderSwatch)}
+                    </div>
+                  </>)}
+                </>);
+              })()}
 
               <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button onClick={resetTower} style={btn}>Reset {selectedTower === -1 ? 'Global' : faction.towerNames[selectedTower]}</button>
@@ -431,16 +563,29 @@ export default function SkinEditorApp() {
           <div style={{ flex: 1, overflow: 'auto', padding: '16px', background: '#08080f' }}>
             {loading && <div style={{ textAlign: 'center', padding: '60px', color: '#666' }}>Rendering...</div>}
 
-            {/* Zoomed single tower view (when a tower is selected) */}
+            {/* Zoomed tower + projectile view */}
             {selectedTower >= 0 && (
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ fontSize: '12px', color: '#ffaa44', marginBottom: '6px', fontWeight: 'bold' }}>
-                  {faction.towerNames[selectedTower]} — 5x zoom (click pixel to pick)
+                  {faction.towerNames[selectedTower]} — click pixel to pick color
                 </div>
-                <div style={{ maxHeight: '400px', overflow: 'auto', border: '1px solid #2a2a44', borderRadius: '4px', display: 'inline-block' }}>
-                  <canvas ref={zoomRef}
-                    onClick={(e: any) => handleZoomClick(e)}
-                    style={{ imageRendering: 'pixelated' as any, cursor: 'crosshair', display: 'block' }} />
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  {/* Tower zoom */}
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#666', marginBottom: '2px' }}>Tower (5x)</div>
+                    <div style={{ maxHeight: '400px', overflow: 'auto', border: '1px solid #2a2a44', borderRadius: '4px', display: 'inline-block' }}>
+                      <canvas ref={zoomRef} onClick={(e: any) => handleZoomClick(e)}
+                        style={{ imageRendering: 'pixelated' as any, cursor: 'crosshair', display: 'block' }} />
+                    </div>
+                  </div>
+                  {/* Projectile zoom */}
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#666', marginBottom: '2px' }}>Projectile (8x)</div>
+                    <div style={{ border: '1px solid #2a2a44', borderRadius: '4px', display: 'inline-block' }}>
+                      <canvas ref={zoomProjRef} onClick={(e: any) => handleZoomProjClick(e)}
+                        style={{ imageRendering: 'pixelated' as any, cursor: 'crosshair', display: 'block' }} />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -457,16 +602,33 @@ export default function SkinEditorApp() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+            {/* Tower sheets */}
+            <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Tower Spritesheets</div>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div>
-                <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>Original</div>
+                <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Original</div>
                 <canvas ref={origRef} onClick={(e: any) => handleCanvasClick(e, origRef, true)}
                   style={{ imageRendering: 'pixelated' as any, maxWidth: '100%', border: '1px solid #1a1a2a', borderRadius: '4px', cursor: 'crosshair' }} />
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#ffaa44', marginBottom: '4px' }}>Modified {totalMods > 0 ? `(${totalMods})` : ''}</div>
+                <div style={{ fontSize: '10px', color: '#ffaa44', marginBottom: '2px' }}>Modified</div>
                 <canvas ref={skinRef} onClick={(e: any) => handleCanvasClick(e, skinRef, false)}
                   style={{ imageRendering: 'pixelated' as any, maxWidth: '100%', border: '1px solid #1a1a2a', borderRadius: '4px', cursor: 'crosshair' }} />
+              </div>
+            </div>
+
+            {/* Projectile sheets */}
+            <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Projectile Spritesheets</div>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Original</div>
+                <canvas ref={origProjRef}
+                  style={{ imageRendering: 'pixelated' as any, maxWidth: '100%', border: '1px solid #1a1a2a', borderRadius: '4px' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', color: '#ffaa44', marginBottom: '2px' }}>Modified</div>
+                <canvas ref={skinProjRef}
+                  style={{ imageRendering: 'pixelated' as any, maxWidth: '100%', border: '1px solid #1a1a2a', borderRadius: '4px' }} />
               </div>
             </div>
           </div>

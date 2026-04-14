@@ -45,6 +45,10 @@ export interface FactionSpriteInfo {
   towerCell: number;
   /** Projectile columns */
   projCols: number;
+  /** Projectile rows (always 6: 3 travel + 3 impact) */
+  projRows: number;
+  /** Projectile cell size in pixels */
+  projCell: number;
   /** File path for dynamic import */
   modulePath: string;
   /** Tower names for labeling */
@@ -52,27 +56,27 @@ export interface FactionSpriteInfo {
 }
 
 export const FACTION_SPRITES: FactionSpriteInfo[] = [
-  { id: 'arcane', name: 'Arcane', towerCols: 7, towerRows: 20, towerCell: 64, projCols: 7, modulePath: '/arcane_sprites.tsx',
+  { id: 'arcane', name: 'Arcane', towerCols: 7, towerRows: 20, towerCell: 64, projCols: 7, projRows: 6, projCell: 32, modulePath: '/arcane_sprites.tsx',
     towerNames: ['Bolt', 'Frost', 'Storm', 'Focus', 'Mana Drain', 'Meteor', 'Arcane Nova'] },
-  { id: 'void', name: 'Void', towerCols: 5, towerRows: 24, towerCell: 64, projCols: 5, modulePath: '/void_sprites.tsx',
+  { id: 'void', name: 'Void', towerCols: 5, towerRows: 24, towerCell: 64, projCols: 5, projRows: 6, projCell: 32, modulePath: '/void_sprites.tsx',
     towerNames: ['Gambler', 'Spike', 'Siphon', 'Rift', 'Oblivion'] },
-  { id: 'mechanical', name: 'Mechanical', towerCols: 8, towerRows: 24, towerCell: 64, projCols: 8, modulePath: '/mechanical_sprites.tsx',
+  { id: 'mechanical', name: 'Mechanical', towerCols: 8, towerRows: 24, towerCell: 64, projCols: 8, projRows: 6, projCell: 32, modulePath: '/mechanical_sprites.tsx',
     towerNames: ['Wall', 'Turret', 'Flame', 'Tesla', 'Mortar', 'Shredder', 'Railgun', 'Titan'] },
-  { id: 'nature', name: 'Nature', towerCols: 6, towerRows: 24, towerCell: 64, projCols: 6, modulePath: '/nature_sprites.tsx',
+  { id: 'nature', name: 'Nature', towerCols: 6, towerRows: 24, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/nature_sprites.tsx',
     towerNames: ['Thorn', 'Root', 'Blossom', 'Spore', 'Vine', 'Elder Treant'] },
-  { id: 'military', name: 'Military', towerCols: 6, towerRows: 20, towerCell: 64, projCols: 6, modulePath: '/military_sprites.tsx',
+  { id: 'military', name: 'Military', towerCols: 6, towerRows: 20, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/military_sprites.tsx',
     towerNames: ['Sandbag', 'Wire', 'Rifleman', 'Brawler', 'Tank', 'Commander'] },
-  { id: 'aliens', name: 'Aliens', towerCols: 8, towerRows: 16, towerCell: 64, projCols: 8, modulePath: '/aliens_sprites.tsx',
+  { id: 'aliens', name: 'Aliens', towerCols: 8, towerRows: 16, towerCell: 64, projCols: 8, projRows: 6, projCell: 32, modulePath: '/aliens_sprites.tsx',
     towerNames: ['Spitter', 'Stinger', 'Swarm Node', 'Acid', 'Hive Spire', 'Brood Mother', 'Swarmling', 'Overmind'] },
-  { id: 'cypherpunk', name: 'Cypherpunk', towerCols: 7, towerRows: 20, towerCell: 64, projCols: 7, modulePath: '/cypherpunk_sprites.tsx',
+  { id: 'cypherpunk', name: 'Cypherpunk', towerCols: 7, towerRows: 20, towerCell: 64, projCols: 7, projRows: 6, projCell: 32, modulePath: '/cypherpunk_sprites.tsx',
     towerNames: ['Ping', 'Firewall', 'Virus', 'Backdoor', 'DDoS', 'Rootkit', 'Zero Day'] },
-  { id: 'infernal', name: 'Infernal', towerCols: 6, towerRows: 16, towerCell: 64, projCols: 6, modulePath: '/infernal_sprites.tsx',
+  { id: 'infernal', name: 'Infernal', towerCols: 6, towerRows: 16, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/infernal_sprites.tsx',
     towerNames: ['Imp', 'Hellfire', 'Soul Drain', 'Bomber', 'Immolate', 'Apocalypse'] },
-  { id: 'celestial', name: 'Celestial', towerCols: 5, towerRows: 20, towerCell: 64, projCols: 5, modulePath: '/celestial_sprites.tsx',
+  { id: 'celestial', name: 'Celestial', towerCols: 5, towerRows: 20, towerCell: 64, projCols: 5, projRows: 6, projCell: 32, modulePath: '/celestial_sprites.tsx',
     towerNames: ['Acolyte', 'Ward', 'Smite', 'Sanctuary', 'Absolution'] },
-  { id: 'psionic', name: 'Psionic', towerCols: 5, towerRows: 20, towerCell: 64, projCols: 5, modulePath: '/psionic_sprites.tsx',
+  { id: 'psionic', name: 'Psionic', towerCols: 5, towerRows: 20, towerCell: 64, projCols: 5, projRows: 6, projCell: 32, modulePath: '/psionic_sprites.tsx',
     towerNames: ['Probe', 'Mesmer', 'Terror', 'Mind Spike', 'Overmind'] },
-  { id: 'harmonic', name: 'Harmonic', towerCols: 7, towerRows: 24, towerCell: 64, projCols: 7, modulePath: '/harmonic_sprites.tsx',
+  { id: 'harmonic', name: 'Harmonic', towerCols: 7, towerRows: 24, towerCell: 64, projCols: 7, projRows: 6, projCell: 32, modulePath: '/harmonic_sprites.tsx',
     towerNames: ['Resonator', 'Amplifier', 'Quickener', 'Reach', 'Critical Mass', 'Conduit', 'Crescendo'] },
 ];
 
