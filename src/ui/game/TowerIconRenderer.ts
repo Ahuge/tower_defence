@@ -98,9 +98,9 @@ export function getHeroIconUrl(heroId: HeroId | string, overrideSuffix?: string 
     key = ensureHeroSkinTextureBySuffix(scene as any, heroId, overrideSuffix);
   }
   if (!game.textures.exists(key)) return null;
-  // Hero frames are 64×128. Frame 0 = idle facing down. Render at 64×64 so
-  // it sits inside a square card cell (the bottom half is feet — fine).
-  return extractFrame(game.textures, key, 0, 64, 128, cacheKey, 64, 64);
+  // Hero frames are 64×128 (full body, idle facing down at frame 0). Output
+  // at full source size — SkinPreview decides how big to display it.
+  return extractFrame(game.textures, key, 0, 64, 128, cacheKey, 64, 128);
 }
 
 function extractFrame(

@@ -77,9 +77,13 @@ export function SkinPreview({ skin, size = 32, gap = 2 }: Props) {
   if (skin.target === 'hero' && skin.heroId) {
     const url = getHeroIconUrl(skin.heroId, skin.assetSuffix);
     if (!url) return null;
+    // Heroes get the prime spotlight on their card — render the full body
+    // at 3x card size (1:2 aspect because hero frames are 64×128).
+    const heroW = size * 3;
+    const heroH = heroW * 2;
     return (
-      <img src={url} width={size * 1.5} height={size * 1.5}
-        style={{ imageRendering: 'pixelated' as any, display: 'block', margin: '4px auto' }} />
+      <img src={url} width={heroW} height={heroH}
+        style={{ imageRendering: 'pixelated' as any, display: 'block', margin: '6px auto' }} />
     );
   }
 
