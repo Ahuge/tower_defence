@@ -191,6 +191,8 @@ export interface GameUIState {
   speed: number;
   /** Is game paused */
   paused: boolean;
+  /** Total income per wave */
+  income: number;
   /** Send options for the send panel */
   sendOptions: SendOption[];
   /** Event log entries (most recent first, max 20) */
@@ -244,6 +246,7 @@ class GameUIStoreClass {
       matchMode: 'standard',
       speed: 1,
       paused: false,
+      income: 0,
       sendOptions: [],
       eventLog: [],
       frontier: { available: [], owned: [] },
@@ -285,9 +288,9 @@ class GameUIStoreClass {
   }
 
   /** Update economy display */
-  updateEconomy(gold: number, lives: number): void {
-    if (this.state.gold === gold && this.state.lives === lives) return;
-    this.state = { ...this.state, gold, lives };
+  updateEconomy(gold: number, lives: number, income?: number): void {
+    if (this.state.gold === gold && this.state.lives === lives && (income === undefined || this.state.income === income)) return;
+    this.state = { ...this.state, gold, lives, income: income ?? this.state.income };
     this.notify();
   }
 

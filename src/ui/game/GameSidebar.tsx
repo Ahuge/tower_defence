@@ -13,7 +13,7 @@ import { ResponsiveManager } from '../../systems/ResponsiveManager';
 type PanelId = 'waves' | 'economy' | 'tower';
 
 export function GameSidebar() {
-  const { active, selectedTower, upcomingWaves, gold, lives } = useGameUI();
+  const { active, selectedTower, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence } = useGameUI();
   const [openPanel, setOpenPanel] = useState<PanelId | null>('waves');
 
   const isPhone = ResponsiveManager.isPhone();
@@ -41,7 +41,7 @@ export function GameSidebar() {
         title="WAVES"
         open={openPanel === 'waves'}
         onToggle={() => toggle('waves')}
-        badge={upcomingWaves.length > 0 ? `W${upcomingWaves[0]?.waveNum ?? '?'}` : undefined}
+        badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
       >
         <UpcomingWavesDOM />
       </CollapsiblePanel>
@@ -51,7 +51,7 @@ export function GameSidebar() {
         titleColor="#ff8844"
         open={openPanel === 'economy'}
         onToggle={() => toggle('economy')}
-        badge={`${gold}g | ${lives} lives`}
+        badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
       >
         <EconomyPanelDOM />
       </CollapsiblePanel>
