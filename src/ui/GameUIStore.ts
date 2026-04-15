@@ -55,6 +55,30 @@ export interface SendOption {
   unlockWave: number;
 }
 
+export interface FrontierBuildingInfo {
+  id: string;
+  name: string;
+  cost: number;
+  description: string;
+  mechanic: string;
+}
+
+export interface OwnedBuildingInfo {
+  defId: string;
+  name: string;
+  mechanic: string;
+  /** Mechanic-specific state label (e.g. "Dig Lv3", "4 stacks", "Dormant 2w") */
+  status: string;
+  destroyed: boolean;
+  /** Grouped count (when in grouped view) */
+  count?: number;
+}
+
+export interface FrontierState {
+  available: FrontierBuildingInfo[];
+  owned: OwnedBuildingInfo[];
+}
+
 export interface EventLogEntry {
   id: number;
   text: string;
@@ -91,6 +115,8 @@ export interface GameUIState {
   sendOptions: SendOption[];
   /** Event log entries (most recent first, max 20) */
   eventLog: EventLogEntry[];
+  /** Frontier buildings state */
+  frontier: FrontierState;
 }
 
 type Listener = () => void;
@@ -108,6 +134,9 @@ class GameUIStoreClass {
     onToggleAutoPlay?: () => void;
     onSetSpeed?: (speed: number) => void;
     onSend?: (sendId: string) => void;
+    onFrontierPurchase?: (buildingId: string) => void;
+    onFrontierAction?: (action: string, buildingIdx: number) => void;
+    onFrontierBatchAction?: (action: string, defId: string) => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -126,6 +155,7 @@ class GameUIStoreClass {
       paused: false,
       sendOptions: [],
       eventLog: [],
+      frontier: { available: [], owned: [] },
     };
   }
 
@@ -192,6 +222,12 @@ class GameUIStoreClass {
     this.notify();
   }
 
+  /** Update frontier state */
+  updateFrontier(frontier: FrontierState): void {
+    this.state = { ...this.state, frontier };
+    this.notify();
+  }
+
   /** Update send panel options */
   updateSendOptions(options: SendOption[]): void {
     this.state = { ...this.state, sendOptions: options };
@@ -244,6 +280,18 @@ class GameUIStoreClass {
 
   requestSend(sendId: string): void {
     this.callbacks.onSend?.(sendId);
+  }
+
+  requestFrontierPurchase(buildingId: string): void {
+    this.callbacks.onFrontierPurchase?.(buildingId);
+  }
+
+  requestFrontierAction(action: string, buildingIdx: number): void {
+    this.callbacks.onFrontierAction?.(action, buildingIdx);
+  }
+
+  requestFrontierBatchAction(action: string, defId: string): void {
+    this.callbacks.onFrontierBatchAction?.(defId, defId);
   }
 
   // ─── Subscription ───────────────────────────────────
