@@ -17,6 +17,8 @@ import { GauntletPreviewScene } from './scenes/GauntletPreviewScene';
 import { LeaderboardScene } from './scenes/LeaderboardScene';
 import { TowerSelectBar } from './ui/TowerSelectBar';
 import { UIBridge } from './ui/UIBridge';
+import { preloadSprites } from './systems/SpriteManager';
+import { preloadCreepSprites } from './systems/CreepSpriteManager';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
@@ -29,6 +31,14 @@ const gameHeight = ResponsiveManager.canvasHeight();
 
 class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
+  preload(): void {
+    // Load tower / hero / creep spritesheets at startup so the Store,
+    // Inventory, and other menu screens can render skin previews before
+    // any GameScene has been instantiated. Textures are global to the
+    // Phaser TextureManager, so loading once here covers every screen.
+    preloadSprites(this);
+    preloadCreepSprites(this);
+  }
   create(): void { /* Phaser ready — menu shown from main.ts */ }
 }
 
