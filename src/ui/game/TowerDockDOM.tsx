@@ -8,7 +8,7 @@ import { GameUIStore } from '../GameUIStore';
 import { getTowerType } from '../../data/TowerTypes';
 import { getTowerIconUrl } from './TowerIconRenderer';
 import { TILE_SIZE } from '../../config';
-import { getSkinDef, DockStyle } from '../../systems/monetization';
+import { getSkinDef, DockStyle, getThemeLabelFromSuffix } from '../../systems/monetization';
 import { PlayerInventory } from '../../systems/monetization/PlayerInventory';
 import { getTowerFaction } from '../../systems/SpriteManager';
 
@@ -24,6 +24,28 @@ function getDockStyle(towerId: string): DockStyle | null {
   // Faction-wide
   const faction = PlayerInventory.getEquippedSkin(`towerfaction:${fid}`);
   if (faction) { const def = getSkinDef(faction); if (def?.dockStyle) return def.dockStyle; }
+  return null;
+}
+
+/** Get the equipped skin's theme label for a tower (e.g. "Gilded"), or null. */
+function getEquippedThemeLabel(towerId: string): string | null {
+  const fid = getTowerFaction(towerId);
+  if (!fid) return null;
+  // Per-tower skin takes priority
+  const perTower = PlayerInventory.getEquippedSkin(`tower:${towerId}`);
+  if (perTower) {
+    const def = getSkinDef(perTower);
+    if (def?.assetSuffix) {
+      const label = getThemeLabelFromSuffix(fid, def.assetSuffix);
+      if (label) return label;
+    }
+  }
+  // Faction-wide skin
+  const faction = PlayerInventory.getEquippedSkin(`towerfaction:${fid}`);
+  if (faction) {
+    const def = getSkinDef(faction);
+    if (def?.assetSuffix) return getThemeLabelFromSuffix(fid, def.assetSuffix);
+  }
   return null;
 }
 
@@ -110,7 +132,7 @@ export function TowerDockDOM() {
                 right: i >= towerBar.towers.length - 1 ? '0' : 'auto',
                 transform: i === 0 || i >= towerBar.towers.length - 1 ? 'none' : 'translateX(-50%)',
               }}>
-                <div class="dock-tooltip-name">{t.name} ({t.cost}g)</div>
+                <div class="dock-tooltip-name">{(() => { const l = getEquippedThemeLabel(tower.id); return l ? `${l} ${t.name}` : t.name; })()} ({t.cost}g)</div>
                 <div class="dock-tooltip-desc">{t.description}</div>
                 <div class="dock-tooltip-stats">
                   DMG: {t.damage} | RNG: {t.range} | SPD: {t.fireRate}ms | {t.damageType}

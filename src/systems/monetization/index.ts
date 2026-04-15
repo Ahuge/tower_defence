@@ -12,7 +12,7 @@ export type { SeasonDef, PassReward, RewardType, ChallengeTemplate, PerkId } fro
 export { PREMIUM_PERKS } from './BattlePass';
 
 export {
-  SKIN_DEFS, TOWER_SKINS, getSkinDef, getRollableSkins, getPurchasableSkins, getSkinsFor,
+  SKIN_DEFS, TOWER_SKINS, getSkinDef, getRollableSkins, getPurchasableSkins, getSkinsFor, getThemeLabelFromSuffix,
   FREE_FACTIONS, PREMIUM_FACTIONS, FACTION_UNLOCK_COST,
   TERRAIN_THEMES, getTerrainTheme,
   SKIN_ROLL_COST, DUPLICATE_REFUND, ROLL_WEIGHTS,

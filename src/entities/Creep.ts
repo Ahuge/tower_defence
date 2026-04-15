@@ -109,6 +109,10 @@ export class Creep {
       if (this.hp <= 0) {
         this.alive = false;
         this.graphics.destroy();
+        if (this.sprite) {
+          playCreepDeath(this._scene, this.sprite, (this._scene as any).creepFaction ?? 'arcane', this._creepTypeId);
+          this.sprite = null;
+        }
         return;
       }
     }

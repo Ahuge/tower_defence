@@ -23,6 +23,19 @@
 ### Test button
 - **+5000 Shards (test)** button on main menu for development.
 
+### Bug fixes
+- **Mobile unit skins now apply correctly when placed.** Anim frames in `createSpriteAnimations` were always bound to the BASE sheet key, so playing any animation on a skinned mobile unit would reset its texture to the base. Affected every mobile unit skin (rifleman/brawler/heavy/commander Arctic+Desert Storm, alien_swarmling, infernal_bomber). Fix: parallel anim sets per loaded skin variant + per-sprite suffix lookup.
+- **Creep sprites no longer linger when killed by DoT effects** (burn, poison). The DoT death branch in `Creep.update()` was destroying graphics but skipping the sprite cleanup that the regular `takeDamage()` path runs.
+- **Selecting a tower in Hero Defense no longer throws** `ReferenceError: require is not defined`. Replaced two CommonJS `require()` calls in `GameScene.towerToStats` with proper ESM imports.
+
+### Hero skin pack bundles + rolls
+- **Tower-faction packs now bundle the matching hero skin.** Buying e.g. `Gilded Mechanical Pack` also grants `Gilded Engineer`. Pack prices bumped ~50% (common 400→600, rare 800→1200, epic 1200→1800).
+- **Hero skins added to the roll pool** at one rarity tier above their tower-pack equivalent (common→rare, rare→epic, epic→legendary). Direct-purchase prices match the bumped tier.
+- New `SkinDef.bundles` field in StoreDefinitions; `PlayerInventory.purchaseSkin` grants bundled IDs alongside the main purchase.
+
+### Tower dock skin labels
+- **Dock card tooltips now prefix the tower name with the equipped skin theme** — e.g. "Gilded Flame ($100g)" instead of just "Flame ($100g)". New `getThemeLabelFromSuffix(faction, suffix)` helper looks up the human-readable theme label.
+
 ## 2026-04-11
 
 ### Endless Mode + Streamlined Menu

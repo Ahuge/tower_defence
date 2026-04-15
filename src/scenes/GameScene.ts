@@ -60,7 +60,7 @@ import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 import { CircleDeathHandler } from '../systems/CircleDeathHandler';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
-import { UpdateContext } from '../systems/traits/Trait';
+import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
@@ -916,8 +916,6 @@ export class GameScene extends Phaser.Scene {
 
   /** Convert a Tower entity to a TowerStats snapshot for the DOM UI */
   private towerToStats(tower: Tower): TowerStats {
-    const { TILE_SIZE } = require('../config');
-    const { hasTrait, getTrait } = require('../systems/traits/Trait');
     const traits: string[] = [];
     for (const t of tower.typeDef.traits) {
       switch (t.id) {
@@ -942,8 +940,8 @@ export class GameScene extends Phaser.Scene {
     const auraBuffs: string[] = [];
     const adjDmg = getTrait(tower.traits, '_adj_damage_buff');
     const adjRate = getTrait(tower.traits, '_adj_rate_buff');
-    if (adjDmg?.bonus > 0) auraBuffs.push(`+${adjDmg.bonus} DMG`);
-    if (adjRate?.bonus > 0) auraBuffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD`);
+    if (adjDmg && adjDmg.bonus > 0) auraBuffs.push(`+${adjDmg.bonus} DMG`);
+    if (adjRate && adjRate.bonus > 0) auraBuffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD`);
 
     let upgradePreview: TowerStats['upgradePreview'] = null;
     if (tower.canUpgrade()) {

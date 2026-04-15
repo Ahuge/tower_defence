@@ -231,6 +231,17 @@ export function getSkinDef(skinId: string): SkinDef | undefined {
   return SKIN_DEFS.find(s => s.id === skinId);
 }
 
+/** Get the human-readable theme label (e.g. "Gilded", "Cyber Sakura") for an
+ *  asset suffix on a given faction. Returns null if the suffix isn't a
+ *  recognized theme. Used to prefix tower names with the equipped skin theme
+ *  on dock cards / tooltips. */
+export function getThemeLabelFromSuffix(faction: FactionId, suffix: string): string | null {
+  const themes = TOWER_SKIN_THEMES[faction] ?? [];
+  const bare = suffix.startsWith('_') ? suffix.slice(1) : suffix;
+  const theme = themes.find(t => t.suffix === bare);
+  return theme?.label ?? null;
+}
+
 /** Get all skins that can appear in rolls. Includes per-tower skins AND
  *  hero skins (whose rarity is already bumped one tier in SKIN_DEFS so they
  *  drop in a higher rarity bucket than tower skins of the same theme). */
