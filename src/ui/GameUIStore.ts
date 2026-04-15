@@ -111,11 +111,52 @@ export interface HeroItemInfo {
   cost: number;
   description: string;
   owned: boolean;
+  color: string;
+}
+
+export interface TomeInfo {
+  id: string;
+  label: string;
+  cost: number;
+}
+
+export interface AccessoryInfo {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  passive: boolean;
+  equipped: boolean;
+  cooldown?: number;
+}
+
+export interface AbilityInfo {
+  key: string;
+  name: string;
+  ready: boolean;
+  cooldown: number;
+  upgrades: number;
 }
 
 export interface HeroShopState {
   heroName: string;
+  level: number;
+  maxLevel: boolean;
+  xp: number;
+  xpNeeded: number;
+  hp: number;
+  maxHp: number;
+  damage: number;
+  attackSpeed: number;
   items: HeroItemInfo[];
+  tomes: TomeInfo[];
+  equippedAccessories: AccessoryInfo[];
+  accessoryOffers: AccessoryInfo[];
+  nextRotationWave: number;
+  abilities: AbilityInfo[];
+  ultimate: AbilityInfo | null;
+  pendingUpgrades: number;
+  upgradeOptions: { id: string; label: string; desc: string }[];
 }
 
 export interface EventLogEntry {
@@ -183,6 +224,10 @@ class GameUIStoreClass {
     onBuyEssenceGenerator?: (genId: string) => void;
     onEssenceSend?: (sendId: string) => void;
     onBuyHeroItem?: (slotId: string) => void;
+    onBuyTome?: (tomeId: string) => void;
+    onBuyAccessory?: (index: number) => void;
+    onHeroUpgrade?: (optionId: string) => void;
+    onUpgradeAbility?: (abilityIndex: number) => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -364,6 +409,22 @@ class GameUIStoreClass {
 
   requestBuyHeroItem(slotId: string): void {
     this.callbacks.onBuyHeroItem?.(slotId);
+  }
+
+  requestBuyTome(tomeId: string): void {
+    this.callbacks.onBuyTome?.(tomeId);
+  }
+
+  requestBuyAccessory(index: number): void {
+    this.callbacks.onBuyAccessory?.(index);
+  }
+
+  requestHeroUpgrade(optionId: string): void {
+    this.callbacks.onHeroUpgrade?.(optionId);
+  }
+
+  requestUpgradeAbility(abilityIndex: number): void {
+    this.callbacks.onUpgradeAbility?.(abilityIndex);
   }
 
   // ─── Subscription ───────────────────────────────────
