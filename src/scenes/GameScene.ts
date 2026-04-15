@@ -282,6 +282,14 @@ export class GameScene extends Phaser.Scene {
       onToggleAutoPlay: () => {
         this.toggleAutoPlay();
       },
+      onStartWave: () => {
+        if (this.betweenWaves && this.currentWave < this.waves.length) {
+          this.startWave();
+        }
+      },
+      onCycleSpeed: () => {
+        this.cycleSpeed();
+      },
       onSelectDockTower: (index: number) => {
         if (index < 0) {
           this.enterNoneMode();
@@ -532,6 +540,10 @@ export class GameScene extends Phaser.Scene {
 
     this.incomeDisplay = new IncomeDisplay(this);
 
+    // Hide Phaser HUD — DOM takes over
+    this.ui.hideAll();
+    this.incomeDisplay.hide();
+
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
     const leakHandler = this.arenaManager
@@ -667,6 +679,10 @@ export class GameScene extends Phaser.Scene {
         () => this.togglePause(),
         () => this.toggleAutoPlay(),
       );
+      // Hide Phaser control bar — DOM status bar handles wave/speed/pause
+      // Note: hero ability buttons (Q/W/E/R/T) are also in this bar on phone.
+      // They still work via keyboard on desktop. Phone hero abilities need DOM solution.
+      this.controlBar.hide?.();
     }
 
     // Camera controller: phone gets pinch-to-zoom + viewport clip, desktop gets scroll wheel + buttons
@@ -1337,6 +1353,7 @@ export class GameScene extends Phaser.Scene {
     const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
     this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     GameUIStore.updateEconomy(this.economy.gold, displayLives, this.incomeMgr.getBreakdown().total);
+    GameUIStore.updateGameState(this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);

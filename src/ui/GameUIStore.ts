@@ -193,6 +193,12 @@ export interface GameUIState {
   paused: boolean;
   /** Total income per wave */
   income: number;
+  /** Is wave active */
+  waveActive: boolean;
+  /** Is between waves (can start next) */
+  betweenWaves: boolean;
+  /** Versus timer (-1 if no timer) */
+  versusTimer: number;
   /** Tower dock bar state */
   towerBar: {
     towers: { id: string; name: string; cost: number; hotkey: string; color: number }[];
@@ -236,6 +242,8 @@ class GameUIStoreClass {
     onHeroUpgrade?: (optionId: string) => void;
     onUpgradeAbility?: (abilityIndex: number) => void;
     onSelectDockTower?: (index: number) => void;
+    onCycleSpeed?: () => void;
+    onPause?: () => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -253,6 +261,9 @@ class GameUIStoreClass {
       speed: 1,
       paused: false,
       income: 0,
+      waveActive: false,
+      betweenWaves: false,
+      versusTimer: -1,
       towerBar: { towers: [], selectedIndex: -1 },
       sendOptions: [],
       eventLog: [],
@@ -322,6 +333,12 @@ class GameUIStoreClass {
   /** Update paused state */
   setPaused(paused: boolean): void {
     this.state = { ...this.state, paused };
+    this.notify();
+  }
+
+  /** Update wave/game state for status bar */
+  updateGameState(waveActive: boolean, betweenWaves: boolean, speed: number, versusTimer: number = -1): void {
+    this.state = { ...this.state, waveActive, betweenWaves, speed, versusTimer };
     this.notify();
   }
 
@@ -404,6 +421,14 @@ class GameUIStoreClass {
 
   requestSetSpeed(speed: number): void {
     this.callbacks.onSetSpeed?.(speed);
+  }
+
+  requestCycleSpeed(): void {
+    this.callbacks.onCycleSpeed?.();
+  }
+
+  requestPause(): void {
+    this.callbacks.onPause?.();
   }
 
   requestSend(sendId: string): void {

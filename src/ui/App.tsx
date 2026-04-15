@@ -14,6 +14,7 @@ import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
+import { StatusBarDOM } from './game/StatusBarDOM';
 import './styles/game-panels.css';
 
 export function App() {
@@ -55,6 +56,7 @@ export function App() {
 
       {/* In-game UI — renders alongside Phaser canvas when no screen is active */}
       {!screen && <GameSidebar />}
+      {!screen && <StatusBarDOM />}
       {!screen && <TowerDockDOM />}
     </>
   );
