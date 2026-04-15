@@ -1,1 +1,0 @@
-import{D as e}from"./jsxRuntime.module-BqWNSnUx.js";import{a as t,i as n,n as r,r as i}from"./compat.module-6GeHmPrQ.js";function a(e){return{render:function(t){i(t,e)},unmount:function(){n(e)}}}function o(e,n){return t(n,e),a(e)}var s,c=e((()=>{r(),s={createRoot:a,hydrateRoot:o}}));export{c as n,s as t};
