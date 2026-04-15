@@ -3,6 +3,7 @@ import { Creep } from '../entities/Creep';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { uiText, uiGraphics } from '../systems/UILayer';
+import { FACTIONS, FactionId } from '../data/Factions';
 
 export class CreepInfoPanel {
   private scene: Phaser.Scene;
@@ -63,7 +64,10 @@ export class CreepInfoPanel {
     if (!c) return;
 
     const bossTag = c.isBoss ? ' [BOSS]' : '';
-    this.nameText.setText(`${c.creepType.name}${bossTag}`);
+    const factionName = c.creepFaction ? (FACTIONS[c.creepFaction]?.name ?? '') : '';
+    const typeName = c.creepType.name;
+    const displayName = factionName ? `${factionName} ${typeName}` : typeName;
+    this.nameText.setText(`${displayName}${bossTag}`);
 
     const hpPct = Math.round((c.hp / c.maxHp) * 100);
     this.statsText.setText(

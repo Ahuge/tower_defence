@@ -290,6 +290,9 @@ export class GameScene extends Phaser.Scene {
       onCycleSpeed: () => {
         this.cycleSpeed();
       },
+      onFrontierDoodad: (color: number) => {
+        this.placeFrontierDoodad(color);
+      },
       onSelectDockTower: (index: number) => {
         if (index < 0) {
           this.enterNoneMode();
@@ -994,6 +997,29 @@ export class GameScene extends Phaser.Scene {
       });
     }
     GameUIStore.updateWaves(currentWave, previews);
+  }
+
+  /** Place a small visual doodad on a random blocked terrain cell */
+  placeFrontierDoodad(color: number = 0xffaa44): void {
+    const blocked: { col: number; row: number }[] = [];
+    for (let r = 0; r < this.grid.rows; r++) {
+      for (let c = 0; c < this.grid.cols; c++) {
+        if (this.grid.cells[r][c] === CellType.Blocked) blocked.push({ col: c, row: r });
+      }
+    }
+    if (blocked.length === 0) return;
+    const cell = blocked[Math.floor(Math.random() * blocked.length)];
+    const px = gridX(cell.col) + (Math.random() - 0.5) * TILE_SIZE * 0.6;
+    const py = gridY(cell.row) + (Math.random() - 0.5) * TILE_SIZE * 0.6;
+    const g = this.add.graphics().setDepth(3);
+    // Tiny building marker — 4x4 pixel square with a dot
+    const sz = 3 + Math.floor(Math.random() * 2);
+    g.fillStyle(color, 0.7);
+    g.fillRect(px - sz, py - sz, sz * 2, sz * 2);
+    g.fillStyle(0xffffff, 0.4);
+    g.fillRect(px - 1, py - sz - 1, 2, 1); // chimney/antenna
+    g.lineStyle(1, color, 0.3);
+    g.strokeRect(px - sz - 1, py - sz - 1, sz * 2 + 2, sz * 2 + 2);
   }
 
   private enterBuildMode(typeId: string): void {
