@@ -10,13 +10,7 @@ export function TowerInfoPanelDOM() {
   if (!tower) return null;
 
   return (
-    <div class="game-panel tower-info-panel">
-      <div class="panel-header">
-        <span class="tower-name">{tower.name}</span>
-        <span class="tower-level">Lv{tower.level}</span>
-        {tower.isUltimate && <span class="tower-ult-badge">ULT</span>}
-        <button class="panel-close" onClick={() => GameUIStore.deselectTower()}>✕</button>
-      </div>
+    <>
 
       {/* Stats */}
       <div class="stat-grid">
@@ -73,7 +67,7 @@ export function TowerInfoPanelDOM() {
           Sell ({tower.sellValue}g)
         </button>
       </div>
-    </div>
+    </>
   );
 }
 

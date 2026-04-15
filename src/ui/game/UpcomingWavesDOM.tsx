@@ -10,9 +10,8 @@ export function UpcomingWavesDOM() {
   const autoPlay = useGameUISelector(s => s.autoPlay);
 
   return (
-    <div class="game-panel" style={{ marginBottom: '6px' }}>
+    <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-        <span style={{ fontSize: '10px', color: '#ffaa44', letterSpacing: '1px' }}>UPCOMING WAVES</span>
         <button
           style={{
             fontSize: '9px', padding: '2px 8px', borderRadius: '3px', cursor: 'pointer',
@@ -52,6 +51,6 @@ export function UpcomingWavesDOM() {
           </div>
         ))
       )}
-    </div>
+    </>
   );
 }

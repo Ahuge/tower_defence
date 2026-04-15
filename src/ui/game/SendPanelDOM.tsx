@@ -11,12 +11,7 @@ export function SendPanelDOM() {
   if (options.length === 0) return null;
 
   return (
-    <div class="game-panel" style={{ marginBottom: '6px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-        <span style={{ fontSize: '10px', color: '#ff8844', letterSpacing: '1px' }}>SENDS</span>
-        <span style={{ fontSize: '9px', color: '#666' }}>between waves</span>
-      </div>
-
+    <>
       {options.map(opt => {
         const canAfford = !opt.locked && gold >= opt.cost;
         return (
@@ -55,6 +50,6 @@ export function SendPanelDOM() {
           </div>
         );
       })}
-    </div>
+    </>
   );
 }

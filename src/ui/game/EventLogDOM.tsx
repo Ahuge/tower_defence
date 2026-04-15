@@ -9,8 +9,7 @@ export function EventLogDOM() {
   if (entries.length === 0) return null;
 
   return (
-    <div class="game-panel" style={{ marginBottom: '6px', maxHeight: '120px', overflow: 'hidden' }}>
-      <div style={{ fontSize: '9px', color: '#666', letterSpacing: '1px', marginBottom: '4px' }}>LOG</div>
+    <>
       {entries.slice(0, 8).map(entry => (
         <div key={entry.id} style={{
           fontSize: '9px', color: entry.color, padding: '1px 0',
@@ -19,6 +18,6 @@ export function EventLogDOM() {
           {entry.text}
         </div>
       ))}
-    </div>
+    </>
   );
 }
