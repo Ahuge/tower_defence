@@ -18,7 +18,7 @@ import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions
 import { PlayerInventory } from '../systems/monetization';
 import { GameUIStore, TowerStats } from '../ui/GameUIStore';
 // @ts-expect-error — doodad sprites are untyped root TSX
-import { DOODAD_DRAW, DOODAD_CELL } from '../frontier_doodad_sprites';
+import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
 import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
