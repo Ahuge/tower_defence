@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-14
+
+### Gauntlet Map Updates
+- **All 11 gauntlet maps re-imported** from the map editor with expanded structure placements.
+- **Iron Foundry (Mechanical)**: 5 → 32 structures — full factory floor build-out.
+- **Ancient Grove (Nature)**: 10 → 22 structures.
+- **Data Grid (Cypherpunk)**: 11 → 20 structures.
+- **Warzone Outpost (Military)**: 11 → 16 structures.
+- **Hellscape (Infernal)**: 11 → 15 structures.
+- **Hive Tunnels (Aliens)**: 6 → 10 structures.
+- **Rift Dimension (Void)**, **Concert Hall (Harmonic)**, **Mind Palace (Psionic)** also expanded.
+- Descriptions preserved across the re-import (editor doesn't export them).
+
 ## 2026-04-11
 
 ### Endless Mode + Streamlined Menu
