@@ -1,6 +1,24 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FACTION_SPRITES, FactionSpriteInfo } from './FactionModules';
 import { createColorProxy, normalizeHex } from './ColorProxyContext';
+import { StepEditorPanel } from './StepEditorPanel';
+import { DrawStep } from './DrawSteps';
+import { ARCANE_TOWER_STEPS } from './ArcaneStepDefs';
+import { FACTIONS, Faction } from '../data/Factions';
+
+/** Map faction ID → tower ID array (for step editor tower selection) */
+const FACTIONS_IDS: Record<string, string[]> = {};
+for (const [fid, f] of Object.entries(FACTIONS) as [string, Faction][]) {
+  if (fid !== 'random') FACTIONS_IDS[fid] = f.towerIds;
+}
+
+/** Get step function for a tower if available */
+function getStepFn(factionId: string, towerId?: string): ((level: number, state: number) => DrawStep[]) | null {
+  if (!towerId) return null;
+  if (factionId === 'arcane') return ARCANE_TOWER_STEPS[towerId] ?? null;
+  // Other factions will be added as they're decomposed
+  return null;
+}
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -155,6 +173,19 @@ export default function SkinEditorApp() {
   const [dockBorder, setDockBorder] = useState('#555555');
   const [dockGlow, setDockGlow] = useState('#55555500');
   const [dockBg, setDockBg] = useState('#1a1a28');
+  const [editorMode, setEditorMode] = useState<'color' | 'shape'>('color');
+  const [shapeSteps, setShapeSteps] = useState<DrawStep[]>([]);
+  const [shapeLevel, setShapeLevel] = useState(1);
+  const [shapeState, setShapeState] = useState(0);
+
+  // Load steps when tower selection changes in shape mode
+  useEffect(() => {
+    if (editorMode !== 'shape' || selectedTower < 0 || !factionId) return;
+    const towerId = FACTIONS_IDS[factionId]?.[selectedTower];
+    const stepFn = towerId ? getStepFn(factionId, towerId) : null;
+    if (stepFn) setShapeSteps(stepFn(shapeLevel, shapeState));
+    else setShapeSteps([]);
+  }, [selectedTower, editorMode, factionId]);
   const origRef = useRef<HTMLCanvasElement>(null);
   const skinRef = useRef<HTMLCanvasElement>(null);
   const origProjRef = useRef<HTMLCanvasElement>(null);
@@ -630,7 +661,29 @@ export default function SkinEditorApp() {
       {/* Header */}
       <div style={{ padding: '16px 24px', background: '#111122', borderBottom: '1px solid #2a2a44', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ margin: 0, fontSize: '20px', color: '#ffaa44', letterSpacing: '2px' }}>SKIN EDITOR</h1>
-        <button onClick={importPalette} style={btn}>Import Palette</button>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {factionId && (
+            <div style={{ display: 'flex', gap: '2px', background: '#0a0a14', borderRadius: '4px', padding: '2px' }}>
+              <button onClick={() => setEditorMode('color')}
+                style={{ ...btn, fontSize: '11px', padding: '4px 12px', background: editorMode === 'color' ? '#2a2040' : 'transparent', borderColor: editorMode === 'color' ? '#aa88ff' : '#333', color: editorMode === 'color' ? '#aa88ff' : '#666' }}>
+                Colors
+              </button>
+              <button onClick={() => {
+                setEditorMode('shape');
+                // Load steps for current tower if available
+                if (selectedTower >= 0 && faction) {
+                  const towerId = FACTIONS_IDS[factionId]?.[selectedTower];
+                  const stepFn = getStepFn(factionId, towerId);
+                  if (stepFn) setShapeSteps(stepFn(shapeLevel, shapeState));
+                }
+              }}
+                style={{ ...btn, fontSize: '11px', padding: '4px 12px', background: editorMode === 'shape' ? '#2a2010' : 'transparent', borderColor: editorMode === 'shape' ? '#ffaa44' : '#333', color: editorMode === 'shape' ? '#ffaa44' : '#666' }}>
+                Shapes
+              </button>
+            </div>
+          )}
+          <button onClick={importPalette} style={btn}>Import Palette</button>
+        </div>
       </div>
 
       {/* Faction picker */}
@@ -791,6 +844,60 @@ export default function SkinEditorApp() {
           <div style={{ flex: 1, overflow: 'auto', padding: '16px', background: '#08080f' }}>
             {loading && <div style={{ textAlign: 'center', padding: '60px', color: '#666' }}>Rendering...</div>}
 
+            {/* Shape editor mode */}
+            {editorMode === 'shape' && (() => {
+              const towerId = selectedTower >= 0 ? (FACTIONS_IDS[factionId]?.[selectedTower]) : undefined;
+              const stepFn = towerId ? getStepFn(factionId, towerId) : null;
+              const hasSteps = !!stepFn;
+
+              return (
+                <div>
+                  {/* Level / State controls */}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '10px', color: '#888' }}>Level:</span>
+                    {[1,2,3,4,5].map(l => (
+                      <button key={l} onClick={() => { setShapeLevel(l); if (stepFn) setShapeSteps(stepFn(l, shapeState)); }}
+                        style={{ ...btn, fontSize: '10px', padding: '2px 8px', background: shapeLevel === l ? '#2a2010' : undefined, borderColor: shapeLevel === l ? '#ffaa44' : '#333', color: shapeLevel === l ? '#ffaa44' : '#666' }}>
+                        {l}
+                      </button>
+                    ))}
+                    <span style={{ fontSize: '10px', color: '#888', marginLeft: '8px' }}>State:</span>
+                    {['Idle','Charge','Fire','Cool'].map((s, i) => (
+                      <button key={i} onClick={() => { setShapeState(i); if (stepFn) setShapeSteps(stepFn(shapeLevel, i)); }}
+                        style={{ ...btn, fontSize: '9px', padding: '2px 6px', background: shapeState === i ? '#2a2010' : undefined, borderColor: shapeState === i ? '#ffaa44' : '#333', color: shapeState === i ? '#ffaa44' : '#666' }}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedTower < 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                      Select a tower from the tabs on the left to edit its shape
+                    </div>
+                  ) : !hasSteps ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                      <div style={{ fontSize: '14px', marginBottom: '8px' }}>{faction.towerNames[selectedTower]}</div>
+                      <div>Shape editing not yet available for this tower.</div>
+                      <div style={{ fontSize: '10px', marginTop: '8px', color: '#555' }}>
+                        Currently only Arcane Bolt has been decomposed into steps.
+                        Other towers coming soon.
+                      </div>
+                    </div>
+                  ) : (
+                    <StepEditorPanel
+                      steps={shapeSteps}
+                      level={shapeLevel}
+                      state={shapeState}
+                      onStepsChange={setShapeSteps}
+                    />
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Color editor mode */}
+            {editorMode === 'color' && <>
+
             {/* Zoomed tower + projectile view */}
             {selectedTower >= 0 && (
               <div style={{ marginBottom: '16px' }}>
@@ -883,6 +990,8 @@ export default function SkinEditorApp() {
                 ))}
               </div>
             )}
+
+            </>}
           </div>
         </div>
       )}
