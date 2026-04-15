@@ -444,13 +444,15 @@ export class GameScene extends Phaser.Scene {
     // Stats tracker
     this.statsTracker = new StatsTracker();
 
-    // Upcoming waves (top of sidebar)
+    // Upcoming waves — Phaser panel hidden, DOM version takes over
     this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
+    this.upcomingWaves.getContainer().setVisible(false);
     this.updateDOMWaves(this.currentWave);
 
-    // Event log (bottom of sidebar)
+    // Event log — Phaser panel hidden, but still functional (pushes to DOM)
     this.eventLog = new EventLog(this, 480);
+    this.eventLog.getContainer().setVisible(false);
 
     // Hero defense: create ArenaManager before game mode
     if (this.matchMode === 'hero_defense' && this.heroId) {
@@ -562,18 +564,20 @@ export class GameScene extends Phaser.Scene {
     this.hoverGraphics = this.add.graphics().setDepth(20);
     this.rangeGraphics = this.add.graphics().setDepth(19);
 
-    // Sidebar background (desktop) or overlay (tablet)
+    // Sidebar — DOM UI handles all panels now.
+    // Desktop: no Phaser sidebar background needed (DOM panels float over canvas).
+    // Tablet/Phone: no SidebarOverlay needed (DOM accordion handles everything).
+    // We still create the SidebarOverlay for modes that call reparentSidebarPanels
+    // (their Phaser panels are hidden but we need the call to not crash).
     if (ResponsiveManager.isTablet()) {
       this.sidebarOverlay = new SidebarOverlay(this);
-      // Reparent sidebar panels into the overlay
       this.sidebarOverlay.addPanel(this.upcomingWaves.getContainer());
       this.sidebarOverlay.addPanel(this.eventLog.getContainer());
       this.gameMode.reparentSidebarPanels?.(this.sidebarOverlay);
-    } else {
-      const sidebarBg = this.add.graphics().setDepth(0);
-      sidebarBg.fillStyle(0x0e0e12, 1);
-      sidebarBg.fillRect(0, 0, SIDEBAR_WIDTH, GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT);
+      // Hide the entire Phaser overlay — DOM handles sidebar
+      this.sidebarOverlay.hideCompletely();
     }
+    // No desktop sidebar background — DOM panels render directly
 
     this.drawGrid();
     this.drawPath();

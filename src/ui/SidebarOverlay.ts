@@ -107,6 +107,14 @@ export class SidebarOverlay {
     else this.show();
   }
 
+  /** Hide everything permanently — DOM UI takes over */
+  hideCompletely(): void {
+    this.hide();
+    this.container.setVisible(false);
+    this.scrim.setVisible(false);
+    this.toggleBtn.setVisible(false);
+  }
+
   isVisible(): boolean {
     return this._visible;
   }
