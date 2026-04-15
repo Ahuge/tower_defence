@@ -241,6 +241,7 @@ const SKIN_ASSETS: Record<string, string[]> = {
   aliens: ['_albino'],
   cypherpunk: ['_cyber_sakura'],
   infernal: ['_frostfire'],
+  harmonic: ['_heavy_metal', '_neon_rave', '_synthwave'],
   celestial: ['_fallen'],
   psionic: ['_emerald'],
 };
@@ -515,8 +516,30 @@ export function createProjectileSprite(
   const scale = isFlame ? 38 / 32 : isUltimate ? 28 / 32 : 20 / 32;
   sprite.setScale(scale);
 
-  // Start travel animation
-  const travelKey = `proj_${towerId}_travel`;
+  // Start travel animation — use skinned animation if the sheet was swapped
+  let travelKey = `proj_${towerId}_travel`;
+  if (projSheetKey !== config.sheetKey) {
+    // Create skinned animation variants if they don't exist
+    const skinnedTravelKey = `proj_${towerId}_${projSheetKey}_travel`;
+    const skinnedImpactKey = `proj_${towerId}_${projSheetKey}_impact`;
+    if (!scene.anims.exists(skinnedTravelKey)) {
+      scene.anims.create({
+        key: skinnedTravelKey,
+        frames: config.travelRows.map(row => ({ key: projSheetKey, frame: row * config.totalCols + config.column })),
+        frameRate: 6, repeat: -1,
+      });
+    }
+    if (!scene.anims.exists(skinnedImpactKey)) {
+      scene.anims.create({
+        key: skinnedImpactKey,
+        frames: config.impactRows.map(row => ({ key: projSheetKey, frame: row * config.totalCols + config.column })),
+        frameRate: 12, repeat: 0,
+      });
+    }
+    travelKey = skinnedTravelKey;
+    // Tag the sprite so playProjectileImpact can find the right animation
+    (sprite as any)._skinnedImpactKey = skinnedImpactKey;
+  }
   sprite.play(travelKey);
 
   return sprite;
@@ -533,13 +556,13 @@ export function playProjectileImpact(
   sprite: Phaser.GameObjects.Sprite, towerId: string, splashRadius?: number,
   scene?: Phaser.Scene,
 ): void {
-  const impactKey = `proj_${towerId}_impact`;
+  // Use skinned impact animation if available (tagged by createProjectileSprite)
+  const impactKey = (sprite as any)._skinnedImpactKey ?? `proj_${towerId}_impact`;
 
   // Ensure crisp pixel art scaling (not blurry interpolation)
   sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
   if (splashRadius && splashRadius > 40) {
-    // Scale impact to match AoE diameter — NEAREST filter keeps pixels crisp
     const scale = (splashRadius * 2) / 32;
     sprite.setScale(scale);
   } else {

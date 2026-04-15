@@ -98,7 +98,7 @@ const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
   psionic:    [{ suffix: 'emerald', label: 'Emerald', description: 'Green glow', rarity: 'common' }],
   aliens:     [{ suffix: 'albino', label: 'Albino', description: 'Pale pink/white', rarity: 'common' }],
   cypherpunk: [{ suffix: 'cyber_sakura', label: 'Cyber Sakura', description: 'Pink sakura theme', rarity: 'epic' }],
-  harmonic:   [],
+  harmonic:   [{ suffix: 'heavy_metal', label: 'Heavy Metal', description: 'Chrome/gunmetal', rarity: 'common' }, { suffix: 'neon_rave', label: 'Neon Rave', description: 'Neon rainbow chaos', rarity: 'rare' }, { suffix: 'synthwave', label: 'Synthwave', description: '80s sunset pink/purple', rarity: 'epic' }],
   random:     [],
 };
 
@@ -163,6 +163,12 @@ export const SKIN_DEFS: SkinDef[] = [
     dockStyle: { borderColor: '#886655', glowColor: '#88665544', bgTint: '#141010' } },
   { id: 'psionic_pack_emerald',    name: 'Emerald Mind Pack',      description: 'All Psionic towers — green glow',     rarity: 'common', target: 'tower_faction', faction: 'psionic', shardCost: 400, assetSuffix: '_emerald',
     dockStyle: { borderColor: '#44cc66', glowColor: '#44cc6666', bgTint: '#0a1a0e' } },
+  { id: 'harmonic_pack_heavy_metal', name: 'Heavy Metal Pack',     description: 'All Harmonic towers — chrome/gunmetal', rarity: 'common', target: 'tower_faction', faction: 'harmonic', shardCost: 400, assetSuffix: '_heavy_metal',
+    dockStyle: { borderColor: '#888899', glowColor: '#88889944', bgTint: '#0e0e12' } },
+  { id: 'harmonic_pack_neon_rave',   name: 'Neon Rave Pack',       description: 'All Harmonic towers — neon rainbow',    rarity: 'rare',   target: 'tower_faction', faction: 'harmonic', shardCost: 800, assetSuffix: '_neon_rave',
+    dockStyle: { borderColor: '#ff00ff', glowColor: '#ff00ff88', bgTint: '#0a050a' } },
+  { id: 'harmonic_pack_synthwave',   name: 'Synthwave Pack',       description: 'All Harmonic towers — 80s sunset',      rarity: 'epic',   target: 'tower_faction', faction: 'harmonic', shardCost: 1200, assetSuffix: '_synthwave',
+    dockStyle: { borderColor: '#ff6688', glowColor: '#ff668888', bgTint: '#1a0a11' } },
   // ── Per-tower skins (roll-only) ──
   ...TOWER_SKINS,
 ];
