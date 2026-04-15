@@ -53,7 +53,10 @@ export function TowerDockDOM() {
                 background: dock?.bgTint ?? (selected ? hexColor(tower.color) + '33' : hexColor(tower.color) + '15'),
                 boxShadow: dock?.glowColor ? `0 0 8px ${dock.glowColor}` : undefined,
               }}
-              onClick={() => GameUIStore.requestSelectDockTower(selected ? -1 : i)}
+              onClick={() => {
+                GameUIStore.requestSelectDockTower(selected ? -1 : i);
+                setTooltip(null); // dismiss tooltip on click (fixes mobile sticky tooltip)
+              }}
             >
               {/* Hotkey badge */}
               <span class="dock-hotkey">{tower.hotkey}</span>
@@ -65,9 +68,13 @@ export function TowerDockDOM() {
               <div class="dock-cost" style={{ color: canAfford ? '#ffdd44' : '#664422' }}>{tower.cost}g</div>
             </div>
 
-            {/* Tooltip */}
+            {/* Tooltip — clamped so it doesn't clip off-screen */}
             {tooltip === i && t && (
-              <div class="dock-tooltip">
+              <div class="dock-tooltip" style={{
+                left: i === 0 ? '0' : i >= towerBar.towers.length - 1 ? 'auto' : '50%',
+                right: i >= towerBar.towers.length - 1 ? '0' : 'auto',
+                transform: i === 0 || i >= towerBar.towers.length - 1 ? 'none' : 'translateX(-50%)',
+              }}>
                 <div class="dock-tooltip-name">{t.name} ({t.cost}g)</div>
                 <div class="dock-tooltip-desc">{t.description}</div>
                 <div class="dock-tooltip-stats">
