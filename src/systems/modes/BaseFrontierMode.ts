@@ -52,7 +52,7 @@ export abstract class BaseFrontierMode implements GameMode {
           ctx.statsTracker.recordFrontierSpent(building.cost);
           ctx.statsTracker.recordGoldSpent(building.cost);
           this.syncFrontierToDOM();
-          GameUIStore.placeFrontierDoodad(0xffaa44);
+          GameUIStore.placeFrontierDoodad(0xffaa44, ctx.faction ?? 'generic');
         }
       },
       onFrontierAction: (action: string, idx: number) => {

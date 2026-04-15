@@ -244,7 +244,7 @@ class GameUIStoreClass {
     onSelectDockTower?: (index: number) => void;
     onCycleSpeed?: () => void;
     onPause?: () => void;
-    onFrontierDoodad?: (color: number) => void;
+    onFrontierDoodad?: (color: number, type: string) => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -432,8 +432,8 @@ class GameUIStoreClass {
     this.callbacks.onPause?.();
   }
 
-  placeFrontierDoodad(color: number = 0xffaa44): void {
-    this.callbacks.onFrontierDoodad?.(color);
+  placeFrontierDoodad(color: number = 0xffaa44, type: string = 'generic'): void {
+    this.callbacks.onFrontierDoodad?.(color, type);
   }
 
   requestSend(sendId: string): void {

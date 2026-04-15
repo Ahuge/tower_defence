@@ -127,7 +127,7 @@ export class BattleMode implements GameMode {
 
     this.ctx.eventLog.gameMessage(`Built ${gen.name} (+${gen.essencePerSec}/s essence)`);
     this.ctx.statsTracker.recordGoldSpent(gen.cost);
-    GameUIStore.placeFrontierDoodad(0x44ddff); // cyan for essence buildings
+    GameUIStore.placeFrontierDoodad(0x44ddff, 'essence');
   }
 
   private buyEssenceSend(send: EssenceSendOption): void {

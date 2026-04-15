@@ -17,6 +17,8 @@ import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '.
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
 import { PlayerInventory } from '../systems/monetization';
 import { GameUIStore, TowerStats } from '../ui/GameUIStore';
+// @ts-expect-error — doodad sprites are untyped root TSX
+import { DOODAD_DRAW, DOODAD_CELL } from '../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
 import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
@@ -290,8 +292,8 @@ export class GameScene extends Phaser.Scene {
       onCycleSpeed: () => {
         this.cycleSpeed();
       },
-      onFrontierDoodad: (color: number) => {
-        this.placeFrontierDoodad(color);
+      onFrontierDoodad: (color: number, type: string) => {
+        this.placeFrontierDoodad(color, type);
       },
       onSelectDockTower: (index: number) => {
         if (index < 0) {
@@ -999,8 +1001,8 @@ export class GameScene extends Phaser.Scene {
     GameUIStore.updateWaves(currentWave, previews);
   }
 
-  /** Place a small visual doodad on a random blocked terrain cell */
-  placeFrontierDoodad(color: number = 0xffaa44): void {
+  /** Place a pixel art doodad on a random blocked terrain cell */
+  placeFrontierDoodad(color: number = 0xffaa44, type: string = 'generic'): void {
     const blocked: { col: number; row: number }[] = [];
     for (let r = 0; r < this.grid.rows; r++) {
       for (let c = 0; c < this.grid.cols; c++) {
@@ -1009,17 +1011,22 @@ export class GameScene extends Phaser.Scene {
     }
     if (blocked.length === 0) return;
     const cell = blocked[Math.floor(Math.random() * blocked.length)];
-    const px = gridX(cell.col) + (Math.random() - 0.5) * TILE_SIZE * 0.6;
-    const py = gridY(cell.row) + (Math.random() - 0.5) * TILE_SIZE * 0.6;
-    const g = this.add.graphics().setDepth(3);
-    // Tiny building marker — 4x4 pixel square with a dot
-    const sz = 3 + Math.floor(Math.random() * 2);
-    g.fillStyle(color, 0.7);
-    g.fillRect(px - sz, py - sz, sz * 2, sz * 2);
-    g.fillStyle(0xffffff, 0.4);
-    g.fillRect(px - 1, py - sz - 1, 2, 1); // chimney/antenna
-    g.lineStyle(1, color, 0.3);
-    g.strokeRect(px - sz - 1, py - sz - 1, sz * 2 + 2, sz * 2 + 2);
+    const px = gridX(cell.col) + (Math.random() - 0.5) * TILE_SIZE * 0.4;
+    const py = gridY(cell.row) + (Math.random() - 0.5) * TILE_SIZE * 0.4;
+
+    // Render doodad sprite to a small canvas, then add as Phaser image
+    const drawFn = DOODAD_DRAW[type] ?? DOODAD_DRAW.generic;
+    const canvas = document.createElement('canvas');
+    canvas.width = DOODAD_CELL; canvas.height = DOODAD_CELL;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    drawFn(ctx, 0, 0);
+
+    const texKey = `doodad_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    this.textures.addCanvas(texKey, canvas);
+    const img = this.add.image(px, py, texKey).setDepth(3);
+    img.setScale(TILE_SIZE / DOODAD_CELL * 0.7); // slightly smaller than a tile
+    img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
 
   private enterBuildMode(typeId: string): void {

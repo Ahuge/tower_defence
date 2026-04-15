@@ -236,10 +236,13 @@ const SKIN_ASSETS: Record<string, string[]> = {
   arcane: ['_corrupted'],
   mechanical: ['_gilded', '_factory_fresh'],
   nature: ['_autumn'],
+  void: ['_whiteout'],
   military: ['_desert_storm', '_arctic'],
   aliens: ['_albino'],
   cypherpunk: ['_cyber_sakura'],
   infernal: ['_frostfire'],
+  celestial: ['_fallen'],
+  psionic: ['_emerald'],
 };
 
 export function preloadSprites(scene: Phaser.Scene): void {
