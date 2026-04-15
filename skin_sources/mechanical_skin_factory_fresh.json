@@ -1,0 +1,45 @@
+{
+  "factionId": "mechanical",
+  "skinName": "Factory Fresh",
+  "suffix": "factory_fresh",
+  "towerPalettes": {
+    "1": {
+      "#bb8855": "#c39669",
+      "#aa7744": "#b38556",
+      "#886633": "#8e6e3e"
+    },
+    "4": {
+      "#6b8a3a": "#88ac4d",
+      "#556b2f": "#6a833f",
+      "#3a4a20": "#45552b"
+    },
+    "-1": {
+      "#cc8833": "#bbbbcc",
+      "#995522": "#888899",
+      "#ddaa55": "#ccccdd",
+      "#eebb66": "#ddddee",
+      "#ffdd88": "#ccddff",
+      "#bb9944": "#aaaabb",
+      "#ff9944": "#ccddee",
+      "#ffbb77": "#ddeeff",
+      "#cc6622": "#8899aa",
+      "#332211": "#222233",
+      "#553322": "#333344",
+      "#664433": "#444455",
+      "#888888": "#aaaacc",
+      "#aaaaaa": "#ccccee",
+      "#666666": "#8888aa",
+      "#cccccc": "#ddddef",
+      "#555555": "#777799",
+      "#444444": "#555577",
+      "#ff6622": "#88aaff",
+      "#ffaa44": "#aaccff",
+      "#cc3300": "#5577cc"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#ccccee",
+    "glowColor": "#ccccee66",
+    "bgTint": "#3a3a45"
+  }
+}

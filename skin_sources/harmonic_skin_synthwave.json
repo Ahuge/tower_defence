@@ -1,0 +1,42 @@
+{
+  "factionId": "harmonic",
+  "skinName": "Synthwave",
+  "suffix": "synthwave",
+  "towerPalettes": {
+    "-1": {
+      "#ffcc44": "#ff6688",
+      "#ffee88": "#ff99aa",
+      "#aa8822": "#aa4466",
+      "#664400": "#552244",
+      "#332200": "#220e1a",
+      "#ff4444": "#ff8844",
+      "#cc2222": "#cc5522",
+      "#ff7766": "#ffaa66",
+      "#ffaaaa": "#ffcc99",
+      "#44ff44": "#cc44ff",
+      "#22aa22": "#8822cc",
+      "#88ff88": "#dd88ff",
+      "#bbffbb": "#eabbff",
+      "#4488ff": "#ff8833",
+      "#2255bb": "#cc5511",
+      "#77bbff": "#ffaa55",
+      "#aaddff": "#ffcc88",
+      "#ff44ff": "#4488ff",
+      "#aa22aa": "#2255bb",
+      "#ff88ff": "#77bbff",
+      "#ffbbff": "#aaddff",
+      "#ffffff": "#fff0ee",
+      "#fff8dd": "#ffe8dd",
+      "#cc9933": "#cc4477",
+      "#888866": "#775566",
+      "#444433": "#332233",
+      "#1a1100": "#1a0a11",
+      "#110800": "#0e0508"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#ff6688",
+    "glowColor": "#ff668888",
+    "bgTint": "#1a0a11"
+  }
+}

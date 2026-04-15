@@ -1,0 +1,40 @@
+{
+  "factionId": "psionic",
+  "skinName": "Emerald Mind",
+  "suffix": "emerald",
+  "towerPalettes": {
+    "-1": {
+      "#2a1544": "#0a2a15",
+      "#3d2255": "#153d22",
+      "#553388": "#225538",
+      "#aa66cc": "#44aa66",
+      "#cc88ee": "#66cc88",
+      "#ddaaff": "#88ddaa",
+      "#eeccff": "#aaeebb",
+      "#f5ddff": "#ccf5dd",
+      "#ff44aa": "#44ff88",
+      "#ff77cc": "#77ffaa",
+      "#ffaadd": "#aaffcc",
+      "#aa2277": "#22aa55",
+      "#661144": "#116633",
+      "#88ddff": "#ddff88",
+      "#bbf0ff": "#f0ffbb",
+      "#447799": "#779944",
+      "#cc88ee": "#66cc88",
+      "#aa66cc": "#44aa66",
+      "#8855bb": "#44bb55",
+      "#776688": "#557766",
+      "#443355": "#224433",
+      "#1a0e2e": "#0e1e0e",
+      "#221440": "#102210",
+      "#ffcc00": "#88ff00",
+      "#aa8800": "#55aa00",
+      "#ffee88": "#bbff88"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#44cc66",
+    "glowColor": "#44cc6666",
+    "bgTint": "#0a1a0e"
+  }
+}

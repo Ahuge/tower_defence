@@ -1,0 +1,42 @@
+{
+  "factionId": "harmonic",
+  "skinName": "Neon Rave",
+  "suffix": "neon_rave",
+  "towerPalettes": {
+    "-1": {
+      "#ffcc44": "#ff00ff",
+      "#ffee88": "#ff66ff",
+      "#aa8822": "#aa00aa",
+      "#664400": "#550055",
+      "#332200": "#220022",
+      "#ff4444": "#00ffcc",
+      "#cc2222": "#00aa88",
+      "#ff7766": "#44ffdd",
+      "#ffaaaa": "#88ffee",
+      "#44ff44": "#ff0088",
+      "#22aa22": "#aa0055",
+      "#88ff88": "#ff44aa",
+      "#bbffbb": "#ff88cc",
+      "#4488ff": "#88ff00",
+      "#2255bb": "#55aa00",
+      "#77bbff": "#bbff44",
+      "#aaddff": "#ddff88",
+      "#ff44ff": "#00ffff",
+      "#aa22aa": "#00aaaa",
+      "#ff88ff": "#44ffff",
+      "#ffbbff": "#88ffff",
+      "#ffffff": "#ffffff",
+      "#fff8dd": "#eeffee",
+      "#cc9933": "#cc00cc",
+      "#888866": "#448844",
+      "#444433": "#112211",
+      "#1a1100": "#0a0a0a",
+      "#110800": "#050505"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#ff00ff",
+    "glowColor": "#ff00ff88",
+    "bgTint": "#0a050a"
+  }
+}

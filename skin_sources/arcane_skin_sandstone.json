@@ -1,0 +1,43 @@
+{
+  "factionId": "arcane",
+  "skinName": "Sandstone Arcane",
+  "suffix": "sandstone",
+  "towerPalettes": {
+    "-1": {
+      "#220044": "#1a1008",
+      "#331166": "#2a1a10",
+      "#442288": "#775533",
+      "#6644ff": "#bb8855",
+      "#9988ff": "#ddaa77",
+      "#bbaaff": "#eeccaa",
+      "#cc88ff": "#cc9966",
+      "#dd99ff": "#ddaa77",
+      "#eeccff": "#ffddbb",
+      "#223388": "#554422",
+      "#4466cc": "#997755",
+      "#88aaff": "#ccaa88",
+      "#bbddff": "#eeddcc",
+      "#aaddff": "#ddccbb",
+      "#6699cc": "#aa8866",
+      "#cceeff": "#ffeedd",
+      "#ffdd44": "#dd8833",
+      "#ffee88": "#eeaa55",
+      "#ffffcc": "#ffddaa",
+      "#ccaa22": "#aa6622",
+      "#ff4422": "#cc6633",
+      "#cc2211": "#994422",
+      "#ff7744": "#dd7744",
+      "#ff8833": "#cc7733",
+      "#ffaa55": "#ddaa66",
+      "#ffcc00": "#cc7722",
+      "#aa8800": "#885511",
+      "#0a0016": "#0e0a06",
+      "#110022": "#140e08"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#bb8855",
+    "glowColor": "#bb885544",
+    "bgTint": "#140e08"
+  }
+}

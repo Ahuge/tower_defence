@@ -1,0 +1,35 @@
+{
+  "factionId": "military",
+  "skinName": "Arctic Military",
+  "suffix": "arctic_military",
+  "towerPalettes": {
+    "-1": {
+      "#556b2f": "#8899aa",
+      "#8fbc8f": "#bbccdd",
+      "#1a2210": "#1a2233",
+      "#6a9a6a": "#99aacc",
+      "#a8d8a8": "#ccddee",
+      "#c2b280": "#ddeeff",
+      "#8a7a50": "#99aabb",
+      "#d4c8a0": "#eef4ff",
+      "#bdb76b": "#bbccdd",
+      "#8a8040": "#8899aa",
+      "#d4cf9a": "#ddeeff",
+      "#5c4033": "#445566",
+      "#3a2820": "#2a3344",
+      "#7a5a45": "#667788",
+      "#8b4513": "#556677",
+      "#5a2d0e": "#334455",
+      "#111111": "#0a1122",
+      "#333333": "#2a3344",
+      "#555555": "#667788",
+      "#999999": "#aabbcc",
+      "#4488ff": "#66aaff"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#aabbdd",
+    "glowColor": "#aabbdd66",
+    "bgTint": "#1f2947"
+  }
+}

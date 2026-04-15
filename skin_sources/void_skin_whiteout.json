@@ -1,0 +1,38 @@
+{
+  "factionId": "void",
+  "skinName": "Whiteout Void",
+  "suffix": "whiteout",
+  "towerPalettes": {
+    "-1": {
+      "#08000f": "#181818",
+      "#0f0019": "#222222",
+      "#1a0033": "#444444",
+      "#2a1155": "#666666",
+      "#442288": "#999999",
+      "#6644cc": "#bbbbbb",
+      "#8866ee": "#cccccc",
+      "#aa99dd": "#dddddd",
+      "#ff4488": "#ddddee",
+      "#ff77bb": "#eeeeff",
+      "#ffaadd": "#f4f4ff",
+      "#cc2255": "#aaaacc",
+      "#881144": "#777799",
+      "#55112a": "#555566",
+      "#00ffcc": "#ccccff",
+      "#009977": "#8888aa",
+      "#66ffe6": "#ddddef",
+      "#aaffee": "#eeeeff",
+      "#ffcc00": "#ccccdd",
+      "#aa8800": "#999999",
+      "#ffee88": "#eeeeff",
+      "#554466": "#888888",
+      "#2a1a3a": "#444444",
+      "#ffffff": "#ffffff"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#ccccdd",
+    "glowColor": "#ccccdd55",
+    "bgTint": "#141418"
+  }
+}
