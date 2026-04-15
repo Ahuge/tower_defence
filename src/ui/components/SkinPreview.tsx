@@ -77,16 +77,16 @@ export function SkinPreview({ skin, size = 32, gap = 2 }: Props) {
   if (skin.target === 'hero' && skin.heroId) {
     const url = getHeroIconUrl(skin.heroId, skin.assetSuffix);
     if (!url) return null;
-    // Heroes get the prime spotlight — render at the cropped aspect ratio
-    // so we don't display the empty space below the body. Cap height at
-    // ~5x card size to bound very tall sprites.
+    // Render at the cropped aspect ratio (no empty space under the body).
+    // Use the same width as a per-tower icon (size * 1.5) so hero cards
+    // sit at parity with tower cards instead of dominating the row.
     const cacheKey = `hero|${skin.heroId}|${skin.assetSuffix ?? ''}`;
     const aspect = getCachedAspectRatio(cacheKey) ?? 0.5; // fallback to 1:2
-    const heroW = size * 3;
-    const heroH = Math.min(size * 5, Math.round(heroW / aspect));
+    const heroW = size * 1.5;
+    const heroH = Math.round(heroW / aspect);
     return (
       <img src={url} width={heroW} height={heroH}
-        style={{ imageRendering: 'pixelated' as any, display: 'block', margin: '6px auto' }} />
+        style={{ imageRendering: 'pixelated' as any, display: 'block', margin: '4px auto' }} />
     );
   }
 
