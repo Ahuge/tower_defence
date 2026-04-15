@@ -88,7 +88,7 @@ interface SkinTheme {
 // Per-tower roll themes — only include factions that have real skin assets.
 // Add new themes here as skins are created in the skin editor.
 const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
-  arcane:     [{ suffix: 'corrupted', label: 'Corrupted', description: 'Green corruption theme', rarity: 'epic' }],
+  arcane:     [{ suffix: 'corrupted', label: 'Corrupted', description: 'Green corruption theme', rarity: 'epic' }, { suffix: 'sandstone', label: 'Sandstone', description: 'Desert ruins', rarity: 'common' }, { suffix: 'moonstone', label: 'Moonstone', description: 'Silver-blue lunar', rarity: 'rare' }, { suffix: 'blood_magic', label: 'Blood Magic', description: 'Dark crimson', rarity: 'epic' }],
   mechanical: [{ suffix: 'gilded', label: 'Gilded', description: 'Bright gold', rarity: 'epic' }, { suffix: 'factory_fresh', label: 'Factory Fresh', description: 'Clean silver', rarity: 'common' }],
   nature:     [{ suffix: 'autumn', label: 'Autumn', description: 'Fall fire colors', rarity: 'common' }],
   void:       [{ suffix: 'whiteout', label: 'Whiteout', description: 'Bleached white', rarity: 'common' }],
@@ -97,7 +97,7 @@ const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
   infernal:   [{ suffix: 'frostfire', label: 'Frostfire', description: 'Blue flames', rarity: 'common' }],
   psionic:    [{ suffix: 'emerald', label: 'Emerald', description: 'Green glow', rarity: 'common' }],
   aliens:     [{ suffix: 'albino', label: 'Albino', description: 'Pale pink/white', rarity: 'common' }],
-  cypherpunk: [{ suffix: 'cyber_sakura', label: 'Cyber Sakura', description: 'Pink sakura theme', rarity: 'epic' }],
+  cypherpunk: [{ suffix: 'cyber_sakura', label: 'Cyber Sakura', description: 'Pink sakura theme', rarity: 'epic' }, { suffix: 'redline', label: 'Redline', description: 'Overheated red', rarity: 'common' }, { suffix: 'offline', label: 'Offline', description: 'Powered down gray', rarity: 'common' }],
   harmonic:   [{ suffix: 'heavy_metal', label: 'Heavy Metal', description: 'Chrome/gunmetal', rarity: 'common' }, { suffix: 'neon_rave', label: 'Neon Rave', description: 'Neon rainbow chaos', rarity: 'rare' }, { suffix: 'synthwave', label: 'Synthwave', description: '80s sunset pink/purple', rarity: 'epic' }],
   random:     [],
 };
@@ -141,10 +141,20 @@ export const SKIN_DEFS: SkinDef[] = [
   // ── Faction-wide skins (direct purchase) — only include skins with actual assets ──
   { id: 'arcane_pack_corrupted',   name: 'Corrupted Arcane Pack', description: 'All Arcane towers — green corruption', rarity: 'epic', target: 'tower_faction', faction: 'arcane',   shardCost: 1200, assetSuffix: '_corrupted',
     dockStyle: { borderColor: '#22aa44', glowColor: '#22aa4466', bgTint: '#0a1a0a' } },
+  { id: 'arcane_pack_sandstone',   name: 'Sandstone Arcane Pack',  description: 'All Arcane towers — desert ruins',     rarity: 'common', target: 'tower_faction', faction: 'arcane', shardCost: 400, assetSuffix: '_sandstone',
+    dockStyle: { borderColor: '#bb8855', glowColor: '#bb885544', bgTint: '#140e08' } },
+  { id: 'arcane_pack_moonstone',   name: 'Moonstone Arcane Pack',  description: 'All Arcane towers — silver-blue lunar', rarity: 'rare', target: 'tower_faction', faction: 'arcane', shardCost: 800, assetSuffix: '_moonstone',
+    dockStyle: { borderColor: '#99aacc', glowColor: '#99aacc55', bgTint: '#0a0e14' } },
+  { id: 'arcane_pack_blood',       name: 'Blood Magic Pack',       description: 'All Arcane towers — dark crimson',     rarity: 'epic', target: 'tower_faction', faction: 'arcane', shardCost: 1200, assetSuffix: '_blood_magic',
+    dockStyle: { borderColor: '#cc3344', glowColor: '#cc334466', bgTint: '#1a0808' } },
   { id: 'mil_pack_desert_storm',   name: 'Desert Storm Pack',    description: 'All Military towers — desert camo',    rarity: 'rare', target: 'tower_faction', faction: 'military', shardCost: 800,  assetSuffix: '_desert_storm',
     dockStyle: { borderColor: '#ccaa66', glowColor: '#ccaa6644', bgTint: '#1a1508' } },
   { id: 'cyber_pack_sakura',       name: 'Cyber Sakura Pack',    description: 'All Cypherpunk towers — pink sakura',  rarity: 'epic', target: 'tower_faction', faction: 'cypherpunk', shardCost: 1200, assetSuffix: '_cyber_sakura',
     dockStyle: { borderColor: '#ff0088', glowColor: '#ff008866', bgTint: '#1a0a1a' } },
+  { id: 'cyber_pack_redline',      name: 'Redline Pack',          description: 'All Cypherpunk towers — overheated red', rarity: 'common', target: 'tower_faction', faction: 'cypherpunk', shardCost: 400, assetSuffix: '_redline',
+    dockStyle: { borderColor: '#ff4422', glowColor: '#ff442266', bgTint: '#1a0804' } },
+  { id: 'cyber_pack_offline',      name: 'Offline Pack',          description: 'All Cypherpunk towers — powered down',  rarity: 'common', target: 'tower_faction', faction: 'cypherpunk', shardCost: 400, assetSuffix: '_offline',
+    dockStyle: { borderColor: '#556677', glowColor: '#55667733', bgTint: '#0a0e14' } },
   { id: 'mech_pack_gilded',        name: 'Gilded Mechanical Pack', description: 'All Mechanical towers — bright gold', rarity: 'epic', target: 'tower_faction', faction: 'mechanical', shardCost: 1200, assetSuffix: '_gilded',
     dockStyle: { borderColor: '#ffdd22', glowColor: '#ffdd2288', bgTint: '#1a1200' } },
   { id: 'mech_pack_factory',       name: 'Factory Fresh Pack',     description: 'All Mechanical towers — clean silver', rarity: 'common', target: 'tower_faction', faction: 'mechanical', shardCost: 400, assetSuffix: '_factory_fresh',

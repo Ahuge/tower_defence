@@ -233,13 +233,13 @@ export function getTowerFaction(towerId: string): FactionId | undefined {
 
 /** Known skin asset suffixes per faction directory. Add entries here when new skins are created. */
 const SKIN_ASSETS: Record<string, string[]> = {
-  arcane: ['_corrupted'],
+  arcane: ['_corrupted', '_sandstone', '_moonstone', '_blood_magic'],
   mechanical: ['_gilded', '_factory_fresh'],
   nature: ['_autumn'],
   void: ['_whiteout'],
   military: ['_desert_storm', '_arctic'],
   aliens: ['_albino'],
-  cypherpunk: ['_cyber_sakura'],
+  cypherpunk: ['_cyber_sakura', '_redline', '_offline'],
   infernal: ['_frostfire'],
   harmonic: ['_heavy_metal', '_neon_rave', '_synthwave'],
   celestial: ['_fallen'],
