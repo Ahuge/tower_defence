@@ -62,6 +62,10 @@ class PlayerInventoryClass {
     if (!ShardWallet.spend(def.shardCost, `Buy skin: ${def.name}`)) return false;
     StorePersistence.update(s => {
       if (!s.ownedSkins.includes(skinId)) s.ownedSkins.push(skinId);
+      // Grant any bundled skins (e.g. faction packs include the matching hero skin).
+      for (const bundledId of def.bundles ?? []) {
+        if (!s.ownedSkins.includes(bundledId)) s.ownedSkins.push(bundledId);
+      }
     });
     this.notify('skin_purchased', skinId);
     return true;

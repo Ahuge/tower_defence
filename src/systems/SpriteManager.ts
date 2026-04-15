@@ -346,22 +346,31 @@ export function createSpriteAnimations(scene: Phaser.Scene): void {
 
   // Mobile unit walk-cycle animations
   // Sheet: 4 cols × 4 rows. Rows: 0=down, 1=right, 2=up, 3=attack
+  // We also generate parallel anim sets per equipped skin variant so
+  // sprite.play() doesn't reset the texture back to the base sheet.
   const dirNames = ['down', 'right', 'up', 'attack'];
   for (const [towerId, cfg] of Object.entries(MOBILE_SPRITE_CONFIGS)) {
-    if (!scene.textures.exists(cfg.sheetKey)) continue;
-    for (let row = 0; row < 4; row++) {
-      const animKey = `mobile_${towerId}_${dirNames[row]}`;
-      if (scene.anims.exists(animKey)) continue;
-      const frames: Phaser.Types.Animations.AnimationFrame[] = [];
-      for (let col = 0; col < cfg.cols; col++) {
-        frames.push({ key: cfg.sheetKey, frame: row * cfg.cols + col });
+    const faction = towerId.startsWith('mil_') ? 'military'
+      : towerId.startsWith('alien_') ? 'aliens'
+      : towerId.startsWith('infernal_') ? 'infernal' : '';
+    const suffixes = ['', ...(SKIN_ASSETS[faction] ?? [])];
+    for (const suffix of suffixes) {
+      const sheetKey = cfg.sheetKey + suffix;
+      if (!scene.textures.exists(sheetKey)) continue;
+      for (let row = 0; row < 4; row++) {
+        const animKey = `mobile_${towerId}${suffix}_${dirNames[row]}`;
+        if (scene.anims.exists(animKey)) continue;
+        const frames: Phaser.Types.Animations.AnimationFrame[] = [];
+        for (let col = 0; col < cfg.cols; col++) {
+          frames.push({ key: sheetKey, frame: row * cfg.cols + col });
+        }
+        scene.anims.create({
+          key: animKey,
+          frames,
+          frameRate: row === 3 ? 10 : 8, // attack slightly faster
+          repeat: row === 3 ? 0 : -1, // attack plays once, walk/idle loop
+        });
       }
-      scene.anims.create({
-        key: animKey,
-        frames,
-        frameRate: row === 3 ? 10 : 8, // attack slightly faster
-        repeat: row === 3 ? 0 : -1, // attack plays once, walk/idle loop
-      });
     }
   }
 }
@@ -377,11 +386,15 @@ export function createTowerSprite(
   if (mobileCfg) {
     const mfid = getTowerFaction(towerId);
     let mobileKey = mobileCfg.sheetKey;
+    let activeSuffix = '';
     if (mfid) {
       const suffix = SkinManager.getSkinSuffix(mfid, towerId);
       if (suffix) {
         const skinnedKey = mobileCfg.sheetKey + suffix;
-        if (scene.textures.exists(skinnedKey)) mobileKey = skinnedKey;
+        if (scene.textures.exists(skinnedKey)) {
+          mobileKey = skinnedKey;
+          activeSuffix = suffix;
+        }
       }
     }
     if (scene.textures.exists(mobileKey)) {
@@ -389,7 +402,10 @@ export function createTowerSprite(
       sprite.setDepth(5);
       sprite.setScale(24 / 32);
       sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-      const idleAnim = `mobile_${towerId}_down`;
+      // Stash the suffix so updateMobileTowerSprite can pick the matching
+      // anim set (frames in each anim are bound to a specific texture key).
+      sprite.setData('skinSuffix', activeSuffix);
+      const idleAnim = `mobile_${towerId}${activeSuffix}_down`;
       if (scene.anims.exists(idleAnim)) sprite.play(idleAnim);
       return sprite;
     }
@@ -454,10 +470,13 @@ export function updateMobileTowerSprite(
 ): void {
   if (!(towerId in MOBILE_SPRITE_CONFIGS)) return;
 
+  // Suffix is stashed by createTowerSprite so we play the skin's anim set
+  // instead of the base — playing a base anim would reset the texture.
+  const suffix = (sprite.getData('skinSuffix') as string | undefined) ?? '';
   const isMoving = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
 
   if (isAttacking) {
-    const key = `mobile_${towerId}_attack`;
+    const key = `mobile_${towerId}${suffix}_attack`;
     if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
     return;
   }
@@ -475,11 +494,11 @@ export function updateMobileTowerSprite(
       dir = dy > 0 ? 'down' : 'up';
     }
 
-    const key = `mobile_${towerId}_${dir}`;
+    const key = `mobile_${towerId}${suffix}_${dir}`;
     if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
   } else {
     // Idle — show first frame of down animation
-    const key = `mobile_${towerId}_down`;
+    const key = `mobile_${towerId}${suffix}_down`;
     if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
   }
 }
