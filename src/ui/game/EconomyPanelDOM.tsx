@@ -13,13 +13,18 @@ export function EconomyPanelDOM() {
   const { sendOptions, eventLog } = useGameUI();
   const [tab, setTab] = useState<EconTab>('sends');
 
+  const frontier = useGameUISelector(s => s.frontier);
+  const hasFrontier = frontier.available.length > 0 || frontier.owned.length > 0;
+
   const tabs: { id: EconTab; label: string; badge?: string; show: boolean }[] = [
     { id: 'sends', label: 'Sends', badge: sendOptions.filter(o => !o.locked).length + ' avail', show: sendOptions.length > 0 },
-    { id: 'frontier', label: 'Frontier', show: true },
+    { id: 'frontier', label: 'Frontier', badge: frontier.owned.length > 0 ? `${frontier.owned.length} owned` : undefined, show: hasFrontier },
     { id: 'log', label: 'Log', badge: String(eventLog.length), show: eventLog.length > 0 },
   ];
 
   const visibleTabs = tabs.filter(t => t.show);
+  // Auto-select first visible tab if current is hidden
+  const activeTab = visibleTabs.find(t => t.id === tab) ? tab : (visibleTabs[0]?.id ?? 'log');
 
   return (
     <>
@@ -30,9 +35,9 @@ export function EconomyPanelDOM() {
             onClick={() => setTab(t.id)}
             style={{
               flex: 1, fontFamily: 'inherit', fontSize: '9px', padding: '4px 0',
-              background: tab === t.id ? 'rgba(255,255,255,0.05)' : 'transparent',
-              border: 'none', borderBottom: tab === t.id ? '2px solid #ffaa44' : '2px solid transparent',
-              color: tab === t.id ? '#ffaa44' : '#666', cursor: 'pointer',
+              background: activeTab === t.id ? 'rgba(255,255,255,0.05)' : 'transparent',
+              border: 'none', borderBottom: activeTab === t.id ? '2px solid #ffaa44' : '2px solid transparent',
+              color: activeTab === t.id ? '#ffaa44' : '#666', cursor: 'pointer',
               borderRadius: '2px 2px 0 0',
             }}>
             {t.label} {t.badge && <span style={{ color: '#555', marginLeft: '2px' }}>({t.badge})</span>}
@@ -41,9 +46,9 @@ export function EconomyPanelDOM() {
       </div>
 
       {/* Tab content */}
-      {tab === 'sends' && <SendPanelDOM />}
-      {tab === 'frontier' && <FrontierContent />}
-      {tab === 'log' && <EventLogDOM />}
+      {activeTab === 'sends' && <SendPanelDOM />}
+      {activeTab === 'frontier' && <FrontierContent />}
+      {activeTab === 'log' && <EventLogDOM />}
     </>
   );
 }
