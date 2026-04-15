@@ -33,7 +33,11 @@ export function GameSidebar() {
 
   return (
     <div style={{
-      position: 'fixed', left: '8px', top: '8px', zIndex: 110, pointerEvents: 'auto',
+      // pointerEvents: 'none' on the wrapper so empty space above/below the
+      // panels doesn't swallow taps destined for the Phaser canvas (mobile).
+      // Each .game-panel below re-enables pointer-events so its header/body
+      // still capture their own touches.
+      position: 'fixed', left: '8px', top: '8px', zIndex: 110, pointerEvents: 'none',
       maxWidth: panelWidth, width: panelWidth,
       maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', overflowX: 'hidden',
     }}>

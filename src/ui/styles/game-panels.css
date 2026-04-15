@@ -108,6 +108,9 @@
   padding: 10px;
   margin-bottom: 8px;
   font-size: 12px;
+  /* Re-enable hit-testing — the GameSidebar wrapper is pointer-events:none
+     so empty sidebar space passes taps through to the Phaser canvas. */
+  pointer-events: auto;
 }
 
 .panel-header {
