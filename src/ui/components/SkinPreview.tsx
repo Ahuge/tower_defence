@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { SkinDef } from '../../systems/monetization';
 import { FACTIONS, FactionId } from '../../data/Factions';
-import { getTowerIconUrl, getHeroIconUrl } from '../game/TowerIconRenderer';
+import { getTowerIconUrl, getHeroIconUrl, getCachedAspectRatio } from '../game/TowerIconRenderer';
 import { UIBridge } from '../UIBridge';
 
 interface Props {
@@ -77,10 +77,13 @@ export function SkinPreview({ skin, size = 32, gap = 2 }: Props) {
   if (skin.target === 'hero' && skin.heroId) {
     const url = getHeroIconUrl(skin.heroId, skin.assetSuffix);
     if (!url) return null;
-    // Heroes get the prime spotlight on their card — render the full body
-    // at 3x card size (1:2 aspect because hero frames are 64×128).
+    // Heroes get the prime spotlight — render at the cropped aspect ratio
+    // so we don't display the empty space below the body. Cap height at
+    // ~5x card size to bound very tall sprites.
+    const cacheKey = `hero|${skin.heroId}|${skin.assetSuffix ?? ''}`;
+    const aspect = getCachedAspectRatio(cacheKey) ?? 0.5; // fallback to 1:2
     const heroW = size * 3;
-    const heroH = heroW * 2;
+    const heroH = Math.min(size * 5, Math.round(heroW / aspect));
     return (
       <img src={url} width={heroW} height={heroH}
         style={{ imageRendering: 'pixelated' as any, display: 'block', margin: '6px auto' }} />

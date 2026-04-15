@@ -98,9 +98,81 @@ export function getHeroIconUrl(heroId: HeroId | string, overrideSuffix?: string 
     key = ensureHeroSkinTextureBySuffix(scene as any, heroId, overrideSuffix);
   }
   if (!game.textures.exists(key)) return null;
-  // Hero frames are 64×128 (full body, idle facing down at frame 0). Output
-  // at full source size — SkinPreview decides how big to display it.
-  return extractFrame(game.textures, key, 0, 64, 128, cacheKey, 64, 128);
+  // Hero frames are 64×128 (full body, idle facing down at frame 0). The
+  // sprite usually only fills the top ~half — auto-crop to the
+  // non-transparent bounding box so the card doesn't have huge dead space
+  // under the character.
+  return extractFrameCropped(game.textures, key, 0, 64, 128, cacheKey);
+}
+
+/** Bounding box of the non-transparent content in a cropped icon, normalized
+ *  to the [0,1] range of the source frame. Used by callers (SkinPreview) to
+ *  pick a display aspect ratio that matches the cropped image. */
+const cropAspectCache = new Map<string, number>();
+export function getCachedAspectRatio(cacheKey: string): number | null {
+  return cropAspectCache.get(cacheKey) ?? null;
+}
+
+function extractFrameCropped(
+  textures: Phaser.Textures.TextureManager,
+  key: string, frameIndex: number,
+  srcCellW: number, srcCellH: number,
+  cacheKey: string,
+): string | null {
+  if (iconCache.has(cacheKey)) return iconCache.get(cacheKey)!;
+  const texture = textures.get(key);
+  if (!texture) return null;
+  const frame = texture.get(frameIndex);
+  if (!frame) return null;
+
+  // Pull the frame into a working canvas so we can scan its alpha channel.
+  const work = document.createElement('canvas');
+  work.width = srcCellW;
+  work.height = srcCellH;
+  const wctx = work.getContext('2d');
+  if (!wctx) return null;
+  wctx.imageSmoothingEnabled = false;
+  const src = frame.source.image as HTMLImageElement | HTMLCanvasElement;
+  wctx.drawImage(
+    src,
+    frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight,
+    0, 0, srcCellW, srcCellH,
+  );
+  const data = wctx.getImageData(0, 0, srcCellW, srcCellH).data;
+
+  // Find the tight bounding box of non-transparent pixels.
+  let minX = srcCellW, minY = srcCellH, maxX = -1, maxY = -1;
+  for (let y = 0; y < srcCellH; y++) {
+    for (let x = 0; x < srcCellW; x++) {
+      const a = data[(y * srcCellW + x) * 4 + 3];
+      if (a > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) {
+    // Fully transparent — fall back to full-frame extract so we still
+    // return something (probably a missing-asset placeholder).
+    return extractFrame(textures, key, frameIndex, srcCellW, srcCellH, cacheKey);
+  }
+
+  const cropW = maxX - minX + 1;
+  const cropH = maxY - minY + 1;
+  const out = document.createElement('canvas');
+  out.width = cropW;
+  out.height = cropH;
+  const octx = out.getContext('2d');
+  if (!octx) return null;
+  octx.imageSmoothingEnabled = false;
+  octx.drawImage(work, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+  const url = out.toDataURL('image/png');
+  iconCache.set(cacheKey, url);
+  cropAspectCache.set(cacheKey, cropW / cropH);
+  return url;
 }
 
 function extractFrame(
