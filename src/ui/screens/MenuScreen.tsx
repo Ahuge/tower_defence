@@ -4,6 +4,7 @@ import { ShardBadge } from '../components/ShardBadge';
 import { MAP_ORDER, MAPS, MapId } from '../../data/Maps';
 import { getDailySeed } from '../../data/MapGenerator';
 import { MatchMode } from '../../data/WaveDefinitions';
+import { ShardWallet } from '../../systems/monetization';
 
 type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
 
@@ -35,6 +36,7 @@ export function MenuScreen() {
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('normal');
   const [dailySeed, setDailySeed] = useState(true);
   const [waveOverlay, setWaveOverlay] = useState(false);
+  const [, setShardTick] = useState(0);
 
   const goFaction = (mode: MatchMode, waveCount?: number) => {
     const seed = selectedMap === 'random'
@@ -117,6 +119,7 @@ export function MenuScreen() {
         <button class="btn" onClick={() => UIBridge.show('encyclopedia')}>Encyclopedia</button>
         <button class="btn" onClick={() => UIBridge.show('leaderboard')}>Leaderboard</button>
         <button class="btn" onClick={() => UIBridge.show('changelog')}>Changelog</button>
+        <button class="btn btn-gold" onClick={() => { ShardWallet.earn(5000, 'test: Add Money'); setShardTick(t => t + 1); }}>+5000 Shards (test)</button>
       </div>
       {waveOverlay && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
