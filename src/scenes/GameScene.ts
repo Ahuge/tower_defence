@@ -691,7 +691,9 @@ export class GameScene extends Phaser.Scene {
       const canvasW = getCanvasWidth();
       if (ResponsiveManager.isPhone()) {
         const canvasH = ResponsiveManager.canvasHeight();
-        const viewportH = canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin;
+        // DOM UI overlays at bottom (~100px for dock + status) — leave minimal room
+        const domBottomUI = 100;
+        const viewportH = canvasH - domBottomUI;
         this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
         this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
       } else {
