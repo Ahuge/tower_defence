@@ -70,6 +70,7 @@ export class SendManager {
           entry.speed,
           false,
           entry.creepType,
+          (this.scene as any).creepFaction,
         );
         creeps.push(creep);
       }
