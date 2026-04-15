@@ -44,6 +44,24 @@ export interface WavePreview {
   isBoss: boolean;
 }
 
+export interface SendOption {
+  id: string;
+  name: string;
+  cost: number;
+  income: number;
+  tier: number;
+  hotkey: string;
+  locked: boolean;
+  unlockWave: number;
+}
+
+export interface EventLogEntry {
+  id: number;
+  text: string;
+  color: string;
+  time: number;
+}
+
 export interface GameUIState {
   /** Whether the game is active (sidebar should render) */
   active: boolean;
@@ -69,6 +87,10 @@ export interface GameUIState {
   speed: number;
   /** Is game paused */
   paused: boolean;
+  /** Send options for the send panel */
+  sendOptions: SendOption[];
+  /** Event log entries (most recent first, max 20) */
+  eventLog: EventLogEntry[];
 }
 
 type Listener = () => void;
@@ -85,6 +107,7 @@ class GameUIStoreClass {
     onStartWave?: () => void;
     onToggleAutoPlay?: () => void;
     onSetSpeed?: (speed: number) => void;
+    onSend?: (sendId: string) => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -101,6 +124,8 @@ class GameUIStoreClass {
       matchMode: 'standard',
       speed: 1,
       paused: false,
+      sendOptions: [],
+      eventLog: [],
     };
   }
 
@@ -167,6 +192,21 @@ class GameUIStoreClass {
     this.notify();
   }
 
+  /** Update send panel options */
+  updateSendOptions(options: SendOption[]): void {
+    this.state = { ...this.state, sendOptions: options };
+    this.notify();
+  }
+
+  /** Add an event log message */
+  private _logId = 0;
+  addLogEntry(text: string, color: string = '#ccc'): void {
+    const entry: EventLogEntry = { id: this._logId++, text, color, time: Date.now() };
+    const log = [entry, ...this.state.eventLog].slice(0, 20);
+    this.state = { ...this.state, eventLog: log };
+    this.notify();
+  }
+
   /** Toggle sidebar overlay (mobile) */
   toggleSidebar(): void {
     this.state = { ...this.state, sidebarOpen: !this.state.sidebarOpen };
@@ -200,6 +240,10 @@ class GameUIStoreClass {
 
   requestSetSpeed(speed: number): void {
     this.callbacks.onSetSpeed?.(speed);
+  }
+
+  requestSend(sendId: string): void {
+    this.callbacks.onSend?.(sendId);
   }
 
   // ─── Subscription ───────────────────────────────────

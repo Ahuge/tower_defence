@@ -1309,6 +1309,7 @@ export class GameScene extends Phaser.Scene {
         : -1;
     const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
     this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    GameUIStore.updateEconomy(this.economy.gold, displayLives);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);

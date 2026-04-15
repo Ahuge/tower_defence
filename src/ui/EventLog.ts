@@ -2,6 +2,7 @@ import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
 import { UIScale } from '../systems/UIScale';
 import { TowerSelectBar } from './TowerSelectBar';
 import { uiText, uiGraphics } from '../systems/UILayer';
+import { GameUIStore } from './GameUIStore';
 
 const MAX_LINES = 12;
 
@@ -44,12 +45,13 @@ export class EventLog {
   }
 
   log(message: string, color?: string): void {
-    const prefix = color ? `[color=${color}]` : '';
     this.lines.push(message);
     if (this.lines.length > MAX_LINES) {
       this.lines.shift();
     }
     this.textObj.setText(this.lines.join('\n'));
+    // Also push to DOM event log
+    GameUIStore.addLogEntry(message, color ?? '#999');
   }
 
   /** Convenience loggers with consistent formatting */
