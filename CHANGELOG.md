@@ -13,6 +13,16 @@
 - **Rift Dimension (Void)**, **Concert Hall (Harmonic)**, **Mind Palace (Psionic)** also expanded.
 - Descriptions preserved across the re-import (editor doesn't export them).
 
+### Hero Skins (20 new)
+- **Runtime palette-swap system** in `src/systems/PaletteSwap.ts` — generates skinned hero spritesheets on demand from the base hero PNG using HSL transforms (and/or exact hex swaps). Editor-output-compatible for when the skin editor gains hero support.
+- **One hero skin per existing tower-skin theme** (20 total): Corrupted/Sandstone/Moonstone/Blood Magic Arcanist · Gilded/Factory Fresh Engineer · Autumn Druid · Whiteout Shadow · Desert Storm/Arctic Warden · Albino Necromancer · Cyber Sakura/Redline/Offline Duelist · Frostfire Berserker · Fallen Paladin · Emerald Monk · Heavy Metal/Neon Rave/Synthwave Ranger.
+- **Cost tiering**: common 200 / rare 400 / epic 600 shards (half the tower-pack price since one character vs full faction).
+- **Hero skin equipping**: Inventory + Store screens already supported `target: 'hero'` — the new defs slot in automatically.
+- **Bug fix**: `Hero.ts` was importing `getHeroSheetKey` from SpriteManager (skin-unaware) instead of resolving the equipped skin. Now uses `ensureHeroSkinTexture()` which lazily generates the palette-swapped spritesheet on first use.
+
+### Test button
+- **+5000 Shards (test)** button on main menu for development.
+
 ## 2026-04-11
 
 ### Endless Mode + Streamlined Menu

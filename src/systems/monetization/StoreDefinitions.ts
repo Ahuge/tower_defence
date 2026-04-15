@@ -179,6 +179,40 @@ export const SKIN_DEFS: SkinDef[] = [
     dockStyle: { borderColor: '#ff00ff', glowColor: '#ff00ff88', bgTint: '#0a050a' } },
   { id: 'harmonic_pack_synthwave',   name: 'Synthwave Pack',       description: 'All Harmonic towers — 80s sunset',      rarity: 'epic',   target: 'tower_faction', faction: 'harmonic', shardCost: 1200, assetSuffix: '_synthwave',
     dockStyle: { borderColor: '#ff6688', glowColor: '#ff668888', bgTint: '#1a0a11' } },
+
+  // ── Hero skins (palette-swap generated at runtime — see HeroSkinPalettes.ts) ──
+  // Arcane — Arcanist
+  { id: 'arcanist_skin_corrupted',    name: 'Corrupted Arcanist',    description: 'Green corruption seeps through the robes',  rarity: 'epic',   target: 'hero', heroId: 'arcanist',    shardCost: 600, assetSuffix: '_corrupted',    dockStyle: { borderColor: '#22aa44', glowColor: '#22aa4466', bgTint: '#0a1a0a' } },
+  { id: 'arcanist_skin_sandstone',    name: 'Sandstone Arcanist',    description: 'Desert-weathered wanderer',                 rarity: 'common', target: 'hero', heroId: 'arcanist',    shardCost: 200, assetSuffix: '_sandstone',    dockStyle: { borderColor: '#bb8855', glowColor: '#bb885544', bgTint: '#140e08' } },
+  { id: 'arcanist_skin_moonstone',    name: 'Moonstone Arcanist',    description: 'Silver-blue lunar mage',                    rarity: 'rare',   target: 'hero', heroId: 'arcanist',    shardCost: 400, assetSuffix: '_moonstone',    dockStyle: { borderColor: '#99aacc', glowColor: '#99aacc55', bgTint: '#0a0e14' } },
+  { id: 'arcanist_skin_blood_magic',  name: 'Blood Magic Arcanist',  description: 'Crimson dark magic adept',                  rarity: 'epic',   target: 'hero', heroId: 'arcanist',    shardCost: 600, assetSuffix: '_blood_magic',  dockStyle: { borderColor: '#cc3344', glowColor: '#cc334466', bgTint: '#1a0808' } },
+  // Mechanical — Engineer
+  { id: 'engineer_skin_gilded',       name: 'Gilded Engineer',       description: 'Bright gold industrialist',                 rarity: 'epic',   target: 'hero', heroId: 'engineer',    shardCost: 600, assetSuffix: '_gilded',       dockStyle: { borderColor: '#ffdd22', glowColor: '#ffdd2288', bgTint: '#1a1200' } },
+  { id: 'engineer_skin_factory_fresh', name: 'Factory Fresh Engineer', description: 'Clean silver tinker',                    rarity: 'common', target: 'hero', heroId: 'engineer',    shardCost: 200, assetSuffix: '_factory_fresh', dockStyle: { borderColor: '#ccccee', glowColor: '#ccccee44', bgTint: '#0e0e14' } },
+  // Nature — Druid
+  { id: 'druid_skin_autumn',          name: 'Autumn Druid',          description: 'Fall fire colors',                          rarity: 'common', target: 'hero', heroId: 'druid',       shardCost: 200, assetSuffix: '_autumn',       dockStyle: { borderColor: '#dd4411', glowColor: '#dd441166', bgTint: '#1a0a02' } },
+  // Void — Shadow
+  { id: 'shadow_skin_whiteout',       name: 'Whiteout Shadow',       description: 'Bleached to nothing',                       rarity: 'common', target: 'hero', heroId: 'shadow',      shardCost: 200, assetSuffix: '_whiteout',     dockStyle: { borderColor: '#ccccdd', glowColor: '#ccccdd55', bgTint: '#141418' } },
+  // Military — Warden
+  { id: 'warden_skin_desert_storm',   name: 'Desert Storm Warden',   description: 'Desert camo commander',                     rarity: 'rare',   target: 'hero', heroId: 'warden',      shardCost: 400, assetSuffix: '_desert_storm', dockStyle: { borderColor: '#ccaa66', glowColor: '#ccaa6644', bgTint: '#1a1508' } },
+  { id: 'warden_skin_arctic',         name: 'Arctic Warden',         description: 'Ice blue cold-weather loadout',             rarity: 'common', target: 'hero', heroId: 'warden',      shardCost: 200, assetSuffix: '_arctic',       dockStyle: { borderColor: '#aabbdd', glowColor: '#aabbdd44', bgTint: '#0a0e1a' } },
+  // Aliens — Necromancer
+  { id: 'necromancer_skin_albino',    name: 'Albino Necromancer',    description: 'Pale pink/white variant',                   rarity: 'common', target: 'hero', heroId: 'necromancer', shardCost: 200, assetSuffix: '_albino',       dockStyle: { borderColor: '#ffcccc', glowColor: '#ffcccc44', bgTint: '#1a1215' } },
+  // Cypherpunk — Duelist
+  { id: 'duelist_skin_cyber_sakura',  name: 'Cyber Sakura Duelist',  description: 'Pink sakura netrunner',                     rarity: 'epic',   target: 'hero', heroId: 'duelist',     shardCost: 600, assetSuffix: '_cyber_sakura', dockStyle: { borderColor: '#ff0088', glowColor: '#ff008866', bgTint: '#1a0a1a' } },
+  { id: 'duelist_skin_redline',       name: 'Redline Duelist',       description: 'Overheated red',                            rarity: 'common', target: 'hero', heroId: 'duelist',     shardCost: 200, assetSuffix: '_redline',      dockStyle: { borderColor: '#ff4422', glowColor: '#ff442266', bgTint: '#1a0804' } },
+  { id: 'duelist_skin_offline',       name: 'Offline Duelist',       description: 'Powered down gray',                         rarity: 'common', target: 'hero', heroId: 'duelist',     shardCost: 200, assetSuffix: '_offline',      dockStyle: { borderColor: '#556677', glowColor: '#55667733', bgTint: '#0a0e14' } },
+  // Infernal — Berserker
+  { id: 'berserker_skin_frostfire',   name: 'Frostfire Berserker',   description: 'Blue flames',                               rarity: 'common', target: 'hero', heroId: 'berserker',   shardCost: 200, assetSuffix: '_frostfire',    dockStyle: { borderColor: '#4488ff', glowColor: '#4488ff66', bgTint: '#0a0a1a' } },
+  // Celestial — Paladin
+  { id: 'paladin_skin_fallen',        name: 'Fallen Paladin',        description: 'Tarnished dark armor',                      rarity: 'common', target: 'hero', heroId: 'paladin',     shardCost: 200, assetSuffix: '_fallen',       dockStyle: { borderColor: '#886655', glowColor: '#88665544', bgTint: '#141010' } },
+  // Psionic — Monk
+  { id: 'monk_skin_emerald',          name: 'Emerald Monk',          description: 'Green glow psychic',                        rarity: 'common', target: 'hero', heroId: 'monk',        shardCost: 200, assetSuffix: '_emerald',      dockStyle: { borderColor: '#44cc66', glowColor: '#44cc6666', bgTint: '#0a1a0e' } },
+  // Harmonic — Ranger
+  { id: 'ranger_skin_heavy_metal',    name: 'Heavy Metal Ranger',    description: 'Chrome/gunmetal',                           rarity: 'common', target: 'hero', heroId: 'ranger',      shardCost: 200, assetSuffix: '_heavy_metal',  dockStyle: { borderColor: '#888899', glowColor: '#88889944', bgTint: '#0e0e12' } },
+  { id: 'ranger_skin_neon_rave',      name: 'Neon Rave Ranger',      description: 'Neon rainbow chaos',                        rarity: 'rare',   target: 'hero', heroId: 'ranger',      shardCost: 400, assetSuffix: '_neon_rave',    dockStyle: { borderColor: '#ff00ff', glowColor: '#ff00ff88', bgTint: '#0a050a' } },
+  { id: 'ranger_skin_synthwave',      name: 'Synthwave Ranger',      description: '80s sunset pink/purple',                    rarity: 'epic',   target: 'hero', heroId: 'ranger',      shardCost: 600, assetSuffix: '_synthwave',    dockStyle: { borderColor: '#ff6688', glowColor: '#ff668888', bgTint: '#1a0a11' } },
+
   // ── Per-tower skins (roll-only) ──
   ...TOWER_SKINS,
 ];
