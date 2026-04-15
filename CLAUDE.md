@@ -99,3 +99,17 @@ The game supports phone screens (<600px viewport). All UI sizing MUST go through
 - 8 maps with varied layouts and strategic constraints
 - Battle mode: Dual Economy with Gold + Essence, compound growth loop
 - LeakHandler/DeathHandler interfaces enable future game modes (Hero Defense, Circle Co-op)
+
+## Architecture Decisions
+
+When implementing new game features or modes, confirm the core architecture (shared map vs. multi-grid, in-memory vs. DB-backed, generic vs. per-resource) with the user BEFORE writing code. Present a 2-3 sentence summary of the chosen approach and wait for confirmation.
+
+
+## Git Safety
+Always commit working changes before any git checkout, branch switch, or rebase operation. Never run `git checkout` on a branch that could discard uncommitted work. Warn the user if uncommitted changes exist.
+
+## Code Quality
+After editing or creating files with import/require statements, verify that all import paths resolve correctly for the project's bundler (Vite, webpack, etc.). Use relative paths consistently — check whether './' vs '../' is correct by examining sibling files.
+
+## Game Development
+For the tower defense game (TypeScript/Phaser): after any sprite, texture, or animation change, verify that (1) texture keys match preloaded asset keys, (2) sprites are preloaded in the correct scene, and (3) animations reference valid frame data. Test mobile rendering separately.
