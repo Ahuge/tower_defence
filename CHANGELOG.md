@@ -36,6 +36,9 @@
 ### Tower dock skin labels
 - **Dock card tooltips now prefix the tower name with the equipped skin theme** — e.g. "Gilded Flame ($100g)" instead of just "Flame ($100g)". New `getThemeLabelFromSuffix(faction, suffix)` helper looks up the human-readable theme label.
 
+### Selected tower range stays visible
+- **The range circle now persists for the entire duration a tower is selected** (inspect mode), instead of being wiped any time the pointer moved. `handleHover()` no longer clears `rangeGraphics` when in inspect mode, and the range is redrawn each frame so it tracks moving mobile units.
+
 ## 2026-04-11
 
 ### Endless Mode + Streamlined Menu

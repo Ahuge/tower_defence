@@ -1141,7 +1141,11 @@ export class GameScene extends Phaser.Scene {
 
   handleHover(col: number, row: number): void {
     this.hoverGraphics.clear();
-    this.rangeGraphics.clear();
+    // Only clear the range circle if we're not inspecting a placed tower —
+    // otherwise hovering over the map would wipe the selected tower's range.
+    if (this.selectionMode !== 'inspect') {
+      this.rangeGraphics.clear();
+    }
 
     if (this.selectionMode !== 'build' || !this.selectedBuildType) return;
 
@@ -1320,6 +1324,14 @@ export class GameScene extends Phaser.Scene {
 
     // Tower updates: aura resets, trait updates, gold/damage collection, fire
     this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps);
+
+    // Keep the selected tower's range circle in sync with its position
+    // (mobile units move) and persistent across other graphics clears.
+    if (this.selectedTower && !(this.selectedTower as any)._expired) {
+      this.rangeGraphics.clear();
+      this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
+      this.rangeGraphics.strokeCircle(this.selectedTower.x, this.selectedTower.y, this.selectedTower.range);
+    }
 
     // Creep updates: movement, leak handling, kill processing, cleanup
     const leakResult = this.creepMgr.update(delta);
