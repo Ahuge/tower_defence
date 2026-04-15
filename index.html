@@ -7,13 +7,20 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    /* Phaser game container sits below the DOM UI layer */
+    #game-root { position: fixed; inset: 0; z-index: 1; }
   </style>
-  <script type="module" crossorigin src="/tower_defence/assets/main-Cd0mI4p7.js"></script>
-  <link rel="modulepreload" crossorigin href="/tower_defence/assets/LargeStructures-BjYrnJAB.js">
-  <link rel="stylesheet" crossorigin href="/tower_defence/assets/main-Cc4oHOj5.css">
+  <script type="module" crossorigin src="/tower_defence/assets/main-Be9Gm79W.js"></script>
+  <link rel="modulepreload" crossorigin href="/tower_defence/assets/jsxRuntime.module-BqWNSnUx.js">
+  <link rel="modulepreload" crossorigin href="/tower_defence/assets/modulepreload-polyfill-CSRv37U6.js">
+  <link rel="modulepreload" crossorigin href="/tower_defence/assets/Factions-urx6urfT.js">
+  <link rel="modulepreload" crossorigin href="/tower_defence/assets/LargeStructures-FsLERN9A.js">
+  <link rel="stylesheet" crossorigin href="/tower_defence/assets/main-CjS3UVVE.css">
 </head>
 <body>
+  <!-- Phaser game canvas container -->
+  <div id="game-root"></div>
   <!-- DOM UI layer — renders above the Phaser canvas -->
-  <div id="ui-root"></div>
+  <div id="ui-root"></div>
 </body>
 </html>
