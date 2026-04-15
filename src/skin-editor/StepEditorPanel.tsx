@@ -26,6 +26,45 @@ export function StepEditorPanel({ steps, level, state, onStepsChange, drawBase }
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedStep, setSelectedStep] = useState<string | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [mutedSteps, setMutedSteps] = useState<Set<string>>(new Set());
+  const [playbackIndex, setPlaybackIndex] = useState<number | null>(null); // null = show all, 0-N = show up to index
+  const playbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const toggleMute = (id: string) => {
+    setMutedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const startPlayback = () => {
+    setPlaybackIndex(0);
+    if (playbackTimer.current) clearInterval(playbackTimer.current);
+    playbackTimer.current = setInterval(() => {
+      setPlaybackIndex(prev => {
+        if (prev === null) return null;
+        const next = prev + 1;
+        if (next >= steps.length) {
+          // Hold on final frame briefly, then stop
+          if (playbackTimer.current) clearInterval(playbackTimer.current);
+          playbackTimer.current = null;
+          // Reset after a brief pause
+          setTimeout(() => setPlaybackIndex(null), 800);
+          return prev;
+        }
+        return next;
+      });
+    }, 300);
+  };
+
+  const stopPlayback = () => {
+    if (playbackTimer.current) { clearInterval(playbackTimer.current); playbackTimer.current = null; }
+    setPlaybackIndex(null);
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (playbackTimer.current) clearInterval(playbackTimer.current); }, []);
 
   // Render preview
   useEffect(() => {
@@ -61,10 +100,15 @@ export function StepEditorPanel({ steps, level, state, onStepsChange, drawBase }
     // Draw base if provided
     if (drawBase) drawBase(mk, bk, level);
 
-    // Render steps
+    // Render steps — filter by muted + playback
     const cy = 12 - Math.min(level, 4);
     const stepCtx: StepContext = { p: mk, b: bk, level, state, cx: 16, cy };
-    renderSteps(steps, stepCtx);
+    const visibleSteps = steps.filter((s, i) => {
+      if (mutedSteps.has(s.id)) return false;
+      if (playbackIndex !== null && i > playbackIndex) return false;
+      return true;
+    });
+    renderSteps(visibleSteps, stepCtx);
 
     // Scale up to preview canvas
     ctx.save();
@@ -81,7 +125,7 @@ export function StepEditorPanel({ steps, level, state, onStepsChange, drawBase }
     for (let y = 0; y <= GRID; y++) {
       ctx.beginPath(); ctx.moveTo(0, y * PX * scale); ctx.lineTo(canvas.width, y * PX * scale); ctx.stroke();
     }
-  }, [steps, level, state, drawBase]);
+  }, [steps, level, state, drawBase, mutedSteps, playbackIndex]);
 
   const toggleStep = (id: string) => {
     onStepsChange(steps.map(s => s.id === id ? { ...s, enabled: s.enabled === false ? true : false } : s));
@@ -138,8 +182,21 @@ export function StepEditorPanel({ steps, level, state, onStepsChange, drawBase }
       <div style={{ flex: 1, overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
           <span style={{ fontSize: '10px', color: '#ffaa44', letterSpacing: '1px' }}>DRAW STEPS ({steps.length})</span>
-          <button onClick={() => setShowLibrary(!showLibrary)} style={btnStyle}>+ Add Shape</button>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {playbackIndex !== null ? (
+              <button onClick={stopPlayback} style={{ ...btnStyle, borderColor: '#ff4444', color: '#ff4444' }}>■ Stop</button>
+            ) : (
+              <button onClick={startPlayback} style={{ ...btnStyle, borderColor: '#44ff44', color: '#44ff44' }}>▶ Play</button>
+            )}
+            <button onClick={() => setMutedSteps(new Set())} style={btnStyle}>Unmute All</button>
+            <button onClick={() => setShowLibrary(!showLibrary)} style={btnStyle}>+ Add</button>
+          </div>
         </div>
+        {playbackIndex !== null && (
+          <div style={{ fontSize: '9px', color: '#44ff44', marginBottom: '4px' }}>
+            Playing step {playbackIndex + 1} / {steps.length}
+          </div>
+        )}
 
         {/* Shape library popup */}
         {showLibrary && (
@@ -160,18 +217,25 @@ export function StepEditorPanel({ steps, level, state, onStepsChange, drawBase }
             onClick={() => setSelectedStep(step.id === selectedStep ? null : step.id)}
             style={{
               padding: '4px 6px', marginBottom: '2px', borderRadius: '4px', cursor: 'pointer',
-              background: step.id === selectedStep ? 'rgba(255,170,68,0.1)' : step.enabled === false ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
-              border: step.id === selectedStep ? '1px solid #ffaa44' : '1px solid transparent',
-              opacity: step.enabled === false ? 0.4 : 1,
+              background: playbackIndex !== null && i === playbackIndex ? 'rgba(68,255,68,0.15)' : step.id === selectedStep ? 'rgba(255,170,68,0.1)' : step.enabled === false ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
+              border: playbackIndex !== null && i === playbackIndex ? '1px solid #44ff44' : step.id === selectedStep ? '1px solid #ffaa44' : '1px solid transparent',
+              opacity: mutedSteps.has(step.id) ? 0.3 : step.enabled === false ? 0.4 : 1,
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
-              {/* Toggle */}
+              {/* Toggle (permanent enable/disable) */}
               <span onClick={(e: any) => { e.stopPropagation(); toggleStep(step.id); }}
-                style={{ cursor: 'pointer', color: step.enabled === false ? '#444' : '#44ff44', fontSize: '12px' }}>
+                style={{ cursor: 'pointer', color: step.enabled === false ? '#444' : '#44ff44', fontSize: '12px' }}
+                title={step.enabled === false ? 'Enable' : 'Disable'}>
                 {step.enabled === false ? '○' : '●'}
               </span>
+              {/* Mute (temporary hide) */}
+              <span onClick={(e: any) => { e.stopPropagation(); toggleMute(step.id); }}
+                style={{ cursor: 'pointer', color: mutedSteps.has(step.id) ? '#ff4444' : '#666', fontSize: '10px' }}
+                title={mutedSteps.has(step.id) ? 'Unmute' : 'Mute'}>
+                {mutedSteps.has(step.id) ? '🔇' : '🔊'}
+              </span>
               {/* Label */}
-              <span style={{ flex: 1, color: step.enabled === false ? '#555' : '#ccc' }}>
+              <span style={{ flex: 1, color: mutedSteps.has(step.id) ? '#ff4444' : step.enabled === false ? '#555' : '#ccc', textDecoration: mutedSteps.has(step.id) ? 'line-through' : 'none' }}>
                 {step.label}
                 {step.minLevel && <span style={{ color: '#555', marginLeft: '4px' }}>Lv{step.minLevel}+</span>}
               </span>
@@ -185,7 +249,7 @@ export function StepEditorPanel({ steps, level, state, onStepsChange, drawBase }
 
             {/* Parameter editor (expanded when selected) */}
             {step.id === selectedStep && step.type !== 'custom' && step.type !== 'base' && (
-              <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #222' }}>
+              <div onClick={(e: any) => e.stopPropagation()} style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #222' }}>
                 {Object.entries(step.params).filter(([k]) => k !== 'fn').map(([key, val]) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', fontSize: '9px' }}>
                     <span style={{ color: '#888', minWidth: '50px' }}>{key}</span>
