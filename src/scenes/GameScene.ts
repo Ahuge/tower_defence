@@ -291,8 +291,8 @@ export class GameScene extends Phaser.Scene {
       onCycleSpeed: () => {
         this.cycleSpeed();
       },
-      onFrontierDoodad: (color: number, type: string) => {
-        this.placeFrontierDoodad(color, type);
+      onFrontierDoodad: (color: number, buildingId: string, factionFallback?: string) => {
+        this.placeFrontierDoodad(color, buildingId, factionFallback);
       },
       onSelectDockTower: (index: number) => {
         if (index < 0) {
@@ -998,8 +998,9 @@ export class GameScene extends Phaser.Scene {
     GameUIStore.updateWaves(currentWave, previews);
   }
 
-  /** Place a pixel art doodad on a random blocked terrain cell */
-  placeFrontierDoodad(color: number = 0xffaa44, type: string = 'generic'): void {
+  /** Place a pixel art doodad on a random blocked terrain cell.
+   *  Looks up art by building ID first, then falls back to faction, then generic. */
+  placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): void {
     const blocked: { col: number; row: number }[] = [];
     for (let r = 0; r < this.grid.rows; r++) {
       for (let c = 0; c < this.grid.cols; c++) {
@@ -1012,7 +1013,7 @@ export class GameScene extends Phaser.Scene {
     const py = gridY(cell.row) + (Math.random() - 0.5) * TILE_SIZE * 0.4;
 
     // Render doodad sprite to a small canvas, then add as Phaser image
-    const drawFn = DOODAD_DRAW[type] ?? DOODAD_DRAW.generic;
+    const drawFn = DOODAD_DRAW[buildingId] ?? (factionFallback ? DOODAD_DRAW[factionFallback] : undefined) ?? DOODAD_DRAW.generic;
     const canvas = document.createElement('canvas');
     canvas.width = DOODAD_CELL; canvas.height = DOODAD_CELL;
     const ctx = canvas.getContext('2d')!;
