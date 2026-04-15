@@ -79,6 +79,45 @@ export interface FrontierState {
   owned: OwnedBuildingInfo[];
 }
 
+export interface EssenceGeneratorInfo {
+  id: string;
+  name: string;
+  cost: number;
+  essencePerSec: number;
+  description: string;
+}
+
+export interface EssenceSendInfo {
+  id: string;
+  name: string;
+  essenceCost: number;
+  incomeReward: number;
+  hotkey: string;
+}
+
+export interface EssenceState {
+  essence: number;
+  rate: number;
+  generators: EssenceGeneratorInfo[];
+  sends: EssenceSendInfo[];
+  owned: { name: string; count: number; rate: number }[];
+}
+
+export interface HeroItemInfo {
+  slotId: string;
+  name: string;
+  tier: number;
+  maxTier: number;
+  cost: number;
+  description: string;
+  owned: boolean;
+}
+
+export interface HeroShopState {
+  heroName: string;
+  items: HeroItemInfo[];
+}
+
 export interface EventLogEntry {
   id: number;
   text: string;
@@ -117,6 +156,10 @@ export interface GameUIState {
   eventLog: EventLogEntry[];
   /** Frontier buildings state */
   frontier: FrontierState;
+  /** Essence/dual economy state (Battle mode) */
+  essence: EssenceState | null;
+  /** Hero item shop state (Hero Defense mode) */
+  heroShop: HeroShopState | null;
 }
 
 type Listener = () => void;
@@ -137,6 +180,9 @@ class GameUIStoreClass {
     onFrontierPurchase?: (buildingId: string) => void;
     onFrontierAction?: (action: string, buildingIdx: number) => void;
     onFrontierBatchAction?: (action: string, defId: string) => void;
+    onBuyEssenceGenerator?: (genId: string) => void;
+    onEssenceSend?: (sendId: string) => void;
+    onBuyHeroItem?: (slotId: string) => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -156,6 +202,8 @@ class GameUIStoreClass {
       sendOptions: [],
       eventLog: [],
       frontier: { available: [], owned: [] },
+      essence: null,
+      heroShop: null,
     };
   }
 
@@ -219,6 +267,18 @@ class GameUIStoreClass {
   /** Update paused state */
   setPaused(paused: boolean): void {
     this.state = { ...this.state, paused };
+    this.notify();
+  }
+
+  /** Update essence state (Battle mode) */
+  updateEssence(essence: EssenceState): void {
+    this.state = { ...this.state, essence };
+    this.notify();
+  }
+
+  /** Update hero shop state (Hero Defense mode) */
+  updateHeroShop(heroShop: HeroShopState): void {
+    this.state = { ...this.state, heroShop };
     this.notify();
   }
 
@@ -291,7 +351,19 @@ class GameUIStoreClass {
   }
 
   requestFrontierBatchAction(action: string, defId: string): void {
-    this.callbacks.onFrontierBatchAction?.(defId, defId);
+    this.callbacks.onFrontierBatchAction?.(action, defId);
+  }
+
+  requestBuyEssenceGenerator(genId: string): void {
+    this.callbacks.onBuyEssenceGenerator?.(genId);
+  }
+
+  requestEssenceSend(sendId: string): void {
+    this.callbacks.onEssenceSend?.(sendId);
+  }
+
+  requestBuyHeroItem(slotId: string): void {
+    this.callbacks.onBuyHeroItem?.(slotId);
   }
 
   // ─── Subscription ───────────────────────────────────

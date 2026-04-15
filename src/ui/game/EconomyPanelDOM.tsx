@@ -6,19 +6,25 @@ import { useGameUI, useGameUISelector } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 import { SendPanelDOM } from './SendPanelDOM';
 import { EventLogDOM } from './EventLogDOM';
+import { EssenceContentDOM } from './EssenceContentDOM';
+import { HeroItemsDOM } from './HeroItemsDOM';
 
-type EconTab = 'sends' | 'frontier' | 'log';
+type EconTab = 'sends' | 'frontier' | 'essence' | 'items' | 'log';
 
 export function EconomyPanelDOM() {
   const { sendOptions, eventLog } = useGameUI();
   const [tab, setTab] = useState<EconTab>('sends');
 
   const frontier = useGameUISelector(s => s.frontier);
+  const essence = useGameUISelector(s => s.essence);
+  const heroShop = useGameUISelector(s => s.heroShop);
   const hasFrontier = frontier.available.length > 0 || frontier.owned.length > 0;
 
   const tabs: { id: EconTab; label: string; badge?: string; show: boolean }[] = [
     { id: 'sends', label: 'Sends', badge: sendOptions.filter(o => !o.locked).length + ' avail', show: sendOptions.length > 0 },
     { id: 'frontier', label: 'Frontier', badge: frontier.owned.length > 0 ? `${frontier.owned.length} owned` : undefined, show: hasFrontier },
+    { id: 'essence', label: 'Essence', badge: essence ? `${Math.floor(essence.essence)}e` : undefined, show: !!essence },
+    { id: 'items', label: 'Items', show: !!heroShop },
     { id: 'log', label: 'Log', badge: String(eventLog.length), show: eventLog.length > 0 },
   ];
 
@@ -48,6 +54,8 @@ export function EconomyPanelDOM() {
       {/* Tab content */}
       {activeTab === 'sends' && <SendPanelDOM />}
       {activeTab === 'frontier' && <FrontierContent />}
+      {activeTab === 'essence' && <EssenceContentDOM />}
+      {activeTab === 'items' && <HeroItemsDOM />}
       {activeTab === 'log' && <EventLogDOM />}
     </>
   );

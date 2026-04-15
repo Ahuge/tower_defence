@@ -4,6 +4,8 @@ import { MatchMode, WaveDefinition } from '../../data/WaveDefinitions';
 import { SEND_OPTIONS, SendCreepOption } from '../../data/SendCreepTypes';
 import { ArenaManager } from '../ArenaManager';
 import { ItemShopPanel } from '../../ui/ItemShopPanel';
+import { GameUIStore, HeroShopState, HeroItemInfo } from '../../ui/GameUIStore';
+import { ITEM_SLOTS, ITEM_SLOT_ORDER } from '../../data/HeroItems';
 
 const SEND_OPTIONS_MAP: Record<string, SendCreepOption> = {};
 for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
@@ -38,11 +40,47 @@ export class HeroDefenseMode implements GameMode {
     ctx.eventLog.gameMessage('HERO DEFENSE: Leaked creeps enter the arena!');
     ctx.eventLog.gameMessage('Click arena to move hero. Q/W/E for abilities.');
     ctx.eventLog.gameMessage('Buy items in the sidebar (Weapon/Armor/Boots).');
+
+    // Register DOM callbacks
+    GameUIStore.registerCallbacks({
+      onBuyHeroItem: (slotId: string) => {
+        const slotIdx = ITEM_SLOT_ORDER.indexOf(slotId as any);
+        if (slotIdx >= 0) {
+          const { canUpgrade, cost } = this.arenaManager.hero.canUpgradeItem(slotIdx);
+          if (canUpgrade && ctx.economy.spend(cost)) {
+            this.arenaManager.hero.upgradeItem(slotIdx);
+            const slotDef = ITEM_SLOTS[slotId as keyof typeof ITEM_SLOTS];
+            ctx.eventLog.gameMessage(`Upgraded ${slotDef?.name ?? slotId} (-${cost}g)`);
+            this.syncHeroShopToDOM();
+          }
+        }
+      },
+    });
+    this.syncHeroShopToDOM();
+  }
+
+  private syncHeroShopToDOM(): void {
+    const hero = this.arenaManager.hero;
+    const items: HeroItemInfo[] = ITEM_SLOT_ORDER.map((slotId, i) => {
+      const slotDef = ITEM_SLOTS[slotId];
+      const item = hero.items[i];
+      const tier = item?.tier ?? 0;
+      const maxTier = slotDef.tiers.length;
+      const nextTier = tier < maxTier ? slotDef.tiers[tier] : null;
+      return {
+        slotId, name: slotDef.name, tier, maxTier, cost: nextTier?.cost ?? 0,
+        description: nextTier?.label ?? (tier >= maxTier ? 'Max tier' : ''),
+        owned: tier > 0,
+      };
+    });
+    GameUIStore.updateHeroShop({ heroName: hero.typeDef.name, items });
   }
 
   update(delta: number): void {
     this.arenaManager.update(delta);
     this.itemShop.update();
+    // Sync hero shop periodically (items can change on level up)
+    this.syncHeroShopToDOM();
   }
 
   onWaveStart(wave: WaveDefinition, waveNum: number): void {

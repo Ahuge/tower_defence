@@ -1,8 +1,9 @@
 import { GameMode, GameModeContext } from '../GameMode';
 import { SidebarOverlay } from '../../ui/SidebarOverlay';
 import { MatchMode } from '../../data/WaveDefinitions';
-import { EssenceGenerator, EssenceSendOption, ESSENCE_SENDS } from '../../data/EssenceGenerators';
+import { EssenceGenerator, EssenceSendOption, ESSENCE_GENERATORS, ESSENCE_SENDS } from '../../data/EssenceGenerators';
 import { EssencePanel } from '../../ui/EssencePanel';
+import { GameUIStore, EssenceState } from '../../ui/GameUIStore';
 
 const ESSENCE_SEND_MAP: Record<string, EssenceSendOption> = {};
 for (const s of ESSENCE_SENDS) ESSENCE_SEND_MAP[s.id] = s;
@@ -38,12 +39,48 @@ export class BattleMode implements GameMode {
     );
 
     ctx.eventLog.gameMessage('BATTLE MODE: Buy generators → earn essence → spend on sends!');
+
+    // Register DOM callbacks
+    GameUIStore.registerCallbacks({
+      onBuyEssenceGenerator: (genId: string) => {
+        const gen = ESSENCE_GENERATORS.find(g => g.id === genId);
+        if (gen) this.buyGenerator(gen);
+      },
+      onEssenceSend: (sendId: string) => {
+        const send = ESSENCE_SENDS.find(s => s.id === sendId);
+        if (send) this.buyEssenceSend(send);
+      },
+    });
+
+    this.syncEssenceToDOM();
+  }
+
+  private syncEssenceToDOM(): void {
+    const essenceAmount = this.ctx.economy.resources.get('essence');
+    const state = this.ctx.economy.resources.getState('essence');
+    const hotkeys = ['Z', 'X', 'C', 'V'];
+
+    const essenceState: EssenceState = {
+      essence: essenceAmount,
+      rate: state?.tickRate ?? 0,
+      generators: ESSENCE_GENERATORS.map(g => ({
+        id: g.id, name: g.name, cost: g.cost, essencePerSec: g.essencePerSec, description: g.description,
+      })),
+      sends: ESSENCE_SENDS.map((s, i) => ({
+        id: s.id, name: s.name, essenceCost: s.essenceCost, incomeReward: s.incomeReward, hotkey: hotkeys[i] ?? '',
+      })),
+      owned: this.essencePanel.generators.map(g => ({
+        name: g.def.name, count: g.count, rate: g.def.essencePerSec * g.count,
+      })),
+    };
+    GameUIStore.updateEssence(essenceState);
   }
 
   update(delta: number): void {
     // Tick essence in real-time
     this.ctx.economy.resources.tick(delta);
     this.essencePanel.update();
+    this.syncEssenceToDOM();
   }
 
   onWaveCleared(_waveNum: number): void {
