@@ -89,7 +89,7 @@ interface SkinTheme {
 // Add new themes here as skins are created in the skin editor.
 const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
   arcane:     [{ suffix: 'corrupted', label: 'Corrupted', description: 'Green corruption theme', rarity: 'epic' }],
-  mechanical: [],
+  mechanical: [{ suffix: 'gilded', label: 'Gilded', description: 'Bright gold', rarity: 'epic' }],
   nature:     [],
   void:       [],
   military:   [{ suffix: 'desert_storm', label: 'Desert Storm', description: 'Desert camo', rarity: 'rare' }],
@@ -145,6 +145,8 @@ export const SKIN_DEFS: SkinDef[] = [
     dockStyle: { borderColor: '#ccaa66', glowColor: '#ccaa6644', bgTint: '#1a1508' } },
   { id: 'cyber_pack_sakura',       name: 'Cyber Sakura Pack',    description: 'All Cypherpunk towers — pink sakura',  rarity: 'epic', target: 'tower_faction', faction: 'cypherpunk', shardCost: 1200, assetSuffix: '_cyber_sakura',
     dockStyle: { borderColor: '#ff0088', glowColor: '#ff008866', bgTint: '#1a0a1a' } },
+  { id: 'mech_pack_gilded',        name: 'Gilded Mechanical Pack', description: 'All Mechanical towers — bright gold', rarity: 'epic', target: 'tower_faction', faction: 'mechanical', shardCost: 1200, assetSuffix: '_gilded',
+    dockStyle: { borderColor: '#ffdd22', glowColor: '#ffdd2288', bgTint: '#1a1200' } },
   // ── Per-tower skins (roll-only) ──
   ...TOWER_SKINS,
 ];
