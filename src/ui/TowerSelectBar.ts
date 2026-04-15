@@ -295,6 +295,8 @@ export class TowerSelectBar {
     this.onSelect(null);
   }
 
+  getContainer(): Phaser.GameObjects.Container { return this.container; }
+
   selectByIndex(index: number): boolean {
     if (index >= 0 && index < this.towerIds.length) {
       this.highlight(index);

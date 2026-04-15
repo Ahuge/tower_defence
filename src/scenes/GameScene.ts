@@ -282,6 +282,15 @@ export class GameScene extends Phaser.Scene {
       onToggleAutoPlay: () => {
         this.toggleAutoPlay();
       },
+      onSelectDockTower: (index: number) => {
+        if (index < 0) {
+          this.enterNoneMode();
+          GameUIStore.selectDockTower(-1);
+        } else if (index < this.activeTowerIds.length) {
+          this.enterBuildMode(this.activeTowerIds[index]);
+          GameUIStore.selectDockTower(index);
+        }
+      },
     });
 
     // Create sprite animations from loaded sheets
@@ -384,6 +393,9 @@ export class GameScene extends Phaser.Scene {
         this.enterNoneMode();
       }
     });
+    // Hide Phaser tower bar — DOM version takes over
+    this.towerBar.getContainer().setVisible(false);
+    this.syncTowerBarToDOM();
 
     this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
     this.ui.setCallbacks(
@@ -690,7 +702,7 @@ export class GameScene extends Phaser.Scene {
           case 'tower_pool':
             if (this.faction === 'random') {
               this.activeTowerIds = msg.towerIds;
-              this.towerBar.setTowerIds(this.activeTowerIds);
+              this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
               this.enterNoneMode();
               this.eventLog.gameMessage('Tower pool updated!');
             }
@@ -871,6 +883,15 @@ export class GameScene extends Phaser.Scene {
 
   // === Selection Mode Management ===
 
+  /** Push tower bar state to the DOM */
+  private syncTowerBarToDOM(): void {
+    const towers = this.activeTowerIds.map((id, i) => {
+      const t = getTowerType(id);
+      return { id, name: t.name, cost: t.cost, hotkey: String(i + 1), color: t.color };
+    });
+    GameUIStore.setTowerBar(towers);
+  }
+
   /** Convert a Tower entity to a TowerStats snapshot for the DOM UI */
   private towerToStats(tower: Tower): TowerStats {
     const { TILE_SIZE } = require('../config');
@@ -963,6 +984,7 @@ export class GameScene extends Phaser.Scene {
     this.selectedTower = null;
     this.towerInfo?.hide();
     GameUIStore.deselectTower();
+    GameUIStore.selectDockTower(this.activeTowerIds.indexOf(typeId));
     this.opponentMinimap?.setFaded(true);
   }
 
@@ -986,6 +1008,7 @@ export class GameScene extends Phaser.Scene {
     this.towerBar.deselect();
     this.towerInfo.hide();
     GameUIStore.deselectTower();
+    GameUIStore.selectDockTower(-1);
     this.opponentMinimap?.setFaded(false);
     this.creepInfo.hide();
     this.hoverGraphics.clear();
@@ -1936,7 +1959,7 @@ export class GameScene extends Phaser.Scene {
     // Random faction rotation
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
-      this.towerBar.setTowerIds(this.activeTowerIds);
+      this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
       if (this.gameMode instanceof BaseFrontierMode) {
         this.gameMode.rotateRandomFrontier();
       }

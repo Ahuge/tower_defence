@@ -193,6 +193,11 @@ export interface GameUIState {
   paused: boolean;
   /** Total income per wave */
   income: number;
+  /** Tower dock bar state */
+  towerBar: {
+    towers: { id: string; name: string; cost: number; hotkey: string; color: number }[];
+    selectedIndex: number;
+  };
   /** Send options for the send panel */
   sendOptions: SendOption[];
   /** Event log entries (most recent first, max 20) */
@@ -230,6 +235,7 @@ class GameUIStoreClass {
     onBuyAccessory?: (index: number) => void;
     onHeroUpgrade?: (optionId: string) => void;
     onUpgradeAbility?: (abilityIndex: number) => void;
+    onSelectDockTower?: (index: number) => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -247,6 +253,7 @@ class GameUIStoreClass {
       speed: 1,
       paused: false,
       income: 0,
+      towerBar: { towers: [], selectedIndex: -1 },
       sendOptions: [],
       eventLog: [],
       frontier: { available: [], owned: [] },
@@ -315,6 +322,19 @@ class GameUIStoreClass {
   /** Update paused state */
   setPaused(paused: boolean): void {
     this.state = { ...this.state, paused };
+    this.notify();
+  }
+
+  /** Set tower bar towers */
+  setTowerBar(towers: GameUIState['towerBar']['towers']): void {
+    this.state = { ...this.state, towerBar: { ...this.state.towerBar, towers } };
+    this.notify();
+  }
+
+  /** Update selected tower in dock */
+  selectDockTower(index: number): void {
+    if (this.state.towerBar.selectedIndex === index) return;
+    this.state = { ...this.state, towerBar: { ...this.state.towerBar, selectedIndex: index } };
     this.notify();
   }
 
@@ -428,6 +448,10 @@ class GameUIStoreClass {
 
   requestUpgradeAbility(abilityIndex: number): void {
     this.callbacks.onUpgradeAbility?.(abilityIndex);
+  }
+
+  requestSelectDockTower(index: number): void {
+    this.callbacks.onSelectDockTower?.(index);
   }
 
   // ─── Subscription ───────────────────────────────────

@@ -13,6 +13,7 @@ import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
 import { GameSidebar } from './game/GameSidebar';
+import { TowerDockDOM } from './game/TowerDockDOM';
 import './styles/game-panels.css';
 
 export function App() {
@@ -52,8 +53,9 @@ export function App() {
         </div>
       )}
 
-      {/* In-game sidebar — renders alongside Phaser canvas when no screen is active */}
+      {/* In-game UI — renders alongside Phaser canvas when no screen is active */}
       {!screen && <GameSidebar />}
+      {!screen && <TowerDockDOM />}
     </>
   );
 }
