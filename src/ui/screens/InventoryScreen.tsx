@@ -7,6 +7,7 @@ import {
 } from '../../systems/monetization';
 import { FACTIONS, FACTION_ORDER, FactionId } from '../../data/Factions';
 import { TOWER_TYPES } from '../../data/TowerTypes';
+import { SkinPreview } from '../components/SkinPreview';
 
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
 
@@ -145,6 +146,8 @@ export function InventoryScreen() {
                             </span>
                           )}
                         </div>
+
+                        <SkinPreview skin={skin} size={26} />
 
                         <div class="card-desc" style={{ marginTop: '4px' }}>{skin.description}</div>
                         <div style={{ fontSize: '9px', marginTop: '2px', color: skin.target === 'tower_faction' ? '#aa88ff' : '#666' }}>

@@ -39,6 +39,12 @@
 ### Selected tower range stays visible
 - **The range circle now persists for the entire duration a tower is selected** (inspect mode), instead of being wiped any time the pointer moved. `handleHover()` no longer clears `rangeGraphics` when in inspect mode, and the range is redrawn each frame so it tracks moving mobile units.
 
+### Sprite previews on store/inventory/roll cards
+- **Store skin cards now show sprite previews.** Tower-faction packs render all of the faction's towers in a row (so you see the whole pack at a glance), per-tower skins show the single tower icon, and hero skins show a hero portrait — all rendered with the skin's palette applied.
+- **Roll strip + result reveal show sprites too.** The casino strip cards each preview the skin they represent, and the "NEW SKIN!" reveal card shows a larger preview of what you won.
+- **Inventory cards show the same previews.**
+- New `SkinPreview` Preact component (`src/ui/components/SkinPreview.tsx`). `getTowerIconUrl` extended with an `overrideSuffix` arg; new `getHeroIconUrl` companion. Hero skin textures are generated lazily via `ensureHeroSkinTextureBySuffix` so previews work even for unowned skins.
+
 ## 2026-04-11
 
 ### Endless Mode + Streamlined Menu

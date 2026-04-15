@@ -152,6 +152,37 @@ const FACTION_HERO_BASE: Record<string, string> = {
   monk: 'psionic_hero', ranger: 'harmonic_hero',
 };
 
+/** Get the base hero spritesheet key for a hero id, or '' if unknown. */
+export function getHeroBaseKey(heroId: HeroId | string): string {
+  return FACTION_HERO_BASE[heroId] ?? '';
+}
+
+/**
+ * Ensure the texture for a specific hero skin exists, generating it from the
+ * base hero PNG via palette-swap if needed. `assetSuffix` includes the leading
+ * underscore (e.g. '_corrupted'). Returns the skinned key, or the base key on
+ * any failure.
+ */
+export function ensureHeroSkinTextureBySuffix(
+  scene: Phaser.Scene, heroId: HeroId | string, assetSuffix: string,
+): string {
+  const baseKey = FACTION_HERO_BASE[heroId];
+  if (!baseKey) return '';
+  if (!assetSuffix) return baseKey;
+
+  const skinnedKey = baseKey + assetSuffix;
+  if (scene.textures.exists(skinnedKey)) return skinnedKey;
+
+  const paletteKey = assetSuffix.replace(/^_/, '');
+  const palette = HERO_SKIN_PALETTES[paletteKey];
+  if (!palette) return baseKey;
+
+  const ok = generatePaletteSwappedSpritesheet(
+    scene, baseKey, skinnedKey, palette.transform, 64, 128,
+  );
+  return ok ? skinnedKey : baseKey;
+}
+
 /**
  * Ensure the texture for the currently-equipped hero skin exists (lazily generate
  * it if needed). Returns the texture key to use — either the skinned key or the

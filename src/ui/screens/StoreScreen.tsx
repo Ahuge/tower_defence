@@ -1,6 +1,7 @@
 import { useState, useRef } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { SkinPreview } from '../components/SkinPreview';
 import {
   ShardWallet, PlayerInventory, BattlePass,
   SKIN_DEFS, SkinDef, RARITY_COLORS, RARITY_LABELS,
@@ -60,6 +61,7 @@ function SkinsTab({ rerender }: { rerender: () => void }) {
             <div key={skin.id} class={`card ${owned ? 'owned' : ''}`}>
               <div class="card-accent" style={{ background: hexColor(RARITY_COLORS[skin.rarity]) }} />
               <div class="card-name" style={{ marginTop: '4px' }}>{skin.name}</div>
+              <SkinPreview skin={skin} size={28} />
               <div class="card-desc"><span class={rarityClass(skin.rarity)} style={{ fontWeight: 'bold' }}>{RARITY_LABELS[skin.rarity]}</span> {targetLabel}</div>
               <div class="card-desc">{skin.description}</div>
               <div class="card-footer">
@@ -217,6 +219,7 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
               >
                 <div class="roll-card-accent" style={{ background: hexColor(rc) }} />
                 <div class="roll-card-name">{skin.name}</div>
+                <SkinPreview skin={skin} size={24} />
                 <div class={`roll-card-rarity rarity-${skin.rarity}`}>{RARITY_LABELS[skin.rarity]}</div>
                 <div class="roll-card-tower">{skin.towerId?.split('_').slice(1).join(' ') ?? ''}</div>
               </div>
@@ -241,6 +244,7 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
           <div style={{ fontSize: '20px', fontWeight: 'bold', color: rollResult.isDuplicate ? 'var(--text-dim)' : hexColor(RARITY_COLORS[rollResult.skin.rarity]) }}>
             {rollResult.isDuplicate ? `DUPLICATE` : 'NEW SKIN!'}
           </div>
+          <SkinPreview skin={rollResult.skin} size={48} />
           <div style={{ fontSize: '16px', color: '#fff', marginTop: '6px' }}>{rollResult.skin.name}</div>
           <div class="text-dim text-sm" style={{ marginTop: '4px' }}>
             {RARITY_LABELS[rollResult.skin.rarity]} &middot; {rollResult.skin.faction} &middot; {rollResult.skin.description}
