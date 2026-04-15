@@ -1012,9 +1012,12 @@ export class GameScene extends Phaser.Scene {
     this.selectedTower = tower;
     this.selectedCreep = null;
     this.towerBar.deselect();
-    // DOM panel handles display — Phaser panel disabled
     GameUIStore.selectTower(this.towerToStats(tower));
     this.creepInfo.hide();
+    // Draw range circle on the game canvas
+    this.rangeGraphics.clear();
+    this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
+    this.rangeGraphics.strokeCircle(tower.x, tower.y, tower.range);
   }
 
   private enterNoneMode(): void {
@@ -1026,6 +1029,7 @@ export class GameScene extends Phaser.Scene {
     this.towerBar.deselect();
     this.towerInfo.hide();
     GameUIStore.deselectTower();
+    this.rangeGraphics.clear();
     GameUIStore.selectDockTower(-1);
     this.opponentMinimap?.setFaded(false);
     this.creepInfo.hide();

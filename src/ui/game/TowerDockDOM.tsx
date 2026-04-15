@@ -2,7 +2,7 @@
  * TowerDockDOM — tower selection bar rendered as DOM.
  * Shows tower icons with costs, hotkeys, tooltips, and skin dock styles.
  */
-import { useState, useMemo } from 'preact/hooks';
+import { useState, useMemo, useRef, useCallback } from 'preact/hooks';
 import { useGameUI } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 import { getTowerType } from '../../data/TowerTypes';
@@ -30,6 +30,31 @@ function getDockStyle(towerId: string): DockStyle | null {
 export function TowerDockDOM() {
   const { towerBar, gold } = useGameUI();
   const [tooltip, setTooltip] = useState<number | null>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+
+  const startHold = useCallback((i: number) => {
+    didLongPress.current = false;
+    holdTimer.current = setTimeout(() => {
+      setTooltip(i);
+      didLongPress.current = true;
+      holdTimer.current = null;
+    }, 400);
+  }, []);
+
+  const endHold = useCallback((i: number) => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    // If it was a long press, just dismiss tooltip — don't select
+    if (didLongPress.current) {
+      // Keep tooltip visible briefly, then dismiss
+      setTimeout(() => setTooltip(null), 2000);
+      return true; // signal that click should be suppressed
+    }
+    return false;
+  }, []);
 
   if (towerBar.towers.length === 0) return null;
 
@@ -53,9 +78,19 @@ export function TowerDockDOM() {
                 background: dock?.bgTint ?? (selected ? hexColor(tower.color) + '33' : hexColor(tower.color) + '15'),
                 boxShadow: dock?.glowColor ? `0 0 8px ${dock.glowColor}` : undefined,
               }}
-              onClick={() => {
+              onTouchStart={() => startHold(i)}
+              onTouchEnd={() => {
+                const wasLongPress = endHold(i);
+                if (!wasLongPress) {
+                  GameUIStore.requestSelectDockTower(selected ? -1 : i);
+                  setTooltip(null);
+                }
+              }}
+              onClick={(e: any) => {
+                // Desktop click — touch devices use touchStart/End above
+                if (e.detail === 0) return; // skip synthetic clicks from touch
                 GameUIStore.requestSelectDockTower(selected ? -1 : i);
-                setTooltip(null); // dismiss tooltip on click (fixes mobile sticky tooltip)
+                setTooltip(null);
               }}
             >
               {/* Hotkey badge */}
