@@ -2,10 +2,11 @@
  * TowerDockDOM — tower selection bar rendered as DOM.
  * Shows tower icons with costs, hotkeys, tooltips, and skin dock styles.
  */
-import { useState } from 'preact/hooks';
-import { useGameUI, useGameUISelector } from '../hooks/useGameUI';
+import { useState, useMemo } from 'preact/hooks';
+import { useGameUI } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 import { getTowerType } from '../../data/TowerTypes';
+import { getTowerIconUrl } from './TowerIconRenderer';
 import { TILE_SIZE } from '../../config';
 import { getSkinDef, DockStyle } from '../../systems/monetization';
 import { PlayerInventory } from '../../systems/monetization/PlayerInventory';
@@ -57,8 +58,8 @@ export function TowerDockDOM() {
               {/* Hotkey badge */}
               <span class="dock-hotkey">{tower.hotkey}</span>
 
-              {/* Tower name (short) */}
-              <div class="dock-name">{tower.name.length > 6 ? tower.name.slice(0, 5) + '..' : tower.name}</div>
+              {/* Tower icon or name fallback */}
+              <TowerIcon towerId={tower.id} size={36} />
 
               {/* Cost */}
               <div class="dock-cost" style={{ color: canAfford ? '#ffdd44' : '#664422' }}>{tower.cost}g</div>
@@ -102,4 +103,15 @@ export function TowerDockDOM() {
       })}
     </div>
   );
+}
+
+/** Renders a tower sprite as an <img> from Phaser texture, or a text fallback */
+function TowerIcon({ towerId, size }: { towerId: string; size: number }) {
+  const url = useMemo(() => getTowerIconUrl(towerId), [towerId]);
+  if (url) {
+    return <img src={url} width={size} height={size} style={{ imageRendering: 'pixelated' as any }} />;
+  }
+  // Text fallback
+  const name = getTowerType(towerId)?.name ?? towerId;
+  return <div class="dock-name">{name.length > 6 ? name.slice(0, 5) + '..' : name}</div>;
 }
