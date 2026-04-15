@@ -234,9 +234,12 @@ export function getTowerFaction(towerId: string): FactionId | undefined {
 /** Known skin asset suffixes per faction directory. Add entries here when new skins are created. */
 const SKIN_ASSETS: Record<string, string[]> = {
   arcane: ['_corrupted'],
-  mechanical: ['_gilded'],
-  military: ['_desert_storm'],
+  mechanical: ['_gilded', '_factory_fresh'],
+  nature: ['_autumn'],
+  military: ['_desert_storm', '_arctic'],
+  aliens: ['_albino'],
   cypherpunk: ['_cyber_sakura'],
+  infernal: ['_frostfire'],
 };
 
 export function preloadSprites(scene: Phaser.Scene): void {
