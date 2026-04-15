@@ -203,6 +203,13 @@ export class GameControlBar {
     }
   }
 
+  /** Hide all visuals — DOM takes over */
+  hide(): void {
+    this.graphics.setVisible(false);
+    for (const btn of this.buttons) btn.zone.setInteractive(false);
+    for (const lbl of this.labels) lbl.setVisible(false);
+  }
+
   destroy(): void {
     this.graphics.destroy();
     for (const btn of this.buttons) btn.zone.destroy();

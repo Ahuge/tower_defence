@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { getCanvasWidth } from '../config';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
+import { goToMenu } from '../ui/navigation';
 
 // In-app changelog — recent changes shown to the player
 const CHANGELOG_ENTRIES = [
@@ -366,7 +367,7 @@ export class ChangelogScene extends Phaser.Scene {
     const backBtn = this.add.text(UIScale.space(50), UIScale.space(25), '[ Back ]', {
       fontSize: UIScale.font(14), color: '#888888', fontFamily: 'monospace',
     }).setInteractive({ useHandCursor: true });
-    backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    backBtn.on('pointerdown', () => goToMenu());
 
     // Scrollable content
     const contentY = UIScale.space(65);

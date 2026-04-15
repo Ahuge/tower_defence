@@ -21,13 +21,14 @@ export class HeroLeakHandler implements LeakHandler {
   }
 
   onCreepLeaked(creep: Creep): number {
-    // Convert TD creep to arena creep data — carry over tower damage
+    // Convert TD creep to arena creep data — carry over tower damage and sprite info
     this.arenaManager.spawnArenaCreep({
       hp: Math.round(creep.hp),
       speed: creep.baseSpeed * 0.5,
       isBoss: creep.isBoss,
       color: creep.color,
       size: creep.size,
+      creepTypeId: creep.creepTypeId,
     });
 
     const label = creep.isBoss ? 'BOSS' : 'Creep';

@@ -1,7 +1,37 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
-const C={
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by tBase() and base-related helpers
+export const C_base={
+  BCYN:'#44ffdd',BLK:'#000a0a',CYAN:'#00ffcc',DARK:'#001a1a',
+  DKNEON:'#009955',DKTEAL:'#002a2a',SCRN:'#003333',TEAL:'#005544',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  CYAN:'#00ffcc',BCYN:'#44ffdd',LTCYN:'#88ffee',PLCYN:'#ccffee',
+  MAG:'#ff00ff',LTMAG:'#ff66ff',PAMAG:'#ffaaff',DKMAG:'#aa00aa',DPMAG:'#660066',
+  DARK:'#001a1a',SCRN:'#003333',TEAL:'#005544',DKTEAL:'#002a2a',
+  NEON:'#00ff88',DKNEON:'#009955',LTNEON:'#66ffaa',
+  GLD:'#ffcc00',DKGLD:'#aa8800',LTGLD:'#ffee88',
+  WHITE:'#ffffff',GRAY:'#446666',DKGRAY:'#1a3333',
+  RED:'#ff3344',DKRED:'#992233',
+  BLK:'#000a0a',VOID:'#000000',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  CYAN:'#00ffcc',BCYN:'#44ffdd',LTCYN:'#88ffee',PLCYN:'#ccffee',
+  MAG:'#ff00ff',DKMAG:'#aa00aa',
+  DARK:'#001a1a',SCRN:'#003333',DKTEAL:'#002a2a',
+  NEON:'#00ff88',DKNEON:'#009955',LTNEON:'#66ffaa',
+  WHITE:'#ffffff',BLK:'#000a0a',VOID:'#000000',
+};
+
+// Unified palette (backward compat — union of all three)
+export const C={
   CYAN:'#00ffcc',BCYN:'#44ffdd',LTCYN:'#88ffee',PLCYN:'#ccffee',
   MAG:'#ff00ff',LTMAG:'#ff66ff',PAMAG:'#ffaaff',DKMAG:'#aa00aa',DPMAG:'#660066',
   DARK:'#001a1a',SCRN:'#003333',TEAL:'#005544',DKTEAL:'#002a2a',
@@ -29,44 +59,44 @@ const T_ROWS=T_MAX_LVL*4; // 20 rows total
 const T_STATES_PER_LVL=4; // idle, charge, fire, cooldown
 
 function tBase(p,b,topY,w,glow,lvl=1){
-  const cx=16;
+  const B=C_base,cx=16;
   // Server rack / circuit board base — grows with level
   const extra=Math.min(lvl-1,4);
   const bw=w+extra*2;
   for(let i=0;i<10+extra;i++){
     const cw=bw-6+Math.floor(i*0.8),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.SCRN:i<5?C.DKTEAL:i<8?C.DARK:C.BLK);
+    b(sx,topY+i,cw,1,i<2?B.SCRN:i<5?B.DKTEAL:i<8?B.DARK:B.BLK);
   }
-  b(cx-Math.floor((bw-6)/2),topY,bw-6,1,C.TEAL);
+  b(cx-Math.floor((bw-6)/2),topY,bw-6,1,B.TEAL);
   // Circuit trace glow nodes — more at higher levels
-  p(cx-3,topY+3,glow>1?C.BCYN:C.CYAN);p(cx-2,topY+4,glow>1?C.BCYN:C.CYAN);
-  p(cx-2,topY+5,glow>0?C.CYAN:C.DKNEON);p(cx-3,topY+6,C.DKTEAL);
-  b(cx-Math.floor((bw-2)/2),topY+9,bw-2,1,C.BLK);
-  p(cx-5,topY+4,glow>0?C.CYAN:C.SCRN);p(cx+3,topY+5,glow>0?C.CYAN:C.SCRN);
-  p(cx-4,topY+6,C.SCRN);p(cx+4,topY+4,C.SCRN);
-  if(glow>0){b(cx-6,topY+7,3,1,C.DKNEON);b(cx+4,topY+7,3,1,C.DKNEON);}
-  if(glow>1){p(cx-4,topY+2,C.DKTEAL);p(cx+2,topY+3,C.DKTEAL);}
+  p(cx-3,topY+3,glow>1?B.BCYN:B.CYAN);p(cx-2,topY+4,glow>1?B.BCYN:B.CYAN);
+  p(cx-2,topY+5,glow>0?B.CYAN:B.DKNEON);p(cx-3,topY+6,B.DKTEAL);
+  b(cx-Math.floor((bw-2)/2),topY+9,bw-2,1,B.BLK);
+  p(cx-5,topY+4,glow>0?B.CYAN:B.SCRN);p(cx+3,topY+5,glow>0?B.CYAN:B.SCRN);
+  p(cx-4,topY+6,B.SCRN);p(cx+4,topY+4,B.SCRN);
+  if(glow>0){b(cx-6,topY+7,3,1,B.DKNEON);b(cx+4,topY+7,3,1,B.DKNEON);}
+  if(glow>1){p(cx-4,topY+2,B.DKTEAL);p(cx+2,topY+3,B.DKTEAL);}
   // Extra circuit nodes for higher levels
   if(lvl>=3){
-    p(cx-6,topY+5,C.DKNEON);p(cx+5,topY+6,C.DKNEON);
-    if(glow>0){p(cx-7,topY+4,C.CYAN);p(cx+6,topY+5,C.CYAN);}
+    p(cx-6,topY+5,B.DKNEON);p(cx+5,topY+6,B.DKNEON);
+    if(glow>0){p(cx-7,topY+4,B.CYAN);p(cx+6,topY+5,B.CYAN);}
   }
   if(lvl>=4){
-    b(cx-8,topY+8,2,1,C.DKTEAL);b(cx+7,topY+8,2,1,C.DKTEAL);
-    p(cx-5,topY+2,glow>0?C.CYAN:C.SCRN);p(cx+4,topY+2,glow>0?C.CYAN:C.SCRN);
+    b(cx-8,topY+8,2,1,B.DKTEAL);b(cx+7,topY+8,2,1,B.DKTEAL);
+    p(cx-5,topY+2,glow>0?B.CYAN:B.SCRN);p(cx+4,topY+2,glow>0?B.CYAN:B.SCRN);
   }
   if(lvl>=5){
-    p(cx-7,topY+3,C.BCYN);p(cx+6,topY+3,C.BCYN);
-    b(cx-9,topY+6,2,1,C.DKNEON);b(cx+8,topY+6,2,1,C.DKNEON);
+    p(cx-7,topY+3,B.BCYN);p(cx+6,topY+3,B.BCYN);
+    b(cx-9,topY+6,2,1,B.DKNEON);b(cx+8,topY+6,2,1,B.DKNEON);
   }
 }
 
 function tCircuit(p,x1,y1,x2,y2,col,bright){
   const dy=y2-y1,dx=x2-x1;
   const midY=y1+Math.round(dy/2);
-  for(let y=y1;y!==midY;y+=Math.sign(dy))p(x1,y,bright?C.BCYN:col);
-  for(let x=x1;x!==x2;x+=Math.sign(dx))p(x,midY,bright?C.BCYN:col);
-  for(let y=midY;y!==y2;y+=Math.sign(dy))p(x2,y,bright?C.BCYN:col);
+  for(let y=y1;y!==midY;y+=Math.sign(dy))p(x1,y,bright?C_base.BCYN:col);
+  for(let x=x1;x!==x2;x+=Math.sign(dx))p(x,midY,bright?C_base.BCYN:col);
+  for(let y=midY;y!==y2;y+=Math.sign(dy))p(x2,y,bright?C_base.BCYN:col);
 }
 
 function tAntenna(p,b,x,y,h,w,c1,c2,ct){
@@ -76,9 +106,19 @@ function tAntenna(p,b,x,y,h,w,c1,c2,ct){
   }
 }
 
+// ===== DRAW BASE (standalone pedestal) =====
+export function drawBase(ctx,col,row){
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_STATES_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  const baseWidths=[18,22,20,20,24,20,26];
+  const baseYs=[22,23,23,22,24,23,25];
+  tBase(p,b,baseYs[col]??22,baseWidths[col]??20,glow,level);
+}
+
 // ===== TOWERS (7 cols × 20 rows at 64×64) =====
 // Each tower drawn per (state, level). Towers with fewer levels leave higher-level rows empty.
-function drawTowers(ctx){
+export function drawTowers(ctx){
   const fns=[
     // 0: Ping — Small antenna/radar dish with pulse rings (4 levels)
     (c,o,s,lvl)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -564,7 +604,7 @@ function drawTowers(ctx){
 // ===== PROJECTILES (7×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx){
+export function drawProjectiles(ctx){
   const fns=[
     // 0: Ping — cyan pulse ring → ring dissipate
     (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -765,7 +805,7 @@ function drawProjectiles(ctx){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx){
+export function drawHero(ctx){
   // Duelist — sleek cyber-ninja with glowing blade, fitted bodysuit with circuit patterns, visor/mask
   // dir: 0=down,1=side,2=up | type: idle/walk/atk | frame: variant
   function drawChar(c,o,dir,opts={}){

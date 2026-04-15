@@ -1,7 +1,36 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
-const C={
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by tBase()
+export const C_base={
+  DKAMB:'#332200',DKGLD:'#aa8822',DPGLD:'#664400',GOLD:'#ffcc44',LTGLD:'#ffee88',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  GOLD:'#ffcc44',LTGLD:'#ffee88',DKGLD:'#aa8822',DPGLD:'#664400',DKAMB:'#332200',
+  RED:'#ff4444',DKRED:'#cc2222',LTRED:'#ff7766',PAPRED:'#ffaaaa',
+  GRN:'#44ff44',DKGRN:'#22aa22',LTGRN:'#88ff88',PAPGRN:'#bbffbb',
+  BLUE:'#4488ff',DKBLU:'#2255bb',LTBLU:'#77bbff',PAPBLU:'#aaddff',
+  MAG:'#ff44ff',DKMAG:'#aa22aa',LTMAG:'#ff88ff',PAPMAG:'#ffbbff',
+  WHITE:'#ffffff',CREAM:'#fff8dd',AMBER:'#cc9933',
+  GRAY:'#888866',DKGRAY:'#444433',BG:'#1a1100',SHADOW:'#110800',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  GOLD:'#ffcc44',LTGLD:'#ffee88',DKGLD:'#aa8822',DPGLD:'#664400',
+  RED:'#ff4444',DKRED:'#cc2222',LTRED:'#ff7766',PAPRED:'#ffaaaa',
+  GRN:'#44ff44',DKGRN:'#22aa22',LTGRN:'#88ff88',
+  BLUE:'#4488ff',DKBLU:'#2255bb',LTBLU:'#77bbff',
+  MAG:'#ff44ff',DKMAG:'#aa22aa',LTMAG:'#ff88ff',
+  WHITE:'#ffffff',
+};
+
+// Unified palette (backward compat — union of all three)
+export const C={
   GOLD:'#ffcc44',LTGLD:'#ffee88',DKGLD:'#aa8822',DPGLD:'#664400',DKAMB:'#332200',
   RED:'#ff4444',DKRED:'#cc2222',LTRED:'#ff7766',PAPRED:'#ffaaaa',
   GRN:'#44ff44',DKGRN:'#22aa22',LTGRN:'#88ff88',PAPGRN:'#bbffbb',
@@ -23,31 +52,31 @@ const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 // Resonating base with tuning fork prongs and sound wave rings
 function tBase(p:any,b:any,topY:number,w:number,glow:number,tint?:string){
-  const cx=16;
+  const B=C_base,cx=16;
   // Platform
   for(let i=0;i<8;i++){
     const cw=w-4+Math.floor(i*0.6),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.GOLD:i<4?C.DKGLD:i<6?C.DPGLD:C.DKAMB);
+    b(sx,topY+i,cw,1,i<2?B.GOLD:i<4?B.DKGLD:i<6?B.DPGLD:B.DKAMB);
   }
-  b(cx-Math.floor((w-4)/2),topY,w-4,1,C.LTGLD);
+  b(cx-Math.floor((w-4)/2),topY,w-4,1,B.LTGLD);
   // Tuning fork prongs
   const fh=4;
-  b(cx-3,topY-fh,1,fh,glow>1?C.LTGLD:C.GOLD);
-  b(cx+2,topY-fh,1,fh,glow>1?C.LTGLD:C.GOLD);
-  b(cx-2,topY-1,4,1,C.DKGLD);// crossbar
+  b(cx-3,topY-fh,1,fh,glow>1?B.LTGLD:B.GOLD);
+  b(cx+2,topY-fh,1,fh,glow>1?B.LTGLD:B.GOLD);
+  b(cx-2,topY-1,4,1,B.DKGLD);// crossbar
   // Resonance rings on base
   if(glow>0){
-    const rc=tint||C.GOLD;
+    const rc=tint||B.GOLD;
     p(cx-5,topY+2,rc);p(cx+4,topY+2,rc);
     p(cx-6,topY+3,rc);p(cx+5,topY+3,rc);
   }
   if(glow>1){
-    const rc=tint||C.LTGLD;
+    const rc=tint||B.LTGLD;
     p(cx-7,topY+1,rc);p(cx+6,topY+1,rc);
     p(cx-8,topY+3,rc);p(cx+7,topY+3,rc);
   }
   // Base bottom edge
-  b(cx-Math.floor((w-2)/2),topY+7,w-2,1,C.DKAMB);
+  b(cx-Math.floor((w-2)/2),topY+7,w-2,1,B.DKAMB);
 }
 
 // Draw a crystal spire
@@ -92,8 +121,23 @@ const T_TOTAL_ROWS=T_MAX_LVL*T_STATES_PER_LVL; // 24
 // Level-based intensity helpers (level 1-6, returns 0.0-1.0)
 function lvlF(level:number,maxLvl:number){return Math.min(1,(level-1)/Math.max(1,maxLvl-1));}
 
+// ===== DRAW BASE (standalone pedestal) =====
+export function drawBase(ctx:any,col:number,row:number){
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_STATES_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  const maxLvls=[6,4,3,3,4,3,1];
+  const baseWidthBases=[14,16,16,16,16,18,24];
+  const baseWidthScales=[6,4,4,4,4,4,0];
+  const baseYs=[22,22,22,22,22,22,23];
+  const tints=[undefined,C.RED,C.GRN,C.BLUE,C.MAG,undefined,undefined];
+  const f=lvlF(level,maxLvls[col]??1);
+  const baseW=baseWidthBases[col]+Math.round(f*(baseWidthScales[col]??0));
+  tBase(p,b,baseYs[col]??22,baseW,glow,tints[col]);
+}
+
 // ===== TOWERS (7×24 at 64×64, 6 levels × 4 states) =====
-function drawTowers(ctx:any){
+export function drawTowers(ctx:any){
   const fns=[
     // 0: Resonator — basic gold crystal with sound waves (6 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -423,7 +467,7 @@ function drawTowers(ctx:any){
 // ===== PROJECTILES (7×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:any){
+export function drawProjectiles(ctx:any){
   const fns=[
     // 0: Resonator — golden sound wave → gold burst
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -590,7 +634,7 @@ function drawProjectiles(ctx:any){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:any){
+export function drawHero(ctx:any){
   // Ranger hero — agile archer with golden bow, light leather armor, green hood/cloak
   function drawChar(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

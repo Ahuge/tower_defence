@@ -2,6 +2,8 @@
  * SpriteManager — handles loading and creating sprites for factions that have art.
  * Factions without spritesheets continue using Graphics primitives.
  */
+import { SkinManager } from './monetization/SkinManager';
+import { FactionId } from '../data/Factions';
 
 /** Tower sprite animation config */
 export interface TowerSpriteConfig {
@@ -217,11 +219,51 @@ export function getHeroSheetKey(heroId: string): string | undefined {
   return HERO_SPRITE_SHEETS[heroId];
 }
 
+/** Map tower ID prefix to faction ID (e.g. 'arcane' → 'arcane', 'mech' → 'mechanical') */
+export const TOWER_PREFIX_TO_FACTION: Record<string, FactionId> = {
+  arcane:'arcane', mech:'mechanical', nature:'nature', void:'void',
+  mil:'military', alien:'aliens', cyber:'cypherpunk', infernal:'infernal',
+  celestial:'celestial', psi:'psionic', harmonic:'harmonic',
+};
+
+/** Get the faction ID for a tower ID */
+export function getTowerFaction(towerId: string): FactionId | undefined {
+  return TOWER_PREFIX_TO_FACTION[towerId.split('_')[0]];
+}
+
+/** Known skin asset suffixes per faction directory. Add entries here when new skins are created. */
+const SKIN_ASSETS: Record<string, string[]> = {
+  arcane: ['_corrupted', '_sandstone', '_moonstone', '_blood_magic'],
+  mechanical: ['_gilded', '_factory_fresh'],
+  nature: ['_autumn'],
+  void: ['_whiteout'],
+  military: ['_desert_storm', '_arctic'],
+  aliens: ['_albino'],
+  cypherpunk: ['_cyber_sakura', '_redline', '_offline'],
+  infernal: ['_frostfire'],
+  harmonic: ['_heavy_metal', '_neon_rave', '_synthwave'],
+  celestial: ['_fallen'],
+  psionic: ['_emerald'],
+};
+
 export function preloadSprites(scene: Phaser.Scene): void {
   for (const f of FACTION_SHEETS) {
     scene.load.spritesheet(f.towers, `assets/${f.dir}/${f.dir}_towers.png`, { frameWidth: 64, frameHeight: 64 });
     scene.load.spritesheet(f.proj, `assets/${f.dir}/${f.dir}_projectiles.png`, { frameWidth: 32, frameHeight: 32 });
     scene.load.spritesheet(f.hero, `assets/${f.dir}/${f.dir}_hero.png`, { frameWidth: 64, frameHeight: 128 });
+
+    // Load skin variant spritesheets
+    const skins = SKIN_ASSETS[f.dir] ?? [];
+    for (const suffix of skins) {
+      const towerKey = f.towers + suffix;
+      const projKey = f.proj + suffix;
+      if (!scene.textures.exists(towerKey)) {
+        scene.load.spritesheet(towerKey, `assets/${f.dir}/${f.dir}_towers${suffix}.png`, { frameWidth: 64, frameHeight: 64 });
+      }
+      if (!scene.textures.exists(projKey)) {
+        scene.load.spritesheet(projKey, `assets/${f.dir}/${f.dir}_projectiles${suffix}.png`, { frameWidth: 32, frameHeight: 32 });
+      }
+    }
   }
 
   // Mobile unit mini-spritesheets (128×128, 32×32 cells)
@@ -234,6 +276,17 @@ export function preloadSprites(scene: Phaser.Scene): void {
       scene.load.spritesheet(cfg.sheetKey, `assets/${faction}/${name}_mobile.png`, {
         frameWidth: cfg.frameWidth, frameHeight: cfg.frameHeight,
       });
+
+      // Load skinned mobile unit spritesheets
+      const mobileSkins = SKIN_ASSETS[faction] ?? [];
+      for (const suffix of mobileSkins) {
+        const skinKey = cfg.sheetKey + suffix;
+        if (!scene.textures.exists(skinKey)) {
+          scene.load.spritesheet(skinKey, `assets/${faction}/${name}_mobile${suffix}.png`, {
+            frameWidth: cfg.frameWidth, frameHeight: cfg.frameHeight,
+          });
+        }
+      }
     }
   }
 }
@@ -293,22 +346,31 @@ export function createSpriteAnimations(scene: Phaser.Scene): void {
 
   // Mobile unit walk-cycle animations
   // Sheet: 4 cols × 4 rows. Rows: 0=down, 1=right, 2=up, 3=attack
+  // We also generate parallel anim sets per equipped skin variant so
+  // sprite.play() doesn't reset the texture back to the base sheet.
   const dirNames = ['down', 'right', 'up', 'attack'];
   for (const [towerId, cfg] of Object.entries(MOBILE_SPRITE_CONFIGS)) {
-    if (!scene.textures.exists(cfg.sheetKey)) continue;
-    for (let row = 0; row < 4; row++) {
-      const animKey = `mobile_${towerId}_${dirNames[row]}`;
-      if (scene.anims.exists(animKey)) continue;
-      const frames: Phaser.Types.Animations.AnimationFrame[] = [];
-      for (let col = 0; col < cfg.cols; col++) {
-        frames.push({ key: cfg.sheetKey, frame: row * cfg.cols + col });
+    const faction = towerId.startsWith('mil_') ? 'military'
+      : towerId.startsWith('alien_') ? 'aliens'
+      : towerId.startsWith('infernal_') ? 'infernal' : '';
+    const suffixes = ['', ...(SKIN_ASSETS[faction] ?? [])];
+    for (const suffix of suffixes) {
+      const sheetKey = cfg.sheetKey + suffix;
+      if (!scene.textures.exists(sheetKey)) continue;
+      for (let row = 0; row < 4; row++) {
+        const animKey = `mobile_${towerId}${suffix}_${dirNames[row]}`;
+        if (scene.anims.exists(animKey)) continue;
+        const frames: Phaser.Types.Animations.AnimationFrame[] = [];
+        for (let col = 0; col < cfg.cols; col++) {
+          frames.push({ key: sheetKey, frame: row * cfg.cols + col });
+        }
+        scene.anims.create({
+          key: animKey,
+          frames,
+          frameRate: row === 3 ? 10 : 8, // attack slightly faster
+          repeat: row === 3 ? 0 : -1, // attack plays once, walk/idle loop
+        });
       }
-      scene.anims.create({
-        key: animKey,
-        frames,
-        frameRate: row === 3 ? 10 : 8, // attack slightly faster
-        repeat: row === 3 ? 0 : -1, // attack plays once, walk/idle loop
-      });
     }
   }
 }
@@ -319,26 +381,52 @@ export function createSpriteAnimations(scene: Phaser.Scene): void {
 export function createTowerSprite(
   scene: Phaser.Scene, towerId: string, x: number, y: number,
 ): Phaser.GameObjects.Sprite | null {
-  // Mobile unit — use separate mini-spritesheet
+  // Mobile unit — use separate mini-spritesheet (with skin resolution)
   const mobileCfg = MOBILE_SPRITE_CONFIGS[towerId];
-  if (mobileCfg && scene.textures.exists(mobileCfg.sheetKey)) {
-    const sprite = scene.add.sprite(x, y, mobileCfg.sheetKey, 0);
-    sprite.setDepth(5);
-    // 32×32 sprite → scale to ~24px (slightly smaller than tiles, they're units not buildings)
-    sprite.setScale(24 / 32);
-    sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-    // Start idle animation
-    const idleAnim = `mobile_${towerId}_down`;
-    if (scene.anims.exists(idleAnim)) sprite.play(idleAnim);
-    return sprite;
+  if (mobileCfg) {
+    const mfid = getTowerFaction(towerId);
+    let mobileKey = mobileCfg.sheetKey;
+    let activeSuffix = '';
+    if (mfid) {
+      const suffix = SkinManager.getSkinSuffix(mfid, towerId);
+      if (suffix) {
+        const skinnedKey = mobileCfg.sheetKey + suffix;
+        if (scene.textures.exists(skinnedKey)) {
+          mobileKey = skinnedKey;
+          activeSuffix = suffix;
+        }
+      }
+    }
+    if (scene.textures.exists(mobileKey)) {
+      const sprite = scene.add.sprite(x, y, mobileKey, 0);
+      sprite.setDepth(5);
+      sprite.setScale(24 / 32);
+      sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      // Stash the suffix so updateMobileTowerSprite can pick the matching
+      // anim set (frames in each anim are bound to a specific texture key).
+      sprite.setData('skinSuffix', activeSuffix);
+      const idleAnim = `mobile_${towerId}${activeSuffix}_down`;
+      if (scene.anims.exists(idleAnim)) sprite.play(idleAnim);
+      return sprite;
+    }
   }
 
   // Static tower
   const config = TOWER_SPRITE_CONFIGS[towerId];
   if (!config) return null;
 
+  // Resolve skinned sheet key (per-tower first, then faction-wide)
+  const fid = getTowerFaction(towerId);
+  let sheetKey = config.sheetKey;
+  if (fid) {
+    const skinned = SkinManager.getTowerSheetKey(fid, towerId);
+    if (skinned && skinned !== sheetKey && scene.textures.exists(skinned)) {
+      sheetKey = skinned;
+    }
+  }
+
   const frameIndex = config.rows.idle * config.totalCols + config.column;
-  const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
+  const sprite = scene.add.sprite(x, y, sheetKey, frameIndex);
   sprite.setDepth(5);
 
   // Scale sprite to fill ~1.3 tiles (64px sprite on 28px grid)
@@ -382,10 +470,13 @@ export function updateMobileTowerSprite(
 ): void {
   if (!(towerId in MOBILE_SPRITE_CONFIGS)) return;
 
+  // Suffix is stashed by createTowerSprite so we play the skin's anim set
+  // instead of the base — playing a base anim would reset the texture.
+  const suffix = (sprite.getData('skinSuffix') as string | undefined) ?? '';
   const isMoving = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5;
 
   if (isAttacking) {
-    const key = `mobile_${towerId}_attack`;
+    const key = `mobile_${towerId}${suffix}_attack`;
     if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
     return;
   }
@@ -403,11 +494,11 @@ export function updateMobileTowerSprite(
       dir = dy > 0 ? 'down' : 'up';
     }
 
-    const key = `mobile_${towerId}_${dir}`;
+    const key = `mobile_${towerId}${suffix}_${dir}`;
     if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
   } else {
     // Idle — show first frame of down animation
-    const key = `mobile_${towerId}_down`;
+    const key = `mobile_${towerId}${suffix}_down`;
     if (sprite.anims.currentAnim?.key !== key) sprite.play(key);
   }
 }
@@ -421,8 +512,18 @@ export function createProjectileSprite(
   const config = PROJECTILE_SPRITE_CONFIGS[towerId];
   if (!config) return null;
 
+  // Resolve skinned projectile sheet key
+  const pfid = getTowerFaction(towerId);
+  let projSheetKey = config.sheetKey;
+  if (pfid) {
+    const skinned = SkinManager.getProjectileSheetKey(pfid, towerId);
+    if (skinned && skinned !== projSheetKey && scene.textures.exists(skinned)) {
+      projSheetKey = skinned;
+    }
+  }
+
   const frameIndex = config.travelRows[0] * config.totalCols + config.column;
-  const sprite = scene.add.sprite(x, y, config.sheetKey, frameIndex);
+  const sprite = scene.add.sprite(x, y, projSheetKey, frameIndex);
   sprite.setDepth(15);
 
   // Scale projectile — larger for flame/splash towers
@@ -434,8 +535,30 @@ export function createProjectileSprite(
   const scale = isFlame ? 38 / 32 : isUltimate ? 28 / 32 : 20 / 32;
   sprite.setScale(scale);
 
-  // Start travel animation
-  const travelKey = `proj_${towerId}_travel`;
+  // Start travel animation — use skinned animation if the sheet was swapped
+  let travelKey = `proj_${towerId}_travel`;
+  if (projSheetKey !== config.sheetKey) {
+    // Create skinned animation variants if they don't exist
+    const skinnedTravelKey = `proj_${towerId}_${projSheetKey}_travel`;
+    const skinnedImpactKey = `proj_${towerId}_${projSheetKey}_impact`;
+    if (!scene.anims.exists(skinnedTravelKey)) {
+      scene.anims.create({
+        key: skinnedTravelKey,
+        frames: config.travelRows.map(row => ({ key: projSheetKey, frame: row * config.totalCols + config.column })),
+        frameRate: 6, repeat: -1,
+      });
+    }
+    if (!scene.anims.exists(skinnedImpactKey)) {
+      scene.anims.create({
+        key: skinnedImpactKey,
+        frames: config.impactRows.map(row => ({ key: projSheetKey, frame: row * config.totalCols + config.column })),
+        frameRate: 12, repeat: 0,
+      });
+    }
+    travelKey = skinnedTravelKey;
+    // Tag the sprite so playProjectileImpact can find the right animation
+    (sprite as any)._skinnedImpactKey = skinnedImpactKey;
+  }
   sprite.play(travelKey);
 
   return sprite;
@@ -452,13 +575,13 @@ export function playProjectileImpact(
   sprite: Phaser.GameObjects.Sprite, towerId: string, splashRadius?: number,
   scene?: Phaser.Scene,
 ): void {
-  const impactKey = `proj_${towerId}_impact`;
+  // Use skinned impact animation if available (tagged by createProjectileSprite)
+  const impactKey = (sprite as any)._skinnedImpactKey ?? `proj_${towerId}_impact`;
 
   // Ensure crisp pixel art scaling (not blurry interpolation)
   sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
   if (splashRadius && splashRadius > 40) {
-    // Scale impact to match AoE diameter — NEAREST filter keeps pixels crisp
     const scale = (splashRadius * 2) / 32;
     sprite.setScale(scale);
   } else {

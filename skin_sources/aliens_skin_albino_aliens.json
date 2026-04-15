@@ -1,0 +1,40 @@
+{
+  "factionId": "aliens",
+  "skinName": "Albino Aliens",
+  "suffix": "albino_aliens",
+  "towerPalettes": {
+    "-1": {
+      "#88ff44": "#ffcccc",
+      "#aaff66": "#ffdddd",
+      "#ffff44": "#ffffdd",
+      "#112200": "#221111",
+      "#445522": "#887777",
+      "#667744": "#aa9999",
+      "#556633": "#998888",
+      "#334411": "#665555",
+      "#66dd22": "#ee9999",
+      "#44aa11": "#cc7777",
+      "#227700": "#994444",
+      "#115500": "#662222",
+      "#bbff88": "#ffddcc",
+      "#ccffaa": "#ffeeee",
+      "#eeffdd": "#fff8f8",
+      "#ccff44": "#ffddbb",
+      "#aaaa00": "#cc9988",
+      "#ffff88": "#ffffee",
+      "#ffffcc": "#fffff8",
+      "#77cc22": "#dd8888",
+      "#558811": "#aa5555",
+      "#aaffaa": "#ffcccc",
+      "#554422": "#554444",
+      "#332211": "#332222",
+      "#665533": "#665555",
+      "#ff4444": "#ff4444"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#ffcccc",
+    "glowColor": "#ffcccc66",
+    "bgTint": "#1a1215"
+  }
+}

@@ -1,7 +1,40 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
-const C={
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by tBase() and base-related helpers
+export const C_base={
+  BRPUR:'#cc88ee',DKPUR:'#553388',LTPUR:'#ddaaff',MDPUR:'#aa66cc',
+  MIND2:'#aa66cc',MIND3:'#8855bb',PLPUR:'#eeccff',WHITE:'#ffffff',WHLAV:'#f5ddff',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  DKPSY:'#2a1544',DPPUR:'#3d2255',DKPUR:'#553388',MDPUR:'#aa66cc',
+  BRPUR:'#cc88ee',LTPUR:'#ddaaff',PLPUR:'#eeccff',WHLAV:'#f5ddff',
+  PINK:'#ff44aa',LTPNK:'#ff77cc',PAPNK:'#ffaadd',DKPNK:'#aa2277',DPNK:'#661144',
+  CYAN:'#88ddff',LTCYN:'#bbf0ff',DKCYN:'#447799',
+  MIND:'#cc88ee',MIND2:'#aa66cc',MIND3:'#8855bb',
+  WHITE:'#ffffff',GRAY:'#776688',DKGRAY:'#443355',
+  VOID:'#1a0e2e',SHAD:'#221440',
+  GOLD:'#ffcc00',DKGLD:'#aa8800',LTGLD:'#ffee88',
+  SKIN:'#e8c8a0',DKSKIN:'#c4a47a',LTSKIN:'#f0dcc0',
+  ROBE:'#ddddcc',DKROBE:'#aaaaaa',LTROBE:'#f0f0e8',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  DKPSY:'#2a1544',DPPUR:'#3d2255',DKPUR:'#553388',MDPUR:'#aa66cc',
+  BRPUR:'#cc88ee',LTPUR:'#ddaaff',PLPUR:'#eeccff',WHLAV:'#f5ddff',
+  PINK:'#ff44aa',PAPNK:'#ffaadd',DKPNK:'#aa2277',DPNK:'#661144',
+  MIND2:'#aa66cc',MIND3:'#8855bb',
+  WHITE:'#ffffff',
+  SHAD:'#221440',
+};
+
+// Unified palette (backward compat — union of all three)
+export const C={
   DKPSY:'#2a1544',DPPUR:'#3d2255',DKPUR:'#553388',MDPUR:'#aa66cc',
   BRPUR:'#cc88ee',LTPUR:'#ddaaff',PLPUR:'#eeccff',WHLAV:'#f5ddff',
   PINK:'#ff44aa',LTPNK:'#ff77cc',PAPNK:'#ffaadd',DKPNK:'#aa2277',DPNK:'#661144',
@@ -25,23 +58,23 @@ const mk=(c:any,o:number[],gw:number,gh:number,ps:number)=>{
 const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 function tBase(p:any,b:any,topY:number,w:number,glow:number){
-  const cx=16;
+  const B=C_base,cx=16;
   // Clean crystalline pedestal — geometric stepped platform
   for(let i=0;i<10;i++){
     const cw=w-6+Math.floor(i*0.6),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.PLPUR:i<4?C.LTPUR:i<7?C.BRPUR:C.MDPUR);
+    b(sx,topY+i,cw,1,i<2?B.PLPUR:i<4?B.LTPUR:i<7?B.BRPUR:B.MDPUR);
   }
-  b(cx-Math.floor((w-6)/2),topY,w-6,1,C.WHLAV);
+  b(cx-Math.floor((w-6)/2),topY,w-6,1,B.WHLAV);
   // Geometric energy core in base — clean diamond
-  p(cx,topY+2,glow>1?C.WHITE:C.PLPUR);p(cx-1,topY+3,glow>1?C.WHLAV:C.LTPUR);
-  p(cx+1,topY+3,glow>1?C.WHLAV:C.LTPUR);p(cx,topY+4,glow>0?C.LTPUR:C.BRPUR);
+  p(cx,topY+2,glow>1?B.WHITE:B.PLPUR);p(cx-1,topY+3,glow>1?B.WHLAV:B.LTPUR);
+  p(cx+1,topY+3,glow>1?B.WHLAV:B.LTPUR);p(cx,topY+4,glow>0?B.LTPUR:B.BRPUR);
   // Symmetric energy lines
-  p(cx-3,topY+4,C.MIND3);p(cx+3,topY+4,C.MIND3);
-  p(cx-4,topY+6,glow>0?C.MIND2:C.MIND3);p(cx+4,topY+6,glow>0?C.MIND2:C.MIND3);
+  p(cx-3,topY+4,B.MIND3);p(cx+3,topY+4,B.MIND3);
+  p(cx-4,topY+6,glow>0?B.MIND2:B.MIND3);p(cx+4,topY+6,glow>0?B.MIND2:B.MIND3);
   // Clean energy channels
-  p(cx-2,topY+5,glow>1?C.PLPUR:C.LTPUR);p(cx+2,topY+5,glow>1?C.PLPUR:C.LTPUR);
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.DKPUR);
-  if(glow>0){p(cx-5,topY+3,C.MIND3);p(cx+5,topY+3,C.MIND3);}
+  p(cx-2,topY+5,glow>1?B.PLPUR:B.LTPUR);p(cx+2,topY+5,glow>1?B.PLPUR:B.LTPUR);
+  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,B.DKPUR);
+  if(glow>0){p(cx-5,topY+3,B.MIND3);p(cx+5,topY+3,B.MIND3);}
 }
 
 function tEnergyBeam(p:any,x1:number,y1:number,x2:number,y2:number,col:string,bright:boolean){
@@ -51,7 +84,7 @@ function tEnergyBeam(p:any,x1:number,y1:number,x2:number,y2:number,col:string,br
     const t=i/Math.max(1,steps);
     const xx=Math.round(x1+dx*t);
     const yy=Math.round(y1+dy*t);
-    p(xx,yy,bright&&i%2===0?C.PLPUR:col);
+    p(xx,yy,bright&&i%2===0?C_base.PLPUR:col);
   }
 }
 
@@ -62,7 +95,7 @@ function tEnergyLink(p:any,x1:number,y1:number,x2:number,y2:number,col:string,br
     const t=i/Math.max(1,steps);
     const xx=Math.round(x1+dx*t);
     const yy=Math.round(y1+dy*t);
-    p(xx,yy,bright&&i%3===0?C.PLPUR:col);
+    p(xx,yy,bright&&i%3===0?C_base.PLPUR:col);
   }
 }
 
@@ -81,11 +114,22 @@ const T_MAX_LEVEL=5;
 const T_STATES_PER_LEVEL=4; // idle, charge, fire, cooldown
 const T_TOTAL_ROWS=T_MAX_LEVEL*T_STATES_PER_LEVEL; // 20
 
+// ===== DRAW BASE (standalone pedestal) =====
+export function drawBase(ctx:any,col:number,row:number){
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_STATES_PER_LEVEL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  const baseWidthBases=[14,16,14,16,12]; // per tower (add lv*2 for actual width)
+  const baseYs=[22,23,24,23,24];
+  const baseW=baseWidthBases[col]+level*2;
+  tBase(p,b,baseYs[col]??22,baseW,glow);
+}
+
 // ===== TOWERS (5×20 at 64×64) =====
 // Layout: 5 cols (towers) × 20 rows (5 levels × 4 states)
 // Row mapping: level L, state S → row = (L-1)*4 + S
 // States: 0=idle, 1=charge, 2=fire, 3=cooldown
-function drawTowers(ctx:any){
+export function drawTowers(ctx:any){
   const fns=[
     // Probe — Floating geometric sensor diamond, true damage, pulsing core (5 levels)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -435,7 +479,7 @@ function drawTowers(ctx:any){
 // ===== PROJECTILES (5×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:any){
+export function drawProjectiles(ctx:any){
   const fns=[
     // Probe: psychic eye beam → mind penetrate flash
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -619,7 +663,7 @@ function drawProjectiles(ctx:any){
 // ===== HERO: MONK (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:any){
+export function drawHero(ctx:any){
   // dir: 0=down,1=side,2=up | type: idle/walk/atk | frame: variant
   function drawChar(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

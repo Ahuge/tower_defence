@@ -1,0 +1,43 @@
+{
+  "factionId": "arcane",
+  "skinName": "Blood Magic",
+  "suffix": "blood_magic",
+  "towerPalettes": {
+    "-1": {
+      "#220044": "#220008",
+      "#331166": "#331122",
+      "#442288": "#662233",
+      "#6644ff": "#cc3344",
+      "#9988ff": "#dd6666",
+      "#bbaaff": "#ee9999",
+      "#cc88ff": "#bb4455",
+      "#dd99ff": "#cc6677",
+      "#eeccff": "#eebbbb",
+      "#223388": "#441122",
+      "#4466cc": "#883344",
+      "#88aaff": "#bb6677",
+      "#bbddff": "#ddaaaa",
+      "#aaddff": "#cc8899",
+      "#6699cc": "#884455",
+      "#cceeff": "#eecccc",
+      "#ffdd44": "#cc2233",
+      "#ffee88": "#dd5555",
+      "#ffffcc": "#ffcccc",
+      "#ccaa22": "#992222",
+      "#ff4422": "#ff2244",
+      "#cc2211": "#aa1133",
+      "#ff7744": "#ff4466",
+      "#ff8833": "#ee3355",
+      "#ffaa55": "#ff6677",
+      "#ffcc00": "#dd2244",
+      "#aa8800": "#881133",
+      "#0a0016": "#0a0004",
+      "#110022": "#110008"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#cc3344",
+    "glowColor": "#cc334466",
+    "bgTint": "#1a0808"
+  }
+}

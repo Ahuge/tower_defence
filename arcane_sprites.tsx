@@ -1,7 +1,47 @@
+// @ts-nocheck
 import { useRef, useEffect, useState } from "react";
 
-// ===== PALETTE =====
-const C={
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by arcaneBase() and tendril/orbit shared helpers
+export const C_base={
+  DVIO:'#220044',DKVIO:'#331166',MDVIO:'#442288',BRVIO:'#6644ff',LTVIO:'#9988ff',
+  LAV:'#cc88ff',PLLAV:'#eeccff',
+  VOID:'#0a0016',SHAD:'#110022',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  // Violet/purple (shared with many towers + nova)
+  DVIO:'#220044',DKVIO:'#331166',MDVIO:'#442288',BRVIO:'#6644ff',LTVIO:'#9988ff',PLVIO:'#bbaaff',
+  LAV:'#cc88ff',LTLAV:'#dd99ff',PLLAV:'#eeccff',
+  // Blue
+  DKBLU:'#223388',MDBLU:'#4466cc',LTBLU:'#88aaff',PLBLU:'#bbddff',
+  // Ice
+  ICE:'#aaddff',DKICE:'#6699cc',LTICE:'#cceeFF',
+  // Yellow/storm
+  YEL:'#ffdd44',LTYEL:'#ffee88',PLYEL:'#ffffcc',DKYEL:'#ccaa22',
+  // Red/fire
+  RED:'#ff4422',DKRED:'#cc2211',LTRED:'#ff7744',ORG:'#ff8833',LTORG:'#ffaa55',
+  // Other
+  WHITE:'#ffffff',
+  VOID:'#0a0016',SHAD:'#110022',DKPUR:'#1a0033',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  BRVIO:'#6644ff',LTVIO:'#9988ff',MDVIO:'#442288',PLLAV:'#eeccff',
+  ICE:'#aaddff',DKICE:'#6699cc',LTICE:'#cceeFF',
+  YEL:'#ffdd44',LTYEL:'#ffee88',PLYEL:'#ffffcc',DKYEL:'#ccaa22',
+  RED:'#ff4422',DKRED:'#cc2211',LTRED:'#ff7744',ORG:'#ff8833',LTORG:'#ffaa55',
+  LAV:'#cc88ff',LTLAV:'#dd99ff',DVIO:'#220044',
+  CYAN:'#00ffcc',DKCYN:'#009977',LTCYN:'#66ffe6',
+  GOLD:'#ffcc00',DKGLD:'#aa8800',LTGLD:'#ffee88',
+  WHITE:'#ffffff',
+};
+
+// Unified palette (backward compat — union of all three)
+export const C={
   DVIO:'#220044',DKVIO:'#331166',MDVIO:'#442288',BRVIO:'#6644ff',LTVIO:'#9988ff',PLVIO:'#bbaaff',
   LAV:'#cc88ff',LTLAV:'#dd99ff',PLLAV:'#eeccff',
   DKBLU:'#223388',MDBLU:'#4466cc',LTBLU:'#88aaff',PLBLU:'#bbddff',
@@ -26,29 +66,30 @@ const mk=(c:CanvasRenderingContext2D,o:number[],gw:number,gh:number,ps:number)=>
 const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 // Shared arcane crystal base — layered crystal pedestal with glowing runes
+// Reads from C_base palette so skin editor can modify pedestal independently
 function arcaneBase(p:(x:number,y:number,cl:string)=>void,b:(x:number,y:number,w:number,h:number,cl:string)=>void,topY:number,w:number,glow:number){
-  const cx=16;
+  const B=C_base,cx=16;
   // Crystal pedestal layers
   for(let i=0;i<8;i++){
     const cw=w-4+Math.floor(i*0.6),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.MDVIO:i<4?C.DKVIO:i<6?C.DVIO:C.SHAD);
+    b(sx,topY+i,cw,1,i<2?B.MDVIO:i<4?B.DKVIO:i<6?B.DVIO:B.SHAD);
   }
   // Top highlight
-  b(cx-Math.floor((w-4)/2),topY,w-4,1,glow>1?C.LTVIO:C.BRVIO);
+  b(cx-Math.floor((w-4)/2),topY,w-4,1,glow>1?B.LTVIO:B.BRVIO);
   // Crystal facets on pedestal
-  p(cx-4,topY+1,glow>0?C.LTVIO:C.MDVIO);p(cx+3,topY+1,glow>0?C.LTVIO:C.MDVIO);
-  p(cx-3,topY+3,C.DKVIO);p(cx+2,topY+3,C.DKVIO);
+  p(cx-4,topY+1,glow>0?B.LTVIO:B.MDVIO);p(cx+3,topY+1,glow>0?B.LTVIO:B.MDVIO);
+  p(cx-3,topY+3,B.DKVIO);p(cx+2,topY+3,B.DKVIO);
   // Rune marks on base
-  p(cx-5,topY+5,glow>1?C.LAV:C.BRVIO);p(cx+4,topY+5,glow>1?C.LAV:C.BRVIO);
-  p(cx-3,topY+6,glow>0?C.LTVIO:C.MDVIO);p(cx+2,topY+6,glow>0?C.LTVIO:C.MDVIO);
+  p(cx-5,topY+5,glow>1?B.LAV:B.BRVIO);p(cx+4,topY+5,glow>1?B.LAV:B.BRVIO);
+  p(cx-3,topY+6,glow>0?B.LTVIO:B.MDVIO);p(cx+2,topY+6,glow>0?B.LTVIO:B.MDVIO);
   // Bottom shadow
-  b(cx-Math.floor(w/2),topY+7,w,1,C.VOID);
+  b(cx-Math.floor(w/2),topY+7,w,1,B.VOID);
   // Floating rune particles
   if(glow>0){
-    p(cx-6,topY+3,C.LAV);p(cx+5,topY+2,C.LAV);
+    p(cx-6,topY+3,B.LAV);p(cx+5,topY+2,B.LAV);
   }
   if(glow>1){
-    p(cx-7,topY+1,C.PLLAV);p(cx+6,topY+1,C.PLLAV);
+    p(cx-7,topY+1,B.PLLAV);p(cx+6,topY+1,B.PLLAV);
   }
 }
 
@@ -59,7 +100,7 @@ function arcaneTendril(p:(x:number,y:number,cl:string)=>void,x1:number,y1:number
     const t=i/Math.max(1,Math.abs(dy));
     const yy=y1+Math.round(i*Math.sign(dy));
     const xx=Math.round(x1+dx*t+Math.sin(t*Math.PI*3)*1.2);
-    p(xx,yy,bright&&i%2===0?C.PLLAV:col);
+    p(xx,yy,bright&&i%2===0?C_base.PLLAV:col);
   }
 }
 
@@ -76,7 +117,7 @@ function arcaneOrbit(p:(x:number,y:number,cl:string)=>void,cx:number,cy:number,p
   const ox=cx+Math.round(Math.cos(phase)*3);
   const oy=cy+Math.round(Math.sin(phase)*1.5);
   p(ox,oy,col);
-  p(ox,oy-1,C.PLLAV);
+  p(ox,oy-1,C_base.PLLAV);
 }
 
 // ===== TOWER LEVEL COUNTS =====
@@ -421,7 +462,17 @@ function drawArcaneNova(c:CanvasRenderingContext2D,o:number[],s:number,_level:nu
   }
 }
 
-function drawTowers(ctx:CanvasRenderingContext2D){
+/** Draw ONLY the base/pedestal for one tower cell (for skin editor isolation) */
+export function drawBase(ctx:CanvasRenderingContext2D,col:number,row:number){
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_ROWS_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  const baseWidths=[18,20,20,18,20,20,24]; // per tower
+  const baseYs=[23,23,23,24,23,24,24];
+  arcaneBase(p,b,baseYs[col]??23,baseWidths[col]??20,glow);
+}
+
+export function drawTowers(ctx:CanvasRenderingContext2D){
   const towerFns=[drawBolt,drawFrost,drawStorm,drawFocus,drawManaDrain,drawMeteor,drawArcaneNova];
   const cols=7,rows=T_TOTAL_ROWS;
   for(let col=0;col<cols;col++){
@@ -440,7 +491,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
 // ===== PROJECTILES (7×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:CanvasRenderingContext2D){
+export function drawProjectiles(ctx:CanvasRenderingContext2D){
   const fns=[
     // Bolt — purple energy ball → purple burst
     (c:CanvasRenderingContext2D,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -637,7 +688,7 @@ function drawProjectiles(ctx:CanvasRenderingContext2D){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:CanvasRenderingContext2D){
+export function drawHero(ctx:CanvasRenderingContext2D){
   // dir: 0=down,1=side,2=up | opts for animation variants
   function drawChar(c:CanvasRenderingContext2D,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

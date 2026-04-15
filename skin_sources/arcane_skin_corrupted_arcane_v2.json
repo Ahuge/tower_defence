@@ -1,0 +1,60 @@
+{
+  "factionId": "arcane",
+  "skinName": "Corrupted Arcane",
+  "suffix": "corrupted_arcane",
+  "towerPalettes": {
+    "0": {
+      "#2255aa": "#a1aa22",
+      "#4488ff": "#e9ff42",
+      "#88bbff": "#f7ff8a",
+      "#aaccff": "#f1ffa8",
+      "#ccddff": "#fcffcc"
+    },
+    "1": {
+      "#6699cc": "#005711",
+      "#aaddff": "#008502",
+      "#bbddff": "#077000",
+      "#cceeff": "#49e44c",
+      "#ffffff": "#c7f2c4"
+    },
+    "3": {
+      "#555566": "#566758",
+      "#888899": "#899a89",
+      "#aaaacc": "#aacba9",
+      "#bbbbdd": "#bbddbd",
+      "#ccccdd": "#cbdccb",
+      "#ddddee": "#dfeedd"
+    },
+    "5": {
+      "#ff4422": "#1bd317",
+      "#cc2211": "#129310",
+      "#ff7744": "#63c115",
+      "#ff8833": "#4bff33",
+      "#ffaa55": "#57ff78",
+      "#ffee88": "#a3ff8a",
+      "#ffffff": "#b8ffb9"
+    },
+    "6": {
+      "#cc2211": "#52cb10",
+      "#ff4422": "#65ff24",
+      "#6699cc": "#66cc97",
+      "#ff7744": "#84ff42",
+      "#ccaa22": "#80cd23",
+      "#aaddff": "#a8ffb2",
+      "#ffdd44": "#7bff42",
+      "#bbddff": "#bdffdd",
+      "#cceeff": "#ccffe9",
+      "#ffee88": "#beff8a",
+      "#ffffcc": "#ebffcc"
+    },
+    "-1": {
+      "#220044": "#004201",
+      "#331166": "#116431",
+      "#442288": "#228723",
+      "#6644ff": "#42ff58",
+      "#9988ff": "#86ca81",
+      "#cc88ff": "#06c16a",
+      "#eeccff": "#065107"
+    }
+  }
+}

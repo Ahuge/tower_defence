@@ -1,0 +1,43 @@
+{
+  "factionId": "arcane",
+  "skinName": "Moonstone Arcane",
+  "suffix": "moonstone",
+  "towerPalettes": {
+    "-1": {
+      "#220044": "#0a0e1a",
+      "#331166": "#1a2233",
+      "#442288": "#334466",
+      "#6644ff": "#6688bb",
+      "#9988ff": "#99aacc",
+      "#bbaaff": "#bbccdd",
+      "#cc88ff": "#8899bb",
+      "#dd99ff": "#aabbcc",
+      "#eeccff": "#ddeeff",
+      "#223388": "#223344",
+      "#4466cc": "#556688",
+      "#88aaff": "#99bbcc",
+      "#bbddff": "#ccddee",
+      "#aaddff": "#bbddee",
+      "#6699cc": "#6688aa",
+      "#cceeff": "#ddeeff",
+      "#ffdd44": "#bbccdd",
+      "#ffee88": "#ccddee",
+      "#ffffcc": "#eef4ff",
+      "#ccaa22": "#8899aa",
+      "#ff4422": "#aabbcc",
+      "#cc2211": "#778899",
+      "#ff7744": "#99aabb",
+      "#ff8833": "#aabbcc",
+      "#ffaa55": "#bbccdd",
+      "#ffcc00": "#99aacc",
+      "#aa8800": "#667788",
+      "#0a0016": "#060a10",
+      "#110022": "#0a1018"
+    }
+  },
+  "dockStyle": {
+    "borderColor": "#99aacc",
+    "glowColor": "#99aacc55",
+    "bgTint": "#0a0e14"
+  }
+}

@@ -1,9 +1,10 @@
 import { GameMode, GameModeContext } from '../GameMode';
 import { SidebarOverlay } from '../../ui/SidebarOverlay';
 import { MatchMode } from '../../data/WaveDefinitions';
-import { FrontierManager } from '../FrontierManager';
+import { FrontierManager, OwnedBuilding } from '../FrontierManager';
 import { FrontierBuilding } from '../../data/FrontierBuildings';
 import { FrontierPanel } from '../../ui/FrontierPanel';
+import { GameUIStore, FrontierState, FrontierBuildingInfo, OwnedBuildingInfo } from '../../ui/GameUIStore';
 
 /**
  * Base class for game modes that use frontier buildings.
@@ -39,6 +40,74 @@ export abstract class BaseFrontierMode implements GameMode {
       (action: string, idx: number) => this.handleFrontierAction(action, idx),
       (action: string, defId: string) => this.handleFrontierBatchAction(action, defId),
     );
+
+    // Register DOM frontier callbacks
+    GameUIStore.registerCallbacks({
+      onFrontierPurchase: (buildingId: string) => {
+        const building = this.frontierMgr.availableBuildings.find(b => b.id === buildingId);
+        if (building && ctx.economy.spend(building.cost)) {
+          this.frontierMgr.purchaseBuilding(building);
+          this.frontierPanel.updateOwned();
+          ctx.eventLog.frontierPurchased(building.name, building.cost);
+          ctx.statsTracker.recordFrontierSpent(building.cost);
+          ctx.statsTracker.recordGoldSpent(building.cost);
+          this.syncFrontierToDOM();
+          GameUIStore.placeFrontierDoodad(0xffaa44, ctx.faction ?? 'generic');
+        }
+      },
+      onFrontierAction: (action: string, idx: number) => {
+        this.handleFrontierAction(action, idx);
+        this.syncFrontierToDOM();
+      },
+      onFrontierBatchAction: (action: string, defId: string) => {
+        this.handleFrontierBatchAction(action, defId);
+        this.syncFrontierToDOM();
+      },
+    });
+
+    // Initial sync
+    this.syncFrontierToDOM();
+  }
+
+  /** Push frontier state to the DOM store */
+  protected syncFrontierToDOM(): void {
+    const available: FrontierBuildingInfo[] = this.frontierMgr.availableBuildings.map(b => ({
+      id: b.id, name: b.name, cost: b.cost, description: b.description, mechanic: b.mechanic,
+    }));
+
+    const active = this.frontierMgr.getActiveBuildings();
+    // Group by defId
+    const groups = new Map<string, OwnedBuilding[]>();
+    for (const b of active) {
+      const key = b.def.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(b);
+    }
+
+    const owned: OwnedBuildingInfo[] = [];
+    for (const [defId, buildings] of groups) {
+      const first = buildings[0];
+      let status = '';
+      switch (first.def.mechanic) {
+        case 'steady': status = `+${first.def.baseIncome}/w`; break;
+        case 'overcharge': status = first.dormantWaves > 0 ? `Dormant ${first.dormantWaves}w` : 'Ready'; break;
+        case 'dig': status = `Depth ${first.digLevel}`; break;
+        case 'grow': status = `${first.growthStacks} stacks`; break;
+        case 'gamble': status = 'Random'; break;
+      }
+      owned.push({
+        defId, name: first.def.name, mechanic: first.def.mechanic,
+        status, destroyed: false, count: buildings.length,
+      });
+    }
+    // Add destroyed
+    for (const b of this.frontierMgr.buildings) {
+      if (b.destroyed) {
+        owned.push({ defId: b.def.id, name: b.def.name, mechanic: b.def.mechanic, status: 'DESTROYED', destroyed: true });
+      }
+    }
+
+    GameUIStore.updateFrontier({ available, owned });
   }
 
   update(_delta: number): void {
@@ -55,6 +124,7 @@ export abstract class BaseFrontierMode implements GameMode {
       this.ctx.eventLog.frontierIncome('Frontier bonus', frontierBonus);
     }
     this.frontierPanel.updateOwned();
+    this.syncFrontierToDOM();
 
     // Wave income
     const income = this.ctx.incomeMgr.collectWaveIncome();
@@ -70,6 +140,7 @@ export abstract class BaseFrontierMode implements GameMode {
   rotateRandomFrontier(): void {
     this.frontierMgr.rotateRandomFrontier();
     this.frontierPanel.rebuildPurchaseList();
+    this.syncFrontierToDOM();
   }
 
   handleSend(_sendId: string): boolean {

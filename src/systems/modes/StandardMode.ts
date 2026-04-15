@@ -1,9 +1,10 @@
 import { GameModeContext } from '../GameMode';
 import { SidebarOverlay } from '../../ui/SidebarOverlay';
 import { MatchMode } from '../../data/WaveDefinitions';
-import { SEND_OPTIONS, SendCreepOption } from '../../data/SendCreepTypes';
+import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../../data/SendCreepTypes';
 import { SendPanel } from '../../ui/SendPanel';
 import { BaseFrontierMode } from './BaseFrontierMode';
+import { GameUIStore, SendOption } from '../../ui/GameUIStore';
 
 const SEND_OPTIONS_MAP: Record<string, SendCreepOption> = {};
 for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
@@ -49,7 +50,53 @@ export class StandardMode extends BaseFrontierMode {
     ctx.eventBus.on('waveStarted', (waveNum: number) => {
       this.currentWave = waveNum;
       this.sendPanel.setWave(waveNum);
+      this.updateDOMSendOptions(waveNum);
     });
+
+    // Initial DOM send options
+    this.updateDOMSendOptions(0);
+
+    // Register DOM send callback
+    const sendHandler = this.sendPanel;
+    GameUIStore.registerCallbacks({
+      onSend: (sendId: string) => {
+        const opt = SEND_OPTIONS_MAP[sendId];
+        if (!opt) return;
+        const cost = getSendCost(opt.cost, this.currentWave);
+        const income = getSendIncome(opt.incomeReward, this.currentWave);
+        if (!this.canStartWave()) return;
+        if (this.currentWave < opt.unlockWave) return;
+        if (!ctx.economy.spend(cost)) return;
+        if (ctx.versus && ctx.versus.isConnected()) {
+          ctx.versus.send({ type: 'send_purchased', sendOptionId: opt.id });
+          ctx.versus.sendsSent++;
+          ctx.eventLog.gameMessage(`Sent ${opt.name} to opponent!`);
+        } else {
+          ctx.sendMgr.queueSend(opt);
+        }
+        ctx.incomeMgr.addSendBonus(income);
+        ctx.eventLog.sendQueued(opt.name, cost);
+        ctx.statsTracker.recordSendSpent(cost);
+        ctx.statsTracker.recordSendIncome(income);
+        ctx.statsTracker.recordGoldSpent(cost);
+        this.updateDOMSendOptions(this.currentWave);
+      },
+    });
+  }
+
+  private updateDOMSendOptions(wave: number): void {
+    const hotkeys = ['Z', 'X', 'C', 'V', '1', '2', '3', '4'];
+    const options: SendOption[] = SEND_OPTIONS.map((opt, i) => ({
+      id: opt.id,
+      name: opt.name,
+      cost: getSendCost(opt.cost, wave),
+      income: getSendIncome(opt.incomeReward, wave),
+      tier: opt.tier,
+      hotkey: hotkeys[i] || '',
+      locked: wave < opt.unlockWave,
+      unlockWave: opt.unlockWave,
+    }));
+    GameUIStore.updateSendOptions(options);
   }
 
   handleSend(sendId: string): boolean {

@@ -121,4 +121,16 @@ export class UIOverlay {
     if (UIScale.isPhone) return;
     this.seedText.setText(`Seed: ${seed}`).setVisible(true);
   }
+
+  /** Hide all Phaser UI elements — DOM takes over */
+  hideAll(): void {
+    this.goldText.setVisible(false);
+    this.livesText.setVisible(false);
+    this.waveText.setVisible(false);
+    this.statusText.setVisible(false);
+    this.speedText.setVisible(false);
+    this.waveBtn.setVisible(false);
+    this.speedBtn.setVisible(false);
+    this.seedText.setVisible(false);
+  }
 }

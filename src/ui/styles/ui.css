@@ -1,0 +1,271 @@
+/* Tower Defence — DOM UI Layer */
+
+#ui-root {
+  position: fixed; inset: 0; z-index: 100; pointer-events: none;
+  font-family: 'Courier New', Consolas, monospace; color: #ccc;
+}
+#ui-root.active { pointer-events: auto; overflow: hidden; }
+
+:root {
+  --bg-deep: #0a0a0f; --bg-surface: #141420; --bg-card: #1a1a28;
+  --bg-card-hover: #252538; --bg-card-owned: #1a2a1a;
+  --border-dim: #2a2a3a; --border-mid: #444466; --border-bright: #ffffff;
+  --text-primary: #e0e0e0; --text-secondary: #999; --text-dim: #666;
+  --accent-gold: #ffaa44; --accent-gold-bright: #ffcc66;
+  --accent-shard: #ffcc44; --accent-pass: #aa88ff; --accent-pass-bright: #ccaaff;
+  --accent-green: #44ff44; --accent-red: #ff4444; --accent-blue: #4488ff;
+  --rarity-common: #aaa; --rarity-rare: #4488ff; --rarity-epic: #aa44ff; --rarity-legendary: #ffaa00;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px;
+  --transition-fast: 150ms ease; --transition-med: 250ms ease;
+}
+
+.ui-screen {
+  position: absolute; inset: 0; background: var(--bg-deep);
+  display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+  animation: fadeIn 200ms ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.ui-screen::-webkit-scrollbar { width: 6px; }
+.ui-screen::-webkit-scrollbar-track { background: transparent; }
+.ui-screen::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+.ui-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border-dim); flex-shrink: 0;
+}
+.ui-header-title { font-size: 20px; font-weight: bold; color: #fff; letter-spacing: 2px; }
+.ui-header-back {
+  font-size: 14px; color: var(--text-dim); cursor: pointer; transition: color var(--transition-fast);
+  background: none; border: none; font-family: inherit;
+}
+.ui-header-back:hover { color: #fff; }
+
+.shard-badge { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--accent-shard); font-weight: bold; }
+.shard-badge .shard-icon {
+  width: 16px; height: 16px; background: var(--accent-shard);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); display: inline-block; flex-shrink: 0;
+}
+.pass-level { font-size: 11px; color: var(--accent-pass); }
+
+.ui-section { padding: 16px 20px; }
+.ui-section-title { font-size: 13px; color: var(--accent-gold); letter-spacing: 1px; margin-bottom: 12px; text-transform: uppercase; }
+
+.card-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.card {
+  background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: var(--radius-md);
+  padding: 12px; cursor: pointer; transition: all var(--transition-fast); position: relative; overflow: hidden;
+}
+.card:hover { background: var(--bg-card-hover); border-color: var(--border-mid); transform: translateY(-1px); }
+.card.owned { background: var(--bg-card-owned); }
+.card.locked { opacity: 0.6; }
+.card.locked:hover { opacity: 0.8; }
+.card-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.card-name { font-size: 13px; color: #fff; margin-bottom: 4px; font-weight: bold; }
+.card-desc { font-size: 10px; color: var(--text-secondary); line-height: 1.4; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+
+.rarity-common { color: var(--rarity-common); }
+.rarity-rare { color: var(--rarity-rare); }
+.rarity-epic { color: var(--rarity-epic); }
+.rarity-legendary { color: var(--rarity-legendary); }
+
+.btn {
+  font-family: inherit; font-size: 12px; padding: 6px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-dim); background: var(--bg-card); color: var(--text-primary);
+  cursor: pointer; transition: all var(--transition-fast); white-space: nowrap;
+}
+.btn:hover { background: var(--bg-card-hover); border-color: var(--border-mid); }
+.btn-primary { background: #2a2040; border-color: var(--accent-pass); color: var(--accent-pass); }
+.btn-primary:hover { background: #3a2a55; color: var(--accent-pass-bright); }
+.btn-gold { background: #2a2010; border-color: var(--accent-gold); color: var(--accent-gold); }
+.btn-gold:hover { background: #3a3018; color: var(--accent-gold-bright); }
+.btn-green { background: #1a2a1a; border-color: var(--accent-green); color: var(--accent-green); }
+.btn-disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-disabled:hover { background: var(--bg-card); border-color: var(--border-dim); transform: none; }
+.btn-large { font-size: 16px; padding: 12px 28px; border-radius: var(--radius-md); }
+
+.tab-bar { display: flex; gap: 2px; padding: 0 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border-dim); flex-shrink: 0; }
+.tab {
+  padding: 10px 20px; font-family: inherit; font-size: 12px; color: var(--text-dim);
+  background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast);
+}
+.tab:hover { color: var(--text-secondary); }
+.tab.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); }
+
+.progress-bar { background: #1a1a28; border-radius: 10px; height: 18px; position: relative; overflow: hidden; border: 1px solid var(--border-dim); }
+.progress-fill { height: 100%; border-radius: 10px; transition: width 400ms ease; background: linear-gradient(90deg, #6644aa, #aa88ff); }
+.progress-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+.challenge-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--bg-card); margin-bottom: 4px; }
+.challenge-row.completed { opacity: 0.6; }
+.challenge-desc { font-size: 12px; flex: 1; }
+.challenge-progress { font-size: 11px; color: var(--text-dim); margin: 0 12px; }
+.challenge-xp { font-size: 11px; color: var(--accent-pass); white-space: nowrap; }
+
+.reward-track { display: flex; gap: 6px; overflow-x: auto; padding: 8px 4px; scroll-snap-type: x mandatory; }
+.reward-track::-webkit-scrollbar { height: 4px; }
+.reward-track::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+.reward-node { flex-shrink: 0; width: 90px; padding: 8px 6px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px solid var(--border-dim); text-align: center; scroll-snap-align: start; transition: all var(--transition-fast); }
+.reward-node.reached { background: #1e1e38; border-color: var(--accent-pass); }
+.reward-node.claimed { background: var(--bg-card-owned); border-color: var(--accent-green); }
+.reward-level { font-size: 9px; color: var(--text-dim); margin-bottom: 4px; }
+.reward-node.reached .reward-level { color: var(--accent-pass); }
+.reward-label { font-size: 9px; color: var(--text-secondary); line-height: 1.3; min-height: 24px; }
+.reward-node.reached .reward-label { color: var(--text-primary); }
+.reward-action { margin-top: 6px; font-size: 9px; }
+
+/* ─── Casino roll animation ──────────────────────── */
+
+.roll-viewport {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  height: 110px;
+  margin: 16px auto;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: #0d0d18;
+  border: 2px solid #2a2a44;
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
+}
+
+.roll-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
+  background: var(--accent-gold);
+  z-index: 10;
+  box-shadow: 0 0 12px var(--accent-gold), 0 0 24px rgba(255,170,68,0.3);
+}
+.roll-marker::before,
+.roll-marker::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+}
+.roll-marker::before {
+  top: -2px;
+  border-top: 10px solid var(--accent-gold);
+}
+.roll-marker::after {
+  bottom: -2px;
+  border-bottom: 10px solid var(--accent-gold);
+}
+
+.roll-strip {
+  display: flex;
+  gap: 4px;
+  padding: 8px 300px 8px 300px;
+  will-change: transform;
+}
+
+.roll-card {
+  flex-shrink: 0;
+  width: 116px;
+  height: 94px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 2px solid var(--border-dim);
+  padding: 8px 6px 6px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.roll-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.roll-card-name {
+  font-size: 10px;
+  color: #fff;
+  font-weight: bold;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roll-card-rarity {
+  font-size: 9px;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.roll-card-tower {
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  text-transform: capitalize;
+}
+
+.roll-card-winner {
+  animation: winnerPulse 0.6s ease 0.1s;
+  box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+  z-index: 5;
+}
+
+@keyframes winnerPulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.08); }
+  60% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+.roll-result {
+  text-align: center;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  animation: rollReveal 400ms ease;
+}
+
+@keyframes rollReveal {
+  0% { transform: scale(0.8); opacity: 0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.faction-row { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px solid var(--border-dim); margin-bottom: 6px; transition: all var(--transition-fast); }
+.faction-row:hover { background: var(--bg-card-hover); }
+.faction-row.owned { background: var(--bg-card-owned); }
+.faction-color-strip { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+.faction-info { flex: 1; }
+.faction-name { font-size: 14px; color: #fff; font-weight: bold; }
+.faction-desc { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+
+.lock-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-md); gap: 4px; }
+.lock-icon { font-size: 18px; color: var(--accent-gold); }
+.lock-cost { font-size: 10px; color: var(--accent-shard); }
+
+@media (max-width: 600px) {
+  .card-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .ui-header { padding: 10px 12px; }
+  .ui-section { padding: 12px; }
+  .tab { padding: 8px 12px; font-size: 11px; }
+  .reward-node { width: 80px; }
+  .btn-large { font-size: 14px; padding: 10px 22px; }
+}
+
+.text-center { text-align: center; }
+.text-gold { color: var(--accent-gold); }
+.text-pass { color: var(--accent-pass); }
+.text-green { color: var(--accent-green); }
+.text-dim { color: var(--text-dim); }
+.text-sm { font-size: 10px; }
+.text-xs { font-size: 9px; }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
+.mb-2 { margin-bottom: 8px; }

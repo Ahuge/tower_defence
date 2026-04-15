@@ -7,9 +7,15 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    /* Phaser game container sits below the DOM UI layer */
+    #game-root { position: fixed; inset: 0; z-index: 1; }
   </style>
 </head>
 <body>
+  <!-- Phaser game canvas container -->
+  <div id="game-root"></div>
+  <!-- DOM UI layer — renders above the Phaser canvas -->
+  <div id="ui-root"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

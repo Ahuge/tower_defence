@@ -16,6 +16,9 @@ import { CreepFactionSelectScene } from './scenes/CreepFactionSelectScene';
 import { GauntletPreviewScene } from './scenes/GauntletPreviewScene';
 import { LeaderboardScene } from './scenes/LeaderboardScene';
 import { TowerSelectBar } from './ui/TowerSelectBar';
+import { UIBridge } from './ui/UIBridge';
+import { preloadSprites } from './systems/SpriteManager';
+import { preloadCreepSprites } from './systems/CreepSpriteManager';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
@@ -26,28 +29,36 @@ ResponsiveManager.init();
 
 const gameHeight = ResponsiveManager.canvasHeight();
 
+class BootScene extends Phaser.Scene {
+  constructor() { super('BootScene'); }
+  preload(): void {
+    // Load tower / hero / creep spritesheets at startup so the Store,
+    // Inventory, and other menu screens can render skin previews before
+    // any GameScene has been instantiated. Textures are global to the
+    // Phaser TextureManager, so loading once here covers every screen.
+    preloadSprites(this);
+    preloadCreepSprites(this);
+  }
+  create(): void { /* Phaser ready — menu shown from main.ts */ }
+}
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
   width: ResponsiveManager.canvasWidth(),
   height: gameHeight,
   backgroundColor: '#111111',
-  parent: document.body,
-  scene: [MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
-  render: {
-    antialias: true,
-    pixelArt: false,
-  },
-  input: {
-    touch: true,
-    activePointers: 3, // support pinch (2 fingers) + 1 extra
-  },
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
+  parent: 'game-root',
+  scene: [BootScene, MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
+  render: { antialias: true, pixelArt: false },
+  input: { touch: true, activePointers: 3 },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
 };
 
 const game = new Phaser.Game(config);
+
+// Initialize DOM UI bridge, then show menu after Preact mounts
+UIBridge.init(game);
+requestAnimationFrame(() => UIBridge.show('menu'));
 
 // Resize canvas on layout mode change
 ResponsiveManager.onLayoutChange(() => {

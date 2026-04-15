@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-04-14
+
+### Gauntlet Map Updates
+- **All 11 gauntlet maps re-imported** from the map editor with expanded structure placements.
+- **Iron Foundry (Mechanical)**: 5 → 32 structures — full factory floor build-out.
+- **Ancient Grove (Nature)**: 10 → 22 structures.
+- **Data Grid (Cypherpunk)**: 11 → 20 structures.
+- **Warzone Outpost (Military)**: 11 → 16 structures.
+- **Hellscape (Infernal)**: 11 → 15 structures.
+- **Hive Tunnels (Aliens)**: 6 → 10 structures.
+- **Rift Dimension (Void)**, **Concert Hall (Harmonic)**, **Mind Palace (Psionic)** also expanded.
+- Descriptions preserved across the re-import (editor doesn't export them).
+
+### Hero Skins (20 new)
+- **Runtime palette-swap system** in `src/systems/PaletteSwap.ts` — generates skinned hero spritesheets on demand from the base hero PNG using HSL transforms (and/or exact hex swaps). Editor-output-compatible for when the skin editor gains hero support.
+- **One hero skin per existing tower-skin theme** (20 total): Corrupted/Sandstone/Moonstone/Blood Magic Arcanist · Gilded/Factory Fresh Engineer · Autumn Druid · Whiteout Shadow · Desert Storm/Arctic Warden · Albino Necromancer · Cyber Sakura/Redline/Offline Duelist · Frostfire Berserker · Fallen Paladin · Emerald Monk · Heavy Metal/Neon Rave/Synthwave Ranger.
+- **Cost tiering**: common 200 / rare 400 / epic 600 shards (half the tower-pack price since one character vs full faction).
+- **Hero skin equipping**: Inventory + Store screens already supported `target: 'hero'` — the new defs slot in automatically.
+- **Bug fix**: `Hero.ts` was importing `getHeroSheetKey` from SpriteManager (skin-unaware) instead of resolving the equipped skin. Now uses `ensureHeroSkinTexture()` which lazily generates the palette-swapped spritesheet on first use.
+
+### Test button
+- **+5000 Shards (test)** button on main menu for development.
+
+### Bug fixes
+- **Mobile unit skins now apply correctly when placed.** Anim frames in `createSpriteAnimations` were always bound to the BASE sheet key, so playing any animation on a skinned mobile unit would reset its texture to the base. Affected every mobile unit skin (rifleman/brawler/heavy/commander Arctic+Desert Storm, alien_swarmling, infernal_bomber). Fix: parallel anim sets per loaded skin variant + per-sprite suffix lookup.
+- **Creep sprites no longer linger when killed by DoT effects** (burn, poison). The DoT death branch in `Creep.update()` was destroying graphics but skipping the sprite cleanup that the regular `takeDamage()` path runs.
+- **Selecting a tower in Hero Defense no longer throws** `ReferenceError: require is not defined`. Replaced two CommonJS `require()` calls in `GameScene.towerToStats` with proper ESM imports.
+
+### Hero skin pack bundles + rolls
+- **Tower-faction packs now bundle the matching hero skin.** Buying e.g. `Gilded Mechanical Pack` also grants `Gilded Engineer`. Pack prices bumped ~50% (common 400→600, rare 800→1200, epic 1200→1800).
+- **Hero skins added to the roll pool** at one rarity tier above their tower-pack equivalent (common→rare, rare→epic, epic→legendary). Direct-purchase prices match the bumped tier.
+- New `SkinDef.bundles` field in StoreDefinitions; `PlayerInventory.purchaseSkin` grants bundled IDs alongside the main purchase.
+
+### Tower dock skin labels
+- **Dock card tooltips now prefix the tower name with the equipped skin theme** — e.g. "Gilded Flame ($100g)" instead of just "Flame ($100g)". New `getThemeLabelFromSuffix(faction, suffix)` helper looks up the human-readable theme label.
+
+### Selected tower range stays visible
+- **The range circle now persists for the entire duration a tower is selected** (inspect mode), instead of being wiped any time the pointer moved. `handleHover()` no longer clears `rangeGraphics` when in inspect mode, and the range is redrawn each frame so it tracks moving mobile units.
+
+### Sprite previews on store/inventory/roll cards
+- **Store skin cards now show sprite previews.** Tower-faction packs render all of the faction's towers in a row (so you see the whole pack at a glance), per-tower skins show the single tower icon, and hero skins show a hero portrait — all rendered with the skin's palette applied.
+- **Roll strip + result reveal show sprites too.** The casino strip cards each preview the skin they represent, and the "NEW SKIN!" reveal card shows a larger preview of what you won.
+- **Inventory cards show the same previews.**
+- New `SkinPreview` Preact component (`src/ui/components/SkinPreview.tsx`). `getTowerIconUrl` extended with an `overrideSuffix` arg; new `getHeroIconUrl` companion. Hero skin textures are generated lazily via `ensureHeroSkinTextureBySuffix` so previews work even for unowned skins.
+
 ## 2026-04-11
 
 ### Endless Mode + Streamlined Menu

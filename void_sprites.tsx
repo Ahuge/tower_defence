@@ -1,7 +1,35 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
-const C={
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by tBase() and tendril shared helper
+export const C_base={
+  BRPUR:'#6644cc',CRIM:'#cc2255',DEPUR:'#2a1155',DKPNK:'#881144',DKPUR:'#1a0033',
+  LTPNK:'#ff77bb',MDPUR:'#442288',PINK:'#ff4488',SHAD:'#0f0019',VOID:'#08000f',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  VOID:'#08000f',SHAD:'#0f0019',DKPUR:'#1a0033',DEPUR:'#2a1155',
+  MDPUR:'#442288',BRPUR:'#6644cc',LTPUR:'#8866ee',PLPUR:'#aa99dd',
+  PINK:'#ff4488',LTPNK:'#ff77bb',PAPNK:'#ffaadd',CRIM:'#cc2255',DKPNK:'#881144',DPNK:'#55112a',
+  CYAN:'#00ffcc',DKCYN:'#009977',LTCYN:'#66ffe6',PLCYN:'#aaffee',
+  GOLD:'#ffcc00',DKGLD:'#aa8800',LTGLD:'#ffee88',
+  WHITE:'#ffffff',GRAY:'#554466',DKGRAY:'#2a1a3a',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  VOID:'#08000f',SHAD:'#0f0019',DKPUR:'#1a0033',DEPUR:'#2a1155',
+  PINK:'#ff4488',LTPNK:'#ff77bb',CRIM:'#cc2255',DKPNK:'#881144',DPNK:'#55112a',
+  CYAN:'#00ffcc',DKCYN:'#009977',LTCYN:'#66ffe6',
+  GOLD:'#ffcc00',DKGLD:'#aa8800',LTGLD:'#ffee88',
+  WHITE:'#ffffff',
+};
+
+// Unified palette (backward compat — union of all three)
+export const C={
   VOID:'#08000f',SHAD:'#0f0019',DKPUR:'#1a0033',DEPUR:'#2a1155',
   MDPUR:'#442288',BRPUR:'#6644cc',LTPUR:'#8866ee',PLPUR:'#aa99dd',
   PINK:'#ff4488',LTPNK:'#ff77bb',PAPNK:'#ffaadd',CRIM:'#cc2255',DKPNK:'#881144',DPNK:'#55112a',
@@ -21,16 +49,16 @@ const mk=(c,o,gw,gh,ps)=>{
 const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 function tBase(p,b,topY,w,glow){
-  const cx=16;
+  const B=C_base,cx=16;
   for(let i=0;i<10;i++){
     const cw=w-6+Math.floor(i*0.8),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.MDPUR:i<5?C.DEPUR:i<8?C.DKPUR:C.SHAD);
+    b(sx,topY+i,cw,1,i<2?B.MDPUR:i<5?B.DEPUR:i<8?B.DKPUR:B.SHAD);
   }
-  b(cx-Math.floor((w-6)/2),topY,w-6,1,C.BRPUR);
-  p(cx-3,topY+3,glow>1?C.LTPNK:C.PINK);p(cx-2,topY+4,glow>1?C.LTPNK:C.PINK);
-  p(cx-2,topY+5,glow>0?C.PINK:C.CRIM);p(cx-3,topY+6,C.DKPNK);
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.VOID);
-  if(glow>0){p(cx-4,topY+2,C.DKPNK);p(cx+2,topY+3,C.DKPNK);}
+  b(cx-Math.floor((w-6)/2),topY,w-6,1,B.BRPUR);
+  p(cx-3,topY+3,glow>1?B.LTPNK:B.PINK);p(cx-2,topY+4,glow>1?B.LTPNK:B.PINK);
+  p(cx-2,topY+5,glow>0?B.PINK:B.CRIM);p(cx-3,topY+6,B.DKPNK);
+  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,B.VOID);
+  if(glow>0){p(cx-4,topY+2,B.DKPNK);p(cx+2,topY+3,B.DKPNK);}
 }
 
 function tTendril(p,x1,y1,x2,y2,col,bright){
@@ -39,7 +67,7 @@ function tTendril(p,x1,y1,x2,y2,col,bright){
     const t=i/Math.max(1,Math.abs(dy));
     const yy=y1+Math.round(i*Math.sign(dy));
     const xx=Math.round(x1+dx*t+Math.sin(t*Math.PI*2)*1.5);
-    p(xx,yy,bright&&i%2===0?C.LTPNK:col);
+    p(xx,yy,bright&&i%2===0?C_base.LTPNK:col);
   }
 }
 
@@ -55,9 +83,24 @@ function tSpire(p,b,x,y,h,w,c1,c2,ct){
 // Tower level counts: Gambler=4, Spike=6, Siphon=6, Rift=3, Oblivion=1
 const T_LEVELS=[4,6,6,3,1];
 const T_MAX_LVL=6;
-const T_ROWS=T_MAX_LVL*4; // 24 rows total
+const T_ROWS_PER_LVL=4;
+const T_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 24 rows total
 
-function drawTowers(ctx){
+// Per-tower base parameters: [topY, baseWidth at level 1, width growth cap]
+const baseYs=[22,23,23,-1,24]; // -1 = Rift (no tBase call)
+const baseWidths=[20,22,20,-1,18]; // base widths at level 1
+const baseGrowths=[3,3,3,0,0]; // max width growth from leveling
+
+export function drawBase(ctx,col,row){
+  if(col<0||col>=5||baseYs[col]<0)return; // skip Rift
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_ROWS_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  const bw=baseWidths[col]+Math.min(level-1,baseGrowths[col])*1;
+  tBase(p,b,baseYs[col],bw,glow);
+}
+
+export function drawTowers(ctx){
   const fns=[
     // Gambler (4 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -217,7 +260,7 @@ function drawTowers(ctx){
 // ===== PROJECTILES (5×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx){
+export function drawProjectiles(ctx){
   const fns=[
     // Coin
     (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -263,7 +306,7 @@ function drawProjectiles(ctx){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx){
+export function drawHero(ctx){
   // dir: 0=down,1=side,2=up | type: idle/walk/atk | frame: variant
   function drawChar(c,o,dir,opts={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

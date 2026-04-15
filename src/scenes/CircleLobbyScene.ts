@@ -10,6 +10,7 @@ import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { UIScale } from '../systems/UIScale';
 import { Analytics } from '../systems/AnalyticsClient';
+import { goToMenu } from '../ui/navigation';
 
 export class CircleLobbyScene extends Phaser.Scene {
   private circle: CircleManager | null = null;
@@ -96,7 +97,7 @@ export class CircleLobbyScene extends Phaser.Scene {
     }).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => {
       this.cleanup();
-      this.scene.start('MenuScene');
+      goToMenu();
     });
 
     this.events.once('shutdown', () => {

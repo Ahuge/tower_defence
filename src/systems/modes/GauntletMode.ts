@@ -13,6 +13,8 @@ import { MatchMode, WaveDefinition } from '../../data/WaveDefinitions';
 import { SEND_OPTIONS, SendCreepOption } from '../../data/SendCreepTypes';
 import { SendPanel } from '../../ui/SendPanel';
 import { BaseFrontierMode } from './BaseFrontierMode';
+import { GameUIStore, SendOption } from '../../ui/GameUIStore';
+import { getSendCost, getSendIncome } from '../../data/SendCreepTypes';
 import { FactionId, FACTIONS } from '../../data/Factions';
 import { getGauntletMap, getGauntletFactions, shuffleArray } from '../../data/GauntletMaps';
 import { generateGauntletWaves, getGlobalWaveNumber } from '../../data/GauntletWaves';
@@ -70,7 +72,40 @@ export class GauntletMode extends BaseFrontierMode {
     ctx.eventBus.on('waveStarted', (waveNum: number) => {
       this.currentWave = waveNum;
       this.sendPanel.setWave(waveNum);
+      this.updateDOMSendOptions(waveNum);
     });
+
+    this.updateDOMSendOptions(0);
+
+    GameUIStore.registerCallbacks({
+      onSend: (sendId: string) => {
+        const opt = SEND_OPTIONS_MAP[sendId];
+        if (!opt) return;
+        const cost = getSendCost(opt.cost, this.currentWave);
+        const income = getSendIncome(opt.incomeReward, this.currentWave);
+        if (!this.canStartWave()) return;
+        if (this.currentWave < opt.unlockWave) return;
+        if (!ctx.economy.spend(cost)) return;
+        ctx.sendMgr.queueSend(opt);
+        ctx.incomeMgr.addSendBonus(income);
+        this.accumulatedIncome += income;
+        ctx.eventLog.sendQueued(opt.name, cost);
+        ctx.statsTracker.recordSendSpent(cost);
+        ctx.statsTracker.recordSendIncome(income);
+        ctx.statsTracker.recordGoldSpent(cost);
+        this.updateDOMSendOptions(this.currentWave);
+      },
+    });
+  }
+
+  private updateDOMSendOptions(wave: number): void {
+    const hotkeys = ['Z', 'X', 'C', 'V', '1', '2', '3', '4'];
+    const options: SendOption[] = SEND_OPTIONS.map((opt, i) => ({
+      id: opt.id, name: opt.name,
+      cost: getSendCost(opt.cost, wave), income: getSendIncome(opt.incomeReward, wave),
+      tier: opt.tier, hotkey: hotkeys[i] || '', locked: wave < opt.unlockWave, unlockWave: opt.unlockWave,
+    }));
+    GameUIStore.updateSendOptions(options);
   }
 
   /** Get the waves for the current stage */

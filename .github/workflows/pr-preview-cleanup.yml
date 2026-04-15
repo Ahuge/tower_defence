@@ -1,0 +1,36 @@
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+
+jobs:
+  cleanup-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove preview from gh-pages
+        run: |
+          PR_NUM=${{ github.event.pull_request.number }}
+          PR_DIR="pr/${PR_NUM}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages:gh-pages 2>/dev/null || exit 0
+          WORK_DIR=$(mktemp -d)
+          git worktree add "$WORK_DIR" gh-pages
+          if [ -d "$WORK_DIR/${PR_DIR}" ]; then
+            rm -rf "$WORK_DIR/${PR_DIR}"
+            cd "$WORK_DIR"
+            git add -A
+            git diff --cached --quiet && echo "Already clean" && exit 0
+            git commit -m "Cleanup: remove PR #${PR_NUM} preview"
+            git push origin gh-pages
+          fi
+          cd -
+          git worktree remove "$WORK_DIR" --force 2>/dev/null || true

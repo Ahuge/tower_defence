@@ -1,5 +1,5 @@
 import { HeroTypeDef, AbilityDef } from '../data/HeroTypes';
-import { getHeroSheetKey } from '../systems/SpriteManager';
+import { ensureHeroSkinTexture } from '../systems/PaletteSwap';
 import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../data/HeroItems';
 import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
@@ -156,13 +156,15 @@ export class Hero {
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(15);
 
-    // Create hero sprite if available
-    const heroSheetKey = getHeroSheetKey(typeDef.id);
+    // Create hero sprite if available — resolves to skinned texture if equipped,
+    // generating it from the base hero spritesheet via palette-swap if needed.
+    const heroSheetKey = ensureHeroSkinTexture(scene, typeDef.id);
     if (heroSheetKey && scene.textures.exists(heroSheetKey)) {
       this.sprite = scene.add.sprite(x, y, heroSheetKey, 0);
       this.sprite.setDepth(15);
       this.sprite.setScale(40 / 64);
       this.sprite.setOrigin(0.5, 0.75);
+      this.sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
     }
   }
 

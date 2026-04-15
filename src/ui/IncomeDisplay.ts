@@ -24,4 +24,7 @@ export class IncomeDisplay {
   update(breakdown: { base: number; sends: number; frontier: number; total: number }): void {
     this.text.setText(`Income: ${breakdown.total}/w (base:${breakdown.base} send:${breakdown.sends} frontier:${breakdown.frontier})`);
   }
+
+  /** Hide — DOM takes over */
+  hide(): void { this.text.setVisible(false); }
 }

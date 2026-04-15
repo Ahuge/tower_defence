@@ -1,7 +1,58 @@
+// @ts-nocheck
 import { useRef, useEffect, useState, useCallback } from "react";
 
-// ===== PALETTE =====
-const C={
+// ===== PALETTES =====
+
+// Base/pedestal palette — used exclusively by mBase() and steam/piston/gear/rivet shared helpers
+export const C_base={
+  BRONZE:'#cc8833',DKBRZ:'#995522',LTBRZ:'#ddaa55',
+  TAN:'#eebb66',
+  DKBRN:'#332211',
+  STEEL:'#888888',LTSTL:'#aaaaaa',DKSTL:'#666666',WTSTL:'#cccccc',
+  RIVET:'#555555',DKRIV:'#444444',
+  SMOKE:'#665555',LTSMK:'#887777',
+  GEAR:'#997744',DKGEAR:'#775533',LTGEAR:'#bbaa66',
+};
+
+// Tower body palette — used by individual tower draw functions
+export const C_tower={
+  BRONZE:'#cc8833',DKBRZ:'#995522',LTBRZ:'#ddaa55',
+  TAN:'#eebb66',LTTAN:'#ffdd88',DKTAN:'#bb9944',
+  ORANGE:'#ff9944',LTORG:'#ffbb77',DKORG:'#cc6622',
+  DKBRN:'#332211',BRWN:'#553322',MDBRN:'#664433',
+  STEEL:'#888888',LTSTL:'#aaaaaa',DKSTL:'#666666',WTSTL:'#cccccc',
+  RIVET:'#555555',DKRIV:'#444444',
+  FLAME:'#ff6622',LTFLM:'#ffaa44',WFLM:'#ffdd88',DKFLM:'#cc3300',
+  BLUE:'#4488ff',LTBLU:'#88bbff',WBLU:'#bbddff',DKBLU:'#2255aa',
+  SPARK:'#ffff88',WSPARK:'#ffffff',LTSPARK:'#ffee66',
+  BLACK:'#111111',VOID:'#000000',
+  WHITE:'#ffffff',GRAY:'#777777',DKGRAY:'#333333',
+  SMOKE:'#665555',LTSMK:'#887777',DKSMK:'#443333',
+  GEAR:'#997744',DKGEAR:'#775533',LTGEAR:'#bbaa66',
+  RED:'#cc3333',LTRED:'#ff5555',DKRED:'#882222',
+  TBRN:'#aa7744',DKTBRN:'#886633',LTTBRN:'#bb8855',
+  FORG:'#ff4400',DFORG:'#cc3300',LFORG:'#ff6622',
+  TYELW:'#ffdd44',LTYELW:'#ffee88',
+  OLIVE:'#556b2f',DKOLV:'#3a4a20',LTOLV:'#6b8a3a',
+  SILVR:'#ccccdd',WSILV:'#eeeeee',LTSILV:'#ddddee',
+};
+
+// Projectile palette — used by projectile draw functions
+export const C_proj={
+  BRONZE:'#cc8833',DKBRZ:'#995522',
+  ORANGE:'#ff9944',DKORG:'#cc6622',
+  DKBRN:'#332211',
+  STEEL:'#888888',LTSTL:'#aaaaaa',DKSTL:'#666666',WTSTL:'#cccccc',
+  RIVET:'#555555',
+  FLAME:'#ff6622',LTFLM:'#ffaa44',WFLM:'#ffdd88',DKFLM:'#cc3300',
+  BLUE:'#4488ff',LTBLU:'#88bbff',WBLU:'#bbddff',DKBLU:'#2255aa',
+  SPARK:'#ffff88',WSPARK:'#ffffff',
+  WHITE:'#ffffff',
+  SMOKE:'#665555',LTSMK:'#887777',DKSMK:'#443333',
+};
+
+// Unified palette (backward compat — union of all three)
+export const C={
   BRONZE:'#cc8833',DKBRZ:'#995522',LTBRZ:'#ddaa55',
   TAN:'#eebb66',LTTAN:'#ffdd88',DKTAN:'#bb9944',
   ORANGE:'#ff9944',LTORG:'#ffbb77',DKORG:'#cc6622',
@@ -36,44 +87,44 @@ const T_PX=2,T_G=32,T_CELL=T_G*T_PX;
 
 // Mechanical base: stacked metal platform with gear teeth and rivets
 function mBase(p:any,b:any,topY:number,w:number,glow:number){
-  const cx=16;
+  const B=C_base,cx=16;
   // Main platform layers
   for(let i=0;i<10;i++){
     const cw=w-4+Math.floor(i*0.6),sx=cx-Math.floor(cw/2);
-    b(sx,topY+i,cw,1,i<2?C.LTBRZ:i<4?C.BRONZE:i<7?C.DKBRZ:C.DKBRN);
+    b(sx,topY+i,cw,1,i<2?B.LTBRZ:i<4?B.BRONZE:i<7?B.DKBRZ:B.DKBRN);
   }
   // Top edge highlight
-  b(cx-Math.floor((w-4)/2),topY,w-4,1,C.TAN);
+  b(cx-Math.floor((w-4)/2),topY,w-4,1,B.TAN);
   // Gear teeth pattern along top edge
   const gw=w-6,gsx=cx-Math.floor(gw/2);
   for(let i=0;i<gw;i++){
-    if(i%3===0){p(gsx+i,topY-1,glow>1?C.LTGEAR:C.GEAR);p(gsx+i,topY,C.LTGEAR);}
+    if(i%3===0){p(gsx+i,topY-1,glow>1?B.LTGEAR:B.GEAR);p(gsx+i,topY,B.LTGEAR);}
   }
   // Gear teeth on sides
   for(let i=0;i<6;i+=2){
-    p(cx-Math.floor(w/2)+1,topY+2+i,glow>0?C.LTGEAR:C.GEAR);
-    p(cx+Math.floor(w/2)-2,topY+2+i,glow>0?C.LTGEAR:C.GEAR);
+    p(cx-Math.floor(w/2)+1,topY+2+i,glow>0?B.LTGEAR:B.GEAR);
+    p(cx+Math.floor(w/2)-2,topY+2+i,glow>0?B.LTGEAR:B.GEAR);
   }
   // Rivets
-  p(cx-4,topY+2,glow>1?C.WTSTL:C.LTSTL);p(cx+3,topY+2,glow>1?C.WTSTL:C.LTSTL);
-  p(cx-3,topY+5,C.RIVET);p(cx+2,topY+5,C.RIVET);
-  p(cx-5,topY+7,C.DKRIV);p(cx+4,topY+7,C.DKRIV);
+  p(cx-4,topY+2,glow>1?B.WTSTL:B.LTSTL);p(cx+3,topY+2,glow>1?B.WTSTL:B.LTSTL);
+  p(cx-3,topY+5,B.RIVET);p(cx+2,topY+5,B.RIVET);
+  p(cx-5,topY+7,B.DKRIV);p(cx+4,topY+7,B.DKRIV);
   // Bottom shadow
-  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,C.DKBRN);
+  b(cx-Math.floor((w-2)/2),topY+9,w-2,1,B.DKBRN);
   // Steam vent (small)
-  if(glow>0){p(cx-2,topY+3,C.SMOKE);p(cx-2,topY+2,C.LTSMK);}
+  if(glow>0){p(cx-2,topY+3,B.SMOKE);p(cx-2,topY+2,B.LTSMK);}
 }
 
 // Piston helper
 function mPiston(p:any,b:any,x:number,y:number,h:number,ext:number){
   // Outer cylinder
-  b(x,y,3,h,C.DKSTL);b(x+1,y,1,h,C.STEEL);
+  b(x,y,3,h,C_base.DKSTL);b(x+1,y,1,h,C_base.STEEL);
   // Inner rod
-  b(x+1,y-ext,1,ext+2,C.LTSTL);
+  b(x+1,y-ext,1,ext+2,C_base.LTSTL);
   // Cap
-  b(x,y-ext-1,3,1,C.WTSTL);
+  b(x,y-ext-1,3,1,C_base.WTSTL);
   // Base mount
-  b(x-1,y+h-1,5,1,C.DKBRN);
+  b(x-1,y+h-1,5,1,C_base.DKBRN);
 }
 
 // Gear helper
@@ -89,15 +140,15 @@ function mGear(p:any,cx:number,cy:number,r:number,col:string,teeth:number){
     p(cx+tx,cy+ty,col);
   }
   // Center hole
-  if(r>1)p(cx,cy,C.DKBRN);
+  if(r>1)p(cx,cy,C_base.DKBRN);
 }
 
 // Steam puff helper
 function mSteam(p:any,x:number,y:number,size:number){
   for(let i=0;i<size;i++){
     const ox=Math.round(Math.sin(i*1.2)*2),oy=-i;
-    p(x+ox,y+oy,i<size/2?C.LTSMK:C.SMOKE);
-    if(i>0)p(x+ox+1,y+oy,C.SMOKE);
+    p(x+ox,y+oy,i<size/2?C_base.LTSMK:C_base.SMOKE);
+    if(i>0)p(x+ox+1,y+oy,C_base.SMOKE);
   }
 }
 
@@ -105,13 +156,14 @@ function mSteam(p:any,x:number,y:number,size:number){
 // levels per tower: Wall=4, Turret=6, Flamethrower=5, Tesla=4, Mortar=4, Shredder=5, Railgun=3, Titan=3
 const T_LEVELS=[4,6,5,4,4,5,3,3];
 const T_MAX_LVL=6; // max across all towers → rows = T_MAX_LVL * 4 states = 24
-const T_ROWS=T_MAX_LVL*4; // 24 rows total
+const T_ROWS_PER_LVL=4;
+const T_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 24 rows total
 
 // ===== LEVEL VISUAL HELPERS =====
 // Extra rivets drawn at higher levels (positions are offsets from center)
 function lvlRivets(p:any,cx:number,cy:number,lvl:number,spread:number){
   if(lvl<2)return;
-  const rv=lvl>=4?C.WTSTL:C.LTSTL;
+  const rv=lvl>=4?C_base.WTSTL:C_base.LTSTL;
   const pts:number[][]=[];
   if(lvl>=2){pts.push([-spread,-(spread-1)],[spread,-(spread-1)]);}
   if(lvl>=3){pts.push([-spread,(spread-1)],[spread,(spread-1)]);}
@@ -123,9 +175,9 @@ function lvlRivets(p:any,cx:number,cy:number,lvl:number,spread:number){
 // Extra exhaust pipes for high levels
 function lvlExhaust(p:any,b:any,x:number,y:number,lvl:number){
   if(lvl<3)return;
-  b(x,y,2,1,C.DKSTL);b(x,y,1,1,C.STEEL);
-  if(lvl>=4){b(x,y-1,2,1,C.DKSTL);p(x,y-2,C.SMOKE);}
-  if(lvl>=5){b(x+2,y,2,1,C.DKSTL);p(x+3,y-1,C.LTSMK);}
+  b(x,y,2,1,C_base.DKSTL);b(x,y,1,1,C_base.STEEL);
+  if(lvl>=4){b(x,y-1,2,1,C_base.DKSTL);p(x,y-2,C_base.SMOKE);}
+  if(lvl>=5){b(x+2,y,2,1,C_base.DKSTL);p(x+3,y-1,C_base.LTSMK);}
 }
 
 // Extra gear decoration for higher levels
@@ -169,10 +221,24 @@ function lvlSteam(p:any,x:number,y:number,lvl:number){
   if(lvl>=6)mSteam(p,x+4,y-1,3);
 }
 
+// Per-tower base parameters
+const baseYs=[22,23,23,23,23,24,24,24];
+const baseWidths=[20,20,20,20,22,20,20,26]; // base widths at level 1
+const baseGrowths=[3,0,0,0,0,0,0,0]; // Wall grows with level, rest fixed
+
+export function drawBase(ctx:CanvasRenderingContext2D,col:number,row:number){
+  if(col<0||col>=8)return;
+  const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
+  const level=Math.floor(row/T_ROWS_PER_LVL)+1;
+  const glow=level>=3?2:level>=2?1:0;
+  const bw=baseWidths[col]+Math.min(level-1,baseGrowths[col])*1;
+  mBase(p,b,baseYs[col],bw,glow);
+}
+
 // ===== TOWERS (8 cols × 24 rows at 64×64) =====
 // Layout: for each tower level, 4 rows (idle/charge/fire/cooldown)
 // Towers with fewer levels than T_MAX_LVL have empty rows at the end
-function drawTowers(ctx:CanvasRenderingContext2D){
+export function drawTowers(ctx:CanvasRenderingContext2D){
   const fns=[
     // 0: Wall — Short solid armored metal block
     (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -697,7 +763,7 @@ function drawTowers(ctx:CanvasRenderingContext2D){
 // ===== PROJECTILES (8×6 at 32×32) =====
 const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
-function drawProjectiles(ctx:CanvasRenderingContext2D){
+export function drawProjectiles(ctx:CanvasRenderingContext2D){
   const fns=[
     // 0: Wall — ricochet spark
     (c:any,o:number[],f:number)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
@@ -1003,7 +1069,7 @@ function drawProjectiles(ctx:CanvasRenderingContext2D){
 // ===== HERO (8×5 at 64×128) =====
 const H_PX=2,H_GW=32,H_GH=64,H_CW=H_GW*H_PX,H_CH=H_GH*H_PX;
 
-function drawHero(ctx:CanvasRenderingContext2D){
+export function drawHero(ctx:CanvasRenderingContext2D){
   // Engineer hero: stocky figure with wrench, goggles, bronze armor, utility belt
   function drawChar(c:any,o:number[],dir:number,opts:any={}){
     const{p,b}=mk(c,o,H_GW,H_GH,H_PX);

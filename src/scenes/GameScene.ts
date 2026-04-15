@@ -15,6 +15,9 @@ import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
+import { PlayerInventory } from '../systems/monetization';
+import { GameUIStore, TowerStats } from '../ui/GameUIStore';
+import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
 import { generateRandomMap, getDailySeed } from '../data/MapGenerator';
@@ -28,6 +31,7 @@ import { BaseFrontierMode } from '../systems/modes/BaseFrontierMode';
 import { BattleMode } from '../systems/modes/BattleMode';
 import { HeroDefenseMode } from '../systems/modes/HeroDefenseMode';
 import { GauntletMode } from '../systems/modes/GauntletMode';
+import { goToMenu } from '../ui/navigation';
 import { HeroLeakHandler } from '../systems/HeroLeakHandler';
 import { ArenaManager } from '../systems/ArenaManager';
 import { AbilitySystem } from '../systems/AbilitySystem';
@@ -56,7 +60,7 @@ import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 import { CircleDeathHandler } from '../systems/CircleDeathHandler';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
-import { UpdateContext } from '../systems/traits/Trait';
+import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
 import { Tower } from '../entities/Tower';
@@ -228,13 +232,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private rollRandomTowers(): string[] {
-    const nonUlt = getAllFactionTowerIds().filter(id => !getTowerType(id).ultimate);
+    // Only roll towers from factions the player owns
+    const ownedFactions = PlayerInventory.getOwnedFactions();
+    const ownedTowerIds = getAllFactionTowerIds().filter(id => {
+      const t = getTowerType(id);
+      return t.faction && ownedFactions.includes(t.faction as FactionId);
+    });
+
+    const nonUlt = ownedTowerIds.filter(id => !getTowerType(id).ultimate);
     const shuffled = [...nonUlt].sort(() => Math.random() - 0.5);
     const pool = shuffled.slice(0, 6);
 
     // 5% chance to replace the last slot with a random ultimate tower
     if (Math.random() < 0.05) {
-      const ultimates = getAllFactionTowerIds().filter(id => getTowerType(id).ultimate);
+      const ultimates = ownedTowerIds.filter(id => getTowerType(id).ultimate);
       if (ultimates.length > 0) {
         pool[5] = ultimates[Math.floor(Math.random() * ultimates.length)];
       }
@@ -253,6 +264,46 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Clean up previous run if scene is being restarted
     this.events.once('shutdown', () => this.shutdown());
+
+    // Activate DOM game UI
+    GameUIStore.activate(this.matchMode, this.waves?.length ?? 0);
+    GameUIStore.registerCallbacks({
+      onUpgrade: (tower) => {
+        if (tower.canUpgrade()) {
+          const cost = tower.typeDef.upgrades[tower.level - 1].cost;
+          if (this.economy.spend(cost)) {
+            tower.upgrade();
+            GameUIStore.selectTower(this.towerToStats(tower));
+          }
+        }
+      },
+      onSell: (tower) => {
+        this.handleRightClick(tower.col, tower.row);
+      },
+      onToggleAutoPlay: () => {
+        this.toggleAutoPlay();
+      },
+      onStartWave: () => {
+        if (this.betweenWaves && this.currentWave < this.waves.length) {
+          this.startWave();
+        }
+      },
+      onCycleSpeed: () => {
+        this.cycleSpeed();
+      },
+      onFrontierDoodad: (color: number, type: string) => {
+        this.placeFrontierDoodad(color, type);
+      },
+      onSelectDockTower: (index: number) => {
+        if (index < 0) {
+          this.enterNoneMode();
+          GameUIStore.selectDockTower(-1);
+        } else if (index < this.activeTowerIds.length) {
+          this.enterBuildMode(this.activeTowerIds[index]);
+          GameUIStore.selectDockTower(index);
+        }
+      },
+    });
 
     // Create sprite animations from loaded sheets
     createSpriteAnimations(this);
@@ -354,6 +405,9 @@ export class GameScene extends Phaser.Scene {
         this.enterNoneMode();
       }
     });
+    // Hide Phaser tower bar — DOM version takes over
+    this.towerBar.getContainer().setVisible(false);
+    this.syncTowerBarToDOM();
 
     this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
     this.ui.setCallbacks(
@@ -390,7 +444,7 @@ export class GameScene extends Phaser.Scene {
           const cost = tower.getUpgradeCost();
           if (this.economy.spend(cost)) {
             tower.upgrade();
-            this.towerInfo.show(tower);
+            GameUIStore.selectTower(this.towerToStats(tower)); // refresh DOM panel
             this.versus?.send({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
             this.circle?.broadcast({ type: 'tower_upgraded', col: tower.col, row: tower.row, level: tower.level });
           }
@@ -414,12 +468,15 @@ export class GameScene extends Phaser.Scene {
     // Stats tracker
     this.statsTracker = new StatsTracker();
 
-    // Upcoming waves (top of sidebar)
+    // Upcoming waves — Phaser panel hidden, DOM version takes over
     this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
+    this.upcomingWaves.getContainer().setVisible(false);
+    this.updateDOMWaves(this.currentWave);
 
-    // Event log (bottom of sidebar)
+    // Event log — Phaser panel hidden, but still functional (pushes to DOM)
     this.eventLog = new EventLog(this, 480);
+    this.eventLog.getContainer().setVisible(false);
 
     // Hero defense: create ArenaManager before game mode
     if (this.matchMode === 'hero_defense' && this.heroId) {
@@ -487,6 +544,10 @@ export class GameScene extends Phaser.Scene {
 
     this.incomeDisplay = new IncomeDisplay(this);
 
+    // Hide Phaser HUD — DOM takes over
+    this.ui.hideAll();
+    this.incomeDisplay.hide();
+
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
     const leakHandler = this.arenaManager
@@ -510,6 +571,7 @@ export class GameScene extends Phaser.Scene {
         const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
         this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
         this.upcomingWaves.update(waveNum, this.waves);
+        this.updateDOMWaves(waveNum);
         this.eventBus.emit('waveStarted', waveNum);
         this.gameMode.onWaveStart?.(wave, waveNum);
       },
@@ -530,17 +592,20 @@ export class GameScene extends Phaser.Scene {
     this.hoverGraphics = this.add.graphics().setDepth(20);
     this.rangeGraphics = this.add.graphics().setDepth(19);
 
-    // Sidebar background (desktop) or overlay (tablet)
+    // Sidebar — DOM UI handles all panels now.
+    // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
     if (ResponsiveManager.isTablet()) {
       this.sidebarOverlay = new SidebarOverlay(this);
-      // Reparent sidebar panels into the overlay
       this.sidebarOverlay.addPanel(this.upcomingWaves.getContainer());
       this.sidebarOverlay.addPanel(this.eventLog.getContainer());
       this.gameMode.reparentSidebarPanels?.(this.sidebarOverlay);
+      this.sidebarOverlay.hideCompletely();
     } else {
-      const sidebarBg = this.add.graphics().setDepth(0);
-      sidebarBg.fillStyle(0x0e0e12, 1);
-      sidebarBg.fillRect(0, 0, SIDEBAR_WIDTH, GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT);
+      // Desktop: hide mode-specific Phaser panels that render inline
+      // (SendPanel, FrontierPanel, EssencePanel, ItemShopPanel)
+      this.gameMode.reparentSidebarPanels?.({
+        addPanel: (panel: Phaser.GameObjects.Container) => { panel.setVisible(false); },
+      } as any);
     }
 
     this.drawGrid();
@@ -619,6 +684,10 @@ export class GameScene extends Phaser.Scene {
         () => this.togglePause(),
         () => this.toggleAutoPlay(),
       );
+      // Hide Phaser control bar — DOM status bar handles wave/speed/pause
+      // Note: hero ability buttons (Q/W/E/R/T) are also in this bar on phone.
+      // They still work via keyboard on desktop. Phone hero abilities need DOM solution.
+      this.controlBar.hide?.();
     }
 
     // Camera controller: phone gets pinch-to-zoom + viewport clip, desktop gets scroll wheel + buttons
@@ -626,7 +695,8 @@ export class GameScene extends Phaser.Scene {
       const canvasW = getCanvasWidth();
       if (ResponsiveManager.isPhone()) {
         const canvasH = ResponsiveManager.canvasHeight();
-        const viewportH = canvasH - TowerSelectBar.BAR_HEIGHT - GameControlBar.BAR_HEIGHT - UIScale.current.bottomSafeMargin;
+        // DOM UI overlays are transparent — full viewport for the game
+        const viewportH = canvasH;
         this.cameraCtrl = new CameraController(this, canvasW, GAME_HEIGHT, viewportH);
         this.inputMgr.setSidebarCheck(() => this.sidebarOverlay?.isVisible() ?? false);
       } else {
@@ -654,7 +724,7 @@ export class GameScene extends Phaser.Scene {
           case 'tower_pool':
             if (this.faction === 'random') {
               this.activeTowerIds = msg.towerIds;
-              this.towerBar.setTowerIds(this.activeTowerIds);
+              this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
               this.enterNoneMode();
               this.eventLog.gameMessage('Tower pool updated!');
             }
@@ -835,11 +905,134 @@ export class GameScene extends Phaser.Scene {
 
   // === Selection Mode Management ===
 
+  /** Push tower bar state to the DOM */
+  private syncTowerBarToDOM(): void {
+    const towers = this.activeTowerIds.map((id, i) => {
+      const t = getTowerType(id);
+      return { id, name: t.name, cost: t.cost, hotkey: String(i + 1), color: t.color };
+    });
+    GameUIStore.setTowerBar(towers);
+  }
+
+  /** Convert a Tower entity to a TowerStats snapshot for the DOM UI */
+  private towerToStats(tower: Tower): TowerStats {
+    const traits: string[] = [];
+    for (const t of tower.typeDef.traits) {
+      switch (t.id) {
+        case 'splash_damage': traits.push(`Splash ${((t.radius ?? 0) / TILE_SIZE).toFixed(1)}`); break;
+        case 'chain_damage': traits.push(`Chain ${(t.chainCount ?? 2) + 1}`); break;
+        case 'teleport_delivery': traits.push('Teleport'); break;
+        case 'slow_on_hit': traits.push(`Slow ${Math.round((1 - (t.factor ?? 1)) * 100)}%`); break;
+        case 'gold_on_hit': traits.push(`+${t.amount}g/hit`); break;
+        case 'crit_chance': traits.push(`${Math.round((t.chance ?? 0.25) * 100)}% crit x${t.multiplier ?? 3}`); break;
+        case 'burn_dot': traits.push(`Burn ${t.dps}dps`); break;
+        case 'poison_dot': traits.push(`Poison ${Math.round((t.percentPerSec ?? 0.02) * 100)}%/s`); break;
+        case 'pierce_delivery': traits.push('Pierce'); break;
+        case 'armor_shred_on_hit': traits.push('Armor shred'); break;
+        case 'damage_amp_on_hit': traits.push(`+${Math.round((t.ampAmount ?? 0.15) * 100)}% vuln`); break;
+        case 'root_on_hit': traits.push(`${Math.round((t.chance ?? 0.2) * 100)}% root`); break;
+        case 'adjacency_buff': traits.push('Adj. aura'); break;
+        case 'damage_variance': traits.push(`Var ${Math.round((t.min ?? 0.5) * 100)}-${Math.round((t.max ?? 1.5) * 100)}%`); break;
+        case 'direct_damage': break;
+        default: if (t.id && !t.id.startsWith('_')) traits.push(t.id.replace(/_/g, ' ')); break;
+      }
+    }
+    const auraBuffs: string[] = [];
+    const adjDmg = getTrait(tower.traits, '_adj_damage_buff');
+    const adjRate = getTrait(tower.traits, '_adj_rate_buff');
+    if (adjDmg && adjDmg.bonus > 0) auraBuffs.push(`+${adjDmg.bonus} DMG`);
+    if (adjRate && adjRate.bonus > 0) auraBuffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD`);
+
+    let upgradePreview: TowerStats['upgradePreview'] = null;
+    if (tower.canUpgrade()) {
+      const next = tower.typeDef.upgrades[tower.level - 1];
+      const deltas: string[] = [];
+      const dd = next.damage - tower.damage;
+      const dr = next.range - tower.range / TILE_SIZE;
+      const ds = next.fireRate - tower.fireRate;
+      upgradePreview = {
+        dmg: dd !== 0 ? `${dd > 0 ? '+' : ''}${dd} DMG` : '',
+        rng: dr !== 0 ? `${dr > 0 ? '+' : ''}${dr.toFixed(1)} RNG` : '',
+        spd: ds !== 0 ? `${ds}ms SPD` : '',
+      };
+    }
+
+    return {
+      name: tower.typeDef.name,
+      level: tower.level,
+      maxLevel: tower.typeDef.upgrades.length + 1,
+      cost: tower.typeDef.cost,
+      sellValue: tower.getSellValue(),
+      damage: tower.damage,
+      range: tower.range / TILE_SIZE,
+      fireRate: tower.fireRate,
+      damageType: tower.damageType,
+      isUltimate: tower.typeDef.ultimate === true,
+      canUpgrade: tower.canUpgrade(),
+      upgradeCost: tower.canUpgrade() ? tower.typeDef.upgrades[tower.level - 1].cost : 0,
+      traits,
+      auraBuffs,
+      upgradePreview,
+      _tower: tower,
+    };
+  }
+
+  /** Convert wave data to previews for the DOM UI */
+  private updateDOMWaves(currentWave: number): void {
+    const previews: { waveNum: number; label: string; creepTypes: string; count: number; isBoss: boolean }[] = [];
+    for (let i = 0; i < 3; i++) {
+      const idx = currentWave + i;
+      if (idx >= this.waves.length) break;
+      const w = this.waves[idx];
+      const types = w.groups.map(g => g.creepType).filter((v, j, a) => a.indexOf(v) === j).join(', ');
+      const count = w.groups.reduce((s, g) => s + g.count, 0);
+      const isBoss = w.groups.some(g => g.creepType === 'boss');
+      previews.push({
+        waveNum: idx + 1,
+        label: i === 0 ? `W${idx + 1}` : `+${i + 1} W${idx + 1}`,
+        creepTypes: types,
+        count,
+        isBoss,
+      });
+    }
+    GameUIStore.updateWaves(currentWave, previews);
+  }
+
+  /** Place a pixel art doodad on a random blocked terrain cell */
+  placeFrontierDoodad(color: number = 0xffaa44, type: string = 'generic'): void {
+    const blocked: { col: number; row: number }[] = [];
+    for (let r = 0; r < this.grid.rows; r++) {
+      for (let c = 0; c < this.grid.cols; c++) {
+        if (this.grid.cells[r][c] === CellType.Blocked) blocked.push({ col: c, row: r });
+      }
+    }
+    if (blocked.length === 0) return;
+    const cell = blocked[Math.floor(Math.random() * blocked.length)];
+    const px = gridX(cell.col) + (Math.random() - 0.5) * TILE_SIZE * 0.4;
+    const py = gridY(cell.row) + (Math.random() - 0.5) * TILE_SIZE * 0.4;
+
+    // Render doodad sprite to a small canvas, then add as Phaser image
+    const drawFn = DOODAD_DRAW[type] ?? DOODAD_DRAW.generic;
+    const canvas = document.createElement('canvas');
+    canvas.width = DOODAD_CELL; canvas.height = DOODAD_CELL;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    drawFn(ctx, 0, 0);
+
+    const texKey = `doodad_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    this.textures.addCanvas(texKey, canvas);
+    const img = this.add.image(px, py, texKey).setDepth(3);
+    img.setScale(TILE_SIZE / DOODAD_CELL * 0.7); // slightly smaller than a tile
+    img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  }
+
   private enterBuildMode(typeId: string): void {
     this.selectionMode = 'build';
     this.selectedBuildType = typeId;
     this.selectedTower = null;
     this.towerInfo?.hide();
+    GameUIStore.deselectTower();
+    GameUIStore.selectDockTower(this.activeTowerIds.indexOf(typeId));
     this.opponentMinimap?.setFaded(true);
   }
 
@@ -849,8 +1042,12 @@ export class GameScene extends Phaser.Scene {
     this.selectedTower = tower;
     this.selectedCreep = null;
     this.towerBar.deselect();
-    this.towerInfo.show(tower);
+    GameUIStore.selectTower(this.towerToStats(tower));
     this.creepInfo.hide();
+    // Draw range circle on the game canvas
+    this.rangeGraphics.clear();
+    this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
+    this.rangeGraphics.strokeCircle(tower.x, tower.y, tower.range);
   }
 
   private enterNoneMode(): void {
@@ -861,6 +1058,9 @@ export class GameScene extends Phaser.Scene {
     this.linkingConduit = null;
     this.towerBar.deselect();
     this.towerInfo.hide();
+    GameUIStore.deselectTower();
+    this.rangeGraphics.clear();
+    GameUIStore.selectDockTower(-1);
     this.opponentMinimap?.setFaded(false);
     this.creepInfo.hide();
     this.hoverGraphics.clear();
@@ -941,7 +1141,11 @@ export class GameScene extends Phaser.Scene {
 
   handleHover(col: number, row: number): void {
     this.hoverGraphics.clear();
-    this.rangeGraphics.clear();
+    // Only clear the range circle if we're not inspecting a placed tower —
+    // otherwise hovering over the map would wipe the selected tower's range.
+    if (this.selectionMode !== 'inspect') {
+      this.rangeGraphics.clear();
+    }
 
     if (this.selectionMode !== 'build' || !this.selectedBuildType) return;
 
@@ -997,7 +1201,7 @@ export class GameScene extends Phaser.Scene {
             const cost = existingTower.getUpgradeCost();
             if (this.economy.spend(cost)) {
               existingTower.upgrade();
-              this.towerInfo.show(existingTower);
+              GameUIStore.selectTower(this.towerToStats(existingTower));
               this.versus?.send({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
               this.circle?.broadcast({ type: 'tower_upgraded', col: existingTower.col, row: existingTower.row, level: existingTower.level });
             }
@@ -1121,6 +1325,14 @@ export class GameScene extends Phaser.Scene {
     // Tower updates: aura resets, trait updates, gold/damage collection, fire
     this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps);
 
+    // Keep the selected tower's range circle in sync with its position
+    // (mobile units move) and persistent across other graphics clears.
+    if (this.selectedTower && !(this.selectedTower as any)._expired) {
+      this.rangeGraphics.clear();
+      this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
+      this.rangeGraphics.strokeCircle(this.selectedTower.x, this.selectedTower.y, this.selectedTower.range);
+    }
+
     // Creep updates: movement, leak handling, kill processing, cleanup
     const leakResult = this.creepMgr.update(delta);
     // Circle co-op: host deducts shared lives via CircleLeakHandler; joiners sync via message
@@ -1188,6 +1400,8 @@ export class GameScene extends Phaser.Scene {
         : -1;
     const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
     this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    GameUIStore.updateEconomy(this.economy.gold, displayLives, this.incomeMgr.getBreakdown().total);
+    GameUIStore.updateGameState(this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     this.creepInfo.updateTracked();
     this.statsTracker.updateTime(delta);
@@ -1466,7 +1680,7 @@ export class GameScene extends Phaser.Scene {
       this.circle?.close();
       this.registry.remove('versus');
       this.registry.remove('circle');
-      this.scene.start('MenuScene');
+      goToMenu();
     });
     exitBtn.on('pointerover', () => exitBtn.setColor('#ffbb77'));
     exitBtn.on('pointerout', () => exitBtn.setColor('#ff8844'));
@@ -1789,6 +2003,7 @@ export class GameScene extends Phaser.Scene {
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
     this.upcomingWaves.update(waveNum, this.waves);
+        this.updateDOMWaves(waveNum);
 
     // Endless mode: append more waves when running low, rotate creep faction every 10 waves
     if (this.matchMode === 'endless') {
@@ -1809,7 +2024,7 @@ export class GameScene extends Phaser.Scene {
     // Random faction rotation
     if (this.faction === 'random') {
       this.activeTowerIds = this.rollRandomTowers();
-      this.towerBar.setTowerIds(this.activeTowerIds);
+      this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
       if (this.gameMode instanceof BaseFrontierMode) {
         this.gameMode.rotateRandomFrontier();
       }
@@ -1905,6 +2120,7 @@ export class GameScene extends Phaser.Scene {
             const creepTypes = [...new Set(wave.groups.map(g => g.creepType))];
             this.eventLog.waveStarted(waveNum, totalWaves, creepTypes);
             this.upcomingWaves.update(waveNum, this.waves);
+        this.updateDOMWaves(waveNum);
             this.eventBus.emit('waveStarted', waveNum);
             this.gameMode.onWaveStart?.(wave, waveNum);
           },
@@ -1924,6 +2140,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Clean up on scene shutdown (returning to menu, restarting) */
   shutdown(): void {
+    GameUIStore.deactivate();
     // Destroy all towers and their sprites
     for (const t of this._towers) t.destroy();
     this._towers = [];

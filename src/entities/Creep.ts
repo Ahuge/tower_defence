@@ -38,6 +38,12 @@ export class Creep {
   private _prevX: number = 0;
   private _scene: Phaser.Scene;
   private _creepTypeId: string = 'standard';
+  private _creepFaction: FactionId | null = null;
+
+  /** The creep type ID (e.g. 'standard', 'fast', 'boss') */
+  get creepTypeId(): string { return this._creepTypeId; }
+  /** The faction this creep belongs to */
+  get creepFaction(): FactionId | null { return this._creepFaction; }
 
   constructor(scene: Phaser.Scene, path: PathPoint[], hp: number, speedMultiplier: number, isBoss: boolean, creepTypeId: string = 'standard', creepFaction?: FactionId) {
     this.creepType = CREEP_TYPES[creepTypeId] || CREEP_TYPES.standard;
@@ -70,6 +76,7 @@ export class Creep {
 
     this._scene = scene;
     this._creepTypeId = creepTypeId;
+    this._creepFaction = creepFaction ?? null;
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(10);
 
@@ -102,6 +109,10 @@ export class Creep {
       if (this.hp <= 0) {
         this.alive = false;
         this.graphics.destroy();
+        if (this.sprite) {
+          playCreepDeath(this._scene, this.sprite, (this._scene as any).creepFaction ?? 'arcane', this._creepTypeId);
+          this.sprite = null;
+        }
         return;
       }
     }

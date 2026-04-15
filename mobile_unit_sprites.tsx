@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useRef, useEffect, useState } from "react";
 
 // ===== PALETTES =====
-const MIL = {
+export const MIL = {
   OLIVE:'#556b2f', DKOLV:'#3b4a20', SAGE:'#8fbc8f', LTSAGE:'#a8d8a8',
   GUN:'#778899', DKGUN:'#556677', LTGUN:'#99aabb',
   SKIN:'#d4a574', DKSKIN:'#b8895a',
@@ -12,13 +13,13 @@ const MIL = {
   BERET:'#882222', DKBER:'#661111',
   CAPE:'#445533', DKCAPE:'#334422',
 };
-const ALN = {
+export const ALN = {
   LIME:'#88ff44', DKLIME:'#55cc22', LTLIME:'#bbff88',
   CHITIN:'#445522', DKCHI:'#334411', LTCHI:'#667744',
   DARK:'#112200', EYE:'#ff4444', DKEYE:'#cc2222',
   MAND:'#99dd33',
 };
-const INF = {
+export const INF = {
   RED:'#ff4422', DKRED:'#cc2200', LTRED:'#ff7755',
   ORANGE:'#ff8844', DKORA:'#cc6622', LTORA:'#ffbb77',
   DARK:'#220000', HORN:'#884400', DKHORN:'#663300',
@@ -41,7 +42,7 @@ const mk = (c: CanvasRenderingContext2D, o: number[], gw: number, gh: number, ps
 const PX = 2, GR = 16, CELL = GR * PX; // 32px cells
 
 // ===== 1. RIFLEMAN =====
-function drawRifleman(ctx: CanvasRenderingContext2D, level: number = 1) {
+export function drawRifleman(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -158,7 +159,7 @@ function drawRifleman(ctx: CanvasRenderingContext2D, level: number = 1) {
 }
 
 // ===== 2. BRAWLER =====
-function drawBrawler(ctx: CanvasRenderingContext2D, level: number = 1) {
+export function drawBrawler(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -249,7 +250,7 @@ function drawBrawler(ctx: CanvasRenderingContext2D, level: number = 1) {
 }
 
 // ===== 3. HEAVY GUNNER =====
-function drawHeavy(ctx: CanvasRenderingContext2D, level: number = 1) {
+export function drawHeavy(ctx: CanvasRenderingContext2D, level: number = 1) {
   // TANK — chunky armored vehicle, not a soldier
   const W = MIL;
 
@@ -413,7 +414,7 @@ function drawHeavy(ctx: CanvasRenderingContext2D, level: number = 1) {
 }
 
 // ===== 4. COMMANDER =====
-function drawCommander(ctx: CanvasRenderingContext2D, level: number = 1) {
+export function drawCommander(ctx: CanvasRenderingContext2D, level: number = 1) {
   const W = MIL;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -523,7 +524,7 @@ function drawCommander(ctx: CanvasRenderingContext2D, level: number = 1) {
 }
 
 // ===== 5. SWARMLING =====
-function drawSwarmling(ctx: CanvasRenderingContext2D, level: number = 1) {
+export function drawSwarmling(ctx: CanvasRenderingContext2D, level: number = 1) {
   const A = ALN;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -634,7 +635,7 @@ function drawSwarmling(ctx: CanvasRenderingContext2D, level: number = 1) {
 }
 
 // ===== 6. FIEND (Kamikaze) =====
-function drawFiend(ctx: CanvasRenderingContext2D, level: number = 1) {
+export function drawFiend(ctx: CanvasRenderingContext2D, level: number = 1) {
   const F = INF;
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
@@ -789,7 +790,7 @@ function drawFiend(ctx: CanvasRenderingContext2D, level: number = 1) {
 }
 
 // ===== UNIT DEFINITIONS =====
-const UNITS = [
+export const UNITS = [
   { name: 'Rifleman', file: 'rifleman_mobile.png', draw: drawRifleman, levels: 5 },
   { name: 'Brawler', file: 'brawler_mobile.png', draw: drawBrawler, levels: 5 },
   { name: 'Tank', file: 'heavy_mobile.png', draw: drawHeavy, levels: 3 },
@@ -798,7 +799,7 @@ const UNITS = [
   { name: 'Fiend', file: 'fiend_mobile.png', draw: drawFiend, levels: 2 },
 ];
 
-const ROWS_PER_LEVEL = 4; // walk down, walk right, walk up, attack
+export const ROWS_PER_LEVEL = 4; // walk down, walk right, walk up, attack
 const ROW_LABELS = ['Walk DOWN', 'Walk RIGHT', 'Walk UP', 'ATTACK'];
 const COL_LABELS = ['Frame 0', 'Frame 1', 'Frame 2', 'Frame 3'];
 
