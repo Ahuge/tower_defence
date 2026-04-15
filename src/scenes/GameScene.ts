@@ -589,19 +589,20 @@ export class GameScene extends Phaser.Scene {
     this.rangeGraphics = this.add.graphics().setDepth(19);
 
     // Sidebar — DOM UI handles all panels now.
-    // Desktop: no Phaser sidebar background needed (DOM panels float over canvas).
-    // Tablet/Phone: no SidebarOverlay needed (DOM accordion handles everything).
-    // We still create the SidebarOverlay for modes that call reparentSidebarPanels
-    // (their Phaser panels are hidden but we need the call to not crash).
+    // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
     if (ResponsiveManager.isTablet()) {
       this.sidebarOverlay = new SidebarOverlay(this);
       this.sidebarOverlay.addPanel(this.upcomingWaves.getContainer());
       this.sidebarOverlay.addPanel(this.eventLog.getContainer());
       this.gameMode.reparentSidebarPanels?.(this.sidebarOverlay);
-      // Hide the entire Phaser overlay — DOM handles sidebar
       this.sidebarOverlay.hideCompletely();
+    } else {
+      // Desktop: hide mode-specific Phaser panels that render inline
+      // (SendPanel, FrontierPanel, EssencePanel, ItemShopPanel)
+      this.gameMode.reparentSidebarPanels?.({
+        addPanel: (panel: Phaser.GameObjects.Container) => { panel.setVisible(false); },
+      } as any);
     }
-    // No desktop sidebar background — DOM panels render directly
 
     this.drawGrid();
     this.drawPath();
