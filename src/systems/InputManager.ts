@@ -76,13 +76,13 @@ export class InputManager {
     scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       this.cancelLongPress();
 
-      if (this.sidebarVisibleCheck?.()) return;
-      if (this.longPressFired) return; // was a long-press (right-click)
-      if (this.cameraCtrl?.wasPan) return; // was a pan gesture
+      if (this.sidebarVisibleCheck?.()) { console.log('[INPUT] blocked by sidebar check'); return; }
+      if (this.longPressFired) { console.log('[INPUT] blocked by long press'); return; }
+      if (this.cameraCtrl?.wasPan) { console.log('[INPUT] blocked by wasPan'); return; }
 
       // Only handle left button / touch
       const isLeftOrTouch = pointer.button === 0 || pointer.wasTouch;
-      if (!isLeftOrTouch) return;
+      if (!isLeftOrTouch) { console.log('[INPUT] blocked: not left/touch'); return; }
 
       const wx = pointer.worldX ?? pointer.x;
       const wy = pointer.worldY ?? pointer.y;
@@ -92,6 +92,7 @@ export class InputManager {
       }
 
       const coord = this.pointerToGrid(pointer);
+      console.log(`[INPUT] pointerup wx=${wx.toFixed(0)} wy=${wy.toFixed(0)} coord=${coord ? `${coord.col},${coord.row}` : 'null'}`);
       // Trigger hover so build preview shows
       if (coord && this.hoverCallback) {
         this.hoverCallback(coord.col, coord.row);
