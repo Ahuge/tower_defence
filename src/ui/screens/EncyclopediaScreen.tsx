@@ -1,10 +1,11 @@
-import { useState } from 'preact/hooks';
+import { useState, useMemo } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
 import { FACTIONS, FACTION_ORDER, FactionId } from '../../data/Factions';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { HERO_TYPES, HERO_ORDER, HeroTypeDef } from '../../data/HeroTypes';
 import { CREEP_TYPES } from '../../data/CreepTypes';
+import { getTowerIconUrl, getHeroIconUrl } from '../game/TowerIconRenderer';
 
 type Tab = 'factions' | 'towers' | 'creeps' | 'heroes';
 
@@ -45,6 +46,20 @@ function traitLabel(trait: { id: string;[k: string]: unknown }): string | null {
   }
 }
 
+/** Small tower sprite icon */
+function TowerIcon({ towerId, size = 28 }: { towerId: string; size?: number }) {
+  const url = useMemo(() => getTowerIconUrl(towerId), [towerId]);
+  if (!url) return null;
+  return <img src={url} width={size} height={size} style={{ imageRendering: 'pixelated' as any, verticalAlign: 'middle' }} />;
+}
+
+/** Hero sprite portrait */
+function HeroPortrait({ heroId, height = 64 }: { heroId: string; height?: number }) {
+  const url = useMemo(() => getHeroIconUrl(heroId), [heroId]);
+  if (!url) return null;
+  return <img src={url} height={height} style={{ imageRendering: 'pixelated' as any, objectFit: 'contain' }} />;
+}
+
 // ---------------------------------------------------------------------------
 // Factions Tab
 // ---------------------------------------------------------------------------
@@ -53,33 +68,36 @@ function FactionsTab() {
   return (
     <div class="ui-section">
       <div class="ui-section-title">All Factions</div>
-      {FACTION_ORDER.filter(fId => fId !== 'random').map(fId => {
-        const faction = FACTIONS[fId];
-        const towers = faction.towerIds
-          .map(tId => TOWER_TYPES[tId])
-          .filter(Boolean);
-        return (
-          <div key={fId} class="faction-row">
-            <div
-              class="faction-color-strip"
-              style={{ background: hexColor(faction.primaryColor) }}
-            />
-            <div class="faction-info" style={{ flex: 1 }}>
-              <div class="faction-name">{faction.name}</div>
-              <div class="faction-desc">{faction.description}</div>
-              <div class="text-dim text-xs mt-2">
-                {towers.map((t, i) => (
-                  <span key={t.id}>
-                    {i > 0 && ' \u00b7 '}
-                    {t.name}{' '}
-                    <span style={{ color: '#ffcc44' }}>{t.cost}g</span>
-                  </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {FACTION_ORDER.filter(fId => fId !== 'random').map(fId => {
+          const faction = FACTIONS[fId];
+          const towers = faction.towerIds
+            .map(tId => TOWER_TYPES[tId])
+            .filter(Boolean);
+          return (
+            <div key={fId} class="card" style={{ padding: '14px' }}>
+              <div class="card-accent" style={{ background: hexColor(faction.primaryColor) }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', marginTop: '2px' }}>
+                <div class="card-name" style={{ margin: 0 }}>{faction.name}</div>
+              </div>
+              <div class="card-desc" style={{ marginBottom: '10px' }}>{faction.description}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {towers.map(t => (
+                  <div key={t.id} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    background: 'rgba(20,20,36,0.6)', borderRadius: '4px', padding: '3px 7px',
+                    fontSize: '12px',
+                  }}>
+                    <TowerIcon towerId={t.id} size={22} />
+                    <span style={{ color: 'var(--text-secondary)' }}>{t.name}</span>
+                    <span style={{ color: 'var(--gold)', fontFamily: "'VT323', monospace" }}>{t.cost}g</span>
+                  </div>
                 ))}
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -117,13 +135,18 @@ function TowersTab() {
                       class="card-accent"
                       style={{ background: hexColor(faction.primaryColor) }}
                     />
-                    <div class="card-name">
-                      {tower.name}
-                      {tower.ultimate && (
-                        <span style={{ color: 'var(--gold)', marginLeft: '6px', fontSize: '10px' }}>
-                          ULT
-                        </span>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <TowerIcon towerId={tower.id} size={32} />
+                      <div>
+                        <div class="card-name" style={{ margin: 0 }}>
+                          {tower.name}
+                          {tower.ultimate && (
+                            <span style={{ color: 'var(--gold)', marginLeft: '6px', fontSize: '10px' }}>
+                              ULT
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div class="card-desc">{tower.description}</div>
                     <div class="text-dim text-xs mt-2" style={{ lineHeight: '1.6' }}>
@@ -223,44 +246,66 @@ function HeroCard({ hero }: { hero: HeroTypeDef }) {
   const faction = FACTIONS[hero.faction as FactionId];
   const fColor = faction ? hexColor(faction.primaryColor) : '#888';
   return (
-    <div class="card" style={{ minWidth: 'min(260px, 100%)' }}>
+    <div class="card" style={{ padding: '16px' }}>
       <div class="card-accent" style={{ background: fColor }} />
-      <div class="card-name">{hero.name}</div>
-      <div class="text-dim text-xs" style={{ marginBottom: '4px' }}>
-        {faction?.name ?? hero.faction}
+      {/* Header: portrait + name/faction/stats */}
+      <div style={{ display: 'flex', gap: '14px', marginBottom: '10px', marginTop: '2px' }}>
+        <div style={{
+          flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(20,20,36,0.6)', borderRadius: '8px', padding: '6px',
+          border: `1px solid ${fColor}33`,
+        }}>
+          <HeroPortrait heroId={hero.id} height={72} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div class="card-name" style={{ margin: 0, fontSize: '20px' }}>{hero.name}</div>
+          <div style={{ color: fColor, fontSize: '13px', marginBottom: '4px' }}>
+            {faction?.name ?? hero.faction}
+          </div>
+          <div class="card-desc" style={{ fontSize: '13px' }}>{hero.description}</div>
+        </div>
       </div>
-      <div class="card-desc">{hero.description}</div>
-      <div class="text-dim text-xs mt-2" style={{ lineHeight: '1.6' }}>
-        {hero.hp} HP
-        {' \u00b7 '}
-        {hero.damage} dmg
-        {' \u00b7 '}
-        {hero.attackSpeed} atk/s
-        {' \u00b7 '}
-        {hero.attackRange}px range
-        {' \u00b7 '}
-        {hero.moveSpeed}px/s move
-        {hero.baseArmor ? ` \u00b7 ${hero.baseArmor} armor` : ''}
+      {/* Stats row */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px',
+      }}>
+        {[
+          { label: 'HP', value: hero.hp, color: 'var(--jewel-red)' },
+          { label: 'DMG', value: hero.damage, color: 'var(--gold)' },
+          { label: 'SPD', value: hero.attackSpeed + '/s', color: 'var(--text-secondary)' },
+          { label: 'RNG', value: hero.attackRange + 'px', color: 'var(--text-secondary)' },
+          { label: 'MOVE', value: hero.moveSpeed + 'px/s', color: 'var(--text-secondary)' },
+          ...(hero.baseArmor ? [{ label: 'ARM', value: hero.baseArmor, color: 'var(--text-secondary)' }] : []),
+        ].map(s => (
+          <div key={s.label} style={{
+            background: 'rgba(20,20,36,0.6)', borderRadius: '4px', padding: '3px 8px',
+            fontSize: '12px', fontFamily: "'VT323', monospace",
+          }}>
+            <span style={{ color: 'var(--text-muted)', marginRight: '3px' }}>{s.label}</span>
+            <span style={{ color: s.color }}>{s.value}</span>
+          </div>
+        ))}
       </div>
-      <div class="mt-2" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }}>
+      {/* Abilities */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '8px' }}>
         {hero.abilities.map(a => (
-          <div key={a.key} class="text-xs" style={{ marginBottom: '4px', lineHeight: '1.4' }}>
+          <div key={a.key} style={{ marginBottom: '6px', lineHeight: '1.5', fontSize: '13px' }}>
             <span style={{ color: 'var(--gold)', fontWeight: 'bold' }}>[{a.key}]</span>{' '}
-            <span style={{ color: 'var(--text-primary)' }}>{a.name}</span>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{a.name}</span>
             {' \u2014 '}
-            <span class="text-dim">{a.description}</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{a.description}</span>
             {' '}
-            <span style={{ color: 'var(--text-muted)' }}>({a.cooldown}s)</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>({a.cooldown}s)</span>
           </div>
         ))}
         {hero.ultimate && (
-          <div class="text-xs" style={{ marginTop: '6px', lineHeight: '1.4' }}>
+          <div style={{ marginTop: '4px', lineHeight: '1.5', fontSize: '13px' }}>
             <span style={{ color: 'var(--jewel-red)', fontWeight: 'bold' }}>[{hero.ultimate.key}]</span>{' '}
-            <span style={{ color: 'var(--text-primary)' }}>{hero.ultimate.name}</span>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{hero.ultimate.name}</span>
             {' \u2014 '}
-            <span class="text-dim">{hero.ultimate.description}</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{hero.ultimate.description}</span>
             {' '}
-            <span style={{ color: 'var(--text-muted)' }}>({hero.ultimate.cooldown}s)</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>({hero.ultimate.cooldown}s)</span>
           </div>
         )}
       </div>
@@ -272,7 +317,7 @@ function HeroesTab() {
   return (
     <div class="ui-section">
       <div class="ui-section-title">Heroes</div>
-      <div class="card-grid">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {HERO_ORDER.map(hId => {
           const hero = HERO_TYPES[hId];
           return <HeroCard key={hId} hero={hero} />;
@@ -292,7 +337,7 @@ export function EncyclopediaScreen() {
 
   return (
     <>
-      <div class="ui-header">
+      <div class="ui-header" style={{ flexWrap: 'wrap', gap: '6px' }}>
         <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>
           {'< Back'}
         </button>
