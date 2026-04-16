@@ -475,14 +475,15 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 12px;
-  padding: 5px 14px;
+  gap: 14px;
+  padding: 6px 16px;
   max-width: 100vw;
   background: rgba(21, 16, 26, 0.92);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   font-family: 'VT323', ui-monospace, monospace;
-  font-size: 14px;
+  font-size: 18px;
+  letter-spacing: 0.5px;
   color: var(--text-primary);
   backdrop-filter: blur(4px);
 }
@@ -498,7 +499,7 @@
 .status-gold { color: var(--gold); }
 .status-lives { color: var(--jewel-red); }
 .status-wave { color: var(--text-secondary); }
-.status-income { font-size: 12px; }
+.status-income { font-size: 16px; letter-spacing: 0.5px; color: var(--jewel-teal); }
 
 .status-controls {
   display: flex;

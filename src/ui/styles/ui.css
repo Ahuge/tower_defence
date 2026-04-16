@@ -3,7 +3,7 @@
 
 #ui-root {
   position: fixed; inset: 0; z-index: 100; pointer-events: none;
-  font-family: 'DM Sans', system-ui, sans-serif; color: var(--text-primary);
+  font-family: 'DM Sans', system-ui, sans-serif; font-size: var(--text-base); color: var(--text-primary);
 }
 #ui-root.active { pointer-events: auto; overflow: hidden; }
 
@@ -53,7 +53,7 @@
   color: var(--gold); letter-spacing: 1px; margin-bottom: var(--space-3); text-transform: uppercase;
 }
 
-.card-grid { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.card-grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 .card {
   background: var(--bg-card); border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md); padding: var(--space-3);
@@ -72,8 +72,8 @@
 .card.locked { opacity: 0.6; }
 .card.locked:hover { opacity: 0.8; }
 .card-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--radius-md) var(--radius-md) 0 0; }
-.card-name { font-size: 13px; color: var(--text-primary); margin-bottom: 4px; font-weight: bold; }
-.card-desc { font-size: 10px; color: var(--text-secondary); line-height: 1.4; }
+.card-name { font-size: 15px; color: var(--text-primary); margin-bottom: 4px; font-weight: bold; }
+.card-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-2); }
 
 .rarity-common { color: var(--rarity-common); }
@@ -261,8 +261,8 @@
 .faction-row.owned { background: var(--bg-card-owned); }
 .faction-color-strip { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
 .faction-info { flex: 1; }
-.faction-name { font-size: 14px; color: var(--text-primary); font-weight: bold; }
-.faction-desc { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+.faction-name { font-size: 16px; color: var(--text-primary); font-weight: bold; }
+.faction-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
 
 .lock-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-md); gap: 4px; }
 .lock-icon { font-size: 18px; color: var(--gold); }
@@ -275,12 +275,14 @@
 
 /* ─── Tablet ── */
 @media (min-width: 601px) and (max-width: 1200px) {
-  .card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .card-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
 
 /* ─── Phone ── */
 @media (max-width: 600px) {
   .card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+  .card-name { font-size: 13px; }
+  .card-desc { font-size: 11px; }
   .ui-header { padding: 10px 12px; }
   .ui-section { padding: 12px; }
   .tab { padding: 8px 12px; font-size: 11px; min-height: 44px; }
@@ -311,8 +313,8 @@
 .text-red    { color: var(--jewel-red); }
 .text-dim    { color: var(--text-dim); }
 .text-muted  { color: var(--text-muted); }
-.text-sm     { font-size: 10px; }
-.text-xs     { font-size: 9px; }
+.text-sm     { font-size: 12px; }
+.text-xs     { font-size: 11px; }
 .font-pixel  { font-family: 'Silkscreen', ui-sans-serif, sans-serif; }
 .font-data   { font-family: 'VT323', ui-monospace, monospace; }
 

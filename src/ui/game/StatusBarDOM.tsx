@@ -21,7 +21,7 @@ export function StatusBarDOM() {
         <span class="status-gold">Gold: {Math.floor(gold)}</span>
         <span class="status-lives">{lives > 0 ? `Lives: ${lives}` : 'DEAD'}</span>
         <span class="status-wave">Wave: {currentWave}{totalWaves > 0 ? `/${totalWaves}` : ''}</span>
-        <span class="status-income" style={{ color: '#88ff88' }}>+{income}/w</span>
+        <span class="status-income">+{income}/w</span>
       </div>
 
       {/* Controls */}
