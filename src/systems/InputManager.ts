@@ -9,6 +9,7 @@ export interface GridCoord {
 
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10; // pixels
+const DEBUG_INPUT = true; // Temporary: on-screen debug for phone touch diagnosis
 
 export class InputManager {
   private scene: Phaser.Scene;
@@ -29,9 +30,24 @@ export class InputManager {
   private longPressStartX = 0;
   private longPressStartY = 0;
 
+  // On-screen debug overlay (phone touch diagnosis)
+  private debugEl: HTMLElement | null = null;
+  private debugLines: string[] = [];
+
   constructor(scene: Phaser.Scene, events: EventBus) {
     this.scene = scene;
     this.events = events;
+
+    if (DEBUG_INPUT) {
+      this.debugEl = document.createElement('div');
+      Object.assign(this.debugEl.style, {
+        position: 'fixed', top: '0', right: '0', zIndex: '9999',
+        background: 'rgba(0,0,0,0.85)', color: '#0f0', fontSize: '11px',
+        fontFamily: 'monospace', padding: '4px 6px', maxWidth: '50vw',
+        pointerEvents: 'none', whiteSpace: 'pre-wrap', lineHeight: '1.3',
+      });
+      document.body.appendChild(this.debugEl);
+    }
 
     scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       // Skip if sidebar overlay is open
@@ -48,13 +64,15 @@ export class InputManager {
         }
       }
 
-      const coord = this.pointerToGrid(pointer);
-      if (coord && this.hoverCallback) {
-        this.hoverCallback(coord.col, coord.row);
+      const hoverCoord = this.pointerToGrid(pointer);
+      if (hoverCoord && this.hoverCallback) {
+        this.hoverCallback(hoverCoord.col, hoverCoord.row);
       }
     });
 
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.dbg(`DN s=${pointer.x|0},${pointer.y|0} touch=${pointer.wasTouch} cam=${pointer.camera?.name ?? '?'}`);
+
       // Skip if sidebar overlay is open
       if (this.sidebarVisibleCheck?.()) return;
 
@@ -76,23 +94,26 @@ export class InputManager {
     scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       this.cancelLongPress();
 
-      if (this.sidebarVisibleCheck?.()) { console.log('[INPUT] blocked by sidebar check'); return; }
-      if (this.longPressFired) { console.log('[INPUT] blocked by long press'); return; }
-      if (this.cameraCtrl?.wasPan) { console.log('[INPUT] blocked by wasPan'); return; }
+      if (this.sidebarVisibleCheck?.()) { this.dbg('BLOCK sidebar'); return; }
+      if (this.longPressFired) { this.dbg('BLOCK longPress'); return; }
+      if (this.cameraCtrl?.wasPan) { this.dbg('BLOCK wasPan'); return; }
 
       // Only handle left button / touch
       const isLeftOrTouch = pointer.button === 0 || pointer.wasTouch;
-      if (!isLeftOrTouch) { console.log('[INPUT] blocked: not left/touch'); return; }
+      if (!isLeftOrTouch) { this.dbg('BLOCK !left/touch'); return; }
 
-      const wx = pointer.worldX ?? pointer.x;
-      const wy = pointer.worldY ?? pointer.y;
+      // Always use main camera for world coordinates (pointer.worldX may
+      // reference the UI camera — see pointerToWorld for details).
+      const { x: wx, y: wy } = this.pointerToWorld(pointer);
 
       if (this.rawClickCallback) {
         this.rawClickCallback(wx, wy);
       }
 
       const coord = this.pointerToGrid(pointer);
-      console.log(`[INPUT] pointerup wx=${wx.toFixed(0)} wy=${wy.toFixed(0)} coord=${coord ? `${coord.col},${coord.row}` : 'null'}`);
+      const cam = this.scene.cameras.main;
+      this.dbg(`UP s=${pointer.x|0},${pointer.y|0} w=${wx|0},${wy|0} g=${coord ? `${coord.col},${coord.row}` : 'null'} z=${cam.zoom.toFixed(1)} pCam=${pointer.camera?.name ?? '?'}`);
+
       // Trigger hover so build preview shows
       if (coord && this.hoverCallback) {
         this.hoverCallback(coord.col, coord.row);
@@ -160,6 +181,14 @@ export class InputManager {
     }
   }
 
+  /** Push a debug line to the on-screen overlay (max 8 lines, newest on top) */
+  private dbg(msg: string): void {
+    if (!DEBUG_INPUT || !this.debugEl) return;
+    this.debugLines.unshift(msg);
+    if (this.debugLines.length > 8) this.debugLines.length = 8;
+    this.debugEl.textContent = this.debugLines.join('\n');
+  }
+
   onHover(cb: (col: number, row: number) => void): void {
     this.hoverCallback = cb;
   }
@@ -205,10 +234,17 @@ export class InputManager {
     this.sidebarVisibleCheck = check;
   }
 
+  /** Convert pointer screen position to world coordinates using the MAIN camera.
+   *  Avoids relying on pointer.worldX which may reference the UI camera
+   *  (Phaser sets pointer.camera to the last camera iterated during hitTest). */
+  private pointerToWorld(pointer: Phaser.Input.Pointer): { x: number; y: number } {
+    const cam = this.scene.cameras.main;
+    const wp = cam.getWorldPoint(pointer.x, pointer.y);
+    return { x: wp.x, y: wp.y };
+  }
+
   private pointerToGrid(pointer: Phaser.Input.Pointer): GridCoord | null {
-    // Use worldX/worldY to account for camera zoom/scroll
-    const wx = pointer.worldX ?? pointer.x;
-    const wy = pointer.worldY ?? pointer.y;
+    const { x: wx, y: wy } = this.pointerToWorld(pointer);
     const col = pixelToCol(wx);
     const row = pixelToRow(wy);
     if (col < 0 || col >= getGridCols() || row < 0 || row >= this.gridRows) return null;

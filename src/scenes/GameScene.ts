@@ -602,9 +602,20 @@ export class GameScene extends Phaser.Scene {
     // Sidebar — DOM UI handles all panels now.
     // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
     // Don't add EventLog/UpcomingWaves containers — they're DOM-only stubs.
-    // Just hide any mode-specific Phaser panels (SendPanel, FrontierPanel, etc).
+    // Hide + disable interactive on mode-specific Phaser panels (SendPanel, FrontierPanel, etc)
+    // so invisible zones don't consume touch events on the game grid.
     this.gameMode.reparentSidebarPanels?.({
-      addPanel: (panel: Phaser.GameObjects.Container) => { panel.setVisible(false); },
+      addPanel: (panel: Phaser.GameObjects.Container) => {
+        panel.setVisible(false);
+        // Recursively disable interactivity on all children
+        const disableAll = (c: Phaser.GameObjects.Container) => {
+          for (const child of c.list) {
+            if ((child as any).disableInteractive) (child as any).disableInteractive();
+            if (child instanceof Phaser.GameObjects.Container) disableAll(child);
+          }
+        };
+        disableAll(panel);
+      },
     } as any);
 
     this.drawGrid();

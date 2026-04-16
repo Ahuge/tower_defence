@@ -125,7 +125,8 @@ export class UIOverlay {
 
   private hidden = false;
 
-  /** Hide all Phaser UI elements — DOM takes over */
+  /** Hide all Phaser UI elements — DOM takes over.
+   *  Also disables interactivity so invisible zones don't consume touch events. */
   hideAll(): void {
     this.hidden = true;
     this.goldText.setVisible(false);
@@ -133,8 +134,8 @@ export class UIOverlay {
     this.waveText.setVisible(false);
     this.statusText.setVisible(false);
     this.speedText.setVisible(false);
-    this.waveBtn.setVisible(false);
-    this.speedBtn.setVisible(false);
+    this.waveBtn.setVisible(false).disableInteractive();
+    this.speedBtn.setVisible(false).disableInteractive();
     this.seedText.setVisible(false);
   }
 }

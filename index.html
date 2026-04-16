@@ -23,6 +23,8 @@
     body { background: #15101a; margin: 0; height: 100vh; overflow: hidden; font-family: 'DM Sans', system-ui, sans-serif; }
     /* Phaser game container sits below the DOM UI layer */
     #game-root { position: fixed; inset: 0; z-index: 1; overflow: hidden; }
+    /* Prevent browser from handling touch gestures on the canvas (scroll, zoom, etc.) */
+    #game-root canvas { touch-action: none; }
   </style>
 </head>
 <body>
