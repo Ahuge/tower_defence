@@ -299,12 +299,17 @@
   .panel-close { min-width: 44px; min-height: 44px; font-size: 20px; display: flex; align-items: center; justify-content: center; }
 }
 
-/* ─── Tablet layout stub ──────────────────────────── */
+/* ─── Tablet layout ───────────────────────────────── */
 @media (min-width: 601px) and (max-width: 1200px) {
-  /* Tablet: intermediate between phone and desktop.
-     Filled in PR 3 — for now inherit desktop with minor adjustments. */
-  .game-panel { font-size: 13px; }
-  .status-bar { font-size: 13px; }
+  .game-panel { font-size: 13px; padding: 8px; }
+  .stat-grid { grid-template-columns: repeat(3, 1fr); }
+  .stat-value { font-size: 16px; }
+  .stat-label { font-size: 9px; }
+  .action-btn { font-size: 12px; padding: 10px 0; }
+  .status-bar { font-size: 13px; padding: 5px 12px; }
+  .tower-dock { gap: 3px; padding: 5px 7px; }
+  .dock-slot { width: 52px; height: 60px; }
+  .dock-tooltip { max-width: 260px; }
 }
 
 /* ─── Tower Dock Bar ───────────────────────────────── */

@@ -94,7 +94,7 @@ export function GameSidebar() {
       {isPhone && selectedTower && showFloatingTower && (
         <div class="floating-tower-info game-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffdd44' }}>
+            <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '16px', fontWeight: 'bold', color: 'var(--gold)' }}>
               {selectedTower.name} Lv{selectedTower.level}{selectedTower.isUltimate ? ' ULT' : ''}
             </span>
             <button class="panel-close" onClick={dismissFloating}>&times;</button>
