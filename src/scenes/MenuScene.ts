@@ -1,10 +1,9 @@
 import Phaser from 'phaser';
-import { getCanvasWidth, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT, TOWER_BAR_HEIGHT } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { getDailySeed } from '../data/MapGenerator';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 
@@ -237,7 +236,7 @@ export class MenuScene extends Phaser.Scene {
     logBtn.on('pointerout', () => logBtn.setColor('#88aacc'));
 
     // Version SHA
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = GAME_HEIGHT + 28 + TOWER_BAR_HEIGHT;
     this.add.text(getCanvasWidth() - 8, totalH - 8, `v${__GIT_SHA__}`, {
       fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(1, 1);
@@ -247,7 +246,7 @@ export class MenuScene extends Phaser.Scene {
     if (this.waveCountOverlay) return;
 
     const canvasW = getCanvasWidth();
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = GAME_HEIGHT + 28 + TOWER_BAR_HEIGHT;
 
     const container = this.add.container(0, 0);
     container.setDepth(1000);

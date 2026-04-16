@@ -15,7 +15,6 @@ import { HeroSelectScene } from './scenes/HeroSelectScene';
 import { CreepFactionSelectScene } from './scenes/CreepFactionSelectScene';
 import { GauntletPreviewScene } from './scenes/GauntletPreviewScene';
 import { LeaderboardScene } from './scenes/LeaderboardScene';
-import { TowerSelectBar } from './ui/TowerSelectBar';
 import { UIBridge } from './ui/UIBridge';
 import { preloadSprites } from './systems/SpriteManager';
 import { preloadCreepSprites } from './systems/CreepSpriteManager';

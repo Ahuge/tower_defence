@@ -1,6 +1,4 @@
-import { SIDEBAR_WIDTH, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE } from '../config';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
-import { GameControlBar } from '../ui/GameControlBar';
+import { SIDEBAR_WIDTH, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, TOWER_BAR_HEIGHT, CONTROL_BAR_HEIGHT } from '../config';
 
 const TABLET_BREAKPOINT = 1200;
 const PHONE_BREAKPOINT = 600;
@@ -67,7 +65,7 @@ class ResponsiveManagerClass {
   /** Full canvas height including status bar, tower select bar, and phone control bar.
    *  On phone: expand to fill viewport aspect ratio so less vertical space is wasted. */
   canvasHeight(): number {
-    const base = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const base = GAME_HEIGHT + 28 + TOWER_BAR_HEIGHT;
     if (this._mode !== 'phone') return base;
 
     // Match phone viewport aspect ratio to minimize letterboxing
@@ -75,7 +73,7 @@ class ResponsiveManagerClass {
     const vpAspect = window.innerHeight / window.innerWidth;
     const targetH = Math.round(cw * vpAspect);
     // At minimum, fit the game + control bar. At maximum, fill the viewport.
-    return Math.max(base + GameControlBar.BAR_HEIGHT, targetH);
+    return Math.max(base + CONTROL_BAR_HEIGHT, targetH);
   }
 
   onLayoutChange(cb: LayoutChangeCallback): void {

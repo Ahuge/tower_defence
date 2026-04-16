@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { getCanvasWidth, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT, TOWER_BAR_HEIGHT } from '../config';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { SignalingClient } from '../systems/multiplayer/SignalingClient';
 import { GameMessage } from '../systems/multiplayer/MessageProtocol';
@@ -7,7 +7,6 @@ import { MapId, MapDefinition, CIRCLE_MAP_ORDER, MAPS } from '../data/Maps';
 import { MapStorage, MapJSON } from '../systems/MapStorage';
 import { DifficultyLevel } from '../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { UIScale } from '../systems/UIScale';
 import { Analytics } from '../systems/AnalyticsClient';
 import { goToMenu } from '../ui/navigation';
@@ -39,7 +38,7 @@ export class CircleLobbyScene extends Phaser.Scene {
 
   create(): void {
     const cx = getCanvasWidth() / 2;
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = GAME_HEIGHT + 28 + TOWER_BAR_HEIGHT;
 
     this.playerFactions.clear();
     this.myFaction = null;
