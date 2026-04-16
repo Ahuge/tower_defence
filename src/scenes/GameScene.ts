@@ -589,6 +589,9 @@ export class GameScene extends Phaser.Scene {
     });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     Analytics.gameStart(this.matchMode, this.faction ?? 'unknown', this.difficulty, this.mapId);
+
+    // Signal loading screen that scene is ready (triggers fade-out)
+    import('../ui/UIBridge').then(m => m.UIBridge.signalSceneReady());
     this._gameStartTime = Date.now();
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { UIBridge, ScreenId } from './UIBridge';
+import { UIBridge, ScreenId, LoadingData } from './UIBridge';
 import { MenuScreen } from './screens/MenuScreen';
 import { StoreScreen } from './screens/StoreScreen';
 import { BattlePassScreen } from './screens/BattlePassScreen';
@@ -13,6 +13,7 @@ import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
 import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
+import { LoadingScreen } from './screens/LoadingScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
@@ -21,6 +22,7 @@ import './styles/game-panels.css';
 export function App() {
   const [screen, setScreen] = useState<ScreenId>(UIBridge.getScreen());
   const [data, setData] = useState<Record<string, unknown>>(UIBridge.getData());
+  const [loading, setLoading] = useState<LoadingData | null>(UIBridge.getLoading());
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -30,9 +32,13 @@ export function App() {
       setScreen(current);
       setData(UIBridge.getData());
     }
-    return UIBridge.onScreenChange((s, d) => {
+    const unsubScreen = UIBridge.onScreenChange((s, d) => {
       if (mounted.current) { setScreen(s); setData(d); }
     });
+    const unsubLoading = UIBridge.onLoadingChange((ld) => {
+      if (mounted.current) setLoading(ld);
+    });
+    return () => { unsubScreen(); unsubLoading(); };
   }, []);
 
   return (
@@ -60,6 +66,17 @@ export function App() {
       {!screen && <GameSidebar />}
       {!screen && <StatusBarDOM />}
       {!screen && <TowerDockDOM />}
+
+      {/* Loading screen — overlays everything during game scene load */}
+      {loading && (
+        <LoadingScreen
+          faction={loading.faction}
+          map={loading.map}
+          difficulty={loading.difficulty}
+          mode={loading.mode}
+          waveCount={loading.waveCount}
+        />
+      )}
     </>
   );
 }
