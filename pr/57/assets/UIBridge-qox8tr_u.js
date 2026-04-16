@@ -1,0 +1,1 @@
+import{n as e,t}from"./main-oB54IvT3.js";e();export{t as UIBridge};
