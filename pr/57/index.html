@@ -2,15 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Tower Defence</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#15101a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
     /* Phaser game container sits below the DOM UI layer */
     #game-root { position: fixed; inset: 0; z-index: 1; }
   </style>
-  <script type="module" crossorigin src="/tower_defence/pr/57/assets/main-CyNUkjTD.js"></script>
+  <script type="module" crossorigin src="/tower_defence/pr/57/assets/main-BXPzTq4v.js"></script>
   <link rel="modulepreload" crossorigin href="/tower_defence/pr/57/assets/jsxRuntime.module-BqWNSnUx.js">
   <link rel="modulepreload" crossorigin href="/tower_defence/pr/57/assets/modulepreload-polyfill-CSRv37U6.js">
   <link rel="modulepreload" crossorigin href="/tower_defence/pr/57/assets/Factions-urx6urfT.js">
