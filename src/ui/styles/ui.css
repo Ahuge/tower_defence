@@ -49,7 +49,7 @@
 
 .ui-section { padding: var(--space-4) var(--space-5); }
 .ui-section-title {
-  font-family: 'VT323', ui-monospace, monospace; font-size: var(--text-lg);
+  font-family: 'VT323', ui-monospace, monospace; font-size: var(--text-xl);
   color: var(--gold); letter-spacing: 1px; margin-bottom: var(--space-3); text-transform: uppercase;
 }
 
@@ -72,8 +72,8 @@
 .card.locked { opacity: 0.6; }
 .card.locked:hover { opacity: 0.8; }
 .card-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--radius-md) var(--radius-md) 0 0; }
-.card-name { font-size: 15px; color: var(--text-primary); margin-bottom: 4px; font-weight: bold; }
-.card-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.card-name { font-size: 18px; color: var(--text-primary); margin-bottom: 6px; font-weight: bold; }
+.card-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
 .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-2); }
 
 .rarity-common { color: var(--rarity-common); }
@@ -83,7 +83,7 @@
 
 /* Buttons — chunky 2px bottom-border for pixel-art heft */
 .btn {
-  font-family: inherit; font-size: 12px; padding: 6px 14px; border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 14px; padding: 8px 16px; border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle); border-bottom-width: 2px;
   background: var(--bg-card); color: var(--text-primary);
   cursor: pointer; transition: all var(--transition-fast); white-space: nowrap;
@@ -100,11 +100,11 @@
 .btn-green { background: #142a1e; border-color: var(--jewel-teal); color: var(--jewel-teal); }
 .btn-disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-disabled:hover { background: var(--bg-card); border-color: var(--border-subtle); transform: none; box-shadow: none; }
-.btn-large { font-size: 16px; padding: 12px 28px; border-radius: var(--radius-md); }
+.btn-large { font-size: 18px; padding: 14px 32px; border-radius: var(--radius-md); }
 
 .tab-bar { display: flex; gap: 2px; padding: 0 var(--space-5); background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
 .tab {
-  padding: 10px 20px; font-family: inherit; font-size: 12px; color: var(--text-muted);
+  padding: 10px 20px; font-family: inherit; font-size: 15px; color: var(--text-muted);
   background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast);
 }
 .tab:hover { color: var(--text-secondary); }
@@ -261,8 +261,8 @@
 .faction-row.owned { background: var(--bg-card-owned); }
 .faction-color-strip { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
 .faction-info { flex: 1; }
-.faction-name { font-size: 16px; color: var(--text-primary); font-weight: bold; }
-.faction-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.faction-name { font-size: 18px; color: var(--text-primary); font-weight: bold; }
+.faction-desc { font-size: 14px; color: var(--text-secondary); margin-top: 2px; line-height: 1.5; }
 
 .lock-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-md); gap: 4px; }
 .lock-icon { font-size: 18px; color: var(--gold); }
@@ -281,8 +281,11 @@
 /* ─── Phone ── */
 @media (max-width: 600px) {
   .card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
-  .card-name { font-size: 13px; }
-  .card-desc { font-size: 11px; }
+  .card-name { font-size: 15px; }
+  .card-desc { font-size: 12px; }
+  .text-sm { font-size: 12px; }
+  .text-xs { font-size: 11px; }
+  .btn { font-size: 13px; padding: 6px 14px; }
   .ui-header { padding: 10px 12px; }
   .ui-section { padding: 12px; }
   .tab { padding: 8px 12px; font-size: 11px; min-height: 44px; }
@@ -313,8 +316,8 @@
 .text-red    { color: var(--jewel-red); }
 .text-dim    { color: var(--text-dim); }
 .text-muted  { color: var(--text-muted); }
-.text-sm     { font-size: 12px; }
-.text-xs     { font-size: 11px; }
+.text-sm     { font-size: 14px; }
+.text-xs     { font-size: 13px; }
 .font-pixel  { font-family: 'Silkscreen', ui-sans-serif, sans-serif; }
 .font-data   { font-family: 'VT323', ui-monospace, monospace; }
 

@@ -107,7 +107,7 @@
   border-radius: 8px;
   padding: 10px;
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: 14px;
   /* Re-enable hit-testing — the GameSidebar wrapper is pointer-events:none
      so empty sidebar space passes taps through to the Phaser canvas. */
   pointer-events: auto;
@@ -124,14 +124,14 @@
 
 .tower-name {
   font-family: 'VT323', ui-monospace, monospace;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: bold;
   color: var(--gold);
   flex: 1;
 }
 
 .tower-level {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -175,14 +175,15 @@
 }
 
 .stat-value {
-  font-size: 14px;
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 18px;
   font-weight: bold;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .stat-label {
-  font-size: 8px;
-  color: #666;
+  font-size: 11px;
+  color: var(--text-muted);
   letter-spacing: 1px;
   margin-top: 2px;
 }
@@ -252,8 +253,8 @@
 .action-btn {
   flex: 1;
   font-family: inherit;
-  font-size: 11px;
-  padding: 8px 0;
+  font-size: 14px;
+  padding: 10px 0;
   border-radius: 4px;
   border: 1px solid #333;
   cursor: pointer;
@@ -303,10 +304,10 @@
 @media (min-width: 601px) and (max-width: 1200px) {
   .game-panel { font-size: 13px; padding: 8px; }
   .stat-grid { grid-template-columns: repeat(3, 1fr); }
-  .stat-value { font-size: 16px; }
-  .stat-label { font-size: 9px; }
-  .action-btn { font-size: 12px; padding: 10px 0; }
-  .status-bar { font-size: 13px; padding: 5px 12px; }
+  .stat-value { font-size: 17px; }
+  .stat-label { font-size: 10px; }
+  .action-btn { font-size: 13px; padding: 10px 0; }
+  .status-bar { font-size: 16px; padding: 5px 12px; }
   .tower-dock { gap: 3px; padding: 5px 7px; }
   .dock-slot { width: 52px; height: 60px; }
   .dock-tooltip { max-width: 260px; }
@@ -380,7 +381,7 @@
 }
 
 .dock-cost {
-  font-size: 10px;
+  font-size: 12px;
   font-family: 'VT323', ui-monospace, monospace;
   margin-top: 1px;
 }
@@ -411,30 +412,30 @@
 
 .dock-tooltip-name {
   font-family: 'VT323', ui-monospace, monospace;
-  font-size: 14px;
+  font-size: 17px;
   color: var(--gold);
   font-weight: bold;
   margin-bottom: 4px;
 }
 .dock-tooltip-desc {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--text-secondary);
   margin-bottom: 4px;
   line-height: 1.4;
 }
 .dock-tooltip-stats {
   font-family: 'VT323', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--text-muted);
   margin-bottom: 4px;
 }
 .dock-tooltip-traits {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--jewel-violet);
   margin-bottom: 4px;
 }
 .dock-tooltip-upgrades {
-  font-size: 8px;
+  font-size: 11px;
   color: var(--text-dim);
 }
 
@@ -509,8 +510,8 @@
 
 .status-btn {
   font-family: inherit;
-  font-size: 13px;
-  padding: 4px 10px;
+  font-size: 16px;
+  padding: 5px 12px;
   border-radius: 4px;
   border: 1px solid var(--border-subtle);
   background: rgba(31, 24, 35, 0.8);
@@ -537,12 +538,12 @@
 }
 
 .status-wave-active {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--text-muted);
 }
 
 .status-auto {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--jewel-teal);
   background: rgba(45, 155, 138, 0.15);
   padding: 1px 5px;

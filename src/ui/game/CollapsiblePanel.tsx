@@ -27,9 +27,9 @@ export function CollapsiblePanel({ title, titleColor, open, onToggle, badge, chi
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '8px', color: 'var(--text-dim)', transition: 'transform 150ms', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-          <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '13px', color: titleColor ?? 'var(--gold)', letterSpacing: '1px' }}>{title}</span>
+          <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '16px', color: titleColor ?? 'var(--gold)', letterSpacing: '1px' }}>{title}</span>
         </div>
-        {badge && <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '11px', color: 'var(--text-muted)' }}>{badge}</span>}
+        {badge && <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '14px', color: 'var(--text-muted)' }}>{badge}</span>}
       </div>
       {/* Content — hidden when collapsed, scroll if too tall */}
       {open && (
