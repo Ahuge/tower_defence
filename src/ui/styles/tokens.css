@@ -1,0 +1,99 @@
+/* ─── Design Tokens ─────────────────────────────────
+ * Single source of truth for palette, spacing, and type scale.
+ * Imported first by ui.css — consumed by all DOM UI components.
+ * Phaser-side UI uses UIScale.ts (separate pipeline).
+ * ──────────────────────────────────────────────────── */
+
+:root {
+  /* ── Backgrounds (warm dark plum, not pure black) ── */
+  --bg-deep:      #15101a;
+  --bg-surface:   #1f1823;
+  --bg-elevated:  #2a2030;
+  --bg-inset:     #0f0b14;
+  --bg-card:      #1f1823;
+  --bg-card-hover:#2a2030;
+  --bg-card-owned:#1a2a1a;
+
+  /* ── Borders ── */
+  --border-subtle: #332838;
+  --border-default:#4a3a52;
+  --border-strong: #6b5478;
+  /* Legacy aliases (consumed by existing classes) */
+  --border-dim:    var(--border-subtle);
+  --border-mid:    var(--border-default);
+  --border-bright: var(--border-strong);
+
+  /* ── Text ── */
+  --text-primary:  #f0e4e8;
+  --text-secondary:#b8a8b8;
+  --text-muted:    #8a7a8a;
+  --text-dim:      #6a5a6c;
+
+  /* ── Accent: Gold (primary) ── */
+  --gold:          #e8b76d;
+  --gold-bright:   #f5d08a;
+  --accent-gold:   var(--gold);
+  --accent-gold-bright: var(--gold-bright);
+
+  /* ── Accent: Jewels ── */
+  --jewel-red:     #c53d4a;
+  --jewel-teal:    #2d9b8a;
+  --jewel-violet:  #8b6bc7;
+  --jewel-amber:   #d98a2b;
+
+  /* ── Legacy accent aliases ── */
+  --accent-shard:      var(--gold);
+  --accent-pass:       var(--jewel-violet);
+  --accent-pass-bright:#b88be0;
+  --accent-green:      var(--jewel-teal);
+  --accent-red:        var(--jewel-red);
+  --accent-blue:       #5a9bc8;
+
+  /* ── Faction accents ── */
+  --faction-arcane:     #9d7bd4;
+  --faction-mechanical: #c89654;
+  --faction-nature:     #4ab88a;
+  --faction-void:       #6b4b8a;
+  --faction-military:   #8a9c5a;
+  --faction-aliens:     #7fb850;
+  --faction-cypherpunk: #4ab8b8;
+  --faction-infernal:   #c55542;
+  --faction-celestial:  #e8c87a;
+  --faction-psionic:    #b86bc8;
+  --faction-harmonic:   #d47b54;
+
+  /* ── Rarity ── */
+  --rarity-common:    #9a8a9a;
+  --rarity-rare:      #5a9bc8;
+  --rarity-epic:      #a875d4;
+  --rarity-legendary: #e8b76d;
+  --rarity-mythic:    #e85a7a;
+
+  /* ── Spacing scale ── */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.5rem;    /* 24px */
+  --space-6: 2rem;      /* 32px */
+  --space-7: 3rem;      /* 48px */
+  --space-8: 4rem;      /* 64px */
+
+  /* ── Type scale (DOM-side, not Phaser UIScale) ── */
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.5rem;     /* 24px */
+  --text-2xl:  2rem;       /* 32px */
+  --text-3xl:  3rem;       /* 48px */
+
+  /* ── Radii ── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms ease;
+  --transition-med:  250ms ease;
+}

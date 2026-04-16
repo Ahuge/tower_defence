@@ -30,6 +30,7 @@ export default defineConfig({
 
   define: {
     __GIT_SHA__: JSON.stringify(gitSha),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString().replace('T', ' ').slice(0, 19)),
   },
 
   build: {

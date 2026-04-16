@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { getCanvasWidth, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT, TOWER_BAR_HEIGHT } from '../config';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SignalingClient } from '../systems/multiplayer/SignalingClient';
 import { GameMessage } from '../systems/multiplayer/MessageProtocol';
@@ -7,7 +7,6 @@ import { MapId, MapDefinition, MAP_ORDER, MAPS } from '../data/Maps';
 import { MapStorage, MapJSON } from '../systems/MapStorage';
 import { DifficultyLevel } from '../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { UIScale } from '../systems/UIScale';
 import { Analytics } from '../systems/AnalyticsClient';
 import { ResponsiveManager } from '../systems/ResponsiveManager';

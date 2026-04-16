@@ -258,6 +258,89 @@ export function drawEssence(c: CanvasRenderingContext2D, ox: number, oy: number)
   p(4, 6, '#aaeeff'); p(9, 7, '#44ddff');
 }
 
+// ═══ ESSENCE T1 — Essence Tap ═══
+// Small siphon tube with a single drip
+export function drawEssenceTap(c: CanvasRenderingContext2D, ox: number, oy: number) {
+  const { p, b } = mk(c, [ox, oy], G, G, PX);
+  // Base plate
+  b(5, 11, 4, 2, '#223344'); b(4, 12, 6, 1, '#112233');
+  // Pipe
+  b(6, 4, 2, 7, '#445566'); p(6, 3, '#556677');
+  // Nozzle
+  p(5, 4, '#334455'); p(8, 4, '#334455');
+  // Drip
+  p(7, 9, '#44ddff'); p(6, 10, '#2288aa');
+  // Spark
+  p(4, 6, '#44ddff');
+}
+
+// ═══ ESSENCE T2 — Essence Well ═══
+// Stone well with glowing water inside
+export function drawEssenceWell(c: CanvasRenderingContext2D, ox: number, oy: number) {
+  const { p, b } = mk(c, [ox, oy], G, G, PX);
+  // Well walls
+  b(3, 7, 8, 2, '#445566'); b(3, 9, 8, 2, '#334455');
+  b(2, 8, 1, 2, '#334455'); b(11, 8, 1, 2, '#334455');
+  b(3, 11, 8, 1, '#223344');
+  // Well rim
+  b(3, 6, 8, 1, '#667788'); p(2, 7, '#556677'); p(11, 7, '#556677');
+  // Glowing water inside
+  b(4, 8, 6, 2, '#2288aa'); b(5, 8, 4, 2, '#44bbdd');
+  p(6, 8, '#88ddff'); // highlight
+  // Sparks rising
+  p(5, 4, '#44ddff'); p(8, 3, '#88ddff');
+  p(6, 2, '#aaeeff');
+}
+
+// ═══ ESSENCE T3 — Essence Conduit ═══
+// Tall crystal pillar with energy arcs
+export function drawEssenceConduit(c: CanvasRenderingContext2D, ox: number, oy: number) {
+  const { p, b } = mk(c, [ox, oy], G, G, PX);
+  // Base
+  b(4, 11, 6, 2, '#334455'); b(3, 12, 8, 1, '#223344');
+  // Crystal pillar
+  b(6, 2, 2, 9, '#2288aa'); b(5, 4, 4, 5, '#44bbdd');
+  p(6, 2, '#88ddff'); p(7, 2, '#88ddff');
+  p(6, 1, '#aaeeff'); // tip glow
+  // Pillar highlights
+  p(5, 5, '#88ddff'); p(5, 6, '#aaeeff');
+  // Energy arcs — left
+  p(3, 5, '#44ddff'); p(2, 4, '#88ddff'); p(4, 3, '#44ddff');
+  // Energy arcs — right
+  p(10, 6, '#44ddff'); p(11, 5, '#88ddff'); p(9, 3, '#44ddff');
+  // Ground glow
+  p(4, 10, '#2288aa'); p(9, 10, '#2288aa');
+}
+
+// ═══ ESSENCE T4 — Essence Nexus ═══
+// Massive floating orb with ring and energy beams
+export function drawEssenceNexus(c: CanvasRenderingContext2D, ox: number, oy: number) {
+  const { p, b } = mk(c, [ox, oy], G, G, PX);
+  // Pedestal
+  b(5, 11, 4, 1, '#445566'); b(4, 12, 6, 1, '#334455');
+  // Floating ring
+  b(3, 5, 8, 1, '#2288aa'); b(3, 9, 8, 1, '#2288aa');
+  p(2, 6, '#2288aa'); p(2, 7, '#2288aa'); p(2, 8, '#2288aa');
+  p(11, 6, '#2288aa'); p(11, 7, '#2288aa'); p(11, 8, '#2288aa');
+  // Orb — large
+  b(4, 5, 6, 5, '#44bbdd'); b(5, 4, 4, 7, '#44bbdd');
+  p(4, 4, '#2288aa'); p(9, 4, '#2288aa');
+  p(4, 9, '#2288aa'); p(9, 9, '#2288aa');
+  // Orb core
+  b(5, 6, 4, 3, '#88ddff'); b(6, 5, 2, 5, '#88ddff');
+  p(6, 6, '#ccffff'); p(7, 7, '#ccffff'); // bright center
+  // Top beam
+  p(6, 2, '#aaeeff'); p(7, 2, '#aaeeff'); p(6, 1, '#ccffff'); p(7, 1, '#ccffff');
+  p(6, 0, '#88ddff'); p(7, 0, '#88ddff');
+  // Floating sparks
+  p(1, 3, '#44ddff'); p(12, 4, '#88ddff');
+  p(0, 7, '#aaeeff'); p(13, 6, '#44ddff');
+  p(3, 1, '#ccffff'); p(10, 2, '#ccffff');
+  // Ground energy
+  p(3, 10, '#44ddff'); p(10, 10, '#44ddff');
+  p(5, 10, '#2288aa'); p(8, 10, '#2288aa');
+}
+
 // ═══ GENERIC OUTPOST ═══
 // Simple tent/hut for factionless frontier
 export function drawGeneric(c: CanvasRenderingContext2D, ox: number, oy: number) {
@@ -1013,6 +1096,11 @@ export const DOODAD_DRAW: Record<string, (c: CanvasRenderingContext2D, ox: numbe
   // Generic outposts
   outpost_1: drawOutpost1,
   outpost_2: drawOutpost2,
+  // Essence generators (Battle mode)
+  gen_basic: drawEssenceTap,
+  gen_improved: drawEssenceWell,
+  gen_advanced: drawEssenceConduit,
+  gen_ultimate: drawEssenceNexus,
   // ── Faction fallbacks (safety net if a new building ID ships without art) ──
   arcane: drawArcane,
   mechanical: drawMechanical,

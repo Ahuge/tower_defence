@@ -1,13 +1,17 @@
 /**
  * GameSidebar — DOM overlay for in-game panels.
- * 3 collapsible sections: Waves, Economy (sends+frontier+log), Tower.
+ * Desktop/tablet: 3 collapsible sections stacked at top-left.
+ * Phone: Waves + Economy stay as compact collapsible panels.
+ *        Tower info renders as a floating card above the dock,
+ *        dismissable via x button or tapping outside.
  */
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useCallback } from 'preact/hooks';
 import { useGameUI } from '../hooks/useGameUI';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { TowerInfoPanelDOM } from './TowerInfoPanelDOM';
 import { UpcomingWavesDOM } from './UpcomingWavesDOM';
 import { EconomyPanelDOM } from './EconomyPanelDOM';
+import { GameUIStore } from '../GameUIStore';
 import { ResponsiveManager } from '../../systems/ResponsiveManager';
 
 type PanelId = 'waves' | 'economy' | 'tower';
@@ -15,15 +19,29 @@ type PanelId = 'waves' | 'economy' | 'tower';
 export function GameSidebar() {
   const { active, selectedTower, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence } = useGameUI();
   const [openPanel, setOpenPanel] = useState<PanelId | null>('waves');
+  const [showFloatingTower, setShowFloatingTower] = useState(false);
 
   const isPhone = ResponsiveManager.isPhone();
   const panelWidth = isPhone ? 'calc(100% - 16px)' : '340px';
 
-  // Auto-open tower panel when selected
+  // Auto-open tower panel on desktop; show floating card on phone
   useEffect(() => {
-    if (selectedTower) setOpenPanel('tower');
-    else if (openPanel === 'tower') setOpenPanel('economy');
+    if (selectedTower) {
+      if (isPhone) {
+        setShowFloatingTower(true);
+      } else {
+        setOpenPanel('tower');
+      }
+    } else {
+      setShowFloatingTower(false);
+      if (openPanel === 'tower') setOpenPanel('economy');
+    }
   }, [selectedTower]);
+
+  const dismissFloating = useCallback(() => {
+    setShowFloatingTower(false);
+    GameUIStore.deselectTower();
+  }, []);
 
   if (!active) return null;
 
@@ -32,45 +50,58 @@ export function GameSidebar() {
   };
 
   return (
-    <div style={{
-      // pointerEvents: 'none' on the wrapper so empty space above/below the
-      // panels doesn't swallow taps destined for the Phaser canvas (mobile).
-      // Each .game-panel below re-enables pointer-events so its header/body
-      // still capture their own touches.
-      position: 'fixed', left: '8px', top: '8px', zIndex: 110, pointerEvents: 'none',
-      maxWidth: panelWidth, width: panelWidth,
-      maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', overflowX: 'hidden',
-    }}>
-      <CollapsiblePanel
-        title="WAVES"
-        open={openPanel === 'waves'}
-        onToggle={() => toggle('waves')}
-        badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
-      >
-        <UpcomingWavesDOM />
-      </CollapsiblePanel>
-
-      <CollapsiblePanel
-        title="ECONOMY"
-        titleColor="#ff8844"
-        open={openPanel === 'economy'}
-        onToggle={() => toggle('economy')}
-        badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
-      >
-        <EconomyPanelDOM />
-      </CollapsiblePanel>
-
-      {selectedTower && (
+    <>
+      {/* Sidebar panels — top-left */}
+      <div style={{
+        position: 'fixed', left: '8px', top: '8px', zIndex: 110, pointerEvents: 'none',
+        maxWidth: panelWidth, width: panelWidth,
+        overflow: 'visible',
+      }}>
         <CollapsiblePanel
-          title={selectedTower.name}
-          titleColor="#ffdd44"
-          open={openPanel === 'tower'}
-          onToggle={() => toggle('tower')}
-          badge={`Lv${selectedTower.level}${selectedTower.isUltimate ? ' ULT' : ''}`}
+          title="WAVES"
+          open={openPanel === 'waves'}
+          onToggle={() => toggle('waves')}
+          badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
         >
-          <TowerInfoPanelDOM />
+          <UpcomingWavesDOM />
         </CollapsiblePanel>
+
+        <CollapsiblePanel
+          title="ECONOMY"
+          titleColor="#ff8844"
+          open={openPanel === 'economy'}
+          onToggle={() => toggle('economy')}
+          badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
+        >
+          <EconomyPanelDOM />
+        </CollapsiblePanel>
+
+        {/* Desktop/tablet: tower info inline in sidebar */}
+        {!isPhone && selectedTower && (
+          <CollapsiblePanel
+            title={selectedTower.name}
+            titleColor="#ffdd44"
+            open={openPanel === 'tower'}
+            onToggle={() => toggle('tower')}
+            badge={`Lv${selectedTower.level}${selectedTower.isUltimate ? ' ULT' : ''}`}
+          >
+            <TowerInfoPanelDOM />
+          </CollapsiblePanel>
+        )}
+      </div>
+
+      {/* Phone: floating tower info card above the dock */}
+      {isPhone && selectedTower && showFloatingTower && (
+        <div class="floating-tower-info game-panel">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '16px', fontWeight: 'bold', color: 'var(--gold)' }}>
+              {selectedTower.name} Lv{selectedTower.level}{selectedTower.isUltimate ? ' ULT' : ''}
+            </span>
+            <button class="panel-close" onClick={dismissFloating}>&times;</button>
+          </div>
+          <TowerInfoPanelDOM />
+        </div>
       )}
-    </div>
+    </>
   );
 }

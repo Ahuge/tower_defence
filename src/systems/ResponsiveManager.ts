@@ -1,6 +1,4 @@
-import { SIDEBAR_WIDTH, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE } from '../config';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
-import { GameControlBar } from '../ui/GameControlBar';
+import { SIDEBAR_WIDTH, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, TOWER_BAR_HEIGHT, CONTROL_BAR_HEIGHT } from '../config';
 
 const TABLET_BREAKPOINT = 1200;
 const PHONE_BREAKPOINT = 600;
@@ -59,23 +57,31 @@ class ResponsiveManagerClass {
     return this._mode === 'desktop' ? SIDEBAR_WIDTH : 0;
   }
 
-  /** Canvas width: desktop includes inline sidebar, tablet/phone is just the game area */
+  /** Canvas width — expanded to fill viewport aspect ratio (no letterboxing).
+   *  Minimum: grid + sidebar offset on desktop, or grid on tablet/phone. */
   canvasWidth(): number {
-    return this._mode === 'desktop' ? SIDEBAR_WIDTH + GAME_WIDTH : this.gameWidth();
+    const minW = this._mode === 'desktop' ? SIDEBAR_WIDTH + GAME_WIDTH : GAME_WIDTH;
+    const minH = this._minCanvasHeight();
+    // Expand width if viewport is wider than the minimum aspect ratio
+    const vpAspect = window.innerWidth / window.innerHeight;
+    const targetW = Math.round(minH * vpAspect);
+    return Math.max(minW, targetW);
   }
 
-  /** Full canvas height including status bar, tower select bar, and phone control bar.
-   *  On phone: expand to fill viewport aspect ratio so less vertical space is wasted. */
+  /** Canvas height — expanded to fill viewport aspect ratio (no letterboxing).
+   *  Minimum: grid + UI bars. Phone also includes control bar. */
   canvasHeight(): number {
-    const base = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
-    if (this._mode !== 'phone') return base;
-
-    // Match phone viewport aspect ratio to minimize letterboxing
+    const minH = this._minCanvasHeight();
     const cw = this.canvasWidth();
     const vpAspect = window.innerHeight / window.innerWidth;
     const targetH = Math.round(cw * vpAspect);
-    // At minimum, fit the game + control bar. At maximum, fill the viewport.
-    return Math.max(base + GameControlBar.BAR_HEIGHT, targetH);
+    return Math.max(minH, targetH);
+  }
+
+  /** Minimum canvas height to fit all game content */
+  private _minCanvasHeight(): number {
+    const base = GAME_HEIGHT + 28 + TOWER_BAR_HEIGHT;
+    return this._mode === 'phone' ? base + CONTROL_BAR_HEIGHT : base;
   }
 
   onLayoutChange(cb: LayoutChangeCallback): void {

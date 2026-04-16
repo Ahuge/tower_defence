@@ -12,8 +12,11 @@ export function DraftScreen({ data }: Props) {
   const matchMode = data.mode as string;
 
   const pick = (mod: DraftModifier | null) => {
-    const nextScene = matchMode === 'gauntlet' ? 'GauntletPreviewScene' : 'GameScene';
-    UIBridge.startScene(nextScene, { ...data, modifier: mod });
+    if (matchMode === 'gauntlet') {
+      UIBridge.show('gauntletpreview', { ...data, modifier: mod });
+    } else {
+      UIBridge.startScene('GameScene', { ...data, modifier: mod });
+    }
   };
 
   return (
@@ -32,11 +35,12 @@ export function DraftScreen({ data }: Props) {
             const isLocked = i > 0 && !hasFreeMods;
             return (
               <div key={mod.id} class={`card ${isLocked ? 'locked' : ''}`}
-                style={{ width: '200px', minHeight: '120px', textAlign: 'center', cursor: isLocked ? 'not-allowed' : 'pointer' }}
+                style={{ width: 'min(200px, 100%)', minHeight: '120px', textAlign: 'center', cursor: isLocked ? 'not-allowed' : 'pointer' }}
                 onClick={() => !isLocked && pick(mod)}>
-                <div class="card-name" style={{ marginTop: '8px', color: isLocked ? '#555' : '#ffaa44' }}>{isLocked ? '???' : mod.name}</div>
-                <div class="card-desc" style={{ marginTop: '8px', color: isLocked ? '#444' : '#ccc' }}>{isLocked ? '' : mod.description}</div>
-                {isLocked && <div class="text-pass text-xs" style={{ marginTop: '12px' }}>Battle Pass required</div>}
+                <div class="card-name" style={{ marginTop: '8px', color: isLocked ? 'var(--text-dim)' : 'var(--gold)' }}>{isLocked ? '???' : mod.name}</div>
+                <div class="card-desc" style={{ marginTop: '8px', color: isLocked ? 'var(--text-dim)' : 'var(--text-primary)' }}>{isLocked ? '' : mod.description}</div>
+                {isLocked && <div style={{ marginTop: '12px', fontSize: '20px', color: 'var(--text-dim)' }}>&#x1f512;</div>}
+                {isLocked && <div class="text-pass text-xs" style={{ marginTop: '4px' }}>Battle Pass required</div>}
               </div>
             );
           })}

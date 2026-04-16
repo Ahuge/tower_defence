@@ -1,23 +1,29 @@
 /**
- * EventLog — DOM panel showing recent game events.
+ * EventLog — DOM panel showing recent game events. Scrollable.
  */
 import { useGameUISelector } from '../hooks/useGameUI';
+import { useRef, useEffect } from 'preact/hooks';
 
 export function EventLogDOM() {
   const entries = useGameUISelector(s => s.eventLog);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new entries arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [entries.length]);
 
   if (entries.length === 0) return null;
 
   return (
-    <>
-      {entries.slice(0, 8).map(entry => (
-        <div key={entry.id} style={{
-          fontSize: '9px', color: entry.color, padding: '1px 0',
-          opacity: Math.max(0.3, 1 - (Date.now() - entry.time) / 30000),
-        }}>
+    <div ref={scrollRef} class="event-log">
+      {entries.map(entry => (
+        <div key={entry.id} class="event-log-entry" style={{ color: entry.color }}>
           {entry.text}
         </div>
       ))}
-    </>
+    </div>
   );
 }

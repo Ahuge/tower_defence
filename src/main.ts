@@ -15,7 +15,6 @@ import { HeroSelectScene } from './scenes/HeroSelectScene';
 import { CreepFactionSelectScene } from './scenes/CreepFactionSelectScene';
 import { GauntletPreviewScene } from './scenes/GauntletPreviewScene';
 import { LeaderboardScene } from './scenes/LeaderboardScene';
-import { TowerSelectBar } from './ui/TowerSelectBar';
 import { UIBridge } from './ui/UIBridge';
 import { preloadSprites } from './systems/SpriteManager';
 import { preloadCreepSprites } from './systems/CreepSpriteManager';
@@ -43,10 +42,10 @@ class BootScene extends Phaser.Scene {
 }
 
 const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.WEBGL,
+  type: Phaser.AUTO,
   width: ResponsiveManager.canvasWidth(),
   height: gameHeight,
-  backgroundColor: '#111111',
+  backgroundColor: '#15101a',
   parent: 'game-root',
   scene: [BootScene, MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
   render: { antialias: true, pixelArt: false },
@@ -64,3 +63,25 @@ requestAnimationFrame(() => UIBridge.show('menu'));
 ResponsiveManager.onLayoutChange(() => {
   game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
 });
+
+// Debounced resize — keeps Phaser resolution in sync with viewport even within
+// the same layout mode (e.g., desktop window dragged narrower).
+// Guard: skip if no scene is active yet (avoids bad resize during boot).
+let resizeTimer: ReturnType<typeof setTimeout>;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (game.scene.getScenes(true).length > 0) {
+      game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
+    }
+  }, 150);
+});
+
+// Register service worker for PWA / offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(
+      import.meta.env.BASE_URL + 'sw.js'
+    );
+  });
+}

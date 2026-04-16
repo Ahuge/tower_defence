@@ -7,6 +7,11 @@ export const GAME_HEIGHT = GRID_ROWS * TILE_SIZE;
 // Sidebar
 export const SIDEBAR_WIDTH = 360;
 
+// UI bar heights — used by ResponsiveManager.canvasHeight() and layout code.
+// Extracted here so Phaser UI files can be deleted without losing these values.
+export const TOWER_BAR_HEIGHT = 96;
+export const CONTROL_BAR_HEIGHT = 70;
+
 /** Sidebar panel content width — full canvas on phone, SIDEBAR_WIDTH on desktop/tablet */
 export function getSidebarWidth(): number {
   return ResponsiveManager.isPhone() ? ResponsiveManager.canvasWidth() : SIDEBAR_WIDTH;

@@ -6,7 +6,15 @@ import { render } from 'preact';
 import { App } from './App';
 import './styles/ui.css';
 
-export type ScreenId = 'menu' | 'store' | 'battlepass' | 'inventory' | 'factionselect' | 'heroselect' | 'creepfactionselect' | 'draft' | 'gameover' | 'changelog' | 'leaderboard' | 'encyclopedia' | null;
+export type ScreenId = 'menu' | 'store' | 'battlepass' | 'inventory' | 'factionselect' | 'heroselect' | 'creepfactionselect' | 'draft' | 'gauntletpreview' | 'gameover' | 'changelog' | 'leaderboard' | 'encyclopedia' | null;
+
+export interface LoadingData {
+  faction: string | null;
+  map: string | null;
+  difficulty: string;
+  mode: string;
+  waveCount?: number;
+}
 
 class UIBridgeClass {
   private root: HTMLElement | null = null;
@@ -14,6 +22,8 @@ class UIBridgeClass {
   private currentScreen: ScreenId = null;
   private currentData: Record<string, unknown> = {};
   private listeners: Array<(screen: ScreenId, data: Record<string, unknown>) => void> = [];
+  private _loading: LoadingData | null = null;
+  private _loadingListeners: Array<(data: LoadingData | null) => void> = [];
 
   init(game: Phaser.Game): void {
     this.game = game;
@@ -40,11 +50,42 @@ class UIBridgeClass {
   getData(): Record<string, unknown> { return this.currentData; }
 
   startScene(sceneName: string, data?: Record<string, unknown>): void {
+    // Show loading screen for game scene transitions
+    if (sceneName === 'GameScene' && data) {
+      this._loading = {
+        faction: (data.faction as string) ?? null,
+        map: (data.map as string) ?? null,
+        difficulty: (data.difficulty as string) ?? 'normal',
+        mode: (data.mode as string) ?? 'standard',
+        waveCount: data.waveCount as number | undefined,
+      };
+      for (const fn of this._loadingListeners) fn(this._loading);
+    }
     this.hide();
     if (this.game) {
       for (const s of this.game.scene.getScenes(true)) this.game.scene.stop(s);
       this.game.scene.start(sceneName, data);
     }
+  }
+
+  /** Called by GameScene when create() finishes — triggers loading screen fade-out.
+   *  Does NOT clear loading state — the LoadingScreen component manages its own
+   *  lifecycle (min time, fade-out) and calls clearLoading() when fully dismissed. */
+  signalSceneReady(): void {
+    window.dispatchEvent(new Event('game-scene-ready'));
+  }
+
+  /** Called by LoadingScreen when it has fully faded out and is ready to unmount */
+  clearLoading(): void {
+    this._loading = null;
+    for (const fn of this._loadingListeners) fn(null);
+  }
+
+  getLoading(): LoadingData | null { return this._loading; }
+
+  onLoadingChange(fn: (data: LoadingData | null) => void): () => void {
+    this._loadingListeners.push(fn);
+    return () => { this._loadingListeners = this._loadingListeners.filter(l => l !== fn); };
   }
 
   private stopPhaserAndShow(screen: ScreenId, data: Record<string, unknown> = {}): void {

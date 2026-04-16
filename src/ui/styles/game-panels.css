@@ -10,15 +10,15 @@
   top: 0;
   bottom: 0;
   width: 360px;
-  background: rgba(10, 10, 18, 0.95);
-  border-right: 1px solid #2a2a44;
+  background: rgba(21, 16, 26, 0.95);
+  border-right: 1px solid var(--border-subtle);
   z-index: 50;
   overflow-y: auto;
   overflow-x: hidden;
   pointer-events: auto;
   padding: 8px;
-  font-family: 'Courier New', Consolas, monospace;
-  color: #ccc;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text-primary);
 }
 
 /* ─── Mobile sidebar ───────────────────────────────── */
@@ -28,13 +28,13 @@
   left: 0;
   top: 0;
   bottom: 0;
-  background: rgba(10, 10, 18, 0.97);
-  border-right: 1px solid #2a2a44;
+  background: rgba(21, 16, 26, 0.97);
+  border-right: 1px solid var(--border-subtle);
   z-index: 55;
   overflow-y: auto;
   padding: 8px;
-  font-family: 'Courier New', Consolas, monospace;
-  color: #ccc;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text-primary);
   transform: translateX(-100%);
   transition: transform 200ms ease;
   pointer-events: auto;
@@ -48,7 +48,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 4px;
-  border-bottom: 1px solid #2a2a44;
+  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 8px;
 }
 
@@ -57,20 +57,20 @@
   left: 8px;
   top: 8px;
   z-index: 52;
-  background: rgba(20, 20, 32, 0.9);
-  border: 1px solid #444;
-  color: #aaa;
+  background: rgba(31, 24, 35, 0.9);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
   font-size: 20px;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   cursor: pointer;
   pointer-events: auto;
   font-family: monospace;
 }
 .sidebar-toggle-btn:hover {
-  color: #fff;
-  border-color: #888;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 .sidebar-scrim {
@@ -102,12 +102,12 @@
 /* ─── Panel base ───────────────────────────────────── */
 
 .game-panel {
-  background: rgba(16, 16, 28, 0.95);
-  border: 1px solid #2a2a44;
+  background: rgba(31, 24, 35, 0.95);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 10px;
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: 14px;
   /* Re-enable hit-testing — the GameSidebar wrapper is pointer-events:none
      so empty sidebar space passes taps through to the Phaser canvas. */
   pointer-events: auto;
@@ -119,19 +119,20 @@
   gap: 6px;
   margin-bottom: 8px;
   padding-bottom: 6px;
-  border-bottom: 1px solid #222244;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .tower-name {
-  font-size: 15px;
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 20px;
   font-weight: bold;
-  color: #ffdd44;
+  color: var(--gold);
   flex: 1;
 }
 
 .tower-level {
-  font-size: 12px;
-  color: #aaa;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .tower-ult-badge {
@@ -174,14 +175,15 @@
 }
 
 .stat-value {
-  font-size: 14px;
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 18px;
   font-weight: bold;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .stat-label {
-  font-size: 8px;
-  color: #666;
+  font-size: 11px;
+  color: var(--text-muted);
   letter-spacing: 1px;
   margin-top: 2px;
 }
@@ -251,8 +253,8 @@
 .action-btn {
   flex: 1;
   font-family: inherit;
-  font-size: 11px;
-  padding: 8px 0;
+  font-size: 14px;
+  padding: 10px 0;
   border-radius: 4px;
   border: 1px solid #333;
   cursor: pointer;
@@ -287,11 +289,28 @@
     font-size: 14px;
     padding: 12px;
   }
+  /* 44px minimum tap targets on panel headers */
+  .game-panel .panel-header,
+  .game-panel > div:first-child { min-height: 44px; }
   .stat-value { font-size: 18px; }
   .stat-label { font-size: 10px; }
-  .buff-tag, .trait-tag { font-size: 12px; padding: 4px 8px; }
-  .action-btn { font-size: 14px; padding: 12px 0; }
-  .tower-name { font-size: 18px; }
+  .buff-tag, .trait-tag { font-size: 12px; padding: 4px 8px; min-height: 44px; display: inline-flex; align-items: center; }
+  .action-btn { font-size: 14px; padding: 12px 0; min-height: 44px; }
+  .tower-name { font-size: 20px; }
+  .panel-close { min-width: 44px; min-height: 44px; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+}
+
+/* ─── Tablet layout ───────────────────────────────── */
+@media (min-width: 601px) and (max-width: 1200px) {
+  .game-panel { font-size: 13px; padding: 8px; }
+  .stat-grid { grid-template-columns: repeat(3, 1fr); }
+  .stat-value { font-size: 17px; }
+  .stat-label { font-size: 10px; }
+  .action-btn { font-size: 13px; padding: 10px 0; }
+  .status-bar { font-size: 16px; padding: 5px 12px; }
+  .tower-dock { gap: 3px; padding: 5px 7px; }
+  .dock-slot { width: 52px; height: 60px; }
+  .dock-tooltip { max-width: 260px; }
 }
 
 /* ─── Tower Dock Bar ───────────────────────────────── */
@@ -306,10 +325,11 @@
   display: flex;
   gap: 4px;
   padding: 6px 8px;
-  background: rgba(10, 10, 18, 0.92);
-  border: 1px solid #2a2a44;
+  background: rgba(21, 16, 26, 0.92);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   backdrop-filter: blur(4px);
+  max-width: calc(100vw - 16px);
 }
 
 .dock-slot-wrapper {
@@ -320,7 +340,7 @@
   width: 56px;
   height: 64px;
   border-radius: 6px;
-  border: 2px solid #333;
+  border: 2px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -331,7 +351,7 @@
   overflow: hidden;
 }
 .dock-slot:hover {
-  border-color: #888;
+  border-color: var(--border-strong);
   transform: translateY(-2px);
 }
 .dock-selected {
@@ -348,21 +368,21 @@
   top: 2px;
   left: 3px;
   font-size: 8px;
-  color: #888;
-  font-family: 'Courier New', monospace;
+  color: var(--text-muted);
+  font-family: 'VT323', ui-monospace, monospace;
 }
 
 .dock-name {
   font-size: 9px;
-  color: #ccc;
+  color: var(--text-primary);
   text-align: center;
-  font-family: 'Courier New', monospace;
+  font-family: 'VT323', ui-monospace, monospace;
   margin-top: 2px;
 }
 
 .dock-cost {
-  font-size: 9px;
-  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-family: 'VT323', ui-monospace, monospace;
   margin-top: 1px;
 }
 
@@ -374,8 +394,8 @@
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 8px;
-  background: rgba(14, 14, 24, 0.97);
-  border: 1px solid #444;
+  background: rgba(15, 11, 20, 0.97);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   padding: 8px 10px;
   min-width: 200px;
@@ -383,7 +403,7 @@
   pointer-events: none;
   z-index: 120;
   animation: tooltipFadeIn 100ms ease;
-  font-family: 'Courier New', monospace;
+  font-family: 'DM Sans', system-ui, sans-serif;
 }
 @keyframes tooltipFadeIn {
   from { opacity: 0; transform: translateX(-50%) translateY(4px); }
@@ -391,30 +411,32 @@
 }
 
 .dock-tooltip-name {
-  font-size: 12px;
-  color: #ffdd44;
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 17px;
+  color: var(--gold);
   font-weight: bold;
   margin-bottom: 4px;
 }
 .dock-tooltip-desc {
-  font-size: 10px;
-  color: #aaa;
+  font-size: 13px;
+  color: var(--text-secondary);
   margin-bottom: 4px;
   line-height: 1.4;
 }
 .dock-tooltip-stats {
-  font-size: 9px;
-  color: #888;
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--text-muted);
   margin-bottom: 4px;
 }
 .dock-tooltip-traits {
-  font-size: 9px;
-  color: #aa88ff;
+  font-size: 12px;
+  color: var(--jewel-violet);
   margin-bottom: 4px;
 }
 .dock-tooltip-upgrades {
-  font-size: 8px;
-  color: #666;
+  font-size: 11px;
+  color: var(--text-dim);
 }
 
 /* ─── Dock Responsive ──────────────────────────────── */
@@ -424,13 +446,20 @@
     bottom: 4px;
     padding: 4px 6px;
     gap: 3px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
   }
+  .tower-dock::-webkit-scrollbar { display: none; }
+  .dock-slot-wrapper { scroll-snap-align: start; }
   .dock-slot {
     width: 48px;
     height: 56px;
+    min-width: 44px;
+    min-height: 44px;
   }
   .dock-name { font-size: 8px; }
-  .dock-cost { font-size: 8px; }
+  .dock-cost { font-size: 9px; }
   .dock-tooltip { min-width: 180px; }
 }
 
@@ -444,28 +473,34 @@
   z-index: 109;
   pointer-events: auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 12px;
-  padding: 5px 14px;
-  background: rgba(10, 10, 18, 0.92);
-  border: 1px solid #2a2a44;
+  gap: 14px;
+  padding: 6px 16px;
+  max-width: 100vw;
+  background: rgba(21, 16, 26, 0.92);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: #fff;
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
   backdrop-filter: blur(4px);
 }
 
 .status-stats {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   align-items: center;
+  justify-content: center;
 }
 
-.status-gold { color: #ffdd44; }
-.status-lives { color: #ff6644; }
-.status-wave { color: #aaa; }
-.status-income { font-size: 10px; }
+.status-gold { color: var(--gold); }
+.status-lives { color: var(--jewel-red); }
+.status-wave { color: var(--text-secondary); }
+.status-income { font-size: 16px; letter-spacing: 0.5px; color: var(--jewel-teal); }
 
 .status-controls {
   display: flex;
@@ -475,26 +510,26 @@
 
 .status-btn {
   font-family: inherit;
-  font-size: 11px;
-  padding: 4px 10px;
+  font-size: 16px;
+  padding: 5px 12px;
   border-radius: 4px;
-  border: 1px solid #333;
-  background: rgba(20, 20, 36, 0.8);
-  color: #ccc;
+  border: 1px solid var(--border-subtle);
+  background: rgba(31, 24, 35, 0.8);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 100ms;
 }
 .status-btn:hover {
-  background: rgba(40, 40, 60, 0.9);
+  background: rgba(42, 32, 48, 0.9);
 }
 
 .status-btn-wave {
-  color: #44ff44;
-  border-color: rgba(68, 255, 68, 0.3);
-  background: rgba(20, 40, 20, 0.8);
+  color: var(--jewel-teal);
+  border-color: rgba(45, 155, 138, 0.3);
+  background: rgba(20, 40, 35, 0.8);
 }
 .status-btn-wave:hover {
-  background: rgba(30, 60, 30, 0.9);
+  background: rgba(30, 60, 50, 0.9);
 }
 
 .status-btn-speed {
@@ -502,15 +537,37 @@
   text-align: center;
 }
 
+.status-btn-pause {
+  min-width: 36px;
+  text-align: center;
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+/* ─── Economy sub-panel shared classes ─────────────── */
+/* Used by Frontier, Essence, Sends, Hero Items panels */
+.econ-section-label { font-family: 'VT323', ui-monospace, monospace; font-size: 13px; letter-spacing: 1px; margin-bottom: 4px; }
+.econ-item-name { font-size: 14px; color: var(--text-primary); }
+.econ-item-desc { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+.econ-item-cost { font-family: 'VT323', ui-monospace, monospace; font-size: 14px; }
+.econ-item-row { padding: 4px 6px; margin-bottom: 2px; border-radius: 4px; cursor: pointer; }
+.econ-tab { font-family: inherit; font-size: 12px; padding: 5px 0; cursor: pointer; border-radius: 2px 2px 0 0; border: none; }
+
+/* ─── Event log ────────────────────────────────────── */
+.event-log { max-height: 200px; overflow-y: auto; }
+.event-log::-webkit-scrollbar { width: 4px; }
+.event-log::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+.event-log-entry { font-size: 12px; padding: 2px 0; line-height: 1.4; }
+
 .status-wave-active {
-  font-size: 10px;
-  color: #888;
+  font-size: 15px;
+  color: var(--text-muted);
 }
 
 .status-auto {
-  font-size: 8px;
-  color: #44ff44;
-  background: rgba(68, 255, 68, 0.15);
+  font-size: 13px;
+  color: var(--jewel-teal);
+  background: rgba(45, 155, 138, 0.15);
   padding: 1px 5px;
   border-radius: 3px;
 }
@@ -518,9 +575,11 @@
 @media (max-width: 600px) {
   .status-bar {
     bottom: 72px;
-    font-size: 11px;
+    font-size: 13px;
     gap: 8px;
     padding: 4px 10px;
+    max-width: calc(100vw - 16px);
   }
   .status-stats { gap: 8px; }
+  .status-btn { min-height: 44px; min-width: 44px; padding: 6px 12px; }
 }

@@ -38,15 +38,15 @@ export function EconomyPanelDOM() {
       <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>
         {visibleTabs.map(t => (
           <button key={t.id}
+            class="econ-tab"
             onClick={() => setTab(t.id)}
             style={{
-              flex: 1, fontFamily: 'inherit', fontSize: '9px', padding: '4px 0',
+              flex: 1,
               background: activeTab === t.id ? 'rgba(255,255,255,0.05)' : 'transparent',
-              border: 'none', borderBottom: activeTab === t.id ? '2px solid #ffaa44' : '2px solid transparent',
-              color: activeTab === t.id ? '#ffaa44' : '#666', cursor: 'pointer',
-              borderRadius: '2px 2px 0 0',
+              borderBottom: activeTab === t.id ? '2px solid var(--gold)' : '2px solid transparent',
+              color: activeTab === t.id ? 'var(--gold)' : 'var(--text-dim)',
             }}>
-            {t.label} {t.badge && <span style={{ color: '#555', marginLeft: '2px' }}>({t.badge})</span>}
+            {t.label} {t.badge && <span style={{ color: 'var(--text-dim)', marginLeft: '2px' }}>({t.badge})</span>}
           </button>
         ))}
       </div>
@@ -80,11 +80,11 @@ function FrontierContent() {
                   background: canAfford ? 'rgba(255,170,68,0.06)' : 'transparent',
                   opacity: canAfford ? 1 : 0.5,
                 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
-                  <span style={{ color: '#ccc' }}>{b.name}</span>
-                  <span style={{ color: canAfford ? '#ffaa44' : '#664422' }}>{b.cost}g</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span class="econ-item-name">{b.name}</span>
+                  <span class="econ-item-cost" style={{ color: canAfford ? 'var(--gold)' : 'var(--text-dim)' }}>{b.cost}g</span>
                 </div>
-                <div style={{ fontSize: '9px', color: '#666', marginTop: '1px' }}>{b.description}</div>
+                <div class="econ-item-desc">{b.description}</div>
               </div>
             );
           })}
@@ -94,7 +94,7 @@ function FrontierContent() {
       {/* Owned buildings */}
       {frontier.owned.length > 0 ? (
         <>
-          <div style={{ fontSize: '9px', color: '#88ff88', marginBottom: '4px' }}>Owned</div>
+          <div style={{ fontSize: '9px', color: 'var(--jewel-teal)', marginBottom: '4px' }}>Owned</div>
           {frontier.owned.map((b, i) => (
             <div key={`${b.defId}-${i}`} style={{
               padding: '4px 6px', marginBottom: '2px', borderRadius: '4px',
@@ -102,10 +102,10 @@ function FrontierContent() {
               opacity: b.destroyed ? 0.4 : 1,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px' }}>
-                <span style={{ color: b.destroyed ? '#ff4444' : '#ccc' }}>
+                <span style={{ color: b.destroyed ? 'var(--jewel-red)' : 'var(--text-primary)' }}>
                   {b.name} {b.count && b.count > 1 ? `×${b.count}` : ''}
                 </span>
-                <span style={{ fontSize: '9px', color: b.destroyed ? '#ff4444' : '#888' }}>{b.status}</span>
+                <span style={{ fontSize: '9px', color: b.destroyed ? 'var(--jewel-red)' : 'var(--text-muted)' }}>{b.status}</span>
               </div>
               {/* Action buttons based on mechanic */}
               {!b.destroyed && (
@@ -125,7 +125,7 @@ function FrontierContent() {
           ))}
         </>
       ) : (
-        <div style={{ fontSize: '10px', color: '#555', padding: '4px 0' }}>No buildings yet — buy one above</div>
+        <div style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '4px 0' }}>No buildings yet — buy one above</div>
       )}
     </>
   );

@@ -80,16 +80,16 @@ export function HeroSelectScreen({ data }: Props) {
               <div
                 key={heroId + rerollCount}
                 class="card"
-                style={{ width: '260px', cursor: 'pointer', padding: '0', overflow: 'hidden' }}
+                style={{ width: 'min(260px, 100%)', cursor: 'pointer', padding: '0', overflow: 'hidden' }}
                 onClick={() => selectHero(heroId)}
               >
                 {/* Header with color */}
                 <div style={{ background: color + '22', borderBottom: `2px solid ${color}`, padding: '10px 12px' }}>
-                  <div style={{ fontSize: '9px', color: isFactionHero ? '#ffaa44' : '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <div style={{ fontSize: '9px', color: isFactionHero ? 'var(--gold)' : 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                     {factionName} {isFactionHero ? '(your faction)' : ''}
                   </div>
-                  <div style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold', marginTop: '2px' }}>{hero.name}</div>
-                  <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px' }}>{hero.description}</div>
+                  <div style={{ fontFamily: "'Silkscreen', ui-sans-serif, sans-serif", fontSize: '18px', color: 'var(--text-primary)', fontWeight: 'bold', marginTop: '2px' }}>{hero.name}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{hero.description}</div>
                 </div>
 
                 {/* Stats */}
@@ -103,23 +103,23 @@ export function HeroSelectScreen({ data }: Props) {
                 </div>
 
                 {/* Abilities */}
-                <div style={{ padding: '4px 12px 12px', borderTop: '1px solid var(--border-dim)' }}>
+                <div style={{ padding: '4px 12px 12px', borderTop: '1px solid var(--border-subtle)' }}>
                   {hero.abilities.map(ab => (
                     <div key={ab.key} style={{ marginTop: '6px' }}>
-                      <div style={{ fontSize: '11px', color: '#fff' }}>
-                        <span style={{ color: '#ffaa44' }}>[{ab.key}]</span> {ab.name}
-                        <span style={{ color: '#555', marginLeft: '6px' }}>{ab.cooldown}s</span>
+                      <div style={{ fontSize: '11px', color: 'var(--text-primary)' }}>
+                        <span style={{ color: 'var(--gold)' }}>[{ab.key}]</span> {ab.name}
+                        <span style={{ color: 'var(--text-dim)', marginLeft: '6px' }}>{ab.cooldown}s</span>
                       </div>
-                      <div style={{ fontSize: '9px', color: '#888', marginTop: '1px' }}>{ab.description}</div>
+                      <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '1px' }}>{ab.description}</div>
                     </div>
                   ))}
                   {hero.ultimate && (
                     <div style={{ marginTop: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#cc66ff' }}>
-                        <span style={{ color: '#aa44ff' }}>[R]</span> {hero.ultimate.name}
-                        <span style={{ color: '#555', marginLeft: '6px' }}>{hero.ultimate.cooldown}s</span>
+                      <div style={{ fontSize: '11px', color: 'var(--jewel-violet)' }}>
+                        <span style={{ color: 'var(--faction-arcane)' }}>[R]</span> {hero.ultimate.name}
+                        <span style={{ color: 'var(--text-dim)', marginLeft: '6px' }}>{hero.ultimate.cooldown}s</span>
                       </div>
-                      <div style={{ fontSize: '9px', color: '#886688', marginTop: '1px' }}>{hero.ultimate.description}</div>
+                      <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '1px' }}>{hero.ultimate.description}</div>
                     </div>
                   )}
                 </div>
@@ -139,8 +139,8 @@ export function HeroSelectScreen({ data }: Props) {
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-      <span style={{ color: '#777' }}>{label}</span>
-      <span style={{ color: '#ccc' }}>{value}</span>
+      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{ color: 'var(--text-primary)', fontFamily: "'VT323', ui-monospace, monospace" }}>{value}</span>
     </div>
   );
 }

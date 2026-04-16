@@ -80,6 +80,7 @@ export class UIOverlay {
   }
 
   update(gold: number, lives: number, currentWave: number, totalWaves: number, waveActive: boolean, betweenWaves: boolean, gameSpeed: number = 1, versusTimer: number = -1): void {
+    if (this.hidden) return; // DOM UI has taken over
     this.goldText.setText(`Gold: ${Math.floor(gold)}`);
     this.livesText.setText(this.livesMode === 'base_hp' ? `Base HP: ${lives}` : `Lives: ${lives}`);
     this.waveText.setText(`Wave: ${currentWave}/${totalWaves}`);
@@ -122,15 +123,19 @@ export class UIOverlay {
     this.seedText.setText(`Seed: ${seed}`).setVisible(true);
   }
 
-  /** Hide all Phaser UI elements — DOM takes over */
+  private hidden = false;
+
+  /** Hide all Phaser UI elements — DOM takes over.
+   *  Also disables interactivity so invisible zones don't consume touch events. */
   hideAll(): void {
+    this.hidden = true;
     this.goldText.setVisible(false);
     this.livesText.setVisible(false);
     this.waveText.setVisible(false);
     this.statusText.setVisible(false);
     this.speedText.setVisible(false);
-    this.waveBtn.setVisible(false);
-    this.speedBtn.setVisible(false);
+    this.waveBtn.setVisible(false).disableInteractive();
+    this.speedBtn.setVisible(false).disableInteractive();
     this.seedText.setVisible(false);
   }
 }

@@ -9,20 +9,20 @@ import { ShardWallet } from '../../systems/monetization';
 type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
 
 const DIFFICULTIES: { id: DifficultyLevel; label: string; color: string }[] = [
-  { id: 'easy', label: 'Easy', color: '#44ff44' },
-  { id: 'normal', label: 'Normal', color: '#ffaa44' },
-  { id: 'hard', label: 'Hard', color: '#ff4444' },
-  { id: 'insane', label: 'Insane', color: '#ff00ff' },
+  { id: 'easy', label: 'Easy', color: 'var(--jewel-teal)' },
+  { id: 'normal', label: 'Normal', color: 'var(--gold)' },
+  { id: 'hard', label: 'Hard', color: 'var(--jewel-red)' },
+  { id: 'insane', label: 'Insane', color: 'var(--faction-psionic)' },
 ];
 
 const MODES: { id: string; label: string; desc: string; accent: string; mode: MatchMode | 'lobby' | 'circle' }[] = [
-  { id: 'standard', label: 'Standard', desc: 'Classic tower defence', accent: '#44cc44', mode: 'standard' },
-  { id: 'battle', label: 'Battle', desc: 'Dual economy — Gold + Essence', accent: '#ddaa22', mode: 'battle' },
-  { id: 'hero', label: 'Hero Defense', desc: 'Control a hero in the arena', accent: '#ff44aa', mode: 'hero_defense' },
-  { id: 'gauntlet', label: 'Faction Gauntlet', desc: '100 waves — fight all factions', accent: '#ff4444', mode: 'gauntlet' },
-  { id: 'endless', label: 'Endless', desc: 'Infinite scaling — play until you fall', accent: '#ff6622', mode: 'endless' },
-  { id: 'versus', label: 'Versus 1v1', desc: 'P2P competitive — sends attack', accent: '#ff8844', mode: 'lobby' },
-  { id: 'circle', label: 'Circle Co-op', desc: '2-4 players — shared map', accent: '#44aaff', mode: 'circle' },
+  { id: 'standard', label: 'Standard', desc: 'Classic tower defence', accent: 'var(--jewel-teal)', mode: 'standard' },
+  { id: 'battle', label: 'Essence', desc: 'Dual economy — Gold + Essence', accent: 'var(--jewel-amber)', mode: 'battle' },
+  { id: 'hero', label: 'Hero Defense', desc: 'Control a hero in the arena', accent: 'var(--faction-psionic)', mode: 'hero_defense' },
+  { id: 'gauntlet', label: 'Faction Gauntlet', desc: '100 waves — fight all factions', accent: 'var(--jewel-red)', mode: 'gauntlet' },
+  { id: 'endless', label: 'Endless', desc: 'Infinite scaling — play until you fall', accent: 'var(--faction-harmonic)', mode: 'endless' },
+  { id: 'versus', label: 'Versus 1v1', desc: 'P2P competitive — sends attack', accent: 'var(--faction-infernal)', mode: 'lobby' },
+  { id: 'circle', label: 'Circle Co-op', desc: '2-4 players — shared map', accent: 'var(--rarity-rare)', mode: 'circle' },
 ];
 
 const WAVE_COUNTS = [
@@ -77,13 +77,13 @@ export function MenuScreen() {
               <button key={mapId} class={`btn ${isSelected ? 'btn-gold' : ''}`}
                 style={isSelected ? { borderWidth: '2px' } : undefined}
                 onClick={() => { if (isCustom) { UIBridge.startScene('CustomMapScene'); } else { setSelectedMap(mapId); } }}>
-                <span style={{ color: isRandom ? '#ff44ff' : isCustom ? '#ffaa22' : undefined }}>{name}</span>
+                <span style={{ color: isRandom ? 'var(--faction-psionic)' : isCustom ? 'var(--gold)' : undefined }}>{name}</span>
               </button>
             );
           })}
         </div>
         {selectedMap === 'random' && (
-          <div style={{ marginTop: '8px', fontSize: '12px', cursor: 'pointer', color: dailySeed ? '#ffaa44' : '#886688' }}
+          <div style={{ marginTop: '8px', fontSize: '12px', cursor: 'pointer', color: dailySeed ? 'var(--gold)' : 'var(--text-dim)' }}
             onClick={() => setDailySeed(!dailySeed)}>
             {dailySeed ? `Daily: ON — seed ${getDailySeed()}` : 'Daily: OFF — random seed'}
           </div>
@@ -121,13 +121,14 @@ export function MenuScreen() {
         <button class="btn" onClick={() => UIBridge.show('changelog')}>Changelog</button>
         <button class="btn btn-gold" onClick={() => { ShardWallet.earn(5000, 'test: Add Money'); setShardTick(t => t + 1); }}>+5000 Shards (test)</button>
       </div>
+      <div class="text-dim text-center" style={{ padding: '8px', fontSize: '11px' }}>Version {__BUILD_TIME__}</div>
       {waveOverlay && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
           onClick={() => setWaveOverlay(false)}>
-          <div style={{ background: 'var(--bg-surface)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-mid)', minWidth: '320px' }}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-default)', maxWidth: 'calc(100vw - 32px)', width: '400px' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ textAlign: 'center', fontSize: '16px', color: '#fff', marginBottom: '16px' }}>Select Wave Count</div>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center', fontFamily: "'Silkscreen', ui-sans-serif, sans-serif", fontSize: 'var(--text-lg)', color: 'var(--text-primary)', marginBottom: '16px' }}>Select Wave Count</div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
               {WAVE_COUNTS.map(opt => (
                 <button key={opt.waves} class="btn btn-gold" style={{ padding: '16px 20px', minWidth: '90px' }}
                   onClick={() => { setWaveOverlay(false); goFaction('standard', opt.waves); }}>

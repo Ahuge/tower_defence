@@ -295,6 +295,7 @@ export class GameScene extends Phaser.Scene {
         this.placeFrontierDoodad(color, buildingId, factionFallback);
       },
       onSelectDockTower: (index: number) => {
+        this.inputMgr.dbg(`DOCK idx=${index} id=${index >= 0 ? this.activeTowerIds[index] ?? '?' : 'deselect'}`);
         if (index < 0) {
           this.enterNoneMode();
           GameUIStore.selectDockTower(-1);
@@ -405,8 +406,11 @@ export class GameScene extends Phaser.Scene {
         this.enterNoneMode();
       }
     });
-    // Hide Phaser tower bar — DOM version takes over
+    // Hide Phaser tower bar — DOM version takes over.
+    // Disable input on the container so invisible zones don't swallow touches.
     this.towerBar.getContainer().setVisible(false);
+    this.towerBar.getContainer().setActive(false);
+    this.towerBar.getContainer().disableInteractive();
     this.syncTowerBarToDOM();
 
     this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
@@ -472,6 +476,7 @@ export class GameScene extends Phaser.Scene {
     this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
     this.upcomingWaves.getContainer().setVisible(false);
+    this.upcomingWaves.getContainer().setActive(false);
     this.updateDOMWaves(this.currentWave);
 
     // Event log — Phaser panel hidden, but still functional (pushes to DOM)
@@ -544,9 +549,12 @@ export class GameScene extends Phaser.Scene {
 
     this.incomeDisplay = new IncomeDisplay(this);
 
-    // Hide Phaser HUD — DOM takes over
+    // Hide Phaser HUD — DOM takes over.
+    // Disable input on ALL hidden Phaser UI so invisible interactive zones
+    // don't swallow touches (was previously handled by SidebarOverlay reparenting).
     this.ui.hideAll();
     this.incomeDisplay.hide();
+    this.disableHiddenPhaserUI();
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
@@ -581,6 +589,9 @@ export class GameScene extends Phaser.Scene {
     });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     Analytics.gameStart(this.matchMode, this.faction ?? 'unknown', this.difficulty, this.mapId);
+
+    // Signal loading screen that scene is ready (triggers fade-out)
+    import('../ui/UIBridge').then(m => m.UIBridge.signalSceneReady());
     this._gameStartTime = Date.now();
     const h = this.difficultyHints;
     this.eventLog.gameMessage(`Difficulty: ${this.difficulty} (HP:${h.toughness}x Count:${h.count}x Spd:${h.speed}x Gold:${h.goldMult}x)`);
@@ -594,19 +605,22 @@ export class GameScene extends Phaser.Scene {
 
     // Sidebar — DOM UI handles all panels now.
     // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
-    if (ResponsiveManager.isTablet()) {
-      this.sidebarOverlay = new SidebarOverlay(this);
-      this.sidebarOverlay.addPanel(this.upcomingWaves.getContainer());
-      this.sidebarOverlay.addPanel(this.eventLog.getContainer());
-      this.gameMode.reparentSidebarPanels?.(this.sidebarOverlay);
-      this.sidebarOverlay.hideCompletely();
-    } else {
-      // Desktop: hide mode-specific Phaser panels that render inline
-      // (SendPanel, FrontierPanel, EssencePanel, ItemShopPanel)
-      this.gameMode.reparentSidebarPanels?.({
-        addPanel: (panel: Phaser.GameObjects.Container) => { panel.setVisible(false); },
-      } as any);
-    }
+    // Don't add EventLog/UpcomingWaves containers — they're DOM-only stubs.
+    // Hide + disable interactive on mode-specific Phaser panels (SendPanel, FrontierPanel, etc)
+    // so invisible zones don't consume touch events on the game grid.
+    this.gameMode.reparentSidebarPanels?.({
+      addPanel: (panel: Phaser.GameObjects.Container) => {
+        panel.setVisible(false);
+        // Recursively disable interactivity on all children
+        const disableAll = (c: Phaser.GameObjects.Container) => {
+          for (const child of c.list) {
+            if ((child as any).disableInteractive) (child as any).disableInteractive();
+            if (child instanceof Phaser.GameObjects.Container) disableAll(child);
+          }
+        };
+        disableAll(panel);
+      },
+    } as any);
 
     this.drawGrid();
     this.drawPath();
@@ -684,9 +698,9 @@ export class GameScene extends Phaser.Scene {
         () => this.togglePause(),
         () => this.toggleAutoPlay(),
       );
-      // Hide Phaser control bar — DOM status bar handles wave/speed/pause
-      // Note: hero ability buttons (Q/W/E/R/T) are also in this bar on phone.
-      // They still work via keyboard on desktop. Phone hero abilities need DOM solution.
+      // Hide Phaser control bar — DOM status bar handles wave/speed/pause.
+      // hide() now uses disableInteractive() on all zones so invisible buttons
+      // don't consume touches that should go to the DOM tower dock underneath.
       this.controlBar.hide?.();
     }
 
@@ -1173,6 +1187,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleClick(col: number, row: number): void {
+    this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
     const existingTower = this.towers.find(t => t.col === col && t.row === row);
 
     // Check for creep click (any mode except build)
@@ -1611,8 +1626,28 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Recursively disable interactivity on all children of hidden Phaser containers.
+   *  Prevents invisible UI zones from swallowing touch events on the game grid. */
+  private disableHiddenPhaserUI(): void {
+    const disable = (container: Phaser.GameObjects.Container) => {
+      for (const child of container.list) {
+        if ((child as any).disableInteractive) (child as any).disableInteractive();
+        if (child instanceof Phaser.GameObjects.Container) disable(child);
+      }
+    };
+    // All hidden Phaser UI containers
+    const containers = [
+      this.towerBar?.getContainer(),
+      (this.towerInfo as any)?.container,
+      (this.creepInfo as any)?.container,
+      this.upcomingWaves?.getContainer(),
+    ].filter(Boolean) as Phaser.GameObjects.Container[];
+    for (const c of containers) disable(c);
+  }
+
   private togglePause(): void {
     this.paused = !this.paused;
+    GameUIStore.setPaused(this.paused);
     if (this.paused) {
       this.showPauseMenu();
     } else {
@@ -1907,6 +1942,7 @@ export class GameScene extends Phaser.Scene {
   toggleAutoPlay(): void {
     this.autoPlay = !this.autoPlay;
     this.upcomingWaves.setAutoPlay(this.autoPlay);
+    GameUIStore.setAutoPlay(this.autoPlay);
     this.eventLog.gameMessage(this.autoPlay ? 'Auto-play ON' : 'Auto-play OFF');
     if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
       this.time.delayedCall(1500, () => {

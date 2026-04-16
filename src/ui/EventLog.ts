@@ -1,60 +1,27 @@
-import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
-import { UIScale } from '../systems/UIScale';
-import { TowerSelectBar } from './TowerSelectBar';
-import { uiText, uiGraphics } from '../systems/UILayer';
+/**
+ * EventLog — lightweight message logger.
+ * Routes all messages to GameUIStore for DOM rendering.
+ * Kept as a class (not singleton) for backward compatibility with systems
+ * that receive it as a constructor parameter.
+ */
+import { GAME_HEIGHT, getSidebarWidth, TOWER_BAR_HEIGHT } from '../config';
 import { GameUIStore } from './GameUIStore';
 
 const MAX_LINES = 12;
 
 export class EventLog {
-  private scene: Phaser.Scene;
-  private container: Phaser.GameObjects.Container;
   private lines: string[] = [];
-  private textObj: Phaser.GameObjects.Text;
-  private panelY: number;
-  private panelH: number;
 
-  constructor(scene: Phaser.Scene, topY: number) {
-    this.scene = scene;
-    this.panelY = topY;
-    this.panelH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT - topY;
-
-    this.container = scene.add.container(0, topY).setDepth(28);
-
-    // Background
-    const bg = uiGraphics(scene);
-    bg.fillStyle(0x0a0a10, 1);
-    bg.fillRect(0, 0, getSidebarWidth(), this.panelH);
-    bg.lineStyle(1, 0x333333, 1);
-    bg.strokeRect(0, 0, getSidebarWidth(), this.panelH);
-    this.container.add(bg);
-
-    // Title
-    const title = uiText(scene, 8, 4, 'EVENT LOG', {
-      fontSize: UIScale.font(10), color: '#666688', fontFamily: 'monospace',
-    });
-    this.container.add(title);
-
-    // Log text — anchored to bottom of panel so newest lines are always visible
-    this.textObj = uiText(scene, 8, this.panelH - 8, '', {
-      fontSize: UIScale.font(10), color: '#999999', fontFamily: 'monospace',
-      lineSpacing: UIScale.current.lineSpacing,
-      wordWrap: { width: getSidebarWidth() - 16 },
-    }).setOrigin(0, 1); // anchor to bottom-left
-    this.container.add(this.textObj);
+  constructor(_scene: unknown, _topY?: number) {
+    // No-op: Phaser rendering removed. Parameters kept for call-site compat.
   }
 
   log(message: string, color?: string): void {
     this.lines.push(message);
-    if (this.lines.length > MAX_LINES) {
-      this.lines.shift();
-    }
-    this.textObj.setText(this.lines.join('\n'));
-    // Also push to DOM event log
+    if (this.lines.length > MAX_LINES) this.lines.shift();
     GameUIStore.addLogEntry(message, color ?? '#999');
   }
 
-  /** Convenience loggers with consistent formatting */
   waveStarted(waveNum: number, totalWaves: number, creepTypes: string[]): void {
     const types = creepTypes.length > 0 ? `: ${creepTypes.join(', ')}` : '';
     this.log(`Wave ${waveNum}/${totalWaves} started${types}`);
@@ -89,14 +56,13 @@ export class EventLog {
   }
 
   creepReached(): void {
-    this.log(`Creep reached exit! -1 life`);
+    this.log('Creep reached exit! -1 life');
   }
 
   gameMessage(msg: string): void {
     this.log(msg);
   }
 
-  getContainer(): Phaser.GameObjects.Container {
-    return this.container;
-  }
+  /** No-op — kept for call-site compat */
+  getContainer(): any { return { setVisible() {} }; }
 }

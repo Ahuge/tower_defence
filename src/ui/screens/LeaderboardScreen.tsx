@@ -17,7 +17,7 @@ export function LeaderboardScreen() {
     <>
       <div class="ui-header">
         <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title" style={{ color: '#ffcc44' }}>LEADERBOARD</div>
+        <div class="ui-header-title">LEADERBOARD</div>
         <ShardBadge />
       </div>
 
@@ -29,7 +29,7 @@ export function LeaderboardScreen() {
         )}
 
         {error && (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#ff4444' }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--jewel-red)' }}>
             Failed to load leaderboard. Check your connection.
           </div>
         )}
@@ -42,10 +42,10 @@ export function LeaderboardScreen() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #333' }}>
+                <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <th style={th}>#</th>
                   <th style={th}>Name</th>
-                  <th style={th}>Wave</th>
+                  <th style={thNum}>Wave</th>
                   <th style={th}>Faction</th>
                   <th style={th}>Difficulty</th>
                 </tr>
@@ -53,13 +53,13 @@ export function LeaderboardScreen() {
               <tbody>
                 {scores.map((entry, i) => {
                   const rank = i + 1;
-                  const color = rank <= 3 ? '#ffaa44' : '#ccc';
+                  const color = rank <= 3 ? 'var(--gold)' : 'var(--text-primary)';
                   const rankStr = rank <= 3 ? ['1st', '2nd', '3rd'][rank - 1] : `${rank}.`;
                   return (
-                    <tr key={entry.id} style={{ borderBottom: '1px solid #1a1a28', color }}>
+                    <tr key={entry.id} style={{ borderBottom: '1px solid var(--bg-inset)', color }}>
                       <td style={td}>{rankStr}</td>
-                      <td style={td}>{entry.name.length > 16 ? entry.name.slice(0, 15) + '...' : entry.name}</td>
-                      <td style={td}>Wave {entry.wave}</td>
+                      <td style={td} title={entry.name}>{entry.name.length > 16 ? entry.name.slice(0, 15) + '...' : entry.name}</td>
+                      <td style={tdNum}>Wave {entry.wave}</td>
                       <td style={td}>{entry.faction}</td>
                       <td style={td}>{entry.difficulty}</td>
                     </tr>
@@ -74,5 +74,7 @@ export function LeaderboardScreen() {
   );
 }
 
-const th: Record<string, string> = { textAlign: 'left', padding: '6px 10px', fontWeight: 'normal', color: '#666' };
+const th: Record<string, string> = { textAlign: 'left', padding: '6px 10px', fontWeight: 'normal', color: 'var(--text-muted)' };
+const thNum: Record<string, string> = { textAlign: 'right', padding: '6px 10px', fontWeight: 'normal', color: 'var(--text-muted)' };
 const td: Record<string, string> = { padding: '6px 10px' };
+const tdNum: Record<string, string> = { padding: '6px 10px', textAlign: 'right', fontFamily: "'VT323', ui-monospace, monospace", fontSize: '14px' };

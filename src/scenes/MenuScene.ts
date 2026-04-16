@@ -1,10 +1,9 @@
 import Phaser from 'phaser';
-import { getCanvasWidth, GAME_HEIGHT } from '../config';
+import { getCanvasWidth, GAME_HEIGHT, TOWER_BAR_HEIGHT } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';
 import { getDailySeed } from '../data/MapGenerator';
-import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 
@@ -154,7 +153,7 @@ export class MenuScene extends Phaser.Scene {
 
     const modes: ModeCard[] = [
       { label: 'Standard',         desc: 'Classic tower defence',           accent: 0x44cc44, action: () => this.showWaveCountOverlay(goFaction) },
-      { label: 'Battle',           desc: 'Dual economy — Gold + Essence',   accent: 0xddaa22, action: () => goFaction('battle') },
+      { label: 'Essence',          desc: 'Dual economy — Gold + Essence',   accent: 0xddaa22, action: () => goFaction('battle') },
       { label: 'Hero Defense',     desc: 'Control a hero in the arena',     accent: 0xff44aa, action: () => goFaction('hero_defense') },
       { label: 'Faction Gauntlet', desc: '100 waves — fight all factions',  accent: 0xff4444, action: () => goFaction('gauntlet') },
       { label: 'Endless',          desc: 'Infinite scaling — play until you fall', accent: 0xff6622, action: () => goFaction('endless') },
@@ -237,7 +236,7 @@ export class MenuScene extends Phaser.Scene {
     logBtn.on('pointerout', () => logBtn.setColor('#88aacc'));
 
     // Version SHA
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = GAME_HEIGHT + 28 + TOWER_BAR_HEIGHT;
     this.add.text(getCanvasWidth() - 8, totalH - 8, `v${__GIT_SHA__}`, {
       fontSize: UIScale.font(10), color: '#666666', fontFamily: 'monospace',
     }).setOrigin(1, 1);
@@ -247,7 +246,7 @@ export class MenuScene extends Phaser.Scene {
     if (this.waveCountOverlay) return;
 
     const canvasW = getCanvasWidth();
-    const totalH = GAME_HEIGHT + 28 + TowerSelectBar.BAR_HEIGHT;
+    const totalH = GAME_HEIGHT + 28 + TOWER_BAR_HEIGHT;
 
     const container = this.add.container(0, 0);
     container.setDepth(1000);
