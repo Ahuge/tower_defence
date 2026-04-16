@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-04-15
+
+### UI/UX Rework — Pixel-Indie Clean
+Major visual refresh across the entire DOM UI layer. Warm dark plum palette replaces the old pure-black look, with three typefaces (Silkscreen for titles, DM Sans for body, VT323 for stats/data) and a consistent design token system.
+
+- **PWA support** — installable as a standalone app on mobile and desktop. Service worker caches assets for offline play after first load. Tower icon on plum background.
+- **Design token system** — new `tokens.css` with full palette (backgrounds, borders, text, jewel-tone accents, faction colors, rarity tiers), spacing scale, and type scale. All shared classes (`.btn`, `.card`, `.ui-section`) auto-updated.
+- **Phone gameplay fixes** — floating tower info card above dock instead of full-width sidebar takeover. Status bar wraps on narrow screens. Tower dock scrolls horizontally with snap inertia. 44px minimum tap targets on all interactive elements. Fixed mobile touch passthrough (scrollable overflow no longer blocks Phaser canvas). Canvas now resizes on every viewport change, not just breakpoint crossings.
+- **Menu screens refreshed** — GameOverScreen with big VT323 hero numerals for shards/score/level. HeroSelectScreen and DraftScreen cards responsive with `min(260px, 100%)`. Wave count modal capped to viewport. Leaderboard with right-aligned VT323 columns.
+- **Contrast pass** — 75% of hardcoded hex colors migrated to semantic tokens. VT323 data font applied to all game panels (waves, economy, sends, essence, hero items). Tablet CSS (601-1200px) fleshed out.
+- **BAR_HEIGHT extracted** to config.ts — ResponsiveManager no longer imports Phaser UI files. EventLog stripped to DOM-only facade.
+- **4K/ultra-wide** — `.ui-screen` max-width 1800px centered, padding scales with clamp(). Font bumps at 2000px+ and 2800px+.
+- **Store roll animation** — strip padding scales with viewport (50vw), reveal synced to CSS `transitionend` instead of drifty setTimeout.
+- **Utility CSS classes** — `.row-wrap`, `.row-center`, `.stack`, `.stat-value-lg/md/sm`, `.font-pixel`, `.font-data` for inline-style reduction.
+- **Noise/film-grain overlay** on all screen backgrounds for texture.
+
 ## 2026-04-14
 
 ### Gauntlet Map Updates
