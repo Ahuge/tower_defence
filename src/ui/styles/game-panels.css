@@ -537,6 +537,13 @@
   text-align: center;
 }
 
+.status-btn-pause {
+  min-width: 36px;
+  text-align: center;
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
 .status-wave-active {
   font-size: 15px;
   color: var(--text-muted);

@@ -1613,6 +1613,7 @@ export class GameScene extends Phaser.Scene {
 
   private togglePause(): void {
     this.paused = !this.paused;
+    GameUIStore.setPaused(this.paused);
     if (this.paused) {
       this.showPauseMenu();
     } else {

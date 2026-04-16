@@ -1,12 +1,12 @@
 /**
  * StatusBarDOM — game status bar + control buttons.
- * Shows gold, lives, wave, income, speed. Start wave + speed buttons.
+ * Shows gold, lives, wave, income, speed, pause. Start wave + speed buttons.
  */
 import { useGameUI } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 
 export function StatusBarDOM() {
-  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, versusTimer } = useGameUI();
+  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, paused, versusTimer } = useGameUI();
 
   if (!active) return null;
 
@@ -40,6 +40,9 @@ export function StatusBarDOM() {
           onClick={() => GameUIStore.requestCycleSpeed()}
         >
           {speed}x
+        </button>
+        <button class="status-btn status-btn-pause" onClick={() => GameUIStore.requestPause()}>
+          {paused ? '▶' : '⏸'}
         </button>
         {autoPlay && <span class="status-auto">AUTO</span>}
       </div>
