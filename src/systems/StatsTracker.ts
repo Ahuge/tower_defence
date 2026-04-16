@@ -29,6 +29,10 @@ export interface GameStats {
   creepsLeaked: number;
   wavesCompleted: number;
   gameTimeMs: number;
+  // Essence mode stats
+  essenceGenerated: number;
+  essenceSpentOnSends: number;
+  essenceGeneratorsBuilt: number;
 }
 
 export class StatsTracker {
@@ -44,6 +48,9 @@ export class StatsTracker {
     creepsLeaked: 0,
     wavesCompleted: 0,
     gameTimeMs: 0,
+    essenceGenerated: 0,
+    essenceSpentOnSends: 0,
+    essenceGeneratorsBuilt: 0,
   };
 
   private getOrCreate(typeId: string): TowerTypeStats {
@@ -122,6 +129,18 @@ export class StatsTracker {
 
   recordSendIncome(amount: number): void {
     this.stats.sendsIncome += amount;
+  }
+
+  recordEssenceGenerated(amount: number): void {
+    this.stats.essenceGenerated += amount;
+  }
+
+  recordEssenceSpentOnSend(amount: number): void {
+    this.stats.essenceSpentOnSends += amount;
+  }
+
+  recordEssenceGeneratorBuilt(): void {
+    this.stats.essenceGeneratorsBuilt++;
   }
 
   recordWaveCompleted(): void {

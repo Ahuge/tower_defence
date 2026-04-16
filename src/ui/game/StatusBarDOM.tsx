@@ -6,7 +6,7 @@ import { useGameUI } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 
 export function StatusBarDOM() {
-  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, paused, versusTimer } = useGameUI();
+  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, paused, versusTimer, essence } = useGameUI();
 
   if (!active) return null;
 
@@ -22,6 +22,7 @@ export function StatusBarDOM() {
         <span class="status-lives">{lives > 0 ? `Lives: ${lives}` : 'DEAD'}</span>
         <span class="status-wave">Wave: {currentWave}{totalWaves > 0 ? `/${totalWaves}` : ''}</span>
         <span class="status-income">+{income}/w</span>
+        {essence && <span style={{ color: '#44ddff' }}>{Math.floor(essence.essence)}e ({essence.rate.toFixed(1)}/s)</span>}
       </div>
 
       {/* Controls */}

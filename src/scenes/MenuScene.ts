@@ -153,7 +153,7 @@ export class MenuScene extends Phaser.Scene {
 
     const modes: ModeCard[] = [
       { label: 'Standard',         desc: 'Classic tower defence',           accent: 0x44cc44, action: () => this.showWaveCountOverlay(goFaction) },
-      { label: 'Battle',           desc: 'Dual economy — Gold + Essence',   accent: 0xddaa22, action: () => goFaction('battle') },
+      { label: 'Essence',          desc: 'Dual economy — Gold + Essence',   accent: 0xddaa22, action: () => goFaction('battle') },
       { label: 'Hero Defense',     desc: 'Control a hero in the arena',     accent: 0xff44aa, action: () => goFaction('hero_defense') },
       { label: 'Faction Gauntlet', desc: '100 waves — fight all factions',  accent: 0xff4444, action: () => goFaction('gauntlet') },
       { label: 'Endless',          desc: 'Infinite scaling — play until you fall', accent: 0xff6622, action: () => goFaction('endless') },

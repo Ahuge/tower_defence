@@ -6,6 +6,14 @@ import { GameStats } from '../../systems/StatsTracker';
 
 interface Props { data: Record<string, unknown>; }
 
+const MODE_DISPLAY: Record<string, string> = {
+  standard: 'Standard',
+  battle: 'Essence',
+  hero_defense: 'Hero Defense',
+  gauntlet: 'Gauntlet',
+  endless: 'Endless',
+};
+
 export function GameOverScreen({ data }: Props) {
   const won = data.won as boolean;
   const wave = data.wave as number;
@@ -54,7 +62,7 @@ export function GameOverScreen({ data }: Props) {
       {/* Overview */}
       <div class="ui-section">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', textAlign: 'center' }}>
-          <Stat label="Mode" value={`${matchMode}${faction ? ` (${faction})` : ''}`} />
+          <Stat label="Mode" value={`${MODE_DISPLAY[matchMode] ?? matchMode}${faction ? ` (${faction})` : ''}`} />
           <Stat label="Waves" value={matchMode === 'endless' || totalWaves > 200 ? `Survived ${wave}` : `${wave}/${totalWaves}`} />
           <Stat label="Time" value={`${minutes}m ${seconds}s`} />
           <Stat label="Killed" value={creepsKilled.toLocaleString()} />
@@ -77,6 +85,9 @@ export function GameOverScreen({ data }: Props) {
             {hasSends && <Stat label="Sends Spent" value={`${stats.sendsSpent.toLocaleString()}g`} />}
             {hasSends && <Stat label="Send Income" value={`+${stats.sendsIncome.toLocaleString()}g/w`} color="var(--jewel-teal)" />}
             {totalTowerGold > 0 && <Stat label="Tower Gold" value={`+${totalTowerGold.toLocaleString()}g`} color="var(--gold)" />}
+            {stats.essenceGeneratorsBuilt > 0 && <Stat label="Generators Built" value={String(stats.essenceGeneratorsBuilt)} color="#44ddff" />}
+            {stats.essenceGenerated > 0 && <Stat label="Essence Generated" value={`${Math.floor(stats.essenceGenerated)}e`} color="#44ddff" />}
+            {stats.essenceSpentOnSends > 0 && <Stat label="Essence on Sends" value={`${Math.floor(stats.essenceSpentOnSends)}e`} />}
           </div>
         </div>
       )}

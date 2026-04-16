@@ -77,8 +77,12 @@ export class BattleMode implements GameMode {
   }
 
   update(delta: number): void {
-    // Tick essence in real-time
+    // Tick essence in real-time — track how much was generated
+    const before = this.ctx.economy.resources.get('essence');
     this.ctx.economy.resources.tick(delta);
+    const after = this.ctx.economy.resources.get('essence');
+    if (after > before) this.ctx.statsTracker.recordEssenceGenerated(after - before);
+
     this.essencePanel.update();
     this.syncEssenceToDOM();
   }
@@ -127,6 +131,7 @@ export class BattleMode implements GameMode {
 
     this.ctx.eventLog.gameMessage(`Built ${gen.name} (+${gen.essencePerSec}/s essence)`);
     this.ctx.statsTracker.recordGoldSpent(gen.cost);
+    this.ctx.statsTracker.recordEssenceGeneratorBuilt();
     GameUIStore.placeFrontierDoodad(0x44ddff, gen.id);
   }
 
@@ -134,6 +139,7 @@ export class BattleMode implements GameMode {
     if (!this.ctx.economy.resources.canAfford('essence', send.essenceCost)) return;
 
     this.ctx.economy.resources.spend('essence', send.essenceCost);
+    this.ctx.statsTracker.recordEssenceSpentOnSend(send.essenceCost);
 
     if (this.ctx.versus && this.ctx.versus.isConnected()) {
       this.ctx.versus.send({ type: 'send_purchased', sendOptionId: send.id });

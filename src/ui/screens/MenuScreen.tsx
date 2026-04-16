@@ -17,7 +17,7 @@ const DIFFICULTIES: { id: DifficultyLevel; label: string; color: string }[] = [
 
 const MODES: { id: string; label: string; desc: string; accent: string; mode: MatchMode | 'lobby' | 'circle' }[] = [
   { id: 'standard', label: 'Standard', desc: 'Classic tower defence', accent: 'var(--jewel-teal)', mode: 'standard' },
-  { id: 'battle', label: 'Battle', desc: 'Dual economy — Gold + Essence', accent: 'var(--jewel-amber)', mode: 'battle' },
+  { id: 'battle', label: 'Essence', desc: 'Dual economy — Gold + Essence', accent: 'var(--jewel-amber)', mode: 'battle' },
   { id: 'hero', label: 'Hero Defense', desc: 'Control a hero in the arena', accent: 'var(--faction-psionic)', mode: 'hero_defense' },
   { id: 'gauntlet', label: 'Faction Gauntlet', desc: '100 waves — fight all factions', accent: 'var(--jewel-red)', mode: 'gauntlet' },
   { id: 'endless', label: 'Endless', desc: 'Infinite scaling — play until you fall', accent: 'var(--faction-harmonic)', mode: 'endless' },
