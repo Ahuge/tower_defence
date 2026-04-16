@@ -54,6 +54,7 @@ export function TowerDockDOM() {
   const [tooltip, setTooltip] = useState<number | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
+  const touchHandled = useRef(false);
 
   const startHold = useCallback((i: number) => {
     didLongPress.current = false;
@@ -107,10 +108,13 @@ export function TowerDockDOM() {
                   GameUIStore.requestSelectDockTower(selected ? -1 : i);
                   setTooltip(null);
                 }
+                // Suppress the synthetic click that the browser fires after touchend
+                touchHandled.current = true;
+                setTimeout(() => { touchHandled.current = false; }, 300);
               }}
-              onClick={(e: any) => {
-                // Desktop click — touch devices use touchStart/End above
-                if (e.detail === 0) return; // skip synthetic clicks from touch
+              onClick={() => {
+                // Touch already handled selection via onTouchEnd — skip synthetic click
+                if (touchHandled.current) return;
                 GameUIStore.requestSelectDockTower(selected ? -1 : i);
                 setTooltip(null);
               }}
