@@ -171,16 +171,21 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
       requestAnimationFrame(() => {
         setRolling(true);
         setStripOffset(targetOffset);
+
+        // Sync reveal to CSS transition end instead of a fixed timeout
+        const el = stripRef.current;
+        if (el) {
+          const onEnd = () => {
+            el.removeEventListener('transitionend', onEnd);
+            setRolling(false);
+            setRevealed(true);
+            setRollResult(result);
+            rerender();
+          };
+          el.addEventListener('transitionend', onEnd);
+        }
       });
     });
-
-    // After animation completes, reveal the result
-    setTimeout(() => {
-      setRolling(false);
-      setRevealed(true);
-      setRollResult(result);
-      rerender();
-    }, 4200); // matches CSS transition duration
   };
 
   return (

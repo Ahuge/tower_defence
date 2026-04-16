@@ -181,7 +181,7 @@
 .roll-strip {
   display: flex;
   gap: 4px;
-  padding: 8px 300px 8px 300px;
+  padding: 8px 50vw;
   will-change: transform;
 }
 
