@@ -105,6 +105,30 @@ export class InputManager {
 
     scene.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+    // When pointer re-enters the canvas after clicking outside (e.g., DOM UI),
+    // Phaser's pointer position goes stale until a new click. Force a hover
+    // update from the native event so the build placement marker reappears.
+    scene.game.canvas.addEventListener('pointerenter', (e: PointerEvent) => {
+      if (!this.hoverCallback) return;
+      // Convert page coordinates → Phaser canvas → world (accounting for camera)
+      const rect = scene.game.canvas.getBoundingClientRect();
+      const scaleX = scene.game.scale.width / rect.width;
+      const scaleY = scene.game.scale.height / rect.height;
+      let wx = (e.clientX - rect.left) * scaleX;
+      let wy = (e.clientY - rect.top) * scaleY;
+      // Apply camera transform if zoomed/panned
+      const cam = scene.cameras?.main;
+      if (cam) {
+        wx = (wx / cam.zoom) + cam.scrollX;
+        wy = (wy / cam.zoom) + cam.scrollY;
+      }
+      const col = pixelToCol(wx);
+      const row = pixelToRow(wy);
+      if (col >= 0 && col < getGridCols() && row >= 0 && row < this.gridRows) {
+        this.hoverCallback(col, row);
+      }
+    });
+
     scene.input.keyboard!.on('keydown-SPACE', () => {
       if (this.spaceCallback) this.spaceCallback();
     });
