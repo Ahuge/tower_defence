@@ -57,7 +57,7 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
     const handler = () => {
       // Ensure minimum display time of 500ms
       const elapsed = performance.now() - startTime;
-      const remaining = Math.max(0, 500 - elapsed);
+      const remaining = Math.max(0, 3000 - elapsed);
       setTimeout(() => {
         setFadeOut(true);
         setTimeout(() => setVisible(false), 200);
