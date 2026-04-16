@@ -288,13 +288,51 @@
   .btn-large { font-size: 14px; padding: 10px 22px; }
 }
 
+/* ─── Layout utilities ─────────────────────────────── */
+.row-wrap       { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.row-wrap-lg    { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.row-center     { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
+.row-center-lg  { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+.row-between    { display: flex; justify-content: space-between; align-items: center; }
+.stack          { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-sm       { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* ─── Stat display ─────────────────────────────────── */
+.stat-label-sm  { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+.stat-value-lg  { font-family: 'VT323', ui-monospace, monospace; font-size: var(--text-xl); line-height: 1; }
+.stat-value-md  { font-family: 'VT323', ui-monospace, monospace; font-size: 16px; }
+.stat-value-sm  { font-family: 'VT323', ui-monospace, monospace; font-size: 13px; }
+
+/* ─── Text utilities ───────────────────────────────── */
 .text-center { text-align: center; }
-.text-gold { color: var(--gold); }
-.text-pass { color: var(--jewel-violet); }
-.text-green { color: var(--jewel-teal); }
-.text-dim { color: var(--text-dim); }
-.text-sm { font-size: 10px; }
-.text-xs { font-size: 9px; }
+.text-gold   { color: var(--gold); }
+.text-pass   { color: var(--jewel-violet); }
+.text-green  { color: var(--jewel-teal); }
+.text-red    { color: var(--jewel-red); }
+.text-dim    { color: var(--text-dim); }
+.text-muted  { color: var(--text-muted); }
+.text-sm     { font-size: 10px; }
+.text-xs     { font-size: 9px; }
+.font-pixel  { font-family: 'Silkscreen', ui-sans-serif, sans-serif; }
+.font-data   { font-family: 'VT323', ui-monospace, monospace; }
+
+/* ─── Spacing utilities ────────────────────────────── */
+.mt-1 { margin-top: var(--space-1); }
 .mt-2 { margin-top: var(--space-2); }
 .mt-4 { margin-top: var(--space-4); }
+.mb-1 { margin-bottom: var(--space-1); }
 .mb-2 { margin-bottom: var(--space-2); }
+.pb-4 { padding-bottom: var(--space-4); }
+
+/* ─── 4K / ultra-wide ─────────────────────────────── */
+.ui-screen {
+  max-width: 1800px; margin-inline: auto;
+  padding-inline: clamp(1rem, 5vw, 4rem);
+}
+@media (min-width: 2000px) {
+  :root { --text-base: 1.125rem; }
+  .ui-header-title { font-size: var(--text-2xl); }
+}
+@media (min-width: 2800px) {
+  .ui-screen { padding-inline: clamp(2rem, 8vw, 8rem); }
+}
