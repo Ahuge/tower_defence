@@ -405,8 +405,11 @@ export class GameScene extends Phaser.Scene {
         this.enterNoneMode();
       }
     });
-    // Hide Phaser tower bar — DOM version takes over
+    // Hide Phaser tower bar — DOM version takes over.
+    // Disable input on the container so invisible zones don't swallow touches.
     this.towerBar.getContainer().setVisible(false);
+    this.towerBar.getContainer().setActive(false);
+    this.towerBar.getContainer().disableInteractive();
     this.syncTowerBarToDOM();
 
     this.ui = new UIOverlay(this, this.eventBus, this.gridOffsetY > 0 ? 'base_hp' : 'lives');
@@ -472,6 +475,7 @@ export class GameScene extends Phaser.Scene {
     this.upcomingWaves = new UpcomingWaves(this, () => this.toggleAutoPlay());
     this.upcomingWaves.update(this.currentWave, this.waves);
     this.upcomingWaves.getContainer().setVisible(false);
+    this.upcomingWaves.getContainer().setActive(false);
     this.updateDOMWaves(this.currentWave);
 
     // Event log — Phaser panel hidden, but still functional (pushes to DOM)
@@ -544,9 +548,12 @@ export class GameScene extends Phaser.Scene {
 
     this.incomeDisplay = new IncomeDisplay(this);
 
-    // Hide Phaser HUD — DOM takes over
+    // Hide Phaser HUD — DOM takes over.
+    // Disable input on ALL hidden Phaser UI so invisible interactive zones
+    // don't swallow touches (was previously handled by SidebarOverlay reparenting).
     this.ui.hideAll();
     this.incomeDisplay.hide();
+    this.disableHiddenPhaserUI();
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
@@ -1601,6 +1608,25 @@ export class GameScene extends Phaser.Scene {
       this.versus.sendChat(text.trim());
       this.eventLog.gameMessage(`[YOU] ${text.trim()}`);
     }
+  }
+
+  /** Recursively disable interactivity on all children of hidden Phaser containers.
+   *  Prevents invisible UI zones from swallowing touch events on the game grid. */
+  private disableHiddenPhaserUI(): void {
+    const disable = (container: Phaser.GameObjects.Container) => {
+      for (const child of container.list) {
+        if ((child as any).disableInteractive) (child as any).disableInteractive();
+        if (child instanceof Phaser.GameObjects.Container) disable(child);
+      }
+    };
+    // All hidden Phaser UI containers
+    const containers = [
+      this.towerBar?.getContainer(),
+      (this.towerInfo as any)?.container,
+      (this.creepInfo as any)?.container,
+      this.upcomingWaves?.getContainer(),
+    ].filter(Boolean) as Phaser.GameObjects.Container[];
+    for (const c of containers) disable(c);
   }
 
   private togglePause(): void {
