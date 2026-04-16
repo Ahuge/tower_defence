@@ -64,3 +64,12 @@ requestAnimationFrame(() => UIBridge.show('menu'));
 ResponsiveManager.onLayoutChange(() => {
   game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
 });
+
+// Register service worker for PWA / offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(
+      import.meta.env.BASE_URL + 'sw.js'
+    );
+  });
+}
