@@ -6,7 +6,7 @@
  * rather than pre-caching a manifest, keeping things simple.
  */
 
-const CACHE_NAME = 'td-cache-v1';
+const CACHE_NAME = 'td-cache-v2';
 
 // Asset extensions worth caching (sprites, audio, fonts, compiled JS/CSS)
 const CACHEABLE = /\.(js|css|woff2?|ttf|png|jpe?g|svg|webp|ico|json|mp3|ogg|wav)$/i;
