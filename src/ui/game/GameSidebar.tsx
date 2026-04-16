@@ -39,7 +39,9 @@ export function GameSidebar() {
       // still capture their own touches.
       position: 'fixed', left: '8px', top: '8px', zIndex: 110, pointerEvents: 'none',
       maxWidth: panelWidth, width: panelWidth,
-      maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', overflowX: 'hidden',
+      // overflow: visible so the wrapper never creates a scrollable touch target
+      // that intercepts gestures on mobile. Each CollapsiblePanel manages its own scroll.
+      overflow: 'visible',
     }}>
       <CollapsiblePanel
         title="WAVES"

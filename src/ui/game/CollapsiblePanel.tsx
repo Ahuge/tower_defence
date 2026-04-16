@@ -31,9 +31,9 @@ export function CollapsiblePanel({ title, titleColor, open, onToggle, badge, chi
         </div>
         {badge && <span style={{ fontSize: '9px', color: '#666' }}>{badge}</span>}
       </div>
-      {/* Content — hidden when collapsed */}
+      {/* Content — hidden when collapsed, scroll if too tall */}
       {open && (
-        <div style={{ padding: '6px 10px 8px' }}>
+        <div style={{ padding: '6px 10px 8px', maxHeight: '50vh', overflowY: 'auto' }}>
           {children}
         </div>
       )}

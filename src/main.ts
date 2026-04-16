@@ -65,6 +65,16 @@ ResponsiveManager.onLayoutChange(() => {
   game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
 });
 
+// Debounced resize — keeps Phaser resolution in sync with viewport even within
+// the same layout mode (e.g., desktop window dragged narrower).
+let resizeTimer: ReturnType<typeof setTimeout>;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
+  }, 150);
+});
+
 // Register service worker for PWA / offline support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
