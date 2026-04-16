@@ -182,7 +182,7 @@ export class InputManager {
   }
 
   /** Push a debug line to the on-screen overlay (max 8 lines, newest on top) */
-  private dbg(msg: string): void {
+  dbg(msg: string): void {
     if (!DEBUG_INPUT || !this.debugEl) return;
     this.debugLines.unshift(msg);
     if (this.debugLines.length > 8) this.debugLines.length = 8;

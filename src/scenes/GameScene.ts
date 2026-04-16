@@ -295,6 +295,7 @@ export class GameScene extends Phaser.Scene {
         this.placeFrontierDoodad(color, buildingId, factionFallback);
       },
       onSelectDockTower: (index: number) => {
+        this.inputMgr.dbg(`DOCK idx=${index} id=${index >= 0 ? this.activeTowerIds[index] ?? '?' : 'deselect'}`);
         if (index < 0) {
           this.enterNoneMode();
           GameUIStore.selectDockTower(-1);
@@ -1183,6 +1184,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleClick(col: number, row: number): void {
+    this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
     const existingTower = this.towers.find(t => t.col === col && t.row === row);
 
     // Check for creep click (any mode except build)
