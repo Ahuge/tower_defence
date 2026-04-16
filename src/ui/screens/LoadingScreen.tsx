@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { FACTIONS, FactionId } from '../../data/Factions';
 import { MAPS, MapId } from '../../data/Maps';
 import { pickFlavour } from '../../data/FactionFlavour';
+import { UIBridge } from '../UIBridge';
 
 function hexColor(n: number): string {
   return '#' + n.toString(16).padStart(6, '0');
@@ -71,7 +72,10 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
       dismissed = true;
       console.log(`[LOADING] DISMISSING at ${elapsed()}`);
       setFadeOut(true);
-      setTimeout(() => setVisible(false), 200);
+      setTimeout(() => {
+        setVisible(false);
+        UIBridge.clearLoading();
+      }, 200);
     };
 
     const onReady = () => {

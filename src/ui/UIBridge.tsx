@@ -68,14 +68,17 @@ class UIBridgeClass {
     }
   }
 
-  /** Called by GameScene when create() finishes — triggers loading screen fade-out */
+  /** Called by GameScene when create() finishes — triggers loading screen fade-out.
+   *  Does NOT clear loading state — the LoadingScreen component manages its own
+   *  lifecycle (min time, fade-out) and calls clearLoading() when fully dismissed. */
   signalSceneReady(): void {
     window.dispatchEvent(new Event('game-scene-ready'));
-    // Clear loading state after fade-out completes
-    setTimeout(() => {
-      this._loading = null;
-      for (const fn of this._loadingListeners) fn(null);
-    }, 700);
+  }
+
+  /** Called by LoadingScreen when it has fully faded out and is ready to unmount */
+  clearLoading(): void {
+    this._loading = null;
+    for (const fn of this._loadingListeners) fn(null);
   }
 
   getLoading(): LoadingData | null { return this._loading; }
