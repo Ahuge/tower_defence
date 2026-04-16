@@ -42,7 +42,7 @@ class BootScene extends Phaser.Scene {
 }
 
 const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.WEBGL,
+  type: Phaser.AUTO,
   width: ResponsiveManager.canvasWidth(),
   height: gameHeight,
   backgroundColor: '#15101a',
