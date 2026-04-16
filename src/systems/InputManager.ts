@@ -9,7 +9,7 @@ export interface GridCoord {
 
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10; // pixels
-const DEBUG_INPUT = true; // Temporary: on-screen debug for phone touch diagnosis
+const DEBUG_INPUT = new URLSearchParams(window.location.search).has('debug');
 
 export class InputManager {
   private scene: Phaser.Scene;
