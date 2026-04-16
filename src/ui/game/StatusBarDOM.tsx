@@ -11,7 +11,7 @@ export function StatusBarDOM() {
   if (!active) return null;
 
   const canStartWave = betweenWaves && (totalWaves === 0 || currentWave < totalWaves) && lives > 0;
-  const speedColors: Record<number, string> = { 0: '#ff4444', 0.5: '#ff8844', 1: '#aaa', 1.5: '#cccc44', 2: '#ffdd44', 3: '#ff8844' };
+  const speedColors: Record<number, string> = { 0: '#c53d4a', 0.5: '#d98a2b', 1: '#b8a8b8', 1.5: '#cccc44', 2: '#e8b76d', 3: '#d98a2b' };
   const speedColor = speedColors[speed] ?? '#aaa';
 
   return (

@@ -81,7 +81,7 @@ export function TowerDockDOM() {
   if (towerBar.towers.length === 0) return null;
 
   return (
-    <div class="tower-dock">
+    <div class="tower-dock" role="toolbar" aria-label="Tower selection">
       {towerBar.towers.map((tower, i) => {
         const selected = towerBar.selectedIndex === i;
         const canAfford = gold >= tower.cost;
