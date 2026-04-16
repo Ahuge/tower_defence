@@ -105,11 +105,13 @@ export class InputManager {
 
     scene.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // When pointer re-enters the canvas after clicking outside (e.g., DOM UI),
+    // When mouse re-enters the canvas after clicking outside (e.g., DOM UI),
     // Phaser's pointer position goes stale until a new click. Force a hover
     // update from the native event so the build placement marker reappears.
+    // Mouse only — touch devices don't have this "re-enter" problem and the
+    // custom coordinate conversion can conflict with Phaser's touch handling.
     scene.game.canvas.addEventListener('pointerenter', (e: PointerEvent) => {
-      if (!this.hoverCallback) return;
+      if (!this.hoverCallback || e.pointerType === 'touch') return;
       // Convert page coordinates → Phaser canvas → world (accounting for camera)
       const rect = scene.game.canvas.getBoundingClientRect();
       const scaleX = scene.game.scale.width / rect.width;
