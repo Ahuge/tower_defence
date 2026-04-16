@@ -38,13 +38,13 @@ export function EconomyPanelDOM() {
       <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>
         {visibleTabs.map(t => (
           <button key={t.id}
+            class="econ-tab"
             onClick={() => setTab(t.id)}
             style={{
-              flex: 1, fontFamily: 'inherit', fontSize: '9px', padding: '4px 0',
+              flex: 1,
               background: activeTab === t.id ? 'rgba(255,255,255,0.05)' : 'transparent',
-              border: 'none', borderBottom: activeTab === t.id ? '2px solid var(--gold)' : '2px solid transparent',
-              color: activeTab === t.id ? 'var(--gold)' : 'var(--text-dim)', cursor: 'pointer',
-              borderRadius: '2px 2px 0 0',
+              borderBottom: activeTab === t.id ? '2px solid var(--gold)' : '2px solid transparent',
+              color: activeTab === t.id ? 'var(--gold)' : 'var(--text-dim)',
             }}>
             {t.label} {t.badge && <span style={{ color: 'var(--text-dim)', marginLeft: '2px' }}>({t.badge})</span>}
           </button>
@@ -80,11 +80,11 @@ function FrontierContent() {
                   background: canAfford ? 'rgba(255,170,68,0.06)' : 'transparent',
                   opacity: canAfford ? 1 : 0.5,
                 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
-                  <span style={{ color: 'var(--text-primary)' }}>{b.name}</span>
-                  <span style={{ color: canAfford ? 'var(--gold)' : 'var(--text-dim)' }}>{b.cost}g</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span class="econ-item-name">{b.name}</span>
+                  <span class="econ-item-cost" style={{ color: canAfford ? 'var(--gold)' : 'var(--text-dim)' }}>{b.cost}g</span>
                 </div>
-                <div style={{ fontSize: '9px', color: 'var(--text-dim)', marginTop: '1px' }}>{b.description}</div>
+                <div class="econ-item-desc">{b.description}</div>
               </div>
             );
           })}

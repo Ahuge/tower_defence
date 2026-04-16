@@ -21,14 +21,14 @@ export function BattlePassScreen() {
       </div>
       <div class="ui-section" style={{ textAlign: 'center' }}>
         <div class="text-dim text-sm">{season?.name ?? 'No Active Season'}</div>
-        <div style={{ fontSize: '24px', color: '#fff', margin: '8px 0 4px' }}>Level {level}</div>
+        <div style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '36px', color: 'var(--text-primary)', margin: '8px 0 4px' }}>Level {level}</div>
         <div class="progress-bar" style={{ maxWidth: '500px', margin: '0 auto' }}>
           <div class="progress-fill" style={{ width: level >= BP_MAX_LEVEL ? '100%' : `${(progress.current / progress.required) * 100}%` }} />
           <div class="progress-text">{level >= BP_MAX_LEVEL ? 'MAX LEVEL' : `${progress.current} / ${progress.required} XP`}</div>
         </div>
         <div class="mt-2">
           {isPremium
-            ? <div class="text-green" style={{ fontSize: '13px', fontWeight: 'bold' }}>PREMIUM PASS ACTIVE</div>
+            ? <div class="text-green" style={{ fontSize: '16px', fontWeight: 'bold' }}>PREMIUM PASS ACTIVE</div>
             : <button class={`btn btn-primary btn-large mt-2 ${!ShardWallet.canAfford(BATTLE_PASS_SHARD_COST) ? 'btn-disabled' : ''}`}
                 onClick={() => { if (BattlePass.purchasePremium()) rerender(); }}>Upgrade to Premium — {BATTLE_PASS_SHARD_COST} Shards</button>}
         </div>

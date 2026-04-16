@@ -384,7 +384,7 @@ class GameUIStoreClass {
   private _logId = 0;
   addLogEntry(text: string, color: string = '#ccc'): void {
     const entry: EventLogEntry = { id: this._logId++, text, color, time: Date.now() };
-    const log = [entry, ...this.state.eventLog].slice(0, 20);
+    const log = [entry, ...this.state.eventLog].slice(0, 100);
     this.state = { ...this.state, eventLog: log };
     this.notify();
   }

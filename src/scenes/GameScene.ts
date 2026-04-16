@@ -1908,6 +1908,7 @@ export class GameScene extends Phaser.Scene {
   toggleAutoPlay(): void {
     this.autoPlay = !this.autoPlay;
     this.upcomingWaves.setAutoPlay(this.autoPlay);
+    GameUIStore.setAutoPlay(this.autoPlay);
     this.eventLog.gameMessage(this.autoPlay ? 'Auto-play ON' : 'Auto-play OFF');
     if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
       this.time.delayedCall(1500, () => {

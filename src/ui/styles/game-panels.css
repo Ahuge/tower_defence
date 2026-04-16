@@ -544,6 +544,21 @@
   border-color: var(--border-subtle);
 }
 
+/* ─── Economy sub-panel shared classes ─────────────── */
+/* Used by Frontier, Essence, Sends, Hero Items panels */
+.econ-section-label { font-family: 'VT323', ui-monospace, monospace; font-size: 13px; letter-spacing: 1px; margin-bottom: 4px; }
+.econ-item-name { font-size: 14px; color: var(--text-primary); }
+.econ-item-desc { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+.econ-item-cost { font-family: 'VT323', ui-monospace, monospace; font-size: 14px; }
+.econ-item-row { padding: 4px 6px; margin-bottom: 2px; border-radius: 4px; cursor: pointer; }
+.econ-tab { font-family: inherit; font-size: 12px; padding: 5px 0; cursor: pointer; border-radius: 2px 2px 0 0; border: none; }
+
+/* ─── Event log ────────────────────────────────────── */
+.event-log { max-height: 200px; overflow-y: auto; }
+.event-log::-webkit-scrollbar { width: 4px; }
+.event-log::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+.event-log-entry { font-size: 12px; padding: 2px 0; line-height: 1.4; }
+
 .status-wave-active {
   font-size: 15px;
   color: var(--text-muted);
