@@ -121,7 +121,7 @@ export function MenuScreen() {
         <button class="btn" onClick={() => UIBridge.show('changelog')}>Changelog</button>
         <button class="btn btn-gold" onClick={() => { ShardWallet.earn(5000, 'test: Add Money'); setShardTick(t => t + 1); }}>+5000 Shards (test)</button>
       </div>
-      <div class="text-dim text-center" style={{ padding: '8px', fontSize: '11px' }}>Version 2026-04-16 09:12:45</div>
+      <div class="text-dim text-center" style={{ padding: '8px', fontSize: '11px' }}>Version {__BUILD_TIME__}</div>
       {waveOverlay && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
           onClick={() => setWaveOverlay(false)}>
