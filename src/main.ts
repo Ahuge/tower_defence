@@ -45,7 +45,7 @@ const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
   width: ResponsiveManager.canvasWidth(),
   height: gameHeight,
-  backgroundColor: '#111111',
+  backgroundColor: '#15101a',
   parent: 'game-root',
   scene: [BootScene, MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
   render: { antialias: true, pixelArt: false },
@@ -66,11 +66,14 @@ ResponsiveManager.onLayoutChange(() => {
 
 // Debounced resize — keeps Phaser resolution in sync with viewport even within
 // the same layout mode (e.g., desktop window dragged narrower).
+// Guard: skip if no scene is active yet (avoids bad resize during boot).
 let resizeTimer: ReturnType<typeof setTimeout>;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
+    if (game.scene.getScenes(true).length > 0) {
+      game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
+    }
   }, 150);
 });
 
