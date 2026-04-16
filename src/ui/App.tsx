@@ -12,6 +12,7 @@ import { GameOverScreen } from './screens/GameOverScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
+import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
@@ -47,6 +48,7 @@ export function App() {
           {screen === 'heroselect' && <HeroSelectScreen data={data} />}
           {screen === 'creepfactionselect' && <CreepFactionSelectScreen data={data} />}
           {screen === 'draft' && <DraftScreen data={data} />}
+          {screen === 'gauntletpreview' && <GauntletPreviewScreen data={data} />}
           {screen === 'gameover' && <GameOverScreen data={data} />}
           {screen === 'changelog' && <ChangelogScreen />}
           {screen === 'leaderboard' && <LeaderboardScreen />}

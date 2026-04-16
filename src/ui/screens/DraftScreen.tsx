@@ -12,8 +12,11 @@ export function DraftScreen({ data }: Props) {
   const matchMode = data.mode as string;
 
   const pick = (mod: DraftModifier | null) => {
-    const nextScene = matchMode === 'gauntlet' ? 'GauntletPreviewScene' : 'GameScene';
-    UIBridge.startScene(nextScene, { ...data, modifier: mod });
+    if (matchMode === 'gauntlet') {
+      UIBridge.show('gauntletpreview', { ...data, modifier: mod });
+    } else {
+      UIBridge.startScene('GameScene', { ...data, modifier: mod });
+    }
   };
 
   return (
