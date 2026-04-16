@@ -61,22 +61,30 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
     let minElapsed = false;
     let dismissed = false;
 
-    const tryDismiss = () => {
+    const elapsed = () => ((performance.now() - startTime) / 1000).toFixed(2) + 's';
+
+    console.log(`[LOADING] mounted, MIN=${MIN_MS}ms SAFETY=${SAFETY_MS}ms`);
+
+    const tryDismiss = (source: string) => {
+      console.log(`[LOADING] tryDismiss(${source}) sceneReady=${sceneReady} minElapsed=${minElapsed} dismissed=${dismissed} elapsed=${elapsed()}`);
       if (dismissed || !sceneReady || !minElapsed) return;
       dismissed = true;
+      console.log(`[LOADING] DISMISSING at ${elapsed()}`);
       setFadeOut(true);
       setTimeout(() => setVisible(false), 200);
     };
 
     const onReady = () => {
+      console.log(`[LOADING] game-scene-ready event received at ${elapsed()}`);
       sceneReady = true;
-      tryDismiss();
+      tryDismiss('scene-ready');
     };
 
     // Min time timer
     const minTimer = setTimeout(() => {
+      console.log(`[LOADING] min timer fired at ${elapsed()}`);
       minElapsed = true;
-      tryDismiss();
+      tryDismiss('min-timer');
     }, MIN_MS);
 
     // Scene ready event
@@ -84,12 +92,14 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
 
     // Safety: force dismiss after SAFETY_MS regardless
     const safety = setTimeout(() => {
+      console.log(`[LOADING] SAFETY timeout fired at ${elapsed()}`);
       sceneReady = true;
       minElapsed = true;
-      tryDismiss();
+      tryDismiss('safety');
     }, SAFETY_MS);
 
     return () => {
+      console.log(`[LOADING] cleanup at ${elapsed()}`);
       window.removeEventListener('game-scene-ready', onReady);
       clearTimeout(minTimer);
       clearTimeout(safety);
