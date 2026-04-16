@@ -1,0 +1,1 @@
+import{n as e,t}from"./main-BDzgAW__.js";e();export{t as UIBridge};
