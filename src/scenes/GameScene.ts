@@ -683,9 +683,9 @@ export class GameScene extends Phaser.Scene {
         () => this.togglePause(),
         () => this.toggleAutoPlay(),
       );
-      // Hide Phaser control bar — DOM status bar handles wave/speed/pause
-      // Note: hero ability buttons (Q/W/E/R/T) are also in this bar on phone.
-      // They still work via keyboard on desktop. Phone hero abilities need DOM solution.
+      // Hide Phaser control bar — DOM status bar handles wave/speed/pause.
+      // hide() now uses disableInteractive() on all zones so invisible buttons
+      // don't consume touches that should go to the DOM tower dock underneath.
       this.controlBar.hide?.();
     }
 
