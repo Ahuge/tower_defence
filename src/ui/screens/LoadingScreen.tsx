@@ -52,23 +52,46 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
   const modeLabel = MODE_DISPLAY[mode] ?? mode;
   const wavesLabel = waveCount ? `${waveCount} waves` : null;
 
-  // Fade out after scene signals ready (or after a max timeout)
+  // Fade out after BOTH: scene signals ready AND minimum time has elapsed
   useEffect(() => {
-    const handler = () => {
-      // Ensure minimum display time of 500ms
-      const elapsed = performance.now() - startTime;
-      const remaining = Math.max(0, 3000 - elapsed);
-      setTimeout(() => {
-        setFadeOut(true);
-        setTimeout(() => setVisible(false), 200);
-      }, remaining);
-    };
+    const MIN_MS = 10000; // testing: 10s minimum
+    const SAFETY_MS = 15000;
     const startTime = performance.now();
-    window.addEventListener('game-scene-ready', handler);
-    // Safety: max 5s loading
-    const safety = setTimeout(handler, 5000);
+    let sceneReady = false;
+    let minElapsed = false;
+    let dismissed = false;
+
+    const tryDismiss = () => {
+      if (dismissed || !sceneReady || !minElapsed) return;
+      dismissed = true;
+      setFadeOut(true);
+      setTimeout(() => setVisible(false), 200);
+    };
+
+    const onReady = () => {
+      sceneReady = true;
+      tryDismiss();
+    };
+
+    // Min time timer
+    const minTimer = setTimeout(() => {
+      minElapsed = true;
+      tryDismiss();
+    }, MIN_MS);
+
+    // Scene ready event
+    window.addEventListener('game-scene-ready', onReady);
+
+    // Safety: force dismiss after SAFETY_MS regardless
+    const safety = setTimeout(() => {
+      sceneReady = true;
+      minElapsed = true;
+      tryDismiss();
+    }, SAFETY_MS);
+
     return () => {
-      window.removeEventListener('game-scene-ready', handler);
+      window.removeEventListener('game-scene-ready', onReady);
+      clearTimeout(minTimer);
       clearTimeout(safety);
     };
   }, []);
