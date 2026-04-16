@@ -273,11 +273,17 @@
   outline: 2px solid var(--gold); outline-offset: 1px;
 }
 
+/* ─── Tablet ── */
+@media (min-width: 601px) and (max-width: 1200px) {
+  .card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+
+/* ─── Phone ── */
 @media (max-width: 600px) {
-  .card-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
   .ui-header { padding: 10px 12px; }
   .ui-section { padding: 12px; }
-  .tab { padding: 8px 12px; font-size: 11px; }
+  .tab { padding: 8px 12px; font-size: 11px; min-height: 44px; }
   .reward-node { width: 80px; }
   .btn-large { font-size: 14px; padding: 10px 22px; }
 }

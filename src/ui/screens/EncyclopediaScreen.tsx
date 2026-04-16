@@ -120,14 +120,14 @@ function TowersTab() {
                     <div class="card-name">
                       {tower.name}
                       {tower.ultimate && (
-                        <span style={{ color: '#ffcc44', marginLeft: '6px', fontSize: '10px' }}>
+                        <span style={{ color: 'var(--gold)', marginLeft: '6px', fontSize: '10px' }}>
                           ULT
                         </span>
                       )}
                     </div>
                     <div class="card-desc">{tower.description}</div>
                     <div class="text-dim text-xs mt-2" style={{ lineHeight: '1.6' }}>
-                      <span style={{ color: '#ffcc44' }}>{tower.cost}g</span>
+                      <span style={{ color: 'var(--gold)' }}>{tower.cost}g</span>
                       {' \u00b7 '}
                       {tower.damage} dmg
                       {' \u00b7 '}
@@ -136,7 +136,7 @@ function TowersTab() {
                       {(tower.fireRate / 1000).toFixed(1)}s
                     </div>
                     {traits.length > 0 && (
-                      <div class="text-xs mt-2" style={{ color: '#aaccff' }}>
+                      <div class="text-xs mt-2" style={{ color: 'var(--rarity-rare)' }}>
                         {traits.join(' \u00b7 ')}
                       </div>
                     )}
@@ -203,7 +203,7 @@ function CreepsTab() {
                 Size {creep.size}
               </div>
               {tags.length > 0 && (
-                <div class="text-xs mt-2" style={{ color: '#ffaa66' }}>
+                <div class="text-xs mt-2" style={{ color: 'var(--gold)' }}>
                   {tags.join(' \u00b7 ')}
                 </div>
               )}
@@ -223,7 +223,7 @@ function HeroCard({ hero }: { hero: HeroTypeDef }) {
   const faction = FACTIONS[hero.faction as FactionId];
   const fColor = faction ? hexColor(faction.primaryColor) : '#888';
   return (
-    <div class="card" style={{ minWidth: '260px' }}>
+    <div class="card" style={{ minWidth: 'min(260px, 100%)' }}>
       <div class="card-accent" style={{ background: fColor }} />
       <div class="card-name">{hero.name}</div>
       <div class="text-dim text-xs" style={{ marginBottom: '4px' }}>
@@ -242,25 +242,25 @@ function HeroCard({ hero }: { hero: HeroTypeDef }) {
         {hero.moveSpeed}px/s move
         {hero.baseArmor ? ` \u00b7 ${hero.baseArmor} armor` : ''}
       </div>
-      <div class="mt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '6px' }}>
+      <div class="mt-2" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }}>
         {hero.abilities.map(a => (
           <div key={a.key} class="text-xs" style={{ marginBottom: '4px', lineHeight: '1.4' }}>
-            <span style={{ color: '#ffcc44', fontWeight: 'bold' }}>[{a.key}]</span>{' '}
-            <span style={{ color: '#fff' }}>{a.name}</span>
+            <span style={{ color: 'var(--gold)', fontWeight: 'bold' }}>[{a.key}]</span>{' '}
+            <span style={{ color: 'var(--text-primary)' }}>{a.name}</span>
             {' \u2014 '}
             <span class="text-dim">{a.description}</span>
             {' '}
-            <span style={{ color: '#888' }}>({a.cooldown}s)</span>
+            <span style={{ color: 'var(--text-muted)' }}>({a.cooldown}s)</span>
           </div>
         ))}
         {hero.ultimate && (
           <div class="text-xs" style={{ marginTop: '6px', lineHeight: '1.4' }}>
-            <span style={{ color: '#ff6644', fontWeight: 'bold' }}>[{hero.ultimate.key}]</span>{' '}
-            <span style={{ color: '#fff' }}>{hero.ultimate.name}</span>
+            <span style={{ color: 'var(--jewel-red)', fontWeight: 'bold' }}>[{hero.ultimate.key}]</span>{' '}
+            <span style={{ color: 'var(--text-primary)' }}>{hero.ultimate.name}</span>
             {' \u2014 '}
             <span class="text-dim">{hero.ultimate.description}</span>
             {' '}
-            <span style={{ color: '#888' }}>({hero.ultimate.cooldown}s)</span>
+            <span style={{ color: 'var(--text-muted)' }}>({hero.ultimate.cooldown}s)</span>
           </div>
         )}
       </div>
