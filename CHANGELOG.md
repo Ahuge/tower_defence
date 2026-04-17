@@ -2,6 +2,14 @@
 
 ## 2026-04-16
 
+### Project renamed: Tower Defence → Factions
+The game is now called **Factions**. User-facing titles updated across HTML, PWA manifest, in-game headers, and server dashboards. Genre phrases like "tower defence" stay as descriptive text. Repo name, directory, `package.json` name, and Vite base path `/tower_defence/` are unchanged — those are tied to the GitHub Pages URL.
+
+### App-startup splash + background icon preheat
+New `AppLoadingScreen` shown on first page load: "FACTIONS by Running Man Games" title card with progress bar driven by Phaser's Loader events (0-80%) and an icon preheat phase (80-100%). Minimum 2.5s display so it always feels intentional.
+
+The real win is the preheat: `IconPreheat` walks every tower + hero id via `requestIdleCallback` after BootScene finishes, extracting each idle frame into the DOM data-URL cache. Opening the Store for the first time used to block the main thread for hundreds of ms while `canvas.toDataURL` ran synchronously per icon — now the cache is warm before the splash even dismisses (smoke test: Store opens in ~325ms with 153 cached icons). `SkinPreview` also falls back to a faction-tinted placeholder if an icon isn't ready yet, so the edge case of opening Store faster than the preheat never visibly hangs.
+
 ### Mobile tower info no longer hides behind the status bar
 On phones, the floating tower-info card had a fixed `bottom: 120px` that only cleared the tower dock — the status bar wraps to 2-3 rows on narrow viewports (~107px on a 400px-wide phone), so its top edge pushed up past the card and painted over the Upgrade/Sell buttons. `GameSidebar` now measures the status bar with a ResizeObserver and positions the card dynamically above it with an 8px gap, regardless of wrap count.
 

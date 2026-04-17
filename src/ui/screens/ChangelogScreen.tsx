@@ -9,6 +9,19 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-04-16',
+    title: 'Factions rename + engine refresh',
+    changes: [
+      'Renamed Tower Defence → FACTIONS. New app-startup splash: "FACTIONS by Running Man Games"',
+      'Background icon preheat eliminates the Store first-open hang on mobile — sprite cache warms during the splash',
+      'Faction-tinted placeholders in SkinPreview while icons extract (edge case: opening Store faster than preheat)',
+      'Mobile fix: tower info card no longer hides behind the status bar (dynamic measurement)',
+      'Infernal Fiend mobile sprite 404 fixed — filename now derived from sheetKey, not towerId',
+      'Upgraded Phaser 3 → 4 (Caladan). Explicit Phaser imports everywhere, no more window.Phaser global',
+      'In-game changelog migrated from Phaser scene to DOM, keyed by date instead of version',
+    ],
+  },
+  {
     date: '2026-04-11',
     title: 'Endless Mode + Streamlined Menu',
     changes: [
