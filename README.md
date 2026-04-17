@@ -94,6 +94,9 @@ Standard, Fast, Armored, Swarm, Healer, Boss, Group, Splitter, Shielded, Evasive
 ### Difficulty System
 Easy/Normal/Hard/Insane. Each creep type interprets difficulty individually — armored gets tankier, swarms multiply, fast creeps get faster. Insane mode adds extra traits (boss damage-cap shields, armored regen, 45% evasion) and is probably not winnable.
 
+### In-game Tutorials
+Joyride-style overlay that teaches the game in context — triggered on first encounter, not up-front. Tracks: basics (first launch), income primers (first game per mode), faction primers (first time each faction is picked), mode primers (first time each mode is chosen), multiplayer (first lobby open). Each track fires at most once; completion persisted in `localStorage`. The `?` button in the menu header replays any track. Custom Preact overlay (Spotlight + Popover), no third-party library. See `src/systems/Tutorial/` and `src/ui/tutorial/`.
+
 ### Multiplayer (P2P WebRTC)
 - No server required — manual SDP exchange via clipboard
 

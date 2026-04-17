@@ -2,6 +2,15 @@
 
 ## 2026-04-17
 
+### In-game tutorial system
+New players were bouncing off the game because several of its load-bearing mechanics (mazing, income from sends, Frontier buildings, per-faction asymmetry) aren't obvious from the UI. Added a joyride-style overlay that introduces each of these at the moment they become relevant — not all up-front — so the tutorial stays short even though it covers a lot of ground.
+
+Everything is a **track**: `basics`, `income_standard/battle/hero`, `multiplayer`, per-faction primers (×11), per-mode primers (×5). Tracks are self-contained sequences of steps, triggered independently the first time their context is encountered. `basics` auto-starts 3s after the splash dismisses on first load. Mode primers fire on FactionSelect entry, faction primers on the subsequent screens (HeroSelect/CreepFactionSelect/Draft), income primers on GameScene create, the MP primer on LobbyScene/CircleLobbyScene open. Each track fires at most once per player — completion persists in `localStorage` under `td_tutorial_state`. A new `?` button in the menu header opens a list of every track with ✓ badges for completed ones, so anything can be replayed on demand.
+
+Steps can advance by click (next/skip buttons on the popover) or by game event — step schema supports `advanceOn: { event: keyof GameEvents }`, which the TutorialManager wires to GameScene's per-match `EventBus` via `setGameEventBus(bus)` push/clear. GameScene now calls this in `create()` and again with `null` in `shutdown()`. Event-gated steps hide their Next button and don't advance on scrim click — forces the user to actually place the tower / start the wave.
+
+Implementation: `src/systems/Tutorial/` (Manager, Tracks, Targets, Persistence) + `src/ui/tutorial/` (Overlay, Spotlight, Popover, MenuButton, `useTutorial` hook mirroring the `useGameUI` pattern). Spotlight uses a box-shadow cutout with a four-rect click-catcher so the highlighted element stays interactive but the dim scrim is clickable. Popover has auto-flipping placement with viewport clamping. Targets are either CSS selectors (`data-tutorial-target` on TowerDockDOM, StatusBarDOM, GameSidebar, MenuScreen) or Phaser canvas rects converted via the canvas bounding box + internal scale. No third-party tour library — all custom Preact, ~500 lines total.
+
 ### Celestial: life gain + Sanctuary actually work now
 Both of Celestial's signature defensive mechanics were silently broken.
 
