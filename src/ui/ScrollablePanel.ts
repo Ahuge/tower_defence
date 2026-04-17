@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 /**
  * Reusable scrollable container for Phaser scenes.
  * Uses a graphics mask to clip content, with touch drag + mouse wheel scrolling.

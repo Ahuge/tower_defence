@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { MatchMode, WaveDefinition } from '../data/WaveDefinitions';
 import { EconomyManager } from './EconomyManager';
 import { IncomeManager } from './IncomeManager';

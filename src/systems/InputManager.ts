@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { GRID_COLS, GRID_ROWS, pixelToCol, pixelToRow, getGridCols } from '../config';
 import { EventBus } from './EventBus';
 import { CameraController } from './CameraController';

@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { getCanvasWidth, getGameWidth, getGridOffsetX } from '../config';
 import { ArenaManager } from '../systems/ArenaManager';
 import { Hero } from '../entities/Hero';

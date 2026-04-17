@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { TILE_SIZE, GRID_COLS, GRID_ROWS, gridX, gridY, gridLeftX, pixelToCol } from '../config';
 import { Grid, CellType } from './Grid';
 import { findPath, PathPoint } from './Pathfinding';

@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { HeroTypeDef, AbilityDef } from '../data/HeroTypes';
 import { ensureHeroSkinTexture } from '../systems/PaletteSwap';
 import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../data/HeroItems';

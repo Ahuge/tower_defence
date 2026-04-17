@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { getGridOffsetX } from '../config';
 import { Hero } from '../entities/Hero';
 import { ArenaCreep } from '../entities/ArenaCreep';

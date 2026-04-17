@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { GRID_COLS, GRID_ROWS, TILE_SIZE, GAME_HEIGHT, gridLeftX, getCanvasWidth } from '../config';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { TOWER_TYPES } from '../data/TowerTypes';

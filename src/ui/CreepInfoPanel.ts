@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { Creep } from '../entities/Creep';
 import { UIScale } from '../systems/UIScale';

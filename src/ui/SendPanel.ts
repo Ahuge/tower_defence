@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
 import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../data/SendCreepTypes';
 import { UIScale } from '../systems/UIScale';

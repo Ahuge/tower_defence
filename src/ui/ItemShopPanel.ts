@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { getSidebarWidth } from '../config';
 import { Hero } from '../entities/Hero';
 import { ITEM_SLOTS, ITEM_SLOT_ORDER } from '../data/HeroItems';

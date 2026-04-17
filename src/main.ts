@@ -1,8 +1,4 @@
 import * as Phaser from 'phaser';
-// Phaser 4's ESM bundle no longer installs a `window.Phaser` global the way v3's UMD
-// did. Several files reference `Phaser.X` at runtime via ambient types without
-// importing it. Expose the namespace globally so those references resolve.
-(globalThis as any).Phaser = Phaser;
 import { GAME_HEIGHT } from './config';
 import { ResponsiveManager } from './systems/ResponsiveManager';
 import { MenuScene } from './scenes/MenuScene';

@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 /**
  * SpriteManager — handles loading and creating sprites for factions that have art.
  * Factions without spritesheets continue using Graphics primitives.

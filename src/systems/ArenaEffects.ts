@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 /**
  * Transient visual effects rendered in the hero arena.
  * Each effect has a position, type, duration, and color.

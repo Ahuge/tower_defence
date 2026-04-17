@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { getCanvasWidth } from '../config';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 

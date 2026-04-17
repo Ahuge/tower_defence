@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { GAME_HEIGHT, getCanvasWidth } from '../config';
 import { FighterType, getFighterTypesForFaction } from '../data/FighterTypes';
 import { FactionId } from '../data/Factions';

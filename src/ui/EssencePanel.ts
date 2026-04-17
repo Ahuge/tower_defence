@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { SIDEBAR_WIDTH, GAME_HEIGHT, getSidebarWidth } from '../config';
 import { UIScale } from '../systems/UIScale';
 import { ResourceManager } from '../systems/ResourceManager';
