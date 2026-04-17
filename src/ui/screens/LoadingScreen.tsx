@@ -79,6 +79,10 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
       setTimeout(() => {
         setVisible(false);
         UIBridge.clearLoading();
+        // Signal for subsystems that need to wait until the match-load
+        // screen is fully gone before showing their own overlays
+        // (e.g. TutorialManager's income/hero/battle primers).
+        window.dispatchEvent(new Event('match-loading-dismissed'));
       }, 200);
     };
 

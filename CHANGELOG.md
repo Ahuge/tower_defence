@@ -2,6 +2,9 @@
 
 ## 2026-04-17
 
+### In-game tutorial primers wait for match-load splash
+Same timing race as the app-startup splash, different splash. In-match primers (`income_standard`, `income_hero`, `income_battle`) fired on `GameScene.create()`, which runs well before the LoadingScreen (5s min display + 200ms fade) dismisses — so the first popover appeared over the faction splash. LoadingScreen now emits `match-loading-dismissed` when it fully unmounts; `TutorialManager.onGameSceneCreated` queues the trackId into `pendingAfterMatchLoad` and the dismissal event drains the queue. Same pattern as the `app-splash-dismissed` wiring for the first-launch basics track.
+
 ### Pause button wired, path indicator redesigned, faction tagline on load
 
 Three tutorial-follow-ups ahead of the tutorial game scene work.

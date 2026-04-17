@@ -41,6 +41,11 @@ class TutorialManagerClass {
   /** True once init() has run. Guards against double-subscribe in dev/HMR. */
   private initialized = false;
 
+  /** Track id queued by GameScene create() but deferred until the match-load
+   *  LoadingScreen has fully dismissed. Otherwise the in-game primers would
+   *  fire while the faction splash is still covering the canvas. */
+  private pendingAfterMatchLoad: string | null = null;
+
   // ─── Lifecycle ──────────────────────────────────────────
 
   init(): void {
@@ -55,6 +60,17 @@ class TutorialManagerClass {
     window.addEventListener('app-splash-dismissed', () => {
       // Small buffer lets the menu finish mounting so DOM targets resolve.
       setTimeout(() => this.maybeStartFirstLaunch(), 200);
+    });
+
+    // In-game primers — the match-load splash (LoadingScreen) runs for a
+    // minimum of 5s and fades out over 200ms. GameScene.create() fires long
+    // before that, so in-match tracks get queued here and only start once
+    // LoadingScreen signals 'match-loading-dismissed'.
+    window.addEventListener('match-loading-dismissed', () => {
+      const trackId = this.pendingAfterMatchLoad;
+      this.pendingAfterMatchLoad = null;
+      if (!trackId) return;
+      this.maybeAutoStart(trackId);
     });
   }
 
@@ -200,7 +216,8 @@ class TutorialManagerClass {
   }
 
   /** Called from GameScene on create() so the income-primer fires once per
-   *  mode. */
+   *  mode — but deferred until the match-load splash has faded out. The
+   *  match-loading-dismissed listener drains `pendingAfterMatchLoad`. */
   onGameSceneCreated(matchMode: string): void {
     // Income track ids map 1:1 with mode ids where applicable.
     const trackId =
@@ -209,7 +226,9 @@ class TutorialManagerClass {
       // standard/endless/gauntlet share the income_standard primer.
       (matchMode === 'standard' || matchMode === 'endless' || matchMode === 'gauntlet') ? 'income_standard' :
       null;
-    if (trackId) this.maybeAutoStart(trackId);
+    if (!trackId) return;
+    if (this.isCompleted(trackId)) return;
+    this.pendingAfterMatchLoad = trackId;
   }
 
   private maybeAutoStart(trackId: string): void {
