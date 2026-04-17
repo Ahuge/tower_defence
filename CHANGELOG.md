@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-17
+
+### Creep inspector migrated from Phaser to DOM
+The creep info panel (shown when you click a creep) was the last major in-game UI still rendered by Phaser — a Container with Graphics + 3 Text objects, manually positioned each frame. Now lives in `CreepInfoPanelDOM.tsx` subscribing to a new `selectedCreep: CreepStats` state in `GameUIStore`.
+
+`GameScene` publishes a fresh snapshot each frame while a creep is inspected (~60Hz); `updateSelectedCreep` does a shallow-equal check and skips `notify()` when nothing changed — which is most frames while the creep is just walking. Preact only re-renders on real deltas (HP ticks, armor shred, effect expiry), so the cadence is effectively free.
+
+Desktop: inline collapsible panel in the left sidebar, faction-colored title, boss badge. Phone: floating card above the status bar, sharing the slot with the tower info panel (they're already mutually exclusive). HP gets its own gradient bar on top of the panel — green→amber→red shading based on percent remaining.
+
+Deleted `src/ui/CreepInfoPanel.ts` (149 lines) and its 6 touch points in `GameScene`.
+
 ## 2026-04-16
 
 ### Project renamed: Tower Defence → Factions
