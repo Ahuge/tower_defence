@@ -1,7 +1,7 @@
 /**
  * LeaderboardScene — thin shell that redirects to DOM UI.
  */
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { UIBridge } from '../ui/UIBridge';
 
 export class LeaderboardScene extends Phaser.Scene {

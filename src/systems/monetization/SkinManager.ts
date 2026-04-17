@@ -6,7 +6,7 @@ import { FactionId } from '../../data/Factions';
 import { HeroId } from '../../data/HeroTypes';
 import { StorePersistence } from './StorePersistence';
 import { getSkinDef } from './StoreDefinitions';
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 
 const FACTION_TOWER_SHEET: Record<string, string> = {
   void: 'void_towers', arcane: 'arcane_towers', mechanical: 'mech_towers',

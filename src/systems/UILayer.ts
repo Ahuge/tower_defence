@@ -15,7 +15,7 @@
  *   const label = uiLayer.text(10, 20, 'Hello', { fontSize: '14px' });
  *   container.add(label);
  */
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 
 export class UILayer {
   private scene: Phaser.Scene;

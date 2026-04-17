@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { getCanvasWidth } from '../config';
 import { MapId } from '../data/Maps';
 import { ResponsiveManager } from '../systems/ResponsiveManager';

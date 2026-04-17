@@ -6,7 +6,7 @@
  * Water and lava tiles are animated via Phaser animations.
  * Ground doodads are scattered on walkable tiles from a separate sheet.
  */
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { TILE_SIZE, gridLeftX, getGridCols } from '../config';
 import { Grid, CellType } from './Grid';
 import {

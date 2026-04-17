@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { getCanvasWidth, GAME_HEIGHT, TOWER_BAR_HEIGHT } from '../config';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SignalingClient } from '../systems/multiplayer/SignalingClient';

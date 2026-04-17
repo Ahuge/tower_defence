@@ -17,7 +17,7 @@
  * → replaced with:
  *   this.dText(x, y, text, style);
  */
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { uiText, uiGraphics, uiSprite, uiZone } from '../systems/UILayer';
 import { getSidebarWidth } from '../config';
 
