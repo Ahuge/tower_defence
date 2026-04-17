@@ -177,6 +177,12 @@ export function getTowerSpriteConfig(towerId: string): TowerSpriteConfig | undef
   return TOWER_SPRITE_CONFIGS[towerId];
 }
 
+/** All tower ids (static + mobile units) that have sprite configs — used by the
+ *  icon preheat scheduler to warm the DOM icon cache on startup. */
+export function getAllSpriteTowerIds(): string[] {
+  return [...Object.keys(TOWER_SPRITE_CONFIGS), ...Object.keys(MOBILE_SPRITE_CONFIGS)];
+}
+
 /** Get the projectile sprite config */
 export function getProjectileSpriteConfig(towerId: string): ProjectileSpriteConfig | undefined {
   return PROJECTILE_SPRITE_CONFIGS[towerId];

@@ -17,6 +17,7 @@ import { LeaderboardScene } from './scenes/LeaderboardScene';
 import { UIBridge } from './ui/UIBridge';
 import { preloadSprites } from './systems/SpriteManager';
 import { preloadCreepSprites } from './systems/CreepSpriteManager';
+import { preheatIcons } from './ui/game/IconPreheat';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
@@ -36,8 +37,22 @@ class BootScene extends Phaser.Scene {
     // Phaser TextureManager, so loading once here covers every screen.
     preloadSprites(this);
     preloadCreepSprites(this);
+
+    // Asset fetch phase occupies the first 80% of the AppLoadingScreen
+    // progress bar; icon preheat takes the remaining 20%.
+    this.load.on('progress', (value: number) => {
+      window.dispatchEvent(new CustomEvent('app-preload-progress', {
+        detail: { value: value * 0.8, phase: 'assets' },
+      }));
+    });
   }
-  create(): void { /* Phaser ready — menu shown from main.ts */ }
+  async create(): Promise<void> {
+    window.dispatchEvent(new CustomEvent('app-preload-progress', {
+      detail: { value: 0.8, phase: 'warming' },
+    }));
+    await preheatIcons(0.8, 0.2);
+    window.dispatchEvent(new Event('app-preload-complete'));
+  }
 }
 
 const config: Phaser.Types.Core.GameConfig = {
