@@ -2,6 +2,12 @@
 
 ## 2026-04-16
 
+### Mobile tower info no longer hides behind the status bar
+On phones, the floating tower-info card had a fixed `bottom: 120px` that only cleared the tower dock — the status bar wraps to 2-3 rows on narrow viewports (~107px on a 400px-wide phone), so its top edge pushed up past the card and painted over the Upgrade/Sell buttons. `GameSidebar` now measures the status bar with a ResizeObserver and positions the card dynamically above it with an 8px gap, regardless of wrap count.
+
+### In-game changelog migrated to DOM, re-keyed by date
+The 435-line Phaser `ChangelogScene` is gone. All 24 entries (v1-5 through v28) live in `ChangelogScreen.tsx` as structured DOM, now headed by **date** (derived from the shipping commit of each feature) instead of version number. Phaser scene registration removed, legacy `MenuScene` button rerouted through `UIBridge.show('changelog')`.
+
 ### Phaser 4 upgrade
 Bumped the engine from **Phaser 3.90 → Phaser 4.0 ("Caladan")**. Two behavioural changes in v4's ESM bundle required code adjustments:
 
