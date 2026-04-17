@@ -98,29 +98,25 @@ function FrontierContent() {
           {frontier.owned.map((b, i) => (
             <div key={`${b.defId}-${i}`} style={{
               padding: '4px 6px', marginBottom: '2px', borderRadius: '4px',
-              background: b.destroyed ? 'rgba(255,68,68,0.08)' : 'rgba(68,255,68,0.04)',
-              opacity: b.destroyed ? 0.4 : 1,
+              background: 'rgba(68,255,68,0.04)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px' }}>
-                <span style={{ color: b.destroyed ? 'var(--jewel-red)' : 'var(--text-primary)' }}>
+                <span style={{ color: 'var(--text-primary)' }}>
                   {b.name} {b.count && b.count > 1 ? `×${b.count}` : ''}
                 </span>
-                <span style={{ fontSize: '9px', color: b.destroyed ? 'var(--jewel-red)' : 'var(--text-muted)' }}>{b.status}</span>
+                <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{b.status}</span>
               </div>
-              {/* Action buttons based on mechanic */}
-              {!b.destroyed && (
-                <div style={{ display: 'flex', gap: '4px', marginTop: '3px' }}>
-                  {b.mechanic === 'overcharge' && b.status === 'Ready' && (
-                    <ActionBtn label="Overcharge" color="#ffaa44" onClick={() => GameUIStore.requestFrontierBatchAction('overcharge', b.defId)} />
-                  )}
-                  {b.mechanic === 'dig' && (
-                    <ActionBtn label="Dig Deeper" color="#88aacc" onClick={() => GameUIStore.requestFrontierBatchAction('dig', b.defId)} />
-                  )}
-                  {b.mechanic === 'grow' && (
-                    <ActionBtn label="Harvest" color="#88ff88" onClick={() => GameUIStore.requestFrontierBatchAction('harvest', b.defId)} />
-                  )}
-                </div>
-              )}
+              <div style={{ display: 'flex', gap: '4px', marginTop: '3px' }}>
+                {b.mechanic === 'overcharge' && b.status === 'Ready' && (
+                  <ActionBtn label="Overcharge" color="#ffaa44" onClick={() => GameUIStore.requestFrontierBatchAction('overcharge', b.defId)} />
+                )}
+                {b.mechanic === 'dig' && (
+                  <ActionBtn label="Dig Deeper" color="#88aacc" onClick={() => GameUIStore.requestFrontierBatchAction('dig', b.defId)} />
+                )}
+                {b.mechanic === 'grow' && (
+                  <ActionBtn label="Harvest" color="#88ff88" onClick={() => GameUIStore.requestFrontierBatchAction('harvest', b.defId)} />
+                )}
+              </div>
             </div>
           ))}
         </>

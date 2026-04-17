@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker — Tower Defence Leaderboard
+ * Cloudflare Worker — Factions Leaderboard
  *
  * KV namespace binding: SCORES
  * Keys:

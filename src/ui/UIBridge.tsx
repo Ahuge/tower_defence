@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 /**
  * UIBridge — connects the DOM UI layer (Preact) with the Phaser game.
  * Screens with data use screenData to pass props through the bridge.

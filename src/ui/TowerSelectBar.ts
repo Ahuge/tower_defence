@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, getGridOffsetX, getCanvasWidth } from '../config';
 import { getTowerType, TowerType } from '../data/TowerTypes';
 import { hasTrait } from '../systems/traits/Trait';

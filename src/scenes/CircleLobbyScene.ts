@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { getCanvasWidth, GAME_HEIGHT, TOWER_BAR_HEIGHT } from '../config';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { SignalingClient } from '../systems/multiplayer/SignalingClient';

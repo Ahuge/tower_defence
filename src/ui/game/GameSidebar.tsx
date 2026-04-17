@@ -2,46 +2,63 @@
  * GameSidebar — DOM overlay for in-game panels.
  * Desktop/tablet: 3 collapsible sections stacked at top-left.
  * Phone: Waves + Economy stay as compact collapsible panels.
- *        Tower info renders as a floating card above the dock,
+ *        Tower/creep info renders as a floating card above the dock,
  *        dismissable via x button or tapping outside.
  */
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useLayoutEffect } from 'preact/hooks';
 import { useGameUI } from '../hooks/useGameUI';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { TowerInfoPanelDOM } from './TowerInfoPanelDOM';
+import { CreepInfoPanelDOM } from './CreepInfoPanelDOM';
 import { UpcomingWavesDOM } from './UpcomingWavesDOM';
 import { EconomyPanelDOM } from './EconomyPanelDOM';
 import { GameUIStore } from '../GameUIStore';
 import { ResponsiveManager } from '../../systems/ResponsiveManager';
 
-type PanelId = 'waves' | 'economy' | 'tower';
+type PanelId = 'waves' | 'economy' | 'tower' | 'creep';
 
 export function GameSidebar() {
-  const { active, selectedTower, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence } = useGameUI();
+  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence } = useGameUI();
   const [openPanel, setOpenPanel] = useState<PanelId | null>('waves');
-  const [showFloatingTower, setShowFloatingTower] = useState(false);
+  const [showFloating, setShowFloating] = useState<'tower' | 'creep' | null>(null);
+  // Measure status bar so the floating card can sit above it — its height
+  // varies with flex-wrap (1-3 rows depending on viewport width and what's shown).
+  const [statusBarHeight, setStatusBarHeight] = useState(0);
 
   const isPhone = ResponsiveManager.isPhone();
   const panelWidth = isPhone ? 'calc(100% - 16px)' : '340px';
 
-  // Auto-open tower panel on desktop; show floating card on phone
+  // Auto-open tower/creep panel on desktop; show floating card on phone.
+  // Tower + creep are mutually exclusive — selecting one clears the other.
   useEffect(() => {
     if (selectedTower) {
-      if (isPhone) {
-        setShowFloatingTower(true);
-      } else {
-        setOpenPanel('tower');
-      }
+      if (isPhone) setShowFloating('tower');
+      else setOpenPanel('tower');
+    } else if (selectedCreep) {
+      if (isPhone) setShowFloating('creep');
+      else setOpenPanel('creep');
     } else {
-      setShowFloatingTower(false);
-      if (openPanel === 'tower') setOpenPanel('economy');
+      setShowFloating(null);
+      if (openPanel === 'tower' || openPanel === 'creep') setOpenPanel('economy');
     }
-  }, [selectedTower]);
+  }, [selectedTower, selectedCreep]);
 
   const dismissFloating = useCallback(() => {
-    setShowFloatingTower(false);
-    GameUIStore.deselectTower();
-  }, []);
+    setShowFloating(null);
+    if (selectedTower) GameUIStore.deselectTower();
+    if (selectedCreep) GameUIStore.deselectCreep();
+  }, [selectedTower, selectedCreep]);
+
+  useLayoutEffect(() => {
+    if (!isPhone || !showFloating) return;
+    const bar = document.querySelector<HTMLElement>('.status-bar');
+    if (!bar) return;
+    const update = () => setStatusBarHeight(bar.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [isPhone, showFloating]);
 
   if (!active) return null;
 
@@ -88,11 +105,27 @@ export function GameSidebar() {
             <TowerInfoPanelDOM />
           </CollapsiblePanel>
         )}
+
+        {/* Desktop/tablet: creep info inline in sidebar */}
+        {!isPhone && selectedCreep && (
+          <CollapsiblePanel
+            title={selectedCreep.name}
+            titleColor={selectedCreep.factionColor ?? '#ff8888'}
+            open={openPanel === 'creep'}
+            onToggle={() => toggle('creep')}
+            badge={selectedCreep.isBoss ? 'BOSS' : `${Math.round((selectedCreep.hp / Math.max(1, selectedCreep.maxHp)) * 100)}%`}
+          >
+            <CreepInfoPanelDOM />
+          </CollapsiblePanel>
+        )}
       </div>
 
-      {/* Phone: floating tower info card above the dock */}
-      {isPhone && selectedTower && showFloatingTower && (
-        <div class="floating-tower-info game-panel">
+      {/* Phone: floating info card above the dock (tower or creep — mutually exclusive) */}
+      {isPhone && showFloating === 'tower' && selectedTower && (
+        <div
+          class="floating-tower-info game-panel"
+          style={statusBarHeight > 0 ? { bottom: `${72 + statusBarHeight + 8}px` } : undefined}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
             <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '16px', fontWeight: 'bold', color: 'var(--gold)' }}>
               {selectedTower.name} Lv{selectedTower.level}{selectedTower.isUltimate ? ' ULT' : ''}
@@ -100,6 +133,26 @@ export function GameSidebar() {
             <button class="panel-close" onClick={dismissFloating}>&times;</button>
           </div>
           <TowerInfoPanelDOM />
+        </div>
+      )}
+
+      {isPhone && showFloating === 'creep' && selectedCreep && (
+        <div
+          class="floating-tower-info game-panel"
+          style={statusBarHeight > 0 ? { bottom: `${72 + statusBarHeight + 8}px` } : undefined}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{
+              fontFamily: "'VT323', ui-monospace, monospace",
+              fontSize: '16px',
+              fontWeight: 'bold',
+              color: selectedCreep.factionColor ?? '#ff8888',
+            }}>
+              {selectedCreep.name}{selectedCreep.isBoss ? ' [BOSS]' : ''}
+            </span>
+            <button class="panel-close" onClick={dismissFloating}>&times;</button>
+          </div>
+          <CreepInfoPanelDOM />
         </div>
       )}
     </>

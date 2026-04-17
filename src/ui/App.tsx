@@ -14,6 +14,7 @@ import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
 import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
+import { AppLoadingScreen } from './screens/AppLoadingScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
@@ -77,6 +78,10 @@ export function App() {
           waveCount={loading.waveCount}
         />
       )}
+
+      {/* App-startup splash — shown on first page load while BootScene
+          fetches spritesheets and the icon cache pre-warms. Self-unmounts. */}
+      <AppLoadingScreen />
     </>
   );
 }

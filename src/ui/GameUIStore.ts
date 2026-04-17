@@ -36,6 +36,35 @@ export interface TowerStats {
   _tower: Tower;
 }
 
+export interface CreepEffect {
+  /** Short label like "Slow 40%" or "Burn 8dps" */
+  label: string;
+  /** Remaining duration in seconds (already rounded to 1dp) */
+  durationS: number;
+  /** Short kind tag for color accents (slow/burn/poison/root/...) */
+  kind: string;
+}
+
+export interface CreepStats {
+  /** Display name: "Military Tank" */
+  name: string;
+  /** Faction primary color (hex string). null for unfactioned creeps. */
+  factionColor: string | null;
+  isBoss: boolean;
+  hp: number;
+  maxHp: number;
+  /** Armor tier name (light/medium/heavy) */
+  armor: string;
+  baseArmor: string;
+  speed: number;
+  baseSpeed: number;
+  effects: CreepEffect[];
+  /** Trait labels like "Shield: 40/120" or "Heal aura (3% nearby/s)" */
+  traits: string[];
+  /** Identity reference — used to detect "same creep re-inspected" across frames. */
+  _creep: Creep;
+}
+
 export interface WavePreview {
   waveNum: number;
   label: string;
@@ -171,6 +200,8 @@ export interface GameUIState {
   active: boolean;
   /** Currently selected tower (null = nothing selected) */
   selectedTower: TowerStats | null;
+  /** Currently inspected creep (null = no creep inspection active) */
+  selectedCreep: CreepStats | null;
   /** Current wave number */
   currentWave: number;
   /** Total waves (0 = endless) */
@@ -218,6 +249,26 @@ export interface GameUIState {
 
 type Listener = () => void;
 
+/** Shallow equality for CreepStats snapshots — field-by-field comparison
+ *  so the 60Hz updateSelectedCreep doesn't re-render unless something
+ *  actually changed (HP/armor/speed/effects). */
+function creepStatsEqual(a: CreepStats, b: CreepStats): boolean {
+  if (a.hp !== b.hp || a.maxHp !== b.maxHp) return false;
+  if (a.armor !== b.armor || a.baseArmor !== b.baseArmor) return false;
+  if (a.speed !== b.speed || a.baseSpeed !== b.baseSpeed) return false;
+  if (a.isBoss !== b.isBoss || a.name !== b.name) return false;
+  if (a.factionColor !== b.factionColor) return false;
+  if (a.effects.length !== b.effects.length || a.traits.length !== b.traits.length) return false;
+  for (let i = 0; i < a.effects.length; i++) {
+    const ea = a.effects[i], eb = b.effects[i];
+    if (ea.label !== eb.label || ea.durationS !== eb.durationS || ea.kind !== eb.kind) return false;
+  }
+  for (let i = 0; i < a.traits.length; i++) {
+    if (a.traits[i] !== b.traits[i]) return false;
+  }
+  return true;
+}
+
 // ─── Store ──────────────────────────────────────────────
 
 class GameUIStoreClass {
@@ -244,13 +295,14 @@ class GameUIStoreClass {
     onSelectDockTower?: (index: number) => void;
     onCycleSpeed?: () => void;
     onPause?: () => void;
-    onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => void;
+    onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
   } = {};
 
   private defaultState(): GameUIState {
     return {
       active: false,
       selectedTower: null,
+      selectedCreep: null,
       currentWave: 0,
       totalWaves: 0,
       upcomingWaves: [],
@@ -303,6 +355,30 @@ class GameUIStoreClass {
   /** Deselect tower — hides the tower info panel */
   deselectTower(): void {
     this.state = { ...this.state, selectedTower: null };
+    this.notify();
+  }
+
+  /** Start inspecting a creep — shows the creep info panel */
+  selectCreep(stats: CreepStats): void {
+    this.state = { ...this.state, selectedCreep: stats };
+    this.notify();
+  }
+
+  /** Push an updated snapshot for the inspected creep. No-op (and no
+   *  re-render) when the new stats are observationally equal to the
+   *  previous snapshot — prevents a 60Hz flood of setState calls while
+   *  a creep walks uncontested. */
+  updateSelectedCreep(stats: CreepStats): void {
+    const prev = this.state.selectedCreep;
+    if (prev && prev._creep === stats._creep && creepStatsEqual(prev, stats)) return;
+    this.state = { ...this.state, selectedCreep: stats };
+    this.notify();
+  }
+
+  /** Hide the creep info panel */
+  deselectCreep(): void {
+    if (this.state.selectedCreep === null) return;
+    this.state = { ...this.state, selectedCreep: null };
     this.notify();
   }
 
@@ -432,8 +508,8 @@ class GameUIStoreClass {
     this.callbacks.onPause?.();
   }
 
-  placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): void {
-    this.callbacks.onFrontierDoodad?.(color, buildingId, factionFallback);
+  placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): { destroy(): void } | null {
+    return this.callbacks.onFrontierDoodad?.(color, buildingId, factionFallback) ?? null;
   }
 
   requestSend(sendId: string): void {

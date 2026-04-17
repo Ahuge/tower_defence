@@ -10,7 +10,7 @@
  * Creep types map to column indices. The walk animation cycles frames 0-3.
  * Death plays frames 4-6 once.
  */
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { FactionId } from '../data/Factions';
 
 const FRAME_SIZE = 64;

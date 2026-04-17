@@ -1,5 +1,5 @@
 /**
- * Tower Defence Signaling Server — Cloudflare Worker entry point.
+ * Factions Signaling Server — Cloudflare Worker entry point.
  *
  * Routes:
  *   POST   /api/rooms                → Create room

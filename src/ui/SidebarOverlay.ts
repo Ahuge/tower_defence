@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { SIDEBAR_WIDTH, GAME_HEIGHT } from '../config';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';

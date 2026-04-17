@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { getCanvasWidth, GAME_HEIGHT, TOWER_BAR_HEIGHT } from '../config';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MAPS, MAP_ORDER } from '../data/Maps';
@@ -6,6 +6,7 @@ import { DifficultyLevel } from '../data/Difficulty';
 import { getDailySeed } from '../data/MapGenerator';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
+import { UIBridge } from '../ui/UIBridge';
 
 interface ModeCard {
   label: string;
@@ -33,7 +34,7 @@ export class MenuScene extends Phaser.Scene {
     const ph = UIScale.isPhone;
 
     let yPos = UIScale.y(40);
-    this.add.text(cx, yPos, 'TOWER DEFENCE', {
+    this.add.text(cx, yPos, 'FACTIONS', {
       fontSize: s.fontHuge, color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
@@ -231,7 +232,7 @@ export class MenuScene extends Phaser.Scene {
     const logBtn = this.add.text(cx + bottomSpacing, bottomRowY, '[ Changelog ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    logBtn.on('pointerdown', () => this.scene.start('ChangelogScene'));
+    logBtn.on('pointerdown', () => UIBridge.show('changelog'));
     logBtn.on('pointerover', () => logBtn.setColor('#bbddff'));
     logBtn.on('pointerout', () => logBtn.setColor('#88aacc'));
 

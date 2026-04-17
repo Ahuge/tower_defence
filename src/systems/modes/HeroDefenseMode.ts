@@ -27,6 +27,10 @@ export class HeroDefenseMode implements GameMode {
   createUI(ctx: GameModeContext): void {
     this.ctx = ctx;
 
+    // Install the Sanctuary shield hook on the arena so base damage is
+    // routed through leak_absorb pools before the baseHp drops.
+    this.arenaManager.onBeforeBaseDamage = (dmg: number) => consumeSanctuaryShields(ctx.scene as any, dmg);
+
     // Item shop panel (replaces frontier)
     this.itemShop = new ItemShopPanel(
       ctx.scene,
@@ -174,6 +178,24 @@ export class HeroDefenseMode implements GameMode {
     this.itemShop.update();
     // Sync hero shop periodically (items can change on level up)
     this.syncHeroShopToDOM();
+    // Lazy-init Celestial Sanctuary shield pools against HD base HP.
+    // Cheap: skip after first init per trait.
+    this.initSanctuaryShieldsIfNeeded();
+  }
+
+  private initSanctuaryShieldsIfNeeded(): void {
+    const scene = this.ctx.scene as any;
+    const towers = scene.towerMgr?.towers ?? [];
+    const pool = Math.max(1, Math.floor(this.arenaManager.baseMaxHp * 0.05));
+    for (const tower of towers) {
+      for (const trait of tower.traits ?? []) {
+        if (trait.id !== 'leak_absorb') continue;
+        if (trait._shieldHpMax !== undefined) continue;
+        const maxCharges = trait.maxCharges ?? 1;
+        trait._shieldHpMax = pool * maxCharges;
+        trait._shieldHp = trait._shieldHpMax;
+      }
+    }
   }
 
   onWaveStart(wave: WaveDefinition, waveNum: number): void {
@@ -225,7 +247,53 @@ export class HeroDefenseMode implements GameMode {
     return false;
   }
 
+  /** Celestial life_on_kill proc → heal base HP by 5% of max per proc
+   *  (capped at max). Base HP is HD's defensive pool, so it maps to the
+   *  same "gain 5% of the pool" ratio that +1 life represents in Standard. */
+  onLifeGain(count: number, towerLabel?: string): boolean {
+    if (count <= 0) return true;
+    const healPerProc = Math.max(1, Math.round(this.arenaManager.baseMaxHp * 0.05));
+    const totalHeal = healPerProc * count;
+    const before = this.arenaManager.baseHp;
+    this.arenaManager.baseHp = Math.min(this.arenaManager.baseMaxHp, before + totalHeal);
+    const actual = this.arenaManager.baseHp - before;
+    if (actual > 0) {
+      const who = towerLabel ? ` from ${towerLabel}` : '';
+      this.ctx.eventLog.gameMessage(`+${actual} base HP${who}!`);
+    }
+    return true;
+  }
+
+  /** Celestial Sanctuary base shield — drains the per-tower shield pools
+   *  before the base takes damage. Called by ArenaManager when a creep
+   *  hits the base. Returns how much of `damage` was absorbed. */
+  absorbDamage(damage: number): number {
+    return consumeSanctuaryShields(this.ctx.scene as any, damage);
+  }
+
   destroy(): void {
     this.itemShop.destroy();
   }
+}
+
+/** Helper shared with Standard's leak-absorb consumer: drains the
+ *  `leak_absorb` trait shields on every Celestial Sanctuary tower in the
+ *  scene, in the order they were placed, up to `damage`. Returns the
+ *  amount actually absorbed. */
+function consumeSanctuaryShields(scene: { towerMgr?: { towers: any[] } }, damage: number): number {
+  const towers = scene.towerMgr?.towers ?? [];
+  let remaining = damage;
+  for (const tower of towers) {
+    if (remaining <= 0) break;
+    for (const trait of tower.traits ?? []) {
+      if (trait.id !== 'leak_absorb') continue;
+      const pool = trait._shieldHp ?? 0;
+      if (pool <= 0) continue;
+      const absorbed = Math.min(pool, remaining);
+      trait._shieldHp = pool - absorbed;
+      remaining -= absorbed;
+      if (remaining <= 0) break;
+    }
+  }
+  return damage - remaining;
 }

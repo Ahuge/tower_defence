@@ -9,7 +9,7 @@
  * Used by hero skins today (generated from the base hero spritesheet at runtime)
  * and will eventually power an editor export path for heroes.
  */
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { HeroId } from '../data/HeroTypes';
 import { HERO_SKIN_PALETTES } from '../data/HeroSkinPalettes';
 import { StorePersistence } from './monetization/StorePersistence';

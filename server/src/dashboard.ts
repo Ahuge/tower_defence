@@ -8,7 +8,7 @@ export function getDashboardHTML(baseUrl: string): string {
   return `<!DOCTYPE html>
 <html>
 <head>
-  <title>Tower Defence Analytics</title>
+  <title>Factions Analytics</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
@@ -49,7 +49,7 @@ export function getDashboardHTML(baseUrl: string): string {
   </style>
 </head>
 <body>
-  <h1>Tower Defence Analytics</h1>
+  <h1>Factions Analytics</h1>
   <div class="subtitle">
     <button class="btn" onclick="loadAll()">Refresh</button>
     <button class="btn" id="auto-btn" onclick="toggleAutoRefresh()">Auto: Off</button>

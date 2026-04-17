@@ -62,7 +62,7 @@ export function MenuScreen() {
   return (
     <>
       <div class="ui-header">
-        <div class="ui-header-title">TOWER DEFENCE</div>
+        <div class="ui-header-title">FACTIONS</div>
         <ShardBadge />
       </div>
       <div class="ui-section">

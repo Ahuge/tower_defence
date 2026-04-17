@@ -1,9 +1,406 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
 
-// Import the changelog entries from the Phaser scene's data
-// For now, render a simple "back to menu" wrapper — the actual changelog content
-// is loaded dynamically from the scene. We'll inline it here.
+type Entry = {
+  date: string;
+  title: string;
+  changes: string[];
+};
+
+const ENTRIES: Entry[] = [
+  {
+    date: '2026-04-17',
+    title: 'Celestial + frontier fixes',
+    changes: [
+      'Celestial Acolyte / Absolution life-on-kill actually procs now (was silently failing on a sentinel timing bug)',
+      'Celestial Sanctuary absorbs leaks as advertised (Standard: blocks 1 life per charge; HD: 5%-base-HP damage shield drained on base hits)',
+      'HD mode: life_on_kill heals base by 5% of max HP instead (mirrors +1 life in Standard)',
+      'Destroyed frontier buildings now fully disappear — map doodad gone, panel entry gone (no more ghost "DESTROYED" rows)',
+    ],
+  },
+  {
+    date: '2026-04-17',
+    title: 'Creep inspector moved to DOM',
+    changes: [
+      'Creep info panel (click a creep) migrated from Phaser to Preact',
+      '60Hz refresh with diff-notify — Preact only re-renders on real stat changes (HP ticks, armor shred, effect expiry)',
+      'HP gradient bar on top of the panel — green → amber → red',
+      'Desktop: collapsible sidebar panel with faction-colored title and boss badge',
+      'Phone: floating card shared slot with tower info (already mutually exclusive)',
+    ],
+  },
+  {
+    date: '2026-04-16',
+    title: 'Factions rename + engine refresh',
+    changes: [
+      'Renamed Tower Defence → FACTIONS. New app-startup splash: "FACTIONS by Running Man Games"',
+      'Background icon preheat eliminates the Store first-open hang on mobile — sprite cache warms during the splash',
+      'Faction-tinted placeholders in SkinPreview while icons extract (edge case: opening Store faster than preheat)',
+      'Mobile fix: tower info card no longer hides behind the status bar (dynamic measurement)',
+      'Infernal Fiend mobile sprite 404 fixed — filename now derived from sheetKey, not towerId',
+      'Upgraded Phaser 3 → 4 (Caladan). Explicit Phaser imports everywhere, no more window.Phaser global',
+      'In-game changelog migrated from Phaser scene to DOM, keyed by date instead of version',
+    ],
+  },
+  {
+    date: '2026-04-11',
+    title: 'Endless Mode + Streamlined Menu',
+    changes: [
+      'NEW MODE: Endless — infinite scaling, play until you fall',
+      'Random creep faction every 10 waves, boss every 10 waves',
+      'HP scales cubically beyond wave 50 — gets brutal',
+      'Game over shows "Survived X waves" — no victory, only glory',
+      'Sprint/Standard/Marathon merged into one Standard mode',
+      'Wave count picker: Quick (15), Standard (30), Extended (100)',
+      'Menu streamlined from 8 to 7 mode cards',
+    ],
+  },
+  {
+    date: '2026-04-11',
+    title: 'Custom Maps',
+    changes: [
+      'NEW: Custom Maps — create, save, and play your own maps',
+      'Custom Maps menu: browse saved maps, import from clipboard, open map editor',
+      'Maps saved to browser localStorage — persist between sessions',
+      "Multiplayer: host's custom map auto-synced to all players via WebRTC",
+      'Works with Versus 1v1 and Circle Co-op lobbies',
+      '93 structures with detailed pixel art across all 11 factions',
+      'Terrain tile improvements: toned-down void, fixed lava/water/thought pool merging',
+      'Harmonic orchestra seating terrain, infernal terrain less intense',
+      'Automated sprite export via Puppeteer (node scripts/export-sprites.mjs)',
+    ],
+  },
+  {
+    date: '2026-04-10',
+    title: 'Animated Structures + Map Editor',
+    changes: [
+      '90 animated large structures across all 11 factions (8-10 per faction)',
+      'Structures animate at 1.5 fps: flames flicker, gears rotate, portals swirl, crystals pulse',
+      'Gauntlet maps redesigned with faction-themed structure placements',
+      'Structure sprites bake faction ground tiles — seamless terrain blending',
+      'Visual map editor at /editor.html: paint terrain, place structures, export JSON',
+      'Maps now stored as JSON files — easy to edit and share',
+    ],
+  },
+  {
+    date: '2026-04-09',
+    title: 'Faction Gauntlet',
+    changes: [
+      'NEW MODE: Faction Gauntlet — 100 waves across 10 faction homeworlds',
+      '10 unique themed maps with custom pixel art terrain and animated tiles',
+      'Each faction homeworld: crystal caverns, iron foundry, ancient grove, rift dimension, warzone outpost, hive tunnels, data grid, hellscape, sky citadel, mind palace, concert hall',
+      'Preview screen shows full randomized stage order before starting',
+      'Stage transitions: fade to black, faction banner, new map loads',
+      'Frontier + send income persist, towers reset, lives reset to 10 per stage',
+      'Stage scaling: HP 1x-4x, speed 1x-1.5x, extra count ramp',
+      'HUD shows current stage and faction during gameplay',
+    ],
+  },
+  {
+    date: '2026-04-09',
+    title: 'Creep Sprites + Terrain + Zoom',
+    changes: [
+      'Creep sprites for all 11 factions — 176 unique creatures with walk + death animations',
+      'Creep Faction Select: choose which enemy faction you face',
+      'Terrain system: themed auto-tiled terrain for all maps (mountain, water, trees, stone, lava)',
+      'Ground doodads: bushes, flowers, pebbles, mushrooms scattered on walkable tiles',
+      'Tower targeting priority: snipers target strongest, frost targets fastest, etc.',
+      'Desktop zoom: scroll wheel + middle-click pan + buttons',
+      'Mobile camera: pinch zoom, elastic bounds, responsive tower bar',
+      'UILayer system: eliminated camera filter bugs',
+      'PanelBase: reusable sidebar panel class',
+      'Multiplayer signaling server (Cloudflare Workers)',
+      'Analytics dashboard with world map',
+    ],
+  },
+  {
+    date: '2026-04-07',
+    title: 'Sprite Art + Balance',
+    changes: [
+      'Pixel art sprites for all 11 factions — towers, projectiles, and heroes',
+      'Per-level tower art: towers visually evolve as they upgrade (up to 6 levels)',
+      'Tower picker shows sprite icons instead of text labels',
+      'Hero select shows sprite portraits (desktop + phone)',
+      'Encyclopedia displays tower and hero sprite art',
+      'Mobile unit walk-cycle sprites: Rifleman, Brawler, Tank, Commander, Swarmling, Fiend',
+      'Heavy Gunner → Tank: slower (45 speed), longer range (4.5-6 tiles), AoE explosive shells',
+      'Brood Mother: commander_aura buffs Swarmlings +20% DMG +15% AS within 6 tiles',
+      'Firewall: 35 DPS + 65% slow through beam',
+      'Meteor: true ground-targeting — hits where the creep was, not where it moved',
+      'Railgun: projectile travels to map edge, damages creeps as the beam passes',
+      'Arcanist renamed to Mage',
+      'Hero Defense tomes: XP Tome (100g), Stat Tome (250g+), Interest Tome (2%→5%)',
+      'Mobile: zoom bounds scale with zoom level, pause menu centers on screen',
+      'Send panel expanded for T2 sends, event log bottom-anchored',
+      'Creep info panel properly sized for shield/effects display',
+    ],
+  },
+  {
+    date: '2026-03-21',
+    title: 'Mobile Phone Support',
+    changes: [
+      'Pinch-to-zoom (1x–3x) + drag-to-pan on phone — camera starts at 1.8x zoom',
+      'Touch controls: tap to place towers, drag to pan, pinch to zoom',
+      'GameControlBar: touch buttons for wave/speed/pause + ability buttons (Q/W/E/R/T)',
+      'Touch clicks deferred to pointerup — panning never accidentally places towers',
+      'Full-screen sidebar overlay on phone with larger close button',
+      'Smaller tower buttons (42px), responsive menu/faction/hero select scenes',
+      'Hero select: single-card carousel with prev/next navigation on phone',
+    ],
+  },
+  {
+    date: '2026-03-20',
+    title: 'Hero Defense Overhaul',
+    changes: [
+      '11 heroes (up from 3): Paladin, Ranger, Berserker, Necromancer, Monk, Engineer, Duelist, Druid',
+      'Random draft: 3 heroes offered per game, reroll available',
+      'Each hero belongs to a faction — picking a non-random faction guarantees that hero',
+      'Hero leveling (uncapped): XP from arena kills, choose stat or ability upgrades per level',
+      'Ability upgrades: [+] buttons next to Q/W/E/R — each gives +20% damage/effects, -5% CD',
+      'Ultimate abilities (R key): one per hero, unlocks at level 6, long cooldown',
+      'Floating damage numbers: color-coded hits, crits, heals, ability damage, level ups',
+      'Ability VFX: AoE rings, dash trails, teleport flashes, meteor impacts, lightning bolts',
+      'Visual targeting mode for ground abilities (Blink) — preview circle + range ring',
+      'Arena creep waves: 3-6 creeps spawn per TD wave (halved on boss waves)',
+      'Elite enemies at waves 10/20/30: Shield Guardian, Base Charger, Necromancer',
+      '3 accessory slots (up from 1): 15 accessories total, rotating shop every 5 waves',
+      'New AoE accessories: Cleave Axe, Inferno Blade, Tempest Hammer — attacks splash in radius',
+      'Tower assists: leaked creeps enter arena with current HP (tower damage carries over)',
+      'Melee heroes buffed: +100-150 HP and innate armor (2-8) varying by hero',
+      'Healer diminishing returns: stacked heals halved per source, healers receive only 10%',
+      'Economy rebalanced: reduced kill gold, wave income, and arena rewards',
+      '2% interest on gold at end of each wave',
+      'Stat accessories: War Gauntlet (+dmg), Heart of Iron (+HP), Rapid Quiver (+AS%), Hawk Eye (+range)',
+      'Faction heroes: each hero belongs to a faction, guaranteed in draft if you pick that faction',
+      'Sidebar shows attack speed instead of move speed',
+      'Heroes encyclopedia page with carousel browser',
+    ],
+  },
+  {
+    date: '2026-03-20',
+    title: 'Procedural Random Maps',
+    changes: [
+      'New "Random" map in the map picker — procedurally generated from a seed',
+      '6 layout templates (classic, dual entry, siege, gauntlet, diagonal, corridor)',
+      'Terrain features: lakes, ridges, pillars, walls, islands, boulder clusters',
+      'Difficulty-linked density: Easy = open, Insane = cramped with NoBuild zones',
+      'Daily seed toggle: same map for everyone that day (seed = YYYYMMDD)',
+      'Versus uses shared seed — both players get identical random maps',
+      'Seed displayed in top-right corner during gameplay',
+    ],
+  },
+  {
+    date: '2026-03-19',
+    title: 'Difficulty Scaling, Send Tiers & Bug Fixes',
+    changes: [
+      'Send cost scaling: costs rise +10% per 5 waves, income rewards scale slightly to compensate',
+      'Tier 2 sends: Healer (w10+), Shielded (w10+), Flying (w15+), Regen (w20+) — hotkeys 1/2/3/4',
+      'Send panel updates each wave with current costs and unlock status',
+      'Fixed DoT/beam rounding bug: Virus, burn, and Firewall beam were dealing 0 damage at 60fps',
+      'Quadratic HP scaling: late-wave creeps are much tougher (wave 20: 340 HP, wave 30: 620 HP)',
+      'Themed late-wave compositions: healer+tank packs, speed rushes, regen DPS checks, flying bypasses',
+      'Kill gold decays over time (5g → 4g → 3g → 2g floor) to prevent income snowball',
+      'New creep type: Regenerator — heavy armor, 2% HP/s regen, appears wave 25+',
+      'New regeneration trait with green pulse visual effect',
+      'Hard difficulty retuned: toughness 2.0×, count 1.6×, speed 1.2×, gold 0.6×',
+      'New Insane difficulty: 3.5× toughness, 2× count, 1.35× speed, 0.4× gold. Good luck.',
+      'Insane extras: boss damage-cap shields, armored regen, 45% evasion, 5% regenerator regen',
+      'Hard-mode bosses now regenerate 1% HP/s',
+      'Faster late-wave spawns (floor lowered to 150ms)',
+    ],
+  },
+  {
+    date: '2026-03-18',
+    title: 'Responsive Scaling & Tablet Support',
+    changes: [
+      'Tablet layout: sidebar becomes a collapsible overlay with hamburger toggle',
+      'Touch input: long-press (500ms) to sell towers, tappable Upgrade/Sell buttons',
+      'Tappable Start Wave and Speed buttons in the status bar',
+      'Dynamic canvas sizing — game area fills available width on smaller screens',
+      'All menus and scenes adapt to the active canvas width',
+    ],
+  },
+  {
+    date: '2026-03-18',
+    title: 'Circle Co-op + Hero Combat + Menu Redesign',
+    changes: [
+      'New multiplayer mode: Circle Co-op — 2-4 players on one shared map',
+      'Creeps loop through all player zones; shared lives, individual gold',
+      '3 new circle maps: 2P (halves), 3P (Y-sectors), 4P (quadrants)',
+      'Zone overlay, player roster panel, wave sync with ready votes',
+      'Individual gold: kill credit tracks which tower dealt the killing blow',
+      'Periodic tower sync every 5s reconciles missed placements between players',
+      'Lobby: joiners see their player index, all players notified of new joins',
+      'Hero Defense: arena creeps now aggro and attack the hero (240px range)',
+      'Hero Defense: creeps park at base and repeatedly attack it (10k base HP)',
+      'Hero Defense: 10x creep waves with faster spawns for arena pressure',
+      'Hero Defense: ranged heroes (Arcanist) fire visible projectiles',
+      'Harmonic: conduit-linked aura towers re-emit inherited buffs to neighbors',
+      'Menu redesign: 2x3 card grid for all 7 modes with color-coded accents',
+      'Autoplay: press A or click [A] AUTO to auto-start waves',
+    ],
+  },
+  {
+    date: '2026-03-18',
+    title: 'Hero Defense Mode',
+    changes: [
+      'New game mode: Hero Defense — leaked creeps enter a hero arena',
+      'Split-screen layout: hero arena (top) + smaller TD grid (bottom)',
+      '3 heroes: Warden (tank), Arcanist (mage), Shadow (assassin)',
+      'Click-to-move hero micro, Q/W/E abilities with cooldowns',
+      'Hero item shop: Weapon, Armor, Boots with 3 upgrade tiers each',
+      'Arena creeps fight back — aggro, chase, and attack the hero',
+      'Base HP replaces lives — creeps past the hero damage the base',
+      'Hero death/respawn: 10s timer, full HP on respawn',
+      'Ranged heroes fire projectiles, melee heroes deal instant damage',
+      'Creeps that reach the base park and attack it repeatedly',
+      '10x creep waves flood the arena, 10% kill gold to balance',
+      '10,000 base HP replaces lives, hero heals 20% on wave clear',
+      'Hero select screen with stat cards and ability descriptions',
+    ],
+  },
+  {
+    date: '2026-03-18',
+    title: 'GameMode Interface',
+    changes: [
+      'Pluggable GameMode system: each mode is a self-contained class',
+      'StandardMode owns sends, frontier panel, and frontier actions',
+      'BattleMode owns essence panel, generators, and essence sends',
+      'Frontier actions (overcharge/dig/harvest) moved from GameScene into StandardMode',
+      'Fixed: eventLog created before game mode init (was null)',
+      'Fixed: versus reference now wired into game mode context',
+      'GameScene reduced from ~1200 to ~1070 lines',
+    ],
+  },
+  {
+    date: '2026-03-18',
+    title: 'Dual Economy & Architecture',
+    changes: [
+      'Battle mode: Dual Economy with Gold + Essence resources',
+      'Essence generators: buy with gold, produce essence in real-time',
+      'Sends cost essence instead of gold — compound growth loop',
+      'GameScene decomposed: TowerManager, CreepManager, WaveController',
+      'Pluggable leak/death handlers for future game modes',
+      'ResourceManager: N-resource system with real-time ticking',
+    ],
+  },
+  {
+    date: '2026-03-18',
+    title: 'New Factions & Maps',
+    changes: [
+      'Harmonic faction: stacking aura network with Conduit linking',
+      'Manual Conduit: press L to link/unlink aura towers',
+      'Distinct aura colors: red (damage), green (rate), blue (range), magenta (crit)',
+      'Maps reworked: mountains, lakes, rivers, canyons',
+      '5 new maps: Serpentine, Islands, Gauntlet, Spiral, Siege',
+      'Encyclopedia: Factions carousel, Tower carousel, Creep cards',
+      'In-app Changelog viewer with full history',
+      'Version SHA on menu screen',
+    ],
+  },
+  {
+    date: '2026-03-17',
+    title: 'Harmonic & Encyclopedia',
+    changes: [
+      'Harmonic faction: aura network with stacking damage/rate/range/crit auras',
+      'Conduit tower links aura towers and shares their effects at 70%',
+      'Encyclopedia: browse all towers, creeps, and frontier buildings',
+      'In-app changelog with scrollable history',
+      'Version SHA displayed on menu screen',
+      'Maps reworked: mountains, lakes, rivers instead of NoBuild zones',
+    ],
+  },
+  {
+    date: '2026-03-17',
+    title: '6 New Factions',
+    changes: [
+      'Spawn Aliens: extreme fire rates, Swarmling mobile units, Brood Mother',
+      'Cypherpunk: Firewall beams, Virus spread, Backdoor hack (walk backward)',
+      'Infernal: Imp (expires), Hellfire (decays), Fiend (kamikaze explode)',
+      'Celestial: life gain on kill, Ward mutes mages, Sanctuary absorbs leaks',
+      'Psionic: true damage ignoring armor, Mesmer confusion, fear aura',
+      'Military faction with mobile units (Rifleman, Brawler, Heavy, Commander)',
+      'Mobile unit balance nerfs across all factions',
+    ],
+  },
+  {
+    date: '2026-03-16',
+    title: 'Multiplayer',
+    changes: [
+      'P2P WebRTC multiplayer — no server required',
+      'Manual SDP exchange via clipboard (host/join)',
+      'Sends go to opponent as extra creeps in their game',
+      '60s first wave / 30s subsequent countdown with ready vote',
+      'Opponent minimap — click to swap full view with simulated creeps',
+      'In-game chat (ENTER key), host controls game speed',
+      'Mirrored waves via shared seed, wave sync protocol',
+      'Disconnect detection — continues as solo game',
+    ],
+  },
+  {
+    date: '2026-03-16',
+    title: 'Creep Variety & Difficulty',
+    changes: [
+      'Difficulty system: Easy/Normal/Hard/Insane with per-creep-type scaling',
+      '7 new creep types: Group, Splitter, Shielded, Evasive, Flying, 4 Mage types',
+      'Flying creeps bypass maze entirely (straight line to exit)',
+      'Shielded creeps: max 1 damage per hit until shield breaks',
+      'Confused creeps walk backward, Muted creeps lose abilities',
+      'NoBuild terrain: walkable but unbuildable cells',
+      'Boss leak costs 5 lives instead of 1',
+    ],
+  },
+  {
+    date: '2026-03-16',
+    title: 'Tower Expansion',
+    changes: [
+      'Asymmetric faction sizes: Mechanical 8, Arcane 7, Nature 6, Void 5',
+      'Cost scaling from 10g starters to 900g ultimates',
+      'Per-tower upgrade design (0 to 5 levels per tower)',
+      '4 ultimate towers: Titan Cannon, Arcane Nova, Elder Treant, Oblivion',
+      'Random faction: 6 towers rotate each wave from all pools',
+      'Creep inspection: click to see HP, armor, status effects',
+      'Tower hover tooltips with full stat breakdown',
+    ],
+  },
+  {
+    date: '2026-03-16',
+    title: 'Trait System',
+    changes: [
+      'All tower/creep behaviors are composable traits',
+      'Handler registry with 5-phase resolution pipeline',
+      'Removed all hardcoded ability if/else chains',
+      'Abilities scale with tower level automatically',
+      'Location-based projectiles for AoE towers',
+      'Tracking projectiles accelerate to always catch targets',
+    ],
+  },
+  {
+    date: '2026-03-16',
+    title: 'UI & Economy',
+    changes: [
+      'Left sidebar: Upcoming Waves, Sends, Frontier, Event Log',
+      '3-mode selection: Build / Inspect / None',
+      'Frontier buildings with faction mechanics (overcharge, dig, grow, gamble)',
+      'Send system with Z/X/C/V hotkeys and adaptive spawning',
+      'Income display, pause menu, game speed control (TAB)',
+      'Score screen with tower DPS tables and economy breakdown',
+    ],
+  },
+  {
+    date: '2026-03-16',
+    title: 'Foundation',
+    changes: [
+      'Grid-based maze building with A* pathfinding',
+      '4 base tower types, 3-level upgrades, status effects',
+      'Armor/damage type system (physical/magic vs light/medium/heavy)',
+      '3 match modes: Sprint (15w), Standard (30w), Marathon (endless)',
+      '4 original factions: Arcane, Mechanical, Nature, Void',
+      'Draft modifiers: Gold Rush, Glass Cannon, Rapid Fire, etc.',
+      '3 maps: Plains, Crossroads, Fortress',
+    ],
+  },
+];
 
 export function ChangelogScreen() {
   return (
@@ -14,18 +411,18 @@ export function ChangelogScreen() {
         <ShardBadge />
       </div>
 
-      <div class="ui-section" style={{ maxWidth: '700px', margin: '0 auto' }}>
-        <div class="text-dim text-sm text-center mb-2">
-          See the full changelog on GitHub or in CHANGELOG.md
-        </div>
-        <div style={{ fontSize: '11px', color: '#999', lineHeight: '1.8' }}>
-          <p>The changelog is maintained in the repository. Use the Phaser version for the full rendered view, or check the CHANGELOG.md file directly.</p>
-        </div>
-        <div class="text-center mt-4">
-          <button class="btn" onClick={() => UIBridge.startScene('ChangelogScene')}>
-            Open Full Changelog (Phaser)
-          </button>
-        </div>
+      <div class="ui-section changelog-list">
+        {ENTRIES.map((e, i) => (
+          <div key={i} class="changelog-entry">
+            <div class="changelog-entry-header">
+              <span class="changelog-entry-date">{e.date}</span>
+              <span class="changelog-entry-title">{e.title}</span>
+            </div>
+            <ul class="changelog-entry-bullets">
+              {e.changes.map((c, j) => <li key={j}>{c}</li>)}
+            </ul>
+          </div>
+        ))}
       </div>
     </>
   );

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { MatchMode } from '../data/WaveDefinitions';
 import { MapId, MapDefinition } from '../data/Maps';
 import { DifficultyLevel } from '../data/Difficulty';

@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 /**
  * Pool of floating damage/heal/level-up text objects.
  * Spawned texts float upward, fade out, then recycle.

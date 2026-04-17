@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { GameStats } from '../systems/StatsTracker';
 import { ShardWallet, BattlePass, PlayerInventory } from '../systems/monetization';
 import { UIBridge } from '../ui/UIBridge';

@@ -3,7 +3,7 @@
  * Displays all 10 enemy factions in order with their homeworld names.
  * Player clicks "BEGIN GAUNTLET" to start.
  */
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { getCanvasWidth } from '../config';
 import { FACTIONS, FactionId } from '../data/Factions';
 import { UIScale } from '../systems/UIScale';

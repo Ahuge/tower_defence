@@ -1,7 +1,7 @@
 {
-  "name": "Tower Defence",
-  "short_name": "TD",
-  "description": "A faction-based tower defence game with 12 asymmetric factions, heroes, and multiplayer.",
+  "name": "Factions",
+  "short_name": "Factions",
+  "description": "A tower defence game with 12 asymmetric factions, heroes, and multiplayer.",
   "start_url": "/tower_defence/",
   "scope": "/tower_defence/",
   "display": "standalone",

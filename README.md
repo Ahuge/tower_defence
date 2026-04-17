@@ -1,6 +1,6 @@
-# Tower Defence
+# Factions
 
-A grid-based maze-building tower defence game with 12 factions, P2P multiplayer (1v1 and 2-4 player co-op), and deep economic strategy. Built with Phaser 3 + TypeScript + Vite.
+A grid-based maze-building tower defence game with 12 factions, P2P multiplayer (1v1 and 2-4 player co-op), and deep economic strategy. Built with Phaser 4 + TypeScript + Vite.
 
 **[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Game Modes](GAMEMODES.md) | [Changelog](CHANGELOG.md)
 
@@ -123,7 +123,7 @@ Create and play custom maps:
 - **Multiplayer**: Host's custom map auto-synced to all players via WebRTC.
 
 ## Tech Stack
-- **Phaser 3.90** — WebGL rendering, scene management, input
+- **Phaser 4.0** (Caladan) — WebGL rendering, scene management, input
 - **TypeScript 5.9** — Type safety
 - **Vite 8** — Build + HMR
 - **WebRTC** — P2P multiplayer (no server)

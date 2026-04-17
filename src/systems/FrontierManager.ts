@@ -9,6 +9,12 @@ export interface OwnedBuilding {
   digLevel: number;
   dormantWaves: number;
   destroyed: boolean;
+  /** Handle to the map-world doodad (Phaser.GameObjects.Image). Set by
+   *  GameScene when placed; FrontierManager calls `.destroy()` on it
+   *  when the building is destroyed so the doodad vanishes from the
+   *  map alongside its listing in the frontier panel. Typed as a plain
+   *  disposable so this file stays Phaser-free. */
+  _doodad?: { destroy(): void };
 }
 
 export class FrontierManager {
@@ -118,8 +124,7 @@ export class FrontierManager {
     building.digLevel++;
     const risk = building.def.id.includes('_2') ? 0.05 : 0.1;
     if (Math.random() < risk * building.digLevel) {
-      building.destroyed = true;
-      this.recalculateBaseIncome();
+      this.destroyBuilding(building);
       return { success: false, collapsed: true };
     }
     return { success: true, collapsed: false };
@@ -152,13 +157,12 @@ export class FrontierManager {
       b.digLevel++;
       const risk = b.def.id.includes('_2') ? 0.05 : 0.1;
       if (Math.random() < risk * b.digLevel) {
-        b.destroyed = true;
+        this.destroyBuilding(b);
         collapses++;
       } else {
         successes++;
       }
     }
-    if (collapses > 0) this.recalculateBaseIncome();
     return { successes, collapses };
   }
 
@@ -170,6 +174,17 @@ export class FrontierManager {
       b.growthStacks = 0;
     }
     return totalGold;
+  }
+
+  /** Mark a building as destroyed: remove its map doodad, null the
+   *  handle, and recompute base income. Called from dig-collapse paths. */
+  private destroyBuilding(b: OwnedBuilding): void {
+    b.destroyed = true;
+    if (b._doodad) {
+      try { b._doodad.destroy(); } catch { /* already destroyed elsewhere */ }
+      b._doodad = undefined;
+    }
+    this.recalculateBaseIncome();
   }
 
   private recalculateBaseIncome(): void {

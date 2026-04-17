@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { TILE_SIZE, gridX, gridY } from '../config';
 import { FighterType } from '../data/FighterTypes';
 import { Fighter } from '../entities/Fighter';

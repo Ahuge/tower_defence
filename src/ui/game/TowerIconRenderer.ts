@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 /**
  * TowerIconRenderer — extracts tower sprite frames from Phaser textures
  * and renders them to data URLs for use in DOM <img> elements.

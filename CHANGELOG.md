@@ -1,5 +1,59 @@
 # Changelog
 
+## 2026-04-17
+
+### Celestial: life gain + Sanctuary actually work now
+Both of Celestial's signature defensive mechanics were silently broken.
+
+**`life_on_kill` (Acolyte, Absolution)** never fired. The handler scanned dead creeps for an `hp <= -900` sentinel, but `CreepManager` set the sentinel *after* tower updates and immediately filtered those creeps out of the array — so the proc window never existed. `CreepManager` now exposes a `justDiedCreeps` list populated in `processKills` before the filter, and `life_on_kill` iterates that explicit list instead of scanning for sentinels.
+
+**`leak_absorb` (Sanctuary)** had no consumer. Charges would recharge every 10 waves, but nothing on the leak path ever checked them. `StandardLeakHandler` now queries for Sanctuary towers with charges and consumes one per leak, returning 0 damage (with an event log line).
+
+**Hero Defense mode** gets both adapted to the mode's HP pool: `life_on_kill` heals the base for 5% of max HP per proc (parallels +1 life = 5% of the 20-life pool in Standard); Sanctuary runs a damage shield pool (5% of max base HP per charge) drained by `ArenaManager` before base HP falls, refilled on the 10-wave recharge cadence. New `GameMode.onLifeGain` / `GameMode.absorbDamage` hooks keep the Standard / HD branching clean.
+
+### Destroyed frontier buildings actually go away
+Previously, when a mine collapsed from digging too deep it stayed as a red "DESTROYED" row in the frontier panel and its doodad persisted on the map forever. Now:
+- `OwnedBuilding` carries a `_doodad` handle (just an object with a `destroy()` method — keeps `FrontierManager` Phaser-free).
+- `GameScene.placeFrontierDoodad` returns the Phaser image; `BaseFrontierMode` stashes it on the owned building.
+- `FrontierManager.destroyBuilding` tears down the doodad when a dig collapses.
+- `syncFrontierToDOM` no longer emits a destroyed entry at all, and the dead "destroyed" styling was removed from `EconomyPanelDOM`.
+
+### Creep inspector migrated from Phaser to DOM
+The creep info panel (shown when you click a creep) was the last major in-game UI still rendered by Phaser — a Container with Graphics + 3 Text objects, manually positioned each frame. Now lives in `CreepInfoPanelDOM.tsx` subscribing to a new `selectedCreep: CreepStats` state in `GameUIStore`.
+
+`GameScene` publishes a fresh snapshot each frame while a creep is inspected (~60Hz); `updateSelectedCreep` does a shallow-equal check and skips `notify()` when nothing changed — which is most frames while the creep is just walking. Preact only re-renders on real deltas (HP ticks, armor shred, effect expiry), so the cadence is effectively free.
+
+Desktop: inline collapsible panel in the left sidebar, faction-colored title, boss badge. Phone: floating card above the status bar, sharing the slot with the tower info panel (they're already mutually exclusive). HP gets its own gradient bar on top of the panel — green→amber→red shading based on percent remaining.
+
+Deleted `src/ui/CreepInfoPanel.ts` (149 lines) and its 6 touch points in `GameScene`.
+
+## 2026-04-16
+
+### Project renamed: Tower Defence → Factions
+The game is now called **Factions**. User-facing titles updated across HTML, PWA manifest, in-game headers, and server dashboards. Genre phrases like "tower defence" stay as descriptive text. Repo name, directory, `package.json` name, and Vite base path `/tower_defence/` are unchanged — those are tied to the GitHub Pages URL.
+
+### App-startup splash + background icon preheat
+New `AppLoadingScreen` shown on first page load: "FACTIONS by Running Man Games" title card with progress bar driven by Phaser's Loader events (0-80%) and an icon preheat phase (80-100%). Minimum 2.5s display so it always feels intentional.
+
+The real win is the preheat: `IconPreheat` walks every tower + hero id via `requestIdleCallback` after BootScene finishes, extracting each idle frame into the DOM data-URL cache. Opening the Store for the first time used to block the main thread for hundreds of ms while `canvas.toDataURL` ran synchronously per icon — now the cache is warm before the splash even dismisses (smoke test: Store opens in ~325ms with 153 cached icons). `SkinPreview` also falls back to a faction-tinted placeholder if an icon isn't ready yet, so the edge case of opening Store faster than the preheat never visibly hangs.
+
+### Mobile tower info no longer hides behind the status bar
+On phones, the floating tower-info card had a fixed `bottom: 120px` that only cleared the tower dock — the status bar wraps to 2-3 rows on narrow viewports (~107px on a 400px-wide phone), so its top edge pushed up past the card and painted over the Upgrade/Sell buttons. `GameSidebar` now measures the status bar with a ResizeObserver and positions the card dynamically above it with an 8px gap, regardless of wrap count.
+
+### In-game changelog migrated to DOM, re-keyed by date
+The 435-line Phaser `ChangelogScene` is gone. All 24 entries (v1-5 through v28) live in `ChangelogScreen.tsx` as structured DOM, now headed by **date** (derived from the shipping commit of each feature) instead of version number. Phaser scene registration removed, legacy `MenuScene` button rerouted through `UIBridge.show('changelog')`.
+
+### Phaser 4 upgrade
+Bumped the engine from **Phaser 3.90 → Phaser 4.0 ("Caladan")**. Two behavioural changes in v4's ESM bundle required code adjustments:
+
+- **Default export removed.** All 21 files that did `import Phaser from 'phaser'` now use `import * as Phaser from 'phaser'`.
+- **No more `window.Phaser` global.** v3's UMD wrapper installed Phaser as a side-effect when the module loaded; v4's ESM bundle doesn't. 36 files referenced `Phaser.Math.Clamp`, `Phaser.Textures.FilterMode.NEAREST`, `Phaser.Geom.Rectangle` etc. at runtime via ambient types without importing phaser. Each now imports the namespace explicitly — no load-order dependencies, no magic global.
+
+Everything else was transparent: no custom pipelines, shaders, preFX/postFX, `Phaser.Geom.Point`, `Phaser.Structs.*`, `Math.PI2`, `DynamicTexture`/`RenderTexture`, TileSprite cropping, or removed plugins in the codebase. End-to-end smoke test (Menu → faction select → enemy select → Draft → GameScene) is clean.
+
+### Bug fix: Infernal fiend mobile sprite
+The Infernal "Fiend" (`infernal_bomber`) mobile spritesheet had been 404ing for a while — the filename derivation stripped the `infernal_` prefix from the towerId to get `bomber`, but the asset on disk is `fiend_mobile.png` (matching the display name). `SpriteManager` now derives the filename from the sheetKey, which already encodes the correct asset name for every mobile unit.
+
 ## 2026-04-15
 
 ### UI/UX Rework — Pixel-Indie Clean

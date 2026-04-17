@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { FactionId } from '../data/Factions';
 import { createCreepSprite, getCreepSpriteScale, playCreepDeath, hasCreepSprites } from '../systems/CreepSpriteManager';
 

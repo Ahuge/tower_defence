@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
 import { TowerType, TargetingMode } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';

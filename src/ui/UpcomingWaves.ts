@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { SIDEBAR_WIDTH, getSidebarWidth } from '../config';
 import { WaveDefinition } from '../data/WaveDefinitions';
 import { UIScale } from '../systems/UIScale';

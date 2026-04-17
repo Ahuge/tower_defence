@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { TILE_SIZE, CREEP_BASE_SPEED, gridX, gridY } from '../config';
 import { PathPoint } from '../systems/Pathfinding';
 import { StatusEffectManager } from '../systems/StatusEffects';

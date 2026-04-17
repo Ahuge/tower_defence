@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { getSidebarWidth } from '../config';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';

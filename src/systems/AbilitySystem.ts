@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 /**
  * AbilitySystem — manages visual effects for hero abilities.
  * Actual ability logic is in Hero.useAbility(). This handles VFX.

@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { TILE_SIZE } from '../config';
 import { Creep } from '../entities/Creep';
 import { PathPoint } from './Pathfinding';

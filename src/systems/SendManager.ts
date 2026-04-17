@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { SendCreepOption } from '../data/SendCreepTypes';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { Creep } from '../entities/Creep';

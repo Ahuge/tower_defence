@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { ResponsiveManager } from './ResponsiveManager';
 import { getGridOffsetX, getCanvasWidth, GAME_HEIGHT } from '../config';
 

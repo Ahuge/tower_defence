@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import { getGridOffsetX } from '../config';
 import { Hero } from '../entities/Hero';
 import { ArenaCreep } from '../entities/ArenaCreep';
@@ -38,6 +39,11 @@ export class ArenaManager {
 
   // Stats
   arenaKills: number = 0;
+
+  /** Optional damage-shield hook — used by HD's mode to drain Celestial
+   *  Sanctuary shield pools before reducing base HP. Returns the amount
+   *  absorbed (0 if no shield). Wired from GameScene at setup. */
+  onBeforeBaseDamage?: (damage: number) => number;
 
   // Visual effects
   private effects: ArenaEffect[] = [];
@@ -132,8 +138,17 @@ export class ArenaManager {
     // Creep → base attacks (creeps parked at base)
     for (const creep of this.arenaCreeps) {
       if (creep.canAttackBase(now)) {
-        const dmg = creep.isBoss ? 15 : creep.baseDamage;
-        this.baseHp -= dmg;
+        let dmg = creep.isBoss ? 15 : creep.baseDamage;
+        if (this.onBeforeBaseDamage) {
+          const absorbed = this.onBeforeBaseDamage(dmg);
+          if (absorbed > 0) {
+            dmg -= absorbed;
+            if (absorbed >= 1) {
+              this.eventLog.gameMessage(`Sanctuary absorbed ${Math.round(absorbed)}`);
+            }
+          }
+        }
+        if (dmg > 0) this.baseHp -= dmg;
         creep.recordAttack(now);
       }
     }

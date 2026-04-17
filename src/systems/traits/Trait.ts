@@ -50,6 +50,12 @@ export interface HitContext {
 export interface UpdateContext {
   allTowers: any[];
   allCreeps: any[];
+  /** Creeps that were killed since the last tower-update tick. Used by
+   *  kill-reactive traits like `life_on_kill` that need to observe deaths
+   *  after CreepManager has marked them but before its filter removes
+   *  them from `allCreeps`. The list is cleared at the start of each
+   *  CreepManager.update(). */
+  justDiedCreeps: any[];
   time: number;
   delta: number;
 }
