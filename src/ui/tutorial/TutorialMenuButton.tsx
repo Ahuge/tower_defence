@@ -27,9 +27,27 @@ export function TutorialMenuButton() {
 
       {open && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(10, 8, 15, 0.92)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 500,
+            animation: 'tutorialModalFade 180ms ease',
+          }}
           onClick={() => setOpen(false)}
         >
+          <style>{`
+            @keyframes tutorialModalFade {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes tutorialModalRise {
+              from { opacity: 0; transform: translateY(12px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
           <div
             style={{
               background: 'var(--bg-surface, #1a1322)',
@@ -41,6 +59,8 @@ export function TutorialMenuButton() {
               overflow: 'auto',
               color: 'var(--text-primary, #f2e6d0)',
               fontFamily: "'DM Sans', system-ui, sans-serif",
+              boxShadow: '0 18px 48px rgba(0,0,0,0.7)',
+              animation: 'tutorialModalRise 220ms ease',
             }}
             onClick={e => e.stopPropagation()}
           >
