@@ -127,10 +127,11 @@ export class TowerManager {
   }
 
   /** Per-frame tower updates: reset auras, run traits, collect gold/damage, fire */
-  updateTowers(time: number, delta: number, creeps: Creep[]): void {
+  updateTowers(time: number, delta: number, creeps: Creep[], justDiedCreeps: Creep[] = []): void {
     const traitCtx: UpdateContext = {
       allTowers: this.towers,
       allCreeps: creeps,
+      justDiedCreeps,
       time,
       delta,
     };
@@ -229,12 +230,16 @@ export class TowerManager {
           tower.damage = Math.max(1, Math.round(tower.damage * (1 - decayPercent)));
           tower.drawTower();
         }
-        // Celestial: leak_absorb recharge
+        // Celestial: leak_absorb recharge — refills both the Standard binary
+        // charge and (if HD set it up) the damage-shield pool.
         if (trait.id === 'leak_absorb') {
           if (trait._rechargeCounter === undefined) trait._rechargeCounter = 0;
           trait._rechargeCounter++;
           if (trait._rechargeCounter >= (trait.rechargeWaves ?? 10)) {
             trait._charges = Math.min((trait._charges ?? 0) + 1, trait.maxCharges ?? 1);
+            if (trait._shieldHpMax !== undefined) {
+              trait._shieldHp = trait._shieldHpMax;
+            }
             trait._rechargeCounter = 0;
           }
         }

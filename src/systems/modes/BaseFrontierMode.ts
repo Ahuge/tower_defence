@@ -46,13 +46,14 @@ export abstract class BaseFrontierMode implements GameMode {
       onFrontierPurchase: (buildingId: string) => {
         const building = this.frontierMgr.availableBuildings.find(b => b.id === buildingId);
         if (building && ctx.economy.spend(building.cost)) {
-          this.frontierMgr.purchaseBuilding(building);
+          const owned = this.frontierMgr.purchaseBuilding(building);
           this.frontierPanel.updateOwned();
           ctx.eventLog.frontierPurchased(building.name, building.cost);
           ctx.statsTracker.recordFrontierSpent(building.cost);
           ctx.statsTracker.recordGoldSpent(building.cost);
           this.syncFrontierToDOM();
-          GameUIStore.placeFrontierDoodad(0xffaa44, building.id, ctx.faction ?? 'generic');
+          const handle = GameUIStore.placeFrontierDoodad(0xffaa44, building.id, ctx.faction ?? 'generic');
+          if (handle) owned._doodad = handle;
         }
       },
       onFrontierAction: (action: string, idx: number) => {
@@ -100,12 +101,9 @@ export abstract class BaseFrontierMode implements GameMode {
         status, destroyed: false, count: buildings.length,
       });
     }
-    // Add destroyed
-    for (const b of this.frontierMgr.buildings) {
-      if (b.destroyed) {
-        owned.push({ defId: b.def.id, name: b.def.name, mechanic: b.def.mechanic, status: 'DESTROYED', destroyed: true });
-      }
-    }
+    // Destroyed buildings are omitted entirely — their doodad is removed
+    // by FrontierManager when collapse happens, and the panel listing
+    // disappears alongside it.
 
     GameUIStore.updateFrontier({ available, owned });
   }

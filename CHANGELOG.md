@@ -2,6 +2,22 @@
 
 ## 2026-04-17
 
+### Celestial: life gain + Sanctuary actually work now
+Both of Celestial's signature defensive mechanics were silently broken.
+
+**`life_on_kill` (Acolyte, Absolution)** never fired. The handler scanned dead creeps for an `hp <= -900` sentinel, but `CreepManager` set the sentinel *after* tower updates and immediately filtered those creeps out of the array — so the proc window never existed. `CreepManager` now exposes a `justDiedCreeps` list populated in `processKills` before the filter, and `life_on_kill` iterates that explicit list instead of scanning for sentinels.
+
+**`leak_absorb` (Sanctuary)** had no consumer. Charges would recharge every 10 waves, but nothing on the leak path ever checked them. `StandardLeakHandler` now queries for Sanctuary towers with charges and consumes one per leak, returning 0 damage (with an event log line).
+
+**Hero Defense mode** gets both adapted to the mode's HP pool: `life_on_kill` heals the base for 5% of max HP per proc (parallels +1 life = 5% of the 20-life pool in Standard); Sanctuary runs a damage shield pool (5% of max base HP per charge) drained by `ArenaManager` before base HP falls, refilled on the 10-wave recharge cadence. New `GameMode.onLifeGain` / `GameMode.absorbDamage` hooks keep the Standard / HD branching clean.
+
+### Destroyed frontier buildings actually go away
+Previously, when a mine collapsed from digging too deep it stayed as a red "DESTROYED" row in the frontier panel and its doodad persisted on the map forever. Now:
+- `OwnedBuilding` carries a `_doodad` handle (just an object with a `destroy()` method — keeps `FrontierManager` Phaser-free).
+- `GameScene.placeFrontierDoodad` returns the Phaser image; `BaseFrontierMode` stashes it on the owned building.
+- `FrontierManager.destroyBuilding` tears down the doodad when a dig collapses.
+- `syncFrontierToDOM` no longer emits a destroyed entry at all, and the dead "destroyed" styling was removed from `EconomyPanelDOM`.
+
 ### Creep inspector migrated from Phaser to DOM
 The creep info panel (shown when you click a creep) was the last major in-game UI still rendered by Phaser — a Container with Graphics + 3 Text objects, manually positioned each frame. Now lives in `CreepInfoPanelDOM.tsx` subscribing to a new `selectedCreep: CreepStats` state in `GameUIStore`.
 

@@ -290,7 +290,7 @@ export class GameScene extends Phaser.Scene {
         this.cycleSpeed();
       },
       onFrontierDoodad: (color: number, buildingId: string, factionFallback?: string) => {
-        this.placeFrontierDoodad(color, buildingId, factionFallback);
+        return this.placeFrontierDoodad(color, buildingId, factionFallback);
       },
       onSelectDockTower: (index: number) => {
         this.inputMgr.dbg(`DOCK idx=${index} id=${index >= 0 ? this.activeTowerIds[index] ?? '?' : 'deselect'}`);
@@ -558,7 +558,7 @@ export class GameScene extends Phaser.Scene {
       ? new HeroLeakHandler(this.arenaManager, this.statsTracker, this.eventLog)
       : this.circle
         ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
-        : new StandardLeakHandler(this.eventLog, this.statsTracker);
+        : new StandardLeakHandler(this.eventLog, this.statsTracker, () => this.towerMgr.towers);
     const deathHandler = this.circle
       ? new CircleDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex)
       : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
@@ -1010,14 +1010,15 @@ export class GameScene extends Phaser.Scene {
 
   /** Place a pixel art doodad on a random blocked terrain cell.
    *  Looks up art by building ID first, then falls back to faction, then generic. */
-  placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): void {
+  placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): Phaser.GameObjects.Image | null {
+    void color; // reserved for future palette tinting
     const blocked: { col: number; row: number }[] = [];
     for (let r = 0; r < this.grid.rows; r++) {
       for (let c = 0; c < this.grid.cols; c++) {
         if (this.grid.cells[r][c] === CellType.Blocked) blocked.push({ col: c, row: r });
       }
     }
-    if (blocked.length === 0) return;
+    if (blocked.length === 0) return null;
     const cell = blocked[Math.floor(Math.random() * blocked.length)];
     const px = gridX(cell.col) + (Math.random() - 0.5) * TILE_SIZE * 0.4;
     const py = gridY(cell.row) + (Math.random() - 0.5) * TILE_SIZE * 0.4;
@@ -1035,6 +1036,7 @@ export class GameScene extends Phaser.Scene {
     const img = this.add.image(px, py, texKey).setDepth(3);
     img.setScale(TILE_SIZE / DOODAD_CELL * 0.7); // slightly smaller than a tile
     img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    return img;
   }
 
   private enterBuildMode(typeId: string): void {
@@ -1389,8 +1391,11 @@ export class GameScene extends Phaser.Scene {
     delta *= this.gameSpeed;
     if (delta === 0) return; // speed 0 = paused
 
-    // Tower updates: aura resets, trait updates, gold/damage collection, fire
-    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps);
+    // Tower updates: aura resets, trait updates, gold/damage collection, fire.
+    // Pass justDiedCreeps so life_on_kill (Celestial) can react to deaths from
+    // the previous frame — the list is populated in processKills before the
+    // dead-creep filter runs, then read here.
+    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps, this.creepMgr.justDiedCreeps);
 
     // Keep the selected tower's range circle in sync with its position
     // (mobile units move) and persistent across other graphics clears.
@@ -2080,7 +2085,10 @@ export class GameScene extends Phaser.Scene {
 
     // Tower wave-end processing
     const livesGained = this.towerMgr.onWaveEnd();
-    this.lives += livesGained;
+    if (livesGained > 0) {
+      const handled = this.gameMode.onLifeGain?.(livesGained) ?? false;
+      if (!handled) this.lives += livesGained;
+    }
 
     // Versus: notify
     if (this.versus) {

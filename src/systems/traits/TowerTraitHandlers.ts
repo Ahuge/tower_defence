@@ -678,19 +678,21 @@ registerDamageMod('bonus_vs_mage', (trait: Trait, damage: number, ctx: HitContex
 });
 
 // --- Life on kill (Celestial — chance to gain life) ---
+// Reads ctx.justDiedCreeps, which CreepManager populates in processKills
+// (before the dead-creep filter) so kills from the previous tick are still
+// observable here. Earlier versions scanned ctx.allCreeps for a hp<=-900
+// sentinel, but by the time tower updates ran those creeps had already been
+// filtered out — so the proc never fired. Fix: iterate the explicit kill list.
 registerTowerUpdate('life_on_kill', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  // Check for recently dead creeps near tower
+  if (ctx.justDiedCreeps.length === 0) return;
   const chance = trait.chance ?? 0.05;
   const range = tower.range || (TILE_SIZE * 5);
-  for (const creep of ctx.allCreeps) {
-    if (creep.alive || creep.reached || creep.hp > -900) continue;
+  for (const creep of ctx.justDiedCreeps) {
     const dx = creep.x - tower.x;
     const dy = creep.y - tower.y;
-    if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      if (Math.random() < chance) {
-        // Signal to GameScene via a special flag on tower
-        tower._livesEarned = (tower._livesEarned ?? 0) + 1;
-      }
+    if (dx * dx + dy * dy > range * range) continue;
+    if (Math.random() < chance) {
+      tower._livesEarned = (tower._livesEarned ?? 0) + 1;
     }
   }
 });

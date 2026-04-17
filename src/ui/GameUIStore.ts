@@ -295,7 +295,7 @@ class GameUIStoreClass {
     onSelectDockTower?: (index: number) => void;
     onCycleSpeed?: () => void;
     onPause?: () => void;
-    onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => void;
+    onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
   } = {};
 
   private defaultState(): GameUIState {
@@ -508,8 +508,8 @@ class GameUIStoreClass {
     this.callbacks.onPause?.();
   }
 
-  placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): void {
-    this.callbacks.onFrontierDoodad?.(color, buildingId, factionFallback);
+  placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): { destroy(): void } | null {
+    return this.callbacks.onFrontierDoodad?.(color, buildingId, factionFallback) ?? null;
   }
 
   requestSend(sendId: string): void {

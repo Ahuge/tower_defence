@@ -24,17 +24,35 @@ export interface DeathHandler {
   onCreepKilled(creep: Creep): void;
 }
 
-/** Standard leak handler: boss = 5 lives, normal = 1 life */
+/** Standard leak handler: boss = 5 lives, normal = 1 life. Celestial
+ *  Sanctuary towers with `leak_absorb` charges consume one charge per
+ *  leak and return 0 damage. */
 export class StandardLeakHandler implements LeakHandler {
   private eventLog: EventLog;
   private statsTracker: StatsTracker;
+  private getTowers: () => any[];
 
-  constructor(eventLog: EventLog, statsTracker: StatsTracker) {
+  constructor(eventLog: EventLog, statsTracker: StatsTracker, getTowers: () => any[] = () => []) {
     this.eventLog = eventLog;
     this.statsTracker = statsTracker;
+    this.getTowers = getTowers;
   }
 
   onCreepLeaked(creep: Creep): number {
+    // Celestial Sanctuary: consume a leak_absorb charge if any tower has one.
+    // No range check — description is global ("Absorbs 1 leaked creep"),
+    // and Sanctuary's placement is constrained enough by its other traits.
+    for (const tower of this.getTowers()) {
+      for (const trait of tower.traits ?? []) {
+        if (trait.id !== 'leak_absorb') continue;
+        if ((trait._charges ?? 0) <= 0) continue;
+        trait._charges -= 1;
+        this.eventLog.gameMessage(`${tower.typeDef?.name ?? 'Sanctuary'} absorbed a leak!`);
+        this.statsTracker.recordLeak();
+        return 0;
+      }
+    }
+
     const damage = creep.isBoss ? 5 : 1;
     this.eventLog.gameMessage(damage > 1 ? `BOSS leaked! -${damage} lives` : 'Creep reached exit! -1 life');
     this.statsTracker.recordLeak();
@@ -78,6 +96,10 @@ export class CreepManager {
   totalCreepsKilled: number = 0;
   leakHandler: LeakHandler;
   deathHandler: DeathHandler;
+  /** Creeps killed during the most recent update tick. Consumed by
+   *  kill-reactive tower traits (e.g. life_on_kill) on the NEXT tower
+   *  update pass, then cleared at the top of the following update. */
+  justDiedCreeps: Creep[] = [];
 
   constructor(leakHandler: LeakHandler, deathHandler: DeathHandler) {
     this.leakHandler = leakHandler;
@@ -86,6 +108,10 @@ export class CreepManager {
 
   /** Update all creeps, process leaks and kills. Returns leak damage. */
   update(delta: number): LeakResult {
+    // Clear last frame's kill list — tower-update pass in the current
+    // tick has already consumed it before CreepManager runs.
+    this.justDiedCreeps.length = 0;
+
     // Move creeps
     for (const creep of this.creeps) {
       creep.update(delta, this.creeps);
@@ -109,6 +135,7 @@ export class CreepManager {
       if (!creep.alive && !creep.reached && creep.hp <= 0) {
         this.deathHandler.onCreepKilled(creep);
         this.totalCreepsKilled++;
+        this.justDiedCreeps.push(creep);
         creep.hp = -999; // sentinel to prevent double-processing
       }
     }

@@ -10,6 +10,16 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-17',
+    title: 'Celestial + frontier fixes',
+    changes: [
+      'Celestial Acolyte / Absolution life-on-kill actually procs now (was silently failing on a sentinel timing bug)',
+      'Celestial Sanctuary absorbs leaks as advertised (Standard: blocks 1 life per charge; HD: 5%-base-HP damage shield drained on base hits)',
+      'HD mode: life_on_kill heals base by 5% of max HP instead (mirrors +1 life in Standard)',
+      'Destroyed frontier buildings now fully disappear — map doodad gone, panel entry gone (no more ghost "DESTROYED" rows)',
+    ],
+  },
+  {
+    date: '2026-04-17',
     title: 'Creep inspector moved to DOM',
     changes: [
       'Creep info panel (click a creep) migrated from Phaser to Preact',

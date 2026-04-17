@@ -54,6 +54,26 @@ export interface GameMode {
   /** Called when a new wave starts spawning */
   onWaveStart?(wave: WaveDefinition, waveNum: number): void;
 
+  /**
+   * Convert a Celestial `life_on_kill` proc into the mode's defensive-pool
+   * replenish. Default (returns false) lets GameScene do `this.lives +=
+   * count` — the Standard behaviour. Override to handle differently.
+   *   - Standard / Gauntlet / Circle: return false (fall back to +lives)
+   *   - Hero Defense: heal base HP by 5% of max per proc, return true
+   *
+   * Called once per wave with the summed `count` from every Celestial
+   * tower that procced during the wave.
+   */
+  onLifeGain?(count: number, towerLabel?: string): boolean;
+
+  /**
+   * Query mode-specific damage shields that should absorb base/life damage
+   * before it takes effect. Returns the amount of damage the mode's shields
+   * absorbed. Used by `leak_absorb` (Celestial Sanctuary) in HD where the
+   * shield pool drains against arena base damage.
+   */
+  absorbDamage?(damage: number): number;
+
   /** Move mode-specific sidebar panels into the overlay (tablet mode) */
   reparentSidebarPanels?(overlay: SidebarOverlay): void;
 
