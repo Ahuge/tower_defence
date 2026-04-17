@@ -273,7 +273,9 @@ export function preloadSprites(scene: Phaser.Scene): void {
       : towerId.startsWith('alien_') ? 'aliens'
       : towerId.startsWith('infernal_') ? 'infernal' : '';
     if (faction) {
-      const name = towerId.replace(/^(mil_|alien_|infernal_)/, '');
+      // Derive asset name from sheetKey (`mobile_<faction>_<name>`), not towerId —
+      // towerId and asset name can diverge (e.g. infernal_bomber → fiend_mobile.png).
+      const name = cfg.sheetKey.replace(/^mobile_(mil|alien|infernal)_/, '');
       scene.load.spritesheet(cfg.sheetKey, `assets/${faction}/${name}_mobile.png`, {
         frameWidth: cfg.frameWidth, frameHeight: cfg.frameHeight,
       });
