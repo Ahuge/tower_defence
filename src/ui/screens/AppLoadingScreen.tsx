@@ -4,13 +4,17 @@
  * pre-warmed. Replaces the silent ~1-2s pause where the menu rendered
  * but Store/Inventory would stutter on first open.
  *
+ * The progress bar is chunked — each stage is displayed for at least
+ * MIN_CHUNK_MS even if its actual work finishes instantly, so the user
+ * always sees the progress advance rather than a sudden jump to full.
+ *
  * Dismissal requires BOTH:
  *   1. a window 'app-preload-complete' event (fired by main.ts once
  *      BootScene's loader is done AND icon preheat has finished), and
- *   2. a 2500ms minimum display (so the title card always feels
- *      intentional, not a flicker).
+ *   2. a MIN_DISPLAY_MS minimum display (so the title card always
+ *      feels intentional, not a flicker).
  */
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
 // Swap this path to a PNG in /public when art is ready. Falls back to a
 // gradient + noise composite via CSS background-image stacking.
@@ -23,48 +27,102 @@ const MIN_DISPLAY_MS = 2500;
 const SAFETY_MS = 15000;
 const FADE_MS = 350;
 
+/** Each chunk is guaranteed at least this much visible time — the
+ *  displayed bar's maximum advance velocity is capped to one chunk
+ *  width per MIN_CHUNK_MS, regardless of how fast the real load is. */
+const MIN_CHUNK_MS = 300;
+
+/** Progress checkpoints. Each chunk defines (end, label); the bar
+ *  shows the corresponding label while its displayed progress is
+ *  below `end`. With 5 chunks × 300ms, the bar takes ≥1500ms to
+ *  traverse 0 → 1 even on a zero-latency load. */
+const CHUNKS: { end: number; label: string }[] = [
+  { end: 0.20, label: 'LOADING FONTS' },
+  { end: 0.45, label: 'LOADING SPRITESHEETS' },
+  { end: 0.70, label: 'LOADING CREEP ART' },
+  { end: 0.90, label: 'WARMING SPRITE CACHE' },
+  { end: 1.00, label: 'READY' },
+];
+
+/** Max advancement rate of the displayed bar (progress units per ms). */
+const MAX_VELOCITY_PER_MS = (1 / CHUNKS.length) / MIN_CHUNK_MS;
+
+function labelForProgress(p: number): string {
+  for (const chunk of CHUNKS) {
+    if (p < chunk.end) return chunk.label;
+  }
+  return CHUNKS[CHUNKS.length - 1].label;
+}
+
 export function AppLoadingScreen() {
-  const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState<'assets' | 'warming' | 'ready'>('assets');
+  const [displayed, setDisplayed] = useState(0);
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
 
+  // Event-driven target, updated by useEffect listeners. Kept in a ref so
+  // the rAF loop can read the latest value without re-subscribing.
+  const targetRef = useRef(0);
+
   useEffect(() => {
     const startTime = performance.now();
+    let lastFrameTime = startTime;
     let preloadComplete = false;
     let minElapsed = false;
     let dismissed = false;
+    let displayedLocal = 0;
+    let rAFid = 0;
 
     const tryDismiss = () => {
-      if (dismissed || !preloadComplete || !minElapsed) return;
+      if (dismissed || !preloadComplete || !minElapsed || displayedLocal < 1) return;
       dismissed = true;
       setFadeOut(true);
       setTimeout(() => setVisible(false), FADE_MS);
     };
 
+    const tick = (now: number) => {
+      const dt = now - lastFrameTime;
+      lastFrameTime = now;
+      const cap = targetRef.current;
+      const step = MAX_VELOCITY_PER_MS * dt;
+      const next = Math.min(cap, displayedLocal + step);
+      if (next !== displayedLocal) {
+        displayedLocal = next;
+        setDisplayed(displayedLocal);
+      }
+      // Dismissal checks every frame — allows the safety timer to fire
+      // even when no other events arrive, and ensures we only dismiss
+      // once the bar has visibly reached 100%.
+      tryDismiss();
+      if (!dismissed) rAFid = requestAnimationFrame(tick);
+    };
+    rAFid = requestAnimationFrame(tick);
+
     const onProgress = (e: Event) => {
-      const detail = (e as CustomEvent<{ value: number; phase?: 'assets' | 'warming' }>).detail;
-      if (typeof detail?.value === 'number') setProgress(detail.value);
-      if (detail?.phase) setPhase(detail.phase);
+      const detail = (e as CustomEvent<{ value: number }>).detail;
+      if (typeof detail?.value === 'number') {
+        targetRef.current = Math.max(targetRef.current, detail.value);
+      }
     };
     const onComplete = () => {
-      setProgress(1);
-      setPhase('ready');
+      targetRef.current = 1;
       preloadComplete = true;
-      tryDismiss();
     };
     window.addEventListener('app-preload-progress', onProgress);
     window.addEventListener('app-preload-complete', onComplete);
 
-    const minTimer = setTimeout(() => { minElapsed = true; tryDismiss(); }, MIN_DISPLAY_MS);
+    const minTimer = setTimeout(() => { minElapsed = true; }, MIN_DISPLAY_MS);
     const safetyTimer = setTimeout(() => {
       if (!preloadComplete) console.warn('[AppLoadingScreen] safety timeout — forcing dismiss');
+      targetRef.current = 1;
       preloadComplete = true;
       minElapsed = true;
-      tryDismiss();
+      // Force bar to jump so tryDismiss clears.
+      displayedLocal = 1;
+      setDisplayed(1);
     }, SAFETY_MS);
 
     return () => {
+      cancelAnimationFrame(rAFid);
       window.removeEventListener('app-preload-progress', onProgress);
       window.removeEventListener('app-preload-complete', onComplete);
       clearTimeout(minTimer);
@@ -74,8 +132,8 @@ export function AppLoadingScreen() {
 
   if (!visible) return null;
 
-  const progressPct = Math.max(0, Math.min(100, progress * 100));
-  const statusText = phase === 'ready' ? 'READY' : phase === 'warming' ? 'WARMING SPRITE CACHE' : 'LOADING ASSETS';
+  const progressPct = Math.max(0, Math.min(100, displayed * 100));
+  const statusText = labelForProgress(displayed);
 
   const bgLayers: string[] = [];
   if (BACKGROUND_IMAGE_URL) bgLayers.push(`url('${BACKGROUND_IMAGE_URL}') center/cover no-repeat`);
@@ -137,7 +195,6 @@ export function AppLoadingScreen() {
               height: '100%', borderRadius: '2px',
               width: `${progressPct}%`,
               background: 'linear-gradient(90deg, #e8b76d, #c6a358)',
-              transition: 'width 160ms ease-out',
             }} />
           </div>
           <div style={{
