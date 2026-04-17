@@ -2,6 +2,16 @@
 
 ## 2026-04-17
 
+### Pause button wired, path indicator redesigned, faction tagline on load
+
+Three tutorial-follow-ups ahead of the tutorial game scene work.
+
+**Pause button fixed.** The DOM status bar's pause button called `GameUIStore.requestPause()`, which in turn called the registered `onPause` callback — except `GameScene` never registered one. So the button quietly did nothing. Added the callback (`onPause: () => this.togglePause()` in `registerCallbacks`), which dispatches to the existing `togglePause` that shows the in-game pause menu with Resume and Exit to Menu buttons. Fixes both "pause doesn't work" and "I can't quit a game" in one stroke — the exit path was always there, just unreachable without the P keybinding.
+
+**Path flow indicator replaces the yellow pip.** The old single-`Arc` pip that lerped from entry to exit kept reading as a creep. Replaced with a `PathFlowIndicator` that samples each path every ~14 px, renders all samples via a single `Graphics` per path, and animates alpha + radius along a traveling sine wave so bright bands march from start to end. Always-on between waves, dims to 0.12 alpha during live waves (stays as a reference but doesn't compete with creeps), flashes bright for ~550 ms when `drawPath` rebuilds (tower placed or sold). Cool blue palette (`0x88bbff`) means it's unambiguously not a gold creep. Phase is preserved across path recomputes so the wave keeps flowing without resetting. New file `src/systems/PathFlowIndicator.ts`; the three old `pathPip*` methods and five state fields in `GameScene` collapse to one indicator array and two small methods.
+
+**Faction identity tagline on the match-load screen.** The `FACTIONS[id].description` text ("Precision magic. Crits, AoE, and spell amplification.") existed only on the FactionSelect card, which players skip past. Slotted a non-italic, body-text line between the faction-name divider and the flavour quote on the LoadingScreen so every match starts by telling the player what their faction does. Random faction gets a sensible fallback since there's no dedicated description for it.
+
 ### Tutorial polish pass
 First-pass feedback from playing through the tour. A grab-bag of fixes:
 
