@@ -28,6 +28,9 @@ export interface TutorialStep {
   advanceOn?: StepAdvance;
   /** Hide the Next button — forces action. Implied when advanceOn is an event. */
   actionRequired?: boolean;
+  /** Fired once when the step becomes active. Use for UI side-effects like
+   *  opening a collapsed panel so its target is actually visible. */
+  onEnter?: () => void;
 }
 
 export interface TutorialTrack {
@@ -47,6 +50,7 @@ const SEL = {
   statusGold: '[data-tutorial-target="status-gold"]',
   statusLives: '[data-tutorial-target="status-lives"]',
   statusWave: '[data-tutorial-target="status-wave"]',
+  statusIncome: '[data-tutorial-target="status-income"]',
   startWaveBtn: '[data-tutorial-target="start-wave"]',
   towerDock: '[data-tutorial-target="tower-dock"]',
   wavesPanel: '[data-tutorial-target="waves-panel"]',
@@ -54,8 +58,15 @@ const SEL = {
   menuStoreBtn: '[data-tutorial-target="menu-store"]',
   menuEncyclopediaBtn: '[data-tutorial-target="menu-encyclopedia"]',
   menuModeCards: '[data-tutorial-target="menu-modes"]',
+  menuModeStandard: '[data-tutorial-target="menu-mode-standard"]',
   menuMapGrid: '[data-tutorial-target="menu-map"]',
 } as const;
+
+/** Dispatched by tutorial steps to open a specific sidebar panel so the
+ *  spotlight lands on its visible content instead of the collapsed header. */
+function openSidebarPanel(panel: 'waves' | 'economy'): void {
+  window.dispatchEvent(new CustomEvent('tutorial-open-sidebar-panel', { detail: { panel } }));
+}
 
 // ─── Tracks ─────────────────────────────────────────────────
 
@@ -107,21 +118,29 @@ const basics: TutorialTrack = {
       id: 'modes',
       target: { kind: 'dom', selector: SEL.menuModeCards },
       title: 'Game Modes',
-      body: 'Standard is the classic mode. Others change the economy or add heroes. You’ll see a short primer the first time you pick each mode.',
+      body: 'Standard is the classic mode. Others change the economy or add heroes. You’ll see a short primer the first time you pick a different mode.',
       placement: 'top',
     },
     {
-      id: 'meta',
+      id: 'encyclopedia',
       target: { kind: 'dom', selector: SEL.menuEncyclopediaBtn },
-      title: 'Encyclopedia & Store',
-      body: 'The Encyclopedia documents every tower, creep, and hero. The Store has cosmetic skins and faction unlocks.',
+      title: 'Encyclopedia',
+      body: 'Documents every tower, creep, and hero — stats, traits, and ability descriptions. Open it any time you want to read before you fight.',
+      placement: 'top',
+    },
+    {
+      id: 'store',
+      target: { kind: 'dom', selector: SEL.menuStoreBtn },
+      title: 'Store',
+      body: 'Cosmetic skins for towers, heroes, and creeps, plus unlocks for the premium factions. Nothing in here is pay-to-win.',
       placement: 'top',
     },
     {
       id: 'done',
-      target: { kind: 'screen' },
+      target: { kind: 'dom', selector: SEL.menuModeStandard },
       title: "You're Ready",
-      body: "Pick Standard on Plains with Normal difficulty for your first run. Replay any tutorial from the Help button in the top-right.",
+      body: "Start with Standard on Plains with Normal difficulty. Replay any tutorial from the ? button in the menu header.",
+      placement: 'top',
     },
   ],
 };
@@ -141,17 +160,18 @@ const incomeStandard: TutorialTrack = {
     },
     {
       id: 'status_income',
-      target: { kind: 'dom', selector: SEL.statusBar },
+      target: { kind: 'dom', selector: SEL.statusIncome },
       title: 'Income Per Wave',
-      body: "See the +N/w figure? That's extra gold you'll get at the end of every wave, on top of kill rewards. Grow it fast.",
+      body: "See the +10/w figure? That's extra gold you'll get at the end of every wave, on top of kill rewards. Grow it fast.",
       placement: 'bottom',
     },
     {
       id: 'economy_panel',
       target: { kind: 'dom', selector: SEL.economyPanel },
       title: 'Economy Panel',
-      body: 'Open the ECONOMY panel to see send options and Frontier buildings. Sends spawn creeps on your own map for income (risk + reward). Frontier buildings grow income safely over time.',
+      body: 'Here are your send options and Frontier buildings. Sends spawn creeps on your own map for permanent income (risk + reward). Frontier buildings grow income safely over time.',
       placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
     },
     {
       id: 'start_wave',
@@ -185,23 +205,63 @@ const incomeBattle: TutorialTrack = {
   ],
 };
 
-/** Hero defence mode primer. */
+/** Hero defence mode primer — deep dive on the hero shop panel. */
 const incomeHero: TutorialTrack = {
   id: 'income_hero',
   name: 'Economy — Hero Defense',
-  summary: 'How the hero arena works.',
+  summary: 'Hero shop walkthrough: items, tomes, accessories, abilities.',
   steps: [
     {
       id: 'hero_intro',
       target: { kind: 'screen' },
       title: 'Hero Defense',
-      body: 'Control a hero in a 12-row arena. Economy is simpler: a percentage of unspent gold carries over between waves.',
+      body: 'You control a hero in a 12-row arena — 10x creeps, elites at waves 10/20/30. Economy is simpler: a percentage of unspent gold returns as interest between waves. Most of your gold goes into the hero shop.',
     },
     {
-      id: 'hero_abilities',
-      target: { kind: 'dom', selector: SEL.towerDock },
-      title: 'Hero & Items',
-      body: 'Buy items, tomes, and accessories from the Hero panel. Your hero has Q/W/E/R abilities and an ultimate — use them.',
+      id: 'shop_overview',
+      target: { kind: 'dom', selector: SEL.economyPanel },
+      title: 'The Hero Shop',
+      body: "Everything for your hero lives in the ECONOMY panel: stats, XP, items, tomes, accessories, and abilities. You'll spend most of your gold here instead of on towers.",
+      placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
+    },
+    {
+      id: 'shop_items',
+      target: { kind: 'dom', selector: '[data-tutorial-target="hero-items"]' },
+      title: 'Items',
+      body: 'Six slot-based items. First purchase fills the slot at tier 1; subsequent purchases tier it up to the cap. Pick the slot, not the individual item — each slot has one fixed item per hero.',
+      placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
+    },
+    {
+      id: 'shop_tomes',
+      target: { kind: 'dom', selector: '[data-tutorial-target="hero-tomes"]' },
+      title: 'Tomes',
+      body: 'One-shot stat boosts. Usually cheaper early-game purchases that add raw HP / damage / attack speed to your hero. Costs climb as you buy more.',
+      placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
+    },
+    {
+      id: 'shop_accessories',
+      target: { kind: 'dom', selector: '[data-tutorial-target="hero-accessories"]' },
+      title: 'Accessories',
+      body: 'Up to 3 equipped at once. [P] are passive; [A] are active — press T in-game to trigger the active one. The offer pool rotates every few waves, so grab what fits your build.',
+      placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
+    },
+    {
+      id: 'shop_abilities',
+      target: { kind: 'dom', selector: '[data-tutorial-target="hero-abilities"]' },
+      title: 'Abilities',
+      body: 'Three abilities bound to Q/W/E, plus an ultimate at R (unlocks at hero level 6). Level up to earn upgrade points — spend them with the [+] icon on any ability.',
+      placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
+    },
+    {
+      id: 'start_wave',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Start Wave',
+      body: "Saved gold isn't wasted — it comes back as interest. Don't overbuy early; a hero that survives wave 10 is worth more than a decked-out hero that dies at 5.",
       placement: 'top',
     },
   ],
@@ -238,22 +298,16 @@ const multiplayer: TutorialTrack = {
 // Short stubs for now — 2 screens each. Faction-track author can flesh these
 // out into 4–5 step tours with canvas targets as content grows.
 
-function factionTrack(id: string, name: string, identity: string, tip: string): TutorialTrack {
+function factionTrack(id: string, name: string, tip: string): TutorialTrack {
   return {
     id: `faction:${id}`,
-    name: `${name} Primer`,
-    summary: `How ${name} plays.`,
+    name: `${name} Tip`,
+    summary: `One-line strategy pointer for ${name}.`,
     steps: [
-      {
-        id: 'identity',
-        target: { kind: 'screen' },
-        title: `${name}`,
-        body: identity,
-      },
       {
         id: 'tip',
         target: { kind: 'screen' },
-        title: 'Key Tip',
+        title: `${name} — Key Tip`,
         body: tip,
       },
     ],
@@ -261,31 +315,25 @@ function factionTrack(id: string, name: string, identity: string, tip: string): 
 }
 
 const factionTracks: TutorialTrack[] = [
-  factionTrack('arcane',     'Arcane',     'Precision magic — crits and AoE. Damage spikes, not sustain.',                   'Stack crit towers on high-HP chokes. Arcane Meteor excels on grouped targets.'),
-  factionTrack('mechanical', 'Mechanical', 'Heavy raw damage, burn DoT, pierce. The most forgiving faction.',                'Mech Wall lets you maze with your eyes closed. Railgun shreds elite creeps.'),
-  factionTrack('nature',     'Nature',     'Poison, roots, and adjacency auras. Rewards tight placement.',                   'Cluster Nature towers together — every adjacent buff stacks. Roots stop flyers cold.'),
-  factionTrack('void',       'Void',       'Gambling, gold-on-hit, teleport. High variance, huge upside.',                   'Gold-on-hit towers snowball if they survive. Don’t over-commit to any one build.'),
-  factionTrack('military',   'Military',   'Mobile units that move to engage. Walls, wire, boots on the ground.',            "Military units don't block the grid — use real walls/wire for mazing, units for damage."),
-  factionTrack('aliens',     'Aliens',     'Swarms of cheap units. Your numbers win fights.',                                'Spam Swarmlings from the Hive Spire. Quantity is quality.'),
-  factionTrack('cypherpunk', 'Cypherpunk', 'Hack, infect, rewire. Weird effects that debuff and chain.',                     'Infect stacks turn creeps against each other. Keep the network online.'),
-  factionTrack('infernal',   'Infernal',   'Sacrifice mechanics. Towers can expire or decay — use them then lose them.',     "Don't build Infernal long-term. Cash in their burst and replace."),
-  factionTrack('celestial',  'Celestial',  'Healing, life gain, leak block. The defensive faction.',                         'Celestial towers can gain lives — stacking them turns leaks into non-events.'),
-  factionTrack('psionic',    'Psionic',    'True damage. Armor means nothing.',                                              'Psionic shines vs heavily armored waves. Save it for elites.'),
-  factionTrack('harmonic',   'Harmonic',   'Aura network — adjacency-chained buffs.',                                        'Plan the whole maze around your aura lattice. A disconnected Harmonic tower is a wasted slot.'),
-  factionTrack('random',     'Random',     'Six towers rotate each wave. No two games play the same.',                       'Buy what fits the wave. Bought towers persist, so commit to keepers.'),
+  factionTrack('arcane',     'Arcane',     'Stack crit towers on high-HP chokes. Arcane Meteor excels on grouped targets.'),
+  factionTrack('mechanical', 'Mechanical', 'Mech Wall lets you maze with your eyes closed. Railgun shreds elite creeps.'),
+  factionTrack('nature',     'Nature',     'Cluster Nature towers together — every adjacent buff stacks. Roots stop flyers cold.'),
+  factionTrack('void',       'Void',       'Gold-on-hit towers snowball if they survive. Don’t over-commit to any one build.'),
+  factionTrack('military',   'Military',   "Military units don't block the grid — use real walls/wire for mazing, units for damage."),
+  factionTrack('aliens',     'Aliens',     'Spam Swarmlings from the Hive Spire. Quantity is quality.'),
+  factionTrack('cypherpunk', 'Cypherpunk', 'Infect stacks turn creeps against each other. Keep the network online.'),
+  factionTrack('infernal',   'Infernal',   "Don't build Infernal long-term. Cash in their burst and replace."),
+  factionTrack('celestial',  'Celestial',  'Celestial towers can gain lives — stacking them turns leaks into non-events.'),
+  factionTrack('psionic',    'Psionic',    'Psionic shines vs heavily armored waves. Save it for elites.'),
+  factionTrack('harmonic',   'Harmonic',   'Plan the whole maze around your aura lattice. A disconnected Harmonic tower is a wasted slot.'),
+  factionTrack('random',     'Random',     'Buy what fits the wave. Bought towers persist, so commit to keepers.'),
 ];
 
 // ─── Per-mode content ───────────────────────────────────────
 
+// Standard mode intentionally has no auto-primer — the basics tour already
+// explains it. Other modes get a one-liner primer on first selection.
 const modeTracks: TutorialTrack[] = [
-  {
-    id: 'mode:standard',
-    name: 'Standard Primer',
-    summary: 'Classic tower defence with income.',
-    steps: [
-      { id: 's', target: { kind: 'screen' }, title: 'Standard', body: 'Normal waves, gold + income, Frontier buildings. The baseline mode. Try Plains map on Normal for your first run.' },
-    ],
-  },
   {
     id: 'mode:endless',
     name: 'Endless Primer',

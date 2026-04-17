@@ -49,13 +49,12 @@ class TutorialManagerClass {
 
     UIBridge.onScreenChange((screen, data) => this.onScreenChange(screen, data));
 
-    // First launch — wait for the boot preload to finish AND for the
-    // AppLoadingScreen splash to dismiss. The splash has a minimum display
-    // time of 2500ms from page load plus a 350ms fade, so the tutorial could
-    // otherwise pop up while the splash is still visible. 3000ms after
-    // preload-complete is conservative enough to cover the fast-preload case.
-    window.addEventListener('app-preload-complete', () => {
-      setTimeout(() => this.maybeStartFirstLaunch(), 3000);
+    // First launch — wait for the AppLoadingScreen splash to fully dismiss.
+    // The splash emits 'app-splash-dismissed' once its fade-out completes,
+    // so we don't race it with a timer.
+    window.addEventListener('app-splash-dismissed', () => {
+      // Small buffer lets the menu finish mounting so DOM targets resolve.
+      setTimeout(() => this.maybeStartFirstLaunch(), 200);
     });
   }
 
@@ -94,6 +93,7 @@ class TutorialManagerClass {
     if (!track || track.steps.length === 0) return;
     this.active = { track, stepIndex: 0, step: track.steps[0] };
     this.rebindEventAdvance();
+    this.runStepEnter();
     this.notify();
   }
 
@@ -107,7 +107,14 @@ class TutorialManagerClass {
     }
     this.active = { track, stepIndex: stepIndex + 1, step: track.steps[stepIndex + 1] };
     this.rebindEventAdvance();
+    this.runStepEnter();
     this.notify();
+  }
+
+  private runStepEnter(): void {
+    if (!this.active) return;
+    try { this.active.step.onEnter?.(); }
+    catch (err) { console.warn('[Tutorial] step onEnter threw:', err); }
   }
 
   /** Skip the current track. Marks it completed so it won't re-trigger. */
@@ -137,6 +144,7 @@ class TutorialManagerClass {
     if (!track || track.steps.length === 0) return;
     this.active = { track, stepIndex: 0, step: track.steps[0] };
     this.rebindEventAdvance();
+    this.runStepEnter();
     this.notify();
   }
 

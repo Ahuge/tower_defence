@@ -50,6 +50,7 @@ export function HeroItemsDOM() {
       )}
 
       {/* Item slots */}
+      <div data-tutorial-target="hero-items">
       <div style={{ fontSize: '9px', color: 'var(--text-dim)', letterSpacing: '1px', marginBottom: '3px' }}>ITEMS</div>
       {shop.items.map(item => {
         const canBuy = !item.owned ? gold >= item.cost : item.tier < item.maxTier && gold >= item.cost;
@@ -71,7 +72,10 @@ export function HeroItemsDOM() {
         );
       })}
 
+      </div>
+
       {/* Tomes */}
+      <div data-tutorial-target="hero-tomes">
       <div style={{ fontSize: '9px', color: 'var(--gold)', letterSpacing: '1px', marginTop: '6px', marginBottom: '3px' }}>TOMES</div>
       {shop.tomes.map(tome => {
         const canBuy = gold >= tome.cost;
@@ -88,7 +92,10 @@ export function HeroItemsDOM() {
         );
       })}
 
+      </div>
+
       {/* Accessories */}
+      <div data-tutorial-target="hero-accessories">
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginTop: '6px', marginBottom: '3px' }}>
         <span style={{ color: 'var(--jewel-violet)', letterSpacing: '1px' }}>ACCESSORIES ({shop.equippedAccessories.length}/3)</span>
         <span style={{ color: 'var(--text-dim)' }}>Rotates W{shop.nextRotationWave}</span>
@@ -115,7 +122,10 @@ export function HeroItemsDOM() {
         );
       })}
 
+      </div>
+
       {/* Abilities */}
+      <div data-tutorial-target="hero-abilities">
       <div style={{ fontSize: '9px', color: 'var(--gold)', letterSpacing: '1px', marginTop: '6px', marginBottom: '3px' }}>ABILITIES</div>
       {shop.abilities.map((ab, i) => (
         <div key={ab.key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', padding: '1px 6px' }}>
@@ -139,6 +149,7 @@ export function HeroItemsDOM() {
           )}
         </div>
       )}
+      </div>
     </>
   );
 }

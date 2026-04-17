@@ -60,6 +60,19 @@ export function GameSidebar() {
     return () => ro.disconnect();
   }, [isPhone, showFloating]);
 
+  // Tutorial steps can request a specific sidebar panel to be open so the
+  // spotlight lands on its visible content rather than the collapsed header.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ panel: PanelId }>).detail;
+      if (detail?.panel === 'waves' || detail?.panel === 'economy') {
+        setOpenPanel(detail.panel);
+      }
+    };
+    window.addEventListener('tutorial-open-sidebar-panel', onOpen);
+    return () => window.removeEventListener('tutorial-open-sidebar-panel', onOpen);
+  }, []);
+
   if (!active) return null;
 
   const toggle = (id: PanelId) => {

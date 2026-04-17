@@ -2,6 +2,18 @@
 
 ## 2026-04-17
 
+### Tutorial polish pass
+First-pass feedback from playing through the tour. A grab-bag of fixes:
+
+- **Splash timing race** — tutorial was popping over the AppLoadingScreen because I'd used a 3s timer after `app-preload-complete` to approximate "splash gone". Replaced with an explicit `app-splash-dismissed` window event fired from AppLoadingScreen's fade-out completion handler; TutorialManager listens for that with a 200ms buffer for DOM to settle.
+- **Encyclopedia + Store split** — were one combined step; now two discrete popovers pointing at the respective buttons.
+- **Final basics step now highlights Standard mode** — last "You're ready" step spotlights the Standard card instead of floating center, pointing the player directly at the recommended first-run mode. Required a per-card `data-tutorial-target="menu-mode-standard"` tag on the Standard mode card.
+- **Drop `mode:standard` auto-primer** — redundant with basics, which already explains Standard.
+- **Faction primers trimmed to the tip** — removed the "Arcane: Precision magic — crits and AoE" identity blurb; each faction track is now a single-step practical tip (e.g. "Stack crit towers on high-HP chokes"). Faction identity content will land as an in-game overlay in a later pass.
+- **Income step wording** — "+N/w" → "+10/w" (concrete example, the early-game income the player will actually see). Also retargeted that step at the new `status-income` selector specifically rather than the whole status bar.
+- **Economy panel step auto-opens the panel** — new `onEnter` hook on `TutorialStep`; the economy-panel step dispatches a `tutorial-open-sidebar-panel` window event, `GameSidebar` listens and sets its local `openPanel` state. Spotlight lands on the panel's actual content instead of a collapsed header.
+- **Hero Defense income primer rewritten as shop walkthrough** — was two steps, now eight: intro (with corrected "returns as interest between waves" wording, the old "carries over" was flat wrong), shop overview (auto-opens economy panel), Items, Tomes, Accessories, Abilities, and a start-wave outro. Required wrapping each section of `HeroItemsDOM` in a `data-tutorial-target` div (hero-items / hero-tomes / hero-accessories / hero-abilities) so each step has a discrete spotlight target.
+
 ### In-game tutorial system
 New players were bouncing off the game because several of its load-bearing mechanics (mazing, income from sends, Frontier buildings, per-faction asymmetry) aren't obvious from the UI. Added a joyride-style overlay that introduces each of these at the moment they become relevant — not all up-front — so the tutorial stays short even though it covers a lot of ground.
 

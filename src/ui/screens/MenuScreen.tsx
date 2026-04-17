@@ -107,7 +107,12 @@ export function MenuScreen() {
         <div class="ui-section-title">Mode</div>
         <div class="card-grid" data-tutorial-target="menu-modes">
           {MODES.map(m => (
-            <div key={m.id} class="card" onClick={() => handleModeClick(m)}>
+            <div
+              key={m.id}
+              class="card"
+              data-tutorial-target={m.id === 'standard' ? 'menu-mode-standard' : undefined}
+              onClick={() => handleModeClick(m)}
+            >
               <div class="card-accent" style={{ background: m.accent }} />
               <div class="card-name" style={{ marginTop: '4px' }}>{m.label}</div>
               <div class="card-desc">{m.desc}</div>
