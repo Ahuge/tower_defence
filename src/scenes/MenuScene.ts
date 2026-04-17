@@ -6,6 +6,7 @@ import { DifficultyLevel } from '../data/Difficulty';
 import { getDailySeed } from '../data/MapGenerator';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
+import { UIBridge } from '../ui/UIBridge';
 
 interface ModeCard {
   label: string;
@@ -231,7 +232,7 @@ export class MenuScene extends Phaser.Scene {
     const logBtn = this.add.text(cx + bottomSpacing, bottomRowY, '[ Changelog ]', {
       fontSize: UIScale.font(13), color: '#88aacc', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    logBtn.on('pointerdown', () => this.scene.start('ChangelogScene'));
+    logBtn.on('pointerdown', () => UIBridge.show('changelog'));
     logBtn.on('pointerover', () => logBtn.setColor('#bbddff'));
     logBtn.on('pointerout', () => logBtn.setColor('#88aacc'));
 

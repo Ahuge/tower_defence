@@ -8,7 +8,6 @@ import { GameScene } from './scenes/GameScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { LobbyScene } from './scenes/LobbyScene';
 import { CircleLobbyScene } from './scenes/CircleLobbyScene';
-import { ChangelogScene } from './scenes/ChangelogScene';
 import { CustomMapScene } from './scenes/CustomMapScene';
 import { EncyclopediaScene } from './scenes/EncyclopediaScene';
 import { HeroSelectScene } from './scenes/HeroSelectScene';
@@ -47,7 +46,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: gameHeight,
   backgroundColor: '#15101a',
   parent: 'game-root',
-  scene: [BootScene, MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, ChangelogScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
+  scene: [BootScene, MenuScene, FactionSelectScene, CreepFactionSelectScene, DraftScene, GauntletPreviewScene, GameScene, GameOverScene, LobbyScene, CircleLobbyScene, LeaderboardScene, EncyclopediaScene, HeroSelectScene, CustomMapScene],
   render: { antialias: true, pixelArt: false },
   input: { touch: true, activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
