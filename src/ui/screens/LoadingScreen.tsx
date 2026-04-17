@@ -48,6 +48,8 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
   const fDef = faction && faction !== 'random' ? FACTIONS[faction as FactionId] : null;
   const fColor = fDef ? hexColor(fDef.primaryColor) : '#888888';
   const fName = fDef?.name ?? (faction === 'random' ? 'Random' : 'Unknown');
+  const fDescription = fDef?.description
+    ?? (faction === 'random' ? 'Six towers rotate every wave — play what the draw gives you.' : null);
   const mapName = map ? (MAPS[map as MapId]?.name ?? (map === 'random' ? 'Random' : map)) : '';
   const diffColor = DIFFICULTY_COLORS[difficulty] ?? 'var(--text-secondary)';
   const modeLabel = MODE_DISPLAY[mode] ?? mode;
@@ -146,18 +148,36 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
 
         {/* Divider */}
         <div style={{
-          width: '80px', height: '2px', margin: '0 auto 20px',
+          width: '80px', height: '2px', margin: '0 auto 16px',
           background: `linear-gradient(90deg, transparent, ${fColor}, transparent)`,
         }} />
+
+        {/* Identity tagline — pulled from FACTIONS[id].description. Sets the
+            faction's play-style expectation in the few seconds a player
+            sits on this screen. */}
+        {fDescription && (
+          <div style={{
+            fontFamily: "'DM Sans', system-ui, sans-serif",
+            fontSize: 'clamp(13px, 2.4vw, 15px)',
+            color: 'var(--text-primary)',
+            lineHeight: 1.5,
+            marginBottom: '16px',
+            padding: '0 12px',
+            maxWidth: '520px',
+            margin: '0 auto 16px',
+          }}>
+            {fDescription}
+          </div>
+        )}
 
         {/* Flavour text */}
         <div style={{
           fontStyle: 'italic',
-          fontSize: 'clamp(13px, 2.5vw, 16px)',
-          color: 'var(--text-secondary)',
+          fontSize: 'clamp(12px, 2.2vw, 14px)',
+          color: 'var(--text-muted)',
           lineHeight: 1.6,
           marginBottom: '32px',
-          minHeight: '48px',
+          minHeight: '42px',
           padding: '0 12px',
         }}>
           "{flavourRef.current}"
