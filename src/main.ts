@@ -18,6 +18,7 @@ import { UIBridge } from './ui/UIBridge';
 import { preloadSprites } from './systems/SpriteManager';
 import { preloadCreepSprites } from './systems/CreepSpriteManager';
 import { preheatIcons } from './ui/game/IconPreheat';
+import { TutorialManager } from './systems/Tutorial/TutorialManager';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
@@ -71,6 +72,7 @@ const game = new Phaser.Game(config);
 
 // Initialize DOM UI bridge, then show menu after Preact mounts
 UIBridge.init(game);
+TutorialManager.init();
 requestAnimationFrame(() => UIBridge.show('menu'));
 
 // Resize canvas on layout mode change

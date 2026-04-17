@@ -58,6 +58,7 @@ import { SidebarOverlay } from '../ui/SidebarOverlay';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 import { CircleDeathHandler } from '../systems/CircleDeathHandler';
+import { TutorialManager } from '../systems/Tutorial/TutorialManager';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
@@ -359,6 +360,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.eventBus = new EventBus();
+    TutorialManager.setGameEventBus(this.eventBus);
+    TutorialManager.onGameSceneCreated(this.matchMode);
 
     // Resolve map definition — generate for random maps, use custom if provided
     let mapDef: MapDefinition;
@@ -2257,6 +2260,7 @@ export class GameScene extends Phaser.Scene {
     // Clean up game mode (panels, keyboard listeners)
     this.gameMode.destroy?.();
     // Clean up event bus
+    TutorialManager.setGameEventBus(null);
     this.eventBus.clear();
     // Reset UI camera + layer so they're re-created on next game
     if (this.uiCamera) {

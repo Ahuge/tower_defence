@@ -10,6 +10,7 @@ import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { UIScale } from '../systems/UIScale';
 import { Analytics } from '../systems/AnalyticsClient';
 import { goToMenu } from '../ui/navigation';
+import { TutorialManager } from '../systems/Tutorial/TutorialManager';
 
 export class CircleLobbyScene extends Phaser.Scene {
   private circle: CircleManager | null = null;
@@ -45,6 +46,7 @@ export class CircleLobbyScene extends Phaser.Scene {
     this.dynamicElements = [];
     this.pollTimer = null;
     this.assignedPlayerIndex = false;
+    TutorialManager.onLobbyOpened();
 
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);
 

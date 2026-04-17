@@ -74,24 +74,28 @@ export function GameSidebar() {
         maxWidth: panelWidth, width: panelWidth,
         overflow: 'visible',
       }}>
-        <CollapsiblePanel
-          title="WAVES"
-          open={openPanel === 'waves'}
-          onToggle={() => toggle('waves')}
-          badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
-        >
-          <UpcomingWavesDOM />
-        </CollapsiblePanel>
+        <div data-tutorial-target="waves-panel">
+          <CollapsiblePanel
+            title="WAVES"
+            open={openPanel === 'waves'}
+            onToggle={() => toggle('waves')}
+            badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
+          >
+            <UpcomingWavesDOM />
+          </CollapsiblePanel>
+        </div>
 
-        <CollapsiblePanel
-          title="ECONOMY"
-          titleColor="#ff8844"
-          open={openPanel === 'economy'}
-          onToggle={() => toggle('economy')}
-          badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
-        >
-          <EconomyPanelDOM />
-        </CollapsiblePanel>
+        <div data-tutorial-target="economy-panel">
+          <CollapsiblePanel
+            title="ECONOMY"
+            titleColor="#ff8844"
+            open={openPanel === 'economy'}
+            onToggle={() => toggle('economy')}
+            badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
+          >
+            <EconomyPanelDOM />
+          </CollapsiblePanel>
+        </div>
 
         {/* Desktop/tablet: tower info inline in sidebar */}
         {!isPhone && selectedTower && (

@@ -11,6 +11,7 @@ import { UIScale } from '../systems/UIScale';
 import { Analytics } from '../systems/AnalyticsClient';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { goToMenu } from '../ui/navigation';
+import { TutorialManager } from '../systems/Tutorial/TutorialManager';
 
 export class LobbyScene extends Phaser.Scene {
   private versus: VersusManager | null = null;
@@ -40,6 +41,7 @@ export class LobbyScene extends Phaser.Scene {
     this.myFaction = null;
     this.opponentFaction = null;
     this.opponentMsg = null;
+    TutorialManager.onLobbyOpened();
 
     const totalH = ResponsiveManager.canvasHeight();
     this.add.graphics().fillStyle(0x0a0a0f, 1).fillRect(0, 0, getCanvasWidth(), totalH);

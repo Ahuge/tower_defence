@@ -18,6 +18,7 @@ import { AppLoadingScreen } from './screens/AppLoadingScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
+import { TutorialOverlay } from './tutorial/TutorialOverlay';
 import './styles/game-panels.css';
 
 export function App() {
@@ -82,6 +83,10 @@ export function App() {
       {/* App-startup splash — shown on first page load while BootScene
           fetches spritesheets and the icon cache pre-warms. Self-unmounts. */}
       <AppLoadingScreen />
+
+      {/* Tutorial overlay — renders nothing when no track is active.
+          Sits on top of everything except the startup splash. */}
+      <TutorialOverlay />
     </>
   );
 }
