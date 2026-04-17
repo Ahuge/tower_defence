@@ -43,7 +43,6 @@ import { TowerSelectBar } from '../ui/TowerSelectBar';
 import { TowerInfoPanel } from '../ui/TowerInfoPanel';
 import { IncomeDisplay } from '../ui/IncomeDisplay';
 import { EventLog } from '../ui/EventLog';
-import { CreepInfoPanel } from '../ui/CreepInfoPanel';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
 import { TowerManager } from '../systems/TowerManager';
@@ -91,7 +90,6 @@ export class GameScene extends Phaser.Scene {
   incomeDisplay!: IncomeDisplay;
   gameMode!: GameMode;
   eventLog!: EventLog;
-  creepInfo!: CreepInfoPanel;
   upcomingWaves!: UpcomingWaves;
   statsTracker!: StatsTracker;
   towerMgr!: TowerManager;
@@ -459,8 +457,6 @@ export class GameScene extends Phaser.Scene {
         this.handleRightClick(tower.col, tower.row);
       },
     );
-    this.creepInfo = new CreepInfoPanel(this);
-
     // Economy systems
     this.incomeMgr = new IncomeManager(this.eventBus);
     if (this.modifier && this.modifier.extraIncome > 0) {
@@ -1058,7 +1054,7 @@ export class GameScene extends Phaser.Scene {
     this.selectedCreep = null;
     this.towerBar.deselect();
     GameUIStore.selectTower(this.towerToStats(tower));
-    this.creepInfo.hide();
+    GameUIStore.deselectCreep();
     // Draw range circle on the game canvas
     this.rangeGraphics.clear();
     this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
@@ -1077,7 +1073,7 @@ export class GameScene extends Phaser.Scene {
     this.rangeGraphics.clear();
     GameUIStore.selectDockTower(-1);
     this.opponentMinimap?.setFaded(false);
-    this.creepInfo.hide();
+    GameUIStore.deselectCreep();
     this.hoverGraphics.clear();
     this.rangeGraphics.clear();
   }
@@ -1256,7 +1252,62 @@ export class GameScene extends Phaser.Scene {
     this.selectedCreep = creep;
     this.towerBar.deselect();
     this.towerInfo.hide();
-    this.creepInfo.show(creep);
+    GameUIStore.deselectTower();
+    GameUIStore.selectCreep(this.creepToStats(creep));
+  }
+
+  /** Build a CreepStats snapshot from a live Creep. Cheap — only small
+   *  allocations and primitive field reads. Called every frame while
+   *  inspecting; GameUIStore.updateSelectedCreep skips the re-render
+   *  when nothing has changed, so the 60Hz cadence is effectively free
+   *  when a creep walks uncontested. */
+  private creepToStats(c: Creep): import('../ui/GameUIStore').CreepStats {
+    const factionName = c.creepFaction ? (FACTIONS[c.creepFaction]?.name ?? '') : '';
+    const displayName = factionName ? `${factionName} ${c.creepType.name}` : c.creepType.name;
+    const factionColor = c.creepFaction && FACTIONS[c.creepFaction]
+      ? '#' + FACTIONS[c.creepFaction]!.primaryColor.toString(16).padStart(6, '0')
+      : null;
+
+    const effects: import('../ui/GameUIStore').CreepEffect[] = [];
+    for (const e of c.statusEffects.effects) {
+      const durS = Math.round(e.duration / 100) / 10;
+      let label: string;
+      switch (e.type) {
+        case 'slow':        label = `Slow ${Math.round((1 - e.magnitude) * 100)}%`; break;
+        case 'burn':        label = `Burn ${e.magnitude}dps`; break;
+        case 'poison':      label = `Poison ${Math.round(e.magnitude * 100)}%/s`; break;
+        case 'root':        label = 'Rooted'; break;
+        case 'armor_shred': label = `Armor -${e.magnitude}`; break;
+        case 'damage_amp':  label = `Vuln +${Math.round(e.magnitude * 100)}%`; break;
+        default:            label = e.type;
+      }
+      effects.push({ label, durationS: durS, kind: e.type });
+    }
+
+    const traits: string[] = [];
+    for (const t of c.traits) {
+      if (t.id === 'shield') {
+        const maxShield = Math.floor(c.maxHp * ((t as any).hpPercent ?? 0.3));
+        traits.push(`Shield: ${(t as any)._shieldHp ?? 0}/${maxShield}`);
+      } else if (t.id === 'heal_aura') {
+        traits.push('Heal aura (3% nearby/s)');
+      }
+    }
+
+    return {
+      name: displayName,
+      factionColor,
+      isBoss: c.isBoss,
+      hp: c.hp,
+      maxHp: c.maxHp,
+      armor: c.armor,
+      baseArmor: c.baseArmor,
+      speed: c.speed,
+      baseSpeed: c.baseSpeed,
+      effects,
+      traits,
+      _creep: c,
+    };
   }
 
   handleRightClick(col: number, row: number): void {
@@ -1419,7 +1470,17 @@ export class GameScene extends Phaser.Scene {
     GameUIStore.updateEconomy(this.economy.gold, displayLives, this.incomeMgr.getBreakdown().total);
     GameUIStore.updateGameState(this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
-    this.creepInfo.updateTracked();
+    // Refresh inspected creep — store skips the re-render when the snapshot
+    // hasn't changed, so this is essentially free when the creep is uncontested.
+    if (this.selectedCreep) {
+      if (!this.selectedCreep.alive) {
+        this.selectedCreep = null;
+        GameUIStore.deselectCreep();
+        if (this.selectionMode === 'inspect_creep') this.selectionMode = 'none';
+      } else {
+        GameUIStore.updateSelectedCreep(this.creepToStats(this.selectedCreep));
+      }
+    }
     this.statsTracker.updateTime(delta);
 
     // Mode-specific per-frame update (essence ticking, arena, etc.)
@@ -1639,7 +1700,6 @@ export class GameScene extends Phaser.Scene {
     const containers = [
       this.towerBar?.getContainer(),
       (this.towerInfo as any)?.container,
-      (this.creepInfo as any)?.container,
       this.upcomingWaves?.getContainer(),
     ].filter(Boolean) as Phaser.GameObjects.Container[];
     for (const c of containers) disable(c);

@@ -9,6 +9,17 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-04-17',
+    title: 'Creep inspector moved to DOM',
+    changes: [
+      'Creep info panel (click a creep) migrated from Phaser to Preact',
+      '60Hz refresh with diff-notify — Preact only re-renders on real stat changes (HP ticks, armor shred, effect expiry)',
+      'HP gradient bar on top of the panel — green → amber → red',
+      'Desktop: collapsible sidebar panel with faction-colored title and boss badge',
+      'Phone: floating card shared slot with tower info (already mutually exclusive)',
+    ],
+  },
+  {
     date: '2026-04-16',
     title: 'Factions rename + engine refresh',
     changes: [
