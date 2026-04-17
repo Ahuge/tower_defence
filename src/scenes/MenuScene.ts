@@ -34,7 +34,7 @@ export class MenuScene extends Phaser.Scene {
     const ph = UIScale.isPhone;
 
     let yPos = UIScale.y(40);
-    this.add.text(cx, yPos, 'TOWER DEFENCE', {
+    this.add.text(cx, yPos, 'FACTIONS', {
       fontSize: s.fontHuge, color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 

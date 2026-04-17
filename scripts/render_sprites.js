@@ -93,7 +93,7 @@ let htmlContent = `<!DOCTYPE html>
 </style>
 </head>
 <body>
-<h1>Tower Defence — Sprite Sheet Renderer</h1>
+<h1>Factions — Sprite Sheet Renderer</h1>
 <p>Click "Save PNGs" for each faction to download the spritesheets.</p>
 <div id="root"></div>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>

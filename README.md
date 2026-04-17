@@ -1,4 +1,4 @@
-# Tower Defence
+# Factions
 
 A grid-based maze-building tower defence game with 12 factions, P2P multiplayer (1v1 and 2-4 player co-op), and deep economic strategy. Built with Phaser 4 + TypeScript + Vite.
 
