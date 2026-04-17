@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-16
+
+### Phaser 4 upgrade
+Bumped the engine from **Phaser 3.90 → Phaser 4.0 ("Caladan")**. Two behavioural changes in v4's ESM bundle required code adjustments:
+
+- **Default export removed.** All 21 files that did `import Phaser from 'phaser'` now use `import * as Phaser from 'phaser'`.
+- **No more `window.Phaser` global.** v3's UMD wrapper installed Phaser as a side-effect when the module loaded; v4's ESM bundle doesn't. 36 files referenced `Phaser.Math.Clamp`, `Phaser.Textures.FilterMode.NEAREST`, `Phaser.Geom.Rectangle` etc. at runtime via ambient types without importing phaser. Each now imports the namespace explicitly — no load-order dependencies, no magic global.
+
+Everything else was transparent: no custom pipelines, shaders, preFX/postFX, `Phaser.Geom.Point`, `Phaser.Structs.*`, `Math.PI2`, `DynamicTexture`/`RenderTexture`, TileSprite cropping, or removed plugins in the codebase. End-to-end smoke test (Menu → faction select → enemy select → Draft → GameScene) is clean.
+
+### Bug fix: Infernal fiend mobile sprite
+The Infernal "Fiend" (`infernal_bomber`) mobile spritesheet had been 404ing for a while — the filename derivation stripped the `infernal_` prefix from the towerId to get `bomber`, but the asset on disk is `fiend_mobile.png` (matching the display name). `SpriteManager` now derives the filename from the sheetKey, which already encodes the correct asset name for every mobile unit.
+
 ## 2026-04-15
 
 ### UI/UX Rework — Pixel-Indie Clean
