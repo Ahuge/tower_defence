@@ -1,1 +1,0 @@
-import{a as e,b as t,i as n,o as r,r as i}from"./compat.module-C_NXKKla.js";function a(t){return{render:function(e){n(e,t)},unmount:function(){e(t)}}}function o(e,t){return r(t,e),a(e)}var s,c=t((()=>{i(),s={createRoot:a,hydrateRoot:o}}));export{c as n,s as t};
