@@ -60,7 +60,9 @@ export interface ActiveTutorial {
   step: TutorialStep;
 }
 
-class TutorialManagerClass {
+/** Exported for tests — production code should only use the singleton
+ *  `TutorialManager` below. */
+export class TutorialManagerClass {
   private persisted: TutorialState = TutorialPersistence.load();
   private active: ActiveTutorial | null = null;
   private listeners: Set<Listener> = new Set();
