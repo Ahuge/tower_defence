@@ -1,0 +1,1 @@
+import{n as e,t}from"./main-DGLSk3ob.js";e();export{t as UIBridge};
