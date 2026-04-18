@@ -90,7 +90,7 @@ export function TutorialOverlay() {
 
   return (
     <>
-      <Spotlight rect={rect} onClickScrim={onScrim} />
+      <Spotlight rect={rect} onClickScrim={onScrim} scrimless={track.scrimless} />
       <Popover
         title={step.title}
         body={step.body}

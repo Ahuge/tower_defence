@@ -13,14 +13,20 @@ interface Props {
   /** Extra pixels of breathing room around the highlight rect. */
   padding?: number;
   onClickScrim?: () => void;
+  /** When true, skip the dimming scrim and the scrim click-catcher —
+   *  just draw the pulsing ring around the target. Used by the tutorial
+   *  match so the gameplay stays visible behind the overlay. */
+  scrimless?: boolean;
 }
 
 const SCRIM = 'rgba(10, 8, 15, 0.72)';
 const RING = '#e8b76d';
 
-export function Spotlight({ rect, padding = 6, onClickScrim }: Props) {
+export function Spotlight({ rect, padding = 6, onClickScrim, scrimless = false }: Props) {
   if (!rect) {
-    // No target — plain scrim, no cutout.
+    // No target. Render a scrim when one is expected (non-scrimless),
+    // otherwise render nothing so the popover floats over the live game.
+    if (scrimless) return null;
     return (
       <div
         class="tutorial-scrim"
@@ -39,18 +45,26 @@ export function Spotlight({ rect, padding = 6, onClickScrim }: Props) {
   const w = rect.width + padding * 2;
   const h = rect.height + padding * 2;
 
+  // Scrimmed variant uses a huge spread-shadow to dim everything outside
+  // the highlight; scrimless variant only draws the ring + glow so the
+  // gameplay behind stays fully visible.
+  const dimShadow = scrimless ? '' : `0 0 0 9999px ${SCRIM}, `;
+  const keyframes = scrimless
+    ? `@keyframes tutorialSpotlightPulse {
+         0%, 100% { box-shadow: 0 0 0 3px ${RING} inset, 0 0 24px ${RING}88; }
+         50%      { box-shadow: 0 0 0 3px ${RING} inset, 0 0 44px ${RING}ee; }
+       }`
+    : `@keyframes tutorialSpotlightPulse {
+         0%, 100% { box-shadow: 0 0 0 9999px ${SCRIM}, 0 0 0 3px ${RING} inset, 0 0 32px ${RING}66; }
+         50%      { box-shadow: 0 0 0 9999px ${SCRIM}, 0 0 0 3px ${RING} inset, 0 0 48px ${RING}aa; }
+       }`;
+
   return (
     <>
-      <style>{`
-        @keyframes tutorialSpotlightPulse {
-          0%, 100% { box-shadow: 0 0 0 9999px ${SCRIM}, 0 0 0 3px ${RING} inset, 0 0 32px ${RING}66; }
-          50%      { box-shadow: 0 0 0 9999px ${SCRIM}, 0 0 0 3px ${RING} inset, 0 0 48px ${RING}aa; }
-        }
-      `}</style>
-      {/* Cutout: a box sized to the rect, with an enormous spread shadow acting
-          as the surrounding scrim. Non-interactive so taps on its area pass
-          through to whatever's under it (the highlighted DOM element, or the
-          game canvas for action-gated steps). */}
+      <style>{keyframes}</style>
+      {/* Cutout: a box sized to the rect. Non-interactive so taps on its
+          area pass through to whatever's under it (the highlighted DOM
+          element, or the game canvas for action-gated steps). */}
       <div
         class="tutorial-spotlight"
         style={{
@@ -58,18 +72,19 @@ export function Spotlight({ rect, padding = 6, onClickScrim }: Props) {
           left: `${x}px`, top: `${y}px`,
           width: `${w}px`, height: `${h}px`,
           borderRadius: '10px',
+          boxShadow: `${dimShadow}0 0 0 3px ${RING} inset, 0 0 32px ${RING}66`,
           pointerEvents: 'none',
           transition: 'left 180ms ease, top 180ms ease, width 180ms ease, height 180ms ease',
           animation: 'tutorialSpotlightPulse 1.4s ease-in-out infinite',
         }}
       />
       {/* Scrim click-catchers only render when the step accepts a scrim-
-          click advance (onClickScrim defined). For action-gated steps
-          (towerPlaced / waveStarted / sendPurchased / frontierPurchased),
-          we intentionally let taps fall through to the canvas — otherwise
-          the scrim would swallow every tap outside the tiny highlight
-          and the player could never actually perform the action. */}
-      {onClickScrim && (
+          click advance (onClickScrim defined) AND the track uses a scrim.
+          For action-gated steps (towerPlaced / waveStarted / sendPurchased
+          / frontierPurchased) we intentionally let taps fall through to
+          the canvas. For scrimless tracks we never catch clicks because
+          there's no visible dim area to click on anyway. */}
+      {!scrimless && onClickScrim && (
         <ScrimClickCatcher rect={{ x, y, width: w, height: h }} onClick={onClickScrim} />
       )}
     </>

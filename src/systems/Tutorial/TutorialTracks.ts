@@ -45,6 +45,10 @@ export interface TutorialTrack {
   /** One-line description for the Help menu. */
   summary: string;
   steps: TutorialStep[];
+  /** Skip the dimming scrim and the scrim click-catcher. Used by the
+   *  tutorial match so the player can watch the actual gameplay while
+   *  the popover + highlight ring guide them. */
+  scrimless?: boolean;
 }
 
 // ─── Selectors ──────────────────────────────────────────────
@@ -180,6 +184,7 @@ const tutorialMatch: TutorialTrack = {
   id: 'tutorial_match',
   name: 'Tutorial Match',
   summary: 'A scripted round as Arcane: maze, run a wave, send, frontier.',
+  scrimless: true,
   steps: [
     {
       id: 'welcome',
@@ -245,6 +250,15 @@ const tutorialMatch: TutorialTrack = {
       placement: 'bottom',
     },
     {
+      id: 'place_third',
+      // Strip below the path, cols 9-15 — more defenders for wave 2.
+      target: gridCellRect(9, 15, 7, 1),
+      title: 'Add More Towers',
+      body: "Place one or two more towers anywhere — this strip is a great spot. More firepower means more kill gold and a longer detour for creeps.",
+      placement: 'top',
+      advanceOn: { event: 'towerPlaced' },
+    },
+    {
       id: 'buy_send',
       target: { kind: 'dom', selector: SEL.economyPanel },
       title: 'Buy a Send',
@@ -267,6 +281,15 @@ const tutorialMatch: TutorialTrack = {
       title: 'Next Wave Running',
       body: 'Let it play out. Next we try the safer income source.',
       advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'place_fourth',
+      // Strip above the path, cols 9-15 — completes the pincer.
+      target: gridCellRect(9, 11, 7, 1),
+      title: 'Reinforce',
+      body: "Wave 3 brings a heavier creep. Drop one more tower — the strip above the path is a good spot for the squeeze.",
+      placement: 'bottom',
+      advanceOn: { event: 'towerPlaced' },
     },
     {
       id: 'buy_frontier',
