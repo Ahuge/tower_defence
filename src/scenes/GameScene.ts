@@ -740,6 +740,15 @@ export class GameScene extends Phaser.Scene {
       // camera via `camera.worldView`, and TutorialManager auto-pans
       // to each step's target on step change so the player never
       // loses the highlighted cell off-screen.
+      //
+      // Mobile specifically also gets a zoomed-in starting view so
+      // individual cells are big enough to see and tap comfortably —
+      // the default 1.8x phone zoom fits the whole grid but makes
+      // each cell tiny. Player can still pinch-zoom back out.
+      if (this.matchMode === 'tutorial' && ResponsiveManager.isPhone()) {
+        this.cameraCtrl.camera.setZoom(2.4);
+        this.cameraCtrl.camera.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+      }
     }
 
     // Versus mode setup
