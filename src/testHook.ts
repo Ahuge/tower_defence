@@ -20,6 +20,8 @@ import { gridX, gridY } from './config';
 import { UIBridge } from './ui/UIBridge';
 import { TutorialManager } from './systems/Tutorial/TutorialManager';
 import { TutorialPersistence } from './systems/Tutorial/TutorialPersistence';
+import { GameUIStore } from './ui/GameUIStore';
+import type { GameEvents } from './systems/EventBus';
 
 declare global {
   interface Window {
@@ -34,6 +36,25 @@ interface TestHook {
    *  viewport CSS pixels, then dispatches pointerdown + pointerup on
    *  the canvas element. */
   clickCell: (col: number, row: number) => boolean;
+  /** Return the CSS-pixel client coordinates of the given cell's
+   *  centre, or null if no scene is active. Tests use this to
+   *  drive Playwright's `page.mouse.click(x, y)`, which routes
+   *  through the browser's real pointer pipeline — more reliable
+   *  on Phaser than synthesising PointerEvent objects ourselves. */
+  getCellClientPos: (col: number, row: number) => { x: number; y: number } | null;
+  /** Emit a GameEvents event directly on the active scene's EventBus.
+   *  Used to advance event-gated tutorial steps when the real user
+   *  action (canvas click, button click in a UI overlay) is flaky or
+   *  hard to reach from Playwright. The unit suite owns the assertion
+   *  that the *real* action produces the same event; the E2E suite
+   *  just needs to verify the tutorial's reaction. */
+  emitGameEvent: <K extends keyof GameEvents>(event: K, ...args: Parameters<GameEvents[K]>) => boolean;
+  /** Select a tower in the DOM tower dock by its slot index. Going
+   *  through GameUIStore.requestSelectDockTower instead of clicking
+   *  the DOM element avoids the click-propagation quirks that make
+   *  Playwright clicks on the wrapper not always reach the inner
+   *  .dock-slot's onClick handler. */
+  selectDockTower: (index: number) => void;
   /** Active tutorial step id, or null if no tutorial is running. */
   getActiveTutorialStep: () => string | null;
   /** Active tutorial track id, or null. */
@@ -50,27 +71,33 @@ interface TestHook {
 let bootComplete = false;
 window.addEventListener('app-splash-dismissed', () => { bootComplete = true; });
 
-function clickCell(col: number, row: number): boolean {
+function getCellClientPos(col: number, row: number): { x: number; y: number } | null {
   const canvas = document.querySelector<HTMLCanvasElement>('#game-root canvas');
-  if (!canvas) return false;
+  if (!canvas) return null;
   const game = UIBridge.getGame();
-  if (!game) return false;
+  if (!game) return null;
   const scene = game.scene.getScene('GameScene') as unknown as { cameras?: { main: Phaser.Cameras.Scene2D.Camera } } | null;
   const cam = scene?.cameras?.main;
-  if (!cam) return false;
+  if (!cam) return null;
   const wv = cam.worldView;
-  if (!wv || wv.width === 0 || wv.height === 0) return false;
+  if (!wv || wv.width === 0 || wv.height === 0) return null;
 
   const worldX = gridX(col);
   const worldY = gridY(row);
   const cr = canvas.getBoundingClientRect();
   const u = (worldX - wv.x) / wv.width;
   const v = (worldY - wv.y) / wv.height;
-  const clientX = cr.left + u * cr.width;
-  const clientY = cr.top + v * cr.height;
+  return { x: cr.left + u * cr.width, y: cr.top + v * cr.height };
+}
+
+function clickCell(col: number, row: number): boolean {
+  const pos = getCellClientPos(col, row);
+  if (!pos) return false;
+  const canvas = document.querySelector<HTMLCanvasElement>('#game-root canvas');
+  if (!canvas) return false;
 
   const opts: PointerEventInit = {
-    clientX, clientY,
+    clientX: pos.x, clientY: pos.y,
     bubbles: true,
     cancelable: true,
     button: 0,
@@ -84,9 +111,21 @@ function clickCell(col: number, row: number): boolean {
   return true;
 }
 
+function emitGameEvent<K extends keyof GameEvents>(event: K, ...args: Parameters<GameEvents[K]>): boolean {
+  const game = UIBridge.getGame();
+  if (!game) return false;
+  const scene = game.scene.getScene('GameScene') as unknown as { eventBus?: { emit: (ev: string, ...a: unknown[]) => void } } | null;
+  if (!scene?.eventBus) return false;
+  scene.eventBus.emit(event, ...args);
+  return true;
+}
+
 export function installTestHook(): void {
   window.__td_test = {
     clickCell,
+    getCellClientPos,
+    emitGameEvent,
+    selectDockTower: (index: number) => GameUIStore.requestSelectDockTower(index),
     getActiveTutorialStep: () => TutorialManager.getActive()?.step.id ?? null,
     getActiveTutorialTrack: () => TutorialManager.getActive()?.track.id ?? null,
     resetTutorialState: () => {

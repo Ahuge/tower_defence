@@ -135,6 +135,8 @@ Create and play custom maps:
 - **Responsive layout** — Desktop (sidebar inline) + tablet (collapsible sidebar overlay, touch controls)
 
 ## Testing
+
+### Unit + component tests (Vitest)
 ```bash
 npm test                # run the full Vitest suite (pure logic + component + regressions)
 npm run test:watch      # re-run affected specs on save
@@ -150,7 +152,29 @@ Test suite covers:
 - Preact overlay components with **overlap / viewport assertions** so a popover tweak can't silently cover the spotlight or leak off-screen
 - Regression pack under `src/__regressions__/` with one test per past bug
 
-CI runs `tsc --noEmit` + `npm test` + `npm run build` on every PR via `.github/workflows/test.yml`.
+### End-to-end tests (Playwright)
+```bash
+npm run test:e2e        # run all e2e specs (desktop + mobile Chromium)
+npm run test:e2e:ui     # interactive UI mode
+npm run test:e2e:report # open the last HTML report
+```
+E2E tests run against `npm run preview` (the production bundle) and cover:
+- App boots, splash dismisses, menu mounts
+- First-launch basics tour + skip-hint follow-up
+- Help (`?`) modal open / close / track routing
+- Full tutorial match walkthrough — every step transition, completion CTA, and quit path
+- Mobile-specific: popover viewport containment, modal portal full-cover, spotlight alignment at 2.4x zoom
+
+Tests opt into a `?test=1` debug hook (`src/testHook.ts`, zero cost in production builds) that exposes:
+- `clickCell(col, row)` / `getCellClientPos(col, row)` — synthesise canvas clicks at grid cells
+- `selectDockTower(index)` — pick a tower bypassing DOM click-propagation quirks
+- `emitGameEvent(name, ...args)` — fire EventBus events directly (for event-gated tutorial advances)
+- `getActiveTutorialStep/Track()` — probe tutorial state for deterministic waits
+
+### CI
+`.github/workflows/test.yml` runs:
+- Fast `test` job (`tsc --noEmit` + Vitest + production build) on every push and PR.
+- `e2e` job (Playwright) on PRs only — gated on the fast job passing. Browser binaries cached; HTML reports + failure videos uploaded as artifacts.
 
 ## Deploy
 ```bash

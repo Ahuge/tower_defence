@@ -62,13 +62,35 @@ export async function waitForNoTutorial(page: Page, timeout = 5_000): Promise<vo
   );
 }
 
-/** Click the given grid cell via the test hook. */
+/** Click the given grid cell via Playwright's real mouse at the
+ *  computed client coordinates. Goes through the browser's real
+ *  pointer pipeline (more reliable on Phaser than dispatchEvent). */
 export async function clickCell(page: Page, col: number, row: number): Promise<void> {
-  const ok = await page.evaluate(
-    ({ c, r }) => window.__td_test?.clickCell(c, r) ?? false,
+  const pos = await page.evaluate(
+    ({ c, r }) => window.__td_test?.getCellClientPos(c, r) ?? null,
     { c: col, r: row },
   );
-  if (!ok) throw new Error(`clickCell(${col}, ${row}) returned false — scene not ready?`);
+  if (!pos) throw new Error(`clickCell(${col}, ${row}): scene not ready or cell out of view`);
+  await page.mouse.click(pos.x, pos.y);
+}
+
+/** Dismiss every tutorial track that auto-fires after a fresh boot:
+ *  basics first, then skip_hint (which surfaces on menu return). By
+ *  the time this resolves the menu is clean and no overlay is in the
+ *  way of subsequent interactions. */
+export async function dismissAllAutoTutorials(page: Page): Promise<void> {
+  // Dismiss basics if it's running.
+  await waitForTutorialStep(page, 'intro', 8_000);
+  await page.getByRole('button', { name: 'Skip' }).click();
+
+  // skip_hint should auto-appear after the 500ms delay.
+  try {
+    await waitForTutorialStep(page, 'hint', 3_000);
+    await page.getByRole('button', { name: 'Skip' }).click();
+  } catch {
+    // skip_hint already dismissed or didn't appear — fine.
+  }
+  await waitForNoTutorial(page);
 }
 
 /** Ambient type for TypeScript in spec files. Playwright specs use
@@ -78,6 +100,9 @@ declare global {
   interface Window {
     __td_test?: {
       clickCell: (col: number, row: number) => boolean;
+      getCellClientPos: (col: number, row: number) => { x: number; y: number } | null;
+      emitGameEvent: (event: string, ...args: unknown[]) => boolean;
+      selectDockTower: (index: number) => void;
       getActiveTutorialStep: () => string | null;
       getActiveTutorialTrack: () => string | null;
       resetTutorialState: () => void;
