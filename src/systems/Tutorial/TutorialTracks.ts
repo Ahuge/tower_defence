@@ -265,11 +265,13 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'place_third',
-      // Strip just below the path, cols 9-15 — squeezes creeps between
-      // your bolt on the path and the frost above.
-      target: gridCellRect(9, 14, 7, 1),
+      // Two rows above the path (row 11). The first two towers force
+      // creeps to detour up and around, so this strip is right where
+      // they end up walking. Below-path strips look tempting but end
+      // up as dead zones the creeps never touch.
+      target: gridCellRect(9, 11, 7, 1),
       title: 'Add More Towers',
-      body: "Place one or two more towers anywhere — this strip below the path is a great spot. Creeps will be squeezed through your frost zone.",
+      body: "Creeps now walk around your towers via the rows above. Place one or two more up here — any damage in their new path stacks with your Frost slow.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
@@ -300,10 +302,12 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'place_fourth',
-      // Strip above the path, cols 9-15 — completes the pincer.
-      target: gridCellRect(9, 11, 7, 1),
+      // Row 10 — extends the maze one row further up so creeps walk
+      // an even longer route, and you get another tower hitting them
+      // along the way.
+      target: gridCellRect(9, 10, 7, 1),
       title: 'Reinforce',
-      body: "Wave 3 brings a heavier creep. Drop one more tower — the strip above the path is a good spot for the squeeze.",
+      body: "Wave 3 brings a heavier creep. Drop one more tower up here — extending the maze forces creeps to walk even further before they reach the exit.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
