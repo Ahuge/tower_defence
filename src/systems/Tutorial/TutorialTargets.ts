@@ -14,11 +14,29 @@
  *  - `screen`  — no spotlight; the popover is centered. Used for intro/outro steps.
  */
 import { UIBridge } from '../../ui/UIBridge';
+import type { PathPoint } from '../Pathfinding';
 
 export type TutorialTarget =
   | { kind: 'dom'; selector: string }
   | { kind: 'canvas'; x: number; y: number; width: number; height: number }
-  | { kind: 'screen' };
+  | { kind: 'screen' }
+  /** Evaluated on every frame — return the current world-space rect, or
+   *  null if a target can't be computed right now. Used for spotlights
+   *  that depend on live game state (e.g. "highlight cells adjacent to
+   *  the current creep path, wherever it runs right now"). */
+  | { kind: 'canvas-dynamic'; compute: () => { x: number; y: number; width: number; height: number } | null };
+
+/** Current creep path for the main entry point, or null if no scene is
+ *  active. Exposed here (not in a separate module) because tutorial
+ *  target helpers are the only consumer. */
+export function getCurrentTutorialPath(): PathPoint[] | null {
+  const game = UIBridge.getGame();
+  if (!game) return null;
+  const scene = game.scene.getScene('GameScene') as unknown as { allPaths?: (PathPoint[] | null)[] } | null;
+  const paths = scene?.allPaths;
+  if (!paths || paths.length === 0) return null;
+  return paths[0] ?? null;
+}
 
 export interface ResolvedRect {
   /** Viewport-space rect in CSS pixels. */
@@ -57,7 +75,18 @@ export function resolveTarget(target: TutorialTarget): ResolvedRect | null {
     return { x: r.left, y: r.top, width: r.width, height: r.height };
   }
 
-  // canvas — target {x,y,w,h} are in Phaser world coords.
+  // Dynamic canvas target — compute the rect from live game state,
+  // then fall through to the canvas path below.
+  let worldRect: { x: number; y: number; width: number; height: number };
+  if (target.kind === 'canvas-dynamic') {
+    const computed = target.compute();
+    if (!computed) return null;
+    worldRect = computed;
+  } else {
+    worldRect = { x: target.x, y: target.y, width: target.width, height: target.height };
+  }
+
+  // canvas — worldRect {x,y,w,h} are in Phaser world coords.
   const canvas = document.querySelector<HTMLCanvasElement>('#game-root canvas');
   if (!canvas) return null;
   const cr = canvas.getBoundingClientRect();
@@ -74,10 +103,10 @@ export function resolveTarget(target: TutorialTarget): ResolvedRect | null {
   // zoom, which is fine because canvas targets are only used during the
   // tutorial match anyway.
   const wv = getCameraWorldView() ?? { x: 0, y: 0, width: canvas.width, height: canvas.height };
-  const u0 = (target.x - wv.x) / wv.width;
-  const v0 = (target.y - wv.y) / wv.height;
-  const u1 = (target.x + target.width - wv.x) / wv.width;
-  const v1 = (target.y + target.height - wv.y) / wv.height;
+  const u0 = (worldRect.x - wv.x) / wv.width;
+  const v0 = (worldRect.y - wv.y) / wv.height;
+  const u1 = (worldRect.x + worldRect.width - wv.x) / wv.width;
+  const v1 = (worldRect.y + worldRect.height - wv.y) / wv.height;
   return {
     x: cr.left + u0 * cr.width,
     y: cr.top + v0 * cr.height,

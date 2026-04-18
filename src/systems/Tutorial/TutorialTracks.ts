@@ -10,8 +10,9 @@
  * Authors keep bodies short — 1–3 sentences — and aim for 5–8 steps per track.
  */
 import type { TutorialTarget } from './TutorialTargets';
+import { getCurrentTutorialPath } from './TutorialTargets';
 import type { GameEvents } from '../EventBus';
-import { TILE_SIZE, gridX, gridY } from '../../config';
+import { TILE_SIZE, gridX, gridY, GRID_COLS, GRID_ROWS } from '../../config';
 
 export type Placement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto' | 'top-banner';
 
@@ -96,6 +97,77 @@ function gridCellRect(col: number, row: number, colSpan = 1, rowSpan = 1): Tutor
     y: gridY(row) - TILE_SIZE / 2 - pad,
     width: TILE_SIZE * colSpan + pad * 2,
     height: TILE_SIZE * rowSpan + pad * 2,
+  };
+}
+
+/** Same shape as gridCellRect but returns the raw world-pixel rect
+ *  (not wrapped in a TutorialTarget), so dynamic-target compute
+ *  functions can build and return one. */
+function gridCellWorldRect(col: number, row: number, colSpan: number): { x: number; y: number; width: number; height: number } {
+  const pad = 4;
+  return {
+    x: gridX(col) - TILE_SIZE / 2 - pad,
+    y: gridY(row) - TILE_SIZE / 2 - pad,
+    width: TILE_SIZE * colSpan + pad * 2,
+    height: TILE_SIZE + pad * 2,
+  };
+}
+
+/** The default creep-path row on the tutorial map (straight east-west
+ *  through the vertical middle of the grid). Used as the reference row
+ *  for detecting which side the live path is bulging toward. */
+const TUTORIAL_DEFAULT_PATH_ROW = Math.floor(GRID_ROWS / 2);
+
+/** Returns a dynamic canvas target that inspects the CURRENT creep
+ *  path and highlights the strip just beyond the side the path is
+ *  already bulging toward. First-two-towers push creeps up → this
+ *  suggests another row up. If the player mirrored below instead,
+ *  this suggests another row down. The spotlight updates live as the
+ *  player places more towers, so it always points at where the next
+ *  tower would actually extend the maze. */
+function nextMazeExtensionTarget(): TutorialTarget {
+  // Fallback rect used when no path is available yet — two rows above
+  // default, matching the old hardcoded hint.
+  const fallback = gridCellWorldRect(9, TUTORIAL_DEFAULT_PATH_ROW - 2, 7);
+
+  return {
+    kind: 'canvas-dynamic',
+    compute: () => {
+      const path = getCurrentTutorialPath();
+      if (!path || path.length === 0) return fallback;
+
+      // Scan the path for the biggest vertical deviation from the
+      // default row, and which cols are on the deviated side.
+      let minRow = TUTORIAL_DEFAULT_PATH_ROW;
+      let maxRow = TUTORIAL_DEFAULT_PATH_ROW;
+      for (const p of path) {
+        if (p.row < minRow) minRow = p.row;
+        if (p.row > maxRow) maxRow = p.row;
+      }
+      const aboveDev = TUTORIAL_DEFAULT_PATH_ROW - minRow;
+      const belowDev = maxRow - TUTORIAL_DEFAULT_PATH_ROW;
+
+      // No deviation yet — path still straight. Point above by default.
+      if (aboveDev === 0 && belowDev === 0) return fallback;
+
+      const goUp = aboveDev >= belowDev;
+      const extremeRow = goUp ? minRow : maxRow;
+      // Suggest the strip one row past the current bulge, clamped.
+      const targetRow = goUp
+        ? Math.max(0, extremeRow - 1)
+        : Math.min(GRID_ROWS - 1, extremeRow + 1);
+
+      // Cols spanned by the bulge — where the path actually reaches
+      // the extreme row. Pad on both sides so the highlight isn't
+      // pixel-tight against the detour.
+      const bulgeCols: number[] = [];
+      for (const p of path) if (p.row === extremeRow) bulgeCols.push(p.col);
+      if (bulgeCols.length === 0) return fallback;
+      const minCol = Math.max(0, Math.min(...bulgeCols) - 1);
+      const maxCol = Math.min(GRID_COLS - 1, Math.max(...bulgeCols) + 1);
+
+      return gridCellWorldRect(minCol, targetRow, maxCol - minCol + 1);
+    },
   };
 }
 
@@ -265,13 +337,13 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'place_third',
-      // Two rows above the path (row 11). The first two towers force
-      // creeps to detour up and around, so this strip is right where
-      // they end up walking. Below-path strips look tempting but end
-      // up as dead zones the creeps never touch.
-      target: gridCellRect(9, 11, 7, 1),
+      // Dynamic hint: inspects the current creep route and highlights
+      // the strip just past the side the path is already bulging
+      // toward. If the player mazed above, the strip points further
+      // above; if they mazed below, it points below.
+      target: nextMazeExtensionTarget(),
       title: 'Add More Towers',
-      body: "Creeps now walk around your towers via the rows above. Place one or two more up here — any damage in their new path stacks with your Frost slow.",
+      body: "Creeps are now detouring around your towers. Place one or two more in the highlighted strip — that's right along their new route, and it keeps the maze growing.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
@@ -302,12 +374,12 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'place_fourth',
-      // Row 10 — extends the maze one row further up so creeps walk
-      // an even longer route, and you get another tower hitting them
-      // along the way.
-      target: gridCellRect(9, 10, 7, 1),
+      // Same dynamic hint — re-inspects the path after the third
+      // tower so the reinforcement strip moves further along the
+      // current bulge direction.
+      target: nextMazeExtensionTarget(),
       title: 'Reinforce',
-      body: "Wave 3 brings a heavier creep. Drop one more tower up here — extending the maze forces creeps to walk even further before they reach the exit.",
+      body: "Wave 3 brings a heavier creep. Extend the maze one more step — the highlight shows the next row along your current detour.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
