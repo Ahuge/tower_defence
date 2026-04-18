@@ -39,9 +39,40 @@ function rectsEqual(a: ResolvedRect | null, b: ResolvedRect | null): boolean {
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 }
 
+/** When a step activates, scroll the spotlight target into view if it's
+ *  off-screen. DOM targets resolve directly to their element — we ask the
+ *  element to scroll itself into center, which handles any scrollable
+ *  ancestor (window or a custom container) without us needing to know
+ *  which one. No-op for canvas/screen targets — the tutorial match locks
+ *  the camera, so those stay in view by construction. */
+function useScrollIntoViewOnStepChange(active: ReturnType<typeof useTutorial>): void {
+  useEffect(() => {
+    if (!active) return;
+    const t = active.step.target;
+    if (t.kind !== 'dom') return;
+    // Let the current render settle before measuring — e.g. a step's
+    // onEnter hook might have expanded a sidebar panel that contains the
+    // target, and the new layout hasn't committed yet.
+    const id = setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(t.selector);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      const fullyVisible =
+        r.top >= 0 && r.left >= 0 && r.bottom <= vh && r.right <= vw;
+      if (!fullyVisible) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      }
+    }, 60);
+    return () => clearTimeout(id);
+  }, [active?.track.id, active?.stepIndex]);
+}
+
 export function TutorialOverlay() {
   const active = useTutorial();
   const rect = useResolvedTargetRect(active);
+  useScrollIntoViewOnStepChange(active);
 
   if (!active) return null;
   const { track, step, stepIndex } = active;
