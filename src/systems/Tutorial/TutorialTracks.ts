@@ -386,13 +386,13 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_send',
-      // Same rationale as buy_frontier — target the tab header so the
-      // spotlight is reliable even if the auto tab-switch is delayed,
-      // and the send list sits visibly right below it.
+      // Target the tab header so the spotlight's visible even if the
+      // auto-switch lags, but pin the popover to the viewport top so
+      // it doesn't cover the send list underneath on mobile.
       target: { kind: 'dom', selector: SEL.econSendsTab },
       title: 'Buy a Send',
       body: 'On the Sends tab, pick a Standard send and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
-      placement: 'bottom',
+      placement: 'top-banner',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('sends'); },
       advanceOn: { event: 'sendPurchased' },
     },
@@ -428,16 +428,13 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_frontier',
-      // Target the Frontier tab header rather than the tab content
-      // below it — the tab button is always rendered as soon as the
-      // economy panel is open, regardless of whether the tutorial's
-      // auto-switch fired yet. The Nexus entry sits visually right
-      // under the spotlighted tab, so the player's eye lands on the
-      // section name and drops straight into the buy list.
+      // Target the Frontier tab header (always rendered once the
+      // panel is open) with a top-banner popover so the Nexus buy
+      // list remains visible underneath on mobile.
       target: { kind: 'dom', selector: SEL.econFrontierTab },
       title: 'Build a Frontier',
       body: "Arcane's Frontier is the Leyline Nexus — steady income every wave, plus an Overcharge button you can hit for 3x burst gold at the cost of two dormant waves. Other factions have their own versions: Mechanical digs for more (with collapse risk), Nature grows and harvests, Void gambles. Tap the Frontier tab, pick the Leyline Nexus, and buy it.",
-      placement: 'bottom',
+      placement: 'top-banner',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('frontier'); },
       advanceOn: { event: 'frontierPurchased' },
     },

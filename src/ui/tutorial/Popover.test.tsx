@@ -74,6 +74,21 @@ describe('Popover — content', () => {
     expect(screen.getByRole('button', { name: 'Quit' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
   });
+
+  it('single-step track: no Skip button — Done is the only action', () => {
+    // Regression: single-step tracks (skip_hint) used to show Skip +
+    // Done, which made dismissal ambiguous. Single-step tracks now
+    // hide Skip entirely.
+    render(<Popover {...defaultProps} stepIndex={0} totalSteps={1} />);
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
+  });
+
+  it('single-step track still hides Skip even with a custom label', () => {
+    render(<Popover {...defaultProps} stepIndex={0} totalSteps={1} skipLabel="Quit" />);
+    expect(screen.queryByRole('button', { name: 'Quit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
+  });
 });
 
 describe('Popover — buttons', () => {

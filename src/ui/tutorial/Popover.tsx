@@ -104,6 +104,10 @@ function fitsInViewport(a: Anchor, vw: number, vh: number): boolean {
 export function Popover({ title, body, rect, placement = 'auto', stepIndex, totalSteps, showNext, onNext, onSkip, skipLabel = 'Skip', cta }: Props) {
   const anchor = pickAnchor(rect, placement);
   const isTerminal = stepIndex + 1 === totalSteps;
+  // Single-step tracks don't need a Skip button — the player can't
+  // skip past a one-step track, and having both Skip + Done makes
+  // the dismissal ambiguous. Done is the only action they need.
+  const showSkip = totalSteps > 1;
 
   return (
     <div
@@ -141,11 +145,13 @@ export function Popover({ title, body, rect, placement = 'auto', stepIndex, tota
           {stepIndex + 1} / {totalSteps}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            class="btn"
-            style={{ padding: '6px 12px', fontSize: '12px' }}
-            onClick={onSkip}
-          >{skipLabel}</button>
+          {showSkip && (
+            <button
+              class="btn"
+              style={{ padding: '6px 12px', fontSize: '12px' }}
+              onClick={onSkip}
+            >{skipLabel}</button>
+          )}
           {cta && isTerminal ? (
             <button
               class="btn btn-gold"
