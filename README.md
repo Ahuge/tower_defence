@@ -1,5 +1,7 @@
 # Factions
 
+[![Tests](https://github.com/Ahuge/tower_defence/actions/workflows/test.yml/badge.svg)](https://github.com/Ahuge/tower_defence/actions/workflows/test.yml)
+
 A grid-based maze-building tower defence game with 12 factions, P2P multiplayer (1v1 and 2-4 player co-op), and deep economic strategy. Built with Phaser 4 + TypeScript + Vite.
 
 **[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Game Modes](GAMEMODES.md) | [Changelog](CHANGELOG.md)
@@ -131,6 +133,24 @@ Create and play custom maps:
 - **Vite 8** — Build + HMR
 - **WebRTC** — P2P multiplayer (no server)
 - **Responsive layout** — Desktop (sidebar inline) + tablet (collapsible sidebar overlay, touch controls)
+
+## Testing
+```bash
+npm test                # run the full Vitest suite (pure logic + component + regressions)
+npm run test:watch      # re-run affected specs on save
+npm run test:ui         # Vitest's web UI
+npm run test:coverage   # text + HTML coverage report under ./coverage/
+```
+Test suite covers:
+- Tutorial state machine + persistence + content schema
+- Dynamic maze-hint path-bulge math
+- Pathfinding A* (valid routes, null for unreachable, optimality, 4-dir)
+- EconomyManager + EventBus wiring
+- Grid math round-trip (pixel ↔ col/row)
+- Preact overlay components with **overlap / viewport assertions** so a popover tweak can't silently cover the spotlight or leak off-screen
+- Regression pack under `src/__regressions__/` with one test per past bug
+
+CI runs `tsc --noEmit` + `npm test` + `npm run build` on every PR via `.github/workflows/test.yml`.
 
 ## Deploy
 ```bash
