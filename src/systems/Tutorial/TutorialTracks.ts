@@ -70,6 +70,8 @@ const SEL = {
   menuModeCards: '[data-tutorial-target="menu-modes"]',
   menuModeStandard: '[data-tutorial-target="menu-mode-standard"]',
   menuMapGrid: '[data-tutorial-target="menu-map"]',
+  econFrontierContent: '[data-tutorial-target="econ-content-frontier"]',
+  econSendsContent: '[data-tutorial-target="econ-content-sends"]',
   // Specific tower slot in the dock — matches data-tutorial-tower-id on
   // the per-slot wrapper. Used when the tutorial wants to point at a
   // particular tower (e.g. Arcane Frost for the slow-effect lesson).
@@ -85,6 +87,14 @@ function openSidebarPanel(panel: 'waves' | 'economy' | null): void {
 }
 function closeSidebarPanels(): void {
   openSidebarPanel(null);
+}
+
+/** Switch the Economy panel's internal tab (sends / frontier / essence /
+ *  items / log). Dispatched when a tutorial step needs specific tab
+ *  content visible, e.g. buy_frontier activating the Frontier tab so
+ *  the Leyline Nexus entry is highlighted rather than the Sends list. */
+function switchEconTab(tab: 'sends' | 'frontier' | 'essence' | 'items' | 'log'): void {
+  window.dispatchEvent(new CustomEvent('tutorial-switch-econ-tab', { detail: { tab } }));
 }
 
 /** Grid rect spanning a range of cells in Phaser world coordinates —
@@ -351,11 +361,11 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_send',
-      target: { kind: 'dom', selector: SEL.economyPanel },
+      target: { kind: 'dom', selector: SEL.econSendsContent },
       title: 'Buy a Send',
-      body: 'Open ECONOMY, pick a Standard send, and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
+      body: 'Pick a Standard send and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
       placement: 'right',
-      onEnter: () => openSidebarPanel('economy'),
+      onEnter: () => { openSidebarPanel('economy'); switchEconTab('sends'); },
       advanceOn: { event: 'sendPurchased' },
     },
     {
@@ -390,11 +400,11 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_frontier',
-      target: { kind: 'dom', selector: SEL.economyPanel },
+      target: { kind: 'dom', selector: SEL.econFrontierContent },
       title: 'Build a Frontier',
       body: "Arcane's Frontier is the Leyline Nexus — steady income every wave, plus an Overcharge button you can hit for 3x burst gold at the cost of two dormant waves. Other factions have their own versions: Mechanical digs for more (with collapse risk), Nature grows and harvests, Void gambles. Pick the Leyline Nexus and buy it.",
       placement: 'right',
-      onEnter: () => openSidebarPanel('economy'),
+      onEnter: () => { openSidebarPanel('economy'); switchEconTab('frontier'); },
       advanceOn: { event: 'frontierPurchased' },
     },
     {

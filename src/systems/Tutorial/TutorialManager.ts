@@ -19,6 +19,7 @@ import { EventBus, GameEvents } from '../EventBus';
 import { TutorialPersistence, TutorialState } from './TutorialPersistence';
 import { getTrack, TutorialTrack, TutorialStep } from './TutorialTracks';
 import { goToMenu } from '../../ui/navigation';
+import { GameUIStore } from '../../ui/GameUIStore';
 
 type Listener = () => void;
 
@@ -157,6 +158,24 @@ class TutorialManagerClass {
     try { this.active.step.onEnter?.(); }
     catch (err) { console.warn('[Tutorial] step onEnter threw:', err); }
     this.panCameraToStep();
+    this.maybeDeselectDockForStep();
+  }
+
+  /** Deselects whatever tower is in the dock when entering a non-
+   *  placement step in the tutorial match. Prevents the player from
+   *  accidentally dropping towers while watching a wave or reading
+   *  an explainer. No-op for other tracks (where the player might
+   *  legitimately be mid-build) and for placement steps themselves. */
+  private maybeDeselectDockForStep(): void {
+    if (!this.active) return;
+    if (this.active.track.id !== 'tutorial_match') return;
+    const advance = this.active.step.advanceOn;
+    const isPlacement = !!advance
+      && typeof advance === 'object'
+      && 'event' in advance
+      && advance.event === 'towerPlaced';
+    if (isPlacement) return;
+    GameUIStore.requestSelectDockTower(-1);
   }
 
   /** If the current step targets a canvas rect (a grid cell), smoothly pan
