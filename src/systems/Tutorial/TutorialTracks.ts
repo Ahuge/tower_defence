@@ -286,7 +286,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'start_wave_2',
       target: { kind: 'dom', selector: SEL.startWaveBtn },
       title: 'Start Wave 2',
-      body: 'The send will join the wave. Two towers should still be enough.',
+      body: "Fast creeps incoming — they're twice as quick as standards. Watch your Frost tower drag them down to a crawl.",
       placement: 'top',
       advanceOn: { event: 'waveStarted' },
     },
@@ -294,7 +294,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'watch_wave_2',
       target: { kind: 'screen' },
       title: 'Next Wave Running',
-      body: 'Let it play out. Next we try the safer income source.',
+      body: "See the fast creeps bogging down in the frost zone? That's the synergy — slow them, then hit them while they're stuck. Next we try the safer income source.",
       advanceOn: { event: 'waveCleared' },
     },
     {

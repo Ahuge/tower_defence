@@ -221,12 +221,15 @@ function generateTutorialWaves(): WaveDefinition[] {
       isBoss: false,
     },
     {
+      // Wave 2 leans into fast creeps so the tutorial's Frost slow
+      // effect is visibly useful — you can actually see the fast
+      // units crawl through the slow zone.
       wave: 2,
       groups: [
-        { creepType: 'standard', count: 8, hpScale: 32, speedScale: 0.9 },
-        { creepType: 'fast',     count: 2, hpScale: 24, speedScale: 1.0 },
+        { creepType: 'standard', count: 6, hpScale: 32, speedScale: 0.9 },
+        { creepType: 'fast',     count: 5, hpScale: 24, speedScale: 1.0 },
       ],
-      spawnInterval: 560,
+      spawnInterval: 520,
       isBoss: false,
     },
     {
