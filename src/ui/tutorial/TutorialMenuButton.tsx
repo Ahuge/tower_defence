@@ -120,6 +120,7 @@ export function TutorialMenuButton() {
     <>
       <button
         class="btn"
+        data-tutorial-target="tutorials-help-btn"
         style={{ padding: '4px 10px', fontSize: '16px', lineHeight: 1 }}
         title="Tutorials"
         onClick={() => setOpen(true)}

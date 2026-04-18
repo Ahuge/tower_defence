@@ -50,6 +50,10 @@ export interface TutorialTrack {
    *  tutorial match so the player can watch the actual gameplay while
    *  the popover + highlight ring guide them. */
   scrimless?: boolean;
+  /** Label for the dismiss button. Defaults to "Skip". The tutorial
+   *  match uses "Quit" because dismissing there also exits the live
+   *  match back to the menu — not just the overlay. */
+  skipLabel?: string;
 }
 
 // ─── Selectors ──────────────────────────────────────────────
@@ -78,6 +82,7 @@ const SEL = {
   // the per-slot wrapper. Used when the tutorial wants to point at a
   // particular tower (e.g. Arcane Frost for the slow-effect lesson).
   dockFrostSlot: '[data-tutorial-tower-id="arcane_frost"]',
+  tutorialsHelpBtn: '[data-tutorial-target="tutorials-help-btn"]',
 } as const;
 
 /** Dispatched by tutorial steps to open a specific sidebar panel so the
@@ -199,6 +204,25 @@ function nextMazeExtensionTarget(): TutorialTarget {
 
 // ─── Tracks ─────────────────────────────────────────────────
 
+/** One-shot nudge fired the next time the player lands on the menu
+ *  after skipping any other track. Points at the `?` help button so
+ *  they know how to find the tutorial list again. Single step, no
+ *  skip prompt — just click to dismiss. */
+const skipHint: TutorialTrack = {
+  id: 'skip_hint',
+  name: 'Tutorials Can Be Replayed',
+  summary: 'Reminder that the ? button opens the tutorial list.',
+  steps: [
+    {
+      id: 'hint',
+      target: { kind: 'dom', selector: SEL.tutorialsHelpBtn },
+      title: 'Come Back Any Time',
+      body: "Changed your mind about the tour? Tap this ? button to replay any tutorial — including the guided practice match.",
+      placement: 'bottom',
+    },
+  ],
+};
+
 /** First-launch orientation. Runs before any faction/mode has been chosen,
  *  so every target is either the Menu screen or a `screen` (centered) step. */
 const basics: TutorialTrack = {
@@ -287,6 +311,7 @@ const tutorialMatch: TutorialTrack = {
   name: 'Tutorial Match',
   summary: 'A scripted round as Arcane: maze, run a wave, send, frontier.',
   scrimless: true,
+  skipLabel: 'Quit',
   steps: [
     {
       id: 'welcome',
@@ -687,6 +712,7 @@ const modeTracks: TutorialTrack[] = [
 const ALL: TutorialTrack[] = [
   basics,
   tutorialMatch,
+  skipHint,
   incomeStandard,
   incomeBattle,
   incomeHero,

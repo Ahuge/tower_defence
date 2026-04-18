@@ -18,6 +18,9 @@ interface Props {
   showNext: boolean;
   onNext: () => void;
   onSkip: () => void;
+  /** Label for the dismiss button. Defaults to "Skip"; the tutorial
+   *  match overrides to "Quit" since dismissing exits the live match. */
+  skipLabel?: string;
   /** Optional call-to-action button (terminal steps only). When provided,
    *  clicking it runs the action AND advances the tutorial (completing the
    *  track on a terminal step). Replaces the Next button if present. */
@@ -98,7 +101,7 @@ function fitsInViewport(a: Anchor, vw: number, vh: number): boolean {
     && a.top + 180 <= vh - CARD_MARGIN;
 }
 
-export function Popover({ title, body, rect, placement = 'auto', stepIndex, totalSteps, showNext, onNext, onSkip, cta }: Props) {
+export function Popover({ title, body, rect, placement = 'auto', stepIndex, totalSteps, showNext, onNext, onSkip, skipLabel = 'Skip', cta }: Props) {
   const anchor = pickAnchor(rect, placement);
   const isTerminal = stepIndex + 1 === totalSteps;
 
@@ -142,7 +145,7 @@ export function Popover({ title, body, rect, placement = 'auto', stepIndex, tota
             class="btn"
             style={{ padding: '6px 12px', fontSize: '12px' }}
             onClick={onSkip}
-          >Skip</button>
+          >{skipLabel}</button>
           {cta && isTerminal ? (
             <button
               class="btn btn-gold"

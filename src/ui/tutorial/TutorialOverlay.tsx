@@ -101,6 +101,7 @@ export function TutorialOverlay() {
         showNext={showNext}
         onNext={onNext}
         onSkip={onSkip}
+        skipLabel={track.skipLabel}
         cta={step.cta}
       />
     </>

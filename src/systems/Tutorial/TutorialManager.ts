@@ -214,6 +214,9 @@ class TutorialManagerClass {
     // Skipping the tutorial match leaves GameScene running in a no-stakes
     // 99-lives state — push the player back to the menu.
     if (wasTutorialMatch) goToMenu();
+    // If they're still (or now back) on the menu, drop the one-shot
+    // "where to find tutorials again" reminder.
+    this.checkForSkipHintAfterDelay();
   }
 
   /** Finish the current track naturally. */
@@ -223,6 +226,29 @@ class TutorialManagerClass {
     this.clearActive();
     this.markFirstLaunchDismissed();
     this.notify();
+    this.checkForSkipHintAfterDelay();
+  }
+
+  /** After a small delay (lets any scene transition land), fire the
+   *  skip-hint mini-track if the player is on the menu. */
+  private checkForSkipHintAfterDelay(): void {
+    setTimeout(() => this.maybeStartSkipHint(), 500);
+  }
+
+  /** One-shot "tap the ? button to replay tutorials" nudge. Fires on
+   *  the menu the first time the player finishes or skips any other
+   *  track, so they know how to get back to the tutorial list. */
+  private maybeStartSkipHint(): void {
+    if (this.active) return;
+    if (this.isCompleted('skip_hint')) return;
+    if (UIBridge.getScreen() !== 'menu') return;
+    // Need at least one OTHER completed track — skip_hint doesn't
+    // surface until the player has actually interacted with the
+    // tutorial system at least once.
+    const others = this.persisted.completedTracks.filter(t => t !== 'skip_hint');
+    if (others.length === 0) return;
+    if (!getTrack('skip_hint')) return;
+    this.start('skip_hint');
   }
 
   /** Replay a track from the Help menu — bypasses the "already completed"
@@ -279,6 +305,12 @@ class TutorialManagerClass {
     if (screen === 'heroselect' || screen === 'creepfactionselect' || screen === 'draft') {
       const faction = typeof data.faction === 'string' ? data.faction : null;
       if (faction) this.maybeAutoStart(`faction:${faction}`);
+    }
+    // Skip-hint reminder — fires on menu arrival if the player has
+    // finished or skipped any tutorial before. Small delay so the
+    // menu DOM has time to mount the ? button.
+    if (screen === 'menu') {
+      setTimeout(() => this.maybeStartSkipHint(), 350);
     }
   }
 
