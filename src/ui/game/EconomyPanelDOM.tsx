@@ -68,9 +68,11 @@ export function EconomyPanelDOM() {
         ))}
       </div>
 
-      {/* Tab content */}
-      {activeTab === 'sends' && <SendPanelDOM />}
-      {activeTab === 'frontier' && <FrontierContent />}
+      {/* Tab content — wrapped in a tagged div so tutorial overlap
+          tests can target the content region (the popover must not
+          cover this box when it's the interactive target). */}
+      {activeTab === 'sends' && <div data-tutorial-target="econ-content-sends"><SendPanelDOM /></div>}
+      {activeTab === 'frontier' && <div data-tutorial-target="econ-content-frontier"><FrontierContent /></div>}
       {activeTab === 'essence' && <EssenceContentDOM />}
       {activeTab === 'items' && <HeroItemsDOM />}
       {activeTab === 'log' && <EventLogDOM />}

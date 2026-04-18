@@ -14,7 +14,7 @@ import { getCurrentTutorialPath } from './TutorialTargets';
 import type { GameEvents } from '../EventBus';
 import { TILE_SIZE, gridX, gridY, GRID_COLS, GRID_ROWS } from '../../config';
 
-export type Placement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto' | 'top-banner';
+export type Placement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto' | 'top-banner' | 'bottom-banner';
 
 export type StepAdvance =
   | 'click'
@@ -386,13 +386,14 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_send',
-      // Target the tab header so the spotlight's visible even if the
-      // auto-switch lags, but pin the popover to the viewport top so
-      // it doesn't cover the send list underneath on mobile.
+      // Target the tab header (always rendered when the panel is
+      // open) but pin the popover to the viewport BOTTOM so it
+      // doesn't overlap the send list sitting in the top-left
+      // ECONOMY panel on mobile.
       target: { kind: 'dom', selector: SEL.econSendsTab },
       title: 'Buy a Send',
       body: 'On the Sends tab, pick a Standard send and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
-      placement: 'top-banner',
+      placement: 'bottom-banner',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('sends'); },
       advanceOn: { event: 'sendPurchased' },
     },
@@ -428,13 +429,13 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_frontier',
-      // Target the Frontier tab header (always rendered once the
-      // panel is open) with a top-banner popover so the Nexus buy
-      // list remains visible underneath on mobile.
+      // Target the Frontier tab header; popover pinned to the
+      // viewport bottom so the Nexus buy list (which sits in the
+      // top-left ECONOMY panel) stays visible on mobile.
       target: { kind: 'dom', selector: SEL.econFrontierTab },
       title: 'Build a Frontier',
       body: "Arcane's Frontier is the Leyline Nexus — steady income every wave, plus an Overcharge button you can hit for 3x burst gold at the cost of two dormant waves. Other factions have their own versions: Mechanical digs for more (with collapse risk), Nature grows and harvests, Void gambles. Tap the Frontier tab, pick the Leyline Nexus, and buy it.",
-      placement: 'top-banner',
+      placement: 'bottom-banner',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('frontier'); },
       advanceOn: { event: 'frontierPurchased' },
     },

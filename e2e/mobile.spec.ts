@@ -6,7 +6,22 @@
  * leak off-screen, spotlight lands on its target cell at the
  * animated zoom, modal portal covers the menu.
  */
-import { test, expect, waitForTutorialStep, dismissAllAutoTutorials } from './fixtures';
+import { test, expect, waitForTutorialStep, dismissAllAutoTutorials, assertPopoverDoesNotCover } from './fixtures';
+
+async function emit(page: import('@playwright/test').Page, event: string, ...args: unknown[]): Promise<void> {
+  const ok = await page.evaluate(
+    ({ e, a }) => window.__td_test?.emitGameEvent(e, ...a) ?? false,
+    { e: event, a: args },
+  );
+  if (!ok) throw new Error(`emitGameEvent(${event}) returned false`);
+}
+
+async function clickPopoverNext(page: import('@playwright/test').Page): Promise<void> {
+  await page
+    .locator('.tutorial-popover')
+    .getByRole('button', { name: 'Next', exact: true })
+    .click();
+}
 
 // Scope this file to the mobile project only — running it on
 // desktop doesn't exercise anything the other specs don't cover.
@@ -66,11 +81,7 @@ test.describe('mobile', () => {
     await page.getByText('Tutorial Match').first().click();
 
     await waitForTutorialStep(page, 'welcome', 20_000);
-    // Click Next once to get to pick_tower.
-    await page
-      .locator('.tutorial-popover')
-      .getByRole('button', { name: 'Next', exact: true })
-      .click();
+    await clickPopoverNext(page);
 
     // pick_tower → select Bolt → place_first.
     await waitForTutorialStep(page, 'pick_tower');
@@ -91,5 +102,55 @@ test.describe('mobile', () => {
     expect(box!.y + box!.height).toBeGreaterThan(0);
     expect(box!.x).toBeLessThan(vp.width);
     expect(box!.y).toBeLessThan(vp.height);
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // Regression — tutorial popover must not cover the send / frontier
+  // list the player is being told to interact with. Screenshot-bug
+  // from real playtesting: placement: 'bottom' on the tab header put
+  // the popover directly over the content below, and the fix was to
+  // switch to 'top-banner'. This test reads both bounding boxes on
+  // real mobile emulation and asserts they don't intersect — the
+  // kind of layout bug unit tests can't catch because jsdom has no
+  // layout engine.
+  // ══════════════════════════════════════════════════════════════════
+
+  test('buy_send popover does NOT cover the Sends content on mobile', async ({ page, gotoFresh }) => {
+    test.setTimeout(60_000);
+    await gotoFresh();
+    await dismissAllAutoTutorials(page);
+
+    await page.getByRole('button', { name: '?' }).click();
+    await page.getByText('Tutorial Match').first().click();
+
+    // Wait for the track to start, then fast-forward via the test
+    // hook — the overlap check doesn't need the real interactions,
+    // just the final rendered state of buy_send.
+    await waitForTutorialStep(page, 'welcome', 20_000);
+    const reached = await page.evaluate(() => window.__td_test?.jumpToTutorialStep('buy_send') ?? false);
+    expect(reached, 'jumpToTutorialStep should reach buy_send').toBe(true);
+
+    await waitForTutorialStep(page, 'buy_send');
+    await expect(page.locator('.tutorial-popover')).toBeVisible();
+    await expect(page.locator('[data-tutorial-target="econ-content-sends"]')).toBeVisible();
+    await assertPopoverDoesNotCover(page, '[data-tutorial-target="econ-content-sends"]', 'Sends content');
+  });
+
+  test('buy_frontier popover does NOT cover the Frontier content on mobile', async ({ page, gotoFresh }) => {
+    test.setTimeout(60_000);
+    await gotoFresh();
+    await dismissAllAutoTutorials(page);
+
+    await page.getByRole('button', { name: '?' }).click();
+    await page.getByText('Tutorial Match').first().click();
+
+    await waitForTutorialStep(page, 'welcome', 20_000);
+    const reached = await page.evaluate(() => window.__td_test?.jumpToTutorialStep('buy_frontier') ?? false);
+    expect(reached, 'jumpToTutorialStep should reach buy_frontier').toBe(true);
+
+    await waitForTutorialStep(page, 'buy_frontier');
+    await expect(page.locator('.tutorial-popover')).toBeVisible();
+    await expect(page.locator('[data-tutorial-target="econ-content-frontier"]')).toBeVisible();
+    await assertPopoverDoesNotCover(page, '[data-tutorial-target="econ-content-frontier"]', 'Frontier content');
   });
 });

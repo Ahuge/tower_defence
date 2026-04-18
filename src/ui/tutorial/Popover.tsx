@@ -48,6 +48,22 @@ function pickAnchor(rect: ResolvedRect | null, placement: Placement): Anchor {
     };
   }
 
+  // 'bottom-banner' — mirror of top-banner. Pins the popover near the
+  // bottom of the viewport. Used for steps whose target is in the
+  // top-left sidebar (WAVES / ECONOMY panels on mobile), where a
+  // top-banner popover would overlap the panel content the player is
+  // being told to interact with. Popover height is assumed ~200px;
+  // leaves a 220px gap from the bottom so the tower dock / status bar
+  // stay clear too.
+  if (placement === 'bottom-banner') {
+    const POPOVER_H_ASSUMED = 200;
+    const BOTTOM_INSET = 220;
+    return {
+      left: Math.max(CARD_MARGIN, vw / 2 - CARD_WIDTH / 2),
+      top: Math.max(CARD_MARGIN, vh - BOTTOM_INSET - POPOVER_H_ASSUMED),
+    };
+  }
+
   if (!rect || placement === 'center') {
     return {
       left: Math.max(CARD_MARGIN, vw / 2 - CARD_WIDTH / 2),

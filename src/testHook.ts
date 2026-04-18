@@ -49,6 +49,13 @@ interface TestHook {
    *  that the *real* action produces the same event; the E2E suite
    *  just needs to verify the tutorial's reaction. */
   emitGameEvent: <K extends keyof GameEvents>(event: K, ...args: Parameters<GameEvents[K]>) => boolean;
+  /** Fast-forward the active tutorial to the given step id by
+   *  repeatedly calling `TutorialManager.next()`. Used by overlap /
+   *  placement tests that need to see a specific step rendered but
+   *  don't care about walking through every preceding step's real
+   *  interactions. Returns true if the step was reached, false if
+   *  it was never seen (wrong id, no active track, etc). */
+  jumpToTutorialStep: (stepId: string, maxSteps?: number) => boolean;
   /** Select a tower in the DOM tower dock by its slot index. Going
    *  through GameUIStore.requestSelectDockTower instead of clicking
    *  the DOM element avoids the click-propagation quirks that make
@@ -120,11 +127,22 @@ function emitGameEvent<K extends keyof GameEvents>(event: K, ...args: Parameters
   return true;
 }
 
+function jumpToTutorialStep(stepId: string, maxSteps = 50): boolean {
+  for (let guard = 0; guard < maxSteps; guard++) {
+    const active = TutorialManager.getActive();
+    if (!active) return false;
+    if (active.step.id === stepId) return true;
+    TutorialManager.next();
+  }
+  return false;
+}
+
 export function installTestHook(): void {
   window.__td_test = {
     clickCell,
     getCellClientPos,
     emitGameEvent,
+    jumpToTutorialStep,
     selectDockTower: (index: number) => GameUIStore.requestSelectDockTower(index),
     getActiveTutorialStep: () => TutorialManager.getActive()?.step.id ?? null,
     getActiveTutorialTrack: () => TutorialManager.getActive()?.track.id ?? null,
