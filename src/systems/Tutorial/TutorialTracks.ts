@@ -69,6 +69,10 @@ const SEL = {
   menuModeCards: '[data-tutorial-target="menu-modes"]',
   menuModeStandard: '[data-tutorial-target="menu-mode-standard"]',
   menuMapGrid: '[data-tutorial-target="menu-map"]',
+  // Specific tower slot in the dock — matches data-tutorial-tower-id on
+  // the per-slot wrapper. Used when the tutorial wants to point at a
+  // particular tower (e.g. Arcane Frost for the slow-effect lesson).
+  dockFrostSlot: '[data-tutorial-tower-id="arcane_frost"]',
 } as const;
 
 /** Dispatched by tutorial steps to open a specific sidebar panel so the
@@ -218,13 +222,22 @@ const tutorialMatch: TutorialTrack = {
       body: "The path bent around your tower. Every tower you drop reshapes the route — the longer you make creeps walk, the more time your towers have to shoot them.",
     },
     {
-      id: 'place_second',
-      // Highlight the row just below the path, cols 10-14 — forces the
-      // detour wider when a tower lands here.
-      target: gridCellRect(10, 14, 5, 1),
-      title: 'One More',
-      body: 'Place another tower below the first. The detour gets longer still.',
+      id: 'pick_frost',
+      target: { kind: 'dom', selector: SEL.dockFrostSlot },
+      title: 'Try the Frost Tower',
+      body: "Different towers do different things. Arcane Frost slows creeps it hits — stack it with damage and creeps spend ages in your killzone. Select it from the dock (hotkey 2).",
       placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
+    },
+    {
+      id: 'place_second',
+      // Strip above the path, cols 10-14. Placing frost here forces a
+      // detour UP (mirror of the first placement), creating a serpentine
+      // route that passes the tower twice.
+      target: gridCellRect(10, 12, 5, 1),
+      title: 'Place It Above',
+      body: "Drop the Frost tower on the row above the path. Creeps will now snake through a much longer route — and get slowed along the way.",
+      placement: 'bottom',
       advanceOn: { event: 'towerPlaced' },
     },
     {
@@ -252,10 +265,11 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'place_third',
-      // Strip below the path, cols 9-15 — more defenders for wave 2.
-      target: gridCellRect(9, 15, 7, 1),
+      // Strip just below the path, cols 9-15 — squeezes creeps between
+      // your bolt on the path and the frost above.
+      target: gridCellRect(9, 14, 7, 1),
       title: 'Add More Towers',
-      body: "Place one or two more towers anywhere — this strip is a great spot. More firepower means more kill gold and a longer detour for creeps.",
+      body: "Place one or two more towers anywhere — this strip below the path is a great spot. Creeps will be squeezed through your frost zone.",
       placement: 'top',
       advanceOn: { event: 'towerPlaced' },
     },

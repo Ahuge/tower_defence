@@ -91,6 +91,7 @@ export function TowerDockDOM() {
 
         return (
           <div key={tower.id} class="dock-slot-wrapper"
+            data-tutorial-tower-id={tower.id}
             onMouseEnter={() => setTooltip(i)}
             onMouseLeave={() => setTooltip(null)}
           >
