@@ -73,18 +73,21 @@ function openSidebarPanel(panel: 'waves' | 'economy'): void {
   window.dispatchEvent(new CustomEvent('tutorial-open-sidebar-panel', { detail: { panel } }));
 }
 
-/** Grid-cell rect in Phaser (canvas) coordinates — consumed by the
- *  `{ kind: 'canvas' }` target path. `gridX`/`gridY` return the cell
- *  centre, so subtract half the tile size for the top-left corner. Adds a
- *  couple of pixels of padding so the highlight visibly frames the cell. */
-function gridCellRect(col: number, row: number, cells = 1): TutorialTarget {
-  const pad = 2;
+/** Grid rect spanning a range of cells in Phaser world coordinates —
+ *  consumed by the `{ kind: 'canvas' }` target path. `gridX`/`gridY`
+ *  return cell centres, so we subtract half the tile for the top-left
+ *  corner. Adds a few pixels of padding so the highlight visibly frames
+ *  the cell(s). Placement is loose, so the helper typically covers a
+ *  multi-cell strip — makes the target obvious at mobile scale and gives
+ *  the player a forgiving area to tap. */
+function gridCellRect(col: number, row: number, colSpan = 1, rowSpan = 1): TutorialTarget {
+  const pad = 4;
   return {
     kind: 'canvas',
     x: gridX(col) - TILE_SIZE / 2 - pad,
     y: gridY(row) - TILE_SIZE / 2 - pad,
-    width: TILE_SIZE * cells + pad * 2,
-    height: TILE_SIZE * cells + pad * 2,
+    width: TILE_SIZE * colSpan + pad * 2,
+    height: TILE_SIZE * rowSpan + pad * 2,
   };
 }
 
@@ -193,9 +196,12 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'place_first',
-      target: gridCellRect(12, 13),
+      // Highlight a 5-cell strip on the path (cols 10-14, row 13) so the
+      // player has an obvious target zone. Placement is loose — any cell
+      // on the path works.
+      target: gridCellRect(10, 13, 5, 1),
       title: 'Place It Here',
-      body: 'Drop the tower right on the path. Watch what happens to the creep route.',
+      body: 'Drop the tower on the path anywhere in the highlighted strip. Watch what happens to the creep route.',
       placement: 'top',
       advanceOn: { event: 'towerPlaced' },
     },
@@ -207,7 +213,9 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'place_second',
-      target: gridCellRect(12, 14),
+      // Highlight the row just below the path, cols 10-14 — forces the
+      // detour wider when a tower lands here.
+      target: gridCellRect(10, 14, 5, 1),
       title: 'One More',
       body: 'Place another tower below the first. The detour gets longer still.',
       placement: 'top',

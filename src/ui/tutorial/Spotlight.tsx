@@ -41,10 +41,16 @@ export function Spotlight({ rect, padding = 6, onClickScrim }: Props) {
 
   return (
     <>
+      <style>{`
+        @keyframes tutorialSpotlightPulse {
+          0%, 100% { box-shadow: 0 0 0 9999px ${SCRIM}, 0 0 0 3px ${RING} inset, 0 0 32px ${RING}66; }
+          50%      { box-shadow: 0 0 0 9999px ${SCRIM}, 0 0 0 3px ${RING} inset, 0 0 48px ${RING}aa; }
+        }
+      `}</style>
       {/* Cutout: a box sized to the rect, with an enormous spread shadow acting
-          as the surrounding scrim. Any event on it lands on the scrim, not the
-          target, so we leave it non-interactive and click-through (the target
-          stays clickable underneath). */}
+          as the surrounding scrim. Non-interactive so taps on its area pass
+          through to whatever's under it (the highlighted DOM element, or the
+          game canvas for action-gated steps). */}
       <div
         class="tutorial-spotlight"
         style={{
@@ -52,15 +58,20 @@ export function Spotlight({ rect, padding = 6, onClickScrim }: Props) {
           left: `${x}px`, top: `${y}px`,
           width: `${w}px`, height: `${h}px`,
           borderRadius: '10px',
-          boxShadow: `0 0 0 9999px ${SCRIM}, 0 0 0 2px ${RING} inset, 0 0 24px ${RING}55`,
           pointerEvents: 'none',
           transition: 'left 180ms ease, top 180ms ease, width 180ms ease, height 180ms ease',
+          animation: 'tutorialSpotlightPulse 1.4s ease-in-out infinite',
         }}
       />
-      {/* Invisible click-catcher covering the scrim (everything except the
-          spotlight rect) so tapping the dim area dismisses or advances the
-          tutorial, but the highlighted element itself stays interactive. */}
-      <ScrimClickCatcher rect={{ x, y, width: w, height: h }} onClick={onClickScrim} />
+      {/* Scrim click-catchers only render when the step accepts a scrim-
+          click advance (onClickScrim defined). For action-gated steps
+          (towerPlaced / waveStarted / sendPurchased / frontierPurchased),
+          we intentionally let taps fall through to the canvas — otherwise
+          the scrim would swallow every tap outside the tiny highlight
+          and the player could never actually perform the action. */}
+      {onClickScrim && (
+        <ScrimClickCatcher rect={{ x, y, width: w, height: h }} onClick={onClickScrim} />
+      )}
     </>
   );
 }
