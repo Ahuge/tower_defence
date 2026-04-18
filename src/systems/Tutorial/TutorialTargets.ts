@@ -1,41 +1,77 @@
 /**
  * TutorialTargets — how a step describes the thing it wants to highlight.
  *
- * Three kinds:
- *  - `dom`     — a CSS selector for a DOM element rendered above the Phaser canvas
- *                (sidebar panels, tower dock, status bar, menu buttons). The
- *                selector is resolved each render so panels that open/close still
- *                get tracked.
- *  - `canvas`  — a rect in Phaser WORLD coordinates. We walk it through the
- *                active Phaser camera (scroll + zoom) to get buffer-space
- *                coords, then scale to viewport via the canvas bounding rect.
- *                Needed on mobile, where the camera is zoomed 1.8x and
- *                centered so the grid isn't swallowed by the tall canvas.
- *  - `screen`  — no spotlight; the popover is centered. Used for intro/outro steps.
+ * Kinds:
+ *  - `dom`             — a CSS selector for a DOM element rendered above the
+ *                         Phaser canvas (sidebar panels, tower dock, status
+ *                         bar, menu buttons). Resolved each render so panels
+ *                         that open/close still get tracked.
+ *  - `canvas`          — a static rect in Phaser WORLD coordinates. Mapped
+ *                         through the camera's worldView + the canvas
+ *                         bounding rect to viewport CSS pixels.
+ *  - `canvas-dynamic`  — same but the rect is recomputed each frame via
+ *                         `compute()`. Used for hints that follow live game
+ *                         state (e.g. "next cell along the current creep
+ *                         path").
+ *  - `screen`          — no spotlight; popover centres. Intro/outro steps.
  */
 import { UIBridge } from '../../ui/UIBridge';
+import type * as Phaser from 'phaser';
 import type { PathPoint } from '../Pathfinding';
+
+export type WorldRect = { x: number; y: number; width: number; height: number };
 
 export type TutorialTarget =
   | { kind: 'dom'; selector: string }
   | { kind: 'canvas'; x: number; y: number; width: number; height: number }
   | { kind: 'screen' }
-  /** Evaluated on every frame — return the current world-space rect, or
-   *  null if a target can't be computed right now. Used for spotlights
-   *  that depend on live game state (e.g. "highlight cells adjacent to
-   *  the current creep path, wherever it runs right now"). */
-  | { kind: 'canvas-dynamic'; compute: () => { x: number; y: number; width: number; height: number } | null };
+  | { kind: 'canvas-dynamic'; compute: () => WorldRect | null };
+
+/** Phaser Scene interface we care about — declared structurally here so
+ *  consumers across TutorialManager / TutorialTargets / TutorialTracks
+ *  don't each re-define their own `as unknown as { allPaths: … }` cast. */
+interface GameSceneLike extends Phaser.Scene {
+  allPaths?: (PathPoint[] | null)[];
+}
+
+/** Active GameScene reference, or null. */
+function getGameScene(): GameSceneLike | null {
+  const game = UIBridge.getGame();
+  if (!game) return null;
+  return (game.scene.getScene('GameScene') as GameSceneLike | undefined) ?? null;
+}
 
 /** Current creep path for the main entry point, or null if no scene is
  *  active. Exposed here (not in a separate module) because tutorial
  *  target helpers are the only consumer. */
 export function getCurrentTutorialPath(): PathPoint[] | null {
-  const game = UIBridge.getGame();
-  if (!game) return null;
-  const scene = game.scene.getScene('GameScene') as unknown as { allPaths?: (PathPoint[] | null)[] } | null;
+  const scene = getGameScene();
   const paths = scene?.allPaths;
   if (!paths || paths.length === 0) return null;
   return paths[0] ?? null;
+}
+
+/** Expose the main camera for the active GameScene, or null. Used by
+ *  TutorialManager.panCameraToStep so it doesn't have to replicate
+ *  the scene-lookup dance. */
+export function getGameCamera(): Phaser.Cameras.Scene2D.Camera | null {
+  const scene = getGameScene();
+  if (!scene || !scene.cameras) return null;
+  return scene.cameras.main ?? null;
+}
+
+/** Resolve a canvas / canvas-dynamic target to its world rect (or null
+ *  if a dynamic compute returned null). Shared by resolveTarget (for
+ *  the spotlight) and TutorialManager.panCameraToStep (for the camera
+ *  auto-pan). Static `canvas` targets just pass through. */
+export function resolveCanvasTargetRect(target: TutorialTarget): WorldRect | null {
+  if (target.kind === 'canvas') {
+    return { x: target.x, y: target.y, width: target.width, height: target.height };
+  }
+  if (target.kind === 'canvas-dynamic') {
+    return target.compute();
+  }
+  return null;
 }
 
 export interface ResolvedRect {
@@ -50,12 +86,8 @@ export interface ResolvedRect {
  *  world-to-canvas mapping. `worldView` is Phaser's own derived rect
  *  covering `(scrollX, scrollY)` through `(scrollX + width/zoom, ...)`.
  *  Returns null when there's no scene / camera active. */
-function getCameraWorldView(): { x: number; y: number; width: number; height: number } | null {
-  const game = UIBridge.getGame();
-  if (!game) return null;
-  const scene = game.scene.getScene('GameScene');
-  if (!scene || !scene.cameras) return null;
-  const cam = scene.cameras.main;
+function getCameraWorldView(): WorldRect | null {
+  const cam = getGameCamera();
   if (!cam) return null;
   const wv = cam.worldView;
   if (!wv || wv.width === 0 || wv.height === 0) return null;
@@ -75,16 +107,9 @@ export function resolveTarget(target: TutorialTarget): ResolvedRect | null {
     return { x: r.left, y: r.top, width: r.width, height: r.height };
   }
 
-  // Dynamic canvas target — compute the rect from live game state,
-  // then fall through to the canvas path below.
-  let worldRect: { x: number; y: number; width: number; height: number };
-  if (target.kind === 'canvas-dynamic') {
-    const computed = target.compute();
-    if (!computed) return null;
-    worldRect = computed;
-  } else {
-    worldRect = { x: target.x, y: target.y, width: target.width, height: target.height };
-  }
+  // Static canvas or dynamic canvas target — get the world-space rect.
+  const worldRect = resolveCanvasTargetRect(target);
+  if (!worldRect) return null;
 
   // canvas — worldRect {x,y,w,h} are in Phaser world coords.
   const canvas = document.querySelector<HTMLCanvasElement>('#game-root canvas');

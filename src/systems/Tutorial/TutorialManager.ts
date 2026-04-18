@@ -14,14 +14,45 @@
  * Follows the same subscribe/notify pattern as GameUIStore so the Preact
  * useTutorial() hook can re-render on step changes.
  */
+import * as Phaser from 'phaser';
 import { UIBridge, ScreenId } from '../../ui/UIBridge';
 import { EventBus, GameEvents } from '../EventBus';
 import { TutorialPersistence, TutorialState } from './TutorialPersistence';
 import { getTrack, TutorialTrack, TutorialStep } from './TutorialTracks';
+import { resolveCanvasTargetRect, getGameCamera } from './TutorialTargets';
 import { goToMenu } from '../../ui/navigation';
 import { GameUIStore } from '../../ui/GameUIStore';
 
 type Listener = () => void;
+
+/**
+ * Central animation + delay tuning for tutorial routing. Pulled up to
+ * module scope so tweaking pacing doesn't require hunting through
+ * half a dozen bare literals sprinkled across the file.
+ */
+const TIMING = {
+  /** Delay after 'app-splash-dismissed' before starting the first-launch
+   *  basics track — gives the menu DOM a moment to mount selectors. */
+  FIRST_LAUNCH_DELAY_MS: 200,
+  /** Delay after 'match-loading-dismissed' before kicking off the queued
+   *  in-match track. Covers DOM mount + canvas settling. */
+  MATCH_LOAD_DELAY_MS: 200,
+  /** Delay between a skip/complete and the skip-hint check. Lets any
+   *  scene transition finish so we don't fire the hint mid-navigation. */
+  SKIP_HINT_AFTER_EVENT_MS: 500,
+  /** Delay on menu screenChange before firing the skip-hint check —
+   *  gives MenuScreen time to render the ? button. */
+  SKIP_HINT_AFTER_MENU_MS: 350,
+  /** Camera pan duration for canvas-target step transitions. */
+  CAMERA_PAN_MS: 350,
+  /** How long a pendingAfterMatchLoad record is considered live — after
+   *  this timeout the queued trackId is discarded. Prevents a stale
+   *  pending ref from surviving an aborted match-load. */
+  PENDING_MATCH_LOAD_TTL_MS: 10_000,
+  /** Delay inside `maybeAutoStart` before firing `start()`. Matches the
+   *  historical buffer used when DOM targets weren't yet mounted. */
+  AUTO_START_DELAY_MS: 250,
+} as const;
 
 export interface ActiveTutorial {
   track: TutorialTrack;
@@ -45,8 +76,10 @@ class TutorialManagerClass {
 
   /** Track queued to fire once the match-load LoadingScreen has dismissed.
    *  `replay: true` bypasses the isCompleted gate — used when the player
-   *  explicitly launches the tutorial match from a CTA or the Help list. */
-  private pendingAfterMatchLoad: { id: string; replay: boolean } | null = null;
+   *  explicitly launches the tutorial match from a CTA or the Help list.
+   *  `expiresAt` guards against a stale ref if the player aborts the
+   *  match-load (close tab, back button mid-load). */
+  private pendingAfterMatchLoad: { id: string; replay: boolean; expiresAt: number } | null = null;
 
   // ─── Lifecycle ──────────────────────────────────────────
 
@@ -58,31 +91,34 @@ class TutorialManagerClass {
 
     // First launch — wait for the AppLoadingScreen splash to fully dismiss.
     // The splash emits 'app-splash-dismissed' once its fade-out completes,
-    // so we don't race it with a timer.
+    // so we don't race it with a timer. Listeners registered here live for
+    // the page lifetime (TutorialManager is a singleton); no cleanup needed.
     window.addEventListener('app-splash-dismissed', () => {
       // Small buffer lets the menu finish mounting so DOM targets resolve.
-      setTimeout(() => this.maybeStartFirstLaunch(), 200);
+      setTimeout(() => this.maybeStartFirstLaunch(), TIMING.FIRST_LAUNCH_DELAY_MS);
     });
 
-    // In-game primers — the match-load splash (LoadingScreen) runs for a
-    // minimum of 5s and fades out over 200ms. GameScene.create() fires long
-    // before that, so in-match tracks get queued here and only start once
-    // LoadingScreen signals 'match-loading-dismissed'.
     // Tutorial CTAs dispatch these events so TutorialTracks (content) can
     // stay free of imports from UIBridge / this manager (avoids a
     // load-order cycle).
     window.addEventListener('tutorial-launch-match', () => this.launchTutorialMatch());
     window.addEventListener('tutorial-go-menu', () => goToMenu());
 
+    // In-game primers — the match-load splash (LoadingScreen) runs for a
+    // minimum of 5s and fades out over 200ms. GameScene.create() fires
+    // long before that, so in-match tracks get queued in
+    // `pendingAfterMatchLoad` and only start once LoadingScreen signals
+    // 'match-loading-dismissed'.
     window.addEventListener('match-loading-dismissed', () => {
       const pending = this.pendingAfterMatchLoad;
       this.pendingAfterMatchLoad = null;
       if (!pending) return;
+      if (Date.now() > pending.expiresAt) return; // stale — drop
       // Small DOM-settle buffer before spotlights start resolving targets.
       setTimeout(() => {
         if (pending.replay) this.replay(pending.id);
         else this.maybeAutoStart(pending.id);
-      }, 200);
+      }, TIMING.MATCH_LOAD_DELAY_MS);
     });
   }
 
@@ -90,7 +126,11 @@ class TutorialManagerClass {
    *  mode and queues the `tutorial_match` track to launch once the
    *  faction-load splash finishes fading out. */
   launchTutorialMatch(): void {
-    this.pendingAfterMatchLoad = { id: 'tutorial_match', replay: true };
+    this.pendingAfterMatchLoad = {
+      id: 'tutorial_match',
+      replay: true,
+      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
+    };
     UIBridge.startScene('GameScene', {
       mode: 'tutorial',
       faction: 'arcane',
@@ -178,35 +218,29 @@ class TutorialManagerClass {
     GameUIStore.requestSelectDockTower(-1);
   }
 
-  /** If the current step targets a canvas rect (a grid cell), smoothly pan
-   *  the main camera to centre on it. Keeps the spotlight visible even if
-   *  the player panned somewhere else, and ensures mobile players don't
-   *  have to hunt for where the tutorial is pointing. No-op for DOM or
-   *  screen targets. */
+  /** If the current step targets a canvas / canvas-dynamic rect (a grid
+   *  cell or live path region), smoothly pan the main camera to centre
+   *  on it. Keeps the spotlight visible even if the player panned
+   *  somewhere else, and ensures mobile players don't have to hunt for
+   *  where the tutorial is pointing. No-op for DOM or screen targets,
+   *  or when a dynamic target's compute() can't resolve a rect yet. */
   private panCameraToStep(): void {
     if (!this.active) return;
-    const t = this.active.step.target;
-    if (t.kind !== 'canvas') return;
-    const game = UIBridge.getGame();
-    if (!game) return;
-    const scene = game.scene.getScene('GameScene');
-    if (!scene || !scene.cameras || !(scene as any).cameras?.main) return;
-    const cam = scene.cameras.main;
-    const cx = t.x + t.width / 2;
-    const cy = t.y + t.height / 2;
-    // Phaser pan: camera.pan(x, y, duration, ease).
-    if (typeof (cam as any).pan === 'function') {
-      (cam as any).pan(cx, cy, 350, 'Sine.easeInOut');
-    } else {
-      cam.centerOn(cx, cy);
-    }
+    const worldRect = resolveCanvasTargetRect(this.active.step.target);
+    if (!worldRect) return;
+    const cam = getGameCamera();
+    if (!cam) return;
+    const cx = worldRect.x + worldRect.width / 2;
+    const cy = worldRect.y + worldRect.height / 2;
+    cam.pan(cx, cy, TIMING.CAMERA_PAN_MS, Phaser.Math.Easing.Sine.InOut);
   }
 
   /** Skip the current track. Marks it completed so it won't re-trigger. */
   skip(): void {
     if (!this.active) return;
-    const wasTutorialMatch = this.active.track.id === 'tutorial_match';
-    this.markCompleted(this.active.track.id);
+    const justDismissed = this.active.track.id;
+    const wasTutorialMatch = justDismissed === 'tutorial_match';
+    this.markCompleted(justDismissed);
     this.clearActive();
     // Skipping any track also implies they've seen the first-launch flow.
     this.markFirstLaunchDismissed();
@@ -215,24 +249,29 @@ class TutorialManagerClass {
     // 99-lives state — push the player back to the menu.
     if (wasTutorialMatch) goToMenu();
     // If they're still (or now back) on the menu, drop the one-shot
-    // "where to find tutorials again" reminder.
-    this.checkForSkipHintAfterDelay();
+    // "where to find tutorials again" reminder — unless the dismissed
+    // track WAS the skip hint itself (avoid an immediate re-fire loop).
+    this.checkForSkipHintAfterDelay(justDismissed);
   }
 
   /** Finish the current track naturally. */
   complete(): void {
     if (!this.active) return;
-    this.markCompleted(this.active.track.id);
+    const justCompleted = this.active.track.id;
+    this.markCompleted(justCompleted);
     this.clearActive();
     this.markFirstLaunchDismissed();
     this.notify();
-    this.checkForSkipHintAfterDelay();
+    this.checkForSkipHintAfterDelay(justCompleted);
   }
 
   /** After a small delay (lets any scene transition land), fire the
-   *  skip-hint mini-track if the player is on the menu. */
-  private checkForSkipHintAfterDelay(): void {
-    setTimeout(() => this.maybeStartSkipHint(), 500);
+   *  skip-hint mini-track if the player is on the menu. Guarded on the
+   *  just-dismissed track id so dismissing the hint itself doesn't
+   *  immediately re-queue another check. */
+  private checkForSkipHintAfterDelay(justDismissed?: string): void {
+    if (justDismissed === 'skip_hint') return;
+    setTimeout(() => this.maybeStartSkipHint(), TIMING.SKIP_HINT_AFTER_EVENT_MS);
   }
 
   /** One-shot "tap the ? button to replay tutorials" nudge. Fires on
@@ -310,7 +349,7 @@ class TutorialManagerClass {
     // finished or skipped any tutorial before. Small delay so the
     // menu DOM has time to mount the ? button.
     if (screen === 'menu') {
-      setTimeout(() => this.maybeStartSkipHint(), 350);
+      setTimeout(() => this.maybeStartSkipHint(), TIMING.SKIP_HINT_AFTER_MENU_MS);
     }
   }
 
@@ -333,7 +372,11 @@ class TutorialManagerClass {
       null;
     if (!trackId) return;
     if (this.isCompleted(trackId)) return;
-    this.pendingAfterMatchLoad = { id: trackId, replay: false };
+    this.pendingAfterMatchLoad = {
+      id: trackId,
+      replay: false,
+      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
+    };
   }
 
   private maybeAutoStart(trackId: string): void {
@@ -345,7 +388,7 @@ class TutorialManagerClass {
       if (this.active) return;
       if (this.isCompleted(trackId)) return;
       this.start(trackId);
-    }, 250);
+    }, TIMING.AUTO_START_DELAY_MS);
   }
 
   // ─── Event-gated step advance ───────────────────────────

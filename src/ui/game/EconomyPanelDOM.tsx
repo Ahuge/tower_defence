@@ -69,8 +69,8 @@ export function EconomyPanelDOM() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'sends' && <div data-tutorial-target="econ-content-sends"><SendPanelDOM /></div>}
-      {activeTab === 'frontier' && <div data-tutorial-target="econ-content-frontier"><FrontierContent /></div>}
+      {activeTab === 'sends' && <SendPanelDOM />}
+      {activeTab === 'frontier' && <FrontierContent />}
       {activeTab === 'essence' && <EssenceContentDOM />}
       {activeTab === 'items' && <HeroItemsDOM />}
       {activeTab === 'log' && <EventLogDOM />}

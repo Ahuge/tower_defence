@@ -9,7 +9,7 @@
  * Steps advance either on "Next" click or on a game event (e.g. towerPlaced).
  * Authors keep bodies short — 1–3 sentences — and aim for 5–8 steps per track.
  */
-import type { TutorialTarget } from './TutorialTargets';
+import type { TutorialTarget, WorldRect } from './TutorialTargets';
 import { getCurrentTutorialPath } from './TutorialTargets';
 import type { GameEvents } from '../EventBus';
 import { TILE_SIZE, gridX, gridY, GRID_COLS, GRID_ROWS } from '../../config';
@@ -74,8 +74,6 @@ const SEL = {
   menuModeCards: '[data-tutorial-target="menu-modes"]',
   menuModeStandard: '[data-tutorial-target="menu-mode-standard"]',
   menuMapGrid: '[data-tutorial-target="menu-map"]',
-  econFrontierContent: '[data-tutorial-target="econ-content-frontier"]',
-  econSendsContent: '[data-tutorial-target="econ-content-sends"]',
   econFrontierTab: '[data-tutorial-target="econ-tab-frontier"]',
   econSendsTab: '[data-tutorial-target="econ-tab-sends"]',
   // Specific tower slot in the dock — matches data-tutorial-tower-id on
@@ -113,35 +111,26 @@ function switchEconTab(tab: 'sends' | 'frontier' | 'essence' | 'items' | 'log'):
   }, 0);
 }
 
-/** Grid rect spanning a range of cells in Phaser world coordinates —
- *  consumed by the `{ kind: 'canvas' }` target path. `gridX`/`gridY`
+const GRID_RECT_PAD = 4;
+
+/** World-space rect covering a span of grid cells. `gridX`/`gridY`
  *  return cell centres, so we subtract half the tile for the top-left
- *  corner. Adds a few pixels of padding so the highlight visibly frames
- *  the cell(s). Placement is loose, so the helper typically covers a
- *  multi-cell strip — makes the target obvious at mobile scale and gives
+ *  corner and pad a few pixels so the highlight visibly frames the
+ *  cells. Placement is loose — the helper typically covers a multi-
+ *  cell strip, making the target obvious at mobile scale and giving
  *  the player a forgiving area to tap. */
-function gridCellRect(col: number, row: number, colSpan = 1, rowSpan = 1): TutorialTarget {
-  const pad = 4;
+function gridCellWorldRect(col: number, row: number, colSpan = 1, rowSpan = 1): WorldRect {
   return {
-    kind: 'canvas',
-    x: gridX(col) - TILE_SIZE / 2 - pad,
-    y: gridY(row) - TILE_SIZE / 2 - pad,
-    width: TILE_SIZE * colSpan + pad * 2,
-    height: TILE_SIZE * rowSpan + pad * 2,
+    x: gridX(col) - TILE_SIZE / 2 - GRID_RECT_PAD,
+    y: gridY(row) - TILE_SIZE / 2 - GRID_RECT_PAD,
+    width: TILE_SIZE * colSpan + GRID_RECT_PAD * 2,
+    height: TILE_SIZE * rowSpan + GRID_RECT_PAD * 2,
   };
 }
 
-/** Same shape as gridCellRect but returns the raw world-pixel rect
- *  (not wrapped in a TutorialTarget), so dynamic-target compute
- *  functions can build and return one. */
-function gridCellWorldRect(col: number, row: number, colSpan: number): { x: number; y: number; width: number; height: number } {
-  const pad = 4;
-  return {
-    x: gridX(col) - TILE_SIZE / 2 - pad,
-    y: gridY(row) - TILE_SIZE / 2 - pad,
-    width: TILE_SIZE * colSpan + pad * 2,
-    height: TILE_SIZE + pad * 2,
-  };
+/** Same rect wrapped as a static `canvas` TutorialTarget. */
+function gridCellRect(col: number, row: number, colSpan = 1, rowSpan = 1): TutorialTarget {
+  return { kind: 'canvas', ...gridCellWorldRect(col, row, colSpan, rowSpan) };
 }
 
 /** The default creep-path row on the tutorial map (straight east-west
