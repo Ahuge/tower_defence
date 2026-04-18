@@ -2,6 +2,22 @@
 
 ## 2026-04-17
 
+### Tutorial match: scripted Arcane sandbox round
+New `'tutorial'` MatchMode running inside GameScene via a thin TutorialMode subclass of StandardMode. Three hand-tuned waves (5 standards / 8 std + 2 fast / 12 std + 1 armored), a new dedicated map (`tutorial` MapId — single straight east-west path with zero obstacles, excluded from MAP_ORDER so it never shows in the picker), 250g starting gold and 99 lives so the player literally cannot lose. The match is gated: `canStartWave()` returns false until the player has placed at least one tower, so they can't punch through the Start Wave button without understanding what towers do.
+
+Scripted as a 15-step TutorialTrack. Tower-placement steps use a new `gridCellRect` helper that produces `{ kind: 'canvas' }` targets so the spotlight lands on an actual grid cell; event-gated `advanceOn: { event: 'towerPlaced'/'waveStarted'/'waveCleared'/'sendPurchased'/'frontierPurchased' }` advances as the player performs the real action. Two new EventBus events (`sendPurchased` / `frontierPurchased`) emitted from StandardMode's send handler and BaseFrontierMode's purchase handlers — hooks the tutorial needs but which are also useful for future analytics.
+
+Step content walks through: pick Arcane Bolt → place it in the path → see mazing bend the route → place a second tower → start wave 1 → watch kills drop gold → notice +10/w income → buy a send (economy panel auto-opens via the `onEnter` hook we already had) → start wave 2 → buy an Arcane Leyline Nexus (copy calls out its Overcharge ability and notes other factions have different frontier mechanics — Mechanical digs, Nature harvests, Void gambles) → start wave 3 → "You've got it" with a CTA back to menu.
+
+New `TutorialStep.cta?: { label, action }` field surfaced in the Popover. On terminal steps, the CTA button replaces Next and runs the supplied action before completing the track. Basics' final step now has a "Play Tutorial Match" CTA that dispatches `tutorial-launch-match` (TutorialManager listens and calls `launchTutorialMatch` — starts GameScene with the right params and queues the scripted track for after the match-load splash dismisses). Tutorial match's final step has "Back to Menu" → `tutorial-go-menu`. Window-event dispatch rather than direct imports keeps TutorialTracks (content) free of a circular dependency on TutorialManager / UIBridge.
+
+Menu `?` help list's replay path for `tutorial_match` routes through `launchTutorialMatch` so the scene actually exists when the spotlights try to resolve. Skipping the tutorial track mid-match also navigates back to the menu so the player doesn't get stranded in the 99-lives sandbox.
+
+CameraController gets a `setLocked(flag)` method that disables pan/zoom/pinch and forces zoom=1, scroll=0 when locking. Tutorial engages it in GameScene post-`CameraController` creation — required because phones default to `DEFAULT_PHONE_ZOOM = 1.8`, which would misalign the canvas-rect spotlights against the grid cells.
+
+### Pause menu visibility fix
+The pause menu was invisible. The cause: GameScene's UI-camera setup installs an `addedtoscene` listener that auto-ignores every new game object on the UI camera. `showPauseMenu` explicitly told the main camera to ignore the overlay too — so both cameras ignored it and nothing rendered. Replaced the `cameras.main.ignore()` pattern with `uiLayer.register()` on the container and every child; UILayer.register correctly sets the cameraFilter bitmask to hide from main and show on UI. Side-effect: the Exit-to-Menu button in the pause menu is now reachable (it was always there, just on an invisible overlay).
+
 ### In-game tutorial primers wait for match-load splash
 Same timing race as the app-startup splash, different splash. In-match primers (`income_standard`, `income_hero`, `income_battle`) fired on `GameScene.create()`, which runs well before the LoadingScreen (5s min display + 200ms fade) dismisses — so the first popover appeared over the faction splash. LoadingScreen now emits `match-loading-dismissed` when it fully unmounts; `TutorialManager.onGameSceneCreated` queues the trackId into `pendingAfterMatchLoad` and the dismissal event drains the queue. Same pattern as the `app-splash-dismissed` wiring for the first-launch basics track.
 
