@@ -67,10 +67,13 @@ export class CameraController {
    *  keep canvas-rect spotlights aligned with grid cells. */
   private locked: boolean = false;
 
-  /** Freeze or unfreeze camera movement. Also resets zoom and scroll to a
-   *  canonical 1x / (0,0) origin when locking — required on phones where
-   *  DEFAULT_PHONE_ZOOM is 1.8x by default, because the tutorial's canvas-
-   *  coordinate spotlights assume a 1:1 world-to-canvas mapping. */
+  /** Freeze or unfreeze pan / zoom / pinch input so the camera stays where
+   *  it is. Intentionally does NOT reset zoom or scroll — on phones the
+   *  default 1.8x zoom + centered scroll is what makes the grid readable,
+   *  and resetting would collapse the grid into the top ~16% of the tall
+   *  mobile canvas buffer. Callers that need canvas-coordinate targets to
+   *  resolve correctly while locked should use `worldToViewport` (in
+   *  TutorialTargets) which accounts for camera scrollX/Y and zoom. */
   setLocked(flag: boolean): void {
     this.locked = flag;
     if (flag) {
@@ -78,8 +81,6 @@ export class CameraController {
       this.pinching = false;
       this.velocityX = 0;
       this.velocityY = 0;
-      this.camera.setZoom(1);
-      this.camera.setScroll(0, 0);
     }
   }
   isLocked(): boolean { return this.locked; }
