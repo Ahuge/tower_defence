@@ -1,5 +1,7 @@
 # Factions
 
+[![Tests](https://github.com/Ahuge/tower_defence/actions/workflows/test.yml/badge.svg)](https://github.com/Ahuge/tower_defence/actions/workflows/test.yml)
+
 A grid-based maze-building tower defence game with 12 factions, P2P multiplayer (1v1 and 2-4 player co-op), and deep economic strategy. Built with Phaser 4 + TypeScript + Vite.
 
 **[Play Online](https://ahuge.github.io/tower_defence/)** | [Faction Guide](FACTIONS.md) | [Game Modes](GAMEMODES.md) | [Changelog](CHANGELOG.md)
@@ -94,6 +96,9 @@ Standard, Fast, Armored, Swarm, Healer, Boss, Group, Splitter, Shielded, Evasive
 ### Difficulty System
 Easy/Normal/Hard/Insane. Each creep type interprets difficulty individually — armored gets tankier, swarms multiply, fast creeps get faster. Insane mode adds extra traits (boss damage-cap shields, armored regen, 45% evasion) and is probably not winnable.
 
+### In-game Tutorials
+Joyride-style overlay that teaches the game in context — triggered on first encounter, not up-front. Tracks: basics (first launch), income primers (first game per mode), faction primers (first time each faction is picked), mode primers (first time each mode is chosen), multiplayer (first lobby open). Each track fires at most once; completion persisted in `localStorage`. The `?` button in the menu header replays any track. Custom Preact overlay (Spotlight + Popover), no third-party library. See `src/systems/Tutorial/` and `src/ui/tutorial/`.
+
 ### Multiplayer (P2P WebRTC)
 - No server required — manual SDP exchange via clipboard
 
@@ -128,6 +133,48 @@ Create and play custom maps:
 - **Vite 8** — Build + HMR
 - **WebRTC** — P2P multiplayer (no server)
 - **Responsive layout** — Desktop (sidebar inline) + tablet (collapsible sidebar overlay, touch controls)
+
+## Testing
+
+### Unit + component tests (Vitest)
+```bash
+npm test                # run the full Vitest suite (pure logic + component + regressions)
+npm run test:watch      # re-run affected specs on save
+npm run test:ui         # Vitest's web UI
+npm run test:coverage   # text + HTML coverage report under ./coverage/
+```
+Test suite covers:
+- Tutorial state machine + persistence + content schema
+- Dynamic maze-hint path-bulge math
+- Pathfinding A* (valid routes, null for unreachable, optimality, 4-dir)
+- EconomyManager + EventBus wiring
+- Grid math round-trip (pixel ↔ col/row)
+- Preact overlay components with **overlap / viewport assertions** so a popover tweak can't silently cover the spotlight or leak off-screen
+- Regression pack under `src/__regressions__/` with one test per past bug
+
+### End-to-end tests (Playwright)
+```bash
+npm run test:e2e        # run all e2e specs (desktop + mobile Chromium)
+npm run test:e2e:ui     # interactive UI mode
+npm run test:e2e:report # open the last HTML report
+```
+E2E tests run against `npm run preview` (the production bundle) and cover:
+- App boots, splash dismisses, menu mounts
+- First-launch basics tour + skip-hint follow-up
+- Help (`?`) modal open / close / track routing
+- Full tutorial match walkthrough — every step transition, completion CTA, and quit path
+- Mobile-specific: popover viewport containment, modal portal full-cover, spotlight alignment at 2.4x zoom
+
+Tests opt into a `?test=1` debug hook (`src/testHook.ts`, zero cost in production builds) that exposes:
+- `clickCell(col, row)` / `getCellClientPos(col, row)` — synthesise canvas clicks at grid cells
+- `selectDockTower(index)` — pick a tower bypassing DOM click-propagation quirks
+- `emitGameEvent(name, ...args)` — fire EventBus events directly (for event-gated tutorial advances)
+- `getActiveTutorialStep/Track()` — probe tutorial state for deterministic waits
+
+### CI
+`.github/workflows/test.yml` runs:
+- Fast `test` job (`tsc --noEmit` + Vitest + production build) on every push and PR.
+- `e2e` job (Playwright) on PRs only — gated on the fast job passing. Browser binaries cached; HTML reports + failure videos uploaded as artifacts.
 
 ## Deploy
 ```bash

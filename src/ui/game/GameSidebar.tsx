@@ -60,6 +60,24 @@ export function GameSidebar() {
     return () => ro.disconnect();
   }, [isPhone, showFloating]);
 
+  // Tutorial steps can request a specific sidebar panel to be open so the
+  // spotlight lands on its visible content rather than the collapsed
+  // header. `panel: null` collapses whichever panel is open — used when
+  // a later step (e.g. watch-a-wave) needs the game area unobscured.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ panel: PanelId | null }>).detail;
+      if (detail === undefined) return;
+      if (detail.panel === null) {
+        setOpenPanel(null);
+      } else if (detail.panel === 'waves' || detail.panel === 'economy') {
+        setOpenPanel(detail.panel);
+      }
+    };
+    window.addEventListener('tutorial-open-sidebar-panel', onOpen);
+    return () => window.removeEventListener('tutorial-open-sidebar-panel', onOpen);
+  }, []);
+
   if (!active) return null;
 
   const toggle = (id: PanelId) => {
@@ -74,24 +92,28 @@ export function GameSidebar() {
         maxWidth: panelWidth, width: panelWidth,
         overflow: 'visible',
       }}>
-        <CollapsiblePanel
-          title="WAVES"
-          open={openPanel === 'waves'}
-          onToggle={() => toggle('waves')}
-          badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
-        >
-          <UpcomingWavesDOM />
-        </CollapsiblePanel>
+        <div data-tutorial-target="waves-panel">
+          <CollapsiblePanel
+            title="WAVES"
+            open={openPanel === 'waves'}
+            onToggle={() => toggle('waves')}
+            badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
+          >
+            <UpcomingWavesDOM />
+          </CollapsiblePanel>
+        </div>
 
-        <CollapsiblePanel
-          title="ECONOMY"
-          titleColor="#ff8844"
-          open={openPanel === 'economy'}
-          onToggle={() => toggle('economy')}
-          badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
-        >
-          <EconomyPanelDOM />
-        </CollapsiblePanel>
+        <div data-tutorial-target="economy-panel">
+          <CollapsiblePanel
+            title="ECONOMY"
+            titleColor="#ff8844"
+            open={openPanel === 'economy'}
+            onToggle={() => toggle('economy')}
+            badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
+          >
+            <EconomyPanelDOM />
+          </CollapsiblePanel>
+        </div>
 
         {/* Desktop/tablet: tower info inline in sidebar */}
         {!isPhone && selectedTower && (

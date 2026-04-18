@@ -1,7 +1,7 @@
 /**
  * EconomyPanel — combined Sends + Frontier + Log with internal tabs.
  */
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { useGameUI, useGameUISelector } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 import { SendPanelDOM } from './SendPanelDOM';
@@ -32,6 +32,22 @@ export function EconomyPanelDOM() {
   // Auto-select first visible tab if current is hidden
   const activeTab = visibleTabs.find(t => t.id === tab) ? tab : (visibleTabs[0]?.id ?? 'log');
 
+  // Tutorial can switch tabs so the right content is visible while its
+  // spotlight lands on the content area (e.g. buy_frontier opens the
+  // Frontier tab before highlighting the Leyline Nexus entry).
+  // Registered once on mount — listener calls setTab directly, and the
+  // component's existing fallback logic picks a visible tab if the
+  // requested one happens to be hidden.
+  useEffect(() => {
+    const onSwitch = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab: EconTab }>).detail;
+      if (!detail) return;
+      setTab(detail.tab);
+    };
+    window.addEventListener('tutorial-switch-econ-tab', onSwitch);
+    return () => window.removeEventListener('tutorial-switch-econ-tab', onSwitch);
+  }, []);
+
   return (
     <>
       {/* Internal tab bar */}
@@ -39,6 +55,7 @@ export function EconomyPanelDOM() {
         {visibleTabs.map(t => (
           <button key={t.id}
             class="econ-tab"
+            data-tutorial-target={`econ-tab-${t.id}`}
             onClick={() => setTab(t.id)}
             style={{
               flex: 1,
@@ -51,9 +68,11 @@ export function EconomyPanelDOM() {
         ))}
       </div>
 
-      {/* Tab content */}
-      {activeTab === 'sends' && <SendPanelDOM />}
-      {activeTab === 'frontier' && <FrontierContent />}
+      {/* Tab content — wrapped in a tagged div so tutorial overlap
+          tests can target the content region (the popover must not
+          cover this box when it's the interactive target). */}
+      {activeTab === 'sends' && <div data-tutorial-target="econ-content-sends"><SendPanelDOM /></div>}
+      {activeTab === 'frontier' && <div data-tutorial-target="econ-content-frontier"><FrontierContent /></div>}
       {activeTab === 'essence' && <EssenceContentDOM />}
       {activeTab === 'items' && <HeroItemsDOM />}
       {activeTab === 'log' && <EventLogDOM />}

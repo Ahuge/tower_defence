@@ -15,20 +15,20 @@ export function StatusBarDOM() {
   const speedColor = speedColors[speed] ?? '#aaa';
 
   return (
-    <div class="status-bar">
+    <div class="status-bar" data-tutorial-target="status-bar">
       {/* Stats */}
       <div class="status-stats">
-        <span class="status-gold">Gold: {Math.floor(gold)}</span>
-        <span class="status-lives">{lives > 0 ? `Lives: ${lives}` : 'DEAD'}</span>
-        <span class="status-wave">Wave: {currentWave}{totalWaves > 0 ? `/${totalWaves}` : ''}</span>
-        <span class="status-income">+{income}/w</span>
+        <span class="status-gold" data-tutorial-target="status-gold">Gold: {Math.floor(gold)}</span>
+        <span class="status-lives" data-tutorial-target="status-lives">{lives > 0 ? `Lives: ${lives}` : 'DEAD'}</span>
+        <span class="status-wave" data-tutorial-target="status-wave">Wave: {currentWave}{totalWaves > 0 ? `/${totalWaves}` : ''}</span>
+        <span class="status-income" data-tutorial-target="status-income">+{income}/w</span>
         {essence && <span style={{ color: '#44ddff' }}>{Math.floor(essence.essence)}e ({essence.rate.toFixed(1)}/s)</span>}
       </div>
 
       {/* Controls */}
       <div class="status-controls">
         {canStartWave && (
-          <button class="status-btn status-btn-wave" onClick={() => GameUIStore.requestStartWave()}>
+          <button class="status-btn status-btn-wave" data-tutorial-target="start-wave" onClick={() => GameUIStore.requestStartWave()}>
             {versusTimer >= 0 ? `Ready (${versusTimer}s)` : '▶ Next Wave'}
           </button>
         )}

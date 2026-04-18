@@ -1,6 +1,6 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 
-export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'custom';
+export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'custom' | 'tutorial';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -311,6 +311,20 @@ export const MAPS: Record<MapId, MapDefinition> = {
     name: 'Custom',
     description: 'User-created map loaded from JSON.',
     theme: 'generic',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [],
+    noBuild: [],
+  },
+  tutorial: {
+    // Tutorial match map — single straight left-to-right path with generous
+    // build space on both sides. Intentionally empty of obstacles so the
+    // mazing moment is clean: placing the suggested tower on the path forces
+    // an obvious detour the player can see. Not listed in MAP_ORDER.
+    id: 'tutorial',
+    name: 'Tutorial',
+    description: 'Onboarding map — simple straight path for your first match.',
+    theme: 'forest',
     entries: [{ col: 0, row: MID_ROW }],
     exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
     blocked: [],

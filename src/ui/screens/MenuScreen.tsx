@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { TutorialMenuButton } from '../tutorial/TutorialMenuButton';
 import { MAP_ORDER, MAPS, MapId } from '../../data/Maps';
 import { getDailySeed } from '../../data/MapGenerator';
 import { MatchMode } from '../../data/WaveDefinitions';
@@ -63,11 +64,14 @@ export function MenuScreen() {
     <>
       <div class="ui-header">
         <div class="ui-header-title">FACTIONS</div>
-        <ShardBadge />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <TutorialMenuButton />
+          <ShardBadge />
+        </div>
       </div>
       <div class="ui-section">
         <div class="ui-section-title">Map</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        <div data-tutorial-target="menu-map" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {MAP_ORDER.map(mapId => {
             const isSelected = mapId === selectedMap;
             const isCustom = mapId === 'custom';
@@ -101,9 +105,14 @@ export function MenuScreen() {
       </div>
       <div class="ui-section" style={{ paddingTop: 0 }}>
         <div class="ui-section-title">Mode</div>
-        <div class="card-grid">
+        <div class="card-grid" data-tutorial-target="menu-modes">
           {MODES.map(m => (
-            <div key={m.id} class="card" onClick={() => handleModeClick(m)}>
+            <div
+              key={m.id}
+              class="card"
+              data-tutorial-target={m.id === 'standard' ? 'menu-mode-standard' : undefined}
+              onClick={() => handleModeClick(m)}
+            >
               <div class="card-accent" style={{ background: m.accent }} />
               <div class="card-name" style={{ marginTop: '4px' }}>{m.label}</div>
               <div class="card-desc">{m.desc}</div>
@@ -113,10 +122,10 @@ export function MenuScreen() {
         <div class="text-dim text-sm text-center mt-2">Multiplayer modes use P2P WebRTC — no server required</div>
       </div>
       <div class="ui-section" style={{ paddingTop: 0, display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <button class="btn btn-gold" onClick={() => UIBridge.show('store')}>Store</button>
+        <button class="btn btn-gold" data-tutorial-target="menu-store" onClick={() => UIBridge.show('store')}>Store</button>
         <button class="btn btn-primary" onClick={() => UIBridge.show('battlepass')}>Battle Pass</button>
         <button class="btn btn-green" onClick={() => UIBridge.show('inventory')}>Inventory</button>
-        <button class="btn" onClick={() => UIBridge.show('encyclopedia')}>Encyclopedia</button>
+        <button class="btn" data-tutorial-target="menu-encyclopedia" onClick={() => UIBridge.show('encyclopedia')}>Encyclopedia</button>
         <button class="btn" onClick={() => UIBridge.show('leaderboard')}>Leaderboard</button>
         <button class="btn" onClick={() => UIBridge.show('changelog')}>Changelog</button>
         <button class="btn btn-gold" onClick={() => { ShardWallet.earn(5000, 'test: Add Money'); setShardTick(t => t + 1); }}>+5000 Shards (test)</button>

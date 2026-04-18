@@ -76,7 +76,12 @@ export function AppLoadingScreen() {
       if (dismissed || !preloadComplete || !minElapsed || displayedLocal < 1) return;
       dismissed = true;
       setFadeOut(true);
-      setTimeout(() => setVisible(false), FADE_MS);
+      setTimeout(() => {
+        setVisible(false);
+        // Signal for components that need to wait until the splash is fully
+        // gone (e.g. TutorialManager) before showing their own overlays.
+        window.dispatchEvent(new Event('app-splash-dismissed'));
+      }, FADE_MS);
     };
 
     const tick = (now: number) => {

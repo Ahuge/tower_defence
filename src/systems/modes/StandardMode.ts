@@ -44,6 +44,7 @@ export class StandardMode extends BaseFrontierMode {
       ctx.statsTracker.recordSendSpent(scaledCost);
       ctx.statsTracker.recordSendIncome(scaledIncome);
       ctx.statsTracker.recordGoldSpent(scaledCost);
+      ctx.eventBus.emit('sendPurchased', opt.id);
     }, ctx.sidebarTopY);
 
     // Track wave for send scaling/unlocks
@@ -79,6 +80,7 @@ export class StandardMode extends BaseFrontierMode {
         ctx.statsTracker.recordSendSpent(cost);
         ctx.statsTracker.recordSendIncome(income);
         ctx.statsTracker.recordGoldSpent(cost);
+        ctx.eventBus.emit('sendPurchased', opt.id);
         this.updateDOMSendOptions(this.currentWave);
       },
     });

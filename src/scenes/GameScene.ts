@@ -58,6 +58,9 @@ import { SidebarOverlay } from '../ui/SidebarOverlay';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { UIScale } from '../systems/UIScale';
 import { CircleDeathHandler } from '../systems/CircleDeathHandler';
+import { TutorialManager } from '../systems/Tutorial/TutorialManager';
+import { PathFlowIndicator } from '../systems/PathFlowIndicator';
+import { TutorialMode } from '../systems/modes/TutorialMode';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
@@ -168,13 +171,11 @@ export class GameScene extends Phaser.Scene {
   pathGraphics!: Phaser.GameObjects.Graphics;
   private terrainMgr!: TerrainManager;
 
-  // Path preview pips
-  private pathPips: Phaser.GameObjects.Arc[] = [];
-  private pathPipProgress: number[] = [];
-  private pathPipTimer: number = 0;
-  private pathPipActive: boolean = false;
-  private readonly PATH_PIP_INTERVAL = 10000; // ms between pip runs
-  private readonly PATH_PIP_SPEED = 0.15;     // progress per second (2x creep speed ~ 6-7s to traverse)
+  // Path flow indicator — one per distinct path (multi-entry maps get several).
+  // Continuously visible between waves, dims while a wave is running. Replaces
+  // the old single-Arc pip that lerped along the path and kept getting
+  // mistaken for a creep.
+  private pathFlows: PathFlowIndicator[] = [];
   private mapDef!: MapDefinition;
   private _gameStartTime: number = 0;
   hoverGraphics!: Phaser.GameObjects.Graphics;
@@ -289,6 +290,9 @@ export class GameScene extends Phaser.Scene {
       onCycleSpeed: () => {
         this.cycleSpeed();
       },
+      onPause: () => {
+        this.togglePause();
+      },
       onFrontierDoodad: (color: number, buildingId: string, factionFallback?: string) => {
         return this.placeFrontierDoodad(color, buildingId, factionFallback);
       },
@@ -297,9 +301,13 @@ export class GameScene extends Phaser.Scene {
         if (index < 0) {
           this.enterNoneMode();
           GameUIStore.selectDockTower(-1);
+          // Intentionally don't emit dockTowerSelected on deselect — the
+          // tutorial's pick_tower step advances only on actual selection.
         } else if (index < this.activeTowerIds.length) {
-          this.enterBuildMode(this.activeTowerIds[index]);
+          const towerId = this.activeTowerIds[index];
+          this.enterBuildMode(towerId);
           GameUIStore.selectDockTower(index);
+          this.eventBus.emit('dockTowerSelected', index, towerId);
         }
       },
     });
@@ -314,7 +322,10 @@ export class GameScene extends Phaser.Scene {
 
     this._towers = [];
     this._creeps = [];
-    this.lives = STARTING_LIVES;
+    // Tutorial gets 99 lives so the player literally can't die. The
+    // matching +150 gold bump lives further down — after `this.economy`
+    // is constructed.
+    this.lives = this.matchMode === 'tutorial' ? 99 : STARTING_LIVES;
     this.currentWave = 0;
     this.waveActive = false;
     this.betweenWaves = true;
@@ -359,6 +370,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.eventBus = new EventBus();
+    TutorialManager.setGameEventBus(this.eventBus);
+    TutorialManager.onGameSceneCreated(this.matchMode);
 
     // Resolve map definition — generate for random maps, use custom if provided
     let mapDef: MapDefinition;
@@ -389,6 +402,9 @@ export class GameScene extends Phaser.Scene {
 
     // Systems
     this.economy = new EconomyManager(this.eventBus);
+    // Tutorial: +150 gold on top of STARTING_GOLD so the player can afford
+    // two Arcane Bolts + a send and a Leyline Nexus.
+    if (this.matchMode === 'tutorial') this.economy.addGold(150);
     const versusRef = this.registry.get('versus') as VersusManager | null;
     const waveSeed = versusRef?.sharedSeed ?? 0;
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
@@ -503,6 +519,8 @@ export class GameScene extends Phaser.Scene {
       }).setDepth(25).setOrigin(0, 1);
     } else if (this.matchMode === 'battle') {
       this.gameMode = new BattleMode();
+    } else if (this.matchMode === 'tutorial') {
+      this.gameMode = new TutorialMode();
     } else if (this.matchMode === 'circle_coop' && this.circle) {
       this.gameMode = new CircleCoopMode();
     } else if (this.matchMode === 'gauntlet') {
@@ -717,6 +735,13 @@ export class GameScene extends Phaser.Scene {
         this.cameraCtrl.setGridOffset(getGridOffsetX());
       }
       this.inputMgr.setCameraController(this.cameraCtrl);
+      // Tutorial mode: camera stays unlocked so the player can pan /
+      // zoom freely. The tutorial's canvas-rect spotlights track the
+      // camera via `camera.worldView`, and TutorialManager auto-pans
+      // to each step's target on step change so the player never
+      // loses the highlighted cell off-screen. Mobile's 2.4x intro
+      // zoom + animated zoom-in lives in CameraController — applies
+      // to every mobile match, not just the tutorial.
     }
 
     // Versus mode setup
@@ -1384,8 +1409,10 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.paused) return;
 
-    // Path preview pips (uses real delta, not speed-adjusted)
-    this.updatePathPips(delta);
+    // Path flow indicator (uses real delta — visual effect is independent
+    // of game speed). Dims while a wave is active so it doesn't compete
+    // with the live creeps.
+    this.updatePathFlow(delta);
 
     // Apply game speed
     delta *= this.gameSpeed;
@@ -1461,6 +1488,11 @@ export class GameScene extends Phaser.Scene {
       if (this.circle) {
         this.circle.broadcast({ type: 'circle_victory', winnerIndex: this.circle.playerIndex });
       }
+      // Tutorial match: skip the GameOverScene hand-off so the player
+      // stays inside the match while the tutorial's closing popover
+      // (with "Back to Menu" CTA) sits over the live board. Prevents
+      // the victory screen from flashing over the popover.
+      if (this.matchMode === 'tutorial') return;
       this.goToGameOver(true);
       return;
     }
@@ -1731,14 +1763,22 @@ export class GameScene extends Phaser.Scene {
 
     this.pauseOverlay = this.add.container(0, 0).setDepth(50);
 
-    // Pause overlay should render on UI camera (screen-space, no scroll/zoom)
-    this.cameras.main.ignore(this.pauseOverlay);
+    // Pause overlay renders on the UI camera only. The UI-camera setup at
+    // line ~902 installs an `addedtoscene` listener that auto-ignores every
+    // new GameObject on the UI camera, so we have to explicitly un-ignore
+    // via uiLayer.register — which also tells the main camera to ignore it.
+    const registerUi = (obj: Phaser.GameObjects.GameObject) => {
+      if (this.uiLayer) this.uiLayer.register(obj);
+      else this.cameras.main.ignore(obj);
+    };
+    registerUi(this.pauseOverlay);
 
     // Dim overlay — covers entire canvas
     const dim = this.add.graphics();
     dim.fillStyle(0x000000, 0.6);
     dim.fillRect(0, 0, canvasW, canvasH);
     this.pauseOverlay.add(dim);
+    registerUi(dim);
 
     // Panel
     const panelW = 260;
@@ -1752,17 +1792,20 @@ export class GameScene extends Phaser.Scene {
     panel.lineStyle(2, 0x555555, 1);
     panel.strokeRect(px, py, panelW, panelH);
     this.pauseOverlay.add(panel);
+    registerUi(panel);
 
-    this.add.text(cx, py + 20, 'PAUSED', {
+    const title = this.add.text(cx, py + 20, 'PAUSED', {
       fontSize: '24px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
-    this.pauseOverlay.add(this.children.getAt(this.children.length - 1) as Phaser.GameObjects.Text);
+    this.pauseOverlay.add(title);
+    registerUi(title);
 
     // Resume button
     const resumeBtn = this.add.text(cx, py + 70, '[ Resume ]', {
       fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(resumeBtn);
+    registerUi(resumeBtn);
     resumeBtn.setInteractive({ useHandCursor: true });
     resumeBtn.on('pointerdown', () => this.togglePause());
     resumeBtn.on('pointerover', () => resumeBtn.setColor('#88ff88'));
@@ -1773,6 +1816,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '16px', color: '#ff8844', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(exitBtn);
+    registerUi(exitBtn);
     exitBtn.setInteractive({ useHandCursor: true });
     exitBtn.on('pointerdown', () => {
       this.hidePauseMenu();
@@ -1791,11 +1835,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '10px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(hint);
-
-    // Ensure all children are also ignored by main camera
-    for (const child of this.pauseOverlay.list) {
-      this.cameras.main.ignore(child as Phaser.GameObjects.GameObject);
-    }
+    registerUi(hint);
   }
 
   private hidePauseMenu(): void {
@@ -1926,82 +1966,36 @@ export class GameScene extends Phaser.Scene {
       g.strokePath();
     }
 
-    // Reset pips when paths change
-    this.resetPathPips();
-  }
-
-  private resetPathPips(): void {
-    for (const pip of this.pathPips) pip.destroy();
-    this.pathPips = [];
-    this.pathPipProgress = [];
-    this.pathPipActive = false;
-    this.pathPipTimer = 0;
-  }
-
-  private startPathPips(): void {
-    this.resetPathPips();
+    // Rebuild path flow indicators — one per distinct path. Reuse existing
+    // indicators where possible so the `time` phase keeps flowing smoothly
+    // across path recomputes instead of resetting to 0. Any surplus
+    // indicators (paths that disappeared) get destroyed. A freshly built
+    // indicator is flashed so the player's eye catches the new routing.
     const validPaths = this.allPaths.filter(p => p && p.length >= 2);
-    if (validPaths.length === 0) return;
-
-    for (const path of validPaths) {
-      if (!path) continue;
-      const pip = this.add.circle(gridX(path[0].col), gridY(path[0].row), 4, 0xffcc44, 0.8);
-      pip.setDepth(4);
-      this.pathPips.push(pip);
-      this.pathPipProgress.push(0);
+    while (this.pathFlows.length > validPaths.length) {
+      const surplus = this.pathFlows.pop();
+      surplus?.destroy();
     }
-    this.pathPipActive = true;
-  }
-
-  private updatePathPips(realDelta: number): void {
-    this.pathPipTimer += realDelta;
-
-    if (!this.pathPipActive && this.pathPipTimer >= this.PATH_PIP_INTERVAL) {
-      this.pathPipTimer = 0;
-      this.startPathPips();
-      return;
-    }
-
-    if (!this.pathPipActive) return;
-
-    const validPaths = this.allPaths.filter(p => p && p.length >= 2);
-    let allDone = true;
-
-    for (let i = 0; i < this.pathPips.length; i++) {
-      const pip = this.pathPips[i];
-      const path = validPaths[i];
-      if (!pip || !path) continue;
-
-      this.pathPipProgress[i] += this.PATH_PIP_SPEED * (realDelta / 1000);
-      const progress = this.pathPipProgress[i];
-
-      if (progress >= 1) {
-        pip.setVisible(false);
-        continue;
+    for (let i = 0; i < validPaths.length; i++) {
+      const path = validPaths[i]!;
+      if (this.pathFlows[i]) {
+        this.pathFlows[i].setPath(path);
+      } else {
+        this.pathFlows[i] = new PathFlowIndicator(this, path);
       }
-      allDone = false;
-
-      // Interpolate position along path
-      const totalSegments = path.length - 1;
-      const exactSeg = progress * totalSegments;
-      const segIdx = Math.floor(exactSeg);
-      const segT = exactSeg - segIdx;
-      const a = path[Math.min(segIdx, path.length - 1)];
-      const b = path[Math.min(segIdx + 1, path.length - 1)];
-      const px = gridX(a.col) + (gridX(b.col) - gridX(a.col)) * segT;
-      const py = gridY(a.row) + (gridY(b.row) - gridY(a.row)) * segT;
-      pip.setPosition(px, py);
-      pip.setVisible(true);
-      // Fade out near the end
-      pip.setAlpha(progress > 0.85 ? (1 - progress) / 0.15 * 0.8 : 0.8);
+      this.pathFlows[i].flash();
     }
+  }
 
-    if (allDone) {
-      this.pathPipActive = false;
-      for (const pip of this.pathPips) pip.destroy();
-      this.pathPips = [];
-      this.pathPipProgress = [];
-    }
+  private resetPathFlow(): void {
+    for (const f of this.pathFlows) f.destroy();
+    this.pathFlows = [];
+  }
+
+  private updatePathFlow(realDelta: number): void {
+    if (this.pathFlows.length === 0) return;
+    const dimmed = this.waveActive;
+    for (const f of this.pathFlows) f.tick(realDelta, dimmed);
   }
 
   toggleAutoPlay(): void {
@@ -2252,11 +2246,12 @@ export class GameScene extends Phaser.Scene {
     // Destroy all creeps
     for (const c of this._creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
     this._creeps = [];
-    // Clean up path pips
-    this.resetPathPips();
+    // Clean up path flow indicators
+    this.resetPathFlow();
     // Clean up game mode (panels, keyboard listeners)
     this.gameMode.destroy?.();
     // Clean up event bus
+    TutorialManager.setGameEventBus(null);
     this.eventBus.clear();
     // Reset UI camera + layer so they're re-created on next game
     if (this.uiCamera) {

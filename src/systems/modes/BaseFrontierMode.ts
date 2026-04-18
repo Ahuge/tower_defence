@@ -35,6 +35,7 @@ export abstract class BaseFrontierMode implements GameMode {
           ctx.eventLog.frontierPurchased(building.name, building.cost);
           ctx.statsTracker.recordFrontierSpent(building.cost);
           ctx.statsTracker.recordGoldSpent(building.cost);
+          ctx.eventBus.emit('frontierPurchased', building.id);
         }
       },
       (action: string, idx: number) => this.handleFrontierAction(action, idx),
@@ -54,6 +55,7 @@ export abstract class BaseFrontierMode implements GameMode {
           this.syncFrontierToDOM();
           const handle = GameUIStore.placeFrontierDoodad(0xffaa44, building.id, ctx.faction ?? 'generic');
           if (handle) owned._doodad = handle;
+          ctx.eventBus.emit('frontierPurchased', building.id);
         }
       },
       onFrontierAction: (action: string, idx: number) => {
