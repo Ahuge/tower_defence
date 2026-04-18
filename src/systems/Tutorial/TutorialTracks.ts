@@ -294,21 +294,12 @@ const tutorialMatch: TutorialTrack = {
       body: "The path bent around your tower. Every tower you drop reshapes the route — the longer you make creeps walk, the more time your towers have to shoot them.",
     },
     {
-      id: 'pick_frost',
-      target: { kind: 'dom', selector: SEL.dockFrostSlot },
-      title: 'Try the Frost Tower',
-      body: "Different towers do different things. Arcane Frost slows creeps it hits — stack it with damage and creeps spend ages in your killzone. Select it from the dock (hotkey 2).",
-      placement: 'top',
-      advanceOn: { event: 'dockTowerSelected' },
-    },
-    {
       id: 'place_second',
-      // Strip above the path, cols 10-14. Placing frost here forces a
-      // detour UP (mirror of the first placement), creating a serpentine
-      // route that passes the tower twice.
-      target: gridCellRect(10, 12, 5, 1),
-      title: 'Place It Above',
-      body: "Drop the Frost tower on the row above the path. Creeps will now snake through a much longer route — and get slowed along the way.",
+      // Dynamic: highlights the strip just past the first tower's
+      // bulge, so placing another Bolt extends the detour.
+      target: nextMazeExtensionTarget(),
+      title: 'Extend the Maze',
+      body: "Drop another Bolt in the highlighted strip — that's right along the new route. You want creeps to walk past your towers as long as possible.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
@@ -316,7 +307,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'start_wave_1',
       target: { kind: 'dom', selector: SEL.startWaveBtn },
       title: 'Start Wave 1',
-      body: 'Click Next Wave. Five slow creeps — your towers handle them easily.',
+      body: "Click Next Wave. Five slow creeps — your two Bolts handle them easily. Then we'll add some variety.",
       placement: 'top',
       advanceOn: { event: 'waveStarted' },
     },
@@ -336,14 +327,20 @@ const tutorialMatch: TutorialTrack = {
       placement: 'bottom',
     },
     {
-      id: 'place_third',
-      // Dynamic hint: inspects the current creep route and highlights
-      // the strip just past the side the path is already bulging
-      // toward. If the player mazed above, the strip points further
-      // above; if they mazed below, it points below.
+      id: 'pick_frost',
+      target: { kind: 'dom', selector: SEL.dockFrostSlot },
+      title: 'Try the Frost Tower',
+      body: "Not every tower deals damage. Arcane Frost slows creeps it hits — pair it with your Bolts and creeps crawl through your killzone. Select it from the dock (hotkey 2).",
+      placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
+    },
+    {
+      id: 'place_frost',
+      // Dynamic: drop the Frost tower in the strip adjacent to the
+      // current route so it hits creeps in the maze, not a dead zone.
       target: nextMazeExtensionTarget(),
-      title: 'Add More Towers',
-      body: "Creeps are now detouring around your towers. Place one or two more in the highlighted strip — that's right along their new route, and it keeps the maze growing.",
+      title: 'Place the Frost',
+      body: "Drop it in the highlighted strip so it hits the detoured creeps. Wave 2 brings fast creeps — you'll see the slow effect clearly.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
