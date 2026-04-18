@@ -11,6 +11,7 @@
  */
 import type { TutorialTarget } from './TutorialTargets';
 import type { GameEvents } from '../EventBus';
+import { TILE_SIZE, gridX, gridY } from '../../config';
 
 export type Placement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto';
 
@@ -31,6 +32,10 @@ export interface TutorialStep {
   /** Fired once when the step becomes active. Use for UI side-effects like
    *  opening a collapsed panel so its target is actually visible. */
   onEnter?: () => void;
+  /** Optional call-to-action button rendered in the popover alongside (or
+   *  in place of) Next. When present on a terminal step, replaces Next
+   *  entirely; clicking invokes `action` and then completes the track. */
+  cta?: { label: string; action: () => void };
 }
 
 export interface TutorialTrack {
@@ -66,6 +71,21 @@ const SEL = {
  *  spotlight lands on its visible content instead of the collapsed header. */
 function openSidebarPanel(panel: 'waves' | 'economy'): void {
   window.dispatchEvent(new CustomEvent('tutorial-open-sidebar-panel', { detail: { panel } }));
+}
+
+/** Grid-cell rect in Phaser (canvas) coordinates — consumed by the
+ *  `{ kind: 'canvas' }` target path. `gridX`/`gridY` return the cell
+ *  centre, so subtract half the tile size for the top-left corner. Adds a
+ *  couple of pixels of padding so the highlight visibly frames the cell. */
+function gridCellRect(col: number, row: number, cells = 1): TutorialTarget {
+  const pad = 2;
+  return {
+    kind: 'canvas',
+    x: gridX(col) - TILE_SIZE / 2 - pad,
+    y: gridY(row) - TILE_SIZE / 2 - pad,
+    width: TILE_SIZE * cells + pad * 2,
+    height: TILE_SIZE * cells + pad * 2,
+  };
 }
 
 // ─── Tracks ─────────────────────────────────────────────────
@@ -139,8 +159,140 @@ const basics: TutorialTrack = {
       id: 'done',
       target: { kind: 'dom', selector: SEL.menuModeStandard },
       title: "You're Ready",
-      body: "Start with Standard on Plains with Normal difficulty. Replay any tutorial from the ? button in the menu header.",
+      body: "Start with Standard on Plains with Normal difficulty — or take the guided practice match first.",
       placement: 'top',
+      cta: {
+        label: 'Play Tutorial Match',
+        action: () => window.dispatchEvent(new Event('tutorial-launch-match')),
+      },
+    },
+  ],
+};
+
+/** Scripted sandbox round — the onboarding tutorial match.
+ *  Plays as Arcane on the tutorial map (straight path, row 13, single
+ *  entry at col 0). Grid cell suggestions target col ~12-14 on row 13 so
+ *  placing a tower there forces a visible path detour. */
+const tutorialMatch: TutorialTrack = {
+  id: 'tutorial_match',
+  name: 'Tutorial Match',
+  summary: 'A scripted round as Arcane: maze, run a wave, send, frontier.',
+  steps: [
+    {
+      id: 'welcome',
+      target: { kind: 'screen' },
+      title: 'Welcome',
+      body: "A short sandbox round — a few minutes, can't lose. We'll place towers, run three waves, and use the income systems at least once each.",
+    },
+    {
+      id: 'pick_tower',
+      target: { kind: 'dom', selector: SEL.towerDock },
+      title: 'Pick a Tower',
+      body: 'Click Arcane Bolt in the dock at the bottom. Hotkey 1 works too.',
+      placement: 'top',
+    },
+    {
+      id: 'place_first',
+      target: gridCellRect(12, 13),
+      title: 'Place It Here',
+      body: 'Drop the tower right on the path. Watch what happens to the creep route.',
+      placement: 'top',
+      advanceOn: { event: 'towerPlaced' },
+    },
+    {
+      id: 'mazing',
+      target: { kind: 'screen' },
+      title: "That's Mazing",
+      body: "The path bent around your tower. Every tower you drop reshapes the route — the longer you make creeps walk, the more time your towers have to shoot them.",
+    },
+    {
+      id: 'place_second',
+      target: gridCellRect(12, 14),
+      title: 'One More',
+      body: 'Place another tower below the first. The detour gets longer still.',
+      placement: 'top',
+      advanceOn: { event: 'towerPlaced' },
+    },
+    {
+      id: 'start_wave_1',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Start Wave 1',
+      body: 'Click Next Wave. Five slow creeps — your towers handle them easily.',
+      placement: 'top',
+      advanceOn: { event: 'waveStarted' },
+    },
+    {
+      id: 'watch_wave_1',
+      target: { kind: 'dom', selector: SEL.statusGold },
+      title: 'Kills Drop Gold',
+      body: "Every creep you kill pays out. Watch your Gold go up. Wait for the wave to finish.",
+      placement: 'bottom',
+      advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'income_bonus',
+      target: { kind: 'dom', selector: SEL.statusIncome },
+      title: 'Wave Income',
+      body: "See the +10/w next to your gold? That's income — you get it at the end of every wave regardless of kills. Sends and Frontier buildings both raise it.",
+      placement: 'bottom',
+    },
+    {
+      id: 'buy_send',
+      target: { kind: 'dom', selector: SEL.economyPanel },
+      title: 'Buy a Send',
+      body: 'Open ECONOMY, pick a Standard send, and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
+      placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
+      advanceOn: { event: 'sendPurchased' },
+    },
+    {
+      id: 'start_wave_2',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Start Wave 2',
+      body: 'The send will join the wave. Two towers should still be enough.',
+      placement: 'top',
+      advanceOn: { event: 'waveStarted' },
+    },
+    {
+      id: 'watch_wave_2',
+      target: { kind: 'screen' },
+      title: 'Next Wave Running',
+      body: 'Let it play out. Next we try the safer income source.',
+      advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'buy_frontier',
+      target: { kind: 'dom', selector: SEL.economyPanel },
+      title: 'Build a Frontier',
+      body: "Arcane's Frontier is the Leyline Nexus — steady income every wave, plus an Overcharge button you can hit for 3x burst gold at the cost of two dormant waves. Other factions have their own versions: Mechanical digs for more (with collapse risk), Nature grows and harvests, Void gambles. Pick the Leyline Nexus and buy it.",
+      placement: 'right',
+      onEnter: () => openSidebarPanel('economy'),
+      advanceOn: { event: 'frontierPurchased' },
+    },
+    {
+      id: 'start_wave_3',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Final Wave',
+      body: "One heavier creep in this one. If it leaks you'll barely notice — you have 99 lives here.",
+      placement: 'top',
+      advanceOn: { event: 'waveStarted' },
+    },
+    {
+      id: 'watch_wave_3',
+      target: { kind: 'screen' },
+      title: 'Bring It Home',
+      body: 'Let the final wave finish.',
+      advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'done',
+      target: { kind: 'screen' },
+      title: "You've Got It",
+      body: "Place towers to maze, kill for gold, invest in income. Pick a faction and run a real match — Plains, Standard, Normal is a clean first pick.",
+      cta: {
+        label: 'Back to Menu',
+        action: () => window.dispatchEvent(new Event('tutorial-go-menu')),
+      },
     },
   ],
 };
@@ -372,6 +524,7 @@ const modeTracks: TutorialTrack[] = [
 
 const ALL: TutorialTrack[] = [
   basics,
+  tutorialMatch,
   incomeStandard,
   incomeBattle,
   incomeHero,

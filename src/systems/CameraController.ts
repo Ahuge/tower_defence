@@ -62,6 +62,27 @@ export class CameraController {
   private canPanCheck: (() => boolean) | null = null;
   /** Desktop: X offset where the game grid starts (sidebar width) */
   private gridOffsetX: number = 0;
+  /** When true, all pan / zoom / pinch input is ignored so the camera stays
+   *  fixed at its current scroll and zoom. Used by the tutorial match to
+   *  keep canvas-rect spotlights aligned with grid cells. */
+  private locked: boolean = false;
+
+  /** Freeze or unfreeze camera movement. Also resets zoom and scroll to a
+   *  canonical 1x / (0,0) origin when locking — required on phones where
+   *  DEFAULT_PHONE_ZOOM is 1.8x by default, because the tutorial's canvas-
+   *  coordinate spotlights assume a 1:1 world-to-canvas mapping. */
+  setLocked(flag: boolean): void {
+    this.locked = flag;
+    if (flag) {
+      this.isPanning = false;
+      this.pinching = false;
+      this.velocityX = 0;
+      this.velocityY = 0;
+      this.camera.setZoom(1);
+      this.camera.setScroll(0, 0);
+    }
+  }
+  isLocked(): boolean { return this.locked; }
 
   constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number, viewportHeight?: number) {
     this.scene = scene;
@@ -98,6 +119,7 @@ export class CameraController {
     const scene = this.scene;
 
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.locked) return;
       const pointers = scene.input.manager.pointers;
       const activeCount = pointers.filter(p => p.isDown).length;
       if (activeCount >= 2) return;
@@ -116,6 +138,7 @@ export class CameraController {
     });
 
     scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (this.locked) return;
       // Pinch-to-zoom: two fingers
       const pointers = scene.input.manager.pointers;
       const downPointers = pointers.filter(p => p.isDown);
@@ -188,6 +211,7 @@ export class CameraController {
 
     // Scroll wheel zoom — zoom toward cursor position
     scene.input.on('wheel', (pointer: Phaser.Input.Pointer, _g: any, _dx: number, dy: number, _dz: number) => {
+      if (this.locked) return;
       const wpBefore = this.camera.getWorldPoint(pointer.x, pointer.y);
       const factor = dy > 0 ? (1 - ZOOM_STEP) : (1 + ZOOM_STEP);
       const newZoom = Phaser.Math.Clamp(this.camera.zoom * factor, MIN_ZOOM, MAX_ZOOM);
@@ -200,6 +224,7 @@ export class CameraController {
 
     // Drag to pan: middle-mouse always, left-click when canPan allows it (no tower selected)
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.locked) return;
       // Always reset wasPan on new click so previous pan state doesn't block tower placement
       this.wasPan = false;
       const middlePan = pointer.middleButtonDown();

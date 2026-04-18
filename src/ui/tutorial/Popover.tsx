@@ -18,6 +18,10 @@ interface Props {
   showNext: boolean;
   onNext: () => void;
   onSkip: () => void;
+  /** Optional call-to-action button (terminal steps only). When provided,
+   *  clicking it runs the action AND advances the tutorial (completing the
+   *  track on a terminal step). Replaces the Next button if present. */
+  cta?: { label: string; action: () => void };
 }
 
 const CARD_WIDTH = 320;
@@ -83,8 +87,9 @@ function fitsInViewport(a: Anchor, vw: number, vh: number): boolean {
     && a.top + 180 <= vh - CARD_MARGIN;
 }
 
-export function Popover({ title, body, rect, placement = 'auto', stepIndex, totalSteps, showNext, onNext, onSkip }: Props) {
+export function Popover({ title, body, rect, placement = 'auto', stepIndex, totalSteps, showNext, onNext, onSkip, cta }: Props) {
   const anchor = pickAnchor(rect, placement);
+  const isTerminal = stepIndex + 1 === totalSteps;
 
   return (
     <div
@@ -127,13 +132,19 @@ export function Popover({ title, body, rect, placement = 'auto', stepIndex, tota
             style={{ padding: '6px 12px', fontSize: '12px' }}
             onClick={onSkip}
           >Skip</button>
-          {showNext && (
+          {cta && isTerminal ? (
+            <button
+              class="btn btn-gold"
+              style={{ padding: '6px 14px', fontSize: '12px' }}
+              onClick={() => { cta.action(); onNext(); }}
+            >{cta.label}</button>
+          ) : (showNext && (
             <button
               class="btn btn-gold"
               style={{ padding: '6px 14px', fontSize: '12px' }}
               onClick={onNext}
-            >{stepIndex + 1 === totalSteps ? 'Done' : 'Next'}</button>
-          )}
+            >{isTerminal ? 'Done' : 'Next'}</button>
+          ))}
         </div>
       </div>
     </div>

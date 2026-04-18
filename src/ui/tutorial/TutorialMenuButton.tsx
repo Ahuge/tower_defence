@@ -13,7 +13,14 @@ export function TutorialMenuButton() {
 
   const replay = (id: string) => {
     setOpen(false);
-    TutorialManager.replay(id);
+    // tutorial_match needs an actual GameScene running to have targets —
+    // route through launchTutorialMatch so the scene starts and the track
+    // fires after the faction-load splash dismisses.
+    if (id === 'tutorial_match') {
+      TutorialManager.launchTutorialMatch();
+    } else {
+      TutorialManager.replay(id);
+    }
   };
 
   return (

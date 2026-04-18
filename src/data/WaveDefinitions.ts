@@ -1,4 +1,4 @@
-export type MatchMode = 'standard' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet';
+export type MatchMode = 'standard' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet' | 'tutorial';
 
 export interface WaveCreepGroup {
   creepType: string;
@@ -200,5 +200,43 @@ export function getWavesForMode(mode: MatchMode, waveCount?: number): WaveDefini
       return generateStandardWaves(waveCount ?? 30); // same structure, leaked creeps forward to next player
     case 'gauntlet':
       return generateStandardWaves(10); // placeholder — actual waves come from GauntletMode.getStageWaves()
+    case 'tutorial':
+      return generateTutorialWaves();
   }
+}
+
+/**
+ * Three hand-tuned waves for the onboarding tutorial match.
+ * Wave 1: 5 slow standards — one Arcane Bolt is enough. Builds confidence.
+ * Wave 2: 8 standards + 2 fast — rewards the second tower / first upgrade.
+ * Wave 3: 12 standards + 1 heavy — rewards sends/frontier spend from earlier steps.
+ * No boss flag, no mages/flyers — tutorial stays inside the lesson scope.
+ */
+function generateTutorialWaves(): WaveDefinition[] {
+  return [
+    {
+      wave: 1,
+      groups: [{ creepType: 'standard', count: 5, hpScale: 24, speedScale: 0.85 }],
+      spawnInterval: 650,
+      isBoss: false,
+    },
+    {
+      wave: 2,
+      groups: [
+        { creepType: 'standard', count: 8, hpScale: 32, speedScale: 0.9 },
+        { creepType: 'fast',     count: 2, hpScale: 24, speedScale: 1.0 },
+      ],
+      spawnInterval: 560,
+      isBoss: false,
+    },
+    {
+      wave: 3,
+      groups: [
+        { creepType: 'standard', count: 12, hpScale: 44, speedScale: 0.95 },
+        { creepType: 'armored',  count: 1,  hpScale: 90, speedScale: 0.8 },
+      ],
+      spawnInterval: 480,
+      isBoss: false,
+    },
+  ];
 }

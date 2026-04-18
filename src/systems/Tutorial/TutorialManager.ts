@@ -18,6 +18,7 @@ import { UIBridge, ScreenId } from '../../ui/UIBridge';
 import { EventBus, GameEvents } from '../EventBus';
 import { TutorialPersistence, TutorialState } from './TutorialPersistence';
 import { getTrack, TutorialTrack, TutorialStep } from './TutorialTracks';
+import { goToMenu } from '../../ui/navigation';
 
 type Listener = () => void;
 
@@ -41,10 +42,10 @@ class TutorialManagerClass {
   /** True once init() has run. Guards against double-subscribe in dev/HMR. */
   private initialized = false;
 
-  /** Track id queued by GameScene create() but deferred until the match-load
-   *  LoadingScreen has fully dismissed. Otherwise the in-game primers would
-   *  fire while the faction splash is still covering the canvas. */
-  private pendingAfterMatchLoad: string | null = null;
+  /** Track queued to fire once the match-load LoadingScreen has dismissed.
+   *  `replay: true` bypasses the isCompleted gate — used when the player
+   *  explicitly launches the tutorial match from a CTA or the Help list. */
+  private pendingAfterMatchLoad: { id: string; replay: boolean } | null = null;
 
   // ─── Lifecycle ──────────────────────────────────────────
 
@@ -66,11 +67,35 @@ class TutorialManagerClass {
     // minimum of 5s and fades out over 200ms. GameScene.create() fires long
     // before that, so in-match tracks get queued here and only start once
     // LoadingScreen signals 'match-loading-dismissed'.
+    // Tutorial CTAs dispatch these events so TutorialTracks (content) can
+    // stay free of imports from UIBridge / this manager (avoids a
+    // load-order cycle).
+    window.addEventListener('tutorial-launch-match', () => this.launchTutorialMatch());
+    window.addEventListener('tutorial-go-menu', () => goToMenu());
+
     window.addEventListener('match-loading-dismissed', () => {
-      const trackId = this.pendingAfterMatchLoad;
+      const pending = this.pendingAfterMatchLoad;
       this.pendingAfterMatchLoad = null;
-      if (!trackId) return;
-      this.maybeAutoStart(trackId);
+      if (!pending) return;
+      // Small DOM-settle buffer before spotlights start resolving targets.
+      setTimeout(() => {
+        if (pending.replay) this.replay(pending.id);
+        else this.maybeAutoStart(pending.id);
+      }, 200);
+    });
+  }
+
+  /** Kick off the scripted tutorial match. Starts GameScene in tutorial
+   *  mode and queues the `tutorial_match` track to launch once the
+   *  faction-load splash finishes fading out. */
+  launchTutorialMatch(): void {
+    this.pendingAfterMatchLoad = { id: 'tutorial_match', replay: true };
+    UIBridge.startScene('GameScene', {
+      mode: 'tutorial',
+      faction: 'arcane',
+      map: 'tutorial',
+      difficulty: 'easy',
+      creepFaction: 'mechanical',
     });
   }
 
@@ -136,11 +161,15 @@ class TutorialManagerClass {
   /** Skip the current track. Marks it completed so it won't re-trigger. */
   skip(): void {
     if (!this.active) return;
+    const wasTutorialMatch = this.active.track.id === 'tutorial_match';
     this.markCompleted(this.active.track.id);
     this.clearActive();
     // Skipping any track also implies they've seen the first-launch flow.
     this.markFirstLaunchDismissed();
     this.notify();
+    // Skipping the tutorial match leaves GameScene running in a no-stakes
+    // 99-lives state — push the player back to the menu.
+    if (wasTutorialMatch) goToMenu();
   }
 
   /** Finish the current track naturally. */
@@ -228,7 +257,7 @@ class TutorialManagerClass {
       null;
     if (!trackId) return;
     if (this.isCompleted(trackId)) return;
-    this.pendingAfterMatchLoad = trackId;
+    this.pendingAfterMatchLoad = { id: trackId, replay: false };
   }
 
   private maybeAutoStart(trackId: string): void {

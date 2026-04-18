@@ -12,6 +12,8 @@ export interface GameEvents {
   gameOver: () => void;
   gameWon: () => void;
   pathUpdated: (path: { col: number; row: number }[] | null) => void;
+  sendPurchased: (sendId: string) => void;
+  frontierPurchased: (buildingId: string) => void;
 }
 
 export class EventBus {

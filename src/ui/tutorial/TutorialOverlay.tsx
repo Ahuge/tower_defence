@@ -70,6 +70,7 @@ export function TutorialOverlay() {
         showNext={showNext}
         onNext={onNext}
         onSkip={onSkip}
+        cta={step.cta}
       />
     </>
   );

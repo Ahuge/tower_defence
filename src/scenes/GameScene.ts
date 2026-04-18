@@ -60,6 +60,7 @@ import { UIScale } from '../systems/UIScale';
 import { CircleDeathHandler } from '../systems/CircleDeathHandler';
 import { TutorialManager } from '../systems/Tutorial/TutorialManager';
 import { PathFlowIndicator } from '../systems/PathFlowIndicator';
+import { TutorialMode } from '../systems/modes/TutorialMode';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
@@ -317,7 +318,11 @@ export class GameScene extends Phaser.Scene {
 
     this._towers = [];
     this._creeps = [];
-    this.lives = STARTING_LIVES;
+    // Tutorial gets 99 lives (can't die accidentally) + 150 extra gold
+    // on top of STARTING_GOLD so the player can afford the two suggested
+    // Arcane Bolts plus a send or a Leyline Nexus.
+    this.lives = this.matchMode === 'tutorial' ? 99 : STARTING_LIVES;
+    if (this.matchMode === 'tutorial') this.economy.addGold(150);
     this.currentWave = 0;
     this.waveActive = false;
     this.betweenWaves = true;
@@ -508,6 +513,8 @@ export class GameScene extends Phaser.Scene {
       }).setDepth(25).setOrigin(0, 1);
     } else if (this.matchMode === 'battle') {
       this.gameMode = new BattleMode();
+    } else if (this.matchMode === 'tutorial') {
+      this.gameMode = new TutorialMode();
     } else if (this.matchMode === 'circle_coop' && this.circle) {
       this.gameMode = new CircleCoopMode();
     } else if (this.matchMode === 'gauntlet') {
@@ -722,6 +729,11 @@ export class GameScene extends Phaser.Scene {
         this.cameraCtrl.setGridOffset(getGridOffsetX());
       }
       this.inputMgr.setCameraController(this.cameraCtrl);
+      // Tutorial mode: freeze the camera so the tutorial overlay's
+      // canvas-rect spotlights stay aligned with actual grid cells.
+      if (this.matchMode === 'tutorial') {
+        this.cameraCtrl.setLocked(true);
+      }
     }
 
     // Versus mode setup
@@ -1738,14 +1750,22 @@ export class GameScene extends Phaser.Scene {
 
     this.pauseOverlay = this.add.container(0, 0).setDepth(50);
 
-    // Pause overlay should render on UI camera (screen-space, no scroll/zoom)
-    this.cameras.main.ignore(this.pauseOverlay);
+    // Pause overlay renders on the UI camera only. The UI-camera setup at
+    // line ~902 installs an `addedtoscene` listener that auto-ignores every
+    // new GameObject on the UI camera, so we have to explicitly un-ignore
+    // via uiLayer.register — which also tells the main camera to ignore it.
+    const registerUi = (obj: Phaser.GameObjects.GameObject) => {
+      if (this.uiLayer) this.uiLayer.register(obj);
+      else this.cameras.main.ignore(obj);
+    };
+    registerUi(this.pauseOverlay);
 
     // Dim overlay — covers entire canvas
     const dim = this.add.graphics();
     dim.fillStyle(0x000000, 0.6);
     dim.fillRect(0, 0, canvasW, canvasH);
     this.pauseOverlay.add(dim);
+    registerUi(dim);
 
     // Panel
     const panelW = 260;
@@ -1759,17 +1779,20 @@ export class GameScene extends Phaser.Scene {
     panel.lineStyle(2, 0x555555, 1);
     panel.strokeRect(px, py, panelW, panelH);
     this.pauseOverlay.add(panel);
+    registerUi(panel);
 
-    this.add.text(cx, py + 20, 'PAUSED', {
+    const title = this.add.text(cx, py + 20, 'PAUSED', {
       fontSize: '24px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
-    this.pauseOverlay.add(this.children.getAt(this.children.length - 1) as Phaser.GameObjects.Text);
+    this.pauseOverlay.add(title);
+    registerUi(title);
 
     // Resume button
     const resumeBtn = this.add.text(cx, py + 70, '[ Resume ]', {
       fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(resumeBtn);
+    registerUi(resumeBtn);
     resumeBtn.setInteractive({ useHandCursor: true });
     resumeBtn.on('pointerdown', () => this.togglePause());
     resumeBtn.on('pointerover', () => resumeBtn.setColor('#88ff88'));
@@ -1780,6 +1803,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '16px', color: '#ff8844', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(exitBtn);
+    registerUi(exitBtn);
     exitBtn.setInteractive({ useHandCursor: true });
     exitBtn.on('pointerdown', () => {
       this.hidePauseMenu();
@@ -1798,11 +1822,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '10px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(hint);
-
-    // Ensure all children are also ignored by main camera
-    for (const child of this.pauseOverlay.list) {
-      this.cameras.main.ignore(child as Phaser.GameObjects.GameObject);
-    }
+    registerUi(hint);
   }
 
   private hidePauseMenu(): void {
