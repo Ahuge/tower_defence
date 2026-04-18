@@ -1,0 +1,1 @@
+import{n as e,t}from"./main-3GPOXe_j.js";e();export{t as UIBridge};
