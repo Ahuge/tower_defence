@@ -1482,6 +1482,11 @@ export class GameScene extends Phaser.Scene {
       if (this.circle) {
         this.circle.broadcast({ type: 'circle_victory', winnerIndex: this.circle.playerIndex });
       }
+      // Tutorial match: skip the GameOverScene hand-off so the player
+      // stays inside the match while the tutorial's closing popover
+      // (with "Back to Menu" CTA) sits over the live board. Prevents
+      // the victory screen from flashing over the popover.
+      if (this.matchMode === 'tutorial') return;
       this.goToGameOver(true);
       return;
     }
