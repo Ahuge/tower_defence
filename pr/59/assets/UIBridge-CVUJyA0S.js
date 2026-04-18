@@ -1,0 +1,1 @@
+import{n as e,t}from"./main-BVmvaJvP.js";e();export{t as UIBridge};
