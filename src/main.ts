@@ -75,6 +75,14 @@ UIBridge.init(game);
 TutorialManager.init();
 requestAnimationFrame(() => UIBridge.show('menu'));
 
+// Playwright test hook — lazily loaded only when the page was opened
+// with `?test=1`. Dev/prod builds for real users serve no extra code.
+if (new URLSearchParams(window.location.search).has('test')) {
+  import('./testHook').then(m => m.installTestHook()).catch(err =>
+    console.error('[td-test] failed to install test hook:', err),
+  );
+}
+
 // Resize canvas on layout mode change
 ResponsiveManager.onLayoutChange(() => {
   game.scale.resize(ResponsiveManager.canvasWidth(), ResponsiveManager.canvasHeight());
