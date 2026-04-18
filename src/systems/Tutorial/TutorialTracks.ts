@@ -13,7 +13,7 @@ import type { TutorialTarget } from './TutorialTargets';
 import type { GameEvents } from '../EventBus';
 import { TILE_SIZE, gridX, gridY } from '../../config';
 
-export type Placement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto';
+export type Placement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto' | 'top-banner';
 
 export type StepAdvance =
   | 'click'
@@ -212,7 +212,7 @@ const tutorialMatch: TutorialTrack = {
       target: gridCellRect(10, 13, 5, 1),
       title: 'Place It Here',
       body: 'Drop the tower on the path anywhere in the highlighted strip. Watch what happens to the creep route.',
-      placement: 'top',
+      placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
     {
@@ -237,7 +237,7 @@ const tutorialMatch: TutorialTrack = {
       target: gridCellRect(10, 12, 5, 1),
       title: 'Place It Above',
       body: "Drop the Frost tower on the row above the path. Creeps will now snake through a much longer route — and get slowed along the way.",
-      placement: 'bottom',
+      placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
     {
@@ -253,7 +253,7 @@ const tutorialMatch: TutorialTrack = {
       target: { kind: 'dom', selector: SEL.statusGold },
       title: 'Kills Drop Gold',
       body: "Every creep you kill pays out. Watch your Gold go up. Wait for the wave to finish.",
-      placement: 'bottom',
+      placement: 'top-banner',
       advanceOn: { event: 'waveCleared' },
     },
     {
@@ -270,7 +270,7 @@ const tutorialMatch: TutorialTrack = {
       target: gridCellRect(9, 14, 7, 1),
       title: 'Add More Towers',
       body: "Place one or two more towers anywhere — this strip below the path is a great spot. Creeps will be squeezed through your frost zone.",
-      placement: 'top',
+      placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
     {
@@ -295,6 +295,7 @@ const tutorialMatch: TutorialTrack = {
       target: { kind: 'screen' },
       title: 'Next Wave Running',
       body: "See the fast creeps bogging down in the frost zone? That's the synergy — slow them, then hit them while they're stuck. Next we try the safer income source.",
+      placement: 'top-banner',
       advanceOn: { event: 'waveCleared' },
     },
     {
@@ -303,7 +304,7 @@ const tutorialMatch: TutorialTrack = {
       target: gridCellRect(9, 11, 7, 1),
       title: 'Reinforce',
       body: "Wave 3 brings a heavier creep. Drop one more tower — the strip above the path is a good spot for the squeeze.",
-      placement: 'bottom',
+      placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
     {
@@ -328,6 +329,7 @@ const tutorialMatch: TutorialTrack = {
       target: { kind: 'screen' },
       title: 'Bring It Home',
       body: 'Let the final wave finish.',
+      placement: 'top-banner',
       advanceOn: { event: 'waveCleared' },
     },
     {

@@ -735,11 +735,11 @@ export class GameScene extends Phaser.Scene {
         this.cameraCtrl.setGridOffset(getGridOffsetX());
       }
       this.inputMgr.setCameraController(this.cameraCtrl);
-      // Tutorial mode: freeze the camera so the tutorial overlay's
-      // canvas-rect spotlights stay aligned with actual grid cells.
-      if (this.matchMode === 'tutorial') {
-        this.cameraCtrl.setLocked(true);
-      }
+      // Tutorial mode: camera stays unlocked so the player can pan /
+      // zoom freely. The tutorial's canvas-rect spotlights track the
+      // camera via `camera.worldView`, and TutorialManager auto-pans
+      // to each step's target on step change so the player never
+      // loses the highlighted cell off-screen.
     }
 
     // Versus mode setup

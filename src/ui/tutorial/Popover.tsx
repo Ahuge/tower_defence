@@ -34,6 +34,17 @@ function pickAnchor(rect: ResolvedRect | null, placement: Placement): Anchor {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
+  // 'top-banner' ignores the target rect and pins the popover to the
+  // top of the viewport, overlapping whatever sits there (WAVES /
+  // ECONOMY panels on mobile). Used when the step wants to keep the
+  // game area clear for tapping.
+  if (placement === 'top-banner') {
+    return {
+      left: Math.max(CARD_MARGIN, vw / 2 - CARD_WIDTH / 2),
+      top: CARD_MARGIN,
+    };
+  }
+
   if (!rect || placement === 'center') {
     return {
       left: Math.max(CARD_MARGIN, vw / 2 - CARD_WIDTH / 2),

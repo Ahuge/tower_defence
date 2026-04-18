@@ -156,6 +156,31 @@ class TutorialManagerClass {
     if (!this.active) return;
     try { this.active.step.onEnter?.(); }
     catch (err) { console.warn('[Tutorial] step onEnter threw:', err); }
+    this.panCameraToStep();
+  }
+
+  /** If the current step targets a canvas rect (a grid cell), smoothly pan
+   *  the main camera to centre on it. Keeps the spotlight visible even if
+   *  the player panned somewhere else, and ensures mobile players don't
+   *  have to hunt for where the tutorial is pointing. No-op for DOM or
+   *  screen targets. */
+  private panCameraToStep(): void {
+    if (!this.active) return;
+    const t = this.active.step.target;
+    if (t.kind !== 'canvas') return;
+    const game = UIBridge.getGame();
+    if (!game) return;
+    const scene = game.scene.getScene('GameScene');
+    if (!scene || !scene.cameras || !(scene as any).cameras?.main) return;
+    const cam = scene.cameras.main;
+    const cx = t.x + t.width / 2;
+    const cy = t.y + t.height / 2;
+    // Phaser pan: camera.pan(x, y, duration, ease).
+    if (typeof (cam as any).pan === 'function') {
+      (cam as any).pan(cx, cy, 350, 'Sine.easeInOut');
+    } else {
+      cam.centerOn(cx, cy);
+    }
   }
 
   /** Skip the current track. Marks it completed so it won't re-trigger. */
