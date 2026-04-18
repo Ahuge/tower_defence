@@ -2,8 +2,16 @@
  * TutorialMenuButton — a "?" affordance on the menu that opens a small
  * modal listing every tutorial track. Completed tracks show a checkmark.
  * Clicking any track replays it from step 0.
+ *
+ * The modal is portaled into document.body via createPortal so it
+ * escapes the MenuScreen header's stacking context. Without the portal,
+ * sibling `.ui-section` elements (MAP / DIFFICULTY / MODE) paint on top
+ * of the modal because `.ui-screen > *` assigns every direct child a
+ * `z-index: 1` stacking context — our fixed modal's z-index: 500 was
+ * being scoped inside `.ui-header`, not the document.
  */
 import { useState } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
 import { TutorialManager } from '../../systems/Tutorial/TutorialManager';
 import { getHelpMenuTracks } from '../../systems/Tutorial/TutorialTracks';
 
@@ -23,28 +31,19 @@ export function TutorialMenuButton() {
     }
   };
 
-  return (
-    <>
-      <button
-        class="btn"
-        style={{ padding: '4px 10px', fontSize: '16px', lineHeight: 1 }}
-        title="Tutorials"
-        onClick={() => setOpen(true)}
-      >?</button>
-
-      {open && (
-        <div
-          style={{
-            position: 'fixed', inset: 0,
-            background: 'rgba(10, 8, 15, 0.92)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 500,
-            animation: 'tutorialModalFade 180ms ease',
-          }}
-          onClick={() => setOpen(false)}
-        >
+  const modal = open ? (
+    <div
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(10, 8, 15, 0.92)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 500,
+        animation: 'tutorialModalFade 180ms ease',
+      }}
+      onClick={() => setOpen(false)}
+    >
           <style>{`
             @keyframes tutorialModalFade {
               from { opacity: 0; }
@@ -115,7 +114,17 @@ export function TutorialMenuButton() {
             </div>
           </div>
         </div>
-      )}
+  ) : null;
+
+  return (
+    <>
+      <button
+        class="btn"
+        style={{ padding: '4px 10px', fontSize: '16px', lineHeight: 1 }}
+        title="Tutorials"
+        onClick={() => setOpen(true)}
+      >?</button>
+      {modal && createPortal(modal, document.body)}
     </>
   );
 }
