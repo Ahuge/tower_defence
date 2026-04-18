@@ -16,6 +16,53 @@ import * as Phaser from 'phaser';
 import { gridX, gridY } from '../config';
 import type { PathPoint } from './Pathfinding';
 
+export interface PathFlowSample {
+  x: number;
+  y: number;
+  /** Distance along the path in world pixels from the start to this sample. */
+  dist: number;
+}
+
+/** Sample a path in pixel-space at fixed `spacing`-pixel intervals.
+ *  Separated from the class so it can be unit-tested without a Phaser
+ *  scene. Exposed for tests via module export; production code only
+ *  goes through PathFlowIndicator. */
+export function samplePath(path: PathPoint[], spacing: number): PathFlowSample[] {
+  const out: PathFlowSample[] = [];
+  if (!path || path.length < 2) return out;
+
+  // Walk the path in pixel-space and drop a sample every `spacing`
+  // pixels. Carry over the leftover distance between segments so
+  // spacing stays even across corners.
+  let carry = 0;
+  let accumulated = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const ax = gridX(path[i].col);
+    const ay = gridY(path[i].row);
+    const bx = gridX(path[i + 1].col);
+    const by = gridY(path[i + 1].row);
+    const dx = bx - ax;
+    const dy = by - ay;
+    const segLen = Math.hypot(dx, dy);
+    if (segLen === 0) continue;
+    const ux = dx / segLen;
+    const uy = dy / segLen;
+
+    let cursor = carry;
+    while (cursor <= segLen) {
+      out.push({
+        x: ax + ux * cursor,
+        y: ay + uy * cursor,
+        dist: accumulated + cursor,
+      });
+      cursor += spacing;
+    }
+    carry = cursor - segLen;
+    accumulated += segLen;
+  }
+  return out;
+}
+
 /** Spacing between sample points in pixels. Lower = denser, prettier, but
  *  more draw calls. ~14 gives a smooth continuous line at any map size. */
 const SAMPLE_SPACING = 14;
@@ -51,7 +98,7 @@ const CREST_SHARPNESS = 1.6;
 
 export class PathFlowIndicator {
   private graphics: Phaser.GameObjects.Graphics;
-  private samples: { x: number; y: number; dist: number }[] = [];
+  private samples: PathFlowSample[] = [];
   private time: number = 0;
   private flashUntil: number = 0;
 
@@ -114,35 +161,6 @@ export class PathFlowIndicator {
   // ─── internals ──────────────────────────────────────────
 
   private rebuildSamples(path: PathPoint[]): void {
-    this.samples = [];
-    if (!path || path.length < 2) return;
-
-    // Walk the path in pixel-space and drop a sample every SAMPLE_SPACING
-    // pixels. Carry over the leftover distance between segments so spacing
-    // stays even across corners.
-    let carry = 0;
-    let accumulated = 0;
-    for (let i = 0; i < path.length - 1; i++) {
-      const ax = gridX(path[i].col);
-      const ay = gridY(path[i].row);
-      const bx = gridX(path[i + 1].col);
-      const by = gridY(path[i + 1].row);
-      const dx = bx - ax;
-      const dy = by - ay;
-      const segLen = Math.hypot(dx, dy);
-      if (segLen === 0) continue;
-      const ux = dx / segLen;
-      const uy = dy / segLen;
-
-      let cursor = carry;
-      while (cursor <= segLen) {
-        const x = ax + ux * cursor;
-        const y = ay + uy * cursor;
-        this.samples.push({ x, y, dist: accumulated + cursor });
-        cursor += SAMPLE_SPACING;
-      }
-      carry = cursor - segLen;
-      accumulated += segLen;
-    }
+    this.samples = samplePath(path, SAMPLE_SPACING);
   }
 }
