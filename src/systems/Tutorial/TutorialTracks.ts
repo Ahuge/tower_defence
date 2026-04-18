@@ -72,6 +72,8 @@ const SEL = {
   menuMapGrid: '[data-tutorial-target="menu-map"]',
   econFrontierContent: '[data-tutorial-target="econ-content-frontier"]',
   econSendsContent: '[data-tutorial-target="econ-content-sends"]',
+  econFrontierTab: '[data-tutorial-target="econ-tab-frontier"]',
+  econSendsTab: '[data-tutorial-target="econ-tab-sends"]',
   // Specific tower slot in the dock — matches data-tutorial-tower-id on
   // the per-slot wrapper. Used when the tutorial wants to point at a
   // particular tower (e.g. Arcane Frost for the slow-effect lesson).
@@ -92,9 +94,18 @@ function closeSidebarPanels(): void {
 /** Switch the Economy panel's internal tab (sends / frontier / essence /
  *  items / log). Dispatched when a tutorial step needs specific tab
  *  content visible, e.g. buy_frontier activating the Frontier tab so
- *  the Leyline Nexus entry is highlighted rather than the Sends list. */
+ *  the Leyline Nexus entry is highlighted rather than the Sends list.
+ *
+ *  Deferred with setTimeout(0) so it fires after React has rendered
+ *  the economy panel's children. CollapsiblePanel only mounts its
+ *  child component when `open=true`, so an earlier openSidebarPanel
+ *  call needs to paint before EconomyPanelDOM is alive to receive
+ *  this event. Without the delay the switch gets dispatched to an
+ *  unmounted listener and silently drops. */
 function switchEconTab(tab: 'sends' | 'frontier' | 'essence' | 'items' | 'log'): void {
-  window.dispatchEvent(new CustomEvent('tutorial-switch-econ-tab', { detail: { tab } }));
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('tutorial-switch-econ-tab', { detail: { tab } }));
+  }, 0);
 }
 
 /** Grid rect spanning a range of cells in Phaser world coordinates —
@@ -361,10 +372,13 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_send',
-      target: { kind: 'dom', selector: SEL.econSendsContent },
+      // Same rationale as buy_frontier — target the tab header so the
+      // spotlight is reliable even if the auto tab-switch is delayed,
+      // and the send list sits visibly right below it.
+      target: { kind: 'dom', selector: SEL.econSendsTab },
       title: 'Buy a Send',
-      body: 'Pick a Standard send and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
-      placement: 'right',
+      body: 'On the Sends tab, pick a Standard send and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
+      placement: 'bottom',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('sends'); },
       advanceOn: { event: 'sendPurchased' },
     },
@@ -400,10 +414,16 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'buy_frontier',
-      target: { kind: 'dom', selector: SEL.econFrontierContent },
+      // Target the Frontier tab header rather than the tab content
+      // below it — the tab button is always rendered as soon as the
+      // economy panel is open, regardless of whether the tutorial's
+      // auto-switch fired yet. The Nexus entry sits visually right
+      // under the spotlighted tab, so the player's eye lands on the
+      // section name and drops straight into the buy list.
+      target: { kind: 'dom', selector: SEL.econFrontierTab },
       title: 'Build a Frontier',
-      body: "Arcane's Frontier is the Leyline Nexus — steady income every wave, plus an Overcharge button you can hit for 3x burst gold at the cost of two dormant waves. Other factions have their own versions: Mechanical digs for more (with collapse risk), Nature grows and harvests, Void gambles. Pick the Leyline Nexus and buy it.",
-      placement: 'right',
+      body: "Arcane's Frontier is the Leyline Nexus — steady income every wave, plus an Overcharge button you can hit for 3x burst gold at the cost of two dormant waves. Other factions have their own versions: Mechanical digs for more (with collapse risk), Nature grows and harvests, Void gambles. Tap the Frontier tab, pick the Leyline Nexus, and buy it.",
+      placement: 'bottom',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('frontier'); },
       advanceOn: { event: 'frontierPurchased' },
     },

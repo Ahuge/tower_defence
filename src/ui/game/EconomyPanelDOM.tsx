@@ -35,17 +35,18 @@ export function EconomyPanelDOM() {
   // Tutorial can switch tabs so the right content is visible while its
   // spotlight lands on the content area (e.g. buy_frontier opens the
   // Frontier tab before highlighting the Leyline Nexus entry).
+  // Registered once on mount — listener calls setTab directly, and the
+  // component's existing fallback logic picks a visible tab if the
+  // requested one happens to be hidden.
   useEffect(() => {
     const onSwitch = (e: Event) => {
       const detail = (e as CustomEvent<{ tab: EconTab }>).detail;
       if (!detail) return;
-      if (visibleTabs.find(t => t.id === detail.tab)) {
-        setTab(detail.tab);
-      }
+      setTab(detail.tab);
     };
     window.addEventListener('tutorial-switch-econ-tab', onSwitch);
     return () => window.removeEventListener('tutorial-switch-econ-tab', onSwitch);
-  }, [visibleTabs]);
+  }, []);
 
   return (
     <>
