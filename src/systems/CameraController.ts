@@ -4,7 +4,8 @@ import { getGridOffsetX, getCanvasWidth, GAME_HEIGHT } from '../config';
 
 const MIN_ZOOM = 1.0;
 const MAX_ZOOM = 8.0;
-const DEFAULT_PHONE_ZOOM = 1.8;
+const DEFAULT_PHONE_ZOOM = 2.4;
+const PHONE_ZOOM_INTRO_MS = 750;
 const PAN_THRESHOLD = 12;       // screen pixels moved before it counts as a pan
 const MOMENTUM_FRICTION = 0.92; // velocity multiplier per frame (< 1 = deceleration)
 const MOMENTUM_MIN = 0.5;       // stop momentum below this velocity
@@ -96,8 +97,24 @@ export class CameraController {
       if (viewportHeight) {
         this.camera.setViewport(0, 0, worldWidth, viewportHeight);
       }
-      this.camera.setZoom(DEFAULT_PHONE_ZOOM);
+      // Start zoomed fully out and animate in over ~750ms so the
+      // player sees the map pull toward the action area. Establishes
+      // a sense of scale and direction before they start tapping.
+      // Re-centering every tween tick keeps the world centre locked
+      // in the viewport centre while zoom animates — Phaser's built-
+      // in zoomTo preserves scroll, which would let the grid drift
+      // toward a corner as zoom climbs.
+      this.camera.setZoom(1.0);
       this.camera.centerOn(worldWidth / 2, worldHeight / 2);
+      scene.tweens.add({
+        targets: this.camera,
+        zoom: DEFAULT_PHONE_ZOOM,
+        duration: PHONE_ZOOM_INTRO_MS,
+        ease: 'Sine.easeInOut',
+        onUpdate: () => {
+          this.camera.centerOn(worldWidth / 2, worldHeight / 2);
+        },
+      });
     }
 
     this.setupInput();
