@@ -318,11 +318,10 @@ export class GameScene extends Phaser.Scene {
 
     this._towers = [];
     this._creeps = [];
-    // Tutorial gets 99 lives (can't die accidentally) + 150 extra gold
-    // on top of STARTING_GOLD so the player can afford the two suggested
-    // Arcane Bolts plus a send or a Leyline Nexus.
+    // Tutorial gets 99 lives so the player literally can't die. The
+    // matching +150 gold bump lives further down — after `this.economy`
+    // is constructed.
     this.lives = this.matchMode === 'tutorial' ? 99 : STARTING_LIVES;
-    if (this.matchMode === 'tutorial') this.economy.addGold(150);
     this.currentWave = 0;
     this.waveActive = false;
     this.betweenWaves = true;
@@ -399,6 +398,9 @@ export class GameScene extends Phaser.Scene {
 
     // Systems
     this.economy = new EconomyManager(this.eventBus);
+    // Tutorial: +150 gold on top of STARTING_GOLD so the player can afford
+    // two Arcane Bolts + a send and a Leyline Nexus.
+    if (this.matchMode === 'tutorial') this.economy.addGold(150);
     const versusRef = this.registry.get('versus') as VersusManager | null;
     const waveSeed = versusRef?.sharedSeed ?? 0;
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
