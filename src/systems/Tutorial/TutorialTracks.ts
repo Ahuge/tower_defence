@@ -77,9 +77,14 @@ const SEL = {
 } as const;
 
 /** Dispatched by tutorial steps to open a specific sidebar panel so the
- *  spotlight lands on its visible content instead of the collapsed header. */
-function openSidebarPanel(panel: 'waves' | 'economy'): void {
+ *  spotlight lands on its visible content instead of the collapsed header.
+ *  Pass `null` to collapse whichever panel is currently open — used when
+ *  a later step needs the game-area / wave controls unobscured. */
+function openSidebarPanel(panel: 'waves' | 'economy' | null): void {
   window.dispatchEvent(new CustomEvent('tutorial-open-sidebar-panel', { detail: { panel } }));
+}
+function closeSidebarPanels(): void {
+  openSidebarPanel(null);
 }
 
 /** Grid rect spanning a range of cells in Phaser world coordinates —
@@ -359,6 +364,9 @@ const tutorialMatch: TutorialTrack = {
       title: 'Start Wave 2',
       body: "Fast creeps incoming — they're twice as quick as standards. Watch your Frost tower drag them down to a crawl.",
       placement: 'top',
+      // Close the ECONOMY panel left open by buy_send so it doesn't
+      // obscure the game area while the wave runs.
+      onEnter: () => closeSidebarPanels(),
       advanceOn: { event: 'waveStarted' },
     },
     {
@@ -395,6 +403,9 @@ const tutorialMatch: TutorialTrack = {
       title: 'Final Wave',
       body: "One heavier creep in this one. If it leaks you'll barely notice — you have 99 lives here.",
       placement: 'top',
+      // Same as start_wave_2 — close the ECONOMY panel left open by
+      // buy_frontier so the game area is clear for the final wave.
+      onEnter: () => closeSidebarPanels(),
       advanceOn: { event: 'waveStarted' },
     },
     {

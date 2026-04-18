@@ -61,11 +61,16 @@ export function GameSidebar() {
   }, [isPhone, showFloating]);
 
   // Tutorial steps can request a specific sidebar panel to be open so the
-  // spotlight lands on its visible content rather than the collapsed header.
+  // spotlight lands on its visible content rather than the collapsed
+  // header. `panel: null` collapses whichever panel is open — used when
+  // a later step (e.g. watch-a-wave) needs the game area unobscured.
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const detail = (e as CustomEvent<{ panel: PanelId }>).detail;
-      if (detail?.panel === 'waves' || detail?.panel === 'economy') {
+      const detail = (e as CustomEvent<{ panel: PanelId | null }>).detail;
+      if (detail === undefined) return;
+      if (detail.panel === null) {
+        setOpenPanel(null);
+      } else if (detail.panel === 'waves' || detail.panel === 'economy') {
         setOpenPanel(detail.panel);
       }
     };
