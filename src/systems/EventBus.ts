@@ -14,6 +14,7 @@ export interface GameEvents {
   pathUpdated: (path: { col: number; row: number }[] | null) => void;
   sendPurchased: (sendId: string) => void;
   frontierPurchased: (buildingId: string) => void;
+  dockTowerSelected: (index: number, towerId: string | null) => void;
 }
 
 export class EventBus {

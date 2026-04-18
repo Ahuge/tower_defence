@@ -28,16 +28,20 @@ export interface ResolvedRect {
   height: number;
 }
 
-/** Find the active GameScene's main camera, or null if there isn't one
- *  (pre-game, mid-scene-transition, etc.). */
-function getGameCamera(): { scrollX: number; scrollY: number; zoom: number } | null {
+/** World rect currently visible in the main camera — ground truth for
+ *  world-to-canvas mapping. `worldView` is Phaser's own derived rect
+ *  covering `(scrollX, scrollY)` through `(scrollX + width/zoom, ...)`.
+ *  Returns null when there's no scene / camera active. */
+function getCameraWorldView(): { x: number; y: number; width: number; height: number } | null {
   const game = UIBridge.getGame();
   if (!game) return null;
   const scene = game.scene.getScene('GameScene');
   if (!scene || !scene.cameras) return null;
   const cam = scene.cameras.main;
   if (!cam) return null;
-  return { scrollX: cam.scrollX, scrollY: cam.scrollY, zoom: cam.zoom };
+  const wv = cam.worldView;
+  if (!wv || wv.width === 0 || wv.height === 0) return null;
+  return { x: wv.x, y: wv.y, width: wv.width, height: wv.height };
 }
 
 /** Resolve a target to a viewport-pixel rect, or null if it can't be found
@@ -53,26 +57,31 @@ export function resolveTarget(target: TutorialTarget): ResolvedRect | null {
     return { x: r.left, y: r.top, width: r.width, height: r.height };
   }
 
-  // canvas — target {x,y} are in Phaser world coords.
+  // canvas — target {x,y,w,h} are in Phaser world coords.
   const canvas = document.querySelector<HTMLCanvasElement>('#game-root canvas');
   if (!canvas) return null;
   const cr = canvas.getBoundingClientRect();
-  const sx = cr.width / canvas.width;
-  const sy = cr.height / canvas.height;
 
-  // World → buffer: account for camera scroll + zoom. Fallback to identity
-  // if no camera is available (desktop pre-match, scene unmounted, etc.).
-  const cam = getGameCamera() ?? { scrollX: 0, scrollY: 0, zoom: 1 };
-  const bufX = (target.x - cam.scrollX) * cam.zoom;
-  const bufY = (target.y - cam.scrollY) * cam.zoom;
-  const bufW = target.width * cam.zoom;
-  const bufH = target.height * cam.zoom;
-
-  // Buffer → viewport CSS pixels.
+  // Map world coords to the canvas's visible CSS rect by using the camera's
+  // worldView rect. A world point at worldView.x maps to cr.left, a world
+  // point at worldView.x + worldView.width maps to cr.right, etc. This
+  // avoids assumptions about DPR, canvas buffer size, or camera viewport
+  // offsets — Phaser tells us exactly which world rect the canvas is
+  // currently displaying, and we linearly interpolate.
+  //
+  // Fallback (no camera / no scene): assume canvas shows world (0,0)–
+  // (canvas.width, canvas.height). That's only correct on desktop at 1x
+  // zoom, which is fine because canvas targets are only used during the
+  // tutorial match anyway.
+  const wv = getCameraWorldView() ?? { x: 0, y: 0, width: canvas.width, height: canvas.height };
+  const u0 = (target.x - wv.x) / wv.width;
+  const v0 = (target.y - wv.y) / wv.height;
+  const u1 = (target.x + target.width - wv.x) / wv.width;
+  const v1 = (target.y + target.height - wv.y) / wv.height;
   return {
-    x: cr.left + bufX * sx,
-    y: cr.top + bufY * sy,
-    width: bufW * sx,
-    height: bufH * sy,
+    x: cr.left + u0 * cr.width,
+    y: cr.top + v0 * cr.height,
+    width: (u1 - u0) * cr.width,
+    height: (v1 - v0) * cr.height,
   };
 }

@@ -198,6 +198,7 @@ const tutorialMatch: TutorialTrack = {
       title: 'Pick a Tower',
       body: 'Click Arcane Bolt in the dock at the bottom. Hotkey 1 works too.',
       placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
     },
     {
       id: 'place_first',

@@ -301,9 +301,13 @@ export class GameScene extends Phaser.Scene {
         if (index < 0) {
           this.enterNoneMode();
           GameUIStore.selectDockTower(-1);
+          // Intentionally don't emit dockTowerSelected on deselect — the
+          // tutorial's pick_tower step advances only on actual selection.
         } else if (index < this.activeTowerIds.length) {
-          this.enterBuildMode(this.activeTowerIds[index]);
+          const towerId = this.activeTowerIds[index];
+          this.enterBuildMode(towerId);
           GameUIStore.selectDockTower(index);
+          this.eventBus.emit('dockTowerSelected', index, towerId);
         }
       },
     });
