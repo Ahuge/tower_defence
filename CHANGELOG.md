@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-04-17 (cross-platform, cont.)
+
+### Restore Purchases flow
+User-facing "Restore Purchases" button in the Store header (native builds only — the web bridge returns `[]`, so the button would be a no-op there). Behind it, `restorePurchases()` in `src/systems/monetization/` asks `platformBridge().iap.restorePurchases()` for the user's owned non-consumable SKUs and re-applies them to `PlayerInventory`: `ads_off` flips the ad-free flag, `skin_pack_<faction>_<name>` SKUs are translated back to their internal skin id via a reverse map built at module load from `SKIN_DEFS`, then granted along with the bundled hero skin. Required by Apple App Store Guideline 3.1.1 for apps selling non-consumables. Consumable shard packs are intentionally excluded — the store won't re-emit them, and granting them again would enable reinstall-to-double-dip.
+
 ## 2026-04-18
 
 ### Review-pass cleanup
