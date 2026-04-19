@@ -19,6 +19,7 @@ import { preloadSprites } from './systems/SpriteManager';
 import { preloadCreepSprites } from './systems/CreepSpriteManager';
 import { preheatIcons } from './ui/game/IconPreheat';
 import { TutorialManager } from './systems/Tutorial/TutorialManager';
+import { installPlatformBridge } from './systems/platform';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
@@ -69,6 +70,12 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+
+// Install the PlatformBridge (ads / IAP / profile) before any system
+// that might depend on it comes online. Fire-and-forget — the bridge
+// starts at the web no-op default, native implementations replace it
+// asynchronously.
+installPlatformBridge().catch(err => console.error('[platform] install failed', err));
 
 // Initialize DOM UI bridge, then show menu after Preact mounts
 UIBridge.init(game);
