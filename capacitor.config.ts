@@ -25,21 +25,25 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
   },
 
-  // Plugin-level config slots in as they're added. Placeholders for
-  // the work that lands in Phase 3:
-  //
-  //   SplashScreen:
-  //     launchShowDuration: 2000
-  //     backgroundColor: '#15101a'
-  //   StatusBar:
-  //     style: 'DARK'
-  //     backgroundColor: '#15101a'
-  //   AdMob:
-  //     appId: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy'
+  // Plugin-level config slots in as they're added. Using Google's
+  // public AdMob TEST IDs for now — these always return fill,
+  // never count as impressions, and are safe to keep in source.
+  // Before first real release we swap them for the real app IDs
+  // minted in the AdMob console (see docs/admob-setup.md).
   plugins: {
-    // Minimum-safe defaults while the real plugin config is
-    // worked out. Capacitor ignores unknown keys so this is safe
-    // even before plugins are installed.
+    AdMob: {
+      // Google's official test app IDs. Documented at
+      // https://developers.google.com/admob/android/test-ads
+      // and https://developers.google.com/admob/ios/test-ads.
+      appIdAndroid: 'ca-app-pub-3940256099942544~3347511713',
+      appIdIos:     'ca-app-pub-3940256099942544~1458002511',
+      // These can be overridden at runtime when showing an ad;
+      // the bridge code will use real per-placement unit IDs as
+      // they're minted in the AdMob console. For now every
+      // placement falls back to the test unit for its ad type.
+    },
+    // SplashScreen / StatusBar config lands with the relevant
+    // plugin installs in Phase 3.
   },
 
   android: {
