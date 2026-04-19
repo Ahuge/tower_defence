@@ -20,6 +20,7 @@
     "electron:build:win": "npm run build:native && electron-builder --config electron-builder.yml --win",
     "electron:build:mac": "npm run build:native && electron-builder --config electron-builder.yml --mac",
     "electron:build:linux": "npm run build:native && electron-builder --config electron-builder.yml --linux",
+    "assets:generate": "node scripts/generate-native-assets.js && capacitor-assets generate --android --ios",
     "cap:sync": "npm run build:native && cap sync",
     "cap:sync:android": "npm run build:native && cap sync android",
     "cap:sync:ios": "npm run build:native && cap sync ios",
@@ -46,6 +47,7 @@
     "vite": "^8.0.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/preact": "^3.2.4",
