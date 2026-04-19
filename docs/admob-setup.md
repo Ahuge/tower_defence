@@ -9,9 +9,13 @@ Step-by-step for creating the live AdMob account and replacing the test IDs curr
 Dev / CI builds use Google's **public test IDs**, configured in:
 
 - `capacitor.config.ts` — `plugins.AdMob.appIdAndroid` / `appIdIos`
+- `android/app/src/main/res/values/strings.xml` — `admob_app_id` (read from AndroidManifest.xml meta-data)
+- `ios/App/App/Info.plist` — `GADApplicationIdentifier`
 - `src/systems/platform/AdUnits.ts` — per-placement test units
 
 These always fill, never count against impression caps, and are safe to commit. `USE_PRODUCTION_AD_UNITS` in `AdUnits.ts` gates the swap to real IDs.
+
+The plugin wiring (`@capacitor-community/admob`, v8) lives in `src/systems/platform/capacitor/CapacitorAdBridge.ts` — `initialize()` on bootstrap, prepare+show for interstitial and rewarded, adaptive banner at the bottom of the screen, rewarded flow guarded by the `Rewarded` event so dismissals return `'skipped'` rather than `'shown'`.
 
 ---
 
@@ -24,6 +28,11 @@ These always fill, never count against impression caps, and are safe to commit. 
 5. `USE_PRODUCTION_AD_UNITS = true`.
 
 Then rebuild + sync: `npm run cap:sync:android` / `:ios`.
+
+Also update the native-side app-id strings alongside the runtime unit swap:
+
+- **Android** — `android/app/src/main/res/values/strings.xml` → `admob_app_id` (the Gradle build reads this at compile time; forgetting this step crashes the app on boot with `The Google Mobile Ads SDK was initialized incorrectly`).
+- **iOS** — `ios/App/App/Info.plist` → `GADApplicationIdentifier`.
 
 ---
 

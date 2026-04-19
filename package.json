@@ -33,10 +33,13 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
     "@capacitor/ios": "^8.3.1",
+    "@osmanraifgunes/capacitor-game-connect": "^8.1.0",
+    "cordova-plugin-purchase": "^13.15.2",
     "phaser": "^4.0.0",
     "preact": "^10.29.1",
     "typescript": "^5.9.3",

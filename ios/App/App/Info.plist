@@ -47,5 +47,18 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+
+	<!-- AdMob iOS: required application identifier. Using Google's
+	     public test app id for now (safe to commit, always fills).
+	     Replace with the real App Store app id from AdMob console
+	     before first release. See docs/admob-setup.md. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+
+	<!-- App Tracking Transparency: AdMob asks for this permission
+	     (iOS 14+). Text shown in the system prompt the first time
+	     we request it. -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This allows us to show personalised ads, which helps keep Factions free.</string>
 </dict>
 </plist>

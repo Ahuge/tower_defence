@@ -4,4 +4,15 @@
     <string name="title_activity_main">Factions</string>
     <string name="package_name">com.alexhughes.factions</string>
     <string name="custom_url_scheme">com.alexhughes.factions</string>
+
+    <!-- AdMob app id. Google's public test app id — safe to commit.
+         Replace with the real id from AdMob Console before first release.
+         See docs/admob-setup.md. -->
+    <string translatable="false" name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+
+    <!-- Google Play Games Services project id. Placeholder until the
+         Play Games Services project is created in Play Console
+         (see docs/play-games-services-setup.md). Sign-in will fail
+         until this is a real project id. -->
+    <string translatable="false" name="game_services_project_id">000000000000</string>
 </resources>

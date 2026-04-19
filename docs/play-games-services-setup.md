@@ -146,37 +146,23 @@ You can unpublish + republish later to iterate on descriptions without losing pl
 
 Once the Play Console side is set up, install the plugin and wire it into the bridge:
 
+Plugin choice: `@osmanraifgunes/capacitor-game-connect` (v8, Capacitor-native, covers both Android Play Games Services v2 and iOS Game Center through one API). Already installed and wired into `src/systems/platform/capacitor/CapacitorProfileBridge.ts`.
+
 ```bash
-npm install @capacitor-community/play-games
-# (plugin name may differ — see the latest docs; some teams use a
-# custom-built plugin wrapping the Android Play Games Services SDK
-# directly)
+npm install @osmanraifgunes/capacitor-game-connect
+npx cap sync
 ```
 
-Then in `CapacitorPlatformBridge`:
+Native-side config required alongside the plugin install:
 
-```ts
-// Pseudocode — adapt to the chosen plugin
-import { PlayGames } from '@capacitor-community/play-games';
+- **Android**: `android/app/src/main/res/values/strings.xml` sets `game_services_project_id` (currently a `000000000000` placeholder). `AndroidManifest.xml` already exposes that id via the `com.google.android.gms.games.APP_ID` meta-data tag. `MainActivity.java` registers the plugin in `onCreate` before `super.onCreate`.
+- **iOS**: Game Center doesn't need Info.plist metadata. The Game Center capability must be toggled on in Xcode's Signing & Capabilities pane, and the app's bundle id has to be linked to a Game Center-enabled App Store Connect record.
 
-async signIn(): Promise<PlayerProfile | null> {
-  const { player } = await PlayGames.signIn();
-  return { id: player.playerId, displayName: player.displayName, ... };
-}
-async unlockAchievement(id: string): Promise<void> {
-  await PlayGames.unlockAchievement({ id });
-}
-async submitLeaderboard(id: string, score: number): Promise<void> {
-  await PlayGames.submitScore({ leaderboardId: id, score });
-}
-async cloudSave(slot: string, json: string): Promise<void> {
-  await PlayGames.saveSnapshot({ name: slot, data: json });
-}
-async cloudLoad(slot: string): Promise<string | null> {
-  const { data } = await PlayGames.loadSnapshot({ name: slot });
-  return data ?? null;
-}
-```
+### What the bridge wraps
+
+- `signIn()` → Play Games Services / Game Center modal sign-in; returns `{player_name, player_id}`. Our bridge maps this into the `PlayerProfile` shape (`avatarUrl` falls through to null — the plugin doesn't expose profile images).
+- `unlockAchievement(id)` / `submitLeaderboard(id, score)` → direct pass-through.
+- **Cloud save**: plugin doesn't wrap Play Games Snapshots / Game Center iCloud — `cloudSave` / `cloudLoad` currently fall back to localStorage scoped per signed-in player id. Good enough for single-device progress; cross-device sync waits on a dedicated snapshots plugin or a custom native bridge.
 
 ---
 
