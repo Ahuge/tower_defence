@@ -32,15 +32,14 @@ const config: CapacitorConfig = {
   // minted in the AdMob console (see docs/admob-setup.md).
   plugins: {
     AdMob: {
-      // Google's official test app IDs. Documented at
-      // https://developers.google.com/admob/android/test-ads
-      // and https://developers.google.com/admob/ios/test-ads.
-      appIdAndroid: 'ca-app-pub-3940256099942544~3347511713',
+      // Android: real production app id (AdMob Console / Running Man
+      // Games, 2026-04-19). iOS still on Google's public test id until
+      // the iOS AdMob app is registered.
+      appIdAndroid: 'ca-app-pub-4227593694949279~8779260912',
       appIdIos:     'ca-app-pub-3940256099942544~1458002511',
-      // These can be overridden at runtime when showing an ad;
-      // the bridge code will use real per-placement unit IDs as
-      // they're minted in the AdMob console. For now every
-      // placement falls back to the test unit for its ad type.
+      // Actual ad unit ids come from `PROD_AD_UNITS` /
+      // `TEST_AD_UNITS` in src/systems/platform/AdUnits.ts,
+      // gated by USE_PRODUCTION_AD_UNITS.
     },
     // SplashScreen / StatusBar config lands with the relevant
     // plugin installs in Phase 3.

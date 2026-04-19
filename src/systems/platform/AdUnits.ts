@@ -45,11 +45,12 @@ export const USE_PRODUCTION_AD_UNITS = false;
  *  burning fake impressions. */
 export const PROD_AD_UNITS: { android: AdUnitSet; ios: AdUnitSet } = {
   android: {
-    banner:       '',
-    interstitial: '',
-    rewarded:     '',
+    banner:       'ca-app-pub-4227593694949279/7163986409',
+    interstitial: 'ca-app-pub-4227593694949279/3983289290',
+    rewarded:     'ca-app-pub-4227593694949279/1870237638',
   },
   ios: {
+    // Populated alongside the iOS AdMob app registration (Step 6).
     banner:       '',
     interstitial: '',
     rewarded:     '',

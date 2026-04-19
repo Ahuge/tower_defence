@@ -5,10 +5,13 @@
     <string name="package_name">com.alexhughes.factions</string>
     <string name="custom_url_scheme">com.alexhughes.factions</string>
 
-    <!-- AdMob app id. Google's public test app id — safe to commit.
-         Replace with the real id from AdMob Console before first release.
-         See docs/admob-setup.md. -->
-    <string translatable="false" name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <!-- AdMob app id. Real production id from the AdMob Console
+         (Running Man Games / Factions Android, 2026-04-19). Safe to
+         commit — AdMob app ids ship inside every installed APK and
+         are visible to anyone who decompiles the app. Live ads only
+         fire when USE_PRODUCTION_AD_UNITS=true in AdUnits.ts; dev
+         builds still use Google's test ids regardless of this value. -->
+    <string translatable="false" name="admob_app_id">ca-app-pub-4227593694949279~8779260912</string>
 
     <!-- Google Play Games Services project id. Placeholder until the
          Play Games Services project is created in Play Console
