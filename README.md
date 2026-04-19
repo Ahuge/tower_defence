@@ -182,3 +182,21 @@ npm run build
 # Upload dist/ to any static host
 ```
 Auto-deploys to GitHub Pages on push to `develop`.
+
+## Native builds
+
+The same web bundle wraps into native apps via two toolchains:
+
+### Desktop (Electron — Windows / macOS / Linux, Steam-ready)
+```bash
+npm run electron:dev                  # launch dev mode against `npm run dev` server
+npm run electron:build                # package for the current host OS
+npm run electron:build:win|mac|linux  # explicit per-OS builds (needs toolchains)
+```
+Output lands under `release/`. `electron-builder.yml` controls installer formats (NSIS + portable zip on Windows, DMG on macOS, AppImage on Linux). Steam integration (`steamworks.js`) is a future add — the `electron/preload.cjs` preload already exposes a `window.__td_electron` surface for the PlatformBridge to detect.
+
+### Mobile (Capacitor — Android + iOS)
+Coming in Phase 2 of this branch.
+
+### Platform abstraction
+All native surfaces (ads, IAP, user profile, cloud save) go through `src/systems/platform/PlatformBridge.ts`. Web builds get a no-op + localStorage fallback; Capacitor / Electron builds slot in implementations that route to AdMob, Play Games Services, Steamworks, etc.

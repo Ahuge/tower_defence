@@ -5,3 +5,5 @@ notes/
 test-results/
 playwright-report/
 /e2e-results/
+release/
+

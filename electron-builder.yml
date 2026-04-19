@@ -1,0 +1,67 @@
+# electron-builder config.
+#
+# `npm run build:electron` builds the web bundle with VITE_BASE_PATH=./
+# then packages it for the current host OS via electron-builder. Per-OS
+# targets are listed below; electron-builder's defaults for asar, icons,
+# and signing are sensible enough that we only specify what differs.
+#
+# When Steam publishing lands, we add a new Steam-specific build script
+# that packages without the auto-updater, drops steam_appid.txt next to
+# the executable, and uploads via SteamPipe.
+
+appId: com.alexhughes.factions
+productName: Factions
+copyright: Copyright © 2026 Alex Hughes
+
+# What to include in the packaged asar. Tests, e2e harness, source
+# maps, and the docs dir are excluded — they balloon the installer.
+files:
+  - dist/**/*
+  - electron/**/*.cjs
+  - package.json
+  - '!**/*.test.*'
+  - '!**/__tests__/**'
+  - '!**/__regressions__/**'
+  - '!**/__smoke__/**'
+  - '!e2e/**'
+  - '!test/**'
+  - '!docs/**'
+
+directories:
+  buildResources: build
+  output: release
+
+# Generic cross-platform options applied unless a per-OS block
+# overrides them.
+asar: true
+compression: normal
+
+# Windows — NSIS installer + portable zip. .exe signed later when
+# we have a code-signing cert.
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+# macOS — DMG for direct download; Mac App Store build is a separate
+# target we can add later if we pursue it.
+mac:
+  category: public.app-category.games
+  hardenedRuntime: false  # flip to true once we're notarising
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+
+# Linux — AppImage for portability; Steam's Linux build layers on top
+# of this later (AppImage is fine as an intermediate).
+linux:
+  category: Game
+  target:
+    - target: AppImage
+      arch: [x64]
+
+# Auto-updater config — turned off for now. When we enable it we'll
+# point it at a published feed (Steam handles updates on its side).
+publish: null
