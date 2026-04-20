@@ -245,6 +245,23 @@ export interface GameUIState {
   essence: EssenceState | null;
   /** Hero item shop state (Hero Defense mode) */
   heroShop: HeroShopState | null;
+  /** Continue-ad offer. Set when the player's lives hit zero and we
+   *  can still legitimately offer a revive. Drives the
+   *  ContinueOfferModal in the DOM layer; GameScene sets it and pauses
+   *  the update loop, clears it once the player picks (or the ad
+   *  errors out). null most of the time. */
+  continueOffer: ContinueOffer | null;
+}
+
+export interface ContinueOffer {
+  /** How many lives the player gets back if they accept. */
+  livesGranted: number;
+  /** Fires when the user taps "Watch Ad". GameScene wires this to
+   *  platformBridge().ads.showRewarded() + reward grant. */
+  onAccept: () => void;
+  /** Fires when the user taps "No thanks" / closes — GameScene falls
+   *  through to the normal game-over path. */
+  onDecline: () => void;
 }
 
 type Listener = () => void;
@@ -323,7 +340,24 @@ class GameUIStoreClass {
       frontier: { available: [], owned: [] },
       essence: null,
       heroShop: null,
+      continueOffer: null,
     };
+  }
+
+  /** Surface the continue-ad offer. GameScene calls this on lives→0
+   *  (outside tutorial / versus / already-used cases) and pauses its
+   *  update loop until one of the callbacks fires. */
+  offerContinue(offer: ContinueOffer): void {
+    this.state = { ...this.state, continueOffer: offer };
+    this.notify();
+  }
+
+  /** Clear the offer — called by the modal's action handlers after
+   *  they invoke onAccept / onDecline. */
+  clearContinueOffer(): void {
+    if (this.state.continueOffer === null) return;
+    this.state = { ...this.state, continueOffer: null };
+    this.notify();
   }
 
   // ─── Getters ────────────────────────────────────────

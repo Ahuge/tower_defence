@@ -13,8 +13,14 @@ interface Props { data: Record<string, unknown>; }
  * owned and to 'unavailable' on web / unfilled inventory — in every
  * non-'shown' case we fall through to the navigation immediately so
  * a missing ad never blocks the user from getting back to the menu.
+ *
+ * When the player already watched a continue-ad to try to revive
+ * (and then still lost), skip this interstitial — two ads back-to-
+ * back is the kind of user-hostile pattern our ad-strategy doc
+ * explicitly rules out.
  */
-function leaveViaInterstitial(next: () => void): void {
+function leaveViaInterstitial(next: () => void, skip: boolean): void {
+  if (skip) { next(); return; }
   platformBridge().ads.showInterstitial('game_over').finally(next);
 }
 
@@ -38,6 +44,7 @@ export function GameOverScreen({ data }: Props) {
   const stats = data.stats as GameStats | undefined;
   const heroStats = data.heroStats as { kills: number; deaths: number; damageDealt: number; abilitiesUsed: number; heroName: string } | null;
   const shardsEarned = data.shardsEarned as number;
+  const continueAdShown = data.continueAdShown === true;
 
   const score = wave * 100 + creepsKilled * 2 + (won ? 1000 : 0) + gold;
   const gameTime = stats ? Math.round(stats.gameTimeMs / 1000) : 0;
@@ -170,8 +177,8 @@ export function GameOverScreen({ data }: Props) {
 
       {/* Buttons */}
       <div class="ui-section" style={{ display: 'flex', justifyContent: 'center', gap: '12px', paddingBottom: '24px', flexWrap: 'wrap' }}>
-        <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu())}>Play Again</button>
-        <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu())}>Menu</button>
+        <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Play Again</button>
+        <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
         <button class="btn btn-primary" onClick={() => UIBridge.show('store')}>Store</button>
       </div>
     </>

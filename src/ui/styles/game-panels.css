@@ -583,3 +583,57 @@
   .status-stats { gap: 8px; }
   .status-btn { min-height: 44px; min-width: 44px; padding: 6px 12px; }
 }
+
+/* Continue-ad modal — lives→0 rescue offer */
+.continue-offer-backdrop {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(10, 8, 15, 0.88);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: continue-fade-in 180ms ease-out;
+}
+@keyframes continue-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.continue-offer-card {
+  background: var(--bg-panel, #1a1520);
+  border: 2px solid var(--gold, #e8b76d);
+  border-radius: 10px;
+  padding: 28px 32px;
+  max-width: 420px;
+  width: calc(100vw - 32px);
+  text-align: center;
+  box-shadow: 0 0 40px rgba(232, 183, 109, 0.25);
+  animation: continue-pop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes continue-pop {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.continue-offer-title {
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 28px;
+  color: var(--gold-bright, #f5d08a);
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+.continue-offer-body {
+  font-size: 15px;
+  color: var(--text-primary, #eee);
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+.continue-offer-body strong { color: var(--gold, #e8b76d); }
+.continue-offer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.continue-offer-actions .btn { width: 100%; }
+
+@media (max-width: 600px) {
+  .continue-offer-card { padding: 20px 18px; }
+  .continue-offer-title { font-size: 24px; }
+  .continue-offer-body { font-size: 14px; }
+}

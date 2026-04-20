@@ -72,6 +72,7 @@ import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
 import { Analytics } from '../systems/AnalyticsClient';
+import { platformBridge } from '../systems/platform';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
@@ -189,6 +190,20 @@ export class GameScene extends Phaser.Scene {
   private _gauntletOrder: FactionId[] | undefined;
   private _gauntletTransitioning: boolean = false;
   private _gauntletHud: Phaser.GameObjects.Text | null = null;
+
+  // Continue-ad state.
+  //   _awaitingContinueDecision: update loop early-returns while the
+  //     modal is up so the game world visibly freezes — creeps stop
+  //     marching, towers stop shooting. Cleared on accept or decline.
+  //   _continueUsedThisMatch: true after a successful revive, so we
+  //     never offer a second ad in the same match (ad-strategy.md #6
+  //     is explicitly 1/match).
+  //   _continueAdShown: true if any continue ad actually played — used
+  //     by GameOverScreen to suppress the post-match interstitial so
+  //     the player doesn't get two ads back-to-back.
+  private _awaitingContinueDecision: boolean = false;
+  private _continueUsedThisMatch: boolean = false;
+  private _continueAdShown: boolean = false;
   private waveCount?: number;
 
   private customMapDef: MapDefinition | null = null;
@@ -1446,6 +1461,13 @@ export class GameScene extends Phaser.Scene {
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
     this.waveMgr.checkWaveComplete(this.creeps.length);
 
+    // While the continue-ad modal is up the game visibly freezes —
+    // early-return here prevents the defeat branch from re-firing
+    // every frame while the player is deciding, and keeps creeps +
+    // towers static so the revive lands the player back on the
+    // exact same board state.
+    if (this._awaitingContinueDecision) return;
+
     // Hero defense: check arena base HP instead of lives
     const isHeroDead = this.arenaManager && this.arenaManager.baseHp <= 0;
     if (this.lives <= 0 || isHeroDead) {
@@ -1458,7 +1480,7 @@ export class GameScene extends Phaser.Scene {
       if (this.circle) {
         this.circle.broadcast({ type: 'circle_victory', winnerIndex: -1 });
       }
-      this.goToGameOver(false);
+      this.offerContinueOrGameOver(!!isHeroDead);
       return;
     }
 
@@ -1656,6 +1678,78 @@ export class GameScene extends Phaser.Scene {
 
   // === Helpers ===
 
+  /**
+   * Intercepts the defeat branch. Decides whether the player is
+   * eligible for the continue-ad rescue, offers it if so (pausing
+   * the world until the modal closes), otherwise falls straight
+   * through to the normal game-over screen.
+   *
+   * Gated off for:
+   *   - Hero Defense (loss mode is hero HP, not lives — "+5 lives"
+   *     would grant nothing meaningful)
+   *   - Tutorial match (see ad-strategy.md: no ads in tutorial)
+   *   - Versus / Circle co-op (other players are waiting; a rescue
+   *     would de-sync the match and give one player a private
+   *     second life the other doesn't know about)
+   *   - Already-used in this match (1/match cap from strategy doc)
+   */
+  private offerContinueOrGameOver(isHeroDead: boolean): void {
+    const eligible =
+      !isHeroDead &&
+      this.matchMode !== 'hero_defense' &&
+      this.matchMode !== 'tutorial' &&
+      !this.versus &&
+      !this.circle &&
+      !this._continueUsedThisMatch &&
+      platformBridge().ads.isEnabled();
+
+    if (!eligible) {
+      this.goToGameOver(false);
+      return;
+    }
+
+    // TODO(ad-strategy.md #6): scale to difficulty once we settle
+    // balance — `max(5, floor(startingLives * 0.15))`. Flat 5 today.
+    const livesGranted = 5;
+
+    this._awaitingContinueDecision = true;
+    GameUIStore.offerContinue({
+      livesGranted,
+      onAccept: async () => {
+        // Regardless of ad result we clear the freeze flag — on
+        // success we grant + resume, on fail we fall through to
+        // game-over. Never leave the player stuck on a frozen
+        // board.
+        try {
+          this._continueUsedThisMatch = true;
+          const result = await platformBridge().ads.showRewarded('game_over_continue');
+          if (result === 'shown') {
+            this._continueAdShown = true;
+            this.lives = livesGranted;
+            GameUIStore.updateEconomy(this.economy.gold, this.lives, this.incomeMgr.getBreakdown().total);
+            this._awaitingContinueDecision = false;
+            // Deliberately do NOT fall through to goToGameOver —
+            // the player keeps playing. The next frame's update()
+            // loop resumes spawning + shooting.
+            return;
+          }
+          // Ad didn't actually play (unfilled / disabled / errored).
+          // Treat as a decline rather than silently trapping the
+          // player in a frozen match.
+          this._awaitingContinueDecision = false;
+          this.goToGameOver(false);
+        } catch {
+          this._awaitingContinueDecision = false;
+          this.goToGameOver(false);
+        }
+      },
+      onDecline: () => {
+        this._awaitingContinueDecision = false;
+        this.goToGameOver(false);
+      },
+    });
+  }
+
   private goToGameOver(won: boolean): void {
     // Reset global grid offset
     setGridOffsetY(0);
@@ -1686,6 +1780,7 @@ export class GameScene extends Phaser.Scene {
         abilitiesUsed: this.arenaManager.hero.abilitiesUsed,
         heroName: this.arenaManager.hero.typeDef.name,
       } : null,
+      continueAdShown: this._continueAdShown,
     };
     const duration = Math.round((Date.now() - this._gameStartTime) / 1000);
     Analytics.gameEnd(this.matchMode, this.lives > 0 ? 'victory' : 'defeat', this.currentWave, duration);
