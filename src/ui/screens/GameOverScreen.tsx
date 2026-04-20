@@ -3,8 +3,20 @@ import { ShardBadge } from '../components/ShardBadge';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { ShardWallet, BattlePass } from '../../systems/monetization';
 import { GameStats } from '../../systems/StatsTracker';
+import { platformBridge } from '../../systems/platform';
 
 interface Props { data: Record<string, unknown>; }
+
+/**
+ * Show a post-match interstitial before leaving the game-over screen.
+ * The bridge short-circuits to 'disabled' when the ad-free IAP is
+ * owned and to 'unavailable' on web / unfilled inventory — in every
+ * non-'shown' case we fall through to the navigation immediately so
+ * a missing ad never blocks the user from getting back to the menu.
+ */
+function leaveViaInterstitial(next: () => void): void {
+  platformBridge().ads.showInterstitial('game_over').finally(next);
+}
 
 const MODE_DISPLAY: Record<string, string> = {
   standard: 'Standard',
@@ -158,8 +170,8 @@ export function GameOverScreen({ data }: Props) {
 
       {/* Buttons */}
       <div class="ui-section" style={{ display: 'flex', justifyContent: 'center', gap: '12px', paddingBottom: '24px', flexWrap: 'wrap' }}>
-        <button class="btn btn-gold btn-large" onClick={() => UIBridge.showMenu()}>Play Again</button>
-        <button class="btn btn-large" onClick={() => UIBridge.showMenu()}>Menu</button>
+        <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu())}>Play Again</button>
+        <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu())}>Menu</button>
         <button class="btn btn-primary" onClick={() => UIBridge.show('store')}>Store</button>
       </div>
     </>
