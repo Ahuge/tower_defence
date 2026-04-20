@@ -78,7 +78,9 @@ const SEL = {
   econSendsTab: '[data-tutorial-target="econ-tab-sends"]',
   // Specific tower slot in the dock — matches data-tutorial-tower-id on
   // the per-slot wrapper. Used when the tutorial wants to point at a
-  // particular tower (e.g. Arcane Frost for the slow-effect lesson).
+  // particular tower (e.g. Arcane Bolt for the first placement, Frost
+  // for the slow-effect lesson).
+  dockBoltSlot:  '[data-tutorial-tower-id="arcane_bolt"]',
   dockFrostSlot: '[data-tutorial-tower-id="arcane_frost"]',
   tutorialsHelpBtn: '[data-tutorial-target="tutorials-help-btn"]',
 } as const;
@@ -310,9 +312,13 @@ const tutorialMatch: TutorialTrack = {
     },
     {
       id: 'pick_tower',
-      target: { kind: 'dom', selector: SEL.towerDock },
+      // Highlight the Bolt slot specifically so the player's eye lands
+      // on the exact card, matching the per-tower highlight pattern
+      // used later for Frost. Prevents the "which tower is the right
+      // one?" hesitation on mobile where multi-tower docks are dense.
+      target: { kind: 'dom', selector: SEL.dockBoltSlot },
       title: 'Pick a Tower',
-      body: 'Click Arcane Bolt in the dock at the bottom. Hotkey 1 works too.',
+      body: 'Click Arcane Bolt — the glowing card in the dock. Hotkey 1 works too.',
       placement: 'top',
       advanceOn: { event: 'dockTowerSelected' },
     },
@@ -334,12 +340,25 @@ const tutorialMatch: TutorialTrack = {
       body: "The path bent around your tower. Every tower you drop reshapes the route — the longer you make creeps walk, the more time your towers have to shoot them.",
     },
     {
+      id: 'pick_bolt_2',
+      // Re-select Bolt. The explainer step before this deselects the
+      // dock (TutorialManager's requestSelectDockTower(-1) on non-
+      // placement steps), so the player would otherwise land on the
+      // placement step with no tower active. Mirroring the pick_frost
+      // pattern: one step to pick, one to place.
+      target: { kind: 'dom', selector: SEL.dockBoltSlot },
+      title: 'Pick Bolt Again',
+      body: 'Select Arcane Bolt again — we need a second one to extend the maze.',
+      placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
+    },
+    {
       id: 'place_second',
       // Dynamic: highlights the strip just past the first tower's
       // bulge, so placing another Bolt extends the detour.
       target: nextMazeExtensionTarget(),
       title: 'Extend the Maze',
-      body: "Drop another Bolt in the highlighted strip — that's right along the new route. You want creeps to walk past your towers as long as possible.",
+      body: "Drop the Bolt in the highlighted strip — that's right along the new route. You want creeps to walk past your towers as long as possible.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
@@ -417,6 +436,17 @@ const tutorialMatch: TutorialTrack = {
       advanceOn: { event: 'waveCleared' },
     },
     {
+      id: 'pick_bolt_reinforce',
+      // Same re-pick pattern as pick_bolt_2 — watch_wave_2 is a
+      // non-placement step that deselects the dock, so we need an
+      // explicit selection step before the next placement.
+      target: { kind: 'dom', selector: SEL.dockBoltSlot },
+      title: 'Pick Bolt',
+      body: 'One more Bolt for the final wave. Select it from the dock.',
+      placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
+    },
+    {
       id: 'place_fourth',
       // Same dynamic hint — re-inspects the path after the third
       // tower so the reinforcement strip moves further along the
@@ -428,13 +458,27 @@ const tutorialMatch: TutorialTrack = {
       advanceOn: { event: 'towerPlaced' },
     },
     {
+      id: 'frontier_intro',
+      target: { kind: 'screen' },
+      title: 'Frontier — Safe Income',
+      body: "Every faction has a Frontier building: passive income that ticks up every wave, no risk, no extra creeps to fight. It's the quiet, reliable counterpart to Sends. Over a long match, Frontier investments compound into most of your gold. For Arcane, that's the Leyline Nexus — we'll buy one next.",
+      placement: 'top-banner',
+    },
+    {
+      id: 'leyline_nexus_intro',
+      target: { kind: 'screen' },
+      title: 'The Leyline Nexus',
+      body: "The Nexus generates steady income and has an Overcharge button you can hit for a 3× gold burst — at the cost of two dormant waves after. Other factions have their own flavour: Mechanical digs (more gold, collapse risk), Nature grows and harvests on a cycle, Void gambles for a jackpot. They all fill the same slot in the economy.",
+      placement: 'top-banner',
+    },
+    {
       id: 'buy_frontier',
       // Target the Frontier tab header; popover pinned to the
       // viewport bottom so the Nexus buy list (which sits in the
       // top-left ECONOMY panel) stays visible on mobile.
       target: { kind: 'dom', selector: SEL.econFrontierTab },
-      title: 'Build a Frontier',
-      body: "Arcane's Frontier is the Leyline Nexus — steady income every wave, plus an Overcharge button you can hit for 3x burst gold at the cost of two dormant waves. Other factions have their own versions: Mechanical digs for more (with collapse risk), Nature grows and harvests, Void gambles. Tap the Frontier tab, pick the Leyline Nexus, and buy it.",
+      title: 'Buy the Nexus',
+      body: "Tap the Frontier tab and buy a Leyline Nexus. You'll see your +w income jump at the end of the next wave.",
       placement: 'bottom-banner',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('frontier'); },
       advanceOn: { event: 'frontierPurchased' },
