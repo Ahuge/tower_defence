@@ -30,6 +30,12 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: '#15101a',
     title: 'Factions',
+    // Dev-mode window icon. In packaged builds electron-builder bakes
+    // the platform-specific icon into the executable; on Linux the
+    // BrowserWindow `icon` option is still the canonical way to set
+    // the runtime window icon, and on all platforms it gives us a
+    // matching icon during `npm run electron:dev`.
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

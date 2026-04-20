@@ -25,7 +25,8 @@ const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 
-const OUT_DIR = path.resolve(__dirname, '..', 'resources');
+const OUT_DIR       = path.resolve(__dirname, '..', 'resources');
+const ELECTRON_DIR  = path.resolve(__dirname, '..', 'build');
 
 const BG      = '#15101a'; // --bg-deep
 const GOLD    = '#e8b76d'; // --gold
@@ -152,6 +153,22 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
   // a dark-background design. @capacitor/assets uses this when the
   // device is in dark mode on iOS / Android 12+.
   writeCanvas(canvas, 'splash-dark.png');
+}
+
+// 5. Electron icon — electron-builder looks for `build/icon.png` at
+//    1024² and auto-generates .ico for Windows + .icns for macOS from
+//    it. Linux uses the PNG directly in the AppImage. Writing the
+//    same master 1024² we already produced for Capacitor.
+{
+  fs.mkdirSync(ELECTRON_DIR, { recursive: true });
+  const size = 1024;
+  const canvas = createCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  paintBackground(ctx, size, size);
+  drawTower(ctx, size / 2, size / 2, size, /*drawBackground*/ true);
+  const outPath = path.join(ELECTRON_DIR, 'icon.png');
+  fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
+  console.log(`  wrote ${path.relative(process.cwd(), outPath)}`);
 }
 
 console.log('Done.');
