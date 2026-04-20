@@ -65,6 +65,7 @@ import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
+import { playCreepDeath } from '../systems/CreepSpriteManager';
 import { Tower } from '../entities/Tower';
 import { GameControlBar } from '../ui/GameControlBar';
 import { preloadSprites, createSpriteAnimations, getTowerSpriteConfig } from '../systems/SpriteManager';
@@ -1701,7 +1702,11 @@ export class GameScene extends Phaser.Scene {
       !this.versus &&
       !this.circle &&
       !this._continueUsedThisMatch &&
-      platformBridge().ads.isEnabled();
+      // Native only — on web the rewarded call returns 'unavailable'
+      // immediately, which would leave the player staring at a
+      // rescue offer that can't actually serve. Skip the offer
+      // entirely on web and go straight to game-over.
+      platformBridge().isNative;
 
     if (!eligible) {
       this.goToGameOver(false);
@@ -1727,6 +1732,12 @@ export class GameScene extends Phaser.Scene {
             this._continueAdShown = true;
             this.lives = livesGranted;
             GameUIStore.updateEconomy(this.economy.gold, this.lives, this.incomeMgr.getBreakdown().total);
+            // Clear the board — otherwise a revive is worthless
+            // when six creeps are one tile from the exit about to
+            // burn through the +5 lives instantly. Visual: shockwave
+            // ring expanding from each exit, killing creeps as it
+            // sweeps over them.
+            this.playReviveShockwave();
             this._awaitingContinueDecision = false;
             // Deliberately do NOT fall through to goToGameOver —
             // the player keeps playing. The next frame's update()
@@ -1748,6 +1759,118 @@ export class GameScene extends Phaser.Scene {
         this.goToGameOver(false);
       },
     });
+  }
+
+  /**
+   * Continue-ad board wipe. Plays a gold shockwave outward from each
+   * map exit, killing creeps as the ring sweeps over them. Without
+   * this a rewarded revive is a trap — the next six creeps one tile
+   * from the exit would burn through the granted +5 lives faster than
+   * the player can even process what happened.
+   *
+   * No gold / stat bounty awarded — these creeps were "cleared by
+   * divine intervention" not killed by a tower, and paying out for
+   * them would make the ad effectively a gold dispenser on top of
+   * the revive.
+   */
+  private playReviveShockwave(): void {
+    // Collect all map exits (last PathPoint of each currently-live path).
+    const exits: { x: number; y: number }[] = [];
+    for (const path of this.allPaths) {
+      if (!path || path.length === 0) continue;
+      const last = path[path.length - 1];
+      exits.push({ x: gridX(last.col), y: gridY(last.row) });
+    }
+    if (exits.length === 0) {
+      // No paths (defensive — shouldn't happen mid-match). Kill
+      // creeps instantly and bail.
+      for (const creep of this.creeps) this.killCreepForRevive(creep);
+      return;
+    }
+
+    // Pair every alive creep with its nearest exit + distance-to, so
+    // the shockwave-front math only has to check "is the ring past my
+    // distance yet?".
+    const targets: { creep: Creep; dist: number }[] = [];
+    for (const creep of this.creeps) {
+      if (!creep.alive) continue;
+      let minDist = Infinity;
+      for (const e of exits) {
+        const dx = creep.x - e.x;
+        const dy = creep.y - e.y;
+        const d = Math.hypot(dx, dy);
+        if (d < minDist) minDist = d;
+      }
+      targets.push({ creep, dist: minDist });
+    }
+
+    // Fixed duration looks more satisfying than scaling with map
+    // size — players want the effect to feel "instant but readable"
+    // rather than dependent on whether their nearest exit is close
+    // or far.
+    const duration = 900;
+    // Expand a bit past the furthest creep so the ring visibly clears
+    // the whole board before dissipating.
+    const maxRadius = Math.max(
+      GAME_WIDTH,
+      ...targets.map(t => t.dist),
+    ) * 1.1;
+
+    const waveGraphics = exits.map(() => {
+      const g = this.add.graphics();
+      g.setDepth(10_000);
+      return g;
+    });
+    const killed = new WeakSet<Creep>();
+    const ring = { r: 0 };
+
+    this.tweens.add({
+      targets: ring,
+      r: maxRadius,
+      duration,
+      ease: 'Cubic.Out',
+      onUpdate: () => {
+        const progress = ring.r / maxRadius;
+        const alpha = 1 - progress;
+        for (let i = 0; i < exits.length; i++) {
+          const g = waveGraphics[i];
+          g.clear();
+          g.lineStyle(6, 0xe8b76d, Math.max(0, alpha));
+          g.strokeCircle(exits[i].x, exits[i].y, ring.r);
+          g.fillStyle(0xf5d08a, Math.max(0, alpha * 0.08));
+          g.fillCircle(exits[i].x, exits[i].y, ring.r);
+        }
+        // Kill creeps the ring has reached this frame.
+        for (const t of targets) {
+          if (killed.has(t.creep)) continue;
+          if (t.dist <= ring.r) {
+            this.killCreepForRevive(t.creep);
+            killed.add(t.creep);
+          }
+        }
+      },
+      onComplete: () => {
+        for (const g of waveGraphics) g.destroy();
+        // Safety net — stragglers (shouldn't happen given maxRadius
+        // covers all, but cheap to guarantee).
+        for (const t of targets) {
+          if (!killed.has(t.creep)) this.killCreepForRevive(t.creep);
+        }
+      },
+    });
+  }
+
+  /** Remove a creep from play without awarding gold or firing a
+   *  creepKilled event. Used exclusively by the revive shockwave;
+   *  normal damage paths still go through `creep.hp -= …`. */
+  private killCreepForRevive(creep: Creep): void {
+    if (!creep.alive) return;
+    creep.alive = false;
+    try { creep.graphics.destroy(); } catch { /* already gone */ }
+    if (creep.sprite) {
+      playCreepDeath(this, creep.sprite, this.creepFaction, creep.creepTypeId);
+      creep.sprite = null;
+    }
   }
 
   private goToGameOver(won: boolean): void {

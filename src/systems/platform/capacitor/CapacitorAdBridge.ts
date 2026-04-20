@@ -83,7 +83,11 @@ export class CapacitorAdBridge implements AdBridge {
   }
 
   async showRewarded(_placement: string): Promise<AdResult> {
-    if (!this.isEnabled()) return 'disabled';
+    // Deliberately NOT gated on isEnabled() — rewarded ads stay
+    // available even when the ads_off IAP is owned. Strategy doc
+    // principle 4: "The ad-free IAP removes interstitials only, not
+    // rewarded. A player who paid to remove ads still wants the
+    // choice to watch one for free shards."
     await this.ready;
     if (!this.rewardedReady) {
       const ok = await this.prepareRewarded();

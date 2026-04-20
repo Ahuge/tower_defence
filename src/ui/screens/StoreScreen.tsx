@@ -1,4 +1,4 @@
-import { useState, useRef } from 'preact/hooks';
+import { useState, useRef, useEffect } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
 import { SkinPreview } from '../components/SkinPreview';
@@ -13,12 +13,84 @@ import {
   Rarity,
 } from '../../systems/monetization';
 import { platformBridge } from '../../systems/platform';
+import {
+  AD_SHARDS_DAILY,
+  DAILY_SHARDS_REWARD,
+} from '../../systems/platform/AdPlacements';
+import {
+  isDailyReady,
+  msUntilNextDaily,
+  markShown,
+  formatCountdown,
+} from '../../systems/platform/AdCooldowns';
 import { FACTIONS, FactionId } from '../../data/Factions';
 
 type Tab = 'skins' | 'factions' | 'terrain' | 'rolls';
 
 function rarityClass(r: Rarity): string { return `rarity-${r}`; }
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
+
+/**
+ * "Watch Ad for +100 Shards" button — placement #1 from ad-strategy.md.
+ * One play per local calendar day; shows a countdown pill when on
+ * cooldown. Hidden entirely on web / non-native builds since the
+ * rewarded bridge returns 'unavailable' there and a grey-disabled
+ * button would just confuse users.
+ */
+function DailyAdButton({ rerender }: { rerender: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Re-render once a minute while on cooldown so the countdown ticks
+  // visibly ("7h 23m" → "7h 22m"). Skipped when ready to avoid a
+  // pointless timer.
+  const ready = isDailyReady(AD_SHARDS_DAILY);
+  useEffect(() => {
+    if (ready || busy) return;
+    const id = window.setInterval(() => setTick(t => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, [ready, busy]);
+
+  if (!platformBridge().isNative) return null;
+
+  const onClick = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    try {
+      const result = await platformBridge().ads.showRewarded(AD_SHARDS_DAILY);
+      if (result === 'shown') {
+        ShardWallet.earn(DAILY_SHARDS_REWARD, 'Daily ad reward');
+        markShown(AD_SHARDS_DAILY);
+        rerender();
+      }
+      // 'skipped' / 'unavailable' / 'disabled' — silent no-op; cooldown
+      // only advances on a verified 'shown'.
+    } finally {
+      setBusy(false);
+      setTick(t => t + 1);
+    }
+  };
+
+  if (!ready) {
+    const remaining = formatCountdown(msUntilNextDaily(AD_SHARDS_DAILY));
+    return (
+      <span class="text-dim text-xs" style={{ padding: '4px 10px' }}>
+        Daily ad in {remaining}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      class={`btn btn-gold ${busy ? 'btn-disabled' : ''}`}
+      style={{ fontSize: '10px', padding: '4px 10px' }}
+      onClick={onClick}
+      disabled={busy}
+    >
+      {busy ? 'Loading ad...' : `Watch Ad → +${DAILY_SHARDS_REWARD} Shards`}
+    </button>
+  );
+}
 
 export function StoreScreen() {
   const [tab, setTab] = useState<Tab>('skins');
@@ -53,17 +125,20 @@ export function StoreScreen() {
         <ShardBadge />
       </div>
       {isNative && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '0 12px 8px' }}>
-          {restoreState !== 'idle' && restoreState !== 'running' && (
-            <span class="text-dim text-xs">{restoreState}</span>
-          )}
-          <button
-            class={`btn ${restoreState === 'running' ? 'btn-disabled' : ''}`}
-            style={{ fontSize: '10px', padding: '4px 10px' }}
-            onClick={onRestore}
-          >
-            {restoreState === 'running' ? 'Restoring...' : 'Restore Purchases'}
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', padding: '0 12px 8px', flexWrap: 'wrap' }}>
+          <DailyAdButton rerender={rerender} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {restoreState !== 'idle' && restoreState !== 'running' && (
+              <span class="text-dim text-xs">{restoreState}</span>
+            )}
+            <button
+              class={`btn ${restoreState === 'running' ? 'btn-disabled' : ''}`}
+              style={{ fontSize: '10px', padding: '4px 10px' }}
+              onClick={onRestore}
+            >
+              {restoreState === 'running' ? 'Restoring...' : 'Restore Purchases'}
+            </button>
+          </div>
         </div>
       )}
       <div class="tab-bar">
