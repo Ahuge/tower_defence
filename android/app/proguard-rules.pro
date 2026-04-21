@@ -1,21 +1,48 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# ProGuard / R8 rules for the Factions release build.
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Capacitor + the Cordova bridge find plugin classes by name via
+# reflection, so keeping plugin entry points prevents R8 from
+# inlining them and breaking the JS → native bridge at runtime.
+# Each -keep rule below exists because removing it would break a
+# specific plugin call in a release build.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ─── Capacitor core + plugin annotation scanning ─────────────────
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keep class com.getcapacitor.** { *; }
+-keep class com.getcapacitor.plugin.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keep class * extends com.getcapacitor.Plugin { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ─── Cordova plugins (routed through Capacitor's Cordova bridge) ──
+
+-keep class org.apache.cordova.** { *; }
+# cordova-plugin-purchase — IAP / Play Billing
+-keep class cc.fovea.purchase.** { *; }
+-keep class com.android.billingclient.** { *; }
+
+# ─── @capacitor-community/admob ──────────────────────────────────
+
+-keep class com.getcapacitor.community.admob.** { *; }
+-keep class com.google.android.gms.ads.** { *; }
+
+# ─── @osmanraifgunes/capacitor-game-connect — Play Games Services ─
+
+-keep class com.osmanraifgunes.capacitorgameconnect.** { *; }
+-keep class com.google.android.gms.games.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+
+# ─── Shared Google Play Services glue ────────────────────────────
+
+-keep class com.google.android.gms.common.api.** { *; }
+-keep class com.google.api.services.** { *; }
+
+# ─── Preserve stack-trace line numbers in release crash reports ──
+
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# ─── Suppress noisy warnings that aren't actionable ──────────────
+
+-dontwarn org.apache.cordova.**
+-dontwarn com.getcapacitor.**
+-dontwarn com.google.android.gms.**

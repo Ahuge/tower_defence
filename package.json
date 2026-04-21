@@ -28,7 +28,10 @@
     "cap:open:android": "cap open android",
     "cap:open:ios": "cap open ios",
     "cap:run:android": "npm run build:native && cap run android",
-    "cap:run:ios": "npm run build:native && cap run ios"
+    "cap:run:ios": "npm run build:native && cap run ios",
+    "android:debug": "npm run cap:sync:android && cd android && ./gradlew assembleDebug",
+    "android:release:apk": "npm run cap:sync:android && cd android && ./gradlew assembleRelease",
+    "android:release:aab": "npm run cap:sync:android && cd android && ./gradlew bundleRelease"
   },
   "keywords": [],
   "author": "",
