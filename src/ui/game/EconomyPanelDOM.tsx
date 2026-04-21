@@ -11,9 +11,38 @@ import { HeroItemsDOM } from './HeroItemsDOM';
 
 type EconTab = 'sends' | 'frontier' | 'essence' | 'items' | 'log';
 
+/**
+ * Tutorial-requested tab that was dispatched before EconomyPanelDOM
+ * was mounted. `CollapsiblePanel` only mounts its child when opened,
+ * so a burst of `openSidebarPanel('economy')` + `switchEconTab('x')`
+ * would race: the event fires before the listener is registered. The
+ * module-level ref below captures the latest request so a subsequent
+ * mount can read it immediately as its initial tab state — event AND
+ * initial-state delivery both work. Cleared after consumption so it
+ * doesn't stick across unrelated panel opens later.
+ */
+let pendingEconTab: EconTab | null = null;
+
+/**
+ * External entry point used by the tutorial track's `switchEconTab`.
+ * Fires the window event AND stores the last-requested tab so a
+ * late-mounting EconomyPanelDOM still picks it up as initial state.
+ */
+export function requestEconTab(tab: EconTab): void {
+  pendingEconTab = tab;
+  window.dispatchEvent(new CustomEvent('tutorial-switch-econ-tab', { detail: { tab } }));
+}
+
 export function EconomyPanelDOM() {
   const { sendOptions, eventLog } = useGameUI();
-  const [tab, setTab] = useState<EconTab>('sends');
+  const [tab, setTab] = useState<EconTab>(() => {
+    // Honor the latest tutorial-requested tab on first mount; clear
+    // the pending ref so subsequent remounts of unrelated panels
+    // don't inherit a stale value.
+    const requested = pendingEconTab;
+    pendingEconTab = null;
+    return requested ?? 'sends';
+  });
 
   const frontier = useGameUISelector(s => s.frontier);
   const essence = useGameUISelector(s => s.essence);

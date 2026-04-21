@@ -107,6 +107,37 @@ class PlayerInventoryClass {
     return 'common';
   }
 
+  /**
+   * Reroll a paid `rollSkin()` result. Redraws at the same rarity
+   * (strategy-doc rule: no stealth downgrades — a legendary reroll
+   * produces a legendary) and excludes the previous skin so the
+   * player is guaranteed a different result. Doesn't charge shards:
+   * the ad itself is the price.
+   *
+   * Falls back to drawing from the broader rarity tier (including
+   * the previous skin) only when the filtered pool is empty — a
+   * corner-case that can hit small factions with a single skin.
+   * Returns null when the faction has no skins at all at any
+   * rarity (caller should surface "no more skins to roll").
+   */
+  rerollSkinAtRarity(rarity: Rarity, previousSkinId: string): { skin: SkinDef; isDuplicate: boolean } | null {
+    const pool = getRollableSkins(this.getOwnedFactions());
+    if (pool.length === 0) return null;
+    const sameRarity = pool.filter(s => s.rarity === rarity);
+    const tier = sameRarity.length > 0 ? sameRarity : pool;
+    let candidates = tier.filter(s => s.id !== previousSkinId);
+    if (candidates.length === 0) candidates = tier;
+    const skin = candidates[Math.floor(Math.random() * candidates.length)];
+    const isDuplicate = this.ownsSkin(skin.id);
+    if (isDuplicate) {
+      ShardWallet.earn(DUPLICATE_REFUND, `Duplicate skin refund: ${skin.name}`);
+    } else {
+      StorePersistence.update(s => { s.ownedSkins.push(skin.id); });
+    }
+    this.notify('skin_rolled', { skin, isDuplicate });
+    return { skin, isDuplicate };
+  }
+
   equipSkin(skinId: string): boolean {
     if (!this.ownsSkin(skinId)) return false;
     const def = getSkinDef(skinId);

@@ -15,7 +15,7 @@ import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
-import { PlayerInventory } from '../systems/monetization';
+import { PlayerInventory, claimRewarded, BattlePass } from '../systems/monetization';
 import { GameUIStore, TowerStats } from '../ui/GameUIStore';
 import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
@@ -65,6 +65,7 @@ import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData } from './GameOverScene';
 import { Creep } from '../entities/Creep';
+import { playCreepDeath } from '../systems/CreepSpriteManager';
 import { Tower } from '../entities/Tower';
 import { GameControlBar } from '../ui/GameControlBar';
 import { preloadSprites, createSpriteAnimations, getTowerSpriteConfig } from '../systems/SpriteManager';
@@ -72,6 +73,9 @@ import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
 import { Analytics } from '../systems/AnalyticsClient';
+import { platformBridge } from '../systems/platform';
+import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
+import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
@@ -158,8 +162,41 @@ export class GameScene extends Phaser.Scene {
   paused: boolean = false;
   gameSpeed: number = 1.0;
   autoPlay: boolean = false;
+  // Full list — 3× is Battle Pass only; 2× is always on for ads-off
+  // owners, temporarily on for free players who watched the ad, and
+  // baseline caps at 1.5×. See activeSpeedOptions() for the slice
+  // that's valid right now for this player.
   private static readonly SPEED_OPTIONS = [0, 0.5, 1.0, 1.5, 2.0, 3.0];
   private speedIndex: number = 2;
+
+  /**
+   * Return the speed-cycle values this player can currently reach.
+   *
+   *   - Battle Pass `all_speeds` perk: full list, up to 3×.
+   *   - ads_off IAP: up to 2× (permanently).
+   *   - Free player with an active speed-boost ad: up to 2× (timed).
+   *   - Otherwise: baseline [0, 0.5, 1, 1.5].
+   *
+   * The 3× slot is intentionally Battle-Pass-exclusive — it's a
+   * premium-tier bonus, not an ad-reachable one. Ads unlock 2×.
+   */
+  private activeSpeedOptions(): number[] {
+    if (BattlePass.hasPerk('all_speeds')) return GameScene.SPEED_OPTIONS;
+    if (PlayerInventory.isAdFree() || this.isSpeedBoosted()) {
+      return GameScene.SPEED_OPTIONS.slice(0, 5); // [0, 0.5, 1, 1.5, 2]
+    }
+    return GameScene.SPEED_OPTIONS.slice(0, 4);   // [0, 0.5, 1, 1.5]
+  }
+
+  /** True while the rewarded speed-boost ad timer is running. */
+  isSpeedBoosted(now: number = Date.now()): boolean {
+    return now < this._speedBoostUntil;
+  }
+
+  /** Remaining milliseconds on the speed boost. 0 when expired. */
+  speedBoostRemainingMs(now: number = Date.now()): number {
+    return Math.max(0, this._speedBoostUntil - now);
+  }
 
   // Selection state
   selectionMode: SelectionMode = 'none';
@@ -189,6 +226,28 @@ export class GameScene extends Phaser.Scene {
   private _gauntletOrder: FactionId[] | undefined;
   private _gauntletTransitioning: boolean = false;
   private _gauntletHud: Phaser.GameObjects.Text | null = null;
+
+  // Continue-ad state.
+  //   _awaitingContinueDecision: update loop early-returns while the
+  //     modal is up so the game world visibly freezes — creeps stop
+  //     marching, towers stop shooting. Cleared on accept or decline.
+  //   _continueUsedThisMatch: true after a successful revive, so we
+  //     never offer a second ad in the same match (ad-strategy.md #6
+  //     is explicitly 1/match).
+  //   _continueAdShown: true if any continue ad actually played — used
+  //     by GameOverScreen to suppress the post-match interstitial so
+  //     the player doesn't get two ads back-to-back.
+  private _awaitingContinueDecision: boolean = false;
+  private _continueUsedThisMatch: boolean = false;
+  private _continueAdShown: boolean = false;
+
+  // Speed boost state (strategy-doc #5).
+  //   Baseline cycle caps at 2×; when `_speedBoostUntil > Date.now()`
+  //   the cycle extends to include 3×. Granted by claimRewarded, lasts
+  //   10 min of wall-clock time (stacks with existing boost, capped at
+  //   30 min total). If the clock expires mid-match while the player
+  //   is at 3×, the next speed read-out snaps them back to 2×.
+  private _speedBoostUntil: number = 0;
   private waveCount?: number;
 
   private customMapDef: MapDefinition | null = null;
@@ -289,6 +348,9 @@ export class GameScene extends Phaser.Scene {
       },
       onCycleSpeed: () => {
         this.cycleSpeed();
+      },
+      onRequestSpeedBoost: () => {
+        void this.requestSpeedBoost();
       },
       onPause: () => {
         this.togglePause();
@@ -1446,6 +1508,13 @@ export class GameScene extends Phaser.Scene {
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
     this.waveMgr.checkWaveComplete(this.creeps.length);
 
+    // While the continue-ad modal is up the game visibly freezes —
+    // early-return here prevents the defeat branch from re-firing
+    // every frame while the player is deciding, and keeps creeps +
+    // towers static so the revive lands the player back on the
+    // exact same board state.
+    if (this._awaitingContinueDecision) return;
+
     // Hero defense: check arena base HP instead of lives
     const isHeroDead = this.arenaManager && this.arenaManager.baseHp <= 0;
     if (this.lives <= 0 || isHeroDead) {
@@ -1458,7 +1527,7 @@ export class GameScene extends Phaser.Scene {
       if (this.circle) {
         this.circle.broadcast({ type: 'circle_victory', winnerIndex: -1 });
       }
-      this.goToGameOver(false);
+      this.offerContinueOrGameOver(!!isHeroDead);
       return;
     }
 
@@ -1488,6 +1557,12 @@ export class GameScene extends Phaser.Scene {
       if (this.circle) {
         this.circle.broadcast({ type: 'circle_victory', winnerIndex: this.circle.playerIndex });
       }
+      // Native achievement unlock. No-op on web / platforms without
+      // a registered achievement id. Fire-and-forget — a failed
+      // unlock shouldn't block the goToGameOver hand-off.
+      if (this.matchMode !== 'tutorial') {
+        void unlockAchievement('FIRST_WIN');
+      }
       // Tutorial match: skip the GameOverScene hand-off so the player
       // stays inside the match while the tutorial's closing popover
       // (with "Back to Menu" CTA) sits over the live board. Prevents
@@ -1505,7 +1580,11 @@ export class GameScene extends Phaser.Scene {
     const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
     this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     GameUIStore.updateEconomy(this.economy.gold, displayLives, this.incomeMgr.getBreakdown().total);
-    GameUIStore.updateGameState(this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    // Demote 3× → 2× the moment the boost lapses so the UI + game
+    // stay in sync. Cheap check (just a timestamp compare).
+    this.reconcileSpeedToBoostState();
+    const boostSec = Math.ceil(this.speedBoostRemainingMs() / 1000);
+    GameUIStore.updateGameState(this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer, boostSec);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     // Refresh inspected creep — store skips the re-render when the snapshot
     // hasn't changed, so this is essentially free when the creep is uncontested.
@@ -1656,6 +1735,207 @@ export class GameScene extends Phaser.Scene {
 
   // === Helpers ===
 
+  /**
+   * Intercepts the defeat branch. Decides whether the player is
+   * eligible for the continue-ad rescue, offers it if so (pausing
+   * the world until the modal closes), otherwise falls straight
+   * through to the normal game-over screen.
+   *
+   * Gated off for:
+   *   - Hero Defense (loss mode is hero HP, not lives — "+5 lives"
+   *     would grant nothing meaningful)
+   *   - Tutorial match (see ad-strategy.md: no ads in tutorial)
+   *   - Versus / Circle co-op (other players are waiting; a rescue
+   *     would de-sync the match and give one player a private
+   *     second life the other doesn't know about)
+   *   - Already-used in this match (1/match cap from strategy doc)
+   */
+  private offerContinueOrGameOver(isHeroDead: boolean): void {
+    const eligible =
+      !isHeroDead &&
+      this.matchMode !== 'hero_defense' &&
+      this.matchMode !== 'tutorial' &&
+      !this.versus &&
+      !this.circle &&
+      !this._continueUsedThisMatch &&
+      // On web the rewarded call returns 'unavailable' immediately
+      // so the offer would be a dead-end. BUT if the user owns
+      // ads_off we grant the revive directly — they've paid for
+      // the courtesy. Covers the edge case of someone buying
+      // ads_off on the web build and still wanting the rescue.
+      (platformBridge().isNative || PlayerInventory.isAdFree());
+
+    if (!eligible) {
+      this.goToGameOver(false);
+      return;
+    }
+
+    // TODO(ad-strategy.md #6): scale to difficulty once we settle
+    // balance — `max(5, floor(startingLives * 0.15))`. Flat 5 today.
+    const livesGranted = 5;
+
+    this._awaitingContinueDecision = true;
+    GameUIStore.offerContinue({
+      livesGranted,
+      onAccept: async () => {
+        // Regardless of the ad / claim result we clear the freeze
+        // flag — on success we grant + resume, on fail we fall
+        // through to game-over. Never leave the player stuck on a
+        // frozen board.
+        try {
+          this._continueUsedThisMatch = true;
+          const granted = await claimRewarded(AD_GAME_OVER_CONTINUE);
+          if (granted) {
+            // Only mark "ad actually shown" when there WAS an ad —
+            // ads-off owners skipped the video so the post-match
+            // interstitial should still be allowed to play on them
+            // (wait — interstitials are also disabled for ads-off,
+            // so the flag is moot in that case. Setting it is still
+            // safe). Keeps the two suppression paths aligned.
+            this._continueAdShown = true;
+            this.lives = livesGranted;
+            GameUIStore.updateEconomy(this.economy.gold, this.lives, this.incomeMgr.getBreakdown().total);
+            // Clear the board — otherwise a revive is worthless
+            // when six creeps are one tile from the exit about to
+            // burn through the +5 lives instantly. Visual: shockwave
+            // ring expanding from each exit, killing creeps as it
+            // sweeps over them.
+            this.playReviveShockwave();
+            this._awaitingContinueDecision = false;
+            // Deliberately do NOT fall through to goToGameOver —
+            // the player keeps playing. The next frame's update()
+            // loop resumes spawning + shooting.
+            return;
+          }
+          // Ad didn't actually play (unfilled / disabled / errored).
+          // Treat as a decline rather than silently trapping the
+          // player in a frozen match.
+          this._awaitingContinueDecision = false;
+          this.goToGameOver(false);
+        } catch {
+          this._awaitingContinueDecision = false;
+          this.goToGameOver(false);
+        }
+      },
+      onDecline: () => {
+        this._awaitingContinueDecision = false;
+        this.goToGameOver(false);
+      },
+    });
+  }
+
+  /**
+   * Continue-ad board wipe. Plays a gold shockwave outward from each
+   * map exit, killing creeps as the ring sweeps over them. Without
+   * this a rewarded revive is a trap — the next six creeps one tile
+   * from the exit would burn through the granted +5 lives faster than
+   * the player can even process what happened.
+   *
+   * No gold / stat bounty awarded — these creeps were "cleared by
+   * divine intervention" not killed by a tower, and paying out for
+   * them would make the ad effectively a gold dispenser on top of
+   * the revive.
+   */
+  private playReviveShockwave(): void {
+    // Collect all map exits (last PathPoint of each currently-live path).
+    const exits: { x: number; y: number }[] = [];
+    for (const path of this.allPaths) {
+      if (!path || path.length === 0) continue;
+      const last = path[path.length - 1];
+      exits.push({ x: gridX(last.col), y: gridY(last.row) });
+    }
+    if (exits.length === 0) {
+      // No paths (defensive — shouldn't happen mid-match). Kill
+      // creeps instantly and bail.
+      for (const creep of this.creeps) this.killCreepForRevive(creep);
+      return;
+    }
+
+    // Pair every alive creep with its nearest exit + distance-to, so
+    // the shockwave-front math only has to check "is the ring past my
+    // distance yet?".
+    const targets: { creep: Creep; dist: number }[] = [];
+    for (const creep of this.creeps) {
+      if (!creep.alive) continue;
+      let minDist = Infinity;
+      for (const e of exits) {
+        const dx = creep.x - e.x;
+        const dy = creep.y - e.y;
+        const d = Math.hypot(dx, dy);
+        if (d < minDist) minDist = d;
+      }
+      targets.push({ creep, dist: minDist });
+    }
+
+    // Fixed duration looks more satisfying than scaling with map
+    // size — players want the effect to feel "instant but readable"
+    // rather than dependent on whether their nearest exit is close
+    // or far.
+    const duration = 900;
+    // Expand a bit past the furthest creep so the ring visibly clears
+    // the whole board before dissipating.
+    const maxRadius = Math.max(
+      GAME_WIDTH,
+      ...targets.map(t => t.dist),
+    ) * 1.1;
+
+    const waveGraphics = exits.map(() => {
+      const g = this.add.graphics();
+      g.setDepth(10_000);
+      return g;
+    });
+    const killed = new WeakSet<Creep>();
+    const ring = { r: 0 };
+
+    this.tweens.add({
+      targets: ring,
+      r: maxRadius,
+      duration,
+      ease: 'Cubic.Out',
+      onUpdate: () => {
+        const progress = ring.r / maxRadius;
+        const alpha = 1 - progress;
+        for (let i = 0; i < exits.length; i++) {
+          const g = waveGraphics[i];
+          g.clear();
+          g.lineStyle(6, 0xe8b76d, Math.max(0, alpha));
+          g.strokeCircle(exits[i].x, exits[i].y, ring.r);
+          g.fillStyle(0xf5d08a, Math.max(0, alpha * 0.08));
+          g.fillCircle(exits[i].x, exits[i].y, ring.r);
+        }
+        // Kill creeps the ring has reached this frame.
+        for (const t of targets) {
+          if (killed.has(t.creep)) continue;
+          if (t.dist <= ring.r) {
+            this.killCreepForRevive(t.creep);
+            killed.add(t.creep);
+          }
+        }
+      },
+      onComplete: () => {
+        for (const g of waveGraphics) g.destroy();
+        // Safety net — stragglers (shouldn't happen given maxRadius
+        // covers all, but cheap to guarantee).
+        for (const t of targets) {
+          if (!killed.has(t.creep)) this.killCreepForRevive(t.creep);
+        }
+      },
+    });
+  }
+
+  /** Remove a creep from play without awarding gold or firing a
+   *  creepKilled event. Used exclusively by the revive shockwave;
+   *  normal damage paths still go through `creep.hp -= …`. */
+  private killCreepForRevive(creep: Creep): void {
+    if (!creep.alive) return;
+    creep.alive = false;
+    try { creep.graphics.destroy(); } catch { /* already gone */ }
+    if (creep.sprite) {
+      playCreepDeath(this, creep.sprite, this.creepFaction, creep.creepTypeId);
+      creep.sprite = null;
+    }
+  }
+
   private goToGameOver(won: boolean): void {
     // Reset global grid offset
     setGridOffsetY(0);
@@ -1686,6 +1966,7 @@ export class GameScene extends Phaser.Scene {
         abilitiesUsed: this.arenaManager.hero.abilitiesUsed,
         heroName: this.arenaManager.hero.typeDef.name,
       } : null,
+      continueAdShown: this._continueAdShown,
     };
     const duration = Math.round((Date.now() - this._gameStartTime) / 1000);
     Analytics.gameEnd(this.matchMode, this.lives > 0 ? 'victory' : 'defeat', this.currentWave, duration);
@@ -1706,12 +1987,53 @@ export class GameScene extends Phaser.Scene {
       this.eventLog.gameMessage('Only the host can change game speed.');
       return;
     }
-    this.speedIndex = (this.speedIndex + 1) % GameScene.SPEED_OPTIONS.length;
-    this.gameSpeed = GameScene.SPEED_OPTIONS[this.speedIndex];
+    // Demote if the current slot is 3× but boost has expired — keeps
+    // the runtime speed honest with the active option list.
+    this.reconcileSpeedToBoostState();
+    const options = this.activeSpeedOptions();
+    // Advance through the reduced list when not boosted.
+    this.speedIndex = (this.speedIndex + 1) % options.length;
+    this.gameSpeed = options[this.speedIndex];
     this.eventLog.gameMessage(`Speed: ${this.gameSpeed}x`);
     if (this.versus) {
       this.versus.send({ type: 'speed_change', speed: this.gameSpeed });
     }
+  }
+
+  /** If the current speed is above what the player can now reach
+   *  (boost timer expired, perk lost, etc.), snap down to the
+   *  highest valid option. Called before cycling + during regular
+   *  ticks so the transition is visible exactly when the cap
+   *  changes. */
+  private reconcileSpeedToBoostState(): void {
+    const options = this.activeSpeedOptions();
+    const maxAllowed = options[options.length - 1];
+    if (this.gameSpeed > maxAllowed) {
+      const wasBoosted = this.gameSpeed > 1.5 && !BattlePass.hasPerk('all_speeds') && !PlayerInventory.isAdFree();
+      this.gameSpeed = maxAllowed;
+      this.speedIndex = options.indexOf(maxAllowed);
+      if (wasBoosted) {
+        this.eventLog.gameMessage(`Speed boost expired. Reverted to ${maxAllowed}×.`);
+      }
+    }
+  }
+
+  /** Request a speed boost. Routes through claimRewarded so ads-off
+   *  owners get it free. 10 min of wall-clock time; stacks with any
+   *  existing boost up to a 30-min ceiling so a determined player
+   *  can't accumulate hours of 3× by chaining ads. Solo only —
+   *  skipped in versus/circle so multiplayer sync stays honest. */
+  async requestSpeedBoost(): Promise<boolean> {
+    if (this.versus || this.circle) return false;
+    const granted = await claimRewarded(AD_SPEED_BOOST_10M);
+    if (!granted) return false;
+    const now = Date.now();
+    const CEILING_MS = 30 * 60 * 1000;
+    const STEP_MS = 10 * 60 * 1000;
+    const base = Math.max(now, this._speedBoostUntil);
+    this._speedBoostUntil = Math.min(base + STEP_MS, now + CEILING_MS);
+    this.eventLog.gameMessage(`3× Speed unlocked for ${Math.round(this.speedBoostRemainingMs() / 60_000)} min.`);
+    return true;
   }
 
   /** Send a chat message (Enter key opens prompt) */

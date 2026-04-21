@@ -220,6 +220,11 @@ export interface GameUIState {
   matchMode: string;
   /** Game speed multiplier */
   speed: number;
+  /** Remaining seconds on the ad-unlocked 3× speed boost (strategy-doc #5).
+   *  0 when no boost is active. Rounded to seconds (not ms) by GameScene
+   *  so the snapshot only changes once per second — prevents a 60Hz
+   *  re-render while the boost timer ticks down. */
+  speedBoostRemainingSec: number;
   /** Is game paused */
   paused: boolean;
   /** Total income per wave */
@@ -245,6 +250,23 @@ export interface GameUIState {
   essence: EssenceState | null;
   /** Hero item shop state (Hero Defense mode) */
   heroShop: HeroShopState | null;
+  /** Continue-ad offer. Set when the player's lives hit zero and we
+   *  can still legitimately offer a revive. Drives the
+   *  ContinueOfferModal in the DOM layer; GameScene sets it and pauses
+   *  the update loop, clears it once the player picks (or the ad
+   *  errors out). null most of the time. */
+  continueOffer: ContinueOffer | null;
+}
+
+export interface ContinueOffer {
+  /** How many lives the player gets back if they accept. */
+  livesGranted: number;
+  /** Fires when the user taps "Watch Ad". GameScene wires this to
+   *  platformBridge().ads.showRewarded() + reward grant. */
+  onAccept: () => void;
+  /** Fires when the user taps "No thanks" / closes — GameScene falls
+   *  through to the normal game-over path. */
+  onDecline: () => void;
 }
 
 type Listener = () => void;
@@ -294,6 +316,7 @@ class GameUIStoreClass {
     onUpgradeAbility?: (abilityIndex: number) => void;
     onSelectDockTower?: (index: number) => void;
     onCycleSpeed?: () => void;
+    onRequestSpeedBoost?: () => void;
     onPause?: () => void;
     onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
   } = {};
@@ -323,7 +346,25 @@ class GameUIStoreClass {
       frontier: { available: [], owned: [] },
       essence: null,
       heroShop: null,
+      continueOffer: null,
+      speedBoostRemainingSec: 0,
     };
+  }
+
+  /** Surface the continue-ad offer. GameScene calls this on lives→0
+   *  (outside tutorial / versus / already-used cases) and pauses its
+   *  update loop until one of the callbacks fires. */
+  offerContinue(offer: ContinueOffer): void {
+    this.state = { ...this.state, continueOffer: offer };
+    this.notify();
+  }
+
+  /** Clear the offer — called by the modal's action handlers after
+   *  they invoke onAccept / onDecline. */
+  clearContinueOffer(): void {
+    if (this.state.continueOffer === null) return;
+    this.state = { ...this.state, continueOffer: null };
+    this.notify();
   }
 
   // ─── Getters ────────────────────────────────────────
@@ -414,8 +455,16 @@ class GameUIStoreClass {
   }
 
   /** Update wave/game state for status bar */
-  updateGameState(waveActive: boolean, betweenWaves: boolean, speed: number, versusTimer: number = -1): void {
-    this.state = { ...this.state, waveActive, betweenWaves, speed, versusTimer };
+  updateGameState(waveActive: boolean, betweenWaves: boolean, speed: number, versusTimer: number = -1, speedBoostRemainingSec: number = 0): void {
+    // Short-circuit on equal snapshot — this fires every tick.
+    if (
+      this.state.waveActive === waveActive &&
+      this.state.betweenWaves === betweenWaves &&
+      this.state.speed === speed &&
+      this.state.versusTimer === versusTimer &&
+      this.state.speedBoostRemainingSec === speedBoostRemainingSec
+    ) return;
+    this.state = { ...this.state, waveActive, betweenWaves, speed, versusTimer, speedBoostRemainingSec };
     this.notify();
   }
 
@@ -502,6 +551,10 @@ class GameUIStoreClass {
 
   requestCycleSpeed(): void {
     this.callbacks.onCycleSpeed?.();
+  }
+
+  requestSpeedBoost(): void {
+    this.callbacks.onRequestSpeedBoost?.();
   }
 
   requestPause(): void {

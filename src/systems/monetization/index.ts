@@ -6,6 +6,9 @@ export type { StoreState, TransactionRecord, ChallengeProgress, SkinEquip } from
 
 export { ShardWallet } from './ShardWallet';
 export { PlayerInventory } from './PlayerInventory';
+export { restorePurchases } from './RestorePurchases';
+export type { RestoreResult } from './RestorePurchases';
+export { claimRewarded, isRewardInstant } from './RewardedClaim';
 export { SkinManager } from './SkinManager';
 export { BattlePass } from './BattlePass';
 export type { SeasonDef, PassReward, RewardType, ChallengeTemplate, PerkId } from './BattlePass';

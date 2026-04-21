@@ -1,4 +1,4 @@
-import { useState, useRef } from 'preact/hooks';
+import { useState, useRef, useEffect } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
 import { SkinPreview } from '../components/SkinPreview';
@@ -9,8 +9,22 @@ import {
   PREMIUM_FACTIONS, FACTION_UNLOCK_COST,
   SKIN_ROLL_COST, DUPLICATE_REFUND,
   getRollableSkins, getPurchasableSkins,
+  restorePurchases,
+  claimRewarded, isRewardInstant,
   Rarity,
 } from '../../systems/monetization';
+import { platformBridge } from '../../systems/platform';
+import {
+  AD_SHARDS_DAILY,
+  DAILY_SHARDS_REWARD,
+  AD_TOWER_ROLL_REROLL,
+} from '../../systems/platform/AdPlacements';
+import {
+  isDailyReady,
+  msUntilNextDaily,
+  markShown,
+  formatCountdown,
+} from '../../systems/platform/AdCooldowns';
 import { FACTIONS, FactionId } from '../../data/Factions';
 
 type Tab = 'skins' | 'factions' | 'terrain' | 'rolls';
@@ -18,11 +32,100 @@ type Tab = 'skins' | 'factions' | 'terrain' | 'rolls';
 function rarityClass(r: Rarity): string { return `rarity-${r}`; }
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
 
+/**
+ * "Watch Ad for +100 Shards" button — placement #1 from ad-strategy.md.
+ * One play per local calendar day; shows a countdown pill when on
+ * cooldown. Hidden entirely on web / non-native builds since the
+ * rewarded bridge returns 'unavailable' there and a grey-disabled
+ * button would just confuse users.
+ */
+function DailyAdButton({ rerender }: { rerender: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Re-render once a minute while on cooldown so the countdown ticks
+  // visibly ("7h 23m" → "7h 22m"). Skipped when ready to avoid a
+  // pointless timer.
+  const ready = isDailyReady(AD_SHARDS_DAILY);
+  useEffect(() => {
+    if (ready || busy) return;
+    const id = window.setInterval(() => setTick(t => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, [ready, busy]);
+
+  // Hidden on web UNLESS the user owns ads-off (in which case this is
+  // a free daily claim button, no ad involved — still valuable on web).
+  if (!platformBridge().isNative && !isRewardInstant()) return null;
+
+  const instant = isRewardInstant();
+
+  const onClick = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    try {
+      const granted = await claimRewarded(AD_SHARDS_DAILY);
+      if (granted) {
+        ShardWallet.earn(DAILY_SHARDS_REWARD, instant ? 'Daily reward (ad-free)' : 'Daily ad reward');
+        markShown(AD_SHARDS_DAILY);
+        rerender();
+      }
+      // granted === false: ad skipped / unavailable / disabled — cooldown
+      // only advances on actual grant.
+    } finally {
+      setBusy(false);
+      setTick(t => t + 1);
+    }
+  };
+
+  if (!ready) {
+    const remaining = formatCountdown(msUntilNextDaily(AD_SHARDS_DAILY));
+    return (
+      <span class="text-dim text-xs" style={{ padding: '4px 10px' }}>
+        Daily reward in {remaining}
+      </span>
+    );
+  }
+
+  const label = instant
+    ? `Claim +${DAILY_SHARDS_REWARD} Shards`
+    : `Watch Ad → +${DAILY_SHARDS_REWARD} Shards`;
+
+  return (
+    <button
+      class={`btn btn-gold ${busy ? 'btn-disabled' : ''}`}
+      style={{ fontSize: '10px', padding: '4px 10px' }}
+      onClick={onClick}
+      disabled={busy}
+    >
+      {busy ? (instant ? 'Claiming...' : 'Loading ad...') : label}
+    </button>
+  );
+}
+
 export function StoreScreen() {
   const [tab, setTab] = useState<Tab>('skins');
   const [, setTick] = useState(0);
   const rerender = () => setTick(t => t + 1);
   const [rollResult, setRollResult] = useState<{ skin: SkinDef; isDuplicate: boolean } | null>(null);
+  const [restoreState, setRestoreState] = useState<'idle' | 'running' | string>('idle');
+
+  const isNative = platformBridge().isNative;
+  const onRestore = async () => {
+    if (restoreState === 'running') return;
+    setRestoreState('running');
+    const r = await restorePurchases();
+    if (r.error) {
+      setRestoreState('Restore failed. Check your connection.');
+    } else if (r.appliedCount > 0) {
+      setRestoreState(`Restored ${r.appliedCount} entitlement${r.appliedCount === 1 ? '' : 's'}.`);
+      rerender();
+    } else if (r.skuCount > 0) {
+      setRestoreState('Already up to date.');
+    } else {
+      setRestoreState('No purchases found on this account.');
+    }
+    setTimeout(() => setRestoreState('idle'), 4000);
+  };
 
   return (
     <>
@@ -31,6 +134,23 @@ export function StoreScreen() {
         <div class="ui-header-title text-gold">STORE</div>
         <ShardBadge />
       </div>
+      {isNative && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', padding: '0 12px 8px', flexWrap: 'wrap' }}>
+          <DailyAdButton rerender={rerender} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {restoreState !== 'idle' && restoreState !== 'running' && (
+              <span class="text-dim text-xs">{restoreState}</span>
+            )}
+            <button
+              class={`btn ${restoreState === 'running' ? 'btn-disabled' : ''}`}
+              style={{ fontSize: '10px', padding: '4px 10px' }}
+              onClick={onRestore}
+            >
+              {restoreState === 'running' ? 'Restoring...' : 'Restore Purchases'}
+            </button>
+          </div>
+        </div>
+      )}
       <div class="tab-bar">
         {(['skins', 'factions', 'terrain', 'rolls'] as Tab[]).map(t => (
           <button key={t} class={`tab ${tab === t ? 'active' : ''}`} onClick={() => { setTab(t); setRollResult(null); }}>
@@ -133,7 +253,13 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
   const [stripItems, setStripItems] = useState<SkinDef[]>([]);
   const [stripOffset, setStripOffset] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  // Reroll state — one shot per paid roll (strategy-doc #7). The flag
+  // resets every time the user kicks off a fresh paid roll.
+  const [rerollUsed, setRerollUsed] = useState(false);
+  const [rerollBusy, setRerollBusy] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
+  const instantReward = isRewardInstant();
+  const canAdReroll = platformBridge().isNative || instantReward;
 
   const freeRolls = BattlePass.getFreeRollsRemaining();
   const canRoll = (ShardWallet.canAfford(SKIN_ROLL_COST) || freeRolls > 0) && !rolling;
@@ -145,6 +271,8 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
     if (freeRolls > 0) BattlePass.useFreeRoll();
     const result = PlayerInventory.rollSkin();
     if (!result) return;
+    // Fresh paid roll — reset the once-per-roll reroll flag.
+    setRerollUsed(false);
 
     // Build the strip: ~40 random skins with the winner placed at position 35
     const STRIP_LEN = 42;
@@ -256,6 +384,47 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
           </div>
           {rollResult.isDuplicate && (
             <div style={{ color: '#ffcc44', marginTop: '8px', fontSize: '13px' }}>+{DUPLICATE_REFUND} Shards refunded</div>
+          )}
+          {canAdReroll && !rerollUsed && (
+            <div style={{ marginTop: '12px' }}>
+              <button
+                class={`btn btn-gold ${rerollBusy ? 'btn-disabled' : ''}`}
+                style={{ fontSize: '11px', padding: '5px 12px' }}
+                onClick={async () => {
+                  if (rerollBusy) return;
+                  setRerollBusy(true);
+                  try {
+                    const granted = await claimRewarded(AD_TOWER_ROLL_REROLL);
+                    if (granted) {
+                      const newResult = PlayerInventory.rerollSkinAtRarity(
+                        rollResult.skin.rarity,
+                        rollResult.skin.id,
+                      );
+                      if (newResult) {
+                        setRollResult(newResult);
+                        setRerollUsed(true);
+                        rerender();
+                      }
+                    }
+                  } finally {
+                    setRerollBusy(false);
+                  }
+                }}
+                disabled={rerollBusy}
+              >
+                {rerollBusy
+                  ? (instantReward ? 'Rerolling...' : 'Loading ad...')
+                  : (instantReward ? 'Reroll (same tier)' : 'Watch Ad → Reroll (same tier)')}
+              </button>
+              <div class="text-dim text-xs" style={{ marginTop: '4px' }}>
+                One reroll per paid roll · stays at {RARITY_LABELS[rollResult.skin.rarity]}
+              </div>
+            </div>
+          )}
+          {rerollUsed && (
+            <div class="text-dim text-xs" style={{ marginTop: '12px' }}>
+              Reroll used — next reroll after your next paid roll.
+            </div>
           )}
         </div>
       )}

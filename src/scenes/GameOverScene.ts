@@ -21,6 +21,10 @@ export interface GameOverData {
   opponentStats?: { stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number } | null;
   opponentLives?: number;
   heroStats?: { kills: number; deaths: number; damageDealt: number; abilitiesUsed: number; heroName: string } | null;
+  /** True if a rewarded continue-ad already played in this match.
+   *  GameOverScreen suppresses its post-match interstitial when true
+   *  so the player never sees two ads in a row. */
+  continueAdShown?: boolean;
 }
 
 export class GameOverScene extends Phaser.Scene {

@@ -65,6 +65,10 @@ test.describe('tutorial match', () => {
     await waitForTutorialStep(page, 'mazing');
     await clickNextInPopover(page);
 
+    // 'pick_bolt_2' — re-select Arcane Bolt before the 2nd placement.
+    await waitForTutorialStep(page, 'pick_bolt_2');
+    await page.evaluate(() => window.__td_test?.selectDockTower(0));
+
     // 'place_second' — another tower to extend the maze.
     await waitForTutorialStep(page, 'place_second');
     await emit(page, 'towerPlaced', 11, 12, 'arcane_bolt');
@@ -101,9 +105,21 @@ test.describe('tutorial match', () => {
     await waitForTutorialStep(page, 'watch_wave_2');
     await emit(page, 'waveCleared', 2);
 
+    // 'pick_bolt_reinforce' — re-select Bolt for the reinforcement step.
+    await waitForTutorialStep(page, 'pick_bolt_reinforce');
+    await page.evaluate(() => window.__td_test?.selectDockTower(0));
+
     // 'place_fourth' — reinforcement tower.
     await waitForTutorialStep(page, 'place_fourth');
     await emit(page, 'towerPlaced', 12, 10, 'arcane_bolt');
+
+    // 'frontier_intro' — explainer: what Frontier is.
+    await waitForTutorialStep(page, 'frontier_intro');
+    await clickNextInPopover(page);
+
+    // 'leyline_nexus_intro' — explainer: what the Arcane Nexus does.
+    await waitForTutorialStep(page, 'leyline_nexus_intro');
+    await clickNextInPopover(page);
 
     // 'buy_frontier' — event-gated on frontierPurchased.
     await waitForTutorialStep(page, 'buy_frontier');

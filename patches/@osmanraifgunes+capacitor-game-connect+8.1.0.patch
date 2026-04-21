@@ -1,0 +1,16 @@
+diff --git a/node_modules/@osmanraifgunes/capacitor-game-connect/android/build.gradle b/node_modules/@osmanraifgunes/capacitor-game-connect/android/build.gradle
+index dc261fd..6d46fb8 100644
+--- a/node_modules/@osmanraifgunes/capacitor-game-connect/android/build.gradle
++++ b/node_modules/@osmanraifgunes/capacitor-game-connect/android/build.gradle
+@@ -1,6 +1,8 @@
+-plugins {
+-    id 'com.android.library' version '8.13.0'
+-}
++// Patched by patch-package (see patches/@osmanraifgunes+capacitor-game-connect+8.1.0.patch):
++// drop explicit `version` so the plugin picks up the AGP version from
++// the app's buildscript classpath. Avoids "plugin is already on the
++// classpath with an unknown version" when Gradle pulls both.
++apply plugin: 'com.android.library'
+ 
+ ext {
+     junitVersion = project.hasProperty('junitVersion') ? rootProject.ext.junitVersion : '4.13.2'

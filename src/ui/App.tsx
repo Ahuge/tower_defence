@@ -18,6 +18,7 @@ import { AppLoadingScreen } from './screens/AppLoadingScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
+import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
 import './styles/game-panels.css';
 
@@ -68,6 +69,12 @@ export function App() {
       {!screen && <GameSidebar />}
       {!screen && <StatusBarDOM />}
       {!screen && <TowerDockDOM />}
+
+      {/* Continue-ad modal — renders only when GameScene offers a revive
+          on lives→0. Self-gates on GameUIStore.continueOffer so no-op
+          when idle. Stays visible even over the tutorial overlay since
+          the tutorial short-circuits this path. */}
+      {!screen && <ContinueOfferModal />}
 
       {/* Loading screen — overlays everything during game scene load */}
       {loading && (

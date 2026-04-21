@@ -19,6 +19,7 @@ import { preloadSprites } from './systems/SpriteManager';
 import { preloadCreepSprites } from './systems/CreepSpriteManager';
 import { preheatIcons } from './ui/game/IconPreheat';
 import { TutorialManager } from './systems/Tutorial/TutorialManager';
+import { installPlatformBridge } from './systems/platform';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
@@ -69,6 +70,29 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+
+// Install the PlatformBridge (ads / IAP / profile) before any system
+// that might depend on it comes online. Fire-and-forget — the bridge
+// starts at the web no-op default, native implementations replace it
+// asynchronously.
+installPlatformBridge()
+  .then(() => {
+    // Silent best-effort Play Games / Game Center sign-in. If the
+    // player has been signed in before, the native SDK reconnects
+    // without prompting; first-time users see the platform modal.
+    // We don't await this — the menu can mount before sign-in
+    // resolves, and failures (user cancels, network out, not on
+    // tester list) are logged but never block gameplay.
+    const bridge = (window as unknown as { Capacitor?: unknown }).Capacitor;
+    if (bridge) {
+      import('./systems/platform').then(({ platformBridge }) => {
+        void platformBridge().profile.signIn().catch(err => {
+          console.warn('[profile] initial sign-in failed (safe to ignore on tester builds):', err);
+        });
+      });
+    }
+  })
+  .catch(err => console.error('[platform] install failed', err));
 
 // Initialize DOM UI bridge, then show menu after Preact mounts
 UIBridge.init(game);

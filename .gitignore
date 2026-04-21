@@ -5,3 +5,26 @@ notes/
 test-results/
 playwright-report/
 /e2e-results/
+release/
+
+# Capacitor — build artefacts + sync'd web bundle. The native
+# projects themselves (android/, ios/) are committed; these
+# subpaths are regenerated each `cap sync`.
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/keystore.properties
+android/app/release/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/capacitor-cordova-android-plugins/
+
+ios/App/build/
+ios/App/Pods/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/capacitor-cordova-ios-plugins/
+ios/DerivedData/
+

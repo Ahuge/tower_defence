@@ -11,8 +11,15 @@ const gitSha = (() => {
   }
 })();
 
+// Native wrappers (Capacitor, Electron) load the bundle via the
+// file:// protocol, so asset URLs must be relative (`./`). Web
+// deployments (GitHub Pages) still need the `/tower_defence/`
+// prefix. Pick via env — `VITE_BASE_PATH=./ npm run build` for
+// native, default web otherwise.
+const BASE_PATH = process.env.VITE_BASE_PATH ?? '/tower_defence/';
+
 export default defineConfig({
-  base: '/tower_defence/',
+  base: BASE_PATH,
 
   // Preact JSX
   esbuild: {

@@ -1,0 +1,128 @@
+apply plugin: 'com.android.application'
+
+// Release signing lookup. Reads an optional keystore.properties file
+// at the android/ root (gitignored — see .gitignore). When present,
+// release builds sign with the Running Man Games release keystore;
+// when absent, release builds fall through to unsigned and the
+// developer has to sign manually (or, more commonly, that means
+// you're building debug only on this machine).
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def releaseSigningAvailable = keystorePropertiesFile.exists()
+def keystoreProperties = new Properties()
+if (releaseSigningAvailable) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+// Read the short git SHA + dirty flag so every build stamps which
+// source tree it came from. Falls through gracefully (unknown) when
+// git is unavailable or this isn't a git worktree — keeps the
+// build itself runnable outside of a git clone.
+def buildGitSha = 'unknown'
+def buildIsDirty = false
+try {
+    def shaProc = ['git', 'rev-parse', '--short=7', 'HEAD'].execute(null, rootProject.projectDir.parentFile)
+    shaProc.waitFor()
+    if (shaProc.exitValue() == 0) {
+        buildGitSha = shaProc.text.trim()
+    }
+    def statusProc = ['git', 'status', '--porcelain'].execute(null, rootProject.projectDir.parentFile)
+    statusProc.waitFor()
+    if (statusProc.exitValue() == 0 && statusProc.text.trim().length() > 0) {
+        buildIsDirty = true
+    }
+} catch (Exception e) {
+    logger.warn("git SHA lookup failed: ${e.message} — versioning will read 'unknown'.")
+}
+def buildVersionSuffix = buildIsDirty ? "${buildGitSha}-dirty" : buildGitSha
+
+android {
+    namespace = "com.runningmangames.factions"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.runningmangames.factions"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // Each Play Console upload needs a strictly increasing
+        // versionCode. Bump this number (+1) for every new internal
+        // / alpha / beta / production release that actually goes up.
+        // Debug sideload builds don't need bumps; Play Console is
+        // the only thing that enforces monotonicity.
+        versionCode 2
+        // versionName shows up in Android Settings → Apps and in
+        // Play Console uploads. Stamping the short SHA (+ "-dirty"
+        // suffix when the working tree has uncommitted changes)
+        // means any QA/tester report uniquely identifies which
+        // source tree produced the build — no more guessing which
+        // of ten installed debug APKs has the bug.
+        versionName "1.0-${buildVersionSuffix}"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    if (releaseSigningAvailable) {
+        signingConfigs {
+            release {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            // R8 minify on for release — trims the bundle size and
+            // is what Play Console expects. The plugin -keep rules
+            // in proguard-rules.pro cover the AdMob / Play Billing /
+            // GameConnect native classes that reflection-load at
+            // runtime.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseSigningAvailable) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+    // Rename the output APK so the file on disk (and the one we copy
+    // to Downloads for sideloading) has the SHA baked into its name.
+    // Easier to spot which is which when three builds sit side-by-side
+    // in a Downloads folder.
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            output.outputFileName = "factions-${variant.name}-${buildVersionSuffix}.apk"
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

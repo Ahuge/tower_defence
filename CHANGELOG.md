@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-04-17 (cross-platform, cont.)
+
+### Phase 5 — real native plugin integrations (Android)
+Capacitor bridges stop being no-op stubs and start routing to real native plugins on Android. Every surface in `PlatformBridge` now has a working implementation behind it.
+
+- **AdBridge** via `@capacitor-community/admob` (v8). `src/systems/platform/capacitor/CapacitorAdBridge.ts` wires `AdMob.initialize` on bootstrap, prepare+show for interstitial and rewarded, adaptive banner at the bottom, and a `Rewarded` event listener so `showRewarded()` correctly returns `'skipped'` when the user dismisses before the reward point. Preloads the next ad of each full-screen type after every show to minimise visible latency. Honors `PlayerInventory.isAdFree()` for short-circuiting every method.
+- **IAPBridge** via `cordova-plugin-purchase` (v13). `CapacitorIAPBridge.ts` registers every SKU from our catalogue (ads-off + shard packs + every tower-faction skin-pack SKU generated from `SKIN_DEFS`) against the matching platform, hooks `when().approved` to track owned non-consumables + resolve pending purchase promises, auto-finishes transactions (server verification deferred), and waits out a 1.5s grace window on `restorePurchases()` so approved events flow in before we return. Consumables are deliberately not cached.
+- **ProfileBridge** via `@osmanraifgunes/capacitor-game-connect` (v8, covers both Android Play Games Services v2 and iOS Game Center). `CapacitorProfileBridge.ts` implements `signIn`, `submitLeaderboard`, `unlockAchievement`; cloud-save falls back to localStorage scoped per-player-id until either the plugin grows Snapshots support or we bridge directly — contract is unchanged for callers.
+
+Native-side plumbing landed alongside:
+- `android/app/src/main/AndroidManifest.xml` — added `<meta-data>` for `com.google.android.gms.ads.APPLICATION_ID` + `com.google.android.gms.games.APP_ID`, both reading from string resources so real IDs drop into `strings.xml`.
+- `android/app/src/main/res/values/strings.xml` — `admob_app_id` (Google's public test id, safe to commit) + `game_services_project_id` (000000000000 placeholder, must be swapped before PGS sign-in works).
+- `MainActivity.java` — registers `CapacitorGameConnectPlugin` in `onCreate`.
+- `ios/App/App/Info.plist` — `GADApplicationIdentifier` (iOS test id) + `NSUserTrackingUsageDescription` for App Tracking Transparency.
+
+Docs (`admob-setup.md`, `play-games-services-setup.md`) updated to reflect the actual plugin choices and native-config edits required.
+
+Verified: `tsc --noEmit` clean, 229 Vitest tests pass, production build succeeds (CapacitorPlatformBridge chunk lands at 160 KB — only loaded when a Capacitor runtime is detected, so web builds don't pay for it).
+
+### Restore Purchases flow
+User-facing "Restore Purchases" button in the Store header (native builds only — the web bridge returns `[]`, so the button would be a no-op there). Behind it, `restorePurchases()` in `src/systems/monetization/` asks `platformBridge().iap.restorePurchases()` for the user's owned non-consumable SKUs and re-applies them to `PlayerInventory`: `ads_off` flips the ad-free flag, `skin_pack_<faction>_<name>` SKUs are translated back to their internal skin id via a reverse map built at module load from `SKIN_DEFS`, then granted along with the bundled hero skin. Required by Apple App Store Guideline 3.1.1 for apps selling non-consumables. Consumable shard packs are intentionally excluded — the store won't re-emit them, and granting them again would enable reinstall-to-double-dip.
+
 ## 2026-04-18
 
 ### Review-pass cleanup
