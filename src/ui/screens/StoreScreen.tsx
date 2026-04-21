@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { SkinPreview } from '../components/SkinPreview';
 import {
   ShardWallet, PlayerInventory, BattlePass,
@@ -9,7 +10,6 @@ import {
   PREMIUM_FACTIONS, FACTION_UNLOCK_COST,
   SKIN_ROLL_COST, DUPLICATE_REFUND,
   getRollableSkins, getPurchasableSkins,
-  restorePurchases,
   claimRewarded, isRewardInstant,
   iapPurchase, getDisplayPrices,
   SHARD_PACKS,
@@ -113,48 +113,15 @@ export function StoreScreen() {
   const [, setTick] = useState(0);
   const rerender = () => setTick(t => t + 1);
   const [rollResult, setRollResult] = useState<{ skin: SkinDef; isDuplicate: boolean } | null>(null);
-  const [restoreState, setRestoreState] = useState<'idle' | 'running' | string>('idle');
 
   const isNative = platformBridge().isNative;
-  const onRestore = async () => {
-    if (restoreState === 'running') return;
-    setRestoreState('running');
-    const r = await restorePurchases();
-    if (r.error) {
-      setRestoreState('Restore failed. Check your connection.');
-    } else if (r.appliedCount > 0) {
-      setRestoreState(`Restored ${r.appliedCount} entitlement${r.appliedCount === 1 ? '' : 's'}.`);
-      rerender();
-    } else if (r.skuCount > 0) {
-      setRestoreState('Already up to date.');
-    } else {
-      setRestoreState('No purchases found on this account.');
-    }
-    setTimeout(() => setRestoreState('idle'), 4000);
-  };
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title text-gold">STORE</div>
-        <ShardBadge />
-      </div>
+      <Header title="STORE" titleClassName="text-gold" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       {isNative && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', padding: '0 12px 8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '0 12px 8px' }}>
           <DailyAdButton rerender={rerender} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {restoreState !== 'idle' && restoreState !== 'running' && (
-              <span class="text-dim text-xs">{restoreState}</span>
-            )}
-            <button
-              class={`btn ${restoreState === 'running' ? 'btn-disabled' : ''}`}
-              style={{ fontSize: '10px', padding: '4px 10px' }}
-              onClick={onRestore}
-            >
-              {restoreState === 'running' ? 'Restoring...' : 'Restore Purchases'}
-            </button>
-          </div>
         </div>
       )}
       <div class="tab-bar">

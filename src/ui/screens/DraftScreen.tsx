@@ -1,5 +1,6 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { DraftModifier, getRandomModifiers } from '../../data/DraftModifiers';
 import { BattlePass, claimRewarded, isRewardInstant } from '../../systems/monetization';
 import { platformBridge } from '../../systems/platform';
@@ -145,11 +146,7 @@ export function DraftScreen({ data }: Props) {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title">CHOOSE MODIFIER</div>
-        <ShardBadge />
-      </div>
+      <Header title="CHOOSE MODIFIER" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       <div class="ui-section" style={{ textAlign: 'center' }}>
         <div class="text-dim text-sm mb-2">{headerLine}</div>
       </div>

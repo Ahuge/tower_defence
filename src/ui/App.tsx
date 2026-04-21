@@ -12,6 +12,7 @@ import { GameOverScreen } from './screens/GameOverScreen';
 import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { AppLoadingScreen } from './screens/AppLoadingScreen';
@@ -63,6 +64,7 @@ export function App() {
           {screen === 'changelog' && <ChangelogScreen />}
           {screen === 'leaderboard' && <LeaderboardScreen />}
           {screen === 'encyclopedia' && <EncyclopediaScreen />}
+          {screen === 'settings' && <SettingsScreen />}
         </div>
       )}
 

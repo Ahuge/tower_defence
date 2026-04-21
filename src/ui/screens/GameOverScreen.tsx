@@ -1,5 +1,6 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { ShardWallet, BattlePass } from '../../systems/monetization';
 import { GameStats } from '../../systems/StatsTracker';
@@ -66,10 +67,7 @@ export function GameOverScreen({ data }: Props) {
 
   return (
     <>
-      <div class="ui-header">
-        <div class="ui-header-title" style={{ color: won ? 'var(--jewel-teal)' : 'var(--jewel-red)' }}>{won ? 'VICTORY!' : 'DEFEAT'}</div>
-        <ShardBadge />
-      </div>
+      <Header title={won ? 'VICTORY!' : 'DEFEAT'} titleStyle={{ color: won ? 'var(--jewel-teal)' : 'var(--jewel-red)' }} rightContent={<ShardBadge />} />
 
       {/* Hero numerals — big VT323 stat readout */}
       <div style={{ background: 'linear-gradient(90deg, var(--bg-inset), var(--bg-surface), var(--bg-inset))', padding: '20px', display: 'flex', justifyContent: 'center', gap: '32px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid var(--border-subtle)' }}>

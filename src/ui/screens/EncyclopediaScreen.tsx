@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { FACTIONS, FACTION_ORDER, FactionId } from '../../data/Factions';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { HERO_TYPES, HERO_ORDER, HeroTypeDef } from '../../data/HeroTypes';
@@ -337,13 +338,7 @@ export function EncyclopediaScreen() {
 
   return (
     <>
-      <div class="ui-header" style={{ flexWrap: 'wrap', gap: '6px' }}>
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>
-          {'< Back'}
-        </button>
-        <div class="ui-header-title">ENCYCLOPEDIA</div>
-        <ShardBadge />
-      </div>
+      <Header title="ENCYCLOPEDIA" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} wrap />
       <div class="tab-bar">
         {tabs.map(t => (
           <button

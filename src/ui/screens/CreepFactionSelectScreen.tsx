@@ -1,5 +1,6 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { FACTIONS, FACTION_ORDER, FactionId } from '../../data/Factions';
 
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
@@ -20,11 +21,7 @@ export function CreepFactionSelectScreen({ data }: Props) {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.showFactionSelect(data)}>{'< Back'}</button>
-        <div class="ui-header-title" style={{ color: '#ff4444' }}>CHOOSE ENEMY</div>
-        <ShardBadge />
-      </div>
+      <Header title="CHOOSE ENEMY" titleStyle={{ color: '#ff4444' }} back={() => UIBridge.showFactionSelect(data)} rightContent={<ShardBadge />} />
 
       <div class="ui-section" style={{ textAlign: 'center' }}>
         <div class="text-dim text-sm mb-2">Which faction's creatures will you face?</div>

@@ -1,5 +1,6 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 
 type Entry = {
   date: string;
@@ -405,11 +406,7 @@ const ENTRIES: Entry[] = [
 export function ChangelogScreen() {
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title">CHANGELOG</div>
-        <ShardBadge />
-      </div>
+      <Header title="CHANGELOG" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
 
       <div class="ui-section changelog-list">
         {ENTRIES.map((e, i) => (
