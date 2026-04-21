@@ -15,7 +15,7 @@ import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
-import { PlayerInventory, claimRewarded } from '../systems/monetization';
+import { PlayerInventory, claimRewarded, BattlePass } from '../systems/monetization';
 import { GameUIStore, TowerStats } from '../ui/GameUIStore';
 import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
@@ -74,7 +74,7 @@ import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
 import { Analytics } from '../systems/AnalyticsClient';
 import { platformBridge } from '../systems/platform';
-import { AD_GAME_OVER_CONTINUE } from '../systems/platform/AdPlacements';
+import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
@@ -161,8 +161,41 @@ export class GameScene extends Phaser.Scene {
   paused: boolean = false;
   gameSpeed: number = 1.0;
   autoPlay: boolean = false;
+  // Full list — 3× is Battle Pass only; 2× is always on for ads-off
+  // owners, temporarily on for free players who watched the ad, and
+  // baseline caps at 1.5×. See activeSpeedOptions() for the slice
+  // that's valid right now for this player.
   private static readonly SPEED_OPTIONS = [0, 0.5, 1.0, 1.5, 2.0, 3.0];
   private speedIndex: number = 2;
+
+  /**
+   * Return the speed-cycle values this player can currently reach.
+   *
+   *   - Battle Pass `all_speeds` perk: full list, up to 3×.
+   *   - ads_off IAP: up to 2× (permanently).
+   *   - Free player with an active speed-boost ad: up to 2× (timed).
+   *   - Otherwise: baseline [0, 0.5, 1, 1.5].
+   *
+   * The 3× slot is intentionally Battle-Pass-exclusive — it's a
+   * premium-tier bonus, not an ad-reachable one. Ads unlock 2×.
+   */
+  private activeSpeedOptions(): number[] {
+    if (BattlePass.hasPerk('all_speeds')) return GameScene.SPEED_OPTIONS;
+    if (PlayerInventory.isAdFree() || this.isSpeedBoosted()) {
+      return GameScene.SPEED_OPTIONS.slice(0, 5); // [0, 0.5, 1, 1.5, 2]
+    }
+    return GameScene.SPEED_OPTIONS.slice(0, 4);   // [0, 0.5, 1, 1.5]
+  }
+
+  /** True while the rewarded speed-boost ad timer is running. */
+  isSpeedBoosted(now: number = Date.now()): boolean {
+    return now < this._speedBoostUntil;
+  }
+
+  /** Remaining milliseconds on the speed boost. 0 when expired. */
+  speedBoostRemainingMs(now: number = Date.now()): number {
+    return Math.max(0, this._speedBoostUntil - now);
+  }
 
   // Selection state
   selectionMode: SelectionMode = 'none';
@@ -206,6 +239,14 @@ export class GameScene extends Phaser.Scene {
   private _awaitingContinueDecision: boolean = false;
   private _continueUsedThisMatch: boolean = false;
   private _continueAdShown: boolean = false;
+
+  // Speed boost state (strategy-doc #5).
+  //   Baseline cycle caps at 2×; when `_speedBoostUntil > Date.now()`
+  //   the cycle extends to include 3×. Granted by claimRewarded, lasts
+  //   10 min of wall-clock time (stacks with existing boost, capped at
+  //   30 min total). If the clock expires mid-match while the player
+  //   is at 3×, the next speed read-out snaps them back to 2×.
+  private _speedBoostUntil: number = 0;
   private waveCount?: number;
 
   private customMapDef: MapDefinition | null = null;
@@ -306,6 +347,9 @@ export class GameScene extends Phaser.Scene {
       },
       onCycleSpeed: () => {
         this.cycleSpeed();
+      },
+      onRequestSpeedBoost: () => {
+        void this.requestSpeedBoost();
       },
       onPause: () => {
         this.togglePause();
@@ -1529,7 +1573,11 @@ export class GameScene extends Phaser.Scene {
     const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
     this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     GameUIStore.updateEconomy(this.economy.gold, displayLives, this.incomeMgr.getBreakdown().total);
-    GameUIStore.updateGameState(this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    // Demote 3× → 2× the moment the boost lapses so the UI + game
+    // stay in sync. Cheap check (just a timestamp compare).
+    this.reconcileSpeedToBoostState();
+    const boostSec = Math.ceil(this.speedBoostRemainingMs() / 1000);
+    GameUIStore.updateGameState(this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer, boostSec);
     this.incomeDisplay.update(this.incomeMgr.getBreakdown());
     // Refresh inspected creep — store skips the re-render when the snapshot
     // hasn't changed, so this is essentially free when the creep is uncontested.
@@ -1932,12 +1980,53 @@ export class GameScene extends Phaser.Scene {
       this.eventLog.gameMessage('Only the host can change game speed.');
       return;
     }
-    this.speedIndex = (this.speedIndex + 1) % GameScene.SPEED_OPTIONS.length;
-    this.gameSpeed = GameScene.SPEED_OPTIONS[this.speedIndex];
+    // Demote if the current slot is 3× but boost has expired — keeps
+    // the runtime speed honest with the active option list.
+    this.reconcileSpeedToBoostState();
+    const options = this.activeSpeedOptions();
+    // Advance through the reduced list when not boosted.
+    this.speedIndex = (this.speedIndex + 1) % options.length;
+    this.gameSpeed = options[this.speedIndex];
     this.eventLog.gameMessage(`Speed: ${this.gameSpeed}x`);
     if (this.versus) {
       this.versus.send({ type: 'speed_change', speed: this.gameSpeed });
     }
+  }
+
+  /** If the current speed is above what the player can now reach
+   *  (boost timer expired, perk lost, etc.), snap down to the
+   *  highest valid option. Called before cycling + during regular
+   *  ticks so the transition is visible exactly when the cap
+   *  changes. */
+  private reconcileSpeedToBoostState(): void {
+    const options = this.activeSpeedOptions();
+    const maxAllowed = options[options.length - 1];
+    if (this.gameSpeed > maxAllowed) {
+      const wasBoosted = this.gameSpeed > 1.5 && !BattlePass.hasPerk('all_speeds') && !PlayerInventory.isAdFree();
+      this.gameSpeed = maxAllowed;
+      this.speedIndex = options.indexOf(maxAllowed);
+      if (wasBoosted) {
+        this.eventLog.gameMessage(`Speed boost expired. Reverted to ${maxAllowed}×.`);
+      }
+    }
+  }
+
+  /** Request a speed boost. Routes through claimRewarded so ads-off
+   *  owners get it free. 10 min of wall-clock time; stacks with any
+   *  existing boost up to a 30-min ceiling so a determined player
+   *  can't accumulate hours of 3× by chaining ads. Solo only —
+   *  skipped in versus/circle so multiplayer sync stays honest. */
+  async requestSpeedBoost(): Promise<boolean> {
+    if (this.versus || this.circle) return false;
+    const granted = await claimRewarded(AD_SPEED_BOOST_10M);
+    if (!granted) return false;
+    const now = Date.now();
+    const CEILING_MS = 30 * 60 * 1000;
+    const STEP_MS = 10 * 60 * 1000;
+    const base = Math.max(now, this._speedBoostUntil);
+    this._speedBoostUntil = Math.min(base + STEP_MS, now + CEILING_MS);
+    this.eventLog.gameMessage(`3× Speed unlocked for ${Math.round(this.speedBoostRemainingMs() / 60_000)} min.`);
+    return true;
   }
 
   /** Send a chat message (Enter key opens prompt) */

@@ -34,10 +34,10 @@ A note on "short ad vs long ad": AdMob doesn't give us a knob for ad length — 
 | 1 | `shards_daily` | Rewarded | "Watch ad for +100 shards" button in Store header | 100 shards | 1 / day (UTC midnight reset) | **Live** |
 | 2 | `draft_modifier_2` | Rewarded | "Watch Ad (Option 2)" button in Draft | Second modifier option to choose from (still pick 1 total) | 1 / match | **Live** |
 | 3 | `draft_modifier_3` | Rewarded | "Watch Ad (Option 3)" button in Draft (only after #2 watched — progressive reveal) | Third modifier option to choose from (still pick 1 total) | 1 / match | **Live** |
-| 4 | `draft_reroll` | Rewarded | "Re-roll all modifiers" button in Draft | All three modifier slots re-rolled | Soft cap: 3 / match, then increasing cooldown | Planned |
-| 5 | `speed_boost_10m` | Rewarded | "Unlock 3× speed for 10 min" button on pause menu / speed toggle | 3× speed enabled for 10 minutes of real time | 1 active timer at a time; stacks up to 30 min | Planned |
-| 6 | `game_over_continue` | Rewarded | "Continue — revive with +5 lives" button on loss screen | Revive with 5 lives; wave resumes | 1 / match | Planned |
-| 7 | `tower_roll_reroll` | Rewarded | "Re-roll this drop" button shown after a paid roll result | Re-roll the 150-shard tower roll once | 1 / paid roll | Planned |
+| 4 | `draft_reroll` | Rewarded | "Watch Ad → Reroll" button below the modifier cards in Draft | All three modifier slots redrawn (unlock state preserved) | Soft cap: 3 free, then 30s / 60s / 120s escalating between subsequent rerolls | **Live** |
+| 5 | `speed_boost_10m` | Rewarded | "⚡ Ad → 2×" button next to the speed toggle; baseline speed cycle caps at 1.5× | 2× speed for 10 min real time; stacks up to 30 min | Auto-demotes on expiry. ads_off: 2× permanent (no ad needed). Battle Pass `all_speeds` perk: 3× permanent | **Live** |
+| 6 | `game_over_continue` | Rewarded | Modal on lives→0 with "Watch Ad +5 Lives" button | +5 lives + board-wipe shockwave (creeps destroyed) | 1 / match | **Live** |
+| 7 | `tower_roll_reroll` | Rewarded | "Watch Ad → Reroll (same tier)" button on the roll result card | Redraw at the same rarity, excludes previous skin | 1 / paid roll | **Live** |
 | I | `game_over_exit` | Interstitial | On "Play Again" / "Menu" after a match | n/a (just a transition ad) | Play Store's frequency-cap flag at the ad-unit level; we also skip if shown in last 60 s | **Live** (wired in GameOverScreen) |
 
 Placement IDs are strings passed to `platformBridge().ads.showInterstitial(id)` / `.showRewarded(id)`. They flow through to AdMob reporting so we can see revenue and fill rate per placement and retire or redesign underperformers.
@@ -47,7 +47,7 @@ Placement IDs are strings passed to `platformBridge().ads.showInterstitial(id)` 
 - **#1 daily shards** — the strongest retention hook on the list. A free 100-shard top-up is enough to feel meaningful (≈1/6 of a skin roll) without inflating the shard economy. Reset at UTC midnight: cloud-synced cooldowns across devices agree without timezone math, and a player can't farm the daily by crossing a timezone boundary on a flight.
 - **#2 / #3 draft modifiers** — free tier sees 1 of 3 options; watching an ad reveals a second, watching another reveals the third. Player always picks one total, so no balance impact — the ads unlock *optionality* (more faces to choose from) not *power*. Progressive reveal: slot 3 only unlocks after slot 2, which gives us the "short ad → longer ad" perceived-length distinction without needing AdMob to honour an ad-length knob it doesn't expose.
 - **#4 draft reroll** — "unlimited" on the user's terms but with the soft cap: after 3 rerolls per match the cooldown grows (next reroll gated behind 30s, then 60s, then 120s). Discourages compulsion watching.
-- **#5 speed boost** — the README says the game already cycles 0× / 0.5× / 1× / 1.5× / 2× / 3× via TAB. Before implementing this placement we need to decide: does the baseline cap drop to 2× (making 3× the ad unlock), or does this unlock something faster than 3×? My recommendation: **drop the free cap to 2×, gate 3× behind the rewarded ad**. Keeps the current speed variety in the game while giving us something meaningful to gate.
+- **#5 speed boost** — tiered progression: baseline 1.5× cap for free players, rewarded ad unlocks 2× for 10 min real time (stackable to 30), ads_off IAP grants 2× permanently, Battle Pass `all_speeds` perk grants 3× permanently. The 3× slot is BP-exclusive — it's the top-tier premium bonus, not an ad-reachable one. Matches the convention that IAP unlocks utility (2× QoL) while BP unlocks cosmetic-adjacent flex (3× "fast-forward").
 - **#6 continue** — 5 lives is a sensible baseline for Normal. On Hard/Insane 5 lives may evaporate in one wave; I'd recommend scaling the revive to `max(5, floor(startingLives * 0.15))` or similar. Flag for playtest.
 - **#7 tower-roll reroll** — nice anti-dupe-frustration tool. Exactly once per paid roll is the right cap — any more and the 150-shard price tag becomes meaningless because players will just watch ads until they get what they want.
 - **#I game-over interstitial** — the one non-rewarded ad. Already wired in `GameOverScreen.tsx`. Has a 60-second same-session cooldown client-side *in addition* to AdMob's own frequency cap so we don't show two interstitials back-to-back if the player taps Menu then Play Again quickly.
@@ -105,9 +105,11 @@ We do these in risk-reverse order — smallest surface, easiest to remove, most 
 2. **Placement #6 (continue after loss)** — ✅ live (includes revive shockwave board-wipe so +5 lives aren't burned by in-flight creeps).
 3. **Placement #1 (daily shards)** — ✅ live.
 4. **Placement #2 + #3 (draft modifier unlocks)** — ✅ live.
-5. **Placement #4 (draft reroll)** — next. Builds on #2/#3.
-6. **Placement #7 (tower-roll reroll)** — needs roll-result screen surface.
-7. **Placement #5 (speed boost)** — last, pending the baseline-cap decision.
+5. **Placement #4 (draft reroll)** — ✅ live (escalating 30s / 60s / 120s cooldown after 3 free).
+6. **Placement #7 (tower-roll reroll)** — ✅ live (same-tier, excludes previous skin, 1/paid roll).
+7. **Placement #5 (speed boost)** — ✅ live (2× via ad, 2× via ads_off, 3× via Battle Pass).
+
+All seven planned placements from the rollout are shipped. Any future placements (events, seasonal ad-watch challenges, etc.) get added to the placement table above and follow the same `claimRewarded` / cooldown pattern.
 
 Each ships behind its own small PR with a telemetry event per placement so we can track fill rate and completion rate on release and drop or redesign the dog.
 
@@ -119,9 +121,9 @@ Flag these back to Alex before implementing the corresponding placement.
 
 - ~~**#1** — does the daily reset align with local midnight or UTC?~~ → **Decided: UTC midnight.** Cross-device sync agrees without timezone math + no timezone-farming.
 - ~~**#2 / #3** — do three simultaneous modifiers break difficulty pacing?~~ → **Decided: N/A.** Player picks 1 of however many options are revealed; ads unlock more options, not more active modifiers.
-- **#5** — baseline speed cap stays at 3× (and the ad unlocks something else, e.g. 4×?) or drops to 2× with 3× ad-gated? Recommend drop to 2×.
-- **#6** — flat +5 lives, or scale with difficulty? Recommend scale.
-- **#7** — should the reroll redraw from the same rarity tier (prevents downgrades) or from the full pool? Recommend same tier.
+- ~~**#5** — baseline speed cap?~~ → **Decided: 1.5× baseline, 2× via ad/ads_off, 3× via Battle Pass.** Tiered so each entitlement tier unlocks something meaningful.
+- ~~**#7** — same rarity tier or full pool for reroll?~~ → **Decided: same tier, previous skin excluded.** No stealth downgrades; no wasted reroll redrawing the exact same skin.
+- **#6** — flat +5 lives, or scale with difficulty? Still flat at the moment; open for a balance pass (recommend `max(5, floor(startingLives × 0.15))`).
 - **Restore behaviour** — rewarded ad state (cooldowns, daily-shard claim) is tied to a device, not a store account. Do we cloud-save cooldowns under the Play Games / Game Center profile so switching devices doesn't reset the daily claim? Recommend yes, in the ProfileBridge's `cloudSave` slot under `ad_cooldowns`.
 
 ---

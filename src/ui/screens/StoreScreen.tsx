@@ -17,6 +17,7 @@ import { platformBridge } from '../../systems/platform';
 import {
   AD_SHARDS_DAILY,
   DAILY_SHARDS_REWARD,
+  AD_TOWER_ROLL_REROLL,
 } from '../../systems/platform/AdPlacements';
 import {
   isDailyReady,
@@ -252,7 +253,13 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
   const [stripItems, setStripItems] = useState<SkinDef[]>([]);
   const [stripOffset, setStripOffset] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  // Reroll state — one shot per paid roll (strategy-doc #7). The flag
+  // resets every time the user kicks off a fresh paid roll.
+  const [rerollUsed, setRerollUsed] = useState(false);
+  const [rerollBusy, setRerollBusy] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
+  const instantReward = isRewardInstant();
+  const canAdReroll = platformBridge().isNative || instantReward;
 
   const freeRolls = BattlePass.getFreeRollsRemaining();
   const canRoll = (ShardWallet.canAfford(SKIN_ROLL_COST) || freeRolls > 0) && !rolling;
@@ -264,6 +271,8 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
     if (freeRolls > 0) BattlePass.useFreeRoll();
     const result = PlayerInventory.rollSkin();
     if (!result) return;
+    // Fresh paid roll — reset the once-per-roll reroll flag.
+    setRerollUsed(false);
 
     // Build the strip: ~40 random skins with the winner placed at position 35
     const STRIP_LEN = 42;
@@ -375,6 +384,47 @@ function RollsTab({ rollResult, setRollResult, rerender }: { rollResult: { skin:
           </div>
           {rollResult.isDuplicate && (
             <div style={{ color: '#ffcc44', marginTop: '8px', fontSize: '13px' }}>+{DUPLICATE_REFUND} Shards refunded</div>
+          )}
+          {canAdReroll && !rerollUsed && (
+            <div style={{ marginTop: '12px' }}>
+              <button
+                class={`btn btn-gold ${rerollBusy ? 'btn-disabled' : ''}`}
+                style={{ fontSize: '11px', padding: '5px 12px' }}
+                onClick={async () => {
+                  if (rerollBusy) return;
+                  setRerollBusy(true);
+                  try {
+                    const granted = await claimRewarded(AD_TOWER_ROLL_REROLL);
+                    if (granted) {
+                      const newResult = PlayerInventory.rerollSkinAtRarity(
+                        rollResult.skin.rarity,
+                        rollResult.skin.id,
+                      );
+                      if (newResult) {
+                        setRollResult(newResult);
+                        setRerollUsed(true);
+                        rerender();
+                      }
+                    }
+                  } finally {
+                    setRerollBusy(false);
+                  }
+                }}
+                disabled={rerollBusy}
+              >
+                {rerollBusy
+                  ? (instantReward ? 'Rerolling...' : 'Loading ad...')
+                  : (instantReward ? 'Reroll (same tier)' : 'Watch Ad → Reroll (same tier)')}
+              </button>
+              <div class="text-dim text-xs" style={{ marginTop: '4px' }}>
+                One reroll per paid roll · stays at {RARITY_LABELS[rollResult.skin.rarity]}
+              </div>
+            </div>
+          )}
+          {rerollUsed && (
+            <div class="text-dim text-xs" style={{ marginTop: '12px' }}>
+              Reroll used — next reroll after your next paid roll.
+            </div>
           )}
         </div>
       )}

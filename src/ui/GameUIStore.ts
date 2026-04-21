@@ -220,6 +220,11 @@ export interface GameUIState {
   matchMode: string;
   /** Game speed multiplier */
   speed: number;
+  /** Remaining seconds on the ad-unlocked 3× speed boost (strategy-doc #5).
+   *  0 when no boost is active. Rounded to seconds (not ms) by GameScene
+   *  so the snapshot only changes once per second — prevents a 60Hz
+   *  re-render while the boost timer ticks down. */
+  speedBoostRemainingSec: number;
   /** Is game paused */
   paused: boolean;
   /** Total income per wave */
@@ -311,6 +316,7 @@ class GameUIStoreClass {
     onUpgradeAbility?: (abilityIndex: number) => void;
     onSelectDockTower?: (index: number) => void;
     onCycleSpeed?: () => void;
+    onRequestSpeedBoost?: () => void;
     onPause?: () => void;
     onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
   } = {};
@@ -341,6 +347,7 @@ class GameUIStoreClass {
       essence: null,
       heroShop: null,
       continueOffer: null,
+      speedBoostRemainingSec: 0,
     };
   }
 
@@ -448,8 +455,16 @@ class GameUIStoreClass {
   }
 
   /** Update wave/game state for status bar */
-  updateGameState(waveActive: boolean, betweenWaves: boolean, speed: number, versusTimer: number = -1): void {
-    this.state = { ...this.state, waveActive, betweenWaves, speed, versusTimer };
+  updateGameState(waveActive: boolean, betweenWaves: boolean, speed: number, versusTimer: number = -1, speedBoostRemainingSec: number = 0): void {
+    // Short-circuit on equal snapshot — this fires every tick.
+    if (
+      this.state.waveActive === waveActive &&
+      this.state.betweenWaves === betweenWaves &&
+      this.state.speed === speed &&
+      this.state.versusTimer === versusTimer &&
+      this.state.speedBoostRemainingSec === speedBoostRemainingSec
+    ) return;
+    this.state = { ...this.state, waveActive, betweenWaves, speed, versusTimer, speedBoostRemainingSec };
     this.notify();
   }
 
@@ -536,6 +551,10 @@ class GameUIStoreClass {
 
   requestCycleSpeed(): void {
     this.callbacks.onCycleSpeed?.();
+  }
+
+  requestSpeedBoost(): void {
+    this.callbacks.onRequestSpeedBoost?.();
   }
 
   requestPause(): void {
