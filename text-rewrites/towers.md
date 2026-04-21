@@ -29,7 +29,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> AoE splash, slow fire
+> Area of effect splash, slow fire
 
 ---
 
@@ -94,7 +94,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> AoE lightning. Good vs packs.
+> Area of effect lightning. Good vs packs.
 
 ---
 
@@ -120,7 +120,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Strips boss shields on hit. Essential for wave 10+.
+> Strips creep shields on hit.
 
 ---
 
@@ -133,7 +133,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Slow-falling star. Massive AoE on impact.
+> Slow-falling star. Massive area of effect on impact. Location target.
 
 ---
 
@@ -146,7 +146,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> ULTIMATE. AoE crit with slow and damage amp.
+> ULTIMATE. Area of effect crit with slow and damage amp.
 
 ---
 
@@ -159,7 +159,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Dirt cheap maze filler. Barely attacks.
+> Dirt spike cheap maze filler. Barely attacks.
 
 ---
 
@@ -185,7 +185,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Short range AoE. Burns for 8 DPS over 3s.
+> Short range area of effect. Burns for 8 DPS over 3s.
 
 ---
 
@@ -224,7 +224,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Very fast. Shreds armor tier for 4s per hit.
+> Very fast. Shreds one armor tier for 4s per hit.
 
 ---
 
@@ -458,7 +458,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Mobile AoE. Slow but long range. Fires explosive shells.
+> Mobile area of effect. Slow but long range. Fires explosive shells.
 
 ---
 
@@ -523,7 +523,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Short range AoE + armor shred + poison.
+> Short range area of effect + armor shred + poison.
 
 ---
 
@@ -601,7 +601,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Links to another Firewall. Beam damages + heavily slows creeps crossing.
+> Links to another Firewall within range. Beam damages + heavily slows creeps crossing.
 
 ---
 
@@ -614,7 +614,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Infects target. Spreads to nearby creeps as DoT.
+> Infects target. Spreads to nearby creeps as Damage over Time.
 
 ---
 
@@ -640,7 +640,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> AoE. Roots all creeps in range for 0.5s periodically.
+> Area of effect. Roots all creeps in range for 0.5s periodically.
 
 ---
 
@@ -692,7 +692,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Strong AoE + burn. Loses 15% damage each wave.
+> Strong area of effect + burn. Loses 15% damage each wave.
 
 ---
 
@@ -718,7 +718,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Kamikaze. Runs to nearest creep and explodes for AoE damage. Single use.
+> Kamikaze. Runs to nearest creep and explodes for area of effect damage. Single use.
 
 ---
 
@@ -731,7 +731,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Strong DPS. Right-click to sacrifice for 2000 AoE damage.
+> Strong DPS. Right-click to sacrifice for 2000 area of effect damage.
 
 ---
 
@@ -744,7 +744,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> ULTIMATE. Massive burn AoE. Sacrifice for 8000 damage.
+> ULTIMATE. Massive burn area of effect. Sacrifice for 8000 damage.
 
 ---
 
@@ -809,7 +809,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> ULTIMATE. Huge holy AoE. 10% life gain on kill. Mutes mages.
+> ULTIMATE. Huge holy area of effect. 10% life gain on kill. Mutes mages.
 
 ---
 

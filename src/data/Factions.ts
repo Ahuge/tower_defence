@@ -13,7 +13,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
   arcane: {
     id: 'arcane',
     name: 'Arcane',
-    description: 'Precision magic. Crits, AoE, and spell amplification.',
+    description: 'High Fantasy precision magic. Crits, AoE, and spell amplification.',
     primaryColor: 0x6644ff,
     secondaryColor: 0x9988ff,
     towerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
@@ -21,7 +21,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
   mechanical: {
     id: 'mechanical',
     name: 'Mechanical',
-    description: 'Engineering and firepower. Burn, pierce, and raw efficiency.',
+    description: 'Steampunk engineering and firepower. Burn, pierce, and raw efficiency.',
     primaryColor: 0xcc8833,
     secondaryColor: 0xeebb66,
     towerIds: ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
@@ -53,7 +53,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
   aliens: {
     id: 'aliens',
     name: 'Spawn Aliens',
-    description: 'The hive hungers. Cheap, fast, overwhelming swarms.',
+    description: 'The hive hungers. Cheap, fast, overwhelming insectoid swarms.',
     primaryColor: 0x88ff44,
     secondaryColor: 0xaaff66,
     towerIds: ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind'],
@@ -61,7 +61,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
   cypherpunk: {
     id: 'cypherpunk',
     name: 'Cypherpunk',
-    description: 'Everything is data. Hack, infect, and rewrite reality.',
+    description: 'Everything is data. Hack, infect, and rewrite reality. Hack the planet',
     primaryColor: 0x00ffcc,
     secondaryColor: 0x44ffdd,
     towerIds: ['cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor', 'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday'],

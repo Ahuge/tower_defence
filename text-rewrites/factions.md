@@ -16,7 +16,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Precision magic. Crits, AoE, and spell amplification.
+> High Fantasy precision magic. Crits, AoE, and spell amplification.
 
 ---
 
@@ -29,7 +29,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Engineering and firepower. Burn, pierce, and raw efficiency.
+> Steampunk engineering and firepower. Burn, pierce, and raw efficiency.
 
 ---
 
@@ -81,7 +81,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> The hive hungers. Cheap, fast, overwhelming swarms.
+> The hive hungers. Cheap, fast, overwhelming insectoid swarms.
 
 ---
 
@@ -94,7 +94,7 @@ Extracted by `scripts/extract-game-text.mjs` — re-run after source edits to re
 
 **description**:
 
-> Everything is data. Hack, infect, and rewrite reality.
+> Everything is data. Hack, infect, and rewrite reality. Hack the planet
 
 ---
 

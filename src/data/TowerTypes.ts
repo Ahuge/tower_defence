@@ -60,7 +60,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   cannon: def({
-    id: 'cannon', name: 'Cannon', description: 'AoE splash, slow fire',
+    id: 'cannon', name: 'Cannon', description: 'Area of effect splash, slow fire',
     damageType: 'physical', cost: 35, damage: 25, range: 3, fireRate: 1800,
     color: 0xff8844, projectileSpeed: 200, hotkey: '2',
     traits: [{ id: 'splash_damage', radius: 48 }],
@@ -112,7 +112,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     // No upgrades — it's balanced as a pure utility tower
   }),
   arcane_storm: def({
-    id: 'arcane_storm', name: 'Storm', description: 'AoE lightning. Good vs packs.',
+    id: 'arcane_storm', name: 'Storm', description: 'Area of effect lightning. Good vs packs.',
     faction: 'arcane', damageType: 'magic', cost: 55, damage: 22, range: 3, fireRate: 1500,
     color: 0x8866ff, projectileSpeed: 250, hotkey: '3',
     traits: [{ id: 'splash_damage', radius: 56 }],
@@ -133,7 +133,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   arcane_drain: def({
-    id: 'arcane_drain', name: 'Mana Drain', description: 'Strips boss shields on hit. Essential for wave 10+.',
+    id: 'arcane_drain', name: 'Mana Drain', description: 'Strips creep shields on hit.',
     faction: 'arcane', damageType: 'magic', cost: 120, damage: 10, range: 4.5, fireRate: 1000,
     color: 0x44aaff, projectileSpeed: 350, hotkey: '5',
     targeting: 'strongest',
@@ -143,7 +143,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   arcane_meteor: def({
-    id: 'arcane_meteor', name: 'Meteor', description: 'Slow-falling star. Massive AoE on impact.',
+    id: 'arcane_meteor', name: 'Meteor', description: 'Slow-falling star. Massive area of effect on impact. Location target.',
     faction: 'arcane', damageType: 'magic', cost: 200, damage: 100, range: 5, fireRate: 4500,
     color: 0xff6644, projectileSpeed: 55, hotkey: '6',
     traits: [{ id: 'splash_damage', radius: 80 }],
@@ -153,7 +153,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   arcane_nova: def({
-    id: 'arcane_nova', name: 'Arcane Nova', description: 'ULTIMATE. AoE crit with slow and damage amp.',
+    id: 'arcane_nova', name: 'Arcane Nova', description: 'ULTIMATE. Area of effect crit with slow and damage amp.',
     faction: 'arcane', damageType: 'magic', cost: 700, damage: 200, range: 5.5, fireRate: 3000,
     color: 0xeeddff, projectileSpeed: 350, hotkey: '7', ultimate: true,
     traits: [
@@ -169,7 +169,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // MECHANICAL (8) — Engineering, burn, pierce, efficiency
   // ================================================================
   mech_wall: def({
-    id: 'mech_wall', name: 'Wall', description: 'Dirt cheap maze filler. Barely attacks.',
+    id: 'mech_wall', name: 'Wall', description: 'Dirt spike cheap maze filler. Barely attacks.',
     faction: 'mechanical', damageType: 'physical', cost: 10, damage: 2, range: 1.5, fireRate: 2000,
     color: 0x998866, projectileSpeed: 200, hotkey: '1',
     // No upgrades — it's a 10g blocker
@@ -186,7 +186,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   mech_flamethrower: def({
-    id: 'mech_flamethrower', name: 'Flame', description: 'Short range AoE. Burns for 8 DPS over 3s.',
+    id: 'mech_flamethrower', name: 'Flame', description: 'Short range area of effect. Burns for 8 DPS over 3s.',
     faction: 'mechanical', damageType: 'physical', cost: 40, damage: 10, range: 2, fireRate: 500,
     color: 0xff4400, projectileSpeed: 200, projectileColor: 0xff6622, hotkey: '3',
     targeting: 'closest',
@@ -217,7 +217,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   mech_shredder: def({
-    id: 'mech_shredder', name: 'Shredder', description: 'Very fast. Shreds armor tier for 4s per hit.',
+    id: 'mech_shredder', name: 'Shredder', description: 'Very fast. Shreds one armor tier for 4s per hit.',
     faction: 'mechanical', damageType: 'physical', cost: 150, damage: 6, range: 3, fireRate: 350,
     color: 0xbbaa88, projectileSpeed: 400, hotkey: '6',
     targeting: 'strongest',
@@ -415,7 +415,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   mil_heavy: def({
-    id: 'mil_heavy', name: 'Tank', description: 'Mobile AoE. Slow but long range. Fires explosive shells.',
+    id: 'mil_heavy', name: 'Tank', description: 'Mobile area of effect. Slow but long range. Fires explosive shells.',
     faction: 'military', damageType: 'physical', cost: 120, damage: 30, range: 5, fireRate: 2000,
     color: 0x4a6741, projectileSpeed: 180, hotkey: '5',
     traits: [{ id: 'mobile_unit', moveSpeed: 60, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 48 }],
@@ -466,7 +466,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   alien_acid: def({
-    id: 'alien_acid', name: 'Acid Sprayer', description: 'Short range AoE + armor shred + poison.',
+    id: 'alien_acid', name: 'Acid Sprayer', description: 'Short range area of effect + armor shred + poison.',
     faction: 'aliens', damageType: 'physical', cost: 100, damage: 8, range: 2.5, fireRate: 500,
     color: 0x44bb00, projectileSpeed: 250, projectileColor: 0x66ff00, hotkey: '4',
     targeting: 'closest',
@@ -524,7 +524,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   cyber_firewall: def({
-    id: 'cyber_firewall', name: 'Firewall', description: 'Links to another Firewall. Beam damages + heavily slows creeps crossing.',
+    id: 'cyber_firewall', name: 'Firewall', description: 'Links to another Firewall within range. Beam damages + heavily slows creeps crossing.',
     faction: 'cypherpunk', damageType: 'magic', cost: 35, damage: 0, range: 8, fireRate: 99999,
     color: 0x0088aa, projectileSpeed: 0, hotkey: '2',
     traits: [{ id: 'firewall_link', linkRange: 8, dps: 35, slowFactor: 0.35 }],
@@ -533,7 +533,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   cyber_virus: def({
-    id: 'cyber_virus', name: 'Virus', description: 'Infects target. Spreads to nearby creeps as DoT.',
+    id: 'cyber_virus', name: 'Virus', description: 'Infects target. Spreads to nearby creeps as Damage over Time.',
     faction: 'cypherpunk', damageType: 'magic', cost: 55, damage: 8, range: 4, fireRate: 1200,
     color: 0x00dd88, projectileSpeed: 350, projectileColor: 0x00ff88, hotkey: '3',
     traits: [{ id: 'direct_damage' }, { id: 'virus_spread', dps: 10, duration: 4000, spreadRange: 2 }],
@@ -553,7 +553,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   cyber_ddos: def({
-    id: 'cyber_ddos', name: 'DDoS', description: 'AoE. Roots all creeps in range for 0.5s periodically.',
+    id: 'cyber_ddos', name: 'DDoS', description: 'Area of effect. Roots all creeps in range for 0.5s periodically.',
     faction: 'cypherpunk', damageType: 'magic', cost: 150, damage: 15, range: 3.5, fireRate: 2000,
     color: 0x4488ee, projectileSpeed: 300, hotkey: '5',
     traits: [{ id: 'splash_damage', radius: 56 }, { id: 'root_on_hit', chance: 1.0, duration: 500 }],
@@ -594,7 +594,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     traits: [{ id: 'direct_damage' }, { id: 'expires_after_waves', waves: 4 }],
   }),
   infernal_hellfire: def({
-    id: 'infernal_hellfire', name: 'Hellfire', description: 'Strong AoE + burn. Loses 15% damage each wave.',
+    id: 'infernal_hellfire', name: 'Hellfire', description: 'Strong area of effect + burn. Loses 15% damage each wave.',
     faction: 'infernal', damageType: 'magic', cost: 45, damage: 35, range: 3, fireRate: 1500,
     color: 0xff6600, projectileSpeed: 250, hotkey: '2',
     targeting: 'closest',
@@ -614,13 +614,13 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   infernal_bomber: def({
-    id: 'infernal_bomber', name: 'Fiend', description: 'Kamikaze. Runs to nearest creep and explodes for AoE damage. Single use.',
+    id: 'infernal_bomber', name: 'Fiend', description: 'Kamikaze. Runs to nearest creep and explodes for area of effect damage. Single use.',
     faction: 'infernal', damageType: 'magic', cost: 20, damage: 60, range: 10, fireRate: 99999,
     color: 0xdd3300, projectileSpeed: 0, hotkey: '4',
     traits: [{ id: 'mobile_unit', moveSpeed: 180, engageRange: 0.5, attackCooldown: 100, attackSplash: 56, selfDestruct: true }],
   }),
   infernal_immolate: def({
-    id: 'infernal_immolate', name: 'Immolate', description: 'Strong DPS. Right-click to sacrifice for 2000 AoE damage.',
+    id: 'infernal_immolate', name: 'Immolate', description: 'Strong DPS. Right-click to sacrifice for 2000 area of effect damage.',
     faction: 'infernal', damageType: 'magic', cost: 200, damage: 40, range: 4, fireRate: 800,
     color: 0xff8800, projectileSpeed: 300, hotkey: '5',
     traits: [{ id: 'direct_damage' }, { id: 'burn_dot', dps: 15, duration: 3000 }],
@@ -629,7 +629,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   infernal_apocalypse: def({
-    id: 'infernal_apocalypse', name: 'Apocalypse', description: 'ULTIMATE. Massive burn AoE. Sacrifice for 8000 damage.',
+    id: 'infernal_apocalypse', name: 'Apocalypse', description: 'ULTIMATE. Massive burn area of effect. Sacrifice for 8000 damage.',
     faction: 'infernal', damageType: 'magic', cost: 900, damage: 80, range: 5, fireRate: 1000,
     color: 0xff2200, projectileSpeed: 300, hotkey: '5', ultimate: true,
     traits: [
@@ -683,7 +683,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   celestial_absolution: def({
-    id: 'celestial_absolution', name: 'Absolution', description: 'ULTIMATE. Huge holy AoE. 10% life gain on kill. Mutes mages.',
+    id: 'celestial_absolution', name: 'Absolution', description: 'ULTIMATE. Huge holy area of effect. 10% life gain on kill. Mutes mages.',
     faction: 'celestial', damageType: 'magic', cost: 600, damage: 60, range: 5, fireRate: 1200,
     color: 0xfff8e0, projectileSpeed: 350, hotkey: '5', ultimate: true,
     traits: [

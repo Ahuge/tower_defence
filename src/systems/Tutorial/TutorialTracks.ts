@@ -209,7 +209,7 @@ const skipHint: TutorialTrack = {
       id: 'hint',
       target: { kind: 'dom', selector: SEL.tutorialsHelpBtn },
       title: 'Come Back Any Time',
-      body: "Changed your mind about the tour? Tap this ? button to replay any tutorial — including the guided practice match.",
+      body: "Changed your mind about the tour? Tap this ? button to replay any tutorial including the guided practice match.",
       placement: 'bottom',
     },
   ],
@@ -220,43 +220,43 @@ const skipHint: TutorialTrack = {
 const basics: TutorialTrack = {
   id: 'basics',
   name: 'Welcome Tour',
-  summary: 'What tower defence is and what makes this one different.',
+  summary: 'What a tower defence is and what makes this one different.',
   steps: [
     {
       id: 'intro',
       target: { kind: 'screen' },
       title: 'Welcome, Commander',
-      body: "Quick tour — under a minute. You'll learn how the game works and what's unique about it. Skip anytime.",
+      body: "A quick tour. You'll learn how the game works and what's unique about it. You can skip anytime.",
     },
     {
       id: 'td_basics',
       target: { kind: 'screen' },
       title: 'The Basics',
-      body: 'Creeps walk from spawn to base. You place towers along the way, towers kill creeps, dead creeps drop gold, gold buys more towers. Miss too many and you lose.',
+      body: 'Creeps walk from the spawn to your base. You can place towers along the way, towers kill creeps, dead creeps drop gold, and gold buys more towers. Leaks lose lives, lose too many lives and its game over.',
     },
     {
       id: 'mazing',
       target: { kind: 'screen' },
       title: "What's Different: Mazing",
-      body: "Towers block creep paths. Place them smartly and you force creeps to snake through your killzone. Mazing is the whole game — it's more important than which towers you pick.",
+      body: "Placing towers block creep paths. If you place them smartly you can force creeps to snake through your killzone. Mazing is the whole game and it's often more important than which towers you pick.",
     },
     {
       id: 'income',
       target: { kind: 'screen' },
       title: "What's Different: Income",
-      body: 'On Normal and above, just killing creeps is not enough gold. You also earn income each wave via self-sent creeps (risky) or Frontier buildings (safer). More on that in-game.',
+      body: 'On Normal and above, just killing creeps is not enough. You have to invest in your income by challenging self-sent creeps (risky) or building Frontier structures (safer). More on that in-game.',
     },
     {
       id: 'factions',
       target: { kind: 'screen' },
       title: '11 Factions',
-      body: "Each faction plays differently — Arcane crits, Nature poisons, Infernal sacrifices. When you pick one for the first time, you'll get a short primer.",
+      body: "Each faction plays differently. Arcane crits, Nature poisons, Infernal sacrifices. When you pick one for the first time, you'll get a short primer.",
     },
     {
       id: 'map',
       target: { kind: 'dom', selector: SEL.menuMapGrid },
       title: 'Pick a Map',
-      body: "Maps have different layouts, entry points, and constraints. Plains is a safe first pick.",
+      body: "Maps have different layouts, entry points, and constraints. Plains is a safe first pick. Random gives everyone the same uniquely generated map daily.",
       placement: 'bottom',
     },
     {
@@ -270,7 +270,7 @@ const basics: TutorialTrack = {
       id: 'encyclopedia',
       target: { kind: 'dom', selector: SEL.menuEncyclopediaBtn },
       title: 'Encyclopedia',
-      body: 'Documents every tower, creep, and hero — stats, traits, and ability descriptions. Open it any time you want to read before you fight.',
+      body: 'Documents every tower, creep, and hero stats, traits, and ability descriptions. Open it any time you want to read before you fight.',
       placement: 'top',
     },
     {
@@ -284,7 +284,7 @@ const basics: TutorialTrack = {
       id: 'done',
       target: { kind: 'dom', selector: SEL.menuModeStandard },
       title: "You're Ready",
-      body: "Start with Standard on Plains with Normal difficulty — or take the guided practice match first.",
+      body: "Start with Standard on Plains with Normal difficulty or take the guided practice match first.",
       placement: 'top',
       cta: {
         label: 'Play Tutorial Match',
@@ -301,7 +301,7 @@ const basics: TutorialTrack = {
 const tutorialMatch: TutorialTrack = {
   id: 'tutorial_match',
   name: 'Tutorial Match',
-  summary: 'A scripted round as Arcane: maze, run a wave, send, frontier.',
+  summary: 'An introductory scripted round playing as Arcane: learn to maze, run some waves, challenge sends, and build a frontier structure.',
   scrimless: true,
   skipLabel: 'Quit',
   steps: [
@@ -309,7 +309,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'welcome',
       target: { kind: 'screen' },
       title: 'Welcome',
-      body: "A short sandbox round — a few minutes, can't lose. We'll place towers, run three waves, and use the income systems at least once each.",
+      body: "This is a short sandbox round. We'll place towers, run three waves, and use the income systems at least once each.",
     },
     {
       id: 'pick_tower',
@@ -319,7 +319,7 @@ const tutorialMatch: TutorialTrack = {
       // one?" hesitation on mobile where multi-tower docks are dense.
       target: { kind: 'dom', selector: SEL.dockBoltSlot },
       title: 'Pick a Tower',
-      body: 'Click Arcane Bolt — the glowing card in the dock. Hotkey 1 works too.',
+      body: 'Click Arcane Bolt tower. It is the basic Arcane tower. You should see it as a glowing card in the dock.',
       placement: 'top',
       advanceOn: { event: 'dockTowerSelected' },
     },
@@ -338,7 +338,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'mazing',
       target: { kind: 'screen' },
       title: "That's Mazing",
-      body: "The path bent around your tower. Every tower you drop reshapes the route — the longer you make creeps walk, the more time your towers have to shoot them.",
+      body: "The path bent around your tower. Every tower you drop reshapes the route. The longer you make creeps walk, the more time your towers have to shoot them.",
     },
     {
       id: 'pick_bolt_2',
@@ -349,7 +349,7 @@ const tutorialMatch: TutorialTrack = {
       // pattern: one step to pick, one to place.
       target: { kind: 'dom', selector: SEL.dockBoltSlot },
       title: 'Pick Bolt Again',
-      body: 'Select Arcane Bolt again — we need a second one to extend the maze.',
+      body: 'Select Arcane Bolt tower again. We need a second one to extend the maze.',
       placement: 'top',
       advanceOn: { event: 'dockTowerSelected' },
     },
@@ -359,7 +359,7 @@ const tutorialMatch: TutorialTrack = {
       // bulge, so placing another Bolt extends the detour.
       target: nextMazeExtensionTarget(),
       title: 'Extend the Maze',
-      body: "Drop the Bolt in the highlighted strip — that's right along the new route. You want creeps to walk past your towers as long as possible.",
+      body: "Drop the Bolt in the highlighted strip. You want creeps to walk past your towers as long as possible.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
@@ -367,7 +367,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'start_wave_1',
       target: { kind: 'dom', selector: SEL.startWaveBtn },
       title: 'Start Wave 1',
-      body: "Click Next Wave. Five slow creeps — your two Bolts handle them easily. Then we'll add some variety.",
+      body: "Click Next Wave. Five slow creeps will spawn and your two Bolts should handle them easily. Then we'll add some variety.",
       placement: 'top',
       advanceOn: { event: 'waveStarted' },
     },
@@ -383,14 +383,14 @@ const tutorialMatch: TutorialTrack = {
       id: 'income_bonus',
       target: { kind: 'dom', selector: SEL.statusIncome },
       title: 'Wave Income',
-      body: "See the +10/w next to your gold? That's income — you get it at the end of every wave regardless of kills. Sends and Frontier buildings both raise it.",
+      body: "See the +10/w next to your gold? That's your income. You get it at the end of every wave regardless of kills. Sends and Frontier buildings both raise it.",
       placement: 'bottom',
     },
     {
       id: 'pick_frost',
       target: { kind: 'dom', selector: SEL.dockFrostSlot },
       title: 'Try the Frost Tower',
-      body: "Not every tower deals damage. Arcane Frost slows creeps it hits — pair it with your Bolts and creeps crawl through your killzone. Select it from the dock (hotkey 2).",
+      body: "Not every tower deals huge damage. Arcane Frost slows creeps it hits. You can Pair it with your Bolts and creeps crawl through your killzone.",
       placement: 'top',
       advanceOn: { event: 'dockTowerSelected' },
     },
@@ -400,7 +400,7 @@ const tutorialMatch: TutorialTrack = {
       // current route so it hits creeps in the maze, not a dead zone.
       target: nextMazeExtensionTarget(),
       title: 'Place the Frost',
-      body: "Drop it in the highlighted strip so it hits the detoured creeps. Wave 2 brings fast creeps — you'll see the slow effect clearly.",
+      body: "Drop it in the highlighted strip so it hits the detoured creeps. Wave 2 introduces fast creeps. They'll show the slow effect clearly.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
@@ -412,7 +412,7 @@ const tutorialMatch: TutorialTrack = {
       // ECONOMY panel on mobile.
       target: { kind: 'dom', selector: SEL.econSendsTab },
       title: 'Buy a Send',
-      body: 'On the Sends tab, pick a Standard send and queue it. A send spawns an extra creep on your own wave — risky, but it permanently raises your income. Hotkey Z.',
+      body: 'On the Sends tab, pick a Standard send and queue it. A send spawns an extra pack of creeps on your own wave. It is risky, but it permanently raises your income. You get money from the kills plus income.',
       placement: 'bottom-banner',
       onEnter: () => { openSidebarPanel('economy'); switchEconTab('sends'); },
       advanceOn: { event: 'sendPurchased' },
@@ -421,7 +421,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'start_wave_2',
       target: { kind: 'dom', selector: SEL.startWaveBtn },
       title: 'Start Wave 2',
-      body: "Fast creeps incoming — they're twice as quick as standards. Watch your Frost tower drag them down to a crawl.",
+      body: "More fast creeps incoming. They're twice as quick as standard creeps. Watch your Frost tower drag them down to a crawl.",
       placement: 'top',
       // Close the ECONOMY panel left open by buy_send so it doesn't
       // obscure the game area while the wave runs.
@@ -432,7 +432,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'watch_wave_2',
       target: { kind: 'screen' },
       title: 'Next Wave Running',
-      body: "See the fast creeps bogging down in the frost zone? That's the synergy — slow them, then hit them while they're stuck. Next we try the safer income source.",
+      body: "See the fast creeps slowing down in the frost zone? That's the Arcane synergy. Slow them, then hit them while they're stuck. Next we try the safer income source.",
       placement: 'top-banner',
       advanceOn: { event: 'waveCleared' },
     },
@@ -443,7 +443,7 @@ const tutorialMatch: TutorialTrack = {
       // explicit selection step before the next placement.
       target: { kind: 'dom', selector: SEL.dockBoltSlot },
       title: 'Pick Bolt',
-      body: 'One more Bolt for the final wave. Select it from the dock.',
+      body: 'One more Arcane Bolt tower for the final wave. Select it from the dock.',
       placement: 'top',
       advanceOn: { event: 'dockTowerSelected' },
     },
@@ -454,22 +454,22 @@ const tutorialMatch: TutorialTrack = {
       // current bulge direction.
       target: nextMazeExtensionTarget(),
       title: 'Reinforce',
-      body: "Wave 3 brings a heavier creep. Extend the maze one more step — the highlight shows the next row along your current detour.",
+      body: "Wave 3 brings an armoured creep. Extend the maze once more. You can choose any tower you'd like. The highlight shows the next row along your current detour.",
       placement: 'top-banner',
       advanceOn: { event: 'towerPlaced' },
     },
     {
       id: 'frontier_intro',
       target: { kind: 'screen' },
-      title: 'Frontier — Safe Income',
-      body: "Every faction has a Frontier building: passive income that ticks up every wave, no risk, no extra creeps to fight. It's the quiet, reliable counterpart to Sends. Over a long match, Frontier investments compound into most of your gold. For Arcane, that's the Leyline Nexus — we'll buy one next.",
+      title: 'Frontier. Safe Income',
+      body: "Every faction has two Frontier structures: passive income that ticks up every wave, no risk, no extra creeps to fight. It's the quiet, reliable counterpart to Sends. Over a long match, Frontier investments compound into most of your gold. For Arcane, that's the Leyline Nexus. We'll buy one next.",
       placement: 'top-banner',
     },
     {
       id: 'leyline_nexus_intro',
       target: { kind: 'screen' },
       title: 'The Leyline Nexus',
-      body: "The Nexus generates steady income and has an Overcharge button you can hit for a 3× gold burst — at the cost of two dormant waves after. Other factions have their own flavour: Mechanical digs (more gold, collapse risk), Nature grows and harvests on a cycle, Void gambles for a jackpot. They all fill the same slot in the economy.",
+      body: "The Nexus generates steady income and has an Overcharge button you can hit for a 3× gold burst, at the cost of two dormant waves after. Other factions have their own flavour: Mechanical digs (more gold, collapse risk), Nature grows and harvests on a cycle, Void gambles for a jackpot. They all fill the same slot in the economy.",
       placement: 'top-banner',
     },
     {
@@ -488,7 +488,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'start_wave_3',
       target: { kind: 'dom', selector: SEL.startWaveBtn },
       title: 'Final Wave',
-      body: "One heavier creep in this one. If it leaks you'll barely notice — you have 99 lives here.",
+      body: "One armoured creep in this one. Don't worry if it leaks. You have 99 lives here.",
       placement: 'top',
       // Same as start_wave_2 — close the ECONOMY panel left open by
       // buy_frontier so the game area is clear for the final wave.
@@ -507,7 +507,7 @@ const tutorialMatch: TutorialTrack = {
       id: 'done',
       target: { kind: 'screen' },
       title: "You've Got It",
-      body: "Place towers to maze, kill for gold, invest in income. Pick a faction and run a real match — Plains, Standard, Normal is a clean first pick.",
+      body: "Place towers to maze, kill for gold, invest in income. Pick a faction and run a real match. Plains, Standard, Normal is a clean first pick.",
       cta: {
         label: 'Back to Menu',
         action: () => window.dispatchEvent(new Event('tutorial-go-menu')),
@@ -519,7 +519,7 @@ const tutorialMatch: TutorialTrack = {
 /** First standard-mode game — the income lesson. Keyed to in-game anchors. */
 const incomeStandard: TutorialTrack = {
   id: 'income_standard',
-  name: 'Economy — Standard',
+  name: 'Economy: Standard',
   summary: 'Sends, Frontier, and why income matters on Normal and above.',
   steps: [
     {
@@ -548,7 +548,7 @@ const incomeStandard: TutorialTrack = {
       id: 'start_wave',
       target: { kind: 'dom', selector: SEL.startWaveBtn },
       title: 'Start Wave',
-      body: 'When you are ready, start the next wave. Harder difficulties need higher income — early sends pay off massively by the late game.',
+      body: 'When you are ready, start the next wave. Harder difficulties need higher income. Early sends pay off massively by the late game. It is a balancing act between investing in income early and keeping yourself alive.',
       placement: 'top',
     },
   ],
@@ -557,7 +557,7 @@ const incomeStandard: TutorialTrack = {
 /** Essence / battle mode economy primer. */
 const incomeBattle: TutorialTrack = {
   id: 'income_battle',
-  name: 'Economy — Essence',
+  name: 'Economy: Essence',
   summary: 'Dual economy: gold + essence.',
   steps: [
     {
@@ -570,7 +570,7 @@ const incomeBattle: TutorialTrack = {
       id: 'essence_panel',
       target: { kind: 'dom', selector: SEL.economyPanel },
       title: 'Essence Generators',
-      body: 'Buy generators early — they compound. Spend essence on sends to boost your gold income. The loop: gold → generators → essence → sends → income → gold.',
+      body: 'Buy generators early. They compound over time. Spend essence on sends to boost your gold income. The loop: gold → generators → essence → sends → income → gold.',
       placement: 'right',
     },
   ],
@@ -579,14 +579,14 @@ const incomeBattle: TutorialTrack = {
 /** Hero defence mode primer — deep dive on the hero shop panel. */
 const incomeHero: TutorialTrack = {
   id: 'income_hero',
-  name: 'Economy — Hero Defense',
+  name: 'Economy: Hero Defense',
   summary: 'Hero shop walkthrough: items, tomes, accessories, abilities.',
   steps: [
     {
       id: 'hero_intro',
       target: { kind: 'screen' },
       title: 'Hero Defense',
-      body: 'You control a hero in a 12-row arena — 10x creeps, elites at waves 10/20/30. Economy is simpler: a percentage of unspent gold returns as interest between waves. Most of your gold goes into the hero shop.',
+      body: 'You control a hero in a 12-row arena. This mode has 10x creeps and elites at waves 10/20/30. The economy is simpler: a percentage of unspent gold returns as interest between waves. Most of your gold goes into the hero shop.',
     },
     {
       id: 'shop_overview',
@@ -600,7 +600,7 @@ const incomeHero: TutorialTrack = {
       id: 'shop_items',
       target: { kind: 'dom', selector: '[data-tutorial-target="hero-items"]' },
       title: 'Items',
-      body: 'Six slot-based items. First purchase fills the slot at tier 1; subsequent purchases tier it up to the cap. Pick the slot, not the individual item — each slot has one fixed item per hero.',
+      body: 'Six slot-based items. First purchase fills the slot at tier 1; subsequent purchases tier it up to the cap.',
       placement: 'right',
       onEnter: () => openSidebarPanel('economy'),
     },
@@ -608,7 +608,7 @@ const incomeHero: TutorialTrack = {
       id: 'shop_tomes',
       target: { kind: 'dom', selector: '[data-tutorial-target="hero-tomes"]' },
       title: 'Tomes',
-      body: 'One-shot stat boosts. Usually cheaper early-game purchases that add raw HP / damage / attack speed to your hero. Costs climb as you buy more.',
+      body: 'One-shot stat boosts. Usually cheaper early-game purchases that add raw HP / damage / attack speed to your hero. Costs climb as you buy more. ',
       placement: 'right',
       onEnter: () => openSidebarPanel('economy'),
     },
@@ -616,7 +616,7 @@ const incomeHero: TutorialTrack = {
       id: 'shop_accessories',
       target: { kind: 'dom', selector: '[data-tutorial-target="hero-accessories"]' },
       title: 'Accessories',
-      body: 'Up to 3 equipped at once. [P] are passive; [A] are active — press T in-game to trigger the active one. The offer pool rotates every few waves, so grab what fits your build.',
+      body: 'Up to 3 equipped at once. [P] are passive; [A] are active. Press T in-game to trigger the active one. The offer pool rotates every few waves, so grab what fits your build.',
       placement: 'right',
       onEnter: () => openSidebarPanel('economy'),
     },
@@ -624,7 +624,7 @@ const incomeHero: TutorialTrack = {
       id: 'shop_abilities',
       target: { kind: 'dom', selector: '[data-tutorial-target="hero-abilities"]' },
       title: 'Abilities',
-      body: 'Three abilities bound to Q/W/E, plus an ultimate at R (unlocks at hero level 6). Level up to earn upgrade points — spend them with the [+] icon on any ability.',
+      body: 'Three abilities bound to Q/W/E, plus an ultimate at R (unlocks at hero level 6). Level up to earn upgrade points and spend them with the [+] icon on any ability.',
       placement: 'right',
       onEnter: () => openSidebarPanel('economy'),
     },
@@ -632,7 +632,7 @@ const incomeHero: TutorialTrack = {
       id: 'start_wave',
       target: { kind: 'dom', selector: SEL.startWaveBtn },
       title: 'Start Wave',
-      body: "Saved gold isn't wasted — it comes back as interest. Don't overbuy early; a hero that survives wave 10 is worth more than a decked-out hero that dies at 5.",
+      body: "Saved gold isn't wasted because it comes back as interest. Don't overbuy early; a hero that survives wave 10 is worth more than a decked-out hero that dies at 5.",
       placement: 'top',
     },
   ],
@@ -642,7 +642,7 @@ const incomeHero: TutorialTrack = {
 const multiplayer: TutorialTrack = {
   id: 'multiplayer',
   name: 'Online Play',
-  summary: 'Versus 1v1 and Circle Co-op — no server, P2P.',
+  summary: 'Versus 1v1 and Circle Co-op. No server required games are done over P2P.',
   steps: [
     {
       id: 'mp_intro',
@@ -654,13 +654,13 @@ const multiplayer: TutorialTrack = {
       id: 'mp_versus',
       target: { kind: 'screen' },
       title: 'Versus 1v1',
-      body: "In Versus, each player builds on their own map. Creeps you send attack your opponent. You lose income but they lose lives — use sends aggressively.",
+      body: "In Versus, each player builds on their own map. Creeps you send attack your opponent. You try to overwhelm them while balancing your own defences. When you send you're giving them a one time cash infusion if they survive but you get consistent income.",
     },
     {
       id: 'mp_circle',
       target: { kind: 'screen' },
       title: 'Circle Co-op',
-      body: '2–4 players share a circular map. Everyone defends together — coordinate who handles which lane.',
+      body: '2–4 players share a circular map. Everyone defends together. Help your allies when they leak.',
     },
   ],
 };
@@ -710,7 +710,7 @@ const modeTracks: TutorialTrack[] = [
     name: 'Endless Primer',
     summary: 'No wave cap.',
     steps: [
-      { id: 's', target: { kind: 'screen' }, title: 'Endless', body: 'Waves scale forever. Economy, towers, and sends work as in Standard — just no end. Score is the wave you die on.' },
+      { id: 's', target: { kind: 'screen' }, title: 'Endless', body: 'Waves scale forever. Economy, towers, and sends work as in Standard. The match doesn\'t end until you lose. Score is the wave you die on.' },
     ],
   },
   {
