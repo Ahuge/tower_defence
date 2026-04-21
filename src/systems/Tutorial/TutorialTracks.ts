@@ -13,6 +13,7 @@ import type { TutorialTarget, WorldRect } from './TutorialTargets';
 import { getCurrentTutorialPath } from './TutorialTargets';
 import type { GameEvents } from '../EventBus';
 import { TILE_SIZE, gridX, gridY, GRID_COLS, GRID_ROWS } from '../../config';
+import { requestEconTab } from '../../ui/game/EconomyPanelDOM';
 
 export type Placement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'auto' | 'top-banner' | 'bottom-banner';
 
@@ -97,20 +98,20 @@ function closeSidebarPanels(): void {
 }
 
 /** Switch the Economy panel's internal tab (sends / frontier / essence /
- *  items / log). Dispatched when a tutorial step needs specific tab
- *  content visible, e.g. buy_frontier activating the Frontier tab so
- *  the Leyline Nexus entry is highlighted rather than the Sends list.
+ *  items / log). Used when a tutorial step needs specific tab content
+ *  visible, e.g. `buy_frontier` activating the Frontier tab so the
+ *  Leyline Nexus entry is highlighted rather than the Sends list.
  *
- *  Deferred with setTimeout(0) so it fires after React has rendered
- *  the economy panel's children. CollapsiblePanel only mounts its
- *  child component when `open=true`, so an earlier openSidebarPanel
- *  call needs to paint before EconomyPanelDOM is alive to receive
- *  this event. Without the delay the switch gets dispatched to an
- *  unmounted listener and silently drops. */
+ *  Routes through `requestEconTab` rather than dispatching a raw
+ *  window event. That helper stores the requested tab in a
+ *  module-level ref that EconomyPanelDOM reads on mount, so the
+ *  switch is delivered whether or not the panel was already mounted
+ *  when the request fired. Previously used a setTimeout(0) dispatch
+ *  which raced CollapsiblePanel's lazy-mount behaviour — the switch
+ *  would drop when the panel wasn't rendered yet (reproducible on
+ *  mobile sidebar + jumpToTutorialStep in e2e tests). */
 function switchEconTab(tab: 'sends' | 'frontier' | 'essence' | 'items' | 'log'): void {
-  setTimeout(() => {
-    window.dispatchEvent(new CustomEvent('tutorial-switch-econ-tab', { detail: { tab } }));
-  }, 0);
+  requestEconTab(tab);
 }
 
 const GRID_RECT_PAD = 4;
