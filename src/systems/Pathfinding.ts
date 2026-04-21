@@ -15,6 +15,40 @@ export interface PathPoint {
   row: number;
 }
 
+/**
+ * Stitch a path that visits an ordered list of waypoints between
+ * `start` and `end`. Runs A* independently for each segment and
+ * concatenates results, de-duplicating the joining point (so the
+ * final path doesn't list the same cell twice where two segments
+ * meet).
+ *
+ * Used by circle co-op maps where each spawner declares an
+ * `entry`, ordered `waypoints[]`, and `exit` so creeps must
+ * physically traverse the full circuit rather than A*-shortcut
+ * directly from entry to exit.
+ *
+ * Returns null if ANY segment can't route — the whole chain fails
+ * because a creep can't skip a blocked waypoint. Callers can fall
+ * back to a plain `findPath(start, end)` in that case if they want
+ * a best-effort route.
+ */
+export function findPathWithWaypoints(grid: Grid, start: PathPoint, waypoints: PathPoint[], end: PathPoint): PathPoint[] | null {
+  const stops: PathPoint[] = [start, ...waypoints, end];
+  const full: PathPoint[] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const segment = findPath(grid, stops[i], stops[i + 1]);
+    if (!segment) return null;
+    if (i === 0) {
+      full.push(...segment);
+    } else {
+      // The segment starts at stops[i] which is also the last
+      // element of `full` — skip the duplicate.
+      full.push(...segment.slice(1));
+    }
+  }
+  return full;
+}
+
 export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPoint[] | null {
   const s = start ?? grid.entry;
   const e = end ?? grid.exit;

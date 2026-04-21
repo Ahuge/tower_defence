@@ -7,7 +7,7 @@ import {
   gridX, gridY, gridLeftX, pixelToCol, setGridOffsetY,
 } from '../config';
 import { Grid, CellType } from '../systems/Grid';
-import { findPath, PathPoint } from '../systems/Pathfinding';
+import { findPath, findPathWithWaypoints, PathPoint } from '../systems/Pathfinding';
 import { EventBus } from '../systems/EventBus';
 import { EconomyManager } from '../systems/EconomyManager';
 import { SpawnManager } from '../systems/SpawnManager';
@@ -2212,9 +2212,21 @@ export class GameScene extends Phaser.Scene {
 
   recalculatePaths(): void {
     this.allPaths = [];
-    for (const entry of this.grid.entries) {
-      for (const exit of this.grid.exits) {
-        this.allPaths.push(findPath(this.grid, entry, exit));
+    // Circle co-op maps carry a `spawners` list, each with an
+    // ordered waypoint chain (entry → waypoints[...] → exit). When
+    // present, use waypoint-chained pathing so creeps physically
+    // circumnavigate the map before exiting; when absent (standard
+    // / gauntlet / hero-defense / versus), fall back to a simple
+    // entry-exit A* cross-product per the original behaviour.
+    if (this.mapDef?.spawners && this.mapDef.spawners.length > 0) {
+      for (const spawner of this.mapDef.spawners) {
+        this.allPaths.push(findPathWithWaypoints(this.grid, spawner.entry, spawner.waypoints, spawner.exit));
+      }
+    } else {
+      for (const entry of this.grid.entries) {
+        for (const exit of this.grid.exits) {
+          this.allPaths.push(findPath(this.grid, entry, exit));
+        }
       }
     }
     this.currentPath = this.allPaths.find(p => p !== null) ?? null;
