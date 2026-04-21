@@ -17,9 +17,11 @@ The privacy policy is already written at `public-legal/privacy-policy.html`. Git
 
 ### 1b. Privacy policy location
 
-Already placed at `privacy-policy.html` at the repo root. The next push to the branch Pages is watching will deploy it.
+The source file lives at `public/privacy-policy.html`. Vite copies everything under `public/` into `dist/` verbatim at build time, so the existing `deploy.yml` workflow deploys it alongside the game on every push to `develop` or `main`.
 
-Wait 2-3 minutes after the push for Pages to rebuild, then verify by browsing to the final URL.
+Wait 2-3 minutes after the push for the GitHub Pages deploy workflow to finish, then verify by browsing to the final URL.
+
+**PR preview caveat**: PR-branch builds deploy to `https://ahuge.github.io/tower_defence/pr/{PR_NUM}/privacy-policy.html` — useful for previewing before merge, but the Play Store listing should use the production URL (the one without `/pr/N/`) which only appears after merging to `develop` or `main`.
 
 ### 1c. The URL to paste into Play Console
 
