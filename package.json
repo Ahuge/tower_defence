@@ -32,7 +32,8 @@
     "android:debug": "npm run cap:sync:android && cd android && ./gradlew assembleDebug",
     "android:release:apk": "npm run cap:sync:android && cd android && ./gradlew assembleRelease",
     "android:release:aab": "npm run cap:sync:android && cd android && ./gradlew bundleRelease",
-    "screenshots": "node scripts/capture-store-screenshots.mjs"
+    "screenshots": "node scripts/capture-store-screenshots.mjs",
+    "achievements:build": "node scripts/generate-achievement-icons.js && node scripts/build-achievements-zip.mjs"
   },
   "keywords": [],
   "author": "",
