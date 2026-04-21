@@ -28,6 +28,8 @@ import {
   SKU_SHARDS_SMALL,
   SKU_SHARDS_MEDIUM,
   SKU_SHARDS_LARGE,
+  SKU_SHARDS_MEGA,
+  SKU_BATTLE_PASS_S1,
   skinIdToSku,
 } from '../Skus';
 import { SKIN_DEFS } from '../../monetization/StoreDefinitions';
@@ -43,9 +45,11 @@ function buildCatalogue(platform: PlatformEnum): CdvPurchase.IRegisterProduct[] 
   const t = CdvPurchase.ProductType;
   const products: CdvPurchase.IRegisterProduct[] = [
     { id: SKU_ADS_OFF,       type: t.NON_CONSUMABLE, platform },
-    { id: SKU_SHARDS_SMALL,  type: t.CONSUMABLE,     platform },
-    { id: SKU_SHARDS_MEDIUM, type: t.CONSUMABLE,     platform },
-    { id: SKU_SHARDS_LARGE,  type: t.CONSUMABLE,     platform },
+    { id: SKU_SHARDS_SMALL,    type: t.CONSUMABLE,     platform },
+    { id: SKU_SHARDS_MEDIUM,   type: t.CONSUMABLE,     platform },
+    { id: SKU_SHARDS_LARGE,    type: t.CONSUMABLE,     platform },
+    { id: SKU_SHARDS_MEGA,     type: t.CONSUMABLE,     platform },
+    { id: SKU_BATTLE_PASS_S1,  type: t.NON_CONSUMABLE, platform },
   ];
   for (const def of SKIN_DEFS) {
     if (def.target !== 'tower_faction' || !def.faction) continue;

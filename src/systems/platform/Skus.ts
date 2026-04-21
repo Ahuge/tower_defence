@@ -40,6 +40,15 @@ export const SKU_ADS_OFF = 'ads_off';
 export const SKU_SHARDS_SMALL  = 'shards_small';
 export const SKU_SHARDS_MEDIUM = 'shards_medium';
 export const SKU_SHARDS_LARGE  = 'shards_large';
+export const SKU_SHARDS_MEGA   = 'shards_mega';
+
+// ─── Battle Pass (non-consumable, per season) ────────────────
+
+/** Real-money Battle Pass premium unlock for the current season.
+ *  One SKU per season — if/when we run season 2 we'll add `bp_s2`
+ *  alongside this. Non-consumable: a season unlock, once owned,
+ *  persists for the duration of that season. */
+export const SKU_BATTLE_PASS_S1 = 'bp_s1';
 
 // ─── Skin packs (non-consumable) ────────────────────────────
 //
@@ -88,6 +97,15 @@ export const CURRENCY_SKUS: SkuDef[] = [
   { id: SKU_SHARDS_SMALL,  type: 'consumable', devLabel: 'Shards — Small Pack'  },
   { id: SKU_SHARDS_MEDIUM, type: 'consumable', devLabel: 'Shards — Medium Pack' },
   { id: SKU_SHARDS_LARGE,  type: 'consumable', devLabel: 'Shards — Large Pack'  },
+  { id: SKU_SHARDS_MEGA,   type: 'consumable', devLabel: 'Shards — Mega Pack'   },
+];
+
+/** Battle Pass SKUs — one per season. Kept in a separate list so
+ *  the store bootstrap code can filter: only the *current* season
+ *  SKU is queryable/purchaseable at any time, older ones stay
+ *  registered in Play Console for restore-purchase support only. */
+export const BATTLE_PASS_SKUS: SkuDef[] = [
+  { id: SKU_BATTLE_PASS_S1, type: 'non_consumable', devLabel: 'Battle Pass — Season 1' },
 ];
 
 /** Build the full SKU list to feed to the store at boot — called

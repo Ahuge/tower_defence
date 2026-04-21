@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { ProfileAvatar } from '../components/ProfileAvatar';
 import { TutorialMenuButton } from '../tutorial/TutorialMenuButton';
 import { MAP_ORDER, MAPS, MapId } from '../../data/Maps';
 import { getDailySeed } from '../../data/MapGenerator';
@@ -65,6 +66,7 @@ export function MenuScreen() {
       <div class="ui-header">
         <div class="ui-header-title">FACTIONS</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ProfileAvatar />
           <TutorialMenuButton />
           <ShardBadge />
         </div>

@@ -19,6 +19,7 @@ import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
 import { ContinueOfferModal } from './game/ContinueOfferModal';
+import { AchievementToast } from './components/AchievementToast';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
 import './styles/game-panels.css';
 
@@ -75,6 +76,11 @@ export function App() {
           when idle. Stays visible even over the tutorial overlay since
           the tutorial short-circuits this path. */}
       {!screen && <ContinueOfferModal />}
+
+      {/* Achievement-unlock toast — always mounted (both in-game and on
+          menu screens) since achievements can fire from either context.
+          Self-gates on the td-achievement-unlocked event. */}
+      <AchievementToast />
 
       {/* Loading screen — overlays everything during game scene load */}
       {loading && (
