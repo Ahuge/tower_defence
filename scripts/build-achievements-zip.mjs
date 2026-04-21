@@ -156,11 +156,11 @@ function readmeText() {
     `Achievements: ${ACHIEVEMENTS.length}`,
     `Total points: ${ACHIEVEMENTS.reduce((s, a) => s + (a.points ?? 0), 0)} / 1000 Play Games cap`,
     '',
-    'Files:',
+    'Files (all at ZIP root — Play Console rejects subfolders):',
     '  AchievementsMetadata.csv        one row per achievement',
     '  AchievementsLocalizations.csv   en-US copy for each achievement',
     '  AchievementsIconsMappings.csv   which icon belongs to which key',
-    '  icons/                          13 × 512×512 PNG icons',
+    '  *.png                           13 × 512×512 PNG icons',
     '',
     'To upload:',
     '  1. Unzip locally.',
@@ -190,13 +190,16 @@ async function main() {
     throw new Error(`Icons directory missing: ${ICONS_DIR}\nRun scripts/generate-achievement-icons.js first.`);
   }
 
+  // Play Console's bulk-import rejects any ZIP with folders — the
+  // CSVs and icons must all live at the root. That means no
+  // `icons/` subfolder; every PNG sits next to the CSVs and the
+  // mapping file references them by bare filename.
   const zip = new JSZip();
   zip.file('AchievementsMetadata.csv', metadataCsv());
   zip.file('AchievementsLocalizations.csv', localizationsCsv());
   zip.file('AchievementsIconsMappings.csv', iconMappingsCsv());
   zip.file('README.txt', readmeText());
 
-  const iconsFolder = zip.folder('icons');
   let missing = 0;
   for (const a of ACHIEVEMENTS) {
     const iconPath = path.join(ICONS_DIR, `${a.key}.png`);
@@ -205,7 +208,8 @@ async function main() {
       missing++;
       continue;
     }
-    iconsFolder.file(`${a.key}.png`, fs.readFileSync(iconPath));
+    // Flat at ZIP root — no `icons/` prefix.
+    zip.file(`${a.key}.png`, fs.readFileSync(iconPath));
   }
 
   const buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 9 } });
