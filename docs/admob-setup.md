@@ -54,14 +54,14 @@ Also update the native-side app-id strings alongside the runtime unit swap:
 1. AdMob dashboard → **Apps** → **Add app**.
 2. Choose "Yes, the app is published" if the Play Store listing exists, otherwise "No".
 3. Platform: **Android**.
-4. Enter the package name (same as `appId` in `capacitor.config.ts` — currently `com.alexhughes.factions`).
+4. Enter the package name (same as `appId` in `capacitor.config.ts` — currently `com.runningmangames.factions`).
 5. Enter the app name (shown in ad-mediation reports).
 6. Copy the generated **AdMob App ID** — looks like `ca-app-pub-1234567890123456~1234567890`. This replaces `appIdAndroid` in `capacitor.config.ts`.
 
 ### 3. Register a new app — iOS
 
 1. Same flow as Android but platform **iOS**.
-2. Enter the iOS bundle ID (same as Android's appId — `com.alexhughes.factions`).
+2. Enter the iOS bundle ID (same as Android's appId — `com.runningmangames.factions`).
 3. Copy the **AdMob App ID** for iOS. Replaces `appIdIos`.
 
 ### 4. Create ad units per app

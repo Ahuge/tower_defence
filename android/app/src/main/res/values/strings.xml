@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">Factions</string>
     <string name="title_activity_main">Factions</string>
-    <string name="package_name">com.alexhughes.factions</string>
-    <string name="custom_url_scheme">com.alexhughes.factions</string>
+    <string name="package_name">com.runningmangames.factions</string>
+    <string name="custom_url_scheme">com.runningmangames.factions</string>
 
     <!-- AdMob app id. Real production id from the AdMob Console
          (Running Man Games / Factions Android, 2026-04-19). Safe to
@@ -13,9 +13,11 @@
          builds still use Google's test ids regardless of this value. -->
     <string translatable="false" name="admob_app_id">ca-app-pub-4227593694949279~8779260912</string>
 
-    <!-- Google Play Games Services project id. Placeholder until the
-         Play Games Services project is created in Play Console
-         (see docs/play-games-services-setup.md). Sign-in will fail
-         until this is a real project id. -->
-    <string translatable="false" name="game_services_project_id">000000000000</string>
+    <!-- Google Play Games Services project id. Real id from Play
+         Console / Play Games Services, linked to both the release
+         SHA-1 and the debug SHA-1 OAuth clients. Sign-in works for
+         testers listed in the OAuth consent screen (testing mode);
+         publish the PGS project only when the achievement + leader-
+         board set is final since publish is one-way. -->
+    <string translatable="false" name="game_services_project_id">4976234554385603697</string>
 </resources>

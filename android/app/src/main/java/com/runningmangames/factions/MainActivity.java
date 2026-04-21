@@ -1,4 +1,4 @@
-package com.alexhughes.factions;
+package com.runningmangames.factions;
 
 import com.getcapacitor.BridgeActivity;
 import com.osmanraifgunes.capacitorgameconnect.CapacitorGameConnectPlugin;

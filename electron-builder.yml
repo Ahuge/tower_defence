@@ -9,7 +9,7 @@
 # that packages without the auto-updater, drops steam_appid.txt next to
 # the executable, and uploads via SteamPipe.
 
-appId: com.alexhughes.factions
+appId: com.runningmangames.factions
 productName: Factions
 copyright: Copyright © 2026 Alex Hughes
 

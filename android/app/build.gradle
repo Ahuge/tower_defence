@@ -23,10 +23,10 @@ try {
 def buildVersionSuffix = buildIsDirty ? "${buildGitSha}-dirty" : buildGitSha
 
 android {
-    namespace = "com.alexhughes.factions"
+    namespace = "com.runningmangames.factions"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.alexhughes.factions"
+        applicationId "com.runningmangames.factions"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

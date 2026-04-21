@@ -18,7 +18,7 @@ iOS has a parallel system (**Game Center**) with a similar feature set. Setup fo
 ## Prerequisites
 
 - Google Play Console account ($25 one-time fee, same one you'll use to publish the Play Store listing).
-- The app's **package name** registered: `com.alexhughes.factions`.
+- The app's **package name** registered: `com.runningmangames.factions`.
 - A **release signing key** (or debug keystore fingerprint for testing) — Play Games Services binds auth to the signing certificate.
 
 Verify your fingerprint:
@@ -56,7 +56,7 @@ Copy the **SHA1** line — you'll paste it into Play Console.
 
 1. In the Play Games Services section → **Credentials** → **Add credential**.
 2. Type: **Android**.
-3. Package name: `com.alexhughes.factions`.
+3. Package name: `com.runningmangames.factions`.
 4. SHA-1 fingerprint: paste the one from the keytool output above.
 5. Grant **Drive API** scopes if you want cloud save (we do).
 6. Complete the OAuth consent screen if prompted — set the same app name, support email, and developer URL you used on the Play Store listing.

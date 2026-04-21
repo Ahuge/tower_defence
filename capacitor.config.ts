@@ -14,7 +14,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.alexhughes.factions',
+  appId: 'com.runningmangames.factions',
   appName: 'Factions',
   webDir: 'dist',
 

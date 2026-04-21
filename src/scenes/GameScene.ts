@@ -75,6 +75,7 @@ import { TerrainManager } from '../systems/TerrainManager';
 import { Analytics } from '../systems/AnalyticsClient';
 import { platformBridge } from '../systems/platform';
 import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
+import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
@@ -1555,6 +1556,12 @@ export class GameScene extends Phaser.Scene {
       }
       if (this.circle) {
         this.circle.broadcast({ type: 'circle_victory', winnerIndex: this.circle.playerIndex });
+      }
+      // Native achievement unlock. No-op on web / platforms without
+      // a registered achievement id. Fire-and-forget — a failed
+      // unlock shouldn't block the goToGameOver hand-off.
+      if (this.matchMode !== 'tutorial') {
+        void unlockAchievement('FIRST_WIN');
       }
       // Tutorial match: skip the GameOverScene hand-off so the player
       // stays inside the match while the tutorial's closing popover
