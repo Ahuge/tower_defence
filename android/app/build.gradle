@@ -1,5 +1,27 @@
 apply plugin: 'com.android.application'
 
+// Read the short git SHA + dirty flag so every build stamps which
+// source tree it came from. Falls through gracefully (unknown) when
+// git is unavailable or this isn't a git worktree — keeps the
+// build itself runnable outside of a git clone.
+def buildGitSha = 'unknown'
+def buildIsDirty = false
+try {
+    def shaProc = ['git', 'rev-parse', '--short=7', 'HEAD'].execute(null, rootProject.projectDir.parentFile)
+    shaProc.waitFor()
+    if (shaProc.exitValue() == 0) {
+        buildGitSha = shaProc.text.trim()
+    }
+    def statusProc = ['git', 'status', '--porcelain'].execute(null, rootProject.projectDir.parentFile)
+    statusProc.waitFor()
+    if (statusProc.exitValue() == 0 && statusProc.text.trim().length() > 0) {
+        buildIsDirty = true
+    }
+} catch (Exception e) {
+    logger.warn("git SHA lookup failed: ${e.message} — versioning will read 'unknown'.")
+}
+def buildVersionSuffix = buildIsDirty ? "${buildGitSha}-dirty" : buildGitSha
+
 android {
     namespace = "com.alexhughes.factions"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,7 +30,13 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        // versionName shows up in Android Settings → Apps and in
+        // Play Console uploads. Stamping the short SHA (+ "-dirty"
+        // suffix when the working tree has uncommitted changes)
+        // means any QA/tester report uniquely identifies which
+        // source tree produced the build — no more guessing which
+        // of ten installed debug APKs has the bug.
+        versionName "1.0-${buildVersionSuffix}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -20,6 +48,15 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    // Rename the output APK so the file on disk (and the one we copy
+    // to Downloads for sideloading) has the SHA baked into its name.
+    // Easier to spot which is which when three builds sit side-by-side
+    // in a Downloads folder.
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            output.outputFileName = "factions-${variant.name}-${buildVersionSuffix}.apk"
         }
     }
 }

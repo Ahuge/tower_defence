@@ -123,7 +123,7 @@ Flag these back to Alex before implementing the corresponding placement.
 - ~~**#2 / #3** — do three simultaneous modifiers break difficulty pacing?~~ → **Decided: N/A.** Player picks 1 of however many options are revealed; ads unlock more options, not more active modifiers.
 - ~~**#5** — baseline speed cap?~~ → **Decided: 1.5× baseline, 2× via ad/ads_off, 3× via Battle Pass.** Tiered so each entitlement tier unlocks something meaningful.
 - ~~**#7** — same rarity tier or full pool for reroll?~~ → **Decided: same tier, previous skin excluded.** No stealth downgrades; no wasted reroll redrawing the exact same skin.
-- **#6** — flat +5 lives, or scale with difficulty? Still flat at the moment; open for a balance pass (recommend `max(5, floor(startingLives × 0.15))`).
+- ~~**#6** — flat +5 lives, or scale with difficulty?~~ → **Decided: flat 5, always.** Simplicity over cleverness; a 5-life revive is a clean mental model and the ad's value doesn't depend on player-visible math.
 - **Restore behaviour** — rewarded ad state (cooldowns, daily-shard claim) is tied to a device, not a store account. Do we cloud-save cooldowns under the Play Games / Game Center profile so switching devices doesn't reset the daily claim? Recommend yes, in the ProfileBridge's `cloudSave` slot under `ad_cooldowns`.
 
 ---
