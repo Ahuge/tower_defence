@@ -345,12 +345,23 @@ export class CircleManager {
 
   // === Shared Lives (host authoritative) ===
 
-  /** Host: deduct lives and broadcast to all */
+  /**
+   * Host-authoritative life deduction. Called from the leak handler
+   * whenever a creep reaches its exit; decrements the shared pool
+   * and broadcasts the new total to every joiner.
+   *
+   * **Defensive**: no-op on joiner clients. Joiners' `sharedLives`
+   * is mutated ONLY by incoming `lives_update` messages (see the
+   * dispatch in `handleMessage` above). This belt-and-suspenders
+   * guard means a future code path that accidentally calls
+   * `deductLives` from a joiner context can't silently corrupt
+   * the joiner's local copy — the host's broadcast remains the
+   * single source of truth.
+   */
   deductLives(amount: number): number {
+    if (!this.isHost) return this.sharedLives;
     this.sharedLives = Math.max(0, this.sharedLives - amount);
-    if (this.isHost) {
-      this.broadcast({ type: 'lives_update', lives: this.sharedLives });
-    }
+    this.broadcast({ type: 'lives_update', lives: this.sharedLives });
     return this.sharedLives;
   }
 
