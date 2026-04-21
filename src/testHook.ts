@@ -73,6 +73,11 @@ interface TestHook {
   /** True once the app-startup splash has emitted its "dismissed"
    *  signal. Tests poll this before interacting with the menu. */
   isBootComplete: () => boolean;
+  /** Navigate to a specific DOM screen. Thin wrapper around
+   *  UIBridge.show — exposed for the Play Store screenshot capture
+   *  script which needs to drive through Menu / Store / Draft /
+   *  etc. without following the real button-click flow. */
+  showScreen: (screen: string, data?: Record<string, unknown>) => void;
 }
 
 let bootComplete = false;
@@ -151,6 +156,12 @@ export function installTestHook(): void {
       location.reload();
     },
     isBootComplete: () => bootComplete,
+    showScreen: (screen: string, data: Record<string, unknown> = {}) => {
+      // Cast through unknown — UIBridge.show's ScreenId union is
+      // private to ../ui/UIBridge, but the test hook accepts any
+      // string so scripts don't have to import that type.
+      UIBridge.show(screen as Parameters<typeof UIBridge.show>[0], data);
+    },
   };
   // One-line breadcrumb — handy when a test fails and you open the
   // browser's console in trace viewer.
