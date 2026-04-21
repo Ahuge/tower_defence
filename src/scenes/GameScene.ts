@@ -15,7 +15,7 @@ import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
-import { PlayerInventory, claimRewarded, BattlePass } from '../systems/monetization';
+import { PlayerInventory, claimRewarded, BattlePass, DiscoveryTracker } from '../systems/monetization';
 import { GameUIStore, TowerStats } from '../ui/GameUIStore';
 import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
@@ -249,6 +249,13 @@ export class GameScene extends Phaser.Scene {
   //   30 min total). If the clock expires mid-match while the player
   //   is at 3×, the next speed read-out snaps them back to 2×.
   private _speedBoostUntil: number = 0;
+
+  // Encyclopedia creep-discovery tracker. Subscribes to creepSpawned
+  // for the lifetime of the scene, de-dups against persisted state,
+  // and ticks the DISCOVER_CREEPS incremental achievement when new
+  // creep types appear. Skipped in tutorial mode (see the constructor
+  // argument check inside the tracker).
+  private _discoveryTracker: DiscoveryTracker | null = null;
   private waveCount?: number;
 
   private customMapDef: MapDefinition | null = null;
@@ -543,6 +550,12 @@ export class GameScene extends Phaser.Scene {
     }
     this.sendMgr = new SendManager(this, this.eventBus);
     this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
+
+    // Subscribe the Encyclopedia discovery tracker. Skips writing
+    // during tutorial mode so the scripted-creep sequence doesn't
+    // front-load discovery progress before the player fairly
+    // encounters creep types in normal play.
+    this._discoveryTracker = new DiscoveryTracker(this.eventBus, this.matchMode);
 
     // Stats tracker
     this.statsTracker = new StatsTracker();
@@ -2615,6 +2628,8 @@ export class GameScene extends Phaser.Scene {
     this.gameMode.destroy?.();
     // Clean up event bus
     TutorialManager.setGameEventBus(null);
+    this._discoveryTracker?.destroy();
+    this._discoveryTracker = null;
     this.eventBus.clear();
     // Reset UI camera + layer so they're re-created on next game
     if (this.uiCamera) {

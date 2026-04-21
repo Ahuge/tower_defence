@@ -31,6 +31,7 @@ class NoopProfile implements ProfileBridge {
   getProfile(): PlayerProfile | null { return null; }
   async submitLeaderboard(_: string, __: number): Promise<void> { /* noop */ }
   async unlockAchievement(_: string): Promise<void> { /* noop */ }
+  async incrementAchievementProgress(_: string, __: number): Promise<void> { /* noop */ }
   async cloudSave(_: string, __: string): Promise<void> { /* noop */ }
   async cloudLoad(_: string): Promise<string | null> { return null; }
 }

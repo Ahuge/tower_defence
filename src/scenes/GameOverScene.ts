@@ -2,6 +2,8 @@ import * as Phaser from 'phaser';
 import { GameStats } from '../systems/StatsTracker';
 import { ShardWallet, BattlePass, PlayerInventory } from '../systems/monetization';
 import { UIBridge } from '../ui/UIBridge';
+import { FactionId } from '../data/Factions';
+import { firstWinAchievementKey, unlockAchievement } from '../data/Achievements';
 
 export interface GameOverData {
   won: boolean;
@@ -36,7 +38,18 @@ export class GameOverScene extends Phaser.Scene {
     if (data.won) shardsEarned += 10;
     if (data.matchMode === 'gauntlet') shardsEarned += Math.min(data.wave, 10) * 5;
     ShardWallet.earn(shardsEarned, `Game complete: ${data.matchMode} (wave ${data.wave})`);
-    PlayerInventory.recordGamePlayed(data.won);
+    // Pass the faction so first-win-per-faction gets tracked.
+    // recordGamePlayed returns true exactly once per faction's
+    // inaugural win — use that as the edge trigger for the
+    // FIRST_WIN_<FACTION> achievement unlock. Tutorial match is
+    // excluded upstream (its matchMode === 'tutorial' short-circuits
+    // GameOverScene dispatch).
+    const factionId = (data.faction ?? null) as FactionId | null;
+    const isFirstFactionWin = PlayerInventory.recordGamePlayed(data.won, factionId);
+    if (isFirstFactionWin && factionId) {
+      const key = firstWinAchievementKey(factionId);
+      if (key) void unlockAchievement(key);
+    }
     BattlePass.recordGameComplete(data.wave, data.won);
 
     // Record challenge events

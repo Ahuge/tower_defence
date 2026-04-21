@@ -121,6 +121,10 @@ export class SpawnManager {
           (this.scene as any).creepFaction,
         );
         creeps.push(creep);
+        // Notify discovery tracker + any other subscriber each time
+        // a creep construct appears. Subscribers de-dup via persisted
+        // state — emit is cheap, per-spawn is fine.
+        this.events.emit('creepSpawned', entry.creepType);
       }
 
       if (this.spawnQueue.length > 0) {

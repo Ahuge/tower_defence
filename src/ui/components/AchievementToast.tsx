@@ -28,9 +28,22 @@ interface ToastState {
 }
 
 // Display-strings for the AchievementKey values. Keep in sync with
-// `src/data/Achievements.ts`.
+// `src/data/Achievements.ts`. Unknown keys fall back to the key
+// string itself — safe default, just not pretty.
 const LABELS: Record<string, string> = {
   FIRST_WIN: 'First Win',
+
+  FIRST_WIN_ARCANE:     'Arcane Ascendant',
+  FIRST_WIN_MECHANICAL: 'Industrial Might',
+  FIRST_WIN_NATURE:     'Overgrowth',
+  FIRST_WIN_VOID:       'Void Walker',
+  FIRST_WIN_MILITARY:   'By the Book',
+  FIRST_WIN_ALIENS:     'The Hive Wins',
+  FIRST_WIN_CYPHERPUNK: 'Root Access',
+  FIRST_WIN_INFERNAL:   'Burn It Down',
+  FIRST_WIN_CELESTIAL:  'Divine Verdict',
+  FIRST_WIN_PSIONIC:    'Mind Over Matter',
+  FIRST_WIN_HARMONIC:   'In Harmony',
 };
 
 let nextId = 0;

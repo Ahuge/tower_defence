@@ -63,6 +63,7 @@ class WebProfileBridge implements ProfileBridge {
 
   async submitLeaderboard(_id: string, _score: number): Promise<void> { /* no-op on web */ }
   async unlockAchievement(_id: string): Promise<void> { /* no-op on web */ }
+  async incrementAchievementProgress(_id: string, _steps: number): Promise<void> { /* no-op on web */ }
 
   /** localStorage-backed cloud-save so the contract works even on
    *  web — just scoped to the browser instead of an account. */

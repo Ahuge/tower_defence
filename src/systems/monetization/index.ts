@@ -9,6 +9,7 @@ export { PlayerInventory } from './PlayerInventory';
 export { restorePurchases } from './RestorePurchases';
 export type { RestoreResult } from './RestorePurchases';
 export { claimRewarded, isRewardInstant } from './RewardedClaim';
+export { DiscoveryTracker } from './DiscoveryTracker';
 export { purchase as iapPurchase, getDisplayPrices } from './IAPFlows';
 export type { PurchaseOutcome } from './IAPFlows';
 export { SkinManager } from './SkinManager';

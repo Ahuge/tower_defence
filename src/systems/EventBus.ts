@@ -5,6 +5,11 @@ export interface GameEvents {
   towerSold: (col: number, row: number) => void;
   creepKilled: (creepId: number, gold: number) => void;
   creepReached: (creepId: number) => void;
+  /** Fired once per creep constructed by SpawnManager — used by the
+   *  DiscoveryTracker to unlock Encyclopedia entries + tick the
+   *  DISCOVER_CREEPS incremental achievement. Fires for every spawn,
+   *  subscribers de-dup via persisted state. */
+  creepSpawned: (creepTypeId: string) => void;
   waveStarted: (waveNum: number) => void;
   waveCleared: (waveNum: number) => void;
   goldChanged: (amount: number, newTotal: number) => void;

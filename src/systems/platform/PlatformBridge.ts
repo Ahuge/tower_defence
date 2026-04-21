@@ -104,6 +104,13 @@ export interface ProfileBridge {
   submitLeaderboard(leaderboardId: string, score: number): Promise<void>;
   /** Unlock a native achievement. */
   unlockAchievement(achievementId: string): Promise<void>;
+  /** Tick progress on an incremental achievement by `steps`. Play
+   *  Games Services + Game Center both expose this separately from
+   *  unlock — incremental achievements auto-unlock server-side when
+   *  cumulative progress hits the target count configured in the
+   *  store's console. Used for "see all N creep types", "win with
+   *  all N factions" style progress-bar achievements. */
+  incrementAchievementProgress(achievementId: string, steps: number): Promise<void>;
   /** Cloud-save JSON state under a named slot. Writes happen in the
    *  background; failures are logged, not thrown. */
   cloudSave(slot: string, json: string): Promise<void>;
