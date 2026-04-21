@@ -20,11 +20,14 @@
 import { useState } from 'preact/hooks';
 import { useGameUISelector } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
+import { isRewardInstant } from '../../systems/monetization';
 
 export function ContinueOfferModal() {
   const offer = useGameUISelector(s => s.continueOffer);
   const [busy, setBusy] = useState(false);
   if (!offer) return null;
+
+  const instant = isRewardInstant();
 
   const handleAccept = async () => {
     if (busy) return;
@@ -47,7 +50,11 @@ export function ContinueOfferModal() {
       <div class="continue-offer-card">
         <div class="continue-offer-title">You Lost</div>
         <div class="continue-offer-body">
-          Watch a short ad to come back with <strong>{offer.livesGranted}</strong> {offer.livesGranted === 1 ? 'life' : 'lives'} and keep playing.
+          {instant ? (
+            <>Revive with <strong>{offer.livesGranted}</strong> {offer.livesGranted === 1 ? 'life' : 'lives'} and keep playing — no ad needed, ads-off benefit.</>
+          ) : (
+            <>Watch a short ad to come back with <strong>{offer.livesGranted}</strong> {offer.livesGranted === 1 ? 'life' : 'lives'} and keep playing.</>
+          )}
         </div>
         <div class="continue-offer-actions">
           <button
@@ -55,7 +62,9 @@ export function ContinueOfferModal() {
             onClick={handleAccept}
             disabled={busy}
           >
-            {busy ? 'Loading ad...' : `Watch Ad +${offer.livesGranted}`}
+            {busy
+              ? (instant ? 'Reviving...' : 'Loading ad...')
+              : (instant ? `Continue +${offer.livesGranted}` : `Watch Ad +${offer.livesGranted}`)}
           </button>
           <button
             class="btn btn-large"

@@ -15,7 +15,7 @@ import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
-import { PlayerInventory } from '../systems/monetization';
+import { PlayerInventory, claimRewarded } from '../systems/monetization';
 import { GameUIStore, TowerStats } from '../ui/GameUIStore';
 import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
@@ -74,6 +74,7 @@ import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
 import { Analytics } from '../systems/AnalyticsClient';
 import { platformBridge } from '../systems/platform';
+import { AD_GAME_OVER_CONTINUE } from '../systems/platform/AdPlacements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
@@ -1702,11 +1703,12 @@ export class GameScene extends Phaser.Scene {
       !this.versus &&
       !this.circle &&
       !this._continueUsedThisMatch &&
-      // Native only — on web the rewarded call returns 'unavailable'
-      // immediately, which would leave the player staring at a
-      // rescue offer that can't actually serve. Skip the offer
-      // entirely on web and go straight to game-over.
-      platformBridge().isNative;
+      // On web the rewarded call returns 'unavailable' immediately
+      // so the offer would be a dead-end. BUT if the user owns
+      // ads_off we grant the revive directly — they've paid for
+      // the courtesy. Covers the edge case of someone buying
+      // ads_off on the web build and still wanting the rescue.
+      (platformBridge().isNative || PlayerInventory.isAdFree());
 
     if (!eligible) {
       this.goToGameOver(false);
@@ -1721,14 +1723,20 @@ export class GameScene extends Phaser.Scene {
     GameUIStore.offerContinue({
       livesGranted,
       onAccept: async () => {
-        // Regardless of ad result we clear the freeze flag — on
-        // success we grant + resume, on fail we fall through to
-        // game-over. Never leave the player stuck on a frozen
-        // board.
+        // Regardless of the ad / claim result we clear the freeze
+        // flag — on success we grant + resume, on fail we fall
+        // through to game-over. Never leave the player stuck on a
+        // frozen board.
         try {
           this._continueUsedThisMatch = true;
-          const result = await platformBridge().ads.showRewarded('game_over_continue');
-          if (result === 'shown') {
+          const granted = await claimRewarded(AD_GAME_OVER_CONTINUE);
+          if (granted) {
+            // Only mark "ad actually shown" when there WAS an ad —
+            // ads-off owners skipped the video so the post-match
+            // interstitial should still be allowed to play on them
+            // (wait — interstitials are also disabled for ads-off,
+            // so the flag is moot in that case. Setting it is still
+            // safe). Keeps the two suppression paths aligned.
             this._continueAdShown = true;
             this.lives = livesGranted;
             GameUIStore.updateEconomy(this.economy.gold, this.lives, this.incomeMgr.getBreakdown().total);

@@ -74,30 +74,32 @@ export function resetCooldown(placementId: string): void {
   save(data);
 }
 
-// ─── Daily (local midnight) ─────────────────────────────────
+// ─── Daily (UTC midnight) ───────────────────────────────────
 
-/** Local-midnight timestamp for the date containing `ms`. */
-function localMidnightOf(ms: number): number {
+/** UTC-midnight timestamp for the date containing `ms`. */
+function utcMidnightOf(ms: number): number {
   const d = new Date(ms);
-  d.setHours(0, 0, 0, 0);
+  d.setUTCHours(0, 0, 0, 0);
   return d.getTime();
 }
 
 /** True when the placement has never played, or when it last played
- *  before the most-recent local midnight. Strategy-doc choice:
- *  players interpret "daily" against their own clock, not UTC. */
+ *  before the most-recent UTC midnight. UTC rather than local so
+ *  cloud-synced cooldowns (future) agree across devices in different
+ *  timezones, and a player can't farm the daily by crossing a
+ *  timezone boundary on a flight. */
 export function isDailyReady(placementId: string, now: number = Date.now()): boolean {
   const last = getLastShown(placementId);
   if (last === null) return true;
-  return localMidnightOf(last) < localMidnightOf(now);
+  return utcMidnightOf(last) < utcMidnightOf(now);
 }
 
-/** Milliseconds until the next local midnight after the last play.
+/** Milliseconds until the next UTC midnight after the last play.
  *  Returns 0 when already available. */
 export function msUntilNextDaily(placementId: string, now: number = Date.now()): number {
   if (isDailyReady(placementId, now)) return 0;
   const d = new Date(now);
-  d.setHours(24, 0, 0, 0); // tomorrow 00:00 local
+  d.setUTCHours(24, 0, 0, 0); // next UTC 00:00
   return d.getTime() - now;
 }
 

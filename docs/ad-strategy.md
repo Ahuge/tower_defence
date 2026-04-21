@@ -11,7 +11,7 @@ These rules drive every placement decision.
 1. **Ads never interrupt active gameplay.** No mid-match interstitials, no wave-transition banners, no "starting wave 5? here's an ad first." The player is in a rhythm; breaking it to insert a third-party video frustrates more than it earns.
 2. **Rewarded ads are always player-initiated.** Every rewarded video has a button the user tapped to start it, with the reward clearly stated before the ad plays ("Watch ad for +100 shards"). We never auto-play a rewarded ad and surprise the user with what comes back.
 3. **Every rewarded ad has a concrete payoff the player wants.** Shards, a modifier, a revive, a speed boost. We don't show ads purely for ad revenue — if there's no reward that feels fair for 30 seconds of the player's attention, the placement doesn't belong here.
-4. **The ad-free IAP (`ads_off`) removes interstitials only, not rewarded.** A player who paid to remove ads still wants the choice to watch one for free shards — that's convention across F2P (Candy Crush, Clash Royale, Brawl Stars all behave this way). Taking the rewarded option away from paying players punishes them for paying. The `AdBridge.isEnabled()` check short-circuits `showInterstitial` / `showBanner` but not `showRewarded`.
+4. **The ad-free IAP (`ads_off`) grants every rewarded benefit directly, no ad required.** A player who paid to remove ads gets *all* the rewards that ad-watchers get — daily shards, the continue revive, draft modifier unlocks, speed boost, tower-roll reroll — by clicking the same button, but without the video. The reward is the thing they were paying to access frictionlessly. Implemented via `claimRewarded(placementId)` in `src/systems/monetization/RewardedClaim.ts`: returns true immediately for ads-off owners, otherwise routes through the rewarded video. Interstitials stay fully off for ads-off (they're not rewards).
 5. **Frequency caps on anything unlimited.** "Unlimited" placements (modifier rerolls, speed boost) need a cooldown or a hard cap somewhere — otherwise a determined player can farm ads for 45 minutes straight and burn out both our revenue share and their own goodwill with the experience.
 6. **Store-policy compliance is non-negotiable.** Both Apple (App Store Review Guideline 1.1.6) and Google (Play Policy on ads / deceptive behaviour) require: ads clearly distinguishable from content, rewards reliably granted after completion, no simulated close buttons, no ads in loading screens that block progress. Every placement here is designed to satisfy both.
 
@@ -31,9 +31,9 @@ A note on "short ad vs long ad": AdMob doesn't give us a knob for ad length — 
 
 | # | Placement ID | Format | When | Reward | Frequency cap | Status |
 |---|---|---|---|---|---|---|
-| 1 | `shards_daily` | Rewarded | "Watch ad for +100 shards" button in Store header | 100 shards | 1 / 24 h (local midnight reset) | Planned |
-| 2 | `draft_modifier_2` | Rewarded | "Unlock a second modifier" button in Draft | Second modifier slot for this match | 1 / match | Planned |
-| 3 | `draft_modifier_3` | Rewarded | "Unlock a third modifier" button in Draft (only after #2 watched) | Third modifier slot for this match | 1 / match | Planned |
+| 1 | `shards_daily` | Rewarded | "Watch ad for +100 shards" button in Store header | 100 shards | 1 / day (UTC midnight reset) | **Live** |
+| 2 | `draft_modifier_2` | Rewarded | "Watch Ad (Option 2)" button in Draft | Second modifier option to choose from (still pick 1 total) | 1 / match | **Live** |
+| 3 | `draft_modifier_3` | Rewarded | "Watch Ad (Option 3)" button in Draft (only after #2 watched — progressive reveal) | Third modifier option to choose from (still pick 1 total) | 1 / match | **Live** |
 | 4 | `draft_reroll` | Rewarded | "Re-roll all modifiers" button in Draft | All three modifier slots re-rolled | Soft cap: 3 / match, then increasing cooldown | Planned |
 | 5 | `speed_boost_10m` | Rewarded | "Unlock 3× speed for 10 min" button on pause menu / speed toggle | 3× speed enabled for 10 minutes of real time | 1 active timer at a time; stacks up to 30 min | Planned |
 | 6 | `game_over_continue` | Rewarded | "Continue — revive with +5 lives" button on loss screen | Revive with 5 lives; wave resumes | 1 / match | Planned |
@@ -44,8 +44,8 @@ Placement IDs are strings passed to `platformBridge().ads.showInterstitial(id)` 
 
 ### Placement notes
 
-- **#1 daily shards** — the strongest retention hook on the list. A free 100-shard top-up is enough to feel meaningful (≈1/6 of a skin roll) without inflating the shard economy. Reset at local midnight rather than UTC — players interpret "daily" against their own clock, not Google's data centre.
-- **#2 / #3 draft modifiers** — reframes the current Draft screen. Base experience stays "pick 1 of 3" so a non-ad-watching player isn't disadvantaged compared to today. Ads add modifier slots on top. This is the single most sensitive placement for "pay to win" perception — balance lead should review whether three simultaneous modifiers break difficulty curves.
+- **#1 daily shards** — the strongest retention hook on the list. A free 100-shard top-up is enough to feel meaningful (≈1/6 of a skin roll) without inflating the shard economy. Reset at UTC midnight: cloud-synced cooldowns across devices agree without timezone math, and a player can't farm the daily by crossing a timezone boundary on a flight.
+- **#2 / #3 draft modifiers** — free tier sees 1 of 3 options; watching an ad reveals a second, watching another reveals the third. Player always picks one total, so no balance impact — the ads unlock *optionality* (more faces to choose from) not *power*. Progressive reveal: slot 3 only unlocks after slot 2, which gives us the "short ad → longer ad" perceived-length distinction without needing AdMob to honour an ad-length knob it doesn't expose.
 - **#4 draft reroll** — "unlimited" on the user's terms but with the soft cap: after 3 rerolls per match the cooldown grows (next reroll gated behind 30s, then 60s, then 120s). Discourages compulsion watching.
 - **#5 speed boost** — the README says the game already cycles 0× / 0.5× / 1× / 1.5× / 2× / 3× via TAB. Before implementing this placement we need to decide: does the baseline cap drop to 2× (making 3× the ad unlock), or does this unlock something faster than 3×? My recommendation: **drop the free cap to 2×, gate 3× behind the rewarded ad**. Keeps the current speed variety in the game while giving us something meaningful to gate.
 - **#6 continue** — 5 lives is a sensible baseline for Normal. On Hard/Insane 5 lives may evaporate in one wave; I'd recommend scaling the revive to `max(5, floor(startingLives * 0.15))` or similar. Flag for playtest.
@@ -101,11 +101,11 @@ Each UI that hosts a rewarded placement follows the same structure:
 
 We do these in risk-reverse order — smallest surface, easiest to remove, most obviously net-positive first:
 
-1. **Placement #I (interstitial on game-over)** — ✅ already live.
-2. **Placement #1 (daily shards)** — highest retention value, cleanest surface (one button in the Store header with a cooldown timer).
-3. **Placement #6 (continue after loss)** — proven F2P pattern, single integration point, easy to A/B.
-4. **Placement #2 + #3 (draft modifier unlocks)** — paired work; needs Draft screen UI additions.
-5. **Placement #4 (draft reroll)** — builds on #2/#3.
+1. **Placement #I (interstitial on game-over)** — ✅ live.
+2. **Placement #6 (continue after loss)** — ✅ live (includes revive shockwave board-wipe so +5 lives aren't burned by in-flight creeps).
+3. **Placement #1 (daily shards)** — ✅ live.
+4. **Placement #2 + #3 (draft modifier unlocks)** — ✅ live.
+5. **Placement #4 (draft reroll)** — next. Builds on #2/#3.
 6. **Placement #7 (tower-roll reroll)** — needs roll-result screen surface.
 7. **Placement #5 (speed boost)** — last, pending the baseline-cap decision.
 
@@ -117,8 +117,8 @@ Each ships behind its own small PR with a telemetry event per placement so we ca
 
 Flag these back to Alex before implementing the corresponding placement.
 
-- **#1** — does the daily reset align with local midnight (friendlier UX) or anchor to a fixed UTC time (cleaner cross-device sync via cloud save)? Recommend local.
-- **#2 / #3** — do three simultaneous modifiers break difficulty pacing? Needs a short balance pass before ship.
+- ~~**#1** — does the daily reset align with local midnight or UTC?~~ → **Decided: UTC midnight.** Cross-device sync agrees without timezone math + no timezone-farming.
+- ~~**#2 / #3** — do three simultaneous modifiers break difficulty pacing?~~ → **Decided: N/A.** Player picks 1 of however many options are revealed; ads unlock more options, not more active modifiers.
 - **#5** — baseline speed cap stays at 3× (and the ad unlocks something else, e.g. 4×?) or drops to 2× with 3× ad-gated? Recommend drop to 2×.
 - **#6** — flat +5 lives, or scale with difficulty? Recommend scale.
 - **#7** — should the reroll redraw from the same rarity tier (prevents downgrades) or from the full pool? Recommend same tier.

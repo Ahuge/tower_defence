@@ -21,10 +21,10 @@ import {
 const PLACEMENT = 'test_placement';
 
 function at(iso: string): number {
-  // Parse as local-time so the daily-boundary tests aren't at the
-  // mercy of the CI runner's timezone. `YYYY-MM-DDTHH:mm:ss` without
-  // a Z is parsed as local time in the JS Date spec.
-  return new Date(iso).getTime();
+  // Always parse as UTC so daily-boundary tests are timezone-
+  // independent. The cooldown logic is UTC-based, so anchoring
+  // fixtures to UTC matches what the module actually checks.
+  return new Date(iso + 'Z').getTime();
 }
 
 beforeEach(() => {

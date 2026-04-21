@@ -10,6 +10,7 @@ import {
   SKIN_ROLL_COST, DUPLICATE_REFUND,
   getRollableSkins, getPurchasableSkins,
   restorePurchases,
+  claimRewarded, isRewardInstant,
   Rarity,
 } from '../../systems/monetization';
 import { platformBridge } from '../../systems/platform';
@@ -51,20 +52,24 @@ function DailyAdButton({ rerender }: { rerender: () => void }) {
     return () => window.clearInterval(id);
   }, [ready, busy]);
 
-  if (!platformBridge().isNative) return null;
+  // Hidden on web UNLESS the user owns ads-off (in which case this is
+  // a free daily claim button, no ad involved — still valuable on web).
+  if (!platformBridge().isNative && !isRewardInstant()) return null;
+
+  const instant = isRewardInstant();
 
   const onClick = async () => {
     if (!ready || busy) return;
     setBusy(true);
     try {
-      const result = await platformBridge().ads.showRewarded(AD_SHARDS_DAILY);
-      if (result === 'shown') {
-        ShardWallet.earn(DAILY_SHARDS_REWARD, 'Daily ad reward');
+      const granted = await claimRewarded(AD_SHARDS_DAILY);
+      if (granted) {
+        ShardWallet.earn(DAILY_SHARDS_REWARD, instant ? 'Daily reward (ad-free)' : 'Daily ad reward');
         markShown(AD_SHARDS_DAILY);
         rerender();
       }
-      // 'skipped' / 'unavailable' / 'disabled' — silent no-op; cooldown
-      // only advances on a verified 'shown'.
+      // granted === false: ad skipped / unavailable / disabled — cooldown
+      // only advances on actual grant.
     } finally {
       setBusy(false);
       setTick(t => t + 1);
@@ -75,10 +80,14 @@ function DailyAdButton({ rerender }: { rerender: () => void }) {
     const remaining = formatCountdown(msUntilNextDaily(AD_SHARDS_DAILY));
     return (
       <span class="text-dim text-xs" style={{ padding: '4px 10px' }}>
-        Daily ad in {remaining}
+        Daily reward in {remaining}
       </span>
     );
   }
+
+  const label = instant
+    ? `Claim +${DAILY_SHARDS_REWARD} Shards`
+    : `Watch Ad → +${DAILY_SHARDS_REWARD} Shards`;
 
   return (
     <button
@@ -87,7 +96,7 @@ function DailyAdButton({ rerender }: { rerender: () => void }) {
       onClick={onClick}
       disabled={busy}
     >
-      {busy ? 'Loading ad...' : `Watch Ad → +${DAILY_SHARDS_REWARD} Shards`}
+      {busy ? (instant ? 'Claiming...' : 'Loading ad...') : label}
     </button>
   );
 }
