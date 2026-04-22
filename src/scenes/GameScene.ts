@@ -483,6 +483,10 @@ export class GameScene extends Phaser.Scene {
     const versusRef = this.registry.get('versus') as VersusManager | null;
     const waveSeed = versusRef?.sharedSeed ?? 0;
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
+    // Attach waypoint-chain spawners (Circle Co-op) so every new
+    // creep knows its ordered waypoints + exit — enables proper
+    // mid-wave rerouting instead of "A* to shortest exit" guessing.
+    this.spawner.setSpawners(this.mapDef?.spawners ?? null);
     this.inputMgr = new InputManager(this, this.eventBus);
     if (this.layout.gridRows !== GRID_ROWS) {
       this.inputMgr.setGridRows(this.layout.gridRows);
@@ -1002,11 +1006,12 @@ export class GameScene extends Phaser.Scene {
 
       // Create player roster UI. Suppliers are optional — they're
       // only used by bot rows. For an all-human match the roster
-      // renders the plain label without bot-gold/tower-count.
+      // renders the plain label without bot-gold/tower-count/kills.
       const zoneColors = mapDef.zoneColors ?? [];
       this.circleRoster = new CirclePlayerRoster(
         this, this.circle, zoneColors,
         () => this.circleBotAI?.getBotGold() ?? new Map(),
+        () => this.circleBotAI?.getBotKills() ?? new Map(),
         () => this.towerOwners,
       );
 
@@ -1536,62 +1541,35 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Re-route creeps whose remaining path actually passes through
-   * the newly-placed tower cell. Strategy: splice around the
-   * blocked cell by routing from the creep's current position to
-   * the nearest reachable downstream cell of its original path,
-   * then concatenate the original path from that point onward.
+   * Re-route creeps whose remaining path passes through the newly-
+   * placed tower cell. Delegates to Creep.rerouteViaWaypoints which
+   * re-runs findPathWithWaypoints through the creep's REMAINING
+   * (unvisited) waypoints to the spawner's exit — preserves both
+   * direction and traversal goal on Circle Co-op maps where the
+   * exit is at the same cell as the entry.
    *
-   * Why splice instead of "route to destination":
-   *   - Circle Co-op maps have entry == exit (creeps loop). If we
-   *     rerouted to creep.path[last], a creep mid-circuit would
-   *     head back the way it came (shortest route to its own
-   *     spawn point), U-turning on the player.
-   *   - Splicing preserves direction AND the remaining waypoints,
-   *     so creeps continue their lap around the map correctly.
-   *
-   * If no downstream rejoin point is reachable (very rare — would
-   * require the tower placement to have cut off every subsequent
-   * path cell), we fall back to "route to destination" which at
-   * least keeps the creep alive and forward-bound.
+   * Creeps whose remaining path doesn't hit the tower are left
+   * alone (no wasted pathfinding work).
    */
   private rerouteCreepsAroundTower(towerCol: number, towerRow: number): void {
     for (const creep of this.creepMgr.creeps) {
       if (!creep.alive || creep.reached) continue;
       const remaining = creep.path.slice(creep.pathIndex);
-      const hitIdx = remaining.findIndex(p => p.col === towerCol && p.row === towerRow);
-      if (hitIdx === -1) continue; // creep's remaining path doesn't hit — leave it alone
+      const hitByTower = remaining.some(p => p.col === towerCol && p.row === towerRow);
+      if (!hitByTower) continue;
 
       const creepCol = pixelToCol(creep.x);
       const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+      const current: PathPoint = { col: creepCol, row: creepRow };
 
-      // Walk forward from the cell AFTER the tower, looking for the
-      // first reachable rejoin point. Usually that's one cell past
-      // the tower; in corridor maps it can take a few hops.
-      const downstream = remaining.slice(hitIdx + 1);
-      let spliced: PathPoint[] | null = null;
-      for (let i = 0; i < downstream.length; i++) {
-        const rejoin = downstream[i];
-        const detour = findPath(this.grid, { col: creepCol, row: creepRow }, rejoin);
-        if (detour) {
-          // detour ends at `rejoin`; downstream.slice(i + 1) is the
-          // remaining original path AFTER that rejoin cell.
-          spliced = detour.concat(downstream.slice(i + 1));
-          break;
-        }
-      }
+      // Creep-side reroute handles both the waypoint path (circle
+      // co-op) and the simple destination case (everywhere else).
+      if (creep.rerouteViaWaypoints(this.grid, current)) continue;
 
-      if (spliced) {
-        creep.path = spliced;
-        creep.pathIndex = 1;
-        continue;
-      }
-
-      // Fallback: no downstream cell reachable. Head for the original
-      // destination directly. towerMgr already ensures SOMETHING is
-      // reachable from entry, so this should almost always work.
+      // Fallback for creeps with no spawner metadata — just try to
+      // reach whatever the final cell of the original path was.
       const dest = creep.path[creep.path.length - 1];
-      const newPath = findPath(this.grid, { col: creepCol, row: creepRow }, dest);
+      const newPath = findPath(this.grid, current, dest);
       if (newPath) {
         creep.path = newPath;
         creep.pathIndex = 1;
@@ -2616,6 +2594,10 @@ export class GameScene extends Phaser.Scene {
 
     // Events + UI
     this.eventBus.emit('waveCleared', waveNum);
+    // Bots share the wave-clear bonus the same way humans do
+    // (EconomyManager listens to the same event for human gold).
+    // Without this bots' economies drift behind over long matches.
+    this.circleBotAI?.creditWaveClear();
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
     this.upcomingWaves.update(waveNum, this.waves);

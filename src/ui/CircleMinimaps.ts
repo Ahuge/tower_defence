@@ -22,21 +22,24 @@ export class CirclePlayerRoster {
    *  bot AI or the owner map. Both are optional so non-bot matches
    *  (all humans) render the plain label. */
   private botGoldSupplier?: () => Map<number, number>;
+  private botKillsSupplier?: () => Map<number, number>;
   private towerOwnersSupplier?: () => Map<string, number>;
 
-  private readonly panelW = 200;
+  private readonly panelW = 230;
 
   constructor(
     scene: Phaser.Scene,
     circle: CircleManager,
     zoneColors: number[],
     botGoldSupplier?: () => Map<number, number>,
+    botKillsSupplier?: () => Map<number, number>,
     towerOwnersSupplier?: () => Map<string, number>,
   ) {
     this.scene = scene;
     this.circle = circle;
     this.zoneColors = zoneColors;
     this.botGoldSupplier = botGoldSupplier;
+    this.botKillsSupplier = botKillsSupplier;
     this.towerOwnersSupplier = towerOwnersSupplier;
 
     // On desktop the camera controller pins +/-/⊙ zoom buttons
@@ -98,6 +101,7 @@ export class CirclePlayerRoster {
     // Snapshot once per frame — avoids N calls to the supplier for
     // an N-player roster.
     const botGold = this.botGoldSupplier?.();
+    const botKills = this.botKillsSupplier?.();
     const owners = this.towerOwnersSupplier?.();
 
     for (let i = 0; i < this.circle.playerCount; i++) {
@@ -110,11 +114,12 @@ export class CirclePlayerRoster {
       if (isMe) {
         label = `P${i} (you) ${faction}${this.circle.localReady ? ' [RDY]' : ''}`;
       } else if (isBot) {
-        // Bot row: show gold + tower count so humans can tell at a
-        // glance whether their CPU allies are productive.
+        // Bot row: show gold + tower count + kills so humans can
+        // tell at a glance whether their CPU allies are productive.
         const gold = botGold?.get(i) ?? 0;
         const towers = owners ? countOwned(owners, i) : 0;
-        label = `P${i} [CPU] ${faction} ${gold}g ${towers}T`;
+        const kills = botKills?.get(i) ?? 0;
+        label = `P${i} [CPU] ${faction} ${gold}g ${towers}T ${kills}K`;
       } else {
         label = `P${i} ${faction}${readyStr}`;
       }

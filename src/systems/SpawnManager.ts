@@ -6,6 +6,7 @@ import { WaveDefinition } from '../data/WaveDefinitions';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { DifficultyHints } from '../data/Difficulty';
 import { EventBus } from './EventBus';
+import { SpawnerDef } from '../data/Maps';
 
 /** Simple seeded PRNG for deterministic wave spawning */
 function seededRandom(seed: number): () => number {
@@ -35,6 +36,14 @@ export class SpawnManager {
   private flyingPath: PathPoint[] | null = null;
   private seed: number;
   private rng: () => number;
+  /**
+   * Map's spawner list (Circle Co-op waypoint-chained maps) indexed
+   * by pathIndex. Attached to every creep at spawn time so reroutes
+   * can re-run `findPathWithWaypoints` through the correct remaining
+   * waypoints instead of guessing a destination. Null on standard
+   * entry→exit maps.
+   */
+  private spawners: SpawnerDef[] | null = null;
 
   constructor(scene: Phaser.Scene, events: EventBus, difficulty: DifficultyHints, seed: number = 0) {
     this.scene = scene;
@@ -42,6 +51,13 @@ export class SpawnManager {
     this.difficulty = difficulty;
     this.seed = seed || Math.floor(Math.random() * 999999);
     this.rng = seededRandom(this.seed);
+  }
+
+  /** Attach the map's spawner list so new creeps carry their
+   *  spawner's waypoint chain + exit. Call once per map change
+   *  (null for non-waypoint maps). */
+  setSpawners(spawners: SpawnerDef[] | null): void {
+    this.spawners = spawners;
   }
 
   setFlyingPath(entry: { col: number; row: number }, exit: { col: number; row: number }): void {
@@ -110,6 +126,10 @@ export class SpawnManager {
       if (!path) return;
 
       const burstCount = entry.groupBurst;
+      // Attach spawner waypoints + exit so the creep can be correctly
+      // re-pathed mid-wave (see Creep.rerouteViaWaypoints). Non-
+      // waypoint maps leave this null.
+      const spawner = this.spawners ? this.spawners[entry.pathIndex] ?? null : null;
       for (let b = 0; b < burstCount; b++) {
         const creep = new Creep(
           this.scene,
@@ -120,6 +140,10 @@ export class SpawnManager {
           entry.creepType,
           (this.scene as any).creepFaction,
         );
+        if (spawner) {
+          creep.spawnerWaypoints = spawner.waypoints.map(p => ({ col: p.col, row: p.row }));
+          creep.spawnerExit = { col: spawner.exit.col, row: spawner.exit.row };
+        }
         creeps.push(creep);
         // Notify discovery tracker + any other subscriber each time
         // a creep construct appears. Subscribers de-dup via persisted

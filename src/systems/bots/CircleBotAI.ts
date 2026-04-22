@@ -18,7 +18,7 @@ import { TowerType, getTowerType } from '../../data/TowerTypes';
 import { FactionId, FACTIONS } from '../../data/Factions';
 import { Grid } from '../Grid';
 import { PathPoint } from '../Pathfinding';
-import { STARTING_GOLD } from '../../config';
+import { STARTING_GOLD, WAVE_CLEAR_BONUS } from '../../config';
 import { BotBrain, BotContext, Cell, createBrain } from './BotBrain';
 // Side-effect imports: register available brains in BRAIN_REGISTRY.
 // New brains need to be imported here (or elsewhere pulled in at
@@ -48,6 +48,11 @@ interface BotState {
    *  against this pool on placements. The human's gold is
    *  completely independent. */
   gold: number;
+  /** Running total of creeps this bot's towers have killed. Tracked
+   *  so the co-op roster can show progress ("P2 [CPU] 45K") and,
+   *  later, so stats/leaderboards can attribute multiplayer kills
+   *  correctly. Incremented inside `creditKill`. */
+  kills: number;
 }
 
 /** Callback the driver invokes to actually place a tower. The scene
@@ -96,18 +101,37 @@ export class CircleBotAI {
    * slot. No-op if the player index isn't a registered bot — kills
    * by untracked towers (human or stale ownership records) keep
    * their existing routing to the shared economy.
+   *
+   * Increments both the bot's gold pool and its kill counter.
    */
   creditKill(playerIndex: number, gold: number): void {
     const bot = this.bots.find(b => b.playerIndex === playerIndex);
     if (!bot) return;
     bot.gold += gold;
+    bot.kills += 1;
   }
 
-  /** Snapshot of each bot's private gold. Useful for UI (future
-   *  "show bot gold in roster") and for event-log diagnostics. */
+  /** Award every bot the wave-clear bonus. Mirror of what the
+   *  human's EconomyManager does on the `waveCleared` event —
+   *  bots need it too or they'll fall behind the human's economy
+   *  over a long match. GameScene wires this to the same event. */
+  creditWaveClear(): void {
+    for (const bot of this.bots) {
+      bot.gold += WAVE_CLEAR_BONUS;
+    }
+  }
+
+  /** Snapshot of each bot's private gold. */
   getBotGold(): Map<number, number> {
     const m = new Map<number, number>();
     for (const b of this.bots) m.set(b.playerIndex, b.gold);
+    return m;
+  }
+
+  /** Snapshot of each bot's kill count. */
+  getBotKills(): Map<number, number> {
+    const m = new Map<number, number>();
+    for (const b of this.bots) m.set(b.playerIndex, b.kills);
     return m;
   }
 
@@ -140,6 +164,7 @@ export class CircleBotAI {
       // Every bot starts with the same pool as a human player so
       // they can ramp on wave 1 without help.
       gold: STARTING_GOLD,
+      kills: 0,
     };
     this.bots.push(state);
 
@@ -185,21 +210,13 @@ export class CircleBotAI {
       if (b.cooldown > 0) continue;
       b.cooldown += BASE_COOLDOWN_MS;
 
-      if (b.candidateCells.length === 0) {
-        // eslint-disable-next-line no-console
-        console.log(`[bot ${b.playerIndex}] skip: no candidate cells`);
-        continue;
-      }
+      if (b.candidateCells.length === 0) continue;
 
       // Private pool: bots don't share the human's economy.
       // `b.gold` grows from kill credits routed through
       // `creditKill()` and shrinks on successful placements.
       const budget = b.gold;
-      if (budget < b.cheapestCost) {
-        // eslint-disable-next-line no-console
-        console.log(`[bot ${b.playerIndex}] skip: budget=${budget} < cheapest=${b.cheapestCost}`);
-        continue;
-      }
+      if (budget < b.cheapestCost) continue;
 
       const ctx: BotContext = {
         playerIndex: b.playerIndex,
@@ -214,11 +231,7 @@ export class CircleBotAI {
       };
 
       const decision = b.brain.decide(ctx);
-      if (decision.kind !== 'place') {
-        // eslint-disable-next-line no-console
-        console.log(`[bot ${b.playerIndex}] skip: brain.decide returned skip (budget=${budget}, cells=${b.candidateCells.length})`);
-        continue;
-      }
+      if (decision.kind !== 'place') continue;
 
       // Belt-and-braces: defend against a misbehaving brain that
       // picks a cell outside the candidate set or a too-expensive
@@ -234,8 +247,6 @@ export class CircleBotAI {
       const cost = decision.type.cost;
       b.gold -= cost;
       const ok = this.placeCallback(b.playerIndex, decision.col, decision.row, decision.type);
-      // eslint-disable-next-line no-console
-      console.log(`[bot ${b.playerIndex}] place ${decision.type.id} at (${decision.col},${decision.row}) → ${ok ? 'OK' : 'REJECTED'} (bot gold after=${ok ? b.gold : b.gold + cost})`);
       if (ok) {
         b.candidateCells = b.candidateCells.filter(c => !(c.col === decision.col && c.row === decision.row));
         this.cellsDirty = true;

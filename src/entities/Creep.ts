@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { TILE_SIZE, CREEP_BASE_SPEED, gridX, gridY } from '../config';
-import { PathPoint } from '../systems/Pathfinding';
+import { PathPoint, findPath, findPathWithWaypoints } from '../systems/Pathfinding';
+import { Grid } from '../systems/Grid';
 import { StatusEffectManager } from '../systems/StatusEffects';
 import { ArmorType, CreepType, CREEP_TYPES } from '../data/CreepTypes';
 import {
@@ -34,6 +35,22 @@ export class Creep {
   /** Col/row of the tower that last dealt damage (for kill credit in co-op) */
   lastHitCol: number = -1;
   lastHitRow: number = -1;
+  /**
+   * The spawner's ordered waypoint list + exit. Set by SpawnManager
+   * when the creep is created from a circle-co-op map with
+   * `mapDef.spawners`. `waypointsVisited` tracks how many of those
+   * waypoints the creep has physically reached, so on a reroute we
+   * can re-run `findPathWithWaypoints` from the creep's current
+   * position through ONLY the unvisited waypoints and end at the
+   * right exit — no guessing, no U-turns.
+   *
+   * `null` on simple entry→exit maps (standard / gauntlet / hero)
+   * where the creep just walks a flat path. On those maps, reroute
+   * falls back to a plain `findPath(current, exit)`.
+   */
+  spawnerWaypoints: PathPoint[] | null = null;
+  spawnerExit: PathPoint | null = null;
+  waypointsVisited: number = 0;
   /** Optional sprite (used when creep faction sprites are loaded) */
   sprite: Phaser.GameObjects.Sprite | null = null;
   private _prevX: number = 0;
@@ -131,19 +148,6 @@ export class Creep {
 
     if (this.pathIndex >= this.path.length) {
       this.reached = true;
-      // Diagnostic: confirm creep-reached → leak-handler pipeline
-      // is firing. If we never see this log but creeps appear to
-      // reach the exit visually, the reached detection is stale
-      // (wrong path length, drifted pixel-cell alignment, etc).
-      // Remove once the Circle Co-op life-loss bug is resolved.
-      // eslint-disable-next-line no-console
-      console.log('[creep] reached', {
-        creepType: this._creepTypeId,
-        isBoss: this.isBoss,
-        pathLen: this.path.length,
-        pathIndex: this.pathIndex,
-        lastCell: this.path[this.path.length - 1],
-      });
       this.graphics.destroy();
       this.sprite?.destroy();
       this.sprite = null;
@@ -185,6 +189,16 @@ export class Creep {
     if (dist <= move) {
       this.x = tx;
       this.y = ty;
+      // If the cell we just arrived at is the next unvisited
+      // spawner waypoint, tick it off. This is what lets a
+      // mid-wave reroute (see `rerouteViaWaypoints`) know which
+      // waypoints are still ahead vs already consumed.
+      if (this.spawnerWaypoints && this.waypointsVisited < this.spawnerWaypoints.length) {
+        const nextWp = this.spawnerWaypoints[this.waypointsVisited];
+        if (target.col === nextWp.col && target.row === nextWp.row) {
+          this.waypointsVisited++;
+        }
+      }
       this.pathIndex++;
     } else if (dist > 0) {
       this.x += (dx / dist) * move;
@@ -192,6 +206,34 @@ export class Creep {
     }
 
     this.draw();
+  }
+
+  /**
+   * Regenerate this creep's path from its current position through
+   * any remaining waypoints to the spawner exit. Used when a tower
+   * placement invalidates the existing path mid-wave.
+   *
+   * Returns true if a valid path was found and applied. If the
+   * caller's reroute fails (no path to any remaining waypoint),
+   * returns false so the caller can fall back to a plain
+   * destination-only A*.
+   *
+   * `currentCell` is the creep's current logical grid cell (pixel
+   * position snapped to the grid). Passed in so the caller doesn't
+   * have to duplicate the pixel→cell math.
+   */
+  rerouteViaWaypoints(grid: Grid, currentCell: PathPoint): boolean {
+    if (!this.spawnerExit) return false;
+    const remaining = this.spawnerWaypoints
+      ? this.spawnerWaypoints.slice(this.waypointsVisited)
+      : [];
+    const newPath = remaining.length > 0
+      ? findPathWithWaypoints(grid, currentCell, remaining, this.spawnerExit)
+      : findPath(grid, currentCell, this.spawnerExit);
+    if (!newPath || newPath.length === 0) return false;
+    this.path = newPath;
+    this.pathIndex = 1;
+    return true;
   }
 
   takeDamage(amount: number, towerCol?: number, towerRow?: number): void {
