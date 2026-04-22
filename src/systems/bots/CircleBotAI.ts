@@ -54,10 +54,6 @@ interface BotState {
    */
   events: EventBus;
   economy: EconomyManager;
-  /** Running total of creeps this bot's towers have killed. Kept
-   *  separate from the economy so the roster can display
-   *  "P2 [CPU] 45K" without digging into stat internals. */
-  kills: number;
 }
 
 /** Callback the driver invokes to actually place a tower. The scene
@@ -103,14 +99,15 @@ export class CircleBotAI {
   /**
    * Credit a bot for a creep kill. Routes through the bot's own
    * EventBus so its EconomyManager picks up the gold via the same
-   * 'creepKilled' listener that the human's economy uses — no
-   * second code path to maintain.
+   * 'creepKilled' listener that the human's economy uses. Kill
+   * counts themselves are tracked by CircleDeathHandler — there's
+   * a single source of truth for per-player kills so the roster
+   * shows consistent numbers for humans and CPUs.
    */
   creditKill(playerIndex: number, gold: number): void {
     const bot = this.bots.find(b => b.playerIndex === playerIndex);
     if (!bot) return;
     bot.events.emit('creepKilled', 0, gold);
-    bot.kills += 1;
   }
 
   /** Re-emit the wave-clear and wave-start events on each bot's
@@ -130,13 +127,6 @@ export class CircleBotAI {
   getBotGold(): Map<number, number> {
     const m = new Map<number, number>();
     for (const b of this.bots) m.set(b.playerIndex, b.economy.gold);
-    return m;
-  }
-
-  /** Snapshot of each bot's kill count. */
-  getBotKills(): Map<number, number> {
-    const m = new Map<number, number>();
-    for (const b of this.bots) m.set(b.playerIndex, b.kills);
     return m;
   }
 
@@ -176,7 +166,6 @@ export class CircleBotAI {
       cooldown: Math.random() * BASE_COOLDOWN_MS,
       events,
       economy,
-      kills: 0,
     };
     this.bots.push(state);
 

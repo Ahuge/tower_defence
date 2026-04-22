@@ -29,6 +29,15 @@ export class CircleDeathHandler implements DeathHandler {
    *  bot-owned tower gets the killing blow. Wired in GameScene
    *  to route gold into CircleBotAI's per-bot pools. */
   private onBotKill?: (botIndex: number, gold: number) => void;
+  /**
+   * Per-player running kill count. Keyed by playerIndex, includes
+   * every slot — local human, remote humans, and bots. Roster UI
+   * reads this as the single source of truth for kills (no more
+   * "bot kills live in CircleBotAI, human kills live in
+   * StatsTracker" split). Only populated for owners the death
+   * handler can identify — untracked towers don't credit anyone.
+   */
+  private killsByPlayer: Map<number, number> = new Map();
 
   constructor(
     economy: EconomyManager,
@@ -48,12 +57,24 @@ export class CircleDeathHandler implements DeathHandler {
     this.onBotKill = onBotKill;
   }
 
+  /** Snapshot of kills by player index. Roster UI consumes this to
+   *  render the `NK` count per row. */
+  getKillsByPlayer(): Map<number, number> {
+    return this.killsByPlayer;
+  }
+
   onCreepKilled(creep: Creep): void {
     this.statsTracker.recordKill();
 
     const key = `${creep.lastHitCol},${creep.lastHitRow}`;
     const owner = this.towerOwners.get(key);
     const killGold = Math.round(this.economy.getKillGold() * this.killGoldMult);
+
+    // Track per-player kills even when the gold routes elsewhere.
+    // Untracked towers (owner === undefined) fall under the local
+    // player's count since they're typically host-authoritative.
+    const creditedTo = owner ?? this.myPlayerIndex;
+    this.killsByPlayer.set(creditedTo, (this.killsByPlayer.get(creditedTo) ?? 0) + 1);
 
     if (owner === this.myPlayerIndex || owner === undefined) {
       this.eventBus.emit('creepKilled', 0, killGold);

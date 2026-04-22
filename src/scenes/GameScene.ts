@@ -110,6 +110,9 @@ export class GameScene extends Phaser.Scene {
   // there are no bot slots. Created after `circle` is initialised
   // (needs playerFactions + zone data).
   circleBotAI: CircleBotAI | null = null;
+  // Kept for the roster UI to read per-player kill counts via
+  // `getKillsByPlayer()`. Null in non-circle matches.
+  circleDeathHandler: CircleDeathHandler | null = null;
   circleRoster: CirclePlayerRoster | null = null;
   circleZoneOverlay: Phaser.GameObjects.Graphics | null = null;
   /** Which zone cells can this player build on? null = no restriction */
@@ -487,6 +490,17 @@ export class GameScene extends Phaser.Scene {
     // creep knows its ordered waypoints + exit — enables proper
     // mid-wave rerouting instead of "A* to shortest exit" guessing.
     this.spawner.setSpawners(this.mapDef?.spawners ?? null);
+
+    // Circle Co-op creep-count scaling: more defenders → more
+    // creeps, with a bonus +1 for smaller teams so 2-player
+    // matches still feel busy. Formula: playerCount + (pc < 4 ? 1 : 0).
+    // Values: 2p = 3×, 3p = 4×, 4p = 4×. Non-coop modes get 1×.
+    const circleMgr = this.registry.get('circle') as CircleManager | null;
+    if (circleMgr) {
+      const pc = circleMgr.playerCount;
+      const mult = pc + (pc < 4 ? 1 : 0);
+      this.spawner.setCountMultiplier(mult);
+    }
     this.inputMgr = new InputManager(this, this.eventBus);
     if (this.layout.gridRows !== GRID_ROWS) {
       this.inputMgr.setGridRows(this.layout.gridRows);
@@ -662,7 +676,7 @@ export class GameScene extends Phaser.Scene {
       : this.circle
         ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
         : new StandardLeakHandler(this.eventLog, this.statsTracker, () => this.towerMgr.towers);
-    const deathHandler = this.circle
+    const circleDeathHandler = this.circle
       ? new CircleDeathHandler(
           this.economy, this.statsTracker, this.eventBus,
           this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex,
@@ -672,7 +686,13 @@ export class GameScene extends Phaser.Scene {
           // the reference is valid once bots are registered.
           (botIndex, gold) => this.circleBotAI?.creditKill(botIndex, gold),
         )
-      : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
+      : null;
+    // Stash the circle death handler on the scene so the roster can
+    // read per-player kill counts without threading a supplier down
+    // through the constructor chain.
+    this.circleDeathHandler = circleDeathHandler;
+    const deathHandler = circleDeathHandler
+      ?? new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
           // Hero Defense: 10x creeps so reduce kill gold to 30%
           this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
@@ -1007,14 +1027,16 @@ export class GameScene extends Phaser.Scene {
         }
       };
 
-      // Create player roster UI. Suppliers are optional — they're
-      // only used by bot rows. For an all-human match the roster
-      // renders the plain label without bot-gold/tower-count/kills.
+      // Create player roster UI. Suppliers deliver per-tick
+      // snapshots of bot gold, per-player kill counts (covers
+      // human + remote humans + bots in one map via the death
+      // handler), and tower ownership. Any supplier may return
+      // an empty map without breaking rendering.
       const zoneColors = mapDef.zoneColors ?? [];
       this.circleRoster = new CirclePlayerRoster(
         this, this.circle, zoneColors,
         () => this.circleBotAI?.getBotGold() ?? new Map(),
-        () => this.circleBotAI?.getBotKills() ?? new Map(),
+        () => this.circleDeathHandler?.getKillsByPlayer() ?? new Map(),
         () => this.towerOwners,
       );
 

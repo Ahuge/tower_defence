@@ -44,6 +44,14 @@ export class SpawnManager {
    * entry→exit maps.
    */
   private spawners: SpawnerDef[] | null = null;
+  /**
+   * Wave-count multiplier for co-op modes. In Circle Co-op we scale
+   * creep counts with team size so defence stays challenging — a
+   * 4-player match faces 4× the creeps a solo match would. Set
+   * once at match start via `setCountMultiplier`; 1 by default so
+   * non-co-op modes are unaffected.
+   */
+  private countMultiplier: number = 1;
 
   constructor(scene: Phaser.Scene, events: EventBus, difficulty: DifficultyHints, seed: number = 0) {
     this.scene = scene;
@@ -58,6 +66,13 @@ export class SpawnManager {
    *  (null for non-waypoint maps). */
   setSpawners(spawners: SpawnerDef[] | null): void {
     this.spawners = spawners;
+  }
+
+  /** Global creep-count multiplier applied on top of per-creep
+   *  difficulty scaling. Used by Circle Co-op to size waves against
+   *  team size. 1 = no change. */
+  setCountMultiplier(mult: number): void {
+    this.countMultiplier = Math.max(1, mult);
   }
 
   setFlyingPath(entry: { col: number; row: number }, exit: { col: number; row: number }): void {
@@ -76,7 +91,9 @@ export class SpawnManager {
 
       const resolved = ct.applyDifficulty(this.difficulty);
       const baseCount = group.count * (ct.count || 1);
-      const actualCount = Math.round(baseCount * resolved.countMult);
+      // Apply both per-creep difficulty scaling AND the global
+      // coop team-size multiplier.
+      const actualCount = Math.round(baseCount * resolved.countMult * this.countMultiplier);
 
       for (let i = 0; i < actualCount; i++) {
         const groupBurst = ct.spawnBehavior === 'group' ? 4 : 1;

@@ -22,7 +22,10 @@ export class CirclePlayerRoster {
    *  bot AI or the owner map. Both are optional so non-bot matches
    *  (all humans) render the plain label. */
   private botGoldSupplier?: () => Map<number, number>;
-  private botKillsSupplier?: () => Map<number, number>;
+  /** Per-player kill counts — keyed by playerIndex. Covers local
+   *  human, remote humans, and bots in one map (see
+   *  CircleDeathHandler.getKillsByPlayer). */
+  private killsSupplier?: () => Map<number, number>;
   private towerOwnersSupplier?: () => Map<string, number>;
 
   private readonly panelW = 230;
@@ -32,14 +35,14 @@ export class CirclePlayerRoster {
     circle: CircleManager,
     zoneColors: number[],
     botGoldSupplier?: () => Map<number, number>,
-    botKillsSupplier?: () => Map<number, number>,
+    killsSupplier?: () => Map<number, number>,
     towerOwnersSupplier?: () => Map<string, number>,
   ) {
     this.scene = scene;
     this.circle = circle;
     this.zoneColors = zoneColors;
     this.botGoldSupplier = botGoldSupplier;
-    this.botKillsSupplier = botKillsSupplier;
+    this.killsSupplier = killsSupplier;
     this.towerOwnersSupplier = towerOwnersSupplier;
 
     // On desktop the camera controller pins +/-/⊙ zoom buttons
@@ -101,7 +104,7 @@ export class CirclePlayerRoster {
     // Snapshot once per frame — avoids N calls to the supplier for
     // an N-player roster.
     const botGold = this.botGoldSupplier?.();
-    const botKills = this.botKillsSupplier?.();
+    const kills = this.killsSupplier?.();
     const owners = this.towerOwnersSupplier?.();
 
     for (let i = 0; i < this.circle.playerCount; i++) {
@@ -109,19 +112,23 @@ export class CirclePlayerRoster {
       const isBot = this.circle.isBotSlot(i);
       const faction = this.circle.playerFactions.get(i) ?? '';
       const readyStr = this.circle.playersReady.has(i) ? ' [RDY]' : '';
+      const playerKills = kills?.get(i) ?? 0;
+      const playerTowers = owners ? countOwned(owners, i) : 0;
 
       let label: string;
       if (isMe) {
-        label = `P${i} (you) ${faction}${this.circle.localReady ? ' [RDY]' : ''}`;
+        // Local human: show the same T / K columns bots get so
+        // the player can compare their output against allies.
+        const readyFlag = this.circle.localReady ? ' [RDY]' : '';
+        label = `P${i} (you) ${faction}${readyFlag} ${playerTowers}T ${playerKills}K`;
       } else if (isBot) {
-        // Bot row: show gold + tower count + kills so humans can
-        // tell at a glance whether their CPU allies are productive.
         const gold = botGold?.get(i) ?? 0;
-        const towers = owners ? countOwned(owners, i) : 0;
-        const kills = botKills?.get(i) ?? 0;
-        label = `P${i} [CPU] ${faction} ${gold}g ${towers}T ${kills}K`;
+        label = `P${i} [CPU] ${faction} ${gold}g ${playerTowers}T ${playerKills}K`;
       } else {
-        label = `P${i} ${faction}${readyStr}`;
+        // Remote human: gold isn't known locally (they have their
+        // own EconomyManager on their client); show what we do
+        // know — faction, ready state, tower + kill counts.
+        label = `P${i} ${faction}${readyStr} ${playerTowers}T ${playerKills}K`;
       }
       this.statusTexts[i]?.setText(label);
     }
