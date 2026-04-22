@@ -20,6 +20,7 @@ import { CircleManager } from '../../systems/multiplayer/CircleManager';
 import { SignalingClient } from '../../systems/multiplayer/SignalingClient';
 import { GameMessage } from '../../systems/multiplayer/MessageProtocol';
 import { MapId, MapDefinition, MAPS } from '../../data/Maps';
+import { getCircleMapsForPlayerCount } from '../../data/CircleMaps';
 import { MapStorage, MapJSON } from '../../systems/MapStorage';
 import { DifficultyLevel } from '../../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../../data/Factions';
@@ -433,6 +434,9 @@ export function CircleLobbyScreen() {
         {phase === 'setup' && (
           <SetupPhaseCircle
             isHost={isHost}
+            playerCount={circleRef.current?.playerCount ?? 2}
+            selectedMap={selectedMap}
+            setSelectedMap={(m) => { setSelectedMap(m); selectedMapRef.current = m; }}
             selectedDifficulty={selectedDifficulty}
             setSelectedDifficulty={setSelectedDifficulty}
             myFaction={myFaction}
@@ -503,18 +507,40 @@ function JoinPhaseCircle({ useManual, codeInput, setCodeInput, onConnect, onPast
   );
 }
 
-function SetupPhaseCircle({ isHost, selectedDifficulty, setSelectedDifficulty, myFaction, onPickFaction }: {
+function SetupPhaseCircle({ isHost, playerCount, selectedMap, setSelectedMap, selectedDifficulty, setSelectedDifficulty, myFaction, onPickFaction }: {
   isHost: boolean;
+  playerCount: number;
+  selectedMap: MapId; setSelectedMap: (m: MapId) => void;
   selectedDifficulty: DifficultyLevel; setSelectedDifficulty: (d: DifficultyLevel) => void;
   myFaction: FactionId | null;
   onPickFaction: (fid: FactionId) => void;
 }) {
   const diffs: DifficultyLevel[] = useMemo(() => ['easy', 'normal', 'hard', 'insane'], []);
+  // All circle maps that match the connected player count. Computed on
+  // every render (cheap — just a filter over 4 maps); the host can swap
+  // between them up until they pick a faction (the final circle_game_start
+  // message carries whichever map is selected at launch).
+  const availableMaps = useMemo(() => getCircleMapsForPlayerCount(playerCount), [playerCount]);
   return (
     <div>
+      {isHost && availableMaps.length > 1 && (
+        <>
+          <div class="ui-section-title" style={{ marginTop: 8 }}>Map</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+            {availableMaps.map(m => (
+              <button key={m.id}
+                class={`btn ${selectedMap === m.id ? 'btn-gold' : ''}`}
+                onClick={() => setSelectedMap(m.id as MapId)}
+                title={m.description}>
+                {m.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {isHost && (
         <>
-          <div class="ui-section-title" style={{ marginTop: 8 }}>Difficulty</div>
+          <div class="ui-section-title" style={{ marginTop: 16 }}>Difficulty</div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             {diffs.map(d => (
               <button key={d}
