@@ -17,8 +17,8 @@
 import { TowerType, getTowerType } from '../../data/TowerTypes';
 import { FactionId, FACTIONS } from '../../data/Factions';
 import { Grid } from '../Grid';
-import { EconomyManager } from '../EconomyManager';
 import { PathPoint } from '../Pathfinding';
+import { STARTING_GOLD } from '../../config';
 import { BotBrain, BotContext, Cell, createBrain } from './BotBrain';
 // Side-effect imports: register available brains in BRAIN_REGISTRY.
 // New brains need to be imported here (or elsewhere pulled in at
@@ -42,28 +42,31 @@ interface BotState {
   cheapestCost: number;
   /** Time remaining until the next decision attempt, in ms. */
   cooldown: number;
+  /** Private gold pool. Bots don't share the human's economy —
+   *  they start at `STARTING_GOLD`, earn `KILL_GOLD` on each kill
+   *  attributed to their towers (via `creditKill`), and spend
+   *  against this pool on placements. The human's gold is
+   *  completely independent. */
+  gold: number;
 }
 
 /** Callback the driver invokes to actually place a tower. The scene
  *  owns the placement/broadcast logic; the bot just announces
- *  intent. Returns true if the placement succeeded (grid + economy
- *  accepted it) so the driver can remove the cell from candidates. */
+ *  intent. The driver has already deducted the tower cost from the
+ *  bot's private gold pool before this fires, so the scene must
+ *  pass `free=true` to TowerManager.placeTower — the shared-pool
+ *  economy is off-limits. Returns true if the placement succeeded
+ *  (grid accepted it) so the driver can prune the cell; false
+ *  means the tower was rejected and the driver refunds the gold. */
 export type BotPlaceCallback = (playerIndex: number, col: number, row: number, towerType: TowerType) => boolean;
 
 /** Fresh-decide cadence, milliseconds. Kept at 4s per the current
  *  tuning — longer feels passive, shorter feels twitchy. */
 const BASE_COOLDOWN_MS = 4000;
 
-/** Gold reserved per human player at all times. A bot only spends
- *  if `sharedGold > RESERVE_PER_HUMAN × humanCount + cheapestCost`.
- *  Tuned so each human always has enough for a mid-tier tower. */
-const RESERVE_PER_HUMAN = 75;
-
 export class CircleBotAI {
   private bots: BotState[] = [];
-  private economy: EconomyManager;
   private grid: Grid;
-  private humanCount: number;
   private placeCallback: BotPlaceCallback;
   /** Suppliers for state that mutates between bot ticks — kept as
    *  closures so the driver doesn't hoard a whole-GameScene reference
@@ -74,21 +77,38 @@ export class CircleBotAI {
   private cellsDirty: boolean = true;
 
   constructor(
-    economy: EconomyManager,
     grid: Grid,
-    humanCount: number,
     placeCallback: BotPlaceCallback,
     waveSupplier: () => number,
     livesSupplier: () => number,
     allPathsSupplier: () => (PathPoint[] | null)[],
   ) {
-    this.economy = economy;
     this.grid = grid;
-    this.humanCount = humanCount;
     this.placeCallback = placeCallback;
     this.getWave = waveSupplier;
     this.getLives = livesSupplier;
     this.getAllPaths = allPathsSupplier;
+  }
+
+  /**
+   * Credit a bot for a creep kill. Called from
+   * `CircleDeathHandler` when the killing tower belongs to a bot
+   * slot. No-op if the player index isn't a registered bot — kills
+   * by untracked towers (human or stale ownership records) keep
+   * their existing routing to the shared economy.
+   */
+  creditKill(playerIndex: number, gold: number): void {
+    const bot = this.bots.find(b => b.playerIndex === playerIndex);
+    if (!bot) return;
+    bot.gold += gold;
+  }
+
+  /** Snapshot of each bot's private gold. Useful for UI (future
+   *  "show bot gold in roster") and for event-log diagnostics. */
+  getBotGold(): Map<number, number> {
+    const m = new Map<number, number>();
+    for (const b of this.bots) m.set(b.playerIndex, b.gold);
+    return m;
   }
 
   /** Register a bot slot. `brainId` defaults to 'dumb'; pass a
@@ -117,6 +137,9 @@ export class CircleBotAI {
       cheapestCost: pool[0].cost,
       // Stagger initial cooldowns so bots don't all fire on frame 1.
       cooldown: Math.random() * BASE_COOLDOWN_MS,
+      // Every bot starts with the same pool as a human player so
+      // they can ramp on wave 1 without help.
+      gold: STARTING_GOLD,
     };
     this.bots.push(state);
 
@@ -168,19 +191,13 @@ export class CircleBotAI {
         continue;
       }
 
-      const reserve = RESERVE_PER_HUMAN * this.humanCount;
-      // Fair-share budget: each bot may spend up to 1/N of the
-      // spendable gold per decision, where N is the number of
-      // bots. Prevents the fastest-cooldown bot from greedily
-      // burning the whole shared pool on one expensive tower
-      // and leaving the other bots below the cheapest-cost gate
-      // for the rest of the cooldown interval. Rounded down so
-      // we never over-commit.
-      const spendable = Math.max(0, this.economy.gold - reserve);
-      const budget = Math.floor(spendable / Math.max(1, this.bots.length));
+      // Private pool: bots don't share the human's economy.
+      // `b.gold` grows from kill credits routed through
+      // `creditKill()` and shrinks on successful placements.
+      const budget = b.gold;
       if (budget < b.cheapestCost) {
         // eslint-disable-next-line no-console
-        console.log(`[bot ${b.playerIndex}] skip: budget=${budget} < cheapest=${b.cheapestCost} (gold=${this.economy.gold}, reserve=${reserve}, bots=${this.bots.length})`);
+        console.log(`[bot ${b.playerIndex}] skip: budget=${budget} < cheapest=${b.cheapestCost}`);
         continue;
       }
 
@@ -211,12 +228,19 @@ export class CircleBotAI {
       if (!cellOK) continue;
       if (!this.grid.canPlaceTower(decision.col, decision.row)) continue;
 
+      // Debit first, then try to place. If the grid rejects the
+      // placement (path-blocking detected by TowerManager), refund
+      // the bot's gold so it can pick a different cell next tick.
+      const cost = decision.type.cost;
+      b.gold -= cost;
       const ok = this.placeCallback(b.playerIndex, decision.col, decision.row, decision.type);
       // eslint-disable-next-line no-console
-      console.log(`[bot ${b.playerIndex}] place ${decision.type.id} at (${decision.col},${decision.row}) → ${ok ? 'OK' : 'REJECTED'} (gold after=${this.economy.gold})`);
+      console.log(`[bot ${b.playerIndex}] place ${decision.type.id} at (${decision.col},${decision.row}) → ${ok ? 'OK' : 'REJECTED'} (bot gold after=${ok ? b.gold : b.gold + cost})`);
       if (ok) {
         b.candidateCells = b.candidateCells.filter(c => !(c.col === decision.col && c.row === decision.row));
         this.cellsDirty = true;
+      } else {
+        b.gold += cost; // refund — placement was rejected
       }
     }
   }

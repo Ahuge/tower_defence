@@ -659,7 +659,15 @@ export class GameScene extends Phaser.Scene {
         ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
         : new StandardLeakHandler(this.eventLog, this.statsTracker, () => this.towerMgr.towers);
     const deathHandler = this.circle
-      ? new CircleDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex)
+      ? new CircleDeathHandler(
+          this.economy, this.statsTracker, this.eventBus,
+          this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex,
+          // Route kills by bot-owned towers to their private gold
+          // pools. The bot AI is created later in setup (needs the
+          // grid); the arrow form defers resolution to call-time so
+          // the reference is valid once bots are registered.
+          (botIndex, gold) => this.circleBotAI?.creditKill(botIndex, gold),
+        )
       : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
           // Hero Defense: 10x creeps so reduce kill gold to 30%
           this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1));
@@ -926,16 +934,17 @@ export class GameScene extends Phaser.Scene {
       // entirely if `botSlots` is empty so non-bot matches pay no
       // update-loop cost.
       if (this.circle.isHost && this.circle.botSlots.size > 0) {
-        const humanCount = this.circle.playerCount - this.circle.botSlots.size;
         this.circleBotAI = new CircleBotAI(
-          this.economy,
           this.grid,
-          humanCount,
           (botIndex, col, row, towerType) => {
+            // Bots have private gold — the driver already debited
+            // the cost before calling us. Place with `free=true`
+            // so TowerManager doesn't also deduct from the shared
+            // human economy.
             const placeResult = this.towerMgr.placeTower(col, row, towerType, this.allPaths, () => {
               this.recalculatePaths();
               return this.allPaths;
-            }, false);
+            }, true);
             if (!placeResult) return false;
             this.towerOwners.set(`${col},${row}`, botIndex);
             this.circle!.broadcast({
@@ -945,10 +954,6 @@ export class GameScene extends Phaser.Scene {
               ownerIndex: botIndex,
             });
             if (placeResult.pathsChanged) {
-              // Reroute host-side creeps around the bot's tower —
-              // without this, creeps that had routed through the
-              // now-blocked cell would walk into it, potentially
-              // never reaching the exit and never leaking lives.
               this.rerouteCreepsAroundTower(col, row);
               this.drawPath();
             }
@@ -962,10 +967,6 @@ export class GameScene extends Phaser.Scene {
         for (const botIndex of this.circle.botSlots) {
           const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
           const zone = circleMapDef.zones?.[botIndex];
-          // 'balanced' is the default brain — role-aware, path-
-          // scoring, tries to maze. Pass 'dumb' here to downgrade
-          // a bot (useful for testing). Extending the lobby to let
-          // the host pick a brain per bot is a one-line change.
           if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, 'balanced');
         }
       }
