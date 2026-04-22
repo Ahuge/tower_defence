@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { getCanvasWidth } from '../config';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
+import { ResponsiveManager } from '../systems/ResponsiveManager';
 
 /**
  * Player roster panel for Circle Co-op.
@@ -38,7 +39,13 @@ export class CirclePlayerRoster {
     this.botGoldSupplier = botGoldSupplier;
     this.towerOwnersSupplier = towerOwnersSupplier;
 
-    const x = getCanvasWidth() - this.panelW - 8;
+    // On desktop the camera controller pins +/-/⊙ zoom buttons
+    // to the top-right (x ≈ canvasWidth - 50, ~40px wide). Shift
+    // the roster panel left by that band + a small gap so the
+    // two never overlap. Phone uses pinch-to-zoom (no buttons)
+    // so no offset needed there.
+    const zoomBtnReservation = ResponsiveManager.isPhone() ? 0 : 55;
+    const x = getCanvasWidth() - this.panelW - 8 - zoomBtnReservation;
     const y = 6;
 
     this.container = scene.add.container(x, y).setDepth(29);
