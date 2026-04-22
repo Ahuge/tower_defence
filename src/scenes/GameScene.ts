@@ -944,7 +944,14 @@ export class GameScene extends Phaser.Scene {
               col, row,
               ownerIndex: botIndex,
             });
-            if (placeResult.pathsChanged) this.drawPath();
+            if (placeResult.pathsChanged) {
+              // Reroute host-side creeps around the bot's tower —
+              // without this, creeps that had routed through the
+              // now-blocked cell would walk into it, potentially
+              // never reaching the exit and never leaking lives.
+              this.rerouteCreepsAroundTower(col, row);
+              this.drawPath();
+            }
             this.circleBotAI?.invalidate();
             return true;
           },
@@ -1523,37 +1530,65 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Re-route creeps whose remaining path actually passes through
-   * the newly-placed tower cell. Creeps whose path is still clear
-   * are left alone so they don't teleport-backward — which is what
-   * happened in Circle Co-op with multiple spawners, where the
-   * nearest exit (by A*) could be *behind* a mid-circuit creep.
+   * the newly-placed tower cell. Strategy: splice around the
+   * blocked cell by routing from the creep's current position to
+   * the nearest reachable downstream cell of its original path,
+   * then concatenate the original path from that point onward.
    *
-   * For re-routed creeps: find a path from the creep's current
-   * position to its ORIGINAL destination (the final cell of its
-   * current path). This preserves the traversal goal even if it
-   * means skipping an intermediate waypoint the creep hasn't
-   * reached yet — an acceptable tradeoff to avoid U-turns.
+   * Why splice instead of "route to destination":
+   *   - Circle Co-op maps have entry == exit (creeps loop). If we
+   *     rerouted to creep.path[last], a creep mid-circuit would
+   *     head back the way it came (shortest route to its own
+   *     spawn point), U-turning on the player.
+   *   - Splicing preserves direction AND the remaining waypoints,
+   *     so creeps continue their lap around the map correctly.
+   *
+   * If no downstream rejoin point is reachable (very rare — would
+   * require the tower placement to have cut off every subsequent
+   * path cell), we fall back to "route to destination" which at
+   * least keeps the creep alive and forward-bound.
    */
   private rerouteCreepsAroundTower(towerCol: number, towerRow: number): void {
     for (const creep of this.creepMgr.creeps) {
       if (!creep.alive || creep.reached) continue;
-      // Only re-route creeps the tower actually affects. Skipping
-      // the rest keeps them on their pre-computed waypoint path.
       const remaining = creep.path.slice(creep.pathIndex);
-      const hitByTower = remaining.some(p => p.col === towerCol && p.row === towerRow);
-      if (!hitByTower) continue;
+      const hitIdx = remaining.findIndex(p => p.col === towerCol && p.row === towerRow);
+      if (hitIdx === -1) continue; // creep's remaining path doesn't hit — leave it alone
 
       const creepCol = pixelToCol(creep.x);
       const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+
+      // Walk forward from the cell AFTER the tower, looking for the
+      // first reachable rejoin point. Usually that's one cell past
+      // the tower; in corridor maps it can take a few hops.
+      const downstream = remaining.slice(hitIdx + 1);
+      let spliced: PathPoint[] | null = null;
+      for (let i = 0; i < downstream.length; i++) {
+        const rejoin = downstream[i];
+        const detour = findPath(this.grid, { col: creepCol, row: creepRow }, rejoin);
+        if (detour) {
+          // detour ends at `rejoin`; downstream.slice(i + 1) is the
+          // remaining original path AFTER that rejoin cell.
+          spliced = detour.concat(downstream.slice(i + 1));
+          break;
+        }
+      }
+
+      if (spliced) {
+        creep.path = spliced;
+        creep.pathIndex = 1;
+        continue;
+      }
+
+      // Fallback: no downstream cell reachable. Head for the original
+      // destination directly. towerMgr already ensures SOMETHING is
+      // reachable from entry, so this should almost always work.
       const dest = creep.path[creep.path.length - 1];
       const newPath = findPath(this.grid, { col: creepCol, row: creepRow }, dest);
       if (newPath) {
         creep.path = newPath;
         creep.pathIndex = 1;
       }
-      // If no path exists — which towerMgr already guards against —
-      // leave the creep on its stale path; it'll naturally
-      // dissolve at wave end.
     }
   }
 
