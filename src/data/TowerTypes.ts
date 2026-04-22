@@ -1,6 +1,7 @@
 import { DamageType } from './CreepTypes';
 import { FactionId } from './Factions';
 import { Trait } from '../systems/traits/Trait';
+import type { TowerRole } from './TowerRoles';
 
 /** Targeting priority for towers */
 export type TargetingMode = 'first' | 'closest' | 'strongest' | 'weakest' | 'fastest';
@@ -25,6 +26,11 @@ export interface TowerType {
   ultimate?: boolean;
   /** Targeting priority. Default: 'first' (closest to exit) */
   targeting?: TargetingMode;
+  /** Optional explicit role for the Balanced bot brain and other
+   *  AI consumers. When unset, `getTowerRole()` in TowerRoles.ts
+   *  derives it from traits + stats. Set this only to override the
+   *  derivation for a tower whose role is non-obvious. */
+  role?: TowerRole;
 }
 
 export interface TowerUpgrade {

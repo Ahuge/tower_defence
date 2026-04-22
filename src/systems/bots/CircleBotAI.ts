@@ -19,8 +19,11 @@ import { FactionId, FACTIONS } from '../../data/Factions';
 import { Grid } from '../Grid';
 import { EconomyManager } from '../EconomyManager';
 import { BotBrain, BotContext, Cell, createBrain } from './BotBrain';
-// Side-effect import: registers the default brain in BRAIN_REGISTRY.
+// Side-effect imports: register available brains in BRAIN_REGISTRY.
+// New brains need to be imported here (or elsewhere pulled in at
+// module-load time) to surface in lookups.
 import './brains/DumbBrain';
+import './brains/BalancedBrain';
 
 /** One bot slot's per-frame state. */
 interface BotState {
@@ -124,6 +127,7 @@ export class CircleBotAI {
       budget: 0,
       wave: 0,
       lives: 0,
+      grid: this.grid,
     });
   }
 
@@ -170,6 +174,7 @@ export class CircleBotAI {
         budget,
         wave,
         lives,
+        grid: this.grid,
       };
 
       const decision = b.brain.decide(ctx);

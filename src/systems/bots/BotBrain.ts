@@ -13,6 +13,7 @@
  */
 import { TowerType } from '../../data/TowerTypes';
 import { FactionId } from '../../data/Factions';
+import { Grid } from '../Grid';
 
 /** `{col, row}` tuple. Local copy since `Pos` isn't exported from
  *  `Maps.ts` and we want to avoid circular dependencies from the
@@ -43,6 +44,11 @@ export interface BotContext {
   /** Shared life pool at this moment. Brains can use this to shift
    *  into "panic mode" when the team is at low lives. */
   lives: number;
+  /** Live grid reference — brains that need pathfinding (maze
+   *  planning, DPS-coverage scoring) use this. Dumb brains can
+   *  ignore it. Cell state mutates frame-to-frame; brains should
+   *  treat it as read-mostly and never persist cell references. */
+  grid: Grid;
 }
 
 /** A brain's response. Either place a specific tower at a specific

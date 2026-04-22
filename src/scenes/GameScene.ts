@@ -954,9 +954,11 @@ export class GameScene extends Phaser.Scene {
         for (const botIndex of this.circle.botSlots) {
           const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
           const zone = circleMapDef.zones?.[botIndex];
-          // brainId defaults to 'dumb'. Extending the lobby to let
-          // the host pick a brain per bot is a one-line change here.
-          if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone);
+          // 'balanced' is the default brain — role-aware, path-
+          // scoring, tries to maze. Pass 'dumb' here to downgrade
+          // a bot (useful for testing). Extending the lobby to let
+          // the host pick a brain per bot is a one-line change.
+          if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, 'balanced');
         }
       }
 
