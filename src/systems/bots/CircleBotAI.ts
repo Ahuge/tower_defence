@@ -162,14 +162,27 @@ export class CircleBotAI {
       if (b.cooldown > 0) continue;
       b.cooldown += BASE_COOLDOWN_MS;
 
-      if (b.candidateCells.length === 0) continue;
+      if (b.candidateCells.length === 0) {
+        // eslint-disable-next-line no-console
+        console.log(`[bot ${b.playerIndex}] skip: no candidate cells`);
+        continue;
+      }
 
-      // Budget gate. If we can't afford even the cheapest tower
-      // without breaking the human reserve, skip — no point calling
-      // into the brain only to have it return skip.
       const reserve = RESERVE_PER_HUMAN * this.humanCount;
-      const budget = this.economy.gold - reserve;
-      if (budget < b.cheapestCost) continue;
+      // Fair-share budget: each bot may spend up to 1/N of the
+      // spendable gold per decision, where N is the number of
+      // bots. Prevents the fastest-cooldown bot from greedily
+      // burning the whole shared pool on one expensive tower
+      // and leaving the other bots below the cheapest-cost gate
+      // for the rest of the cooldown interval. Rounded down so
+      // we never over-commit.
+      const spendable = Math.max(0, this.economy.gold - reserve);
+      const budget = Math.floor(spendable / Math.max(1, this.bots.length));
+      if (budget < b.cheapestCost) {
+        // eslint-disable-next-line no-console
+        console.log(`[bot ${b.playerIndex}] skip: budget=${budget} < cheapest=${b.cheapestCost} (gold=${this.economy.gold}, reserve=${reserve}, bots=${this.bots.length})`);
+        continue;
+      }
 
       const ctx: BotContext = {
         playerIndex: b.playerIndex,
@@ -184,7 +197,11 @@ export class CircleBotAI {
       };
 
       const decision = b.brain.decide(ctx);
-      if (decision.kind !== 'place') continue;
+      if (decision.kind !== 'place') {
+        // eslint-disable-next-line no-console
+        console.log(`[bot ${b.playerIndex}] skip: brain.decide returned skip (budget=${budget}, cells=${b.candidateCells.length})`);
+        continue;
+      }
 
       // Belt-and-braces: defend against a misbehaving brain that
       // picks a cell outside the candidate set or a too-expensive
@@ -194,10 +211,10 @@ export class CircleBotAI {
       if (!cellOK) continue;
       if (!this.grid.canPlaceTower(decision.col, decision.row)) continue;
 
-      if (this.placeCallback(b.playerIndex, decision.col, decision.row, decision.type)) {
-        // Remove the placed cell from candidates so nobody picks it
-        // again, and mark the set dirty for neighbouring-path
-        // invalidation on the next tick.
+      const ok = this.placeCallback(b.playerIndex, decision.col, decision.row, decision.type);
+      // eslint-disable-next-line no-console
+      console.log(`[bot ${b.playerIndex}] place ${decision.type.id} at (${decision.col},${decision.row}) → ${ok ? 'OK' : 'REJECTED'} (gold after=${this.economy.gold})`);
+      if (ok) {
         b.candidateCells = b.candidateCells.filter(c => !(c.col === decision.col && c.row === decision.row));
         this.cellsDirty = true;
       }
