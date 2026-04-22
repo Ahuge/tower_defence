@@ -358,9 +358,23 @@ export class GameScene extends Phaser.Scene {
         this.toggleAutoPlay();
       },
       onStartWave: () => {
-        if (this.betweenWaves && this.currentWave < this.waves.length) {
-          this.startWave();
+        // Diagnostic: the Next Wave button silently doing nothing is
+        // a common-enough bug report (usually caused by a creep that
+        // never reaches the exit, keeping the wave "active") that the
+        // click path is worth instrumenting. Logs the specific reason
+        // the gate failed so we can tell at a glance whether the
+        // problem is "stuck creep" vs "bad wave index" vs other.
+        if (!this.betweenWaves) {
+          // eslint-disable-next-line no-console
+          console.warn(`[wave] Next Wave ignored: wave ${this.currentWave} still active (creeps=${this.creeps.length})`);
+          return;
         }
+        if (this.currentWave >= this.waves.length) {
+          // eslint-disable-next-line no-console
+          console.warn('[wave] Next Wave ignored: all waves completed');
+          return;
+        }
+        this.startWave();
       },
       onCycleSpeed: () => {
         this.cycleSpeed();
@@ -1565,6 +1579,36 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Debug: ms accumulated since we last printed the stuck-creep
+   *  roster (throttle so the console doesn't flood). */
+  private _stuckCreepLogElapsed: number = 0;
+
+  /**
+   * If the wave has been active too long, print each alive creep's
+   * position + pathIndex + path length so the dev can see which
+   * creep (or creeps) is stuck. Pairs with WaveController's
+   * "wave stuck" line — that one tells you the category of
+   * blockage, this one identifies the specific creep.
+   */
+  private diagLogStuckCreeps(delta: number): void {
+    if (!this.waveActive) {
+      this._stuckCreepLogElapsed = 0;
+      return;
+    }
+    this._stuckCreepLogElapsed += delta;
+    // Match the WaveController gate so logs from both systems line up.
+    if (this._stuckCreepLogElapsed < 5000) return;
+    if (this._stuckCreepLogElapsed % 3000 > delta) return; // roughly every 3s
+    if (this.creeps.length === 0) return;
+    const rows = this.creeps.slice(0, 8).map((c) => {
+      const col = pixelToCol(c.x);
+      const row = Math.round((c.y - TILE_SIZE / 2) / TILE_SIZE);
+      return `${c.creepTypeId}@(${col},${row}) idx=${c.pathIndex}/${c.path.length} reached=${c.reached} alive=${c.alive}`;
+    });
+    // eslint-disable-next-line no-console
+    console.warn('[wave] stuck creeps:\n  ' + rows.join('\n  '));
+  }
+
   /**
    * Re-route creeps whose remaining path passes through the newly-
    * placed tower cell. Delegates to Creep.rerouteViaWaypoints which
@@ -1649,7 +1693,13 @@ export class GameScene extends Phaser.Scene {
 
     // Spawning + wave clear detection
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
-    this.waveMgr.checkWaveComplete(this.creeps.length);
+    this.waveMgr.checkWaveComplete(this.creeps.length, delta);
+
+    // When a wave has been active well past its expected duration,
+    // also log each alive creep's state periodically. This pairs
+    // with the "wave N stuck" line from WaveController and shows
+    // exactly which creep(s) are the problem.
+    this.diagLogStuckCreeps(delta);
 
     // While the continue-ad modal is up the game visibly freezes —
     // early-return here prevents the defeat branch from re-firing
