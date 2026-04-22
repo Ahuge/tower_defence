@@ -26,7 +26,7 @@
 import { BotBrain, BotContext, BotDecision, Cell, registerBrain } from '../BotBrain';
 import { TowerType } from '../../../data/TowerTypes';
 import { TowerRole, groupByRole } from '../../../data/TowerRoles';
-import { findPath, PathPoint } from '../../Pathfinding';
+import { PathPoint } from '../../Pathfinding';
 import { bestMazeCell, pathCellsWithinRange } from '../MazePlanner';
 
 type Phase = 'building-maze' | 'filling-dps' | 'panic';
@@ -89,21 +89,19 @@ export class BalancedBrain implements BotBrain {
 
   // ===== Phase handlers =====
 
-  /** Place a wall in the cell that most extends the creep path. */
+  /** Place a wall in the cell that most extends the creep path.
+   *  Scores across all spawners' paths so bots on circle maps
+   *  correctly credit walls that only slow their own spawner. */
   private decideMaze(ctx: BotContext): BotDecision {
     const walls = this.affordable(this.grouped.wall, ctx.budget);
     if (walls.length === 0) return { kind: 'skip' };
 
-    const best = bestMazeCell(ctx.grid, ctx.candidateCells);
+    const best = bestMazeCell(ctx.grid, ctx.candidateCells, 30, ctx.allPaths);
     if (!best || best.gain <= MAZE_SATURATION_THRESHOLD) {
-      // Zone is saturated for mazing — switch phase permanently for
-      // this brain instance so we don't keep re-scoring the grid.
       this.wallsPlaced = MAX_WALL_PLACEMENTS;
       return { kind: 'skip' };
     }
 
-    // Cheapest wall wins — we want to maze aggressively and save
-    // the expensive budget for DPS later.
     const type = walls[0];
     this.wallsPlaced++;
     return { kind: 'place', col: best.col, row: best.row, type };
@@ -118,15 +116,12 @@ export class BalancedBrain implements BotBrain {
     const pool = [...splash, ...single];
     if (pool.length === 0) return { kind: 'skip' };
 
-    const path = findPath(ctx.grid);
-    if (!path || path.length === 0) return { kind: 'skip' };
+    const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
+    if (paths.length === 0) return { kind: 'skip' };
 
-    // Prefer the most expensive tower we can afford — higher damage
-    // density in the kill zone. Caller already reserved humans'
-    // fair share, so spending up-to-budget is correct.
     const pickedType = [...pool].sort((a, b) => b.cost - a.cost)[0];
 
-    const scored = this.scoreDpsCells(ctx.candidateCells, path, pickedType.range);
+    const scored = this.scoreDpsCells(ctx.candidateCells, paths, pickedType.range);
     if (scored.length === 0) return { kind: 'skip' };
     const best = scored[0];
     if (best.coverage === 0) return { kind: 'skip' };
@@ -140,21 +135,26 @@ export class BalancedBrain implements BotBrain {
   private decidePanic(ctx: BotContext): BotDecision {
     const slows = this.affordable(this.grouped.slow, ctx.budget);
     if (slows.length === 0) return { kind: 'skip' };
-    const path = findPath(ctx.grid);
-    if (!path) return { kind: 'skip' };
-    const type = slows[0]; // cheapest slow — get it down ASAP
-    const scored = this.scoreDpsCells(ctx.candidateCells, path, type.range);
+    const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
+    if (paths.length === 0) return { kind: 'skip' };
+    const type = slows[0];
+    const scored = this.scoreDpsCells(ctx.candidateCells, paths, type.range);
     if (scored.length === 0 || scored[0].coverage === 0) return { kind: 'skip' };
     return { kind: 'place', col: scored[0].col, row: scored[0].row, type };
   }
 
   // ===== Scoring helpers =====
 
-  private scoreDpsCells(cells: Cell[], path: PathPoint[], range: number): { col: number; row: number; coverage: number }[] {
-    const scored = cells.map(c => ({
-      col: c.col, row: c.row,
-      coverage: pathCellsWithinRange(c, path, range),
-    }));
+  /** DPS coverage = total number of path cells within range,
+   *  summed across all spawner paths. A tower that covers both
+   *  player 1's and player 2's paths is more valuable than one
+   *  that only covers a single path. */
+  private scoreDpsCells(cells: Cell[], paths: PathPoint[][], range: number): { col: number; row: number; coverage: number }[] {
+    const scored = cells.map(c => {
+      let coverage = 0;
+      for (const p of paths) coverage += pathCellsWithinRange(c, p, range);
+      return { col: c.col, row: c.row, coverage };
+    });
     scored.sort((a, b) => b.coverage - a.coverage);
     return scored;
   }

@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { BalancedBrain } from './BalancedBrain';
 import { BotContext } from '../BotBrain';
 import { Grid, CellType } from '../../Grid';
+import { findPath } from '../../Pathfinding';
 import { TowerType } from '../../../data/TowerTypes';
 
 /** Minimal TowerType factory — just enough fields for the brain's
@@ -52,6 +53,10 @@ function openGrid(cols: number, rows: number): Grid {
 
 function ctx(overrides: Partial<BotContext>): BotContext {
   const grid = overrides.grid ?? openGrid(10, 5);
+  // Supply the default grid-entry→exit path as the single spawner
+  // path. Tests can override via the overrides arg if a scenario
+  // needs multiple or custom paths.
+  const defaultPath = findPath(grid);
   return {
     playerIndex: 1,
     faction: 'mechanical',
@@ -61,6 +66,7 @@ function ctx(overrides: Partial<BotContext>): BotContext {
     wave: 1,
     lives: 20,
     grid,
+    allPaths: defaultPath ? [defaultPath] : [],
     ...overrides,
   };
 }

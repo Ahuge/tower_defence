@@ -18,6 +18,7 @@ import { TowerType, getTowerType } from '../../data/TowerTypes';
 import { FactionId, FACTIONS } from '../../data/Factions';
 import { Grid } from '../Grid';
 import { EconomyManager } from '../EconomyManager';
+import { PathPoint } from '../Pathfinding';
 import { BotBrain, BotContext, Cell, createBrain } from './BotBrain';
 // Side-effect imports: register available brains in BRAIN_REGISTRY.
 // New brains need to be imported here (or elsewhere pulled in at
@@ -64,11 +65,12 @@ export class CircleBotAI {
   private grid: Grid;
   private humanCount: number;
   private placeCallback: BotPlaceCallback;
-  /** `getCurrentWave` / `getLives` suppliers so the brain's context
-   *  is always fresh without the driver having to hoard references
-   *  to the whole GameScene. */
+  /** Suppliers for state that mutates between bot ticks — kept as
+   *  closures so the driver doesn't hoard a whole-GameScene reference
+   *  (keeps the bot module loosely coupled and easier to test). */
   private getWave: () => number;
   private getLives: () => number;
+  private getAllPaths: () => (PathPoint[] | null)[];
   private cellsDirty: boolean = true;
 
   constructor(
@@ -78,6 +80,7 @@ export class CircleBotAI {
     placeCallback: BotPlaceCallback,
     waveSupplier: () => number,
     livesSupplier: () => number,
+    allPathsSupplier: () => (PathPoint[] | null)[],
   ) {
     this.economy = economy;
     this.grid = grid;
@@ -85,6 +88,7 @@ export class CircleBotAI {
     this.placeCallback = placeCallback;
     this.getWave = waveSupplier;
     this.getLives = livesSupplier;
+    this.getAllPaths = allPathsSupplier;
   }
 
   /** Register a bot slot. `brainId` defaults to 'dumb'; pass a
@@ -128,6 +132,7 @@ export class CircleBotAI {
       wave: 0,
       lives: 0,
       grid: this.grid,
+      allPaths: [],
     });
   }
 
@@ -175,6 +180,7 @@ export class CircleBotAI {
         wave,
         lives,
         grid: this.grid,
+        allPaths: this.getAllPaths(),
       };
 
       const decision = b.brain.decide(ctx);

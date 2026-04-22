@@ -45,6 +45,16 @@ export function currentPathLength(grid: Grid): number | null {
   return path ? path.length : null;
 }
 
+/** Sum of cell-counts across all non-null paths. Used as the
+ *  baseline when scoring maze placements on multi-spawner maps —
+ *  a wall that lengthens player 2's path still counts even if
+ *  player 0's path is unaffected. */
+export function totalPathLength(paths: (PathPoint[] | null)[]): number {
+  let total = 0;
+  for (const p of paths) if (p) total += p.length;
+  return total;
+}
+
 /** Measure path length after temporarily setting `(col, row)` to a
  *  blocked cell. Restores the original cell value before returning.
  *  Returns null if the placement breaks pathing (exit unreachable). */
@@ -60,6 +70,37 @@ function simulateWithWall(grid: Grid, col: number, row: number): number | null {
 }
 
 /**
+ * Sum path lengths across every spawner path after temporarily
+ * blocking `(col, row)`. Returns null if blocking the cell breaks
+ * any existing path. Used for multi-spawner maps (Circle Co-op)
+ * so a bot's wall gets credit for slowing creeps from any spawner
+ * whose path it forces through a detour.
+ */
+function simulateWallAllPaths(grid: Grid, col: number, row: number, paths: (PathPoint[] | null)[]): number | null {
+  // Import lazily to avoid circular deps on the callsite.
+  // We reuse the game's path logic: re-run the same pathing used
+  // to produce each input path. For waypoint-chained maps the
+  // inputs carry enough structure (entry/exit tuples), but we
+  // don't have the spawners here — caller must pass valid paths.
+  const original = grid.cells[row][col];
+  grid.cells[row][col] = CellType.Blocked;
+  try {
+    let total = 0;
+    for (const p of paths) {
+      if (!p || p.length === 0) continue;
+      const start = p[0];
+      const end = p[p.length - 1];
+      const newP = findPath(grid, start, end);
+      if (!newP) return null; // would strand a spawner — reject
+      total += newP.length;
+    }
+    return total;
+  } finally {
+    grid.cells[row][col] = original;
+  }
+}
+
+/**
  * Score every candidate cell by the path-length gain it would
  * produce. Cells that block the exit get filtered out. Results are
  * sorted best-first.
@@ -68,13 +109,29 @@ function simulateWithWall(grid: Grid, col: number, row: number): number | null {
  * zone is large and we can't afford to simulate every empty cell.
  * Default 30 is well inside the per-frame budget at 4s cadence.
  */
-export function scoreMazeCells(grid: Grid, candidates: Cell[], maxCandidates: number = 30): MazeScore[] {
+export function scoreMazeCells(grid: Grid, candidates: Cell[], maxCandidates: number = 30, allPaths?: (PathPoint[] | null)[]): MazeScore[] {
+  // Multi-path scoring path: sum lengths across every spawner's
+  // path. Use this when `allPaths` is supplied (Circle Co-op or
+  // any multi-spawner map). Fallback to single-path grid-default
+  // behaviour when absent — matches the pre-multipath signature.
+  if (allPaths && allPaths.length > 0) {
+    const baseline = totalPathLength(allPaths);
+    if (baseline === 0) return [];
+    const pool = candidates.length > maxCandidates ? sampleRandom(candidates, maxCandidates) : candidates;
+    const scores: MazeScore[] = [];
+    for (const c of pool) {
+      const newTotal = simulateWallAllPaths(grid, c.col, c.row, allPaths);
+      if (newTotal == null) continue;
+      scores.push({ col: c.col, row: c.row, gain: newTotal - baseline });
+    }
+    scores.sort((a, b) => b.gain - a.gain);
+    return scores;
+  }
+
+  // Single-path fallback.
   const baseline = currentPathLength(grid);
   if (baseline == null) return [];
 
-  // If there are more candidates than the cap, sample randomly —
-  // keeps per-call work bounded while still exploring the zone
-  // evenly over many calls.
   const pool = candidates.length > maxCandidates
     ? sampleRandom(candidates, maxCandidates)
     : candidates;
@@ -82,7 +139,7 @@ export function scoreMazeCells(grid: Grid, candidates: Cell[], maxCandidates: nu
   const scores: MazeScore[] = [];
   for (const c of pool) {
     const newLen = simulateWithWall(grid, c.col, c.row);
-    if (newLen == null) continue; // would break the map — skip
+    if (newLen == null) continue;
     scores.push({ col: c.col, row: c.row, gain: newLen - baseline });
   }
   scores.sort((a, b) => b.gain - a.gain);
@@ -91,10 +148,10 @@ export function scoreMazeCells(grid: Grid, candidates: Cell[], maxCandidates: nu
 
 /** Return the cell that would most extend the creep path, or null
  *  if no placement would help (or if the zone is saturated). */
-export function bestMazeCell(grid: Grid, candidates: Cell[], maxCandidates: number = 30): MazeScore | null {
-  const scores = scoreMazeCells(grid, candidates, maxCandidates);
+export function bestMazeCell(grid: Grid, candidates: Cell[], maxCandidates: number = 30, allPaths?: (PathPoint[] | null)[]): MazeScore | null {
+  const scores = scoreMazeCells(grid, candidates, maxCandidates, allPaths);
   if (scores.length === 0) return null;
-  if (scores[0].gain <= 0) return null; // a neutral wall isn't worth it
+  if (scores[0].gain <= 0) return null;
   return scores[0];
 }
 

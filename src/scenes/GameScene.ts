@@ -950,6 +950,7 @@ export class GameScene extends Phaser.Scene {
           },
           () => this.currentWave,
           () => this.lives,
+          () => this.allPaths,
         );
         for (const botIndex of this.circle.botSlots) {
           const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
@@ -1515,24 +1516,44 @@ export class GameScene extends Phaser.Scene {
     this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
 
     if (result.pathsChanged) {
-      // Update existing creep paths
-      for (const creep of this.creepMgr.creeps) {
-        if (!creep.alive || creep.reached) continue;
-        const creepCol = pixelToCol(creep.x);
-        const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
-        let bestPath: PathPoint[] | null = null;
-        for (const exit of this.grid.exits) {
-          const p = findPath(this.grid, { col: creepCol, row: creepRow }, exit);
-          if (p && (!bestPath || p.length < bestPath.length)) {
-            bestPath = p;
-          }
-        }
-        if (bestPath) {
-          creep.path = bestPath;
-          creep.pathIndex = 1;
-        }
-      }
+      this.rerouteCreepsAroundTower(col, row);
       this.drawPath();
+    }
+  }
+
+  /**
+   * Re-route creeps whose remaining path actually passes through
+   * the newly-placed tower cell. Creeps whose path is still clear
+   * are left alone so they don't teleport-backward — which is what
+   * happened in Circle Co-op with multiple spawners, where the
+   * nearest exit (by A*) could be *behind* a mid-circuit creep.
+   *
+   * For re-routed creeps: find a path from the creep's current
+   * position to its ORIGINAL destination (the final cell of its
+   * current path). This preserves the traversal goal even if it
+   * means skipping an intermediate waypoint the creep hasn't
+   * reached yet — an acceptable tradeoff to avoid U-turns.
+   */
+  private rerouteCreepsAroundTower(towerCol: number, towerRow: number): void {
+    for (const creep of this.creepMgr.creeps) {
+      if (!creep.alive || creep.reached) continue;
+      // Only re-route creeps the tower actually affects. Skipping
+      // the rest keeps them on their pre-computed waypoint path.
+      const remaining = creep.path.slice(creep.pathIndex);
+      const hitByTower = remaining.some(p => p.col === towerCol && p.row === towerRow);
+      if (!hitByTower) continue;
+
+      const creepCol = pixelToCol(creep.x);
+      const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+      const dest = creep.path[creep.path.length - 1];
+      const newPath = findPath(this.grid, { col: creepCol, row: creepRow }, dest);
+      if (newPath) {
+        creep.path = newPath;
+        creep.pathIndex = 1;
+      }
+      // If no path exists — which towerMgr already guards against —
+      // leave the creep on its stale path; it'll naturally
+      // dissolve at wave end.
     }
   }
 
@@ -2469,7 +2490,14 @@ export class GameScene extends Phaser.Scene {
     }, true);
     if (placeResult) {
       this.towerOwners.set(`${col},${row}`, fromPlayer);
-      if (placeResult.pathsChanged) this.drawPath();
+      if (placeResult.pathsChanged) {
+        // Same re-route rule as local placement — only touch creeps
+        // whose remaining path hits the new tower. Without this,
+        // remote placements (humans AND bots) mid-wave would leave
+        // creeps colliding with new towers.
+        this.rerouteCreepsAroundTower(col, row);
+        this.drawPath();
+      }
     }
   }
 

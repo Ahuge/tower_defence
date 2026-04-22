@@ -14,6 +14,7 @@
 import { TowerType } from '../../data/TowerTypes';
 import { FactionId } from '../../data/Factions';
 import { Grid } from '../Grid';
+import { PathPoint } from '../Pathfinding';
 
 /** `{col, row}` tuple. Local copy since `Pos` isn't exported from
  *  `Maps.ts` and we want to avoid circular dependencies from the
@@ -49,6 +50,14 @@ export interface BotContext {
    *  ignore it. Cell state mutates frame-to-frame; brains should
    *  treat it as read-mostly and never persist cell references. */
   grid: Grid;
+  /** All active creep paths from every spawner. In Circle Co-op
+   *  with waypoints, each entry is a full waypoint-chained path;
+   *  in standard modes, one entry per entry×exit combination.
+   *  Null entries are unreachable spawners — filter before use.
+   *  Brains should score against *all* non-null paths so a bot in
+   *  player 3's zone considers the creep path through its zone,
+   *  not just `grid.entry → grid.exit`. */
+  allPaths: (PathPoint[] | null)[];
 }
 
 /** A brain's response. Either place a specific tower at a specific
