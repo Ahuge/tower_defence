@@ -1000,9 +1000,15 @@ export class GameScene extends Phaser.Scene {
         }
       };
 
-      // Create player roster UI
+      // Create player roster UI. Suppliers are optional — they're
+      // only used by bot rows. For an all-human match the roster
+      // renders the plain label without bot-gold/tower-count.
       const zoneColors = mapDef.zoneColors ?? [];
-      this.circleRoster = new CirclePlayerRoster(this, this.circle, zoneColors);
+      this.circleRoster = new CirclePlayerRoster(
+        this, this.circle, zoneColors,
+        () => this.circleBotAI?.getBotGold() ?? new Map(),
+        () => this.towerOwners,
+      );
 
       // Draw zone overlay on grid
       this.drawCircleZones();
