@@ -18,7 +18,8 @@ import { TowerType, getTowerType } from '../../data/TowerTypes';
 import { FactionId, FACTIONS } from '../../data/Factions';
 import { Grid } from '../Grid';
 import { PathPoint } from '../Pathfinding';
-import { STARTING_GOLD, WAVE_CLEAR_BONUS } from '../../config';
+import { EconomyManager } from '../EconomyManager';
+import { EventBus } from '../EventBus';
 import { BotBrain, BotContext, Cell, createBrain } from './BotBrain';
 // Side-effect imports: register available brains in BRAIN_REGISTRY.
 // New brains need to be imported here (or elsewhere pulled in at
@@ -42,16 +43,20 @@ interface BotState {
   cheapestCost: number;
   /** Time remaining until the next decision attempt, in ms. */
   cooldown: number;
-  /** Private gold pool. Bots don't share the human's economy —
-   *  they start at `STARTING_GOLD`, earn `KILL_GOLD` on each kill
-   *  attributed to their towers (via `creditKill`), and spend
-   *  against this pool on placements. The human's gold is
-   *  completely independent. */
-  gold: number;
-  /** Running total of creeps this bot's towers have killed. Tracked
-   *  so the co-op roster can show progress ("P2 [CPU] 45K") and,
-   *  later, so stats/leaderboards can attribute multiplayer kills
-   *  correctly. Incremented inside `creditKill`. */
+  /**
+   * Each bot gets its own full EconomyManager + EventBus, identical
+   * to what the human player uses. Same class, same subscriptions,
+   * same starting-gold / kill-reward / wave-clear-bonus semantics.
+   * Future income sources (interest, frontier payout, etc.) added
+   * through the event bus flow through to bots automatically with
+   * no bot-side code changes — no drift between human and CPU
+   * economic rules.
+   */
+  events: EventBus;
+  economy: EconomyManager;
+  /** Running total of creeps this bot's towers have killed. Kept
+   *  separate from the economy so the roster can display
+   *  "P2 [CPU] 45K" without digging into stat internals. */
   kills: number;
 }
 
@@ -96,35 +101,35 @@ export class CircleBotAI {
   }
 
   /**
-   * Credit a bot for a creep kill. Called from
-   * `CircleDeathHandler` when the killing tower belongs to a bot
-   * slot. No-op if the player index isn't a registered bot — kills
-   * by untracked towers (human or stale ownership records) keep
-   * their existing routing to the shared economy.
-   *
-   * Increments both the bot's gold pool and its kill counter.
+   * Credit a bot for a creep kill. Routes through the bot's own
+   * EventBus so its EconomyManager picks up the gold via the same
+   * 'creepKilled' listener that the human's economy uses — no
+   * second code path to maintain.
    */
   creditKill(playerIndex: number, gold: number): void {
     const bot = this.bots.find(b => b.playerIndex === playerIndex);
     if (!bot) return;
-    bot.gold += gold;
+    bot.events.emit('creepKilled', 0, gold);
     bot.kills += 1;
   }
 
-  /** Award every bot the wave-clear bonus. Mirror of what the
-   *  human's EconomyManager does on the `waveCleared` event —
-   *  bots need it too or they'll fall behind the human's economy
-   *  over a long match. GameScene wires this to the same event. */
-  creditWaveClear(): void {
-    for (const bot of this.bots) {
-      bot.gold += WAVE_CLEAR_BONUS;
-    }
+  /** Re-emit the wave-clear and wave-start events on each bot's
+   *  own event bus so their EconomyManagers respond exactly like
+   *  the human's: wave-clear bonus added, currentWave tracked for
+   *  killGold scaling. GameScene fans these out from the shared
+   *  bus; adding a new income source to EconomyManager.ts applies
+   *  to bots for free. */
+  creditWaveClear(waveNum: number): void {
+    for (const bot of this.bots) bot.events.emit('waveCleared', waveNum);
+  }
+  creditWaveStart(waveNum: number): void {
+    for (const bot of this.bots) bot.events.emit('waveStarted', waveNum);
   }
 
-  /** Snapshot of each bot's private gold. */
+  /** Snapshot of each bot's gold pool (reads from their EconomyManager). */
   getBotGold(): Map<number, number> {
     const m = new Map<number, number>();
-    for (const b of this.bots) m.set(b.playerIndex, b.gold);
+    for (const b of this.bots) m.set(b.playerIndex, b.economy.gold);
     return m;
   }
 
@@ -152,6 +157,14 @@ export class CircleBotAI {
     const brain = createBrain(brainId) ?? createBrain('dumb');
     if (!brain) return; // should never hit — 'dumb' is always registered.
 
+    // Each bot spins up its own EventBus + EconomyManager. The
+    // manager subscribes to 'creepKilled', 'waveCleared', and
+    // 'waveStarted' on its own bus — identical to the human's
+    // economy wiring — so adding a new economy event type applies
+    // uniformly to both players.
+    const events = new EventBus();
+    const economy = new EconomyManager(events);
+
     const state: BotState = {
       playerIndex,
       faction,
@@ -161,9 +174,8 @@ export class CircleBotAI {
       cheapestCost: pool[0].cost,
       // Stagger initial cooldowns so bots don't all fire on frame 1.
       cooldown: Math.random() * BASE_COOLDOWN_MS,
-      // Every bot starts with the same pool as a human player so
-      // they can ramp on wave 1 without help.
-      gold: STARTING_GOLD,
+      events,
+      economy,
       kills: 0,
     };
     this.bots.push(state);
@@ -212,10 +224,11 @@ export class CircleBotAI {
 
       if (b.candidateCells.length === 0) continue;
 
-      // Private pool: bots don't share the human's economy.
-      // `b.gold` grows from kill credits routed through
-      // `creditKill()` and shrinks on successful placements.
-      const budget = b.gold;
+      // Read from the bot's own EconomyManager — same source of
+      // truth as b.economy.spend() below, so there's never any
+      // divergence between "what the brain sees as budget" and
+      // "what we can actually spend".
+      const budget = b.economy.gold;
       if (budget < b.cheapestCost) continue;
 
       const ctx: BotContext = {
@@ -241,17 +254,18 @@ export class CircleBotAI {
       if (!cellOK) continue;
       if (!this.grid.canPlaceTower(decision.col, decision.row)) continue;
 
-      // Debit first, then try to place. If the grid rejects the
-      // placement (path-blocking detected by TowerManager), refund
-      // the bot's gold so it can pick a different cell next tick.
+      // Debit via the bot's own economy so any future economy-
+      // side effects (stats tracking, modifier hooks, etc.) apply.
+      // TowerManager.placeTower gets free=true in the scene callback
+      // so it doesn't touch the human's EconomyManager.
       const cost = decision.type.cost;
-      b.gold -= cost;
+      if (!b.economy.spend(cost)) continue; // shouldn't happen given budget check, but defensive
       const ok = this.placeCallback(b.playerIndex, decision.col, decision.row, decision.type);
       if (ok) {
         b.candidateCells = b.candidateCells.filter(c => !(c.col === decision.col && c.row === decision.row));
         this.cellsDirty = true;
       } else {
-        b.gold += cost; // refund — placement was rejected
+        b.economy.addGold(cost); // refund — placement was rejected
       }
     }
   }

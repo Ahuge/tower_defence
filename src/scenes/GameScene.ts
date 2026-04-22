@@ -688,6 +688,9 @@ export class GameScene extends Phaser.Scene {
         this.upcomingWaves.update(waveNum, this.waves);
         this.updateDOMWaves(waveNum);
         this.eventBus.emit('waveStarted', waveNum);
+        // Fan waveStarted out to bot economies — they subscribe
+        // on their own EventBus instances, not the shared one.
+        this.circleBotAI?.creditWaveStart(waveNum);
         this.gameMode.onWaveStart?.(wave, waveNum);
       },
       onWaveCleared: (waveNum) => {
@@ -2594,10 +2597,9 @@ export class GameScene extends Phaser.Scene {
 
     // Events + UI
     this.eventBus.emit('waveCleared', waveNum);
-    // Bots share the wave-clear bonus the same way humans do
-    // (EconomyManager listens to the same event for human gold).
-    // Without this bots' economies drift behind over long matches.
-    this.circleBotAI?.creditWaveClear();
+    // Fan waveCleared out to bot economies so they get the same
+    // bonus via their own EconomyManager subscriptions.
+    this.circleBotAI?.creditWaveClear(waveNum);
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
     this.upcomingWaves.update(waveNum, this.waves);
