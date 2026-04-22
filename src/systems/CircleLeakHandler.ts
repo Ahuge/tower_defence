@@ -38,12 +38,18 @@ export class CircleLeakHandler implements LeakHandler {
   onCreepLeaked(creep: Creep): number {
     const damage = creep.isBoss ? 5 : 1;
     const label = creep.isBoss ? 'BOSS' : 'Creep';
-    this.eventLog.gameMessage(`${label} completed the loop! -${damage} shared life${damage > 1 ? 's' : ''}`);
-    this.statsTracker.recordLeak();
-    // Authoritative on host, no-op on joiner — the gate lives in
-    // CircleManager.deductLives so there's one single place that
-    // decides who actually mutates shared state.
+    // Diagnostic trace — helps distinguish "leak handler never
+    // fires" from "fires but deductLives is a no-op". Include
+    // isHost explicitly since that's the branch inside deductLives
+    // that most commonly bites.
+    const before = this.circle.sharedLives;
     this.circle.deductLives(damage);
+    const after = this.circle.sharedLives;
+    this.eventLog.gameMessage(
+      `${label} completed the loop! -${damage} shared life${damage > 1 ? 's' : ''} ` +
+      `(isHost=${this.circle.isHost}, ${before}→${after})`,
+    );
+    this.statsTracker.recordLeak();
     return damage;
   }
 }

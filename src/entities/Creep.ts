@@ -131,6 +131,19 @@ export class Creep {
 
     if (this.pathIndex >= this.path.length) {
       this.reached = true;
+      // Diagnostic: confirm creep-reached → leak-handler pipeline
+      // is firing. If we never see this log but creeps appear to
+      // reach the exit visually, the reached detection is stale
+      // (wrong path length, drifted pixel-cell alignment, etc).
+      // Remove once the Circle Co-op life-loss bug is resolved.
+      // eslint-disable-next-line no-console
+      console.log('[creep] reached', {
+        creepType: this._creepTypeId,
+        isBoss: this.isBoss,
+        pathLen: this.path.length,
+        pathIndex: this.pathIndex,
+        lastCell: this.path[this.path.length - 1],
+      });
       this.graphics.destroy();
       this.sprite?.destroy();
       this.sprite = null;
