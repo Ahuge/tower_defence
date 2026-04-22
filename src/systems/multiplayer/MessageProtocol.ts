@@ -1,7 +1,12 @@
 import { GameStats } from '../StatsTracker';
 
 export type GameMessage =
-  | { type: 'tower_placed'; towerId: string; col: number; row: number }
+  // `ownerIndex` is optional — set when a CPU bot (hosted on the
+  // sender but owned by a bot slot) places a tower, so receivers
+  // attribute it to the bot's player index instead of the sender's.
+  // Undefined on human placements (attribution falls back to the
+  // envelope `from` field).
+  | { type: 'tower_placed'; towerId: string; col: number; row: number; ownerIndex?: number }
   | { type: 'tower_sold'; col: number; row: number }
   | { type: 'tower_upgraded'; col: number; row: number; level: number }
   | { type: 'send_purchased'; sendOptionId: string }

@@ -137,6 +137,9 @@ export function CircleLobbyScreen() {
       for (const p of msg.players) {
         playerFactionsRef.current.set(p.index, p.faction as FactionId);
       }
+      // Joiners record which slots are bots so the in-game roster
+      // can label them correctly; host already has this set.
+      if (msg.botSlots) for (const idx of msg.botSlots) circle.botSlots.add(idx);
       if (!isHostRef.current) {
         setSelectedMap(msg.map as MapId);
         setSelectedDifficulty(msg.difficulty as DifficultyLevel);
@@ -238,6 +241,27 @@ export function CircleLobbyScreen() {
     }
   };
 
+  // Host-only: claim the next free slot as a CPU bot with a random
+  // faction. Bots count toward the `canSetup` threshold (≥2) so you
+  // can solo-play by adding ≥1 bot. Cap the roster at 4 (matches
+  // Circle Co-Op's player-count range and the available circle maps).
+  const hostAddBot = () => {
+    const circle = circleRef.current;
+    if (!circle) return;
+    if (circle.playerCount >= 4) { setStatus('Lobby full (4 players max).'); return; }
+    // Random non-random faction — "random" is a special pick pool that
+    // a bot's dumb greedy AI can't reason about, so exclude it.
+    const pool = FACTION_ORDER.filter(f => f !== 'random');
+    const fac = pool[Math.floor(Math.random() * pool.length)];
+    const botIndex = circle.addBot(fac);
+    if (botIndex == null) return;
+    // Keep the lobby's canonical faction map + local roster in sync.
+    playerFactionsRef.current.set(botIndex, fac);
+    bumpRoster();
+    // With ≥1 bot present we can always Setup — unlock the button.
+    setCanSetup(true);
+  };
+
   const hostStartSetup = () => {
     const circle = circleRef.current;
     if (!circle) return;
@@ -334,6 +358,7 @@ export function CircleLobbyScreen() {
       map: selectedMapRef.current,
       difficulty: selectedDifficultyRef.current,
       seed: circle.sharedSeed,
+      botSlots: Array.from(circle.botSlots),
     };
     if (selectedMapRef.current === 'custom' && customMapJSONRef.current) launchMsg.customMapJSON = customMapJSONRef.current;
     circle.broadcast(launchMsg);
@@ -370,9 +395,11 @@ export function CircleLobbyScreen() {
     const lines: string[] = [];
     for (let i = 0; i < circle.playerCount; i++) {
       const isMe = i === circle.playerIndex;
+      const isBot = circle.isBotSlot(i);
       const faction = playerFactionsRef.current.get(i);
       const fStr = faction ? ` [${FACTIONS[faction]?.name ?? faction}]` : '';
-      lines.push(`Player ${i}: ${isMe ? '(you)' : 'connected'}${fStr}`);
+      const status = isMe ? '(you)' : isBot ? '[CPU]' : 'connected';
+      lines.push(`Player ${i}: ${status}${fStr}`);
     }
     return lines.join('\n');
   })();
@@ -415,8 +442,10 @@ export function CircleLobbyScreen() {
             useManual={useManual}
             roomCode={roomCode}
             canSetup={canSetup}
+            playerCount={circleRef.current?.playerCount ?? 1}
             onAddPlayer={hostAddPlayerManual}
             onPasteAnswer={hostPasteAnswer}
+            onAddBot={hostAddBot}
             onSetup={hostStartSetup}
           />
         )}
@@ -450,10 +479,11 @@ export function CircleLobbyScreen() {
 
 // ─── Phase sub-components ──────────────────────────────────────────
 
-function HostPhaseCircle({ useManual, roomCode, canSetup, onAddPlayer, onPasteAnswer, onSetup }: {
-  useManual: boolean; roomCode: string | null; canSetup: boolean;
-  onAddPlayer: () => void; onPasteAnswer: () => void; onSetup: () => void;
+function HostPhaseCircle({ useManual, roomCode, canSetup, playerCount, onAddPlayer, onPasteAnswer, onAddBot, onSetup }: {
+  useManual: boolean; roomCode: string | null; canSetup: boolean; playerCount: number;
+  onAddPlayer: () => void; onPasteAnswer: () => void; onAddBot: () => void; onSetup: () => void;
 }) {
+  const canAddBot = playerCount < 4;
   return (
     <div>
       {!useManual && roomCode && (
@@ -467,6 +497,13 @@ function HostPhaseCircle({ useManual, roomCode, canSetup, onAddPlayer, onPasteAn
           <button class="btn btn-gold" onClick={onPasteAnswer}>PASTE ANSWER</button>
         </div>
       )}
+      <div style={{ marginTop: 12, display: 'flex', gap: 12, justifyContent: 'center' }}>
+        <button class="btn" disabled={!canAddBot}
+          style={{ opacity: canAddBot ? 1 : 0.4, cursor: canAddBot ? 'pointer' : 'not-allowed' }}
+          onClick={onAddBot}>
+          + ADD CPU
+        </button>
+      </div>
       <div style={{ marginTop: 16 }}>
         <button
           class={`btn ${canSetup ? 'btn-gold' : ''}`}
