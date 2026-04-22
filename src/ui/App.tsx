@@ -13,6 +13,8 @@ import { ChangelogScreen } from './screens/ChangelogScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { LobbyScreen } from './screens/LobbyScreen';
+import { CircleLobbyScreen } from './screens/CircleLobbyScreen';
 import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { AppLoadingScreen } from './screens/AppLoadingScreen';
@@ -65,6 +67,8 @@ export function App() {
           {screen === 'leaderboard' && <LeaderboardScreen />}
           {screen === 'encyclopedia' && <EncyclopediaScreen />}
           {screen === 'settings' && <SettingsScreen />}
+          {screen === 'lobby' && <LobbyScreen />}
+          {screen === 'circle-lobby' && <CircleLobbyScreen />}
         </div>
       )}
 

@@ -25,6 +25,7 @@ import { MapDefinition, MapId, SpawnerDef } from './Maps';
 import circle2p from './maps/circle/circle_2p.json';
 import circle3p from './maps/circle/circle_3p.json';
 import circle4p from './maps/circle/circle_4p.json';
+import circle4pHellCircle from './maps/circle/circle_4p_hell_circle.json';
 
 type Tuple = [number, number];
 type Pos = { col: number; row: number };
@@ -92,6 +93,7 @@ const ALL_CIRCLE_MAPS: CircleMapJSON[] = [
   circle2p as unknown as CircleMapJSON,
   circle3p as unknown as CircleMapJSON,
   circle4p as unknown as CircleMapJSON,
+  circle4pHellCircle as unknown as CircleMapJSON,
 ];
 
 /** All circle maps as MapDefinition objects, built once at module

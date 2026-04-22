@@ -105,30 +105,45 @@ function csvRow(fields) {
   return fields.map(csvEscape).join(',');
 }
 
+// Play Console's bulk-import format (verified against repeated
+// 2026 importer errors). The key insights:
+//   • NO header rows. Play Console iterates every row as data and
+//     validates each column, so a text header fails every column's
+//     value check ("Wrong initial state: Name", "Wrong incremental
+//     value: Name", etc. — "Name" there was the literal header).
+//     The importer is purely positional.
+//   • Metadata column order (7 cols):
+//         1. Name            (unique id)
+//         2. Initial State   (Revealed / Hidden)
+//         3. Incremental     (True / False)
+//         4. Number of Steps (whole number, only if Incremental)
+//         5. Points          (whole number, multiple of 5, 5-200)
+//         6. List Order      (whole number, 1-based)
+//         7. Published       (True / False)
+//   • Localization row (4 cols): name, locale, title, description.
+//     Locale must match a language enabled for this game in Play
+//     Console (usually "en-US"). If you get "Locale not supported",
+//     enable en-US in Play Console → Game Services → Listings first.
+//   • Icons row (2 cols): name, icon PNG filename (flat at ZIP root).
+
 function metadataCsv() {
-  const header = [
-    'Key',
-    'Type',
-    'Initial State',
-    'Points',
-    'Steps',
-  ];
-  const rows = [csvRow(header)];
-  for (const a of ACHIEVEMENTS) {
+  const rows = [];
+  ACHIEVEMENTS.forEach((a, i) => {
     rows.push(csvRow([
       a.key,
-      a.type,
-      a.initial,
-      a.points,
+      a.initial === 'hidden' ? 'Hidden' : 'Revealed',
+      a.type === 'incremental' ? 'True' : 'False',
       a.type === 'incremental' ? a.steps : '',
+      a.points,
+      i + 1,
+      'True',
     ]));
-  }
+  });
   return rows.join('\n') + '\n';
 }
 
 function localizationsCsv() {
-  const header = ['Key', 'Locale', 'Name', 'Description'];
-  const rows = [csvRow(header)];
+  const rows = [];
   for (const a of ACHIEVEMENTS) {
     rows.push(csvRow([a.key, 'en-US', a.name, a.description]));
   }
@@ -136,49 +151,11 @@ function localizationsCsv() {
 }
 
 function iconMappingsCsv() {
-  const header = ['Key', 'Icon Filename'];
-  const rows = [csvRow(header)];
+  const rows = [];
   for (const a of ACHIEVEMENTS) {
     rows.push(csvRow([a.key, `${a.key}.png`]));
   }
   return rows.join('\n') + '\n';
-}
-
-function readmeText() {
-  return [
-    'Factions — Play Games Services achievements import',
-    '=====================================================',
-    '',
-    'This ZIP contains the complete achievement set for Factions, ready',
-    'to import into Play Console → Play Games Services → Achievements',
-    '→ Bulk import.',
-    '',
-    `Achievements: ${ACHIEVEMENTS.length}`,
-    `Total points: ${ACHIEVEMENTS.reduce((s, a) => s + (a.points ?? 0), 0)} / 1000 Play Games cap`,
-    '',
-    'Files (all at ZIP root — Play Console rejects subfolders):',
-    '  AchievementsMetadata.csv        one row per achievement',
-    '  AchievementsLocalizations.csv   en-US copy for each achievement',
-    '  AchievementsIconsMappings.csv   which icon belongs to which key',
-    '  *.png                           13 × 512×512 PNG icons',
-    '',
-    'To upload:',
-    '  1. Unzip locally.',
-    '  2. Open each CSV in a spreadsheet editor + verify the column',
-    '     headers match whatever Play Console\'s current importer',
-    '     expects. Google has tweaked these names between releases;',
-    '     if the upload rejects the file, adjust here and retry.',
-    '  3. Re-zip everything (CSVs + the icons/ folder) and upload.',
-    '  4. After import, Play Console assigns each achievement a final',
-    '     ID (format: CgkI...). Copy those back into',
-    '     src/data/Achievements.ts — replace the empty-string',
-    '     placeholders for the 11 FIRST_WIN_<FACTION> entries + the',
-    '     DISCOVER_CREEPS incremental id.',
-    '',
-    'Source of truth: scripts/build-achievements-zip.mjs. Regenerate',
-    'this ZIP any time the in-code ACHIEVEMENTS list changes.',
-    '',
-  ].join('\n');
 }
 
 // ───────────────────────────────────────────────────────────
@@ -195,10 +172,12 @@ async function main() {
   // `icons/` subfolder; every PNG sits next to the CSVs and the
   // mapping file references them by bare filename.
   const zip = new JSZip();
+  // Play Console rejects any non-CSV/PNG at the ZIP root — no
+  // README, no stray files. Keep upload strictly to the three
+  // required CSVs + the icon PNGs.
   zip.file('AchievementsMetadata.csv', metadataCsv());
   zip.file('AchievementsLocalizations.csv', localizationsCsv());
   zip.file('AchievementsIconsMappings.csv', iconMappingsCsv());
-  zip.file('README.txt', readmeText());
 
   let missing = 0;
   for (const a of ACHIEVEMENTS) {

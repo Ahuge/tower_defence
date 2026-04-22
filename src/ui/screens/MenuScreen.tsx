@@ -51,9 +51,9 @@ export function MenuScreen() {
 
   const handleModeClick = (m: typeof MODES[0]) => {
     if (m.mode === 'lobby') {
-      UIBridge.startScene('LobbyScene');
+      UIBridge.show('lobby');
     } else if (m.mode === 'circle') {
-      UIBridge.startScene('CircleLobbyScene');
+      UIBridge.show('circle-lobby');
     } else if (m.mode === 'standard') {
       setWaveOverlay(true);
     } else {

@@ -1,7 +1,7 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 import { getCircleMap } from './CircleMaps';
 
-export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'custom' | 'tutorial';
+export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'circle_4p_hell_circle' | 'custom' | 'tutorial';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -372,6 +372,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
   circle_2p: getCircleMapById('circle_2p'),
   circle_3p: getCircleMapById('circle_3p'),
   circle_4p: getCircleMapById('circle_4p'),
+  circle_4p_hell_circle: getCircleMapById('circle_4p_hell_circle'),
 };
 
 // (Legacy-shaped IIFE bodies removed; data lives in
@@ -390,4 +391,4 @@ function getCircleMapById(id: string): MapDefinition {
 
 
 export const MAP_ORDER: MapId[] = ['plains', 'crossroads', 'fortress', 'serpentine', 'islands', 'gauntlet', 'spiral', 'siege', 'random', 'custom'];
-export const CIRCLE_MAP_ORDER: MapId[] = ['circle_2p', 'circle_3p', 'circle_4p'];
+export const CIRCLE_MAP_ORDER: MapId[] = ['circle_2p', 'circle_3p', 'circle_4p', 'circle_4p_hell_circle'];

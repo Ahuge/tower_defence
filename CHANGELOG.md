@@ -65,6 +65,43 @@ User-facing "Restore Purchases" button in the Store header (native builds only �
 
 ## 2026-04-18
 
+### Lobby screens migrated to Preact DOM
+Versus 1v1 and Circle Co-Op lobbies now render as DOM screens instead of Phaser scenes. New files:
+- `src/ui/screens/LobbyScreen.tsx` — 1v1 with Host / Join / Manual phases, room code input, map + difficulty selector (host), faction picker.
+- `src/ui/screens/CircleLobbyScreen.tsx` — 2-4 player co-op with roster, Setup Game gate (host, unlocks at ≥2 connected), difficulty + faction picker; keeps the same circle_Np auto-selection by player count.
+
+Managers (`VersusManager` / `CircleManager`) created in the screen's effect scope, stashed into `game.registry` immediately before `UIBridge.startScene('DraftScene', ...)` so GameScene picks them up unchanged. A `launchedRef` flag skips the unmount `.close()` on successful handoff.
+
+`ScreenId` gained `'lobby'` + `'circle-lobby'`; `MenuScreen.tsx` and `MenuScene.ts` now call `UIBridge.show(...)` instead of `scene.start(...)`. The two Phaser scenes (`LobbyScene`, `CircleLobbyScene`) are kept registered in `main.ts` as a fallback while the new screens bake in — remove once end-to-end multiplayer is verified.
+
+### Two new 4-player circle maps
+Authored via the new `/circle-editor.html` tool:
+- `circle_4p` (Quadrants) — forest theme, 113 blocked cells, cross-divided quadrant zones.
+- `circle_4p_hell_circle` — volcanic theme, 104 blocked / 184 animated / 232 no-build, inspired by Hell Circle TD.
+
+Both registered in `Maps.ts` (`MapId` union + `MAPS` record + `CIRCLE_MAP_ORDER`) and `CircleMaps.ts` (`ALL_CIRCLE_MAPS`). The map editor's built-in dropdown lists all four so you can re-open and tweak any of them.
+
+### Circle Co-Op map editor (5c)
+New authoring tool at `/circle-editor.html` for building circumnavigation maps. Separate entry from the gauntlet editor so neither grows a mode switch. Round-tripped against the three existing JSON maps (82 blocked / 416×2 zone cells / all spawner waypoints preserved).
+
+Editor features:
+- Terrain brushes (Empty / Blocked / Animated / NoBuild) with drag-paint.
+- Per-player zone painter with color-pickable overlays.
+- Spawner list: each has Set Entry / Set Exit / Append Waypoint click-modes; waypoints reorder via ↑/↓ and delete; spawners add/remove on the fly.
+- Player count toggle (2P/3P/4P) that resizes the spawner + zone-color arrays and demotes out-of-range zone assignments.
+- Load JSON / Download JSON round-trip. Schema matches `src/data/maps/circle/*.json` exactly, so export → drop into the folder → `CircleMaps.ts` picks it up automatically.
+
+Wired into `vite.config.ts` alongside `editor` and `skin-editor` so `npm run build` emits `dist/circle-editor.html`.
+
+### Play Console achievement bulk-import — format fixes
+`scripts/build-achievements-zip.mjs` now emits CSVs that pass Play Console's validator. Fixes discovered over two upload attempts:
+- Removed `README.txt` from the ZIP root — Play Console rejects any non-CSV/PNG at the archive root.
+- Column order in `AchievementsMetadata.csv` corrected: `Number of Steps` precedes `Points` (the importer is positional despite accepting headers).
+- `Incremental` column takes `True`/`False` (not STANDARD/INCREMENTAL).
+- `Initial State` is title-case `Revealed`/`Hidden` (not uppercase).
+- Locale code in Localizations is BCP-47 `en-US` (not `en_US`).
+- All three CSVs share the `Name` cross-reference column so Play Console can match rows across files.
+
 ### Review-pass cleanup
 Tidy pass after `/review` on the tutorial branch: fixed `panCameraToStep` so it now handles `canvas-dynamic` targets (the three "place more towers" / "place frost" steps used dynamic rects that the pan was silently skipping); guarded `checkForSkipHintAfterDelay` so dismissing the skip-hint track doesn't immediately re-queue another check; collapsed the scene-lookup `as unknown as { allPaths }` casts into a single typed helper in `TutorialTargets`; dropped the `cam.pan` typeof guard in favour of the typed Phaser API; pulled the scattered animation delays (200/250/350/500/750 ms and 10 s TTL) into a `TIMING` constants block at the top of `TutorialManager`; added a TTL to `pendingAfterMatchLoad` so a stale queued trackId can't survive a 10s-abandoned match-load; removed the unused `econFrontierContent`/`econSendsContent` selectors and the now-redundant `data-tutorial-target="econ-content-*"` wrappers from `EconomyPanelDOM`; collapsed `gridCellRect`/`gridCellWorldRect` into a single source-of-truth using the shared `WorldRect` type; fixed a stapled comment block in `TutorialManager.init`.
 
