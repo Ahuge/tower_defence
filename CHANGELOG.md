@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-23
+
+### Circle Co-op roster → DOM panel
+The roster (kills / gold / towers / lives / timer) was Phaser `Text` at a hardcoded 11px font — unreadable on phone where everything else goes through `UIScale`. Moved to a Preact component (`CircleRosterDOM`) driven by a `GameUIStore.circleRoster` snapshot that GameScene rewrites each frame. Font sizes now use `UIScale.fontCapped` so phone scales to ~22–24px. Shallow-equality gate on the store skips re-renders when nothing changed.
+
+Positioning: fixed top-right with a small inset on desktop so it clears the zoom buttons; hugs the right edge on phone (no zoom buttons there).
+
+### Endless mode bug fixes (audit follow-up)
+Three real bugs from the Endless audit:
+
+1. **Missing sprite rebind on faction rotation.** After `creepFaction = X` the code didn't call `createCreepAnimations` so creeps on wave 11+ would render with the previous faction's textures (or fall back to the Graphics shape). Now runs `preloadCreepSprites` + `createCreepAnimations` immediately after the rotation.
+
+2. **Faction rotation desynced in multiplayer.** `Math.random()` picked the new creep faction, so host and joiner landed on different factions after wave 10 in 1v1 Versus / Circle Co-op Endless. Now seeded via `versus.sharedSeed ^ (waveNum * 2654435761)` through a mulberry32 one-shot so both sides converge. Solo falls back to `Math.random` — standalone runs stay unpredictable.
+
+3. **UpcomingWaves stale right after an append.** The append fires inside `onWaveCleared` but `upcomingWaves.update(...)` ran *before* the append. Moved the snapshot call to after the append block so newly-generated waves show up on the same tick.
+
+### Gambler balance: 4% kill, halved vs bosses
+Dropped Gambler's `jackpot.killChance` from 8% → 4%. At 15g per tower with ~1s fire rate you could comfortably spam the entire late game — 8% across 8 Gamblers was effectively free wave clears. 4% still feels chunky without trivialising placement choices.
+
+Added universal **boss resistance** to the jackpot handler: kill chance halves when `target.isBoss`. Gambler reads 4% regular / 2% boss; Oblivion (the void ULT) reads 15% / 7.5%. Keeps jackpot towers valuable without the "I erased the boss wave from one lucky roll" outcome. Miss slice is unchanged — bosses don't get the "please whiff" perk. `HitTarget` interface gained `isBoss: boolean` (phantom splash targets default to false). Matching change in `OpponentSimulation`'s shadow sim so the 1v1 CPU's Gamblers also respect boss resistance.
+
 ## 2026-04-22
 
 ### Multiplayer + random-faction bug sweep

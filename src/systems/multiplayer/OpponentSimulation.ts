@@ -399,15 +399,18 @@ export class OpponentSimulation {
   /** Resolve a shot from `t` against `target`. Applies damage,
    *  variance, splash, status effects, per-hit gold. */
   private fire(t: SimTower, target: SimCreep): void {
-    // Jackpot — instant kill / miss dice roll.
+    // Jackpot — instant kill / miss dice roll. Kill slice halves
+    // against bosses so the shadow sim matches the real jackpot
+    // handler's boss resistance (Tower tracks this via HitTarget.isBoss).
     if (t.jackpotKillChance > 0 || t.jackpotMissChance > 0) {
+      const killChance = target.isBoss ? t.jackpotKillChance * 0.5 : t.jackpotKillChance;
       const r = Math.random();
-      if (r < t.jackpotKillChance) {
+      if (r < killChance) {
         this.applyHit(t, target, target.hp + 1);
         this.creditGoldOnHit(t);
         return;
       }
-      if (r < t.jackpotKillChance + t.jackpotMissChance) {
+      if (r < killChance + t.jackpotMissChance) {
         this.creditGoldOnHit(t); // counts as a shot
         return;
       }

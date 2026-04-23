@@ -14,6 +14,7 @@ export interface HitTarget {
   alive: boolean;
   reached: boolean;
   armor: ArmorType;
+  isBoss: boolean;
   pathIndex: number;
   path: { col: number; row: number }[];
   takeDamage(amount: number): void;

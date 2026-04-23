@@ -662,6 +662,7 @@ export class Tower {
       x: p.destX, y: p.destY,
       alive: false, reached: false,
       armor: 'medium',
+      isBoss: false,
       pathIndex: 0, path: [],
       takeDamage: () => {},
       applySlow: () => {},

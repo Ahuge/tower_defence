@@ -21,6 +21,7 @@ import { AppLoadingScreen } from './screens/AppLoadingScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
+import { CircleRosterDOM } from './game/CircleRosterDOM';
 import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { AchievementToast } from './components/AchievementToast';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
@@ -76,6 +77,7 @@ export function App() {
       {!screen && <GameSidebar />}
       {!screen && <StatusBarDOM />}
       {!screen && <TowerDockDOM />}
+      {!screen && <CircleRosterDOM />}
 
       {/* Continue-ad modal — renders only when GameScene offers a revive
           on lives→0. Self-gates on GameUIStore.continueOffer so no-op

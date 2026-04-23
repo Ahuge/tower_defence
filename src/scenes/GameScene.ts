@@ -17,7 +17,7 @@ import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
 import { PlayerInventory, claimRewarded, BattlePass, DiscoveryTracker } from '../systems/monetization';
-import { GameUIStore, TowerStats, TowerUpgradeOption } from '../ui/GameUIStore';
+import { GameUIStore, TowerStats, TowerUpgradeOption, CircleRosterPlayer } from '../ui/GameUIStore';
 import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
@@ -55,7 +55,6 @@ import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { BotAI } from '../systems/bots/BotAI';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
-import { CirclePlayerRoster } from '../ui/CircleMinimaps';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
 import { SidebarOverlay } from '../ui/SidebarOverlay';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
@@ -84,6 +83,17 @@ import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
+
+/** Single-shot seeded roll in [0, 1). Used by the Endless faction
+ *  rotation so host + joiner converge on the same faction for a
+ *  given (sharedSeed, waveNum) pair. Same mulberry32 math as
+ *  `data/MapGenerator.ts`; not worth factoring out for one call. */
+function seededRoll(seed: number): number {
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
 
 export class GameScene extends Phaser.Scene {
   // Core systems
@@ -121,7 +131,9 @@ export class GameScene extends Phaser.Scene {
   // Kept for the roster UI to read per-player kill counts via
   // `getKillsByPlayer()`. Null in non-circle matches.
   circleDeathHandler: CircleDeathHandler | null = null;
-  circleRoster: CirclePlayerRoster | null = null;
+  /** Zone swatches for the DOM roster. Populated at Circle setup;
+   *  read by `publishCircleRoster` each frame. */
+  private _circleZoneColors: number[] = [];
   circleZoneOverlay: Phaser.GameObjects.Graphics | null = null;
   /** Which zone cells can this player build on? null = no restriction */
   private circleMyZone: Set<string> | null = null;
@@ -446,7 +458,8 @@ export class GameScene extends Phaser.Scene {
 
     // Reset circle/multiplayer state and clean registry
     this.circle = null;
-    this.circleRoster = null;
+    this._circleZoneColors = [];
+    GameUIStore.setCircleRoster(null);
     this.circleZoneOverlay = null;
     this.circleMyZone = null;
     this.towerOwners.clear();
@@ -1156,18 +1169,11 @@ export class GameScene extends Phaser.Scene {
         }
       };
 
-      // Create player roster UI. Suppliers deliver per-tick
-      // snapshots of bot gold, per-player kill counts (covers
-      // human + remote humans + bots in one map via the death
-      // handler), and tower ownership. Any supplier may return
-      // an empty map without breaking rendering.
-      const zoneColors = mapDef.zoneColors ?? [];
-      this.circleRoster = new CirclePlayerRoster(
-        this, this.circle, zoneColors,
-        () => this.circleBotAI?.getBotGold() ?? new Map(),
-        () => this.circleDeathHandler?.getKillsByPlayer() ?? new Map(),
-        () => this.towerOwners,
-      );
+      // Roster is a DOM panel (see `CircleRosterDOM`) — GameScene
+      // just writes snapshots into GameUIStore each frame. Zone
+      // colors are stashed here so the per-frame builder can tag
+      // each row with the right swatch.
+      this._circleZoneColors = mapDef.zoneColors ?? [];
 
       // Draw zone overlay on grid
       this.drawCircleZones();
@@ -1986,6 +1992,42 @@ export class GameScene extends Phaser.Scene {
    * "wave stuck" line — that one tells you the category of
    * blockage, this one identifies the specific creep.
    */
+  /** Build the roster snapshot from live Circle state + suppliers
+   *  and push it into GameUIStore. CircleRosterDOM reads from
+   *  there and renders. Called each frame; the store skips the
+   *  notify when nothing changed (shallow-equal check). */
+  private publishCircleRoster(): void {
+    if (!this.circle) { GameUIStore.setCircleRoster(null); return; }
+    const botGold = this.circleBotAI?.getBotGold() ?? new Map<number, number>();
+    const kills = this.circleDeathHandler?.getKillsByPlayer() ?? new Map<number, number>();
+    const owners = this.towerOwners;
+    const players: CircleRosterPlayer[] = [];
+    for (let i = 0; i < this.circle.playerCount; i++) {
+      const color = this._circleZoneColors[i] ?? 0xffffff;
+      const colorHex = '#' + color.toString(16).padStart(6, '0');
+      const isMe = i === this.circle.playerIndex;
+      const isBot = this.circle.isBotSlot(i);
+      const ready = isMe ? this.circle.localReady : this.circle.playersReady.has(i);
+      let towers = 0;
+      for (const owner of owners.values()) if (owner === i) towers++;
+      players.push({
+        index: i,
+        kind: isMe ? 'me' : isBot ? 'bot' : 'remote',
+        faction: this.circle.playerFactions.get(i) ?? '',
+        colorHex,
+        ready,
+        gold: isBot ? (botGold.get(i) ?? 0) : null,
+        towers,
+        kills: kills.get(i) ?? 0,
+      });
+    }
+    GameUIStore.setCircleRoster({
+      players,
+      timerS: this.circle.waveTimerActive ? this.circle.getWaveTimerSeconds() : -1,
+      sharedLives: this.lives,
+    });
+  }
+
   private diagLogStuckCreeps(delta: number): void {
     if (!DEBUG) return;
     if (!this.waveActive) {
@@ -2397,8 +2439,8 @@ export class GameScene extends Phaser.Scene {
         this.circle.broadcast({ type: 'tower_sync', towers: myTowers });
       }
 
-      // Update roster UI
-      this.circleRoster?.update(this.lives);
+      // Publish roster snapshot for the DOM panel.
+      this.publishCircleRoster();
     }
 
     // Update tower alive time for DPS calc
@@ -3172,8 +3214,6 @@ export class GameScene extends Phaser.Scene {
     this.cpuOpponentAI?.creditWaveClear(waveNum);
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
-    this.upcomingWaves.update(waveNum, this.waves);
-        this.updateDOMWaves(waveNum);
 
     // Endless mode: append more waves when running low, rotate creep faction every 10 waves
     if (this.matchMode === 'endless') {
@@ -3185,11 +3225,30 @@ export class GameScene extends Phaser.Scene {
       }
       if (waveNum % 10 === 0) {
         const playable = FACTION_ORDER.filter(f => f !== 'random' && f !== this.creepFaction);
-        this.creepFaction = playable[Math.floor(Math.random() * playable.length)];
+        // Deterministic faction pick for multiplayer Endless — host
+        // and joiner must land on the same faction or wave 11+ creeps
+        // diverge. Seeded from (sharedSeed XOR waveNum); solo falls
+        // back to Math.random so standalone runs stay unpredictable.
+        const sharedSeed = this.versus?.sharedSeed ?? this.circle?.sharedSeed ?? 0;
+        const roll = sharedSeed > 0
+          ? seededRoll((sharedSeed ^ (waveNum * 2654435761)) >>> 0)
+          : Math.random();
+        this.creepFaction = playable[Math.floor(roll * playable.length)];
         if (DEBUG) console.log(`[Endless] Creep faction rotated to: ${this.creepFaction}`);
         this.eventLog.gameMessage(`Enemy faction changed to ${FACTIONS[this.creepFaction].name}!`);
+        // Bind the new faction's sprites + animations. Without this
+        // creeps spawned on wave 11+ render with the prior faction's
+        // textures (or fall back to the Graphics shape).
+        preloadCreepSprites(this);
+        createCreepAnimations(this, this.creepFaction);
       }
     }
+
+    // Upcoming-waves snapshot runs AFTER the Endless append so the
+    // just-pushed waves show up in the panel on the same tick rather
+    // than after the next clear.
+    this.upcomingWaves.update(waveNum, this.waves);
+    this.updateDOMWaves(waveNum);
 
     // Random faction rotation
     if (this.faction === 'random') {

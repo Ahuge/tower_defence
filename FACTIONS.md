@@ -59,7 +59,7 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Gambler | 15g | 8% instant kill, 25% zero damage. Cheapest tower. |
+| Gambler | 15g | 4% instant kill (halved vs bosses), 25% whiff. Cheapest tower. |
 | Spike | 30g | Each shot deals 50-150% damage randomly. |
 | Siphon | 50g | +1g per hit. Economy engine. 4 levels. |
 | Rift | 120g | Teleports creeps backward on path + 2-4 damage per hit. |

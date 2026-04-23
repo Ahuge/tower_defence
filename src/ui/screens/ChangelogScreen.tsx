@@ -10,6 +10,34 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-04-23',
+    title: 'Circle Co-op roster → DOM panel',
+    changes: [
+      'Roster (kills, gold, towers, lives, timer) moved from Phaser Text to a Preact component so font sizes scale on phone via UIScale',
+      'New GameUIStore.circleRoster snapshot rewritten each frame; shallow-equal check skips re-renders when nothing changes',
+      'Top-right positioning accounts for zoom buttons on desktop; phone hugs the right edge',
+    ],
+  },
+  {
+    date: '2026-04-23',
+    title: 'Endless mode bug fixes',
+    changes: [
+      'FIX: faction rotation at wave 10/20/... forgot to rebind creep sprites — new faction creeps rendered with the prior faction\'s textures',
+      'FIX: faction rotation used Math.random(), so host + joiner diverged in multiplayer Endless. Now seeded from sharedSeed ^ waveNum',
+      'FIX: UpcomingWaves snapshot ran before the append-more-waves block, so newly generated waves didn\'t appear until the next clear',
+    ],
+  },
+  {
+    date: '2026-04-23',
+    title: 'Gambler balance: 4% instant kill, halved vs bosses',
+    changes: [
+      'Gambler jackpot.killChance dropped from 8% to 4% — 15g + fast fire rate made the 8% roll too cheap',
+      'NEW universal boss resistance on jackpot: kill chance halves when target.isBoss. Gambler: 4%/2%. Oblivion: 15%/7.5%',
+      'Miss chance unchanged — no "please whiff" perk for bosses',
+      'HitTarget interface gained isBoss. Shadow sim in OpponentSimulation mirrors the same halving for 1v1 CPU',
+    ],
+  },
+  {
     date: '2026-04-22',
     title: 'Multiplayer + random-faction bug sweep',
     changes: [

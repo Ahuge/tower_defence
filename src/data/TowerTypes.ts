@@ -408,11 +408,11 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // VOID (5) — Chaos, gambling, manipulation
   // ================================================================
   void_gambler: def({
-    id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 8% instant kill, 25% whiff.',
+    id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 4% instant kill (2% vs bosses), 25% whiff.',
     faction: 'void', damageType: 'magic', cost: 15, damage: 25, range: 3, fireRate: 1000,
     color: 0xdd44ff, projectileSpeed: 300, hotkey: '1',
     targeting: 'weakest',
-    traits: [{ id: 'direct_damage' }, { id: 'jackpot', killChance: 0.08, missChance: 0.25 }],
+    traits: [{ id: 'direct_damage' }, { id: 'jackpot', killChance: 0.04, missChance: 0.25 }],
     upgrades: [
       { level: 2, cost: 30, damage: 45, range: 3.5, fireRate: 900 },
     ],
