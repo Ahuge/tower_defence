@@ -1,32 +1,46 @@
 /**
- * Nature sprite regeneration script.
+ * ============================================================
+ *  DEPRECATED — do not run.
+ * ============================================================
  *
- * Rebuilds the Nature faction spritesheets to match the post-Thorn
- * 8-tower roster. Avoids the full browser+puppeteer pipeline by
- * cropping the kept columns out of the old PNG and drawing the three
- * new columns (Bramble, Spider, Sunroot) programmatically. Also
- * generates the Thornweaver mobile-unit sheet and the `_autumn` skin
- * variants via a palette-swap applied pixel-by-pixel.
+ * This was a one-shot bootstrap used to produce the initial
+ * post-Thorn 8-column Nature sheets by cropping the legacy 6-col
+ * PNG and drawing Bramble/Spider/Sunroot programmatically. It
+ * assumes:
+ *   - An 8-col tower layout (real layout is now 9 — Razor Bramble
+ *     appended at col 8).
+ *   - `nature_spider` as the third column (the mobile unit is now
+ *     the poison-dart frog `nature_dartfrog`).
  *
- * New tower sheet column order (matches Factions.ts):
- *   0: nature_bramble  (new — wall+cheap DPS, 5 levels)
- *   1: nature_root     (kept — copy from old col 1)
- *   2: nature_spider   (new — dock icon; real sprite is on the mobile sheet)
- *   3: nature_blossom  (kept — copy from old col 2)
- *   4: nature_spore    (kept — copy from old col 3)
- *   5: nature_sunroot  (new — splash DPS)
- *   6: nature_vine     (kept — copy from old col 4)
- *   7: nature_elder    (kept — copy from old col 5)
+ * The authoritative source for all Nature sprites is now the TSX
+ * generator (`nature_sprites.tsx` + `mobile_unit_sprites.tsx`)
+ * baked via the puppeteer pipeline:
  *
- * Outputs:
- *   public/assets/nature/nature_towers.png          (512×1536)
- *   public/assets/nature/nature_projectiles.png     (256×192)
- *   public/assets/nature/nature_towers_autumn.png   (palette-swapped)
- *   public/assets/nature/nature_projectiles_autumn.png
- *   public/assets/nature/nature_spider_mobile.png   (128×384 — 3 levels × 4 rows × 32 cell)
+ *   node scripts/export-sprites.mjs
  *
- * Usage: node scripts/regenerate-nature-sprites.mjs
+ * For `_autumn` variants (palette swap only, no layout change)
+ * use the dedicated:
+ *
+ *   node scripts/regenerate-nature-autumn.mjs
+ *
+ * Kept here for git history; running it will overwrite the good
+ * sprites with a stale 8-col Thornweaver-era layout.
  */
+// Deprecation guard — fail closed so we don't silently regress the
+// sprite sheets. Pass --force-stale-bootstrap to bypass (only use
+// if you explicitly want the legacy 8-col bootstrap output).
+if (!process.argv.includes('--force-stale-bootstrap')) {
+  console.error(
+    'scripts/regenerate-nature-sprites.mjs is DEPRECATED and produces ' +
+    'a stale 8-col Thornweaver-era layout.\n' +
+    'Use `node scripts/export-sprites.mjs` (puppeteer + TSX) for the ' +
+    'authoritative bake, or `scripts/regenerate-nature-autumn.mjs` for ' +
+    '_autumn variants only.\n' +
+    '(Pass --force-stale-bootstrap if you really want the legacy output.)',
+  );
+  process.exit(1);
+}
+
 import { createCanvas, loadImage } from 'canvas';
 import { writeFileSync, readFileSync } from 'fs';
 import { resolve, dirname, join } from 'path';
