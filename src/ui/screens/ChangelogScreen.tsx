@@ -11,6 +11,14 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-23',
+    title: 'CPU brain: must have a fighting tower before buying frontier/sends',
+    changes: [
+      'FIX: BalancedBrain rolled meta-economy at the top of every between-waves tick — on wave 0, the 70% commit chance meant the bot could blow its budget on frontier before placing any tower',
+      'Added a gate: meta economy (frontier + sends) only fires once the bot owns at least one non-wall tower — a wall-only zone has no DPS either, so walls alone don\'t count',
+    ],
+  },
+  {
+    date: '2026-04-23',
     title: 'Jackpot boss resistance tuned: halve → quarter',
     changes: [
       'Follow-up to the earlier Gambler pass — ×0.5 boss multiplier still felt too generous in practice',

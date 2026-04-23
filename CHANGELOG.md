@@ -2,6 +2,9 @@
 
 ## 2026-04-23
 
+### CPU brain: gate meta-economy behind having a fighting tower
+`BalancedBrain.decide()` used to run its meta-economy pass (frontier + sends) at the top of every between-waves tick with a 70% commit roll. On wave 0 with an empty board the bot could blow its whole opening budget on a frontier building and enter wave 1 with zero defense. Added a gate: meta is only considered once the bot owns at least one **non-wall tower** — i.e. something with actual damage output. Placing a single wall then buying frontier is still blocked, since a wall-only zone has no DPS. A new `hasFightingTower(ctx)` helper reads from `ctx.placedTowers` so the check is cheap per-tick.
+
 ### Jackpot boss resistance tuned: halve → quarter
 Follow-up to the earlier Gambler pass. Halving the kill chance against bosses (×0.5) still landed too often in practice — a cluster of Gamblers could still swing a boss wave on a lucky roll. Shifted the boss multiplier to **×0.25**:
 - Gambler: 4% regular / **1%** boss (was 2%)

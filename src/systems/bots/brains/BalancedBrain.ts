@@ -62,7 +62,15 @@ export class BalancedBrain implements BotBrain {
     // committing to another tower. Roughly mirrors how a competent
     // human plays 1v1 — you don't blow every coin on walls when
     // frontier buildings pay dividends every round after.
-    if (ctx.betweenWaves) {
+    //
+    // GATE: only consider meta once this bot has a fighting
+    // footprint on the board. Without this the 70% meta roll on
+    // wave 0 could fire before the bot placed its first tower,
+    // leaving the zone defenceless through the entire first wave.
+    // "Fighting" = at least one non-wall tower (actual damage
+    // output), so placing a single wall then buying frontier
+    // doesn't count.
+    if (ctx.betweenWaves && this.hasFightingTower(ctx)) {
       const meta = this.decideMeta(ctx);
       if (meta.kind !== 'skip') return meta;
     }
@@ -301,6 +309,19 @@ export class BalancedBrain implements BotBrain {
    *  driver does this in `addBot`). */
   private affordable(pool: TowerType[], budget: number): TowerType[] {
     return pool.filter(t => t.cost <= budget);
+  }
+
+  /** True once the bot owns at least one non-wall tower. Walls
+   *  don't attack, so a zone with just walls has zero DPS — the
+   *  meta-economy gate uses this to avoid buying frontier when
+   *  the board would be defenceless. */
+  private hasFightingTower(ctx: BotContext): boolean {
+    if (ctx.placedTowers.length === 0) return false;
+    const wallIds = new Set(this.grouped.wall.map(t => t.id));
+    for (const p of ctx.placedTowers) {
+      if (!wallIds.has(p.towerId)) return true;
+    }
+    return false;
   }
 
 }
