@@ -824,16 +824,20 @@ export function drawFiend(ctx: CanvasRenderingContext2D, level: number = 1) {
 export function drawDartfrog(ctx: CanvasRenderingContext2D, level: number = 1) {
   const C = NAT;
 
-  // Per-level silhouette jumps
-  const BODY_W = [0, 5, 7, 9][level];   // width of the frog's body
-  const BODY_H = [0, 4, 5, 6][level];   // body height (squat)
-  const HEAD_W = [0, 4, 5, 6][level];   // head bulge width
-  const LEG_LEN = [0, 2, 3, 4][level];  // back-leg reach on launch frame
-  const TONGUE_MAX = [0, 3, 5, 7][level];  // tongue extent on attack frame 2
-  const STRIPES = level >= 2;           // yellow warning stripes
-  const SPOTS = level >= 3;             // red spots (L3 only)
-  const EYE_CLUSTER = level >= 3;       // four eyes (L3 only)
-  const THROAT_SAC = level >= 2;        // pulsing red throat
+  // Per-level silhouette jumps — use a much bigger share of the
+  // 16×16 grid than before. Rifleman fills ~6 wide; a frog should
+  // be WIDER than tall and read from across the screen, so we push
+  // to 10/12/14 wide at L1/L2/L3.
+  const BODY_W = [0, 10, 12, 14][level];
+  const BODY_H = [0, 5, 6, 7][level];
+  const EYE_W  = [0, 3, 3, 4][level];    // eye orb width
+  const EYE_H  = [0, 3, 3, 4][level];    // eye orb height
+  const LEG_LEN = [0, 3, 4, 4][level];
+  const TONGUE_MAX = [0, 3, 5, 7][level];
+  const STRIPES = level >= 2;
+  const SPOTS = level >= 3;
+  const EYE_CLUSTER = level >= 3;
+  const THROAT_SAC = level >= 2;
 
   // Tone gradient — light sage → green → dark forest
   const BODY = [C.SAGE, C.GREEN, C.FOREST][level - 1];
@@ -850,159 +854,239 @@ export function drawDartfrog(ctx: CanvasRenderingContext2D, level: number = 1) {
   const cx = 8;
 
   // ---- Reusable shape helpers ----
-  // Draw a bulging frog eye as a 2×2 orb with dark outline + bright
-  // highlight. Returns the pixels used so the caller can paint the
-  // eyeball pupil on attack frames.
-  function drawEye(p: (x: number, y: number, c: string) => void, ex: number, ey: number, flipHi: boolean) {
-    // Outline (dark) on outside corner
-    p(ex + (flipHi ? 1 : 0), ey,     C.DARK);
-    p(ex + (flipHi ? 1 : 0), ey + 1, C.DARK);
-    // Eye color fill
-    p(ex + (flipHi ? 0 : 1), ey,     EYE_COL);
-    p(ex + (flipHi ? 0 : 1), ey + 1, EYE_COL);
-    // White highlight (top inside corner)
-    p(ex + (flipHi ? 0 : 1), ey,     C.WHITE);
+  // Draw a bulging frog eye as a proper rectangular orb with dark
+  // outline, iris fill, center pupil, and bright highlight. Sized
+  // by EYE_W × EYE_H grid cells (3×3 or 4×4 for matriarch). Eyes
+  // visibly POP above the body silhouette — that's what sells
+  // "frog" at a glance.
+  function drawEye(p: (x: number, y: number, c: string) => void, b: (x: number, y: number, w: number, h: number, c: string) => void, ex: number, ey: number, flipHi: boolean) {
+    // Outer dark outline — eye orb silhouette
+    b(ex, ey, EYE_W, EYE_H, C.DARK);
+    // Iris fill — bright amber/gold
+    b(ex + 1, ey + 1, EYE_W - 2, EYE_H - 2, EYE_COL);
+    // Pupil — center dark dot
+    const pupilX = ex + Math.floor(EYE_W / 2);
+    const pupilY = ey + Math.floor(EYE_H / 2);
+    p(pupilX, pupilY, C.DARK);
+    // Bright highlight — top corner (flipped for right eye so both
+    // read as "looking at viewer")
+    p(ex + (flipHi ? EYE_W - 2 : 1), ey + 1, C.WHITE);
+    // Secondary highlight at L2+
+    if (level >= 2) p(ex + (flipHi ? EYE_W - 1 : 0), ey + 1, BODY);
   }
 
-  // Draw the body silhouette — a wide squat oval, wider at the
-  // back, with a clearly lighter belly band and a dark mouth slit
-  // across the face. This is what sells the "frog" read.
+  // Draw the body as a wide squat oval with rounded corners. Top
+  // dips between the eye sockets so the eyes read as separate
+  // orbs sitting ON the body rather than inside it. Mouth is a
+  // U-shape dark smile spanning most of the face.
   function drawBody(p: (x: number, y: number, c: string) => void, b: (x: number, y: number, w: number, h: number, c: string) => void, abx: number, aby: number, showMouth: boolean) {
-    // Outer dark outline
+    // Outer dark outline — full rectangle first
     b(abx, aby, BODY_W, BODY_H, C.DARK);
-    // Body fill (mid tone)
+    // Body fill
     b(abx + 1, aby + 1, BODY_W - 2, BODY_H - 2, MID);
-    // Back highlight — the rounded dome of the frog's back
+    // Back dome highlight — wide lighter band across the top
     b(abx + 2, aby + 1, BODY_W - 4, 1, BODY);
-    // Belly — distinctly lighter band across the bottom
+    // Belly band — lighter 2-row band at the bottom
     b(abx + 1, aby + BODY_H - 2, BODY_W - 2, 1, BELLY_COL);
-    // Round the corners off so it reads as a squat oval
+    // Cut the 4 corners off to make it read as a squat oval
     p(abx, aby, C.DARK);
     p(abx + BODY_W - 1, aby, C.DARK);
     p(abx, aby + BODY_H - 1, C.DARK);
     p(abx + BODY_W - 1, aby + BODY_H - 1, C.DARK);
+    p(abx + 1, aby, C.DARK);
+    p(abx + BODY_W - 2, aby, C.DARK);
+    p(abx + 1, aby + BODY_H - 1, C.DARK);
+    p(abx + BODY_W - 2, aby + BODY_H - 1, C.DARK);
 
-    // Stripes + spots overlay
+    // Warning stripes overlay (L2+)
     if (STRIPES) {
-      for (let sx = abx + 2; sx < abx + BODY_W - 2; sx += 2) {
+      for (let sx = abx + 3; sx < abx + BODY_W - 3; sx += 2) {
         p(sx, aby + 1, STRIPE);
       }
+      // Second stripe band
+      for (let sx = abx + 4; sx < abx + BODY_W - 4; sx += 2) {
+        p(sx, aby + 2, STRIPE);
+      }
     }
+    // Red dart-frog spots (L3)
     if (SPOTS) {
       p(abx + 2, aby + 2, SPOT);
       p(abx + BODY_W - 3, aby + 2, SPOT);
-      p(cx, aby + BODY_H - 2, C.PINK);
+      p(cx - 1, aby + BODY_H - 3, C.PINK);
+      p(cx + 1, aby + BODY_H - 3, C.PINK);
     }
 
-    // Mouth slit — a dark line across the face. Curves up at the
-    // corners at L2+ (amphibian mouth shape).
+    // ---- Mouth — a wide U-shape smile ----
     if (showMouth) {
       const mouthY = aby + BODY_H - 2;
-      b(abx + 2, mouthY, BODY_W - 4, 1, C.DARK);
+      // Main mouth line across the face
+      b(abx + 3, mouthY, BODY_W - 6, 1, C.DARK);
+      // Corners turn up (makes it a smile)
+      p(abx + 2, mouthY - 1, C.DARK);
+      p(abx + BODY_W - 3, mouthY - 1, C.DARK);
+      // L2+: mouth opens slightly, showing a thin dark lip below
       if (level >= 2) {
-        p(abx + 1, mouthY - 1, C.DARK);
-        p(abx + BODY_W - 2, mouthY - 1, C.DARK);
+        b(abx + 4, mouthY + 1, BODY_W - 8, 1, C.DARK);
       }
+      // L3: inner-mouth pink hint when big open
+      if (level >= 3) {
+        b(abx + 5, mouthY + 1, BODY_W - 10, 1, C.PINK);
+      }
+      // Nostril dots — between mouth and eyes, close-set
+      p(cx - 2, mouthY - 2, C.DARK);
+      p(cx + 2, mouthY - 2, C.DARK);
     }
   }
 
-  // Draw bent-Z back legs at the sides of the body. `extended`
-  // triggers the airborne pose; otherwise knees stick out sideways
-  // in a classic crouched-frog silhouette.
+  // Draw bent Z-shape back legs sticking OUT beyond the body. The
+  // knee must be visible at the side of the body silhouette — this
+  // is a defining frog shape. When extended, legs trail behind
+  // during a hop; when tucked, they fold into a crouch with knees
+  // poking out.
   function drawLegs(p: (x: number, y: number, c: string) => void, abx: number, aby: number, extended: boolean) {
     if (extended) {
-      // Airborne — legs trailing behind (upward in walk-down) with
-      // a bright spring of motion.
+      // Airborne: legs trail backward/upward (we're moving forward)
       for (let d = 1; d <= LEG_LEN; d++) {
-        p(abx - d, aby - Math.floor(d / 2), LEG_COL);
-        p(abx + BODY_W - 1 + d, aby - Math.floor(d / 2), LEG_COL);
+        const y = aby + BODY_H - 2 - Math.floor(d * 0.6);
+        p(abx - d, y, LEG_COL);
+        p(abx - d, y + 1, C.DARK);
+        p(abx + BODY_W - 1 + d, y, LEG_COL);
+        p(abx + BODY_W - 1 + d, y + 1, C.DARK);
       }
-      // Webbed toes at tips
-      p(abx - LEG_LEN - 1, aby - Math.floor(LEG_LEN / 2) - 1, C.DARK);
-      p(abx + BODY_W + LEG_LEN, aby - Math.floor(LEG_LEN / 2) - 1, C.DARK);
-      if (level >= 2) {
-        p(abx - LEG_LEN, aby - Math.floor(LEG_LEN / 2) - 1, LEG_COL);
-        p(abx + BODY_W + LEG_LEN - 1, aby - Math.floor(LEG_LEN / 2) - 1, LEG_COL);
-      }
+      // Webbed toe tips
+      const toeX1 = abx - LEG_LEN;
+      const toeX2 = abx + BODY_W - 1 + LEG_LEN;
+      const toeY = aby + BODY_H - 2 - Math.floor(LEG_LEN * 0.6);
+      p(toeX1 - 1, toeY, LEG_COL);
+      p(toeX2 + 1, toeY, LEG_COL);
+      p(toeX1 - 1, toeY + 1, C.DARK);
+      p(toeX2 + 1, toeY + 1, C.DARK);
     } else {
-      // Crouched — classic frog pose: knees bulge out sideways,
-      // lower leg drops down, webbed foot tucked below.
-      // Left leg (Z-shape: upper → knee → lower → foot)
-      p(abx - 1, aby + BODY_H - 3, LEG_COL);    // upper attachment
-      p(abx - 2, aby + BODY_H - 2, LEG_COL);    // knee bulge (sticking OUT)
-      p(abx - 1, aby + BODY_H - 1, LEG_COL);    // lower leg
-      p(abx - 1, aby + BODY_H, C.DARK);         // foot shadow
-      p(abx,     aby + BODY_H, LEG_COL);        // webbed foot tucked forward
-      // Right leg — mirror
-      p(abx + BODY_W,     aby + BODY_H - 3, LEG_COL);
-      p(abx + BODY_W + 1, aby + BODY_H - 2, LEG_COL);
-      p(abx + BODY_W,     aby + BODY_H - 1, LEG_COL);
-      p(abx + BODY_W,     aby + BODY_H, C.DARK);
-      p(abx + BODY_W - 1, aby + BODY_H, LEG_COL);
+      // Crouched — knees bulge out to the sides (frog signature)
+      // LEFT leg: thigh along body → knee (2px out) → shin → foot tucked under
+      const kneeY = aby + 1;
+      const shinY = aby + 2;
+      const footY = aby + BODY_H;
+
+      // Upper thigh alongside body
+      p(abx - 1, kneeY, C.DARK);
+      p(abx - 1, kneeY + 1, LEG_COL);
+      // Knee bulge — 2 cells sticking OUT sideways
+      p(abx - 2, kneeY + 1, C.DARK);
+      p(abx - 2, kneeY + 2, LEG_COL);
+      p(abx - 3, kneeY + 2, C.DARK);
+      p(abx - 3, kneeY + 3, LEG_COL);
+      p(abx - 3, kneeY + 4, C.DARK);
+      // Shin drops down toward body
+      p(abx - 2, kneeY + 3, C.DARK);
+      p(abx - 2, kneeY + 4, LEG_COL);
+      p(abx - 1, shinY + 2, LEG_COL);
+      p(abx - 1, shinY + 3, LEG_COL);
+      // Webbed foot under body
+      p(abx - 1, footY, LEG_COL);
+      p(abx, footY, LEG_COL);
+      p(abx + 1, footY, C.DARK);
+
+      // RIGHT leg — mirror
+      p(abx + BODY_W, kneeY, C.DARK);
+      p(abx + BODY_W, kneeY + 1, LEG_COL);
+      p(abx + BODY_W + 1, kneeY + 1, C.DARK);
+      p(abx + BODY_W + 1, kneeY + 2, LEG_COL);
+      p(abx + BODY_W + 2, kneeY + 2, C.DARK);
+      p(abx + BODY_W + 2, kneeY + 3, LEG_COL);
+      p(abx + BODY_W + 2, kneeY + 4, C.DARK);
+      p(abx + BODY_W + 1, kneeY + 3, C.DARK);
+      p(abx + BODY_W + 1, kneeY + 4, LEG_COL);
+      p(abx + BODY_W, shinY + 2, LEG_COL);
+      p(abx + BODY_W, shinY + 3, LEG_COL);
+      p(abx + BODY_W, footY, LEG_COL);
+      p(abx + BODY_W - 1, footY, LEG_COL);
+      p(abx + BODY_W - 2, footY, C.DARK);
     }
-    // Small front arms under the belly — always visible, give the
-    // frog its "sitting up" posture.
-    p(abx + 2, aby + BODY_H, LEG_COL);
-    p(abx + BODY_W - 3, aby + BODY_H, LEG_COL);
+    // Front arms — two small pegs peeking out below the belly.
+    // They give the "sitting up" frog pose.
+    p(abx + 3, aby + BODY_H, LEG_COL);
+    p(abx + 3, aby + BODY_H + 1, C.DARK);
+    p(abx + BODY_W - 4, aby + BODY_H, LEG_COL);
+    p(abx + BODY_W - 4, aby + BODY_H + 1, C.DARK);
+    if (level >= 3) {
+      // L3: visible webbed fingers
+      p(abx + 2, aby + BODY_H + 1, C.DARK);
+      p(abx + BODY_W - 3, aby + BODY_H + 1, C.DARK);
+    }
   }
 
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
     const { p, b } = mk(c, o, GR, GR, PX);
 
+    // Vertical anchor: body bottom sits just above the leg row
+    // regardless of level, so the feet always plant at the same
+    // visual line. Eye orb reaches up from there.
+    const bodyBottom = 12;          // y of body's bottom-most row
+    const baseAby = bodyBottom - BODY_H + 1;
+
+    // Eye orbs overlap the top row of the body by 1 cell so they
+    // read as bulges growing OUT of the body outline.
+    const eyeTopY = baseAby - EYE_H + 1;
+
+    // Eye positions — pushed out near the body edges with a gap
+    // between them so each eye is clearly a separate orb.
+    const eye1X = cx - Math.floor(BODY_W / 2) + 1;
+    const eye2X = cx + Math.floor(BODY_W / 2) - EYE_W - 1;
+
     // ---- ATTACK row (tongue-lash, 4 frames) ----
     if (row === 3) {
-      // Frog stays grounded, tongue animates outward.
       const abx = cx - Math.floor(BODY_W / 2);
-      const aby = 10;
-      drawBody(p, b, abx, aby, false); // no mouth slit — jaw open instead
+      const aby = baseAby;
+      drawBody(p, b, abx, aby, true);
 
-      // Open jaw — dark maw across the face
-      const mouthY = aby + BODY_H - 2;
-      b(abx + 2, mouthY - 1, BODY_W - 4, 2, C.DARK);
+      // Big bulging eyes on top of the head
+      drawEye(p, b, eye1X, eyeTopY, false);
+      drawEye(p, b, eye2X, eyeTopY, true);
 
-      // Bulging eyes on top of the head (above body silhouette)
-      drawEye(p, abx + 1, aby - 2, false);
-      drawEye(p, abx + BODY_W - 3, aby - 2, true);
-
-      // Eye cluster at L3 — two extra smaller eyes between the big ones
+      // L3 extra eye cluster between the big eyes
       if (EYE_CLUSTER) {
-        p(cx - 1, aby - 1, C.EYE);
-        p(cx + 1, aby - 1, C.EYE);
+        p(cx, eyeTopY + 1, C.EYE);
+        p(cx, eyeTopY + 2, EYE_COL);
       }
 
-      // Tongue: 0 = retracted, 1 = half, 2 = full, 3 = retracting
-      const tongueY = mouthY;
+      // Open jaw — extra dark band on the mouth line (attack pose
+      // is "gaping open" not "smiling")
+      const mouthY = aby + BODY_H - 2;
+      b(abx + 3, mouthY + 1, BODY_W - 6, 1, C.DARK);
+
+      // Tongue whips forward through the 4 frames
       let tongueLen = 0;
-      if (col === 1) tongueLen = Math.max(1, Math.floor(TONGUE_MAX / 2));
+      if (col === 1) tongueLen = Math.max(2, Math.floor(TONGUE_MAX / 2));
       else if (col === 2) tongueLen = TONGUE_MAX;
       else if (col === 3) tongueLen = Math.max(1, Math.floor(TONGUE_MAX / 3));
 
       if (tongueLen > 0) {
         const tongueStart = abx + BODY_W;
+        const tongueY = mouthY;
         for (let t = 0; t < tongueLen; t++) {
           p(tongueStart + t, tongueY, TONGUE_COL);
-          if (t > 0) p(tongueStart + t, tongueY + 1, TONGUE_DK);
+          p(tongueStart + t, tongueY + 1, TONGUE_DK);
         }
-        // Whip-tip highlight + barbed ending at L3
         const tipX = tongueStart + tongueLen;
         p(tipX, tongueY, C.WHITE);
+        p(tipX, tongueY + 1, TONGUE_COL);
         if (level >= 3) {
           p(tipX, tongueY - 1, TONGUE_COL);
-          p(tipX, tongueY + 1, TONGUE_COL);
+          p(tipX + 1, tongueY, TONGUE_COL);
         }
       }
 
       // Venom drip on retract
       if (col === 3 && level >= 2) {
-        const dripX = abx + BODY_W + Math.max(1, Math.floor(tongueLen / 2));
-        p(dripX, tongueY + 2, C.VENOM);
-        if (level >= 3) p(dripX + 1, tongueY + 3, C.TOXIC);
+        p(abx + BODY_W + 2, mouthY + 3, C.VENOM);
+        if (level >= 3) p(abx + BODY_W + 3, mouthY + 4, C.TOXIC);
       }
 
-      // Legs crouched forward, ready to pounce
+      // Crouched legs — ready to pounce
       drawLegs(p, abx, aby, false);
 
-      // Throat sac — puffs during the attack
+      // Throat sac puffing
       if (THROAT_SAC) {
         p(cx, aby + BODY_H, C.PINK);
         p(cx - 1, aby + BODY_H, C.DKTHRN);
@@ -1012,66 +1096,64 @@ export function drawDartfrog(ctx: CanvasRenderingContext2D, level: number = 1) {
     }
 
     // ---- WALK (HOP) frames — rows 0..2 ----
-    // 4-frame hop cycle: crouch → launch → peak → landing.
-    // Y-offset sprite bobbing gives the airborne illusion.
-    const hopOffsets = [0, -3, -5, -2];
+    // 4-frame hop cycle with a more conservative Y-lift now that
+    // the frog is bigger (at the peak frame we don't want the
+    // eyes to clip off the top of the cell).
+    const hopOffsets = [0, -2, -3, -1];
     const hopY = hopOffsets[col];
-    const cy = 9 + hopY;
 
     const orient = row; // 0=down, 1=right, 2=up
     const abx = cx - Math.floor(BODY_W / 2);
-    const aby = cy;
+    const aby = baseAby + hopY;
+    const eyeY = eyeTopY + hopY;
 
-    // Draw the body (with mouth slit for the face-us view only —
-    // walk-down shows the mouth, walk-up we see the back)
+    // Body with mouth visible only in the walk-down (face-us) row
     drawBody(p, b, abx, aby, orient === 0);
 
-    // ---- Eyes — always on top of the head ----
+    // ---- Eyes ----
     if (orient === 0) {
-      // Facing viewer: two big bulging eyes on top of the head
-      drawEye(p, abx + 1, aby - 2, false);
-      drawEye(p, abx + BODY_W - 3, aby - 2, true);
+      // Facing viewer: two big bulging orbs on top of head
+      drawEye(p, b, eye1X, eyeY, false);
+      drawEye(p, b, eye2X, eyeY, true);
       if (EYE_CLUSTER) {
-        p(cx - 1, aby - 1, C.EYE);
-        p(cx + 1, aby - 1, C.EYE);
+        p(cx, eyeY + 1, C.EYE);
+        p(cx, eyeY + 2, EYE_COL);
       }
-      // Idle tongue peek at L3
+      // Idle tongue tip at L3 in crouch frame
       if (level >= 3 && col === 0) {
         const mouthY = aby + BODY_H - 2;
-        p(cx, mouthY + 1, TONGUE_COL);
+        p(abx + BODY_W - 2, mouthY + 1, TONGUE_COL);
       }
     } else if (orient === 1) {
-      // Profile view — eyes stacked on top, slight lean forward
-      drawEye(p, cx - 1, aby - 2, false);
-      p(cx + 1, aby - 2, EYE_COL);
-      p(cx + 2, aby - 2, C.DARK);
-      p(cx + 2, aby - 1, C.DARK);
-      // Mouth visible on the side
-      p(cx + BODY_W - Math.floor(BODY_W / 2) - 1, aby + BODY_H - 2, C.DARK);
-      p(cx + BODY_W - Math.floor(BODY_W / 2), aby + BODY_H - 2, C.DARK);
-      if (EYE_CLUSTER) p(cx, aby - 1, C.EYE);
-      // Tongue tip poking out forward at L3
+      // Profile: both eyes visible but offset forward (toward the
+      // direction of travel). Near eye bigger, far eye smaller.
+      drawEye(p, b, eye1X + 1, eyeY, false);
+      drawEye(p, b, eye2X + 1, eyeY - 1, true);
+      if (EYE_CLUSTER) p(cx + 1, eyeY + 1, C.EYE);
+      // Mouth visible on forward side
+      p(abx + BODY_W - 2, aby + BODY_H - 2, C.DARK);
+      p(abx + BODY_W - 1, aby + BODY_H - 2, C.DARK);
+      // Tongue tip peeks at L3
       if (level >= 3 && col === 0) {
         p(abx + BODY_W, aby + BODY_H - 2, TONGUE_COL);
       }
     } else {
-      // Facing away (walk-up): we see the back of the frog's head
-      // with just the tops of the bulging eyes peeking up.
-      p(abx + 1, aby - 1, C.DARK);
-      p(abx + 2, aby - 1, EYE_COL);
-      p(abx + BODY_W - 3, aby - 1, EYE_COL);
-      p(abx + BODY_W - 2, aby - 1, C.DARK);
-      if (EYE_CLUSTER) {
-        p(abx + 3, aby - 1, C.EYE);
-        p(abx + BODY_W - 4, aby - 1, C.EYE);
+      // Facing away: we see the back of the head. Eyes only peek
+      // their top edges above the body. Legs show the full Z bend.
+      for (let i = 0; i < EYE_W; i++) {
+        p(eye1X + i, aby - 1, C.DARK);
+        p(eye2X + i, aby - 1, C.DARK);
       }
+      // Iris peek
+      p(eye1X + 1, aby - 1, EYE_COL);
+      p(eye2X + EYE_W - 2, aby - 1, EYE_COL);
     }
 
-    // ---- Back legs (bent Z-shape vs airborne trail) ----
+    // ---- Back legs — bent Z when grounded, trailing when airborne ----
     const extended = col === 1 || col === 2;
-    drawLegs(p, abx, aby + (extended ? Math.floor(BODY_H / 2) : 0), extended);
+    drawLegs(p, abx, aby, extended);
 
-    // ---- Throat sac (L2+, only visible on walk-down) ----
+    // ---- Throat sac (L2+, only visible when facing viewer) ----
     if (THROAT_SAC && orient === 0) {
       const sacCol = col === 0 || col === 3 ? C.PINK : C.MAGENTA;
       p(cx, aby + BODY_H, sacCol);

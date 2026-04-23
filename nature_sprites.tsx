@@ -314,11 +314,13 @@ export function drawTowers(ctx){
       const br=s>=1,fl=s===2;
       const cx=16;
 
-      // Per-level discrete jumps
-      const BODY_W=[0,12,14,16][lv];   // body width
-      const BODY_H=[0,6,7,8][lv];      // body height (squat)
-      const EYE_SIZE=[0,2,3,3][lv];    // eye orb width (grid cells)
-      const TONGUE=[0,0,3,6][lv];
+      // Per-level discrete jumps. Scaled up generously — on the
+      // 32×32 grid (64×64 display) the frog needs to occupy most
+      // of the cell to read as a frog at a glance.
+      const BODY_W=[0,18,22,26][lv];   // body width (big squat oval)
+      const BODY_H=[0,9,11,13][lv];    // body height
+      const EYE_SIZE=[0,5,6,7][lv];    // eye orb width (grid cells)
+      const TONGUE=[0,0,4,8][lv];
       const STRIPES=lv>=2;
       const SPOTS=lv>=3;
       const EYE_CLUSTER=lv>=3;
