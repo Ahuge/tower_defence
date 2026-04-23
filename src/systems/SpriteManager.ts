@@ -95,7 +95,7 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
   // it's only reachable via Bramble's L2 branch. Kept here so the
   // skin editor + SpriteManager know about its column.
   ...factionTowers('nature_towers',
-    ['nature_bramble', 'nature_root', 'nature_dartfrog', 'nature_blossom',
+    ['nature_bramble', 'nature_root', 'nature_viper', 'nature_blossom',
      'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder',
      'nature_razor_bramble'],
     [5, 2, 3, 3, 3, 3, 3, 1, 3]),
@@ -120,7 +120,7 @@ const PROJECTILE_SPRITE_CONFIGS: Record<string, ProjectileSpriteConfig> = {
   ...factionProj('arcane_proj', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova']),
   ...factionProj('mech_proj', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan']),
   ...factionProj('nature_proj',
-    ['nature_bramble', 'nature_root', 'nature_dartfrog', 'nature_blossom',
+    ['nature_bramble', 'nature_root', 'nature_viper', 'nature_blossom',
      'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder',
      'nature_razor_bramble']),
   ...factionProj('mil_proj', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander']),
@@ -137,7 +137,7 @@ const MOBILE_TOWER_IDS = new Set([
   'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander',
   'alien_swarmling',
   'infernal_bomber',
-  'nature_dartfrog',
+  'nature_viper',
 ]);
 
 /** Mobile unit sprite configs — each gets its own small spritesheet */
@@ -148,7 +148,7 @@ const MOBILE_SPRITE_CONFIGS: Record<string, MobileUnitSpriteConfig> = {
   mil_commander:   { sheetKey: 'mobile_mil_commander', frameWidth: 32, frameHeight: 32, cols: 4 },
   alien_swarmling: { sheetKey: 'mobile_alien_swarmling', frameWidth: 32, frameHeight: 32, cols: 4 },
   infernal_bomber: { sheetKey: 'mobile_infernal_fiend', frameWidth: 32, frameHeight: 32, cols: 4 },
-  nature_dartfrog: { sheetKey: 'mobile_nature_dartfrog', frameWidth: 32, frameHeight: 32, cols: 4 },
+  nature_viper:    { sheetKey: 'mobile_nature_viper', frameWidth: 32, frameHeight: 32, cols: 4 },
 };
 
 /** Check if a tower ID has sprite art available */

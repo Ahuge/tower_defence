@@ -43,7 +43,7 @@
 | Bramble Hedge | 12g | Wall + cheap DPS. 1 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
 | └ Razor Bramble *(branch)* | 20g switch | Not placeable directly — reached via Bramble L1→L2 choice. 5 dmg @ 300ms range 1.5 on switch, scales to 15 dmg range 2.2 at L4. |
 | Root | 35g | Strongest slow: 70% for 3s. |
-| Mire Dart | 40g | **Mobile.** Poison-dart frog. Hops between creeps, tongue-lashes with 5%/s 4s poison. Weak tongue-hit (4 dmg), deadly venom. |
+| Grove Viper | 40g | **Mobile.** Slithers between creeps, lunges with a fanged strike. 5 dmg bite + 6%/s 4.5s viper venom. |
 | Blossom | 60g | No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level. |
 | Spore | 100g | Poisons ALL creeps near tower (not target). 2% HP/s. |
 | Sunroot | 140g | Splash DPS. 56-radius fire-flower AoE. |

@@ -294,263 +294,255 @@ export function drawTowers(ctx){
       if(lv>=4){p(9,16,C.LTMOSS);p(22,13,C.MOSS);p(12,20,C.MOSS);}
       if(s===3){b(14,massTop+2,4,2,C.DKBARK);p(15,massTop+4,C.STUMP);}
     },
-    // 3. Mire Dart — Poison dart frog dock icon. The animated
-    //    hop+tongue-lash sprite lives on `dartfrog_mobile.png`;
-    //    this is just the tower-bar thumbnail. Discrete per-level
-    //    silhouette jumps:
-    //      L1 hatchling — small pale sage body, crouched, no
-    //                    stripes, no tongue showing, sage eyes
-    //      L2 striped dart — bigger green body with yellow warning
-    //                    stripes on the back, short red tongue
-    //                    visible, amber eyes, slightly puffed
-    //                    throat
-    //      L3 ancient dart — large dark-forest body with yellow
-    //                    stripes + red warning spots, long gnarled
-    //                    tongue always extended, bulging red throat
-    //                    sac, four-eye cluster, venom drooling
+    // 3. Grove Viper — Coiled snake dock icon. The animated
+    //    slither+strike sprite lives on `viper_mobile.png`; this
+    //    is the tower-bar thumbnail. Discrete per-level jumps:
+    //      L1 hatchling — slim juvenile snake coiled once, small
+    //                    triangular head, pale eye, no markings
+    //      L2 adult viper — thicker body with diamond-back pattern,
+    //                    tongue flicking out, amber eye, visible
+    //                    venom fangs
+    //      L3 ancient viper — massive coil, bold diamond pattern
+    //                    with red accents, slit pupil, venom drool,
+    //                    extended cobra-style hood
     //    (3 levels — maxLevel=3 in T_LEVELS for this column)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       tBaseLv(p,b,23,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
       const cx=16;
 
-      // Per-level discrete jumps. Scaled up generously — on the
-      // 32×32 grid (64×64 display) the frog needs to occupy most
-      // of the cell to read as a frog at a glance.
-      const BODY_W=[0,18,22,26][lv];   // body width (big squat oval)
-      const BODY_H=[0,9,11,13][lv];    // body height
-      const EYE_SIZE=[0,5,6,7][lv];    // eye orb width (grid cells)
-      const TONGUE=[0,0,4,8][lv];
-      const STRIPES=lv>=2;
-      const SPOTS=lv>=3;
-      const EYE_CLUSTER=lv>=3;
-      const THROAT_SAC=lv>=2;
+      // Per-level discrete jumps. The snake is a big coiled
+      // silhouette — wider than tall like a stacked rope.
+      const COIL_W=[0,18,22,26][lv];   // total coil width
+      const BODY_TH=[0,3,4,5][lv];     // body thickness (pixels per coil band)
+      const COILS=[0,2,3,3][lv];       // number of visible coil loops
+      const HEAD_W=[0,5,7,8][lv];      // triangular head width
+      const HEAD_H=[0,4,5,6][lv];
+      const FANGS=lv>=2;
+      const HOOD=lv>=3;
+      const DIAMOND=lv>=2;
+      const VENOM_DROOL=lv>=3;
 
-      // Palette per level — light sage → green → deep forest
-      const BODY=[C.LTGRN,C.GREEN,C.FOREST][lv-1];
-      const MID=[C.GREEN,C.MDGRN,C.DKFOR][lv-1];
-      const BELLY=[C.PALGRN,C.LTGRN,C.GREEN][lv-1];
+      // Palette per level — earthy greens trending dark
+      const SCALE_LT=[C.LTGRN,C.THORN,C.MDGRN][lv-1];
+      const SCALE_MD=[C.MDGRN,C.DKVINE,C.FOREST][lv-1];
+      const SCALE_DK=[C.FOREST,C.DKFOR,C.DKFOR][lv-1];
+      const BELLY=[C.PALGRN,C.LTGRN,C.LTMOSS][lv-1];
       const EYE_COL=lv===1?C.AMBER:lv===2?C.GOLD:C.LTAMB;
-      const EYE_PUPIL=C.DKFOR;
-      const STRIPE_COL=fl?C.WHITE:C.GOLD;
-      const SPOT_COL=C.PINK;
+      const PUPIL=C.DKFOR;
       const TONGUE_COL=fl?C.LTPNK:C.PINK;
-      const TONGUE_DK=C.MAGENTA;
+      const DIAMOND_DK=C.DKFOR;
+      const DIAMOND_LT=lv===3?C.PINK:C.GOLD;
 
-      // ==== BODY silhouette (wide squat oval) ====
-      // Sits centred low, occupies roughly the bottom third of the
-      // cell. Eyes will bulge UP above this silhouette; legs hang
-      // slightly below.
-      const aby=22-BODY_H;
-      const abx=cx-Math.floor(BODY_W/2);
-      // Outer dark outline
-      b(abx,aby,BODY_W,BODY_H,C.DKFOR);
-      // Interior fill
-      b(abx+1,aby+1,BODY_W-2,BODY_H-2,MID);
-      // Back dome (lighter upper band)
-      b(abx+2,aby+1,BODY_W-4,2,BODY);
-      // Belly band (lighter underside)
-      b(abx+1,aby+BODY_H-2,BODY_W-2,1,BELLY);
-      // Cut the corners off to read as an oval, not a rectangle
-      p(abx,aby,C.SHAD);p(abx+BODY_W-1,aby,C.SHAD);
-      p(abx,aby+BODY_H-1,C.SHAD);p(abx+BODY_W-1,aby+BODY_H-1,C.SHAD);
-      p(abx+1,aby,C.DKFOR);p(abx+BODY_W-2,aby,C.DKFOR);
-      p(abx+1,aby+BODY_H-1,C.DKFOR);p(abx+BODY_W-2,aby+BODY_H-1,C.DKFOR);
+      // ==== COILED BODY (stacked bands of coil, wider than tall) ====
+      // Each coil is a horizontal band with alternating offset so
+      // the snake reads as a rope spiraling down on itself. Base
+      // sits on the pedestal.
+      const baseY=22;                  // base of coil (on pedestal)
+      const coilStartY=baseY-COILS*BODY_TH;
+      const abx=cx-Math.floor(COIL_W/2);
 
-      // ==== MOUTH (wide dark slit across the face) ====
-      // Placed on the front face, turning up at the corners to
-      // read as a frog smile.
-      const mouthY=aby+BODY_H-3;
-      b(abx+3,mouthY,BODY_W-6,1,C.DKFOR);
-      // Upturned corners
-      p(abx+2,mouthY-1,C.DKFOR);
-      p(abx+BODY_W-3,mouthY-1,C.DKFOR);
-      // Mouth open wider at higher levels
-      if(lv>=2){
-        b(abx+4,mouthY+1,BODY_W-8,1,C.SHAD);
-      }
-      if(lv>=3){
-        // Visible inner mouth (darker pink) when mouth is open
-        b(abx+5,mouthY+1,BODY_W-10,1,C.DKPNK);
-      }
+      for(let k=0;k<COILS;k++){
+        const y0=coilStartY+k*BODY_TH;
+        // Offset alternating coils slightly for an S shape read
+        const xOff=(k%2===0)?0:1;
+        const w=COIL_W-xOff*2;
+        const x=abx+xOff;
+        // Outer dark outline
+        b(x,y0,w,BODY_TH,SCALE_DK);
+        // Mid fill
+        b(x+1,y0+1,w-2,Math.max(1,BODY_TH-2),SCALE_MD);
+        // Top highlight row (lighter scales)
+        b(x+2,y0+1,w-4,1,SCALE_LT);
+        // Belly band (lighter under-scale on the bottom row of each coil)
+        if(BODY_TH>=3)b(x+1,y0+BODY_TH-1,w-2,1,BELLY);
+        // Round the coil ends (cap both sides)
+        p(x,y0,C.DKFOR);
+        p(x+w-1,y0,C.DKFOR);
+        p(x,y0+BODY_TH-1,C.DKFOR);
+        p(x+w-1,y0+BODY_TH-1,C.DKFOR);
 
-      // ==== WARNING STRIPES (L2+) ====
-      if(STRIPES){
-        // Two horizontal warning stripes across the back
-        for(let sx=abx+2;sx<abx+BODY_W-2;sx+=2){
-          p(sx,aby+1,STRIPE_COL);
+        // ==== DIAMOND-BACK PATTERN (L2+) ====
+        if(DIAMOND&&BODY_TH>=3){
+          const diamondCount=Math.floor((w-4)/4);
+          for(let d=0;d<diamondCount;d++){
+            const dx=x+2+d*4+(k%2);
+            const dy=y0+Math.floor(BODY_TH/2);
+            // Diamond shape (centre darker, outer edges lighter)
+            p(dx,dy,DIAMOND_DK);
+            p(dx+1,dy,DIAMOND_DK);
+            p(dx,dy-1,DIAMOND_LT);
+            p(dx+1,dy-1,DIAMOND_LT);
+            if(lv>=3){
+              p(dx,dy+1,DIAMOND_LT);
+              p(dx+1,dy+1,DIAMOND_LT);
+            }
+          }
         }
-        // Second stripe
-        for(let sx=abx+3;sx<abx+BODY_W-3;sx+=2){
-          p(sx,aby+2,STRIPE_COL);
+
+        // Scale texture — tiny dot pattern
+        if(k===0||k===COILS-1){
+          for(let sx=x+3;sx<x+w-3;sx+=3){
+            p(sx,y0+1,SCALE_DK);
+          }
         }
       }
 
-      // ==== RED DART-FROG SPOTS (L3) ====
-      if(SPOTS){
-        b(abx+2,aby+2,2,1,SPOT_COL);
-        b(abx+BODY_W-4,aby+2,2,1,SPOT_COL);
-        p(cx-1,aby+3,C.MAGENTA);
-        p(cx+1,aby+3,C.MAGENTA);
-        p(abx+3,aby+BODY_H-3,C.MAGENTA);
-        p(abx+BODY_W-4,aby+BODY_H-3,C.MAGENTA);
+      // ==== HEAD (triangular, rising up off the top coil) ====
+      // Head is raised like a cobra-ready pose — rising up and
+      // slightly to the right so you see the eye in profile.
+      const headBaseY=coilStartY-1;
+      const headX=cx-1;                // head centred near middle
+      const headTop=headBaseY-HEAD_H;
+      // Triangular head — narrows to a point at the top, wider at base
+      for(let y=0;y<HEAD_H;y++){
+        const ratio=y/HEAD_H;
+        const w=Math.max(2,Math.floor(HEAD_W*(1-ratio*0.4)));
+        const xs=headX-Math.floor(w/2)+1;
+        b(xs,headTop+y,w,1,SCALE_MD);
+        // Outline
+        p(xs-1,headTop+y,SCALE_DK);
+        p(xs+w,headTop+y,SCALE_DK);
+        // Top highlight
+        if(y===0)b(xs,headTop+y,w,1,SCALE_LT);
+      }
+      // Jaw/mouth — horizontal line at bottom of head
+      b(headX-Math.floor(HEAD_W/2)+2,headBaseY-1,HEAD_W-4,1,C.DKFOR);
+
+      // ==== HOOD (L3 only — cobra-style flare) ====
+      if(HOOD){
+        const hoodY=headTop+Math.floor(HEAD_H/2);
+        p(headX-Math.floor(HEAD_W/2),hoodY,SCALE_DK);
+        p(headX-Math.floor(HEAD_W/2)-1,hoodY+1,SCALE_DK);
+        p(headX-Math.floor(HEAD_W/2)-1,hoodY,SCALE_MD);
+        p(headX+Math.floor(HEAD_W/2)+1,hoodY,SCALE_DK);
+        p(headX+Math.floor(HEAD_W/2)+2,hoodY+1,SCALE_DK);
+        p(headX+Math.floor(HEAD_W/2)+2,hoodY,SCALE_MD);
+        // Hood spots — amber dots on the flare
+        p(headX-Math.floor(HEAD_W/2)-1,hoodY+1,C.AMBER);
+        p(headX+Math.floor(HEAD_W/2)+2,hoodY+1,C.AMBER);
       }
 
-      // ==== BULGING EYE ORBS (sit ON TOP of the body) ====
-      // Each eye is a (EYE_SIZE × EYE_SIZE) rounded square. Left
-      // and right eyes are placed near the body edges; the body
-      // top dips slightly between them to read as an inter-ocular
-      // gap.
-      const eyeW=EYE_SIZE;
-      const eyeH=EYE_SIZE;
-      const eyeTopY=aby-eyeH;
-      // Inter-eye gap (dark body between the eyes)
-      const gapL=cx-1,gapR=cx+1;
-      for(let y=eyeTopY+1;y<aby;y++){
-        p(gapL,y,C.DKFOR);p(cx,y,MID);p(gapR,y,C.DKFOR);
-      }
-
-      // Left eye — draw as a rounded square with outline + fill + highlight
-      const leftEyeX=abx+1;
-      // Outline
-      b(leftEyeX,eyeTopY,eyeW,eyeH,C.DKFOR);
-      // Eye-color fill
-      b(leftEyeX,eyeTopY+1,eyeW,eyeH-1,EYE_COL);
-      // Pupil — center dark dot
-      p(leftEyeX+Math.floor(eyeW/2),eyeTopY+Math.floor(eyeH/2),EYE_PUPIL);
-      // Highlight — bright spot top-right
-      p(leftEyeX+eyeW-1,eyeTopY,C.WHITE);
-      if(lv>=2)p(leftEyeX+eyeW-1,eyeTopY+1,C.PALGRN);
-
-      // Right eye — mirror (highlight goes top-LEFT)
-      const rightEyeX=abx+BODY_W-1-eyeW;
-      b(rightEyeX,eyeTopY,eyeW,eyeH,C.DKFOR);
-      b(rightEyeX,eyeTopY+1,eyeW,eyeH-1,EYE_COL);
-      p(rightEyeX+Math.floor(eyeW/2),eyeTopY+Math.floor(eyeH/2),EYE_PUPIL);
-      p(rightEyeX,eyeTopY,C.WHITE);
-      if(lv>=2)p(rightEyeX,eyeTopY+1,C.PALGRN);
-
-      // L3 extra eye cluster — two smaller eyes in the gap
-      if(EYE_CLUSTER){
-        p(cx-1,eyeTopY+1,C.EYE??C.AMBER);
-        p(cx,eyeTopY+1,C.DKFOR);
-        p(cx+1,eyeTopY+1,C.EYE??C.AMBER);
-      }
-
-      // ==== NOSTRIL DOTS (L2+) ====
-      // Tiny dark nostrils between mouth and eyes — big recognition win
-      if(lv>=2){
-        p(cx-2,mouthY-2,C.DKFOR);
-        p(cx+2,mouthY-2,C.DKFOR);
-      }
-
-      // ==== BACK LEGS (bent Z-shape, sitting POSITION) ====
-      // Frogs' back legs fold alongside the body with the knee
-      // sticking out. Drawn as a clear zigzag at each side.
-      const legCol=lv===1?C.MDGRN:lv===2?C.DKGRN:C.FOREST;
-      const legDk=C.DKFOR;
-      // LEFT leg (Z-shape: upper thigh down, knee sticks out, shin down, foot under body)
-      // Upper thigh (alongside body)
-      p(abx-1,aby+2,legDk);
-      p(abx-1,aby+3,legCol);
-      // Knee bulge (sticking OUT to the side — iconic frog silhouette)
-      p(abx-2,aby+4,legDk);
-      p(abx-2,aby+5,legCol);
-      p(abx-3,aby+5,legCol);
-      p(abx-3,aby+6,legDk);
-      // Shin dropping down from knee
-      p(abx-2,aby+6,legCol);
-      p(abx-1,aby+BODY_H-1,legCol);
-      // Webbed foot tucked under body (visible toes)
-      p(abx-1,aby+BODY_H,legCol);
-      p(abx,aby+BODY_H,legCol);
-      p(abx+1,aby+BODY_H,legDk);
-      // RIGHT leg — mirror
-      p(abx+BODY_W,aby+2,legDk);
-      p(abx+BODY_W,aby+3,legCol);
-      p(abx+BODY_W+1,aby+4,legDk);
-      p(abx+BODY_W+1,aby+5,legCol);
-      p(abx+BODY_W+2,aby+5,legCol);
-      p(abx+BODY_W+2,aby+6,legDk);
-      p(abx+BODY_W+1,aby+6,legCol);
-      p(abx+BODY_W,aby+BODY_H-1,legCol);
-      p(abx+BODY_W,aby+BODY_H,legCol);
-      p(abx+BODY_W-1,aby+BODY_H,legCol);
-      p(abx+BODY_W-2,aby+BODY_H,legDk);
-
-      // ==== FRONT ARMS (small pegs under the belly) ====
-      // Give the frog its "sitting up" pose — two front arms
-      // visibly supporting the front of the body.
-      p(abx+3,aby+BODY_H,legCol);
-      p(abx+3,aby+BODY_H+1,legDk);
-      p(abx+BODY_W-4,aby+BODY_H,legCol);
-      p(abx+BODY_W-4,aby+BODY_H+1,legDk);
+      // ==== EYE (on the side of the head, visible in profile) ====
+      const eyeY=headTop+Math.floor(HEAD_H/2)-1;
+      const eyeX=headX+Math.floor(HEAD_W/2)-2;
+      // Eye socket (darker recess)
+      p(eyeX,eyeY,C.DKFOR);
+      p(eyeX+1,eyeY,C.DKFOR);
+      p(eyeX,eyeY+1,C.DKFOR);
+      p(eyeX+1,eyeY+1,C.DKFOR);
+      // Iris fill
+      p(eyeX,eyeY,EYE_COL);
+      p(eyeX+1,eyeY+1,EYE_COL);
+      // Slit pupil at L3 (vertical slit — classic viper eye)
       if(lv>=3){
-        // Webbed fingers hinted
-        p(abx+2,aby+BODY_H+1,legDk);
-        p(abx+BODY_W-3,aby+BODY_H+1,legDk);
+        p(eyeX,eyeY+1,PUPIL);
+        p(eyeX+1,eyeY,PUPIL);
+      }else{
+        // Round pupil at L1/L2
+        p(eyeX+1,eyeY+1,PUPIL);
+      }
+      // Bright highlight
+      p(eyeX,eyeY,C.WHITE);
+
+      // Mirror eye on the other side at L3 (we see both with the
+      // hood extended)
+      if(HOOD){
+        const eyeX2=headX-Math.floor(HEAD_W/2)+1;
+        p(eyeX2,eyeY,EYE_COL);
+        p(eyeX2+1,eyeY,C.DKFOR);
       }
 
-      // ==== THROAT SAC (L2+, pulsing below jaw) ====
-      if(THROAT_SAC){
-        const sacY=aby+BODY_H-1;
-        p(cx,sacY,lv===3?C.PINK:C.DKPNK);
+      // ==== FORKED TONGUE (flickers out of the mouth) ====
+      // Tongue always visible on the Viper — it's the
+      // iconic-snake read. Forks at the tip at L2+.
+      const tongueBaseY=headBaseY-1;
+      const tongueBaseX=headX+Math.floor(HEAD_W/2)-1;
+      const tongueLen=lv===1?3:lv===2?5:7;
+      // Main tongue shaft extending to the right
+      for(let t=0;t<tongueLen;t++){
+        p(tongueBaseX+t,tongueBaseY,TONGUE_COL);
+        if(t>0)p(tongueBaseX+t,tongueBaseY-1,C.MAGENTA);
+      }
+      // Forked tip (Y shape) — L2+ actually splits into two prongs
+      if(FANGS){
+        const tipX=tongueBaseX+tongueLen;
+        p(tipX,tongueBaseY-1,TONGUE_COL);
+        p(tipX,tongueBaseY+1,TONGUE_COL);
+        p(tipX+1,tongueBaseY-1,C.MAGENTA);
+        p(tipX+1,tongueBaseY+1,C.MAGENTA);
+      }else{
+        p(tongueBaseX+tongueLen,tongueBaseY,C.WHITE);
+      }
+      // Fire — tongue lashes farther + white-hot tip
+      if(br){
+        for(let t=tongueLen+1;t<=tongueLen+2+lv;t++){
+          p(tongueBaseX+t,tongueBaseY,TONGUE_COL);
+          p(tongueBaseX+t,tongueBaseY-1,C.MAGENTA);
+        }
+        if(fl)p(tongueBaseX+tongueLen+2+lv,tongueBaseY,C.WHITE);
+      }
+
+      // ==== FANGS (L2+, visible when mouth open) ====
+      if(FANGS){
+        // Two small white fangs below the jaw line
+        p(headX-1,headBaseY,C.WHITE);
+        p(headX+1,headBaseY,C.WHITE);
         if(lv>=3){
-          p(cx-1,sacY,C.MAGENTA);
-          p(cx+1,sacY,C.MAGENTA);
-          p(cx,sacY-1,C.PINK);
+          // Longer fangs
+          p(headX-1,headBaseY+1,C.WHITE);
+          p(headX+1,headBaseY+1,C.WHITE);
         }
       }
 
-      // ==== TONGUE (extends from mouth, L2+) ====
-      if(TONGUE>0){
-        const tongueY=mouthY+1;
-        // Tongue extends to the right from the mouth corner
-        for(let t=1;t<=TONGUE;t++){
-          p(abx+BODY_W-3+t,tongueY,TONGUE_COL);
-          if(t>1)p(abx+BODY_W-3+t,tongueY-1,TONGUE_DK);
+      // ==== VENOM DROOL (L3 always; L2 fire only) ====
+      if(VENOM_DROOL){
+        p(headX-1,headBaseY+2,C.VENOM);
+        p(headX+1,headBaseY+2,C.VENOM);
+        if(fl){
+          p(headX-1,headBaseY+3,C.TOXIC);
+          p(headX+1,headBaseY+3,C.TOXIC);
+          p(headX,headBaseY+3,C.SPORE);
         }
-        const tipX=abx+BODY_W-3+TONGUE;
-        p(tipX+1,tongueY,C.WHITE);
-        if(lv>=3){
-          p(tipX+1,tongueY-1,C.LTPNK);
-          p(tipX+1,tongueY+1,C.LTPNK);
-        }
-      }
-      // Charge/fire — tongue lashes farther out
-      if(br&&TONGUE>0){
-        const tongueY=mouthY+1;
-        for(let t=TONGUE+1;t<=TONGUE+2+lv;t++){
-          p(abx+BODY_W-3+t,tongueY,TONGUE_COL);
-          p(abx+BODY_W-3+t,tongueY-1,TONGUE_DK);
-        }
-      }
-
-      // ==== VENOM DROOL (L3 always, L2 fire) ====
-      if(lv>=3){
-        p(cx,mouthY+2,C.VENOM);
-        if(fl){p(cx,mouthY+3,C.TOXIC);p(cx-1,mouthY+3,C.SPORE);}
       }else if(lv===2&&fl){
-        p(cx,mouthY+2,C.SPORE);
+        p(headX-1,headBaseY+2,C.SPORE);
+        p(headX+1,headBaseY+2,C.SPORE);
+      }
+
+      // ==== TAIL TIP (peeks out from the bottom of the coil) ====
+      // Small tail sliver hanging off the bottom-right of the
+      // lowest coil so the snake reads as having a tail end.
+      const tailY=baseY-1;
+      const tailX=abx+COIL_W-1;
+      p(tailX+1,tailY,SCALE_MD);
+      p(tailX+2,tailY-1,SCALE_DK);
+      if(lv>=2){
+        // Rattle hint at the tail tip at L2+
+        p(tailX+3,tailY-1,C.AMBER);
+        p(tailX+4,tailY-2,C.DKBARK);
+      }
+      if(lv>=3){
+        p(tailX+5,tailY-2,C.AMBER);
       }
 
       // ==== STATE OVERLAYS ====
       if(s===1){
-        // Charge: throat sac + eyes flare
-        if(THROAT_SAC)p(cx,aby+BODY_H-1,C.MAGENTA);
-        p(leftEyeX+eyeW-1,eyeTopY,C.WHITE);
-        p(rightEyeX,eyeTopY,C.WHITE);
+        // Charge: eye flares bright, tongue extends
+        p(eyeX,eyeY,C.WHITE);
+        p(eyeX+1,eyeY+1,C.GOLD);
       }
       if(fl){
-        // Fire: tongue snap-streak forward (extra trailing pixels)
-        const tongueY=mouthY+1;
-        p(abx+BODY_W-3+TONGUE+3,tongueY,C.WHITE);
-        p(abx+BODY_W-3+TONGUE+4,tongueY,C.PINK);
+        // Fire: strike flash — bright white at the mouth
+        p(headX,headBaseY-1,C.WHITE);
+        p(headX-1,headBaseY-1,C.PINK);
+        p(headX+1,headBaseY-1,C.PINK);
       }
       if(s===3){
-        // Cooldown: eyes closed (horizontal slit across each eye)
-        b(leftEyeX,eyeTopY+Math.floor(eyeH/2),eyeW,1,C.DKFOR);
-        b(rightEyeX,eyeTopY+Math.floor(eyeH/2),eyeW,1,C.DKFOR);
+        // Cooldown: eye closed (horizontal slit)
+        p(eyeX,eyeY,C.DKFOR);
+        p(eyeX+1,eyeY,C.DKFOR);
+        p(eyeX,eyeY+1,C.DKFOR);
+        p(eyeX+1,eyeY+1,C.DKFOR);
       }
     },
     // 4. Blossom — Pink/magenta flower bloom on stalk (3 levels)
@@ -1623,7 +1615,7 @@ export function drawHero(ctx){
 }
 
 // ===== LABELS =====
-const T_NAMES=['Bramble','Root','Mire Dart','Blossom','Spore','Sunroot','Vine','Elder Treant','Razor Bramble'];
+const T_NAMES=['Bramble','Root','Grove Viper','Blossom','Spore','Sunroot','Vine','Elder Treant','Razor Bramble'];
 const T_STATES=['Idle','Charge','Fire','Cooldown'];
 // Generate row labels: "Lv1 Idle", "Lv1 Charge", ..., "Lv6 Cooldown"
 const T_ROW_LABELS:string[]=[];

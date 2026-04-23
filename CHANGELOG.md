@@ -2,6 +2,19 @@
 
 ## 2026-04-22
 
+### Mire Dart → Grove Viper (snake)
+Swapped the poison-dart frog for a slithering snake — better thematic fit for Nature's ambush/DoT identity and a distinctly different silhouette from any other mobile unit. Id rename: `nature_dartfrog` → `nature_viper`. Display name: "Grove Viper". Sprite file: `dartfrog_mobile.png` → `viper_mobile.png` (old files deleted).
+
+**Stats**: cost 40, 5 dmg, 2.5 range, 950ms fireRate, moveSpeed 100, engageRange 1.8, poison 6%/s over 4.5s. Upgrades to 9 dmg (L2, range 2.8) and 14 dmg (L3, range 3.2). Slower cadence + stronger venom than the frog.
+
+**Mobile sprite** (`viper_mobile.png`): snake body is a sine-wave path of segments with the phase shifted per frame, so it visibly undulates as it moves. Head is a triangular block with single visible eye (slit-pupil at L3), forked tongue flicking at specific frames (L2+), and venom drool on attack retract. L1 slim sage juvenile, L2 diamond-back pattern + forked tongue, L3 dark matriarch with cobra-style hood flare, red diamond accents, fangs, and rattle-tipped tail. Attack row coils tightly on frame 0, lunges forward on frame 2 with fangs extended, retracts with venom splash on frame 3.
+
+**Tower dock icon** (col 2 of `nature_towers.png`) redrawn as a coiled snake on the pedestal: 2-3 coil bands stacked like a ready-to-strike cobra, triangular head raised, visible eye, flicking tongue, diamond-back pattern (L2+), rattle tip, and cobra hood flare (L3).
+
+**Attack visual** (`spawnAttackEffect`): replaced the tongue-lash with a **twin-fang strike lunge** — two parallel bone-white lines from snake to target (the fang trajectory), then a green venom splash with two red puncture dots at the bite site.
+
+Rename touched: `TowerTypes`, `Factions.towerIds`, `Lore`, `SpriteManager` (3 sites), `FactionModules.ts`, `sprite-preview.tsx` MOBILE_FILES, `TowerTraitHandlers.ts` isDartfrog → isViper, autumn regen script, `FACTIONS.md`.
+
 ### Thornweaver replaced by Mire Dart — a jumping poison-dart frog
 The Nature spider (`nature_spider` / "Thornweaver") is gone; in its place a poison-dart frog named **Mire Dart** (`nature_dartfrog`). Same mobile-unit slot, much better thematic fit for Nature's DoT identity, plus distinct jumping + tongue-lash animations rather than another chitinous bug (Alien already owns that aesthetic).
 

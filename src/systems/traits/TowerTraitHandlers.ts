@@ -17,67 +17,73 @@ function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: U
   const towerTypeId: string = tower.typeId ?? '';
   const isMelee = towerTypeId.includes('brawler');
   const isHeavy = towerTypeId.includes('heavy') || towerTypeId.includes('commander');
-  const isDartfrog = towerTypeId === 'nature_dartfrog';
+  const isViper = towerTypeId === 'nature_viper';
   const isSwarmling = towerTypeId === 'alien_swarmling';
 
   // Per-unit visual kit. Each mobile unit has its own attack
-  // signature — Mire Dart whips a red tongue at the target and
-  // leaves a green venom splash; Swarmling rakes with chitin
-  // shards; Brawler star-bursts; Rifleman leaves a bullet trail.
-  if (isDartfrog && target) {
-    // Tongue lash: a fast pink-red line from frog to target, held
-    // briefly, then retracted. On impact, a green venom-droplet
-    // ring scatters. Scales with tower.level (thicker tongue +
-    // more droplets at higher levels).
+  // signature — Grove Viper strikes with a fanged lunge and leaves
+  // a green venom splash; Swarmling rakes with chitin shards;
+  // Brawler star-bursts; Rifleman leaves a bullet trail.
+  if (isViper && target) {
+    // Strike lunge: a short fang-shaped stab from snake toward
+    // target, held briefly, followed by a venom-droplet splash.
+    // Scales with tower.level (thicker strike + more droplets).
     const lv = tower.level ?? 1;
     const gfx = scene.add.graphics();
     gfx.setDepth(14);
-    const tongue = 0xee55aa;      // PINK
-    const tongueDk = 0xcc2288;    // MAGENTA
-    const venom = 0x66dd33;
-    const toxic = 0xaaee33;
+    const fang = 0xf6f0e8;        // bone-white
+    const fangShadow = 0x886644;  // dark bark (back of fang)
+    const venom = 0x66dd33;       // bright venom green
+    const toxic = 0xaaee33;       // lighter toxic splash
+    const bloodFleck = 0xcc2288;  // magenta for the strike flash
 
-    // Phase 1: extend tongue over ~60ms
-    let extendProgress = 0;
-    const extend = scene.time.addEvent({
-      delay: 16, repeat: 3,
+    // Phase 1: lunge — two quick fang stabs from snake to target
+    let stabProgress = 0;
+    const stab = scene.time.addEvent({
+      delay: 14, repeat: 3,
       callback: () => {
-        extendProgress += 1 / 3;
+        stabProgress += 1 / 3;
         gfx.clear();
-        const tx = tower.x + (target.x - tower.x) * extendProgress;
-        const ty = tower.y + (target.y - tower.y) * extendProgress;
-        // Thick tongue — 2px for L1, 3px for L2, 4px for L3
-        gfx.lineStyle(1 + lv, tongue, 1);
-        gfx.lineBetween(tower.x, tower.y, tx, ty);
-        // Darker underline for extra heft
-        gfx.lineStyle(1, tongueDk, 0.8);
-        gfx.lineBetween(tower.x, tower.y + 1, tx, ty + 1);
-        // White tip highlight at the head of the tongue
-        gfx.fillStyle(0xffffff, 1);
-        gfx.fillCircle(tx, ty, 1);
-        if (extendProgress >= 1) {
-          extend.destroy();
-          // Phase 2: impact droplets
+        const tx = tower.x + (target.x - tower.x) * stabProgress;
+        const ty = tower.y + (target.y - tower.y) * stabProgress;
+        // Perpendicular offset for the twin-fang pair
+        const dx = target.x - tower.x;
+        const dy = target.y - tower.y;
+        const len = Math.max(1, Math.hypot(dx, dy));
+        const nx = -dy / len;
+        const ny = dx / len;
+        const offset = 1 + lv; // fang-pair spread
+        // Left fang line
+        gfx.lineStyle(1 + Math.min(2, lv), fangShadow, 0.9);
+        gfx.lineBetween(tower.x + nx * offset, tower.y + ny * offset, tx + nx * offset, ty + ny * offset);
+        gfx.lineStyle(1, fang, 1);
+        gfx.lineBetween(tower.x + nx * offset, tower.y + ny * offset, tx + nx * offset, ty + ny * offset);
+        // Right fang line
+        gfx.lineStyle(1 + Math.min(2, lv), fangShadow, 0.9);
+        gfx.lineBetween(tower.x - nx * offset, tower.y - ny * offset, tx - nx * offset, ty - ny * offset);
+        gfx.lineStyle(1, fang, 1);
+        gfx.lineBetween(tower.x - nx * offset, tower.y - ny * offset, tx - nx * offset, ty - ny * offset);
+        // Magenta strike-flash at the head of the lunge
+        gfx.fillStyle(bloodFleck, 1);
+        gfx.fillCircle(tx, ty, 1 + (lv >= 2 ? 1 : 0));
+        if (stabProgress >= 1) {
+          stab.destroy();
+          // Phase 2: venom splash at target
           gfx.clear();
-          // Tongue fully extended, held
-          gfx.lineStyle(1 + lv, tongue, 0.9);
-          gfx.lineBetween(tower.x, tower.y, target.x, target.y);
-          // Venom splash at target
           gfx.fillStyle(venom, 0.85);
-          for (let i = 0; i < 5 + lv * 2; i++) {
-            const a = (i / (5 + lv * 2)) * Math.PI * 2;
+          for (let i = 0; i < 6 + lv * 2; i++) {
+            const a = (i / (6 + lv * 2)) * Math.PI * 2;
             const r = 3 + Math.random() * (3 + lv);
             gfx.fillCircle(target.x + Math.cos(a) * r, target.y + Math.sin(a) * r, 1 + (i % 2));
           }
           gfx.fillStyle(toxic, 0.7);
-          gfx.fillCircle(target.x, target.y, 2);
-          // Retract over ~80ms then clean up
-          scene.time.delayedCall(80, () => {
-            gfx.clear();
-            gfx.lineStyle(1, tongueDk, 0.4);
-            gfx.lineBetween(tower.x, tower.y, (tower.x + target.x) / 2, (tower.y + target.y) / 2);
-            scene.time.delayedCall(60, () => gfx.destroy());
-          });
+          gfx.fillCircle(target.x, target.y, 2 + lv);
+          // Two puncture dots (the bite marks) at the target
+          gfx.fillStyle(bloodFleck, 0.9);
+          gfx.fillCircle(target.x - 1, target.y, 1);
+          gfx.fillCircle(target.x + 1, target.y, 1);
+          // Recoil wash after ~100ms
+          scene.time.delayedCall(100, () => gfx.destroy());
         }
       },
     });

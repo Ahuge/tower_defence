@@ -41,7 +41,7 @@ export const TOWER_LORE: Record<string, string> = {
   nature_vine: 'Whip-like vines lash out and occasionally wrap completely around a target, freezing it in place.',
   nature_elder: 'Planted as a seed, it grows forever. Given enough time, an Elder Treant becomes unstoppable.',
   nature_bramble: 'The Grove\'s first line. Nothing grand — just a wall of barbs that pricks and pricks and pricks.',
-  nature_dartfrog: 'Bright skin promises death. The Mire Dart hops through root and pool, and its tongue does not miss. The Grove feeds what the Grove keeps.',
+  nature_viper: 'Long, patient, without warning. The Grove keeps its vipers close to the path — what they catch, they keep. First the coil, then the strike, then the long, quiet sinking of venom.',
   nature_sunroot: 'The Grove turned its face to the sun. It turned back burning. Petals of solar fire arc across the path.',
   nature_razor_bramble: 'Some brambles grow thorns. This one grew teeth. A hedge remembers being threatened — and sharpens in reply.',
 

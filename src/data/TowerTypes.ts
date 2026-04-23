@@ -373,23 +373,23 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { level: 4, cost: 70, damage: 15, range: 2.2, fireRate: 220 },
     ],
   }),
-  nature_dartfrog: def({
-    id: 'nature_dartfrog', name: 'Mire Dart',
-    description: 'Mobile. Hops along hidden paths; its tongue finds what it wants. Bite is weak — the venom is not.',
-    faction: 'nature', damageType: 'physical', cost: 40, damage: 4, range: 2.5, fireRate: 900,
-    color: 0x3aaa44, projectileSpeed: 200, hotkey: '8',
+  nature_viper: def({
+    id: 'nature_viper', name: 'Grove Viper',
+    description: 'Mobile. Slithers along hidden paths; strikes with a fanged lunge and sinks venom deep.',
+    faction: 'nature', damageType: 'physical', cost: 40, damage: 5, range: 2.5, fireRate: 950,
+    color: 0x2a5a2a, projectileSpeed: 200, hotkey: '8',
     traits: [
-      // Hops in discrete arcs visually; underlying pathing is the
-      // standard mobile_unit trait (smooth-slide) — the "jump" is
-      // pure sprite bobbing in walk frames. engageRange bumped to
-      // 1.5 so the tongue has visible reach.
-      { id: 'mobile_unit', moveSpeed: 110, engageRange: 1.5, leashRange: 4, attackCooldown: 900 },
+      // Slithers along the ground — underlying mobile_unit pathing
+      // is standard (smooth-slide); the undulation is sprite-only
+      // (4-frame S-curve cycle). engageRange tuned so the strike
+      // reaches past the snake's own body length.
+      { id: 'mobile_unit', moveSpeed: 100, engageRange: 1.8, leashRange: 4, attackCooldown: 950 },
       { id: 'direct_damage' },
-      { id: 'poison_dot', percentPerSec: 0.05, duration: 4000 },
+      { id: 'poison_dot', percentPerSec: 0.06, duration: 4500 },
     ],
     upgrades: [
-      { level: 2, cost: 40, damage: 8,  range: 2.5, fireRate: 850 },
-      { level: 3, cost: 65, damage: 12, range: 3,   fireRate: 800 },
+      { level: 2, cost: 40, damage: 9,  range: 2.8, fireRate: 900 },
+      { level: 3, cost: 65, damage: 14, range: 3.2, fireRate: 850 },
     ],
   }),
   nature_sunroot: def({

@@ -70,7 +70,7 @@ async function swapAndWrite(sourceFile, autumnFile) {
 async function main() {
   await swapAndWrite('nature_towers.png', 'nature_towers_autumn.png');
   await swapAndWrite('nature_projectiles.png', 'nature_projectiles_autumn.png');
-  await swapAndWrite('dartfrog_mobile.png', 'dartfrog_mobile_autumn.png');
+  await swapAndWrite('viper_mobile.png', 'viper_mobile_autumn.png');
   console.log('\nDone — autumn variants synced to latest base sheets.');
 }
 

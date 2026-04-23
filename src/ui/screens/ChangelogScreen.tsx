@@ -11,6 +11,17 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-22',
+    title: 'Mire Dart → Grove Viper: slithering snake replaces the frog',
+    changes: [
+      'REPLACED Mire Dart frog with Grove Viper snake. Same mobile-unit slot, but slither animation (sine-wave body undulation per frame) + twin-fang strike lunge instead of hop + tongue-lash.',
+      'Stats: 40g, 5 dmg, 2.5 range, 950ms fireRate, moveSpeed 100, engageRange 1.8, poison 6%/s over 4.5s. Upgrades scale DPS and strike range further.',
+      'Three life stages: L1 slim sage juvenile, L2 diamond-back viper with forked tongue, L3 dark matriarch with cobra hood flare, slit pupil, rattle tail, and red diamond accents.',
+      'Tower dock icon redrawn as a coiled cobra in ready-to-strike pose. Attack visual is a twin-fang lunge with green venom splash + two red puncture marks at the bite site.',
+      'Renamed `nature_dartfrog` → `nature_viper` across TowerTypes/Factions/SpriteManager/skin-editor/lore; `dartfrog_mobile.png` replaced with `viper_mobile.png`.',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: 'Divergent upgrade paths — Bramble forks into Hedge or Razor Bramble',
     changes: [
       'NEW: Bramble Hedge now branches at L2 — choose "Hedge" (wall-focused, caps L3) or "Razor Bramble" (DPS-focused, caps L4 with 15 dmg @ 220ms)',
