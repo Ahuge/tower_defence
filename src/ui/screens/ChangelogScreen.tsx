@@ -11,6 +11,15 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-23',
+    title: 'Jackpot boss resistance tuned: halve → quarter',
+    changes: [
+      'Follow-up to the earlier Gambler pass — ×0.5 boss multiplier still felt too generous in practice',
+      'Kill slice now ×0.25 vs bosses. Gambler: 4%/1% (was 4%/2%). Oblivion: 15%/3.75% (was 15%/7.5%)',
+      'OpponentSimulation shadow sim mirrors the same quartering for 1v1 CPU',
+    ],
+  },
+  {
+    date: '2026-04-23',
     title: 'Circle Co-op roster → DOM panel',
     changes: [
       'Roster (kills, gold, towers, lives, timer) moved from Phaser Text to a Preact component so font sizes scale on phone via UIScale',

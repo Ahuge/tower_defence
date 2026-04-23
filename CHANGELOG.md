@@ -2,6 +2,13 @@
 
 ## 2026-04-23
 
+### Jackpot boss resistance tuned: halve → quarter
+Follow-up to the earlier Gambler pass. Halving the kill chance against bosses (×0.5) still landed too often in practice — a cluster of Gamblers could still swing a boss wave on a lucky roll. Shifted the boss multiplier to **×0.25**:
+- Gambler: 4% regular / **1%** boss (was 2%)
+- Oblivion: 15% regular / **3.75%** boss (was 7.5%)
+
+Same quartering mirrored in `OpponentSimulation`'s shadow sim so the 1v1 CPU's jackpot towers respect the same boss floor. Miss chance still untouched.
+
 ### Circle Co-op roster → DOM panel
 The roster (kills / gold / towers / lives / timer) was Phaser `Text` at a hardcoded 11px font — unreadable on phone where everything else goes through `UIScale`. Moved to a Preact component (`CircleRosterDOM`) driven by a `GameUIStore.circleRoster` snapshot that GameScene rewrites each frame. Font sizes now use `UIScale.fontCapped` so phone scales to ~22–24px. Shallow-equality gate on the store skips re-renders when nothing changed.
 
