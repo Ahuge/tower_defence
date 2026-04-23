@@ -846,236 +846,245 @@ export function drawDartfrog(ctx: CanvasRenderingContext2D, level: number = 1) {
   const TONGUE_COL = C.PINK;
   const TONGUE_DK = C.DKTHRN; // nearest NAT dark-red-ish for tongue shadow
 
+  // Cell center (hoisted so helper fns can reference it).
+  const cx = 8;
+
+  // ---- Reusable shape helpers ----
+  // Draw a bulging frog eye as a 2×2 orb with dark outline + bright
+  // highlight. Returns the pixels used so the caller can paint the
+  // eyeball pupil on attack frames.
+  function drawEye(p: (x: number, y: number, c: string) => void, ex: number, ey: number, flipHi: boolean) {
+    // Outline (dark) on outside corner
+    p(ex + (flipHi ? 1 : 0), ey,     C.DARK);
+    p(ex + (flipHi ? 1 : 0), ey + 1, C.DARK);
+    // Eye color fill
+    p(ex + (flipHi ? 0 : 1), ey,     EYE_COL);
+    p(ex + (flipHi ? 0 : 1), ey + 1, EYE_COL);
+    // White highlight (top inside corner)
+    p(ex + (flipHi ? 0 : 1), ey,     C.WHITE);
+  }
+
+  // Draw the body silhouette — a wide squat oval, wider at the
+  // back, with a clearly lighter belly band and a dark mouth slit
+  // across the face. This is what sells the "frog" read.
+  function drawBody(p: (x: number, y: number, c: string) => void, b: (x: number, y: number, w: number, h: number, c: string) => void, abx: number, aby: number, showMouth: boolean) {
+    // Outer dark outline
+    b(abx, aby, BODY_W, BODY_H, C.DARK);
+    // Body fill (mid tone)
+    b(abx + 1, aby + 1, BODY_W - 2, BODY_H - 2, MID);
+    // Back highlight — the rounded dome of the frog's back
+    b(abx + 2, aby + 1, BODY_W - 4, 1, BODY);
+    // Belly — distinctly lighter band across the bottom
+    b(abx + 1, aby + BODY_H - 2, BODY_W - 2, 1, BELLY_COL);
+    // Round the corners off so it reads as a squat oval
+    p(abx, aby, C.DARK);
+    p(abx + BODY_W - 1, aby, C.DARK);
+    p(abx, aby + BODY_H - 1, C.DARK);
+    p(abx + BODY_W - 1, aby + BODY_H - 1, C.DARK);
+
+    // Stripes + spots overlay
+    if (STRIPES) {
+      for (let sx = abx + 2; sx < abx + BODY_W - 2; sx += 2) {
+        p(sx, aby + 1, STRIPE);
+      }
+    }
+    if (SPOTS) {
+      p(abx + 2, aby + 2, SPOT);
+      p(abx + BODY_W - 3, aby + 2, SPOT);
+      p(cx, aby + BODY_H - 2, C.PINK);
+    }
+
+    // Mouth slit — a dark line across the face. Curves up at the
+    // corners at L2+ (amphibian mouth shape).
+    if (showMouth) {
+      const mouthY = aby + BODY_H - 2;
+      b(abx + 2, mouthY, BODY_W - 4, 1, C.DARK);
+      if (level >= 2) {
+        p(abx + 1, mouthY - 1, C.DARK);
+        p(abx + BODY_W - 2, mouthY - 1, C.DARK);
+      }
+    }
+  }
+
+  // Draw bent-Z back legs at the sides of the body. `extended`
+  // triggers the airborne pose; otherwise knees stick out sideways
+  // in a classic crouched-frog silhouette.
+  function drawLegs(p: (x: number, y: number, c: string) => void, abx: number, aby: number, extended: boolean) {
+    if (extended) {
+      // Airborne — legs trailing behind (upward in walk-down) with
+      // a bright spring of motion.
+      for (let d = 1; d <= LEG_LEN; d++) {
+        p(abx - d, aby - Math.floor(d / 2), LEG_COL);
+        p(abx + BODY_W - 1 + d, aby - Math.floor(d / 2), LEG_COL);
+      }
+      // Webbed toes at tips
+      p(abx - LEG_LEN - 1, aby - Math.floor(LEG_LEN / 2) - 1, C.DARK);
+      p(abx + BODY_W + LEG_LEN, aby - Math.floor(LEG_LEN / 2) - 1, C.DARK);
+      if (level >= 2) {
+        p(abx - LEG_LEN, aby - Math.floor(LEG_LEN / 2) - 1, LEG_COL);
+        p(abx + BODY_W + LEG_LEN - 1, aby - Math.floor(LEG_LEN / 2) - 1, LEG_COL);
+      }
+    } else {
+      // Crouched — classic frog pose: knees bulge out sideways,
+      // lower leg drops down, webbed foot tucked below.
+      // Left leg (Z-shape: upper → knee → lower → foot)
+      p(abx - 1, aby + BODY_H - 3, LEG_COL);    // upper attachment
+      p(abx - 2, aby + BODY_H - 2, LEG_COL);    // knee bulge (sticking OUT)
+      p(abx - 1, aby + BODY_H - 1, LEG_COL);    // lower leg
+      p(abx - 1, aby + BODY_H, C.DARK);         // foot shadow
+      p(abx,     aby + BODY_H, LEG_COL);        // webbed foot tucked forward
+      // Right leg — mirror
+      p(abx + BODY_W,     aby + BODY_H - 3, LEG_COL);
+      p(abx + BODY_W + 1, aby + BODY_H - 2, LEG_COL);
+      p(abx + BODY_W,     aby + BODY_H - 1, LEG_COL);
+      p(abx + BODY_W,     aby + BODY_H, C.DARK);
+      p(abx + BODY_W - 1, aby + BODY_H, LEG_COL);
+    }
+    // Small front arms under the belly — always visible, give the
+    // frog its "sitting up" posture.
+    p(abx + 2, aby + BODY_H, LEG_COL);
+    p(abx + BODY_W - 3, aby + BODY_H, LEG_COL);
+  }
+
   function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
     const { p, b } = mk(c, o, GR, GR, PX);
 
-    const cx = 8;
-
     // ---- ATTACK row (tongue-lash, 4 frames) ----
     if (row === 3) {
-      // Frog stays grounded during the attack pose, just the
-      // tongue animates outward.
-      const baseY = 10;
-      const aby = baseY;
+      // Frog stays grounded, tongue animates outward.
       const abx = cx - Math.floor(BODY_W / 2);
+      const aby = 10;
+      drawBody(p, b, abx, aby, false); // no mouth slit — jaw open instead
 
-      // Body (crouched low, ready-to-pounce pose)
-      b(abx, aby, BODY_W, BODY_H, C.DARK);
-      b(abx + 1, aby + 1, BODY_W - 2, BODY_H - 2, MID);
-      b(abx + 2, aby + 1, BODY_W - 4, 2, BODY);
-      b(abx + 1, aby + BODY_H - 2, BODY_W - 2, 1, BELLY_COL);
+      // Open jaw — dark maw across the face
+      const mouthY = aby + BODY_H - 2;
+      b(abx + 2, mouthY - 1, BODY_W - 4, 2, C.DARK);
 
-      // Warning stripes + spots stay visible during attack
-      if (STRIPES) {
-        for (let sx = abx + 2; sx < abx + BODY_W - 2; sx += 2) p(sx, aby + 2, STRIPE);
-      }
-      if (SPOTS) {
-        p(abx + 2, aby + 3, SPOT);
-        p(abx + BODY_W - 3, aby + 3, SPOT);
-      }
+      // Bulging eyes on top of the head (above body silhouette)
+      drawEye(p, abx + 1, aby - 2, false);
+      drawEye(p, abx + BODY_W - 3, aby - 2, true);
 
-      // Head — extended FORWARD (to the right) during attack, jaw open
-      const headX = abx + BODY_W - 1;
-      const headY = aby - 1;
-      b(headX, headY, HEAD_W - 1, 3, MID);
-      b(headX, headY + 1, HEAD_W - 1, 1, C.DARK); // open mouth line
-
-      // Bulging eyes on top of head
-      p(headX, headY - 1, C.DARK); p(headX + 1, headY - 1, EYE_COL);
-      p(headX + 2, headY - 1, C.DARK); p(headX + 3, headY - 1, EYE_COL);
+      // Eye cluster at L3 — two extra smaller eyes between the big ones
       if (EYE_CLUSTER) {
-        p(headX + 1, headY - 2, C.EYE);
-        p(headX + 3, headY - 2, C.EYE);
+        p(cx - 1, aby - 1, C.EYE);
+        p(cx + 1, aby - 1, C.EYE);
       }
 
-      // Tongue animation — col 0 retracted, 1 extending, 2 full
-      // extended, 3 retracting with venom drip.
-      const tongueY = headY + 2;
+      // Tongue: 0 = retracted, 1 = half, 2 = full, 3 = retracting
+      const tongueY = mouthY;
       let tongueLen = 0;
       if (col === 1) tongueLen = Math.max(1, Math.floor(TONGUE_MAX / 2));
       else if (col === 2) tongueLen = TONGUE_MAX;
       else if (col === 3) tongueLen = Math.max(1, Math.floor(TONGUE_MAX / 3));
 
       if (tongueLen > 0) {
-        // Tongue shaft
-        const tongueStartX = headX + HEAD_W - 1;
+        const tongueStart = abx + BODY_W;
         for (let t = 0; t < tongueLen; t++) {
-          p(tongueStartX + t, tongueY, TONGUE_COL);
-          if (t > 0) p(tongueStartX + t, tongueY + 1, TONGUE_DK);
+          p(tongueStart + t, tongueY, TONGUE_COL);
+          if (t > 0) p(tongueStart + t, tongueY + 1, TONGUE_DK);
         }
-        // Tongue tip — bright white-pink
-        const tipX = tongueStartX + tongueLen;
+        // Whip-tip highlight + barbed ending at L3
+        const tipX = tongueStart + tongueLen;
         p(tipX, tongueY, C.WHITE);
-        if (level >= 2) p(tipX + 1, tongueY, TONGUE_COL);
-        // Barbed tip at L3
         if (level >= 3) {
           p(tipX, tongueY - 1, TONGUE_COL);
           p(tipX, tongueY + 1, TONGUE_COL);
         }
       }
 
-      // Venom drips from tongue retract (col 3)
+      // Venom drip on retract
       if (col === 3 && level >= 2) {
-        const dripX = headX + HEAD_W + Math.floor(tongueLen / 2);
+        const dripX = abx + BODY_W + Math.max(1, Math.floor(tongueLen / 2));
         p(dripX, tongueY + 2, C.VENOM);
-        if (level >= 3) p(dripX - 1, tongueY + 3, C.TOXIC);
+        if (level >= 3) p(dripX + 1, tongueY + 3, C.TOXIC);
       }
 
-      // Back legs (tense, coiled for the pounce)
-      p(abx - 1, aby + BODY_H - 2, LEG_COL);
-      p(abx - 2, aby + BODY_H - 1, LEG_COL);
-      p(abx - 2, aby + BODY_H, C.DARK);
+      // Legs crouched forward, ready to pounce
+      drawLegs(p, abx, aby, false);
 
-      // Throat sac puffs bigger during attack
+      // Throat sac — puffs during the attack
       if (THROAT_SAC) {
-        p(abx + Math.floor(BODY_W / 2), aby + BODY_H, C.PINK);
-        if (level >= 3) {
-          p(abx + Math.floor(BODY_W / 2) - 1, aby + BODY_H, C.MAGENTA);
-          p(abx + Math.floor(BODY_W / 2) + 1, aby + BODY_H, C.MAGENTA);
-        }
+        p(cx, aby + BODY_H, C.PINK);
+        p(cx - 1, aby + BODY_H, C.DKTHRN);
+        p(cx + 1, aby + BODY_H, C.DKTHRN);
       }
       return;
     }
 
     // ---- WALK (HOP) frames — rows 0..2 ----
     // 4-frame hop cycle: crouch → launch → peak → landing.
-    // Y offset gives the airborne illusion while the underlying
-    // mobile_unit position still interpolates linearly.
+    // Y-offset sprite bobbing gives the airborne illusion.
     const hopOffsets = [0, -3, -5, -2];
     const hopY = hopOffsets[col];
     const cy = 9 + hopY;
 
-    // Orientation per direction
     const orient = row; // 0=down, 1=right, 2=up
-    const headFacing = orient === 0 ? 'down' : orient === 1 ? 'right' : 'up';
-
-    // ---- Body (squat oval) ----
     const abx = cx - Math.floor(BODY_W / 2);
     const aby = cy;
-    // Silhouette outline
-    b(abx, aby, BODY_W, BODY_H, C.DARK);
-    // Body fill
-    b(abx + 1, aby + 1, BODY_W - 2, BODY_H - 2, MID);
-    // Light back dome
-    b(abx + 2, aby + 1, BODY_W - 4, 1, BODY);
-    // Lighter belly
-    b(abx + 1, aby + BODY_H - 2, BODY_W - 2, 1, BELLY_COL);
-    // Round corners
-    p(abx, aby, C.DARK);
-    p(abx + BODY_W - 1, aby, C.DARK);
 
-    // Warning stripes (L2+)
-    if (STRIPES) {
-      for (let sx = abx + 2; sx < abx + BODY_W - 2; sx += 2) {
-        p(sx, aby + 2, STRIPE);
-      }
-      // Warning stripe along the spine
-      if (BODY_W >= 7) p(cx, aby + 3, STRIPE);
-    }
+    // Draw the body (with mouth slit for the face-us view only —
+    // walk-down shows the mouth, walk-up we see the back)
+    drawBody(p, b, abx, aby, orient === 0);
 
-    // Red dart-frog spots (L3)
-    if (SPOTS) {
-      p(abx + 2, aby + 1, SPOT);
-      p(abx + BODY_W - 3, aby + 1, SPOT);
-      p(cx, aby + BODY_H - 2, C.PINK);
-    }
-
-    // ---- Head (bulge facing direction of travel) ----
-    if (headFacing === 'down') {
-      // Facing down — head at bottom edge
-      const hy = aby + BODY_H;
-      const hx = cx - Math.floor(HEAD_W / 2);
-      b(hx, hy, HEAD_W, 2, MID);
-      // Eyes bulge UP from the back (top of body)
-      const eyeY = aby - 1;
-      const eye1X = abx + 1;
-      const eye2X = abx + BODY_W - 2;
-      p(eye1X, eyeY, C.DARK); p(eye1X + 1, eyeY - 1, EYE_COL); p(eye1X, eyeY - 1, C.DARK);
-      p(eye2X, eyeY, C.DARK); p(eye2X - 1, eyeY - 1, EYE_COL); p(eye2X, eyeY - 1, C.DARK);
+    // ---- Eyes — always on top of the head ----
+    if (orient === 0) {
+      // Facing viewer: two big bulging eyes on top of the head
+      drawEye(p, abx + 1, aby - 2, false);
+      drawEye(p, abx + BODY_W - 3, aby - 2, true);
       if (EYE_CLUSTER) {
-        p(eye1X + 1, eyeY, C.EYE);
-        p(eye2X - 1, eyeY, C.EYE);
+        p(cx - 1, aby - 1, C.EYE);
+        p(cx + 1, aby - 1, C.EYE);
       }
-      // Short idle tongue visible at L3
-      if (level >= 3) {
-        p(cx, hy, TONGUE_COL);
-        p(cx, hy + 1, TONGUE_DK);
+      // Idle tongue peek at L3
+      if (level >= 3 && col === 0) {
+        const mouthY = aby + BODY_H - 2;
+        p(cx, mouthY + 1, TONGUE_COL);
       }
-    } else if (headFacing === 'right') {
-      // Facing right — head bulges to the right
-      const hx = abx + BODY_W;
-      const hy = aby + Math.floor(BODY_H / 2);
-      b(hx, hy - 1, 2, 3, MID);
-      // Eyes on top of head-bulge
-      p(hx + 1, hy - 2, C.DARK);
-      p(hx + 1, hy - 3, EYE_COL);
-      if (EYE_CLUSTER) p(hx, hy - 2, C.EYE);
-      // Idle tongue tip (L3)
-      if (level >= 3) p(hx + 2, hy, TONGUE_COL);
+    } else if (orient === 1) {
+      // Profile view — eyes stacked on top, slight lean forward
+      drawEye(p, cx - 1, aby - 2, false);
+      p(cx + 1, aby - 2, EYE_COL);
+      p(cx + 2, aby - 2, C.DARK);
+      p(cx + 2, aby - 1, C.DARK);
+      // Mouth visible on the side
+      p(cx + BODY_W - Math.floor(BODY_W / 2) - 1, aby + BODY_H - 2, C.DARK);
+      p(cx + BODY_W - Math.floor(BODY_W / 2), aby + BODY_H - 2, C.DARK);
+      if (EYE_CLUSTER) p(cx, aby - 1, C.EYE);
+      // Tongue tip poking out forward at L3
+      if (level >= 3 && col === 0) {
+        p(abx + BODY_W, aby + BODY_H - 2, TONGUE_COL);
+      }
     } else {
-      // Facing up — head at top, eyes visible
-      const hy = aby - 2;
-      const hx = cx - Math.floor(HEAD_W / 2);
-      b(hx, hy, HEAD_W, 2, MID);
-      // Eyes bulge up
-      p(hx + 1, hy - 1, EYE_COL);
-      p(hx + HEAD_W - 2, hy - 1, EYE_COL);
+      // Facing away (walk-up): we see the back of the frog's head
+      // with just the tops of the bulging eyes peeking up.
+      p(abx + 1, aby - 1, C.DARK);
+      p(abx + 2, aby - 1, EYE_COL);
+      p(abx + BODY_W - 3, aby - 1, EYE_COL);
+      p(abx + BODY_W - 2, aby - 1, C.DARK);
       if (EYE_CLUSTER) {
-        p(hx + 2, hy - 1, C.EYE);
-        p(hx + HEAD_W - 3, hy - 1, C.EYE);
+        p(abx + 3, aby - 1, C.EYE);
+        p(abx + BODY_W - 4, aby - 1, C.EYE);
       }
     }
 
-    // ---- Back legs (frog's signature: coiled vs extended per frame) ----
-    // Frame 0 (crouch) + 3 (landing) = tucked
-    // Frame 1 (launch) + 2 (peak) = extended back behind body
+    // ---- Back legs (bent Z-shape vs airborne trail) ----
     const extended = col === 1 || col === 2;
-    if (extended) {
-      // Left back leg — extended diagonally behind
-      for (let d = 1; d <= LEG_LEN; d++) {
-        p(abx - d, aby + BODY_H - 1 + Math.floor(d * 0.3), LEG_COL);
-      }
-      // Right back leg
-      for (let d = 1; d <= LEG_LEN; d++) {
-        p(abx + BODY_W - 1 + d, aby + BODY_H - 1 + Math.floor(d * 0.3), LEG_COL);
-      }
-      // Toe tips
-      p(abx - LEG_LEN - 1, aby + BODY_H + Math.floor(LEG_LEN * 0.3), C.DARK);
-      p(abx + BODY_W + LEG_LEN, aby + BODY_H + Math.floor(LEG_LEN * 0.3), C.DARK);
-    } else {
-      // Tucked — legs folded under body
-      p(abx, aby + BODY_H, LEG_COL);
-      p(abx - 1, aby + BODY_H, C.DARK);
-      p(abx + BODY_W - 1, aby + BODY_H, LEG_COL);
-      p(abx + BODY_W, aby + BODY_H, C.DARK);
-      // Front toes peeking
-      if (level >= 2) {
-        p(abx + 2, aby + BODY_H, LEG_COL);
-        p(abx + BODY_W - 3, aby + BODY_H, LEG_COL);
-      }
-    }
+    drawLegs(p, abx, aby + (extended ? Math.floor(BODY_H / 2) : 0), extended);
 
-    // ---- Throat sac pulsing (L2+) ----
-    // Visible on walk-down orientation (we can see it)
-    if (THROAT_SAC && headFacing === 'down') {
-      const sacX = cx;
-      const sacY = aby + BODY_H;
+    // ---- Throat sac (L2+, only visible on walk-down) ----
+    if (THROAT_SAC && orient === 0) {
       const sacCol = col === 0 || col === 3 ? C.PINK : C.MAGENTA;
-      p(sacX, sacY + 1, sacCol);
+      p(cx, aby + BODY_H, sacCol);
       if (level >= 3) {
-        p(sacX - 1, sacY + 1, C.DKTHRN);
-        p(sacX + 1, sacY + 1, C.DKTHRN);
+        p(cx - 1, aby + BODY_H, C.DKTHRN);
+        p(cx + 1, aby + BODY_H, C.DKTHRN);
       }
     }
 
-    // ---- Motion-trail droplets on the peak frame (L2+) ----
-    // Adds to the hop-in-air feel — a tiny dust/venom puff trails
-    // behind the frog at its highest point.
+    // ---- Motion-trail on the peak frame (L2+) ----
     if (col === 2 && level >= 2) {
       p(abx - 2, aby + BODY_H + 1, C.VENOM);
-      if (level >= 3) {
-        p(abx + BODY_W + 1, aby + BODY_H + 1, C.VENOM);
-      }
+      if (level >= 3) p(abx + BODY_W + 1, aby + BODY_H + 1, C.VENOM);
     }
   }
 

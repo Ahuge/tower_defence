@@ -314,164 +314,241 @@ export function drawTowers(ctx){
       const br=s>=1,fl=s===2;
       const cx=16;
 
-      // Per-level proportions — discrete jumps.
-      const BODY_W=[0,6,8,10][lv];    // body width
-      const BODY_H=[0,5,6,7][lv];     // body height (squat / bulky)
-      const HEAD_W=[0,5,6,7][lv];     // head width
-      const TONGUE=[0,0,3,6][lv];     // idle tongue length
-      const STRIPES=lv>=2;            // yellow warning stripes
-      const SPOTS=lv>=3;              // red dart-frog spots
-      const EYE_CLUSTER=lv>=3;        // extra eyes at matriarch
-      const THROAT_SAC=lv>=2;         // puffing throat at L2+
+      // Per-level discrete jumps
+      const BODY_W=[0,12,14,16][lv];   // body width
+      const BODY_H=[0,6,7,8][lv];      // body height (squat)
+      const EYE_SIZE=[0,2,3,3][lv];    // eye orb width (grid cells)
+      const TONGUE=[0,0,3,6][lv];
+      const STRIPES=lv>=2;
+      const SPOTS=lv>=3;
+      const EYE_CLUSTER=lv>=3;
+      const THROAT_SAC=lv>=2;
 
-      // Tone gradient: light sage → green → dark forest
+      // Palette per level — light sage → green → deep forest
       const BODY=[C.LTGRN,C.GREEN,C.FOREST][lv-1];
       const MID=[C.GREEN,C.MDGRN,C.DKFOR][lv-1];
       const BELLY=[C.PALGRN,C.LTGRN,C.GREEN][lv-1];
-      const EYE_COL=lv===1?C.PALGRN:lv===2?C.AMBER:C.GOLD;
+      const EYE_COL=lv===1?C.AMBER:lv===2?C.GOLD:C.LTAMB;
+      const EYE_PUPIL=C.DKFOR;
       const STRIPE_COL=fl?C.WHITE:C.GOLD;
       const SPOT_COL=C.PINK;
       const TONGUE_COL=fl?C.LTPNK:C.PINK;
       const TONGUE_DK=C.MAGENTA;
 
-      // ---- Body (squat oval, centered low) ----
+      // ==== BODY silhouette (wide squat oval) ====
+      // Sits centred low, occupies roughly the bottom third of the
+      // cell. Eyes will bulge UP above this silhouette; legs hang
+      // slightly below.
       const aby=22-BODY_H;
       const abx=cx-Math.floor(BODY_W/2);
-      // Dark outline
+      // Outer dark outline
       b(abx,aby,BODY_W,BODY_H,C.DKFOR);
-      // Body fill
+      // Interior fill
       b(abx+1,aby+1,BODY_W-2,BODY_H-2,MID);
-      // Back dome (lighter on top)
+      // Back dome (lighter upper band)
       b(abx+2,aby+1,BODY_W-4,2,BODY);
-      // Belly (lighter underbelly)
+      // Belly band (lighter underside)
       b(abx+1,aby+BODY_H-2,BODY_W-2,1,BELLY);
-      // Rounded corners (darken 4 corners)
+      // Cut the corners off to read as an oval, not a rectangle
       p(abx,aby,C.SHAD);p(abx+BODY_W-1,aby,C.SHAD);
       p(abx,aby+BODY_H-1,C.SHAD);p(abx+BODY_W-1,aby+BODY_H-1,C.SHAD);
+      p(abx+1,aby,C.DKFOR);p(abx+BODY_W-2,aby,C.DKFOR);
+      p(abx+1,aby+BODY_H-1,C.DKFOR);p(abx+BODY_W-2,aby+BODY_H-1,C.DKFOR);
 
-      // ---- Warning stripes (L2+) ----
+      // ==== MOUTH (wide dark slit across the face) ====
+      // Placed on the front face, turning up at the corners to
+      // read as a frog smile.
+      const mouthY=aby+BODY_H-3;
+      b(abx+3,mouthY,BODY_W-6,1,C.DKFOR);
+      // Upturned corners
+      p(abx+2,mouthY-1,C.DKFOR);
+      p(abx+BODY_W-3,mouthY-1,C.DKFOR);
+      // Mouth open wider at higher levels
+      if(lv>=2){
+        b(abx+4,mouthY+1,BODY_W-8,1,C.SHAD);
+      }
+      if(lv>=3){
+        // Visible inner mouth (darker pink) when mouth is open
+        b(abx+5,mouthY+1,BODY_W-10,1,C.DKPNK);
+      }
+
+      // ==== WARNING STRIPES (L2+) ====
       if(STRIPES){
-        for(let sx=abx+2;sx<abx+BODY_W-2;sx++){
-          if((sx-abx)%2===0)p(sx,aby+2,STRIPE_COL);
+        // Two horizontal warning stripes across the back
+        for(let sx=abx+2;sx<abx+BODY_W-2;sx+=2){
+          p(sx,aby+1,STRIPE_COL);
         }
-        // Central spine stripe
-        p(cx-1,aby+3,STRIPE_COL);p(cx,aby+3,STRIPE_COL);p(cx+1,aby+3,STRIPE_COL);
+        // Second stripe
+        for(let sx=abx+3;sx<abx+BODY_W-3;sx+=2){
+          p(sx,aby+2,STRIPE_COL);
+        }
       }
 
-      // ---- Red spots (L3 only) ----
+      // ==== RED DART-FROG SPOTS (L3) ====
       if(SPOTS){
-        p(abx+2,aby+3,SPOT_COL);
-        p(abx+BODY_W-3,aby+3,SPOT_COL);
-        p(cx,aby+1,SPOT_COL);
-        p(abx+3,aby+BODY_H-2,C.MAGENTA);
-        p(abx+BODY_W-4,aby+BODY_H-2,C.MAGENTA);
+        b(abx+2,aby+2,2,1,SPOT_COL);
+        b(abx+BODY_W-4,aby+2,2,1,SPOT_COL);
+        p(cx-1,aby+3,C.MAGENTA);
+        p(cx+1,aby+3,C.MAGENTA);
+        p(abx+3,aby+BODY_H-3,C.MAGENTA);
+        p(abx+BODY_W-4,aby+BODY_H-3,C.MAGENTA);
       }
 
-      // ---- Head (front bulge at top of body) ----
-      const hy=aby-2;
-      const hx=cx-Math.floor(HEAD_W/2);
-      b(hx,hy,HEAD_W,3,MID);
-      // Mouth line
-      b(hx+1,hy+2,HEAD_W-2,1,C.DKFOR);
-      // Bulging eye sockets (above the head)
-      const eye1X=hx+1;
-      const eye2X=hx+HEAD_W-2;
-      // Left eye
-      b(eye1X,hy-2,2,2,C.DKFOR);
-      p(eye1X,hy-1,EYE_COL);
-      p(eye1X+1,hy-2,br?C.WHITE:EYE_COL);
-      // Right eye
-      b(eye2X,hy-2,2,2,C.DKFOR);
-      p(eye2X,hy-1,EYE_COL);
-      p(eye2X+1,hy-2,br?C.WHITE:EYE_COL);
-      // Eye cluster (L3) — two extra small eyes
+      // ==== BULGING EYE ORBS (sit ON TOP of the body) ====
+      // Each eye is a (EYE_SIZE × EYE_SIZE) rounded square. Left
+      // and right eyes are placed near the body edges; the body
+      // top dips slightly between them to read as an inter-ocular
+      // gap.
+      const eyeW=EYE_SIZE;
+      const eyeH=EYE_SIZE;
+      const eyeTopY=aby-eyeH;
+      // Inter-eye gap (dark body between the eyes)
+      const gapL=cx-1,gapR=cx+1;
+      for(let y=eyeTopY+1;y<aby;y++){
+        p(gapL,y,C.DKFOR);p(cx,y,MID);p(gapR,y,C.DKFOR);
+      }
+
+      // Left eye — draw as a rounded square with outline + fill + highlight
+      const leftEyeX=abx+1;
+      // Outline
+      b(leftEyeX,eyeTopY,eyeW,eyeH,C.DKFOR);
+      // Eye-color fill
+      b(leftEyeX,eyeTopY+1,eyeW,eyeH-1,EYE_COL);
+      // Pupil — center dark dot
+      p(leftEyeX+Math.floor(eyeW/2),eyeTopY+Math.floor(eyeH/2),EYE_PUPIL);
+      // Highlight — bright spot top-right
+      p(leftEyeX+eyeW-1,eyeTopY,C.WHITE);
+      if(lv>=2)p(leftEyeX+eyeW-1,eyeTopY+1,C.PALGRN);
+
+      // Right eye — mirror (highlight goes top-LEFT)
+      const rightEyeX=abx+BODY_W-1-eyeW;
+      b(rightEyeX,eyeTopY,eyeW,eyeH,C.DKFOR);
+      b(rightEyeX,eyeTopY+1,eyeW,eyeH-1,EYE_COL);
+      p(rightEyeX+Math.floor(eyeW/2),eyeTopY+Math.floor(eyeH/2),EYE_PUPIL);
+      p(rightEyeX,eyeTopY,C.WHITE);
+      if(lv>=2)p(rightEyeX,eyeTopY+1,C.PALGRN);
+
+      // L3 extra eye cluster — two smaller eyes in the gap
       if(EYE_CLUSTER){
-        p(hx+Math.floor(HEAD_W/2)-1,hy-1,C.AMBER);
-        p(hx+Math.floor(HEAD_W/2)+1,hy-1,C.AMBER);
+        p(cx-1,eyeTopY+1,C.EYE??C.AMBER);
+        p(cx,eyeTopY+1,C.DKFOR);
+        p(cx+1,eyeTopY+1,C.EYE??C.AMBER);
       }
 
-      // ---- Tongue (from the mouth, red, extends forward) ----
-      if(TONGUE>0){
-        const mouthY=hy+2;
-        const mouthX=cx;
-        // Tongue extends to the right as a default orientation
-        for(let t=1;t<=TONGUE;t++){
-          p(mouthX+t,mouthY,TONGUE_COL);
-          if(t>1)p(mouthX+t,mouthY-1,TONGUE_DK);
-        }
-        // Tongue tip
-        const tipX=mouthX+TONGUE;
-        p(tipX+1,mouthY,C.WHITE);
-        if(lv>=3){
-          // Barbed tip
-          p(tipX+1,mouthY-1,C.LTPNK);
-          p(tipX+1,mouthY+1,C.LTPNK);
-        }
-      }
-      // Tongue extends FURTHER on charge/fire
-      if(br&&TONGUE>0){
-        for(let t=TONGUE+1;t<=TONGUE+2+lv;t++){
-          p(cx+t,hy+2,TONGUE_COL);
-          p(cx+t,hy+2-1,TONGUE_DK);
-        }
+      // ==== NOSTRIL DOTS (L2+) ====
+      // Tiny dark nostrils between mouth and eyes — big recognition win
+      if(lv>=2){
+        p(cx-2,mouthY-2,C.DKFOR);
+        p(cx+2,mouthY-2,C.DKFOR);
       }
 
-      // ---- Throat sac (below head, L2+) ----
+      // ==== BACK LEGS (bent Z-shape, sitting POSITION) ====
+      // Frogs' back legs fold alongside the body with the knee
+      // sticking out. Drawn as a clear zigzag at each side.
+      const legCol=lv===1?C.MDGRN:lv===2?C.DKGRN:C.FOREST;
+      const legDk=C.DKFOR;
+      // LEFT leg (Z-shape: upper thigh down, knee sticks out, shin down, foot under body)
+      // Upper thigh (alongside body)
+      p(abx-1,aby+2,legDk);
+      p(abx-1,aby+3,legCol);
+      // Knee bulge (sticking OUT to the side — iconic frog silhouette)
+      p(abx-2,aby+4,legDk);
+      p(abx-2,aby+5,legCol);
+      p(abx-3,aby+5,legCol);
+      p(abx-3,aby+6,legDk);
+      // Shin dropping down from knee
+      p(abx-2,aby+6,legCol);
+      p(abx-1,aby+BODY_H-1,legCol);
+      // Webbed foot tucked under body (visible toes)
+      p(abx-1,aby+BODY_H,legCol);
+      p(abx,aby+BODY_H,legCol);
+      p(abx+1,aby+BODY_H,legDk);
+      // RIGHT leg — mirror
+      p(abx+BODY_W,aby+2,legDk);
+      p(abx+BODY_W,aby+3,legCol);
+      p(abx+BODY_W+1,aby+4,legDk);
+      p(abx+BODY_W+1,aby+5,legCol);
+      p(abx+BODY_W+2,aby+5,legCol);
+      p(abx+BODY_W+2,aby+6,legDk);
+      p(abx+BODY_W+1,aby+6,legCol);
+      p(abx+BODY_W,aby+BODY_H-1,legCol);
+      p(abx+BODY_W,aby+BODY_H,legCol);
+      p(abx+BODY_W-1,aby+BODY_H,legCol);
+      p(abx+BODY_W-2,aby+BODY_H,legDk);
+
+      // ==== FRONT ARMS (small pegs under the belly) ====
+      // Give the frog its "sitting up" pose — two front arms
+      // visibly supporting the front of the body.
+      p(abx+3,aby+BODY_H,legCol);
+      p(abx+3,aby+BODY_H+1,legDk);
+      p(abx+BODY_W-4,aby+BODY_H,legCol);
+      p(abx+BODY_W-4,aby+BODY_H+1,legDk);
+      if(lv>=3){
+        // Webbed fingers hinted
+        p(abx+2,aby+BODY_H+1,legDk);
+        p(abx+BODY_W-3,aby+BODY_H+1,legDk);
+      }
+
+      // ==== THROAT SAC (L2+, pulsing below jaw) ====
       if(THROAT_SAC){
-        const sacY=aby+1;
+        const sacY=aby+BODY_H-1;
         p(cx,sacY,lv===3?C.PINK:C.DKPNK);
         if(lv>=3){
           p(cx-1,sacY,C.MAGENTA);
           p(cx+1,sacY,C.MAGENTA);
+          p(cx,sacY-1,C.PINK);
         }
       }
 
-      // ---- Legs (crouched pose — 4 visible; front + back pairs) ----
-      // Back legs (powerful, coiled for hopping) — sit on pedestal
-      const legColor=lv===1?C.MDGRN:lv===2?C.DKGRN:C.FOREST;
-      const legDark=C.DKFOR;
-      // Left back leg (bent, ready to hop)
-      p(abx-1,aby+BODY_H-3,legColor);
-      p(abx-1,aby+BODY_H-2,legColor);
-      p(abx-2,aby+BODY_H-1,legColor);
-      p(abx-2,aby+BODY_H,legDark);
-      // Right back leg
-      p(abx+BODY_W,aby+BODY_H-3,legColor);
-      p(abx+BODY_W,aby+BODY_H-2,legColor);
-      p(abx+BODY_W+1,aby+BODY_H-1,legColor);
-      p(abx+BODY_W+1,aby+BODY_H,legDark);
-      // Front feet (smaller, tucked under body)
-      if(lv>=2){
-        p(abx+1,aby+BODY_H,legColor);
-        p(abx+BODY_W-2,aby+BODY_H,legColor);
+      // ==== TONGUE (extends from mouth, L2+) ====
+      if(TONGUE>0){
+        const tongueY=mouthY+1;
+        // Tongue extends to the right from the mouth corner
+        for(let t=1;t<=TONGUE;t++){
+          p(abx+BODY_W-3+t,tongueY,TONGUE_COL);
+          if(t>1)p(abx+BODY_W-3+t,tongueY-1,TONGUE_DK);
+        }
+        const tipX=abx+BODY_W-3+TONGUE;
+        p(tipX+1,tongueY,C.WHITE);
+        if(lv>=3){
+          p(tipX+1,tongueY-1,C.LTPNK);
+          p(tipX+1,tongueY+1,C.LTPNK);
+        }
+      }
+      // Charge/fire — tongue lashes farther out
+      if(br&&TONGUE>0){
+        const tongueY=mouthY+1;
+        for(let t=TONGUE+1;t<=TONGUE+2+lv;t++){
+          p(abx+BODY_W-3+t,tongueY,TONGUE_COL);
+          p(abx+BODY_W-3+t,tongueY-1,TONGUE_DK);
+        }
       }
 
-      // ---- Venom drool (L3 always, L2 when fire) ----
+      // ==== VENOM DROOL (L3 always, L2 fire) ====
       if(lv>=3){
-        p(cx,hy+3,C.VENOM);
-        if(fl){p(cx,hy+4,C.TOXIC);p(cx-1,hy+4,C.SPORE);}
+        p(cx,mouthY+2,C.VENOM);
+        if(fl){p(cx,mouthY+3,C.TOXIC);p(cx-1,mouthY+3,C.SPORE);}
       }else if(lv===2&&fl){
-        p(cx,hy+3,C.SPORE);
+        p(cx,mouthY+2,C.SPORE);
       }
 
-      // ---- State overlays ----
+      // ==== STATE OVERLAYS ====
       if(s===1){
         // Charge: throat sac + eyes flare
-        if(THROAT_SAC)p(cx,aby+1,C.MAGENTA);
-        p(eye1X+1,hy-2,C.WHITE);
-        p(eye2X+1,hy-2,C.WHITE);
+        if(THROAT_SAC)p(cx,aby+BODY_H-1,C.MAGENTA);
+        p(leftEyeX+eyeW-1,eyeTopY,C.WHITE);
+        p(rightEyeX,eyeTopY,C.WHITE);
       }
       if(fl){
-        // Fire: tongue snap-streak forward (extra pixels past normal)
-        p(cx+TONGUE+3,hy+2,C.WHITE);
-        p(cx+TONGUE+4,hy+2,C.PINK);
+        // Fire: tongue snap-streak forward (extra trailing pixels)
+        const tongueY=mouthY+1;
+        p(abx+BODY_W-3+TONGUE+3,tongueY,C.WHITE);
+        p(abx+BODY_W-3+TONGUE+4,tongueY,C.PINK);
       }
       if(s===3){
-        // Cooldown: eyes closed, body relaxed
-        p(eye1X,hy-1,C.DKFOR);
-        p(eye1X+1,hy-2,C.DKFOR);
-        p(eye2X,hy-1,C.DKFOR);
-        p(eye2X+1,hy-2,C.DKFOR);
+        // Cooldown: eyes closed (horizontal slit across each eye)
+        b(leftEyeX,eyeTopY+Math.floor(eyeH/2),eyeW,1,C.DKFOR);
+        b(rightEyeX,eyeTopY+Math.floor(eyeH/2),eyeW,1,C.DKFOR);
       }
     },
     // 4. Blossom — Pink/magenta flower bloom on stalk (3 levels)
