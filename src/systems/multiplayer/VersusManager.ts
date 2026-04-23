@@ -2,6 +2,7 @@ import { PeerConnection, ConnectionState } from './PeerConnection';
 import { SignalingClient } from './SignalingClient';
 import { GameMessage, decodeMessage } from './MessageProtocol';
 import { GameStats } from '../StatsTracker';
+import { TOWER_TYPES } from '../../data/TowerTypes';
 
 export class VersusManager {
   peer: PeerConnection;
@@ -38,7 +39,7 @@ export class VersusManager {
   // Opponent state
   opponentLives: number = 20;
   opponentWave: number = 0;
-  opponentTowers: { towerId: string; col: number; row: number; level: number }[] = [];
+  opponentTowers: { towerId: string; col: number; row: number; level: number; branch?: string }[] = [];
   opponentGameOver: boolean = false;
   opponentEndStats: { stats: GameStats; wave: number; lives: number; sendsSent: number; sendsReceived: number } | null = null;
   opponentDisconnected: boolean = false;
@@ -166,7 +167,18 @@ export class VersusManager {
         break;
       case 'tower_upgraded': {
         const t = this.opponentTowers.find(t => t.col === msg.col && t.row === msg.row);
-        if (t) t.level = msg.level;
+        if (t) {
+          t.level = msg.level;
+          // Branch upgrades swap the tower's typeDef. Resolve the
+          // target type so shadow-sim combat keys off the right stats.
+          if (msg.branch) {
+            t.branch = msg.branch;
+            const srcDef = TOWER_TYPES[t.towerId];
+            const upgAtLevel = srcDef?.upgrades.find(u => u.level === msg.level);
+            const branchDef = upgAtLevel?.branches?.find(b => b.id === msg.branch);
+            if (branchDef) t.towerId = branchDef.transformsTo;
+          }
+        }
         break;
       }
       case 'send_purchased':

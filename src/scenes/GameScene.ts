@@ -7,6 +7,7 @@ import {
   gridX, gridY, gridLeftX, pixelToCol, setGridOffsetY,
 } from '../config';
 import { Grid, CellType } from '../systems/Grid';
+import { DEBUG } from '../systems/DebugFlags';
 import { findPath, findPathWithWaypoints, PathPoint } from '../systems/Pathfinding';
 import { EventBus } from '../systems/EventBus';
 import { EconomyManager } from '../systems/EconomyManager';
@@ -371,20 +372,12 @@ export class GameScene extends Phaser.Scene {
         this.toggleAutoPlay();
       },
       onStartWave: () => {
-        // Diagnostic: the Next Wave button silently doing nothing is
-        // a common-enough bug report (usually caused by a creep that
-        // never reaches the exit, keeping the wave "active") that the
-        // click path is worth instrumenting. Logs the specific reason
-        // the gate failed so we can tell at a glance whether the
-        // problem is "stuck creep" vs "bad wave index" vs other.
         if (!this.betweenWaves) {
-          // eslint-disable-next-line no-console
-          console.warn(`[wave] Next Wave ignored: wave ${this.currentWave} still active (creeps=${this.creeps.length})`);
+          if (DEBUG) console.warn(`[wave] Next Wave ignored: wave ${this.currentWave} still active (creeps=${this.creeps.length})`);
           return;
         }
         if (this.currentWave >= this.waves.length) {
-          // eslint-disable-next-line no-console
-          console.warn('[wave] Next Wave ignored: all waves completed');
+          if (DEBUG) console.warn('[wave] Next Wave ignored: all waves completed');
           return;
         }
         this.startWave();
@@ -1975,6 +1968,7 @@ export class GameScene extends Phaser.Scene {
    * blockage, this one identifies the specific creep.
    */
   private diagLogStuckCreeps(delta: number): void {
+    if (!DEBUG) return;
     if (!this.waveActive) {
       this._stuckCreepLogElapsed = 0;
       return;
@@ -1989,7 +1983,6 @@ export class GameScene extends Phaser.Scene {
       const row = Math.round((c.y - TILE_SIZE / 2) / TILE_SIZE);
       return `${c.creepTypeId}@(${col},${row}) idx=${c.pathIndex}/${c.path.length} reached=${c.reached} alive=${c.alive}`;
     });
-    // eslint-disable-next-line no-console
     console.warn('[wave] stuck creeps:\n  ' + rows.join('\n  '));
   }
 
@@ -2230,7 +2223,7 @@ export class GameScene extends Phaser.Scene {
       // authoritative.
       if (this.versus.cpuOpponent && this.cpuOpponentAI) {
         this.cpuOpponentAI.tick(delta);
-        const { leaks, kills } = this.opponentSim?.drainEvents() ?? { leaks: 0, kills: [] };
+        const { leaks, kills, goldEarned } = this.opponentSim?.drainEvents() ?? { leaks: 0, kills: [], goldEarned: 0 };
         if (leaks > 0) {
           const boss = kills.some(k => k.isBoss);
           const cost = boss ? 5 : 1;
@@ -2253,6 +2246,12 @@ export class GameScene extends Phaser.Scene {
           for (const k of kills) {
             this.cpuOpponentAI.creditKill(1, k.isBoss ? baseGold * 5 : baseGold);
           }
+        }
+        // Per-hit / per-kill gold from the shadow sim — covers void
+        // siphon, gambler jackpot, soul drain etc. that the earlier
+        // DPS-smear simulation couldn't credit.
+        if (goldEarned > 0) {
+          this.cpuOpponentAI.creditGold(1, goldEarned);
         }
         // If the shadow sim finished its wave (no queue, no creeps,
         // not active) and we haven't already fired `wave_cleared`
@@ -3163,12 +3162,12 @@ export class GameScene extends Phaser.Scene {
         const nextStart = this.waves.length + 1;
         const newWaves = generateEndlessWaves(nextStart, 10);
         this.waves.push(...newWaves);
-        console.log(`[Endless] Appended waves ${nextStart}-${nextStart + 9}, total: ${this.waves.length}`);
+        if (DEBUG) console.log(`[Endless] Appended waves ${nextStart}-${nextStart + 9}, total: ${this.waves.length}`);
       }
       if (waveNum % 10 === 0) {
         const playable = FACTION_ORDER.filter(f => f !== 'random' && f !== this.creepFaction);
         this.creepFaction = playable[Math.floor(Math.random() * playable.length)];
-        console.log(`[Endless] Creep faction rotated to: ${this.creepFaction}`);
+        if (DEBUG) console.log(`[Endless] Creep faction rotated to: ${this.creepFaction}`);
         this.eventLog.gameMessage(`Enemy faction changed to ${FACTIONS[this.creepFaction].name}!`);
       }
     }

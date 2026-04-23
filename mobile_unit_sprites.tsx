@@ -821,21 +821,27 @@ export function drawViper(ctx: CanvasRenderingContext2D, level: number = 1) {
 
   // Per-level silhouette — longer bodies + more scales as the
   // viper matures.
-  const BODY_TH = [0, 2, 3, 3][level];  // body thickness in grid cells
-  const N_SEGS = [0, 8, 10, 12][level]; // segments along the snake length
+  // Beefed up thickness so the snake reads as a chunky rope, not a
+  // wire — the old 2-cell body blended into the grass tileset.
+  const BODY_TH = [0, 3, 4, 5][level];  // body thickness in grid cells
+  const N_SEGS = [0, 10, 12, 14][level]; // denser segment sampling → no gaps
   const AMP    = [0, 2, 2, 3][level];   // sine-wave amplitude (slither undulation)
-  const HEAD_W = [0, 3, 4, 5][level];
-  const HEAD_H = [0, 3, 3, 4][level];
+  const HEAD_W = [0, 4, 5, 6][level];
+  const HEAD_H = [0, 3, 4, 5][level];
   const DIAMOND = level >= 2;
   const HOOD = level >= 3;
   const FORKED_TONGUE = level >= 2;
   const SLIT_PUPIL = level >= 3;
 
-  // Tone gradient — sage → green → dark forest
-  const SCALE_LT = [C.SAGE, C.MOSS, C.GREEN][level - 1];
-  const SCALE_MD = [C.MOSS, C.DKGRN, C.FOREST][level - 1];
-  const SCALE_DK = [C.FOREST, C.DARK, C.DARK][level - 1];
-  const BELLY_SCALE = [C.LTLIME ?? C.SAGE, C.SAGE, C.MOSS][level - 1];
+  // Palette: shift L1 to BARK BROWNS so a juvenile viper contrasts
+  // against a green grass tileset. L2 keeps dark-green but with
+  // warm bark mid-tones. L3 stays near-black with red accents.
+  // Dark outlines are always the "near-black" end so the snake
+  // always has a hard silhouette against any background.
+  const SCALE_LT = [C.BARK,   C.THORN,  C.MOSS  ][level - 1]; // back highlight
+  const SCALE_MD = [C.DKBARK, C.DKGRN,  C.FOREST][level - 1]; // body fill
+  const SCALE_DK = [C.DARK,   C.DARK,   C.DARK  ][level - 1]; // outline (always near-black)
+  const BELLY_SCALE = [C.LTBARK, C.SAGE, C.MDGRN][level - 1];
   const EYE_COL = level === 1 ? C.SAGE : level === 2 ? C.EYE : C.GLOW;
   const TONGUE_COL = C.PINK;
   const DIAMOND_LT = level === 3 ? C.PINK : C.GLOW;
@@ -902,36 +908,53 @@ export function drawViper(ctx: CanvasRenderingContext2D, level: number = 1) {
   // ---- Draw a segment of the snake body at a given path point ----
   // `t` is 0 at tail, 1 at head. Thickness tapers from head to
   // tail. Diamond pattern alternates along the body.
-  function drawBodySeg(p: (x: number, y: number, c: string) => void, b: (x: number, y: number, w: number, h: number, c: string) => void, px: number, py: number, t: number, _row: number, segIdx: number) {
+  //
+  // Cross-section is drawn perpendicular to the travel axis:
+  //   row 1 (walk-right)       → vertical cross-section
+  //   row 0/2 (walk-down/up)   → horizontal cross-section
+  //   row 3 (attack)           → horizontal (default, coiled blob)
+  //
+  // Dark outline pixels are ALWAYS placed at both edges of the
+  // cross-section so the snake silhouette reads against any
+  // background.
+  function drawBodySeg(p: (x: number, y: number, c: string) => void, b: (x: number, y: number, w: number, h: number, c: string) => void, px: number, py: number, t: number, row: number, segIdx: number) {
     const pxI = Math.round(px);
     const pyI = Math.round(py);
-    // Taper — body is thickest in the middle, thinner at tail
-    const thick = t < 0.15 ? 1 : Math.min(BODY_TH, Math.floor(BODY_TH * (0.5 + t * 0.6)));
+    // Taper — full thickness through the midsection, slimmer at tail
+    const thick = t < 0.1 ? 1 : t < 0.25 ? Math.max(2, BODY_TH - 2) : t < 0.5 ? Math.max(2, BODY_TH - 1) : BODY_TH;
+    const half = Math.floor(thick / 2);
 
-    // Body cross-section — drawn perpendicular to travel axis. For
-    // walk-right (row=1) we draw a vertical stripe; for up/down we
-    // draw horizontal.
-    for (let o = 0; o < thick; o++) {
-      const off = o - Math.floor((thick - 1) / 2);
-      // Default: horizontal cross-section (for walk-down/up or
-      // attack); swap for walk-right.
-      // For simplicity: always draw 2×2 block at each path point.
-      p(pxI + off, pyI, SCALE_MD);
-      if (o === 0) p(pxI + off, pyI, SCALE_DK); // outline
-      if (o === Math.floor(thick / 2)) {
-        // Centre — back highlight
-        p(pxI + off, pyI, SCALE_LT);
+    // Travel axis → cross-section axis. Row 1 (horizontal travel)
+    // draws a vertical stripe; everything else draws horizontal.
+    const vertical = row === 1;
+
+    for (let o = -half; o < thick - half; o++) {
+      const isEdge = o === -half || o === thick - half - 1;
+      let col: string;
+      if (isEdge) {
+        col = SCALE_DK;
+      } else if (o === -half + 1 && thick >= 4) {
+        // Back highlight — one row in from the top/left edge
+        col = SCALE_LT;
+      } else if (o === thick - half - 2 && thick >= 4) {
+        // Belly tone — one row in from the bottom/right edge
+        col = BELLY_SCALE;
+      } else {
+        col = SCALE_MD;
       }
+      if (vertical) p(pxI, pyI + o, col);
+      else p(pxI + o, pyI, col);
     }
 
-    // Outline the segment block with a darker rim above/below
-    p(pxI - Math.ceil(thick / 2), pyI, SCALE_DK);
-    p(pxI + Math.ceil(thick / 2) - 1, pyI, SCALE_DK);
-
-    // Diamond-back pattern — every 3rd segment, centre
-    if (DIAMOND && segIdx % 3 === 1 && segIdx > 0 && t < 0.85) {
-      p(pxI, pyI - (thick >= 3 ? 1 : 0), DIAMOND_DK);
-      if (thick >= 3) p(pxI, pyI, DIAMOND_LT);
+    // Diamond-back pattern — every 3rd segment, centred on the spine
+    if (DIAMOND && segIdx % 3 === 1 && segIdx > 0 && t < 0.85 && thick >= 3) {
+      if (vertical) {
+        p(pxI, pyI, DIAMOND_DK);
+        if (thick >= 4) p(pxI, pyI + 1, DIAMOND_LT);
+      } else {
+        p(pxI, pyI, DIAMOND_DK);
+        if (thick >= 4) p(pxI + 1, pyI, DIAMOND_LT);
+      }
     }
   }
 

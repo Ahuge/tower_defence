@@ -16,6 +16,7 @@ export const C_tower={
   BARK:'#664422',LTBARK:'#885533',PLBARK:'#aa7744',DKBARK:'#3a2211',STUMP:'#4a3318',
   AMBER:'#ffaa44',DKAMB:'#cc7722',LTAMB:'#ffcc88',GOLD:'#ffcc00',
   PINK:'#ee55aa',LTPNK:'#ff88cc',MAGENTA:'#cc2288',DKPNK:'#882255',
+  BLOOD:'#cc2222',LTBLOOD:'#ee4444',DKBLOOD:'#661111',BONE:'#f0e8d0',
   MOSS:'#446633',DKMOSS:'#2a4422',LTMOSS:'#88aa66',
   THORN:'#558833',DKTHRN:'#334422',LTTHRN:'#88cc55',
   SPORE:'#88cc44',DKSPOR:'#668833',LTSPOR:'#bbee77',TOXIC:'#aaee33',
@@ -30,6 +31,7 @@ export const C_proj={
   BARK:'#664422',LTBARK:'#885533',PLBARK:'#aa7744',DKBARK:'#3a2211',STUMP:'#4a3318',
   AMBER:'#ffaa44',DKAMB:'#cc7722',LTAMB:'#ffcc88',
   PINK:'#ee55aa',LTPNK:'#ff88cc',MAGENTA:'#cc2288',DKPNK:'#882255',
+  BLOOD:'#cc2222',LTBLOOD:'#ee4444',DKBLOOD:'#661111',BONE:'#f0e8d0',
   THORN:'#558833',DKTHRN:'#334422',LTTHRN:'#88cc55',
   SPORE:'#88cc44',DKSPOR:'#668833',LTSPOR:'#bbee77',TOXIC:'#aaee33',
   VINE:'#339944',DKVINE:'#226633',LTVINE:'#55cc66',
@@ -42,6 +44,7 @@ export const C={
   BARK:'#664422',LTBARK:'#885533',PLBARK:'#aa7744',DKBARK:'#3a2211',STUMP:'#4a3318',
   AMBER:'#ffaa44',DKAMB:'#cc7722',LTAMB:'#ffcc88',GOLD:'#ffcc00',
   PINK:'#ee55aa',LTPNK:'#ff88cc',MAGENTA:'#cc2288',DKPNK:'#882255',
+  BLOOD:'#cc2222',LTBLOOD:'#ee4444',DKBLOOD:'#661111',BONE:'#f0e8d0',
   MOSS:'#446633',DKMOSS:'#2a4422',LTMOSS:'#88aa66',
   THORN:'#558833',DKTHRN:'#334422',LTTHRN:'#88cc55',
   SPORE:'#88cc44',DKSPOR:'#668833',LTSPOR:'#bbee77',TOXIC:'#aaee33',
@@ -891,11 +894,12 @@ export function drawTowers(ctx){
         p(kx,ky,C.DKBARK);p(kx+1,ky,C.BARK);p(kx,ky+1,C.BARK);p(kx+1,ky+1,C.DKBARK);
       }
 
-      // ---- Red vein network (the "razor" identity) ----
+      // ---- Blood vein network (the "razor" identity) ----
       // Runs down the trunk like a blood vessel. Brighter when
-      // charging/firing. Scales with level.
-      const veinCol=fl?C.LTPNK:br?C.PINK:C.DKPNK;
-      const veinMid=fl?C.PINK:br?C.MAGENTA:C.DKPNK;
+      // charging/firing. Scales with level. Crimson red (not pink)
+      // so it doesn't read as Blossom's flower at small scale.
+      const veinCol=fl?C.LTBLOOD:br?C.BLOOD:C.DKBLOOD;
+      const veinMid=fl?C.BLOOD:br?C.DKBLOOD:C.DKBLOOD;
       // Main vertical vein just left of centre
       for(let y=coreTop+2;y<coreTop+coreH-1;y++){
         p(cx-1,y,y%2===0?veinCol:veinMid);
@@ -987,10 +991,11 @@ export function drawTowers(ctx){
           // higher levels.
           if(lv>=3&&y===Math.floor(flen/2))p(fx+(offset<0?-1:1),ty,C.LTBARK);
         }
-        // Red fang tip — the bite
+        // Bone-white fang tip with a dab of blood at the bite edge
         if(lv>=2){
-          p(fx,baseY-flen,C.PINK);
-          if(lv>=3&&f===Math.floor(fangs/2))p(fx,baseY-flen-1,C.MAGENTA);
+          p(fx,baseY-flen,C.BONE);
+          p(fx,baseY-flen+1,C.BLOOD);
+          if(lv>=3&&f===Math.floor(fangs/2))p(fx,baseY-flen-1,C.LTBLOOD);
         }
       }
       // Inter-fang gaps shadowed so each fang reads separately
@@ -1024,38 +1029,38 @@ export function drawTowers(ctx){
       p(xL+1,coreTop+coreH-1,C.MDGRN);
       p(xL+coreW-2,coreTop+coreH-1,C.MDGRN);
       if(lv>=2){
-        p(xL+2,coreTop+coreH-1,C.DKPNK);
-        p(xL+coreW-3,coreTop+coreH-1,C.DKPNK);
+        p(xL+2,coreTop+coreH-1,C.DKBLOOD);
+        p(xL+coreW-3,coreTop+coreH-1,C.DKBLOOD);
       }
       if(lv>=3){
-        p(xL,coreTop+coreH,C.MAGENTA);
-        p(xL+coreW-1,coreTop+coreH,C.MAGENTA);
+        p(xL,coreTop+coreH,C.BLOOD);
+        p(xL+coreW-1,coreTop+coreH,C.BLOOD);
       }
 
       // ---- State overlays ----
       // Charge — vein network pulses red, blade spines glow warm
       if(s===1){
         for(let y=coreTop+3;y<coreTop+coreH-2;y+=2){
-          p(cx-1,y,C.LTPNK);
+          p(cx-1,y,C.LTBLOOD);
         }
-        p(cx,coreTop-1,C.PINK); // crown tip pulse
+        p(cx,coreTop-1,C.BLOOD); // crown tip pulse
       }
       // Fire — launched central fang + red spark ring
       if(fl){
         const tipY=coreTop-(1+fangs);
-        p(cx,tipY-1,C.WHITE);
-        p(cx,tipY-2,C.PINK);
-        p(cx-1,tipY-1,C.MAGENTA);
-        p(cx+1,tipY-1,C.MAGENTA);
+        p(cx,tipY-1,C.BONE);
+        p(cx,tipY-2,C.BLOOD);
+        p(cx-1,tipY-1,C.DKBLOOD);
+        p(cx+1,tipY-1,C.DKBLOOD);
         // Red spark trail down vein
-        p(cx-1,coreTop+2,C.LTPNK);
-        p(cx-1,coreTop+5,C.PINK);
-        p(cx-1,coreTop+8,C.MAGENTA);
+        p(cx-1,coreTop+2,C.LTBLOOD);
+        p(cx-1,coreTop+5,C.BLOOD);
+        p(cx-1,coreTop+8,C.DKBLOOD);
       }
       // Cooldown — dim veins, retracted blades
       if(s===3){
         for(let y=coreTop+2;y<coreTop+coreH-1;y++){
-          p(cx-1,y,C.DKPNK);
+          p(cx-1,y,C.DKBLOOD);
         }
         // Draw dark overlay on crown so fangs appear partially
         // tucked.

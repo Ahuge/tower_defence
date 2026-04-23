@@ -2,6 +2,24 @@
 
 ## 2026-04-22
 
+### 1v1 Versus — CPU opponent now runs real per-tower combat
+Replaced the DPS-smear approximation in `OpponentSimulation` with a full per-tower-per-creep combat loop. The CPU now picks targets, fires on cooldown, applies splash, slow, root, and poison, and routes per-hit / per-kill gold into its `EconomyManager` — so **void siphon, gambler jackpot, damage variance (spike/oblivion), and infernal soul drain finally credit the bot**. Adjacency buffs (Nature Blossom) stack onto neighbour towers' damage and fire rate just like the human side. Tower-aura DoTs (Spore) poison everything in radius each tick.
+
+Branched towers (Bramble → Razor) resolve correctly: `VersusManager.tower_upgraded` now swaps the opponent's tower id when `branch` is set, so the shadow sim keys off the right TowerType's stats.
+
+Simplifications vs. real `TowerManager`/`Tower`: no projectile travel time (hits resolve instantly), targeting is always "first-in-line", no creep armor/shield/mage resistances. Fine — the sim only drives the CPU's economy and the minimap visual; the user never sees the damage numbers.
+
+### Nature hotkeys realigned + Razor Bramble re-coloured
+Nature tower dock was scrambled — viper was on `8`, blossom on `3`, sunroot on `9`. Re-mapped to match dock position: bramble 1, root 2, viper 3, blossom 4, spore 5, sunroot 6, vine 7, elder 8. Razor stays unplaceable (reachable only via Bramble's L2 branch).
+
+Razor Bramble's palette shifted from pink/magenta to **blood red + bone white** so it no longer reads as Blossom at game-icon scale. Veins are now `#cc2222` crimson, fangs get bone tips with a blood droplet, base pooling is dark blood red. Bramble's foliage + Blossom's pink petals + Razor's blood-and-bone trunk are now three distinctly coloured silhouettes.
+
+### Grove Viper — thicker body, better contrast against grass
+Snake body bumped from 2 cells to 3/4/5 per level, cross-section now orientation-aware (vertical stripe for walk-right, horizontal for walk-up/down) with guaranteed dark outline pixels on both edges. L1 palette shifted from greens to **bark browns** so a juvenile viper reads against a grass-tile backdrop instead of blending in. Denser segment sampling (10/12/14 body cells) prevents visible gaps.
+
+### Debug logs gated behind `?debug` query-string param
+Wave-sync diagnostics (`[wave] stuck creeps`, `[wave] wave N cleared`, `[wave] Next Wave ignored`) and endless-mode rotation logs (`[Endless] Creep faction rotated`) now only print when the page URL has `?debug`. New `src/systems/DebugFlags.ts` centralises the check. Normal play no longer spams console.warn — use `localhost:5173/?debug` to get full wave-state diagnostics when investigating a stuck-wave report.
+
 ### Mire Dart → Grove Viper (snake)
 Swapped the poison-dart frog for a slithering snake — better thematic fit for Nature's ambush/DoT identity and a distinctly different silhouette from any other mobile unit. Id rename: `nature_dartfrog` → `nature_viper`. Display name: "Grove Viper". Sprite file: `dartfrog_mobile.png` → `viper_mobile.png` (old files deleted).
 

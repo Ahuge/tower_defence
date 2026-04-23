@@ -295,7 +295,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_blossom: def({
     id: 'nature_blossom', name: 'Blossom', description: 'No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level.',
     faction: 'nature', damageType: 'magic', cost: 60, damage: 0, range: 1.5, fireRate: 99999,
-    color: 0xff88aa, projectileSpeed: 0, hotkey: '3',
+    color: 0xff88aa, projectileSpeed: 0, hotkey: '4',
     traits: [{ id: 'adjacency_buff', damagePercent: 0.15, ratePercent: 0.08 }],
     upgrades: [
       { level: 2, cost: 55, damage: 0, range: 1.5, fireRate: 99999 },
@@ -305,7 +305,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_spore: def({
     id: 'nature_spore', name: 'Spore', description: 'Poisons ALL creeps near tower. 2% HP/s. Area denial.',
     faction: 'nature', damageType: 'magic', cost: 100, damage: 5, range: 3, fireRate: 1500,
-    color: 0x88cc22, projectileSpeed: 200, projectileColor: 0x66aa00, hotkey: '4',
+    color: 0x88cc22, projectileSpeed: 200, projectileColor: 0x66aa00, hotkey: '5',
     traits: [{ id: 'tower_aura_damage', radius: 96 }, { id: 'poison_dot', percentPerSec: 0.02, duration: 3000 }],
     upgrades: [
       { level: 2, cost: 90, damage: 8, range: 3.5, fireRate: 1300 },
@@ -315,7 +315,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_vine: def({
     id: 'nature_vine', name: 'Vine', description: '20% chance to fully root (stun) for 0.8s per hit.',
     faction: 'nature', damageType: 'physical', cost: 160, damage: 14, range: 3.5, fireRate: 1000,
-    color: 0x228833, projectileSpeed: 280, hotkey: '5',
+    color: 0x228833, projectileSpeed: 280, hotkey: '7',
     traits: [{ id: 'direct_damage' }, { id: 'root_on_hit', chance: 0.2, duration: 800 }],
     upgrades: [
       { level: 2, cost: 130, damage: 22, range: 4, fireRate: 900 },
@@ -325,7 +325,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_elder: def({
     id: 'nature_elder', name: 'Elder Treant', description: 'ULTIMATE. Grows +8% DMG permanently. Roots and buffs allies.',
     faction: 'nature', damageType: 'physical', cost: 600, damage: 40, range: 4, fireRate: 800,
-    color: 0x225511, projectileSpeed: 280, hotkey: '6', ultimate: true,
+    color: 0x225511, projectileSpeed: 280, hotkey: '8', ultimate: true,
     traits: [
       { id: 'direct_damage' },
       { id: 'growth_scaling', growthPercent: 0.08 },
@@ -377,7 +377,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'nature_viper', name: 'Grove Viper',
     description: 'Mobile. Slithers along hidden paths; strikes with a fanged lunge and sinks venom deep.',
     faction: 'nature', damageType: 'physical', cost: 40, damage: 5, range: 2.5, fireRate: 950,
-    color: 0x2a5a2a, projectileSpeed: 200, hotkey: '8',
+    color: 0x2a5a2a, projectileSpeed: 200, hotkey: '3',
     traits: [
       // Slithers along the ground — underlying mobile_unit pathing
       // is standard (smooth-slide); the undulation is sprite-only
@@ -396,7 +396,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'nature_sunroot', name: 'Sunroot',
     description: 'Splash DPS. A bloom that learned to burn — fire-flowers arc wide.',
     faction: 'nature', damageType: 'magic', cost: 140, damage: 16, range: 3, fireRate: 900,
-    color: 0xddaa22, projectileSpeed: 260, projectileColor: 0xffcc44, hotkey: '9',
+    color: 0xddaa22, projectileSpeed: 260, projectileColor: 0xffcc44, hotkey: '6',
     traits: [{ id: 'splash_damage', radius: 56 }],
     upgrades: [
       { level: 2, cost: 120, damage: 24, range: 3.5, fireRate: 850 },

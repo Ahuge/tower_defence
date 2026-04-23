@@ -2,6 +2,7 @@ import { WaveDefinition } from '../data/WaveDefinitions';
 import { SpawnManager } from './SpawnManager';
 import { SendManager } from './SendManager';
 import { PathPoint } from './Pathfinding';
+import { DEBUG } from './DebugFlags';
 
 export interface WaveCallbacks {
   onWaveStart(wave: WaveDefinition, waveNum: number, totalWaves: number): void;
@@ -48,13 +49,11 @@ export class WaveController {
   /** Start the next wave. Returns false if can't start. */
   startWave(allPaths: (PathPoint[] | null)[]): boolean {
     if (!this.callbacks.canStartWave()) {
-      // eslint-disable-next-line no-console
-      console.warn('[wave] startWave rejected: canStartWave() === false (usually !currentPath)');
+      if (DEBUG) console.warn('[wave] startWave rejected: canStartWave() === false (usually !currentPath)');
       return false;
     }
     if (this.currentWave >= this.waves.length) {
-      // eslint-disable-next-line no-console
-      console.warn(`[wave] startWave rejected: all waves exhausted (${this.currentWave}/${this.waves.length})`);
+      if (DEBUG) console.warn(`[wave] startWave rejected: all waves exhausted (${this.currentWave}/${this.waves.length})`);
       return false;
     }
 
@@ -93,10 +92,10 @@ export class WaveController {
       // has been active well past its normal length. Throttled so
       // the console doesn't get flooded. This is the single most
       // useful diagnostic when the Next Wave button stays greyed.
-      if (this.waveElapsed > STUCK_THRESHOLD &&
+      if (DEBUG &&
+          this.waveElapsed > STUCK_THRESHOLD &&
           this.waveElapsed - this.lastStuckLog > STUCK_LOG_INTERVAL) {
         this.lastStuckLog = this.waveElapsed;
-        // eslint-disable-next-line no-console
         console.warn(
           `[wave] wave ${this.currentWave} stuck at ${Math.round(this.waveElapsed / 1000)}s — ` +
           `spawning=${spawning} sending=${sending} creeps=${creepCount}`,
@@ -108,8 +107,7 @@ export class WaveController {
     // Wave cleared!
     this.waveActive = false;
     this.betweenWaves = true;
-    // eslint-disable-next-line no-console
-    console.log(`[wave] wave ${this.currentWave} cleared in ${Math.round(this.waveElapsed / 1000)}s`);
+    if (DEBUG) console.log(`[wave] wave ${this.currentWave} cleared in ${Math.round(this.waveElapsed / 1000)}s`);
     this.callbacks.onWaveCleared(this.currentWave);
   }
 

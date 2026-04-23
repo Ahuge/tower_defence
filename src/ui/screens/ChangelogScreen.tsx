@@ -11,6 +11,46 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-22',
+    title: '1v1 Versus: CPU opponent runs real per-tower combat',
+    changes: [
+      'REWRITE: OpponentSimulation now does per-tower-per-creep combat instead of a DPS smear — picks targets, fires on cooldown, applies splash/slow/root/poison',
+      'Per-hit and per-kill gold routed into the CPU bot economy — void siphon, gambler jackpot, damage variance (spike/oblivion), and infernal soul drain all credit the bot correctly',
+      'Adjacency buffs (Nature Blossom) stack onto neighbour tower damage + fire rate for the CPU, matching the human side',
+      'Tower-aura DoTs (Spore) poison creeps in radius each tick',
+      'Branched towers (Bramble → Razor) now resolve the target TowerType when `tower_upgraded.branch` syncs, so the sim keys off the correct stats',
+      'Simplifications: no projectile travel time (hits resolve instantly), always-first targeting, no creep armor resistances. The sim drives economy + minimap only, never user-visible numbers',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Nature dock hotkeys realigned + Razor re-coloured',
+    changes: [
+      'FIX: Nature dock hotkeys were scrambled — viper was on 8, blossom on 3, sunroot on 9. Now: bramble 1, root 2, viper 3, blossom 4, spore 5, sunroot 6, vine 7, elder 8',
+      'Razor Bramble palette swapped from pink/magenta to blood red + bone white so it no longer reads as Blossom at game-icon scale',
+      'Veins are crimson #cc2222, fangs get bone-white tips with blood droplets, base pooling is dark blood red',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Grove Viper thickened — chunky rope, not a wire',
+    changes: [
+      'Snake body bumped from 2 cells to 3/4/5 per level with orientation-aware cross-sections (vertical stripe for walk-right, horizontal for walk-up/down)',
+      'Dark outline pixels guaranteed on both edges every frame so the silhouette reads against any background',
+      'L1 palette shifted to bark browns so a juvenile viper contrasts against grass tileset instead of blending in',
+      'Denser segment sampling (10/12/14 body cells per level) prevents visible gaps in the body curve',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Debug logs gated behind ?debug QSP',
+    changes: [
+      'New DebugFlags module reads `?debug` from the URL',
+      'Wave-sync console logs (stuck creeps, wave cleared, Next Wave ignored) and endless-mode rotation logs now only print when debug is on',
+      'Normal play is quiet — visit `localhost:5173/?debug` to re-enable diagnostics when investigating a stuck-wave report',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: 'Mire Dart → Grove Viper: slithering snake replaces the frog',
     changes: [
       'REPLACED Mire Dart frog with Grove Viper snake. Same mobile-unit slot, but slither animation (sine-wave body undulation per frame) + twin-fang strike lunge instead of hop + tongue-lash.',
