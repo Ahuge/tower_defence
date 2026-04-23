@@ -11,6 +11,18 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-22',
+    title: 'Multiplayer + random-faction bug sweep',
+    changes: [
+      'FIX 1v1: client could send T2/T3 sends before unlock wave — receiver now re-validates unlockWave and drops locked messages',
+      'FIX 1v1: flying sends walked the maze for the receiving host — SendManager now supports a flying path and routes creepType flying through it',
+      'FIX Circle Co-op: host + client saw different kill counts for the same creep — new creep_killed broadcast syncs per-player kill totals across all peers',
+      'FIX Circle Co-op: CPU players missing from the human peer\'s roster — clients now sync playerCount + botSlots from circle_game_start',
+      'NEW Circle Co-op: shared economy — every kill splits 50/50 between the killer and the spawn-owner (whoever\'s zone/send the creep came from). Creep carries spawnOwnerIndex; DeathHandler credits each share on every peer via the new broadcast.',
+      'FIX Random faction: Razor Bramble could roll into the random tower pool — pool source changed from TOWER_TYPES to Factions[*].towerIds so branch-only towers are excluded',
+    ],
+  },
+  {
+    date: '2026-04-22',
     title: '1v1 Versus: CPU opponent runs real per-tower combat',
     changes: [
       'REWRITE: OpponentSimulation now does per-tower-per-creep combat instead of a DPS smear — picks targets, fires on cooldown, applies splash/slow/root/poison',

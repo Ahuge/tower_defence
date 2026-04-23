@@ -520,6 +520,9 @@ export class GameScene extends Phaser.Scene {
       const pc = circleMgr.playerCount;
       const mult = pc + (pc < 4 ? 1 : 0);
       this.spawner.setCountMultiplier(mult);
+      // Tag every wave creep with its spawner's owner so the shared
+      // kill-gold split knows who to pay the spawn-owner half.
+      this.spawner.setTrackSpawnOwnership(true);
     }
     this.inputMgr = new InputManager(this, this.eventBus);
     if (this.layout.gridRows !== GRID_ROWS) {
@@ -594,6 +597,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.sendMgr = new SendManager(this, this.eventBus);
     this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
+    this.sendMgr.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
 
     // Subscribe the Encyclopedia discovery tracker. Skips writing
     // during tutorial mode so the scripted-creep sequence doesn't
@@ -701,11 +705,20 @@ export class GameScene extends Phaser.Scene {
       ? new CircleDeathHandler(
           this.economy, this.statsTracker, this.eventBus,
           this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex,
-          // Route kills by bot-owned towers to their private gold
-          // pools. The bot AI is created later in setup (needs the
-          // grid); the arrow form defers resolution to call-time so
-          // the reference is valid once bots are registered.
-          (botIndex, gold) => this.circleBotAI?.creditKill(botIndex, gold),
+          {
+            // Broadcast each local kill so other peers update their
+            // rosters + credit their half of the shared gold.
+            broadcast: (killedBy, spawnOwnerIndex, goldValue) => {
+              this.circle?.broadcast({
+                type: 'creep_killed', killedBy, spawnOwnerIndex, goldValue,
+              });
+            },
+            // Route bot-owned kills to their private pools. Bots live
+            // on the host only; on clients this resolves to a no-op
+            // because `circleBotAI` stays null.
+            creditBot: (botIndex, gold) => this.circleBotAI?.creditKill(botIndex, gold),
+            isLocalBot: (idx) => !!this.circle?.isBotSlot(idx) && !!this.circleBotAI,
+          },
         )
       : null;
     // Stash the circle death handler on the scene so the roster can
@@ -1133,6 +1146,12 @@ export class GameScene extends Phaser.Scene {
             break;
           case 'chat':
             this.eventLog.gameMessage(`[P${fromPlayer}] ${msg.text}`);
+            break;
+          case 'creep_killed':
+            // Apply the same kill accounting the sender already did.
+            // Updates our roster's per-player kill count and credits
+            // any economy share (self or local bots) we're owed.
+            this.circleDeathHandler?.onRemoteKill(msg.killedBy, msg.spawnOwnerIndex, msg.goldValue);
             break;
         }
       };
@@ -3231,6 +3250,7 @@ export class GameScene extends Phaser.Scene {
 
       // Update flying path for new map entry/exit
       this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
+      this.sendMgr.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
 
       // Create creep animations for new faction
       createCreepAnimations(this, this.creepFaction);

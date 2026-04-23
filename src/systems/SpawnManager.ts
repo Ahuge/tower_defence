@@ -45,6 +45,15 @@ export class SpawnManager {
    */
   private spawners: SpawnerDef[] | null = null;
   /**
+   * Circle Co-op: each spawner belongs to a player (spawner index
+   * = player index = zone index). Wave creeps that spawn from
+   * spawner `i` carry `spawnOwnerIndex = i` so the shared-economy
+   * death handler can pay the spawn-owner their half of the kill
+   * gold. Disabled on non-Circle maps where spawnOwnerIndex has
+   * no meaning (stays null on the creep).
+   */
+  private trackSpawnOwnership: boolean = false;
+  /**
    * Wave-count multiplier for co-op modes. In Circle Co-op we scale
    * creep counts with team size so defence stays challenging — a
    * 4-player match faces 4× the creeps a solo match would. Set
@@ -66,6 +75,14 @@ export class SpawnManager {
    *  (null for non-waypoint maps). */
   setSpawners(spawners: SpawnerDef[] | null): void {
     this.spawners = spawners;
+  }
+
+  /** Turn on Circle Co-op ownership tagging — every wave creep
+   *  spawned from spawner `i` gets `spawnOwnerIndex = i` so the
+   *  shared-economy death handler can credit that zone's player
+   *  their half of the kill gold. Default off. */
+  setTrackSpawnOwnership(enabled: boolean): void {
+    this.trackSpawnOwnership = enabled;
   }
 
   /** Global creep-count multiplier applied on top of per-creep
@@ -169,6 +186,7 @@ export class SpawnManager {
           creep.spawnerWaypoints = spawner.waypoints.map(p => ({ col: p.col, row: p.row }));
           creep.spawnerExit = { col: spawner.exit.col, row: spawner.exit.row };
         }
+        if (this.trackSpawnOwnership) creep.spawnOwnerIndex = entry.pathIndex;
         creeps.push(creep);
         // Notify discovery tracker + any other subscriber each time
         // a creep construct appears. Subscribers de-dup via persisted

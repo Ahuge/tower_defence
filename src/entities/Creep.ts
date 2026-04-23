@@ -36,6 +36,16 @@ export class Creep {
   lastHitCol: number = -1;
   lastHitRow: number = -1;
   /**
+   * Player-index whose send / zone spawned this creep. Carried
+   * through from `SendManager.queueSend(opt, ownerIndex)` for
+   * bought sends, and populated from the spawner's `playerIndex`
+   * for Circle Co-op wave creeps. Drives the 50/50 kill-gold
+   * split in Circle Co-op: killer gets half, this field gets the
+   * other half. `null` = no spawn owner (standard solo / 1v1
+   * where every creep belongs to the defender themselves).
+   */
+  spawnOwnerIndex: number | null = null;
+  /**
    * The spawner's ordered waypoint list + exit. Set by SpawnManager
    * when the creep is created from a circle-co-op map with
    * `mapDef.spawners`. `waypointsVisited` tracks how many of those

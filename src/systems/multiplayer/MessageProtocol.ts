@@ -38,7 +38,18 @@ export type GameMessage =
   | { type: 'player_joined'; playerIndex: number; totalPlayers: number }
   | { type: 'all_waves_cleared'; wave: number }
   | { type: 'circle_victory'; winnerIndex: number }
-  | { type: 'tower_sync'; towers: { towerId: string; col: number; row: number; level: number }[] };
+  | { type: 'tower_sync'; towers: { towerId: string; col: number; row: number; level: number }[] }
+  // Circle Co-op kill record. Broadcast when a creep dies so every
+  // peer's roster shows a consistent per-player kill count, and the
+  // 50/50 kill-gold split (half to killer, half to spawn-owner)
+  // credits the right EconomyManager on every peer.
+  //
+  //   `killedBy`          player-index of the tower owner who struck
+  //                       the killing blow (−1 if untracked).
+  //   `spawnOwnerIndex`   player-index whose zone / bought-send this
+  //                       creep came from (−1 if none).
+  //   `goldValue`         total kill gold, before the 50/50 split.
+  | { type: 'creep_killed'; killedBy: number; spawnOwnerIndex: number; goldValue: number };
 
 /** Envelope wrapper for CircleManager routing */
 export interface CircleEnvelope {

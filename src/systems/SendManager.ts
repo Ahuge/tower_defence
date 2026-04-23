@@ -7,23 +7,42 @@ import { EventBus } from './EventBus';
 
 interface QueuedSend {
   option: SendCreepOption;
+  /** Which player-index sent this, if any. Carried onto each
+   *  spawned creep so the post-kill gold-split knows who to pay
+   *  the spawner half. Null for non-multiplayer queues. */
+  spawnOwnerIndex: number | null;
 }
 
 export class SendManager {
   private scene: Phaser.Scene;
   private events: EventBus;
   private queuedSends: QueuedSend[] = [];
-  private spawnQueue: { creepType: string; hp: number; speed: number }[] = [];
+  private spawnQueue: { creepType: string; hp: number; speed: number; spawnOwnerIndex: number | null }[] = [];
   private spawnTimer: number = 0;
   private spawnInterval: number = 150;
+  /** Straight-line path used by flying sends so they bypass the
+   *  maze just like flying creeps in regular waves. Synced by
+   *  GameScene alongside `SpawnManager.setFlyingPath`. */
+  private flyingPath: PathPoint[] | null = null;
 
   constructor(scene: Phaser.Scene, events: EventBus) {
     this.scene = scene;
     this.events = events;
   }
 
-  queueSend(option: SendCreepOption): void {
-    this.queuedSends.push({ option });
+  setFlyingPath(entry: { col: number; row: number }, exit: { col: number; row: number }): void {
+    this.flyingPath = [
+      { col: entry.col, row: entry.row },
+      { col: exit.col, row: exit.row },
+    ];
+  }
+
+  /** Queue a send. `spawnOwnerIndex` lets the receiver credit the
+   *  original sender later (Circle Co-op shared economy: 50% of
+   *  the kill gold flows back to whoever's sent creep died). Null
+   *  for local tests / standard solo where ownership is irrelevant. */
+  queueSend(option: SendCreepOption, spawnOwnerIndex: number | null = null): void {
+    this.queuedSends.push({ option, spawnOwnerIndex });
   }
 
   // Called at wave start to generate extra creeps from sends
@@ -37,6 +56,7 @@ export class SendManager {
           creepType: send.option.creepType,
           hp: baseHp,
           speed: baseSpeed,
+          spawnOwnerIndex: send.spawnOwnerIndex,
         });
       }
     }
@@ -64,15 +84,25 @@ export class SendManager {
       const batchSize = this.spawnQueue.length > 20 ? 3 : this.spawnQueue.length > 10 ? 2 : 1;
       for (let b = 0; b < batchSize && this.spawnQueue.length > 0; b++) {
         const entry = this.spawnQueue.shift()!;
+        // Flying sends (and any other send whose creep type is
+        // marked `spawnBehavior === 'flying'`) skip the maze by
+        // using the straight-line flying path. Falls back to the
+        // normal path if the flying one hasn't been set (e.g.
+        // Circle Co-op maps with no shared entry/exit).
+        const ct = CREEP_TYPES[entry.creepType];
+        const path = ct?.spawnBehavior === 'flying' && this.flyingPath
+          ? this.flyingPath
+          : currentPath;
         const creep = new Creep(
           this.scene,
-          [...currentPath],
+          [...path],
           entry.hp,
           entry.speed,
           false,
           entry.creepType,
           (this.scene as any).creepFaction,
         );
+        creep.spawnOwnerIndex = entry.spawnOwnerIndex;
         creeps.push(creep);
       }
       this.spawnTimer = this.spawnInterval;

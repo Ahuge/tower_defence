@@ -140,6 +140,11 @@ export function CircleLobbyScreen() {
       // Joiners record which slots are bots so the in-game roster
       // can label them correctly; host already has this set.
       if (msg.botSlots) for (const idx of msg.botSlots) circle.botSlots.add(idx);
+      // Sync `playerCount` to match the authoritative total from
+      // the host. `player_joined` only fires for real peer joins,
+      // so joiners never see bots added by the host — without this
+      // the roster iterates `playerCount` slots and skips the bots.
+      if (!isHostRef.current) circle.playerCount = msg.players.length;
       if (!isHostRef.current) {
         setSelectedMap(msg.map as MapId);
         setSelectedDifficulty(msg.difficulty as DifficultyLevel);

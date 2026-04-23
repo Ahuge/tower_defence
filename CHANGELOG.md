@@ -2,6 +2,21 @@
 
 ## 2026-04-22
 
+### Multiplayer + random-faction bug sweep
+Six bugs reported + fixed in one pass:
+
+1. **1v1 — send tier unlock gates bypassed on receive.** Sender-side already gated T2/T3 sends behind `unlockWave`, but the receiver blindly queued whatever message landed. `StandardMode.handleSend` now re-checks `unlockWave` against the current wave and drops locked sends. Safe against a bad/modded peer firing `send_flying` at wave 5.
+
+2. **1v1 — flying sends walked the maze for the receiver.** `SendManager` never knew about the flying path — it always used `currentPath`. Added `setFlyingPath` (called by `GameScene` alongside `SpawnManager.setFlyingPath`) and a per-spawn check on `CREEP_TYPES[type].spawnBehavior === 'flying'`. Flying squad sends now bypass the maze as intended.
+
+3. **Circle Co-op — host + client saw divergent kill counts.** Each peer only counted creep deaths on their own local creep list, so a client killing host-zone creeps never updated the host's roster. New `creep_killed` broadcast: sender records locally + broadcasts; receivers apply via `CircleDeathHandler.onRemoteKill`. All peers converge on the same per-player kill count.
+
+4. **Circle Co-op — human peers didn't see CPU players in the roster.** Host-added bots increment the host's `playerCount` but client's `playerCount` only tracked real peer joins. Client now reads `msg.players.length` + `msg.botSlots` from `circle_game_start` and syncs its `playerCount` / `botSlots` state — the roster iterates the right number of slots and labels bots `[CPU]`.
+
+5. **Circle Co-op — shared economy: 50% killer / 50% spawn-owner.** `Creep` gains `spawnOwnerIndex`. Wave creeps carry their spawner's index (zone owner); sent creeps carry the buyer's index via `SendManager.queueSend(opt, senderIndex)`. `CircleDeathHandler` now splits kill gold 50/50 (killer gets the odd-penny half) and routes each share to the right beneficiary on each peer — broadcast on the `creep_killed` message so every peer credits any local economies they host (self + their bots). No spawn-owner = killer takes 100% (legacy solo behaviour).
+
+6. **Random faction — Razor Bramble appeared in Random rolls.** `getAllFactionTowerIds()` iterated `TOWER_TYPES` directly, which picked up branch-only towers like `nature_razor_bramble` even though they're not in any faction's dock list. Switched it to iterate `Factions[*].towerIds` — the authoritative "placeable from the dock" list. Razor can still be reached via Bramble's L2 branch as designed.
+
 ### 1v1 Versus — CPU opponent now runs real per-tower combat
 Replaced the DPS-smear approximation in `OpponentSimulation` with a full per-tower-per-creep combat loop. The CPU now picks targets, fires on cooldown, applies splash, slow, root, and poison, and routes per-hit / per-kill gold into its `EconomyManager` — so **void siphon, gambler jackpot, damage variance (spike/oblivion), and infernal soul drain finally credit the bot**. Adjacency buffs (Nature Blossom) stack onto neighbour towers' damage and fire rate just like the human side. Tower-aura DoTs (Spore) poison everything in radius each tick.
 

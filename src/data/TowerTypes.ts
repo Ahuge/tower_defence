@@ -1,5 +1,5 @@
 import { DamageType } from './CreepTypes';
-import { FactionId } from './Factions';
+import { FactionId, FACTIONS, FACTION_ORDER } from './Factions';
 import { Trait } from '../systems/traits/Trait';
 import type { TowerRole } from './TowerRoles';
 
@@ -913,9 +913,21 @@ export function getTowerType(id: string): TowerType {
   return t;
 }
 
-/** Get all faction tower IDs (excluding generic) */
+/** Get all faction-selectable tower IDs.
+ *
+ *  Pulls from each faction's explicit `towerIds` list rather than
+ *  iterating `TOWER_TYPES`, so branch-only towers (e.g.
+ *  `nature_razor_bramble`, reached only via Bramble Hedge's L2
+ *  branch) are NOT included. This is the pool the Random faction
+ *  and other "all towers" UIs roll from. */
 export function getAllFactionTowerIds(): string[] {
-  return Object.values(TOWER_TYPES)
-    .filter(t => t.faction)
-    .map(t => t.id);
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const fid of FACTION_ORDER) {
+    if (fid === 'random') continue;
+    for (const id of FACTIONS[fid].towerIds) {
+      if (!seen.has(id)) { seen.add(id); ids.push(id); }
+    }
+  }
+  return ids;
 }

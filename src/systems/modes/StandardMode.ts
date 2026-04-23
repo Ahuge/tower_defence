@@ -101,15 +101,22 @@ export class StandardMode extends BaseFrontierMode {
     GameUIStore.updateSendOptions(options);
   }
 
-  handleSend(sendId: string): boolean {
-    // Handle incoming sends from versus opponent
+  handleSend(sendId: string, spawnOwnerIndex: number | null = null): boolean {
+    // Handle incoming sends from versus opponent.
+    //
+    // The sender also enforces `unlockWave` on their end, but we
+    // re-check here so a bad/modded peer can't bypass the gate —
+    // the receiver is the authoritative voice on what lands in
+    // their maze.
     const opt = SEND_OPTIONS_MAP[sendId];
-    if (opt) {
-      this.ctx.sendMgr.queueSend(opt);
-      this.ctx.eventLog.gameMessage(`Incoming send: ${opt.name}!`);
-      return true;
+    if (!opt) return false;
+    if (this.currentWave < opt.unlockWave) {
+      this.ctx.eventLog.gameMessage(`Rejected locked send: ${opt.name} (unlocks wave ${opt.unlockWave})`);
+      return true; // handled, just discarded
     }
-    return false;
+    this.ctx.sendMgr.queueSend(opt, spawnOwnerIndex);
+    this.ctx.eventLog.gameMessage(`Incoming send: ${opt.name}!`);
+    return true;
   }
 
   reparentSidebarPanels(overlay: SidebarOverlay): void {
