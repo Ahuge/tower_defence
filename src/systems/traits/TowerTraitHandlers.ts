@@ -330,12 +330,13 @@ registerDamageMod('crit_chance', (trait: Trait, damage: number, ctx: HitContext)
 registerDamageMod('jackpot', (trait: Trait, damage: number, ctx: HitContext) => {
   // Kill chance scales: +2% per level above 1.
   // Bosses are genuinely hard to jackpot — the instant-kill slice
-  // is halved against them so Gambler / Oblivion still land the
-  // occasional lucky crit but can't trivially erase a boss wave.
-  // The miss slice stays full — no "I'm a boss, please whiff" perk.
+  // is quartered against them (×0.25) so Gambler / Oblivion still
+  // land the occasional lucky crit but can't trivially erase a
+  // boss wave. Miss slice stays full — no "I'm a boss, please
+  // whiff" perk.
   const baseKill = trait.killChance ?? 0.04;
   const levelKill = Math.min(0.5, baseKill + 0.02 * (ctx.towerLevel - 1));
-  const killChance = ctx.target.isBoss ? levelKill * 0.5 : levelKill;
+  const killChance = ctx.target.isBoss ? levelKill * 0.25 : levelKill;
   const missChance = trait.missChance ?? 0.25;
   const roll = Math.random();
   if (roll < killChance) {

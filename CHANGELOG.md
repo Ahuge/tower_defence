@@ -16,10 +16,10 @@ Three real bugs from the Endless audit:
 
 3. **UpcomingWaves stale right after an append.** The append fires inside `onWaveCleared` but `upcomingWaves.update(...)` ran *before* the append. Moved the snapshot call to after the append block so newly-generated waves show up on the same tick.
 
-### Gambler balance: 4% kill, halved vs bosses
+### Gambler balance: 4% kill, quartered vs bosses
 Dropped Gambler's `jackpot.killChance` from 8% → 4%. At 15g per tower with ~1s fire rate you could comfortably spam the entire late game — 8% across 8 Gamblers was effectively free wave clears. 4% still feels chunky without trivialising placement choices.
 
-Added universal **boss resistance** to the jackpot handler: kill chance halves when `target.isBoss`. Gambler reads 4% regular / 2% boss; Oblivion (the void ULT) reads 15% / 7.5%. Keeps jackpot towers valuable without the "I erased the boss wave from one lucky roll" outcome. Miss slice is unchanged — bosses don't get the "please whiff" perk. `HitTarget` interface gained `isBoss: boolean` (phantom splash targets default to false). Matching change in `OpponentSimulation`'s shadow sim so the 1v1 CPU's Gamblers also respect boss resistance.
+Added universal **boss resistance** to the jackpot handler: kill chance is **quartered** (×0.25) when `target.isBoss`. Gambler reads 4% regular / 1% boss; Oblivion (the void ULT) reads 15% / 3.75%. Keeps jackpot towers valuable without the "I erased the boss wave from one lucky roll" outcome. Miss slice is unchanged — bosses don't get the "please whiff" perk. `HitTarget` interface gained `isBoss: boolean` (phantom splash targets default to false). Matching change in `OpponentSimulation`'s shadow sim so the 1v1 CPU's Gamblers also respect boss resistance.
 
 ## 2026-04-22
 

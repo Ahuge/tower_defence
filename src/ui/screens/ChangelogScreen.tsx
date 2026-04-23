@@ -29,12 +29,12 @@ const ENTRIES: Entry[] = [
   },
   {
     date: '2026-04-23',
-    title: 'Gambler balance: 4% instant kill, halved vs bosses',
+    title: 'Gambler balance: 4% instant kill, quartered vs bosses',
     changes: [
       'Gambler jackpot.killChance dropped from 8% to 4% — 15g + fast fire rate made the 8% roll too cheap',
-      'NEW universal boss resistance on jackpot: kill chance halves when target.isBoss. Gambler: 4%/2%. Oblivion: 15%/7.5%',
+      'NEW universal boss resistance on jackpot: kill chance ×0.25 when target.isBoss. Gambler: 4%/1%. Oblivion: 15%/3.75%',
       'Miss chance unchanged — no "please whiff" perk for bosses',
-      'HitTarget interface gained isBoss. Shadow sim in OpponentSimulation mirrors the same halving for 1v1 CPU',
+      'HitTarget interface gained isBoss. Shadow sim in OpponentSimulation mirrors the same quartering for 1v1 CPU',
     ],
   },
   {
