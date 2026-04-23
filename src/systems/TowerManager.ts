@@ -26,6 +26,12 @@ export class TowerManager {
   private eventBus: EventBus;
   private modifier: DraftModifier | null;
   totalTowersBuilt: number = 0;
+  /** Circle Co-op gold router: called with per-hit gold earned by a
+   *  bot-owned tower (gold_on_hit / jackpot / etc.) so it flows into
+   *  the bot's private EconomyManager instead of the human's shared
+   *  pool. Null outside co-op — TowerManager falls back to the
+   *  shared economy for every tower. */
+  botGoldRouter: ((ownerIndex: number, amount: number) => void) | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -83,7 +89,14 @@ export class TowerManager {
     const anyBlocked = newPaths.some(p => p === null);
 
     if (anyBlocked) {
+      // Rollback: restore the grid AND rerun recalc so the scene's
+      // cached allPaths / currentPath aren't left pointing at the
+      // "would-have-been-blocked" state. Without this second recalc,
+      // a rejected bot placement would poison currentPath = null and
+      // permanently break the Next Wave button even though the grid
+      // was successfully restored.
       this.grid.removeTower(col, row);
+      recalcPaths();
       return null;
     }
 
@@ -101,15 +114,20 @@ export class TowerManager {
     return { tower, pathsChanged: true };
   }
 
-  /** Sell tower at grid position. Returns refund amount or 0. */
-  sellTower(col: number, row: number): { tower: Tower; refund: number } | null {
+  /** Sell tower at grid position. Returns refund amount or 0.
+   *  `free=true` skips the shared-economy refund (and the event-log
+   *  line) — used when a CPU bot is paying itself from its own
+   *  EconomyManager, same pattern as `placeTower(free=true)`. */
+  sellTower(col: number, row: number, free: boolean = false): { tower: Tower; refund: number } | null {
     const idx = this.towers.findIndex(t => t.col === col && t.row === row);
     if (idx === -1) return null;
 
     const tower = this.towers[idx];
     const refund = tower.getSellValue();
-    this.economy.addGold(refund);
-    this.eventLog.towerSold(tower.typeDef.name, refund);
+    if (!free) {
+      this.economy.addGold(refund);
+      this.eventLog.towerSold(tower.typeDef.name, refund);
+    }
     tower.destroy();
     this.towers.splice(idx, 1);
 
@@ -161,9 +179,17 @@ export class TowerManager {
     // Collect gold and damage stats
     for (const tower of this.towers) {
       if (tower.goldEarned > 0) {
-        this.economy.addGold(tower.goldEarned);
+        // Circle Co-op: bot-owned towers route their per-hit gold
+        // (gold_on_hit / jackpot) to the bot's private economy
+        // instead of the human's shared pool. Stats still track
+        // the tower-level totals for the end-of-match screen.
+        if (tower.ownerIndex !== undefined && this.botGoldRouter) {
+          this.botGoldRouter(tower.ownerIndex, tower.goldEarned);
+        } else {
+          this.economy.addGold(tower.goldEarned);
+          this.statsTracker.recordGoldEarned(tower.goldEarned);
+        }
         this.statsTracker.recordTowerGold(tower.typeId, tower.goldEarned);
-        this.statsTracker.recordGoldEarned(tower.goldEarned);
         tower.goldEarned = 0;
       }
       if (tower.damageDealt > 0) {

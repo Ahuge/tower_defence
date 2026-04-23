@@ -1,10 +1,12 @@
 /**
- * BotBrain — pluggable decision-making strategy for Circle Co-op
- * CPU players. The surrounding driver (`CircleBotAI`) handles all the
- * mechanical concerns: cooldown scheduling, fair-share gold reserve,
- * candidate-cell maintenance, actual tower placement + broadcast. A
- * brain only answers one question: *given this context, what should
- * I do this placement opportunity?*
+ * BotBrain — pluggable decision-making strategy for CPU players.
+ * Used by the Circle Co-op shared-grid driver and the 1v1 Versus
+ * simulated-peer driver (both implemented via `BotAI`). The driver
+ * handles all the mechanical concerns: cooldown scheduling, fair-
+ * share gold reserve, candidate-cell maintenance, actual tower
+ * placement/upgrade/sell + broadcast. A brain only answers one
+ * question: *given this context, what should I do this decision
+ * opportunity?*
  *
  * Split this way so different competency tiers (Dumb, Balanced,
  * Aggressive, Wave-Reactive, …) can share all the scaffolding and
@@ -21,50 +23,118 @@ import { PathPoint } from '../Pathfinding';
  *  bots module back into map data. */
 export interface Cell { col: number; row: number; }
 
+/** Snapshot of a tower this bot has previously placed. The driver
+ *  refreshes this list each decide() call from its own ledger so
+ *  brains don't need to track placements themselves. `upgradeCost`
+ *  is 0 when the tower is max level; brains should treat that as
+ *  "not upgradable right now" rather than calling it for free. */
+export interface PlacedTower {
+  col: number;
+  row: number;
+  towerId: string;
+  level: number;
+  /** Cost of the next upgrade, in gold. 0 if the tower is at
+   *  max level — brains should skip upgrade decisions on these.
+   *  When `upgradeBranches` is non-empty, this is the DEFAULT
+   *  path's cost; per-branch costs are available in
+   *  `branchUpgradeCosts`. */
+  upgradeCost: number;
+  /** Branch ids available at this tower's current upgrade point,
+   *  excluding the default path. Empty for linear upgrades or
+   *  max-level towers. Drives branch picking in the brain. */
+  upgradeBranches: string[];
+  /** Per-branch upgrade cost. Keyed by branch id. Populated when
+   *  `upgradeBranches` is non-empty so the brain can afford-check
+   *  before picking. */
+  branchUpgradeCosts: Record<string, number>;
+  /** Gold refunded if the tower is sold this frame. */
+  sellValue: number;
+}
+
 /** Everything a brain might reasonably want to know when it's
  *  asked to decide. Fields are read-only from the brain's POV —
  *  mutating them has no effect since the driver passes snapshots. */
 export interface BotContext {
-  /** This bot's player-index slot in the Circle Co-op lobby. */
+  /** This bot's player-index slot in the lobby (Circle) or 1 for
+   *  the synthetic opponent in 1v1 Versus. */
   playerIndex: number;
   /** Faction assigned at lobby start. Never changes mid-match. */
   faction: FactionId;
-  /** Empty, in-zone cells that currently pass `Grid.canPlaceTower`.
-   *  The driver filters stale cells before each decide() call, so
-   *  the brain can treat this as a live list. */
+  /** Empty cells currently legal for this bot to place on. In
+   *  Circle Co-op this is zone-restricted; in 1v1 Versus this is
+   *  the full grid. Driver filters stale cells before each
+   *  decide() call, so the brain can treat it as a live list. */
   candidateCells: Cell[];
   /** Tower types available to this bot, pre-sorted by cost ASC. */
   towerPool: TowerType[];
   /** Gold this bot may spend this decision. Already accounts for
-   *  the fair-share reserve the driver holds back for humans, so a
-   *  brain can greedily spend up to `budget` without starving the
-   *  team. */
+   *  the fair-share reserve the driver holds back for humans (in
+   *  Circle Co-op) — brains can greedily spend up to `budget`. */
   budget: number;
   /** Current wave number (1-based). 0 before the first wave starts. */
   wave: number;
-  /** Shared life pool at this moment. Brains can use this to shift
-   *  into "panic mode" when the team is at low lives. */
+  /** Life pool at this moment (shared pool in Circle Co-op, this
+   *  bot's private pool in 1v1 Versus). Brains can use this to
+   *  shift into "panic mode" when under pressure. */
   lives: number;
   /** Live grid reference — brains that need pathfinding (maze
-   *  planning, DPS-coverage scoring) use this. Dumb brains can
-   *  ignore it. Cell state mutates frame-to-frame; brains should
-   *  treat it as read-mostly and never persist cell references. */
+   *  planning, DPS-coverage scoring) use this. Cell state mutates
+   *  frame-to-frame; treat it as read-mostly. */
   grid: Grid;
-  /** All active creep paths from every spawner. In Circle Co-op
-   *  with waypoints, each entry is a full waypoint-chained path;
-   *  in standard modes, one entry per entry×exit combination.
-   *  Null entries are unreachable spawners — filter before use.
-   *  Brains should score against *all* non-null paths so a bot in
-   *  player 3's zone considers the creep path through its zone,
-   *  not just `grid.entry → grid.exit`. */
+  /** All active creep paths. In Circle Co-op with waypoints, each
+   *  entry is a full waypoint-chained path; in standard modes, one
+   *  entry per entry×exit combination. Null entries are unreachable
+   *  spawners — filter before use. */
   allPaths: (PathPoint[] | null)[];
+  /** Towers this bot currently owns on the board. Empty before the
+   *  first successful placement. Brains use this to choose upgrade
+   *  or sell targets. */
+  placedTowers: PlacedTower[];
+  /** Send options available to this bot this decision. Empty in
+   *  modes that don't support sends (Circle Co-op); otherwise the
+   *  driver pre-filters to cost-sorted, wave-unlock-respected
+   *  options so brains just pick an id. */
+  sendOptions: SendOptionInfo[];
+  /** Frontier buildings currently available for purchase. Empty in
+   *  modes that don't support frontier. Cost-sorted ascending. */
+  frontierOptions: FrontierOptionInfo[];
+  /** Whether it is currently between waves — most sends/frontier
+   *  purchases are only valid here. Brains can trust this flag
+   *  instead of reasoning about wave state. */
+  betweenWaves: boolean;
 }
 
-/** A brain's response. Either place a specific tower at a specific
- *  cell, or skip this opportunity (cooldown still advances so the
- *  brain retries later). */
+/** Catalog entry the driver gives the brain so it can decide what
+ *  to buy from the meta economy — sends and frontier buildings. */
+export interface SendOptionInfo {
+  id: string;
+  cost: number;
+  income: number;
+  unlocked: boolean;
+}
+export interface FrontierOptionInfo {
+  id: string;
+  cost: number;
+  income: number;
+}
+
+/** A brain's response. One of:
+ *   - `place`: build a specific tower at a specific cell
+ *   - `upgrade`: level up a tower this bot already owns
+ *   - `sell`: tear down one of this bot's towers (gold is refunded)
+ *   - `send`: buy a send option (1v1 only — queues creeps on opp.)
+ *   - `frontier`: buy a frontier / economy building (permanent income)
+ *   - `skip`: do nothing; cooldown still advances and the brain
+ *             retries on the next tick
+ */
 export type BotDecision =
   | { kind: 'place'; col: number; row: number; type: TowerType }
+  /** Divergent upgrade paths: `branch` picks a non-default branch.
+   *  Omit / null for the default (linear) path. */
+  | { kind: 'upgrade'; col: number; row: number; branch?: string | null }
+  | { kind: 'sell'; col: number; row: number }
+  | { kind: 'send'; sendOptionId: string }
+  | { kind: 'frontier'; buildingId: string }
   | { kind: 'skip' };
 
 export interface BotBrain {

@@ -1,9 +1,27 @@
 import * as Phaser from 'phaser';
 import { TILE_SIZE, COLOR_PROJECTILE, gridX, gridY } from '../config';
-import { TowerType, TargetingMode } from '../data/TowerTypes';
+import { TowerType, TowerUpgrade, TOWER_TYPES, TargetingMode } from '../data/TowerTypes';
 import { DamageType } from '../data/CreepTypes';
 import { HitTarget } from '../systems/traits/Trait';
 import { hasTowerSprite, isMobileTowerSprite, shouldTowerRotate, createTowerSprite, setTowerSpriteState, updateMobileTowerSprite, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
+
+/** One upgrade option presented to the player. A linear tower has
+ *  a single option (branchId=null). A branching tower surfaces the
+ *  default path plus one option per defined branch. */
+export interface UpgradeOption {
+  /** null = default linear continuation; otherwise the branch id. */
+  branchId: string | null;
+  /** Short label for the button. "Upgrade" for linear, "Hedge" /
+   *  "Razor Bramble" / ... for branches. */
+  label: string;
+  cost: number;
+  damage: number;
+  range: number;
+  fireRate: number;
+  /** Tower display name AFTER picking this option. Differs from
+   *  the current name only when a branch renames the tower. */
+  resolvedName: string;
+}
 import {
   Trait, HitContext, HitStats, createHitStats, hasTrait, getTrait,
   resolveDelivery, resolveDamageModifiers, resolveFireRate,
@@ -58,6 +76,24 @@ export class Tower {
   goldEarned: number = 0;
   damageDealt: number = 0;
   hitStatsAccum: HitStats = createHitStats();
+  /** Circle Co-op: player-index of the bot/human who built this
+   *  tower. Used by `TowerManager.updateTowers` to route per-hit
+   *  gold (gold_on_hit / jackpot etc.) to the correct economy —
+   *  leaving this undefined means "shared economy" (tutorial /
+   *  standard / hero defense). */
+  ownerIndex?: number;
+  /** Divergent-upgrade branch id once the player (or bot) has
+   *  committed to one. Undefined on linear towers + pre-branch
+   *  state. Broadcast over `tower_upgraded.branch` so peers can
+   *  apply the same path. */
+  chosenBranch?: string;
+  /** Name override applied after a branching upgrade swaps the
+   *  typeDef. Read by UI via `tower.displayName ?? typeDef.name`. */
+  displayName?: string;
+  /** Live upgrade ladder — mutated on each upgrade. Initialised
+   *  from `typeDef.upgrades` in the constructor and replaced with
+   *  the target typeDef's upgrades array when a branch fires. */
+  private _remainingUpgrades: TowerUpgrade[] = [];
   projectileColor: number;
   homeX: number = 0;
   homeY: number = 0;
@@ -96,6 +132,7 @@ export class Tower {
     this.projectiles = [];
 
     this.traits = towerType.traits.map(t => ({ ...t }));
+    this._remainingUpgrades = towerType.upgrades.slice();
 
     const rangeBonus = getTrait(this.traits, 'range_bonus');
     if (rangeBonus) {
@@ -231,22 +268,102 @@ export class Tower {
   }
 
   canUpgrade(): boolean {
-    return this.level - 1 < this.typeDef.upgrades.length;
+    return this._remainingUpgrades.length > 0;
   }
 
+  /** Cost of the DEFAULT next upgrade. Back-compat for code that
+   *  only knows linear upgrades. Branches have their own cost
+   *  exposed via `getUpgradeOptions`. */
   getUpgradeCost(): number {
     if (!this.canUpgrade()) return 0;
-    return this.typeDef.upgrades[this.level - 1].cost;
+    return this._remainingUpgrades[0].cost;
   }
 
-  upgrade(): void {
+  /** Surface all upgrade choices currently available. Linear
+   *  towers return a one-element array; towers at a branch point
+   *  return the default + one option per branch. Empty when max
+   *  level is reached. */
+  getUpgradeOptions(): UpgradeOption[] {
+    if (!this.canUpgrade()) return [];
+    const next = this._remainingUpgrades[0];
+    const options: UpgradeOption[] = [{
+      branchId: null,
+      label: next.branchLabel ?? 'Upgrade',
+      cost: next.cost,
+      damage: next.damage,
+      range: next.range,
+      fireRate: next.fireRate,
+      resolvedName: this.displayName ?? this.typeDef.name,
+    }];
+    if (next.branches) {
+      for (const b of next.branches) {
+        const target = TOWER_TYPES[b.transformsTo];
+        if (!target) continue; // defensive: unknown id → hide option
+        options.push({
+          branchId: b.id,
+          label: b.label,
+          cost: target.cost,
+          damage: target.damage,
+          range: target.range,
+          fireRate: target.fireRate,
+          resolvedName: target.name,
+        });
+      }
+    }
+    return options;
+  }
+
+  upgrade(branchId: string | null = null): void {
     if (!this.canUpgrade()) return;
-    const upg = this.typeDef.upgrades[this.level - 1];
-    this.level = upg.level;
-    this.damage = upg.damage;
-    this.range = upg.range * TILE_SIZE;
-    this.fireRate = upg.fireRate;
-    this.totalInvested += upg.cost;
+    const next = this._remainingUpgrades[0];
+
+    // Branch path: swap typeDef to the target TowerType. Tower
+    // identity (col/row/object ref) is preserved — only stats, art,
+    // name, and the remaining upgrade ladder change.
+    if (branchId && next.branches) {
+      const branch = next.branches.find(b => b.id === branchId);
+      if (!branch) return;
+      const newDef = TOWER_TYPES[branch.transformsTo];
+      if (!newDef) return;
+      this.chosenBranch = branchId;
+      this.displayName = newDef.name;
+      this.typeDef = newDef;
+      this.typeId = newDef.id;
+      this.color = newDef.color;
+      this.damageType = newDef.damageType;
+      this.projectileColor = newDef.projectileColor ?? COLOR_PROJECTILE;
+      this.level = next.level; // displayed level is unchanged — still L2
+      this.damage = newDef.damage;
+      this.range = newDef.range * TILE_SIZE;
+      this.fireRate = newDef.fireRate;
+      this.totalInvested += newDef.cost;
+      this._remainingUpgrades = newDef.upgrades.slice();
+
+      const rangeBonus = getTrait(this.traits, 'range_bonus');
+      if (rangeBonus) {
+        this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
+      }
+
+      // Destroy old sprite and create a new one from the swapped
+      // typeDef so the tower visibly changes on the board.
+      if (this.sprite) {
+        this.sprite.destroy();
+        this.sprite = null;
+      }
+      if (hasTowerSprite(this.typeId)) {
+        this.sprite = createTowerSprite(this._scene, this.typeId, this.x, this.y);
+      }
+      this.drawTower();
+      return;
+    }
+
+    // Default (linear) path.
+    this.level = next.level;
+    this.damage = next.damage;
+    this.range = next.range * TILE_SIZE;
+    this.fireRate = next.fireRate;
+    this.totalInvested += next.cost;
+    this._remainingUpgrades = this._remainingUpgrades.slice(1);
 
     const rangeBonus = getTrait(this.traits, 'range_bonus');
     if (rangeBonus) {

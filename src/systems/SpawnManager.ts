@@ -116,7 +116,15 @@ export class SpawnManager {
       [this.spawnQueue[i], this.spawnQueue[j]] = [this.spawnQueue[j], this.spawnQueue[i]];
     }
 
-    this.spawnInterval = waveDef.spawnInterval;
+    // Co-op: with N× the creep count, keep the wave duration roughly
+    // constant by spawning N× faster. Without this the wave trickles
+    // out for minutes on larger teams. Floor at 30ms so bursts stay
+    // visually readable. waveDef.spawnInterval === 0 (boss wave / set
+    // pieces) stays 0.
+    const interval = waveDef.spawnInterval > 0
+      ? Math.max(30, Math.round(waveDef.spawnInterval / this.countMultiplier))
+      : 0;
+    this.spawnInterval = interval;
     this.spawnTimer = 0;
   }
 

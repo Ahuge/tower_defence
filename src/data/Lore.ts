@@ -2,7 +2,7 @@
 export const FACTION_LORE: Record<string, string> = {
   arcane: 'The Arcane Order traces its roots to the first mages who discovered how to weave raw mana into destructive force. Their towers channel ancient ley-line energy through crystalline focuses, each one a miniature storm of controlled destruction. Where other factions rely on brute force or trickery, the Arcane Order understands that precision and amplification are the true paths to power.',
   mechanical: 'Born in the smoke-stacked foundries of the Iron Compact, Mechanical engineers believe that any problem can be solved with enough gears, pressure, and firepower. Their towers are marvels of steampunk ingenuity — from the humble turret that learns its target to the devastating Titan Cannon that can level a city block. They build not just defenses, but systems.',
-  nature: 'The Verdant Circle draws power from the living world itself. Their towers grow from enchanted seeds, roots spreading deep into the earth to form networks of symbiotic defense. A single Thorn is unremarkable. A grove of Thorns, nurtured by Blossom and fed by Spore, becomes an impenetrable wall of poison and pain that grows stronger with every passing wave.',
+  nature: 'The Verdant Circle draws power from the living world itself. Their towers grow from enchanted seeds, roots spreading deep into the earth to form networks of symbiotic defense. A single bramble is unremarkable. A hedgerow of brambles, nurtured by Blossom and fed by Spore, becomes an impenetrable wall of poison and pain that grows stronger with every passing wave.',
   void: 'Those who peer into the Void see infinite possibility — and infinite risk. Void towers tap into the space between dimensions, where probability is a suggestion and gold flows from nowhere. Every shot from a Void tower is a gamble. Every investment is a leap of faith. But those who embrace the chaos are rewarded with power that defies conventional understanding.',
   military: 'The Steel Legion deploys boots on the ground. While other factions hide behind static defenses, Military commanders send soldiers directly into the fray. Their mobile units move with purpose, engaging threats wherever they appear. The Sandbags and Barbed Wire hold the line; the Riflemen and Brawlers break it. And when the Commander arrives, the entire battlefield shifts.',
   aliens: 'They came from the dark between stars. The Spawn are not individuals — they are a hive, a hunger, a flood of chitinous bodies that overwhelm through sheer volume. A single Spitter is barely a threat. Ten thousand of them, firing in concert, their acid burning through the strongest armor, their Brood Mothers endlessly spawning replacements — that is extinction.',
@@ -35,12 +35,15 @@ export const TOWER_LORE: Record<string, string> = {
   mech_titan: 'The ultimate war machine. Engineering perfection. One shot changes the entire battlefield.',
 
   // Nature
-  nature_thorn: 'A simple thorn-throwing plant. Easy to grow, and it never stops getting bigger.',
   nature_root: 'Entangling roots erupt from the ground, slowing anything caught in their grasp to a crawl.',
   nature_blossom: 'The Blossom doesn\'t fight. It nurtures. Every tower near it grows stronger, faster, more deadly.',
   nature_spore: 'Releases a cloud of toxic spores that poison everything near the tower. Area denial at its finest.',
   nature_vine: 'Whip-like vines lash out and occasionally wrap completely around a target, freezing it in place.',
   nature_elder: 'Planted as a seed, it grows forever. Given enough time, an Elder Treant becomes unstoppable.',
+  nature_bramble: 'The Grove\'s first line. Nothing grand — just a wall of barbs that pricks and pricks and pricks.',
+  nature_dartfrog: 'Bright skin promises death. The Mire Dart hops through root and pool, and its tongue does not miss. The Grove feeds what the Grove keeps.',
+  nature_sunroot: 'The Grove turned its face to the sun. It turned back burning. Petals of solar fire arc across the path.',
+  nature_razor_bramble: 'Some brambles grow thorns. This one grew teeth. A hedge remembers being threatened — and sharpens in reply.',
 
   // Void
   void_gambler: 'Flip a coin with the universe. Sometimes you win big. Sometimes you get nothing. Always exciting.',

@@ -1,45 +1,119 @@
 # Changelog
 
-## 2026-04-26
+## 2026-04-22
 
-### Bug fix: Game Over screen "Frontier Returned" / ROI showed 0g even with steady income
+### Thornweaver replaced by Mire Dart — a jumping poison-dart frog
+The Nature spider (`nature_spider` / "Thornweaver") is gone; in its place a poison-dart frog named **Mire Dart** (`nature_dartfrog`). Same mobile-unit slot, much better thematic fit for Nature's DoT identity, plus distinct jumping + tongue-lash animations rather than another chitinous bug (Alien already owns that aesthetic).
 
-`StatsTracker.recordFrontierEarned()` was only being called for the *bonus* slice (dig-depth, grow-stacks, gamble rolls) returned from `FrontierManager.onWaveEnd()`. Steady-income buildings (Manor, Vault, Sacred Grove pre-harvest, etc.) flow through `IncomeManager.frontierIncome` → `collectWaveIncome()`, which only logged it under generic `goldEarned`. Result: a player could invest 2,250g in steady frontier buildings, earn thousands back over the match, and the stats screen still showed `Frontier Returned: 0g` and `Frontier ROI: 0%`.
+**Stats rebalance** — cost 45 → 40, damage 8 → 4, range 2 → 2.5, fireRate 700 → 900ms, moveSpeed 130 → 110, engageRange 0.8 → 1.5, poison 3%/s 3s → 5%/s 4s. Net: cheaper, slower cadence, weaker tongue-hit, but the venom now carries the real damage. Upgrades scale poison duration naturally via the existing +15%/level trait ramp.
 
-Fix: `BaseFrontierMode.onWaveCleared` now reads the `frontier` slice from `incomeMgr.getBreakdown()` before `collectWaveIncome()` and records it as `frontierEarned` separately. ROI calculations now match the gold the player actually earned from frontier holdings.
+**Sprite work** (`nature_sprites.tsx` col 2 + `mobile_unit_sprites.tsx` `drawDartfrog`):
+- Walk rows use a 4-frame **hop cycle** via Y-offset sprite bobbing (crouch → launch → peak → landing) — the unit visibly jumps while the underlying mobile_unit trait still smooths its position. No engine changes needed.
+- Attack row animates a **tongue-lash**: mouth opens → tongue extends → tongue fully out → retract with venom drip.
+- L1 hatchling (pale sage, no stripes), L2 striped dart (yellow back stripes, short tongue visible, amber eyes), L3 ancient dart (dark forest body with red dart-frog spots, gnarled long tongue always out, bulging throat sac, four-eye cluster, constant venom drool).
 
-## 2026-04-24
+**Attack visual** in `spawnAttackEffect` — replaced the spider's venom-gob arc with a tongue-lash line graphic (pink/magenta, thickness scales with tower level) that extends to the target, holds briefly, then retracts with a green venom-droplet splash at the impact point.
 
-### Random map gen: random tileset theme
+**Rename**: `nature_spider` → `nature_dartfrog` everywhere (`TowerTypes`, `Factions.towerIds`, `Lore`, `SpriteManager` × 4 sites, `FactionModules` skin editor, `sprite-preview.tsx` MOBILE_FILES, `TowerTraitHandlers` isSpider → isDartfrog, `regenerate-nature-autumn.mjs`). Sprite file `spider_mobile.png` replaced with `dartfrog_mobile.png` (old file deleted). `FACTIONS.md` updated.
 
-`generateRandomMap(seed, difficulty)` now rolls a random tileset theme as part of generation and stamps it into the returned `MapDefinition.theme`. The pool is `Object.keys(THEMES)` — 11 faction themes (`arcane_crystal`, `hellscape`, `circuit`, `ancient_grove`, `factory`, `void_rift`, `urban`, `hive`, `marble`, `neural`, `concert`) + 6 non-faction themes (`forest`, `mountain`, `water`, `stone`, `volcanic`, `generic`) for 17 options total.
+### Razor Bramble + Thornweaver level art — denser detail, clearer per-level jumps
+Razor Bramble's column redrawn from scratch: trunk now has actual bark grain (vertical strokes + knots), a red vein network running down the centre that brightens on charge/fire, serrated blades (2px-thick spine + alternating highlight pixels for the teeth), socketed attachment points, a tooth-like crown of 3/5/7 fangs (by level) with inter-fang shadow so each tooth reads separately, barbed spikes running down the outer edges at L2+, moss + dried blood pooling at the base, and state-specific overlays (charge pulses the vein, fire launches the central fang with a spark trail, cooldown dims). L2 gets a visible capillary branch; L3 adds hooked matriarch barbs, outer-edge thorns, blood pooling, and a bright-white blade tip.
 
-Adding a new theme to `TerrainTheme.ts` auto-includes it in the pool. Same seed always yields the same theme (reload-safe — the theme roll is the first RNG draw before any layout work, so map layouts stay stable across random-theme vs fixed-theme runs of the same seed).
+Thornweaver dock icon (`col 2` in `nature_towers.png`) and mobile walk-cycle sheet (`spider_mobile.png`) both rewritten so L1 vs L2 vs L3 read as genuinely different creatures rather than the same sprite at different sizes. Discrete per-level jumps for body width (3/6/8 grid cells), head width, leg pair count (2/4/4), leg length, fang count (0/2/3), thorn crest (0/3/5), eye type (sage/amber/gold-cluster). L2 specifically gains a *stripe pattern* across the abdomen that neither L1 (plain) nor L3 (carapace spine + vine marks) has — so you can tell the juvenile, the striped adolescent, and the matriarch apart from across the board.
 
-API: `generateRandomMap(seed, difficulty, theme?)`. Pass nothing or the `RANDOM_THEME` sentinel to get a random theme. Pass a specific themeId to override (used by a future UI picker — not wired into the menu yet).
+### Divergent upgrade paths — Bramble Hedge forks into Hedge or Razor Bramble at L2
+First implementation of the engine's **divergent upgrade paths** system, prototyped on Nature's Bramble Hedge. At L1→L2, the tower info panel now shows TWO upgrade buttons side-by-side: `Hedge` (15g — keeps the wall identity, ladder caps at L3) and `Razor Bramble` (20g — swaps the tower into a dedicated DPS TowerType with its own art column, scales L2 → L3 (40g) → L4 (70g) up to 15 dmg @ 220ms, range 2.2). One-way choice; sell-and-rebuild to reset.
 
-A store-equipped terrain still wins on top: the resolver sees the random map's stamped theme as the "map default" and applies the player's equipped override per the standard rules. (Custom maps, by contrast, stay locked to the editor-saved theme.)
+**Data model** (`src/data/TowerTypes.ts`): `TowerUpgrade` gains optional `branchLabel` + `branches: UpgradeBranch[]`. A branch points at another TowerType via `transformsTo` — no stat duplication, the target owns everything. Linear towers are unaffected (zero schema bump for them).
 
-### Terrain override: equipped store theme now actually overrides the map tileset
+**Runtime** (`src/entities/Tower.ts`): new `chosenBranch`, `displayName`, and `_remainingUpgrades` fields. `upgrade(branchId?)` swaps `typeDef` when a branch is picked, destroys + recreates the sprite from the new typeId, and preserves the displayed level (Bramble L2 → Razor L2). `getUpgradeOptions()` returns 0/1/2+ choices; `getSellValue()` unchanged — `totalInvested` accumulates across the branch so refunds are correct either way.
 
-The store had `equipTerrain(themeId)` writing to `state.equippedTerrain` and `SkinManager.getTerrainOverrideFaction()` reading it back, but the getter was never called from the rendering pipeline — equipping a terrain theme did nothing visible.
+**UI**: `TowerInfoPanelDOM` renders one button per option with an amber/red accent (`.action-upgrade-branch`) on the divergent path. Per-option stat-delta previews stack vertically above the button row. `TowerStats` gains `upgradeOptions: TowerUpgradeOption[]` — legacy `canUpgrade/upgradeCost/upgradePreview` stay populated from the default option for back-compat.
 
-Single resolver now: **`SkinManager.getActiveTerrainTheme(ctx)`**. Resolution order:
+**Multiplayer**: `tower_upgraded` message gained optional `branch?: string`. Missing = linear (back-compat). All 4 broadcast sites + the remote-receive handler updated in GameScene.
 
-1. **Faction Gauntlet** → ignore override; use the map's authored theme. Overriding here would defeat the unlock-the-look loop.
-2. **Custom maps** → ignore override; use the editor-saved theme. Custom maps were authored with intentional theming.
-3. **Coop guest** → render the host's broadcast theme (shared grid → single visual; host wins).
-4. **Coop host / 1v1 / single-player** → local equipped override; falls back to map default if nothing equipped.
+**CPU bot**: `BotDecision.upgrade` gained `branch?: string | null`; `PlacedTower` gained `upgradeBranches` + `branchUpgradeCosts` so brains can afford-check per branch. `BalancedBrain.decideUpgrade` now promotes a wall-classified tower to upgrade-candidate if it has a DPS branch available — specifically lets Bramble → Razor happen without the old "skip walls" filter blocking it. Two new tests in `BalancedBrain.test.ts` cover the branch pick.
 
-`GameScene.drawGrid` was the only render call site that picked a themeId; it now routes through the resolver. The faction → render-themeId map (e.g. `arcane → arcane_crystal`, `infernal → hellscape`) is centralised in `SkinManager.factionToThemeId`.
+**Sprite / skin editor — full integration**. Nature sprite sheets expanded **8 → 9 columns**:
+- `nature_towers.png` 576×1536, new Razor column at col 8 with 3 levels of blade-fanning art (dark-bark core + red bloodied tips + bright crown blade).
+- `nature_projectiles.png` 288×192, matching Razor projectile column (red-edged thorn + bloody droplet impact).
+- Both `_autumn` variants regenerated at new dimensions.
+- Skin editor (`skin-editor.html`) now lists "Razor Bramble" as its own column — authors can paint a Razor skin independently of Bramble.
+- `nature_sprites.tsx` is authoritative; `scripts/export-sprites.mjs` (puppeteer pipeline) baked all PNGs from source.
 
-**Coop wire piece**: the host's resolved themeId rides on the `circle_game_start` message as a new `hostTerrainOverride?: string | null` field. Joiners read it on receive and stash it on `CircleManager.hostTerrainOverride`; `GameScene` reads from there. Backwards-compat: the field is optional, so older clients still parse the message (they just won't see the host's terrain).
+Skipped: per-skin Razor art (this PR opens the door; new autumn/future skin rolls cover Razor automatically via `SKIN_ASSETS['nature']`).
 
-In 1v1 Versus each peer renders their own grid, so each applies their own equipped override independently — no host concept needed for that mode.
+### Textures baked via TSX source, Thornweaver redesigned per level, unit-specific attack visuals
+Ran the full `scripts/export-sprites.mjs` (Vite + puppeteer) pipeline so every PNG in `public/assets/` is a fresh build from the TSX sprite modules. The Nature sheets now match what the skin editor previews — including the detailed Bramble.
 
-### GameScene: sync DOM lives/gold at end of create()
+Added `drawSpider` to `mobile_unit_sprites.tsx` with genuinely different art per level, not just a scaled-up blob:
+- **L1 juvenile** — small pale sage body, short 4-leg stance, no fangs or thorns, duller eyes
+- **L2 adolescent** — darker moss body, 6 longer legs, 2 fangs, budding 3-spike thorn ridge, amber eyes, first venom bead
+- **L3 matriarch** — massive dark-forest body with bark-brown carapace spine, 8 articulated legs with claw tips, 4-eye cluster (glowing amber), 3 fangs, full 5-spike thorn ridge, vine markings on abdomen, constant venom drip
+All stats — body width, head width, leg length, leg pair count, thorn count, fang count — use discrete per-level jumps so the silhouette changes at each upgrade instead of smoothly tweening. Matching `spider_mobile.png` + `spider_mobile_autumn.png` regenerated from the TSX.
 
-Push the correct lives + gold + income into the store explicitly at the end of `create()`. Uses the same `displayLives` selection as the update loop (`arenaManager.baseHp` for hero defence, else `this.lives`) so Hero Defence matches start with the right number.
+Added per-mobile-unit attack visuals to `spawnAttackEffect` in `TowerTraitHandlers.ts` so each unit has a signature attack:
+- **Spider**: venom gob arcs from spider to target (scales with `tower.level`), splatters into 5–11 toxic droplets at impact — not a generic star burst
+- **Swarmling**: three quick bone-yellow chitin-scratch lines at the target
+- Rifleman/Commander/Brawler/Heavy keep their existing yellow trail / star burst / AoE ring
+Unit type is detected by `tower.typeId` string so new mobile units can opt in with a single case.
+
+New helper script `scripts/regenerate-nature-autumn.mjs` that re-applies the autumn palette swap to the base Nature PNGs without touching column layouts — safe to re-run any time the base sheets are rebaked.
+
+### Skin editor now shows the new Nature towers
+`skin-editor.html` was still rendering the legacy 6-tower Nature preview (Thorn at col 0) because `nature_sprites.tsx` — which the editor imports to draw its preview canvas — hadn't been ported to the 8-tower layout. Rewrote `drawTowers` in the TSX to match the new roster: Bramble (with dense leafy detail — dappled mid-green body over dark branch silhouettes, clustered leaf sprites, top-ridge highlight, side thorns, lv5 berries), Thornweaver dock icon, and Sunroot. Dropped the legacy Thorn draw function, renumbered the remaining towers, bumped `T_LEVELS`/`T_NAMES`/`baseYs`/`baseWidths` to the 8-col arrays, and updated all the hardcoded 6-col canvas widths in the App component. `drawProjectiles` got matching Bramble/Thornweaver (empty — mobile melee)/Sunroot slots. The Node regen script (`scripts/regenerate-nature-sprites.mjs`) now also produces the denser Bramble art and gained a dimension-check to fail loudly if re-run against an already-reshuffled 8-col source.
+
+### Nature sprites regenerated: new tower + projectile + spider mobile sheets + autumn variants
+Rebuilt `nature_towers.png` (512×1536, 8 cols × 24 rows) and `nature_projectiles.png` (256×192, 8 cols × 6 rows) to match the new post-Thorn roster. Kept columns (Root, Blossom, Spore, Vine, Elder) were copied out of the old sheet and remapped to new indices; the three new columns (Bramble Hedge at col 0, Thornweaver dock-icon at col 2, Sunroot at col 5) are drawn programmatically in Nature-palette pixel art. Thornweaver's actual animated sprite lives in the new `spider_mobile.png` (128×384 — 3 levels × walk-down/right/up + attack). `_autumn` skin variants regenerated for all three sheets via a pixel-by-pixel palette swap using the existing `skin_sources/nature_skin_autumn_nature.json`. New `scripts/regenerate-nature-sprites.mjs` drives the whole pipeline from Node using the `canvas` package — no browser needed. `SpriteManager.ts` updated to register the new 8-tower column mapping + the `nature_spider` mobile config (adds `nature` branch to the mobile faction-detection), and `FactionModules.ts` + `sprite-preview.tsx` pick up Thornweaver as a new mobile unit. The in-file TODO comments on `nature_sprites.tsx` and `FactionModules.ts` about a deferred regen pass have been resolved.
+
+### Nature faction reshuffled: Thorn → Bramble, added Thornweaver + Sunroot, classifier fix
+Nature's identity was fine on paper but the Balanced CPU brain played it badly for two reasons. First, `getTowerRole` was mis-classifying Blossom as a `wall` because its `adjacency_buff` trait didn't match the aura-naming convention the classifier checked for — so the bot was happily spending 60g per maze slot on a flower that doesn't attack. Extended `hasAnyAura` in `src/data/TowerRoles.ts` to cover `adjacency_buff`, `spell_amp`, `overclock_buff`, and `commander_aura`; Blossom is now correctly `aura`, and the same fix cleans up Arcane/Harmonic synergy towers. Second, Nature had real kit gaps and a redundant cheap-DPS slot.
+
+**Thorn removed.** Its "cheap scaling DPS" role is now carried by the new **Bramble Hedge** (12g, 1 dmg @ 400ms fire rate, tiny 1.2 range, explicit `role: 'wall'` override; 5 upgrade levels scaling to 8 dmg @ 220ms range 2.0 at L5). Bramble is a thornbrush that doubles as Nature's maze piece — short range keeps it from soloing kill zones, but its fast fire rate + 5-level ladder carries the role Thorn used to. Faction lore paragraph in `Lore.ts` updated to reference brambles instead of thorns.
+
+**Thornweaver** (45g mobile spider that crawls to creeps and bites with 3%/s poison — Nature's first `mobile_unit`, carrying the faction's DoT identity onto the mobile system, 3 upgrade levels to 18 dmg + 5%/s poison).
+
+**Sunroot** (140g splash DPS with 56-radius fire-flower AoE — *"The Grove turned its face to the sun. It turned back burning."* 3 levels to 34 dmg radius 72).
+
+All three reuse existing traits — no new engine code. Registered in `Factions.ts`, lore + `FACTIONS.md` updated (Nature now 8 towers: Bramble, Root, Thornweaver, Blossom, Spore, Sunroot, Vine, Elder). Spritesheet regeneration (current `nature_towers.png` still has Thorn at col 0 as a ghost slot, and Bramble/Thornweaver/Sunroot fall back to graphics diamonds until the PNG is rebuilt) is a follow-up — the skin editor (`src/skin-editor/FactionModules.ts`) and sprite generator (`nature_sprites.tsx`) both carry TODO comments for that work.
+
+### Void Rift now deals a little damage on top of the teleport
+`void_rift` was 0 damage across all three levels, which made the tower read as "only teleport" and left the Damage stat blank on the info panel. Bumped to 2 / 3 / 4 damage per level and added `direct_damage` alongside the existing `teleport_delivery` trait. Since `teleport_delivery` is the first-match delivery handler, the damage was silently getting dropped — patched the delivery handler (`src/systems/traits/TowerTraitHandlers.ts`) to apply `ctx.damage` via `calculateDamage` before shunting the creep backward. Now the Rift bites a little as it opens.
+
+### Fixed: "Next Wave" button permanently greyed after a rejected placement
+Root cause of a silent bug where the Next Wave button could stay unstartable for the rest of the match. When `TowerManager.placeTower` detected that a placement would block all paths, it correctly rolled back the grid (`removeTower`) and returned null — but the `recalcPaths` callback had *already mutated the scene's cached `allPaths` / `currentPath` to reflect the would-have-been-blocked state*. On the next `canStartWave() → !!currentPath` check, `currentPath` was null even though the grid was back to valid. A rejected **bot** placement was the most common trigger in Circle Co-op, but a rejected human placement could hit the same path. Fix: re-run `recalcPaths()` after the rollback so the cache matches reality.
+
+### Bots now get credit for per-hit gold from their own towers
+Fixed a silent leak in Circle Co-op where a bot's Void Market Tower (or anything else with `gold_on_hit` / `jackpot`) would fire all match and dump its +1g-per-hit into the **human's** shared economy. `TowerManager.updateTowers` was sweeping every tower's `goldEarned` into `this.economy` without looking at ownership. Fix: stamp `ownerIndex` on the `Tower` when a bot places it, then route per-hit gold via a new `TowerManager.botGoldRouter` callback that deposits to the bot's private `EconomyManager`. `BotAI.creditGold(playerIndex, amount)` is the direct deposit method (separate from `creditKill` since hit-gold isn't a kill event). Stats tracking stays intact — the tower-level gold totals still surface on the end-of-match screen. Remote-human tower gold on joiners remains a pre-existing consistency issue, but host-side bot gold now flows to the right place.
+
+### CPU_BRAIN.md — bot decision state machine doc
+New `CPU_BRAIN.md` at the repo root walks through how the bots decide what to do each frame. Covers both layers: the `BotAI` driver (cooldown gate, affordability gate, context snapshot) and `BalancedBrain.decide` (meta pass between waves → phase selection by lives/walls → place → upgrade → sell → skip). Also documents the brain registration flow so future brains (e.g. an Aggressive or Wave-Reactive variant) can slot in without touching the driver.
+
+### CPU bots can now use the meta economy (sends + frontier)
+Bots got two new decision types — `send` and `frontier` — plus the context + driver plumbing to make them work. In 1v1 Versus the CPU opponent now buys send creep packs at you between waves and invests in its faction's frontier buildings to compound income; in Circle Co-op bots also buy frontier to contribute per-wave income instead of stockpiling idle gold forever. The driver exposes `setMetaCallbacks({ sendCb, frontierCb, sendOpts, frontierOpts, betweenWaves })` so scene-side glue can differ by mode — Circle Co-op passes `sendCb: null` since co-op is PvE — while the brain sees a uniform `BotContext.sendOptions` / `frontierOptions` list and doesn't branch. `BalancedBrain` now runs a "meta pass" first between waves (40% frontier by income/cost, 30% most-expensive-affordable send, 30% fall through to towers) so bots don't freeze at "no placeable cell + no upgrade target". Bot income from frontier + send purchases is tracked via a new per-bot `incomeBonus` paid out at each `creditWaveClear` — no faction-specific frontier mechanic is simulated (flat `baseIncome` is close enough for the CPU).
+
+### Human sends now land on the CPU opponent
+Previously any `send_purchased` message in 1v1 CPU mode was dropped because the simulated-peer `send()` is a no-op; the creeps never actually reached the CPU. Added a `cpuSendReceiver` hook on `VersusManager.send()` that routes the id through to a scene-installed handler, plus `OpponentSimulation.enqueueSend()` which pushes the send's creep count into the shadow-sim spawn queue with HP/speed templated from the current wave. Now the human can pressure the CPU with sends exactly like against a remote human, and the CPU can pressure the human back via the new `send` decision — credit goes to the bot's `sendsReceived` stat on the human side so post-match totals stay consistent.
+
+### Circle Co-op end screen breaks out per-player performance
+The victory/defeat screen now shows a "Team Performance" table when the match was Circle Co-op — one row per slot (human or CPU) with kills, kill %, towers built, and gold remaining. Rows are sorted by kills so the MVP is at the top; your own slot is tagged "(you)" and bolded, CPU slots tagged "[CPU]". Gold is authoritative for the local player and CPUs (we read their EconomyManagers); remote humans show "—" since their economy isn't synced end-of-match yet. New `CoopPlayerStats` type + `buildCoopPlayerRows()` helper on GameScene assemble the rows from `circleDeathHandler.getKillsByPlayer()`, `towerOwners`, `circleBotAI.getBotGold()`, and the local economy. Threaded through `GameOverData.coopPlayers` and rendered in `GameOverScreen.tsx`.
+
+### CPU opponent in 1v1 Versus (reuses Circle Co-op bot work)
+Added a "VS CPU" button to the 1v1 Versus lobby so you can play against a local CPU without signaling, offers, or a second browser. Under the hood: `CircleBotAI` was renamed to `BotAI` (file + class) because it was already brain-driven and faction-agnostic — only the name was Circle-specific. A backwards-compat `CircleBotAI` alias remains. `VersusManager` gained a "simulated peer" mode (`cpuOpponent`, `cpuBrainId`, `cpuFaction`): `send()` is a no-op, `isConnected()` returns true, `startCpuOpponent()` flips the state, and `injectFromCpu()` pipes synthesized `tower_placed` / `tower_upgraded` / `tower_sold` / `lives_update` / `wave_cleared` / `wave_ready` / `game_over` messages through the same `handleMessage` path a real remote peer would hit.
+
+GameScene's new `setupCpuOpponent()` builds the CPU a private `Grid` (derived from the match map) and drives a single-bot `BotAI` on it. Placements feed `versus.opponentTowers` via the injected messages, so `OpponentSimulation` and the opponent minimap treat the CPU's board exactly like a remote human's. `OpponentSimulation` grew a `drainEvents()` method that exposes accumulated leaks + typed kills per tick — GameScene reads them each frame to decrement `versus.opponentLives`, credit the CPU's bot economy (~human-parity gold curve), and synth `game_over` when the CPU runs out of lives. Wave coordination: `wave_ready` is fired once at setup + after each shadow-sim wave clear (guarded by `_cpuLastClearedWave` to avoid per-frame spam), so the human can skip countdowns and waves advance in lockstep.
+
+### CPU bots can now upgrade and sell their towers
+`BotBrain` gained two new decision types: `{ kind: 'upgrade'; col; row }` and `{ kind: 'sell'; col; row }`. `BotContext` now carries a `placedTowers: PlacedTower[]` list (with live `upgradeCost` / `sellValue`) so brains can score which of their own towers to level up or tear down. `BotAI` tracks per-bot placement ledgers and wires through new `BotUpgradeCallback` / `BotSellCallback` slots; Circle Co-op + the new 1v1 CPU opponent both register callbacks that mirror the human code path (broadcast, rebuild paths, keep `towerOwners` in sync). `TowerManager.sellTower` picked up a `free: boolean` param (matching the existing pattern on `placeTower`) so a bot selling one of its own towers doesn't dump the refund into the human's shared economy. `BalancedBrain` added `decideUpgrade` (prioritises the non-wall DPS tower with the best path coverage) and `decideSell` (tears down the lowest-coverage wall when the zone is saturated and budget is stuck), so bots don't freeze once their zone is full. New `ok / upgradeCost / sellValue` return shape on the place callback lets the driver track fresh economics without chasing Tower refs.
+
+### Tower info panel shows effective (post-aura) stats + live buffs
+The DOM tower info panel now displays **resolved** DMG / RNG / SPD — the values the tower is actually firing at right now, factoring in every aura buff and overclock stacked on top of it. When a buff is active, the number turns green and the base value is shown struck-through underneath (e.g. "36 — was 30"). Buff chips under the stat grid were expanded from just `_adj_damage_buff` / `_adj_rate_buff` to the full set: adjacency (dmg/spd), harmonic (dmg/spd/rng/crit), faction, spell amp, overclock, and ramp-up with live stack count. `TowerStats` gained `effectiveDamage` / `effectiveRange` / `effectiveFireRate`, computed by mirroring the damage-mod pipeline (flat adj → harmonic % → spell amp for magic types) and calling `tower.getEffectiveFireRate()` for rate. And because buff traits refresh every 200ms, the panel now re-publishes its snapshot every 250ms while a tower is selected so the display stays live instead of freezing at click-time.
+
+### Circle Co-op: waves spawn at team-size tempo
+Circle Co-op already scales the creep *count* by team size (2p = 3×, 3p/4p = 4×) but left the per-creep spawn interval alone, so waves dragged on for minutes as creeps trickled out one by one. `SpawnManager.startWave` now divides the wave's `spawnInterval` by the same `countMultiplier` (floored at 30ms for readability; `spawnInterval === 0` boss/set-piece waves untouched), keeping wave duration roughly constant across team sizes.
+
+### Circle Co-op: can't spend your gold on other players' towers
+Fixed a bug where, in Circle Co-op, clicking another player's (or bot's) tower and hitting Upgrade would deduct gold from your own economy and upgrade *their* tower. Sell was already guarded via `towerOwners`; upgrade was not. Added a `canModifyTower(col, row)` helper on GameScene that returns true only when the local player owns the tile (or it's unowned / not a Circle game), and gated all three upgrade paths (`GameUIStore.onUpgrade`, `TowerInfoPanel.onUpgrade`, inspect-mode click-to-upgrade) plus `handleRightClick` through it. The tower info panel now also hides the Upgrade and Sell buttons entirely for foreign towers via a new `owned` flag on `TowerStats` — you can still inspect stats, just not spend your gold. Also picked up a missing `tower_upgraded` broadcast on the DOM upgrade path so peers stay in sync.
 
 ## 2026-04-17 (cross-platform, cont.)
 

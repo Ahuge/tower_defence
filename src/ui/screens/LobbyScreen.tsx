@@ -104,6 +104,27 @@ export function LobbyScreen() {
   const myFactionRef = useRef<FactionId | null>(null);
   useEffect(() => { myFactionRef.current = myFaction; }, [myFaction]);
 
+  // ===================== CPU opponent flow =====================
+  // No networking: spin up a VersusManager in "simulated peer" mode
+  // and jump straight to setup. The player picks map/difficulty/
+  // faction; GameScene later creates the CPU's BotAI and pre-assigns
+  // a random faction for the opponent's side.
+  const startVsCpu = () => {
+    setIsHost(true);
+    isHostRef.current = true;
+    const versus = createVersus();
+    // Pre-pick a CPU faction. Must be a non-random faction — the
+    // brain can't reason about a pool that rotates every wave.
+    const pool = FACTION_ORDER.filter(f => f !== 'random');
+    const cpuFac = pool[Math.floor(Math.random() * pool.length)];
+    versus.startCpuOpponent('balanced', cpuFac);
+    // Mark the opponent as "already picked" so launchGame fires
+    // as soon as the human picks their own faction.
+    opponentRef.current = { faction: cpuFac as FactionId, msg: null };
+    setPhase('setup');
+    setStatus(`CPU opponent: ${FACTIONS[cpuFac].name}. Pick map + your faction!`);
+  };
+
   // ===================== Host flow =====================
   const startHost = async () => {
     setIsHost(true);
@@ -245,7 +266,7 @@ export function LobbyScreen() {
         )}
 
         {phase === 'intro' && (
-          <IntroPhase onHost={startHost} onJoin={startJoin} useManual={useManual} setUseManual={setUseManual} />
+          <IntroPhase onHost={startHost} onJoin={startJoin} onVsCpu={startVsCpu} useManual={useManual} setUseManual={setUseManual} />
         )}
 
         {phase === 'host' && (
@@ -280,14 +301,15 @@ export function LobbyScreen() {
 
 // ─── Phase sub-components ──────────────────────────────────────────
 
-function IntroPhase({ onHost, onJoin, useManual, setUseManual }: {
-  onHost: () => void; onJoin: () => void; useManual: boolean; setUseManual: (b: boolean) => void;
+function IntroPhase({ onHost, onJoin, onVsCpu, useManual, setUseManual }: {
+  onHost: () => void; onJoin: () => void; onVsCpu: () => void; useManual: boolean; setUseManual: (b: boolean) => void;
 }) {
   return (
     <div>
-      <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginTop: 24 }}>
+      <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
         <button class="btn btn-green" style={{ padding: '12px 24px', fontSize: 16 }} onClick={onHost}>HOST GAME</button>
         <button class="btn btn-primary" style={{ padding: '12px 24px', fontSize: 16 }} onClick={onJoin}>JOIN GAME</button>
+        <button class="btn btn-gold" style={{ padding: '12px 24px', fontSize: 16 }} onClick={onVsCpu}>VS CPU</button>
       </div>
       <div style={{ marginTop: 24 }}>
         <label style={{ cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>

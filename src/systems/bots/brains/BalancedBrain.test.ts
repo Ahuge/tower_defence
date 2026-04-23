@@ -67,6 +67,10 @@ function ctx(overrides: Partial<BotContext>): BotContext {
     lives: 20,
     grid,
     allPaths: defaultPath ? [defaultPath] : [],
+    placedTowers: [],
+    sendOptions: [],
+    frontierOptions: [],
+    betweenWaves: false,
     ...overrides,
   };
 }
@@ -200,6 +204,59 @@ describe('BalancedBrain.decide — invariants', () => {
     const decision = brain.decide(ctx({ candidateCells: cells }));
     if (decision.kind === 'place') {
       expect(cells.some(c => c.col === decision.col && c.row === decision.row)).toBe(true);
+    }
+  });
+});
+
+describe('BalancedBrain.decide — divergent upgrade branches', () => {
+  it('upgrades a wall tower via its DPS branch when one is available', () => {
+    const brain = new BalancedBrain();
+    // Use a tower pool that includes a "wall" (cheap low-DPS, like
+    // Bramble) so the classifier tags `wall_fake` as wall.
+    brain.init(ctx({}));
+    // Drive with no candidateCells — forces the brain past the
+    // placement phases into decideUpgrade.
+    const decision = brain.decide(ctx({
+      candidateCells: [],
+      // One placed wall with a 'razor' branch available at 20g.
+      // upgradeCost of the default path is 15g; razor branch is 20g.
+      placedTowers: [{
+        col: 5, row: 2, towerId: 'wall_fake', level: 1,
+        upgradeCost: 15,
+        upgradeBranches: ['razor'],
+        branchUpgradeCosts: { razor: 20 },
+        sellValue: 5,
+      }],
+      budget: 50,
+    }));
+    expect(decision.kind).toBe('upgrade');
+    if (decision.kind === 'upgrade') {
+      expect(decision.branch).toBe('razor');
+      expect(decision.col).toBe(5);
+      expect(decision.row).toBe(2);
+    }
+  });
+
+  it('skips branch upgrade when the branch is unaffordable', () => {
+    const brain = new BalancedBrain();
+    brain.init(ctx({}));
+    const decision = brain.decide(ctx({
+      candidateCells: [],
+      placedTowers: [{
+        col: 5, row: 2, towerId: 'wall_fake', level: 1,
+        upgradeCost: 15,
+        upgradeBranches: ['razor'],
+        branchUpgradeCosts: { razor: 500 }, // too expensive
+        sellValue: 5,
+      }],
+      budget: 20, // can't afford 500g razor branch
+    }));
+    // Brain should fall through to skip / sell since the default
+    // upgrade of a wall tower is filtered out by the non-wall pref.
+    expect(['skip', 'sell', 'upgrade']).toContain(decision.kind);
+    if (decision.kind === 'upgrade') {
+      // If it did upgrade, it should be the default path (no branch)
+      expect(decision.branch ?? null).toBe(null);
     }
   });
 });

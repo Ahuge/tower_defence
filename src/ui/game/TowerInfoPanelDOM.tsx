@@ -12,11 +12,27 @@ export function TowerInfoPanelDOM() {
   return (
     <>
 
-      {/* Stats */}
+      {/* Stats — shows effective (post-aura) values; base shown underneath
+          as a strikethrough hint when a buff has shifted the number. */}
       <div class="stat-grid">
-        <StatCell label="DMG" value={String(tower.damage)} />
-        <StatCell label="RNG" value={tower.range.toFixed(1)} />
-        <StatCell label="SPD" value={`${tower.fireRate}ms`} />
+        <StatCell
+          label="DMG"
+          value={String(tower.effectiveDamage)}
+          base={tower.effectiveDamage !== tower.damage ? String(tower.damage) : undefined}
+          buffed={tower.effectiveDamage > tower.damage}
+        />
+        <StatCell
+          label="RNG"
+          value={tower.effectiveRange.toFixed(1)}
+          base={tower.effectiveRange !== tower.range ? tower.range.toFixed(1) : undefined}
+          buffed={tower.effectiveRange > tower.range}
+        />
+        <StatCell
+          label="SPD"
+          value={`${tower.effectiveFireRate}ms`}
+          base={tower.effectiveFireRate !== tower.fireRate ? `${tower.fireRate}ms` : undefined}
+          buffed={tower.effectiveFireRate < tower.fireRate}
+        />
         <StatCell label="TYPE" value={tower.damageType} color="#888" />
       </div>
 
@@ -38,43 +54,54 @@ export function TowerInfoPanelDOM() {
         </div>
       )}
 
-      {/* Upgrade preview */}
-      {tower.upgradePreview && (
+      {/* Upgrade preview — shown per option when branching, or as a
+          single preview for linear towers. The branch label makes
+          the fork visually obvious when there are ≥2 options. */}
+      {tower.upgradeOptions.length > 0 && (
         <div class="upgrade-preview">
-          <div class="upgrade-label">Lv{tower.level + 1} Preview</div>
-          <div class="upgrade-deltas">
-            {tower.upgradePreview.dmg && <span class="delta-positive">{tower.upgradePreview.dmg}</span>}
-            {tower.upgradePreview.rng && <span class="delta-positive">{tower.upgradePreview.rng}</span>}
-            {tower.upgradePreview.spd && <span class="delta-neutral">{tower.upgradePreview.spd}</span>}
-          </div>
+          {tower.upgradeOptions.map((opt) => (
+            <div key={opt.branchId ?? 'default'} class={`upgrade-row ${opt.branchId ? 'upgrade-branch' : ''}`}>
+              <div class="upgrade-label">{opt.label}{opt.resolvedName !== tower.name ? ` → ${opt.resolvedName}` : ''}</div>
+              <div class="upgrade-deltas">
+                {opt.dmg && <span class="delta-positive">{opt.dmg}</span>}
+                {opt.rng && <span class="delta-positive">{opt.rng}</span>}
+                {opt.spd && <span class="delta-neutral">{opt.spd}</span>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Actions */}
-      <div class="panel-actions">
-        {tower.canUpgrade && (
+      {/* Actions — hidden for towers owned by another player in Circle Co-op */}
+      {tower.owned && (
+        <div class="panel-actions">
+          {tower.upgradeOptions.map((opt) => (
+            <button
+              key={opt.branchId ?? 'default'}
+              class={`action-btn action-upgrade${opt.branchId ? ' action-upgrade-branch' : ''}`}
+              onClick={() => GameUIStore.requestUpgrade(tower._tower, opt.branchId)}
+            >
+              {opt.label} ({opt.cost}g)
+            </button>
+          ))}
           <button
-            class="action-btn action-upgrade"
-            onClick={() => GameUIStore.requestUpgrade(tower._tower)}
+            class="action-btn action-sell"
+            onClick={() => GameUIStore.requestSell(tower._tower)}
           >
-            Upgrade ({tower.upgradeCost}g)
+            Sell ({tower.sellValue}g)
           </button>
-        )}
-        <button
-          class="action-btn action-sell"
-          onClick={() => GameUIStore.requestSell(tower._tower)}
-        >
-          Sell ({tower.sellValue}g)
-        </button>
-      </div>
+        </div>
+      )}
     </>
   );
 }
 
-function StatCell({ label, value, color }: { label: string; value: string; color?: string }) {
+function StatCell({ label, value, color, base, buffed }: { label: string; value: string; color?: string; base?: string; buffed?: boolean }) {
+  const valueColor = color ?? (buffed ? '#88ff88' : undefined);
   return (
     <div class="stat-cell">
-      <div class="stat-value" style={color ? { color } : undefined}>{value}</div>
+      <div class="stat-value" style={valueColor ? { color: valueColor } : undefined}>{value}</div>
+      {base && <div class="stat-base">was {base}</div>}
       <div class="stat-label">{label}</div>
     </div>
   );

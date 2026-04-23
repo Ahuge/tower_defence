@@ -17,6 +17,91 @@ function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: U
   const towerTypeId: string = tower.typeId ?? '';
   const isMelee = towerTypeId.includes('brawler');
   const isHeavy = towerTypeId.includes('heavy') || towerTypeId.includes('commander');
+  const isDartfrog = towerTypeId === 'nature_dartfrog';
+  const isSwarmling = towerTypeId === 'alien_swarmling';
+
+  // Per-unit visual kit. Each mobile unit has its own attack
+  // signature — Mire Dart whips a red tongue at the target and
+  // leaves a green venom splash; Swarmling rakes with chitin
+  // shards; Brawler star-bursts; Rifleman leaves a bullet trail.
+  if (isDartfrog && target) {
+    // Tongue lash: a fast pink-red line from frog to target, held
+    // briefly, then retracted. On impact, a green venom-droplet
+    // ring scatters. Scales with tower.level (thicker tongue +
+    // more droplets at higher levels).
+    const lv = tower.level ?? 1;
+    const gfx = scene.add.graphics();
+    gfx.setDepth(14);
+    const tongue = 0xee55aa;      // PINK
+    const tongueDk = 0xcc2288;    // MAGENTA
+    const venom = 0x66dd33;
+    const toxic = 0xaaee33;
+
+    // Phase 1: extend tongue over ~60ms
+    let extendProgress = 0;
+    const extend = scene.time.addEvent({
+      delay: 16, repeat: 3,
+      callback: () => {
+        extendProgress += 1 / 3;
+        gfx.clear();
+        const tx = tower.x + (target.x - tower.x) * extendProgress;
+        const ty = tower.y + (target.y - tower.y) * extendProgress;
+        // Thick tongue — 2px for L1, 3px for L2, 4px for L3
+        gfx.lineStyle(1 + lv, tongue, 1);
+        gfx.lineBetween(tower.x, tower.y, tx, ty);
+        // Darker underline for extra heft
+        gfx.lineStyle(1, tongueDk, 0.8);
+        gfx.lineBetween(tower.x, tower.y + 1, tx, ty + 1);
+        // White tip highlight at the head of the tongue
+        gfx.fillStyle(0xffffff, 1);
+        gfx.fillCircle(tx, ty, 1);
+        if (extendProgress >= 1) {
+          extend.destroy();
+          // Phase 2: impact droplets
+          gfx.clear();
+          // Tongue fully extended, held
+          gfx.lineStyle(1 + lv, tongue, 0.9);
+          gfx.lineBetween(tower.x, tower.y, target.x, target.y);
+          // Venom splash at target
+          gfx.fillStyle(venom, 0.85);
+          for (let i = 0; i < 5 + lv * 2; i++) {
+            const a = (i / (5 + lv * 2)) * Math.PI * 2;
+            const r = 3 + Math.random() * (3 + lv);
+            gfx.fillCircle(target.x + Math.cos(a) * r, target.y + Math.sin(a) * r, 1 + (i % 2));
+          }
+          gfx.fillStyle(toxic, 0.7);
+          gfx.fillCircle(target.x, target.y, 2);
+          // Retract over ~80ms then clean up
+          scene.time.delayedCall(80, () => {
+            gfx.clear();
+            gfx.lineStyle(1, tongueDk, 0.4);
+            gfx.lineBetween(tower.x, tower.y, (tower.x + target.x) / 2, (tower.y + target.y) / 2);
+            scene.time.delayedCall(60, () => gfx.destroy());
+          });
+        }
+      },
+    });
+    return;
+  }
+
+  if (isSwarmling && target) {
+    // Chitin slash — 3 quick bone-yellow scratch lines at the target.
+    const gfx = scene.add.graphics();
+    gfx.setDepth(14);
+    gfx.lineStyle(1, 0xccffaa, 0.95);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI / 2 - Math.PI / 4;
+      const len = 6;
+      gfx.lineBetween(
+        target.x + Math.cos(a) * -len * 0.3,
+        target.y + Math.sin(a) * -len * 0.3,
+        target.x + Math.cos(a) * len,
+        target.y + Math.sin(a) * len,
+      );
+    }
+    scene.time.delayedCall(90, () => gfx.destroy());
+    return;
+  }
 
   if (splashRadius > 0) {
     // AoE flash ring (Tank / splash mobile units)
@@ -145,6 +230,14 @@ registerDelivery('chain_damage', (trait: Trait, ctx: HitContext) => {
 registerDelivery('teleport_delivery', (trait: Trait, ctx: HitContext) => {
   const steps = (trait.stepsBase ?? 3) + (trait.stepsPerLevel ?? 2) * ctx.towerLevel;
   const target = ctx.target;
+  // Apply damage BEFORE teleporting so a Rift tower with a small
+  // damage stat actually dings the target (previously 0-damage
+  // mechanic — non-zero damage was silently dropped).
+  if (ctx.damage > 0) {
+    const dmg = calculateDamage(ctx.damage, ctx.damageType, target.armor);
+    target.takeDamage(dmg);
+    ctx.hitStats.directDamage += dmg;
+  }
   target.pathIndex = Math.max(1, target.pathIndex - steps);
   const tp = target.path[target.pathIndex - 1];
   if (tp) {

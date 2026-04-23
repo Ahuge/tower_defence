@@ -96,6 +96,7 @@ const MOBILE_FILES: Record<string, string> = {
   'commander': 'military/commander_mobile',
   'swarmling': 'aliens/swarmling_mobile',
   'fiend': 'infernal/fiend_mobile',
+  'dartfrog': 'nature/dartfrog_mobile',
 };
 
 // ===================== Animation Preview Component =====================

@@ -26,6 +26,16 @@ export const INF = {
   GLOW:'#ffcc00', FLASH:'#ffffff', YELLOW:'#ffee44',
   SMOKE:'#444444', DKSMOKE:'#222222',
 };
+export const NAT = {
+  // Young → ancient progression: pale sage → forest → near-black
+  SAGE:'#88bb66', MOSS:'#558844', GREEN:'#33aa44', DKGRN:'#226633',
+  FOREST:'#1a4422', DARK:'#113311',
+  BARK:'#664422', DKBARK:'#3a2211', LTBARK:'#aa7744',
+  THORN:'#558833', DKTHRN:'#334422', LTTHRN:'#88cc55',
+  SPORE:'#88cc44', TOXIC:'#aaee33', VENOM:'#66dd33',
+  EYE:'#ffaa44', GLOW:'#ffcc00', HOT:'#ffee66',
+  PINK:'#ee55aa', WHITE:'#ffffff', SHADOW:'#0a1808',
+};
 
 // ===== DRAWING HELPERS =====
 const mk = (c: CanvasRenderingContext2D, o: number[], gw: number, gh: number, ps: number) => {
@@ -789,6 +799,296 @@ export function drawFiend(ctx: CanvasRenderingContext2D, level: number = 1) {
       frame(ctx, [col * CELL, row * CELL], row, col);
 }
 
+// ===== 7. MIRE DART (POISON DART FROG) =====
+//
+// Replaces the earlier Thornweaver spider. Three life stages —
+// each a distinctly different silhouette, not a scaled-up blob:
+//
+//   L1 Hatchling
+//       - Small pale-sage body, crouched pose, no stripes
+//       - Sage eyes, no tongue showing, short tucked back legs
+//   L2 Striped Dart
+//       - Medium green body with yellow warning stripes across back
+//       - Short red tongue visible during attack, amber eyes
+//       - Longer hopping legs
+//   L3 Ancient Dart
+//       - Large dark-forest body with yellow stripes + red warning
+//         spots, bulging red throat sac, gnarled tongue always
+//         out, four-eye cluster, constant venom drool
+//
+// Walk rows (0-2) use a 4-frame HOP cycle — the sprite bobs up
+// into the air at frames 1-2 and lands at 0/3. Underlying unit
+// position is still interpolated linearly by the mobile_unit
+// trait; the "jumping" is pure sprite-level Y-offsetting. Attack
+// row (3) animates a tongue-lash extending from the mouth.
+export function drawDartfrog(ctx: CanvasRenderingContext2D, level: number = 1) {
+  const C = NAT;
+
+  // Per-level silhouette jumps
+  const BODY_W = [0, 5, 7, 9][level];   // width of the frog's body
+  const BODY_H = [0, 4, 5, 6][level];   // body height (squat)
+  const HEAD_W = [0, 4, 5, 6][level];   // head bulge width
+  const LEG_LEN = [0, 2, 3, 4][level];  // back-leg reach on launch frame
+  const TONGUE_MAX = [0, 3, 5, 7][level];  // tongue extent on attack frame 2
+  const STRIPES = level >= 2;           // yellow warning stripes
+  const SPOTS = level >= 3;             // red spots (L3 only)
+  const EYE_CLUSTER = level >= 3;       // four eyes (L3 only)
+  const THROAT_SAC = level >= 2;        // pulsing red throat
+
+  // Tone gradient — light sage → green → dark forest
+  const BODY = [C.SAGE, C.GREEN, C.FOREST][level - 1];
+  const MID = [C.MOSS, C.DKGRN, C.DARK][level - 1];
+  const BELLY_COL = [C.SAGE, C.MOSS, C.DKGRN][level - 1];
+  const EYE_COL = level === 1 ? C.SAGE : level === 2 ? C.EYE : C.GLOW;
+  const LEG_COL = level === 1 ? C.DKGRN : level === 2 ? C.FOREST : C.DARK;
+  const STRIPE = C.GLOW;
+  const SPOT = C.EYE;       // amber-red for L3 spots
+  const TONGUE_COL = C.PINK;
+  const TONGUE_DK = C.DKTHRN; // nearest NAT dark-red-ish for tongue shadow
+
+  function frame(c: CanvasRenderingContext2D, o: number[], row: number, col: number) {
+    const { p, b } = mk(c, o, GR, GR, PX);
+
+    const cx = 8;
+
+    // ---- ATTACK row (tongue-lash, 4 frames) ----
+    if (row === 3) {
+      // Frog stays grounded during the attack pose, just the
+      // tongue animates outward.
+      const baseY = 10;
+      const aby = baseY;
+      const abx = cx - Math.floor(BODY_W / 2);
+
+      // Body (crouched low, ready-to-pounce pose)
+      b(abx, aby, BODY_W, BODY_H, C.DARK);
+      b(abx + 1, aby + 1, BODY_W - 2, BODY_H - 2, MID);
+      b(abx + 2, aby + 1, BODY_W - 4, 2, BODY);
+      b(abx + 1, aby + BODY_H - 2, BODY_W - 2, 1, BELLY_COL);
+
+      // Warning stripes + spots stay visible during attack
+      if (STRIPES) {
+        for (let sx = abx + 2; sx < abx + BODY_W - 2; sx += 2) p(sx, aby + 2, STRIPE);
+      }
+      if (SPOTS) {
+        p(abx + 2, aby + 3, SPOT);
+        p(abx + BODY_W - 3, aby + 3, SPOT);
+      }
+
+      // Head — extended FORWARD (to the right) during attack, jaw open
+      const headX = abx + BODY_W - 1;
+      const headY = aby - 1;
+      b(headX, headY, HEAD_W - 1, 3, MID);
+      b(headX, headY + 1, HEAD_W - 1, 1, C.DARK); // open mouth line
+
+      // Bulging eyes on top of head
+      p(headX, headY - 1, C.DARK); p(headX + 1, headY - 1, EYE_COL);
+      p(headX + 2, headY - 1, C.DARK); p(headX + 3, headY - 1, EYE_COL);
+      if (EYE_CLUSTER) {
+        p(headX + 1, headY - 2, C.EYE);
+        p(headX + 3, headY - 2, C.EYE);
+      }
+
+      // Tongue animation — col 0 retracted, 1 extending, 2 full
+      // extended, 3 retracting with venom drip.
+      const tongueY = headY + 2;
+      let tongueLen = 0;
+      if (col === 1) tongueLen = Math.max(1, Math.floor(TONGUE_MAX / 2));
+      else if (col === 2) tongueLen = TONGUE_MAX;
+      else if (col === 3) tongueLen = Math.max(1, Math.floor(TONGUE_MAX / 3));
+
+      if (tongueLen > 0) {
+        // Tongue shaft
+        const tongueStartX = headX + HEAD_W - 1;
+        for (let t = 0; t < tongueLen; t++) {
+          p(tongueStartX + t, tongueY, TONGUE_COL);
+          if (t > 0) p(tongueStartX + t, tongueY + 1, TONGUE_DK);
+        }
+        // Tongue tip — bright white-pink
+        const tipX = tongueStartX + tongueLen;
+        p(tipX, tongueY, C.WHITE);
+        if (level >= 2) p(tipX + 1, tongueY, TONGUE_COL);
+        // Barbed tip at L3
+        if (level >= 3) {
+          p(tipX, tongueY - 1, TONGUE_COL);
+          p(tipX, tongueY + 1, TONGUE_COL);
+        }
+      }
+
+      // Venom drips from tongue retract (col 3)
+      if (col === 3 && level >= 2) {
+        const dripX = headX + HEAD_W + Math.floor(tongueLen / 2);
+        p(dripX, tongueY + 2, C.VENOM);
+        if (level >= 3) p(dripX - 1, tongueY + 3, C.TOXIC);
+      }
+
+      // Back legs (tense, coiled for the pounce)
+      p(abx - 1, aby + BODY_H - 2, LEG_COL);
+      p(abx - 2, aby + BODY_H - 1, LEG_COL);
+      p(abx - 2, aby + BODY_H, C.DARK);
+
+      // Throat sac puffs bigger during attack
+      if (THROAT_SAC) {
+        p(abx + Math.floor(BODY_W / 2), aby + BODY_H, C.PINK);
+        if (level >= 3) {
+          p(abx + Math.floor(BODY_W / 2) - 1, aby + BODY_H, C.MAGENTA);
+          p(abx + Math.floor(BODY_W / 2) + 1, aby + BODY_H, C.MAGENTA);
+        }
+      }
+      return;
+    }
+
+    // ---- WALK (HOP) frames — rows 0..2 ----
+    // 4-frame hop cycle: crouch → launch → peak → landing.
+    // Y offset gives the airborne illusion while the underlying
+    // mobile_unit position still interpolates linearly.
+    const hopOffsets = [0, -3, -5, -2];
+    const hopY = hopOffsets[col];
+    const cy = 9 + hopY;
+
+    // Orientation per direction
+    const orient = row; // 0=down, 1=right, 2=up
+    const headFacing = orient === 0 ? 'down' : orient === 1 ? 'right' : 'up';
+
+    // ---- Body (squat oval) ----
+    const abx = cx - Math.floor(BODY_W / 2);
+    const aby = cy;
+    // Silhouette outline
+    b(abx, aby, BODY_W, BODY_H, C.DARK);
+    // Body fill
+    b(abx + 1, aby + 1, BODY_W - 2, BODY_H - 2, MID);
+    // Light back dome
+    b(abx + 2, aby + 1, BODY_W - 4, 1, BODY);
+    // Lighter belly
+    b(abx + 1, aby + BODY_H - 2, BODY_W - 2, 1, BELLY_COL);
+    // Round corners
+    p(abx, aby, C.DARK);
+    p(abx + BODY_W - 1, aby, C.DARK);
+
+    // Warning stripes (L2+)
+    if (STRIPES) {
+      for (let sx = abx + 2; sx < abx + BODY_W - 2; sx += 2) {
+        p(sx, aby + 2, STRIPE);
+      }
+      // Warning stripe along the spine
+      if (BODY_W >= 7) p(cx, aby + 3, STRIPE);
+    }
+
+    // Red dart-frog spots (L3)
+    if (SPOTS) {
+      p(abx + 2, aby + 1, SPOT);
+      p(abx + BODY_W - 3, aby + 1, SPOT);
+      p(cx, aby + BODY_H - 2, C.PINK);
+    }
+
+    // ---- Head (bulge facing direction of travel) ----
+    if (headFacing === 'down') {
+      // Facing down — head at bottom edge
+      const hy = aby + BODY_H;
+      const hx = cx - Math.floor(HEAD_W / 2);
+      b(hx, hy, HEAD_W, 2, MID);
+      // Eyes bulge UP from the back (top of body)
+      const eyeY = aby - 1;
+      const eye1X = abx + 1;
+      const eye2X = abx + BODY_W - 2;
+      p(eye1X, eyeY, C.DARK); p(eye1X + 1, eyeY - 1, EYE_COL); p(eye1X, eyeY - 1, C.DARK);
+      p(eye2X, eyeY, C.DARK); p(eye2X - 1, eyeY - 1, EYE_COL); p(eye2X, eyeY - 1, C.DARK);
+      if (EYE_CLUSTER) {
+        p(eye1X + 1, eyeY, C.EYE);
+        p(eye2X - 1, eyeY, C.EYE);
+      }
+      // Short idle tongue visible at L3
+      if (level >= 3) {
+        p(cx, hy, TONGUE_COL);
+        p(cx, hy + 1, TONGUE_DK);
+      }
+    } else if (headFacing === 'right') {
+      // Facing right — head bulges to the right
+      const hx = abx + BODY_W;
+      const hy = aby + Math.floor(BODY_H / 2);
+      b(hx, hy - 1, 2, 3, MID);
+      // Eyes on top of head-bulge
+      p(hx + 1, hy - 2, C.DARK);
+      p(hx + 1, hy - 3, EYE_COL);
+      if (EYE_CLUSTER) p(hx, hy - 2, C.EYE);
+      // Idle tongue tip (L3)
+      if (level >= 3) p(hx + 2, hy, TONGUE_COL);
+    } else {
+      // Facing up — head at top, eyes visible
+      const hy = aby - 2;
+      const hx = cx - Math.floor(HEAD_W / 2);
+      b(hx, hy, HEAD_W, 2, MID);
+      // Eyes bulge up
+      p(hx + 1, hy - 1, EYE_COL);
+      p(hx + HEAD_W - 2, hy - 1, EYE_COL);
+      if (EYE_CLUSTER) {
+        p(hx + 2, hy - 1, C.EYE);
+        p(hx + HEAD_W - 3, hy - 1, C.EYE);
+      }
+    }
+
+    // ---- Back legs (frog's signature: coiled vs extended per frame) ----
+    // Frame 0 (crouch) + 3 (landing) = tucked
+    // Frame 1 (launch) + 2 (peak) = extended back behind body
+    const extended = col === 1 || col === 2;
+    if (extended) {
+      // Left back leg — extended diagonally behind
+      for (let d = 1; d <= LEG_LEN; d++) {
+        p(abx - d, aby + BODY_H - 1 + Math.floor(d * 0.3), LEG_COL);
+      }
+      // Right back leg
+      for (let d = 1; d <= LEG_LEN; d++) {
+        p(abx + BODY_W - 1 + d, aby + BODY_H - 1 + Math.floor(d * 0.3), LEG_COL);
+      }
+      // Toe tips
+      p(abx - LEG_LEN - 1, aby + BODY_H + Math.floor(LEG_LEN * 0.3), C.DARK);
+      p(abx + BODY_W + LEG_LEN, aby + BODY_H + Math.floor(LEG_LEN * 0.3), C.DARK);
+    } else {
+      // Tucked — legs folded under body
+      p(abx, aby + BODY_H, LEG_COL);
+      p(abx - 1, aby + BODY_H, C.DARK);
+      p(abx + BODY_W - 1, aby + BODY_H, LEG_COL);
+      p(abx + BODY_W, aby + BODY_H, C.DARK);
+      // Front toes peeking
+      if (level >= 2) {
+        p(abx + 2, aby + BODY_H, LEG_COL);
+        p(abx + BODY_W - 3, aby + BODY_H, LEG_COL);
+      }
+    }
+
+    // ---- Throat sac pulsing (L2+) ----
+    // Visible on walk-down orientation (we can see it)
+    if (THROAT_SAC && headFacing === 'down') {
+      const sacX = cx;
+      const sacY = aby + BODY_H;
+      const sacCol = col === 0 || col === 3 ? C.PINK : C.MAGENTA;
+      p(sacX, sacY + 1, sacCol);
+      if (level >= 3) {
+        p(sacX - 1, sacY + 1, C.DKTHRN);
+        p(sacX + 1, sacY + 1, C.DKTHRN);
+      }
+    }
+
+    // ---- Motion-trail droplets on the peak frame (L2+) ----
+    // Adds to the hop-in-air feel — a tiny dust/venom puff trails
+    // behind the frog at its highest point.
+    if (col === 2 && level >= 2) {
+      p(abx - 2, aby + BODY_H + 1, C.VENOM);
+      if (level >= 3) {
+        p(abx + BODY_W + 1, aby + BODY_H + 1, C.VENOM);
+      }
+    }
+  }
+
+  const levels = 3;
+  // Draw 4 rows (walk down, walk right, walk up, attack) × 4 cols
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      frame(ctx, [col * CELL, row * CELL], row, col);
+    }
+  }
+  void levels;
+}
+
 // ===== UNIT DEFINITIONS =====
 export const UNITS = [
   { name: 'Rifleman', file: 'rifleman_mobile.png', draw: drawRifleman, levels: 5 },
@@ -797,6 +1097,7 @@ export const UNITS = [
   { name: 'Commander', file: 'commander_mobile.png', draw: drawCommander, levels: 3 },
   { name: 'Swarmling', file: 'swarmling_mobile.png', draw: drawSwarmling, levels: 2 },
   { name: 'Fiend', file: 'fiend_mobile.png', draw: drawFiend, levels: 2 },
+  { name: 'Mire Dart', file: 'dartfrog_mobile.png', draw: drawDartfrog, levels: 3 },
 ];
 
 export const ROWS_PER_LEVEL = 4; // walk down, walk right, walk up, attack

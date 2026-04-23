@@ -188,6 +188,15 @@
   margin-top: 2px;
 }
 
+.stat-base {
+  font-family: 'VT323', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+  margin-top: 1px;
+  opacity: 0.7;
+}
+
 /* ─── Buff & trait tags ────────────────────────────── */
 
 .buff-row, .trait-row {
@@ -271,6 +280,23 @@
   background: rgba(40, 80, 40, 0.9);
   border-color: rgba(68, 255, 68, 0.6);
 }
+
+/* Branch variant of the upgrade button — amber/red accent so the
+ * divergent path is visually distinct from the default upgrade. */
+.action-upgrade-branch {
+  background: rgba(60, 35, 20, 0.85);
+  color: #ffcc88;
+  border-color: rgba(255, 170, 68, 0.4);
+}
+.action-upgrade-branch:hover {
+  background: rgba(90, 50, 25, 0.95);
+  border-color: rgba(255, 170, 68, 0.7);
+}
+
+/* Individual upgrade-preview rows (one per option when branching). */
+.upgrade-row { margin-bottom: 4px; }
+.upgrade-row:last-child { margin-bottom: 0; }
+.upgrade-row.upgrade-branch .upgrade-label { color: #ffbb66; }
 
 .action-sell {
   background: rgba(60, 30, 30, 0.8);

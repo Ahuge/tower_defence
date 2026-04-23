@@ -13,6 +13,22 @@ import { WaveDefinition } from '../data/WaveDefinitions';
 
 // ─── Types ──────────────────────────────────────────────
 
+/** Upgrade choice surfaced in the tower info panel. Linear towers
+ *  get a single entry (branchId=null); branching towers get the
+ *  default path plus one entry per branch. */
+export interface TowerUpgradeOption {
+  branchId: string | null;
+  label: string;
+  cost: number;
+  /** Tower name AFTER this option resolves. For branches that
+   *  rename the tower this shows the new name in tooltips. */
+  resolvedName: string;
+  /** Precomputed stat deltas for the preview row. */
+  dmg: string;
+  rng: string;
+  spd: string;
+}
+
 export interface TowerStats {
   name: string;
   level: number;
@@ -22,16 +38,25 @@ export interface TowerStats {
   damage: number;
   range: number;
   fireRate: number;
+  /** Values after aura/buff resolution. Equal to base when no buffs active. */
+  effectiveDamage: number;
+  effectiveRange: number;
+  effectiveFireRate: number;
   damageType: string;
   isUltimate: boolean;
   canUpgrade: boolean;
   upgradeCost: number;
+  /** Circle co-op: false when tower belongs to another player. Disables upgrade/sell. */
+  owned: boolean;
   /** Formatted trait descriptions */
   traits: string[];
   /** Aura buff descriptions (from adjacent towers) */
   auraBuffs: string[];
-  /** Upgrade preview: stat deltas */
+  /** Upgrade preview: stat deltas (default path — back-compat). */
   upgradePreview: { dmg: string; rng: string; spd: string } | null;
+  /** All upgrade choices currently available (≥2 when this tower
+   *  is at a branch point). Drives the info panel's button row. */
+  upgradeOptions: TowerUpgradeOption[];
   /** Raw tower reference for callbacks */
   _tower: Tower;
 }
@@ -297,7 +322,7 @@ class GameUIStoreClass {
   private state: GameUIState = this.defaultState();
   private listeners: Set<Listener> = new Set();
   private callbacks: {
-    onUpgrade?: (tower: Tower) => void;
+    onUpgrade?: (tower: Tower, branchId?: string | null) => void;
     onSell?: (tower: Tower) => void;
     onToggleSidebar?: () => void;
     onStartWave?: () => void;
@@ -528,8 +553,8 @@ class GameUIStoreClass {
   }
 
   /** Called by DOM panel when user clicks upgrade */
-  requestUpgrade(tower: Tower): void {
-    this.callbacks.onUpgrade?.(tower);
+  requestUpgrade(tower: Tower, branchId: string | null = null): void {
+    this.callbacks.onUpgrade?.(tower, branchId);
   }
 
   /** Called by DOM panel when user clicks sell */

@@ -7,6 +7,24 @@ export class VersusManager {
   peer: PeerConnection;
   isHost: boolean = false;
 
+  /** True when this manager is driving a local CPU opponent instead
+   *  of a real remote peer. No WebRTC, no signaling — `send()` is a
+   *  no-op (the CPU doesn't need the messages; we drive its state
+   *  directly from GameScene). `isConnected()` still returns true so
+   *  all the existing "waiting for opponent" UI short-circuits. */
+  cpuOpponent: boolean = false;
+  /** Brain id the CPU opponent uses. Read by GameScene when it spins
+   *  up its `BotAI`. 'balanced' by default. */
+  cpuBrainId: string = 'balanced';
+  /** Faction the CPU opponent is playing. GameScene needs this to
+   *  build the CPU's tower pool. */
+  cpuFaction: string = '';
+  /** Hook the scene installs in CPU mode so the human's send
+   *  purchases actually land on the CPU's shadow sim. `send()`
+   *  intercepts `send_purchased` and routes it here instead of
+   *  dropping it on the floor. */
+  cpuSendReceiver: ((sendOptionId: string) => void) | null = null;
+
   // Wave timing
   opponentReady: boolean = false;
   localReady: boolean = false;
@@ -96,8 +114,43 @@ export class VersusManager {
   }
 
   send(msg: GameMessage): void {
+    // CPU opponent has no channel — messages originate locally and
+    // their state is driven directly. Drop silently so the existing
+    // `versus.send(...)` call sites don't need to branch on mode,
+    // EXCEPT for `send_purchased` which must land on the CPU's
+    // shadow sim — otherwise the human's sends would be cosmetic.
+    if (this.cpuOpponent) {
+      if (msg.type === 'send_purchased' && this.cpuSendReceiver) {
+        this.cpuSendReceiver(msg.sendOptionId);
+      }
+      return;
+    }
     if (this.peer.state !== 'connected') return;
     this.peer.sendJSON(msg);
+  }
+
+  /** Begin a "CPU opponent" 1v1 match. No peer connection is
+   *  established — from the rest of the code's point of view the
+   *  manager is already "connected" via `isConnected()`. The caller
+   *  (lobby screen) is expected to drive its own phase transition
+   *  to 'setup' directly since there's no async handshake to wait
+   *  on. GameScene will see `versus.cpuOpponent === true` and spin
+   *  up a BotAI for the opponent's side. */
+  startCpuOpponent(brainId: string, faction: string): void {
+    this.isHost = true; // always "host" — there's no real peer
+    this.cpuOpponent = true;
+    this.cpuBrainId = brainId;
+    this.cpuFaction = faction;
+    this.sharedSeed = Math.floor(Math.random() * 999999);
+  }
+
+  /** Inject a message into the manager as if it came from the remote
+   *  peer. Used by the CPU opponent simulation in GameScene to drive
+   *  `opponentTowers`, `opponentLives`, `opponentWaveCleared`, etc.
+   *  via the same handler path that real messages hit. */
+  injectFromCpu(msg: GameMessage): void {
+    if (!this.cpuOpponent) return;
+    this.handleMessage(JSON.stringify(msg));
   }
 
   private handleMessage(data: string): void {
@@ -247,10 +300,11 @@ export class VersusManager {
   }
 
   isConnected(): boolean {
+    if (this.cpuOpponent) return true;
     return this.peer.state === 'connected';
   }
 
   close(): void {
-    this.peer.close();
+    if (!this.cpuOpponent) this.peer.close();
   }
 }

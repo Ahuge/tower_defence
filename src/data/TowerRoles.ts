@@ -86,10 +86,20 @@ export function getTowerRole(tower: TowerType): TowerRole {
   return 'dps-single';
 }
 
-/** Any trait whose id starts with 'tower_aura' or ends in '_aura'. */
+/** Any trait whose id starts with 'tower_aura' or ends in '_aura',
+ *  plus the adjacency/synergy trait family (adjacency_buff, spell_amp,
+ *  overclock_buff, commander_aura) which are conceptually auras but
+ *  don't follow the naming convention. Without this, non-attacking
+ *  buff towers (Blossom, etc.) get mis-classified as `wall` and the
+ *  Balanced brain wastes gold on them as maze fillers. */
 function hasAnyAura(tower: TowerType): boolean {
   return tower.traits.some(t =>
-    t.id.startsWith('tower_aura') || t.id.endsWith('_aura'),
+    t.id.startsWith('tower_aura') ||
+    t.id.endsWith('_aura') ||
+    t.id === 'adjacency_buff' ||
+    t.id === 'spell_amp' ||
+    t.id === 'overclock_buff' ||
+    t.id === 'commander_aura',
   );
 }
 

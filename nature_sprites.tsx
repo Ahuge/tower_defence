@@ -81,7 +81,15 @@ function tStalk(p,b,x,y,h,w,c1,c2,ct){
 }
 
 // ===== TOWER LEVEL COUNTS =====
-const T_LEVELS=[6,4,5,5,3,1]; // Thorn, Root, Blossom, Spore, Vine, Elder Treant
+// 9-tower Nature layout (Thorn removed; Razor Bramble branch added
+// at col 8). Order mirrors SpriteManager's factionTowers call.
+//   0: Bramble (5 lv)  1: Root (2 lv)        2: Thornweaver (3 lv)
+//   3: Blossom (3 lv)  4: Spore (3 lv)       5: Sunroot (3 lv)
+//   6: Vine (3 lv)     7: Elder Treant (1 lv) 8: Razor Bramble (3 lv)
+// Razor Bramble is the divergent-upgrade DPS branch of Bramble.
+// Not in `Factions.nature.towerIds` (not a starter) but has its
+// own art column so the skin editor can paint it independently.
+const T_LEVELS=[5,2,3,3,3,3,3,1,3];
 const T_MAX_LV=6;
 const T_ROWS_PER_LVL=4;
 const T_ROWS=T_MAX_LV*T_ROWS_PER_LVL; // 24 rows total (max levels × 4 states)
@@ -116,80 +124,128 @@ function tBaseLv(p,b,topY,w,glow,lv){
   if(lv>=6){p(cx-4,topY+1,B.LTGRN);p(cx+3,topY+1,B.LTGRN);p(cx,topY+rootH,B.GREEN);}
 }
 
-// Per-tower base parameters
-const baseYs=[22,23,22,23,22,-1]; // -1 = Elder Treant (custom base)
-const baseWidths=[20,22,20,20,20,-1];
+// Per-tower base parameters (indexed by column in the 9-tower layout)
+// Order: Bramble, Root, Thornweaver, Blossom, Spore, Sunroot, Vine, Elder, Razor
+const baseYs=[22,23,23,22,23,22,22,-1,22]; // -1 = Elder Treant (custom base)
+const baseWidths=[20,22,20,20,20,20,20,-1,18]; // Razor slightly narrower so blades read
 
 export function drawBase(ctx,col,row){
-  if(col<0||col>=6||baseYs[col]<0)return; // skip Elder Treant
+  if(col<0||col>=9||baseYs[col]<0)return; // skip Elder Treant
   const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
   const level=Math.floor(row/T_ROWS_PER_LVL)+1;
   const glow=level>=3?2:level>=2?1:0;
   tBaseLv(p,b,baseYs[col],baseWidths[col],glow,level);
 }
 
-// ===== TOWERS (6 cols × 24 rows at 64×64) — per-level sprites =====
+// ===== TOWERS (9 cols × 24 rows at 64×64) — per-level sprites =====
 export function drawTowers(ctx){
   const fns=[
-    // 1. Thorn — Spiky plant shooting thorns (6 levels)
+    // 1. Bramble Hedge — Low wide thorn-thicket that pricks
+    //    constantly. Replaces the old Thorn tower; carries the
+    //    5-level scaling slot now that Thorn is gone. Densely
+    //    detailed foliage: clustered leaves, branch silhouettes,
+    //    dappled highlights, berries at max level. (5 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       tBaseLv(p,b,22,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
-      // Central stalk — thicker at higher levels
-      const sw=Math.min(3,1+Math.floor(lv/3));
-      const sh=Math.min(16,10+lv);
-      const stY=22-sh;
-      b(16-Math.floor(sw/2),stY,sw,sh,C.DKFOR);b(16-Math.floor(sw/2),stY,Math.max(1,sw-1),sh,C.MDGRN);
-      // Bark texture on stalk at high levels
-      if(lv>=4)for(let y=stY;y<stY+sh;y+=3){p(16-Math.floor(sw/2)-1,y,C.DKFOR);}
-      if(lv>=5){b(16-Math.floor(sw/2)-1,stY+2,1,sh-4,C.FOREST);b(16+Math.ceil(sw/2),stY+2,1,sh-4,C.FOREST);}
-      // Sharp angular leaves / thorns — count grows with level
-      const spread=fl?3:br?2:1;
-      const thornCount=Math.min(6,1+lv);
-      // Left thorns
-      for(let i=0;i<thornCount;i++){
-        const ty=stY+2+i*Math.floor(sh/thornCount),tx=14-spread-Math.min(i,3);
-        p(tx,ty,fl?C.LTTHRN:C.THORN);p(tx+1,ty-1,fl?C.LTGRN:C.GREEN);p(tx-1,ty+1,C.DKTHRN);
-        if(lv>=4){p(tx-1,ty,C.THORN);} // extra width
-        if(lv>=6){p(tx-2,ty+1,C.LTTHRN);p(tx,ty-1,C.LTGRN);} // glow tips
+      // Hedge body — grows taller + wider each level
+      const hh=6+lv*2,ht=22-hh;
+      const hw=Math.min(24,16+Math.min(lv,3)*2),xL=16-Math.floor(hw/2);
+      // ---- Base silhouette (dark forest outline) ----
+      b(xL,ht,hw,hh,C.FOREST);
+      // Rounded bottom corners
+      p(xL,ht+hh-1,C.DKFOR);p(xL+hw-1,ht+hh-1,C.DKFOR);
+      // ---- Branch / twig silhouettes poking through ----
+      // Vertical dark strands suggest woody structure inside the
+      // foliage mass. Positioned deterministically so the shapes
+      // are stable across all frames/states.
+      for(let i=0;i<Math.max(3,lv+2);i++){
+        const bx=xL+2+((i*5+lv)%(hw-3));
+        const by=ht+1+((i*3)%(hh-3));
+        const blen=Math.min(hh-2,3+((i*2)%3));
+        for(let y=0;y<blen;y++)p(bx,by+y,C.DKFOR);
       }
-      // Right thorns
-      for(let i=0;i<thornCount;i++){
-        const ty=stY+3+i*Math.floor(sh/thornCount),tx=17+spread+Math.min(i,3);
-        p(tx,ty,fl?C.LTTHRN:C.THORN);p(tx-1,ty-1,fl?C.LTGRN:C.GREEN);p(tx+1,ty+1,C.DKTHRN);
-        if(lv>=4){p(tx+1,ty,C.THORN);}
-        if(lv>=6){p(tx+2,ty+1,C.LTTHRN);p(tx,ty-1,C.LTGRN);}
+      // ---- Mid-green leafy body over the silhouette ----
+      // Dappled fill: lots of short horizontal runs of MDGRN with
+      // GREEN and LTGRN scattered through for bramble texture.
+      for(let y=ht+1;y<ht+hh-1;y++){
+        for(let x=xL+1;x<xL+hw-1;x++){
+          // Checker-ish fill — skip deterministic cells to leave
+          // the darker silhouette visible underneath.
+          const n=(x*7+y*13+lv)%11;
+          if(n<8)p(x,y,C.MDGRN);
+          else if(n===8)p(x,y,C.DKMOSS);
+          else if(n===9)p(x,y,C.GREEN);
+          else p(x,y,C.LTMOSS);
+        }
       }
-      // Top spike cluster — grows with level
-      const topY=stY-1;
-      p(15,topY+1,br?C.LTTHRN:C.THORN);p(16,topY,fl?C.WHITE:C.LTTHRN);p(16,topY+2,C.THORN);
-      p(14,topY+2,br?C.LTGRN:C.GREEN);p(17,topY+1,br?C.LTGRN:C.GREEN);
-      if(lv>=2){p(13,topY+1,C.THORN);p(18,topY,C.THORN);}
-      if(lv>=3){p(13,topY-1,C.LTTHRN);p(18,topY-1,C.LTTHRN);}
-      if(lv>=4){p(12,topY,C.THORN);p(19,topY+1,C.THORN);p(15,topY-2,fl?C.WHITE:C.LTTHRN);}
-      if(lv>=5){p(11,topY-1,C.LTTHRN);p(20,topY-1,C.LTTHRN);p(14,topY-2,C.GREEN);p(17,topY-2,C.GREEN);p(16,topY-3,C.LTGRN);}
-      if(lv>=6){
-        // Ancient crown of thorns with nature energy glow
-        p(10,topY-2,C.LTTHRN);p(21,topY-2,C.LTTHRN);p(15,topY-4,C.WHITE);p(16,topY-4,C.LTGRN);
-        p(12,topY-3,C.GREEN);p(19,topY-3,C.GREEN);
-        // Glow aura
-        for(let i=0;i<6;i++){const a=i*Math.PI/3;p(16+Math.round(Math.cos(a)*3),topY-1+Math.round(Math.sin(a)*2),C.LTGRN);}
+      // ---- Clustered leaf shapes ----
+      // Small 2×2 leaf clusters scattered through the hedge —
+      // brighter green, each with a light highlight pixel.
+      const leafCount=Math.min(8,3+lv);
+      for(let i=0;i<leafCount;i++){
+        const lx=xL+1+((i*7+lv*2)%(hw-3));
+        const ly=ht+1+((i*5+lv)%(hh-3));
+        p(lx,ly,C.GREEN);p(lx+1,ly,C.GREEN);
+        p(lx,ly+1,C.MDGRN);p(lx+1,ly+1,C.LTGRN);
       }
-      if(fl){p(13,topY-1,C.LTTHRN);p(18,topY-1,C.LTTHRN);p(15,topY-2,C.WHITE);p(16,topY-2,C.LTGRN);}
-      // Fire state: thorns launched outward — more at higher levels
+      // ---- Top ridge highlight ----
+      // Bright curve along the top hints at sun catching the hedge.
+      for(let x=xL+2;x<xL+hw-2;x++){
+        const wave=Math.round(Math.sin((x-xL)*0.7)*0.6);
+        p(x,ht+wave,C.GREEN);
+        if((x-xL)%3===0)p(x,ht+wave,C.LTGRN);
+        if((x-xL)%5===0)p(x,ht+wave+1,C.PALGRN);
+      }
+      // ---- Thorn tips bursting out the top ----
+      const tn=3+lv;
+      for(let i=0;i<tn;i++){
+        const tx=xL+2+((i*3)%(hw-4));
+        p(tx,ht-1,C.THORN);
+        p(tx,ht-2,i%2===0?C.DKTHRN:C.THORN);
+        if(fl){p(tx,ht-3,C.LTTHRN);p(tx+1,ht-2,C.GREEN);}
+      }
+      // ---- Side thorns + protruding leaves at higher levels ----
+      if(lv>=2){
+        // Left-side leaf fringe
+        p(xL-1,ht+2,C.GREEN);p(xL-1,ht+4,C.MDGRN);
+        p(xL+hw,ht+3,C.GREEN);p(xL+hw,ht+5,C.MDGRN);
+      }
+      if(lv>=3){
+        p(xL-1,ht+2,C.THORN);p(xL+hw,ht+2,C.THORN);
+        p(xL-1,ht+5,C.THORN);p(xL+hw,ht+5,C.THORN);
+        // Small branch poking out
+        p(xL-2,ht+3,C.DKBARK);p(xL+hw+1,ht+4,C.DKBARK);
+      }
+      if(lv>=4){
+        // Scattered bright tip leaves hinting at new growth
+        p(xL+2,ht+2,C.LTGRN);p(xL+hw-3,ht+hh-3,C.LTGRN);
+        p(xL+Math.floor(hw/2),ht+Math.floor(hh/2),C.PALGRN);
+      }
+      if(lv>=5){
+        p(xL-1,ht+hh-2,C.THORN);p(xL+hw,ht+hh-2,C.THORN);
+        // Red berries — the mature hedge in autumn-kissed bloom
+        p(xL+3,ht+3,C.PINK);p(xL+hw-4,ht+4,C.PINK);p(16,ht+2,C.PINK);
+        p(xL+5,ht+5,C.MAGENTA);p(xL+hw-6,ht+3,C.MAGENTA);
+        p(xL+3,ht+3,C.LTPNK); // berry highlight
+      }
+      // ---- Charge: pulsing green glow deep inside ----
+      if(s===1){
+        const gcx=16,gcy=ht+Math.floor(hh/2);
+        p(gcx,gcy,C.LTGRN);p(gcx-1,gcy,C.PALGRN);p(gcx+1,gcy,C.PALGRN);
+        p(gcx,gcy-1,C.PALGRN);p(gcx,gcy+1,C.PALGRN);
+      }
+      // ---- Fire: launched thorn-spike from the crown ----
       if(fl){
-        const launchN=Math.min(5,1+lv);
-        for(let i=0;i<launchN;i++){p(8-i,8+i,C.THORN);p(24+i,9+i,C.THORN);}
-        p(8-launchN,7,C.LTTHRN);p(24+launchN,8,C.LTTHRN);
-        if(lv>=4){p(6,10,C.THORN);p(26,11,C.THORN);}
+        p(16,ht-2,C.THORN);p(16,ht-3,C.LTTHRN);p(16,ht-4,C.WHITE);
+        p(15,ht-2,C.LTGRN);p(17,ht-2,C.LTGRN);
+        p(15,ht-3,C.GREEN);p(17,ht-3,C.GREEN);
       }
-      // Leaf accents — more at higher levels
-      p(12,14,C.GREEN);p(20,16,C.GREEN);
-      if(lv>=2)p(11,18,br?C.LTGRN:C.GREEN);
-      if(lv>=3){p(21,14,C.MDGRN);p(10,16,C.MDGRN);}
-      if(lv>=5){p(9,12,C.GREEN);p(22,18,C.GREEN);p(10,20,C.LTGRN);}
-      // Cooldown: retracted
-      if(s===3){p(14,stY+2,C.DKTHRN);p(17,stY+3,C.DKTHRN);b(15,stY+1,2,2,C.DKFOR);}
+      // ---- Cooldown: top dims, berries drop ----
+      if(s===3){
+        b(xL+2,ht+1,hw-4,2,C.DKFOR);
+        if(lv>=3)p(xL+Math.floor(hw/2),ht+hh,C.DKPNK);
+      }
     },
     // 2. Root — Twisted root mass (4 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -238,7 +294,187 @@ export function drawTowers(ctx){
       if(lv>=4){p(9,16,C.LTMOSS);p(22,13,C.MOSS);p(12,20,C.MOSS);}
       if(s===3){b(14,massTop+2,4,2,C.DKBARK);p(15,massTop+4,C.STUMP);}
     },
-    // 3. Blossom — Pink/magenta flower bloom on stalk (5 levels)
+    // 3. Mire Dart — Poison dart frog dock icon. The animated
+    //    hop+tongue-lash sprite lives on `dartfrog_mobile.png`;
+    //    this is just the tower-bar thumbnail. Discrete per-level
+    //    silhouette jumps:
+    //      L1 hatchling — small pale sage body, crouched, no
+    //                    stripes, no tongue showing, sage eyes
+    //      L2 striped dart — bigger green body with yellow warning
+    //                    stripes on the back, short red tongue
+    //                    visible, amber eyes, slightly puffed
+    //                    throat
+    //      L3 ancient dart — large dark-forest body with yellow
+    //                    stripes + red warning spots, long gnarled
+    //                    tongue always extended, bulging red throat
+    //                    sac, four-eye cluster, venom drooling
+    //    (3 levels — maxLevel=3 in T_LEVELS for this column)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,23,20,s===1?1:s===2?2:0,lv);
+      const br=s>=1,fl=s===2;
+      const cx=16;
+
+      // Per-level proportions — discrete jumps.
+      const BODY_W=[0,6,8,10][lv];    // body width
+      const BODY_H=[0,5,6,7][lv];     // body height (squat / bulky)
+      const HEAD_W=[0,5,6,7][lv];     // head width
+      const TONGUE=[0,0,3,6][lv];     // idle tongue length
+      const STRIPES=lv>=2;            // yellow warning stripes
+      const SPOTS=lv>=3;              // red dart-frog spots
+      const EYE_CLUSTER=lv>=3;        // extra eyes at matriarch
+      const THROAT_SAC=lv>=2;         // puffing throat at L2+
+
+      // Tone gradient: light sage → green → dark forest
+      const BODY=[C.LTGRN,C.GREEN,C.FOREST][lv-1];
+      const MID=[C.GREEN,C.MDGRN,C.DKFOR][lv-1];
+      const BELLY=[C.PALGRN,C.LTGRN,C.GREEN][lv-1];
+      const EYE_COL=lv===1?C.PALGRN:lv===2?C.AMBER:C.GOLD;
+      const STRIPE_COL=fl?C.WHITE:C.GOLD;
+      const SPOT_COL=C.PINK;
+      const TONGUE_COL=fl?C.LTPNK:C.PINK;
+      const TONGUE_DK=C.MAGENTA;
+
+      // ---- Body (squat oval, centered low) ----
+      const aby=22-BODY_H;
+      const abx=cx-Math.floor(BODY_W/2);
+      // Dark outline
+      b(abx,aby,BODY_W,BODY_H,C.DKFOR);
+      // Body fill
+      b(abx+1,aby+1,BODY_W-2,BODY_H-2,MID);
+      // Back dome (lighter on top)
+      b(abx+2,aby+1,BODY_W-4,2,BODY);
+      // Belly (lighter underbelly)
+      b(abx+1,aby+BODY_H-2,BODY_W-2,1,BELLY);
+      // Rounded corners (darken 4 corners)
+      p(abx,aby,C.SHAD);p(abx+BODY_W-1,aby,C.SHAD);
+      p(abx,aby+BODY_H-1,C.SHAD);p(abx+BODY_W-1,aby+BODY_H-1,C.SHAD);
+
+      // ---- Warning stripes (L2+) ----
+      if(STRIPES){
+        for(let sx=abx+2;sx<abx+BODY_W-2;sx++){
+          if((sx-abx)%2===0)p(sx,aby+2,STRIPE_COL);
+        }
+        // Central spine stripe
+        p(cx-1,aby+3,STRIPE_COL);p(cx,aby+3,STRIPE_COL);p(cx+1,aby+3,STRIPE_COL);
+      }
+
+      // ---- Red spots (L3 only) ----
+      if(SPOTS){
+        p(abx+2,aby+3,SPOT_COL);
+        p(abx+BODY_W-3,aby+3,SPOT_COL);
+        p(cx,aby+1,SPOT_COL);
+        p(abx+3,aby+BODY_H-2,C.MAGENTA);
+        p(abx+BODY_W-4,aby+BODY_H-2,C.MAGENTA);
+      }
+
+      // ---- Head (front bulge at top of body) ----
+      const hy=aby-2;
+      const hx=cx-Math.floor(HEAD_W/2);
+      b(hx,hy,HEAD_W,3,MID);
+      // Mouth line
+      b(hx+1,hy+2,HEAD_W-2,1,C.DKFOR);
+      // Bulging eye sockets (above the head)
+      const eye1X=hx+1;
+      const eye2X=hx+HEAD_W-2;
+      // Left eye
+      b(eye1X,hy-2,2,2,C.DKFOR);
+      p(eye1X,hy-1,EYE_COL);
+      p(eye1X+1,hy-2,br?C.WHITE:EYE_COL);
+      // Right eye
+      b(eye2X,hy-2,2,2,C.DKFOR);
+      p(eye2X,hy-1,EYE_COL);
+      p(eye2X+1,hy-2,br?C.WHITE:EYE_COL);
+      // Eye cluster (L3) — two extra small eyes
+      if(EYE_CLUSTER){
+        p(hx+Math.floor(HEAD_W/2)-1,hy-1,C.AMBER);
+        p(hx+Math.floor(HEAD_W/2)+1,hy-1,C.AMBER);
+      }
+
+      // ---- Tongue (from the mouth, red, extends forward) ----
+      if(TONGUE>0){
+        const mouthY=hy+2;
+        const mouthX=cx;
+        // Tongue extends to the right as a default orientation
+        for(let t=1;t<=TONGUE;t++){
+          p(mouthX+t,mouthY,TONGUE_COL);
+          if(t>1)p(mouthX+t,mouthY-1,TONGUE_DK);
+        }
+        // Tongue tip
+        const tipX=mouthX+TONGUE;
+        p(tipX+1,mouthY,C.WHITE);
+        if(lv>=3){
+          // Barbed tip
+          p(tipX+1,mouthY-1,C.LTPNK);
+          p(tipX+1,mouthY+1,C.LTPNK);
+        }
+      }
+      // Tongue extends FURTHER on charge/fire
+      if(br&&TONGUE>0){
+        for(let t=TONGUE+1;t<=TONGUE+2+lv;t++){
+          p(cx+t,hy+2,TONGUE_COL);
+          p(cx+t,hy+2-1,TONGUE_DK);
+        }
+      }
+
+      // ---- Throat sac (below head, L2+) ----
+      if(THROAT_SAC){
+        const sacY=aby+1;
+        p(cx,sacY,lv===3?C.PINK:C.DKPNK);
+        if(lv>=3){
+          p(cx-1,sacY,C.MAGENTA);
+          p(cx+1,sacY,C.MAGENTA);
+        }
+      }
+
+      // ---- Legs (crouched pose — 4 visible; front + back pairs) ----
+      // Back legs (powerful, coiled for hopping) — sit on pedestal
+      const legColor=lv===1?C.MDGRN:lv===2?C.DKGRN:C.FOREST;
+      const legDark=C.DKFOR;
+      // Left back leg (bent, ready to hop)
+      p(abx-1,aby+BODY_H-3,legColor);
+      p(abx-1,aby+BODY_H-2,legColor);
+      p(abx-2,aby+BODY_H-1,legColor);
+      p(abx-2,aby+BODY_H,legDark);
+      // Right back leg
+      p(abx+BODY_W,aby+BODY_H-3,legColor);
+      p(abx+BODY_W,aby+BODY_H-2,legColor);
+      p(abx+BODY_W+1,aby+BODY_H-1,legColor);
+      p(abx+BODY_W+1,aby+BODY_H,legDark);
+      // Front feet (smaller, tucked under body)
+      if(lv>=2){
+        p(abx+1,aby+BODY_H,legColor);
+        p(abx+BODY_W-2,aby+BODY_H,legColor);
+      }
+
+      // ---- Venom drool (L3 always, L2 when fire) ----
+      if(lv>=3){
+        p(cx,hy+3,C.VENOM);
+        if(fl){p(cx,hy+4,C.TOXIC);p(cx-1,hy+4,C.SPORE);}
+      }else if(lv===2&&fl){
+        p(cx,hy+3,C.SPORE);
+      }
+
+      // ---- State overlays ----
+      if(s===1){
+        // Charge: throat sac + eyes flare
+        if(THROAT_SAC)p(cx,aby+1,C.MAGENTA);
+        p(eye1X+1,hy-2,C.WHITE);
+        p(eye2X+1,hy-2,C.WHITE);
+      }
+      if(fl){
+        // Fire: tongue snap-streak forward (extra pixels past normal)
+        p(cx+TONGUE+3,hy+2,C.WHITE);
+        p(cx+TONGUE+4,hy+2,C.PINK);
+      }
+      if(s===3){
+        // Cooldown: eyes closed, body relaxed
+        p(eye1X,hy-1,C.DKFOR);
+        p(eye1X+1,hy-2,C.DKFOR);
+        p(eye2X,hy-1,C.DKFOR);
+        p(eye2X+1,hy-2,C.DKFOR);
+      }
+    },
+    // 4. Blossom — Pink/magenta flower bloom on stalk (3 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       tBaseLv(p,b,22,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
@@ -311,7 +547,7 @@ export function drawTowers(ctx){
       }
       if(s===3){b(15,flowerY-1,2,3,C.DKPNK);p(14,flowerY,C.MAGENTA);p(17,flowerY,C.MAGENTA);}
     },
-    // 4. Spore — Mushroom cap releasing spore cloud (5 levels)
+    // 5. Spore — Mushroom cap releasing spore cloud (3 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       tBaseLv(p,b,23,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
@@ -375,7 +611,53 @@ export function drawTowers(ctx){
       }
       if(s===3){b(14,capTopY+1,4,2,C.DKSPOR);p(16,capTopY-1,C.DKFOR);}
     },
-    // 5. Vine — Whipping vine tendril (3 levels)
+    // 6. Sunroot — Sunflower splash DPS. Radiant petals, dark seed
+    //    centre; bloom rises higher at each level. (3 levels)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,22,20,s===1?1:s===2?2:0,lv);
+      const br=s>=1,fl=s===2;
+      const cx=16,bcy=8+(3-lv); // higher level blooms higher
+      // Stalk
+      b(cx-1,bcy+3,2,14,C.MDGRN);
+      b(cx,bcy+3,1,14,C.GREEN);
+      // Leaves off the stalk
+      p(cx-3,bcy+8,C.GREEN);p(cx-4,bcy+9,C.MDGRN);
+      p(cx+2,bcy+7,C.GREEN);p(cx+3,bcy+8,C.MDGRN);
+      if(lv>=2){p(cx-4,bcy+10,C.LTGRN);p(cx+3,bcy+11,C.LTGRN);}
+      // Bloom centre — dark seed disc
+      const br2=2+lv;
+      for(let dy=-br2;dy<=br2;dy++){
+        for(let dx=-br2;dx<=br2;dx++){
+          const d2=dx*dx+dy*dy;
+          if(d2<=br2*br2){
+            p(cx+dx,bcy+dy,d2<(br2-1)*(br2-1)?C.DKAMB:C.BARK);
+          }
+        }
+      }
+      // 8 petals around the bloom
+      const pr=br2+1;
+      const pcol=fl?C.WHITE:br?C.LTAMB:C.AMBER;
+      const off=[[0,-pr],[pr,0],[0,pr],[-pr,0],[pr-1,-pr+1],[pr-1,pr-1],[-pr+1,pr-1],[-pr+1,-pr+1]];
+      for(const [dx,dy] of off){
+        p(cx+dx,bcy+dy,pcol);
+        if(lv>=3){
+          p(cx+Math.sign(dx)*(Math.abs(dx)+1),bcy+dy,C.GOLD);
+          p(cx+dx,bcy+Math.sign(dy)*(Math.abs(dy)+1),C.GOLD);
+        }
+      }
+      // Seed pattern at higher levels
+      if(lv>=2){p(cx,bcy,C.DKBARK);p(cx-1,bcy-1,C.DKBARK);p(cx+1,bcy+1,C.DKBARK);}
+      // Charge: glow ring outside petals
+      if(s===1){for(const [dx,dy] of off){p(cx+(dx*13/10|0),bcy+(dy*13/10|0),C.LTAMB);}}
+      // Fire: radiant spike upward
+      if(fl){
+        p(cx,bcy-pr-1,C.WHITE);p(cx,bcy-pr-2,C.GOLD);
+        p(cx-1,bcy-pr-1,C.LTAMB);p(cx+1,bcy-pr-1,C.LTAMB);
+      }
+      // Cooldown: seed disc darkens
+      if(s===3){b(cx-1,bcy-1,2,2,C.DKAMB);}
+    },
+    // 7. Vine — Whipping vine tendril (3 levels)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       tBaseLv(p,b,22,20,s===1?1:s===2?2:0,lv);
       const br=s>=1,fl=s===2;
@@ -431,7 +713,7 @@ export function drawTowers(ctx){
         for(let y=6;y<12;y++){const x=16+Math.round(Math.sin((y-6)*0.4)*2);p(x,y,C.DKVINE);}
       }
     },
-    // 6. Elder Treant (Ultimate) — Ancient tree face/trunk (1 level)
+    // 8. Elder Treant (Ultimate) — Ancient tree face/trunk (1 level)
     (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const br=s>=1,fl=s===2;
       // Massive root base — custom for ultimate
@@ -482,9 +764,239 @@ export function drawTowers(ctx){
       if(fl){b(14,5,4,2,C.LTAMB);p(15,4,C.WHITE);p(16,4,C.AMBER);}
       if(s===3){b(13,9,2,2,C.DKAMB);b(17,9,2,2,C.DKAMB);p(15,6,C.DKBARK);}
     },
+    // 9. Razor Bramble — Bramble's divergent DPS branch. A lean
+    //    bark-and-blades trunk: serrated thorn-blades fan out from
+    //    a textured dark core, tooth-like crown at the top, barbed
+    //    spine running top-to-bottom, red bloodied highlights.
+    //    L1 → L2 → L3 each add a real silhouette change (more
+    //    blades, serrations, veins, trunk details) so upgrading
+    //    reads at a glance. (3 levels = engine levels 2, 3, 4)
+    (c,o,s,lv)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      tBaseLv(p,b,22,18,s===1?1:s===2?2:0,lv);
+      const br=s>=1,fl=s===2;
+      const cx=16;
+      const coreW=6+lv*2,coreH=10+lv*2;
+      const coreTop=22-coreH,xL=cx-Math.floor(coreW/2);
+
+      // ---- Trunk silhouette (dark outline) ----
+      b(xL,coreTop,coreW,coreH,C.DKFOR);
+      // Slight waist — narrow the middle one cell on both sides so
+      // the trunk reads as organic, not a rectangle.
+      const waistY=coreTop+Math.floor(coreH/2);
+      p(xL,waistY,C.SHAD);p(xL,waistY+1,C.SHAD);
+      p(xL+coreW-1,waistY,C.SHAD);p(xL+coreW-1,waistY+1,C.SHAD);
+      // Rounded base corners
+      p(xL,coreTop+coreH-1,C.SHAD);p(xL+coreW-1,coreTop+coreH-1,C.SHAD);
+
+      // ---- Bark texture (grain + knots) ----
+      // Fill interior with dark forest, then stipple a deterministic
+      // bark pattern — vertical grain strokes, knots, light highlights
+      // along one side (left = lit, right = shadow).
+      for(let y=coreTop+1;y<coreTop+coreH-1;y++){
+        for(let x=xL+1;x<xL+coreW-1;x++){
+          const n=(x*11+y*7+lv*3)%13;
+          if(n<6)p(x,y,C.FOREST);
+          else if(n===6||n===7)p(x,y,C.DKFOR);        // dark grain
+          else if(n===8)p(x,y,C.DKBARK);              // bark streak
+          else if(n===9)p(x,y,C.BARK);
+          else if(n===10&&x<cx)p(x,y,C.MDGRN);        // mossy patch (left)
+          else if(n===11&&x>=cx)p(x,y,C.STUMP);       // shadow side
+          else p(x,y,C.FOREST);
+        }
+      }
+      // Vertical grain strokes — long darker runs that read as
+      // bark channels. Positioned deterministically from lv.
+      const grainCols=[xL+1,xL+Math.floor(coreW/2),xL+coreW-2];
+      for(const gx of grainCols){
+        for(let y=coreTop+2;y<coreTop+coreH-2;y++){
+          if((y+gx)%3===0)p(gx,y,C.DKBARK);
+        }
+      }
+      // Knots — small oval-ish bark features
+      const knots:[number,number][]=[[xL+2,coreTop+3],[xL+coreW-3,coreTop+5]];
+      if(lv>=2)knots.push([xL+1,coreTop+coreH-4]);
+      if(lv>=3)knots.push([xL+coreW-2,coreTop+coreH-5],[xL+Math.floor(coreW/2)+1,coreTop+2]);
+      for(const[kx,ky]of knots){
+        p(kx,ky,C.DKBARK);p(kx+1,ky,C.BARK);p(kx,ky+1,C.BARK);p(kx+1,ky+1,C.DKBARK);
+      }
+
+      // ---- Red vein network (the "razor" identity) ----
+      // Runs down the trunk like a blood vessel. Brighter when
+      // charging/firing. Scales with level.
+      const veinCol=fl?C.LTPNK:br?C.PINK:C.DKPNK;
+      const veinMid=fl?C.PINK:br?C.MAGENTA:C.DKPNK;
+      // Main vertical vein just left of centre
+      for(let y=coreTop+2;y<coreTop+coreH-1;y++){
+        p(cx-1,y,y%2===0?veinCol:veinMid);
+      }
+      // Branching capillaries at higher levels
+      if(lv>=2){
+        p(cx-2,coreTop+4,veinMid);p(cx-2,coreTop+5,veinMid);
+        p(cx,coreTop+coreH-3,veinMid);p(cx,coreTop+coreH-4,veinCol);
+      }
+      if(lv>=3){
+        p(cx+1,coreTop+3,veinCol);p(cx+2,coreTop+3,veinMid);
+        p(cx-3,coreTop+coreH-5,veinMid);p(cx-4,coreTop+coreH-5,C.DKPNK);
+        p(cx+1,coreTop+coreH-2,veinCol);
+      }
+
+      // ---- Serrated blades fanning out from each side ----
+      // Every blade is a 2-px-thick angled segment with a bright
+      // spine highlight and a bloody tip. Count + length both
+      // scale dramatically per level.
+      const bladeCount=3+lv*2;
+      for(let i=0;i<bladeCount;i++){
+        const side=i%2===0?-1:1;
+        const slot=Math.floor(i/2);
+        const rowSpacing=Math.max(2,Math.floor((coreH-2)/Math.max(1,Math.ceil(bladeCount/2))));
+        const by=coreTop+2+slot*rowSpacing;
+        if(by>=coreTop+coreH-1)continue;
+        const bx=xL+(side===-1?0:coreW-1);
+        const len=2+lv+(i%3===0?1:0);
+
+        // Blade main body — two-tone angled segment with upward tilt
+        for(let d=1;d<=len;d++){
+          const x=bx+side*d;
+          const y=by-Math.floor(d*0.4);
+          // Back edge (shadow)
+          p(x,y+1,C.DKBARK);
+          // Spine (mid)
+          p(x,y,d<len?C.BARK:C.LTBARK);
+          // Serrated edge — alternating pixels above the spine
+          if(d%2===0&&d<len){p(x,y-1,C.LTBARK);}
+          // Occasional blood drip along the edge at higher levels
+          if(lv>=2&&d===Math.floor(len/2))p(x,y-1,veinMid);
+        }
+        // Tip — bright highlight + blood
+        const tipX=bx+side*(len+1);
+        const tipY=by-Math.floor(len*0.4);
+        p(tipX,tipY,lv>=3?C.WHITE:C.PLBARK);
+        p(tipX,tipY-1,lv>=2?veinCol:C.LTBARK);
+        if(lv>=2)p(tipX+side,tipY,veinMid);
+        if(lv>=3){p(tipX+side,tipY-1,veinCol);p(tipX,tipY+1,C.DKBARK);}
+
+        // Attachment point — where the blade meets the trunk, a
+        // little darker "socket" so the blade doesn't float.
+        p(bx,by,C.SHAD);
+        p(bx,by+1,C.DKBARK);
+      }
+
+      // ---- Barbed spine running down the trunk's centre ----
+      // Like a row of tiny thorns pinning the vein. Scales with lv.
+      if(lv>=2){
+        for(let y=coreTop+3;y<coreTop+coreH-2;y+=3){
+          p(cx,y,C.THORN);
+          p(cx+1,y-1,C.DKTHRN);
+        }
+      }
+      if(lv>=3){
+        // Extra hooked barbs at matriarch level
+        for(let y=coreTop+4;y<coreTop+coreH-2;y+=4){
+          p(cx-2,y,C.DKTHRN);
+          p(cx-3,y,C.THORN);
+        }
+      }
+
+      // ---- Tooth-like crown at the top ----
+      // Replaces the old "single blade". Three (L1) → five (L2) →
+      // seven (L3) upward fangs of varying length, centred on cx.
+      const fangs=3+(lv-1)*2; // 3, 5, 7
+      for(let f=0;f<fangs;f++){
+        const offset=f-Math.floor(fangs/2);
+        const fx=cx+offset;
+        const baseY=coreTop;
+        // Fang length varies — the middle one tallest, outer ones
+        // shorter.
+        const flen=(fangs-Math.abs(offset)*2)+1;
+        for(let y=0;y<flen;y++){
+          const ty=baseY-1-y;
+          const col=y===0?C.LTBARK:y===flen-1?(fl?C.WHITE:C.PLBARK):y<flen-1?C.BARK:C.DKBARK;
+          p(fx,ty,col);
+          // Blade spine — a single pixel highlight on one side at
+          // higher levels.
+          if(lv>=3&&y===Math.floor(flen/2))p(fx+(offset<0?-1:1),ty,C.LTBARK);
+        }
+        // Red fang tip — the bite
+        if(lv>=2){
+          p(fx,baseY-flen,C.PINK);
+          if(lv>=3&&f===Math.floor(fangs/2))p(fx,baseY-flen-1,C.MAGENTA);
+        }
+      }
+      // Inter-fang gaps shadowed so each fang reads separately
+      for(let f=0;f<fangs-1;f++){
+        const gapX=cx+(f-Math.floor(fangs/2));
+        p(gapX,coreTop,C.DKFOR); // shadow where fangs separate
+      }
+
+      // ---- Barbed spikes running down the outer edges ----
+      if(lv>=2){
+        for(let y=0;y<Math.floor(coreH/2);y++){
+          if(y%2===0){
+            p(xL-1,coreTop+1+y,C.DKTHRN);
+            p(xL+coreW,coreTop+1+y,C.DKTHRN);
+          }
+        }
+      }
+      if(lv>=3){
+        // Longer, nastier barbs at matriarch level
+        for(let y=0;y<coreH-3;y++){
+          if(y%3===0){
+            p(xL-2,coreTop+1+y,C.THORN);
+            p(xL+coreW+1,coreTop+1+y,C.THORN);
+          }
+        }
+      }
+
+      // ---- Moss / blood at the base ----
+      // The Grove won't let go of this thing — moss and dried blood
+      // pool at the foot of the trunk where it meets the pedestal.
+      p(xL+1,coreTop+coreH-1,C.MDGRN);
+      p(xL+coreW-2,coreTop+coreH-1,C.MDGRN);
+      if(lv>=2){
+        p(xL+2,coreTop+coreH-1,C.DKPNK);
+        p(xL+coreW-3,coreTop+coreH-1,C.DKPNK);
+      }
+      if(lv>=3){
+        p(xL,coreTop+coreH,C.MAGENTA);
+        p(xL+coreW-1,coreTop+coreH,C.MAGENTA);
+      }
+
+      // ---- State overlays ----
+      // Charge — vein network pulses red, blade spines glow warm
+      if(s===1){
+        for(let y=coreTop+3;y<coreTop+coreH-2;y+=2){
+          p(cx-1,y,C.LTPNK);
+        }
+        p(cx,coreTop-1,C.PINK); // crown tip pulse
+      }
+      // Fire — launched central fang + red spark ring
+      if(fl){
+        const tipY=coreTop-(1+fangs);
+        p(cx,tipY-1,C.WHITE);
+        p(cx,tipY-2,C.PINK);
+        p(cx-1,tipY-1,C.MAGENTA);
+        p(cx+1,tipY-1,C.MAGENTA);
+        // Red spark trail down vein
+        p(cx-1,coreTop+2,C.LTPNK);
+        p(cx-1,coreTop+5,C.PINK);
+        p(cx-1,coreTop+8,C.MAGENTA);
+      }
+      // Cooldown — dim veins, retracted blades
+      if(s===3){
+        for(let y=coreTop+2;y<coreTop+coreH-1;y++){
+          p(cx-1,y,C.DKPNK);
+        }
+        // Draw dark overlay on crown so fangs appear partially
+        // tucked.
+        for(let f=0;f<fangs;f++){
+          const offset=f-Math.floor(fangs/2);
+          p(cx+offset,coreTop-1,C.DKBARK);
+        }
+      }
+    },
   ];
-  // Layout: 6 cols × 24 rows. Per tower column, levels stack: lv1 states 0-3, lv2 states 0-3, ...
-  const cols=6,rows=T_ROWS;
+  // Layout: 9 cols × 24 rows. Per tower column, levels stack: lv1 states 0-3, lv2 states 0-3, ...
+  const cols=9,rows=T_ROWS;
   for(let col=0;col<cols;col++){
     const maxLv=T_LEVELS[col];
     for(let lv=1;lv<=maxLv;lv++){
@@ -502,7 +1014,7 @@ const P_PX=2,P_G=16,P_CELL=P_G*P_PX;
 
 export function drawProjectiles(ctx){
   const fns=[
-    // Thorn: flying thorn/spike → thorn shatter
+    // Bramble: same thorn/spike art — short ranged but fires thorns
     (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
         const ang=[-1,0,1][f];
@@ -556,6 +1068,10 @@ export function drawProjectiles(ctx){
         [[4,5],[11,6],[6,11],[9,4],[3,9],[13,8]].forEach(([x,y],i)=>p(x,y,i%2?C.DKBARK:C.STUMP));
       }
     },
+    // Thornweaver: melee mobile unit — no projectile (column left
+    // blank by design; the mobile_unit trait handles attacks at
+    // close range so no projectile is ever fired).
+    (_c,_o,_f)=>{/* intentionally empty */},
     // Blossom: pollen cloud → bloom flash (pink)
     (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
       if(f<3){
@@ -618,6 +1134,41 @@ export function drawProjectiles(ctx){
       else{
         [[4,4],[11,5],[6,12],[9,3],[3,9],[13,10]].forEach(([x,y],i)=>p(x,y,i%2?C.DKSPOR:C.DKFOR));
         p(cx,cy,C.DKSPOR);
+      }
+    },
+    // Sunroot: fireball petal → bloom-burst
+    (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
+      if(f<3){
+        const spin=f;
+        // Fireball — amber/gold core
+        for(let dy=-2;dy<=2;dy++){
+          for(let dx=-2;dx<=2;dx++){
+            if(dx*dx+dy*dy<=4){
+              const d=Math.abs(dx)+Math.abs(dy);
+              p(cx+dx,cy+dy,d<2?C.GOLD:C.AMBER);
+            }
+          }
+        }
+        // Flare highlight rotates with spin
+        p(cx+(spin-1),cy,C.WHITE);
+        p(cx,cy+(spin-1),C.WHITE);
+      }
+      else if(f===3){
+        // Impact: bloom burst radiating outward
+        for(let i=0;i<8;i++){
+          const a=i*Math.PI/4;
+          p(cx+Math.round(Math.cos(a)*4),cy+Math.round(Math.sin(a)*4),i%2?C.GOLD:C.AMBER);
+          p(cx+Math.round(Math.cos(a)*2),cy+Math.round(Math.sin(a)*2),C.LTAMB);
+        }
+        p(cx,cy,C.WHITE);
+      }
+      else if(f===4){
+        for(let i=0;i<10;i++){const a=i*Math.PI/5,r=3+i%3;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%3===0?C.LTAMB:C.DKAMB);}
+        p(cx,cy,C.AMBER);
+      }
+      else{
+        [[3,5],[12,4],[5,11],[10,12],[7,3],[9,13]].forEach(([x,y],i)=>p(x,y,i%2?C.DKAMB:C.AMBER));
+        p(cx,cy,C.DKBARK);
       }
     },
     // Vine: whipping vine tip → vine snap
@@ -688,8 +1239,36 @@ export function drawProjectiles(ctx){
         p(cx,cy,C.DKFOR);
       }
     },
+    // Razor Bramble projectile — a sharp thorn-blade with red
+    // bloodied edge. Impact = short red droplet spray.
+    (c,o,f)=>{const{p,b}=mk(c,o,P_G,P_G,P_PX);const cx=8,cy=8;
+      if(f<3){
+        const ang=[-1,0,1][f];
+        // Blade-like thorn spike — longer than Bramble's
+        for(let i=0;i<10;i++){
+          const w=i<2?1:i<7?2:1;
+          b(cx-Math.floor(w/2)+ang*(i>5?1:0),cy-5+i,w,1,i<2?C.WHITE:i<4?C.LTBARK:i<8?C.BARK:C.DKBARK);
+        }
+        // Red bloodied edge
+        p(cx-1,cy-3,C.PINK);p(cx+1,cy-3,C.PINK);
+        p(cx,cy-6,f===0?C.WHITE:C.MAGENTA);
+      }
+      else if(f===3){
+        // Impact — red droplet spray
+        for(let i=0;i<8;i++){const a=i*Math.PI/4;p(cx+Math.round(Math.cos(a)*4),cy+Math.round(Math.sin(a)*4),i%2?C.PINK:C.MAGENTA);}
+        p(cx,cy,C.WHITE);b(cx-1,cy-1,2,2,C.DKBARK);
+      }
+      else if(f===4){
+        for(let i=0;i<10;i++){const a=i*Math.PI/5,r=3+i%3;p(cx+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*r),i%3===0?C.PINK:C.DKPNK);}
+        p(cx,cy,C.MAGENTA);p(cx-1,cy+1,C.DKBARK);
+      }
+      else{
+        [[3,5],[12,4],[5,11],[10,12],[7,3],[9,13]].forEach(([x,y],i)=>p(x,y,i%2?C.DKBARK:C.DKPNK));
+        p(cx,cy,C.DKBARK);
+      }
+    },
   ];
-  const cols=6,rows=6;
+  const cols=9,rows=6;
   for(let col=0;col<cols;col++)for(let row=0;row<rows;row++)fns[col](ctx,[col*P_CELL,row*P_CELL],row);
   return{cols,rows,cell:P_CELL};
 }
@@ -965,7 +1544,7 @@ export function drawHero(ctx){
 }
 
 // ===== LABELS =====
-const T_NAMES=['Thorn','Root','Blossom','Spore','Vine','Elder Treant'];
+const T_NAMES=['Bramble','Root','Mire Dart','Blossom','Spore','Sunroot','Vine','Elder Treant','Razor Bramble'];
 const T_STATES=['Idle','Charge','Fire','Cooldown'];
 // Generate row labels: "Lv1 Idle", "Lv1 Charge", ..., "Lv6 Cooldown"
 const T_ROW_LABELS:string[]=[];
@@ -986,29 +1565,29 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=6*T_CELL;tc.height=T_ROWS*T_CELL;
+    const tc=tRef.current!;tc.width=9*T_CELL;tc.height=T_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
     const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
-    tpv.width=tLW+6*T_CELL*tS;tpv.height=T_ROWS*(T_CELL*tS+tLH)+10;
+    tpv.width=tLW+9*T_CELL*tS;tpv.height=T_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#0a1108';tpc.fillRect(0,0,tpv.width,tpv.height);
     for(let r=0;r<T_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#33aa44';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
       // Separator line between level groups
-      if(r>0&&r%4===0){tpc.fillStyle='#33aa44';tpc.fillRect(tLW,by-2,6*T_CELL*tS,1);}
-      for(let cc=0;cc<6;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a2a1a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#88aa77';tpc.font='9px monospace';const lvInfo=`${T_NAMES[cc]} (${T_LEVELS[cc]}lv)`;tpc.fillText(lvInfo,bx_+2,by-2);}}}
+      if(r>0&&r%4===0){tpc.fillStyle='#33aa44';tpc.fillRect(tLW,by-2,9*T_CELL*tS,1);}
+      for(let cc=0;cc<9;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a2a1a';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#88aa77';tpc.font='9px monospace';const lvInfo=`${T_NAMES[cc]} (${T_LEVELS[cc]}lv)`;tpc.fillText(lvInfo,bx_+2,by-2);}}}
 
     // Projectiles
-    const pc_=pRef.current!;pc_.width=6*P_CELL;pc_.height=6*P_CELL;
+    const pc_=pRef.current!;pc_.width=9*P_CELL;pc_.height=6*P_CELL;
     const pCtx=pc_.getContext('2d')!;pCtx.imageSmoothingEnabled=false;
     drawProjectiles(pCtx);
     const ppv=pPv.current!;const pS=3;
-    ppv.width=tLW+6*P_CELL*pS;ppv.height=6*(P_CELL*pS+tLH)+10;
+    ppv.width=tLW+9*P_CELL*pS;ppv.height=6*(P_CELL*pS+tLH)+10;
     const ppc=ppv.getContext('2d')!;ppc.imageSmoothingEnabled=false;
     ppc.fillStyle='#0a1108';ppc.fillRect(0,0,ppv.width,ppv.height);
     for(let r=0;r<6;r++){const by=r*(P_CELL*pS+tLH)+5;ppc.fillStyle='#33aa44';ppc.font='bold 9px monospace';ppc.fillText(P_STATES[r],3,by+P_CELL*pS/2+3);
-      for(let cc=0;cc<6;cc++){const bx_=tLW+cc*P_CELL*pS;ppc.save();ppc.translate(bx_,by);ppc.scale(pS,pS);ppc.drawImage(pc_,cc*P_CELL,r*P_CELL,P_CELL,P_CELL,0,0,P_CELL,P_CELL);ppc.restore();ppc.strokeStyle='#1a2a1a';ppc.strokeRect(bx_,by,P_CELL*pS,P_CELL*pS);if(r===0){ppc.fillStyle='#88aa77';ppc.font='9px monospace';ppc.fillText(P_NAMES[cc],bx_+2,by-2);}}}
+      for(let cc=0;cc<9;cc++){const bx_=tLW+cc*P_CELL*pS;ppc.save();ppc.translate(bx_,by);ppc.scale(pS,pS);ppc.drawImage(pc_,cc*P_CELL,r*P_CELL,P_CELL,P_CELL,0,0,P_CELL,P_CELL);ppc.restore();ppc.strokeStyle='#1a2a1a';ppc.strokeRect(bx_,by,P_CELL*pS,P_CELL*pS);if(r===0){ppc.fillStyle='#88aa77';ppc.font='9px monospace';ppc.fillText(P_NAMES[cc],bx_+2,by-2);}}}
 
     // Hero
     const hc=hRef.current!;hc.width=8*H_CW;hc.height=5*H_CH;
@@ -1031,9 +1610,9 @@ export default function App(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'nature_towers_animated.png',
-      info:{sz:'384×1536',cell:'64×64',loader:"this.load.spritesheet('nature_towers','nature_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`6 cols (towers) × ${T_ROWS} rows (${T_MAX_LV} levels × 4 states). Levels: ${T_NAMES.map((n,i)=>`${n}=${T_LEVELS[i]}`).join(', ')}`}},
+      info:{sz:'576×1536',cell:'64×64',loader:"this.load.spritesheet('nature_towers','nature_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`9 cols (towers) × ${T_ROWS} rows (${T_MAX_LV} levels × 4 states). Levels: ${T_NAMES.map((n,i)=>`${n}=${T_LEVELS[i]}`).join(', ')}`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'nature_projectiles_animated.png',
-      info:{sz:'192×192',cell:'32×32',loader:"this.load.spritesheet('nature_proj','nature_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'6 cols × 6 rows (3 travel + 3 impact)'}},
+      info:{sz:'288×192',cell:'32×32',loader:"this.load.spritesheet('nature_proj','nature_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'9 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Druid',ref:hRef,pvRef:hPv,dl:'druid_hero_directional.png',
       info:{sz:'512×640',cell:'64×128',loader:"this.load.spritesheet('druid','druid_hero_directional.png',{frameWidth:64,frameHeight:128})",note:'Row 0-2: Down/Side/Up (idle×2, walk×4, atk×2) · Row 3: Abilities · Row 4: States'}},
   ];
@@ -1060,7 +1639,7 @@ export default function App(){
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
             <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}} data-label={`Nature ${t.label} (Preview)`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'}/>
-            <canvas ref={t.ref} data-label={`Nature ${t.label}`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?6*P_CELL*3:6*T_CELL*2,border:'1px solid #1a2a1a'}}/>
+            <canvas ref={t.ref} data-label={`Nature ${t.label}`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?9*P_CELL*3:9*T_CELL*2,border:'1px solid #1a2a1a'}}/>
           </div>
         ))}
       </div>

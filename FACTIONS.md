@@ -35,15 +35,18 @@
 
 ---
 
-## Nature (6 towers)
+## Nature (8 towers)
 *"All things grow in time." — Living forest, poison, synergy.*
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Thorn | 20g | Cheap physical DPS. 5 upgrade levels — scales all game. |
+| Bramble Hedge | 12g | Wall + cheap DPS. 1 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
+| └ Razor Bramble *(branch)* | 20g switch | Not placeable directly — reached via Bramble L1→L2 choice. 5 dmg @ 300ms range 1.5 on switch, scales to 15 dmg range 2.2 at L4. |
 | Root | 35g | Strongest slow: 70% for 3s. |
+| Mire Dart | 40g | **Mobile.** Poison-dart frog. Hops between creeps, tongue-lashes with 5%/s 4s poison. Weak tongue-hit (4 dmg), deadly venom. |
 | Blossom | 60g | No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level. |
 | Spore | 100g | Poisons ALL creeps near tower (not target). 2% HP/s. |
+| Sunroot | 140g | Splash DPS. 56-radius fire-flower AoE. |
 | Vine | 160g | 20% chance to root (stun) creeps for 0.8s. |
 | **Elder Treant** | **600g** | Ultimate. Grows +8% damage permanently. Roots + buffs adjacents. |
 
@@ -59,7 +62,7 @@
 | Gambler | 15g | 8% instant kill, 25% zero damage. Cheapest tower. |
 | Spike | 30g | Each shot deals 50-150% damage randomly. |
 | Siphon | 50g | +1g per hit. Economy engine. 4 levels. |
-| Rift | 120g | Teleports creeps backward on path. |
+| Rift | 120g | Teleports creeps backward on path + 2-4 damage per hit. |
 | **Oblivion** | **900g** | Ultimate. 15% instakill, +3g/hit, extreme variance + damage amp. |
 
 **Frontier:** The Rift (random 0-15g or 0-30g per wave).

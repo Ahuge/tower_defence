@@ -7,6 +7,7 @@ import { CREEP_TYPES } from '../../data/CreepTypes';
 import { WaveDefinition } from '../../data/WaveDefinitions';
 import { DifficultyHints } from '../../data/Difficulty';
 import { MapDefinition } from '../../data/Maps';
+import { SendCreepOption } from '../../data/SendCreepTypes';
 
 interface SimCreep {
   x: number;
@@ -31,7 +32,7 @@ interface SimCreep {
  * Creep deaths are approximate (based on rough tower DPS).
  */
 export class OpponentSimulation {
-  private grid: Grid;
+  grid: Grid;
   private versus: VersusManager;
   private difficulty: DifficultyHints;
   private mapDef: MapDefinition;
@@ -39,11 +40,22 @@ export class OpponentSimulation {
   private spawnQueue: { typeId: string; hp: number; speed: number }[] = [];
   private spawnTimer: number = 0;
   private spawnInterval: number = 500;
-  private paths: (PathPoint[] | null)[] = [];
+  paths: (PathPoint[] | null)[] = [];
   private waveActive: boolean = false;
 
   // Rough tower DPS estimate for killing creeps
   private totalDps: number = 0;
+
+  /** Creeps that leaked since the last drain. For CPU-opponent 1v1,
+   *  GameScene reads these each tick and applies life loss + game-
+   *  over detection against `versus.opponentLives`. Empty for
+   *  human-opponent matches (lives come through `lives_update`
+   *  messages from the remote peer instead). */
+  private pendingLeaks: number = 0;
+  /** Typed kills since the last drain. Used by CPU-opponent 1v1 to
+   *  credit the bot's economy at roughly human-equivalent rates so
+   *  its gold pool compounds like the human's. */
+  private pendingKills: { typeId: string; isBoss: boolean }[] = [];
 
   constructor(versus: VersusManager, mapDef: MapDefinition, difficulty: DifficultyHints) {
     this.versus = versus;
@@ -160,12 +172,14 @@ export class OpponentSimulation {
       creep.hp -= dpsPerCreep * (delta / 1000);
       if (creep.hp <= 0) {
         creep.alive = false;
+        this.pendingKills.push({ typeId: creep.typeId, isBoss: creep.isBoss });
         continue;
       }
 
       // Move along path
       if (creep.pathIndex >= creep.path.length) {
         creep.reached = true;
+        this.pendingLeaks++;
         continue;
       }
 
@@ -198,5 +212,40 @@ export class OpponentSimulation {
 
   isWaveActive(): boolean {
     return this.waveActive;
+  }
+
+  /** Drain accumulated leaks/kills since the last call. CPU-opponent
+   *  1v1 uses these to keep `versus.opponentLives` and the CPU bot's
+   *  economy in sync with what the shadow simulation has done this
+   *  tick. Safe to call on every frame — returns 0/empty when nothing
+   *  has happened. */
+  drainEvents(): { leaks: number; kills: { typeId: string; isBoss: boolean }[] } {
+    const out = { leaks: this.pendingLeaks, kills: this.pendingKills };
+    this.pendingLeaks = 0;
+    this.pendingKills = [];
+    return out;
+  }
+
+  /** Queue extra creeps for the CPU side — the shadow-sim equivalent
+   *  of `SendManager.queueSend`. Added to the spawn queue so they
+   *  start trickling in immediately, not on the next wave start —
+   *  matches the human side where sends also activate with the
+   *  current wave. HP/speed use the same scale the current wave
+   *  was seeded with (approximated from the first queued entry, or
+   *  baseline when no wave is active). */
+  enqueueSend(opt: SendCreepOption): void {
+    const ct = CREEP_TYPES[opt.creepType];
+    if (!ct) return;
+    const count = opt.count * (ct.count || 1);
+    // Use the first queued wave entry as a template for HP/speed
+    // scaling; if the queue is empty (wave already fully spawned),
+    // fall back to a middling approximation tuned to the creep type.
+    const tmpl = this.spawnQueue[0];
+    const hp = tmpl ? tmpl.hp : Math.round(20 * ct.hpMultiplier);
+    const speed = tmpl ? tmpl.speed : 80 * ct.speedMultiplier;
+    for (let i = 0; i < count; i++) {
+      this.spawnQueue.push({ typeId: opt.creepType, hp, speed });
+    }
+    this.waveActive = true;
   }
 }
