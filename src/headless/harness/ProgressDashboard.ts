@@ -97,8 +97,11 @@ export class ProgressDashboard {
 
   private clear(): void {
     if (!this.enabled || this.linesDrawn === 0) return;
-    // Move cursor up to first line, clear each.
-    process.stderr.write(ANSI.cursorToCol0);
+    // draw() ends with a trailing '\n', so the cursor sits one line
+    // below the last rendered line. Move up onto the first rendered
+    // line before clearing, otherwise we wipe blank rows below and
+    // the previous frame stays visible.
+    process.stderr.write(ANSI.cursorUp(this.linesDrawn) + ANSI.cursorToCol0);
     for (let i = 0; i < this.linesDrawn; i++) {
       process.stderr.write(ANSI.clearLine);
       if (i < this.linesDrawn - 1) process.stderr.write('\x1b[1B'); // down one
