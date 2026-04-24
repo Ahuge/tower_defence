@@ -2,6 +2,14 @@
 
 ## 2026-04-23
 
+### Nature round-2 buffs
+Second pass after NatureBrain validated the branch-pivot play was working but the faction still underperformed. Three tweaks:
+- Elder Treant: 600g → 450g (ULT now actually reachable mid-match)
+- Bramble Hedge L1: damage 2 → 3 (wall is a real pricker now)
+- Blossom adjacency: 20%/12% → 25%/15%
+
+Sweep delta was flat (Nature easy 30% → 25%, within 20-seed variance). Signal: small numeric buffs aren't breaking Nature through the wave-20 ceiling. Further work wants structural changes (cheap scaling DPS tower, or re-examine Root's 35g cost for its slow-only role) rather than continued fine-tuning.
+
 ### Imp softened + NatureBrain
 Partial rollback on Imp: damage 10 → 12 (kept cost 12). Previous nerf stacked with the difficulty ramp crashed Infernal hard from 100% to 0% — overshot. New DPS-per-coin 1.43 (was 2.0 pre-nerf, 1.19 over-nerfed). Middle ground preserves the nerf intent without kneecapping the faction.
 

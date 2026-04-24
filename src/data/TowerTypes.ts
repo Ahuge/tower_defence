@@ -293,10 +293,10 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   nature_blossom: def({
-    id: 'nature_blossom', name: 'Blossom', description: 'No attack. Buffs adjacent towers: +20% DMG, +12% SPD/level.',
+    id: 'nature_blossom', name: 'Blossom', description: 'No attack. Buffs adjacent towers: +25% DMG, +15% SPD/level.',
     faction: 'nature', damageType: 'magic', cost: 60, damage: 0, range: 1.5, fireRate: 99999,
     color: 0xff88aa, projectileSpeed: 0, hotkey: '4',
-    traits: [{ id: 'adjacency_buff', damagePercent: 0.20, ratePercent: 0.12 }],
+    traits: [{ id: 'adjacency_buff', damagePercent: 0.25, ratePercent: 0.15 }],
     upgrades: [
       { level: 2, cost: 55, damage: 0, range: 1.5, fireRate: 99999 },
       { level: 3, cost: 90, damage: 0, range: 1.5, fireRate: 99999 },
@@ -324,7 +324,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   nature_elder: def({
     id: 'nature_elder', name: 'Elder Treant', description: 'ULTIMATE. Grows +8% DMG permanently. Roots and buffs allies.',
-    faction: 'nature', damageType: 'physical', cost: 600, damage: 40, range: 4, fireRate: 800,
+    faction: 'nature', damageType: 'physical', cost: 450, damage: 40, range: 4, fireRate: 800,
     color: 0x225511, projectileSpeed: 280, hotkey: '8', ultimate: true,
     traits: [
       { id: 'direct_damage' },
@@ -338,7 +338,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'nature_bramble', name: 'Bramble Hedge',
     description: 'Dense thornbrush. Pricks constantly. At Lv2, choose Hedge (wider maze) or Razor Bramble (vicious DPS).',
     role: 'wall',
-    faction: 'nature', damageType: 'physical', cost: 12, damage: 2, range: 1.2, fireRate: 400,
+    faction: 'nature', damageType: 'physical', cost: 12, damage: 3, range: 1.2, fireRate: 400,
     color: 0x447733, projectileSpeed: 260, hotkey: '1',
     traits: [{ id: 'direct_damage' }],
     upgrades: [

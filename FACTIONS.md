@@ -40,15 +40,15 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Bramble Hedge | 12g | Wall + cheap DPS. 2 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
+| Bramble Hedge | 12g | Wall + cheap DPS. 3 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
 | └ Razor Bramble *(branch)* | 15g switch | Not placeable directly — reached via Bramble L1→L2 choice. 5 dmg @ 300ms range 1.5 on switch, scales to 15 dmg range 2.2 at L4. |
 | Root | 35g | Strongest slow: 70% for 3s. |
 | Grove Viper | 40g | **Mobile.** Slithers between creeps, lunges with a fanged strike. 8 dmg bite @ 750ms + 6%/s 4.5s viper venom. |
-| Blossom | 60g | No attack. Buffs adjacent towers: +20% DMG, +12% SPD/level. |
+| Blossom | 60g | No attack. Buffs adjacent towers: +25% DMG, +15% SPD/level. |
 | Spore | 100g | Poisons ALL creeps near tower (not target). 2% HP/s. |
 | Sunroot | 140g | Splash DPS. 56-radius fire-flower AoE. |
 | Vine | 160g | 20% chance to root (stun) creeps for 0.8s. |
-| **Elder Treant** | **600g** | Ultimate. Grows +8% damage permanently. Roots + buffs adjacents. |
+| **Elder Treant** | **450g** | Ultimate. Grows +8% damage permanently. Roots + buffs adjacents. |
 
 **Frontier:** Sacred Grove (grows income, harvest for burst payout).
 
