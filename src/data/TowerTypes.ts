@@ -395,12 +395,12 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_sunroot: def({
     id: 'nature_sunroot', name: 'Sunroot',
     description: 'Splash DPS. A bloom that learned to burn — fire-flowers arc wide.',
-    faction: 'nature', damageType: 'magic', cost: 140, damage: 16, range: 3, fireRate: 900,
+    faction: 'nature', damageType: 'magic', cost: 140, damage: 22, range: 3, fireRate: 900,
     color: 0xddaa22, projectileSpeed: 260, projectileColor: 0xffcc44, hotkey: '6',
     traits: [{ id: 'splash_damage', radius: 56 }],
     upgrades: [
-      { level: 2, cost: 120, damage: 24, range: 3.5, fireRate: 850 },
-      { level: 3, cost: 200, damage: 34, range: 4, fireRate: 800 },
+      { level: 2, cost: 120, damage: 34, range: 3.5, fireRate: 850 },
+      { level: 3, cost: 200, damage: 50, range: 4, fireRate: 800 },
     ],
   }),
 

@@ -2,6 +2,9 @@
 
 ## 2026-04-23
 
+### Sunroot damage buff — Nature easy 25% → 50%
+Sunroot L1 damage 16 → 22 (L2/L3 scaled similarly). Nature's main splash DPS was under-scaling for the late game; the buff lands the faction in the target "playable on easy" band with a single knob.
+
 ### Nature round-2 buffs
 Second pass after NatureBrain validated the branch-pivot play was working but the faction still underperformed. Three tweaks:
 - Elder Treant: 600g → 450g (ULT now actually reachable mid-match)
