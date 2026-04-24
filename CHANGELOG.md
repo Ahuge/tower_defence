@@ -2,6 +2,20 @@
 
 ## 2026-04-23
 
+### Imp softened + NatureBrain
+Partial rollback on Imp: damage 10 → 12 (kept cost 12). Previous nerf stacked with the difficulty ramp crashed Infernal hard from 100% to 0% — overshot. New DPS-per-coin 1.43 (was 2.0 pre-nerf, 1.19 over-nerfed). Middle ground preserves the nerf intent without kneecapping the faction.
+
+Added **NatureBrain** — fourth brain in the tournament. Faction-aware opening: places 2-3 Bramble walls, then **immediately branch-upgrades** each to Razor Bramble as soon as the 15g switch is affordable. Priority 1 in `decide()` so the pivot happens before new placements. Then seeds a Blossom cluster, stacks Viper + DPS adjacent to it, Elder Treant ultimate when budget allows. For non-Nature factions the branch-check is a no-op and the brain falls through to a Rush-style DPS fill — so NatureBrain doubles as a second opinion for every faction.
+
+Sweep deltas (best brain, before → after):
+- **Nature easy: 0% → 30%** ✅ NatureBrain works — avg wave 9.1 → 16.4 (of 20). Still underperforming normal/hard/insane though.
+- Infernal hard: 0% → 0% (Imp softening wasn't enough alone — hard difficulty is now uniformly impossible across all factions after the ramp)
+- Harmonic easy: 90% → 55% (regression — rebalancing hit it sideways)
+- Harmonic normal: 30% → 55% ✅
+- Mechanical normal: 5% → 5% (stuck)
+
+Nature **still can't reliably win easy** even with a dedicated brain — 30% is borderline. Signal: faction may need further buffs (cheaper Elder Treant? stronger Bramble base DPS?) rather than more brain tuning.
+
 ### Balance pass: difficulty ramp + Void/Infernal nerfs + Nature buffs
 Validated via the autonomous-play sweep — 2,640 matches before and after, comparing best-brain win rates per (faction, difficulty) cell.
 

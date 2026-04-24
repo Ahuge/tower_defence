@@ -124,7 +124,7 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Imp | 12g | Decent damage. Expires after 4 waves. Disposable. |
+| Imp | 12g | 12 damage, 700ms. Expires after 4 waves. Disposable. |
 | Hellfire | 45g | Strong AoE + burn. Loses 15% damage each wave. |
 | Soul Drain | 70g | +2g per kill within range. Economy tower. |
 | Fiend | 20g | KAMIKAZE. Runs to nearest creep, explodes for 80 AoE, destroys self. |

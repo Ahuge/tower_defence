@@ -69,7 +69,7 @@ test.skip('runBalanceSweep — full faction matrix', async () => {
     // winner per (faction, difficulty) and reports its win rate as
     // the faction's ceiling. Approximates "best-case competent
     // play" without hand-tuning one brain per faction.
-    brains: ['balanced', 'rush', 'synergy'],
+    brains: ['balanced', 'rush', 'synergy', 'nature'],
     matchModes: ['standard'],
     seedsPerCell: 20,
     baseSeed: 1,

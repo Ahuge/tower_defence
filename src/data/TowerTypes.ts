@@ -677,7 +677,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   infernal_imp: def({
     id: 'infernal_imp', name: 'Imp', description: 'Cheap. Decent damage. Expires after 4 waves.',
-    faction: 'infernal', damageType: 'magic', cost: 12, damage: 10, range: 3, fireRate: 700,
+    faction: 'infernal', damageType: 'magic', cost: 12, damage: 12, range: 3, fireRate: 700,
     color: 0xff4422, projectileSpeed: 350, hotkey: '1',
     traits: [{ id: 'direct_damage' }, { id: 'expires_after_waves', waves: 4 }],
   }),
