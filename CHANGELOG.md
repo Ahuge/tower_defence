@@ -2,6 +2,25 @@
 
 ## 2026-04-23
 
+### Balance harness: full catalog (232 changes) + absurd-confidence defaults
+Expanded `ChangeCatalog.ts` from the seeded 32 (Nature + Void + Infernal only) to **232 changes covering every faction**:
+- **Arcane** 20 nerfs
+- **Mechanical** 20 mixed
+- **Nature** 20 buffs
+- **Void** 20 nerfs
+- **Military** 20 mixed
+- **Aliens** 20 nerfs
+- **Cypherpunk** 20 mixed
+- **Infernal** 20 nerfs
+- **Celestial** 20 buffs
+- **Psionic** 20 buffs
+- **Harmonic** 20 buffs
+- **Global** 12 changes (difficulty ramps, toughness, count, gold multipliers)
+
+All tagged `[buff]` / `[nerf]` / `[tune]` / `[big]` in the description so the report reads at a glance.
+
+`seedsPerCell` bumped from 50 → **1,000**. ±1.5% CI on a binary win rate — any observed delta ≥ ±3% is statistically meaningful. Baseline sweep = 176,000 matches; faction-scoped change = 16,000; global change = 176,000. Full catalog = **~5.8 million matches**, ~2 hours on 28 cores. Overnight-friendly.
+
 ### Balance harness — scripted A/B testing for numeric tweaks
 New `src/headless/harness/` — A/B-tests balance changes by running the tournament once per change and diffing best-brain win rates against a baseline. Pure A/B, no combinatorial explosion.
 

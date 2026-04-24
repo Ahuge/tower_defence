@@ -54,21 +54,25 @@ to the cwd for re-analysis without re-running.
 
 ## Scale
 
-- Baseline sweep ≈ 8,800 matches (11 factions × 4 difficulties × 4 brains × 50 seeds).
-- Per-change sweep (faction-scoped): narrows to just that faction = 800 matches.
-  - A Nature change can't affect Arcane's win rate, so the other 10 factions
-    are skipped. ~10× faster per change vs. sweeping all factions.
-- Per-change sweep (global-scoped): full 8,800 matches.
-- `seedsPerCell: 50` gives ±6.5% CI on a binary win rate — balance
-  deltas of ±10% land outside the noise floor reliably.
+Current defaults are tuned for **absurd confidence + overnight runs**:
 
-Total catalog (baseline + 32 faction-scoped changes):
-- Matches: 8,800 + 32 × 800 = **34,400**.
-- Runtime on 28 cores: ~40 s sim + 15-30 s startup/aggregation ≈ **~1 min**.
-- Serial: ~20 min.
+- **seedsPerCell = 1,000** → ±1.5% CI. Any delta ≥ ±3% is statistically
+  meaningful; no more chasing 5-seed variance.
+- **Baseline sweep** = 11 factions × 4 difficulties × 4 brains × 1000 seeds = **176,000 matches**.
+- **Faction-scoped change** (one per catalog entry with a specific faction):
+  narrows to that faction only = 16,000 matches. A Nature change can't
+  affect Arcane, so the other 10 factions are skipped — ~10× faster per change.
+- **Global change** (difficulty ramp, kill gold, starting gold): full 176,000.
 
-Add a `global` change (e.g. difficulty ramp) and each one adds
-8,800 matches (~18 s serial, much less with parallel).
+Catalog as shipped (~220 faction-scoped + ~12 global):
+- Matches: 176,000 + 220 × 16,000 + 12 × 176,000 = **5,808,000**.
+- Aggregate throughput: 28 cores × ~30 matches/s/core = 840 matches/s.
+- Runtime on 28 cores: **~2 hours wall time** (well within an overnight window).
+- Serial (no workers): ~2 days — don't.
+
+For quick iteration drop `seedsPerCell: 1000` → `100`:
+- Baseline drops to 17,600. Faction-scoped to 1,600.
+- Full catalog runs in ~13 min on 28 cores, ±4.5% CI.
 
 ## Target bands
 

@@ -28,19 +28,20 @@ export interface HarnessMatrixSpec {
 }
 
 /** Default matrix used for BASELINE sweeps + GLOBAL changes.
- *  11 factions × 4 difficulties × 4 brains × 50 seeds = 8,800
+ *  11 factions × 4 difficulties × 4 brains × 1000 seeds = 176,000
  *  matches. Per-change sweeps (when the change targets a specific
  *  faction) narrow to just that faction — see `narrowToFaction`.
  *
- *  50 seeds gives ±6.5% CI on a binary win rate; balance deltas
- *  of ±10% land outside the noise floor reliably. */
+ *  1000 seeds gives ±1.5% CI on a binary win rate — absurd
+ *  confidence. Any observed delta above ±3% is statistically
+ *  meaningful. Drop to 100 for quick iteration (±4.5% CI). */
 export const DEFAULT_MATRIX: HarnessMatrixSpec = {
   factions: ['mechanical', 'arcane', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'],
   difficulties: ['easy', 'normal', 'hard', 'insane'],
   maps: ['plains'],
   brains: ['balanced', 'rush', 'synergy', 'nature'],
   matchModes: ['standard'],
-  seedsPerCell: 50,
+  seedsPerCell: 1000,
   baseSeed: 1,
   waveCount: 20,
 };
