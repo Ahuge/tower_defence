@@ -54,12 +54,16 @@ to the cwd for re-analysis without re-running.
 
 ## Scale
 
-- Single sweep ≈ 3,520 matches ≈ 30–60 s single-threaded.
+- Single sweep ≈ 528 matches ≈ 15–20 s single-threaded (44 cells × 12 seeds).
 - Catalog ≈ 33 tasks (baseline + 32 changes).
-- With 28 cores: roughly `33 / 28 × 60 ≈ 70 s` — single-digit
-  minutes including startup.
-- With 8 cores: ~4 × single-sweep time ≈ 4 min.
-- Serial (no workers): 33 × 30 s ≈ 15 min.
+- With 28 cores: roughly `33 / 28 × 18 ≈ 22 s` — call it ~1 minute
+  including startup + result aggregation.
+- With 8 cores: ~4 × single-sweep time ≈ 75 s.
+- Serial (no workers): 33 × 18 s ≈ 10 min.
+
+`seedsPerCell: 12` gives ±14% CI on a binary win rate — tight
+enough to discriminate real balance deltas, loose enough to
+iterate quickly. Bump to 20 for tighter confidence.
 
 ## Target bands
 
