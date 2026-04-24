@@ -27,18 +27,19 @@ export interface HarnessMatrixSpec {
   waveCount: number;
 }
 
-/** Default matrix — ~528 matches per change (44 cells × 12 seeds).
- *  Enough samples per cell (±14% noise on a binary win rate) to
- *  surface real balance deltas without drowning in seed variance.
- *  Scale up `seedsPerCell` for tighter confidence intervals, down
- *  for faster iteration. */
+/** Default matrix — ~1760 matches per change (44 cells × 40 seeds).
+ *  Heavier sample per cell (±7% noise on a binary win rate) so
+ *  balance deltas of ±10% land outside the noise floor reliably.
+ *  Scale `seedsPerCell` up for tighter CIs or down for faster
+ *  iteration — the rest of the matrix (factions × difficulties ×
+ *  brains) is the authoritative tournament shape. */
 export const DEFAULT_MATRIX: HarnessMatrixSpec = {
   factions: ['mechanical', 'arcane', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'],
   difficulties: ['easy', 'normal', 'hard', 'insane'],
   maps: ['plains'],
   brains: ['balanced', 'rush', 'synergy', 'nature'],
   matchModes: ['standard'],
-  seedsPerCell: 12,
+  seedsPerCell: 40,
   baseSeed: 1,
   waveCount: 20,
 };
