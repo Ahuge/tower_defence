@@ -2,6 +2,20 @@
 
 ## 2026-04-23
 
+### Balance harness — scripted A/B testing for numeric tweaks
+New `src/headless/harness/` — A/B-tests balance changes by running the tournament once per change and diffing best-brain win rates against a baseline. Pure A/B, no combinatorial explosion.
+
+- `ChangeCatalog.ts` — seed catalog of 32 candidate changes (12 Nature buffs, 10 Void nerfs, 10 Infernal nerfs). Each entry is an `apply(patch)` function that mutates `TOWER_TYPES` / `DIFFICULTIES` via the `PatchEngine` (handles automatic rollback).
+- `PatchEngine.ts` — records + reverts mutations on towers, traits, upgrades, and difficulty fields. Per-worker so parallel shards don't cross-contaminate.
+- `HarnessRunner.ts` — baseline sweep → one sweep per change → delta computation. Shares the 3,520-match tournament matrix from `batch.test.ts`.
+- `Pool.ts` — `worker_threads`-based parallel orchestrator. Each worker is a fresh V8 isolate (no shared heap state), so patches can run independently. Round-robin task split.
+- `HarnessReport.ts` — markdown ranking table + per-change breakdown with target-band ✅/❌ flags per (faction, difficulty) cell.
+- `scripts/run-harness.mjs` — CLI. Runs the full catalog, emits `harness-results.json` + stdout markdown.
+
+Uses `tsx` (new devDep) as the TS loader for worker threads — Node 24 runs TypeScript natively but can't resolve extensionless imports, which the game systems use pervasively.
+
+Runtime: ~70 s on 28 cores for the 32-change catalog + baseline. Not run yet; catalog seeded for the next balance pass.
+
 ### Sunroot damage buff — Nature easy 25% → 50%
 Sunroot L1 damage 16 → 22 (L2/L3 scaled similarly). Nature's main splash DPS was under-scaling for the late game; the buff lands the faction in the target "playable on easy" band with a single knob.
 
