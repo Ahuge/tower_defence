@@ -2,6 +2,19 @@
 
 ## 2026-04-23
 
+### Balance pass: difficulty ramp + Void/Infernal nerfs + Nature buffs
+Validated via the autonomous-play sweep — 2,640 matches before and after, comparing best-brain win rates per (faction, difficulty) cell.
+
+**Difficulty ramp**: `DifficultyHints.toughnessPerWave`. Effective creep HP = `toughness × (1 + wave × toughnessPerWave)`. Easy 0, Normal 0.5%/wave, Hard 1.5%/wave, Insane 2.5%/wave. Applied in `SpawnManager` + `OpponentSimulation` (1v1 shadow sim). The late game had no teeth before — once a player stacked towers, wave 30 creeps died as fast as wave 10.
+
+**Void gold_on_hit → chance-based.** Trait schema extended with optional `chance` (defaults to 1.0 = old behavior). Siphon `amount 2 @ 40%` (0.8 EV vs old 1.0). Oblivion `amount 8 @ 30%` (2.4 EV vs old 3.0). Preserves gambling identity, trims EV, adds variance.
+
+**Infernal Imp nerf.** cost 10→12, damage 14→10. DPS-per-coin 2.0→1.19. Imp was 3× better than anything else in the game.
+
+**Nature buffs.** Bramble L1 damage 1→2, Razor Bramble branch cost 20→15, Grove Viper damage 5→8 / fireRate 950→750 (L2/L3 bumped in proportion), Blossom adjacency buff 15/8 → 20/12 %.
+
+Sweep deltas (best brain, before → after): Void insane 70%→10%, Aliens normal 100%→70%, Cypherpunk normal 90%→60%, Infernal hard 100%→0% (overshot — may soften Imp to damage 12), Mechanical normal 50%→5%, Harmonic easy 80%→90%, Nature still stuck at 0%/0% (avg wave 7.7→9.1 — some survival gain but can't close).
+
 ### Autonomous play system — headless match runner for balance testing
 New `src/headless/` module runs full game matches outside Phaser so we can play thousands of games faster than realtime and measure faction balance without the render loop in the way. Three pieces:
 

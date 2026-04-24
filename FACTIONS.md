@@ -40,11 +40,11 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Bramble Hedge | 12g | Wall + cheap DPS. 1 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
-| └ Razor Bramble *(branch)* | 20g switch | Not placeable directly — reached via Bramble L1→L2 choice. 5 dmg @ 300ms range 1.5 on switch, scales to 15 dmg range 2.2 at L4. |
+| Bramble Hedge | 12g | Wall + cheap DPS. 2 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
+| └ Razor Bramble *(branch)* | 15g switch | Not placeable directly — reached via Bramble L1→L2 choice. 5 dmg @ 300ms range 1.5 on switch, scales to 15 dmg range 2.2 at L4. |
 | Root | 35g | Strongest slow: 70% for 3s. |
-| Grove Viper | 40g | **Mobile.** Slithers between creeps, lunges with a fanged strike. 5 dmg bite + 6%/s 4.5s viper venom. |
-| Blossom | 60g | No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level. |
+| Grove Viper | 40g | **Mobile.** Slithers between creeps, lunges with a fanged strike. 8 dmg bite @ 750ms + 6%/s 4.5s viper venom. |
+| Blossom | 60g | No attack. Buffs adjacent towers: +20% DMG, +12% SPD/level. |
 | Spore | 100g | Poisons ALL creeps near tower (not target). 2% HP/s. |
 | Sunroot | 140g | Splash DPS. 56-radius fire-flower AoE. |
 | Vine | 160g | 20% chance to root (stun) creeps for 0.8s. |
@@ -124,7 +124,7 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Imp | 10g | Decent damage. Expires after 4 waves. Disposable. |
+| Imp | 12g | Decent damage. Expires after 4 waves. Disposable. |
 | Hellfire | 45g | Strong AoE + burn. Loses 15% damage each wave. |
 | Soul Drain | 70g | +2g per kill within range. Economy tower. |
 | Fiend | 20g | KAMIKAZE. Runs to nearest creep, explodes for 80 AoE, destroys self. |
