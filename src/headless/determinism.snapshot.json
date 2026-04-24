@@ -7,8 +7,7 @@
     "goldEarned": 205,
     "goldSpent": 190,
     "creepsKilled": 41,
-    "towersBuilt": 5,
-    "simTimeMs": 54720
+    "towersBuilt": 5
   },
   {
     "key": "arcane|normal|balanced|standard|5|1002",
@@ -18,19 +17,17 @@
     "goldEarned": 190,
     "goldSpent": 245,
     "creepsKilled": 38,
-    "towersBuilt": 6,
-    "simTimeMs": 53792
+    "towersBuilt": 6
   },
   {
     "key": "nature|normal|balanced|standard|5|1003",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 16,
-    "goldEarned": 190,
-    "goldSpent": 92,
-    "creepsKilled": 38,
-    "towersBuilt": 3,
-    "simTimeMs": 74176
+    "livesRemaining": 2,
+    "goldEarned": 120,
+    "goldSpent": 80,
+    "creepsKilled": 24,
+    "towersBuilt": 2
   },
   {
     "key": "void|normal|balanced|standard|5|1004",
@@ -40,8 +37,7 @@
     "goldEarned": 265,
     "goldSpent": 210,
     "creepsKilled": 37,
-    "towersBuilt": 7,
-    "simTimeMs": 62656
+    "towersBuilt": 7
   },
   {
     "key": "military|normal|balanced|standard|5|1005",
@@ -51,8 +47,7 @@
     "goldEarned": 160,
     "goldSpent": 158,
     "creepsKilled": 32,
-    "towersBuilt": 4,
-    "simTimeMs": 26112
+    "towersBuilt": 4
   },
   {
     "key": "aliens|normal|balanced|standard|5|1006",
@@ -62,19 +57,17 @@
     "goldEarned": 125,
     "goldSpent": 155,
     "creepsKilled": 25,
-    "towersBuilt": 4,
-    "simTimeMs": 67648
+    "towersBuilt": 4
   },
   {
     "key": "cypherpunk|normal|balanced|standard|5|1007",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 9,
-    "goldEarned": 155,
-    "goldSpent": 150,
-    "creepsKilled": 31,
-    "towersBuilt": 6,
-    "simTimeMs": 79744
+    "livesRemaining": 13,
+    "goldEarned": 175,
+    "goldSpent": 190,
+    "creepsKilled": 35,
+    "towersBuilt": 6
   },
   {
     "key": "infernal|normal|balanced|standard|5|1008",
@@ -84,8 +77,7 @@
     "goldEarned": 145,
     "goldSpent": 199,
     "creepsKilled": 29,
-    "towersBuilt": 7,
-    "simTimeMs": 33792
+    "towersBuilt": 7
   },
   {
     "key": "celestial|normal|balanced|standard|5|1009",
@@ -95,8 +87,7 @@
     "goldEarned": 140,
     "goldSpent": 155,
     "creepsKilled": 28,
-    "towersBuilt": 4,
-    "simTimeMs": 48832
+    "towersBuilt": 4
   },
   {
     "key": "psionic|normal|balanced|standard|5|1010",
@@ -106,19 +97,17 @@
     "goldEarned": 30,
     "goldSpent": 130,
     "creepsKilled": 6,
-    "towersBuilt": 4,
-    "simTimeMs": 65696
+    "towersBuilt": 4
   },
   {
     "key": "harmonic|normal|balanced|standard|5|1011",
     "outcome": "loss",
     "waveReached": 4,
     "livesRemaining": 0,
-    "goldEarned": 20,
+    "goldEarned": 45,
     "goldSpent": 140,
-    "creepsKilled": 4,
-    "towersBuilt": 3,
-    "simTimeMs": 59776
+    "creepsKilled": 9,
+    "towersBuilt": 3
   },
   {
     "key": "arcane|hard|rush|standard|5|2001",
@@ -128,8 +117,7 @@
     "goldEarned": 65,
     "goldSpent": 200,
     "creepsKilled": 13,
-    "towersBuilt": 8,
-    "simTimeMs": 47968
+    "towersBuilt": 8
   },
   {
     "key": "nature|easy|nature|standard|5|2002",
@@ -139,8 +127,7 @@
     "goldEarned": 165,
     "goldSpent": 407,
     "creepsKilled": 33,
-    "towersBuilt": 10,
-    "simTimeMs": 51488
+    "towersBuilt": 10
   },
   {
     "key": "mechanical|insane|synergy|standard|3|2003",
@@ -150,7 +137,6 @@
     "goldEarned": 0,
     "goldSpent": 130,
     "creepsKilled": 0,
-    "towersBuilt": 3,
-    "simTimeMs": 29760
+    "towersBuilt": 3
   }
 ]

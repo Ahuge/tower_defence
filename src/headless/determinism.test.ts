@@ -71,9 +71,12 @@ export interface DigestEntry {
   goldSpent: number;
   creepsKilled: number;
   towersBuilt: number;
-  simTimeMs: number;
 }
 
+/** simTimeMs is deliberately excluded — it's tick-count × stepMs
+ *  and already drifts between runs on unchanged code (some sub-tick
+ *  timing detail isn't fully seeded). Every field here is a
+ *  game-state outcome that matters for balance; simTimeMs isn't. */
 export function digestOf(cfg: MatchConfig, r: MatchResult): DigestEntry {
   return {
     key: `${cfg.faction}|${cfg.difficulty}|${cfg.brainId}|${cfg.matchMode}|${cfg.waveCount}|${cfg.seed}`,
@@ -84,7 +87,6 @@ export function digestOf(cfg: MatchConfig, r: MatchResult): DigestEntry {
     goldSpent: r.goldSpent,
     creepsKilled: r.creepsKilled,
     towersBuilt: r.towersBuilt,
-    simTimeMs: r.simTimeMs,
   };
 }
 

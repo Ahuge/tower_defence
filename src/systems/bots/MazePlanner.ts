@@ -28,6 +28,7 @@
 import { Grid, CellType } from '../Grid';
 import { findPath, PathPoint } from '../Pathfinding';
 import { Cell } from './BotBrain';
+import { rng } from '../Rng';
 
 export interface MazeScore {
   col: number;
@@ -179,7 +180,7 @@ function sampleRandom<T>(arr: T[], n: number): T[] {
   // Fisher-Yates partial shuffle — O(n) and unbiased.
   const copy = arr.slice();
   for (let i = 0; i < n; i++) {
-    const j = i + Math.floor(Math.random() * (copy.length - i));
+    const j = i + Math.floor(rng() * (copy.length - i));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy.slice(0, n);

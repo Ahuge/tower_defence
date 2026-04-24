@@ -3,6 +3,7 @@ import { TILE_SIZE } from '../config';
 import { Creep } from '../entities/Creep';
 import { PathPoint } from './Pathfinding';
 import { WaveDefinition } from '../data/WaveDefinitions';
+import { rng } from './Rng';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { DifficultyHints } from '../data/Difficulty';
 import { EventBus } from './EventBus';
@@ -256,8 +257,8 @@ export class SpawnManager {
               splitType,
               (this.scene as any).creepFaction,
             );
-            child.x = creep.x + (Math.random() - 0.5) * TILE_SIZE;
-            child.y = creep.y + (Math.random() - 0.5) * TILE_SIZE;
+            child.x = creep.x + (rng() - 0.5) * TILE_SIZE;
+            child.y = creep.y + (rng() - 0.5) * TILE_SIZE;
             newCreeps.push(child);
           }
           break;
