@@ -1,4 +1,5 @@
 import { TILE_SIZE, gridX, gridY } from '../../config';
+import { rng } from '../Rng';
 import {
   registerCreepDamage, registerCreepUpdate, registerCreepDraw,
   Trait,
@@ -48,7 +49,7 @@ registerCreepDraw('damage_cap_shield', (trait: Trait, creep: any, g: any) => {
 
 registerCreepDamage('evasion', (trait: Trait, damage: number) => {
   const chance = trait.chance ?? 0.25;
-  if (Math.random() < chance) {
+  if (rng() < chance) {
     return 0; // dodged!
   }
   return damage;
@@ -242,7 +243,7 @@ registerCreepDraw('evasion_aura', (trait: Trait, creep: any, g: any) => {
 
 registerCreepDraw('evasion', (_trait: Trait, creep: any, g: any) => {
   // Subtle shimmer effect for evasive creeps
-  if (Math.random() < 0.3) {
+  if (rng() < 0.3) {
     const baseSize = creep.isBoss ? TILE_SIZE * 0.45 : TILE_SIZE * 0.3;
     g.lineStyle(1, 0x66ccff, 0.3);
     g.strokeCircle(creep.x, creep.y, baseSize * creep.size + 2);

@@ -1,4 +1,5 @@
 import { FrontierBuilding, FRONTIER_BUILDINGS, GENERIC_OUTPOSTS, getAllFactionFrontierBuildings } from '../data/FrontierBuildings';
+import { rng } from './Rng';
 import { FactionId } from '../data/Factions';
 import { EventBus } from './EventBus';
 import { IncomeManager } from './IncomeManager';
@@ -49,7 +50,7 @@ export class FrontierManager {
   /** Roll 2 random frontier buildings from all faction pools */
   rollRandomFrontier(): FrontierBuilding[] {
     const all = getAllFactionFrontierBuildings();
-    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    const shuffled = [...all].sort(() => rng() - 0.5);
     return shuffled.slice(0, 2);
   }
 
@@ -108,7 +109,7 @@ export class FrontierManager {
         case 'gamble': {
           // All gamble income is bonus (baseIncome is 0)
           const max = b.def.id.includes('_2') ? 30 : 15;
-          bonusGold += Math.floor(Math.random() * (max + 1));
+          bonusGold += Math.floor(rng() * (max + 1));
           break;
         }
       }
@@ -134,7 +135,7 @@ export class FrontierManager {
     if (!building || building.def.mechanic !== 'dig') return { success: false, collapsed: false };
     building.digLevel++;
     const risk = building.def.id.includes('_2') ? 0.05 : 0.1;
-    if (Math.random() < risk * building.digLevel) {
+    if (rng() < risk * building.digLevel) {
       this.destroyBuilding(building);
       return { success: false, collapsed: true };
     }
@@ -167,7 +168,7 @@ export class FrontierManager {
       if (b.destroyed || b.def.id !== defId || b.def.mechanic !== 'dig') continue;
       b.digLevel++;
       const risk = b.def.id.includes('_2') ? 0.05 : 0.1;
-      if (Math.random() < risk * b.digLevel) {
+      if (rng() < risk * b.digLevel) {
         this.destroyBuilding(b);
         collapses++;
       } else {

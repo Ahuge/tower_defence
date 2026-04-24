@@ -2,6 +2,17 @@
 
 ## 2026-04-23
 
+### Autonomous play system — headless match runner for balance testing
+New `src/headless/` module runs full game matches outside Phaser so we can play thousands of games faster than realtime and measure faction balance without the render loop in the way. Three pieces:
+
+- **`HeadlessScene`** + **`SimClock`**: Phaser.Scene stub. `add.graphics()` / `add.sprite()` / `add.text()` return callable chaining proxies that no-op every method and property access; `scene.time.delayedCall` / `scene.time.addEvent` route into a priority queue that fires callbacks on sim-time (advanced per tick) rather than wall time. Covers the ~126 Phaser touches in `Tower.ts` / `Creep.ts` without changing either file.
+- **`HeadlessMatch`**: composes the real game systems (Grid, SpawnManager, TowerManager, CreepManager, WaveController, EconomyManager, FrontierManager) and runs a tick loop until win / loss / timeout. The "player" is a `BotBrain` instance (default `BalancedBrain`); between-waves the brain places / upgrades / buys frontier until it skips, then the next wave fires immediately. Standard + endless modes supported in v1; Circle Co-op / 1v1 / Hero Defense are future work.
+- **`Batch`**: Cartesian matrix expander + serial runner + aggregator. Grouped win-rate / avg-wave / avg-gold reports formatted as markdown tables. A skipped test (`runBalanceSweep — full faction matrix`) is ready to un-skip for ad-hoc sweeps.
+
+Perf: a 5-wave `mechanical` / `normal` / `plains` match runs in **~40-50ms wall time** on a single thread — roughly **1300-1400× realtime**. A 1000-match balance sweep should finish in ~40 seconds serial. `worker_threads` parallelism is a future win; today's bottleneck is pathfinding + trait ticks, which don't benefit from threading until the batch is 10k+ matches.
+
+Determinism: new `systems/Rng.ts` module-level seeded PRNG replaces the 15 scattered `Math.random()` sites in Creep, trait handlers (tower + creep), BalancedBrain, and FrontierManager. `HeadlessMatch` calls `seedRng(config.seed)` at match start — same `(config, seed)` pair now yields identical results across runs, which is what makes before/after balance comparisons honest. Production paths default to `Date.now()` seeding so live play keeps its usual randomness feel.
+
 ### Circle Co-op late-game rebalance
 Coop started hard on insane but trended *easier* wave after wave — team DPS compounds once zones fill out, while creep HP scaling plateaus. Three coordinated nerfs + one buff:
 

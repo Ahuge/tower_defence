@@ -1,5 +1,6 @@
 import { TILE_SIZE, gridX, gridY } from '../../config';
 import { calculateDamage } from '../DamageCalculator';
+import { rng } from '../Rng';
 import {
   registerDelivery, registerDamageMod, registerFireRateMod,
   registerHitEffect, registerOnFire, registerTowerUpdate,
@@ -73,7 +74,7 @@ function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: U
           gfx.fillStyle(venom, 0.85);
           for (let i = 0; i < 6 + lv * 2; i++) {
             const a = (i / (6 + lv * 2)) * Math.PI * 2;
-            const r = 3 + Math.random() * (3 + lv);
+            const r = 3 + rng() * (3 + lv);
             gfx.fillCircle(target.x + Math.cos(a) * r, target.y + Math.sin(a) * r, 1 + (i % 2));
           }
           gfx.fillStyle(toxic, 0.7);
@@ -309,7 +310,7 @@ registerDelivery('pierce_delivery', (trait: Trait, ctx: HitContext) => {
 registerDamageMod('damage_variance', (trait: Trait, damage: number, _ctx: HitContext) => {
   const min = trait.min ?? 0.5;
   const max = trait.max ?? 1.5;
-  return Math.round(damage * (min + Math.random() * (max - min)));
+  return Math.round(damage * (min + rng() * (max - min)));
 });
 
 registerDamageMod('damage_mult', (trait: Trait, damage: number, _ctx: HitContext) => {
@@ -321,7 +322,7 @@ registerDamageMod('crit_chance', (trait: Trait, damage: number, ctx: HitContext)
   const baseChance = trait.chance ?? 0.25;
   const chance = Math.min(0.8, baseChance + 0.03 * (ctx.towerLevel - 1));
   const multiplier = trait.multiplier ?? 3;
-  if (Math.random() < chance) {
+  if (rng() < chance) {
     return Math.round(damage * multiplier);
   }
   return damage;
@@ -338,7 +339,7 @@ registerDamageMod('jackpot', (trait: Trait, damage: number, ctx: HitContext) => 
   const levelKill = Math.min(0.5, baseKill + 0.02 * (ctx.towerLevel - 1));
   const killChance = ctx.target.isBoss ? levelKill * 0.25 : levelKill;
   const missChance = trait.missChance ?? 0.25;
-  const roll = Math.random();
+  const roll = rng();
   if (roll < killChance) {
     return 99999;
   } else if (roll < killChance + missChance) {
@@ -489,7 +490,7 @@ registerHitEffect('root_on_hit', (trait: Trait, ctx: HitContext) => {
   const baseDuration = trait.duration ?? 800;
   const duration = levelScale(baseDuration, ctx.towerLevel, 0.15);
   for (const target of ctx.hitTargets) {
-    if (Math.random() < chance) {
+    if (rng() < chance) {
       (target as any).statusEffects?.apply('root', duration, 1);
     }
   }
@@ -796,7 +797,7 @@ registerTowerUpdate('life_on_kill', (trait: Trait, tower: any, ctx: UpdateContex
     const dx = creep.x - tower.x;
     const dy = creep.y - tower.y;
     if (dx * dx + dy * dy > range * range) continue;
-    if (Math.random() < chance) {
+    if (rng() < chance) {
       tower._livesEarned = (tower._livesEarned ?? 0) + 1;
     }
   }
@@ -1098,7 +1099,7 @@ registerTowerUpdate('crit_aura', (trait: Trait, tower: any, ctx: UpdateContext) 
 });
 
 registerDamageMod('_harmonic_crit', (trait: Trait, damage: number, _ctx: HitContext) => {
-  if (Math.random() < (trait.chance ?? 0.15)) {
+  if (rng() < (trait.chance ?? 0.15)) {
     return Math.round(damage * (trait.multiplier ?? 2));
   }
   return damage;

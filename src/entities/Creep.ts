@@ -9,6 +9,7 @@ import {
 } from '../systems/traits/Trait';
 import { FactionId } from '../data/Factions';
 import { createCreepSprite, getCreepSpriteScale, playCreepDeath, hasCreepSprites } from '../systems/CreepSpriteManager';
+import { rng } from '../systems/Rng';
 
 const ARMOR_TIERS: ArmorType[] = ['light', 'medium', 'heavy'];
 
@@ -253,7 +254,7 @@ export class Creep {
     }
     // Check evasion buff from mage auras
     const auraEvasion = this.statusEffects.getEvasionChance();
-    if (auraEvasion > 0 && Math.random() < auraEvasion) {
+    if (auraEvasion > 0 && rng() < auraEvasion) {
       return; // dodged via aura
     }
 

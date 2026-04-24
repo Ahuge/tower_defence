@@ -28,6 +28,7 @@ import { TowerType } from '../../../data/TowerTypes';
 import { TowerRole, groupByRole } from '../../../data/TowerRoles';
 import { PathPoint } from '../../Pathfinding';
 import { bestMazeCell, pathCellsWithinRange } from '../MazePlanner';
+import { rng } from '../../Rng';
 
 type Phase = 'building-maze' | 'filling-dps' | 'panic';
 
@@ -123,7 +124,7 @@ export class BalancedBrain implements BotBrain {
    *  because income compounds — a frontier building bought on wave
    *  3 pays out for every remaining wave. */
   private decideMeta(ctx: BotContext): BotDecision {
-    const roll = Math.random();
+    const roll = rng();
     const wantFrontier = roll < 0.4;
     const wantSend = roll >= 0.4 && roll < 0.7;
 
