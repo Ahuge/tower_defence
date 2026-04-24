@@ -108,6 +108,12 @@ export class Tower {
   private _prevY: number = 0;
   /** Last rotation applied to sprite (preserved when no target) */
   private _lastSpriteRotation: number = 0;
+  /** Cached findTarget result for the current tick. Cleared at the
+   *  top of every update(); rotation + fire both call findTarget
+   *  with the same creeps array, so the cache saves one full scan
+   *  per rotating tower per tick. Invalidated per call of update(). */
+  private _frameTarget: Creep | null = null;
+  private _frameTargetValid: boolean = false;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
@@ -399,6 +405,13 @@ export class Tower {
       return;
     }
 
+    // Per-tick findTarget cache. Rotation + fire both call findTarget
+    // with the same creeps[] in the same tick; without the cache the
+    // list is scanned twice. Reset at top of update() so state can't
+    // leak across ticks.
+    this._frameTargetValid = false;
+    this._frameTarget = null;
+
     // Rotate tower sprite to face nearest target (mechanical/military towers with barrels)
     if (this.sprite && !isMobileTowerSprite(this.typeId) && shouldTowerRotate(this.typeId)) {
       const nearest = this.findTarget(creeps);
@@ -424,9 +437,12 @@ export class Tower {
   }
 
   findTarget(creeps: Creep[]): Creep | null {
+    if (this._frameTargetValid) return this._frameTarget;
+
     const mode: TargetingMode = this.typeDef.targeting ?? 'first';
+    const weakestMode = mode === 'weakest';
     let best: Creep | null = null;
-    let bestScore = mode === 'weakest' ? Infinity : -Infinity;
+    let bestScore = weakestMode ? Infinity : -Infinity;
 
     for (const creep of creeps) {
       if (!creep.alive || creep.reached) continue;
@@ -445,13 +461,15 @@ export class Tower {
         default:          score = creep.pathIndex; break;
       }
 
-      const isBetter = mode === 'weakest' ? score < bestScore : score > bestScore;
+      const isBetter = weakestMode ? score < bestScore : score > bestScore;
       if (isBetter) {
         best = creep;
         bestScore = score;
       }
     }
 
+    this._frameTarget = best;
+    this._frameTargetValid = true;
     return best;
   }
 
