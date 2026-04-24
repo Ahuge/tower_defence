@@ -952,6 +952,13 @@ export class GameScene extends Phaser.Scene {
         ? this.circle.getWaveTimerSeconds()
         : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    // GameUIStore.activate() reset the DOM state to lives=0, gold=0.
+    // Without this sync push, the HUD renders "DEAD" (lives=0) for
+    // one frame between create() finishing and the first update()
+    // tick — most noticeable when restarting after a loss, where
+    // deactivate() had already parked lives at 0.
+    const initialDisplayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
+    GameUIStore.updateEconomy(this.economy.gold, initialDisplayLives, this.incomeMgr.getBreakdown().total);
 
     // Set up UI camera so HUD stays fixed while game camera zooms/pans (once)
     if (!this.uiCamera) {
