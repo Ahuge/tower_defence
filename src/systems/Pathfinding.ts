@@ -11,11 +11,13 @@
  * On a unit-cost 4-directional grid, BFS and A*-with-Manhattan-
  * heuristic both find shortest paths. They can differ in the
  * *shape* of the path when multiple equal-length routes exist —
- * we mitigate that with a **goal-biased neighbour order**: each
- * call computes a per-query `dirs` array that tries the direction
- * pointing toward the goal first, then perpendicular, then away.
- * Paths look A*-like (goal-directed staircase) but the inner loop
- * is a typed-array BFS — no heap, no heuristic, no string keys.
+ * we mitigate that with a **per-cell goal-biased neighbour order**:
+ * on each dequeue we rebuild the direction order from the current
+ * cell's vector to the goal, preferring the axis with more
+ * remaining distance first. This reproduces A*-with-Manhattan
+ * tie-breaking (paths hug walls on bending mazes) while the inner
+ * loop remains a typed-array BFS — no heap, no heuristic, no
+ * string keys.
  *
  * Implementation notes:
  *   - Visited tracking: `Uint8Array(cols*rows)` flipped to 1 on
@@ -73,25 +75,6 @@ export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPo
     return [{ col: s.col, row: s.row }];
   }
 
-  // Goal-biased neighbour order: try the toward-goal directions
-  // first so that when multiple shortest paths exist, BFS picks
-  // the one that makes progress early (staircase shape). On a tie
-  // (sdx === 0 or sdy === 0) the remaining perpendicular still
-  // gets visited — order just matters for which gets visited first.
-  const sdc = Math.sign(e.col - s.col);
-  const sdr = Math.sign(e.row - s.row);
-  // Primary goal dir, secondary goal dir, then away-from-goal.
-  // If sdc or sdr is 0 (aligned on that axis), fall back to a
-  // canonical order so the neighbour array always has 4 entries.
-  const primaryCol = sdc !== 0 ? sdc : 1;
-  const primaryRow = sdr !== 0 ? sdr : 1;
-  const dirs: [number, number][] = [
-    [primaryCol, 0],      // toward goal, col axis
-    [0, primaryRow],      // toward goal, row axis
-    [-primaryCol, 0],     // away, col axis
-    [0, -primaryRow],     // away, row axis
-  ];
-
   // Fixed-capacity typed-array queue. `queue[head..tail)` holds
   // packed cell indices. Capacity = n because we never enqueue a
   // cell twice (visited flag prevents it).
@@ -107,6 +90,17 @@ export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPo
 
   queue[tail++] = sIdx;
   visited[sIdx] = 1;
+
+  // Scratch arrays for per-cell goal-biased neighbour ordering. We
+  // rebuild the dir order on every dequeue using the *current* cell's
+  // vector to the goal, not the start→goal vector — this matters on
+  // bending mazes where "toward goal" rotates as you walk. With a
+  // fixed start→goal bias, long vertical mazes produced loose, stair-
+  // stepping paths because the frozen dir order didn't match the
+  // local progress direction. Recomputing per-cell reproduces the
+  // A*-with-Manhattan tie-breaking that makes paths hug walls.
+  const dcs = [0, 0, 0, 0];
+  const drs = [0, 0, 0, 0];
 
   while (head < tail) {
     const cur = queue[head++];
@@ -128,11 +122,31 @@ export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPo
       return reverse;
     }
 
+    // Goal-biased neighbour order from CURRENT cell. Prefer the axis
+    // with more remaining distance first (so long-axis progress wins
+    // ties before short-axis), then the other toward-goal axis, then
+    // the two away-from-goal dirs. When a signed distance is 0, fall
+    // back to +1 so we still emit 4 unique directions.
+    const ddc = e.col - cc;
+    const ddr = e.row - cr;
+    const sdc = ddc > 0 ? 1 : ddc < 0 ? -1 : 1;
+    const sdr = ddr > 0 ? 1 : ddr < 0 ? -1 : 1;
+    const colFirst = Math.abs(ddc) >= Math.abs(ddr);
+    if (colFirst) {
+      dcs[0] = sdc; drs[0] = 0;    // primary toward-goal: col axis
+      dcs[1] = 0;   drs[1] = sdr;  // secondary toward-goal: row axis
+      dcs[2] = 0;   drs[2] = -sdr; // away: row
+      dcs[3] = -sdc; drs[3] = 0;   // away: col
+    } else {
+      dcs[0] = 0;   drs[0] = sdr;
+      dcs[1] = sdc; drs[1] = 0;
+      dcs[2] = -sdc; drs[2] = 0;
+      dcs[3] = 0;   drs[3] = -sdr;
+    }
+
     for (let d = 0; d < 4; d++) {
-      const dc = dirs[d][0];
-      const dr = dirs[d][1];
-      const nc = cc + dc;
-      const nr = cr + dr;
+      const nc = cc + dcs[d];
+      const nr = cr + drs[d];
 
       if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
       const nIdx = nr * cols + nc;
