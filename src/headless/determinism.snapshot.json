@@ -3,21 +3,21 @@
     "key": "mechanical|normal|balanced|standard|5|1001",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 19,
-    "goldEarned": 205,
-    "goldSpent": 190,
-    "creepsKilled": 41,
-    "towersBuilt": 5
+    "livesRemaining": 15,
+    "goldEarned": 185,
+    "goldSpent": 130,
+    "creepsKilled": 37,
+    "towersBuilt": 3
   },
   {
     "key": "arcane|normal|balanced|standard|5|1002",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 16,
-    "goldEarned": 190,
-    "goldSpent": 245,
-    "creepsKilled": 38,
-    "towersBuilt": 6
+    "livesRemaining": 3,
+    "goldEarned": 75,
+    "goldSpent": 150,
+    "creepsKilled": 15,
+    "towersBuilt": 3
   },
   {
     "key": "nature|normal|balanced|standard|5|1003",
@@ -33,41 +33,41 @@
     "key": "void|normal|balanced|standard|5|1004",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 15,
-    "goldEarned": 265,
-    "goldSpent": 210,
-    "creepsKilled": 37,
-    "towersBuilt": 7
+    "livesRemaining": 9,
+    "goldEarned": 135,
+    "goldSpent": 95,
+    "creepsKilled": 21,
+    "towersBuilt": 4
   },
   {
     "key": "military|normal|balanced|standard|5|1005",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 20,
-    "goldEarned": 160,
+    "livesRemaining": 19,
+    "goldEarned": 205,
     "goldSpent": 158,
-    "creepsKilled": 32,
+    "creepsKilled": 41,
     "towersBuilt": 4
   },
   {
     "key": "aliens|normal|balanced|standard|5|1006",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 3,
-    "goldEarned": 125,
+    "livesRemaining": 4,
+    "goldEarned": 130,
     "goldSpent": 155,
-    "creepsKilled": 25,
+    "creepsKilled": 26,
     "towersBuilt": 4
   },
   {
     "key": "cypherpunk|normal|balanced|standard|5|1007",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 13,
-    "goldEarned": 175,
-    "goldSpent": 190,
-    "creepsKilled": 35,
-    "towersBuilt": 6
+    "livesRemaining": 6,
+    "goldEarned": 140,
+    "goldSpent": 160,
+    "creepsKilled": 28,
+    "towersBuilt": 4
   },
   {
     "key": "infernal|normal|balanced|standard|5|1008",
@@ -83,20 +83,20 @@
     "key": "celestial|normal|balanced|standard|5|1009",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 16,
-    "goldEarned": 140,
-    "goldSpent": 155,
-    "creepsKilled": 28,
-    "towersBuilt": 4
+    "livesRemaining": 14,
+    "goldEarned": 130,
+    "goldSpent": 130,
+    "creepsKilled": 26,
+    "towersBuilt": 3
   },
   {
     "key": "psionic|normal|balanced|standard|5|1010",
     "outcome": "loss",
     "waveReached": 4,
     "livesRemaining": 0,
-    "goldEarned": 30,
+    "goldEarned": 25,
     "goldSpent": 130,
-    "creepsKilled": 6,
+    "creepsKilled": 5,
     "towersBuilt": 4
   },
   {
@@ -104,9 +104,9 @@
     "outcome": "loss",
     "waveReached": 4,
     "livesRemaining": 0,
-    "goldEarned": 45,
+    "goldEarned": 25,
     "goldSpent": 140,
-    "creepsKilled": 9,
+    "creepsKilled": 5,
     "towersBuilt": 3
   },
   {
@@ -123,10 +123,10 @@
     "key": "nature|easy|nature|standard|5|2002",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 19,
-    "goldEarned": 165,
+    "livesRemaining": 16,
+    "goldEarned": 150,
     "goldSpent": 407,
-    "creepsKilled": 33,
+    "creepsKilled": 30,
     "towersBuilt": 10
   },
   {

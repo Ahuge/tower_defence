@@ -1,14 +1,33 @@
+/**
+ * BFS pathfinding on a 4-directional unit-cost grid.
+ *
+ * Previous implementation was textbook-slow A* — an `open` array
+ * linearly scanned for min-f on every iteration, a `Set<string>`
+ * closed set keyed on `"col,row"`, and `open.find(...)` per neighbour
+ * lookup making the inner loop ~O(N²). On a 36×26 grid that adds
+ * up to hundreds of thousands of ops per call, and `recalcPaths`
+ * runs on every tower placement.
+ *
+ * On a unit-cost 4-directional grid, BFS and A*-with-Manhattan-
+ * heuristic both find shortest paths. They can differ in the
+ * *shape* of the path when multiple equal-length routes exist —
+ * we mitigate that with a **goal-biased neighbour order**: each
+ * call computes a per-query `dirs` array that tries the direction
+ * pointing toward the goal first, then perpendicular, then away.
+ * Paths look A*-like (goal-directed staircase) but the inner loop
+ * is a typed-array BFS — no heap, no heuristic, no string keys.
+ *
+ * Implementation notes:
+ *   - Visited tracking: `Uint8Array(cols*rows)` flipped to 1 on
+ *     enqueue. Integer key = `row * cols + col`.
+ *   - Parent tracking: `Int32Array(cols*rows)` storing the parent
+ *     index of each cell. `-1` = no parent (start cell).
+ *   - Queue: `Int32Array` with head/tail pointers. Worst-case size
+ *     is `cols * rows` since we never enqueue the same cell twice.
+ *   - Path reconstruction: walk parents from goal back to start,
+ *     then reverse (push + reverse, not unshift — avoids O(N²)).
+ */
 import { Grid } from './Grid';
-import { GRID_COLS } from '../config';
-
-interface Node {
-  col: number;
-  row: number;
-  g: number;
-  h: number;
-  f: number;
-  parent: Node | null;
-}
 
 export interface PathPoint {
   col: number;
@@ -17,20 +36,10 @@ export interface PathPoint {
 
 /**
  * Stitch a path that visits an ordered list of waypoints between
- * `start` and `end`. Runs A* independently for each segment and
- * concatenates results, de-duplicating the joining point (so the
- * final path doesn't list the same cell twice where two segments
- * meet).
+ * `start` and `end`. Runs BFS independently for each segment and
+ * concatenates results, de-duplicating the joining point.
  *
- * Used by circle co-op maps where each spawner declares an
- * `entry`, ordered `waypoints[]`, and `exit` so creeps must
- * physically traverse the full circuit rather than A*-shortcut
- * directly from entry to exit.
- *
- * Returns null if ANY segment can't route — the whole chain fails
- * because a creep can't skip a blocked waypoint. Callers can fall
- * back to a plain `findPath(start, end)` in that case if they want
- * a best-effort route.
+ * Returns null if ANY segment can't route.
  */
 export function findPathWithWaypoints(grid: Grid, start: PathPoint, waypoints: PathPoint[], end: PathPoint): PathPoint[] | null {
   const stops: PathPoint[] = [start, ...waypoints, end];
@@ -41,8 +50,8 @@ export function findPathWithWaypoints(grid: Grid, start: PathPoint, waypoints: P
     if (i === 0) {
       full.push(...segment);
     } else {
-      // The segment starts at stops[i] which is also the last
-      // element of `full` — skip the duplicate.
+      // Segment starts at stops[i] which is also the last element of
+      // `full` — skip the duplicate.
       full.push(...segment.slice(1));
     }
   }
@@ -53,75 +62,88 @@ export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPo
   const s = start ?? grid.entry;
   const e = end ?? grid.exit;
 
-  const open: Node[] = [];
-  const closed = new Set<string>();
+  const cols = grid.cols;
+  const rows = grid.rows;
+  const n = cols * rows;
 
-  const key = (col: number, row: number) => `${col},${row}`;
-  const heuristic = (col: number, row: number) =>
-    Math.abs(col - e.col) + Math.abs(row - e.row);
+  const sIdx = s.row * cols + s.col;
+  const eIdx = e.row * cols + e.col;
 
-  const startNode: Node = {
-    col: s.col,
-    row: s.row,
-    g: 0,
-    h: heuristic(s.col, s.row),
-    f: heuristic(s.col, s.row),
-    parent: null,
-  };
+  if (sIdx === eIdx) {
+    return [{ col: s.col, row: s.row }];
+  }
 
-  open.push(startNode);
-
-  // 4-directional movement
-  const dirs = [
-    [0, -1], [0, 1], [-1, 0], [1, 0],
+  // Goal-biased neighbour order: try the toward-goal directions
+  // first so that when multiple shortest paths exist, BFS picks
+  // the one that makes progress early (staircase shape). On a tie
+  // (sdx === 0 or sdy === 0) the remaining perpendicular still
+  // gets visited — order just matters for which gets visited first.
+  const sdc = Math.sign(e.col - s.col);
+  const sdr = Math.sign(e.row - s.row);
+  // Primary goal dir, secondary goal dir, then away-from-goal.
+  // If sdc or sdr is 0 (aligned on that axis), fall back to a
+  // canonical order so the neighbour array always has 4 entries.
+  const primaryCol = sdc !== 0 ? sdc : 1;
+  const primaryRow = sdr !== 0 ? sdr : 1;
+  const dirs: [number, number][] = [
+    [primaryCol, 0],      // toward goal, col axis
+    [0, primaryRow],      // toward goal, row axis
+    [-primaryCol, 0],     // away, col axis
+    [0, -primaryRow],     // away, row axis
   ];
 
-  while (open.length > 0) {
-    // Find lowest f
-    let bestIdx = 0;
-    for (let i = 1; i < open.length; i++) {
-      if (open[i].f < open[bestIdx].f) bestIdx = i;
-    }
-    const current = open.splice(bestIdx, 1)[0];
+  // Fixed-capacity typed-array queue. `queue[head..tail)` holds
+  // packed cell indices. Capacity = n because we never enqueue a
+  // cell twice (visited flag prevents it).
+  const queue = new Int32Array(n);
+  const visited = new Uint8Array(n);
+  const parent = new Int32Array(n);
+  // -1 sentinel = "no parent" (start cell) or "unvisited" (anything
+  // else). We distinguish by checking the visited flag.
+  for (let i = 0; i < n; i++) parent[i] = -1;
 
-    if (current.col === e.col && current.row === e.row) {
-      // Reconstruct path
-      const path: PathPoint[] = [];
-      let node: Node | null = current;
-      while (node) {
-        path.unshift({ col: node.col, row: node.row });
-        node = node.parent;
+  let head = 0;
+  let tail = 0;
+
+  queue[tail++] = sIdx;
+  visited[sIdx] = 1;
+
+  while (head < tail) {
+    const cur = queue[head++];
+    const cr = (cur / cols) | 0;
+    const cc = cur - cr * cols;
+
+    if (cur === eIdx) {
+      // Walk parent chain back to start. Max length = n; push then
+      // reverse (in-place) for O(N) reconstruction.
+      const reverse: PathPoint[] = [];
+      let node = cur;
+      while (node !== -1) {
+        const r = (node / cols) | 0;
+        const c = node - r * cols;
+        reverse.push({ col: c, row: r });
+        node = parent[node];
       }
-      return path;
+      reverse.reverse();
+      return reverse;
     }
 
-    closed.add(key(current.col, current.row));
+    for (let d = 0; d < 4; d++) {
+      const dc = dirs[d][0];
+      const dr = dirs[d][1];
+      const nc = cc + dc;
+      const nr = cr + dr;
 
-    for (const [dc, dr] of dirs) {
-      const nc = current.col + dc;
-      const nr = current.row + dr;
-
-      if (nc < 0 || nc >= grid.cols || nr < 0 || nr >= grid.rows) continue;
+      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+      const nIdx = nr * cols + nc;
+      if (visited[nIdx]) continue;
       if (!grid.isWalkable(nc, nr)) continue;
-      if (closed.has(key(nc, nr))) continue;
 
-      const g = current.g + 1;
-      const h = heuristic(nc, nr);
-      const f = g + h;
-
-      const existing = open.find(n => n.col === nc && n.row === nr);
-      if (existing) {
-        if (g < existing.g) {
-          existing.g = g;
-          existing.f = f;
-          existing.parent = current;
-        }
-        continue;
-      }
-
-      open.push({ col: nc, row: nr, g, h, f, parent: current });
+      visited[nIdx] = 1;
+      parent[nIdx] = cur;
+      queue[tail++] = nIdx;
     }
   }
 
-  return null; // No path found
+  return null;
 }
