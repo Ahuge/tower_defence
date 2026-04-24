@@ -20,17 +20,28 @@ import { availableParallelism } from 'node:os';
 const argv = process.argv.slice(2);
 const workersFlag = argv.find(a => a.startsWith('--workers='));
 const changeFlag = argv.find(a => a.startsWith('--change='));
+const seedsFlag = argv.find(a => a.startsWith('--seeds='));
 const workers = workersFlag ? parseInt(workersFlag.split('=')[1], 10) : availableParallelism();
 const singleChange = changeFlag ? changeFlag.split('=')[1] : null;
+const seedsOverride = seedsFlag ? parseInt(seedsFlag.split('=')[1], 10) : null;
 
+// Install jsdom shim first — Phaser touches window/document at
+// import time and explodes in plain Node. Must run BEFORE any
+// game module is imported.
+await import('../src/headless/harness/jsdom-setup.ts');
 const { runHarnessParallel, runOneChange } = await import('../src/headless/harness/Pool.ts');
 const { formatFullReport } = await import('../src/headless/harness/HarnessReport.ts');
+const { DEFAULT_MATRIX } = await import('../src/headless/harness/HarnessRunner.ts');
+
+const matrix = seedsOverride
+  ? { ...DEFAULT_MATRIX, seedsPerCell: seedsOverride }
+  : DEFAULT_MATRIX;
 
 const log = (msg) => console.error(msg);
 const t0 = Date.now();
 const results = singleChange
-  ? await runOneChange(singleChange, { workers, log })
-  : await runHarnessParallel({ workers, log });
+  ? await runOneChange(singleChange, { workers, log, matrix })
+  : await runHarnessParallel({ workers, log, matrix });
 const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 
 writeFileSync('harness-results.json', JSON.stringify(results, mapReplacer, 2));

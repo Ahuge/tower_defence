@@ -1,25 +1,27 @@
 /**
- * Parallel harness runner — spawns N worker_threads, distributes
- * the `baseline + catalog[]` task list across them, and collects
- * results as they stream back.
+ * Parallel harness runner — spawns N node child processes (one
+ * per CPU), distributes the `baseline + catalog[]` task list
+ * across them, and collects results via stdin/stdout JSON.
  *
- * Each worker is a fresh V8 isolate so per-change mutations to
- * `TOWER_TYPES` / `DIFFICULTIES` don't cross-contaminate. Workers
- * share the task result format with the serial runner — the caller
- * gets the same `HarnessResults` shape either way.
+ * Each child is a separate Node process (spawned with `--import
+ * tsx` so TypeScript loads natively). This gives:
+ *   - true heap isolation — TOWER_TYPES mutations in one child
+ *     don't leak into siblings
+ *   - clean `--import tsx` + `--experimental-vm-modules` handling
+ *     (worker_threads ignored these in testing)
+ *   - same-process-per-shard so startup cost is amortised across
+ *     the shard's tasks
  *
- * Node 24 runs `.ts` files directly for simple TS, but the game
- * systems use extensionless imports which native type-stripping
- * can't resolve. To run workers we rely on `tsx` (added as
- * devDep) loaded via `--import tsx`. If the user's Node setup
- * doesn't have it, fall back to running serially with a helpful
- * error message.
+ * Protocol: parent writes JSON objects, one per line, to the child's
+ * stdin; child writes one JSON object per line to stdout. No
+ * explicit close — when the parent's writable end finishes, the
+ * child's stdin EOFs and the child exits cleanly.
  */
-import { Worker } from 'node:worker_threads';
-import { pathToFileURL } from 'node:url';
-import { existsSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
+import { spawn, ChildProcess } from 'node:child_process';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+import { createInterface } from 'node:readline';
 import { BalanceChange, CATALOG, findChange } from './ChangeCatalog';
 import { FactionBestStats } from '../Batch';
 import {
@@ -35,21 +37,22 @@ interface Task {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER_ENTRY = resolve(HERE, 'worker.ts');
 
-/** Locate tsx so we can pass `--import tsx` to the worker. Returns
- *  null if tsx isn't installed — caller falls back to serial. */
-function findTsxEntry(): string | null {
-  // walk up from the project looking for node_modules/tsx/dist/esm/index.mjs
+/** Walk up from the harness module looking for node_modules/tsx.
+ *  Returns the bare specifier `tsx` if found — Node resolves it
+ *  via NODE_PATH when the child is launched with cwd at the
+ *  project root. */
+function hasTsx(): boolean {
   let dir = HERE;
   for (let i = 0; i < 8; i++) {
-    const candidate = join(dir, 'node_modules', 'tsx');
-    if (existsSync(candidate)) return 'tsx';
-    dir = dirname(dir);
-    if (dir === '/' || dir.endsWith(':\\')) break;
+    if (existsSync(join(dir, 'node_modules', 'tsx'))) return true;
+    const next = dirname(dir);
+    if (next === dir) break;
+    dir = next;
   }
-  return null;
+  return false;
 }
 
-/** Round-robin split of a flat task list across `n` workers. */
+/** Round-robin split — tasks[i] goes to shard[i % n]. */
 function splitTasks(tasks: Task[], n: number): Task[][] {
   const shards: Task[][] = [];
   for (let i = 0; i < n; i++) shards.push([]);
@@ -57,49 +60,72 @@ function splitTasks(tasks: Task[], n: number): Task[][] {
   return shards;
 }
 
-/** Spawn one worker and post its task shard. Resolves when the
- *  worker sends `{type:'done'}`. Collects taskDone messages into
- *  the supplied `sink`. */
+interface ShardResult {
+  results: Map<string, FactionBestStats[]>;
+  errors: { taskId: string; message: string }[];
+}
+
+/** Spawn one child process, pipe it the task shard, collect
+ *  results. Returns the merged shard result when the child exits. */
 function runShard(
   shard: Task[],
   matrix: HarnessMatrixSpec,
   sink: Map<string, FactionBestStats[]>,
   log: (msg: string) => void,
+  total: number,
+  progress: { done: number },
 ): Promise<void> {
+  if (shard.length === 0) return Promise.resolve();
   return new Promise((resolveP, rejectP) => {
-    const tsx = findTsxEntry();
-    const execArgv: string[] = tsx ? ['--import', 'tsx'] : [];
-    const worker = new Worker(pathToFileURL(WORKER_ENTRY), { execArgv });
-    worker.on('message', (msg: any) => {
-      if (msg?.type === 'taskDone') {
+    const projectRoot = resolve(HERE, '..', '..', '..');
+    const args: string[] = [];
+    if (hasTsx()) args.push('--import', 'tsx');
+    args.push(WORKER_ENTRY);
+    const child: ChildProcess = spawn(process.execPath, args, {
+      cwd: projectRoot,
+      stdio: ['pipe', 'pipe', 'inherit'],
+      env: process.env,
+    });
+
+    // Line-buffered JSON protocol.
+    const rl = createInterface({ input: child.stdout!, crlfDelay: Infinity });
+    rl.on('line', (line) => {
+      if (!line.trim()) return;
+      let msg: any;
+      try { msg = JSON.parse(line); } catch { return; }
+      if (msg.type === 'taskDone') {
         sink.set(msg.taskId, msg.best);
-        log(`[harness] ✓ ${msg.taskId} (${sink.size} of ${shard.length + /*baseline counted externally*/ 0}…)`);
-      } else if (msg?.type === 'error') {
+        progress.done++;
+        log(`[harness] ✓ ${msg.taskId.padEnd(16)} (${progress.done}/${total})`);
+      } else if (msg.type === 'error') {
         log(`[harness] ✗ ${msg.taskId ?? '?'}: ${msg.message}`);
-      } else if (msg?.type === 'done') {
-        worker.terminate();
+      }
+    });
+
+    child.on('error', (err) => rejectP(err));
+    child.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        rejectP(new Error(`worker exited with code ${code}`));
+      } else {
         resolveP();
       }
     });
-    worker.on('error', err => rejectP(err));
-    worker.on('exit', code => { if (code !== 0 && code !== null) rejectP(new Error(`worker exited ${code}`)); });
-    worker.postMessage({ type: 'run', matrix, tasks: shard });
+
+    // Send each task as a JSON line. Close stdin after — child
+    // reads until EOF then processes each task in order.
+    const payload = { matrix, tasks: shard };
+    child.stdin!.write(JSON.stringify(payload) + '\n');
+    child.stdin!.end();
   });
 }
 
 export interface RunHarnessParallelOpts {
   catalog?: BalanceChange[];
   matrix?: HarnessMatrixSpec;
-  /** Number of worker threads. Default: Math.min(catalog.length+1, os.availableParallelism()). */
   workers?: number;
-  /** Log hook — called with status lines. Defaults to no-op. */
   log?: (msg: string) => void;
 }
 
-/** Run the full harness sweep across N worker threads. Baseline is
- *  always task 0; remaining tasks are the catalog. Results are
- *  collected, deltas computed against baseline, shape matches the
- *  serial runner's return. */
 export async function runHarnessParallel(opts: RunHarnessParallelOpts = {}): Promise<HarnessResults> {
   const catalog = opts.catalog ?? CATALOG;
   const matrix = opts.matrix ?? DEFAULT_MATRIX;
@@ -112,20 +138,21 @@ export async function runHarnessParallel(opts: RunHarnessParallelOpts = {}): Pro
     ...catalog.map(c => ({ kind: 'change' as const, id: c.id })),
   ];
   const shards = splitTasks(tasks, workers);
+  const nonEmptyShardCount = shards.filter(s => s.length > 0).length;
 
-  log(`[harness] spawning ${workers} workers for ${tasks.length} tasks ` +
-      `(${shards.map(s => s.length).join('+')})`);
+  log(`[harness] spawning ${nonEmptyShardCount} worker processes for ${tasks.length} tasks ` +
+      `(shards: ${shards.map(s => s.length).filter(n => n > 0).join(',')})`);
 
   const sink = new Map<string, FactionBestStats[]>();
+  const progress = { done: 0 };
   const t0 = Date.now();
-  await Promise.all(shards.map(s => runShard(s, matrix, sink, log)));
+  await Promise.all(shards.map(s => runShard(s, matrix, sink, log, tasks.length, progress)));
   const elapsed = (Date.now() - t0) / 1000;
   log(`[harness] all shards done in ${elapsed.toFixed(1)}s`);
 
   const baseline = sink.get('baseline');
-  if (!baseline) throw new Error('baseline sweep missing from results — was task 0 run?');
+  if (!baseline) throw new Error('baseline sweep missing from results');
 
-  // Compute deltas, build ChangeResult entries in catalog order.
   const baseMap = new Map(baseline.map(b => [`${b.faction}|${b.difficulty}`, b.bestWinRate]));
   const changes: ChangeResult[] = [];
   for (const change of catalog) {
@@ -144,8 +171,6 @@ export async function runHarnessParallel(opts: RunHarnessParallelOpts = {}): Pro
   return { matrix, baseline, changes };
 }
 
-/** Convenience — resolve a catalog entry + apply + run it through
- *  the worker. Used for manual spot-checks. */
 export async function runOneChange(changeId: string, opts: RunHarnessParallelOpts = {}): Promise<HarnessResults> {
   const change = findChange(changeId);
   if (!change) throw new Error(`unknown change id: ${changeId}`);

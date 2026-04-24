@@ -1,71 +1,62 @@
 /**
- * Worker thread entry. Runs one or more sweeps (baseline + a
- * subset of changes) and posts results back to the parent.
+ * Worker process entry. Reads one JSON payload from stdin,
+ * runs the listed tasks (baseline + subset of changes), prints
+ * one JSON result per line to stdout, exits cleanly.
  *
- * Each worker has its own V8 heap + fresh module imports, so
- * `TOWER_TYPES` / `DIFFICULTIES` mutations by one worker don't
- * leak into siblings. That's the isolation that makes running
- * many A/B patches in parallel safe.
+ * Spawned as a separate Node process (not worker_thread) so
+ * `--import tsx` works normally and TOWER_TYPES mutations stay
+ * isolated per shard.
  *
- * Protocol (over parentPort):
- *   Parent → Worker: { type: 'run', matrix, tasks: [{ kind, id? }] }
- *   Worker → Parent: { type: 'progress', taskIdx, done, total }  (optional)
- *   Worker → Parent: { type: 'taskDone', taskIdx, best }
- *   Worker → Parent: { type: 'done' }
- *   Worker → Parent: { type: 'error', message }
+ * Protocol:
+ *   stdin  (single line, then EOF): { matrix, tasks: Task[] }
+ *   stdout (one JSON per line):     {type:'taskDone', taskId, best}
+ *                                   {type:'error',    taskId, message}
  */
-import { parentPort } from 'node:worker_threads';
+// Side-effect import — installs the jsdom shim so Phaser's
+// browser-globals don't explode at module load time. Must run
+// BEFORE any game import.
+import './jsdom-setup';
 import { runSingle, HarnessMatrixSpec } from './HarnessRunner';
 import { FactionBestStats } from '../Batch';
 
 interface Task {
-  /** 'baseline' runs with no patch applied; 'change' applies the
-   *  named change from the catalog. */
   kind: 'baseline' | 'change';
-  id?: string; // required when kind === 'change'
+  id?: string;
 }
 
-interface RunMessage {
-  type: 'run';
+interface Payload {
   matrix: HarnessMatrixSpec;
   tasks: Task[];
 }
 
-interface TaskDoneMessage {
-  type: 'taskDone';
-  taskIdx: number;
-  taskId: string;             // 'baseline' or the change id
-  best: FactionBestStats[];
+function send(obj: unknown): void {
+  process.stdout.write(JSON.stringify(obj) + '\n');
 }
 
-async function handleRun(msg: RunMessage): Promise<void> {
-  for (let i = 0; i < msg.tasks.length; i++) {
-    const task = msg.tasks[i];
+async function readStdin(): Promise<string> {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on('data', c => chunks.push(c));
+    process.stdin.on('end', () => resolvePromise(Buffer.concat(chunks).toString('utf8')));
+    process.stdin.on('error', rejectPromise);
+  });
+}
+
+async function main(): Promise<void> {
+  const raw = await readStdin();
+  const payload = JSON.parse(raw.trim()) as Payload;
+  for (const task of payload.tasks) {
+    const taskId = task.kind === 'change' ? (task.id ?? '?') : 'baseline';
     try {
-      const { best } = await runSingle(msg.matrix, task.kind === 'change' ? (task.id ?? null) : null);
-      const reply: TaskDoneMessage = {
-        type: 'taskDone',
-        taskIdx: i,
-        taskId: task.kind === 'change' ? (task.id ?? '?') : 'baseline',
-        best,
-      };
-      parentPort?.postMessage(reply);
+      const { best } = await runSingle(payload.matrix, task.kind === 'change' ? (task.id ?? null) : null);
+      send({ type: 'taskDone', taskId, best });
     } catch (err) {
-      parentPort?.postMessage({
-        type: 'error',
-        taskIdx: i,
-        taskId: task.kind === 'change' ? (task.id ?? '?') : 'baseline',
-        message: (err as Error).message,
-      });
+      send({ type: 'error', taskId, message: (err as Error).message });
     }
   }
-  parentPort?.postMessage({ type: 'done' });
 }
 
-parentPort?.on('message', (msg: any) => {
-  if (msg?.type === 'run') {
-    handleRun(msg as RunMessage).catch(err => {
-      parentPort?.postMessage({ type: 'error', message: (err as Error).message });
-    });
-  }
+main().catch(err => {
+  send({ type: 'error', taskId: '?', message: (err as Error).message });
+  process.exit(1);
 });
