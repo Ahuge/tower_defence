@@ -28,3 +28,6 @@ ios/App/App/capacitor.config.json
 ios/capacitor-cordova-ios-plugins/
 ios/DerivedData/
 
+harness-results.json
+harness-results.md
+harness-progress.jsonl
