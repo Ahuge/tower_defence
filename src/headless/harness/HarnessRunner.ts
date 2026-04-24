@@ -27,22 +27,34 @@ export interface HarnessMatrixSpec {
   waveCount: number;
 }
 
-/** Default matrix — ~1760 matches per change (44 cells × 40 seeds).
- *  Heavier sample per cell (±7% noise on a binary win rate) so
- *  balance deltas of ±10% land outside the noise floor reliably.
- *  Scale `seedsPerCell` up for tighter CIs or down for faster
- *  iteration — the rest of the matrix (factions × difficulties ×
- *  brains) is the authoritative tournament shape. */
+/** Default matrix used for BASELINE sweeps + GLOBAL changes.
+ *  11 factions × 4 difficulties × 4 brains × 50 seeds = 8,800
+ *  matches. Per-change sweeps (when the change targets a specific
+ *  faction) narrow to just that faction — see `narrowToFaction`.
+ *
+ *  50 seeds gives ±6.5% CI on a binary win rate; balance deltas
+ *  of ±10% land outside the noise floor reliably. */
 export const DEFAULT_MATRIX: HarnessMatrixSpec = {
   factions: ['mechanical', 'arcane', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'],
   difficulties: ['easy', 'normal', 'hard', 'insane'],
   maps: ['plains'],
   brains: ['balanced', 'rush', 'synergy', 'nature'],
   matchModes: ['standard'],
-  seedsPerCell: 40,
+  seedsPerCell: 50,
   baseSeed: 1,
   waveCount: 20,
 };
+
+/** Restrict a matrix to a single faction. Used for faction-
+ *  targeted changes — a Nature tweak can't affect Arcane's win
+ *  rate (towers don't overlap) so sweeping all 11 factions is
+ *  ~11× wasted compute. We still run the full matrix for
+ *  `baseline` and `global`-scoped changes so cross-faction
+ *  spillover (from difficulty ramp, kill-gold tweaks, etc.)
+ *  can be measured. */
+export function narrowToFaction(matrix: HarnessMatrixSpec, faction: string): HarnessMatrixSpec {
+  return { ...matrix, factions: [faction] };
+}
 
 export interface ChangeResult {
   id: string;
@@ -131,7 +143,13 @@ export async function runHarness(
     const change = catalog[i];
     log(`[harness] [${i + 1}/${catalog.length}] ${change.id} — ${change.description}`);
     const t0 = Date.now();
-    const out = await runOneSweep(matrix, change);
+    // Faction-scoped changes run on their target faction only — a
+    // Nature tweak can't affect Arcane, etc. Global changes +
+    // baseline use the full matrix.
+    const effectiveMatrix = change.faction !== 'global'
+      ? narrowToFaction(matrix, change.faction)
+      : matrix;
+    const out = await runOneSweep(effectiveMatrix, change);
     const delta = computeDelta(baseline.best, out.best);
     changes.push(makeChangeResult(change, out.best, delta));
     log(`[harness]   ${((Date.now() - t0) / 1000).toFixed(1)}s · netΔ=${sumValues(delta).toFixed(2)}`);
@@ -178,13 +196,21 @@ function sumValues(m: Map<string, number>): number {
 
 /** Entry for a worker — runs a single sweep (baseline or one
  *  change) and returns the best-brain table. Pool.ts calls this
- *  over the thread boundary. */
+ *  over the thread boundary.
+ *
+ *  Narrows the sweep matrix to `change.faction` when the change
+ *  is faction-scoped — saves ~10× the compute since a Nature
+ *  tweak can't affect Arcane's win rate. Global + baseline always
+ *  use the full matrix. */
 export async function runSingle(
   matrix: HarnessMatrixSpec,
   changeId: string | null,
 ): Promise<{ best: FactionBestStats[] }> {
   const change = changeId ? CATALOG.find(c => c.id === changeId) : null;
   if (changeId && !change) throw new Error(`runSingle: unknown change id "${changeId}"`);
-  const out = await runOneSweep(matrix, change ?? null);
+  const effectiveMatrix = change && change.faction !== 'global'
+    ? narrowToFaction(matrix, change.faction)
+    : matrix;
+  const out = await runOneSweep(effectiveMatrix, change ?? null);
   return { best: out.best };
 }

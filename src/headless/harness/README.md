@@ -54,17 +54,21 @@ to the cwd for re-analysis without re-running.
 
 ## Scale
 
-- Single sweep ≈ 1,760 matches ≈ 50–60 s single-threaded (44 cells × 40 seeds).
-- Catalog ≈ 33 tasks (baseline + 32 changes).
-- With 28 cores: roughly `33 / 28 × 55 ≈ 65 s` — ~1–2 min including
-  startup + result aggregation.
-- With 8 cores: ~4 × single-sweep time ≈ 4 min.
-- Serial (no workers): 33 × 55 s ≈ 30 min.
+- Baseline sweep ≈ 8,800 matches (11 factions × 4 difficulties × 4 brains × 50 seeds).
+- Per-change sweep (faction-scoped): narrows to just that faction = 800 matches.
+  - A Nature change can't affect Arcane's win rate, so the other 10 factions
+    are skipped. ~10× faster per change vs. sweeping all factions.
+- Per-change sweep (global-scoped): full 8,800 matches.
+- `seedsPerCell: 50` gives ±6.5% CI on a binary win rate — balance
+  deltas of ±10% land outside the noise floor reliably.
 
-`seedsPerCell: 40` gives ±7% CI on a binary win rate — tight
-enough to land ±10% balance deltas outside the noise floor.
-Drop to 12 for quick iteration (±14% CI), bump to 80 for
-publication-grade confidence.
+Total catalog (baseline + 32 faction-scoped changes):
+- Matches: 8,800 + 32 × 800 = **34,400**.
+- Runtime on 28 cores: ~40 s sim + 15-30 s startup/aggregation ≈ **~1 min**.
+- Serial: ~20 min.
+
+Add a `global` change (e.g. difficulty ramp) and each one adds
+8,800 matches (~18 s serial, much less with parallel).
 
 ## Target bands
 
