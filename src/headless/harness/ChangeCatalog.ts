@@ -578,6 +578,25 @@ const GLOBAL: BalanceChange[] = [
     }},
   { id: 'global.12', faction: 'global', description: '[big] Insane speed 1.35 → 1.2 (calmer pace)',
     apply: p => p.patchDifficulty('insane', 'speed', 1.2) },
+  // Compound re-shapes: start closer to the lower tier, ramp harder.
+  // Harness run 2026-04-24T16-55-42 showed hard/insane die at wave
+  // ~2-3 — the per-wave ramp never engages. Pull base toughness/speed
+  // down; keep count close to current so spatial pressure survives;
+  // keep gold penalty so the tier still feels economy-starved.
+  { id: 'global.13', faction: 'global', description: '[big][buff] Hard re-shape: soft start, steep ramp (tough 2.0→1.0, count 1.6→1.5, speed 1.2→1.1, gold unchanged, ramp 0.015→0.13 — anchors wave 10 to old hard wave 10)',
+    apply: p => {
+      p.patchDifficulty('hard', 'toughness', 1.0);
+      p.patchDifficulty('hard', 'count', 1.5);
+      p.patchDifficulty('hard', 'speed', 1.1);
+      p.patchDifficulty('hard', 'toughnessPerWave', 0.13);
+    }},
+  { id: 'global.14', faction: 'global', description: '[big][buff] Insane re-shape: soft start, steep ramp (tough 3.5→1.3, count 2.0→1.8, speed 1.35→1.2, gold unchanged, ramp 0.025→0.24 — anchors wave 10 to old insane wave 10)',
+    apply: p => {
+      p.patchDifficulty('insane', 'toughness', 1.3);
+      p.patchDifficulty('insane', 'count', 1.8);
+      p.patchDifficulty('insane', 'speed', 1.2);
+      p.patchDifficulty('insane', 'toughnessPerWave', 0.24);
+    }},
 ];
 
 export const CATALOG: BalanceChange[] = [

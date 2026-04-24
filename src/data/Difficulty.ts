@@ -33,17 +33,17 @@ export const DIFFICULTIES: Record<DifficultyLevel, DifficultyHints> = {
     toughnessPerWave: 0.005, // +0.5%/wave — wave 20 = 1.10×, wave 40 = 1.20×
   },
   hard: {
-    toughness: 1.3,
+    toughness: 1.0,
     count: 1.5,
     speed: 1.1,
     goldMult: 0.6,
-    toughnessPerWave: 0.04, // +4%/wave — wave 20 = 2.34×, wave 40 = 3.38×
+    toughnessPerWave: 0.13, // +13%/wave — wave 10 = 2.30× (matches old hard), wave 20 = 3.60×, wave 30 = 4.90×
   },
   insane: {
-    toughness: 1.8,
+    toughness: 1.3,
     count: 1.8,
     speed: 1.2,
     goldMult: 0.4,
-    toughnessPerWave: 0.06, // +6%/wave — wave 20 = 3.96×, wave 40 = 6.12×
+    toughnessPerWave: 0.24, // +24%/wave — wave 10 = 4.38× (matches old insane), wave 20 = 7.54×, wave 30 = 10.66×
   },
 };
