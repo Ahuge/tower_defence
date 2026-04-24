@@ -107,8 +107,10 @@ export class FrontierManager {
           break;
 
         case 'gamble': {
-          // All gamble income is bonus (baseIncome is 0)
-          const max = b.def.id.includes('_2') ? 30 : 15;
+          // All gamble income is bonus (baseIncome is 0). Roll in
+          // [0, gambleMax]; fall back to 15 for legacy entries with
+          // no explicit max.
+          const max = b.def.gambleMax ?? 15;
           bonusGold += Math.floor(rng() * (max + 1));
           break;
         }
