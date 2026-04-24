@@ -41,6 +41,16 @@ function makeChainingStub(label: string = 'stub'): any {
       if (prop === 'scene') return state.scene ?? undefined;
       if (prop === 'active') return state.active ?? true;
       if (prop === 'destroyed') return state.destroyed ?? false;
+      // String/number coercion — some game code concatenates or
+      // compares sprite fields (e.g. `'mobile_' + sprite.getData(...)`
+      // — getData returns the proxy, which must stringify to '' or
+      // the concat throws "Cannot convert object to primitive value".
+      // Empty string is also a correct answer for "no skin suffix".
+      if (prop === Symbol.toPrimitive) {
+        return (_hint: string) => '';
+      }
+      if (prop === 'toString') return () => '';
+      if (prop === 'valueOf') return () => 0;
       if (prop in state) return state[prop];
       // Fallback: return the proxy itself. Works for both method
       // calls (`.setDepth(5)` is `proxy(5)` which returns proxy)

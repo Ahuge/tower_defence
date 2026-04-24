@@ -17,6 +17,7 @@ import { TowerType } from '../../data/TowerTypes';
 import { FactionId } from '../../data/Factions';
 import { Grid } from '../Grid';
 import { PathPoint } from '../Pathfinding';
+import { WaveDefinition } from '../../data/WaveDefinitions';
 
 /** `{col, row}` tuple. Local copy since `Pos` isn't exported from
  *  `Maps.ts` and we want to avoid circular dependencies from the
@@ -102,6 +103,12 @@ export interface BotContext {
    *  purchases are only valid here. Brains can trust this flag
    *  instead of reasoning about wave state. */
   betweenWaves: boolean;
+  /** Optional — the next few wave definitions so wave-reactive
+   *  brains can bias tower picks toward counters for upcoming
+   *  creep types (e.g. splash vs. swarm, pierce vs. armored).
+   *  Driver may omit when wave data isn't readily available;
+   *  brains MUST behave correctly when this is empty/undefined. */
+  upcomingWaves?: WaveDefinition[];
 }
 
 /** Catalog entry the driver gives the brain so it can decide what

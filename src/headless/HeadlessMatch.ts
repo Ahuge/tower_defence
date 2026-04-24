@@ -232,6 +232,11 @@ async function runMatchInner(
       sendOptions: [],
       frontierOptions: frontierOptions(),
       betweenWaves: waveMgr.betweenWaves,
+      // Surface the next 3 waves so wave-lookahead brains can pick
+      // counter towers. The `waveMgr.currentWave` is already
+      // 1-indexed past the current wave, so `waves[currentWave]`
+      // is wave N+1 — exactly what we want as "upcoming".
+      upcomingWaves: waveMgr.waves.slice(waveMgr.currentWave, waveMgr.currentWave + 3),
     };
   }
 
