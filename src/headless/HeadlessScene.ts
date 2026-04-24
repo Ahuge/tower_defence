@@ -71,6 +71,12 @@ function makeChainingStub(label: string = 'stub'): any {
 export class HeadlessScene {
   readonly sim: SimClock = new SimClock();
 
+  /** Marker for entity code to detect headless mode and skip
+   *  purely-visual work (Creep.draw, Tower.drawTower). Read once
+   *  at entity construction time and cached on the instance — the
+   *  hot path only pays a single boolean check per tick. */
+  readonly isHeadless: boolean = true;
+
   /** `scene.add.*` factory — returns chaining stubs. */
   add = {
     graphics: () => makeChainingStub('graphics'),

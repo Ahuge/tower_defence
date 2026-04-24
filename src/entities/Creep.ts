@@ -68,6 +68,11 @@ export class Creep {
   private _scene: Phaser.Scene;
   private _creepTypeId: string = 'standard';
   private _creepFaction: FactionId | null = null;
+  /** Cached on construct — lets the hot path (draw() called every
+   *  tick) short-circuit with a single boolean check instead of
+   *  going through the chain of Phaser graphics Proxy traps. Never
+   *  set in the real game; always set in HeadlessScene. */
+  private _isHeadless: boolean = false;
 
   /** The creep type ID (e.g. 'standard', 'fast', 'boss') */
   get creepTypeId(): string { return this._creepTypeId; }
@@ -106,6 +111,7 @@ export class Creep {
     this._scene = scene;
     this._creepTypeId = creepTypeId;
     this._creepFaction = creepFaction ?? null;
+    this._isHeadless = (scene as any).isHeadless === true;
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(10);
 
@@ -282,6 +288,13 @@ export class Creep {
   }
 
   draw(): void {
+    // Headless: skip entirely — no sprites are rendered, trait draw
+    // handlers don't mutate sim state, and going through the Phaser
+    // Proxy stubs in HeadlessScene is the dominant cost per tick on
+    // large creep counts. Evasion's shimmer roll was the only RNG-
+    // consuming draw handler; that was moved to wallclock so skipping
+    // draw() is side-effect-free.
+    if (this._isHeadless) return;
     this.graphics.clear();
 
     const baseSize = this.isBoss ? TILE_SIZE * 0.45 : TILE_SIZE * 0.3;

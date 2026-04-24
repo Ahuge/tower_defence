@@ -114,6 +114,11 @@ export class Tower {
    *  per rotating tower per tick. Invalidated per call of update(). */
   private _frameTarget: Creep | null = null;
   private _frameTargetValid: boolean = false;
+  /** Cached on construct — skips drawTower() entirely in headless.
+   *  drawTower only mutates graphics/sprite state (all Phaser Proxy
+   *  stubs in headless) plus _prevX/_prevY which are also read only
+   *  inside drawTower, so short-circuiting is side-effect-free. */
+  private _isHeadless: boolean = false;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
@@ -148,6 +153,7 @@ export class Tower {
     this._scene = scene;
     this._prevX = this.x;
     this._prevY = this.y;
+    this._isHeadless = (scene as any).isHeadless === true;
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(5);
 
@@ -160,6 +166,12 @@ export class Tower {
   }
 
   drawTower(): void {
+    // Headless: skip entirely. drawTower only mutates graphics/sprite
+    // state (all Phaser Proxy stubs in headless) plus _prevX/_prevY,
+    // which are read only inside this function. No tower draw trait
+    // handlers are registered (unlike creeps), so no RNG leaks to
+    // worry about here.
+    if (this._isHeadless) return;
     this.graphics.clear();
 
     // Update sprite position and animation
