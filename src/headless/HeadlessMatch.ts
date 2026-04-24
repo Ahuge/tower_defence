@@ -43,6 +43,8 @@ import { BRAIN_REGISTRY } from '../systems/bots/BotBrain';
 import '../systems/traits/TowerTraitHandlers';
 import '../systems/traits/CreepTraitHandlers';
 import '../systems/bots/brains/BalancedBrain';
+import '../systems/bots/brains/RushBrain';
+import '../systems/bots/brains/SynergyBrain';
 import { HeadlessScene } from './HeadlessScene';
 import { MatchConfig, MatchResult } from './types';
 import { seedRng } from '../systems/Rng';

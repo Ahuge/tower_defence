@@ -10,7 +10,7 @@
  * so it doesn't run during regular test passes).
  */
 import { describe, it, expect, test } from 'vitest';
-import { expandMatrix, runBatch, aggregate, formatReport } from './Batch';
+import { expandMatrix, runBatch, aggregate, formatReport, aggregateByFactionBest, formatFactionBestReport } from './Batch';
 
 describe('Batch', () => {
   it('expandMatrix produces a full cartesian product', () => {
@@ -65,7 +65,11 @@ test.skip('runBalanceSweep — full faction matrix', async () => {
     factions: ['mechanical', 'arcane', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'],
     difficulties: ['easy', 'normal', 'hard', 'insane'],
     maps: ['plains'],
-    brains: ['balanced'],
+    // Three brains run in tournament — the aggregator picks the
+    // winner per (faction, difficulty) and reports its win rate as
+    // the faction's ceiling. Approximates "best-case competent
+    // play" without hand-tuning one brain per faction.
+    brains: ['balanced', 'rush', 'synergy'],
     matchModes: ['standard'],
     seedsPerCell: 20,
     baseSeed: 1,
@@ -81,8 +85,15 @@ test.skip('runBalanceSweep — full faction matrix', async () => {
   });
   const wallMs = Date.now() - wallStart;
   const stats = aggregate(results);
+  const best = aggregateByFactionBest(stats);
   // eslint-disable-next-line no-console
   console.log(`\n[sweep] ${results.length} matches in ${(wallMs / 1000).toFixed(1)}s (${Math.round(results.length / (wallMs / 1000))}/s)\n`);
+  // eslint-disable-next-line no-console
+  console.log('=== Best-of-brains per faction ===\n');
+  // eslint-disable-next-line no-console
+  console.log(formatFactionBestReport(best));
+  // eslint-disable-next-line no-console
+  console.log('\n=== Full per-brain breakdown ===\n');
   // eslint-disable-next-line no-console
   console.log(formatReport(stats));
 }, 10 * 60_000);

@@ -154,3 +154,76 @@ function avg(xs: number[]): number {
 function pct(x: number): string {
   return `${(x * 100).toFixed(1)}%`;
 }
+
+export interface FactionBestStats {
+  faction: string;
+  difficulty: string;
+  bestBrain: string;
+  bestWinRate: number;
+  bestAvgWave: number;
+  /** Per-brain win rates, in the order the brains appeared in the
+   *  input spec. Included so consumers can see which brain won and
+   *  by how much over the runner-up. */
+  perBrain: { brain: string; winRate: number; avgWave: number }[];
+}
+
+/** "Tournament" aggregation — for each (faction, difficulty) cell,
+ *  pick the brain that scored highest and report its win rate as
+ *  the faction's effective ceiling. This is the closest cheap signal
+ *  we have for "best-case competent play" without hand-tuning a
+ *  brain per faction.
+ *
+ *  Call after `aggregate(results)` — takes the per-cell stats and
+ *  groups by (faction, difficulty). Maps over all brains seen and
+ *  returns the winner. */
+export function aggregateByFactionBest(stats: CellStats[]): FactionBestStats[] {
+  const groups = new Map<string, CellStats[]>();
+  for (const s of stats) {
+    // key format: `faction|difficulty|map|brain|mode` — we group
+    // by the prefix up to the brain.
+    const parts = s.key.split('|');
+    const [faction, difficulty] = [parts[0], parts[1]];
+    const groupKey = `${faction}|${difficulty}`;
+    const arr = groups.get(groupKey);
+    if (arr) arr.push(s); else groups.set(groupKey, [s]);
+  }
+  const out: FactionBestStats[] = [];
+  for (const [key, cells] of groups) {
+    const [faction, difficulty] = key.split('|');
+    cells.sort((a, b) => b.winRate - a.winRate);
+    const best = cells[0];
+    const perBrain = cells.map(c => ({
+      brain: c.key.split('|')[3],
+      winRate: c.winRate,
+      avgWave: c.avgWaveReached,
+    }));
+    out.push({
+      faction, difficulty,
+      bestBrain: best.key.split('|')[3],
+      bestWinRate: best.winRate,
+      bestAvgWave: best.avgWaveReached,
+      perBrain,
+    });
+  }
+  out.sort((a, b) => a.faction.localeCompare(b.faction) || a.difficulty.localeCompare(b.difficulty));
+  return out;
+}
+
+/** Format the "best brain per faction" view as a markdown table.
+ *  Includes per-brain breakdown so you can see whether the winner
+ *  dominated or edged out its rival. */
+export function formatFactionBestReport(best: FactionBestStats[]): string {
+  if (best.length === 0) return '_(no data)_';
+  const brainNames = best[0].perBrain.map(b => b.brain);
+  const header = '| faction | difficulty | best | win% | avg wave | ' + brainNames.map(b => `${b} win%`).join(' | ') + ' |';
+  const sep = '|' + '---|'.repeat(4 + brainNames.length + 1);
+  const rows = [header, sep];
+  for (const b of best) {
+    const cols = [
+      b.faction, b.difficulty, b.bestBrain, pct(b.bestWinRate), b.bestAvgWave.toFixed(1),
+      ...b.perBrain.map(x => pct(x.winRate)),
+    ];
+    rows.push('| ' + cols.join(' | ') + ' |');
+  }
+  return rows.join('\n');
+}
