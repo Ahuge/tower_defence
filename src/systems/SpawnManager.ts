@@ -61,6 +61,16 @@ export class SpawnManager {
    * non-co-op modes are unaffected.
    */
   private countMultiplier: number = 1;
+  /**
+   * Per-wave HP ramp for Circle Co-op. Player DPS compounds fast
+   * once zones have frontier-paid-for upgrades, so creep HP needs
+   * its own additive ramp on top of difficulty + the natural
+   * wave-count scaling to keep late game honest. Callback form so
+   * the coop side can plug in `(wave) => 1 + wave * 0.035` without
+   * SpawnManager caring about wave number at construction time.
+   * Default returns 1 (no change) — non-coop modes stay identical.
+   */
+  private hpWaveMultiplier: (wave: number) => number = () => 1;
 
   constructor(scene: Phaser.Scene, events: EventBus, difficulty: DifficultyHints, seed: number = 0) {
     this.scene = scene;
@@ -92,6 +102,15 @@ export class SpawnManager {
     this.countMultiplier = Math.max(1, mult);
   }
 
+  /** Callback that returns an extra HP multiplier per wave. Only
+   *  wired in Circle Co-op today (solo / 1v1 leave it at the
+   *  default `() => 1`). The callback is evaluated once per
+   *  wave-start so the returned factor is stable across the whole
+   *  wave's spawns. */
+  setHpWaveMultiplier(fn: (wave: number) => number): void {
+    this.hpWaveMultiplier = fn;
+  }
+
   setFlyingPath(entry: { col: number; row: number }, exit: { col: number; row: number }): void {
     this.flyingPath = [
       { col: entry.col, row: entry.row },
@@ -101,6 +120,7 @@ export class SpawnManager {
 
   startWave(waveDef: WaveDefinition, numPaths: number = 1): void {
     this.spawnQueue = [];
+    const hpWaveBoost = this.hpWaveMultiplier(waveDef.wave);
 
     for (const group of waveDef.groups) {
       const ct = CREEP_TYPES[group.creepType];
@@ -118,7 +138,7 @@ export class SpawnManager {
         const pathIndex = numPaths > 1 ? (i % numPaths) : 0;
         this.spawnQueue.push({
           creepType: group.creepType,
-          hpScale: group.hpScale * resolved.hpMult,
+          hpScale: group.hpScale * resolved.hpMult * hpWaveBoost,
           speedScale: group.speedScale * resolved.speedMult,
           isBoss: waveDef.isBoss,
           groupBurst,

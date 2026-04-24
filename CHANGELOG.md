@@ -2,6 +2,14 @@
 
 ## 2026-04-23
 
+### Circle Co-op late-game rebalance
+Coop started hard on insane but trended *easier* wave after wave — team DPS compounds once zones fill out, while creep HP scaling plateaus. Three coordinated nerfs + one buff:
+
+- **Creep HP ramp**: new per-wave coop multiplier `1 + wave × 0.035` on top of existing difficulty + natural scaling. Wave 10 ≈ 1.35×, wave 25 ≈ 1.88×, wave 40 = 2.4×. Stacks with insane's 3.5× base so wave 40 insane-coop creeps are roughly 8.4× solo-normal HP. Plugs into `SpawnManager` via a new `setHpWaveMultiplier` callback — non-coop modes leave it at the default `() => 1` so solo / 1v1 are untouched.
+- **Kill-gold nerf**: `CircleDeathHandler.killGoldMult` now `× 0.7` in coop. Team total drops to 70% of solo per kill; after the 50/50 killer/spawner split each player's share sits at 35%.
+- **Frontier income buff**: `FrontierManager.incomeMultiplier = 1.5` in coop. Applies to `baseIncome` (the per-wave passive), the per-wave bonus slice for dig/grow/gamble, overcharge bursts, and grow harvests. Meta-economy stays a strong pivot despite the kill-gold cut.
+- **Solo untouched**: every knob defaults to a no-op so standard / gauntlet / 1v1 / endless scaling is identical to before the commit.
+
 ### CPU brain: gate meta-economy behind having a fighting tower
 `BalancedBrain.decide()` used to run its meta-economy pass (frontier + sends) at the top of every between-waves tick with a 70% commit roll. On wave 0 with an empty board the bot could blow its whole opening budget on a frontier building and enter wave 1 with zero defense. Added a gate: meta is only considered once the bot owns at least one **non-wall tower** — i.e. something with actual damage output. Placing a single wall then buying frontier is still blocked, since a wall-only zone has no DPS. A new `hasFightingTower(ctx)` helper reads from `ctx.placedTowers` so the check is cheap per-tick.
 

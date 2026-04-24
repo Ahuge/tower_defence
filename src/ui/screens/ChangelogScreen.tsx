@@ -11,6 +11,16 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-23',
+    title: 'Circle Co-op late-game rebalance',
+    changes: [
+      'Coop creep HP ramps +3.5% per wave on top of existing scaling — team DPS was outpacing creep HP late',
+      'Kill gold in coop multiplied by 0.7 (was 1.0). Team total = 70% of solo, each player share = 35% after the 50/50 split',
+      'Frontier income multiplier = 1.5× in coop — applies to passive income, per-wave bonuses, overcharge bursts, and grow harvests',
+      'Solo / 1v1 / endless scaling is unchanged — every knob defaults to a no-op outside coop',
+    ],
+  },
+  {
+    date: '2026-04-23',
     title: 'CPU brain: must have a fighting tower before buying frontier/sends',
     changes: [
       'FIX: BalancedBrain rolled meta-economy at the top of every between-waves tick — on wave 0, the 70% commit chance meant the bot could blow its budget on frontier before placing any tower',

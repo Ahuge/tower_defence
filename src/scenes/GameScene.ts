@@ -536,6 +536,11 @@ export class GameScene extends Phaser.Scene {
       // Tag every wave creep with its spawner's owner so the shared
       // kill-gold split knows who to pay the spawn-owner half.
       this.spawner.setTrackSpawnOwnership(true);
+      // Coop late-game scaling: creep HP gets an extra additive
+      // ramp per wave. Wave 10 ≈ 1.35×, wave 25 ≈ 1.875×, wave 40
+      // = 2.4×. Compounds with difficulty + the natural wave-count
+      // curve, which weren't keeping up with stacked team DPS.
+      this.spawner.setHpWaveMultiplier((wave) => 1 + wave * 0.035);
     }
     this.inputMgr = new InputManager(this, this.eventBus);
     if (this.layout.gridRows !== GRID_ROWS) {
@@ -698,6 +703,13 @@ export class GameScene extends Phaser.Scene {
     };
     this.gameMode.createUI(gameModeCtx);
 
+    // Coop frontier buff: +50% on baseIncome + per-wave bonus
+    // + overcharge / harvest payouts. Balances against the coop
+    // kill-gold nerf so the meta-economy path stays compelling.
+    if (this.circle && this.gameMode instanceof BaseFrontierMode) {
+      this.gameMode.frontierMgr.incomeMultiplier = 1.5;
+    }
+
     this.incomeDisplay = new IncomeDisplay(this);
 
     // Hide Phaser HUD — DOM takes over.
@@ -714,10 +726,15 @@ export class GameScene extends Phaser.Scene {
       : this.circle
         ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
         : new StandardLeakHandler(this.eventLog, this.statsTracker, () => this.towerMgr.towers);
+    // Coop kill-gold nerf: with the 50/50 killer-spawner split and
+    // teams of 2-4 players, an unscaled mult left coop with way
+    // more team gold than solo — players outgrew creep HP fast.
+    // 0.7× trims each share to 35% of solo, team total to 70%.
+    const circleKillGoldMult = (this.modifier?.killGoldMult ?? 1) * 0.7;
     const circleDeathHandler = this.circle
       ? new CircleDeathHandler(
           this.economy, this.statsTracker, this.eventBus,
-          this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex,
+          circleKillGoldMult, this.towerOwners, this.circle.playerIndex,
           {
             // Broadcast each local kill so other peers update their
             // rosters + credit their half of the shared gold.

@@ -23,6 +23,14 @@ export class FrontierManager {
   private faction: FactionId | null;
   buildings: OwnedBuilding[] = [];
   availableBuildings: FrontierBuilding[];
+  /**
+   * Flat multiplier applied to every active building's baseIncome
+   * when `recalculateBaseIncome` runs. Circle Co-op sets this to
+   * 1.5× to encourage meta investment — the coop kill-gold nerf
+   * shifts earning pressure onto frontier, so we buff the return.
+   * 1× (no change) for every other mode.
+   */
+  incomeMultiplier: number = 1;
 
   constructor(events: EventBus, incomeMgr: IncomeManager, faction: FactionId | null) {
     this.events = events;
@@ -106,16 +114,19 @@ export class FrontierManager {
       }
     }
 
-    return bonusGold;
+    // Apply the mode-level income multiplier (Coop = 1.5×) to the
+    // per-wave bonus slice too, otherwise dig/grow/gamble buildings
+    // would lag behind steady/overcharge in coop's buffed economy.
+    return Math.round(bonusGold * this.incomeMultiplier);
   }
 
   // Faction-specific actions - return gold earned
   overchargeBuilding(idx: number): number {
     const building = this.getActiveBuildings()[idx];
     if (!building || building.def.mechanic !== 'overcharge' || building.dormantWaves > 0) return 0;
-    const burst = building.def.baseIncome * 3;
+    const burst = building.def.baseIncome * 3 * this.incomeMultiplier;
     building.dormantWaves = 2;
-    return burst;
+    return Math.round(burst);
   }
 
   digDeeper(idx: number): { success: boolean; collapsed: boolean } {
@@ -133,7 +144,7 @@ export class FrontierManager {
   harvestGrowth(idx: number): number {
     const building = this.getActiveBuildings()[idx];
     if (!building || building.def.mechanic !== 'grow') return 0;
-    const payout = building.growthStacks * 5;
+    const payout = Math.round(building.growthStacks * 5 * this.incomeMultiplier);
     building.growthStacks = 0;
     return payout;
   }
@@ -146,7 +157,7 @@ export class FrontierManager {
       totalGold += b.def.baseIncome * 3;
       b.dormantWaves = 2;
     }
-    return totalGold;
+    return Math.round(totalGold * this.incomeMultiplier);
   }
 
   digAllOfType(defId: string): { successes: number; collapses: number } {
@@ -194,7 +205,7 @@ export class FrontierManager {
         total += b.def.baseIncome;
       }
     }
-    this.incomeMgr.frontierIncome = total;
+    this.incomeMgr.frontierIncome = Math.round(total * this.incomeMultiplier);
   }
 
   getActiveBuildings(): OwnedBuilding[] {
