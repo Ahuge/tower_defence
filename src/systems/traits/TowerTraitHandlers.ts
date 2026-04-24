@@ -422,7 +422,22 @@ registerHitEffect('slow_on_hit', (trait: Trait, ctx: HitContext) => {
 });
 
 registerHitEffect('gold_on_hit', (trait: Trait, ctx: HitContext) => {
-  ctx.goldEarned += (trait.amount ?? 1) * ctx.hitTargets.length;
+  // `chance` is optional — when set, each hit has a
+  // `chance` probability of paying out `amount`. Preserves
+  // faction identity (Void = gambling) and lets balance tune
+  // EV without changing trait call-sites.
+  //
+  // Roll is per-target so the hit on a single splashed creep
+  // doesn't collapse everyone else's payout to 0.
+  const amount = trait.amount ?? 1;
+  const chance = trait.chance ?? 1;
+  if (chance >= 1) {
+    ctx.goldEarned += amount * ctx.hitTargets.length;
+    return;
+  }
+  for (let i = 0; i < ctx.hitTargets.length; i++) {
+    if (rng() < chance) ctx.goldEarned += amount;
+  }
 });
 
 registerHitEffect('burn_dot', (trait: Trait, ctx: HitContext) => {

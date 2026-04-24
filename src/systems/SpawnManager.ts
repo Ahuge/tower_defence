@@ -120,7 +120,15 @@ export class SpawnManager {
 
   startWave(waveDef: WaveDefinition, numPaths: number = 1): void {
     this.spawnQueue = [];
-    const hpWaveBoost = this.hpWaveMultiplier(waveDef.wave);
+    // Stack two HP modifiers onto every creep's base scaling:
+    //  * difficulty ramp — per-wave additive multiplier from the
+    //    selected `DifficultyHints.toughnessPerWave`. Applies to
+    //    every mode so the late game has teeth.
+    //  * coop ramp — independent multiplier Circle Co-op sets via
+    //    `setHpWaveMultiplier`, stacking on top to offset team DPS.
+    const difficultyWaveBoost = 1 + waveDef.wave * (this.difficulty.toughnessPerWave ?? 0);
+    const coopWaveBoost = this.hpWaveMultiplier(waveDef.wave);
+    const hpWaveBoost = difficultyWaveBoost * coopWaveBoost;
 
     for (const group of waveDef.groups) {
       const ct = CREEP_TYPES[group.creepType];

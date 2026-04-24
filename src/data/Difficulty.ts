@@ -7,6 +7,12 @@ export interface DifficultyHints {
   count: number;      // 1.0 = normal, 1.5 = 50% more spawns
   speed: number;      // 1.0 = normal, 1.2 = 20% faster
   goldMult: number;   // 1.0 = normal, 0.8 = 20% less gold
+  /** Per-wave additive toughness ramp. Effective HP multiplier
+   *  is `toughness × (1 + wave × toughnessPerWave)`. Keeps the
+   *  late game from collapsing under stacked player DPS — without
+   *  it, wave 30 creeps died as fast as wave 10 creeps on every
+   *  difficulty. 0 = no ramp (easy stays as-authored). */
+  toughnessPerWave: number;
 }
 
 export type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
@@ -17,23 +23,27 @@ export const DIFFICULTIES: Record<DifficultyLevel, DifficultyHints> = {
     count: 0.8,
     speed: 0.9,
     goldMult: 1.2,
+    toughnessPerWave: 0,
   },
   normal: {
     toughness: 1.0,
     count: 1.0,
     speed: 1.0,
     goldMult: 1.0,
+    toughnessPerWave: 0.005, // +0.5%/wave — wave 20 = 1.10×, wave 40 = 1.20×
   },
   hard: {
     toughness: 2.0,
     count: 1.6,
     speed: 1.2,
     goldMult: 0.6,
+    toughnessPerWave: 0.015, // +1.5%/wave — wave 20 = 2.60×, wave 40 = 3.20×
   },
   insane: {
     toughness: 3.5,
     count: 2.0,
     speed: 1.35,
     goldMult: 0.4,
+    toughnessPerWave: 0.025, // +2.5%/wave — wave 20 = 5.25×, wave 40 = 7.0×
   },
 };
