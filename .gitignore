@@ -30,4 +30,6 @@ ios/DerivedData/
 
 harness-results.json
 harness-results.md
+harness-report.md
 harness-progress.jsonl
+harness-runs/
