@@ -42,6 +42,42 @@ const HERO_FACTION: Record<string, FactionId> = {
   berserker: 'infernal', paladin: 'celestial', monk: 'psionic', ranger: 'harmonic',
 };
 
+/** Map FactionId → render-side themeId. The render-side ids match the
+ *  keys in `THEMES` (TerrainTheme.ts) and the entries in
+ *  `FACTION_TERRAINS` (TerrainManager.ts). Used by the terrain
+ *  override resolver: store-equipped 'theme_arcane' → faction 'arcane'
+ *  → render themeId 'arcane_crystal'. */
+const FACTION_TO_THEME_ID: Record<FactionId, string> = {
+  arcane: 'arcane_crystal', mechanical: 'factory', nature: 'ancient_grove',
+  void: 'void_rift', military: 'urban', aliens: 'hive',
+  cypherpunk: 'circuit', infernal: 'hellscape', celestial: 'marble',
+  psionic: 'neural', harmonic: 'concert', random: 'generic',
+};
+
+/** Modes that should ALWAYS render the map's authored theme — the
+ *  store override is suppressed. Faction Gauntlet would defeat the
+ *  unlock-the-look loop; custom maps were authored with a specific
+ *  visual intent the player chose. */
+const OVERRIDE_SUPPRESSED_MODES = new Set(['gauntlet']);
+
+export interface ActiveTerrainContext {
+  /** The match mode this scene is running. */
+  matchMode: string;
+  /** The map definition's authored theme. Resolver falls back here
+   *  when no override applies. */
+  mapTheme: string | undefined;
+  /** True if the current map is a player-authored custom map.
+   *  Custom maps stay locked to the editor-saved theme. */
+  isCustomMap?: boolean;
+  /** In coop, the host's broadcast theme — guests render the host's
+   *  choice. Set by the multiplayer layer once `game_start` lands.
+   *  Ignored outside coop. */
+  hostOverrideTheme?: string | null;
+  /** True if this client is the coop host. Hosts render their own
+   *  local equipped override; guests render `hostOverrideTheme`. */
+  isCoopHost?: boolean;
+}
+
 class SkinManagerClass {
   private getSuffix(slotKey: string): string | null {
     const state = StorePersistence.load();
@@ -120,6 +156,48 @@ class SkinManagerClass {
       theme_cypherpunk: 'cypherpunk', theme_harmonic: 'harmonic',
     };
     return THEME_TO_FACTION[state.equippedTerrain] ?? null;
+  }
+
+  /** Map a FactionId to its render-side themeId — the key used by
+   *  THEMES (TerrainTheme.ts) and FACTION_TERRAINS (TerrainManager.ts).
+   *  Used by the terrain override resolver and by the random map
+   *  generator's theme picker. */
+  factionToThemeId(faction: FactionId): string {
+    return FACTION_TO_THEME_ID[faction] ?? 'generic';
+  }
+
+  /** Resolve the active themeId for a scene about to render. Single
+   *  source of truth: GameScene.drawGrid asks here, gets back the
+   *  themeId to feed into TerrainManager.compute().
+   *
+   *  Resolution order:
+   *    1. Faction Gauntlet  → ignore override; map default
+   *    2. Custom maps       → ignore override; map default
+   *    3. Coop guest        → host's broadcast theme; falls back to map default
+   *    4. Coop host / 1v1 / single-player → local equipped override; falls back to map default
+   *
+   *  Multiplayer note: 1v1 Versus runs each player on their own
+   *  grid, so each peer applies their own override independently —
+   *  no host concept. Coop shares a grid, so only one theme can
+   *  render; the host's choice wins (see #3 / #4).
+   */
+  getActiveTerrainTheme(ctx: ActiveTerrainContext): string {
+    const fallback = ctx.mapTheme ?? 'generic';
+
+    if (OVERRIDE_SUPPRESSED_MODES.has(ctx.matchMode)) return fallback;
+    if (ctx.isCustomMap) return fallback;
+
+    // Coop guest: render whatever the host broadcast. Falls back to
+    // map default when the host hasn't broadcast yet (early frames
+    // before `game_start` is processed) or has no override equipped.
+    if (ctx.matchMode === 'circle_coop' && ctx.isCoopHost === false) {
+      return ctx.hostOverrideTheme ?? fallback;
+    }
+
+    // Local override applies for everyone else.
+    const faction = this.getTerrainOverrideFaction();
+    if (!faction) return fallback;
+    return this.factionToThemeId(faction);
   }
 
   isTextureLoaded(scene: Phaser.Scene, key: string): boolean {

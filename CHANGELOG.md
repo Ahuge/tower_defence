@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-04-24
+
+### Terrain override: equipped store theme now actually overrides the map tileset
+
+The store had `equipTerrain(themeId)` writing to `state.equippedTerrain` and `SkinManager.getTerrainOverrideFaction()` reading it back, but the getter was never called from the rendering pipeline — equipping a terrain theme did nothing visible.
+
+Single resolver now: **`SkinManager.getActiveTerrainTheme(ctx)`**. Resolution order:
+
+1. **Faction Gauntlet** → ignore override; use the map's authored theme. Overriding here would defeat the unlock-the-look loop.
+2. **Custom maps** → ignore override; use the editor-saved theme. Custom maps were authored with intentional theming.
+3. **Coop guest** → render the host's broadcast theme (shared grid → single visual; host wins).
+4. **Coop host / 1v1 / single-player** → local equipped override; falls back to map default if nothing equipped.
+
+`GameScene.drawGrid` was the only render call site that picked a themeId; it now routes through the resolver. The faction → render-themeId map (e.g. `arcane → arcane_crystal`, `infernal → hellscape`) is centralised in `SkinManager.factionToThemeId`.
+
+**Coop wire piece**: the host's resolved themeId rides on the `circle_game_start` message as a new `hostTerrainOverride?: string | null` field. Joiners read it on receive and stash it on `CircleManager.hostTerrainOverride`; `GameScene` reads from there. Backwards-compat: the field is optional, so older clients still parse the message (they just won't see the host's terrain).
+
+In 1v1 Versus each peer renders their own grid, so each applies their own equipped override independently — no host concept needed for that mode.
+
+### GameScene: sync DOM lives/gold at end of create()
+
+Push the correct lives + gold + income into the store explicitly at the end of `create()`. Uses the same `displayLives` selection as the update loop (`arenaManager.baseHp` for hero defence, else `this.lives`) so Hero Defence matches start with the right number.
+
 ## 2026-04-17 (cross-platform, cont.)
 
 ### Phase 5 — real native plugin integrations (Android)
