@@ -34,29 +34,78 @@ import { TILE_SIZE } from '../../../config';
 
 type Phase = 'building-maze' | 'filling-dps' | 'saving-ultimate' | 'panic';
 
-const PANIC_LIVES = 5;
-const MAZE_SATURATION_THRESHOLD = 0;
-const MAX_WALL_PLACEMENTS = 8;
-/** Coverage (path cells within any DPS tower's range, summed across
- *  all paths) above which the brain prefers to upgrade existing
- *  towers rather than place new ones. Calibrated per path length:
- *  `HIGH_COVERAGE_RATIO × (total path cells × paths)`. */
-const HIGH_COVERAGE_RATIO = 1.5;
-/** Once this many non-wall towers are placed, the ultimate-save
- *  phase can activate. Below this we still need more raw coverage. */
-const MIN_DPS_TOWERS_FOR_ULT = 4;
-/** Start buying frontier / saving for ultimate once lives are at
- *  least this high. Keeps panic-mode responsive — you don't save
- *  for an ultimate while bleeding out. */
-const STABLE_LIVES_FOR_ULT = 15;
+/** All numeric knobs that drive BalancedBrain decisions. Centralised
+ *  so an external search loop (scripts/brain-search.mjs) can sweep
+ *  them. Defaults preserve historical behaviour. */
+export interface BalancedBrainParams {
+  /** Lives ≤ this triggers panic phase (slow-tower spam). */
+  panicLives: number;
+  /** Wall-extension gain below which the maze phase ends. */
+  mazeSaturationThreshold: number;
+  /** Hard cap on walls before forced switch to DPS phase. */
+  maxWallPlacements: number;
+  /** Coverage ratio above which upgrading beats placing more DPS. */
+  highCoverageRatio: number;
+  /** Non-wall towers required before the ultimate-save phase opens. */
+  minDpsTowersForUlt: number;
+  /** Lives required for the brain to commit budget to the ultimate. */
+  stableLivesForUlt: number;
+  /** 1.0 = always pick most expensive affordable tower (legacy);
+   *  0.0 = always pick cheapest. Linear interpolation in cost rank. */
+  expensiveBias: number;
+  /** Probability of buying a frontier between waves (when a fighting
+   *  tower already exists). */
+  frontierBuyChance: number;
+  /** Probability of buying a send between waves (sandwiched after
+   *  the frontier roll). */
+  sendBuyChance: number;
+  /** Multiplier for the aura-adjacency bonus on DPS cell scoring. */
+  auraAdjacencyBonus: number;
+  /** Window of upcoming waves to scan for the dominant creep type. */
+  waveLookaheadWindow: number;
+  /** Range (tiles) used in upgrade-target scoring — proxy for how
+   *  far past a tower's actual range we still credit "near path". */
+  upgradeCoverageRange: number;
+}
+
+export const DEFAULT_BALANCED_PARAMS: BalancedBrainParams = {
+  panicLives: 5,
+  mazeSaturationThreshold: 0,
+  maxWallPlacements: 8,
+  highCoverageRatio: 1.5,
+  minDpsTowersForUlt: 4,
+  stableLivesForUlt: 15,
+  expensiveBias: 1.0,
+  frontierBuyChance: 0.4,
+  sendBuyChance: 0.3,
+  auraAdjacencyBonus: 0.25,
+  waveLookaheadWindow: 3,
+  upgradeCoverageRange: 4,
+};
 
 /** Tile-distance within which a tower is "adjacent" for aura
  *  buffing. Matches the engine's Chebyshev-1 adjacency convention
  *  used by `adjacency_buff` and the Harmonic aura radii. */
 const ADJACENCY_TILES = 1;
 
+/** Read params from the BALANCED_BRAIN_PARAMS env var (JSON-encoded).
+ *  Used by the brain-search loop to inject configs into worker
+ *  processes without code changes. Missing/invalid → defaults. */
+function loadParamsFromEnv(): BalancedBrainParams {
+  const raw = (typeof process !== 'undefined' && process.env)
+    ? process.env.BALANCED_BRAIN_PARAMS : undefined;
+  if (!raw) return DEFAULT_BALANCED_PARAMS;
+  try {
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_BALANCED_PARAMS, ...parsed };
+  } catch {
+    return DEFAULT_BALANCED_PARAMS;
+  }
+}
+
 export class BalancedBrain implements BotBrain {
   readonly name = 'Balanced';
+  readonly params: BalancedBrainParams;
 
   private grouped: Record<TowerRole, TowerType[]> = {
     'wall': [], 'dps-single': [], 'dps-splash': [],
@@ -75,6 +124,11 @@ export class BalancedBrain implements BotBrain {
    *  bucket) so the brain can place them on proximity-to-path
    *  cells instead of leaving them unbuilt. */
   private mobileUnits: TowerType[] = [];
+
+  constructor(params?: Partial<BalancedBrainParams>) {
+    const base = params ? { ...DEFAULT_BALANCED_PARAMS, ...params } : loadParamsFromEnv();
+    this.params = base;
+  }
 
   init(ctx: BotContext): void {
     this.grouped = groupByRole(ctx.towerPool);
@@ -152,8 +206,10 @@ export class BalancedBrain implements BotBrain {
 
   private decideMeta(ctx: BotContext): BotDecision {
     const roll = rng();
-    const wantFrontier = roll < 0.4;
-    const wantSend = roll >= 0.4 && roll < 0.7;
+    const frontierEnd = this.params.frontierBuyChance;
+    const sendEnd = frontierEnd + this.params.sendBuyChance;
+    const wantFrontier = roll < frontierEnd;
+    const wantSend = roll >= frontierEnd && roll < sendEnd;
 
     if (wantFrontier && ctx.frontierOptions.length > 0) {
       const affordable = ctx.frontierOptions.filter(o => o.cost <= ctx.budget);
@@ -177,14 +233,14 @@ export class BalancedBrain implements BotBrain {
   // ===== Phase selection =====
 
   private pickPhase(ctx: BotContext): Phase {
-    if (ctx.lives > 0 && ctx.lives <= PANIC_LIVES) return 'panic';
-    if (this.wallsPlaced < MAX_WALL_PLACEMENTS) return 'building-maze';
+    if (ctx.lives > 0 && ctx.lives <= this.params.panicLives) return 'panic';
+    if (this.wallsPlaced < this.params.maxWallPlacements) return 'building-maze';
     // Ultimate save — only when coverage is solid, lives aren't
     // critical, and we actually have an ultimate to aim for.
     if (
       this.ultimate &&
-      ctx.placedTowers.filter(p => !this.wallIds.has(p.towerId)).length >= MIN_DPS_TOWERS_FOR_ULT &&
-      ctx.lives >= STABLE_LIVES_FOR_ULT &&
+      ctx.placedTowers.filter(p => !this.wallIds.has(p.towerId)).length >= this.params.minDpsTowersForUlt &&
+      ctx.lives >= this.params.stableLivesForUlt &&
       this.coverageHigh(ctx)
     ) {
       return 'saving-ultimate';
@@ -198,8 +254,8 @@ export class BalancedBrain implements BotBrain {
     const walls = this.affordable(this.grouped.wall, ctx.budget);
     if (walls.length === 0) return { kind: 'skip' };
     const best = bestMazeCell(ctx.grid, ctx.candidateCells, 30, ctx.allPaths);
-    if (!best || best.gain <= MAZE_SATURATION_THRESHOLD) {
-      this.wallsPlaced = MAX_WALL_PLACEMENTS;
+    if (!best || best.gain <= this.params.mazeSaturationThreshold) {
+      this.wallsPlaced = this.params.maxWallPlacements;
       return { kind: 'skip' };
     }
     const type = walls[0];
@@ -300,9 +356,10 @@ export class BalancedBrain implements BotBrain {
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
     if (paths.length === 0) return { kind: 'upgrade', col: pool[0].col, row: pool[0].row };
 
+    const range = this.params.upgradeCoverageRange * TILE_SIZE;
     const scored = pool.map(p => {
       let coverage = 0;
-      for (const path of paths) coverage += pathCellsWithinRange(p, path, 4 * TILE_SIZE);
+      for (const path of paths) coverage += pathCellsWithinRange(p, path, range);
       return { ...p, coverage };
     });
     scored.sort((a, b) => b.coverage - a.coverage);
@@ -315,9 +372,10 @@ export class BalancedBrain implements BotBrain {
     if (paths.length === 0 || ctx.placedTowers.length === 0) return { kind: 'skip' };
     const walls = ctx.placedTowers.filter(p => this.wallIds.has(p.towerId));
     const pool = walls.length > 0 ? walls : ctx.placedTowers;
+    const sellRange = this.params.upgradeCoverageRange * TILE_SIZE;
     const scored = pool.map(p => {
       let coverage = 0;
-      for (const path of paths) coverage += pathCellsWithinRange(p, path, 4 * TILE_SIZE);
+      for (const path of paths) coverage += pathCellsWithinRange(p, path, sellRange);
       return { ...p, coverage };
     });
     scored.sort((a, b) => a.coverage - b.coverage);
@@ -352,7 +410,7 @@ export class BalancedBrain implements BotBrain {
           auraAdj++;
         }
       }
-      const score = coverage + Math.round(coverage * 0.25 * auraAdj);
+      const score = coverage + Math.round(coverage * this.params.auraAdjacencyBonus * auraAdj);
       return { col: c.col, row: c.row, score };
     });
     scored.sort((a, b) => b.score - a.score);
@@ -385,16 +443,22 @@ export class BalancedBrain implements BotBrain {
   }
 
   /** Pick the "best" tower to place from a cost-ascending pool.
-   *  Default: most expensive (bigger coverage per cell). Override
-   *  when upcoming waves have a dominant creep type that one of
-   *  the affordable towers specifically counters. */
+   *  `expensiveBias=1` matches the historical "most expensive" rule;
+   *  `expensiveBias=0` picks the cheapest (keystone-friendly when the
+   *  faction's headline tower is cheap, e.g. arcane Bolt). Linear
+   *  rank interpolation in between. Counter override still wins when
+   *  upcoming waves have a clear dominant creep type. */
   private pickTowerType(pool: TowerType[], ctx: BotContext): TowerType {
-    const top = [...pool].sort((a, b) => b.cost - a.cost)[0];
+    const sortedByCost = [...pool].sort((a, b) => b.cost - a.cost); // expensive → cheap
+    const idx = Math.round((1 - this.params.expensiveBias) * (sortedByCost.length - 1));
+    const top = sortedByCost[Math.max(0, Math.min(sortedByCost.length - 1, idx))];
+
+    const window = Math.max(1, this.params.waveLookaheadWindow);
     if (!ctx.upcomingWaves || ctx.upcomingWaves.length === 0) return top;
 
-    // Tally creep-type mass across the next 3 waves.
+    // Tally creep-type mass across the configured lookahead window.
     const typeCount = new Map<string, number>();
-    for (const w of ctx.upcomingWaves.slice(0, 3)) {
+    for (const w of ctx.upcomingWaves.slice(0, window)) {
       for (const g of w.groups) {
         typeCount.set(g.creepType, (typeCount.get(g.creepType) ?? 0) + g.count);
       }
@@ -437,7 +501,7 @@ export class BalancedBrain implements BotBrain {
       if (!def) continue;
       for (const p of paths) covered += pathCellsWithinRange(placed, p, def.range * TILE_SIZE);
     }
-    return covered >= HIGH_COVERAGE_RATIO * totalPathCells;
+    return covered >= this.params.highCoverageRatio * totalPathCells;
   }
 }
 

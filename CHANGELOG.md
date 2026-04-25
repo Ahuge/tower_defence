@@ -2,6 +2,24 @@
 
 ## 2026-04-25
 
+### Brain tuning: BalancedBrain on arcane|normal — 8% → 100% via L1 search
+
+First end-to-end run of the new brain-search infrastructure. Hyperparameter sweep over 12 numeric knobs in `BalancedBrain` (panic threshold, wall cap, ultimate-save gates, expensive-bias, frontier/send buy probabilities, aura/coverage weights, wave-lookahead window). Search method: (μ+λ) evolution strategy with auto-validation of any candidate clearing 85% on n=20 search seeds.
+
+- **Result: 100% win rate (n=100 validated)**, up from baseline 8% — confirmed on two holdout seed ranges (99% and 98%) so it's not overfit.
+- **Total evaluations:** 135 (112 search + 23 validation), **wall time ~45 sec on 8 workers**.
+- **Biggest single lever:** `frontierBuyChance` 0.4 → 0. Default brain was burning 40% of between-wave decisions on income buildings whose payoff doesn't land in 20 waves.
+- **Other findings:** `panicLives` 5 → 13 (defend earlier), `minDpsTowersForUlt` 4 → 7 (don't rush the ultimate), `expensiveBias` 1.0 → 0.58 (cheap keystones like Bolt back in rotation).
+
+Winner config saved at `brain-baselines/balanced-arcane-normal.json`. Currently env-driven (`BALANCED_BRAIN_PARAMS`); a runtime auto-loader is a follow-up.
+
+New infrastructure:
+- `src/headless/brain-search/BrainSearchManager.ts` — μ+λ ES with persistence, plateau/drift termination, auto-validation gate.
+- `src/headless/brain-search/BalancedBrainSchema.ts` — bounds/defaults/step sizes for 12 tunable params.
+- `src/headless/brain-search/brain-search-worker.ts` — subprocess match runner; brain reads params per task via env var.
+- `scripts/brain-search.mjs` — CLI with `--probe`, `--resume`, `--max-evals`, `--workers`, etc. Append-per-eval `evaluations.jsonl` for crash recovery (mirrors the harness pattern).
+- `BalancedBrain` refactor: hardcoded constants → `BalancedBrainParams` interface with env-loaded fallback. Behaviour-preserving when no env override is set.
+
 ### Balance: harness-validated buffs (nature × 3, psionic × 1)
 
 Four data-driven balance tweaks landed from the 2026-04-25T14-34-23 harness run (231 changes × 44 cells × 100 seeds). Each one moved its target faction by ≥+16% target-cell win rate without hurting any other cell — i.e. low-risk universal buffs.
