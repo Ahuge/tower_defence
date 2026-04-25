@@ -28,6 +28,8 @@
  *   node --import tsx scripts/run-harness.mjs --resume=harness-runs/2026-04-24T07-16-57
  *   node --import tsx scripts/run-harness.mjs --resume=latest
  *   node --import tsx scripts/run-harness.mjs --no-dashboard
+ *   node --import tsx scripts/run-harness.mjs --combos=2  # singles + disjoint pairs
+ *   node --import tsx scripts/run-harness.mjs --combos=3  # singles + pairs + triples
  */
 import {
   writeFileSync, mkdirSync, existsSync, unlinkSync, symlinkSync,
@@ -48,6 +50,7 @@ const workersFlag = getFlag('workers');
 const changeFlag = getFlag('change');
 const seedsFlag = getFlag('seeds');
 const resumeFlag = getFlag('resume');
+const combosFlag = getFlag('combos');
 const noDashboard = hasFlag('no-dashboard');
 
 // Default: ~2/3 of cores, leaving headroom for OS / other work.
@@ -117,10 +120,19 @@ const { runHarnessParallel, runOneChange } = await import('../src/headless/harne
 const { formatFullReport } = await import('../src/headless/harness/HarnessReport.ts');
 const { DEFAULT_MATRIX } = await import('../src/headless/harness/HarnessRunner.ts');
 const { ProgressDashboard } = await import('../src/headless/harness/ProgressDashboard.ts');
+const { CATALOG } = await import('../src/headless/harness/ChangeCatalog.ts');
+const { expandCombos } = await import('../src/headless/harness/ComboGenerator.ts');
 
 const matrix = seedsOverride
   ? { ...DEFAULT_MATRIX, seedsPerCell: seedsOverride }
   : DEFAULT_MATRIX;
+
+let catalog = CATALOG;
+if (combosFlag !== null) {
+  const maxSize = combosFlag === '' ? 2 : Math.max(1, Math.min(3, parseInt(combosFlag, 10) || 2));
+  catalog = expandCombos(CATALOG, { maxSize });
+  log(`[harness] combos enabled: maxSize=${maxSize}, catalog ${CATALOG.length} → ${catalog.length} entries`);
+}
 
 log(`[harness] matrix: ${matrix.factions.length} factions × ${matrix.difficulties.length} difficulties × ${matrix.brains.length} brains × ${matrix.seedsPerCell} seeds`);
 
@@ -143,6 +155,7 @@ try {
     log,
     matrix,
     runDir,
+    catalog,
     onProgress: dashboard ? dashboard.onProgress : undefined,
   };
   results = singleChange !== null && singleChange !== ''

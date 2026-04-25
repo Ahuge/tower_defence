@@ -2,6 +2,49 @@
 
 ## 2026-04-24
 
+### Balance harness: cluster-dedup score + combo catalog generator
+
+Two follow-up additions to address the report-quality issues from the
+earlier brain-roster commit.
+
+**Cluster-dedup score (`HarnessReport.ts`)** — the ranking now uses
+
+```
+score = (targetΔ × 2 + netΔ) × (1 / √clusterSize) × max(0, 1 − brainSpread × 2)
+```
+
+`clusterSize` counts how many other changes within the same faction
+produced the same per-cell delta signature (cells rounded to 0.5%
+buckets). 19 sibling-cluster mech.* nerfs that all read identical
+"+86% mech easy" now divide by √19, dropping their score from
+the top of the table. `brainSpread` is the stdev of per-brain mean
+deltas; a change that moved one brain by 50% while three didn't
+budge has high spread and gets shrunk toward zero. New ranking
+columns: `raw`, `cluster (1/N)`, `spread (%)`. Single distinct
+effects with low brain spread now bubble above 19-sibling echoes.
+
+**Combo catalog generator (`ComboGenerator.ts` + `--combos=N` CLI)**
+— the catalog can now be expanded to test combinations of changes:
+
+```
+node --import tsx scripts/run-harness.mjs --combos=2  # singles + disjoint pairs
+node --import tsx scripts/run-harness.mjs --combos=3  # singles + pairs + triples
+```
+
+Combos only span members of the same faction. Two changes are
+"disjoint" iff they touch different `(entity.field)` keys, derived
+by running each `apply()` against a tracking-shim PatchEngine.
+Triples are capped at 100 per faction so the run stays bounded
+(default catalog: 234 singles, +2167 pairs, +1200 triples).
+
+The "empty third slot" the user asked for falls out of always
+including singles + pairs alongside triples — any subset of
+size 1, 2, or 3 has a catalog entry.
+
+Combo apply() runs each member's apply() in sequence. Composite
+ids look like `combo.mech.mech.1+mech.2`; descriptions prefix
+`[combo:N]` so they're scannable in the ranking.
+
 ### Balance harness: brain roster expansion + per-brain + build-hash diagnostics
 
 The previous run's biggest weakness was sibling-cluster artifacts: 19
