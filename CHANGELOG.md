@@ -2,6 +2,42 @@
 
 ## 2026-04-24
 
+### Balance harness: brain roster expansion + per-brain + build-hash diagnostics
+
+The previous run's biggest weakness was sibling-cluster artifacts: 19
+unrelated mech.* changes all read identical "+86% mech easy" because
+the only brain that could clear the cell shifted into a slightly
+different MCTS path on each patch. Two changes here address that.
+
+**Four new brains** — bringing the matrix from 4 to 8 brains:
+- `greedy` — strict T1 single-target spam, no upgrades / frontier /
+  ultimates / mazing. Deterministic stat-baseline anchor: when
+  greedy moves, it's a real arithmetic effect, not roulette.
+- `ultimate` — saves for the faction's ultimate while keeping a
+  scaling DPS floor (2 + wave/4, max 6) on the board. Panic-spends
+  on lives below 10. Tests whether ultimates are pickable / useful.
+- `econ` — frontier-first IF survival floor met. Same survival gate
+  as Ultimate; below floor it behaves like Greedy. Validates
+  Frontier balance, which the existing 4 brains barely register.
+- `aoe_focus` — splash + chain + aura specialist. Min cheap-DPS
+  survival floor, then biggest-affordable AOE at chokepoints, then
+  upgrades on existing AOEs. Counterpart to Rush.
+
+The shipped 5th option (`wave_reactive`) was dropped — too
+dependent on upcoming-wave data quality to give a strong signal.
+
+**Per-brain delta in the report** — `formatChange` now appends a
+"per-brain Δ" column. A delta concentrated in one brain is
+brain-roulette; a delta spread across all brains is real.
+Surfaces the 19-mech-clones artifact directly.
+
+**Build-hash fingerprint** — `MatchResult.buildHash` is a 32-bit
+FNV-1a fold of the sorted `id@Llevel` multiset of placed towers
+at sim end. Two runs with identical builds produce identical
+hashes. Lets future analysis distinguish "same build, different
+winrate = brain noise" from "different build = real placement
+shift". Added to `MatchResult`; not yet surfaced in the report.
+
 ### Balance ship from harness run 2026-04-24T16-55-42
 
 Acted on the strongest signals from the latest 1000-seed sweep, plus a difficulty-curve softening guided by the report's headline finding that hard mode was unwinnable across half the matrix.

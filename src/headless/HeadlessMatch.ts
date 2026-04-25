@@ -46,6 +46,10 @@ import '../systems/bots/brains/BalancedBrain';
 import '../systems/bots/brains/RushBrain';
 import '../systems/bots/brains/SynergyBrain';
 import '../systems/bots/brains/NatureBrain';
+import '../systems/bots/brains/GreedyBrain';
+import '../systems/bots/brains/UltimateBrain';
+import '../systems/bots/brains/EconBrain';
+import '../systems/bots/brains/AOEFocusBrain';
 import { HeadlessScene } from './HeadlessScene';
 import { MatchConfig, MatchResult } from './types';
 import { seedRng } from '../systems/Rng';
@@ -77,6 +81,7 @@ export async function runMatch(config: MatchConfig): Promise<MatchResult> {
       towersBuilt: 0,
       simTimeMs: 0,
       wallTimeMs: Date.now() - wallStart,
+      buildHash: '00000000',
       error: (err as Error).message,
     };
   }
@@ -331,6 +336,7 @@ async function runMatchInner(
     towersBuilt: towerMgr.totalTowersBuilt,
     simTimeMs: simTime,
     wallTimeMs: Date.now() - wallStart,
+    buildHash: hashBuild(towerMgr.towers),
   };
 
   // ---- Decision dispatch ----
@@ -377,6 +383,28 @@ async function runMatchInner(
     }
     return false;
   }
+}
+
+/** Compact fingerprint of the final tower build: sorted multiset of
+ *  `id@Llevel` joined by `,` then run through a 32-bit FNV-1a fold so
+ *  the result is short and easy to compare. Two runs with identical
+ *  builds produce identical hashes; any tower id/level/count
+ *  difference flips it. Used by the harness to diagnose brain-noise
+ *  (same build, moved winrate) vs. real signal (different build). */
+function hashBuild(towers: { typeDef: { id: string }; level: number }[]): string {
+  const counts = new Map<string, number>();
+  for (const t of towers) {
+    const key = `${t.typeDef.id}@L${t.level}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const sorted = [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const joined = sorted.map(([k, n]) => `${k}x${n}`).join(',');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < joined.length; i++) {
+    h ^= joined.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
 }
 
 /** Walk the grid once and collect every cell the player could

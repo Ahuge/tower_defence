@@ -39,7 +39,7 @@ export const DEFAULT_MATRIX: HarnessMatrixSpec = {
   factions: ['mechanical', 'arcane', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'],
   difficulties: ['easy', 'normal', 'hard', 'insane'],
   maps: ['plains'],
-  brains: ['balanced', 'rush', 'synergy', 'nature'],
+  brains: ['balanced', 'rush', 'synergy', 'nature', 'greedy', 'ultimate', 'econ', 'aoe_focus'],
   matchModes: ['standard'],
   seedsPerCell: 100,
   baseSeed: 1,

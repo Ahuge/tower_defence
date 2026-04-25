@@ -50,4 +50,12 @@ export interface MatchResult {
   wallTimeMs: number;
   /** Optional error message when `outcome === 'error'`. */
   error?: string;
+  /** Hash of the final tower build (sorted multiset of
+   *  `${towerId}@L${level}`). Lets the harness diagnose whether two
+   *  match results converged on the same build or diverged: if a
+   *  patched run has the same `buildHash` as baseline but a moved
+   *  win-rate, the change is brain-noise (MCTS roulette / FP-tie
+   *  drift); different hash ⇒ the change actually altered placement
+   *  decisions, so the win-rate delta carries real signal. */
+  buildHash: string;
 }

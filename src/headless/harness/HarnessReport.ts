@@ -35,7 +35,10 @@ function pct(x: number): string {
 }
 
 /** Narrate a single ChangeResult as markdown. Shows cells with
- *  non-trivial movement + the summary. */
+ *  non-trivial movement + the summary, plus a per-brain breakdown
+ *  for each moved cell so brain-noise can be distinguished from
+ *  real signal (a delta concentrated in one brain == roulette;
+ *  a delta spread across all brains == real). */
 export function formatChange(change: ChangeResult, baseline: FactionBestStats[]): string {
   const lines: string[] = [];
   lines.push(`### ${change.id} — ${change.description}`);
@@ -45,6 +48,7 @@ export function formatChange(change: ChangeResult, baseline: FactionBestStats[])
   lines.push('');
 
   const baseMap = new Map(baseline.map(b => [`${b.faction}|${b.difficulty}`, b]));
+  const changeMap = new Map(change.best.map(b => [`${b.faction}|${b.difficulty}`, b]));
   const moved = Array.from(change.delta.entries())
     .filter(([, d]) => Math.abs(d) > 0.05)
     .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a));
@@ -54,8 +58,8 @@ export function formatChange(change: ChangeResult, baseline: FactionBestStats[])
     return lines.join('\n');
   }
 
-  lines.push('| cell | baseline | new | Δ | in target? |');
-  lines.push('|---|---|---|---|---|');
+  lines.push('| cell | baseline | new | Δ | in target? | per-brain Δ (best-mover first) |');
+  lines.push('|---|---|---|---|---|---|');
   for (const [key, delta] of moved) {
     const base = baseMap.get(key);
     if (!base) continue;
@@ -63,9 +67,31 @@ export function formatChange(change: ChangeResult, baseline: FactionBestStats[])
     const [, difficulty] = key.split('|');
     const bandBefore = inTargetBand(difficulty, base.bestWinRate) ? '✅' : '❌';
     const bandAfter = inTargetBand(difficulty, newRate) ? '✅' : '❌';
-    lines.push(`| ${key} | ${pct(base.bestWinRate).replace('+', '')} | ${pct(newRate).replace('+', '')} | ${pct(delta)} | ${bandBefore}→${bandAfter} |`);
+    const brainDelta = formatPerBrainDelta(base, changeMap.get(key));
+    lines.push(`| ${key} | ${pct(base.bestWinRate).replace('+', '')} | ${pct(newRate).replace('+', '')} | ${pct(delta)} | ${bandBefore}→${bandAfter} | ${brainDelta} |`);
   }
   return lines.join('\n');
+}
+
+/** Compute baseline → change winrate delta per brain for one cell.
+ *  Used in formatChange to surface whether a change moved every
+ *  brain or just one — a single-brain mover is brain-roulette. */
+function formatPerBrainDelta(base: FactionBestStats, changed: FactionBestStats | undefined): string {
+  if (!changed) return '_(no change data)_';
+  const baseByBrain = new Map(base.perBrain.map(p => [p.brain, p.winRate]));
+  const changedByBrain = new Map(changed.perBrain.map(p => [p.brain, p.winRate]));
+  const allBrains = new Set([...baseByBrain.keys(), ...changedByBrain.keys()]);
+  const deltas: { brain: string; d: number }[] = [];
+  for (const b of allBrains) {
+    const before = baseByBrain.get(b) ?? 0;
+    const after = changedByBrain.get(b) ?? 0;
+    deltas.push({ brain: b, d: after - before });
+  }
+  deltas.sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+  return deltas
+    .filter(d => Math.abs(d.d) >= 0.02)
+    .map(d => `${d.brain} ${pct(d.d)}`)
+    .join(', ') || '_(all brains within ±2%)_';
 }
 
 /** Concise ranking table. Sorts changes by a weighted score:
