@@ -2,6 +2,16 @@
 
 ## 2026-04-24
 
+### Random map gen: random tileset theme
+
+`generateRandomMap(seed, difficulty)` now rolls a random tileset theme as part of generation and stamps it into the returned `MapDefinition.theme`. The pool is `Object.keys(THEMES)` — 11 faction themes (`arcane_crystal`, `hellscape`, `circuit`, `ancient_grove`, `factory`, `void_rift`, `urban`, `hive`, `marble`, `neural`, `concert`) + 6 non-faction themes (`forest`, `mountain`, `water`, `stone`, `volcanic`, `generic`) for 17 options total.
+
+Adding a new theme to `TerrainTheme.ts` auto-includes it in the pool. Same seed always yields the same theme (reload-safe — the theme roll is the first RNG draw before any layout work, so map layouts stay stable across random-theme vs fixed-theme runs of the same seed).
+
+API: `generateRandomMap(seed, difficulty, theme?)`. Pass nothing or the `RANDOM_THEME` sentinel to get a random theme. Pass a specific themeId to override (used by a future UI picker — not wired into the menu yet).
+
+A store-equipped terrain still wins on top: the resolver sees the random map's stamped theme as the "map default" and applies the player's equipped override per the standard rules. (Custom maps, by contrast, stay locked to the editor-saved theme.)
+
 ### Terrain override: equipped store theme now actually overrides the map tileset
 
 The store had `equipTerrain(themeId)` writing to `state.equippedTerrain` and `SkinManager.getTerrainOverrideFaction()` reading it back, but the getter was never called from the rendering pipeline — equipping a terrain theme did nothing visible.
