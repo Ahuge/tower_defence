@@ -26,7 +26,7 @@ export const DIFFICULTIES: Record<DifficultyLevel, DifficultyHints> = {
     toughnessPerWave: 0,
   },
   normal: {
-    toughness: 1.0,
+    toughness: 0.95,
     count: 1.0,
     speed: 1.0,
     goldMult: 1.0,
@@ -34,15 +34,15 @@ export const DIFFICULTIES: Record<DifficultyLevel, DifficultyHints> = {
   },
   hard: {
     toughness: 1.0,
-    count: 1.5,
-    speed: 1.1,
+    count: 1.3,
+    speed: 1.05,
     goldMult: 0.6,
     toughnessPerWave: 0.13, // +13%/wave — wave 10 = 2.30× (matches old hard), wave 20 = 3.60×, wave 30 = 4.90×
   },
   insane: {
-    toughness: 1.3,
-    count: 1.8,
-    speed: 1.2,
+    toughness: 1.15,
+    count: 1.5,
+    speed: 1.1,
     goldMult: 0.4,
     toughnessPerWave: 0.24, // +24%/wave — wave 10 = 4.38× (matches old insane), wave 20 = 7.54×, wave 30 = 10.66×
   },

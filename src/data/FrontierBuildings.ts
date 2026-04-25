@@ -100,9 +100,9 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
       description: 'Overcharge to sell data: 3x burst, 2 wave cooldown.', mechanic: 'overcharge' },
   ],
   infernal: [
-    { id: 'soul_well', name: 'Soul Well', faction: 'infernal', cost: 25, baseIncome: 0,
+    { id: 'soul_well', name: 'Soul Well', faction: 'infernal', cost: 32, baseIncome: 0,
       description: 'Chaotic souls: 0-25g per wave. High variance.', mechanic: 'gamble', gambleMax: 25 },
-    { id: 'blood_pact', name: 'Blood Pact', faction: 'infernal', cost: 175, baseIncome: 20,
+    { id: 'blood_pact', name: 'Blood Pact', faction: 'infernal', cost: 185, baseIncome: 20,
       description: 'Dig deeper into damnation. +1/wave but 15% collapse risk.', mechanic: 'dig' },
   ],
   celestial: [

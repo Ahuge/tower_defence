@@ -223,7 +223,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   mech_tesla: def({
     id: 'mech_tesla', name: 'Tesla', description: 'Chain lightning. Jumps to nearby targets.',
-    faction: 'mechanical', damageType: 'magic', cost: 80, damage: 18, range: 3, fireRate: 1400,
+    faction: 'mechanical', damageType: 'magic', cost: 80, damage: 18, range: 3.5, fireRate: 1400,
     color: 0xeebb44, projectileSpeed: 400, hotkey: '4',
     targeting: 'closest',
     traits: [{ id: 'chain_damage', chainCount: 2, chainRange: 96, falloff: 0.7 }],
@@ -376,7 +376,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_viper: def({
     id: 'nature_viper', name: 'Grove Viper',
     description: 'Mobile. Slithers along hidden paths; strikes with a fanged lunge and sinks venom deep.',
-    faction: 'nature', damageType: 'physical', cost: 40, damage: 8, range: 2.5, fireRate: 750,
+    faction: 'nature', damageType: 'physical', cost: 40, damage: 12, range: 2.5, fireRate: 750,
     color: 0x2a5a2a, projectileSpeed: 200, hotkey: '3',
     traits: [
       // Slithers along the ground — underlying mobile_unit pathing
@@ -409,7 +409,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   void_gambler: def({
     id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 4% instant kill (1% vs bosses), 25% whiff.',
-    faction: 'void', damageType: 'magic', cost: 15, damage: 25, range: 3, fireRate: 1000,
+    faction: 'void', damageType: 'magic', cost: 15, damage: 20, range: 3, fireRate: 1000,
     color: 0xdd44ff, projectileSpeed: 300, hotkey: '1',
     targeting: 'weakest',
     traits: [{ id: 'direct_damage' }, { id: 'jackpot', killChance: 0.04, missChance: 0.25 }],
@@ -604,7 +604,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   cyber_ping: def({
     id: 'cyber_ping', name: 'Ping', description: 'Cheap. Very long range, low damage.',
-    faction: 'cypherpunk', damageType: 'magic', cost: 15, damage: 5, range: 8, fireRate: 900,
+    faction: 'cypherpunk', damageType: 'magic', cost: 15, damage: 5, range: 8, fireRate: 700,
     color: 0x00ffcc, projectileSpeed: 500, hotkey: '1',
     upgrades: [
       { level: 2, cost: 20, damage: 8, range: 9, fireRate: 800 },
@@ -693,7 +693,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   infernal_soul_drain: def({
     id: 'infernal_soul_drain', name: 'Soul Drain', description: 'Earns +2g per kill within range.',
-    faction: 'infernal', damageType: 'magic', cost: 70, damage: 18, range: 4, fireRate: 900,
+    faction: 'infernal', damageType: 'magic', cost: 90, damage: 18, range: 4, fireRate: 900,
     color: 0xcc3366, projectileSpeed: 300, hotkey: '3',
     traits: [{ id: 'direct_damage' }, { id: 'gold_per_kill_range', goldPerKill: 2 }],
     upgrades: [
@@ -732,7 +732,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   celestial_acolyte: def({
     id: 'celestial_acolyte', name: 'Acolyte', description: 'Light damage. 5% chance on nearby kill to gain +1 life.',
-    faction: 'celestial', damageType: 'magic', cost: 25, damage: 10, range: 3.5, fireRate: 800,
+    faction: 'celestial', damageType: 'magic', cost: 25, damage: 14, range: 4.5, fireRate: 800,
     color: 0xffffaa, projectileSpeed: 350, hotkey: '1',
     traits: [{ id: 'direct_damage' }, { id: 'life_on_kill', chance: 0.05 }],
     upgrades: [

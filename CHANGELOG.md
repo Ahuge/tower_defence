@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-04-24
+
+### Balance ship from harness run 2026-04-24T16-55-42
+
+Acted on the strongest signals from the latest 1000-seed sweep, plus a difficulty-curve softening guided by the report's headline finding that hard mode was unwinnable across half the matrix.
+
+**Difficulty re-anchor (`Difficulty.ts`)** — pulled the *base* values closer together while leaving the strong per-wave ramps alone (the ramps are doing the late-game work; it was the wave-1 cliff that was unwinnable):
+- normal toughness 1.0 → 0.95
+- hard count 1.5 → 1.3, speed 1.1 → 1.05
+- insane toughness 1.3 → 1.15, count 1.8 → 1.5, speed 1.2 → 1.1
+
+**Tower stat tweaks (`TowerTypes.ts`)** — single-stat levers that registered cleanly above their faction's cluster floor:
+- Tesla range 3 → 3.5 (mech)
+- Grove Viper damage 8 → 12 (nature)
+- Ping fireRate 900 → 700ms (cyber) — fire-rate over damage so the cheap tower stays cheap
+- Soul Drain cost 70 → 90 (infernal) — counter-intuitive nerf-helps signal from the harness; the tower is over-bought
+- Acolyte damage 10 → 14 + range 3.5 → 4.5 (celestial) — celestial|normal was 0% baseline, two-stat lift to crack it
+- Gambler damage 25 → 20 (void) — precautionary nerf
+
+**Infernal Frontier nerf (`FrontierBuildings.ts`)** — small precautionary cost bump in case Infernal stays too strong after the Soul Drain nerf:
+- Soul Well cost 25 → 32g
+- Blood Pact cost 175 → 185g
+
+### Balance harness: default seedsPerCell 1000 → 100
+
+Iteration default is now ±4.5% CI (still meaningful for ±10%-class deltas). Final-validation runs use `--seeds=1000` for ±1.5% CI. Wall time on the default config drops ~10× — turns "overnight sweep" into "lunch sweep".
+
 ## 2026-04-23
 
 ### Balance harness: full catalog (232 changes) + absurd-confidence defaults

@@ -13,7 +13,7 @@
 | Meteor | 200g | Slow-falling projectile, massive AoE on impact. Location-targeted. |
 | **Arcane Nova** | **700g** | Ultimate. AoE + crit + slow + damage amp combined. |
 
-**Frontier:** Leyline Nexus (overcharge for burst, dormancy risk).
+**Frontier:** Leyline Nexus 55g (+5g/wave, overcharge for 3× burst then 2 waves dormant) / Greater Nexus 250g (+28g/wave, same overcharge mechanic).
 
 ---
 
@@ -31,7 +31,7 @@
 | Railgun | 300g | Pierces ALL creeps in a line. |
 | **Titan Cannon** | **800g** | Ultimate. 500 damage, range 12, splash + burn + shred. |
 
-**Frontier:** Deep Mine (dig deeper for +income, cave-in risk).
+**Frontier:** Deep Mine 44g (+4g/wave, dig +1g/wave per level with 10% collapse risk per level) / Reinforced Mine 225g (+25g/wave, dig +1g/wave per level with 5% collapse risk per level).
 
 ---
 
@@ -50,7 +50,7 @@
 | Vine | 160g | 20% chance to root (stun) creeps for 0.8s. |
 | **Elder Treant** | **450g** | Ultimate. Grows +8% damage permanently. Roots + buffs adjacents. |
 
-**Frontier:** Sacred Grove (grows income, harvest for burst payout).
+**Frontier:** Sacred Grove 55g (+3g/wave, grows +2g/wave; harvest = stacks × 5g) / Ancient Grove 225g (+22g/wave, same grow mechanic).
 
 ---
 
@@ -65,7 +65,7 @@
 | Rift | 120g | Teleports creeps backward on path + 2-4 damage per hit. |
 | **Oblivion** | **900g** | Ultimate. 15% instakill, +3g/hit, extreme variance + damage amp. |
 
-**Frontier:** The Rift (random 0-15g or 0-30g per wave).
+**Frontier:** The Rift 35g (gamble 0-15g/wave) / Abyssal Rift 160g (gamble 0-80g/wave).
 
 ---
 
@@ -81,7 +81,7 @@
 | Tank | 120g | Mobile AoE. Slow but long range, fires explosive shells. |
 | **Commander** | **750g** | Ultimate. Mobile fighter + adjacency buff aura. |
 
-**Frontier:** Supply Depot / Forward Base (steady income).
+**Frontier:** Supply Depot 44g (+4g/wave, steady) / Forward Base 225g (+25g/wave, steady).
 
 ---
 
@@ -98,7 +98,7 @@
 | Swarmling | 15g | Mobile melee. Cheap, fast, stackable. |
 | **Overmind** | **700g** | Ultimate. Extreme fire rate + 30% faction speed aura. |
 
-**Frontier:** Breeding Pool / Hive Queen (growth + harvest).
+**Frontier:** Breeding Pool 35g (+2g/wave, grows +2g/wave; harvest = stacks × 5g) / Hive Queen 175g (+18g/wave, same grow mechanic).
 
 ---
 
@@ -115,7 +115,7 @@
 | Rootkit | 300g | Mutes mage abilities + heavy armor shred (2 tiers, 6s). |
 | **Zero Day** | **800g** | Ultimate. Hack + virus + mute + shred in massive range. |
 
-**Frontier:** Crypto Mine (gamble 0-25g) / Data Broker (overcharge).
+**Frontier:** Crypto Mine 35g (gamble 0-25g/wave) / Data Broker 225g (+25g/wave, overcharge for 3× burst then 2 waves dormant).
 
 ---
 
@@ -126,12 +126,12 @@
 |-------|------|------------|
 | Imp | 12g | 12 damage, 700ms. Expires after 4 waves. Disposable. |
 | Hellfire | 45g | Strong AoE + burn. Loses 15% damage each wave. |
-| Soul Drain | 70g | +2g per kill within range. Economy tower. |
+| Soul Drain | 90g | +2g per kill within range. Economy tower. |
 | Fiend | 20g | KAMIKAZE. Runs to nearest creep, explodes for 80 AoE, destroys self. |
 | Immolate | 200g | Strong DPS + burn. Can sacrifice for burst AoE. |
 | **Apocalypse** | **900g** | Ultimate. Massive burn AoE + damage amp. |
 
-**Frontier:** Soul Well (gamble 0-30g) / Blood Pact (dig, 15% collapse).
+**Frontier:** Soul Well 32g (gamble 0-25g/wave) / Blood Pact 185g (+20g/wave, dig +1g/wave per level with 10% collapse risk per level).
 
 ---
 
@@ -146,7 +146,7 @@
 | Sanctuary | 150g | Absorbs 1 leaked creep (recharges every 10 waves). |
 | **Absolution** | **600g** | Ultimate. Holy AoE + 10% life gain on kill + mutes mages. |
 
-**Frontier:** Tithe (steady) / Miracle (growth + harvest).
+**Frontier:** Tithe 55g (+5g/wave, steady) / Miracle 225g (+20g/wave, grows +2g/wave; harvest = stacks × 5g).
 
 ---
 
@@ -161,7 +161,7 @@
 | Mind Spike | 150g | Long range true damage. +50% vs mage creeps. |
 | **Overmind** | **750g** | Ultimate. Mass confusion + massive true damage pulse. |
 
-**Frontier:** Dream Tap (gamble) / Mind Prison (overcharge).
+**Frontier:** Dream Tap 40g (gamble 0-25g/wave) / Mind Prison 225g (+25g/wave, overcharge for 3× burst then 2 waves dormant).
 
 ---
 
@@ -184,7 +184,7 @@
 
 **Identity:** The placement puzzle faction. Individual towers are weak — the power comes from overlapping aura coverage. Two Amplifiers + Quickener on a Resonator = massive DPS. Conduit extends the network across the map, and re-emit means linked towers amplify each other's reach.
 
-**Frontier:** Resonance Chamber (growth) / Symphony Hall (overcharge).
+**Frontier:** Resonance Chamber 50g (+4g/wave, grows +2g/wave; harvest = stacks × 5g) / Symphony Hall 225g (+25g/wave, overcharge for 3× burst then 2 waves dormant).
 
 ---
 
