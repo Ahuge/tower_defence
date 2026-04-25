@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-25
+
+### Balance: harness-validated buffs (nature × 3, psionic × 1)
+
+Four data-driven balance tweaks landed from the 2026-04-25T14-34-23 harness run (231 changes × 44 cells × 100 seeds). Each one moved its target faction by ≥+16% target-cell win rate without hurting any other cell — i.e. low-risk universal buffs.
+
+- **Grove Viper cost 40 → 30** (`nature.5`, +95% nature target). Viper was the keystone DPS already shown by prior nature-tuning work; this lowers the spend gate to land it in the early-mid game.
+- **Root cost 35 → 25** (`nature.7`, +24% nature target). Strongest slow in the game was overpriced relative to its impact.
+- **Sunroot range 3 → 4 + splash radius 56 → 72** (`nature.12`, +23% nature target). Mid-tier splash tower now actually reaches the lanes it's meant to cover.
+- **Probe range 3 → 4** (`psi.2`, +16% psionic target). True-damage staple gets the same range as its L3 upgrade so initial placement isn't wasted.
+
+Faction docs updated. Larger run notes saved to `harness-runs/2026-04-25T14-34-23/report.md`.
+
 ## 2026-04-24
 
 ### Balance harness: cluster-dedup score + combo catalog generator

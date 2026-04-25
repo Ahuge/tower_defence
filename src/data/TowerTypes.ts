@@ -284,7 +284,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // preserved.
   nature_root: def({
     id: 'nature_root', name: 'Root', description: 'Strongest slow in game: 70% for 3s.',
-    faction: 'nature', damageType: 'magic', cost: 35, damage: 3, range: 3, fireRate: 1000,
+    faction: 'nature', damageType: 'magic', cost: 25, damage: 3, range: 3, fireRate: 1000,
     color: 0x886633, projectileSpeed: 200, hotkey: '2',
     targeting: 'fastest',
     traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 3000, factor: 0.3 }],
@@ -376,7 +376,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_viper: def({
     id: 'nature_viper', name: 'Grove Viper',
     description: 'Mobile. Slithers along hidden paths; strikes with a fanged lunge and sinks venom deep.',
-    faction: 'nature', damageType: 'physical', cost: 40, damage: 12, range: 2.5, fireRate: 750,
+    faction: 'nature', damageType: 'physical', cost: 30, damage: 12, range: 2.5, fireRate: 750,
     color: 0x2a5a2a, projectileSpeed: 200, hotkey: '3',
     traits: [
       // Slithers along the ground — underlying mobile_unit pathing
@@ -395,9 +395,9 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_sunroot: def({
     id: 'nature_sunroot', name: 'Sunroot',
     description: 'Splash DPS. A bloom that learned to burn — fire-flowers arc wide.',
-    faction: 'nature', damageType: 'magic', cost: 140, damage: 22, range: 3, fireRate: 900,
+    faction: 'nature', damageType: 'magic', cost: 140, damage: 22, range: 4, fireRate: 900,
     color: 0xddaa22, projectileSpeed: 260, projectileColor: 0xffcc44, hotkey: '6',
-    traits: [{ id: 'splash_damage', radius: 56 }],
+    traits: [{ id: 'splash_damage', radius: 72 }],
     upgrades: [
       { level: 2, cost: 120, damage: 34, range: 3.5, fireRate: 850 },
       { level: 3, cost: 200, damage: 50, range: 4, fireRate: 800 },
@@ -787,7 +787,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   psi_probe: def({
     id: 'psi_probe', name: 'Probe', description: 'Cheap true damage. Ignores all armor.',
-    faction: 'psionic', damageType: 'magic', cost: 20, damage: 8, range: 3, fireRate: 700,
+    faction: 'psionic', damageType: 'magic', cost: 20, damage: 8, range: 4, fireRate: 700,
     color: 0xdd88ff, projectileSpeed: 350, hotkey: '1',
     traits: [{ id: 'true_damage' }],
     upgrades: [
