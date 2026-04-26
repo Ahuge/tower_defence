@@ -2,6 +2,45 @@
 
 ## 2026-04-26
 
+### LearningBrain v2: one brain, 9/11 normal cells matched (action-value regression)
+
+First end-to-end run of the learning-brain pipeline. Trains a gradient-boosted-tree regressor offline (Python / xgboost) on per-decision (state, action, outcome) tuples captured from the headless harness, then walks the JSON model in pure TS at inference. Single brain that pilots all 11 factions.
+
+**Pipeline:**
+- `src/systems/bots/learning/RecorderBrain.ts` — wraps any brain, captures features per decide() without side effects on decisions.
+- `scripts/generate-training-data.mjs` — runs each of 10 brains × 11 factions × 20 seeds = 2200 matches, writes ~515k turn rows to `ml/training-data/turns.jsonl` (~17 min wall, sequential).
+- `ml/train.py` — xgboost binary-logistic, max_depth=6, eta=0.1, scale_pos_weight (~1.83) for class balance, group-by-match train/val split. Early-stops at ~150 trees. Final val AUC ~0.998.
+- `models/brain-q-model.json` (committed, ~585KB) — xgboost JSON dump wrapped in our trainingMeta header.
+- `src/systems/bots/learning/TreeInference.ts` — pure-TS recursive walker, ~50 LoC, microseconds per prediction. Handles xgboost ≥3.0's stringified-array `base_score` format.
+- `src/systems/bots/brains/LearningBrain.ts` — at decide() time, asks 10 sub-brains for proposals, scores each `(state || action || proposer-id)` through the model, returns argmax-Q.
+
+**v2 validation (n=50 per cell):**
+
+| faction | best of existing | LearningBrain | Δ |
+|---|---|---|---|
+| arcane | greedy 50/50 | 50/50 | 0 |
+| nature | rush 50/50 | 50/50 | 0 |
+| void | greedy 50/50 | 50/50 | 0 |
+| military | rush 50/50 | 50/50 | 0 |
+| infernal | synergy 50/50 | 50/50 | 0 |
+| celestial | greedy 50/50 | 50/50 | 0 |
+| cypherpunk | aoe_focus 41/50 | 41/50 | 0 |
+| harmonic | harmonic 47/50 | 45/50 | -2 |
+| psionic | psionic 18/50 | 2/50 | -16 |
+| mechanical | balanced 0/50 | 0/50 | 0 |
+| aliens | balanced 0/50 | 0/50 | 0 |
+
+**9/11 cells match-or-near best-of-existing.** Net Δ = -18 across all cells, driven entirely by psionic.
+
+**v1 → v2 gap was caused by missing proposer-id feature.** v1 action features encoded WHAT decision was emitted but not WHO proposed it, so identical "place Resonator on harmonic" decisions from BalancedBrain (loss) and HarmonicBrain (win) had identical features and got averaged-down Q. Adding a 10-dim proposer-brain one-hot (action features 19→29) let the model differentiate. Cypherpunk recovered 13→41, harmonic 0→45.
+
+**Why psionic still drops:** PsionicBrain itself only wins 18/50 in training data, so the model's signal for psionic-specialist proposals is noisier than for harmonic (45/50). Better: oversample winning brain×faction pairs in next data generation, or train a per-faction sub-model for psionic.
+
+**Operational notes:**
+- Retrain workflow: `node --import tsx scripts/generate-training-data.mjs && python3 ml/train.py ml/training-data/turns.jsonl models/brain-q-model.json` (~30 min wall total).
+- Game ships without Python — model JSON is loaded by `TreeInference.compileModel`. The Python training script is dev-only, lives in `ml/`.
+- LearningBrain falls through to BalancedBrain if the model file is missing or has the wrong feature shape (e.g. after a feature schema change). Verified with smoke test (1/20 wins with no model = matches BalancedBrain default).
+
 ### Brain-tuning session summary (8/11 normal cells solved at ≥80%)
 
 Ran a multi-day exploration to push BalancedBrain (and other brains) past their default win-rates across the 11 factions. Approach evolved through three phases:
