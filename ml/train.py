@@ -92,6 +92,15 @@ def main() -> int:
     t1 = time.monotonic()
     dtr = xgb.DMatrix(Xtr, label=ytr)
     dva = xgb.DMatrix(Xva, label=yva)
+    # scale_pos_weight: with the data class-imbalanced toward
+    # win-rate ~0.35, the model otherwise underfits positive cases.
+    # The compensating weight is (negatives / positives), so each
+    # win-turn counts as ~1.8 examples during training.
+    pos_count = float((y == 1).sum())
+    neg_count = float((y == 0).sum())
+    spw = neg_count / max(1.0, pos_count)
+    print(f"  scale_pos_weight: {spw:.3f}")
+
     params = {
         "objective": "binary:logistic",
         "eval_metric": ["logloss", "auc"],
@@ -100,6 +109,7 @@ def main() -> int:
         "subsample": 0.8,
         "colsample_bytree": 0.8,
         "tree_method": "hist",
+        "scale_pos_weight": spw,
     }
     booster = xgb.train(
         params,

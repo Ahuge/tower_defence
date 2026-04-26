@@ -101,23 +101,29 @@ export class LearningBrain implements BotBrain {
       return this.fallback?.decide(ctx) ?? { kind: 'skip' };
     }
 
-    // Gather proposals.
-    const proposals: { brainName: string; decision: BotDecision }[] = [];
-    for (const p of this.proposers) {
+    // Gather proposals — each tagged with its proposer brain id so
+    // the regressor can score the correct (state, action, proposer)
+    // tuple. Proposer matters: the same "place Resonator" decision
+    // has very different win probability when it comes from
+    // HarmonicBrain (knows aura placement) vs BalancedBrain (drops
+    // it on a random cell).
+    const proposals: { brainId: string; decision: BotDecision }[] = [];
+    for (let pi = 0; pi < this.proposers.length; pi++) {
+      const id = PROPOSER_IDS[pi];
       try {
-        proposals.push({ brainName: p.name, decision: p.decide(ctx) });
+        proposals.push({ brainId: id, decision: this.proposers[pi].decide(ctx) });
       } catch {
-        // Sub-brain crashed — skip it. Don't let one buggy brain
-        // poison the whole turn.
+        // Sub-brain crashed — skip it.
       }
     }
     if (proposals.length === 0) return { kind: 'skip' };
 
-    // Deduplicate by decision shape — two proposers placing the
-    // same tower at the same cell are identical actions.
-    const seen = new Map<string, { brainName: string; decision: BotDecision }>();
+    // Deduplicate by (decision shape, proposer) — two different
+    // proposers emitting the same decision are still scored
+    // separately because the proposer feature can flip the Q.
+    const seen = new Map<string, { brainId: string; decision: BotDecision }>();
     for (const p of proposals) {
-      const k = decisionKey(p.decision);
+      const k = `${p.brainId}|${decisionKey(p.decision)}`;
       if (!seen.has(k)) seen.set(k, p);
     }
 
@@ -125,10 +131,9 @@ export class LearningBrain implements BotBrain {
     const stateF = extractStateFeatures(ctx);
     let bestQ = -Infinity;
     let bestDecision: BotDecision = { kind: 'skip' };
-    for (const { decision } of seen.values()) {
-      const actionF = extractActionFeatures(ctx, decision);
+    for (const { brainId, decision } of seen.values()) {
+      const actionF = extractActionFeatures(ctx, decision, brainId);
       const features = [...stateF, ...actionF];
-      // Defensive: if feature shape mismatches model, model is stale.
       if (features.length !== MODEL.totalDim) {
         return this.fallback?.decide(ctx) ?? { kind: 'skip' };
       }

@@ -65,8 +65,15 @@ export function compileModel(json: any): CompiledModel {
   if (!xgb || !xgb.learner) throw new Error('TreeInference: missing xgboost.learner');
 
   const learner = xgb.learner;
-  const baseScoreStr = learner.learner_model_param?.base_score ?? '0.5';
+  // xgboost ≥3.0 stores base_score as a stringified JSON array
+  // ("[2.98e-1]"), not a plain float. Older versions used a plain
+  // float. Strip brackets if present.
+  const rawBase = learner.learner_model_param?.base_score ?? '0.5';
+  const baseScoreStr = typeof rawBase === 'string' ? rawBase.replace(/^\[|\]$/g, '') : String(rawBase);
   const baseScore = parseFloat(baseScoreStr);
+  if (!Number.isFinite(baseScore)) {
+    throw new Error(`TreeInference: could not parse base_score "${rawBase}"`);
+  }
 
   const trees: CompiledTree[] = [];
   const treeArr = learner.gradient_booster?.model?.trees ?? [];

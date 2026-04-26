@@ -68,7 +68,10 @@ export class RecorderBrain implements BotBrain {
       matchId: this.matchId,
       turnIdx: this.turnIdx++,
       stateFeatures: extractStateFeatures(ctx),
-      actionFeatures: extractActionFeatures(ctx, decision),
+      // Action features include the proposer brain id as a one-hot
+      // — this match's brain emitted the decision, so that's the
+      // proposer.
+      actionFeatures: extractActionFeatures(ctx, decision, this.meta.brain),
       decisionKind: decision.kind,
       faction: this.meta.faction,
       brain: this.meta.brain,

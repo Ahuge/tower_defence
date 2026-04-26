@@ -138,11 +138,24 @@ export const ACTION_FEATURE_NAMES = [
   // Cell-related (place only)
   'cell_path_coverage_norm', // path cells within tower range
   'cell_in_aura_zone',       // 0/1, cell sits in an existing aura tower's range
+  // Proposer brain one-hot — needed so the model can distinguish
+  // "harmonic brain placed Resonator on harmonic" from "balanced
+  // placed Resonator on harmonic"; without this signal the model
+  // averages the two and underprices specialist actions.
+  'by_balanced', 'by_greedy', 'by_rush', 'by_econ', 'by_synergy',
+  'by_ultimate', 'by_aoe_focus', 'by_nature', 'by_harmonic', 'by_psionic',
 ] as const;
 export type ActionFeatureName = (typeof ACTION_FEATURE_NAMES)[number];
 export const ACTION_FEATURE_COUNT = ACTION_FEATURE_NAMES.length;
 
-export function extractActionFeatures(ctx: BotContext, decision: BotDecision): number[] {
+const PROPOSER_ORDER = [
+  'balanced', 'greedy', 'rush', 'econ', 'synergy',
+  'ultimate', 'aoe_focus', 'nature', 'harmonic', 'psionic',
+];
+
+export function extractActionFeatures(
+  ctx: BotContext, decision: BotDecision, proposerBrainId?: string,
+): number[] {
   const out: number[] = new Array(ACTION_FEATURE_COUNT).fill(0);
   let i = 0;
   // One-hot kind
@@ -199,12 +212,17 @@ export function extractActionFeatures(ctx: BotContext, decision: BotDecision): n
       if (!t) continue;
       const role = getTowerRole(t);
       if (role !== 'aura' && role !== 'slow') continue;
-      const dx = placed.col - decision.col, dy = placed.row - decision.row;
+      const dx = placed.col - decision.col, dy = decision.row - placed.row;
       if (dx * dx + dy * dy <= t.range * t.range) { inAuraZone = 1; break; }
     }
     out[i++] = inAuraZone;
   } else {
     i += 2;
+  }
+
+  // Proposer brain one-hot
+  for (const id of PROPOSER_ORDER) {
+    out[i++] = proposerBrainId === id ? 1 : 0;
   }
 
   return out;
@@ -220,6 +238,8 @@ export const ALL_FEATURE_NAMES = [
 ];
 export const ALL_FEATURE_COUNT = STATE_FEATURE_COUNT + ACTION_FEATURE_COUNT;
 
-export function extractAllFeatures(ctx: BotContext, decision: BotDecision): number[] {
-  return [...extractStateFeatures(ctx), ...extractActionFeatures(ctx, decision)];
+export function extractAllFeatures(
+  ctx: BotContext, decision: BotDecision, proposerBrainId?: string,
+): number[] {
+  return [...extractStateFeatures(ctx), ...extractActionFeatures(ctx, decision, proposerBrainId)];
 }
