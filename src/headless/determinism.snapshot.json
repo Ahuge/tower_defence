@@ -25,7 +25,7 @@
     "waveReached": 5,
     "livesRemaining": 11,
     "goldEarned": 165,
-    "goldSpent": 80,
+    "goldSpent": 60,
     "creepsKilled": 33,
     "towersBuilt": 2
   },
@@ -125,9 +125,9 @@
     "waveReached": 5,
     "livesRemaining": 20,
     "goldEarned": 130,
-    "goldSpent": 327,
+    "goldSpent": 342,
     "creepsKilled": 26,
-    "towersBuilt": 8
+    "towersBuilt": 10
   },
   {
     "key": "mechanical|insane|synergy|standard|3|2003",
