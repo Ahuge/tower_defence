@@ -14,6 +14,32 @@ interface AnalyticsEvent {
   [key: string]: string | number | boolean;
 }
 
+/** Detected once at module load. One of:
+ *    'android' — Capacitor build running on Android
+ *    'ios'     — Capacitor build running on iOS
+ *    'desktop' — web build on a desktop browser
+ *    'web'     — web build on a mobile browser
+ *  Lets the analytics dashboard slice events by player surface
+ *  without needing per-call instrumentation. */
+function detectPlatform(): 'android' | 'ios' | 'desktop' | 'web' {
+  if (typeof window === 'undefined') return 'web';
+  // Capacitor exposes window.Capacitor with getPlatform() in native
+  // builds; on web it's either undefined or returns 'web'.
+  const cap = (window as unknown as { Capacitor?: { getPlatform?: () => string; isNativePlatform?: () => boolean } }).Capacitor;
+  if (cap?.isNativePlatform?.()) {
+    const p = cap.getPlatform?.();
+    if (p === 'android' || p === 'ios') return p;
+  }
+  // Web build — distinguish desktop vs mobile by touch capability +
+  // viewport width. Same heuristic ResponsiveManager uses for its
+  // phone/tablet/desktop split.
+  const hasTouch = 'ontouchstart' in window || (navigator?.maxTouchPoints ?? 0) > 0;
+  const smallViewport = (window.innerWidth || 0) < 1024;
+  return (hasTouch && smallViewport) ? 'web' : 'desktop';
+}
+
+const PLATFORM = detectPlatform();
+
 class AnalyticsClientClass {
   private serverUrl: string;
   private queue: AnalyticsEvent[] = [];
@@ -28,10 +54,12 @@ class AnalyticsClientClass {
     }
   }
 
-  /** Track a game event. Batched and sent periodically. */
+  /** Track a game event. Batched and sent periodically.
+   *  Every event auto-includes `platform` (android/ios/desktop/web)
+   *  so the dashboard can slice by player surface. */
   event(type: string, data: Record<string, string | number | boolean> = {}): void {
     if (!this.enabled) return;
-    this.queue.push({ type, ...data });
+    this.queue.push({ type, platform: PLATFORM, ...data });
     this.scheduleFlush();
   }
 
