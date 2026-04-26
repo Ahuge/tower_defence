@@ -25,6 +25,12 @@ import { installPlatformBridge } from './systems/platform';
 import './systems/traits/TowerTraitHandlers';
 import './systems/traits/CreepTraitHandlers';
 
+// Eager-load the live-capture module so window.__learningCapture is
+// available from the menu (before any match starts). Module is
+// otherwise no-op until capture is enabled via URL param or
+// localStorage flag.
+import './systems/learning/LiveCapture';
+
 // Initialize responsive detection before Phaser
 ResponsiveManager.init();
 

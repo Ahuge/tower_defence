@@ -300,6 +300,21 @@ export class GameScene extends Phaser.Scene {
     this.randomSeed = data.randomSeed ?? 0;
     this.creepFaction = data.creepFaction ?? 'arcane';
     this.waveCount = data.waveCount;
+    // Live-capture mode forces 20-wave matches to match the
+    // headless training data shape — bot data is generated at
+    // waveCount=20, so human-captured rows must use the same to
+    // be mixable. Only applies to standard mode (the only mode
+    // capture targets).
+    try {
+      const win = (typeof window !== 'undefined') ? window : null;
+      const capActive = win && (
+        new URLSearchParams(win.location.search).get('capture') === '1' ||
+        win.localStorage.getItem('learning.capture') === '1'
+      );
+      if (capActive && this.matchMode === 'standard') {
+        this.waveCount = 20;
+      }
+    } catch { /* ignore (headless / sandboxed) */ }
     this._gauntletOrder = (data as any).gauntletOrder ?? undefined;
     this._gauntletTransitioning = false;
     this.generatedMapDef = null;
