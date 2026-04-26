@@ -2,6 +2,37 @@
 
 ## 2026-04-26
 
+### Brain-tuning session summary (8/11 normal cells solved at ≥80%)
+
+Ran a multi-day exploration to push BalancedBrain (and other brains) past their default win-rates across the 11 factions. Approach evolved through three phases:
+
+**Phase 1 — L1+L2 hyperparameter search.** Refactored BalancedBrain to take 12 numeric tunables, then 3 categorical structural toggles. Built a μ+λ ES search loop with persistence, plateau/drift termination, warm-start support, holdout validation, and survival-depth fitness fallback for all-zero plateaus. Same loop later applied to GreedyBrain (2 params) and AOEFocusBrain (7 params). Lifts: arcane|normal 8% → 100%, void|normal 0% → 98%, infernal|normal default → 98%, celestial|normal 0% → 100% (with greedy).
+
+**Phase 2 — Coverage scan.** Realised we'd been doing duplicate work tuning BalancedBrain on cells where rush/synergy/aoe_focus already win at defaults. Cross-brain × cross-faction default scan revealed nature/military/infernal solved by RushBrain or SynergyBrain at zero-tuning, and cypherpunk near-baseline with default AOEFocus. Lesson: survey first, tune second.
+
+**Phase 3 — L3a specialised brains.** Built per-faction brains (HarmonicBrain, MechanicalBrain, AlienBrain, PsionicBrain) using existing BotDecision kinds + richer internal state. Results validated a clear rule: **specialised brains pay off iff the faction has a unique mechanic the existing primitives can't model.**
+- HarmonicBrain (range-based aura stacking): 0% → 93% ✅
+- PsionicBrain (slow_aura + true-damage compounding): 1-16% → 35-40% ⚠ partial
+- MechanicalBrain (no unique mechanic, just diverse towers): matches Balanced default, no improvement ✗
+- AlienBrain (raw-damage shortfall, not strategy fit): worse than greedy default ✗
+
+**Final coverage at normal:** 8/11 cells at ≥80%, 1 partial (psionic 35-40%), 2 stuck (mechanical, aliens). Stuck cells likely need balance work or true driver-level primitives (sell-and-rebuild, expiry-aware-replace) — not more hand-crafted brains.
+
+**Infrastructure committed:**
+- `scripts/brain-search.mjs` — multi-brain hyperparameter search CLI
+- `scripts/sweep-factions.mjs` — orchestrator for faction × normal sweeps
+- `scripts/brain-coverage.mjs` — default-config win-rate matrix scan
+- `scripts/ramp-sweep.mjs`, `scripts/all-brains-hard.mjs`, `scripts/all-factions-hard.mjs` — diagnostic tools
+- `src/headless/brain-search/BrainSearchManager.ts` — μ+λ ES with persistence + adaptive termination
+- `src/headless/brain-search/{Balanced,Greedy,AOEFocus}BrainSchema.ts` — per-brain search schemas
+- `src/systems/bots/brains/BrainHelpers.ts` — shared placement utilities (placeAtBestCoverage, placeInBuffZone, placeAtMaxStack, bestUpgradeInBuffZone)
+- `src/systems/bots/brains/{HarmonicBrain,PsionicBrain}.ts` — specialised brains
+- `brain-baselines/` — winner JSONs for each solved cell (greedy, balanced, rush, synergy, aoe_focus, harmonic), 12 baselines total
+
+**Balance change shipped from this work:** Hard difficulty toughnessPerWave 0.13 → 0.05, after diagnostic sweeps showed the original was 0/11 winnable for any default brain. The 0.05 ramp keeps hard genuinely difficult (still 1/11 winnable at default — celestial with greedy 26%) without being a 0% wall.
+
+**Next direction:** Building a learning-brain architecture (regression-based) rather than continuing to hand-craft per-faction brains. The L3a results have confirmed where specialised brains earn their keep and where they don't; the natural next step is a system that learns the right strategy per cell from training data instead of requiring human-coded decision trees.
+
 ### Specialised brain: PsionicBrain — 1%/16% → 35-40% on psionic|normal (partial)
 
 Second specialised brain. Builds on the BrainHelpers utilities introduced with HarmonicBrain.
