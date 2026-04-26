@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-26
+
+### Bug fix: Game Over screen "Frontier Returned" / ROI showed 0g even with steady income
+
+`StatsTracker.recordFrontierEarned()` was only being called for the *bonus* slice (dig-depth, grow-stacks, gamble rolls) returned from `FrontierManager.onWaveEnd()`. Steady-income buildings (Manor, Vault, Sacred Grove pre-harvest, etc.) flow through `IncomeManager.frontierIncome` → `collectWaveIncome()`, which only logged it under generic `goldEarned`. Result: a player could invest 2,250g in steady frontier buildings, earn thousands back over the match, and the stats screen still showed `Frontier Returned: 0g` and `Frontier ROI: 0%`.
+
+Fix: `BaseFrontierMode.onWaveCleared` now reads the `frontier` slice from `incomeMgr.getBreakdown()` before `collectWaveIncome()` and records it as `frontierEarned` separately. ROI calculations now match the gold the player actually earned from frontier holdings.
+
 ## 2026-04-24
 
 ### Random map gen: random tileset theme

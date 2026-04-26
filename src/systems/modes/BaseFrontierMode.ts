@@ -115,7 +115,9 @@ export abstract class BaseFrontierMode implements GameMode {
   }
 
   onWaveCleared(waveNum: number): void {
-    // Frontier income
+    // Frontier *bonus* income (dig depth, grow stacks, gamble roll).
+    // FrontierManager.onWaveEnd's contract is "extras only — base
+    // steady/overcharge income flows through IncomeManager".
     const frontierBonus = this.frontierMgr.onWaveEnd(waveNum);
     if (frontierBonus > 0) {
       this.ctx.economy.addGold(frontierBonus);
@@ -126,10 +128,22 @@ export abstract class BaseFrontierMode implements GameMode {
     this.frontierPanel.updateOwned();
     this.syncFrontierToDOM();
 
-    // Wave income
+    // Wave income — base + sends + frontier (steady). Read the
+    // frontier slice BEFORE collectWaveIncome so we can attribute
+    // it to the per-stat bucket; collectWaveIncome itself just
+    // returns the sum and bumps totalIncomeEarned.
+    const breakdown = this.ctx.incomeMgr.getBreakdown();
     const income = this.ctx.incomeMgr.collectWaveIncome();
     this.ctx.economy.addGold(income);
     this.ctx.statsTracker.recordGoldEarned(income);
+    // Steady frontier income (Manor, Vault, Sacred Grove pre-harvest,
+    // etc.) was previously double-missed: counted into total gold but
+    // never into frontierEarned, so the GameOver "Frontier ROI" stat
+    // showed 0% even when the player invested heavily. Attribute it
+    // here.
+    if (breakdown.frontier > 0) {
+      this.ctx.statsTracker.recordFrontierEarned(breakdown.frontier);
+    }
   }
 
   canStartWave(): boolean {
