@@ -28,6 +28,7 @@ await import('../src/systems/bots/brains/AOEFocusBrain.ts');
 await import('../src/systems/bots/brains/NatureBrain.ts');
 await import('../src/systems/bots/brains/HarmonicBrain.ts');
 await import('../src/systems/bots/brains/PsionicBrain.ts');
+await import('../src/systems/bots/brains/HumanReplayBrain.ts');
 await import('../src/systems/bots/brains/LearningBrain.ts');
 
 const FACTIONS = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'];

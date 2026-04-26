@@ -27,6 +27,20 @@ interface InFlightTurn {
   stateFeatures: number[];
   actionFeatures: number[];
   decisionKind: BotDecision['kind'];
+  /** Raw decision shape — needed to reconstruct the action so a
+   *  HumanReplayBrain can re-emit it later. Captures col/row plus
+   *  the tower id (for places) or branch id (for upgrades).
+   *  The encoded actionFeatures vector is lossy; this preserves
+   *  every dimension of the original choice. */
+  decisionRaw: {
+    kind: BotDecision['kind'];
+    col?: number;
+    row?: number;
+    towerId?: string;
+    branch?: string;
+    sendOptionId?: string;
+    buildingId?: string;
+  };
   faction: string;
   difficulty: string;
   wave: number;
@@ -96,11 +110,32 @@ export function startSession(faction: string, difficulty: string): void {
 export function recordAction(ctx: BotContext, decision: BotDecision): void {
   if (!session) return;
   try {
+    // Preserve the raw shape so HumanReplayBrain can reconstruct
+    // the exact action later. The actionFeatures vector is lossy
+    // (encodes role/cost/etc but not towerId/cell/branch).
+    const raw: InFlightTurn['decisionRaw'] = { kind: decision.kind };
+    if (decision.kind === 'place') {
+      raw.col = decision.col;
+      raw.row = decision.row;
+      raw.towerId = decision.type.id;
+    } else if (decision.kind === 'upgrade') {
+      raw.col = decision.col;
+      raw.row = decision.row;
+      if (decision.branch) raw.branch = decision.branch;
+    } else if (decision.kind === 'sell') {
+      raw.col = decision.col;
+      raw.row = decision.row;
+    } else if (decision.kind === 'send') {
+      raw.sendOptionId = decision.sendOptionId;
+    } else if (decision.kind === 'frontier') {
+      raw.buildingId = decision.buildingId;
+    }
     const turn: InFlightTurn = {
       turnIdx: session.turnIdx++,
       stateFeatures: extractStateFeatures(ctx),
       actionFeatures: extractActionFeatures(ctx, decision, 'human'),
       decisionKind: decision.kind,
+      decisionRaw: raw,
       faction: session.faction,
       difficulty: session.difficulty,
       wave: ctx.wave,
@@ -193,6 +228,7 @@ export function exportJSONL(): string {
           stateFeatures: t.stateFeatures,
           actionFeatures: t.actionFeatures,
           decisionKind: t.decisionKind,
+          decisionRaw: t.decisionRaw,
           faction: t.faction,
           brain: 'human',
           difficulty: t.difficulty,

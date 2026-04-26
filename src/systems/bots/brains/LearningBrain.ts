@@ -59,11 +59,15 @@ function loadModelSync(): CompiledModel | null {
 
 // Sub-brain ids consulted as proposers each turn. Deliberately
 // excludes 'learning' (would loop) and 'dumb' (no useful proposals).
-// We also include the specialised brains so when their faction is
-// active they contribute their composition wisdom.
+// The 'human' slot is HumanReplayBrain — surfaces actions from
+// captured human matches. Without it, the model's human-trained
+// tree leaves are unreachable at inference. Brain id 'human' aligns
+// with the by_human slot in FeatureExtractor.PROPOSER_ORDER so
+// proposed actions get by_human=1, matching captured training rows.
 const PROPOSER_IDS = [
   'balanced', 'greedy', 'rush', 'econ', 'synergy',
   'ultimate', 'aoe_focus', 'nature', 'harmonic', 'psionic',
+  'human',
 ];
 
 export class LearningBrain implements BotBrain {

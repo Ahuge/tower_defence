@@ -37,3 +37,5 @@ harness-runs/
 /ml/training-data/
 /ml/__pycache__/
 /ml/.venv/
+# /ml/captured/ is NOT ignored — those are committed human-played
+# JSONL files (hand-collected positive examples for hard cells).
