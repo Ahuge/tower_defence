@@ -30,12 +30,59 @@ import { PathPoint } from '../../Pathfinding';
 import { bestMazeCell, pathCellsWithinRange } from '../MazePlanner';
 import { hasTrait } from '../../traits/Trait';
 
-const MAX_OPENING_WALLS = 2;
-const SURVIVAL_FLOOR_TOWERS = 1;
-const PANIC_LIVES = 10;
+/** Tunable knobs for the brain-search loop. Defaults preserve the
+ *  historical hardcoded constants. */
+export interface AOEFocusBrainParams {
+  /** Max opening walls before we stop mazing and start placing DPS. */
+  maxOpeningWalls: number;
+  /** Cheap-DPS towers to lay down before saving for splash. */
+  survivalFloorTowers: number;
+  /** Lives ≤ this triggers an emergency cheap-DPS placement. */
+  panicLives: number;
+  /** AOE tower pick rule. See AOE_PICK_STRATEGIES.
+   *    0 expensive       – most expensive affordable AOE (legacy)
+   *    1 cheap           – cheapest AOE (volume)
+   *    2 damage-per-cost – best damage / cost
+   *    3 long-range      – longest range */
+  aoePickStrategyIdx: number;
+  /** Lives required before committing to the ultimate. */
+  ultimateLivesThreshold: number;
+  /** Towers placed required before committing to the ultimate. */
+  ultimateMinTowers: number;
+  /** Upgrade pick rule. See AOE_UPGRADE_STRATEGIES.
+   *    0 compound – highest-level tower (legacy)
+   *    1 spread   – lowest-level tower (broaden) */
+  upgradeStrategyIdx: number;
+}
+
+export const DEFAULT_AOE_FOCUS_PARAMS: AOEFocusBrainParams = {
+  maxOpeningWalls: 2,
+  survivalFloorTowers: 1,
+  panicLives: 10,
+  aoePickStrategyIdx: 0,
+  ultimateLivesThreshold: 15,
+  ultimateMinTowers: 3,
+  upgradeStrategyIdx: 0,
+};
+
+export const AOE_PICK_STRATEGIES = ['expensive', 'cheap', 'damage-per-cost', 'long-range'] as const;
+export const AOE_UPGRADE_STRATEGIES = ['compound', 'spread'] as const;
+
+function loadAOEFocusParamsFromEnv(): AOEFocusBrainParams {
+  const raw = (typeof process !== 'undefined' && process.env)
+    ? process.env.AOE_FOCUS_BRAIN_PARAMS : undefined;
+  if (!raw) return DEFAULT_AOE_FOCUS_PARAMS;
+  try {
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_AOE_FOCUS_PARAMS, ...parsed };
+  } catch {
+    return DEFAULT_AOE_FOCUS_PARAMS;
+  }
+}
 
 export class AOEFocusBrain implements BotBrain {
   readonly name = 'AOE Focus';
+  readonly params: AOEFocusBrainParams;
 
   private grouped: Record<TowerRole, TowerType[]> = {
     'wall': [], 'dps-single': [], 'dps-splash': [],
@@ -47,6 +94,10 @@ export class AOEFocusBrain implements BotBrain {
   private ultimate: TowerType | null = null;
   private wallsPlaced = 0;
   private placedUltimate = false;
+
+  constructor(params?: Partial<AOEFocusBrainParams>) {
+    this.params = params ? { ...DEFAULT_AOE_FOCUS_PARAMS, ...params } : loadAOEFocusParamsFromEnv();
+  }
 
   init(ctx: BotContext): void {
     this.grouped = groupByRole(ctx.towerPool);
@@ -71,30 +122,32 @@ export class AOEFocusBrain implements BotBrain {
   }
 
   decide(ctx: BotContext): BotDecision {
-    // Short opening maze — 2 walls to bend the path into a chokepoint
-    // where a single mortar covers a long path strip. More walls is
-    // wasted gold we'd rather sink into the splash tower.
-    if (this.wallsPlaced < MAX_OPENING_WALLS) {
+    // Short opening maze — bend the path into a chokepoint where a
+    // single mortar covers a long path strip.
+    if (this.wallsPlaced < this.params.maxOpeningWalls) {
       const maze = this.decideMaze(ctx);
       if (maze.kind === 'place') return maze;
     }
 
-    // Survival floor: at least 1 cheap DPS on the board before we
+    // Survival floor: at least N cheap DPS on the board before we
     // start saving for splash. Without it the first wave clips us.
     const dpsOwned = ctx.placedTowers.filter(p => !this.wallIds.has(p.towerId)).length;
-    if (dpsOwned < SURVIVAL_FLOOR_TOWERS && this.cheapDps && ctx.budget >= this.cheapDps.cost) {
+    if (dpsOwned < this.params.survivalFloorTowers && this.cheapDps && ctx.budget >= this.cheapDps.cost) {
       const place = placeAtBestCoverage(ctx, this.cheapDps);
       if (place.kind === 'place') return place;
     }
     // Lives panic — drop a survival tower no matter what.
-    if (ctx.lives < PANIC_LIVES && this.cheapDps && ctx.budget >= this.cheapDps.cost) {
+    if (ctx.lives < this.params.panicLives && this.cheapDps && ctx.budget >= this.cheapDps.cost) {
       const place = placeAtBestCoverage(ctx, this.cheapDps);
       if (place.kind === 'place') return place;
     }
 
-    // Ultimate: only when survival floor + lives safe. Prevents
-    // saving-into-loss on hard difficulty.
-    if (!this.placedUltimate && this.ultimate && ctx.lives >= 15 && ctx.placedTowers.length >= 3) {
+    // Ultimate: only when survival floor + lives safe.
+    if (
+      !this.placedUltimate && this.ultimate &&
+      ctx.lives >= this.params.ultimateLivesThreshold &&
+      ctx.placedTowers.length >= this.params.ultimateMinTowers
+    ) {
       if (ctx.budget >= this.ultimate.cost) {
         const place = placeAtBestCoverage(ctx, this.ultimate);
         if (place.kind === 'place') {
@@ -104,18 +157,15 @@ export class AOEFocusBrain implements BotBrain {
       }
     }
 
-    // Core loop: place the most expensive AOE tower we can afford.
-    // Bigger AOE = bigger ROI on a tower built where the path
-    // bends, so we prefer up-tier over multiple cheap copies.
+    // Core loop: pick an AOE tower per the configured strategy.
     const aoeAffordable = this.aoePool.filter(t => t.cost <= ctx.budget);
     if (aoeAffordable.length > 0) {
-      const pick = aoeAffordable[aoeAffordable.length - 1]; // max-cost we can afford
+      const pick = this.pickAOE(aoeAffordable);
       const place = placeAtBestCoverage(ctx, pick);
       if (place.kind === 'place') return place;
     }
 
-    // Compound returns: upgrade an existing AOE tower before buying
-    // another cheap copy.
+    // Upgrade an existing AOE tower per the configured strategy.
     const upgrade = this.upgradeBestAOE(ctx);
     if (upgrade.kind === 'upgrade') return upgrade;
 
@@ -133,11 +183,33 @@ export class AOEFocusBrain implements BotBrain {
     if (walls.length === 0) return { kind: 'skip' };
     const best = bestMazeCell(ctx.grid, ctx.candidateCells, 30, ctx.allPaths);
     if (!best || best.gain <= 0) {
-      this.wallsPlaced = MAX_OPENING_WALLS;
+      this.wallsPlaced = this.params.maxOpeningWalls;
       return { kind: 'skip' };
     }
     this.wallsPlaced++;
     return { kind: 'place', col: best.col, row: best.row, type: walls[0] };
+  }
+
+  /** Pick from the affordable AOE pool per the configured strategy.
+   *  Pool is cost-sorted ascending (set up in init). */
+  private pickAOE(pool: TowerType[]): TowerType {
+    const strategy = AOE_PICK_STRATEGIES[
+      Math.max(0, Math.min(AOE_PICK_STRATEGIES.length - 1, this.params.aoePickStrategyIdx))
+    ] ?? 'expensive';
+    switch (strategy) {
+      case 'cheap': return pool[0];
+      case 'damage-per-cost': {
+        const sorted = [...pool].sort((a, b) =>
+          (b.damage / Math.max(1, b.cost)) - (a.damage / Math.max(1, a.cost)));
+        return sorted[0];
+      }
+      case 'long-range': {
+        const sorted = [...pool].sort((a, b) => b.range - a.range);
+        return sorted[0];
+      }
+      case 'expensive':
+      default: return pool[pool.length - 1];
+    }
   }
 
   private upgradeBestAOE(ctx: BotContext): BotDecision {
@@ -146,7 +218,14 @@ export class AOEFocusBrain implements BotBrain {
       aoeIds.has(p.towerId) && p.upgradeCost > 0 && p.upgradeCost <= ctx.budget,
     );
     if (candidates.length === 0) return { kind: 'skip' };
-    candidates.sort((a, b) => b.level - a.level); // compound — highest level first
+    const strategy = AOE_UPGRADE_STRATEGIES[
+      Math.max(0, Math.min(AOE_UPGRADE_STRATEGIES.length - 1, this.params.upgradeStrategyIdx))
+    ] ?? 'compound';
+    if (strategy === 'spread') {
+      candidates.sort((a, b) => a.level - b.level); // lowest level first
+    } else {
+      candidates.sort((a, b) => b.level - a.level); // compound — highest level first
+    }
     return { kind: 'upgrade', col: candidates[0].col, row: candidates[0].row };
   }
 }
