@@ -2,6 +2,28 @@
 
 ## 2026-04-26
 
+### Specialised brain: PsionicBrain — 1%/16% → 35-40% on psionic|normal (partial)
+
+Second specialised brain. Builds on the BrainHelpers utilities introduced with HarmonicBrain.
+
+**Why this works partially:**
+Psionic's Terror tower (80g) is a 3.5-tile slow_aura field that halves creep speed AND deals true damage. Probes (20g, true damage) placed inside Terror's range get effectively-doubled DPS (slowed creeps spend twice as long per tile). Generic brains never made this connection — greedy spammed Probes alone (16% / avgWave 19.4); BalancedBrain stalled at 1% / avgWave 15.
+
+**Why not more than 40%:**
+The brain reaches avgWave 19.6 — losing on the final wave consistently. To push past 50% likely needs either:
+- Balance change (Probe damage bump, Terror cost reduction), OR
+- Driver-level primitives like sell-and-rebuild that the brain layer can't access.
+
+Iteration history (commits not retained):
+- Mesmer (45g, confuse 1.2s) tested and dropped — underperformed an extra Probe in the slow zone.
+- Second Mind Spike + earlier second Terror tested — actively worse (5-10% wins) because they ate Probe-spam budget.
+- Overmind lives gate lowered 15→10 — no measurable change (gold gate, not lives, was the binder).
+- Mind Spike upgrade priority moved to first — no change (only 1 Mind Spike, levelled fast).
+
+Committed as a documented partial win — meaningful improvement (+19 to +24 percentage points), future iteration target. No baseline file generated since 35-40% is below the 80% threshold.
+
+Cumulative ≥80% normal coverage stays at 8/11. Stuck cells: mechanical, aliens, and now psionic at 35-40% (close but not landed).
+
 ### Specialised brain: HarmonicBrain — 0% → 93% on harmonic|normal
 
 First L3-phase specialised brain. Lives entirely in brain code (no driver / BotDecision changes); uses standard `place` and `upgrade` decisions but with strategy-aware internal state.
