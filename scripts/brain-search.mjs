@@ -52,15 +52,22 @@ const seedsFlag = getFlag('search-seeds');
 const validateSeedsFlag = getFlag('validate-seeds');
 const seedFromFlag = getFlag('seed-from');
 
-if (brainFlag !== 'balanced') {
-  console.error('[brain-search] only "balanced" supported in this iteration');
-  process.exit(1);
-}
-
 // ── jsdom + dynamic imports of TS sources ──────────────────────────
 await import('../src/headless/harness/jsdom-setup.ts');
 const { BrainSearchManager, DEFAULT_MANAGER_CONFIG } = await import('../src/headless/brain-search/BrainSearchManager.ts');
-const { BALANCED_BRAIN_SCHEMA } = await import('../src/headless/brain-search/BalancedBrainSchema.ts');
+
+// Pick the right schema for the brain under test. Each brain's
+// search schema lives next to its impl; the search loop is otherwise
+// brain-agnostic.
+let BRAIN_SCHEMA;
+if (brainFlag === 'balanced') {
+  ({ BALANCED_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/BalancedBrainSchema.ts'));
+} else if (brainFlag === 'greedy') {
+  ({ GREEDY_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/GreedyBrainSchema.ts'));
+} else {
+  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy`);
+  process.exit(1);
+}
 
 // ── Run dir + persistence ──────────────────────────────────────────
 const runId = `${brainFlag}-${factionFlag}-${difficultyFlag}`;
@@ -83,7 +90,7 @@ if (maxEvalsFlag !== null) cfg.maxEvals = parseInt(maxEvalsFlag, 10);
 if (seedsFlag !== null) cfg.searchSeeds = parseInt(seedsFlag, 10);
 if (validateSeedsFlag !== null) cfg.validateSeeds = parseInt(validateSeedsFlag, 10);
 
-const manager = new BrainSearchManager(BALANCED_BRAIN_SCHEMA, cfg);
+const manager = new BrainSearchManager(BRAIN_SCHEMA, cfg);
 
 if (existsSync(evalLogPath)) {
   const lines = readFileSync(evalLogPath, 'utf8').split('\n').filter(l => l.trim());
@@ -173,7 +180,7 @@ function makeMatchConfig(seed) {
     faction: factionFlag,
     difficulty: difficultyFlag,
     mapId: 'plains',
-    brainId: 'balanced',
+    brainId: brainFlag,
     matchMode: 'standard',
     waveCount: 20,
     seed: (1 * 31 + seed * 7919) >>> 0,
@@ -208,7 +215,7 @@ async function evaluateConfig(params, n, tag) {
 }
 
 function formatParams(p) {
-  const keys = Object.keys(BALANCED_BRAIN_SCHEMA);
+  const keys = Object.keys(BRAIN_SCHEMA);
   return keys.map(k => `${k}=${typeof p[k] === 'number' ? p[k].toFixed(2) : p[k]}`).join(' ');
 }
 

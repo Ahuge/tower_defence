@@ -2,6 +2,26 @@
 
 ## 2026-04-26
 
+### Brain tuning: parameterised GreedyBrain unlocks celestial (4/11 solved)
+
+GreedyBrain refactored to take 2 search-tunable params:
+- `pickStrategyIdx` (0..3): cheapest-single (legacy) | damage-per-cost | fast-fire | long-range. Determines the single tower the brain spams.
+- `allowUpgrade` (0/1): when 1, level up the highest-coverage instance of the spam-tower once placement options are exhausted.
+
+Defaults preserve historical behaviour. Search infrastructure refactored so each brain reads its own env var (`GREEDY_BRAIN_PARAMS` / `BALANCED_BRAIN_PARAMS`); the worker derives the var name from `config.brainId` so adding new parameterised brains needs no worker change.
+
+11-faction × normal sweep with greedy (~10 min wall time) added one new clean win: **celestial 0% → 100%**, the cell BalancedBrain couldn't crack. The winner uses pure defaults (15 evals) — even default greedy beats tuned BalancedBrain on celestial. Confirms that **different brains have different per-faction blind spots**; faction baselines should use whichever brain converges, not a single chosen brain across the board.
+
+Cumulative ≥98% baseline coverage across both brains:
+- arcane (balanced 100% / greedy 100%) — pick either
+- void (balanced 98% / greedy 100%) — greedy slightly cleaner
+- infernal (balanced 98% / greedy 0%, Imps expire) — balanced only
+- celestial (balanced 0% / greedy 100%) — **greedy only**
+
+Greedy's `avgWave` data also surfaces "almost-wins": cypherpunk/aliens/harmonic/infernal reach wave 18–19 of 20 with greedy but can't close. They're a single tactical adjustment away — outside greedy's "spam one tower" model but plausibly within reach of specialised per-faction brains.
+
+Bug fix: `scripts/brain-search.mjs` was hardcoding `brainId: 'balanced'` in `makeMatchConfig`, so greedy searches were silently running BalancedBrain for the actual matches. Now propagates `--brain=` through.
+
 ### Brain tuning: 11-faction × normal sweep — 3/11 solved, 8 brain-structural
 
 Ran the L1+L2 search across all 11 factions × normal in ~7 min wall time. **Three factions converged to ≥98% with per-faction tuning**: arcane (100%, prior), void (98%, new), infernal (98%, new). The L2 toggles added meaningful value — void's winner uses `towerPickStrategyIdx=damage-per-cost`, infernal's uses `skipUltimateSave=1`, neither reachable from the L1-only param space.

@@ -1,0 +1,17 @@
+{
+  "brain": "greedy",
+  "faction": "arcane",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-26",
+  "method": "L1+L2 hyperparameter search · μ+λ ES (μ=2, λ=8)",
+  "results": {
+    "winnerWinRate": 1,
+    "avgWave": 20,
+    "n": 100,
+    "totalEvaluations": 16
+  },
+  "params": {
+    "pickStrategyIdx": 0,
+    "allowUpgrade": 0
+  }
+}

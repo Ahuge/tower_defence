@@ -14,17 +14,20 @@ import { fileURLToPath } from 'node:url';
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const PROJECT_ROOT = resolve(HERE, '..');
 
+// Order: arcane first so the search cache & schema warm up against the
+// known-winnable cell, then the rest. Customise via CLI args.
 const FACTIONS = [
-  'mechanical', 'nature', 'void', 'military', 'aliens',
+  'arcane', 'mechanical', 'nature', 'void', 'military', 'aliens',
   'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic',
 ];
-const DIFFICULTY = process.argv[2] ?? 'normal';
-const MAX_EVALS = parseInt(process.argv[3] ?? '300', 10);
+const BRAIN = process.argv[2] ?? 'balanced';
+const DIFFICULTY = process.argv[3] ?? 'normal';
+const MAX_EVALS = parseInt(process.argv[4] ?? '300', 10);
 const SAVE_THRESHOLD = 0.8;
 
 function runSearch(faction) {
   return new Promise((resolveP) => {
-    const runId = `balanced-${faction}-${DIFFICULTY}`;
+    const runId = `${BRAIN}-${faction}-${DIFFICULTY}`;
     const runDir = resolve(PROJECT_ROOT, 'brain-search', runId);
     if (existsSync(runDir)) {
       // Cleanest is to start fresh — resume would mix in prior runs
@@ -35,7 +38,7 @@ function runSearch(faction) {
     const args = [
       '--import', 'tsx',
       resolve(PROJECT_ROOT, 'scripts/brain-search.mjs'),
-      `--brain=balanced`,
+      `--brain=${BRAIN}`,
       `--faction=${faction}`,
       `--difficulty=${DIFFICULTY}`,
       `--workers=8`,
@@ -58,7 +61,7 @@ function runSearch(faction) {
   });
 }
 
-console.log(`sweep · ${FACTIONS.length} factions × ${DIFFICULTY} · max-evals=${MAX_EVALS} · ~${FACTIONS.length} min wall total`);
+console.log(`sweep · brain=${BRAIN} · ${FACTIONS.length} factions × ${DIFFICULTY} · max-evals=${MAX_EVALS}`);
 console.log('---');
 
 const startedAt = Date.now();
@@ -95,9 +98,9 @@ mkdirSync(baselineDir, { recursive: true });
 for (const r of results) {
   const b = r.summary?.bestSoFar;
   if (!b || b.tag !== 'validate' || b.score < SAVE_THRESHOLD) continue;
-  const path = resolve(baselineDir, `balanced-${r.faction}-${DIFFICULTY}.json`);
+  const path = resolve(baselineDir, `${BRAIN}-${r.faction}-${DIFFICULTY}.json`);
   const doc = {
-    brain: 'balanced',
+    brain: BRAIN,
     faction: r.faction,
     difficulty: DIFFICULTY,
     discoveredAt: new Date().toISOString().slice(0, 10),

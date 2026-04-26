@@ -35,11 +35,12 @@ async function main(): Promise<void> {
     running = true;
     while (queue.length > 0) {
       const t = queue.shift()!;
-      // Inject params via env so BalancedBrain's loadParamsFromEnv
-      // picks them up at construction time. Each match reconstructs
-      // the brain (BRAIN_REGISTRY factory), so the env mutation
-      // takes effect on the very next runMatch() call.
-      process.env.BALANCED_BRAIN_PARAMS = JSON.stringify(t.params);
+      // Inject params via env keyed off the brain id so each brain's
+      // loadParamsFromEnv picks them up at construction time. Each
+      // match reconstructs the brain (BRAIN_REGISTRY factory), so the
+      // env mutation takes effect on the very next runMatch() call.
+      const envVar = `${(t.config.brainId || 'balanced').toUpperCase()}_BRAIN_PARAMS`;
+      process.env[envVar] = JSON.stringify(t.params);
       try {
         const r = await runMatch(t.config);
         send({
