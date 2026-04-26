@@ -23,10 +23,9 @@
  *   Phase 4 (waves 15+, lives stable): Crescendo ult — drop in the
  *     densest buff zone for doubled-aura DPS.
  */
-import { BotBrain, BotContext, BotDecision, Cell, PlacedTower, registerBrain } from '../BotBrain';
-import { TowerType, TOWER_TYPES } from '../../../data/TowerTypes';
-import { PathPoint } from '../../Pathfinding';
-import { pathCellsWithinRange } from '../MazePlanner';
+import { BotBrain, BotContext, BotDecision, PlacedTower, registerBrain } from '../BotBrain';
+import { TowerType } from '../../../data/TowerTypes';
+import { placeAtBestCoverage, placeInBuffZone, placeAtMaxStack, bestUpgradeInBuffZone } from './BrainHelpers';
 
 const RESONATOR_ID = 'harmonic_resonator';
 const AMPLIFIER_ID = 'harmonic_amplifier';
@@ -74,7 +73,7 @@ export class HarmonicBrain implements BotBrain {
       !this.ultPlaced && this.crescendo && ctx.lives >= 15 && myAuras.length >= 3 &&
       ctx.budget >= this.crescendo.cost
     ) {
-      const place = placeInBestBuffZone(ctx, this.crescendo, myAuras);
+      const place = placeAtMaxStack(ctx, this.crescendo, myAuras);
       if (place.kind === 'place') {
         this.ultPlaced = true;
         return place;
@@ -132,109 +131,10 @@ export class HarmonicBrain implements BotBrain {
   private upgradeBestResonator(
     ctx: BotContext, resonators: PlacedTower[], auras: PlacedTower[],
   ): BotDecision {
-    const candidates = resonators.filter(p => p.upgradeCost > 0 && p.upgradeCost <= ctx.budget);
-    if (candidates.length === 0) return { kind: 'skip' };
-    // Score: count of auras whose range covers this Resonator.
-    let bestCol = -1, bestRow = -1, bestScore = -1;
-    for (const r of candidates) {
-      let score = 0;
-      for (const a of auras) {
-        const def = TOWER_TYPES[a.towerId];
-        if (!def) continue;
-        const dx = a.col - r.col, dy = a.row - r.row;
-        if (dx * dx + dy * dy <= def.range * def.range) score++;
-      }
-      if (score > bestScore) { bestScore = score; bestCol = r.col; bestRow = r.row; }
-    }
-    if (bestCol < 0) return { kind: 'skip' };
-    return { kind: 'upgrade', col: bestCol, row: bestRow };
+    const target = bestUpgradeInBuffZone(ctx, resonators, auras);
+    if (!target) return { kind: 'skip' };
+    return { kind: 'upgrade', col: target.col, row: target.row };
   }
-}
-
-/** Find the cell with highest path coverage that's also inside the
- *  buff zone of `anchors` — i.e. within at least one anchor's range.
- *  Falls back to plain best-coverage if no candidate cell is in
- *  range of any anchor (early game before anchors are placed). */
-function placeInBuffZone(ctx: BotContext, type: TowerType, anchors: PlacedTower[]): BotDecision {
-  if (ctx.budget < type.cost) return { kind: 'skip' };
-  if (ctx.candidateCells.length === 0) return { kind: 'skip' };
-  const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
-  if (paths.length === 0) return { kind: 'skip' };
-
-  // Pre-compute squared aura ranges per anchor (in tile units).
-  const anchorRanges = anchors.map(a => {
-    const def = TOWER_TYPES[a.towerId];
-    return { a, r2: def ? def.range * def.range : 0 };
-  });
-
-  let bestCol = -1, bestRow = -1, bestScore = -Infinity;
-  for (const c of ctx.candidateCells) {
-    // anchor count = how many anchors' ranges this cell sits inside
-    let anchorCount = 0;
-    for (const { a, r2 } of anchorRanges) {
-      const dx = a.col - c.col, dy = a.row - c.row;
-      if (dx * dx + dy * dy <= r2) anchorCount++;
-    }
-    if (anchorCount === 0 && anchorRanges.length > 0) continue; // out of buff zone
-    let coverage = 0;
-    for (const p of paths) coverage += pathCellsWithinRange(c, p, type.range);
-    // Score combines: in-zone bonus (heavy) + own coverage. Lets us
-    // pick the best-coverage cell that's still inside the zone.
-    const score = anchorCount * 100 + coverage;
-    if (score > bestScore) {
-      bestScore = score;
-      bestCol = c.col;
-      bestRow = c.row;
-    }
-  }
-
-  if (bestCol < 0) {
-    // No buff-zone cell found — fall back so we don't skip and starve.
-    return placeAtBestCoverage(ctx, type);
-  }
-  return { kind: 'place', col: bestCol, row: bestRow, type };
-}
-
-/** Crescendo placement: the cell where the most aura ranges overlap.
- *  Crescendo doubles all incoming auras, so density matters more
- *  than path coverage for this single placement. */
-function placeInBestBuffZone(ctx: BotContext, type: TowerType, auras: PlacedTower[]): BotDecision {
-  if (ctx.budget < type.cost) return { kind: 'skip' };
-  if (ctx.candidateCells.length === 0) return { kind: 'skip' };
-  const auraRanges = auras.map(a => {
-    const def = TOWER_TYPES[a.towerId];
-    return { a, r2: def ? def.range * def.range : 0 };
-  });
-  let bestCol = -1, bestRow = -1, bestStack = 0;
-  for (const c of ctx.candidateCells) {
-    let stack = 0;
-    for (const { a, r2 } of auraRanges) {
-      const dx = a.col - c.col, dy = a.row - c.row;
-      if (dx * dx + dy * dy <= r2) stack++;
-    }
-    if (stack > bestStack) { bestStack = stack; bestCol = c.col; bestRow = c.row; }
-  }
-  if (bestCol < 0) return placeAtBestCoverage(ctx, type);
-  return { kind: 'place', col: bestCol, row: bestRow, type };
-}
-
-function placeAtBestCoverage(ctx: BotContext, type: TowerType): BotDecision {
-  if (ctx.budget < type.cost) return { kind: 'skip' };
-  if (ctx.candidateCells.length === 0) return { kind: 'skip' };
-  const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
-  if (paths.length === 0) return { kind: 'skip' };
-  let bestCol = -1, bestRow = -1, bestCoverage = -1;
-  for (const c of ctx.candidateCells) {
-    let coverage = 0;
-    for (const p of paths) coverage += pathCellsWithinRange(c, p, type.range);
-    if (coverage > bestCoverage) {
-      bestCoverage = coverage;
-      bestCol = c.col;
-      bestRow = c.row;
-    }
-  }
-  if (bestCoverage <= 0) return { kind: 'skip' };
-  return { kind: 'place', col: bestCol, row: bestRow, type };
 }
 
 registerBrain('harmonic', () => new HarmonicBrain());
