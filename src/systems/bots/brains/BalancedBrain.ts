@@ -66,7 +66,33 @@ export interface BalancedBrainParams {
   /** Range (tiles) used in upgrade-target scoring — proxy for how
    *  far past a tower's actual range we still credit "near path". */
   upgradeCoverageRange: number;
+
+  // ── L2 (structural) toggles — encoded as integers so the existing
+  // μ+λ ES handles them via Gaussian mutation + clamping. Each maps
+  // to a named strategy via the *_MODES tables below.
+
+  /** 0 = false, 1 = true. When 1, the saving-ultimate phase is
+   *  bypassed entirely — brain spends all gold on placing/upgrading
+   *  instead of accumulating for the faction ult. Hypothesis: on
+   *  hard difficulty, saving 700g while bleeding lives is a losing
+   *  trade. */
+  skipUltimateSave: number;
+  /** Upgrade-target ranking. See UPGRADE_STRATEGIES.
+   *    0 coverage   – most path cells in range (legacy default)
+   *    1 concentrate – upgrade highest-level tower (focus fire)
+   *    2 cheapest    – upgrade lowest-cost upgrade (volume)
+   *    3 damage      – upgrade highest-base-damage tower */
+  upgradeStrategyIdx: number;
+  /** Tower-pick ranking when placing DPS. See TOWER_PICK_STRATEGIES.
+   *    0 expensive-bias  – current `expensiveBias`-weighted rank (legacy)
+   *    1 damage-per-cost – maximise damage / cost
+   *    2 fast-fire       – lowest fireRate (highest attack frequency)
+   *    3 long-range      – longest range */
+  towerPickStrategyIdx: number;
 }
+
+export const UPGRADE_STRATEGIES = ['coverage', 'concentrate', 'cheapest', 'damage'] as const;
+export const TOWER_PICK_STRATEGIES = ['expensive-bias', 'damage-per-cost', 'fast-fire', 'long-range'] as const;
 
 export const DEFAULT_BALANCED_PARAMS: BalancedBrainParams = {
   panicLives: 5,
@@ -81,6 +107,11 @@ export const DEFAULT_BALANCED_PARAMS: BalancedBrainParams = {
   auraAdjacencyBonus: 0.25,
   waveLookaheadWindow: 3,
   upgradeCoverageRange: 4,
+  // L2 defaults: every toggle starts at the legacy strategy so the
+  // refactor is behaviour-preserving when no env override is set.
+  skipUltimateSave: 0,
+  upgradeStrategyIdx: 0, // coverage
+  towerPickStrategyIdx: 0, // expensive-bias
 };
 
 /** Tile-distance within which a tower is "adjacent" for aura
@@ -236,8 +267,11 @@ export class BalancedBrain implements BotBrain {
     if (ctx.lives > 0 && ctx.lives <= this.params.panicLives) return 'panic';
     if (this.wallsPlaced < this.params.maxWallPlacements) return 'building-maze';
     // Ultimate save — only when coverage is solid, lives aren't
-    // critical, and we actually have an ultimate to aim for.
+    // critical, and we actually have an ultimate to aim for. When
+    // skipUltimateSave is enabled, the brain never accumulates for
+    // the ult and stays in filling-dps until panic.
     if (
+      !this.params.skipUltimateSave &&
       this.ultimate &&
       ctx.placedTowers.filter(p => !this.wallIds.has(p.towerId)).length >= this.params.minDpsTowersForUlt &&
       ctx.lives >= this.params.stableLivesForUlt &&
@@ -356,14 +390,52 @@ export class BalancedBrain implements BotBrain {
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
     if (paths.length === 0) return { kind: 'upgrade', col: pool[0].col, row: pool[0].row };
 
-    const range = this.params.upgradeCoverageRange * TILE_SIZE;
-    const scored = pool.map(p => {
-      let coverage = 0;
-      for (const path of paths) coverage += pathCellsWithinRange(p, path, range);
-      return { ...p, coverage };
-    });
-    scored.sort((a, b) => b.coverage - a.coverage);
-    const best = scored[0];
+    const strategy = UPGRADE_STRATEGIES[
+      Math.max(0, Math.min(UPGRADE_STRATEGIES.length - 1, this.params.upgradeStrategyIdx))
+    ] ?? 'coverage';
+
+    let best: PlacedTower;
+    switch (strategy) {
+      case 'concentrate': {
+        // Highest-level tower wins. Tiebreaker: most-coverage at the
+        // same level. Concentrates upgrade gold on a single carry.
+        const sorted = [...pool].sort((a, b) => {
+          if (b.level !== a.level) return b.level - a.level;
+          return 0;
+        });
+        best = sorted[0];
+        break;
+      }
+      case 'cheapest': {
+        // Lowest upgradeCost wins — maximises upgrade volume.
+        const sorted = [...pool].sort((a, b) => a.upgradeCost - b.upgradeCost);
+        best = sorted[0];
+        break;
+      }
+      case 'damage': {
+        // Highest base damage wins — bias toward the highest-DPS
+        // tower regardless of position. Useful when a single
+        // keystone tower carries the faction (e.g. arcane Bolt).
+        const sorted = [...pool].sort((a, b) => {
+          const da = TOWER_TYPES[a.towerId]?.damage ?? 0;
+          const db = TOWER_TYPES[b.towerId]?.damage ?? 0;
+          return db - da;
+        });
+        best = sorted[0];
+        break;
+      }
+      case 'coverage':
+      default: {
+        const range = this.params.upgradeCoverageRange * TILE_SIZE;
+        const scored = pool.map(p => {
+          let coverage = 0;
+          for (const path of paths) coverage += pathCellsWithinRange(p, path, range);
+          return { ...p, coverage };
+        });
+        scored.sort((a, b) => b.coverage - a.coverage);
+        best = scored[0];
+      }
+    }
     return { kind: 'upgrade', col: best.col, row: best.row };
   }
 
@@ -442,16 +514,43 @@ export class BalancedBrain implements BotBrain {
     return scored;
   }
 
-  /** Pick the "best" tower to place from a cost-ascending pool.
-   *  `expensiveBias=1` matches the historical "most expensive" rule;
-   *  `expensiveBias=0` picks the cheapest (keystone-friendly when the
-   *  faction's headline tower is cheap, e.g. arcane Bolt). Linear
-   *  rank interpolation in between. Counter override still wins when
-   *  upcoming waves have a clear dominant creep type. */
+  /** Pick the "best" tower to place from a cost-ascending pool. The
+   *  ranking criterion is selected by `towerPickStrategyIdx`:
+   *    expensive-bias  – `expensiveBias`-weighted cost rank (legacy)
+   *    damage-per-cost – maximise damage / cost (cheap-keystone-friendly)
+   *    fast-fire       – minimise fireRate (highest attack frequency)
+   *    long-range      – maximise range
+   *  Counter override still wins when upcoming waves have a clear
+   *  dominant creep type. */
   private pickTowerType(pool: TowerType[], ctx: BotContext): TowerType {
-    const sortedByCost = [...pool].sort((a, b) => b.cost - a.cost); // expensive → cheap
-    const idx = Math.round((1 - this.params.expensiveBias) * (sortedByCost.length - 1));
-    const top = sortedByCost[Math.max(0, Math.min(sortedByCost.length - 1, idx))];
+    const strategy = TOWER_PICK_STRATEGIES[
+      Math.max(0, Math.min(TOWER_PICK_STRATEGIES.length - 1, this.params.towerPickStrategyIdx))
+    ] ?? 'expensive-bias';
+
+    let top: TowerType;
+    switch (strategy) {
+      case 'damage-per-cost': {
+        const sorted = [...pool].sort((a, b) => (b.damage / Math.max(1, b.cost)) - (a.damage / Math.max(1, a.cost)));
+        top = sorted[0];
+        break;
+      }
+      case 'fast-fire': {
+        const sorted = [...pool].sort((a, b) => a.fireRate - b.fireRate);
+        top = sorted[0];
+        break;
+      }
+      case 'long-range': {
+        const sorted = [...pool].sort((a, b) => b.range - a.range);
+        top = sorted[0];
+        break;
+      }
+      case 'expensive-bias':
+      default: {
+        const sortedByCost = [...pool].sort((a, b) => b.cost - a.cost); // expensive → cheap
+        const idx = Math.round((1 - this.params.expensiveBias) * (sortedByCost.length - 1));
+        top = sortedByCost[Math.max(0, Math.min(sortedByCost.length - 1, idx))];
+      }
+    }
 
     const window = Math.max(1, this.params.waveLookaheadWindow);
     if (!ctx.upcomingWaves || ctx.upcomingWaves.length === 0) return top;

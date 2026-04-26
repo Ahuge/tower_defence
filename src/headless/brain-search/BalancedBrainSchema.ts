@@ -47,4 +47,17 @@ export const BALANCED_BRAIN_SCHEMA: ParamSchema = {
   upgradeCoverageRange: {
     min: 2, max: 8, default: 4, step: 1, integer: true,
   },
+  // L2 (structural) toggles — integers indexing into the named
+  // strategy tables in BalancedBrain.ts. Step=1 so Gaussian mutation
+  // tends to swap to a neighbouring strategy; the manager clamps
+  // out-of-bound values to the valid range.
+  skipUltimateSave: {
+    min: 0, max: 1, default: 0, step: 1, integer: true,
+  },
+  upgradeStrategyIdx: {
+    min: 0, max: 3, default: 0, step: 1, integer: true,
+  },
+  towerPickStrategyIdx: {
+    min: 0, max: 3, default: 0, step: 1, integer: true,
+  },
 };
