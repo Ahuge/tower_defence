@@ -61,14 +61,17 @@ function makeEventLog(scene: HeadlessScene): EventLog {
   return new EventLog(scene.asScene(), 0);
 }
 
-export async function runMatch(config: MatchConfig): Promise<MatchResult> {
+export async function runMatch(
+  config: MatchConfig,
+  brainOverride?: BotBrain | null,
+): Promise<MatchResult> {
   const wallStart = Date.now();
   const stepMs = config.stepMs ?? 32;
   const maxSimMs = config.maxSimMs ?? 30 * 60 * 1000;
   const maxWaves = config.maxWaves ?? 60;
 
   try {
-    return await runMatchInner(config, wallStart, stepMs, maxSimMs, maxWaves);
+    return await runMatchInner(config, wallStart, stepMs, maxSimMs, maxWaves, brainOverride ?? null);
   } catch (err) {
     return {
       config,
@@ -89,6 +92,7 @@ export async function runMatch(config: MatchConfig): Promise<MatchResult> {
 
 async function runMatchInner(
   config: MatchConfig, wallStart: number, stepMs: number, maxSimMs: number, maxWaves: number,
+  brainOverride: BotBrain | null,
 ): Promise<MatchResult> {
   // Seed every Math.random equivalent that flows through
   // `systems/Rng` — same (config, seed) pair now gives the same
@@ -185,9 +189,17 @@ async function runMatchInner(
   });
 
   // ---- Brain ----
-  const brainFactory = BRAIN_REGISTRY[config.brainId];
-  if (!brainFactory) throw new Error(`unknown brain: ${config.brainId}`);
-  const brain: BotBrain = brainFactory();
+  // brainOverride lets the data-gen pipeline supply a wrapper
+  // (RecorderBrain, etc.) that captures decisions; production paths
+  // skip it and resolve via the registry.
+  let brain: BotBrain;
+  if (brainOverride) {
+    brain = brainOverride;
+  } else {
+    const brainFactory = BRAIN_REGISTRY[config.brainId];
+    if (!brainFactory) throw new Error(`unknown brain: ${config.brainId}`);
+    brain = brainFactory();
+  }
 
   const towerPool = factionDef.towerIds.map(id => getTowerType(id)).sort((a, b) => a.cost - b.cost);
   const candidateCells = buildCandidateCells(grid, mapDef);

@@ -34,3 +34,6 @@ harness-report.md
 harness-progress.jsonl
 harness-runs/
 /brain-search/
+/ml/training-data/
+/ml/__pycache__/
+/ml/.venv/
