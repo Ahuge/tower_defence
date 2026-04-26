@@ -1,0 +1,14 @@
+{
+  "brain": "synergy",
+  "faction": "infernal",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-26",
+  "method": "default config (no tuning required) — surfaced via brain-coverage scan",
+  "results": {
+    "winnerWinRate": 1.0,
+    "n": 50,
+    "totalEvaluations": 0,
+    "note": "SynergyBrain at defaults wins infernal|normal 50/50. AOEFocus also 50/50; balanced reaches only 28/50 even at default. Two viable brain choices for this cell."
+  },
+  "params": {}
+}

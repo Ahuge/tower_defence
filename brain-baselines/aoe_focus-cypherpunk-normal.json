@@ -1,0 +1,14 @@
+{
+  "brain": "aoe_focus",
+  "faction": "cypherpunk",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-26",
+  "method": "default config (no tuning required) — surfaced via brain-coverage scan",
+  "results": {
+    "winnerWinRate": 0.82,
+    "n": 50,
+    "totalEvaluations": 0,
+    "note": "AOEFocusBrain at defaults wins cypherpunk|normal 41/50 = 82%. Borderline baseline; could likely be pushed to ~95%+ by parameterising AOEFocusBrain. Defer until we hit other priorities."
+  },
+  "params": {}
+}

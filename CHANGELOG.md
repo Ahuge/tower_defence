@@ -2,6 +2,33 @@
 
 ## 2026-04-26
 
+### Brain coverage scan: 7/11 normal cells already solvable with existing brains
+
+Before building specialised per-faction brains, ran an 8-brain × 11-faction × n=50 coverage scan to find out which cells are *already* winnable by an existing brain at defaults. **Three new wins surfaced from brains we'd been ignoring**:
+
+- **nature|normal:** RushBrain wins 50/50 at defaults (NatureBrain, the faction-specialised one, only manages 45/50).
+- **military|normal:** RushBrain wins 50/50. Every other brain 0/50.
+- **infernal|normal:** SynergyBrain wins 50/50 at defaults. Also AOEFocusBrain 50/50. (Balanced needed L1+L2 tuning to reach 98%.)
+- **cypherpunk|normal:** AOEFocusBrain at defaults reaches 82% (41/50). Sub-baseline but very close.
+
+Cumulative ≥80% coverage at normal difficulty:
+
+| faction | best brain | wins | source |
+|---|---|---|---|
+| arcane | greedy | 100% | default |
+| nature | rush | 100% | **default (new)** |
+| void | greedy | 100% | default |
+| military | rush | 100% | **default (new)** |
+| infernal | synergy | 100% | **default (new)** |
+| celestial | greedy | 100% | default |
+| cypherpunk | aoe_focus | 82% | **default (new)** |
+
+**Total: 7/11 normal cells covered without any tuning.** The remaining four (mechanical, aliens, psionic, harmonic) are the genuine "needs-new-brain" tier — every existing brain at defaults reaches 0–12% on these cells.
+
+This finding reframes the work. Rather than tuning a single chosen brain per cell, the right architecture is a **meta-brain dispatcher** that selects per faction (`{nature: 'rush', military: 'rush', infernal: 'synergy', ...}`). The dispatcher would unlock the seven cells immediately; the four hard cells remain as targets for specialised brain work.
+
+New diagnostic at `scripts/brain-coverage.mjs` — produces the brain × faction default-win matrix in ~1 min.
+
 ### Brain tuning: parameterised GreedyBrain unlocks celestial (4/11 solved)
 
 GreedyBrain refactored to take 2 search-tunable params:
