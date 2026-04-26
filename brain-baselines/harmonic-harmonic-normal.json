@@ -1,0 +1,20 @@
+{
+  "brain": "harmonic",
+  "faction": "harmonic",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-26",
+  "method": "specialised brain (HarmonicBrain) — hand-coded aura-stacking strategy",
+  "results": {
+    "winnerWinRate": 0.93,
+    "avgWave": 19.9,
+    "n": 100,
+    "totalEvaluations": 0,
+    "holdout": {
+      "baseSeed1": 0.93,
+      "baseSeed999": 0.89,
+      "baseSeed42": 0.89
+    },
+    "note": "First specialised brain in the L3 phase. Generic brains (greedy, balanced) cap at 0% on harmonic|normal because they check Chebyshev-1 adjacency for synergy bonuses, but harmonic auras are RANGE-based (4 tiles). HarmonicBrain places Amplifiers within aura range of existing Resonators, stacking buffs."
+  },
+  "params": {}
+}

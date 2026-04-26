@@ -2,6 +2,32 @@
 
 ## 2026-04-26
 
+### Specialised brain: HarmonicBrain — 0% → 93% on harmonic|normal
+
+First L3-phase specialised brain. Lives entirely in brain code (no driver / BotDecision changes); uses standard `place` and `upgrade` decisions but with strategy-aware internal state.
+
+**Why generic brains failed on harmonic:**
+Harmonic auras are RANGE-based (Amplifier range 4, Quickener range 4, etc.) so an aura buffs every tower within ~4 tiles. The existing `auraAdjacencyBonus` heuristic in BalancedBrain checks Chebyshev-1 adjacency only — completely wrong proximity model. Greedy ignores auras entirely. Result: every generic brain got 0% on harmonic|normal at default and at L1+L2 tuning, despite reaching avgWave 18 (close to winning).
+
+**Strategy:**
+- Phase 1: place 1–2 Resonators on best path-coverage cells.
+- Phase 2: build aura towers (Amplifier → Amplifier → Quickener → …) within AURA RANGE of existing Resonators. Cheap auras outweigh single expensive ones early because effects stack.
+- Phase 3: more Resonators, but only inside the existing buff zone.
+- Phase 4: Crescendo ult into the densest aura-stack cell.
+- Upgrades: prefer the Resonator with the most auras in range (compounded per-level).
+
+**Results (n=100 each, 3 seed ranges for holdout):**
+- baseSeed=1:   93%
+- baseSeed=999: 89%
+- baseSeed=42:  89%
+
+Up from 0% across all 8 generic brains. Real cell unlock.
+
+**Negative result — AlienBrain (built, dropped):**
+Tried the same template on aliens (Spitter spam → Swarm Node → Hive Spire → Brood Mother). The brain stalled at avgWave 12.7 (worse than default greedy at 15.9) because Hive Spire (180g) and Brood Mother (80g) ate budget that would otherwise have been Spitter spam. Aliens isn't a composition problem — it's a raw-damage shortfall on a fixed budget. Different factions have genuinely different shapes; a single template won't generalise.
+
+Cumulative ≥80% coverage at normal: 8/11 (arcane, void, infernal, celestial, nature, military, cypherpunk@82%, harmonic). Remaining stuck: mechanical, aliens, psionic.
+
 ### Brain coverage scan: 7/11 normal cells already solvable with existing brains
 
 Before building specialised per-faction brains, ran an 8-brain × 11-faction × n=50 coverage scan to find out which cells are *already* winnable by an existing brain at defaults. **Three new wins surfaced from brains we'd been ignoring**:
