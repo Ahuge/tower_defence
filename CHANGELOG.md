@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-04-26
+
+### Bug fix: Game Over screen "Frontier Returned" / ROI showed 0g even with steady income
+
+`StatsTracker.recordFrontierEarned()` was only being called for the *bonus* slice (dig-depth, grow-stacks, gamble rolls) returned from `FrontierManager.onWaveEnd()`. Steady-income buildings (Manor, Vault, Sacred Grove pre-harvest, etc.) flow through `IncomeManager.frontierIncome` → `collectWaveIncome()`, which only logged it under generic `goldEarned`. Result: a player could invest 2,250g in steady frontier buildings, earn thousands back over the match, and the stats screen still showed `Frontier Returned: 0g` and `Frontier ROI: 0%`.
+
+Fix: `BaseFrontierMode.onWaveCleared` now reads the `frontier` slice from `incomeMgr.getBreakdown()` before `collectWaveIncome()` and records it as `frontierEarned` separately. ROI calculations now match the gold the player actually earned from frontier holdings.
+
+## 2026-04-24
+
+### Random map gen: random tileset theme
+
+`generateRandomMap(seed, difficulty)` now rolls a random tileset theme as part of generation and stamps it into the returned `MapDefinition.theme`. The pool is `Object.keys(THEMES)` — 11 faction themes (`arcane_crystal`, `hellscape`, `circuit`, `ancient_grove`, `factory`, `void_rift`, `urban`, `hive`, `marble`, `neural`, `concert`) + 6 non-faction themes (`forest`, `mountain`, `water`, `stone`, `volcanic`, `generic`) for 17 options total.
+
+Adding a new theme to `TerrainTheme.ts` auto-includes it in the pool. Same seed always yields the same theme (reload-safe — the theme roll is the first RNG draw before any layout work, so map layouts stay stable across random-theme vs fixed-theme runs of the same seed).
+
+API: `generateRandomMap(seed, difficulty, theme?)`. Pass nothing or the `RANDOM_THEME` sentinel to get a random theme. Pass a specific themeId to override (used by a future UI picker — not wired into the menu yet).
+
+A store-equipped terrain still wins on top: the resolver sees the random map's stamped theme as the "map default" and applies the player's equipped override per the standard rules. (Custom maps, by contrast, stay locked to the editor-saved theme.)
+
+### Terrain override: equipped store theme now actually overrides the map tileset
+
+The store had `equipTerrain(themeId)` writing to `state.equippedTerrain` and `SkinManager.getTerrainOverrideFaction()` reading it back, but the getter was never called from the rendering pipeline — equipping a terrain theme did nothing visible.
+
+Single resolver now: **`SkinManager.getActiveTerrainTheme(ctx)`**. Resolution order:
+
+1. **Faction Gauntlet** → ignore override; use the map's authored theme. Overriding here would defeat the unlock-the-look loop.
+2. **Custom maps** → ignore override; use the editor-saved theme. Custom maps were authored with intentional theming.
+3. **Coop guest** → render the host's broadcast theme (shared grid → single visual; host wins).
+4. **Coop host / 1v1 / single-player** → local equipped override; falls back to map default if nothing equipped.
+
+`GameScene.drawGrid` was the only render call site that picked a themeId; it now routes through the resolver. The faction → render-themeId map (e.g. `arcane → arcane_crystal`, `infernal → hellscape`) is centralised in `SkinManager.factionToThemeId`.
+
+**Coop wire piece**: the host's resolved themeId rides on the `circle_game_start` message as a new `hostTerrainOverride?: string | null` field. Joiners read it on receive and stash it on `CircleManager.hostTerrainOverride`; `GameScene` reads from there. Backwards-compat: the field is optional, so older clients still parse the message (they just won't see the host's terrain).
+
+In 1v1 Versus each peer renders their own grid, so each applies their own equipped override independently — no host concept needed for that mode.
+
+### GameScene: sync DOM lives/gold at end of create()
+
+Push the correct lives + gold + income into the store explicitly at the end of `create()`. Uses the same `displayLives` selection as the update loop (`arenaManager.baseHp` for hero defence, else `this.lives`) so Hero Defence matches start with the right number.
+
 ## 2026-04-17 (cross-platform, cont.)
 
 ### Phase 5 — real native plugin integrations (Android)

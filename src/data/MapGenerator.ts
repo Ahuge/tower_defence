@@ -3,6 +3,20 @@ import { MapDefinition } from './Maps';
 import { DifficultyLevel } from './Difficulty';
 import { findPath } from '../systems/Pathfinding';
 import { Grid } from '../systems/Grid';
+import { THEMES } from '../systems/TerrainTheme';
+
+/** Sentinel passed to `generateRandomMap` to ask for a random
+ *  tileset theme. Same as omitting the `theme` parameter — kept as
+ *  an explicit string so a future UI picker can pass it through
+ *  state without ambiguity. */
+export const RANDOM_THEME = 'random';
+
+/** All themeIds eligible for the random tileset picker. 11 faction
+ *  themes (arcane_crystal, hellscape, etc.) + 6 non-faction themes
+ *  (forest, mountain, water, stone, volcanic, generic). Pulled from
+ *  THEMES so adding a new theme to TerrainTheme.ts auto-includes it.
+ *  17 options total. */
+const RANDOMIZABLE_THEMES = Object.keys(THEMES);
 
 // ── Seeded PRNG (mulberry32) ──────────────────────────────────
 function mulberry32(seed: number): () => number {
@@ -276,9 +290,33 @@ function getShortestPathLength(entries: Pos[], exits: Pos[], blocked: Set<string
   return shortest;
 }
 
-export function generateRandomMap(seed: number, difficulty: DifficultyLevel): MapDefinition {
+/** Generate a random map.
+ *
+ *  `theme` controls the tileset theme baked into the returned
+ *  `MapDefinition`:
+ *    - undefined or `'random'` (the `RANDOM_THEME` sentinel): pick
+ *      uniformly from the 17 themes via the seeded RNG. Same seed
+ *      always yields the same theme — reload-safe.
+ *    - any specific themeId from `THEMES` (e.g. `'arcane_crystal'`):
+ *      stamp that exact theme onto the map.
+ *  Falls back to `'generic'` if an unknown id is passed in. */
+export function generateRandomMap(seed: number, difficulty: DifficultyLevel, theme?: string): MapDefinition {
   const rng = mulberry32(seed);
   const params = DIFFICULTY_TERRAIN[difficulty];
+
+  // Resolve theme up front so it consumes a deterministic slice of
+  // the RNG sequence even when an explicit theme is passed — keeps
+  // map layout stable across "random theme" vs "fixed theme" runs
+  // of the same seed.
+  const themeRoll = rng();
+  let resolvedTheme: string;
+  if (theme === undefined || theme === RANDOM_THEME) {
+    resolvedTheme = RANDOMIZABLE_THEMES[Math.floor(themeRoll * RANDOMIZABLE_THEMES.length)];
+  } else if (THEMES[theme]) {
+    resolvedTheme = theme;
+  } else {
+    resolvedTheme = 'generic';
+  }
 
   // 1. Pick a random layout template
   const templateIdx = Math.floor(rng() * LAYOUT_TEMPLATES.length);
@@ -401,6 +439,7 @@ export function generateRandomMap(seed: number, difficulty: DifficultyLevel): Ma
     exits,
     blocked: blockedArr,
     noBuild: noBuildFiltered,
+    theme: resolvedTheme,
   };
 }
 

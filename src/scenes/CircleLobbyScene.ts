@@ -5,6 +5,7 @@ import { SignalingClient } from '../systems/multiplayer/SignalingClient';
 import { GameMessage } from '../systems/multiplayer/MessageProtocol';
 import { MapId, MapDefinition, CIRCLE_MAP_ORDER, MAPS } from '../data/Maps';
 import { MapStorage, MapJSON } from '../systems/MapStorage';
+import { SkinManager } from '../systems/monetization/SkinManager';
 import { DifficultyLevel } from '../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../data/Factions';
 import { UIScale } from '../systems/UIScale';
@@ -147,6 +148,7 @@ export class CircleLobbyScene extends Phaser.Scene {
         this.selectedMap = msg.map as MapId;
         this.selectedDifficulty = msg.difficulty as DifficultyLevel;
         this.circle!.sharedSeed = msg.seed;
+        this.circle!.hostTerrainOverride = msg.hostTerrainOverride ?? null;
         if (msg.customMapJSON) {
           this.customMapJSON = msg.customMapJSON as MapJSON;
           this.customMapDef = MapStorage.mapJSONToDefinition(this.customMapJSON);
@@ -537,16 +539,25 @@ export class CircleLobbyScene extends Phaser.Scene {
     if (this.playerFactions.size < connected) return;
 
     const players = Array.from(this.playerFactions.entries()).map(([index, faction]) => ({ index, faction }));
+    // Resolve the host's equipped terrain theme so guests can render
+    // the same tileset on the shared grid. Custom maps stay locked to
+    // their authored theme regardless — `hostTerrainOverride` is null.
+    const hostFaction = this.selectedMap === 'custom'
+      ? null
+      : SkinManager.getTerrainOverrideFaction();
+    const hostTerrainOverride = hostFaction ? SkinManager.factionToThemeId(hostFaction) : null;
     const launchMsg: GameMessage = {
       type: 'circle_game_start',
       players,
       map: this.selectedMap,
       difficulty: this.selectedDifficulty,
       seed: this.circle.sharedSeed,
+      hostTerrainOverride,
     };
     if (this.selectedMap === 'custom' && this.customMapJSON) {
       launchMsg.customMapJSON = this.customMapJSON;
     }
+    this.circle.hostTerrainOverride = hostTerrainOverride;
     this.circle.broadcast(launchMsg);
     this.launchGame();
   }

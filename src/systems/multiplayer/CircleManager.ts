@@ -24,6 +24,13 @@ export class CircleManager {
   // Shared game state
   sharedLives: number = 20;
   sharedSeed: number = 0;
+  /** Host's equipped terrain themeId. Coop renders the host's
+   *  choice on every peer's grid (shared grid → single visual).
+   *  null means the host has nothing equipped → use map default.
+   *  Populated by joiners on `circle_game_start`; the host sets it
+   *  from its own SkinManager state at broadcast time. Null on the
+   *  host side too if nothing is equipped. */
+  hostTerrainOverride: string | null = null;
 
   // Wave sync
   playersReady: Set<number> = new Set();

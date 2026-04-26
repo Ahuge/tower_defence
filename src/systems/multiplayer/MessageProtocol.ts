@@ -21,7 +21,12 @@ export type GameMessage =
   // Circle co-op messages
   | { type: 'circle_leak'; creepType: string; hp: number; speed: number; isBoss: boolean; color: number; size: number }
   | { type: 'player_eliminated'; playerIndex: number }
-  | { type: 'circle_game_start'; players: { index: number; faction: string }[]; map: string; difficulty: string; seed: number; customMapJSON?: any }
+  // `botSlots`: indexes occupied by host-simulated CPU players. Joiners
+  // use this to suppress any "waiting for player N to connect" state
+  // and to render the slot's roster entry as `[CPU]`.
+  // `hostTerrainOverride`: equipped store theme to propagate so peers
+  // render the same skin as the host.
+  | { type: 'circle_game_start'; players: { index: number; faction: string }[]; map: string; difficulty: string; seed: number; customMapJSON?: any; botSlots?: number[]; hostTerrainOverride?: string | null }
   | { type: 'player_joined'; playerIndex: number; totalPlayers: number }
   | { type: 'all_waves_cleared'; wave: number }
   | { type: 'circle_victory'; winnerIndex: number }

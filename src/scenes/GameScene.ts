@@ -49,6 +49,7 @@ import { TowerManager } from '../systems/TowerManager';
 import { CreepManager, StandardLeakHandler, StandardDeathHandler } from '../systems/CreepManager';
 import { WaveController } from '../systems/WaveController';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
+import { SkinManager } from '../systems/monetization/SkinManager';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
@@ -952,6 +953,13 @@ export class GameScene extends Phaser.Scene {
         ? this.circle.getWaveTimerSeconds()
         : -1;
     this.ui.update(this.economy.gold, this.lives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
+    // GameUIStore.activate() reset the DOM state to lives=0, gold=0.
+    // Without this sync push, the HUD renders "DEAD" (lives=0) for
+    // one frame between create() finishing and the first update()
+    // tick — most noticeable when restarting after a loss, where
+    // deactivate() had already parked lives at 0.
+    const initialDisplayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
+    GameUIStore.updateEconomy(this.economy.gold, initialDisplayLives, this.incomeMgr.getBreakdown().total);
 
     // Set up UI camera so HUD stays fixed while game camera zooms/pans (once)
     if (!this.uiCamera) {
@@ -2178,8 +2186,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawGrid(): void {
-    // Use terrain manager for themed rendering
-    const themeId = this.mapDef?.theme ?? 'generic';
+    // Themed rendering routes through SkinManager so equipped store
+    // themes can override the map's authored theme. See
+    // SkinManager.getActiveTerrainTheme for the full resolution order
+    // (Gauntlet + custom maps suppress the override; coop guests
+    // render the host's broadcast theme).
+    const circle = this.registry.get('circle') as { isHost: boolean; hostTerrainOverride: string | null } | null;
+    const themeId = SkinManager.getActiveTerrainTheme({
+      matchMode: this.matchMode,
+      mapTheme: this.mapDef?.theme,
+      isCustomMap: this.mapId === 'custom' && !!this.customMapDef,
+      isCoopHost: this.matchMode === 'circle_coop' ? (circle?.isHost ?? true) : undefined,
+      hostOverrideTheme: circle?.hostTerrainOverride ?? null,
+    });
     this.terrainMgr.compute(this.grid, themeId, this.mapDef?.structures, this.mapDef?.animated);
     this.terrainMgr.render(this.grid, this.gridOffsetY);
   }
