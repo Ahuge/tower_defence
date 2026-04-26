@@ -145,7 +145,14 @@ export class BrainSearchManager {
   private absorb(r: EvalRecord): void {
     this.evals.push(r);
     const isValidate = r.tag === 'validate' || r.n >= this.cfg.validateSeeds;
-    if (!this.bestRaw || r.score > this.bestRaw.score) {
+    // Survival-depth fitness fallback: when no eval has scored a
+    // single win yet, fall back to avgWave/100 as the secondary
+    // signal. Compounded with score so once any win lands, win rate
+    // dominates again. Picks up the "all-zero plateau" case where
+    // raw win-rate has no gradient to climb.
+    const fitness = (e: EvalRecord) => fitnessOf(e);
+    const newFit = fitness(r);
+    if (!this.bestRaw || newFit > fitness(this.bestRaw)) {
       this.bestRaw = r;
       this.evalsSinceImprovement = 0;
     } else {
@@ -156,12 +163,12 @@ export class BrainSearchManager {
     }
   }
 
-  /** Recompute μ parents — top-μ scores, search-tag evals only.
+  /** Recompute μ parents — top-μ by fitness, search-tag evals only.
    *  Validation evals are recorded but don't enter the breeding pool
    *  (they'd dominate via tighter variance, distorting the search). */
   private refreshParents(): void {
     const searchEvals = this.evals.filter(e => e.tag !== 'validate');
-    const sorted = [...searchEvals].sort((a, b) => b.score - a.score);
+    const sorted = [...searchEvals].sort((a, b) => fitnessOf(b) - fitnessOf(a));
     this.parents = sorted.slice(0, this.cfg.mu);
   }
 
@@ -179,14 +186,18 @@ export class BrainSearchManager {
       return { continue: false, reason: `hard plateau (${this.evalsSinceImprovement} evals since improvement)` };
     }
     // Soft plateau check — only if we've collected enough samples.
+    // Uses window MAX rather than mean: when wins are rare (e.g. 1 in
+    // 30 evals at 5%) the mean barely moves but the max does, and we
+    // do want to keep mutating in that direction. Fitness is the
+    // composite score-plus-survival from fitnessOf().
     if (searchEvals.length >= this.cfg.softPlateauWindow * 2) {
       const recent = searchEvals.slice(-this.cfg.softPlateauWindow);
       const prior = searchEvals.slice(-this.cfg.softPlateauWindow * 2, -this.cfg.softPlateauWindow);
-      const recentMean = mean(recent.map(e => e.score));
-      const priorMean = mean(prior.map(e => e.score));
-      if (recentMean - priorMean < this.cfg.softPlateauDelta) {
+      const recentMax = Math.max(...recent.map(fitnessOf));
+      const priorMax = Math.max(...prior.map(fitnessOf));
+      if (recentMax - priorMax < this.cfg.softPlateauDelta) {
         if (this.softPlateauExtended) {
-          return { continue: false, reason: `soft plateau confirmed (Δ=${(recentMean - priorMean).toFixed(3)})` };
+          return { continue: false, reason: `soft plateau confirmed (Δmax=${(recentMax - priorMax).toFixed(3)})` };
         }
         this.softPlateauExtended = true;
         // Warning still continues — signal it to the caller.
@@ -194,13 +205,15 @@ export class BrainSearchManager {
         this.softPlateauExtended = false;
       }
     }
-    // Drift check — last 20 vs. prior 20.
+    // Drift check — last 20 vs. prior 20. Same window-max convention
+    // so we don't false-trigger when the mean drops because one
+    // batch happened to be unlucky.
     if (searchEvals.length >= 40) {
       const last20 = searchEvals.slice(-20);
       const prev20 = searchEvals.slice(-40, -20);
-      const drop = mean(prev20.map(e => e.score)) - mean(last20.map(e => e.score));
+      const drop = Math.max(...prev20.map(fitnessOf)) - Math.max(...last20.map(fitnessOf));
       if (drop >= this.cfg.driftThreshold) {
-        return { continue: false, reason: `search drift (mean dropped ${drop.toFixed(3)} over last 20)` };
+        return { continue: false, reason: `search drift (max dropped ${drop.toFixed(3)} over last 20)` };
       }
     }
     return { continue: true, reason: 'ok' };
@@ -284,6 +297,18 @@ function mean(xs: number[]): number {
   let s = 0;
   for (const x of xs) s += x;
   return s / xs.length;
+}
+
+/** Composite fitness: win rate dominates, but `avgWave` provides a
+ *  tiny tiebreaker that matters only when scores tie. Surfaces the
+ *  "no wins anywhere" case — a config that survives to wave 16 is
+ *  preferred over one that dies at wave 4 even when both are 0%.
+ *  Once any win lands, the win-rate term (≥0.05 per win at n=20)
+ *  swamps the wave term (≤0.20 even at max survival), so the
+ *  rankings naturally swap back to win-rate-dominated. */
+function fitnessOf(e: { score: number; avgWave: number }): number {
+  const waveBonus = (e.avgWave ?? 0) / 100; // wave 20 → +0.20
+  return e.score + waveBonus;
 }
 
 /** Box-Muller transform — standard normal, mean 0, σ 1. */

@@ -50,6 +50,7 @@ const maxEvalsFlag = getFlag('max-evals');
 const probeFlag = getFlag('probe');
 const seedsFlag = getFlag('search-seeds');
 const validateSeedsFlag = getFlag('validate-seeds');
+const seedFromFlag = getFlag('seed-from');
 
 if (brainFlag !== 'balanced') {
   console.error('[brain-search] only "balanced" supported in this iteration');
@@ -245,6 +246,32 @@ if (probeFlag !== null) {
   pool.shutdown();
   log(`probe complete. spread = ${(Math.max(...manager.history.map(e => e.score)) * 100 - Math.min(...manager.history.map(e => e.score)) * 100).toFixed(1)}%`);
   process.exit(0);
+}
+
+// ── Warm start (optional) ──────────────────────────────────────────
+// Load a previous winner config and seed it as the first parent.
+// The manager treats whatever scores best in evaluations.jsonl as a
+// parent for the next batch, so all we need to do is evaluate the
+// warm-start config at searchSeeds before the main loop. The eval
+// is also auto-validated at validateSeeds so we know if the config
+// transferred to this cell at all.
+if (seedFromFlag !== null && manager.evalCount === 0) {
+  const seedPath = seedFromFlag;
+  if (!existsSync(seedPath)) {
+    log(`--seed-from: ${seedPath} not found`);
+    process.exit(1);
+  }
+  const seedDoc = JSON.parse(readFileSync(seedPath, 'utf8'));
+  const seedParams = seedDoc.params ?? seedDoc; // accept either wrapped or bare
+  log(`warm-start: loading params from ${seedPath}`);
+  const r = await evaluateConfig(seedParams, cfg.searchSeeds, 'warmstart');
+  log(`  warm-start search-seeds: ${(r.score * 100).toFixed(1)}% (avgWave ${r.avgWave.toFixed(1)})`);
+  if (r.score >= 0.05) {
+    const v = await evaluateConfig(seedParams, cfg.validateSeeds, 'validate');
+    log(`  warm-start validated:    ${(v.score * 100).toFixed(1)}% (n=${v.n}, avgWave ${v.avgWave.toFixed(1)})`);
+  } else {
+    log(`  warm-start score too low to validate — proceeding with mutation anyway`);
+  }
 }
 
 // ── Main search loop ───────────────────────────────────────────────

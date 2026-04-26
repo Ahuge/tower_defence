@@ -37,7 +37,13 @@ export const DIFFICULTIES: Record<DifficultyLevel, DifficultyHints> = {
     count: 1.3,
     speed: 1.05,
     goldMult: 0.6,
-    toughnessPerWave: 0.13, // +13%/wave — wave 10 = 2.30× (matches old hard), wave 20 = 3.60×, wave 30 = 4.90×
+    // +5%/wave — wave 10 = 1.50×, wave 20 = 2.00×, wave 30 = 2.50×.
+    // Lowered from 0.13 (wave 10 = 2.30×) which the brain-search loop
+    // showed produced 0% wins across every BalancedBrain config tested
+    // — i.e. unwinnable, not "hard". Default brains still 0% at 0.05;
+    // tuned brain reaches wave 14.8 of 20 (no wins), giving the
+    // search a real optimisation target without trivialising the band.
+    toughnessPerWave: 0.05,
   },
   insane: {
     toughness: 1.15,
