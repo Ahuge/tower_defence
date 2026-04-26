@@ -370,6 +370,7 @@ export class GameScene extends Phaser.Scene {
         const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
         if (!opt) return;
         if (this.economy.spend(opt.cost)) {
+          this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
           tower.upgrade(branchId ?? null);
           GameUIStore.selectTower(this.towerToStats(tower));
           const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
@@ -784,6 +785,15 @@ export class GameScene extends Phaser.Scene {
     });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     Analytics.gameStart(this.matchMode, this.faction ?? 'unknown', this.difficulty, this.mapId);
+
+    // Live-capture hook — when ?capture=1 (or localStorage flag) is
+    // set, record every human place/upgrade/sell for offline retrain
+    // of LearningBrain. No-op when capture mode is off.
+    import('../systems/learning/LiveCapture').then(m => {
+      if (m.isCaptureEnabled() && this.faction && this.matchMode === 'standard') {
+        m.startSession(this.faction, this.difficulty);
+      }
+    });
 
     // Signal loading screen that scene is ready (triggers fade-out)
     import('../ui/UIBridge').then(m => m.UIBridge.signalSceneReady());
@@ -1954,6 +1964,10 @@ export class GameScene extends Phaser.Scene {
     // Circle co-op: can only sell your own towers
     if (!this.canModifyTower(col, row)) return;
 
+    // Capture BEFORE the sell mutates state so the recorded
+    // snapshot reflects what the player saw at decision time.
+    this._captureHumanAction({ kind: 'sell', col, row });
+
     const result = this.towerMgr.sellTower(col, row);
     if (!result) return;
 
@@ -1970,12 +1984,44 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Build a synthetic BotContext + record one human action through
+   *  LiveCapture. No-op when capture mode is off. Errors are
+   *  swallowed inside the capture module. */
+  private _captureHumanAction(decision: any): void {
+    if (!this.faction) return;
+    void import('../systems/learning/LiveCapture').then(m => {
+      if (!m.isCaptureEnabled()) return;
+      // Convert live tower instances → PlacedTower shape the
+      // featurizer expects.
+      const placed = this.towerMgr.towers
+        .filter(t => (t as any).ownerIndex === undefined)
+        .map(t => ({
+          col: t.col, row: t.row, towerId: t.typeId, level: t.level,
+          upgradeCost: 0, upgradeBranches: [], branchUpgradeCosts: {}, sellValue: 0,
+        }));
+      const ctx = m.buildCtxFromSnapshot({
+        faction: this.faction!,
+        wave: this.currentWave,
+        lives: this.lives,
+        budget: this.economy?.gold ?? 0,
+        candidateCells: [],
+        placedTowers: placed,
+        allPaths: this.allPaths,
+        betweenWaves: this.betweenWaves,
+      });
+      m.recordAction(ctx, decision);
+    });
+  }
+
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
     // Circle co-op: zone restriction
     if (!this.canBuildInZone(col, row)) return;
 
     const towerType = getTowerType(this.selectedBuildType);
+
+    // Capture BEFORE placement so the snapshot is the pre-action state.
+    this._captureHumanAction({ kind: 'place', col, row, type: towerType });
 
     const result = this.towerMgr.placeTower(col, row, towerType, this.allPaths, () => {
       this.recalculatePaths();
@@ -2744,6 +2790,14 @@ export class GameScene extends Phaser.Scene {
     };
     const duration = Math.round((Date.now() - this._gameStartTime) / 1000);
     Analytics.gameEnd(this.matchMode, this.lives > 0 ? 'victory' : 'defeat', this.currentWave, duration);
+
+    // Live-capture session close — appends this match's turns to
+    // localStorage with the match outcome attached.
+    void import('../systems/learning/LiveCapture').then(m => {
+      if (m.isCaptureEnabled()) {
+        m.finishSession(this.lives > 0 ? 'win' : 'loss', this.currentWave);
+      }
+    });
 
     this.versus?.close();
     this.registry.remove('versus');

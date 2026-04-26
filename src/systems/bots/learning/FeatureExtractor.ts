@@ -144,6 +144,11 @@ export const ACTION_FEATURE_NAMES = [
   // averages the two and underprices specialist actions.
   'by_balanced', 'by_greedy', 'by_rush', 'by_econ', 'by_synergy',
   'by_ultimate', 'by_aoe_focus', 'by_nature', 'by_harmonic', 'by_psionic',
+  // 'human' is reserved for live-capture rows from human play. Bot
+  // data leaves this 0; the model sees it set only on imported
+  // human turns so it can learn "human-on-mechanical = winning
+  // strategy" without mixing into the existing brains' signal.
+  'by_human',
 ] as const;
 export type ActionFeatureName = (typeof ACTION_FEATURE_NAMES)[number];
 export const ACTION_FEATURE_COUNT = ACTION_FEATURE_NAMES.length;
@@ -151,6 +156,7 @@ export const ACTION_FEATURE_COUNT = ACTION_FEATURE_NAMES.length;
 const PROPOSER_ORDER = [
   'balanced', 'greedy', 'rush', 'econ', 'synergy',
   'ultimate', 'aoe_focus', 'nature', 'harmonic', 'psionic',
+  'human',
 ];
 
 export function extractActionFeatures(
