@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-26
+
+### Brain tuning: 11-faction × normal sweep — 3/11 solved, 8 brain-structural
+
+Ran the L1+L2 search across all 11 factions × normal in ~7 min wall time. **Three factions converged to ≥98% with per-faction tuning**: arcane (100%, prior), void (98%, new), infernal (98%, new). The L2 toggles added meaningful value — void's winner uses `towerPickStrategyIdx=damage-per-cost`, infernal's uses `skipUltimateSave=1`, neither reachable from the L1-only param space.
+
+The other 8 factions plateaued at 0–10% wins:
+- **mobile-unit / spawn-heavy** (nature 0%, military 0%, aliens 2%) — BalancedBrain's mobile-unit placement logic is weak and L1+L2 can't compensate
+- **synergy / status-effect heavy** (cypherpunk 5%, harmonic 5%, psionic 1%) — adjacency planning + status combos + ult timing the brain doesn't model
+- **anomaly** (celestial 0%) — greedy wins 100% on celestial|hard with no tuning, but BalancedBrain stalls at 0% on celestial|normal. Different brains pilot it differently; BalancedBrain's choices are actively worse for this faction
+
+This is the **L3 trigger**: the parameterised search has hit a ceiling that new *decisions* (sell-and-rebuild, force-keystone-spam, place-adjacent-to-aura) could clear, but new *parameters* cannot. L3 work would add new BotDecision kinds + corresponding brain-search hyperparameters.
+
+The committed `void` and `infernal` baselines bring the brain-baseline library to 3 (out of 44 cells in the full grid). Sweep tooling lives at `scripts/sweep-factions.mjs`.
+
 ## 2026-04-25
 
 ### Brain tuning: BalancedBrain on arcane|normal — 8% → 100% via L1 search

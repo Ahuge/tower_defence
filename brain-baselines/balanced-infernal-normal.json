@@ -1,0 +1,30 @@
+{
+  "brain": "balanced",
+  "faction": "infernal",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-26",
+  "method": "L1+L2 hyperparameter search · μ+λ ES (μ=2, λ=8)",
+  "results": {
+    "winnerWinRate": 0.98,
+    "avgWave": 20,
+    "n": 100,
+    "totalEvaluations": 21
+  },
+  "params": {
+    "panicLives": 5,
+    "mazeSaturationThreshold": 0,
+    "maxWallPlacements": 8,
+    "highCoverageRatio": 1.4705721815922494,
+    "minDpsTowersForUlt": 3,
+    "stableLivesForUlt": 17,
+    "expensiveBias": 0.7777310660780452,
+    "frontierBuyChance": 0.40301509283997455,
+    "sendBuyChance": 0.27019314115429954,
+    "auraAdjacencyBonus": 0.19044579435008827,
+    "waveLookaheadWindow": 3,
+    "upgradeCoverageRange": 2,
+    "skipUltimateSave": 1,
+    "upgradeStrategyIdx": 0,
+    "towerPickStrategyIdx": 0
+  }
+}

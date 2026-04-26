@@ -1,0 +1,30 @@
+{
+  "brain": "balanced",
+  "faction": "void",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-26",
+  "method": "L1+L2 hyperparameter search · μ+λ ES (μ=2, λ=8)",
+  "results": {
+    "winnerWinRate": 0.98,
+    "avgWave": 19.96,
+    "n": 100,
+    "totalEvaluations": 31
+  },
+  "params": {
+    "panicLives": 4,
+    "mazeSaturationThreshold": 1,
+    "maxWallPlacements": 8,
+    "highCoverageRatio": 1.2597944248294208,
+    "minDpsTowersForUlt": 4,
+    "stableLivesForUlt": 16,
+    "expensiveBias": 1,
+    "frontierBuyChance": 0.23615146091497666,
+    "sendBuyChance": 0.3,
+    "auraAdjacencyBonus": 0.27184309484792196,
+    "waveLookaheadWindow": 2,
+    "upgradeCoverageRange": 6,
+    "skipUltimateSave": 0,
+    "upgradeStrategyIdx": 0,
+    "towerPickStrategyIdx": 1
+  }
+}
