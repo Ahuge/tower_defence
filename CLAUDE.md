@@ -114,6 +114,27 @@ After editing or creating files with import/require statements, verify that all 
 ## Game Development
 For the tower defense game (TypeScript/Phaser): after any sprite, texture, or animation change, verify that (1) texture keys match preloaded asset keys, (2) sprites are preloaded in the correct scene, and (3) animations reference valid frame data. Test mobile rendering separately.
 
+## Frame-rate / time-based math — anti-pattern to avoid
+
+Anything that consumes `delta` (per-frame ms) and produces an integer output must NOT round in place — otherwise sub-1-unit-per-frame results silently floor to 0 on high-refresh-rate displays and the effect quietly does nothing. We hit this with Firewall on a 180Hz monitor: per-frame damage = `35 dps × 5.6ms / 1000 ≈ 0.2`, then `Math.round(0.2) = 0`, then the early `if (finalDamage <= 0) return;` killed every tick. Bug invisible at 60Hz where the same math gives `round(0.56) = 1`.
+
+Two correct patterns to use instead:
+
+- **Accumulator-then-floor** when integer output is required (HP damage, displayed counters):
+  ```ts
+  this._accum += value * delta / 1000;
+  const integer = Math.floor(this._accum);
+  this._accum -= integer;
+  if (integer > 0) apply(integer);
+  ```
+  Used by `StatusEffects.getDotDamage` (`_dotAccum`) and `Creep.takeDamage` (`_dmgDebt`). Framerate-independent, integer-clean output, exact long-run average.
+
+- **Float state, no rounding** when the value itself can be fractional (positions, cooldowns in ms, timers): just keep the float. Round only at the very last moment when displaying.
+
+Anti-pattern to avoid: `Math.round(value * delta / 1000)` or `Math.round(amount * amp)` on an amount that may be sub-1. If it can ever be < 0.5 it disappears. Either thread the value through an accumulator, or carry it as float until the display step.
+
+Audit reminder: any new per-frame damage / heal / counter / pickup that takes `delta` should follow one of the two patterns above. The chokepoint for damage is `Creep.takeDamage` (and `Hero.takeDamage` if a beam-style hazard ever targets the hero) — those already handle the accumulator centrally, so callers can pass fractional amounts safely.
+
 ## Learning brain — handling fresh human-capture data
 
 The user records gameplay in the live game with `?capture=1` (or `__learningCapture.setEnabled(true)`) and exports JSONL via `__learningCapture.downloadJSONL()`. When they send a fresh JSONL, the standard ingest sequence is:
