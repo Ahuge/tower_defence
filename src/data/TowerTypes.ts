@@ -303,13 +303,20 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   nature_spore: def({
-    id: 'nature_spore', name: 'Spore', description: 'Poisons ALL creeps near tower. 2% HP/s. Area denial.',
-    faction: 'nature', damageType: 'magic', cost: 100, damage: 5, range: 3, fireRate: 1500,
+    id: 'nature_spore', name: 'Spore',
+    description: 'Pulses 8 dmg AoE every 1.5s + 2% HP/s poison. Hits ALL creeps in range. Upgrades scale poison to 2.5% / 3% HP/s.',
+    faction: 'nature', damageType: 'magic', cost: 100, damage: 8, range: 3, fireRate: 1500,
     color: 0x88cc22, projectileSpeed: 200, projectileColor: 0x66aa00, hotkey: '5',
-    traits: [{ id: 'tower_aura_damage', radius: 96 }, { id: 'poison_dot', percentPerSec: 0.02, duration: 3000 }],
+    // scalePerLevel 0.25 makes poison_dot read 2%/2.5%/3% across L1/L2/L3
+    // (vs the default 0.15 which would land at 2%/2.3%/2.6%). Other
+    // poison-dot towers keep the default scaling.
+    traits: [
+      { id: 'tower_aura_damage', radius: 96 },
+      { id: 'poison_dot', percentPerSec: 0.02, duration: 3000, scalePerLevel: 0.25 },
+    ],
     upgrades: [
-      { level: 2, cost: 90, damage: 8, range: 3.5, fireRate: 1300 },
-      { level: 3, cost: 150, damage: 12, range: 4, fireRate: 1100 },
+      { level: 2, cost: 90, damage: 14, range: 3.5, fireRate: 1300 },
+      { level: 3, cost: 150, damage: 22, range: 4, fireRate: 1100 },
     ],
   }),
   nature_vine: def({

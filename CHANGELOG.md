@@ -2,6 +2,28 @@
 
 ## 2026-04-26
 
+### Sends ROI on Game Over screen + per-wave attribution
+
+Mirror of the Frontier ROI work — sends now have a `Sends Earned` cumulative-gold stat alongside the existing per-wave-rate `Send Income` line, plus a `Sends ROI` percentage. ROI is `(sendsEarned / sendsSpent) × 100`, coloured teal when ≥100% and red when below.
+
+Required adding `sendsEarned: number` to `GameStats`, a `recordSendsEarned()` method on `StatsTracker`, and a per-wave hook in each mode's `onWaveCleared` that reads `incomeMgr.getBreakdown().sends` and accumulates it. `IncomeManager.collectWaveIncome()` also tracks `totalSendsRealized` / `totalFrontierRealized` so future surfaces (mid-match income readouts, leaderboard feeds) can read realised gold per channel without rewiring callers.
+
+### Adjacency auras stack instead of replace
+
+Two Blossoms next to one Resonator now contribute *both* their damage / fire-rate buffs instead of the second one overwriting the first. Same fix for Mana Drain's `spell_amp`. Implementation: per-frame tag (`_setAt = ctx.time`) on the buff trait — first call each frame resets the bucket, subsequent same-frame calls add. TTL still drops the buff if no aura source is adjacent next frame, so coverage holes still penalise the player.
+
+Affects every `adjacency_buff` and `spell_amp` source in the game (Nature Blossom, Arcane Mana Drain, anything else on the same trait id).
+
+### Spore: flat AoE pulse + 2% / 2.5% / 3% scaling poison
+
+Spore (Nature, 100g) clarified and slightly buffed:
+
+- Each fire pulses 8 / 14 / 22 damage to **all** creeps in range (was 5 / 8 / 12 — under-tuned vs other 100g area towers like Acid 100g 8 dmg + splash + shred).
+- Poison persists at 2% HP/s base; upgrades now scale to 2.5% (L2) and 3% (L3) — was 2% / 2.3% / 2.6% under default per-level scaling.
+- Description rewritten: was "Poisons ALL creeps near tower. 2% HP/s." → "8 dmg pulse to ALL creeps in range every 1.5s + 2% HP/s poison. Upgrades scale poison to 2.5% / 3% HP/s."
+
+Implementation hung an optional `scalePerLevel` field on the `poison_dot` trait (default 0.15 — preserves existing scaling for nature_viper, alien_stinger, alien_acid). Spore overrides to 0.25 to land the 2/2.5/3 cadence cleanly.
+
 ### Bug fix: Game Over screen "Frontier Returned" / ROI showed 0g even with steady income
 
 `StatsTracker.recordFrontierEarned()` was only being called for the *bonus* slice (dig-depth, grow-stacks, gamble rolls) returned from `FrontierManager.onWaveEnd()`. Steady-income buildings (Manor, Vault, Sacred Grove pre-harvest, etc.) flow through `IncomeManager.frontierIncome` → `collectWaveIncome()`, which only logged it under generic `goldEarned`. Result: a player could invest 2,250g in steady frontier buildings, earn thousands back over the match, and the stats screen still showed `Frontier Returned: 0g` and `Frontier ROI: 0%`.

@@ -451,9 +451,13 @@ registerHitEffect('burn_dot', (trait: Trait, ctx: HitContext) => {
 });
 
 registerHitEffect('poison_dot', (trait: Trait, ctx: HitContext) => {
-  // % scales: +15% per level above 1
+  // % scales: +scalePerLevel per level above 1 (default 15%; trait
+  // can override — e.g. nature_spore wants +25% for the 2% / 2.5%
+  // / 3% per-level cadence its design calls for, while
+  // nature_viper / aliens stay at the gentler default).
   const basePercent = trait.percentPerSec ?? 0.02;
-  const percent = levelScale(basePercent, ctx.towerLevel, 0.15);
+  const scale = (trait as any).scalePerLevel ?? 0.15;
+  const percent = levelScale(basePercent, ctx.towerLevel, scale);
   const duration = trait.duration ?? 3000;
   for (const target of ctx.hitTargets) {
     (target as any).statusEffects?.apply('poison', duration, percent);
@@ -515,8 +519,38 @@ registerHitEffect('root_on_hit', (trait: Trait, ctx: HitContext) => {
 // Tower update traits (per-frame)
 // ============================================================
 
+/** Accumulate a per-frame buff bonus on `target`. Multiple buff
+ *  sources adjacent to the same target (e.g. two Blossoms next to
+ *  one Resonator) ADD their contributions instead of overwriting.
+ *
+ *  Tagging is by `ctx.time` — the first call this frame finds
+ *  either no existing trait or an existing one with `_setAt` from
+ *  a prior frame and resets to fresh. Subsequent same-frame calls
+ *  see `_setAt === ctx.time` and add. TTL=200 keeps the trait
+ *  alive across the gap between adjacency-update ticks. */
+function accumulateBuff(target: any, id: string, bonus: number, time: number): void {
+  let existing = target.traits.find((t: Trait) => t.id === id) as any;
+  if (!existing || existing._setAt !== time) {
+    if (existing) {
+      existing.bonus = bonus;
+      existing._ttl = 200;
+      existing._setAt = time;
+    } else {
+      target.traits.push({ id, bonus, _ttl: 200, _setAt: time } as any);
+    }
+  } else {
+    // Same frame, additional source — accumulate.
+    existing.bonus += bonus;
+    existing._ttl = 200;
+  }
+}
+
 registerTowerUpdate('adjacency_buff', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  // Percentage-based: damagePercent and ratePercent
+  // Percentage-based: damagePercent and ratePercent. Multiple
+  // adjacency_buff sources around the same tower stack — two
+  // Blossoms = two stacks. Tagged by ctx.time so the first source
+  // each frame resets the bucket and subsequent same-frame sources
+  // accumulate.
   const dmgPercent = trait.damagePercent ?? 0.15;
   const ratePercent = trait.ratePercent ?? 0.08;
 
@@ -525,21 +559,15 @@ registerTowerUpdate('adjacency_buff', (trait: Trait, tower: any, ctx: UpdateCont
     const dc = Math.abs(other.col - tower.col);
     const dr = Math.abs(other.row - tower.row);
     if (dc <= 1 && dr <= 1) {
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_damage_buff',
-        bonus: Math.round(other.damage * dmgPercent * tower.level),
-        _ttl: 200,
-      });
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_rate_buff',
-        bonus: ratePercent * tower.level, // percentage
-        _ttl: 200,
-      });
+      accumulateBuff(other, '_adj_damage_buff', Math.round(other.damage * dmgPercent * tower.level), ctx.time);
+      accumulateBuff(other, '_adj_rate_buff', ratePercent * tower.level, ctx.time);
     }
   }
 });
 
 registerTowerUpdate('spell_amp', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  // Same accumulating pattern as adjacency_buff — multiple Mana
+  // Drains stacking on one tower compound their amp.
   const ampPercent = trait.ampPercent ?? 0.3;
 
   for (const other of ctx.allTowers) {
@@ -547,11 +575,7 @@ registerTowerUpdate('spell_amp', (trait: Trait, tower: any, ctx: UpdateContext) 
     const dc = Math.abs(other.col - tower.col);
     const dr = Math.abs(other.row - tower.row);
     if (dc <= 1 && dr <= 1) {
-      addOrRefreshTrait(other.traits, {
-        id: '_spell_amp_buff',
-        bonus: ampPercent * tower.level,
-        _ttl: 200,
-      });
+      accumulateBuff(other, '_spell_amp_buff', ampPercent * tower.level, ctx.time);
     }
   }
 });

@@ -45,7 +45,7 @@
 | Root | 25g | Strongest slow: 70% for 3s. |
 | Grove Viper | 30g | **Mobile.** Slithers between creeps, lunges with a fanged strike. 12 dmg bite @ 750ms + 6%/s 4.5s viper venom. |
 | Blossom | 60g | No attack. Buffs adjacent towers: +25% DMG, +15% SPD/level. |
-| Spore | 100g | Poisons ALL creeps near tower (not target). 2% HP/s. |
+| Spore | 100g | 8 dmg pulse to ALL creeps in range every 1.5s + 2% HP/s poison. Upgrades scale poison to 2.5% / 3% HP/s. |
 | Sunroot | 140g | Splash DPS. 22 damage, range 4, 72-radius fire-flower AoE. |
 | Vine | 160g | 20% chance to root (stun) creeps for 0.8s. |
 | **Elder Treant** | **450g** | Ultimate. Grows +8% damage permanently. Roots + buffs adjacents. |

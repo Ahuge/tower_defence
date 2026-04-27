@@ -22,7 +22,15 @@ export interface GameStats {
   frontierSpent: number;
   frontierEarned: number;
   sendsSpent: number;
+  /** Per-wave income RATE accumulated by send purchases — sum of
+   *  the +g/wave bonus that each send added. Displayed as
+   *  "Send Income +Xg/w" since it's the final per-wave rate, not
+   *  cumulative gold. */
   sendsIncome: number;
+  /** Cumulative gold actually paid out from send bonuses across
+   *  the whole match. Each wave-clear adds the current send bonus
+   *  to this. Used by Sends ROI on the Game Over screen. */
+  sendsEarned: number;
   totalGoldEarned: number;
   totalGoldSpent: number;
   creepsKilled: number;
@@ -42,6 +50,7 @@ export class StatsTracker {
     frontierEarned: 0,
     sendsSpent: 0,
     sendsIncome: 0,
+    sendsEarned: 0,
     totalGoldEarned: 0,
     totalGoldSpent: 0,
     creepsKilled: 0,
@@ -129,6 +138,12 @@ export class StatsTracker {
 
   recordSendIncome(amount: number): void {
     this.stats.sendsIncome += amount;
+  }
+
+  /** Record gold paid out from send bonuses on a single wave clear.
+   *  Accumulates into `sendsEarned` for the Sends ROI computation. */
+  recordSendsEarned(amount: number): void {
+    this.stats.sendsEarned += amount;
   }
 
   recordEssenceGenerated(amount: number): void {

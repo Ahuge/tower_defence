@@ -204,9 +204,14 @@ export class HeroDefenseMode implements GameMode {
 
   onWaveCleared(waveNum: number): void {
     // Wave income (halved — 10x creeps already provide plenty of kill gold)
+    const breakdown = this.ctx.incomeMgr.getBreakdown();
     const income = Math.round(this.ctx.incomeMgr.collectWaveIncome() * 0.5);
     this.ctx.economy.addGold(income);
     this.ctx.statsTracker.recordGoldEarned(income);
+    // Sends in HD also pay at 0.5×; record that against ROI.
+    if (breakdown.sends > 0) {
+      this.ctx.statsTracker.recordSendsEarned(Math.round(breakdown.sends * 0.5));
+    }
 
     // Interest: base 2%, upgradeable via Interest Tome (stored on hero)
     const interestRate = (this.arenaManager.hero as any)._interestRate ?? 0.02;

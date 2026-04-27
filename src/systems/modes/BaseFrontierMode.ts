@@ -129,20 +129,22 @@ export abstract class BaseFrontierMode implements GameMode {
     this.syncFrontierToDOM();
 
     // Wave income — base + sends + frontier (steady). Read the
-    // frontier slice BEFORE collectWaveIncome so we can attribute
-    // it to the per-stat bucket; collectWaveIncome itself just
-    // returns the sum and bumps totalIncomeEarned.
+    // breakdown BEFORE collectWaveIncome so we can attribute each
+    // slice to its own per-stat bucket; collectWaveIncome itself
+    // just returns the sum and bumps totalIncomeEarned.
     const breakdown = this.ctx.incomeMgr.getBreakdown();
     const income = this.ctx.incomeMgr.collectWaveIncome();
     this.ctx.economy.addGold(income);
     this.ctx.statsTracker.recordGoldEarned(income);
-    // Steady frontier income (Manor, Vault, Sacred Grove pre-harvest,
-    // etc.) was previously double-missed: counted into total gold but
-    // never into frontierEarned, so the GameOver "Frontier ROI" stat
-    // showed 0% even when the player invested heavily. Attribute it
-    // here.
+    // Steady frontier income and per-wave send bonus payouts are
+    // real gold; both used to vanish into goldEarned without
+    // attribution, so the Frontier ROI / Sends ROI stats on Game
+    // Over had no source data. Attribute them here.
     if (breakdown.frontier > 0) {
       this.ctx.statsTracker.recordFrontierEarned(breakdown.frontier);
+    }
+    if (breakdown.sends > 0) {
+      this.ctx.statsTracker.recordSendsEarned(breakdown.sends);
     }
   }
 
