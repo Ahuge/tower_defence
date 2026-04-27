@@ -203,8 +203,10 @@ export abstract class BaseFrontierMode implements GameMode {
     // Emit so live-capture and any future tutorial / analytics
     // listener can observe the human-side action. Bot post-purchase
     // actions go through the BotAI dispatch path, which calls into
-    // this same handler, so the event covers both.
-    ctx.eventBus.emit('frontierActionPerformed', { action, idx });
+    // this same handler, so the event covers both. The switch above
+    // only does work for these three values, so the cast is safe —
+    // an unknown action string would have already been a no-op.
+    ctx.eventBus.emit('frontierActionPerformed', { action: action as 'overcharge' | 'dig' | 'harvest', idx });
     this.frontierPanel.updateOwned();
   }
 
@@ -236,7 +238,7 @@ export abstract class BaseFrontierMode implements GameMode {
     // Same emit as single-action, with defId instead of idx so
     // capture / analytics can distinguish "Overcharge that one"
     // from "Overcharge all of this type".
-    ctx.eventBus.emit('frontierActionPerformed', { action, defId });
+    ctx.eventBus.emit('frontierActionPerformed', { action: action as 'overcharge' | 'dig' | 'harvest', defId });
     this.frontierPanel.updateOwned();
   }
 }

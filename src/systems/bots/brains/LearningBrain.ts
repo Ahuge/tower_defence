@@ -151,12 +151,13 @@ export class LearningBrain implements BotBrain {
 /** Stable key for a BotDecision so duplicates can be dropped. */
 function decisionKey(d: BotDecision): string {
   switch (d.kind) {
-    case 'place':    return `place:${d.col},${d.row},${d.type.id}`;
-    case 'upgrade':  return `upgrade:${d.col},${d.row},${d.branch ?? ''}`;
-    case 'sell':     return `sell:${d.col},${d.row}`;
-    case 'send':     return `send:${d.sendOptionId}`;
-    case 'frontier': return `frontier:${d.buildingId}`;
-    case 'skip':     return 'skip';
+    case 'place':           return `place:${d.col},${d.row},${d.type.id}`;
+    case 'upgrade':         return `upgrade:${d.col},${d.row},${d.branch ?? ''}`;
+    case 'sell':            return `sell:${d.col},${d.row}`;
+    case 'send':            return `send:${d.sendOptionId}`;
+    case 'frontier':        return `frontier:${d.buildingId}`;
+    case 'frontierManage':  return `frontierManage:${d.action}:${d.defId ?? ''}:${d.idx ?? ''}`;
+    case 'skip':            return 'skip';
   }
 }
 
