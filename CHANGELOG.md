@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-27
+
+### Tower dock + info panel UI polish
+
+- **Unaffordable cost text was nearly invisible** (`#664422` on the dim slot). Brightened to `#c89a44` so the player can still read the price tag while the slot itself stays desaturated.
+- **Upgrade button always rendered green** even when the player couldn't afford it, leading to mis-clicks that did nothing. Now reads current gold, sets `disabled` plus a new `.action-disabled` style (grey, `cursor: not-allowed`), and the click is gated.
+- **Selected tower wouldn't deselect** when the user pressed × on the mobile floating card or collapsed the tower section / opened Economy on desktop — a 250ms info-refresh in `GameScene.update` re-pushed the snapshot every tick and reopened the panel. Added `GameUIStore.requestDeselectTower()` plus an `onDeselectTower` callback that GameScene wires to `enterNoneMode()`, so the inspect mode tears down (range circle clears, selection clears) the moment the user dismisses the panel.
+
 ## 2026-04-26
 
 ### Live capture: sends, frontier purchases, frontier post-purchase actions

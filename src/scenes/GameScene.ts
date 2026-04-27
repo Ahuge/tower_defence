@@ -436,6 +436,13 @@ export class GameScene extends Phaser.Scene {
           this.eventBus.emit('dockTowerSelected', index, towerId);
         }
       },
+      onDeselectTower: () => {
+        // Full deselect from the sidebar UI — must clear `this.selectedTower`
+        // too, otherwise the per-frame refresh below re-pushes the snapshot
+        // and the panel reappears 250ms later.
+        if (this.selectionMode === 'inspect') this.enterNoneMode();
+        else GameUIStore.deselectTower();
+      },
     });
 
     // Create sprite animations from loaded sheets

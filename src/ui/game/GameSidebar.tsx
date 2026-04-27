@@ -45,7 +45,10 @@ export function GameSidebar() {
 
   const dismissFloating = useCallback(() => {
     setShowFloating(null);
-    if (selectedTower) GameUIStore.deselectTower();
+    // Full deselect — also clears GameScene's `selectedTower`, so the
+    // 250ms info-refresh tick can't re-push the snapshot and reopen
+    // the floating card a beat after the user pressed ×.
+    if (selectedTower) GameUIStore.requestDeselectTower();
     if (selectedCreep) GameUIStore.deselectCreep();
   }, [selectedTower, selectedCreep]);
 
@@ -81,7 +84,21 @@ export function GameSidebar() {
   if (!active) return null;
 
   const toggle = (id: PanelId) => {
-    setOpenPanel(prev => prev === id ? null : id);
+    setOpenPanel(prev => {
+      const next = prev === id ? null : id;
+      // Switching away from the tower/creep panel = "I'm done with that
+      // selection". Without this, collapsing the Hive Spire header or
+      // opening Economy left the tower selected (range circle + info
+      // refresh kept ticking). Now the inspect mode tears down with the
+      // panel.
+      if (prev === 'tower' && next !== 'tower' && selectedTower) {
+        GameUIStore.requestDeselectTower();
+      }
+      if (prev === 'creep' && next !== 'creep' && selectedCreep) {
+        GameUIStore.deselectCreep();
+      }
+      return next;
+    });
   };
 
   return (

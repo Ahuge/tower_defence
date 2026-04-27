@@ -126,8 +126,10 @@ export function TowerDockDOM() {
               {/* Tower icon or name fallback */}
               <TowerIcon towerId={tower.id} size={36} />
 
-              {/* Cost */}
-              <div class="dock-cost" style={{ color: canAfford ? '#ffdd44' : '#664422' }}>{tower.cost}g</div>
+              {/* Cost — unaffordable still readable, just dimmed. The
+                  slot itself is desaturated via .dock-unaffordable, so
+                  the text doesn't also need to disappear. */}
+              <div class="dock-cost" style={{ color: canAfford ? '#ffdd44' : '#c89a44' }}>{tower.cost}g</div>
             </div>
 
             {/* Tooltip — clamped so it doesn't clip off-screen */}

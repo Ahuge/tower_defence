@@ -385,6 +385,7 @@ class GameUIStoreClass {
     onHeroUpgrade?: (optionId: string) => void;
     onUpgradeAbility?: (abilityIndex: number) => void;
     onSelectDockTower?: (index: number) => void;
+    onDeselectTower?: () => void;
     onCycleSpeed?: () => void;
     onRequestSpeedBoost?: () => void;
     onPause?: () => void;
@@ -693,6 +694,16 @@ class GameUIStoreClass {
 
   requestSelectDockTower(index: number): void {
     this.callbacks.onSelectDockTower?.(index);
+  }
+
+  /** Full deselect — clears the GameScene's inspected tower as well as
+   *  the DOM's `selectedTower`, so the per-frame refresh in GameScene
+   *  doesn't immediately re-push the snapshot back into the store. The
+   *  raw `deselectTower()` only clears the DOM state; for user-driven
+   *  dismissals (X button, panel collapse) always go through this. */
+  requestDeselectTower(): void {
+    if (this.callbacks.onDeselectTower) this.callbacks.onDeselectTower();
+    else this.deselectTower();
   }
 
   // ─── Subscription ───────────────────────────────────
