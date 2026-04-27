@@ -136,6 +136,35 @@ function translate(raw: CapturedTurn['decisionRaw'], ctx: BotContext): BotDecisi
       if (!owned) return { kind: 'skip' };
       return { kind: 'sell', col: owned.col, row: owned.row };
     }
+    case 'send': {
+      // Only propose if the captured option is currently available
+      // and unlocked. Otherwise skip — better than emitting an
+      // unknown id the driver will reject.
+      if (!raw.sendOptionId) return { kind: 'skip' };
+      const opt = ctx.sendOptions.find(o => o.id === raw.sendOptionId);
+      if (!opt || !opt.unlocked || opt.cost > ctx.budget) return { kind: 'skip' };
+      return { kind: 'send', sendOptionId: raw.sendOptionId };
+    }
+    case 'frontier': {
+      // Same gating: only propose if the captured building is in
+      // the current frontier rotation and we can afford it.
+      if (!raw.buildingId) return { kind: 'skip' };
+      const opt = ctx.frontierOptions.find(o => o.id === raw.buildingId);
+      if (!opt || opt.cost > ctx.budget) return { kind: 'skip' };
+      return { kind: 'frontier', buildingId: raw.buildingId };
+    }
+    case 'frontierManage' as any: {
+      // T2: replay frontier post-purchase actions (overcharge / dig
+      // / harvest, single or batch). The driver requires a defId
+      // (batch) or idx (single); we pass through whichever the
+      // capture recorded.
+      const a = (raw as any).action;
+      if (!a) return { kind: 'skip' };
+      const decision: any = { kind: 'frontierManage', action: a };
+      if ((raw as any).defId) decision.defId = (raw as any).defId;
+      if ((raw as any).idx !== undefined && (raw as any).idx !== null) decision.idx = (raw as any).idx;
+      return decision as BotDecision;
+    }
     default:
       return { kind: 'skip' };
   }

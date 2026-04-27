@@ -40,6 +40,12 @@ interface InFlightTurn {
     branch?: string;
     sendOptionId?: string;
     buildingId?: string;
+    /** frontierManage extras — `action` is one of overcharge / dig
+     *  / harvest; target is exactly one of (idx for a single owned
+     *  building, defId for batch-of-type). */
+    action?: 'overcharge' | 'dig' | 'harvest';
+    defId?: string;
+    idx?: number;
   };
   faction: string;
   difficulty: string;
@@ -129,6 +135,10 @@ export function recordAction(ctx: BotContext, decision: BotDecision): void {
       raw.sendOptionId = decision.sendOptionId;
     } else if (decision.kind === 'frontier') {
       raw.buildingId = decision.buildingId;
+    } else if (decision.kind === 'frontierManage') {
+      raw.action = decision.action;
+      if (decision.idx !== undefined) raw.idx = decision.idx;
+      if (decision.defId) raw.defId = decision.defId;
     }
     const turn: InFlightTurn = {
       turnIdx: session.turnIdx++,

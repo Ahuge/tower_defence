@@ -500,6 +500,27 @@ export class GameScene extends Phaser.Scene {
     TutorialManager.setGameEventBus(this.eventBus);
     TutorialManager.onGameSceneCreated(this.matchMode);
 
+    // Live-capture for sends + frontier purchases. Both events are
+    // emitted ONLY from human-player code paths (DOM callbacks +
+    // panel-click handlers in StandardMode / GauntletMode /
+    // BaseFrontierMode); bot purchases route through the BotAI
+    // frontierCb / sendCb pathway which doesn't emit these. So
+    // subscribing here captures human actions only — no bot leakage.
+    this.eventBus.on('sendPurchased', (sendOptionId: string) => {
+      this._captureHumanAction({ kind: 'send', sendOptionId });
+    });
+    this.eventBus.on('frontierPurchased', (buildingId: string) => {
+      this._captureHumanAction({ kind: 'frontier', buildingId });
+    });
+    this.eventBus.on('frontierActionPerformed', (event) => {
+      this._captureHumanAction({
+        kind: 'frontierManage',
+        action: event.action,
+        idx: event.idx,
+        defId: event.defId,
+      });
+    });
+
     // Resolve map definition — generate for random maps, use custom if provided
     let mapDef: MapDefinition;
     if (this.mapId === 'custom' && this.customMapDef) {

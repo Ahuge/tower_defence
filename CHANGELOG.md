@@ -2,6 +2,15 @@
 
 ## 2026-04-26
 
+### Live capture: sends, frontier purchases, frontier post-purchase actions
+
+Discovered that `LiveCapture` only recorded tower place / upgrade / sell — sends and frontier buildings were silently dropped, so every human-recorded match was missing entire categories of strategic decisions. Fixed end-to-end:
+
+- **T1 — purchases**: `GameScene` now subscribes to `sendPurchased` and `frontierPurchased` events and forwards them to `LiveCapture.recordAction`. `HumanReplayBrain` translates the captured `decisionRaw` back into `send` / `frontier` decisions when replaying.
+- **T2 — frontier management**: New `BotDecision` kind `frontierManage` for post-purchase actions (overcharge / dig / harvest, single-target via `idx` or batch via `defId`). `BotAI` driver dispatches via a new `frontierActionCallback`; `BaseFrontierMode` emits a `frontierActionPerformed` event after each human or bot action; `GameScene` captures it; `HumanReplayBrain` and `HeadlessMatch.applyDecision` both replay it. So the same decision shape now flows through human capture, bot inference, and the headless harness.
+
+Existing recorded data (everything before this commit) is missing these rows — re-record after this lands.
+
 ### Sends ROI on Game Over screen + per-wave attribution
 
 Mirror of the Frontier ROI work — sends now have a `Sends Earned` cumulative-gold stat alongside the existing per-wave-rate `Send Income` line, plus a `Sends ROI` percentage. ROI is `(sendsEarned / sendsSpent) × 100`, coloured teal when ≥100% and red when below.

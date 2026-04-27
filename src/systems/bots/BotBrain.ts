@@ -142,6 +142,13 @@ export type BotDecision =
   | { kind: 'sell'; col: number; row: number }
   | { kind: 'send'; sendOptionId: string }
   | { kind: 'frontier'; buildingId: string }
+  /** Post-purchase frontier action — overcharge/dig/harvest a
+   *  building the bot already owns. Targets either a single owned
+   *  index (`idx`) or all of a defId at once (`defId`); exactly
+   *  one of those should be set. Driver routes these to the
+   *  per-mode handleFrontierAction / handleFrontierBatchAction
+   *  callbacks via the registered frontierActionCb. */
+  | { kind: 'frontierManage'; action: 'overcharge' | 'dig' | 'harvest'; defId?: string; idx?: number }
   | { kind: 'skip' };
 
 export interface BotBrain {

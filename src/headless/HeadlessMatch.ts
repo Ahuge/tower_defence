@@ -387,6 +387,39 @@ async function runMatchInner(
         frontierMgr.purchaseBuilding(building);
         return true;
       }
+      case 'frontierManage': {
+        // Post-purchase action — overcharge / dig / harvest. Either
+        // single-target (idx) or batch (defId). Mirror of
+        // BaseFrontierMode.handleFrontierAction in the live game,
+        // minus the eventLog / panel-refresh side effects that
+        // headless doesn't have.
+        if (d.defId) {
+          if (d.action === 'overcharge') {
+            const gold = frontierMgr.overchargeAllOfType(d.defId);
+            if (gold > 0) economy.addGold(gold);
+            return true;
+          }
+          if (d.action === 'dig') { frontierMgr.digAllOfType(d.defId); return true; }
+          if (d.action === 'harvest') {
+            const gold = frontierMgr.harvestAllOfType(d.defId);
+            if (gold > 0) economy.addGold(gold);
+            return true;
+          }
+        } else if (d.idx !== undefined) {
+          if (d.action === 'overcharge') {
+            const gold = frontierMgr.overchargeBuilding(d.idx);
+            if (gold > 0) economy.addGold(gold);
+            return true;
+          }
+          if (d.action === 'dig') { frontierMgr.digDeeper(d.idx); return true; }
+          if (d.action === 'harvest') {
+            const gold = frontierMgr.harvestGrowth(d.idx);
+            if (gold > 0) economy.addGold(gold);
+            return true;
+          }
+        }
+        return false;
+      }
       case 'send':
         // Standard mode doesn't have a real send target — skip.
         return false;
