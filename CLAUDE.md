@@ -139,6 +139,8 @@ Audit reminder: any new per-frame damage / heal / counter / pickup that takes `d
 
 The user records gameplay in the live game with `?capture=1` (or `__learningCapture.setEnabled(true)`) and exports JSONL via `__learningCapture.downloadJSONL()`. When they send a fresh JSONL, the standard ingest sequence is:
 
+**Note:** while capture is on, the Draft screen suppresses modifier selection and forces `modifier: null` (see `DraftScreen.tsx`'s `captureLocked` branch). The bot harness also runs modifier=null, so this keeps the human and bot halves of the training set distribution-aligned. If you ever extend the harness to support DraftModifiers, lift this gate in lockstep — otherwise the asymmetric data poisons the model.
+
 1. **Save permanently.** Move the file to `ml/captured/<descriptive>_human.jsonl` — `ml/captured/` is whitelisted in `.gitignore` so these files commit. Use a name that says what it covers (e.g. `mech_games_human.jsonl`, `aliens_v2_human.jsonl`). Don't overwrite — append a counter / version if the same faction comes through twice (`mech_v2`, `mech_v3`).
 
 2. **Sanity-check.** Run a Python one-liner to count rows, matches, wins, and verify all rows have `brain="human"`, `outcome` set, and a 56-dim feature shape. Reject the batch and tell the user if anything looks malformed (stale feature shape from an outdated client, missing outcomes, wrong `by_human` flag).

@@ -2,6 +2,14 @@
 
 ## 2026-04-27
 
+### Capture-aware Draft: modifiers suppressed when training capture is on
+
+Headless harness runs `modifier: null` for every match in the bot dataset (~515k turns). If a player records gameplay with capture enabled and picks a DraftModifier (Gold Rush +50g, Glass Cannon, Discount, etc.), those rows show up in human captures with state distributions the bot half can't match — the model gradient gets dominated by the no-modifier majority and the modifier dimension carries almost no signal.
+
+Cleanest fix: gate the Draft screen on `isCaptureEnabled()`. When capture is on, replace the modifier picker with a single explanatory card ("Modifiers disabled — toggle capture off in Settings to pick a modifier") and a Continue button that picks `null`. The user can always disable capture if they want to play with a modifier; we just don't pretend those games are useful training data.
+
+If/when the harness grows DraftModifier support and the bot dataset is regenerated 9× to cover each bucket, lift this gate in lockstep. Documented in CLAUDE.md alongside the existing capture-ingest playbook.
+
 ### Fix: Firewall (and any tick-based DoT) no-op on high-refresh-rate displays
 
 `Creep.takeDamage` rounded the incoming amount via `Math.round(amount × amp)` and bailed if the result was ≤ 0. On a 60 Hz display the Firewall beam's per-frame damage `35 × 16/1000 ≈ 0.56` rounded to 1 every frame and worked. On a 144/180/240 Hz display, delta drops to ~5–7 ms, per-frame damage drops below 0.5, `Math.round` floors it to 0, and the early-return wiped the entire beam. Same shape would have also hit any direct-fire path that ever fed fractional damage in.
