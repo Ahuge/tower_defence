@@ -2,6 +2,14 @@
 
 ## 2026-04-27
 
+### Fix: Firewall (and any tick-based DoT) no-op on high-refresh-rate displays
+
+`Creep.takeDamage` rounded the incoming amount via `Math.round(amount × amp)` and bailed if the result was ≤ 0. On a 60 Hz display the Firewall beam's per-frame damage `35 × 16/1000 ≈ 0.56` rounded to 1 every frame and worked. On a 144/180/240 Hz display, delta drops to ~5–7 ms, per-frame damage drops below 0.5, `Math.round` floors it to 0, and the early-return wiped the entire beam. Same shape would have also hit any direct-fire path that ever fed fractional damage in.
+
+Replaced the `Math.round` step with a per-creep `_dmgDebt` accumulator that flushes only the integer portion each call and carries the fractional remainder forward. Sub-1-hp slivers now accumulate to real damage matching the requested DPS regardless of frame cadence, integer-damage callers are unaffected (debt is already empty so `floor(N + 0) === N`), and displayed HP stays integer-clean. The DoT path (`StatusEffects.getDotDamage`) was already doing this — `takeDamage` is now consistent.
+
+Stripped the temporary `[firewall] hit/tick/linked/no partner` console traces; they did their job.
+
 ### Perf: shared creep overlay graphics
 
 Spawning 10–15 sends at once dropped a lot of frames, and the lag persisted while the creeps were just walking — i.e. before any tower was firing at them. The cause was per-creep `Phaser.GameObjects.Graphics` objects: every creep ran `this.graphics.clear()` plus a stack of `fillRect` / `strokeCircle` / `fillEllipse` calls each frame. Phaser's WebGL batcher batches shapes within one Graphics, but each Graphics is its own render entry — 100+ creeps meant 100+ separate draw entries.

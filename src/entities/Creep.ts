@@ -72,6 +72,14 @@ export class Creep {
    *  going through the chain of Phaser graphics Proxy traps. Never
    *  set in the real game; always set in HeadlessScene. */
   private _isHeadless: boolean = false;
+  /** Sub-1-hp damage accumulator. `Math.round`ing every individual hit
+   *  used to floor anything below 0.5 hp to 0, which silently zeroed
+   *  out tick-based traits (Firewall beam, burn DoT, poison) on high-
+   *  refresh-rate displays where per-frame damage = `dps × delta/1000`
+   *  fell below 0.5. We now flush only the integer part of the debt
+   *  and carry the fractional remainder forward so net damage matches
+   *  the requested DPS regardless of frame cadence. */
+  private _dmgDebt: number = 0;
 
   /** The creep type ID (e.g. 'standard', 'fast', 'boss') */
   get creepTypeId(): string { return this._creepTypeId; }
@@ -262,9 +270,17 @@ export class Creep {
       return; // dodged via aura
     }
 
-    // Apply damage amplification
+    // Apply damage amplification, then accumulate sub-1-hp slivers
+    // into `_dmgDebt`. Only the integer part flushes this call —
+    // the fractional remainder rides forward to the next hit. Keeps
+    // displayed HP integer-clean while letting tiny per-frame
+    // damages (Firewall, burn, poison at high refresh rates) still
+    // accumulate to real damage instead of getting rounded to 0.
     const amp = this.statusEffects.getDamageAmp();
-    const amped = Math.round(amount * amp);
+    this._dmgDebt += amount * amp;
+    const amped = Math.floor(this._dmgDebt);
+    if (amped <= 0) return;
+    this._dmgDebt -= amped;
 
     // Run through creep traits (shield absorb, own evasion, etc.)
     const finalDamage = resolveCreepDamage(this.traits, amped);
