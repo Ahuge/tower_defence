@@ -913,12 +913,23 @@ registerTowerUpdate('firewall_link', (trait: Trait, tower: any, ctx: UpdateConte
         otherTrait._partnerRow = tower.row;
         otherTrait._partnerX = tower.x;
         otherTrait._partnerY = tower.y;
+        if (typeof console !== 'undefined') {
+          console.log('[firewall] linked', { from: [tower.col, tower.row], to: [other.col, other.row], dist: Math.sqrt(dx * dx + dy * dy).toFixed(1) });
+        }
         break;
       }
     }
   }
 
-  if (trait._partnerX === undefined) return;
+  if (trait._partnerX === undefined) {
+    // Throttle: log once a second so a lone Firewall doesn't flood the console.
+    const now = ctx.time;
+    if (!trait._lastNoPartnerLog || now - trait._lastNoPartnerLog > 1000) {
+      trait._lastNoPartnerLog = now;
+      if (typeof console !== 'undefined') console.log('[firewall] no partner', { col: tower.col, row: tower.row });
+    }
+    return;
+  }
 
   // Draw beam and damage creeps crossing it
   const ax = tower.x, ay = tower.y;
@@ -928,6 +939,7 @@ registerTowerUpdate('firewall_link', (trait: Trait, tower: any, ctx: UpdateConte
   const nx = (bx - ax) / beamLen;
   const ny = (by - ay) / beamLen;
 
+  let hitsThisFrame = 0;
   for (const creep of ctx.allCreeps) {
     if (!creep.alive || creep.reached) continue;
     const cx = creep.x - ax;
@@ -938,11 +950,48 @@ registerTowerUpdate('firewall_link', (trait: Trait, tower: any, ctx: UpdateConte
     const perpY = cy - proj * ny;
     const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
     if (perpDist <= TILE_SIZE * 0.6) {
+      const hpBefore = creep.hp;
       creep.takeDamage(damage);
+      const dealt = hpBefore - creep.hp;
       tower.damageDealt += damage;
       // Heavy slow while crossing the beam
       const slowFactor = trait.slowFactor ?? 0.4;
       creep.applySlow(500, slowFactor);
+      hitsThisFrame++;
+      // Throttle per-creep hits to one log per second per beam so the
+      // console isn't flooded — enough to confirm the path runs and
+      // see what takeDamage actually applied vs requested.
+      const now = ctx.time;
+      if (!trait._lastHitLog || now - trait._lastHitLog > 1000) {
+        trait._lastHitLog = now;
+        if (typeof console !== 'undefined') {
+          console.log('[firewall] hit', {
+            beam: [tower.col, tower.row],
+            creep: creep.creepTypeId,
+            requested: damage.toFixed(3),
+            dealt: dealt.toFixed(3),
+            hp: `${creep.hp.toFixed(1)}/${creep.maxHp}`,
+            delta: ctx.delta.toFixed(1),
+            dps,
+          });
+        }
+      }
+    }
+  }
+
+  // Once a second, log the per-beam state even when nobody crossed —
+  // confirms the handler is running and the partner link is intact.
+  const now = ctx.time;
+  if (!trait._lastTickLog || now - trait._lastTickLog > 1000) {
+    trait._lastTickLog = now;
+    if (typeof console !== 'undefined') {
+      console.log('[firewall] tick', {
+        beam: [tower.col, tower.row],
+        partner: [trait._partnerCol, trait._partnerRow],
+        creepsInScene: ctx.allCreeps.length,
+        hitsThisFrame,
+        beamLenTiles: (beamLen / TILE_SIZE).toFixed(1),
+      });
     }
   }
 
