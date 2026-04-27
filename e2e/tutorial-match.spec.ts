@@ -46,7 +46,10 @@ test.describe('tutorial match', () => {
     await gotoFresh();
     await dismissAllAutoTutorials(page);
 
-    await page.getByRole('button', { name: '?' }).click();
+    // ProfileAvatar renders a "?" button when no profile is signed
+    // in (`title="Tap to sign in"`), colliding with the Tutorials
+    // help button by accessible name. Disambiguate by title.
+    await page.getByTitle('Tutorials').click();
     await page.getByText('Tutorial Match').first().click();
 
     // 'welcome' — click-advance.
@@ -161,7 +164,10 @@ test.describe('tutorial match', () => {
     await gotoFresh();
     await dismissAllAutoTutorials(page);
 
-    await page.getByRole('button', { name: '?' }).click();
+    // ProfileAvatar renders a "?" button when no profile is signed
+    // in (`title="Tap to sign in"`), colliding with the Tutorials
+    // help button by accessible name. Disambiguate by title.
+    await page.getByTitle('Tutorials').click();
     await page.getByText('Tutorial Match').first().click();
     await waitForTutorialStep(page, 'welcome', 20_000);
 
