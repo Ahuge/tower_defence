@@ -2,6 +2,12 @@
 
 ## 2026-04-27
 
+### Non-stacking auras: best contribution wins
+
+`faction_speed_aura` (Aliens Spawner), `commander_aura` (Aliens Swarm Commander), and `overclock_buff` (Cypherpunk Quickener) were applying their buffs via `addOrRefreshTrait`, which is last-write-wins — two overlapping sources would arbitrarily pick whichever ran last in the update loop. Added a `setBestBuff` helper alongside the existing `accumulateBuff`: same per-frame `_setAt = ctx.time` tag, but each subsequent same-frame source keeps the higher `score` instead of accumulating. So a Lv3 Spawner adjacent to a Lv1 Spawner now wins the rate buff for the shared neighbour rather than depending on iteration order.
+
+Left the Conduit `shareAura` / re-emit paths on the old helper — they write to the same trait IDs as the *stacking* direct Resonator/Quickener auras, and converting them in isolation would trigger the per-frame reset mid-frame and clobber stacked direct contributions. Worth a separate cleanup pass on the harmonic-aura plumbing before flipping that.
+
 ### Tower dock + info panel UI polish
 
 - **Unaffordable cost text was nearly invisible** (`#664422` on the dim slot). Brightened to `#c89a44` so the player can still read the price tag while the slot itself stays desaturated.

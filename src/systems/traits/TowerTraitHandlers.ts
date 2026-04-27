@@ -545,6 +545,35 @@ function accumulateBuff(target: any, id: string, bonus: number, time: number): v
   }
 }
 
+/** Non-stacking aura: when multiple sources cover the same target in
+ *  one frame, keep the *best* contribution (highest `score`) instead
+ *  of last-write-wins. Same `_setAt = time` tag as accumulateBuff so
+ *  the first call each frame resets the bucket and later calls compare
+ *  against it; `_ttl=200` carries the buff between adjacency ticks.
+ *
+ *  `fields` carries the trait's payload (bonus / chance / multiplier /
+ *  etc.). `score` is the comparison key — usually `bonus` for plain
+ *  percentage buffs, or `chance` for crit-style auras. */
+function setBestBuff(target: any, id: string, score: number, fields: Record<string, any>, time: number): void {
+  let existing = target.traits.find((t: Trait) => t.id === id) as any;
+  if (!existing || existing._setAt !== time) {
+    if (existing) {
+      Object.assign(existing, fields);
+      existing._ttl = 200;
+      existing._setAt = time;
+      existing._bestScore = score;
+    } else {
+      target.traits.push({ id, ...fields, _ttl: 200, _setAt: time, _bestScore: score } as any);
+    }
+  } else if (score > (existing._bestScore ?? -Infinity)) {
+    Object.assign(existing, fields);
+    existing._bestScore = score;
+    existing._ttl = 200;
+  } else {
+    existing._ttl = 200;
+  }
+}
+
 registerTowerUpdate('adjacency_buff', (trait: Trait, tower: any, ctx: UpdateContext) => {
   // Percentage-based: damagePercent and ratePercent. Multiple
   // adjacency_buff sources around the same tower stack — two
@@ -600,11 +629,10 @@ registerTowerUpdate('overclock_buff', (trait: Trait, tower: any, ctx: UpdateCont
   }
 
   if (bestTower) {
-    addOrRefreshTrait(bestTower.traits, {
-      id: '_overclock_buff',
-      bonus: Math.min(0.6, rateReduction * tower.level), // cap at 60%
-      _ttl: 200,
-    });
+    // Non-stacking buff: when two Quickeners pick the same target,
+    // the higher-bonus one wins instead of last-write-wins.
+    const bonus = Math.min(0.6, rateReduction * tower.level); // cap at 60%
+    setBestBuff(bestTower, '_overclock_buff', bonus, { bonus }, ctx.time);
   }
 });
 
@@ -741,16 +769,12 @@ registerTowerUpdate('commander_aura', (trait: Trait, tower: any, ctx: UpdateCont
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= buffRange) {
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_damage_buff',
-        bonus: Math.round(other.damage * dmgPercent * tower.level),
-        _ttl: 200,
-      });
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_rate_buff',
-        bonus: ratePercent * tower.level,
-        _ttl: 200,
-      });
+      // Non-stacking: two overlapping Commanders pick the strongest
+      // bonus rather than overwriting per-frame.
+      const dmgBonus = Math.round(other.damage * dmgPercent * tower.level);
+      const rateBonus = ratePercent * tower.level;
+      setBestBuff(other, '_adj_damage_buff', dmgBonus, { bonus: dmgBonus }, ctx.time);
+      setBestBuff(other, '_adj_rate_buff', rateBonus, { bonus: rateBonus }, ctx.time);
     }
   }
 });
@@ -996,11 +1020,11 @@ registerTowerUpdate('faction_speed_aura', (trait: Trait, tower: any, ctx: Update
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      addOrRefreshTrait(other.traits, {
-        id: '_faction_rate_buff',
-        bonus: rateBonus * tower.level,
-        _ttl: 200,
-      });
+      // Non-stacking: a higher-level Spawner overlapping a lower-level
+      // one keeps the stronger rate buff instead of whichever fires
+      // last in the update loop.
+      const bonus = rateBonus * tower.level;
+      setBestBuff(other, '_faction_rate_buff', bonus, { bonus }, ctx.time);
     }
   }
 });
