@@ -24,7 +24,6 @@ export class Creep {
   path: PathPoint[];
   alive: boolean;
   reached: boolean;
-  graphics: Phaser.GameObjects.Graphics;
   isBoss: boolean;
   statusEffects: StatusEffectManager;
   armor: ArmorType;
@@ -112,8 +111,12 @@ export class Creep {
     this._creepTypeId = creepTypeId;
     this._creepFaction = creepFaction ?? null;
     this._isHeadless = (scene as any).isHeadless === true;
-    this.graphics = scene.add.graphics();
-    this.graphics.setDepth(10);
+    // Per-creep procedural overlay used to be its own Graphics object.
+    // 100+ creeps × 1 Graphics each meant 100+ separate render entries
+    // every frame — Phaser's WebGL batcher batches *within* a Graphics
+    // but not across them. CreepManager now owns one shared overlay
+    // and creeps draw into it via drawInto(g). Headless: no draw at all
+    // (see _isHeadless guard in drawInto).
 
     // Create sprite if creep faction has sprites loaded
     if (creepFaction && hasCreepSprites(creepFaction, scene)) {
@@ -143,7 +146,6 @@ export class Creep {
       this.hp -= dotDmg;
       if (this.hp <= 0) {
         this.alive = false;
-        this.graphics.destroy();
         if (this.sprite) {
           playCreepDeath(this._scene, this.sprite, (this._scene as any).creepFaction ?? 'arcane', this._creepTypeId);
           this.sprite = null;
@@ -165,7 +167,6 @@ export class Creep {
 
     if (this.pathIndex >= this.path.length) {
       this.reached = true;
-      this.graphics.destroy();
       this.sprite?.destroy();
       this.sprite = null;
       return;
@@ -189,7 +190,6 @@ export class Creep {
         this.x += (bdx / bdist) * move;
         this.y += (bdy / bdist) * move;
       }
-      this.draw();
       return;
     }
 
@@ -221,8 +221,6 @@ export class Creep {
       this.x += (dx / dist) * move;
       this.y += (dy / dist) * move;
     }
-
-    this.draw();
   }
 
   /**
@@ -275,7 +273,6 @@ export class Creep {
     this.hp -= finalDamage;
     if (this.hp <= 0) {
       this.alive = false;
-      this.graphics.destroy();
       if (this.sprite) {
         playCreepDeath(this._scene, this.sprite, (this._scene as any).creepFaction ?? 'arcane', this._creepTypeId);
         this.sprite = null;
@@ -287,21 +284,21 @@ export class Creep {
     this.statusEffects.apply('slow', duration, factor);
   }
 
-  draw(): void {
-    // Headless: skip entirely — no sprites are rendered, trait draw
-    // handlers don't mutate sim state, and going through the Phaser
-    // Proxy stubs in HeadlessScene is the dominant cost per tick on
-    // large creep counts. Evasion's shimmer roll was the only RNG-
-    // consuming draw handler; that was moved to wallclock so skipping
-    // draw() is side-effect-free.
+  /** Render this creep's HP bar / shadow / status overlays into a
+   *  shared `Graphics` owned by CreepManager. The shared overlay is
+   *  cleared once per frame before iterating creeps, so individual
+   *  creeps just paint into it without their own clear/destroy
+   *  bookkeeping. Headless: short-circuit (HeadlessScene's stubbed
+   *  graphics are no-ops anyway, but avoiding the call keeps the
+   *  hot loop free of Proxy traps). */
+  drawInto(g: any): void {
     if (this._isHeadless) return;
-    this.graphics.clear();
 
     const baseSize = this.isBoss ? TILE_SIZE * 0.45 : TILE_SIZE * 0.3;
     const drawSize = baseSize * this.size;
 
     // Trait overlays (shield glow, heal aura ring)
-    resolveCreepDraw(this.traits, this, this.graphics);
+    resolveCreepDraw(this.traits, this, g);
 
     // Position and flip sprite based on movement direction
     if (this.sprite) {
@@ -314,8 +311,8 @@ export class Creep {
       // Ground shadow
       const shadowW = drawSize * 1.6;
       const shadowH = drawSize * 0.5;
-      this.graphics.fillStyle(0x000000, 0.2);
-      this.graphics.fillEllipse(this.x, this.y + drawSize * 0.8, shadowW, shadowH);
+      g.fillStyle(0x000000, 0.2);
+      g.fillEllipse(this.x, this.y + drawSize * 0.8, shadowW, shadowH);
 
       // Apply status tint
       if (this.statusEffects.has('confused')) this.sprite.setTint(0xff00ff);
@@ -335,20 +332,20 @@ export class Creep {
       else if (this.statusEffects.has('poison')) bodyColor = 0x44cc22;
       else if (this.statusEffects.has('slow')) bodyColor = 0x6688cc;
 
-      this.graphics.fillStyle(bodyColor, 1);
-      this.graphics.fillCircle(this.x, this.y, drawSize);
+      g.fillStyle(bodyColor, 1);
+      g.fillCircle(this.x, this.y, drawSize);
     }
 
     // Armor shred indicator
     if (this.statusEffects.has('armor_shred')) {
-      this.graphics.lineStyle(1, 0x880088, 0.6);
-      this.graphics.strokeCircle(this.x, this.y, drawSize + 2);
+      g.lineStyle(1, 0x880088, 0.6);
+      g.strokeCircle(this.x, this.y, drawSize + 2);
     }
 
     // Damage amp indicator
     if (this.statusEffects.has('damage_amp')) {
-      this.graphics.lineStyle(1, 0xff0000, 0.4);
-      this.graphics.strokeCircle(this.x, this.y, drawSize + 4);
+      g.lineStyle(1, 0xff0000, 0.4);
+      g.strokeCircle(this.x, this.y, drawSize + 4);
     }
 
     // HP bar
@@ -358,20 +355,20 @@ export class Creep {
     const barY = this.y - drawSize - 6;
     const hpRatio = this.hp / this.maxHp;
 
-    this.graphics.fillStyle(0x333333, 1);
-    this.graphics.fillRect(barX, barY, barWidth, barHeight);
-    this.graphics.fillStyle(hpRatio > 0.5 ? 0x44ff44 : hpRatio > 0.25 ? 0xffaa00 : 0xff2222, 1);
-    this.graphics.fillRect(barX, barY, barWidth * hpRatio, barHeight);
+    g.fillStyle(0x333333, 1);
+    g.fillRect(barX, barY, barWidth, barHeight);
+    g.fillStyle(hpRatio > 0.5 ? 0x44ff44 : hpRatio > 0.25 ? 0xffaa00 : 0xff2222, 1);
+    g.fillRect(barX, barY, barWidth * hpRatio, barHeight);
 
     // Shield bar
     const shieldTrait = getTrait(this.traits, 'shield');
     if (shieldTrait && (shieldTrait._active || shieldTrait._shieldHp > 0)) {
       const shieldMax = Math.floor(this.maxHp * (shieldTrait.hpPercent ?? 0.3));
       const shieldRatio = (shieldTrait._shieldHp ?? 0) / shieldMax;
-      this.graphics.fillStyle(0x222244, 1);
-      this.graphics.fillRect(barX, barY + barHeight + 1, barWidth, 2);
-      this.graphics.fillStyle(0x4488ff, 1);
-      this.graphics.fillRect(barX, barY + barHeight + 1, barWidth * shieldRatio, 2);
+      g.fillStyle(0x222244, 1);
+      g.fillRect(barX, barY + barHeight + 1, barWidth, 2);
+      g.fillStyle(0x4488ff, 1);
+      g.fillRect(barX, barY + barHeight + 1, barWidth * shieldRatio, 2);
     }
   }
 }

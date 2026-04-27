@@ -2,6 +2,12 @@
 
 ## 2026-04-27
 
+### Perf: shared creep overlay graphics
+
+Spawning 10–15 sends at once dropped a lot of frames, and the lag persisted while the creeps were just walking — i.e. before any tower was firing at them. The cause was per-creep `Phaser.GameObjects.Graphics` objects: every creep ran `this.graphics.clear()` plus a stack of `fillRect` / `strokeCircle` / `fillEllipse` calls each frame. Phaser's WebGL batcher batches shapes within one Graphics, but each Graphics is its own render entry — 100+ creeps meant 100+ separate draw entries.
+
+Now there's a single shared overlay owned by `CreepManager` (`setOverlay`), cleared once per frame and painted by every living creep via the new `Creep.drawInto(g)` method. Per-creep `graphics` field is gone, along with the `graphics.destroy()` calls in `Creep.update` / `takeDamage` / `killCreepForRevive` / scene-reset paths. Sprite handling is unchanged (Phaser already batches sprites by texture). All 307 tests pass; the headless `_isHeadless` short-circuit still skips draw work entirely outside the browser.
+
 ### Non-stacking auras: best contribution wins
 
 `faction_speed_aura` (Aliens Spawner), `commander_aura` (Aliens Swarm Commander), and `overclock_buff` (Cypherpunk Quickener) were applying their buffs via `addOrRefreshTrait`, which is last-write-wins — two overlapping sources would arbitrarily pick whichever ran last in the update loop. Added a `setBestBuff` helper alongside the existing `accumulateBuff`: same per-frame `_setAt = ctx.time` tag, but each subsequent same-frame source keeps the higher `score` instead of accumulating. So a Lv3 Spawner adjacent to a Lv1 Spawner now wins the rate buff for the shared neighbour rather than depending on iteration order.

@@ -96,6 +96,10 @@ export class CreepManager {
   totalCreepsKilled: number = 0;
   leakHandler: LeakHandler;
   deathHandler: DeathHandler;
+  /** Shared `Phaser.GameObjects.Graphics` for every creep's HP bar /
+   *  shadow / status overlay. One render entry per frame instead of
+   *  N. Set by GameScene via `setOverlay`; left null in headless. */
+  private overlay: any = null;
   /** Creeps killed during the most recent update tick. Consumed by
    *  kill-reactive tower traits (e.g. life_on_kill) on the NEXT tower
    *  update pass, then cleared at the top of the following update. */
@@ -104,6 +108,24 @@ export class CreepManager {
   constructor(leakHandler: LeakHandler, deathHandler: DeathHandler) {
     this.leakHandler = leakHandler;
     this.deathHandler = deathHandler;
+  }
+
+  /** Wire in the shared overlay graphics. Called once by GameScene
+   *  after `add.graphics()` is available. No-op in headless. */
+  setOverlay(g: any): void {
+    this.overlay = g;
+  }
+
+  /** Clear the shared overlay and redraw every living creep into it
+   *  in a single pass. Cheap because it's one Graphics → one render
+   *  entry, regardless of creep count. */
+  drawAll(): void {
+    if (!this.overlay) return;
+    this.overlay.clear();
+    for (const creep of this.creeps) {
+      if (!creep.alive || creep.reached) continue;
+      creep.drawInto(this.overlay);
+    }
   }
 
   /** Update all creeps, process leaks and kills. Returns leak damage. */

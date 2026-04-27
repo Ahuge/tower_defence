@@ -804,6 +804,13 @@ export class GameScene extends Phaser.Scene {
           // Hero Defense: 10x creeps so reduce kill gold to 30%
           this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
+    // Shared procedural overlay for all creeps (HP bars, shadows,
+    // status rings). Replaces the previous per-creep Graphics — 1
+    // render entry instead of N. Depth 10 matches the old per-creep
+    // setting so layering stays the same.
+    const creepOverlay = this.add.graphics();
+    creepOverlay.setDepth(10);
+    this.creepMgr.setOverlay(creepOverlay);
 
     // Wave controller
     this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {
@@ -2231,6 +2238,9 @@ export class GameScene extends Phaser.Scene {
 
     // Creep updates: movement, leak handling, kill processing, cleanup
     const leakResult = this.creepMgr.update(delta);
+    // After all creeps have moved and been culled, repaint the shared
+    // overlay (HP bars, shadows, status rings) in one pass.
+    this.creepMgr.drawAll();
     // Non-circle modes (standard / hero defense / versus): this.lives
     // is authoritative. Circle mode has TWO life pools (local
     // this.lives + circle.sharedLives) that are kept synchronised by
@@ -2752,7 +2762,6 @@ export class GameScene extends Phaser.Scene {
   private killCreepForRevive(creep: Creep): void {
     if (!creep.alive) return;
     creep.alive = false;
-    try { creep.graphics.destroy(); } catch { /* already gone */ }
     if (creep.sprite) {
       playCreepDeath(this, creep.sprite, this.creepFaction, creep.creepTypeId);
       creep.sprite = null;
@@ -3394,8 +3403,9 @@ export class GameScene extends Phaser.Scene {
       for (const t of this.towerMgr.towers) t.destroy();
       this.towerMgr.towers = [];
       this._towers = [];
-      // Destroy all creeps
-      for (const c of this.creepMgr.creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
+      // Destroy all creeps (sprites only; the shared overlay graphics
+      // is owned by CreepManager and survives the reset).
+      for (const c of this.creepMgr.creeps) { c.sprite?.destroy(); }
       this.creepMgr.creeps = [];
       this._creeps = [];
 
@@ -3488,8 +3498,9 @@ export class GameScene extends Phaser.Scene {
     // Destroy all towers and their sprites
     for (const t of this._towers) t.destroy();
     this._towers = [];
-    // Destroy all creeps
-    for (const c of this._creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
+    // Destroy all creep sprites (shared overlay graphics is auto-cleaned
+    // when the scene tears down — no per-creep graphics to destroy).
+    for (const c of this._creeps) { c.sprite?.destroy(); }
     this._creeps = [];
     // Clean up path flow indicators
     this.resetPathFlow();
