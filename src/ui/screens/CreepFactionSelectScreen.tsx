@@ -8,7 +8,12 @@ function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '
 interface Props { data: Record<string, unknown>; }
 
 export function CreepFactionSelectScreen({ data }: Props) {
-  const playable = FACTION_ORDER.filter(f => f !== 'random');
+  // Skip both meta-factions: 'random' is a UI picker token (no creep
+  // identity), and 'chaos' is the rotating-pool meta-faction with no
+  // fixed creep sprite atlas. If chaos was offered as a creep type
+  // the renderer fell back to red-circle stubs because no sprite
+  // sheet got preloaded.
+  const playable = FACTION_ORDER.filter(f => f !== 'chaos' && f !== 'random');
 
   const pick = (creepFaction: FactionId) => {
     UIBridge.showDraft({ ...data, creepFaction });
