@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-04-28
+
+### Human captures v3: dropped modifier-tainted data, banked one clean Cypherpunk match
+
+User flagged that the previous captures (`mech_games_human.jsonl`, `mixed_2026-04-26_human.jsonl`) predate the modifier-lock fix landed yesterday, so they may have been recorded with a DraftModifier active — distribution-tainted relative to the bot harness which always runs `modifier=null`. Dropped both files.
+
+First clean capture: `cypherpunk_2026-04-28_human.jsonl` — one Cypherpunk match (normal, win at W20). 408 rows, decision mix `place:206 / send:198 / sell:4`. The play was distinctive: send-spam economy in W5–W10 (peaked at 59 standard sends in one wave) followed by a 100+ tower flood in W16–W20 (mostly Pings).
+
+**Did not retrain on it.** Both `--human-weight=200` (CLAUDE.md's <500-rows tier) and `--human-weight=50` produced bit-identical regressions of -7 net cells against the prior committed model:
+
+| faction | best of existing | prior LearningBrain | retrain attempt | Δ vs prior |
+|---|---|---|---|---|
+| arcane | greedy 50/50 | 50/50 | 49/50 | -1 |
+| infernal | synergy 50/50 | 50/50 | 48/50 | -2 |
+| cypherpunk | aoe_focus 41/50 | 41/50 | 39/50 | -2 |
+| psionic | psionic 18/50 | 2/50 | 0/50 | -2 |
+| harmonic | harmonic 47/50 | 45/50 | 45/50 | 0 |
+| (other 6 cells unchanged at 50/50 or 0/50) | | | | |
+
+xgboost hit the same local minimum at both weights — the captured strategy is too narrow (single game, single faction, single send type, no frontier) to act as good gradient. Notably it regressed *cypherpunk itself* by 2 cells, which is the canary that the model isn't generalising from this data.
+
+Capture is checked in for the next ingest pass once we have ≥4–5 matches across different factions / strategies. Model on disk is the prior baseline, untouched.
+
 ## 2026-04-27
 
 ### Balance: Firewall slow 0.35 → 0.50
