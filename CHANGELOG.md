@@ -2,6 +2,12 @@
 
 ## 2026-04-27
 
+### Balance: Firewall slow 0.35 → 0.50
+
+Firewall's `slowFactor` was 0.35 (creep at 35% speed = 65% slow), one of the heaviest single-source slows in the game. Combined with 35 dps, the beam scales bimodally: a perpendicular crossing deals ~21 damage (fine), but routing the path *along* the beam corridor turns the segment into a 280-damage death zone — broken with clever placement.
+
+Bumped `slowFactor` to 0.50 (50% slow). Beam-along-path damage drops from ~280 → ~196; perpendicular crossing barely changes (~21 → ~17). Still tactically meaningful, no longer a path eraser. DPS untouched for now — re-evaluate after a few sessions.
+
 ### Capture-aware Draft: modifiers suppressed when training capture is on
 
 Headless harness runs `modifier: null` for every match in the bot dataset (~515k turns). If a player records gameplay with capture enabled and picks a DraftModifier (Gold Rush +50g, Glass Cannon, Discount, etc.), those rows show up in human captures with state distributions the bot half can't match — the model gradient gets dominated by the no-modifier majority and the modifier dimension carries almost no signal.

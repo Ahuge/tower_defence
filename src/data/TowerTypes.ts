@@ -622,7 +622,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'cyber_firewall', name: 'Firewall', description: 'Links to another Firewall within range. Beam damages + heavily slows creeps crossing.',
     faction: 'cypherpunk', damageType: 'magic', cost: 35, damage: 0, range: 8, fireRate: 99999,
     color: 0x0088aa, projectileSpeed: 0, hotkey: '2',
-    traits: [{ id: 'firewall_link', linkRange: 8, dps: 35, slowFactor: 0.35 }],
+    traits: [{ id: 'firewall_link', linkRange: 8, dps: 35, slowFactor: 0.50 }],
     upgrades: [
       { level: 2, cost: 40, damage: 0, range: 10, fireRate: 99999 },
     ],
