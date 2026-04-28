@@ -123,14 +123,16 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
     { id: 'symphony_hall', name: 'Symphony Hall', faction: 'harmonic', cost: 225, baseIncome: 25,
       description: 'Overcharge for 3x crescendo, dormant 2 waves.', mechanic: 'overcharge' },
   ],
+  chaos: [],
   random: [],
 };
 
-/** Get all faction frontier buildings (for Random faction pool) */
+/** Get all faction frontier buildings (for Chaos faction pool — picks
+ *  random buildings each wave from this superset). */
 export function getAllFactionFrontierBuildings(): FrontierBuilding[] {
   const all: FrontierBuilding[] = [];
   for (const [fid, buildings] of Object.entries(FRONTIER_BUILDINGS)) {
-    if (fid === 'random' || fid === 'military') continue;
+    if (fid === 'chaos' || fid === 'random' || fid === 'military') continue;
     all.push(...buildings);
   }
   return all;

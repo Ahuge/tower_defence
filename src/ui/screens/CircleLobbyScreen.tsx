@@ -254,9 +254,11 @@ export function CircleLobbyScreen() {
     const circle = circleRef.current;
     if (!circle) return;
     if (circle.playerCount >= 4) { setStatus('Lobby full (4 players max).'); return; }
-    // Random non-random faction — "random" is a special pick pool that
-    // a bot's dumb greedy AI can't reason about, so exclude it.
-    const pool = FACTION_ORDER.filter(f => f !== 'random');
+    // Pick a real faction for the bot. Exclude 'chaos' (the rotating
+    // pool meta-faction — a greedy bot AI can't reason about it) and
+    // 'random' (a UI-only picker token that should be resolved before
+    // a bot ever sees it, never carried into the lobby state).
+    const pool = FACTION_ORDER.filter(f => f !== 'chaos' && f !== 'random');
     const fac = pool[Math.floor(Math.random() * pool.length)];
     const botIndex = circle.addBot(fac);
     if (botIndex == null) return;
@@ -608,7 +610,7 @@ function SetupPhaseCircle({ isHost, playerCount, selectedMap, setSelectedMap, se
               style={isMine ? { outline: `2px solid ${hex(faction.primaryColor)}` } : undefined}>
               <div class="card-accent" style={{ background: hex(faction.primaryColor) }} />
               <div class="card-name" style={{ marginTop: 6 }}>{faction.name}</div>
-              <div class="text-dim text-xs">{fid === 'random' ? '6 / wave' : `${faction.towerIds.length} towers`}</div>
+              <div class="text-dim text-xs">{fid === 'chaos' ? '6 / wave' : fid === 'random' ? '?? towers' : `${faction.towerIds.length} towers`}</div>
             </div>
           );
         })}

@@ -697,7 +697,7 @@ const factionTracks: TutorialTrack[] = [
   factionTrack('celestial',  'Celestial',  'Celestial towers can gain lives — stacking them turns leaks into non-events.'),
   factionTrack('psionic',    'Psionic',    'Psionic shines vs heavily armored waves. Save it for elites.'),
   factionTrack('harmonic',   'Harmonic',   'Plan the whole maze around your aura lattice. A disconnected Harmonic tower is a wasted slot.'),
-  factionTrack('random',     'Random',     'Buy what fits the wave. Bought towers persist, so commit to keepers.'),
+  factionTrack('chaos',      'Chaos',      'Buy what fits the wave. Bought towers persist, so commit to keepers.'),
 ];
 
 // ─── Per-mode content ───────────────────────────────────────

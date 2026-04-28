@@ -925,13 +925,13 @@ export function getTowerType(id: string): TowerType {
  *  Pulls from each faction's explicit `towerIds` list rather than
  *  iterating `TOWER_TYPES`, so branch-only towers (e.g.
  *  `nature_razor_bramble`, reached only via Bramble Hedge's L2
- *  branch) are NOT included. This is the pool the Random faction
+ *  branch) are NOT included. This is the pool the Chaos faction
  *  and other "all towers" UIs roll from. */
 export function getAllFactionTowerIds(): string[] {
   const ids: string[] = [];
   const seen = new Set<string>();
   for (const fid of FACTION_ORDER) {
-    if (fid === 'random') continue;
+    if (fid === 'chaos' || fid === 'random') continue;
     for (const id of FACTIONS[fid].towerIds) {
       if (!seen.has(id)) { seen.add(id); ids.push(id); }
     }

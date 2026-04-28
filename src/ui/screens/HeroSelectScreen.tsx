@@ -25,7 +25,10 @@ export function HeroSelectScreen({ data }: Props) {
   const offered = useMemo(() => {
     const ownedFactions = PlayerInventory.getOwnedFactions();
     const ownedHeroes = HERO_ORDER.filter(h => ownedFactions.includes(HERO_TYPES[h].faction as FactionId));
-    const factionHero = faction && faction !== 'random' ? getHeroForFaction(faction) : null;
+    // Chaos has no faction-specific hero (rotating tower pool, no
+    // identity); 'random' is a picker token already resolved upstream
+    // but kept in the guard for safety.
+    const factionHero = faction && faction !== 'chaos' && faction !== 'random' ? getHeroForFaction(faction) : null;
 
     if (factionHero) {
       const others = ownedHeroes.filter(h => h !== factionHero);
@@ -40,7 +43,10 @@ export function HeroSelectScreen({ data }: Props) {
   const reroll = () => {
     const ownedFactions = PlayerInventory.getOwnedFactions();
     const ownedHeroes = HERO_ORDER.filter(h => ownedFactions.includes(HERO_TYPES[h].faction as FactionId));
-    const factionHero = faction && faction !== 'random' ? getHeroForFaction(faction) : null;
+    // Chaos has no faction-specific hero (rotating tower pool, no
+    // identity); 'random' is a picker token already resolved upstream
+    // but kept in the guard for safety.
+    const factionHero = faction && faction !== 'chaos' && faction !== 'random' ? getHeroForFaction(faction) : null;
     if (factionHero) {
       const others = ownedHeroes.filter(h => h !== factionHero);
       setHeroes([factionHero, ...pickRandom(others, 2)]);
@@ -55,7 +61,7 @@ export function HeroSelectScreen({ data }: Props) {
     UIBridge.show('creepfactionselect', { ...data, heroId });
   };
 
-  const factionHeroId = faction && faction !== 'random' ? getHeroForFaction(faction) : null;
+  const factionHeroId = faction && faction !== 'chaos' && faction !== 'random' ? getHeroForFaction(faction) : null;
 
   return (
     <>

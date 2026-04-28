@@ -38,7 +38,7 @@ export class FrontierManager {
     this.incomeMgr = incomeMgr;
     this.faction = faction;
 
-    if (faction === 'random') {
+    if (faction === 'chaos') {
       this.availableBuildings = this.rollRandomFrontier();
     } else if (faction) {
       this.availableBuildings = FRONTIER_BUILDINGS[faction] || [];
@@ -54,9 +54,9 @@ export class FrontierManager {
     return shuffled.slice(0, 2);
   }
 
-  /** Rotate frontier for random faction (called on wave clear) */
+  /** Rotate frontier for Chaos faction (called on wave clear) */
   rotateRandomFrontier(): void {
-    if (this.faction === 'random') {
+    if (this.faction === 'chaos') {
       this.availableBuildings = this.rollRandomFrontier();
     }
   }

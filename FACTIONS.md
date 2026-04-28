@@ -188,7 +188,12 @@
 
 ---
 
-## Random (dynamic)
+## Chaos (dynamic)
 *"Adapt or die." — 6 random towers + 2 frontier buildings each wave.*
 
 Each wave, 6 non-ultimate towers are randomly chosen from all faction pools. Bought towers stay permanently. Frontier buildings also rotate. Forces adaptive strategy.
+
+## Random (UI picker, never played directly)
+*"Roll one of the 11 real factions on click."*
+
+Picking Random on the faction-select screen rolls a uniform random pick from the 11 real factions (Arcane, Mechanical, Nature, Void, Military, Spawn Aliens, Cypherpunk, Infernal, Celestial, Psionic, Harmonic — `Chaos` is excluded). The roll happens immediately on click; downstream code (Draft, GameScene, multiplayer messages, training capture) only ever sees the resolved real faction, not `random` itself.

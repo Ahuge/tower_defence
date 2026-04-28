@@ -2,6 +2,16 @@
 
 ## 2026-04-28
 
+### Faction picker: Random renamed to Chaos, new "roll a real faction" Random added
+
+The old `random` faction (rotating tower + frontier pool, 6 random towers each wave from all factions) is renamed to **Chaos**. The new `random` is a UI-only picker token — clicking it on the faction-select screen rolls one of the 11 real factions uniformly (Arcane / Mechanical / Nature / Void / Military / Spawn Aliens / Cypherpunk / Infernal / Celestial / Psionic / Harmonic, excluding Chaos itself) and substitutes the resolved id before any downstream screen sees it.
+
+The motivation: `random` previously meant "play the rotating-pool meta-faction" with no way to ask the game to pick a real coherent faction for you — useful when capturing training data across factions you don't want to choose between, or just for variety.
+
+Single-source resolution lives in `FactionSelectScreen.selectFaction` via the new `rollRandomRealFaction()` helper and the `REAL_FACTIONS` constant on `Factions.ts`. Every place that previously special-cased `=== 'random'` for the rotating-pool mechanic now special-cases `=== 'chaos'` instead — `~30 call sites updated across GameScene, FrontierManager, FrontierBuildings, TowerTypes, PlayerInventory, StoreDefinitions, LobbyScene, CircleLobbyScreen, EncyclopediaScreen, HeroSelectScreen, TutorialTracks, SkinEditorApp, and the matching test fixtures. Map-side `'random'` (for randomly-generated maps) is unrelated and untouched.
+
+For training-data captures the resolution happens before the match starts, so each capture file is tagged with the real resolved faction (e.g. cypherpunk, harmonic) — distribution stays clean against the bot harness.
+
 ### Human captures v3: dropped modifier-tainted data, banked one clean Cypherpunk match
 
 User flagged that the previous captures (`mech_games_human.jsonl`, `mixed_2026-04-26_human.jsonl`) predate the modifier-lock fix landed yesterday, so they may have been recorded with a DraftModifier active — distribution-tainted relative to the bot harness which always runs `modifier=null`. Dropped both files.

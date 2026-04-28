@@ -377,7 +377,7 @@ export class LobbyScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.dynamicElements.push(nameText);
 
-      const tCount = fid === 'random' ? '6/wave' : `${faction.towerIds.length} towers`;
+      const tCount = fid === 'chaos' ? '6/wave' : fid === 'random' ? '?? towers' : `${faction.towerIds.length} towers`;
       const countText = this.add.text(x + cardW / 2, cardY + cardH * 0.7, tCount, {
         fontSize: UIScale.font(9), color: '#888888', fontFamily: 'monospace',
       }).setOrigin(0.5);

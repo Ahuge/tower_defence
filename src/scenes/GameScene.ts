@@ -326,7 +326,7 @@ export class GameScene extends Phaser.Scene {
     this.layout = getLayout(this.matchMode);
     this.gridOffsetY = this.layout.gridOffsetY;
     this.difficultyHints = DIFFICULTIES[this.difficulty];
-    if (this.faction === 'random') {
+    if (this.faction === 'chaos') {
       this.activeTowerIds = this.rollRandomTowers();
     } else if (this.faction) {
       const f = getFaction(this.faction);
@@ -998,7 +998,7 @@ export class GameScene extends Phaser.Scene {
             this.eventLog.gameMessage('Opponent defeated! You win!');
             break;
           case 'tower_pool':
-            if (this.faction === 'random') {
+            if (this.faction === 'chaos') {
               this.activeTowerIds = msg.towerIds;
               this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
               this.enterNoneMode();
@@ -1023,9 +1023,9 @@ export class GameScene extends Phaser.Scene {
         }
       };
 
-      // Random faction in versus: host rolls towers for joiner too
-      if (this.faction === 'random' && this.versus.isHost) {
-        // Send the initial pool to joiner (if they're also random,
+      // Chaos faction in versus: host rolls towers for joiner too
+      if (this.faction === 'chaos' && this.versus.isHost) {
+        // Send the initial pool to joiner (if they're also chaos,
         // they'll use this; if not, they'll ignore it)
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
@@ -1185,7 +1185,7 @@ export class GameScene extends Phaser.Scene {
         this.circleBotAI.setMetaCallbacks({
           frontierCb: (botIdx, buildingId) => {
             const botFac = this.circle!.playerFactions.get(botIdx) as FactionId | undefined;
-            const pool = botFac === 'random'
+            const pool = botFac === 'chaos'
               ? getAllFactionFrontierBuildings()
               : (botFac ? (FRONTIER_BUILDINGS[botFac] ?? GENERIC_OUTPOSTS) : GENERIC_OUTPOSTS);
             const b = pool.find(b => b.id === buildingId);
@@ -1202,7 +1202,7 @@ export class GameScene extends Phaser.Scene {
             const firstBotIdx = [...this.circle!.botSlots][0];
             if (firstBotIdx === undefined) return [];
             const fac = this.circle!.playerFactions.get(firstBotIdx) as FactionId | undefined;
-            const pool = fac === 'random'
+            const pool = fac === 'chaos'
               ? getAllFactionFrontierBuildings()
               : (fac ? (FRONTIER_BUILDINGS[fac] ?? GENERIC_OUTPOSTS) : GENERIC_OUTPOSTS);
             return pool.map(b => ({ id: b.id, cost: b.cost, income: b.baseIncome }));
@@ -1952,7 +1952,7 @@ export class GameScene extends Phaser.Scene {
     // cosmetic in CPU matches), and the bot can purchase its own
     // sends / frontier to build income and pressure the human.
     const cpuFaction = this.versus.cpuFaction as FactionId;
-    const frontierPool = cpuFaction === 'random'
+    const frontierPool = cpuFaction === 'chaos'
       ? getAllFactionFrontierBuildings()
       : (FRONTIER_BUILDINGS[cpuFaction] ?? GENERIC_OUTPOSTS);
     this.cpuOpponentAI.setMetaCallbacks({
@@ -3347,7 +3347,7 @@ export class GameScene extends Phaser.Scene {
         if (DEBUG) console.log(`[Endless] Appended waves ${nextStart}-${nextStart + 9}, total: ${this.waves.length}`);
       }
       if (waveNum % 10 === 0) {
-        const playable = FACTION_ORDER.filter(f => f !== 'random' && f !== this.creepFaction);
+        const playable = FACTION_ORDER.filter(f => f !== 'chaos' && f !== 'random' && f !== this.creepFaction);
         // Deterministic faction pick for multiplayer Endless — host
         // and joiner must land on the same faction or wave 11+ creeps
         // diverge. Seeded from (sharedSeed XOR waveNum); solo falls
@@ -3373,8 +3373,8 @@ export class GameScene extends Phaser.Scene {
     this.upcomingWaves.update(waveNum, this.waves);
     this.updateDOMWaves(waveNum);
 
-    // Random faction rotation
-    if (this.faction === 'random') {
+    // Chaos faction rotation (rolls a fresh tower + frontier pool each wave).
+    if (this.faction === 'chaos') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
       if (this.gameMode instanceof BaseFrontierMode) {

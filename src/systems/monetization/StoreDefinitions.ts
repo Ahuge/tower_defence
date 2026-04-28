@@ -113,7 +113,7 @@ const RARITY_UP: Record<Rarity, Rarity> = {
 function generateTowerSkins(): SkinDef[] {
   const skins: SkinDef[] = [];
   for (const [factionId, themes] of Object.entries(TOWER_SKIN_THEMES)) {
-    if (factionId === 'random' || !themes.length) continue;
+    if (factionId === 'chaos' || factionId === 'random' || !themes.length) continue;
     const faction = FACTIONS[factionId as FactionId];
     if (!faction) continue;
     for (const theme of themes) {
