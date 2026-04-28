@@ -102,6 +102,10 @@ const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
   aliens:     [{ suffix: 'albino', label: 'Albino', description: 'Pale pink/white', rarity: 'common' }],
   cypherpunk: [{ suffix: 'cyber_sakura', label: 'Cyber Sakura', description: 'Pink sakura theme', rarity: 'epic' }, { suffix: 'redline', label: 'Redline', description: 'Overheated red', rarity: 'common' }, { suffix: 'offline', label: 'Offline', description: 'Powered down gray', rarity: 'common' }],
   harmonic:   [{ suffix: 'heavy_metal', label: 'Heavy Metal', description: 'Chrome/gunmetal', rarity: 'common' }, { suffix: 'neon_rave', label: 'Neon Rave', description: 'Neon rainbow chaos', rarity: 'rare' }, { suffix: 'synthwave', label: 'Synthwave', description: '80s sunset pink/purple', rarity: 'epic' }],
+  // Meta-factions get no skins — chaos has no fixed tower set, random
+  // resolves before any skin lookup. Empty arrays satisfy the
+  // Record<FactionId, ...> exhaustiveness check.
+  chaos:      [],
   random:     [],
 };
 
