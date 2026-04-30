@@ -25,6 +25,7 @@ import { CircleRosterDOM } from './game/CircleRosterDOM';
 import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { AchievementToast } from './components/AchievementToast';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
+import { LevelUpModal } from './components/LevelUpModal';
 import { AnalyticsDebugPanel } from './debug/AnalyticsDebugPanel';
 import './styles/game-panels.css';
 
@@ -109,6 +110,11 @@ export function App() {
       {/* Tutorial overlay — renders nothing when no track is active.
           Sits on top of everything except the startup splash. */}
       <TutorialOverlay />
+
+      {/* Player Level / migration modal — self-gates on PlayerProfile
+          listener queue. Renders nothing when no level-up or banner is
+          pending. */}
+      <LevelUpModal />
 
       {/* Analytics debug panel — gated on the `?debug` URL flag, renders
           nothing in normal play. Fixed bottom-left drawer. */}

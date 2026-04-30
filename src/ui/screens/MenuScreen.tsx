@@ -8,6 +8,8 @@ import { getDailySeed } from '../../data/MapGenerator';
 import { MatchMode } from '../../data/WaveDefinitions';
 import { ShardWallet } from '../../systems/monetization';
 import { Analytics } from '../../systems/AnalyticsClient';
+import { PlayerProfile } from '../../systems/profile/PlayerProfile';
+import { isModeUnlocked, isMapUnlocked, MODE_UNLOCK_LEVEL, LOBBY_UNLOCK_LEVEL, nextUnlockHint } from '../../systems/profile/UnlockGates';
 
 type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
 
@@ -45,6 +47,27 @@ export function MenuScreen() {
   // independent of game-start, useful for tutorial-skip funnel analysis.
   useEffect(() => { Analytics.track('menu_view', {}); }, []);
 
+  // Player Level drives which mode tiles + map tiles render. Locked
+  // tiles are hidden (per user direction: cleaner menu); a single
+  // "More unlocks at L_" teaser tile takes their place. Faction list
+  // remains visible everywhere — that's FactionSelect's job, not here.
+  const playerLevel = PlayerProfile.getLevel();
+  const visibleModes = MODES.filter(m => {
+    // Map menu mode-id to the unlock-table mode-id. The two diverge
+    // for the lobby tiles (versus_lobby / circle_lobby).
+    if (m.mode === 'lobby')  return playerLevel >= (LOBBY_UNLOCK_LEVEL.versus_lobby ?? 0);
+    if (m.mode === 'circle') return playerLevel >= (LOBBY_UNLOCK_LEVEL.circle_lobby ?? 0);
+    return isModeUnlocked(m.mode, playerLevel);
+  });
+  const teaser = nextUnlockHint(playerLevel, 12);
+  const visibleMaps = MAP_ORDER.filter(mapId => {
+    // Custom + circle maps stay visible at any level (they're
+    // mode-gated, not level-gated).
+    if (mapId === 'custom') return true;
+    if (mapId.startsWith('circle')) return true;
+    return isMapUnlocked(mapId, playerLevel);
+  });
+
   const goFaction = (mode: MatchMode, waveCount?: number) => {
     const seed = selectedMap === 'random'
       ? (dailySeed ? getDailySeed() : Math.floor(Math.random() * 999999999))
@@ -72,7 +95,7 @@ export function MenuScreen() {
       <div class="ui-section">
         <div class="ui-section-title">Map</div>
         <div data-tutorial-target="menu-map" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          {MAP_ORDER.map(mapId => {
+          {visibleMaps.map(mapId => {
             const isSelected = mapId === selectedMap;
             const isCustom = mapId === 'custom';
             const isRandom = mapId === 'random';
@@ -106,7 +129,7 @@ export function MenuScreen() {
       <div class="ui-section" style={{ paddingTop: 0 }}>
         <div class="ui-section-title">Mode</div>
         <div class="card-grid" data-tutorial-target="menu-modes">
-          {MODES.map(m => (
+          {visibleModes.map(m => (
             <div
               key={m.id}
               class="card"
@@ -118,6 +141,22 @@ export function MenuScreen() {
               <div class="card-desc">{m.desc}</div>
             </div>
           ))}
+          {/* Plan 2: a single "More unlocks at L_" teaser tile in place
+              of the hidden modes. Tappable for context but doesn't
+              navigate anywhere yet — the level-up modal owns the
+              real reveal. */}
+          {teaser && visibleModes.length < MODES.length && (
+            <div
+              key="unlock-teaser"
+              class="card"
+              style={{ borderStyle: 'dashed', opacity: 0.7, cursor: 'pointer' }}
+              onClick={() => Analytics.track('menu_locked_tile_tapped', { id: 'mode_teaser' })}
+            >
+              <div class="card-accent" style={{ background: 'var(--text-dim)' }} />
+              <div class="card-name" style={{ marginTop: '4px', color: 'var(--text-dim)' }}>More at L{teaser.level}</div>
+              <div class="card-desc">{teaser.items.map(i => i.label).join(' · ')}</div>
+            </div>
+          )}
         </div>
         <div class="text-dim text-sm text-center mt-2">Multiplayer modes use P2P WebRTC — no server required</div>
       </div>

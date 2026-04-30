@@ -1,32 +1,40 @@
 # Changelog
 
-## 2026-05-08
+## 2026-04-30
 
-### Harmonic auras: order-dependent buff bug fix + Quickener uncapped exponential stacking
+### Player Profile + Player Level + hidden-content menu (Plan 2 of progression roadmap)
 
-Two changes to the Harmonic aura system shipped together as `ah/fix/harmonic-auras`.
+Builds the spine of long-term progression. New permanent global Player Level — distinct from the seasonal Battle Pass — gates the modes / maps / future faction-tree unlocks. Per the roadmap's user direction: **hide locked content** in the menu, **keep the faction list visible** (silhouettes come with the faction tree, Plan 5). The player should always see the next thing they're about to unlock.
 
-**Order-dependent range buff (bug fix).** `range_aura` (Reach) was silently doing nothing whenever the buffed tower had been built *before* the Reach. The buff is applied via the `_harmonic_range` virtual trait, accumulated each frame by `range_aura` and applied directly to `tower.range` inside the trait's per-frame update. But within `TowerManager.updateTowers`'s single iteration over towers, a target processed before its source ran its apply step on `bonus = 0`, missing every contribution that frame and every frame after. Fixed by:
+XP curve is `200 × level` per step. Standard 30 win on Normal = 150 XP. Hard +50%, Insane +100%. First-time faction +50, first-time map win +25. Defeat at wave 5+ awards 10 XP so unlucky runs aren't completely empty. L20 takes ~250–300 games — paced for "always something next week."
 
-- Adding a `_basePxRange` field on `Tower` that tracks the post-upgrade pre-aura range (set in the constructor and on both upgrade paths). The per-frame reset in `TowerManager` now uses this instead of `typeDef.range`, fixing a side-bug where linear-upgraded towers under a Reach were silently downgraded back to L1 range every frame.
-- Moving the `_harmonic_range` apply out of the trait handler and into a dedicated second pass in `TowerManager.updateTowers`, after every aura source has contributed. Order independence guaranteed.
+**Mode unlock levels**: Endless L5, Hero Defense L8, Essence (Battle) L9, Versus L10, Co-op L12, Gauntlet L14. Career L15 and Campaign L7 are reserved for their own future plans.
 
-**All Harmonic auras switched to multiplicative compounding (balance).** Every aura source now compounds onto the buffed tower's running multiplier instead of additively summing into a hard-capped scalar. Stacks 7+ at the old caps were pure wasted gold; the new model has no cap and every additional stack still meaningfully scales the effect.
+**Map unlock levels**: Crossroads L2, Fortress L4, Serpentine L5, Islands L6, Random L6, Gauntlet L8, Spiral L10, Siege L12.
 
-Per-stack values are tuned per aura so 5-stack power is roughly equivalent to the old additive-cap power, and stacks 6+ scale beyond what the old model could express:
+**Cores currency** added (parallel to Shards). Earned in Career mode (Plan 15) — spent on tower-chip upgrades (Plan 16). The hard rule is that Cores are never sold for money. That separation is what keeps the random-chip-token loop from feeling like pay-to-win.
 
-| Aura | Old | New | 5 stacks | 10 stacks |
-|---|---|---|---|---|
-| `damage_aura` (Amplifier) | +20% additive per stack, uncapped (linear ramp, eventually game-breaking) | `(1 + 0.15 × level)` multiplicative | +101% (parity with old +100%) | +305% (vs old +200%) |
-| `rate_aura` (Quickener) | +15% additive per stack, capped at 80% reduction (5× speed) | `(1 + 0.10 × level)` fire-rate multiplier, 50ms cooldown floor | +61% speed | +159% speed |
-| `range_aura` (Reach) | +1.5 tiles additive per stack, uncapped | `(1 + 0.10 × level)` range multiplier (proportional to base range) | +61% range | +159% range |
-| `crit_aura` (Critical Mass) | +15% additive chance per stack, capped at 80% | `1 − (1−c)(1−0.20)` chance compound | 67% chance | 89% chance, 99% at 20 |
+**Level-up modal** — full-screen take-over after each game-end with the new level + the list of unlocks revealed. Same modal handles the one-shot "Welcome back: starting at level X" banner for legacy players migrated from `td_store.gamesPlayed`. Migration is conservative (1 game ≈ 1 level, capped at L20) so nobody feels demoted.
 
-Per-stack default lands at `0.07` for the three multiplier-style auras and `0.15` for crit chance. Conduit's `shareAura` and re-emit pathway switched from `addOrRefreshTrait` (which silently overwrote direct-source contributions) to compounding-via-find, so a Conduit feeding into a tower that's already getting a direct aura now actually adds to it instead of clobbering. Range buff is now proportional rather than absolute — so a Sniper at 7-tile base under one Reach gains 0.49 tiles, while a Resonator at 3.5 tiles only gains 0.245; long-range towers benefit more proportionally.
+Every analytics event now auto-includes `playerLevel / cores / shards / unlockedFactionsCount` via the player-context hook landed in Plan 1.
 
-**Order-dependent range buff (bug fix, shipped same branch).** `range_aura` was silently doing nothing whenever the buffed tower was placed *before* the Reach. `_harmonic_range`'s apply step ran once per frame inside the trait handler; if the target tower was iterated before the source, it applied bonus=0 and missed every contribution. Fixed by moving the apply into a dedicated second pass in `TowerManager.updateTowers` that runs after every aura source has contributed. Side-bug fixed: per-frame reset previously used `tower.typeDef.range` (always base level), silently downgrading linear-upgraded towers to L1 range every frame they were under a Reach — now uses `Tower._basePxRange` which tracks the current post-upgrade pre-aura range.
+**Save format**: new `td_profile` localStorage key, deliberately separate from `td_store`. A Battle Pass season rollover wipes the seasonal slice; the spine of progression survives.
 
-Files: `src/entities/Tower.ts`, `src/systems/TowerManager.ts`, `src/systems/traits/TowerTraitHandlers.ts`, `src/data/TowerTypes.ts`, `src/headless/harness/ChangeCatalog.ts`. Tests + tsc clean.
+New events: `profile_initialized`, `profile_migrated_from_legacy`, `xp_awarded`, `level_up`, `unlock_revealed`, `menu_locked_tile_tapped`. +30 unit tests on the XP curve + unlock gates.
+
+### Telemetry foundation (Plan 1 of progression roadmap)
+
+Foundation work — every later progression plan depends on being able to measure whether it's working.
+
+Typed analytics catalog (`AnalyticsEvents.ts`) with ~30 event shapes covering game lifecycle, onboarding, mode lifecycle, progression, monetization, encyclopedia, and achievements. New `Analytics.track<E>(name, payload)` typed entry point. Legacy `event(type, data)` preserved for back-compat — existing callsites unchanged.
+
+Every event now carries `platform`, `sessionId`, `ts`, and (after Plan 2) the player-level context. Stripped `undefined` fields before send so the server schema (`string | number | boolean`) stays clean.
+
+New `?debug`-gated `AnalyticsDebugPanel` — fixed bottom-left ring buffer of the last 200 events with filter + copy-as-JSON. Works even when network analytics are opted out, useful for verifying telemetry without a backend dashboard.
+
+Wired the high-leverage events that don't need later plans: tutorial track start/complete + step seen/completed/skipped + quit, Battle Pass XP awards + level-ups + premium purchase + reward claims, `mode_entered` / `mode_exited` with `durationMs`, cold-boot `app_boot`, `menu_view`. Future plans wire their own events at landing time.
+
+**Server side** (`server/src/index.ts`): schema docstring rewritten as a comprehensive event catalog, per-event dimension list extended with `trackId`, `stepId`, `factionId`, `route`, `unlockType`, `category`, `id`, `currency`. The summary + history endpoints now surface 17+ new event types and break down tutorial funnels by track, faction unlocks by route, achievements by id, and purchase mix by currency. Per-event KV cost stays approximately flat — events skip cheaply when they don't carry the dimension field.
 
 ## 2026-04-28
 

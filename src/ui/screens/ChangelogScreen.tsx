@@ -10,6 +10,38 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-04-30',
+    title: 'Player Profile + Player Level + hidden-content menu (Plan 2 of progression roadmap)',
+    changes: [
+      'New permanent global Player Level — distinct from the seasonal Battle Pass, drives unlocks for modes / maps / future faction tree',
+      'XP curve: 200 × level per step. Standard 30 win on Normal = 150 XP. Hard +50%, Insane +100%. First-time faction +50, first-time map win +25. Defeat at wave 5+ awards a small engagement bonus',
+      'Cores currency added (parallel to Shards). Earned in Career mode (Plan 15) — spent on tower-chip upgrades (Plan 16). Never sold for money',
+      'Menu now hides locked modes / maps and shows a single "More at L_" teaser tile in their place. Faction list stays visible — silhouettes come with the faction tree (Plan 5)',
+      'Mode unlock levels: Endless L5, Hero Defense L8, Essence (Battle) L9, Versus L10, Co-op L12, Gauntlet L14',
+      'Map unlock levels: Crossroads L2, Fortress L4, Serpentine L5, Islands L6, Random L6, Gauntlet L8, Spiral L10, Siege L12',
+      'Level-up modal — full-screen take-over after a game ends with the new level + unlock list. Reusable styling for future faction-unlock and achievement reveals',
+      'Migration: existing players with gamesPlayed > 0 get an inferred starting level (1 game ≈ 1 level, capped at L20) + a one-shot welcome banner',
+      'Every analytics event now auto-includes playerLevel / cores / shards / unlockedFactionsCount via the Plan-1 player-context hook',
+      'Save format: new td_profile localStorage key, separate from td_store so a season rollover never wipes the spine of progression',
+      'New analytics events: profile_initialized, profile_migrated_from_legacy, xp_awarded, level_up, unlock_revealed, menu_locked_tile_tapped',
+      '+30 unit tests on the XP curve and unlock gates',
+    ],
+  },
+  {
+    date: '2026-04-30',
+    title: 'Telemetry foundation (Plan 1 of progression roadmap)',
+    changes: [
+      'Typed analytics catalog (AnalyticsEvents.ts) — ~30 event shapes covering game lifecycle, onboarding, mode lifecycle, progression, monetization, encyclopedia, and achievements',
+      'Analytics.track<E>(name, payload) typed entry point. Legacy event(type, data) preserved for back-compat',
+      'Auto-attach: every event now carries platform, sessionId, ts, and (after Plan 2 lands) playerLevel + cores + shards + unlockedFactionsCount',
+      'New ?debug-gated AnalyticsDebugPanel — fixed bottom-left ring buffer of the last 200 events with filter + copy-as-JSON',
+      'Tutorial events wired: track_started/completed, step_seen/completed/skipped, quit. Battle Pass wired: bp_xp_awarded, bp_level_up, bp_premium_purchased, bp_reward_claimed, plus purchase_attempted/completed/failed for the BP IAP',
+      'Mode lifecycle: mode_entered fires on game start, mode_exited fires on game end with durationMs',
+      'Cold-boot app_boot event with viewport + touch info, menu_view fires once per menu mount',
+      'Server (Cloudflare Worker): per-event dimension list extended (trackId, stepId, factionId, route, unlockType, category, id, currency); summary + history endpoints surface 17+ new event types and tutorial-funnel + faction-unlock + achievement + purchase-mix breakdowns',
+    ],
+  },
+  {
     date: '2026-04-23',
     title: 'Circle Co-op late-game rebalance',
     changes: [

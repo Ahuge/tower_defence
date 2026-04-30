@@ -77,6 +77,7 @@ import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
 import { Analytics } from '../systems/AnalyticsClient';
+import { PlayerProfile } from '../systems/profile/PlayerProfile';
 import { platformBridge } from '../systems/platform';
 import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
 import { unlockAchievement } from '../data/Achievements';
@@ -2859,6 +2860,19 @@ export class GameScene extends Phaser.Scene {
       Analytics.track('mode_exited', { mode: this.matchMode, durationMs: Date.now() - this._modeEnteredAt });
       this._modeEnteredAt = 0;
     }
+
+    // Award global Player Level XP. Distinct from BattlePass XP which
+    // also fires elsewhere — Player Level is permanent and gates
+    // mode/map unlocks across seasons.
+    PlayerProfile.awardGameEndXP({
+      mode: this.matchMode,
+      result: this.lives > 0 ? 'victory' : 'defeat',
+      wave: this.currentWave,
+      difficulty: this.difficulty,
+      faction: this.faction ?? null,
+      mapId: this.mapId,
+      waveCount: this.waveCount,
+    });
 
     // Live-capture session close — appends this match's turns to
     // localStorage with the match outcome attached.
