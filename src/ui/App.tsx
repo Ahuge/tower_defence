@@ -25,6 +25,7 @@ import { CircleRosterDOM } from './game/CircleRosterDOM';
 import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { AchievementToast } from './components/AchievementToast';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
+import { AnalyticsDebugPanel } from './debug/AnalyticsDebugPanel';
 import './styles/game-panels.css';
 
 export function App() {
@@ -108,6 +109,10 @@ export function App() {
       {/* Tutorial overlay — renders nothing when no track is active.
           Sits on top of everything except the startup splash. */}
       <TutorialOverlay />
+
+      {/* Analytics debug panel — gated on the `?debug` URL flag, renders
+          nothing in normal play. Fixed bottom-left drawer. */}
+      <AnalyticsDebugPanel />
     </>
   );
 }

@@ -22,6 +22,7 @@ import { getTrack, TutorialTrack, TutorialStep } from './TutorialTracks';
 import { resolveCanvasTargetRect, getGameCamera } from './TutorialTargets';
 import { goToMenu } from '../../ui/navigation';
 import { GameUIStore } from '../../ui/GameUIStore';
+import { Analytics } from '../AnalyticsClient';
 
 type Listener = () => void;
 
@@ -176,6 +177,8 @@ export class TutorialManagerClass {
     const track = getTrack(trackId);
     if (!track || track.steps.length === 0) return;
     this.active = { track, stepIndex: 0, step: track.steps[0] };
+    Analytics.track('tutorial_track_started', { trackId });
+    Analytics.track('tutorial_step_seen', { trackId, stepId: track.steps[0].id });
     this.rebindEventAdvance();
     this.runStepEnter();
     this.notify();
@@ -184,12 +187,15 @@ export class TutorialManagerClass {
   /** Advance to next step, or complete the track if already on the last one. */
   next(): void {
     if (!this.active) return;
-    const { track, stepIndex } = this.active;
+    const { track, stepIndex, step } = this.active;
+    Analytics.track('tutorial_step_completed', { trackId: track.id, stepId: step.id });
     if (stepIndex + 1 >= track.steps.length) {
       this.complete();
       return;
     }
-    this.active = { track, stepIndex: stepIndex + 1, step: track.steps[stepIndex + 1] };
+    const nextStep = track.steps[stepIndex + 1];
+    this.active = { track, stepIndex: stepIndex + 1, step: nextStep };
+    Analytics.track('tutorial_step_seen', { trackId: track.id, stepId: nextStep.id });
     this.rebindEventAdvance();
     this.runStepEnter();
     this.notify();
@@ -241,6 +247,9 @@ export class TutorialManagerClass {
   skip(): void {
     if (!this.active) return;
     const justDismissed = this.active.track.id;
+    const atStepId = this.active.step.id;
+    Analytics.track('tutorial_step_skipped', { trackId: justDismissed, stepId: atStepId });
+    Analytics.track('tutorial_quit', { trackId: justDismissed, atStepId });
     const wasTutorialMatch = justDismissed === 'tutorial_match';
     this.markCompleted(justDismissed);
     this.clearActive();
@@ -260,6 +269,7 @@ export class TutorialManagerClass {
   complete(): void {
     if (!this.active) return;
     const justCompleted = this.active.track.id;
+    Analytics.track('tutorial_track_completed', { trackId: justCompleted });
     this.markCompleted(justCompleted);
     this.clearActive();
     this.markFirstLaunchDismissed();

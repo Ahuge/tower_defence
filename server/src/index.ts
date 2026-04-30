@@ -192,11 +192,49 @@ async function forwardToRoom(
  * Analytics event schema — flexible key-value telemetry.
  * Events are bucketed by day and type for aggregation.
  *
- * Example events:
- *   { type: 'game_start', mode: 'standard', faction: 'arcane', difficulty: 'normal', map: 'plains' }
- *   { type: 'game_end', mode: 'hero_defense', result: 'victory', wave: 30, duration: 1200 }
- *   { type: 'multiplayer_start', mode: 'versus', players: 2 }
- *   { type: 'faction_pick', faction: 'mechanical' }
+ * Game lifecycle:
+ *   { type: 'game_start', mode, faction, difficulty, map }
+ *   { type: 'game_end', mode, result, wave, duration }
+ *   { type: 'multiplayer_start', mode: 'versus' | 'circle', players }
+ *   { type: 'faction_pick', faction }
+ *
+ * Engagement / onboarding:
+ *   { type: 'app_boot', viewportW, viewportH, touch, build }
+ *   { type: 'menu_view' } / { type: 'screen_view', screen }
+ *   { type: 'splash_shown' | 'splash_play_tapped' | 'splash_skip_tapped' }
+ *   { type: 'tutorial_track_started' | 'tutorial_track_completed', trackId }
+ *   { type: 'tutorial_step_seen' | 'tutorial_step_completed' | 'tutorial_step_skipped', trackId, stepId }
+ *   { type: 'tutorial_quit', trackId, atStepId }
+ *
+ * Mode lifecycle:
+ *   { type: 'mode_entered' | 'mode_exited', mode, durationMs? }
+ *
+ * Progression / unlocks (Plan 2 + 5):
+ *   { type: 'profile_initialized' | 'profile_migrated_from_legacy', level, cores, ... }
+ *   { type: 'xp_awarded' | 'bp_xp_awarded', amount, source }
+ *   { type: 'level_up' | 'bp_level_up', from, to }
+ *   { type: 'unlock_revealed', unlockType, id, atLevel }
+ *   { type: 'menu_locked_tile_tapped', id }
+ *   { type: 'faction_tree_opened' | 'faction_tree_node_focused', factionId? }
+ *   { type: 'faction_unlock_attempted' | 'faction_unlocked' | 'faction_unlock_failed', factionId, route?, shardsSpent?, reason? }
+ *
+ * Encyclopedia / achievements:
+ *   { type: 'encyclopedia_opened' }
+ *   { type: 'encyclopedia_entry_revealed', category, id }
+ *   { type: 'achievement_unlocked' | 'achievement_progress', id, current?, target? }
+ *
+ * Monetization:
+ *   { type: 'store_view' | 'bp_premium_purchased' }
+ *   { type: 'purchase_attempted' | 'purchase_completed' | 'purchase_failed', itemId, currency, cost?, reason? }
+ *   { type: 'bp_reward_claimed', track: 'free' | 'premium', level, rewardType }
+ *
+ * Settings:
+ *   { type: 'settings_changed', key, value }
+ *   { type: 'analytics_optout_changed', optedOut }
+ *
+ * Auto-attached fields on every event (do NOT include in payload):
+ *   ts, sessionId, platform, plus optional player context
+ *   (playerLevel, cores, shards, unlockedFactionsCount).
  */
 interface AnalyticsEvent {
   type: string;
@@ -245,8 +283,22 @@ async function handleAnalytics(request: Request, env: Env, origin: string): Prom
     const totalCurrent = parseInt(await env.ANALYTICS.get(totalKey) ?? '0');
     await env.ANALYTICS.put(totalKey, String(totalCurrent + 1));
 
-    // Increment per-value counters for important dimensions
-    for (const dim of ['faction', 'mode', 'difficulty', 'map', 'result']) {
+    // Increment per-value counters for important dimensions.
+    // Each adds one KV write per event that carries the field — events
+    // that don't carry the field skip cheaply.
+    //
+    //   faction, mode, difficulty, map, result    — game lifecycle slicing
+    //   trackId, stepId                            — tutorial funnels
+    //   factionId, route                           — faction unlock tree
+    //   unlockType, category, id                   — generic unlocks + encyclopedia
+    //   currency                                   — purchase mix
+    for (const dim of [
+      'faction', 'mode', 'difficulty', 'map', 'result',
+      'trackId', 'stepId',
+      'factionId', 'route',
+      'unlockType', 'category', 'id',
+      'currency',
+    ]) {
       if (event[dim] !== undefined) {
         const dimKey = `dim:${day}:${event.type}:${dim}:${event[dim]}`;
         const dimCount = parseInt(await env.ANALYTICS.get(dimKey) ?? '0');
@@ -262,8 +314,26 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-  // Gather daily counts for common event types
-  const eventTypes = ['game_start', 'game_end', 'multiplayer_start', 'faction_pick'];
+  // Gather daily counts for tracked event types. Add new types here when
+  // a new event from AnalyticsEvents.ts becomes dashboard-worthy. Each
+  // type adds 2 cheap KV reads per summary call (today + yesterday).
+  const eventTypes = [
+    // Game lifecycle (original)
+    'game_start', 'game_end', 'multiplayer_start', 'faction_pick',
+    // Engagement / onboarding
+    'app_boot', 'menu_view',
+    'splash_play_tapped', 'splash_skip_tapped',
+    'tutorial_track_started', 'tutorial_track_completed', 'tutorial_quit',
+    // Mode lifecycle
+    'mode_entered',
+    // Progression
+    'level_up', 'faction_unlocked', 'achievement_unlocked',
+    'bp_level_up', 'bp_premium_purchased', 'bp_reward_claimed',
+    // Monetization
+    'purchase_completed', 'purchase_failed',
+    // Encyclopedia
+    'encyclopedia_opened', 'encyclopedia_entry_revealed',
+  ];
   const summary: Record<string, Record<string, number>> = {};
 
   for (const type of eventTypes) {
@@ -281,6 +351,17 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
     { prefix: `dim:${today}:game_start:difficulty:`, key: 'difficulties' },
     { prefix: `dim:${today}:game_start:map:`, key: 'maps' },
     { prefix: `dim:${today}:game_end:result:`, key: 'results' },
+    // Onboarding funnel — tutorial drop-off by track and step
+    { prefix: `dim:${today}:tutorial_step_seen:trackId:`, key: 'tutorialTracksSeen' },
+    { prefix: `dim:${today}:tutorial_step_completed:trackId:`, key: 'tutorialTracksCompleted' },
+    { prefix: `dim:${today}:tutorial_quit:trackId:`, key: 'tutorialQuitsByTrack' },
+    // Progression — which factions get unlocked, by route
+    { prefix: `dim:${today}:faction_unlocked:factionId:`, key: 'factionUnlocks' },
+    { prefix: `dim:${today}:faction_unlocked:route:`, key: 'factionUnlockRoutes' },
+    // Achievements — which ones get earned
+    { prefix: `dim:${today}:achievement_unlocked:id:`, key: 'achievementsUnlocked' },
+    // Monetization — purchase mix by currency
+    { prefix: `dim:${today}:purchase_completed:currency:`, key: 'purchaseCurrencies' },
   ];
 
   for (const q of dimQueries) {
@@ -314,7 +395,16 @@ async function handleAnalyticsHistory(env: Env, origin: string): Promise<Respons
   const url = new URL('https://dummy');
   const days = 30; // Fixed 30 days — keeps KV reads manageable
 
-  const eventTypes = ['game_start', 'game_end', 'multiplayer_start', 'faction_pick'];
+  // Time-series only for the events that drive headline charts. Adding
+  // more types here scales linearly: each adds 30 KV reads per call.
+  // Full per-event slicing is available via /api/analytics/summary.
+  const eventTypes = [
+    'game_start', 'game_end', 'multiplayer_start', 'faction_pick',
+    'app_boot', 'menu_view',
+    'tutorial_track_started', 'tutorial_track_completed',
+    'level_up', 'faction_unlocked', 'achievement_unlocked',
+    'purchase_completed',
+  ];
   const modes = ['standard', 'hero_defense', 'battle', 'marathon', 'sprint', 'circle_coop'];
   const allKeys: string[] = [];
   const dates: string[] = [];

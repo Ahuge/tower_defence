@@ -289,6 +289,9 @@ export class GameScene extends Phaser.Scene {
 
   private customMapDef: MapDefinition | null = null;
 
+  /** Timestamp when mode_entered fired; used to compute mode_exited durationMs. */
+  private _modeEnteredAt: number = 0;
+
   init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
@@ -835,6 +838,8 @@ export class GameScene extends Phaser.Scene {
     });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     Analytics.gameStart(this.matchMode, this.faction ?? 'unknown', this.difficulty, this.mapId);
+    Analytics.track('mode_entered', { mode: this.matchMode });
+    this._modeEnteredAt = Date.now();
 
     // Live-capture hook — when ?capture=1 (or localStorage flag) is
     // set, record every human place/upgrade/sell for offline retrain
@@ -2842,6 +2847,10 @@ export class GameScene extends Phaser.Scene {
     };
     const duration = Math.round((Date.now() - this._gameStartTime) / 1000);
     Analytics.gameEnd(this.matchMode, this.lives > 0 ? 'victory' : 'defeat', this.currentWave, duration);
+    if (this._modeEnteredAt) {
+      Analytics.track('mode_exited', { mode: this.matchMode, durationMs: Date.now() - this._modeEnteredAt });
+      this._modeEnteredAt = 0;
+    }
 
     // Live-capture session close — appends this match's turns to
     // localStorage with the match outcome attached.
