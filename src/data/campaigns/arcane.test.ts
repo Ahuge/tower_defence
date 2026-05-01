@@ -73,16 +73,15 @@ describe('Campaign registry', () => {
     expect(getCampaign('arcane')).toBe(ARCANE_CAMPAIGN);
   });
 
-  it('Mechanical / Nature / Void return null until their content ships', () => {
-    expect(getCampaign('mechanical')).toBeNull();
+  it('Nature / Void return null until their content ships', () => {
     expect(getCampaign('nature')).toBeNull();
     expect(getCampaign('void')).toBeNull();
   });
 
-  it('listCampaigns returns the v1 set', () => {
-    const all = listCampaigns();
-    expect(all.length).toBe(1);
-    expect(all[0].factionId).toBe('arcane');
+  it('listCampaigns includes arcane and mechanical', () => {
+    const ids = listCampaigns().map(c => c.factionId);
+    expect(ids).toContain('arcane');
+    expect(ids).toContain('mechanical');
   });
 });
 
@@ -139,6 +138,6 @@ describe('isCampaignComplete', () => {
   });
 
   it('false for a faction whose campaign does not exist yet', () => {
-    expect(isCampaignComplete('mechanical', {})).toBe(false);
+    expect(isCampaignComplete('nature', {})).toBe(false);
   });
 });

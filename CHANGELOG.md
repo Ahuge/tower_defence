@@ -2,6 +2,26 @@
 
 ## 2026-05-02
 
+### Mechanical campaign — 10 missions, Iron Cascade
+
+Second complete campaign. Player fights AGAINST Mechanical across 10 missions; completing it unlocks playing AS Mechanical (alternate route to the Shards spend in the faction tree). Mechanical is a tier-1 unlock.
+
+Mission lineup leans on the new Plan 11/12/13 archetypes:
+- M1 Perimeter Breach — Standard with basic-kit restriction
+- M2 Supply Road — Standard 15 on serpentine
+- M3 The Depot Raid — **Heist** (steal back captured ordnance)
+- M4 Foundry Siege — **Base Defense** (factory under all-sides assault)
+- M5 Iron Convoy — Boss Rush (5 walker bosses)
+- M6 First Light — Speedrun (20 waves before they mobilize)
+- M7 Rationed Steel — Frugal (6 towers, half gold)
+- M8 Assembly Strike — **Attacker** (we strike their fortified line)
+- M9 The Ace — Hero vs Boss (Engineer vs the rival mech ace)
+- M10 Cascade Terminus — Final Showdown (30 waves at the core foundry)
+
+Tone is grimdark warhammer / war-machine — smoke, gears, oil, iron — counterpoint to Arcane's medieval-fantasy register. Reuses existing shared maps + the new archetype-default maps for the three new archetype missions; bespoke mech-tileset maps land in a follow-up.
+
+`mechanical.test.ts` covers shape + registry + predicate behavior (15 new tests, mirrors arcane.test.ts).
+
 ### Bespoke mobile splashes — 10 of 11 factions
 
 Artist drop in `resources/high_res_art_v2/splash_mobile_<faction>.png` (1530 × 2720, 9:16 aspect, hand-authored portrait composition rather than landscape center-crop). 10 factions delivered (everyone except void, which continues to auto-crop from the landscape source until its bespoke version lands).
