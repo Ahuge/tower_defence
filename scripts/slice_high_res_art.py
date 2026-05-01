@@ -113,6 +113,13 @@ def ensure_dir(path: str) -> None:
 
 
 def copy_splashes(dry: bool) -> None:
+    """Each splash exports two files:
+       - {faction}_splash.png        — original landscape (desktop)
+       - {faction}_splash_mobile.png — center-cropped 9:16 portrait
+    The engine picks per-viewport via CSS media query or by reading the
+    portrait file when the viewport is narrow. Center-crop is a
+    reasonable v1; bespoke mobile compositions can replace this drop-in
+    later if the artist re-renders for portrait."""
     print('— Splashes —')
     for token, faction in SPLASH_NAME_MAP.items():
         src = os.path.join(SRC, f'splash_{token}.png')
@@ -121,13 +128,37 @@ def copy_splashes(dry: bool) -> None:
             continue
         out_dir = os.path.join(OUT, faction)
         ensure_dir(out_dir)
+
+        # 1) Landscape — direct copy.
         out = os.path.join(out_dir, f'{faction}_splash.png')
         if dry:
             print(f'  [dry] would copy {src} → {out}')
+        else:
+            shutil.copyfile(src, out)
+            size_kb = os.path.getsize(out) / 1024
+            print(f'  ✓ {os.path.relpath(out, ROOT)}  (landscape, {size_kb:.0f} KB)')
+
+        # 2) Portrait — center-crop the landscape to 9:16 aspect.
+        #    For a 2164x816 source, that's a 459-wide × 816-tall slice
+        #    centered horizontally. The hero subject in every splash is
+        #    near the centre line so this preserves it.
+        out_m = os.path.join(out_dir, f'{faction}_splash_mobile.png')
+        if dry:
+            print(f'  [dry] would crop portrait → {out_m}')
             continue
-        shutil.copyfile(src, out)
-        size_kb = os.path.getsize(out) / 1024
-        print(f'  ✓ {os.path.relpath(out, ROOT)}  ({size_kb:.0f} KB)')
+        img = Image.open(src).convert('RGBA')
+        w, h = img.size
+        # Target portrait aspect 9:16 → width = h * 9/16.
+        target_w = int(round(h * 9 / 16))
+        if target_w >= w:
+            # Source is already narrower than 9:16; just copy.
+            shutil.copyfile(src, out_m)
+        else:
+            x0 = (w - target_w) // 2
+            crop = img.crop((x0, 0, x0 + target_w, h))
+            crop.save(out_m, 'PNG', optimize=True)
+        size_kb = os.path.getsize(out_m) / 1024
+        print(f'  ✓ {os.path.relpath(out_m, ROOT)}  (portrait, {size_kb:.0f} KB)')
 
 
 def slice_emblems(dry: bool) -> None:

@@ -19,9 +19,15 @@ import { getCampaign } from '../../data/campaigns';
 
 const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
 
-function splashSrc(faction: FactionId): string {
+/** Pick the landscape or portrait splash based on viewport aspect.
+ *  Both files exist under public/assets/{faction}/ — `_splash.png` is
+ *  the landscape source and `_splash_mobile.png` is the 9:16 center-
+ *  cropped portrait. The slicer regenerates both from the artist's
+ *  landscape source. */
+function splashSrc(faction: FactionId, mobile: boolean): string {
   if (faction === 'chaos' || faction === 'random') return '';
-  return `${BASE_URL}assets/${faction}/${faction}_splash.png`;
+  const suffix = mobile ? '_splash_mobile' : '_splash';
+  return `${BASE_URL}assets/${faction}/${faction}${suffix}.png`;
 }
 
 export function FactionUnlockSplash() {
@@ -51,7 +57,11 @@ export function FactionUnlockSplash() {
     }
   };
 
-  const splashImg = splashSrc(factionId);
+  // Reactive portrait detection — re-evaluates on rotate so a tablet
+  // swap doesn't wedge on the wrong aspect.
+  const isPortrait = typeof window !== 'undefined'
+    && window.matchMedia('(max-aspect-ratio: 1/1)').matches;
+  const splashImg = splashSrc(factionId, isPortrait);
 
   return (
     <div style={{

@@ -16,6 +16,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { CircleLobbyScreen } from './screens/CircleLobbyScreen';
 import { CampaignLobbyScreen } from './screens/CampaignLobbyScreen';
+import { CampaignMenuScreen } from './screens/CampaignMenuScreen';
 import { FactionTreeScreen } from './screens/FactionTreeScreen';
 import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
@@ -100,6 +101,7 @@ export function App() {
           {screen === 'lobby' && <LobbyScreen />}
           {screen === 'circle-lobby' && <CircleLobbyScreen />}
           {screen === 'campaign-lobby' && <CampaignLobbyScreen data={data} />}
+          {screen === 'campaign-menu' && <CampaignMenuScreen />}
           {screen === 'faction-tree' && <FactionTreeScreen />}
         </div>
       )}

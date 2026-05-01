@@ -17,10 +17,33 @@ const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
 
 /** Path to the player's faction splash key art. Returns '' for meta
  *  entries (chaos / random) and unknown ids — caller falls back to
- *  the radial-gradient mood lighting only. */
-function factionSplashSrc(faction: string | null): string {
+ *  the radial-gradient mood lighting only.
+ *
+ *  Mobile variant (`{faction}_splash_mobile.png`) is a 9:16 portrait
+ *  crop of the landscape source; the engine selects between them via
+ *  a viewport-width media check below. */
+function factionSplashSrc(faction: string | null, mobile = false): string {
   if (!faction || faction === 'random' || faction === 'chaos') return '';
-  return `${BASE_URL}assets/${faction}/${faction}_splash.png`;
+  const suffix = mobile ? '_splash_mobile' : '_splash';
+  return `${BASE_URL}assets/${faction}/${faction}${suffix}.png`;
+}
+
+/** Reactive viewport portrait detection. Re-evaluates on resize so a
+ *  rotated tablet swaps between landscape/portrait splashes cleanly. */
+function useIsPortraitViewport(): boolean {
+  const [portrait, setPortrait] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(max-aspect-ratio: 1/1)').matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-aspect-ratio: 1/1)');
+    const onChange = () => setPortrait(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return portrait;
 }
 
 // ─── Difficulty display ────────────────────────────────────
@@ -130,7 +153,11 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
 
   if (!visible) return null;
 
-  const splashImg = factionSplashSrc(typeof faction === 'string' ? faction : null);
+  const isPortrait = useIsPortraitViewport();
+  const splashImg = factionSplashSrc(
+    typeof faction === 'string' ? faction : null,
+    isPortrait,
+  );
 
   return (
     <div style={{

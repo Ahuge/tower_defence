@@ -175,6 +175,12 @@ export function MenuScreen() {
               <div class="card-name" style={{ marginTop: '4px' }}>Faction Tree</div>
               <div class="card-desc">Unlock new factions by spending Shards on their campaign and beating it.</div>
             </div>
+            <div class="card"
+              onClick={() => UIBridge.show('campaign-menu')}>
+              <div class="card-accent" style={{ background: 'var(--faction-arcane, #6644ff)' }} />
+              <div class="card-name" style={{ marginTop: '4px' }}>Campaigns</div>
+              <div class="card-desc">Resume any unlocked campaign. Track stars + completion across all factions.</div>
+            </div>
           </div>
         </div>
       )}
