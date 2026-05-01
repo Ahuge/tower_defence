@@ -1,18 +1,25 @@
 /**
- * FactionEmblem — procedurally-rendered SVG emblem per faction.
+ * FactionEmblem — bespoke per-faction emblem art with a procedural
+ * SVG fallback.
  *
- * Plan 5 was originally specced as needing bespoke per-faction emblem
- * art. v1 ships this programmatic alternative: a circular crest that
- * pulls primary/secondary colors from `FACTIONS[id]` and overlays a
- * faction-specific geometric glyph. Hand-drawn art is a nicer-to-have
- * later, but this gives every faction a distinct identity in the tree
- * without an asset pipeline.
+ * Plan 5 v1 shipped a procedural SVG glyph because no art existed.
+ * The art-pass drop (Apr 2026) delivered hand-drawn emblems sliced
+ * from `resources/composite_art_theme.png` into
+ * `public/assets/{faction}/{faction}_emblem.png`. This component
+ * renders the PNG by default and falls back to the procedural SVG
+ * if the image fails to load (handles offline/missing-asset cases
+ * cleanly so the tree never shows a broken-image icon).
  *
- * Each glyph reads as one of: spell-spark / cog / leaf / vortex /
- * chevron / hexagon / bracket / flame / sun / wave / network. Keeps
- * the silhouette readable even at the small (48px) tree-node size.
+ * Locked-state desaturation is handled with a CSS filter on the
+ * `<img>` so the engine doesn't need separate locked-variant assets.
+ *
+ * Each procedural glyph reads as one of: spell-spark / cog / leaf /
+ * vortex / chevron / hexagon / bracket / flame / sun / wave /
+ * network. Keeps the silhouette readable even at the small (48px)
+ * tree-node size.
  */
 
+import { useState } from 'preact/hooks';
 import type { FactionId } from '../../data/Factions';
 import { FACTIONS } from '../../data/Factions';
 
@@ -25,12 +32,48 @@ interface Props {
 
 function hex(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
 
+const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
+
+function emblemSrc(faction: FactionId): string {
+  // Meta entries (chaos / random) don't ship with bespoke emblems —
+  // they always fall through to the procedural glyph below.
+  if (faction === 'chaos' || faction === 'random') return '';
+  return `${BASE_URL}assets/${faction}/${faction}_emblem.png`;
+}
+
 export function FactionEmblem({ faction, size = 56, locked = false }: Props) {
   const def = FACTIONS[faction];
   const primary = locked ? '#444' : hex(def.primaryColor);
   const secondary = locked ? '#666' : hex(def.secondaryColor);
   const halo = locked ? '#222' : 'rgba(255,255,255,0.08)';
   const glyph = renderGlyph(faction, primary, secondary);
+
+  // PNG-first; fall back to procedural SVG on load failure.
+  const [imgFailed, setImgFailed] = useState(false);
+  const src = emblemSrc(faction);
+  if (src && !imgFailed) {
+    return (
+      <img
+        src={src}
+        alt={`${def.name} emblem`}
+        width={size}
+        height={size}
+        loading="lazy"
+        onError={() => setImgFailed(true)}
+        style={{
+          display: 'block',
+          width: `${size}px`,
+          height: `${size}px`,
+          objectFit: 'contain',
+          // Locked = desaturate + dim. Keeps a single asset; no
+          // separate locked-variant PNG needed.
+          filter: locked ? 'grayscale(0.85) brightness(0.55)' : undefined,
+          imageRendering: 'auto',
+        }}
+      />
+    );
+  }
+  // Procedural SVG fallback (also used for chaos / random).
 
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block' }}>

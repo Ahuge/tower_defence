@@ -17,6 +17,13 @@ import { FactionEmblem } from './FactionEmblem';
 import { UIBridge } from '../UIBridge';
 import { getCampaign } from '../../data/campaigns';
 
+const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
+
+function splashSrc(faction: FactionId): string {
+  if (faction === 'chaos' || faction === 'random') return '';
+  return `${BASE_URL}assets/${faction}/${faction}_splash.png`;
+}
+
 export function FactionUnlockSplash() {
   const [factionId, setFactionId] = useState<FactionId | null>(null);
 
@@ -44,6 +51,8 @@ export function FactionUnlockSplash() {
     }
   };
 
+  const splashImg = splashSrc(factionId);
+
   return (
     <div style={{
       position: 'fixed', inset: 0,
@@ -52,7 +61,38 @@ export function FactionUnlockSplash() {
       zIndex: 800,
       animation: 'unlockFade 280ms ease-out',
       padding: '24px',
+      overflow: 'hidden',
     }} onClick={dismiss}>
+      {/* Bespoke splash key art behind the emblem + text. Centered,
+          scaled to cover, with the existing radial vignette overlaying
+          for legibility. PNG missing → background gracefully renders
+          just the radial gradient. */}
+      {splashImg && (
+        <img
+          src={splashImg}
+          alt=""
+          aria-hidden="true"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            maxWidth: '720px',
+            width: 'min(90vw, 720px)',
+            opacity: 0.55,
+            pointerEvents: 'none',
+            filter: 'blur(0.5px) saturate(1.1)',
+            zIndex: 0,
+          }}
+        />
+      )}
+      {/* Dark vignette over the splash so text + emblem stay readable. */}
+      {splashImg && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(8,5,12,0.55) 60%, rgba(8,5,12,0.92) 100%)',
+        }} />
+      )}
       <style>{`
         @keyframes unlockFade {
           from { opacity: 0; }
@@ -68,7 +108,7 @@ export function FactionUnlockSplash() {
         }
       `}</style>
       <div onClick={e => e.stopPropagation()}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', maxWidth: '520px' }}>
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', maxWidth: '520px', position: 'relative', zIndex: 2 }}>
         <div style={{
           fontSize: '12px', color: 'var(--text-dim)', letterSpacing: '0.18em', textTransform: 'uppercase',
         }}>Faction Unlocked</div>

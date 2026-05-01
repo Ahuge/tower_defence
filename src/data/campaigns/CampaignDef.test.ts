@@ -18,10 +18,21 @@ describe('MissionArchetypes — registry shape', () => {
     }
   });
 
-  it('Plans 11/12/13 archetypes are stubbed', () => {
-    expect(isArchetypeStub('base_defense')).toBe(true);
+  it('Plan 11 base_defense and Plan 13 heist are no longer stubs (v1 ships)', () => {
+    expect(isArchetypeStub('base_defense')).toBe(false);
+    expect(isArchetypeStub('heist')).toBe(false);
+  });
+
+  it('Plan 12 attacker stays stubbed pending engine surface (creep-send UI + AI defender)', () => {
     expect(isArchetypeStub('attacker')).toBe(true);
-    expect(isArchetypeStub('heist')).toBe(true);
+  });
+
+  it('base_defense default mapId is base_arena', () => {
+    expect(getArchetype('base_defense').defaults.mapId).toBe('base_arena');
+  });
+
+  it('heist default mapId is heist_vault', () => {
+    expect(getArchetype('heist').defaults.mapId).toBe('heist_vault');
   });
 
   it('frugal applies a goldStartMult of 0.5 + maxTowers cap', () => {

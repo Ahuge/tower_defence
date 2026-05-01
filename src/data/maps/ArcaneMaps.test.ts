@@ -43,6 +43,35 @@ describe('Bespoke Arcane maps', () => {
   });
 });
 
+describe('Plan 11 / Plan 13 v1 maps', () => {
+  it('base_arena registers with 4 perimeter spawners + 1 central exit', () => {
+    const m = MAPS.base_arena;
+    expect(m).toBeTruthy();
+    expect(m.entries.length).toBe(4);
+    expect(m.exits.length).toBe(1);
+    // Exit is at the geometric center.
+    expect(m.exits[0].col).toBe(Math.floor(36 / 2));
+    expect(m.exits[0].row).toBe(Math.floor(26 / 2));
+  });
+
+  it('base_arena reserves a 3x3 noBuild ring around the base', () => {
+    const m = MAPS.base_arena;
+    expect(m.noBuild).toBeTruthy();
+    // Ring should contain at least 9 cells (3x3 minus the exit cell
+    // which doesn't strictly need to be noBuild — we add it anyway).
+    expect(m.noBuild!.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('heist_vault has reverse direction (east entry, west exit)', () => {
+    const m = MAPS.heist_vault;
+    expect(m).toBeTruthy();
+    // Entry on east edge.
+    expect(m.entries[0].col).toBe(36 - 1);
+    // Exit on west edge.
+    expect(m.exits[0].col).toBe(0);
+  });
+});
+
 describe('Arcane campaign references the bespoke maps', () => {
   const used = new Set(ARCANE_CAMPAIGN.missions.map(m => m.overrides.mapId));
 

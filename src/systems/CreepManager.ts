@@ -168,6 +168,18 @@ export class CreepManager {
     return { totalLeakDamage, leakCount };
   }
 
+  /** Auto-recovery: mark every alive creep as `reached` so the next
+   *  update tick processes them through the leak handler. Used by
+   *  WaveController when a wave has been stuck past the force-clear
+   *  threshold (typically a single creep mis-pathed after a tower
+   *  placement and the wave-end gate is waiting for it to finish).
+   *  Without this the entire match can hang on one stuck creep. */
+  forceLeakAllAlive(): void {
+    for (const creep of this.creeps) {
+      if (creep.alive) creep.reached = true;
+    }
+  }
+
   /** Find nearest creep to a pixel position */
   findCreepNear(px: number, py: number, maxDist: number): Creep | null {
     let closest: Creep | null = null;

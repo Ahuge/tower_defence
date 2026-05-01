@@ -5,7 +5,11 @@ export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islan
   // Plan 14 v1.1 — bespoke Arcane campaign maps. Use the
   // arcane_crystal terrain theme so blocked cells render as crystal
   // formations instead of generic walls.
-  | 'arcane_outskirts' | 'arcane_pass' | 'arcane_throne';
+  | 'arcane_outskirts' | 'arcane_pass' | 'arcane_throne'
+  // Plan 11 — Base Defense. 4-edge spawn into a central base.
+  | 'base_arena'
+  // Plan 13 v1 — Heist. Vault on the east, exit to the west.
+  | 'heist_vault';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -405,6 +409,72 @@ export const MAPS: Record<MapId, MapDefinition> = {
       ...rect(14, 12, 27, 17),
       // Final wall guarding the exit
       ...rect(24, 18, 28, 25),
+    ],
+    noBuild: [],
+  },
+
+  // === Base Defense (Plan 11) ===
+  // Open arena with 4 entries (one per edge) converging on a single
+  // exit at the geometric center. The exit cell is the "base" — a
+  // leak there costs lives. Player builds defensive structure
+  // anywhere; pathfinder routes each spawner to the central exit so
+  // a thoughtful maze can lengthen the walk for every direction.
+  // Light decorative blockers in each corner stop the player from
+  // fully ringing the base — they have to pick which lanes to wall.
+  base_arena: {
+    id: 'base_arena',
+    name: 'Citadel Arena',
+    description: 'Spawns from every side converging on the base. The whole map is your maze.',
+    theme: 'stone',
+    entries: [
+      { col: MID_COL, row: 0 },              // North
+      { col: MID_COL, row: GRID_ROWS - 1 },  // South
+      { col: GRID_COLS - 1, row: MID_ROW },  // East
+      { col: 0, row: MID_ROW },              // West
+    ],
+    // Single exit at the center — visualized as the "base."
+    exits: [{ col: MID_COL, row: MID_ROW }],
+    blocked: [
+      // Corner pillars — decorative obstructions that prevent the
+      // player from sealing the base behind a four-cell wall, and
+      // anchor a sense of "arena" geometry.
+      ...rect(4, 4, 5, 5),
+      ...rect(GRID_COLS - 6, 4, GRID_COLS - 5, 5),
+      ...rect(4, GRID_ROWS - 6, 5, GRID_ROWS - 5),
+      ...rect(GRID_COLS - 6, GRID_ROWS - 6, GRID_COLS - 5, GRID_ROWS - 5),
+    ],
+    noBuild: [
+      // Reserve a small ring around the base so the player can't
+      // wall the central tile shut from arm's length.
+      ...rect(MID_COL - 1, MID_ROW - 1, MID_COL + 1, MID_ROW + 1),
+    ],
+  },
+
+  // === Heist (Plan 13 v1) ===
+  // Reverse-direction map: creeps spawn from a vault on the east
+  // edge and try to escape west. v1 reuses the standard "creep
+  // exits = lives lost" semantics; v2 adds gold-on-ground (carried
+  // gold drops on death; surviving creeps absorb pickups) once the
+  // creep base class gains a `carriedGold` field.
+  //
+  // Vault placement: east-side narrow opening so the spawn pours
+  // out along a single column. Exit: west edge, full open. Two
+  // diagonal walls force creeps through a central kill funnel.
+  heist_vault: {
+    id: 'heist_vault',
+    name: 'The Vault Heist',
+    description: 'Loot pours from the eastern vault. Stop them before they reach the west exit.',
+    theme: 'stone',
+    entries: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    exits: [{ col: 0, row: MID_ROW }],
+    blocked: [
+      // Vault structure on the east side — implies a heavy stone
+      // building creeps stream out of.
+      ...rect(GRID_COLS - 4, MID_ROW - 4, GRID_COLS - 2, MID_ROW - 2),
+      ...rect(GRID_COLS - 4, MID_ROW + 2, GRID_COLS - 2, MID_ROW + 4),
+      // Central diagonal walls forcing a serpentine kill zone.
+      ...rect(MID_COL + 4, 4, MID_COL + 5, MID_ROW - 2),
+      ...rect(MID_COL - 4, MID_ROW + 2, MID_COL - 3, GRID_ROWS - 5),
     ],
     noBuild: [],
   },

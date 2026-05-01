@@ -143,6 +143,12 @@ export function FactionTreeScreen() {
       <Header title="FACTION TREE" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       <div class="faction-tree-shell">
         <div class="faction-tree-bg" />
+        {/* Plan 5 art-pass: when a faction is focused, layer in its
+            three parallax homeworld backgrounds (far / mid / fore)
+            with progressively faster pan rates per the PRD A3 spec.
+            Layers ride above the starfield so the focus state has a
+            distinct identity. They fade out when no node is selected. */}
+        {selected && <FactionParallax factionId={selected} />}
         <div class="faction-tree-content">
           <div class="ui-section" style={{ paddingBottom: '8px' }}>
             <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)', maxWidth: '640px', margin: '0 auto', lineHeight: 1.55 }}>
@@ -358,5 +364,42 @@ function renderDetail(
         </div>
       </div>
     </div>
+  );
+}
+
+
+// ─── Faction parallax overlay (Plan 5 art-pass) ─────────────────
+// Three layered <img> elements per faction, panning at the rates
+// from the PRD A3 spec (far 0.05 px/frame, mid 0.10 px/frame, fore
+// 0.25 px/frame). CSS keyframes drive the pan; if any layer fails
+// to load, that layer self-removes via onError without breaking
+// the others.
+
+const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? "/";
+
+function parallaxSrc(factionId: FactionId, layer: "far" | "mid" | "fore"): string {
+  if (factionId === "chaos" || factionId === "random") return "";
+  return `${BASE_URL}assets/${factionId}/${factionId}_parallax_${layer}.png`;
+}
+
+function FactionParallax({ factionId }: { factionId: FactionId }) {
+  return (
+    <>
+      <style>{`
+        @keyframes parallax-far  { from { background-position: 0 0; }   to { background-position: -240px 0; } }
+        @keyframes parallax-mid  { from { background-position: 0 0; }   to { background-position: -480px 0; } }
+        @keyframes parallax-fore { from { background-position: 0 0; }   to { background-position: -1200px 0; } }
+        .parallax-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; background-repeat: repeat-x; opacity: 0.45; transition: opacity 600ms ease; }
+        .parallax-far  { animation: parallax-far  240s linear infinite; background-size: cover; }
+        .parallax-mid  { animation: parallax-mid  120s linear infinite; background-size: cover; opacity: 0.35; }
+        .parallax-fore { animation: parallax-fore  60s linear infinite; background-size: cover; opacity: 0.25; }
+      `}</style>
+      <div class="parallax-layer parallax-far"
+        style={{ backgroundImage: `url(${parallaxSrc(factionId, "far")})` }} />
+      <div class="parallax-layer parallax-mid"
+        style={{ backgroundImage: `url(${parallaxSrc(factionId, "mid")})` }} />
+      <div class="parallax-layer parallax-fore"
+        style={{ backgroundImage: `url(${parallaxSrc(factionId, "fore")})` }} />
+    </>
   );
 }

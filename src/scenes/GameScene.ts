@@ -889,6 +889,14 @@ export class GameScene extends Phaser.Scene {
       onWaveCleared: (waveNum) => {
         this.onWaveCleared(waveNum);
       },
+      onStuckForceClear: () => {
+        // Wave hung > 30s with creeps alive but nothing spawning.
+        // Force-leak the rest so the wave can clear. Player loses
+        // lives proportional to the creep count; better than
+        // hanging the entire match indefinitely.
+        this.creepMgr.forceLeakAllAlive();
+        this.eventLog.gameMessage('Wave timed out — remaining creeps escaped.');
+      },
     });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     Analytics.gameStart(this.matchMode, this.faction ?? 'unknown', this.difficulty, this.mapId);
@@ -3619,6 +3627,10 @@ export class GameScene extends Phaser.Scene {
           },
           onWaveCleared: (waveNum) => {
             this.onWaveCleared(waveNum);
+          },
+          onStuckForceClear: () => {
+            this.creepMgr.forceLeakAllAlive();
+            this.eventLog.gameMessage('Wave timed out — remaining creeps escaped.');
           },
         });
         // Update gauntlet HUD

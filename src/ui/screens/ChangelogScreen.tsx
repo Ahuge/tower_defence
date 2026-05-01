@@ -11,6 +11,21 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-30',
+    title: 'Art pass extracted + Plans 11/13 v1 (Base Defense + Heist) + art PRD',
+    changes: [
+      'Sliced 55 PNGs from a single composite art-pass file (resources/composite_art_theme.png) into per-faction emblems / welcome splashes / parallax-layer triplets at public/assets/{faction}/. Sliced via scripts/slice_art_pass.py — column boundaries auto-detected for A1 emblems, hand-tuned for A2 splashes (designer used different alignment), even-spaced for A3 parallax (LAYER label gutter)',
+      'FactionEmblem switched to PNG-first: renders /assets/{faction}/{faction}_emblem.png with a CSS grayscale filter for the locked state, falls back to the procedural SVG glyph if the image fails to load (or for chaos / random which don\'t ship art)',
+      'FactionUnlockSplash overlays the per-faction splash key art behind the existing emblem + text, with a darkening radial vignette over it for legibility. Self-hides the <img> on load failure',
+      'FactionTreeScreen layers in the focused faction\'s 3-layer parallax (far / mid / fore) when a node is selected. Pan rates per the PRD A3 spec — far at 240s/cycle, mid at 120s, fore at 60s. The starfield default still renders when no node is focused',
+      'Plan 11 — Base Defense archetype shipped v1. New base_arena map (4 perimeter spawners → central exit, 3x3 noBuild ring around the base, corner pillars stop full-perimeter walling). Reuses Standard mode mechanics; "base" is the central exit cell + standard lives counter. v2 will add a bespoke Base entity with HP bar / damage states',
+      'Plan 13 — Heist archetype shipped v1. New heist_vault map (vault-themed structure on east edge spawning west). Reverse direction. Gold-on-ground mechanic deferred to v2 (needs new GoldDrop entity + per-creep carriedGold field)',
+      'Plan 12 — Attacker stays stubbed; the role-reversal needs net-new engine surface (creep-send picker UI, AI defender driver, win-by-leak condition). Tracked separately',
+      'New art_prd.md in notes/ — production PRD covering 50+ assets across 6 categories (faction visual identity, campaign content, tutorial / onboarding, profile / progression, generic UI, future Hero Defense). Per asset: code, purpose, dimensions, format, composition spec, animation requirements, acceptance criteria, priority',
+      '+8 unit tests on archetype unstubs + new map shapes; FactionEmblem tests rewritten for PNG-first behavior with SVG fallback. 438/438 vitest pass',
+    ],
+  },
+  {
+    date: '2026-04-30',
     title: 'Bespoke Arcane maps + procedural faction emblems + tree polish + unlock splash',
     changes: [
       'Three new Arcane-tileset maps: arcane_outskirts (mission 1 opener — single-path with crystal cluster), arcane_pass (mission 6 speedrun — long winding S through crystal walls), arcane_throne (mission 10 final showdown — three-entry fortified arena with central nexus + dais)',

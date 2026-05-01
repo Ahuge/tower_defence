@@ -1,7 +1,9 @@
 /**
- * Smoke tests for the procedural FactionEmblem component. Confirms it
- * renders without crashing for every faction and applies the
- * locked-state silhouette correctly.
+ * FactionEmblem smoke tests.
+ *
+ * Component renders the bespoke PNG by default with a procedural SVG
+ * fallback when the image fails to load (or for chaos / random which
+ * don't ship with bespoke art). These tests cover both branches.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/preact';
@@ -10,26 +12,41 @@ import { FACTION_ORDER } from '../../data/Factions';
 
 afterEach(() => cleanup());
 
-describe('FactionEmblem', () => {
-  it('renders for every faction without crashing', () => {
+describe('FactionEmblem — PNG-first render', () => {
+  it('renders an <img> for real factions (PNG-backed)', () => {
     for (const id of FACTION_ORDER) {
+      if (id === 'chaos' || id === 'random') continue;
       const { container } = render(<FactionEmblem faction={id} size={48} />);
-      expect(container.querySelector('svg')).toBeTruthy();
+      const img = container.querySelector('img');
+      expect(img).toBeTruthy();
+      expect(img!.getAttribute('src')).toContain(`assets/${id}/${id}_emblem.png`);
       cleanup();
     }
   });
 
-  it('respects size prop', () => {
+  it('respects the size prop on the <img>', () => {
     const { container } = render(<FactionEmblem faction="arcane" size={120} />);
-    const svg = container.querySelector('svg')!;
-    expect(svg.getAttribute('width')).toBe('120');
-    expect(svg.getAttribute('height')).toBe('120');
+    const img = container.querySelector('img')!;
+    expect(img.getAttribute('width')).toBe('120');
+    expect(img.getAttribute('height')).toBe('120');
   });
 
-  it('locked variant uses muted colors', () => {
+  it('locked variant applies a CSS desaturation filter to the <img>', () => {
     const { container } = render(<FactionEmblem faction="harmonic" locked={true} />);
-    const html = container.innerHTML;
-    // Locked palette uses #444 / #666 instead of vibrant Harmonic colors.
-    expect(html).toContain('#444');
+    const img = container.querySelector('img')!;
+    const style = img.getAttribute('style') ?? '';
+    expect(style).toContain('grayscale');
+  });
+});
+
+describe('FactionEmblem — procedural SVG fallback', () => {
+  it('chaos and random fall back to the procedural SVG (no bespoke art ships for them)', () => {
+    for (const id of ['chaos', 'random'] as const) {
+      const { container } = render(<FactionEmblem faction={id} size={48} />);
+      // Meta entries skip the <img> path entirely → SVG renders.
+      expect(container.querySelector('svg')).toBeTruthy();
+      expect(container.querySelector('img')).toBeNull();
+      cleanup();
+    }
   });
 });

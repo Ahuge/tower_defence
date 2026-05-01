@@ -8,6 +8,13 @@ export interface WaveCallbacks {
   onWaveStart(wave: WaveDefinition, waveNum: number, totalWaves: number): void;
   onWaveCleared(waveNum: number): void;
   canStartWave(): boolean; // e.g. check if path exists
+  /** Auto-recovery hook — called once when a wave has been active
+   *  past `STUCK_FORCE_CLEAR_THRESHOLD` with no spawning/sending in
+   *  flight but creeps still on the field. Implementation should
+   *  cull or force-leak the remaining creeps so the wave can clear.
+   *  Without this, a single mis-pathed creep can hang the entire
+   *  match indefinitely (reported by users on first-match runs). */
+  onStuckForceClear?(): void;
 }
 
 /** How often to log "wave still stuck" diagnostics, ms. */
@@ -15,6 +22,11 @@ const STUCK_LOG_INTERVAL = 3000;
 /** How long a wave has to be active without completing before we
  *  start logging the why-it's-stuck breakdown. */
 const STUCK_THRESHOLD = 5000;
+/** How long until we auto-recover by forcing alive creeps to leak.
+ *  Generous on top of STUCK_THRESHOLD so a slow-but-progressing
+ *  wave (e.g. heavy tank creep + low DPS player) doesn't trigger
+ *  the recovery erroneously. */
+const STUCK_FORCE_CLEAR_THRESHOLD = 30000;
 
 /**
  * Controls wave lifecycle: start, spawning, clear detection.
@@ -29,6 +41,10 @@ export class WaveController {
   private spawner: SpawnManager;
   private sendMgr: SendManager;
   private callbacks: WaveCallbacks;
+  /** Per-wave latch — once auto-recovery has fired for this wave we
+   *  don't fire it again, even if the recovery doesn't fully clear
+   *  (e.g. extra creeps still spawning). Reset on each wave start. */
+  private forceClearFired: boolean = false;
   /** ms since the current wave started. Used to gate stuck logging. */
   private waveElapsed: number = 0;
   /** ms since last stuck-log so we don't spam the console every frame. */
@@ -60,6 +76,7 @@ export class WaveController {
     this.betweenWaves = false;
     this.waveActive = true;
     this.waveElapsed = 0;
+    this.forceClearFired = false;
     this.lastStuckLog = 0;
     const wave = this.waves[this.currentWave];
     this.currentWave++;
@@ -100,6 +117,21 @@ export class WaveController {
           `[wave] wave ${this.currentWave} stuck at ${Math.round(this.waveElapsed / 1000)}s — ` +
           `spawning=${spawning} sending=${sending} creeps=${creepCount}`,
         );
+      }
+      // Auto-recovery: if the wave has been stuck past the force-clear
+      // threshold AND nothing is spawning, the only cause is at least
+      // one creep is alive but not advancing (typically a mis-pathed
+      // creep after a tower-placement bend). Fire the recovery hook;
+      // GameScene cull alive creeps as leaks so the wave clears.
+      if (!spawning && !sending && creepCount > 0 &&
+          this.waveElapsed > STUCK_FORCE_CLEAR_THRESHOLD &&
+          !this.forceClearFired) {
+        this.forceClearFired = true;
+        if (DEBUG) {
+          console.warn(`[wave] wave ${this.currentWave} auto-recovering after ` +
+            `${Math.round(this.waveElapsed / 1000)}s stuck — force-leaking ${creepCount} creep(s)`);
+        }
+        this.callbacks.onStuckForceClear?.();
       }
       return;
     }

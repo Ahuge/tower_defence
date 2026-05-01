@@ -100,15 +100,27 @@ const ARCHETYPES: Record<MissionArchetypeId, MissionArchetype> = {
     defaults: { waveCount: 15, difficulty: 'normal' },
   },
 
-  // ─── Stubs (Plans 11/12/13 land these) ──────────────────────────
+  // ─── Plan 11 — Base Defense (omni-directional spawn) ───────────
+  // v1 implementation: reuses Standard mode + the new `base_arena`
+  // map (4 edge spawners → central exit). The "base" is the single
+  // central exit cell; leaks there cost lives just like Standard.
+  // Future v2: bespoke Base entity with HP bar, hit-flash, damage
+  // states (Plan 8-style polish). Map-level support is sufficient
+  // for the campaign-mission use case today.
   base_defense: {
     id: 'base_defense',
     label: 'Base Defense',
-    blurb: '360° spawns toward a central base. (Coming soon.)',
+    blurb: 'Hold a central base against spawns from every side.',
     baseMode: 'standard',
-    defaults: { waveCount: 15, difficulty: 'normal' },
-    __archetypeStub: true,
+    defaults: { waveCount: 15, difficulty: 'normal', mapId: 'base_arena' as const },
   },
+
+  // ─── Plan 12 — Attacker (stub) ─────────────────────────────────
+  // Reverse-roles archetype — player commands creeps, AI plays
+  // defender. Stays stubbed because it requires net-new engine
+  // surface (creep-send picker UI, AI defender driver, win-by-leak
+  // condition flip). Tracked separately when the engine work is
+  // scoped.
   attacker: {
     id: 'attacker',
     label: 'Attacker',
@@ -117,13 +129,21 @@ const ARCHETYPES: Record<MissionArchetypeId, MissionArchetype> = {
     defaults: { waveCount: 10, difficulty: 'normal' },
     __archetypeStub: true,
   },
+
+  // ─── Plan 13 — Heist (v1 — reverse path only) ──────────────────
+  // v1 implementation: reuses Standard mode + the new `heist_vault`
+  // map (vault on the east, escape route to the west — creeps spawn
+  // from the vault carrying loot and try to escape). The signature
+  // gold-on-ground mechanic (killed creeps drop pickups, surviving
+  // creeps absorb them) is deferred to Plan 13 v2 — needs a new
+  // GoldDrop entity and per-creep `carriedGold` plumbing on the
+  // creep base class.
   heist: {
     id: 'heist',
     label: 'Heist',
-    blurb: 'Reverse path — stop the loot from escaping. (Coming soon.)',
+    blurb: 'Reverse path — stop the loot from escaping the vault.',
     baseMode: 'standard',
-    defaults: { waveCount: 10, difficulty: 'normal' },
-    __archetypeStub: true,
+    defaults: { waveCount: 10, difficulty: 'normal', mapId: 'heist_vault' as const },
   },
 };
 

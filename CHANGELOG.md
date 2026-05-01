@@ -2,6 +2,26 @@
 
 ## 2026-04-30
 
+### Art-pass extraction + Plans 11 / 13 v1 (Base Defense + Heist) + art PRD
+
+**Art-pass extraction.** A single 1536×1024 composite art-pass file (`resources/composite_art_theme.png`) sliced into 55 individual PNGs across `public/assets/{faction}/`. Per faction: `{faction}_emblem.png` (A1 row), `{faction}_splash.png` (A2 row), and a 3-layer parallax set `{faction}_parallax_far/mid/fore.png` (A3 grid). The composite's columns aren't aligned identically across rows — A1 emblems were detected by scanning for dark gutters between the bright crests, A2 splashes were hand-tuned (designer used wider cells on the left half / narrower on the right), A3 parallax was even-spaced from x=85..1528 because of the LAYER-label gutter on the left. Slicer lives in `scripts/slice_art_pass.py` and is regenerable.
+
+**FactionEmblem** now PNG-first with SVG fallback. Renders `/assets/{faction}/{faction}_emblem.png` as an `<img>` with a CSS `grayscale + brightness` filter for the locked state. If the image fails to load (offline / missing / `chaos` / `random`) the component falls through to the procedural SVG glyph from before so the tree never shows a broken-image icon.
+
+**FactionUnlockSplash** layers the per-faction splash key art behind the existing emblem + identity copy. Width-clamped to `min(90vw, 720px)`, blurred 0.5px and saturated, with a darkening radial vignette over it for text legibility. Self-hides the `<img>` on load failure — splash falls back to the radial-only mood lighting.
+
+**FactionTreeScreen** layers in the focused faction's 3-layer parallax (far / mid / fore) when a node is selected. Pan rates per the PRD A3 spec — far at 240s/cycle, mid at 120s, fore at 60s, all with `repeat-x` / `cover` for any viewport size. The default starfield still renders when no node is focused; selecting a node fades the homeworld scene in over it.
+
+**Plan 11 — Base Defense (v1)**. Archetype unstubbed. New `base_arena` map: 4 perimeter spawners (N/S/E/W edge midpoints) converging on a single central exit. The center cell is the "base" — a leak there costs lives like Standard. A 3×3 `noBuild` ring around the base prevents arm's-length walling. Corner pillars anchor the arena geometry and stop the player from fully encircling. v2 will add a bespoke Base entity with HP bar, hit-flash, and damage states (Plan 8-style polish); v1 reuses the standard lives counter for shipping speed.
+
+**Plan 13 — Heist (v1)**. Archetype unstubbed. New `heist_vault` map: reverse-direction layout with a vault structure on the east edge spawning creeps westward. Two diagonal walls force a serpentine kill funnel. The signature gold-on-ground mechanic (killed creeps drop pickups; surviving creeps absorb them up to capacity) is deferred to v2 — it needs a new `GoldDrop` entity plus per-creep `carriedGold` plumbing on the Creep base class. v1 ships as a reverse-path Standard variant which still feels distinct from the regular kit.
+
+**Plan 12 — Attacker stays stubbed**. The role-reversal needs net-new engine surface (creep-send picker UI, AI defender driver via existing `BalancedBrain`, win-by-leak condition flip). Tracked separately when that engine work is scoped — flipping a stub on a map alone wouldn't capture the design intent.
+
+**New art_prd.md** in `notes/` — production PRD covering 50+ assets across 6 categories (Faction visual identity, Campaign content, Tutorial / onboarding, Profile / progression, Generic UI, Future Hero Defense). Per asset: code, purpose, dimensions, format, composition spec, animation requirements, acceptance criteria, priority. Recommended 4-wave production sequencing so the asset backlog has a paced delivery cadence rather than 50 simultaneous deliverables.
+
+**Verification**: 438/438 vitest pass (+8 new, archetype tests rewritten for PNG-first behavior with SVG fallback). tsc clean.
+
 ### Bespoke Arcane maps + procedural faction emblems + tree polish + unlock splash
 
 Picking up the open deferred items from Chunk A — visual identity for the faction tree and faction-themed maps for the Arcane campaign. Both done procedurally rather than with bespoke art so they ship without an asset pipeline.
