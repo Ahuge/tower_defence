@@ -131,30 +131,53 @@ def copy_splashes(dry: bool) -> None:
 
 
 def slice_emblems(dry: bool) -> None:
+    """Per-faction emblem files. Prefers an individual `emblem_{id}.png`
+    in the v2 source folder; falls back to slicing the multi-emblem
+    `elmblems.png` reference sheet for any faction that doesn't have
+    its own file (typical when art is delivered incrementally)."""
     print('— Emblems —')
-    src = os.path.join(SRC, 'elmblems.png')
-    if not os.path.exists(src):
-        print(f'  ERR: {src} not found', file=sys.stderr)
-        return
-    img = Image.open(src).convert('RGBA')
+    sheet_path = os.path.join(SRC, 'elmblems.png')
+    sheet = None  # lazy-load only if a fallback slice is needed.
 
-    def slice_row(y0: int, y1: int, xs: list[tuple[int, int]], factions: list[str]) -> None:
-        for (x0, x1), faction in zip(xs, factions):
-            out_dir = os.path.join(OUT, faction)
-            ensure_dir(out_dir)
-            out = os.path.join(out_dir, f'{faction}_emblem.png')
-            box = (x0 + 4, y0, x1 - 4, y1)  # 4-px inner gutter trim
+    all_factions = EMBLEM_TOP_FACTIONS + EMBLEM_BOT_FACTIONS
+    all_xs = EMBLEM_TOP_X + EMBLEM_BOT_X
+    sheet_y_for = (
+        [EMBLEM_TOP_Y] * len(EMBLEM_TOP_FACTIONS)
+        + [EMBLEM_BOT_Y] * len(EMBLEM_BOT_FACTIONS)
+    )
+
+    for faction, (x0, x1), (y0, y1) in zip(all_factions, all_xs, sheet_y_for):
+        out_dir = os.path.join(OUT, faction)
+        ensure_dir(out_dir)
+        out = os.path.join(out_dir, f'{faction}_emblem.png')
+
+        # 1) Per-faction individual file?
+        individual = os.path.join(SRC, f'emblem_{faction}.png')
+        if os.path.exists(individual):
             if dry:
-                print(f'  [dry] would crop {faction} from {box}')
+                print(f'  [dry] would copy {individual} → {out}')
                 continue
-            crop = img.crop(box)
-            crop.save(out, 'PNG', optimize=True)
-            w, h = crop.size
+            shutil.copyfile(individual, out)
             size_kb = os.path.getsize(out) / 1024
-            print(f'  ✓ {os.path.relpath(out, ROOT)}  ({w}×{h}, {size_kb:.0f} KB)')
+            print(f'  ✓ {os.path.relpath(out, ROOT)}  (individual, {size_kb:.0f} KB)')
+            continue
 
-    slice_row(*EMBLEM_TOP_Y, EMBLEM_TOP_X, EMBLEM_TOP_FACTIONS)
-    slice_row(*EMBLEM_BOT_Y, EMBLEM_BOT_X, EMBLEM_BOT_FACTIONS)
+        # 2) Fallback — slice from the multi-emblem reference sheet.
+        if sheet is None:
+            if not os.path.exists(sheet_path):
+                print(f'  WARN: no individual emblem for {faction} and no sheet at {sheet_path}', file=sys.stderr)
+                continue
+            sheet = Image.open(sheet_path).convert('RGBA')
+
+        box = (x0 + 4, y0, x1 - 4, y1)
+        if dry:
+            print(f'  [dry] would slice {faction} from {sheet_path} {box}')
+            continue
+        crop = sheet.crop(box)
+        crop.save(out, 'PNG', optimize=True)
+        w, h = crop.size
+        size_kb = os.path.getsize(out) / 1024
+        print(f'  ✓ {os.path.relpath(out, ROOT)}  (sliced from sheet, {w}×{h}, {size_kb:.0f} KB)')
 
 
 def slice_parallax(dry: bool) -> None:
