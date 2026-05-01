@@ -29,6 +29,7 @@ PATTERNS = (
     '_parallax_far.png',
     '_parallax_mid.png',
     '_parallax_fore.png',
+    '_keyart.png',
 )
 
 # WebP quality. 82 is the sweet spot for stylised art; 90 is barely

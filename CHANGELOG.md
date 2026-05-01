@@ -2,6 +2,25 @@
 
 ## 2026-05-02
 
+### High-res parallax v2 import — arcane / mech / nature / void
+
+Artist drop in `resources/high_res_art_v2/parallax/`. 6 files per faction (4 of 11 delivered so far). New `scripts/import_parallax_v2.py` routes them to the right engine slots:
+
+| Source | Destination | Purpose |
+|---|---|---|
+| `parallax_<faction>_far.png` | `<faction>_parallax_far.png` | parallax background — strict upgrade (2040×708 vs v1's smaller slice) |
+| `parallax_<faction>_mid.png` | `<faction>_parallax_mid.png` | parallax mid — RGBA, composites cleanly |
+| `parallax_<faction>_fore.png` | `<faction>_parallax_fore.png` | parallax foreground — auto-luminosity-mask if shipped as RGB so dark regions don't block lower layers |
+| `parallax_<faction>_big_no_text.png` | `<faction>_keyart.png` | NEW slot — square hero art (2040×1812) reserved for CampaignLobby / FactionTree detail panels |
+
+Skipped: `_big` (text overlay, baked-in title) and `_composite` (pre-flattened, no current consumer). Both stay under `resources/` as design references.
+
+**RGB → alpha auto-mask**: arcane and mech delivered the fore layer as opaque RGB which would block the mid+far layers when stacked. The importer applies a luminosity → alpha conversion (Rec.601 luminance × 1.4 bias) so dark sky/void becomes near-transparent while embers/crystals stay readable. Nature and void shipped as RGBA already and are copied straight through.
+
+**WebP refresh**: `_keyart` added to the convert script's pattern list. Re-running `convert_assets_to_webp.py` now produces 4 new `_keyart.webp` files at ~90-120KB each (down from ~3.6MB PNG).
+
+`FactionTreeScreen.FactionParallax` consumes the new files transparently — same paths, just higher quality. Keyart slot is staged for future wiring (next likely consumer: CampaignLobby hero background).
+
 ### Faction art loading speed — WebP conversion (95% size reduction)
 
 User reported faction images and splash screen loading slowly. Cause: the high-res v2 art delivery shipped 2MB landscape splashes + 800KB emblems as PNG. New `scripts/convert_assets_to_webp.py` bulk-converts every `_splash` / `_splash_mobile` / `_emblem` / `_parallax_{far,mid,fore}` PNG to WebP at q=82.
