@@ -18,13 +18,14 @@ describe('MissionArchetypes — registry shape', () => {
     }
   });
 
-  it('Plan 11 base_defense and Plan 13 heist are no longer stubs (v1 ships)', () => {
+  it('Plan 11 base_defense, Plan 12 attacker, and Plan 13 heist are no longer stubs (v1 ships)', () => {
     expect(isArchetypeStub('base_defense')).toBe(false);
+    expect(isArchetypeStub('attacker')).toBe(false);
     expect(isArchetypeStub('heist')).toBe(false);
   });
 
-  it('Plan 12 attacker stays stubbed pending engine surface (creep-send UI + AI defender)', () => {
-    expect(isArchetypeStub('attacker')).toBe(true);
+  it('attacker default mapId is attacker_assault', () => {
+    expect(getArchetype('attacker').defaults.mapId).toBe('attacker_assault');
   });
 
   it('base_defense default mapId is base_arena', () => {

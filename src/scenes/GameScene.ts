@@ -92,6 +92,11 @@ type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 const WALL_TOWER_IDS = new Set<string>(['mech_wall', 'mil_sandbag', 'mil_wire']);
 function isWallTower(towerId: string): boolean { return WALL_TOWER_IDS.has(towerId); }
 
+/** Plan 12 attacker mode — number of creeps that must reach the exit
+ *  during the run for the player to win. v1 hardcodes 5; v2 will let
+ *  per-mission overrides set it. */
+const ATTACKER_LEAK_THRESHOLD_DEFAULT = 5;
+
 /** Single-shot seeded roll in [0, 1). Used by the Endless faction
  *  rotation so host + joiner converge on the same faction for a
  *  given (sharedSeed, waveNum) pair. Same mulberry32 math as
@@ -491,7 +496,13 @@ export class GameScene extends Phaser.Scene {
     // Tutorial gets 99 lives so the player literally can't die. The
     // matching +150 gold bump lives further down — after `this.economy`
     // is constructed.
-    this.lives = this.matchMode === 'tutorial' ? 99 : STARTING_LIVES;
+    // Attacker mode: player commands creeps, leaks count as their score.
+    // Lives are repurposed as "defender HP" — the player wins by
+    // forcing N leaks. Set high so they always have wave attempts left
+    // and the game-over-on-zero-lives path doesn't fire prematurely.
+    this.lives = this.matchMode === 'tutorial' ? 99
+      : this.matchMode === 'attacker' ? 999
+      : STARTING_LIVES;
     this.currentWave = 0;
     this.waveActive = false;
     this.betweenWaves = true;
@@ -822,6 +833,23 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
+    // Plan 12 attacker mode — drop the map's pre-placed defender
+    // towers onto the grid as the AI-side defense the player's
+    // creeps must break through. Free placements (no gold cost),
+    // happen once at scene init.
+    if (this.matchMode === 'attacker' && mapDef.preplacedTowers) {
+      for (const spec of mapDef.preplacedTowers) {
+        try {
+          const towerType = getTowerType(spec.towerId);
+          this.towerMgr.placeTower(spec.col, spec.row, towerType, this.allPaths, () => {
+            this.recalculatePaths();
+            return this.allPaths;
+          });
+        } catch (err) {
+          console.warn(`[attacker] failed to pre-place ${spec.towerId} at ${spec.col},${spec.row}`, err);
+        }
+      }
+    }
     const leakHandler = this.arenaManager
       ? new HeroLeakHandler(this.arenaManager, this.statsTracker, this.eventLog)
       : this.circle
@@ -2140,6 +2168,10 @@ export class GameScene extends Phaser.Scene {
 
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
+    // Plan 12: in attacker mode the player commands creeps, not
+    // towers — the defender's lattice is pre-placed at scene init.
+    // Hard-block all player placements regardless of allowedTowerIds.
+    if (this.matchMode === 'attacker') return;
     // Circle co-op: zone restriction
     if (!this.canBuildInZone(col, row)) return;
 
@@ -2407,6 +2439,25 @@ export class GameScene extends Phaser.Scene {
         }
       }
       if (this._gauntletTransitioning) return; // still transitioning
+
+      // Plan 12: attacker mode flips the win condition. Reaching all
+      // waves cleared without enough creeps escaping is a DEFEAT for
+      // the player (their creeps couldn't break through the defender).
+      // Threshold defaults to 5 for v1; mission overrides can set
+      // their own via missionContext later.
+      if (this.matchMode === 'attacker') {
+        const leaks = this.statsTracker.stats.creepsLeaked;
+        const threshold = ATTACKER_LEAK_THRESHOLD_DEFAULT;
+        if (leaks < threshold) {
+          // Defeat path — fall through to game-over with a synthetic
+          // "lives = 0" so existing code reads it as a defeat.
+          this.lives = 0;
+          this.eventLog.gameMessage(`Defenders held — only ${leaks} broke through (needed ${threshold}).`);
+          this.goToGameOver(false);
+          return;
+        }
+        this.eventLog.gameMessage(`Breakthrough — ${leaks} creep${leaks === 1 ? '' : 's'} reached the exit!`);
+      }
 
       this.eventBus.emit('gameWon');
       if (this.versus) {

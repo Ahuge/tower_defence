@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-05-02
+
+### Plan 12 v1 — Attacker mission archetype (pre-placed defender towers)
+
+Roles reverse: the player commands the creep waves and the map ships with a fixed defender lattice. v1 implementation per the roadmap — bespoke `attacker_assault` map with hand-placed Arrow/Cannon/Sniper/Frost-Trap towers along a central corridor, the player can't build, and the win condition flips at end-of-waves.
+
+**`MatchMode` extended**. Added `'attacker'` to the union in `WaveDefinitions.ts`. `getWavesForMode` calls `generateStandardWaves(waveCount ?? 10)` for it — same wave script as Standard, the asymmetry comes from the inverted player role rather than the spawn pattern.
+
+**`MapDefinition.preplacedTowers`**. New optional field: `Array<{ col, row, towerId }>`. Loaded after `TowerManager` init when `matchMode === 'attacker'`; each entry calls the same placement path a player would, but skips gold cost and faction gating (they're authored fixtures). The lattice for `attacker_assault` is 10 towers — Arrow pairs flanking the corridor for chip damage, Cannon mid-corridor for splash, two Sniper anchors at long range, and a Frost-Trap pair to slow boss waves through the kill zone.
+
+**GameScene attacker hooks**:
+- `lives = 999` so the existing zero-lives game-over check doesn't fire prematurely (the player WANTS leaks to happen).
+- `tryBuildTower` early-returns — no player tower placement.
+- Wave-complete branch flips: if all waves cleared and `creepsLeaked < ATTACKER_LEAK_THRESHOLD_DEFAULT (5)`, that's a defeat ("Defenders held"). At or above threshold = victory ("Breakthrough"). Threshold is a constant for v1; mission overrides will be threaded through `MissionContext` later.
+- `Analytics.gameEnd` and `PlayerProfile.awardGameEndXP` read `lives > 0` which correctly reports defeat (we explicitly zero lives in the under-threshold branch) or victory (lives stays at 999).
+
+**Archetype unstubbed**. `MissionArchetypes.attacker` now points at `attacker_assault` with `baseMode: 'attacker'`, 10 waves, normal difficulty. `CampaignDef.test.ts` updated to assert the new shape (was asserting the stub remained).
+
+**Out of scope for v1** (per the plan):
+- Dynamic AI defender via `BotAI` on `this.grid` — the plan v2 work, won't ship until creep-buff palette is also designed.
+- Essence-bought creep buffs / send composition picker — the player still gets standard "Z" sends, but a richer per-faction creep palette is the v2 piece.
+- Standalone top-level Attacker mode in the menu — campaign-only until data justifies promotion.
+
+**Verification**: 440/440 vitest pass, tsc clean.
+
 ## 2026-05-01
 
 ### High-res art v2 + parallax delivery + LoadingScreen splash

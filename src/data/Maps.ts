@@ -9,7 +9,10 @@ export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islan
   // Plan 11 — Base Defense. 4-edge spawn into a central base.
   | 'base_arena'
   // Plan 13 v1 — Heist. Vault on the east, exit to the west.
-  | 'heist_vault';
+  | 'heist_vault'
+  // Plan 12 v1 — Attacker. Open assault corridor with pre-placed
+  // defender towers; player commands the creeps.
+  | 'attacker_assault';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -52,6 +55,11 @@ export interface MapDefinition {
    *  gameplay. `entries` / `exits` are still populated (derived from
    *  spawners) so code paths that predate this feature keep working. */
   spawners?: SpawnerDef[];
+  /** Plan 12 — Attacker mode. Towers pre-placed by the defender
+   *  (the AI) at scene init. Player can't build their own; these
+   *  are the static defense the player's creep waves attempt to
+   *  break through. Ignored outside attacker missions. */
+  preplacedTowers?: { col: number; row: number; towerId: string }[];
 }
 
 export interface SpawnerDef {
@@ -447,6 +455,49 @@ export const MAPS: Record<MapId, MapDefinition> = {
       // Reserve a small ring around the base so the player can't
       // wall the central tile shut from arm's length.
       ...rect(MID_COL - 1, MID_ROW - 1, MID_COL + 1, MID_ROW + 1),
+    ],
+  },
+
+  // === Attacker (Plan 12 v1) ===
+  // Long open assault corridor. The player commands the attacking
+  // creeps; the defender (AI) is represented by a fixed lattice of
+  // pre-placed towers along the path. Player can't build, can't
+  // upgrade — they watch each wave try to break through and (in
+  // future v2) buff their next wave with essence.
+  //
+  // Win: leak count >= mission threshold (set per-mission, default
+  // around 5 of the wave creeps surviving the gauntlet).
+  attacker_assault: {
+    id: 'attacker_assault',
+    name: 'The Assault Corridor',
+    description: 'You command the attack. Their pre-built defense is in the way.',
+    theme: 'stone',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [
+      // Outer arena walls — funnel the path through the central
+      // corridor where defender towers sit.
+      ...rect(0, 0, GRID_COLS - 1, 5),
+      ...rect(0, GRID_ROWS - 6, GRID_COLS - 1, GRID_ROWS - 1),
+    ],
+    noBuild: [],
+    preplacedTowers: [
+      // Pre-placed defender lattice. Cheap towers at staggered rows
+      // along the corridor — the player's wave has to walk past all
+      // of these. Picked from the basic-faction kit so any campaign
+      // mission against any faction reads as "their basic outposts."
+      // Mix of damage profiles: arrows (fast single-target), cannons
+      // (splash), one sniper for late-corridor pressure.
+      { col: 6,  row: MID_ROW - 2, towerId: 'arrow' },
+      { col: 6,  row: MID_ROW + 2, towerId: 'arrow' },
+      { col: 12, row: MID_ROW - 2, towerId: 'cannon' },
+      { col: 12, row: MID_ROW + 2, towerId: 'cannon' },
+      { col: 18, row: MID_ROW - 2, towerId: 'arrow' },
+      { col: 18, row: MID_ROW + 2, towerId: 'slow' },
+      { col: 24, row: MID_ROW - 2, towerId: 'cannon' },
+      { col: 24, row: MID_ROW + 2, towerId: 'arrow' },
+      { col: 30, row: MID_ROW - 2, towerId: 'sniper' },
+      { col: 30, row: MID_ROW + 2, towerId: 'arrow' },
     ],
   },
 

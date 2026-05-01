@@ -115,19 +115,22 @@ const ARCHETYPES: Record<MissionArchetypeId, MissionArchetype> = {
     defaults: { waveCount: 15, difficulty: 'normal', mapId: 'base_arena' as const },
   },
 
-  // ─── Plan 12 — Attacker (stub) ─────────────────────────────────
-  // Reverse-roles archetype — player commands creeps, AI plays
-  // defender. Stays stubbed because it requires net-new engine
-  // surface (creep-send picker UI, AI defender driver, win-by-leak
-  // condition flip). Tracked separately when the engine work is
-  // scoped.
+  // ─── Plan 12 — Attacker (v1 — pre-placed defender towers) ──────
+  // v1 implementation: new `attacker` MatchMode + the `attacker_assault`
+  // map with pre-placed defender towers. Player can't build; their
+  // creep waves spawn from the standard wave script and the win
+  // condition is inverted at game-end (leak count >= threshold =
+  // victory).
+  //
+  // v2: dynamic AI defender via BotAI on this.grid (instead of
+  // fixed pre-placements), plus an essence-bought creep-buff palette
+  // for the player. Both are tracked separately.
   attacker: {
     id: 'attacker',
     label: 'Attacker',
-    blurb: 'You command the creeps. (Coming soon.)',
-    baseMode: 'standard',
-    defaults: { waveCount: 10, difficulty: 'normal' },
-    __archetypeStub: true,
+    blurb: 'You command the creeps. Break through their defense.',
+    baseMode: 'attacker',
+    defaults: { waveCount: 10, difficulty: 'normal', mapId: 'attacker_assault' as const },
   },
 
   // ─── Plan 13 — Heist (v1 — reverse path only) ──────────────────
