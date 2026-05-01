@@ -2,6 +2,16 @@
 
 ## 2026-05-02
 
+### Campaign mode now always available (level 1)
+
+User feedback: a fresh player should be able to dive into the Arcane campaign immediately rather than grinding to level 7 first. Campaigns ARE the polished onboarding path into the faction content, not a late-game reward. Drops `MODE_UNLOCK_LEVEL.campaign` from 7 → 1.
+
+### Bugfix: parallax v2 high-res silently overwritten by sheet slicer
+
+Discovered while investigating "the parallax in `public/assets/arcane/` isn't the new stuff." Cause: `slice_high_res_art.py`'s `slice_parallax` step writes to the same output paths as `import_parallax_v2.py` (`{faction}_parallax_{far,mid,fore}.png`), so any time the slicer ran (e.g. for splash imports) it silently re-overwrote the high-res with low-res slices from `image_c.png`.
+
+Fix: `slice_parallax` now skips any faction whose bespoke `parallax/parallax_<faction>_far.png` exists in the v2 source folder. `import_parallax_v2.py` retains exclusive ownership of those files for delivered factions; the sheet slicer continues to handle the 7 not-yet-delivered factions. Re-imported high-res for arcane / mech / nature / void; WebP refreshed.
+
 ### Mechanical campaign — 10 missions, Iron Cascade
 
 Second complete campaign. Player fights AGAINST Mechanical across 10 missions; completing it unlocks playing AS Mechanical (alternate route to the Shards spend in the faction tree). Mechanical is a tier-1 unlock.

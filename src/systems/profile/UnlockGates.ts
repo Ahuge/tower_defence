@@ -56,7 +56,10 @@ export const MODE_UNLOCK_LEVEL: Record<string, number> = {
   circle_coop:  12,
   // Modes shipped via later plans — not exposed in menu yet.
   career:       15,
-  campaign:     7,
+  // Campaign is the polished onboarding path into the game's faction
+  // content — always available so a fresh player can dive straight
+  // into Arcane (the free root) without a Player Level grind first.
+  campaign:     1,
   base_defense: 999,
   attacker:     999,
   heist:        999,

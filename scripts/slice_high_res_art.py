@@ -236,6 +236,15 @@ def slice_parallax(dry: bool) -> None:
     def slice_row(factions: list[str], xs: list[tuple[int, int]],
                   layer_ys: dict[str, tuple[int, int]]) -> None:
         for (x0, x1), faction in zip(xs, factions):
+            # Bespoke high-res parallax wins. If the artist delivered a
+            # full-res `parallax/parallax_<faction>_far.png` (etc), skip
+            # the low-res sheet slice entirely — `import_parallax_v2.py`
+            # owns the good copy. Without this gate, every run of this
+            # script silently overwrites the high-res with the old slice.
+            bespoke = os.path.join(SRC, 'parallax', f'parallax_{faction}_far.png')
+            if os.path.exists(bespoke):
+                print(f'  ⤷ {faction}: bespoke high-res parallax exists, skipping sheet slice')
+                continue
             out_dir = os.path.join(OUT, faction)
             ensure_dir(out_dir)
             for layer, (y0, y1) in layer_ys.items():
