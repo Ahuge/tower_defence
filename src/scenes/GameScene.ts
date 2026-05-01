@@ -82,6 +82,8 @@ import { platformBridge } from '../systems/platform';
 import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
 import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
+import { MissionRunner } from '../systems/missions/MissionRunner';
+import { getCampaign } from '../data/campaigns';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -2527,6 +2529,56 @@ export class GameScene extends Phaser.Scene {
         threshold: ATTACKER_LEAK_THRESHOLD_DEFAULT,
       });
     }
+    // Plan 14 v2: push the in-mission objective tracker state. Built
+    // from a hypothetical "if I won right now" MissionResult so each
+    // star predicate evaluates against the LIVE state (lives, sends
+    // bought, hero hp, attacker leaks, ...) rather than the final
+    // numbers we don't have yet.
+    if (this.missionContext) {
+      const campaign = getCampaign(this.missionContext.campaignFactionId as FactionId);
+      const missionDef = campaign?.missions[this.missionContext.missionIdx] ?? null;
+      if (missionDef) {
+        const livesStart = this._missionLives ?? STARTING_LIVES;
+        const liveResult = {
+          won: true, // tracker assumes "if you won this instant"
+          wave: this.currentWave,
+          durationMs: Date.now() - this._gameStartTime,
+          livesRemaining: this.lives,
+          livesStart,
+          goldRemaining: this.economy.gold,
+          goldEarned: this.statsTracker.stats.totalGoldEarned ?? 0,
+          towerCount: this.towerMgr.totalTowersBuilt,
+          perfectRun: this.lives === livesStart && !this._continueAdShown,
+          custom: {
+            sendsBought: this._missionSendsBought,
+            heroHpMin: this._missionHeroHpMinFraction,
+            attackerLeaks: this.statsTracker.stats.creepsLeaked,
+          },
+        };
+        const objectives: Array<{ star: 1 | 2 | 3; label: string; met: boolean }> = [
+          { star: 1, label: 'Win the mission', met: false },
+        ];
+        if (missionDef.objectives.star2) {
+          objectives.push({
+            star: 2,
+            label: missionDef.objectives.star2.label,
+            met: missionDef.objectives.star2.predicate(liveResult),
+          });
+        }
+        if (missionDef.objectives.star3) {
+          objectives.push({
+            star: 3,
+            label: missionDef.objectives.star3.label,
+            met: missionDef.objectives.star3.predicate(liveResult),
+          });
+        }
+        GameUIStore.setMissionPanel({
+          missionName: missionDef.name,
+          archetypeId: this.missionContext.archetypeId,
+          objectives,
+        });
+      }
+    }
     // Demote 3× → 2× the moment the boost lapses so the UI + game
     // stay in sync. Cheap check (just a timestamp compare).
     this.reconcileSpeedToBoostState();
@@ -3051,36 +3103,61 @@ export class GameScene extends Phaser.Scene {
 
     // Plan 10: if this was a campaign mission, hand the result to
     // MissionRunner so it can evaluate star objectives and persist.
-    // The runner reads the same result snapshot we built for the
-    // GameOverScene, plus a couple of mission-specific fields.
+    // We attach the resulting stars + objective summary onto the
+    // game-over data so GameOverScreen can render mission-specific UI
+    // (star reveal, "Next Mission" CTA) without re-evaluating any
+    // predicates DOM-side.
     if (this.missionContext) {
       const won = this.lives > 0;
       const livesStart = this._missionLives ?? STARTING_LIVES;
       const heroHpMin = this._missionHeroHpMinFraction;
       const sendsBought = this._missionSendsBought;
-      void import('../systems/missions/MissionRunner').then(m => {
-        m.MissionRunner.finalize({
-          won,
-          wave: this.currentWave,
-          durationMs: Date.now() - this._gameStartTime,
-          livesRemaining: this.lives,
-          livesStart,
-          goldRemaining: this.economy.gold,
-          goldEarned: this.statsTracker.stats.totalGoldEarned ?? 0,
-          towerCount: this.towerMgr.totalTowersBuilt,
-          perfectRun: won && this.lives === livesStart && !this._continueAdShown,
-          custom: {
-            // Plan 14 v1.1: counter-driven star objectives. Predicates
-            // in arcane.ts read these by name.
-            sendsBought,
-            heroHpMin,
-            // Plan 12 attacker: total leaks (== creeps that broke
-            // through the defender lattice). Predicates can require a
-            // higher count for star objectives ("3★: 8+ break through").
-            attackerLeaks: this.statsTracker.stats.creepsLeaked,
-          },
-        });
-      });
+      const missionResult = {
+        won,
+        wave: this.currentWave,
+        durationMs: Date.now() - this._gameStartTime,
+        livesRemaining: this.lives,
+        livesStart,
+        goldRemaining: this.economy.gold,
+        goldEarned: this.statsTracker.stats.totalGoldEarned ?? 0,
+        towerCount: this.towerMgr.totalTowersBuilt,
+        perfectRun: won && this.lives === livesStart && !this._continueAdShown,
+        custom: {
+          sendsBought,
+          heroHpMin,
+          // Plan 12 attacker: total leaks (creeps that broke through).
+          attackerLeaks: this.statsTracker.stats.creepsLeaked,
+        },
+      };
+      const stars = MissionRunner.finalize(missionResult);
+      const active = MissionRunner.getActive(); // null after finalize, so capture before
+      // Re-resolve via the campaign registry since finalize cleared
+      // the active session. We need the campaign + missionDef to render
+      // the post-mission UI and offer the Next Mission jump.
+      const campaign = getCampaign(this.missionContext.campaignFactionId as FactionId);
+      const missionDef = campaign?.missions[this.missionContext.missionIdx] ?? null;
+      data.missionResult = {
+        campaignFactionId: this.missionContext.campaignFactionId,
+        missionIdx: this.missionContext.missionIdx,
+        missionName: missionDef?.name ?? 'Mission',
+        archetypeId: this.missionContext.archetypeId,
+        stars,
+        won,
+        objectives: [
+          { label: 'Win the mission', met: won },
+          missionDef?.objectives.star2
+            ? { label: missionDef.objectives.star2.label, met: won && missionDef.objectives.star2.predicate(missionResult) }
+            : null,
+          missionDef?.objectives.star3
+            ? { label: missionDef.objectives.star3.label, met: stars >= 3 }
+            : null,
+        ].filter((o): o is { label: string; met: boolean } => o !== null),
+        // Idx of the next playable mission (or null if this was the last
+        // OR the player lost — losing doesn't unlock the next one).
+        nextMissionIdx: (won && campaign && this.missionContext.missionIdx + 1 < campaign.missions.length)
+          ? this.missionContext.missionIdx + 1 : null,
+      };
+      void active; // suppress unused
     }
 
     // Live-capture session close — appends this match's turns to

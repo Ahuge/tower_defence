@@ -6,7 +6,9 @@ import { ShardWallet, BattlePass } from '../../systems/monetization';
 import { GameStats } from '../../systems/StatsTracker';
 import { platformBridge } from '../../systems/platform';
 import { FACTIONS, FactionId } from '../../data/Factions';
-import { CoopPlayerStats } from '../../scenes/GameOverScene';
+import { CoopPlayerStats, MissionResultSummary } from '../../scenes/GameOverScene';
+import { getCampaign } from '../../data/campaigns';
+import { MissionRunner } from '../../systems/missions/MissionRunner';
 
 interface Props { data: Record<string, unknown>; }
 
@@ -49,6 +51,7 @@ export function GameOverScreen({ data }: Props) {
   const shardsEarned = data.shardsEarned as number;
   const continueAdShown = data.continueAdShown === true;
   const coopPlayers = data.coopPlayers as CoopPlayerStats[] | undefined;
+  const missionResult = data.missionResult as MissionResultSummary | undefined;
 
   const score = wave * 100 + creepsKilled * 2 + (won ? 1000 : 0) + gold;
   const gameTime = stats ? Math.round(stats.gameTimeMs / 1000) : 0;
@@ -228,12 +231,114 @@ export function GameOverScreen({ data }: Props) {
         </div>
       )}
 
-      {/* Buttons */}
+      {/* Mission summary — only for campaign mission runs. Shows
+          per-objective star reveal + a "Next Mission" CTA so the
+          player can chain into the next chapter from this screen. */}
+      {missionResult && <MissionSummary result={missionResult} continueAdShown={continueAdShown} />}
+
+      {/* Buttons — mission runs replace the generic Play Again/Menu
+          pair with a mission-flow set (Next / Replay / Lobby / Menu). */}
       <div class="ui-section" style={{ display: 'flex', justifyContent: 'center', gap: '12px', paddingBottom: '24px', flexWrap: 'wrap' }}>
-        <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Play Again</button>
-        <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
-        <button class="btn btn-primary" onClick={() => UIBridge.show('store')}>Store</button>
+        {missionResult ? (
+          <MissionButtons result={missionResult} continueAdShown={continueAdShown} />
+        ) : (
+          <>
+            <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Play Again</button>
+            <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
+            <button class="btn btn-primary" onClick={() => UIBridge.show('store')}>Store</button>
+          </>
+        )}
       </div>
+    </>
+  );
+}
+
+/** Post-mission star reveal + objective list. Renders the 3-star
+ *  badge prominently and lists every objective with met / unmet state.
+ *  Sits between the stats grid and the action buttons. */
+function MissionSummary({ result }: { result: MissionResultSummary; continueAdShown: boolean }) {
+  const earned = '★'.repeat(result.stars) + '☆'.repeat(3 - result.stars);
+  const subtitle = result.won
+    ? (result.stars === 3 ? 'Perfect!' : result.stars === 2 ? 'Strong run.' : 'Mission won.')
+    : 'Mission failed.';
+  return (
+    <div class="ui-section" style={{ paddingTop: 0 }}>
+      <div class="ui-section-title" style={{ color: 'var(--gold)' }}>{result.missionName}</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+        padding: '16px', borderRadius: '8px',
+        background: 'rgba(255,170,68,0.06)',
+        border: '1px solid rgba(255,170,68,0.25)',
+      }}>
+        <div style={{ fontFamily: "'Silkscreen', monospace", fontSize: '36px', color: 'var(--gold)', letterSpacing: '0.1em' }}>{earned}</div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{subtitle}</div>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+          {result.objectives.map((o, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              fontSize: '12px',
+              color: o.met ? 'var(--gold)' : 'var(--text-dim)',
+              padding: '4px 8px',
+            }}>
+              <span style={{ width: '14px' }}>{o.met ? '★' : '☆'}</span>
+              <span>{o.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Mission-flow buttons. Won + has-next: prefer "Next Mission". Won
+ *  + last: prefer "Campaign Lobby". Lost: "Retry". Always include a
+ *  Lobby + Menu fallback so the player isn't trapped. */
+function MissionButtons({ result, continueAdShown }: { result: MissionResultSummary; continueAdShown: boolean }) {
+  const factionId = result.campaignFactionId;
+  const goLobby = () => leaveViaInterstitial(() => {
+    const campaign = getCampaign(factionId as any);
+    if (campaign) UIBridge.show('campaign-lobby', { campaign });
+    else UIBridge.showMenu();
+  }, continueAdShown);
+  const goNext = () => leaveViaInterstitial(() => {
+    const campaign = getCampaign(factionId as any);
+    if (campaign && result.nextMissionIdx !== null) {
+      MissionRunner.start(campaign, result.nextMissionIdx);
+    } else if (campaign) {
+      UIBridge.show('campaign-lobby', { campaign });
+    } else {
+      UIBridge.showMenu();
+    }
+  }, continueAdShown);
+  const goRetry = () => leaveViaInterstitial(() => {
+    const campaign = getCampaign(factionId as any);
+    if (campaign) MissionRunner.start(campaign, result.missionIdx);
+    else UIBridge.showMenu();
+  }, continueAdShown);
+
+  if (result.won && result.nextMissionIdx !== null) {
+    return (
+      <>
+        <button class="btn btn-gold btn-large" onClick={goNext}>Next Mission →</button>
+        <button class="btn btn-large" onClick={goLobby}>Campaign Lobby</button>
+        <button class="btn" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
+      </>
+    );
+  }
+  if (result.won) {
+    return (
+      <>
+        <button class="btn btn-gold btn-large" onClick={goLobby}>Campaign Lobby</button>
+        <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
+      </>
+    );
+  }
+  // Loss
+  return (
+    <>
+      <button class="btn btn-gold btn-large" onClick={goRetry}>Retry Mission</button>
+      <button class="btn btn-large" onClick={goLobby}>Campaign Lobby</button>
+      <button class="btn" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
     </>
   );
 }

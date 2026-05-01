@@ -149,6 +149,17 @@ export class CreepManager {
         leakCount++;
         creep.reached = false;
         creep.alive = false;
+        // Destroy any lingering sprite. Normally Creep.update tears
+        // down the sprite when the creep walks off the end of its
+        // path (pathIndex >= path.length), but `reached` can also be
+        // set externally — e.g. by the wave-stuck recovery path
+        // (forceLeakAllAlive) or any future leak-promotion logic.
+        // Without this, the leaked creep's sprite gets orphaned and
+        // sits frozen on the board forever.
+        if ((creep as any).sprite) {
+          (creep as any).sprite.destroy();
+          (creep as any).sprite = null;
+        }
       }
     }
 

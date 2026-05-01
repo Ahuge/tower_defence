@@ -2,6 +2,16 @@
 
 ## 2026-05-02
 
+### Post-mission UX + in-mission star tracker + leak-sprite bug
+
+Three campaign-flow features in one batch.
+
+**Post-mission flow → campaign lobby + Next Mission CTA**. Per user: "We need to drop the player back in the campaign menu after they finish a campaign match, ideally some sort of lobby where they can press yes and go to the next campaign level." GameOverScreen now detects mission runs and renders a star reveal block + per-objective met/unmet rows + mission-flow buttons. Won + has-next: "Next Mission →" is the primary CTA. Won + last: "Campaign Lobby" is primary. Lost: "Retry Mission" is primary, lobby + menu fall-throughs always present.
+
+**In-mission objective tracker (sidebar MISSION panel)**. Per user: "I'd also like to see the things that give me stars throughout the mission and how I'm doing in realtime. Maybe a mission tab beside waves." New `MissionPanelDOM` renders inside `GameSidebar` above WAVES on campaign runs. Each frame GameScene pushes the live state of every star objective by evaluating its predicate against an "if I won this instant" snapshot — lives, sends bought, hero hp, attacker leaks, etc all tick the tracker live. Star icons fill / unfill in real time. Default-open on campaign runs so the player sees objectives without an extra tap.
+
+**Bugfix: leaked creep sprites orphaned**. User report: "creeps I leaked got about halfway before my lives counter went down and they stopped moving but their sprites are still there." Root cause: `CreepManager.update`'s leak-processing loop ran the leak handler and marked `creep.alive = false` but never destroyed the sprite. Normal end-of-path leaks (Creep.update sets reached=true AND destroys sprite) were fine, but the wave-stuck recovery path (`forceLeakAllAlive` from `WaveController`) only sets `reached = true` — sprite was orphaned. Fixed: leak loop now destroys any lingering sprite on the leaked creep.
+
 ### Campaign mode now always available (level 1)
 
 User feedback: a fresh player should be able to dive into the Arcane campaign immediately rather than grinding to level 7 first. Campaigns ARE the polished onboarding path into the faction content, not a late-game reward. Drops `MODE_UNLOCK_LEVEL.campaign` from 7 → 1.

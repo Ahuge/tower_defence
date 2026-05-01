@@ -315,6 +315,20 @@ export interface GameUIState {
    *  meaningful "Breakthrough: X / N" readout — in attacker mode the
    *  player WANTS leaks, so the lives counter is misleading. */
   attackerProgress: { leaks: number; threshold: number } | null;
+  /** Plan 14 v2: in-mission objective tracker state. Populated each
+   *  frame when a campaign mission is active; null otherwise. Drives
+   *  the MISSION sidebar panel — players see live which star
+   *  objectives they're currently meeting and which they still need. */
+  missionPanel: MissionPanelState | null;
+}
+
+export interface MissionPanelState {
+  missionName: string;
+  archetypeId: string;
+  /** Each objective with its live met/unmet state evaluated against a
+   *  hypothetical "if I won right now" snapshot. Order: star 1 (always
+   *  "win"), star 2, star 3 if declared. */
+  objectives: Array<{ star: 1 | 2 | 3; label: string; met: boolean }>;
 }
 
 export interface ContinueOffer {
@@ -426,6 +440,7 @@ class GameUIStoreClass {
       speedBoostRemainingSec: 0,
       circleRoster: null,
       attackerProgress: null,
+      missionPanel: null,
     };
   }
 
@@ -448,6 +463,21 @@ class GameUIStoreClass {
     if (prev === next) return;
     if (prev && next && prev.leaks === next.leaks && prev.threshold === next.threshold) return;
     this.state = { ...this.state, attackerProgress: next };
+    this.notify();
+  }
+
+  /** Plan 14 v2: push in-mission objective tracker state. Pushed each
+   *  frame from GameScene only on campaign mission runs. Skip notify
+   *  when nothing changed (compares per-objective met flag — labels +
+   *  archetype don't change once the mission starts). */
+  setMissionPanel(next: MissionPanelState | null): void {
+    const prev = this.state.missionPanel;
+    if (prev === next) return;
+    if (prev && next
+      && prev.missionName === next.missionName
+      && prev.objectives.length === next.objectives.length
+      && prev.objectives.every((o, i) => o.met === next.objectives[i].met)) return;
+    this.state = { ...this.state, missionPanel: next };
     this.notify();
   }
 

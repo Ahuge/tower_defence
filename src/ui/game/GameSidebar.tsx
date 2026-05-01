@@ -12,14 +12,18 @@ import { TowerInfoPanelDOM } from './TowerInfoPanelDOM';
 import { CreepInfoPanelDOM } from './CreepInfoPanelDOM';
 import { UpcomingWavesDOM } from './UpcomingWavesDOM';
 import { EconomyPanelDOM } from './EconomyPanelDOM';
+import { MissionPanelDOM } from './MissionPanelDOM';
 import { GameUIStore } from '../GameUIStore';
 import { ResponsiveManager } from '../../systems/ResponsiveManager';
 
-type PanelId = 'waves' | 'economy' | 'tower' | 'creep';
+type PanelId = 'mission' | 'waves' | 'economy' | 'tower' | 'creep';
 
 export function GameSidebar() {
-  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence } = useGameUI();
-  const [openPanel, setOpenPanel] = useState<PanelId | null>('waves');
+  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence, missionPanel } = useGameUI();
+  // Default to MISSION when this is a campaign run so the player sees
+  // their star objectives at the top of the sidebar without an extra
+  // tap; otherwise default to WAVES like before.
+  const [openPanel, setOpenPanel] = useState<PanelId | null>(missionPanel ? 'mission' : 'waves');
   const [showFloating, setShowFloating] = useState<'tower' | 'creep' | null>(null);
   // Measure status bar so the floating card can sit above it — its height
   // varies with flex-wrap (1-3 rows depending on viewport width and what's shown).
@@ -109,6 +113,21 @@ export function GameSidebar() {
         maxWidth: panelWidth, width: panelWidth,
         overflow: 'visible',
       }}>
+        {/* Plan 14 v2: campaign mission objective tracker. Sits above
+            Waves so the player's eyes land on their star goals first.
+            Hidden entirely on non-mission runs. */}
+        {missionPanel && (
+          <CollapsiblePanel
+            title="MISSION"
+            titleColor="var(--gold)"
+            open={openPanel === 'mission'}
+            onToggle={() => toggle('mission')}
+            badge={`${missionPanel.objectives.filter(o => o.met).length}/${missionPanel.objectives.length}★`}
+          >
+            <MissionPanelDOM />
+          </CollapsiblePanel>
+        )}
+
         <div data-tutorial-target="waves-panel">
           <CollapsiblePanel
             title="WAVES"
