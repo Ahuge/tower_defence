@@ -303,7 +303,12 @@ function MissionButtons({ result, continueAdShown }: { result: MissionResultSumm
   const goNext = () => leaveViaInterstitial(() => {
     const campaign = getCampaign(factionId as any);
     if (campaign && result.nextMissionIdx !== null) {
-      MissionRunner.start(campaign, result.nextMissionIdx);
+      // Route through the campaign lobby with the next mission
+      // pre-selected. The lobby auto-opens the story modal for it,
+      // which surfaces the pre-mission lore + objectives — without
+      // this hop the player would skip straight into the mission and
+      // miss the narrative beat entirely.
+      UIBridge.show('campaign-lobby', { campaign, autoSelectMissionIdx: result.nextMissionIdx });
     } else if (campaign) {
       UIBridge.show('campaign-lobby', { campaign });
     } else {

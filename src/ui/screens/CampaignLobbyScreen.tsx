@@ -41,6 +41,7 @@ interface Props {
 
 export function CampaignLobbyScreen({ data }: Props) {
   const campaign = data.campaign as CampaignDef | undefined;
+  const autoSelectMissionIdx = data.autoSelectMissionIdx as number | undefined;
   const [, setTick] = useState(0);
   const [pendingMission, setPendingMission] = useState<MissionDef | null>(null);
 
@@ -49,6 +50,20 @@ export function CampaignLobbyScreen({ data }: Props) {
       Analytics.track('campaign_lobby_opened', { campaignFactionId: campaign.factionId });
     }
   }, [campaign?.factionId]);
+
+  // GameOverScreen routes here with autoSelectMissionIdx after a "Next
+  // Mission" tap so the player sees the story modal for the upcoming
+  // chapter before launching. Skip if the mission is locked or stub
+  // (defensive — the prior mission's win unlocked the next, so this
+  // should always pass for a normal Next Mission flow).
+  useEffect(() => {
+    if (!campaign || autoSelectMissionIdx === undefined) return;
+    const next = campaign.missions[autoSelectMissionIdx];
+    if (!next) return;
+    if (!PlayerProfile.isMissionUnlocked(campaign.factionId, next.idx)) return;
+    if (isArchetypeStub(next.archetype)) return;
+    setPendingMission(next);
+  }, [campaign?.factionId, autoSelectMissionIdx]);
 
   if (!campaign) {
     return (
