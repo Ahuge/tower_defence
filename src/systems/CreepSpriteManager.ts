@@ -112,7 +112,13 @@ export function createCreepSprite(
   return sprite;
 }
 
-/** Play death animation on a creep sprite, then destroy it */
+/** Play death animation on a creep sprite, then destroy it.
+ *  Defensive cleanup: in addition to the `animationcomplete` listener,
+ *  schedule a delayed destroy as a backstop. If the event fires first
+ *  the destroy is a no-op (Phaser checks `active`). If the event is
+ *  swallowed (scene transition mid-animation, or any Phaser 4 edge
+ *  case where the listener never fires), the timer fires anyway and
+ *  the corpse can't outlive the animation duration. */
 export function playCreepDeath(
   scene: Phaser.Scene,
   sprite: Phaser.GameObjects.Sprite,
@@ -120,11 +126,17 @@ export function playCreepDeath(
   creepTypeId: string,
 ): void {
   const deathKey = `creep_${faction}_${creepTypeId}_death`;
+  const safeDestroy = () => {
+    if (sprite && (sprite as any).active !== false) sprite.destroy();
+  };
   if (scene.anims.exists(deathKey)) {
     sprite.play(deathKey);
-    sprite.once('animationcomplete', () => {
-      sprite.destroy();
-    });
+    sprite.once('animationcomplete', safeDestroy);
+    // Backstop timer at 1.5× animation duration. DEATH_FRAMES / DEATH_FPS
+    // is the natural runtime; the cushion gives the listener room to
+    // win the race in the happy path.
+    const ms = Math.ceil((DEATH_FRAMES / DEATH_FPS) * 1500);
+    scene.time.delayedCall(ms, safeDestroy);
   } else {
     sprite.destroy();
   }

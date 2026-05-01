@@ -608,6 +608,21 @@ export class GameScene extends Phaser.Scene {
     const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
     this.grid = new Grid(mapDef, gridRows);
     this.waves = getWavesForMode(this.matchMode, this.waveCount);
+    // Hero vs Boss mission: promote the final wave to a boss wave so
+    // the archetype's "5 waves then a boss" promise actually plays out.
+    // Without this the last wave is just escalating standard creeps and
+    // the player never sees a flagship enemy. Mutates the wave script
+    // in-place; the rest of the engine reads the boss flag transparently.
+    if (this.missionContext?.archetypeId === 'hero_vs_boss' && this.waves.length > 0) {
+      const last = this.waves[this.waves.length - 1];
+      const baseHp = last.groups[0]?.hpScale ?? 100;
+      this.waves[this.waves.length - 1] = {
+        wave: last.wave,
+        groups: [{ creepType: 'boss', count: 1, hpScale: baseHp * 1.4, speedScale: 1 }],
+        spawnInterval: 0,
+        isBoss: true,
+      };
+    }
     this.recalculatePaths();
 
     // Systems
@@ -2434,7 +2449,15 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.waveMgr.isComplete() && this.creeps.length === 0 && this.matchMode !== 'endless') {
+    // HD mode: arena creeps live separately from path creeps, so the
+    // wave-clear check must also wait for the arena to drain — otherwise
+    // the player gets a false "victory" message while the hero is still
+    // mid-fight (especially obvious on hero_vs_boss: the boss spawns
+    // at the END of wave N's spawn pulse, then the gate trips before
+    // the hero kills it).
+    const arenaDrained = !this.arenaManager
+      || this.arenaManager.arenaCreeps.every(c => !c.alive);
+    if (this.waveMgr.isComplete() && this.creeps.length === 0 && arenaDrained && this.matchMode !== 'endless') {
       // Gauntlet: stage transition instead of game over
       if (this.matchMode === 'gauntlet' && !this._gauntletTransitioning) {
         const gauntlet = this.gameMode as any;
@@ -3051,6 +3074,10 @@ export class GameScene extends Phaser.Scene {
             // in arcane.ts read these by name.
             sendsBought,
             heroHpMin,
+            // Plan 12 attacker: total leaks (== creeps that broke
+            // through the defender lattice). Predicates can require a
+            // higher count for star objectives ("3★: 8+ break through").
+            attackerLeaks: this.statsTracker.stats.creepsLeaked,
           },
         });
       });

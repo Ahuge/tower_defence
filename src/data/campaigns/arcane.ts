@@ -8,11 +8,9 @@
  * validates the campaign system before tier-1 campaigns (Mechanical
  * etc.) ship with real unlock-to-play stakes.
  *
- * v1 lineup uses only the existing-mode archetypes from Plan 10.
- * Missions 4 + 8 in the original design called for Base Defense and
- * Attacker (Plans 11/12); v1 substitutes restriction and standard
- * survival. Plan 14 v2 (Chunk D) retrofits the proper archetypes
- * once Plans 11/12/13 ship.
+ * Plan 14 v2: missions 4 (Spire Under Siege) and 8 (Breach the
+ * Relay) now use the proper archetypes shipped in Plans 11 and 12.
+ * Earlier v1 entries (Open Fortress / The Long Siege) were stand-ins.
  *
  * Story tone: terse-mechanical medieval-fantasy report style. Each
  * mission is roughly one stage of a coalition's pushback against
@@ -102,29 +100,23 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 4 — REPLACEMENT for Base Defense: no-walls restriction on a long fortress map
+    // 4 — Base Defense (Plan 11): four columns advance on a central spire
     {
-      id: 'open_fortress',
+      id: 'spire_siege',
       idx: 3,
-      name: 'Open Fortress',
+      name: 'Spire Under Siege',
       story:
-        "The forge that supplies our walls fell to a meteor strike. We have stone, but no spike — no walls allowed " +
-        "this run. The maze must be made of shooters. They\'ll punish a slack defence.",
-      archetype: 'restriction',
+        "Their wizards charted our high command. Meteors fall from every horizon — they have us encircled, " +
+        "and four columns advance on the spire at once. No flank to hold. Stop everything that gets close.",
+      archetype: 'base_defense',
       overrides: {
-        mapId: 'fortress',
+        mapId: 'base_arena',
         difficulty: 'normal',
-        waveCount: 20,
-        restrictions: {
-          noWalls: true,
-        },
+        waveCount: 15,
       },
       objectives: {
-        star2: {
-          label: 'Win without buying any sends',
-          predicate: r => r.won && (r.custom.sendsBought as number ?? 0) === 0,
-        },
-        star3: { label: 'Win with at least 50% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.5) },
+        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: 'Win with 80% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
       },
     },
 
@@ -188,23 +180,29 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 8 — REPLACEMENT for Attacker: long-grind survival
+    // 8 — Attacker (Plan 12): we send raiders through their fortified relay
     {
-      id: 'long_siege',
+      id: 'breach_relay',
       idx: 7,
-      name: 'The Long Siege',
+      name: 'Breach the Relay',
       story:
-        "They won\'t leave. We won\'t leave. Twenty-five waves at the spire. Whoever still stands at the end " +
-        "writes the report.",
-      archetype: 'standard',
+        "Their meteor relay funnels every spell through one fortified corridor. Their towers are dug in; " +
+        "ours are not coming. We send raiders ourselves — get enough through and the relay falls.",
+      archetype: 'attacker',
       overrides: {
-        mapId: 'spiral',
-        difficulty: 'hard',
-        waveCount: 25,
+        mapId: 'attacker_assault',
+        difficulty: 'normal',
+        waveCount: 10,
       },
       objectives: {
-        star2: { label: 'Survive past wave 20', predicate: r => r.wave >= 20 },
-        star3: { label: 'Win with 100+ gold banked', predicate: r => r.won && r.goldRemaining >= 100 },
+        star2: {
+          label: 'Break through with 8+ raiders',
+          predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 8,
+        },
+        star3: {
+          label: 'Break through with 12+ raiders',
+          predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 12,
+        },
       },
     },
 

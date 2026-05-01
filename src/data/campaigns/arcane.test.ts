@@ -88,7 +88,7 @@ describe('Campaign registry', () => {
 
 describe('Arcane mission predicates — counter-driven (Plan 14 v1.1)', () => {
   const heroDuel = ARCANE_CAMPAIGN.missions[2];
-  const openFortress = ARCANE_CAMPAIGN.missions[3];
+  const breachRelay = ARCANE_CAMPAIGN.missions[7];
 
   it('hero_duel star2 fires when heroHpMin >= 0.5 and the player won', () => {
     const r = { ...FRESH_RESULT, custom: { heroHpMin: 0.6 } };
@@ -105,14 +105,21 @@ describe('Arcane mission predicates — counter-driven (Plan 14 v1.1)', () => {
     expect(heroDuel.objectives.star2!.predicate(r)).toBe(false);
   });
 
-  it('open_fortress star2 fires when sendsBought === 0 on a win', () => {
-    const r = { ...FRESH_RESULT, custom: { sendsBought: 0 } };
-    expect(openFortress.objectives.star2!.predicate(r)).toBe(true);
+  it('breach_relay star2 fires when 8+ raiders broke through', () => {
+    const r = { ...FRESH_RESULT, custom: { attackerLeaks: 8 } };
+    expect(breachRelay.objectives.star2!.predicate(r)).toBe(true);
   });
 
-  it('open_fortress star2 fails when sendsBought >= 1', () => {
-    const r = { ...FRESH_RESULT, custom: { sendsBought: 1 } };
-    expect(openFortress.objectives.star2!.predicate(r)).toBe(false);
+  it('breach_relay star2 fails when fewer than 8 broke through', () => {
+    const r = { ...FRESH_RESULT, custom: { attackerLeaks: 7 } };
+    expect(breachRelay.objectives.star2!.predicate(r)).toBe(false);
+  });
+
+  it('breach_relay star3 requires 12+ raiders', () => {
+    const r12 = { ...FRESH_RESULT, custom: { attackerLeaks: 12 } };
+    const r11 = { ...FRESH_RESULT, custom: { attackerLeaks: 11 } };
+    expect(breachRelay.objectives.star3!.predicate(r12)).toBe(true);
+    expect(breachRelay.objectives.star3!.predicate(r11)).toBe(false);
   });
 });
 

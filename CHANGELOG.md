@@ -2,6 +2,21 @@
 
 ## 2026-05-02
 
+### Bugfix: hero_vs_boss campaign missions never spawned a boss + ended early
+
+User report: "In campaign, hero defence mode mentions 5 waves then boss. I never got the boss, and the wave 5 ended with creeps still in the hero area but says victory."
+
+Two distinct issues, both fixed:
+
+1. **No boss spawned**. The `hero_vs_boss` archetype defaulted to a 5-wave standard script. Wave 5 isn't a boss wave under the standard wave generator (bosses fall on multiples of 10), so the player got a regular wave instead. Fix: when a mission's archetype is `hero_vs_boss`, GameScene mutates the LAST wave of the generated script to a single-creep boss wave at 1.4× hpScale. The existing engine handles the boss flag transparently from there.
+2. **Premature victory**. The wave-clear gate checked `this.creeps.length === 0` (path creeps) but ignored arena creeps in HD mode. With 10× creep spawn density and a hero mid-fight, the path drained while the arena was still busy → false victory. Fix: the gate now also waits for `arenaManager.arenaCreeps.every(c => !c.alive)` when an arena exists.
+
+### Bugfix: dead creeps could persist indefinitely (sprite cleanup race)
+
+User report: "lots of dead creeps with their art still just hanging around, no death animation or anything, just them there forever."
+
+`playCreepDeath` relied solely on `sprite.once('animationcomplete', destroy)` to clean up the corpse. Phaser 4 has documented edge cases where the event is swallowed (scene transitions, sprite re-targeted, animation interrupted) — the corpse then lives forever. Fix: in addition to the listener, schedule a backstop `delayedCall` at 1.5× the natural animation duration. The two race; whichever fires first destroys the sprite, the second is a no-op.
+
 ### Plan 12 v1 polish — attacker HUD swap + intro hint
 
 The 999-lives counter was misleading in attacker mode (the player WANTS leaks). Three changes for clarity:
