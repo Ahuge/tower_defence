@@ -39,46 +39,23 @@ DST_BASE = ROOT / 'public' / 'assets'
 FACTIONS = ['arcane', 'mechanical', 'nature', 'void']
 
 
-def luminosity_alpha(img: Image.Image, bias: float = 1.4) -> Image.Image:
-    """Convert an RGB image to RGBA, deriving alpha from luminance.
-
-    Dark pixels (background sky / void) become near-transparent so the
-    foreground layer composites cleanly over the mid/far layers.
-    `bias` boosts highlights — embers, sparks, crystals stay opaque
-    even if their luminance isn't pure white. Tuned at 1.4 to keep
-    the ember/crystal silhouettes readable without bringing back the
-    grey haze that would defeat the whole point.
-    """
-    rgba = img.convert('RGBA')
-    pixels = rgba.load()
-    w, h = rgba.size
-    for y in range(h):
-        for x in range(w):
-            r, g, b, _ = pixels[x, y]
-            # Rec.601 luminance — matches how the eye reads brightness.
-            lum = 0.299 * r + 0.587 * g + 0.114 * b
-            a = max(0, min(255, int(lum * bias)))
-            pixels[x, y] = (r, g, b, a)
-    return rgba
-
-
-def import_layer(faction: str, role: str, dst_name: str, mask_alpha: bool = False) -> bool:
+def import_layer(faction: str, role: str, dst_name: str) -> bool:
+    """Copy a parallax layer source → engine path. We used to luminosity-
+    mask RGB fore layers to drop dark sky to alpha, but it over-thinned
+    them — the artist's intent for an RGB fore is "render the dark
+    pixels as opaque dim foreground" (a soft vignette / atmosphere).
+    The CSS in FactionTreeScreen already stacks the layer at opacity
+    0.25 over the mid+far, so dark RGB reads as a gentle darkening
+    rather than a hard block. If a faction needs true transparent fore
+    detail (floating crystals on clear sky, etc.), the artist ships
+    the layer as RGBA and that alpha is preserved. Either way, this
+    function just copies the bytes straight through. """
     src = SRC / f'parallax_{faction}_{role}.png'
     if not src.exists():
         print(f'  ! missing {src.name}')
         return False
     dst = DST_BASE / faction / dst_name
-    if mask_alpha:
-        img = Image.open(src)
-        if img.mode == 'RGB':
-            print(f'    luminosity-mask: {src.name} (RGB → RGBA)')
-            out = luminosity_alpha(img)
-            out.save(dst, 'PNG')
-        else:
-            # Already has alpha — straight copy.
-            shutil.copy2(src, dst)
-    else:
-        shutil.copy2(src, dst)
+    shutil.copy2(src, dst)
     size_kb = dst.stat().st_size / 1024
     print(f'  {src.name:42} → {dst.relative_to(ROOT)}  ({size_kb:.0f}K)')
     return True
@@ -94,11 +71,7 @@ def main() -> int:
         ok = True
         ok &= import_layer(faction, 'far',  f'{faction}_parallax_far.png')
         ok &= import_layer(faction, 'mid',  f'{faction}_parallax_mid.png')
-        # Fore layer: if it ships as RGB it would block the mid/far
-        # layers when stacked. Auto-mask dark → transparent so the
-        # parallax layering reads correctly regardless of artist
-        # delivery format.
-        ok &= import_layer(faction, 'fore', f'{faction}_parallax_fore.png', mask_alpha=True)
+        ok &= import_layer(faction, 'fore', f'{faction}_parallax_fore.png')
         ok &= import_layer(faction, 'big_no_text', f'{faction}_keyart.png')
         if not ok:
             print(f'  ! {faction} skipped some files')
