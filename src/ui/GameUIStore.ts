@@ -511,6 +511,18 @@ class GameUIStoreClass {
     this.notify();
   }
 
+  /** Replace totalWaves after activate. Phaser scene reuse keeps the
+   *  GameScene instance alive across matches, so `this.waves` from a
+   *  prior run can be stale at activate-time — without a follow-up
+   *  push the wave HUD shows the previous match's count (e.g. /20
+   *  bleeding into a 5-wave Hero Duel mission). GameScene calls this
+   *  immediately after `this.waves = getWavesForMode(...)`. */
+  setTotalWaves(totalWaves: number): void {
+    if (this.state.totalWaves === totalWaves) return;
+    this.state = { ...this.state, totalWaves };
+    this.notify();
+  }
+
   /** Deactivate (called when game ends) */
   deactivate(): void {
     this.state = this.defaultState();

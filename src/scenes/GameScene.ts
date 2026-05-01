@@ -610,6 +610,11 @@ export class GameScene extends Phaser.Scene {
     const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
     this.grid = new Grid(mapDef, gridRows);
     this.waves = getWavesForMode(this.matchMode, this.waveCount);
+    // Push the final wave count to the HUD now that this.waves is
+    // settled. activate() at create-start runs BEFORE this assignment
+    // and on a Phaser scene-reuse it sees the previous match's stale
+    // `this.waves` (e.g. /20 bleeding into a 5-wave Hero Duel).
+    GameUIStore.setTotalWaves(this.waves.length);
     // Hero vs Boss mission: promote the final wave to a boss wave so
     // the archetype's "5 waves then a boss" promise actually plays out.
     // Without this the last wave is just escalating standard creeps and
