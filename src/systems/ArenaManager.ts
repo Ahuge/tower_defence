@@ -11,6 +11,8 @@ import { EconomyManager } from './EconomyManager';
 import { EventLog } from '../ui/EventLog';
 import { FloatingDamage } from './FloatingDamage';
 import { ArenaEffect, FX, drawEffect } from './ArenaEffects';
+import { ArenaFloorRenderer } from './ArenaFloorRenderer';
+import type { FactionId } from '../data/Factions';
 
 export interface ArenaCreepData {
   hp: number;
@@ -65,6 +67,10 @@ export class ArenaManager {
   // Respawn text
   private respawnText: Phaser.GameObjects.Text | null = null;
 
+  // Per-faction floor tileset (PRD 01). Optional — falls back to the
+  // procedural background painted by drawArena() when null.
+  private floorRenderer: ArenaFloorRenderer | null = null;
+
   constructor(
     scene: Phaser.Scene,
     heroType: HeroTypeDef,
@@ -73,6 +79,7 @@ export class ArenaManager {
     economy: EconomyManager,
     eventLog: EventLog,
     baseHp: number = 100,
+    creepFaction: FactionId | null = null,
   ) {
     this.scene = scene;
     this.economy = economy;
@@ -86,6 +93,14 @@ export class ArenaManager {
 
     this.graphics = scene.add.graphics().setDepth(10);
     this.floatingDamage = new FloatingDamage(scene);
+
+    // Paint the per-faction floor tileset (PRD 01) once into a render
+    // texture sitting at depth -100. Self-skips when the faction's
+    // tileset isn't loaded (chaos / random / missing assets), in
+    // which case drawArena()'s procedural fill takes over.
+    this.floorRenderer = new ArenaFloorRenderer(
+      scene, creepFaction ?? null, this.arenaX, this.arenaY, arenaWidth, arenaHeight,
+    );
 
     // Spawn hero at center of arena (pixel coords relative to arena)
     const offsetX = getGridOffsetX();
@@ -538,17 +553,23 @@ export class ArenaManager {
   drawArena(): void {
     this.graphics.clear();
 
-    // Arena background
-    this.graphics.fillStyle(0x1a1520, 1);
-    this.graphics.fillRect(this.arenaX, this.arenaY, this.arenaWidth, this.arenaHeight);
+    // Arena background — only paint the flat fallback when the
+    // floor renderer didn't take over. The renderer paints a faction
+    // tileset into a RenderTexture at depth -100, which already sits
+    // behind everything; this draws at depth 10 so the procedural
+    // version would sit ON TOP of the tileset and hide it.
+    if (!this.floorRenderer) {
+      this.graphics.fillStyle(0x1a1520, 1);
+      this.graphics.fillRect(this.arenaX, this.arenaY, this.arenaWidth, this.arenaHeight);
 
-    // Grid-like subtle pattern
-    this.graphics.lineStyle(1, 0x222222, 0.3);
-    for (let x = this.arenaX; x <= this.arenaX + this.arenaWidth; x += 40) {
-      this.graphics.lineBetween(x, 0, x, this.arenaHeight);
-    }
-    for (let y = 0; y <= this.arenaHeight; y += 40) {
-      this.graphics.lineBetween(this.arenaX, y, this.arenaX + this.arenaWidth, y);
+      // Grid-like subtle pattern (procedural fallback only)
+      this.graphics.lineStyle(1, 0x222222, 0.3);
+      for (let x = this.arenaX; x <= this.arenaX + this.arenaWidth; x += 40) {
+        this.graphics.lineBetween(x, 0, x, this.arenaHeight);
+      }
+      for (let y = 0; y <= this.arenaHeight; y += 40) {
+        this.graphics.lineBetween(this.arenaX, y, this.arenaX + this.arenaWidth, y);
+      }
     }
 
     // Base structure on right edge
@@ -637,5 +658,7 @@ export class ArenaManager {
     for (const c of this.arenaCreeps) c.destroy();
     if (this.respawnText) this.respawnText.destroy();
     this.floatingDamage.destroy();
+    this.floorRenderer?.destroy();
+    this.floorRenderer = null;
   }
 }
