@@ -2,6 +2,14 @@
 
 ## 2026-05-02
 
+### Bespoke mobile splashes — 10 of 11 factions
+
+Artist drop in `resources/high_res_art_v2/splash_mobile_<faction>.png` (1530 × 2720, 9:16 aspect, hand-authored portrait composition rather than landscape center-crop). 10 factions delivered (everyone except void, which continues to auto-crop from the landscape source until its bespoke version lands).
+
+Slicer update: `scripts/slice_high_res_art.py` now prefers the bespoke `splash_mobile_<faction>.png` if present, and falls back to center-cropping the landscape splash for any faction without one. Output filename + engine consumer paths unchanged — drop-in for `FactionUnlockSplash`, `LoadingScreen`, `CampaignLobbyScreen`.
+
+WebP refresh: bespoke 4.5MB sources compress to ~200KB on average (~5% of original). Total mobile splash bundle: 4.3MB across all 11 factions.
+
 ### Bugfix: hero_vs_boss campaign missions never spawned a boss + ended early
 
 User report: "In campaign, hero defence mode mentions 5 waves then boss. I never got the boss, and the wave 5 ended with creeps still in the hero area but says victory."

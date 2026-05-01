@@ -138,13 +138,24 @@ def copy_splashes(dry: bool) -> None:
             size_kb = os.path.getsize(out) / 1024
             print(f'  ✓ {os.path.relpath(out, ROOT)}  (landscape, {size_kb:.0f} KB)')
 
-        # 2) Portrait — center-crop the landscape to 9:16 aspect.
-        #    For a 2164x816 source, that's a 459-wide × 816-tall slice
-        #    centered horizontally. The hero subject in every splash is
-        #    near the centre line so this preserves it.
+        # 2) Portrait — prefer a hand-authored mobile splash if one
+        #    exists at `splash_mobile_<faction>.png` (1530×2720, 9:16).
+        #    Fall back to center-cropping the landscape source for any
+        #    faction that hasn't shipped a bespoke mobile yet. Naming
+        #    intentionally uses the FACTION id (not the splash token)
+        #    so the artist's filename matches the engine's filename.
         out_m = os.path.join(out_dir, f'{faction}_splash_mobile.png')
+        bespoke = os.path.join(SRC, f'splash_mobile_{faction}.png')
+        if os.path.exists(bespoke):
+            if dry:
+                print(f'  [dry] would copy bespoke {bespoke} → {out_m}')
+                continue
+            shutil.copyfile(bespoke, out_m)
+            size_kb = os.path.getsize(out_m) / 1024
+            print(f'  ✓ {os.path.relpath(out_m, ROOT)}  (portrait, bespoke, {size_kb:.0f} KB)')
+            continue
         if dry:
-            print(f'  [dry] would crop portrait → {out_m}')
+            print(f'  [dry] would center-crop portrait → {out_m}')
             continue
         img = Image.open(src).convert('RGBA')
         w, h = img.size
@@ -158,7 +169,7 @@ def copy_splashes(dry: bool) -> None:
             crop = img.crop((x0, 0, x0 + target_w, h))
             crop.save(out_m, 'PNG', optimize=True)
         size_kb = os.path.getsize(out_m) / 1024
-        print(f'  ✓ {os.path.relpath(out_m, ROOT)}  (portrait, {size_kb:.0f} KB)')
+        print(f'  ✓ {os.path.relpath(out_m, ROOT)}  (portrait, auto-crop, {size_kb:.0f} KB)')
 
 
 def slice_emblems(dry: bool) -> None:
