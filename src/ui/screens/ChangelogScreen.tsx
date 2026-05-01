@@ -10,6 +10,18 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-05-01',
+    title: 'High-res art v2 + parallax delivery + LoadingScreen splash + game-stuck fixes',
+    changes: [
+      'Adopted high_res_art_v2/: 4× larger emblems (5016×5016 sheet) and splashes (2164×816 each, individual files), plus net-new image_c.png parallax sheet (6144×4096) with all 33 layer cells (11 factions × far/mid/fore)',
+      'Updated scripts/slice_high_res_art.py — auto-detects emblem cell columns, hand-tuned y-bands per row (top vs bottom rows have different label positions; image-then-label on top, label-before-image on bottom), and slices the parallax sheet into 1008×~180 (top) and 1212×~120 (bottom) per-layer PNGs',
+      'LoadingScreen now renders the player\'s faction splash key art as a 35%-opacity background with a radial vignette over it for text readability. Hides cleanly on load failure / meta factions (chaos / random)',
+      'MissionRunner faction default → arcane: campaign missions without an explicit faction override fell back to the generic Arrow/Cannon/Sniper/Frost-Trap pool. Long-term fix is a pre-mission faction picker; this is the shipping fix',
+      'WaveController auto-recovery after 30s stuck: if a wave has no active spawns/sends but creeps remain (typically a mis-pathed creep after a tower placement), the controller calls onStuckForceClear which marks every alive creep as `reached`. Wave clears, player loses lives proportional to leaks, match continues. Without this a single mis-pathed creep could hang the entire match',
+      '438/438 vitest pass, tsc clean',
+    ],
+  },
+  {
     date: '2026-04-30',
     title: 'Art pass extracted + Plans 11/13 v1 (Base Defense + Heist) + art PRD',
     changes: [

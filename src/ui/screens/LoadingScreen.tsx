@@ -13,6 +13,16 @@ function hexColor(n: number): string {
   return '#' + n.toString(16).padStart(6, '0');
 }
 
+const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
+
+/** Path to the player's faction splash key art. Returns '' for meta
+ *  entries (chaos / random) and unknown ids — caller falls back to
+ *  the radial-gradient mood lighting only. */
+function factionSplashSrc(faction: string | null): string {
+  if (!faction || faction === 'random' || faction === 'chaos') return '';
+  return `${BASE_URL}assets/${faction}/${faction}_splash.png`;
+}
+
 // ─── Difficulty display ────────────────────────────────────
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -120,6 +130,8 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
 
   if (!visible) return null;
 
+  const splashImg = factionSplashSrc(typeof faction === 'string' ? faction : null);
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
@@ -128,8 +140,43 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
       opacity: fadeOut ? 0 : 1,
       transition: 'opacity 200ms ease',
       padding: '24px',
+      overflow: 'hidden',
     }}>
-      {/* Background glow — faction colored radial */}
+      {/* Bespoke faction splash — landscape art behind the foreground
+          UI text. Self-hides via onError when the asset is missing
+          (meta factions, broken installs) so the radial gradient
+          fallback is the only thing rendered. */}
+      {splashImg && (
+        <img
+          src={splashImg}
+          alt=""
+          aria-hidden="true"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: 0.35,
+            zIndex: 0,
+            pointerEvents: 'none',
+            filter: 'saturate(1.05)',
+          }}
+        />
+      )}
+      {/* Vignette over the splash so foreground text + progress
+          bar stay readable. Strongest in the centre column where
+          the title sits, weaker at the edges so the splash art
+          shows through. */}
+      {splashImg && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at center, rgba(21, 16, 26, 0.85) 0%, rgba(21, 16, 26, 0.55) 50%, rgba(21, 16, 26, 0.75) 100%)',
+        }} />
+      )}
+      {/* Background glow — faction colored radial. Sits above the splash
+          for the colored mood-lighting boost. */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: `radial-gradient(ellipse at center, ${fColor}15 0%, ${fColor}08 40%, transparent 70%)`,

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-05-01
+
+### High-res art v2 + parallax delivery + LoadingScreen splash
+
+Second drop of bespoke art replacing the v1 lower-res files. Same engine slots, higher fidelity, plus a net-new parallax delivery.
+
+**v2 files at `resources/high_res_art_v2/`**: 11 individual splash PNGs at 2164×816 (4× v1's 541×204), one 5016×5016 emblem reference sheet (4× v1's 1254×1254), and a brand-new 6144×4096 `image_c.png` parallax sheet containing all 33 layer cells (11 factions × Far / Mid / Fore).
+
+**`scripts/slice_high_res_art.py` updates**:
+- Reads from `resources/high_res_art_v2/` first, falls back to v1 if v2 isn't present.
+- Splash files copy directly with `mech → mechanical` name normalization.
+- Emblem cell boundaries auto-detected on the new 5016×5016 sheet (gutters between bright crests on dark background).
+- Parallax cells sliced from `image_c.png` with hand-tuned y-bands. Discovered the top and bottom rows have different label conventions (top is image-then-label, bottom is label-before-image) so the boundary tables are kept separate.
+- 11 splash + 11 emblem + 33 parallax PNGs land under `public/assets/{faction}/`. Engine slots (FactionEmblem, FactionUnlockSplash, FactionTreeScreen) consume the new files transparently — same paths as v1.
+
+**LoadingScreen now uses faction art**. Per the user's request: while GameScene loads, the player's faction splash key art renders as a 35%-opacity background layer with a radial vignette over it for text readability. Self-hides on load failure or for meta factions (`chaos` / `random`) — the existing radial gradient mood lighting remains as the universal fallback.
+
+**Two critical bug fixes shipped alongside**:
+- **MissionRunner faction default → `arcane`**. Plan 14 v1 Arcane campaign missions launched with `faction: null` because the mission overrides didn't specify a player faction. GameScene fell back to the generic Arrow/Cannon/Sniper/Frost-Trap pool. Default to Arcane (every player has it as the free root); long-term, a pre-mission faction picker UI replaces this.
+- **Wave-stuck auto-recovery after 30s**. `WaveController` now fires `onStuckForceClear` if a wave has been active >30s with no spawning, no sending, but creep count > 0. `CreepManager.forceLeakAllAlive()` marks every alive creep as `reached`, routing them through the existing leak handler. Player loses lives proportional to the leaks but the wave clears; previously a single mis-pathed creep could hang the entire match indefinitely (which is what the user hit).
+
+**Verification**: 438/438 vitest pass, tsc clean (client + server).
+
 ## 2026-04-30
 
 ### Art-pass extraction + Plans 11 / 13 v1 (Base Defense + Heist) + art PRD
