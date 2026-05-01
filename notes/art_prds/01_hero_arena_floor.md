@@ -1,42 +1,73 @@
-# Art PRD — Hero Defense Arena Floor
+# Art PRD — Hero Defense Arena Floor (pixel-art tileset)
+
+## Context
+Match the existing in-game pixel-art style — see `public/assets/terrain/<faction>_terrain_tileset.png` for reference. **Programmatic pixel art**, NOT hand-painted illustration. Tile-based, auto-tiled, faction-themed.
 
 ## Slot
-Single piece. Replaces the current procedural arena background in Hero Defense mode.
+A small per-faction tileset that the engine tiles across the Hero Defense arena footprint. Replaces the current flat-color procedural arena background.
 
 ## Where it lives
-- Path on disk: `public/assets/arena/arena_floor_hero_plains.png` (initial), `public/assets/arena/arena_floor_<theme>.png` for future themes.
-- Engine consumer: a new background `Phaser.GameObjects.TileSprite` rendered behind `ArenaManager`'s creeps + hero. Sits at depth -10.
+- Path on disk: `public/assets/arena/<faction>_arena_tileset.png` — one sheet per faction.
+- Engine consumer: a new `ArenaFloorRenderer` in `src/systems/` that mirrors `TerrainManager`'s tile-painting approach, but anchored to the arena rect (right of the Hero Defense playfield) instead of the main grid.
 
-## Dimensions
-- **2160 × 720** (3:1 aspect).
-- The arena footprint at runtime is `getGameWidth() × this.layout.arenaHeight`. Today that's roughly **1008 × 280–340** depending on viewport; scaled at 2× source-to-render keeps Phaser bilinear sampling clean.
-- Render mode: `cover`. Tiles will edge-bleed; do NOT put critical detail in the outer 64 px.
+## Sheet layout
+- **Tile size**: 28 × 28 px (same as the main TILE_SIZE constant — keeps the visual scale consistent with creeps + towers).
+- **Sheet dimensions**: **448 × 56 px** (16 cols × 2 rows × 28 px).
+- **Row 0 — Ground variants** (16 frames). The base arena floor. Frames 0–11 are subtle variations of the dominant ground pattern (grass tufts, stone cracks, etc.); frames 12–15 are accent tiles with small thematic detail (a rune, a cog, a sigil — picked sparsely, ~5% of cells).
+- **Row 1 — Edge / structural** (16 frames). Frames 0–7 are vertical column / pillar / banner motifs that anchor the LEFT side of the arena (where creeps enter). Frames 8–15 are clutter (a barrel, a broken weapon, a piece of armor, a faction-themed doodad) randomly scattered ~3% of cells. Reads as "this is a real fighting pit, not just a tinted rectangle."
 
-## Visual brief
-- A side-view arena floor — left/right is the playfield, vertical slice. Hero patrols horizontally, creeps walk in from the left and march toward the right edge (the base).
-- The art reads from the side: foreground ground, mid-ground textures, distant skyline at top edge.
-- "Hero Plains" theme is the default — grassy ground, slightly windswept, with a stone-flagged combat strip down the center horizontal axis (where the hero walks). Distant treeline + warm sky on the upper edge.
+The renderer picks Row 0 frame for every floor cell using a deterministic seed (hash of col×row) so the layout is stable across replays. Row 1 frames are layered on top sparsely.
 
-## Required structure (top → bottom of canvas)
-1. **Top 100 px**: Soft skyline / distance vignette. Will be partially covered by the HUD bar, so don't put icon-able detail here.
-2. **Middle 480 px**: The combat zone. Most visually busy. Stone-flagged ground with grass tufts to either side. A subtle horizontal "ribbon" effect (banners, runes, embers) drawing the eye left→right reinforces creep travel direction.
-3. **Bottom 140 px**: Anchor/foreground — slightly darker, slight perspective tilt, suggests "ground continues toward viewer". Will be partially covered by the per-faction base (separate PRD).
+## Faction count
+**11 sheets total** (one per playable faction). Each sheet is the same layout — only the visual differs per faction.
+
+For shipping order (so we can roll it out without all 11 ready at once), priority list:
+1. arcane (the campaign player most often hits HD with — Plan 14 mission 3 is HD)
+2. mechanical (next campaign)
+3. nature, void (the other tier-1 archetypes)
+4. military, cypherpunk, aliens, harmonic, psionic, infernal, celestial (rest)
+
+## Per-faction visual brief
+Lean on the EXISTING `<faction>_terrain_tileset.png` palette and detail vocabulary so the arena reads as the same world. Specifics:
+
+- **arcane** — purple stone with embedded crystal shards. Faint rune chalk in row 0 frames 12–15. Row 1 props: a fallen staff, a cracked crystal pillar, a glowing rune marker.
+- **mechanical** — riveted iron plate with oil stains. Faint hex-bolt pattern. Row 1 props: a cog wheel, a busted pipe, a dropped wrench.
+- **nature** — packed earth with moss patches and small stones. Row 1 props: a wooden post, a tangle of roots, a dropped horn.
+- **void** — dark obsidian with violet rift cracks. Row 1 props: a broken altar, a rift fissure, a dropped sigil-stone.
+- **military** — sandy gravel with tire tracks. Row 1 props: sandbags, an ammo crate, a helmet.
+- **aliens** — chitinous bio-flooring with pulsing veins. Row 1 props: a hatched egg, an organic spike, a glowing pustule.
+- **cypherpunk** — circuit-board flooring with neon traces. Row 1 props: a broken monitor, a power conduit, a server rack.
+- **infernal** — cracked obsidian with lava seams. Row 1 props: a burning skull, a smoldering brand, a cooled lava chunk.
+- **celestial** — gold-veined marble. Row 1 props: a fallen feather, a halo fragment, a dropped scroll.
+- **psionic** — pulsing membrane / brain-tissue floor. Row 1 props: a floating orb, a discarded probe, a brain-coral nub.
+- **harmonic** — geometric crystalline tiling. Row 1 props: a tuning fork, a resonance crystal, a sound-prism shard.
 
 ## Color palette
-- Ground: warm earthy `#3a2b1f` ↔ `#6b5040` ↔ `#8b6f4a`
-- Grass tufts: muted greens `#5a6b34` ↔ `#7a8b44`
-- Sky strip: `#7a8ba6` ↔ `#a6b5c4` (cool, NOT vivid — UI text needs to read against it)
-- Stone: `#5a5a5a` ↔ `#7a7a7a` with occasional warm highlight rune `#caa666`
+For each faction's sheet, pull the dominant + secondary colors from `src/data/Factions.ts`:
+- `primaryColor` is the dominant accent (rune glow, prop highlight).
+- `secondaryColor` is the structural / shadow tone.
+- Ground base should be a desaturated, ~30% darker version of secondaryColor — the floor anchors visual contrast for creeps and the hero on top of it. Don't use the bright primary for large flat areas.
 
-## What NOT to draw
-- No characters, hero, base, creeps, or projectile FX.
-- No text overlays.
-- No gradient banding — keep noise/texture in shadow regions.
-- No fully-saturated reds or bright pure whites — those need to belong to gameplay FX, not the floor.
+Reference: the existing `<faction>_terrain_tileset.png` already nails this contrast. Match its palette exactly.
 
-## Variants requested
-v1: just `arena_floor_hero_plains.png`. Single shared theme is fine for shipping. Future themes (`arena_floor_industrial`, `arena_floor_void`, etc.) come later as we add HD maps.
+## Constraints
+- **No transparency in row 0** — ground tiles are opaque; the arena rect should never show the canvas color through.
+- **Transparency in row 1** — props sit on top of ground, so frames 0–15 are alpha-PNG.
+- **No animation** — these are static frames. No animated water/lava rows like the main tileset has. Animated VFX in the arena (particles, fire) come from the engine's particle system, not the floor.
+- **No characters / creeps / hero** — never bake combatants into the floor.
+- **No HUD elements** — no HP bar, no UI chrome.
+- **No outer-edge dimming or vignette** — engine will render a separate overlay for that. Tiles are flat.
+
+## Pixel art rules
+Match the existing tileset's discipline:
+- 1 px outline per detail blob (use the secondary color, not pure black).
+- 3-color palette per detail (base / shadow / highlight); 1-color palette for flat ground.
+- Dithering allowed for transition between accent + base, but keep it sparse — not noisy.
+- No anti-aliasing (this is the existing house style — Phaser renders these with NEAREST filter).
+
+## What programmatic generation could cover
+If hand-pixeling 11 sheets is too much, the existing `TerrainTheme` palette + detail-blob system could generate these procedurally given a per-faction config. If the artist would rather express the design as "color × prop list" for a generator script to render, this is a viable v1 — same file output, same engine consumer.
 
 ## Reference / mood
-- Think the side-view arenas in late-90s SNES "battle" games (Final Fantasy combat backdrops, Live A Live's chapters): clear horizontal staging, painterly, NOT pixel-art.
-- The `parallax_<faction>_far` style we already have nails the painterly tone — apply that vocabulary at a 3:1 horizontal aspect for arena floor specifically.
+- Look at `arcane_terrain_tileset.png` and `mechanical_terrain_tileset.png` directly. The arena floor is the SAME vocabulary, the SAME pixel scale, the SAME palette discipline — just oriented as a flat horizontal floor instead of a top-down map terrain.
+- Game references: Castle Crashers arena floors, Streets of Rage backdrop streets, late-90s pixel-art beat-em-up arenas.
