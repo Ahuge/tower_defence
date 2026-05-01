@@ -160,30 +160,31 @@ export function MenuScreen() {
         </div>
         <div class="text-dim text-sm text-center mt-2">Multiplayer modes use P2P WebRTC — no server required</div>
       </div>
-      {/* Plan 5: Faction Tree entry point. Gated at L3 (matches the
-          first archetype unlock level). Replaces the temporary single-
-          Campaigns tile from Plan 14 — the tree itself routes into
-          campaign lobbies for any faction whose campaign content has
-          shipped. */}
-      {playerLevel >= 3 && (
-        <div class="ui-section" style={{ paddingTop: 0 }}>
-          <div class="ui-section-title">Factions</div>
-          <div class="card-grid">
+      {/* Factions section — Campaigns is always shown (campaign mode
+          is the polished onboarding into faction content, available
+          from level 1). Faction Tree is gated at L3 because its
+          purpose is spending Shards on tree unlocks, which only
+          starts mattering once the player has played enough to have
+          Shards to spend. */}
+      <div class="ui-section" style={{ paddingTop: 0 }}>
+        <div class="ui-section-title">Factions</div>
+        <div class="card-grid">
+          <div class="card"
+            onClick={() => UIBridge.show('campaign-menu')}>
+            <div class="card-accent" style={{ background: 'var(--faction-arcane, #6644ff)' }} />
+            <div class="card-name" style={{ marginTop: '4px' }}>Campaigns</div>
+            <div class="card-desc">Story-driven 10-mission campaigns per faction. Track stars and completion.</div>
+          </div>
+          {playerLevel >= 3 && (
             <div class="card"
               onClick={() => UIBridge.show('faction-tree')}>
               <div class="card-accent" style={{ background: 'var(--gold)' }} />
               <div class="card-name" style={{ marginTop: '4px' }}>Faction Tree</div>
               <div class="card-desc">Unlock new factions by spending Shards on their campaign and beating it.</div>
             </div>
-            <div class="card"
-              onClick={() => UIBridge.show('campaign-menu')}>
-              <div class="card-accent" style={{ background: 'var(--faction-arcane, #6644ff)' }} />
-              <div class="card-name" style={{ marginTop: '4px' }}>Campaigns</div>
-              <div class="card-desc">Resume any unlocked campaign. Track stars + completion across all factions.</div>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
       <div class="ui-section" style={{ paddingTop: 0, display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <button class="btn btn-gold" data-tutorial-target="menu-store" onClick={() => UIBridge.show('store')}>Store</button>
         <button class="btn btn-primary" onClick={() => UIBridge.show('battlepass')}>Battle Pass</button>
