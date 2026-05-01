@@ -316,7 +316,7 @@ function renderDetail(
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'rgba(8, 6, 14, 0.48)',
+      background: 'rgba(8, 6, 14, 0.25)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 600, padding: '16px',
     }} onClick={onClose}>

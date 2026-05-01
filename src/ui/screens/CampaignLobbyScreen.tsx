@@ -23,7 +23,17 @@ import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
 import { isArchetypeStub, getArchetype } from '../../data/campaigns/MissionArchetypes';
 import type { CampaignDef, MissionDef } from '../../data/campaigns/CampaignDef';
-import { FACTIONS } from '../../data/Factions';
+import { FACTIONS, type FactionId } from '../../data/Factions';
+
+const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
+
+/** Faction key art (square 2040×1812 hero piece, no title overlay).
+ *  Available for factions delivered in the v2 art drop; missing files
+ *  silently 404 and the consumer's onError hides the layer. */
+function keyartSrc(factionId: FactionId): string {
+  if (factionId === 'chaos' || factionId === 'random') return '';
+  return `${BASE_URL}assets/${factionId}/${factionId}_keyart.webp`;
+}
 
 interface Props {
   data: Record<string, unknown>;
@@ -117,8 +127,34 @@ export function CampaignLobbyScreen({ data }: Props) {
     </div>
   ) : null;
 
+  const keyart = keyartSrc(campaign.factionId);
+
   return (
     <>
+      {/* Faction keyart hero background. Fixed-position so it stays
+          parallax-anchored as the player scrolls the mission list.
+          Heavy vignette over it keeps the card text readable; the
+          overlay color is the faction primary so the page reads as
+          themed rather than just "image with text on it". */}
+      {keyart && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: -1,
+          backgroundImage: `url(${keyart})`,
+          backgroundPosition: 'center',
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.45,
+          filter: 'saturate(1.05)',
+          pointerEvents: 'none',
+        }} />
+      )}
+      {keyart && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: -1,
+          background: `radial-gradient(ellipse at center, rgba(8,5,12,0.55) 0%, rgba(6,4,10,0.85) 70%, rgba(4,3,8,0.95) 100%)`,
+          pointerEvents: 'none',
+        }} />
+      )}
       <Header title={campaign.name.toUpperCase()} back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       <div class="ui-section">
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>

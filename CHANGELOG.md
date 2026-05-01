@@ -2,6 +2,22 @@
 
 ## 2026-05-02
 
+### Plan 12 v1 polish — attacker HUD swap + intro hint
+
+The 999-lives counter was misleading in attacker mode (the player WANTS leaks). Three changes for clarity:
+
+- **`GameUIState.attackerProgress`**: new field `{ leaks, threshold } | null`, populated each frame by GameScene when `matchMode === 'attacker'`.
+- **StatusBarDOM**: shows "Breakthrough: 2/5" instead of "Lives: 999" in attacker mode. Color flips to green once threshold met (player knows they can stop pushing).
+- **Intro hint**: gameMessage event-log entry fires once at attacker-mode game start: "Attacker mode — you command the creeps. Get N through the defense to win." Persistent in the log so a player who misses it on first wave can scroll back.
+
+### Faction tree backdrop dim 48% → 25%
+
+Per user — the dark scrim behind the faction-detail modal was still too heavy after the v1 reduction. Dropped from `rgba(8,6,14,0.48)` to `rgba(8,6,14,0.25)`. Modal text contrast is preserved by the modal's own `--bg-surface` panel and border.
+
+### CampaignLobbyScreen — faction keyart hero background
+
+Wires the `_big_no_text` art delivery (`{faction}_keyart.webp`) into the campaign sub-scene lobby as a fixed-position background. Heavy radial vignette layered over it keeps the mission-card text readable. Falls back to the existing flat dark background for factions without keyart yet (psionic, harmonic, infernal, military, aliens, cypherpunk, celestial — until those land in the v2 parallax delivery). Currently visible on Arcane, Mechanical, Nature, Void.
+
 ### High-res parallax v2 import — arcane / mech / nature / void
 
 Artist drop in `resources/high_res_art_v2/parallax/`. 6 files per faction (4 of 11 delivered so far). New `scripts/import_parallax_v2.py` routes them to the right engine slots:

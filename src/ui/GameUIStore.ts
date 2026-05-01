@@ -310,6 +310,11 @@ export interface GameUIState {
    *  frame; shallow-equality in the setter skips the notify when
    *  nothing changed. */
   circleRoster: CircleRosterState | null;
+  /** Plan 12: attacker-mode breakthrough progress. Populated only when
+   *  `matchMode === 'attacker'`. The HUD swaps "Lives: 999" for a
+   *  meaningful "Breakthrough: X / N" readout — in attacker mode the
+   *  player WANTS leaks, so the lives counter is misleading. */
+  attackerProgress: { leaks: number; threshold: number } | null;
 }
 
 export interface ContinueOffer {
@@ -420,6 +425,7 @@ class GameUIStoreClass {
       continueOffer: null,
       speedBoostRemainingSec: 0,
       circleRoster: null,
+      attackerProgress: null,
     };
   }
 
@@ -431,6 +437,17 @@ class GameUIStoreClass {
     if (prev === next) return;
     if (prev && next && circleRosterEqual(prev, next)) return;
     this.state = { ...this.state, circleRoster: next };
+    this.notify();
+  }
+
+  /** Plan 12: push attacker-mode breakthrough progress for the HUD.
+   *  Pass null on non-attacker matches so StatusBarDOM falls back to
+   *  the regular Lives readout. Skips notify when nothing changed. */
+  setAttackerProgress(next: { leaks: number; threshold: number } | null): void {
+    const prev = this.state.attackerProgress;
+    if (prev === next) return;
+    if (prev && next && prev.leaks === next.leaks && prev.threshold === next.threshold) return;
+    this.state = { ...this.state, attackerProgress: next };
     this.notify();
   }
 

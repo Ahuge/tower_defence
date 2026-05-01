@@ -849,6 +849,12 @@ export class GameScene extends Phaser.Scene {
           console.warn(`[attacker] failed to pre-place ${spec.towerId} at ${spec.col},${spec.row}`, err);
         }
       }
+      // Intro hint — explain the inverted role at game start. The
+      // event log is persistent so the player can scroll back if
+      // they miss it.
+      this.eventLog.gameMessage(
+        `Attacker mode — you command the creeps. Get ${ATTACKER_LEAK_THRESHOLD_DEFAULT} through the defense to win.`,
+      );
     }
     const leakHandler = this.arenaManager
       ? new HeroLeakHandler(this.arenaManager, this.statsTracker, this.eventLog)
@@ -2489,6 +2495,15 @@ export class GameScene extends Phaser.Scene {
     const displayLives = this.arenaManager ? this.arenaManager.baseHp : this.lives;
     this.ui.update(this.economy.gold, displayLives, this.currentWave, this.waves.length, this.waveActive, this.betweenWaves, this.gameSpeed, versusTimer);
     GameUIStore.updateEconomy(this.economy.gold, displayLives, this.incomeMgr.getBreakdown().total);
+    // Plan 12: in attacker mode the HUD shows breakthrough progress
+    // instead of the meaningless 999-lives counter. Pushed every
+    // frame so the readout ticks up the moment a creep escapes.
+    if (this.matchMode === 'attacker') {
+      GameUIStore.setAttackerProgress({
+        leaks: this.statsTracker.stats.creepsLeaked,
+        threshold: ATTACKER_LEAK_THRESHOLD_DEFAULT,
+      });
+    }
     // Demote 3× → 2× the moment the boost lapses so the UI + game
     // stay in sync. Cheap check (just a timestamp compare).
     this.reconcileSpeedToBoostState();
