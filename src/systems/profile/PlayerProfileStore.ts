@@ -63,8 +63,11 @@ export interface PlayerProfileState {
    *  `unlockedFactions` which is the active monetization inventory. */
   unlockedFactionsLifetime: string[];
 
-  /** Per-faction campaign mission completion count (0..10). */
-  campaignProgress: { [factionId: string]: number };
+  /** Per-faction campaign progress. Plan 10 expanded this from a
+   *  scalar count to a per-mission star map: `factionId → missionIdx →
+   *  stars (0..3)`. Stars are monotonic — replays only ever upgrade
+   *  the stored value, never downgrade. */
+  campaignProgress: { [factionId: string]: { [missionIdx: number]: number } };
   /** Highest career stage ever cleared. */
   careerHighStage: number;
 

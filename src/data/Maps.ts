@@ -1,7 +1,11 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 import { getCircleMap } from './CircleMaps';
 
-export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'circle_4p_hell_circle' | 'custom' | 'tutorial';
+export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'circle_4p_hell_circle' | 'custom' | 'tutorial'
+  // Plan 14 v1.1 — bespoke Arcane campaign maps. Use the
+  // arcane_crystal terrain theme so blocked cells render as crystal
+  // formations instead of generic walls.
+  | 'arcane_outskirts' | 'arcane_pass' | 'arcane_throne';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -360,6 +364,80 @@ export const MAPS: Record<MapId, MapDefinition> = {
     ],
     noBuild: [],
   },
+  // === Arcane campaign maps (Plan 14 v1.1) ===
+  // Plan 14 v1 launched the Arcane campaign on existing standard maps;
+  // v1.1 adds 3 bespoke Arcane-tileset maps for the marquee missions
+  // so the campaign feels like its own place. Crystal motifs (clusters
+  // of blocked cells via `circle()`) render via the `arcane_crystal`
+  // terrain theme. Layouts are intentionally kept on validated path
+  // shapes rather than radically new geometry — first content pass.
+
+  arcane_outskirts: {
+    id: 'arcane_outskirts',
+    name: 'Crystal Outskirts',
+    description: 'Wide corridor approaching the caverns. A central crystal cluster forces a single deflection.',
+    theme: 'arcane_crystal',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [
+      // Single central crystal cluster — visible obstacle, soft mazing
+      // hint, but the player can route around either side.
+      ...circle(MID_COL - 4, MID_ROW - 4, 3),
+      ...circle(MID_COL + 4, MID_ROW + 4, 3),
+    ],
+    noBuild: [],
+  },
+
+  arcane_pass: {
+    id: 'arcane_pass',
+    name: 'The Crystal Pass',
+    description: 'Long winding pass through crystal walls. Forces a serpentine route — built for speedruns.',
+    theme: 'arcane_crystal',
+    entries: [{ col: 0, row: 4 }],
+    exits: [{ col: GRID_COLS - 1, row: GRID_ROWS - 5 }],
+    blocked: [
+      // Two mirrored crystal walls force a long S-shape from top-left
+      // entry down to bottom-right exit.
+      // Top wall (forces creeps down)
+      ...rect(8, 0, 12, 9),
+      ...rect(8, 0, 22, 4),
+      // Bottom wall (forces creeps back up to weave)
+      ...rect(14, 12, 27, 17),
+      // Final wall guarding the exit
+      ...rect(24, 18, 28, 25),
+    ],
+    noBuild: [],
+  },
+
+  arcane_throne: {
+    id: 'arcane_throne',
+    name: 'The Arcane Throne',
+    description: 'The wizards\' inner sanctum. Three approaches converge on the central nexus.',
+    theme: 'arcane_crystal',
+    entries: [
+      { col: 0, row: 4 },
+      { col: 0, row: MID_ROW },
+      { col: 0, row: GRID_ROWS - 5 },
+    ],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [
+      // Outer crystal pillars guard the throne's flanks.
+      ...rect(8, 6, 9, 9),
+      ...rect(8, GRID_ROWS - 10, 9, GRID_ROWS - 7),
+      // Central crystal nexus — the throne itself, decorative + forces
+      // attackers to thread around.
+      ...circle(MID_COL + 6, MID_ROW, 3),
+      // Funnel walls before the exit
+      ...rect(GRID_COLS - 8, 6, GRID_COLS - 7, MID_ROW - 2),
+      ...rect(GRID_COLS - 8, MID_ROW + 2, GRID_COLS - 7, GRID_ROWS - 7),
+    ],
+    noBuild: [
+      // The throne dais itself — visually striking but unbuildable so
+      // the player can't simply turtle on the central tile.
+      ...rect(MID_COL + 4, MID_ROW - 1, MID_COL + 5, MID_ROW + 1),
+    ],
+  },
+
   // === Circle Co-op Maps ===
   // Loaded from JSON under src/data/maps/circle/*.json via the
   // `CircleMaps` loader. Each map declares per-player spawners with

@@ -21,6 +21,7 @@ describe('TutorialPersistence.load', () => {
     expect(s).toEqual({
       completedTracks: [],
       dismissedFirstLaunch: false,
+      skipAllFactionBriefs: false,
       version: EXPECTED_VERSION,
     });
   });
@@ -29,6 +30,7 @@ describe('TutorialPersistence.load', () => {
     const state: TutorialState = {
       completedTracks: ['basics', 'tutorial_match'],
       dismissedFirstLaunch: true,
+      skipAllFactionBriefs: false,
       version: EXPECTED_VERSION,
     };
     TutorialPersistence.save(state);
@@ -56,6 +58,7 @@ describe('TutorialPersistence.load', () => {
     expect(TutorialPersistence.load()).toEqual({
       completedTracks: [],
       dismissedFirstLaunch: false,
+      skipAllFactionBriefs: false,
       version: EXPECTED_VERSION,
     });
   });
@@ -66,6 +69,7 @@ describe('TutorialPersistence.load', () => {
     expect(TutorialPersistence.load()).toEqual({
       completedTracks: [],
       dismissedFirstLaunch: false,
+      skipAllFactionBriefs: false,
       version: EXPECTED_VERSION,
     });
   });
@@ -159,13 +163,35 @@ describe('TutorialPersistence.reset', () => {
     TutorialPersistence.save({
       completedTracks: ['basics', 'tutorial_match'],
       dismissedFirstLaunch: true,
+      skipAllFactionBriefs: false,
       version: EXPECTED_VERSION,
     });
     TutorialPersistence.reset();
     expect(TutorialPersistence.load()).toEqual({
       completedTracks: [],
       dismissedFirstLaunch: false,
+      skipAllFactionBriefs: false,
       version: EXPECTED_VERSION,
     });
+  });
+});
+
+describe('TutorialPersistence — skip-all-faction-briefs (Plan 4)', () => {
+  it('isFactionBriefsSkipped is false on a fresh state', () => {
+    TutorialPersistence.reset();
+    expect(TutorialPersistence.isFactionBriefsSkipped()).toBe(false);
+  });
+
+  it('setFactionBriefsSkipped persists across loads', () => {
+    TutorialPersistence.reset();
+    TutorialPersistence.setFactionBriefsSkipped(true);
+    expect(TutorialPersistence.isFactionBriefsSkipped()).toBe(true);
+    expect(TutorialPersistence.load().skipAllFactionBriefs).toBe(true);
+  });
+
+  it('setFactionBriefsSkipped is idempotent — same value writes nothing new', () => {
+    TutorialPersistence.reset();
+    TutorialPersistence.setFactionBriefsSkipped(false);
+    expect(TutorialPersistence.load().skipAllFactionBriefs).toBe(false);
   });
 });

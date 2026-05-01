@@ -84,7 +84,14 @@ export type AnalyticsEvent =
   | { type: 'faction_tree_node_focused'; factionId: FactionId | string }
   | { type: 'faction_unlock_attempted'; factionId: FactionId | string; route: 'shards' | 'campaign' }
   | { type: 'faction_unlocked'; factionId: FactionId | string; route: 'shards' | 'campaign'; shardsSpent: number }
-  | { type: 'faction_unlock_failed'; factionId: FactionId | string; reason: string };
+  | { type: 'faction_unlock_failed'; factionId: FactionId | string; reason: string }
+
+  // ---- Campaign / mission lifecycle (Plan 10) ------------------------------
+  | { type: 'campaign_lobby_opened'; campaignFactionId: string }
+  | { type: 'mission_started'; campaignFactionId: string; missionIdx: number; archetypeId: string }
+  | { type: 'mission_completed'; campaignFactionId: string; missionIdx: number; archetypeId: string; stars: number; elapsedMs: number }
+  | { type: 'mission_failed'; campaignFactionId: string; missionIdx: number; archetypeId: string; atWave: number }
+  | { type: 'campaign_completed'; campaignFactionId: string; totalStars: number };
 
 /** Convenience union of all event names. */
 export type EventName = AnalyticsEvent['type'];

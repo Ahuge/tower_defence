@@ -7,7 +7,7 @@ import { render } from 'preact';
 import { App } from './App';
 import './styles/ui.css';
 
-export type ScreenId = 'menu' | 'store' | 'battlepass' | 'inventory' | 'factionselect' | 'heroselect' | 'creepfactionselect' | 'draft' | 'gauntletpreview' | 'gameover' | 'changelog' | 'leaderboard' | 'encyclopedia' | 'settings' | 'lobby' | 'circle-lobby' | null;
+export type ScreenId = 'menu' | 'store' | 'battlepass' | 'inventory' | 'factionselect' | 'heroselect' | 'creepfactionselect' | 'draft' | 'gauntletpreview' | 'gameover' | 'changelog' | 'leaderboard' | 'encyclopedia' | 'settings' | 'lobby' | 'circle-lobby' | 'campaign-lobby' | 'faction-tree' | null;
 
 export interface LoadingData {
   faction: string | null;

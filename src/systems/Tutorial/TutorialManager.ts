@@ -23,8 +23,20 @@ import { resolveCanvasTargetRect, getGameCamera } from './TutorialTargets';
 import { goToMenu } from '../../ui/navigation';
 import { GameUIStore } from '../../ui/GameUIStore';
 import { Analytics } from '../AnalyticsClient';
+import { PlayerProfile } from '../profile/PlayerProfile';
 
 type Listener = () => void;
+
+/** Map a creep type id to the JIT concept the player should learn the
+ *  first time they encounter it. Returns null for creeps that don't
+ *  warrant a popover (basic, fast, swarm, etc.). */
+function mapCreepTypeToJITConcept(creepTypeId: string): 'flying' | 'regen' | 'mage' | 'boss' | null {
+  if (creepTypeId === 'flying') return 'flying';
+  if (creepTypeId === 'regenerator') return 'regen';
+  if (creepTypeId.startsWith('mage_')) return 'mage';
+  if (creepTypeId === 'boss') return 'boss';
+  return null;
+}
 
 /**
  * Central animation + delay tuning for tutorial routing. Pulled up to
@@ -105,6 +117,9 @@ export class TutorialManagerClass {
     // stay free of imports from UIBridge / this manager (avoids a
     // load-order cycle).
     window.addEventListener('tutorial-launch-match', () => this.launchTutorialMatch());
+    window.addEventListener('tutorial-launch-ftg', () => this.launchFTG());
+    window.addEventListener('tutorial-launch-economy', () => this.launchEconomyTutorial());
+    window.addEventListener('tutorial-launch-vs-cpu', () => this.launchVsCpuTutorial());
     window.addEventListener('tutorial-go-menu', () => goToMenu());
 
     // In-game primers — the match-load splash (LoadingScreen) runs for a
@@ -123,6 +138,79 @@ export class TutorialManagerClass {
         else this.maybeAutoStart(pending.id);
       }, TIMING.MATCH_LOAD_DELAY_MS);
     });
+  }
+
+  /** Kick off the FTG (First Tutorial Game) — Plan 3's cold-boot
+   *  introduction. Same in-game shape as `launchTutorialMatch` (Arcane
+   *  on the tutorial map, mode=tutorial → 99 lives + 250g start) but
+   *  queues the slimmer `ftg` track instead. */
+  launchFTG(): void {
+    this.pendingAfterMatchLoad = {
+      id: 'ftg',
+      replay: true,
+      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
+    };
+    UIBridge.startScene('GameScene', {
+      mode: 'tutorial',
+      faction: 'arcane',
+      map: 'tutorial',
+      difficulty: 'easy',
+      creepFaction: 'mechanical',
+    });
+  }
+
+  /** Plan 4 Tutorial 2 — gentle 4-wave economy lesson on Hero Plains.
+   *  Same tutorial-mode underpinnings as FTG (99 lives, +250g start).
+   *  Track teaches kill gold, frontier income, and sends. Reachable
+   *  from the Help carousel and an end-of-FTG CTA. */
+  launchEconomyTutorial(): void {
+    this.pendingAfterMatchLoad = {
+      id: 'tutorial_economy',
+      replay: true,
+      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
+    };
+    UIBridge.startScene('GameScene', {
+      mode: 'tutorial',
+      faction: 'arcane',
+      map: 'hero_plains',
+      difficulty: 'easy',
+      creepFaction: 'mechanical',
+      waveCount: 4,
+    });
+  }
+
+  /** Plan 4 Tutorial 3 — real 5-wave Versus game vs a CPU opponent.
+   *  Routes through the existing LobbyScreen CPU flow via a window
+   *  event the lobby listens for; lobby spins up VersusManager with
+   *  cpuOpponent=true and shorter waveCount. Coach marks come from
+   *  the `tutorial_vs_cpu` track that the GameScene queues on
+   *  match-load.
+   *
+   *  Implementation note: this dispatch only requests the launch.
+   *  The lobby flow + CPU plumbing already exists (LobbyScreen
+   *  .startVsCpu) — we surface a single shortcut event so the
+   *  TutorialMenuButton / Help carousel can trigger it without
+   *  importing UIBridge. */
+  launchVsCpuTutorial(): void {
+    // Lobby reads this flag on mount and auto-runs startVsCpu, then
+    // calls queueInGameTrack() at the actual game-launch moment to
+    // pick up the in-game coach marks. We avoid setting
+    // pendingAfterMatchLoad here because its 10s TTL would expire
+    // while the player is still in the lobby picking a faction.
+    (window as unknown as { __tutorialVsCpuQueued?: boolean }).__tutorialVsCpuQueued = true;
+    UIBridge.show('lobby');
+  }
+
+  /** Lobby calls this just before launching GameScene when the player
+   *  came in via the vs-CPU tutorial path. Bypasses the 10s TTL on
+   *  pendingAfterMatchLoad by setting it RIGHT before the scene
+   *  switch — match-loading-dismissed will fire within seconds. */
+  queueInGameTrack(trackId: string): void {
+    this.pendingAfterMatchLoad = {
+      id: trackId,
+      replay: true,
+      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
+    };
   }
 
   /** Kick off the scripted tutorial match. Starts GameScene in tutorial
@@ -150,8 +238,60 @@ export class TutorialManagerClass {
     if (this.currentEventBinding && this.gameEventBus) {
       this.gameEventBus.off(this.currentEventBinding.event, this.currentEventBinding.fn as any);
     }
+    if (this.jitCreepListener && this.gameEventBus) {
+      this.gameEventBus.off('creepSpawned', this.jitCreepListener);
+      this.jitCreepListener = null;
+    }
+    if (this.jitLeakListener && this.gameEventBus) {
+      this.gameEventBus.off('creepReached', this.jitLeakListener);
+      this.jitLeakListener = null;
+    }
     this.gameEventBus = bus;
     if (this.active) this.rebindEventAdvance();
+    // Plan 4: hook creepSpawned to fire a one-shot popover the FIRST
+    // time the player encounters each archetype. Tutorial mode is
+    // exempt — the FTG and tutorial_match scripts already control
+    // their own onboarding.
+    if (bus) this.bindJITListeners(bus);
+  }
+
+  // ─── Plan 4: JIT (just-in-time) lessons ─────────────────────
+
+  /** Bound listeners so off() can find the same references at teardown. */
+  private jitCreepListener: ((creepTypeId: string) => void) | null = null;
+  private jitLeakListener: ((creepId: number) => void) | null = null;
+
+  private bindJITListeners(bus: EventBus): void {
+    this.jitCreepListener = (creepTypeId: string) => {
+      // Suppress JIT popovers during a tutorial track — the scripted
+      // tutorial owns the player's attention.
+      if (this.active) return;
+      const concept = mapCreepTypeToJITConcept(creepTypeId);
+      if (!concept) return;
+      this.maybeFireJIT(concept);
+    };
+    bus.on('creepSpawned', this.jitCreepListener);
+
+    // First time a creep reaches the exit, prompt the leak lesson.
+    // Reading "leak" here as "a creep made it past your towers" —
+    // technically synonymous with creepReached.
+    this.jitLeakListener = () => {
+      if (this.active) return;
+      this.maybeFireJIT('leak');
+    };
+    bus.on('creepReached', this.jitLeakListener);
+  }
+
+  /** Fire a JIT track if the player hasn't seen this concept yet.
+   *  Idempotent: per-concept flag set in PlayerProfile after the
+   *  first fire. */
+  private maybeFireJIT(concept: 'flying' | 'regen' | 'mage' | 'boss' | 'leak'): void {
+    const flag = `jit_seen.${concept}`;
+    if (PlayerProfile.getFlag(flag)) return;
+    const trackId = `jit_${concept}`;
+    if (!getTrack(trackId)) return;
+    PlayerProfile.setFlag(flag, true);
+    this.start(trackId);
   }
 
   // ─── Query ──────────────────────────────────────────────
@@ -251,14 +391,15 @@ export class TutorialManagerClass {
     Analytics.track('tutorial_step_skipped', { trackId: justDismissed, stepId: atStepId });
     Analytics.track('tutorial_quit', { trackId: justDismissed, atStepId });
     const wasTutorialMatch = justDismissed === 'tutorial_match';
+    const wasFTG = justDismissed === 'ftg';
     this.markCompleted(justDismissed);
     this.clearActive();
     // Skipping any track also implies they've seen the first-launch flow.
     this.markFirstLaunchDismissed();
     this.notify();
-    // Skipping the tutorial match leaves GameScene running in a no-stakes
+    // Skipping an in-game tutorial leaves GameScene running in a no-stakes
     // 99-lives state — push the player back to the menu.
-    if (wasTutorialMatch) goToMenu();
+    if (wasTutorialMatch || wasFTG) goToMenu();
     // If they're still (or now back) on the menu, drop the one-shot
     // "where to find tutorials again" reminder — unless the dismissed
     // track WAS the skip hint itself (avoid an immediate re-fire loop).
@@ -274,6 +415,13 @@ export class TutorialManagerClass {
     this.clearActive();
     this.markFirstLaunchDismissed();
     this.notify();
+    // Plan 3: completing FTG marks the player as past their first
+    // game and grants the bonus XP that crosses L1->L2 cleanly. Also
+    // covers the longer `tutorial_match` track since either
+    // satisfies the "first game" intent.
+    if (justCompleted === 'ftg' || justCompleted === 'tutorial_match') {
+      PlayerProfile.markFirstGameComplete();
+    }
     this.checkForSkipHintAfterDelay(justCompleted);
   }
 
@@ -338,6 +486,12 @@ export class TutorialManagerClass {
   private maybeStartFirstLaunch(): void {
     if (this.persisted.dismissedFirstLaunch) return;
     if (this.active) return;
+    // Plan 3: the cold-boot SplashScreen (rendered by App.tsx when
+    // first_game_complete + dismissedFirstLaunch are both false) owns
+    // first-launch onboarding. Don't race it with the legacy `basics`
+    // walkthrough. Returning players who skipped both will already
+    // have dismissedFirstLaunch=true and won't reach this branch.
+    if (!PlayerProfile.isFirstGameComplete()) return;
     // Only start basics if the player is currently on the menu screen — if
     // they've already navigated away we don't want to yank them back.
     if (UIBridge.getScreen() !== 'menu' && UIBridge.getScreen() !== null) return;
@@ -395,6 +549,10 @@ export class TutorialManagerClass {
     if (this.active) return;
     if (this.isCompleted(trackId)) return;
     if (!getTrack(trackId)) return;
+    // Plan 4: a single global toggle suppresses every faction:* brief
+    // for veterans who don't want to be re-introduced to a faction.
+    // The Help carousel still lets them replay any individual brief.
+    if (trackId.startsWith('faction:') && TutorialPersistence.isFactionBriefsSkipped()) return;
     // Small delay lets the target DOM mount before we try to resolve it.
     setTimeout(() => {
       if (this.active) return;

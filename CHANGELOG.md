@@ -2,6 +2,198 @@
 
 ## 2026-04-30
 
+### Bespoke Arcane maps + procedural faction emblems + tree polish + unlock splash
+
+Picking up the open deferred items from Chunk A — visual identity for the faction tree and faction-themed maps for the Arcane campaign. Both done procedurally rather than with bespoke art so they ship without an asset pipeline.
+
+**Three new Arcane-tileset maps** (added inline in `Maps.ts` with the `arcane_crystal` terrain theme so blocked cells render as crystal formations):
+
+- **`arcane_outskirts`** — Mission 1 opener. Wide corridor with two offset crystal clusters; soft mazing hint, the player can route around either side.
+- **`arcane_pass`** — Mission 6 speedrun. Long winding S-shape from top-left to bottom-right with mirrored crystal walls forcing a serpentine route. Built specifically for time-attack scoring.
+- **`arcane_throne`** — Mission 10 final showdown. Three-entry approach (top, middle, bottom) converging on a central crystal nexus + unbuildable dais. Fortified funnel walls before the exit. The throne campaign closer.
+
+The Arcane campaign was updated — missions 1, 6, 10 now reference these instead of `plains` / `serpentine` / `siege`. Other missions still use existing standard maps; bespoke art for those is on the long-tail content track.
+
+**Procedural FactionEmblem component** (`src/ui/components/FactionEmblem.tsx`). Circular SVG crest pulled from the existing primary/secondary colors in `FACTIONS[id]`. Per-faction glyph: Arcane = 4-pointed star, Mechanical = gear, Nature = 3-petal flower, Void = spiral, Military = chevrons, Aliens = hexagon hive, Cypherpunk = bracket-circuit, Infernal = flame, Celestial = sun rays, Psionic = concentric brain-wave arcs, Harmonic = 3-circle network. Stroke-only at small sizes for silhouette legibility; locked variant uses a muted `#444/#666` palette. Hand-drawn art can drop into the same shell later — the emblem signature stays the same.
+
+**Faction tree visual polish**:
+- Animated CSS starfield background drifting at 60s/loop with two soft radial color washes.
+- Per-tier `↓` dividers between rows so the parent → child topology reads at a glance.
+- 2.4s pulsing halo (`box-shadow` keyframe) on every unlockable node so the next available step is visually obvious without a tutorial nudge.
+- Each tree node shows its emblem at 56px above the faction name + state badge.
+
+**FactionUnlockSplash** component — full-screen take-over after `attemptFactionUnlock` succeeds. Listens for a new `td-faction-unlocked` window event the unlock flow dispatches. Big 180px emblem with color-tinted drop-shadow glow + 3s glow-pulse animation, faction identity copy, "Begin Campaign" CTA when content is shipped or "Continue" otherwise. Decoupled from the tree screen via the window event so any future unlock surface (campaign-completion route, achievement route) gets the splash for free.
+
+**No bespoke art assets** in this drop. Every visual is procedural CSS / SVG. When real per-faction illustrations and parallax homeworld backgrounds land later, they slot into the same component shells without engine changes.
+
+**Verification**: 431/431 vitest pass (+12 new). tsc clean. Both changelogs updated.
+
+### Mission restrictions enforced + custom counters wired (Plan 14 v1.1)
+
+Cleanup pass on the open deferred items from Chunk A. Two real changes:
+
+**Restriction enforcement**. `noSends` and `noFrontier` mission restrictions were wired into the schema in Plan 10 but had no runtime gates — purchases would silently succeed. Now both the keyboard send paths (`SendPanel` callback) and the DOM-side callbacks (`GameUIStore.onSend` / `onFrontierPurchase`) short-circuit with a "Sends are disabled for this mission." / "Frontier buildings are disabled for this mission." event-log message before the spend hits.
+
+Implementation: `GameModeContext` gained a `missionRestrictions` field. `GameScene` populates it from `missionContext.restrictions` when the scene was launched as a mission. `StandardMode` + `BaseFrontierMode` read `ctx.missionRestrictions?.noSends` / `noFrontier` at the top of every purchase handler.
+
+**Custom counters**. Two new per-mission counters fed into `MissionResult.custom`:
+
+- `sendsBought` — incremented on the existing `sendPurchased` EventBus event. Always-on but only consumed by missions that care (the `sendPurchased` listener was already capturing for LiveCapture, so this is a single extra increment).
+- `heroHpMin` — fraction (0..1) sampled once per `update()` frame from `arenaManager.hero.hp / hero.maxHp`. Tracks the lowest the hero ever fell. Skipped when no hero exists.
+
+This lets two Arcane mission star-3 predicates flip from placeholder `() => false` to real conditions:
+
+- **Mission 3 "Hero never falls below 50% HP"** → `r.custom.heroHpMin >= 0.5`
+- **Mission 4 "Win without buying any sends"** → `r.custom.sendsBought === 0`
+
+Two other placeholders remain — **Mission 5 "Kill every warlord before halfway"** (needs per-creep distance-traveled tracking) and **Mission 9 "Ally never below 5 lives"** (needs co-op state inspection). Both deferred until the surfaces get the right hooks; players still earn 1-2 stars on those missions via the simpler conditions.
+
+**Verification**: 419/419 vitest pass (+5 new). tsc clean.
+
+### Faction Tree — unlock-via-Shards-and-campaign progression UI (Plan 5)
+
+The visible spine of progression. New `FactionTreeScreen` lets the player see all 11 factions, their unlock requirements, and their current state in the new two-step unlock model. Replaces the previous one-shot Shards spend in FactionSelect.
+
+**Tree shape** (locked with the user in conversation):
+
+```
+                Arcane (root, L1, free)
+                  /        |         \
+        Mechanical (L3) Nature (L3)  Void (L3)         (1000 Shards each)
+          /     \         /     \      /     \
+      Military Celestial Aliens Infernal Psionic Cypherpunk   (1500 each)
+                       \    |    |   /
+                       Harmonic (L18, 2000 Shards, requires any 4)
+```
+
+**Two-step unlock model**: pay Shards on the tree → unlocks that faction's campaign → beat the campaign → faction becomes playable in every non-campaign mode (Standard, Endless, Battle, etc.). Arcane is the free root and always playable. No rerolls, no refunds.
+
+**State machine** per node (drives the UI badge + CTA):
+- `locked_level` — Player Level too low; silhouette + L_ tooltip
+- `locked_parents` — parent(s) not yet Shards-unlocked
+- `locked_capstone` — Harmonic, needs 4 other unlocks first
+- `unlockable` — all gates clear, can spend Shards now
+- `campaign_pending` — Shards spent but campaign content not yet shipped (Mech/Nature/Void/specialists at this point)
+- `campaign_in_progress` — at least one mission won, not all
+- `playable` — Arcane (free root) OR Shards-unlocked + campaign complete OR legacy migration
+
+**Migration safety**: PlayerProfile's legacy migration (Plan 2) was extended — any faction the player already had in `td_store.unlockedFactions` gets pre-marked playable via `legacy_faction_playable.<id>` flags. Veterans keep their full roster on first launch with Plan 5; new players have only Arcane and walk the tree from there.
+
+**Purchase flow** (`attemptFactionUnlock`): checks Shards balance, parent gates, level gate, capstone N-of-any. Switched from legacy `PlayerInventory.ownsFaction` (which still treats `FREE_FACTIONS` of arcane/mech/nature/void/military/celestial as free) to Plan-5-aware `isFactionCampaignPurchased` so the new model wins. Emits `faction_unlock_attempted` / `faction_unlocked` / `faction_unlock_failed` to the existing Plan-1 analytics catalog.
+
+**FactionSelect** rewired — locked factions now tap into the tree screen rather than offering a one-shot Shards spend in place. Cleaner: the tree is the unlock surface, FactionSelect is "pick from your playable factions."
+
+**Menu** now exposes a Factions tile at L3+ (matches the first archetype unlock). Replaces the temporary single-Campaigns tile that Plan 14 v1 used as a stopgap. The tree itself routes to campaign lobbies for any faction whose content has shipped.
+
+New `'faction-tree'` ScreenId. New `src/data/FactionTree.ts` (graph spec). New `src/systems/profile/FactionUnlockFlow.ts` (purchase orchestration). New `src/ui/screens/FactionTreeScreen.tsx` (UI). UnlockGates extended with `isFactionPlayable` / `isFactionCampaignPurchased` / `isFactionCampaignComplete` / `getFactionNodeState`.
+
+**Verification**: 414/414 vitest pass (+25 new). tsc clean. Both changelogs updated.
+
+**Not shipped this plan**: bespoke per-faction emblem art, animated parallax homeworld backgrounds, edge animations between unlocked nodes, audio stings on unlock. Plan 5 v1 ships the structural shell + state machine; the polish art lands as a separate cosmetic-track release. Per-faction welcome splashes also deferred.
+
+### Arcane campaign — first complete 10-mission campaign (Plan 14 v1)
+
+The first piece of campaign content on top of Plan 10's framework. **Arcane Reckoning** — 10 missions where the player commands one of their unlocked factions and fights *against* Arcane creeps + bosses on Arcane-themed maps. Arcane is the free root faction in the Plan 5 tree, so beating this campaign rewards Cores + cosmetics rather than unlocking a new faction. It's the proof-of-concept demo that validates the unlock-via-campaign loop before the Mechanical campaign (Chunk C) lands with real faction-unlock stakes.
+
+**Mission lineup** (v1, no Plans 11/12/13):
+
+| # | Archetype | Map | Notes |
+|--:|-----------|-----|-------|
+| 1 | restriction | plains | First 4 towers only — soft opener |
+| 2 | standard | serpentine | 15 waves, winding path |
+| 3 | hero_vs_boss | hero_plains | Arcanist hero vs Archmage NPC |
+| 4 | restriction | fortress | No walls allowed (swap-in for Base Defense) |
+| 5 | boss_rush | crossroads | 5 boss-only waves on hard |
+| 6 | speedrun | serpentine | 20 waves, time-attack |
+| 7 | frugal | islands | 0.5× gold, 6-tower cap |
+| 8 | standard | spiral | 25-wave siege (swap-in for Attacker) |
+| 9 | coop_with_bot | circle_2p | Co-op with bot ally |
+| 10 | final_showdown | siege | 30 waves, hard, the closer |
+
+**Star objectives** per mission: 1 star = win, 2 = win + bonus condition (no leaks / fast clear / lives remaining etc.), 3 = stricter condition (perfect run / under N minutes etc.). Stars are monotonic (replays only upgrade). A handful of star-3 predicates are placeholder `() => false` where the underlying counter doesn't yet exist — hero HP-floor tracking, send count, per-creep "killed before halfway" markers. Players still earn 2 stars on those missions via the simpler condition; the 3-star path waits on a counter-instrumentation pass.
+
+**Story tone** is terse-mechanical medieval-fantasy report style. Each mission has ~50 words of narrative — a coalition pushing back against an Arcane invasion in stages. No in-character flourish, no internal canon hardlock — keeps each future campaign's lore self-contained.
+
+**Menu integration**: a new Campaigns tile on `MenuScreen` shows up at Player Level 7 (matches the existing `MODE_UNLOCK_LEVEL.campaign` gate). Opens the Arcane lobby directly. Plan 5's faction tree later supersedes this single tile with the full tree picker.
+
+**Restriction enforcement** in GameScene at the placement gate: `allowedTowerIds`, `allowedFactions`, `noWalls` (filters out `mech_wall` / `mil_sandbag` / `mil_wire`), `maxTowers` (counts non-walls only). Sends + frontier restrictions are wired in the schema but not yet enforced — wired in Chunk C alongside the Mechanical campaign.
+
+**Maps** are existing standard maps (plains, serpentine, fortress, crossroads, islands, spiral, circle_2p, siege, hero_plains). Bespoke Arcane-tileset maps deferred to a polish pass once Chunk C ships and we have content authoring tooling.
+
+**Verification**: 389/389 vitest pass (+15 new). tsc clean on client + server. Both changelogs updated.
+
+### Campaign framework — mission archetypes, MissionRunner, sub-scene lobby (Plan 10)
+
+Foundation for the Arcane / Mechanical / future campaigns. Ships the *invisible* infrastructure — schema, runtime orchestrator, lobby UI, profile state — without any campaign content. Plan 14 (Arcane) and the Mechanical campaign land next as content drops on top of this framework.
+
+**Schema** (`src/data/campaigns/CampaignDef.ts`). A campaign is 10 missions targeting one faction. Player fights *against* that faction in its tileset; beating all 10 unlocks playing AS that faction. Each mission picks a `MissionArchetype` and applies overrides — waveCount, difficulty, starting gold (delta or multiplier), lives, hero, modifier, restrictions (allowedFactions / allowedTowerIds / maxTowers / noWalls / noSends / noFrontier / forceHeroId). Star objectives are predicates evaluated at game-end against a `MissionResult` snapshot (won / wave / durationMs / livesRemaining / livesStart / goldRemaining / goldEarned / towerCount / perfectRun / custom counters).
+
+**Archetype catalog**. 8 v1 archetypes that reuse existing MatchModes:
+- `standard` — basic; 15 waves on Normal
+- `boss_rush` — 10-wave hard; campaigns swap creep mix at wave-script time
+- `speedrun` — 20 waves, time-attack scoring
+- `frugal` — 15 waves, 0.5× starting gold, 6 tower cap
+- `hero_vs_boss` — Hero Defense base mode, 5 waves
+- `coop_with_bot` — Circle Co-op base mode for solo practice
+- `final_showdown` — 30 waves, hard
+- `restriction` — Standard with allowedTowerIds / noWalls etc.
+
+Plus 3 stubs (`base_defense`, `attacker`, `heist`) reserved for Plans 11/12/13. Stub archetypes refuse to launch; the lobby surfaces them as "Coming Soon."
+
+**MissionRunner** orchestrates a single run. `start(campaign, missionIdx)` resolves archetype defaults + mission overrides into init data, threads a `MissionContext` through `UIBridge.startScene('GameScene', ...)`, and emits `mission_started`. GameScene applies the gold / lives / wave overrides at init and, at game-end, calls `MissionRunner.finalize(result)` — which evaluates star predicates (1 = win, 2 = win + objective, 3 = perfect run), calls `PlayerProfile.recordMissionResult`, and emits `mission_completed` / `mission_failed`. Final mission completion fires `campaign_completed`.
+
+**GameScene threading**. Init signature accepts `missionContext` + `missionGoldStart` + `missionGoldStartMult` + `missionLives`. Mission lives override beats both tutorial mode (99) and DraftModifier overrides. Gold delta + multiplier can both apply (delta first, then multiply by current). Game-end imports `MissionRunner` lazily and calls `finalize` only when the scene was launched as a mission.
+
+**`CampaignLobbyScreen`** — Preact full-screen lobby per faction. Linear 10-mission card list with star ratings (★/☆), archetype badge per card, locked silhouettes (mission N is locked until N-1 has ≥1 star), pre-mission story modal showing the mission's narrative intro + objective list before launching. Completion banner ("Campaign Complete") with the campaign's `outro` copy when all 10 missions are won. Faction color theming pulled from `FACTIONS[id].primaryColor`. New `'campaign-lobby'` ScreenId in UIBridge.
+
+**`PlayerProfile.campaignProgress`** reshaped from `{ factionId → count }` to `{ factionId → { missionIdx → stars } }`. Helpers: `getMissionStars`, `getCampaignProgress`, `getCampaignTotalStars`, `isMissionUnlocked`, `recordMissionResult`. Stars monotonic — replay can never downgrade. Mission N+1 unlocks at ≥1 star on mission N.
+
+**Analytics + server**. New events: `campaign_lobby_opened`, `mission_started`, `mission_completed`, `mission_failed`, `campaign_completed`. Server's per-event dim list extended with `campaignFactionId` + `archetypeId`. Summary `dimQueries` adds `campaignViews` / `missionsByFaction` / `missionsByArchetype` / `missionFailsByFaction` breakdowns.
+
+**Verification**: 374/374 vitest pass (+13 new). tsc clean on client and server.
+
+**Not shipped**: campaign content (Arcane / Mechanical / etc.). Lobby UI gracefully shows "no campaign loaded" if opened without a `data.campaign` payload.
+
+### Tutorial extensions — economy / vs-CPU / JIT / faction briefs / Help carousel (Plan 4)
+
+Rounds out the onboarding surface beyond Plan 3's FTG. New player or returning, every tutorial concept now has a JIT or opt-in track behind it. Per the roadmap user calls: gentle (no drama), real games (not just primer screens), terse voice (no flavor padding).
+
+**Tutorial 2 — Economy** (`tutorial_economy`). Four-wave embedded lesson on Hero Plains in tutorial mode (99 lives, can't fail). Teaches the three income sources in order: kill gold (wave 1), frontier buildings (wave 2), sends (wave 3), synthesis (wave 4). Reached from the ? Help carousel and via an end-of-FTG CTA. No auto-prompt — the user explicitly picked the gentle approach over the wave-4-spike "drama" alternative.
+
+**Tutorial 3 — vs CPU** (`tutorial_vs_cpu`). Real 5-wave Versus session against the existing `BalancedBrain` CPU opponent. Routes through the lobby's existing `startVsCpu` flow via a window flag (`__tutorialVsCpuQueued`) — Lobby auto-runs setup, queues `waveCount=5`, and calls `TutorialManager.queueInGameTrack('tutorial_vs_cpu')` right before scene-switch so the 10s pendingAfterMatchLoad TTL doesn't expire while the player is picking a faction. In-game coach marks cover the three Versus-specific surfaces: sends-go-to-opponent, opponent minimap, ready vote.
+
+**JIT (just-in-time) lessons.** Five new single-step scrimless popovers fired the first time the player encounters each archetype outside of a scripted tutorial: flying creeps (ignore the maze), regenerators (heal between hits), mage creeps (auras buff allies), bosses (cost 5 lives), and leaks (a creep made it past your towers). Idempotent via `PlayerProfile.flags.jit_seen.<concept>`. Suppressed during active tutorial tracks so they don't collide with the scripted lesson. Wired off the existing `creepSpawned` and `creepReached` EventBus events with a `mapCreepTypeToJITConcept` switch.
+
+**Faction briefs.** The old single-line "Key Tip" expanded to a 5-line teaching block per faction: *identity / opener / key tower / what to avoid / how you win*. 11 factions × 5 steps each, terse-mechanical voice — no flavor padding (the picked option). Each faction takes ~30 seconds to read. Auto-fires once per faction the first time it's picked in FactionSelect.
+
+**Skip-all-faction-briefs toggle.** New global persistent setting — when on, every `faction:*` auto-trigger early-returns in `TutorialManager.maybeAutoStart`. Reachable via a checkbox in the Help carousel's "All Tutorials" view. Player can still replay any specific brief on demand. Stored in `TutorialPersistence.skipAllFactionBriefs`.
+
+**Help carousel + basics rewrite.** Replaces the old "?" track-list drawer with a 6-card How To Play carousel — *Mazing / Income / Factions / Modes / Sends / Online*. ≤40 words per card, plain teaching voice. The carousel is the default view; an "All Tutorials →" link swaps to the full replay list. The legacy `basics` track copy was rewritten — the user-flagged "What's Different: Mazing / What's Different: Income" framing dropped (read like marketing), now reads as a normal walkthrough. End-of-`basics` CTA now launches the FTG instead of the longer tutorial_match.
+
+**No new analytics events** — Plan 1's `tutorial_track_started/completed/quit` plus `tutorial_step_seen/completed/skipped` already cover Tutorial 2 / 3 / JIT / brief funnels at the schema level. The new track ids show up automatically in summary `dim:` breakdowns by `trackId`.
+
+361/361 vitest pass (+14 new). tsc clean on client. Server unchanged this plan.
+
+### First Tutorial Game (FTG) splash + slim onboarding track (Plan 3 of progression roadmap)
+
+Replaces the menu-first onboarding with a contained tutorial-game-first flow. Net-new players now see a single splash card before the menu — large **Play Tutorial (~3 min)** button, small **Skip**. Tap Play and you go straight into a 5-minute scripted Arcane round on a single straight-corridor map. Tap Skip and you go to the menu, never re-prompted.
+
+Per the user-flagged "tutorial game mode has too much in it": the new `ftg` track is **mazing + towers ONLY**. Eight steps total — welcome, pick Bolt, place, mazing reveal, pick Bolt again, extend the maze, start wave 1, done. No frontier, no sends, no draft, no economy lesson. Income/sends introduction is deferred to Plan 4's separate `Tutorial 2` (Economy) and `Tutorial 3` (vs CPU) tracks.
+
+The existing longer `tutorial_match` track (covers economy + sends + frontier) is preserved as a Help-menu replay option but no longer the default first-time experience.
+
+Reuses the existing `TutorialMode` (99 lives, +250 starting gold) and the existing `tutorial` map. No new mode or map needed — Plan 3's value is the framing and the slimmer script.
+
+**On FTG complete**: `PlayerProfile.markFirstGameComplete()` sets the `first_game_complete` flag (so the splash never re-prompts on this device) and grants a one-shot 200 XP bonus that crosses L1 → L2 cleanly so the player immediately sees the unlock loop from Plan 2. Quitting the FTG mid-game returns to menu.
+
+**Migration**: legacy players (with `gamesPlayed > 0`) were already pre-marked at Plan 2 migration time as `first_game_complete=true`, so they never see the new splash — they go directly to menu like before.
+
+**Existing `basics` menu walkthrough**: no longer auto-fires on cold boot. Still available via the Help menu's `?` button. The user-flagged "What's Different" framing in basics is left for Plan 4 to overhaul.
+
+Server analytics already sliced `splash_play_tapped` / `splash_skip_tapped` from Plan 1, so the splash decision funnel is queryable from day one.
+
++10 unit tests covering the FTG track shape (8 expected step ids, no economy steps), `markFirstGameComplete` idempotency, and the migration path. 347/347 vitest pass. tsc clean.
+
 ### Player Profile + Player Level + hidden-content menu (Plan 2 of progression roadmap)
 
 Builds the spine of long-term progression. New permanent global Player Level — distinct from the seasonal Battle Pass — gates the modes / maps / future faction-tree unlocks. Per the roadmap's user direction: **hide locked content** in the menu, **keep the faction list visible** (silhouettes come with the faction tree, Plan 5). The player should always see the next thing they're about to unlock.

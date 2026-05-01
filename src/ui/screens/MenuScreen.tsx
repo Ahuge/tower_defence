@@ -160,6 +160,24 @@ export function MenuScreen() {
         </div>
         <div class="text-dim text-sm text-center mt-2">Multiplayer modes use P2P WebRTC — no server required</div>
       </div>
+      {/* Plan 5: Faction Tree entry point. Gated at L3 (matches the
+          first archetype unlock level). Replaces the temporary single-
+          Campaigns tile from Plan 14 — the tree itself routes into
+          campaign lobbies for any faction whose campaign content has
+          shipped. */}
+      {playerLevel >= 3 && (
+        <div class="ui-section" style={{ paddingTop: 0 }}>
+          <div class="ui-section-title">Factions</div>
+          <div class="card-grid">
+            <div class="card"
+              onClick={() => UIBridge.show('faction-tree')}>
+              <div class="card-accent" style={{ background: 'var(--gold)' }} />
+              <div class="card-name" style={{ marginTop: '4px' }}>Faction Tree</div>
+              <div class="card-desc">Unlock new factions by spending Shards on their campaign and beating it.</div>
+            </div>
+          </div>
+        </div>
+      )}
       <div class="ui-section" style={{ paddingTop: 0, display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <button class="btn btn-gold" data-tutorial-target="menu-store" onClick={() => UIBridge.show('store')}>Store</button>
         <button class="btn btn-primary" onClick={() => UIBridge.show('battlepass')}>Battle Pass</button>

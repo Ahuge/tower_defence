@@ -298,6 +298,8 @@ async function handleAnalytics(request: Request, env: Env, origin: string): Prom
       'factionId', 'route',
       'unlockType', 'category', 'id',
       'currency',
+      // Campaigns (Plan 10) — slice mission funnels by faction + archetype.
+      'campaignFactionId', 'archetypeId',
     ]) {
       if (event[dim] !== undefined) {
         const dimKey = `dim:${day}:${event.type}:${dim}:${event[dim]}`;
@@ -333,6 +335,8 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
     'purchase_completed', 'purchase_failed',
     // Encyclopedia
     'encyclopedia_opened', 'encyclopedia_entry_revealed',
+    // Campaigns (Plan 10)
+    'campaign_lobby_opened', 'mission_started', 'mission_completed', 'mission_failed', 'campaign_completed',
   ];
   const summary: Record<string, Record<string, number>> = {};
 
@@ -362,6 +366,11 @@ async function handleAnalyticsSummary(env: Env, origin: string): Promise<Respons
     { prefix: `dim:${today}:achievement_unlocked:id:`, key: 'achievementsUnlocked' },
     // Monetization — purchase mix by currency
     { prefix: `dim:${today}:purchase_completed:currency:`, key: 'purchaseCurrencies' },
+    // Campaigns — completion rate by faction + archetype mix (Plan 10)
+    { prefix: `dim:${today}:campaign_lobby_opened:campaignFactionId:`, key: 'campaignViews' },
+    { prefix: `dim:${today}:mission_completed:campaignFactionId:`, key: 'missionsByFaction' },
+    { prefix: `dim:${today}:mission_completed:archetypeId:`, key: 'missionsByArchetype' },
+    { prefix: `dim:${today}:mission_failed:campaignFactionId:`, key: 'missionFailsByFaction' },
   ];
 
   for (const q of dimQueries) {

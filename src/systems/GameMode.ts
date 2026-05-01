@@ -27,6 +27,17 @@ export interface GameModeContext {
   modifier: DraftModifier | null;
   versus: VersusManager | null;
   sidebarTopY: number; // Y position for sidebar panels
+  /** Plan 14: campaign mission restrictions. Set when the scene was
+   *  launched as a campaign mission; null otherwise. Modes read this
+   *  to gate sends / frontier purchases before they happen. */
+  missionRestrictions?: {
+    noSends?: boolean;
+    noFrontier?: boolean;
+    allowedTowerIds?: string[];
+    allowedFactions?: FactionId[];
+    maxTowers?: number;
+    noWalls?: boolean;
+  } | null;
 }
 
 /**

@@ -75,7 +75,8 @@ class PlayerProfileClass {
   }
 
   /** Existing players (with gamesPlayed > 0 from `td_store`) get a
-   *  one-time inferred starting level so they don't feel demoted. */
+   *  one-time inferred starting level so they don't feel demoted. Also
+   *  marks `first_game_complete` so they don't see Plan 3's splash. */
   private maybeMigrateFromLegacy(): void {
     const store = StorePersistence.load();
     if (store.gamesPlayed <= 0) return;
@@ -95,6 +96,18 @@ class PlayerProfileClass {
       s.migratedAt = Date.now();
       s.migratedFromInferredLevel = inferred;
       s.flags.migration_banner_pending = true;
+      // Legacy player has played the game already — splash + FTG would
+      // be patronizing. Mark FTG complete so the cold-boot splash is
+      // suppressed for them.
+      s.flags.first_game_complete = true;
+      // Plan 5 migration: any faction the player already owned in
+      // td_store.unlockedFactions becomes pre-marked playable so the
+      // tree's two-step unlock model (Shards → campaign → playable)
+      // doesn't demote veterans' rosters. Without this, every legacy
+      // faction would suddenly require a campaign run.
+      for (const factionId of store.unlockedFactions) {
+        s.flags[`legacy_faction_playable.${factionId}`] = true;
+      }
     });
 
     Analytics.track('profile_migrated_from_legacy', {
@@ -138,6 +151,74 @@ class PlayerProfileClass {
 
   hasWonOnMap(mapId: string): boolean {
     return this.getFlag(`first_win_map.${mapId}`);
+  }
+
+  /** True once the player has finished (or skipped past) their first
+   *  guided tutorial. Drives the cold-boot splash decision in App.tsx. */
+  isFirstGameComplete(): boolean {
+    return this.getFlag('first_game_complete');
+  }
+
+  // ---- Campaign progress (Plan 10) -------------------------------------
+
+  /** Star map: factionId → missionIdx → stars (0..3). Stars are
+   *  monotonic — replays only ever upgrade, never downgrade. */
+  getCampaignProgress(factionId: string): { [missionIdx: number]: number } {
+    const raw = PlayerProfileStore.load().campaignProgress[factionId];
+    return raw ?? {};
+  }
+
+  /** Stars earned on a specific mission. 0 means not yet attempted/won. */
+  getMissionStars(factionId: string, missionIdx: number): number {
+    const progress = this.getCampaignProgress(factionId);
+    return progress[missionIdx] ?? 0;
+  }
+
+  /** Sum of stars across all missions of a campaign. */
+  getCampaignTotalStars(factionId: string): number {
+    const progress = this.getCampaignProgress(factionId);
+    let total = 0;
+    for (const stars of Object.values(progress)) total += stars;
+    return total;
+  }
+
+  /** Mission N is unlocked when mission N-1 is won (any star count).
+   *  Mission 0 is always unlocked once the campaign itself is. */
+  isMissionUnlocked(factionId: string, missionIdx: number): boolean {
+    if (missionIdx === 0) return true;
+    return this.getMissionStars(factionId, missionIdx - 1) >= 1;
+  }
+
+  /** Persist a mission result. Stars are monotonic — a 2-star replay
+   *  doesn't downgrade a previous 3-star clear. Field stored as a
+   *  numeric value rather than the StarCount type because the profile
+   *  schema is plain JSON. */
+  recordMissionResult(factionId: string, missionIdx: number, stars: number): void {
+    if (stars < 0 || stars > 3) {
+      console.warn(`[PlayerProfile] invalid star count ${stars}; clamping`);
+      stars = Math.max(0, Math.min(3, stars));
+    }
+    const previous = this.getMissionStars(factionId, missionIdx);
+    if (stars <= previous) return; // monotonic; never demote
+    PlayerProfileStore.update(s => {
+      if (!s.campaignProgress[factionId]) s.campaignProgress[factionId] = {};
+      s.campaignProgress[factionId][missionIdx] = stars;
+    });
+  }
+
+  /** Mark FTG complete. Idempotent. Awards a one-shot XP bonus the
+   *  first time it's called so the FTG winner sees the level-up
+   *  modal immediately and feels the rest of the unlock loop. */
+  markFirstGameComplete(): void {
+    if (this.isFirstGameComplete()) return;
+    this.setFlag('first_game_complete', true);
+    // Bonus equal to one full level at the current level. Crosses the
+    // L1->L2 boundary cleanly for a brand-new player; older players
+    // who somehow trigger this (re-running ftg from Help) get a
+    // smaller relative bump.
+    const lvl = this.getLevel();
+    const bonus = Math.max(50, lvl * 200);
+    this.addXP(bonus, 'ftg-completed');
   }
 
   // ---- XP awarding ------------------------------------------------------

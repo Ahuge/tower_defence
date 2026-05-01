@@ -24,6 +24,20 @@
 
 import { PlayerProfileStore } from './PlayerProfileStore';
 import { levelFromXp } from './PlayerLevel';
+import { StorePersistence } from '../monetization/StorePersistence';
+import { getTreeNode } from '../../data/FactionTree';
+import { getCampaign, isCampaignComplete } from '../../data/campaigns';
+import type { FactionId } from '../../data/Factions';
+
+// We deliberately do NOT import PlayerProfile here — UnlockGates is
+// imported by PlayerProfile, so the dependency must point one way.
+// Read flags + campaign progress directly from the store layer.
+function readProfileFlag(key: string): boolean {
+  return !!PlayerProfileStore.load().flags[key];
+}
+function readCampaignProgress(factionId: string): { [missionIdx: number]: number } {
+  return PlayerProfileStore.load().campaignProgress[factionId] ?? {};
+}
 
 // ---- Mode unlocks --------------------------------------------------------
 
@@ -154,6 +168,85 @@ export function nextUnlockHint(currentLevel: number, lookaheadLevels = 10): { le
     if (items.length > 0) return { level: l, items };
   }
   return null;
+}
+
+// ---- Faction tree state machine (Plan 5) -------------------------------
+
+/** State of a single faction in the tree, used to render the tree UI
+ *  and gate the unlock CTA. */
+export type FactionNodeState =
+  | 'locked_level'         // Player Level too low — silhouette + L_ tooltip
+  | 'locked_parents'       // Parent(s) not yet Shards-unlocked
+  | 'locked_capstone'      // Capstone — needs N other unlocks
+  | 'unlockable'           // All gates clear, can spend Shards now
+  | 'campaign_pending'     // Shards spent, campaign exists but not started / not shipped
+  | 'campaign_in_progress' // At least one mission won, not all
+  | 'playable';            // Free root OR Shards spent + campaign complete
+
+/** Has the Shards purchase happened for this faction's campaign?
+ *  Tracked in `PlayerInventory.unlockedFactions` (existing field; Plan 5
+ *  reuses it — the meaning shifted from "playable" to
+ *  "campaign-purchased"). */
+export function isFactionCampaignPurchased(factionId: FactionId): boolean {
+  if (factionId === 'arcane') return true; // free root, implicitly purchased
+  return StorePersistence.load().unlockedFactions.includes(factionId);
+}
+
+/** Has the player completed the campaign for this faction?
+ *  True when every mission has at least one star. Returns false if
+ *  the campaign content hasn't shipped yet — can't complete what
+ *  isn't there. */
+export function isFactionCampaignComplete(factionId: FactionId): boolean {
+  const def = getCampaign(factionId);
+  if (!def) return false;
+  return isCampaignComplete(factionId, readCampaignProgress(factionId));
+}
+
+/** Is this faction playable in non-campaign modes (Standard, Endless,
+ *  etc.)? Two-step unlock:
+ *    1. Pay Shards → campaign purchased
+ *    2. Beat campaign → playable
+ *  Arcane is the free root and is always playable. Legacy migration
+ *  may also pre-grant playable status to factions the player already
+ *  used pre-Plan-5 via `legacy_faction_playable.<id>` flags. */
+export function isFactionPlayable(factionId: FactionId): boolean {
+  if (factionId === 'arcane') return true;
+  if (factionId === 'chaos' || factionId === 'random') return true; // meta — not gated
+  if (readProfileFlag(`legacy_faction_playable.${factionId}`)) return true;
+  if (!isFactionCampaignPurchased(factionId)) return false;
+  return isFactionCampaignComplete(factionId);
+}
+
+/** Compute tree-state for a node. Drives the UI badge + whether the
+ *  unlock CTA fires. */
+export function getFactionNodeState(factionId: FactionId): FactionNodeState {
+  const node = getTreeNode(factionId);
+  if (!node) return 'playable'; // chaos / random — not in tree
+  const level = getCurrentLevel();
+
+  if (isFactionPlayable(factionId)) return 'playable';
+
+  if (isFactionCampaignPurchased(factionId)) {
+    const def = getCampaign(factionId);
+    if (!def) return 'campaign_pending';
+    const progress = readCampaignProgress(factionId);
+    return Object.values(progress).some(s => s >= 1) ? 'campaign_in_progress' : 'campaign_pending';
+  }
+
+  if (level < node.minLevel) return 'locked_level';
+
+  if (node.requiresAnyN !== undefined) {
+    let count = 0;
+    for (const peer of ['mechanical', 'nature', 'void', 'military', 'celestial', 'aliens', 'infernal', 'psionic', 'cypherpunk'] as FactionId[]) {
+      if (isFactionCampaignPurchased(peer)) count++;
+    }
+    return count >= node.requiresAnyN ? 'unlockable' : 'locked_capstone';
+  }
+
+  for (const parentId of node.parents) {
+    if (!isFactionCampaignPurchased(parentId)) return 'locked_parents';
+  }
+  return 'unlockable';
 }
 
 // ---- Convenience: read profile directly ---------------------------------

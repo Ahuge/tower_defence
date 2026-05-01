@@ -15,6 +15,8 @@ import { EncyclopediaScreen } from './screens/EncyclopediaScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { CircleLobbyScreen } from './screens/CircleLobbyScreen';
+import { CampaignLobbyScreen } from './screens/CampaignLobbyScreen';
+import { FactionTreeScreen } from './screens/FactionTreeScreen';
 import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { AppLoadingScreen } from './screens/AppLoadingScreen';
@@ -26,13 +28,26 @@ import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { AchievementToast } from './components/AchievementToast';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
 import { LevelUpModal } from './components/LevelUpModal';
+import { FactionUnlockSplash } from './components/FactionUnlockSplash';
+import { SplashScreen } from './screens/SplashScreen';
 import { AnalyticsDebugPanel } from './debug/AnalyticsDebugPanel';
+import { PlayerProfile } from '../systems/profile/PlayerProfile';
+import { TutorialPersistence } from '../systems/Tutorial/TutorialPersistence';
 import './styles/game-panels.css';
 
 export function App() {
   const [screen, setScreen] = useState<ScreenId>(UIBridge.getScreen());
   const [data, setData] = useState<Record<string, unknown>>(UIBridge.getData());
   const [loading, setLoading] = useState<LoadingData | null>(UIBridge.getLoading());
+  // Plan 3: cold-boot splash gates the menu for net-new players.
+  // Initial value computed once at mount — the player can't toggle this
+  // back on by interacting with the splash, so re-evaluation isn't needed.
+  // Migration in PlayerProfile.init() pre-marks first_game_complete for
+  // legacy players so they never see this.
+  const [showSplash, setShowSplash] = useState(() => {
+    const tut = TutorialPersistence.load();
+    return !PlayerProfile.isFirstGameComplete() && !tut.dismissedFirstLaunch;
+  });
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -50,6 +65,18 @@ export function App() {
     });
     return () => { unsubScreen(); unsubLoading(); };
   }, []);
+
+  // While the splash is up, suppress everything else. Once the player
+  // taps Play (FTG launches into GameScene which clears the screen)
+  // or Skip (menu falls through normally), this gate releases.
+  if (showSplash && screen === 'menu') {
+    return (
+      <>
+        <SplashScreen onDismissed={() => setShowSplash(false)} />
+        <AnalyticsDebugPanel />
+      </>
+    );
+  }
 
   return (
     <>
@@ -72,6 +99,8 @@ export function App() {
           {screen === 'settings' && <SettingsScreen />}
           {screen === 'lobby' && <LobbyScreen />}
           {screen === 'circle-lobby' && <CircleLobbyScreen />}
+          {screen === 'campaign-lobby' && <CampaignLobbyScreen data={data} />}
+          {screen === 'faction-tree' && <FactionTreeScreen />}
         </div>
       )}
 
@@ -115,6 +144,11 @@ export function App() {
           listener queue. Renders nothing when no level-up or banner is
           pending. */}
       <LevelUpModal />
+
+      {/* Faction unlock splash — listens for `td-faction-unlocked`
+          window events dispatched by the Plan 5 unlock flow. Self-gates
+          to null when no unlock is pending. */}
+      <FactionUnlockSplash />
 
       {/* Analytics debug panel — gated on the `?debug` URL flag, renders
           nothing in normal play. Fixed bottom-left drawer. */}

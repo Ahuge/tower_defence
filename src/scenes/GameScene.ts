@@ -85,6 +85,13 @@ import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpri
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
+/** Tower ids treated as "walls" for the Plan 14 campaign-restriction
+ *  `noWalls` check + the `maxTowers` cap (which only counts non-wall
+ *  shooters). Hardcoded list — small surface, the kit doesn't rotate
+ *  often enough to justify a per-tower flag in the data layer yet. */
+const WALL_TOWER_IDS = new Set<string>(['mech_wall', 'mil_sandbag', 'mil_wire']);
+function isWallTower(towerId: string): boolean { return WALL_TOWER_IDS.has(towerId); }
+
 /** Single-shot seeded roll in [0, 1). Used by the Endless faction
  *  rotation so host + joiner converge on the same faction for a
  *  given (sharedSeed, waveNum) pair. Same mulberry32 math as
@@ -293,7 +300,25 @@ export class GameScene extends Phaser.Scene {
   /** Timestamp when mode_entered fired; used to compute mode_exited durationMs. */
   private _modeEnteredAt: number = 0;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number }): void {
+  /** Plan 10: campaign mission context. Populated when the scene was
+   *  launched by `MissionRunner.start`; null otherwise. GameScene
+   *  reads this in init() to apply mission-specific overrides
+   *  (lives, gold, restrictions) and uses it at game-end to call
+   *  `MissionRunner.finalize`. */
+  private missionContext: import('../systems/missions/MissionRunner').MissionContext | null = null;
+
+  /** Mission-applied gold/lives overrides (snapshot of init data). */
+  private _missionGoldStart?: number;
+  private _missionGoldStartMult?: number;
+  private _missionLives?: number;
+
+  /** Plan 14 custom counters fed into MissionResult.custom at game-end.
+   *  Populated only when the scene was launched as a campaign mission;
+   *  ignored otherwise. */
+  private _missionSendsBought = 0;
+  private _missionHeroHpMinFraction = 1;
+
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -304,6 +329,10 @@ export class GameScene extends Phaser.Scene {
     this.randomSeed = data.randomSeed ?? 0;
     this.creepFaction = data.creepFaction ?? 'arcane';
     this.waveCount = data.waveCount;
+    this.missionContext = data.missionContext ?? null;
+    this._missionGoldStart = data.missionGoldStart;
+    this._missionGoldStartMult = data.missionGoldStartMult;
+    this._missionLives = data.missionLives;
     // Live-capture mode forces 20-wave matches to match the
     // headless training data shape — bot data is generated at
     // waveCount=20, so human-captured rows must use the same to
@@ -479,6 +508,12 @@ export class GameScene extends Phaser.Scene {
         this.lives = this.modifier.livesOverride;
       }
     }
+    // Plan 10: campaign mission lives override takes precedence over
+    // tutorial / modifier defaults. Final showdowns / boss rushes
+    // use this for tighter constraints.
+    if (this._missionLives !== undefined) {
+      this.lives = this._missionLives;
+    }
 
     this.arenaManager = null;
     this.abilitySystem = null;
@@ -519,6 +554,11 @@ export class GameScene extends Phaser.Scene {
     // subscribing here captures human actions only — no bot leakage.
     this.eventBus.on('sendPurchased', (sendOptionId: string) => {
       this._captureHumanAction({ kind: 'send', sendOptionId });
+      // Plan 14 mission counter — feeds the "Win without sends"
+      // star-3 predicate at finalize. Capture mode runs alongside
+      // the mission counter cleanly since only one is active per
+      // session.
+      this._missionSendsBought++;
     });
     this.eventBus.on('frontierPurchased', (buildingId: string) => {
       this._captureHumanAction({ kind: 'frontier', buildingId });
@@ -564,6 +604,18 @@ export class GameScene extends Phaser.Scene {
     // Tutorial: +150 gold on top of STARTING_GOLD so the player can afford
     // two Arcane Bolts + a send and a Leyline Nexus.
     if (this.matchMode === 'tutorial') this.economy.addGold(150);
+    // Plan 10: campaign mission gold tweaks. `missionGoldStart` is an
+    // additive bump; `missionGoldStartMult` halves (frugal) or
+    // doubles starting gold. Both can apply.
+    if (this._missionGoldStart !== undefined) {
+      this.economy.addGold(this._missionGoldStart);
+    }
+    if (this._missionGoldStartMult !== undefined && this._missionGoldStartMult !== 1) {
+      const current = this.economy.gold;
+      const adjusted = Math.round(current * this._missionGoldStartMult);
+      // Subtract or add the delta — there's no setGold helper.
+      this.economy.addGold(adjusted - current);
+    }
     const versusRef = this.registry.get('versus') as VersusManager | null;
     const waveSeed = versusRef?.sharedSeed ?? 0;
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
@@ -748,6 +800,7 @@ export class GameScene extends Phaser.Scene {
       modifier: this.modifier,
       versus: null, // set after versus init
       sidebarTopY: UpcomingWaves.HEIGHT,
+      missionRestrictions: this.missionContext?.restrictions ?? null,
     };
     this.gameMode.createUI(gameModeCtx);
 
@@ -2084,6 +2137,20 @@ export class GameScene extends Phaser.Scene {
 
     const towerType = getTowerType(this.selectedBuildType);
 
+    // Plan 14: enforce campaign mission restrictions at the placement
+    // gate. allowedTowerIds + allowedFactions filter the kit; maxTowers
+    // caps non-wall placements; noWalls bans wall-class towers entirely.
+    if (this.missionContext?.restrictions) {
+      const r = this.missionContext.restrictions;
+      if (r.allowedTowerIds && !r.allowedTowerIds.includes(towerType.id)) return;
+      if (r.allowedFactions && towerType.faction && !r.allowedFactions.includes(towerType.faction)) return;
+      if (r.noWalls && isWallTower(towerType.id)) return;
+      if (r.maxTowers !== undefined) {
+        const placed = this._towers.filter(t => !isWallTower(t.typeId)).length;
+        if (placed >= r.maxTowers) return;
+      }
+    }
+
     // Capture BEFORE placement so the snapshot is the pre-action state.
     this._captureHumanAction({ kind: 'place', col, row, type: towerType });
 
@@ -2220,6 +2287,17 @@ export class GameScene extends Phaser.Scene {
     // of game speed). Dims while a wave is active so it doesn't compete
     // with the live creeps.
     this.updatePathFlow(delta);
+
+    // Plan 14: track minimum hero HP fraction during the run for the
+    // "Hero never falls below 50% HP" star objective. Sampled once per
+    // frame; no allocation in steady state.
+    if (this.missionContext && this.arenaManager?.hero) {
+      const h = this.arenaManager.hero;
+      if (h.maxHp > 0) {
+        const frac = Math.max(0, h.hp / h.maxHp);
+        if (frac < this._missionHeroHpMinFraction) this._missionHeroHpMinFraction = frac;
+      }
+    }
 
     // Apply game speed
     delta *= this.gameSpeed;
@@ -2873,6 +2951,36 @@ export class GameScene extends Phaser.Scene {
       mapId: this.mapId,
       waveCount: this.waveCount,
     });
+
+    // Plan 10: if this was a campaign mission, hand the result to
+    // MissionRunner so it can evaluate star objectives and persist.
+    // The runner reads the same result snapshot we built for the
+    // GameOverScene, plus a couple of mission-specific fields.
+    if (this.missionContext) {
+      const won = this.lives > 0;
+      const livesStart = this._missionLives ?? STARTING_LIVES;
+      const heroHpMin = this._missionHeroHpMinFraction;
+      const sendsBought = this._missionSendsBought;
+      void import('../systems/missions/MissionRunner').then(m => {
+        m.MissionRunner.finalize({
+          won,
+          wave: this.currentWave,
+          durationMs: Date.now() - this._gameStartTime,
+          livesRemaining: this.lives,
+          livesStart,
+          goldRemaining: this.economy.gold,
+          goldEarned: this.statsTracker.stats.totalGoldEarned ?? 0,
+          towerCount: this.towerMgr.totalTowersBuilt,
+          perfectRun: won && this.lives === livesStart && !this._continueAdShown,
+          custom: {
+            // Plan 14 v1.1: counter-driven star objectives. Predicates
+            // in arcane.ts read these by name.
+            sendsBought,
+            heroHpMin,
+          },
+        });
+      });
+    }
 
     // Live-capture session close — appends this match's turns to
     // localStorage with the match outcome attached.
