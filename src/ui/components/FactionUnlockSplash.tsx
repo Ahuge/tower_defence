@@ -27,7 +27,9 @@ const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
 function splashSrc(faction: FactionId, mobile: boolean): string {
   if (faction === 'chaos' || faction === 'random') return '';
   const suffix = mobile ? '_splash_mobile' : '_splash';
-  return `${BASE_URL}assets/${faction}/${faction}${suffix}.png`;
+  // WebP — drops splash payload from ~2MB → ~100KB. The PNG fallback
+  // path is preserved on disk for any consumer not yet migrated.
+  return `${BASE_URL}assets/${faction}/${faction}${suffix}.webp`;
 }
 
 export function FactionUnlockSplash() {

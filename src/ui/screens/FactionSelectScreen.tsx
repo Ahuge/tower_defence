@@ -5,6 +5,7 @@ import { FACTION_ORDER, FACTIONS, FactionId, rollRandomRealFaction } from '../..
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { MatchMode } from '../../data/WaveDefinitions';
 import { isFactionPlayable } from '../../systems/profile/UnlockGates';
+import { preloadFactionArt } from '../utils/preloadFactionArt';
 
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
 
@@ -19,6 +20,10 @@ export function FactionSelectScreen({ data }: Props) {
     // multiplayer messages, training capture) only ever sees a real
     // faction id — keeps the surface area minimal.
     const resolvedFaction = factionId === 'random' ? rollRandomRealFaction() : factionId;
+    // Warm the browser cache for the chosen faction's splash + emblem
+    // so LoadingScreen and any downstream FactionUnlockSplash paint
+    // instantly. Fire-and-forget; payload is tiny post-WebP.
+    preloadFactionArt(resolvedFaction);
     const passData = { mode, faction: resolvedFaction, map: data.map, difficulty: data.difficulty, randomSeed: data.randomSeed, dailySeed: data.dailySeed, customMapDef: data.customMapDef, waveCount: data.waveCount };
     if (mode === 'hero_defense') { UIBridge.show('heroselect', passData); }
     else if (mode === 'gauntlet' || mode === 'endless') {

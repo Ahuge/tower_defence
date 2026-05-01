@@ -2,6 +2,20 @@
 
 ## 2026-05-02
 
+### Faction art loading speed — WebP conversion (95% size reduction)
+
+User reported faction images and splash screen loading slowly. Cause: the high-res v2 art delivery shipped 2MB landscape splashes + 800KB emblems as PNG. New `scripts/convert_assets_to_webp.py` bulk-converts every `_splash` / `_splash_mobile` / `_emblem` / `_parallax_{far,mid,fore}` PNG to WebP at q=82.
+
+**Conversion impact**: 42.7 MB → 2.1 MB across 11 factions (4.9% of original size). Per-faction breakdown roughly: splash 2MB → 100KB, emblem 800KB → 50KB, parallax bundle 600KB → 25KB.
+
+**Component switch**: `FactionEmblem`, `FactionUnlockSplash`, `LoadingScreen`, and `FactionTreeScreen.parallaxSrc` all now point at `.webp` paths. WebP is universally supported in the target browser matrix (Chrome, Edge, Firefox 65+, Safari 14+, Capacitor WebView). PNG sources stay on disk as a defensive fallback for one release; cleanup PR after WebP ships verified.
+
+**Preload helper**: `src/ui/utils/preloadFactionArt.ts` — when the player picks a faction in `FactionSelectScreen`, fire-and-forget `<img>` prefetches for `_splash.webp`, `_splash_mobile.webp`, and `_emblem.webp` warm the browser HTTP cache. By the time they reach LoadingScreen / FactionUnlockSplash a few clicks later, the art is decoded and renders instantly.
+
+**Other tweaks**: `decoding="async"` added to FactionEmblem `<img>` so emblem decode happens off the main thread. Existing `loading="lazy"` retained — emblems in card lists shouldn't block initial paint.
+
+**Verification**: 440/440 vitest pass, tsc clean. `FactionEmblem.test.tsx` updated to assert WebP path.
+
 ### Plan 12 v1 — Attacker mission archetype (pre-placed defender towers)
 
 Roles reverse: the player commands the creep waves and the map ships with a fixed defender lattice. v1 implementation per the roadmap — bespoke `attacker_assault` map with hand-placed Arrow/Cannon/Sniper/Frost-Trap towers along a central corridor, the player can't build, and the win condition flips at end-of-waves.

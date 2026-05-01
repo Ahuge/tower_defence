@@ -379,7 +379,8 @@ const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? "/";
 
 function parallaxSrc(factionId: FactionId, layer: "far" | "mid" | "fore"): string {
   if (factionId === "chaos" || factionId === "random") return "";
-  return `${BASE_URL}assets/${factionId}/${factionId}_parallax_${layer}.png`;
+  // WebP — drops the 3-layer parallax bundle from ~600KB → ~25KB.
+  return `${BASE_URL}assets/${factionId}/${factionId}_parallax_${layer}.webp`;
 }
 
 function FactionParallax({ factionId }: { factionId: FactionId }) {

@@ -25,7 +25,8 @@ const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
 function factionSplashSrc(faction: string | null, mobile = false): string {
   if (!faction || faction === 'random' || faction === 'chaos') return '';
   const suffix = mobile ? '_splash_mobile' : '_splash';
-  return `${BASE_URL}assets/${faction}/${faction}${suffix}.png`;
+  // WebP — ~95% smaller payload than the PNG source.
+  return `${BASE_URL}assets/${faction}/${faction}${suffix}.webp`;
 }
 
 /** Reactive viewport portrait detection. Re-evaluates on resize so a

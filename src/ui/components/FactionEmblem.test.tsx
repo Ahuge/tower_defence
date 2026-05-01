@@ -12,14 +12,14 @@ import { FACTION_ORDER } from '../../data/Factions';
 
 afterEach(() => cleanup());
 
-describe('FactionEmblem — PNG-first render', () => {
-  it('renders an <img> for real factions (PNG-backed)', () => {
+describe('FactionEmblem — WebP-first render', () => {
+  it('renders an <img> for real factions (WebP-backed)', () => {
     for (const id of FACTION_ORDER) {
       if (id === 'chaos' || id === 'random') continue;
       const { container } = render(<FactionEmblem faction={id} size={48} />);
       const img = container.querySelector('img');
       expect(img).toBeTruthy();
-      expect(img!.getAttribute('src')).toContain(`assets/${id}/${id}_emblem.png`);
+      expect(img!.getAttribute('src')).toContain(`assets/${id}/${id}_emblem.webp`);
       cleanup();
     }
   });

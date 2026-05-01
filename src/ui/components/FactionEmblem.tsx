@@ -38,7 +38,10 @@ function emblemSrc(faction: FactionId): string {
   // Meta entries (chaos / random) don't ship with bespoke emblems —
   // they always fall through to the procedural glyph below.
   if (faction === 'chaos' || faction === 'random') return '';
-  return `${BASE_URL}assets/${faction}/${faction}_emblem.png`;
+  // WebP is universally supported in our target browsers (Chrome,
+  // Edge, Firefox 65+, Safari 14+, Capacitor WebView). Drops emblem
+  // payload from ~800KB → ~50KB for substantially faster paint.
+  return `${BASE_URL}assets/${faction}/${faction}_emblem.webp`;
 }
 
 export function FactionEmblem({ faction, size = 56, locked = false }: Props) {
@@ -59,6 +62,7 @@ export function FactionEmblem({ faction, size = 56, locked = false }: Props) {
         width={size}
         height={size}
         loading="lazy"
+        decoding="async"
         onError={() => setImgFailed(true)}
         style={{
           display: 'block',
