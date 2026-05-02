@@ -31,47 +31,87 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     "Their archmages are spent, their meteors fall on rubble, and the caverns retreat behind their crystal walls. " +
     "You hold the field. Future campaigns will reshape your roster — start by picking the next faction tree branch.",
   missions: [
-    // 1 — Soft opener, restriction (first 4 towers only)
+    // 1 — First Sigil (interrupt). Plan A v2: introduces the channel
+    // mechanic. Two Sigils, easy to interrupt; missing one costs a
+    // ring of towers. Tutorial mission for the campaign's verb.
     {
-      id: 'crystal_outskirts',
+      id: 'first_sigil',
       idx: 0,
-      name: 'Crystal Outskirts',
+      name: 'First Sigil',
       story:
-        "Their scouts probe the eastern path. Light skirmishers, easy to read. " +
-        "We have basic defences only — no advanced kit until we resupply. " +
-        "Hold the line and we earn the inventory back.",
-      archetype: 'restriction',
+        "Their scouts plant glyphs along the eastern path. Each glyph that finishes its sigil clears a ring of stone — " +
+        "your towers within reach go to dust. Stop the channel and the ring stays standing. Easy first one. " +
+        "There will be harder ones.",
+      archetype: 'interrupt',
       overrides: {
         mapId: 'arcane_outskirts',
         difficulty: 'easy',
-        waveCount: 10,
-        restrictions: {
-          allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'mech_wall'],
-        },
+        waveCount: 8,
+        waveScript: [
+          { wave: 1, groups: [{ creepType: 'standard', count: 6, hpScale: 28, speedScale: 1 }], spawnInterval: 600, isBoss: false },
+          { wave: 2, groups: [{ creepType: 'standard', count: 8, hpScale: 36, speedScale: 1 }], spawnInterval: 550, isBoss: false },
+          { wave: 3, groups: [
+            { creepType: 'standard', count: 6, hpScale: 44, speedScale: 1 },
+            { creepType: 'arcane_sigil', count: 1, hpScale: 60, speedScale: 1 },
+          ], spawnInterval: 500, isBoss: false },
+          { wave: 4, groups: [{ creepType: 'fast', count: 8, hpScale: 32, speedScale: 1 }], spawnInterval: 400, isBoss: false },
+          { wave: 5, groups: [{ creepType: 'standard', count: 10, hpScale: 60, speedScale: 1 }], spawnInterval: 450, isBoss: false },
+          { wave: 6, groups: [
+            { creepType: 'standard', count: 8, hpScale: 70, speedScale: 1 },
+            { creepType: 'arcane_sigil', count: 1, hpScale: 90, speedScale: 1 },
+          ], spawnInterval: 400, isBoss: false },
+          { wave: 7, groups: [{ creepType: 'armored', count: 6, hpScale: 110, speedScale: 1 }], spawnInterval: 500, isBoss: false },
+          { wave: 8, groups: [{ creepType: 'boss', count: 1, hpScale: 600, speedScale: 1 }], spawnInterval: 0, isBoss: true },
+        ],
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Win with under 8 towers placed', predicate: r => r.towerCount <= 8 },
+        star2: { label: 'Interrupt at least 1 Sigil', predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 1 },
+        star3: { label: 'No Sigil completed its channel', predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0 },
       },
     },
 
-    // 2 — Standard 15 with terrain + winding map
+    // 2 — The Library (interrupt). Scribes channel a wave-buff that
+    // makes future creeps tougher. Cumulative — leak two scribes and
+    // wave 7 is a brick wall. Player learns "kill the casters first."
     {
-      id: 'serpent_pass',
+      id: 'the_library',
       idx: 1,
-      name: 'Serpent Pass',
+      name: 'The Library',
       story:
-        "The river path winds through wizard-worked stone. Visibility is short, the curves are tight. " +
-        "Their main force opens with this approach. Build inside the bends — they\'ll do the walking for us.",
-      archetype: 'standard',
+        "They've made the chapter library a forward camp. Their scribes channel from inside it — every uninterrupted " +
+        "passage strengthens the next wave's bones. The pattern compounds. Don't let them write more than they have to.",
+      archetype: 'interrupt',
       overrides: {
         mapId: 'serpentine',
         difficulty: 'normal',
-        waveCount: 15,
+        waveCount: 12,
+        waveScript: [
+          { wave: 1, groups: [{ creepType: 'standard', count: 6, hpScale: 30, speedScale: 1 }], spawnInterval: 600, isBoss: false },
+          { wave: 2, groups: [{ creepType: 'standard', count: 8, hpScale: 40, speedScale: 1 }], spawnInterval: 550, isBoss: false },
+          { wave: 3, groups: [
+            { creepType: 'standard', count: 6, hpScale: 50, speedScale: 1 },
+            { creepType: 'arcane_scribe', count: 2, hpScale: 70, speedScale: 1 },
+          ], spawnInterval: 500, isBoss: false },
+          { wave: 4, groups: [{ creepType: 'fast', count: 10, hpScale: 50, speedScale: 1 }], spawnInterval: 400, isBoss: false },
+          { wave: 5, groups: [{ creepType: 'standard', count: 12, hpScale: 70, speedScale: 1 }], spawnInterval: 450, isBoss: false },
+          { wave: 6, groups: [
+            { creepType: 'standard', count: 8, hpScale: 80, speedScale: 1 },
+            { creepType: 'arcane_scribe', count: 2, hpScale: 100, speedScale: 1 },
+          ], spawnInterval: 450, isBoss: false },
+          { wave: 7, groups: [{ creepType: 'armored', count: 8, hpScale: 130, speedScale: 1 }], spawnInterval: 500, isBoss: false },
+          { wave: 8, groups: [{ creepType: 'standard', count: 14, hpScale: 110, speedScale: 1 }], spawnInterval: 400, isBoss: false },
+          { wave: 9, groups: [
+            { creepType: 'standard', count: 8, hpScale: 130, speedScale: 1 },
+            { creepType: 'arcane_scribe', count: 2, hpScale: 150, speedScale: 1 },
+          ], spawnInterval: 400, isBoss: false },
+          { wave: 10, groups: [{ creepType: 'fast', count: 14, hpScale: 130, speedScale: 1 }], spawnInterval: 350, isBoss: false },
+          { wave: 11, groups: [{ creepType: 'armored', count: 10, hpScale: 200, speedScale: 1 }], spawnInterval: 500, isBoss: false },
+          { wave: 12, groups: [{ creepType: 'boss', count: 1, hpScale: 1200, speedScale: 1 }], spawnInterval: 0, isBoss: true },
+        ],
       },
       objectives: {
-        star2: { label: 'Win with 70% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.7) },
-        star3: { label: 'Finish in under 8 minutes', predicate: r => r.durationMs < 8 * 60 * 1000 },
+        star2: { label: 'Interrupt at least 3 Scribes', predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 3 },
+        star3: { label: 'No Scribe completed its channel', predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0 },
       },
     },
 
