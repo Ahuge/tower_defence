@@ -342,9 +342,9 @@ export const CREEP_TYPES: Record<string, CreepType> = {
 
   arcane_sigil: {
     id: 'arcane_sigil', name: 'Sigil',
-    description: 'Channels a tower-clearing pulse. Tanky on purpose — committing real DPS is the price of an interrupt.',
-    hpMultiplier: 2.5, speedMultiplier: 0.5, armor: 'medium',
-    color: 0xaa44ff, size: 1.15, count: 1,
+    description: 'Channels a tower-clearing pulse. Heavily armored — interrupting it costs real DPS, not a casual stray shot.',
+    hpMultiplier: 4.5, speedMultiplier: 0.5, armor: 'heavy',
+    color: 0xaa44ff, size: 1.25, count: 1,
     traits: [{
       id: 'channel_caster',
       // 10s channel — long enough that the player has time to read,
