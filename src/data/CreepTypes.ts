@@ -329,6 +329,59 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  // ─── Plan A: Arcane Counterspell — caster creeps ───────────────
+  // Channel a spell after a delay; any damage interrupts. Designed
+  // to read clearly: a Sigil and a Scribe should look like distinct
+  // threats in the wave so the player learns to prioritize them.
+
+  arcane_sigil: {
+    id: 'arcane_sigil', name: 'Sigil',
+    description: 'Channels a tower-clearing pulse. Interrupt or lose nearby towers.',
+    hpMultiplier: 0.7, speedMultiplier: 0.55, armor: 'light',
+    color: 0xaa44ff, size: 1.0, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.5,
+      channelDuration: 4.5,
+      effectId: 'clear_towers_radius',
+      meta: { radius: 84 },
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.9,
+        speedMult: hints.speed * 0.8,
+        countMult: 1,
+        goldMult: hints.goldMult * 1.3,
+        extraTraits: [],
+      };
+    },
+  },
+
+  arcane_scribe: {
+    id: 'arcane_scribe', name: 'Scribe',
+    description: 'Channels a buff that strengthens future waves. Cumulative if uninterrupted.',
+    hpMultiplier: 0.9, speedMultiplier: 0.6, armor: 'medium',
+    color: 0xffd966, size: 1.0, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 5.0,
+      effectId: 'buff_next_wave_hp',
+      meta: { percent: 0.30 },
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness,
+        speedMult: hints.speed * 0.85,
+        countMult: 1,
+        goldMult: hints.goldMult * 1.2,
+        extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {

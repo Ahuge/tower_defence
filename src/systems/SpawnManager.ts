@@ -201,11 +201,17 @@ export class SpawnManager {
       // re-pathed mid-wave (see Creep.rerouteViaWaypoints). Non-
       // waypoint maps leave this null.
       const spawner = this.spawners ? this.spawners[entry.pathIndex] ?? null : null;
+      // Plan A: Counterspell channel-completion buff. Each completed
+      // `buff_next_wave_hp` cast adds to the running multiplier. Reads
+      // off the scene because it's a per-mission accumulator that
+      // SpawnManager doesn't otherwise need to know about.
+      const channelHpBuff = (this.scene as any)._channelHpBuff ?? 0;
+      const hpScaleWithBuff = entry.hpScale * (1 + channelHpBuff);
       for (let b = 0; b < burstCount; b++) {
         const creep = new Creep(
           this.scene,
           [...path],
-          entry.hpScale,
+          hpScaleWithBuff,
           entry.speedScale,
           entry.isBoss,
           entry.creepType,

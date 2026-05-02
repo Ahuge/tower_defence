@@ -95,7 +95,12 @@ export type AnalyticsEvent =
 
   // ---- Campaign state v2 (Phase 0 of campaign-systems v2) ------------------
   | { type: 'campaign_state_loaded'; factionId: string; hasState: boolean }
-  | { type: 'campaign_state_updated'; factionId: string; changedKeys: string[]; hadPriorState: boolean };
+  | { type: 'campaign_state_updated'; factionId: string; changedKeys: string[]; hadPriorState: boolean }
+
+  // ---- Arcane Counterspell (Plan A) -----------------------------------------
+  | { type: 'arcane_channel_started'; channelId: string; effectId: string; duration: number }
+  | { type: 'arcane_channel_interrupted'; channelId: string; effectId: string; source: 'damage' | 'death' | 'amf' | 'external'; percentRemaining: number }
+  | { type: 'arcane_channel_completed'; channelId: string; effectId: string };
 
 /** Convenience union of all event names. */
 export type EventName = AnalyticsEvent['type'];

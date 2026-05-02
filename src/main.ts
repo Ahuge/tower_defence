@@ -26,6 +26,7 @@ import { PlayerProfile } from './systems/profile/PlayerProfile';
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
 import './systems/traits/CreepTraitHandlers';
+import './systems/traits/handlers/ChannelCasterHandler';
 
 // Eager-load the live-capture module so window.__learningCapture is
 // available from the menu (before any match starts). Module is

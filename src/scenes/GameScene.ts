@@ -85,6 +85,8 @@ import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpri
 import { preloadArenaFloors, preloadArenaBases, preloadHeroAbilityVfx, createHeroAbilityVfxAnimations } from '../systems/ArenaFloorRenderer';
 import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../data/campaigns';
+import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
+import { ChannelSystem } from '../systems/channels/ChannelSystem';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -172,6 +174,11 @@ export class GameScene extends Phaser.Scene {
   gridOffsetY: number = 0;
   selectedCreep: Creep | null = null;
   linkingConduit: Tower | null = null; // tower being linked in link mode
+
+  // Plan A: Counterspell channel-bar overlay. Lazy: created only when
+  // a creep with the `channel_caster` trait spawns. Idle scenes pay
+  // nothing.
+  private channelBarOverlay: ChannelBarOverlay | null = null;
 
   // Game state — towers and creeps live in managers, these are accessors
   get towers(): Tower[] { return this.towerMgr?.towers ?? this._towers; }
@@ -2362,6 +2369,18 @@ export class GameScene extends Phaser.Scene {
     // with the live creeps.
     this.updatePathFlow(delta);
 
+    // Channel-bar overlay (Plan A). Lazy-create on first channel so
+    // non-arcane scenes pay zero. ChannelSystem.peek returns null until
+    // a channel_caster trait posts the first channel.
+    if (this.channelBarOverlay) {
+      this.channelBarOverlay.update();
+    } else {
+      const peek = ChannelSystem.peek(this);
+      if (peek && peek.listActive().length > 0) {
+        this.channelBarOverlay = new ChannelBarOverlay(this);
+      }
+    }
+
     // Plan 14: track minimum hero HP fraction during the run for the
     // "Hero never falls below 50% HP" star objective. Sampled once per
     // frame; no allocation in steady state.
@@ -3842,6 +3861,8 @@ export class GameScene extends Phaser.Scene {
     TutorialManager.setGameEventBus(null);
     this._discoveryTracker?.destroy();
     this._discoveryTracker = null;
+    this.channelBarOverlay?.destroy();
+    this.channelBarOverlay = null;
     this.eventBus.clear();
     // Reset UI camera + layer so they're re-created on next game
     if (this.uiCamera) {
