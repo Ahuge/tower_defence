@@ -122,28 +122,76 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 3 — Hero Defense vs Arcane mage NPC boss
+    // 3 — Ritual Circle (interrupt boss-rush). Three named archmages
+    // (Meteora / Stormcaller / Necromaster) introduced one per wave;
+    // finale wave is all three together. Each is interruptible only by
+    // Frost / Mana Drain — same vocabulary as M1 + M2.
     {
-      id: 'archmage_duel',
+      id: 'ritual_circle',
       idx: 2,
-      name: 'The Archmage Duel',
+      name: 'Ritual Circle',
       story:
-        "Their lead caster stepped onto the field of personal honour. Five waves of guard, " +
-        "then the archmage themselves. We sent a Mage of our own. Win this and we know they have hands, " +
-        "not just towers.",
-      archetype: 'hero_vs_boss',
+        "Three archmages have set the standing stones glowing. They came to channel openly — Meteora calls fire, " +
+        "Stormcaller chains lightning across our lines, the Necromaster pulls dead things back across the threshold. " +
+        "You'll meet each one, then they'll all step into the ring together. Counter their casts or be erased.",
+      archetype: 'interrupt',
       overrides: {
-        mapId: 'hero_plains',
+        mapId: 'crossroads',
         difficulty: 'normal',
         waveCount: 5,
-        heroId: 'arcanist',
+        // Full arcane kit unlocked — Frost + Mana Drain are both
+        // available; player should be using both by the finale.
+        waveScript: [
+          // Wave 1 — light fodder, no archmage. Player stockpiles gold,
+          // builds Frost coverage in advance of M3's first boss.
+          { wave: 1, groups: [
+            { creepType: 'standard', count: 8, hpScale: 70, speedScale: 1 },
+            { creepType: 'fast', count: 6, hpScale: 50, speedScale: 1 },
+          ], spawnInterval: 500, isBoss: false },
+
+          // Wave 2 — Meteora introduced. Heavy fodder + 1 archmage.
+          { wave: 2, groups: [
+            { creepType: 'standard', count: 10, hpScale: 90, speedScale: 1 },
+            { creepType: 'arcane_archmage_meteor', count: 1, hpScale: 80, speedScale: 1 },
+          ], spawnInterval: 500, isBoss: false },
+
+          // Wave 3 — Stormcaller. By now player should have ≥2 Frost.
+          { wave: 3, groups: [
+            { creepType: 'armored', count: 8, hpScale: 130, speedScale: 1 },
+            { creepType: 'arcane_archmage_storm', count: 1, hpScale: 100, speedScale: 1 },
+          ], spawnInterval: 480, isBoss: false },
+
+          // Wave 4 — Necromaster + a thicker fodder field (his summons
+          // pile up on top of the wave's standard creeps).
+          { wave: 4, groups: [
+            { creepType: 'fast', count: 10, hpScale: 90, speedScale: 1 },
+            { creepType: 'arcane_archmage_necro', count: 1, hpScale: 110, speedScale: 1 },
+          ], spawnInterval: 450, isBoss: false },
+
+          // Wave 5 — Finale. All three archmages step in together. The
+          // wave's existence is the boss — no fodder. Boss-flagged so
+          // the wave-end fanfare reads correctly.
+          { wave: 5, groups: [
+            { creepType: 'arcane_archmage_meteor', count: 1, hpScale: 130, speedScale: 1 },
+            { creepType: 'arcane_archmage_storm', count: 1, hpScale: 130, speedScale: 1 },
+            { creepType: 'arcane_archmage_necro', count: 1, hpScale: 130, speedScale: 1 },
+          ], spawnInterval: 1500, isBoss: true },
+        ],
       },
       objectives: {
+        // Star 2: at least 3 channels interrupted across the mission.
+        // With 4 archmages (waves 2-4) × castCount 2 + 3 archmages × 2
+        // in finale = 14 cast attempts. 3 interrupts is the "you
+        // engaged with the mechanic" bar.
         star2: {
-          label: 'Hero never falls below 50% HP',
-          predicate: r => r.won && (r.custom.heroHpMin as number ?? 1) >= 0.5,
+          label: 'Interrupt at least 3 Archmage channels',
+          predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 3,
         },
-        star3: { label: 'Clear all 5 waves in under 6 minutes', predicate: r => r.won && r.durationMs < 6 * 60 * 1000 },
+        // Star 3: zero cast completions. The flawless run.
+        star3: {
+          label: 'No Archmage completed any channel',
+          predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0,
+        },
       },
     },
 

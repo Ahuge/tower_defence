@@ -30,14 +30,16 @@ const MAX_VISIBLE = 3;
 const HALO_RADIUS = 18;  // pixels around caster — sized to read past the creep sprite
 
 /** Color per channel effect — keeps caster identity readable.
- *  Palette aligns with the cast's flavor: purple for offense
- *  (clear-towers), gold for buff (wave HP), magenta for chain spells. */
+ *  Palette aligns with the cast's flavor: purple for clear-towers,
+ *  gold for buff, blue for chain-lightning, orange for meteor,
+ *  deep purple for summon. */
 const HALO_COLOR: Record<string, number> = {
   clear_towers_radius: 0xaa44ff,
   buff_next_wave_hp: 0xffd966,
   chain_lightning_on_towers: 0x66ccff,
   permadebuff_player_towers: 0xff44aa,
   meteor_drop: 0xff8844,
+  summon_creeps_at_position: 0xaa44dd,
   default: 0xff66ff,
 };
 

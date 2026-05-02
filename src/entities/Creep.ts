@@ -136,10 +136,19 @@ export class Creep {
         // upscale so even before the channel-bar appears, the player
         // can pick them out of a crowd. Tint persists; status-effect
         // tints (burn / slow / etc.) override transiently in update().
+        // Per-effect tint matches the halo color so cast type is
+        // readable from the sprite alone.
         const casterTrait = this.traits.find(t => t.id === 'channel_caster');
         if (casterTrait) {
-          const isOffense = casterTrait.effectId !== 'buff_next_wave_hp';
-          this.sprite.setTint(isOffense ? 0xff44ff : 0xffd966);
+          const tints: Record<string, number> = {
+            clear_towers_radius: 0xff44ff,         // Sigil — magenta
+            buff_next_wave_hp: 0xffd966,           // Scribe — gold
+            meteor_drop: 0xff6622,                 // Meteora — hot orange
+            chain_lightning_on_towers: 0x4488cc,   // Stormcaller — blue
+            summon_creeps_at_position: 0xaa44dd,   // Necromaster — purple
+          };
+          const tint = tints[casterTrait.effectId as string] ?? 0xff44ff;
+          this.sprite.setTint(tint);
           this.sprite.setScale(scale * 1.2);
         }
       }

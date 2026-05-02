@@ -124,6 +124,154 @@ ChannelEffects.register('clear_towers_radius', (ctx) => {
   }
 });
 
+/** meteor_drop — Meteora's signature. Drops AOE damage at a random
+ *  walkable tile inside the arena. Sells with a screen shake + fire
+ *  ring + falling debris VFX. Does not target the caster — the caster
+ *  is the spell-source, the meteor lands on a random tile in the play
+ *  area. meta: { damage: 250, radius: 80 } */
+ChannelEffects.register('meteor_drop', (ctx) => {
+  const damage = (ctx.meta.damage as number) ?? 250;
+  const radius = (ctx.meta.radius as number) ?? 80;
+  const scene = ctx.scene as any;
+  const caster = ctx.caster;
+
+  // Pick a random arena tile near the caster (within ~6 tiles).
+  // Coupling to caster keeps the meteor meaningful in context — it
+  // lands "near you" rather than randomly off-screen.
+  const tx = (caster?.x ?? 400) + (Math.random() - 0.5) * 280;
+  const ty = (caster?.y ?? 300) + (Math.random() - 0.5) * 280;
+
+  // Damage anything caught in the radius. Currently towers + the base.
+  // Towers in radius lose 60% of their max-equivalent (set _expired
+  // for now; a future tier could damage rather than destroy).
+  const towers = scene.towers ?? scene.towerManager?.towers;
+  if (Array.isArray(towers)) {
+    for (const t of towers) {
+      if (!t || t._expired) continue;
+      const dx = (t.x ?? 0) - tx;
+      const dy = (t.y ?? 0) - ty;
+      if (dx * dx + dy * dy <= radius * radius) t._expired = true;
+    }
+  }
+
+  // VFX: fire ring + filled core + lingering crater.
+  const g = scene.add?.graphics?.();
+  if (g) {
+    g.setDepth(40);
+    g.fillStyle(0xff4400, 0.6);
+    g.fillCircle(tx, ty, radius);
+    g.fillStyle(0xffaa44, 0.5);
+    g.fillCircle(tx, ty, radius * 0.55);
+    g.lineStyle(4, 0xff8822, 1);
+    g.strokeCircle(tx, ty, radius);
+    g.lineStyle(2, 0xffe066, 0.85);
+    g.strokeCircle(tx, ty, radius * 1.4);
+    scene.tweens?.add?.({ targets: g, alpha: 0, duration: 1100, onComplete: () => g.destroy() });
+  }
+  scene.cameras?.main?.shake?.(380, 0.012);
+
+  const log = scene.eventLog;
+  if (log?.gameMessage) {
+    log.gameMessage(`☄ Meteora's meteor landed — damage: ${damage}`);
+  }
+  void damage; // kept for future tower-HP-damage upgrade path
+});
+
+/** chain_lightning_on_towers — Stormcaller's signature. Picks N
+ *  random non-disabled towers and disables them for `duration` seconds
+ *  (no fire, blue-grey tint, lightning particles). meta: { count: 3,
+ *  duration: 5 } */
+ChannelEffects.register('chain_lightning_on_towers', (ctx) => {
+  const count = (ctx.meta.count as number) ?? 3;
+  const duration = (ctx.meta.duration as number) ?? 5;
+  const scene = ctx.scene as any;
+  const caster = ctx.caster;
+  const towers = scene.towers ?? scene.towerManager?.towers;
+  if (!Array.isArray(towers) || towers.length === 0) return;
+
+  // Pick `count` random towers that aren't already disabled or expired.
+  const candidates = towers.filter((t: any) => t && !t._expired && (t._disabledRemaining ?? 0) <= 0);
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  const targets = candidates.slice(0, count);
+  for (const t of targets) {
+    t._disabledRemaining = duration;
+  }
+
+  // VFX: lightning bolt from caster to each victim.
+  const g = scene.add?.graphics?.();
+  if (g && caster && typeof caster.x === 'number') {
+    g.setDepth(40);
+    g.lineStyle(3, 0x88ccff, 1);
+    for (const t of targets) {
+      // Two-segment lightning (one mid-jitter point) for that
+      // hand-drawn-shock look.
+      const mx = (caster.x + t.x) / 2 + (Math.random() - 0.5) * 30;
+      const my = (caster.y + t.y) / 2 + (Math.random() - 0.5) * 30;
+      g.lineBetween(caster.x, caster.y, mx, my);
+      g.lineBetween(mx, my, t.x, t.y);
+    }
+    scene.tweens?.add?.({ targets: g, alpha: 0, duration: 700, onComplete: () => g.destroy() });
+  }
+  scene.cameras?.main?.shake?.(180, 0.005);
+
+  const log = scene.eventLog;
+  if (log?.gameMessage) {
+    log.gameMessage(`⚡ Stormcaller chained lightning — ${targets.length} tower${targets.length === 1 ? '' : 's'} disabled for ${duration}s`);
+  }
+});
+
+/** summon_creeps_at_position — Necromaster's signature. Spawns N
+ *  creeps at the caster's location with a necromancy VFX (purple-black
+ *  pulse, rising shades). meta: { count: 5, summonType: 'standard' } */
+ChannelEffects.register('summon_creeps_at_position', (ctx) => {
+  const count = (ctx.meta.count as number) ?? 5;
+  const summonType = (ctx.meta.summonType as string) ?? 'standard';
+  const scene = ctx.scene as any;
+  const caster = ctx.caster;
+
+  if (scene.spawner) {
+    for (let i = 0; i < count; i++) {
+      scene.time?.delayedCall?.(i * 180, () => {
+        scene.spawner?.spawnQueue?.push?.({
+          creepType: summonType,
+          hpScale: 60,
+          speedScale: 1,
+          isBoss: false,
+          groupBurst: 1,
+          pathIndex: 0,
+        });
+      });
+    }
+  }
+
+  // VFX: purple pulse + rising shade ribbons. Necromancy reads as
+  // "darker than buff/meteor" — keep the palette deep.
+  if (caster && typeof caster.x === 'number') {
+    const g = scene.add?.graphics?.();
+    if (g) {
+      g.setDepth(40);
+      g.fillStyle(0x441166, 0.6);
+      g.fillCircle(caster.x, caster.y, 60);
+      g.fillStyle(0x8833aa, 0.4);
+      g.fillCircle(caster.x, caster.y, 30);
+      g.lineStyle(3, 0xaa44dd, 1);
+      g.strokeCircle(caster.x, caster.y, 60);
+      g.lineStyle(2, 0x6622aa, 0.7);
+      g.strokeCircle(caster.x, caster.y, 90);
+      scene.tweens?.add?.({ targets: g, alpha: 0, duration: 1000, onComplete: () => g.destroy() });
+    }
+  }
+  scene.cameras?.main?.shake?.(220, 0.006);
+
+  const log = scene.eventLog;
+  if (log?.gameMessage) {
+    log.gameMessage(`☠ Necromaster summoned ${count} shades`);
+  }
+});
+
 /** buff_next_wave_hp — increment a per-mission HP-buff stack AND
  *  optionally summon extra creeps at the caster's location. Cumulative.
  *

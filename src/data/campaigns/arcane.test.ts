@@ -86,22 +86,32 @@ describe('Campaign registry', () => {
 });
 
 describe('Arcane mission predicates — counter-driven (Plan 14 v1.1)', () => {
-  const heroDuel = ARCANE_CAMPAIGN.missions[2];
+  const ritualCircle = ARCANE_CAMPAIGN.missions[2];
   const breachRelay = ARCANE_CAMPAIGN.missions[7];
 
-  it('hero_duel star2 fires when heroHpMin >= 0.5 and the player won', () => {
-    const r = { ...FRESH_RESULT, custom: { heroHpMin: 0.6 } };
-    expect(heroDuel.objectives.star2!.predicate(r)).toBe(true);
+  it('ritual_circle star2 fires when channelsInterrupted >= 3 and the player won', () => {
+    const r = { ...FRESH_RESULT, custom: { channelsInterrupted: 3 } };
+    expect(ritualCircle.objectives.star2!.predicate(r)).toBe(true);
   });
 
-  it('hero_duel star2 fails when heroHpMin < 0.5', () => {
-    const r = { ...FRESH_RESULT, custom: { heroHpMin: 0.45 } };
-    expect(heroDuel.objectives.star2!.predicate(r)).toBe(false);
+  it('ritual_circle star2 fails when channelsInterrupted < 3', () => {
+    const r = { ...FRESH_RESULT, custom: { channelsInterrupted: 2 } };
+    expect(ritualCircle.objectives.star2!.predicate(r)).toBe(false);
   });
 
-  it('hero_duel star2 fails on a loss even with full HP', () => {
-    const r = { ...FRESH_RESULT, won: false, custom: { heroHpMin: 1 } };
-    expect(heroDuel.objectives.star2!.predicate(r)).toBe(false);
+  it('ritual_circle star2 fails on a loss even with many interrupts', () => {
+    const r = { ...FRESH_RESULT, won: false, custom: { channelsInterrupted: 10 } };
+    expect(ritualCircle.objectives.star2!.predicate(r)).toBe(false);
+  });
+
+  it('ritual_circle star3 fires when no Archmage completed any channel', () => {
+    const r = { ...FRESH_RESULT, custom: { channelsCompleted: 0 } };
+    expect(ritualCircle.objectives.star3!.predicate(r)).toBe(true);
+  });
+
+  it('ritual_circle star3 fails when at least one channel completed', () => {
+    const r = { ...FRESH_RESULT, custom: { channelsCompleted: 1 } };
+    expect(ritualCircle.objectives.star3!.predicate(r)).toBe(false);
   });
 
   it('breach_relay star2 fires when 8+ raiders broke through', () => {

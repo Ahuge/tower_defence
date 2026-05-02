@@ -370,6 +370,92 @@ export const CREEP_TYPES: Record<string, CreepType> = {
     },
   },
 
+  // ─── M3 Ritual Circle Archmages ──────────────────────────────
+  // Boss-tier casters, each with a distinct named spell. interruptible:
+  // false, large size, heavy armor, very slow. Castable by Frost or
+  // Mana Drain. Designed to be the wave's centerpiece, not a swarm.
+
+  arcane_archmage_meteor: {
+    id: 'arcane_archmage_meteor', name: 'Meteora',
+    description: 'Boss caster. Channels meteor strikes. Counter with Frost or Mana Drain.',
+    hpMultiplier: 18.0, speedMultiplier: 0.4, armor: 'heavy',
+    color: 0xff6622, size: 2.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 11.0,
+      effectId: 'meteor_drop',
+      meta: { damage: 200, radius: 80 },
+      interruptible: false,
+      castCount: 2,
+      castCooldown: 5.0,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.95,
+        speedMult: hints.speed * 0.7,
+        countMult: 1,
+        goldMult: hints.goldMult * 2.5,
+        extraTraits: [],
+      };
+    },
+  },
+
+  arcane_archmage_storm: {
+    id: 'arcane_archmage_storm', name: 'Stormcaller',
+    description: 'Boss caster. Disables towers with chain lightning. Counter with Frost or Mana Drain.',
+    hpMultiplier: 18.0, speedMultiplier: 0.4, armor: 'heavy',
+    color: 0x4488cc, size: 2.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 10.0,
+      effectId: 'chain_lightning_on_towers',
+      meta: { count: 3, duration: 5 },
+      interruptible: false,
+      castCount: 2,
+      castCooldown: 5.0,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.95,
+        speedMult: hints.speed * 0.7,
+        countMult: 1,
+        goldMult: hints.goldMult * 2.5,
+        extraTraits: [],
+      };
+    },
+  },
+
+  arcane_archmage_necro: {
+    id: 'arcane_archmage_necro', name: 'Necromaster',
+    description: 'Boss caster. Summons shades from beyond. Counter with Frost or Mana Drain.',
+    hpMultiplier: 18.0, speedMultiplier: 0.4, armor: 'heavy',
+    color: 0x8833aa, size: 2.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 10.0,
+      effectId: 'summon_creeps_at_position',
+      meta: { count: 5, summonType: 'standard' },
+      interruptible: false,
+      castCount: 2,
+      castCooldown: 5.0,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.95,
+        speedMult: hints.speed * 0.7,
+        countMult: 1,
+        goldMult: hints.goldMult * 2.5,
+        extraTraits: [],
+      };
+    },
+  },
+
   arcane_scribe: {
     id: 'arcane_scribe', name: 'Scribe',
     description: 'Channels a wave-buff repeatedly while it walks. Counter with Frost or Mana Drain — early.',

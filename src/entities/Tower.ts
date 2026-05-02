@@ -126,6 +126,11 @@ export class Tower {
    *  inside drawTower, so short-circuiting is side-effect-free. */
   private _isHeadless: boolean = false;
 
+  /** Plan A: Stormcaller's chain_lightning_on_towers cast disables
+   *  towers for a few seconds. Decremented each frame in update();
+   *  while > 0, fire logic is skipped and a stunned overlay draws. */
+  _disabledRemaining: number = 0;
+
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
@@ -441,6 +446,17 @@ export class Tower {
       }
       // Always apply the saved rotation (persists when no target)
       this.sprite.setRotation(this._lastSpriteRotation);
+    }
+
+    // Plan A: Stormcaller stun. Tick down the remaining disabled time;
+    // skip the fire block while > 0. Sprite tint applied separately
+    // in drawTower so it persists across non-fire frames.
+    if (this._disabledRemaining > 0) {
+      this._disabledRemaining = Math.max(0, this._disabledRemaining - delta / 1000);
+      if (this.sprite) this.sprite.setTint(0x4488cc);
+      return;
+    } else if (this.sprite) {
+      this.sprite.clearTint();
     }
 
     const effectiveRate = this.getEffectiveFireRate();

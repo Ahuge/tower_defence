@@ -35,6 +35,14 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   // distinct from regular mages.
   arcane_sigil: 12,
   arcane_scribe: 15,
+  // M3 Archmages reuse mage sprite columns; the channel-bar halo +
+  // unique tints + boss-tier scale make them visually distinct.
+  // Meteora → mage_armor (col 12), tinted hot orange in Creep ctor.
+  arcane_archmage_meteor: 12,
+  // Stormcaller → mage_speed (col 13), tinted blue.
+  arcane_archmage_storm: 13,
+  // Necromaster → mage_evasion (col 14), tinted deep purple.
+  arcane_archmage_necro: 14,
 };
 
 /** All faction IDs that have creep spritesheets */
