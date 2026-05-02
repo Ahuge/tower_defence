@@ -2377,14 +2377,18 @@ export class GameScene extends Phaser.Scene {
     // with the live creeps.
     this.updatePathFlow(delta);
 
-    // Channel-bar overlay (Plan A). Lazy-create on first channel so
-    // non-arcane scenes pay zero. ChannelSystem.peek returns null until
-    // a channel_caster trait posts the first channel.
+    // Channel-bar + caster-halo overlay (Plan A). Lazy-create on first
+    // detected caster creep so non-arcane scenes pay zero. The overlay
+    // renders halos for casters even before they start channeling, so
+    // we activate as soon as a creep with the `channel_caster` trait
+    // appears — not waiting for the first channel to post.
     if (this.channelBarOverlay) {
       this.channelBarOverlay.update();
     } else {
-      const peek = ChannelSystem.peek(this);
-      if (peek && peek.listActive().length > 0) {
+      const hasCaster = this.creeps.some(
+        c => c.alive && c.traits.some((t: { id: string }) => t.id === 'channel_caster'),
+      );
+      if (hasCaster) {
         this.channelBarOverlay = new ChannelBarOverlay(this);
       }
     }

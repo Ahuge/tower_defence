@@ -28,6 +28,13 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   mage_armor: 12, mage_speed: 13, mage_evasion: 14, mage_heal: 15,
   // Aliases
   splitter_child: 3, // use swarm sprite for splitlings
+  // Plan A — caster aliases. Sigils ride the mage_armor sprite (the
+  // tankier, more visibly threatening mage); Scribes ride mage_heal
+  // (the spellcaster look). Halo overlay (ChannelBarOverlay) layers
+  // a faction glow on top so the player can read them as casters
+  // distinct from regular mages.
+  arcane_sigil: 12,
+  arcane_scribe: 15,
 };
 
 /** All faction IDs that have creep spritesheets */

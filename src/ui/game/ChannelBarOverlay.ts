@@ -21,11 +21,25 @@
 
 import * as Phaser from 'phaser';
 import { ChannelSystem, type ChannelInstance } from '../../systems/channels/ChannelSystem';
+import { getTrait } from '../../systems/traits/Trait';
 
 const BAR_W = 36;
 const BAR_H = 5;
 const Y_OFFSET = 22;     // pixels above the creep
 const MAX_VISIBLE = 3;
+const HALO_RADIUS = 18;  // pixels around caster — sized to read past the creep sprite
+
+/** Color per channel effect — keeps caster identity readable.
+ *  Palette aligns with the cast's flavor: purple for offense
+ *  (clear-towers), gold for buff (wave HP), magenta for chain spells. */
+const HALO_COLOR: Record<string, number> = {
+  clear_towers_radius: 0xaa44ff,
+  buff_next_wave_hp: 0xffd966,
+  chain_lightning_on_towers: 0x66ccff,
+  permadebuff_player_towers: 0xff44aa,
+  meteor_drop: 0xff8844,
+  default: 0xff66ff,
+};
 
 export class ChannelBarOverlay {
   private scene: Phaser.Scene;
@@ -37,22 +51,45 @@ export class ChannelBarOverlay {
   }
 
   update(): void {
-    const sys = ChannelSystem.peek(this.scene);
-    if (!sys) {
-      this.graphics.clear();
-      return;
+    this.graphics.clear();
+    const time = this.scene.time?.now ?? 0;
+
+    // First pass: halos around every caster creep (whether channeling or
+    // not). Reads scene.creeps and finds any with the `channel_caster`
+    // trait. Without this, casters look identical to standard creeps
+    // until their channel-bar appears 1+ seconds after spawn.
+    const creeps: any[] = (this.scene as any).creeps ?? [];
+    for (const creep of creeps) {
+      if (!creep || creep.alive === false || !creep.traits) continue;
+      const trait = getTrait(creep.traits, 'channel_caster');
+      if (!trait) continue;
+      this.drawHalo(creep, trait, time);
     }
+
+    // Second pass: channel bars for active channels.
+    const sys = ChannelSystem.peek(this.scene);
+    if (!sys) return;
     const all = sys.listActive();
-    // Order by urgency (most-progress-first), keep top 3.
     const ranked = all
       .filter(c => c.caster && c.caster.alive !== false)
       .sort((a, b) => (b.elapsed / b.duration) - (a.elapsed / a.duration))
       .slice(0, MAX_VISIBLE);
-
-    this.graphics.clear();
     for (const chan of ranked) {
       this.drawBar(chan);
     }
+  }
+
+  private drawHalo(creep: any, trait: any, time: number): void {
+    if (typeof creep.x !== 'number' || typeof creep.y !== 'number') return;
+    const effectId = trait.effectId ?? 'default';
+    const color = HALO_COLOR[effectId] ?? HALO_COLOR.default;
+    // Subtle pulse so it reads as "channel-pending," not just decoration.
+    const pulse = 0.55 + 0.25 * Math.sin(time / 280);
+    this.graphics.lineStyle(2, color, pulse);
+    this.graphics.strokeCircle(creep.x, creep.y, HALO_RADIUS);
+    // Dim inner ring for depth.
+    this.graphics.lineStyle(1, color, pulse * 0.5);
+    this.graphics.strokeCircle(creep.x, creep.y, HALO_RADIUS - 4);
   }
 
   private drawBar(chan: ChannelInstance): void {
