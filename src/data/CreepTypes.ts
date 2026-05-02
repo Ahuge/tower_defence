@@ -30,6 +30,11 @@ export interface CreepType {
   count: number; // per-unit spawn count (swarm = 3)
   traits: Trait[];
   spawnBehavior: SpawnBehavior;
+  /** Spawn-order tier within a wave. 'last' creeps sort to the end of
+   *  the wave's spawn queue regardless of group order. Used for
+   *  caster creeps so the threat is the wave's finale, not a random
+   *  mid-wave surprise. Default 'normal'. */
+  spawnOrder?: 'normal' | 'last';
   /** How this creep interprets difficulty. Returns modified params. */
   applyDifficulty(hints: DifficultyHints): ResolvedCreepParams;
 }
@@ -337,23 +342,27 @@ export const CREEP_TYPES: Record<string, CreepType> = {
 
   arcane_sigil: {
     id: 'arcane_sigil', name: 'Sigil',
-    description: 'Channels a tower-clearing pulse. Interrupt or lose nearby towers.',
-    hpMultiplier: 0.7, speedMultiplier: 0.55, armor: 'light',
-    color: 0xaa44ff, size: 1.0, count: 1,
+    description: 'Channels a tower-clearing pulse. Tanky on purpose — committing real DPS is the price of an interrupt.',
+    hpMultiplier: 2.5, speedMultiplier: 0.5, armor: 'medium',
+    color: 0xaa44ff, size: 1.15, count: 1,
     traits: [{
       id: 'channel_caster',
+      // 10s channel — long enough that the player has time to read,
+      // turn turrets, choose to engage. Tankier-than-average HP means
+      // the choice to interrupt costs you on the rest of the wave.
       channelStartAt: 1.5,
-      channelDuration: 4.5,
+      channelDuration: 10.0,
       effectId: 'clear_towers_radius',
       meta: { radius: 140 }, // 5 tiles — large enough to bite even loose mazing
     }],
     spawnBehavior: 'normal',
+    spawnOrder: 'last',
     applyDifficulty(hints) {
       return {
         hpMult: hints.toughness * 0.9,
         speedMult: hints.speed * 0.8,
         countMult: 1,
-        goldMult: hints.goldMult * 1.3,
+        goldMult: hints.goldMult * 1.5,
         extraTraits: [],
       };
     },
@@ -367,11 +376,12 @@ export const CREEP_TYPES: Record<string, CreepType> = {
     traits: [{
       id: 'channel_caster',
       channelStartAt: 1.0,
-      channelDuration: 5.0,
+      channelDuration: 8.0,
       effectId: 'buff_next_wave_hp',
       meta: { percent: 0.30 },
     }],
     spawnBehavior: 'normal',
+    spawnOrder: 'last',
     applyDifficulty(hints) {
       return {
         hpMult: hints.toughness,

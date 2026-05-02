@@ -161,6 +161,15 @@ export class SpawnManager {
       const j = Math.floor(this.rng() * (i + 1));
       [this.spawnQueue[i], this.spawnQueue[j]] = [this.spawnQueue[j], this.spawnQueue[i]];
     }
+    // Stable-partition 'last' creeps to the end. Caster creeps use this
+    // so they're the wave's finale, not a random mid-wave surprise the
+    // player can't telegraph against. Sort is stable so creeps sharing
+    // a tier preserve their post-shuffle order.
+    this.spawnQueue.sort((a, b) => {
+      const ta = CREEP_TYPES[a.creepType]?.spawnOrder === 'last' ? 1 : 0;
+      const tb = CREEP_TYPES[b.creepType]?.spawnOrder === 'last' ? 1 : 0;
+      return ta - tb;
+    });
 
     // Co-op: with N× the creep count, keep the wave duration roughly
     // constant by spawning N× faster. Without this the wave trickles
