@@ -17,7 +17,7 @@
  * declared as predicates evaluated at game-end.
  */
 
-import type { MatchMode } from '../WaveDefinitions';
+import type { MatchMode, WaveDefinition } from '../WaveDefinitions';
 import type { FactionId } from '../Factions';
 import type { MapId } from '../Maps';
 import type { DraftModifier } from '../DraftModifiers';
@@ -143,6 +143,10 @@ export interface MissionOverrides {
   creepFaction?: FactionId;
   /** Restriction set (towers, sends, frontier). */
   restrictions?: MissionRestrictions;
+  /** v2: per-mission wave script. Replaces the global wave generator
+   *  for this mission. Lets a campaign drop a Sigil into wave 3 or a
+   *  Scribe trio at wave 6 without polluting other modes' waves. */
+  waveScript?: WaveDefinition[];
 }
 
 /** The 10-mission campaign. */

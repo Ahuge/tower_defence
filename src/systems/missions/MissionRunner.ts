@@ -110,6 +110,7 @@ class MissionRunnerClass {
       missionGoldStart: merged.goldStart,
       missionGoldStartMult: merged.goldStartMult,
       missionLives: merged.lives,
+      missionWaveScript: merged.waveScript,
     });
     return true;
   }

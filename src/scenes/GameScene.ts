@@ -326,6 +326,8 @@ export class GameScene extends Phaser.Scene {
   private _missionGoldStart?: number;
   private _missionGoldStartMult?: number;
   private _missionLives?: number;
+  /** v2: mission-supplied wave script. Replaces getWavesForMode when set. */
+  private _missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[];
 
   /** Plan 14 custom counters fed into MissionResult.custom at game-end.
    *  Populated only when the scene was launched as a campaign mission;
@@ -333,7 +335,7 @@ export class GameScene extends Phaser.Scene {
   private _missionSendsBought = 0;
   private _missionHeroHpMinFraction = 1;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -348,6 +350,7 @@ export class GameScene extends Phaser.Scene {
     this._missionGoldStart = data.missionGoldStart;
     this._missionGoldStartMult = data.missionGoldStartMult;
     this._missionLives = data.missionLives;
+    this._missionWaveScript = data.missionWaveScript;
     // Live-capture mode forces 20-wave matches to match the
     // headless training data shape — bot data is generated at
     // waveCount=20, so human-captured rows must use the same to
@@ -621,7 +624,12 @@ export class GameScene extends Phaser.Scene {
     this.mapDef = mapDef;
     const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
     this.grid = new Grid(mapDef, gridRows);
-    this.waves = getWavesForMode(this.matchMode, this.waveCount);
+    // v2: a mission-supplied wave script wins over the default
+    // generator. Used by Counterspell / Cascade missions to thread
+    // caster creeps and walker variants into specific wave slots.
+    this.waves = this._missionWaveScript && this._missionWaveScript.length > 0
+      ? this._missionWaveScript
+      : getWavesForMode(this.matchMode, this.waveCount);
     // Push the final wave count to the HUD now that this.waves is
     // settled. activate() at create-start runs BEFORE this assignment
     // and on a Phaser scene-reuse it sees the previous match's stale
