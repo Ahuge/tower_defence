@@ -40,9 +40,9 @@ describe('ChannelEffects built-in: clear_towers_radius', () => {
   it('marks towers within radius as expired', () => {
     const towers = [
       { x: 0, y: 0, _expired: false },
-      { x: 50, y: 0, _expired: false },     // ~50 from caster — inside default 84 radius
-      { x: 200, y: 0, _expired: false },    // far — outside
-      { x: 70, y: 30, _expired: false },    // ~76 — inside
+      { x: 50, y: 0, _expired: false },     // ~50 from caster — inside default 140 radius
+      { x: 300, y: 0, _expired: false },    // far — outside
+      { x: 100, y: 50, _expired: false },   // ~112 — inside
     ];
     const scene = { towers, add: { graphics: () => null }, tweens: { add: () => {} } };
     const caster = { x: 0, y: 0 };

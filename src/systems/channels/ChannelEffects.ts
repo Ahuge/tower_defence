@@ -60,9 +60,14 @@ export const ChannelEffects = {
 // ─── Built-in effects ──────────────────────────────────────────────
 
 /** clear_towers_radius — destroy player towers within radius of caster.
- *  Used by M1's Glyph Sigil. meta: { radius: pixels (default TILE*3) } */
+ *  Used by M1's Glyph Sigil. meta: { radius: pixels (default 5 tiles) }.
+ *
+ *  Radius bumped from 3→5 tiles after first playtest: a 3-tile radius
+ *  routinely missed every player tower if the Sigil cast near spawn,
+ *  making the cast feel inert ("nothing happened"). 5 tiles ≈ 140px is
+ *  large enough that mazing-near-the-path almost always loses something. */
 ChannelEffects.register('clear_towers_radius', (ctx) => {
-  const radius = (ctx.meta.radius as number) ?? 84; // 3 tiles
+  const radius = (ctx.meta.radius as number) ?? 140; // 5 tiles
   const caster = ctx.caster;
   if (!caster || typeof caster.x !== 'number') return;
   const scene = ctx.scene as any;
@@ -80,17 +85,42 @@ ChannelEffects.register('clear_towers_radius', (ctx) => {
   for (const t of toRemove) {
     t._expired = true; // GameScene's frame loop cleans up _expired towers
   }
-  // Visible feedback — purple shockwave at the caster.
+  // Visible feedback — multi-ring shockwave + camera shake. Every cast
+  // lands visibly even when no towers are in radius; players need to
+  // *see* the threat connect or they'll keep ignoring the casters.
   const g = scene.add?.graphics?.();
   if (g) {
-    g.lineStyle(3, 0xaa44ff, 0.8);
+    g.setDepth(40);
+    // Outer ring at full radius — fades over 800ms.
+    g.lineStyle(4, 0xaa44ff, 1);
     g.strokeCircle(caster.x, caster.y, radius);
+    // Inner ring expanding from caster.
+    g.lineStyle(2, 0xff66ff, 0.85);
+    g.strokeCircle(caster.x, caster.y, radius * 0.5);
+    // Filled hot core fading out.
+    g.fillStyle(0xff66ff, 0.4);
+    g.fillCircle(caster.x, caster.y, 28);
     scene.tweens?.add?.({
       targets: g,
       alpha: 0,
-      duration: 600,
+      duration: 900,
       onComplete: () => g.destroy(),
     });
+  }
+  // Camera shake — small, brief. Sells the impact even when zero
+  // towers were in range.
+  scene.cameras?.main?.shake?.(180, 0.005);
+  // Event-log callout so the player gets a concrete read on what just
+  // happened. Reads off the existing eventLog used by the rest of the
+  // game for cast-relevant notifications.
+  const log = scene.eventLog;
+  if (log?.gameMessage) {
+    const cleared = toRemove.length;
+    log.gameMessage(
+      cleared > 0
+        ? `⚠ Sigil cast landed — ${cleared} tower${cleared > 1 ? 's' : ''} destroyed`
+        : `⚠ Sigil cast landed — no towers in radius`,
+    );
   }
 });
 
@@ -102,4 +132,29 @@ ChannelEffects.register('buff_next_wave_hp', (ctx) => {
   const scene = ctx.scene as any;
   const prev = (scene._channelHpBuff as number) ?? 0;
   scene._channelHpBuff = prev + pct;
+  // Visible feedback — gold pulse at the caster + event-log callout.
+  // Without these, the buff is invisible until next wave's HP bars
+  // come back inflated; players miss the cause-and-effect.
+  const caster = ctx.caster;
+  if (caster && typeof caster.x === 'number') {
+    const g = scene.add?.graphics?.();
+    if (g) {
+      g.setDepth(40);
+      g.fillStyle(0xffd966, 0.5);
+      g.fillCircle(caster.x, caster.y, 32);
+      g.lineStyle(3, 0xffe066, 1);
+      g.strokeCircle(caster.x, caster.y, 32);
+      scene.tweens?.add?.({
+        targets: g,
+        alpha: 0,
+        duration: 800,
+        onComplete: () => g.destroy(),
+      });
+    }
+  }
+  const log = scene.eventLog;
+  if (log?.gameMessage) {
+    const totalPct = Math.round(scene._channelHpBuff * 100);
+    log.gameMessage(`⚠ Scribe cast landed — future creeps +${totalPct}% HP`);
+  }
 });

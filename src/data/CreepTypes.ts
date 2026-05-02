@@ -345,7 +345,7 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       channelStartAt: 1.5,
       channelDuration: 4.5,
       effectId: 'clear_towers_radius',
-      meta: { radius: 84 },
+      meta: { radius: 140 }, // 5 tiles — large enough to bite even loose mazing
     }],
     spawnBehavior: 'normal',
     applyDifficulty(hints) {
