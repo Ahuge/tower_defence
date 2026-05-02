@@ -387,7 +387,7 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       // Multi-channel: a Scribe casts up to N times across its path,
       // with a cooldown between casts. Forces the player to either
       // commit a Frost in range or eat the cumulative buff.
-      castCount: 2,
+      castCount: 3,
       castCooldown: 4.0,
     }],
     spawnBehavior: 'normal',
