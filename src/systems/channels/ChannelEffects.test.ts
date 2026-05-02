@@ -109,4 +109,36 @@ describe('ChannelEffects built-in: buff_next_wave_hp', () => {
     });
     expect(scene._channelHpBuff).toBeCloseTo(0.10);
   });
+
+  it('schedules summonCount entries on the spawn queue when meta.summonCount > 0', () => {
+    const queue: unknown[] = [];
+    const scheduled: Array<() => void> = [];
+    const scene = {
+      _channelHpBuff: 0,
+      spawner: { spawnQueue: queue },
+      time: { delayedCall: (_d: number, fn: () => void) => { scheduled.push(fn); } },
+    };
+    ChannelEffects.dispatch('buff_next_wave_hp', {
+      scene: scene as any,
+      caster: { x: 100, y: 100 },
+      meta: { percent: 0.30, summonCount: 3, summonType: 'standard' },
+    });
+    expect(scheduled.length).toBe(3);
+    // Run the scheduled callbacks — they push into the spawn queue.
+    for (const fn of scheduled) fn();
+    expect(queue.length).toBe(3);
+    expect((queue[0] as { creepType: string }).creepType).toBe('standard');
+  });
+
+  it('skips summon entirely when summonCount is 0 or absent', () => {
+    const queue: unknown[] = [];
+    const scene = {
+      spawner: { spawnQueue: queue },
+      time: { delayedCall: () => {} },
+    };
+    ChannelEffects.dispatch('buff_next_wave_hp', {
+      scene: scene as any, caster: {}, meta: {},
+    });
+    expect(queue.length).toBe(0);
+  });
 });

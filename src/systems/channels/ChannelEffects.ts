@@ -124,37 +124,73 @@ ChannelEffects.register('clear_towers_radius', (ctx) => {
   }
 });
 
-/** buff_next_wave_hp — increment a per-mission HP-buff stack that the
- *  spawn pipeline reads to scale next-wave creep HP. Cumulative.
- *  meta: { percent: 0.30 } (default +30% per uninterrupted Scribe) */
+/** buff_next_wave_hp — increment a per-mission HP-buff stack AND
+ *  optionally summon extra creeps at the caster's location. Cumulative.
+ *
+ *  meta:
+ *    percent: 0.30        — HP buff to stack onto every future creep
+ *    summonCount: 3       — additional creeps spawned at caster (default 0)
+ *    summonType: 'standard' — creep type for the summons
+ *
+ *  The summon side-effect makes the cast immediately visible in the
+ *  current wave (3 fresh creeps appear by the path) on top of the
+ *  invisible HP buff that affects future waves. Without it the cast
+ *  is purely cerebral and easy to ignore in the moment. */
 ChannelEffects.register('buff_next_wave_hp', (ctx) => {
   const pct = (ctx.meta.percent as number) ?? 0.30;
   const scene = ctx.scene as any;
   const prev = (scene._channelHpBuff as number) ?? 0;
   scene._channelHpBuff = prev + pct;
-  // Visible feedback — gold pulse at the caster + event-log callout.
-  // Without these, the buff is invisible until next wave's HP bars
-  // come back inflated; players miss the cause-and-effect.
+
   const caster = ctx.caster;
+
+  // Dramatized visual: layered gold flash + ring + camera shake. M2's
+  // beta-tester flagged that the buff felt invisible until next wave's
+  // bars came back inflated — make the moment unmissable.
   if (caster && typeof caster.x === 'number') {
     const g = scene.add?.graphics?.();
     if (g) {
       g.setDepth(40);
-      g.fillStyle(0xffd966, 0.5);
-      g.fillCircle(caster.x, caster.y, 32);
-      g.lineStyle(3, 0xffe066, 1);
-      g.strokeCircle(caster.x, caster.y, 32);
+      g.fillStyle(0xffe066, 0.55);
+      g.fillCircle(caster.x, caster.y, 56);
+      g.fillStyle(0xffffff, 0.4);
+      g.fillCircle(caster.x, caster.y, 24);
+      g.lineStyle(4, 0xffe066, 1);
+      g.strokeCircle(caster.x, caster.y, 56);
+      g.lineStyle(2, 0xffffff, 0.8);
+      g.strokeCircle(caster.x, caster.y, 90);
       scene.tweens?.add?.({
-        targets: g,
-        alpha: 0,
-        duration: 800,
+        targets: g, alpha: 0, duration: 1000,
         onComplete: () => g.destroy(),
       });
     }
+    scene.cameras?.main?.shake?.(220, 0.004);
   }
+
+  // Summon — push entries directly into SpawnManager's queue so the
+  // standard spawn-tick pipeline handles them (path resolution, sprite
+  // creation, gold-on-kill bookkeeping). 200ms apart for visual rhythm.
+  const summonCount = (ctx.meta.summonCount as number) ?? 0;
+  const summonType = (ctx.meta.summonType as string) ?? 'standard';
+  if (summonCount > 0 && scene.spawner) {
+    for (let i = 0; i < summonCount; i++) {
+      scene.time?.delayedCall?.(i * 220, () => {
+        scene.spawner?.spawnQueue?.push?.({
+          creepType: summonType,
+          hpScale: 50,
+          speedScale: 1,
+          isBoss: false,
+          groupBurst: 1,
+          pathIndex: 0,
+        });
+      });
+    }
+  }
+
   const log = scene.eventLog;
   if (log?.gameMessage) {
     const totalPct = Math.round(scene._channelHpBuff * 100);
-    log.gameMessage(`⚠ Scribe cast landed — future creeps +${totalPct}% HP`);
+    const summonNote = summonCount > 0 ? ` + ${summonCount} extras inbound` : '';
+    log.gameMessage(`⚠ Scribe cast landed — future creeps +${totalPct}% HP${summonNote}`);
   }
 });

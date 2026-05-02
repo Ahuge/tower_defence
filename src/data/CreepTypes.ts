@@ -380,7 +380,10 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       channelStartAt: 1.0,
       channelDuration: 8.0,
       effectId: 'buff_next_wave_hp',
-      meta: { percent: 0.30 },
+      meta: { percent: 0.30, summonCount: 3, summonType: 'standard' },
+      // Damage alone won't cancel — Frost or Mana Drain required, same
+      // as Sigil. Keeps the campaign's interrupt vocabulary consistent.
+      interruptible: false,
     }],
     spawnBehavior: 'normal',
     spawnOrder: 'last',
