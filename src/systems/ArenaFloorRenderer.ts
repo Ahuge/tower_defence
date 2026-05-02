@@ -216,7 +216,7 @@ function hash3(a: number, b: number, c: number): number {
 
 export class ArenaFloorRenderer {
   private scene: Phaser.Scene;
-  private rt: Phaser.GameObjects.RenderTexture | null = null;
+  private container: Phaser.GameObjects.Container | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -234,11 +234,12 @@ export class ArenaFloorRenderer {
     const cols = Math.ceil(arenaWidth / TILE);
     const rows = Math.ceil(arenaHeight / TILE);
 
-    // Single render texture sized to the arena. Stamped once below
-    // and then never touched per frame.
-    this.rt = scene.add.renderTexture(arenaX, arenaY, arenaWidth, arenaHeight)
-      .setOrigin(0, 0)
-      .setDepth(-100); // below everything (creeps, hero, base, projectiles)
+    // Container of per-tile sprites. Depth -100 keeps the floor under
+    // creeps / hero / base / projectiles. Replaced an earlier
+    // RenderTexture+stamp() approach because Phaser 4's stamp(...) was
+    // silently no-op'ing in the in-game scene; per-sprite is cheap
+    // enough at this grid size (e.g. 36×15 = 540 sprites once).
+    this.container = scene.add.container(arenaX, arenaY).setDepth(-100);
 
     const factionSeed = stringHash(faction);
 
@@ -246,8 +247,6 @@ export class ArenaFloorRenderer {
       for (let col = 0; col < cols; col++) {
         const x = col * TILE;
         const y = row * TILE;
-        // Pick a row-0 ground variant. ~6% of cells use frames 12-15
-        // (accent variants); the rest use frames 0-11 (plain ground).
         let groundFrame: number;
         const rA = hash3(factionSeed, col, row * 7 + 1);
         if (rA < ACCENT_RATE) {
@@ -255,28 +254,26 @@ export class ArenaFloorRenderer {
         } else {
           groundFrame = Math.floor(hash3(factionSeed, col, row) * 12);
         }
-        // Phaser's stamp() defaults origin to (0.5, 0.5) — pin to
-        // top-left so (x, y) is the tile's upper-left corner.
-        const stampOpts = { originX: 0, originY: 0 } as const;
-        this.rt.stamp(key, groundFrame, x, y, stampOpts);
+        const ground = scene.add.image(x, y, key, groundFrame).setOrigin(0, 0);
+        ground.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        this.container.add(ground);
 
-        // ~4% of cells overlay a row-1 prop sprite. Picked
-        // independently from the ground so accents and props can
-        // co-occur on the same cell without interfering.
         const rP = hash3(factionSeed, col + 13, row + 17);
         if (rP < PROP_RATE) {
           const propFrame = COLS + Math.floor(hash3(factionSeed, col + 7, row + 11) * COLS);
-          this.rt.stamp(key, propFrame, x, y, stampOpts);
+          const prop = scene.add.image(x, y, key, propFrame).setOrigin(0, 0);
+          prop.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+          this.container.add(prop);
         }
       }
     }
   }
 
-  /** Tear down the render texture. Called by ArenaManager.destroy(). */
+  /** Tear down the floor sprites. Called by ArenaManager.destroy(). */
   destroy(): void {
-    if (this.rt) {
-      this.rt.destroy();
-      this.rt = null;
+    if (this.container) {
+      this.container.destroy();
+      this.container = null;
     }
   }
 }
