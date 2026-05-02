@@ -587,27 +587,44 @@ export class ArenaManager {
     const hpRatio = this.baseHp / this.baseMaxHp;
     const baseX = this.arenaX + this.arenaWidth - 60;
     const baseY = this.arenaHeight / 2;
+    let barX: number, barY: number, barW: number, barH: number;
     if (this.baseSprite?.isActive()) {
       this.baseSprite.update(hpRatio);
+      // Horizontal HP bar above the sprite. Sprite is 112×140 anchored
+      // bottom-center at (baseX, arenaHeight - 8); top of sprite is
+      // therefore at arenaHeight - 148. Gap of 6px above.
+      barW = 90;
+      barH = 8;
+      barX = baseX - barW / 2;
+      barY = (this.arenaHeight - 8) - 140 - barH - 6;
     } else {
       this.graphics.fillStyle(0x4444aa, 0.8);
       this.graphics.fillRect(baseX - 15, baseY - 40, 30, 80);
       this.graphics.lineStyle(2, 0x6666dd, 1);
       this.graphics.strokeRect(baseX - 15, baseY - 40, 30, 80);
+      // Vertical HP bar overlay (legacy fallback) — original layout.
+      barW = 20;
+      barH = 70;
+      barX = baseX - barW / 2;
+      barY = baseY - barH / 2;
     }
 
-    // Base HP bar — overlays the sprite (or legacy rect). Anchored at
-    // the same position so it tracks the right edge regardless of art.
-    const barW = 20;
-    const barH = 70;
-    const barX = baseX - barW / 2;
-    const barY = baseY - barH / 2;
+    // Base HP bar
     this.graphics.fillStyle(0x222222, 1);
     this.graphics.fillRect(barX, barY, barW, barH);
     const hpColor = hpRatio > 0.5 ? 0x44ff44 : hpRatio > 0.25 ? 0xffaa44 : 0xff4444;
     this.graphics.fillStyle(hpColor, 1);
-    const filledH = barH * hpRatio;
-    this.graphics.fillRect(barX, barY + barH - filledH, barW, filledH);
+    if (this.baseSprite?.isActive()) {
+      // Horizontal: fill from left
+      const filledW = barW * hpRatio;
+      this.graphics.fillRect(barX, barY, filledW, barH);
+    } else {
+      // Vertical: fill from bottom up (legacy)
+      const filledH = barH * hpRatio;
+      this.graphics.fillRect(barX, barY + barH - filledH, barW, filledH);
+    }
+    this.graphics.lineStyle(1, 0x000000, 0.8);
+    this.graphics.strokeRect(barX, barY, barW, barH);
 
     // Base HP text
     this.graphics.fillStyle(0xffffff, 1);

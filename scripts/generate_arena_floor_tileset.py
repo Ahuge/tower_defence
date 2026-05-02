@@ -236,17 +236,17 @@ PROP_SETS: dict[str, list] = {
 
 
 def make_ground_palette(secondary, primary):
-    """Ground tone derived from secondary, ~30% darker, with the
-    primary's hue pulled toward the secondary so the floor reads
-    as part of the same family but cooler/darker than the highlights
-    on creatures + structures."""
-    base = darken(secondary, 0.32)
+    """Ground tone derived from secondary. Base is dark enough that
+    creep/hero/tower sprites read clearly above it but bright enough
+    to be visible against the canvas backdrop (#15101a). 'light' and
+    'highlight' must be brighter than 'mid' (was inverted in v3)."""
+    mid = darken(secondary, 0.55)
     return {
-        'deep':       darken(base, 0.75),
-        'mid':        base,
-        'light':      darken(secondary, 0.42),
-        'highlight':  darken(secondary, 0.55),
-        'edge':       darken(base, 0.70),
+        'deep':       darken(mid, 0.65),
+        'mid':        mid,
+        'light':      darken(secondary, 0.75),
+        'highlight':  darken(secondary, 0.90),
+        'edge':       darken(mid, 0.70),
     }
 
 
