@@ -23,55 +23,17 @@ import sys
 from pathlib import Path
 from PIL import Image, ImageDraw
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _arena_palette import (
+    FACTION_PALETTE, faction_palette, hex_to_rgb, darken, lighten, rgba,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / 'public' / 'assets' / 'arena'
 
 W = 112
 H = 140
 FRAMES = 5
-
-FACTIONS: dict[str, tuple[int, int]] = {
-    'arcane':     (0x6644ff, 0x9988ff),
-    'mechanical': (0xcc8833, 0xeebb66),
-    'nature':     (0x33aa44, 0x66dd77),
-    'void':       (0x8822aa, 0xbb55dd),
-    'military':   (0x556b2f, 0x8fbc8f),
-    'aliens':     (0x88ff44, 0xaaff66),
-    'cypherpunk': (0x00ffcc, 0x44ffdd),
-    'infernal':   (0xff4422, 0xff8844),
-    'celestial':  (0xffffaa, 0xffffff),
-    'psionic':    (0xdd88ff, 0xee99ff),
-    'harmonic':   (0xffcc44, 0xffee88),
-}
-
-
-def hex_to_rgb(c: int):
-    return ((c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff)
-
-
-def darken(rgb, k: float):
-    return tuple(max(0, min(255, int(c * k))) for c in rgb)
-
-
-def lighten(rgb, k: float):
-    return tuple(max(0, min(255, int(c + (255 - c) * k))) for c in rgb)
-
-
-def rgba(rgb, a=255):
-    return (rgb[0], rgb[1], rgb[2], a)
-
-
-def make_palette(primary):
-    """4-tone palette + outline + specular for a faction.
-    Order: deep_shadow, shadow, mid, highlight, specular, outline."""
-    return {
-        'deep':   darken(primary, 0.30),
-        'shadow': darken(primary, 0.55),
-        'mid':    primary,
-        'highlight': lighten(primary, 0.30),
-        'specular':  lighten(primary, 0.65),
-        'outline':   darken(primary, 0.25),
-    }
 
 
 def shaded_rect(d: ImageDraw.ImageDraw, rect, pal):
@@ -155,13 +117,18 @@ def draw_arcane(d, pal):
     # Spire facet line down center
     d.line((56, 14, 56, 52), fill=rgba(pal['highlight']))
     d.line((56, 16, 56, 50), fill=rgba(pal['specular']))
-    # Glowing rune dot on arch keystone
-    d.ellipse((52, 70, 60, 78), fill=rgba(pal['highlight']), outline=rgba(pal['outline']))
-    d.point((54, 72), fill=rgba(pal['specular']))
-    # Side rune marks
+    # Glowing rune dot on arch keystone — tertiary gold pop
+    d.ellipse((50, 68, 62, 80), fill=rgba(pal['glow_dim']), outline=rgba(pal['outline']))
+    d.ellipse((52, 70, 60, 78), fill=rgba(pal['glow_mid']))
+    d.ellipse((54, 72, 58, 76), fill=rgba(pal['glow_bright']))
+    d.point((56, 74), fill=(255, 255, 255, 255))
+    # Side rune marks (cross sigils, tertiary glow)
     for rx in (32, 80):
-        d.line((rx, 80, rx + 4, 80), fill=rgba(pal['highlight']))
-        d.line((rx + 2, 78, rx + 2, 82), fill=rgba(pal['highlight']))
+        d.line((rx, 80, rx + 4, 80), fill=rgba(pal['glow_dim']))
+        d.line((rx + 2, 78, rx + 2, 82), fill=rgba(pal['glow_dim']))
+        d.point((rx + 2, 80), fill=rgba(pal['glow_mid']))
+    # Spire heart specular (gold)
+    d.point((56, 32), fill=rgba(pal['glow_mid']))
 
 
 def draw_mechanical(d, pal):
@@ -175,11 +142,11 @@ def draw_mechanical(d, pal):
     # Rivets along top of mid
     for rx in (26, 36, 46, 56, 66, 76, 86):
         d.ellipse((rx - 1, 90, rx + 1, 92), fill=rgba(pal['highlight']), outline=rgba(pal['outline']))
-    # Furnace mouth — recessed dark with glow
+    # Furnace mouth — recessed dark with tertiary orange glow
     d.rectangle((40, 64, 72, 88), fill=rgba(darken(pal['mid'], 0.25)), outline=rgba(pal['outline']))
-    d.rectangle((43, 67, 69, 85), fill=rgba(pal['mid']))
-    d.rectangle((46, 70, 66, 82), fill=rgba(pal['highlight']))
-    d.rectangle((49, 73, 63, 79), fill=rgba(pal['specular']))
+    d.rectangle((43, 67, 69, 85), fill=rgba(pal['glow_dim']))
+    d.rectangle((46, 70, 66, 82), fill=rgba(pal['glow_mid']))
+    d.rectangle((49, 73, 63, 79), fill=rgba(pal['glow_bright']))
     # Furnace grating bars
     for fx in (49, 55, 61):
         d.line((fx, 67, fx, 85), fill=rgba(pal['outline']))
@@ -221,9 +188,11 @@ def draw_nature(d, pal):
     for cx, cy in crown_centers:
         r = 14 if cx == 56 else 11
         shaded_circle(d, (cx - r, cy - r, cx + r, cy + r), pal)
-    # Highlight leaves (specular dots)
-    for cx, cy in [(56, 26), (40, 40), (72, 40), (52, 50), (60, 50)]:
-        d.ellipse((cx - 1, cy - 1, cx + 1, cy + 1), fill=rgba(pal['specular']))
+    # Highlight leaves with tertiary pollen-yellow flowers
+    for cx, cy in [(56, 26), (40, 40), (72, 40), (52, 50), (60, 50), (44, 30), (68, 30)]:
+        d.ellipse((cx - 2, cy - 2, cx + 2, cy + 2), fill=rgba(pal['glow_dim']))
+        d.ellipse((cx - 1, cy - 1, cx + 1, cy + 1), fill=rgba(pal['glow_mid']))
+        d.point((cx, cy), fill=rgba(pal['glow_bright']))
 
 
 def draw_void(d, pal):
@@ -243,12 +212,15 @@ def draw_void(d, pal):
     d.line((56, 60, 78, 100), fill=rgba(pal['outline']))
     d.line((28, 50, 56, 60), fill=rgba(pal['outline']))
     d.line((84, 50, 56, 60), fill=rgba(pal['outline']))
-    # Glowing rift slash (vertical, energy)
-    d.line((54, 35, 58, 95), fill=rgba(pal['specular']), width=2)
-    d.line((55, 38, 57, 92), fill=rgba(lighten(pal['specular'], 0.3)))
-    # Rift glow dots
+    # Glowing rift slash — magenta tertiary energy
+    d.line((54, 35, 58, 95), fill=rgba(pal['glow_dim']), width=3)
+    d.line((54, 35, 58, 95), fill=rgba(pal['glow_mid']), width=2)
+    d.line((55, 38, 57, 92), fill=rgba(pal['glow_bright']))
+    # Rift glow dots — magenta pulse
     for ry in (45, 65, 85):
-        d.ellipse((53, ry, 59, ry + 4), fill=rgba(pal['highlight']))
+        d.ellipse((52, ry, 60, ry + 5), fill=rgba(pal['glow_dim']))
+        d.ellipse((53, ry + 1, 59, ry + 4), fill=rgba(pal['glow_mid']))
+        d.point((56, ry + 2), fill=rgba(pal['glow_bright']))
     # Top vertex specular
     d.point((56, 14), fill=rgba(pal['specular']))
 
@@ -267,9 +239,11 @@ def draw_military(d, pal):
         d.line((16, y, 96, y), fill=rgba(darken(base_pal['mid'], 0.6)))
     # Slit window (dark recessed)
     d.rectangle((38, 92, 74, 100), fill=rgba(darken(base_pal['mid'], 0.2)), outline=rgba(base_pal['outline']))
-    # Slit interior glints
-    d.point((42, 96), fill=rgba(pal['specular']))
-    d.point((68, 96), fill=rgba(pal['specular']))
+    # Slit interior — red tracer-tertiary glints (military signature)
+    d.point((42, 96), fill=rgba(pal['glow_bright']))
+    d.point((68, 96), fill=rgba(pal['glow_bright']))
+    d.point((52, 96), fill=rgba(pal['glow_mid']))
+    d.point((60, 96), fill=rgba(pal['glow_mid']))
     # Sandbags — ovals stacked
     sandbag_pal = {**pal, 'mid': darken(pal['mid'], 0.4), 'highlight': darken(pal['mid'], 0.2), 'shadow': darken(pal['mid'], 0.6)}
     for cx, cy in [(24, 122), (40, 124), (56, 126), (72, 124), (88, 122),
@@ -306,14 +280,14 @@ def draw_aliens(d, pal):
             offset = int(8 * math.sin(t * 3.14))
             d.point((56 + offset, y), fill=rgba(pal['outline']))
             d.point((56 - offset, y), fill=rgba(pal['outline']))
-    # Pulsing pustules (4-tone gradient)
+    # Pulsing pustules — magenta ichor (tertiary) inside green chitin
     pustules = [(38, 55), (56, 48), (74, 55), (44, 75), (68, 75), (56, 90)]
     for cx, cy in pustules:
         d.ellipse((cx - 6, cy - 6, cx + 6, cy + 6), fill=rgba(pal['outline']))
         d.ellipse((cx - 5, cy - 5, cx + 5, cy + 5), fill=rgba(pal['shadow']))
-        d.ellipse((cx - 4, cy - 4, cx + 4, cy + 4), fill=rgba(pal['mid']))
-        d.ellipse((cx - 3, cy - 3, cx + 3, cy + 3), fill=rgba(pal['highlight']))
-        d.point((cx - 1, cy - 1), fill=rgba(pal['specular']))
+        d.ellipse((cx - 4, cy - 4, cx + 4, cy + 4), fill=rgba(pal['glow_dim']))
+        d.ellipse((cx - 3, cy - 3, cx + 3, cy + 3), fill=rgba(pal['glow_mid']))
+        d.point((cx - 1, cy - 1), fill=rgba(pal['glow_bright']))
     # Top spike (chitinous spire)
     shaded_polygon(d, [(56, 14), (62, 36), (50, 36)], pal)
     # Tendrils dropping from base
@@ -332,17 +306,19 @@ def draw_cypherpunk(d, pal):
     # Horizontal server units (each row is a "rack")
     for y in (40, 52, 64, 76, 88, 100):
         d.rectangle((22, y, 90, y + 8), fill=rgba(darken(body_pal['mid'], 0.6)), outline=rgba(body_pal['outline']))
-        # Status LEDs on the right side of each rack
+        # Status LEDs on the right side of each rack — hot-pink tertiary
         for lx in (78, 82, 86):
-            d.point((lx, y + 4), fill=rgba(pal['specular']))
+            d.point((lx, y + 4), fill=rgba(pal['glow_mid']))
         # Vent slots
         for vx in (28, 30, 32):
             d.line((vx, y + 2, vx, y + 6), fill=rgba(body_pal['outline']))
-    # Neon strip down both sides (vertical glow)
-    d.line((22, 34, 22, 116), fill=rgba(pal['specular']), width=2)
-    d.line((23, 36, 23, 114), fill=rgba(pal['highlight']))
-    d.line((90, 34, 90, 116), fill=rgba(pal['specular']), width=2)
-    d.line((89, 36, 89, 114), fill=rgba(pal['highlight']))
+    # Neon strips — hot-pink tertiary against cyan body
+    d.line((22, 34, 22, 116), fill=rgba(pal['glow_dim']), width=2)
+    d.line((22, 34, 22, 116), fill=rgba(pal['glow_mid']))
+    d.line((23, 36, 23, 114), fill=rgba(pal['glow_bright']))
+    d.line((90, 34, 90, 116), fill=rgba(pal['glow_dim']), width=2)
+    d.line((90, 34, 90, 116), fill=rgba(pal['glow_mid']))
+    d.line((89, 36, 89, 114), fill=rgba(pal['glow_bright']))
     # Monitor on top (with screen content)
     d.rectangle((34, 14, 78, 32), fill=rgba(body_pal['shadow']), outline=rgba(body_pal['outline']))
     d.rectangle((36, 16, 76, 30), fill=rgba(darken(pal['mid'], 0.7)), outline=rgba(body_pal['outline']))
@@ -367,25 +343,28 @@ def draw_infernal(d, pal):
     # Stepped altar block
     shaded_rect(d, (24, 95, 88, 115), found_pal)
     shaded_rect(d, (30, 80, 82, 95), found_pal)
-    # Glowing seams in altar (lava cracks)
+    # Glowing lava seams — ember-yellow tertiary against red body
     for y in (98, 104, 108):
         for x in range(28, 86, 8):
-            d.line((x, y, x + 4, y), fill=rgba(pal['specular']))
+            d.line((x, y, x + 4, y), fill=rgba(pal['glow_mid']))
+            d.point((x + 2, y), fill=rgba(pal['glow_bright']))
     # Lava seam vertical
-    d.line((42, 82, 42, 113), fill=rgba(pal['highlight']))
-    d.line((70, 82, 70, 113), fill=rgba(pal['highlight']))
+    d.line((42, 82, 42, 113), fill=rgba(pal['glow_dim']))
+    d.line((42, 84, 42, 111), fill=rgba(pal['glow_mid']))
+    d.line((70, 82, 70, 113), fill=rgba(pal['glow_dim']))
+    d.line((70, 84, 70, 111), fill=rgba(pal['glow_mid']))
     # Central pillar
     shaded_rect(d, (46, 50, 66, 80), {**pal, 'mid': darken(pal['mid'], 0.6)})
-    # Pillar embers (glowing pixels)
+    # Pillar embers — bright tertiary
     for ex, ey in [(50, 58), (62, 64), (54, 72), (60, 76)]:
-        d.point((ex, ey), fill=rgba(pal['specular']))
-        d.point((ex + 1, ey), fill=rgba(pal['highlight']))
-    # Eternal flame (multi-layered)
+        d.point((ex, ey), fill=rgba(pal['glow_bright']))
+        d.point((ex + 1, ey), fill=rgba(pal['glow_mid']))
+    # Eternal flame — body red + tertiary core
     flame_pts_outer = [(56, 12), (66, 30), (62, 38), (56, 32), (50, 38), (46, 30)]
     d.polygon(flame_pts_outer, fill=rgba(darken(pal['shadow'], 0.3)), outline=rgba(pal['outline']))
     d.polygon([(56, 16), (62, 30), (58, 36), (56, 30), (54, 36), (50, 30)], fill=rgba(pal['mid']))
-    d.polygon([(56, 20), (60, 30), (56, 28), (52, 30)], fill=rgba(pal['highlight']))
-    d.point((56, 24), fill=rgba(pal['specular']))
+    d.polygon([(56, 20), (60, 30), (56, 28), (52, 30)], fill=rgba(pal['glow_mid']))
+    d.point((56, 24), fill=rgba(pal['glow_bright']))
 
 
 def draw_celestial(d, pal):
@@ -407,13 +386,17 @@ def draw_celestial(d, pal):
     # Acanthus leaf decoration on capital
     for lx in (44, 56, 68):
         d.polygon([(lx - 2, 42), (lx, 38), (lx + 2, 42)], fill=rgba(pal['specular']))
-    # Halo (multi-ring)
-    d.ellipse((30, 8, 82, 38), outline=rgba(pal['outline']), width=1)
-    d.ellipse((32, 10, 80, 36), outline=rgba(pal['highlight']), width=2)
-    d.ellipse((36, 14, 76, 32), outline=rgba(pal['specular']), width=1)
-    # Halo shimmer (4-direction)
-    for hx, hy in [(56, 8), (82, 22), (56, 38), (30, 22)]:
-        d.point((hx, hy), fill=rgba(pal['specular']))
+    # Halo (multi-ring) — gold tertiary against ivory body
+    d.ellipse((28, 6, 84, 40), outline=rgba(pal['glow_dim']), width=1)
+    d.ellipse((30, 8, 82, 38), outline=rgba(pal['glow_mid']), width=2)
+    d.ellipse((32, 10, 80, 36), outline=rgba(pal['glow_bright']), width=1)
+    d.ellipse((36, 14, 76, 32), outline=rgba(pal['glow_mid']), width=1)
+    # Halo shimmer cross — bright gold sparks at cardinal points
+    for hx, hy in [(56, 6), (84, 22), (56, 40), (28, 22)]:
+        d.point((hx, hy), fill=rgba(pal['glow_bright']))
+        if hy < 40 and hy > 0:
+            d.point((hx, hy - 1), fill=rgba(pal['glow_dim']))
+            d.point((hx, hy + 1), fill=rgba(pal['glow_dim']))
 
 
 def draw_psionic(d, pal):
@@ -437,14 +420,17 @@ def draw_psionic(d, pal):
     brain_pal = {**pal, 'mid': lighten(pal['mid'], 0.2)}
     d.ellipse((34, 44, 78, 84), fill=rgba(brain_pal['shadow']), outline=rgba(brain_pal['outline']))
     d.ellipse((36, 46, 76, 82), fill=rgba(brain_pal['mid']))
-    # Brain folds (curvy lines)
+    # Brain folds with hot-pink tertiary pulse
     d.line((42, 56, 70, 56), fill=rgba(pal['outline']))
-    d.line((44, 58, 68, 58), fill=rgba(pal['highlight']))
+    d.line((44, 58, 68, 58), fill=rgba(pal['glow_mid']))
     d.line((40, 64, 72, 64), fill=rgba(pal['outline']))
-    d.line((42, 66, 70, 66), fill=rgba(pal['highlight']))
+    d.line((42, 66, 70, 66), fill=rgba(pal['glow_mid']))
     d.line((42, 72, 70, 72), fill=rgba(pal['outline']))
-    d.line((44, 74, 68, 74), fill=rgba(pal['highlight']))
-    # Highlight crescent on glass (specular)
+    d.line((44, 74, 68, 74), fill=rgba(pal['glow_mid']))
+    # Brain pulse points (tertiary bright)
+    for px_, py_ in [(50, 60), (60, 60), (56, 68), (52, 76), (60, 76)]:
+        d.point((px_, py_), fill=rgba(pal['glow_bright']))
+    # Highlight crescent on glass (specular white)
     d.ellipse((28, 34, 50, 56), outline=rgba(pal['specular']), width=2)
     d.point((34, 38), fill=rgba(pal['specular']))
     # Orb top stem
@@ -476,15 +462,18 @@ def draw_harmonic(d, pal):
     # Tine caps (faceted crystals)
     for tx in (34, 84):
         shaded_polygon(d, [(tx, 12), (tx + 8, 22), (tx - 8, 22)], pal)
-    # Resonance crystal at center
+    # Resonance crystal at center — prism-white tertiary glow
     shaded_polygon(d, [(56, 42), (66, 56), (56, 70), (46, 56)], pal)
-    # Crystal facet line
-    d.line((56, 42, 56, 70), fill=rgba(pal['highlight']))
-    d.point((56, 56), fill=rgba(pal['specular']))
-    # Resonance arcs above the device
+    d.polygon([(56, 44), (64, 56), (56, 68), (48, 56)], fill=rgba(pal['glow_dim']))
+    d.polygon([(56, 46), (62, 56), (56, 66), (50, 56)], fill=rgba(pal['glow_mid']))
+    d.line((56, 46, 56, 66), fill=rgba(pal['glow_bright']))
+    d.point((56, 56), fill=(255, 255, 255, 255))
+    # Resonance arcs — tertiary white prism
     for arc_r in (16, 22, 28):
         d.arc((56 - arc_r, 42 - arc_r, 56 + arc_r, 42 + arc_r),
-              start=200, end=340, fill=rgba(pal['highlight']))
+              start=200, end=340, fill=rgba(pal['glow_dim']))
+        d.arc((56 - arc_r, 42 - arc_r, 56 + arc_r, 42 + arc_r),
+              start=240, end=300, fill=rgba(pal['glow_mid']))
 
 
 SILHOUETTES = {
@@ -637,7 +626,7 @@ def apply_damage(img: Image.Image, level: int, faction: str, pal) -> Image.Image
 
 
 def render_sheet(faction: str) -> Image.Image:
-    pal = make_palette(hex_to_rgb(FACTIONS[faction][0]))
+    pal = faction_palette(faction)
     sheet = Image.new('RGBA', (W, H * FRAMES), (0, 0, 0, 0))
     pristine = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     d0 = ImageDraw.Draw(pristine)
@@ -651,8 +640,8 @@ def render_sheet(faction: str) -> Image.Image:
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    print(f'Generating {len(FACTIONS)} HD base sheets v2 → {OUT_DIR.relative_to(ROOT)}/')
-    for faction in FACTIONS:
+    print(f'Generating {len(FACTION_PALETTE)} HD base sheets v3 → {OUT_DIR.relative_to(ROOT)}/')
+    for faction in FACTION_PALETTE:
         sheet = render_sheet(faction)
         out_path = OUT_DIR / f'base_{faction}.png'
         sheet.save(out_path, 'PNG')
