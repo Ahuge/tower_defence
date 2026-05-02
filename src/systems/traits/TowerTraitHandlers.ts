@@ -1,6 +1,7 @@
 import { TILE_SIZE, gridX, gridY } from '../../config';
 import { calculateDamage } from '../DamageCalculator';
 import { rng } from '../Rng';
+import { ChannelSystem } from '../channels/ChannelSystem';
 import {
   registerDelivery, registerDamageMod, registerFireRateMod,
   registerHitEffect, registerOnFire, registerTowerUpdate,
@@ -418,6 +419,26 @@ registerHitEffect('slow_on_hit', (trait: Trait, ctx: HitContext) => {
   const factor = trait.factor ?? 0.5;
   for (const target of ctx.hitTargets) {
     target.applySlow(duration, factor);
+  }
+});
+
+// interrupts_channels — Plan A counter to interruptible:false casters.
+// On hit, find any active channel on the target via the channel_caster
+// trait + ChannelSystem, and cancel it. Used by Frost and Mana Drain
+// so the player has to BUILD the counter, not just have raw DPS on
+// the field. Other towers' damage still hurts the caster's HP normally
+// (raw kill is always a valid interrupt — this trait just makes the
+// counter explicit for tanky casters).
+registerHitEffect('interrupts_channels', (_trait: Trait, ctx: HitContext) => {
+  for (const target of ctx.hitTargets) {
+    const creep = target as unknown as { traits?: Trait[]; _scene?: unknown };
+    if (!creep.traits) continue;
+    const casterTrait = creep.traits.find(t => t.id === 'channel_caster');
+    if (!casterTrait || !casterTrait._channelId) continue;
+    const sys = ChannelSystem.peek(creep._scene as never);
+    if (!sys) continue;
+    sys.interrupt(casterTrait._channelId, 'damage');
+    casterTrait._channelId = null;
   }
 });
 

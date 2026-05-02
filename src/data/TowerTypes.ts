@@ -129,11 +129,11 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   arcane_frost: def({
-    id: 'arcane_frost', name: 'Frost', description: 'Applies 65% slow for 2.5s. No upgrades needed.',
+    id: 'arcane_frost', name: 'Frost', description: 'Applies 65% slow for 2.5s. Interrupts caster channels. No upgrades needed.',
     faction: 'arcane', damageType: 'magic', cost: 35, damage: 4, range: 3, fireRate: 900,
     color: 0x88bbff, projectileSpeed: 280, hotkey: '2',
     targeting: 'fastest',
-    traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 2500, factor: 0.35 }],
+    traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 2500, factor: 0.35 }, { id: 'interrupts_channels' }],
     // No upgrades — it's balanced as a pure utility tower
   }),
   arcane_storm: def({
@@ -158,11 +158,11 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   arcane_drain: def({
-    id: 'arcane_drain', name: 'Mana Drain', description: 'Strips creep shields on hit.',
+    id: 'arcane_drain', name: 'Mana Drain', description: 'Strips creep shields and interrupts caster channels on hit.',
     faction: 'arcane', damageType: 'magic', cost: 120, damage: 10, range: 4.5, fireRate: 1000,
     color: 0x44aaff, projectileSpeed: 350, hotkey: '5',
     targeting: 'strongest',
-    traits: [{ id: 'direct_damage' }, { id: 'strip_shield' }],
+    traits: [{ id: 'direct_damage' }, { id: 'strip_shield' }, { id: 'interrupts_channels' }],
     upgrades: [
       { level: 2, cost: 80, damage: 18, range: 5, fireRate: 900 },
     ],

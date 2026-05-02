@@ -342,18 +342,20 @@ export const CREEP_TYPES: Record<string, CreepType> = {
 
   arcane_sigil: {
     id: 'arcane_sigil', name: 'Sigil',
-    description: 'Channels a tower-clearing pulse. Big and armored — interrupting it is a deliberate commit, not a stray shot.',
-    hpMultiplier: 5.0, speedMultiplier: 0.5, armor: 'heavy',
+    description: 'Channels a tower-clearing pulse. Damage alone will not cancel the channel — bring Frost or Mana Drain.',
+    hpMultiplier: 9.0, speedMultiplier: 0.5, armor: 'heavy',
     color: 0xaa44ff, size: 2.5, count: 1,
     traits: [{
       id: 'channel_caster',
-      // 10s channel — long enough that the player has time to read,
-      // turn turrets, choose to engage. Tankier-than-average HP means
-      // the choice to interrupt costs you on the rest of the wave.
+      // 10s channel. Interruptible only by counter-magic towers (Frost,
+      // Mana Drain) via the `interrupts_channels` tower trait. Standard
+      // damage doesn't auto-cancel — the player has to BUILD the
+      // counter, not just have damage on the field.
       channelStartAt: 1.5,
       channelDuration: 10.0,
       effectId: 'clear_towers_radius',
       meta: { radius: 140 }, // 5 tiles — large enough to bite even loose mazing
+      interruptible: false,
     }],
     spawnBehavior: 'normal',
     spawnOrder: 'last',

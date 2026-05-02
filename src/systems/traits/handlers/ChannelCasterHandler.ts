@@ -21,7 +21,17 @@ import {
 import { ChannelSystem } from '../../channels/ChannelSystem';
 
 registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) => {
-  if (!creep.alive) return;
+  if (!creep.alive) {
+    // Death is always an interrupt — regardless of `interruptible: false`.
+    // Without this, an uninterruptible caster killed by raw DPS would
+    // leave its channel dangling in ChannelSystem until scene shutdown.
+    if (trait._channelId) {
+      const sys = ChannelSystem.peek(creep._scene);
+      sys?.interrupt(trait._channelId, 'death');
+      trait._channelId = null;
+    }
+    return;
+  }
   // Back-ref so the damage hook can reach the scene + creep without
   // breaking the existing (trait, damage) signature.
   trait._creep = creep;
