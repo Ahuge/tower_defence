@@ -343,7 +343,7 @@ export const CREEP_TYPES: Record<string, CreepType> = {
   arcane_sigil: {
     id: 'arcane_sigil', name: 'Sigil',
     description: 'Channels a tower-clearing pulse. Damage alone will not cancel the channel — bring Frost or Mana Drain.',
-    hpMultiplier: 9.0, speedMultiplier: 0.5, armor: 'heavy',
+    hpMultiplier: 12.0, speedMultiplier: 0.5, armor: 'heavy',
     color: 0xaa44ff, size: 2.5, count: 1,
     traits: [{
       id: 'channel_caster',

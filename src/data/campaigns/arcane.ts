@@ -47,6 +47,13 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         mapId: 'arcane_outskirts',
         difficulty: 'easy',
         waveCount: 8,
+        // M1 tutorial: limit the kit so the player can SEE the counter.
+        // Frost is the cheap, available interrupt; Bolt is generic DPS;
+        // Storm is AoE for the supporting waves. Other towers (Focus,
+        // Drain, Meteor, Nova) unlock in later missions.
+        restrictions: {
+          allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm'],
+        },
         waveScript: [
           { wave: 1, groups: [{ creepType: 'standard', count: 6, hpScale: 28, speedScale: 1 }], spawnInterval: 600, isBoss: false },
           { wave: 2, groups: [{ creepType: 'standard', count: 8, hpScale: 36, speedScale: 1 }], spawnInterval: 550, isBoss: false },

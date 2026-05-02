@@ -385,6 +385,16 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.activeTowerIds = TOWER_ORDER;
     }
+    // Mission restrictions: trim the tower bar to the allowed list so
+    // the player isn't shown towers they can't actually place. Without
+    // this, restricted towers appear in the bar and silently fail on
+    // placement — confusing UX. Allowed-faction filter is applied in
+    // the same step.
+    const restrictions = this.missionContext?.restrictions;
+    if (restrictions?.allowedTowerIds && restrictions.allowedTowerIds.length > 0) {
+      const allow = new Set(restrictions.allowedTowerIds);
+      this.activeTowerIds = this.activeTowerIds.filter(id => allow.has(id));
+    }
   }
 
   /** Get the active map definition (generated for random, custom, static otherwise) */
