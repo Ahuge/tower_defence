@@ -132,6 +132,16 @@ export class Creep {
       if (this.sprite) {
         const scale = getCreepSpriteScale(creepTypeId);
         this.sprite.setScale(scale);
+        // Plan A — caster creeps need to be unmistakable. Tint + slight
+        // upscale so even before the channel-bar appears, the player
+        // can pick them out of a crowd. Tint persists; status-effect
+        // tints (burn / slow / etc.) override transiently in update().
+        const casterTrait = this.traits.find(t => t.id === 'channel_caster');
+        if (casterTrait) {
+          const isOffense = casterTrait.effectId !== 'buff_next_wave_hp';
+          this.sprite.setTint(isOffense ? 0xff44ff : 0xffd966);
+          this.sprite.setScale(scale * 1.2);
+        }
       }
     }
     this._prevX = this.x;

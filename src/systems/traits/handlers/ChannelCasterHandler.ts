@@ -26,6 +26,12 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
   // breaking the existing (trait, damage) signature.
   trait._creep = creep;
   trait._age = (trait._age ?? 0) + delta / 1000;
+  // Diagnostic — fires once per caster on first tick so we can confirm
+  // the trait pipeline reached this handler. Drop after Plan A v1.
+  if (!trait._loggedTick) {
+    trait._loggedTick = true;
+    console.log(`[ChannelCaster] tick fired for creep ${creep._creepTypeId ?? '?'}, effect=${trait.effectId}`);
+  }
   const startAt = trait.channelStartAt ?? 1.0;
   const duration = trait.channelDuration ?? 4.0;
   const effectId = trait.effectId ?? 'noop';
