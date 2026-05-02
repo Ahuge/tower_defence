@@ -1,17 +1,20 @@
 /**
  * channel_caster trait — caster creeps that channel a spell after a
- * delay. Cancelled if any damage is taken before completion.
+ * delay, optionally repeating up to castCount times.
  *
  * Trait config (declared in CreepTypes.ts):
  *   id: 'channel_caster'
- *   channelStartAt: seconds since spawn before channel begins (e.g. 1.0)
+ *   channelStartAt: seconds since spawn before FIRST channel begins (e.g. 1.0)
  *   channelDuration: seconds the channel takes (e.g. 4.0)
  *   effectId: ChannelEffects registry id (e.g. 'clear_towers_radius')
  *   meta?: extra fields passed to the effect (radius, percent, etc)
  *   interruptible?: true — any damage cancels (default true)
+ *   castCount?: max number of channels per creep (default 1, single-shot)
+ *   castCooldown?: seconds of downtime between cast 1 → cast 2 (default 3)
  *
  * Wires into the Trait registry via creep update + creep damage hooks.
- * Per-creep state lives on the trait object (`_channelId`, `_age`).
+ * Per-creep state lives on the trait object (`_channelId`, `_age`,
+ * `_castsDone`, `_cooldownRemaining`).
  */
 
 import {
@@ -32,28 +35,52 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
     }
     return;
   }
-  // Back-ref so the damage hook can reach the scene + creep without
-  // breaking the existing (trait, damage) signature.
   trait._creep = creep;
   trait._age = (trait._age ?? 0) + delta / 1000;
-  // Diagnostic — fires once per caster on first tick so we can confirm
-  // the trait pipeline reached this handler. Drop after Plan A v1.
   if (!trait._loggedTick) {
     trait._loggedTick = true;
     console.log(`[ChannelCaster] tick fired for creep ${creep._creepTypeId ?? '?'}, effect=${trait.effectId}`);
   }
+
   const startAt = trait.channelStartAt ?? 1.0;
   const duration = trait.channelDuration ?? 4.0;
   const effectId = trait.effectId ?? 'noop';
   const meta = trait.meta ?? {};
+  const castCount = trait.castCount ?? 1;
+  const cooldown = trait.castCooldown ?? 3.0;
+  const castsDone = (trait._castsDone ?? 0);
 
-  if (!trait._channelId && trait._age >= startAt) {
+  if (trait._channelId) {
+    // A channel is in flight — tick it. Detect end-of-channel
+    // (completed or interrupted, both via ChannelSystem) and roll
+    // bookkeeping to start the cooldown for the next cast.
     const sys = ChannelSystem.forScene(creep._scene);
-    trait._channelId = sys.start(creep, effectId, duration, meta);
-  } else if (trait._channelId) {
-    const sys = ChannelSystem.peek(creep._scene);
-    sys?.tick(trait._channelId, delta);
+    sys.tick(trait._channelId, delta);
+    const chan = sys.listActive().find(c => c.id === trait._channelId);
+    if (!chan || chan.completed || chan.interrupted) {
+      trait._channelId = null;
+      trait._castsDone = castsDone + 1;
+      trait._cooldownRemaining = cooldown;
+    }
+    return;
   }
+
+  // No active channel. If we've hit the cap, this creep is done casting.
+  if (castsDone >= castCount) return;
+
+  // Decrement the inter-cast cooldown if one is running. Initial cast
+  // uses `channelStartAt` as its only delay; subsequent casts use the
+  // cooldown set when the prior channel ended.
+  if (trait._cooldownRemaining !== undefined && trait._cooldownRemaining > 0) {
+    trait._cooldownRemaining -= delta / 1000;
+    if (trait._cooldownRemaining > 0) return;
+  }
+
+  // Initial-channel start gate (only for cast #0).
+  if (castsDone === 0 && trait._age < startAt) return;
+
+  const sys = ChannelSystem.forScene(creep._scene);
+  trait._channelId = sys.start(creep, effectId, duration, meta);
 });
 
 registerCreepDamage('channel_caster', (trait: Trait, damage: number) => {

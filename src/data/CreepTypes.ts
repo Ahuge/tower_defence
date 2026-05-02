@@ -372,9 +372,9 @@ export const CREEP_TYPES: Record<string, CreepType> = {
 
   arcane_scribe: {
     id: 'arcane_scribe', name: 'Scribe',
-    description: 'Channels a buff that strengthens future waves. Cumulative if uninterrupted.',
-    hpMultiplier: 0.9, speedMultiplier: 0.6, armor: 'medium',
-    color: 0xffd966, size: 1.0, count: 1,
+    description: 'Channels a wave-buff repeatedly while it walks. Counter with Frost or Mana Drain — early.',
+    hpMultiplier: 3.0, speedMultiplier: 0.6, armor: 'medium',
+    color: 0xffd966, size: 1.4, count: 1,
     traits: [{
       id: 'channel_caster',
       channelStartAt: 1.0,
@@ -384,9 +384,15 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       // Damage alone won't cancel — Frost or Mana Drain required, same
       // as Sigil. Keeps the campaign's interrupt vocabulary consistent.
       interruptible: false,
+      // Multi-channel: a Scribe casts up to N times across its path,
+      // with a cooldown between casts. Forces the player to either
+      // commit a Frost in range or eat the cumulative buff.
+      castCount: 2,
+      castCooldown: 4.0,
     }],
     spawnBehavior: 'normal',
-    spawnOrder: 'last',
+    // No spawnOrder — Scribes interleave with the rest of the wave so
+    // the player can't just hold DPS for the back half.
     applyDifficulty(hints) {
       return {
         hpMult: hints.toughness,
