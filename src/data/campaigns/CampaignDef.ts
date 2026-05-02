@@ -65,20 +65,48 @@ export interface MissionRestrictions {
   forceHeroId?: HeroId;
 }
 
+/** Story can be a literal string (v1) or a function that reads campaign
+ *  state and the last mission result (v2 — see ParametricStory.ts). */
+export type MissionStory<TState = unknown> =
+  | string
+  | ((ctx: { state: TState; lastResult: MissionResult | null }) => string);
+
+/** v2 hook: mutate per-faction campaign state at mission end. Receives
+ *  the final mission result + the prior state, returns the new state.
+ *  Pure function — no side effects beyond returning the new value. */
+export type CampaignStateUpdater<TState = unknown> = (
+  result: MissionResult,
+  prevState: TState,
+) => TState;
+
+/** v2 hook: read campaign state at mission start to override mission
+ *  config (e.g. boss HP scales with prior ore-token tally). Merges
+ *  into archetype defaults + per-mission overrides at runtime. */
+export type DynamicOverrides<TState = unknown> = (
+  state: TState,
+) => Partial<MissionOverrides>;
+
 /** A single mission inside a campaign. */
-export interface MissionDef {
+export interface MissionDef<TState = unknown> {
   /** Stable id within the campaign. Used for save state + analytics. */
   id: string;
   /** Display order in the lobby (0..9). */
   idx: number;
   /** Display name (e.g. "Crystal Outskirts"). */
   name: string;
-  /** Two-paragraph story beat shown in the pre-mission modal. */
-  story: string;
+  /** Two-paragraph story beat shown in the pre-mission modal. v2 may
+   *  pass a function reading current campaign state. */
+  story: MissionStory<TState>;
   /** Archetype id (see MissionArchetypes.ts). Resolves to base mode + defaults. */
   archetype: MissionArchetypeId;
   /** Per-mission overrides on top of the archetype. */
   overrides: MissionOverrides;
+  /** v2: read campaign state at start to compute additional overrides
+   *  (e.g. scale boss HP from prior mission's ore tally). Merged on top
+   *  of archetype + static overrides. */
+  dynamicOverrides?: DynamicOverrides<TState>;
+  /** v2: write to campaign state at end. No-op for v1 missions. */
+  stateUpdater?: CampaignStateUpdater<TState>;
   /** Star objectives. Star 1 is always "win the match" — we don't
    *  re-declare it here. Stars 2 and 3 are optional bonus goals. */
   objectives: {
@@ -118,7 +146,7 @@ export interface MissionOverrides {
 }
 
 /** The 10-mission campaign. */
-export interface CampaignDef {
+export interface CampaignDef<TState = unknown> {
   /** Faction this campaign targets — the faction the player fights
    *  against AND unlocks by completing. */
   factionId: FactionId;
@@ -130,11 +158,15 @@ export interface CampaignDef {
   outro: string;
   /** 10 missions in order. Mission N+1 unlocks when mission N is won
    *  (any star count). Replays of completed missions are allowed. */
-  missions: MissionDef[];
+  missions: MissionDef<TState>[];
   /** Cosmetic banner / lobby art id (theme tile pack key). */
   bannerId?: string;
   /** Audio loop id for the lobby. */
   audioLoopId?: string;
+  /** v2: initial campaign state used on first read after install.
+   *  Required for any campaign that uses stateUpdater / dynamicOverrides
+   *  / parametric stories. v1 campaigns leave this undefined. */
+  initialState?: TState;
 }
 
 /** Star count earned (0 = not attempted, 1-3 = stars). */
@@ -153,7 +185,14 @@ export type MissionArchetypeId =
   | 'coop_with_bot'       // Circle co-op with a bot ally on the player's side
   | 'final_showdown'      // Standard 30 on the campaign's flagship map
   | 'restriction'         // Standard with allowedTowerIds / noWalls / etc.
-  // Plans 11/12/13 — placeholder ids; archetype configs land with those plans.
+  // Plans 11/12/13.
   | 'base_defense'
   | 'attacker'
-  | 'heist';
+  | 'heist'
+  // Phase 0 v2 archetypes — registered as stubs; gameplay lands with
+  // Plans A (Arcane Counterspell) and B (Mech Cascade).
+  | 'interrupt'                    // Plan A: caster-channel disruption
+  | 'interrupt_combo'              // Plan A: chain-stun on adjacent casters
+  | 'interrupt_cascade'            // Plan A: completed casts permadebuff towers
+  | 'attacker_role_reversal'       // Plan B: Foundry Floor / Assembly Strike I+II
+  | 'boss_rush_visible_assembly';  // Plan B: walker bosses spawn missing parts

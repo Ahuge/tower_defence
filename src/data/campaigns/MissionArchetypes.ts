@@ -148,6 +148,52 @@ const ARCHETYPES: Record<MissionArchetypeId, MissionArchetype> = {
     baseMode: 'standard',
     defaults: { waveCount: 10, difficulty: 'normal', mapId: 'heist_vault' as const },
   },
+
+  // ─── Phase 0 — v2 archetype slots (stubbed) ────────────────────
+  // Registered so CampaignDef + MissionRunner type-check against them.
+  // `__archetypeStub` keeps MissionRunner from launching them until
+  // Plan A / Plan B replaces the stub with real config.
+
+  interrupt: {
+    id: 'interrupt',
+    label: 'Interrupt',
+    blurb: 'Disrupt enemy channels before they cast.',
+    baseMode: 'standard',
+    defaults: { waveCount: 12, difficulty: 'normal' },
+    __archetypeStub: true,
+  },
+  interrupt_combo: {
+    id: 'interrupt_combo',
+    label: 'Dispel Chain',
+    blurb: 'Chain interrupts — one stun ripples to adjacent casters.',
+    baseMode: 'standard',
+    defaults: { waveCount: 12, difficulty: 'normal' },
+    __archetypeStub: true,
+  },
+  interrupt_cascade: {
+    id: 'interrupt_cascade',
+    label: 'Counter-Cascade',
+    blurb: 'Each completed cast permanently weakens your towers.',
+    baseMode: 'standard',
+    defaults: { waveCount: 15, difficulty: 'normal' },
+    __archetypeStub: true,
+  },
+  attacker_role_reversal: {
+    id: 'attacker_role_reversal',
+    label: 'Role Reversal',
+    blurb: 'Command the assault. Defender layouts shift with the supply.',
+    baseMode: 'attacker',
+    defaults: { waveCount: 10, difficulty: 'normal' },
+    __archetypeStub: true,
+  },
+  boss_rush_visible_assembly: {
+    id: 'boss_rush_visible_assembly',
+    label: 'Cascade Strike',
+    blurb: 'Walker bosses arrive missing parts you stole.',
+    baseMode: 'standard',
+    defaults: { waveCount: 5, difficulty: 'hard' },
+    __archetypeStub: true,
+  },
 };
 
 export function getArchetype(id: MissionArchetypeId): MissionArchetype {

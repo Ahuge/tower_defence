@@ -68,6 +68,16 @@ export interface PlayerProfileState {
    *  stars (0..3)`. Stars are monotonic — replays only ever upgrade
    *  the stored value, never downgrade. */
   campaignProgress: { [factionId: string]: { [missionIdx: number]: number } };
+
+  /** Per-faction persistent campaign state, owned by the campaign's
+   *  v2 systems (Arcane Counterspell channel-clock, Mech Cascade
+   *  supply-chain, …). Stored as `unknown` here — the typed shape is
+   *  declared by each consumer in `systems/campaign/`. Reads narrow
+   *  via accessor helpers; writes go through MissionRunner.finalize.
+   *
+   *  Existing v1 saves load with `{}` (defaults merge); v1 campaigns
+   *  ignore this field entirely. */
+  campaignState: { [factionId: string]: unknown };
   /** Highest career stage ever cleared. */
   careerHighStage: number;
 
@@ -99,6 +109,7 @@ export function defaultProfileState(): PlayerProfileState {
     unlockedMaps: ['plains', 'tutorial', 'hero_plains'],
     unlockedFactionsLifetime: ['arcane'],
     campaignProgress: {},
+    campaignState: {},
     careerHighStage: 0,
     towerChips: {},
     flags: {},

@@ -18,6 +18,14 @@ After every commit, check and update these files:
 3. **FACTIONS.md** — Update if any faction's towers, costs, traits, or identity changes. Include ALL factions.
 4. **GAMEMODES.md** — Update if any game mode's rules, economy, heroes, items, or strategy changes.
 
+## Creative Work — Always Ship 3 Versions
+For any **art, story, or copy** task — sprite/illustration generation, mission narratives, faction/level/character names, dialogue, splash text, taglines, UI microcopy, palette picks — always produce **three meaningfully-distinct versions** and then dispatch a subagent (`general-purpose`) for blind comparison: "which is best, and why." Do NOT pick the winner yourself — taste calls made by the implementing model are biased toward whatever was generated last.
+
+- Three options force a real third axis (two collapse to "safe vs. weird")
+- Each version must take a different angle, tone, or approach — not minor tweaks
+- After the agent recommends, the **user** makes the final call
+- Does not apply to code, logic, architecture, or balance numbers — those have correctness criteria
+
 ## Project Structure
 ```
 src/

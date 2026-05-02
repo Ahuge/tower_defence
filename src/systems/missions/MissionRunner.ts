@@ -23,11 +23,12 @@
  * objective evaluation is real).
  */
 
-import type { CampaignDef, MissionDef, MissionResult, StarCount } from '../../data/campaigns/CampaignDef';
+import type { CampaignDef, MissionDef, MissionOverrides, MissionResult, StarCount } from '../../data/campaigns/CampaignDef';
 import { getArchetype, isArchetypeStub } from '../../data/campaigns/MissionArchetypes';
 import { UIBridge } from '../../ui/UIBridge';
 import { Analytics } from '../AnalyticsClient';
 import { PlayerProfile } from '../profile/PlayerProfile';
+import { CampaignState } from '../campaign/CampaignState';
 
 /** Subset of MissionDef that GameScene actually reads. Distinct from
  *  the full def so the runtime contract is small and stable. */
@@ -57,7 +58,20 @@ class MissionRunnerClass {
       return false;
     }
     const archetype = getArchetype(mission.archetype);
-    const merged = { ...archetype.defaults, ...mission.overrides };
+
+    // v2: read campaign state and let the mission compute additional
+    // overrides on top of static config. v1 missions skip this branch
+    // because dynamicOverrides is undefined and initialState is null.
+    let dynamic: Partial<MissionOverrides> = {};
+    if (mission.dynamicOverrides && campaign.initialState !== undefined) {
+      const state = CampaignState.get(campaign.factionId, campaign.initialState);
+      try {
+        dynamic = mission.dynamicOverrides(state) ?? {};
+      } catch (err) {
+        console.warn(`[MissionRunner] dynamicOverrides threw for ${mission.id}:`, err);
+      }
+    }
+    const merged = { ...archetype.defaults, ...dynamic, ...mission.overrides };
 
     this.active = { campaign, mission, startedAt: Date.now() };
     Analytics.track('mission_started', {
@@ -120,6 +134,20 @@ class MissionRunnerClass {
     }
 
     PlayerProfile.recordMissionResult(session.campaign.factionId, mission.idx, stars);
+
+    // v2: write to campaign state. Runs after stars are recorded so
+    // failure analytics still emit even if the updater throws.
+    if (mission.stateUpdater && session.campaign.initialState !== undefined) {
+      try {
+        const prev = CampaignState.get(session.campaign.factionId, session.campaign.initialState);
+        const next = mission.stateUpdater(result, prev);
+        if (next && typeof next === 'object') {
+          CampaignState.set(session.campaign.factionId, next);
+        }
+      } catch (err) {
+        console.warn(`[MissionRunner] stateUpdater threw for ${mission.id}:`, err);
+      }
+    }
 
     if (result.won) {
       Analytics.track('mission_completed', {

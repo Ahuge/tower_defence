@@ -24,6 +24,7 @@ import { MissionRunner } from '../../systems/missions/MissionRunner';
 import { isArchetypeStub, getArchetype } from '../../data/campaigns/MissionArchetypes';
 import type { CampaignDef, MissionDef } from '../../data/campaigns/CampaignDef';
 import { FACTIONS, type FactionId } from '../../data/Factions';
+import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
 
 const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
 
@@ -192,6 +193,15 @@ export function CampaignLobbyScreen({ data }: Props) {
             </div>
           )}
         </div>
+
+        {(() => {
+          const StatePanel = CampaignStatePanelRegistry.get(campaign.factionId);
+          return StatePanel ? (
+            <div style={{ maxWidth: '520px', margin: '0 auto 16px' }}>
+              <StatePanel factionId={campaign.factionId} />
+            </div>
+          ) : null;
+        })()}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '520px', margin: '0 auto' }}>
           {campaign.missions.map(mission => {
