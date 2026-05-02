@@ -2,6 +2,18 @@
 
 ## 2026-05-02
 
+### Hero Defense art PRDs 01-03 — procedural pixel-art generation
+
+Three PRDs from `notes/art_prds/` shipped as Python generators + engine wire-up. All in the in-house pixel-art style (28 px scale, 1 px outlines, 3-color blob palette, NEAREST filter, no AA), matching existing terrain tilesets / structures / creep death animations. Hand-pixel polish remains a future option without changing engine consumers.
+
+**PRD 01 — Arena floor tileset** (`scripts/generate_arena_floor_tileset.py`). 11 sheets, 448×56 each (16 cols × 2 rows × 28 px). Row 0 = 12 ground variants + 4 accents (rune / gem / dots / pip); row 1 = 16 alpha-PNG faction prop tiles (crystal / cog / blob / skull / chip / etc). Engine consumer: new `ArenaFloorRenderer` paints tiles into a `RenderTexture` once at depth -100; deterministic per-cell so layouts are stable across replays.
+
+**PRD 02 — Per-faction HD base** (`scripts/generate_hero_base_sheets.py`). 11 sheets, 112×700 each (5 vertical damage frames × 112×140). Each frame's silhouette is a faction-specific shape (arch + spire / smelter + chimneys / tree shrine / floating shard / bunker / hive / server stack / altar / pillar / glass orb / tuning fork). Damage states reuse the silhouette and add cumulative chip-pixels / scorch / crack-lines / knock-out regions per level. New `ArenaBase` sprite class swaps frame on baseHp threshold (100/85/60/35/10/0 = frames 0-4). Replaces the legacy procedural blue rect when art loaded.
+
+**PRD 03 — Hero ability VFX** (`scripts/generate_hero_vfx_atlas.py`). 12 sheets v1: arcanist (mage) / ranger / paladin × Q / W / E / R. 384×64 each (6 frames × 64×64). 18 fps anticipation→peak→decay cadence. Four archetypes assigned per ability: `burst` (single-target hit spikes), `ring` (expanding AoE), `aura` (centered self-cast rays), `beam` (vertical beam + ground flare). New `spawnHeroAbilityVfx()` helper, called from `Hero.useAbility` at the resolved impact location. No-op when sheet not authored — procedural FX continue to play.
+
+`createHeroAbilityVfxAnimations()` registers play-once `repeat: 0` anims with the same defensive backstop timer as creep death animations (1.5× duration in case `animationcomplete` is dropped). All systems gate behind asset existence checks so missing files fall through to the procedural fallback.
+
 ### Post-mission UX + in-mission star tracker + leak-sprite bug
 
 Three campaign-flow features in one batch.

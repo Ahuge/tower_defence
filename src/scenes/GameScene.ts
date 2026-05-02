@@ -82,7 +82,7 @@ import { platformBridge } from '../systems/platform';
 import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
 import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
-import { preloadArenaFloors } from '../systems/ArenaFloorRenderer';
+import { preloadArenaFloors, preloadArenaBases, preloadHeroAbilityVfx, createHeroAbilityVfxAnimations } from '../systems/ArenaFloorRenderer';
 import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../data/campaigns';
 
@@ -411,6 +411,8 @@ export class GameScene extends Phaser.Scene {
     TerrainManager.preload(this);
     preloadCreepSprites(this);
     preloadArenaFloors(this);
+    preloadArenaBases(this);
+    preloadHeroAbilityVfx(this);
   }
 
   create(): void {
@@ -491,6 +493,7 @@ export class GameScene extends Phaser.Scene {
     createSpriteAnimations(this);
     TerrainManager.createAnimations(this);
     createCreepAnimations(this, this.creepFaction);
+    createHeroAbilityVfxAnimations(this);
 
     // Set global grid Y offset for hero defense (arena above grid)
     setGridOffsetY(this.gridOffsetY);

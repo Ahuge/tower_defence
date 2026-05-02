@@ -11,7 +11,7 @@ import { EconomyManager } from './EconomyManager';
 import { EventLog } from '../ui/EventLog';
 import { FloatingDamage } from './FloatingDamage';
 import { ArenaEffect, FX, drawEffect } from './ArenaEffects';
-import { ArenaFloorRenderer } from './ArenaFloorRenderer';
+import { ArenaFloorRenderer, ArenaBase } from './ArenaFloorRenderer';
 import type { FactionId } from '../data/Factions';
 
 export interface ArenaCreepData {
@@ -70,6 +70,9 @@ export class ArenaManager {
   // Per-faction floor tileset (PRD 01). Optional — falls back to the
   // procedural background painted by drawArena() when null.
   private floorRenderer: ArenaFloorRenderer | null = null;
+  // Per-faction base sprite (PRD 02). Optional — falls back to the
+  // legacy procedural blue rect inside drawArena() when null.
+  private baseSprite: ArenaBase | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -101,6 +104,13 @@ export class ArenaManager {
     this.floorRenderer = new ArenaFloorRenderer(
       scene, creepFaction ?? null, this.arenaX, this.arenaY, arenaWidth, arenaHeight,
     );
+
+    // Per-faction base sprite (PRD 02). Anchored bottom-center at the
+    // right edge of the arena, just inside the wall. Frame swaps
+    // based on baseHp ratio — see ArenaBase.update().
+    const baseAnchorX = this.arenaX + arenaWidth - 60;
+    const baseAnchorY = arenaHeight - 8;
+    this.baseSprite = new ArenaBase(scene, creepFaction ?? null, baseAnchorX, baseAnchorY);
 
     // Spawn hero at center of arena (pixel coords relative to arena)
     const offsetX = getGridOffsetX();
@@ -572,20 +582,26 @@ export class ArenaManager {
       }
     }
 
-    // Base structure on right edge
-    const baseX = this.arenaX + this.arenaWidth - 30;
+    // Base structure on right edge. Pixel-art sprite when a faction
+    // base sheet loaded; legacy procedural blue rect otherwise.
+    const hpRatio = this.baseHp / this.baseMaxHp;
+    const baseX = this.arenaX + this.arenaWidth - 60;
     const baseY = this.arenaHeight / 2;
-    this.graphics.fillStyle(0x4444aa, 0.8);
-    this.graphics.fillRect(baseX - 15, baseY - 40, 30, 80);
-    this.graphics.lineStyle(2, 0x6666dd, 1);
-    this.graphics.strokeRect(baseX - 15, baseY - 40, 30, 80);
+    if (this.baseSprite?.isActive()) {
+      this.baseSprite.update(hpRatio);
+    } else {
+      this.graphics.fillStyle(0x4444aa, 0.8);
+      this.graphics.fillRect(baseX - 15, baseY - 40, 30, 80);
+      this.graphics.lineStyle(2, 0x6666dd, 1);
+      this.graphics.strokeRect(baseX - 15, baseY - 40, 30, 80);
+    }
 
-    // Base HP bar
+    // Base HP bar — overlays the sprite (or legacy rect). Anchored at
+    // the same position so it tracks the right edge regardless of art.
     const barW = 20;
     const barH = 70;
     const barX = baseX - barW / 2;
     const barY = baseY - barH / 2;
-    const hpRatio = this.baseHp / this.baseMaxHp;
     this.graphics.fillStyle(0x222222, 1);
     this.graphics.fillRect(barX, barY, barW, barH);
     const hpColor = hpRatio > 0.5 ? 0x44ff44 : hpRatio > 0.25 ? 0xffaa44 : 0xff4444;
@@ -660,5 +676,7 @@ export class ArenaManager {
     this.floatingDamage.destroy();
     this.floorRenderer?.destroy();
     this.floorRenderer = null;
+    this.baseSprite?.destroy();
+    this.baseSprite = null;
   }
 }

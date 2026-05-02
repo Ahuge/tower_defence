@@ -6,6 +6,7 @@ import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
 import { DamageNumberEntry, DMG_COLOR } from '../systems/FloatingDamage';
 import { ArenaEffect, FX } from '../systems/ArenaEffects';
+import { spawnHeroAbilityVfx } from '../systems/ArenaFloorRenderer';
 
 export interface AbilityState {
   def: AbilityDef;
@@ -596,6 +597,28 @@ export class Hero {
       this._animState = 'ability';
       this._abilityIndex = overrideDef ? 3 : index; // ultimate = slot 3
       this._abilityAnimTimer = 0.5; // show ability frame for 0.5s
+    }
+
+    // PRD 03: per-hero ability VFX. Spawned at the impact location
+    // when the sheet exists for this hero × ability combo. Layers on
+    // top of the existing procedural FX (no removal — both can co-exist
+    // for v1; we'll dial the procedurals back after authoring lands
+    // for all 11 heroes). No-op when this hero hasn't shipped a VFX
+    // sheet yet (v1 = mage / ranger / paladin only).
+    {
+      const heroId = this.typeDef.id;
+      const targetCreep = this.target ?? this.findTarget(arenaCreeps);
+      const fxX = targetX !== undefined
+        ? targetX
+        : (def.type === 'self_buff' || def.type === 'aoe' || def.key === 'E')
+          ? this.x
+          : (targetCreep?.x ?? this.x);
+      const fxY = targetY !== undefined
+        ? targetY
+        : (def.type === 'self_buff' || def.type === 'aoe' || def.key === 'E')
+          ? this.y
+          : (targetCreep?.y ?? this.y);
+      spawnHeroAbilityVfx(this.scene, heroId, def.key, fxX, fxY);
     }
 
     switch (def.type) {
