@@ -154,13 +154,16 @@ const ARCHETYPES: Record<MissionArchetypeId, MissionArchetype> = {
   // `__archetypeStub` keeps MissionRunner from launching them until
   // Plan A / Plan B replaces the stub with real config.
 
+  // Plan A v1: real archetype. Wraps standard mode; the mission's
+  // own waveScript drops Sigil / Scribe casters into specific waves.
+  // Win condition is still "survive all waves"; star objectives can
+  // read result.custom.channelsInterrupted / channelsCompleted.
   interrupt: {
     id: 'interrupt',
     label: 'Interrupt',
     blurb: 'Disrupt enemy channels before they cast.',
     baseMode: 'standard',
     defaults: { waveCount: 12, difficulty: 'normal' },
-    __archetypeStub: true,
   },
   interrupt_combo: {
     id: 'interrupt_combo',

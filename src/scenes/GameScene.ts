@@ -3165,6 +3165,18 @@ export class GameScene extends Phaser.Scene {
           heroHpMin,
           // Plan 12 attacker: total leaks (creeps that broke through).
           attackerLeaks: this.statsTracker.stats.creepsLeaked,
+          // Plan A counterspell: channel stats. Read off the scene's
+          // ChannelSystem if one was created. Zero-default when the
+          // mission had no casters.
+          ...(() => {
+            const cs = ChannelSystem.peek(this);
+            const stats = cs?.getStats() ?? { started: 0, interrupted: 0, completed: 0 };
+            return {
+              channelsStarted: stats.started,
+              channelsInterrupted: stats.interrupted,
+              channelsCompleted: stats.completed,
+            };
+          })(),
         },
       };
       const stars = MissionRunner.finalize(missionResult);
