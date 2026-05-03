@@ -114,7 +114,13 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
           { wave: 10, groups: [{ creepType: 'fast', count: 14, hpScale: 130, speedScale: 1 }], spawnInterval: 350, isBoss: false },
           { wave: 11, groups: [{ creepType: 'armored', count: 10, hpScale: 200, speedScale: 1 }], spawnInterval: 500, isBoss: false },
           { wave: 12, groups: [
-            { creepType: 'boss', count: 1, hpScale: 1200, speedScale: 1 },
+            // M2 balance pass: hpScale 1200 → 600. The boss pre-buff
+            // came out at ~18k HP + 5k shield, which the player called
+            // "really really hard" with no buff applied. Halving the
+            // base gives ~9k HP + 3k shield no-buff and ~18k + 5k at
+            // the new +100% buff cap — reproducing the intended
+            // ceiling without the floor punishment.
+            { creepType: 'boss', count: 1, hpScale: 600, speedScale: 1 },
             { creepType: 'arcane_scribe', count: 3, hpScale: 200, speedScale: 1 },
           ], spawnInterval: 600, isBoss: true },
         ],

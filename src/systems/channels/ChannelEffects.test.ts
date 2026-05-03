@@ -94,13 +94,13 @@ describe('ChannelEffects built-in: buff_next_wave_hp', () => {
     expect(scene._channelHpBuff).toBeCloseTo(0.20);
   });
 
-  it('stacks cumulatively across multiple completions up to the default cap (0.75)', () => {
+  it('stacks cumulatively across multiple completions up to the default cap (1.0)', () => {
     const scene: { _channelHpBuff?: number } = {};
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       ChannelEffects.dispatch('buff_next_wave_hp', { scene: scene as any, caster: {}, meta: {} });
     }
-    // 6 × 0.20 = 1.20 raw, capped at 0.75 (+75%).
-    expect(scene._channelHpBuff).toBeCloseTo(0.75);
+    // 8 × 0.20 = 1.60 raw, capped at 1.0 (+100%).
+    expect(scene._channelHpBuff).toBeCloseTo(1.0);
   });
 
   it('honors a custom maxBuff cap from meta', () => {
