@@ -176,9 +176,9 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       idx: 2,
       name: 'Ritual Circle',
       story:
-        "Three archmages have set the standing stones glowing. They came to channel openly — Meteora calls fire, " +
-        "Stormcaller chains lightning across our lines, the Necromaster pulls dead things back across the threshold. " +
-        "You'll meet each one, then they'll all step into the ring together.\n\n" +
+        "Three archmages have set the standing stones glowing. They've come to channel openly. The Necromaster pulls " +
+        "dead things back across the threshold first — softer than what's behind him. Then Stormcaller, who chains " +
+        "lightning across our lines. Last comes Meteora, who calls fire down on stone — towers will not survive her cast.\n\n" +
         "We recovered Frost technology from a captured archmage's notebook. The Coalition Forge can replicate it now — " +
         "the Frost is yours to deploy. Counter their casts or be erased.",
       archetype: 'interrupt',
@@ -213,23 +213,28 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
             { creepType: 'fast', count: 6, hpScale: 60, speedScale: 1 },
           ], spawnInterval: 500, isBoss: false },
 
-          // Wave 3 — Meteora introduced. Heavy fodder + 1 archmage.
+          // Wave 3 — Necromaster first. He summons fodder, which is
+          // annoying but doesn't destroy your towers. Player gets to
+          // see the channel mechanic with the lowest-stakes archmage.
           { wave: 3, groups: [
-            { creepType: 'standard', count: 10, hpScale: 90, speedScale: 1 },
-            { creepType: 'arcane_archmage_meteor', count: 1, hpScale: 80, speedScale: 1 },
+            { creepType: 'fast', count: 10, hpScale: 90, speedScale: 1 },
+            { creepType: 'arcane_archmage_necro', count: 1, hpScale: 110, speedScale: 1 },
           ], spawnInterval: 500, isBoss: false },
 
-          // Wave 4 — Stormcaller.
+          // Wave 4 — Stormcaller. Disables towers temporarily — bad,
+          // but recoverable.
           { wave: 4, groups: [
             { creepType: 'armored', count: 8, hpScale: 130, speedScale: 1 },
             { creepType: 'arcane_archmage_storm', count: 1, hpScale: 100, speedScale: 1 },
           ], spawnInterval: 480, isBoss: false },
 
-          // Wave 5 — Necromaster + a thicker fodder field (his summons
-          // pile up on top of the wave's standard creeps).
+          // Wave 5 — Meteora last. Her cast destroys towers in radius
+          // — the highest-stakes archmage. Player needs full Frost
+          // coverage by now to interrupt; failure to do so is a
+          // permanent loss of structures.
           { wave: 5, groups: [
-            { creepType: 'fast', count: 10, hpScale: 90, speedScale: 1 },
-            { creepType: 'arcane_archmage_necro', count: 1, hpScale: 110, speedScale: 1 },
+            { creepType: 'standard', count: 10, hpScale: 90, speedScale: 1 },
+            { creepType: 'arcane_archmage_meteor', count: 1, hpScale: 80, speedScale: 1 },
           ], spawnInterval: 450, isBoss: false },
 
           // Wave 6 — Finale. All three archmages step in together. The
