@@ -180,9 +180,13 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // Coalition kit + Frost unlock — first mission Frost is
         // player-buildable.
         faction: 'coalition',
-        mapId: 'crossroads',
+        // arcane_pass — single-entrance winding S-shape forces creeps
+        // into a long predictable killzone. crossroads (the prior
+        // map) had two entrances, which the Coalition kit can't cover
+        // simultaneously by wave 2.
+        mapId: 'arcane_pass',
         difficulty: 'normal',
-        waveCount: 5,
+        waveCount: 6,
         // M3 Coalition kit: Arrow + Cannon + Wall + Sniper + Frost
         // (Frost newly unlocked). No pre-placement — player must build
         // their own counter coverage now.
@@ -190,36 +194,42 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
           allowedTowerIds: ['arrow', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost'],
         },
         waveScript: [
-          // Wave 1 — light fodder, no archmage. Player stockpiles gold,
-          // builds Frost coverage in advance of M3's first boss.
+          // Wave 1 — first warm-up. Light fodder so the player can
+          // place the first 3-4 towers and feel out the path.
           { wave: 1, groups: [
-            { creepType: 'standard', count: 8, hpScale: 70, speedScale: 1 },
-            { creepType: 'fast', count: 6, hpScale: 50, speedScale: 1 },
+            { creepType: 'standard', count: 8, hpScale: 60, speedScale: 1 },
+          ], spawnInterval: 600, isBoss: false },
+
+          // Wave 2 — second warm-up. More creeps, more variety. Player
+          // banks gold for Frost + Sniper before the first archmage.
+          { wave: 2, groups: [
+            { creepType: 'standard', count: 8, hpScale: 80, speedScale: 1 },
+            { creepType: 'fast', count: 6, hpScale: 60, speedScale: 1 },
           ], spawnInterval: 500, isBoss: false },
 
-          // Wave 2 — Meteora introduced. Heavy fodder + 1 archmage.
-          { wave: 2, groups: [
+          // Wave 3 — Meteora introduced. Heavy fodder + 1 archmage.
+          { wave: 3, groups: [
             { creepType: 'standard', count: 10, hpScale: 90, speedScale: 1 },
             { creepType: 'arcane_archmage_meteor', count: 1, hpScale: 80, speedScale: 1 },
           ], spawnInterval: 500, isBoss: false },
 
-          // Wave 3 — Stormcaller. By now player should have ≥2 Frost.
-          { wave: 3, groups: [
+          // Wave 4 — Stormcaller.
+          { wave: 4, groups: [
             { creepType: 'armored', count: 8, hpScale: 130, speedScale: 1 },
             { creepType: 'arcane_archmage_storm', count: 1, hpScale: 100, speedScale: 1 },
           ], spawnInterval: 480, isBoss: false },
 
-          // Wave 4 — Necromaster + a thicker fodder field (his summons
+          // Wave 5 — Necromaster + a thicker fodder field (his summons
           // pile up on top of the wave's standard creeps).
-          { wave: 4, groups: [
+          { wave: 5, groups: [
             { creepType: 'fast', count: 10, hpScale: 90, speedScale: 1 },
             { creepType: 'arcane_archmage_necro', count: 1, hpScale: 110, speedScale: 1 },
           ], spawnInterval: 450, isBoss: false },
 
-          // Wave 5 — Finale. All three archmages step in together. The
+          // Wave 6 — Finale. All three archmages step in together. The
           // wave's existence is the boss — no fodder. Boss-flagged so
           // the wave-end fanfare reads correctly.
-          { wave: 5, groups: [
+          { wave: 6, groups: [
             { creepType: 'arcane_archmage_meteor', count: 1, hpScale: 130, speedScale: 1 },
             { creepType: 'arcane_archmage_storm', count: 1, hpScale: 130, speedScale: 1 },
             { creepType: 'arcane_archmage_necro', count: 1, hpScale: 130, speedScale: 1 },
@@ -228,8 +238,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
       objectives: {
         // Star 2: at least 3 channels interrupted across the mission.
-        // With 4 archmages (waves 2-4) × castCount 2 + 3 archmages × 2
-        // in finale = 14 cast attempts. 3 interrupts is the "you
+        // With 3 archmages in waves 3-5 × castCount 2 + 3 archmages × 2
+        // in finale = 12 cast attempts. 3 interrupts is the "you
         // engaged with the mechanic" bar.
         star2: {
           label: 'Interrupt at least 3 Archmage channels',
