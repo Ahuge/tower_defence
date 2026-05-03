@@ -325,10 +325,11 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
           {wavesLabel && <InfoPill label="Waves" value={wavesLabel} />}
         </div>
 
-        {/* Continue button (campaign mode) OR animated progress bar */}
-        {requiresContinue ? (
+        {/* Progress bar transforms into a Begin button when the scene
+            is ready (campaign mode only). For non-campaign loads, the
+            bar just keeps animating until auto-dismiss fires. */}
+        {requiresContinue && sceneReady ? (
           <button
-            disabled={!sceneReady}
             onClick={() => window.dispatchEvent(new Event('loading-screen-continue'))}
             style={{
               fontFamily: "'Silkscreen', ui-sans-serif, sans-serif",
@@ -336,19 +337,17 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
               color: '#15101a',
               letterSpacing: '3px',
               padding: '14px 36px',
-              background: sceneReady
-                ? `linear-gradient(180deg, ${fColor}, ${fColor}cc)`
-                : 'rgba(255,255,255,0.08)',
-              border: sceneReady ? `2px solid ${fColor}` : '2px solid rgba(255,255,255,0.15)',
+              background: `linear-gradient(180deg, ${fColor}, ${fColor}cc)`,
+              border: `2px solid ${fColor}`,
               borderRadius: '6px',
-              cursor: sceneReady ? 'pointer' : 'not-allowed',
-              opacity: sceneReady ? 1 : 0.55,
-              transition: 'background 200ms, opacity 200ms',
-              boxShadow: sceneReady ? `0 0 20px ${fColor}66` : 'none',
+              cursor: 'pointer',
+              transition: 'transform 120ms, box-shadow 120ms',
+              boxShadow: `0 0 20px ${fColor}66`,
               fontWeight: 700,
+              animation: 'beginPulse 1.6s ease-in-out infinite',
             }}
           >
-            {sceneReady ? 'BEGIN' : 'PREPARING…'}
+            BEGIN
           </button>
         ) : (
           <div style={{
@@ -378,12 +377,16 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
         )}
       </div>
 
-      {/* CSS animation for progress bar */}
+      {/* CSS animations for the progress bar + Begin-button pulse */}
       <style>{`
         @keyframes loadingBar {
           0% { width: 0%; margin-left: 0; }
           50% { width: 60%; margin-left: 20%; }
           100% { width: 0%; margin-left: 100%; }
+        }
+        @keyframes beginPulse {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.04); }
         }
       `}</style>
     </div>
