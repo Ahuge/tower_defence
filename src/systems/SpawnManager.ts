@@ -226,6 +226,12 @@ export class SpawnManager {
           entry.creepType,
           (this.scene as any).creepFaction,
         );
+        // Stamp the buff value at spawn so the visualization layer
+        // can render a per-creep glow scaled to how buffed each one
+        // is. Zero-buff spawns leave the field absent → cheap default.
+        if (channelHpBuff > 0) {
+          (creep as { _channelBuff?: number })._channelBuff = channelHpBuff;
+        }
         if (spawner) {
           creep.spawnerWaypoints = spawner.waypoints.map(p => ({ col: p.col, row: p.row }));
           creep.spawnerExit = { col: spawner.exit.col, row: spawner.exit.row };

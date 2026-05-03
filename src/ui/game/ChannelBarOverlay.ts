@@ -61,11 +61,23 @@ export class ChannelBarOverlay {
     const time = this.scene.time?.now ?? 0;
     this.updateBuffReadout(time);
 
-    // First pass: halos around every caster creep (whether channeling or
-    // not). Reads scene.creeps and finds any with the `channel_caster`
-    // trait. Without this, casters look identical to standard creeps
-    // until their channel-bar appears 1+ seconds after spawn.
     const creeps: any[] = (this.scene as any).creeps ?? [];
+
+    // First pass: gold buff-glow around every channel-buffed creep.
+    // Renders BEFORE caster halos so caster-buffed creeps (rare, but
+    // possible if a Scribe's summons spawn during a buff state) layer
+    // their caster halo on top.
+    for (const creep of creeps) {
+      if (!creep || creep.alive === false) continue;
+      const buff = creep._channelBuff;
+      if (typeof buff === 'number' && buff > 0) {
+        this.drawBuffGlow(creep, buff, time);
+      }
+    }
+
+    // Second pass: caster halos for creeps with the channel_caster
+    // trait. Visible from spawn — without this, casters look identical
+    // to standard creeps until their channel-bar appears 1+s later.
     for (const creep of creeps) {
       if (!creep || creep.alive === false || !creep.traits) continue;
       const trait = getTrait(creep.traits, 'channel_caster');
@@ -114,6 +126,30 @@ export class ChannelBarOverlay {
     const pulse = 0.85 + 0.15 * Math.sin(time / 240);
     this.buffText.setAlpha(pulse);
     this.buffText.setVisible(true);
+  }
+
+  /** Gold glow around a creep that spawned with a channel-HP buff
+   *  applied. Intensity (radius + alpha) scales with the buff value
+   *  so the player can see at a glance how buffed each creep is.
+   *  +20% = subtle wash, +75% (cap) = unmistakable aura. */
+  private drawBuffGlow(creep: any, buff: number, time: number): void {
+    if (typeof creep.x !== 'number' || typeof creep.y !== 'number') return;
+    // Map buff [0..0.75] → intensity [0.4..1.0].
+    const intensity = 0.4 + Math.min(1, buff / 0.75) * 0.6;
+    const radius = 14 + buff * 14; // scales 14..24.5
+    const pulse = 0.7 + 0.3 * Math.sin(time / 320);
+    // Soft outer glow.
+    this.graphics.fillStyle(0xffd966, 0.12 * intensity * pulse);
+    this.graphics.fillCircle(creep.x, creep.y, radius + 4);
+    // Crisp gold ring.
+    this.graphics.lineStyle(2, 0xffe066, intensity * pulse);
+    this.graphics.strokeCircle(creep.x, creep.y, radius);
+    // Inner accent ring at high buff for readability when there are
+    // many creeps onscreen.
+    if (buff > 0.4) {
+      this.graphics.lineStyle(1, 0xffffff, 0.7 * pulse);
+      this.graphics.strokeCircle(creep.x, creep.y, radius - 4);
+    }
   }
 
   private drawHalo(creep: any, trait: any, time: number): void {
