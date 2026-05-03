@@ -91,15 +91,24 @@ describe('ChannelEffects built-in: buff_next_wave_hp', () => {
     ChannelEffects.dispatch('buff_next_wave_hp', {
       scene: scene as any, caster: {}, meta: {},
     });
-    expect(scene._channelHpBuff).toBeCloseTo(0.30);
+    expect(scene._channelHpBuff).toBeCloseTo(0.20);
   });
 
-  it('stacks cumulatively across multiple completions', () => {
+  it('stacks cumulatively across multiple completions up to the default cap (0.75)', () => {
     const scene: { _channelHpBuff?: number } = {};
-    ChannelEffects.dispatch('buff_next_wave_hp', { scene: scene as any, caster: {}, meta: {} });
-    ChannelEffects.dispatch('buff_next_wave_hp', { scene: scene as any, caster: {}, meta: {} });
-    ChannelEffects.dispatch('buff_next_wave_hp', { scene: scene as any, caster: {}, meta: {} });
-    expect(scene._channelHpBuff).toBeCloseTo(0.90);
+    for (let i = 0; i < 6; i++) {
+      ChannelEffects.dispatch('buff_next_wave_hp', { scene: scene as any, caster: {}, meta: {} });
+    }
+    // 6 × 0.20 = 1.20 raw, capped at 0.75.
+    expect(scene._channelHpBuff).toBeCloseTo(0.75);
+  });
+
+  it('honors a custom maxBuff cap from meta', () => {
+    const scene: { _channelHpBuff?: number } = {};
+    ChannelEffects.dispatch('buff_next_wave_hp', {
+      scene: scene as any, caster: {}, meta: { percent: 0.50, maxBuff: 0.40 },
+    });
+    expect(scene._channelHpBuff).toBeCloseTo(0.40);
   });
 
   it('respects a custom percent from meta', () => {

@@ -46,6 +46,10 @@ const HALO_COLOR: Record<string, number> = {
 export class ChannelBarOverlay {
   private scene: Phaser.Scene;
   private graphics: Phaser.GameObjects.Graphics;
+  /** HUD text that shows the active channel HP-buff percent. Lazy-
+   *  created on first non-zero buff so non-Counterspell scenes pay
+   *  nothing. Pulses gold so it reads as "active threat." */
+  private buffText: Phaser.GameObjects.Text | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -55,6 +59,7 @@ export class ChannelBarOverlay {
   update(): void {
     this.graphics.clear();
     const time = this.scene.time?.now ?? 0;
+    this.updateBuffReadout(time);
 
     // First pass: halos around every caster creep (whether channeling or
     // not). Reads scene.creeps and finds any with the `channel_caster`
@@ -79,6 +84,36 @@ export class ChannelBarOverlay {
     for (const chan of ranked) {
       this.drawBar(chan);
     }
+  }
+
+  /** HUD readout for the cumulative `_channelHpBuff` set by the
+   *  Scribe's buff_next_wave_hp effect. Pulses gold when active so the
+   *  player sees the cause of inflated wave HP bars. */
+  private updateBuffReadout(time: number): void {
+    const buff = ((this.scene as any)._channelHpBuff as number | undefined) ?? 0;
+    if (buff <= 0) {
+      if (this.buffText) {
+        this.buffText.setVisible(false);
+      }
+      return;
+    }
+    if (!this.buffText) {
+      const cam = this.scene.cameras?.main;
+      const x = (cam?.width ?? 800) / 2;
+      const y = 28;
+      this.buffText = this.scene.add.text(x, y, '', {
+        fontSize: '16px',
+        fontFamily: 'monospace',
+        color: '#ffe066',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }).setOrigin(0.5, 0).setDepth(60).setScrollFactor(0);
+    }
+    const pct = Math.round(buff * 100);
+    this.buffText.setText(`☠ Channel buff: +${pct}% creep HP`);
+    const pulse = 0.85 + 0.15 * Math.sin(time / 240);
+    this.buffText.setAlpha(pulse);
+    this.buffText.setVisible(true);
   }
 
   private drawHalo(creep: any, trait: any, time: number): void {
@@ -127,5 +162,7 @@ export class ChannelBarOverlay {
 
   destroy(): void {
     this.graphics.destroy();
+    this.buffText?.destroy();
+    this.buffText = null;
   }
 }

@@ -273,22 +273,28 @@ ChannelEffects.register('summon_creeps_at_position', (ctx) => {
 });
 
 /** buff_next_wave_hp — increment a per-mission HP-buff stack AND
- *  optionally summon extra creeps at the caster's location. Cumulative.
+ *  optionally summon extra creeps at the caster's location. Cumulative
+ *  but capped — without a cap, 18+ uninterrupted casts cube-stacked
+ *  the wave-12 boss to 110k+ HP and made the mission unbeatable.
  *
  *  meta:
- *    percent: 0.30        — HP buff to stack onto every future creep
+ *    percent: 0.20        — HP buff to stack onto every future creep
  *    summonCount: 3       — additional creeps spawned at caster (default 0)
  *    summonType: 'standard' — creep type for the summons
+ *    maxBuff: 0.75        — cap on _channelHpBuff (default; ≈ 4 completions
+ *                           to fully cap at 20%/cast). Prevents a runaway
+ *                           wave 12 boss while still punishing total inattention.
  *
  *  The summon side-effect makes the cast immediately visible in the
  *  current wave (3 fresh creeps appear by the path) on top of the
  *  invisible HP buff that affects future waves. Without it the cast
  *  is purely cerebral and easy to ignore in the moment. */
 ChannelEffects.register('buff_next_wave_hp', (ctx) => {
-  const pct = (ctx.meta.percent as number) ?? 0.30;
+  const pct = (ctx.meta.percent as number) ?? 0.20;
+  const cap = (ctx.meta.maxBuff as number) ?? 0.75;
   const scene = ctx.scene as any;
   const prev = (scene._channelHpBuff as number) ?? 0;
-  scene._channelHpBuff = prev + pct;
+  scene._channelHpBuff = Math.min(cap, prev + pct);
 
   const caster = ctx.caster;
 
