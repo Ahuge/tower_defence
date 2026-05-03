@@ -126,12 +126,12 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // precursor). Stats for Briarroot roughly 70% of arcane_drain so
   // the eventual swap feels like a real upgrade.
   coalition_wall: def({
-    id: 'coalition_wall', name: 'Wall', description: 'Stone wall. Cheap maze filler. No upgrades.',
+    id: 'coalition_wall', name: 'Stone Wall', description: 'Quarried stone, mortared in haste. It will hold a wave or two. Pile them well.',
     faction: 'coalition', damageType: 'physical', cost: 10, damage: 2, range: 1.5, fireRate: 2000,
     color: 0x9aa3ad, projectileSpeed: 200, hotkey: '3',
   }),
   coalition_root: def({
-    id: 'coalition_root', name: 'Briarroot', description: 'Roots and damages creeps in a wide arc. Interrupts caster channels. Precursor to Mana Drain.',
+    id: 'coalition_root', name: 'Briarroot', description: 'Iron crown of thorns, dragged up from the old groves. Snares casters mid-spell — their words break on its barbs.',
     faction: 'coalition', damageType: 'magic', cost: 100, damage: 6, range: 4, fireRate: 1100,
     color: 0x668844, projectileSpeed: 320, hotkey: '5',
     targeting: 'strongest',

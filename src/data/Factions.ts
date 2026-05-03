@@ -127,13 +127,13 @@ export const FACTIONS: Record<FactionId, Faction> = {
   coalition: {
     id: 'coalition',
     name: 'Coalition',
-    description: 'Generic pre-Arcane defenses. Used only as the Arcane-campaign first-time default kit; not playable in main game modes.',
+    description: 'The Arcane march on the realm. The Coalition rallies — old stone, plain steel, no spells of our own. Hold what you have. Build it well. There is nothing else coming.',
     primaryColor: 0x9aa3ad,
     secondaryColor: 0xc8cfd6,
     // Coalition starting kit. Specific Arcane campaign missions
     // override `restrictions.allowedTowerIds` to expose a subset
-    // (M1 starts with arrow + cannon + mech_wall only); replacements
-    // happen as the campaign progresses.
+    // (M1 starts with arrow + cannon + coalition_wall only);
+    // replacements happen as the campaign progresses.
     towerIds: ['arrow', 'cannon', 'sniper', 'coalition_wall', 'coalition_root'],
   },
 };
