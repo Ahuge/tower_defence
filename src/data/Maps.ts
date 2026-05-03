@@ -463,11 +463,10 @@ export const MAPS: Record<MapId, MapDefinition> = {
       ...rect(4, GRID_ROWS - 6, 5, GRID_ROWS - 5),
       ...rect(GRID_COLS - 6, GRID_ROWS - 6, GRID_COLS - 5, GRID_ROWS - 5),
     ],
-    noBuild: [
-      // Reserve a small ring around the base so the player can't
-      // wall the central tile shut from arm's length.
-      ...rect(MID_COL - 1, MID_ROW - 1, MID_COL + 1, MID_ROW + 1),
-    ],
+    // No noBuild ring — the player can build right up to the base.
+    // Pathfinder still prevents placement that would seal off any
+    // spawn from the exit, so the base remains reachable.
+    noBuild: [],
   },
 
   // === Attacker (Plan 12 v1) ===

@@ -61,12 +61,13 @@ describe('Plan 11 / Plan 13 v1 maps', () => {
     }
   });
 
-  it('base_arena reserves a 3x3 noBuild ring around the base', () => {
+  it('base_arena has no noBuild ring — player can build to the base', () => {
     const m = MAPS.base_arena;
     expect(m.noBuild).toBeTruthy();
-    // Ring should contain at least 9 cells (3x3 minus the exit cell
-    // which doesn't strictly need to be noBuild — we add it anyway).
-    expect(m.noBuild!.length).toBeGreaterThanOrEqual(8);
+    // The pathfinder rejects placements that would seal any spawn off
+    // from the exit, so the base remains reachable without an explicit
+    // noBuild ring. Empty array is the locked state.
+    expect(m.noBuild!.length).toBe(0);
   });
 
   it('heist_vault has reverse direction (east entry, west exit)', () => {
