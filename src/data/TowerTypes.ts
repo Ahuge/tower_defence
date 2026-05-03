@@ -116,6 +116,28 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
 
   // ================================================================
+  // COALITION (Arcane-campaign first-time default kit)
+  // ================================================================
+  // Used only as the Coalition faction's tower set during the Arcane
+  // campaign. Mostly reuses generics (arrow / cannon / sniper /
+  // mech_wall) above; coalition_root is the unique addition — an
+  // AOE-root tower with `interrupts_channels` that serves as Mana
+  // Drain's narrative precursor. Stats roughly 70% of arcane_drain
+  // so the eventual swap feels like a real upgrade.
+  coalition_root: def({
+    id: 'coalition_root', name: 'Briarroot', description: 'Roots and damages creeps in a wide arc. Interrupts caster channels. Precursor to Mana Drain.',
+    faction: 'coalition', damageType: 'magic', cost: 100, damage: 6, range: 4, fireRate: 1100,
+    color: 0x668844, projectileSpeed: 320, hotkey: '5',
+    targeting: 'strongest',
+    traits: [
+      { id: 'direct_damage' },
+      { id: 'splash_damage', radius: 40 },
+      { id: 'slow_on_hit', duration: 1800, factor: 0.45 },
+      { id: 'interrupts_channels' },
+    ],
+  }),
+
+  // ================================================================
   // ARCANE (7) — Precision magic, crits, elements
   // ================================================================
   arcane_bolt: def({

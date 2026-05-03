@@ -328,6 +328,11 @@ export class GameScene extends Phaser.Scene {
   private _missionLives?: number;
   /** v2: mission-supplied wave script. Replaces getWavesForMode when set. */
   private _missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[];
+  /** Coalition Arcane-campaign feature: towers placed at scene init,
+   *  fixed location, locked from upgrade and absent from the buildable
+   *  kit. Used to gift the player a Frost at M1 + M2 before Frost
+   *  unlocks normally at M3. */
+  private _missionPrePlacedTowers?: { towerId: string; col: number; row: number }[];
 
   /** Plan 14 custom counters fed into MissionResult.custom at game-end.
    *  Populated only when the scene was launched as a campaign mission;
@@ -335,7 +340,7 @@ export class GameScene extends Phaser.Scene {
   private _missionSendsBought = 0;
   private _missionHeroHpMinFraction = 1;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[] }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -351,6 +356,7 @@ export class GameScene extends Phaser.Scene {
     this._missionGoldStartMult = data.missionGoldStartMult;
     this._missionLives = data.missionLives;
     this._missionWaveScript = data.missionWaveScript;
+    this._missionPrePlacedTowers = data.missionPrePlacedTowers;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -907,6 +913,25 @@ export class GameScene extends Phaser.Scene {
           console.warn(`[attacker] failed to pre-place ${spec.towerId} at ${spec.col},${spec.row}`, err);
         }
       }
+    }
+    // Mission-supplied pre-placed towers (Coalition Arcane campaign).
+    // Independent of the attacker-mode pre-placements above — a
+    // mission can drop a Frost on M1 to teach the interrupt verb
+    // before the tower is buildable.
+    if (this._missionPrePlacedTowers && this._missionPrePlacedTowers.length > 0) {
+      for (const spec of this._missionPrePlacedTowers) {
+        try {
+          const towerType = getTowerType(spec.towerId);
+          this.towerMgr.placeTower(spec.col, spec.row, towerType, this.allPaths, () => {
+            this.recalculatePaths();
+            return this.allPaths;
+          });
+        } catch (err) {
+          console.warn(`[mission] failed to pre-place ${spec.towerId} at ${spec.col},${spec.row}`, err);
+        }
+      }
+    }
+    if (this.matchMode === 'attacker' && mapDef.preplacedTowers) {
       // Intro hint — explain the inverted role at game start. The
       // event log is persistent so the player can scroll back if
       // they miss it.

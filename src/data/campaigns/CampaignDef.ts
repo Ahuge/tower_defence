@@ -147,6 +147,13 @@ export interface MissionOverrides {
    *  for this mission. Lets a campaign drop a Sigil into wave 3 or a
    *  Scribe trio at wave 6 without polluting other modes' waves. */
   waveScript?: WaveDefinition[];
+  /** Pre-placed towers spawned at scene init. Used by the Arcane
+   *  Coalition campaign to gift the player a Frost (or two) at fixed
+   *  locations on M1 and M2 — the player builds their maze around it
+   *  to teach the interrupt verb before Frost is buildable at M3.
+   *  Tower types not in `restrictions.allowedTowerIds` are still
+   *  pre-placeable; they just can't be added to or replaced. */
+  prePlacedTowers?: { towerId: string; col: number; row: number }[];
 }
 
 /** The 10-mission campaign. */

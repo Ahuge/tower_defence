@@ -107,6 +107,7 @@ const TOWER_SKIN_THEMES: Record<FactionId, SkinTheme[]> = {
   // Record<FactionId, ...> exhaustiveness check.
   chaos:      [],
   random:     [],
+  coalition:  [],
 };
 
 const RARITY_UP: Record<Rarity, Rarity> = {

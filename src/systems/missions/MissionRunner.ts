@@ -111,6 +111,7 @@ class MissionRunnerClass {
       missionGoldStartMult: merged.goldStartMult,
       missionLives: merged.lives,
       missionWaveScript: merged.waveScript,
+      missionPrePlacedTowers: merged.prePlacedTowers,
     });
     return true;
   }

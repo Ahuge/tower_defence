@@ -8,7 +8,7 @@
  *            resolved, downstream code only ever sees a real faction
  *            id; `random` itself never reaches GameScene.
  */
-export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'chaos' | 'random';
+export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'chaos' | 'random' | 'coalition';
 
 export interface Faction {
   id: FactionId;
@@ -124,9 +124,21 @@ export const FACTIONS: Record<FactionId, Faction> = {
     secondaryColor: 0xff88ff,
     towerIds: [], // Resolved on selection — never used directly.
   },
+  coalition: {
+    id: 'coalition',
+    name: 'Coalition',
+    description: 'Generic pre-Arcane defenses. Used only as the Arcane-campaign first-time default kit; not playable in main game modes.',
+    primaryColor: 0x9aa3ad,
+    secondaryColor: 0xc8cfd6,
+    // Coalition starting kit. Specific Arcane campaign missions
+    // override `restrictions.allowedTowerIds` to expose a subset
+    // (M1 starts with arrow + cannon + mech_wall only); replacements
+    // happen as the campaign progresses.
+    towerIds: ['arrow', 'cannon', 'sniper', 'mech_wall', 'coalition_root'],
+  },
 };
 
-export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'chaos', 'random'];
+export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'chaos', 'random', 'coalition'];
 
 /** Real, playable factions that resolve to a deterministic tower pool.
  *  Excludes `chaos` (rotating pool meta-faction) and `random` (the
