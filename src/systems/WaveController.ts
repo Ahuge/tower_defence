@@ -22,11 +22,14 @@ const STUCK_LOG_INTERVAL = 3000;
 /** How long a wave has to be active without completing before we
  *  start logging the why-it's-stuck breakdown. */
 const STUCK_THRESHOLD = 5000;
-/** How long until we auto-recover by forcing alive creeps to leak.
- *  Generous on top of STUCK_THRESHOLD so a slow-but-progressing
- *  wave (e.g. heavy tank creep + low DPS player) doesn't trigger
- *  the recovery erroneously. */
-const STUCK_FORCE_CLEAR_THRESHOLD = 30000;
+/** How long the wave can go without any forward progress (a creep
+ *  advancing its pathIndex OR a creep dying) before auto-recovery
+ *  kicks in. Replaces the older "total wave duration" trigger:
+ *  v2 caster missions can legitimately drag past 30-60s of clean
+ *  play, and force-clearing them as if mis-pathed bled lives the
+ *  player wasn't owed. Now: only fires when nothing has changed
+ *  on the field for the entire window. */
+const STUCK_NO_PROGRESS_WINDOW = 15000;
 
 /**
  * Controls wave lifecycle: start, spawning, clear detection.
@@ -49,6 +52,17 @@ export class WaveController {
   private waveElapsed: number = 0;
   /** ms since last stuck-log so we don't spam the console every frame. */
   private lastStuckLog: number = 0;
+  /** Max pathIndex any alive creep has reached this wave. Bumped
+   *  each frame in checkWaveComplete. Combined with `lastAliveCount`
+   *  to gate the force-clear: progress = any creep advances OR any
+   *  creep dies. */
+  private maxPathIndexReached: number = 0;
+  /** waveElapsed at the last frame where progress was observed
+   *  (advance or death). Force-clear fires when (waveElapsed -
+   *  lastProgressAt) exceeds STUCK_NO_PROGRESS_WINDOW. */
+  private lastProgressAt: number = 0;
+  /** Last frame's alive-creep count. A drop counts as progress. */
+  private lastAliveCount: number = 0;
 
   constructor(
     waves: WaveDefinition[],
@@ -77,6 +91,9 @@ export class WaveController {
     this.waveActive = true;
     this.waveElapsed = 0;
     this.forceClearFired = false;
+    this.maxPathIndexReached = 0;
+    this.lastProgressAt = 0;
+    this.lastAliveCount = 0;
     this.lastStuckLog = 0;
     const wave = this.waves[this.currentWave];
     this.currentWave++;
@@ -95,14 +112,36 @@ export class WaveController {
     return true;
   }
 
-  /** Check if the current wave is complete. Call each frame. */
-  checkWaveComplete(creepCount: number, delta: number = 0): void {
+  /** Check if the current wave is complete. Call each frame.
+   *  `creeps` is optional; when provided, the controller tracks max
+   *  pathIndex advancement to differentiate "slow but progressing"
+   *  from "actually stuck" — only the latter triggers force-clear. */
+  checkWaveComplete(creepCount: number, delta: number = 0, creeps?: Array<{ pathIndex: number; alive: boolean }>): void {
     if (!this.waveActive) return;
 
     this.waveElapsed += delta;
 
     const spawning = this.spawner.isSpawning();
     const sending = this.sendMgr.isSpawning();
+
+    if (creeps) {
+      let frameMax = 0;
+      let frameAlive = 0;
+      for (const c of creeps) {
+        if (c.alive) {
+          frameAlive++;
+          if (c.pathIndex > frameMax) frameMax = c.pathIndex;
+        }
+      }
+      // Progress = any creep advanced OR any creep died this window.
+      // Both are signs the wave is healthy; only their absence means
+      // the field is genuinely frozen.
+      if (frameMax > this.maxPathIndexReached || frameAlive < this.lastAliveCount) {
+        this.maxPathIndexReached = Math.max(this.maxPathIndexReached, frameMax);
+        this.lastProgressAt = this.waveElapsed;
+      }
+      this.lastAliveCount = frameAlive;
+    }
 
     if (spawning || sending || creepCount > 0) {
       // Log a "why isn't the wave ending?" breakdown once the wave
@@ -118,18 +157,21 @@ export class WaveController {
           `spawning=${spawning} sending=${sending} creeps=${creepCount}`,
         );
       }
-      // Auto-recovery: if the wave has been stuck past the force-clear
-      // threshold AND nothing is spawning, the only cause is at least
-      // one creep is alive but not advancing (typically a mis-pathed
-      // creep after a tower-placement bend). Fire the recovery hook;
-      // GameScene cull alive creeps as leaks so the wave clears.
+      // Auto-recovery: force-clear when nothing has happened on the
+      // field for STUCK_NO_PROGRESS_WINDOW. Progress = any creep
+      // advancing pathIndex OR any creep dying (tracked above). If
+      // the caller didn't pass `creeps` we can't gate, so fall back
+      // to firing after the same window using waveElapsed.
+      const noRecentProgress = creeps === undefined
+        ? this.waveElapsed > STUCK_NO_PROGRESS_WINDOW
+        : (this.waveElapsed - this.lastProgressAt) > STUCK_NO_PROGRESS_WINDOW;
       if (!spawning && !sending && creepCount > 0 &&
-          this.waveElapsed > STUCK_FORCE_CLEAR_THRESHOLD &&
+          noRecentProgress &&
           !this.forceClearFired) {
         this.forceClearFired = true;
         if (DEBUG) {
           console.warn(`[wave] wave ${this.currentWave} auto-recovering after ` +
-            `${Math.round(this.waveElapsed / 1000)}s stuck — force-leaking ${creepCount} creep(s)`);
+            `${Math.round((this.waveElapsed - this.lastProgressAt) / 1000)}s without progress — force-leaking ${creepCount} creep(s)`);
         }
         this.callbacks.onStuckForceClear?.();
       }

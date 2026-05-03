@@ -2465,7 +2465,7 @@ export class GameScene extends Phaser.Scene {
 
     // Spawning + wave clear detection
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
-    this.waveMgr.checkWaveComplete(this.creeps.length, delta);
+    this.waveMgr.checkWaveComplete(this.creeps.length, delta, this.creeps);
 
     // When a wave has been active well past its expected duration,
     // also log each alive creep's state periodically. This pairs
