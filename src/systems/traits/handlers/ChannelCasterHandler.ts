@@ -4,20 +4,24 @@
  *
  * Trait config (declared in CreepTypes.ts):
  *   id: 'channel_caster'
- *   channelStartAt: seconds since spawn before FIRST channel begins (e.g. 1.0)
+ *   triggerOn?: 'spawn' (default) — channel starts after channelStartAt
+ *               seconds-since-spawn elapses
+ *               'first_hit' — channel doesn't start until the creep
+ *               takes its first damage. Used for "rage timer" style
+ *               bosses that the player engages with deliberately.
+ *   channelStartAt: seconds since spawn (or since first hit) before
+ *               channel begins (e.g. 1.0)
  *   channelDuration: seconds the channel takes (e.g. 4.0)
  *   effectId: ChannelEffects registry id (e.g. 'clear_towers_radius')
  *   meta?: extra fields passed to the effect (radius, percent, etc)
  *   interruptible?: true — any damage cancels (default true)
  *   castCount?: max number of channels per creep. Defaults to 1
- *               (single-shot). Pass 0 for unlimited — caster channels
- *               as long as it's alive, only stopping when killed or
- *               when it walks off the end of the path.
+ *               (single-shot). Pass 0 for unlimited.
  *   castCooldown?: seconds of downtime between cast 1 → cast 2 (default 3)
  *
  * Wires into the Trait registry via creep update + creep damage hooks.
  * Per-creep state lives on the trait object (`_channelId`, `_age`,
- * `_castsDone`, `_cooldownRemaining`).
+ * `_castsDone`, `_cooldownRemaining`, `_firstHitAt`).
  */
 
 import {
@@ -42,9 +46,10 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
   trait._age = (trait._age ?? 0) + delta / 1000;
   if (!trait._loggedTick) {
     trait._loggedTick = true;
-    console.log(`[ChannelCaster] tick fired for creep ${creep._creepTypeId ?? '?'}, effect=${trait.effectId}`);
+    console.log(`[ChannelCaster] tick fired for creep ${creep._creepTypeId ?? '?'}, effect=${trait.effectId}, triggerOn=${trait.triggerOn ?? 'spawn'}`);
   }
 
+  const triggerOn = trait.triggerOn ?? 'spawn';
   const startAt = trait.channelStartAt ?? 1.0;
   const duration = trait.channelDuration ?? 4.0;
   const effectId = trait.effectId ?? 'noop';
@@ -69,8 +74,7 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
   }
 
   // No active channel. If we've hit the cap, this creep is done
-  // casting. castCount: 0 means unlimited — Scribes use this so they
-  // channel for the duration of their walk.
+  // casting. castCount: 0 means unlimited.
   if (castCount > 0 && castsDone >= castCount) return;
 
   // Decrement the inter-cast cooldown if one is running. Initial cast
@@ -81,14 +85,32 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
     if (trait._cooldownRemaining > 0) return;
   }
 
-  // Initial-channel start gate (only for cast #0).
-  if (castsDone === 0 && trait._age < startAt) return;
+  // triggerOn='first_hit' — the rage clock doesn't start until the
+  // player engages. Trait._firstHitAt is set by the creep_damage hook
+  // below on the first damage event. Until then, no channel starts.
+  if (triggerOn === 'first_hit') {
+    if (trait._firstHitAt === undefined) return; // not engaged yet
+    // First-hit count gate: subtract first-hit-time from age to
+    // produce "seconds since first hit" for the startAt gate.
+    if (castsDone === 0 && (trait._age - trait._firstHitAt) < startAt) return;
+  } else {
+    // Default 'spawn' triggering — gate the first cast on age.
+    if (castsDone === 0 && trait._age < startAt) return;
+  }
 
   const sys = ChannelSystem.forScene(creep._scene);
   trait._channelId = sys.start(creep, effectId, duration, meta);
 });
 
 registerCreepDamage('channel_caster', (trait: Trait, damage: number) => {
+  // Record first-hit timestamp for triggerOn:'first_hit' rage timers.
+  // Stored as seconds-elapsed-since-spawn so the update tick can
+  // gate the rage start cleanly without time drift.
+  if (trait._firstHitAt === undefined && (trait.triggerOn === 'first_hit')) {
+    trait._firstHitAt = trait._age ?? 0;
+  }
+  // Standard interrupt-on-damage path. interruptible: false skips
+  // (Sigil / Scribe / Archmage / Warlord-rage all use this).
   if (!trait._channelId) return damage;
   if (trait.interruptible === false) return damage;
   const creep = trait._creep;

@@ -291,14 +291,21 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 5 — Boss rush
+    // 5 — Crystal Warlords (boss rush — rage timers)
+    // Each Warlord starts a 25-second rage clock when first damaged.
+    // If the player can't finish them in time, the Warlord's rage
+    // ability fires (reinforcements / heal / shield / haste / mass
+    // summon depending on which Warlord). interruptible: false —
+    // Frost can't pause the timer; only killing them stops it.
     {
       id: 'crystal_warlords',
       idx: 4,
       name: 'Crystal Warlords',
       story:
         "Five of their warlords broke from the main host. Each is a boss in their own right — heavy, slow, " +
-        "shielded. No regular waves, just this convoy. Burst is the answer; sustain won't matter.\n\n" +
+        "shielded. No regular waves, just this convoy. The intelligence is grim: the moment you land a blow on " +
+        "any of them, they will start to rage. You have about half a minute before the rage breaks. Kill them " +
+        "before then or eat the consequences — reinforcements, healing, hastes, swarms.\n\n" +
         "The Forge finished the Bolt prototype overnight. Coalition Arrows are recalled from every battery — " +
         "every emplacement now wields Bolt instead. Same stance, sharper teeth.",
       archetype: 'boss_rush',
@@ -307,13 +314,39 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         mapId: 'crossroads',
         difficulty: 'hard',
         waveCount: 5,
-        // M5: Arrow → Bolt. Cannon, Sniper, Wall, Frost, Briarroot retained.
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
         },
+        waveScript: [
+          { wave: 1, groups: [
+            { creepType: 'standard', count: 4, hpScale: 50, speedScale: 1 },
+            { creepType: 'warlord_stalwart', count: 1, hpScale: 100, speedScale: 1 },
+          ], spawnInterval: 800, isBoss: false },
+          { wave: 2, groups: [
+            { creepType: 'fast', count: 4, hpScale: 50, speedScale: 1 },
+            { creepType: 'warlord_healer', count: 1, hpScale: 110, speedScale: 1 },
+          ], spawnInterval: 800, isBoss: false },
+          { wave: 3, groups: [
+            { creepType: 'armored', count: 4, hpScale: 80, speedScale: 1 },
+            { creepType: 'warlord_champion', count: 1, hpScale: 130, speedScale: 1 },
+          ], spawnInterval: 800, isBoss: false },
+          { wave: 4, groups: [
+            { creepType: 'standard', count: 5, hpScale: 90, speedScale: 1 },
+            { creepType: 'warlord_tactician', count: 1, hpScale: 130, speedScale: 1 },
+          ], spawnInterval: 800, isBoss: false },
+          { wave: 5, groups: [
+            { creepType: 'warlord_captain', count: 1, hpScale: 180, speedScale: 1 },
+          ], spawnInterval: 0, isBoss: true },
+        ],
       },
       objectives: {
-        star2: { label: 'Kill every warlord before it reaches halfway', predicate: () => false /* custom counter */ },
+        // ★★ — kill all 5 warlords without any rage going off. The
+        // ChannelSystem's stats counts completed channels including
+        // warlord rages; if any rage completed, this fails.
+        star2: {
+          label: 'No Warlord rage went off',
+          predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0,
+        },
         star3: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
       },
     },

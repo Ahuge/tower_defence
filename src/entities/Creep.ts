@@ -146,6 +146,11 @@ export class Creep {
             meteor_drop: 0xff6622,                 // Meteora — hot orange
             chain_lightning_on_towers: 0x4488cc,   // Stormcaller — blue
             summon_creeps_at_position: 0xaa44dd,   // Necromaster — purple
+            warlord_reinforcements: 0xff8844,      // Stalwart — orange
+            warlord_heal_all: 0x44ff88,            // Healer — green
+            warlord_shield_all: 0xeecc88,          // Champion — gold
+            warlord_haste_all: 0x66ccff,           // Tactician — blue
+            warlord_mass_summon: 0xff44aa,         // Captain — magenta
           };
           const tint = tints[casterTrait.effectId as string] ?? 0xff44ff;
           this.sprite.setTint(tint);

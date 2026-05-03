@@ -40,6 +40,12 @@ const HALO_COLOR: Record<string, number> = {
   permadebuff_player_towers: 0xff44aa,
   meteor_drop: 0xff8844,
   summon_creeps_at_position: 0xaa44dd,
+  // M5 warlord rage timers — color matches each warlord's identity.
+  warlord_reinforcements: 0xff8844, // Stalwart — orange
+  warlord_heal_all: 0x44ff88,        // Healer — green
+  warlord_shield_all: 0xeecc88,      // Champion — gold
+  warlord_haste_all: 0x66ccff,       // Tactician — blue
+  warlord_mass_summon: 0xff44aa,     // Captain — magenta
   default: 0xff66ff,
 };
 

@@ -223,6 +223,126 @@ ChannelEffects.register('chain_lightning_on_towers', (ctx) => {
   }
 });
 
+/** warlord_reinforcements — Stalwart's rage. Spawns 6 fast creeps. */
+ChannelEffects.register('warlord_reinforcements', (ctx) => {
+  const scene = ctx.scene as any;
+  if (scene.spawner) {
+    for (let i = 0; i < 6; i++) {
+      scene.time?.delayedCall?.(i * 200, () => {
+        scene.spawner?.spawnQueue?.push?.({
+          creepType: 'fast', hpScale: 80, speedScale: 1,
+          isBoss: false, groupBurst: 1, pathIndex: i % 4,
+        });
+      });
+    }
+  }
+  warlordVfx(ctx, 0xff8844, 0xffaa44);
+  scene.eventLog?.gameMessage?.('⚠ Stalwart\'s rage — 6 reinforcements inbound');
+});
+
+/** warlord_heal_all — Healer's rage. Heals every alive creep to full. */
+ChannelEffects.register('warlord_heal_all', (ctx) => {
+  const scene = ctx.scene as any;
+  const creeps: any[] = scene.creeps ?? [];
+  let healedCount = 0;
+  for (const c of creeps) {
+    if (!c.alive) continue;
+    const before = c.hp ?? 0;
+    c.hp = c.maxHp ?? before;
+    if (c.hp > before) healedCount++;
+  }
+  warlordVfx(ctx, 0x44ff88, 0xaaffcc);
+  scene.eventLog?.gameMessage?.(`⚠ Healer's rage — ${healedCount} creep${healedCount === 1 ? '' : 's'} restored to full HP`);
+});
+
+/** warlord_shield_all — Champion's rage. Adds a shield trait to every
+ *  alive creep (50% of current HP). */
+ChannelEffects.register('warlord_shield_all', (ctx) => {
+  const scene = ctx.scene as any;
+  const creeps: any[] = scene.creeps ?? [];
+  let count = 0;
+  for (const c of creeps) {
+    if (!c.alive || !c.traits) continue;
+    if (c.traits.some((t: { id: string }) => t.id === 'shield')) continue;
+    const shieldHp = Math.round((c.maxHp ?? 50) * 0.5);
+    c.traits.push({ id: 'shield', hpPercent: 0.5, _shieldHp: shieldHp, _active: true });
+    count++;
+  }
+  warlordVfx(ctx, 0xeecc88, 0xfff0aa);
+  scene.eventLog?.gameMessage?.(`⚠ Champion's rage — ${count} creep${count === 1 ? '' : 's'} gained shields`);
+});
+
+/** warlord_haste_all — Tactician's rage. +60% speed on all alive
+ *  creeps for the rest of the wave. */
+ChannelEffects.register('warlord_haste_all', (ctx) => {
+  const scene = ctx.scene as any;
+  const creeps: any[] = scene.creeps ?? [];
+  let count = 0;
+  for (const c of creeps) {
+    if (!c.alive) continue;
+    if (typeof c.baseSpeed === 'number') {
+      c.baseSpeed *= 1.6;
+      c.speed = (c.speed ?? c.baseSpeed) * 1.6;
+      count++;
+    }
+  }
+  warlordVfx(ctx, 0x66ccff, 0xaaddff);
+  scene.eventLog?.gameMessage?.(`⚠ Tactician's rage — ${count} creep${count === 1 ? '' : 's'} now running 60% faster`);
+});
+
+/** warlord_mass_summon — Captain's rage (final warlord). Big swarm:
+ *  10 standard + 5 armored. Map-clearing ultimate. */
+ChannelEffects.register('warlord_mass_summon', (ctx) => {
+  const scene = ctx.scene as any;
+  if (scene.spawner) {
+    for (let i = 0; i < 10; i++) {
+      scene.time?.delayedCall?.(i * 150, () => {
+        scene.spawner?.spawnQueue?.push?.({
+          creepType: 'standard', hpScale: 100, speedScale: 1,
+          isBoss: false, groupBurst: 1, pathIndex: i % 6,
+        });
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      scene.time?.delayedCall?.(1500 + i * 200, () => {
+        scene.spawner?.spawnQueue?.push?.({
+          creepType: 'armored', hpScale: 140, speedScale: 1,
+          isBoss: false, groupBurst: 1, pathIndex: i % 4,
+        });
+      });
+    }
+  }
+  warlordVfx(ctx, 0xff44aa, 0xff88dd);
+  scene.eventLog?.gameMessage?.('☠ Captain\'s rage — 10 swarm + 5 armored inbound');
+});
+
+/** Shared red-pulse VFX for warlord rages. Big bright flash + camera
+ *  shake at the caster's position so the rage moment is unmistakable. */
+function warlordVfx(ctx: ChannelEffectContext, primary: number, secondary: number): void {
+  const scene = ctx.scene as Phaser.Scene & {
+    add?: { graphics?: () => Phaser.GameObjects.Graphics | null };
+    tweens?: { add?: (cfg: { targets: Phaser.GameObjects.Graphics; alpha: number; duration: number; onComplete: () => void }) => void };
+    cameras?: { main?: { shake?: (duration: number, intensity: number) => void } };
+  };
+  const caster = ctx.caster as { x?: number; y?: number };
+  if (caster && typeof caster.x === 'number' && typeof caster.y === 'number') {
+    const g = scene.add?.graphics?.();
+    if (g) {
+      g.setDepth(40);
+      g.fillStyle(primary, 0.7);
+      g.fillCircle(caster.x, caster.y, 64);
+      g.fillStyle(secondary, 0.55);
+      g.fillCircle(caster.x, caster.y, 36);
+      g.lineStyle(5, secondary, 1);
+      g.strokeCircle(caster.x, caster.y, 64);
+      g.lineStyle(2, secondary, 0.7);
+      g.strokeCircle(caster.x, caster.y, 96);
+      scene.tweens?.add?.({ targets: g, alpha: 0, duration: 1300, onComplete: () => g.destroy() });
+    }
+  }
+  scene.cameras?.main?.shake?.(450, 0.012);
+}
+
 /** summon_creeps_at_position — Necromaster's signature. Spawns N
  *  creeps at the caster's location with a necromancy VFX (purple-black
  *  pulse, rising shades). meta: { count: 5, summonType: 'standard' } */

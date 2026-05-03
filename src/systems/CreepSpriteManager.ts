@@ -43,6 +43,14 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   arcane_archmage_storm: 13,
   // Necromaster → mage_evasion (col 14), tinted deep purple.
   arcane_archmage_necro: 14,
+  // M5 Warlords ride the boss sprite (col 5) at 2.2-2.6 scale, with
+  // per-creep tint baked in Creep.ts. Same trick as the archmages
+  // but using the boss column for the heavier silhouette.
+  warlord_stalwart: 5,
+  warlord_healer: 5,
+  warlord_champion: 5,
+  warlord_tactician: 5,
+  warlord_captain: 5,
 };
 
 /** All faction IDs that have creep spritesheets */
