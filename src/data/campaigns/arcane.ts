@@ -271,12 +271,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       name: 'Spire Under Siege',
       story:
         "Their wizards charted our high command. Meteors fall from every horizon — they have us encircled, " +
-        "and four columns advance on the spire at once. No flank to hold. Stop everything that gets close.",
+        "and four columns advance on the spire at once. No flank to hold. Stop everything that gets close.\n\n" +
+        "An old druid from the deep groves answered our call. She brought iron-thorn crowns — Briarroot — that " +
+        "snare casters mid-spell, the same as Frost. New tool, same purpose.",
       archetype: 'base_defense',
       overrides: {
+        faction: 'coalition',
         mapId: 'base_arena',
         difficulty: 'normal',
         waveCount: 15,
+        // M4 Coalition kit + Briarroot (new slot).
+        restrictions: {
+          allowedTowerIds: ['arrow', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
+        },
       },
       objectives: {
         star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
@@ -291,12 +298,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       name: 'Crystal Warlords',
       story:
         "Five of their warlords broke from the main host. Each is a boss in their own right — heavy, slow, " +
-        "shielded. No regular waves, just this convoy. Burst is the answer; sustain won\'t matter.",
+        "shielded. No regular waves, just this convoy. Burst is the answer; sustain won't matter.\n\n" +
+        "The Forge finished the Bolt prototype overnight. Coalition Arrows are recalled from every battery — " +
+        "every emplacement now wields Bolt instead. Same stance, sharper teeth.",
       archetype: 'boss_rush',
       overrides: {
+        faction: 'coalition',
         mapId: 'crossroads',
         difficulty: 'hard',
         waveCount: 5,
+        // M5: Arrow → Bolt. Cannon, Sniper, Wall, Frost, Briarroot retained.
+        restrictions: {
+          allowedTowerIds: ['arcane_bolt', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
+        },
       },
       objectives: {
         star2: { label: 'Kill every warlord before it reaches halfway', predicate: () => false /* custom counter */ },
@@ -311,12 +325,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       name: 'Forced March',
       story:
         "Reinforcements are still days away. We accelerate the engagement and end this approach quickly — " +
-        "their stragglers can be routed if we move on the lead column fast. Twenty waves. Fast as you can.",
+        "their stragglers can be routed if we move on the lead column fast. Twenty waves. Fast as you can.\n\n" +
+        "The cabal's Storm spell is reverse-engineered. The Cannons came home this morning; in their place, Storm " +
+        "drums hammer chained lightning across packed ranks. Cannons no longer issued.",
       archetype: 'speedrun',
       overrides: {
+        faction: 'coalition',
         mapId: 'arcane_pass',
         difficulty: 'normal',
         waveCount: 20,
+        // M6: Cannon → Storm.
+        restrictions: {
+          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
+        },
       },
       objectives: {
         star2: { label: 'Finish in under 12 minutes', predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
@@ -331,12 +352,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       name: 'Starved Winter',
       story:
         "Coffers are empty. Half the gold, six tower slots — make it work. The Arcane march does not stop because " +
-        "we ran out of coin. Pick your six and pick well.",
+        "we ran out of coin. Pick your six and pick well.\n\n" +
+        "The Snipers came down off the walls last week. The Forge replaced them with arcane Focus crystals — long " +
+        "range, single-target, prone to the strongest creep on the field.",
       archetype: 'frugal',
       overrides: {
+        faction: 'coalition',
         mapId: 'islands',
         difficulty: 'normal',
         waveCount: 15,
+        // M7: Sniper → Focus.
+        restrictions: {
+          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'coalition_root'],
+        },
       },
       objectives: {
         star2: { label: 'Win using only 5 towers', predicate: r => r.won && r.towerCount <= 5 },
@@ -351,12 +379,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       name: 'Breach the Relay',
       story:
         "Their meteor relay funnels every spell through one fortified corridor. Their towers are dug in; " +
-        "ours are not coming. We send raiders ourselves — get enough through and the relay falls.",
+        "ours are not coming. We send raiders ourselves — get enough through and the relay falls.\n\n" +
+        "Briarroot served well, but the druid says the brambles fade in the cabal's anti-magic fields. The Forge " +
+        "has refined her work into Mana Drain — same interrupt, more punch, drains shields off the cabal's heaviest.",
       archetype: 'attacker',
       overrides: {
+        faction: 'coalition',
         mapId: 'attacker_assault',
         difficulty: 'normal',
         waveCount: 10,
+        // M8: Briarroot → Mana Drain. Final 1:1 swap.
+        restrictions: {
+          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'arcane_drain'],
+        },
       },
       objectives: {
         star2: {
@@ -376,13 +411,20 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       idx: 8,
       name: 'Allied Circle',
       story:
-        "A neighbouring hold sent reinforcements but they\'re green — you train them in the field. " +
-        "Two fronts, two defenders. Cover for each other.",
+        "A neighbouring hold sent reinforcements but they're green — you train them in the field. " +
+        "Two fronts, two defenders. Cover for each other.\n\n" +
+        "From the captured archmage's library: Meteor. The Forge studied the cast for weeks. The drum platforms " +
+        "are ready. Save the cooldown for the heaviest.",
       archetype: 'coop_with_bot',
       overrides: {
+        faction: 'coalition',
         mapId: 'circle_2p',
         difficulty: 'normal',
         waveCount: 15,
+        // M9: + Meteor (ult slot).
+        restrictions: {
+          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'arcane_drain', 'arcane_meteor'],
+        },
       },
       objectives: {
         star2: { label: 'Win without your ally falling below 5 lives', predicate: () => false /* needs co-op tracking */ },
@@ -397,12 +439,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       name: 'Reckoning',
       story:
         "Their archmage cabal makes its stand at the spire. Thirty waves, hard difficulty, our home ground. " +
-        "If you win this they won\'t come again. If you lose, none of the previous wins mattered. End it.",
+        "If you win this they won't come again. If you lose, none of the previous wins mattered. End it.\n\n" +
+        "The last piece. The Forge unveils Arcane Nova — a final-tier ultimate the cabal kept locked in their " +
+        "deepest vault. We have it now. Save it for the ones that matter.",
       archetype: 'final_showdown',
       overrides: {
+        faction: 'coalition',
         mapId: 'arcane_throne',
         difficulty: 'hard',
         waveCount: 30,
+        // M10: + Nova (final ult). Full kit deployed for the showdown.
+        restrictions: {
+          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
+        },
       },
       objectives: {
         star2: { label: 'Win with at least 10 lives remaining', predicate: r => r.livesRemaining >= 10 },
