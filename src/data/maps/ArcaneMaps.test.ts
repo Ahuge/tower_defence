@@ -44,14 +44,21 @@ describe('Bespoke Arcane maps', () => {
 });
 
 describe('Plan 11 / Plan 13 v1 maps', () => {
-  it('base_arena registers with 4 perimeter spawners + 1 central exit', () => {
+  it('base_arena registers with 32 perimeter spawners + 1 central exit', () => {
     const m = MAPS.base_arena;
     expect(m).toBeTruthy();
-    expect(m.entries.length).toBe(4);
+    // Bumped from 4 cardinal entries to 32 (8 per edge) for truly
+    // 360° threat coverage on the M4 base_defense mission.
+    expect(m.entries.length).toBe(32);
     expect(m.exits.length).toBe(1);
     // Exit is at the geometric center.
     expect(m.exits[0].col).toBe(Math.floor(36 / 2));
     expect(m.exits[0].row).toBe(Math.floor(26 / 2));
+    // All entries are on the perimeter (col 0 or 35, OR row 0 or 25).
+    for (const e of m.entries) {
+      const onPerimeter = e.col === 0 || e.col === 35 || e.row === 0 || e.row === 25;
+      expect(onPerimeter).toBe(true);
+    }
   });
 
   it('base_arena reserves a 3x3 noBuild ring around the base', () => {

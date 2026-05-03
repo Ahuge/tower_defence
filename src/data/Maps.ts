@@ -434,11 +434,23 @@ export const MAPS: Record<MapId, MapDefinition> = {
     name: 'Citadel Arena',
     description: 'Spawns from every side converging on the base. The whole map is your maze.',
     theme: 'stone',
+    // Truly 360° threat — 32 spawn points distributed around the
+    // entire perimeter (8 per edge). Creeps round-robin across
+    // paths via the standard SpawnManager pathIndex split, so each
+    // wave hits the player from many directions simultaneously.
     entries: [
-      { col: MID_COL, row: 0 },              // North
-      { col: MID_COL, row: GRID_ROWS - 1 },  // South
-      { col: GRID_COLS - 1, row: MID_ROW },  // East
-      { col: 0, row: MID_ROW },              // West
+      // North edge (8 points, row 0)
+      { col: 2,  row: 0 }, { col: 6,  row: 0 }, { col: 11, row: 0 }, { col: 15, row: 0 },
+      { col: 20, row: 0 }, { col: 24, row: 0 }, { col: 29, row: 0 }, { col: 33, row: 0 },
+      // South edge (8 points, row GRID_ROWS - 1)
+      { col: 2,  row: GRID_ROWS - 1 }, { col: 6,  row: GRID_ROWS - 1 }, { col: 11, row: GRID_ROWS - 1 }, { col: 15, row: GRID_ROWS - 1 },
+      { col: 20, row: GRID_ROWS - 1 }, { col: 24, row: GRID_ROWS - 1 }, { col: 29, row: GRID_ROWS - 1 }, { col: 33, row: GRID_ROWS - 1 },
+      // West edge (8 points, col 0)
+      { col: 0, row: 1 },  { col: 0, row: 4 },  { col: 0, row: 8 },  { col: 0, row: 11 },
+      { col: 0, row: 14 }, { col: 0, row: 17 }, { col: 0, row: 21 }, { col: 0, row: 24 },
+      // East edge (8 points, col GRID_COLS - 1)
+      { col: GRID_COLS - 1, row: 1 },  { col: GRID_COLS - 1, row: 4 },  { col: GRID_COLS - 1, row: 8 },  { col: GRID_COLS - 1, row: 11 },
+      { col: GRID_COLS - 1, row: 14 }, { col: GRID_COLS - 1, row: 17 }, { col: GRID_COLS - 1, row: 21 }, { col: GRID_COLS - 1, row: 24 },
     ],
     // Single exit at the center — visualized as the "base."
     exits: [{ col: MID_COL, row: MID_ROW }],
