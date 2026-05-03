@@ -351,6 +351,11 @@ export class GameScene extends Phaser.Scene {
     this._missionGoldStartMult = data.missionGoldStartMult;
     this._missionLives = data.missionLives;
     this._missionWaveScript = data.missionWaveScript;
+    // Reset Plan A scene-level state that lives as duck-typed fields
+    // on `this`. Phaser reuses scene instances across matches, so
+    // without this an inflated _channelHpBuff from a Counterspell
+    // mission would carry into the next match (e.g. M2 → M3).
+    (this as unknown as { _channelHpBuff?: number })._channelHpBuff = 0;
     // Live-capture mode forces 20-wave matches to match the
     // headless training data shape — bot data is generated at
     // waveCount=20, so human-captured rows must use the same to
@@ -1927,6 +1932,13 @@ export class GameScene extends Phaser.Scene {
       } else if (t.id === 'heal_aura') {
         traits.push('Heal aura (3% nearby/s)');
       }
+    }
+    // Plan A: surface the channel-buff value the creep spawned with so
+    // the inspector reads "+N% HP from Scribe channels" rather than
+    // hiding the cause of inflated HP.
+    const buff = (c as unknown as { _channelBuff?: number })._channelBuff ?? 0;
+    if (buff > 0) {
+      traits.push(`Channel buff: +${Math.round(buff * 100)}% HP`);
     }
 
     return {

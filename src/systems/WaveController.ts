@@ -52,14 +52,15 @@ export class WaveController {
   private waveElapsed: number = 0;
   /** ms since last stuck-log so we don't spam the console every frame. */
   private lastStuckLog: number = 0;
-  /** Max pathIndex any alive creep has reached this wave. Bumped
-   *  each frame in checkWaveComplete. Combined with `lastAliveCount`
-   *  to gate the force-clear: progress = any creep advances OR any
-   *  creep dies. */
-  private maxPathIndexReached: number = 0;
+  /** Last frame's max pathIndex among alive creeps. Compared against
+   *  this frame's max — any change (up OR down due to a leader dying)
+   *  counts as progress. Was previously a lifetime high; that broke
+   *  M3 where archmages walked forward indefinitely after the leader
+   *  died but never surpassed the leader's prior peak. */
+  private lastFrameMaxPathIndex: number = 0;
   /** waveElapsed at the last frame where progress was observed
-   *  (advance or death). Force-clear fires when (waveElapsed -
-   *  lastProgressAt) exceeds STUCK_NO_PROGRESS_WINDOW. */
+   *  (path-advance, leader change, or death). Force-clear fires when
+   *  (waveElapsed - lastProgressAt) exceeds STUCK_NO_PROGRESS_WINDOW. */
   private lastProgressAt: number = 0;
   /** Last frame's alive-creep count. A drop counts as progress. */
   private lastAliveCount: number = 0;
@@ -91,7 +92,7 @@ export class WaveController {
     this.waveActive = true;
     this.waveElapsed = 0;
     this.forceClearFired = false;
-    this.maxPathIndexReached = 0;
+    this.lastFrameMaxPathIndex = 0;
     this.lastProgressAt = 0;
     this.lastAliveCount = 0;
     this.lastStuckLog = 0;
@@ -133,13 +134,17 @@ export class WaveController {
           if (c.pathIndex > frameMax) frameMax = c.pathIndex;
         }
       }
-      // Progress = any creep advanced OR any creep died this window.
-      // Both are signs the wave is healthy; only their absence means
-      // the field is genuinely frozen.
-      if (frameMax > this.maxPathIndexReached || frameAlive < this.lastAliveCount) {
-        this.maxPathIndexReached = Math.max(this.maxPathIndexReached, frameMax);
+      // Progress = the field changed in any meaningful way this frame.
+      // - frameMax !== lastFrameMaxPathIndex: leader advanced OR leader
+      //   died (max dropped). Both prove the wave isn't frozen.
+      // - frameAlive !== lastAliveCount: a creep died (or spawned).
+      // Comparing against last frame (not lifetime high) is critical:
+      // M3 archmages walking forward indefinitely after their leader
+      // died never surpassed the prior peak and got falsely flagged.
+      if (frameMax !== this.lastFrameMaxPathIndex || frameAlive !== this.lastAliveCount) {
         this.lastProgressAt = this.waveElapsed;
       }
+      this.lastFrameMaxPathIndex = frameMax;
       this.lastAliveCount = frameAlive;
     }
 

@@ -111,14 +111,20 @@ export class ChannelBarOverlay {
     }
     if (!this.buffText) {
       const cam = this.scene.cameras?.main;
+      // Position the readout below the wave / lives panel that lives
+      // at the very top of the canvas. y=88 sits clear of common header
+      // heights on both phone and desktop layouts.
       const x = (cam?.width ?? 800) / 2;
-      const y = 28;
+      const y = 88;
       this.buffText = this.scene.add.text(x, y, '', {
-        fontSize: '16px',
+        fontSize: '18px',
         fontFamily: 'monospace',
+        fontStyle: 'bold',
         color: '#ffe066',
         stroke: '#000000',
-        strokeThickness: 3,
+        strokeThickness: 4,
+        backgroundColor: 'rgba(60, 30, 0, 0.85)',
+        padding: { x: 10, y: 4 },
       }).setOrigin(0.5, 0).setDepth(60).setScrollFactor(0);
     }
     const pct = Math.round(buff * 100);
