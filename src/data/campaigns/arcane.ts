@@ -41,19 +41,29 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       story:
         "Their scouts plant glyphs along the eastern path. Each glyph that finishes its sigil clears a ring of stone — " +
         "your towers within reach go to dust. Stop the channel and the ring stays standing. Easy first one. " +
-        "There will be harder ones.",
+        "There will be harder ones.\n\n" +
+        "The Coalition Forge has left an Arcane Frost on the field — captured tech, beyond your craft to make more of yet. " +
+        "Build your maze around it; let no Sigil walk past without it speaking.",
       archetype: 'interrupt',
       overrides: {
+        // Coalition default kit per locked design (notes/campaign-game-modes/07).
+        faction: 'coalition',
         mapId: 'arcane_outskirts',
         difficulty: 'easy',
         waveCount: 8,
-        // M1 tutorial: limit the kit so the player can SEE the counter.
-        // Frost is the cheap, available interrupt; Bolt is generic DPS;
-        // Storm is AoE for the supporting waves. Other towers (Focus,
-        // Drain, Meteor, Nova) unlock in later missions.
+        // M1 Coalition kit: Arrow + Cannon + Wall (per-mission progression
+        // in notes/campaign-game-modes/07). NO buildable Frost — the
+        // pre-placed Frost (below) is the only interrupt. Sniper, Root,
+        // and Arcane upgrades unlock in later missions.
         restrictions: {
-          allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm'],
+          allowedTowerIds: ['arrow', 'cannon', 'mech_wall'],
         },
+        // Pre-placed Frost catches Sigils mid-channel. Position chosen so
+        // Sigils at speed 0.4 reach Frost range (3 tiles) ~5s after spawn,
+        // letting the player see the channel-bar tick before the interrupt.
+        prePlacedTowers: [
+          { towerId: 'arcane_frost', col: 5, row: 12 },
+        ],
         waveScript: [
           { wave: 1, groups: [{ creepType: 'standard', count: 6, hpScale: 28, speedScale: 1 }], spawnInterval: 600, isBoss: false },
           { wave: 2, groups: [{ creepType: 'standard', count: 8, hpScale: 36, speedScale: 1 }], spawnInterval: 550, isBoss: false },
@@ -86,12 +96,28 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       name: 'The Library',
       story:
         "They've made the chapter library a forward camp. Their scribes channel from inside it — every uninterrupted " +
-        "passage strengthens the next wave's bones. The pattern compounds. Don't let them write more than they have to.",
+        "passage strengthens the next wave's bones. The pattern compounds. Don't let them write more than they have to.\n\n" +
+        "Coalition reinforcements arrive — a Sniper to extend your reach, and two more Frosts taken at the outskirts. " +
+        "Position them at the serpent's bends; the scribes will not dance around your fire.",
       archetype: 'interrupt',
       overrides: {
+        // Coalition kit + Sniper unlock per progression.
+        faction: 'coalition',
         mapId: 'serpentine',
         difficulty: 'normal',
         waveCount: 12,
+        // M2 Coalition kit: Arrow + Cannon + Wall + Sniper. Frost still
+        // not buildable — but TWO pre-placed Frosts cover the canyon's
+        // bends.
+        restrictions: {
+          allowedTowerIds: ['arrow', 'cannon', 'mech_wall', 'sniper'],
+        },
+        // Two Frosts at the upper and lower serpentine bends — Scribes
+        // walking the snake path pass through both ranges.
+        prePlacedTowers: [
+          { towerId: 'arcane_frost', col: 3, row: 4 },
+          { towerId: 'arcane_frost', col: 32, row: 18 },
+        ],
         waveScript: [
           { wave: 1, groups: [{ creepType: 'standard', count: 6, hpScale: 30, speedScale: 1 }], spawnInterval: 600, isBoss: false },
           { wave: 2, groups: [{ creepType: 'standard', count: 8, hpScale: 40, speedScale: 1 }], spawnInterval: 550, isBoss: false },
@@ -142,14 +168,23 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       story:
         "Three archmages have set the standing stones glowing. They came to channel openly — Meteora calls fire, " +
         "Stormcaller chains lightning across our lines, the Necromaster pulls dead things back across the threshold. " +
-        "You'll meet each one, then they'll all step into the ring together. Counter their casts or be erased.",
+        "You'll meet each one, then they'll all step into the ring together.\n\n" +
+        "We recovered Frost technology from a captured archmage's notebook. The Coalition Forge can replicate it now — " +
+        "the Frost is yours to deploy. Counter their casts or be erased.",
       archetype: 'interrupt',
       overrides: {
+        // Coalition kit + Frost unlock — first mission Frost is
+        // player-buildable.
+        faction: 'coalition',
         mapId: 'crossroads',
         difficulty: 'normal',
         waveCount: 5,
-        // Full arcane kit unlocked — Frost + Mana Drain are both
-        // available; player should be using both by the finale.
+        // M3 Coalition kit: Arrow + Cannon + Wall + Sniper + Frost
+        // (Frost newly unlocked). No pre-placement — player must build
+        // their own counter coverage now.
+        restrictions: {
+          allowedTowerIds: ['arrow', 'cannon', 'mech_wall', 'sniper', 'arcane_frost'],
+        },
         waveScript: [
           // Wave 1 — light fodder, no archmage. Player stockpiles gold,
           // builds Frost coverage in advance of M3's first boss.
