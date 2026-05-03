@@ -470,10 +470,12 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       // Damage alone won't cancel — Frost or Mana Drain required, same
       // as Sigil. Keeps the campaign's interrupt vocabulary consistent.
       interruptible: false,
-      // Multi-channel: a Scribe casts up to N times across its path,
-      // with a cooldown between casts. Forces the player to either
-      // commit a Frost in range or eat the cumulative buff.
-      castCount: 3,
+      // Multi-channel: a Scribe channels for the entire duration of
+      // its walk — castCount 0 means unlimited. Combined with the
+      // +75% global buff cap and the per-cast 20%, the player still
+      // can't be infinitely punished, but every uninterrupted Scribe
+      // also drops 3 summoned creeps per cast — those don't cap.
+      castCount: 0,
       castCooldown: 4.0,
     }],
     spawnBehavior: 'normal',

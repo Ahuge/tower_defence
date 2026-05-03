@@ -9,7 +9,10 @@
  *   effectId: ChannelEffects registry id (e.g. 'clear_towers_radius')
  *   meta?: extra fields passed to the effect (radius, percent, etc)
  *   interruptible?: true — any damage cancels (default true)
- *   castCount?: max number of channels per creep (default 1, single-shot)
+ *   castCount?: max number of channels per creep. Defaults to 1
+ *               (single-shot). Pass 0 for unlimited — caster channels
+ *               as long as it's alive, only stopping when killed or
+ *               when it walks off the end of the path.
  *   castCooldown?: seconds of downtime between cast 1 → cast 2 (default 3)
  *
  * Wires into the Trait registry via creep update + creep damage hooks.
@@ -65,8 +68,10 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
     return;
   }
 
-  // No active channel. If we've hit the cap, this creep is done casting.
-  if (castsDone >= castCount) return;
+  // No active channel. If we've hit the cap, this creep is done
+  // casting. castCount: 0 means unlimited — Scribes use this so they
+  // channel for the duration of their walk.
+  if (castCount > 0 && castsDone >= castCount) return;
 
   // Decrement the inter-cast cooldown if one is running. Initial cast
   // uses `channelStartAt` as its only delay; subsequent casts use the
