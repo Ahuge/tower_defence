@@ -134,7 +134,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
     // override `restrictions.allowedTowerIds` to expose a subset
     // (M1 starts with arrow + cannon + mech_wall only); replacements
     // happen as the campaign progresses.
-    towerIds: ['arrow', 'cannon', 'sniper', 'mech_wall', 'coalition_root'],
+    towerIds: ['arrow', 'cannon', 'sniper', 'coalition_wall', 'coalition_root'],
   },
 };
 

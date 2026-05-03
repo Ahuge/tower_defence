@@ -66,6 +66,14 @@ FACTION_PALETTE: dict[str, dict[str, int]] = {
         'secondary': 0xffee88,  # gold highlight
         'tertiary':  0xffffff,  # prism white (pop)
     },
+    # Coalition — generic pre-Arcane kit. Faction-neutral steel + leather +
+    # grey-stone. No glow accent; "tertiary" reuses leather brown rather
+    # than a magic pop color so Coalition reads visually mundane.
+    'coalition': {
+        'primary':   0x9aa3ad,  # steel grey body
+        'secondary': 0xc8cfd6,  # light steel highlight
+        'tertiary':  0x4a4035,  # leather brown (no glow — Coalition is non-magic)
+    },
 }
 
 

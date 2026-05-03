@@ -56,7 +56,7 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // pre-placed Frost (below) is the only interrupt. Sniper, Root,
         // and Arcane upgrades unlock in later missions.
         restrictions: {
-          allowedTowerIds: ['arrow', 'cannon', 'mech_wall'],
+          allowedTowerIds: ['arrow', 'cannon', 'coalition_wall'],
         },
         // Pre-placed Frost catches Sigils mid-channel. Position chosen so
         // Sigils at speed 0.4 reach Frost range (3 tiles) ~5s after spawn,
@@ -110,7 +110,7 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // not buildable — but TWO pre-placed Frosts cover the canyon's
         // bends.
         restrictions: {
-          allowedTowerIds: ['arrow', 'cannon', 'mech_wall', 'sniper'],
+          allowedTowerIds: ['arrow', 'cannon', 'coalition_wall', 'sniper'],
         },
         // Two Frosts at the upper and lower serpentine bends — Scribes
         // walking the snake path pass through both ranges.
@@ -183,7 +183,7 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // (Frost newly unlocked). No pre-placement — player must build
         // their own counter coverage now.
         restrictions: {
-          allowedTowerIds: ['arrow', 'cannon', 'mech_wall', 'sniper', 'arcane_frost'],
+          allowedTowerIds: ['arrow', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost'],
         },
         waveScript: [
           // Wave 1 — light fodder, no archmage. Player stockpiles gold,
