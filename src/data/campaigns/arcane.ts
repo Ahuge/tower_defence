@@ -78,7 +78,11 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
             { creepType: 'arcane_sigil', count: 1, hpScale: 90, speedScale: 1 },
           ], spawnInterval: 400, isBoss: false },
           { wave: 7, groups: [{ creepType: 'armored', count: 6, hpScale: 110, speedScale: 1 }], spawnInterval: 500, isBoss: false },
-          { wave: 8, groups: [{ creepType: 'boss', count: 1, hpScale: 600, speedScale: 1 }], spawnInterval: 0, isBoss: true },
+          // Boss tuned down (600 → 350) to match the Coalition kit's
+          // damage ceiling. With only Arrow as a real DPS tower
+          // (~13 dps each, maybe 5 placed), the original 9k+ total HP
+          // boss took 2+ minutes to grind.
+          { wave: 8, groups: [{ creepType: 'boss', count: 1, hpScale: 350, speedScale: 1 }], spawnInterval: 0, isBoss: true },
         ],
       },
       objectives: {
