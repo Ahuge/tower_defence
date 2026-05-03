@@ -131,12 +131,12 @@ export class ChannelBarOverlay {
   /** Gold glow around a creep that spawned with a channel-HP buff
    *  applied. Intensity (radius + alpha) scales with the buff value
    *  so the player can see at a glance how buffed each creep is.
-   *  +20% = subtle wash, +75% (cap) = unmistakable aura. */
+   *  +20% = subtle wash, +100% (cap) = unmistakable aura. */
   private drawBuffGlow(creep: any, buff: number, time: number): void {
     if (typeof creep.x !== 'number' || typeof creep.y !== 'number') return;
-    // Map buff [0..0.75] → intensity [0.4..1.0].
-    const intensity = 0.4 + Math.min(1, buff / 0.75) * 0.6;
-    const radius = 14 + buff * 14; // scales 14..24.5
+    // Map buff [0..1.0] → intensity [0.4..1.0].
+    const intensity = 0.4 + Math.min(1, buff) * 0.6;
+    const radius = 14 + Math.min(buff, 1) * 14; // scales 14..28
     const pulse = 0.7 + 0.3 * Math.sin(time / 320);
     // Soft outer glow.
     this.graphics.fillStyle(0xffd966, 0.12 * intensity * pulse);

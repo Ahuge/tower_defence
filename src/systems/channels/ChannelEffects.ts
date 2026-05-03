@@ -281,9 +281,11 @@ ChannelEffects.register('summon_creeps_at_position', (ctx) => {
  *    percent: 0.20        — HP buff to stack onto every future creep
  *    summonCount: 3       — additional creeps spawned at caster (default 0)
  *    summonType: 'standard' — creep type for the summons
- *    maxBuff: 0.75        — cap on _channelHpBuff (default; ≈ 4 completions
- *                           to fully cap at 20%/cast). Prevents a runaway
- *                           wave 12 boss while still punishing total inattention.
+ *    maxBuff: 1.0         — cap on _channelHpBuff (default; ≈ 5 completions
+ *                           to fully cap at 20%/cast). Bounds the boss
+ *                           inflation to 2× base while letting the
+ *                           summons (uncapped) carry the unlimited-cast
+ *                           threat for the back half of the mission.
  *
  *  The summon side-effect makes the cast immediately visible in the
  *  current wave (3 fresh creeps appear by the path) on top of the
@@ -291,7 +293,7 @@ ChannelEffects.register('summon_creeps_at_position', (ctx) => {
  *  is purely cerebral and easy to ignore in the moment. */
 ChannelEffects.register('buff_next_wave_hp', (ctx) => {
   const pct = (ctx.meta.percent as number) ?? 0.20;
-  const cap = (ctx.meta.maxBuff as number) ?? 0.75;
+  const cap = (ctx.meta.maxBuff as number) ?? 1.0;
   const scene = ctx.scene as any;
   const prev = (scene._channelHpBuff as number) ?? 0;
   scene._channelHpBuff = Math.min(cap, prev + pct);
