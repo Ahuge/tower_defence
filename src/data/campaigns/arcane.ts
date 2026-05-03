@@ -30,6 +30,12 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
   outro:
     "Their archmages are spent, their meteors fall on rubble, and the caverns retreat behind their crystal walls. " +
     "You hold the field. Future campaigns will reshape your roster — start by picking the next faction tree branch.",
+  // Render every mission's map in the arcane-crystal tileset for
+  // visual cohesion. Most missions reuse non-arcane maps (serpentine /
+  // crossroads / islands / etc.) for their geometry; this override
+  // keeps the campaign's palette consistent without authoring bespoke
+  // arcane copies of each map.
+  defaultMapThemeOverride: 'arcane_crystal',
   missions: [
     // 1 — First Sigil (interrupt). Plan A v2: introduces the channel
     // mechanic. Two Sigils, easy to interrupt; missing one costs a

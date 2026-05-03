@@ -112,6 +112,7 @@ class MissionRunnerClass {
       missionLives: merged.lives,
       missionWaveScript: merged.waveScript,
       missionPrePlacedTowers: merged.prePlacedTowers,
+      missionMapThemeOverride: merged.mapThemeOverride ?? campaign.defaultMapThemeOverride,
     });
     return true;
   }

@@ -333,6 +333,9 @@ export class GameScene extends Phaser.Scene {
    *  kit. Used to gift the player a Frost at M1 + M2 before Frost
    *  unlocks normally at M3. */
   private _missionPrePlacedTowers?: { towerId: string; col: number; row: number }[];
+  /** Override the map's authored terrain theme. Lets the Arcane
+   *  campaign render any map with the arcane-crystal tileset. */
+  private _missionMapThemeOverride?: string;
 
   /** Plan 14 custom counters fed into MissionResult.custom at game-end.
    *  Populated only when the scene was launched as a campaign mission;
@@ -340,7 +343,7 @@ export class GameScene extends Phaser.Scene {
   private _missionSendsBought = 0;
   private _missionHeroHpMinFraction = 1;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[] }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -357,6 +360,7 @@ export class GameScene extends Phaser.Scene {
     this._missionLives = data.missionLives;
     this._missionWaveScript = data.missionWaveScript;
     this._missionPrePlacedTowers = data.missionPrePlacedTowers;
+    this._missionMapThemeOverride = data.missionMapThemeOverride;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -3495,7 +3499,10 @@ export class GameScene extends Phaser.Scene {
     // (Gauntlet + custom maps suppress the override; coop guests
     // render the host's broadcast theme).
     const circle = this.registry.get('circle') as { isHost: boolean; hostTerrainOverride: string | null } | null;
-    const themeId = SkinManager.getActiveTerrainTheme({
+    // Mission-supplied theme override wins when set — used by the
+    // Arcane Coalition campaign to render every mission's map in
+    // arcane-crystal tileset regardless of the map's authored theme.
+    const themeId = this._missionMapThemeOverride ?? SkinManager.getActiveTerrainTheme({
       matchMode: this.matchMode,
       mapTheme: this.mapDef?.theme,
       isCustomMap: this.mapId === 'custom' && !!this.customMapDef,

@@ -154,6 +154,13 @@ export interface MissionOverrides {
    *  Tower types not in `restrictions.allowedTowerIds` are still
    *  pre-placeable; they just can't be added to or replaced. */
   prePlacedTowers?: { towerId: string; col: number; row: number }[];
+  /** Force a specific terrain theme regardless of the map's authored
+   *  one. Lets the Arcane campaign render serpentine / islands /
+   *  fortress etc. with the arcane-crystal tileset for visual
+   *  cohesion, without requiring bespoke arcane-themed copies of
+   *  every map. Theme id matches `TerrainTheme.ts` keys ('arcane_crystal',
+   *  'factory', 'ancient_grove', etc.). */
+  mapThemeOverride?: string;
 }
 
 /** The 10-mission campaign. */
@@ -178,6 +185,12 @@ export interface CampaignDef<TState = unknown> {
    *  Required for any campaign that uses stateUpdater / dynamicOverrides
    *  / parametric stories. v1 campaigns leave this undefined. */
   initialState?: TState;
+  /** Campaign-wide terrain theme override applied to every mission's
+   *  map. Lets the Arcane campaign render every mission in
+   *  arcane-crystal tileset for visual cohesion without bespoke
+   *  arcane-themed copies of every map. Per-mission `mapThemeOverride`
+   *  takes precedence when both are set. */
+  defaultMapThemeOverride?: string;
 }
 
 /** Star count earned (0 = not attempted, 1-3 = stars). */
