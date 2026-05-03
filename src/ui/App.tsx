@@ -131,6 +131,9 @@ export function App() {
           difficulty={loading.difficulty}
           mode={loading.mode}
           waveCount={loading.waveCount}
+          missionTitle={loading.missionTitle}
+          missionStory={loading.missionStory}
+          requiresContinue={loading.requiresContinue}
         />
       )}
 

@@ -72,11 +72,19 @@ interface LoadingScreenProps {
   difficulty: string;
   mode: string;
   waveCount?: number;
+  /** Campaign mission title — replaces faction name as headline. */
+  missionTitle?: string;
+  /** Campaign mission briefing — replaces flavour quote. */
+  missionStory?: string;
+  /** When true, screen waits for player to click "Begin" before
+   *  dismissing instead of auto-dismissing on scene-ready. */
+  requiresContinue?: boolean;
 }
 
-export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: LoadingScreenProps) {
+export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missionTitle, missionStory, requiresContinue }: LoadingScreenProps) {
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
   const flavourRef = useRef(pickFlavour(faction));
 
   const fDef = faction && faction !== 'random' ? FACTIONS[faction as FactionId] : null;
@@ -89,12 +97,16 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
   const modeLabel = MODE_DISPLAY[mode] ?? mode;
   const wavesLabel = waveCount ? `${waveCount} waves` : null;
 
-  // Fade out after BOTH: scene signals ready AND minimum time has elapsed
+  // Dismiss flow:
+  //  - Default: scene-ready + min-time elapsed → auto-dismiss
+  //  - requiresContinue: scene-ready + player clicks Begin → dismiss
+  //    Min-time still applies before the button enables (so the loading
+  //    screen never feels skippable in <1s).
   useEffect(() => {
-    const MIN_MS = 5000;
+    const MIN_MS = requiresContinue ? 800 : 5000;
     const SAFETY_MS = 10000;
     const startTime = performance.now();
-    let sceneReady = false;
+    let isReady = false;
     let minElapsed = false;
     let dismissed = false;
 
@@ -102,44 +114,48 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
     const log = (msg: string) => { if (debug) console.log(msg); };
     const elapsed = () => ((performance.now() - startTime) / 1000).toFixed(2) + 's';
 
-    log(`[LOADING] mounted, MIN=${MIN_MS}ms SAFETY=${SAFETY_MS}ms`);
+    log(`[LOADING] mounted, MIN=${MIN_MS}ms SAFETY=${SAFETY_MS}ms requiresContinue=${requiresContinue}`);
 
     const tryDismiss = (source: string) => {
-      log(`[LOADING] tryDismiss(${source}) sceneReady=${sceneReady} minElapsed=${minElapsed} dismissed=${dismissed} elapsed=${elapsed()}`);
-      if (dismissed || !sceneReady || !minElapsed) return;
+      log(`[LOADING] tryDismiss(${source}) sceneReady=${isReady} minElapsed=${minElapsed} dismissed=${dismissed} elapsed=${elapsed()}`);
+      if (dismissed || !isReady || !minElapsed) return;
+      // requiresContinue waits for explicit player click.
+      if (requiresContinue && source !== 'continue-click' && source !== 'safety') return;
       dismissed = true;
       log(`[LOADING] DISMISSING at ${elapsed()}`);
       setFadeOut(true);
       setTimeout(() => {
         setVisible(false);
         UIBridge.clearLoading();
-        // Signal for subsystems that need to wait until the match-load
-        // screen is fully gone before showing their own overlays
-        // (e.g. TutorialManager's income/hero/battle primers).
         window.dispatchEvent(new Event('match-loading-dismissed'));
       }, 200);
     };
 
     const onReady = () => {
       log(`[LOADING] game-scene-ready event received at ${elapsed()}`);
-      sceneReady = true;
+      isReady = true;
+      setSceneReady(true);
       tryDismiss('scene-ready');
     };
 
-    // Min time timer
+    const onContinue = () => {
+      log(`[LOADING] continue-click at ${elapsed()}`);
+      tryDismiss('continue-click');
+    };
+
     const minTimer = setTimeout(() => {
       log(`[LOADING] min timer fired at ${elapsed()}`);
       minElapsed = true;
       tryDismiss('min-timer');
     }, MIN_MS);
 
-    // Scene ready event
     window.addEventListener('game-scene-ready', onReady);
+    window.addEventListener('loading-screen-continue', onContinue);
 
-    // Safety: force dismiss after SAFETY_MS regardless
     const safety = setTimeout(() => {
       log(`[LOADING] SAFETY timeout fired at ${elapsed()}`);
-      sceneReady = true;
+      isReady = true;
+      setSceneReady(true);
       minElapsed = true;
       tryDismiss('safety');
     }, SAFETY_MS);
@@ -147,10 +163,11 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
     return () => {
       log(`[LOADING] cleanup at ${elapsed()}`);
       window.removeEventListener('game-scene-ready', onReady);
+      window.removeEventListener('loading-screen-continue', onContinue);
       clearTimeout(minTimer);
       clearTimeout(safety);
     };
-  }, []);
+  }, [requiresContinue]);
 
   if (!visible) return null;
 
@@ -212,18 +229,33 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
 
       {/* Content */}
       <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '600px', width: '100%' }}>
-        {/* Faction name */}
+        {/* Headline — mission title (when set) or faction name */}
         <div style={{
           fontFamily: "'Silkscreen', ui-sans-serif, sans-serif",
           fontSize: 'clamp(28px, 6vw, 48px)',
           color: fColor,
           letterSpacing: '4px',
           fontWeight: 700,
-          marginBottom: '16px',
+          marginBottom: '8px',
           textShadow: `0 0 30px ${fColor}44`,
         }}>
-          {fName.toUpperCase()}
+          {(missionTitle ?? fName).toUpperCase()}
         </div>
+        {/* Subtitle — when on a campaign mission, show the faction
+            name in a smaller line under the mission title so the
+            player still gets the visual context. */}
+        {missionTitle && fName && fName !== 'Unknown' && (
+          <div style={{
+            fontFamily: "'DM Sans', system-ui, sans-serif",
+            fontSize: 'clamp(11px, 2vw, 13px)',
+            color: 'var(--text-muted)',
+            letterSpacing: '2px',
+            marginBottom: '12px',
+            textTransform: 'uppercase',
+          }}>
+            {fName}
+          </div>
+        )}
 
         {/* Divider */}
         <div style={{
@@ -231,41 +263,59 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
           background: `linear-gradient(90deg, transparent, ${fColor}, transparent)`,
         }} />
 
-        {/* Identity tagline — pulled from FACTIONS[id].description. Sets the
-            faction's play-style expectation in the few seconds a player
-            sits on this screen. */}
-        {fDescription && (
+        {/* Mission story (when on a campaign) OR faction tagline.
+            Mission briefs supersede the faction description so the
+            player reads the in-world brief, not generic flavour. */}
+        {missionStory ? (
           <div style={{
             fontFamily: "'DM Sans', system-ui, sans-serif",
             fontSize: 'clamp(13px, 2.4vw, 15px)',
             color: 'var(--text-primary)',
-            lineHeight: 1.5,
-            marginBottom: '16px',
+            lineHeight: 1.6,
+            marginBottom: '24px',
             padding: '0 12px',
-            maxWidth: '520px',
-            margin: '0 auto 16px',
+            maxWidth: '560px',
+            margin: '0 auto 24px',
+            whiteSpace: 'pre-line',
+            textAlign: 'left',
           }}>
-            {fDescription}
+            {missionStory}
           </div>
+        ) : (
+          <>
+            {fDescription && (
+              <div style={{
+                fontFamily: "'DM Sans', system-ui, sans-serif",
+                fontSize: 'clamp(13px, 2.4vw, 15px)',
+                color: 'var(--text-primary)',
+                lineHeight: 1.5,
+                marginBottom: '16px',
+                padding: '0 12px',
+                maxWidth: '520px',
+                margin: '0 auto 16px',
+              }}>
+                {fDescription}
+              </div>
+            )}
+            {/* Flavour quote — only when there's no mission story */}
+            <div style={{
+              fontStyle: 'italic',
+              fontSize: 'clamp(12px, 2.2vw, 14px)',
+              color: 'var(--text-muted)',
+              lineHeight: 1.6,
+              marginBottom: '32px',
+              minHeight: '42px',
+              padding: '0 12px',
+            }}>
+              "{flavourRef.current}"
+            </div>
+          </>
         )}
-
-        {/* Flavour text */}
-        <div style={{
-          fontStyle: 'italic',
-          fontSize: 'clamp(12px, 2.2vw, 14px)',
-          color: 'var(--text-muted)',
-          lineHeight: 1.6,
-          marginBottom: '32px',
-          minHeight: '42px',
-          padding: '0 12px',
-        }}>
-          "{flavourRef.current}"
-        </div>
 
         {/* Map / Difficulty / Waves info pills */}
         <div style={{
           display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px',
-          marginBottom: '40px',
+          marginBottom: '32px',
         }}>
           {mapName && (
             <InfoPill label="Map" value={mapName} />
@@ -275,31 +325,57 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount }: Loa
           {wavesLabel && <InfoPill label="Waves" value={wavesLabel} />}
         </div>
 
-        {/* Animated progress bar */}
-        <div style={{
-          width: '100%', maxWidth: '300px', margin: '0 auto',
-        }}>
+        {/* Continue button (campaign mode) OR animated progress bar */}
+        {requiresContinue ? (
+          <button
+            disabled={!sceneReady}
+            onClick={() => window.dispatchEvent(new Event('loading-screen-continue'))}
+            style={{
+              fontFamily: "'Silkscreen', ui-sans-serif, sans-serif",
+              fontSize: 'clamp(16px, 3vw, 20px)',
+              color: '#15101a',
+              letterSpacing: '3px',
+              padding: '14px 36px',
+              background: sceneReady
+                ? `linear-gradient(180deg, ${fColor}, ${fColor}cc)`
+                : 'rgba(255,255,255,0.08)',
+              border: sceneReady ? `2px solid ${fColor}` : '2px solid rgba(255,255,255,0.15)',
+              borderRadius: '6px',
+              cursor: sceneReady ? 'pointer' : 'not-allowed',
+              opacity: sceneReady ? 1 : 0.55,
+              transition: 'background 200ms, opacity 200ms',
+              boxShadow: sceneReady ? `0 0 20px ${fColor}66` : 'none',
+              fontWeight: 700,
+            }}
+          >
+            {sceneReady ? 'BEGIN' : 'PREPARING…'}
+          </button>
+        ) : (
           <div style={{
-            height: '3px', borderRadius: '2px',
-            background: 'rgba(255,255,255,0.08)',
-            overflow: 'hidden',
+            width: '100%', maxWidth: '300px', margin: '0 auto',
           }}>
             <div style={{
-              height: '100%', borderRadius: '2px',
-              background: `linear-gradient(90deg, ${fColor}, ${fColor}aa)`,
-              animation: 'loadingBar 2s ease-in-out infinite',
-            }} />
+              height: '3px', borderRadius: '2px',
+              background: 'rgba(255,255,255,0.08)',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%', borderRadius: '2px',
+                background: `linear-gradient(90deg, ${fColor}, ${fColor}aa)`,
+                animation: 'loadingBar 2s ease-in-out infinite',
+              }} />
+            </div>
+            <div style={{
+              marginTop: '10px',
+              fontFamily: "'VT323', ui-monospace, monospace",
+              fontSize: '14px',
+              color: 'var(--text-muted)',
+              letterSpacing: '2px',
+            }}>
+              PREPARING DEFENSES...
+            </div>
           </div>
-          <div style={{
-            marginTop: '10px',
-            fontFamily: "'VT323', ui-monospace, monospace",
-            fontSize: '14px',
-            color: 'var(--text-muted)',
-            letterSpacing: '2px',
-          }}>
-            PREPARING DEFENSES...
-          </div>
-        </div>
+        )}
       </div>
 
       {/* CSS animation for progress bar */}

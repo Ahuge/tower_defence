@@ -29,6 +29,7 @@ import { UIBridge } from '../../ui/UIBridge';
 import { Analytics } from '../AnalyticsClient';
 import { PlayerProfile } from '../profile/PlayerProfile';
 import { CampaignState } from '../campaign/CampaignState';
+import { ParametricStory } from '../campaign/ParametricStory';
 
 /** Subset of MissionDef that GameScene actually reads. Distinct from
  *  the full def so the runtime contract is small and stable. */
@@ -113,6 +114,17 @@ class MissionRunnerClass {
       missionWaveScript: merged.waveScript,
       missionPrePlacedTowers: merged.prePlacedTowers,
       missionMapThemeOverride: merged.mapThemeOverride ?? campaign.defaultMapThemeOverride,
+      // LoadingScreen briefing — show the mission name + story text
+      // there, and gate dismissal on a "Begin" button so the player
+      // can read the brief without time pressure.
+      loadingMissionTitle: mission.name,
+      loadingMissionStory: ParametricStory.resolve(mission.story, {
+        state: campaign.initialState !== undefined
+          ? CampaignState.get(campaign.factionId, campaign.initialState)
+          : null,
+        lastResult: null,
+      }),
+      loadingRequiresContinue: true,
     });
     return true;
   }

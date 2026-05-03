@@ -15,6 +15,16 @@ export interface LoadingData {
   difficulty: string;
   mode: string;
   waveCount?: number;
+  /** Campaign mission title (e.g. "First Sigil"). When set, replaces
+   *  the faction name as the loading-screen headline. */
+  missionTitle?: string;
+  /** Campaign mission briefing text. When set, replaces the random
+   *  flavour quote — the player reads the in-world brief instead. */
+  missionStory?: string;
+  /** When true, the LoadingScreen waits for the player to click a
+   *  "Begin" button after the scene loads instead of auto-dismissing.
+   *  Used for campaign missions so the player can read the briefing. */
+  requiresContinue?: boolean;
 }
 
 class UIBridgeClass {
@@ -59,6 +69,9 @@ class UIBridgeClass {
         difficulty: (data.difficulty as string) ?? 'normal',
         mode: (data.mode as string) ?? 'standard',
         waveCount: data.waveCount as number | undefined,
+        missionTitle: data.loadingMissionTitle as string | undefined,
+        missionStory: data.loadingMissionStory as string | undefined,
+        requiresContinue: data.loadingRequiresContinue as boolean | undefined,
       };
       for (const fn of this._loadingListeners) fn(this._loading);
     }
