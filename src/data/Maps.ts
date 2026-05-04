@@ -12,7 +12,11 @@ export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islan
   | 'heist_vault'
   // Plan 12 v1 — Attacker. Open assault corridor with pre-placed
   // defender towers; player commands the creeps.
-  | 'attacker_assault';
+  | 'attacker_assault'
+  // Plan 14 M10 — finale siege. Player builds mana drains on the right
+  // to charge summoning circles, the hero attacks pre-placed CPU
+  // towers (with HP) on the left. Win = all CPU towers destroyed.
+  | 'arcane_throne_finale';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -66,6 +70,19 @@ export interface MapDefinition {
    *  picks the one that best counters the upcoming wave. Capped
    *  per mission by `attackerDefenderDifficulty`. */
   expansionSockets?: { col: number; row: number; allowedTowerIds: string[] }[];
+  /** M10 finale — cells the player is allowed to build on. When set,
+   *  the placement gate rejects player builds outside this set. Empty
+   *  / undefined = no restriction (every other mission). */
+  playerBuildableCells?: { col: number; row: number }[];
+  /** M10 finale — Summoning Circle structures. Each circle is 2x2 at
+   *  (col, row) top-left. Renders a charge ring; adjacent mana drains
+   *  feed a shared charge meter that summons the hero at 100%. */
+  summoningCircles?: { col: number; row: number; chargeRatePerDrain?: number }[];
+  /** M10 finale — pre-placed CPU defender towers WITH HP. Distinct from
+   *  `preplacedTowers` (attacker mode) so finale CPU towers carry HP
+   *  + destructible flag without polluting attacker_assault. The Ult
+   *  tower flags `isUlt: true` and triggers the ult_finale phase trait. */
+  destructibleTowers?: { col: number; row: number; towerId: string; hp: number; isUlt?: boolean }[];
 }
 
 export interface SpawnerDef {
@@ -577,6 +594,81 @@ export const MAPS: Record<MapId, MapDefinition> = {
   circle_3p: getCircleMapById('circle_3p'),
   circle_4p: getCircleMapById('circle_4p'),
   circle_4p_hell_circle: getCircleMapById('circle_4p_hell_circle'),
+
+  // === M10 Arcane finale siege ===
+  // Author shape: 30 wide × 18 tall. Player on the right (mana drain
+  // zones around two summoning circles), CPU towers scattered on the
+  // left around the green exit, Ult tower on far west. Brown perimeter
+  // + central arrow-cross. Real authored data lands in M10.16; this
+  // is a working stub so the type system + scene init can boot.
+  arcane_throne_finale: (() => {
+    const cols = GRID_COLS;          // 36 — using full grid for now
+    const rowsTop = 0, rowsBot = GRID_ROWS - 1;
+    const midRow = Math.floor(GRID_ROWS / 2);
+    // Outer wall: top, bottom, left+right edges (except entry/exit cells).
+    const outerWall: Pos[] = [];
+    for (let c = 0; c < cols; c++) { outerWall.push({ col: c, row: rowsTop }, { col: c, row: rowsBot }); }
+    for (let r = 1; r < rowsBot; r++) {
+      if (r !== midRow) {
+        outerWall.push({ col: 0, row: r }, { col: cols - 1, row: r });
+      }
+    }
+    // Central arrow-cross blocked region (Y / cross shape near col 18).
+    const centerCross: Pos[] = [
+      ...rect(17, 5, 19, 6),
+      ...rect(17, 8, 19, 9),
+      ...rect(17, 12, 19, 13),
+      { col: 18, row: 7 }, { col: 18, row: 10 }, { col: 18, row: 11 },
+    ];
+    // Pre-placed CPU defender towers (left half, scattered around exit).
+    // Real placement comes in M10.16; this stub gives 4 towers + 1 Ult.
+    const destructibleTowers = [
+      { col: 5,  row: midRow,     towerId: 'arcane_bolt',  hp: 600 },
+      { col: 7,  row: midRow - 2, towerId: 'arcane_storm', hp: 600 },
+      { col: 7,  row: midRow + 2, towerId: 'arcane_storm', hp: 600 },
+      { col: 10, row: midRow,     towerId: 'arcane_focus', hp: 600 },
+      { col: 2,  row: midRow,     towerId: 'arcane_ult_throne', hp: 5000, isUlt: true },
+    ];
+    // Player buildable zones — two clusters of magenta cells around the
+    // two summoning circles on the right. Top cluster around (28, 4),
+    // bottom around (28, 13).
+    const playerBuildableCells: Pos[] = [];
+    const dropZone = (cx: number, cy: number) => {
+      // Ring of 8 cells around the 2x2 footprint at (cx, cy) — these
+      // become the magenta "drop a mana drain here" cells.
+      for (let dc = -1; dc <= 2; dc++) for (let dr = -1; dr <= 2; dr++) {
+        if (dc >= 0 && dc <= 1 && dr >= 0 && dr <= 1) continue; // skip the circle footprint
+        playerBuildableCells.push({ col: cx + dc, row: cy + dr });
+      }
+    };
+    dropZone(28, 4);
+    dropZone(28, 13);
+    // Summoning circles — 2x2 each, marked noBuild so player can't
+    // drop towers on them. Top-left corner of each footprint.
+    const summoningCircles = [
+      { col: 28, row: 4 },
+      { col: 28, row: 13 },
+    ];
+    const noBuild: Pos[] = [];
+    for (const c of summoningCircles) {
+      for (let dc = 0; dc <= 1; dc++) for (let dr = 0; dr <= 1; dr++) {
+        noBuild.push({ col: c.col + dc, row: c.row + dr });
+      }
+    }
+    return {
+      id: 'arcane_throne_finale' as MapId,
+      name: 'The Reckoning',
+      description: 'Siege the Arcane archmage spire. Charge your summoning circles, summon the mage, destroy the cabal\'s lattice.',
+      theme: 'arcane_crystal',
+      entries: [{ col: cols - 1, row: midRow }],
+      exits: [{ col: 0, row: midRow }],
+      blocked: [...outerWall, ...centerCross],
+      noBuild,
+      playerBuildableCells,
+      summoningCircles,
+      destructibleTowers,
+    };
+  })(),
 };
 
 // (Legacy-shaped IIFE bodies removed; data lives in

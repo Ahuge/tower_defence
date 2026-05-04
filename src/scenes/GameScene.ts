@@ -364,6 +364,10 @@ export class GameScene extends Phaser.Scene {
    *  BalancedBrain. One bot, plays as the campaign's creep faction
    *  (e.g. Arcane on M8). Null on non-attacker missions. */
   private _attackerCpuBotAI: BotAI | null = null;
+  /** M10 finale — set of "col,row" cells the player is allowed to
+   *  build on. Empty = no restriction (every other mission).
+   *  Populated from `mapDef.playerBuildableCells` at scene init. */
+  private _playerBuildableSet: Set<string> = new Set();
   /** One-shot latch — instant victory when leak threshold hits, no
    *  matter how many waves remain. Existing wave-end loss path still
    *  fires for the defender-held case. */
@@ -790,6 +794,14 @@ export class GameScene extends Phaser.Scene {
     this.mapDef = mapDef;
     const gridRows = this.layout.gridRows !== GRID_ROWS ? this.layout.gridRows : undefined;
     this.grid = new Grid(mapDef, gridRows);
+    // M10 finale: restrict player builds to specific cells when the
+    // map declares them. Empty set = no restriction (every other map).
+    this._playerBuildableSet = new Set();
+    if (mapDef.playerBuildableCells) {
+      for (const c of mapDef.playerBuildableCells) {
+        this._playerBuildableSet.add(`${c.col},${c.row}`);
+      }
+    }
     // v2: a mission-supplied wave script wins over the default
     // generator. Used by Counterspell / Cascade missions to thread
     // caster creeps and walker variants into specific wave slots.
@@ -1362,6 +1374,10 @@ export class GameScene extends Phaser.Scene {
 
     this.drawGrid();
     this.drawPath();
+    // M10 finale: tint magenta on the player's buildable cells so the
+    // restricted zones are visible at a glance. No-op when the map
+    // doesn't declare playerBuildableCells.
+    this.drawPlayerBuildableZones();
 
     // Wire input
     this.inputMgr.onHover((col, row) => this.handleHover(col, row));
@@ -2584,6 +2600,11 @@ export class GameScene extends Phaser.Scene {
     if (this.matchMode === 'attacker') return;
     // Circle co-op: zone restriction
     if (!this.canBuildInZone(col, row)) return;
+    // M10 finale: when the map declares playerBuildableCells, only
+    // those cells accept player towers. Every other mission has an
+    // empty set and skips this gate. Mana drains in the magenta zone
+    // only — keeps the player's defense localized to the right side.
+    if (this._playerBuildableSet.size > 0 && !this._playerBuildableSet.has(`${col},${row}`)) return;
 
     const towerType = getTowerType(this.selectedBuildType);
 
@@ -4020,6 +4041,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Draw zone tint overlay on the grid for circle co-op */
+  /** M10 finale: draw a magenta tint on every cell in
+   *  `playerBuildableCells` so the player sees their build zones at
+   *  a glance. Cheap one-time draw at scene init — the set is static
+   *  for the entire mission. */
+  private drawPlayerBuildableZones(): void {
+    if (this._playerBuildableSet.size === 0) return;
+    const g = this.add.graphics().setDepth(0.5);
+    const color = 0xff44dd; // magenta
+    g.fillStyle(color, 0.18);
+    g.lineStyle(1, color, 0.4);
+    for (const key of this._playerBuildableSet) {
+      const [c, r] = key.split(',').map(Number);
+      g.fillRect(gridLeftX(c), gridY(r) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+      g.strokeRect(gridLeftX(c), gridY(r) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+    }
+  }
+
   private drawCircleZones(): void {
     if (!this.circle) return;
     const zoneMapDef = this.getMapDef();

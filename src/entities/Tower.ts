@@ -131,6 +131,25 @@ export class Tower {
    *  while > 0, fire logic is skipped and a stunned overlay draws. */
   _disabledRemaining: number = 0;
 
+  /** M10 finale: tower destructibility. Default undefined = invincible
+   *  (every existing mission). Set true on M10 CPU defender towers via
+   *  the `destructibleTowers` map field; the hero attacks them and they
+   *  die when hp hits 0. Player towers (mana drains) stay invincible. */
+  destructible?: boolean;
+  hp?: number;
+  maxHp?: number;
+  /** Whether this tower is the M10 Ult tower. Triggers ult_finale phase
+   *  callbacks at HP thresholds. */
+  isUlt?: boolean;
+  /** Last time the tower took damage (scene.time.now). Drives a brief
+   *  white-flash on the sprite. */
+  _lastHitAt: number = 0;
+  /** One-shot phase markers for the Ult tower: 50% / 25% / 10% HP
+   *  thresholds. Each fires at most once. FinaleController polls. */
+  _ultPhase50Fired: boolean = false;
+  _ultPhase25Fired: boolean = false;
+  _ultPhase10Fired: boolean = false;
+
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
@@ -295,10 +314,67 @@ export class Tower {
       this.graphics.lineStyle(1, 0xff44ff, 0.2); // magenta
       this.graphics.strokeCircle(this.x, this.y, this.range);
     }
+
+    // M10 finale: HP bar above destructible CPU towers. Default
+    // undefined for every other mission so this is a free no-op.
+    if (this.destructible && this.maxHp !== undefined && this.hp !== undefined && this.maxHp > 0) {
+      const ratio = Math.max(0, Math.min(1, this.hp / this.maxHp));
+      const w = TILE_SIZE * 0.9;
+      const h = 4;
+      const x = this.x - w / 2;
+      const y = this.y - TILE_SIZE * 0.55;
+      // Background
+      this.graphics.fillStyle(0x000000, 0.6);
+      this.graphics.fillRect(x - 1, y - 1, w + 2, h + 2);
+      // Fill — color shifts red as HP drops
+      const fillColor = ratio > 0.5 ? 0xff5544 : ratio > 0.25 ? 0xffaa44 : 0xff2222;
+      this.graphics.fillStyle(fillColor, 1);
+      this.graphics.fillRect(x, y, w * ratio, h);
+      // Ult tower gets a special golden border so the player knows
+      // which one is the win-target.
+      if (this.isUlt) {
+        this.graphics.lineStyle(1, 0xffdd44, 1);
+        this.graphics.strokeRect(x - 1, y - 1, w + 2, h + 2);
+      }
+    }
+
+    // White-flash on damage (50ms after _lastHitAt). Cheap visual cue
+    // that the tower is being attacked. Sprite tint reverts the next
+    // frame because drawTower runs every tick.
+    if (this.destructible && this.sprite && this._lastHitAt > 0) {
+      const now = (this._scene as { time?: { now: number } }).time?.now ?? 0;
+      if (now - this._lastHitAt < 80) {
+        // setTintFill replaces sprite color (vs setTint which multiplies);
+        // headless stub doesn't accept args reliably so guard.
+        const s = this.sprite as { setTintFill?: (c: number) => void };
+        if (typeof s.setTintFill === 'function') s.setTintFill(0xffffff);
+      }
+    }
   }
 
   canUpgrade(): boolean {
     return this._remainingUpgrades.length > 0;
+  }
+
+  /** M10 finale: apply damage. No-op on non-destructible towers (the
+   *  vast majority — every player tower in every existing mission).
+   *  Returns true on the killing blow so the caller (Hero) can grant
+   *  rewards exactly once. _lastHitAt is set so drawTower can render
+   *  a brief white-flash on the sprite. */
+  takeDamage(amount: number): boolean {
+    if (!this.destructible || this.hp === undefined) return false;
+    if (this.hp <= 0) return false; // already dead this frame
+    this.hp -= amount;
+    this._lastHitAt = (this._scene as { time?: { now: number } }).time?.now ?? 0;
+    if (this.hp <= 0) {
+      this.hp = 0;
+      // Mark for cleanup. TowerManager.cleanupExpired() picks this up
+      // next frame and removes the tower from the grid + sprite +
+      // recalculates paths (handled in cleanupExpired for destructibles).
+      (this as { _expired?: boolean })._expired = true;
+      return true;
+    }
+    return false;
   }
 
   /** Cost of the DEFAULT next upgrade. Back-compat for code that
