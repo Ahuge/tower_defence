@@ -82,6 +82,35 @@ export class StandardDeathHandler implements DeathHandler {
   }
 }
 
+/** Attacker mode death handler: every kill funds the CPU defender's
+ *  treasury (which auto-spends on tower upgrades). The player's
+ *  economy is not credited — the player's "win" is leaks, not kills. */
+export class AttackerDeathHandler implements DeathHandler {
+  private economy: EconomyManager;  // for reading the kill-gold curve
+  private statsTracker: StatsTracker;
+  private eventBus: EventBus;
+  private addToDefenderTreasury: (amount: number) => void;
+
+  constructor(
+    economy: EconomyManager,
+    statsTracker: StatsTracker,
+    eventBus: EventBus,
+    addToDefenderTreasury: (amount: number) => void,
+  ) {
+    this.economy = economy;
+    this.statsTracker = statsTracker;
+    this.eventBus = eventBus;
+    this.addToDefenderTreasury = addToDefenderTreasury;
+  }
+
+  onCreepKilled(_creep: Creep): void {
+    const killGold = this.economy.getKillGold();
+    this.addToDefenderTreasury(killGold);
+    this.eventBus.emit('creepKilled', 0, 0); // 0 to player
+    this.statsTracker.recordKill();
+  }
+}
+
 export interface LeakResult {
   totalLeakDamage: number;
   leakCount: number;

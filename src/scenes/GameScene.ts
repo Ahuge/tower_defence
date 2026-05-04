@@ -47,7 +47,7 @@ import { EventLog } from '../ui/EventLog';
 import { UpcomingWaves } from '../ui/UpcomingWaves';
 import { StatsTracker } from '../systems/StatsTracker';
 import { TowerManager } from '../systems/TowerManager';
-import { CreepManager, StandardLeakHandler, StandardDeathHandler } from '../systems/CreepManager';
+import { CreepManager, StandardLeakHandler, StandardDeathHandler, AttackerDeathHandler } from '../systems/CreepManager';
 import { WaveController } from '../systems/WaveController';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SkinManager } from '../systems/monetization/SkinManager';
@@ -347,6 +347,15 @@ export class GameScene extends Phaser.Scene {
    *  ignored otherwise. */
   private _missionSendsBought = 0;
   private _missionHeroHpMinFraction = 1;
+  /** Attacker mode: gold from creep kills routed to the defender's
+   *  treasury, spent automatically on upgrading their pre-placed
+   *  towers. Adaptive defense — the longer the player struggles, the
+   *  stronger the defense gets. */
+  private _attackerDefenderGold = 0;
+  /** One-shot latch — instant victory when leak threshold hits, no
+   *  matter how many waves remain. Existing wave-end loss path still
+   *  fires for the defender-held case. */
+  private _attackerInstantWinFired = false;
 
   init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number }): void {
     this.matchMode = data.mode || 'standard';
@@ -986,12 +995,17 @@ export class GameScene extends Phaser.Scene {
     // through the constructor chain.
     this.circleDeathHandler = circleDeathHandler;
     const deathHandler = circleDeathHandler
-      ?? new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
+      ?? (this.matchMode === 'attacker'
+        ? new AttackerDeathHandler(
+            this.economy, this.statsTracker, this.eventBus,
+            (amount) => this.addAttackerDefenderGold(amount),
+          )
+        : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
           // Mission killGoldMult wins over modifier and Hero Defense
           // defaults — used by speedrun-style missions to blunt
           // income so the player relies on the bumped goldStart.
           this._missionKillGoldMult
-            ?? (this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1)));
+            ?? (this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1))));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
     // Shared procedural overlay for all creeps (HP bars, shadows,
     // status rings). Replaces the previous per-creep Graphics — 1
@@ -2636,6 +2650,21 @@ export class GameScene extends Phaser.Scene {
         leaks: this.statsTracker.stats.creepsLeaked,
         threshold: ATTACKER_LEAK_THRESHOLD_DEFAULT,
       });
+      // Instant victory the moment leak threshold hits — don't make
+      // the player sit through remaining waves once they've already
+      // won. Existing post-wave-clear check stays as the loss-path
+      // gate (defender held = lives → 0 → defeat).
+      if (this.statsTracker.stats.creepsLeaked >= ATTACKER_LEAK_THRESHOLD_DEFAULT
+          && !this._attackerInstantWinFired) {
+        this._attackerInstantWinFired = true;
+        this.eventLog.gameMessage(`Relay breached — ${this.statsTracker.stats.creepsLeaked} raiders through.`);
+        this.goToGameOver(true);
+        return;
+      }
+      // CPU defender economy: each frame, see if the defender treasury
+      // can afford to upgrade the lowest-tier alive non-mobile tower.
+      // Treasury accumulates from kills routed via the AttackerDeathHandler.
+      this.tickAttackerDefenderUpgrades();
     }
     // Plan 14 v2: push the in-mission objective tracker state. Built
     // from a hypothetical "if I won right now" MissionResult so each
@@ -3736,6 +3765,48 @@ export class GameScene extends Phaser.Scene {
 
   startWave(): void {
     this.waveMgr.startWave(this.allPaths);
+  }
+
+  /** Add to the attacker mode's defender treasury. Called by the
+   *  attacker-mode death handler when a defender tower kills a
+   *  creep — routes the kill gold to the CPU defender instead of
+   *  the player's economy. The treasury then auto-spends on
+   *  upgrades via tickAttackerDefenderUpgrades. */
+  addAttackerDefenderGold(amount: number): void {
+    this._attackerDefenderGold += amount;
+  }
+
+  /** Spend defender treasury on tower upgrades. Called every frame
+   *  while in attacker mode. Picks the lowest-current-level
+   *  upgradeable tower whose next upgrade is affordable, upgrades it
+   *  along the default path. Throttled to one upgrade per ~1.5s of
+   *  game time so the player can SEE the defender adapting rather
+   *  than watching all 14 towers level up in the same frame. */
+  private _attackerLastUpgradeAt = 0;
+  private tickAttackerDefenderUpgrades(): void {
+    const now = this.time.now;
+    if (now - this._attackerLastUpgradeAt < 1500) return;
+    if (this._attackerDefenderGold <= 0) return;
+
+    // Find the lowest-level upgradeable tower whose next upgrade fits
+    // the budget. Walls and mobile units are excluded — only static
+    // damage towers level up.
+    let pick: { tower: import('../entities/Tower').Tower; cost: number } | null = null;
+    for (const t of this._towers) {
+      if ((t as { _expired?: boolean })._expired || t.isMobile) continue;
+      if (!t.canUpgrade()) continue;
+      const cost = t.getUpgradeCost();
+      if (cost <= 0 || cost > this._attackerDefenderGold) continue;
+      if (!pick || t.level < pick.tower.level) {
+        pick = { tower: t, cost };
+      }
+    }
+    if (!pick) return;
+
+    this._attackerDefenderGold -= pick.cost;
+    pick.tower.upgrade(null);
+    this._attackerLastUpgradeAt = now;
+    this.eventLog.gameMessage(`Defender reinforced ${pick.tower.typeDef.name} → L${pick.tower.level}`);
   }
 
   /** Called by WaveController when a wave clears */

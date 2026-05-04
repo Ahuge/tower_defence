@@ -471,19 +471,21 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       idx: 7,
       name: 'Breach the Relay',
       story:
-        "Their meteor relay funnels every spell through one fortified corridor. Their towers are dug in; " +
-        "ours are not coming. We send raiders ourselves — get enough through and the relay falls.\n\n" +
-        "Briarroot served well, but the druid says the brambles fade in the cabal's anti-magic fields. The Forge " +
-        "has refined her work into Mana Drain — same interrupt, more punch, drains shields off the cabal's heaviest.",
+        "Their meteor relay funnels every spell through one fortified corridor. Their towers are dug in; ours are " +
+        "not coming. We send raiders ourselves — five through the corridor and the relay's defenders break.\n\n" +
+        "The defenders don't sit still. Every raider they cut down funds another emplacement on the line. Move fast.",
       archetype: 'attacker',
       overrides: {
         faction: 'coalition',
         mapId: 'attacker_assault',
         difficulty: 'normal',
         waveCount: 10,
-        // M8: Briarroot → Mana Drain. Final 1:1 swap.
+        // M8 doesn't grant a tower unlock — the player isn't placing
+        // towers in attacker mode anyway. Mana Drain unlock moved to M9.
+        // Kit is the M7-end state (Briarroot still last) for narrative
+        // consistency if the player checks the bar.
         restrictions: {
-          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'arcane_drain'],
+          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'coalition_root'],
         },
       },
       objectives: {
@@ -506,15 +508,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       story:
         "A neighbouring hold sent reinforcements but they're green — you train them in the field. " +
         "Two fronts, two defenders. Cover for each other.\n\n" +
-        "From the captured archmage's library: Meteor. The Forge studied the cast for weeks. The drum platforms " +
-        "are ready. Save the cooldown for the heaviest.",
+        "Briarroot served well, but the druid says the brambles fade in the cabal's anti-magic fields. The Forge " +
+        "has refined her work into Mana Drain — same interrupt, more punch, drains shields off the heaviest. " +
+        "And from the captured archmage's library, Meteor. The drum platforms are ready. Save the cooldown for " +
+        "what matters.",
       archetype: 'coop_with_bot',
       overrides: {
         faction: 'coalition',
         mapId: 'circle_2p',
         difficulty: 'normal',
         waveCount: 15,
-        // M9: + Meteor (ult slot).
+        // M9: Briarroot → Mana Drain (deferred from M8) AND + Meteor.
+        // Two unlocks at once because M8 doesn't grant towers (attacker
+        // mode), and the campaign progression needs to land somewhere.
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'arcane_drain', 'arcane_meteor'],
         },
