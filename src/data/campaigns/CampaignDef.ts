@@ -194,6 +194,22 @@ export interface MissionOverrides {
    *  applies. Strategic axis: forces player composition rotation
    *  across the run. */
   attackerPrepOrder?: string[];
+  // ─── Plan 12 v2 economy v3 ────────────────────────────────────
+  /** Additive income growth per wave: wave-N cap = base + growth × (N-1).
+   *  0 = flat budget every wave (legacy behaviour). */
+  attackerEssenceGrowthPerWave?: number;
+  /** Carryover cap as a multiple of the current wave's income. 0 =
+   *  unspent essence is wasted (default). 2 = up to 2× this wave's
+   *  income can roll over from saving. */
+  attackerEssenceCarryoverMult?: number;
+  /** Max Reinforcement Camps the player can build this mission.
+   *  0 = camps disabled (default — UI hides the row). */
+  attackerCampMax?: number;
+  /** Essence cost to build one camp. Default 50. */
+  attackerCampCost?: number;
+  /** Permanent income each camp adds to every subsequent wave's
+   *  income cap. Default 15. */
+  attackerCampIncome?: number;
 }
 
 /** The 10-mission campaign. */

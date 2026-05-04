@@ -1,18 +1,24 @@
 /**
  * AttackerComposer — per-wave creep-pick state for attacker missions
- * (Plan 12 v2 Phase 1 + Phase 2).
+ * (Plan 12 v2 Phases 1, 2, 2.5, 3 — economy v3).
  *
- * Holds the player's current pre-wave picks, the essence budget, the
- * ability cooldowns, the queued abilities for the next wave, and the
- * Anti-magic Wagon count. Pre-wave UI (AttackerComposerOverlay) reads
- * + mutates this state via the methods below. When the player clicks
- * "Send Wave", GameScene reads the locked picks + queued abilities,
- * builds a WaveDefinition via AttackerWaveBuilder, dispatches the
- * abilities through AttackerAbilities, and starts the wave.
+ * Holds the player's picks, ability cooldowns, wagon count, persistent
+ * Reinforcement Camps, and the carryover-aware essence budget. The
+ * composer is the single source of truth for the pre-wave UI; the
+ * scene reads `lockedPicks()` / `queuedAbilities()` / state.wagon /
+ * state.camps and dispatches everything at Send Wave time.
+ *
+ * Economy v3 additions:
+ *  - **Carryover** — unspent essence rolls forward, capped at
+ *    `economy.maxCarryoverMult × this wave's income cap`.
+ *  - **Income growth** — each wave's income cap = baseBudget +
+ *    growthPerWave × (waveNum-1) + camps × campIncomePerWave.
+ *  - **Reinforcement Camps** — one-time essence-spend that adds
+ *    permanent income. Persists across waves; resetForWave does NOT
+ *    clear them.
  *
  * One Composer instance per scene. Stored on GameScene as
- * `attackerComposer`. Re-initializes per wave (essence + queue
- * refresh; cooldowns tick down).
+ * `attackerComposer`. resetForWave runs between waves.
  */
 import type { AttackerPalette, AttackerPaletteEntry } from '../../data/AttackerPalettes';
 import type { AttackerAbilityDef } from '../../data/AttackerAbilityDefs';
@@ -32,55 +38,120 @@ export interface AttackerAbilitySlot {
 }
 
 /** Anti-magic Wagon: pre-wave essence-spend that grants the first N
- *  spawned creeps a 2-hit shield. v2 prototype: same essence pool as
- *  picks; UI is a simple 0..max counter. */
+ *  spawned creeps a 2-hit shield. Resets per wave. */
 export interface AttackerWagonState {
-  /** How many wagons are currently bought for this wave (0..max). */
   count: number;
-  /** Max wagons per wave. Default 2. */
   max: number;
-  /** Essence cost per wagon. Default 25. */
   costPerWagon: number;
 }
 
+/** Reinforcement Camps — permanent income buildings. Each camp costs
+ *  `costPerCamp` essence (one-time, paid out of the current wave's
+ *  budget) and adds `incomePerWave` to every subsequent wave's income
+ *  cap. PERSIST across waves — resetForWave does NOT reset count. */
+export interface AttackerCampState {
+  count: number;
+  max: number;
+  costPerCamp: number;
+  incomePerWave: number;
+}
+
+/** Economy v3 config — per-mission tuning of the income curve. */
+export interface AttackerEconomyConfig {
+  /** Wave-1 income cap (before camps + carryover). */
+  baseBudget: number;
+  /** How much the income cap grows per wave (additive). 0 = flat. */
+  growthPerWave: number;
+  /** Carryover cap as a multiple of the current wave's income. 0 = no
+   *  carryover, 2.0 = up to 2× this wave's income can roll over. */
+  maxCarryoverMult: number;
+  /** Reinforcement Camps config. Set max=0 to disable. */
+  camps: { costPerCamp: number; incomePerWave: number; max: number };
+  /** Wagon config (existing). */
+  wagon: { costPerWagon: number; max: number };
+}
+
+/** Default economy — used when callers pass a number budget for
+ *  back-compat with the v1/v2 constructor signature. */
+const LEGACY_DEFAULTS = {
+  growthPerWave: 0,
+  maxCarryoverMult: 0,
+  camps: { costPerCamp: 50, incomePerWave: 15, max: 0 },
+  wagon: { costPerWagon: 25, max: 2 },
+};
+
 export interface ComposerState {
-  /** Picks indexed by creep type id. count: 0 means not picked. */
   picks: Map<string, AttackerPick>;
-  /** Essence remaining after current picks + abilities + wagons are
-   *  subtracted. */
+  /** Essence remaining after current picks + wagons + camps purchased
+   *  this wave. */
   remainingEssence: number;
-  /** Total essence available this wave. */
+  /** Total available this wave: thisWaveIncome + carryover. */
   budget: number;
-  /** Ability slots — UI tray reads these. */
+  /** Carryover from the previous wave's leftover. UI displays this
+   *  separately so the player understands where their money came from. */
+  carryover: number;
+  /** This wave's income cap (excluding carryover): baseBudget +
+   *  growth + camps. UI shows it as the "income" line. */
+  thisWaveIncome: number;
   abilities: AttackerAbilitySlot[];
-  /** Wagon spend state. */
   wagon: AttackerWagonState;
+  camps: AttackerCampState;
+  /** 1-indexed wave number this composer is currently composing for.
+   *  resetForWave bumps it. */
+  waveNum: number;
 }
 
 export class AttackerComposer {
   private palette: AttackerPalette;
-  private budget: number;
+  private economy: AttackerEconomyConfig;
   private state: ComposerState;
   private listeners: Set<(state: ComposerState) => void> = new Set();
+  /** Snapshot of camp count at the start of this wave — anchored by
+   *  resetForWave / constructor. Used by totalCost to charge only
+   *  freshly-built camps against the current wave's budget. */
+  private _campsAtWaveStart: number = 0;
 
-  constructor(palette: AttackerPalette, budget: number, abilities: AttackerAbilityDef[] = []) {
+  constructor(
+    palette: AttackerPalette,
+    budgetOrConfig: number | AttackerEconomyConfig,
+    abilities: AttackerAbilityDef[] = [],
+  ) {
     this.palette = palette;
-    this.budget = budget;
+    this.economy = typeof budgetOrConfig === 'number'
+      ? { baseBudget: budgetOrConfig, ...LEGACY_DEFAULTS }
+      : budgetOrConfig;
+    const cfg = this.economy;
     this.state = {
       picks: new Map(),
-      remainingEssence: budget,
-      budget,
+      remainingEssence: cfg.baseBudget,
+      budget: cfg.baseBudget,
+      carryover: 0,
+      thisWaveIncome: cfg.baseBudget,
       abilities: abilities.map(def => ({ def, cooldownRemaining: 0, queued: false })),
-      wagon: { count: 0, max: 2, costPerWagon: 25 },
+      wagon: { count: 0, max: cfg.wagon.max, costPerWagon: cfg.wagon.costPerWagon },
+      camps: { count: 0, max: cfg.camps.max, costPerCamp: cfg.camps.costPerCamp, incomePerWave: cfg.camps.incomePerWave },
+      waveNum: 1,
     };
   }
 
-  /** Reset the composer for a new wave. Called between waves so the
-   *  player starts each wave with a clean pick slate. Cooldowns tick
-   *  down by 1 (with a floor of 0). Queued ability flags clear. Wagon
-   *  count resets. */
-  resetForWave(budget: number): void {
-    this.budget = budget;
+  /** Reset the composer for a new wave. Picks + wagons clear; camps
+   *  PERSIST. Cooldowns tick down. Carryover from this wave's
+   *  remaining essence rolls into the next wave's pool, capped by
+   *  economy.maxCarryoverMult × the new income cap.
+   *
+   *  `nextWaveNum` is 1-indexed (the wave the composer is now setting
+   *  up for, not the one that just cleared). */
+  resetForWave(nextWaveNum: number): void {
+    const cfg = this.economy;
+    const camps = this.state.camps;
+    const thisWaveIncome = cfg.baseBudget
+      + cfg.growthPerWave * (nextWaveNum - 1)
+      + camps.count * camps.incomePerWave;
+    const carryover = Math.min(
+      Math.max(0, this.state.remainingEssence),
+      thisWaveIncome * cfg.maxCarryoverMult,
+    );
+    const budget = thisWaveIncome + carryover;
     for (const ab of this.state.abilities) {
       ab.cooldownRemaining = Math.max(0, ab.cooldownRemaining - 1);
       ab.queued = false;
@@ -89,15 +160,21 @@ export class AttackerComposer {
       picks: new Map(),
       remainingEssence: budget,
       budget,
+      carryover,
+      thisWaveIncome,
       abilities: this.state.abilities,
-      wagon: { count: 0, max: this.state.wagon.max, costPerWagon: this.state.wagon.costPerWagon },
+      wagon: { count: 0, max: cfg.wagon.max, costPerWagon: cfg.wagon.costPerWagon },
+      camps: { ...camps }, // persist
+      waveNum: nextWaveNum,
     };
+    // Anchor camps-paid-for so further adjustCamps charges only the
+    // delta against this wave's budget.
+    this._campsAtWaveStart = camps.count;
     this.notify();
   }
 
   /** Increment count for a creep type by `delta` (can be negative).
-   *  Clamps to budget — refuses to add a creep that wouldn't fit.
-   *  Refuses to go below 0. Returns true if the change applied. */
+   *  Refuses if the next state wouldn't fit the budget. */
   adjust(creepTypeId: string, delta: number): boolean {
     const entry = this.palette.entries.find(e => e.creepType === creepTypeId);
     if (!entry) return false;
@@ -106,20 +183,19 @@ export class AttackerComposer {
     if (next < 0) return false;
     const newSpend = next * entry.cost;
     const otherSpend = this.totalCost() - current * entry.cost;
-    if (otherSpend + newSpend > this.budget) return false;
+    if (otherSpend + newSpend > this.state.budget) return false;
     if (next === 0) {
       this.state.picks.delete(creepTypeId);
     } else {
       this.state.picks.set(creepTypeId, { entry, count: next });
     }
-    this.state.remainingEssence = this.budget - this.totalCost();
+    this.state.remainingEssence = this.state.budget - this.totalCost();
     this.notify();
     return true;
   }
 
   /** Toggle whether an ability is queued for the next Send. Refuses
-   *  if the ability is on cooldown. Returns true if the toggle
-   *  applied. Abilities don't cost essence — only cooldown. */
+   *  if the ability is on cooldown. */
   toggleAbility(abilityId: string): boolean {
     const slot = this.state.abilities.find(a => a.def.id === abilityId);
     if (!slot) return false;
@@ -129,26 +205,39 @@ export class AttackerComposer {
     return true;
   }
 
-  /** Adjust the wagon count by `delta` (typically +1 / -1). Costs
-   *  `wagon.costPerWagon` essence per wagon, capped at wagon.max.
-   *  Refuses if budget can't fit. Returns true if the change applied. */
+  /** Adjust the wagon count by ±1 within budget + max. */
   adjustWagon(delta: number): boolean {
     const next = this.state.wagon.count + delta;
     if (next < 0) return false;
     if (next > this.state.wagon.max) return false;
-    const wagonSpendBefore = this.state.wagon.count * this.state.wagon.costPerWagon;
-    const wagonSpendAfter = next * this.state.wagon.costPerWagon;
-    const projected = this.totalCost() - wagonSpendBefore + wagonSpendAfter;
-    if (projected > this.budget) return false;
+    const before = this.state.wagon.count * this.state.wagon.costPerWagon;
+    const after = next * this.state.wagon.costPerWagon;
+    const projected = this.totalCost() - before + after;
+    if (projected > this.state.budget) return false;
     this.state.wagon.count = next;
-    this.state.remainingEssence = this.budget - this.totalCost();
+    this.state.remainingEssence = this.state.budget - this.totalCost();
     this.notify();
     return true;
   }
 
-  /** Mark queued abilities as cast — sets their cooldown and clears
-   *  the queued flag. Called by GameScene at Send Wave time AFTER the
-   *  effects have dispatched. */
+  /** Adjust the camp count by ±1. Camps persist across waves and are
+   *  irreversible — once you build one you can't refund it (delta=-1
+   *  is rejected here so the UI can't accidentally roll it back). */
+  adjustCamps(delta: number): boolean {
+    if (delta <= 0) return false;
+    const next = this.state.camps.count + delta;
+    if (next > this.state.camps.max) return false;
+    const before = this.state.camps.count * this.state.camps.costPerCamp;
+    const after = next * this.state.camps.costPerCamp;
+    const projected = this.totalCost() - before + after;
+    if (projected > this.state.budget) return false;
+    this.state.camps.count = next;
+    this.state.remainingEssence = this.state.budget - this.totalCost();
+    this.notify();
+    return true;
+  }
+
+  /** Mark queued abilities as cast — sets cooldown + clears queued. */
   commitQueuedAbilities(): void {
     for (const ab of this.state.abilities) {
       if (ab.queued) {
@@ -159,21 +248,17 @@ export class AttackerComposer {
     this.notify();
   }
 
-  /** Snapshot of currently-queued abilities. GameScene dispatches
-   *  these at startWave time so the wave inherits the buffs. */
   queuedAbilities(): AttackerAbilitySlot[] {
     return this.state.abilities.filter(a => a.queued);
   }
 
-  /** Clear all picks. Cooldowns + queued abilities + wagons unaffected. */
+  /** Clear picks (not wagons / camps / abilities). */
   clear(): void {
     this.state.picks.clear();
-    this.state.remainingEssence = this.budget - this.totalCost();
+    this.state.remainingEssence = this.state.budget - this.totalCost();
     this.notify();
   }
 
-  /** Snapshot of locked picks for the current wave — used by
-   *  AttackerWaveBuilder to construct the actual WaveDefinition. */
   lockedPicks(): AttackerPick[] {
     return [...this.state.picks.values()];
   }
@@ -182,26 +267,29 @@ export class AttackerComposer {
     return this.state;
   }
 
-  /** True if at least one creep is picked. UI uses this to enable/
-   *  disable the Send-Wave button (no point sending an empty wave). */
   hasAnyPicks(): boolean {
     return this.state.picks.size > 0;
   }
 
-  /** Subscribe to state changes. UI calls this to re-render. */
   subscribe(fn: (state: ComposerState) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
 
-  /** Total essence currently spent — picks + wagons. Abilities are
-   *  cooldown-gated, not essence-priced. */
+  /** Total essence committed this wave: picks + wagons + camps just
+   *  bought. (Camps already built in earlier waves don't count — they
+   *  were paid for then.) */
   private totalCost(): number {
     let total = 0;
     for (const pick of this.state.picks.values()) {
       total += pick.entry.cost * pick.count;
     }
     total += this.state.wagon.count * this.state.wagon.costPerWagon;
+    // Camps cost is the *new* camps charged against this wave's
+    // budget. We track it via a `_campsAtWaveStart` snapshot so we
+    // know how many were paid for in prior waves vs this one.
+    const newCamps = this.state.camps.count - this._campsAtWaveStart;
+    total += newCamps * this.state.camps.costPerCamp;
     return total;
   }
 

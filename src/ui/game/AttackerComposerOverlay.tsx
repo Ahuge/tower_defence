@@ -19,9 +19,10 @@ export function AttackerComposerOverlay() {
   const composer = useGameUISelector(s => s.attackerComposer);
   if (!composer) return null;
 
-  const { entries, spent, budget, waveNum, canSend, abilities, wagon, prep } = composer;
+  const { entries, spent, budget, waveNum, canSend, abilities, wagon, camps, carryover, thisWaveIncome, prep } = composer;
   const remaining = budget - spent;
   const wagonAffordOne = remaining >= wagon.costPerWagon;
+  const campAffordOne = remaining >= camps.costPerCamp;
   const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
   const isPhone = ResponsiveManager.isPhone();
 
@@ -67,6 +68,26 @@ export function AttackerComposerOverlay() {
             {spent}/{budget} ess
           </span>
         </div>
+        {/* Income breakdown — only meaningful when carryover or camps
+            are in play. Helps the player understand WHERE their budget
+            came from this wave. Hidden on flat-budget missions. */}
+        {(carryover > 0 || camps.max > 0) && (
+          <div style={{
+            fontSize: '9px', color: 'var(--text-dim)',
+            marginBottom: '3px',
+            display: 'flex', justifyContent: 'space-between',
+          }}>
+            <span>income {Math.round(thisWaveIncome)}</span>
+            {carryover > 0 && (
+              <span style={{ color: '#88ddaa' }}>+ saved {Math.round(carryover)}</span>
+            )}
+            {camps.count > 0 && (
+              <span style={{ color: 'var(--jewel-violet)' }}>
+                ({camps.count} camp{camps.count > 1 ? 's' : ''})
+              </span>
+            )}
+          </div>
+        )}
         <div style={{
           height: '4px', background: 'rgba(255,255,255,0.08)',
           borderRadius: '2px', overflow: 'hidden',
@@ -163,6 +184,49 @@ export function AttackerComposerOverlay() {
           );
         })}
       </div>
+
+      {/* Reinforcement Camp — irreversible income investment. Hidden
+          when mission disabled camps (max=0). Persists across waves
+          (state.camps.count rolls forward). */}
+      {camps.max > 0 && (
+        <div
+          title={`Reinforcement Camp — pay ${camps.costPerCamp}e once for +${camps.incomePerWave}e to every future wave's income. Permanent.`}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            marginTop: '6px', padding: '3px 6px',
+            background: camps.count > 0 ? 'rgba(76,200,180,0.15)' : 'rgba(255,255,255,0.03)',
+            border: camps.count > 0 ? '1px solid var(--jewel-teal)' : '1px solid transparent',
+            borderRadius: '3px',
+            minHeight: '28px',
+          }}
+        >
+          <span style={{
+            flex: 1, minWidth: 0,
+            fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            Reinforcement Camp <span style={{ fontSize: '9px', color: 'var(--jewel-teal)', fontWeight: 'normal' }}>+{camps.incomePerWave}/w</span>
+          </span>
+          <span style={{ color: 'var(--gold)', fontSize: '11px' }}>{camps.costPerCamp}e</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <span style={{
+              minWidth: '28px', textAlign: 'center',
+              fontFamily: "'VT323', ui-monospace, monospace",
+              fontSize: '14px', color: camps.count > 0 ? 'var(--jewel-teal)' : 'var(--text-dim)',
+            }}>{camps.count}/{camps.max}</span>
+            <button
+              class="ui-btn"
+              onClick={() => GameUIStore.requestAttackerCampsBuy()}
+              disabled={camps.count >= camps.max || !campAffordOne}
+              style={{
+                width: '46px', height: '22px', padding: 0,
+                fontSize: '10px', lineHeight: '22px',
+                opacity: (camps.count >= camps.max || !campAffordOne) ? 0.3 : 1,
+              }}
+            >Build</button>
+          </div>
+        </div>
+      )}
 
       {/* Anti-magic Wagon spinner — compact single row */}
       <div

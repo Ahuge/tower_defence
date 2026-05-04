@@ -490,7 +490,17 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // Plan 12 v2: per-wave essence the player spends in the
         // composer. 100 essence ≈ 10-20 raiders depending on the mix —
         // see AttackerPalettes.ts for cost tuning.
-        attackerEssencePerWave: 100,
+        // Economy v3 — base income wave 1, ramps each wave. Player
+        // can roll over unspent essence (capped at 2× current
+        // income) and invest in Reinforcement Camps for permanent
+        // bonus income. CPU treasury also scales with wave so
+        // saving forever isn't free.
+        attackerEssencePerWave: 80,             // wave-1 cap
+        attackerEssenceGrowthPerWave: 12,       // +12e/wave: W10 cap = 188
+        attackerEssenceCarryoverMult: 2,        // up to 2× this wave's income rolls over
+        attackerCampMax: 2,                     // build up to 2 camps over the run
+        attackerCampCost: 50,                   // 50e once
+        attackerCampIncome: 15,                 // +15e per camp per wave
         attackerPaletteFaction: 'coalition',
         // Threshold tuned for v2 composer: 12 leaks needed (was 5 in
         // v1 default). At 100e/wave the player can dump ~20 raiders in

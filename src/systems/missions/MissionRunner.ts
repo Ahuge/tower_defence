@@ -121,6 +121,11 @@ class MissionRunnerClass {
       missionAttackerLeakThreshold: merged.attackerLeakThreshold,
       missionAttackerDefenderDifficulty: merged.attackerDefenderDifficulty,
       missionAttackerPrepOrder: merged.attackerPrepOrder,
+      missionAttackerEssenceGrowthPerWave: merged.attackerEssenceGrowthPerWave,
+      missionAttackerEssenceCarryoverMult: merged.attackerEssenceCarryoverMult,
+      missionAttackerCampMax: merged.attackerCampMax,
+      missionAttackerCampCost: merged.attackerCampCost,
+      missionAttackerCampIncome: merged.attackerCampIncome,
       // LoadingScreen briefing — show the mission name + story text
       // there, and gate dismissal on a "Begin" button so the player
       // can read the brief without time pressure.

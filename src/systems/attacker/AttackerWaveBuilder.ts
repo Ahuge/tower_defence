@@ -27,9 +27,13 @@ function speedScaleForWave(waveNum: number): number {
   return 1 + waveNum * 0.02;
 }
 
-/** Spawn interval for a given wave number. Tighter as waves climb. */
+/** Spawn interval for an attacker wave. Much tighter than standard
+ *  waves — attacker creeps need to feel like a charging COLUMN,
+ *  not a thin trickle. 80ms gives a wave of 15 raiders ~1.2s of
+ *  spawn pressure instead of ~9s, so defender splash matters and
+ *  swarm compositions become viable. */
 function spawnIntervalForWave(waveNum: number): number {
-  return Math.max(150, 600 - waveNum * 12);
+  return Math.max(60, 100 - waveNum * 4);
 }
 
 export interface BuildWaveOptions {

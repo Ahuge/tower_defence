@@ -379,6 +379,20 @@ export interface AttackerComposerUIState {
     max: number;
     costPerWagon: number;
   };
+  /** Economy v3 — Reinforcement Camps. Persistent income buildings.
+   *  max=0 hides the row entirely (mission opted out). */
+  camps: {
+    count: number;
+    max: number;
+    costPerCamp: number;
+    incomePerWave: number;
+  };
+  /** Economy v3 — income breakdown for the header. The composer's
+   *  remaining + spent + budget already cover the spend bar; these
+   *  separate fields let the UI show "Carryover N + Income M = budget"
+   *  so the player understands their economy. */
+  carryover: number;
+  thisWaveIncome: number;
   /** Plan 12 v2 Phase 2.5 — defender prep for this wave. Null = no
    *  prep configured for the mission. UI renders the prep label +
    *  description in the composer header. */
@@ -468,6 +482,7 @@ class GameUIStoreClass {
     onAttackerSendWave?: () => void;
     onAttackerAbilityToggle?: (abilityId: string) => void;
     onAttackerWagonAdjust?: (delta: number) => void;
+    onAttackerCampsBuy?: () => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -555,6 +570,10 @@ class GameUIStoreClass {
       && prev.entries.length === next.entries.length
       && prev.entries.every((e, i) => e.count === next.entries[i].count && e.creepType === next.entries[i].creepType && e.prepMult === next.entries[i].prepMult)
       && (prev.prep?.id ?? null) === (next.prep?.id ?? null)
+      && prev.camps.count === next.camps.count
+      && prev.camps.max === next.camps.max
+      && prev.carryover === next.carryover
+      && prev.thisWaveIncome === next.thisWaveIncome
       && prev.abilities.length === next.abilities.length
       && prev.abilities.every((a, i) => a.cooldownRemaining === next.abilities[i].cooldownRemaining && a.queued === next.abilities[i].queued)
       && prev.wagon.count === next.wagon.count
@@ -872,6 +891,11 @@ class GameUIStoreClass {
   /** Plan 12 v2 Phase 2: adjust the wagon count by ±1. */
   requestAttackerWagonAdjust(delta: number): void {
     this.callbacks.onAttackerWagonAdjust?.(delta);
+  }
+
+  /** Economy v3: build a Reinforcement Camp (+1, irreversible). */
+  requestAttackerCampsBuy(): void {
+    this.callbacks.onAttackerCampsBuy?.();
   }
 
   // ─── Subscription ───────────────────────────────────

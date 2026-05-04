@@ -2,6 +2,24 @@
 
 ## 2026-05-04
 
+### Attacker mode economy v3 — temporal pressure + investment loop
+
+After the Defender-Prep playtest the mode still felt static — every wave was a one-shot decision with no consequence carrying forward. Adding a real economy curve so the player has to make timing decisions across the run.
+
+**Four mechanics ship together:**
+
+1. **Reinforcement Camps** — new line item in the composer. 50e once → +15e to every subsequent wave's income, max 2 camps. First-wave question: build a camp (skip offense to compound income) or push hard now? Camps persist across waves; once built they can't be refunded.
+
+2. **Income growth + carryover** — wave-1 income is 80e; each wave's cap rises by 12e (W10 cap = 188e). Unspent essence rolls forward, capped at 2× the current wave's income. Saving for a boss wave is now a real strategy. Composer header shows the breakdown: `income 92 + saved 70 = 162/180`.
+
+3. **CPU treasury wave-scaling** — defender treasury earns +10% per wave the player has been alive (×1.0 W1 → ×2.0 W11). Stalling forever is no longer free; the lattice gets meaner the longer you sit on essence.
+
+4. **Burst spawning** — attacker `spawnInterval` dropped from 150ms floor to 60ms floor. A 15-raider wave now flushes through in ~1s of charging column instead of a 9s trickle. Defender splash and slow towers actually matter; small-creep swarm comps are viable.
+
+**Composer config refactor** — `AttackerComposer` constructor now takes either a number (legacy) or an `AttackerEconomyConfig` object. New mission overrides on `MissionOverrides`: `attackerEssenceGrowthPerWave`, `attackerEssenceCarryoverMult`, `attackerCampMax`, `attackerCampCost`, `attackerCampIncome`. M8 wired with the v3 numbers above.
+
+9 new tests for carryover + camps + economy curve. Total 530 passing.
+
 ### Attacker v2 Phase 2.5: Defender Prep + composer compaction
 
 After M8 first playtest the strategy collapsed into "always send boss + healer + bulwark" because the defender lattice was static. Adding a per-wave **Defender Prep** axis: each wave the defender announces what they're countering, and creeps of that type take a real HP penalty for the wave. Player has to rotate composition every 1-2 waves instead of finding one solved combo.

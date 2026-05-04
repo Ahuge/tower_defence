@@ -383,12 +383,18 @@ export class GameScene extends Phaser.Scene {
   /** Plan 12 v2 Phase 2.5: per-wave defender prep order (ids resolve
    *  through AttackerPreps.ATTACKER_PREPS). Index = waveNum-1. */
   private _missionAttackerPrepOrder?: string[];
+  // Economy v3 mission overrides — see CampaignDef for semantics.
+  private _missionAttackerEssenceGrowthPerWave?: number;
+  private _missionAttackerEssenceCarryoverMult?: number;
+  private _missionAttackerCampMax?: number;
+  private _missionAttackerCampCost?: number;
+  private _missionAttackerCampIncome?: number;
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[] }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -413,6 +419,11 @@ export class GameScene extends Phaser.Scene {
     this._missionAttackerLeakThreshold = data.missionAttackerLeakThreshold;
     this._missionAttackerDefenderDifficulty = data.missionAttackerDefenderDifficulty;
     this._missionAttackerPrepOrder = data.missionAttackerPrepOrder;
+    this._missionAttackerEssenceGrowthPerWave = data.missionAttackerEssenceGrowthPerWave;
+    this._missionAttackerEssenceCarryoverMult = data.missionAttackerEssenceCarryoverMult;
+    this._missionAttackerCampMax = data.missionAttackerCampMax;
+    this._missionAttackerCampCost = data.missionAttackerCampCost;
+    this._missionAttackerCampIncome = data.missionAttackerCampIncome;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -594,6 +605,9 @@ export class GameScene extends Phaser.Scene {
       },
       onAttackerWagonAdjust: (delta: number) => {
         this.attackerComposer?.adjustWagon(delta);
+      },
+      onAttackerCampsBuy: () => {
+        this.attackerComposer?.adjustCamps(+1);
       },
       onAttackerSendWave: () => {
         if (!this.attackerComposer) return;
@@ -1076,7 +1090,17 @@ export class GameScene extends Phaser.Scene {
       if (palette) {
         this.attackerComposer = new AttackerComposer(
           palette,
-          this._missionAttackerEssencePerWave,
+          {
+            baseBudget: this._missionAttackerEssencePerWave,
+            growthPerWave: this._missionAttackerEssenceGrowthPerWave ?? 0,
+            maxCarryoverMult: this._missionAttackerEssenceCarryoverMult ?? 0,
+            camps: {
+              max: this._missionAttackerCampMax ?? 0,
+              costPerCamp: this._missionAttackerCampCost ?? 50,
+              incomePerWave: this._missionAttackerCampIncome ?? 15,
+            },
+            wagon: { max: 2, costPerWagon: 25 },
+          },
           DEFAULT_ATTACKER_ABILITIES,
         );
         this.attackerComposer.subscribe(() => this.pushAttackerComposerSnapshot());
@@ -3942,6 +3966,14 @@ export class GameScene extends Phaser.Scene {
         max: state.wagon.max,
         costPerWagon: state.wagon.costPerWagon,
       },
+      camps: {
+        count: state.camps.count,
+        max: state.camps.max,
+        costPerCamp: state.camps.costPerCamp,
+        incomePerWave: state.camps.incomePerWave,
+      },
+      carryover: state.carryover,
+      thisWaveIncome: state.thisWaveIncome,
       prep: prep ? { id: prep.id, label: prep.label, description: prep.description } : null,
     });
   }
@@ -3951,11 +3983,18 @@ export class GameScene extends Phaser.Scene {
    *  creep — routes the kill gold to the CPU defender instead of
    *  the player's economy. The treasury then auto-spends on
    *  upgrades + socket builds via tickAttackerDefenderUpgrades.
-   *  Difficulty multiplier applied here so the rest of the
-   *  pipeline doesn't need to know. */
+   *  Difficulty + wave-scaling multipliers applied here so the rest
+   *  of the pipeline doesn't need to know.
+   *
+   *  Wave scaling: economy v3 lets the player save / income-invest;
+   *  if the CPU stayed at flat treasury, infinite-saving would
+   *  trivialize late waves. Treasury earns +10% per wave the player
+   *  has stalled, so dawdling has a real cost (×1.0 wave 1 → ×2.0
+   *  wave 11). */
   addAttackerDefenderGold(amount: number): void {
     const cfg = getDifficultyConfig(this._missionAttackerDefenderDifficulty ?? 'normal');
-    this._attackerDefenderGold += amount * cfg.treasuryMult;
+    const waveScale = 1 + 0.1 * Math.max(0, this.currentWave - 1);
+    this._attackerDefenderGold += amount * cfg.treasuryMult * waveScale;
   }
 
   /** Spend defender treasury on tower upgrades or expansion-socket
@@ -4080,7 +4119,11 @@ export class GameScene extends Phaser.Scene {
     // callback, which pushes the snapshot to the DOM overlay.
     if (this.attackerComposer && this._missionAttackerEssencePerWave !== undefined
         && this.currentWave < this.waves.length) {
-      this.attackerComposer.resetForWave(this._missionAttackerEssencePerWave);
+      // Composer maintains its own income curve (base + growth +
+      // camps) and applies carryover from the previous wave's
+      // remaining essence. Pass the upcoming wave number; composer
+      // does the rest.
+      this.attackerComposer.resetForWave(this.currentWave + 1);
     }
 
     // Events + UI
