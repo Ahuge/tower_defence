@@ -1095,6 +1095,19 @@ export class GameScene extends Phaser.Scene {
     // charge, and watches for the win condition. Skipped on every
     // other mission (when finaleRules is undefined).
     if (this._missionFinaleRules && mapDef.summoningCircles && mapDef.destructibleTowers) {
+      // M10 finale: sends walk RIGHT → LEFT (player's home back into
+      // the CPU tower lattice) while wave creeps walk LEFT → RIGHT.
+      // Compute the reversed path once at scene init and feed it to
+      // SendManager so finale sends use it instead of the standard
+      // entry→exit path.
+      if (mapDef.entries[0] && mapDef.exits[0]) {
+        const entry = mapDef.entries[0];
+        const exit = mapDef.exits[0];
+        const reversePath = findPath(this.grid, exit, entry);
+        if (reversePath) {
+          this.sendMgr.setSendPathOverride(reversePath);
+        }
+      }
       this._finaleController = new FinaleController({
         scene: this,
         rules: this._missionFinaleRules,
@@ -2928,6 +2941,22 @@ export class GameScene extends Phaser.Scene {
     // every other mission.
     if (this._finaleController) {
       this._finaleController.update(delta, this._towers, this.creeps);
+      // Push HUD snapshot for the DOM charge bar.
+      const hero = this._finaleController.getHero();
+      const cpuAlive = this._finaleController.getCpuTowers().length;
+      const cpuTotal = (this.getMapDef().destructibleTowers ?? []).length;
+      GameUIStore.setFinaleHud({
+        charge: this._finaleController.getCharge(),
+        heroSummoned: !!hero,
+        heroHp: hero ? {
+          hp: Math.max(0, hero.hp),
+          maxHp: hero.maxHp,
+          alive: hero.alive,
+          respawnIn: (hero as unknown as { respawnTimer: number }).respawnTimer,
+        } : null,
+        cpuTowersRemaining: cpuAlive,
+        cpuTowersTotal: cpuTotal,
+      });
     }
 
     // Spawning + wave clear detection

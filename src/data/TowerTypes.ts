@@ -232,6 +232,20 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { id: 'crit_chance', chance: 0.2, multiplier: 2.0 },
     ],
   }),
+  // ─── M10 Finale Mana Conduit ───────────────────────────────────
+  // A dedicated summoning-feeder. Does NOT attack — its only purpose
+  // is to sit adjacent to a Summoning Circle and contribute to the
+  // shared charge meter. Lets the player keep their full Arcane kit
+  // for actual defense + spend on conduits to summon the hero faster.
+  // Strategic axis: every g spent on a conduit is g not spent on
+  // damage towers, and the conduit MUST be in a magenta zone.
+  arcane_conduit: def({
+    id: 'arcane_conduit', name: 'Mana Conduit',
+    description: 'Channels arcane energy into a Summoning Circle. No attack — sit adjacent to a Circle to charge the summon.',
+    faction: 'arcane', damageType: 'magic', cost: 40, damage: 0, range: 0, fireRate: 999999,
+    color: 0xcc88ff, projectileSpeed: 0, hotkey: '8',
+    traits: [],
+  }),
 
   // ================================================================
   // MECHANICAL (8) — Engineering, burn, pierce, efficiency

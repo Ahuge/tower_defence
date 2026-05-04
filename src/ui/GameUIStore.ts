@@ -324,6 +324,8 @@ export interface GameUIState {
    *  mission is between waves and the player should compose their
    *  next wave; cleared while a wave is in flight. */
   attackerComposer: AttackerComposerUIState | null;
+  /** M10 finale — HUD state for the summoning charge bar + tower count. */
+  finaleHud: FinaleHudState | null;
 }
 
 export interface MissionPanelState {
@@ -397,6 +399,23 @@ export interface AttackerComposerUIState {
    *  prep configured for the mission. UI renders the prep label +
    *  description in the composer header. */
   prep: { id: string; label: string; description: string } | null;
+}
+
+/** M10 finale — DOM HUD state for the charge meter + summon status.
+ *  Pushed each frame from GameScene when FinaleController is active.
+ *  Null on every other mission. */
+export interface FinaleHudState {
+  /** Charge in [0, 1]. UI renders a horizontal progress bar. */
+  charge: number;
+  /** True after the hero has summoned at least once (charge bar
+   *  becomes "ACTIVE" indicator instead of countdown). */
+  heroSummoned: boolean;
+  /** Hero's current HP / maxHP — null until first summon. */
+  heroHp: { hp: number; maxHp: number; alive: boolean; respawnIn: number } | null;
+  /** Count of CPU towers still alive (incl. Ult). */
+  cpuTowersRemaining: number;
+  /** Total CPU towers at scene start (constant). */
+  cpuTowersTotal: number;
 }
 
 export interface ContinueOffer {
@@ -516,7 +535,30 @@ class GameUIStoreClass {
       attackerProgress: null,
       missionPanel: null,
       attackerComposer: null,
+      finaleHud: null,
     };
+  }
+
+  /** M10 finale: push charge + hero state for the DOM HUD. Pass null
+   *  to hide. Skips notify when nothing changed (per-frame pump). */
+  setFinaleHud(next: FinaleHudState | null): void {
+    const prev = this.state.finaleHud;
+    if (prev === next) return;
+    if (prev && next
+      && Math.abs(prev.charge - next.charge) < 0.001
+      && prev.heroSummoned === next.heroSummoned
+      && prev.cpuTowersRemaining === next.cpuTowersRemaining
+      && prev.cpuTowersTotal === next.cpuTowersTotal
+      && (!prev.heroHp) === (!next.heroHp)
+      && (!prev.heroHp || !next.heroHp || (
+        prev.heroHp.hp === next.heroHp.hp
+        && prev.heroHp.alive === next.heroHp.alive
+        && Math.abs(prev.heroHp.respawnIn - next.heroHp.respawnIn) < 0.5
+      ))) {
+      return;
+    }
+    this.state = { ...this.state, finaleHud: next };
+    this.notify();
   }
 
   /** Replace the circle roster snapshot. Shallow-compares each row

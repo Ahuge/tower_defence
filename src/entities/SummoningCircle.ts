@@ -42,15 +42,19 @@ export class SummoningCircle {
     }
   }
 
-  /** Count of adjacent Mana Drain towers — Chebyshev distance ≤ 1 of
+  /** Count of adjacent Mana Conduit towers — Chebyshev distance ≤ 1 of
    *  any of the 2x2 footprint cells. The same tower counted at most
-   *  once even if it sits adjacent to multiple footprint cells. */
+   *  once even if it sits adjacent to multiple footprint cells.
+   *
+   *  Only `arcane_conduit` contributes — the player keeps their full
+   *  Arcane kit (Bolt / Frost / Storm / Mana Drain / Meteor / Nova)
+   *  for actual defense and dedicates conduit placements to summoning. */
   chargeContribution(towers: Tower[]): number {
     let count = 0;
     const seen = new Set<Tower>();
     for (const t of towers) {
       if (seen.has(t)) continue;
-      if (t.typeId !== 'arcane_drain') continue;
+      if (t.typeId !== 'arcane_conduit') continue;
       // Chebyshev distance to closest footprint cell.
       const dc = Math.max(0, Math.abs(t.col - (this.col + 0.5)) - 0.5);
       const dr = Math.max(0, Math.abs(t.row - (this.row + 0.5)) - 0.5);

@@ -694,8 +694,13 @@ export const MAPS: Record<MapId, MapDefinition> = {
       name: 'The Reckoning',
       description: 'Siege the Arcane archmage spire. Charge your summoning circles, summon the mage, destroy the cabal\'s lattice.',
       theme: 'arcane_crystal',
-      entries: [{ col: cols - 1, row: midRow }],
-      exits: [{ col: 0, row: midRow }],
+      // Wave creeps are the cabal's own — they emerge from the spire
+      // (left edge, near the CPU towers) and walk RIGHT toward the
+      // player's home. CPU towers ignore them (same team). Player
+      // sends walk the reverse direction (right→left, into the
+      // tower lattice) and DO get shot at.
+      entries: [{ col: 0, row: midRow }],
+      exits: [{ col: cols - 1, row: midRow }],
       blocked: [...outerWall, ...centerCross],
       noBuild,
       playerBuildableCells,

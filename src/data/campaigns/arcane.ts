@@ -607,11 +607,15 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         mapId: 'arcane_throne_finale',
         difficulty: 'hard',
         waveCount: 999,  // endless until win-by-tower-kill or lives-out
-        // Player can ONLY build the Arcane Mana Drain (the verb of M10).
-        // Coalition Wall explicitly off (noWalls). Other towers blocked
-        // via allowedTowerIds.
+        // Full Arcane kit + the M10-specific Mana Conduit (the dedicated
+        // summoning-feeder). Coalition Wall explicitly off — pure
+        // spellcraft for the climax.
         restrictions: {
-          allowedTowerIds: ['arcane_drain'],
+          allowedTowerIds: [
+            'arcane_bolt', 'arcane_storm', 'arcane_focus', 'arcane_frost',
+            'arcane_drain', 'arcane_meteor', 'arcane_nova',
+            'arcane_conduit',
+          ],
           noWalls: true,
         },
         finaleRules: {

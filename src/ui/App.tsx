@@ -23,6 +23,7 @@ import { LoadingScreen } from './screens/LoadingScreen';
 import { AppLoadingScreen } from './screens/AppLoadingScreen';
 import { GameSidebar } from './game/GameSidebar';
 import { AttackerComposerOverlay } from './game/AttackerComposerOverlay';
+import { FinaleHudDOM } from './game/FinaleHudDOM';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
 import { CircleRosterDOM } from './game/CircleRosterDOM';
@@ -113,6 +114,7 @@ export function App() {
       {!screen && <TowerDockDOM />}
       {!screen && <CircleRosterDOM />}
       {!screen && <AttackerComposerOverlay />}
+      {!screen && <FinaleHudDOM />}
 
       {/* Continue-ad modal — renders only when GameScene offers a revive
           on lives→0. Self-gates on GameUIStore.continueOffer so no-op

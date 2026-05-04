@@ -2,6 +2,25 @@
 
 ## 2026-05-04
 
+### M10 v2 — Mana Conduit tower, full kit, reversed paths, DOM HUD
+
+Four corrections after Phase 1 playtest reveal:
+
+**1. New Mana Conduit tower (`arcane_conduit`).** The summoning circle now charges from a *dedicated* tower instead of co-opting the Mana Drain. Conduits cost 40g, do no damage, exist only to feed the circle. Lets the player keep the full Arcane kit available for actual defense and treat conduits as a deliberate spend.
+
+**2. Full Arcane kit access.** M10's `restrictions.allowedTowerIds` opened up to the entire Arcane kit (Bolt / Frost / Storm / Focus / Mana Drain / Meteor / Nova) plus the new Conduit. Coalition Wall stays explicitly off (`noWalls: true`). Player decides per-cell whether the slot is offense (Bolt etc.) or summon-feed (Conduit).
+
+**3. Reversed path mechanics.** Wave creeps spawn at the LEFT edge (the cabal's own pets, walking past their own towers) and walk RIGHT toward the player's home — CPU towers ignore them. Player sends use a reversed path: spawn at the RIGHT edge (player's home) and walk LEFT into the CPU tower lattice — CPU towers DO target sends, drawing fire away from the hero. SendManager gains `setSendPathOverride(path)`; FinaleController computes the reverse path at scene init via `findPath(exit, entry)`. Tower.findTarget for destructible CPU towers now ignores wave creeps entirely (only sends in range fire targeting; hero is wired separately).
+
+**4. DOM HUD bar.** `GameUIStore.finaleHud` slice + new `FinaleHudDOM` component pinned top-centre. Two rows:
+- **Pre-summon**: lavender→teal "SUMMONING CHARGE" progress bar with percentage + a subtitle prompt explaining what the player needs to do.
+- **Post-summon**: hero name + HP bar (green→amber→red), or "HERO RESPAWN Xs" countdown when dead.
+- **Always**: "CABAL LATTICE: N / TOTAL destroyed" win-progress meter.
+
+Per-frame snapshot push from GameScene; equality check on the setter prevents 60Hz re-renders.
+
+`SummoningCircle.chargeContribution` updated to count `arcane_conduit` instead of `arcane_drain`. Test fixtures updated.
+
 ### M10 The Reckoning: full Arcane finale siege
 
 The vanilla 30-wave standard mode M10 felt boring. Replaced with a unique siege climax:
