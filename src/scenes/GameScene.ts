@@ -2242,15 +2242,16 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       // Empty cell click → move hero (when a hero exists and the
-      // click isn't a creep / build action).
+      // click isn't a creep / build action). Uses FinaleController's
+      // pathfinder so the hero walks around blocked cells instead of
+      // straight-lining into walls.
       if (hero && this.selectionMode !== 'build') {
         const targetX = gridX(col);
         const targetY = gridY(row);
         const clickedCreep = this.findCreepNear(targetX, targetY);
         const clickedPlayerTower = this.towers.find(t => t.col === col && t.row === row);
         if (!clickedCreep && !clickedPlayerTower) {
-          hero.clickedTowerTarget = null; // cancel any prior tower target
-          hero.moveTo(targetX, targetY);
+          this._finaleController.moveHeroTo(col, row);
           return;
         }
       }

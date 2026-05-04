@@ -144,6 +144,12 @@ export class Hero {
   /** M10 finale — count of CPU towers this hero has destroyed. Drives
    *  the "Win without losing the hero" star objective + analytics. */
   towersDestroyed: number = 0;
+  /** M10 finale — pre-computed pixel waypoints the hero walks along.
+   *  Replaces straight-line moveTarget walking when set, so the hero
+   *  pathfinds around blocked cells instead of getting stuck on walls.
+   *  FinaleController computes via findPath when the player issues a
+   *  move command or sets a tower target. */
+  pathWaypoints: { x: number; y: number }[] | null = null;
 
   static readonly RESPAWN_TIME = 10; // seconds
 
@@ -394,8 +400,34 @@ export class Hero {
       return;
     }
 
-    // Move towards move target
-    if (this.moveTarget) {
+    // Move along pre-computed waypoint path (M10 finale pathfinding).
+    // Walks toward the next waypoint; advances when reached. Beats the
+    // legacy straight-line move when set so hero doesn't no-clip walls.
+    if (this.pathWaypoints && this.pathWaypoints.length > 0) {
+      const speed = this.getEffectiveSpeed();
+      let remaining = speed * dt;
+      while (remaining > 0 && this.pathWaypoints.length > 0) {
+        const wp = this.pathWaypoints[0];
+        const dx = wp.x - this.x;
+        const dy = wp.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= remaining) {
+          this.x = wp.x;
+          this.y = wp.y;
+          remaining -= dist;
+          this.pathWaypoints.shift();
+        } else {
+          this.x += (dx / dist) * remaining;
+          this.y += (dy / dist) * remaining;
+          remaining = 0;
+        }
+      }
+      if (this.pathWaypoints.length === 0) {
+        this.pathWaypoints = null;
+        this.moveTarget = null;
+      }
+    } else if (this.moveTarget) {
+      // Legacy straight-line move (Hero Defense / non-finale).
       const dx = this.moveTarget.x - this.x;
       const dy = this.moveTarget.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -423,8 +455,10 @@ export class Hero {
     }
 
     // M10 finale — prioritize the player's clicked CPU tower target.
-    // Chase it, attack-cooldown gated. Falls through to creep
-    // auto-attack only when no tower is targeted (or it's dead).
+    // Approach via pathfinding (FinaleController set pathWaypoints),
+    // then attack on cooldown. Straight-line fallback skipped when
+    // worldBounds is set (finale mode) — without a real path the
+    // hero just sits and waits for player to re-click.
     let firedTowerThisFrame = false;
     if (this.clickedTowerTarget) {
       const t = this.clickedTowerTarget as Tower;
@@ -443,8 +477,10 @@ export class Hero {
             this.lastAttackTime = now;
             firedTowerThisFrame = true;
           }
-        } else if (!this.moveTarget) {
-          // Walk toward the tower
+        } else if (!this.worldBounds && !this.moveTarget) {
+          // Legacy non-finale: straight-line walk. Finale path uses
+          // pathWaypoints (handled in the move block above), so this
+          // fallback only fires for old Hero Defense flows.
           const speed = this.getEffectiveSpeed();
           const move = speed * dt;
           this.x += (dx / dist) * move;

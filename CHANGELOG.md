@@ -2,6 +2,20 @@
 
 ## 2026-05-04
 
+### M10 v5 — re-summoning, hero pathfinding, HP redraw, tower projectiles
+
+Five fixes after v4 playtest:
+
+**1. HP bar redraw.** `Tower.runTraitUpdates` `needsRedraw` check excluded destructibles, so HP bars rendered once at construction and never updated. Damage was happening invisibly. Added `this.destructible` to the redraw set so the bar reflects live HP.
+
+**2. Hero re-summoning instead of auto-respawn.** Hero death used to start a 20s respawn timer. Now per user spec: hero death resets the charge meter to 0; the player has to charge again via Conduits to bring the hero back. Hero retains XP / items / level through the cycle (`Hero.respawn()` already preserves all state). `Hero.respawnSeconds` set to `Infinity` at finale construction so the internal timer never fires.
+
+**3. Hero pathfinding.** Hero used to walk straight-line and got stuck on perimeter walls / central arrow-cross. Added `Hero.pathWaypoints: {x,y}[]`. `FinaleController.moveHeroTo / setHeroTowerTarget` now compute a `findPath`-based pixel waypoint list; for tower targets, picks an adjacent walkable cell (the tower's own cell is blocked, so paths can't end on it). Hero walks waypoint-to-waypoint each frame, advancing on arrival. Straight-line fallback gated on `!worldBounds` so non-finale Hero Defense runs unchanged.
+
+**4. CPU tower → hero visual projectiles.** Damage was instant + invisible. Now each fire spawns a colored line from tower to hero (tower color, 3px, alpha 0.9), tweened to 0 alpha over 300ms.
+
+**5. Tower attack mechanism.** With pathfinding fixed and HP bars redrawing, the hero's existing attack-tower path is now end-to-end functional: click tower → FinaleController computes path to adjacent cell → hero walks through the maze → arrives in range → fires `attackTower` on cooldown → tower's HP bar visibly drops. The earlier "hero doesn't attack towers" report was downstream of pathing + HP-bar-not-updating.
+
 ### M10 v4 — CPU towers shoot hero, friendly sends, hero collision, right-click gate
 
 Five fixes after v3 playtest:

@@ -37,6 +37,7 @@ import type { ArenaCreep } from '../../entities/ArenaCreep';
 import type { Creep } from '../../entities/Creep';
 import { gridX, gridY, GRID_COLS, GRID_ROWS, TILE_SIZE, getGridOffsetX, pixelToCol } from '../../config';
 import { Grid, CellType } from '../Grid';
+import { findPath, PathPoint } from '../Pathfinding';
 
 /** Sentinel ownerIndex for CPU defender towers. Distinct from any
  *  player slot (0-3 in circle co-op). Used by Tower.findFinaleTarget
@@ -169,15 +170,36 @@ export class FinaleController {
     // Tick charge from adjacent mana drains across all circles —
     // ONLY while a wave is actively spawning/walking. The player has
     // to commit drains AND survive the wave for the summon to advance.
-    if (!this.firstSpawnDone && waveActive) {
+    //
+    // Per user spec v5b: hero death does NOT trigger an auto-respawn
+    // timer. Instead the charge meter resets to 0 and the player has
+    // to charge it again via conduits. Hero retains XP/items/level
+    // through the cycle (Hero.respawn() preserves all that). Hero's
+    // own respawnSeconds is set to Infinity at construction so its
+    // internal timer never fires.
+    const heroNeedsSummon = !this.hero || !this.hero.alive;
+    if (heroNeedsSummon && waveActive) {
       let totalAdjacent = 0;
       for (const c of this.circles) totalAdjacent += c.chargeContribution(allTowers);
       this.charge = Math.min(1, this.charge + totalAdjacent * this.rules.chargeRatePerDrain * dt);
       if (this.charge >= 1) {
-        this.spawnHero();
-        this.firstSpawnDone = true;
+        if (!this.hero) {
+          this.spawnHero();
+          this.firstSpawnDone = true;
+        } else {
+          // Re-summon: hero keeps its level / items / XP. Anchor + HP
+          // reset via Hero.respawn() (already preserves stats).
+          this.hero.respawn();
+          const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
+          log?.gameMessage?.('The Forge mage answers the call again!');
+        }
+        this.charge = 0;
       }
     }
+    // While the hero is alive, ensure charge stays at 0 between
+    // summons (cosmetic — keeps the bar from showing partial fill
+    // while the mage is on the field).
+    if (this.hero && this.hero.alive) this.charge = 0;
 
     // Render circles.
     for (const c of this.circles) c.draw(this.charge);
@@ -257,15 +279,14 @@ export class FinaleController {
           if (sd < heroDistSq) { sendCloserThanHero = true; break; }
         }
         if (sendCloserThanHero) continue;
-        // Apply hero damage. Use tower's base damage (no projectile —
-        // the existing tower fire pipeline can't render hero projectiles
-        // without further plumbing; instant damage + flash is fine for v1).
+        // Apply hero damage + spawn a brief visual projectile so the
+        // player can see what hit them. Tower color → hero in ~250ms,
+        // then fade out.
         const dmg = t.damage;
-        // Flash the hero sprite + damage number for feedback.
         this.hero.hp = Math.max(0, this.hero.hp - dmg);
-        // Push a damage number above the hero through its pending queue.
         (this.hero as unknown as { pendingDamageNumbers: { x: number; y: number; text: string; color: string; duration: number }[] })
           .pendingDamageNumbers.push({ x: heroX, y: heroY - 24, text: String(dmg), color: '#ff6644', duration: 0.6 });
+        this.spawnHeroProjectile(t, this.hero.x, this.hero.y);
         t.lastFired = now;
         if (this.hero.hp <= 0) this.hero.die();
       }
@@ -357,8 +378,9 @@ export class FinaleController {
     }
   }
 
-  /** Set the player's clicked CPU tower target. FinaleController
-   *  forwards it to the hero's update loop. Pass null to clear. */
+  /** Set the player's clicked CPU tower target. Computes a pathfinder
+   *  route to a cell adjacent to the tower so the hero can walk
+   *  through the maze instead of straight-line phasing into walls. */
   setHeroTowerTarget(tower: Tower | null): void {
     if (!this.hero) return;
     if (tower && (!tower.destructible || (tower as { _expired?: boolean })._expired)) {
@@ -366,6 +388,51 @@ export class FinaleController {
       return;
     }
     this.hero.clickedTowerTarget = tower;
+    if (tower) this.repathHeroTo(tower.col, tower.row, /*adjacent=*/true);
+  }
+
+  /** Player commanded the hero to move to a specific cell. Compute a
+   *  walk path around blocked terrain. */
+  moveHeroTo(col: number, row: number): void {
+    if (!this.hero) return;
+    this.hero.clickedTowerTarget = null;
+    this.repathHeroTo(col, row, /*adjacent=*/false);
+  }
+
+  /** Compute a pixel-waypoint path from the hero's current cell to
+   *  the target. When `adjacent` is true the path stops at any cell
+   *  adjacent to the target — used for tower targets so the hero
+   *  stops outside the tower's footprint and shoots from there. */
+  private repathHeroTo(col: number, row: number, adjacent: boolean): void {
+    if (!this.hero) return;
+    const fromCol = pixelToCol(this.hero.x);
+    const fromRow = Math.round((this.hero.y - TILE_SIZE / 2) / TILE_SIZE);
+    let dest: PathPoint = { col, row };
+    if (adjacent) {
+      // Pick an adjacent walkable cell to stop at — the tower's own
+      // cell isn't pathfindable (it's blocked).
+      const candidates = [
+        { col: col - 1, row }, { col: col + 1, row },
+        { col, row: row - 1 }, { col, row: row + 1 },
+      ];
+      let bestDist = Infinity;
+      for (const c of candidates) {
+        if (c.col < 0 || c.col >= this.grid.cells[0].length) continue;
+        if (c.row < 0 || c.row >= this.grid.cells.length) continue;
+        if (this.grid.cells[c.row][c.col] === CellType.Blocked) continue;
+        const d = Math.abs(c.col - fromCol) + Math.abs(c.row - fromRow);
+        if (d < bestDist) { bestDist = d; dest = c; }
+      }
+    }
+    const path = findPath(this.grid, { col: fromCol, row: fromRow }, dest);
+    if (!path || path.length === 0) {
+      this.hero.pathWaypoints = null;
+      return;
+    }
+    // Convert grid waypoints to pixel coords for the hero. Skip the
+    // first node (current cell) so the hero doesn't backtrack.
+    const px = path.slice(1).map(p => ({ x: gridX(p.col), y: gridY(p.row) }));
+    this.hero.pathWaypoints = px;
   }
 
   /** Lookup helper — does this position correspond to a destructible
@@ -380,6 +447,34 @@ export class FinaleController {
   /** Snapshot of all alive CPU towers. Used by win-check + UI. */
   getCpuTowers(): Tower[] {
     return this.cpuTowers.filter(t => !(t as { _expired?: boolean })._expired && (t.hp ?? 1) > 0);
+  }
+
+  /** Quick visual projectile from a tower to the hero. Used by the
+   *  CPU-tower-attacks-hero pass since the standard Tower.fire path
+   *  is creep-only. Draws a colored line from tower to hero,
+   *  tweens out over 300ms. */
+  private spawnHeroProjectile(tower: Tower, hx: number, hy: number): void {
+    const sceneAdd = (this.scene as { add?: { graphics?: () => Phaser.GameObjects.Graphics } }).add;
+    if (!sceneAdd?.graphics) return;
+    const g = sceneAdd.graphics();
+    g.setDepth(16);
+    g.lineStyle(3, tower.color ?? 0xcc88ff, 0.9);
+    g.beginPath();
+    g.moveTo(tower.x, tower.y);
+    g.lineTo(hx, hy);
+    g.strokePath();
+    const tweens = (this.scene as { tweens?: { add?: (cfg: object) => void } }).tweens;
+    if (tweens?.add) {
+      tweens.add({
+        targets: g,
+        alpha: 0,
+        duration: 300,
+        ease: 'Cubic.easeOut',
+        onComplete: () => g.destroy(),
+      });
+    } else {
+      g.destroy();
+    }
   }
 
   private spawnHero(): void {
@@ -405,9 +500,11 @@ export class FinaleController {
       maxX: getGridOffsetX() + GRID_COLS * TILE_SIZE,
       maxY: GRID_ROWS * TILE_SIZE,
     };
-    if (this.rules.heroRespawnSeconds !== undefined) {
-      hero.respawnSeconds = this.rules.heroRespawnSeconds;
-    }
+    // Block the hero's internal respawn timer — re-summons go through
+    // the charge meter, not a wallclock. Setting respawnSeconds to
+    // Infinity means die() sets respawnTimer to Infinity and the
+    // tick-down in Hero.update never reaches 0.
+    hero.respawnSeconds = Infinity;
     if (this.rules.heroStartingLevel && this.rules.heroStartingLevel > 1) {
       // Pre-level the hero so they have abilities ready on first summon.
       // grantXP cumulative: sum from level 1 → N is `(N-1) * N / 2 * 15`.

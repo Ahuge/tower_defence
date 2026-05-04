@@ -488,8 +488,11 @@ export class Tower {
   runTraitUpdates(ctx: UpdateContext): void {
     resolveTowerUpdates(this.traits, this, ctx);
     cleanupExpiredTraits(this.traits);
-    // Redraw towers with dynamic visuals each frame
-    const needsRedraw = hasTrait(this.traits, 'firewall_link') ||
+    // Redraw towers with dynamic visuals each frame. M10 destructibles
+    // need this to update their HP bar as the hero damages them; if we
+    // skipped redraw the bar would freeze at maxHp until upgrade/death.
+    const needsRedraw = this.destructible ||
+      hasTrait(this.traits, 'firewall_link') ||
       hasTrait(this.traits, 'conduit_link') ||
       hasTrait(this.traits, 'damage_aura') || hasTrait(this.traits, 'rate_aura') ||
       hasTrait(this.traits, 'range_aura') || hasTrait(this.traits, 'crit_aura');
