@@ -2,6 +2,12 @@
 
 ## 2026-05-04
 
+### M10 Reckoning: pure-spellcraft kit, no Wall
+
+The final Arcane mission still listed `coalition_wall` in its allowed-tower set, which thematically didn't fit — by the showdown the player has earned the full Arcane lattice and shouldn't be falling back on plain stone. Dropped it from `allowedTowerIds` and added `noWalls: true` belt-and-braces so the dock UI can't sneak it back in.
+
+Story tweaked to acknowledge the transition: "The stone-and-mortar Walls are gone too: every coin we have left goes to spellcraft." Plus a callout that the map (`arcane_throne`) has three converging approaches.
+
 ### M9: heavier waves + boss-per-spawn + real star objectives
 
 Three M9 fixes:

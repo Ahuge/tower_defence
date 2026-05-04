@@ -594,19 +594,26 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       idx: 9,
       name: 'Reckoning',
       story:
-        "Their archmage cabal makes its stand at the spire. Thirty waves, hard difficulty, our home ground. " +
-        "If you win this they won't come again. If you lose, none of the previous wins mattered. End it.\n\n" +
-        "The last piece. The Forge unveils Arcane Nova — a final-tier ultimate the cabal kept locked in their " +
-        "deepest vault. We have it now. Save it for the ones that matter.",
+        "Their archmage cabal makes its stand at the spire. Thirty waves, hard difficulty, three approaches " +
+        "converging on our line. If you win this they won't come again. If you lose, none of the previous " +
+        "wins mattered. End it.\n\n" +
+        "The Forge unveils Arcane Nova — a final-tier ultimate the cabal kept locked in their deepest vault. " +
+        "We have it now. The stone-and-mortar Walls are gone too: every coin we have left goes to spellcraft. " +
+        "Save Nova for the ones that matter.",
       archetype: 'final_showdown',
       overrides: {
         faction: 'coalition',
         mapId: 'arcane_throne',
         difficulty: 'hard',
         waveCount: 30,
-        // M10: + Nova (final ult). Full kit deployed for the showdown.
+        // M10: full Arcane kit + Nova (final ult). Coalition Wall
+        // explicitly NOT included — by the showdown the player has
+        // earned the full magical lattice and shouldn't be relying
+        // on plain stone any more. noWalls reinforces it via the
+        // generic gate so accidental dock state can't sneak walls in.
         restrictions: {
-          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
+          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'arcane_focus', 'arcane_frost', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
+          noWalls: true,
         },
       },
       objectives: {
