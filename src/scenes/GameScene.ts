@@ -1021,6 +1021,9 @@ export class GameScene extends Phaser.Scene {
       onWaveCleared: (waveNum) => {
         this.onWaveCleared(waveNum);
       },
+      onWaveSpawningComplete: (waveNum) => {
+        this.onWaveSpawningComplete(waveNum);
+      },
       onStuckForceClear: () => {
         // Wave hung > 30s with creeps alive but nothing spawning.
         // Force-leak the rest so the wave can clear. Player loses
@@ -3736,23 +3739,30 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Called by WaveController when a wave clears */
+  /** Mission auto-chain hook — fires when a wave's spawn+send queues
+   *  empty, EVEN IF creeps are still walking. Speedrun missions use
+   *  this to schedule the next wave while the current is still in
+   *  flight, so spawns overlap and the player feels constant pressure. */
+  private onWaveSpawningComplete(waveNum: number): void {
+    if (this._missionAutoChainWaves === undefined) return;
+    if (this.versus) return;
+    if (this.currentWave >= this.waves.length) return;
+    this.time.delayedCall(this._missionAutoChainWaves * 1000, () => {
+      // Use waveMgr.startWave directly so it works while a previous
+      // wave is still on the field (this.betweenWaves is false then).
+      if (this.currentWave < this.waves.length) {
+        this.startWave();
+      }
+    });
+    void waveNum; // marker for telemetry / debugging hook
+  }
+
   private onWaveCleared(waveNum: number): void {
-    // Auto-play: schedule next wave automatically
+    // Auto-play: schedule next wave automatically (manual auto-play
+    // toggle, separate from mission auto-chain).
     if (this.autoPlay && this.currentWave < this.waves.length && !this.versus) {
       this.time.delayedCall(1500, () => {
         if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
-          this.startWave();
-        }
-      });
-    }
-    // Mission auto-chain: speedrun-style relentless pace. After each
-    // wave clears, schedule the next one automatically. Independent of
-    // autoPlay (player doesn't have to opt in — the mission compels
-    // the cadence).
-    if (this._missionAutoChainWaves !== undefined && !this.versus
-        && this.currentWave < this.waves.length) {
-      this.time.delayedCall(this._missionAutoChainWaves * 1000, () => {
-        if (this.betweenWaves && this.currentWave < this.waves.length) {
           this.startWave();
         }
       });

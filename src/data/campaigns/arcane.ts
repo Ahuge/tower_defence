@@ -356,17 +356,19 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     },
 
     // 6 — Forced March (auto-chain speedrun)
-    // Waves chain automatically every 5 seconds — no Next-Wave button.
-    // Player gets a war-chest of starting gold (700) but creeps drop
-    // half normal — start strong, no slow-cooker income, finish fast.
+    // Waves chain automatically 5s after the spawn queue empties
+    // (NOT after the wave clears) — so wave 2 starts spawning while
+    // wave 1 creeps are still walking the path. Counts are 2-3x
+    // standard; spawn intervals are tight (200ms). Player gets a
+    // 600-gold war-chest up front; kill gold halved.
     {
       id: 'forced_march',
       idx: 5,
       name: 'Forced March',
       story:
         "Reinforcements are still days away. The Forge issued you a war-chest up front — empty it well, because " +
-        "the column will not stop and stragglers pay half what they used to. The waves come on their own. There " +
-        "is no time to breathe between them.\n\n" +
+        "the column will not stop and stragglers pay half what they used to. The next wave begins before the last " +
+        "is done. There is no breath between them.\n\n" +
         "The cabal's Storm spell is reverse-engineered. The Cannons came home this morning; in their place, Storm " +
         "drums hammer chained lightning across packed ranks.",
       archetype: 'speedrun',
@@ -375,16 +377,60 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         mapId: 'arcane_pass',
         difficulty: 'normal',
         waveCount: 20,
-        // M6: Cannon → Storm.
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
         },
-        // Speedrun feel: bumped starting gold + auto-chained waves +
-        // halved kill gold. Front-loads economy and forces relentless
-        // pace.
-        goldStart: 700,
-        autoChainWaves: 5,
+        goldStart: 600,
+        autoChainWaves: 5,  // 5s after wave finishes spawning
         killGoldMult: 0.5,
+        // 20 dense fast waves. Counts are ~3x standard; spawn intervals
+        // are tight so each wave's spawn phase is short. Programmatic
+        // generation keeps the kit data terse.
+        waveScript: (() => {
+          const w = [];
+          for (let i = 1; i <= 20; i++) {
+            const isBoss = i === 20;
+            const hp = Math.round(35 + i * 14 + i * i * 0.6);
+            if (isBoss) {
+              w.push({
+                wave: 20,
+                groups: [
+                  { creepType: 'boss', count: 1, hpScale: 320, speedScale: 1 },
+                  { creepType: 'standard', count: 18, hpScale: hp * 0.7, speedScale: 1 },
+                ],
+                spawnInterval: 180,
+                isBoss: true,
+              });
+              continue;
+            }
+            // Wave composition rotates by group of 4 to give variety
+            const groups: { creepType: string; count: number; hpScale: number; speedScale: number }[] = [];
+            const phase = Math.floor((i - 1) / 4);
+            if (phase === 0) {
+              // Waves 1-4: standard swarm
+              groups.push({ creepType: 'standard', count: 18, hpScale: hp, speedScale: 1 });
+            } else if (phase === 1) {
+              // Waves 5-8: standard + fast
+              groups.push({ creepType: 'standard', count: 14, hpScale: hp, speedScale: 1 });
+              groups.push({ creepType: 'fast', count: 10, hpScale: hp * 0.7, speedScale: 1 });
+            } else if (phase === 2) {
+              // Waves 9-12: armored + standard
+              groups.push({ creepType: 'armored', count: 10, hpScale: hp * 1.4, speedScale: 1 });
+              groups.push({ creepType: 'standard', count: 14, hpScale: hp, speedScale: 1 });
+            } else if (phase === 3) {
+              // Waves 13-16: fast + armored mix
+              groups.push({ creepType: 'fast', count: 14, hpScale: hp * 0.8, speedScale: 1 });
+              groups.push({ creepType: 'armored', count: 10, hpScale: hp * 1.3, speedScale: 1 });
+            } else {
+              // Waves 17-19: heavy late game
+              groups.push({ creepType: 'standard', count: 16, hpScale: hp, speedScale: 1 });
+              groups.push({ creepType: 'armored', count: 10, hpScale: hp * 1.5, speedScale: 1 });
+              groups.push({ creepType: 'fast', count: 10, hpScale: hp * 0.9, speedScale: 1 });
+            }
+            w.push({ wave: i, groups, spawnInterval: 200, isBoss: false });
+          }
+          return w;
+        })(),
       },
       objectives: {
         star2: { label: 'Finish in under 12 minutes', predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },

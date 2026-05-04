@@ -8,12 +8,15 @@ export interface WaveCallbacks {
   onWaveStart(wave: WaveDefinition, waveNum: number, totalWaves: number): void;
   onWaveCleared(waveNum: number): void;
   canStartWave(): boolean; // e.g. check if path exists
+  /** Fires once per wave the moment the spawn queue + send queue
+   *  finishes emptying — even if creeps are still walking the path.
+   *  Used by speedrun-style auto-chain missions to start the next
+   *  wave while the previous one is still in flight. */
+  onWaveSpawningComplete?(waveNum: number): void;
   /** Auto-recovery hook — called once when a wave has been active
    *  past `STUCK_FORCE_CLEAR_THRESHOLD` with no spawning/sending in
    *  flight but creeps still on the field. Implementation should
-   *  cull or force-leak the remaining creeps so the wave can clear.
-   *  Without this, a single mis-pathed creep can hang the entire
-   *  match indefinitely (reported by users on first-match runs). */
+   *  cull or force-leak the remaining creeps so the wave can clear. */
   onStuckForceClear?(): void;
 }
 
@@ -64,6 +67,9 @@ export class WaveController {
   private lastProgressAt: number = 0;
   /** Last frame's alive-creep count. A drop counts as progress. */
   private lastAliveCount: number = 0;
+  /** Latch — onWaveSpawningComplete fires once per wave when spawn+
+   *  send queues both first transition to empty. */
+  private spawningCompleteFired: boolean = false;
 
   constructor(
     waves: WaveDefinition[],
@@ -95,6 +101,7 @@ export class WaveController {
     this.lastFrameMaxPathIndex = 0;
     this.lastProgressAt = 0;
     this.lastAliveCount = 0;
+    this.spawningCompleteFired = false;
     this.lastStuckLog = 0;
     const wave = this.waves[this.currentWave];
     this.currentWave++;
@@ -146,6 +153,15 @@ export class WaveController {
       }
       this.lastFrameMaxPathIndex = frameMax;
       this.lastAliveCount = frameAlive;
+    }
+
+    // Fire onWaveSpawningComplete once when spawn + send queues both
+    // first transition to empty — even if creeps still walking. Used
+    // by speedrun auto-chain to start the next wave while previous
+    // creeps are still in flight.
+    if (!this.spawningCompleteFired && !spawning && !sending) {
+      this.spawningCompleteFired = true;
+      this.callbacks.onWaveSpawningComplete?.(this.currentWave);
     }
 
     if (spawning || sending || creepCount > 0) {
