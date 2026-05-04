@@ -2,6 +2,14 @@
 
 ## 2026-05-04
 
+### M8 attacker: CPU defender now builds new towers; M9: bot ally now actually exists
+
+Two related defender-side fixes.
+
+**M8** was wired with `attackerDefenderDifficulty: 'easy'` which has `maxExpansions: 0` — the static lattice never grew across the run regardless of treasury. Bumped to `'normal'` (1× treasury, up to 2 socket builds). The corridor's 4 expansion sockets now fill in over the run as the defender accumulates kill gold.
+
+**M9 (Allied Circle)** described a CPU partner in its story but didn't actually have one. Campaign missions launch straight into GameScene, bypassing CircleLobbyScene where the bot slot normally gets created — so `botSlots` was empty and the BotAI block never spun up. Added an auto-create path: when archetype is `coop_with_bot` and no `circle` is in the registry, GameScene now constructs a solo-host CircleManager + adds one bot with the player's faction, and the existing BotAI wiring picks it up.
+
 ### M5 Warlords: tighter rage timers + speed differentiation
 
 Five Warlords were homogeneous mechanically — all had `channelDuration: 25` and similar `speedMultiplier` values (0.40–0.55). Engaging one effectively meant 25 seconds of buffer before the rage fired, which is plenty even with sloppy DPS. And every Warlord moved at the same crawl, so the player never had to reprioritize based on "who's about to leak."

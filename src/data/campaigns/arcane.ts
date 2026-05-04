@@ -506,9 +506,12 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // v1 default). At 100e/wave the player can dump ~20 raiders in
         // a single wave, so 5 was trivially won on wave 1.
         attackerLeakThreshold: 12,
-        // First attacker encounter — easy CPU: 0.5x treasury, no
-        // socket builds (defender only upgrades existing towers).
-        attackerDefenderDifficulty: 'easy',
+        // CPU defender on normal — 1x treasury, up to 2 expansion-
+        // socket builds across the run. Was 'easy' (0 builds) for the
+        // first encounter, but the static lattice felt too predictable.
+        // 'normal' lets the defender drop new counter towers as the
+        // treasury fills, forcing the player to react.
+        attackerDefenderDifficulty: 'normal',
         // 10-wave defender prep cycle. Each wave shows a different
         // counter; player rotates composition to avoid the prep target.
         // First entry is for wave 1. Imported from AttackerPreps.ts to

@@ -953,6 +953,24 @@ export class GameScene extends Phaser.Scene {
       this.abilitySystem = new AbilitySystem(this);
     }
 
+    // Plan 14 v2: campaign coop_with_bot missions launch directly into
+    // GameScene without going through CircleLobbyScene, so the registry
+    // doesn't have a CircleManager. Build a solo-host one here with a
+    // single CPU bot ally so the bot AI block below picks up botSlots.
+    // The bot's faction matches the player's (set via mission def) so
+    // their kit is consistent with the campaign theme.
+    if (this.matchMode === 'circle_coop'
+        && this.missionContext?.archetypeId === 'coop_with_bot'
+        && !this.registry.get('circle')) {
+      const c = new CircleManager(() => {}, () => {});
+      c.initHost();
+      const allyFaction = this.faction ?? 'coalition';
+      // Stamp the host slot's faction so circle code that reads
+      // playerFactions.get(0) gets a real value, not undefined.
+      c.playerFactions.set(0, allyFaction);
+      c.addBot(allyFaction);
+      this.registry.set('circle', c);
+    }
     // Circle co-op: get CircleManager from registry
     this.circle = this.registry.get('circle') as CircleManager | null;
 
