@@ -318,11 +318,12 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
           allowedTowerIds: ['arcane_bolt', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
         },
         waveScript: [
-          // Wave 1 — Stalwart tuned down; fewer fodder distractions and
-          // lower wave hpScale (100 → 70) so the player's freshly-Bolt-
-          // upgraded line can finish him inside the 25s rage window.
+          // Wave 1 — Stalwart with lower wave hpScale (100 → 70) so
+          // the player's freshly Bolt-upgraded line can finish him
+          // inside the 25s rage window. Fodder count restored — the
+          // distraction is fair, only the boss HP needed trimming.
           { wave: 1, groups: [
-            { creepType: 'standard', count: 2, hpScale: 50, speedScale: 1 },
+            { creepType: 'standard', count: 4, hpScale: 50, speedScale: 1 },
             { creepType: 'warlord_stalwart', count: 1, hpScale: 70, speedScale: 1 },
           ], spawnInterval: 800, isBoss: false },
           { wave: 2, groups: [
