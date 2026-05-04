@@ -4,6 +4,7 @@ import { ensureHeroSkinTexture } from '../systems/PaletteSwap';
 import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../data/HeroItems';
 import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
+import type { Tower } from './Tower';
 import { DamageNumberEntry, DMG_COLOR } from '../systems/FloatingDamage';
 import { ArenaEffect, FX } from '../systems/ArenaEffects';
 import { spawnHeroAbilityVfx } from '../systems/ArenaFloorRenderer';
@@ -124,6 +125,25 @@ export class Hero {
   // Arena bounds
   private arenaWidth: number;
   private arenaHeight: number;
+  /** M10 finale — instance-configurable respawn time. Defaults to the
+   *  static RESPAWN_TIME for backward compat with HeroDefenseMode;
+   *  FinaleController bumps it for the climax (~20s). */
+  respawnSeconds: number = Hero.RESPAWN_TIME;
+  /** M10 finale — anchor the hero respawns to. Defaults to the arena
+   *  centre (Hero Defense mode behaviour); FinaleController sets this
+   *  to the midpoint of the two summoning circles. */
+  spawnAnchor: { x: number; y: number };
+  /** M10 finale — world bounds for clamp + ability targeting. When set,
+   *  overrides arenaWidth/Height. FinaleController sets it to the
+   *  full grid pixel rect. */
+  worldBounds?: { minX: number; minY: number; maxX: number; maxY: number };
+  /** M10 finale — clicked CPU tower target. When set, the hero
+   *  prioritizes attacking this tower over any creep auto-attack.
+   *  Cleared when the tower dies or the player clicks elsewhere. */
+  clickedTowerTarget: Tower | null = null;
+  /** M10 finale — count of CPU towers this hero has destroyed. Drives
+   *  the "Win without losing the hero" star objective + analytics. */
+  towersDestroyed: number = 0;
 
   static readonly RESPAWN_TIME = 10; // seconds
 
@@ -140,6 +160,7 @@ export class Hero {
     this.baseMoveSpeed = typeDef.moveSpeed;
     this.arenaWidth = arenaWidth;
     this.arenaHeight = arenaHeight;
+    this.spawnAnchor = { x, y };  // default to construct position
 
     this.abilities = typeDef.abilities.map(a => ({
       def: a,
@@ -391,9 +412,46 @@ export class Hero {
       }
     }
 
-    // Clamp to arena bounds
-    this.x = Math.max(20, Math.min(this.arenaWidth - 20, this.x));
-    this.y = Math.max(20, Math.min(this.arenaHeight - 20, this.y));
+    // Clamp to bounds. M10 finale uses worldBounds (full grid rect);
+    // every other mode uses the arena rectangle.
+    if (this.worldBounds) {
+      this.x = Math.max(this.worldBounds.minX + 20, Math.min(this.worldBounds.maxX - 20, this.x));
+      this.y = Math.max(this.worldBounds.minY + 20, Math.min(this.worldBounds.maxY - 20, this.y));
+    } else {
+      this.x = Math.max(20, Math.min(this.arenaWidth - 20, this.x));
+      this.y = Math.max(20, Math.min(this.arenaHeight - 20, this.y));
+    }
+
+    // M10 finale — prioritize the player's clicked CPU tower target.
+    // Chase it, attack-cooldown gated. Falls through to creep
+    // auto-attack only when no tower is targeted (or it's dead).
+    let firedTowerThisFrame = false;
+    if (this.clickedTowerTarget) {
+      const t = this.clickedTowerTarget as Tower;
+      const towerDead = !t.destructible || (t as { _expired?: boolean })._expired || (t.hp ?? 1) <= 0;
+      if (towerDead) {
+        this.clickedTowerTarget = null;
+      } else {
+        const dx = t.x - this.x;
+        const dy = t.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= this.getEffectiveRange()) {
+          const attackInterval = 1000 / this.getEffectiveAttackSpeed();
+          const now = this.scene.time.now;
+          if (now - this.lastAttackTime >= attackInterval) {
+            this.attackTower(t);
+            this.lastAttackTime = now;
+            firedTowerThisFrame = true;
+          }
+        } else if (!this.moveTarget) {
+          // Walk toward the tower
+          const speed = this.getEffectiveSpeed();
+          const move = speed * dt;
+          this.x += (dx / dist) * move;
+          this.y += (dy / dist) * move;
+        }
+      }
+    }
 
     // Find target
     if (!this.target || !this.target.alive) {
@@ -401,7 +459,7 @@ export class Hero {
     }
 
     // Auto-attack
-    if (this.target && this.target.alive) {
+    if (!firedTowerThisFrame && this.target && this.target.alive) {
       const dx = this.target.x - this.x;
       const dy = this.target.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -413,8 +471,9 @@ export class Hero {
           this.attack(this.target);
           this.lastAttackTime = now;
         }
-      } else if (!this.moveTarget) {
-        // Move towards target if no explicit move command
+      } else if (!this.moveTarget && !this.clickedTowerTarget) {
+        // Move towards target if no explicit move command AND no tower
+        // target — when chasing a tower, the loop above handles motion.
         const speed = this.getEffectiveSpeed();
         const move = speed * dt;
         this.x += (dx / dist) * move;
@@ -477,6 +536,44 @@ export class Hero {
         dmgColor,
         graphics: g,
       });
+    }
+  }
+
+  /** M10 finale — apply damage to a CPU tower. Mirrors `attack()` but
+   *  routes damage through `tower.takeDamage` instead of the
+   *  arena-creep pipeline. Crit + lifesteal still apply; on-hit
+   *  status effects (slow / mark / chain) are no-op against towers
+   *  for v1 (towers are immobile, can't be slowed; chain spread to
+   *  creeps is v2 polish). Increments towersDestroyed on the
+   *  killing blow for analytics + star objective tracking. */
+  private attackTower(target: Tower): void {
+    let dmg = this.getEffectiveDamage();
+    let isCrit = false;
+    if (Math.random() < this.getCritChance()) {
+      let critMult = 1.5;
+      critMult += this.accSum('critDmgBonus');
+      dmg = Math.round(dmg * critMult);
+      isCrit = true;
+    }
+    const dmgColor = isCrit ? DMG_COLOR.CRIT : DMG_COLOR.NORMAL;
+    // Floating damage number above the tower so the player sees feedback.
+    this.pendingDamageNumbers.push({
+      x: target.x, y: target.y - 24,
+      text: String(dmg), color: dmgColor, duration: 0.6,
+    });
+    const killed = target.takeDamage(dmg);
+    if (killed) {
+      this.towersDestroyed++;
+      this.clickedTowerTarget = null; // clear so player can pick a new one
+    }
+    // Lifesteal (sum across accessories)
+    const ls = this.accSum('lifestealPct');
+    if (ls > 0) {
+      const heal = Math.round(dmg * ls);
+      if (heal > 0 && this.hp < this.maxHp) {
+        this.hp = Math.min(this.maxHp, this.hp + heal);
+        this.pendingDamageNumbers.push({ x: this.x, y: this.y - 20, text: `+${heal}`, color: DMG_COLOR.HEAL, duration: 0.6 });
+      }
     }
   }
 
@@ -836,7 +933,7 @@ export class Hero {
     this.alive = false;
     this.hp = 0;
     this.deaths++;
-    this.respawnTimer = Hero.RESPAWN_TIME;
+    this.respawnTimer = this.respawnSeconds;
     this.target = null;
     this.moveTarget = null;
   }
@@ -845,8 +942,15 @@ export class Hero {
     this.alive = true;
     this.maxHp = this.getEffectiveMaxHp();
     this.hp = this.maxHp;
-    this.x = this.arenaWidth / 2;
-    this.y = this.arenaHeight / 2;
+    // Default Hero Defense: respawn at arena centre. M10 finale: respawn
+    // at the configured spawnAnchor (midpoint of summoning circles).
+    if (this.worldBounds) {
+      this.x = this.spawnAnchor.x;
+      this.y = this.spawnAnchor.y;
+    } else {
+      this.x = this.arenaWidth / 2;
+      this.y = this.arenaHeight / 2;
+    }
     this.respawnTimer = 0;
     this.buffs = [];
     this.dodgeRemaining = 0;

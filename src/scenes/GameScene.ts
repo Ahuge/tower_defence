@@ -2723,6 +2723,27 @@ export class GameScene extends Phaser.Scene {
    * Creeps whose remaining path doesn't hit the tower are left
    * alone (no wasted pathfinding work).
    */
+  /** M10 finale: re-route every alive creep through the current grid.
+   *  Used when a destructible CPU tower dies and the cleared cells
+   *  open a shortcut. Unlike rerouteCreepsAroundTower this doesn't
+   *  filter by which tower changed — every creep re-evaluates against
+   *  the new grid state. Cheap (one findPath per creep). */
+  private rerouteAliveCreeps(): void {
+    for (const creep of this.creepMgr.creeps) {
+      if (!creep.alive || creep.reached) continue;
+      const creepCol = pixelToCol(creep.x);
+      const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+      const current: PathPoint = { col: creepCol, row: creepRow };
+      if (creep.rerouteViaWaypoints(this.grid, current)) continue;
+      const dest = creep.path[creep.path.length - 1];
+      const newPath = findPath(this.grid, current, dest);
+      if (newPath) {
+        creep.path = newPath;
+        creep.pathIndex = 1;
+      }
+    }
+  }
+
   private rerouteCreepsAroundTower(towerCol: number, towerRow: number): void {
     for (const creep of this.creepMgr.creeps) {
       if (!creep.alive || creep.reached) continue;
@@ -2835,6 +2856,15 @@ export class GameScene extends Phaser.Scene {
 
     // Clean up expired towers
     this.towerMgr.cleanupExpired();
+    // M10 finale: when a destructible CPU tower dies, the cell becomes
+    // walkable again. Recompute paths so creeps in flight take the
+    // newly-available shortcut. The feedback-loop design: every tower
+    // the hero kills opens a creep shortcut, ramping wave pressure.
+    if (this.towerMgr.consumeDestructibleDeathFlag()) {
+      this.recalculatePaths();
+      this.rerouteAliveCreeps();
+      this.drawPath();
+    }
 
     // Spawning + wave clear detection
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
