@@ -381,11 +381,11 @@ export const CREEP_TYPES: Record<string, CreepType> = {
   warlord_stalwart: {
     id: 'warlord_stalwart', name: 'Stalwart Warlord',
     description: 'Tanky vanguard. Rage on first hit: summons 6 fast reinforcements.',
-    hpMultiplier: 16.0, speedMultiplier: 0.45, armor: 'heavy',
+    hpMultiplier: 16.0, speedMultiplier: 0.40, armor: 'heavy',
     color: 0xff8844, size: 2.2, count: 1,
     traits: [{
       id: 'channel_caster',
-      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 25,
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 15,
       effectId: 'warlord_reinforcements',
       meta: {},
       interruptible: false, castCount: 1,
@@ -399,11 +399,11 @@ export const CREEP_TYPES: Record<string, CreepType> = {
   warlord_healer: {
     id: 'warlord_healer', name: 'Healer Warlord',
     description: 'Battlefield medic. Rage on first hit: heals every alive creep to full.',
-    hpMultiplier: 14.0, speedMultiplier: 0.50, armor: 'heavy',
+    hpMultiplier: 14.0, speedMultiplier: 0.65, armor: 'heavy',
     color: 0x44ff88, size: 2.2, count: 1,
     traits: [{
       id: 'channel_caster',
-      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 25,
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 15,
       effectId: 'warlord_heal_all',
       meta: {},
       interruptible: false, castCount: 1,
@@ -417,11 +417,11 @@ export const CREEP_TYPES: Record<string, CreepType> = {
   warlord_champion: {
     id: 'warlord_champion', name: 'Champion Warlord',
     description: 'Heavily armored. Rage on first hit: every alive creep gains a shield.',
-    hpMultiplier: 18.0, speedMultiplier: 0.45, armor: 'heavy',
+    hpMultiplier: 18.0, speedMultiplier: 0.40, armor: 'heavy',
     color: 0xeecc88, size: 2.4, count: 1,
     traits: [{
       id: 'channel_caster',
-      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 25,
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 18,
       effectId: 'warlord_shield_all',
       meta: {},
       interruptible: false, castCount: 1,
@@ -434,12 +434,12 @@ export const CREEP_TYPES: Record<string, CreepType> = {
 
   warlord_tactician: {
     id: 'warlord_tactician', name: 'Tactician Warlord',
-    description: 'Field commander. Rage on first hit: every alive creep moves 60% faster.',
-    hpMultiplier: 14.0, speedMultiplier: 0.55, armor: 'heavy',
+    description: 'Field commander. FAST mover. Rage on first hit: every alive creep moves 60% faster.',
+    hpMultiplier: 14.0, speedMultiplier: 0.95, armor: 'heavy',
     color: 0x66ccff, size: 2.2, count: 1,
     traits: [{
       id: 'channel_caster',
-      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 25,
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 12,
       effectId: 'warlord_haste_all',
       meta: {},
       interruptible: false, castCount: 1,
@@ -453,11 +453,11 @@ export const CREEP_TYPES: Record<string, CreepType> = {
   warlord_captain: {
     id: 'warlord_captain', name: 'Captain Warlord',
     description: 'The vanguard\'s capstone. Rage on first hit: massive swarm summon.',
-    hpMultiplier: 22.0, speedMultiplier: 0.40, armor: 'heavy',
+    hpMultiplier: 22.0, speedMultiplier: 0.50, armor: 'heavy',
     color: 0xff44aa, size: 2.6, count: 1,
     traits: [{
       id: 'channel_caster',
-      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 25,
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 18,
       effectId: 'warlord_mass_summon',
       meta: {},
       interruptible: false, castCount: 1,

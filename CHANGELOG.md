@@ -2,6 +2,24 @@
 
 ## 2026-05-04
 
+### M5 Warlords: tighter rage timers + speed differentiation
+
+Five Warlords were homogeneous mechanically — all had `channelDuration: 25` and similar `speedMultiplier` values (0.40–0.55). Engaging one effectively meant 25 seconds of buffer before the rage fired, which is plenty even with sloppy DPS. And every Warlord moved at the same crawl, so the player never had to reprioritize based on "who's about to leak."
+
+Tighter timers + per-role speeds:
+
+| Warlord | speed | rage duration |
+|---|---|---|
+| Stalwart | 0.40 (very slow) | 15s |
+| Healer | 0.65 (medium) | 15s |
+| Champion | 0.40 (very slow) | 18s |
+| Tactician | **0.95 (fast)** | **12s** |
+| Captain | 0.50 (slow) | 18s |
+
+Tactician is the standout — almost normal-creep speed, the shortest rage window, and their rage hastes everyone alive. The player now has to either burn them down on sight or eat a fast wave. Stalwart and Champion remain anvils. Captain stays the capstone but loses 7s of grace.
+
+Description updated on Tactician to call out the speed.
+
 ### LoadingScreen Begin button: pointer-events fix
 
 The button rendered fine but couldn't be clicked — no cursor change on hover, no click response. Root cause: `#ui-root` carries `pointer-events: none` by default, only flipping to `auto` when a screen marks `.active`. UIBridge.startScene() clears `.active` before the LoadingScreen mounts (the loading screen lives in the gap between screens), so the entire loading overlay was inside a `pointer-events:none` container.
