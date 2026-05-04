@@ -2962,7 +2962,7 @@ export class GameScene extends Phaser.Scene {
       // Use the getter `this.towers` — proxies to TowerManager.towers,
       // which is where placeTower actually adds them. The underlying
       // `_towers` field is the fallback when towerMgr isn't built yet.
-      this._finaleController.update(delta, this.towers, this.creeps);
+      this._finaleController.update(delta, this.towers, this.creeps, this.waveActive);
       // Push HUD snapshot for the DOM charge bar.
       const hero = this._finaleController.getHero();
       const cpuAlive = this._finaleController.getCpuTowers().length;

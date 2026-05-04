@@ -158,12 +158,18 @@ export class FinaleController {
    *  passed creeps in range; M10 passes the live wave creeps so the
    *  hero swats them as they walk by. ArenaCreep is the type Hero
    *  expects — Creep is shape-compatible for the methods Hero calls
-   *  (alive, x, y, takeDamage), so we duck-type cast at the boundary. */
-  update(delta: number, allTowers: Tower[], creeps: Creep[] | ArenaCreep[]): void {
+   *  (alive, x, y, takeDamage), so we duck-type cast at the boundary.
+   *
+   *  `waveActive` gates summoning-charge accumulation: charge only
+   *  ticks while a wave is in flight. Between-wave time is for the
+   *  player to plan / spend, not free progress toward the summon. */
+  update(delta: number, allTowers: Tower[], creeps: Creep[] | ArenaCreep[], waveActive: boolean): void {
     const dt = delta / 1000;
 
-    // Tick charge from adjacent mana drains across all circles.
-    if (!this.firstSpawnDone) {
+    // Tick charge from adjacent mana drains across all circles —
+    // ONLY while a wave is actively spawning/walking. The player has
+    // to commit drains AND survive the wave for the summon to advance.
+    if (!this.firstSpawnDone && waveActive) {
       let totalAdjacent = 0;
       for (const c of this.circles) totalAdjacent += c.chargeContribution(allTowers);
       this.charge = Math.min(1, this.charge + totalAdjacent * this.rules.chargeRatePerDrain * dt);
