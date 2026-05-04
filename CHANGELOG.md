@@ -2,6 +2,40 @@
 
 ## 2026-05-04
 
+### M10 The Reckoning: full Arcane finale siege
+
+The vanilla 30-wave standard mode M10 felt boring. Replaced with a unique siege climax:
+
+- Player builds **Mana Drains** in two magenta zones on the right side of the map (`playerBuildableCells` enforced at the placement gate, magenta tint overlay drawn at scene init).
+- Drains adjacent to either of the two **Summoning Circles** (Chebyshev distance ≤ 1 to any of the 2x2 footprint cells, no double-count) feed a single shared charge meter at `0.156%/s per drain`. 8 drains max → ~80s to first summon.
+- At 100% charge, the **Forge Mage hero** spawns at the midpoint between the two circles. Pre-leveled to 3 (Q+W ready); 20s respawn at the same anchor on death.
+- The hero **attacks CPU defender towers** when commanded (click on a tower to set target). Auto-attacks creeps when no tower target is set. Crit + lifesteal still apply; status effects no-op against towers in v1.
+- Pre-placed **destructible CPU towers** with HP — 22 Arcane towers + the Ult Throne (5000 HP) clustered on the left around the green exit. HP bars render above each. White-flash on hit.
+- **Path recompute on tower death**: every CPU tower the hero kills opens a creep shortcut. Wave creeps reroute through cleared cells. Ramping pressure as the hero pushes deeper — feedback loop.
+- **CPU tower target priority**: sends > non-send creeps > hero. Player sends decoy CPU defender fire while the hero closes distance.
+- **Ult Throne phase mechanics**: at 50% HP heals 10%, at 25% HP summons reinforcements (event log only in v1), at 10% HP doubles attack speed.
+- **Win condition**: zero alive destructible CPU towers → emit `gameWon`. The standard wave-cleared win is suppressed when the finale is active.
+- **Tower kill rewards**: 50g + 50xp per tower, 500g + 250xp on the Ult kill.
+- **Respawn countdown** overlay above the anchor when the hero is dead.
+- **Tower death VFX**: scale-up + fade-out tween + sprite white-flash on the killing blow.
+
+**New systems:**
+- `src/entities/SummoningCircle.ts` — 2x2 entity with charge ring + adjacent-drain count.
+- `src/systems/finale/FinaleController.ts` — owns hero, circles, charge, win-check, Ult phases, respawn overlay, kill rewards.
+- `src/data/Maps.ts:arcane_throne_finale` — 36×26 map matching the user's reference image.
+- `src/data/TowerTypes.ts:arcane_ult_throne` — boss tower for the win-target.
+
+**Schema additions (all optional, gated):**
+- `MapDefinition.playerBuildableCells / summoningCircles / destructibleTowers`.
+- `Tower.hp / maxHp / destructible / isUlt / takeDamage()`.
+- `MissionOverrides.finaleRules` and `'final_arcane'` archetype.
+- `Hero.spawnAnchor / worldBounds / respawnSeconds / clickedTowerTarget / towersDestroyed / attackTower()`.
+- `Creep.isSend` (set by SendManager).
+
+**Stars:** ★ = win; ★★ = win in <25 minutes; ★★★ = win without a single hero death.
+
+9 new tests (Tower.takeDamage + SummoningCircle.chargeContribution). Total 539 passing.
+
 ### M10 Reckoning: pure-spellcraft kit, no Wall
 
 The final Arcane mission still listed `coalition_wall` in its allowed-tower set, which thematically didn't fit — by the showdown the player has earned the full Arcane lattice and shouldn't be falling back on plain stone. Dropped it from `allowedTowerIds` and added `noWalls: true` belt-and-braces so the dock UI can't sneak it back in.

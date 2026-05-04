@@ -85,6 +85,9 @@ export class FinaleController {
   private winFired: boolean = false;
   private onHeroSpawned?: () => void;
   private onWin?: () => void;
+  /** Phaser text object for the "RESPAWNING IN Xs" overlay above the
+   *  spawn anchor. Created lazily on first hero death. */
+  private respawnText: Phaser.GameObjects.Text | null = null;
 
   constructor(args: FinaleSetupArgs) {
     this.scene = args.scene;
@@ -165,10 +168,69 @@ export class FinaleController {
     // Render circles.
     for (const c of this.circles) c.draw(this.charge);
 
+    // Hero respawn countdown overlay. Shown above the anchor while
+    // the hero is dead. Hides + clears when alive.
+    if (this.hero && !this.hero.alive) {
+      const seconds = Math.max(0, Math.ceil((this.hero as unknown as { respawnTimer: number }).respawnTimer));
+      const txt = `RESPAWN ${seconds}s`;
+      if (!this.respawnText) {
+        const addText = (this.scene as { add?: { text?: (x: number, y: number, t: string, s: object) => Phaser.GameObjects.Text } }).add?.text;
+        if (typeof addText === 'function') {
+          this.respawnText = addText.call(this.scene.add, this.heroAnchor.x, this.heroAnchor.y - 40, txt, {
+            fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
+          });
+          this.respawnText?.setOrigin?.(0.5);
+          this.respawnText?.setDepth?.(20);
+        }
+      } else {
+        this.respawnText.setText(txt);
+        this.respawnText.setVisible(true);
+      }
+    } else if (this.respawnText) {
+      this.respawnText.setVisible(false);
+    }
+
     // Drive hero update + respawn. ArenaCreep[] cast — Hero only uses
     // alive/x/y/takeDamage off the creep, all of which Creep also has.
     if (this.hero) {
       this.hero.update(delta, creeps as ArenaCreep[]);
+    }
+
+    // M10 finale: grant gold + xp for each newly-killed CPU tower this
+    // frame (poll _expired flag which the hero's attackTower set on
+    // killing blow). Only fire once per tower via _killRewardGranted.
+    if (this.hero) {
+      const reward = this.rules.towerKillReward;
+      if (reward) {
+        for (const t of this.cpuTowers) {
+          if ((t as { _expired?: boolean })._expired && !(t as { _killRewardGranted?: boolean })._killRewardGranted) {
+            (t as { _killRewardGranted?: boolean })._killRewardGranted = true;
+            const gold = t.isUlt ? (reward.ultGold ?? 500) : (reward.gold ?? 50);
+            const xp = t.isUlt ? (reward.ultXp ?? 250) : (reward.xp ?? 50);
+            const econ = (this.scene as { economy?: { addGold: (n: number) => void } }).economy;
+            econ?.addGold?.(gold);
+            this.hero.grantXP(xp);
+            // Quick death VFX — sprite flash + tween on the tower
+            // before it's destroyed by cleanupExpired next frame.
+            const sprite = (t as { sprite?: { setTintFill?: (c: number) => void; setScale?: (n: number) => void } }).sprite;
+            if (sprite?.setTintFill) sprite.setTintFill(0xffffff);
+            const tweens = (this.scene as { tweens?: { add?: (cfg: object) => void } }).tweens;
+            if (tweens?.add && t.sprite) {
+              tweens.add({
+                targets: t.sprite,
+                scale: 1.4,
+                alpha: 0,
+                duration: 250,
+                ease: 'Cubic.easeOut',
+              });
+            }
+            const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
+            log?.gameMessage?.(t.isUlt
+              ? `THE THRONE FALLS — ${gold}g, ${xp}xp.`
+              : `Defender tower destroyed (+${gold}g, +${xp}xp).`);
+          }
+        }
+      }
     }
 
     // Ult tower phase mechanics. As the throne loses HP it fires
