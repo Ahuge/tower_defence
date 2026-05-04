@@ -317,24 +317,26 @@ export class Tower {
 
     // M10 finale: HP bar above destructible CPU towers. Default
     // undefined for every other mission so this is a free no-op.
-    if (this.destructible && this.maxHp !== undefined && this.hp !== undefined && this.maxHp > 0) {
+    // Hidden at full HP — only shows when the tower's been hit, so
+    // the unhit lattice doesn't read as visually noisy.
+    if (this.destructible && this.maxHp !== undefined && this.hp !== undefined && this.maxHp > 0 && this.hp < this.maxHp) {
       const ratio = Math.max(0, Math.min(1, this.hp / this.maxHp));
-      const w = TILE_SIZE * 0.9;
-      const h = 4;
+      const w = TILE_SIZE * 0.8;
+      const h = 3;
       const x = this.x - w / 2;
       const y = this.y - TILE_SIZE * 0.55;
-      // Background
-      this.graphics.fillStyle(0x000000, 0.6);
-      this.graphics.fillRect(x - 1, y - 1, w + 2, h + 2);
-      // Fill — color shifts red as HP drops
-      const fillColor = ratio > 0.5 ? 0xff5544 : ratio > 0.25 ? 0xffaa44 : 0xff2222;
+      // Match the creep HP bar palette so the visual language is
+      // consistent (green > 50%, orange > 25%, red below).
+      this.graphics.fillStyle(0x333333, 1);
+      this.graphics.fillRect(x, y, w, h);
+      const fillColor = ratio > 0.5 ? 0x44ff44 : ratio > 0.25 ? 0xffaa00 : 0xff2222;
       this.graphics.fillStyle(fillColor, 1);
       this.graphics.fillRect(x, y, w * ratio, h);
       // Ult tower gets a special golden border so the player knows
       // which one is the win-target.
       if (this.isUlt) {
         this.graphics.lineStyle(1, 0xffdd44, 1);
-        this.graphics.strokeRect(x - 1, y - 1, w + 2, h + 2);
+        this.graphics.strokeRect(x, y, w, h);
       }
     }
 

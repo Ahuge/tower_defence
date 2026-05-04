@@ -609,10 +609,11 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         waveCount: 999,  // endless until win-by-tower-kill or lives-out
         // Full Arcane kit + the M10-specific Mana Conduit (the dedicated
         // summoning-feeder). Coalition Wall explicitly off — pure
-        // spellcraft for the climax.
+        // spellcraft for the climax. Order matches the standard Arcane
+        // dock layout; conduit appended last as it's M10-only.
         restrictions: {
           allowedTowerIds: [
-            'arcane_bolt', 'arcane_storm', 'arcane_focus', 'arcane_frost',
+            'arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus',
             'arcane_drain', 'arcane_meteor', 'arcane_nova',
             'arcane_conduit',
           ],
