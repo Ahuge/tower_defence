@@ -87,6 +87,7 @@ import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../data/campaigns';
 import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
+import { FinaleController } from '../systems/finale/FinaleController';
 import { AttackerComposer } from '../systems/attacker/AttackerComposer';
 import { buildAttackerWave } from '../systems/attacker/AttackerWaveBuilder';
 import { getAttackerPalette, visibleEntries } from '../data/AttackerPalettes';
@@ -368,6 +369,9 @@ export class GameScene extends Phaser.Scene {
    *  build on. Empty = no restriction (every other mission).
    *  Populated from `mapDef.playerBuildableCells` at scene init. */
   private _playerBuildableSet: Set<string> = new Set();
+  /** M10 finale — owns hero, summoning circles, charge meter, and
+   *  win-condition check. Null on every other mission. */
+  private _finaleController: import('../systems/finale/FinaleController').FinaleController | null = null;
   /** One-shot latch — instant victory when leak threshold hits, no
    *  matter how many waves remain. Existing wave-end loss path still
    *  fires for the defender-held case. */
@@ -403,12 +407,15 @@ export class GameScene extends Phaser.Scene {
    *  wave fatter than usual" pressure works without rewriting the
    *  generator. Undefined = no change. */
   private _missionCoopCreepCountMult?: number;
+  /** M10 finale — when set, GameScene instantiates a FinaleController
+   *  which owns the hero, summoning circles, and tower-kill win check. */
+  private _missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules'];
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules'] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -439,6 +446,7 @@ export class GameScene extends Phaser.Scene {
     this._missionAttackerCampCost = data.missionAttackerCampCost;
     this._missionAttackerCampIncome = data.missionAttackerCampIncome;
     this._missionCoopCreepCountMult = data.missionCoopCreepCountMult;
+    this._missionFinaleRules = data.missionFinaleRules;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -1081,6 +1089,28 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
+    // M10 finale: instantiate the FinaleController. It places the
+    // destructible CPU towers (with HP), creates the SummoningCircles,
+    // tracks the shared charge meter, summons the hero on first 100%
+    // charge, and watches for the win condition. Skipped on every
+    // other mission (when finaleRules is undefined).
+    if (this._missionFinaleRules && mapDef.summoningCircles && mapDef.destructibleTowers) {
+      this._finaleController = new FinaleController({
+        scene: this,
+        rules: this._missionFinaleRules,
+        destructibleTowers: mapDef.destructibleTowers,
+        summoningCircles: mapDef.summoningCircles,
+        towerMgr: this.towerMgr,
+        onHeroSpawned: () => {
+          this.eventLog.gameMessage('A pillar of light — the Forge mage answers the call!');
+        },
+        onWin: () => {
+          this.eventLog.gameMessage('The spire falls. Every tower in the cabal\'s lattice is dust.');
+          this.eventBus.emit('gameWon');
+          this.goToGameOver(true);
+        },
+      });
+    }
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
     // creeps must break through. Free placements (no gold cost),
@@ -2179,6 +2209,33 @@ export class GameScene extends Phaser.Scene {
 
   handleClick(col: number, row: number): void {
     this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
+    // M10 finale: when the player isn't in build mode and the click
+    // landed on a CPU defender tower, set the hero to attack it.
+    // Click on an empty cell → move the hero there. The build path
+    // still wins when the player has a tower selected (mana drain
+    // placement).
+    if (this._finaleController && this.selectionMode !== 'build') {
+      const cpuTower = this._finaleController.findCpuTowerAt(col, row);
+      const hero = this._finaleController.getHero();
+      if (cpuTower && hero) {
+        this._finaleController.setHeroTowerTarget(cpuTower);
+        this.eventLog.gameMessage(`Hero ordered to assault ${cpuTower.typeDef.name}.`);
+        return;
+      }
+      // Empty cell click in finale = move hero (when one exists). Skip
+      // if it's a destructible tower we missed above (defensive) or a
+      // creep — let the existing creep-inspect path handle that.
+      if (hero && !cpuTower) {
+        const targetX = gridX(col);
+        const targetY = gridY(row);
+        const clickedCreep = this.findCreepNear(targetX, targetY);
+        if (!clickedCreep) {
+          hero.clickedTowerTarget = null; // cancel any prior tower target
+          hero.moveTo(targetX, targetY);
+          return;
+        }
+      }
+    }
     const existingTower = this.towers.find(t => t.col === col && t.row === row);
 
     // Check for creep click (any mode except build)
@@ -2865,6 +2922,13 @@ export class GameScene extends Phaser.Scene {
       this.rerouteAliveCreeps();
       this.drawPath();
     }
+    // M10 finale: tick the controller (charge meter, hero update,
+    // win-check, Ult phase mechanics). The hero auto-attacks wave
+    // creeps in range; clicked tower targets take priority. No-op on
+    // every other mission.
+    if (this._finaleController) {
+      this._finaleController.update(delta, this._towers, this.creeps);
+    }
 
     // Spawning + wave clear detection
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
@@ -2914,6 +2978,13 @@ export class GameScene extends Phaser.Scene {
     // the hero kills it).
     const arenaDrained = !this.arenaManager
       || this.arenaManager.arenaCreeps.every(c => !c.alive);
+    // M10 finale: wave-cleared is NOT the win condition — the player
+    // wins by destroying every CPU tower (incl. Ult). FinaleController
+    // fires its own gameWon. Suppress the standard wave-clear path
+    // when the finale is active so we don't double-trigger.
+    if (this._finaleController) {
+      // skip the wave-cleared branch entirely
+    } else
     if (this.waveMgr.isComplete() && this.creeps.length === 0 && arenaDrained && this.matchMode !== 'endless') {
       // Gauntlet: stage transition instead of game over
       if (this.matchMode === 'gauntlet' && !this._gauntletTransitioning) {

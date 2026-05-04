@@ -596,16 +596,20 @@ export const MAPS: Record<MapId, MapDefinition> = {
   circle_4p_hell_circle: getCircleMapById('circle_4p_hell_circle'),
 
   // === M10 Arcane finale siege ===
-  // Author shape: 30 wide × 18 tall. Player on the right (mana drain
-  // zones around two summoning circles), CPU towers scattered on the
-  // left around the green exit, Ult tower on far west. Brown perimeter
-  // + central arrow-cross. Real authored data lands in M10.16; this
-  // is a working stub so the type system + scene init can boot.
+  // Layout matches the user's reference image:
+  //   - Brown perimeter walls + central arrow-cross divider (col ~17).
+  //   - LEFT half (cols 1-13): CPU territory. ~25 destructible Arcane
+  //     towers in scattered clusters around the green exit. The Ult
+  //     Throne sits behind the exit at (2, midRow).
+  //   - RIGHT half (cols 19-34): Player territory. Two magenta build
+  //     zones each ringing a 2x2 lavender Summoning Circle.
+  //   - Red entry at the right edge mid-row, green exit at the left
+  //     edge mid-row. Wave creeps walk right→left.
   arcane_throne_finale: (() => {
-    const cols = GRID_COLS;          // 36 — using full grid for now
+    const cols = GRID_COLS;          // 36
     const rowsTop = 0, rowsBot = GRID_ROWS - 1;
     const midRow = Math.floor(GRID_ROWS / 2);
-    // Outer wall: top, bottom, left+right edges (except entry/exit cells).
+    // Outer wall around the perimeter (entry + exit cells stay open).
     const outerWall: Pos[] = [];
     for (let c = 0; c < cols; c++) { outerWall.push({ col: c, row: rowsTop }, { col: c, row: rowsBot }); }
     for (let r = 1; r < rowsBot; r++) {
@@ -613,42 +617,72 @@ export const MAPS: Record<MapId, MapDefinition> = {
         outerWall.push({ col: 0, row: r }, { col: cols - 1, row: r });
       }
     }
-    // Central arrow-cross blocked region (Y / cross shape near col 18).
+    // Central arrow-cross divider at col ~17 — forces creeps to detour
+    // around it. Vertical spine + horizontal arms forming a +/Y shape.
     const centerCross: Pos[] = [
-      ...rect(17, 5, 19, 6),
-      ...rect(17, 8, 19, 9),
-      ...rect(17, 12, 19, 13),
-      { col: 18, row: 7 }, { col: 18, row: 10 }, { col: 18, row: 11 },
+      ...rect(17, 4, 17, 8),       // top vertical spine
+      ...rect(17, 14, 17, 20),     // bottom vertical spine
+      ...rect(15, 9, 19, 13),      // central thick body
+      { col: 18, row: 8 },
+      { col: 16, row: 11 }, { col: 20, row: 11 },
+      // Two lone blocks above + below the central body (matches the
+      // reference image's arrow-cross silhouette).
+      { col: 17, row: 2 },
+      { col: 17, row: 22 },
     ];
-    // Pre-placed CPU defender towers (left half, scattered around exit).
-    // Real placement comes in M10.16; this stub gives 4 towers + 1 Ult.
+    // Pre-placed CPU defender towers — scattered clusters across the
+    // left half. Mix of Arcane kit + the Ult Throne.
     const destructibleTowers = [
-      { col: 5,  row: midRow,     towerId: 'arcane_bolt',  hp: 600 },
-      { col: 7,  row: midRow - 2, towerId: 'arcane_storm', hp: 600 },
-      { col: 7,  row: midRow + 2, towerId: 'arcane_storm', hp: 600 },
-      { col: 10, row: midRow,     towerId: 'arcane_focus', hp: 600 },
-      { col: 2,  row: midRow,     towerId: 'arcane_ult_throne', hp: 5000, isUlt: true },
+      // Top cluster (rows 4-7)
+      { col: 2,  row: 5,  towerId: 'arcane_bolt',  hp: 500 },
+      { col: 4,  row: 4,  towerId: 'arcane_storm', hp: 600 },
+      { col: 6,  row: 6,  towerId: 'arcane_bolt',  hp: 500 },
+      { col: 8,  row: 5,  towerId: 'arcane_focus', hp: 700 },
+      { col: 10, row: 4,  towerId: 'arcane_storm', hp: 600 },
+      { col: 12, row: 5,  towerId: 'arcane_bolt',  hp: 500 },
+      // Mid cluster (rows 9-15) — densest, around the green exit
+      { col: 2,  row: 10, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 5,  row: 11, towerId: 'arcane_storm', hp: 600 },
+      { col: 7,  row: 10, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 9,  row: 12, towerId: 'arcane_focus', hp: 700 },
+      { col: 11, row: 11, towerId: 'arcane_storm', hp: 600 },
+      { col: 13, row: 10, towerId: 'arcane_bolt',  hp: 500 },
+      // The Ult Throne — directly behind the green exit
+      { col: 2,  row: midRow, towerId: 'arcane_ult_throne', hp: 5000, isUlt: true },
+      { col: 4,  row: 14, towerId: 'arcane_drain', hp: 800 },
+      { col: 6,  row: 13, towerId: 'arcane_storm', hp: 600 },
+      { col: 9,  row: 14, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 11, row: 13, towerId: 'arcane_focus', hp: 700 },
+      // Bottom cluster (rows 17-20)
+      { col: 2,  row: 17, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 4,  row: 19, towerId: 'arcane_storm', hp: 600 },
+      { col: 6,  row: 18, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 8,  row: 17, towerId: 'arcane_focus', hp: 700 },
+      { col: 10, row: 19, towerId: 'arcane_storm', hp: 600 },
+      { col: 13, row: 18, towerId: 'arcane_bolt',  hp: 500 },
     ];
-    // Player buildable zones — two clusters of magenta cells around the
-    // two summoning circles on the right. Top cluster around (28, 4),
-    // bottom around (28, 13).
+    // Two summoning circles — top + bottom of right half. 2x2 each,
+    // top-left corner specified.
+    const summoningCircles = [
+      { col: 30, row: 5 },
+      { col: 30, row: 17 },
+    ];
+    // Player buildable zones — magenta cells surrounding each circle's
+    // 2x2 footprint (8-cell ring), letting the player drop up to 8
+    // mana drains adjacent to each circle.
     const playerBuildableCells: Pos[] = [];
     const dropZone = (cx: number, cy: number) => {
-      // Ring of 8 cells around the 2x2 footprint at (cx, cy) — these
-      // become the magenta "drop a mana drain here" cells.
       for (let dc = -1; dc <= 2; dc++) for (let dr = -1; dr <= 2; dr++) {
-        if (dc >= 0 && dc <= 1 && dr >= 0 && dr <= 1) continue; // skip the circle footprint
-        playerBuildableCells.push({ col: cx + dc, row: cy + dr });
+        if (dc >= 0 && dc <= 1 && dr >= 0 && dr <= 1) continue; // skip circle footprint
+        const c = cx + dc, r = cy + dr;
+        if (c < 1 || c >= cols - 1 || r < 1 || r >= GRID_ROWS - 1) continue; // skip perimeter
+        playerBuildableCells.push({ col: c, row: r });
       }
     };
-    dropZone(28, 4);
-    dropZone(28, 13);
-    // Summoning circles — 2x2 each, marked noBuild so player can't
-    // drop towers on them. Top-left corner of each footprint.
-    const summoningCircles = [
-      { col: 28, row: 4 },
-      { col: 28, row: 13 },
-    ];
+    dropZone(30, 5);
+    dropZone(30, 17);
+    // The summoning circle footprints are noBuild so the player can't
+    // drop a tower on top of them.
     const noBuild: Pos[] = [];
     for (const c of summoningCircles) {
       for (let dc = 0; dc <= 1; dc++) for (let dr = 0; dr <= 1; dr++) {

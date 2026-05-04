@@ -197,6 +197,19 @@ const ARCHETYPES: Record<MissionArchetypeId, MissionArchetype> = {
     defaults: { waveCount: 5, difficulty: 'hard' },
     __archetypeStub: true,
   },
+
+  // ─── M10 finale — Arcane siege ────────────────────────────────
+  // Hybrid mode: standard wave creeps + a hero summoned from the
+  // player's mana drains + destructible CPU towers the hero attacks.
+  // Win = destroy every CPU tower (incl. the Ult Throne). Endless
+  // waves until win/loss.
+  final_arcane: {
+    id: 'final_arcane',
+    label: 'The Reckoning',
+    blurb: 'Charge your circles, summon the mage, raze the spire.',
+    baseMode: 'standard',
+    defaults: { waveCount: 999, difficulty: 'hard' },
+  },
 };
 
 export function getArchetype(id: MissionArchetypeId): MissionArchetype {

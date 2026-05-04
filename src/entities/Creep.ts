@@ -45,6 +45,11 @@ export class Creep {
    * where every creep belongs to the defender themselves).
    */
   spawnOwnerIndex: number | null = null;
+  /** M10 finale (also useful for any future "decoy" mode): true when
+   *  the creep was spawned by SendManager as a player send (not a wave
+   *  creep). CPU defender towers in M10 prefer sends in their target
+   *  priority list (sends > non-send creeps > hero). */
+  isSend: boolean = false;
   /**
    * Plan 12 v2 — Anti-magic Wagon shield. Number of incoming damage
    * instances this creep can fully absorb before normal damage applies.

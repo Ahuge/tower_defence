@@ -552,6 +552,44 @@ export class Tower {
   findTarget(creeps: Creep[]): Creep | null {
     if (this._frameTargetValid) return this._frameTarget;
 
+    // M10 finale: destructible CPU defender towers prefer player sends
+    // over wave creeps (sends are decoys; wave creeps reach the exit
+    // and cost the player lives, so the player WANTS them targeted —
+    // the inversion is intentional). Hero is hit when no creeps in
+    // range. Player towers' targeting unchanged.
+    if (this.destructible) {
+      const sendsInRange: Creep[] = [];
+      const otherInRange: Creep[] = [];
+      for (const creep of creeps) {
+        if (!creep.alive || creep.reached) continue;
+        const dx = creep.x - this.x;
+        const dy = creep.y - this.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > this.range * this.range) continue;
+        if (creep.isSend) sendsInRange.push(creep);
+        else otherInRange.push(creep);
+      }
+      // Tier 1: any send in range → pick nearest.
+      // Tier 2: any non-send in range → pick nearest.
+      const pool = sendsInRange.length > 0 ? sendsInRange : otherInRange;
+      if (pool.length === 0) {
+        this._frameTarget = null;
+        this._frameTargetValid = true;
+        return null;
+      }
+      let nearest: Creep | null = null;
+      let nearestSq = Infinity;
+      for (const c of pool) {
+        const dx = c.x - this.x;
+        const dy = c.y - this.y;
+        const d = dx * dx + dy * dy;
+        if (d < nearestSq) { nearest = c; nearestSq = d; }
+      }
+      this._frameTarget = nearest;
+      this._frameTargetValid = true;
+      return nearest;
+    }
+
     const mode: TargetingMode = this.typeDef.targeting ?? 'first';
     const weakestMode = mode === 'weakest';
     let best: Creep | null = null;

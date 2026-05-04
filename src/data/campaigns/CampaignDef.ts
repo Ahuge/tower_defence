@@ -215,6 +215,18 @@ export interface MissionOverrides {
    *  Used by missions that want the wave pressure to feel meatier
    *  than the team-size baseline (M9: 2× → total ~6× a solo wave). */
   coopCreepCountMult?: number;
+  /** M10 finale rules — when present, GameScene instantiates a
+   *  FinaleController which owns hero, summoning circles, charge
+   *  meter, win-condition. Other missions leave this undefined. */
+  finaleRules?: {
+    heroId: import('../HeroTypes').HeroId;
+    heroStartingLevel?: number;
+    heroRespawnSeconds?: number;
+    chargeRatePerDrain: number;
+    cpuTowerHpDefault?: number;
+    cpuTowerOwnerIndex?: number;
+    towerKillReward?: { gold?: number; xp?: number; ultGold?: number; ultXp?: number };
+  };
 }
 
 /** The 10-mission campaign. */
@@ -273,4 +285,5 @@ export type MissionArchetypeId =
   | 'interrupt_combo'              // Plan A: chain-stun on adjacent casters
   | 'interrupt_cascade'            // Plan A: completed casts permadebuff towers
   | 'attacker_role_reversal'       // Plan B: Foundry Floor / Assembly Strike I+II
-  | 'boss_rush_visible_assembly';  // Plan B: walker bosses spawn missing parts
+  | 'boss_rush_visible_assembly'   // Plan B: walker bosses spawn missing parts
+  | 'final_arcane';                // M10 finale — siege the archmage spire with summoned hero

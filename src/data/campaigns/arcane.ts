@@ -588,37 +588,52 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 10 — Final showdown
+    // 10 — The Reckoning. Arcane finale — siege the archmage spire.
     {
       id: 'reckoning',
       idx: 9,
-      name: 'Reckoning',
+      name: 'The Reckoning',
       story:
-        "Their archmage cabal makes its stand at the spire. Thirty waves, hard difficulty, three approaches " +
-        "converging on our line. If you win this they won't come again. If you lose, none of the previous " +
-        "wins mattered. End it.\n\n" +
-        "The Forge unveils Arcane Nova — a final-tier ultimate the cabal kept locked in their deepest vault. " +
-        "We have it now. The stone-and-mortar Walls are gone too: every coin we have left goes to spellcraft. " +
-        "Save Nova for the ones that matter.",
-      archetype: 'final_showdown',
+        "The cabal's lattice ringed around their spire — every Arcane tower the Forge ever feared, " +
+        "stacked between us and the throne. The Archmage Throne anchors the back: she's the one we have " +
+        "to break. We don't have the towers to siege a fortress this big.\n\n" +
+        "What we have is the Forge's last gift: TWO summoning circles. Pour Mana Drains around them and " +
+        "the circles charge — at full charge they call the Forge mage herself, the only one of us who " +
+        "ever beat an archmage in a duel. Hold the line while the circles charge. Then she walks west " +
+        "and breaks every tower in her path. Don't let her die in vain.",
+      archetype: 'final_arcane',
       overrides: {
         faction: 'coalition',
-        mapId: 'arcane_throne',
+        mapId: 'arcane_throne_finale',
         difficulty: 'hard',
-        waveCount: 30,
-        // M10: full Arcane kit + Nova (final ult). Coalition Wall
-        // explicitly NOT included — by the showdown the player has
-        // earned the full magical lattice and shouldn't be relying
-        // on plain stone any more. noWalls reinforces it via the
-        // generic gate so accidental dock state can't sneak walls in.
+        waveCount: 999,  // endless until win-by-tower-kill or lives-out
+        // Player can ONLY build the Arcane Mana Drain (the verb of M10).
+        // Coalition Wall explicitly off (noWalls). Other towers blocked
+        // via allowedTowerIds.
         restrictions: {
-          allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'arcane_focus', 'arcane_frost', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
+          allowedTowerIds: ['arcane_drain'],
           noWalls: true,
+        },
+        finaleRules: {
+          heroId: 'arcanist',
+          heroStartingLevel: 3,           // Q + W ready on first summon
+          heroRespawnSeconds: 20,
+          // 8 drains × 0.00156 = 1.25%/s → 80s to first summon at max
+          // density. 4 drains = 160s. Long pure-defense ramp.
+          chargeRatePerDrain: 0.00156,
+          cpuTowerHpDefault: 600,
+          towerKillReward: { gold: 50, xp: 50, ultGold: 500, ultXp: 250 },
         },
       },
       objectives: {
-        star2: { label: 'Win with at least 10 lives remaining', predicate: r => r.livesRemaining >= 10 },
-        star3: { label: 'Win without using a continue', predicate: r => r.won && r.perfectRun },
+        star2: {
+          label: 'Win in under 25 minutes',
+          predicate: r => r.won && r.durationMs < 25 * 60 * 1000,
+        },
+        star3: {
+          label: 'Win without losing the hero (zero deaths)',
+          predicate: r => r.won && (r.custom.heroDeaths ?? 99) === 0,
+        },
       },
     },
   ],

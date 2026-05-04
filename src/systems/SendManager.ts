@@ -103,6 +103,7 @@ export class SendManager {
           (this.scene as any).creepFaction,
         );
         creep.spawnOwnerIndex = entry.spawnOwnerIndex;
+        creep.isSend = true;
         creeps.push(creep);
       }
       this.spawnTimer = this.spawnInterval;

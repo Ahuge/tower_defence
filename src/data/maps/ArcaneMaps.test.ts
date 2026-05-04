@@ -91,8 +91,9 @@ describe('Arcane campaign references the bespoke maps', () => {
     expect(ARCANE_CAMPAIGN.missions[5].overrides.mapId).toBe('arcane_pass');
   });
 
-  it('mission 10 (Reckoning / final showdown) uses arcane_throne', () => {
-    expect(ARCANE_CAMPAIGN.missions[9].overrides.mapId).toBe('arcane_throne');
+  it('mission 10 (The Reckoning / final_arcane) uses arcane_throne_finale', () => {
+    expect(ARCANE_CAMPAIGN.missions[9].overrides.mapId).toBe('arcane_throne_finale');
+    expect(ARCANE_CAMPAIGN.missions[9].archetype).toBe('final_arcane');
   });
 
   it('every map referenced by the campaign exists in MAPS', () => {
