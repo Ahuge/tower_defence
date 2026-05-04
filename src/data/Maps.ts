@@ -487,45 +487,23 @@ export const MAPS: Record<MapId, MapDefinition> = {
   attacker_assault: {
     id: 'attacker_assault',
     name: 'The Assault Corridor',
-    description: 'You command the attack. Their pre-built defense is in the way.',
+    description: 'You command the attack. The Arcane defender plays a full game — mazes, builds, upgrades.',
     theme: 'stone',
     entries: [{ col: 0, row: MID_ROW }],
     exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
     blocked: [
       // Outer arena walls — funnel the path through the central
-      // corridor where defender towers sit.
+      // corridor where the CPU defender mazes their towers.
       ...rect(0, 0, GRID_COLS - 1, 5),
       ...rect(0, GRID_ROWS - 6, GRID_COLS - 1, GRID_ROWS - 1),
     ],
     noBuild: [],
-    preplacedTowers: [
-      // Pre-placed defender lattice. Cheap towers at staggered rows
-      // along the corridor — the player's wave has to walk past all
-      // of these. Picked from the basic-faction kit so any campaign
-      // mission against any faction reads as "their basic outposts."
-      // Mix of damage profiles: arrows (fast single-target), cannons
-      // (splash), one sniper for late-corridor pressure.
-      { col: 6,  row: MID_ROW - 2, towerId: 'arrow' },
-      { col: 6,  row: MID_ROW + 2, towerId: 'arrow' },
-      { col: 12, row: MID_ROW - 2, towerId: 'cannon' },
-      { col: 12, row: MID_ROW + 2, towerId: 'cannon' },
-      { col: 18, row: MID_ROW - 2, towerId: 'arrow' },
-      { col: 18, row: MID_ROW + 2, towerId: 'slow' },
-      { col: 24, row: MID_ROW - 2, towerId: 'cannon' },
-      { col: 24, row: MID_ROW + 2, towerId: 'arrow' },
-      { col: 30, row: MID_ROW - 2, towerId: 'sniper' },
-      { col: 30, row: MID_ROW + 2, towerId: 'arrow' },
-    ],
-    // Plan 12 v2 Phase 3 — empty cells the CPU may build new towers
-    // on once the defender treasury fills up. Picks counter-best from
-    // allowedTowerIds vs the upcoming wave. 4 sockets staggered along
-    // the corridor between existing rows; capped per difficulty.
-    expansionSockets: [
-      { col: 9,  row: MID_ROW,     allowedTowerIds: ['arrow', 'cannon', 'slow'] },
-      { col: 15, row: MID_ROW,     allowedTowerIds: ['arrow', 'cannon', 'sniper'] },
-      { col: 21, row: MID_ROW,     allowedTowerIds: ['cannon', 'slow', 'sniper'] },
-      { col: 27, row: MID_ROW,     allowedTowerIds: ['arrow', 'cannon', 'sniper'] },
-    ],
+    // Plan 12 v3 — no static lattice. The CPU defender plays this
+    // map as a full game (BalancedBrain), placing + upgrading +
+    // mazing with the Arcane kit from a starting gold seed and
+    // kill-gold income. Removed the old pre-placed arrow / cannon /
+    // sniper lattice + expansion sockets; both are obsolete now
+    // that the brain owns the entire map.
   },
 
   // === Heist (Plan 13 v1) ===

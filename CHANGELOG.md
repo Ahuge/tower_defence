@@ -2,6 +2,18 @@
 
 ## 2026-05-04
 
+### M8 attacker v3: real Arcane CPU brain, full game
+
+The static defender lattice (arrow / cannon / sniper pre-placed at fixed positions, light upgrade ticks on top) was a thin "treadmill" — the player's strategy collapsed to "find the right composition once, repeat." Replaced with a real CPU brain playing a full game on the Arcane kit:
+
+- **No more pre-placed lattice**. `attacker_assault` map clears `preplacedTowers` + `expansionSockets`. The map is empty corridor when the mission starts; the CPU builds everything from scratch.
+- **BotAI defender** with the BalancedBrain spins up at scene init. Faction is the campaign's creep faction (M8 → Arcane), so the bot picks from `arcane_bolt / arcane_storm / arcane_focus / arcane_frost / arcane_drain / arcane_meteor / arcane_nova`. It mazes, builds, and upgrades exactly like a human Arcane player would.
+- **Economy plumbing**: `addAttackerDefenderGold` now credits the bot's `EconomyManager` via `creditKill`, with the existing `treasuryMult × waveScale` multipliers applied. Wave-start / wave-clear events fan out to the bot too, so its income mirrors a real player's economy.
+- **Seed gold**: 300g at scene init, enough for ~6 cheap towers wave 1 before kill-gold starts flowing in.
+- The legacy `tickAttackerDefenderUpgrades` upgrade-only picker is no longer called in the attacker update branch; the bot's `tick(delta)` runs in its place. The expansion-socket helper code stays in the file as dead-code-callable (kept for future maps that might still want the static-lattice + sockets mode), but `attacker_assault` doesn't trigger it.
+
+**M8 story** rewritten as a heist: the player is breaking in to steal the meteor archive (a tower they can't yet build), and the defending archmage is on the line in person — building, upgrading, calling in Frost and Mana Drain as needed. "Don't expect the same fight twice."
+
 ### M8 attacker: CPU defender now builds new towers; M9: bot ally now actually exists
 
 Two related defender-side fixes.

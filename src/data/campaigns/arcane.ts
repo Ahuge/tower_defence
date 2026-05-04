@@ -465,15 +465,16 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 8 — Attacker (Plan 12): we send raiders through their fortified relay
+    // 8 — Attacker (Plan 12): heist into the Arcane meteor archive
     {
       id: 'breach_relay',
       idx: 7,
       name: 'Breach the Relay',
       story:
-        "Their meteor relay funnels every spell through one fortified corridor. Their towers are dug in; ours are " +
-        "not coming. We send raiders ourselves — five through the corridor and the relay's defenders break.\n\n" +
-        "The defenders don't sit still. Every raider they cut down funds another emplacement on the line. Move fast.",
+        "The cabal hoards the meteor schematics behind their lattice. We need that archive — a tower we can't yet " +
+        "build, an answer to the spells they've been throwing at us. Push twelve raiders through and the archive is ours.\n\n" +
+        "Their archmage is on the line in person, building and re-building the maze as our column comes through. " +
+        "She mazes, she upgrades, she calls in Frost and Mana Drain as needed. Don't expect the same fight twice.",
       archetype: 'attacker',
       overrides: {
         faction: 'coalition',
