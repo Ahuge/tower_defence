@@ -2,6 +2,18 @@
 
 ## 2026-05-04
 
+### LoadingScreen Begin button — actually waits forever now
+
+Two bugs in the campaign-mission loading flow:
+
+- 10-second safety timer auto-dismissed the screen even when `requiresContinue=true`, defeating the purpose of the Begin gate.
+- 800ms min display time meant the loading bar barely showed before the button appeared (effectively skipping the loading-bar phase).
+
+Fixed:
+- Safety timer skipped entirely when `requiresContinue` is set. The screen now genuinely waits forever for the player's click.
+- Min display time bumped to 1500ms so the loading bar always animates fully at least once before the button can appear.
+- Button visibility now gates on BOTH `sceneReady` AND min-time elapsed, so the loading bar always plays through before the Begin button takes its place. Previously the button could appear in <100ms on fast scene loads, making clicks silently no-op until 800ms had passed.
+
 ### Attacker mode economy v3 — temporal pressure + investment loop
 
 After the Defender-Prep playtest the mode still felt static — every wave was a one-shot decision with no consequence carrying forward. Adding a real economy curve so the player has to make timing decisions across the run.

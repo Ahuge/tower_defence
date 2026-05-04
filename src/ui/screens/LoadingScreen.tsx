@@ -85,6 +85,7 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
+  const [minElapsedUI, setMinElapsedUI] = useState(false);
   const flavourRef = useRef(pickFlavour(faction));
 
   const fDef = faction && faction !== 'random' ? FACTIONS[faction as FactionId] : null;
@@ -98,13 +99,14 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
   const wavesLabel = waveCount ? `${waveCount} waves` : null;
 
   // Dismiss flow:
-  //  - Default: scene-ready + min-time elapsed → auto-dismiss
-  //  - requiresContinue: scene-ready + player clicks Begin → dismiss
-  //    Min-time still applies before the button enables (so the loading
-  //    screen never feels skippable in <1s).
+  //  - Default (non-campaign): scene-ready + min-time elapsed →
+  //    auto-dismiss. 10s safety unblocks if scene-ready never fires.
+  //  - requiresContinue (campaign): scene-ready + min-time elapsed →
+  //    show Begin button. Player clicks → dismiss. NO auto-dismiss,
+  //    NO safety timeout — the screen waits forever for the click so
+  //    the player can read the mission brief at their own pace.
   useEffect(() => {
-    const MIN_MS = requiresContinue ? 800 : 5000;
-    const SAFETY_MS = 10000;
+    const MIN_MS = 1500;
     const startTime = performance.now();
     let isReady = false;
     let minElapsed = false;
@@ -114,15 +116,12 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
     const log = (msg: string) => { if (debug) console.log(msg); };
     const elapsed = () => ((performance.now() - startTime) / 1000).toFixed(2) + 's';
 
-    log(`[LOADING] mounted, MIN=${MIN_MS}ms SAFETY=${SAFETY_MS}ms requiresContinue=${requiresContinue}`);
+    log(`[LOADING] mounted, MIN=${MIN_MS}ms requiresContinue=${requiresContinue}`);
 
-    const tryDismiss = (source: string) => {
-      log(`[LOADING] tryDismiss(${source}) sceneReady=${isReady} minElapsed=${minElapsed} dismissed=${dismissed} elapsed=${elapsed()}`);
-      if (dismissed || !isReady || !minElapsed) return;
-      // requiresContinue waits for explicit player click.
-      if (requiresContinue && source !== 'continue-click' && source !== 'safety') return;
+    const dismiss = (source: string) => {
+      if (dismissed) return;
       dismissed = true;
-      log(`[LOADING] DISMISSING at ${elapsed()}`);
+      log(`[LOADING] DISMISSING (${source}) at ${elapsed()}`);
       setFadeOut(true);
       setTimeout(() => {
         setVisible(false);
@@ -131,41 +130,60 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
       }, 200);
     };
 
+    const tryAutoDismiss = (source: string) => {
+      log(`[LOADING] tryAutoDismiss(${source}) sceneReady=${isReady} minElapsed=${minElapsed} dismissed=${dismissed} elapsed=${elapsed()}`);
+      if (dismissed || !isReady || !minElapsed) return;
+      // requiresContinue: NEVER auto-dismiss. Wait for the click.
+      if (requiresContinue) return;
+      dismiss(source);
+    };
+
     const onReady = () => {
       log(`[LOADING] game-scene-ready event received at ${elapsed()}`);
       isReady = true;
       setSceneReady(true);
-      tryDismiss('scene-ready');
+      tryAutoDismiss('scene-ready');
     };
 
     const onContinue = () => {
       log(`[LOADING] continue-click at ${elapsed()}`);
-      tryDismiss('continue-click');
+      // Click is honored only after scene is ready + min time elapsed
+      // (so the button itself is gated by sceneReady before it
+      // renders — but defensive check belt-and-braces).
+      if (!isReady || !minElapsed) return;
+      dismiss('continue-click');
     };
 
     const minTimer = setTimeout(() => {
       log(`[LOADING] min timer fired at ${elapsed()}`);
       minElapsed = true;
-      tryDismiss('min-timer');
+      setMinElapsedUI(true);
+      tryAutoDismiss('min-timer');
     }, MIN_MS);
 
     window.addEventListener('game-scene-ready', onReady);
     window.addEventListener('loading-screen-continue', onContinue);
 
-    const safety = setTimeout(() => {
-      log(`[LOADING] SAFETY timeout fired at ${elapsed()}`);
-      isReady = true;
-      setSceneReady(true);
-      minElapsed = true;
-      tryDismiss('safety');
-    }, SAFETY_MS);
+    // Safety net only for non-campaign loads — without it a missing
+    // game-scene-ready event hangs the menu forever. Campaign mode
+    // intentionally has no safety; the player MUST click Begin.
+    let safety: ReturnType<typeof setTimeout> | null = null;
+    if (!requiresContinue) {
+      safety = setTimeout(() => {
+        log(`[LOADING] SAFETY timeout fired at ${elapsed()}`);
+        isReady = true;
+        setSceneReady(true);
+        minElapsed = true;
+        dismiss('safety');
+      }, 10000);
+    }
 
     return () => {
       log(`[LOADING] cleanup at ${elapsed()}`);
       window.removeEventListener('game-scene-ready', onReady);
       window.removeEventListener('loading-screen-continue', onContinue);
       clearTimeout(minTimer);
-      clearTimeout(safety);
+      if (safety) clearTimeout(safety);
     };
   }, [requiresContinue]);
 
@@ -326,9 +344,11 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
         </div>
 
         {/* Progress bar transforms into a Begin button when the scene
-            is ready (campaign mode only). For non-campaign loads, the
-            bar just keeps animating until auto-dismiss fires. */}
-        {requiresContinue && sceneReady ? (
+            is ready AND the min-time has elapsed (campaign only).
+            Until both are true the loading bar keeps animating. For
+            non-campaign loads, the bar just keeps animating until
+            auto-dismiss fires. */}
+        {requiresContinue && sceneReady && minElapsedUI ? (
           <button
             onClick={() => window.dispatchEvent(new Event('loading-screen-continue'))}
             style={{
