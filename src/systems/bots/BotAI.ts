@@ -35,6 +35,7 @@ import { BotBrain, BotContext, Cell, PlacedTower, createBrain } from './BotBrain
 // module-load time) to surface in lookups.
 import './brains/DumbBrain';
 import './brains/BalancedBrain';
+import './brains/AttackerDefenderBrain';
 
 /** One bot slot's per-frame state. */
 interface BotState {

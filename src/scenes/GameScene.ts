@@ -1163,10 +1163,14 @@ export class GameScene extends Phaser.Scene {
         }
       }
       const defenderFaction = (this.creepFaction ?? 'arcane') as FactionId;
-      this._attackerCpuBotAI.addBot(0, defenderFaction, candidateCells, 'balanced');
+      // 'attacker_defender' is BalancedBrain with attacker-mode tuning
+      // (no walls, never panic, never feel "covered enough", never save
+      // for ultimate). See AttackerDefenderBrain.ts.
+      this._attackerCpuBotAI.addBot(0, defenderFaction, candidateCells, 'attacker_defender');
       // Seed gold: enough for ~6 cheap towers wave 1. Without this the
       // first decide() at <4s into the run would have nothing to spend.
       this._attackerCpuBotAI.creditGold(0, 300);
+      this.eventLog.gameMessage(`Defender: ${FACTIONS[defenderFaction]?.name ?? defenderFaction} CPU.`);
     }
     // Plan 12 v2: build the AttackerComposer when the mission supplies
     // an essence budget. Composer state is pushed to the DOM overlay

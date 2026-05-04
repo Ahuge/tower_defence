@@ -54,33 +54,33 @@ const ARCANE_PALETTE: AttackerPalette = {
     },
     {
       creepType: 'swarm', label: 'Wolfpack',
-      cost: 8,
+      cost: 12,
       description: 'Spawns as a 3-unit pack. Flood damage; defender has to hit them all.',
     },
     {
       creepType: 'armored', label: 'Bulwark',
-      cost: 12,
+      cost: 20,
       description: 'Heavy armor, slow. Tanks splash so your skirmishers can leak.',
     },
     {
       creepType: 'regenerator', label: 'Healer',
-      cost: 14,
+      cost: 25,
       description: 'Self-heals between hits. Survives single-target snipers.',
     },
     {
       creepType: 'evasive', label: 'Smoker',
-      cost: 9,
+      cost: 14,
       description: 'Dodges hits 25% of the time. Throws off precision turrets.',
     },
     {
       creepType: 'flying', label: 'Glider',
-      cost: 10,
-      description: 'Bypasses ground defenses on a straight-line path. Useful only on maps with anti-air gaps.',
+      cost: 8,
+      description: 'Bypasses ground defenses on a straight-line path. Cheap to spam — useful when the defender mazes.',
     },
     {
       creepType: 'boss', label: 'Battering Ram',
-      cost: 60,
-      description: 'Single high-HP push. Costly; one-shot leak.',
+      cost: 100,
+      description: 'Single high-HP push. Expensive; one-shot leak.',
     },
   ],
 };

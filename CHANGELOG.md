@@ -2,6 +2,21 @@
 
 ## 2026-05-04
 
+### M8 attacker v3 followups: brain tuning, palette costs, faction confirmation
+
+Three fixes after M8 v3 first playtest reported "still Coalition, only 2 towers, T2 sends too strong."
+
+**AttackerDefenderBrain** — new brain id wrapping BalancedBrain with attacker-mode tuning. Default BalancedBrain treats coverage > 1.5× as "good enough, just upgrade now"; the bot would place 2 arcane_bolts that cover most of the corridor and then never place again. New brain bumps `highCoverageRatio` to 5.0, zeroes `panicLives` (the bot's "lives" is the player's 999-leak counter, not real HP), zeroes `maxWallPlacements` (Arcane has no walls), zeroes meta-economy probabilities (no sends/frontier wired in attacker mode), and skips ultimate-save so the bot doesn't hoard 700g for Nova. Bot now keeps placing as long as candidates + budget last.
+
+**Faction confirmation log** — `addBot` runs with the campaign's `creepFaction` (Arcane on M8). The defender brain instantiates with `FACTIONS.arcane.towerIds = ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova']`. To make this verifiable in-game, M8 now logs `Defender: Arcane CPU.` to the event log at scene init.
+
+**Palette cost rebalance** — T2 / T3 sends were dominating: 100e bought 8 Bulwarks or 7 Healers, both nearly unstoppable. T1 (Raider, Skirmisher) felt strictly worse. New costs:
+- Wolfpack 8 → 12, Bulwark 12 → 20, Healer 14 → 25, Smoker 9 → 14, Battering Ram 60 → 100.
+- Glider 10 → 8 (cheaper since the user reported it weak — flying bypass is situational against any non-mazed corridor).
+- Raider 5, Skirmisher 4 unchanged.
+
+100e budget now buys ~20 raiders OR 5 bulwarks OR 4 healers — T2 is a real spend decision instead of a strict upgrade.
+
 ### M8 attacker v3: real Arcane CPU brain, full game
 
 The static defender lattice (arrow / cannon / sniper pre-placed at fixed positions, light upgrade ticks on top) was a thin "treadmill" — the player's strategy collapsed to "find the right composition once, repeat." Replaced with a real CPU brain playing a full game on the Arcane kit:
