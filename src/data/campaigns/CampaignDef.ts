@@ -188,6 +188,12 @@ export interface MissionOverrides {
    *  1x treasury, hard = 4 socket builds + 1.5x treasury. Default
    *  'normal'. */
   attackerDefenderDifficulty?: 'easy' | 'normal' | 'hard';
+  /** Plan 12 v2 Phase 2.5: per-wave defender prep order. Each entry
+   *  is a prep id from AttackerPreps.ts. Length should match wave
+   *  count (or be longer — extras ignored). When undefined, no prep
+   *  applies. Strategic axis: forces player composition rotation
+   *  across the run. */
+  attackerPrepOrder?: string[];
 }
 
 /** The 10-mission campaign. */

@@ -93,6 +93,7 @@ import { getAttackerPalette, visibleEntries } from '../data/AttackerPalettes';
 import { AttackerAbilities } from '../systems/attacker/AttackerAbilities';
 import { DEFAULT_ATTACKER_ABILITIES } from '../data/AttackerAbilityDefs';
 import { pickUpgradeTarget, pickExpansionBuild, getDifficultyConfig, type AttackerDifficulty, type ExpansionSocket } from '../systems/attacker/CpuDefender';
+import { getPrep, prepHpMultiplier } from '../data/AttackerPreps';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -379,12 +380,15 @@ export class GameScene extends Phaser.Scene {
   /** Plan 12 v2 Phase 3: count of expansion-socket builds the CPU has
    *  already made this mission. Capped by the difficulty config. */
   private _attackerExpansionsBuilt = 0;
+  /** Plan 12 v2 Phase 2.5: per-wave defender prep order (ids resolve
+   *  through AttackerPreps.ATTACKER_PREPS). Index = waveNum-1. */
+  private _missionAttackerPrepOrder?: string[];
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -408,6 +412,7 @@ export class GameScene extends Phaser.Scene {
     this._missionAttackerPaletteFaction = data.missionAttackerPaletteFaction;
     this._missionAttackerLeakThreshold = data.missionAttackerLeakThreshold;
     this._missionAttackerDefenderDifficulty = data.missionAttackerDefenderDifficulty;
+    this._missionAttackerPrepOrder = data.missionAttackerPrepOrder;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -596,10 +601,19 @@ export class GameScene extends Phaser.Scene {
         if (!this.betweenWaves) return;
         if (this.currentWave >= this.waves.length) return;
         // Replace the upcoming wave's groups with the player's picks.
+        // Prep is per-wave from the mission's prep order — applies an
+        // HP multiplier per creep type. Player saw it in the composer
+        // header before composing.
+        const prepId = this._missionAttackerPrepOrder?.[this.currentWave];
+        const prep = getPrep(prepId);
         const built = buildAttackerWave({
           waveNum: this.currentWave + 1,
           picks: this.attackerComposer.lockedPicks(),
+          prep,
         });
+        if (prep) {
+          this.eventLog.gameMessage(`Defender prep: ${prep.label} — ${prep.description}.`);
+        }
         // Plan 12 v2 Phase 2: dispatch queued abilities. Effects mutate
         // the wave (frenzy bumps speedScale, power_surge bumps hpScale)
         // or scene state (smoke_screen disables towers at startWave).
@@ -3897,12 +3911,17 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const visible = visibleEntries(palette, this.missionContext.missionIdx);
+    // Phase 2.5: snapshot the prep for the upcoming wave so the
+    // composer header + per-card badges can render the warning.
+    const prepId = this._missionAttackerPrepOrder?.[this.currentWave];
+    const prep = getPrep(prepId);
     const entries = visible.map(e => ({
       creepType: e.creepType,
       label: e.label,
       cost: e.cost,
       description: e.description,
       count: state.picks.get(e.creepType)?.count ?? 0,
+      prepMult: prepHpMultiplier(prep, e.creepType),
     }));
     GameUIStore.setAttackerComposer({
       entries,
@@ -3923,6 +3942,7 @@ export class GameScene extends Phaser.Scene {
         max: state.wagon.max,
         costPerWagon: state.wagon.costPerWagon,
       },
+      prep: prep ? { id: prep.id, label: prep.label, description: prep.description } : null,
     });
   }
 

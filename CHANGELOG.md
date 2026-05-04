@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-05-04
+
+### Attacker v2 Phase 2.5: Defender Prep + composer compaction
+
+After M8 first playtest the strategy collapsed into "always send boss + healer + bulwark" because the defender lattice was static. Adding a per-wave **Defender Prep** axis: each wave the defender announces what they're countering, and creeps of that type take a real HP penalty for the wave. Player has to rotate composition every 1-2 waves instead of finding one solved combo.
+
+**Five prep types** (`src/data/AttackerPreps.ts`):
+- **Sustained Fire** — all creeps -15% HP (broad pressure intro)
+- **Anti-Light** — light-armor creeps -35% HP (Skirmisher/Wolfpack/Smoker/Glider)
+- **Anti-Medium** — medium creeps -35% HP (Raider — single-target hit)
+- **Anti-Heavy** — heavy creeps -40% HP (Bulwark/Healer/Battering Ram)
+- **Anti-Air** — flying creeps -65% HP (Glider — hard counter)
+
+Prep applies as an HP multiplier on the per-group `hpScale` at wave-build time. Player sees the prep in the composer header (red banner with the description) and per-card red badge with the percentage on countered creeps BEFORE composing. They route around it.
+
+M8 ships a **10-wave prep order**: cycles all 5 preps with no two adjacent waves the same. Wave 1 is Sustained Fire (gentle); the order escalates through Anti-Heavy → Anti-Light → Anti-Medium → Anti-Air across the early waves so the player encounters every prep within the first half of the mission. Future faction attacker missions can ship their own prep order via `MissionOverrides.attackerPrepOrder`.
+
+### Composer UI compaction
+
+Phone overlay was overflowing the visible area with 8 creep cards + wagon + abilities. Tightened all paddings (10→8 / 6→3), shrunk creep card to a single row (description moves to the title attribute / hover tooltip), button sizes 24→22, fonts 12→11. Hard-capped to `60vh` on phone with internal scroll. The full panel including header, palette, wagon row, ability tray, and footer now fits comfortably in roughly half the screen on a 412×915 phone.
+
+11 new tests (AttackerPreps math + M8 prep order). Total 521 passing.
+
 ## 2026-05-03
 
 ### Attacker v2 — Phase 2 + Phase 3 (abilities, wagons, smart CPU)

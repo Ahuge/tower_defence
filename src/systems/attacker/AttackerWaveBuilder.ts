@@ -13,6 +13,8 @@
  */
 import type { WaveDefinition, WaveCreepGroup } from '../../data/WaveDefinitions';
 import type { AttackerPick } from './AttackerComposer';
+import type { AttackerPrepDef } from '../../data/AttackerPreps';
+import { prepHpMultiplier } from '../../data/AttackerPreps';
 
 /** Compute hp scale for a given wave number. Mirrors the standard
  *  generator's curve: 20 + 8*w + 0.4*w^2. */
@@ -35,6 +37,9 @@ export interface BuildWaveOptions {
   waveNum: number;
   /** Locked picks from the composer. */
   picks: AttackerPick[];
+  /** Defender prep for this wave — applies an HP multiplier per
+   *  creep type. Null = no prep (no penalty). */
+  prep?: AttackerPrepDef | null;
 }
 
 export interface BuildWaveResult {
@@ -47,7 +52,7 @@ export interface BuildWaveResult {
 
 /** Build a WaveDefinition from the player's composed picks. */
 export function buildAttackerWave(opts: BuildWaveOptions): WaveDefinition {
-  const { waveNum, picks } = opts;
+  const { waveNum, picks, prep } = opts;
   const hp = hpScaleForWave(waveNum);
   const speed = speedScaleForWave(waveNum);
 
@@ -56,7 +61,9 @@ export function buildAttackerWave(opts: BuildWaveOptions): WaveDefinition {
     .map(pick => ({
       creepType: pick.entry.creepType,
       count: pick.count,
-      hpScale: hp,
+      // Defender prep multiplies HP per creep type at spawn time.
+      // Player sees the prep before composing and can route around it.
+      hpScale: hp * prepHpMultiplier(prep ?? null, pick.entry.creepType),
       speedScale: speed,
     }));
 

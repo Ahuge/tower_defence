@@ -499,6 +499,22 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // First attacker encounter — easy CPU: 0.5x treasury, no
         // socket builds (defender only upgrades existing towers).
         attackerDefenderDifficulty: 'easy',
+        // 10-wave defender prep cycle. Each wave shows a different
+        // counter; player rotates composition to avoid the prep target.
+        // First entry is for wave 1. Imported from AttackerPreps.ts to
+        // keep the rotation reusable across future attacker missions.
+        attackerPrepOrder: [
+          'sustained_fire', // W1 — gentle intro: -15% all
+          'anti_heavy',     // W2 — boss/healer/bulwark hurt
+          'anti_light',     // W3 — skirmisher/wolfpack/smoker/glider hurt
+          'anti_medium',    // W4 — only Raider hit
+          'anti_air',       // W5 — Glider unusable
+          'anti_heavy',     // W6 — boss/healer/bulwark again
+          'sustained_fire', // W7
+          'anti_light',     // W8
+          'anti_heavy',     // W9
+          'sustained_fire', // W10 — final
+        ],
       },
       objectives: {
         // Stars switch to wave-count-based — the leak threshold

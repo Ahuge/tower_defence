@@ -349,6 +349,10 @@ export interface AttackerComposerUIState {
     description: string;
     /** Currently-picked count of this entry. */
     count: number;
+    /** Defender-prep HP multiplier for this creep type this wave.
+     *  1.0 = neutral. < 1 = creep is being countered. UI renders a
+     *  red badge with the percentage when < 1. */
+    prepMult: number;
   }>;
   /** Essence spent so far this wave. */
   spent: number;
@@ -375,6 +379,10 @@ export interface AttackerComposerUIState {
     max: number;
     costPerWagon: number;
   };
+  /** Plan 12 v2 Phase 2.5 — defender prep for this wave. Null = no
+   *  prep configured for the mission. UI renders the prep label +
+   *  description in the composer header. */
+  prep: { id: string; label: string; description: string } | null;
 }
 
 export interface ContinueOffer {
@@ -545,7 +553,8 @@ class GameUIStoreClass {
       && prev.waveNum === next.waveNum
       && prev.canSend === next.canSend
       && prev.entries.length === next.entries.length
-      && prev.entries.every((e, i) => e.count === next.entries[i].count && e.creepType === next.entries[i].creepType)
+      && prev.entries.every((e, i) => e.count === next.entries[i].count && e.creepType === next.entries[i].creepType && e.prepMult === next.entries[i].prepMult)
+      && (prev.prep?.id ?? null) === (next.prep?.id ?? null)
       && prev.abilities.length === next.abilities.length
       && prev.abilities.every((a, i) => a.cooldownRemaining === next.abilities[i].cooldownRemaining && a.queued === next.abilities[i].queued)
       && prev.wagon.count === next.wagon.count
