@@ -293,6 +293,16 @@ export class CircleManager {
 
   notifyWaveCleared(wave: number): void {
     this.playersWaveCleared.add(this.playerIndex);
+    // Bot slots have no agent to fire their own notify — auto-clear
+    // them on the host so checkAllWavesCleared doesn't deadlock when
+    // every human has already cleared. Without this, M9 (campaign
+    // bot ally) hangs after wave 1 because the bot index never
+    // enters playersWaveCleared.
+    if (this.isHost) {
+      for (const botIndex of this.botSlots) {
+        this.playersWaveCleared.add(botIndex);
+      }
+    }
     this.broadcast({ type: 'wave_cleared', wave });
     if (this.isHost) {
       this.checkAllWavesCleared();
@@ -304,6 +314,13 @@ export class CircleManager {
     this.waveTimerActive = true;
     this.localReady = false;
     this.playersReady.clear();
+    // Bots auto-ready immediately. Wave still waits for humans to
+    // ready or the timer to expire — but bots never block progression.
+    if (this.isHost) {
+      for (const botIndex of this.botSlots) {
+        this.playersReady.add(botIndex);
+      }
+    }
   }
 
   updateWaveTimer(delta: number): boolean {

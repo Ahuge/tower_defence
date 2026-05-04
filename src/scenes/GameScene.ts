@@ -972,11 +972,16 @@ export class GameScene extends Phaser.Scene {
         && !this.registry.get('circle')) {
       const c = new CircleManager(() => {}, () => {});
       c.initHost();
-      const allyFaction = this.faction ?? 'coalition';
+      const playerFaction = this.faction ?? 'coalition';
       // Stamp the host slot's faction so circle code that reads
       // playerFactions.get(0) gets a real value, not undefined.
-      c.playerFactions.set(0, allyFaction);
-      c.addBot(allyFaction);
+      c.playerFactions.set(0, playerFaction);
+      // Bot ally plays Arcane — has the full Arcane kit (Bolt, Frost,
+      // Storm, Focus, Mana Drain, Meteor, Nova) which fits the
+      // campaign theme better than the Coalition basic kit. Hardcoded
+      // to 'arcane' for now; future faction campaigns can override
+      // via missionContext if other ally factions ever ship.
+      c.addBot('arcane');
       this.registry.set('circle', c);
     }
     // Circle co-op: get CircleManager from registry
@@ -1167,9 +1172,12 @@ export class GameScene extends Phaser.Scene {
       // (no walls, never panic, never feel "covered enough", never save
       // for ultimate). See AttackerDefenderBrain.ts.
       this._attackerCpuBotAI.addBot(0, defenderFaction, candidateCells, 'attacker_defender');
-      // Seed gold: enough for ~6 cheap towers wave 1. Without this the
-      // first decide() at <4s into the run would have nothing to spend.
-      this._attackerCpuBotAI.creditGold(0, 300);
+      // Seed gold: enough for ~10-15 cheap towers wave 1 so the
+      // defender starts with real teeth instead of placing 1 bolt
+      // before the player rushes Send. Combined with hard-difficulty
+      // treasuryMult and wave-scaling, the bot keeps pace with the
+      // player's carryover-fueled late-game spends.
+      this._attackerCpuBotAI.creditGold(0, 500);
       this.eventLog.gameMessage(`Defender: ${FACTIONS[defenderFaction]?.name ?? defenderFaction} CPU.`);
     }
     // Plan 12 v2: build the AttackerComposer when the mission supplies

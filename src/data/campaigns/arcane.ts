@@ -496,8 +496,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // income) and invest in Reinforcement Camps for permanent
         // bonus income. CPU treasury also scales with wave so
         // saving forever isn't free.
-        attackerEssencePerWave: 80,             // wave-1 cap
-        attackerEssenceGrowthPerWave: 12,       // +12e/wave: W10 cap = 188
+        attackerEssencePerWave: 60,             // wave-1 cap (tightened — player should feel the squeeze)
+        attackerEssenceGrowthPerWave: 10,       // +10e/wave: W10 cap = 150
         attackerEssenceCarryoverMult: 2,        // up to 2× this wave's income rolls over
         attackerCampMax: 2,                     // build up to 2 camps over the run
         attackerCampCost: 50,                   // 50e once
@@ -507,12 +507,11 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // v1 default). At 100e/wave the player can dump ~20 raiders in
         // a single wave, so 5 was trivially won on wave 1.
         attackerLeakThreshold: 12,
-        // CPU defender on normal — 1x treasury, up to 2 expansion-
-        // socket builds across the run. Was 'easy' (0 builds) for the
-        // first encounter, but the static lattice felt too predictable.
-        // 'normal' lets the defender drop new counter towers as the
-        // treasury fills, forcing the player to react.
-        attackerDefenderDifficulty: 'normal',
+        // CPU defender on hard — 1.5x kill-gold treasury so the bot
+        // can keep building/upgrading aggressively. Combined with
+        // wave-scaling (×1.0 W1 → ×2.0 W11) the bot earns up to ×3.0
+        // by late game, keeping pace with the carryover-fueled player.
+        attackerDefenderDifficulty: 'hard',
         // 10-wave defender prep cycle. Each wave shows a different
         // counter; player rotates composition to avoid the prep target.
         // First entry is for wave 1. Imported from AttackerPreps.ts to

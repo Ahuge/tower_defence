@@ -2,6 +2,17 @@
 
 ## 2026-05-04
 
+### M8 economy flip + M9 wave-progression + ally faction
+
+**M8 economy flip:** previous run felt too easy on the player's side. Pulled both levers:
+- Player essence cap: wave-1 80 → 60, growth 12/wave → 10/wave (W10 cap 188 → 150). Player now has to scrape together each wave.
+- CPU difficulty: 'normal' → 'hard' (1.5× kill-gold treasury, up from 1.0×). Combined with the existing wave-scaling (×1.0 W1 → ×2.0 W11) the CPU earns up to ×3.0 by late game.
+- CPU seed gold: 300 → 500. Wave 1 the bot can drop ~10-15 cheap towers before the player rushes Send.
+
+**M9 wave 2 hang:** after wave 1 cleared, the next-wave countdown never started. CircleManager.checkAllWavesCleared waits for every player slot (including bot slots) to enter playersWaveCleared, but bots have no agent to fire their own notify — so the host hung waiting for the bot. Fixed: notifyWaveCleared now auto-adds every bot slot to playersWaveCleared on the host, and startWaveCountdown auto-readies them in playersReady. Wave progression no longer blocks on bot input.
+
+**M9 ally faction:** the bot ally was being created with `this.faction` (Coalition), so it built basic arrow / cannon / sniper alongside the player's full Arcane kit. Changed the auto-bot setup to hardcode `'arcane'` faction — bot now builds Bolt / Frost / Storm / Focus / Mana Drain / Meteor / Nova, matching the player's loadout. Future faction campaigns can override via mission context when needed.
+
 ### M8 attacker v3 followups: brain tuning, palette costs, faction confirmation
 
 Three fixes after M8 v3 first playtest reported "still Coalition, only 2 towers, T2 sends too strong."
