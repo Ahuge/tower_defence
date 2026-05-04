@@ -204,6 +204,11 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
       transition: 'opacity 200ms ease',
       padding: '24px',
       overflow: 'hidden',
+      // The parent #ui-root has pointer-events:none whenever no DOM
+      // screen is active (UIBridge clears the .active class on
+      // startScene). The button inside this loading screen wouldn't
+      // receive clicks without forcing pointer-events:auto here.
+      pointerEvents: 'auto',
     }}>
       {/* Bespoke faction splash — landscape art behind the foreground
           UI text. Self-hides via onError when the asset is missing

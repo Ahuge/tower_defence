@@ -2,6 +2,12 @@
 
 ## 2026-05-04
 
+### LoadingScreen Begin button: pointer-events fix
+
+The button rendered fine but couldn't be clicked — no cursor change on hover, no click response. Root cause: `#ui-root` carries `pointer-events: none` by default, only flipping to `auto` when a screen marks `.active`. UIBridge.startScene() clears `.active` before the LoadingScreen mounts (the loading screen lives in the gap between screens), so the entire loading overlay was inside a `pointer-events:none` container.
+
+Children with `pointer-events: auto` should still receive events through a `pointer-events:none` parent, but in practice the button wasn't being hit. Forcing explicit `pointer-events: auto` on the LoadingScreen's outer div fixes both the hover cursor and the click handler.
+
 ### LoadingScreen Begin button — actually waits forever now
 
 Two bugs in the campaign-mission loading flow:
