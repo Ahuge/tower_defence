@@ -2,6 +2,20 @@
 
 ## 2026-05-04
 
+### M10 v4 — CPU towers shoot hero, friendly sends, hero collision, right-click gate
+
+Five fixes after v3 playtest:
+
+**1. CPU towers attack the hero.** New parallel pass in `FinaleController.update`: each frame, every alive destructible tower checks if the hero is in range. If yes AND no send is closer (decoy priority), and the tower's fire-rate cooldown has elapsed, it fires at the hero. Reuses `tower.lastFired` so the existing creep-fire path doesn't double-fire on the same tick. Damage is instant (no projectile flying — instant + flash + damage number is fine for v1; full projectile rendering is a polish item).
+
+**2. Player sends are friendly to player towers.** Sends used to be slaughtered by the player's own arcane_bolt / arcane_storm towers because the standard target-search saw them as creeps. New `Creep.isFriendly` field set by SendManager when a `sendPathOverride` is active (i.e., finale mode). Player towers' `findTarget` skips friendly creeps. CPU defender towers still target sends as designed.
+
+**3. Sends re-route around player-placed towers.** The reverse send path was computed once at scene init and stayed stale as the player built towers. Now `tryBuildTower` recomputes the reverse path via `findPath(exit, entry)` whenever the placement changed paths, and SendManager picks up the new override on next spawn.
+
+**4. Hero collision with blocked cells.** Hero used to no-clip through perimeter walls and the central arrow-cross divider. FinaleController now post-processes the hero each frame: convert pixel position to grid cell, check `CellType.Blocked`, restore the last valid pixel position when the hero would walk into a wall. Player towers and CPU towers still pass-through (hero is small enough; v2 polish could add tower collision if it feels weird).
+
+**5. Right-click sell gate.** Player could right-click-sell CPU defender towers. `handleRightClick` now checks `tower.destructible` and bails before invoking `towerMgr.sellTower`. CPU towers are tower-property of the cabal — only the hero kills them.
+
 ### M10 v3 — bug fix + tower-interaction gate + open buildable
 
 Three fixes after v2 playtest:

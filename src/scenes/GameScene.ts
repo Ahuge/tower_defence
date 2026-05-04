@@ -1114,6 +1114,7 @@ export class GameScene extends Phaser.Scene {
         destructibleTowers: mapDef.destructibleTowers,
         summoningCircles: mapDef.summoningCircles,
         towerMgr: this.towerMgr,
+        grid: this.grid,
         onHeroSpawned: () => {
           this.eventLog.gameMessage('A pillar of light — the Forge mage answers the call!');
         },
@@ -2617,6 +2618,10 @@ export class GameScene extends Phaser.Scene {
   handleRightClick(col: number, row: number): void {
     // Circle co-op: can only sell your own towers
     if (!this.canModifyTower(col, row)) return;
+    // M10 finale: CPU defender towers are NOT player property — they
+    // can be destroyed only by the hero, never sold by the player.
+    const tower = this.towers.find(t => t.col === col && t.row === row);
+    if (tower?.destructible) return;
 
     // Capture BEFORE the sell mutates state so the recorded
     // snapshot reflects what the player saw at decision time.
@@ -2718,6 +2723,15 @@ export class GameScene extends Phaser.Scene {
     if (result.pathsChanged) {
       this.rerouteCreepsAroundTower(col, row);
       this.drawPath();
+      // M10 finale: also recompute the reverse send path so newly
+      // spawned sends route around the just-placed tower.
+      if (this._finaleController) {
+        const md = this.getMapDef();
+        if (md.entries[0] && md.exits[0]) {
+          const reverse = findPath(this.grid, md.exits[0], md.entries[0]);
+          if (reverse) this.sendMgr.setSendPathOverride(reverse);
+        }
+      }
     }
   }
 

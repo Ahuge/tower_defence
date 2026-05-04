@@ -580,6 +580,10 @@ export class Tower {
 
     for (const creep of creeps) {
       if (!creep.alive || creep.reached) continue;
+      // M10 finale: player towers skip "friendly" creeps (the player's
+      // own sends used as decoy fodder for the CPU lattice). CPU
+      // towers handled in the destructible branch above.
+      if (creep.isFriendly) continue;
       const dx = creep.x - this.x;
       const dy = creep.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);

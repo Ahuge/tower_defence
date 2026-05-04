@@ -50,6 +50,12 @@ export class Creep {
    *  creep). CPU defender towers in M10 prefer sends in their target
    *  priority list (sends > non-send creeps > hero). */
   isSend: boolean = false;
+  /** M10 finale — true when this creep is "friendly" to the player's
+   *  towers (i.e., the player's send used as decoy fodder for the CPU
+   *  lattice). Player towers skip these in their target search; CPU
+   *  defender towers still shoot them. Set by SendManager when a
+   *  send-path override is active (finale mode). */
+  isFriendly: boolean = false;
   /**
    * Plan 12 v2 — Anti-magic Wagon shield. Number of incoming damage
    * instances this creep can fully absorb before normal damage applies.

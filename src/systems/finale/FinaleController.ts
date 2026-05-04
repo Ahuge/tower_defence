@@ -35,7 +35,8 @@ import { getTowerType } from '../../data/TowerTypes';
 import { HERO_TYPES, HeroId } from '../../data/HeroTypes';
 import type { ArenaCreep } from '../../entities/ArenaCreep';
 import type { Creep } from '../../entities/Creep';
-import { gridX, gridY, GRID_COLS, GRID_ROWS, TILE_SIZE, getGridOffsetX } from '../../config';
+import { gridX, gridY, GRID_COLS, GRID_ROWS, TILE_SIZE, getGridOffsetX, pixelToCol } from '../../config';
+import { Grid, CellType } from '../Grid';
 
 /** Sentinel ownerIndex for CPU defender towers. Distinct from any
  *  player slot (0-3 in circle co-op). Used by Tower.findFinaleTarget
@@ -64,6 +65,8 @@ export interface FinaleSetupArgs {
   destructibleTowers: { col: number; row: number; towerId: string; hp: number; isUlt?: boolean }[];
   summoningCircles: { col: number; row: number; chargeRatePerDrain?: number }[];
   towerMgr: TowerManager;
+  /** Grid used for hero collision against blocked cells. */
+  grid: Grid;
   /** Optional callback fired when the hero is summoned for the first
    *  time. GameScene uses this to log the event + dim the loading hint. */
   onHeroSpawned?: () => void;
@@ -85,6 +88,10 @@ export class FinaleController {
   private winFired: boolean = false;
   private onHeroSpawned?: () => void;
   private onWin?: () => void;
+  private grid: Grid;
+  /** Last valid pixel position for the hero — used to clamp hero
+   *  movement so it doesn't no-clip through blocked cells. */
+  private heroLastValid: { x: number; y: number } | null = null;
   /** Phaser text object for the "RESPAWNING IN Xs" overlay above the
    *  spawn anchor. Created lazily on first hero death. */
   private respawnText: Phaser.GameObjects.Text | null = null;
@@ -93,6 +100,7 @@ export class FinaleController {
     this.scene = args.scene;
     this.rules = args.rules;
     this.towerMgr = args.towerMgr;
+    this.grid = args.grid;
     this.onHeroSpawned = args.onHeroSpawned;
     this.onWin = args.onWin;
 
@@ -194,6 +202,67 @@ export class FinaleController {
     // alive/x/y/takeDamage off the creep, all of which Creep also has.
     if (this.hero) {
       this.hero.update(delta, creeps as ArenaCreep[]);
+      // Collision: the hero should not no-clip through blocked cells.
+      // Convert pixel pos → grid cell, check the cell type, restore
+      // the last valid position when the new one is on a wall.
+      if (this.hero.alive) {
+        const c = pixelToCol(this.hero.x);
+        const r = Math.round((this.hero.y - TILE_SIZE / 2) / TILE_SIZE);
+        const inBounds = c >= 0 && c < GRID_COLS && r >= 0 && r < GRID_ROWS;
+        const cell = inBounds ? this.grid.cells[r]?.[c] : CellType.Blocked;
+        if (cell === CellType.Blocked) {
+          if (this.heroLastValid) {
+            this.hero.x = this.heroLastValid.x;
+            this.hero.y = this.heroLastValid.y;
+          }
+        } else {
+          this.heroLastValid = { x: this.hero.x, y: this.hero.y };
+        }
+      }
+    }
+
+    // CPU towers shoot the hero (when no sends are in range to decoy).
+    // Tower's normal creep-fire pass already handles sends — this pass
+    // runs in parallel: for each alive destructible tower, if it has
+    // no send in range AND its fire-rate has elapsed AND the hero is
+    // in range, apply damage. Reuses the tower's lastFired cooldown
+    // so a tower that just fired at a send won't double-fire on the hero.
+    if (this.hero && this.hero.alive) {
+      const now = (this.scene as { time?: { now: number } }).time?.now ?? 0;
+      const heroX = this.hero.x;
+      const heroY = this.hero.y;
+      for (const t of this.cpuTowers) {
+        if ((t as { _expired?: boolean })._expired) continue;
+        const dx = heroX - t.x;
+        const dy = heroY - t.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > t.range * t.range) continue;
+        if (now - t.lastFired < t.fireRate) continue;
+        // Sends in range get priority — skip hero attack this tick if
+        // any send is closer than the hero (decoy effect).
+        let sendCloserThanHero = false;
+        const heroDistSq = distSq;
+        for (const c of creeps as Creep[]) {
+          if (!c.alive || c.reached || !c.isSend) continue;
+          const sdx = c.x - t.x;
+          const sdy = c.y - t.y;
+          const sd = sdx * sdx + sdy * sdy;
+          if (sd > t.range * t.range) continue;
+          if (sd < heroDistSq) { sendCloserThanHero = true; break; }
+        }
+        if (sendCloserThanHero) continue;
+        // Apply hero damage. Use tower's base damage (no projectile —
+        // the existing tower fire pipeline can't render hero projectiles
+        // without further plumbing; instant damage + flash is fine for v1).
+        const dmg = t.damage;
+        // Flash the hero sprite + damage number for feedback.
+        this.hero.hp = Math.max(0, this.hero.hp - dmg);
+        // Push a damage number above the hero through its pending queue.
+        (this.hero as unknown as { pendingDamageNumbers: { x: number; y: number; text: string; color: string; duration: number }[] })
+          .pendingDamageNumbers.push({ x: heroX, y: heroY - 24, text: String(dmg), color: '#ff6644', duration: 0.6 });
+        t.lastFired = now;
+        if (this.hero.hp <= 0) this.hero.die();
+      }
     }
 
     // M10 finale: grant gold + xp for each newly-killed CPU tower this
