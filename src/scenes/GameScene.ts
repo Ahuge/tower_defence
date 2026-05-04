@@ -336,6 +336,11 @@ export class GameScene extends Phaser.Scene {
   /** Override the map's authored terrain theme. Lets the Arcane
    *  campaign render any map with the arcane-crystal tileset. */
   private _missionMapThemeOverride?: string;
+  /** Auto-start next wave after this many seconds when set. Used by
+   *  speedrun missions for relentless pace. */
+  private _missionAutoChainWaves?: number;
+  /** Multiplier applied to creep kill-gold for the mission. */
+  private _missionKillGoldMult?: number;
 
   /** Plan 14 custom counters fed into MissionResult.custom at game-end.
    *  Populated only when the scene was launched as a campaign mission;
@@ -343,7 +348,7 @@ export class GameScene extends Phaser.Scene {
   private _missionSendsBought = 0;
   private _missionHeroHpMinFraction = 1;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -361,6 +366,8 @@ export class GameScene extends Phaser.Scene {
     this._missionWaveScript = data.missionWaveScript;
     this._missionPrePlacedTowers = data.missionPrePlacedTowers;
     this._missionMapThemeOverride = data.missionMapThemeOverride;
+    this._missionAutoChainWaves = data.missionAutoChainWaves;
+    this._missionKillGoldMult = data.missionKillGoldMult;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -980,8 +987,11 @@ export class GameScene extends Phaser.Scene {
     this.circleDeathHandler = circleDeathHandler;
     const deathHandler = circleDeathHandler
       ?? new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
-          // Hero Defense: 10x creeps so reduce kill gold to 30%
-          this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1));
+          // Mission killGoldMult wins over modifier and Hero Defense
+          // defaults — used by speedrun-style missions to blunt
+          // income so the player relies on the bumped goldStart.
+          this._missionKillGoldMult
+            ?? (this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1)));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
     // Shared procedural overlay for all creeps (HP bars, shadows,
     // status rings). Replaces the previous per-creep Graphics — 1
@@ -3731,6 +3741,18 @@ export class GameScene extends Phaser.Scene {
     if (this.autoPlay && this.currentWave < this.waves.length && !this.versus) {
       this.time.delayedCall(1500, () => {
         if (this.autoPlay && this.betweenWaves && this.currentWave < this.waves.length) {
+          this.startWave();
+        }
+      });
+    }
+    // Mission auto-chain: speedrun-style relentless pace. After each
+    // wave clears, schedule the next one automatically. Independent of
+    // autoPlay (player doesn't have to opt in — the mission compels
+    // the cadence).
+    if (this._missionAutoChainWaves !== undefined && !this.versus
+        && this.currentWave < this.waves.length) {
+      this.time.delayedCall(this._missionAutoChainWaves * 1000, () => {
+        if (this.betweenWaves && this.currentWave < this.waves.length) {
           this.startWave();
         }
       });

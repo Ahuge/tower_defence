@@ -318,9 +318,12 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
           allowedTowerIds: ['arcane_bolt', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
         },
         waveScript: [
+          // Wave 1 — Stalwart tuned down; fewer fodder distractions and
+          // lower wave hpScale (100 → 70) so the player's freshly-Bolt-
+          // upgraded line can finish him inside the 25s rage window.
           { wave: 1, groups: [
-            { creepType: 'standard', count: 4, hpScale: 50, speedScale: 1 },
-            { creepType: 'warlord_stalwart', count: 1, hpScale: 100, speedScale: 1 },
+            { creepType: 'standard', count: 2, hpScale: 50, speedScale: 1 },
+            { creepType: 'warlord_stalwart', count: 1, hpScale: 70, speedScale: 1 },
           ], spawnInterval: 800, isBoss: false },
           { wave: 2, groups: [
             { creepType: 'fast', count: 4, hpScale: 50, speedScale: 1 },
@@ -351,16 +354,20 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 6 — Speedrun
+    // 6 — Forced March (auto-chain speedrun)
+    // Waves chain automatically every 5 seconds — no Next-Wave button.
+    // Player gets a war-chest of starting gold (700) but creeps drop
+    // half normal — start strong, no slow-cooker income, finish fast.
     {
       id: 'forced_march',
       idx: 5,
       name: 'Forced March',
       story:
-        "Reinforcements are still days away. We accelerate the engagement and end this approach quickly — " +
-        "their stragglers can be routed if we move on the lead column fast. Twenty waves. Fast as you can.\n\n" +
+        "Reinforcements are still days away. The Forge issued you a war-chest up front — empty it well, because " +
+        "the column will not stop and stragglers pay half what they used to. The waves come on their own. There " +
+        "is no time to breathe between them.\n\n" +
         "The cabal's Storm spell is reverse-engineered. The Cannons came home this morning; in their place, Storm " +
-        "drums hammer chained lightning across packed ranks. Cannons no longer issued.",
+        "drums hammer chained lightning across packed ranks.",
       archetype: 'speedrun',
       overrides: {
         faction: 'coalition',
@@ -371,6 +378,12 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
         },
+        // Speedrun feel: bumped starting gold + auto-chained waves +
+        // halved kill gold. Front-loads economy and forces relentless
+        // pace.
+        goldStart: 700,
+        autoChainWaves: 5,
+        killGoldMult: 0.5,
       },
       objectives: {
         star2: { label: 'Finish in under 12 minutes', predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },

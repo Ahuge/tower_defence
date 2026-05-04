@@ -161,6 +161,16 @@ export interface MissionOverrides {
    *  every map. Theme id matches `TerrainTheme.ts` keys ('arcane_crystal',
    *  'factory', 'ancient_grove', etc.). */
   mapThemeOverride?: string;
+  /** Auto-chain waves: when set, the game starts the next wave
+   *  automatically `autoChainWaves` seconds after the previous one
+   *  clears. Used by speedrun-style missions to enforce relentless
+   *  pace — no Next-Wave button required. Undefined = manual
+   *  next-wave (default). */
+  autoChainWaves?: number;
+  /** Multiplier applied to creep kill-gold. <1 reduces income;
+   *  combined with a higher goldStart, gives speedrun missions a
+   *  bursty start-with-everything-spend-it-down feel. Default 1.0. */
+  killGoldMult?: number;
 }
 
 /** The 10-mission campaign. */
