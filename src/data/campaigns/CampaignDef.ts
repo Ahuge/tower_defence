@@ -171,6 +171,14 @@ export interface MissionOverrides {
    *  combined with a higher goldStart, gives speedrun missions a
    *  bursty start-with-everything-spend-it-down feel. Default 1.0. */
   killGoldMult?: number;
+  /** Plan 12 v2: per-wave essence budget the attacker spends in the
+   *  composer. Required for `archetype: 'attacker'` v2 missions; ignored
+   *  otherwise. */
+  attackerEssencePerWave?: number;
+  /** Plan 12 v2: which palette to use. Defaults to 'coalition' (the
+   *  Arcane-campaign neutral kit). Future faction campaigns will register
+   *  their own palettes and reference them here. */
+  attackerPaletteFaction?: FactionId | 'coalition';
 }
 
 /** The 10-mission campaign. */

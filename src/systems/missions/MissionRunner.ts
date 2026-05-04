@@ -116,6 +116,8 @@ class MissionRunnerClass {
       missionMapThemeOverride: merged.mapThemeOverride ?? campaign.defaultMapThemeOverride,
       missionAutoChainWaves: merged.autoChainWaves,
       missionKillGoldMult: merged.killGoldMult,
+      missionAttackerEssencePerWave: merged.attackerEssencePerWave,
+      missionAttackerPaletteFaction: merged.attackerPaletteFaction,
       // LoadingScreen briefing — show the mission name + story text
       // there, and gate dismissal on a "Begin" button so the player
       // can read the brief without time pressure.

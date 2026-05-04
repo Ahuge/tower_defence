@@ -87,6 +87,9 @@ import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../data/campaigns';
 import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
+import { AttackerComposer } from '../systems/attacker/AttackerComposer';
+import { buildAttackerWave } from '../systems/attacker/AttackerWaveBuilder';
+import { getAttackerPalette, visibleEntries } from '../data/AttackerPalettes';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -356,8 +359,18 @@ export class GameScene extends Phaser.Scene {
    *  matter how many waves remain. Existing wave-end loss path still
    *  fires for the defender-held case. */
   private _attackerInstantWinFired = false;
+  /** Plan 12 v2: per-wave essence budget the attacker spends in the
+   *  composer. Set when the mission supplies attackerEssencePerWave. */
+  private _missionAttackerEssencePerWave?: number;
+  /** Plan 12 v2: faction id used to look up the attacker palette.
+   *  Defaults to 'coalition' when undefined. */
+  private _missionAttackerPaletteFaction?: FactionId | 'coalition';
+  /** Plan 12 v2: composer instance for the current attacker mission.
+   *  Built in setupAttackerComposer() on init when the mission supplies
+   *  an essence budget; null otherwise. */
+  attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition' }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -377,6 +390,8 @@ export class GameScene extends Phaser.Scene {
     this._missionMapThemeOverride = data.missionMapThemeOverride;
     this._missionAutoChainWaves = data.missionAutoChainWaves;
     this._missionKillGoldMult = data.missionKillGoldMult;
+    this._missionAttackerEssencePerWave = data.missionAttackerEssencePerWave;
+    this._missionAttackerPaletteFaction = data.missionAttackerPaletteFaction;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -504,6 +519,13 @@ export class GameScene extends Phaser.Scene {
           if (DEBUG) console.warn('[wave] Next Wave ignored: all waves completed');
           return;
         }
+        // Plan 12 v2: in attacker missions with a composer, the wave
+        // only starts when the player hits Send Wave inside the
+        // composer — not via the generic Next-Wave button / SPACE.
+        if (this.attackerComposer) {
+          if (DEBUG) console.warn('[wave] Next Wave ignored: use AttackerComposer Send Wave button');
+          return;
+        }
         this.startWave();
       },
       onCycleSpeed: () => {
@@ -538,6 +560,28 @@ export class GameScene extends Phaser.Scene {
         // and the panel reappears 250ms later.
         if (this.selectionMode === 'inspect') this.enterNoneMode();
         else GameUIStore.deselectTower();
+      },
+      onAttackerAdjust: (creepTypeId: string, delta: number) => {
+        if (!this.attackerComposer) return;
+        this.attackerComposer.adjust(creepTypeId, delta);
+      },
+      onAttackerClear: () => {
+        this.attackerComposer?.clear();
+      },
+      onAttackerSendWave: () => {
+        if (!this.attackerComposer) return;
+        if (!this.attackerComposer.hasAnyPicks()) return;
+        if (!this.betweenWaves) return;
+        if (this.currentWave >= this.waves.length) return;
+        // Replace the upcoming wave's groups with the player's picks.
+        const built = buildAttackerWave({
+          waveNum: this.currentWave + 1,
+          picks: this.attackerComposer.lockedPicks(),
+        });
+        this.waves[this.currentWave] = built;
+        // Hide the composer overlay until the wave clears.
+        GameUIStore.setAttackerComposer(null);
+        this.startWave();
       },
     });
 
@@ -959,6 +1003,21 @@ export class GameScene extends Phaser.Scene {
       this.eventLog.gameMessage(
         `Attacker mode — you command the creeps. Get ${ATTACKER_LEAK_THRESHOLD_DEFAULT} through the defense to win.`,
       );
+    }
+    // Plan 12 v2: build the AttackerComposer when the mission supplies
+    // an essence budget. Composer state is pushed to the DOM overlay
+    // via a subscribe(); the player adjusts picks and hits Send Wave to
+    // commit + start the wave (replacing the auto-generated wave).
+    if (this.matchMode === 'attacker' && this._missionAttackerEssencePerWave !== undefined) {
+      const paletteFaction = this._missionAttackerPaletteFaction ?? 'coalition';
+      const palette = getAttackerPalette(paletteFaction);
+      if (palette) {
+        this.attackerComposer = new AttackerComposer(palette, this._missionAttackerEssencePerWave);
+        this.attackerComposer.subscribe(() => this.pushAttackerComposerSnapshot());
+        this.pushAttackerComposerSnapshot();
+      } else {
+        console.warn(`[attacker v2] no palette registered for faction "${paletteFaction}" — composer disabled`);
+      }
     }
     const leakHandler = this.arenaManager
       ? new HeroLeakHandler(this.arenaManager, this.statsTracker, this.eventLog)
@@ -3767,6 +3826,40 @@ export class GameScene extends Phaser.Scene {
     this.waveMgr.startWave(this.allPaths);
   }
 
+  /** Plan 12 v2: snapshot composer state to the DOM overlay. Called by
+   *  the AttackerComposer subscribe callback after every adjust(), and
+   *  manually at composer setup / between-wave reset to push the
+   *  initial / refreshed budget. */
+  pushAttackerComposerSnapshot(): void {
+    if (!this.attackerComposer) return;
+    if (this.missionContext === null) {
+      // Defensive — composer should only exist for campaign missions.
+      GameUIStore.setAttackerComposer(null);
+      return;
+    }
+    const state = this.attackerComposer.getState();
+    const palette = getAttackerPalette(this._missionAttackerPaletteFaction ?? 'coalition');
+    if (!palette) {
+      GameUIStore.setAttackerComposer(null);
+      return;
+    }
+    const visible = visibleEntries(palette, this.missionContext.missionIdx);
+    const entries = visible.map(e => ({
+      creepType: e.creepType,
+      label: e.label,
+      cost: e.cost,
+      description: e.description,
+      count: state.picks.get(e.creepType)?.count ?? 0,
+    }));
+    GameUIStore.setAttackerComposer({
+      entries,
+      spent: state.budget - state.remainingEssence,
+      budget: state.budget,
+      waveNum: this.currentWave + 1,
+      canSend: this.attackerComposer.hasAnyPicks(),
+    });
+  }
+
   /** Add to the attacker mode's defender treasury. Called by the
    *  attacker-mode death handler when a defender tower kills a
    *  creep — routes the kill gold to the CPU defender instead of
@@ -3858,6 +3951,14 @@ export class GameScene extends Phaser.Scene {
 
     // Mode-specific wave-end (frontier income, essence, etc.)
     this.gameMode.onWaveCleared(waveNum);
+
+    // Plan 12 v2: refresh the attacker composer for the next wave so
+    // the player can compose again. resetForWave fires the subscribe
+    // callback, which pushes the snapshot to the DOM overlay.
+    if (this.attackerComposer && this._missionAttackerEssencePerWave !== undefined
+        && this.currentWave < this.waves.length) {
+      this.attackerComposer.resetForWave(this._missionAttackerEssencePerWave);
+    }
 
     // Events + UI
     this.eventBus.emit('waveCleared', waveNum);

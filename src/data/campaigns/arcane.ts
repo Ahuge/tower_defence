@@ -487,6 +487,11 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'coalition_root'],
         },
+        // Plan 12 v2: per-wave essence the player spends in the
+        // composer. 100 essence ≈ 10-20 raiders depending on the mix —
+        // see AttackerPalettes.ts for cost tuning.
+        attackerEssencePerWave: 100,
+        attackerPaletteFaction: 'coalition',
       },
       objectives: {
         star2: {

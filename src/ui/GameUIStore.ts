@@ -320,6 +320,10 @@ export interface GameUIState {
    *  the MISSION sidebar panel — players see live which star
    *  objectives they're currently meeting and which they still need. */
   missionPanel: MissionPanelState | null;
+  /** Plan 12 v2: AttackerComposer snapshot. Set when an attacker
+   *  mission is between waves and the player should compose their
+   *  next wave; cleared while a wave is in flight. */
+  attackerComposer: AttackerComposerUIState | null;
 }
 
 export interface MissionPanelState {
@@ -329,6 +333,31 @@ export interface MissionPanelState {
    *  hypothetical "if I won right now" snapshot. Order: star 1 (always
    *  "win"), star 2, star 3 if declared. */
   objectives: Array<{ star: 1 | 2 | 3; label: string; met: boolean }>;
+}
+
+/** Plan 12 v2: snapshot of the AttackerComposer pushed to the DOM each
+ *  time the player adjusts a pick. The overlay reads this and renders
+ *  palette cards + a Send Wave button. Null when not in attacker v2
+ *  mode, or when the wave is in flight (composer hidden mid-wave). */
+export interface AttackerComposerUIState {
+  /** Palette entries visible at this mission's idx — the overlay maps
+   *  these to cards. */
+  entries: Array<{
+    creepType: string;
+    label: string;
+    cost: number;
+    description: string;
+    /** Currently-picked count of this entry. */
+    count: number;
+  }>;
+  /** Essence spent so far this wave. */
+  spent: number;
+  /** Total essence budget this wave. */
+  budget: number;
+  /** Wave number that will be sent when the player hits Send. */
+  waveNum: number;
+  /** True iff at least one creep is picked. Disables Send button below. */
+  canSend: boolean;
 }
 
 export interface ContinueOffer {
@@ -409,6 +438,9 @@ class GameUIStoreClass {
     onRequestSpeedBoost?: () => void;
     onPause?: () => void;
     onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
+    onAttackerAdjust?: (creepTypeId: string, delta: number) => void;
+    onAttackerClear?: () => void;
+    onAttackerSendWave?: () => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -441,6 +473,7 @@ class GameUIStoreClass {
       circleRoster: null,
       attackerProgress: null,
       missionPanel: null,
+      attackerComposer: null,
     };
   }
 
@@ -478,6 +511,25 @@ class GameUIStoreClass {
       && prev.objectives.length === next.objectives.length
       && prev.objectives.every((o, i) => o.met === next.objectives[i].met)) return;
     this.state = { ...this.state, missionPanel: next };
+    this.notify();
+  }
+
+  /** Plan 12 v2: push the attacker-composer snapshot. Pass null to
+   *  hide the overlay (e.g. while a wave is in flight). Skips notify
+   *  when nothing changed so the per-frame push is cheap. */
+  setAttackerComposer(next: AttackerComposerUIState | null): void {
+    const prev = this.state.attackerComposer;
+    if (prev === next) return;
+    if (prev && next
+      && prev.spent === next.spent
+      && prev.budget === next.budget
+      && prev.waveNum === next.waveNum
+      && prev.canSend === next.canSend
+      && prev.entries.length === next.entries.length
+      && prev.entries.every((e, i) => e.count === next.entries[i].count && e.creepType === next.entries[i].creepType)) {
+      return;
+    }
+    this.state = { ...this.state, attackerComposer: next };
     this.notify();
   }
 
@@ -763,6 +815,21 @@ class GameUIStoreClass {
   requestDeselectTower(): void {
     if (this.callbacks.onDeselectTower) this.callbacks.onDeselectTower();
     else this.deselectTower();
+  }
+
+  /** Plan 12 v2: composer pick adjust (called by overlay +/- buttons). */
+  requestAttackerAdjust(creepTypeId: string, delta: number): void {
+    this.callbacks.onAttackerAdjust?.(creepTypeId, delta);
+  }
+
+  /** Plan 12 v2: clear all picks. */
+  requestAttackerClear(): void {
+    this.callbacks.onAttackerClear?.();
+  }
+
+  /** Plan 12 v2: lock picks and start the wave. */
+  requestAttackerSendWave(): void {
+    this.callbacks.onAttackerSendWave?.();
   }
 
   // ─── Subscription ───────────────────────────────────

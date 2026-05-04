@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-05-03
+
+### Attacker mode v2 — Phase 1 (composer + palette)
+
+Phase 1 of the Plan 12 v2 spec at `notes/campaign-game-modes/09-attacker-v2-spec.md`. The player composes each wave from a palette by spending a per-wave essence budget — no more reusing standard waves where the player commands creeps but doesn't pick them.
+
+**Engine** — three new files in `src/systems/attacker/` and `src/data/`:
+- `AttackerPalettes.ts` — 8-entry Coalition palette: Raider (5e), Skirmisher (4e), Wolfpack swarm (8e), Bulwark armored (12e), Healer regen (14e), Smoker evasive (9e), Glider flying (10e), Battering Ram boss (60e). 100e per wave produces ~10-20 raiders depending on mix.
+- `AttackerComposer.ts` — per-wave pick state (Map<creepType, count>), budget tracking, listener pattern for UI subscribe. `adjust(creepTypeId, delta)` clamps to budget + zero. `resetForWave(budget)` between waves.
+- `AttackerWaveBuilder.ts` — pure function: `(picks, waveNum) → WaveDefinition` with hpScale/speedScale curves matching the standard generator.
+
+**UI** — `src/ui/game/AttackerComposerOverlay.tsx` (Preact). Top-right overlay; appears when `GameUIStore.attackerComposer` is set. Header shows "COMPOSE WAVE N" + budget bar (teal→violet gradient). Palette cards with +/- buttons disabled when budget exhausted. Footer Clear + Send Wave buttons. Mounted in App.tsx alongside GameSidebar.
+
+**GameScene wiring** — `attackerComposer` field initialized when mission supplies `attackerEssencePerWave`. Subscribe pushes snapshot to GameUIStore on every adjust. Send Wave overrides `waves[currentWave]` with the built wave then calls `startWave()`. `onWaveCleared` resets composer for next wave (which fires the snapshot push). Generic Next-Wave button / SPACE blocked while composer is active — wave only starts via Send Wave.
+
+**M8 (Breach the Relay)** updated: `attackerEssencePerWave: 100`, `attackerPaletteFaction: 'coalition'`. Star objectives unchanged (8/12 leaks for stars 2/3).
+
+Phase 2 (abilities + lane choice + mode-specific kit items like Mana Drain → Anti-magic Wagon) and Phase 3 (smart CPU + per-faction polish) are queued per the spec.
+
 ## 2026-05-02
 
 ### Hero Defense art PRDs 01-03 — procedural pixel-art generation
