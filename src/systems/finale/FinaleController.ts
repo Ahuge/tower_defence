@@ -38,6 +38,7 @@ import type { Creep } from '../../entities/Creep';
 import { gridX, gridY, GRID_COLS, GRID_ROWS, TILE_SIZE, getGridOffsetX, pixelToCol } from '../../config';
 import { Grid, CellType } from '../Grid';
 import { findPath, PathPoint } from '../Pathfinding';
+import { createProjectileSprite, hasProjectileSprite } from '../SpriteManager';
 
 /** Sentinel ownerIndex for CPU defender towers. Distinct from any
  *  player slot (0-3 in circle co-op). Used by Tower.findFinaleTarget
@@ -204,16 +205,18 @@ export class FinaleController {
     // Render circles.
     for (const c of this.circles) c.draw(this.charge);
 
-    // Hero respawn countdown overlay. Shown above the anchor while
-    // the hero is dead. Hides + clears when alive.
+    // Hero respawn overlay. In finale mode the respawnSeconds is
+    // Infinity (re-summon via charge instead), so the old "RESPAWN Xs"
+    // countdown rendered as "RESPAWN ∞s". Now shows "AWAITING SUMMON"
+    // with a hint to build conduits. The DOM HUD shows the live
+    // charge percentage so the player has the actual progress.
     if (this.hero && !this.hero.alive) {
-      const seconds = Math.max(0, Math.ceil((this.hero as unknown as { respawnTimer: number }).respawnTimer));
-      const txt = `RESPAWN ${seconds}s`;
+      const txt = 'AWAITING SUMMON';
       if (!this.respawnText) {
         const addText = (this.scene as { add?: { text?: (x: number, y: number, t: string, s: object) => Phaser.GameObjects.Text } }).add?.text;
         if (typeof addText === 'function') {
           this.respawnText = addText.call(this.scene.add, this.heroAnchor.x, this.heroAnchor.y - 40, txt, {
-            fontSize: '14px', color: '#ffaa44', fontFamily: 'monospace',
+            fontSize: '13px', color: '#cc88ff', fontFamily: 'monospace',
           });
           this.respawnText?.setOrigin?.(0.5);
           this.respawnText?.setDepth?.(20);
@@ -324,6 +327,32 @@ export class FinaleController {
             log?.gameMessage?.(t.isUlt
               ? `THE THRONE FALLS — ${gold}g, ${xp}xp.`
               : `Defender tower destroyed (+${gold}g, +${xp}xp).`);
+          }
+        }
+      }
+    }
+
+    // M10 v6 — sends trickle-damage adjacent CPU towers. 5 dps per
+    // send per tower (Chebyshev distance ≤ 1 in pixel terms = ~28px
+    // per cell, so ~40px touch radius). Debt accumulator on each
+    // tower holds sub-1 damage between frames so 5 dps still lands.
+    if (this.firstSpawnDone || this.hero) {
+      for (const t of this.cpuTowers) {
+        if ((t as { _expired?: boolean })._expired) continue;
+        let sendCount = 0;
+        for (const c of creeps as Creep[]) {
+          if (!c.alive || !c.isSend || !c.isFriendly) continue;
+          const dx = c.x - t.x;
+          const dy = c.y - t.y;
+          if (dx * dx + dy * dy <= 40 * 40) sendCount++;
+        }
+        if (sendCount > 0) {
+          const debtRef = t as { _sendDmgDebt?: number };
+          debtRef._sendDmgDebt = (debtRef._sendDmgDebt ?? 0) + sendCount * 5 * dt;
+          const integer = Math.floor(debtRef._sendDmgDebt);
+          if (integer > 0) {
+            t.takeDamage(integer);
+            debtRef._sendDmgDebt -= integer;
           }
         }
       }
@@ -449,32 +478,54 @@ export class FinaleController {
     return this.cpuTowers.filter(t => !(t as { _expired?: boolean })._expired && (t.hp ?? 1) > 0);
   }
 
-  /** Quick visual projectile from a tower to the hero. Used by the
-   *  CPU-tower-attacks-hero pass since the standard Tower.fire path
-   *  is creep-only. Draws a colored line from tower to hero,
-   *  tweens out over 300ms. */
+  /** Sprite-based projectile from a tower to the hero. Uses the
+   *  same projectile spritesheet the tower fires at creeps so the
+   *  visual is identical. Tweens position over distance/projectile
+   *  speed; on arrival applies damage + cleans up. Hero damage was
+   *  already applied at fire-time by the caller (avoid double damage). */
   private spawnHeroProjectile(tower: Tower, hx: number, hy: number): void {
-    const sceneAdd = (this.scene as { add?: { graphics?: () => Phaser.GameObjects.Graphics } }).add;
-    if (!sceneAdd?.graphics) return;
-    const g = sceneAdd.graphics();
-    g.setDepth(16);
-    g.lineStyle(3, tower.color ?? 0xcc88ff, 0.9);
-    g.beginPath();
-    g.moveTo(tower.x, tower.y);
-    g.lineTo(hx, hy);
-    g.strokePath();
-    const tweens = (this.scene as { tweens?: { add?: (cfg: object) => void } }).tweens;
-    if (tweens?.add) {
-      tweens.add({
-        targets: g,
-        alpha: 0,
-        duration: 300,
-        ease: 'Cubic.easeOut',
-        onComplete: () => g.destroy(),
-      });
-    } else {
-      g.destroy();
+    const sceneAny = this.scene as {
+      add?: { sprite?: (...a: unknown[]) => Phaser.GameObjects.Sprite; graphics?: () => Phaser.GameObjects.Graphics };
+      tweens?: { add?: (cfg: object) => void };
+    };
+    // Try to make the actual projectile sprite. If the tower has no
+    // projectile spritesheet (rare), fall back to a Phaser circle.
+    const dx = hx - tower.x;
+    const dy = hy - tower.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const speed = tower.typeDef.projectileSpeed || 320; // px/s
+    const flightMs = Math.max(120, Math.round((dist / speed) * 1000));
+
+    let target: Phaser.GameObjects.Sprite | Phaser.GameObjects.Graphics | null = null;
+    if (hasProjectileSprite(tower.typeId)) {
+      target = createProjectileSprite(this.scene, tower.typeId, tower.x, tower.y);
+      if (target) {
+        // Rotate to face the hero so directional projectile sprites
+        // (arrows, bolts) point along the flight path.
+        (target as Phaser.GameObjects.Sprite).setRotation?.(Math.atan2(dy, dx));
+      }
     }
+    if (!target && sceneAny.add?.graphics) {
+      const g = sceneAny.add.graphics();
+      g.setDepth(15);
+      g.fillStyle(tower.color ?? 0xcc88ff, 1);
+      g.fillCircle(0, 0, 4);
+      g.x = tower.x;
+      g.y = tower.y;
+      target = g;
+    }
+    if (!target) return;
+
+    sceneAny.tweens?.add?.({
+      targets: target,
+      x: hx,
+      y: hy,
+      duration: flightMs,
+      ease: 'Linear',
+      onComplete: () => {
+        target?.destroy?.();
+      },
+    });
   }
 
   private spawnHero(): void {
@@ -505,6 +556,14 @@ export class FinaleController {
     // Infinity means die() sets respawnTimer to Infinity and the
     // tick-down in Hero.update never reaches 0.
     hero.respawnSeconds = Infinity;
+    // Hero Defense's default sprite origin (0.5, 0.75) makes the hero
+    // visually float above its position when placed on a tile-grid
+    // (top of sprite extends into the cell above where the player
+    // clicked). Center the origin so hero.x/y is the visual center
+    // of the sprite, matching click-target expectations.
+    if ((hero as { sprite?: { setOrigin?: (x: number, y: number) => void } }).sprite?.setOrigin) {
+      (hero as unknown as { sprite: { setOrigin: (x: number, y: number) => void } }).sprite.setOrigin(0.5, 0.5);
+    }
     if (this.rules.heroStartingLevel && this.rules.heroStartingLevel > 1) {
       // Pre-level the hero so they have abilities ready on first summon.
       // grantXP cumulative: sum from level 1 → N is `(N-1) * N / 2 * 15`.

@@ -507,9 +507,10 @@ export class Hero {
           this.attack(this.target);
           this.lastAttackTime = now;
         }
-      } else if (!this.moveTarget && !this.clickedTowerTarget) {
-        // Move towards target if no explicit move command AND no tower
-        // target — when chasing a tower, the loop above handles motion.
+      } else if (!this.moveTarget && !this.clickedTowerTarget && !this.pathWaypoints) {
+        // Move towards creep target only when the player has not
+        // commanded a destination. Otherwise the hero would fight
+        // its own move command (running off to creeps mid-walk).
         const speed = this.getEffectiveSpeed();
         const move = speed * dt;
         this.x += (dx / dist) * move;

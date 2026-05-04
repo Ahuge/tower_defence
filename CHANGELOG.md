@@ -2,6 +2,24 @@
 
 ## 2026-05-04
 
+### M10 v6 — projectiles, HUD, pathing focus, sprite origin, send trickle
+
+Seven fixes after v5 playtest:
+
+**1. "RESPAWN Infinitys" text bug.** v5 set `respawnSeconds = Infinity` to block auto-respawn, which the in-world overlay rendered as "RESPAWN ∞s". Now shows "AWAITING SUMMON" in lavender — the DOM HUD has the live charge percentage so the player has the actual progress.
+
+**2. DOM HUD shows charge bar while hero is dead.** `heroSummoned` stayed true once the hero existed, so on death the HUD kept showing the (frozen) hero HP bar instead of the refilling charge meter. New `showChargeBar = !heroSummoned || heroDead` flag flips it back to the charge UI on death; label changes to "RE-SUMMONING" so the player knows it's a refill.
+
+**3. CPU tower projectiles now match the normal attack visuals.** The earlier "random laser style" custom line is replaced with `createProjectileSprite` from the same spritesheet the tower uses to fire at creeps. Sprite tweens from tower to hero pixel position over `dist / projectileSpeed` ms, rotated to face the hero so directional sprites (arrows / bolts) point along their flight. Falls back to a Phaser circle if no sprite registered for that tower.
+
+**4. Hero attacks CPU towers — actually works now.** v5's pathfinding + this commit's "don't fight the player's command" change make the chain end-to-end: click tower → path to an adjacent cell → walk through the maze → in range → fire `attackTower` on cooldown → tower HP bar drops.
+
+**5. Hero pathing no longer fights with creep auto-target.** The auto-attack-creep walk-toward block is now gated on `!this.pathWaypoints` (in addition to the existing `!moveTarget && !clickedTowerTarget`). When the player has commanded a path, the hero ignores the creep auto-pathing pull. Hero still auto-attacks creeps that walk into its existing range — just doesn't chase them.
+
+**6. Hero sprite origin centered.** Hero Defense's default `setOrigin(0.5, 0.75)` made the sprite visually float ~one tile above the click position on the tile grid. FinaleController now overrides to `setOrigin(0.5, 0.5)` after the hero is constructed, so `hero.x/y` matches the visual center.
+
+**7. Sends trickle-damage CPU towers.** Each alive friendly send within 40px of a CPU tower deals 5 dps to that tower (debt accumulator handles sub-1 damages between frames). Sends still primarily decoy fire, but they also chip in. The whole send-fodder-strategy is now: spawn → walk into the lattice → draw fire from hero → die slowly while contributing trickle damage.
+
 ### M10 v5 — re-summoning, hero pathfinding, HP redraw, tower projectiles
 
 Five fixes after v4 playtest:

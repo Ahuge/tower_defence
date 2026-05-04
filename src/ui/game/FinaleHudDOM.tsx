@@ -22,7 +22,12 @@ export function FinaleHudDOM() {
   const pctLabel = Math.round(pct * 100);
   const towersRemaining = hud.cpuTowersRemaining;
   const towersTotal = hud.cpuTowersTotal;
-  const heroDead = hud.heroHp && !hud.heroHp.alive;
+  const heroDead = !!(hud.heroHp && !hud.heroHp.alive);
+  // Per v5b: hero death resets charge to 0 and the player has to
+  // re-summon via Conduits. While dead, the bar shows charge progress
+  // (not the hero HP / countdown), so the player sees the meter
+  // refill in real time.
+  const showChargeBar = !hud.heroSummoned || heroDead;
   const respawnSeconds = heroDead && hud.heroHp ? Math.ceil(hud.heroHp.respawnIn) : 0;
   const heroHpPct = hud.heroHp && hud.heroHp.maxHp > 0
     ? Math.max(0, hud.heroHp.hp / hud.heroHp.maxHp)
@@ -44,8 +49,8 @@ export function FinaleHudDOM() {
         fontFamily: "'DM Sans', system-ui, sans-serif",
       }}
     >
-      {/* Row 1 — summoning charge or hero status */}
-      {!hud.heroSummoned ? (
+      {/* Row 1 — summoning charge (pre-summon OR while dead) or hero HP */}
+      {showChargeBar ? (
         <div>
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
@@ -56,7 +61,7 @@ export function FinaleHudDOM() {
               fontSize: '14px', fontWeight: 'bold', color: 'var(--jewel-violet)',
               letterSpacing: '1px',
             }}>
-              SUMMONING CHARGE
+              {heroDead ? 'RE-SUMMONING' : 'SUMMONING CHARGE'}
             </span>
             <span style={{
               fontSize: '13px', color: pct >= 1 ? '#ffdd44' : 'var(--jewel-teal)',
