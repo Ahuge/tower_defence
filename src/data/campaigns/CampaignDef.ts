@@ -179,6 +179,10 @@ export interface MissionOverrides {
    *  Arcane-campaign neutral kit). Future faction campaigns will register
    *  their own palettes and reference them here. */
   attackerPaletteFaction?: FactionId | 'coalition';
+  /** Plan 12 v2: number of leaks needed for the player (attacker) to
+   *  win. Default 5; missions with fat budgets / many waves should set
+   *  it higher so the run isn't won on wave 1 by dumping. */
+  attackerLeakThreshold?: number;
 }
 
 /** The 10-mission campaign. */

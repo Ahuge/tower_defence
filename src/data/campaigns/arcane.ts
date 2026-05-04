@@ -492,15 +492,22 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // see AttackerPalettes.ts for cost tuning.
         attackerEssencePerWave: 100,
         attackerPaletteFaction: 'coalition',
+        // Threshold tuned for v2 composer: 12 leaks needed (was 5 in
+        // v1 default). At 100e/wave the player can dump ~20 raiders in
+        // a single wave, so 5 was trivially won on wave 1.
+        attackerLeakThreshold: 12,
       },
       objectives: {
+        // Stars switch to wave-count-based — the leak threshold
+        // instant-wins so total-leak objectives can't go higher than
+        // it. Reward composing efficiency: fewer waves = more stars.
         star2: {
-          label: 'Break through with 8+ raiders',
-          predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 8,
+          label: 'Break through in 6 waves or fewer',
+          predicate: r => r.won && r.wave <= 6,
         },
         star3: {
-          label: 'Break through with 12+ raiders',
-          predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 12,
+          label: 'Break through in 4 waves or fewer',
+          predicate: r => r.won && r.wave <= 4,
         },
       },
     },

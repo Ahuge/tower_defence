@@ -365,12 +365,15 @@ export class GameScene extends Phaser.Scene {
   /** Plan 12 v2: faction id used to look up the attacker palette.
    *  Defaults to 'coalition' when undefined. */
   private _missionAttackerPaletteFaction?: FactionId | 'coalition';
+  /** Plan 12 v2: per-mission override for the leak threshold needed
+   *  to win as attacker. Defaults to ATTACKER_LEAK_THRESHOLD_DEFAULT. */
+  private _missionAttackerLeakThreshold?: number;
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition' }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -392,6 +395,7 @@ export class GameScene extends Phaser.Scene {
     this._missionKillGoldMult = data.missionKillGoldMult;
     this._missionAttackerEssencePerWave = data.missionAttackerEssencePerWave;
     this._missionAttackerPaletteFaction = data.missionAttackerPaletteFaction;
+    this._missionAttackerLeakThreshold = data.missionAttackerLeakThreshold;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -1000,8 +1004,9 @@ export class GameScene extends Phaser.Scene {
       // Intro hint — explain the inverted role at game start. The
       // event log is persistent so the player can scroll back if
       // they miss it.
+      const introThreshold = this._missionAttackerLeakThreshold ?? ATTACKER_LEAK_THRESHOLD_DEFAULT;
       this.eventLog.gameMessage(
-        `Attacker mode — you command the creeps. Get ${ATTACKER_LEAK_THRESHOLD_DEFAULT} through the defense to win.`,
+        `Attacker mode — you command the creeps. Get ${introThreshold} through the defense to win.`,
       );
     }
     // Plan 12 v2: build the AttackerComposer when the mission supplies
@@ -2659,7 +2664,7 @@ export class GameScene extends Phaser.Scene {
       // their own via missionContext later.
       if (this.matchMode === 'attacker') {
         const leaks = this.statsTracker.stats.creepsLeaked;
-        const threshold = ATTACKER_LEAK_THRESHOLD_DEFAULT;
+        const threshold = this._missionAttackerLeakThreshold ?? ATTACKER_LEAK_THRESHOLD_DEFAULT;
         if (leaks < threshold) {
           // Defeat path — fall through to game-over with a synthetic
           // "lives = 0" so existing code reads it as a defeat.
@@ -2705,15 +2710,16 @@ export class GameScene extends Phaser.Scene {
     // instead of the meaningless 999-lives counter. Pushed every
     // frame so the readout ticks up the moment a creep escapes.
     if (this.matchMode === 'attacker') {
+      const threshold = this._missionAttackerLeakThreshold ?? ATTACKER_LEAK_THRESHOLD_DEFAULT;
       GameUIStore.setAttackerProgress({
         leaks: this.statsTracker.stats.creepsLeaked,
-        threshold: ATTACKER_LEAK_THRESHOLD_DEFAULT,
+        threshold,
       });
       // Instant victory the moment leak threshold hits — don't make
       // the player sit through remaining waves once they've already
       // won. Existing post-wave-clear check stays as the loss-path
       // gate (defender held = lives → 0 → defeat).
-      if (this.statsTracker.stats.creepsLeaked >= ATTACKER_LEAK_THRESHOLD_DEFAULT
+      if (this.statsTracker.stats.creepsLeaked >= threshold
           && !this._attackerInstantWinFired) {
         this._attackerInstantWinFired = true;
         this.eventLog.gameMessage(`Relay breached — ${this.statsTracker.stats.creepsLeaked} raiders through.`);

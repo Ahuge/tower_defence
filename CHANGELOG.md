@@ -2,6 +2,18 @@
 
 ## 2026-05-03
 
+### Attacker v2 polish: hide dock, mobile layout, M8 threshold tune
+
+Three fixes after first M8 v2 playtest.
+
+**Dock hidden in attacker mode** — `TowerDockDOM` returns null when `matchMode === 'attacker'`. The player isn't placing towers, the dock was dead chrome that overlapped the composer overlay.
+
+**Sidebar trims WAVES + ECONOMY in attacker mode** — `GameSidebar` hides those two panels (gold counter is meaningless, upcoming-wave previews are stale until the player composes). MISSION + tower/creep info panels remain.
+
+**Composer mobile layout** — on phone the overlay now occupies the full top row (left:8, right:8) instead of being clipped at right:12 with a 320px width that overflowed under the sidebar. Desktop is unchanged.
+
+**M8 threshold + star tune** — at 100e/wave the player can dump ~20 raiders in a single wave, so the v1 default 5-leak threshold gave instant-win on round 2. New `attackerLeakThreshold` per-mission override; M8 set to 12. Stars switch from leak-count (capped by instant-win) to wave-count: ★★ = win in ≤6 waves, ★★★ = win in ≤4. Rewards composer efficiency.
+
 ### Attacker mode v2 — Phase 1 (composer + palette)
 
 Phase 1 of the Plan 12 v2 spec at `notes/campaign-game-modes/09-attacker-v2-spec.md`. The player composes each wave from a palette by spending a per-wave essence budget — no more reusing standard waves where the player commands creeps but doesn't pick them.

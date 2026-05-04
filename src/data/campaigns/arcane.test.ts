@@ -114,21 +114,21 @@ describe('Arcane mission predicates — counter-driven (Plan 14 v1.1)', () => {
     expect(ritualCircle.objectives.star3!.predicate(r)).toBe(false);
   });
 
-  it('breach_relay star2 fires when 8+ raiders broke through', () => {
-    const r = { ...FRESH_RESULT, custom: { attackerLeaks: 8 } };
+  it('breach_relay star2 fires when player wins in 6 waves or fewer', () => {
+    const r = { ...FRESH_RESULT, won: true, wave: 6 };
     expect(breachRelay.objectives.star2!.predicate(r)).toBe(true);
   });
 
-  it('breach_relay star2 fails when fewer than 8 broke through', () => {
-    const r = { ...FRESH_RESULT, custom: { attackerLeaks: 7 } };
+  it('breach_relay star2 fails when player needed more than 6 waves', () => {
+    const r = { ...FRESH_RESULT, won: true, wave: 7 };
     expect(breachRelay.objectives.star2!.predicate(r)).toBe(false);
   });
 
-  it('breach_relay star3 requires 12+ raiders', () => {
-    const r12 = { ...FRESH_RESULT, custom: { attackerLeaks: 12 } };
-    const r11 = { ...FRESH_RESULT, custom: { attackerLeaks: 11 } };
-    expect(breachRelay.objectives.star3!.predicate(r12)).toBe(true);
-    expect(breachRelay.objectives.star3!.predicate(r11)).toBe(false);
+  it('breach_relay star3 requires win in 4 waves or fewer', () => {
+    const w4 = { ...FRESH_RESULT, won: true, wave: 4 };
+    const w5 = { ...FRESH_RESULT, won: true, wave: 5 };
+    expect(breachRelay.objectives.star3!.predicate(w4)).toBe(true);
+    expect(breachRelay.objectives.star3!.predicate(w5)).toBe(false);
   });
 });
 

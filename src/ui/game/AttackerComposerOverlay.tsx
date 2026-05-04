@@ -13,6 +13,7 @@
  */
 import { useGameUISelector } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
+import { ResponsiveManager } from '../../systems/ResponsiveManager';
 
 export function AttackerComposerOverlay() {
   const composer = useGameUISelector(s => s.attackerComposer);
@@ -21,16 +22,23 @@ export function AttackerComposerOverlay() {
   const { entries, spent, budget, waveNum, canSend } = composer;
   const remaining = budget - spent;
   const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+  const isPhone = ResponsiveManager.isPhone();
+
+  // Phone: occupy the sidebar slot (top-left, full width). The sidebar
+  // hides its WAVES + ECONOMY panels in attacker mode, so this is the
+  // only chrome at the top of the screen — no overlap.
+  // Desktop: top-right, fixed 320px width.
+  const positionStyle = isPhone
+    ? { left: '8px', right: '8px', top: '8px' }
+    : { right: '12px', top: '12px', width: '320px' };
 
   return (
     <div
       class="attacker-composer game-panel"
       style={{
         position: 'fixed',
-        right: '12px',
-        top: '12px',
+        ...positionStyle,
         zIndex: 120,
-        width: '320px',
         maxHeight: 'calc(100vh - 100px)',
         overflowY: 'auto',
         padding: '10px',

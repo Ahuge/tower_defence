@@ -118,6 +118,7 @@ class MissionRunnerClass {
       missionKillGoldMult: merged.killGoldMult,
       missionAttackerEssencePerWave: merged.attackerEssencePerWave,
       missionAttackerPaletteFaction: merged.attackerPaletteFaction,
+      missionAttackerLeakThreshold: merged.attackerLeakThreshold,
       // LoadingScreen briefing — show the mission name + story text
       // there, and gate dismissal on a "Begin" button so the player
       // can read the brief without time pressure.

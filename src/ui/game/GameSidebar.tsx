@@ -19,7 +19,13 @@ import { ResponsiveManager } from '../../systems/ResponsiveManager';
 type PanelId = 'mission' | 'waves' | 'economy' | 'tower' | 'creep';
 
 export function GameSidebar() {
-  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence, missionPanel } = useGameUI();
+  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence, missionPanel, matchMode } = useGameUI();
+  // Plan 12 attacker mode — the composer overlay is the only chrome
+  // the player needs between waves; sidebar's wave/economy panels are
+  // misleading (gold doesn't matter, upcoming-wave previews are stale
+  // until the player composes). Tower/creep info still lands as
+  // floating cards (see AttackerComposerOverlay's mobile branch).
+  const isAttacker = matchMode === 'attacker';
   // Default to MISSION when this is a campaign run so the player sees
   // their star objectives at the top of the sidebar without an extra
   // tap; otherwise default to WAVES like before.
@@ -128,28 +134,32 @@ export function GameSidebar() {
           </CollapsiblePanel>
         )}
 
-        <div data-tutorial-target="waves-panel">
-          <CollapsiblePanel
-            title="WAVES"
-            open={openPanel === 'waves'}
-            onToggle={() => toggle('waves')}
-            badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
-          >
-            <UpcomingWavesDOM />
-          </CollapsiblePanel>
-        </div>
+        {!isAttacker && (
+          <div data-tutorial-target="waves-panel">
+            <CollapsiblePanel
+              title="WAVES"
+              open={openPanel === 'waves'}
+              onToggle={() => toggle('waves')}
+              badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
+            >
+              <UpcomingWavesDOM />
+            </CollapsiblePanel>
+          </div>
+        )}
 
-        <div data-tutorial-target="economy-panel">
-          <CollapsiblePanel
-            title="ECONOMY"
-            titleColor="#ff8844"
-            open={openPanel === 'economy'}
-            onToggle={() => toggle('economy')}
-            badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
-          >
-            <EconomyPanelDOM />
-          </CollapsiblePanel>
-        </div>
+        {!isAttacker && (
+          <div data-tutorial-target="economy-panel">
+            <CollapsiblePanel
+              title="ECONOMY"
+              titleColor="#ff8844"
+              open={openPanel === 'economy'}
+              onToggle={() => toggle('economy')}
+              badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
+            >
+              <EconomyPanelDOM />
+            </CollapsiblePanel>
+          </div>
+        )}
 
         {/* Desktop/tablet: tower info inline in sidebar */}
         {!isPhone && selectedTower && (
