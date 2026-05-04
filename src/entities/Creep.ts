@@ -46,6 +46,14 @@ export class Creep {
    */
   spawnOwnerIndex: number | null = null;
   /**
+   * Plan 12 v2 — Anti-magic Wagon shield. Number of incoming damage
+   * instances this creep can fully absorb before normal damage applies.
+   * Set at spawn time when the player has bought a wagon for this wave;
+   * the first N spawned creeps inherit the field. takeDamage() decrements
+   * and short-circuits while > 0. 0 / undefined = no shield.
+   */
+  _wagonHits: number = 0;
+  /**
    * The spawner's ordered waypoint list + exit. Set by SpawnManager
    * when the creep is created from a circle-co-op map with
    * `mapDef.spawners`. `waypointsVisited` tracks how many of those
@@ -287,6 +295,13 @@ export class Creep {
     if (towerCol !== undefined && towerRow !== undefined) {
       this.lastHitCol = towerCol;
       this.lastHitRow = towerRow;
+    }
+    // Plan 12 v2 — Anti-magic Wagon: each shield charge fully absorbs
+    // one damage instance, ignoring evasion / armor / accumulators
+    // entirely. Single-hit-equivalent regardless of incoming amount.
+    if (this._wagonHits > 0) {
+      this._wagonHits--;
+      return;
     }
     // Check evasion buff from mage auras
     const auraEvasion = this.statusEffects.getEvasionChance();

@@ -496,6 +496,9 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // v1 default). At 100e/wave the player can dump ~20 raiders in
         // a single wave, so 5 was trivially won on wave 1.
         attackerLeakThreshold: 12,
+        // First attacker encounter — easy CPU: 0.5x treasury, no
+        // socket builds (defender only upgrades existing towers).
+        attackerDefenderDifficulty: 'easy',
       },
       objectives: {
         // Stars switch to wave-count-based — the leak threshold

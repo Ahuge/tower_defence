@@ -2,6 +2,24 @@
 
 ## 2026-05-03
 
+### Attacker v2 — Phase 2 + Phase 3 (abilities, wagons, smart CPU)
+
+Lands the rest of the v2 plan from `notes/campaign-game-modes/09-attacker-v2-spec.md`. Player gains abilities + a mode-specific kit item; defender becomes adaptive.
+
+**Phase 2 — abilities, wagons:**
+- New `AttackerAbilities.ts` registry (mirrors ChannelEffects). Three v2 abilities: **Frenzy** (next-wave creeps move 2× speed), **Smoke Screen** (defender towers blinded for 5s at wave start), **Power Surge** (next-wave creeps gain +50% HP). Each has a wave-cooldown (3/4/3); composer ticks cooldowns down on `resetForWave`.
+- `AttackerComposer` extended with ability slots (`{def, cooldownRemaining, queued}`) + `toggleAbility / commitQueuedAbilities`. Effects dispatch at Send-Wave time so the wave's spawned creeps inherit the buff.
+- **Anti-magic Wagon** kit item — pre-wave, the player can spend essence (25e/wagon, max 2/wave) to grant the first N spawned creeps a 2-hit shield. New `Creep._wagonHits` field; `takeDamage()` short-circuits while shield > 0. `SpawnManager` reads `scene._pendingWagonCount` (set at Send Wave) and stamps the shield on each new creep.
+- UI: `AttackerComposerOverlay` adds a wagon spinner row + an ability tray (3 buttons with cooldown indicators + queued highlight). All gated through `GameUIStore.requestAttackerAbilityToggle / WagonAdjust`.
+
+**Phase 3 — smart CPU:**
+- New `CpuDefender.ts` with a hand-tuned counter table for `(towerId, creepType)` pairs. `arrow` strongly prefers fast/swarm/evasive; `cannon` prefers swarm/armored; `slow` prefers fast; `sniper` prefers boss/regen/armored. 11 tests pin the math.
+- `pickUpgradeTarget` combines a level-inverse base score (low-level catches up) with the counter multiplier vs the upcoming wave. Replaces the v1.5 lowest-level-first picker.
+- **Expansion sockets** — `MapDefinition` gains `expansionSockets[]`. The CPU may build new towers on these as treasury accumulates, picking the counter-best affordable tower from each socket's allowedTowerIds. Path is recomputed + creeps reroute on placement. `attacker_assault` ships with 4 sockets staggered along the corridor.
+- **Difficulty curve** — new `attackerDefenderDifficulty: 'easy' | 'normal' | 'hard'` on MissionOverrides. Easy = 0.5× treasury, no socket builds (M8's first-encounter setting). Normal = 1× + 2 builds. Hard = 1.5× + 4 builds. Treasury multiplier applied at `addAttackerDefenderGold` so downstream code stays simple.
+
+**M8** runs `attackerDefenderDifficulty: 'easy'` so the first attacker encounter doesn't include socket builds; later faction campaigns will tune up. CHANGELOG note for this slot is in the "v2 polish" entry below.
+
 ### Attacker v2 polish: hide dock, mobile layout, M8 threshold tune
 
 Three fixes after first M8 v2 playtest.

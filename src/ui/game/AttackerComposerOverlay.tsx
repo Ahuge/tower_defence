@@ -19,8 +19,9 @@ export function AttackerComposerOverlay() {
   const composer = useGameUISelector(s => s.attackerComposer);
   if (!composer) return null;
 
-  const { entries, spent, budget, waveNum, canSend } = composer;
+  const { entries, spent, budget, waveNum, canSend, abilities, wagon } = composer;
   const remaining = budget - spent;
+  const wagonAffordOne = remaining >= wagon.costPerWagon;
   const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
   const isPhone = ResponsiveManager.isPhone();
 
@@ -136,6 +137,95 @@ export function AttackerComposerOverlay() {
           );
         })}
       </div>
+
+      {/* Anti-magic Wagon spinner */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '8px',
+        marginTop: '10px', padding: '6px',
+        background: wagon.count > 0 ? 'rgba(139,107,199,0.15)' : 'rgba(255,255,255,0.03)',
+        border: wagon.count > 0 ? '1px solid var(--jewel-violet)' : '1px solid transparent',
+        borderRadius: '4px',
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)',
+            display: 'flex', justifyContent: 'space-between', gap: '6px',
+          }}>
+            <span>Anti-magic Wagon</span>
+            <span style={{ color: 'var(--gold)', fontSize: '11px' }}>{wagon.costPerWagon}e ea</span>
+          </div>
+          <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+            First N raiders absorb 2 hits each
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <button
+            class="ui-btn"
+            onClick={() => GameUIStore.requestAttackerWagonAdjust(-1)}
+            disabled={wagon.count <= 0}
+            style={{
+              width: '24px', height: '24px', padding: 0,
+              fontSize: '14px', lineHeight: '24px',
+              opacity: wagon.count <= 0 ? 0.3 : 1,
+            }}
+          >−</button>
+          <span style={{
+            minWidth: '32px', textAlign: 'center',
+            fontFamily: "'VT323', ui-monospace, monospace",
+            fontSize: '16px', color: wagon.count > 0 ? 'var(--jewel-violet)' : 'var(--text-dim)',
+          }}>{wagon.count}/{wagon.max}</span>
+          <button
+            class="ui-btn"
+            onClick={() => GameUIStore.requestAttackerWagonAdjust(+1)}
+            disabled={wagon.count >= wagon.max || !wagonAffordOne}
+            style={{
+              width: '24px', height: '24px', padding: 0,
+              fontSize: '14px', lineHeight: '24px',
+              opacity: (wagon.count >= wagon.max || !wagonAffordOne) ? 0.3 : 1,
+            }}
+          >+</button>
+        </div>
+      </div>
+
+      {/* Ability tray */}
+      {abilities.length > 0 && (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{
+            fontSize: '10px', color: 'var(--text-dim)', marginBottom: '4px',
+            textTransform: 'uppercase', letterSpacing: '1px',
+          }}>Abilities</div>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {abilities.map(a => {
+              const onCd = a.cooldownRemaining > 0;
+              return (
+                <button
+                  key={a.id}
+                  class="ui-btn"
+                  onClick={() => GameUIStore.requestAttackerAbilityToggle(a.id)}
+                  disabled={onCd}
+                  title={a.description}
+                  style={{
+                    flex: 1,
+                    padding: '6px 4px',
+                    fontSize: '10px',
+                    fontWeight: a.queued ? 'bold' : 'normal',
+                    border: a.queued ? '1px solid var(--jewel-teal)' : '1px solid transparent',
+                    background: a.queued ? 'rgba(76,200,180,0.18)' : (onCd ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)'),
+                    color: onCd ? 'var(--text-dim)' : 'var(--text-primary)',
+                    opacity: onCd ? 0.5 : 1,
+                    position: 'relative',
+                  }}
+                >
+                  <div>{a.label}</div>
+                  <div style={{ fontSize: '9px', color: onCd ? '#ff8888' : 'var(--text-dim)' }}>
+                    {onCd ? `${a.cooldownRemaining}w` : 'ready'}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Footer — Clear + Send */}
       <div style={{

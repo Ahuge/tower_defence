@@ -90,6 +90,9 @@ import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { AttackerComposer } from '../systems/attacker/AttackerComposer';
 import { buildAttackerWave } from '../systems/attacker/AttackerWaveBuilder';
 import { getAttackerPalette, visibleEntries } from '../data/AttackerPalettes';
+import { AttackerAbilities } from '../systems/attacker/AttackerAbilities';
+import { DEFAULT_ATTACKER_ABILITIES } from '../data/AttackerAbilityDefs';
+import { pickUpgradeTarget, pickExpansionBuild, getDifficultyConfig, type AttackerDifficulty, type ExpansionSocket } from '../systems/attacker/CpuDefender';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -368,12 +371,20 @@ export class GameScene extends Phaser.Scene {
   /** Plan 12 v2: per-mission override for the leak threshold needed
    *  to win as attacker. Defaults to ATTACKER_LEAK_THRESHOLD_DEFAULT. */
   private _missionAttackerLeakThreshold?: number;
+  /** Plan 12 v2 Phase 3: defender AI difficulty. Default 'normal'. */
+  private _missionAttackerDefenderDifficulty?: AttackerDifficulty;
+  /** Plan 12 v2 Phase 3: live socket pool — sockets shrink as the CPU
+   *  builds on them. Filled at create() from mapDef.expansionSockets. */
+  private _attackerOpenSockets: ExpansionSocket[] = [];
+  /** Plan 12 v2 Phase 3: count of expansion-socket builds the CPU has
+   *  already made this mission. Capped by the difficulty config. */
+  private _attackerExpansionsBuilt = 0;
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -396,6 +407,7 @@ export class GameScene extends Phaser.Scene {
     this._missionAttackerEssencePerWave = data.missionAttackerEssencePerWave;
     this._missionAttackerPaletteFaction = data.missionAttackerPaletteFaction;
     this._missionAttackerLeakThreshold = data.missionAttackerLeakThreshold;
+    this._missionAttackerDefenderDifficulty = data.missionAttackerDefenderDifficulty;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -572,6 +584,12 @@ export class GameScene extends Phaser.Scene {
       onAttackerClear: () => {
         this.attackerComposer?.clear();
       },
+      onAttackerAbilityToggle: (abilityId: string) => {
+        this.attackerComposer?.toggleAbility(abilityId);
+      },
+      onAttackerWagonAdjust: (delta: number) => {
+        this.attackerComposer?.adjustWagon(delta);
+      },
       onAttackerSendWave: () => {
         if (!this.attackerComposer) return;
         if (!this.attackerComposer.hasAnyPicks()) return;
@@ -582,6 +600,22 @@ export class GameScene extends Phaser.Scene {
           waveNum: this.currentWave + 1,
           picks: this.attackerComposer.lockedPicks(),
         });
+        // Plan 12 v2 Phase 2: dispatch queued abilities. Effects mutate
+        // the wave (frenzy bumps speedScale, power_surge bumps hpScale)
+        // or scene state (smoke_screen disables towers at startWave).
+        for (const slot of this.attackerComposer.queuedAbilities()) {
+          AttackerAbilities.dispatch(slot.def.effectId, {
+            scene: this,
+            wave: built,
+            waveNum: this.currentWave + 1,
+            meta: slot.def.meta ?? {},
+          });
+        }
+        this.attackerComposer.commitQueuedAbilities();
+        // Anti-magic Wagon: stash count on scene so SpawnManager applies
+        // the shield to the first N spawned creeps as they appear.
+        (this as { _pendingWagonCount?: number })._pendingWagonCount =
+          this.attackerComposer.getState().wagon.count;
         this.waves[this.currentWave] = built;
         // Hide the composer overlay until the wave clears.
         GameUIStore.setAttackerComposer(null);
@@ -1009,6 +1043,15 @@ export class GameScene extends Phaser.Scene {
         `Attacker mode — you command the creeps. Get ${introThreshold} through the defense to win.`,
       );
     }
+    // Plan 12 v2 Phase 3: snapshot expansion sockets from the map.
+    // CPU defender builds new towers on these as treasury fills up,
+    // capped by the mission's difficulty knob.
+    if (this.matchMode === 'attacker' && mapDef.expansionSockets) {
+      this._attackerOpenSockets = mapDef.expansionSockets.map(s => ({
+        col: s.col, row: s.row, allowedTowerIds: [...s.allowedTowerIds],
+      }));
+    }
+    this._attackerExpansionsBuilt = 0;
     // Plan 12 v2: build the AttackerComposer when the mission supplies
     // an essence budget. Composer state is pushed to the DOM overlay
     // via a subscribe(); the player adjusts picks and hits Send Wave to
@@ -1017,7 +1060,11 @@ export class GameScene extends Phaser.Scene {
       const paletteFaction = this._missionAttackerPaletteFaction ?? 'coalition';
       const palette = getAttackerPalette(paletteFaction);
       if (palette) {
-        this.attackerComposer = new AttackerComposer(palette, this._missionAttackerEssencePerWave);
+        this.attackerComposer = new AttackerComposer(
+          palette,
+          this._missionAttackerEssencePerWave,
+          DEFAULT_ATTACKER_ABILITIES,
+        );
         this.attackerComposer.subscribe(() => this.pushAttackerComposerSnapshot());
         this.pushAttackerComposerSnapshot();
       } else {
@@ -3863,6 +3910,19 @@ export class GameScene extends Phaser.Scene {
       budget: state.budget,
       waveNum: this.currentWave + 1,
       canSend: this.attackerComposer.hasAnyPicks(),
+      abilities: state.abilities.map(a => ({
+        id: a.def.id,
+        label: a.def.label,
+        description: a.def.description,
+        cooldown: a.def.cooldown,
+        cooldownRemaining: a.cooldownRemaining,
+        queued: a.queued,
+      })),
+      wagon: {
+        count: state.wagon.count,
+        max: state.wagon.max,
+        costPerWagon: state.wagon.costPerWagon,
+      },
     });
   }
 
@@ -3870,42 +3930,79 @@ export class GameScene extends Phaser.Scene {
    *  attacker-mode death handler when a defender tower kills a
    *  creep — routes the kill gold to the CPU defender instead of
    *  the player's economy. The treasury then auto-spends on
-   *  upgrades via tickAttackerDefenderUpgrades. */
+   *  upgrades + socket builds via tickAttackerDefenderUpgrades.
+   *  Difficulty multiplier applied here so the rest of the
+   *  pipeline doesn't need to know. */
   addAttackerDefenderGold(amount: number): void {
-    this._attackerDefenderGold += amount;
+    const cfg = getDifficultyConfig(this._missionAttackerDefenderDifficulty ?? 'normal');
+    this._attackerDefenderGold += amount * cfg.treasuryMult;
   }
 
-  /** Spend defender treasury on tower upgrades. Called every frame
-   *  while in attacker mode. Picks the lowest-current-level
-   *  upgradeable tower whose next upgrade is affordable, upgrades it
-   *  along the default path. Throttled to one upgrade per ~1.5s of
-   *  game time so the player can SEE the defender adapting rather
-   *  than watching all 14 towers level up in the same frame. */
+  /** Spend defender treasury on tower upgrades or expansion-socket
+   *  builds. Throttled so the player can SEE the defender adapting
+   *  rather than watching the lattice level up in one frame. Picks
+   *  the highest-counter-score affordable action vs. the upcoming
+   *  wave (Plan 12 v2 Phase 3 — was a flat lowest-level-first pick). */
   private _attackerLastUpgradeAt = 0;
   private tickAttackerDefenderUpgrades(): void {
     const now = this.time.now;
     if (now - this._attackerLastUpgradeAt < 1500) return;
     if (this._attackerDefenderGold <= 0) return;
 
-    // Find the lowest-level upgradeable tower whose next upgrade fits
-    // the budget. Walls and mobile units are excluded — only static
-    // damage towers level up.
-    let pick: { tower: import('../entities/Tower').Tower; cost: number } | null = null;
-    for (const t of this._towers) {
-      if ((t as { _expired?: boolean })._expired || t.isMobile) continue;
-      if (!t.canUpgrade()) continue;
-      const cost = t.getUpgradeCost();
-      if (cost <= 0 || cost > this._attackerDefenderGold) continue;
-      if (!pick || t.level < pick.tower.level) {
-        pick = { tower: t, cost };
+    const cfg = getDifficultyConfig(this._missionAttackerDefenderDifficulty ?? 'normal');
+    const upcoming = this.currentWave < this.waves.length ? this.waves[this.currentWave] : null;
+
+    // 1) Try a counter-biased upgrade pick. Walls / mobile units skipped.
+    const upgrade = pickUpgradeTarget(this._towers, this._attackerDefenderGold, upcoming);
+
+    // 2) Try a counter-biased expansion-socket build. Skipped on
+    //    'easy' (maxExpansions = 0) and once the cap is hit.
+    let expansion: { socket: ExpansionSocket; towerId: string; cost: number } | null = null;
+    if (this._attackerExpansionsBuilt < cfg.maxExpansions && this._attackerOpenSockets.length > 0) {
+      expansion = pickExpansionBuild(
+        this._attackerOpenSockets,
+        this._attackerDefenderGold,
+        upcoming,
+        (id) => {
+          try { return getTowerType(id).cost; }
+          catch { return -1; }
+        },
+      );
+    }
+
+    // Prefer expansion when available — new towers reshape the kill
+    // zone more than another L+1 on an existing one. Only fall back
+    // to upgrade when nothing can be built.
+    if (expansion) {
+      try {
+        const towerType = getTowerType(expansion.towerId);
+        const result = this.towerMgr.placeTower(expansion.socket.col, expansion.socket.row, towerType, this.allPaths, () => {
+          this.recalculatePaths();
+          return this.allPaths;
+        });
+        if (result) {
+          this._attackerDefenderGold -= expansion.cost;
+          this._attackerExpansionsBuilt++;
+          this._attackerOpenSockets = this._attackerOpenSockets.filter(s => s !== expansion!.socket);
+          this._attackerLastUpgradeAt = now;
+          this.eventLog.gameMessage(`Defender deployed ${towerType.name} at ${expansion.socket.col},${expansion.socket.row}`);
+          if (result.pathsChanged) {
+            this.rerouteCreepsAroundTower(expansion.socket.col, expansion.socket.row);
+            this.drawPath();
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn(`[attacker] expansion build failed at ${expansion.socket.col},${expansion.socket.row}:`, err);
       }
     }
-    if (!pick) return;
 
-    this._attackerDefenderGold -= pick.cost;
-    pick.tower.upgrade(null);
-    this._attackerLastUpgradeAt = now;
-    this.eventLog.gameMessage(`Defender reinforced ${pick.tower.typeDef.name} → L${pick.tower.level}`);
+    if (upgrade) {
+      this._attackerDefenderGold -= upgrade.cost;
+      upgrade.tower.upgrade(null);
+      this._attackerLastUpgradeAt = now;
+      this.eventLog.gameMessage(`Defender reinforced ${upgrade.tower.typeDef.name} → L${upgrade.tower.level}`);
+    }
   }
 
   /** Called by WaveController when a wave clears */

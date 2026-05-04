@@ -358,6 +358,23 @@ export interface AttackerComposerUIState {
   waveNum: number;
   /** True iff at least one creep is picked. Disables Send button below. */
   canSend: boolean;
+  /** Plan 12 v2 Phase 2 — ability tray. Each entry is one ability the
+   *  player can queue for the next wave. cooldownRemaining > 0 grays
+   *  the button. queued = armed for Send. */
+  abilities: Array<{
+    id: string;
+    label: string;
+    description: string;
+    cooldown: number;
+    cooldownRemaining: number;
+    queued: boolean;
+  }>;
+  /** Plan 12 v2 Phase 2 — Anti-magic Wagon spend. */
+  wagon: {
+    count: number;
+    max: number;
+    costPerWagon: number;
+  };
 }
 
 export interface ContinueOffer {
@@ -441,6 +458,8 @@ class GameUIStoreClass {
     onAttackerAdjust?: (creepTypeId: string, delta: number) => void;
     onAttackerClear?: () => void;
     onAttackerSendWave?: () => void;
+    onAttackerAbilityToggle?: (abilityId: string) => void;
+    onAttackerWagonAdjust?: (delta: number) => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -526,7 +545,11 @@ class GameUIStoreClass {
       && prev.waveNum === next.waveNum
       && prev.canSend === next.canSend
       && prev.entries.length === next.entries.length
-      && prev.entries.every((e, i) => e.count === next.entries[i].count && e.creepType === next.entries[i].creepType)) {
+      && prev.entries.every((e, i) => e.count === next.entries[i].count && e.creepType === next.entries[i].creepType)
+      && prev.abilities.length === next.abilities.length
+      && prev.abilities.every((a, i) => a.cooldownRemaining === next.abilities[i].cooldownRemaining && a.queued === next.abilities[i].queued)
+      && prev.wagon.count === next.wagon.count
+      && prev.wagon.max === next.wagon.max) {
       return;
     }
     this.state = { ...this.state, attackerComposer: next };
@@ -830,6 +853,16 @@ class GameUIStoreClass {
   /** Plan 12 v2: lock picks and start the wave. */
   requestAttackerSendWave(): void {
     this.callbacks.onAttackerSendWave?.();
+  }
+
+  /** Plan 12 v2 Phase 2: toggle an ability armed/disarmed for next Send. */
+  requestAttackerAbilityToggle(abilityId: string): void {
+    this.callbacks.onAttackerAbilityToggle?.(abilityId);
+  }
+
+  /** Plan 12 v2 Phase 2: adjust the wagon count by ±1. */
+  requestAttackerWagonAdjust(delta: number): void {
+    this.callbacks.onAttackerWagonAdjust?.(delta);
   }
 
   // ─── Subscription ───────────────────────────────────

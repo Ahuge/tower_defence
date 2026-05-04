@@ -216,6 +216,10 @@ export class SpawnManager {
       // SpawnManager doesn't otherwise need to know about.
       const channelHpBuff = (this.scene as any)._channelHpBuff ?? 0;
       const hpScaleWithBuff = entry.hpScale * (1 + channelHpBuff);
+      // Plan 12 v2 — Anti-magic Wagon: drain the scene-level pending
+      // wagon counter onto each new creep. First N spawned creeps
+      // inherit a 2-hit shield via Creep._wagonHits.
+      const sceneAny = this.scene as { _pendingWagonCount?: number };
       for (let b = 0; b < burstCount; b++) {
         const creep = new Creep(
           this.scene,
@@ -231,6 +235,10 @@ export class SpawnManager {
         // is. Zero-buff spawns leave the field absent → cheap default.
         if (channelHpBuff > 0) {
           (creep as { _channelBuff?: number })._channelBuff = channelHpBuff;
+        }
+        if ((sceneAny._pendingWagonCount ?? 0) > 0) {
+          creep._wagonHits = 2;
+          sceneAny._pendingWagonCount = (sceneAny._pendingWagonCount ?? 0) - 1;
         }
         if (spawner) {
           creep.spawnerWaypoints = spawner.waypoints.map(p => ({ col: p.col, row: p.row }));

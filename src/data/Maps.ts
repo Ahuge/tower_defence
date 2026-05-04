@@ -60,6 +60,12 @@ export interface MapDefinition {
    *  are the static defense the player's creep waves attempt to
    *  break through. Ignored outside attacker missions. */
   preplacedTowers?: { col: number; row: number; towerId: string }[];
+  /** Plan 12 v2 Phase 3 — Attacker mode expansion sockets. Cells
+   *  the CPU defender may build new towers on as treasury
+   *  accumulates. Each socket lists allowed tower ids; the CPU
+   *  picks the one that best counters the upcoming wave. Capped
+   *  per mission by `attackerDefenderDifficulty`. */
+  expansionSockets?: { col: number; row: number; allowedTowerIds: string[] }[];
 }
 
 export interface SpawnerDef {
@@ -509,6 +515,16 @@ export const MAPS: Record<MapId, MapDefinition> = {
       { col: 24, row: MID_ROW + 2, towerId: 'arrow' },
       { col: 30, row: MID_ROW - 2, towerId: 'sniper' },
       { col: 30, row: MID_ROW + 2, towerId: 'arrow' },
+    ],
+    // Plan 12 v2 Phase 3 — empty cells the CPU may build new towers
+    // on once the defender treasury fills up. Picks counter-best from
+    // allowedTowerIds vs the upcoming wave. 4 sockets staggered along
+    // the corridor between existing rows; capped per difficulty.
+    expansionSockets: [
+      { col: 9,  row: MID_ROW,     allowedTowerIds: ['arrow', 'cannon', 'slow'] },
+      { col: 15, row: MID_ROW,     allowedTowerIds: ['arrow', 'cannon', 'sniper'] },
+      { col: 21, row: MID_ROW,     allowedTowerIds: ['cannon', 'slow', 'sniper'] },
+      { col: 27, row: MID_ROW,     allowedTowerIds: ['arrow', 'cannon', 'sniper'] },
     ],
   },
 

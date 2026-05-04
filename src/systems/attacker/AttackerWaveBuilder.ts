@@ -37,6 +37,14 @@ export interface BuildWaveOptions {
   picks: AttackerPick[];
 }
 
+export interface BuildWaveResult {
+  wave: WaveDefinition;
+  /** Total raider count in the wave (sum of all group counts). Used by
+   *  GameScene to decide how many spawned creeps get the Anti-magic
+   *  Wagon shield (first N spawned). */
+  totalRaiders: number;
+}
+
 /** Build a WaveDefinition from the player's composed picks. */
 export function buildAttackerWave(opts: BuildWaveOptions): WaveDefinition {
   const { waveNum, picks } = opts;

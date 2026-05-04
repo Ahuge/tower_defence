@@ -183,6 +183,11 @@ export interface MissionOverrides {
    *  win. Default 5; missions with fat budgets / many waves should set
    *  it higher so the run isn't won on wave 1 by dumping. */
   attackerLeakThreshold?: number;
+  /** Plan 12 v2 Phase 3: defender-AI difficulty for attacker missions.
+   *  easy = no new builds + 0.5x treasury, normal = 2 socket builds +
+   *  1x treasury, hard = 4 socket builds + 1.5x treasury. Default
+   *  'normal'. */
+  attackerDefenderDifficulty?: 'easy' | 'normal' | 'hard';
 }
 
 /** The 10-mission campaign. */
