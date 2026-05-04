@@ -568,10 +568,23 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'arcane_drain', 'arcane_meteor'],
         },
+        // 2.5× extra creep count on top of the 2-player coop baseline
+        // (3×) → ~7.5× total. Two zones, two fronts, the wave should
+        // FEEL like a real coordinated assault. Boss waves auto-scale
+        // to spawn one boss per entry (handled in SpawnManager).
+        coopCreepCountMult: 2.5,
       },
       objectives: {
-        star2: { label: 'Win without your ally falling below 5 lives', predicate: () => false /* needs co-op tracking */ },
-        star3: { label: 'Win with 80% shared lives intact', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
+        // Shared-lives co-op: track team lives lost rather than ally-
+        // specific (which the engine doesn't separate in shared mode).
+        star2: {
+          label: 'Win losing 5 or fewer shared lives',
+          predicate: r => r.won && (r.livesStart - r.livesRemaining) <= 5,
+        },
+        star3: {
+          label: 'Win without losing a single shared life',
+          predicate: r => r.won && r.livesRemaining === r.livesStart,
+        },
       },
     },
 

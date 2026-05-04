@@ -126,6 +126,7 @@ class MissionRunnerClass {
       missionAttackerCampMax: merged.attackerCampMax,
       missionAttackerCampCost: merged.attackerCampCost,
       missionAttackerCampIncome: merged.attackerCampIncome,
+      missionCoopCreepCountMult: merged.coopCreepCountMult,
       // LoadingScreen briefing — show the mission name + story text
       // there, and gate dismissal on a "Begin" button so the player
       // can read the brief without time pressure.

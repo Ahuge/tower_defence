@@ -2,6 +2,18 @@
 
 ## 2026-05-04
 
+### M9: heavier waves + boss-per-spawn + real star objectives
+
+Three M9 fixes:
+
+**Heavier creep counts** — the 2-player team-size formula gave 3× creeps which felt thin across the two zones. New mission override `coopCreepCountMult` multiplies on top; M9 set to 2.5× → ~7.5× a solo wave. Two zones now feel like a real coordinated assault.
+
+**Boss per spawn point** — on multi-entry maps, boss waves used round-robin distribution that could leave a path with no boss if the boss count rounded to less than `numPaths`. Added a floor in `SpawnManager.startWave`: when the group is `creepType: 'boss'` and `numPaths > 1`, `actualCount` is bumped to at least `numPaths` so every entry sees a boss appear.
+
+**Star objectives** — M9 was awarding only 1/3 stars even on flawless runs. Star 2's predicate was `() => false` (placeholder for ally-life tracking that was never built), and star 3 only fires if star 2 was achieved (sequential). Replaced both with shared-lives predicates that work in circle co-op:
+- Star 2: win losing ≤5 shared lives
+- Star 3: win without losing any shared lives (a 0-leak run earns the full 3 stars)
+
 ### M8 economy flip + M9 wave-progression + ally faction
 
 **M8 economy flip:** previous run felt too easy on the player's side. Pulled both levers:

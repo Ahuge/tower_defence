@@ -139,7 +139,15 @@ export class SpawnManager {
       const baseCount = group.count * (ct.count || 1);
       // Apply both per-creep difficulty scaling AND the global
       // coop team-size multiplier.
-      const actualCount = Math.round(baseCount * resolved.countMult * this.countMultiplier);
+      let actualCount = Math.round(baseCount * resolved.countMult * this.countMultiplier);
+      // Boss-per-spawn floor: on multi-entry maps, ensure each path
+      // gets at least one boss creep when this is a boss group. The
+      // round-robin distribution below assigns by `i % numPaths`, so
+      // making actualCount >= numPaths guarantees every spawn point
+      // sees a boss appear.
+      if (group.creepType === 'boss' && numPaths > 1) {
+        actualCount = Math.max(actualCount, numPaths);
+      }
 
       for (let i = 0; i < actualCount; i++) {
         const groupBurst = ct.spawnBehavior === 'group' ? 4 : 1;

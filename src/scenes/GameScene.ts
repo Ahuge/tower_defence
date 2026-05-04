@@ -394,12 +394,17 @@ export class GameScene extends Phaser.Scene {
   private _missionAttackerCampMax?: number;
   private _missionAttackerCampCost?: number;
   private _missionAttackerCampIncome?: number;
+  /** Extra creep-count multiplier for circle-coop campaign missions.
+   *  Multiplies on top of the team-size formula so M9-style "make this
+   *  wave fatter than usual" pressure works without rewriting the
+   *  generator. Undefined = no change. */
+  private _missionCoopCreepCountMult?: number;
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -429,6 +434,7 @@ export class GameScene extends Phaser.Scene {
     this._missionAttackerCampMax = data.missionAttackerCampMax;
     this._missionAttackerCampCost = data.missionAttackerCampCost;
     this._missionAttackerCampIncome = data.missionAttackerCampIncome;
+    this._missionCoopCreepCountMult = data.missionCoopCreepCountMult;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -844,7 +850,11 @@ export class GameScene extends Phaser.Scene {
     const circleMgr = this.registry.get('circle') as CircleManager | null;
     if (circleMgr) {
       const pc = circleMgr.playerCount;
-      const mult = pc + (pc < 4 ? 1 : 0);
+      const baseMult = pc + (pc < 4 ? 1 : 0);
+      // Mission-specific multiplier on top of the team-size formula.
+      // M9 uses ~2x to push the "fight on two fronts" feel.
+      const missionMult = this._missionCoopCreepCountMult ?? 1;
+      const mult = baseMult * missionMult;
       this.spawner.setCountMultiplier(mult);
       // Tag every wave creep with its spawner's owner so the shared
       // kill-gold split knows who to pay the spawn-owner half.

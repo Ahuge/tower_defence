@@ -210,6 +210,11 @@ export interface MissionOverrides {
   /** Permanent income each camp adds to every subsequent wave's
    *  income cap. Default 15. */
   attackerCampIncome?: number;
+  /** Circle co-op missions: extra multiplier applied to creep counts
+   *  on top of the team-size formula. 1.0 = no change (default).
+   *  Used by missions that want the wave pressure to feel meatier
+   *  than the team-size baseline (M9: 2× → total ~6× a solo wave). */
+  coopCreepCountMult?: number;
 }
 
 /** The 10-mission campaign. */
