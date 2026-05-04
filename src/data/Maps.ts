@@ -667,20 +667,19 @@ export const MAPS: Record<MapId, MapDefinition> = {
       { col: 30, row: 5 },
       { col: 30, row: 17 },
     ];
-    // Player buildable zones — magenta cells surrounding each circle's
-    // 2x2 footprint (8-cell ring), letting the player drop up to 8
-    // mana drains adjacent to each circle.
+    // Player buildable zones — the ENTIRE right half of the map (right
+    // of the central arrow-cross divider). The player decides per-cell:
+    // build damage towers (Bolt / Frost / Storm / etc.) for defense, or
+    // a Mana Conduit specifically adjacent to a Summoning Circle to
+    // charge the summon faster. Only the conduit-adjacency matters for
+    // charging — non-adjacent conduits are wasted gold.
     const playerBuildableCells: Pos[] = [];
-    const dropZone = (cx: number, cy: number) => {
-      for (let dc = -1; dc <= 2; dc++) for (let dr = -1; dr <= 2; dr++) {
-        if (dc >= 0 && dc <= 1 && dr >= 0 && dr <= 1) continue; // skip circle footprint
-        const c = cx + dc, r = cy + dr;
-        if (c < 1 || c >= cols - 1 || r < 1 || r >= GRID_ROWS - 1) continue; // skip perimeter
+    const buildableMinCol = 18;  // just right of the central arrow-cross
+    for (let c = buildableMinCol; c < cols - 1; c++) {
+      for (let r = 1; r < GRID_ROWS - 1; r++) {
         playerBuildableCells.push({ col: c, row: r });
       }
-    };
-    dropZone(30, 5);
-    dropZone(30, 17);
+    }
     // The summoning circle footprints are noBuild so the player can't
     // drop a tower on top of them.
     const noBuild: Pos[] = [];

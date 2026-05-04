@@ -2222,27 +2222,32 @@ export class GameScene extends Phaser.Scene {
 
   handleClick(col: number, row: number): void {
     this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
-    // M10 finale: when the player isn't in build mode and the click
-    // landed on a CPU defender tower, set the hero to attack it.
-    // Click on an empty cell → move the hero there. The build path
-    // still wins when the player has a tower selected (mana drain
-    // placement).
-    if (this._finaleController && this.selectionMode !== 'build') {
+    // M10 finale: clicks on CPU defender towers are special-cased.
+    // - With a hero alive + non-build mode: assault command.
+    // - Otherwise: swallow the click — never enter inspect/upgrade
+    //   on a CPU tower (those are NOT player property).
+    // Empty-cell clicks in finale also command hero movement when a
+    // hero exists.
+    if (this._finaleController) {
       const cpuTower = this._finaleController.findCpuTowerAt(col, row);
       const hero = this._finaleController.getHero();
-      if (cpuTower && hero) {
-        this._finaleController.setHeroTowerTarget(cpuTower);
-        this.eventLog.gameMessage(`Hero ordered to assault ${cpuTower.typeDef.name}.`);
+      if (cpuTower) {
+        if (hero && this.selectionMode !== 'build') {
+          this._finaleController.setHeroTowerTarget(cpuTower);
+          this.eventLog.gameMessage(`Hero ordered to assault ${cpuTower.typeDef.name}.`);
+        }
+        // Either set the hero target OR no-op — never fall through to
+        // enterInspectMode on a CPU tower.
         return;
       }
-      // Empty cell click in finale = move hero (when one exists). Skip
-      // if it's a destructible tower we missed above (defensive) or a
-      // creep — let the existing creep-inspect path handle that.
-      if (hero && !cpuTower) {
+      // Empty cell click → move hero (when a hero exists and the
+      // click isn't a creep / build action).
+      if (hero && this.selectionMode !== 'build') {
         const targetX = gridX(col);
         const targetY = gridY(row);
         const clickedCreep = this.findCreepNear(targetX, targetY);
-        if (!clickedCreep) {
+        const clickedPlayerTower = this.towers.find(t => t.col === col && t.row === row);
+        if (!clickedCreep && !clickedPlayerTower) {
           hero.clickedTowerTarget = null; // cancel any prior tower target
           hero.moveTo(targetX, targetY);
           return;
@@ -2940,7 +2945,10 @@ export class GameScene extends Phaser.Scene {
     // creeps in range; clicked tower targets take priority. No-op on
     // every other mission.
     if (this._finaleController) {
-      this._finaleController.update(delta, this._towers, this.creeps);
+      // Use the getter `this.towers` — proxies to TowerManager.towers,
+      // which is where placeTower actually adds them. The underlying
+      // `_towers` field is the fallback when towerMgr isn't built yet.
+      this._finaleController.update(delta, this.towers, this.creeps);
       // Push HUD snapshot for the DOM charge bar.
       const hero = this._finaleController.getHero();
       const cpuAlive = this._finaleController.getCpuTowers().length;
@@ -4174,13 +4182,14 @@ export class GameScene extends Phaser.Scene {
   /** M10 finale: draw a magenta tint on every cell in
    *  `playerBuildableCells` so the player sees their build zones at
    *  a glance. Cheap one-time draw at scene init — the set is static
-   *  for the entire mission. */
+   *  for the entire mission. With the v3 expansion to the full right
+   *  half, the tint is kept light so it doesn't overwhelm the eye. */
   private drawPlayerBuildableZones(): void {
     if (this._playerBuildableSet.size === 0) return;
     const g = this.add.graphics().setDepth(0.5);
     const color = 0xff44dd; // magenta
-    g.fillStyle(color, 0.18);
-    g.lineStyle(1, color, 0.4);
+    g.fillStyle(color, 0.07);
+    g.lineStyle(1, color, 0.18);
     for (const key of this._playerBuildableSet) {
       const [c, r] = key.split(',').map(Number);
       g.fillRect(gridLeftX(c), gridY(r) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);

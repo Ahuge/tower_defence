@@ -2,6 +2,16 @@
 
 ## 2026-05-04
 
+### M10 v3 — bug fix + tower-interaction gate + open buildable
+
+Three fixes after v2 playtest:
+
+**Conduits-don't-charge bug.** The FinaleController was being passed `this._towers` (the underlying field, which is `[]` because TowerManager owns the live tower list) instead of `this.towers` (the getter that proxies to `towerMgr.towers`). Player-placed Conduits never appeared in the iteration, so `chargeContribution` returned 0 every frame. One-line fix in the update tick.
+
+**CPU tower interaction gate.** Clicking a CPU defender tower used to fall through to `enterInspectMode` — the player could open the inspect panel for the cabal's towers, even attempt to upgrade them. Now the click handler short-circuits on any CPU tower: when a hero exists + non-build mode → assault command, otherwise no-op. Inspect mode is unreachable for destructible CPU towers.
+
+**Open buildable zone.** Old `playerBuildableCells` was two narrow 8-cell rings around the circles, which forced a tight defense and confused the player about where they could build. Now the entire right half of the map (cols ≥ 18, just right of the central arrow-cross) is buildable. The player decides per-cell: damage tower for defense, or Mana Conduit specifically adjacent to a Circle (only the conduit's adjacency matters — non-adjacent conduits are wasted gold). Magenta tint dropped to 7% alpha so the wider zone doesn't overwhelm the eye.
+
 ### M10 v2 — Mana Conduit tower, full kit, reversed paths, DOM HUD
 
 Four corrections after Phase 1 playtest reveal:
