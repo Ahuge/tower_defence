@@ -1244,7 +1244,14 @@ export class GameScene extends Phaser.Scene {
             // Route bot-owned kills to their private pools. Bots live
             // on the host only; on clients this resolves to a no-op
             // because `circleBotAI` stays null.
-            creditBot: (botIndex, gold) => this.circleBotAI?.creditKill(botIndex, gold),
+            //
+            // M9-style coop_with_bot missions get a 1.5× kill-gold
+            // multiplier so the ally pulls weight through the run.
+            // Other co-op modes use the standard rate.
+            creditBot: (botIndex, gold) => {
+              const mult = this.missionContext?.archetypeId === 'coop_with_bot' ? 1.5 : 1.0;
+              this.circleBotAI?.creditKill(botIndex, gold * mult);
+            },
             isLocalBot: (idx) => !!this.circle?.isBotSlot(idx) && !!this.circleBotAI,
           },
         )
@@ -1640,6 +1647,21 @@ export class GameScene extends Phaser.Scene {
           const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
           const zone = circleMapDef.zones?.[botIndex];
           if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, 'balanced');
+        }
+        // Campaign coop_with_bot missions (M9 etc.): give the bot ally
+        // a real helping-hand economy. Without this the bot starts
+        // with the same lean budget a human player has and barely
+        // builds anything in the early waves. Three knobs:
+        //   - Extra starting gold so the bot can place 4-6 towers
+        //     before kill-gold starts flowing.
+        //   - Extra per-wave bonus on top of the default WAVE_CLEAR_BONUS.
+        //   - (Per-kill bonus is harder — would require modifying the
+        //     CircleDeathHandler to multiply bot gold; left for later.)
+        if (this.missionContext?.archetypeId === 'coop_with_bot') {
+          for (const botIndex of this.circle.botSlots) {
+            this.circleBotAI.creditGold(botIndex, 250);
+            this.circleBotAI.addIncomeBonus(botIndex, 30);
+          }
         }
 
         // Route per-hit gold (gold_on_hit / jackpot) from bot-owned
