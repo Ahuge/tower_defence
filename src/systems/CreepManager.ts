@@ -39,6 +39,14 @@ export class StandardLeakHandler implements LeakHandler {
   }
 
   onCreepLeaked(creep: Creep): number {
+    // M10 finale (and any future attacker-style hybrid): friendly
+    // sends are the player's OWN units walking into the CPU base.
+    // Reaching the end of their (reversed) path is neutral — not a
+    // leak, not a player-life loss. Just disappear.
+    if (creep.isFriendly) {
+      this.eventLog.gameMessage('Send reached the cabal\'s line — fades into the spire.');
+      return 0;
+    }
     // Celestial Sanctuary: consume a leak_absorb charge if any tower has one.
     // No range check — description is global ("Absorbs 1 leaked creep"),
     // and Sanctuary's placement is constrained enough by its other traits.

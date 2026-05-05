@@ -2802,6 +2802,20 @@ export class GameScene extends Phaser.Scene {
 
     if (!result) return;
 
+    // M10 finale (PRD 06 v3): every player tower is destructible by
+    // wave creeps. Default 200 HP — high enough to absorb a few
+    // creep attacks but low enough that a determined wave can chip
+    // through if the player ignores the path. Mana drains/conduits
+    // get the same treatment since they're often near the path.
+    if (this._finaleController) {
+      result.tower.destructible = true;
+      result.tower.maxHp = 200;
+      result.tower.hp = 200;
+      // Mark ownerIndex = 0 so the creep-attack adapter recognises
+      // this as PLAYER-owned (not CPU defender at CPU_INDEX=99).
+      result.tower.ownerIndex = 0;
+    }
+
     // Track tower ownership for circle co-op
     if (this.circle) {
       this.towerOwners.set(`${col},${row}`, this.circle.playerIndex);

@@ -170,6 +170,15 @@ export class FinaleController {
         let embeddedTower: Tower | null = null;
         if (def.embeddedTowerId) {
           const towerType = getTowerType(def.embeddedTowerId);
+          // The map's noBuild list includes the throne's footprint
+          // (so the player can't build on top of the structure). But
+          // that same noBuild flag prevents `placeTower` from accepting
+          // the embedded tower — its `canPlaceTower` check requires
+          // CellType.Empty. Briefly clear the center cell to Empty,
+          // then let placeTower run; it'll set the cell to Tower and
+          // the structure's downstream Blocked-cells loop secures the
+          // surrounding 8.
+          this.grid.cells[centerRow][centerCol] = CellType.Empty;
           const result = this.towerMgr.placeTower(
             centerCol, centerRow, towerType,
             [], () => [],
@@ -518,6 +527,36 @@ export class FinaleController {
           // first). Also marks the send as "recently engaging this
           // tower" for hero priority lookups.
           (best as { _lastSendHitAt?: number })._lastSendHitAt = now;
+        }
+      }
+
+      // ─── ENEMY CREEPS ATTACK PLAYER TOWERS (mirror of sends) ───
+      // M10 v3: wave creeps now opportunistically chip player towers
+      // along their path. Same 1s cadence + creep.maxHp/100 damage
+      // scaling as sends. Forces the player to think about tower
+      // placement vs the creep route — a tower right on the path is
+      // a tower that gets killed.
+      for (const c of creeps as Creep[]) {
+        if (!c.alive || c.reached) continue;
+        if (c.isSend || c.isFriendly) continue; // sends + friendlies handled above
+        const cref = c as Creep & { _lastAttackPlayerAt?: number };
+        if (now - (cref._lastAttackPlayerAt ?? 0) < cadenceMs) continue;
+        // Find the closest PLAYER-owned destructible tower in touch radius.
+        let bestPT: Tower | null = null;
+        let bestPTDistSq = 40 * 40;
+        for (const t of allTowers) {
+          if (!t.destructible) continue;
+          if (t.ownerIndex === (this.rules.cpuTowerOwnerIndex ?? CPU_INDEX)) continue; // skip CPU towers
+          if ((t as { _expired?: boolean })._expired) continue;
+          const dx = c.x - t.x, dy = c.y - t.y;
+          const ds = dx * dx + dy * dy;
+          if (ds < bestPTDistSq) { bestPTDistSq = ds; bestPT = t; }
+        }
+        if (bestPT) {
+          const damage = Math.max(1, Math.floor((c.maxHp * dmgScale) / 100));
+          bestPT.takeDamage(damage);
+          cref._lastAttackPlayerAt = now;
+          fd?.spawn?.(bestPT.x, bestPT.y - 18, String(damage), '#ff6644');
         }
       }
     }

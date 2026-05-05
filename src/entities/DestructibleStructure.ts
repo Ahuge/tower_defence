@@ -17,7 +17,7 @@
  * adapter treat it identically to a Tower.
  */
 import * as Phaser from 'phaser';
-import { TILE_SIZE, gridX, gridY } from '../config';
+import { TILE_SIZE, gridX, gridY, gridLeftX } from '../config';
 import { Tower } from './Tower';
 import { DestructibleStructureDef, DestructibleStructurePlacement, getDestructibleStructureDef } from '../data/DestructibleStructures';
 import { Damageable } from '../systems/finale/Damageable';
@@ -93,10 +93,15 @@ export class DestructibleStructure implements Damageable {
     this.ownerIndex = args.ownerIndex;
     this.isMissionWinTarget = args.placement.isMissionWinTarget ?? false;
 
-    // Pixel center of the footprint. gridX/gridY return the LEFT edge
-    // of a cell, so center = average of left + right edges.
-    this.x = (gridX(this.col) + gridX(this.col + this.widthCells)) / 2;
-    this.y = (gridY(this.row) + gridY(this.row + this.heightCells)) / 2;
+    // Pixel center of the footprint. gridX/gridY return cell CENTER
+    // (not the left edge), so we use gridLeftX + half-footprint width
+    // for x; for y we mirror the formula manually since there's no
+    // gridTopY helper (gridY = row*TILE + TILE/2 + offset, so row top
+    // = gridY - TILE/2). Earlier (gridX(col) + gridX(col+widthCells))/2
+    // was off by half a tile in both directions because gridX returns
+    // the cell CENTER, not the left edge.
+    this.x = gridLeftX(this.col) + (this.widthCells * TILE_SIZE) / 2;
+    this.y = (gridY(this.row) - TILE_SIZE / 2) + (this.heightCells * TILE_SIZE) / 2;
 
     this.embeddedTower = args.embeddedTower;
     this.maxHp = args.placement.hp ?? def.defaultHp;
