@@ -571,6 +571,13 @@ export class FinaleController {
       const totalXp = ((targetLevel - 1) * targetLevel / 2) * 15;
       hero.grantXP(totalXp);
     }
+    // Finale-specific +40% HP buff. Arcanist's 280 base HP felt too
+    // squishy under the cabal lattice's combined fire — bump via
+    // tomeBonusHp (the natural additive max-HP slot, also persists
+    // through respawn since getEffectiveMaxHp reads it).
+    hero.tomeBonusHp += Math.round(hero.typeDef.hp * 0.4);
+    hero.maxHp = hero.getEffectiveMaxHp();
+    hero.hp = hero.maxHp;
     this.hero = hero;
     this.onHeroSpawned?.();
   }
