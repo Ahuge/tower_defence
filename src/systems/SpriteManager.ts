@@ -85,8 +85,8 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
   // Level counts: how many upgrade levels each tower has (matches TowerTypes.ts)
   ...factionTowers('void_towers', ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion'],
     [4, 6, 6, 3, 1]),
-  ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
-    [4, 3, 5, 4, 4, 3, 1]),
+  ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova', 'arcane_conduit'],
+    [4, 3, 5, 4, 4, 3, 1, 1]),
   ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
     [4, 6, 5, 4, 4, 5, 3, 3]),
   // 9-tower Nature sprite layout, matching the regenerated

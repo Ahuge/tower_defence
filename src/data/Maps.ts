@@ -686,11 +686,13 @@ export const MAPS: Record<MapId, MapDefinition> = {
       }
     }
     // PRD 06 — Archmage Throne destructible structure. 3×3 footprint
-    // anchored top-left at (1, midRow-1) so its center cell is (2, midRow)
-    // — same as the prior 1-cell ult tower. `isMissionWinTarget` means
+    // anchored top-left at (2, midRow-2) so its center cell is (3, midRow-1)
+    // — shifted off the green exit row + one column inward from the
+    // outer wall so the throne reads as a separate boss structure
+    // rather than overlapping the leak path. `isMissionWinTarget` means
     // FinaleController.checkWin() requires it to be dead before victory.
     const destructibleStructures = [
-      { id: 'arcane_archmage_throne', col: 1, row: midRow - 1, hp: 5000, isMissionWinTarget: true },
+      { id: 'arcane_archmage_throne', col: 2, row: midRow - 2, hp: 5000, isMissionWinTarget: true },
     ];
     // The summoning circle footprints are noBuild so the player can't
     // drop a tower on top of them. Throne footprint also noBuild +
