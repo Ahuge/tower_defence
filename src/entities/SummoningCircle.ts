@@ -20,6 +20,7 @@
 import * as Phaser from 'phaser';
 import { TILE_SIZE, gridX, gridY } from '../config';
 import type { Tower } from './Tower';
+import { SUMMONING_CIRCLE_KEY, summoningCircleFrame } from '../systems/ArenaFloorRenderer';
 
 export class SummoningCircle {
   /** Top-left grid coordinate of the 2x2 footprint. */
@@ -29,14 +30,27 @@ export class SummoningCircle {
   cx: number;
   cy: number;
 
+  /** Sprite-based render (PRD 04 art). Falls back to Graphics when
+   *  the sheet hasn't been preloaded (headless scene / missing asset). */
+  private sprite: Phaser.GameObjects.Sprite | null = null;
   private graphics: Phaser.GameObjects.Graphics | null = null;
+  private lastFrame: number = -1;
 
   constructor(scene: Phaser.Scene, col: number, row: number) {
     this.col = col;
     this.row = row;
     this.cx = (gridX(col) + gridX(col + 1)) / 2;
     this.cy = (gridY(row) + gridY(row + 1)) / 2;
-    if (typeof (scene.add as { graphics?: () => Phaser.GameObjects.Graphics }).graphics === 'function') {
+    // Try sprite first — only available in real Phaser scenes.
+    const textures = (scene as { textures?: { exists: (k: string) => boolean } }).textures;
+    const addSprite = (scene as { add?: { sprite?: (...a: unknown[]) => Phaser.GameObjects.Sprite } }).add?.sprite;
+    if (textures?.exists(SUMMONING_CIRCLE_KEY) && typeof addSprite === 'function') {
+      this.sprite = addSprite.call(scene.add, this.cx, this.cy, SUMMONING_CIRCLE_KEY, 0);
+      this.sprite.setDepth(1);
+      // Sprite is 56x56 = exactly 2x2 tiles. Center origin so it
+      // anchors at the footprint center (this.cx, this.cy).
+      this.sprite.setOrigin?.(0.5, 0.5);
+    } else if (typeof (scene.add as { graphics?: () => Phaser.GameObjects.Graphics }).graphics === 'function') {
       this.graphics = scene.add.graphics();
       this.graphics.setDepth(1);
     }
@@ -66,21 +80,27 @@ export class SummoningCircle {
     return count;
   }
 
-  /** Render the ring + charge fill. Called each frame from
-   *  FinaleController so the visual always reflects the live shared
-   *  charge value. */
+  /** Render the circle at its current charge state. Sprite path picks
+   *  one of 10 charge frames; Graphics path is the legacy fallback
+   *  for headless / missing-asset states. */
   draw(charge: number): void {
+    if (this.sprite) {
+      const frame = summoningCircleFrame(charge);
+      if (frame !== this.lastFrame) {
+        this.sprite.setFrame(frame);
+        this.lastFrame = frame;
+      }
+      return;
+    }
+    // Graphics fallback (headless / missing asset)
     if (!this.graphics) return;
     const g = this.graphics;
     g.clear();
     const radius = TILE_SIZE * 1.05;
-    // Ring background
     g.lineStyle(3, 0x442266, 0.55);
     g.strokeCircle(this.cx, this.cy, radius);
-    // Charge fill — clockwise arc from top.
     const pct = Math.max(0, Math.min(1, charge));
     if (pct > 0) {
-      // Phaser arc: start at top (-PI/2), sweep clockwise by 2*PI*pct.
       const startAngle = -Math.PI / 2;
       const endAngle = startAngle + Math.PI * 2 * pct;
       g.lineStyle(4, 0xcc88ff, 0.95);
@@ -88,7 +108,6 @@ export class SummoningCircle {
       g.arc(this.cx, this.cy, radius, startAngle, endAngle, false);
       g.strokePath();
     }
-    // Inner glow when fully charged
     if (pct >= 1) {
       g.fillStyle(0xcc88ff, 0.18);
       g.fillCircle(this.cx, this.cy, radius * 0.7);
@@ -96,6 +115,10 @@ export class SummoningCircle {
   }
 
   destroy(): void {
+    if (this.sprite) {
+      this.sprite.destroy();
+      this.sprite = null;
+    }
     if (this.graphics) {
       this.graphics.destroy();
       this.graphics = null;

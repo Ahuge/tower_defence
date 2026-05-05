@@ -82,7 +82,7 @@ import { platformBridge } from '../systems/platform';
 import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
 import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
-import { preloadArenaFloors, preloadArenaBases, preloadHeroAbilityVfx, createHeroAbilityVfxAnimations } from '../systems/ArenaFloorRenderer';
+import { preloadArenaFloors, preloadArenaBases, preloadHeroAbilityVfx, createHeroAbilityVfxAnimations, preloadSummoningCircle } from '../systems/ArenaFloorRenderer';
 import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../data/campaigns';
 import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
@@ -535,6 +535,7 @@ export class GameScene extends Phaser.Scene {
     preloadArenaFloors(this);
     preloadArenaBases(this);
     preloadHeroAbilityVfx(this);
+    preloadSummoningCircle(this);
   }
 
   create(): void {

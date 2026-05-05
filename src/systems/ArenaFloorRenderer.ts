@@ -80,6 +80,31 @@ export function baseDamageFrame(hpRatio: number): number {
   return 4;
 }
 
+// ─── PRD 04: Summoning Circle (M10 finale) ────────────────────────
+// Single shared spritesheet, 56×560 (10 charge frames stacked
+// vertically @ 56×56 each). Loaded once at GameScene.preload;
+// SummoningCircle.draw(charge) picks frame = floor(charge * 10).
+
+export const SUMMONING_CIRCLE_KEY = 'struct_summoning_circle';
+export const SUMMONING_CIRCLE_FRAME = 56;
+export const SUMMONING_CIRCLE_FRAMES = 10;
+
+export function preloadSummoningCircle(scene: Phaser.Scene): void {
+  if (scene.textures.exists(SUMMONING_CIRCLE_KEY)) return;
+  scene.load.spritesheet(
+    SUMMONING_CIRCLE_KEY,
+    'assets/arena/struct_summoning_circle.png',
+    { frameWidth: SUMMONING_CIRCLE_FRAME, frameHeight: SUMMONING_CIRCLE_FRAME },
+  );
+}
+
+/** Pick a frame for a [0, 1] charge value. Clamps so charge=1
+ *  doesn't overflow to frame 10. */
+export function summoningCircleFrame(charge: number): number {
+  const f = Math.floor(Math.max(0, Math.min(0.9999, charge)) * SUMMONING_CIRCLE_FRAMES);
+  return Math.min(SUMMONING_CIRCLE_FRAMES - 1, f);
+}
+
 // ─── PRD 03: Hero ability VFX atlas ────────────────────────────────
 // 12 sheets ship for v1: mage / ranger / paladin × Q W E R. Each
 // sheet is a 6-frame horizontal strip of 64x64 frames. Plays at 18 fps,
