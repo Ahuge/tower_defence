@@ -87,7 +87,9 @@ import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../data/campaigns';
 import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
-import { FinaleController } from '../systems/finale/FinaleController';
+import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
+import type { DestructibleStructure } from '../entities/DestructibleStructure';
+import { DESTRUCTIBLE_STRUCTURES } from '../data/DestructibleStructures';
 import { AttackerComposer } from '../systems/attacker/AttackerComposer';
 import { buildAttackerWave } from '../systems/attacker/AttackerWaveBuilder';
 import { getAttackerPalette, visibleEntries } from '../data/AttackerPalettes';
@@ -262,6 +264,12 @@ export class GameScene extends Phaser.Scene {
   selectionMode: SelectionMode = 'none';
   selectedBuildType: string | null = null;
   selectedTower: Tower | null = null;
+  /** PRD 06: when the player inspects a destructible boss structure,
+   *  this is set alongside `selectedTower` (= structure.embeddedTower).
+   *  Used by the per-frame refresh to apply structure-level overrides
+   *  (name, hp/maxHp, owned=false) to the TowerStats payload. Null when
+   *  inspecting a regular tower. */
+  private selectedStructure: DestructibleStructure | null = null;
   private _infoRefreshAccum: number = 0;
 
   // Graphics layers
@@ -703,7 +711,7 @@ export class GameScene extends Phaser.Scene {
     this.paused = false;
     this.selectionMode = 'none';
     this.selectedBuildType = null;
-    this.selectedTower = null;
+    this.selectedTower = null; this.selectedStructure = null;
     // totalTowersBuilt and totalCreepsKilled tracked by managers
 
     // Apply one-time modifier effects
@@ -2018,7 +2026,12 @@ export class GameScene extends Phaser.Scene {
       isUltimate: tower.typeDef.ultimate === true,
       canUpgrade: tower.canUpgrade(),
       upgradeCost: defaultOpt ? defaultOpt.cost : 0,
-      owned: this.canModifyTower(tower.col, tower.row),
+      // Read-only when CPU owns the tower (M10 destructible defenders +
+      // throne embedded tower). Player can inspect HP / stats but not
+      // sell/upgrade.
+      owned: tower.ownerIndex !== CPU_INDEX && this.canModifyTower(tower.col, tower.row),
+      hp: tower.hp,
+      maxHp: tower.maxHp,
       traits,
       auraBuffs,
       upgradePreview,
@@ -2082,7 +2095,7 @@ export class GameScene extends Phaser.Scene {
   private enterBuildMode(typeId: string): void {
     this.selectionMode = 'build';
     this.selectedBuildType = typeId;
-    this.selectedTower = null;
+    this.selectedTower = null; this.selectedStructure = null;
     this.towerInfo?.hide();
     GameUIStore.deselectTower();
     GameUIStore.selectDockTower(this.activeTowerIds.indexOf(typeId));
@@ -2093,6 +2106,7 @@ export class GameScene extends Phaser.Scene {
     this.selectionMode = 'inspect';
     this.selectedBuildType = null;
     this.selectedTower = tower;
+    this.selectedStructure = null;
     this.selectedCreep = null;
     this.towerBar.deselect();
     GameUIStore.selectTower(this.towerToStats(tower));
@@ -2103,10 +2117,55 @@ export class GameScene extends Phaser.Scene {
     this.rangeGraphics.strokeCircle(tower.x, tower.y, tower.range);
   }
 
+  /** PRD 06: read-only inspect for a destructible boss structure.
+   *  Synthesizes TowerStats from the structure's embedded tower so
+   *  the existing TowerInfoPanel renders without a parallel UI.
+   *  Overrides: name (structure name not embedded-tower name), HP
+   *  (structure-level), owned=false (no sell/upgrade), canUpgrade=false. */
+  private enterStructureInspectMode(structure: DestructibleStructure): void {
+    if (!structure.embeddedTower) return;
+    const tower = structure.embeddedTower;
+    this.selectionMode = 'inspect';
+    this.selectedBuildType = null;
+    this.selectedTower = tower;
+    this.selectedStructure = structure;
+    this.selectedCreep = null;
+    this.towerBar.deselect();
+    GameUIStore.selectTower(this.structureToStats(structure));
+    GameUIStore.deselectCreep();
+    // Range circle for the embedded tower so the player can see the
+    // throne's threat radius.
+    this.rangeGraphics.clear();
+    this.rangeGraphics.lineStyle(1, 0xffe8a0, 0.3);
+    this.rangeGraphics.strokeCircle(structure.x, structure.y, tower.range);
+  }
+
+  /** Synthesize TowerStats for a destructible structure. Reads stats
+   *  from the embedded tower (so combat numbers like dmg/range/fireRate
+   *  show the throne's actual threat) but overrides identity (name +
+   *  HP) and disables sell/upgrade. */
+  private structureToStats(structure: DestructibleStructure): TowerStats {
+    if (!structure.embeddedTower) {
+      // Defensive — passive structures (no embedded tower) aren't yet
+      // routed through this inspect path, but if they ever are, fall
+      // back to a near-empty TowerStats. Future: a separate
+      // `StructureStats` interface for non-attacking bosses.
+      throw new Error(`structureToStats: ${structure.id} has no embedded tower`);
+    }
+    return {
+      ...this.towerToStats(structure.embeddedTower),
+      name: structure.def.name,
+      hp: structure.hp,
+      maxHp: structure.maxHp,
+      owned: false,
+      canUpgrade: false,
+    };
+  }
+
   private enterNoneMode(): void {
     this.selectionMode = 'none';
     this.selectedBuildType = null;
-    this.selectedTower = null;
+    this.selectedTower = null; this.selectedStructure = null;
     this.selectedCreep = null;
     this.linkingConduit = null;
     this.towerBar.deselect();
@@ -2236,17 +2295,33 @@ export class GameScene extends Phaser.Scene {
       const cpuTarget = this._finaleController.findCpuTargetAt(col, row);
       const hero = this._finaleController.getHero();
       if (cpuTarget) {
-        if (hero && this.selectionMode !== 'build') {
-          this._finaleController.setHeroTarget(cpuTarget);
-          // Display name: structure exposes `def.name`, tower exposes
-          // `typeDef.name`. Both shapes contribute the human-readable
-          // label for the event log.
-          const targetName =
-            'def' in cpuTarget ? cpuTarget.def.name : cpuTarget.typeDef.name;
-          this.eventLog.gameMessage(`Hero ordered to assault ${targetName}.`);
+        if (this.selectionMode !== 'build') {
+          // Read-only inspect: HP, damage type, name. Sell/upgrade are
+          // gated by `owned: false` in TowerStats (towerToStats sets
+          // owned=false when ownerIndex === CPU_INDEX). For structures
+          // we route through the embedded tower so the existing
+          // TowerInfoPanel works without a parallel UI component.
+          if ('def' in cpuTarget) {
+            // DestructibleStructure — inspect via embedded tower (HP
+            // is shared via delegation; structure's name overrides via
+            // a synthetic stats override).
+            const s = cpuTarget;
+            if (s.embeddedTower) {
+              this.enterStructureInspectMode(s);
+            }
+          } else {
+            this.enterInspectMode(cpuTarget);
+          }
+          // Hero command is layered on top of inspect — clicking a CPU
+          // target both shows its info AND orders the hero to assault
+          // it. Clicking elsewhere clears both.
+          if (hero) {
+            this._finaleController.setHeroTarget(cpuTarget);
+            const targetName =
+              'def' in cpuTarget ? cpuTarget.def.name : cpuTarget.typeDef.name;
+            this.eventLog.gameMessage(`Hero ordered to assault ${targetName}.`);
+          }
         }
-        // Either set the hero target OR no-op — never fall through to
-        // enterInspectMode on a CPU target.
         return;
       }
       // Empty cell click → move hero (when a hero exists and the
@@ -2328,7 +2403,7 @@ export class GameScene extends Phaser.Scene {
   private enterCreepInspect(creep: Creep): void {
     this.selectionMode = 'inspect_creep';
     this.selectedBuildType = null;
-    this.selectedTower = null;
+    this.selectedTower = null; this.selectedStructure = null;
     this.selectedCreep = creep;
     this.towerBar.deselect();
     this.towerInfo.hide();
@@ -2931,7 +3006,13 @@ export class GameScene extends Phaser.Scene {
       this._infoRefreshAccum = (this._infoRefreshAccum ?? 0) + delta;
       if (this._infoRefreshAccum >= 250) {
         this._infoRefreshAccum = 0;
-        GameUIStore.selectTower(this.towerToStats(this.selectedTower));
+        // PRD 06: when inspecting a structure, the structure's HP and
+        // identity overrides win. Otherwise it's a regular tower.
+        if (this.selectedStructure && this.selectedStructure.alive) {
+          GameUIStore.selectTower(this.structureToStats(this.selectedStructure));
+        } else {
+          GameUIStore.selectTower(this.towerToStats(this.selectedTower));
+        }
       }
     }
 
@@ -4020,7 +4101,20 @@ export class GameScene extends Phaser.Scene {
       isCoopHost: this.matchMode === 'circle_coop' ? (circle?.isHost ?? true) : undefined,
       hostOverrideTheme: circle?.hostTerrainOverride ?? null,
     });
-    this.terrainMgr.compute(this.grid, themeId, this.mapDef?.structures, this.mapDef?.animated);
+    // PRD 06: expand destructible structure placements into per-cell
+    // footprints so the terrain renderer skips faction-decoration on
+    // those cells. The throne sprite renders against plain floor.
+    const extraSkipCells: { col: number; row: number }[] = [];
+    for (const placement of this.mapDef?.destructibleStructures ?? []) {
+      const def = DESTRUCTIBLE_STRUCTURES[placement.id];
+      if (!def) continue;
+      for (let dc = 0; dc < def.widthCells; dc++) {
+        for (let dr = 0; dr < def.heightCells; dr++) {
+          extraSkipCells.push({ col: placement.col + dc, row: placement.row + dr });
+        }
+      }
+    }
+    this.terrainMgr.compute(this.grid, themeId, this.mapDef?.structures, this.mapDef?.animated, extraSkipCells);
     this.terrainMgr.render(this.grid, this.gridOffsetY);
   }
 

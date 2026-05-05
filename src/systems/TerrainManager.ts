@@ -149,6 +149,10 @@ export class TerrainManager {
   private structureCells = new Set<string>();
   private structureSprites: (Phaser.GameObjects.Image | Phaser.GameObjects.Sprite)[] = [];
   private structures: LargeStructurePlacement[] = [];
+  /** PRD 06: cells that are blocked but skip terrain decoration so a
+   *  destructible boss structure (placed elsewhere) renders against
+   *  normal floor. Populated via compute()'s `extraSkipCells` arg. */
+  private extraSkipCells = new Set<string>();
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -254,14 +258,28 @@ export class TerrainManager {
     }
   }
 
-  /** Compute terrain types for all cells based on grid and theme */
-  compute(grid: Grid, themeId: string, structures?: LargeStructurePlacement[], animatedCells?: { col: number; row: number }[]): void {
+  /** Compute terrain types for all cells based on grid and theme.
+   *
+   *  `extraSkipCells` (PRD 06): cells that are blocked in the grid but
+   *  should NOT have crystal-wall / faction-terrain decorations applied.
+   *  Used by destructible boss structures (M10 Archmage Throne) so
+   *  normal floor renders under the structure sprite instead of the
+   *  surrounding faction terrain pattern. Different from `structures`
+   *  (decorative LargeStructures) — those bring their own sprite. */
+  compute(
+    grid: Grid,
+    themeId: string,
+    structures?: LargeStructurePlacement[],
+    animatedCells?: { col: number; row: number }[],
+    extraSkipCells?: { col: number; row: number }[],
+  ): void {
     const theme = THEMES[themeId] ?? THEMES.generic;
     this.groundType = theme.ground;
     this.themeId = themeId;
     this.factionTerrain = FACTION_TERRAINS.find(ft => ft.themeId === themeId) ?? null;
     this.themeColors = theme.colors ?? {};
     this.structures = structures ?? [];
+    this.extraSkipCells = new Set((extraSkipCells ?? []).map(c => `${c.col},${c.row}`));
     this.terrainMap.clear();
 
     const rows = grid.rows;
@@ -292,6 +310,9 @@ export class TerrainManager {
         if (grid.cells[r][c] === CellType.Blocked) {
           const key = `${c},${r}`;
           if (animatedSet.has(key)) continue;
+          // PRD 06: skip cells covered by destructible boss structures —
+          // they get rendered against normal floor (no crystal walls).
+          if (this.extraSkipCells.has(key)) continue;
           blockedSet.add(key);
         }
       }

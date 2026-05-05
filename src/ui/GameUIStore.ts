@@ -38,6 +38,11 @@ export interface TowerStats {
   damage: number;
   range: number;
   fireRate: number;
+  /** Current HP — only set on destructible towers (M10 CPU defenders +
+   *  PRD 06 boss structures). Undefined on invincible player towers,
+   *  in which case the info panel hides the HP row. */
+  hp?: number;
+  maxHp?: number;
   /** Values after aura/buff resolution. Equal to base when no buffs active. */
   effectiveDamage: number;
   effectiveRange: number;
