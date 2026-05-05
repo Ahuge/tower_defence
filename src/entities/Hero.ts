@@ -5,6 +5,7 @@ import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../da
 import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
 import type { Tower } from './Tower';
+import type { DestructibleStructure } from './DestructibleStructure';
 import { DamageNumberEntry, DMG_COLOR } from '../systems/FloatingDamage';
 import { ArenaEffect, FX } from '../systems/ArenaEffects';
 import { spawnHeroAbilityVfx } from '../systems/ArenaFloorRenderer';
@@ -137,10 +138,12 @@ export class Hero {
    *  overrides arenaWidth/Height. FinaleController sets it to the
    *  full grid pixel rect. */
   worldBounds?: { minX: number; minY: number; maxX: number; maxY: number };
-  /** M10 finale — clicked CPU tower target. When set, the hero
-   *  prioritizes attacking this tower over any creep auto-attack.
-   *  Cleared when the tower dies or the player clicks elsewhere. */
-  clickedTowerTarget: Tower | null = null;
+  /** M10 finale — clicked CPU damage target. When set, the hero
+   *  prioritizes attacking this target over any creep auto-attack.
+   *  Accepts a Tower (existing CPU defenders) OR a DestructibleStructure
+   *  (PRD 06 boss structures like the Archmage Throne). Cleared when
+   *  the target dies or the player clicks elsewhere. */
+  clickedTarget: Tower | DestructibleStructure | null = null;
   /** M10 finale — count of CPU towers this hero has destroyed. Drives
    *  the "Win without losing the hero" star objective + analytics. */
   towersDestroyed: number = 0;
@@ -454,17 +457,17 @@ export class Hero {
       this.y = Math.max(20, Math.min(this.arenaHeight - 20, this.y));
     }
 
-    // M10 finale — prioritize the player's clicked CPU tower target.
-    // Approach via pathfinding (FinaleController set pathWaypoints),
-    // then attack on cooldown. Straight-line fallback skipped when
-    // worldBounds is set (finale mode) — without a real path the
-    // hero just sits and waits for player to re-click.
+    // M10 finale — prioritize the player's clicked CPU target (Tower or
+    // DestructibleStructure). Approach via pathfinding (FinaleController
+    // set pathWaypoints), then attack on cooldown. Straight-line fallback
+    // skipped when worldBounds is set (finale mode) — without a real path
+    // the hero just sits and waits for player to re-click.
     let firedTowerThisFrame = false;
-    if (this.clickedTowerTarget) {
-      const t = this.clickedTowerTarget as Tower;
-      const towerDead = !t.destructible || (t as { _expired?: boolean })._expired || (t.hp ?? 1) <= 0;
-      if (towerDead) {
-        this.clickedTowerTarget = null;
+    if (this.clickedTarget) {
+      const t = this.clickedTarget;
+      const targetDead = !isClickedTargetAlive(t);
+      if (targetDead) {
+        this.clickedTarget = null;
       } else {
         const dx = t.x - this.x;
         const dy = t.y - this.y;
@@ -473,7 +476,7 @@ export class Hero {
           const attackInterval = 1000 / this.getEffectiveAttackSpeed();
           const now = this.scene.time.now;
           if (now - this.lastAttackTime >= attackInterval) {
-            this.attackTower(t);
+            this.attackTarget(t);
             this.lastAttackTime = now;
             firedTowerThisFrame = true;
           }
@@ -507,7 +510,7 @@ export class Hero {
           this.attack(this.target);
           this.lastAttackTime = now;
         }
-      } else if (!this.moveTarget && !this.clickedTowerTarget && !this.pathWaypoints) {
+      } else if (!this.moveTarget && !this.clickedTarget && !this.pathWaypoints) {
         // Move towards creep target only when the player has not
         // commanded a destination. Otherwise the hero would fight
         // its own move command (running off to creeps mid-walk).
@@ -576,14 +579,17 @@ export class Hero {
     }
   }
 
-  /** M10 finale — apply damage to a CPU tower. Mirrors `attack()` but
-   *  routes damage through `tower.takeDamage` instead of the
-   *  arena-creep pipeline. Crit + lifesteal still apply; on-hit
-   *  status effects (slow / mark / chain) are no-op against towers
-   *  for v1 (towers are immobile, can't be slowed; chain spread to
-   *  creeps is v2 polish). Increments towersDestroyed on the
-   *  killing blow for analytics + star objective tracking. */
-  private attackTower(target: Tower): void {
+  /** M10 finale — apply damage to a CPU target (Tower or
+   *  DestructibleStructure). Mirrors `attack()` but routes damage
+   *  through `target.takeDamage` instead of the arena-creep pipeline.
+   *  Crit + lifesteal still apply; on-hit status effects (slow /
+   *  mark / chain) are no-op against towers/structures for v1
+   *  (immobile, can't be slowed; chain spread to creeps is v2
+   *  polish). Increments towersDestroyed on the killing blow for
+   *  analytics + star objective tracking. Both Tower and
+   *  DestructibleStructure expose the same `takeDamage(amount):
+   *  boolean` shape, so this works structurally. */
+  private attackTarget(target: Tower | DestructibleStructure): void {
     let dmg = this.getEffectiveDamage();
     let isCrit = false;
     if (Math.random() < this.getCritChance()) {
@@ -593,7 +599,9 @@ export class Hero {
       isCrit = true;
     }
     const dmgColor = isCrit ? DMG_COLOR.CRIT : DMG_COLOR.NORMAL;
-    // Floating damage number above the tower so the player sees feedback.
+    // Floating damage number above the target so the player sees feedback.
+    // Anchor above the target's pixel center; for multi-cell structures
+    // that's the structure center, which reads correctly.
     this.pendingDamageNumbers.push({
       x: target.x, y: target.y - 24,
       text: String(dmg), color: dmgColor, duration: 0.6,
@@ -601,7 +609,7 @@ export class Hero {
     const killed = target.takeDamage(dmg);
     if (killed) {
       this.towersDestroyed++;
-      this.clickedTowerTarget = null; // clear so player can pick a new one
+      this.clickedTarget = null; // clear so player can pick a new one
     }
     // Lifesteal (sum across accessories)
     const ls = this.accSum('lifestealPct');
@@ -1305,4 +1313,20 @@ export class Hero {
     for (const p of this.projectiles) p.graphics.destroy();
     this.projectiles = [];
   }
+}
+
+/** Liveness check shared by Hero target logic. Tower and
+ *  DestructibleStructure use slightly different shapes:
+ *   - Tower: alive when `destructible && !_expired && (hp ?? 1) > 0`
+ *   - DestructibleStructure: has an explicit `alive` getter
+ *  Returns false on any unexpected shape so dead targets are cleared. */
+function isClickedTargetAlive(t: Tower | DestructibleStructure): boolean {
+  if ('alive' in t && typeof (t as { alive?: unknown }).alive === 'boolean') {
+    return (t as { alive: boolean }).alive;
+  }
+  // Tower path
+  const tw = t as Tower;
+  if (!tw.destructible) return false;
+  if ((tw as { _expired?: boolean })._expired) return false;
+  return (tw.hp ?? 1) > 0;
 }

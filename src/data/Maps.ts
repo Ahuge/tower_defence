@@ -83,6 +83,11 @@ export interface MapDefinition {
    *  + destructible flag without polluting attacker_assault. The Ult
    *  tower flags `isUlt: true` and triggers the ult_finale phase trait. */
   destructibleTowers?: { col: number; row: number; towerId: string; hp: number; isUlt?: boolean }[];
+  /** Multi-tile boss structures the player must destroy. PRD 06 entry
+   *  point — see `src/data/DestructibleStructures.ts` for the registry
+   *  of allowed `id`s. Each structure occupies its `widthCells ×
+   *  heightCells` footprint at top-left = (col, row). */
+  destructibleStructures?: { id: string; col: number; row: number; hp?: number; isMissionWinTarget?: boolean; phaseHooks?: { [hpFraction: string]: string } }[];
 }
 
 export interface SpawnerDef {
@@ -647,8 +652,8 @@ export const MAPS: Record<MapId, MapDefinition> = {
       { col: 9,  row: 12, towerId: 'arcane_focus', hp: 700 },
       { col: 11, row: 11, towerId: 'arcane_storm', hp: 600 },
       { col: 13, row: 10, towerId: 'arcane_bolt',  hp: 500 },
-      // The Ult Throne — directly behind the green exit
-      { col: 2,  row: midRow, towerId: 'arcane_ult_throne', hp: 5000, isUlt: true },
+      // The Archmage Throne moved to `destructibleStructures` (PRD 06):
+      // 3×3 boss structure with damage frames + win-target flag.
       { col: 4,  row: 14, towerId: 'arcane_drain', hp: 800 },
       { col: 6,  row: 13, towerId: 'arcane_storm', hp: 600 },
       { col: 9,  row: 14, towerId: 'arcane_bolt',  hp: 500 },
@@ -680,12 +685,25 @@ export const MAPS: Record<MapId, MapDefinition> = {
         playerBuildableCells.push({ col: c, row: r });
       }
     }
+    // PRD 06 — Archmage Throne destructible structure. 3×3 footprint
+    // anchored top-left at (1, midRow-1) so its center cell is (2, midRow)
+    // — same as the prior 1-cell ult tower. `isMissionWinTarget` means
+    // FinaleController.checkWin() requires it to be dead before victory.
+    const destructibleStructures = [
+      { id: 'arcane_archmage_throne', col: 1, row: midRow - 1, hp: 5000, isMissionWinTarget: true },
+    ];
     // The summoning circle footprints are noBuild so the player can't
-    // drop a tower on top of them.
+    // drop a tower on top of them. Throne footprint also noBuild +
+    // blocked (the structure occupies the cells, period).
     const noBuild: Pos[] = [];
     for (const c of summoningCircles) {
       for (let dc = 0; dc <= 1; dc++) for (let dr = 0; dr <= 1; dr++) {
         noBuild.push({ col: c.col + dc, row: c.row + dr });
+      }
+    }
+    for (const s of destructibleStructures) {
+      for (let dc = 0; dc < 3; dc++) for (let dr = 0; dr < 3; dr++) {
+        noBuild.push({ col: s.col + dc, row: s.row + dr });
       }
     }
     return {
@@ -705,6 +723,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
       playerBuildableCells,
       summoningCircles,
       destructibleTowers,
+      destructibleStructures,
     };
   })(),
 };

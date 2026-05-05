@@ -218,10 +218,14 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     // No upgrades — already the apex
   }),
   // ─── M10 Finale Ult Tower ──────────────────────────────────────
-  // The throne — an unkillable-feeling boss tower at the heart of
-  // the spire. Phase mechanics fire from FinaleController as HP
-  // crosses thresholds (50/25/10%). Player towers can never reach
-  // this kit; it lives purely on the M10 destructibleTowers list.
+  // The throne's firing module — embedded inside the
+  // `arcane_archmage_throne` DestructibleStructure (PRD 06) as the
+  // attack-capable component at the structure's center cell. Player
+  // towers can never reach this kit. The structure handles HP /
+  // damage frames / phase hooks; this tower handles the actual
+  // shoots-at-hero logic via the standard Tower fire pipeline.
+  // Phase mechanics (heal / summon / rage) are dispatched by
+  // FinaleEffects, which can mutate this tower's fireRate for "rage".
   arcane_ult_throne: def({
     id: 'arcane_ult_throne', name: 'The Archmage Throne',
     description: 'CPU ult. Massive HP, devastating cast. Win-target of the M10 finale.',

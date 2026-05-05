@@ -138,17 +138,17 @@ export class Tower {
   destructible?: boolean;
   hp?: number;
   maxHp?: number;
-  /** Whether this tower is the M10 Ult tower. Triggers ult_finale phase
-   *  callbacks at HP thresholds. */
+  /** Whether this tower is a "boss-tier" CPU defender. Drives the
+   *  golden HP-bar border treatment in the renderer. PRD 06 migrated
+   *  the M10 throne off this flag onto a `DestructibleStructure` with
+   *  `isMissionWinTarget`; the field stays here for any future
+   *  campaigns that want a single-cell bossy tower without a 3×3
+   *  structure. Phase mechanics now live on `DestructibleStructure.phaseHooks`
+   *  + `FinaleEffects` rather than Tower flags. */
   isUlt?: boolean;
   /** Last time the tower took damage (scene.time.now). Drives a brief
    *  white-flash on the sprite. */
   _lastHitAt: number = 0;
-  /** One-shot phase markers for the Ult tower: 50% / 25% / 10% HP
-   *  thresholds. Each fires at most once. FinaleController polls. */
-  _ultPhase50Fired: boolean = false;
-  _ultPhase25Fired: boolean = false;
-  _ultPhase10Fired: boolean = false;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;

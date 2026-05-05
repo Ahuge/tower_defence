@@ -82,7 +82,7 @@ import { platformBridge } from '../systems/platform';
 import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
 import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
-import { preloadArenaFloors, preloadArenaBases, preloadHeroAbilityVfx, createHeroAbilityVfxAnimations, preloadSummoningCircle } from '../systems/ArenaFloorRenderer';
+import { preloadArenaFloors, preloadArenaBases, preloadHeroAbilityVfx, createHeroAbilityVfxAnimations, preloadSummoningCircle, preloadArchmageThrone } from '../systems/ArenaFloorRenderer';
 import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../data/campaigns';
 import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
@@ -536,6 +536,7 @@ export class GameScene extends Phaser.Scene {
     preloadArenaBases(this);
     preloadHeroAbilityVfx(this);
     preloadSummoningCircle(this);
+    preloadArchmageThrone(this);
   }
 
   create(): void {
@@ -1113,6 +1114,7 @@ export class GameScene extends Phaser.Scene {
         scene: this,
         rules: this._missionFinaleRules,
         destructibleTowers: mapDef.destructibleTowers,
+        destructibleStructures: mapDef.destructibleStructures ?? [],
         summoningCircles: mapDef.summoningCircles,
         towerMgr: this.towerMgr,
         grid: this.grid,
@@ -2231,15 +2233,20 @@ export class GameScene extends Phaser.Scene {
     // Empty-cell clicks in finale also command hero movement when a
     // hero exists.
     if (this._finaleController) {
-      const cpuTower = this._finaleController.findCpuTowerAt(col, row);
+      const cpuTarget = this._finaleController.findCpuTargetAt(col, row);
       const hero = this._finaleController.getHero();
-      if (cpuTower) {
+      if (cpuTarget) {
         if (hero && this.selectionMode !== 'build') {
-          this._finaleController.setHeroTowerTarget(cpuTower);
-          this.eventLog.gameMessage(`Hero ordered to assault ${cpuTower.typeDef.name}.`);
+          this._finaleController.setHeroTarget(cpuTarget);
+          // Display name: structure exposes `def.name`, tower exposes
+          // `typeDef.name`. Both shapes contribute the human-readable
+          // label for the event log.
+          const targetName =
+            'def' in cpuTarget ? cpuTarget.def.name : cpuTarget.typeDef.name;
+          this.eventLog.gameMessage(`Hero ordered to assault ${targetName}.`);
         }
         // Either set the hero target OR no-op — never fall through to
-        // enterInspectMode on a CPU tower.
+        // enterInspectMode on a CPU target.
         return;
       }
       // Empty cell click → move hero (when a hero exists and the

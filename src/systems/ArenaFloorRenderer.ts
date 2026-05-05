@@ -105,6 +105,39 @@ export function summoningCircleFrame(charge: number): number {
   return Math.min(SUMMONING_CIRCLE_FRAMES - 1, f);
 }
 
+// ─── PRD 06: Archmage Throne (M10 finale destructible boss) ────────
+// 84×420 sheet, 5 damage frames stacked vertically. Frame 0 = pristine
+// 100% HP, frame 4 = pre-collapse 0% HP. DestructibleStructure picks
+// frame = floor((1 - hp/maxHp) * damageFrames), clamped.
+//
+// Reused as the rendering convention for any future faction's
+// destructible boss structure — every PRD 06-style sheet is N×84 px
+// vertical strips of 84×84 cells (3×3 tiles at 28px each).
+
+export const ARCHMAGE_THRONE_KEY = 'struct_arcane_archmage_throne';
+export const ARCHMAGE_THRONE_FRAME = 84;
+export const ARCHMAGE_THRONE_FRAMES = 5;
+
+export function preloadArchmageThrone(scene: Phaser.Scene): void {
+  if (scene.textures.exists(ARCHMAGE_THRONE_KEY)) return;
+  scene.load.spritesheet(
+    ARCHMAGE_THRONE_KEY,
+    'assets/arena/struct_arcane_archmage_throne.png',
+    { frameWidth: ARCHMAGE_THRONE_FRAME, frameHeight: ARCHMAGE_THRONE_FRAME },
+  );
+}
+
+/** Pick a damage frame for a destructible structure given its HP fraction
+ *  (1.0 = pristine, 0 = dying). Generic across any 5-frame damage sheet. */
+export function destructibleStructureFrame(hpFraction: number, frameCount: number): number {
+  const dmg = 1 - Math.max(0, Math.min(1, hpFraction));
+  // Scale damage [0..1] to frame index [0..frameCount-1]. Most of the time we
+  // want the pristine frame to span [1, 0.85], not just exactly 1.0, so we
+  // bias slightly: only show frame 0 above 99% HP, frame N-1 below 1% HP.
+  const f = Math.floor(dmg * frameCount);
+  return Math.min(frameCount - 1, Math.max(0, f));
+}
+
 // ─── PRD 03: Hero ability VFX atlas ────────────────────────────────
 // 12 sheets ship for v1: mage / ranger / paladin × Q W E R. Each
 // sheet is a 6-frame horizontal strip of 64x64 frames. Plays at 18 fps,

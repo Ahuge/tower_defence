@@ -30,6 +30,8 @@ import * as Phaser from 'phaser';
 import { Hero } from '../../entities/Hero';
 import { SummoningCircle } from '../../entities/SummoningCircle';
 import { Tower } from '../../entities/Tower';
+import { DestructibleStructure } from '../../entities/DestructibleStructure';
+import { getDestructibleStructureDef, DestructibleStructurePlacement } from '../../data/DestructibleStructures';
 import { TowerManager } from '../TowerManager';
 import { getTowerType } from '../../data/TowerTypes';
 import { HERO_TYPES, HeroId } from '../../data/HeroTypes';
@@ -39,6 +41,8 @@ import { gridX, gridY, GRID_COLS, GRID_ROWS, TILE_SIZE, getGridOffsetX, pixelToC
 import { Grid, CellType } from '../Grid';
 import { findPath, PathPoint } from '../Pathfinding';
 import { createProjectileSprite, hasProjectileSprite } from '../SpriteManager';
+import { Damageable } from './Damageable';
+import { dispatchFinaleEffect } from './FinaleEffects';
 
 /** Sentinel ownerIndex for CPU defender towers. Distinct from any
  *  player slot (0-3 in circle co-op). Used by Tower.findFinaleTarget
@@ -59,12 +63,25 @@ export interface FinaleRules {
   cpuTowerOwnerIndex?: number;
   /** Reward for destroying a regular CPU tower. */
   towerKillReward?: { gold?: number; xp?: number; ultGold?: number; ultXp?: number };
+  /** PRD 06 — sends deal damage to adjacent CPU destructibles (walls,
+   *  towers, throne) each `sendAttackCadenceMs` (default 1000ms).
+   *  Damage scales with creep maxHp: `floor(maxHp * sendAttackDamageScale / 100)`,
+   *  clamped to ≥ 1. Default scale = 1.0 — a 500-hp creep deals 5
+   *  per attack, a 5000-hp boss deals 50. */
+  sendAttackDamageScale?: number;
+  /** Cadence of send attacks against adjacent CPU destructibles, in ms.
+   *  Default 1000. Lower = more send DPS. */
+  sendAttackCadenceMs?: number;
 }
 
 export interface FinaleSetupArgs {
   scene: Phaser.Scene;
   rules: FinaleRules;
   destructibleTowers: { col: number; row: number; towerId: string; hp: number; isUlt?: boolean }[];
+  /** PRD 06: multi-tile boss structures the player must destroy.
+   *  Empty array means no structures (existing missions); M10 ships
+   *  with the Archmage Throne. */
+  destructibleStructures: DestructibleStructurePlacement[];
   summoningCircles: { col: number; row: number; chargeRatePerDrain?: number }[];
   towerMgr: TowerManager;
   /** Grid used for hero collision against blocked cells. */
@@ -83,6 +100,10 @@ export class FinaleController {
   private circles: SummoningCircle[] = [];
   private towerMgr: TowerManager;
   private cpuTowers: Tower[] = [];
+  /** PRD 06: destructible boss structures (e.g. M10 throne). Tracked
+   *  separately from `cpuTowers` because they have multi-cell footprints
+   *  and the win condition counts them via `isMissionWinTarget`. */
+  private cpuStructures: DestructibleStructure[] = [];
   private hero: Hero | null = null;
   private heroAnchor: { x: number; y: number };
   private charge: number = 0;
@@ -129,6 +150,50 @@ export class FinaleController {
         }
       } catch (err) {
         console.warn(`[FinaleController] failed to place CPU tower ${spec.towerId} at ${spec.col},${spec.row}:`, err);
+      }
+    }
+
+    // PRD 06: Place destructible boss structures. For each placement:
+    //   1. If the structure def has an embedded tower, place it via
+    //      towerMgr first at the structure's CENTER cell.
+    //   2. Construct the DestructibleStructure with the embedded tower
+    //      reference. The structure delegates HP and rendering and
+    //      occupies its full WxH grid footprint.
+    //   3. Block the additional 8 cells in the grid (the embedded tower
+    //      already blocks its center cell). Without this, creeps could
+    //      walk through 8/9 of the throne footprint.
+    for (const placement of args.destructibleStructures) {
+      try {
+        const def = getDestructibleStructureDef(placement.id);
+        const centerCol = placement.col + Math.floor(def.widthCells / 2);
+        const centerRow = placement.row + Math.floor(def.heightCells / 2);
+        let embeddedTower: Tower | null = null;
+        if (def.embeddedTowerId) {
+          const towerType = getTowerType(def.embeddedTowerId);
+          const result = this.towerMgr.placeTower(
+            centerCol, centerRow, towerType,
+            [], () => [],
+            true,  // free
+          );
+          if (result) embeddedTower = result.tower;
+        }
+        const structure = new DestructibleStructure({
+          scene: args.scene,
+          placement,
+          embeddedTower,
+          factionId: 'arcane',
+          ownerIndex,
+        });
+        this.cpuStructures.push(structure);
+        // Block the non-center cells of the WxH footprint in the grid.
+        for (const cell of structure.getOccupiedCells()) {
+          if (cell.col === centerCol && cell.row === centerRow) continue;
+          if (cell.row < 0 || cell.row >= this.grid.cells.length) continue;
+          if (cell.col < 0 || cell.col >= this.grid.cells[0].length) continue;
+          this.grid.cells[cell.row][cell.col] = CellType.Blocked;
+        }
+      } catch (err) {
+        console.warn(`[FinaleController] failed to place structure ${placement.id} at ${placement.col},${placement.row}:`, err);
       }
     }
 
@@ -296,7 +361,7 @@ export class FinaleController {
     }
 
     // M10 finale: grant gold + xp for each newly-killed CPU tower this
-    // frame (poll _expired flag which the hero's attackTower set on
+    // frame (poll _expired flag which the hero's attackTarget set on
     // killing blow). Only fire once per tower via _killRewardGranted.
     if (this.hero) {
       const reward = this.rules.towerKillReward;
@@ -332,100 +397,186 @@ export class FinaleController {
       }
     }
 
-    // M10 v6 — sends trickle-damage adjacent CPU towers. 5 dps per
-    // send per tower (Chebyshev distance ≤ 1 in pixel terms = ~28px
-    // per cell, so ~40px touch radius). Debt accumulator on each
-    // tower holds sub-1 damage between frames so 5 dps still lands.
+    // PRD 06 — Sends attack adjacent CPU destructibles (walls, towers,
+    // and the throne structure) at a discrete 1s cadence. Each send
+    // ticks an internal cooldown via `_lastAttackAt` (scene time ms).
+    // When the cooldown expires AND the send is within Chebyshev ≤ 1
+    // (pixel: ~40px) of any alive CPU-owned destructible, it picks the
+    // closest one and deals `floor(creep.maxHp * scale / 100)` (min 1)
+    // damage. Sends keep walking — opportunistic stop-and-attack would
+    // strand them; per the user spec they path normally.
+    const cadenceMs = this.rules.sendAttackCadenceMs ?? 1000;
+    const dmgScale = this.rules.sendAttackDamageScale ?? 1.0;
     if (this.firstSpawnDone || this.hero) {
-      for (const t of this.cpuTowers) {
-        if ((t as { _expired?: boolean })._expired) continue;
-        let sendCount = 0;
-        for (const c of creeps as Creep[]) {
-          if (!c.alive || !c.isSend || !c.isFriendly) continue;
-          const dx = c.x - t.x;
-          const dy = c.y - t.y;
-          if (dx * dx + dy * dy <= 40 * 40) sendCount++;
+      const now = this.scene.time.now;
+      for (const c of creeps as Creep[]) {
+        if (!c.alive || !c.isSend || !c.isFriendly) continue;
+        const sref = c as Creep & { _lastAttackAt?: number };
+        if (now - (sref._lastAttackAt ?? 0) < cadenceMs) continue;
+        // Find the closest CPU destructible within touch radius. Both
+        // Tower and DestructibleStructure expose .x/.y as their pixel
+        // center, so a single pixel-distance check suffices for both.
+        let best: Tower | DestructibleStructure | null = null;
+        let bestDistSq = 40 * 40;
+        for (const t of this.cpuTowers) {
+          if ((t as { _expired?: boolean })._expired) continue;
+          if (!t.destructible) continue;
+          const dx = c.x - t.x, dy = c.y - t.y;
+          const ds = dx * dx + dy * dy;
+          if (ds < bestDistSq) { bestDistSq = ds; best = t; }
         }
-        if (sendCount > 0) {
-          const debtRef = t as { _sendDmgDebt?: number };
-          debtRef._sendDmgDebt = (debtRef._sendDmgDebt ?? 0) + sendCount * 5 * dt;
-          const integer = Math.floor(debtRef._sendDmgDebt);
-          if (integer > 0) {
-            t.takeDamage(integer);
-            debtRef._sendDmgDebt -= integer;
-          }
+        for (const s of this.cpuStructures) {
+          if (!s.alive) continue;
+          // Adjacent check via pixel distance from send to structure
+          // perimeter. Approximate: if send center is within
+          // (footprint half-extent + tile_size) of structure center.
+          const halfW = (s.widthCells * TILE_SIZE) / 2;
+          const halfH = (s.heightCells * TILE_SIZE) / 2;
+          const dx = Math.max(0, Math.abs(c.x - s.x) - halfW);
+          const dy = Math.max(0, Math.abs(c.y - s.y) - halfH);
+          const ds = dx * dx + dy * dy;
+          if (ds < bestDistSq) { bestDistSq = ds; best = s; }
+        }
+        if (best) {
+          const damage = Math.max(1, Math.floor((c.maxHp * dmgScale) / 100));
+          best.takeDamage(damage);
+          sref._lastAttackAt = now;
         }
       }
     }
 
-    // Ult tower phase mechanics. As the throne loses HP it fires
-    // staged callbacks: 50% heal, 25% reinforcements, 10% rage. Each
-    // phase is one-shot via _ultPhaseNNFired flags on the tower.
-    for (const t of this.cpuTowers) {
-      if (!t.isUlt || (t as { _expired?: boolean })._expired) continue;
-      if (t.maxHp === undefined || t.hp === undefined) continue;
-      const ratio = t.hp / t.maxHp;
-      if (!t._ultPhase50Fired && ratio <= 0.5) {
-        t._ultPhase50Fired = true;
-        // 10% heal over 5s — apply instantly here for simplicity (v2
-        // polish: tween over 5s with VFX).
-        t.hp = Math.min(t.maxHp, t.hp + Math.round(t.maxHp * 0.1));
-        const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
-        log?.gameMessage?.('The Throne calls reinforcement spells — its wards mend!');
-      }
-      if (!t._ultPhase25Fired && ratio <= 0.25) {
-        t._ultPhase25Fired = true;
-        const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
-        log?.gameMessage?.('The Throne summons mage reinforcements!');
-        // v2 polish: spawn N mage creeps at the entry. v1 ships the
-        // narrative beat without the spawn — wave creeps already
-        // ramp via the standard hpWaveBoost so the ramping pressure
-        // is already there.
-      }
-      if (!t._ultPhase10Fired && ratio <= 0.10) {
-        t._ultPhase10Fired = true;
-        // Rage mode: halve fire rate ms (= 2x attack speed). Modify
-        // typeDef.fireRate clone? No — fireRate is read each frame
-        // from typeDef. Instead halve the live tower's fireRate
-        // field (Tower.ts uses this.fireRate).
-        t.fireRate = Math.max(200, Math.floor(t.fireRate / 2));
-        const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
-        log?.gameMessage?.('THE THRONE RAGES! Attack speed doubled!');
+    // PRD 06 — destructible boss structure update.
+    //   - Redraw each structure (HP changed → frame swap if a damage
+    //     threshold was crossed; HP bar updates).
+    //   - Collect any phase hooks that crossed their HP threshold this
+    //     frame and dispatch them through FinaleEffects.
+    for (const s of this.cpuStructures) {
+      s.draw();
+      if (!s.alive) continue;
+      const fired = s.collectPhaseHooks();
+      for (const hookId of fired) {
+        dispatchFinaleEffect(hookId, s, {
+          scene: this.scene,
+          controller: this,
+          hero: this.hero,
+        });
       }
     }
 
-    // Win condition — zero alive destructible CPU towers.
+    // Win condition (PRD 06) — fires when:
+    //   1. The hero has been summoned at least once (firstSpawnDone), AND
+    //   2. Zero alive destructible CPU towers, AND
+    //   3. Zero alive `isMissionWinTarget` structures.
+    //
+    // Non-win-target structures (decorative future destructibles) don't
+    // gate victory. Tower-class destructibles always do (kill-all rule).
     if (!this.winFired && this.firstSpawnDone) {
-      let aliveCount = 0;
+      let aliveTowers = 0;
       for (const t of this.cpuTowers) {
-        if (!(t as { _expired?: boolean })._expired && (t.hp ?? 0) > 0) aliveCount++;
+        if (!(t as { _expired?: boolean })._expired && (t.hp ?? 0) > 0) aliveTowers++;
       }
-      if (aliveCount === 0) {
+      let aliveWinTargets = 0;
+      for (const s of this.cpuStructures) {
+        if (s.isMissionWinTarget && s.alive) aliveWinTargets++;
+      }
+      if (aliveTowers === 0 && aliveWinTargets === 0) {
         this.winFired = true;
         this.onWin?.();
       }
     }
   }
 
-  /** Set the player's clicked CPU tower target. Computes a pathfinder
-   *  route to a cell adjacent to the tower so the hero can walk
-   *  through the maze instead of straight-line phasing into walls. */
-  setHeroTowerTarget(tower: Tower | null): void {
+  /** Set the player's clicked CPU target — Tower or DestructibleStructure.
+   *  Computes a pathfinder route to a cell adjacent to the target so
+   *  the hero can walk through the maze instead of straight-line
+   *  phasing into walls. For multi-cell structures, the path
+   *  destination is one of the cells adjacent to the structure's
+   *  bounding box. */
+  setHeroTarget(target: Tower | DestructibleStructure | null): void {
     if (!this.hero) return;
-    if (tower && (!tower.destructible || (tower as { _expired?: boolean })._expired)) {
-      this.hero.clickedTowerTarget = null;
+    if (target === null) {
+      this.hero.clickedTarget = null;
       return;
     }
-    this.hero.clickedTowerTarget = tower;
-    if (tower) this.repathHeroTo(tower.col, tower.row, /*adjacent=*/true);
+    // Validate alive
+    if ('alive' in target) {
+      if (!target.alive) {
+        this.hero.clickedTarget = null;
+        return;
+      }
+    } else {
+      const tw = target as Tower;
+      if (!tw.destructible || (tw as { _expired?: boolean })._expired) {
+        this.hero.clickedTarget = null;
+        return;
+      }
+    }
+    this.hero.clickedTarget = target;
+    // Path to an adjacent walkable cell. For structures, target the
+    // closest perimeter cell. For towers, target the tower's own cell.
+    if ('widthCells' in target && (target as DestructibleStructure).widthCells > 1) {
+      const s = target as DestructibleStructure;
+      this.repathHeroToStructure(s);
+    } else {
+      this.repathHeroTo(target.col, target.row, /*adjacent=*/true);
+    }
+  }
+
+  /** Backwards-compat alias for the old method name. Kept so any
+   *  external callers continue to work; new call sites should use
+   *  `setHeroTarget` directly. */
+  setHeroTowerTarget(tower: Tower | null): void {
+    this.setHeroTarget(tower);
   }
 
   /** Player commanded the hero to move to a specific cell. Compute a
    *  walk path around blocked terrain. */
   moveHeroTo(col: number, row: number): void {
     if (!this.hero) return;
-    this.hero.clickedTowerTarget = null;
+    this.hero.clickedTarget = null;
     this.repathHeroTo(col, row, /*adjacent=*/false);
+  }
+
+  /** Path the hero to the closest walkable cell adjacent to a 3×3
+   *  (or NxM) destructible structure. Picks among the perimeter cells
+   *  the one that's both walkable AND closest to the hero in Manhattan
+   *  distance, so the hero stops just outside the structure footprint
+   *  with a clear line of sight to fire. */
+  private repathHeroToStructure(s: DestructibleStructure): void {
+    if (!this.hero) return;
+    const fromCol = pixelToCol(this.hero.x);
+    const fromRow = Math.round((this.hero.y - TILE_SIZE / 2) / TILE_SIZE);
+    // Build candidate perimeter cells — every cell directly adjacent
+    // to the WxH footprint (not corners, just orthogonal neighbours).
+    const candidates: PathPoint[] = [];
+    for (let dr = 0; dr < s.heightCells; dr++) {
+      candidates.push({ col: s.col - 1, row: s.row + dr });
+      candidates.push({ col: s.col + s.widthCells, row: s.row + dr });
+    }
+    for (let dc = 0; dc < s.widthCells; dc++) {
+      candidates.push({ col: s.col + dc, row: s.row - 1 });
+      candidates.push({ col: s.col + dc, row: s.row + s.heightCells });
+    }
+    let dest: PathPoint | null = null;
+    let bestDist = Infinity;
+    for (const c of candidates) {
+      if (c.col < 0 || c.col >= this.grid.cells[0].length) continue;
+      if (c.row < 0 || c.row >= this.grid.cells.length) continue;
+      if (this.grid.cells[c.row][c.col] === CellType.Blocked) continue;
+      const d = Math.abs(c.col - fromCol) + Math.abs(c.row - fromRow);
+      if (d < bestDist) { bestDist = d; dest = c; }
+    }
+    if (!dest) {
+      this.hero.pathWaypoints = null;
+      return;
+    }
+    const path = findPath(this.grid, { col: fromCol, row: fromRow }, dest);
+    if (!path || path.length === 0) {
+      this.hero.pathWaypoints = null;
+      return;
+    }
+    const px = path.slice(1).map(p => ({ x: gridX(p.col), y: gridY(p.row) }));
+    this.hero.pathWaypoints = px;
   }
 
   /** Compute a pixel-waypoint path from the hero's current cell to
@@ -465,12 +616,38 @@ export class FinaleController {
   }
 
   /** Lookup helper — does this position correspond to a destructible
-   *  CPU tower? Used by the click-handler in GameScene. */
-  findCpuTowerAt(col: number, row: number): Tower | null {
+   *  CPU tower OR multi-cell structure? Used by the click-handler in
+   *  GameScene. Structures are checked first (3×3 footprint can
+   *  overlap with the cell of an embedded tower at the center; the
+   *  player should target the structure-as-a-whole, not the embedded
+   *  tower individually). */
+  findCpuTargetAt(col: number, row: number): Tower | DestructibleStructure | null {
+    // Structure first (covers the embedded tower's cell + 8 others)
+    for (const s of this.cpuStructures) {
+      if (!s.alive) continue;
+      if (col >= s.col && col < s.col + s.widthCells &&
+          row >= s.row && row < s.row + s.heightCells) {
+        return s;
+      }
+    }
+    // Then standalone CPU towers (walls + non-throne defenders)
     for (const t of this.cpuTowers) {
       if (t.col === col && t.row === row && !(t as { _expired?: boolean })._expired) return t;
     }
     return null;
+  }
+
+  /** Backwards-compat alias. New callers should use `findCpuTargetAt`. */
+  findCpuTowerAt(col: number, row: number): Tower | null {
+    const t = this.findCpuTargetAt(col, row);
+    if (!t) return null;
+    if ('widthCells' in t && (t as DestructibleStructure).widthCells > 1) {
+      // It's a structure — return its embedded tower if it has one,
+      // otherwise null (legacy callers expect Tower).
+      const s = t as DestructibleStructure;
+      return s.embeddedTower ?? null;
+    }
+    return t as Tower;
   }
 
   /** Snapshot of all alive CPU towers. Used by win-check + UI. */
