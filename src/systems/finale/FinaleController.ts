@@ -294,6 +294,32 @@ export class FinaleController {
       this.respawnText.setVisible(false);
     }
 
+    // M10 v2 — hero auto-retaliate priority. If a CPU tower has been
+    // shooting the hero in the last 2s and it's within hero attack
+    // range, set it as the hero's autoTarget so the hero retaliates
+    // automatically. Cleared each tick: when no tower is currently
+    // attacking, autoTarget falls back to null and the hero resumes
+    // creep auto-attack via findTarget. Player's clicked target
+    // always wins over autoTarget.
+    if (this.hero && this.hero.alive) {
+      const HERO_AGGRO_WINDOW_MS = 2000;
+      const heroNow = (this.scene as { time?: { now: number } }).time?.now ?? 0;
+      const heroRange = this.hero.getEffectiveRange();
+      let bestAttacker: Tower | null = null;
+      let bestAttackerDist = Infinity;
+      for (const t of this.cpuTowers) {
+        if ((t as { _expired?: boolean })._expired) continue;
+        if (heroNow - t._lastAttackedHeroAt > HERO_AGGRO_WINDOW_MS) continue;
+        const dx = t.x - this.hero.x, dy = t.y - this.hero.y;
+        const d = dx * dx + dy * dy;
+        if (d > heroRange * heroRange) continue;
+        if (d < bestAttackerDist) { bestAttackerDist = d; bestAttacker = t; }
+      }
+      this.hero.autoTarget = bestAttacker;
+    } else if (this.hero) {
+      this.hero.autoTarget = null;
+    }
+
     // Drive hero update + respawn. ArenaCreep[] cast — Hero only uses
     // alive/x/y/takeDamage off the creep, all of which Creep also has.
     if (this.hero) {
@@ -317,46 +343,82 @@ export class FinaleController {
       }
     }
 
-    // CPU towers shoot the hero (when no sends are in range to decoy).
-    // Tower's normal creep-fire pass already handles sends — this pass
-    // runs in parallel: for each alive destructible tower, if it has
-    // no send in range AND its fire-rate has elapsed AND the hero is
-    // in range, apply damage. Reuses the tower's lastFired cooldown
-    // so a tower that just fired at a send won't double-fire on the hero.
-    if (this.hero && this.hero.alive) {
+    // CPU tower target priority (M10 v2):
+    //   1. creeps_attacking_it — sends that have damaged this tower
+    //      within ATTACKING_WINDOW_MS. (Sends adjacent + dealing damage.)
+    //   2. hero_attacking_it — hero who's been shooting this tower
+    //      within the same window.
+    //   3. creeps_in_range — any send within range, closest first.
+    //   4. hero_in_range — hero within range.
+    // The tower fires at the FIRST tier that has at least one valid
+    // target. This replaces the old "send-closer-than-hero" decoy rule.
+    const ATTACKING_WINDOW_MS = 2000;
+    if ((this.hero && this.hero.alive) || (creeps as Creep[]).some(c => c.alive && c.isSend)) {
       const now = (this.scene as { time?: { now: number } }).time?.now ?? 0;
-      const heroX = this.hero.x;
-      const heroY = this.hero.y;
+      const hero = this.hero;
+      const heroX = hero?.x ?? 0;
+      const heroY = hero?.y ?? 0;
       for (const t of this.cpuTowers) {
         if ((t as { _expired?: boolean })._expired) continue;
-        const dx = heroX - t.x;
-        const dy = heroY - t.y;
-        const distSq = dx * dx + dy * dy;
-        if (distSq > t.range * t.range) continue;
         if (now - t.lastFired < t.fireRate) continue;
-        // Sends in range get priority — skip hero attack this tick if
-        // any send is closer than the hero (decoy effect).
-        let sendCloserThanHero = false;
-        const heroDistSq = distSq;
-        for (const c of creeps as Creep[]) {
-          if (!c.alive || c.reached || !c.isSend) continue;
-          const sdx = c.x - t.x;
-          const sdy = c.y - t.y;
-          const sd = sdx * sdx + sdy * sdy;
-          if (sd > t.range * t.range) continue;
-          if (sd < heroDistSq) { sendCloserThanHero = true; break; }
+        const rangeSq = t.range * t.range;
+        // ─── Tier 1: creeps_attacking_it (sends that recently hit it) ───
+        let target: { x: number; y: number; isHero?: boolean; creep?: Creep } | null = null;
+        if (now - t._lastSendHitAt < ATTACKING_WINDOW_MS) {
+          let bestDist = Infinity;
+          for (const c of creeps as Creep[]) {
+            if (!c.alive || c.reached || !c.isSend) continue;
+            const sdx = c.x - t.x, sdy = c.y - t.y;
+            const sd = sdx * sdx + sdy * sdy;
+            if (sd > rangeSq) continue;
+            if (sd < bestDist) { bestDist = sd; target = { x: c.x, y: c.y, creep: c }; }
+          }
         }
-        if (sendCloserThanHero) continue;
+        // ─── Tier 2: hero_attacking_it (hero recently hit it) ───
+        if (!target && hero && hero.alive && now - t._lastHeroHitAt < ATTACKING_WINDOW_MS) {
+          const dx = heroX - t.x, dy = heroY - t.y;
+          if (dx * dx + dy * dy <= rangeSq) {
+            target = { x: heroX, y: heroY, isHero: true };
+          }
+        }
+        // ─── Tier 3: creeps_in_range (closest send) ───
+        if (!target) {
+          let bestDist = Infinity;
+          for (const c of creeps as Creep[]) {
+            if (!c.alive || c.reached || !c.isSend) continue;
+            const sdx = c.x - t.x, sdy = c.y - t.y;
+            const sd = sdx * sdx + sdy * sdy;
+            if (sd > rangeSq) continue;
+            if (sd < bestDist) { bestDist = sd; target = { x: c.x, y: c.y, creep: c }; }
+          }
+        }
+        // ─── Tier 4: hero_in_range ───
+        if (!target && hero && hero.alive) {
+          const dx = heroX - t.x, dy = heroY - t.y;
+          if (dx * dx + dy * dy <= rangeSq) {
+            target = { x: heroX, y: heroY, isHero: true };
+          }
+        }
+        if (!target) continue;
+        // Send creeps go through the standard tower fire pipeline (so
+        // splash / chain / etc work). The standard updateTowers tick
+        // already targets sends, so we only need to fire here for hero
+        // targets (which the standard pipeline doesn't know about).
+        if (!target.isHero || !hero) continue;
         // Apply hero damage + spawn a brief visual projectile so the
         // player can see what hit them. Tower color → hero in ~250ms,
         // then fade out.
         const dmg = t.damage;
-        this.hero.hp = Math.max(0, this.hero.hp - dmg);
-        (this.hero as unknown as { pendingDamageNumbers: { x: number; y: number; text: string; color: string; duration: number }[] })
+        hero.hp = Math.max(0, hero.hp - dmg);
+        (hero as unknown as { pendingDamageNumbers: { x: number; y: number; text: string; color: string; duration: number }[] })
           .pendingDamageNumbers.push({ x: heroX, y: heroY - 24, text: String(dmg), color: '#ff6644', duration: 0.6 });
-        this.spawnHeroProjectile(t, this.hero.x, this.hero.y);
+        this.spawnHeroProjectile(t, hero.x, hero.y);
         t.lastFired = now;
-        if (this.hero.hp <= 0) this.hero.die();
+        // Track "this tower is currently shooting the hero" for the
+        // hero's auto-attack priority cascade. The hero retaliates
+        // against attackers before considering range-based picks.
+        t._lastAttackedHeroAt = now;
+        if (hero.hp <= 0) hero.die();
       }
     }
 
@@ -400,15 +462,21 @@ export class FinaleController {
     // PRD 06 — Sends attack adjacent CPU destructibles (walls, towers,
     // and the throne structure) at a discrete 1s cadence. Each send
     // ticks an internal cooldown via `_lastAttackAt` (scene time ms).
-    // When the cooldown expires AND the send is within Chebyshev ≤ 1
-    // (pixel: ~40px) of any alive CPU-owned destructible, it picks the
-    // closest one and deals `floor(creep.maxHp * scale / 100)` (min 1)
-    // damage. Sends keep walking — opportunistic stop-and-attack would
-    // strand them; per the user spec they path normally.
+    // When the cooldown expires AND the send is within touch radius
+    // of any alive CPU-owned destructible, it picks the closest one
+    // and deals `floor(creep.maxHp * scale / 100)` (min 1) damage.
+    // Sends keep walking — opportunistic stop-and-attack would strand
+    // them; per the user spec they path normally.
+    //
+    // Gating: this loop runs as soon as ANY send creep exists. Earlier
+    // versions gated on `firstSpawnDone || hero` which prevented sends
+    // from chipping CPU towers BEFORE the first hero summon — that
+    // robbed the player's pre-summon window of any agency.
     const cadenceMs = this.rules.sendAttackCadenceMs ?? 1000;
     const dmgScale = this.rules.sendAttackDamageScale ?? 1.0;
-    if (this.firstSpawnDone || this.hero) {
+    {
       const now = this.scene.time.now;
+      const fd = (this.scene as { floatingDamage?: { spawn: (x: number, y: number, text: string, color?: string) => void } }).floatingDamage;
       for (const c of creeps as Creep[]) {
         if (!c.alive || !c.isSend || !c.isFriendly) continue;
         const sref = c as Creep & { _lastAttackAt?: number };
@@ -441,6 +509,15 @@ export class FinaleController {
           const damage = Math.max(1, Math.floor((c.maxHp * dmgScale) / 100));
           best.takeDamage(damage);
           sref._lastAttackAt = now;
+          // Visual feedback so the player can see sends chipping the
+          // CPU lattice. Without this the damage was silent and looked
+          // like nothing happened.
+          fd?.spawn?.(best.x, best.y - 18, String(damage), '#ffaa44');
+          // Mark the target as "recently attacked by sends" — drives
+          // the new tower target priority (creeps_attacking_it ranks
+          // first). Also marks the send as "recently engaging this
+          // tower" for hero priority lookups.
+          (best as { _lastSendHitAt?: number })._lastSendHitAt = now;
         }
       }
     }

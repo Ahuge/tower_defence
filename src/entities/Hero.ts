@@ -144,6 +144,12 @@ export class Hero {
    *  (PRD 06 boss structures like the Archmage Throne). Cleared when
    *  the target dies or the player clicks elsewhere. */
   clickedTarget: Tower | DestructibleStructure | null = null;
+  /** M10 v2 — auto-retaliate target. Set by FinaleController when a
+   *  CPU tower has been shooting the hero recently (priority cascade
+   *  tier 1). Treated like `clickedTarget` for combat purposes but
+   *  cleared automatically — never overrides a player-clicked target,
+   *  and FinaleController re-evaluates it each tick. */
+  autoTarget: Tower | null = null;
   /** M10 finale — count of CPU towers this hero has destroyed. Drives
    *  the "Win without losing the hero" star objective + analytics. */
   towersDestroyed: number = 0;
@@ -463,11 +469,17 @@ export class Hero {
     // skipped when worldBounds is set (finale mode) — without a real path
     // the hero just sits and waits for player to re-click.
     let firedTowerThisFrame = false;
-    if (this.clickedTarget) {
-      const t = this.clickedTarget;
+    // Effective combat target: clicked (player-explicit) > auto (retaliation).
+    // The auto target is cleared if the source tower died or moved out of
+    // range — FinaleController re-evaluates each tick.
+    const effectiveTarget = this.clickedTarget ?? this.autoTarget;
+    if (effectiveTarget) {
+      const t = effectiveTarget;
       const targetDead = !isClickedTargetAlive(t);
       if (targetDead) {
-        this.clickedTarget = null;
+        // Clear whichever bucket pointed at the dead target.
+        if (this.clickedTarget === t) this.clickedTarget = null;
+        if (this.autoTarget === t) this.autoTarget = null;
       } else {
         const dx = t.x - this.x;
         const dy = t.y - this.y;
@@ -510,7 +522,7 @@ export class Hero {
           this.attack(this.target);
           this.lastAttackTime = now;
         }
-      } else if (!this.moveTarget && !this.clickedTarget && !this.pathWaypoints) {
+      } else if (!this.moveTarget && !this.clickedTarget && !this.autoTarget && !this.pathWaypoints) {
         // Move towards creep target only when the player has not
         // commanded a destination. Otherwise the hero would fight
         // its own move command (running off to creeps mid-walk).
@@ -532,6 +544,9 @@ export class Hero {
     let bestDist = Infinity;
     for (const c of creeps) {
       if (!c.alive) continue;
+      // M10 finale: skip player's own sends. They're decoy fodder, the
+      // hero doesn't fight its own team.
+      if ((c as { isFriendly?: boolean }).isFriendly) continue;
       const dx = c.x - this.x;
       const dy = c.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -606,6 +621,14 @@ export class Hero {
       x: target.x, y: target.y - 24,
       text: String(dmg), color: dmgColor, duration: 0.6,
     });
+    // Mark the target as "recently hit by hero" so its target-priority
+    // logic can retaliate: a tower that's been shot by the hero
+    // re-targets the hero before considering creeps in range.
+    if ('_lastHeroHitAt' in target) {
+      (target as { _lastHeroHitAt: number })._lastHeroHitAt = this.scene.time.now;
+    } else if ('embeddedTower' in target && target.embeddedTower) {
+      target.embeddedTower._lastHeroHitAt = this.scene.time.now;
+    }
     const killed = target.takeDamage(dmg);
     if (killed) {
       this.towersDestroyed++;

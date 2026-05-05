@@ -138,6 +138,19 @@ export class Tower {
   destructible?: boolean;
   hp?: number;
   maxHp?: number;
+  /** PRD 06 / M10 v2 — last time the hero damaged this tower (scene
+   *  time ms). Drives "X is attacking me" target priority: a CPU
+   *  tower that's been hit by the hero recently retaliates against
+   *  the hero before falling back to range-based picking. */
+  _lastHeroHitAt: number = 0;
+  /** Last time a SEND creep damaged this tower (scene time ms).
+   *  Same retaliation rule as _lastHeroHitAt but for sends. */
+  _lastSendHitAt: number = 0;
+  /** Last time this tower fired at the hero (scene time ms). The
+   *  hero's auto-attack priority bumps "towers that have been
+   *  shooting me" to the top of the cascade — retaliation reads
+   *  natural for the player. */
+  _lastAttackedHeroAt: number = 0;
   /** Whether this tower is a "boss-tier" CPU defender. Drives the
    *  golden HP-bar border treatment in the renderer. PRD 06 migrated
    *  the M10 throne off this flag onto a `DestructibleStructure` with

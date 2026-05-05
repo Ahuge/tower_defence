@@ -185,6 +185,12 @@ registerDelivery('splash_damage', (trait: Trait, ctx: HitContext) => {
   const radius = levelScale(baseRadius, ctx.towerLevel);
   for (const creep of ctx.allTargets) {
     if (!creep.alive || creep.reached) continue;
+    // M10 finale: player splash never damages player's own sends.
+    // (Sends are friendly creeps. Both player + CPU towers should
+    // ignore allies of the firing tower; the simplest invariant is
+    // "no splash hits friendly creeps", which is correct for the
+    // current single-player M10 layout.)
+    if ((creep as { isFriendly?: boolean }).isFriendly) continue;
     const dx = creep.x - ctx.target.x;
     const dy = creep.y - ctx.target.y;
     if (Math.sqrt(dx * dx + dy * dy) <= radius) {

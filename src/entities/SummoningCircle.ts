@@ -46,13 +46,13 @@ export class SummoningCircle {
     const addSprite = (scene as { add?: { sprite?: (...a: unknown[]) => Phaser.GameObjects.Sprite } }).add?.sprite;
     if (textures?.exists(SUMMONING_CIRCLE_KEY) && typeof addSprite === 'function') {
       this.sprite = addSprite.call(scene.add, this.cx, this.cy, SUMMONING_CIRCLE_KEY, 0);
-      this.sprite.setDepth(1);
+      this.sprite.setDepth(2);
       // Sprite is 56x56 = exactly 2x2 tiles. Center origin so it
       // anchors at the footprint center (this.cx, this.cy).
       this.sprite.setOrigin?.(0.5, 0.5);
     } else if (typeof (scene.add as { graphics?: () => Phaser.GameObjects.Graphics }).graphics === 'function') {
       this.graphics = scene.add.graphics();
-      this.graphics.setDepth(1);
+      this.graphics.setDepth(2);
     }
   }
 
