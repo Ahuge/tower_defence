@@ -11,6 +11,18 @@ import { FactionId } from '../data/Factions';
 import { createCreepSprite, getCreepSpriteScale, playCreepDeath, hasCreepSprites } from '../systems/CreepSpriteManager';
 import { rng } from '../systems/Rng';
 
+/** Value returned by `Creep.getAttackTarget` in goalMode='attacking'.
+ *  The creep walks toward `pos`, attacks `entity.takeDamage(amount)`
+ *  when within attackRange, and re-asks for a new target when
+ *  `entity.alive === false`. Both Tower and DestructibleStructure
+ *  satisfy this shape via duck typing. */
+export interface CreepAttackTarget {
+  readonly x: number;
+  readonly y: number;
+  readonly alive?: boolean;
+  takeDamage(amount: number): boolean;
+}
+
 const ARMOR_TIERS: ArmorType[] = ['light', 'medium', 'heavy'];
 
 export class Creep {
@@ -75,6 +87,26 @@ export class Creep {
    *  compatibility shim so older code paths don't crash mid-refactor;
    *  reads true when the creep is on a Player team. */
   get isFriendly(): boolean { return this.ownerIndex >= 0 && this.ownerIndex < 99; }
+
+  // ─── Attacking Goal (PRD post-M10-v4) ────────────────────────────
+  /** Callback that returns the next enemy-owned target for a creep
+   *  in `goalMode='attacking'`. Owner of the callback (typically
+   *  FinaleController for M10 sends) is responsible for ownership
+   *  filtering — Creep just consumes the result. Returning null
+   *  signals "no targets remain" → creep falls back to Pathing Goal
+   *  and resumes walking the original path to exit. */
+  getAttackTarget?: (creep: Creep) => CreepAttackTarget | null;
+  /** Last frame the creep dealt damage to its current attacking
+   *  target. Drives the 1s-cadence (configurable per creep). */
+  _attackLastFiredAt: number = 0;
+  /** Cadence of attacks while in `goalMode='attacking'` (ms). 1000ms
+   *  by default — sends the same DPS-feel as the older opportunistic
+   *  send-chip mechanic. */
+  attackCadenceMs: number = 1000;
+  /** Damage dealt per attack while in `goalMode='attacking'`. Falls
+   *  back to `floor(maxHp / 100)` (min 1) when undefined — matches
+   *  the prior opportunistic-chip damage scale. */
+  attackDamage?: number;
   /**
    * Plan 12 v2 — Anti-magic Wagon shield. Number of incoming damage
    * instances this creep can fully absorb before normal damage applies.
@@ -233,6 +265,47 @@ export class Creep {
     // Trait updates (heal_aura, etc.) — suppressed when muted
     if (!this.statusEffects.isMuted()) {
       resolveCreepUpdates(this.traits, this, delta, nearbyCreeps ?? []);
+    }
+
+    // ─── Attacking Goal (PRD post-M10-v4) ──────────────────────────
+    // When goalMode='attacking', the creep ignores its exit path and
+    // walks straight-line toward the nearest enemy-owned destructible
+    // (resolved via `getAttackTarget`). Stops walking + attacks at
+    // 1s cadence when within attackRange. When all enemy targets are
+    // gone, falls back to Pathing Goal — resumes the original path.
+    if (this.goalMode === 'attacking' && this.getAttackTarget) {
+      const cb = this.getAttackTarget;
+      const candidate = cb(this);
+      if (candidate && candidate.alive !== false) {
+        const dx = candidate.x - this.x;
+        const dy = candidate.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= this.attackRange) {
+          // In range — stop and attack at the configured cadence.
+          // Phaser scene.time.now isn't accessible from Creep (no
+          // scene ref). We reuse the same delta-accumulator pattern:
+          // _attackLastFiredAt holds millis-since-spawn, advanced by
+          // delta each frame.
+          this._attackLastFiredAt += delta;
+          if (this._attackLastFiredAt >= this.attackCadenceMs) {
+            this._attackLastFiredAt = 0;
+            const dmg = this.attackDamage ?? Math.max(1, Math.floor(this.maxHp / 100));
+            candidate.takeDamage(dmg);
+          }
+        } else {
+          // Walk straight-line toward target (no pathfinding for v1 —
+          // good enough for the M10 layout where sends spawn near the
+          // throne corridor and walls/towers are exposed). Future
+          // refinement: route via grid pathfind to handle mazes.
+          const move = this.speed * (delta / 1000);
+          if (dist > 0) {
+            this.x += (dx / dist) * move;
+            this.y += (dy / dist) * move;
+          }
+        }
+        return;
+      }
+      // No targets — fall through to Pathing Goal below.
     }
 
     if (this.pathIndex >= this.path.length) {

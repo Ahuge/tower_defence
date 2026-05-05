@@ -468,69 +468,60 @@ export class FinaleController {
       }
     }
 
-    // PRD 06 — Sends attack adjacent CPU destructibles (walls, towers,
-    // and the throne structure) at a discrete 1s cadence. Each send
-    // ticks an internal cooldown via `_lastAttackAt` (scene time ms).
-    // When the cooldown expires AND the send is within touch radius
-    // of any alive CPU-owned destructible, it picks the closest one
-    // and deals `floor(creep.maxHp * scale / 100)` (min 1) damage.
-    // Sends keep walking — opportunistic stop-and-attack would strand
-    // them; per the user spec they path normally.
-    //
-    // Gating: this loop runs as soon as ANY send creep exists. Earlier
-    // versions gated on `firstSpawnDone || hero` which prevented sends
-    // from chipping CPU towers BEFORE the first hero summon — that
-    // robbed the player's pre-summon window of any agency.
+    // PRD post-M10-v4 — Attacking Goal wiring for player sends. Each
+    // send creep gets a `getAttackTarget` callback that returns the
+    // closest alive CPU-owned destructible (walls, towers, throne).
+    // Creep.update consumes this — walks straight-line toward the
+    // target, attacks at 1s cadence when in attackRange, falls back
+    // to Pathing Goal when no targets remain. Sets the callback once
+    // per send (idempotent — same closure-shape every frame).
     const cadenceMs = this.rules.sendAttackCadenceMs ?? 1000;
     const dmgScale = this.rules.sendAttackDamageScale ?? 1.0;
-    {
-      const now = this.scene.time.now;
-      const fd = (this.scene as { floatingDamage?: { spawn: (x: number, y: number, text: string, color?: string) => void } }).floatingDamage;
-      for (const c of creeps as Creep[]) {
-        if (!c.alive || !c.isSend || !c.isFriendly) continue;
-        const sref = c as Creep & { _lastAttackAt?: number };
-        if (now - (sref._lastAttackAt ?? 0) < cadenceMs) continue;
-        // Find the closest CPU destructible within touch radius. Both
-        // Tower and DestructibleStructure expose .x/.y as their pixel
-        // center, so a single pixel-distance check suffices for both.
+    const fd = (this.scene as { floatingDamage?: { spawn: (x: number, y: number, text: string, color?: string) => void } }).floatingDamage;
+    const cpuTowers = this.cpuTowers;
+    const cpuStructures = this.cpuStructures;
+    for (const c of creeps as Creep[]) {
+      if (!c.alive || c.goalMode !== 'attacking') continue;
+      if (c.getAttackTarget) continue; // already wired
+      c.attackCadenceMs = cadenceMs;
+      // Damage scales with creep maxHp like the prior opportunistic mechanic.
+      c.attackDamage = Math.max(1, Math.floor((c.maxHp * dmgScale) / 100));
+      c.getAttackTarget = (creep: Creep) => {
+        // Closest alive CPU-owned destructible to the creep's current pos.
         let best: Tower | DestructibleStructure | null = null;
-        let bestDistSq = 40 * 40;
-        for (const t of this.cpuTowers) {
-          if ((t as { _expired?: boolean })._expired) continue;
+        let bestSq = Infinity;
+        for (const t of cpuTowers) {
           if (!t.destructible) continue;
-          const dx = c.x - t.x, dy = c.y - t.y;
+          if ((t as { _expired?: boolean })._expired) continue;
+          const dx = creep.x - t.x, dy = creep.y - t.y;
           const ds = dx * dx + dy * dy;
-          if (ds < bestDistSq) { bestDistSq = ds; best = t; }
+          if (ds < bestSq) { bestSq = ds; best = t; }
         }
-        for (const s of this.cpuStructures) {
+        for (const s of cpuStructures) {
           if (!s.alive) continue;
-          // Adjacent check via pixel distance from send to structure
-          // perimeter. Approximate: if send center is within
-          // (footprint half-extent + tile_size) of structure center.
-          const halfW = (s.widthCells * TILE_SIZE) / 2;
-          const halfH = (s.heightCells * TILE_SIZE) / 2;
-          const dx = Math.max(0, Math.abs(c.x - s.x) - halfW);
-          const dy = Math.max(0, Math.abs(c.y - s.y) - halfH);
+          const dx = creep.x - s.x, dy = creep.y - s.y;
           const ds = dx * dx + dy * dy;
-          if (ds < bestDistSq) { bestDistSq = ds; best = s; }
+          if (ds < bestSq) { bestSq = ds; best = s; }
         }
-        if (best) {
-          const damage = Math.max(1, Math.floor((c.maxHp * dmgScale) / 100));
-          best.takeDamage(damage);
-          sref._lastAttackAt = now;
-          // Visual feedback so the player can see sends chipping the
-          // CPU lattice. Without this the damage was silent and looked
-          // like nothing happened.
-          fd?.spawn?.(best.x, best.y - 18, String(damage), '#ffaa44');
-          // Mark the target as "recently attacked by sends" — drives
-          // the new tower target priority (creeps_attacking_it ranks
-          // first). Also marks the send as "recently engaging this
-          // tower" for hero priority lookups.
-          (best as { _lastSendHitAt?: number })._lastSendHitAt = now;
-        }
-      }
-
+        if (!best) return null;
+        const target = best;
+        return {
+          x: target.x,
+          y: target.y,
+          alive: 'alive' in target ? target.alive : !((target as { _expired?: boolean })._expired) && (target.hp ?? 0) > 0,
+          takeDamage: (amount: number) => {
+            const killed = target.takeDamage(amount);
+            // Visual + tracking — same as the old opportunistic loop.
+            fd?.spawn?.(target.x, target.y - 18, String(amount), '#ffaa44');
+            (target as { _lastSendHitAt?: number })._lastSendHitAt = (this.scene as { time?: { now: number } }).time?.now ?? 0;
+            return killed;
+          },
+        };
+      };
     }
+
+    // (Legacy opportunistic send-attack loop removed — sends now use
+    //  Creep.update's Attacking Goal branch via the callback above.)
 
     // PRD 06 — destructible boss structure update.
     //   - Redraw each structure (HP changed → frame swap if a damage
