@@ -12,14 +12,19 @@ import { createCreepSprite, getCreepSpriteScale, playCreepDeath, hasCreepSprites
 import { rng } from '../systems/Rng';
 
 /** Value returned by `Creep.getAttackTarget` in goalMode='attacking'.
- *  The creep walks toward `pos`, attacks `entity.takeDamage(amount)`
- *  when within attackRange, and re-asks for a new target when
- *  `entity.alive === false`. Both Tower and DestructibleStructure
- *  satisfy this shape via duck typing. */
+ *  The creep walks the supplied path (or straight-line if no path
+ *  given), attacks `entity.takeDamage(amount)` when within attackRange,
+ *  and re-asks for a new target when `entity.alive === false`. */
 export interface CreepAttackTarget {
   readonly x: number;
   readonly y: number;
   readonly alive?: boolean;
+  /** Pre-computed grid path from the creep's current cell to a cell
+   *  within attack range of the target. Owner of the callback (e.g.
+   *  FinaleController for M10 sends) supplies this so Creep stays
+   *  decoupled from grid + findPath. Empty / undefined → fall back
+   *  to straight-line movement. */
+  path?: { x: number; y: number }[];
   takeDamage(amount: number): boolean;
 }
 
@@ -282,21 +287,34 @@ export class Creep {
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist <= this.attackRange) {
           // In range — stop and attack at the configured cadence.
-          // Phaser scene.time.now isn't accessible from Creep (no
-          // scene ref). We reuse the same delta-accumulator pattern:
-          // _attackLastFiredAt holds millis-since-spawn, advanced by
-          // delta each frame.
           this._attackLastFiredAt += delta;
           if (this._attackLastFiredAt >= this.attackCadenceMs) {
             this._attackLastFiredAt = 0;
             const dmg = this.attackDamage ?? Math.max(1, Math.floor(this.maxHp / 100));
             candidate.takeDamage(dmg);
           }
+        } else if (candidate.path && candidate.path.length > 0) {
+          // Walk grid-pathed waypoints supplied by the callback. Pop
+          // the head waypoint as we reach it; on each tick walk toward
+          // the current head. Respects terrain + tower placements
+          // because the owner (FinaleController) computed the path
+          // via findPath against the live grid.
+          const move = this.speed * (delta / 1000);
+          const wp = candidate.path[0];
+          const wdx = wp.x - this.x, wdy = wp.y - this.y;
+          const wdist = Math.sqrt(wdx * wdx + wdy * wdy);
+          if (wdist <= move) {
+            this.x = wp.x;
+            this.y = wp.y;
+            candidate.path.shift();
+          } else if (wdist > 0) {
+            this.x += (wdx / wdist) * move;
+            this.y += (wdy / wdist) * move;
+          }
         } else {
-          // Walk straight-line toward target (no pathfinding for v1 —
-          // good enough for the M10 layout where sends spawn near the
-          // throne corridor and walls/towers are exposed). Future
-          // refinement: route via grid pathfind to handle mazes.
+          // Fallback: no path supplied — straight-line walk. Useful
+          // when the target is in line of sight or the owner couldn't
+          // pathfind (target unreachable; just close the gap).
           const move = this.speed * (delta / 1000);
           if (dist > 0) {
             this.x += (dx / dist) * move;

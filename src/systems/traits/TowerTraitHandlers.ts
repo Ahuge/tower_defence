@@ -185,12 +185,16 @@ registerDelivery('splash_damage', (trait: Trait, ctx: HitContext) => {
   const radius = levelScale(baseRadius, ctx.towerLevel);
   for (const creep of ctx.allTargets) {
     if (!creep.alive || creep.reached) continue;
-    // M10 finale: player splash never damages player's own sends.
-    // (Sends are friendly creeps. Both player + CPU towers should
-    // ignore allies of the firing tower; the simplest invariant is
-    // "no splash hits friendly creeps", which is correct for the
-    // current single-player M10 layout.)
-    if ((creep as { isFriendly?: boolean }).isFriendly) continue;
+    // Owner-aware skip — a tower never splashes its own team. Player
+    // towers skip player sends (so a Storm tower doesn't friendly-fire
+    // your own decoys); CPU towers DO splash sends (those are not on
+    // their team) and DON'T splash CPU-spawned wave creeps. When the
+    // firing tower has no ownerIndex, fall back to the legacy "skip
+    // friendly" rule for backwards-compat with non-finale missions.
+    const cOwner = (creep as { ownerIndex?: number }).ownerIndex;
+    const tOwner = ctx.towerOwnerIndex;
+    if (tOwner !== undefined && cOwner !== undefined && cOwner === tOwner) continue;
+    if (tOwner === undefined && (creep as { isFriendly?: boolean }).isFriendly) continue;
     const dx = creep.x - ctx.target.x;
     const dy = creep.y - ctx.target.y;
     if (Math.sqrt(dx * dx + dy * dy) <= radius) {

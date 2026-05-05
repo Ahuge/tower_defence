@@ -486,6 +486,7 @@ export class FinaleController {
       c.attackCadenceMs = cadenceMs;
       // Damage scales with creep maxHp like the prior opportunistic mechanic.
       c.attackDamage = Math.max(1, Math.floor((c.maxHp * dmgScale) / 100));
+      const grid = this.grid;
       c.getAttackTarget = (creep: Creep) => {
         // Closest alive CPU-owned destructible to the creep's current pos.
         let best: Tower | DestructibleStructure | null = null;
@@ -499,19 +500,51 @@ export class FinaleController {
         }
         for (const s of cpuStructures) {
           if (!s.alive) continue;
+          if (s.invulnerable) continue;
           const dx = creep.x - s.x, dy = creep.y - s.y;
           const ds = dx * dx + dy * dy;
           if (ds < bestSq) { bestSq = ds; best = s; }
         }
         if (!best) return null;
         const target = best;
+        // Grid-pathfind from creep's current cell to a cell adjacent to
+        // the target. Targets are blocked cells themselves; we step out
+        // by 1 to find a walkable approach. Use Manhattan-closest.
+        const fromCol = pixelToCol(creep.x);
+        const fromRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+        const tCol = target.col;
+        const tRow = target.row;
+        const tW = 'widthCells' in target ? (target as DestructibleStructure).widthCells : 1;
+        const tH = 'heightCells' in target ? (target as DestructibleStructure).heightCells : 1;
+        const candidates: { col: number; row: number; d: number }[] = [];
+        for (let dr = -1; dr <= tH; dr++) {
+          for (let dc = -1; dc <= tW; dc++) {
+            // Skip footprint interior — only pick cells adjacent to the
+            // perimeter (Chebyshev distance 1 from the bounding box).
+            if (dc >= 0 && dc < tW && dr >= 0 && dr < tH) continue;
+            const cc = tCol + dc, rr = tRow + dr;
+            if (cc < 0 || cc >= grid.cells[0].length) continue;
+            if (rr < 0 || rr >= grid.cells.length) continue;
+            if (grid.cells[rr][cc] === CellType.Blocked) continue;
+            candidates.push({ col: cc, row: rr, d: Math.abs(cc - fromCol) + Math.abs(rr - fromRow) });
+          }
+        }
+        candidates.sort((a, b) => a.d - b.d);
+        let pathPx: { x: number; y: number }[] | undefined = undefined;
+        for (const cand of candidates) {
+          const path = findPath(grid, { col: fromCol, row: fromRow }, { col: cand.col, row: cand.row });
+          if (path && path.length > 0) {
+            pathPx = path.slice(1).map(p => ({ x: gridX(p.col), y: gridY(p.row) }));
+            break;
+          }
+        }
         return {
           x: target.x,
           y: target.y,
           alive: 'alive' in target ? target.alive : !((target as { _expired?: boolean })._expired) && (target.hp ?? 0) > 0,
+          path: pathPx,
           takeDamage: (amount: number) => {
             const killed = target.takeDamage(amount);
-            // Visual + tracking — same as the old opportunistic loop.
             fd?.spawn?.(target.x, target.y - 18, String(amount), '#ffaa44');
             (target as { _lastSendHitAt?: number })._lastSendHitAt = (this.scene as { time?: { now: number } }).time?.now ?? 0;
             return killed;
@@ -522,6 +555,21 @@ export class FinaleController {
 
     // (Legacy opportunistic send-attack loop removed — sends now use
     //  Creep.update's Attacking Goal branch via the callback above.)
+
+    // M10 PRD post-v4 (a) — Throne invulnerability gate. The mission
+    // win-target structure (the throne) stays untouchable until every
+    // other CPU defender tower is dead. Forces the player to clear the
+    // 22-tower lattice before they can finish the boss; otherwise sends
+    // could chip the throne while the player ignores the surrounding
+    // defenders. Re-evaluated each frame so the moment the last regular
+    // tower falls, the shield drops.
+    let aliveTowerCount = 0;
+    for (const t of this.cpuTowers) {
+      if (!(t as { _expired?: boolean })._expired && (t.hp ?? 0) > 0) aliveTowerCount++;
+    }
+    for (const s of this.cpuStructures) {
+      s.invulnerable = s.isMissionWinTarget && aliveTowerCount > 0;
+    }
 
     // PRD 06 — destructible boss structure update.
     //   - Redraw each structure (HP changed → frame swap if a damage
@@ -615,34 +663,33 @@ export class FinaleController {
     this.repathHeroTo(col, row, /*adjacent=*/false);
   }
 
-  /** Path the hero to the closest walkable cell adjacent to a 3×3
-   *  (or NxM) destructible structure. Picks among the perimeter cells
-   *  the one that's both walkable AND closest to the hero in Manhattan
-   *  distance, so the hero stops just outside the structure footprint
-   *  with a clear line of sight to fire. */
+  /** Path the hero to the closest walkable cell that's within the
+   *  hero's attack range of a multi-cell destructible structure.
+   *  Replaces the old "stop adjacent" behaviour — the hero now uses
+   *  its full range, so a long-range mage doesn't waddle right up to
+   *  the throne when it could fire from 4 tiles back. */
   private repathHeroToStructure(s: DestructibleStructure): void {
     if (!this.hero) return;
     const fromCol = pixelToCol(this.hero.x);
     const fromRow = Math.round((this.hero.y - TILE_SIZE / 2) / TILE_SIZE);
-    // Build candidate perimeter cells — every cell directly adjacent
-    // to the WxH footprint (not corners, just orthogonal neighbours).
-    const candidates: PathPoint[] = [];
-    for (let dr = 0; dr < s.heightCells; dr++) {
-      candidates.push({ col: s.col - 1, row: s.row + dr });
-      candidates.push({ col: s.col + s.widthCells, row: s.row + dr });
-    }
-    for (let dc = 0; dc < s.widthCells; dc++) {
-      candidates.push({ col: s.col + dc, row: s.row - 1 });
-      candidates.push({ col: s.col + dc, row: s.row + s.heightCells });
-    }
+    // Candidate cells: any cell whose Chebyshev distance to ANY footprint
+    // cell is ≤ rangeCells. We pick the cell closest to the hero's
+    // current position so the path is as short as possible.
+    const rangeCells = Math.max(1, Math.floor(this.hero.getEffectiveRange() / TILE_SIZE));
     let dest: PathPoint | null = null;
     let bestDist = Infinity;
-    for (const c of candidates) {
-      if (c.col < 0 || c.col >= this.grid.cells[0].length) continue;
-      if (c.row < 0 || c.row >= this.grid.cells.length) continue;
-      if (this.grid.cells[c.row][c.col] === CellType.Blocked) continue;
-      const d = Math.abs(c.col - fromCol) + Math.abs(c.row - fromRow);
-      if (d < bestDist) { bestDist = d; dest = c; }
+    const cols = this.grid.cells[0].length;
+    const rows = this.grid.cells.length;
+    for (let r = Math.max(0, s.row - rangeCells); r < Math.min(rows, s.row + s.heightCells + rangeCells); r++) {
+      for (let c = Math.max(0, s.col - rangeCells); c < Math.min(cols, s.col + s.widthCells + rangeCells); c++) {
+        if (this.grid.cells[r][c] === CellType.Blocked) continue;
+        // Chebyshev distance from (c,r) to footprint
+        const dxF = Math.max(0, Math.max(s.col - c, c - (s.col + s.widthCells - 1)));
+        const dyF = Math.max(0, Math.max(s.row - r, r - (s.row + s.heightCells - 1)));
+        if (Math.max(dxF, dyF) > rangeCells) continue;
+        const d = Math.abs(c - fromCol) + Math.abs(r - fromRow);
+        if (d < bestDist) { bestDist = d; dest = { col: c, row: r }; }
+      }
     }
     if (!dest) {
       this.hero.pathWaypoints = null;
@@ -658,29 +705,34 @@ export class FinaleController {
   }
 
   /** Compute a pixel-waypoint path from the hero's current cell to
-   *  the target. When `adjacent` is true the path stops at any cell
-   *  adjacent to the target — used for tower targets so the hero
-   *  stops outside the tower's footprint and shoots from there. */
+   *  the target. When `adjacent` is true the path stops at the closest
+   *  walkable cell within the hero's attack range of the target —
+   *  used for tower targets so the hero stops at max range and fires
+   *  from there instead of waddling up to the tower. */
   private repathHeroTo(col: number, row: number, adjacent: boolean): void {
     if (!this.hero) return;
     const fromCol = pixelToCol(this.hero.x);
     const fromRow = Math.round((this.hero.y - TILE_SIZE / 2) / TILE_SIZE);
     let dest: PathPoint = { col, row };
     if (adjacent) {
-      // Pick an adjacent walkable cell to stop at — the tower's own
-      // cell isn't pathfindable (it's blocked).
-      const candidates = [
-        { col: col - 1, row }, { col: col + 1, row },
-        { col, row: row - 1 }, { col, row: row + 1 },
-      ];
+      // Stop within hero attack range, not just adjacent. Iterate the
+      // bounding box of cells within Chebyshev rangeCells of the target,
+      // pick the closest walkable to the hero's current position.
+      const rangeCells = Math.max(1, Math.floor(this.hero.getEffectiveRange() / TILE_SIZE));
+      const cols = this.grid.cells[0].length;
+      const rows = this.grid.cells.length;
       let bestDist = Infinity;
-      for (const c of candidates) {
-        if (c.col < 0 || c.col >= this.grid.cells[0].length) continue;
-        if (c.row < 0 || c.row >= this.grid.cells.length) continue;
-        if (this.grid.cells[c.row][c.col] === CellType.Blocked) continue;
-        const d = Math.abs(c.col - fromCol) + Math.abs(c.row - fromRow);
-        if (d < bestDist) { bestDist = d; dest = c; }
+      let found: PathPoint | null = null;
+      for (let r = Math.max(0, row - rangeCells); r <= Math.min(rows - 1, row + rangeCells); r++) {
+        for (let c = Math.max(0, col - rangeCells); c <= Math.min(cols - 1, col + rangeCells); c++) {
+          if (this.grid.cells[r][c] === CellType.Blocked) continue;
+          if (c === col && r === row) continue; // tower's own cell — not pathfindable
+          if (Math.max(Math.abs(c - col), Math.abs(r - row)) > rangeCells) continue;
+          const d = Math.abs(c - fromCol) + Math.abs(r - fromRow);
+          if (d < bestDist) { bestDist = d; found = { col: c, row: r }; }
+        }
       }
+      if (found) dest = found;
     }
     const path = findPath(this.grid, { col: fromCol, row: fromRow }, dest);
     if (!path || path.length === 0) {

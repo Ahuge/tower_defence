@@ -46,6 +46,12 @@ export interface HitContext {
   hitTargets: HitTarget[];
   goldEarned: number;
   hitStats: HitStats;
+  /** Owner of the firing tower. Splash / chain / similar AOE
+   *  deliveries skip creeps with the same ownerIndex (a tower's own
+   *  team is immune to its own splash). Optional so legacy callers
+   *  don't have to set it; undefined falls back to friend-fire-on
+   *  behaviour. */
+  towerOwnerIndex?: number;
 }
 
 export interface UpdateContext {

@@ -165,8 +165,15 @@ export class DestructibleStructure implements Damageable {
     return this.standaloneHp > 0;
   }
 
+  /** When true, takeDamage no-ops. Set externally each frame by the
+   *  controller — e.g. M10 keeps the Archmage Throne invulnerable
+   *  until every other CPU tower is destroyed (forces the player to
+   *  clear the lattice before they can finish the boss). */
+  invulnerable: boolean = false;
+
   takeDamage(amount: number): boolean {
     if (this._expired) return false;
+    if (this.invulnerable) return false;
     let killing = false;
     if (this.embeddedTower) {
       // Delegate to tower — its takeDamage handles _expired marking.

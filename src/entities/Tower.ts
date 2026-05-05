@@ -807,6 +807,7 @@ export class Tower {
       hitTargets: [],
       goldEarned: 0,
       hitStats: stats,
+      towerOwnerIndex: this.ownerIndex,
     };
 
     resolveDamageModifiers(this.traits, ctx);
@@ -841,6 +842,7 @@ export class Tower {
       hitTargets: [],
       goldEarned: 0,
       hitStats: stats,
+      towerOwnerIndex: this.ownerIndex,
     };
 
     resolveDamageModifiers(this.traits, ctx);
