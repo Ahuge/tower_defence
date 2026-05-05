@@ -121,13 +121,13 @@ function arcaneOrbit(p:(x:number,y:number,cl:string)=>void,cx:number,cy:number,p
 }
 
 // ===== TOWER LEVEL COUNTS =====
-// Bolt:4, Frost:3, Storm:5, Focus:4, ManaDrain:4, Meteor:3, ArcaneNova:1
-const T_LEVELS=[4,3,5,4,4,3,1];
+// Bolt:4, Frost:3, Storm:5, Focus:4, ManaDrain:4, Meteor:3, ArcaneNova:1, ManaConduit:1
+const T_LEVELS=[4,3,5,4,4,3,1,1];
 const T_MAX_LVL=5; // max across all towers — sheet has this many level-groups
 const T_ROWS_PER_LVL=4; // idle/charge/fire/cooldown per level
 const T_TOTAL_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 20
 
-// ===== TOWERS (7 cols × 20 rows at 64×64) =====
+// ===== TOWERS (8 cols × 20 rows at 64×64) =====
 // Layout: for each upgrade level (1-5), 4 animation rows (idle/charge/fire/cooldown).
 // Towers with fewer levels repeat their max level for remaining rows.
 
@@ -423,6 +423,152 @@ function drawMeteor(c:CanvasRenderingContext2D,o:number[],s:number,level:number)
   if(s===3){b(14,cy-2,4,4,C.DKRED);p(16,cy,C.RED);}
 }
 
+// Mana Conduit — single-level passive structure. Channels energy UPWARD
+// from a wide pedestal through a thick crystal obelisk into a suspended
+// floating geode, feeding adjacent Summoning Circles. Distinct from Mana
+// Drain (downward vortex/dark void) — the Conduit's signature is an
+// axis-aligned column of channeled light topped with a hovering crystal.
+function drawConduit(c:CanvasRenderingContext2D,o:number[],s:number,_level:number){
+  const{p,b}=mk(c,o,T_G,T_G,T_PX);
+  // Wide low pedestal — imposing, anchored. glow=2 always (single-level always-on).
+  arcaneBase(p,b,23,22,2);
+  // Animation phase: idle/charge/fire/cooldown encoded by s∈[0..3].
+  const charging=s===1,firing=s===2,cooling=s===3;
+  const bright=firing?2:charging||!cooling?1:0;
+  // ===== CENTRAL OBELISK =====
+  // Tall thick pillar from pedestal-top up to row 9. Tapers slightly so
+  // it reads as a hewn obelisk rather than a beam.
+  const obTop=8,obBot=22,obH=obBot-obTop;
+  for(let i=0;i<obH;i++){
+    const t=i/obH; // 0 top, 1 bottom
+    const w=Math.round(3+t*2); // 3 wide at top → 5 wide at bottom
+    const sx=16-Math.floor(w/2);
+    const y=obTop+i;
+    const inner=cooling?C_tower.MDVIO:bright>1?C_tower.LTVIO:C_tower.BRVIO;
+    const edge=cooling?C_tower.DKVIO:C_tower.MDVIO;
+    const core=cooling?C_tower.BRVIO:bright>1?C_tower.PLLAV:C_tower.LTLAV;
+    b(sx,y,w,1,edge);
+    if(w>=3)b(sx+1,y,w-2,1,inner);
+    p(16,y,core);
+  }
+  // Obelisk facet bands — horizontal rune-stripes that read as carvings
+  for(const by of [obTop+2,obTop+5,obTop+8,obTop+11]){
+    const w=Math.round(3+((by-obTop)/obH)*2);
+    const sx=16-Math.floor(w/2);
+    p(sx,by,bright>0?C_tower.LAV:C_tower.DKVIO);
+    if(w>=3)p(sx+w-1,by,bright>0?C_tower.LAV:C_tower.DKVIO);
+  }
+  // Central rune marks down the obelisk face
+  p(16,obTop+3,bright>1?C.WHITE:C_tower.PLLAV);
+  p(16,obTop+7,bright>0?C_tower.PLLAV:C_tower.LAV);
+  p(16,obTop+11,bright>0?C_tower.PLLAV:C_tower.LAV);
+  // Obelisk capstone — pointed crystal tip
+  p(16,obTop-1,firing?C.WHITE:bright>1?C_tower.PLLAV:C_tower.LTLAV);
+  p(15,obTop,bright>0?C_tower.LTLAV:C_tower.LAV);
+  p(17,obTop,bright>0?C_tower.LTLAV:C_tower.LAV);
+  // ===== SIDE SUPPORT SPIRES =====
+  // Two flanking crystal spires lean inward, framing the obelisk.
+  crystalSpire(p,b,9,obTop+3,10,3,C_tower.DKVIO,bright>0?C_tower.MDVIO:C_tower.DKVIO,bright>0?C_tower.LTVIO:C_tower.BRVIO);
+  crystalSpire(p,b,20,obTop+2,11,3,C_tower.DKVIO,bright>0?C_tower.MDVIO:C_tower.DKVIO,bright>0?C_tower.LTVIO:C_tower.BRVIO);
+  // Side spire facet sparkle
+  p(10,obTop+5,bright>0?C_tower.LAV:C_tower.MDVIO);
+  p(22,obTop+4,bright>0?C_tower.LAV:C_tower.MDVIO);
+  // ===== FLOATING GEODE (terminus) =====
+  // Substantial diamond crystal hovering above the obelisk — the energy
+  // sink. Sized comparable to Bolt's level-4 crystal so silhouette reads.
+  const cy=4+(firing?-1:cooling?1:0);
+  const cSize=7;
+  for(let i=0;i<cSize;i++){
+    const hw=i<Math.ceil(cSize/2)?i+1:cSize-i;
+    const sx=16-hw;
+    const cl=i<2?(firing?C.WHITE:C_tower.PLLAV):i<Math.ceil(cSize*0.6)?C_tower.LTLAV:i<cSize-1?C_tower.LAV:C_tower.MDVIO;
+    b(sx,cy-Math.floor(cSize/2)+i,hw*2,1,cl);
+  }
+  // Geode inner facet — bright core
+  b(15,cy-1,2,2,firing?C.WHITE:bright>1?C_tower.PLLAV:C_tower.LTLAV);
+  p(16,cy,firing?C.WHITE:C_tower.PLLAV);
+  // Geode facet darks (depth)
+  p(14,cy,C_tower.MDVIO);p(18,cy,C_tower.MDVIO);
+  p(15,cy+1,bright>0?C_tower.LTLAV:C_tower.LAV);
+  p(17,cy+1,bright>0?C_tower.LTLAV:C_tower.LAV);
+  // ===== VIOLET BEAM =====
+  // Connects obelisk tip → floating geode. Always visible (idle), wider
+  // when charging/firing.
+  const beamTop=cy+Math.floor(cSize/2),beamBot=obTop-2;
+  for(let y=beamTop;y<=beamBot;y++){
+    const inner=firing?C.WHITE:bright>0?C_tower.PLLAV:C_tower.LTLAV;
+    const outer=firing?C_tower.PLLAV:bright>0?C_tower.LTLAV:C_tower.LAV;
+    const ext=firing?C_tower.LAV:C_tower.MDVIO;
+    p(16,y,inner);
+    p(15,y,outer);p(17,y,outer);
+    if(firing||bright>1){p(14,y,ext);p(18,y,ext);}
+  }
+  // Traveling pulse dots up the beam (charge/fire only)
+  if(charging||firing){
+    const pulses=firing?3:2;
+    for(let i=0;i<pulses;i++){
+      const py=beamTop+((s*2+i*2)%(beamBot-beamTop+1));
+      p(16,py,C.WHITE);
+      if(firing){p(15,py,C_tower.PLLAV);p(17,py,C_tower.PLLAV);}
+    }
+  }
+  // ===== HALO LAYERS AROUND FLOATING GEODE =====
+  // Inner orbit ring (4 motes)
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2+s*0.6;
+    p(16+Math.round(Math.cos(a)*5),cy+Math.round(Math.sin(a)*4),firing?C.WHITE:bright>0?C_tower.PLLAV:C_tower.LTLAV);
+  }
+  // Outer halo ring (8 motes) — always visible at lower brightness
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4;
+    const r=firing?7:bright>1?6:5;
+    p(16+Math.round(Math.cos(a)*r),cy+Math.round(Math.sin(a)*(r-1)),i%2?(bright>0?C_tower.LAV:C_tower.MDVIO):(bright>0?C_tower.LTLAV:C_tower.LAV));
+  }
+  // Orbiting crystal sparkles (signature)
+  arcaneOrbit(p,16,cy-4,s*1.3,firing?C.WHITE:C_tower.PLLAV);
+  arcaneOrbit(p,12,cy-2,s*1.3+2,C_tower.LTLAV);
+  arcaneOrbit(p,20,cy-2,s*1.3+4,C_tower.LTLAV);
+  // ===== TENDRILS =====
+  // Energy threads from the pedestal up the obelisk sides — like the
+  // other arcane towers' tendril signature, but flowing UP instead of out.
+  arcaneTendril(p,11,obBot-1,12,obTop+5,bright>0?C_tower.LAV:C_tower.MDVIO,firing||bright>1);
+  arcaneTendril(p,21,obBot-1,20,obTop+5,bright>0?C_tower.LAV:C_tower.MDVIO,firing||bright>1);
+  arcaneTendril(p,8,obBot,9,obTop+8,C_tower.MDVIO,bright>1);
+  arcaneTendril(p,24,obBot,23,obTop+8,C_tower.MDVIO,bright>1);
+  // ===== PEDESTAL RUNE GLYPHS =====
+  // Lit runes around the base — always on, brighter at fire.
+  const runeBright=firing?C.WHITE:bright>0?C_tower.PLLAV:C_tower.LAV;
+  p(8,22,runeBright);p(24,22,runeBright);
+  p(10,21,bright>0?C_tower.LAV:C_tower.MDVIO);
+  p(22,21,bright>0?C_tower.LAV:C_tower.MDVIO);
+  p(13,20,C_tower.LAV);p(19,20,C_tower.LAV);
+  // ===== FIRING BURST =====
+  if(firing){
+    // Radial burst from the floating geode
+    for(let i=0;i<12;i++){const a=i*Math.PI/6;
+      p(16+Math.round(Math.cos(a)*9),cy+Math.round(Math.sin(a)*8),i%3===0?C.WHITE:i%2?C_tower.PLLAV:C_tower.LAV);
+    }
+    // Ground-glow ring around the pedestal
+    for(let i=0;i<12;i++){const a=i*Math.PI/6;
+      p(16+Math.round(Math.cos(a)*10),25+Math.round(Math.sin(a)*1),i%2?C_tower.PLLAV:C_tower.LTLAV);
+    }
+    // Bright spike up from geode top
+    for(let i=0;i<3;i++)p(16,cy-Math.floor(cSize/2)-1-i,i===0?C.WHITE:C_tower.PLLAV);
+  }
+  // ===== CHARGE OVERLAY =====
+  if(charging){
+    // Extra particles drawn into the geode
+    p(13,cy-3,C_tower.LTLAV);p(19,cy-3,C_tower.LTLAV);
+    p(11,cy+1,C_tower.LAV);p(21,cy+1,C_tower.LAV);
+  }
+  // ===== COOLDOWN OVERLAY =====
+  if(cooling){
+    // Beam dims to a thin trickle, ember dots fall
+    p(14,cy+4,C_tower.MDVIO);p(18,cy+5,C_tower.MDVIO);
+    p(16,cy+7,C_tower.DKVIO);
+  }
+}
+
 function drawArcaneNova(c:CanvasRenderingContext2D,o:number[],s:number,_level:number){
   const{p,b}=mk(c,o,T_G,T_G,T_PX);
   // Ultimate — always max visuals (single level)
@@ -467,14 +613,14 @@ export function drawBase(ctx:CanvasRenderingContext2D,col:number,row:number){
   const{p,b}=mk(ctx,[col*T_CELL,row*T_CELL],T_G,T_G,T_PX);
   const level=Math.floor(row/T_ROWS_PER_LVL)+1;
   const glow=level>=3?2:level>=2?1:0;
-  const baseWidths=[18,20,20,18,20,20,24]; // per tower
-  const baseYs=[23,23,23,24,23,24,24];
+  const baseWidths=[18,20,20,18,20,20,24,22]; // per tower
+  const baseYs=[23,23,23,24,23,24,24,23];
   arcaneBase(p,b,baseYs[col]??23,baseWidths[col]??20,glow);
 }
 
 export function drawTowers(ctx:CanvasRenderingContext2D){
-  const towerFns=[drawBolt,drawFrost,drawStorm,drawFocus,drawManaDrain,drawMeteor,drawArcaneNova];
-  const cols=7,rows=T_TOTAL_ROWS;
+  const towerFns=[drawBolt,drawFrost,drawStorm,drawFocus,drawManaDrain,drawMeteor,drawArcaneNova,drawConduit];
+  const cols=8,rows=T_TOTAL_ROWS;
   for(let col=0;col<cols;col++){
     const maxLvl=T_LEVELS[col];
     for(let lvl=1;lvl<=T_MAX_LVL;lvl++){
@@ -986,7 +1132,7 @@ export function drawHero(ctx:CanvasRenderingContext2D){
 }
 
 // ===== LABELS =====
-const T_NAMES=['Bolt','Frost','Storm','Focus','Mana Drain','Meteor','Arcane Nova'];
+const T_NAMES=['Bolt','Frost','Storm','Focus','Mana Drain','Meteor','Arcane Nova','Mana Conduit'];
 const T_STATES:string[]=[];
 for(let lvl=1;lvl<=T_MAX_LVL;lvl++){for(const st of['Idle','Charge','Fire','Cooldown'])T_STATES.push(`L${lvl} ${st}`);};
 const P_NAMES=['Bolt','Frost','Storm','Focus','Mana Drain','Meteor','Arcane Nova'];
@@ -1005,16 +1151,16 @@ export default function ArcaneSprites(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=7*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
+    const tc=tRef.current!;tc.width=8*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
     const tpv=tPv.current!;const tS=2,tLW=80,tLH=13;
-    tpv.width=tLW+7*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
+    tpv.width=tLW+8*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#07050c';tpc.fillRect(0,0,tpv.width,tpv.height);
     for(let r=0;r<T_TOTAL_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle='#6644ff';tpc.font='bold 9px monospace';tpc.fillText(T_STATES[r],3,by+T_CELL*tS/2+3);
-      for(let cc=0;cc<7;cc++){const bx=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a1a2a';tpc.strokeRect(bx,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#9988ff';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx+2,by-2);}}}
+      for(let cc=0;cc<8;cc++){const bx=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#1a1a2a';tpc.strokeRect(bx,by,T_CELL*tS,T_CELL*tS);if(r===0){tpc.fillStyle='#9988ff';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc],bx+2,by-2);}}}
 
     // Projectiles
     const pc=pRef.current!;pc.width=7*P_CELL;pc.height=6*P_CELL;
@@ -1048,7 +1194,7 @@ export default function ArcaneSprites(){
 
   const tabs=[
     {id:'towers',label:'Towers',ref:tRef,pvRef:tPv,dl:'arcane_towers_animated.png',
-      info:{sz:'448×1280',cell:'64×64',loader:"this.load.spritesheet('arcane_towers','arcane_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`7 cols (towers) × ${T_TOTAL_ROWS} rows (5 upgrade levels × 4 anim states). Levels: Bolt=4, Frost=3, Storm=5, Focus=4, ManaDrain=4, Meteor=3, ArcaneNova=1. Towers with fewer levels repeat max for remaining rows.`}},
+      info:{sz:'512×1280',cell:'64×64',loader:"this.load.spritesheet('arcane_towers','arcane_towers_animated.png',{frameWidth:64,frameHeight:64})",note:`8 cols (towers) × ${T_TOTAL_ROWS} rows (5 upgrade levels × 4 anim states). Levels: Bolt=4, Frost=3, Storm=5, Focus=4, ManaDrain=4, Meteor=3, ArcaneNova=1, ManaConduit=1. Towers with fewer levels repeat max for remaining rows.`}},
     {id:'projectiles',label:'Projectiles',ref:pRef,pvRef:pPv,dl:'arcane_projectiles_animated.png',
       info:{sz:'224×192',cell:'32×32',loader:"this.load.spritesheet('arcane_proj','arcane_projectiles_animated.png',{frameWidth:32,frameHeight:32})",note:'7 cols × 6 rows (3 travel + 3 impact)'}},
     {id:'hero',label:'Hero: Arcanist',ref:hRef,pvRef:hPv,dl:'arcanist_hero_directional.png',
@@ -1077,7 +1223,7 @@ export default function ArcaneSprites(){
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
             <canvas ref={t.pvRef as any} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}} data-label={`Arcane ${t.label} (Preview)`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'}/>
-            <canvas ref={t.ref as any} data-label={`Arcane ${t.label}`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?7*P_CELL*3:7*T_CELL*2,border:'1px solid #1a1a2a'}}/>
+            <canvas ref={t.ref as any} data-label={`Arcane ${t.label}`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?7*P_CELL*3:8*T_CELL*2,border:'1px solid #1a1a2a'}}/>
           </div>
         ))}
       </div>

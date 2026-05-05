@@ -58,8 +58,8 @@ export interface FactionSpriteInfo {
 }
 
 export const FACTION_SPRITES: FactionSpriteInfo[] = [
-  { id: 'arcane', name: 'Arcane', towerCols: 7, towerRows: 20, towerCell: 64, projCols: 7, projRows: 6, projCell: 32, modulePath: '/arcane_sprites.tsx',
-    towerNames: ['Bolt', 'Frost', 'Storm', 'Focus', 'Mana Drain', 'Meteor', 'Arcane Nova'] },
+  { id: 'arcane', name: 'Arcane', towerCols: 8, towerRows: 20, towerCell: 64, projCols: 7, projRows: 6, projCell: 32, modulePath: '/arcane_sprites.tsx',
+    towerNames: ['Bolt', 'Frost', 'Storm', 'Focus', 'Mana Drain', 'Meteor', 'Arcane Nova', 'Mana Conduit'] },
   { id: 'void', name: 'Void', towerCols: 5, towerRows: 24, towerCell: 64, projCols: 5, projRows: 6, projCell: 32, modulePath: '/void_sprites.tsx',
     towerNames: ['Gambler', 'Spike', 'Siphon', 'Rift', 'Oblivion'] },
   { id: 'mechanical', name: 'Mechanical', towerCols: 8, towerRows: 24, towerCell: 64, projCols: 8, projRows: 6, projCell: 32, modulePath: '/mechanical_sprites.tsx',
