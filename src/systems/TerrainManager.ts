@@ -384,11 +384,15 @@ export class TerrainManager {
       }
     }
 
-    // NoBuild cells with faction-specific sprites
+    // NoBuild cells with faction-specific sprites. PRD 06: cells in
+    // `extraSkipCells` also skip the NoBuild crystal-pattern decoration
+    // — destructible structures (throne) + summoning circles render
+    // their sprites against plain ground, not against the noBuild tile.
     if (useFaction) {
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (grid.cells[r][c] === CellType.NoBuild) {
+            if (this.extraSkipCells.has(`${c},${r}`)) continue;
             const x = gridLeftX(c) + TILE_SIZE / 2;
             const y = oY + r * TILE_SIZE + TILE_SIZE / 2;
             const frame = ft!.noBuildRow * COLS + 15; // center variant

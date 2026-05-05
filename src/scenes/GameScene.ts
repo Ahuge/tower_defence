@@ -471,7 +471,13 @@ export class GameScene extends Phaser.Scene {
         new URLSearchParams(win.location.search).get('capture') === '1' ||
         win.localStorage.getItem('learning.capture') === '1'
       );
-      if (capActive && this.matchMode === 'standard') {
+      // Skip the M10 finale — its 999-wave endless gate is part of
+      // the design (you win by destroying every CPU tower, not by
+      // surviving N waves). Capping at 20 would soft-lock the run
+      // because the player would run out of waves before destroying
+      // all 22 CPU defenders.
+      const isFinale = data.missionFinaleRules != null;
+      if (capActive && this.matchMode === 'standard' && !isFinale) {
         this.waveCount = 20;
       }
     } catch { /* ignore (headless / sandboxed) */ }
@@ -4101,9 +4107,11 @@ export class GameScene extends Phaser.Scene {
       isCoopHost: this.matchMode === 'circle_coop' ? (circle?.isHost ?? true) : undefined,
       hostOverrideTheme: circle?.hostTerrainOverride ?? null,
     });
-    // PRD 06: expand destructible structure placements into per-cell
-    // footprints so the terrain renderer skips faction-decoration on
-    // those cells. The throne sprite renders against plain floor.
+    // PRD 06: expand destructible structure placements + summoning
+    // circle footprints into per-cell skip cells so the terrain
+    // renderer skips both Blocked-cluster crystal walls AND NoBuild
+    // faction sprites on those cells. Both kinds of structure render
+    // their own sprite against plain ground.
     const extraSkipCells: { col: number; row: number }[] = [];
     for (const placement of this.mapDef?.destructibleStructures ?? []) {
       const def = DESTRUCTIBLE_STRUCTURES[placement.id];
@@ -4111,6 +4119,16 @@ export class GameScene extends Phaser.Scene {
       for (let dc = 0; dc < def.widthCells; dc++) {
         for (let dr = 0; dr < def.heightCells; dr++) {
           extraSkipCells.push({ col: placement.col + dc, row: placement.row + dr });
+        }
+      }
+    }
+    // Summoning circles are 2x2 NoBuild cells; the engine's NoBuild
+    // sprite would otherwise render the crystal-pattern tile under the
+    // circle, bleeding through the circle sprite's transparent areas.
+    for (const c of this.mapDef?.summoningCircles ?? []) {
+      for (let dc = 0; dc <= 1; dc++) {
+        for (let dr = 0; dr <= 1; dr++) {
+          extraSkipCells.push({ col: c.col + dc, row: c.row + dr });
         }
       }
     }
