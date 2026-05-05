@@ -120,9 +120,13 @@ export class SendManager {
         creep.spawnOwnerIndex = entry.spawnOwnerIndex;
         creep.isSend = true;
         // M10 finale: when a send-path override is active, sends are
-        // the player's own (decoy fodder). Mark friendly so player
-        // towers skip them. CPU defender towers still target them.
-        if (this.sendPathOverride) creep.isFriendly = true;
+        // the player's own (decoy fodder). ownerIndex = the spawning
+        // player slot (defaults to 0 for single-player); player towers
+        // skip them via the same-team filter, CPU defenders target them.
+        if (this.sendPathOverride) {
+          creep.ownerIndex = entry.spawnOwnerIndex ?? 0;
+          creep.goalMode = 'attacking';
+        }
         creeps.push(creep);
       }
       this.spawnTimer = this.spawnInterval;

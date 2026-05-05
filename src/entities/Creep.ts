@@ -45,17 +45,36 @@ export class Creep {
    * where every creep belongs to the defender themselves).
    */
   spawnOwnerIndex: number | null = null;
+  /** Owner of this creep. Drives the universal "same-team-can't-target"
+   *  rule (Tower.findTarget skips creeps with the same ownerIndex as
+   *  the tower; sends/creeps with goalMode='attacking' skip towers
+   *  with the same owner). Conventions:
+   *    -  0..3 = a Player slot (single-player → 0; circle co-op → 0..3)
+   *    -  99   = CPU / enemy waves (default for spawned wave creeps)
+   *  Defaults to 99 so any spawn path that doesn't explicitly set
+   *  ownership produces an "enemy" creep — preserving existing
+   *  behaviour without per-call edits. */
+  ownerIndex: number = 99;
   /** M10 finale (also useful for any future "decoy" mode): true when
    *  the creep was spawned by SendManager as a player send (not a wave
-   *  creep). CPU defender towers in M10 prefer sends in their target
-   *  priority list (sends > non-send creeps > hero). */
+   *  creep). Distinct from ownerIndex — `isSend` is the SOURCE
+   *  (queued via the send panel) while ownerIndex is the TEAM. */
   isSend: boolean = false;
-  /** M10 finale — true when this creep is "friendly" to the player's
-   *  towers (i.e., the player's send used as decoy fodder for the CPU
-   *  lattice). Player towers skip these in their target search; CPU
-   *  defender towers still shoot them. Set by SendManager when a
-   *  send-path override is active (finale mode). */
-  isFriendly: boolean = false;
+  /** Goal mode (PRD per user spec):
+   *    'pathing'   = walk to exit point along the existing path.
+   *    'attacking' = pathfind to the nearest enemy-owned destructible
+   *                  tower, attack until dead, repeat. Falls back to
+   *                  'pathing' once no enemy towers remain.
+   *  Defaults to 'pathing' — the existing single-direction behaviour. */
+  goalMode: 'pathing' | 'attacking' = 'pathing';
+  /** Attack range (in pixels) for goalMode='attacking'. Standard sends
+   *  / wave creeps are melee-ish (~40 px = 1.4 tiles). Flying / mage
+   *  variants can override to attack from further away. */
+  attackRange: number = 40;
+  /** @deprecated — use `ownerIndex !== 99` instead. Kept as a
+   *  compatibility shim so older code paths don't crash mid-refactor;
+   *  reads true when the creep is on a Player team. */
+  get isFriendly(): boolean { return this.ownerIndex >= 0 && this.ownerIndex < 99; }
   /**
    * Plan 12 v2 — Anti-magic Wagon shield. Number of incoming damage
    * instances this creep can fully absorb before normal damage applies.

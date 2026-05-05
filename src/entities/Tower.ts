@@ -570,26 +570,14 @@ export class Tower {
   findTarget(creeps: Creep[]): Creep | null {
     if (this._frameTargetValid) return this._frameTarget;
 
-    // M10 finale: destructible CPU defender towers ONLY target player
-    // sends (the hero is wired separately via FinaleController). Wave
-    // creeps are the cabal's own (same team) so the towers ignore them.
-    // Player towers' targeting is unchanged below.
-    if (this.destructible) {
-      let nearest: Creep | null = null;
-      let nearestSq = Infinity;
-      for (const creep of creeps) {
-        if (!creep.alive || creep.reached) continue;
-        if (!creep.isSend) continue;  // skip wave creeps — same team
-        const dx = creep.x - this.x;
-        const dy = creep.y - this.y;
-        const distSq = dx * dx + dy * dy;
-        if (distSq > this.range * this.range) continue;
-        if (distSq < nearestSq) { nearest = creep; nearestSq = distSq; }
-      }
-      this._frameTarget = nearest;
-      this._frameTargetValid = true;
-      return nearest;
-    }
+    // Universal same-team filter (PRD post-M10-v4): a tower never
+    // targets a creep that shares its `ownerIndex`. Replaces the
+    // earlier `destructible`-branch hack and the `isFriendly` check
+    // for player towers — both fall out of ownership semantics now.
+    // Conventions: player towers default ownerIndex undefined → treated
+    // as 0 (player team). CPU defenders use 99. Wave creeps default
+    // to 99 (CPU team), player sends to the spawning player slot.
+    const myOwner = this.ownerIndex ?? 0;
 
     const mode: TargetingMode = this.typeDef.targeting ?? 'first';
     const weakestMode = mode === 'weakest';
@@ -598,10 +586,11 @@ export class Tower {
 
     for (const creep of creeps) {
       if (!creep.alive || creep.reached) continue;
-      // M10 finale: player towers skip "friendly" creeps (the player's
-      // own sends used as decoy fodder for the CPU lattice). CPU
-      // towers handled in the destructible branch above.
-      if (creep.isFriendly) continue;
+      // Same-team skip — covers M10's player-skip-sends + CPU-skip-waves
+      // in one rule. For pre-M10 missions every wave creep defaults to
+      // ownerIndex = 99, every player tower → 0, so the comparison is
+      // 0 !== 99 → tower fires (preserves legacy behaviour).
+      if (creep.ownerIndex === myOwner) continue;
       const dx = creep.x - this.x;
       const dy = creep.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
