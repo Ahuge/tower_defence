@@ -18,9 +18,10 @@ await import('../src/systems/bots/brains/SynergyBrain.ts');
 await import('../src/systems/bots/brains/UltimateBrain.ts');
 await import('../src/systems/bots/brains/AOEFocusBrain.ts');
 await import('../src/systems/bots/brains/NatureBrain.ts');
+await import('../src/systems/bots/brains/MazingBrain.ts');
 
 const FACTIONS = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'];
-const BRAINS = ['balanced', 'greedy', 'rush', 'econ', 'synergy', 'ultimate', 'aoe_focus', 'nature'];
+const BRAINS = ['balanced', 'greedy', 'rush', 'econ', 'synergy', 'ultimate', 'aoe_focus', 'nature', 'mazing'];
 const N = 50;
 
 console.log(`brain × faction snapshot · normal · n=${N}`);
@@ -37,6 +38,7 @@ for (const faction of FACTIONS) {
   for (const brain of BRAINS) {
     delete process.env.BALANCED_BRAIN_PARAMS;
     delete process.env.GREEDY_BRAIN_PARAMS;
+    delete process.env.MAZING_BRAIN_PARAMS;
     let wins = 0;
     for (let i = 0; i < N; i++) {
       const r = await runMatch({
