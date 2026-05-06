@@ -119,9 +119,12 @@ export class MazingScorer {
       // No paths means the map state is invalid (or the bot has been
       // called pre-init). Don't waste a beam search on it; return
       // an empty plan that bestCell() naturally rejects.
-      this.cachedPlan = { bestPlan: [], scoreHistory: [], finalBeam: [] };
+      this.cachedPlan = {
+        bestPlan: [], scoreHistory: [], finalBeam: [],
+        bestRoleScore: { 'wall': 0, 'dps-single': 0, 'dps-splash': 0, 'slow': 0, 'aura': 0, 'utility': 0 },
+      };
     } else {
-      this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, this.opts);
+      this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, ctx.towerPool, this.opts);
     }
     this.cacheGridVersion = ctx.grid.version;
     this.cacheWave = ctx.wave;

@@ -1165,10 +1165,18 @@ export class GameScene extends Phaser.Scene {
             return result.refund;
           },
         );
+        // URL ?botBrain=mazing (or any registered brain id) overrides
+        // the default so playtesters can compare brains live without
+        // a code change. Falls through to 'balanced' when absent.
+        const botBrainId = (() => {
+          if (typeof window === 'undefined') return 'balanced';
+          const p = new URLSearchParams(window.location.search).get('botBrain');
+          return p && p.length > 0 ? p : 'balanced';
+        })();
         for (const botIndex of this.circle.botSlots) {
           const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
           const zone = circleMapDef.zones?.[botIndex];
-          if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, 'balanced');
+          if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, botBrainId);
         }
 
         // Route per-hit gold (gold_on_hit / jackpot) from bot-owned

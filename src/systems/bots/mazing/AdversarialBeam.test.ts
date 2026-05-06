@@ -39,7 +39,7 @@ beforeEach(() => seedRng(42));
 describe('AdversarialBeam — runBeam', () => {
   it('produces a non-empty plan on an open grid', () => {
     const g = openGrid(10, 7);
-    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], DEFAULT_BEAM_OPTIONS);
+    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], [], DEFAULT_BEAM_OPTIONS);
     expect(result.bestPlan.length).toBeGreaterThan(0);
   });
 
@@ -49,7 +49,7 @@ describe('AdversarialBeam — runBeam', () => {
     expect(baseline).not.toBeNull();
     const baselineLen = baseline!.path.length;
 
-    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], DEFAULT_BEAM_OPTIONS);
+    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], [], DEFAULT_BEAM_OPTIONS);
 
     // Apply the plan to the grid and re-measure.
     for (const c of result.bestPlan) {
@@ -62,7 +62,7 @@ describe('AdversarialBeam — runBeam', () => {
 
   it('never strands the goal — every cell in the plan keeps reachability', () => {
     const g = openGrid(8, 5);
-    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], DEFAULT_BEAM_OPTIONS);
+    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], [], DEFAULT_BEAM_OPTIONS);
     for (const c of result.bestPlan) g.cells[c.row][c.col] = CellType.Tower;
     const after = findPathWithMetrics(g, g.entry, g.exit);
     expect(after).not.toBeNull();
@@ -70,7 +70,7 @@ describe('AdversarialBeam — runBeam', () => {
 
   it('score history is monotone non-decreasing across waves', () => {
     const g = openGrid(10, 7);
-    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], DEFAULT_BEAM_OPTIONS);
+    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], [], DEFAULT_BEAM_OPTIONS);
     // The beam keeps the best so far; later waves can't produce a
     // worse top-of-beam unless they failed to mutate (in which case
     // the prior score is recorded). Allow one strict-equality but no
@@ -83,10 +83,10 @@ describe('AdversarialBeam — runBeam', () => {
   it('seeded rng makes runs reproducible', () => {
     const g1 = openGrid(8, 5);
     seedRng(123);
-    const r1 = runBeam(g1, allEmpty(g1), [{ start: g1.entry, end: g1.exit }], DEFAULT_BEAM_OPTIONS);
+    const r1 = runBeam(g1, allEmpty(g1), [{ start: g1.entry, end: g1.exit }], [], DEFAULT_BEAM_OPTIONS);
     const g2 = openGrid(8, 5);
     seedRng(123);
-    const r2 = runBeam(g2, allEmpty(g2), [{ start: g2.entry, end: g2.exit }], DEFAULT_BEAM_OPTIONS);
+    const r2 = runBeam(g2, allEmpty(g2), [{ start: g2.entry, end: g2.exit }], [], DEFAULT_BEAM_OPTIONS);
     expect(r1.bestPlan).toEqual(r2.bestPlan);
   });
 
@@ -99,7 +99,7 @@ describe('AdversarialBeam — runBeam', () => {
         if (g.cells[r][c] === CellType.Empty) restricted.push({ col: c, row: r });
       }
     }
-    const result = runBeam(g, restricted, [{ start: g.entry, end: g.exit }], DEFAULT_BEAM_OPTIONS);
+    const result = runBeam(g, restricted, [{ start: g.entry, end: g.exit }], [], DEFAULT_BEAM_OPTIONS);
     for (const cell of result.bestPlan) {
       const inPool = restricted.some(c => c.col === cell.col && c.row === cell.row);
       expect(inPool).toBe(true);
@@ -112,7 +112,7 @@ describe('AdversarialBeam — runBeam', () => {
       { start: g.entry, end: g.exit },
       { start: { col: 0, row: 0 }, end: { col: 9, row: 6 } },
     ];
-    const result = runBeam(g, allEmpty(g), segs, DEFAULT_BEAM_OPTIONS);
+    const result = runBeam(g, allEmpty(g), segs, [], DEFAULT_BEAM_OPTIONS);
     expect(result.bestPlan.length).toBeGreaterThan(0);
   });
 
@@ -120,7 +120,7 @@ describe('AdversarialBeam — runBeam', () => {
     const g = openGrid(8, 5);
     const before = g.cells.map(r => r.slice());
     const beforeVersion = g.version;
-    runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], DEFAULT_BEAM_OPTIONS);
+    runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], [], DEFAULT_BEAM_OPTIONS);
     for (let r = 0; r < g.rows; r++) {
       for (let c = 0; c < g.cols; c++) {
         expect(g.cells[r][c]).toBe(before[r][c]);
@@ -131,14 +131,14 @@ describe('AdversarialBeam — runBeam', () => {
 
   it('returns an empty plan when no candidates are available', () => {
     const g = openGrid(6, 5);
-    const result = runBeam(g, [], [{ start: g.entry, end: g.exit }], DEFAULT_BEAM_OPTIONS);
+    const result = runBeam(g, [], [{ start: g.entry, end: g.exit }], [], DEFAULT_BEAM_OPTIONS);
     expect(result.bestPlan).toEqual([]);
   });
 
   it('tiny beam + few mutations still yields a valid plan', () => {
     const g = openGrid(8, 5);
     const opts: BeamOptions = { ...DEFAULT_BEAM_OPTIONS, beamWidth: 1, mutationsPerState: 3, waves: 4 };
-    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], opts);
+    const result = runBeam(g, allEmpty(g), [{ start: g.entry, end: g.exit }], [], opts);
     for (const c of result.bestPlan) g.cells[c.row][c.col] = CellType.Tower;
     expect(findPathWithMetrics(g, g.entry, g.exit)).not.toBeNull();
   });
