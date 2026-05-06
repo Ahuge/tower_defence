@@ -109,7 +109,9 @@ function FactionsTab() {
 // ---------------------------------------------------------------------------
 
 function TowersTab() {
-  const factionIds = FACTION_ORDER.filter(fId => fId !== 'random');
+  // Skip both meta-factions: chaos has no fixed tower list, random
+  // is just a picker token.
+  const factionIds = FACTION_ORDER.filter(fId => fId !== 'chaos' && fId !== 'random');
   return (
     <div>
       {factionIds.map(fId => {

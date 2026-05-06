@@ -20,13 +20,28 @@ import { preloadCreepSprites } from './systems/CreepSpriteManager';
 import { preheatIcons } from './ui/game/IconPreheat';
 import { TutorialManager } from './systems/Tutorial/TutorialManager';
 import { installPlatformBridge } from './systems/platform';
+import { Analytics } from './systems/AnalyticsClient';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
 import './systems/traits/CreepTraitHandlers';
 
+// Eager-load the live-capture module so window.__learningCapture is
+// available from the menu (before any match starts). Module is
+// otherwise no-op until capture is enabled via URL param or
+// localStorage flag.
+import './systems/learning/LiveCapture';
+
 // Initialize responsive detection before Phaser
 ResponsiveManager.init();
+
+// First analytics event — tells us a session started, what platform,
+// and the viewport shape. Fires before any scene loads.
+Analytics.track('app_boot', {
+  viewportW: window.innerWidth || 0,
+  viewportH: window.innerHeight || 0,
+  touch: 'ontouchstart' in window || (navigator?.maxTouchPoints ?? 0) > 0,
+});
 
 const gameHeight = ResponsiveManager.canvasHeight();
 

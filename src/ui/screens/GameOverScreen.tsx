@@ -65,6 +65,12 @@ export function GameOverScreen({ data }: Props) {
   const frontierROI = stats && stats.frontierSpent > 0
     ? ((stats.frontierEarned / stats.frontierSpent) * 100).toFixed(0)
     : null;
+  // Sends ROI uses sendsEarned (cumulative gold paid out from per-
+  // wave send bonuses) ÷ sendsSpent. sendsIncome is the +g/wave RATE
+  // and is shown separately as a dial of ongoing flow at game end.
+  const sendsROI = stats && stats.sendsSpent > 0
+    ? ((stats.sendsEarned / stats.sendsSpent) * 100).toFixed(0)
+    : null;
   const hasFrontier = stats && (stats.frontierSpent > 0 || stats.frontierEarned > 0);
   const hasSends = stats && (stats.sendsSpent > 0 || stats.sendsIncome > 0);
 
@@ -147,6 +153,8 @@ export function GameOverScreen({ data }: Props) {
             {hasFrontier && <Stat label="Frontier Returned" value={`${stats.frontierEarned.toLocaleString()}g`} color="var(--jewel-teal)" />}
             {frontierROI && <Stat label="Frontier ROI" value={`${frontierROI}%`} color={Number(frontierROI) >= 100 ? 'var(--jewel-teal)' : 'var(--jewel-red)'} />}
             {hasSends && <Stat label="Sends Spent" value={`${stats.sendsSpent.toLocaleString()}g`} />}
+            {hasSends && <Stat label="Sends Earned" value={`${stats.sendsEarned.toLocaleString()}g`} color="var(--jewel-teal)" />}
+            {sendsROI && <Stat label="Sends ROI" value={`${sendsROI}%`} color={Number(sendsROI) >= 100 ? 'var(--jewel-teal)' : 'var(--jewel-red)'} />}
             {hasSends && <Stat label="Send Income" value={`+${stats.sendsIncome.toLocaleString()}g/w`} color="var(--jewel-teal)" />}
             {totalTowerGold > 0 && <Stat label="Tower Gold" value={`+${totalTowerGold.toLocaleString()}g`} color="var(--gold)" />}
             {stats.essenceGeneratorsBuilt > 0 && <Stat label="Generators Built" value={String(stats.essenceGeneratorsBuilt)} color="#44ddff" />}

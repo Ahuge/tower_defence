@@ -1,4 +1,14 @@
-export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'random';
+/**
+ * `chaos` — the old "random rotating pool" faction. Each wave the
+ *           tower selection rotates among 6 random towers across all
+ *           factions. Always-unlocked, never resolved further.
+ *
+ * `random` — UI picker token. Resolved at faction-select time to one
+ *            of the 11 real factions (everyone EXCEPT `chaos`). Once
+ *            resolved, downstream code only ever sees a real faction
+ *            id; `random` itself never reaches GameScene.
+ */
+export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'chaos' | 'random';
 
 export interface Faction {
   id: FactionId;
@@ -98,17 +108,37 @@ export const FACTIONS: Record<FactionId, Faction> = {
     secondaryColor: 0xffee88,
     towerIds: ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo'],
   },
-  random: {
-    id: 'random',
-    name: 'Random',
+  chaos: {
+    id: 'chaos',
+    name: 'Chaos',
     description: '6 random towers each wave from all factions. Adapt or die.',
     primaryColor: 0xcccccc,
     secondaryColor: 0xffffff,
     towerIds: [], // Populated dynamically each wave
   },
+  random: {
+    id: 'random',
+    name: 'Random',
+    description: 'Roll one of the 11 real factions at match start. Surprise.',
+    primaryColor: 0xff44ff,
+    secondaryColor: 0xff88ff,
+    towerIds: [], // Resolved on selection — never used directly.
+  },
 };
 
-export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'random'];
+export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'chaos', 'random'];
+
+/** Real, playable factions that resolve to a deterministic tower pool.
+ *  Excludes `chaos` (rotating pool meta-faction) and `random` (the
+ *  UI picker token). Used by the random-faction roller and by
+ *  loops that need to skip meta-factions. */
+export const REAL_FACTIONS: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'];
+
+/** Pick one of the 11 real factions uniformly at random. Used to
+ *  resolve the `'random'` picker token before any match logic runs. */
+export function rollRandomRealFaction(): FactionId {
+  return REAL_FACTIONS[Math.floor(Math.random() * REAL_FACTIONS.length)];
+}
 
 export function getFaction(id: FactionId): Faction {
   return FACTIONS[id];

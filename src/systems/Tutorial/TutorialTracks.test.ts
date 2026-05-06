@@ -23,7 +23,7 @@ const REQUIRED_TRACK_IDS = [
 /** Every playable faction needs an auto-primer track, keyed `faction:<id>`. */
 const REQUIRED_FACTION_IDS = [
   'arcane', 'mechanical', 'nature', 'void', 'military', 'aliens',
-  'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'random',
+  'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'chaos',
 ] as const;
 
 /** Every mode except `standard` (intentionally omitted — the basics tour

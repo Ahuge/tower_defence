@@ -47,7 +47,7 @@ android {
         // / alpha / beta / production release that actually goes up.
         // Debug sideload builds don't need bumps; Play Console is
         // the only thing that enforces monotonicity.
-        versionCode 3
+        versionCode 4
         // versionName shows up in Android Settings → Apps and in
         // Play Console uploads. Stamping the short SHA (+ "-dirty"
         // suffix when the working tree has uncommitted changes)

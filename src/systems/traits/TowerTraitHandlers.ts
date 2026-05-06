@@ -1,5 +1,6 @@
 import { TILE_SIZE, gridX, gridY } from '../../config';
 import { calculateDamage } from '../DamageCalculator';
+import { rng } from '../Rng';
 import {
   registerDelivery, registerDamageMod, registerFireRateMod,
   registerHitEffect, registerOnFire, registerTowerUpdate,
@@ -73,7 +74,7 @@ function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: U
           gfx.fillStyle(venom, 0.85);
           for (let i = 0; i < 6 + lv * 2; i++) {
             const a = (i / (6 + lv * 2)) * Math.PI * 2;
-            const r = 3 + Math.random() * (3 + lv);
+            const r = 3 + rng() * (3 + lv);
             gfx.fillCircle(target.x + Math.cos(a) * r, target.y + Math.sin(a) * r, 1 + (i % 2));
           }
           gfx.fillStyle(toxic, 0.7);
@@ -309,7 +310,7 @@ registerDelivery('pierce_delivery', (trait: Trait, ctx: HitContext) => {
 registerDamageMod('damage_variance', (trait: Trait, damage: number, _ctx: HitContext) => {
   const min = trait.min ?? 0.5;
   const max = trait.max ?? 1.5;
-  return Math.round(damage * (min + Math.random() * (max - min)));
+  return Math.round(damage * (min + rng() * (max - min)));
 });
 
 registerDamageMod('damage_mult', (trait: Trait, damage: number, _ctx: HitContext) => {
@@ -321,7 +322,7 @@ registerDamageMod('crit_chance', (trait: Trait, damage: number, ctx: HitContext)
   const baseChance = trait.chance ?? 0.25;
   const chance = Math.min(0.8, baseChance + 0.03 * (ctx.towerLevel - 1));
   const multiplier = trait.multiplier ?? 3;
-  if (Math.random() < chance) {
+  if (rng() < chance) {
     return Math.round(damage * multiplier);
   }
   return damage;
@@ -330,14 +331,15 @@ registerDamageMod('crit_chance', (trait: Trait, damage: number, ctx: HitContext)
 registerDamageMod('jackpot', (trait: Trait, damage: number, ctx: HitContext) => {
   // Kill chance scales: +2% per level above 1.
   // Bosses are genuinely hard to jackpot — the instant-kill slice
-  // is halved against them so Gambler / Oblivion still land the
-  // occasional lucky crit but can't trivially erase a boss wave.
-  // The miss slice stays full — no "I'm a boss, please whiff" perk.
+  // is quartered against them (×0.25) so Gambler / Oblivion still
+  // land the occasional lucky crit but can't trivially erase a
+  // boss wave. Miss slice stays full — no "I'm a boss, please
+  // whiff" perk.
   const baseKill = trait.killChance ?? 0.04;
   const levelKill = Math.min(0.5, baseKill + 0.02 * (ctx.towerLevel - 1));
-  const killChance = ctx.target.isBoss ? levelKill * 0.5 : levelKill;
+  const killChance = ctx.target.isBoss ? levelKill * 0.25 : levelKill;
   const missChance = trait.missChance ?? 0.25;
-  const roll = Math.random();
+  const roll = rng();
   if (roll < killChance) {
     return 99999;
   } else if (roll < killChance + missChance) {
@@ -420,7 +422,22 @@ registerHitEffect('slow_on_hit', (trait: Trait, ctx: HitContext) => {
 });
 
 registerHitEffect('gold_on_hit', (trait: Trait, ctx: HitContext) => {
-  ctx.goldEarned += (trait.amount ?? 1) * ctx.hitTargets.length;
+  // `chance` is optional — when set, each hit has a
+  // `chance` probability of paying out `amount`. Preserves
+  // faction identity (Void = gambling) and lets balance tune
+  // EV without changing trait call-sites.
+  //
+  // Roll is per-target so the hit on a single splashed creep
+  // doesn't collapse everyone else's payout to 0.
+  const amount = trait.amount ?? 1;
+  const chance = trait.chance ?? 1;
+  if (chance >= 1) {
+    ctx.goldEarned += amount * ctx.hitTargets.length;
+    return;
+  }
+  for (let i = 0; i < ctx.hitTargets.length; i++) {
+    if (rng() < chance) ctx.goldEarned += amount;
+  }
 });
 
 registerHitEffect('burn_dot', (trait: Trait, ctx: HitContext) => {
@@ -434,9 +451,13 @@ registerHitEffect('burn_dot', (trait: Trait, ctx: HitContext) => {
 });
 
 registerHitEffect('poison_dot', (trait: Trait, ctx: HitContext) => {
-  // % scales: +15% per level above 1
+  // % scales: +scalePerLevel per level above 1 (default 15%; trait
+  // can override — e.g. nature_spore wants +25% for the 2% / 2.5%
+  // / 3% per-level cadence its design calls for, while
+  // nature_viper / aliens stay at the gentler default).
   const basePercent = trait.percentPerSec ?? 0.02;
-  const percent = levelScale(basePercent, ctx.towerLevel, 0.15);
+  const scale = (trait as any).scalePerLevel ?? 0.15;
+  const percent = levelScale(basePercent, ctx.towerLevel, scale);
   const duration = trait.duration ?? 3000;
   for (const target of ctx.hitTargets) {
     (target as any).statusEffects?.apply('poison', duration, percent);
@@ -488,7 +509,7 @@ registerHitEffect('root_on_hit', (trait: Trait, ctx: HitContext) => {
   const baseDuration = trait.duration ?? 800;
   const duration = levelScale(baseDuration, ctx.towerLevel, 0.15);
   for (const target of ctx.hitTargets) {
-    if (Math.random() < chance) {
+    if (rng() < chance) {
       (target as any).statusEffects?.apply('root', duration, 1);
     }
   }
@@ -498,8 +519,67 @@ registerHitEffect('root_on_hit', (trait: Trait, ctx: HitContext) => {
 // Tower update traits (per-frame)
 // ============================================================
 
+/** Accumulate a per-frame buff bonus on `target`. Multiple buff
+ *  sources adjacent to the same target (e.g. two Blossoms next to
+ *  one Resonator) ADD their contributions instead of overwriting.
+ *
+ *  Tagging is by `ctx.time` — the first call this frame finds
+ *  either no existing trait or an existing one with `_setAt` from
+ *  a prior frame and resets to fresh. Subsequent same-frame calls
+ *  see `_setAt === ctx.time` and add. TTL=200 keeps the trait
+ *  alive across the gap between adjacency-update ticks. */
+function accumulateBuff(target: any, id: string, bonus: number, time: number): void {
+  let existing = target.traits.find((t: Trait) => t.id === id) as any;
+  if (!existing || existing._setAt !== time) {
+    if (existing) {
+      existing.bonus = bonus;
+      existing._ttl = 200;
+      existing._setAt = time;
+    } else {
+      target.traits.push({ id, bonus, _ttl: 200, _setAt: time } as any);
+    }
+  } else {
+    // Same frame, additional source — accumulate.
+    existing.bonus += bonus;
+    existing._ttl = 200;
+  }
+}
+
+/** Non-stacking aura: when multiple sources cover the same target in
+ *  one frame, keep the *best* contribution (highest `score`) instead
+ *  of last-write-wins. Same `_setAt = time` tag as accumulateBuff so
+ *  the first call each frame resets the bucket and later calls compare
+ *  against it; `_ttl=200` carries the buff between adjacency ticks.
+ *
+ *  `fields` carries the trait's payload (bonus / chance / multiplier /
+ *  etc.). `score` is the comparison key — usually `bonus` for plain
+ *  percentage buffs, or `chance` for crit-style auras. */
+function setBestBuff(target: any, id: string, score: number, fields: Record<string, any>, time: number): void {
+  let existing = target.traits.find((t: Trait) => t.id === id) as any;
+  if (!existing || existing._setAt !== time) {
+    if (existing) {
+      Object.assign(existing, fields);
+      existing._ttl = 200;
+      existing._setAt = time;
+      existing._bestScore = score;
+    } else {
+      target.traits.push({ id, ...fields, _ttl: 200, _setAt: time, _bestScore: score } as any);
+    }
+  } else if (score > (existing._bestScore ?? -Infinity)) {
+    Object.assign(existing, fields);
+    existing._bestScore = score;
+    existing._ttl = 200;
+  } else {
+    existing._ttl = 200;
+  }
+}
+
 registerTowerUpdate('adjacency_buff', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  // Percentage-based: damagePercent and ratePercent
+  // Percentage-based: damagePercent and ratePercent. Multiple
+  // adjacency_buff sources around the same tower stack — two
+  // Blossoms = two stacks. Tagged by ctx.time so the first source
+  // each frame resets the bucket and subsequent same-frame sources
+  // accumulate.
   const dmgPercent = trait.damagePercent ?? 0.15;
   const ratePercent = trait.ratePercent ?? 0.08;
 
@@ -508,21 +588,15 @@ registerTowerUpdate('adjacency_buff', (trait: Trait, tower: any, ctx: UpdateCont
     const dc = Math.abs(other.col - tower.col);
     const dr = Math.abs(other.row - tower.row);
     if (dc <= 1 && dr <= 1) {
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_damage_buff',
-        bonus: Math.round(other.damage * dmgPercent * tower.level),
-        _ttl: 200,
-      });
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_rate_buff',
-        bonus: ratePercent * tower.level, // percentage
-        _ttl: 200,
-      });
+      accumulateBuff(other, '_adj_damage_buff', Math.round(other.damage * dmgPercent * tower.level), ctx.time);
+      accumulateBuff(other, '_adj_rate_buff', ratePercent * tower.level, ctx.time);
     }
   }
 });
 
 registerTowerUpdate('spell_amp', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  // Same accumulating pattern as adjacency_buff — multiple Mana
+  // Drains stacking on one tower compound their amp.
   const ampPercent = trait.ampPercent ?? 0.3;
 
   for (const other of ctx.allTowers) {
@@ -530,11 +604,7 @@ registerTowerUpdate('spell_amp', (trait: Trait, tower: any, ctx: UpdateContext) 
     const dc = Math.abs(other.col - tower.col);
     const dr = Math.abs(other.row - tower.row);
     if (dc <= 1 && dr <= 1) {
-      addOrRefreshTrait(other.traits, {
-        id: '_spell_amp_buff',
-        bonus: ampPercent * tower.level,
-        _ttl: 200,
-      });
+      accumulateBuff(other, '_spell_amp_buff', ampPercent * tower.level, ctx.time);
     }
   }
 });
@@ -559,11 +629,10 @@ registerTowerUpdate('overclock_buff', (trait: Trait, tower: any, ctx: UpdateCont
   }
 
   if (bestTower) {
-    addOrRefreshTrait(bestTower.traits, {
-      id: '_overclock_buff',
-      bonus: Math.min(0.6, rateReduction * tower.level), // cap at 60%
-      _ttl: 200,
-    });
+    // Non-stacking buff: when two Quickeners pick the same target,
+    // the higher-bonus one wins instead of last-write-wins.
+    const bonus = Math.min(0.6, rateReduction * tower.level); // cap at 60%
+    setBestBuff(bestTower, '_overclock_buff', bonus, { bonus }, ctx.time);
   }
 });
 
@@ -700,16 +769,12 @@ registerTowerUpdate('commander_aura', (trait: Trait, tower: any, ctx: UpdateCont
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= buffRange) {
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_damage_buff',
-        bonus: Math.round(other.damage * dmgPercent * tower.level),
-        _ttl: 200,
-      });
-      addOrRefreshTrait(other.traits, {
-        id: '_adj_rate_buff',
-        bonus: ratePercent * tower.level,
-        _ttl: 200,
-      });
+      // Non-stacking: two overlapping Commanders pick the strongest
+      // bonus rather than overwriting per-frame.
+      const dmgBonus = Math.round(other.damage * dmgPercent * tower.level);
+      const rateBonus = ratePercent * tower.level;
+      setBestBuff(other, '_adj_damage_buff', dmgBonus, { bonus: dmgBonus }, ctx.time);
+      setBestBuff(other, '_adj_rate_buff', rateBonus, { bonus: rateBonus }, ctx.time);
     }
   }
 });
@@ -795,7 +860,7 @@ registerTowerUpdate('life_on_kill', (trait: Trait, tower: any, ctx: UpdateContex
     const dx = creep.x - tower.x;
     const dy = creep.y - tower.y;
     if (dx * dx + dy * dy > range * range) continue;
-    if (Math.random() < chance) {
+    if (rng() < chance) {
       tower._livesEarned = (tower._livesEarned ?? 0) + 1;
     }
   }
@@ -873,6 +938,10 @@ registerTowerUpdate('firewall_link', (trait: Trait, tower: any, ctx: UpdateConte
     const perpY = cy - proj * ny;
     const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
     if (perpDist <= TILE_SIZE * 0.6) {
+      // Fractional per-frame damage is fine: Creep.takeDamage now
+      // accumulates sub-1-hp slivers into a debt and flushes only
+      // the integer part, so high refresh rates no longer zero this
+      // out at the round() step.
       creep.takeDamage(damage);
       tower.damageDealt += damage;
       // Heavy slow while crossing the beam
@@ -955,11 +1024,11 @@ registerTowerUpdate('faction_speed_aura', (trait: Trait, tower: any, ctx: Update
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      addOrRefreshTrait(other.traits, {
-        id: '_faction_rate_buff',
-        bonus: rateBonus * tower.level,
-        _ttl: 200,
-      });
+      // Non-stacking: a higher-level Spawner overlapping a lower-level
+      // one keeps the stronger rate buff instead of whichever fires
+      // last in the update loop.
+      const bonus = rateBonus * tower.level;
+      setBestBuff(other, '_faction_rate_buff', bonus, { bonus }, ctx.time);
     }
   }
 });
@@ -1097,7 +1166,7 @@ registerTowerUpdate('crit_aura', (trait: Trait, tower: any, ctx: UpdateContext) 
 });
 
 registerDamageMod('_harmonic_crit', (trait: Trait, damage: number, _ctx: HitContext) => {
-  if (Math.random() < (trait.chance ?? 0.15)) {
+  if (rng() < (trait.chance ?? 0.15)) {
     return Math.round(damage * (trait.multiplier ?? 2));
   }
   return damage;

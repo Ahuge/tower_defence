@@ -11,6 +11,33 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-04-23',
+    title: 'Circle Co-op late-game rebalance',
+    changes: [
+      'Coop creep HP ramps +3.5% per wave on top of existing scaling — team DPS was outpacing creep HP late',
+      'Kill gold in coop multiplied by 0.7 (was 1.0). Team total = 70% of solo, each player share = 35% after the 50/50 split',
+      'Frontier income multiplier = 1.5× in coop — applies to passive income, per-wave bonuses, overcharge bursts, and grow harvests',
+      'Solo / 1v1 / endless scaling is unchanged — every knob defaults to a no-op outside coop',
+    ],
+  },
+  {
+    date: '2026-04-23',
+    title: 'CPU brain: must have a fighting tower before buying frontier/sends',
+    changes: [
+      'FIX: BalancedBrain rolled meta-economy at the top of every between-waves tick — on wave 0, the 70% commit chance meant the bot could blow its budget on frontier before placing any tower',
+      'Added a gate: meta economy (frontier + sends) only fires once the bot owns at least one non-wall tower — a wall-only zone has no DPS either, so walls alone don\'t count',
+    ],
+  },
+  {
+    date: '2026-04-23',
+    title: 'Jackpot boss resistance tuned: halve → quarter',
+    changes: [
+      'Follow-up to the earlier Gambler pass — ×0.5 boss multiplier still felt too generous in practice',
+      'Kill slice now ×0.25 vs bosses. Gambler: 4%/1% (was 4%/2%). Oblivion: 15%/3.75% (was 15%/7.5%)',
+      'OpponentSimulation shadow sim mirrors the same quartering for 1v1 CPU',
+    ],
+  },
+  {
+    date: '2026-04-23',
     title: 'Circle Co-op roster → DOM panel',
     changes: [
       'Roster (kills, gold, towers, lives, timer) moved from Phaser Text to a Preact component so font sizes scale on phone via UIScale',
@@ -29,12 +56,12 @@ const ENTRIES: Entry[] = [
   },
   {
     date: '2026-04-23',
-    title: 'Gambler balance: 4% instant kill, halved vs bosses',
+    title: 'Gambler balance: 4% instant kill, quartered vs bosses',
     changes: [
       'Gambler jackpot.killChance dropped from 8% to 4% — 15g + fast fire rate made the 8% roll too cheap',
-      'NEW universal boss resistance on jackpot: kill chance halves when target.isBoss. Gambler: 4%/2%. Oblivion: 15%/7.5%',
+      'NEW universal boss resistance on jackpot: kill chance ×0.25 when target.isBoss. Gambler: 4%/1%. Oblivion: 15%/3.75%',
       'Miss chance unchanged — no "please whiff" perk for bosses',
-      'HitTarget interface gained isBoss. Shadow sim in OpponentSimulation mirrors the same halving for 1v1 CPU',
+      'HitTarget interface gained isBoss. Shadow sim in OpponentSimulation mirrors the same quartering for 1v1 CPU',
     ],
   },
   {

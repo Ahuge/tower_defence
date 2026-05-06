@@ -89,9 +89,13 @@ export class BattleMode implements GameMode {
 
   onWaveCleared(_waveNum: number): void {
     // Wave income (base + send bonuses — no frontier in battle mode)
+    const breakdown = this.ctx.incomeMgr.getBreakdown();
     const income = this.ctx.incomeMgr.collectWaveIncome();
     this.ctx.economy.addGold(income);
     this.ctx.statsTracker.recordGoldEarned(income);
+    if (breakdown.sends > 0) {
+      this.ctx.statsTracker.recordSendsEarned(breakdown.sends);
+    }
   }
 
   canStartWave(): boolean {

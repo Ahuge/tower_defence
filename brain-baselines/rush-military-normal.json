@@ -1,0 +1,14 @@
+{
+  "brain": "rush",
+  "faction": "military",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-26",
+  "method": "default config (no tuning required) — surfaced via brain-coverage scan",
+  "results": {
+    "winnerWinRate": 1.0,
+    "n": 50,
+    "totalEvaluations": 0,
+    "note": "RushBrain at defaults wins military|normal 50/50. Other 7 brains all 0/50 — military's mobile-unit-heavy roster is uniquely fit for RushBrain's strategy."
+  },
+  "params": {}
+}

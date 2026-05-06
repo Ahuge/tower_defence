@@ -28,3 +28,14 @@ ios/App/App/capacitor.config.json
 ios/capacitor-cordova-ios-plugins/
 ios/DerivedData/
 
+harness-results.json
+harness-results.md
+harness-report.md
+harness-progress.jsonl
+harness-runs/
+/brain-search/
+/ml/training-data/
+/ml/__pycache__/
+/ml/.venv/
+# /ml/captured/ is NOT ignored — those are committed human-played
+# JSONL files (hand-collected positive examples for hard cells).

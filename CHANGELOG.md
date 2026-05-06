@@ -1,6 +1,536 @@
 # Changelog
 
+## 2026-04-28
+
+### Faction picker: Random renamed to Chaos, new "roll a real faction" Random added
+
+The old `random` faction (rotating tower + frontier pool, 6 random towers each wave from all factions) is renamed to **Chaos**. The new `random` is a UI-only picker token — clicking it on the faction-select screen rolls one of the 11 real factions uniformly (Arcane / Mechanical / Nature / Void / Military / Spawn Aliens / Cypherpunk / Infernal / Celestial / Psionic / Harmonic, excluding Chaos itself) and substitutes the resolved id before any downstream screen sees it.
+
+The motivation: `random` previously meant "play the rotating-pool meta-faction" with no way to ask the game to pick a real coherent faction for you — useful when capturing training data across factions you don't want to choose between, or just for variety.
+
+Single-source resolution lives in `FactionSelectScreen.selectFaction` via the new `rollRandomRealFaction()` helper and the `REAL_FACTIONS` constant on `Factions.ts`. Every place that previously special-cased `=== 'random'` for the rotating-pool mechanic now special-cases `=== 'chaos'` instead — `~30 call sites updated across GameScene, FrontierManager, FrontierBuildings, TowerTypes, PlayerInventory, StoreDefinitions, LobbyScene, CircleLobbyScreen, EncyclopediaScreen, HeroSelectScreen, TutorialTracks, SkinEditorApp, and the matching test fixtures. Map-side `'random'` (for randomly-generated maps) is unrelated and untouched.
+
+For training-data captures the resolution happens before the match starts, so each capture file is tagged with the real resolved faction (e.g. cypherpunk, harmonic) — distribution stays clean against the bot harness.
+
+### Human captures v3: dropped modifier-tainted data, banked one clean Cypherpunk match
+
+User flagged that the previous captures (`mech_games_human.jsonl`, `mixed_2026-04-26_human.jsonl`) predate the modifier-lock fix landed yesterday, so they may have been recorded with a DraftModifier active — distribution-tainted relative to the bot harness which always runs `modifier=null`. Dropped both files.
+
+First clean capture: `cypherpunk_2026-04-28_human.jsonl` — one Cypherpunk match (normal, win at W20). 408 rows, decision mix `place:206 / send:198 / sell:4`. The play was distinctive: send-spam economy in W5–W10 (peaked at 59 standard sends in one wave) followed by a 100+ tower flood in W16–W20 (mostly Pings).
+
+**Did not retrain on it.** Both `--human-weight=200` (CLAUDE.md's <500-rows tier) and `--human-weight=50` produced bit-identical regressions of -7 net cells against the prior committed model:
+
+| faction | best of existing | prior LearningBrain | retrain attempt | Δ vs prior |
+|---|---|---|---|---|
+| arcane | greedy 50/50 | 50/50 | 49/50 | -1 |
+| infernal | synergy 50/50 | 50/50 | 48/50 | -2 |
+| cypherpunk | aoe_focus 41/50 | 41/50 | 39/50 | -2 |
+| psionic | psionic 18/50 | 2/50 | 0/50 | -2 |
+| harmonic | harmonic 47/50 | 45/50 | 45/50 | 0 |
+| (other 6 cells unchanged at 50/50 or 0/50) | | | | |
+
+xgboost hit the same local minimum at both weights — the captured strategy is too narrow (single game, single faction, single send type, no frontier) to act as good gradient. Notably it regressed *cypherpunk itself* by 2 cells, which is the canary that the model isn't generalising from this data.
+
+Capture is checked in for the next ingest pass once we have ≥4–5 matches across different factions / strategies. Model on disk is the prior baseline, untouched.
+
+## 2026-04-27
+
+### Balance: Firewall slow 0.35 → 0.50
+
+Firewall's `slowFactor` was 0.35 (creep at 35% speed = 65% slow), one of the heaviest single-source slows in the game. Combined with 35 dps, the beam scales bimodally: a perpendicular crossing deals ~21 damage (fine), but routing the path *along* the beam corridor turns the segment into a 280-damage death zone — broken with clever placement.
+
+Bumped `slowFactor` to 0.50 (50% slow). Beam-along-path damage drops from ~280 → ~196; perpendicular crossing barely changes (~21 → ~17). Still tactically meaningful, no longer a path eraser. DPS untouched for now — re-evaluate after a few sessions.
+
+### Capture-aware Draft: modifiers suppressed when training capture is on
+
+Headless harness runs `modifier: null` for every match in the bot dataset (~515k turns). If a player records gameplay with capture enabled and picks a DraftModifier (Gold Rush +50g, Glass Cannon, Discount, etc.), those rows show up in human captures with state distributions the bot half can't match — the model gradient gets dominated by the no-modifier majority and the modifier dimension carries almost no signal.
+
+Cleanest fix: gate the Draft screen on `isCaptureEnabled()`. When capture is on, replace the modifier picker with a single explanatory card ("Modifiers disabled — toggle capture off in Settings to pick a modifier") and a Continue button that picks `null`. The user can always disable capture if they want to play with a modifier; we just don't pretend those games are useful training data.
+
+If/when the harness grows DraftModifier support and the bot dataset is regenerated 9× to cover each bucket, lift this gate in lockstep. Documented in CLAUDE.md alongside the existing capture-ingest playbook.
+
+### Fix: Firewall (and any tick-based DoT) no-op on high-refresh-rate displays
+
+`Creep.takeDamage` rounded the incoming amount via `Math.round(amount × amp)` and bailed if the result was ≤ 0. On a 60 Hz display the Firewall beam's per-frame damage `35 × 16/1000 ≈ 0.56` rounded to 1 every frame and worked. On a 144/180/240 Hz display, delta drops to ~5–7 ms, per-frame damage drops below 0.5, `Math.round` floors it to 0, and the early-return wiped the entire beam. Same shape would have also hit any direct-fire path that ever fed fractional damage in.
+
+Replaced the `Math.round` step with a per-creep `_dmgDebt` accumulator that flushes only the integer portion each call and carries the fractional remainder forward. Sub-1-hp slivers now accumulate to real damage matching the requested DPS regardless of frame cadence, integer-damage callers are unaffected (debt is already empty so `floor(N + 0) === N`), and displayed HP stays integer-clean. The DoT path (`StatusEffects.getDotDamage`) was already doing this — `takeDamage` is now consistent.
+
+Stripped the temporary `[firewall] hit/tick/linked/no partner` console traces; they did their job.
+
+### Perf: shared creep overlay graphics
+
+Spawning 10–15 sends at once dropped a lot of frames, and the lag persisted while the creeps were just walking — i.e. before any tower was firing at them. The cause was per-creep `Phaser.GameObjects.Graphics` objects: every creep ran `this.graphics.clear()` plus a stack of `fillRect` / `strokeCircle` / `fillEllipse` calls each frame. Phaser's WebGL batcher batches shapes within one Graphics, but each Graphics is its own render entry — 100+ creeps meant 100+ separate draw entries.
+
+Now there's a single shared overlay owned by `CreepManager` (`setOverlay`), cleared once per frame and painted by every living creep via the new `Creep.drawInto(g)` method. Per-creep `graphics` field is gone, along with the `graphics.destroy()` calls in `Creep.update` / `takeDamage` / `killCreepForRevive` / scene-reset paths. Sprite handling is unchanged (Phaser already batches sprites by texture). All 307 tests pass; the headless `_isHeadless` short-circuit still skips draw work entirely outside the browser.
+
+### Non-stacking auras: best contribution wins
+
+`faction_speed_aura` (Aliens Spawner), `commander_aura` (Aliens Swarm Commander), and `overclock_buff` (Cypherpunk Quickener) were applying their buffs via `addOrRefreshTrait`, which is last-write-wins — two overlapping sources would arbitrarily pick whichever ran last in the update loop. Added a `setBestBuff` helper alongside the existing `accumulateBuff`: same per-frame `_setAt = ctx.time` tag, but each subsequent same-frame source keeps the higher `score` instead of accumulating. So a Lv3 Spawner adjacent to a Lv1 Spawner now wins the rate buff for the shared neighbour rather than depending on iteration order.
+
+Left the Conduit `shareAura` / re-emit paths on the old helper — they write to the same trait IDs as the *stacking* direct Resonator/Quickener auras, and converting them in isolation would trigger the per-frame reset mid-frame and clobber stacked direct contributions. Worth a separate cleanup pass on the harmonic-aura plumbing before flipping that.
+
+### Tower dock + info panel UI polish
+
+- **Unaffordable cost text was nearly invisible** (`#664422` on the dim slot). Brightened to `#c89a44` so the player can still read the price tag while the slot itself stays desaturated.
+- **Upgrade button always rendered green** even when the player couldn't afford it, leading to mis-clicks that did nothing. Now reads current gold, sets `disabled` plus a new `.action-disabled` style (grey, `cursor: not-allowed`), and the click is gated.
+- **Selected tower wouldn't deselect** when the user pressed × on the mobile floating card or collapsed the tower section / opened Economy on desktop — a 250ms info-refresh in `GameScene.update` re-pushed the snapshot every tick and reopened the panel. Added `GameUIStore.requestDeselectTower()` plus an `onDeselectTower` callback that GameScene wires to `enterNoneMode()`, so the inspect mode tears down (range circle clears, selection clears) the moment the user dismisses the panel.
+
+## 2026-04-26
+
+### Live capture: sends, frontier purchases, frontier post-purchase actions
+
+Discovered that `LiveCapture` only recorded tower place / upgrade / sell — sends and frontier buildings were silently dropped, so every human-recorded match was missing entire categories of strategic decisions. Fixed end-to-end:
+
+- **T1 — purchases**: `GameScene` now subscribes to `sendPurchased` and `frontierPurchased` events and forwards them to `LiveCapture.recordAction`. `HumanReplayBrain` translates the captured `decisionRaw` back into `send` / `frontier` decisions when replaying.
+- **T2 — frontier management**: New `BotDecision` kind `frontierManage` for post-purchase actions (overcharge / dig / harvest, single-target via `idx` or batch via `defId`). `BotAI` driver dispatches via a new `frontierActionCallback`; `BaseFrontierMode` emits a `frontierActionPerformed` event after each human or bot action; `GameScene` captures it; `HumanReplayBrain` and `HeadlessMatch.applyDecision` both replay it. So the same decision shape now flows through human capture, bot inference, and the headless harness.
+
+Existing recorded data (everything before this commit) is missing these rows — re-record after this lands.
+
+### Sends ROI on Game Over screen + per-wave attribution
+
+Mirror of the Frontier ROI work — sends now have a `Sends Earned` cumulative-gold stat alongside the existing per-wave-rate `Send Income` line, plus a `Sends ROI` percentage. ROI is `(sendsEarned / sendsSpent) × 100`, coloured teal when ≥100% and red when below.
+
+Required adding `sendsEarned: number` to `GameStats`, a `recordSendsEarned()` method on `StatsTracker`, and a per-wave hook in each mode's `onWaveCleared` that reads `incomeMgr.getBreakdown().sends` and accumulates it. `IncomeManager.collectWaveIncome()` also tracks `totalSendsRealized` / `totalFrontierRealized` so future surfaces (mid-match income readouts, leaderboard feeds) can read realised gold per channel without rewiring callers.
+
+### Adjacency auras stack instead of replace
+
+Two Blossoms next to one Resonator now contribute *both* their damage / fire-rate buffs instead of the second one overwriting the first. Same fix for Mana Drain's `spell_amp`. Implementation: per-frame tag (`_setAt = ctx.time`) on the buff trait — first call each frame resets the bucket, subsequent same-frame calls add. TTL still drops the buff if no aura source is adjacent next frame, so coverage holes still penalise the player.
+
+Affects every `adjacency_buff` and `spell_amp` source in the game (Nature Blossom, Arcane Mana Drain, anything else on the same trait id).
+
+### Spore: flat AoE pulse + 2% / 2.5% / 3% scaling poison
+
+Spore (Nature, 100g) clarified and slightly buffed:
+
+- Each fire pulses 8 / 14 / 22 damage to **all** creeps in range (was 5 / 8 / 12 — under-tuned vs other 100g area towers like Acid 100g 8 dmg + splash + shred).
+- Poison persists at 2% HP/s base; upgrades now scale to 2.5% (L2) and 3% (L3) — was 2% / 2.3% / 2.6% under default per-level scaling.
+- Description rewritten: was "Poisons ALL creeps near tower. 2% HP/s." → "8 dmg pulse to ALL creeps in range every 1.5s + 2% HP/s poison. Upgrades scale poison to 2.5% / 3% HP/s."
+
+Implementation hung an optional `scalePerLevel` field on the `poison_dot` trait (default 0.15 — preserves existing scaling for nature_viper, alien_stinger, alien_acid). Spore overrides to 0.25 to land the 2/2.5/3 cadence cleanly.
+
+### Bug fix: Game Over screen "Frontier Returned" / ROI showed 0g even with steady income
+
+`StatsTracker.recordFrontierEarned()` was only being called for the *bonus* slice (dig-depth, grow-stacks, gamble rolls) returned from `FrontierManager.onWaveEnd()`. Steady-income buildings (Manor, Vault, Sacred Grove pre-harvest, etc.) flow through `IncomeManager.frontierIncome` → `collectWaveIncome()`, which only logged it under generic `goldEarned`. Result: a player could invest 2,250g in steady frontier buildings, earn thousands back over the match, and the stats screen still showed `Frontier Returned: 0g` and `Frontier ROI: 0%`.
+
+Fix: `BaseFrontierMode.onWaveCleared` now reads the `frontier` slice from `incomeMgr.getBreakdown()` before `collectWaveIncome()` and records it as `frontierEarned` separately. ROI calculations now match the gold the player actually earned from frontier holdings.
+
+
+### LearningBrain v2: one brain, 9/11 normal cells matched (action-value regression)
+
+First end-to-end run of the learning-brain pipeline. Trains a gradient-boosted-tree regressor offline (Python / xgboost) on per-decision (state, action, outcome) tuples captured from the headless harness, then walks the JSON model in pure TS at inference. Single brain that pilots all 11 factions.
+
+**Pipeline:**
+- `src/systems/bots/learning/RecorderBrain.ts` — wraps any brain, captures features per decide() without side effects on decisions.
+- `scripts/generate-training-data.mjs` — runs each of 10 brains × 11 factions × 20 seeds = 2200 matches, writes ~515k turn rows to `ml/training-data/turns.jsonl` (~17 min wall, sequential).
+- `ml/train.py` — xgboost binary-logistic, max_depth=6, eta=0.1, scale_pos_weight (~1.83) for class balance, group-by-match train/val split. Early-stops at ~150 trees. Final val AUC ~0.998.
+- `models/brain-q-model.json` (committed, ~585KB) — xgboost JSON dump wrapped in our trainingMeta header.
+- `src/systems/bots/learning/TreeInference.ts` — pure-TS recursive walker, ~50 LoC, microseconds per prediction. Handles xgboost ≥3.0's stringified-array `base_score` format.
+- `src/systems/bots/brains/LearningBrain.ts` — at decide() time, asks 10 sub-brains for proposals, scores each `(state || action || proposer-id)` through the model, returns argmax-Q.
+
+**v2 validation (n=50 per cell):**
+
+| faction | best of existing | LearningBrain | Δ |
+|---|---|---|---|
+| arcane | greedy 50/50 | 50/50 | 0 |
+| nature | rush 50/50 | 50/50 | 0 |
+| void | greedy 50/50 | 50/50 | 0 |
+| military | rush 50/50 | 50/50 | 0 |
+| infernal | synergy 50/50 | 50/50 | 0 |
+| celestial | greedy 50/50 | 50/50 | 0 |
+| cypherpunk | aoe_focus 41/50 | 41/50 | 0 |
+| harmonic | harmonic 47/50 | 45/50 | -2 |
+| psionic | psionic 18/50 | 2/50 | -16 |
+| mechanical | balanced 0/50 | 0/50 | 0 |
+| aliens | balanced 0/50 | 0/50 | 0 |
+
+**9/11 cells match-or-near best-of-existing.** Net Δ = -18 across all cells, driven entirely by psionic.
+
+**v1 → v2 gap was caused by missing proposer-id feature.** v1 action features encoded WHAT decision was emitted but not WHO proposed it, so identical "place Resonator on harmonic" decisions from BalancedBrain (loss) and HarmonicBrain (win) had identical features and got averaged-down Q. Adding a 10-dim proposer-brain one-hot (action features 19→29) let the model differentiate. Cypherpunk recovered 13→41, harmonic 0→45.
+
+**Why psionic still drops:** PsionicBrain itself only wins 18/50 in training data, so the model's signal for psionic-specialist proposals is noisier than for harmonic (45/50). Better: oversample winning brain×faction pairs in next data generation, or train a per-faction sub-model for psionic.
+
+**Operational notes:**
+- Retrain workflow: `node --import tsx scripts/generate-training-data.mjs && python3 ml/train.py ml/training-data/turns.jsonl models/brain-q-model.json` (~30 min wall total).
+- Game ships without Python — model JSON is loaded by `TreeInference.compileModel`. The Python training script is dev-only, lives in `ml/`.
+- LearningBrain falls through to BalancedBrain if the model file is missing or has the wrong feature shape (e.g. after a feature schema change). Verified with smoke test (1/20 wins with no model = matches BalancedBrain default).
+
+### Brain-tuning session summary (8/11 normal cells solved at ≥80%)
+
+Ran a multi-day exploration to push BalancedBrain (and other brains) past their default win-rates across the 11 factions. Approach evolved through three phases:
+
+**Phase 1 — L1+L2 hyperparameter search.** Refactored BalancedBrain to take 12 numeric tunables, then 3 categorical structural toggles. Built a μ+λ ES search loop with persistence, plateau/drift termination, warm-start support, holdout validation, and survival-depth fitness fallback for all-zero plateaus. Same loop later applied to GreedyBrain (2 params) and AOEFocusBrain (7 params). Lifts: arcane|normal 8% → 100%, void|normal 0% → 98%, infernal|normal default → 98%, celestial|normal 0% → 100% (with greedy).
+
+**Phase 2 — Coverage scan.** Realised we'd been doing duplicate work tuning BalancedBrain on cells where rush/synergy/aoe_focus already win at defaults. Cross-brain × cross-faction default scan revealed nature/military/infernal solved by RushBrain or SynergyBrain at zero-tuning, and cypherpunk near-baseline with default AOEFocus. Lesson: survey first, tune second.
+
+**Phase 3 — L3a specialised brains.** Built per-faction brains (HarmonicBrain, MechanicalBrain, AlienBrain, PsionicBrain) using existing BotDecision kinds + richer internal state. Results validated a clear rule: **specialised brains pay off iff the faction has a unique mechanic the existing primitives can't model.**
+- HarmonicBrain (range-based aura stacking): 0% → 93% ✅
+- PsionicBrain (slow_aura + true-damage compounding): 1-16% → 35-40% ⚠ partial
+- MechanicalBrain (no unique mechanic, just diverse towers): matches Balanced default, no improvement ✗
+- AlienBrain (raw-damage shortfall, not strategy fit): worse than greedy default ✗
+
+**Final coverage at normal:** 8/11 cells at ≥80%, 1 partial (psionic 35-40%), 2 stuck (mechanical, aliens). Stuck cells likely need balance work or true driver-level primitives (sell-and-rebuild, expiry-aware-replace) — not more hand-crafted brains.
+
+**Infrastructure committed:**
+- `scripts/brain-search.mjs` — multi-brain hyperparameter search CLI
+- `scripts/sweep-factions.mjs` — orchestrator for faction × normal sweeps
+- `scripts/brain-coverage.mjs` — default-config win-rate matrix scan
+- `scripts/ramp-sweep.mjs`, `scripts/all-brains-hard.mjs`, `scripts/all-factions-hard.mjs` — diagnostic tools
+- `src/headless/brain-search/BrainSearchManager.ts` — μ+λ ES with persistence + adaptive termination
+- `src/headless/brain-search/{Balanced,Greedy,AOEFocus}BrainSchema.ts` — per-brain search schemas
+- `src/systems/bots/brains/BrainHelpers.ts` — shared placement utilities (placeAtBestCoverage, placeInBuffZone, placeAtMaxStack, bestUpgradeInBuffZone)
+- `src/systems/bots/brains/{HarmonicBrain,PsionicBrain}.ts` — specialised brains
+- `brain-baselines/` — winner JSONs for each solved cell (greedy, balanced, rush, synergy, aoe_focus, harmonic), 12 baselines total
+
+**Balance change shipped from this work:** Hard difficulty toughnessPerWave 0.13 → 0.05, after diagnostic sweeps showed the original was 0/11 winnable for any default brain. The 0.05 ramp keeps hard genuinely difficult (still 1/11 winnable at default — celestial with greedy 26%) without being a 0% wall.
+
+**Next direction:** Building a learning-brain architecture (regression-based) rather than continuing to hand-craft per-faction brains. The L3a results have confirmed where specialised brains earn their keep and where they don't; the natural next step is a system that learns the right strategy per cell from training data instead of requiring human-coded decision trees.
+
+### Specialised brain: PsionicBrain — 1%/16% → 35-40% on psionic|normal (partial)
+
+Second specialised brain. Builds on the BrainHelpers utilities introduced with HarmonicBrain.
+
+**Why this works partially:**
+Psionic's Terror tower (80g) is a 3.5-tile slow_aura field that halves creep speed AND deals true damage. Probes (20g, true damage) placed inside Terror's range get effectively-doubled DPS (slowed creeps spend twice as long per tile). Generic brains never made this connection — greedy spammed Probes alone (16% / avgWave 19.4); BalancedBrain stalled at 1% / avgWave 15.
+
+**Why not more than 40%:**
+The brain reaches avgWave 19.6 — losing on the final wave consistently. To push past 50% likely needs either:
+- Balance change (Probe damage bump, Terror cost reduction), OR
+- Driver-level primitives like sell-and-rebuild that the brain layer can't access.
+
+Iteration history (commits not retained):
+- Mesmer (45g, confuse 1.2s) tested and dropped — underperformed an extra Probe in the slow zone.
+- Second Mind Spike + earlier second Terror tested — actively worse (5-10% wins) because they ate Probe-spam budget.
+- Overmind lives gate lowered 15→10 — no measurable change (gold gate, not lives, was the binder).
+- Mind Spike upgrade priority moved to first — no change (only 1 Mind Spike, levelled fast).
+
+Committed as a documented partial win — meaningful improvement (+19 to +24 percentage points), future iteration target. No baseline file generated since 35-40% is below the 80% threshold.
+
+Cumulative ≥80% normal coverage stays at 8/11. Stuck cells: mechanical, aliens, and now psionic at 35-40% (close but not landed).
+
+### Specialised brain: HarmonicBrain — 0% → 93% on harmonic|normal
+
+First L3-phase specialised brain. Lives entirely in brain code (no driver / BotDecision changes); uses standard `place` and `upgrade` decisions but with strategy-aware internal state.
+
+**Why generic brains failed on harmonic:**
+Harmonic auras are RANGE-based (Amplifier range 4, Quickener range 4, etc.) so an aura buffs every tower within ~4 tiles. The existing `auraAdjacencyBonus` heuristic in BalancedBrain checks Chebyshev-1 adjacency only — completely wrong proximity model. Greedy ignores auras entirely. Result: every generic brain got 0% on harmonic|normal at default and at L1+L2 tuning, despite reaching avgWave 18 (close to winning).
+
+**Strategy:**
+- Phase 1: place 1–2 Resonators on best path-coverage cells.
+- Phase 2: build aura towers (Amplifier → Amplifier → Quickener → …) within AURA RANGE of existing Resonators. Cheap auras outweigh single expensive ones early because effects stack.
+- Phase 3: more Resonators, but only inside the existing buff zone.
+- Phase 4: Crescendo ult into the densest aura-stack cell.
+- Upgrades: prefer the Resonator with the most auras in range (compounded per-level).
+
+**Results (n=100 each, 3 seed ranges for holdout):**
+- baseSeed=1:   93%
+- baseSeed=999: 89%
+- baseSeed=42:  89%
+
+Up from 0% across all 8 generic brains. Real cell unlock.
+
+**Negative result — AlienBrain (built, dropped):**
+Tried the same template on aliens (Spitter spam → Swarm Node → Hive Spire → Brood Mother). The brain stalled at avgWave 12.7 (worse than default greedy at 15.9) because Hive Spire (180g) and Brood Mother (80g) ate budget that would otherwise have been Spitter spam. Aliens isn't a composition problem — it's a raw-damage shortfall on a fixed budget. Different factions have genuinely different shapes; a single template won't generalise.
+
+Cumulative ≥80% coverage at normal: 8/11 (arcane, void, infernal, celestial, nature, military, cypherpunk@82%, harmonic). Remaining stuck: mechanical, aliens, psionic.
+
+### Brain coverage scan: 7/11 normal cells already solvable with existing brains
+
+Before building specialised per-faction brains, ran an 8-brain × 11-faction × n=50 coverage scan to find out which cells are *already* winnable by an existing brain at defaults. **Three new wins surfaced from brains we'd been ignoring**:
+
+- **nature|normal:** RushBrain wins 50/50 at defaults (NatureBrain, the faction-specialised one, only manages 45/50).
+- **military|normal:** RushBrain wins 50/50. Every other brain 0/50.
+- **infernal|normal:** SynergyBrain wins 50/50 at defaults. Also AOEFocusBrain 50/50. (Balanced needed L1+L2 tuning to reach 98%.)
+- **cypherpunk|normal:** AOEFocusBrain at defaults reaches 82% (41/50). Sub-baseline but very close.
+
+Cumulative ≥80% coverage at normal difficulty:
+
+| faction | best brain | wins | source |
+|---|---|---|---|
+| arcane | greedy | 100% | default |
+| nature | rush | 100% | **default (new)** |
+| void | greedy | 100% | default |
+| military | rush | 100% | **default (new)** |
+| infernal | synergy | 100% | **default (new)** |
+| celestial | greedy | 100% | default |
+| cypherpunk | aoe_focus | 82% | **default (new)** |
+
+**Total: 7/11 normal cells covered without any tuning.** The remaining four (mechanical, aliens, psionic, harmonic) are the genuine "needs-new-brain" tier — every existing brain at defaults reaches 0–12% on these cells.
+
+This finding reframes the work. Rather than tuning a single chosen brain per cell, the right architecture is a **meta-brain dispatcher** that selects per faction (`{nature: 'rush', military: 'rush', infernal: 'synergy', ...}`). The dispatcher would unlock the seven cells immediately; the four hard cells remain as targets for specialised brain work.
+
+New diagnostic at `scripts/brain-coverage.mjs` — produces the brain × faction default-win matrix in ~1 min.
+
+### Brain tuning: parameterised GreedyBrain unlocks celestial (4/11 solved)
+
+GreedyBrain refactored to take 2 search-tunable params:
+- `pickStrategyIdx` (0..3): cheapest-single (legacy) | damage-per-cost | fast-fire | long-range. Determines the single tower the brain spams.
+- `allowUpgrade` (0/1): when 1, level up the highest-coverage instance of the spam-tower once placement options are exhausted.
+
+Defaults preserve historical behaviour. Search infrastructure refactored so each brain reads its own env var (`GREEDY_BRAIN_PARAMS` / `BALANCED_BRAIN_PARAMS`); the worker derives the var name from `config.brainId` so adding new parameterised brains needs no worker change.
+
+11-faction × normal sweep with greedy (~10 min wall time) added one new clean win: **celestial 0% → 100%**, the cell BalancedBrain couldn't crack. The winner uses pure defaults (15 evals) — even default greedy beats tuned BalancedBrain on celestial. Confirms that **different brains have different per-faction blind spots**; faction baselines should use whichever brain converges, not a single chosen brain across the board.
+
+Cumulative ≥98% baseline coverage across both brains:
+- arcane (balanced 100% / greedy 100%) — pick either
+- void (balanced 98% / greedy 100%) — greedy slightly cleaner
+- infernal (balanced 98% / greedy 0%, Imps expire) — balanced only
+- celestial (balanced 0% / greedy 100%) — **greedy only**
+
+Greedy's `avgWave` data also surfaces "almost-wins": cypherpunk/aliens/harmonic/infernal reach wave 18–19 of 20 with greedy but can't close. They're a single tactical adjustment away — outside greedy's "spam one tower" model but plausibly within reach of specialised per-faction brains.
+
+Bug fix: `scripts/brain-search.mjs` was hardcoding `brainId: 'balanced'` in `makeMatchConfig`, so greedy searches were silently running BalancedBrain for the actual matches. Now propagates `--brain=` through.
+
+### Brain tuning: 11-faction × normal sweep — 3/11 solved, 8 brain-structural
+
+Ran the L1+L2 search across all 11 factions × normal in ~7 min wall time. **Three factions converged to ≥98% with per-faction tuning**: arcane (100%, prior), void (98%, new), infernal (98%, new). The L2 toggles added meaningful value — void's winner uses `towerPickStrategyIdx=damage-per-cost`, infernal's uses `skipUltimateSave=1`, neither reachable from the L1-only param space.
+
+The other 8 factions plateaued at 0–10% wins:
+- **mobile-unit / spawn-heavy** (nature 0%, military 0%, aliens 2%) — BalancedBrain's mobile-unit placement logic is weak and L1+L2 can't compensate
+- **synergy / status-effect heavy** (cypherpunk 5%, harmonic 5%, psionic 1%) — adjacency planning + status combos + ult timing the brain doesn't model
+- **anomaly** (celestial 0%) — greedy wins 100% on celestial|hard with no tuning, but BalancedBrain stalls at 0% on celestial|normal. Different brains pilot it differently; BalancedBrain's choices are actively worse for this faction
+
+This is the **L3 trigger**: the parameterised search has hit a ceiling that new *decisions* (sell-and-rebuild, force-keystone-spam, place-adjacent-to-aura) could clear, but new *parameters* cannot. L3 work would add new BotDecision kinds + corresponding brain-search hyperparameters.
+
+The committed `void` and `infernal` baselines bring the brain-baseline library to 3 (out of 44 cells in the full grid). Sweep tooling lives at `scripts/sweep-factions.mjs`.
+
+## 2026-04-25
+
+### Brain tuning: BalancedBrain on arcane|normal — 8% → 100% via L1 search
+
+First end-to-end run of the new brain-search infrastructure. Hyperparameter sweep over 12 numeric knobs in `BalancedBrain` (panic threshold, wall cap, ultimate-save gates, expensive-bias, frontier/send buy probabilities, aura/coverage weights, wave-lookahead window). Search method: (μ+λ) evolution strategy with auto-validation of any candidate clearing 85% on n=20 search seeds.
+
+- **Result: 100% win rate (n=100 validated)**, up from baseline 8% — confirmed on two holdout seed ranges (99% and 98%) so it's not overfit.
+- **Total evaluations:** 135 (112 search + 23 validation), **wall time ~45 sec on 8 workers**.
+- **Biggest single lever:** `frontierBuyChance` 0.4 → 0. Default brain was burning 40% of between-wave decisions on income buildings whose payoff doesn't land in 20 waves.
+- **Other findings:** `panicLives` 5 → 13 (defend earlier), `minDpsTowersForUlt` 4 → 7 (don't rush the ultimate), `expensiveBias` 1.0 → 0.58 (cheap keystones like Bolt back in rotation).
+
+Winner config saved at `brain-baselines/balanced-arcane-normal.json`. Currently env-driven (`BALANCED_BRAIN_PARAMS`); a runtime auto-loader is a follow-up.
+
+New infrastructure:
+- `src/headless/brain-search/BrainSearchManager.ts` — μ+λ ES with persistence, plateau/drift termination, auto-validation gate.
+- `src/headless/brain-search/BalancedBrainSchema.ts` — bounds/defaults/step sizes for 12 tunable params.
+- `src/headless/brain-search/brain-search-worker.ts` — subprocess match runner; brain reads params per task via env var.
+- `scripts/brain-search.mjs` — CLI with `--probe`, `--resume`, `--max-evals`, `--workers`, etc. Append-per-eval `evaluations.jsonl` for crash recovery (mirrors the harness pattern).
+- `BalancedBrain` refactor: hardcoded constants → `BalancedBrainParams` interface with env-loaded fallback. Behaviour-preserving when no env override is set.
+
+### Balance: harness-validated buffs (nature × 3, psionic × 1)
+
+Four data-driven balance tweaks landed from the 2026-04-25T14-34-23 harness run (231 changes × 44 cells × 100 seeds). Each one moved its target faction by ≥+16% target-cell win rate without hurting any other cell — i.e. low-risk universal buffs.
+
+- **Grove Viper cost 40 → 30** (`nature.5`, +95% nature target). Viper was the keystone DPS already shown by prior nature-tuning work; this lowers the spend gate to land it in the early-mid game.
+- **Root cost 35 → 25** (`nature.7`, +24% nature target). Strongest slow in the game was overpriced relative to its impact.
+- **Sunroot range 3 → 4 + splash radius 56 → 72** (`nature.12`, +23% nature target). Mid-tier splash tower now actually reaches the lanes it's meant to cover.
+- **Probe range 3 → 4** (`psi.2`, +16% psionic target). True-damage staple gets the same range as its L3 upgrade so initial placement isn't wasted.
+
+Faction docs updated. Larger run notes saved to `harness-runs/2026-04-25T14-34-23/report.md`.
+
+## 2026-04-24
+
+### Balance harness: cluster-dedup score + combo catalog generator
+
+Two follow-up additions to address the report-quality issues from the
+earlier brain-roster commit.
+
+**Cluster-dedup score (`HarnessReport.ts`)** — the ranking now uses
+
+```
+score = (targetΔ × 2 + netΔ) × (1 / √clusterSize) × max(0, 1 − brainSpread × 2)
+```
+
+`clusterSize` counts how many other changes within the same faction
+produced the same per-cell delta signature (cells rounded to 0.5%
+buckets). 19 sibling-cluster mech.* nerfs that all read identical
+"+86% mech easy" now divide by √19, dropping their score from
+the top of the table. `brainSpread` is the stdev of per-brain mean
+deltas; a change that moved one brain by 50% while three didn't
+budge has high spread and gets shrunk toward zero. New ranking
+columns: `raw`, `cluster (1/N)`, `spread (%)`. Single distinct
+effects with low brain spread now bubble above 19-sibling echoes.
+
+**Combo catalog generator (`ComboGenerator.ts` + `--combos=N` CLI)**
+— the catalog can now be expanded to test combinations of changes:
+
+```
+node --import tsx scripts/run-harness.mjs --combos=2  # singles + disjoint pairs
+node --import tsx scripts/run-harness.mjs --combos=3  # singles + pairs + triples
+```
+
+Combos only span members of the same faction. Two changes are
+"disjoint" iff they touch different `(entity.field)` keys, derived
+by running each `apply()` against a tracking-shim PatchEngine.
+Triples are capped at 100 per faction so the run stays bounded
+(default catalog: 234 singles, +2167 pairs, +1200 triples).
+
+The "empty third slot" the user asked for falls out of always
+including singles + pairs alongside triples — any subset of
+size 1, 2, or 3 has a catalog entry.
+
+Combo apply() runs each member's apply() in sequence. Composite
+ids look like `combo.mech.mech.1+mech.2`; descriptions prefix
+`[combo:N]` so they're scannable in the ranking.
+
+### Balance harness: brain roster expansion + per-brain + build-hash diagnostics
+
+The previous run's biggest weakness was sibling-cluster artifacts: 19
+unrelated mech.* changes all read identical "+86% mech easy" because
+the only brain that could clear the cell shifted into a slightly
+different MCTS path on each patch. Two changes here address that.
+
+**Four new brains** — bringing the matrix from 4 to 8 brains:
+- `greedy` — strict T1 single-target spam, no upgrades / frontier /
+  ultimates / mazing. Deterministic stat-baseline anchor: when
+  greedy moves, it's a real arithmetic effect, not roulette.
+- `ultimate` — saves for the faction's ultimate while keeping a
+  scaling DPS floor (2 + wave/4, max 6) on the board. Panic-spends
+  on lives below 10. Tests whether ultimates are pickable / useful.
+- `econ` — frontier-first IF survival floor met. Same survival gate
+  as Ultimate; below floor it behaves like Greedy. Validates
+  Frontier balance, which the existing 4 brains barely register.
+- `aoe_focus` — splash + chain + aura specialist. Min cheap-DPS
+  survival floor, then biggest-affordable AOE at chokepoints, then
+  upgrades on existing AOEs. Counterpart to Rush.
+
+The shipped 5th option (`wave_reactive`) was dropped — too
+dependent on upcoming-wave data quality to give a strong signal.
+
+**Per-brain delta in the report** — `formatChange` now appends a
+"per-brain Δ" column. A delta concentrated in one brain is
+brain-roulette; a delta spread across all brains is real.
+Surfaces the 19-mech-clones artifact directly.
+
+**Build-hash fingerprint** — `MatchResult.buildHash` is a 32-bit
+FNV-1a fold of the sorted `id@Llevel` multiset of placed towers
+at sim end. Two runs with identical builds produce identical
+hashes. Lets future analysis distinguish "same build, different
+winrate = brain noise" from "different build = real placement
+shift". Added to `MatchResult`; not yet surfaced in the report.
+
+### Balance ship from harness run 2026-04-24T16-55-42
+
+Acted on the strongest signals from the latest 1000-seed sweep, plus a difficulty-curve softening guided by the report's headline finding that hard mode was unwinnable across half the matrix.
+
+**Difficulty re-anchor (`Difficulty.ts`)** — pulled the *base* values closer together while leaving the strong per-wave ramps alone (the ramps are doing the late-game work; it was the wave-1 cliff that was unwinnable):
+- normal toughness 1.0 → 0.95
+- hard count 1.5 → 1.3, speed 1.1 → 1.05
+- insane toughness 1.3 → 1.15, count 1.8 → 1.5, speed 1.2 → 1.1
+
+**Tower stat tweaks (`TowerTypes.ts`)** — single-stat levers that registered cleanly above their faction's cluster floor:
+- Tesla range 3 → 3.5 (mech)
+- Grove Viper damage 8 → 12 (nature)
+- Ping fireRate 900 → 700ms (cyber) — fire-rate over damage so the cheap tower stays cheap
+- Soul Drain cost 70 → 90 (infernal) — counter-intuitive nerf-helps signal from the harness; the tower is over-bought
+- Acolyte damage 10 → 14 + range 3.5 → 4.5 (celestial) — celestial|normal was 0% baseline, two-stat lift to crack it
+- Gambler damage 25 → 20 (void) — precautionary nerf
+
+**Infernal Frontier nerf (`FrontierBuildings.ts`)** — small precautionary cost bump in case Infernal stays too strong after the Soul Drain nerf:
+- Soul Well cost 25 → 32g
+- Blood Pact cost 175 → 185g
+
+### Balance harness: default seedsPerCell 1000 → 100
+
+Iteration default is now ±4.5% CI (still meaningful for ±10%-class deltas). Final-validation runs use `--seeds=1000` for ±1.5% CI. Wall time on the default config drops ~10× — turns "overnight sweep" into "lunch sweep".
+
 ## 2026-04-23
+
+### Balance harness: full catalog (232 changes) + absurd-confidence defaults
+Expanded `ChangeCatalog.ts` from the seeded 32 (Nature + Void + Infernal only) to **232 changes covering every faction**:
+- **Arcane** 20 nerfs
+- **Mechanical** 20 mixed
+- **Nature** 20 buffs
+- **Void** 20 nerfs
+- **Military** 20 mixed
+- **Aliens** 20 nerfs
+- **Cypherpunk** 20 mixed
+- **Infernal** 20 nerfs
+- **Celestial** 20 buffs
+- **Psionic** 20 buffs
+- **Harmonic** 20 buffs
+- **Global** 12 changes (difficulty ramps, toughness, count, gold multipliers)
+
+All tagged `[buff]` / `[nerf]` / `[tune]` / `[big]` in the description so the report reads at a glance.
+
+`seedsPerCell` bumped from 50 → **1,000**. ±1.5% CI on a binary win rate — any observed delta ≥ ±3% is statistically meaningful. Baseline sweep = 176,000 matches; faction-scoped change = 16,000; global change = 176,000. Full catalog = **~5.8 million matches**, ~2 hours on 28 cores. Overnight-friendly.
+
+### Balance harness — scripted A/B testing for numeric tweaks
+New `src/headless/harness/` — A/B-tests balance changes by running the tournament once per change and diffing best-brain win rates against a baseline. Pure A/B, no combinatorial explosion.
+
+- `ChangeCatalog.ts` — seed catalog of 32 candidate changes (12 Nature buffs, 10 Void nerfs, 10 Infernal nerfs). Each entry is an `apply(patch)` function that mutates `TOWER_TYPES` / `DIFFICULTIES` via the `PatchEngine` (handles automatic rollback).
+- `PatchEngine.ts` — records + reverts mutations on towers, traits, upgrades, and difficulty fields. Per-worker so parallel shards don't cross-contaminate.
+- `HarnessRunner.ts` — baseline sweep → one sweep per change → delta computation. Shares the 3,520-match tournament matrix from `batch.test.ts`.
+- `Pool.ts` — `worker_threads`-based parallel orchestrator. Each worker is a fresh V8 isolate (no shared heap state), so patches can run independently. Round-robin task split.
+- `HarnessReport.ts` — markdown ranking table + per-change breakdown with target-band ✅/❌ flags per (faction, difficulty) cell.
+- `scripts/run-harness.mjs` — CLI. Runs the full catalog, emits `harness-results.json` + stdout markdown.
+
+Uses `tsx` (new devDep) as the TS loader for worker threads — Node 24 runs TypeScript natively but can't resolve extensionless imports, which the game systems use pervasively.
+
+Runtime: ~70 s on 28 cores for the 32-change catalog + baseline. Not run yet; catalog seeded for the next balance pass.
+
+### Sunroot damage buff — Nature easy 25% → 50%
+Sunroot L1 damage 16 → 22 (L2/L3 scaled similarly). Nature's main splash DPS was under-scaling for the late game; the buff lands the faction in the target "playable on easy" band with a single knob.
+
+### Nature round-2 buffs
+Second pass after NatureBrain validated the branch-pivot play was working but the faction still underperformed. Three tweaks:
+- Elder Treant: 600g → 450g (ULT now actually reachable mid-match)
+- Bramble Hedge L1: damage 2 → 3 (wall is a real pricker now)
+- Blossom adjacency: 20%/12% → 25%/15%
+
+Sweep delta was flat (Nature easy 30% → 25%, within 20-seed variance). Signal: small numeric buffs aren't breaking Nature through the wave-20 ceiling. Further work wants structural changes (cheap scaling DPS tower, or re-examine Root's 35g cost for its slow-only role) rather than continued fine-tuning.
+
+### Imp softened + NatureBrain
+Partial rollback on Imp: damage 10 → 12 (kept cost 12). Previous nerf stacked with the difficulty ramp crashed Infernal hard from 100% to 0% — overshot. New DPS-per-coin 1.43 (was 2.0 pre-nerf, 1.19 over-nerfed). Middle ground preserves the nerf intent without kneecapping the faction.
+
+Added **NatureBrain** — fourth brain in the tournament. Faction-aware opening: places 2-3 Bramble walls, then **immediately branch-upgrades** each to Razor Bramble as soon as the 15g switch is affordable. Priority 1 in `decide()` so the pivot happens before new placements. Then seeds a Blossom cluster, stacks Viper + DPS adjacent to it, Elder Treant ultimate when budget allows. For non-Nature factions the branch-check is a no-op and the brain falls through to a Rush-style DPS fill — so NatureBrain doubles as a second opinion for every faction.
+
+Sweep deltas (best brain, before → after):
+- **Nature easy: 0% → 30%** ✅ NatureBrain works — avg wave 9.1 → 16.4 (of 20). Still underperforming normal/hard/insane though.
+- Infernal hard: 0% → 0% (Imp softening wasn't enough alone — hard difficulty is now uniformly impossible across all factions after the ramp)
+- Harmonic easy: 90% → 55% (regression — rebalancing hit it sideways)
+- Harmonic normal: 30% → 55% ✅
+- Mechanical normal: 5% → 5% (stuck)
+
+Nature **still can't reliably win easy** even with a dedicated brain — 30% is borderline. Signal: faction may need further buffs (cheaper Elder Treant? stronger Bramble base DPS?) rather than more brain tuning.
+
+### Balance pass: difficulty ramp + Void/Infernal nerfs + Nature buffs
+Validated via the autonomous-play sweep — 2,640 matches before and after, comparing best-brain win rates per (faction, difficulty) cell.
+
+**Difficulty ramp**: `DifficultyHints.toughnessPerWave`. Effective creep HP = `toughness × (1 + wave × toughnessPerWave)`. Easy 0, Normal 0.5%/wave, Hard 1.5%/wave, Insane 2.5%/wave. Applied in `SpawnManager` + `OpponentSimulation` (1v1 shadow sim). The late game had no teeth before — once a player stacked towers, wave 30 creeps died as fast as wave 10.
+
+**Void gold_on_hit → chance-based.** Trait schema extended with optional `chance` (defaults to 1.0 = old behavior). Siphon `amount 2 @ 40%` (0.8 EV vs old 1.0). Oblivion `amount 8 @ 30%` (2.4 EV vs old 3.0). Preserves gambling identity, trims EV, adds variance.
+
+**Infernal Imp nerf.** cost 10→12, damage 14→10. DPS-per-coin 2.0→1.19. Imp was 3× better than anything else in the game.
+
+**Nature buffs.** Bramble L1 damage 1→2, Razor Bramble branch cost 20→15, Grove Viper damage 5→8 / fireRate 950→750 (L2/L3 bumped in proportion), Blossom adjacency buff 15/8 → 20/12 %.
+
+Sweep deltas (best brain, before → after): Void insane 70%→10%, Aliens normal 100%→70%, Cypherpunk normal 90%→60%, Infernal hard 100%→0% (overshot — may soften Imp to damage 12), Mechanical normal 50%→5%, Harmonic easy 80%→90%, Nature still stuck at 0%/0% (avg wave 7.7→9.1 — some survival gain but can't close).
+
+### Autonomous play system — headless match runner for balance testing
+New `src/headless/` module runs full game matches outside Phaser so we can play thousands of games faster than realtime and measure faction balance without the render loop in the way. Three pieces:
+
+- **`HeadlessScene`** + **`SimClock`**: Phaser.Scene stub. `add.graphics()` / `add.sprite()` / `add.text()` return callable chaining proxies that no-op every method and property access; `scene.time.delayedCall` / `scene.time.addEvent` route into a priority queue that fires callbacks on sim-time (advanced per tick) rather than wall time. Covers the ~126 Phaser touches in `Tower.ts` / `Creep.ts` without changing either file.
+- **`HeadlessMatch`**: composes the real game systems (Grid, SpawnManager, TowerManager, CreepManager, WaveController, EconomyManager, FrontierManager) and runs a tick loop until win / loss / timeout. The "player" is a `BotBrain` instance (default `BalancedBrain`); between-waves the brain places / upgrades / buys frontier until it skips, then the next wave fires immediately. Standard + endless modes supported in v1; Circle Co-op / 1v1 / Hero Defense are future work.
+- **`Batch`**: Cartesian matrix expander + serial runner + aggregator. Grouped win-rate / avg-wave / avg-gold reports formatted as markdown tables. A skipped test (`runBalanceSweep — full faction matrix`) is ready to un-skip for ad-hoc sweeps.
+
+Perf: a 5-wave `mechanical` / `normal` / `plains` match runs in **~40-50ms wall time** on a single thread — roughly **1300-1400× realtime**. A 1000-match balance sweep should finish in ~40 seconds serial. `worker_threads` parallelism is a future win; today's bottleneck is pathfinding + trait ticks, which don't benefit from threading until the batch is 10k+ matches.
+
+Determinism: new `systems/Rng.ts` module-level seeded PRNG replaces the 15 scattered `Math.random()` sites in Creep, trait handlers (tower + creep), BalancedBrain, and FrontierManager. `HeadlessMatch` calls `seedRng(config.seed)` at match start — same `(config, seed)` pair now yields identical results across runs, which is what makes before/after balance comparisons honest. Production paths default to `Date.now()` seeding so live play keeps its usual randomness feel.
+
+### Circle Co-op late-game rebalance
+Coop started hard on insane but trended *easier* wave after wave — team DPS compounds once zones fill out, while creep HP scaling plateaus. Three coordinated nerfs + one buff:
+
+- **Creep HP ramp**: new per-wave coop multiplier `1 + wave × 0.035` on top of existing difficulty + natural scaling. Wave 10 ≈ 1.35×, wave 25 ≈ 1.88×, wave 40 = 2.4×. Stacks with insane's 3.5× base so wave 40 insane-coop creeps are roughly 8.4× solo-normal HP. Plugs into `SpawnManager` via a new `setHpWaveMultiplier` callback — non-coop modes leave it at the default `() => 1` so solo / 1v1 are untouched.
+- **Kill-gold nerf**: `CircleDeathHandler.killGoldMult` now `× 0.7` in coop. Team total drops to 70% of solo per kill; after the 50/50 killer/spawner split each player's share sits at 35%.
+- **Frontier income buff**: `FrontierManager.incomeMultiplier = 1.5` in coop. Applies to `baseIncome` (the per-wave passive), the per-wave bonus slice for dig/grow/gamble, overcharge bursts, and grow harvests. Meta-economy stays a strong pivot despite the kill-gold cut.
+- **Solo untouched**: every knob defaults to a no-op so standard / gauntlet / 1v1 / endless scaling is identical to before the commit.
+
+### CPU brain: gate meta-economy behind having a fighting tower
+`BalancedBrain.decide()` used to run its meta-economy pass (frontier + sends) at the top of every between-waves tick with a 70% commit roll. On wave 0 with an empty board the bot could blow its whole opening budget on a frontier building and enter wave 1 with zero defense. Added a gate: meta is only considered once the bot owns at least one **non-wall tower** — i.e. something with actual damage output. Placing a single wall then buying frontier is still blocked, since a wall-only zone has no DPS. A new `hasFightingTower(ctx)` helper reads from `ctx.placedTowers` so the check is cheap per-tick.
+
+### Jackpot boss resistance tuned: halve → quarter
+Follow-up to the earlier Gambler pass. Halving the kill chance against bosses (×0.5) still landed too often in practice — a cluster of Gamblers could still swing a boss wave on a lucky roll. Shifted the boss multiplier to **×0.25**:
+- Gambler: 4% regular / **1%** boss (was 2%)
+- Oblivion: 15% regular / **3.75%** boss (was 7.5%)
+
+Same quartering mirrored in `OpponentSimulation`'s shadow sim so the 1v1 CPU's jackpot towers respect the same boss floor. Miss chance still untouched.
 
 ### Circle Co-op roster → DOM panel
 The roster (kills / gold / towers / lives / timer) was Phaser `Text` at a hardcoded 11px font — unreadable on phone where everything else goes through `UIScale`. Moved to a Preact component (`CircleRosterDOM`) driven by a `GameUIStore.circleRoster` snapshot that GameScene rewrites each frame. Font sizes now use `UIScale.fontCapped` so phone scales to ~22–24px. Shallow-equality gate on the store skips re-renders when nothing changed.
@@ -16,10 +546,10 @@ Three real bugs from the Endless audit:
 
 3. **UpcomingWaves stale right after an append.** The append fires inside `onWaveCleared` but `upcomingWaves.update(...)` ran *before* the append. Moved the snapshot call to after the append block so newly-generated waves show up on the same tick.
 
-### Gambler balance: 4% kill, halved vs bosses
+### Gambler balance: 4% kill, quartered vs bosses
 Dropped Gambler's `jackpot.killChance` from 8% → 4%. At 15g per tower with ~1s fire rate you could comfortably spam the entire late game — 8% across 8 Gamblers was effectively free wave clears. 4% still feels chunky without trivialising placement choices.
 
-Added universal **boss resistance** to the jackpot handler: kill chance halves when `target.isBoss`. Gambler reads 4% regular / 2% boss; Oblivion (the void ULT) reads 15% / 7.5%. Keeps jackpot towers valuable without the "I erased the boss wave from one lucky roll" outcome. Miss slice is unchanged — bosses don't get the "please whiff" perk. `HitTarget` interface gained `isBoss: boolean` (phantom splash targets default to false). Matching change in `OpponentSimulation`'s shadow sim so the 1v1 CPU's Gamblers also respect boss resistance.
+Added universal **boss resistance** to the jackpot handler: kill chance is **quartered** (×0.25) when `target.isBoss`. Gambler reads 4% regular / 1% boss; Oblivion (the void ULT) reads 15% / 3.75%. Keeps jackpot towers valuable without the "I erased the boss wave from one lucky roll" outcome. Miss slice is unchanged — bosses don't get the "please whiff" perk. `HitTarget` interface gained `isBoss: boolean` (phantom splash targets default to false). Matching change in `OpponentSimulation`'s shadow sim so the 1v1 CPU's Gamblers also respect boss resistance.
 
 ## 2026-04-22
 
@@ -181,6 +711,38 @@ Circle Co-op already scales the creep *count* by team size (2p = 3×, 3p/4p = 4�
 
 ### Circle Co-op: can't spend your gold on other players' towers
 Fixed a bug where, in Circle Co-op, clicking another player's (or bot's) tower and hitting Upgrade would deduct gold from your own economy and upgrade *their* tower. Sell was already guarded via `towerOwners`; upgrade was not. Added a `canModifyTower(col, row)` helper on GameScene that returns true only when the local player owns the tile (or it's unowned / not a Circle game), and gated all three upgrade paths (`GameUIStore.onUpgrade`, `TowerInfoPanel.onUpgrade`, inspect-mode click-to-upgrade) plus `handleRightClick` through it. The tower info panel now also hides the Upgrade and Sell buttons entirely for foreign towers via a new `owned` flag on `TowerStats` — you can still inspect stats, just not spend your gold. Also picked up a missing `tower_upgraded` broadcast on the DOM upgrade path so peers stay in sync.
+
+
+### Random map gen: random tileset theme
+
+`generateRandomMap(seed, difficulty)` now rolls a random tileset theme as part of generation and stamps it into the returned `MapDefinition.theme`. The pool is `Object.keys(THEMES)` — 11 faction themes (`arcane_crystal`, `hellscape`, `circuit`, `ancient_grove`, `factory`, `void_rift`, `urban`, `hive`, `marble`, `neural`, `concert`) + 6 non-faction themes (`forest`, `mountain`, `water`, `stone`, `volcanic`, `generic`) for 17 options total.
+
+Adding a new theme to `TerrainTheme.ts` auto-includes it in the pool. Same seed always yields the same theme (reload-safe — the theme roll is the first RNG draw before any layout work, so map layouts stay stable across random-theme vs fixed-theme runs of the same seed).
+
+API: `generateRandomMap(seed, difficulty, theme?)`. Pass nothing or the `RANDOM_THEME` sentinel to get a random theme. Pass a specific themeId to override (used by a future UI picker — not wired into the menu yet).
+
+A store-equipped terrain still wins on top: the resolver sees the random map's stamped theme as the "map default" and applies the player's equipped override per the standard rules. (Custom maps, by contrast, stay locked to the editor-saved theme.)
+
+### Terrain override: equipped store theme now actually overrides the map tileset
+
+The store had `equipTerrain(themeId)` writing to `state.equippedTerrain` and `SkinManager.getTerrainOverrideFaction()` reading it back, but the getter was never called from the rendering pipeline — equipping a terrain theme did nothing visible.
+
+Single resolver now: **`SkinManager.getActiveTerrainTheme(ctx)`**. Resolution order:
+
+1. **Faction Gauntlet** → ignore override; use the map's authored theme. Overriding here would defeat the unlock-the-look loop.
+2. **Custom maps** → ignore override; use the editor-saved theme. Custom maps were authored with intentional theming.
+3. **Coop guest** → render the host's broadcast theme (shared grid → single visual; host wins).
+4. **Coop host / 1v1 / single-player** → local equipped override; falls back to map default if nothing equipped.
+
+`GameScene.drawGrid` was the only render call site that picked a themeId; it now routes through the resolver. The faction → render-themeId map (e.g. `arcane → arcane_crystal`, `infernal → hellscape`) is centralised in `SkinManager.factionToThemeId`.
+
+**Coop wire piece**: the host's resolved themeId rides on the `circle_game_start` message as a new `hostTerrainOverride?: string | null` field. Joiners read it on receive and stash it on `CircleManager.hostTerrainOverride`; `GameScene` reads from there. Backwards-compat: the field is optional, so older clients still parse the message (they just won't see the host's terrain).
+
+In 1v1 Versus each peer renders their own grid, so each applies their own equipped override independently — no host concept needed for that mode.
+
+### GameScene: sync DOM lives/gold at end of create()
+
+Push the correct lives + gold + income into the store explicitly at the end of `create()`. Uses the same `displayLives` selection as the update loop (`arenaManager.baseHp` for hero defence, else `this.lives`) so Hero Defence matches start with the right number.
 
 ## 2026-04-17 (cross-platform, cont.)
 

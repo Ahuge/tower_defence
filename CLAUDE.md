@@ -113,3 +113,83 @@ After editing or creating files with import/require statements, verify that all 
 
 ## Game Development
 For the tower defense game (TypeScript/Phaser): after any sprite, texture, or animation change, verify that (1) texture keys match preloaded asset keys, (2) sprites are preloaded in the correct scene, and (3) animations reference valid frame data. Test mobile rendering separately.
+
+## Frame-rate / time-based math — anti-pattern to avoid
+
+Anything that consumes `delta` (per-frame ms) and produces an integer output must NOT round in place — otherwise sub-1-unit-per-frame results silently floor to 0 on high-refresh-rate displays and the effect quietly does nothing. We hit this with Firewall on a 180Hz monitor: per-frame damage = `35 dps × 5.6ms / 1000 ≈ 0.2`, then `Math.round(0.2) = 0`, then the early `if (finalDamage <= 0) return;` killed every tick. Bug invisible at 60Hz where the same math gives `round(0.56) = 1`.
+
+Two correct patterns to use instead:
+
+- **Accumulator-then-floor** when integer output is required (HP damage, displayed counters):
+  ```ts
+  this._accum += value * delta / 1000;
+  const integer = Math.floor(this._accum);
+  this._accum -= integer;
+  if (integer > 0) apply(integer);
+  ```
+  Used by `StatusEffects.getDotDamage` (`_dotAccum`) and `Creep.takeDamage` (`_dmgDebt`). Framerate-independent, integer-clean output, exact long-run average.
+
+- **Float state, no rounding** when the value itself can be fractional (positions, cooldowns in ms, timers): just keep the float. Round only at the very last moment when displaying.
+
+Anti-pattern to avoid: `Math.round(value * delta / 1000)` or `Math.round(amount * amp)` on an amount that may be sub-1. If it can ever be < 0.5 it disappears. Either thread the value through an accumulator, or carry it as float until the display step.
+
+Audit reminder: any new per-frame damage / heal / counter / pickup that takes `delta` should follow one of the two patterns above. The chokepoint for damage is `Creep.takeDamage` (and `Hero.takeDamage` if a beam-style hazard ever targets the hero) — those already handle the accumulator centrally, so callers can pass fractional amounts safely.
+
+## Learning brain — handling fresh human-capture data
+
+The user records gameplay in the live game with `?capture=1` (or `__learningCapture.setEnabled(true)`) and exports JSONL via `__learningCapture.downloadJSONL()`. When they send a fresh JSONL, the standard ingest sequence is:
+
+**Note:** while capture is on, the Draft screen suppresses modifier selection and forces `modifier: null` (see `DraftScreen.tsx`'s `captureLocked` branch). The bot harness also runs modifier=null, so this keeps the human and bot halves of the training set distribution-aligned. If you ever extend the harness to support DraftModifiers, lift this gate in lockstep — otherwise the asymmetric data poisons the model.
+
+1. **Save permanently.** Move the file to `ml/captured/<descriptive>_human.jsonl` — `ml/captured/` is whitelisted in `.gitignore` so these files commit. Use a name that says what it covers (e.g. `mech_games_human.jsonl`, `aliens_v2_human.jsonl`). Don't overwrite — append a counter / version if the same faction comes through twice (`mech_v2`, `mech_v3`).
+
+2. **Sanity-check.** Run a Python one-liner to count rows, matches, wins, and verify all rows have `brain="human"`, `outcome` set, and a 56-dim feature shape. Reject the batch and tell the user if anything looks malformed (stale feature shape from an outdated client, missing outcomes, wrong `by_human` flag).
+
+3. **Retrain.** From the project root:
+   ```
+   python3 ml/train.py \
+     --human-weight=<W> \
+     --extra=ml/captured/file1_human.jsonl \
+     --extra=ml/captured/file2_human.jsonl \
+     ml/training-data/turns.jsonl \
+     models/brain-q-model.json
+   ```
+   Pass every captured file via `--extra=` (one per file). The bot dataset (`turns.jsonl`) is the positional `<turns.jsonl>` arg.
+
+4. **Pick `--human-weight=W` by row volume.** Default rule of thumb:
+   - <500 human rows: `W=200` (small batch, must be amplified)
+   - 500–2000 rows: `W=50–100`
+   - 2000–10k rows: `W=10–25`
+   - 10k+ rows: `W=2–5` (data is plentiful, weight gently)
+   The objective is human rows contribute ~10–30% of the positive-class gradient, NOT dominate it. A first principle: `target_share ≈ 0.2`, so `W ≈ 0.2 × bot_positives / human_rows` (e.g. ~180k bot positives ÷ 293 human rows × 0.2 ≈ 120). Round to the nearest tier.
+
+5. **Validate.** Run `node --import tsx scripts/validate-learning-brain.mjs 50`. Compare the new run vs the prior baseline (look in CHANGELOG for the last "LearningBrain" entry). What we want to see:
+   - The cell(s) the captures targeted should improve (e.g. mechanical 0/50 → ≥20/50 means 5 wins of mech data is paying off).
+   - No regressions on already-solved cells (the 8 cells at 50/50 should stay 50/50).
+   - If a captured cell is *unchanged* despite weight tuning, the model is likely failing to generalize from the captures. Try `--human-weight=W*2` once, then ask the user for more matches rather than chasing weight knobs.
+
+6. **Commit.** Two-step:
+   ```
+   git add ml/captured/<new-files>.jsonl
+   git add models/brain-q-model.json
+   git commit -m "..."
+   ```
+   In the commit body, include: how many human matches, what factions, the weight used, the validation Δ vs baseline. Future sessions read these commits to understand what the dataset contains.
+
+7. **Update CHANGELOG.md** with the validation table.
+
+**Don't:**
+- Don't delete files in `ml/captured/`. Old human captures stay forever as training data.
+- Don't change `FeatureExtractor.ts` schemas without retraining. A schema mismatch will break LearningBrain inference (it falls back to BalancedBrain — silent regression).
+- Don't ignore the `brain="human"` validation step. If a capture file doesn't have that tag, the user's client is stale or capture was never enabled — flag it back to them rather than retraining on garbage.
+
+**Pipeline files at a glance:**
+- `src/systems/learning/LiveCapture.ts` — in-game recorder, browser-side
+- `src/systems/bots/learning/RecorderBrain.ts` — headless recorder, wraps any brain
+- `src/systems/bots/learning/FeatureExtractor.ts` — single source of feature truth
+- `src/systems/bots/learning/TreeInference.ts` — pure-TS xgboost JSON walker
+- `src/systems/bots/brains/LearningBrain.ts` — runtime: scores 10 brains' proposals through the model
+- `ml/train.py` — Python xgboost trainer, weights human rows
+- `scripts/generate-training-data.mjs` — bot data gen (~17 min wall, 515k turns)
+- `scripts/validate-learning-brain.mjs` — n=50 vs best-of-existing per cell
+- `models/brain-q-model.json` — committed model artefact (~1MB, 250 trees, 56 features)

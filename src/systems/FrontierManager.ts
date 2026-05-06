@@ -1,4 +1,5 @@
 import { FrontierBuilding, FRONTIER_BUILDINGS, GENERIC_OUTPOSTS, getAllFactionFrontierBuildings } from '../data/FrontierBuildings';
+import { rng } from './Rng';
 import { FactionId } from '../data/Factions';
 import { EventBus } from './EventBus';
 import { IncomeManager } from './IncomeManager';
@@ -23,13 +24,21 @@ export class FrontierManager {
   private faction: FactionId | null;
   buildings: OwnedBuilding[] = [];
   availableBuildings: FrontierBuilding[];
+  /**
+   * Flat multiplier applied to every active building's baseIncome
+   * when `recalculateBaseIncome` runs. Circle Co-op sets this to
+   * 1.5× to encourage meta investment — the coop kill-gold nerf
+   * shifts earning pressure onto frontier, so we buff the return.
+   * 1× (no change) for every other mode.
+   */
+  incomeMultiplier: number = 1;
 
   constructor(events: EventBus, incomeMgr: IncomeManager, faction: FactionId | null) {
     this.events = events;
     this.incomeMgr = incomeMgr;
     this.faction = faction;
 
-    if (faction === 'random') {
+    if (faction === 'chaos') {
       this.availableBuildings = this.rollRandomFrontier();
     } else if (faction) {
       this.availableBuildings = FRONTIER_BUILDINGS[faction] || [];
@@ -41,13 +50,13 @@ export class FrontierManager {
   /** Roll 2 random frontier buildings from all faction pools */
   rollRandomFrontier(): FrontierBuilding[] {
     const all = getAllFactionFrontierBuildings();
-    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    const shuffled = [...all].sort(() => rng() - 0.5);
     return shuffled.slice(0, 2);
   }
 
-  /** Rotate frontier for random faction (called on wave clear) */
+  /** Rotate frontier for Chaos faction (called on wave clear) */
   rotateRandomFrontier(): void {
-    if (this.faction === 'random') {
+    if (this.faction === 'chaos') {
       this.availableBuildings = this.rollRandomFrontier();
     }
   }
@@ -98,24 +107,29 @@ export class FrontierManager {
           break;
 
         case 'gamble': {
-          // All gamble income is bonus (baseIncome is 0)
-          const max = b.def.id.includes('_2') ? 30 : 15;
-          bonusGold += Math.floor(Math.random() * (max + 1));
+          // All gamble income is bonus (baseIncome is 0). Roll in
+          // [0, gambleMax]; fall back to 15 for legacy entries with
+          // no explicit max.
+          const max = b.def.gambleMax ?? 15;
+          bonusGold += Math.floor(rng() * (max + 1));
           break;
         }
       }
     }
 
-    return bonusGold;
+    // Apply the mode-level income multiplier (Coop = 1.5×) to the
+    // per-wave bonus slice too, otherwise dig/grow/gamble buildings
+    // would lag behind steady/overcharge in coop's buffed economy.
+    return Math.round(bonusGold * this.incomeMultiplier);
   }
 
   // Faction-specific actions - return gold earned
   overchargeBuilding(idx: number): number {
     const building = this.getActiveBuildings()[idx];
     if (!building || building.def.mechanic !== 'overcharge' || building.dormantWaves > 0) return 0;
-    const burst = building.def.baseIncome * 3;
+    const burst = building.def.baseIncome * 3 * this.incomeMultiplier;
     building.dormantWaves = 2;
-    return burst;
+    return Math.round(burst);
   }
 
   digDeeper(idx: number): { success: boolean; collapsed: boolean } {
@@ -123,7 +137,7 @@ export class FrontierManager {
     if (!building || building.def.mechanic !== 'dig') return { success: false, collapsed: false };
     building.digLevel++;
     const risk = building.def.id.includes('_2') ? 0.05 : 0.1;
-    if (Math.random() < risk * building.digLevel) {
+    if (rng() < risk * building.digLevel) {
       this.destroyBuilding(building);
       return { success: false, collapsed: true };
     }
@@ -133,7 +147,7 @@ export class FrontierManager {
   harvestGrowth(idx: number): number {
     const building = this.getActiveBuildings()[idx];
     if (!building || building.def.mechanic !== 'grow') return 0;
-    const payout = building.growthStacks * 5;
+    const payout = Math.round(building.growthStacks * 5 * this.incomeMultiplier);
     building.growthStacks = 0;
     return payout;
   }
@@ -146,7 +160,7 @@ export class FrontierManager {
       totalGold += b.def.baseIncome * 3;
       b.dormantWaves = 2;
     }
-    return totalGold;
+    return Math.round(totalGold * this.incomeMultiplier);
   }
 
   digAllOfType(defId: string): { successes: number; collapses: number } {
@@ -156,7 +170,7 @@ export class FrontierManager {
       if (b.destroyed || b.def.id !== defId || b.def.mechanic !== 'dig') continue;
       b.digLevel++;
       const risk = b.def.id.includes('_2') ? 0.05 : 0.1;
-      if (Math.random() < risk * b.digLevel) {
+      if (rng() < risk * b.digLevel) {
         this.destroyBuilding(b);
         collapses++;
       } else {
@@ -194,7 +208,7 @@ export class FrontierManager {
         total += b.def.baseIncome;
       }
     }
-    this.incomeMgr.frontierIncome = total;
+    this.incomeMgr.frontierIncome = Math.round(total * this.incomeMultiplier);
   }
 
   getActiveBuildings(): OwnedBuilding[] {

@@ -7,6 +7,7 @@ import { GameUIStore, TowerStats } from '../GameUIStore';
 
 export function TowerInfoPanelDOM() {
   const tower = useGameUISelector(s => s.selectedTower);
+  const gold = useGameUISelector(s => s.gold);
   if (!tower) return null;
 
   return (
@@ -75,15 +76,19 @@ export function TowerInfoPanelDOM() {
       {/* Actions — hidden for towers owned by another player in Circle Co-op */}
       {tower.owned && (
         <div class="panel-actions">
-          {tower.upgradeOptions.map((opt) => (
-            <button
-              key={opt.branchId ?? 'default'}
-              class={`action-btn action-upgrade${opt.branchId ? ' action-upgrade-branch' : ''}`}
-              onClick={() => GameUIStore.requestUpgrade(tower._tower, opt.branchId)}
-            >
-              {opt.label} ({opt.cost}g)
-            </button>
-          ))}
+          {tower.upgradeOptions.map((opt) => {
+            const canAfford = gold >= opt.cost;
+            return (
+              <button
+                key={opt.branchId ?? 'default'}
+                class={`action-btn action-upgrade${opt.branchId ? ' action-upgrade-branch' : ''}${canAfford ? '' : ' action-disabled'}`}
+                disabled={!canAfford}
+                onClick={() => { if (canAfford) GameUIStore.requestUpgrade(tower._tower, opt.branchId); }}
+              >
+                {opt.label} ({opt.cost}g)
+              </button>
+            );
+          })}
           <button
             class="action-btn action-sell"
             onClick={() => GameUIStore.requestSell(tower._tower)}

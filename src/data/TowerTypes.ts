@@ -223,7 +223,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   mech_tesla: def({
     id: 'mech_tesla', name: 'Tesla', description: 'Chain lightning. Jumps to nearby targets.',
-    faction: 'mechanical', damageType: 'magic', cost: 80, damage: 18, range: 3, fireRate: 1400,
+    faction: 'mechanical', damageType: 'magic', cost: 80, damage: 18, range: 3.5, fireRate: 1400,
     color: 0xeebb44, projectileSpeed: 400, hotkey: '4',
     targeting: 'closest',
     traits: [{ id: 'chain_damage', chainCount: 2, chainRange: 96, falloff: 0.7 }],
@@ -284,7 +284,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // preserved.
   nature_root: def({
     id: 'nature_root', name: 'Root', description: 'Strongest slow in game: 70% for 3s.',
-    faction: 'nature', damageType: 'magic', cost: 35, damage: 3, range: 3, fireRate: 1000,
+    faction: 'nature', damageType: 'magic', cost: 25, damage: 3, range: 3, fireRate: 1000,
     color: 0x886633, projectileSpeed: 200, hotkey: '2',
     targeting: 'fastest',
     traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 3000, factor: 0.3 }],
@@ -293,23 +293,30 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   nature_blossom: def({
-    id: 'nature_blossom', name: 'Blossom', description: 'No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level.',
+    id: 'nature_blossom', name: 'Blossom', description: 'No attack. Buffs adjacent towers: +25% DMG, +15% SPD/level.',
     faction: 'nature', damageType: 'magic', cost: 60, damage: 0, range: 1.5, fireRate: 99999,
     color: 0xff88aa, projectileSpeed: 0, hotkey: '4',
-    traits: [{ id: 'adjacency_buff', damagePercent: 0.15, ratePercent: 0.08 }],
+    traits: [{ id: 'adjacency_buff', damagePercent: 0.25, ratePercent: 0.15 }],
     upgrades: [
       { level: 2, cost: 55, damage: 0, range: 1.5, fireRate: 99999 },
       { level: 3, cost: 90, damage: 0, range: 1.5, fireRate: 99999 },
     ],
   }),
   nature_spore: def({
-    id: 'nature_spore', name: 'Spore', description: 'Poisons ALL creeps near tower. 2% HP/s. Area denial.',
-    faction: 'nature', damageType: 'magic', cost: 100, damage: 5, range: 3, fireRate: 1500,
+    id: 'nature_spore', name: 'Spore',
+    description: 'Pulses 8 dmg AoE every 1.5s + 2% HP/s poison. Hits ALL creeps in range. Upgrades scale poison to 2.5% / 3% HP/s.',
+    faction: 'nature', damageType: 'magic', cost: 100, damage: 8, range: 3, fireRate: 1500,
     color: 0x88cc22, projectileSpeed: 200, projectileColor: 0x66aa00, hotkey: '5',
-    traits: [{ id: 'tower_aura_damage', radius: 96 }, { id: 'poison_dot', percentPerSec: 0.02, duration: 3000 }],
+    // scalePerLevel 0.25 makes poison_dot read 2%/2.5%/3% across L1/L2/L3
+    // (vs the default 0.15 which would land at 2%/2.3%/2.6%). Other
+    // poison-dot towers keep the default scaling.
+    traits: [
+      { id: 'tower_aura_damage', radius: 96 },
+      { id: 'poison_dot', percentPerSec: 0.02, duration: 3000, scalePerLevel: 0.25 },
+    ],
     upgrades: [
-      { level: 2, cost: 90, damage: 8, range: 3.5, fireRate: 1300 },
-      { level: 3, cost: 150, damage: 12, range: 4, fireRate: 1100 },
+      { level: 2, cost: 90, damage: 14, range: 3.5, fireRate: 1300 },
+      { level: 3, cost: 150, damage: 22, range: 4, fireRate: 1100 },
     ],
   }),
   nature_vine: def({
@@ -324,7 +331,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   nature_elder: def({
     id: 'nature_elder', name: 'Elder Treant', description: 'ULTIMATE. Grows +8% DMG permanently. Roots and buffs allies.',
-    faction: 'nature', damageType: 'physical', cost: 600, damage: 40, range: 4, fireRate: 800,
+    faction: 'nature', damageType: 'physical', cost: 450, damage: 40, range: 4, fireRate: 800,
     color: 0x225511, projectileSpeed: 280, hotkey: '8', ultimate: true,
     traits: [
       { id: 'direct_damage' },
@@ -338,7 +345,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'nature_bramble', name: 'Bramble Hedge',
     description: 'Dense thornbrush. Pricks constantly. At Lv2, choose Hedge (wider maze) or Razor Bramble (vicious DPS).',
     role: 'wall',
-    faction: 'nature', damageType: 'physical', cost: 12, damage: 1, range: 1.2, fireRate: 400,
+    faction: 'nature', damageType: 'physical', cost: 12, damage: 3, range: 1.2, fireRate: 400,
     color: 0x447733, projectileSpeed: 260, hotkey: '1',
     traits: [{ id: 'direct_damage' }],
     upgrades: [
@@ -365,7 +372,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     description: 'Bramble sharpened into blades. Short range, vicious bite.',
     role: 'dps-single',
     faction: 'nature', damageType: 'physical',
-    cost: 20, damage: 5, range: 1.5, fireRate: 300,
+    cost: 15, damage: 5, range: 1.5, fireRate: 300,
     color: 0x884433, projectileSpeed: 300, projectileColor: 0xcc4422, hotkey: '',
     traits: [{ id: 'direct_damage' }],
     upgrades: [
@@ -376,31 +383,31 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_viper: def({
     id: 'nature_viper', name: 'Grove Viper',
     description: 'Mobile. Slithers along hidden paths; strikes with a fanged lunge and sinks venom deep.',
-    faction: 'nature', damageType: 'physical', cost: 40, damage: 5, range: 2.5, fireRate: 950,
+    faction: 'nature', damageType: 'physical', cost: 30, damage: 12, range: 2.5, fireRate: 750,
     color: 0x2a5a2a, projectileSpeed: 200, hotkey: '3',
     traits: [
       // Slithers along the ground — underlying mobile_unit pathing
       // is standard (smooth-slide); the undulation is sprite-only
       // (4-frame S-curve cycle). engageRange tuned so the strike
       // reaches past the snake's own body length.
-      { id: 'mobile_unit', moveSpeed: 100, engageRange: 1.8, leashRange: 4, attackCooldown: 950 },
+      { id: 'mobile_unit', moveSpeed: 100, engageRange: 1.8, leashRange: 4, attackCooldown: 750 },
       { id: 'direct_damage' },
       { id: 'poison_dot', percentPerSec: 0.06, duration: 4500 },
     ],
     upgrades: [
-      { level: 2, cost: 40, damage: 9,  range: 2.8, fireRate: 900 },
-      { level: 3, cost: 65, damage: 14, range: 3.2, fireRate: 850 },
+      { level: 2, cost: 40, damage: 13, range: 2.8, fireRate: 700 },
+      { level: 3, cost: 65, damage: 20, range: 3.2, fireRate: 650 },
     ],
   }),
   nature_sunroot: def({
     id: 'nature_sunroot', name: 'Sunroot',
     description: 'Splash DPS. A bloom that learned to burn — fire-flowers arc wide.',
-    faction: 'nature', damageType: 'magic', cost: 140, damage: 16, range: 3, fireRate: 900,
+    faction: 'nature', damageType: 'magic', cost: 140, damage: 22, range: 4, fireRate: 900,
     color: 0xddaa22, projectileSpeed: 260, projectileColor: 0xffcc44, hotkey: '6',
-    traits: [{ id: 'splash_damage', radius: 56 }],
+    traits: [{ id: 'splash_damage', radius: 72 }],
     upgrades: [
-      { level: 2, cost: 120, damage: 24, range: 3.5, fireRate: 850 },
-      { level: 3, cost: 200, damage: 34, range: 4, fireRate: 800 },
+      { level: 2, cost: 120, damage: 34, range: 3.5, fireRate: 850 },
+      { level: 3, cost: 200, damage: 50, range: 4, fireRate: 800 },
     ],
   }),
 
@@ -408,8 +415,8 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // VOID (5) — Chaos, gambling, manipulation
   // ================================================================
   void_gambler: def({
-    id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 4% instant kill (2% vs bosses), 25% whiff.',
-    faction: 'void', damageType: 'magic', cost: 15, damage: 25, range: 3, fireRate: 1000,
+    id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 4% instant kill (1% vs bosses), 25% whiff.',
+    faction: 'void', damageType: 'magic', cost: 15, damage: 20, range: 3, fireRate: 1000,
     color: 0xdd44ff, projectileSpeed: 300, hotkey: '1',
     targeting: 'weakest',
     traits: [{ id: 'direct_damage' }, { id: 'jackpot', killChance: 0.04, missChance: 0.25 }],
@@ -428,10 +435,10 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   void_siphon: def({
-    id: 'void_siphon', name: 'Siphon', description: 'Earns +1g per hit. Economy engine.',
+    id: 'void_siphon', name: 'Siphon', description: '40% chance of +2g per hit. Gambler\'s economy engine.',
     faction: 'void', damageType: 'magic', cost: 50, damage: 5, range: 3, fireRate: 700,
     color: 0xbb55dd, projectileSpeed: 300, projectileColor: 0xffdd44, hotkey: '3',
-    traits: [{ id: 'direct_damage' }, { id: 'gold_on_hit', amount: 1 }],
+    traits: [{ id: 'direct_damage' }, { id: 'gold_on_hit', amount: 2, chance: 0.4 }],
     upgrades: [
       { level: 2, cost: 55, damage: 8, range: 3.5, fireRate: 650 },
       { level: 3, cost: 90, damage: 12, range: 4, fireRate: 580 },
@@ -449,7 +456,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   void_oblivion: def({
-    id: 'void_oblivion', name: 'Oblivion', description: 'ULTIMATE. 15% instakill, +3g/hit, extreme variance.',
+    id: 'void_oblivion', name: 'Oblivion', description: 'ULTIMATE. 15% instakill, 30% chance of +8 gold per hit, extreme variance.',
     faction: 'void', damageType: 'magic', cost: 900, damage: 80, range: 5, fireRate: 600,
     color: 0x220044, projectileSpeed: 400, projectileColor: 0xff00ff, hotkey: '5', ultimate: true,
     targeting: 'weakest',
@@ -457,7 +464,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { id: 'direct_damage' },
       { id: 'jackpot', killChance: 0.15, missChance: 0.1 },
       { id: 'damage_variance', min: 0.5, max: 2.5 },
-      { id: 'gold_on_hit', amount: 3 },
+      { id: 'gold_on_hit', amount: 8, chance: 0.3 },
       { id: 'damage_amp_on_hit', ampAmount: 0.2, duration: 3000 },
     ],
     // No upgrades — pure chaos incarnate
@@ -604,7 +611,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   cyber_ping: def({
     id: 'cyber_ping', name: 'Ping', description: 'Cheap. Very long range, low damage.',
-    faction: 'cypherpunk', damageType: 'magic', cost: 15, damage: 5, range: 8, fireRate: 900,
+    faction: 'cypherpunk', damageType: 'magic', cost: 15, damage: 5, range: 8, fireRate: 700,
     color: 0x00ffcc, projectileSpeed: 500, hotkey: '1',
     upgrades: [
       { level: 2, cost: 20, damage: 8, range: 9, fireRate: 800 },
@@ -615,7 +622,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'cyber_firewall', name: 'Firewall', description: 'Links to another Firewall within range. Beam damages + heavily slows creeps crossing.',
     faction: 'cypherpunk', damageType: 'magic', cost: 35, damage: 0, range: 8, fireRate: 99999,
     color: 0x0088aa, projectileSpeed: 0, hotkey: '2',
-    traits: [{ id: 'firewall_link', linkRange: 8, dps: 35, slowFactor: 0.35 }],
+    traits: [{ id: 'firewall_link', linkRange: 8, dps: 35, slowFactor: 0.50 }],
     upgrades: [
       { level: 2, cost: 40, damage: 0, range: 10, fireRate: 99999 },
     ],
@@ -677,7 +684,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   infernal_imp: def({
     id: 'infernal_imp', name: 'Imp', description: 'Cheap. Decent damage. Expires after 4 waves.',
-    faction: 'infernal', damageType: 'magic', cost: 10, damage: 14, range: 3, fireRate: 700,
+    faction: 'infernal', damageType: 'magic', cost: 12, damage: 12, range: 3, fireRate: 700,
     color: 0xff4422, projectileSpeed: 350, hotkey: '1',
     traits: [{ id: 'direct_damage' }, { id: 'expires_after_waves', waves: 4 }],
   }),
@@ -693,7 +700,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   infernal_soul_drain: def({
     id: 'infernal_soul_drain', name: 'Soul Drain', description: 'Earns +2g per kill within range.',
-    faction: 'infernal', damageType: 'magic', cost: 70, damage: 18, range: 4, fireRate: 900,
+    faction: 'infernal', damageType: 'magic', cost: 90, damage: 18, range: 4, fireRate: 900,
     color: 0xcc3366, projectileSpeed: 300, hotkey: '3',
     traits: [{ id: 'direct_damage' }, { id: 'gold_per_kill_range', goldPerKill: 2 }],
     upgrades: [
@@ -732,7 +739,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   celestial_acolyte: def({
     id: 'celestial_acolyte', name: 'Acolyte', description: 'Light damage. 5% chance on nearby kill to gain +1 life.',
-    faction: 'celestial', damageType: 'magic', cost: 25, damage: 10, range: 3.5, fireRate: 800,
+    faction: 'celestial', damageType: 'magic', cost: 25, damage: 14, range: 4.5, fireRate: 800,
     color: 0xffffaa, projectileSpeed: 350, hotkey: '1',
     traits: [{ id: 'direct_damage' }, { id: 'life_on_kill', chance: 0.05 }],
     upgrades: [
@@ -787,7 +794,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   psi_probe: def({
     id: 'psi_probe', name: 'Probe', description: 'Cheap true damage. Ignores all armor.',
-    faction: 'psionic', damageType: 'magic', cost: 20, damage: 8, range: 3, fireRate: 700,
+    faction: 'psionic', damageType: 'magic', cost: 20, damage: 8, range: 4, fireRate: 700,
     color: 0xdd88ff, projectileSpeed: 350, hotkey: '1',
     traits: [{ id: 'true_damage' }],
     upgrades: [
@@ -918,13 +925,13 @@ export function getTowerType(id: string): TowerType {
  *  Pulls from each faction's explicit `towerIds` list rather than
  *  iterating `TOWER_TYPES`, so branch-only towers (e.g.
  *  `nature_razor_bramble`, reached only via Bramble Hedge's L2
- *  branch) are NOT included. This is the pool the Random faction
+ *  branch) are NOT included. This is the pool the Chaos faction
  *  and other "all towers" UIs roll from. */
 export function getAllFactionTowerIds(): string[] {
   const ids: string[] = [];
   const seen = new Set<string>();
   for (const fid of FACTION_ORDER) {
-    if (fid === 'random') continue;
+    if (fid === 'chaos' || fid === 'random') continue;
     for (const id of FACTIONS[fid].towerIds) {
       if (!seen.has(id)) { seen.add(id); ids.push(id); }
     }

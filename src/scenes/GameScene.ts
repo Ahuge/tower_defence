@@ -289,6 +289,9 @@ export class GameScene extends Phaser.Scene {
 
   private customMapDef: MapDefinition | null = null;
 
+  /** Timestamp when mode_entered fired; used to compute mode_exited durationMs. */
+  private _modeEnteredAt: number = 0;
+
   init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
@@ -300,6 +303,21 @@ export class GameScene extends Phaser.Scene {
     this.randomSeed = data.randomSeed ?? 0;
     this.creepFaction = data.creepFaction ?? 'arcane';
     this.waveCount = data.waveCount;
+    // Live-capture mode forces 20-wave matches to match the
+    // headless training data shape — bot data is generated at
+    // waveCount=20, so human-captured rows must use the same to
+    // be mixable. Only applies to standard mode (the only mode
+    // capture targets).
+    try {
+      const win = (typeof window !== 'undefined') ? window : null;
+      const capActive = win && (
+        new URLSearchParams(win.location.search).get('capture') === '1' ||
+        win.localStorage.getItem('learning.capture') === '1'
+      );
+      if (capActive && this.matchMode === 'standard') {
+        this.waveCount = 20;
+      }
+    } catch { /* ignore (headless / sandboxed) */ }
     this._gauntletOrder = (data as any).gauntletOrder ?? undefined;
     this._gauntletTransitioning = false;
     this.generatedMapDef = null;
@@ -311,7 +329,7 @@ export class GameScene extends Phaser.Scene {
     this.layout = getLayout(this.matchMode);
     this.gridOffsetY = this.layout.gridOffsetY;
     this.difficultyHints = DIFFICULTIES[this.difficulty];
-    if (this.faction === 'random') {
+    if (this.faction === 'chaos') {
       this.activeTowerIds = this.rollRandomTowers();
     } else if (this.faction) {
       const f = getFaction(this.faction);
@@ -370,6 +388,7 @@ export class GameScene extends Phaser.Scene {
         const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
         if (!opt) return;
         if (this.economy.spend(opt.cost)) {
+          this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
           tower.upgrade(branchId ?? null);
           GameUIStore.selectTower(this.towerToStats(tower));
           const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
@@ -419,6 +438,13 @@ export class GameScene extends Phaser.Scene {
           GameUIStore.selectDockTower(index);
           this.eventBus.emit('dockTowerSelected', index, towerId);
         }
+      },
+      onDeselectTower: () => {
+        // Full deselect from the sidebar UI — must clear `this.selectedTower`
+        // too, otherwise the per-frame refresh below re-pushes the snapshot
+        // and the panel reappears 250ms later.
+        if (this.selectionMode === 'inspect') this.enterNoneMode();
+        else GameUIStore.deselectTower();
       },
     });
 
@@ -484,6 +510,27 @@ export class GameScene extends Phaser.Scene {
     TutorialManager.setGameEventBus(this.eventBus);
     TutorialManager.onGameSceneCreated(this.matchMode);
 
+    // Live-capture for sends + frontier purchases. Both events are
+    // emitted ONLY from human-player code paths (DOM callbacks +
+    // panel-click handlers in StandardMode / GauntletMode /
+    // BaseFrontierMode); bot purchases route through the BotAI
+    // frontierCb / sendCb pathway which doesn't emit these. So
+    // subscribing here captures human actions only — no bot leakage.
+    this.eventBus.on('sendPurchased', (sendOptionId: string) => {
+      this._captureHumanAction({ kind: 'send', sendOptionId });
+    });
+    this.eventBus.on('frontierPurchased', (buildingId: string) => {
+      this._captureHumanAction({ kind: 'frontier', buildingId });
+    });
+    this.eventBus.on('frontierActionPerformed', (event) => {
+      this._captureHumanAction({
+        kind: 'frontierManage',
+        action: event.action,
+        idx: event.idx,
+        defId: event.defId,
+      });
+    });
+
     // Resolve map definition — generate for random maps, use custom if provided
     let mapDef: MapDefinition;
     if (this.mapId === 'custom' && this.customMapDef) {
@@ -536,6 +583,11 @@ export class GameScene extends Phaser.Scene {
       // Tag every wave creep with its spawner's owner so the shared
       // kill-gold split knows who to pay the spawn-owner half.
       this.spawner.setTrackSpawnOwnership(true);
+      // Coop late-game scaling: creep HP gets an extra additive
+      // ramp per wave. Wave 10 ≈ 1.35×, wave 25 ≈ 1.875×, wave 40
+      // = 2.4×. Compounds with difficulty + the natural wave-count
+      // curve, which weren't keeping up with stacked team DPS.
+      this.spawner.setHpWaveMultiplier((wave) => 1 + wave * 0.035);
     }
     this.inputMgr = new InputManager(this, this.eventBus);
     if (this.layout.gridRows !== GRID_ROWS) {
@@ -698,6 +750,13 @@ export class GameScene extends Phaser.Scene {
     };
     this.gameMode.createUI(gameModeCtx);
 
+    // Coop frontier buff: +50% on baseIncome + per-wave bonus
+    // + overcharge / harvest payouts. Balances against the coop
+    // kill-gold nerf so the meta-economy path stays compelling.
+    if (this.circle && this.gameMode instanceof BaseFrontierMode) {
+      this.gameMode.frontierMgr.incomeMultiplier = 1.5;
+    }
+
     this.incomeDisplay = new IncomeDisplay(this);
 
     // Hide Phaser HUD — DOM takes over.
@@ -714,10 +773,15 @@ export class GameScene extends Phaser.Scene {
       : this.circle
         ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
         : new StandardLeakHandler(this.eventLog, this.statsTracker, () => this.towerMgr.towers);
+    // Coop kill-gold nerf: with the 50/50 killer-spawner split and
+    // teams of 2-4 players, an unscaled mult left coop with way
+    // more team gold than solo — players outgrew creep HP fast.
+    // 0.7× trims each share to 35% of solo, team total to 70%.
+    const circleKillGoldMult = (this.modifier?.killGoldMult ?? 1) * 0.7;
     const circleDeathHandler = this.circle
       ? new CircleDeathHandler(
           this.economy, this.statsTracker, this.eventBus,
-          this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex,
+          circleKillGoldMult, this.towerOwners, this.circle.playerIndex,
           {
             // Broadcast each local kill so other peers update their
             // rosters + credit their half of the shared gold.
@@ -743,6 +807,13 @@ export class GameScene extends Phaser.Scene {
           // Hero Defense: 10x creeps so reduce kill gold to 30%
           this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
+    // Shared procedural overlay for all creeps (HP bars, shadows,
+    // status rings). Replaces the previous per-creep Graphics — 1
+    // render entry instead of N. Depth 10 matches the old per-creep
+    // setting so layering stays the same.
+    const creepOverlay = this.add.graphics();
+    creepOverlay.setDepth(10);
+    this.creepMgr.setOverlay(creepOverlay);
 
     // Wave controller
     this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {
@@ -767,6 +838,17 @@ export class GameScene extends Phaser.Scene {
     });
     this.eventLog.gameMessage('Game started. Press SPACE for wave 1. [A] to auto-play.');
     Analytics.gameStart(this.matchMode, this.faction ?? 'unknown', this.difficulty, this.mapId);
+    Analytics.track('mode_entered', { mode: this.matchMode });
+    this._modeEnteredAt = Date.now();
+
+    // Live-capture hook — when ?capture=1 (or localStorage flag) is
+    // set, record every human place/upgrade/sell for offline retrain
+    // of LearningBrain. No-op when capture mode is off.
+    import('../systems/learning/LiveCapture').then(m => {
+      if (m.isCaptureEnabled() && this.faction && this.matchMode === 'standard') {
+        m.startSession(this.faction, this.difficulty);
+      }
+    });
 
     // Signal loading screen that scene is ready (triggers fade-out)
     import('../ui/UIBridge').then(m => m.UIBridge.signalSceneReady());
@@ -921,7 +1003,7 @@ export class GameScene extends Phaser.Scene {
             this.eventLog.gameMessage('Opponent defeated! You win!');
             break;
           case 'tower_pool':
-            if (this.faction === 'random') {
+            if (this.faction === 'chaos') {
               this.activeTowerIds = msg.towerIds;
               this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
               this.enterNoneMode();
@@ -946,9 +1028,9 @@ export class GameScene extends Phaser.Scene {
         }
       };
 
-      // Random faction in versus: host rolls towers for joiner too
-      if (this.faction === 'random' && this.versus.isHost) {
-        // Send the initial pool to joiner (if they're also random,
+      // Chaos faction in versus: host rolls towers for joiner too
+      if (this.faction === 'chaos' && this.versus.isHost) {
+        // Send the initial pool to joiner (if they're also chaos,
         // they'll use this; if not, they'll ignore it)
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
@@ -1108,7 +1190,7 @@ export class GameScene extends Phaser.Scene {
         this.circleBotAI.setMetaCallbacks({
           frontierCb: (botIdx, buildingId) => {
             const botFac = this.circle!.playerFactions.get(botIdx) as FactionId | undefined;
-            const pool = botFac === 'random'
+            const pool = botFac === 'chaos'
               ? getAllFactionFrontierBuildings()
               : (botFac ? (FRONTIER_BUILDINGS[botFac] ?? GENERIC_OUTPOSTS) : GENERIC_OUTPOSTS);
             const b = pool.find(b => b.id === buildingId);
@@ -1125,7 +1207,7 @@ export class GameScene extends Phaser.Scene {
             const firstBotIdx = [...this.circle!.botSlots][0];
             if (firstBotIdx === undefined) return [];
             const fac = this.circle!.playerFactions.get(firstBotIdx) as FactionId | undefined;
-            const pool = fac === 'random'
+            const pool = fac === 'chaos'
               ? getAllFactionFrontierBuildings()
               : (fac ? (FRONTIER_BUILDINGS[fac] ?? GENERIC_OUTPOSTS) : GENERIC_OUTPOSTS);
             return pool.map(b => ({ id: b.id, cost: b.cost, income: b.baseIncome }));
@@ -1875,7 +1957,7 @@ export class GameScene extends Phaser.Scene {
     // cosmetic in CPU matches), and the bot can purchase its own
     // sends / frontier to build income and pressure the human.
     const cpuFaction = this.versus.cpuFaction as FactionId;
-    const frontierPool = cpuFaction === 'random'
+    const frontierPool = cpuFaction === 'chaos'
       ? getAllFactionFrontierBuildings()
       : (FRONTIER_BUILDINGS[cpuFaction] ?? GENERIC_OUTPOSTS);
     this.cpuOpponentAI.setMetaCallbacks({
@@ -1937,6 +2019,10 @@ export class GameScene extends Phaser.Scene {
     // Circle co-op: can only sell your own towers
     if (!this.canModifyTower(col, row)) return;
 
+    // Capture BEFORE the sell mutates state so the recorded
+    // snapshot reflects what the player saw at decision time.
+    this._captureHumanAction({ kind: 'sell', col, row });
+
     const result = this.towerMgr.sellTower(col, row);
     if (!result) return;
 
@@ -1953,12 +2039,44 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Build a synthetic BotContext + record one human action through
+   *  LiveCapture. No-op when capture mode is off. Errors are
+   *  swallowed inside the capture module. */
+  private _captureHumanAction(decision: any): void {
+    if (!this.faction) return;
+    void import('../systems/learning/LiveCapture').then(m => {
+      if (!m.isCaptureEnabled()) return;
+      // Convert live tower instances → PlacedTower shape the
+      // featurizer expects.
+      const placed = this.towerMgr.towers
+        .filter(t => (t as any).ownerIndex === undefined)
+        .map(t => ({
+          col: t.col, row: t.row, towerId: t.typeId, level: t.level,
+          upgradeCost: 0, upgradeBranches: [], branchUpgradeCosts: {}, sellValue: 0,
+        }));
+      const ctx = m.buildCtxFromSnapshot({
+        faction: this.faction!,
+        wave: this.currentWave,
+        lives: this.lives,
+        budget: this.economy?.gold ?? 0,
+        candidateCells: [],
+        placedTowers: placed,
+        allPaths: this.allPaths,
+        betweenWaves: this.betweenWaves,
+      });
+      m.recordAction(ctx, decision);
+    });
+  }
+
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
     // Circle co-op: zone restriction
     if (!this.canBuildInZone(col, row)) return;
 
     const towerType = getTowerType(this.selectedBuildType);
+
+    // Capture BEFORE placement so the snapshot is the pre-action state.
+    this._captureHumanAction({ kind: 'place', col, row, type: towerType });
 
     const result = this.towerMgr.placeTower(col, row, towerType, this.allPaths, () => {
       this.recalculatePaths();
@@ -2125,6 +2243,9 @@ export class GameScene extends Phaser.Scene {
 
     // Creep updates: movement, leak handling, kill processing, cleanup
     const leakResult = this.creepMgr.update(delta);
+    // After all creeps have moved and been culled, repaint the shared
+    // overlay (HP bars, shadows, status rings) in one pass.
+    this.creepMgr.drawAll();
     // Non-circle modes (standard / hero defense / versus): this.lives
     // is authoritative. Circle mode has TWO life pools (local
     // this.lives + circle.sharedLives) that are kept synchronised by
@@ -2646,7 +2767,6 @@ export class GameScene extends Phaser.Scene {
   private killCreepForRevive(creep: Creep): void {
     if (!creep.alive) return;
     creep.alive = false;
-    try { creep.graphics.destroy(); } catch { /* already gone */ }
     if (creep.sprite) {
       playCreepDeath(this, creep.sprite, this.creepFaction, creep.creepTypeId);
       creep.sprite = null;
@@ -2727,6 +2847,18 @@ export class GameScene extends Phaser.Scene {
     };
     const duration = Math.round((Date.now() - this._gameStartTime) / 1000);
     Analytics.gameEnd(this.matchMode, this.lives > 0 ? 'victory' : 'defeat', this.currentWave, duration);
+    if (this._modeEnteredAt) {
+      Analytics.track('mode_exited', { mode: this.matchMode, durationMs: Date.now() - this._modeEnteredAt });
+      this._modeEnteredAt = 0;
+    }
+
+    // Live-capture session close — appends this match's turns to
+    // localStorage with the match outcome attached.
+    void import('../systems/learning/LiveCapture').then(m => {
+      if (m.isCaptureEnabled()) {
+        m.finishSession(this.lives > 0 ? 'win' : 'loss', this.currentWave);
+      }
+    });
 
     this.versus?.close();
     this.registry.remove('versus');
@@ -3224,7 +3356,7 @@ export class GameScene extends Phaser.Scene {
         if (DEBUG) console.log(`[Endless] Appended waves ${nextStart}-${nextStart + 9}, total: ${this.waves.length}`);
       }
       if (waveNum % 10 === 0) {
-        const playable = FACTION_ORDER.filter(f => f !== 'random' && f !== this.creepFaction);
+        const playable = FACTION_ORDER.filter(f => f !== 'chaos' && f !== 'random' && f !== this.creepFaction);
         // Deterministic faction pick for multiplayer Endless — host
         // and joiner must land on the same faction or wave 11+ creeps
         // diverge. Seeded from (sharedSeed XOR waveNum); solo falls
@@ -3250,8 +3382,8 @@ export class GameScene extends Phaser.Scene {
     this.upcomingWaves.update(waveNum, this.waves);
     this.updateDOMWaves(waveNum);
 
-    // Random faction rotation
-    if (this.faction === 'random') {
+    // Chaos faction rotation (rolls a fresh tower + frontier pool each wave).
+    if (this.faction === 'chaos') {
       this.activeTowerIds = this.rollRandomTowers();
       this.towerBar.setTowerIds(this.activeTowerIds); this.syncTowerBarToDOM();
       if (this.gameMode instanceof BaseFrontierMode) {
@@ -3280,8 +3412,9 @@ export class GameScene extends Phaser.Scene {
       for (const t of this.towerMgr.towers) t.destroy();
       this.towerMgr.towers = [];
       this._towers = [];
-      // Destroy all creeps
-      for (const c of this.creepMgr.creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
+      // Destroy all creeps (sprites only; the shared overlay graphics
+      // is owned by CreepManager and survives the reset).
+      for (const c of this.creepMgr.creeps) { c.sprite?.destroy(); }
       this.creepMgr.creeps = [];
       this._creeps = [];
 
@@ -3374,8 +3507,9 @@ export class GameScene extends Phaser.Scene {
     // Destroy all towers and their sprites
     for (const t of this._towers) t.destroy();
     this._towers = [];
-    // Destroy all creeps
-    for (const c of this._creeps) { c.graphics?.destroy(); c.sprite?.destroy(); }
+    // Destroy all creep sprites (shared overlay graphics is auto-cleaned
+    // when the scene tears down — no per-creep graphics to destroy).
+    for (const c of this._creeps) { c.sprite?.destroy(); }
     this._creeps = [];
     // Clean up path flow indicators
     this.resetPathFlow();

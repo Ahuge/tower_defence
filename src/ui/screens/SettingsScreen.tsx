@@ -21,6 +21,11 @@ import type { PlayerProfile } from '../../systems/platform';
 import { restorePurchases, PlayerInventory } from '../../systems/monetization';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { TutorialPersistence } from '../../systems/Tutorial/TutorialPersistence';
+import {
+  isCaptureEnabled, setCaptureEnabled,
+  getStats as getCaptureStats,
+  downloadJSONL as downloadCapture, clearAll as clearCaptures,
+} from '../../systems/learning/LiveCapture';
 
 export function SettingsScreen() {
   const [, setTick] = useState(0);
@@ -35,6 +40,7 @@ export function SettingsScreen() {
         <RestoreSection />
         <TutorialSection />
         <AnalyticsSection />
+        <TrainingDataSection />
         <AboutSection />
       </div>
     </>
@@ -201,6 +207,71 @@ function AnalyticsSection() {
         <input type="checkbox" checked={optedOut} onChange={toggle} />
         <span>Opt out of anonymous telemetry</span>
       </label>
+    </div>
+  );
+}
+
+// ─── Training data (LearningBrain captures) ─────────────────
+
+function TrainingDataSection() {
+  // Pull stats once on mount + after every action; LiveCapture's
+  // localStorage writes are synchronous so getStats() returns the
+  // current truth.
+  const [stats, setStats] = useState(() => getCaptureStats());
+  const [enabled, setEnabledLocal] = useState(() => isCaptureEnabled());
+  const refresh = () => setStats(getCaptureStats());
+
+  const toggle = () => {
+    const next = !enabled;
+    setCaptureEnabled(next);
+    setEnabledLocal(next);
+  };
+
+  const onDownload = () => {
+    if (stats.matches === 0) return;
+    downloadCapture(`human-turns-${new Date().toISOString().slice(0, 10)}.jsonl`);
+  };
+
+  const onClear = () => {
+    if (stats.matches === 0) return;
+    if (!window.confirm(`Clear ${stats.matches} captured matches? This can't be undone (download a copy first if you want to keep them).`)) return;
+    clearCaptures();
+    refresh();
+  };
+
+  return (
+    <div class="settings-block" style={{ marginTop: '16px' }}>
+      <div class="ui-section-title">Training data</div>
+      <div class="text-dim text-sm mb-2">
+        Records your standard-mode gameplay (any difficulty) for offline AI training. Saves locally — never uploaded.
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '12px' }}>
+        <input type="checkbox" checked={enabled} onChange={toggle} />
+        <span>Record gameplay for AI training</span>
+      </label>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <button
+            class={`btn ${stats.matches === 0 ? 'btn-disabled' : 'btn-primary'}`}
+            onClick={onDownload}
+            disabled={stats.matches === 0}
+          >
+            Download Stats
+          </button>
+          <div class="text-dim" style={{ fontSize: '11px', marginTop: '4px' }}>
+            {stats.matches === 0
+              ? 'No games recorded yet'
+              : `${stats.matches} game${stats.matches === 1 ? '' : 's'} (${stats.wins} win${stats.wins === 1 ? '' : 's'}, ${stats.turns.toLocaleString()} turns)`}
+          </div>
+        </div>
+        <button
+          class={`btn ${stats.matches === 0 ? 'btn-disabled' : 'btn-secondary'}`}
+          onClick={onClear}
+          disabled={stats.matches === 0}
+        >
+          Clear Stats
+        </button>
+      </div>
     </div>
   );
 }

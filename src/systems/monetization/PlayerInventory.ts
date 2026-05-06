@@ -26,7 +26,10 @@ class PlayerInventoryClass {
   private listeners: InventoryListener[] = [];
 
   ownsFaction(factionId: FactionId): boolean {
-    if (factionId === 'random') return true;
+    // Both meta-factions are always available: 'chaos' (rotating
+    // pool) and 'random' (the picker token, which resolves to a
+    // real faction at match start).
+    if (factionId === 'chaos' || factionId === 'random') return true;
     if ((FREE_FACTIONS as string[]).includes(factionId)) return true;
     return StorePersistence.load().unlockedFactions.includes(factionId);
   }
@@ -231,7 +234,12 @@ class PlayerInventoryClass {
       s.gamesPlayed++;
       if (won) {
         s.gamesWon++;
-        if (faction && faction !== 'random' && !s.firstWinFactions.includes(faction)) {
+        // Skip Chaos (rotating pool — no specific faction credit).
+        // 'random' won't appear here because it's resolved to a real
+        // faction at the FactionSelectScreen, but kept in the guard
+        // for safety against future call sites that might pass it
+        // through unresolved.
+        if (faction && faction !== 'chaos' && faction !== 'random' && !s.firstWinFactions.includes(faction)) {
           s.firstWinFactions.push(faction);
           isFirstFactionWin = true;
         }

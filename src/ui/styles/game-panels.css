@@ -281,6 +281,17 @@
   border-color: rgba(68, 255, 68, 0.6);
 }
 
+/* Greyed-out upgrade/branch button when the player can't afford it.
+   Cost text stays readable so they know the target — just no green
+   pulse to suggest it's actionable. */
+.action-btn.action-disabled,
+.action-btn.action-disabled:hover {
+  background: rgba(40, 40, 40, 0.6);
+  color: #888;
+  border-color: rgba(140, 140, 140, 0.25);
+  cursor: not-allowed;
+}
+
 /* Branch variant of the upgrade button — amber/red accent so the
  * divergent path is visually distinct from the default upgrade. */
 .action-upgrade-branch {

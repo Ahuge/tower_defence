@@ -6,10 +6,12 @@ import { DrawStep } from './DrawSteps';
 import { ARCANE_TOWER_STEPS } from './ArcaneStepDefs';
 import { FACTIONS, Faction } from '../data/Factions';
 
-/** Map faction ID → tower ID array (for step editor tower selection) */
+/** Map faction ID → tower ID array (for step editor tower selection).
+ *  Skip 'chaos' (rotating pool, no fixed tower list) and 'random'
+ *  (UI picker token, no towers of its own). */
 const FACTIONS_IDS: Record<string, string[]> = {};
 for (const [fid, f] of Object.entries(FACTIONS) as [string, Faction][]) {
-  if (fid !== 'random') FACTIONS_IDS[fid] = f.towerIds;
+  if (fid !== 'chaos' && fid !== 'random') FACTIONS_IDS[fid] = f.towerIds;
 }
 
 /** Get step function for a tower if available */

@@ -1,0 +1,39 @@
+{
+  "brain": "balanced",
+  "faction": "arcane",
+  "difficulty": "normal",
+  "discoveredAt": "2026-04-25",
+  "method": "L1 hyperparameter search · μ+λ ES (μ=2, λ=8)",
+  "results": {
+    "baselineWinRate": 0.08,
+    "winnerWinRate": 1.0,
+    "validation": {
+      "trainingSeeds_baseSeed1": { "n": 100, "winRate": 1.0, "avgWave": 20.0 },
+      "holdoutSeeds_baseSeed999": { "n": 100, "winRate": 0.99, "avgWave": 20.0 },
+      "holdoutSeeds_baseSeed42": { "n": 100, "winRate": 0.98, "avgWave": 20.0 }
+    },
+    "totalEvaluations": 135,
+    "wallTimeSeconds": 45
+  },
+  "params": {
+    "panicLives": 13,
+    "mazeSaturationThreshold": 3,
+    "maxWallPlacements": 8,
+    "highCoverageRatio": 2.1395775790792784,
+    "minDpsTowersForUlt": 7,
+    "stableLivesForUlt": 19,
+    "expensiveBias": 0.5765304131411251,
+    "frontierBuyChance": 0,
+    "sendBuyChance": 0.24681592363718136,
+    "auraAdjacencyBonus": 0.10670555039084635,
+    "waveLookaheadWindow": 5,
+    "upgradeCoverageRange": 3
+  },
+  "interpretation": [
+    "frontierBuyChance=0 — biggest lever. Default 0.4 had brain wasting 40% of between-wave decisions on income buildings whose payoff doesn't materialise within a 20-wave normal match.",
+    "panicLives=13 (vs default 5) — switch to defensive slows much earlier rather than dying the moment lives drop.",
+    "minDpsTowersForUlt=7, stableLivesForUlt=19 — much more cautious about saving for the ultimate; build a real DPS base first.",
+    "expensiveBias=0.58 — pick mid-cost towers, not greediest. Lets cheap keystones (Bolt) into the rotation.",
+    "mazeSaturationThreshold=3 — stop wall-building once path-extension gain dries up; redirect gold to towers."
+  ]
+}

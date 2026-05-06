@@ -11,6 +11,7 @@ import {
 } from '../../systems/platform/AdPlacements';
 import { formatCountdown } from '../../systems/platform/AdCooldowns';
 import { useState, useEffect } from 'preact/hooks';
+import { isCaptureEnabled } from '../../systems/learning/LiveCapture';
 
 /**
  * Cooldown (ms) required before the Nth reroll (1-indexed). First
@@ -47,6 +48,15 @@ interface Props { data: Record<string, unknown>; }
  * mode-specific branching needed.
  */
 export function DraftScreen({ data }: Props) {
+  // Training-data capture suppresses modifiers entirely. The headless
+  // bot harness (which generates the rest of the training set) runs
+  // modifier=null, so allowing modifier picks here would inject a
+  // dimension into the human captures that the bot data doesn't have
+  // — model gradient gets dominated by the no-modifier majority and
+  // the modifier feature carries no signal. See CLAUDE.md (capture
+  // ingest section) and the "DraftModifier — Option A" decision.
+  const captureLocked = isCaptureEnabled();
+
   const [modifiers, setModifiers] = useState(() => getRandomModifiers(3));
   const hasFreeMods = BattlePass.hasPerk('free_modifiers');
   // ads_off bypass delegates to claimRewarded but we use the helper to
@@ -143,6 +153,29 @@ export function DraftScreen({ data }: Props) {
     : isRewardInstant()
       ? 'Ads-off: all modifiers unlocked'
       : 'First modifier free — watch an ad to unlock more options';
+
+  if (captureLocked) {
+    // Single explanatory card + Continue button that picks modifier=null.
+    // Deliberately *not* auto-routing — surprising the user with a vanished
+    // screen would be worse than one extra click that explains itself.
+    return (
+      <>
+        <Header title="CHOOSE MODIFIER" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
+        <div class="ui-section" style={{ textAlign: 'center' }}>
+          <div class="text-dim text-sm mb-2">Training capture is on</div>
+        </div>
+        <div class="ui-section" style={{ paddingTop: 0 }}>
+          <div class="card" style={{ maxWidth: '440px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
+            <div class="card-name" style={{ color: 'var(--gold)', marginBottom: '10px' }}>Modifiers disabled</div>
+            <div class="card-desc" style={{ marginBottom: '14px' }}>
+              While training-data capture is active, all matches run without a modifier so the recordings stay aligned with the bot dataset. Toggle capture off in Settings to pick a modifier.
+            </div>
+            <button class="btn btn-gold" onClick={() => pick(null)}>Continue</button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

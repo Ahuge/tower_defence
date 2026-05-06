@@ -118,6 +118,17 @@ export type BotSendCallback = (playerIndex: number, sendOptionId: string, cost: 
 /** Frontier / economy building purchase callback. Mirrors send. */
 export type BotFrontierCallback = (playerIndex: number, buildingId: string, cost: number) => boolean;
 
+/** Post-purchase frontier action — overcharge / dig / harvest a
+ *  building the bot already owns. Targets either a single owned
+ *  index (`idx`) or all-of-type (`defId`). Returns true on success;
+ *  the scene handles the gold credit / dormancy / collapse logic
+ *  same as the human flow. */
+export type BotFrontierActionCallback = (
+  playerIndex: number,
+  action: 'overcharge' | 'dig' | 'harvest',
+  target: { idx?: number; defId?: string },
+) => boolean;
+
 /** Per-decision context suppliers for sends and frontier. Returns
  *  empty arrays in modes where the system doesn't apply (Circle
  *  Co-op has no sends; pure-tutorial has no frontier). Called per
@@ -137,6 +148,7 @@ export class BotAI {
   private sellCallback: BotSellCallback | null;
   private sendCallback: BotSendCallback | null = null;
   private frontierCallback: BotFrontierCallback | null = null;
+  private frontierActionCallback: BotFrontierActionCallback | null = null;
   private sendOptionsSupplier: SendOptionsSupplier | null = null;
   private frontierOptionsSupplier: FrontierOptionsSupplier | null = null;
   private betweenWavesSupplier: (() => boolean) | null = null;
@@ -174,12 +186,14 @@ export class BotAI {
   setMetaCallbacks(opts: {
     sendCb?: BotSendCallback | null;
     frontierCb?: BotFrontierCallback | null;
+    frontierActionCb?: BotFrontierActionCallback | null;
     sendOpts?: SendOptionsSupplier | null;
     frontierOpts?: FrontierOptionsSupplier | null;
     betweenWaves?: (() => boolean) | null;
   }): void {
     if (opts.sendCb !== undefined) this.sendCallback = opts.sendCb;
     if (opts.frontierCb !== undefined) this.frontierCallback = opts.frontierCb;
+    if (opts.frontierActionCb !== undefined) this.frontierActionCallback = opts.frontierActionCb;
     if (opts.sendOpts !== undefined) this.sendOptionsSupplier = opts.sendOpts;
     if (opts.frontierOpts !== undefined) this.frontierOptionsSupplier = opts.frontierOpts;
     if (opts.betweenWaves !== undefined) this.betweenWavesSupplier = opts.betweenWaves;
@@ -469,6 +483,20 @@ export class BotAI {
           if (!b.economy.spend(opt.cost)) continue;
           const ok = this.frontierCallback(b.playerIndex, opt.id, opt.cost);
           if (!ok) b.economy.addGold(opt.cost);
+          break;
+        }
+
+        case 'frontierManage': {
+          // Post-purchase action — the scene already manages gold
+          // credit / dormancy / collapse via the existing
+          // handleFrontierAction handlers, so the driver just
+          // forwards intent. No spend on this side.
+          if (!this.frontierActionCallback) continue;
+          const target: { idx?: number; defId?: string } = {};
+          if (decision.idx !== undefined) target.idx = decision.idx;
+          if (decision.defId) target.defId = decision.defId;
+          if (target.idx === undefined && !target.defId) continue;
+          this.frontierActionCallback(b.playerIndex, decision.action, target);
           break;
         }
 

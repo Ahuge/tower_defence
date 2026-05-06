@@ -53,6 +53,7 @@ interface SimTower {
   poisonPctPerSec: number;
   poisonDuration: number;
   goldOnHit: number;
+  goldOnHitChance: number; // 1 = always, <1 = chance-based (Void post-nerf)
   goldOnKill: number;
   jackpotKillChance: number; // instant kill chance
   jackpotMissChance: number;
@@ -166,7 +167,7 @@ export class OpponentSimulation {
       slowFactor: 1, slowDuration: 0,
       rootChance: 0, rootDuration: 0,
       poisonPctPerSec: 0, poisonDuration: 0,
-      goldOnHit: 0, goldOnKill: 0,
+      goldOnHit: 0, goldOnHitChance: 1, goldOnKill: 0,
       jackpotKillChance: 0, jackpotMissChance: 0,
       dmgVarMin: 1, dmgVarMax: 1,
       auraDamageRadius: 0,
@@ -190,7 +191,10 @@ export class OpponentSimulation {
           sim.poisonPctPerSec = (tr.percentPerSec ?? 0);
           sim.poisonDuration = (tr.duration ?? 0);
           break;
-        case 'gold_on_hit': sim.goldOnHit = (tr.amount ?? 0); break;
+        case 'gold_on_hit':
+          sim.goldOnHit = (tr.amount ?? 0);
+          sim.goldOnHitChance = (tr.chance ?? 1);
+          break;
         case 'gold_on_kill': sim.goldOnKill = (tr.amount ?? 0); break;
         case 'jackpot':
           sim.jackpotKillChance = (tr.killChance ?? 0);
@@ -248,6 +252,11 @@ export class OpponentSimulation {
     this.rebuildGrid();
     this.spawnQueue = [];
 
+    // Same wave-ramp the real SpawnManager applies — the shadow
+    // sim's creep HP needs to scale the same way or 1v1 CPU's wave
+    // progression diverges from the human's.
+    const difficultyWaveBoost = 1 + waveDef.wave * (this.difficulty.toughnessPerWave ?? 0);
+
     for (const group of waveDef.groups) {
       const ct = CREEP_TYPES[group.creepType];
       if (!ct) continue;
@@ -257,7 +266,7 @@ export class OpponentSimulation {
       for (let i = 0; i < count; i++) {
         this.spawnQueue.push({
           typeId: group.creepType,
-          hp: Math.round(group.hpScale * ct.hpMultiplier * resolved.hpMult),
+          hp: Math.round(group.hpScale * ct.hpMultiplier * resolved.hpMult * difficultyWaveBoost),
           speed: 80 * group.speedScale * ct.speedMultiplier * resolved.speedMult,
         });
       }
@@ -399,11 +408,11 @@ export class OpponentSimulation {
   /** Resolve a shot from `t` against `target`. Applies damage,
    *  variance, splash, status effects, per-hit gold. */
   private fire(t: SimTower, target: SimCreep): void {
-    // Jackpot — instant kill / miss dice roll. Kill slice halves
-    // against bosses so the shadow sim matches the real jackpot
+    // Jackpot — instant kill / miss dice roll. Kill slice is
+    // quartered against bosses (×0.25) to match the real jackpot
     // handler's boss resistance (Tower tracks this via HitTarget.isBoss).
     if (t.jackpotKillChance > 0 || t.jackpotMissChance > 0) {
-      const killChance = target.isBoss ? t.jackpotKillChance * 0.5 : t.jackpotKillChance;
+      const killChance = target.isBoss ? t.jackpotKillChance * 0.25 : t.jackpotKillChance;
       const r = Math.random();
       if (r < killChance) {
         this.applyHit(t, target, target.hp + 1);
@@ -463,7 +472,11 @@ export class OpponentSimulation {
   }
 
   private creditGoldOnHit(t: SimTower): void {
-    if (t.goldOnHit > 0) this.pendingGold += t.goldOnHit;
+    if (t.goldOnHit > 0) {
+      if (t.goldOnHitChance >= 1 || Math.random() < t.goldOnHitChance) {
+        this.pendingGold += t.goldOnHit;
+      }
+    }
   }
 
   isWaveActive(): boolean {

@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
 import { Header } from '../components/Header';
@@ -7,6 +7,7 @@ import { MAP_ORDER, MAPS, MapId } from '../../data/Maps';
 import { getDailySeed } from '../../data/MapGenerator';
 import { MatchMode } from '../../data/WaveDefinitions';
 import { ShardWallet } from '../../systems/monetization';
+import { Analytics } from '../../systems/AnalyticsClient';
 
 type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
 
@@ -39,6 +40,10 @@ export function MenuScreen() {
   const [dailySeed, setDailySeed] = useState(true);
   const [waveOverlay, setWaveOverlay] = useState(false);
   const [, setShardTick] = useState(0);
+
+  // One menu_view event on mount. Plan-1 telemetry — measures menu visits
+  // independent of game-start, useful for tutorial-skip funnel analysis.
+  useEffect(() => { Analytics.track('menu_view', {}); }, []);
 
   const goFaction = (mode: MatchMode, waveCount?: number) => {
     const seed = selectedMap === 'random'

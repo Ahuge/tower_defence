@@ -19,6 +19,11 @@ export interface GameEvents {
   pathUpdated: (path: { col: number; row: number }[] | null) => void;
   sendPurchased: (sendId: string) => void;
   frontierPurchased: (buildingId: string) => void;
+  /** Post-purchase frontier action — overcharge / dig / harvest.
+   *  Targets a single owned building (`idx`) or all of a defId
+   *  (`defId`). Used by LiveCapture to record the human's action
+   *  pattern for AI training. */
+  frontierActionPerformed: (event: { action: 'overcharge' | 'dig' | 'harvest'; idx?: number; defId?: string }) => void;
   dockTowerSelected: (index: number, towerId: string | null) => void;
 }
 

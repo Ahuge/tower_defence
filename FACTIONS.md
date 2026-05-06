@@ -13,7 +13,7 @@
 | Meteor | 200g | Slow-falling projectile, massive AoE on impact. Location-targeted. |
 | **Arcane Nova** | **700g** | Ultimate. AoE + crit + slow + damage amp combined. |
 
-**Frontier:** Leyline Nexus (overcharge for burst, dormancy risk).
+**Frontier:** Leyline Nexus 55g (+5g/wave, overcharge for 3× burst then 2 waves dormant) / Greater Nexus 250g (+28g/wave, same overcharge mechanic).
 
 ---
 
@@ -31,7 +31,7 @@
 | Railgun | 300g | Pierces ALL creeps in a line. |
 | **Titan Cannon** | **800g** | Ultimate. 500 damage, range 12, splash + burn + shred. |
 
-**Frontier:** Deep Mine (dig deeper for +income, cave-in risk).
+**Frontier:** Deep Mine 44g (+4g/wave, dig +1g/wave per level with 10% collapse risk per level) / Reinforced Mine 225g (+25g/wave, dig +1g/wave per level with 5% collapse risk per level).
 
 ---
 
@@ -40,17 +40,17 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Bramble Hedge | 12g | Wall + cheap DPS. 1 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
-| └ Razor Bramble *(branch)* | 20g switch | Not placeable directly — reached via Bramble L1→L2 choice. 5 dmg @ 300ms range 1.5 on switch, scales to 15 dmg range 2.2 at L4. |
-| Root | 35g | Strongest slow: 70% for 3s. |
-| Grove Viper | 40g | **Mobile.** Slithers between creeps, lunges with a fanged strike. 5 dmg bite + 6%/s 4.5s viper venom. |
-| Blossom | 60g | No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level. |
-| Spore | 100g | Poisons ALL creeps near tower (not target). 2% HP/s. |
-| Sunroot | 140g | Splash DPS. 56-radius fire-flower AoE. |
+| Bramble Hedge | 12g | Wall + cheap DPS. 3 dmg @ 400ms, range 1.2. At L2, branches into **Hedge** (keeps maze identity, caps L3) or **Razor Bramble** (DPS, caps L4). |
+| └ Razor Bramble *(branch)* | 15g switch | Not placeable directly — reached via Bramble L1→L2 choice. 5 dmg @ 300ms range 1.5 on switch, scales to 15 dmg range 2.2 at L4. |
+| Root | 25g | Strongest slow: 70% for 3s. |
+| Grove Viper | 30g | **Mobile.** Slithers between creeps, lunges with a fanged strike. 12 dmg bite @ 750ms + 6%/s 4.5s viper venom. |
+| Blossom | 60g | No attack. Buffs adjacent towers: +25% DMG, +15% SPD/level. |
+| Spore | 100g | 8 dmg pulse to ALL creeps in range every 1.5s + 2% HP/s poison. Upgrades scale poison to 2.5% / 3% HP/s. |
+| Sunroot | 140g | Splash DPS. 22 damage, range 4, 72-radius fire-flower AoE. |
 | Vine | 160g | 20% chance to root (stun) creeps for 0.8s. |
-| **Elder Treant** | **600g** | Ultimate. Grows +8% damage permanently. Roots + buffs adjacents. |
+| **Elder Treant** | **450g** | Ultimate. Grows +8% damage permanently. Roots + buffs adjacents. |
 
-**Frontier:** Sacred Grove (grows income, harvest for burst payout).
+**Frontier:** Sacred Grove 55g (+3g/wave, grows +2g/wave; harvest = stacks × 5g) / Ancient Grove 225g (+22g/wave, same grow mechanic).
 
 ---
 
@@ -59,13 +59,13 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Gambler | 15g | 4% instant kill (halved vs bosses), 25% whiff. Cheapest tower. |
+| Gambler | 15g | 4% instant kill (quartered to 1% vs bosses), 25% whiff. Cheapest tower. |
 | Spike | 30g | Each shot deals 50-150% damage randomly. |
 | Siphon | 50g | +1g per hit. Economy engine. 4 levels. |
 | Rift | 120g | Teleports creeps backward on path + 2-4 damage per hit. |
 | **Oblivion** | **900g** | Ultimate. 15% instakill, +3g/hit, extreme variance + damage amp. |
 
-**Frontier:** The Rift (random 0-15g or 0-30g per wave).
+**Frontier:** The Rift 35g (gamble 0-15g/wave) / Abyssal Rift 160g (gamble 0-80g/wave).
 
 ---
 
@@ -81,7 +81,7 @@
 | Tank | 120g | Mobile AoE. Slow but long range, fires explosive shells. |
 | **Commander** | **750g** | Ultimate. Mobile fighter + adjacency buff aura. |
 
-**Frontier:** Supply Depot / Forward Base (steady income).
+**Frontier:** Supply Depot 44g (+4g/wave, steady) / Forward Base 225g (+25g/wave, steady).
 
 ---
 
@@ -98,7 +98,7 @@
 | Swarmling | 15g | Mobile melee. Cheap, fast, stackable. |
 | **Overmind** | **700g** | Ultimate. Extreme fire rate + 30% faction speed aura. |
 
-**Frontier:** Breeding Pool / Hive Queen (growth + harvest).
+**Frontier:** Breeding Pool 35g (+2g/wave, grows +2g/wave; harvest = stacks × 5g) / Hive Queen 175g (+18g/wave, same grow mechanic).
 
 ---
 
@@ -115,7 +115,7 @@
 | Rootkit | 300g | Mutes mage abilities + heavy armor shred (2 tiers, 6s). |
 | **Zero Day** | **800g** | Ultimate. Hack + virus + mute + shred in massive range. |
 
-**Frontier:** Crypto Mine (gamble 0-25g) / Data Broker (overcharge).
+**Frontier:** Crypto Mine 35g (gamble 0-25g/wave) / Data Broker 225g (+25g/wave, overcharge for 3× burst then 2 waves dormant).
 
 ---
 
@@ -124,14 +124,14 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Imp | 10g | Decent damage. Expires after 4 waves. Disposable. |
+| Imp | 12g | 12 damage, 700ms. Expires after 4 waves. Disposable. |
 | Hellfire | 45g | Strong AoE + burn. Loses 15% damage each wave. |
-| Soul Drain | 70g | +2g per kill within range. Economy tower. |
+| Soul Drain | 90g | +2g per kill within range. Economy tower. |
 | Fiend | 20g | KAMIKAZE. Runs to nearest creep, explodes for 80 AoE, destroys self. |
 | Immolate | 200g | Strong DPS + burn. Can sacrifice for burst AoE. |
 | **Apocalypse** | **900g** | Ultimate. Massive burn AoE + damage amp. |
 
-**Frontier:** Soul Well (gamble 0-30g) / Blood Pact (dig, 15% collapse).
+**Frontier:** Soul Well 32g (gamble 0-25g/wave) / Blood Pact 185g (+20g/wave, dig +1g/wave per level with 10% collapse risk per level).
 
 ---
 
@@ -146,7 +146,7 @@
 | Sanctuary | 150g | Absorbs 1 leaked creep (recharges every 10 waves). |
 | **Absolution** | **600g** | Ultimate. Holy AoE + 10% life gain on kill + mutes mages. |
 
-**Frontier:** Tithe (steady) / Miracle (growth + harvest).
+**Frontier:** Tithe 55g (+5g/wave, steady) / Miracle 225g (+20g/wave, grows +2g/wave; harvest = stacks × 5g).
 
 ---
 
@@ -155,13 +155,13 @@
 
 | Tower | Cost | Key Traits |
 |-------|------|------------|
-| Probe | 20g | True damage — ignores all armor completely. |
+| Probe | 20g | True damage — ignores all armor completely. Range 4. |
 | Mesmer | 45g | Confuses target — walks backward for 1.2s. |
 | Terror | 80g | Fear aura: 50% slow field + true damage. |
 | Mind Spike | 150g | Long range true damage. +50% vs mage creeps. |
 | **Overmind** | **750g** | Ultimate. Mass confusion + massive true damage pulse. |
 
-**Frontier:** Dream Tap (gamble) / Mind Prison (overcharge).
+**Frontier:** Dream Tap 40g (gamble 0-25g/wave) / Mind Prison 225g (+25g/wave, overcharge for 3× burst then 2 waves dormant).
 
 ---
 
@@ -184,11 +184,16 @@
 
 **Identity:** The placement puzzle faction. Individual towers are weak — the power comes from overlapping aura coverage. Two Amplifiers + Quickener on a Resonator = massive DPS. Conduit extends the network across the map, and re-emit means linked towers amplify each other's reach.
 
-**Frontier:** Resonance Chamber (growth) / Symphony Hall (overcharge).
+**Frontier:** Resonance Chamber 50g (+4g/wave, grows +2g/wave; harvest = stacks × 5g) / Symphony Hall 225g (+25g/wave, overcharge for 3× burst then 2 waves dormant).
 
 ---
 
-## Random (dynamic)
+## Chaos (dynamic)
 *"Adapt or die." — 6 random towers + 2 frontier buildings each wave.*
 
 Each wave, 6 non-ultimate towers are randomly chosen from all faction pools. Bought towers stay permanently. Frontier buildings also rotate. Forces adaptive strategy.
+
+## Random (UI picker, never played directly)
+*"Roll one of the 11 real factions on click."*
+
+Picking Random on the faction-select screen rolls a uniform random pick from the 11 real factions (Arcane, Mechanical, Nature, Void, Military, Spawn Aliens, Cypherpunk, Infernal, Celestial, Psionic, Harmonic — `Chaos` is excluded). The roll happens immediately on click; downstream code (Draft, GameScene, multiplayer messages, training capture) only ever sees the resolved real faction, not `random` itself.

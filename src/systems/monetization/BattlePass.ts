@@ -5,6 +5,7 @@ import { StorePersistence, ChallengeProgress } from './StorePersistence';
 import { ShardWallet } from './ShardWallet';
 import { PlayerInventory } from './PlayerInventory';
 import { BP_XP_PER_LEVEL, BP_MAX_LEVEL, BATTLE_PASS_SHARD_COST } from './StoreDefinitions';
+import { Analytics } from '../AnalyticsClient';
 
 export type RewardType = 'shards' | 'skin' | 'terrain' | 'faction' | 'perk';
 
@@ -141,9 +142,15 @@ class BattlePassClass {
     return { current: xp % BP_XP_PER_LEVEL, required: BP_XP_PER_LEVEL };
   }
 
-  addXP(amount: number, _reason: string): void {
+  addXP(amount: number, reason: string): void {
     if (amount <= 0) return;
+    const fromLevel = this.getLevel();
     StorePersistence.update(s => { s.battlePassXP += amount; });
+    Analytics.track('bp_xp_awarded', { amount, source: reason });
+    const toLevel = this.getLevel();
+    if (toLevel > fromLevel) {
+      Analytics.track('bp_level_up', { from: fromLevel, to: toLevel });
+    }
   }
 
   recordGameComplete(wavesCleared: number, won: boolean): void {
@@ -160,8 +167,14 @@ class BattlePassClass {
 
   purchasePremium(): boolean {
     if (this.isPremium()) return true;
-    if (!ShardWallet.spend(BATTLE_PASS_SHARD_COST, 'Battle Pass Premium')) return false;
+    Analytics.track('purchase_attempted', { itemId: 'battle_pass_premium', currency: 'shards', cost: BATTLE_PASS_SHARD_COST });
+    if (!ShardWallet.spend(BATTLE_PASS_SHARD_COST, 'Battle Pass Premium')) {
+      Analytics.track('purchase_failed', { itemId: 'battle_pass_premium', reason: 'insufficient_shards' });
+      return false;
+    }
     StorePersistence.update(s => { s.battlePassPremium = true; });
+    Analytics.track('purchase_completed', { itemId: 'battle_pass_premium', currency: 'shards', cost: BATTLE_PASS_SHARD_COST });
+    Analytics.track('bp_premium_purchased', {});
     return true;
   }
 
@@ -196,6 +209,7 @@ class BattlePassClass {
     if (!reward) return false;
     this.grantReward(reward);
     StorePersistence.update(s => { s.claimedFreeRewards.push(level); });
+    Analytics.track('bp_reward_claimed', { track: 'free', level, rewardType: reward.type });
     return true;
   }
 
@@ -204,6 +218,7 @@ class BattlePassClass {
     if (!reward) return false;
     this.grantReward(reward);
     StorePersistence.update(s => { s.claimedPremiumRewards.push(level); });
+    Analytics.track('bp_reward_claimed', { track: 'premium', level, rewardType: reward.type });
     return true;
   }
 
