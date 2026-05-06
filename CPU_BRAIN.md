@@ -133,19 +133,39 @@ candidate pool.
 
 **The planner** (`src/systems/bots/mazing/AdversarialBeam.ts`,
 `MazingScorer.ts`) is a TypeScript port of the Python POC at
-`ml/mazing/adversarial_impl.py`. Score function:
-`α·path_length + β·nodes_expanded + γ·max_queue` summed across all
-spawner→exit BFS paths. Mutation operators: `add_wall`, `grow_branch`,
-`remove_wall`. Beam-width-K elitism preserves the top score across
-waves so the score history is monotone non-decreasing.
+`ml/mazing/adversarial_impl.py`, extended in v2 to be **tower-aware**.
 
-**Cache invalidation** is a simple dirty-bit: the cached plan is
-keyed by `(grid.version, ctx.wave)`. Grid bumps `version` on every
-`placeTower` / `removeTower`. Same key = reuse plan. Different key =
-re-run beam. No hashing, no LRU.
+**v2 score function:**
+```
+α·path_length + β·nodes_expanded + γ·max_queue       ← BFS workload
++ δ·sum(dpsCoverage) + ε·sum(slowValue) + ζ·sum(auraAmplification)  ← role
+```
+
+Walls earn their value through the α term (path extension); DPS /
+slow / aura towers gain extra value from their role contributions
+when placed at coverage-good cells.
+
+**v2 mutation operators:** `addTower(towerId, x, y)` (greedy or random
+tower-pick), `growBranchTyped` (random walk placing cheapest wall),
+`removeTower`, `swapTower` (change a placed tower's type, keep cell).
+
+**v2 per-role bestCell:** `bestCell(ctx, towerType)` walks the plan
+in three tiers — exact tower-id match → same-role match → null. The
+brain's wishlist falls down to the next preference when null fires.
+
+**Cache invalidation** is wave-based: the cached plan replans iff
+the wave has advanced OR the bot's own placedTowers count has caught
+up to the cached plan's length. Cross-bot grid mutations don't
+invalidate — Circle Co-op zones are isolated.
 
 **Mobile units** stay on the parent's `scoreMobileCells` since the
 BFS-flavored ranking doesn't model wandering creep-engagement well.
+
+**Brain wishlist composition by phase:**
+- `decideMaze` → `[cheapest wall]`
+- `decideDps` → `[counter-pick, ...remaining splash, ...single, ...mobile]`
+- `decidePanic` → `[cheapest slow, ...splash, ...single]`
+- `tryPlaceUltimate` → `[the ult]`
 
 **Auto-tuning** via `scripts/brain-search.mjs`:
 ```

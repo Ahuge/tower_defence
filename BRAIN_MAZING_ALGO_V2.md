@@ -240,6 +240,49 @@ answers per-tower queries.
 - Comparison run (`brain-coverage.mjs`) shows v2 ≥ v1 on every cell
   AND wins ≥ +5pp on at least 1-2 previously-unsolved cells
 
+## v2 results — n=50, normal, plains, default params (post-tuning pending)
+
+```
+faction        bala   gree   rush   econ   syne   ulti   aoe_   natu   mazi
+arcane            2     50     50     50      8      5      ·      ·      ·
+mechanical        ·      ·      ·      ·      ·      ·      ·      ·      ·
+nature            ·      ·     50      ·      ·      ·      ·     50      ·
+void              ·     50     50     48      ·      1     50      ·      2
+military          ·      ·     50      ·      ·      ·      ·     13      ·
+aliens            ·      ·      ·      ·      1      ·      ·      ·      ·
+cypherpunk        ·      ·      6      ·      ·      ·     41      ·      ·
+infernal         28      ·      ·      ·     50      ·     50      6     22
+celestial         ·     50     50     50      ·     50      ·      ·      ·
+psionic           ·      6      6      ·      ·      ·      ·      ·      ·
+harmonic          ·      ·      ·      ·      ·      ·      ·      ·      ·
+```
+
+**v2 vs v1 (Δ on the `mazi` column):**
+- infernal: **2 → 22** (+20pp) ← big win
+- void: **0 → 2** (+2pp) ← small win
+- every other cell: unchanged (no regressions)
+
+**Verification gate:**
+- ✅ v2 ≥ v1 on every cell
+- ❌ "crack an unsolved cell" goal not met — mechanical/aliens/psionic/
+  harmonic still 0/50 at default weights
+
+**Why v2 doesn't dominate yet:** the default α/β/γ/δ/ε/ζ/addBias weights
+mirror the POC values × my hand-tuned multipliers — they're untuned.
+BalancedBrain hits 28/50 on infernal vs v2's 22/50 because it has a
+hand-tuned counter-pick path against infernal's specific creep waves.
+v2's architecture is correct (per-role queries clearly help — the
++20pp infernal jump from v1 confirms it) but the WEIGHTS need
+brain-search tuning per (faction, difficulty) cell to close the gap.
+
+**Recommended next step (out of v2 scope):** run
+`scripts/brain-search.mjs --brain=mazing --faction=infernal
+--difficulty=normal` for ~250 evaluations and compare to BalancedBrain.
+If v2 with tuned weights beats BalancedBrain on infernal, repeat for
+the 4 unsolved cells (mechanical/aliens/psionic/harmonic) — this is
+the highest-leverage place for tuning to discover wins, since no
+existing brain hits 50% there.
+
 ## v1 vs BalancedBrain comparison (n=50, normal, plains, default params)
 
 Captured via `node --import tsx scripts/brain-coverage.mjs` after
