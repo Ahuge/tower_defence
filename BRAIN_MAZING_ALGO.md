@@ -1,156 +1,250 @@
-# Brain Mazing Algorithm — Plan
+# Brain Mazing Algorithm — Plan (v2)
 
 Branch: `ah/feature/brain-mazing-algo` (off `develop`)
 
-## What we have today
+This plan supersedes the v1 draft. Reoriented around your `ml/mazing/`
+PRD + POC, with the answers you locked in:
+- v1 ships a new brain `MazingBrain` that subclasses BalancedBrain
+- Auto-tuning via `scripts/brain-search.mjs`
+- Module name: `MazingScorer`
 
-- **`MazePlanner.bestMazeCell(grid, candidates, max, allPaths?)`** in `src/systems/bots/MazePlanner.ts` — single helper. Greedy: simulates blocking each candidate cell with a wall, returns the cell whose blockage maximizes path length. Tower-agnostic.
-- **`BalancedBrain.decideMaze()`** calls `bestMazeCell` for **walls only**. DPS / slow / mobile / aura placements all use a different scorer (`scoreDpsCells`, `scoreMobileCells`) that ranks by path-cell coverage within range, not by maze contribution.
-- **`BalancedBrain.pickTowerType(pool, ctx)`** picks the tower first (by strategy: expensive-bias / damage-per-cost / fast-fire / long-range; with creep-counter swap). Then `decideDps` finds the best cell for *that specific tower's range*.
-- Decisions fire on a **4-second cooldown** per bot (`BASE_COOLDOWN_MS`). Plenty of compute headroom — A* on the 36×26 grid is sub-ms.
+## What we're aligning to
 
-## Goal
-
-Build a dedicated cell-scoring algorithm that brains can plug into, replacing the current ad-hoc split (`bestMazeCell` for walls, `scoreDpsCells` for DPS, etc.). v1 unweighted by tower type; v2 tower-aware.
-
-## Where it plugs in
-
-The natural seam is the **cell selection** step inside the brain's `decide()`. Today this is scattered:
+**Your POC** (`ml/mazing/adversarial_impl.py` + `adversarial_bfs_mazing_prd.md`):
+an offline beam-search optimizer that maximizes BFS workload. Each wave
+expands a beam of candidate grids via mutation operators (`add_wall`,
+`grow_branch`, `remove_wall`), scored by:
 
 ```
-BalancedBrain.decide()
-  → decideMaze()    → bestMazeCell()                  ← path-extension only
-  → decideDps()     → scoreDpsCells(range, placed)    ← coverage + aura adjacency
-  → decidePanic()   → scoreDpsCells(slow.range, ...)  ← same as DPS
-  → decideMobile() inline → scoreMobileCells(paths)   ← proximity-to-path
-  → tryPlaceUltimate() → scoreDpsCells / Mobile       ← same again
+score = α·path_length + β·nodes_expanded + γ·max_queue
 ```
 
-The new algorithm becomes a single `MazingScorer` interface (tentative name) with one entry point that all of these call. Each call site can stop owning its own scoring math.
+Defaults α=5, β=1, γ=0.5. Budget grows per wave (10 + wave×8 in the POC).
+
+**The game's existing seam** (`src/systems/bots/MazePlanner.ts`):
+greedy single-cell scorer used only for walls in `BalancedBrain.decideMaze()`.
+DPS / slow / mobile / aura placements use a different scorer entirely.
+
+The new module replaces the greedy scorer with the adversarial planner,
+exposes a per-decision API the brain can consume, and a new brain
+(`MazingBrain`) drives placement off it.
+
+## Naming
+
+`MazingScorer` per your preference. Module exposes both a planner API
+(beam search produces a target layout) and a per-decision query API
+(brain pulls the next best placement from the cached plan).
+
+## Architecture
+
+### Three layers
 
 ```
-MazingScorer.score(ctx, towerOrNull, candidates) → ScoredCell[]
+                      ┌─────────────────────┐
+                      │   MazingBrain       │  decide()
+                      │   (subclass of      │
+                      │    BalancedBrain)   │
+                      └──────────┬──────────┘
+                                 │
+                       wishlist  │  next-cell
+                       fall-     │  query
+                       through   ▼
+                      ┌─────────────────────┐
+                      │   MazingScorer      │  bestCell()
+                      │   - per-decision    │  scoreCells()
+                      │     API             │
+                      │   - cached target   │
+                      │     layout          │
+                      └──────────┬──────────┘
+                                 │
+                                 ▼
+                      ┌─────────────────────┐
+                      │   AdversarialBeam   │  beamSearch()
+                      │   (port of POC)     │
+                      │   - mutate          │
+                      │   - bfsScore        │
+                      │   - select          │
+                      └─────────────────────┘
 ```
 
-Returning `ScoredCell[]` (sorted, decorated with breakdown) keeps callers flexible: `[0]` is the best, but a brain can scan deeper if it wants to filter by other criteria. v1 ignores `towerOrNull`; v2 uses it for tower-specific weighting.
-
-## v1 — Unweighted
-
-Single-pass scorer that combines path-extension (today's `bestMazeCell` math) with path-coverage (today's `scoreDpsCells` math). Returns one ranked list per call.
-
-Score components per candidate cell:
-- **`pathExtensionGain`**: cells added to creep path if blocked here. Reuses `simulateWallAllPaths`. Negative gain or null = reject.
-- **`coverageProxy`**: count of unique path cells within a *fixed* generic range (e.g. 4 tiles — the median tower range). Gives every cell a coverage score even when the tower is unknown.
-- **`adjacencyToOwn`**: bonus for being adjacent to existing same-team towers (encourages clustering for aura synergy).
-- **`distanceToEntry`**: small bias against placing right at the spawner (lets towers attack creeps already slowed/damaged).
-
-Final score = `α·pathExtensionGain + β·coverageProxy + γ·adjacencyToOwn − δ·distanceToEntry`. Weights tuned by harness, with sane defaults.
-
-## v2 — Tower-weighted
-
-When a tower is provided, weights shift:
-
-| Tower role | α (path-extension) | β (coverage) | γ (adjacency) | Notes |
-|---|---|---|---|---|
-| `wall` | high | low | — | path-extension dominates |
-| `dps-single` | low | high (uses tower's actual range) | medium | coverage with the real range |
-| `dps-splash` | low | high | medium | reuses coverage but also rewards path *bends* (more creep clustering) |
-| `slow` | low | high | high (next to DPS) | a slow next to a damage tower amplifies it |
-| `aura` | low | medium | very high (next to DPS) | placement value comes entirely from neighbors |
-| `mobile` | — | — | — | use proximity-to-path only (existing `scoreMobileCells`) |
-| `utility` (e.g. mana drain) | — | — | — | role-specific override hooks (channel-interrupt cells, summoning-circle adjacency, etc.) |
-
-The weights live in a per-role `RoleWeights` table. Tower-pool roles already exist via `TowerRoles.ts` / `groupByRole()`. v2 just looks up the weights for the chosen tower's role.
-
-## The architectural question — should the algo override the brain's tower choice?
-
-Three plausible architectures, listed best→worst as I see it.
-
-### Option A (recommended): Score-then-veto
-
-Brain proposes a tower from its preference order. The algo scores its candidate cells. If the **best score is below a confidence threshold** (relative to historical best for this role on this map), the algo returns `null` and the brain falls down its preference list.
+### How a decision works (v1 — unweighted)
 
 ```
-brain wants:    [slow, splash-dps, single-dps, wall, upgrade]
-for each tower in wishlist:
-  scored = scorer.score(ctx, tower, ctx.candidateCells)
-  if scored.length > 0 and scored[0].score >= confidenceFloor(tower.role):
-    return { kind: 'place', cell: scored[0], type: tower }
-return decideUpgrade() ?? skip
+MazingBrain.decide(ctx):
+  1. inherit BalancedBrain's meta pass + phase logic (frontier/send rolls,
+     panic mode, ultimate-save). Tower-pick still uses BalancedBrain.
+  2. when the decision is "place a tower":
+     a. if no cached layout for this match-state-key:
+        run AdversarialBeam.beamSearch(grid, totalBudget, opts)
+        cache the result keyed by (paths, blockedCells, totalBudget bucket)
+     b. pick the next cell in the layout that is:
+        - currently in ctx.candidateCells (zone + walkable check)
+        - currently affordable for the chosen tower
+     c. if no such cell, fall through to the brain's existing scorer
+        (preserves baseline behavior — no regression)
+  3. upgrade / sell fallback paths unchanged
 ```
 
-- **Pro**: respects brain intent, defers spatial calls to the algo.
-- **Pro**: easy to reason about — each subsystem owns one decision.
-- **Pro**: implementable today with only a `confidenceFloor()` per role (heuristic at first, harness-tuned later).
-- **Con**: confidence floor needs calibration; too high → brain skips too often.
-- **Con**: doesn't capture "wait N waves and slows will be great here" — that's emergent from the wishlist falling-through, not explicit.
+Cache invalidation on (a) new tower placed by anyone, (b) wave count crossing
+a threshold, (c) budget jumping by ≥30% from the cached projection. Stale
+cache entry just triggers a re-plan; cost is bounded.
 
-### Option B: Joint optimization
+### How v2 (tower-weighted) extends
 
-Brain hands the algo `(affordableTowers[], wishlist[])` and the algo scores all `(tower × cell)` pairs, returning the best.
+The POC's `add_wall` mutation becomes `add_tower(towerId)`. The score
+function gains tower-typed terms:
 
 ```
-scored = scorer.score(ctx, affordableTowers, ctx.candidateCells)
-return { kind: 'place', cell: scored[0].cell, type: scored[0].tower }
+score_v2 = α·path_length + β·nodes_expanded + γ·max_queue
+        + δ·dps_in_path_range_for_dps_towers
+        + ε·slow_time_at_choke_for_slow_towers
+        + ζ·adjacency_bonus_for_aura_towers
 ```
 
-- **Pro**: theoretically optimal each tick.
-- **Con**: combinatorial — N×M evaluations per decide(). With per-tower-range pathfinding it's still fast at 4s cadence, but the score function gets harder to debug.
-- **Con**: blurs responsibilities — strategic intent (when to maze vs DPS) lives in the algo's weighting, not in the brain.
-- **Con**: harder to A/B test — you can't compare "the brain's wishlist" against "the algo's pick" because the brain has no wishlist anymore.
+Tower-pool drives mutations: instead of "add wall", the engine picks a
+tower from `ctx.towerPool` weighted by role and remaining wave budget,
+then chooses the cell. v2 still respects v1's path-extension term so
+walls remain valuable; the new terms add dimensions specific to each
+tower's purpose.
 
-### Option C: Brain-only (current state)
+Brain side: the wishlist becomes the *brain's* preference order
+(slow → splash → single → wall → upgrade), and `MazingScorer.bestCell(ctx, towerType)`
+returns null when no cell scores above a confidence floor. This is the
+"wait N waves and slows will be great here" emergent behavior — every
+4s the brain re-walks its wishlist and the planner's veto changes.
 
-Keep the brain owning everything. Just refine `bestMazeCell` / `scoreDpsCells` independently.
+## Module layout
 
-- **Pro**: no new abstraction.
-- **Con**: doesn't actually solve the user's stated goal — there's still no shared "mazing algo" the brain can plug into.
+```
+src/systems/bots/mazing/
+  MazingScorer.ts          public API: scoreCells, bestCell, planLayout
+  AdversarialBeam.ts       port of the POC: mutate, bfsScore, beam loop
+  layoutCache.ts           per-(grid, budget) memoization
+  RoleWeights.ts           v2: per-role α/β/γ/δ/ε/ζ weights
+  MazingScorer.test.ts     vitest specs (≥15)
+src/systems/bots/brains/
+  MazingBrain.ts           extends BalancedBrain, swaps cell selection
+  MazingBrain.test.ts      regression: behaviour under known seeds
+src/headless/brain-search/
+  MazingBrainSchema.ts     ParamSchema for ES auto-tuning
+```
 
-### My recommendation
+## Mapping the POC to the game
 
-**Option A** for v1 + v2. The "next N iterations would accept a slow" idea you raised is naturally captured by the wishlist falling through:
-- Tick 1: brain wants slow → algo says no good slow cells → brain falls to splash → places splash.
-- Tick 2: situation changes (more towers placed, path geometry evolved) → algo now finds a good slow cell → places slow.
+### POC primitives → game equivalents
 
-No state machine needed; the "N-tick wait" is emergent from the wishlist re-evaluating each decision.
+| POC | Game |
+|-----|------|
+| `GRID_W × GRID_H` rectangular grid | `Grid` from `Grid.ts` (36×26, with map-defined walkability) |
+| `START`, `GOAL` corner cells | `grid.entry`, `grid.exit` (or per-spawner endpoints in Circle Co-op) |
+| `WALL`, `EMPTY` | `CellType.Blocked` (towers) vs `CellType.Empty` |
+| `bfs(grid)` returning `path_length, nodes_expanded, max_queue` | Extend `Pathfinding.findPath` to return metrics. Existing impl is already typed-array BFS — just exposes the counters |
+| `placement_cost(x, y) = 1 + dist_from_start * 0.05` | v1: tower's gold cost. v2: gold cost + positional penalty (cell distance from entry) so cheap walls near goal score higher than expensive towers near spawn |
+| `WAVES = 15`, `BUDGET_GROWTH = 8` | `ctx.wave`, projected gold accumulation across remaining waves |
+| `random_empty_cell` | `ctx.candidateCells` (already pre-filtered to bot's zone + walkable) |
+| `BEAM_WIDTH = 5`, `MUTATIONS_PER_STATE = 25` | Same defaults at first; brain-search will sweep them |
 
-## Implementation sketch
+### Pathfinding extension
 
-### Files
+`Pathfinding.ts` already does BFS but only returns the path. Add a sibling
+`findPathWithMetrics(grid, start?, end?)` returning
+`{ path, nodesExpanded, maxQueue }`. The two counters are already trivially
+trackable inside the existing loop (one `head++` counter for nodesExpanded,
+one running max of `tail - head` for maxQueue). 5-line addition.
 
-**Create:**
-- `src/systems/bots/MazingScorer.ts` — the new module. Pure functions.
-  - `interface ScoredCell { col, row, score, breakdown: {...} }`
-  - `interface MazingScorerOpts { confidenceFloor?: ..., weights?: ... }`
-  - `function scoreCells(ctx: BotContext, tower: TowerType | null, opts?: MazingScorerOpts): ScoredCell[]`
-  - `function bestCell(ctx, tower, opts?): ScoredCell | null` — returns null when below confidence floor
-- `src/systems/bots/MazingScorer.test.ts` — vitest specs covering single-path, multi-path, wall vs DPS bias, role weights v2, confidence-floor rejection.
-- `notes/plans/brain_mazing_algo.md` — this doc.
+This keeps the hot path (regular `findPath` used everywhere else) free of
+the metrics overhead — only `MazingScorer` calls the metrics variant.
 
-**Modify (later, in a v1 polish pass):**
-- `src/systems/bots/MazePlanner.ts` — keep `bestMazeCell` as a thin wrapper around `MazingScorer.bestCell(ctx, wallType)` once v1 lands. Or deprecate gradually.
-- `src/systems/bots/brains/BalancedBrain.ts` — replace `decideMaze` / `decideDps` / `decidePanic` cell selection with calls to `MazingScorer`. Tower-pick logic stays.
+### Multi-spawner support
 
-### Sequencing
+Circle Co-op has waypoint-chained paths from N spawners. The POC has one
+start/goal. Two options:
 
-1. **v0 (this branch)**: ship `MazingScorer.ts` + tests. v1 unweighted scorer only. No brain changes yet — adopting it is opt-in via a new brain or a flag on BalancedBrain. Verify via harness (existing `scripts/validate-learning-brain.mjs` + `scripts/generate-training-data.mjs`).
-2. **v1 polish**: refactor `BalancedBrain.decideDps` to call `MazingScorer.score(ctx, pickedType)`. Behavior should match within harness noise.
-3. **v2**: add role weights. Tune via `scripts/brain-search.mjs` if it still exists.
-4. **Score-then-veto wishlist**: extend `BalancedBrain.decide()` to walk a wishlist and use `MazingScorer.bestCell()`'s null return to fall through.
+1. **Sum BFS metrics across all spawners** (matches `MazePlanner.totalPathLength` today)
+2. **Score per-spawner, weighted by that spawner's creep volume**
+
+Going with #1 in v1 — simple sum, no creep-flow modeling. v2 can refine.
+
+## Auto-tuning via brain-search
+
+Drop-in: add `MAZING_BRAIN_SCHEMA` to `src/headless/brain-search/MazingBrainSchema.ts`,
+register in `scripts/brain-search.mjs` alongside balanced / greedy /
+aoe_focus.
+
+Search-space candidates:
+
+```ts
+export const MAZING_BRAIN_SCHEMA: ParamSchema = {
+  // Score weights (v1 + v2)
+  alpha:    { min: 0.5, max: 15.0, default: 5.0, step: 1.0 },
+  beta:     { min: 0.0,  max: 5.0,  default: 1.0, step: 0.3 },
+  gamma:    { min: 0.0,  max: 3.0,  default: 0.5, step: 0.2 },
+  // v2 tower-aware terms
+  deltaDps:    { min: 0.0, max: 5.0, default: 1.0, step: 0.3 },
+  epsilonSlow: { min: 0.0, max: 5.0, default: 1.0, step: 0.3 },
+  zetaAura:    { min: 0.0, max: 3.0, default: 0.5, step: 0.2 },
+  // Beam search shape
+  beamWidth:        { min: 1, max: 12, default: 5, step: 1, integer: true },
+  mutationsPerState:{ min: 5, max: 60, default: 25, step: 5, integer: true },
+  planHorizonWaves: { min: 3, max: 20, default: 10, step: 2, integer: true },
+  // Mutation operator probabilities (sum normalised at runtime)
+  pAddWall:     { min: 0.0, max: 1.0, default: 0.5, step: 0.1 },
+  pGrowBranch:  { min: 0.0, max: 1.0, default: 0.3, step: 0.1 },
+  pRemoveWall:  { min: 0.0, max: 1.0, default: 0.2, step: 0.1 },
+  // Confidence floor — when bestCell.score < this × historical-best,
+  // return null so the brain falls down its wishlist
+  confidenceFloor:  { min: 0.0, max: 1.0, default: 0.4, step: 0.1 },
+  // Budget projection — how aggressively to assume future gold for the
+  // plan horizon. 1.0 = current rate, 1.5 = optimistic
+  budgetProjection: { min: 0.5, max: 2.0, default: 1.0, step: 0.2 },
+  // Inheritance from BalancedBrain (subclass uses the same params for
+  // meta/phase/upgrade — search can co-tune them with the maze terms)
+  panicLives:        { min: 0, max: 15, default: 5, step: 2, integer: true },
+  maxWallPlacements: { min: 0, max: 20, default: 8, step: 2, integer: true },
+  // ... (other BalancedBrainParams inherited via spread)
+};
+```
+
+Tuning protocol:
+1. Hand-set defaults based on POC values.
+2. Run `--probe=8` for a sensitivity check across a single (faction, difficulty) cell.
+3. Full ES on each of arcane, mech, void, infernal, military, harmonic — the cells where BalancedBrain doesn't already hit ≥80% (`scripts/brain-coverage.mjs` finds them).
+4. Validate: run 50-seed batches against the prior best brain on each cell. Ship if Δ ≥ +5pp win-rate AND no >3pp regression on solved cells.
+5. If wins are concentrated on a single faction, save as a *specialised* brain (per the existing `HarmonicBrain`, `PsionicBrain` pattern) rather than as the default.
+
+## v1 build order
+
+1. **Pathfinding metrics** — `findPathWithMetrics` returning nodes/maxQueue.
+2. **`AdversarialBeam.ts`** — direct port of POC. Mutation ops, beam loop, scorer.
+3. **`MazingScorer.ts`** — public API. `planLayout(grid, paths, budget, opts)` runs the beam. `bestCell(ctx, tower, opts)` consults the cached plan + falls back to inline single-cell scoring when no plan or no match.
+4. **`layoutCache.ts`** — keyed by hashed-grid + budget bucket. LRU 8 entries.
+5. **`MazingBrain.ts`** — `extends BalancedBrain`. Override `decideMaze` / `decideDps` cell selection to call `MazingScorer.bestCell(ctx, type)`. Tower-pick logic from BalancedBrain reused as-is (the wishlist).
+6. **Tests**:
+   - `MazingScorer.test.ts`: BFS-metrics correctness, single-spawner score, multi-spawner score, budget cap respect, beam stability across runs (seeded).
+   - `MazingBrain.test.ts`: at least mirrors `BalancedBrain` baselines on 2-3 fixed scenarios.
+7. **`MazingBrainSchema.ts`** + register in `scripts/brain-search.mjs`.
+8. **Sensitivity probe** — `node --import tsx scripts/brain-search.mjs --brain=mazing --faction=arcane --difficulty=normal --probe=8` to verify the search loop.
+9. **Docs** — append a section to `CPU_BRAIN.md` once the brain ships.
+
+## v2 extensions (separate PR)
+
+- Tower-typed mutations (`add_tower(id, x, y)` selecting from `ctx.towerPool`)
+- Role-weighted score terms (`δ·dps_coverage`, `ε·slow_time_at_choke`, `ζ·aura_adjacency`)
+- Brain wishlist with per-tower confidence-floor veto
+- `MazingScorer.bestCell(ctx, tower)` becomes tower-aware
 
 ## Verification
 
 - `npx tsc --noEmit` clean.
-- New `MazingScorer.test.ts` covers ≥10 specs.
-- `npx vitest run` passes (existing 555 + new tests).
-- Harness sanity: run `scripts/generate-training-data.mjs` for ~5 cells, compare win-rate Δ to a baseline run on `develop`. v1 should be within ±3% (it's mostly a refactor); v2 with tuned weights should improve.
-- LearningBrain validation: `node --import tsx scripts/validate-learning-brain.mjs 50` — should not regress.
+- `npx vitest run` passes (existing 555 + new specs).
+- Sensitivity probe at `--probe=8` completes without crashing.
+- LearningBrain validation untouched (`scripts/validate-learning-brain.mjs 50` ≥9/11 cells).
 
-## Open questions for you
+## Open questions for you (just confirmation)
 
-1. **Architecture (A vs B vs C)** — does Option A's score-then-veto fall through your wishlist match how you want this to work? Or do you want Option B's joint optimization?
-2. **Scope of v1**: is the unweighted scorer + opt-in adoption enough for the first PR, or should v1 also include the BalancedBrain refactor?
-3. **Tuning**: should v2 weights be hand-tuned + harness-validated, or auto-tuned by extending `brain-search.mjs`?
-4. **Naming**: `MazingScorer` is fine but slightly inaccurate (it's also a coverage scorer). Alternatives: `PlacementScorer`, `CellScorer`, `BuildAdvisor`. Pick one that reads well in `BalancedBrain.decide()`.
+1. Pathfinding metrics extension as `findPathWithMetrics` (sibling of `findPath`) — fine to land in `Pathfinding.ts` directly?
+2. Cache invalidation strategy: keyed by hashed-grid + budget bucket. OK or do you want match-tick invalidation instead?
+3. Multi-spawner BFS: sum metrics across all spawner paths in v1 (defer per-spawner weighting to v2). OK?
+4. Confidence-floor for veto: hardcoded default 0.4 of best-historical, OR auto-tuned per-cell via brain-search? (I'd say tune — the `brain-search.mjs` knob system is right there.)
 
-I haven't written any code yet — waiting on your call on (1)-(4) before drafting the v1 module. Let me know.
+If those four are ack, I'll start the v1 build.
