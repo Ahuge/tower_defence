@@ -3833,6 +3833,12 @@ export class GameScene extends Phaser.Scene {
               channelsCompleted: stats.completed,
             };
           })(),
+          // M10 finale star objective: hero deaths across the match.
+          // Read off the FinaleController's hero (HD's hero is on
+          // ArenaManager and already counted via stats.deaths above).
+          // 0 by default so star-3 predicates resolving against this
+          // field on non-finale missions don't trip.
+          heroDeaths: this._finaleController?.getHero()?.deaths ?? 0,
         },
       };
       const stars = MissionRunner.finalize(missionResult);

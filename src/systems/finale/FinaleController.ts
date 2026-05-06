@@ -288,6 +288,10 @@ export class FinaleController {
           const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
           log?.gameMessage?.('The Forge mage answers the call again!');
         }
+        // Pillar-of-light flash at the anchor — fires on first summon
+        // AND every re-summon. Plan 1.18 polish item: "summoning-pillar
+        // VFX at 100% charge".
+        this.drawHeroSummonPillar();
         this.charge = 0;
       }
     }
@@ -929,6 +933,51 @@ export class FinaleController {
       });
     }
     sceneAny.cameras?.main?.shake?.(Math.min(420, durationMs * 0.35), 0.008);
+  }
+
+  /** Render a phase-shift shockwave at the structure's center.
+   *  Triggered from FinaleEffects phase-hook handlers when the throne
+   *  crosses 50% / 25% / 10%. Two-color expanding ring + camera shake
+   *  scaled to the structure's footprint. */
+  drawPhaseShockwave(structure: DestructibleStructure, primary: number, secondary: number): void {
+    const radius = Math.max(structure.widthCells, structure.heightCells) * TILE_SIZE * 1.2;
+    this.drawAoeRing(structure.x, structure.y, radius, primary, secondary, 1400);
+  }
+
+  /** Pillar-of-light VFX for hero summon. A vertical column flashing
+   *  at the anchor point — sells the climactic "the Forge mage answers
+   *  the call!" moment. Headless-safe: bails on missing scene.add. */
+  private drawHeroSummonPillar(): void {
+    const sceneAny = this.scene as {
+      add?: { graphics?: () => Phaser.GameObjects.Graphics };
+      tweens?: { add?: (cfg: object) => void };
+      cameras?: { main?: { shake?: (d: number, i: number) => void } };
+    };
+    const x = this.heroAnchor.x;
+    const y = this.heroAnchor.y;
+    const g = sceneAny.add?.graphics?.();
+    if (g) {
+      g.setDepth(45);
+      // Tall vertical pillar tapering inward, plus a fat ground pulse.
+      const pillarH = 240;
+      const pillarW = 56;
+      g.fillStyle(0xffffff, 0.7);
+      g.fillRect(x - pillarW / 2, y - pillarH, pillarW, pillarH);
+      g.fillStyle(0xcc88ff, 0.5);
+      g.fillRect(x - pillarW * 0.7 / 2, y - pillarH, pillarW * 0.7, pillarH);
+      g.fillStyle(0xffe066, 0.45);
+      g.fillCircle(x, y, 70);
+      g.lineStyle(3, 0xffffff, 1);
+      g.strokeCircle(x, y, 70);
+      g.lineStyle(2, 0xcc88ff, 0.85);
+      g.strokeCircle(x, y, 110);
+      sceneAny.tweens?.add?.({
+        targets: g, alpha: 0, duration: 1500,
+        ease: 'Sine.easeOut',
+        onComplete: () => g.destroy(),
+      });
+    }
+    sceneAny.cameras?.main?.shake?.(420, 0.010);
   }
 
   /** Spawn a floating damage number that rises and fades. M10's

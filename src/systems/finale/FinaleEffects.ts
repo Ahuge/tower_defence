@@ -75,15 +75,47 @@ registerFinaleEffect('arcane_throne_heal', (s, ctx) => {
   const healAmount = Math.round(s.maxHp * 0.10);
   s.hp = Math.min(s.maxHp, s.hp + healAmount);
   gameMessage(ctx, 'The Throne calls reinforcement spells — its wards mend!');
+  // Teal phase-shift pulse on the throne (heal palette) — sells the
+  // moment without a new VFX system.
+  ctx.controller.drawPhaseShockwave(s, 0x44ffaa, 0xaaffcc);
 });
 
-/** 25% HP — summon mage reinforcements. v1 ships the narrative beat;
- *  future polish: spawn N mage creeps at the entry. */
-registerFinaleEffect('arcane_throne_summon_reinforcements', (_s, ctx) => {
-  gameMessage(ctx, 'The Throne summons mage reinforcements!');
-  // TODO: spawn N elite mage creeps at the map entry. Wave creeps
-  // already ramp via standard hpWaveBoost so the pressure is partly
-  // there; this is a v2 polish item.
+/** 25% HP — summon mage reinforcements. Pushes 2 elite Stormcallers +
+ *  1 Meteora into SpawnManager's queue so they walk in from the map
+ *  entry. They hit waves already ramped by hpWaveBoost so the pressure
+ *  feels real. Same `scene.spawner.spawnQueue.push()` pattern that
+ *  ChannelEffects' warlord_reinforcements / summon_creeps_at_position
+ *  use — bypasses the wave script (mid-wave injection). */
+registerFinaleEffect('arcane_throne_summon_reinforcements', (s, ctx) => {
+  gameMessage(ctx, 'The Throne summons archmage reinforcements!');
+  ctx.controller.drawPhaseShockwave(s, 0xaa44dd, 0xdd88ff);
+  const sceneAny = ctx.scene as {
+    spawner?: { spawnQueue?: { push?: (entry: object) => void } };
+    time?: { delayedCall?: (delay: number, fn: () => void) => void };
+  };
+  if (!sceneAny.spawner?.spawnQueue?.push) return;
+  const summons: { creepType: string; hp: number; delayMs: number }[] = [
+    { creepType: 'arcane_archmage_storm',  hp: 200, delayMs: 0 },
+    { creepType: 'arcane_archmage_storm',  hp: 200, delayMs: 600 },
+    { creepType: 'arcane_archmage_meteor', hp: 220, delayMs: 1400 },
+  ];
+  for (const sum of summons) {
+    const fire = () => {
+      sceneAny.spawner?.spawnQueue?.push?.({
+        creepType: sum.creepType,
+        hpScale: sum.hp,
+        speedScale: 1,
+        isBoss: false,
+        groupBurst: 1,
+        pathIndex: 0,
+      });
+    };
+    if (sum.delayMs > 0 && sceneAny.time?.delayedCall) {
+      sceneAny.time.delayedCall(sum.delayMs, fire);
+    } else {
+      fire();
+    }
+  }
 });
 
 /** 10% HP — rage mode. Halves the embedded tower's fireRate (= 2x
@@ -95,4 +127,5 @@ registerFinaleEffect('arcane_throne_rage', (s, ctx) => {
     tower.fireRate = Math.max(200, Math.floor(tower.fireRate / 2));
   }
   gameMessage(ctx, 'THE THRONE RAGES! Attack speed doubled!');
+  ctx.controller.drawPhaseShockwave(s, 0xff4444, 0xff8866);
 });
