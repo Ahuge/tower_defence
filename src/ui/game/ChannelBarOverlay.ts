@@ -56,6 +56,13 @@ export class ChannelBarOverlay {
    *  created on first non-zero buff so non-Counterspell scenes pay
    *  nothing. Pulses gold so it reads as "active threat." */
   private buffText: Phaser.GameObjects.Text | null = null;
+  /** Per-channel seconds-remaining text node, keyed by channel id. The
+   *  bar alone reads as "something's filling" but doesn't telegraph
+   *  urgency in absolute terms — players in M5 routinely lose a
+   *  Warlord to the rage timer because they don't know they have ~7s
+   *  left vs ~3s. A numeric countdown above the bar fixes that. Reused
+   *  across frames; recycled via a free list when channels finish. */
+  private secondsTexts: Map<string, Phaser.GameObjects.Text> = new Map();
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -93,15 +100,31 @@ export class ChannelBarOverlay {
 
     // Second pass: channel bars for active channels.
     const sys = ChannelSystem.peek(this.scene);
-    if (!sys) return;
+    if (!sys) {
+      this.hideAllSecondsTexts();
+      return;
+    }
     const all = sys.listActive();
     const ranked = all
       .filter(c => c.caster && c.caster.alive !== false)
       .sort((a, b) => (b.elapsed / b.duration) - (a.elapsed / a.duration))
       .slice(0, MAX_VISIBLE);
+    const visibleIds = new Set<string>();
     for (const chan of ranked) {
       this.drawBar(chan);
+      this.drawSecondsRemaining(chan);
+      visibleIds.add(chan.id);
     }
+    // Hide any seconds-text nodes whose channel is no longer in the
+    // top-3 ranked list (channel ended, was interrupted, or fell out
+    // of the cap). Lazy-recreated on demand below.
+    for (const [id, node] of this.secondsTexts) {
+      if (!visibleIds.has(id)) node.setVisible(false);
+    }
+  }
+
+  private hideAllSecondsTexts(): void {
+    for (const node of this.secondsTexts.values()) node.setVisible(false);
   }
 
   /** HUD readout for the cumulative `_channelHpBuff` set by the
@@ -208,9 +231,43 @@ export class ChannelBarOverlay {
     this.graphics.strokeRect(x, y, BAR_W, BAR_H);
   }
 
+  /** Float a seconds-remaining countdown above the channel bar. Color
+   *  shifts cool→hot (teal at start, gold mid, red final 3s) so urgency
+   *  reads at a glance. Hidden on completion / interruption so the
+   *  result-frame on the bar doesn't compete with stale text. */
+  private drawSecondsRemaining(chan: ChannelInstance): void {
+    const c = chan.caster as { x?: number; y?: number };
+    if (typeof c.x !== 'number' || typeof c.y !== 'number') return;
+    if (chan.completed || chan.interrupted) {
+      this.secondsTexts.get(chan.id)?.setVisible(false);
+      return;
+    }
+    const remaining = Math.max(0, chan.duration - chan.elapsed);
+    const display = remaining < 1 ? remaining.toFixed(1) : Math.ceil(remaining).toString();
+    const color = remaining > 6 ? '#88eeff' : remaining > 3 ? '#ffe066' : '#ff6644';
+    const x = c.x;
+    const y = c.y - Y_OFFSET - 9;
+    let node = this.secondsTexts.get(chan.id);
+    if (!node) {
+      node = this.scene.add.text(x, y, '', {
+        fontSize: '10px', fontFamily: 'monospace', fontStyle: 'bold',
+        color, stroke: '#000000', strokeThickness: 2,
+      });
+      node.setOrigin(0.5, 1).setDepth(46);
+      this.secondsTexts.set(chan.id, node);
+    } else {
+      node.setVisible(true);
+      node.setPosition(x, y);
+      node.setColor(color);
+    }
+    node.setText(`${display}s`);
+  }
+
   destroy(): void {
     this.graphics.destroy();
     this.buffText?.destroy();
     this.buffText = null;
+    for (const node of this.secondsTexts.values()) node.destroy();
+    this.secondsTexts.clear();
   }
 }

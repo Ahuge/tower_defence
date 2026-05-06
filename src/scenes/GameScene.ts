@@ -67,6 +67,7 @@ import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
 import { GameOverData, CoopPlayerStats } from './GameOverScene';
 import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../data/SendCreepTypes';
+import { CREEP_TYPES } from '../data/CreepTypes';
 import { FRONTIER_BUILDINGS, GENERIC_OUTPOSTS, getAllFactionFrontierBuildings } from '../data/FrontierBuildings';
 import { Creep } from '../entities/Creep';
 import { playCreepDeath } from '../systems/CreepSpriteManager';
@@ -116,6 +117,43 @@ const ATTACKER_LEAK_THRESHOLD_DEFAULT = 5;
  *  rotation so host + joiner converge on the same faction for a
  *  given (sharedSeed, waveNum) pair. Same mulberry32 math as
  *  `data/MapGenerator.ts`; not worth factoring out for one call. */
+/** Roll up the named boss creeps in a wave to a banner title. M3 wave 6
+ *  has 3 archmages → "FINAL STAND — Meteora, Stormcaller, Necromaster".
+ *  Single-named bosses (M5 warlord captain, standard wave-12 boss) →
+ *  "BOSS WAVE — <Name>". Anonymous boss waves → "BOSS WAVE — N".
+ *  Multi-archmage waves trigger the "FINAL STAND" framing because that
+ *  composition signals the M3-style ritual climax. */
+function dispatchBossWaveBanner(wave: { groups: { creepType: string; count: number }[]; isBoss: boolean }, waveNum: number): void {
+  // Pull display names off CREEP_TYPES; skip generic fodder (standard /
+  // fast / armored / etc.) and only count "named" creeps that read as
+  // boss-tier in the banner.
+  const FODDER = new Set([
+    'standard', 'fast', 'armored', 'swarm', 'group', 'splitter',
+    'splitter_child', 'flying', 'shielded', 'phasing', 'wraith',
+  ]);
+  const namedTypes: string[] = [];
+  for (const g of wave.groups) {
+    if (FODDER.has(g.creepType)) continue;
+    const ct = CREEP_TYPES[g.creepType];
+    if (!ct) continue;
+    if (!namedTypes.includes(ct.name)) namedTypes.push(ct.name);
+  }
+  let title: string;
+  let subtitle: string;
+  if (namedTypes.length >= 3) {
+    title = 'FINAL STAND';
+    subtitle = namedTypes.join(' · ');
+  } else if (namedTypes.length >= 1) {
+    title = 'BOSS WAVE';
+    subtitle = namedTypes.join(' · ');
+  } else {
+    title = 'BOSS WAVE';
+    subtitle = `Wave ${waveNum}`;
+  }
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  window.dispatchEvent(new CustomEvent('td-boss-wave-started', { detail: { title, subtitle } }));
+}
+
 function seededRoll(seed: number): number {
   seed = (seed + 0x6D2B79F5) | 0;
   let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -1373,6 +1411,14 @@ export class GameScene extends Phaser.Scene {
         this.cpuOpponentAI?.creditWaveStart(waveNum);
         this._attackerCpuBotAI?.creditWaveStart(waveNum);
         this.gameMode.onWaveStart?.(wave, waveNum);
+        // Boss-wave banner — only on `isBoss: true`. Title rolls up the
+        // named boss creeps in the wave (e.g. M3 wave 6: "Final Stand —
+        // Meteora, Stormcaller, Necromaster"). Generic boss waves get
+        // "Boss Wave — N". Skipped on the standard endless mode where
+        // every 10th wave is a boss — the banner would flash too often.
+        if (wave.isBoss && this.matchMode !== 'endless') {
+          dispatchBossWaveBanner(wave, waveNum);
+        }
       },
       onWaveCleared: (waveNum) => {
         this.onWaveCleared(waveNum);

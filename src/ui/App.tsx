@@ -29,6 +29,7 @@ import { StatusBarDOM } from './game/StatusBarDOM';
 import { CircleRosterDOM } from './game/CircleRosterDOM';
 import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { AchievementToast } from './components/AchievementToast';
+import { BossWaveBanner } from './components/BossWaveBanner';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
 import { LevelUpModal } from './components/LevelUpModal';
 import { FactionUnlockSplash } from './components/FactionUnlockSplash';
@@ -126,6 +127,10 @@ export function App() {
           menu screens) since achievements can fire from either context.
           Self-gates on the td-achievement-unlocked event. */}
       <AchievementToast />
+
+      {/* Boss-wave banner — fires when GameScene.onWaveStart hits an
+          isBoss wave. Self-gates on the td-boss-wave-started event. */}
+      <BossWaveBanner />
 
       {/* Loading screen — overlays everything during game scene load */}
       {loading && (

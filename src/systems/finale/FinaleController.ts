@@ -484,6 +484,12 @@ export class FinaleController {
           }
         }
         if (!target) continue;
+        // Track "I picked a send" so the send-priority indicator can
+        // float a chevron above this tower for ~1s. Helps the player
+        // read at a glance which towers their decoy sends are pulling.
+        if (target.creep && target.creep.isSend) {
+          (t as { _targetingSendAt?: number })._targetingSendAt = now;
+        }
         // Send creeps go through the standard tower fire pipeline (so
         // splash / chain / etc work). The standard updateTowers tick
         // already targets sends, so we only need to fire here for hero
@@ -505,6 +511,12 @@ export class FinaleController {
         if (hero.hp <= 0) hero.die();
       }
     }
+
+    // Render send-priority indicator above CPU towers currently
+    // targeting a send. ~1s decay from `_targetingSendAt` so the
+    // chevron lingers between frames; clears naturally when the tower
+    // switches back to the hero or finds no target.
+    this.drawSendPriorityIndicators();
 
     // M10 finale: grant gold + xp for each newly-killed CPU tower this
     // frame (poll _expired flag which the hero's attackTarget set on
@@ -682,9 +694,52 @@ export class FinaleController {
       }
       if (aliveTowers === 0 && aliveWinTargets === 0) {
         this.winFired = true;
+        this.fireVictoryFlash();
         this.onWin?.();
       }
     }
+  }
+
+  /** Brief victory flash + slow-mo on the killing blow. The throne's
+   *  death is the single most important moment in the campaign — at
+   *  full speed it ticks past in 100ms. Slow Phaser's time scale to
+   *  0.3 for ~700ms (≈2.3s real-time) and overlay a bright white→fade
+   *  rectangle so the player has time to register "I did it." Time
+   *  scale auto-restores via delayedCall so a Phaser-side update
+   *  doesn't strand the slow-mo if onWin's GameOver scene swap is
+   *  somehow delayed. */
+  private fireVictoryFlash(): void {
+    const sceneAny = this.scene as {
+      add?: { graphics?: () => Phaser.GameObjects.Graphics };
+      tweens?: { add?: (cfg: object) => void };
+      time?: { delayedCall?: (delay: number, fn: () => void) => void };
+      cameras?: { main?: { width?: number; height?: number; shake?: (d: number, i: number) => void } };
+    };
+    // Slow time. Affects creep movement, projectile flight, tween
+    // duration — feels like a freeze-frame. Phaser scales `delta` for
+    // its own time events; gameplay code consumes `delta` directly so
+    // it slows in lockstep.
+    const sceneTime = (this.scene as { time?: { timeScale?: number; delayedCall?: (d: number, f: () => void) => void } }).time;
+    if (sceneTime && typeof sceneTime.timeScale === 'number') {
+      sceneTime.timeScale = 0.3;
+      sceneTime.delayedCall?.(700, () => { sceneTime.timeScale = 1.0; });
+    }
+    // Camera punch.
+    sceneAny.cameras?.main?.shake?.(500, 0.014);
+    // White flash overlay across the camera viewport.
+    const camW = sceneAny.cameras?.main?.width ?? 1920;
+    const camH = sceneAny.cameras?.main?.height ?? 1080;
+    const g = sceneAny.add?.graphics?.();
+    if (!g) return;
+    g.setDepth(200);
+    g.setScrollFactor?.(0);
+    g.fillStyle(0xffffff, 0.85);
+    g.fillRect(-camW, -camH, camW * 3, camH * 3);
+    sceneAny.tweens?.add?.({
+      targets: g, alpha: 0, duration: 900,
+      ease: 'Sine.easeOut',
+      onComplete: () => g.destroy(),
+    });
   }
 
   /** Set the player's clicked CPU target — Tower or DestructibleStructure.
@@ -942,6 +997,43 @@ export class FinaleController {
   drawPhaseShockwave(structure: DestructibleStructure, primary: number, secondary: number): void {
     const radius = Math.max(structure.widthCells, structure.heightCells) * TILE_SIZE * 1.2;
     this.drawAoeRing(structure.x, structure.y, radius, primary, secondary, 1400);
+  }
+
+  /** Per-frame send-priority chevron above any CPU tower whose
+   *  priority cascade resolved to a send creep in the last 1000ms.
+   *  Tells the player "your decoys are working" — without this, the
+   *  cascade is invisible and feels like a black-box rule. Re-uses a
+   *  shared graphics layer so no per-tower allocations. */
+  private _sendIndicatorGfx: Phaser.GameObjects.Graphics | null = null;
+  private drawSendPriorityIndicators(): void {
+    const sceneAny = this.scene as { add?: { graphics?: () => Phaser.GameObjects.Graphics }; time?: { now: number } };
+    const now = sceneAny.time?.now ?? 0;
+    const FADE_MS = 1000;
+    if (!this._sendIndicatorGfx && sceneAny.add?.graphics) {
+      this._sendIndicatorGfx = sceneAny.add.graphics();
+      this._sendIndicatorGfx.setDepth(46);
+    }
+    const g = this._sendIndicatorGfx;
+    if (!g) return;
+    g.clear();
+    for (const t of this.cpuTowers) {
+      if ((t as { _expired?: boolean })._expired) continue;
+      const last = (t as { _targetingSendAt?: number })._targetingSendAt ?? 0;
+      const age = now - last;
+      if (age >= FADE_MS) continue;
+      const alpha = 1 - age / FADE_MS;
+      // Tiny double-chevron pointing down (toward the tower) in
+      // amber. 8px wide × 6px tall. Visually distinct from the
+      // channel-bar magenta + the hero retaliate cue.
+      const cx = t.x;
+      const cy = t.y - TILE_SIZE * 0.55;
+      g.lineStyle(2, 0xffaa44, alpha);
+      g.lineBetween(cx - 5, cy - 3, cx, cy + 1);
+      g.lineBetween(cx, cy + 1, cx + 5, cy - 3);
+      g.lineStyle(2, 0xffcc88, alpha * 0.7);
+      g.lineBetween(cx - 5, cy, cx, cy + 4);
+      g.lineBetween(cx, cy + 4, cx + 5, cy);
+    }
   }
 
   /** Pillar-of-light VFX for hero summon. A vertical column flashing
