@@ -3,6 +3,8 @@
  * 1 accessory slot. Rotating shop offers 3 random accessories every 5 waves.
  */
 
+import { rng } from '../systems/Rng';
+
 export interface AccessoryDef {
   id: string;
   name: string;
@@ -197,8 +199,16 @@ export const ACCESSORIES: AccessoryDef[] = [
 /** Get N random accessories for rotation */
 export function getRandomAccessories(count: number, seed?: number): AccessoryDef[] {
   const shuffled = [...ACCESSORIES];
-  // Simple Fisher-Yates with optional seed
-  let s = seed ?? Math.floor(Math.random() * 100000);
+  // Fisher-Yates. When an explicit seed is passed we use the embedded
+  // LCG so the same wave + accessoryRotationCadence reproduces the
+  // same offer pool (HeroEconomyController.rotateAccessories passes
+  // `waveNum * 7919`). When no seed is passed we draw the initial
+  // seed from the module-level seeded `rng()` — same contract the
+  // sim-side hot paths use post-PR3, so headless harness runs and
+  // LiveCapture replays that ever extend to a hero-bearing match
+  // produce the same offers each replay. In production `rng()` is
+  // wallclock-seeded at boot so the first session still feels random.
+  let s = seed ?? Math.floor(rng() * 100000);
   for (let i = shuffled.length - 1; i > 0; i--) {
     s = (s * 1103515245 + 12345) & 0x7fffffff;
     const j = s % (i + 1);
