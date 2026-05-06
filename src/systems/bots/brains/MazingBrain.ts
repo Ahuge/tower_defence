@@ -1,29 +1,29 @@
 /**
  * MazingBrain — BalancedBrain with adversarial-BFS cell selection.
  *
- * Inherits the entire decision pipeline from BalancedBrain (meta pass,
- * phase machine, panic mode, ultimate-save, upgrade, sell). The only
- * thing that changes is *where* a tower goes once the brain has
- * decided what kind of placement to make:
+ * v2 phase 4: wishlist + per-role veto. The brain owns the strategic
+ * intent (which towers it'd prefer to place, in priority order) and
+ * the scorer owns the spatial intent (where good cells exist for
+ * each tower's role). bestCell returns null when no role-compatible
+ * cell scores above the confidence floor — the brain falls down its
+ * wishlist (splash → single → mobile, or slow → splash → single in
+ * panic) and tries the next preference. All-vetoed → parent's
+ * coverage scorer fallback so the brain never stalls.
  *
- *   - decideMaze:  cell picked by MazingScorer.bestCell (was bestMazeCell)
- *   - decideDps:   cell picked by MazingScorer.bestCell (was scoreDpsCells)
- *   - decidePanic: cell picked by MazingScorer.bestCell (was scoreDpsCells)
- *   - tryPlaceUltimate: cell picked by MazingScorer.bestCell (was scoreDpsCells)
+ * Wishlist composition by phase:
+ *   - decideMaze:  [cheapest wall]
+ *   - decideDps:   [counter-pick, ...remaining splash, ...single, ...mobile]
+ *   - decidePanic: [cheapest slow, ...remaining DPS pool]
+ *   - tryPlaceUltimate: [the ult] (single-item)
  *
- * v1 ignores the tower being placed (every cell gets one score). v2
- * passes the tower into bestCell so role-aware scoring can shift the
- * best-cell ranking.
+ * The "wait N waves and slows will be great here" emergent behavior
+ * is built in: every 4-second decision, the brain re-walks its
+ * wishlist with the scorer's veto-of-the-moment. As placements
+ * accumulate and the plan replans, formerly-rejected roles become
+ * accepted naturally.
  *
- * Why subclass instead of compose: the spatial choice is a single
- * helper deep in BalancedBrain's machinery — overriding 4 methods is
- * lower-friction than wrapping the whole brain and re-deriving
- * candidate cells / wallsPlaced state on each call.
- *
- * Fallback behaviour: when MazingScorer.bestCell returns null (the
- * cached plan has no cells matching the brain's candidate pool, or
- * confidence is below the floor), the override falls back to the
- * parent's scorer so we never stall harder than BalancedBrain would.
+ * Mobile units retain the parent's proximity-to-path scorer — the
+ * BFS-flavored ranking doesn't model wandering creep-engagement well.
  */
 import {
   BotContext, BotDecision, registerBrain,
@@ -39,10 +39,6 @@ import { TILE_SIZE } from '../../../config';
 export interface MazingBrainParams extends BalancedBrainParams, MazingScorerOptions {}
 
 export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
-  // Spread the BalancedBrain defaults so any future addition to that
-  // schema lands here automatically. Searched values come in via the
-  // env-var path BalancedBrain already uses, plus a parallel one for
-  // mazing-specific knobs (loadParamsFromEnv hook below).
   panicLives: 5,
   mazeSaturationThreshold: 0,
   maxWallPlacements: 8,
@@ -58,8 +54,6 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
   skipUltimateSave: 0,
   upgradeStrategyIdx: 0,
   towerPickStrategyIdx: 0,
-  // MazingScorerOptions defaults (alpha/beta/gamma + beam shape +
-  // mutation probs + confidence-floor + budget projection).
   ...DEFAULT_MAZING_OPTIONS,
 };
 
@@ -77,9 +71,6 @@ function loadMazingParamsFromEnv(): MazingBrainParams {
 
 export class MazingBrain extends BalancedBrain {
   readonly name: string = 'Mazing';
-  // Per-bot scorer instance — owns the cached plan + dirty-bit. Bots
-  // in different zones don't share caches because their candidate
-  // pools (and thus their plans) diverge.
   protected scorer: MazingScorer;
 
   constructor(params?: Partial<MazingBrainParams>) {
@@ -89,21 +80,21 @@ export class MazingBrain extends BalancedBrain {
   }
 
   // ── decideMaze ─────────────────────────────────────────────────
-  // Use the cached beam plan to choose the wall cell. Falls back to
-  // the parent's bestMazeCell when the plan is empty or below
-  // confidence. Affordability + walls-placed counter logic is
-  // unchanged from the parent.
   protected decideMaze(ctx: BotContext): BotDecision {
     const walls = this.affordable(this.grouped.wall, ctx.budget);
     if (walls.length === 0) return { kind: 'skip' };
 
-    const pick = this.scorer.bestCell(ctx);
+    // Per-role query: ask the scorer specifically for a wall cell.
+    // Phase 3 returns role-bucketed picks, so this gets back a cell
+    // the planner scored as "good for a wall" rather than "good for
+    // anything" (which used to land us at DPS-best cells).
+    const pick = this.scorer.bestCell(ctx, walls[0]);
     if (pick) {
       this.wallsPlaced++;
       return { kind: 'place', col: pick.col, row: pick.row, type: walls[0] };
     }
 
-    // Fallback to BalancedBrain's greedy single-cell scorer.
+    // Fallback: parent's greedy single-cell scorer (always wall-extending).
     const best = bestMazeCell(ctx.grid, ctx.candidateCells, 30, ctx.allPaths);
     if (!best || best.gain <= this.params.mazeSaturationThreshold) {
       this.wallsPlaced = this.params.maxWallPlacements;
@@ -114,68 +105,69 @@ export class MazingBrain extends BalancedBrain {
   }
 
   // ── decideDps ──────────────────────────────────────────────────
-  // Same tower-pick logic (expensive-bias / counter-swap / etc) as the
-  // parent. Cell selection switches to MazingScorer with parent
-  // fallback. Mobile units keep the parent's proximity-to-path scorer
-  // since their placement semantics are different (roam, not coverage).
   protected decideDps(ctx: BotContext): BotDecision {
-    const splash = this.affordable(this.grouped['dps-splash'], ctx.budget);
-    const single = this.affordable(this.grouped['dps-single'], ctx.budget);
-    const mobile = this.affordable(this.mobileUnits, ctx.budget);
-    const pool = [...splash, ...single, ...mobile];
-    if (pool.length === 0) return { kind: 'skip' };
+    const wishlist = this.buildDpsWishlist(ctx);
+    if (wishlist.length === 0) return { kind: 'skip' };
 
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
     if (paths.length === 0) return { kind: 'skip' };
 
-    const pickedType = this.pickTowerType(pool, ctx);
-
-    // Mobile units: parent path. The scorer's BFS-flavored ranking
-    // doesn't model wandering units well — a mobile placed at a
-    // far-from-path "good wall" cell wastes its DPS.
-    if (hasTrait(pickedType.traits, 'mobile_unit')) {
-      const scored = this.scoreMobileCells(ctx.candidateCells, paths, pickedType);
-      if (scored.length === 0 || scored[0].score === 0) return { kind: 'skip' };
-      return { kind: 'place', col: scored[0].col, row: scored[0].row, type: pickedType };
+    // Walk the wishlist asking the scorer per-tower. First non-null
+    // wins. Mobile units route through the parent's proximity scorer
+    // since the BFS-flavored ranking doesn't model wandering.
+    for (const tower of wishlist) {
+      if (hasTrait(tower.traits, 'mobile_unit')) {
+        const scored = this.scoreMobileCells(ctx.candidateCells, paths, tower);
+        if (scored.length > 0 && scored[0].score > 0) {
+          return { kind: 'place', col: scored[0].col, row: scored[0].row, type: tower };
+        }
+        continue;
+      }
+      const pick = this.scorer.bestCell(ctx, tower);
+      if (pick) {
+        return { kind: 'place', col: pick.col, row: pick.row, type: tower };
+      }
     }
 
-    // Stationary towers (Bolt, Cannon, Frost, Sniper, etc): scorer
-    // picks the cell. v1 ignores `pickedType` — every plan cell looks
-    // the same — but we pass it through so v2's role-weighted scoring
-    // is a drop-in upgrade.
-    const pick = this.scorer.bestCell(ctx, pickedType);
-    if (pick) {
-      return { kind: 'place', col: pick.col, row: pick.row, type: pickedType };
-    }
-    // Fallback to the parent's coverage scorer.
-    const scored = this.scoreDpsCells(ctx.candidateCells, paths, pickedType.range, ctx.placedTowers);
+    // All-vetoed fallback: try the parent's coverage scorer with the
+    // top wishlist tower so we don't stall when the planner's plan
+    // is exhausted.
+    const top = wishlist[0];
+    if (hasTrait(top.traits, 'mobile_unit')) return { kind: 'skip' };
+    const scored = this.scoreDpsCells(ctx.candidateCells, paths, top.range, ctx.placedTowers);
     if (scored.length === 0) return { kind: 'skip' };
     const best = scored[0];
     if (best.score === 0) return { kind: 'skip' };
-    return { kind: 'place', col: best.col, row: best.row, type: pickedType };
+    return { kind: 'place', col: best.col, row: best.row, type: top };
   }
 
   // ── decidePanic ────────────────────────────────────────────────
-  // Slow tower placement. The scorer's path-extension term naturally
-  // rewards placing the slow at a chokepoint, which is where panic
-  // actually wants it.
+  // Panic mode wishlist: slow first, then DPS as a fallback so the
+  // brain never silently does nothing while lives bleed.
   protected decidePanic(ctx: BotContext): BotDecision {
     const slows = this.affordable(this.grouped.slow, ctx.budget);
-    if (slows.length === 0) return { kind: 'skip' };
+    const splash = this.affordable(this.grouped['dps-splash'], ctx.budget);
+    const single = this.affordable(this.grouped['dps-single'], ctx.budget);
+    const wishlist: TowerType[] = [...slows, ...splash, ...single];
+    if (wishlist.length === 0) return { kind: 'skip' };
+
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
     if (paths.length === 0) return { kind: 'skip' };
 
-    const type = slows[0];
-    const pick = this.scorer.bestCell(ctx, type);
-    if (pick) return { kind: 'place', col: pick.col, row: pick.row, type };
+    for (const tower of wishlist) {
+      const pick = this.scorer.bestCell(ctx, tower);
+      if (pick) return { kind: 'place', col: pick.col, row: pick.row, type: tower };
+    }
 
+    // All-vetoed fallback — use the parent's coverage scorer with the
+    // top wishlist entry. Panic mode never wants to skip silently.
+    const type = wishlist[0];
     const scored = this.scoreDpsCells(ctx.candidateCells, paths, type.range, ctx.placedTowers);
     if (scored.length === 0 || scored[0].score === 0) return { kind: 'skip' };
     return { kind: 'place', col: scored[0].col, row: scored[0].row, type };
   }
 
   // ── tryPlaceUltimate ───────────────────────────────────────────
-  // Ult placement. Mobile ults stay on the parent's proximity scorer.
   protected tryPlaceUltimate(ctx: BotContext): BotDecision {
     if (!this.ultimate || ctx.budget < this.ultimate.cost) return { kind: 'skip' };
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
@@ -194,11 +186,25 @@ export class MazingBrain extends BalancedBrain {
     if (scored.length === 0) return { kind: 'skip' };
     return { kind: 'place', col: scored[0].col, row: scored[0].row, type: this.ultimate };
   }
+
+  /** Build the DPS-phase tower wishlist. The counter-aware top pick
+   *  from `pickTowerType` leads, with the rest of the affordable pool
+   *  trailing in role-priority order: splash → single → mobile. The
+   *  scorer's veto is what makes this list useful — without it the
+   *  brain just always places the top pick. */
+  protected buildDpsWishlist(ctx: BotContext): TowerType[] {
+    const splash = this.affordable(this.grouped['dps-splash'], ctx.budget);
+    const single = this.affordable(this.grouped['dps-single'], ctx.budget);
+    const mobile = this.affordable(this.mobileUnits, ctx.budget);
+    const pool = [...splash, ...single, ...mobile];
+    if (pool.length === 0) return [];
+    const top = this.pickTowerType(pool, ctx);
+    const rest = pool.filter(t => t.id !== top.id);
+    return [top, ...rest];
+  }
 }
 
-// pathCellsWithinRange + TILE_SIZE are imported for v2 role-weighted
-// scoring; harmless in v1 because TS will tree-shake. The TowerType
-// import is the parameter type for `bestCell`.
+// Imports kept for v2 phase 5+ work. TS tree-shake handles unused at build time.
 void pathCellsWithinRange;
 void TILE_SIZE;
 

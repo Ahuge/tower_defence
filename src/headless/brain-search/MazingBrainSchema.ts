@@ -2,13 +2,12 @@
  * Search schema for MazingBrain — drives the (μ+λ) ES tuning loop.
  *
  * Spans BalancedBrain's existing knobs (so the search can co-tune
- * meta + spatial behaviour) plus the mazing-specific terms
- * controlling the adversarial beam search and the wishlist veto.
+ * meta + spatial behaviour) plus the v2 mazing-specific terms
+ * controlling the adversarial beam search, role-aware scoring, and
+ * the wishlist veto.
  *
- * The BalancedBrain schema would have been a natural base to extend
- * but TypeScript's ParamSchema is a flat record so we restate the
- * fields here. Defaults mirror DEFAULT_MAZING_BRAIN_PARAMS so a
- * "no-op" config matches the as-shipped behaviour.
+ * Defaults mirror DEFAULT_MAZING_BRAIN_PARAMS so a "no-op" config
+ * matches the as-shipped behaviour.
  */
 import { ParamSchema } from './BrainSearchManager';
 
@@ -60,7 +59,7 @@ export const MAZING_BRAIN_SCHEMA: ParamSchema = {
     min: 0, max: 3, default: 0, step: 1, integer: true,
   },
 
-  // ── Mazing-specific: BFS score weights ───────────────────────
+  // ── BFS-workload score weights (v1 terms) ────────────────────
   alpha: {
     min: 0.5, max: 15.0, default: 5.0, step: 1.0,
   },
@@ -71,45 +70,85 @@ export const MAZING_BRAIN_SCHEMA: ParamSchema = {
     min: 0.0, max: 3.0, default: 0.5, step: 0.2,
   },
 
-  // ── Mazing-specific: beam search shape ───────────────────────
+  // ── Role-aware score weights (v2 terms) ──────────────────────
+  // δ rewards DPS coverage (path cells × dps/sec), ε rewards slow
+  // value (path cells × slow strength), ζ rewards aura
+  // amplification (sum over Cheby≤1 dps of neighbours × aura).
+  // High values prefer placing towers at coverage-optimal cells;
+  // low values keep the plan maze-shaped.
+  deltaDps: {
+    min: 0.0, max: 1.0, default: 0.05, step: 0.1,
+  },
+  epsilonSlow: {
+    min: 0.0, max: 1.0, default: 0.05, step: 0.1,
+  },
+  zetaAura: {
+    min: 0.0, max: 1.0, default: 0.05, step: 0.1,
+  },
+
+  // ── Beam search shape ────────────────────────────────────────
   beamWidth: {
-    min: 1, max: 12, default: 5, step: 1, integer: true,
+    min: 1, max: 12, default: 3, step: 1, integer: true,
   },
   mutationsPerState: {
-    min: 5, max: 60, default: 25, step: 5, integer: true,
+    min: 5, max: 30, default: 12, step: 3, integer: true,
   },
   waves: {
-    min: 3, max: 20, default: 15, step: 2, integer: true,
+    min: 3, max: 20, default: 8, step: 2, integer: true,
   },
   baseBudget: {
-    min: 5, max: 50, default: 10, step: 5, integer: true,
+    min: 50, max: 500, default: 100, step: 50, integer: true,
   },
   budgetGrowth: {
-    min: 1, max: 20, default: 8, step: 2, integer: true,
+    min: 20, max: 200, default: 80, step: 20, integer: true,
   },
   growBranchMaxLen: {
     min: 2, max: 15, default: 8, step: 2, integer: true,
   },
+  // 0 = greedy (try every affordable tower per cell, keep best),
+  // 1 = random with role-bias weights. Random is much cheaper.
+  towerPickMode: {
+    min: 0, max: 1, default: 1, step: 1, integer: true,
+  },
 
-  // ── Mazing-specific: mutation operator probabilities ─────────
+  // ── Mutation operator probabilities ──────────────────────────
   // Sum-normalised at runtime so brain-search can sweep them as
   // independent floats. ES will tend to push these toward the
-  // operators that produce the highest BFS score on this cell.
-  pAddWall: {
+  // operators that produce the highest score on this cell.
+  pAddTower: {
     min: 0.0, max: 1.0, default: 0.5, step: 0.15,
   },
   pGrowBranch: {
     min: 0.0, max: 1.0, default: 0.3, step: 0.15,
   },
-  pRemoveWall: {
-    min: 0.0, max: 1.0, default: 0.2, step: 0.1,
+  pRemoveTower: {
+    min: 0.0, max: 1.0, default: 0.15, step: 0.1,
+  },
+  pSwapTower: {
+    min: 0.0, max: 1.0, default: 0.05, step: 0.1,
   },
 
-  // ── Mazing-specific: confidence floor for wishlist veto ──────
-  // bestCell returns null when (1 - rank/planLen) < confidenceFloor —
-  // higher floor = more aggressive veto = brain falls down its
-  // wishlist sooner. v1 hardcodes the floor against plan-position;
-  // v2 will compare against historical-best score.
+  // ── Per-role mutation bias (random-mode only) ────────────────
+  // Multiplies a tower's chance of being picked under towerPickMode=1.
+  // Higher addBiasWall = more wall placements in the plan, which
+  // produces more visible mazing.
+  addBiasWall: {
+    min: 0.0, max: 4.0, default: 2.5, step: 0.5,
+  },
+  addBiasDps: {
+    min: 0.0, max: 4.0, default: 1.0, step: 0.5,
+  },
+  addBiasSlow: {
+    min: 0.0, max: 4.0, default: 0.6, step: 0.5,
+  },
+  addBiasAura: {
+    min: 0.0, max: 4.0, default: 0.4, step: 0.5,
+  },
+
+  // ── Confidence floor for the wishlist veto ───────────────────
+  // bestCell returns null when (1 - roleRank/bucketLen) <
+  // confidenceFloor — higher floor = more aggressive veto = brain
+  // falls down its wishlist sooner.
   confidenceFloor: {
     min: 0.0, max: 1.0, default: 0.4, step: 0.1,
   },

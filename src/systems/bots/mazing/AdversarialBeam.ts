@@ -85,15 +85,13 @@ export interface BeamOptions {
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   alpha: 5.0, beta: 1.0, gamma: 0.5,
-  // Role weights default to 0 until phase 3 (per-role bestCell)
-  // ships. With non-zero δ/ε/ζ, the planner ranks DPS placements
-  // over walls, but the brain's decideMaze still asks for "any
-  // rank-0 cell" — so it places walls at DPS-best cells and the
-  // visible mazing collapses. Keeping these at 0 makes the v2
-  // architecture behave like v1 (path-extension only) until phase
-  // 3+4 wire the brain's per-role queries. brain-search will
-  // raise these once the loop is closed.
-  deltaDps: 0.0, epsilonSlow: 0.0, zetaAura: 0.0,
+  // Role weights — re-enabled now that phase 3+4 ship per-role bestCell
+  // and the brain's wishlist veto. Conservative defaults: path
+  // extension still dominates so the plan stays maze-shaped, but DPS /
+  // slow / aura contributions register so role-bucket queries return
+  // meaningfully-ranked cells. brain-search will retune once we have
+  // a comparison baseline.
+  deltaDps: 0.05, epsilonSlow: 0.05, zetaAura: 0.05,
   // Beam search shape — reduced from POC defaults to fit a 4s bot
   // decision budget with multiple bots running concurrently. POC
   // had beam=5 mutations=25 waves=15 = ~1875 evals/plan; the trim
