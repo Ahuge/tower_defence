@@ -19,6 +19,7 @@
  */
 
 import * as Phaser from 'phaser';
+import { rng } from '../Rng';
 
 export interface ChannelEffectContext {
   scene: Phaser.Scene;
@@ -137,20 +138,28 @@ ChannelEffects.register('meteor_drop', (ctx) => {
 
   // Pick a random arena tile near the caster (within ~6 tiles).
   // Coupling to caster keeps the meteor meaningful in context — it
-  // lands "near you" rather than randomly off-screen.
-  const tx = (caster?.x ?? 400) + (Math.random() - 0.5) * 280;
-  const ty = (caster?.y ?? 300) + (Math.random() - 0.5) * 280;
+  // lands "near you" rather than randomly off-screen. Seeded rng()
+  // keeps headless and LiveCapture replays deterministic.
+  const tx = (caster?.x ?? 400) + (rng() - 0.5) * 280;
+  const ty = (caster?.y ?? 300) + (rng() - 0.5) * 280;
 
-  // Damage anything caught in the radius. Currently towers + the base.
-  // Towers in radius lose 60% of their max-equivalent (set _expired
-  // for now; a future tier could damage rather than destroy).
+  // Damage anything caught in the radius. Towers receive HP damage via
+  // Tower.takeDamage (added with the M10 destructible framework).
+  // Non-destructible towers fall back to instant-kill via _expired —
+  // takeDamage no-ops on them, and the gameplay intent of "meteor
+  // wipes towers in radius" is preserved on legacy maps.
   const towers = scene.towers ?? scene.towerManager?.towers;
   if (Array.isArray(towers)) {
     for (const t of towers) {
       if (!t || t._expired) continue;
       const dx = (t.x ?? 0) - tx;
       const dy = (t.y ?? 0) - ty;
-      if (dx * dx + dy * dy <= radius * radius) t._expired = true;
+      if (dx * dx + dy * dy > radius * radius) continue;
+      if (typeof t.takeDamage === 'function' && t.destructible) {
+        t.takeDamage(damage);
+      } else {
+        t._expired = true;
+      }
     }
   }
 
@@ -174,7 +183,6 @@ ChannelEffects.register('meteor_drop', (ctx) => {
   if (log?.gameMessage) {
     log.gameMessage(`☄ Meteora's meteor landed — damage: ${damage}`);
   }
-  void damage; // kept for future tower-HP-damage upgrade path
 });
 
 /** chain_lightning_on_towers — Stormcaller's signature. Picks N
@@ -191,8 +199,9 @@ ChannelEffects.register('chain_lightning_on_towers', (ctx) => {
 
   // Pick `count` random towers that aren't already disabled or expired.
   const candidates = towers.filter((t: any) => t && !t._expired && (t._disabledRemaining ?? 0) <= 0);
+  // Seeded rng() — keeps LiveCapture / determinism-snapshot reproducible.
   for (let i = candidates.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
   const targets = candidates.slice(0, count);
@@ -208,8 +217,8 @@ ChannelEffects.register('chain_lightning_on_towers', (ctx) => {
     for (const t of targets) {
       // Two-segment lightning (one mid-jitter point) for that
       // hand-drawn-shock look.
-      const mx = (caster.x + t.x) / 2 + (Math.random() - 0.5) * 30;
-      const my = (caster.y + t.y) / 2 + (Math.random() - 0.5) * 30;
+      const mx = (caster.x + t.x) / 2 + (rng() - 0.5) * 30;
+      const my = (caster.y + t.y) / 2 + (rng() - 0.5) * 30;
       g.lineBetween(caster.x, caster.y, mx, my);
       g.lineBetween(mx, my, t.x, t.y);
     }
@@ -256,7 +265,12 @@ ChannelEffects.register('warlord_heal_all', (ctx) => {
 });
 
 /** warlord_shield_all — Champion's rage. Adds a shield trait to every
- *  alive creep (50% of current HP). */
+ *  alive creep (50% of current HP).
+ *
+ *  Trait shape matches what `registerCreepDamage('shield', ...)` in
+ *  CreepTraitHandlers.ts reads — `_active` + `_shieldHp` are the only
+ *  fields the handler uses. Same runtime-attach pattern as
+ *  `TowerManager`'s `expires_after_waves` push for swarmlings. */
 ChannelEffects.register('warlord_shield_all', (ctx) => {
   const scene = ctx.scene as any;
   const creeps: any[] = scene.creeps ?? [];
@@ -265,7 +279,7 @@ ChannelEffects.register('warlord_shield_all', (ctx) => {
     if (!c.alive || !c.traits) continue;
     if (c.traits.some((t: { id: string }) => t.id === 'shield')) continue;
     const shieldHp = Math.round((c.maxHp ?? 50) * 0.5);
-    c.traits.push({ id: 'shield', hpPercent: 0.5, _shieldHp: shieldHp, _active: true });
+    c.traits.push({ id: 'shield', _shieldHp: shieldHp, _active: true });
     count++;
   }
   warlordVfx(ctx, 0xeecc88, 0xfff0aa);

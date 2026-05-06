@@ -11,6 +11,7 @@ import { EconomyManager } from './EconomyManager';
 import { EventLog } from '../ui/EventLog';
 import { FloatingDamage } from './FloatingDamage';
 import { ArenaEffect, FX, drawEffect } from './ArenaEffects';
+import { applyHeroPendingEffects } from './finale/applyHeroPendingEffects';
 import { ArenaFloorRenderer, ArenaBase } from './ArenaFloorRenderer';
 import type { FactionId } from '../data/Factions';
 
@@ -215,63 +216,28 @@ export class ArenaManager {
     // Clean up dead creeps
     this.arenaCreeps = this.arenaCreeps.filter(c => c.alive);
 
-    // Process pending meteors
-    if (this.hero.pendingMeteor) {
-      const m = this.hero.pendingMeteor;
-      // Random position in arena
-      const mx = this.arenaX + 60 + Math.random() * (this.arenaWidth - 120);
-      const my = 30 + Math.random() * (this.arenaHeight - 60);
-      // Impact VFX
-      this.effects.push(FX.meteorImpact(mx, my, m.radius));
-      this.effects.push(FX.shockwave(mx, my, m.radius * 1.3, 0xff4400));
-      for (const creep of this.arenaCreeps) {
-        if (!creep.alive) continue;
-        const dx = creep.x - mx;
-        const dy = creep.y - my;
-        if (Math.sqrt(dx * dx + dy * dy) <= m.radius) {
-          creep.takeDamage(m.damage);
-          this.hero.totalDamageDealt += m.damage;
-          this.hero.pendingDamageNumbers.push({ x: creep.x, y: creep.y - 10, text: String(m.damage), color: '#cc66ff', duration: 1.0 });
-          if (!creep.alive) this.hero.kills++;
-        }
-      }
-      this.hero.pendingMeteor = null;
-    }
-
-    // Process splash attacks
-    for (const splash of this.hero.pendingSplash) {
-      this.effects.push(FX.aoeBlast(splash.x, splash.y, splash.radius, 0xff8844));
-      for (const creep of this.arenaCreeps) {
-        if (!creep.alive) continue;
-        const dx = creep.x - splash.x;
-        const dy = creep.y - splash.y;
-        if (Math.sqrt(dx * dx + dy * dy) <= splash.radius) {
-          creep.takeDamage(splash.damage);
-          this.hero.totalDamageDealt += splash.damage;
-          this.hero.pendingDamageNumbers.push({ x: creep.x, y: creep.y - 10, text: String(splash.damage), color: '#ff8844', duration: 0.6 });
-          if (!creep.alive) this.hero.kills++;
-        }
-      }
-    }
-    this.hero.pendingSplash.length = 0;
-
-    // Process chain lightning
-    if (this.hero.pendingChainLightning) {
-      const cl = this.hero.pendingChainLightning;
-      for (const creep of this.arenaCreeps) {
-        if (!creep.alive) continue;
-        const dx = creep.x - cl.x;
-        const dy = creep.y - cl.y;
-        if (Math.sqrt(dx * dx + dy * dy) <= 80) {
-          creep.takeDamage(cl.damage);
-          this.hero.totalDamageDealt += cl.damage;
-          this.hero.pendingDamageNumbers.push({ x: creep.x, y: creep.y - 10, text: String(cl.damage), color: '#44aaff', duration: 0.6 });
-          this.effects.push(FX.lightning(cl.x, cl.y, creep.x, creep.y));
-          if (!creep.alive) this.hero.kills++;
-        }
-      }
-      this.hero.pendingChainLightning = null;
-    }
+    // Drain hero's per-frame ability queues (meteor / splash / chain
+    // lightning). Shared with FinaleController via the helper. This
+    // arena renders effects via its own ArenaEffect queue; we hand the
+    // helper VFX hooks that push there.
+    applyHeroPendingEffects({
+      hero: this.hero,
+      targets: this.arenaCreeps,
+      pickMeteorPosition: () => ({
+        x: this.arenaX + 60 + Math.random() * (this.arenaWidth - 120),
+        y: 30 + Math.random() * (this.arenaHeight - 60),
+      }),
+      onMeteorVfx: (x, y, radius) => {
+        this.effects.push(FX.meteorImpact(x, y, radius));
+        this.effects.push(FX.shockwave(x, y, radius * 1.3, 0xff4400));
+      },
+      onSplashVfx: (x, y, radius) => {
+        this.effects.push(FX.aoeBlast(x, y, radius, 0xff8844));
+      },
+      onChainHitVfx: (sx, sy, hx, hy) => {
+        this.effects.push(FX.lightning(sx, sy, hx, hy));
+      },
+    });
 
     // Process reflect damage — apply to all creeps currently in attack range of hero
     if (this.hero.pendingReflectDamage > 0 && heroAlive) {

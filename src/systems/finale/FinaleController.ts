@@ -43,6 +43,8 @@ import { findPath, PathPoint } from '../Pathfinding';
 import { createProjectileSprite, hasProjectileSprite } from '../SpriteManager';
 import { Damageable } from './Damageable';
 import { dispatchFinaleEffect } from './FinaleEffects';
+import { applyHeroPendingEffects, PendingHittable } from './applyHeroPendingEffects';
+import { rng } from '../Rng';
 
 /** Sentinel ownerIndex for CPU defender towers. Distinct from any
  *  player slot (0-3 in circle co-op). Used by Tower.findFinaleTarget
@@ -350,6 +352,52 @@ export class FinaleController {
           this.heroLastValid = { x: this.hero.x, y: this.hero.y };
         }
       }
+    }
+
+    // Drain the hero's per-frame ability queues (Meteor / Splash /
+    // Chain Lightning). ArenaManager owns this drain in HD mode; M10
+    // is on the main grid so the controller does it. Without this the
+    // first cast of Meteor Storm would jam — `Hero.update` only fires
+    // the next meteor when `pendingMeteor` is null. Targets: alive
+    // wave creeps + alive CPU towers + alive boss structures.
+    if (this.hero && this.hero.alive) {
+      const heroX = this.hero.x;
+      const heroY = this.hero.y;
+      const targets: PendingHittable[] = [];
+      for (const c of creeps as Creep[]) {
+        if (c.alive && !c.reached) targets.push(c as unknown as PendingHittable);
+      }
+      for (const t of this.cpuTowers) {
+        if (!(t as { _expired?: boolean })._expired) {
+          targets.push(t as unknown as PendingHittable);
+        }
+      }
+      for (const s of this.cpuStructures) {
+        if (s.alive) targets.push(s);
+      }
+      applyHeroPendingEffects({
+        hero: this.hero,
+        targets,
+        // Meteor lands near the hero with up-to-2× radius jitter.
+        // Seeded RNG keeps headless / capture replays deterministic.
+        pickMeteorPosition: (radius) => ({
+          x: heroX + (rng() - 0.5) * radius * 4,
+          y: heroY + (rng() - 0.5) * radius * 4,
+        }),
+        onMeteorVfx: (x, y, radius) => this.drawAoeRing(x, y, radius, 0xff4400, 0xffaa44, 1100),
+        onSplashVfx: (x, y, radius) => this.drawAoeRing(x, y, radius, 0xff8844, 0xffcc88, 600),
+        onChainHitVfx: (sx, sy, hx, hy) => this.drawLightningArc(sx, sy, hx, hy),
+      });
+    }
+
+    // Drain hero damage-number queue (Arena uses FloatingDamage; we
+    // render via inline Phaser text tweens so the numbers appear in
+    // M10 too — without this drain the queue would grow unbounded.
+    if (this.hero && this.hero.pendingDamageNumbers.length > 0) {
+      for (const entry of this.hero.pendingDamageNumbers) {
+        this.spawnFloatingNumber(entry.x, entry.y, entry.text, entry.color, entry.duration);
+      }
+      this.hero.pendingDamageNumbers.length = 0;
     }
 
     // CPU tower target priority (M10 v2):
@@ -832,6 +880,75 @@ export class FinaleController {
       onComplete: () => {
         target?.destroy?.();
       },
+    });
+  }
+
+  /** Render a two-ring AOE pulse with camera shake. Used for meteor
+   *  and splash hits. Headless-safe: bails on missing scene.add. */
+  private drawAoeRing(x: number, y: number, radius: number, outerColor: number, innerColor: number, durationMs: number): void {
+    const sceneAny = this.scene as {
+      add?: { graphics?: () => Phaser.GameObjects.Graphics };
+      tweens?: { add?: (cfg: object) => void };
+      cameras?: { main?: { shake?: (d: number, i: number) => void } };
+    };
+    const g = sceneAny.add?.graphics?.();
+    if (g) {
+      g.setDepth(40);
+      g.fillStyle(outerColor, 0.55);
+      g.fillCircle(x, y, radius);
+      g.fillStyle(innerColor, 0.4);
+      g.fillCircle(x, y, radius * 0.55);
+      g.lineStyle(4, outerColor, 1);
+      g.strokeCircle(x, y, radius);
+      sceneAny.tweens?.add?.({
+        targets: g, alpha: 0, duration: durationMs,
+        onComplete: () => g.destroy(),
+      });
+    }
+    sceneAny.cameras?.main?.shake?.(Math.min(420, durationMs * 0.35), 0.008);
+  }
+
+  /** Spawn a floating damage number that rises and fades. M10's
+   *  Phaser-text equivalent of HD's FloatingDamage system. */
+  private spawnFloatingNumber(x: number, y: number, text: string, color: string, durationSec: number): void {
+    const sceneAny = this.scene as {
+      add?: { text?: (x: number, y: number, t: string, s: object) => Phaser.GameObjects.Text };
+      tweens?: { add?: (cfg: object) => void };
+    };
+    const node = sceneAny.add?.text?.(x, y, text, {
+      fontSize: '12px', color, fontFamily: 'monospace',
+    });
+    if (!node) return;
+    node.setOrigin?.(0.5);
+    node.setDepth?.(45);
+    sceneAny.tweens?.add?.({
+      targets: node,
+      y: y - 24,
+      alpha: 0,
+      duration: durationSec * 1000,
+      ease: 'Sine.easeOut',
+      onComplete: () => node.destroy(),
+    });
+  }
+
+  /** Render a two-segment lightning bolt for chain-lightning hits.
+   *  Mid-jitter via seeded rng() so headless / capture stays repeatable. */
+  private drawLightningArc(sx: number, sy: number, hx: number, hy: number): void {
+    const sceneAny = this.scene as {
+      add?: { graphics?: () => Phaser.GameObjects.Graphics };
+      tweens?: { add?: (cfg: object) => void };
+    };
+    const g = sceneAny.add?.graphics?.();
+    if (!g) return;
+    g.setDepth(40);
+    g.lineStyle(3, 0x44aaff, 0.9);
+    const mx = (sx + hx) / 2 + (rng() - 0.5) * 30;
+    const my = (sy + hy) / 2 + (rng() - 0.5) * 30;
+    g.lineBetween(sx, sy, mx, my);
+    g.lineBetween(mx, my, hx, hy);
+    sceneAny.tweens?.add?.({
+      targets: g, alpha: 0, duration: 500,
+      onComplete: () => g.destroy(),
     });
   }
 
