@@ -6,7 +6,14 @@
  * rather than pre-caching a manifest, keeping things simple.
  */
 
-const CACHE_NAME = 'td-cache-v2';
+// Bump on every release that ships changed art/audio assets — the
+// activate handler deletes any cache whose name doesn't match this
+// constant, so a version bump forces a clean re-fetch of every PNG /
+// font / spritesheet from the new APK. Without this, devices with
+// the old SW installed keep serving the previous build's sprites
+// (the Nature 2026-04-22 rework was invisible to existing installs
+// until they cleared app data — root cause of "wrong sprite" reports).
+const CACHE_NAME = 'td-cache-v3-2026-04-26';
 
 // Asset extensions worth caching (sprites, audio, fonts, compiled JS/CSS)
 const CACHEABLE = /\.(js|css|woff2?|ttf|png|jpe?g|svg|webp|ico|json|mp3|ogg|wav)$/i;
