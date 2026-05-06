@@ -1132,6 +1132,8 @@ export class GameScene extends Phaser.Scene {
         summoningCircles: mapDef.summoningCircles,
         towerMgr: this.towerMgr,
         grid: this.grid,
+        economy: this.economy,
+        eventLog: this.eventLog,
         onHeroSpawned: () => {
           this.eventLog.gameMessage('A pillar of light — the Forge mage answers the call!');
         },
@@ -4561,6 +4563,11 @@ export class GameScene extends Phaser.Scene {
 
     // Mode-specific wave-end (frontier income, essence, etc.)
     this.gameMode.onWaveCleared(waveNum);
+
+    // M10 finale: heal hero, apply interest tome, rotate accessory
+    // shop. No-op when no FinaleController or before first hero
+    // summon — the controller guards internally.
+    this._finaleController?.onWaveCleared(waveNum);
 
     // Plan 12 v2: refresh the attacker composer for the next wave so
     // the player can compose again. resetForWave fires the subscribe

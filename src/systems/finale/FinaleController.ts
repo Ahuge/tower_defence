@@ -45,6 +45,9 @@ import { Damageable } from './Damageable';
 import { dispatchFinaleEffect } from './FinaleEffects';
 import { applyHeroPendingEffects, PendingHittable } from './applyHeroPendingEffects';
 import { rng } from '../Rng';
+import { HeroEconomyController } from '../hero/HeroEconomyController';
+import type { EconomyManager } from '../EconomyManager';
+import type { EventLog } from '../../ui/EventLog';
 
 /** Sentinel ownerIndex for CPU defender towers. Distinct from any
  *  player slot (0-3 in circle co-op). Used by Tower.findFinaleTarget
@@ -88,6 +91,12 @@ export interface FinaleSetupArgs {
   towerMgr: TowerManager;
   /** Grid used for hero collision against blocked cells. */
   grid: Grid;
+  /** Match-level economy. Threaded through to HeroEconomyController so
+   *  the player can spend gold on hero items / tomes / accessories
+   *  during the finale. */
+  economy: import('../EconomyManager').EconomyManager;
+  /** Match event log. */
+  eventLog: import('../../ui/EventLog').EventLog;
   /** Optional callback fired when the hero is summoned for the first
    *  time. GameScene uses this to log the event + dim the loading hint. */
   onHeroSpawned?: () => void;
@@ -107,6 +116,13 @@ export class FinaleController {
    *  and the win condition counts them via `isMissionWinTarget`. */
   private cpuStructures: DestructibleStructure[] = [];
   private hero: Hero | null = null;
+  /** Hero economy + shop wiring. Lazily constructed when the hero is
+   *  first summoned (we don't know hero refs until then). Persists
+   *  across hero re-summons since Hero.respawn() preserves the same
+   *  instance. */
+  private econController: HeroEconomyController | null = null;
+  private economy: EconomyManager;
+  private eventLog: EventLog;
   private heroAnchor: { x: number; y: number };
   private charge: number = 0;
   private firstSpawnDone: boolean = false;
@@ -126,6 +142,8 @@ export class FinaleController {
     this.rules = args.rules;
     this.towerMgr = args.towerMgr;
     this.grid = args.grid;
+    this.economy = args.economy;
+    this.eventLog = args.eventLog;
     this.onHeroSpawned = args.onHeroSpawned;
     this.onWin = args.onWin;
 
@@ -399,6 +417,11 @@ export class FinaleController {
       }
       this.hero.pendingDamageNumbers.length = 0;
     }
+
+    // Push fresh hero-shop snapshot to the DOM (level / cooldowns /
+    // costs / etc). Cheap pure-object construction — same cadence HD
+    // uses inside HeroDefenseMode.update().
+    this.econController?.syncToDOM();
 
     // CPU tower target priority (M10 v2):
     //   1. creeps_attacking_it — sends that have damaged this tower
@@ -1003,6 +1026,46 @@ export class FinaleController {
     hero.maxHp = hero.getEffectiveMaxHp();
     hero.hp = hero.maxHp;
     this.hero = hero;
+
+    // Wire the hero economy panel. Rotation cadence 4 (vs HD's 5) so
+    // a ~30-min match still produces fresh accessory offers every few
+    // minutes. `initialRotationWave: 1` means offers are present from
+    // first summon. Items / tomes / accessories all flow through the
+    // same DOM panel HD uses — `EconomyPanelDOM`'s "Items" tab auto-
+    // shows when `heroShop` becomes non-null.
+    this.econController = new HeroEconomyController(
+      hero, this.economy, this.eventLog,
+      { rotationCadence: 4, initialRotationWave: 1 },
+    );
+    this.econController.registerCallbacks();
+    this.econController.syncToDOM();
+
     this.onHeroSpawned?.();
+  }
+
+  /** Surface the controller for outside coordination (e.g. GameScene
+   *  per-frame sync, mode wave-cleared hooks). Null until the hero is
+   *  first summoned. */
+  getEconController(): HeroEconomyController | null {
+    return this.econController;
+  }
+
+  /** Per-wave heal + interest + accessory rotation. Called from
+   *  GameScene.onWaveCleared after the active mode's wave-cleared
+   *  hook runs. Idempotent before hero summon (no-op while
+   *  controller is null). */
+  onWaveCleared(waveNum: number): void {
+    if (!this.econController) return;
+    const interestRate = (this.hero as unknown as { _interestRate?: number } | null)?._interestRate ?? 0;
+    this.econController.onWaveCleared(waveNum, {
+      // Hero gets 15% per-wave heal in finale (HD is 20%, but M10 is
+      // longer + tower kills already drop XP/gold so the heal can be
+      // a touch lighter). Tune in playtest.
+      healPercent: 0.15,
+      interestRate,
+      onInterestPaid: (amt) => {
+        this.eventLog.gameMessage(`+${amt}g interest (${Math.round(interestRate * 100)}%)`);
+      },
+    });
   }
 }

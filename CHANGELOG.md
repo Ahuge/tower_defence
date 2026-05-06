@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-05-06
+
+### M10 hero economy panel + decoupled HeroEconomyController
+
+M10 now has the full Hero Defense progression loop — items, tomes, accessories, ability upgrades — plugged into the existing DOM panel via a shared, mode-agnostic controller.
+
+**1. New `HeroEconomyController`** (`src/systems/hero/HeroEconomyController.ts`) owns purchase callbacks (buy item / tome / accessory / hero upgrade / ability upgrade), accessory shop rotation, and the hero-shop state push to `GameUIStore`. Configurable via `HeroEconomyOptions`: rotation cadence, initial rotation wave, opt-out of constructor's initial offer roll. Per-wave hooks are opt-in via the options bag (`healPercent`, `interestRate`, `onInterestPaid`) so each mode picks the knobs that fit.
+
+**2. Decoupling.** `HeroDefenseMode` no longer inlines the shop logic — it constructs a `HeroEconomyController` and delegates registerCallbacks / syncToDOM / onWaveCleared to it. `ArenaManager` lost `currentAccessoryOffers`, `nextRotationWave`, `rotateAccessories()`, `buyAccessory()` — those are the controller's job now. `ItemShopPanel` (legacy Phaser sidebar in HD) takes a `HeroEconomyController` in its constructor instead of an `ArenaManager`. Same panel, no behavior change — just sourced state.
+
+**3. M10 wiring.** `FinaleController` now takes `economy` + `eventLog` in `FinaleSetupArgs` and lazily constructs a `HeroEconomyController` when the hero first summons (rotation cadence 4 vs HD's 5, since the M10 match is longer). `GameScene.onWaveCleared` calls `_finaleController.onWaveCleared(waveNum)` after the active mode's hook — heals the hero 15%, pays interest, rotates the accessory offers. The Items tab in `EconomyPanelDOM` auto-shows when `heroShop` becomes non-null, so M10 gets the panel for free.
+
+**4. Tests.** New `HeroEconomyController.test.ts` covers accessory rotation cadence, custom cadence, skipInitialRoll, gold-spend gating on accessory buys, full-slots / duplicate / can't-afford rejection paths, healPercent / interestRate / onInterestPaid options, and destroy() shutdown. 16 new tests, suite total 555/555.
+
 ## 2026-05-04
 
 ### M10 v6 — projectiles, HUD, pathing focus, sprite origin, send trickle

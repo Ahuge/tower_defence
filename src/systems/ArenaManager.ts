@@ -6,7 +6,6 @@ import { HeroTypeDef } from '../data/HeroTypes';
 import { WaveDefinition } from '../data/WaveDefinitions';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { getEliteForWave, ArenaEliteDef } from '../data/ArenaElites';
-import { AccessoryDef, getRandomAccessories } from '../data/HeroAccessories';
 import { EconomyManager } from './EconomyManager';
 import { EventLog } from '../ui/EventLog';
 import { FloatingDamage } from './FloatingDamage';
@@ -60,10 +59,6 @@ export class ArenaManager {
 
   // Graveyard for necromancer resurrections
   private graveyard: ArenaCreepData[] = [];
-
-  // Accessory shop rotation
-  currentAccessoryOffers: AccessoryDef[] = [];
-  nextRotationWave: number = 1; // rotates at wave 1, 6, 11, 16...
 
   // Respawn text
   private respawnText: Phaser.GameObjects.Text | null = null;
@@ -124,8 +119,8 @@ export class ArenaManager {
       arenaHeight,
     );
 
-    // Initialize accessory rotation
-    this.currentAccessoryOffers = getRandomAccessories(3);
+    // Accessory rotation moved to HeroEconomyController — owned by
+    // HeroDefenseMode (HD) and FinaleController (M10).
 
     // Track mouse for targeting mode
     scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
@@ -392,33 +387,6 @@ export class ArenaManager {
   /** Use active accessory (T key) */
   handleAccessoryKey(): void {
     this.hero.useAccessory(this.arenaCreeps);
-  }
-
-  /** Buy an accessory by index in current offers */
-  buyAccessory(index: number): boolean {
-    const acc = this.currentAccessoryOffers[index];
-    if (!acc) return false;
-    if (this.hero.accessories.length >= Hero.MAX_ACCESSORIES) {
-      this.eventLog.gameMessage('Accessory slots full! (3/3)');
-      return false;
-    }
-    // Don't allow duplicate accessories
-    if (this.hero.accessories.some(a => a.id === acc.id)) {
-      this.eventLog.gameMessage('Already equipped!');
-      return false;
-    }
-    if (!this.economy.spend(acc.cost)) return false;
-    this.hero.equipAccessory(acc);
-    this.eventLog.gameMessage(`Equipped ${acc.name}! (${this.hero.accessories.length}/3)`);
-    return true;
-  }
-
-  /** Rotate accessory shop offers */
-  rotateAccessories(waveNum: number): void {
-    if (waveNum >= this.nextRotationWave) {
-      this.currentAccessoryOffers = getRandomAccessories(3, waveNum * 7919);
-      this.nextRotationWave = waveNum + 5;
-    }
   }
 
   /** Spawn an elite arena enemy */
