@@ -47,10 +47,10 @@ export interface CellPick {
 }
 
 export class MazingScorer {
-  /** Last cached plan, keyed by `(gridVersion, wave)`. Null until the
-   *  first `bestCell()` call triggers planning. */
+  /** Last cached plan. Null until the first `bestCell()` call
+   *  triggers planning. Invalidation is wave-based + placement-count
+   *  based — see `ensurePlan` for the trigger logic. */
   private cachedPlan: BeamResult | null = null;
-  private cacheGridVersion: number = -1;
   private cacheWave: number = -1;
   private readonly opts: MazingScorerOptions;
 
@@ -63,7 +63,6 @@ export class MazingScorer {
    *  the brain wants to manually invalidate (e.g. after losing a key
    *  tower to enemy fire). */
   invalidate(): void {
-    this.cacheGridVersion = -1;
     this.cacheWave = -1;
     this.cachedPlan = null;
   }
@@ -104,15 +103,19 @@ export class MazingScorer {
     return this.cachedPlan;
   }
 
-  /** Replan iff the grid version or wave has advanced since the
-   *  last cached plan. Otherwise no-op. */
+  /** Replan iff the wave has advanced since the last cached plan, OR
+   *  the bot is mid-wave but its OWN placements have outpaced the
+   *  plan. Cross-bot grid mutations do NOT invalidate — Circle Co-op
+   *  zones are isolated and a 3-bot lobby would otherwise replan on
+   *  every other bot's placement, multiplying CPU cost.
+   *
+   *  The "outpaced" trigger compares placedTowers count against the
+   *  cached plan length: when the bot has placed at-or-beyond the
+   *  plan's tail, replan to extend the layout. */
   private ensurePlan(ctx: BotContext): void {
-    if (
-      this.cachedPlan &&
-      ctx.grid.version === this.cacheGridVersion &&
-      ctx.wave === this.cacheWave
-    ) {
-      return;
+    if (this.cachedPlan && ctx.wave === this.cacheWave) {
+      const planLen = this.cachedPlan.bestPlan.length;
+      if (planLen === 0 || ctx.placedTowers.length < planLen) return;
     }
     const paths = pathSegmentsFor(ctx);
     if (paths.length === 0) {
@@ -126,7 +129,6 @@ export class MazingScorer {
     } else {
       this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, ctx.towerPool, this.opts);
     }
-    this.cacheGridVersion = ctx.grid.version;
     this.cacheWave = ctx.wave;
   }
 

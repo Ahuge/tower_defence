@@ -157,13 +157,16 @@ describe('MazingBrain — basic decisions', () => {
     expect(planA).toBe(planB);
   });
 
-  it('placing a tower bumps grid.version which forces a replan', () => {
+  it('advancing the wave triggers a replan', () => {
+    // Cache invalidation is wave-based — cross-bot grid mutations no
+    // longer trip a replan storm. The bot's own placement progress is
+    // tracked separately (placedTowers count vs plan length).
     const brain = new MazingBrain();
     const c = ctx({});
     brain.init(c);
     brain.decide(c);
     const planA = (brain as unknown as { scorer: { getCachedPlan: () => unknown } }).scorer.getCachedPlan();
-    c.grid.placeTower(3, 2);
+    c.wave = 5;
     brain.decide(c);
     const planB = (brain as unknown as { scorer: { getCachedPlan: () => unknown } }).scorer.getCachedPlan();
     expect(planA).not.toBe(planB);

@@ -85,17 +85,36 @@ export interface BeamOptions {
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   alpha: 5.0, beta: 1.0, gamma: 0.5,
-  deltaDps: 1.0, epsilonSlow: 1.0, zetaAura: 0.5,
-  beamWidth: 5,
-  mutationsPerState: 25,
-  waves: 15,
+  // Role weights default to 0 until phase 3 (per-role bestCell)
+  // ships. With non-zero δ/ε/ζ, the planner ranks DPS placements
+  // over walls, but the brain's decideMaze still asks for "any
+  // rank-0 cell" — so it places walls at DPS-best cells and the
+  // visible mazing collapses. Keeping these at 0 makes the v2
+  // architecture behave like v1 (path-extension only) until phase
+  // 3+4 wire the brain's per-role queries. brain-search will
+  // raise these once the loop is closed.
+  deltaDps: 0.0, epsilonSlow: 0.0, zetaAura: 0.0,
+  // Beam search shape — reduced from POC defaults to fit a 4s bot
+  // decision budget with multiple bots running concurrently. POC
+  // had beam=5 mutations=25 waves=15 = ~1875 evals/plan; the trim
+  // below is ~3x cheaper without much score loss in practice.
+  beamWidth: 3,
+  mutationsPerState: 12,
+  waves: 8,
   // ×10 vs v1 to match real gold scale. POC budgets were abstract.
   baseBudget: 100,
   budgetGrowth: 80,
   pAddTower: 0.5, pGrowBranch: 0.3, pRemoveTower: 0.15, pSwapTower: 0.05,
   growBranchMaxLen: 8,
-  towerPickMode: 0,
-  addBiasWall: 1.0, addBiasDps: 1.0, addBiasSlow: 1.0, addBiasAura: 1.0,
+  // Random-mode tower-pick is the default — greedy mode runs a full
+  // state score per affordable tower per mutation attempt, which is
+  // ~10x more expensive. Brain-search can probe greedy via
+  // towerPickMode=0 once the plumbing is well-tuned.
+  towerPickMode: 1,
+  // Default-time bias toward walls so the planner produces visible
+  // mazes (the user's stated expectation) rather than spreading
+  // placements across roles. brain-search will rebalance.
+  addBiasWall: 2.5, addBiasDps: 1.0, addBiasSlow: 0.6, addBiasAura: 0.4,
 };
 
 const INVALID_SCORE = -1e9;
