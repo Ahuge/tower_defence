@@ -6,7 +6,7 @@
  * which makes it a great candidate for exhaustive unit testing.
  */
 import { describe, it, expect } from 'vitest';
-import { findPath, PathPoint } from './Pathfinding';
+import { findPath, findPathWithWaypoints, PathPoint } from './Pathfinding';
 import { Grid, CellType } from './Grid';
 
 /** Build a Grid filled entirely with Empty cells, plus the given entry
@@ -138,5 +138,81 @@ describe('findPath', () => {
     // Start has no walkable neighbours — should return null without looping.
     const path = findPath(g);
     expect(path).toBeNull();
+  });
+});
+
+describe('findPathWithWaypoints', () => {
+  it('stitches segments through ordered waypoints', () => {
+    const g = openGrid(10, 5, { col: 0, row: 2 }, { col: 9, row: 2 });
+    const path = findPathWithWaypoints(
+      g,
+      { col: 0, row: 2 },
+      [{ col: 5, row: 0 }],
+      { col: 9, row: 2 },
+    );
+    expect(path).not.toBeNull();
+    const cells = path!.map(p => `${p.col},${p.row}`);
+    expect(cells[0]).toBe('0,2');
+    expect(cells[cells.length - 1]).toBe('9,2');
+    expect(cells).toContain('5,0'); // waypoint visited
+  });
+
+  it('de-duplicates the joining cell between segments', () => {
+    const g = openGrid(5, 5, { col: 0, row: 0 }, { col: 4, row: 4 });
+    const path = findPathWithWaypoints(
+      g,
+      { col: 0, row: 0 },
+      [{ col: 2, row: 2 }],
+      { col: 4, row: 4 },
+    );
+    expect(path).not.toBeNull();
+    // '2,2' should appear exactly once even though it's the end of
+    // segment 1 AND the start of segment 2.
+    const count = path!.filter(p => p.col === 2 && p.row === 2).length;
+    expect(count).toBe(1);
+  });
+
+  it('returns null if any segment is unreachable', () => {
+    const g = openGrid(6, 6, { col: 0, row: 0 }, { col: 5, row: 5 });
+    // Wall off the centre column — start can't reach a waypoint on
+    // the other side.
+    paintBlocked(g, 3, 0, 3, 5);
+    const path = findPathWithWaypoints(
+      g,
+      { col: 0, row: 0 },
+      [{ col: 5, row: 0 }],
+      { col: 0, row: 5 },
+    );
+    expect(path).toBeNull();
+  });
+
+  it('handles empty waypoint list — equivalent to findPath(start, end)', () => {
+    const g = openGrid(5, 5, { col: 0, row: 0 }, { col: 4, row: 0 });
+    const direct = findPath(g, { col: 0, row: 0 }, { col: 4, row: 0 });
+    const withEmpty = findPathWithWaypoints(g, { col: 0, row: 0 }, [], { col: 4, row: 0 });
+    expect(withEmpty).toEqual(direct);
+  });
+
+  it('multiple waypoints in sequence — visits each in order', () => {
+    const g = openGrid(10, 10, { col: 0, row: 5 }, { col: 9, row: 5 });
+    const path = findPathWithWaypoints(
+      g,
+      { col: 0, row: 5 },
+      [
+        { col: 5, row: 0 },
+        { col: 9, row: 5 },
+        { col: 5, row: 9 },
+      ],
+      { col: 0, row: 5 },
+    );
+    expect(path).not.toBeNull();
+    const idxOf = (c: number, r: number) => path!.findIndex(p => p.col === c && p.row === r);
+    // Each waypoint appears in the path, in order.
+    const i1 = idxOf(5, 0);
+    const i2 = idxOf(9, 5);
+    const i3 = idxOf(5, 9);
+    expect(i1).toBeGreaterThan(0);
+    expect(i2).toBeGreaterThan(i1);
+    expect(i3).toBeGreaterThan(i2);
   });
 });

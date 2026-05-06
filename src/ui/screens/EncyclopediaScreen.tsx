@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { FACTIONS, FACTION_ORDER, FactionId } from '../../data/Factions';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { HERO_TYPES, HERO_ORDER, HeroTypeDef } from '../../data/HeroTypes';
 import { CREEP_TYPES } from '../../data/CreepTypes';
+import { DiscoveryTracker } from '../../systems/monetization';
 import { getTowerIconUrl, getHeroIconUrl } from '../game/TowerIconRenderer';
 
 type Tab = 'factions' | 'towers' | 'creeps' | 'heroes';
@@ -182,11 +184,39 @@ function CreepsTab() {
   const creepIds = Object.keys(CREEP_TYPES).filter(
     id => id !== 'splitter_child' // internal sub-type
   );
+  // Discovery gating — entries stay hidden (as "???" placeholders)
+  // until the player encounters a creep of that type in a live
+  // match. Driven by the DiscoveryTracker persisting into
+  // StorePersistence.discoveredCreeps.
+  const discovered = new Set(DiscoveryTracker.all());
+  const totalCount = creepIds.length;
+  const discoveredCount = creepIds.filter(id => discovered.has(id)).length;
+
   return (
     <div class="ui-section">
       <div class="ui-section-title">Creep Types</div>
+      <div class="text-dim text-sm mb-2">
+        Discovered: <span class="text-gold">{discoveredCount}</span> / {totalCount}. Face a creep in a match to unlock its entry.
+      </div>
       {creepIds.map(id => {
         const creep = CREEP_TYPES[id];
+        const isDiscovered = discovered.has(id);
+
+        if (!isDiscovered) {
+          // Locked placeholder — teases that more content exists
+          // without revealing stats, art, or traits.
+          return (
+            <div key={id} class="faction-row" style={{ opacity: 0.55 }}>
+              <div class="faction-color-strip" style={{ background: 'var(--border-subtle)' }} />
+              <div class="faction-info" style={{ flex: 1 }}>
+                <div class="faction-name">???</div>
+                <div class="faction-desc text-dim">Undiscovered — defeat one in a match to unlock.</div>
+              </div>
+              <div style={{ fontSize: '22px', color: 'var(--text-dim)', alignSelf: 'center', paddingRight: '8px' }}>&#x1f512;</div>
+            </div>
+          );
+        }
+
         const tags: string[] = [];
         if (creep.armor === 'heavy') tags.push('Heavy Armor');
         else if (creep.armor === 'light') tags.push('Light Armor');
@@ -337,13 +367,7 @@ export function EncyclopediaScreen() {
 
   return (
     <>
-      <div class="ui-header" style={{ flexWrap: 'wrap', gap: '6px' }}>
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>
-          {'< Back'}
-        </button>
-        <div class="ui-header-title">ENCYCLOPEDIA</div>
-        <ShardBadge />
-      </div>
+      <Header title="ENCYCLOPEDIA" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} wrap />
       <div class="tab-bar">
         {tabs.map(t => (
           <button

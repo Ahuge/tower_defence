@@ -24,6 +24,16 @@ import type { PlayerProfile } from '../../systems/platform';
 
 interface Props {
   size?: number;
+  /**
+   * Override for the default click behavior. When present, the
+   * avatar calls this instead of triggering `profile.signIn()` on
+   * tap. Used by the shared Header to route every avatar click
+   * into the Settings screen — sign-in lives inside Settings as
+   * one affordance among several (restore purchases, tutorial
+   * reset, analytics opt-out), so the avatar click only needs to
+   * get the user to that screen.
+   */
+  onClickOverride?: () => void;
 }
 
 function initialsOf(name: string | null | undefined): string {
@@ -34,7 +44,7 @@ function initialsOf(name: string | null | undefined): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function ProfileAvatar({ size = 32 }: Props) {
+export function ProfileAvatar({ size = 32, onClickOverride }: Props) {
   const [profile, setProfile] = useState<PlayerProfile | null>(() => platformBridge().profile.getProfile());
   const [imgFailed, setImgFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -49,11 +59,20 @@ export function ProfileAvatar({ size = 32 }: Props) {
     return () => window.removeEventListener('td-profile-changed', onChanged);
   }, []);
 
-  // Click → trigger sign-in if no profile yet. For platforms that
-  // support re-authentication (e.g. Game Center's account picker),
-  // future enhancement: open a "switch account" menu here instead.
+  // Click behaviour. The shared Header passes `onClickOverride` that
+  // routes every tap to the Settings screen — sign-in is one option
+  // inside Settings, alongside restore purchases / tutorial reset /
+  // analytics opt-out. When there's no override (legacy standalone
+  // use), fall back to triggering sign-in directly on a missing
+  // profile; that preserves the behaviour of the first landing
+  // before the Header refactor.
   const onClick = useCallback(async () => {
-    if (profile || busy) return;
+    if (busy) return;
+    if (onClickOverride) {
+      onClickOverride();
+      return;
+    }
+    if (profile) return;
     setBusy(true);
     try {
       const p = await platformBridge().profile.signIn();
@@ -65,11 +84,17 @@ export function ProfileAvatar({ size = 32 }: Props) {
     } finally {
       setBusy(false);
     }
-  }, [profile, busy]);
+  }, [profile, busy, onClickOverride]);
 
   const hasImage = profile?.avatarUrl && !imgFailed;
+  // Clickable in every state when an override is wired (Header → Settings).
+  // Standalone use is still clickable only when there's no profile (legacy
+  // "tap to sign in" behaviour).
+  const clickable = !!onClickOverride || !profile;
   const title = profile
-    ? `${profile.displayName} — ${profile.provider}`
+    ? onClickOverride
+      ? `${profile.displayName} — ${profile.provider} · tap for settings`
+      : `${profile.displayName} — ${profile.provider}`
     : busy
       ? 'Signing in…'
       : 'Tap to sign in';
@@ -79,7 +104,7 @@ export function ProfileAvatar({ size = 32 }: Props) {
     height: `${size}px`,
     borderRadius: '50%',
     border: '2px solid var(--gold, #e8b76d)',
-    cursor: profile ? 'default' : 'pointer',
+    cursor: clickable ? 'pointer' : 'default',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -101,6 +126,7 @@ export function ProfileAvatar({ size = 32 }: Props) {
         width={size}
         height={size}
         style={baseStyle}
+        onClick={clickable ? onClick : undefined}
         onError={() => setImgFailed(true)}
       />
     );

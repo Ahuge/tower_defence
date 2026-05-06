@@ -65,6 +65,17 @@ export class CapacitorProfileBridge implements ProfileBridge {
     }
   }
 
+  async incrementAchievementProgress(achievementId: string, steps: number): Promise<void> {
+    try {
+      await CapacitorGameConnect.incrementAchievementProgress({
+        achievementID: achievementId,
+        pointsToIncrement: steps,
+      });
+    } catch (err) {
+      console.warn('[profile] incrementAchievementProgress failed', err);
+    }
+  }
+
   async cloudSave(slot: string, json: string): Promise<void> {
     // Scope per signed-in player so a different account on the same
     // device doesn't read the other player's save.

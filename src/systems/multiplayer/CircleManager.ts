@@ -21,6 +21,14 @@ export class CircleManager {
   // Player info
   playerFactions: Map<number, string> = new Map();
 
+  // CPU bot slots — player indexes that are host-simulated. Bots
+  // increment `playerCount` and live in `playerFactions` like any
+  // other slot, but the host never creates a PeerConnection for them
+  // and runs their tower-placement logic in `CircleBotAI` each
+  // frame. Joiners learn which slots are bots via the `botSlots`
+  // field on the `circle_game_start` message.
+  botSlots: Set<number> = new Set();
+
   // Shared game state
   sharedLives: number = 20;
   sharedSeed: number = 0;
@@ -374,6 +382,28 @@ export class CircleManager {
 
   getConnectedCount(): number {
     return this.connectedPlayers.size;
+  }
+
+  /**
+   * Claim the next free slot for a CPU bot. Host only. Bumps
+   * `playerCount`, seeds the slot with a faction, and marks it in
+   * `botSlots`. The bot has no PeerConnection — the game scene's
+   * `CircleBotAI` ticks it each frame on the host. Returns the new
+   * bot's player index, or null if the lobby is full (>=4).
+   */
+  addBot(faction: string): number | null {
+    if (!this.isHost) return null;
+    if (this.playerCount >= 4) return null;
+    const botIndex = this.playerCount;
+    this.playerCount++;
+    this.botSlots.add(botIndex);
+    this.playerFactions.set(botIndex, faction);
+    this.connectedPlayers.add(botIndex);
+    return botIndex;
+  }
+
+  isBotSlot(playerIndex: number): boolean {
+    return this.botSlots.has(playerIndex);
   }
 
   close(): void {

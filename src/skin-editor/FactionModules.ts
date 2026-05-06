@@ -64,8 +64,11 @@ export const FACTION_SPRITES: FactionSpriteInfo[] = [
     towerNames: ['Gambler', 'Spike', 'Siphon', 'Rift', 'Oblivion'] },
   { id: 'mechanical', name: 'Mechanical', towerCols: 8, towerRows: 24, towerCell: 64, projCols: 8, projRows: 6, projCell: 32, modulePath: '/mechanical_sprites.tsx',
     towerNames: ['Wall', 'Turret', 'Flame', 'Tesla', 'Mortar', 'Shredder', 'Railgun', 'Titan'] },
-  { id: 'nature', name: 'Nature', towerCols: 6, towerRows: 24, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/nature_sprites.tsx',
-    towerNames: ['Thorn', 'Root', 'Blossom', 'Spore', 'Vine', 'Elder Treant'] },
+  { id: 'nature', name: 'Nature', towerCols: 9, towerRows: 24, towerCell: 64, projCols: 9, projRows: 6, projCell: 32, modulePath: '/nature_sprites.tsx',
+    towerNames: ['Bramble', 'Root', 'Grove Viper', 'Blossom', 'Spore', 'Sunroot', 'Vine', 'Elder Treant', 'Razor Bramble'],
+    mobileUnits: [
+      { towerId: 'nature_viper', name: 'Grove Viper', unitIndex: 0 },
+    ] },
   { id: 'military', name: 'Military', towerCols: 6, towerRows: 20, towerCell: 64, projCols: 6, projRows: 6, projCell: 32, modulePath: '/military_sprites.tsx',
     towerNames: ['Sandbag', 'Wire', 'Rifleman', 'Brawler', 'Tank', 'Commander'],
     mobileUnits: [

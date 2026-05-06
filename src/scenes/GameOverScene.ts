@@ -2,6 +2,8 @@ import * as Phaser from 'phaser';
 import { GameStats } from '../systems/StatsTracker';
 import { ShardWallet, BattlePass, PlayerInventory } from '../systems/monetization';
 import { UIBridge } from '../ui/UIBridge';
+import { FactionId } from '../data/Factions';
+import { firstWinAchievementKey, unlockAchievement } from '../data/Achievements';
 
 export interface GameOverData {
   won: boolean;
@@ -25,6 +27,28 @@ export interface GameOverData {
    *  GameOverScreen suppresses its post-match interstitial when true
    *  so the player never sees two ads in a row. */
   continueAdShown?: boolean;
+  /** Circle Co-op per-player performance rows. Surfaced on the
+   *  victory/defeat screen so each player (human or CPU) gets
+   *  credit for their contribution. Undefined outside co-op. */
+  coopPlayers?: CoopPlayerStats[];
+  /** True when the local player is the bot-host in Circle Co-op.
+   *  Used to tag the self-row in the roster. */
+  coopLocalIndex?: number;
+}
+
+/** One row on the Circle Co-op end screen: identity + what they did
+ *  during the match. Built on GameScene shutdown from whatever state
+ *  we have locally (bot economies, death handler kills, tower owner
+ *  map). Remote humans show their slot faction + kill count; we
+ *  don't synthesize their per-tower breakdown. */
+export interface CoopPlayerStats {
+  playerIndex: number;
+  faction: string;
+  isBot: boolean;
+  isLocal: boolean;
+  kills: number;
+  towersBuilt: number;
+  goldRemaining: number;
 }
 
 export class GameOverScene extends Phaser.Scene {
@@ -36,7 +60,18 @@ export class GameOverScene extends Phaser.Scene {
     if (data.won) shardsEarned += 10;
     if (data.matchMode === 'gauntlet') shardsEarned += Math.min(data.wave, 10) * 5;
     ShardWallet.earn(shardsEarned, `Game complete: ${data.matchMode} (wave ${data.wave})`);
-    PlayerInventory.recordGamePlayed(data.won);
+    // Pass the faction so first-win-per-faction gets tracked.
+    // recordGamePlayed returns true exactly once per faction's
+    // inaugural win — use that as the edge trigger for the
+    // FIRST_WIN_<FACTION> achievement unlock. Tutorial match is
+    // excluded upstream (its matchMode === 'tutorial' short-circuits
+    // GameOverScene dispatch).
+    const factionId = (data.faction ?? null) as FactionId | null;
+    const isFirstFactionWin = PlayerInventory.recordGamePlayed(data.won, factionId);
+    if (isFirstFactionWin && factionId) {
+      const key = firstWinAchievementKey(factionId);
+      if (key) void unlockAchievement(key);
+    }
     BattlePass.recordGameComplete(data.wave, data.won);
 
     // Record challenge events

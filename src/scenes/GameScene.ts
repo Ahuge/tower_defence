@@ -7,7 +7,8 @@ import {
   gridX, gridY, gridLeftX, pixelToCol, setGridOffsetY,
 } from '../config';
 import { Grid, CellType } from '../systems/Grid';
-import { findPath, PathPoint } from '../systems/Pathfinding';
+import { DEBUG } from '../systems/DebugFlags';
+import { findPath, findPathWithWaypoints, PathPoint } from '../systems/Pathfinding';
 import { EventBus } from '../systems/EventBus';
 import { EconomyManager } from '../systems/EconomyManager';
 import { SpawnManager } from '../systems/SpawnManager';
@@ -15,8 +16,8 @@ import { InputManager } from '../systems/InputManager';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
-import { PlayerInventory, claimRewarded, BattlePass } from '../systems/monetization';
-import { GameUIStore, TowerStats } from '../ui/GameUIStore';
+import { PlayerInventory, claimRewarded, BattlePass, DiscoveryTracker } from '../systems/monetization';
+import { GameUIStore, TowerStats, TowerUpgradeOption, CircleRosterPlayer } from '../ui/GameUIStore';
 import { DOODAD_DRAW, DOODAD_CELL } from '../../frontier_doodad_sprites';
 import { MatchMode, WaveDefinition, getWavesForMode, generateEndlessWaves } from '../data/WaveDefinitions';
 import { MapId, MAPS, MapDefinition } from '../data/Maps';
@@ -51,9 +52,9 @@ import { WaveController } from '../systems/WaveController';
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SkinManager } from '../systems/monetization/SkinManager';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
+import { BotAI } from '../systems/bots/BotAI';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
-import { CirclePlayerRoster } from '../ui/CircleMinimaps';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
 import { SidebarOverlay } from '../ui/SidebarOverlay';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
@@ -64,7 +65,9 @@ import { PathFlowIndicator } from '../systems/PathFlowIndicator';
 import { TutorialMode } from '../systems/modes/TutorialMode';
 import { CircleCoopMode } from '../systems/modes/CircleCoopMode';
 import { UpdateContext, hasTrait, getTrait } from '../systems/traits/Trait';
-import { GameOverData } from './GameOverScene';
+import { GameOverData, CoopPlayerStats } from './GameOverScene';
+import { SEND_OPTIONS, SendCreepOption, getSendCost, getSendIncome } from '../data/SendCreepTypes';
+import { FRONTIER_BUILDINGS, GENERIC_OUTPOSTS, getAllFactionFrontierBuildings } from '../data/FrontierBuildings';
 import { Creep } from '../entities/Creep';
 import { playCreepDeath } from '../systems/CreepSpriteManager';
 import { Tower } from '../entities/Tower';
@@ -80,6 +83,17 @@ import { unlockAchievement } from '../data/Achievements';
 import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
+
+/** Single-shot seeded roll in [0, 1). Used by the Endless faction
+ *  rotation so host + joiner converge on the same faction for a
+ *  given (sharedSeed, waveNum) pair. Same mulberry32 math as
+ *  `data/MapGenerator.ts`; not worth factoring out for one call. */
+function seededRoll(seed: number): number {
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
 
 export class GameScene extends Phaser.Scene {
   // Core systems
@@ -105,7 +119,21 @@ export class GameScene extends Phaser.Scene {
   waveMgr!: WaveController;
   versus: VersusManager | null = null;
   circle: CircleManager | null = null;
-  circleRoster: CirclePlayerRoster | null = null;
+  // Host-only CPU bot driver. Null on joiners, and on host when
+  // there are no bot slots. Created after `circle` is initialised
+  // (needs playerFactions + zone data).
+  circleBotAI: BotAI | null = null;
+  cpuOpponentAI: BotAI | null = null;
+  /** Wave number the CPU opponent's shadow sim has most recently
+   *  completed. Guards against re-firing `wave_cleared` every frame
+   *  while the countdown is ticking between waves. */
+  private _cpuLastClearedWave: number = 0;
+  // Kept for the roster UI to read per-player kill counts via
+  // `getKillsByPlayer()`. Null in non-circle matches.
+  circleDeathHandler: CircleDeathHandler | null = null;
+  /** Zone swatches for the DOM roster. Populated at Circle setup;
+   *  read by `publishCircleRoster` each frame. */
+  private _circleZoneColors: number[] = [];
   circleZoneOverlay: Phaser.GameObjects.Graphics | null = null;
   /** Which zone cells can this player build on? null = no restriction */
   private circleMyZone: Set<string> | null = null;
@@ -203,6 +231,7 @@ export class GameScene extends Phaser.Scene {
   selectionMode: SelectionMode = 'none';
   selectedBuildType: string | null = null;
   selectedTower: Tower | null = null;
+  private _infoRefreshAccum: number = 0;
 
   // Graphics layers
   gridGraphics!: Phaser.GameObjects.Graphics;
@@ -249,6 +278,13 @@ export class GameScene extends Phaser.Scene {
   //   30 min total). If the clock expires mid-match while the player
   //   is at 3×, the next speed read-out snaps them back to 2×.
   private _speedBoostUntil: number = 0;
+
+  // Encyclopedia creep-discovery tracker. Subscribes to creepSpawned
+  // for the lifetime of the scene, de-dups against persisted state,
+  // and ticks the DISCOVER_CREEPS incremental achievement when new
+  // creep types appear. Skipped in tutorial mode (see the constructor
+  // argument check inside the tracker).
+  private _discoveryTracker: DiscoveryTracker | null = null;
   private waveCount?: number;
 
   private customMapDef: MapDefinition | null = null;
@@ -327,13 +363,18 @@ export class GameScene extends Phaser.Scene {
     // Activate DOM game UI
     GameUIStore.activate(this.matchMode, this.waves?.length ?? 0);
     GameUIStore.registerCallbacks({
-      onUpgrade: (tower) => {
-        if (tower.canUpgrade()) {
-          const cost = tower.typeDef.upgrades[tower.level - 1].cost;
-          if (this.economy.spend(cost)) {
-            tower.upgrade();
-            GameUIStore.selectTower(this.towerToStats(tower));
-          }
+      onUpgrade: (tower, branchId) => {
+        if (!this.canModifyTower(tower.col, tower.row)) return;
+        // Re-read options off the live tower so we spend the right
+        // cost even if a stale click event carries an old branch id.
+        const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
+        if (!opt) return;
+        if (this.economy.spend(opt.cost)) {
+          tower.upgrade(branchId ?? null);
+          GameUIStore.selectTower(this.towerToStats(tower));
+          const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
+          this.versus?.send(msg);
+          this.circle?.broadcast(msg);
         }
       },
       onSell: (tower) => {
@@ -343,9 +384,15 @@ export class GameScene extends Phaser.Scene {
         this.toggleAutoPlay();
       },
       onStartWave: () => {
-        if (this.betweenWaves && this.currentWave < this.waves.length) {
-          this.startWave();
+        if (!this.betweenWaves) {
+          if (DEBUG) console.warn(`[wave] Next Wave ignored: wave ${this.currentWave} still active (creeps=${this.creeps.length})`);
+          return;
         }
+        if (this.currentWave >= this.waves.length) {
+          if (DEBUG) console.warn('[wave] Next Wave ignored: all waves completed');
+          return;
+        }
+        this.startWave();
       },
       onCycleSpeed: () => {
         this.cycleSpeed();
@@ -411,7 +458,8 @@ export class GameScene extends Phaser.Scene {
 
     // Reset circle/multiplayer state and clean registry
     this.circle = null;
-    this.circleRoster = null;
+    this._circleZoneColors = [];
+    GameUIStore.setCircleRoster(null);
     this.circleZoneOverlay = null;
     this.circleMyZone = null;
     this.towerOwners.clear();
@@ -471,6 +519,24 @@ export class GameScene extends Phaser.Scene {
     const versusRef = this.registry.get('versus') as VersusManager | null;
     const waveSeed = versusRef?.sharedSeed ?? 0;
     this.spawner = new SpawnManager(this, this.eventBus, this.difficultyHints, waveSeed);
+    // Attach waypoint-chain spawners (Circle Co-op) so every new
+    // creep knows its ordered waypoints + exit — enables proper
+    // mid-wave rerouting instead of "A* to shortest exit" guessing.
+    this.spawner.setSpawners(this.mapDef?.spawners ?? null);
+
+    // Circle Co-op creep-count scaling: more defenders → more
+    // creeps, with a bonus +1 for smaller teams so 2-player
+    // matches still feel busy. Formula: playerCount + (pc < 4 ? 1 : 0).
+    // Values: 2p = 3×, 3p = 4×, 4p = 4×. Non-coop modes get 1×.
+    const circleMgr = this.registry.get('circle') as CircleManager | null;
+    if (circleMgr) {
+      const pc = circleMgr.playerCount;
+      const mult = pc + (pc < 4 ? 1 : 0);
+      this.spawner.setCountMultiplier(mult);
+      // Tag every wave creep with its spawner's owner so the shared
+      // kill-gold split knows who to pay the spawn-owner half.
+      this.spawner.setTrackSpawnOwnership(true);
+    }
     this.inputMgr = new InputManager(this, this.eventBus);
     if (this.layout.gridRows !== GRID_ROWS) {
       this.inputMgr.setGridRows(this.layout.gridRows);
@@ -521,6 +587,7 @@ export class GameScene extends Phaser.Scene {
     this.towerInfo.setCallbacks(
       (tower) => {
         // Upgrade
+        if (!this.canModifyTower(tower.col, tower.row)) return;
         if (tower.canUpgrade()) {
           const cost = tower.getUpgradeCost();
           if (this.economy.spend(cost)) {
@@ -543,6 +610,13 @@ export class GameScene extends Phaser.Scene {
     }
     this.sendMgr = new SendManager(this, this.eventBus);
     this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
+    this.sendMgr.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
+
+    // Subscribe the Encyclopedia discovery tracker. Skips writing
+    // during tutorial mode so the scripted-creep sequence doesn't
+    // front-load discovery progress before the player fairly
+    // encounters creep types in normal play.
+    this._discoveryTracker = new DiscoveryTracker(this.eventBus, this.matchMode);
 
     // Stats tracker
     this.statsTracker = new StatsTracker();
@@ -640,9 +714,32 @@ export class GameScene extends Phaser.Scene {
       : this.circle
         ? new CircleLeakHandler(this.circle, this.statsTracker, this.eventLog)
         : new StandardLeakHandler(this.eventLog, this.statsTracker, () => this.towerMgr.towers);
-    const deathHandler = this.circle
-      ? new CircleDeathHandler(this.economy, this.statsTracker, this.eventBus, this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex)
-      : new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
+    const circleDeathHandler = this.circle
+      ? new CircleDeathHandler(
+          this.economy, this.statsTracker, this.eventBus,
+          this.modifier?.killGoldMult ?? 1, this.towerOwners, this.circle.playerIndex,
+          {
+            // Broadcast each local kill so other peers update their
+            // rosters + credit their half of the shared gold.
+            broadcast: (killedBy, spawnOwnerIndex, goldValue) => {
+              this.circle?.broadcast({
+                type: 'creep_killed', killedBy, spawnOwnerIndex, goldValue,
+              });
+            },
+            // Route bot-owned kills to their private pools. Bots live
+            // on the host only; on clients this resolves to a no-op
+            // because `circleBotAI` stays null.
+            creditBot: (botIndex, gold) => this.circleBotAI?.creditKill(botIndex, gold),
+            isLocalBot: (idx) => !!this.circle?.isBotSlot(idx) && !!this.circleBotAI,
+          },
+        )
+      : null;
+    // Stash the circle death handler on the scene so the roster can
+    // read per-player kill counts without threading a supplier down
+    // through the constructor chain.
+    this.circleDeathHandler = circleDeathHandler;
+    const deathHandler = circleDeathHandler
+      ?? new StandardDeathHandler(this.economy, this.statsTracker, this.eventBus,
           // Hero Defense: 10x creeps so reduce kill gold to 30%
           this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
@@ -658,6 +755,10 @@ export class GameScene extends Phaser.Scene {
         this.upcomingWaves.update(waveNum, this.waves);
         this.updateDOMWaves(waveNum);
         this.eventBus.emit('waveStarted', waveNum);
+        // Fan waveStarted out to bot economies — they subscribe
+        // on their own EventBus instances, not the shared one.
+        this.circleBotAI?.creditWaveStart(waveNum);
+        this.cpuOpponentAI?.creditWaveStart(waveNum);
         this.gameMode.onWaveStart?.(wave, waveNum);
       },
       onWaveCleared: (waveNum) => {
@@ -874,6 +975,16 @@ export class GameScene extends Phaser.Scene {
       // Create opponent simulation
       this.opponentSim = new OpponentSimulation(this.versus, this.getMapDef(), this.difficultyHints);
 
+      // CPU opponent (local, no networking): spin up a BotAI that
+      // places/upgrades/sells on the opponent's shadow grid and
+      // publishes each action as a synthetic tower_* message via
+      // `versus.injectFromCpu`, so the existing opponent pipeline
+      // (opponentTowers, opponentSim.rebuildGrid) stays the single
+      // source of truth for the CPU's board.
+      if (this.versus.cpuOpponent) {
+        this.setupCpuOpponent();
+      }
+
       // Wire versus into the game mode context so sends go to opponent
       gameModeCtx.versus = this.versus;
       this.eventLog.gameMessage('VERSUS MODE — sends go to opponent!');
@@ -898,6 +1009,129 @@ export class GameScene extends Phaser.Scene {
         this.circleMyZone = new Set(
           circleMapDef.zones[this.circle.playerIndex].map(p => `${p.col},${p.row}`)
         );
+      }
+
+      // Host only: spin up the bot AI driver for any CPU slots. The
+      // bot placement callback mirrors the human placement path:
+      // deduct from shared gold (placeTower with free=false), record
+      // owner as the bot's playerIndex, broadcast with `ownerIndex`
+      // so joiners attribute the tower to the bot slot. Skipped
+      // entirely if `botSlots` is empty so non-bot matches pay no
+      // update-loop cost.
+      if (this.circle.isHost && this.circle.botSlots.size > 0) {
+        this.circleBotAI = new BotAI(
+          this.grid,
+          (botIndex, col, row, towerType) => {
+            // Bots have private gold — the driver already debited
+            // the cost before calling us. Place with `free=true`
+            // so TowerManager doesn't also deduct from the shared
+            // human economy.
+            const placeResult = this.towerMgr.placeTower(col, row, towerType, this.allPaths, () => {
+              this.recalculatePaths();
+              return this.allPaths;
+            }, true);
+            if (!placeResult) return { ok: false, upgradeCost: 0, sellValue: 0 };
+            // Stamp ownership on the tower itself so TowerManager's
+            // per-hit gold sweep routes gold_on_hit / jackpot gold
+            // into the bot's economy instead of the shared pool.
+            placeResult.tower.ownerIndex = botIndex;
+            this.towerOwners.set(`${col},${row}`, botIndex);
+            this.circle!.broadcast({
+              type: 'tower_placed',
+              towerId: towerType.id,
+              col, row,
+              ownerIndex: botIndex,
+            });
+            if (placeResult.pathsChanged) {
+              this.rerouteCreepsAroundTower(col, row);
+              this.drawPath();
+            }
+            this.circleBotAI?.invalidate();
+            return this._placeResultFromTower(placeResult.tower);
+          },
+          () => this.currentWave,
+          () => this.lives,
+          () => this.allPaths,
+          // Upgrade: level up in-place, broadcast, return fresh stats.
+          (_botIndex, col, row, branchId) => {
+            const tower = this.towerMgr.getTowerAt(col, row);
+            if (!tower || !tower.canUpgrade()) return { ok: false, newLevel: 0, nextUpgradeCost: 0, sellValue: 0 };
+            tower.upgrade(branchId ?? null);
+            this.circle!.broadcast({ type: 'tower_upgraded', col, row, level: tower.level, branch: branchId ?? undefined });
+            const stats = this._placeResultFromTower(tower);
+            return {
+              ok: true,
+              newLevel: tower.level,
+              nextUpgradeCost: stats.upgradeCost,
+              sellValue: stats.sellValue,
+              upgradeBranches: stats.upgradeBranches,
+              branchUpgradeCosts: stats.branchUpgradeCosts,
+            };
+          },
+          // Sell: refund goes to bot economy via the driver (free=true
+          // keeps human shared gold untouched).
+          (_botIndex, col, row) => {
+            const result = this.towerMgr.sellTower(col, row, true);
+            if (!result) return 0;
+            this.towerOwners.delete(`${col},${row}`);
+            this.circle!.broadcast({ type: 'tower_sold', col, row });
+            if (!result.tower.isMobile) {
+              this.recalculatePaths();
+              this.drawPath();
+            }
+            this.circleBotAI?.invalidate();
+            return result.refund;
+          },
+        );
+        for (const botIndex of this.circle.botSlots) {
+          const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
+          const zone = circleMapDef.zones?.[botIndex];
+          if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, 'balanced');
+        }
+
+        // Route per-hit gold (gold_on_hit / jackpot) from bot-owned
+        // towers into the correct bot's private economy. Without
+        // this, TowerManager defaults every tower's gold to the
+        // shared human pool — Void bots would fire Market Towers
+        // all match and their +1g/hit would silently fatten the
+        // human, not the bot.
+        this.towerMgr.botGoldRouter = (ownerIndex, amount) => {
+          this.circleBotAI?.creditGold(ownerIndex, amount);
+        };
+
+        // Circle Co-op: wire frontier so bots also invest in
+        // per-wave income. No sends in co-op (the creep-flow is
+        // shared PvE, not competitive), so sendCb stays null. Each
+        // bot's frontier pool is seeded from its own faction — the
+        // brain pays from its private gold pool and the income
+        // bonus pays out on wave clear.
+        this.circleBotAI.setMetaCallbacks({
+          frontierCb: (botIdx, buildingId) => {
+            const botFac = this.circle!.playerFactions.get(botIdx) as FactionId | undefined;
+            const pool = botFac === 'random'
+              ? getAllFactionFrontierBuildings()
+              : (botFac ? (FRONTIER_BUILDINGS[botFac] ?? GENERIC_OUTPOSTS) : GENERIC_OUTPOSTS);
+            const b = pool.find(b => b.id === buildingId);
+            if (!b) return false;
+            this.circleBotAI?.addIncomeBonus(botIdx, b.baseIncome);
+            this.eventLog.gameMessage(`P${botIdx} [CPU] built ${b.name} (+${b.baseIncome}g/wave).`);
+            return true;
+          },
+          frontierOpts: () => {
+            // Report the first bot's frontier pool. Good enough for
+            // Circle Co-op — bots share the same faction pool if
+            // they share a faction, and the driver re-looks up the
+            // actual building from id at purchase time anyway.
+            const firstBotIdx = [...this.circle!.botSlots][0];
+            if (firstBotIdx === undefined) return [];
+            const fac = this.circle!.playerFactions.get(firstBotIdx) as FactionId | undefined;
+            const pool = fac === 'random'
+              ? getAllFactionFrontierBuildings()
+              : (fac ? (FRONTIER_BUILDINGS[fac] ?? GENERIC_OUTPOSTS) : GENERIC_OUTPOSTS);
+            return pool.map(b => ({ id: b.id, cost: b.cost, income: b.baseIncome }));
+          },
+          betweenWaves: () => this.betweenWaves,
+        });
       }
 
       // Wire message handler
@@ -926,12 +1160,20 @@ export class GameScene extends Phaser.Scene {
           case 'chat':
             this.eventLog.gameMessage(`[P${fromPlayer}] ${msg.text}`);
             break;
+          case 'creep_killed':
+            // Apply the same kill accounting the sender already did.
+            // Updates our roster's per-player kill count and credits
+            // any economy share (self or local bots) we're owed.
+            this.circleDeathHandler?.onRemoteKill(msg.killedBy, msg.spawnOwnerIndex, msg.goldValue);
+            break;
         }
       };
 
-      // Create player roster UI
-      const zoneColors = mapDef.zoneColors ?? [];
-      this.circleRoster = new CirclePlayerRoster(this, this.circle, zoneColors);
+      // Roster is a DOM panel (see `CircleRosterDOM`) — GameScene
+      // just writes snapshots into GameUIStore each frame. Zone
+      // colors are stashed here so the per-frame builder can tag
+      // each row with the right swatch.
+      this._circleZoneColors = mapDef.zoneColors ?? [];
 
       // Draw zone overlay on grid
       this.drawCircleZones();
@@ -1042,28 +1284,80 @@ export class GameScene extends Phaser.Scene {
         default: if (t.id && !t.id.startsWith('_')) traits.push(t.id.replace(/_/g, ' ')); break;
       }
     }
+    // Collect all active aura/buff traits. These are internal
+    // underscore-prefixed traits that aura towers pump into nearby
+    // towers each frame; they drive the "effective" stats below and
+    // get surfaced as chips in the info panel.
     const auraBuffs: string[] = [];
     const adjDmg = getTrait(tower.traits, '_adj_damage_buff');
     const adjRate = getTrait(tower.traits, '_adj_rate_buff');
-    if (adjDmg && adjDmg.bonus > 0) auraBuffs.push(`+${adjDmg.bonus} DMG`);
-    if (adjRate && adjRate.bonus > 0) auraBuffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD`);
+    const spellAmp = getTrait(tower.traits, '_spell_amp_buff');
+    const overclock = getTrait(tower.traits, '_overclock_buff');
+    const factionRate = getTrait(tower.traits, '_faction_rate_buff');
+    const harmDmg = getTrait(tower.traits, '_harmonic_damage');
+    const harmRate = getTrait(tower.traits, '_harmonic_rate');
+    const harmRange = getTrait(tower.traits, '_harmonic_range');
+    const harmCrit = getTrait(tower.traits, '_harmonic_crit');
+    const rampUp = getTrait(tower.traits, 'ramp_up');
+    if (adjDmg && adjDmg.bonus > 0) auraBuffs.push(`+${adjDmg.bonus} DMG (adj)`);
+    if (adjRate && adjRate.bonus > 0) auraBuffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD (adj)`);
+    if (harmDmg && harmDmg.bonus > 0) auraBuffs.push(`+${Math.round(harmDmg.bonus * 100)}% DMG`);
+    if (harmRate && harmRate.bonus > 0) auraBuffs.push(`-${Math.round(Math.min(0.8, harmRate.bonus) * 100)}% SPD`);
+    if (harmRange && harmRange.bonus > 0) auraBuffs.push(`+${(harmRange.bonus / TILE_SIZE).toFixed(1)} RNG`);
+    if (harmCrit && (harmCrit.chance ?? 0) > 0) auraBuffs.push(`${Math.round((harmCrit.chance ?? 0) * 100)}% crit x${harmCrit.multiplier ?? 2}`);
+    if (factionRate && factionRate.bonus > 0) auraBuffs.push(`-${Math.round(factionRate.bonus * 100)}% SPD (faction)`);
+    if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') auraBuffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic`);
+    if (overclock && overclock.bonus > 0) auraBuffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (OC)`);
+    if (rampUp && (rampUp._stacks ?? 0) > 0) {
+      const stacks = rampUp._stacks as number;
+      const perStack = (rampUp.reductionPerStack ?? 0.08) as number;
+      const maxStacks = (rampUp.maxStacks ?? 5) as number;
+      const reduction = Math.min(stacks * perStack, maxStacks * perStack);
+      auraBuffs.push(`Ramp ${stacks}/${maxStacks} (-${Math.round(reduction * 100)}% SPD)`);
+    }
 
-    let upgradePreview: TowerStats['upgradePreview'] = null;
-    if (tower.canUpgrade()) {
-      const next = tower.typeDef.upgrades[tower.level - 1];
-      const deltas: string[] = [];
-      const dd = next.damage - tower.damage;
-      const dr = next.range - tower.range / TILE_SIZE;
-      const ds = next.fireRate - tower.fireRate;
-      upgradePreview = {
+    // Effective (post-buff) stats. Damage mirrors the pipeline in
+    // resolveDamageModifiers: flat adj bonus → harmonic % → spell amp
+    // (magic-only). Fire rate uses tower.getEffectiveFireRate() so
+    // we're always consistent with the runtime shot pacing. Range
+    // picks up harmonic range.
+    let effDmg = tower.damage;
+    if (adjDmg && adjDmg.bonus > 0) effDmg += adjDmg.bonus;
+    if (harmDmg && harmDmg.bonus > 0) effDmg = Math.round(effDmg * (1 + harmDmg.bonus));
+    if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') effDmg = Math.round(effDmg * (1 + spellAmp.bonus));
+    const effFireRate = tower.getEffectiveFireRate();
+    let effRange = tower.range / TILE_SIZE;
+    if (harmRange && harmRange.bonus > 0) effRange += harmRange.bonus / TILE_SIZE;
+
+    // Build the multi-option upgrade list (one entry per available
+    // path — linear towers get length 1, branching towers get 2+).
+    // Delta strings are precomputed relative to the tower's current
+    // base stats so the UI only has to render text.
+    const rawOptions = tower.getUpgradeOptions();
+    const makeDelta = (o: { damage: number; range: number; fireRate: number }) => {
+      const dd = o.damage - tower.damage;
+      const dr = o.range - tower.range / TILE_SIZE;
+      const ds = o.fireRate - tower.fireRate;
+      return {
         dmg: dd !== 0 ? `${dd > 0 ? '+' : ''}${dd} DMG` : '',
         rng: dr !== 0 ? `${dr > 0 ? '+' : ''}${dr.toFixed(1)} RNG` : '',
         spd: ds !== 0 ? `${ds}ms SPD` : '',
       };
-    }
+    };
+    const upgradeOptions: TowerUpgradeOption[] = rawOptions.map(o => ({
+      branchId: o.branchId,
+      label: o.label,
+      cost: o.cost,
+      resolvedName: o.resolvedName,
+      ...makeDelta(o),
+    }));
+    const defaultOpt = upgradeOptions.find(o => o.branchId === null);
+    const upgradePreview: TowerStats['upgradePreview'] = defaultOpt
+      ? { dmg: defaultOpt.dmg, rng: defaultOpt.rng, spd: defaultOpt.spd }
+      : null;
 
     return {
-      name: tower.typeDef.name,
+      name: tower.displayName ?? tower.typeDef.name,
       level: tower.level,
       maxLevel: tower.typeDef.upgrades.length + 1,
       cost: tower.typeDef.cost,
@@ -1071,13 +1365,18 @@ export class GameScene extends Phaser.Scene {
       damage: tower.damage,
       range: tower.range / TILE_SIZE,
       fireRate: tower.fireRate,
+      effectiveDamage: effDmg,
+      effectiveRange: effRange,
+      effectiveFireRate: effFireRate,
       damageType: tower.damageType,
       isUltimate: tower.typeDef.ultimate === true,
       canUpgrade: tower.canUpgrade(),
-      upgradeCost: tower.canUpgrade() ? tower.typeDef.upgrades[tower.level - 1].cost : 0,
+      upgradeCost: defaultOpt ? defaultOpt.cost : 0,
+      owned: this.canModifyTower(tower.col, tower.row),
       traits,
       auraBuffs,
       upgradePreview,
+      upgradeOptions,
       _tower: tower,
     };
   }
@@ -1306,7 +1605,7 @@ export class GameScene extends Phaser.Scene {
       case 'inspect':
       case 'inspect_creep':
         if (existingTower) {
-          if (existingTower === this.selectedTower && existingTower.canUpgrade()) {
+          if (existingTower === this.selectedTower && existingTower.canUpgrade() && this.canModifyTower(existingTower.col, existingTower.row)) {
             const cost = existingTower.getUpgradeCost();
             if (this.economy.spend(cost)) {
               existingTower.upgrade();
@@ -1407,12 +1706,236 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  /**
+   * Circle co-op: returns false if this tower belongs to another
+   * player (human or bot) — gates upgrade and sell so you can't
+   * spend your gold on someone else's tower.
+   */
+  /** Build the PlaceResult / UpgradeResult payload the bot driver
+   *  needs from a Tower reference. Centralised so the Circle Co-op
+   *  and 1v1 CPU paths stay in lock-step on what branch metadata
+   *  looks like after place/upgrade. */
+  private _placeResultFromTower(t: Tower) {
+    const options = t.getUpgradeOptions();
+    const defaultOpt = options.find(o => o.branchId === null);
+    const branches = options.filter(o => o.branchId !== null);
+    const branchUpgradeCosts: Record<string, number> = {};
+    for (const b of branches) if (b.branchId) branchUpgradeCosts[b.branchId] = b.cost;
+    return {
+      ok: true,
+      upgradeCost: defaultOpt ? defaultOpt.cost : 0,
+      sellValue: t.getSellValue(),
+      upgradeBranches: branches.map(b => b.branchId!).filter((id): id is string => !!id),
+      branchUpgradeCosts,
+    };
+  }
+
+  canModifyTower(col: number, row: number): boolean {
+    if (!this.circle) return true;
+    const owner = this.towerOwners.get(`${col},${row}`);
+    return owner === undefined || owner === this.circle.playerIndex;
+  }
+
+  /**
+   * 1v1 Versus CPU opponent setup. Builds a private grid + BotAI
+   * whose place/upgrade/sell operations synthesize `tower_*`
+   * messages into the VersusManager — from the rest of the scene's
+   * point of view, an invisible peer is playing on the other side.
+   * Cheap: the CPU side is not a real Phaser simulation, just the
+   * existing OpponentSimulation driven by the bot's placements.
+   */
+  private setupCpuOpponent(): void {
+    if (!this.versus || !this.opponentSim) return;
+    const CPU_INDEX = 1; // arbitrary non-0 index — the human is 0
+    const cpuGrid = new Grid(this.getMapDef());
+    // Full-grid candidate set — unlike Circle Co-op, no zone
+    // restriction. Every placeable cell is fair game for the bot.
+    const candidates: { col: number; row: number }[] = [];
+    for (let r = 0; r < cpuGrid.cells.length; r++) {
+      for (let c = 0; c < cpuGrid.cells[r].length; c++) {
+        if (cpuGrid.canPlaceTower(c, r)) candidates.push({ col: c, row: r });
+      }
+    }
+
+    // Synthesise `tower_placed` / `tower_upgraded` / `tower_sold`
+    // into the VersusManager so OpponentSimulation + minimap see
+    // the bot's board as though a real remote peer were playing it.
+    const injectPlaced = (towerId: string, col: number, row: number) => {
+      this.versus!.injectFromCpu({ type: 'tower_placed', towerId, col, row });
+    };
+    const injectUpgraded = (col: number, row: number, level: number) => {
+      this.versus!.injectFromCpu({ type: 'tower_upgraded', col, row, level });
+    };
+    const injectSold = (col: number, row: number) => {
+      this.versus!.injectFromCpu({ type: 'tower_sold', col, row });
+    };
+
+    // Helper to look up the last-placed tower def for deriving
+    // upgrade cost / sell value + any branches available at the
+    // current upgrade point. Without a live Tower instance we work
+    // directly off the TowerType definitions.
+    const derive = (towerId: string, level: number) => {
+      const def = TOWER_TYPES[towerId];
+      if (!def) return { upgradeCost: 0, sellValue: 0, upgradeBranches: [], branchUpgradeCosts: {} };
+      const upg = def.upgrades[level - 1];
+      const totalCost = def.cost + def.upgrades.slice(0, level - 1).reduce((s, u) => s + u.cost, 0);
+      const branches = upg?.branches ?? [];
+      const branchUpgradeCosts: Record<string, number> = {};
+      for (const b of branches) {
+        const target = TOWER_TYPES[b.transformsTo];
+        if (target) branchUpgradeCosts[b.id] = target.cost;
+      }
+      return {
+        upgradeCost: upg?.cost ?? 0,
+        sellValue: Math.round(totalCost * 0.75),
+        upgradeBranches: branches.map(b => b.id),
+        branchUpgradeCosts,
+      };
+    };
+
+    this.cpuOpponentAI = new BotAI(
+      cpuGrid,
+      (_botIdx, col, row, towerType) => {
+        if (!cpuGrid.canPlaceTower(col, row)) return { ok: false, upgradeCost: 0, sellValue: 0 };
+        cpuGrid.placeTower(col, row);
+        injectPlaced(towerType.id, col, row);
+        this.opponentSim?.rebuildGrid();
+        this.cpuOpponentAI?.invalidate();
+        // derive() returns both the linear next-upgrade cost AND any
+        // branch info — surfaces Bramble → Razor for the brain.
+        const stats = derive(towerType.id, 1);
+        return { ok: true, ...stats };
+      },
+      () => this.currentWave,
+      () => this.versus?.opponentLives ?? 0,
+      () => {
+        // Supply every entry→exit path on the CPU grid so the
+        // brain's maze/DPS scoring runs against the right graph.
+        const paths: (PathPoint[] | null)[] = [];
+        for (const entry of cpuGrid.entries) {
+          for (const exit of cpuGrid.exits) {
+            paths.push(findPath(cpuGrid, entry, exit));
+          }
+        }
+        return paths;
+      },
+      (_botIdx, col, row, branchId) => {
+        const t = this.versus!.opponentTowers.find(x => x.col === col && x.row === row);
+        if (!t) return { ok: false, newLevel: 0, nextUpgradeCost: 0, sellValue: 0 };
+        const def = TOWER_TYPES[t.towerId];
+        if (!def) return { ok: false, newLevel: t.level, nextUpgradeCost: 0, sellValue: 0 };
+        const upg = def.upgrades[t.level - 1];
+        if (!upg) return { ok: false, newLevel: t.level, nextUpgradeCost: 0, sellValue: 0 };
+        // Branch path: swap the stored towerId so subsequent
+        // upgrades pull from the target TowerType's ladder.
+        if (branchId && upg.branches) {
+          const branch = upg.branches.find(b => b.id === branchId);
+          const target = branch ? TOWER_TYPES[branch.transformsTo] : null;
+          if (!target) return { ok: false, newLevel: t.level, nextUpgradeCost: 0, sellValue: 0 };
+          t.towerId = target.id;
+          t.level = upg.level;
+          injectUpgraded(col, row, t.level);
+          this.versus!.injectFromCpu({ type: 'tower_upgraded', col, row, level: t.level, branch: branchId });
+          const stats = derive(t.towerId, t.level);
+          return {
+            ok: true, newLevel: t.level,
+            nextUpgradeCost: stats.upgradeCost, sellValue: stats.sellValue,
+            upgradeBranches: stats.upgradeBranches, branchUpgradeCosts: stats.branchUpgradeCosts,
+          };
+        }
+        // Default (linear) path.
+        t.level += 1;
+        injectUpgraded(col, row, t.level);
+        const stats = derive(t.towerId, t.level);
+        return {
+          ok: true, newLevel: t.level,
+          nextUpgradeCost: stats.upgradeCost, sellValue: stats.sellValue,
+          upgradeBranches: stats.upgradeBranches, branchUpgradeCosts: stats.branchUpgradeCosts,
+        };
+      },
+      (_botIdx, col, row) => {
+        const idx = this.versus!.opponentTowers.findIndex(x => x.col === col && x.row === row);
+        if (idx < 0) return 0;
+        const t = this.versus!.opponentTowers[idx];
+        const def = TOWER_TYPES[t.towerId];
+        if (!def) return 0;
+        const totalCost = def.cost + def.upgrades.slice(0, t.level - 1).reduce((s, u) => s + u.cost, 0);
+        const refund = Math.round(totalCost * 0.75);
+        cpuGrid.removeTower(col, row);
+        injectSold(col, row);
+        this.opponentSim?.rebuildGrid();
+        this.cpuOpponentAI?.invalidate();
+        return refund;
+      },
+    );
+    this.cpuOpponentAI.addBot(CPU_INDEX, this.versus.cpuFaction as FactionId, candidates, this.versus.cpuBrainId);
+
+    // Wire the meta economy: sends + frontier buildings. The human's
+    // sends land on the CPU's shadow sim (so send is no longer
+    // cosmetic in CPU matches), and the bot can purchase its own
+    // sends / frontier to build income and pressure the human.
+    const cpuFaction = this.versus.cpuFaction as FactionId;
+    const frontierPool = cpuFaction === 'random'
+      ? getAllFactionFrontierBuildings()
+      : (FRONTIER_BUILDINGS[cpuFaction] ?? GENERIC_OUTPOSTS);
+    this.cpuOpponentAI.setMetaCallbacks({
+      // Human sends land on CPU shadow sim.
+      // (Wired on versus below — this block only sets up the bot's
+      // purchase pipeline; receiving happens via cpuSendReceiver.)
+      sendCb: (_idx, optionId, _cost, income) => {
+        const opt = SEND_OPTIONS.find(o => o.id === optionId);
+        if (!opt) return false;
+        // Queue creeps on the HUMAN's sendMgr — the bot's send is
+        // additional pressure on us, mirroring how a human opponent
+        // sending would arrive in our `incomingSends` queue.
+        this.sendMgr.queueSend(opt);
+        this.eventLog.gameMessage(`CPU sent ${opt.name}!`);
+        this.versus!.sendsReceived++;
+        this.cpuOpponentAI?.addIncomeBonus(1, income);
+        return true;
+      },
+      frontierCb: (_idx, buildingId) => {
+        const b = frontierPool.find(b => b.id === buildingId);
+        if (!b) return false;
+        // We don't simulate the faction-specific mechanic (dig /
+        // overcharge / grow / gamble) for the CPU — a flat income
+        // bump matches baseIncome closely enough and avoids a
+        // headless FrontierManager per bot.
+        this.cpuOpponentAI?.addIncomeBonus(1, b.baseIncome);
+        this.eventLog.gameMessage(`CPU built ${b.name} (+${b.baseIncome}g/wave).`);
+        return true;
+      },
+      sendOpts: () => {
+        const wave = this.currentWave;
+        return SEND_OPTIONS.map(opt => ({
+          id: opt.id,
+          cost: getSendCost(opt.cost, wave),
+          income: getSendIncome(opt.incomeReward, wave),
+          unlocked: wave >= opt.unlockWave,
+        }));
+      },
+      frontierOpts: () => frontierPool.map(b => ({ id: b.id, cost: b.cost, income: b.baseIncome })),
+      betweenWaves: () => this.betweenWaves,
+    });
+
+    // Install the send receiver so the human's `versus.send` for
+    // `send_purchased` actually lands on the CPU's shadow sim.
+    this.versus.cpuSendReceiver = (sendOptionId) => {
+      const opt = SEND_OPTIONS.find(o => o.id === sendOptionId);
+      if (opt) this.opponentSim?.enqueueSend(opt);
+    };
+
+    this.eventLog.gameMessage(`CPU opponent: ${this.versus.cpuFaction} (${this.versus.cpuBrainId})`);
+    // Mark the CPU as ready immediately so the initial 60s
+    // pre-wave-1 countdown can be skipped by the human hitting
+    // ready. We re-fire wave_ready after every CPU wave clear
+    // (see the update loop) so the flag resets properly.
+    this.versus.injectFromCpu({ type: 'wave_ready' });
+  }
+
   handleRightClick(col: number, row: number): void {
     // Circle co-op: can only sell your own towers
-    if (this.circle) {
-      const owner = this.towerOwners.get(`${col},${row}`);
-      if (owner !== undefined && owner !== this.circle.playerIndex) return;
-    }
+    if (!this.canModifyTower(col, row)) return;
 
     const result = this.towerMgr.sellTower(col, row);
     if (!result) return;
@@ -1453,24 +1976,111 @@ export class GameScene extends Phaser.Scene {
     this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col, row });
 
     if (result.pathsChanged) {
-      // Update existing creep paths
-      for (const creep of this.creepMgr.creeps) {
-        if (!creep.alive || creep.reached) continue;
-        const creepCol = pixelToCol(creep.x);
-        const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
-        let bestPath: PathPoint[] | null = null;
-        for (const exit of this.grid.exits) {
-          const p = findPath(this.grid, { col: creepCol, row: creepRow }, exit);
-          if (p && (!bestPath || p.length < bestPath.length)) {
-            bestPath = p;
-          }
-        }
-        if (bestPath) {
-          creep.path = bestPath;
-          creep.pathIndex = 1;
-        }
-      }
+      this.rerouteCreepsAroundTower(col, row);
       this.drawPath();
+    }
+  }
+
+  /** Debug: ms accumulated since we last printed the stuck-creep
+   *  roster (throttle so the console doesn't flood). */
+  private _stuckCreepLogElapsed: number = 0;
+
+  /**
+   * If the wave has been active too long, print each alive creep's
+   * position + pathIndex + path length so the dev can see which
+   * creep (or creeps) is stuck. Pairs with WaveController's
+   * "wave stuck" line — that one tells you the category of
+   * blockage, this one identifies the specific creep.
+   */
+  /** Build the roster snapshot from live Circle state + suppliers
+   *  and push it into GameUIStore. CircleRosterDOM reads from
+   *  there and renders. Called each frame; the store skips the
+   *  notify when nothing changed (shallow-equal check). */
+  private publishCircleRoster(): void {
+    if (!this.circle) { GameUIStore.setCircleRoster(null); return; }
+    const botGold = this.circleBotAI?.getBotGold() ?? new Map<number, number>();
+    const kills = this.circleDeathHandler?.getKillsByPlayer() ?? new Map<number, number>();
+    const owners = this.towerOwners;
+    const players: CircleRosterPlayer[] = [];
+    for (let i = 0; i < this.circle.playerCount; i++) {
+      const color = this._circleZoneColors[i] ?? 0xffffff;
+      const colorHex = '#' + color.toString(16).padStart(6, '0');
+      const isMe = i === this.circle.playerIndex;
+      const isBot = this.circle.isBotSlot(i);
+      const ready = isMe ? this.circle.localReady : this.circle.playersReady.has(i);
+      let towers = 0;
+      for (const owner of owners.values()) if (owner === i) towers++;
+      players.push({
+        index: i,
+        kind: isMe ? 'me' : isBot ? 'bot' : 'remote',
+        faction: this.circle.playerFactions.get(i) ?? '',
+        colorHex,
+        ready,
+        gold: isBot ? (botGold.get(i) ?? 0) : null,
+        towers,
+        kills: kills.get(i) ?? 0,
+      });
+    }
+    GameUIStore.setCircleRoster({
+      players,
+      timerS: this.circle.waveTimerActive ? this.circle.getWaveTimerSeconds() : -1,
+      sharedLives: this.lives,
+    });
+  }
+
+  private diagLogStuckCreeps(delta: number): void {
+    if (!DEBUG) return;
+    if (!this.waveActive) {
+      this._stuckCreepLogElapsed = 0;
+      return;
+    }
+    this._stuckCreepLogElapsed += delta;
+    // Match the WaveController gate so logs from both systems line up.
+    if (this._stuckCreepLogElapsed < 5000) return;
+    if (this._stuckCreepLogElapsed % 3000 > delta) return; // roughly every 3s
+    if (this.creeps.length === 0) return;
+    const rows = this.creeps.slice(0, 8).map((c) => {
+      const col = pixelToCol(c.x);
+      const row = Math.round((c.y - TILE_SIZE / 2) / TILE_SIZE);
+      return `${c.creepTypeId}@(${col},${row}) idx=${c.pathIndex}/${c.path.length} reached=${c.reached} alive=${c.alive}`;
+    });
+    console.warn('[wave] stuck creeps:\n  ' + rows.join('\n  '));
+  }
+
+  /**
+   * Re-route creeps whose remaining path passes through the newly-
+   * placed tower cell. Delegates to Creep.rerouteViaWaypoints which
+   * re-runs findPathWithWaypoints through the creep's REMAINING
+   * (unvisited) waypoints to the spawner's exit — preserves both
+   * direction and traversal goal on Circle Co-op maps where the
+   * exit is at the same cell as the entry.
+   *
+   * Creeps whose remaining path doesn't hit the tower are left
+   * alone (no wasted pathfinding work).
+   */
+  private rerouteCreepsAroundTower(towerCol: number, towerRow: number): void {
+    for (const creep of this.creepMgr.creeps) {
+      if (!creep.alive || creep.reached) continue;
+      const remaining = creep.path.slice(creep.pathIndex);
+      const hitByTower = remaining.some(p => p.col === towerCol && p.row === towerRow);
+      if (!hitByTower) continue;
+
+      const creepCol = pixelToCol(creep.x);
+      const creepRow = Math.round((creep.y - TILE_SIZE / 2) / TILE_SIZE);
+      const current: PathPoint = { col: creepCol, row: creepRow };
+
+      // Creep-side reroute handles both the waypoint path (circle
+      // co-op) and the simple destination case (everywhere else).
+      if (creep.rerouteViaWaypoints(this.grid, current)) continue;
+
+      // Fallback for creeps with no spawner metadata — just try to
+      // reach whatever the final cell of the original path was.
+      const dest = creep.path[creep.path.length - 1];
+      const newPath = findPath(this.grid, current, dest);
+      if (newPath) {
+        creep.path = newPath;
+        creep.pathIndex = 1;
+      }
     }
   }
 
@@ -1500,6 +2110,17 @@ export class GameScene extends Phaser.Scene {
       this.rangeGraphics.clear();
       this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
       this.rangeGraphics.strokeCircle(this.selectedTower.x, this.selectedTower.y, this.selectedTower.range);
+
+      // Refresh the info-panel snapshot a few times per second so
+      // aura buffs and effective stats update live while the player
+      // keeps a tower selected. Buff traits refresh every 200ms, so
+      // 250ms cadence is enough to stay in sync without re-rendering
+      // the DOM on every tick.
+      this._infoRefreshAccum = (this._infoRefreshAccum ?? 0) + delta;
+      if (this._infoRefreshAccum >= 250) {
+        this._infoRefreshAccum = 0;
+        GameUIStore.selectTower(this.towerToStats(this.selectedTower));
+      }
     }
 
     // Creep updates: movement, leak handling, kill processing, cleanup
@@ -1521,7 +2142,13 @@ export class GameScene extends Phaser.Scene {
 
     // Spawning + wave clear detection
     this.waveMgr.updateSpawning(delta, this.allPaths, this.currentPath, this.creeps);
-    this.waveMgr.checkWaveComplete(this.creeps.length);
+    this.waveMgr.checkWaveComplete(this.creeps.length, delta);
+
+    // When a wave has been active well past its expected duration,
+    // also log each alive creep's state periodically. This pairs
+    // with the "wave N stuck" line from WaveController and shows
+    // exactly which creep(s) are the problem.
+    this.diagLogStuckCreeps(delta);
 
     // While the continue-ad modal is up the game visibly freezes —
     // early-return here prevents the defeat branch from re-firing
@@ -1650,6 +2277,56 @@ export class GameScene extends Phaser.Scene {
         this.drawOpponentView();
       }
 
+      // CPU opponent: tick the bot AI, then drain shadow-sim events
+      // (leaks → opponentLives down, kills → bot economy + wave
+      // progress). All state changes flow through versus via
+      // injectFromCpu so the existing opponent pipeline stays
+      // authoritative.
+      if (this.versus.cpuOpponent && this.cpuOpponentAI) {
+        this.cpuOpponentAI.tick(delta);
+        const { leaks, kills, goldEarned } = this.opponentSim?.drainEvents() ?? { leaks: 0, kills: [], goldEarned: 0 };
+        if (leaks > 0) {
+          const boss = kills.some(k => k.isBoss);
+          const cost = boss ? 5 : 1;
+          const newLives = Math.max(0, (this.versus.opponentLives ?? 0) - leaks * cost);
+          this.versus.injectFromCpu({ type: 'lives_update', lives: newLives });
+          if (newLives <= 0 && !this.versus.opponentGameOver) {
+            this.versus.injectFromCpu({
+              type: 'game_over', won: false,
+              stats: { damageDealt: 0, creepsKilled: 0, towersBuilt: 0, goldSpent: 0, goldEarned: 0, timePlayed: 0 } as any,
+              wave: this.currentWave, lives: 0,
+              sendsSent: 0, sendsReceived: 0,
+            });
+          }
+        }
+        if (kills.length > 0) {
+          // Approximate gold reward per creep — mirrors the human's
+          // killGold curve (falls off slightly each 10 waves). Boss
+          // kills pay ~5× a trash kill.
+          const baseGold = Math.max(2, 4 - Math.floor(this.currentWave / 10));
+          for (const k of kills) {
+            this.cpuOpponentAI.creditKill(1, k.isBoss ? baseGold * 5 : baseGold);
+          }
+        }
+        // Per-hit / per-kill gold from the shadow sim — covers void
+        // siphon, gambler jackpot, soul drain etc. that the earlier
+        // DPS-smear simulation couldn't credit.
+        if (goldEarned > 0) {
+          this.cpuOpponentAI.creditGold(1, goldEarned);
+        }
+        // If the shadow sim finished its wave (no queue, no creeps,
+        // not active) and we haven't already fired `wave_cleared`
+        // for this wave, synth wave_cleared + wave_ready so the 1v1
+        // wave-sync flow progresses as if the remote player had
+        // cleared. The _cpuLastClearedWave guard prevents re-firing
+        // on every frame during the between-wave countdown.
+        if (!this.opponentSim?.isWaveActive() && this.currentWave > 0 && this._cpuLastClearedWave < this.currentWave) {
+          this._cpuLastClearedWave = this.currentWave;
+          this.versus.injectFromCpu({ type: 'wave_cleared', wave: this.currentWave });
+          this.versus.injectFromCpu({ type: 'wave_ready' });
+        }
+      }
+
       // Incoming sends
       const incoming = this.versus.drainIncomingSends();
       for (const sendId of incoming) {
@@ -1689,7 +2366,11 @@ export class GameScene extends Phaser.Scene {
       const towerEvents = this.circle.drainTowerEvents();
       for (const { from, msg } of towerEvents) {
         if (msg.type === 'tower_placed') {
-          this.placeRemoteTower(msg.towerId, msg.col, msg.row, from);
+          // `ownerIndex` overrides the envelope `from` — it's set
+          // when the message was generated by a host-side CPU bot
+          // so the receiver attributes the tower to the correct
+          // bot slot, not the host that sent it.
+          this.placeRemoteTower(msg.towerId, msg.col, msg.row, msg.ownerIndex ?? from);
         } else if (msg.type === 'tower_sold') {
           this.towerMgr.sellTower(msg.col, msg.row);
           this.towerOwners.delete(`${msg.col},${msg.row}`);
@@ -1698,7 +2379,7 @@ export class GameScene extends Phaser.Scene {
         } else if (msg.type === 'tower_upgraded') {
           const tower = this.towers.find(t => t.col === msg.col && t.row === msg.row);
           if (tower && tower.canUpgrade()) {
-            tower.upgrade();
+            tower.upgrade(msg.branch ?? null);
           }
         } else if (msg.type === 'tower_sync') {
           // Reconcile — add any towers we're missing from this player
@@ -1710,6 +2391,12 @@ export class GameScene extends Phaser.Scene {
           }
         }
       }
+
+      // Bot AI tick — host only, no-op when `circleBotAI` is null
+      // (joiner, or host with no CPU slots). Runs after the tower
+      // event drain so bot placements this frame don't race against
+      // remote placements being applied to the grid.
+      this.circleBotAI?.tick(delta);
 
       // Incoming chats
       const chats = this.circle.drainChats();
@@ -1752,8 +2439,8 @@ export class GameScene extends Phaser.Scene {
         this.circle.broadcast({ type: 'tower_sync', towers: myTowers });
       }
 
-      // Update roster UI
-      this.circleRoster?.update(this.lives);
+      // Publish roster snapshot for the DOM panel.
+      this.publishCircleRoster();
     }
 
     // Update tower alive time for DPS calc
@@ -1966,6 +2653,44 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Circle Co-op: assemble one stats row per player slot for the
+   * end-of-match screen. Kills come from the death handler's
+   * per-player ledger; tower counts come from the towerOwners map
+   * we already maintain; gold comes from the per-bot EconomyManagers
+   * (bots) or from our local economy (self). Remote human gold
+   * isn't synced — reported as 0 until we add a message for it.
+   * Returns undefined outside Circle Co-op so GameOverScreen knows
+   * to hide the section.
+   */
+  private buildCoopPlayerRows(): CoopPlayerStats[] | undefined {
+    if (!this.circle) return undefined;
+    const kills = this.circleDeathHandler?.getKillsByPlayer() ?? new Map<number, number>();
+    const botGold = this.circleBotAI?.getBotGold() ?? new Map<number, number>();
+
+    const towersByPlayer = new Map<number, number>();
+    for (const ownerIdx of this.towerOwners.values()) {
+      towersByPlayer.set(ownerIdx, (towersByPlayer.get(ownerIdx) ?? 0) + 1);
+    }
+
+    const rows: CoopPlayerStats[] = [];
+    for (let i = 0; i < this.circle.playerCount; i++) {
+      const isLocal = i === this.circle.playerIndex;
+      const isBot = this.circle.botSlots.has(i);
+      const gold = isLocal ? this.economy.gold : (isBot ? (botGold.get(i) ?? 0) : 0);
+      rows.push({
+        playerIndex: i,
+        faction: this.circle.playerFactions.get(i) ?? 'unknown',
+        isBot,
+        isLocal,
+        kills: kills.get(i) ?? 0,
+        towersBuilt: towersByPlayer.get(i) ?? 0,
+        goldRemaining: gold,
+      });
+    }
+    return rows;
+  }
+
   private goToGameOver(won: boolean): void {
     // Reset global grid offset
     setGridOffsetY(0);
@@ -1997,6 +2722,8 @@ export class GameScene extends Phaser.Scene {
         heroName: this.arenaManager.hero.typeDef.name,
       } : null,
       continueAdShown: this._continueAdShown,
+      coopPlayers: this.buildCoopPlayerRows(),
+      coopLocalIndex: this.circle?.playerIndex,
     };
     const duration = Math.round((Date.now() - this._gameStartTime) / 1000);
     Analytics.gameEnd(this.matchMode, this.lives > 0 ? 'victory' : 'defeat', this.currentWave, duration);
@@ -2199,9 +2926,21 @@ export class GameScene extends Phaser.Scene {
 
   recalculatePaths(): void {
     this.allPaths = [];
-    for (const entry of this.grid.entries) {
-      for (const exit of this.grid.exits) {
-        this.allPaths.push(findPath(this.grid, entry, exit));
+    // Circle co-op maps carry a `spawners` list, each with an
+    // ordered waypoint chain (entry → waypoints[...] → exit). When
+    // present, use waypoint-chained pathing so creeps physically
+    // circumnavigate the map before exiting; when absent (standard
+    // / gauntlet / hero-defense / versus), fall back to a simple
+    // entry-exit A* cross-product per the original behaviour.
+    if (this.mapDef?.spawners && this.mapDef.spawners.length > 0) {
+      for (const spawner of this.mapDef.spawners) {
+        this.allPaths.push(findPathWithWaypoints(this.grid, spawner.entry, spawner.waypoints, spawner.exit));
+      }
+    } else {
+      for (const entry of this.grid.entries) {
+        for (const exit of this.grid.exits) {
+          this.allPaths.push(findPath(this.grid, entry, exit));
+        }
       }
     }
     this.currentPath = this.allPaths.find(p => p !== null) ?? null;
@@ -2385,7 +3124,14 @@ export class GameScene extends Phaser.Scene {
     }, true);
     if (placeResult) {
       this.towerOwners.set(`${col},${row}`, fromPlayer);
-      if (placeResult.pathsChanged) this.drawPath();
+      if (placeResult.pathsChanged) {
+        // Same re-route rule as local placement — only touch creeps
+        // whose remaining path hits the new tower. Without this,
+        // remote placements (humans AND bots) mid-wave would leave
+        // creeps colliding with new towers.
+        this.rerouteCreepsAroundTower(col, row);
+        this.drawPath();
+      }
     }
   }
 
@@ -2462,10 +3208,12 @@ export class GameScene extends Phaser.Scene {
 
     // Events + UI
     this.eventBus.emit('waveCleared', waveNum);
+    // Fan waveCleared out to bot economies so they get the same
+    // bonus via their own EconomyManager subscriptions.
+    this.circleBotAI?.creditWaveClear(waveNum);
+    this.cpuOpponentAI?.creditWaveClear(waveNum);
     this.eventLog.waveCleared(waveNum, this.incomeMgr.getWaveIncome());
     this.statsTracker.recordWaveCompleted();
-    this.upcomingWaves.update(waveNum, this.waves);
-        this.updateDOMWaves(waveNum);
 
     // Endless mode: append more waves when running low, rotate creep faction every 10 waves
     if (this.matchMode === 'endless') {
@@ -2473,15 +3221,34 @@ export class GameScene extends Phaser.Scene {
         const nextStart = this.waves.length + 1;
         const newWaves = generateEndlessWaves(nextStart, 10);
         this.waves.push(...newWaves);
-        console.log(`[Endless] Appended waves ${nextStart}-${nextStart + 9}, total: ${this.waves.length}`);
+        if (DEBUG) console.log(`[Endless] Appended waves ${nextStart}-${nextStart + 9}, total: ${this.waves.length}`);
       }
       if (waveNum % 10 === 0) {
         const playable = FACTION_ORDER.filter(f => f !== 'random' && f !== this.creepFaction);
-        this.creepFaction = playable[Math.floor(Math.random() * playable.length)];
-        console.log(`[Endless] Creep faction rotated to: ${this.creepFaction}`);
+        // Deterministic faction pick for multiplayer Endless — host
+        // and joiner must land on the same faction or wave 11+ creeps
+        // diverge. Seeded from (sharedSeed XOR waveNum); solo falls
+        // back to Math.random so standalone runs stay unpredictable.
+        const sharedSeed = this.versus?.sharedSeed ?? this.circle?.sharedSeed ?? 0;
+        const roll = sharedSeed > 0
+          ? seededRoll((sharedSeed ^ (waveNum * 2654435761)) >>> 0)
+          : Math.random();
+        this.creepFaction = playable[Math.floor(roll * playable.length)];
+        if (DEBUG) console.log(`[Endless] Creep faction rotated to: ${this.creepFaction}`);
         this.eventLog.gameMessage(`Enemy faction changed to ${FACTIONS[this.creepFaction].name}!`);
+        // Bind the new faction's sprites + animations. Without this
+        // creeps spawned on wave 11+ render with the prior faction's
+        // textures (or fall back to the Graphics shape).
+        preloadCreepSprites(this);
+        createCreepAnimations(this, this.creepFaction);
       }
     }
+
+    // Upcoming-waves snapshot runs AFTER the Endless append so the
+    // just-pushed waves show up in the panel on the same tick rather
+    // than after the next clear.
+    this.upcomingWaves.update(waveNum, this.waves);
+    this.updateDOMWaves(waveNum);
 
     // Random faction rotation
     if (this.faction === 'random') {
@@ -2542,6 +3309,7 @@ export class GameScene extends Phaser.Scene {
 
       // Update flying path for new map entry/exit
       this.spawner.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
+      this.sendMgr.setFlyingPath(this.grid.entries[0], this.grid.exits[0]);
 
       // Create creep animations for new faction
       createCreepAnimations(this, this.creepFaction);
@@ -2615,6 +3383,8 @@ export class GameScene extends Phaser.Scene {
     this.gameMode.destroy?.();
     // Clean up event bus
     TutorialManager.setGameEventBus(null);
+    this._discoveryTracker?.destroy();
+    this._discoveryTracker = null;
     this.eventBus.clear();
     // Reset UI camera + layer so they're re-created on next game
     if (this.uiCamera) {

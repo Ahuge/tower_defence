@@ -73,6 +73,19 @@ export interface StoreState {
   gamesPlayed: number;
   /** Total games won */
   gamesWon: number;
+
+  /** Creep-type ids the player has ever seen in a live match. Drives
+   *  the Pokédex-style EncyclopediaScreen gating + the incremental
+   *  DISCOVER_CREEPS achievement. Persists across sessions so
+   *  progress survives reinstalls (within localStorage scope). */
+  discoveredCreeps: string[];
+
+  /** Faction ids the player has ever WON a match with. Drives the
+   *  FIRST_WIN_<FACTION> achievements — set insertion fires the
+   *  unlock exactly once per faction. `random` is never added
+   *  (wins there aren't faction-mastery milestones; see
+   *  Achievements.firstWinAchievementKey). */
+  firstWinFactions: string[];
 }
 
 const STORAGE_KEY = 'td_store';
@@ -101,6 +114,8 @@ function defaultState(): StoreState {
     adFree: false,
     gamesPlayed: 0,
     gamesWon: 0,
+    discoveredCreeps: [],
+    firstWinFactions: [],
   };
 }
 

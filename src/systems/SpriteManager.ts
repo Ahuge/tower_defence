@@ -89,8 +89,16 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
     [4, 3, 5, 4, 4, 3, 1]),
   ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
     [4, 6, 5, 4, 4, 5, 3, 3]),
-  ...factionTowers('nature_towers', ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder'],
-    [6, 4, 5, 5, 3, 1]),
+  // 9-tower Nature sprite layout, matching the regenerated
+  // `nature_towers.png` (576×1536, 9 cols × 24 rows). The 9th
+  // entry (`nature_razor_bramble`) is NOT a selectable starter —
+  // it's only reachable via Bramble's L2 branch. Kept here so the
+  // skin editor + SpriteManager know about its column.
+  ...factionTowers('nature_towers',
+    ['nature_bramble', 'nature_root', 'nature_viper', 'nature_blossom',
+     'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder',
+     'nature_razor_bramble'],
+    [5, 2, 3, 3, 3, 3, 3, 1, 3]),
   ...factionTowers('mil_towers', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander'],
     [2, 4, 5, 5, 3, 3]),
   ...factionTowers('alien_towers', ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind'],
@@ -111,7 +119,10 @@ const PROJECTILE_SPRITE_CONFIGS: Record<string, ProjectileSpriteConfig> = {
   ...factionProj('void_proj', ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion']),
   ...factionProj('arcane_proj', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova']),
   ...factionProj('mech_proj', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan']),
-  ...factionProj('nature_proj', ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder']),
+  ...factionProj('nature_proj',
+    ['nature_bramble', 'nature_root', 'nature_viper', 'nature_blossom',
+     'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder',
+     'nature_razor_bramble']),
   ...factionProj('mil_proj', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander']),
   ...factionProj('alien_proj', ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind']),
   ...factionProj('cyber_proj', ['cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor', 'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday']),
@@ -126,6 +137,7 @@ const MOBILE_TOWER_IDS = new Set([
   'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander',
   'alien_swarmling',
   'infernal_bomber',
+  'nature_viper',
 ]);
 
 /** Mobile unit sprite configs — each gets its own small spritesheet */
@@ -136,6 +148,7 @@ const MOBILE_SPRITE_CONFIGS: Record<string, MobileUnitSpriteConfig> = {
   mil_commander:   { sheetKey: 'mobile_mil_commander', frameWidth: 32, frameHeight: 32, cols: 4 },
   alien_swarmling: { sheetKey: 'mobile_alien_swarmling', frameWidth: 32, frameHeight: 32, cols: 4 },
   infernal_bomber: { sheetKey: 'mobile_infernal_fiend', frameWidth: 32, frameHeight: 32, cols: 4 },
+  nature_viper:    { sheetKey: 'mobile_nature_viper', frameWidth: 32, frameHeight: 32, cols: 4 },
 };
 
 /** Check if a tower ID has sprite art available */
@@ -277,11 +290,12 @@ export function preloadSprites(scene: Phaser.Scene): void {
   for (const [towerId, cfg] of Object.entries(MOBILE_SPRITE_CONFIGS)) {
     const faction = towerId.startsWith('mil_') ? 'military'
       : towerId.startsWith('alien_') ? 'aliens'
-      : towerId.startsWith('infernal_') ? 'infernal' : '';
+      : towerId.startsWith('infernal_') ? 'infernal'
+      : towerId.startsWith('nature_') ? 'nature' : '';
     if (faction) {
       // Derive asset name from sheetKey (`mobile_<faction>_<name>`), not towerId —
       // towerId and asset name can diverge (e.g. infernal_bomber → fiend_mobile.png).
-      const name = cfg.sheetKey.replace(/^mobile_(mil|alien|infernal)_/, '');
+      const name = cfg.sheetKey.replace(/^mobile_(mil|alien|infernal|nature)_/, '');
       scene.load.spritesheet(cfg.sheetKey, `assets/${faction}/${name}_mobile.png`, {
         frameWidth: cfg.frameWidth, frameHeight: cfg.frameHeight,
       });

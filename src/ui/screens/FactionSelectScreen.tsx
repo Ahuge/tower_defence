@@ -1,5 +1,6 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../../data/Factions';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { MatchMode } from '../../data/WaveDefinitions';
@@ -27,11 +28,7 @@ export function FactionSelectScreen({ data }: Props) {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title">CHOOSE FACTION</div>
-        <ShardBadge />
-      </div>
+      <Header title="CHOOSE FACTION" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       <div class="ui-section">
         <div class="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
           {FACTION_ORDER.map(factionId => {

@@ -6,6 +6,7 @@ import { WaveDefinition } from '../data/WaveDefinitions';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { DifficultyHints } from '../data/Difficulty';
 import { EventBus } from './EventBus';
+import { SpawnerDef } from '../data/Maps';
 
 /** Simple seeded PRNG for deterministic wave spawning */
 function seededRandom(seed: number): () => number {
@@ -35,6 +36,31 @@ export class SpawnManager {
   private flyingPath: PathPoint[] | null = null;
   private seed: number;
   private rng: () => number;
+  /**
+   * Map's spawner list (Circle Co-op waypoint-chained maps) indexed
+   * by pathIndex. Attached to every creep at spawn time so reroutes
+   * can re-run `findPathWithWaypoints` through the correct remaining
+   * waypoints instead of guessing a destination. Null on standard
+   * entry→exit maps.
+   */
+  private spawners: SpawnerDef[] | null = null;
+  /**
+   * Circle Co-op: each spawner belongs to a player (spawner index
+   * = player index = zone index). Wave creeps that spawn from
+   * spawner `i` carry `spawnOwnerIndex = i` so the shared-economy
+   * death handler can pay the spawn-owner their half of the kill
+   * gold. Disabled on non-Circle maps where spawnOwnerIndex has
+   * no meaning (stays null on the creep).
+   */
+  private trackSpawnOwnership: boolean = false;
+  /**
+   * Wave-count multiplier for co-op modes. In Circle Co-op we scale
+   * creep counts with team size so defence stays challenging — a
+   * 4-player match faces 4× the creeps a solo match would. Set
+   * once at match start via `setCountMultiplier`; 1 by default so
+   * non-co-op modes are unaffected.
+   */
+  private countMultiplier: number = 1;
 
   constructor(scene: Phaser.Scene, events: EventBus, difficulty: DifficultyHints, seed: number = 0) {
     this.scene = scene;
@@ -42,6 +68,28 @@ export class SpawnManager {
     this.difficulty = difficulty;
     this.seed = seed || Math.floor(Math.random() * 999999);
     this.rng = seededRandom(this.seed);
+  }
+
+  /** Attach the map's spawner list so new creeps carry their
+   *  spawner's waypoint chain + exit. Call once per map change
+   *  (null for non-waypoint maps). */
+  setSpawners(spawners: SpawnerDef[] | null): void {
+    this.spawners = spawners;
+  }
+
+  /** Turn on Circle Co-op ownership tagging — every wave creep
+   *  spawned from spawner `i` gets `spawnOwnerIndex = i` so the
+   *  shared-economy death handler can credit that zone's player
+   *  their half of the kill gold. Default off. */
+  setTrackSpawnOwnership(enabled: boolean): void {
+    this.trackSpawnOwnership = enabled;
+  }
+
+  /** Global creep-count multiplier applied on top of per-creep
+   *  difficulty scaling. Used by Circle Co-op to size waves against
+   *  team size. 1 = no change. */
+  setCountMultiplier(mult: number): void {
+    this.countMultiplier = Math.max(1, mult);
   }
 
   setFlyingPath(entry: { col: number; row: number }, exit: { col: number; row: number }): void {
@@ -60,7 +108,9 @@ export class SpawnManager {
 
       const resolved = ct.applyDifficulty(this.difficulty);
       const baseCount = group.count * (ct.count || 1);
-      const actualCount = Math.round(baseCount * resolved.countMult);
+      // Apply both per-creep difficulty scaling AND the global
+      // coop team-size multiplier.
+      const actualCount = Math.round(baseCount * resolved.countMult * this.countMultiplier);
 
       for (let i = 0; i < actualCount; i++) {
         const groupBurst = ct.spawnBehavior === 'group' ? 4 : 1;
@@ -83,7 +133,15 @@ export class SpawnManager {
       [this.spawnQueue[i], this.spawnQueue[j]] = [this.spawnQueue[j], this.spawnQueue[i]];
     }
 
-    this.spawnInterval = waveDef.spawnInterval;
+    // Co-op: with N× the creep count, keep the wave duration roughly
+    // constant by spawning N× faster. Without this the wave trickles
+    // out for minutes on larger teams. Floor at 30ms so bursts stay
+    // visually readable. waveDef.spawnInterval === 0 (boss wave / set
+    // pieces) stays 0.
+    const interval = waveDef.spawnInterval > 0
+      ? Math.max(30, Math.round(waveDef.spawnInterval / this.countMultiplier))
+      : 0;
+    this.spawnInterval = interval;
     this.spawnTimer = 0;
   }
 
@@ -110,6 +168,10 @@ export class SpawnManager {
       if (!path) return;
 
       const burstCount = entry.groupBurst;
+      // Attach spawner waypoints + exit so the creep can be correctly
+      // re-pathed mid-wave (see Creep.rerouteViaWaypoints). Non-
+      // waypoint maps leave this null.
+      const spawner = this.spawners ? this.spawners[entry.pathIndex] ?? null : null;
       for (let b = 0; b < burstCount; b++) {
         const creep = new Creep(
           this.scene,
@@ -120,7 +182,16 @@ export class SpawnManager {
           entry.creepType,
           (this.scene as any).creepFaction,
         );
+        if (spawner) {
+          creep.spawnerWaypoints = spawner.waypoints.map(p => ({ col: p.col, row: p.row }));
+          creep.spawnerExit = { col: spawner.exit.col, row: spawner.exit.row };
+        }
+        if (this.trackSpawnOwnership) creep.spawnOwnerIndex = entry.pathIndex;
         creeps.push(creep);
+        // Notify discovery tracker + any other subscriber each time
+        // a creep construct appears. Subscribers de-dup via persisted
+        // state — emit is cheap, per-spawn is fine.
+        this.events.emit('creepSpawned', entry.creepType);
       }
 
       if (this.spawnQueue.length > 0) {

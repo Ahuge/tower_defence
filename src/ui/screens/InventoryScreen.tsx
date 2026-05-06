@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import {
   PlayerInventory, SkinDef, SKIN_DEFS, RARITY_COLORS, RARITY_LABELS,
   getSkinDef, Rarity,
@@ -60,11 +61,7 @@ export function InventoryScreen() {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title">INVENTORY</div>
-        <ShardBadge />
-      </div>
+      <Header title="INVENTORY" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
 
       {/* Filter tabs */}
       <div class="tab-bar">

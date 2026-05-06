@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { LeaderboardAPI, LeaderboardEntry } from '../../systems/LeaderboardAPI';
 
 export function LeaderboardScreen() {
@@ -15,11 +16,7 @@ export function LeaderboardScreen() {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title">LEADERBOARD</div>
-        <ShardBadge />
-      </div>
+      <Header title="LEADERBOARD" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
 
       <div class="ui-section">
         <div class="text-dim text-sm text-center mb-2">Endless Mode — Top 50</div>

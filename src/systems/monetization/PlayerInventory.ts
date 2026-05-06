@@ -218,11 +218,26 @@ class PlayerInventoryClass {
     this.notify('ad_free_purchased');
   }
 
-  recordGamePlayed(won: boolean): void {
+  /**
+   * Bump global play counters and — if `faction` is provided on a
+   * win — record the first-win-with-this-faction milestone. Returns
+   * true when the call was the FIRST win with that faction (caller
+   * uses this to fire the native achievement unlock). Returns false
+   * on losses, repeat wins, random faction, or missing faction.
+   */
+  recordGamePlayed(won: boolean, faction?: FactionId | null): boolean {
+    let isFirstFactionWin = false;
     StorePersistence.update(s => {
       s.gamesPlayed++;
-      if (won) s.gamesWon++;
+      if (won) {
+        s.gamesWon++;
+        if (faction && faction !== 'random' && !s.firstWinFactions.includes(faction)) {
+          s.firstWinFactions.push(faction);
+          isFirstFactionWin = true;
+        }
+      }
     });
+    return isFirstFactionWin;
   }
 
   getStats(): { gamesPlayed: number; gamesWon: number } {

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { HeroId, HERO_ORDER, HERO_TYPES, HeroTypeDef, getHeroForFaction } from '../../data/HeroTypes';
 import { FACTIONS, FactionId } from '../../data/Factions';
 import { PlayerInventory } from '../../systems/monetization';
@@ -58,11 +59,7 @@ export function HeroSelectScreen({ data }: Props) {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.showFactionSelect(data)}>{'< Back'}</button>
-        <div class="ui-header-title">CHOOSE HERO</div>
-        <ShardBadge />
-      </div>
+      <Header title="CHOOSE HERO" back={() => UIBridge.showFactionSelect(data)} rightContent={<ShardBadge />} />
 
       <div class="ui-section" style={{ textAlign: 'center', paddingBottom: '4px' }}>
         <div class="text-dim text-sm">Three heroes offered — pick wisely</div>

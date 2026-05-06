@@ -4,6 +4,7 @@
  */
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { FACTIONS, FactionId } from '../../data/Factions';
 import { getGauntletFactions, shuffleArray, getGauntletMap } from '../../data/GauntletMaps';
 import { useState } from 'preact/hooks';
@@ -22,11 +23,7 @@ export function GauntletPreviewScreen({ data }: Props) {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('draft', data)}>{'< Back'}</button>
-        <div class="ui-header-title" style={{ color: 'var(--jewel-red)' }}>FACTION GAUNTLET</div>
-        <ShardBadge />
-      </div>
+      <Header title="FACTION GAUNTLET" titleStyle={{ color: 'var(--jewel-red)' }} back={() => UIBridge.show('draft', data)} rightContent={<ShardBadge />} />
 
       <div class="ui-section" style={{ textAlign: 'center', paddingBottom: 0 }}>
         <div class="text-muted text-sm">Playing as {FACTIONS[playerFaction]?.name ?? playerFaction}</div>

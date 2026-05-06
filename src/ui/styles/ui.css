@@ -48,6 +48,14 @@
 .pass-level { font-size: 11px; color: var(--jewel-violet); }
 
 .ui-section { padding: var(--space-4) var(--space-5); }
+
+/* Settings-screen section blocks — visually grouped but no outer
+   chrome. Each block has a title header and a body of controls. */
+.settings-block {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+}
+.settings-block:first-child { border-top: none; padding-top: 0; }
 .ui-section-title {
   font-family: 'VT323', ui-monospace, monospace; font-size: var(--text-xl);
   color: var(--gold); letter-spacing: 1px; margin-bottom: var(--space-3); text-transform: uppercase;

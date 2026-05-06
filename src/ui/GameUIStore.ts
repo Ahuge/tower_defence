@@ -13,6 +13,22 @@ import { WaveDefinition } from '../data/WaveDefinitions';
 
 // ─── Types ──────────────────────────────────────────────
 
+/** Upgrade choice surfaced in the tower info panel. Linear towers
+ *  get a single entry (branchId=null); branching towers get the
+ *  default path plus one entry per branch. */
+export interface TowerUpgradeOption {
+  branchId: string | null;
+  label: string;
+  cost: number;
+  /** Tower name AFTER this option resolves. For branches that
+   *  rename the tower this shows the new name in tooltips. */
+  resolvedName: string;
+  /** Precomputed stat deltas for the preview row. */
+  dmg: string;
+  rng: string;
+  spd: string;
+}
+
 export interface TowerStats {
   name: string;
   level: number;
@@ -22,16 +38,25 @@ export interface TowerStats {
   damage: number;
   range: number;
   fireRate: number;
+  /** Values after aura/buff resolution. Equal to base when no buffs active. */
+  effectiveDamage: number;
+  effectiveRange: number;
+  effectiveFireRate: number;
   damageType: string;
   isUltimate: boolean;
   canUpgrade: boolean;
   upgradeCost: number;
+  /** Circle co-op: false when tower belongs to another player. Disables upgrade/sell. */
+  owned: boolean;
   /** Formatted trait descriptions */
   traits: string[];
   /** Aura buff descriptions (from adjacent towers) */
   auraBuffs: string[];
-  /** Upgrade preview: stat deltas */
+  /** Upgrade preview: stat deltas (default path — back-compat). */
   upgradePreview: { dmg: string; rng: string; spd: string } | null;
+  /** All upgrade choices currently available (≥2 when this tower
+   *  is at a branch point). Drives the info panel's button row. */
+  upgradeOptions: TowerUpgradeOption[];
   /** Raw tower reference for callbacks */
   _tower: Tower;
 }
@@ -195,6 +220,30 @@ export interface EventLogEntry {
   time: number;
 }
 
+/** Per-player row in the Circle Co-op roster panel. GameScene
+ *  snapshots these each frame from `CircleManager` + the kill /
+ *  bot-gold / tower-ownership suppliers so the DOM component can
+ *  render them without touching any of the live systems. */
+export interface CircleRosterPlayer {
+  index: number;
+  kind: 'me' | 'bot' | 'remote';
+  /** Faction display name (lowercased faction id, e.g. 'nature'). */
+  faction: string;
+  /** Zone color as a CSS hex string (e.g. '#88cc22'). */
+  colorHex: string;
+  ready: boolean;
+  gold: number | null;   // bots only — remote peers keep this null
+  towers: number;
+  kills: number;
+}
+
+export interface CircleRosterState {
+  players: CircleRosterPlayer[];
+  /** Remaining seconds on the current wave countdown (-1 = no timer). */
+  timerS: number;
+  sharedLives: number;
+}
+
 export interface GameUIState {
   /** Whether the game is active (sidebar should render) */
   active: boolean;
@@ -256,6 +305,11 @@ export interface GameUIState {
    *  the update loop, clears it once the player picks (or the ad
    *  errors out). null most of the time. */
   continueOffer: ContinueOffer | null;
+  /** Circle Co-op roster snapshot. `null` on any non-Circle match so
+   *  the DOM panel stays unmounted. GameScene rewrites this each
+   *  frame; shallow-equality in the setter skips the notify when
+   *  nothing changed. */
+  circleRoster: CircleRosterState | null;
 }
 
 export interface ContinueOffer {
@@ -291,13 +345,29 @@ function creepStatsEqual(a: CreepStats, b: CreepStats): boolean {
   return true;
 }
 
+/** Shallow equality for CircleRosterState — per-row field check so
+ *  a snapshot with identical values (common across frames when
+ *  nothing is happening) doesn't trigger a DOM re-render. */
+function circleRosterEqual(a: CircleRosterState, b: CircleRosterState): boolean {
+  if (a.timerS !== b.timerS || a.sharedLives !== b.sharedLives) return false;
+  if (a.players.length !== b.players.length) return false;
+  for (let i = 0; i < a.players.length; i++) {
+    const pa = a.players[i], pb = b.players[i];
+    if (pa.index !== pb.index || pa.kind !== pb.kind) return false;
+    if (pa.faction !== pb.faction || pa.colorHex !== pb.colorHex) return false;
+    if (pa.ready !== pb.ready || pa.gold !== pb.gold) return false;
+    if (pa.towers !== pb.towers || pa.kills !== pb.kills) return false;
+  }
+  return true;
+}
+
 // ─── Store ──────────────────────────────────────────────
 
 class GameUIStoreClass {
   private state: GameUIState = this.defaultState();
   private listeners: Set<Listener> = new Set();
   private callbacks: {
-    onUpgrade?: (tower: Tower) => void;
+    onUpgrade?: (tower: Tower, branchId?: string | null) => void;
     onSell?: (tower: Tower) => void;
     onToggleSidebar?: () => void;
     onStartWave?: () => void;
@@ -348,7 +418,19 @@ class GameUIStoreClass {
       heroShop: null,
       continueOffer: null,
       speedBoostRemainingSec: 0,
+      circleRoster: null,
     };
+  }
+
+  /** Replace the circle roster snapshot. Shallow-compares each row
+   *  so a frame-for-frame identical snapshot doesn't cost a re-
+   *  render. Pass `null` to hide the panel (non-Circle matches). */
+  setCircleRoster(next: CircleRosterState | null): void {
+    const prev = this.state.circleRoster;
+    if (prev === next) return;
+    if (prev && next && circleRosterEqual(prev, next)) return;
+    this.state = { ...this.state, circleRoster: next };
+    this.notify();
   }
 
   /** Surface the continue-ad offer. GameScene calls this on lives→0
@@ -528,8 +610,8 @@ class GameUIStoreClass {
   }
 
   /** Called by DOM panel when user clicks upgrade */
-  requestUpgrade(tower: Tower): void {
-    this.callbacks.onUpgrade?.(tower);
+  requestUpgrade(tower: Tower, branchId: string | null = null): void {
+    this.callbacks.onUpgrade?.(tower, branchId);
   }
 
   /** Called by DOM panel when user clicks sell */

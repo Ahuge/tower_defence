@@ -17,6 +17,97 @@ function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: U
   const towerTypeId: string = tower.typeId ?? '';
   const isMelee = towerTypeId.includes('brawler');
   const isHeavy = towerTypeId.includes('heavy') || towerTypeId.includes('commander');
+  const isViper = towerTypeId === 'nature_viper';
+  const isSwarmling = towerTypeId === 'alien_swarmling';
+
+  // Per-unit visual kit. Each mobile unit has its own attack
+  // signature — Grove Viper strikes with a fanged lunge and leaves
+  // a green venom splash; Swarmling rakes with chitin shards;
+  // Brawler star-bursts; Rifleman leaves a bullet trail.
+  if (isViper && target) {
+    // Strike lunge: a short fang-shaped stab from snake toward
+    // target, held briefly, followed by a venom-droplet splash.
+    // Scales with tower.level (thicker strike + more droplets).
+    const lv = tower.level ?? 1;
+    const gfx = scene.add.graphics();
+    gfx.setDepth(14);
+    const fang = 0xf6f0e8;        // bone-white
+    const fangShadow = 0x886644;  // dark bark (back of fang)
+    const venom = 0x66dd33;       // bright venom green
+    const toxic = 0xaaee33;       // lighter toxic splash
+    const bloodFleck = 0xcc2288;  // magenta for the strike flash
+
+    // Phase 1: lunge — two quick fang stabs from snake to target
+    let stabProgress = 0;
+    const stab = scene.time.addEvent({
+      delay: 14, repeat: 3,
+      callback: () => {
+        stabProgress += 1 / 3;
+        gfx.clear();
+        const tx = tower.x + (target.x - tower.x) * stabProgress;
+        const ty = tower.y + (target.y - tower.y) * stabProgress;
+        // Perpendicular offset for the twin-fang pair
+        const dx = target.x - tower.x;
+        const dy = target.y - tower.y;
+        const len = Math.max(1, Math.hypot(dx, dy));
+        const nx = -dy / len;
+        const ny = dx / len;
+        const offset = 1 + lv; // fang-pair spread
+        // Left fang line
+        gfx.lineStyle(1 + Math.min(2, lv), fangShadow, 0.9);
+        gfx.lineBetween(tower.x + nx * offset, tower.y + ny * offset, tx + nx * offset, ty + ny * offset);
+        gfx.lineStyle(1, fang, 1);
+        gfx.lineBetween(tower.x + nx * offset, tower.y + ny * offset, tx + nx * offset, ty + ny * offset);
+        // Right fang line
+        gfx.lineStyle(1 + Math.min(2, lv), fangShadow, 0.9);
+        gfx.lineBetween(tower.x - nx * offset, tower.y - ny * offset, tx - nx * offset, ty - ny * offset);
+        gfx.lineStyle(1, fang, 1);
+        gfx.lineBetween(tower.x - nx * offset, tower.y - ny * offset, tx - nx * offset, ty - ny * offset);
+        // Magenta strike-flash at the head of the lunge
+        gfx.fillStyle(bloodFleck, 1);
+        gfx.fillCircle(tx, ty, 1 + (lv >= 2 ? 1 : 0));
+        if (stabProgress >= 1) {
+          stab.destroy();
+          // Phase 2: venom splash at target
+          gfx.clear();
+          gfx.fillStyle(venom, 0.85);
+          for (let i = 0; i < 6 + lv * 2; i++) {
+            const a = (i / (6 + lv * 2)) * Math.PI * 2;
+            const r = 3 + Math.random() * (3 + lv);
+            gfx.fillCircle(target.x + Math.cos(a) * r, target.y + Math.sin(a) * r, 1 + (i % 2));
+          }
+          gfx.fillStyle(toxic, 0.7);
+          gfx.fillCircle(target.x, target.y, 2 + lv);
+          // Two puncture dots (the bite marks) at the target
+          gfx.fillStyle(bloodFleck, 0.9);
+          gfx.fillCircle(target.x - 1, target.y, 1);
+          gfx.fillCircle(target.x + 1, target.y, 1);
+          // Recoil wash after ~100ms
+          scene.time.delayedCall(100, () => gfx.destroy());
+        }
+      },
+    });
+    return;
+  }
+
+  if (isSwarmling && target) {
+    // Chitin slash — 3 quick bone-yellow scratch lines at the target.
+    const gfx = scene.add.graphics();
+    gfx.setDepth(14);
+    gfx.lineStyle(1, 0xccffaa, 0.95);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI / 2 - Math.PI / 4;
+      const len = 6;
+      gfx.lineBetween(
+        target.x + Math.cos(a) * -len * 0.3,
+        target.y + Math.sin(a) * -len * 0.3,
+        target.x + Math.cos(a) * len,
+        target.y + Math.sin(a) * len,
+      );
+    }
+    scene.time.delayedCall(90, () => gfx.destroy());
+    return;
+  }
 
   if (splashRadius > 0) {
     // AoE flash ring (Tank / splash mobile units)
@@ -145,6 +236,14 @@ registerDelivery('chain_damage', (trait: Trait, ctx: HitContext) => {
 registerDelivery('teleport_delivery', (trait: Trait, ctx: HitContext) => {
   const steps = (trait.stepsBase ?? 3) + (trait.stepsPerLevel ?? 2) * ctx.towerLevel;
   const target = ctx.target;
+  // Apply damage BEFORE teleporting so a Rift tower with a small
+  // damage stat actually dings the target (previously 0-damage
+  // mechanic — non-zero damage was silently dropped).
+  if (ctx.damage > 0) {
+    const dmg = calculateDamage(ctx.damage, ctx.damageType, target.armor);
+    target.takeDamage(dmg);
+    ctx.hitStats.directDamage += dmg;
+  }
   target.pathIndex = Math.max(1, target.pathIndex - steps);
   const tp = target.path[target.pathIndex - 1];
   if (tp) {
@@ -229,9 +328,14 @@ registerDamageMod('crit_chance', (trait: Trait, damage: number, ctx: HitContext)
 });
 
 registerDamageMod('jackpot', (trait: Trait, damage: number, ctx: HitContext) => {
-  // Kill chance scales: +2% per level above 1
-  const baseKill = trait.killChance ?? 0.08;
-  const killChance = Math.min(0.5, baseKill + 0.02 * (ctx.towerLevel - 1));
+  // Kill chance scales: +2% per level above 1.
+  // Bosses are genuinely hard to jackpot — the instant-kill slice
+  // is halved against them so Gambler / Oblivion still land the
+  // occasional lucky crit but can't trivially erase a boss wave.
+  // The miss slice stays full — no "I'm a boss, please whiff" perk.
+  const baseKill = trait.killChance ?? 0.04;
+  const levelKill = Math.min(0.5, baseKill + 0.02 * (ctx.towerLevel - 1));
+  const killChance = ctx.target.isBoss ? levelKill * 0.5 : levelKill;
   const missChance = trait.missChance ?? 0.25;
   const roll = Math.random();
   if (roll < killChance) {

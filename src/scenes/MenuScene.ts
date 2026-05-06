@@ -158,8 +158,8 @@ export class MenuScene extends Phaser.Scene {
       { label: 'Hero Defense',     desc: 'Control a hero in the arena',     accent: 0xff44aa, action: () => goFaction('hero_defense') },
       { label: 'Faction Gauntlet', desc: '100 waves — fight all factions',  accent: 0xff4444, action: () => goFaction('gauntlet') },
       { label: 'Endless',          desc: 'Infinite scaling — play until you fall', accent: 0xff6622, action: () => goFaction('endless') },
-      { label: 'Versus 1v1',       desc: 'P2P competitive — sends attack',  accent: 0xff8844, action: () => this.scene.start('LobbyScene') },
-      { label: 'Circle Co-op',     desc: '2-4 players — shared map',        accent: 0x44aaff, action: () => this.scene.start('CircleLobbyScene') },
+      { label: 'Versus 1v1',       desc: 'P2P competitive — sends attack',  accent: 0xff8844, action: () => UIBridge.show('lobby') },
+      { label: 'Circle Co-op',     desc: '2-4 players — shared map',        accent: 0x44aaff, action: () => UIBridge.show('circle-lobby') },
     ];
 
     const modeCols = ph ? 2 : 3;

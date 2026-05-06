@@ -153,6 +153,10 @@ export class CircleLobbyScene extends Phaser.Scene {
           this.customMapJSON = msg.customMapJSON as MapJSON;
           this.customMapDef = MapStorage.mapJSONToDefinition(this.customMapJSON);
         }
+        // Sync playerCount + botSlots so the roster renders bots
+        // that the host added (these don't fire player_joined).
+        this.circle!.playerCount = msg.players.length;
+        if (msg.botSlots) for (const idx of msg.botSlots) this.circle!.botSlots.add(idx);
       }
       this.launchGame();
     } else if (msg.type === 'game_start') {

@@ -47,6 +47,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         editor: resolve(__dirname, 'editor.html'),
         skinEditor: resolve(__dirname, 'skin-editor.html'),
+        circleEditor: resolve(__dirname, 'circle-editor.html'),
       },
     },
   },

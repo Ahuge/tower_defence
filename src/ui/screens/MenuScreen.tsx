@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
-import { ProfileAvatar } from '../components/ProfileAvatar';
+import { Header } from '../components/Header';
 import { TutorialMenuButton } from '../tutorial/TutorialMenuButton';
 import { MAP_ORDER, MAPS, MapId } from '../../data/Maps';
 import { getDailySeed } from '../../data/MapGenerator';
@@ -51,9 +51,9 @@ export function MenuScreen() {
 
   const handleModeClick = (m: typeof MODES[0]) => {
     if (m.mode === 'lobby') {
-      UIBridge.startScene('LobbyScene');
+      UIBridge.show('lobby');
     } else if (m.mode === 'circle') {
-      UIBridge.startScene('CircleLobbyScene');
+      UIBridge.show('circle-lobby');
     } else if (m.mode === 'standard') {
       setWaveOverlay(true);
     } else {
@@ -63,14 +63,7 @@ export function MenuScreen() {
 
   return (
     <>
-      <div class="ui-header">
-        <div class="ui-header-title">FACTIONS</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <ProfileAvatar />
-          <TutorialMenuButton />
-          <ShardBadge />
-        </div>
-      </div>
+      <Header title="FACTIONS" rightContent={<><TutorialMenuButton /><ShardBadge /></>} />
       <div class="ui-section">
         <div class="ui-section-title">Map</div>
         <div data-tutorial-target="menu-map" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>

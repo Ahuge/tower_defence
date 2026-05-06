@@ -32,7 +32,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
     description: 'Growth and synergy. Poison, roots, and adjacency buffs.',
     primaryColor: 0x33aa44,
     secondaryColor: 0x66dd77,
-    towerIds: ['nature_thorn', 'nature_root', 'nature_blossom', 'nature_spore', 'nature_vine', 'nature_elder'],
+    towerIds: ['nature_bramble', 'nature_root', 'nature_viper', 'nature_blossom', 'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder'],
   },
   void: {
     id: 'void',

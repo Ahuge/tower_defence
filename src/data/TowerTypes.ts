@@ -1,6 +1,7 @@
 import { DamageType } from './CreepTypes';
-import { FactionId } from './Factions';
+import { FactionId, FACTIONS, FACTION_ORDER } from './Factions';
 import { Trait } from '../systems/traits/Trait';
+import type { TowerRole } from './TowerRoles';
 
 /** Targeting priority for towers */
 export type TargetingMode = 'first' | 'closest' | 'strongest' | 'weakest' | 'fastest';
@@ -25,6 +26,11 @@ export interface TowerType {
   ultimate?: boolean;
   /** Targeting priority. Default: 'first' (closest to exit) */
   targeting?: TargetingMode;
+  /** Optional explicit role for the Balanced bot brain and other
+   *  AI consumers. When unset, `getTowerRole()` in TowerRoles.ts
+   *  derives it from traits + stats. Set this only to override the
+   *  derivation for a tower whose role is non-obvious. */
+  role?: TowerRole;
 }
 
 export interface TowerUpgrade {
@@ -33,6 +39,25 @@ export interface TowerUpgrade {
   damage: number;
   range: number;
   fireRate: number;
+  /** Label shown on the default (left-hand) upgrade button when
+   *  branches exist. Only read when `branches` is non-empty. */
+  branchLabel?: string;
+  /** Alternative paths at this upgrade point. Picking a branch
+   *  swaps the tower's `typeDef` to the target TowerType — the
+   *  target owns all post-branch stats, art, and upgrades. */
+  branches?: UpgradeBranch[];
+}
+
+export interface UpgradeBranch {
+  /** Stable per-tower branch id, e.g. 'razor'. Sent over the wire
+   *  with `tower_upgraded` so peers pick the matching path. */
+  id: string;
+  /** UI label for the branch button (the resulting tower's name). */
+  label: string;
+  /** TowerType id to swap into. The target's `cost` is charged as
+   *  the branch-switch cost; subsequent upgrades pull from the
+   *  target's `upgrades` array. */
+  transformsTo: string;
 }
 
 function def(p: Partial<TowerType> & Pick<TowerType, 'id' | 'name' | 'cost' | 'damage' | 'range' | 'fireRate' | 'color' | 'hotkey' | 'description'>): TowerType {
@@ -250,19 +275,13 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
 
   // ================================================================
-  // NATURE (6) — Growth, poison, synergy, roots
+  // NATURE (8) — Growth, poison, synergy, roots
   // ================================================================
-  nature_thorn: def({
-    id: 'nature_thorn', name: 'Thorn', description: 'Cheap physical DPS. Bread and butter.',
-    faction: 'nature', damageType: 'physical', cost: 20, damage: 10, range: 3, fireRate: 700,
-    color: 0x33aa44, projectileSpeed: 320, hotkey: '1',
-    upgrades: [
-      { level: 2, cost: 25, damage: 16, range: 3, fireRate: 650 },
-      { level: 3, cost: 45, damage: 24, range: 3.5, fireRate: 580 },
-      { level: 4, cost: 75, damage: 35, range: 3.5, fireRate: 500 },
-      { level: 5, cost: 120, damage: 50, range: 4, fireRate: 420 },
-    ],
-  }),
+  // Note: `nature_thorn` (the classic cheap scaling DPS) was removed
+  // in favour of `nature_bramble` — a faster-firing, shorter-range
+  // thornbrush that doubles as a maze filler. Bramble carries
+  // Thorn's 5-level scaling slot so Nature's early-DPS curve is
+  // preserved.
   nature_root: def({
     id: 'nature_root', name: 'Root', description: 'Strongest slow in game: 70% for 3s.',
     faction: 'nature', damageType: 'magic', cost: 35, damage: 3, range: 3, fireRate: 1000,
@@ -276,7 +295,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_blossom: def({
     id: 'nature_blossom', name: 'Blossom', description: 'No attack. Buffs adjacent towers: +15% DMG, +8% SPD/level.',
     faction: 'nature', damageType: 'magic', cost: 60, damage: 0, range: 1.5, fireRate: 99999,
-    color: 0xff88aa, projectileSpeed: 0, hotkey: '3',
+    color: 0xff88aa, projectileSpeed: 0, hotkey: '4',
     traits: [{ id: 'adjacency_buff', damagePercent: 0.15, ratePercent: 0.08 }],
     upgrades: [
       { level: 2, cost: 55, damage: 0, range: 1.5, fireRate: 99999 },
@@ -286,7 +305,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_spore: def({
     id: 'nature_spore', name: 'Spore', description: 'Poisons ALL creeps near tower. 2% HP/s. Area denial.',
     faction: 'nature', damageType: 'magic', cost: 100, damage: 5, range: 3, fireRate: 1500,
-    color: 0x88cc22, projectileSpeed: 200, projectileColor: 0x66aa00, hotkey: '4',
+    color: 0x88cc22, projectileSpeed: 200, projectileColor: 0x66aa00, hotkey: '5',
     traits: [{ id: 'tower_aura_damage', radius: 96 }, { id: 'poison_dot', percentPerSec: 0.02, duration: 3000 }],
     upgrades: [
       { level: 2, cost: 90, damage: 8, range: 3.5, fireRate: 1300 },
@@ -296,7 +315,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_vine: def({
     id: 'nature_vine', name: 'Vine', description: '20% chance to fully root (stun) for 0.8s per hit.',
     faction: 'nature', damageType: 'physical', cost: 160, damage: 14, range: 3.5, fireRate: 1000,
-    color: 0x228833, projectileSpeed: 280, hotkey: '5',
+    color: 0x228833, projectileSpeed: 280, hotkey: '7',
     traits: [{ id: 'direct_damage' }, { id: 'root_on_hit', chance: 0.2, duration: 800 }],
     upgrades: [
       { level: 2, cost: 130, damage: 22, range: 4, fireRate: 900 },
@@ -306,7 +325,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   nature_elder: def({
     id: 'nature_elder', name: 'Elder Treant', description: 'ULTIMATE. Grows +8% DMG permanently. Roots and buffs allies.',
     faction: 'nature', damageType: 'physical', cost: 600, damage: 40, range: 4, fireRate: 800,
-    color: 0x225511, projectileSpeed: 280, hotkey: '6', ultimate: true,
+    color: 0x225511, projectileSpeed: 280, hotkey: '8', ultimate: true,
     traits: [
       { id: 'direct_damage' },
       { id: 'growth_scaling', growthPercent: 0.08 },
@@ -315,16 +334,85 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
     // No upgrades — it grows on its own
   }),
+  nature_bramble: def({
+    id: 'nature_bramble', name: 'Bramble Hedge',
+    description: 'Dense thornbrush. Pricks constantly. At Lv2, choose Hedge (wider maze) or Razor Bramble (vicious DPS).',
+    role: 'wall',
+    faction: 'nature', damageType: 'physical', cost: 12, damage: 1, range: 1.2, fireRate: 400,
+    color: 0x447733, projectileSpeed: 260, hotkey: '1',
+    traits: [{ id: 'direct_damage' }],
+    upgrades: [
+      // L2 is the branch point. Default = Hedge (keeps the wall
+      // identity and cheap-maze scaling). Branch = Razor Bramble,
+      // which swaps the tower's typeDef to nature_razor_bramble
+      // (see the sibling definition below for Razor's stats).
+      {
+        level: 2, cost: 15, damage: 2, range: 1.2, fireRate: 350,
+        branchLabel: 'Hedge',
+        branches: [{ id: 'razor', label: 'Razor Bramble', transformsTo: 'nature_razor_bramble' }],
+      },
+      { level: 3, cost: 25, damage: 3, range: 1.5, fireRate: 300 },
+    ],
+  }),
+  // Razor Bramble — not in `Factions.nature.towerIds`, so it can't
+  // be placed directly from the tower dock. Only reachable via
+  // Bramble Hedge's L2 branch. Its `cost` is charged as the one-
+  // time branch-switch fee. `upgrades` contains L3 and L4 stats,
+  // continuing the engine's level counter from where Bramble left
+  // off (L2 on swap → typeDef.upgrades[0].level === 3).
+  nature_razor_bramble: def({
+    id: 'nature_razor_bramble', name: 'Razor Bramble',
+    description: 'Bramble sharpened into blades. Short range, vicious bite.',
+    role: 'dps-single',
+    faction: 'nature', damageType: 'physical',
+    cost: 20, damage: 5, range: 1.5, fireRate: 300,
+    color: 0x884433, projectileSpeed: 300, projectileColor: 0xcc4422, hotkey: '',
+    traits: [{ id: 'direct_damage' }],
+    upgrades: [
+      { level: 3, cost: 40, damage: 9,  range: 1.8, fireRate: 260 },
+      { level: 4, cost: 70, damage: 15, range: 2.2, fireRate: 220 },
+    ],
+  }),
+  nature_viper: def({
+    id: 'nature_viper', name: 'Grove Viper',
+    description: 'Mobile. Slithers along hidden paths; strikes with a fanged lunge and sinks venom deep.',
+    faction: 'nature', damageType: 'physical', cost: 40, damage: 5, range: 2.5, fireRate: 950,
+    color: 0x2a5a2a, projectileSpeed: 200, hotkey: '3',
+    traits: [
+      // Slithers along the ground — underlying mobile_unit pathing
+      // is standard (smooth-slide); the undulation is sprite-only
+      // (4-frame S-curve cycle). engageRange tuned so the strike
+      // reaches past the snake's own body length.
+      { id: 'mobile_unit', moveSpeed: 100, engageRange: 1.8, leashRange: 4, attackCooldown: 950 },
+      { id: 'direct_damage' },
+      { id: 'poison_dot', percentPerSec: 0.06, duration: 4500 },
+    ],
+    upgrades: [
+      { level: 2, cost: 40, damage: 9,  range: 2.8, fireRate: 900 },
+      { level: 3, cost: 65, damage: 14, range: 3.2, fireRate: 850 },
+    ],
+  }),
+  nature_sunroot: def({
+    id: 'nature_sunroot', name: 'Sunroot',
+    description: 'Splash DPS. A bloom that learned to burn — fire-flowers arc wide.',
+    faction: 'nature', damageType: 'magic', cost: 140, damage: 16, range: 3, fireRate: 900,
+    color: 0xddaa22, projectileSpeed: 260, projectileColor: 0xffcc44, hotkey: '6',
+    traits: [{ id: 'splash_damage', radius: 56 }],
+    upgrades: [
+      { level: 2, cost: 120, damage: 24, range: 3.5, fireRate: 850 },
+      { level: 3, cost: 200, damage: 34, range: 4, fireRate: 800 },
+    ],
+  }),
 
   // ================================================================
   // VOID (5) — Chaos, gambling, manipulation
   // ================================================================
   void_gambler: def({
-    id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 8% instant kill, 25% whiff.',
+    id: 'void_gambler', name: 'Gambler', description: 'Cheap chaos. 4% instant kill (2% vs bosses), 25% whiff.',
     faction: 'void', damageType: 'magic', cost: 15, damage: 25, range: 3, fireRate: 1000,
     color: 0xdd44ff, projectileSpeed: 300, hotkey: '1',
     targeting: 'weakest',
-    traits: [{ id: 'direct_damage' }, { id: 'jackpot', killChance: 0.08, missChance: 0.25 }],
+    traits: [{ id: 'direct_damage' }, { id: 'jackpot', killChance: 0.04, missChance: 0.25 }],
     upgrades: [
       { level: 2, cost: 30, damage: 45, range: 3.5, fireRate: 900 },
     ],
@@ -351,13 +439,13 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   void_rift: def({
-    id: 'void_rift', name: 'Rift', description: 'Teleports creeps backward on their path.',
-    faction: 'void', damageType: 'magic', cost: 120, damage: 0, range: 3.5, fireRate: 3500,
+    id: 'void_rift', name: 'Rift', description: 'Teleports creeps backward on their path. Bites a little on the way through.',
+    faction: 'void', damageType: 'magic', cost: 120, damage: 2, range: 3.5, fireRate: 3500,
     color: 0x440066, projectileSpeed: 200, hotkey: '4',
     traits: [{ id: 'teleport_delivery', stepsBase: 4, stepsPerLevel: 2 }],
     upgrades: [
-      { level: 2, cost: 100, damage: 0, range: 4, fireRate: 3000 },
-      { level: 3, cost: 160, damage: 0, range: 4.5, fireRate: 2500 },
+      { level: 2, cost: 100, damage: 3, range: 4, fireRate: 3000 },
+      { level: 3, cost: 160, damage: 4, range: 4.5, fireRate: 2500 },
     ],
   }),
   void_oblivion: def({
@@ -825,9 +913,21 @@ export function getTowerType(id: string): TowerType {
   return t;
 }
 
-/** Get all faction tower IDs (excluding generic) */
+/** Get all faction-selectable tower IDs.
+ *
+ *  Pulls from each faction's explicit `towerIds` list rather than
+ *  iterating `TOWER_TYPES`, so branch-only towers (e.g.
+ *  `nature_razor_bramble`, reached only via Bramble Hedge's L2
+ *  branch) are NOT included. This is the pool the Random faction
+ *  and other "all towers" UIs roll from. */
 export function getAllFactionTowerIds(): string[] {
-  return Object.values(TOWER_TYPES)
-    .filter(t => t.faction)
-    .map(t => t.id);
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const fid of FACTION_ORDER) {
+    if (fid === 'random') continue;
+    for (const id of FACTIONS[fid].towerIds) {
+      if (!seen.has(id)) { seen.add(id); ids.push(id); }
+    }
+  }
+  return ids;
 }

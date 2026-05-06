@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { ShardWallet, BattlePass, StorePersistence, BATTLE_PASS_SHARD_COST, BP_MAX_LEVEL, PREMIUM_PERKS } from '../../systems/monetization';
 import { PassReward, PerkId } from '../../systems/monetization/BattlePass';
 
@@ -14,11 +15,7 @@ export function BattlePassScreen() {
 
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title text-pass">BATTLE PASS</div>
-        <ShardBadge />
-      </div>
+      <Header title="BATTLE PASS" titleClassName="text-pass" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       <div class="ui-section" style={{ textAlign: 'center' }}>
         <div class="text-dim text-sm">{season?.name ?? 'No Active Season'}</div>
         <div style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '36px', color: 'var(--text-primary)', margin: '8px 0 4px' }}>Level {level}</div>

@@ -1,9 +1,17 @@
 import { GameStats } from '../StatsTracker';
 
 export type GameMessage =
-  | { type: 'tower_placed'; towerId: string; col: number; row: number }
+  // `ownerIndex` is optional — set when a CPU bot (hosted on the
+  // sender but owned by a bot slot) places a tower, so receivers
+  // attribute it to the bot's player index instead of the sender's.
+  // Undefined on human placements (attribution falls back to the
+  // envelope `from` field).
+  | { type: 'tower_placed'; towerId: string; col: number; row: number; ownerIndex?: number }
   | { type: 'tower_sold'; col: number; row: number }
-  | { type: 'tower_upgraded'; col: number; row: number; level: number }
+  // Divergent upgrade paths: when a branch is picked, `branch` is
+  // the per-tower branch id. Missing on linear upgrades — receiver
+  // applies the default path (back-compat).
+  | { type: 'tower_upgraded'; col: number; row: number; level: number; branch?: string }
   | { type: 'send_purchased'; sendOptionId: string }
   | { type: 'frontier_purchased'; buildingId: string }
   | { type: 'wave_ready' }
@@ -30,7 +38,18 @@ export type GameMessage =
   | { type: 'player_joined'; playerIndex: number; totalPlayers: number }
   | { type: 'all_waves_cleared'; wave: number }
   | { type: 'circle_victory'; winnerIndex: number }
-  | { type: 'tower_sync'; towers: { towerId: string; col: number; row: number; level: number }[] };
+  | { type: 'tower_sync'; towers: { towerId: string; col: number; row: number; level: number }[] }
+  // Circle Co-op kill record. Broadcast when a creep dies so every
+  // peer's roster shows a consistent per-player kill count, and the
+  // 50/50 kill-gold split (half to killer, half to spawn-owner)
+  // credits the right EconomyManager on every peer.
+  //
+  //   `killedBy`          player-index of the tower owner who struck
+  //                       the killing blow (−1 if untracked).
+  //   `spawnOwnerIndex`   player-index whose zone / bought-send this
+  //                       creep came from (−1 if none).
+  //   `goldValue`         total kill gold, before the 50/50 split.
+  | { type: 'creep_killed'; killedBy: number; spawnOwnerIndex: number; goldValue: number };
 
 /** Envelope wrapper for CircleManager routing */
 export interface CircleEnvelope {

@@ -1,9 +1,12 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { ShardWallet, BattlePass } from '../../systems/monetization';
 import { GameStats } from '../../systems/StatsTracker';
 import { platformBridge } from '../../systems/platform';
+import { FACTIONS, FactionId } from '../../data/Factions';
+import { CoopPlayerStats } from '../../scenes/GameOverScene';
 
 interface Props { data: Record<string, unknown>; }
 
@@ -45,6 +48,7 @@ export function GameOverScreen({ data }: Props) {
   const heroStats = data.heroStats as { kills: number; deaths: number; damageDealt: number; abilitiesUsed: number; heroName: string } | null;
   const shardsEarned = data.shardsEarned as number;
   const continueAdShown = data.continueAdShown === true;
+  const coopPlayers = data.coopPlayers as CoopPlayerStats[] | undefined;
 
   const score = wave * 100 + creepsKilled * 2 + (won ? 1000 : 0) + gold;
   const gameTime = stats ? Math.round(stats.gameTimeMs / 1000) : 0;
@@ -66,10 +70,7 @@ export function GameOverScreen({ data }: Props) {
 
   return (
     <>
-      <div class="ui-header">
-        <div class="ui-header-title" style={{ color: won ? 'var(--jewel-teal)' : 'var(--jewel-red)' }}>{won ? 'VICTORY!' : 'DEFEAT'}</div>
-        <ShardBadge />
-      </div>
+      <Header title={won ? 'VICTORY!' : 'DEFEAT'} titleStyle={{ color: won ? 'var(--jewel-teal)' : 'var(--jewel-red)' }} rightContent={<ShardBadge />} />
 
       {/* Hero numerals — big VT323 stat readout */}
       <div style={{ background: 'linear-gradient(90deg, var(--bg-inset), var(--bg-surface), var(--bg-inset))', padding: '20px', display: 'flex', justifyContent: 'center', gap: '32px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -90,6 +91,50 @@ export function GameOverScreen({ data }: Props) {
           <Stat label="Gold Left" value={String(gold)} />
         </div>
       </div>
+
+      {/* Circle Co-op per-player performance */}
+      {coopPlayers && coopPlayers.length > 0 && (
+        <div class="ui-section" style={{ paddingTop: 0 }}>
+          <div class="ui-section-title" style={{ color: 'var(--jewel-teal)' }}>Team Performance</div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: '13px', width: 'auto', minWidth: '100%' }}>
+              <thead><tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)' }}>
+                <th style={th}>Player</th>
+                <th style={th}>Faction</th>
+                <th style={thR}>Kills</th>
+                <th style={thR}>%</th>
+                <th style={thR}>Towers</th>
+                <th style={thR}>Gold Left</th>
+              </tr></thead>
+              <tbody>{(() => {
+                const totalKills = coopPlayers.reduce((s, p) => s + p.kills, 0);
+                const sorted = [...coopPlayers].sort((a, b) => b.kills - a.kills);
+                return sorted.map(p => {
+                  const factionDef = FACTIONS[p.faction as FactionId];
+                  const facColor = factionDef ? '#' + factionDef.primaryColor.toString(16).padStart(6, '0') : 'var(--text-primary)';
+                  const pct = totalKills > 0 ? ((p.kills / totalKills) * 100).toFixed(0) : '0';
+                  const label = p.isLocal ? `P${p.playerIndex} (you)` : p.isBot ? `P${p.playerIndex} [CPU]` : `P${p.playerIndex}`;
+                  return (
+                    <tr key={p.playerIndex} style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--bg-inset)', fontWeight: p.isLocal ? 'bold' : 'normal' }}>
+                      <td style={td}>{label}</td>
+                      <td style={{ ...td, color: facColor }}>{factionDef?.name ?? p.faction}</td>
+                      <td style={tdNum}>{p.kills.toLocaleString()}</td>
+                      <td style={{ ...tdNum, color: 'var(--text-muted)' }}>{pct}%</td>
+                      <td style={tdNum}>{p.towersBuilt}</td>
+                      <td style={{ ...tdNum, color: p.goldRemaining > 0 ? 'var(--gold)' : 'var(--text-dim)' }}>
+                        {p.goldRemaining > 0 ? `${p.goldRemaining}g` : (p.isBot || p.isLocal ? '0g' : '—')}
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}</tbody>
+            </table>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 6 }}>
+            Gold Left shows 0 / — for remote humans because their economy isn't synced — local player and CPUs are authoritative.
+          </div>
+        </div>
+      )}
 
       {/* Economy Breakdown */}
       {stats && (

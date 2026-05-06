@@ -1,5 +1,6 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
+import { Header } from '../components/Header';
 
 type Entry = {
   date: string;
@@ -8,6 +9,140 @@ type Entry = {
 };
 
 const ENTRIES: Entry[] = [
+  {
+    date: '2026-04-23',
+    title: 'Circle Co-op roster → DOM panel',
+    changes: [
+      'Roster (kills, gold, towers, lives, timer) moved from Phaser Text to a Preact component so font sizes scale on phone via UIScale',
+      'New GameUIStore.circleRoster snapshot rewritten each frame; shallow-equal check skips re-renders when nothing changes',
+      'Top-right positioning accounts for zoom buttons on desktop; phone hugs the right edge',
+    ],
+  },
+  {
+    date: '2026-04-23',
+    title: 'Endless mode bug fixes',
+    changes: [
+      'FIX: faction rotation at wave 10/20/... forgot to rebind creep sprites — new faction creeps rendered with the prior faction\'s textures',
+      'FIX: faction rotation used Math.random(), so host + joiner diverged in multiplayer Endless. Now seeded from sharedSeed ^ waveNum',
+      'FIX: UpcomingWaves snapshot ran before the append-more-waves block, so newly generated waves didn\'t appear until the next clear',
+    ],
+  },
+  {
+    date: '2026-04-23',
+    title: 'Gambler balance: 4% instant kill, halved vs bosses',
+    changes: [
+      'Gambler jackpot.killChance dropped from 8% to 4% — 15g + fast fire rate made the 8% roll too cheap',
+      'NEW universal boss resistance on jackpot: kill chance halves when target.isBoss. Gambler: 4%/2%. Oblivion: 15%/7.5%',
+      'Miss chance unchanged — no "please whiff" perk for bosses',
+      'HitTarget interface gained isBoss. Shadow sim in OpponentSimulation mirrors the same halving for 1v1 CPU',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Multiplayer + random-faction bug sweep',
+    changes: [
+      'FIX 1v1: client could send T2/T3 sends before unlock wave — receiver now re-validates unlockWave and drops locked messages',
+      'FIX 1v1: flying sends walked the maze for the receiving host — SendManager now supports a flying path and routes creepType flying through it',
+      'FIX Circle Co-op: host + client saw different kill counts for the same creep — new creep_killed broadcast syncs per-player kill totals across all peers',
+      'FIX Circle Co-op: CPU players missing from the human peer\'s roster — clients now sync playerCount + botSlots from circle_game_start',
+      'NEW Circle Co-op: shared economy — every kill splits 50/50 between the killer and the spawn-owner (whoever\'s zone/send the creep came from). Creep carries spawnOwnerIndex; DeathHandler credits each share on every peer via the new broadcast.',
+      'FIX Random faction: Razor Bramble could roll into the random tower pool — pool source changed from TOWER_TYPES to Factions[*].towerIds so branch-only towers are excluded',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: '1v1 Versus: CPU opponent runs real per-tower combat',
+    changes: [
+      'REWRITE: OpponentSimulation now does per-tower-per-creep combat instead of a DPS smear — picks targets, fires on cooldown, applies splash/slow/root/poison',
+      'Per-hit and per-kill gold routed into the CPU bot economy — void siphon, gambler jackpot, damage variance (spike/oblivion), and infernal soul drain all credit the bot correctly',
+      'Adjacency buffs (Nature Blossom) stack onto neighbour tower damage + fire rate for the CPU, matching the human side',
+      'Tower-aura DoTs (Spore) poison creeps in radius each tick',
+      'Branched towers (Bramble → Razor) now resolve the target TowerType when `tower_upgraded.branch` syncs, so the sim keys off the correct stats',
+      'Simplifications: no projectile travel time (hits resolve instantly), always-first targeting, no creep armor resistances. The sim drives economy + minimap only, never user-visible numbers',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Nature dock hotkeys realigned + Razor re-coloured',
+    changes: [
+      'FIX: Nature dock hotkeys were scrambled — viper was on 8, blossom on 3, sunroot on 9. Now: bramble 1, root 2, viper 3, blossom 4, spore 5, sunroot 6, vine 7, elder 8',
+      'Razor Bramble palette swapped from pink/magenta to blood red + bone white so it no longer reads as Blossom at game-icon scale',
+      'Veins are crimson #cc2222, fangs get bone-white tips with blood droplets, base pooling is dark blood red',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Grove Viper thickened — chunky rope, not a wire',
+    changes: [
+      'Snake body bumped from 2 cells to 3/4/5 per level with orientation-aware cross-sections (vertical stripe for walk-right, horizontal for walk-up/down)',
+      'Dark outline pixels guaranteed on both edges every frame so the silhouette reads against any background',
+      'L1 palette shifted to bark browns so a juvenile viper contrasts against grass tileset instead of blending in',
+      'Denser segment sampling (10/12/14 body cells per level) prevents visible gaps in the body curve',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Debug logs gated behind ?debug QSP',
+    changes: [
+      'New DebugFlags module reads `?debug` from the URL',
+      'Wave-sync console logs (stuck creeps, wave cleared, Next Wave ignored) and endless-mode rotation logs now only print when debug is on',
+      'Normal play is quiet — visit `localhost:5173/?debug` to re-enable diagnostics when investigating a stuck-wave report',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Mire Dart → Grove Viper: slithering snake replaces the frog',
+    changes: [
+      'REPLACED Mire Dart frog with Grove Viper snake. Same mobile-unit slot, but slither animation (sine-wave body undulation per frame) + twin-fang strike lunge instead of hop + tongue-lash.',
+      'Stats: 40g, 5 dmg, 2.5 range, 950ms fireRate, moveSpeed 100, engageRange 1.8, poison 6%/s over 4.5s. Upgrades scale DPS and strike range further.',
+      'Three life stages: L1 slim sage juvenile, L2 diamond-back viper with forked tongue, L3 dark matriarch with cobra hood flare, slit pupil, rattle tail, and red diamond accents.',
+      'Tower dock icon redrawn as a coiled cobra in ready-to-strike pose. Attack visual is a twin-fang lunge with green venom splash + two red puncture marks at the bite site.',
+      'Renamed `nature_dartfrog` → `nature_viper` across TowerTypes/Factions/SpriteManager/skin-editor/lore; `dartfrog_mobile.png` replaced with `viper_mobile.png`.',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'Divergent upgrade paths — Bramble forks into Hedge or Razor Bramble',
+    changes: [
+      'NEW: Bramble Hedge now branches at L2 — choose "Hedge" (wall-focused, caps L3) or "Razor Bramble" (DPS-focused, caps L4 with 15 dmg @ 220ms)',
+      'Tower info panel shows both buttons side-by-side with per-option stat previews; picking one commits (sell to switch)',
+      'Razor Bramble has its own dedicated tower art column, projectile, and skin-editor slot — treated as a separate tower for skins',
+      'CPU bots reason about branches via `BotDecision.upgrade.branch` — Balanced brain promotes Bramble → Razor when budget allows',
+      'Multiplayer protocol: `tower_upgraded.branch` synced so Versus and Circle Co-op peers see the same art / ladder',
+      'Nature sprite sheets expanded to 9 columns (576×1536) with matching _autumn variants regenerated',
+      'Razor Bramble art rewritten: bark grain, red vein network, serrated blade teeth, tooth-crown (3/5/7 fangs by level), barbed edges, moss+blood base detail, state overlays',
+      'Thornweaver redrawn: L1 juvenile sage blob, L2 striped adolescent with fangs + thorn ridge, L3 dark matriarch with carapace spine + claw tips + eye cluster — each level now a distinct creature',
+    ],
+  },
+  {
+    date: '2026-04-22',
+    title: 'CPU opponent in 1v1 + bots play the meta economy',
+    changes: [
+      'NEW: "VS CPU" button in the Versus 1v1 lobby — play against a local bot with no signaling or second browser',
+      'Reuses the same brain-driven bot AI that Circle Co-op uses (renamed CircleBotAI → BotAI)',
+      'CPU opponents place towers on a private grid; its moves show up on your opponent minimap like a real remote peer',
+      'Bots can now UPGRADE their towers (best-coverage non-wall DPS) and SELL them (weakest wall when zone is saturated)',
+      'Bots buy SENDS at you and invest in FRONTIER buildings between waves — CPU pressure + compounding income',
+      'Sends from you actually LAND on the CPU now (previously cosmetic against a simulated peer)',
+      'Circle Co-op: gold/towers/kills now break out per-player on the victory/defeat screen, including CPU bots',
+      "Co-op tower panel hides Upgrade/Sell for another player's tower (you can still inspect stats)",
+      'Co-op waves spawn 3–4× faster to match the team-size creep-count scaling (no more trickle)',
+      'Tower info panel shows live effective stats (post-aura DMG/SPD/RNG in green, with the pre-buff number struck through)',
+      'New CPU_BRAIN.md doc at the repo root — walkthrough of the bot decision state machine (driver cadence, phase selection, meta pass)',
+      'Bots now collect per-hit gold from their own towers (Void gold_on_hit / jackpot). Previously all tower gold dumped into the human\'s shared pool',
+      'FIX: "Next Wave" button could get permanently stuck greyed after a rejected tower placement (stale cached paths left over from the rollback)',
+      'Nature faction reshuffled to 8 towers: Thorn removed, Bramble Hedge takes the cheap-DPS slot (12g, 5-level scaling thornbrush), plus Thornweaver mobile poison spider (45g) and Sunroot splash DPS (140g)',
+      'Nature spritesheets rebuilt: new tower/projectile art for Bramble, Thornweaver, Sunroot, plus a proper Thornweaver mobile walk-cycle sheet. Autumn skin variants regenerated to match.',
+      'Skin editor (skin-editor.html) now shows the new 8-tower Nature roster — Bramble has dense leafy detail (dappled body, branch silhouettes, clustered leaves, berries at L5) instead of a solid green slab.',
+      'REPLACED Thornweaver spider with Mire Dart poison-dart frog: hops in 4-frame arcs instead of sliding, tongue-lashes targets for poison, three distinct life stages (pale hatchling → yellow-striped dart → dark spotted matriarch with gnarled tongue and bulging throat sac)',
+      'Mire Dart stats: cheaper (40g vs 45g), weaker direct hit (4 vs 8 dmg) but stronger venom (5%/s 4s vs 3%/s 3s) — the dart IS the damage',
+      'Renamed `nature_spider` → `nature_dartfrog` across TowerTypes/Factions/SpriteManager/skin-editor/lore; old `spider_mobile.png` replaced with `dartfrog_mobile.png`',
+      'Mobile units now have signature attacks: Spider spits a venom gob that splatters toxic droplets (scales with level), Swarmling rakes with chitin-scratch lines. Rifleman/Commander/Brawler/Heavy keep their existing look.',
+      'All PNGs re-baked from the TSX sprite modules via the full browser pipeline so editor previews and in-game textures match exactly.',
+      'Nature CPUs no longer waste gold on Blossom-as-maze: fixed role classifier so adjacency/buff towers are correctly "aura" not "wall"',
+      'Void Rift now bites a little: 2/3/4 damage across levels on top of the teleport (was 0 at all levels)',
+    ],
+  },
   {
     date: '2026-04-17',
     title: 'Celestial + frontier fixes',
@@ -405,11 +540,7 @@ const ENTRIES: Entry[] = [
 export function ChangelogScreen() {
   return (
     <>
-      <div class="ui-header">
-        <button class="ui-header-back" onClick={() => UIBridge.show('menu')}>{'< Back'}</button>
-        <div class="ui-header-title">CHANGELOG</div>
-        <ShardBadge />
-      </div>
+      <Header title="CHANGELOG" back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
 
       <div class="ui-section changelog-list">
         {ENTRIES.map((e, i) => (
