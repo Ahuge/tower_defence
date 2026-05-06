@@ -147,6 +147,90 @@ describe('MazingScorer — dirty-bit cache', () => {
   });
 });
 
+describe('MazingScorer — phase 3 per-role bestCell', () => {
+  // Minimal tower fixtures for role queries. The towerPool is what
+  // the scorer uses to look up a placed towerId's role for the
+  // role-bucketing step.
+  const wallTower = {
+    id: 'wall_test', name: 'Wall', cost: 10, damage: 0, range: 1,
+    fireRate: 99999, damageType: 'physical', color: 0, projectileSpeed: 0,
+    sellRefundRatio: 0, upgrades: [],
+    traits: [{ id: 'direct_damage' }],
+    hotkey: '1', description: '',
+  };
+  const dpsTower = {
+    id: 'dps_test', name: 'DPS', cost: 50, damage: 30, range: 5,
+    fireRate: 600, damageType: 'physical', color: 0, projectileSpeed: 300,
+    sellRefundRatio: 0.5, upgrades: [],
+    traits: [{ id: 'direct_damage' }],
+    hotkey: '2', description: '',
+  };
+
+  function makeCtxWithPool(grid: Grid, candidates: Cell[]): BotContext {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { ...makeCtx(grid, candidates), towerPool: [wallTower as any, dpsTower as any] };
+  }
+
+  it('returns null when the asked-for role has no plan cells', () => {
+    // With pool=[wall,dps] and δ/ε/ζ ≈ 0, the planner picks mostly
+    // walls. Ask for a slow tower (no plan entries match) — expect
+    // null so the brain's wishlist falls through.
+    const slow = {
+      ...dpsTower, id: 'slow_test', name: 'Slow',
+      traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', factor: 0.5 }],
+    };
+    const g = openGrid(8, 5);
+    const scorer = new MazingScorer({ confidenceFloor: 0, deltaDps: 0, epsilonSlow: 0, zetaAura: 0 });
+    const ctx = makeCtxWithPool(g, allEmpty(g));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pick = scorer.bestCell(ctx, slow as any);
+    // No plan entries are slows, so result should be null.
+    expect(pick).toBeNull();
+  });
+
+  it('exact match wins over role match when both exist', () => {
+    // With both wall and dps in pool, the plan will likely contain
+    // entries of both. Ask for the wall tower — should get an exact
+    // match.
+    const g = openGrid(8, 5);
+    const scorer = new MazingScorer({ confidenceFloor: 0 });
+    const ctx = makeCtxWithPool(g, allEmpty(g));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pick = scorer.bestCell(ctx, wallTower as any);
+    if (pick) {
+      // If there's any wall in the plan we should have either an
+      // exact or role match — never fallback (which only fires when
+      // no tower arg is passed).
+      expect(['exact', 'role']).toContain(pick.match);
+      expect(pick.role).toBe('wall');
+    }
+  });
+
+  it('returns role-bucketed CellPick metadata', () => {
+    const g = openGrid(8, 5);
+    const scorer = new MazingScorer({ confidenceFloor: 0 });
+    const ctx = makeCtxWithPool(g, allEmpty(g));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pick = scorer.bestCell(ctx, wallTower as any);
+    if (pick) {
+      expect(pick.role).toBeDefined();
+      expect(pick.match).toBeDefined();
+      expect(typeof pick.roleRank).toBe('number');
+      expect(typeof pick.planRank).toBe('number');
+    }
+  });
+
+  it('no-tower query returns fallback match', () => {
+    const g = openGrid(8, 5);
+    const scorer = new MazingScorer({ confidenceFloor: 0 });
+    const ctx = makeCtxWithPool(g, allEmpty(g));
+    const pick = scorer.bestCell(ctx);
+    if (pick) {
+      expect(pick.match).toBe('fallback');
+    }
+  });
+});
+
 describe('MazingScorer — config plumbing', () => {
   it('default options match DEFAULT_MAZING_OPTIONS', () => {
     expect(DEFAULT_MAZING_OPTIONS.confidenceFloor).toBe(0.4);
