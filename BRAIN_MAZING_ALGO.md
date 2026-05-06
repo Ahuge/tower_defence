@@ -240,11 +240,41 @@ Tuning protocol:
 - Sensitivity probe at `--probe=8` completes without crashing.
 - LearningBrain validation untouched (`scripts/validate-learning-brain.mjs 50` ≥9/11 cells).
 
-## Open questions for you (just confirmation)
+## v1 status — shipped
 
-1. Pathfinding metrics extension as `findPathWithMetrics` (sibling of `findPath`) — fine to land in `Pathfinding.ts` directly?
-2. Cache invalidation strategy: keyed by hashed-grid + budget bucket. OK or do you want match-tick invalidation instead?
-3. Multi-spawner BFS: sum metrics across all spawner paths in v1 (defer per-spawner weighting to v2). OK?
-4. Confidence-floor for veto: hardcoded default 0.4 of best-historical, OR auto-tuned per-cell via brain-search? (I'd say tune — the `brain-search.mjs` knob system is right there.)
+All 9 build-order items in this branch:
 
-If those four are ack, I'll start the v1 build.
+| Step | Status | File |
+|---|---|---|
+| 1. `findPathWithMetrics` | ✅ | `src/systems/Pathfinding.ts` |
+| 2. AdversarialBeam port | ✅ | `src/systems/bots/mazing/AdversarialBeam.ts` |
+| 3. MazingScorer + dirty-bit cache | ✅ | `src/systems/bots/mazing/MazingScorer.ts` |
+| 4. `Grid.version` dirty bit | ✅ | `src/systems/Grid.ts` |
+| 5. MazingBrain | ✅ | `src/systems/bots/brains/MazingBrain.ts` |
+| 6. Tests (27 specs, 3 files) | ✅ | `*.test.ts` |
+| 7. MazingBrainSchema + brain-search wiring | ✅ | `src/headless/brain-search/MazingBrainSchema.ts` + `scripts/brain-search.mjs` |
+| 8. Sensitivity probe | ✅ | `--brain=mazing --probe=4` clean, 16s/80 matches |
+| 9. CPU_BRAIN.md docs | ✅ | New "MazingBrain" section |
+
+Total diff: ~1100 LOC added (impl + tests + schema + docs). 334/334 vitest pass, `tsc --noEmit` clean.
+
+## Decisions captured (from v2 plan + user answers)
+
+1. ✅ `findPathWithMetrics` lives in `Pathfinding.ts` as a sibling of `findPath` — keeps the hot path metric-free.
+2. ✅ **Dirty-bit cache** via `Grid.version` (bumps on placeTower/removeTower) + `ctx.wave`. Replaced the original hash+bucket idea with the simpler "did the situation change at all" check. Always-correct invalidation, one field, easy to debug.
+3. ✅ Multi-spawner: sum BFS metrics across all spawner→exit paths in v1.
+4. ✅ Confidence floor exposed as a brain-search-tunable knob (`confidenceFloor` in the schema).
+
+## v2 — what's next (separate PR)
+
+- Tower-typed mutations (`add_tower(id, x, y)` selecting from `ctx.towerPool`)
+- Role-weighted score terms (`δ·dps_coverage`, `ε·slow_time_at_choke`, `ζ·aura_adjacency`)
+- Wishlist with per-tower veto (today's confidence floor is plan-position; v2 compares against per-role historical-best)
+- `MazingScorer.bestCell(ctx, tower)` actually consumes the `tower` arg
+
+## Tuning protocol (for follow-up runs)
+
+1. Probe to verify wiring: `--probe=8` against `arcane|normal` (already done — 0% at defaults).
+2. Full ES on cells where BalancedBrain doesn't hit ≥80% (`scripts/brain-coverage.mjs`).
+3. Validate: 50-seed batches against the prior best brain on each cell. Ship if Δ ≥ +5pp win-rate AND no >3pp regression on solved cells.
+4. If wins are concentrated on a single faction, save as a *specialised* MazingBrain variant (per the existing HarmonicBrain / PsionicBrain pattern) rather than as the default.

@@ -135,26 +135,26 @@ function loadParamsFromEnv(): BalancedBrainParams {
 }
 
 export class BalancedBrain implements BotBrain {
-  readonly name = 'Balanced';
+  readonly name: string = 'Balanced';
   readonly params: BalancedBrainParams;
 
-  private grouped: Record<TowerRole, TowerType[]> = {
+  protected grouped: Record<TowerRole, TowerType[]> = {
     'wall': [], 'dps-single': [], 'dps-splash': [],
     'slow': [], 'aura': [], 'utility': [],
   };
-  private wallsPlaced = 0;
+  protected wallsPlaced = 0;
   /** Cached ultimate tower (if any) for this faction — memoised at
    *  init so we don't re-scan the pool every decide(). */
-  private ultimate: TowerType | null = null;
+  protected ultimate: TowerType | null = null;
   /** Cached set of tower ids whose role is 'aura' — used for the
    *  adjacency bonus in DPS cell scoring. */
-  private auraIds: Set<string> = new Set();
+  protected auraIds: Set<string> = new Set();
   /** Cached set of wall ids — used throughout for classification. */
-  private wallIds: Set<string> = new Set();
+  protected wallIds: Set<string> = new Set();
   /** Cached mobile-unit tower types (extracted from the utility
    *  bucket) so the brain can place them on proximity-to-path
    *  cells instead of leaving them unbuilt. */
-  private mobileUnits: TowerType[] = [];
+  protected mobileUnits: TowerType[] = [];
 
   constructor(params?: Partial<BalancedBrainParams>) {
     const base = params ? { ...DEFAULT_BALANCED_PARAMS, ...params } : loadParamsFromEnv();
@@ -235,7 +235,7 @@ export class BalancedBrain implements BotBrain {
     return { kind: 'skip' };
   }
 
-  private decideMeta(ctx: BotContext): BotDecision {
+  protected decideMeta(ctx: BotContext): BotDecision {
     const roll = rng();
     const frontierEnd = this.params.frontierBuyChance;
     const sendEnd = frontierEnd + this.params.sendBuyChance;
@@ -263,7 +263,7 @@ export class BalancedBrain implements BotBrain {
 
   // ===== Phase selection =====
 
-  private pickPhase(ctx: BotContext): Phase {
+  protected pickPhase(ctx: BotContext): Phase {
     if (ctx.lives > 0 && ctx.lives <= this.params.panicLives) return 'panic';
     if (this.wallsPlaced < this.params.maxWallPlacements) return 'building-maze';
     // Ultimate save — only when coverage is solid, lives aren't
@@ -284,7 +284,7 @@ export class BalancedBrain implements BotBrain {
 
   // ===== Phase handlers =====
 
-  private decideMaze(ctx: BotContext): BotDecision {
+  protected decideMaze(ctx: BotContext): BotDecision {
     const walls = this.affordable(this.grouped.wall, ctx.budget);
     if (walls.length === 0) return { kind: 'skip' };
     const best = bestMazeCell(ctx.grid, ctx.candidateCells, 30, ctx.allPaths);
@@ -303,7 +303,7 @@ export class BalancedBrain implements BotBrain {
    *  affordable and the chosen cell is near the creep path, pick
    *  the mobile unit instead — that's a faction's key DPS lever
    *  (Military, Nature Viper) that the old brain never built. */
-  private decideDps(ctx: BotContext): BotDecision {
+  protected decideDps(ctx: BotContext): BotDecision {
     const splash = this.affordable(this.grouped['dps-splash'], ctx.budget);
     const single = this.affordable(this.grouped['dps-single'], ctx.budget);
     const mobile = this.affordable(this.mobileUnits, ctx.budget);
@@ -334,7 +334,7 @@ export class BalancedBrain implements BotBrain {
     return { kind: 'place', col: best.col, row: best.row, type: pickedType };
   }
 
-  private decidePanic(ctx: BotContext): BotDecision {
+  protected decidePanic(ctx: BotContext): BotDecision {
     const slows = this.affordable(this.grouped.slow, ctx.budget);
     if (slows.length === 0) return { kind: 'skip' };
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
@@ -348,7 +348,7 @@ export class BalancedBrain implements BotBrain {
   /** Try to buy the faction ultimate. Returns `place` if affordable
    *  now (pick the best-scoring cell); otherwise `skip` — the saving
    *  phase catches the skip and stops spending. */
-  private tryPlaceUltimate(ctx: BotContext): BotDecision {
+  protected tryPlaceUltimate(ctx: BotContext): BotDecision {
     if (!this.ultimate || ctx.budget < this.ultimate.cost) return { kind: 'skip' };
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
     if (paths.length === 0) return { kind: 'skip' };
@@ -363,7 +363,7 @@ export class BalancedBrain implements BotBrain {
     return { kind: 'place', col: scored[0].col, row: scored[0].row, type: this.ultimate };
   }
 
-  private decideUpgrade(ctx: BotContext): BotDecision {
+  protected decideUpgrade(ctx: BotContext): BotDecision {
     const affordableOn = (p: PlacedTower): number => {
       if (this.wallIds.has(p.towerId) && p.upgradeBranches.length > 0) {
         const branchCosts = p.upgradeBranches.map(id => p.branchUpgradeCosts[id] ?? Infinity);
@@ -439,7 +439,7 @@ export class BalancedBrain implements BotBrain {
     return { kind: 'upgrade', col: best.col, row: best.row };
   }
 
-  private decideSell(ctx: BotContext): BotDecision {
+  protected decideSell(ctx: BotContext): BotDecision {
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
     if (paths.length === 0 || ctx.placedTowers.length === 0) return { kind: 'skip' };
     const walls = ctx.placedTowers.filter(p => this.wallIds.has(p.towerId));
@@ -465,7 +465,7 @@ export class BalancedBrain implements BotBrain {
    *  Harmonic) competitive — placing a DPS next to an already-
    *  placed Amplifier now scores higher than an equivalent cell
    *  in the open. */
-  private scoreDpsCells(
+  protected scoreDpsCells(
     cells: Cell[], paths: PathPoint[][], range: number, placed: PlacedTower[],
   ): { col: number; row: number; score: number }[] {
     const auraCells = placed.filter(p => this.auraIds.has(p.towerId));
@@ -493,7 +493,7 @@ export class BalancedBrain implements BotBrain {
    *  to ANY path cell. Mobile units wander from their home cell to
    *  engage creeps via the `mobile_unit` trait's leash, so being
    *  near the path matters more than line-of-sight range coverage. */
-  private scoreMobileCells(
+  protected scoreMobileCells(
     cells: Cell[], paths: PathPoint[][], _type: TowerType,
   ): { col: number; row: number; score: number }[] {
     const scored = cells.map(c => {
@@ -522,7 +522,7 @@ export class BalancedBrain implements BotBrain {
    *    long-range      – maximise range
    *  Counter override still wins when upcoming waves have a clear
    *  dominant creep type. */
-  private pickTowerType(pool: TowerType[], ctx: BotContext): TowerType {
+  protected pickTowerType(pool: TowerType[], ctx: BotContext): TowerType {
     const strategy = TOWER_PICK_STRATEGIES[
       Math.max(0, Math.min(TOWER_PICK_STRATEGIES.length - 1, this.params.towerPickStrategyIdx))
     ] ?? 'expensive-bias';
@@ -573,12 +573,12 @@ export class BalancedBrain implements BotBrain {
     return counter ?? top;
   }
 
-  private affordable(pool: TowerType[], budget: number): TowerType[] {
+  protected affordable(pool: TowerType[], budget: number): TowerType[] {
     return pool.filter(t => t.cost <= budget);
   }
 
   /** True once the bot owns at least one non-wall tower. */
-  private hasFightingTower(ctx: BotContext): boolean {
+  protected hasFightingTower(ctx: BotContext): boolean {
     if (ctx.placedTowers.length === 0) return false;
     for (const p of ctx.placedTowers) {
       if (!this.wallIds.has(p.towerId)) return true;
@@ -589,7 +589,7 @@ export class BalancedBrain implements BotBrain {
   /** Rough "is our zone well-defended?" check. Sums path-cell
    *  coverage across all our DPS towers and compares to a ratio
    *  of the total path length. */
-  private coverageHigh(ctx: BotContext): boolean {
+  protected coverageHigh(ctx: BotContext): boolean {
     const paths = ctx.allPaths.filter((p): p is PathPoint[] => !!p && p.length > 0);
     if (paths.length === 0) return false;
     const totalPathCells = paths.reduce((s, p) => s + p.length, 0);

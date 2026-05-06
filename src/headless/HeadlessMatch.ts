@@ -43,6 +43,7 @@ import { BRAIN_REGISTRY } from '../systems/bots/BotBrain';
 import '../systems/traits/TowerTraitHandlers';
 import '../systems/traits/CreepTraitHandlers';
 import '../systems/bots/brains/BalancedBrain';
+import '../systems/bots/brains/MazingBrain';
 import '../systems/bots/brains/RushBrain';
 import '../systems/bots/brains/SynergyBrain';
 import '../systems/bots/brains/NatureBrain';

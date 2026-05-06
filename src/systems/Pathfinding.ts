@@ -161,3 +161,107 @@ export function findPath(grid: Grid, start?: PathPoint, end?: PathPoint): PathPo
 
   return null;
 }
+
+/** BFS metrics surfaced for adversarial maze planning (MazingScorer).
+ *  Identical traversal to `findPath` — extra counters layered on the
+ *  side. Returns null instead of a result object when the goal is
+ *  unreachable so the caller can short-circuit.
+ *
+ *  Why a separate fn: the main `findPath` is on the hot path of every
+ *  recalcPaths / send routing call; tracking these counters there
+ *  would add ~3 instructions per dequeue across the whole game. The
+ *  mazing planner is the only consumer that needs them. */
+export interface PathMetrics {
+  path: PathPoint[];
+  /** Total cells dequeued during the search — proxy for BFS work. */
+  nodesExpanded: number;
+  /** Peak `tail - head` queue depth — proxy for frontier width. */
+  maxQueue: number;
+}
+
+export function findPathWithMetrics(grid: Grid, start?: PathPoint, end?: PathPoint): PathMetrics | null {
+  const s = start ?? grid.entry;
+  const e = end ?? grid.exit;
+
+  const cols = grid.cols;
+  const rows = grid.rows;
+  const n = cols * rows;
+
+  const sIdx = s.row * cols + s.col;
+  const eIdx = e.row * cols + e.col;
+
+  if (sIdx === eIdx) {
+    return { path: [{ col: s.col, row: s.row }], nodesExpanded: 1, maxQueue: 1 };
+  }
+
+  const queue = new Int32Array(n);
+  const visited = new Uint8Array(n);
+  const parent = new Int32Array(n);
+  for (let i = 0; i < n; i++) parent[i] = -1;
+
+  let head = 0;
+  let tail = 0;
+  let nodesExpanded = 0;
+  let maxQueue = 1;
+
+  queue[tail++] = sIdx;
+  visited[sIdx] = 1;
+
+  const dcs = [0, 0, 0, 0];
+  const drs = [0, 0, 0, 0];
+
+  while (head < tail) {
+    const depth = tail - head;
+    if (depth > maxQueue) maxQueue = depth;
+    const cur = queue[head++];
+    nodesExpanded++;
+    const cr = (cur / cols) | 0;
+    const cc = cur - cr * cols;
+
+    if (cur === eIdx) {
+      const reverse: PathPoint[] = [];
+      let node = cur;
+      while (node !== -1) {
+        const r = (node / cols) | 0;
+        const c = node - r * cols;
+        reverse.push({ col: c, row: r });
+        node = parent[node];
+      }
+      reverse.reverse();
+      return { path: reverse, nodesExpanded, maxQueue };
+    }
+
+    const ddc = e.col - cc;
+    const ddr = e.row - cr;
+    const sdc = ddc > 0 ? 1 : ddc < 0 ? -1 : 1;
+    const sdr = ddr > 0 ? 1 : ddr < 0 ? -1 : 1;
+    const colFirst = Math.abs(ddc) >= Math.abs(ddr);
+    if (colFirst) {
+      dcs[0] = sdc; drs[0] = 0;
+      dcs[1] = 0;   drs[1] = sdr;
+      dcs[2] = 0;   drs[2] = -sdr;
+      dcs[3] = -sdc; drs[3] = 0;
+    } else {
+      dcs[0] = 0;   drs[0] = sdr;
+      dcs[1] = sdc; drs[1] = 0;
+      dcs[2] = -sdc; drs[2] = 0;
+      dcs[3] = 0;   drs[3] = -sdr;
+    }
+
+    for (let d = 0; d < 4; d++) {
+      const nc = cc + dcs[d];
+      const nr = cr + drs[d];
+
+      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+      const nIdx = nr * cols + nc;
+      if (visited[nIdx]) continue;
+      if (!grid.isWalkable(nc, nr)) continue;
+
+      visited[nIdx] = 1;
+      parent[nIdx] = cur;
+      queue[tail++] = nIdx;
+    }
+  }
+
+  return null;
+}

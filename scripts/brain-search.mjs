@@ -66,8 +66,10 @@ if (brainFlag === 'balanced') {
   ({ GREEDY_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/GreedyBrainSchema.ts'));
 } else if (brainFlag === 'aoe_focus') {
   ({ AOE_FOCUS_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/AOEFocusBrainSchema.ts'));
+} else if (brainFlag === 'mazing') {
+  ({ MAZING_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/MazingBrainSchema.ts'));
 } else {
-  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus`);
+  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus, mazing`);
   process.exit(1);
 }
 

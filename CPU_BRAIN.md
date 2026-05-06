@@ -115,6 +115,50 @@ instead of fattening the human's shared pool. 1v1 CPU bots fire
 through an approximation-only shadow sim (`OpponentSimulation`)
 and currently don't simulate per-hit traits — a known limitation.
 
+## MazingBrain — adversarial-BFS placement
+
+Subclass of `BalancedBrain` (`src/systems/bots/brains/MazingBrain.ts`)
+that swaps cell selection for an offline-cached **beam-search
+adversarial maze planner**. Inherits the entire decision pipeline —
+meta pass, phase machine, panic mode, ultimate save, upgrade, sell —
+unchanged from the parent.
+
+**What changes:** in `decideMaze` / `decideDps` / `decidePanic` /
+`tryPlaceUltimate`, instead of the parent's greedy `bestMazeCell` or
+coverage-based `scoreDpsCells`, MazingBrain calls
+`MazingScorer.bestCell(ctx, type)`. The scorer holds a cached layout
+plan produced by the adversarial beam search; the brain just walks
+the plan and picks the highest-priority cell that's still in its
+candidate pool.
+
+**The planner** (`src/systems/bots/mazing/AdversarialBeam.ts`,
+`MazingScorer.ts`) is a TypeScript port of the Python POC at
+`ml/mazing/adversarial_impl.py`. Score function:
+`α·path_length + β·nodes_expanded + γ·max_queue` summed across all
+spawner→exit BFS paths. Mutation operators: `add_wall`, `grow_branch`,
+`remove_wall`. Beam-width-K elitism preserves the top score across
+waves so the score history is monotone non-decreasing.
+
+**Cache invalidation** is a simple dirty-bit: the cached plan is
+keyed by `(grid.version, ctx.wave)`. Grid bumps `version` on every
+`placeTower` / `removeTower`. Same key = reuse plan. Different key =
+re-run beam. No hashing, no LRU.
+
+**Mobile units** stay on the parent's `scoreMobileCells` since the
+BFS-flavored ranking doesn't model wandering creep-engagement well.
+
+**Auto-tuning** via `scripts/brain-search.mjs`:
+```
+node --import tsx scripts/brain-search.mjs --brain=mazing \
+    --faction=arcane --difficulty=normal --probe=8
+```
+
+Schema at `src/headless/brain-search/MazingBrainSchema.ts` covers all
+inherited BalancedBrain knobs plus the mazing-specific ones (α, β, γ,
+beam width, mutations per state, waves, mutation operator probs,
+confidence floor). The (μ+λ) ES tunes them per (faction, difficulty)
+cell.
+
 ## Adding a new brain
 
 1. Implement `BotBrain` in `src/systems/bots/brains/<Name>Brain.ts`.
