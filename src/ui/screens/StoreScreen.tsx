@@ -11,8 +11,14 @@ import {
   getRollableSkins, getPurchasableSkins,
   restorePurchases,
   claimRewarded, isRewardInstant,
+  iapPurchase, getDisplayPrices,
+  SHARD_PACKS,
   Rarity,
 } from '../../systems/monetization';
+import {
+  SKU_ADS_OFF,
+  SKU_BATTLE_PASS_S1,
+} from '../../systems/platform/Skus';
 import { platformBridge } from '../../systems/platform';
 import {
   AD_SHARDS_DAILY,
@@ -27,7 +33,7 @@ import {
 } from '../../systems/platform/AdCooldowns';
 import { FACTIONS, FactionId } from '../../data/Factions';
 
-type Tab = 'skins' | 'factions' | 'terrain' | 'rolls';
+type Tab = 'buy' | 'skins' | 'factions' | 'terrain' | 'rolls';
 
 function rarityClass(r: Rarity): string { return `rarity-${r}`; }
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
@@ -103,7 +109,7 @@ function DailyAdButton({ rerender }: { rerender: () => void }) {
 }
 
 export function StoreScreen() {
-  const [tab, setTab] = useState<Tab>('skins');
+  const [tab, setTab] = useState<Tab>('buy');
   const [, setTick] = useState(0);
   const rerender = () => setTick(t => t + 1);
   const [rollResult, setRollResult] = useState<{ skin: SkinDef; isDuplicate: boolean } | null>(null);
@@ -152,12 +158,13 @@ export function StoreScreen() {
         </div>
       )}
       <div class="tab-bar">
-        {(['skins', 'factions', 'terrain', 'rolls'] as Tab[]).map(t => (
+        {(['buy', 'skins', 'factions', 'terrain', 'rolls'] as Tab[]).map(t => (
           <button key={t} class={`tab ${tab === t ? 'active' : ''}`} onClick={() => { setTab(t); setRollResult(null); }}>
             {t[0].toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
+      {tab === 'buy' && <BuyTab rerender={rerender} />}
       {tab === 'skins' && <SkinsTab rerender={rerender} />}
       {tab === 'factions' && <FactionsTab rerender={rerender} />}
       {tab === 'terrain' && <TerrainTab rerender={rerender} />}
@@ -444,4 +451,155 @@ function isEquipped(skin: SkinDef): boolean {
   else if (skin.target === 'hero' && skin.heroId) slotKey = `hero:${skin.heroId}`;
   if (!slotKey) return false;
   return equipped[slotKey] === skin.id;
+}
+
+/**
+ * Real-money IAP tab. Lists:
+ *   - Shard packs (consumable)
+ *   - Remove Ads (non-consumable, hides once owned)
+ *   - Battle Pass premium — current season (hides once owned)
+ *
+ * Display prices come from the Play Store at runtime via
+ * `getDisplayPrices()`; we fall back to the hardcoded priceCents
+ * until the native call resolves. `iapPurchase(sku)` handles the
+ * native buy sheet + the in-game grant; we just render a toast
+ * with the resulting message.
+ */
+function BuyTab({ rerender }: { rerender: () => void }) {
+  const isNative = platformBridge().isNative;
+  const adsOffOwned = PlayerInventory.isAdFree();
+  const bpOwned = BattlePass.isPremium();
+
+  const shardSkus = SHARD_PACKS.map(p => p.sku);
+  const allSkus = [...shardSkus, SKU_ADS_OFF, SKU_BATTLE_PASS_S1];
+
+  const [prices, setPrices] = useState<Record<string, string | null>>({});
+  const [busySku, setBusySku] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Ask the native store for localised prices. Web returns {} so
+    // fallback cent pricing kicks in below.
+    let cancelled = false;
+    getDisplayPrices(allSkus).then(p => {
+      if (!cancelled) setPrices(p);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const priceFor = (sku: string, fallbackCents: number): string => {
+    return prices[sku] ?? `$${(fallbackCents / 100).toFixed(2)}`;
+  };
+
+  const doPurchase = async (sku: string) => {
+    if (busySku) return;
+    setBusySku(sku);
+    setToast(null);
+    const result = await iapPurchase(sku);
+    setBusySku(null);
+    setToast(result.message);
+    if (result.ok) rerender();
+    window.setTimeout(() => setToast(null), 5000);
+  };
+
+  return (
+    <div class="ui-section">
+      {!isNative && (
+        <div class="text-dim text-sm mb-2" style={{ padding: '8px 12px', background: 'rgba(255, 200, 100, 0.08)', border: '1px solid rgba(255, 200, 100, 0.3)', borderRadius: '6px' }}>
+          Real-money purchases only work in the native Android / iOS build. On web this tab shows prices for reference only; the purchase buttons will return "unavailable".
+        </div>
+      )}
+
+      {toast && (
+        <div class={`text-sm mb-2`} style={{
+          padding: '8px 12px',
+          background: 'rgba(232, 183, 109, 0.12)',
+          border: '1px solid var(--gold, #e8b76d)',
+          borderRadius: '6px',
+          color: 'var(--text-primary, #eee)',
+        }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Ads-off + Battle Pass — non-consumables. Hide once owned. */}
+      <div class="ui-section-title">Bundles</div>
+      <div class="card-grid">
+        {!adsOffOwned && (
+          <div class="card">
+            <div class="card-accent" style={{ background: hexColor(0xe8b76d) }} />
+            <div class="card-name" style={{ marginTop: '4px' }}>Remove Ads</div>
+            <div class="card-desc">No more interstitials, ever. Rewarded ads still available as optional shard bonuses.</div>
+            <div class="card-footer">
+              <button
+                class={`btn btn-gold ${busySku === SKU_ADS_OFF ? 'btn-disabled' : ''}`}
+                style={{ fontSize: '11px', padding: '4px 12px' }}
+                onClick={() => doPurchase(SKU_ADS_OFF)}
+                disabled={busySku !== null}
+              >
+                {busySku === SKU_ADS_OFF ? 'Processing...' : priceFor(SKU_ADS_OFF, 499)}
+              </button>
+            </div>
+          </div>
+        )}
+        {adsOffOwned && (
+          <div class="card owned">
+            <div class="card-accent" style={{ background: hexColor(0x44ff44) }} />
+            <div class="card-name" style={{ marginTop: '4px' }}>Remove Ads</div>
+            <div class="card-desc text-green">OWNED</div>
+          </div>
+        )}
+
+        {!bpOwned && (
+          <div class="card">
+            <div class="card-accent" style={{ background: hexColor(0xaa44ff) }} />
+            <div class="card-name" style={{ marginTop: '4px' }}>Battle Pass — Season 1</div>
+            <div class="card-desc">Unlock the premium reward track + all premium perks this season. Includes free modifiers, free continues, all game speeds, and a free weekly roll.</div>
+            <div class="card-footer">
+              <button
+                class={`btn btn-gold ${busySku === SKU_BATTLE_PASS_S1 ? 'btn-disabled' : ''}`}
+                style={{ fontSize: '11px', padding: '4px 12px' }}
+                onClick={() => doPurchase(SKU_BATTLE_PASS_S1)}
+                disabled={busySku !== null}
+              >
+                {busySku === SKU_BATTLE_PASS_S1 ? 'Processing...' : priceFor(SKU_BATTLE_PASS_S1, 999)}
+              </button>
+            </div>
+          </div>
+        )}
+        {bpOwned && (
+          <div class="card owned">
+            <div class="card-accent" style={{ background: hexColor(0xaa44ff) }} />
+            <div class="card-name" style={{ marginTop: '4px' }}>Battle Pass — Season 1</div>
+            <div class="card-desc text-green">OWNED</div>
+          </div>
+        )}
+      </div>
+
+      {/* Shard packs — consumables, always buyable */}
+      <div class="ui-section-title" style={{ marginTop: '16px' }}>Shards</div>
+      <div class="card-grid">
+        {SHARD_PACKS.map(pack => (
+          <div key={pack.id} class="card">
+            <div class="card-accent" style={{ background: hexColor(0xf5d08a) }} />
+            <div class="card-name" style={{ marginTop: '4px' }}>{pack.label}</div>
+            <div class="card-desc">
+              {pack.shards.toLocaleString()} Shards
+              {pack.bonusPercent > 0 && <span class="text-gold"> · +{pack.bonusPercent}% bonus</span>}
+            </div>
+            <div class="card-footer">
+              <button
+                class={`btn btn-gold ${busySku === pack.sku ? 'btn-disabled' : ''}`}
+                style={{ fontSize: '11px', padding: '4px 12px' }}
+                onClick={() => doPurchase(pack.sku)}
+                disabled={busySku !== null}
+              >
+                {busySku === pack.sku ? 'Processing...' : priceFor(pack.sku, pack.priceCents)}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

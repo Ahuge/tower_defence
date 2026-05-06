@@ -338,8 +338,14 @@ export const DUPLICATE_REFUND = 30;
 
 export interface ShardPack {
   id: string;
+  /** Play Store SKU this pack maps to. `platformBridge().iap.listProducts([sku])`
+   *  fetches the localised display price; `purchase(sku)` runs the buy flow. */
+  sku: string;
   shards: number;
-  /** Price in cents (USD) */
+  /** Price in cents (USD) — fallback when Play Store can't return a
+   *  localised price (web builds, unfilled price catalogue during
+   *  Play Console rollout, etc.). Prefer the store's localised
+   *  displayPrice when available. */
   priceCents: number;
   /** Display label */
   label: string;
@@ -347,11 +353,15 @@ export interface ShardPack {
   bonusPercent: number;
 }
 
+import {
+  SKU_SHARDS_SMALL, SKU_SHARDS_MEDIUM, SKU_SHARDS_LARGE, SKU_SHARDS_MEGA,
+} from '../platform/Skus';
+
 export const SHARD_PACKS: ShardPack[] = [
-  { id: 'pack_500',  shards: 500,   priceCents: 500,  label: '500 Shards',         bonusPercent: 0 },
-  { id: 'pack_1200', shards: 1200,  priceCents: 1000, label: '1,200 Shards (+20%)', bonusPercent: 20 },
-  { id: 'pack_3000', shards: 3000,  priceCents: 2000, label: '3,000 Shards (+50%)', bonusPercent: 50 },
-  { id: 'pack_7000', shards: 7000,  priceCents: 4000, label: '7,000 Shards (+75%)', bonusPercent: 75 },
+  { id: 'pack_500',  sku: SKU_SHARDS_SMALL,  shards: 500,   priceCents: 500,  label: '500 Shards',          bonusPercent: 0  },
+  { id: 'pack_1200', sku: SKU_SHARDS_MEDIUM, shards: 1200,  priceCents: 1000, label: '1,200 Shards (+20%)', bonusPercent: 20 },
+  { id: 'pack_3000', sku: SKU_SHARDS_LARGE,  shards: 3000,  priceCents: 2000, label: '3,000 Shards (+50%)', bonusPercent: 50 },
+  { id: 'pack_7000', sku: SKU_SHARDS_MEGA,   shards: 7000,  priceCents: 4000, label: '7,000 Shards (+75%)', bonusPercent: 75 },
 ];
 
 // ─── Battle pass pricing ───────────────────────────────────

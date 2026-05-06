@@ -39,13 +39,33 @@ export function achievementId(key: AchievementKey): string | null {
   return null;
 }
 
-/** Fire-and-forget wrapper. Never throws, never blocks the caller. */
+/**
+ * Fire-and-forget wrapper. Never throws, never blocks the caller.
+ *
+ * Always dispatches a `td-achievement-unlocked` window event after
+ * the native bridge call resolves (or fails), so the in-app
+ * `AchievementToast` component can show local confirmation. The
+ * event's `nativeOk` flag says whether the platform bridge
+ * succeeded — false when the user isn't signed in, the plugin
+ * isn't installed (web), or the platform doesn't have a registered
+ * id for this key. In either case the player sees the toast so
+ * they know the achievement fired locally; a signed-in Android
+ * user ALSO gets the Play Games server-side unlock.
+ */
 export async function unlockAchievement(key: AchievementKey): Promise<void> {
   const id = achievementId(key);
-  if (!id) return;
-  try {
-    await platformBridge().profile.unlockAchievement(id);
-  } catch (err) {
-    console.warn(`[achievements] unlock failed for ${key}`, err);
+  let nativeOk = false;
+  if (id) {
+    try {
+      await platformBridge().profile.unlockAchievement(id);
+      nativeOk = true;
+    } catch (err) {
+      console.warn(`[achievements] unlock failed for ${key}`, err);
+    }
+  } else {
+    console.info(`[achievements] ${key}: no platform id registered for ${platformBridge().platform} — local toast only`);
   }
+  try {
+    window.dispatchEvent(new CustomEvent('td-achievement-unlocked', { detail: { key, nativeOk } }));
+  } catch { /* ignore */ }
 }

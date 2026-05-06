@@ -86,9 +86,17 @@ installPlatformBridge()
     const bridge = (window as unknown as { Capacitor?: unknown }).Capacitor;
     if (bridge) {
       import('./systems/platform').then(({ platformBridge }) => {
-        void platformBridge().profile.signIn().catch(err => {
-          console.warn('[profile] initial sign-in failed (safe to ignore on tester builds):', err);
-        });
+        platformBridge().profile.signIn()
+          .then(() => {
+            // Notify the UI that sign-in completed so any mounted
+            // avatar / display-name component can refresh. Fires
+            // whether or not the sign-in actually returned a profile
+            // — the listener decides what to do on null.
+            window.dispatchEvent(new Event('td-profile-changed'));
+          })
+          .catch(err => {
+            console.warn('[profile] initial sign-in failed (safe to ignore on tester builds):', err);
+          });
       });
     }
   })

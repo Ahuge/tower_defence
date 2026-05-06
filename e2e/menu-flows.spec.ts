@@ -36,7 +36,10 @@ test.describe('menu — help modal (? button)', () => {
     await dismissAllAutoTutorials(page);
 
     // Click the ? button (portaled modal opens).
-    await page.getByRole('button', { name: '?' }).click();
+    // ProfileAvatar renders a "?" button when no profile is signed
+    // in (`title="Tap to sign in"`), colliding with the Tutorials
+    // help button by accessible name. Disambiguate by title.
+    await page.getByTitle('Tutorials').click();
     // The modal title is a styled <div>, not a semantic heading, so
     // match by text rather than role.
     await expect(page.getByText('Tutorials', { exact: true }).first()).toBeVisible();
@@ -53,7 +56,10 @@ test.describe('menu — help modal (? button)', () => {
     await gotoFresh();
     await dismissAllAutoTutorials(page);
 
-    await page.getByRole('button', { name: '?' }).click();
+    // ProfileAvatar renders a "?" button when no profile is signed
+    // in (`title="Tap to sign in"`), colliding with the Tutorials
+    // help button by accessible name. Disambiguate by title.
+    await page.getByTitle('Tutorials').click();
     await expect(page.getByText('Tutorials', { exact: true }).first()).toBeVisible();
     // Click the Tutorial Match entry.
     await page.getByText('Tutorial Match').first().click();

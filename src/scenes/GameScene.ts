@@ -1504,8 +1504,15 @@ export class GameScene extends Phaser.Scene {
 
     // Creep updates: movement, leak handling, kill processing, cleanup
     const leakResult = this.creepMgr.update(delta);
-    // Circle co-op: host deducts shared lives via CircleLeakHandler; joiners sync via message
-    if (!this.circle || this.circle.isHost) {
+    // Non-circle modes (standard / hero defense / versus): this.lives
+    // is authoritative. Circle mode has TWO life pools (local
+    // this.lives + circle.sharedLives) that are kept synchronised by
+    // the sync block later in this update tick; for circle mode the
+    // decrement has already happened inside `CircleLeakHandler`
+    // (→ circle.deductLives), and the sync block copies sharedLives
+    // into this.lives. Double-decrementing here would over-report
+    // damage when sharedLives is pulled back into this.lives.
+    if (!this.circle) {
       this.lives -= leakResult.totalLeakDamage;
     }
 
@@ -1710,11 +1717,26 @@ export class GameScene extends Phaser.Scene {
         this.eventLog.gameMessage(`[P${fromIdx}] ${text}`);
       }
 
-      // Sync shared lives (host is authoritative, joiners read from circle)
-      if (this.circle.isHost) {
-        this.circle.sharedLives = this.lives;
-      } else {
-        this.lives = this.circle.sharedLives;
+      // Pull shared lives into the local mirror for UI read. In
+      // circle mode `circle.sharedLives` is the authoritative value
+      // (host mutates it inside `deductLives`; joiners receive it via
+      // `lives_update` broadcasts). `this.lives` is a convenience
+      // copy so every UI path that reads `this.lives` works without
+      // a mode check. Before this consolidation host had a separate
+      // `this.lives` counter that also drifted-corrected sharedLives
+      // via `sharedLives = this.lives` — harmless when in sync but
+      // one accidental drift away from eating lives silently. Now
+      // both host and joiner read-only from sharedLives here.
+      //
+      // On joiners, if the shared pool dropped without our local sim
+      // having logged a leak this frame (no "Creep completed the loop"
+      // entry), it was a remote player's leak. Surface that explicitly
+      // so "lives lost randomly" has an audit trail in the event log.
+      const prev = this.lives;
+      this.lives = this.circle.sharedLives;
+      if (!this.circle.isHost && this.lives < prev && leakResult.totalLeakDamage === 0) {
+        const dropped = prev - this.lives;
+        this.eventLog.gameMessage(`Another player lost ${dropped} shared life${dropped > 1 ? 's' : ''}.`);
       }
 
       // Periodic tower sync — broadcast our tower state every 5s

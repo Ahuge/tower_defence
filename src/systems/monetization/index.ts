@@ -9,6 +9,8 @@ export { PlayerInventory } from './PlayerInventory';
 export { restorePurchases } from './RestorePurchases';
 export type { RestoreResult } from './RestorePurchases';
 export { claimRewarded, isRewardInstant } from './RewardedClaim';
+export { purchase as iapPurchase, getDisplayPrices } from './IAPFlows';
+export type { PurchaseOutcome } from './IAPFlows';
 export { SkinManager } from './SkinManager';
 export { BattlePass } from './BattlePass';
 export type { SeasonDef, PassReward, RewardType, ChallengeTemplate, PerkId } from './BattlePass';
