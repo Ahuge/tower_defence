@@ -84,7 +84,12 @@ function makeStubEventLog(): { messages: string[]; gameMessage: (s: string) => v
 function fresh() {
   const bus = new EventBus();
   const econ = new EconomyManager(bus);
-  econ.addGold(1000);
+  // Accessories range 600..2000g, and getRandomAccessories without a
+  // seed uses Math.random() so per-CI-run the rolled offer at index 0
+  // can land on the priciest entry. Seed enough gold to afford the
+  // most expensive accessory + a bit, otherwise the "successful buy"
+  // test flakes on CI when the random roll lands on a 2000g item.
+  econ.addGold(5000);
   const hero = makeHero();
   const log = makeStubEventLog();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
