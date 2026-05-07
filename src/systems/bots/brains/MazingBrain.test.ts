@@ -132,13 +132,16 @@ describe('MazingBrain — basic decisions', () => {
     // preferred but the scorer's veto can fall through to splash or
     // single. Either is valid panic-mode behaviour — what matters is
     // the brain doesn't silently skip while lives bleed.
-    const brain = new MazingBrain();
+    //
+    // Per-faction tuning means panicLives varies per faction (the
+    // mechanical default is 1). Pass explicit params to force a
+    // predictable panic threshold for the test.
+    const brain = new MazingBrain({ panicLives: 5 });
     const c = ctx({ lives: 3 });
     brain.init(c);
     const d = brain.decide(c);
     expect(d.kind).toBe('place');
     if (d.kind === 'place') {
-      // Any defensive tower works — slow / splash / single all qualify.
       const okIds = [SLOW.id, DPS_CHEAP.id, DPS_EXPENSIVE.id];
       expect(okIds).toContain(d.type.id);
     }

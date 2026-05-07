@@ -105,6 +105,88 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
   confidenceFloor: 0.40,
 };
 
+/** Per-faction MazingScorer configs harvested from brain-search runs.
+ *  Each entry is the bestSoFar params from
+ *  brain-search/mazing-<faction>-normal/summary.json. Keyed by
+ *  faction id; init(ctx) picks the right one based on ctx.faction.
+ *
+ *  Cells included = those where MazingBrain beats every prior brain
+ *  by > 5pp (verified on n=100 validation in the brain-search run):
+ *    - infernal:   99% (was 56% balanced)  — DEFAULT, kept verbatim
+ *    - void:       98% (was 100% greedy, ~tie)
+ *    - aliens:     73% (was 2% best)
+ *    - harmonic:    8% (was 0% best)
+ *    - mechanical:  7% (was 0% best)
+ *
+ *  Cells NOT included (keep their existing winner):
+ *    - arcane→greedy 100%  - psionic→greedy 12%
+ *    - nature→rush 100%    - cypherpunk→aoe_focus 82%
+ *    - military→rush 100%  - celestial→greedy 100%
+ *
+ *  When ctx.faction isn't in this table, the brain falls back to
+ *  DEFAULT_MAZING_BRAIN_PARAMS (the infernal config). */
+export const MAZING_FACTION_CONFIGS: Record<string, Partial<MazingBrainParams>> = {
+  void: {
+    panicLives: 5, mazeSaturationThreshold: 1, maxWallPlacements: 8,
+    highCoverageRatio: 1.5, minDpsTowersForUlt: 4, stableLivesForUlt: 15,
+    expensiveBias: 0.8215, frontierBuyChance: 0.3713, sendBuyChance: 0.3258,
+    auraAdjacencyBonus: 0.3124, waveLookaheadWindow: 3, upgradeCoverageRange: 4,
+    skipUltimateSave: 0, upgradeStrategyIdx: 0, towerPickStrategyIdx: 1,
+    alpha: 5, beta: 1, gamma: 0.8282,
+    deltaDps: 0.05, epsilonSlow: 0.05, zetaAura: 0,
+    beamWidth: 3, mutationsPerState: 12, waves: 6,
+    baseBudget: 83, budgetGrowth: 94, growBranchMaxLen: 7, towerPickMode: 0,
+    pAddTower: 0.5098, pGrowBranch: 0.3, pRemoveTower: 0.15, pSwapTower: 0.05,
+    addBiasWall: 2.121, addBiasDps: 1.4128, addBiasSlow: 0.6, addBiasAura: 0.0222,
+    confidenceFloor: 0.4,
+  },
+  aliens: {
+    panicLives: 8, mazeSaturationThreshold: 1, maxWallPlacements: 1,
+    highCoverageRatio: 1.166, minDpsTowersForUlt: 3, stableLivesForUlt: 18,
+    expensiveBias: 0.9105, frontierBuyChance: 0.305, sendBuyChance: 0.2978,
+    auraAdjacencyBonus: 0.122, waveLookaheadWindow: 5, upgradeCoverageRange: 4,
+    skipUltimateSave: 0, upgradeStrategyIdx: 2, towerPickStrategyIdx: 3,
+    alpha: 5.1304, beta: 1.3376, gamma: 0.7437,
+    deltaDps: 0.0962, epsilonSlow: 0, zetaAura: 0,
+    beamWidth: 2, mutationsPerState: 13, waves: 6,
+    baseBudget: 126, budgetGrowth: 40, growBranchMaxLen: 3, towerPickMode: 0,
+    pAddTower: 0.1121, pGrowBranch: 0.2165, pRemoveTower: 0.0036, pSwapTower: 0.2505,
+    addBiasWall: 2.6897, addBiasDps: 1.7308, addBiasSlow: 0, addBiasAura: 0.6583,
+    confidenceFloor: 0.4273,
+  },
+  harmonic: {
+    panicLives: 2, mazeSaturationThreshold: 2, maxWallPlacements: 11,
+    highCoverageRatio: 1.4938, minDpsTowersForUlt: 7, stableLivesForUlt: 18,
+    expensiveBias: 1, frontierBuyChance: 0.2334, sendBuyChance: 0.4855,
+    auraAdjacencyBonus: 0.0908, waveLookaheadWindow: 4, upgradeCoverageRange: 5,
+    skipUltimateSave: 1, upgradeStrategyIdx: 0, towerPickStrategyIdx: 0,
+    alpha: 4.12, beta: 0.3986, gamma: 0.1811,
+    deltaDps: 0.1438, epsilonSlow: 0.2582, zetaAura: 0.1234,
+    beamWidth: 3, mutationsPerState: 18, waves: 8,
+    baseBudget: 103, budgetGrowth: 59, growBranchMaxLen: 7, towerPickMode: 0,
+    pAddTower: 0.96, pGrowBranch: 0, pRemoveTower: 0.2971, pSwapTower: 0.1734,
+    addBiasWall: 1.7111, addBiasDps: 2.3636, addBiasSlow: 1.2069, addBiasAura: 1.7585,
+    confidenceFloor: 0.0966,
+  },
+  mechanical: {
+    // Mechanical's brain-search winner — 7% on a previously-unsolved
+    // cell. Mech kit emphasises wall placements (mech_wall is cheap,
+    // mech_spike) plus DPS coverage. Towers tend to want to occupy
+    // the path itself, not the chokes.
+    panicLives: 1, maxWallPlacements: 9, highCoverageRatio: 1.46,
+    expensiveBias: 1.0, sendBuyChance: 0.32, auraAdjacencyBonus: 0.33,
+    skipUltimateSave: 0, upgradeStrategyIdx: 2,
+    alpha: 6.26, beta: 1.47, gamma: 0.21,
+    deltaDps: 0.05, epsilonSlow: 0, zetaAura: 0.23,
+    beamWidth: 5, mutationsPerState: 19, waves: 14,
+    baseBudget: 78, budgetGrowth: 44, growBranchMaxLen: 7, towerPickMode: 0,
+    pAddTower: 0.30, pGrowBranch: 0.02, pRemoveTower: 0.30, pSwapTower: 0.17,
+    addBiasWall: 2.84, addBiasDps: 1.25, addBiasSlow: 0, addBiasAura: 0,
+    confidenceFloor: 0.22,
+  },
+  // infernal: omitted — its winner IS the DEFAULT_MAZING_BRAIN_PARAMS.
+};
+
 function loadMazingParamsFromEnv(): MazingBrainParams {
   const raw = (typeof process !== 'undefined' && process.env)
     ? process.env.MAZING_BRAIN_PARAMS : undefined;
@@ -120,11 +202,41 @@ function loadMazingParamsFromEnv(): MazingBrainParams {
 export class MazingBrain extends BalancedBrain {
   readonly name: string = 'Mazing';
   protected scorer: MazingScorer;
+  /** Optional explicit override (test injection / brain-search). When
+   *  null, init(ctx) picks the per-faction config from
+   *  MAZING_FACTION_CONFIGS keyed on ctx.faction. */
+  private readonly explicitParams: Partial<MazingBrainParams> | null;
 
   constructor(params?: Partial<MazingBrainParams>) {
-    const merged = params ? { ...DEFAULT_MAZING_BRAIN_PARAMS, ...params } : loadMazingParamsFromEnv();
-    super(merged);
-    this.scorer = new MazingScorer(merged);
+    // Resolve params at construction time only when explicitly given
+    // OR when the env override is set. Otherwise defer to init(ctx)
+    // so we can pick the per-faction config.
+    const envParams = !params ? loadMazingParamsFromEnv() : null;
+    const initial = params
+      ? { ...DEFAULT_MAZING_BRAIN_PARAMS, ...params }
+      : (envParams ?? DEFAULT_MAZING_BRAIN_PARAMS);
+    super(initial);
+    this.scorer = new MazingScorer(initial);
+    this.explicitParams = params ?? null;
+  }
+
+  init(ctx: BotContext): void {
+    super.init(ctx);
+    // Per-faction tuning: when no explicit override AND no env var,
+    // swap in the brain-search-tuned config for this faction. Falls
+    // back to DEFAULT_MAZING_BRAIN_PARAMS (the infernal-tuned config)
+    // when the faction has no specialised entry. Both the parent's
+    // strategic knobs (panicLives, frontierBuyChance, etc.) AND the
+    // scorer's spatial weights need swapping — they were tuned together
+    // by brain-search and the win-rates depend on the combination.
+    if (!this.explicitParams && !process.env.MAZING_BRAIN_PARAMS) {
+      const factionConfig = MAZING_FACTION_CONFIGS[ctx.faction];
+      if (factionConfig) {
+        const merged = { ...DEFAULT_MAZING_BRAIN_PARAMS, ...factionConfig };
+        this.params = merged;       // swap parent's strategic knobs
+        this.scorer = new MazingScorer(merged);  // swap scorer weights
+      }
+    }
   }
 
   // ── decideMaze ─────────────────────────────────────────────────

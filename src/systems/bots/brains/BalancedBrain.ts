@@ -136,7 +136,10 @@ function loadParamsFromEnv(): BalancedBrainParams {
 
 export class BalancedBrain implements BotBrain {
   readonly name: string = 'Balanced';
-  readonly params: BalancedBrainParams;
+  // params is mutable so subclasses can swap in faction-specific
+  // configs at init(ctx) time, after the constructor has run.
+  // MazingBrain uses this for per-faction tuned weights.
+  params: BalancedBrainParams;
 
   protected grouped: Record<TowerRole, TowerType[]> = {
     'wall': [], 'dps-single': [], 'dps-splash': [],
