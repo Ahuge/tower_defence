@@ -2,6 +2,32 @@
 
 ## 2026-05-07
 
+### MazingBrain v3.4 — wave-mix-aware planner, variety fitness, trait coverage, BFS dedup
+
+Four milestones landed in v3.4 plus a v4 design doc.
+
+**M1 — Wave-mix-aware planner (`WaveCounterScorer`)**: ScorerContext gains a `creepMix` field (heavy/medium/light armor shares, group/flying/boss/fast shares, avg HP scale). `MazingScorer.ensurePlan` precomputes the mix from `ctx.upcomingWaves` and threads it through `runBeam`. New scorer adds counter-effectiveness bonus per placed tower scaled by path coverage:
+- splash_damage vs swarm/heavy/flying creeps
+- pierce_damage vs heavy armor
+- slow_on_hit vs fast creeps
+- jackpot/damage_amp vs bosses (HP-scaled)
+- chain_lightning vs group spawns
+
+Default weight 0.05; brain-search tunes per cell. Empty mix → 0 contribution (legacy behavior).
+
+**M3 — Variety as fitness term**: `MatchResult.towerIdCounts` records final tower distribution (levels collapsed). Brain-search's eval loop computes Shannon entropy of placements, normalized to `log(distinct_types)`. New CLI flag `--diversity-weight=N` adds `weight × entropy` to fitness. At `0.05` ties prefer variety; at `0.1` a 90% win-rate config with full variety beats a 95% monoculture. Default 0 (legacy pure-win-rate optimization).
+
+**M2 — Extended trait coverage**:
+- `AuraAmplificationScorer` now handles every aura trait we have data for: `adjacency_buff` (Mech), `damage_aura`/`rate_aura`/`crit_aura` (Harmonic), `spell_amp` (Arcane), `overclock_buff` (Mech Mortar). Previously the scorer only saw `adjacency_buff`, returning 0 for Harmonic's entire amplifier kit.
+- New `ChainLightningScorer` for Mech Tesla's `chain_damage`. Models bounce damage as a geometric falloff series (1 + falloff + falloff² + ... × baseDPS).
+- **First Mechanical win**: 0/50 → 1/50 at default weights. Tiny but a real signal that the math is correct. Brain-search re-tune (deferred) will scale this up.
+
+**M4 — BFS dedup (40% perf win)**: profiling showed `scoreState` runs BFS twice per call — once for metrics in `bfsScoreMulti`, once again per segment for path coordinates. Made `bfsScoreMulti` return path geometries alongside metrics so `scoreState` reuses them. Per-faction speedup: arcane/mechanical/celestial -38%, infernal -18%, void -20%.
+
+**v4 plan committed** as `BRAIN_V4_PLAN.md` — adversarial self-play between TowerPlacer and SendPicker brains, with paired-evolution brain-search alternating which side gets tuned. Phased implementation (4.1 SendPickerBrain interface → 4.5 per-faction self-play tuning), estimated 2-3 weeks. Open decisions documented (action space, evaluation cadence, match length, picker economy).
+
+**Verification across v3.4**: 361/361 tests pass. Win rates n=50 normal plains: void 50/50, infernal 50/50, aliens 39/50, harmonic 5/50, military 0/50, **mechanical 0/50 → 1/50**, nature 0/50 — no regressions; one new cell unlocked.
+
 ### MazingBrain v3.2 (M4): brain-search re-tune void + infernal with v3.1 scorers in scope
 
 Re-ran `scripts/brain-search.mjs --brain=mazing --faction={void,infernal,military}` with v3.1's gold/teleport/jackpot scorers in the search space (300 evals × 4 workers, ~3 min each). Findings:
