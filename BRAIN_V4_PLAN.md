@@ -21,7 +21,7 @@ This caps win rate on cells where:
   against high-armor + flying mix; brain-search currently can't see
   this because it runs against fixed waves.
 
-v4 introduces a **second agent — the SendPicker** — that adversarially
+v4 introduces a **second agent — the WaveDirector** — that adversarially
 optimizes against the TowerPlacer's current strategy. Self-play between
 the two converges toward a more robust placer.
 
@@ -35,7 +35,7 @@ the two converges toward a more robust placer.
                 ├─────────────────────┤
                 │ TowerPlacer_N       │
                 │   (current best)    │
-                │ SendPicker_N        │
+                │ WaveDirector_N        │
                 │   (current best)    │
                 └─────────┬───────────┘
                           │
@@ -43,84 +43,99 @@ the two converges toward a more robust placer.
             ↓                           ↓
    ┌────────────────┐         ┌────────────────┐
    │ Optimize       │         │ Optimize       │
-   │ TowerPlacer    │         │ SendPicker     │
-   │ vs SendPicker_N│         │ vs TowerPlacer_N│
+   │ TowerPlacer    │         │ WaveDirector     │
+   │ vs WaveDirector_N│         │ vs TowerPlacer_N│
    └────────┬───────┘         └────────┬───────┘
             ↓                           ↓
    ┌────────────────┐         ┌────────────────┐
-   │ TowerPlacer_N+1│         │ SendPicker_N+1 │
+   │ TowerPlacer_N+1│         │ WaveDirector_N+1 │
    └────────┬───────┘         └────────┬───────┘
             └────────────┬──────────────┘
                          ↓
               ┌─────────────────┐
               │ Min-max:        │
               │ TowerPlacer_N+1 │
-              │ vs SendPicker_N+1│
+              │ vs WaveDirector_N+1│
               │  → fitness      │
               └─────────────────┘
 ```
 
 ### Components to build
 
-#### 1. `SendPickerBrain` (new agent type)
+#### 1. `WaveDirectorBrain` (new agent type)
 
-Mirror `BotBrain` interface but for the wave/send-picking side:
+The WaveDirector is the **wave-composer adversary** — for each upcoming
+wave, it picks the creep mix that best pressures the defender's current
+layout. **It is NOT the player-facing "send" mechanic** (which is a
+gold-cost interrupt action in versus mode); the WaveDirector replaces
+the static `WaveDefinitions` generator only.
+
+**Hard invariant: creeps cannot damage towers.** The WaveDirector's
+action space is constrained to creep-type / count / hp-or-speed scale
+within the difficulty curve's bounds. No new creep abilities, no
+"tower-attacker" creep type, no creeps that grant damage to other
+creeps' attacks. Outcome is identical to current TD: more creeps
+reach exit → more lives lost. Towers are untouchable as in v1-v3.5.
 
 ```ts
-interface SendPickerBrain {
+interface WaveDirectorBrain {
   name: string;
-  init(ctx: SendPickerContext): void;
-  decide(ctx: SendPickerContext): SendDecision;
+  init(ctx: WaveDirectorContext): void;
+  /** Called once between waves. Returns the wave's creep composition. */
+  decide(ctx: WaveDirectorContext): WaveDecision;
 }
 
-interface SendPickerContext {
-  wave: number;                    // current wave
-  budget: number;                  // sender's gold budget
-  livesRemaining: number;          // attacker's "score"
-  observedTowers: PlacedTower[];   // what the bot built (visible)
-  observedPath: PathPoint[];       // current creep route
+interface WaveDirectorContext {
+  wave: number;                    // current wave index
+  livesRemaining: number;          // defender's lives — director's "objective"
+  observedTowers: PlacedTower[];   // what the defender built (visible)
+  observedPath: PathPoint[];       // current creep route through the maze
   upcomingHorizon: number;         // waves ahead to plan for
-  creepCatalog: CreepType[];       // available creep types
-  sendCatalog: SendOption[];       // available send options
+  creepCatalog: CreepType[];       // available creep types (per difficulty)
+  hpScaleBounds: { min: number; max: number };  // ±20% around nominal
+  speedScaleBounds: { min: number; max: number };
 }
 
-type SendDecision =
-  | { kind: 'wave'; groups: WaveCreepGroup[] }   // compose this wave's creeps
-  | { kind: 'send'; sendOptionId: string }        // queue an interrupt send
-  | { kind: 'skip' };                             // wait
+type WaveDecision = { kind: 'wave'; groups: WaveCreepGroup[] };
 ```
 
-#### 2. Send-Picker brains (initial roster)
+The decision is always a fully-specified wave composition. There's no
+"skip" or "send" branch — every wave fires, the director just picks
+which creeps populate it within the difficulty bounds.
 
-Start with 3 SendPickers covering the strategic spectrum:
+#### 2. WaveDirector brains (initial roster)
 
-- **`UniformSendPicker`** — picks creep mix uniformly across types.
+Start with 3 WaveDirectors covering the strategic spectrum:
+
+- **`UniformWaveDirector`** — picks creep mix uniformly across types.
   Baseline that mimics current static wave generator.
-- **`CounterPickSendPicker`** — observes placed towers, picks creeps
+- **`CounterPickWaveDirector`** — observes placed towers, picks creeps
   whose armor/behavior counters the bot's tower mix. E.g. bot placed
   splash → send shielded; bot placed slow → send fast.
-- **`AdversarialSearchSendPicker`** — runs a 1-step lookahead: for
+- **`AdversarialSearchWaveDirector`** — runs a 1-step lookahead: for
   each candidate creep mix, simulates the bot's likely placements,
   picks the mix that maximizes leak count. Mini-beam-search.
 
-#### 3. Engine hooks for send-picker dispatch
+#### 3. Engine hooks for wave-director dispatch
 
 `SpawnManager` and `WaveController` currently read static
-`WaveDefinitions[]`. Need to plumb a `SendPickerBrain` hook that
+`WaveDefinitions[]`. Need to plumb a `WaveDirectorBrain` hook that
 generates `WaveDefinition` per wave at runtime. Affects:
 
-- `MatchConfig` gains `sendPickerId?: string`
-- `HeadlessMatch.runMatchInner` instantiates the SendPicker if set,
+- `MatchConfig` gains `waveDirectorId?: string`
+- `HeadlessMatch.runMatchInner` instantiates the WaveDirector if set,
   calls `decide()` between waves, materializes the chosen creep mix
-- `WaveController` emits "between-wave" events the SendPicker subscribes to
-- `EconomyManager` for SendPicker tracks attacker's gold budget separately
+- `WaveController` emits "between-wave" events the WaveDirector subscribes to
+- (No separate attacker economy — wave compositions are scaled by
+  difficulty/wave-index, not by an attacker gold budget. That keeps
+  WaveDirector strictly a wave-composer, not a "sender".)
 
 #### 4. Two-agent brain-search
 
 Extend `BrainSearchManager` to support paired-evolution:
 
 - `TowerPlacerSchema` (existing MazingBrainSchema) — known-good
-- `SendPickerSchema` (new) — knobs for the picker's behavior
+- `WaveDirectorSchema` (new) — knobs for the picker's behavior
 - Match config takes `placerParams` + `pickerParams`
 - Self-play loop alternates: tune placer vs frozen picker, then
   tune picker vs frozen placer
@@ -130,31 +145,31 @@ Extend `BrainSearchManager` to support paired-evolution:
 
 Match outcome: leak count + waveReached.
 - TowerPlacer minimizes leaks (current win-rate definition)
-- SendPicker maximizes leaks
+- WaveDirector maximizes leaks
 - Two fitness functions; both use the same EvalRecord shape
 
 ## Implementation order
 
-### Phase 4.1: SendPickerBrain interface + UniformSendPicker
+### Phase 4.1: WaveDirectorBrain interface + UniformWaveDirector
 
-- Define `SendPickerBrain` + `SendPickerContext` + `SendDecision`
-- Implement `UniformSendPicker` (currently-static wave generator
+- Define `WaveDirectorBrain` + `WaveDirectorContext` + `WaveDecision`
+- Implement `UniformWaveDirector` (currently-static wave generator
   reimplemented as a brain)
-- Plumb `MatchConfig.sendPickerId` through `HeadlessMatch`
-- Verify: with `sendPickerId='uniform'`, behavior matches current
-  static-wave system (regression-clean)
+- Plumb `MatchConfig.waveDirectorId` through `HeadlessMatch`
+- Verify: with `waveDirectorId='uniform'` (or omitted), behavior
+  matches current static-wave system (regression-clean)
 
 Estimated: 3-4 days. Mostly mechanical refactoring of wave generation
 into a brain interface.
 
-### Phase 4.2: CounterPickSendPicker + send-picker tests
+### Phase 4.2: CounterPickWaveDirector + wave-director tests
 
 - Implement counter-pick logic (observed towers → creep weakness)
-- Match harness needs to expose tower observations to SendPicker
+- Match harness needs to expose tower observations to WaveDirector
 - Brain tests for counter-pick: when bot places X, picker should
   prefer Y
-- Run all existing TowerPlacer brains vs CounterPickSendPicker;
-  measure win-rate delta vs UniformSendPicker
+- Run all existing TowerPlacer brains vs CounterPickWaveDirector;
+  measure win-rate delta vs UniformWaveDirector
 
 Estimated: 2-3 days.
 
@@ -168,9 +183,9 @@ Estimated: 2-3 days.
 
 Estimated: 3-4 days.
 
-### Phase 4.4: AdversarialSearchSendPicker
+### Phase 4.4: AdversarialSearchWaveDirector
 
-- Mini-beam-search inside the SendPicker
+- Mini-beam-search inside the WaveDirector
 - Lookahead: 1 wave ahead, simulate placer's response (using cached
   placer plan from previous wave), pick creep mix with highest
   expected leaks
@@ -197,7 +212,7 @@ Estimated: 1-2 days of compute (parallel) + analysis.
 - **Variety as emergent behavior** — facing a counter-picker, the
   placer naturally diversifies tower choices to avoid being countered.
   The v3.3 variety knob becomes redundant in many cases.
-- **New game modes** — the SendPicker brain becomes the AI for human-vs-CPU
+- **New game modes** — the WaveDirector brain becomes the AI for human-vs-CPU
   matches where the human plays the attacker. Repurposable for
   competitive multiplayer scenarios.
 - **Learning brain reborn** — the existing LearningBrain pipeline
@@ -220,7 +235,7 @@ Estimated: 1-2 days of compute (parallel) + analysis.
 
 ## Decision points to lock before starting
 
-1. **Send-picker action space.** Allowing arbitrary creep compositions
+1. **Wave-director action space.** Allowing arbitrary creep compositions
    per wave is too unconstrained. Realistic options:
    - "Pick from a fixed roster of 5 wave templates per difficulty"
    - "Pick a creep type + count, scale by difficulty curve"
@@ -240,7 +255,10 @@ Estimated: 1-2 days of compute (parallel) + analysis.
    generation. **Recommendation**: keep the existing 20-wave default;
    add a 30-wave "stress test" mode for final validation.
 
-4. **Picker also gets gold/ult mechanics?** Current sends in the game
-   cost gold and have unlock tiers. The picker should respect this —
-   not infinite-budget creep summoning. **Recommendation**: yes, mirror
-   the human attacker's economy in versus mode.
+4. **WaveDirector economy?** The in-game "send" mechanic is a
+   versus-mode player action with gold cost and unlock tiers — that's
+   separate from this work. The WaveDirector replaces only the static
+   wave generator; it doesn't queue sends. **Recommendation**: no
+   economy for the WaveDirector — its action space is bounded by
+   difficulty/wave-index curves, not by gold. Keeps the abstraction
+   clean and prevents conflating with the player-facing send system.
