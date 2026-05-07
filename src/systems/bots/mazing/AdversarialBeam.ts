@@ -34,6 +34,7 @@ import { Cell } from '../BotBrain';
 import { TowerType } from '../../../data/TowerTypes';
 import { TowerRole, getTowerRole } from '../../../data/TowerRoles';
 import { hasTrait, getTrait } from '../../traits/Trait';
+import { CreepMix, EMPTY_CREEP_MIX } from './scorers/types';
 import { TILE_SIZE } from '../../../config';
 import { ScorerRegistry, buildDefaultRegistry } from './scorers';
 
@@ -115,6 +116,13 @@ export interface BeamOptions {
   weight_teleport_delivery: number;
   enable_gold_on_hit: number;
   enable_teleport_delivery: number;
+  /** v3.4 NEW — wave-mix-aware counter bonus. Reads upcoming creep
+   *  composition (armor, behavior, boss share, fast share) and uplifts
+   *  towers whose traits counter the dominant mix (splash vs swarm,
+   *  pierce vs heavy, slow vs fast, jackpot vs boss). 0 = no counter
+   *  bonus (legacy v3.2 behaviour). */
+  weight_wave_counter: number;
+  enable_wave_counter: number;
 }
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
@@ -156,6 +164,8 @@ export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   // leaving them on for non-Void/Infernal factions is a no-op.
   weight_gold_on_hit: 1.0, weight_teleport_delivery: 1.0,
   enable_gold_on_hit: 1, enable_teleport_delivery: 1,
+  // v3.4 — wave-mix-aware counter bonus, default-on.
+  weight_wave_counter: 0.05, enable_wave_counter: 1,
 };
 
 const INVALID_SCORE = -1e9;
@@ -293,6 +303,7 @@ function scoreState(
   paths: { start: PathPoint; end: PathPoint }[],
   opts: BeamOptions,
   lookupType: (id: string) => TowerType | null,
+  creepMix: CreepMix = EMPTY_CREEP_MIX,
 ): { total: number; perRole: Record<TowerRole, number> } {
   const restore: { col: number; row: number; prev: CellType }[] = [];
   for (const p of state.placedTowers) {
@@ -338,6 +349,7 @@ function scoreState(
       pathGeometries: pathGeoms,
       lookupTower: lookupType,
       lookupRole,
+      creepMix,
     };
 
     // Pull the registry from opts (set by runBeam below). Falls back
@@ -356,6 +368,7 @@ function scoreState(
         dotOverlap: opts.weight_dot_overlap,
         goldOnHit: opts.weight_gold_on_hit,
         teleportDelivery: opts.weight_teleport_delivery,
+        waveCounter: opts.weight_wave_counter,
       },
       {
         slowOverlap: opts.enable_slow_overlap > 0,
@@ -365,6 +378,7 @@ function scoreState(
         dotOverlap: opts.enable_dot_overlap > 0,
         goldOnHit: opts.enable_gold_on_hit > 0,
         teleportDelivery: opts.enable_teleport_delivery > 0,
+        waveCounter: opts.enable_wave_counter > 0,
       },
     );
 
@@ -627,6 +641,7 @@ export function runBeam(
   paths: { start: PathPoint; end: PathPoint }[],
   towerPool: TowerType[],
   opts: BeamOptions = DEFAULT_BEAM_OPTIONS,
+  creepMix: CreepMix = EMPTY_CREEP_MIX,
 ): BeamResult {
   const lookupType = makeTowerLookup(towerPool);
   // Empty pool fallback — synthesise a generic wall stub. This keeps
@@ -637,7 +652,7 @@ export function runBeam(
   if (towerPool.length === 0) lookupType.set(SYNTHETIC_WALL.id, SYNTHETIC_WALL);
 
   const initial: BeamState = { placedTowers: [], cost: 0, score: -Infinity };
-  initial.score = scoreState(baseline, initial, paths, opts, (id) => lookupType.get(id) ?? null).total;
+  initial.score = scoreState(baseline, initial, paths, opts, (id) => lookupType.get(id) ?? null, creepMix).total;
   let beam: BeamState[] = [initial];
   const scoreHistory: number[] = [initial.score];
   const bestRoleScore = emptyRoleScores();
@@ -649,7 +664,7 @@ export function runBeam(
       for (let m = 0; m < opts.mutationsPerState; m++) {
         const next = mutate(state, candidates, budget, baseline.entry, pool, opts, baseline, paths, (id) => lookupType.get(id) ?? null);
         if (!next) continue;
-        const s = scoreState(baseline, next, paths, opts, (id) => lookupType.get(id) ?? null);
+        const s = scoreState(baseline, next, paths, opts, (id) => lookupType.get(id) ?? null, creepMix);
         if (s.total === INVALID_SCORE) continue;
         next.score = s.total;
         for (const role of Object.keys(s.perRole) as TowerRole[]) {

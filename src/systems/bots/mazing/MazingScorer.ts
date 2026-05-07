@@ -30,6 +30,9 @@ import { runBeam, BeamOptions, BeamResult, DEFAULT_BEAM_OPTIONS, PlacedTower } f
 import { TowerType } from '../../../data/TowerTypes';
 import { TowerRole, getTowerRole } from '../../../data/TowerRoles';
 import { hasTrait } from '../../traits/Trait';
+import { CreepMix, EMPTY_CREEP_MIX } from './scorers/types';
+import { CREEP_TYPES } from '../../../data/CreepTypes';
+import { WaveDefinition } from '../../../data/WaveDefinitions';
 
 export interface MazingScorerOptions extends BeamOptions {
   /** Confidence floor for the wishlist veto. v2 compares the cell's
@@ -208,7 +211,12 @@ export class MazingScorer {
       // ExpiringTowerScorer in scorers/), so they fade out naturally
       // late-game without needing a hard exclude.
       const planPool = ctx.towerPool.filter(t => !hasTrait(t.traits, 'mobile_unit'));
-      this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, planPool, this.opts);
+      // Window matches the brain's lookahead. Hardcoded 5 here because
+      // BeamOptions doesn't carry waveLookaheadWindow (that's a brain-
+      // level knob); the scorer's view of "upcoming" is the brain's
+      // anyway, since both consume from ctx.upcomingWaves.
+      const creepMix = computeCreepMix(ctx.upcomingWaves, 5);
+      this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, planPool, this.opts, creepMix);
     }
     this.cacheWave = ctx.wave;
     this.roleBuckets = null;
@@ -265,6 +273,49 @@ function pathSegmentsFor(ctx: BotContext): { start: PathPoint; end: PathPoint }[
     segs.push({ start: ctx.grid.entry, end: ctx.grid.exit });
   }
   return segs;
+}
+
+/** Aggregate creep composition over the next `window` upcoming waves
+ *  into shares per armor / behavior / boss / fast / HP-scale. Used by
+ *  WaveCounterScorer to bias placements toward what's coming. */
+function computeCreepMix(upcoming: WaveDefinition[] | undefined, window: number): CreepMix {
+  if (!upcoming || upcoming.length === 0) return EMPTY_CREEP_MIX;
+  const slice = upcoming.slice(0, Math.max(1, window));
+  let total = 0;
+  let heavy = 0, medium = 0, light = 0;
+  let group = 0, flying = 0, boss = 0, fast = 0;
+  let hpScaleSum = 0;
+  for (const wave of slice) {
+    for (const g of wave.groups) {
+      const ct = CREEP_TYPES[g.creepType];
+      if (!ct) continue;
+      const n = g.count;
+      total += n;
+      if (ct.armor === 'heavy') heavy += n;
+      else if (ct.armor === 'light') light += n;
+      else medium += n;
+      if (ct.spawnBehavior === 'group') group += n;
+      else if (ct.spawnBehavior === 'flying') flying += n;
+      // Boss detection: explicit isBoss flag if present, else infer
+      // from creep id (boss / mage_armor patterns).
+      if (wave.isBoss || g.creepType === 'boss' || g.creepType.includes('boss')) boss += n;
+      // Fast = speed > 1.1× baseline.
+      if ((ct.speedMultiplier ?? 1) > 1.1) fast += n;
+      hpScaleSum += (ct.hpMultiplier ?? 1) * n;
+    }
+  }
+  if (total === 0) return EMPTY_CREEP_MIX;
+  return {
+    heavyArmorShare: heavy / total,
+    mediumArmorShare: medium / total,
+    lightArmorShare: light / total,
+    groupShare: group / total,
+    flyingShare: flying / total,
+    bossShare: boss / total,
+    fastShare: fast / total,
+    avgHpScale: hpScaleSum / total,
+    empty: false,
+  };
 }
 
 void Grid; // imported for type-completeness in interfaces

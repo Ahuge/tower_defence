@@ -105,6 +105,8 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
   // for cells that haven't been re-tuned with the v3.1 scorers in scope.
   weight_gold_on_hit: 1.0, weight_teleport_delivery: 1.0,
   enable_gold_on_hit: 1, enable_teleport_delivery: 1,
+  // v3.4 — wave-mix-aware counter bonus, default-on at small weight.
+  weight_wave_counter: 0.05, enable_wave_counter: 1,
 };
 
 /** Per-faction MazingScorer configs harvested from brain-search runs.

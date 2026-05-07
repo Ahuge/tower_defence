@@ -15,7 +15,7 @@ import { TowerType } from '../../../../data/TowerTypes';
 import { TowerRole, getTowerRole } from '../../../../data/TowerRoles';
 import { PathPoint } from '../../../Pathfinding';
 import {
-  ScorerContext, ScorerState, BfsMetrics, PlacedTower,
+  ScorerContext, ScorerState, BfsMetrics, PlacedTower, EMPTY_CREEP_MIX,
 } from './types';
 import { SlowOverlapScorer } from './SlowOverlapScorer';
 import { AuraChainScorer } from './AuraChainScorer';
@@ -90,6 +90,7 @@ function makeCtx(placedTowers: PlacedTower[], path: PathPoint[]): ScorerContext 
       const t = lookup.get(id);
       return t ? getTowerRole(t) : 'utility' as TowerRole;
     },
+    creepMix: EMPTY_CREEP_MIX,
   };
 }
 

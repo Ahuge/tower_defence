@@ -20,6 +20,7 @@ import { MobileEngagementScorer } from './MobileEngagementScorer';
 import { DotOverlapScorer } from './DotOverlapScorer';
 import { GoldOnHitScorer } from './GoldOnHitScorer';
 import { TeleportDeliveryScorer } from './TeleportDeliveryScorer';
+import { WaveCounterScorer } from './WaveCounterScorer';
 
 /** Weights config — one knob per registered scorer. v2 → v3 migration:
  *    pathExtension ← α
@@ -47,6 +48,9 @@ export interface ScorerWeights {
   // v3.1 — trait-aware scorers for unique per-tower mechanics
   goldOnHit: number;
   teleportDelivery: number;
+  // v3.4 — wave-mix-aware counter bonus (splash vs swarm, slow vs fast,
+  // jackpot vs boss, etc.)
+  waveCounter: number;
 }
 
 export interface ScorerToggles {
@@ -63,6 +67,8 @@ export interface ScorerToggles {
   // v3.1
   goldOnHit: boolean;
   teleportDelivery: boolean;
+  // v3.4
+  waveCounter: boolean;
 }
 
 export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
@@ -84,6 +90,11 @@ export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
   // brain-search re-tunes per cell.
   goldOnHit: 1.0,
   teleportDelivery: 1.0,
+  // v3.4 — wave-mix-aware counter bonus. Default 0.05 (small) because
+  // the contribution is dpsRate × pathCells × share × multiplier, which
+  // can scale to thousands; matched to dpsCoverage's 0.05 weight so
+  // counter-effective placements get a meaningful but bounded bonus.
+  waveCounter: 0.05,
 };
 
 export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
@@ -107,6 +118,10 @@ export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
   // no-op rather than a regression.
   goldOnHit: true,
   teleportDelivery: true,
+  // v3.4 — default-on. WaveCounterScorer returns 0 when ctx.creepMix
+  // is empty (no upcoming waves available) so non-game callers /
+  // legacy paths see no behaviour change.
+  waveCounter: true,
 };
 
 /** Build a ScorerRegistry from the weight + toggle config. v3 planner
@@ -133,6 +148,8 @@ export function buildDefaultRegistry(
     // v3.1 — trait-aware unique-tower scorers, default-on.
     { scorer: new GoldOnHitScorer(),         weight: w.goldOnHit,      enabled: e.goldOnHit },
     { scorer: new TeleportDeliveryScorer(),  weight: w.teleportDelivery, enabled: e.teleportDelivery },
+    // v3.4 — wave-mix-aware counter bonus.
+    { scorer: new WaveCounterScorer(),       weight: w.waveCounter,    enabled: e.waveCounter },
   ];
   return new ScorerRegistry(entries);
 }

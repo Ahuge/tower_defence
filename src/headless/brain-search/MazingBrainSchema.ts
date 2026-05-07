@@ -188,4 +188,12 @@ export const MAZING_BRAIN_SCHEMA: ParamSchema = {
   weight_teleport_delivery: { min: 0.0, max: 5.0, default: 1.0, step: 0.3 },
   enable_gold_on_hit:       { min: 0, max: 1, default: 1, step: 1, integer: true },
   enable_teleport_delivery: { min: 0, max: 1, default: 1, step: 1, integer: true },
+
+  // ── v3.4 NEW wave-mix-aware counter bonus. Reads upcoming creep
+  // composition and uplifts towers whose traits counter the dominant
+  // mix (splash vs swarm, pierce vs heavy, slow vs fast, jackpot vs
+  // boss, chain vs group). Default 0.05 weight to match dpsCoverage's
+  // scale; brain-search tunes 0..2 per cell. Default-on toggle.
+  weight_wave_counter:      { min: 0.0, max: 2.0, default: 0.05, step: 0.15 },
+  enable_wave_counter:      { min: 0, max: 1, default: 1, step: 1, integer: true },
 };

@@ -58,6 +58,41 @@ export interface BfsMetrics {
  *  of re-running BFS. */
 export type PathGeometries = PathPoint[][];
 
+/** Aggregate creep statistics for the upcoming wave window. Computed
+ *  once per plan (in MazingScorer.ensurePlan) from ctx.upcomingWaves
+ *  and reused by every scorer that wants to bias placement based on
+ *  what's coming. All shares are normalised to [0, 1]; sums of armor
+ *  shares + behavior shares each total 1.0 (modulo unknown creeps). */
+export interface CreepMix {
+  /** Share of upcoming creeps with heavy armor. */
+  heavyArmorShare: number;
+  /** Share with medium armor (the default). */
+  mediumArmorShare: number;
+  /** Share with light armor. */
+  lightArmorShare: number;
+  /** Share that spawn in groups (swarm-like). */
+  groupShare: number;
+  /** Share that fly (bypass mazes). */
+  flyingShare: number;
+  /** Share that are bosses. */
+  bossShare: number;
+  /** Share that move significantly faster than baseline. */
+  fastShare: number;
+  /** Average HP scale across the window (1.0 ≈ baseline). High HP
+   *  amplifies instakill / per-hit-bonus traits. */
+  avgHpScale: number;
+  /** True if upcomingWaves is empty / unavailable; scorers can choose
+   *  to short-circuit rather than apply a 0-share default. */
+  empty: boolean;
+}
+
+export const EMPTY_CREEP_MIX: CreepMix = {
+  heavyArmorShare: 0, mediumArmorShare: 0, lightArmorShare: 0,
+  groupShare: 0, flyingShare: 0, bossShare: 0, fastShare: 0,
+  avgHpScale: 1.0,
+  empty: true,
+};
+
 /** What every scorer sees. Cached fields are precomputed once per
  *  state-score by the planner and reused across all registered
  *  scorers — performance optimization, since every scorer would
@@ -75,6 +110,10 @@ export interface ScorerContext {
   /** O(1) tower-id → TowerRole lookup. Same as
    *  `getTowerRole(lookupTower(id)!)` but cached. */
   lookupRole: (id: string) => TowerRole;
+  /** Aggregate composition of upcoming waves. Default empty mix when
+   *  the planner doesn't have a wave window (fresh game / endless).
+   *  Scorers that bias by creep type read this. */
+  creepMix: CreepMix;
 }
 
 export interface ContributionScorer {
