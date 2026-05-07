@@ -103,6 +103,12 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
   addBiasSlow: 1.04,
   addBiasAura: 0.40,
   confidenceFloor: 0.40,
+  // v3 NEW scorer weights — default 0 + disabled. brain-search per
+  // cell will tune them on selectively for synergy-heavy factions.
+  weight_slow_overlap: 0, weight_aura_chain: 0, weight_cc_boost: 0,
+  weight_mobile_engagement: 0, weight_dot_overlap: 0,
+  enable_slow_overlap: 0, enable_aura_chain: 0, enable_cc_boost: 0,
+  enable_mobile_engagement: 0, enable_dot_overlap: 0,
 };
 
 /** Per-faction MazingScorer configs harvested from brain-search runs.

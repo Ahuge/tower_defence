@@ -152,4 +152,27 @@ export const MAZING_BRAIN_SCHEMA: ParamSchema = {
   confidenceFloor: {
     min: 0.0, max: 1.0, default: 0.4, step: 0.1,
   },
+
+  // ── v3 NEW trait-aware scorer weights (0 = scorer contributes
+  // nothing). Each captures a synergy v2 couldn't model:
+  //   slow_overlap     = slow tower × DPS overlap (void/military)
+  //   aura_chain       = harmonic multi-hop amp→amp→DPS chains
+  //   cc_boost         = root/confuse/stun extending DPS time-in-range
+  //   mobile_engagement = leashed mobile units (military/nature)
+  //   dot_overlap      = burn/poison DOTs boosted by CC
+  weight_slow_overlap:      { min: 0.0, max: 5.0, default: 0, step: 0.3 },
+  weight_aura_chain:        { min: 0.0, max: 5.0, default: 0, step: 0.3 },
+  weight_cc_boost:          { min: 0.0, max: 5.0, default: 0, step: 0.3 },
+  weight_mobile_engagement: { min: 0.0, max: 5.0, default: 0, step: 0.3 },
+  weight_dot_overlap:       { min: 0.0, max: 5.0, default: 0, step: 0.3 },
+
+  // ── v3 NEW scorer enable flags (0/1). Lets brain-search disable
+  // a misleading scorer entirely without nudging weights. Especially
+  // useful when a scorer's contribution is monotone-bad on a cell
+  // (e.g. mobile engagement on a faction with no mobile units).
+  enable_slow_overlap:      { min: 0, max: 1, default: 0, step: 1, integer: true },
+  enable_aura_chain:        { min: 0, max: 1, default: 0, step: 1, integer: true },
+  enable_cc_boost:          { min: 0, max: 1, default: 0, step: 1, integer: true },
+  enable_mobile_engagement: { min: 0, max: 1, default: 0, step: 1, integer: true },
+  enable_dot_overlap:       { min: 0, max: 1, default: 0, step: 1, integer: true },
 };

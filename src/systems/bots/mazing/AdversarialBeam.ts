@@ -88,6 +88,25 @@ export interface BeamOptions {
   addBiasDps: number;
   addBiasSlow: number;
   addBiasAura: number;
+  /** v3 NEW scorer weights — register additional ContributionScorers
+   *  with these weights. Default 0 = scorer registered but contributes
+   *  nothing. brain-search per cell tunes them on selectively for
+   *  synergy-heavy factions (harmonic / psionic / nature / military). */
+  weight_slow_overlap: number;
+  weight_aura_chain: number;
+  weight_cc_boost: number;
+  weight_mobile_engagement: number;
+  weight_dot_overlap: number;
+  /** v3 NEW scorer enable flags — 0 disables the scorer entirely
+   *  (zeros its contribution without nudging the weight tuning).
+   *  Useful for brain-search to drop misleading scorers on cells
+   *  where they hurt. Stored as int (0/1) to match brain-search's
+   *  numeric sweep. */
+  enable_slow_overlap: number;
+  enable_aura_chain: number;
+  enable_cc_boost: number;
+  enable_mobile_engagement: number;
+  enable_dot_overlap: number;
 }
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
@@ -117,6 +136,12 @@ export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   // mazes (the user's stated expectation) rather than spreading
   // placements across roles. brain-search will rebalance.
   addBiasWall: 2.5, addBiasDps: 1.0, addBiasSlow: 0.6, addBiasAura: 0.4,
+  // v3 NEW scorer weights — default 0 + disabled. brain-search per
+  // cell will turn the relevant ones on with non-zero weights.
+  weight_slow_overlap: 0, weight_aura_chain: 0, weight_cc_boost: 0,
+  weight_mobile_engagement: 0, weight_dot_overlap: 0,
+  enable_slow_overlap: 0, enable_aura_chain: 0, enable_cc_boost: 0,
+  enable_mobile_engagement: 0, enable_dot_overlap: 0,
 };
 
 const INVALID_SCORE = -1e9;
@@ -303,13 +328,27 @@ function scoreState(
 
     // Pull the registry from opts (set by runBeam below). Falls back
     // to a per-call default if absent (legacy callers).
-    const registry = opts.registry ?? buildDefaultRegistry({
-      pathExtension: opts.alpha,
-      bfsWork: opts.beta + opts.gamma,
-      dpsCoverage: opts.deltaDps,
-      slowValue: opts.epsilonSlow,
-      auraAmp: opts.zetaAura,
-    });
+    const registry = opts.registry ?? buildDefaultRegistry(
+      {
+        pathExtension: opts.alpha,
+        bfsWork: opts.beta + opts.gamma,
+        dpsCoverage: opts.deltaDps,
+        slowValue: opts.epsilonSlow,
+        auraAmp: opts.zetaAura,
+        slowOverlap: opts.weight_slow_overlap,
+        auraChain: opts.weight_aura_chain,
+        ccBoost: opts.weight_cc_boost,
+        mobileEngagement: opts.weight_mobile_engagement,
+        dotOverlap: opts.weight_dot_overlap,
+      },
+      {
+        slowOverlap: opts.enable_slow_overlap > 0,
+        auraChain: opts.enable_aura_chain > 0,
+        ccBoost: opts.enable_cc_boost > 0,
+        mobileEngagement: opts.enable_mobile_engagement > 0,
+        dotOverlap: opts.enable_dot_overlap > 0,
+      },
+    );
 
     const total = registry.totalScore(ctx);
 
