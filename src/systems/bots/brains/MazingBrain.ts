@@ -238,7 +238,14 @@ export class MazingBrain extends BalancedBrain {
     // strategic knobs (panicLives, frontierBuyChance, etc.) AND the
     // scorer's spatial weights need swapping — they were tuned together
     // by brain-search and the win-rates depend on the combination.
-    if (!this.explicitParams && !process.env.MAZING_BRAIN_PARAMS) {
+    // `typeof process !== 'undefined'` guard is mandatory — in browser
+    // builds `process` is not defined and a bare reference throws,
+    // which kills GameScene.create() mid-init and leaves the HUD at
+    // 0/0/DEAD. The headless harness has process via Node so it skips
+    // the guard branch naturally.
+    const envOverride = (typeof process !== 'undefined' && process.env)
+      ? process.env.MAZING_BRAIN_PARAMS : undefined;
+    if (!this.explicitParams && !envOverride) {
       const factionConfig = MAZING_FACTION_CONFIGS[ctx.faction];
       if (factionConfig) {
         const merged = { ...DEFAULT_MAZING_BRAIN_PARAMS, ...factionConfig };
