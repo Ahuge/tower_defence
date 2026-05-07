@@ -19,9 +19,10 @@ await import('../src/systems/bots/brains/UltimateBrain.ts');
 await import('../src/systems/bots/brains/AOEFocusBrain.ts');
 await import('../src/systems/bots/brains/NatureBrain.ts');
 await import('../src/systems/bots/brains/MazingBrain.ts');
+await import('../src/systems/bots/brains/ComboMazingBrains.ts');
 
 const FACTIONS = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'];
-const BRAINS = ['balanced', 'greedy', 'rush', 'econ', 'synergy', 'ultimate', 'aoe_focus', 'nature', 'mazing'];
+const BRAINS = ['balanced', 'greedy', 'rush', 'aoe_focus', 'nature', 'mazing', 'greedy_mazing', 'rush_mazing', 'aoe_focus_mazing'];
 const N = 50;
 
 console.log(`brain × faction snapshot · normal · n=${N}`);

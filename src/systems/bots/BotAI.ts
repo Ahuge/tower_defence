@@ -36,6 +36,7 @@ import { BotBrain, BotContext, Cell, PlacedTower, createBrain } from './BotBrain
 import './brains/DumbBrain';
 import './brains/BalancedBrain';
 import './brains/MazingBrain';
+import './brains/ComboMazingBrains';
 
 /** One bot slot's per-frame state. */
 interface BotState {
