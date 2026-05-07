@@ -175,14 +175,21 @@ export class MazingScorer {
     this.roleBuckets = null;
   }
 
-  /** Replan iff the wave has advanced since the last cached plan, OR
-   *  the bot is mid-wave but its OWN placements have outpaced the
-   *  plan. */
+  /** Replan iff the wave has advanced since the last cached plan.
+   *
+   *  The earlier "placements-outpace-plan" trigger forced mid-wave
+   *  replans which caused the brain to second-guess earlier
+   *  placements made under a now-stale plan: tower 1 was placed for
+   *  plan-v1's logic but now operates inside plan-v2's structure.
+   *  Wave-only invalidation makes sequential execution match the
+   *  plan's intent — the brain follows ONE plan all the way through
+   *  a wave, falls back to the parent's coverage scorer when the plan
+   *  runs out of cells, and only re-plans on the next wave start.
+   *
+   *  Cross-bot grid mutations don't invalidate either — Circle Co-op
+   *  zones are isolated. */
   private ensurePlan(ctx: BotContext): void {
-    if (this.cachedPlan && ctx.wave === this.cacheWave) {
-      const planLen = this.cachedPlan.bestPlan.length;
-      if (planLen === 0 || ctx.placedTowers.length < planLen) return;
-    }
+    if (this.cachedPlan && ctx.wave === this.cacheWave) return;
     const paths = pathSegmentsFor(ctx);
     if (paths.length === 0) {
       this.cachedPlan = {

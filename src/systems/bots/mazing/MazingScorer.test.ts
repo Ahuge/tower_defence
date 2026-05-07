@@ -99,30 +99,29 @@ describe('MazingScorer — dirty-bit cache', () => {
     expect(planA).toBe(planB);
   });
 
-  it('replans when the bot has placed up to or past the cached plan length', () => {
-    // Wave-only invalidation deliberately ignores cross-bot grid
-    // mutations (zones are isolated in Circle Co-op). The bot's own
-    // placement progress is tracked via ctx.placedTowers — once the
-    // bot has placed as many towers as the plan recommended, the
-    // scorer replans to extend the layout.
+  it('does NOT replan within a wave when the bot outpaces the plan', () => {
+    // Wave-locked cache: the brain follows ONE plan through a wave
+    // and falls back to the parent's coverage scorer when the plan
+    // runs out of cells. Avoids "second-guessing" earlier placements
+    // made under a stale plan.
     const g = openGrid(8, 5);
     const scorer = new MazingScorer({ confidenceFloor: 0 });
     scorer.bestCell(makeCtx(g, allEmpty(g)));
     const planA = scorer.getCachedPlan();
     expect(planA).not.toBeNull();
     const planLen = planA!.bestPlan.length;
-    // Simulate the bot having placed planLen towers — the placedTowers
-    // count meets the plan length, so the next bestCell should replan.
     const ctxPlaced: BotContext = {
       ...makeCtx(g, allEmpty(g)),
-      placedTowers: Array.from({ length: planLen }, (_, i) => ({
+      placedTowers: Array.from({ length: planLen + 5 }, (_, i) => ({
         col: i, row: 0, towerId: 't', level: 1, upgradeCost: 0,
         upgradeBranches: [], branchUpgradeCosts: {}, sellValue: 0,
       })),
     };
     scorer.bestCell(ctxPlaced);
     const planB = scorer.getCachedPlan();
-    expect(planA).not.toBe(planB);
+    // Same wave → cached plan unchanged even though placedTowers
+    // exceeds the plan length.
+    expect(planA).toBe(planB);
   });
 
   it('replans when wave advances', () => {
