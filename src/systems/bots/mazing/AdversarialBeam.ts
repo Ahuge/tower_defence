@@ -212,18 +212,23 @@ function placementCost(tower: TowerType, col: number, row: number, entry: PathPo
   return tower.cost * (1 + d * 0.005);
 }
 
-function bfsScoreMulti(grid: Grid, paths: { start: PathPoint; end: PathPoint }[]): BfsScoreParts {
+function bfsScoreMulti(
+  grid: Grid,
+  paths: { start: PathPoint; end: PathPoint }[],
+): BfsScoreParts & { pathGeoms: PathPoint[][] } {
   let pathLength = 0;
   let nodesExpanded = 0;
   let maxQueue = 0;
+  const pathGeoms: PathPoint[][] = [];
   for (const seg of paths) {
     const m = findPathWithMetrics(grid, seg.start, seg.end);
-    if (!m) return { pathLength: 0, nodesExpanded: 0, maxQueue: 0, success: false };
+    if (!m) return { pathLength: 0, nodesExpanded: 0, maxQueue: 0, success: false, pathGeoms: [] };
     pathLength += m.path.length;
     nodesExpanded += m.nodesExpanded;
     if (m.maxQueue > maxQueue) maxQueue = m.maxQueue;
+    pathGeoms.push(m.path);
   }
-  return { pathLength, nodesExpanded, maxQueue, success: true };
+  return { pathLength, nodesExpanded, maxQueue, success: true, pathGeoms };
 }
 
 /** DPS coverage proxy: path cells within `tower.range` × tower DPS.
@@ -325,13 +330,11 @@ function scoreState(
       return { total: INVALID_SCORE, perRole: emptyRoleScores() };
     }
 
-    // Build path geometries once — every scorer that needs them shares
-    // the same array.
-    const pathGeoms: PathPoint[][] = [];
-    for (const seg of paths) {
-      const m = findPathWithMetrics(baseline, seg.start, seg.end);
-      if (m) pathGeoms.push(m.path);
-    }
+    // Path geometries already computed by bfsScoreMulti; reuse them
+    // instead of running BFS a second time. Halves BFS cost per
+    // scoreState call (was 2 BFS per call: one for metrics, one for
+    // path coords).
+    const pathGeoms: PathPoint[][] = bfs.pathGeoms;
 
     // Cache role lookup once per state-score so scorers don't all
     // re-call getTowerRole.
