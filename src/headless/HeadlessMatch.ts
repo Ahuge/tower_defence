@@ -30,6 +30,9 @@ import { MAPS } from '../data/Maps';
 import { DIFFICULTIES } from '../data/Difficulty';
 import { FACTIONS } from '../data/Factions';
 import { getWavesForMode, generateEndlessWaves, WaveDefinition } from '../data/WaveDefinitions';
+import { getWaveDirector, listWaveDirectors } from '../systems/bots/WaveDirectorBrain';
+// Side-effect import: register UniformWaveDirector at module load.
+import '../systems/bots/wavedirectors/UniformWaveDirector';
 import { getTowerType, TOWER_TYPES } from '../data/TowerTypes';
 import { FRONTIER_BUILDINGS, GENERIC_OUTPOSTS } from '../data/FrontierBuildings';
 import { STARTING_LIVES } from '../config';
@@ -144,7 +147,24 @@ async function runMatchInner(
   const frontierMgr = new FrontierManager(eventBus, incomeMgr, config.faction);
 
   // ---- Waves + paths ----
-  let waves: WaveDefinition[] = getWavesForMode(config.matchMode, config.waveCount);
+  // v4.1: route through WaveDirectorBrain when configured. UniformWave-
+  // Director defers to getWavesForMode so behaviour is identical to
+  // pre-v4 runs. Smart directors (v4.2+) can react to faction/observed
+  // towers / wave count and produce different mixes.
+  let waves: WaveDefinition[];
+  if (config.waveDirectorId) {
+    const director = getWaveDirector(config.waveDirectorId);
+    if (!director) {
+      throw new Error(`Unknown waveDirectorId: ${config.waveDirectorId}. Registered: ${listWaveDirectors().join(', ')}`);
+    }
+    waves = director.materializeWaves({
+      matchMode: config.matchMode,
+      waveCount: config.waveCount,
+      defenderFaction: config.faction,
+    });
+  } else {
+    waves = getWavesForMode(config.matchMode, config.waveCount);
+  }
   let currentWave = 0;
   let lives = STARTING_LIVES;
 
