@@ -28,7 +28,8 @@ let totBal = 0, totMaz = 0;
 for (const faction of FACTIONS) {
   let bal = 0, maz = 0;
   for (let i = 0; i < N; i++) {
-    delete process.env.MAZING_BRAIN_PARAMS;
+    // NOTE: deliberately do NOT delete process.env.MAZING_BRAIN_PARAMS
+    // here — pass it via the script invocation to test tuned configs.
     const seed = (1 * 31 + i * 7919) >>> 0;
     const rb = await runMatch({ faction, difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 20, seed });
     const rm = await runMatch({ faction, difficulty: 'normal', mapId: 'plains', brainId: 'mazing',   matchMode: 'standard', waveCount: 20, seed });
