@@ -51,6 +51,7 @@ const probeFlag = getFlag('probe');
 const seedsFlag = getFlag('search-seeds');
 const validateSeedsFlag = getFlag('validate-seeds');
 const seedFromFlag = getFlag('seed-from');
+const diversityWeightFlag = getFlag('diversity-weight');
 
 // ── jsdom + dynamic imports of TS sources ──────────────────────────
 await import('../src/headless/harness/jsdom-setup.ts');
@@ -93,6 +94,7 @@ const cfg = { ...DEFAULT_MANAGER_CONFIG };
 if (maxEvalsFlag !== null) cfg.maxEvals = parseInt(maxEvalsFlag, 10);
 if (seedsFlag !== null) cfg.searchSeeds = parseInt(seedsFlag, 10);
 if (validateSeedsFlag !== null) cfg.validateSeeds = parseInt(validateSeedsFlag, 10);
+if (diversityWeightFlag !== null) cfg.diversityWeight = parseFloat(diversityWeightFlag);
 
 const manager = new BrainSearchManager(BRAIN_SCHEMA, cfg);
 
@@ -198,11 +200,31 @@ async function evaluateConfig(params, n, tag) {
     tasks.push(pool.dispatch({ taskId: nextTaskId++, config, params }));
   }
   const results = await Promise.all(tasks);
-  let wins = 0, errors = 0, totalWave = 0;
+  let wins = 0, errors = 0, totalWave = 0, totalDiversity = 0, diversityCount = 0;
   for (const r of results) {
     if (r.outcome === 'win') wins++;
     if (r.outcome === 'error') errors++;
     totalWave += r.waveReached || 0;
+    // Shannon entropy of placement distribution, normalised to [0,1]
+    // by max-entropy of N distinct types placed (uniform). Skip
+    // matches with no towers (errors/early-leaks).
+    if (r.towerIdCounts) {
+      const counts = Object.values(r.towerIdCounts);
+      const total = counts.reduce((s, c) => s + c, 0);
+      if (total > 1 && counts.length > 1) {
+        let entropy = 0;
+        for (const c of counts) {
+          if (c > 0) {
+            const p = c / total;
+            entropy -= p * Math.log(p);
+          }
+        }
+        const maxEntropy = Math.log(counts.length);
+        const norm = maxEntropy > 0 ? entropy / maxEntropy : 0;
+        totalDiversity += norm;
+        diversityCount++;
+      }
+    }
   }
   const evalRecord = {
     evalId: nextEvalId++,
@@ -210,6 +232,7 @@ async function evaluateConfig(params, n, tag) {
     params,
     score: wins / n,
     avgWave: totalWave / n,
+    diversity: diversityCount > 0 ? totalDiversity / diversityCount : 0,
     n,
     tag,
   };

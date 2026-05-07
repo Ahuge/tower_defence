@@ -46,6 +46,14 @@ export interface EvalRecord {
   avgWave: number;
   /** Number of seeds in this eval (for binomial-CI calculations). */
   n: number;
+  /** Average normalised Shannon-entropy of tower-id placement
+   *  distribution across the eval's seeds. 0 = monoculture (every
+   *  seed placed only one tower id), 1 = perfectly uniform across
+   *  the towers it placed. Combined into fitness via diversityWeight
+   *  to let brain-search trade off win-rate against tower variety
+   *  (the v3.4 M3 lever for "play feels right when all 5 towers see
+   *  use"). May be 0 if no towers were placed. */
+  diversity?: number;
   /** Optional tag — `'search'`, `'validate'`, `'manual'` etc.
    *  Lets us reconstruct which evals were tight-CI validations vs.
    *  loose-CI search rolls when reading back the log. */
@@ -81,6 +89,14 @@ export interface ManagerConfig {
    *  vs. mean(prev 20). Catches search wandering away from the
    *  optimum due to noise. */
   driftThreshold: number;
+  /** Weight of the placement-diversity term in fitness. 0 = pure
+   *  win-rate optimisation (legacy v3.2 behaviour). >0 = trade win
+   *  rate for tower variety. At 0.05, two configs with the same win
+   *  rate prefer the one with higher Shannon entropy of tower-id
+   *  distribution; ties get broken toward variety. At 0.1, a 90%
+   *  win-rate config with full variety can beat a 95% win-rate
+   *  config with monoculture. brain-search CLI: --diversity-weight=N. */
+  diversityWeight: number;
 }
 
 export const DEFAULT_MANAGER_CONFIG: ManagerConfig = {
@@ -95,6 +111,10 @@ export const DEFAULT_MANAGER_CONFIG: ManagerConfig = {
   softPlateauWindow: 30,
   softPlateauDelta: 0.01,
   driftThreshold: 0.05,
+  // Default 0 — pure win-rate optimisation (legacy v3.2 behaviour).
+  // Override via brain-search CLI flag --diversity-weight=N when running
+  // a "show me variety even at win-rate cost" search.
+  diversityWeight: 0,
 };
 
 export interface ContinueResult {
@@ -150,7 +170,7 @@ export class BrainSearchManager {
     // signal. Compounded with score so once any win lands, win rate
     // dominates again. Picks up the "all-zero plateau" case where
     // raw win-rate has no gradient to climb.
-    const fitness = (e: EvalRecord) => fitnessOf(e);
+    const fitness = (e: EvalRecord) => fitnessOf(e, this.cfg.diversityWeight);
     const newFit = fitness(r);
     if (!this.bestRaw || newFit > fitness(this.bestRaw)) {
       this.bestRaw = r;
@@ -168,7 +188,7 @@ export class BrainSearchManager {
    *  (they'd dominate via tighter variance, distorting the search). */
   private refreshParents(): void {
     const searchEvals = this.evals.filter(e => e.tag !== 'validate');
-    const sorted = [...searchEvals].sort((a, b) => fitnessOf(b) - fitnessOf(a));
+    const sorted = [...searchEvals].sort((a, b) => fitnessOf(b, this.cfg.diversityWeight) - fitnessOf(a, this.cfg.diversityWeight));
     this.parents = sorted.slice(0, this.cfg.mu);
   }
 
@@ -305,10 +325,15 @@ function mean(xs: number[]): number {
  *  preferred over one that dies at wave 4 even when both are 0%.
  *  Once any win lands, the win-rate term (≥0.05 per win at n=20)
  *  swamps the wave term (≤0.20 even at max survival), so the
- *  rankings naturally swap back to win-rate-dominated. */
-function fitnessOf(e: { score: number; avgWave: number }): number {
+ *  rankings naturally swap back to win-rate-dominated.
+ *
+ *  v3.4 M3: optional `diversityWeight` adds a Shannon-entropy term
+ *  on tower-id placements. Default 0 keeps legacy behaviour. Set via
+ *  `--diversity-weight=N` to trade win rate for tower variety. */
+function fitnessOf(e: { score: number; avgWave: number; diversity?: number }, diversityWeight = 0): number {
   const waveBonus = (e.avgWave ?? 0) / 100; // wave 20 → +0.20
-  return e.score + waveBonus;
+  const diversityBonus = diversityWeight * (e.diversity ?? 0);
+  return e.score + waveBonus + diversityBonus;
 }
 
 /** Box-Muller transform — standard normal, mean 0, σ 1. */

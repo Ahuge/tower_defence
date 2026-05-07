@@ -58,4 +58,10 @@ export interface MatchResult {
    *  drift); different hash ⇒ the change actually altered placement
    *  decisions, so the win-rate delta carries real signal. */
   buildHash: string;
+  /** Tower-id distribution at match end: id → count of towers of
+   *  that type. Used by brain-search to compute placement diversity
+   *  (Shannon entropy) when --diversity-weight is set. Levels are
+   *  collapsed — a Lv2 Bolt and a Lv3 Bolt both count as `arcane_bolt`.
+   *  Empty map when no towers were placed. */
+  towerIdCounts: Record<string, number>;
 }

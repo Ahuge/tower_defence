@@ -87,6 +87,7 @@ export async function runMatch(
       simTimeMs: 0,
       wallTimeMs: Date.now() - wallStart,
       buildHash: '00000000',
+      towerIdCounts: {},
       error: (err as Error).message,
     };
   }
@@ -351,6 +352,7 @@ async function runMatchInner(
     simTimeMs: simTime,
     wallTimeMs: Date.now() - wallStart,
     buildHash: hashBuild(towerMgr.towers),
+    towerIdCounts: countTowerIds(towerMgr.towers),
   };
 
   // ---- Decision dispatch ----
@@ -438,6 +440,16 @@ async function runMatchInner(
  *  builds produce identical hashes; any tower id/level/count
  *  difference flips it. Used by the harness to diagnose brain-noise
  *  (same build, moved winrate) vs. real signal (different build). */
+/** Tower-id distribution at match end, levels collapsed.  Used by
+ *  brain-search to compute placement diversity (Shannon entropy)
+ *  when --diversity-weight is set. Returns empty map for an empty
+ *  tower list. */
+function countTowerIds(towers: { typeDef: { id: string } }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of towers) out[t.typeDef.id] = (out[t.typeDef.id] ?? 0) + 1;
+  return out;
+}
+
 function hashBuild(towers: { typeDef: { id: string }; level: number }[]): string {
   const counts = new Map<string, number>();
   for (const t of towers) {

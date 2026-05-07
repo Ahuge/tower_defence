@@ -48,6 +48,10 @@ async function main(): Promise<void> {
           outcome: r.outcome,
           waveReached: r.waveReached,
           livesRemaining: r.livesRemaining,
+          // v3.4 M3: forward tower-id distribution so the runner can
+          // compute placement diversity (Shannon entropy) for the
+          // diversity-weighted fitness term.
+          towerIdCounts: r.towerIdCounts,
         });
       } catch (err) {
         send({ taskId: t.taskId, outcome: 'error', waveReached: 0, livesRemaining: 0, error: (err as Error).message });
