@@ -175,4 +175,17 @@ export const MAZING_BRAIN_SCHEMA: ParamSchema = {
   enable_cc_boost:          { min: 0, max: 1, default: 0, step: 1, integer: true },
   enable_mobile_engagement: { min: 0, max: 1, default: 0, step: 1, integer: true },
   enable_dot_overlap:       { min: 0, max: 1, default: 0, step: 1, integer: true },
+
+  // ── v3.1 NEW trait-aware scorer weights — Void/Infernal economy
+  // and teleport mechanics:
+  //   gold_on_hit         = Siphon (40%×+2g) and Soul Drain (+2g/kill in range)
+  //   teleport_delivery   = Rift (push creep N tiles backward)
+  // Default-on at 1.0 because both scorers contribute 0 for towers
+  // without the matching trait — leaving them on for non-Void factions
+  // is a no-op rather than a regression. brain-search per Void can
+  // dial them up; per non-Void should leave them at 1.0.
+  weight_gold_on_hit:       { min: 0.0, max: 5.0, default: 1.0, step: 0.3 },
+  weight_teleport_delivery: { min: 0.0, max: 5.0, default: 1.0, step: 0.3 },
+  enable_gold_on_hit:       { min: 0, max: 1, default: 1, step: 1, integer: true },
+  enable_teleport_delivery: { min: 0, max: 1, default: 1, step: 1, integer: true },
 };

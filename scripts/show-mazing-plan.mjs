@@ -34,11 +34,15 @@ const { findPath } = await import('../src/systems/Pathfinding.ts');
 const { getTowerRole } = await import('../src/data/TowerRoles.ts');
 const { MazingScorer } = await import('../src/systems/bots/mazing/MazingScorer.ts');
 const { seedRng } = await import('../src/systems/Rng.ts');
+const { buildDefaultRegistry } = await import('../src/systems/bots/mazing/scorers/index.ts');
+const { findPathWithMetrics } = await import('../src/systems/bots/mazing/AdversarialBeam.ts').catch(() => ({ findPathWithMetrics: null }));
 
-const factionId = process.argv[2] ?? 'infernal';
-const mapId = process.argv[3] ?? 'plains';
-const wave = Number(process.argv[4] ?? 1);
-const seed = Number(process.argv[5] ?? 42);
+const showBreakdown = process.argv.includes('--breakdown');
+const args = process.argv.slice(2).filter(a => !a.startsWith('--'));
+const factionId = args[0] ?? 'infernal';
+const mapId = args[1] ?? 'plains';
+const wave = Number(args[2] ?? 1);
+const seed = Number(args[3] ?? 42);
 
 const faction = FACTIONS[factionId];
 if (!faction) { console.error(`unknown faction ${factionId}`); process.exit(1); }
@@ -147,4 +151,42 @@ console.log('');
 console.log('Best role scores (peak across the run):');
 for (const [role, score] of Object.entries(plan.bestRoleScore)) {
   if (score > 0) console.log(`  ${role}: ${Math.round(score)}`);
+}
+
+if (showBreakdown) {
+  console.log('');
+  console.log('Score breakdown — per-scorer contribution at final plan state:');
+  console.log('  (positive = contributes to picking this layout; weights default-on at 1.0 unless --tune)');
+  console.log('');
+  // Reconstruct a ScorerContext for the final plan state and ask the
+  // default registry to break down each scorer's contribution. Bypasses
+  // the wave-cached path inside MazingScorer; matches the same scoring
+  // function the planner uses internally.
+  const lookup = new Map(towerPool.map(t => [t.id, t]));
+  const planState = {
+    placedTowers: plan.bestPlan.map(p => ({ col: p.col, row: p.row, towerId: p.towerId })),
+    cost: plan.bestPlan.reduce((s, p) => s + (lookup.get(p.towerId)?.cost ?? 0), 0),
+  };
+  const breakdownCtx = {
+    grid,
+    paths: [{ start: path[0], end: path[path.length - 1] }],
+    towerPool,
+    state: planState,
+    bfs: { pathLength: path.length, nodesExpanded: 0, maxQueue: 0, success: true },
+    pathGeometries: [path],
+    lookupTower: (id) => lookup.get(id) ?? null,
+    lookupRole: (id) => {
+      const t = lookup.get(id);
+      return t ? getTowerRole(t) : 'utility';
+    },
+  };
+  const registry = buildDefaultRegistry();
+  const breakdown = registry.scoreBreakdown(breakdownCtx);
+  const sorted = Object.entries(breakdown).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  for (const [id, val] of sorted) {
+    console.log(`  ${id.padEnd(22)} ${val.toFixed(2).padStart(12)}`);
+  }
+  console.log('');
+  console.log(`Plan state.cost = ${planState.cost} → goldOnHit urgency factor 100/(100+${planState.cost}) ≈ ${(100 / (100 + planState.cost)).toFixed(3)}`);
+  void findPathWithMetrics;
 }

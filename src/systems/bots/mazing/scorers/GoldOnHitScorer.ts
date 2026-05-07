@@ -14,6 +14,22 @@
  * but lets the planner compare "place a Siphon" vs "place a Gambler"
  * on a single combined scale. brain-search re-tunes the weight.
  *
+ * **Economic urgency factor (v3.2)**: gold compounds — gold earned
+ * early funds more towers which earn more gold which funds more towers,
+ * etc. Gold earned late, when the bot already has enough to upgrade or
+ * place ult, is marginal. Per-tower gold contribution is multiplied by
+ * `URGENCY_REFERENCE / (URGENCY_REFERENCE + state.cost)`. With
+ * URGENCY_REFERENCE=100:
+ *   state.cost=0   → multiplier 1.00
+ *   state.cost=100 → multiplier 0.50
+ *   state.cost=500 → multiplier 0.17
+ *   state.cost=1000 → multiplier 0.09
+ * The state-cost view rather than a per-tower-position view is a
+ * simplification — every gold tower in the state shares the urgency,
+ * not the urgency at the moment of its individual placement. Good
+ * enough for the planner's heuristic; brain-search can re-tune if
+ * later evaluation shows otherwise.
+ *
  * Why not just bake into DpsCoverageScorer like jackpot?
  * Jackpot directly multiplies per-hit damage — same input shape. Gold
  * generation is *categorically* different (income, not damage), so
@@ -38,6 +54,14 @@ const SHOTS_PER_CREEP = 4;
  *  ~0.05 kills/sec across normal play. */
 const KILLS_PER_PATH_CELL_PER_SEC = 0.05;
 
+/** Reference cost-scale for the economic-urgency factor. At
+ *  state.cost == URGENCY_REFERENCE, gold contribution halves. Chosen
+ *  to reflect the gold scale where placing a single tower matters —
+ *  100g is the cost of one mid-tier tower (Heavy 120g, Soul Drain 90g)
+ *  so a Siphon at state.cost=0 (no other towers) is worth twice what
+ *  it's worth after one mid-tower has been placed. */
+const URGENCY_REFERENCE = 100;
+
 interface GoldTower {
   range: number;
   fireRate: number;
@@ -48,21 +72,23 @@ export class GoldOnHitScorer implements ContributionScorer {
   readonly id = 'gold_on_hit';
 
   contribute(c: ScorerContext): number {
+    const urgency = URGENCY_REFERENCE / (URGENCY_REFERENCE + Math.max(0, c.state.cost));
     let total = 0;
     for (const placed of c.state.placedTowers) {
       const t = c.lookupTower(placed.towerId);
       if (!t) continue;
       total += goldContributionForTower(t, placed.col, placed.row, c.pathGeometries);
     }
-    return total;
+    return total * urgency;
   }
 
   breakdown(c: ScorerContext): Record<string, number> {
+    const urgency = URGENCY_REFERENCE / (URGENCY_REFERENCE + Math.max(0, c.state.cost));
     const out: Record<string, number> = {};
     for (const placed of c.state.placedTowers) {
       const t = c.lookupTower(placed.towerId);
       if (!t) continue;
-      const g = goldContributionForTower(t, placed.col, placed.row, c.pathGeometries);
+      const g = goldContributionForTower(t, placed.col, placed.row, c.pathGeometries) * urgency;
       if (g > 0) {
         out[`${placed.col},${placed.row}:${placed.towerId}`] = g;
       }

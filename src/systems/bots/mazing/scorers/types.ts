@@ -31,6 +31,11 @@ export interface PlacedTower {
  *  pull in the whole AdversarialBeam type tree. */
 export interface ScorerState {
   placedTowers: PlacedTower[];
+  /** Cumulative gold cost of every placement in this state. Used by
+   *  scorers that want to model economic urgency — gold-generating
+   *  towers placed early when budget is tight contribute more than
+   *  the same towers placed late when the bot is rich. */
+  cost: number;
 }
 
 /** BFS metrics — computed once per state-score by the planner and

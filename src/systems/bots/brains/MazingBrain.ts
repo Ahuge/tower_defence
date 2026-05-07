@@ -100,6 +100,11 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
   weight_mobile_engagement: 0, weight_dot_overlap: 0.4544,
   enable_slow_overlap: 0, enable_aura_chain: 1, enable_cc_boost: 0,
   enable_mobile_engagement: 0, enable_dot_overlap: 0,
+  // v3.1 trait-aware scorers — default-on at weight 1.0. Per-cell tuning
+  // happens via brain-search; defaults reflect "use them, see what happens"
+  // for cells that haven't been re-tuned with the v3.1 scorers in scope.
+  weight_gold_on_hit: 1.0, weight_teleport_delivery: 1.0,
+  enable_gold_on_hit: 1, enable_teleport_delivery: 1,
 };
 
 /** Per-faction MazingScorer configs harvested from brain-search runs.

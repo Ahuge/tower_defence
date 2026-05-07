@@ -77,7 +77,9 @@ function makeCtx(placedTowers: PlacedTower[], path: PathPoint[]): ScorerContext 
   const grid = new Grid(undefined, 5, 10);
   const lookup = new Map<string, TowerType>(POOL.map(t => [t.id, t]));
   const bfs: BfsMetrics = { pathLength: path.length, nodesExpanded: 25, maxQueue: 5, success: true };
-  const state: ScorerState = { placedTowers };
+  // Tests pre-date the v3.2 cost field; default to 0 (low-urgency
+  // regime) so gold contributions are at full strength in test asserts.
+  const state: ScorerState = { placedTowers, cost: 0 };
   return {
     grid, paths: [{ start: path[0], end: path[path.length - 1] }],
     towerPool: POOL,

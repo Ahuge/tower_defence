@@ -107,6 +107,14 @@ export interface BeamOptions {
   enable_cc_boost: number;
   enable_mobile_engagement: number;
   enable_dot_overlap: number;
+  /** v3.1 NEW trait-aware scorer weights — Void/Infernal economy and
+   *  teleport mechanics. Default-on at 1.0 because they only contribute
+   *  for towers with the matching trait (gold_on_hit, gold_per_kill_range,
+   *  teleport_delivery). brain-search tunes per-cell. */
+  weight_gold_on_hit: number;
+  weight_teleport_delivery: number;
+  enable_gold_on_hit: number;
+  enable_teleport_delivery: number;
 }
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
@@ -142,6 +150,12 @@ export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   weight_mobile_engagement: 0, weight_dot_overlap: 0,
   enable_slow_overlap: 0, enable_aura_chain: 0, enable_cc_boost: 0,
   enable_mobile_engagement: 0, enable_dot_overlap: 0,
+  // v3.1 NEW scorer weights — default-on at 1.0. These read trait
+  // shapes that exist in the data (gold_on_hit, gold_per_kill_range,
+  // teleport_delivery) and contribute 0 for towers without them, so
+  // leaving them on for non-Void/Infernal factions is a no-op.
+  weight_gold_on_hit: 1.0, weight_teleport_delivery: 1.0,
+  enable_gold_on_hit: 1, enable_teleport_delivery: 1,
 };
 
 const INVALID_SCORE = -1e9;
@@ -319,7 +333,7 @@ function scoreState(
       grid: baseline,
       paths,
       towerPool: [] as TowerType[], // not needed for scoring; scorers use lookup
-      state: { placedTowers: state.placedTowers },
+      state: { placedTowers: state.placedTowers, cost: state.cost },
       bfs,
       pathGeometries: pathGeoms,
       lookupTower: lookupType,
@@ -340,6 +354,8 @@ function scoreState(
         ccBoost: opts.weight_cc_boost,
         mobileEngagement: opts.weight_mobile_engagement,
         dotOverlap: opts.weight_dot_overlap,
+        goldOnHit: opts.weight_gold_on_hit,
+        teleportDelivery: opts.weight_teleport_delivery,
       },
       {
         slowOverlap: opts.enable_slow_overlap > 0,
@@ -347,6 +363,8 @@ function scoreState(
         ccBoost: opts.enable_cc_boost > 0,
         mobileEngagement: opts.enable_mobile_engagement > 0,
         dotOverlap: opts.enable_dot_overlap > 0,
+        goldOnHit: opts.enable_gold_on_hit > 0,
+        teleportDelivery: opts.enable_teleport_delivery > 0,
       },
     );
 
