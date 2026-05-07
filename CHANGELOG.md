@@ -2,6 +2,29 @@
 
 ## 2026-05-07
 
+### MazingBrain v3.1: GoldOnHitScorer + TeleportDeliveryScorer + boss-aware jackpot
+
+Three new trait-aware scorers landed so the planner can value Void's unique towers correctly. Without these, all 5 Void towers register as identical `dps-single` to the role classifier and the planner picked Gambler universally on cost grounds:
+
+- **`GoldOnHitScorer`** — values `gold_on_hit` (Void Siphon: 40% × +2g) and `gold_per_kill_range` (Infernal Soul Drain: +2g per kill in range) at 1 gold ≈ 1 DPS-unit. Per-tower contribution = chance × amount × shotsPerSec × pathCellsInRange × 0.5 for `gold_on_hit`, or goldPerKill × pathCellsInRange × 0.05 for `gold_per_kill_range`. Returns 0 for towers without either trait.
+- **`TeleportDeliveryScorer`** — values Void Rift's `teleport_delivery` (push backward N tiles per hit). Per-hit value = steps × DPS_PER_TILE_ESTIMATE × shotsPerSec, scaled by a path-coverage factor so Rifts that don't actually cover the path score 0.
+- **Boss-aware jackpot in `DpsCoverageScorer`** — fixed a bug from yesterday's commit (read trait field as `chance` but the actual property is `killChance`). Reworked the model: expected per-hit damage = killChance × representativeHp + (1 - killChance - missChance) × damage, weighted as 90% normal-creep / 10% boss. Boss case quarters killChance per the trait handler. Representative HP bumped to 200 (mid-late wave) which is the regime where Gambler's 4% instakill genuinely matters.
+
+Pivot in **MazingBrain.MAZING_FACTION_CONFIGS.void**: switched `towerPickMode: 1 → 0` (random → greedy). Random mode weights by role only, and all 5 Void towers share role=`dps-single`, so the new scorers had nothing to bite on — the planner picked Gambler purely because it was cheapest. Greedy mode evaluates each affordable tower's full state-score per cell, letting jackpot/gold/teleport contributions shape the choice. Cost is ~10x per pick but with `beamWidth=2` and 5 towers in Void's pool, total cost is bounded.
+
+**Plan composition shift on void/plains/wave 5**: `40 gambler` → `29 gambler + 4 spike + 0 siphon` via the brain (with faction config applied). Spikes now register because their `damage_variance` doesn't change expected damage but Gambler's expected dropped from 20→18.2 after fixing the jackpot whiff modeling, so Spikes (22 dmg) edge out Gambler at higher budgets. Siphon's gold contribution (~3.4 gold/sec at coverage=6) doesn't quite outscore Gambler's DPS uplift yet — needs brain-search re-tuning of `goldOnHit` weight per cell. Surfaced for v3.2.
+
+**Scorer registry additions** in `scorers/index.ts`:
+- `goldOnHit` and `teleportDelivery` weight + toggle fields added to `ScorerWeights` / `ScorerToggles`
+- Defaults: weight 1.0, enabled. Both scorers contribute 0 for towers without the relevant trait, so leaving them on for non-Void factions is a no-op rather than a regression.
+
+**Verification**: 361/361 tests pass (354 prior + 7 new for the two scorers). Win-rate vs Balanced (n=50 normal plains): infernal 50/50 unchanged, void 49/50 (-1 noise, was 50/50), military 0/50 unchanged, aliens 39/50 unchanged, harmonic 5/50 unchanged, nature 0/50 unchanged. No regressions across the matrix.
+
+**Deferred to v3.2**:
+- Plumb `weight_gold_on_hit` / `weight_teleport_delivery` through `BeamOptions` so brain-search can per-cell-tune them. Currently they use the registry's default 1.0.
+- Damage_variance modeling — Spike's range (50-150%) doesn't change expected damage but DOES change variance against high-HP creeps; could matter against bosses.
+- damage_amp_on_hit — Oblivion's stacked trait that amps subsequent hits' damage. Synergy with Oblivion's other traits is non-trivial.
+
 ### MazingBrain: trait-aware DPS scoring + sandbag/wire alternation + per-tower scorers
 
 User reported three behavioural quirks watching `?botBrain=mazing`:

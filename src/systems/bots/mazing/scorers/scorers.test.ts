@@ -22,6 +22,8 @@ import { AuraChainScorer } from './AuraChainScorer';
 import { CrowdControlBoostScorer } from './CrowdControlBoostScorer';
 import { MobileEngagementScorer } from './MobileEngagementScorer';
 import { DotOverlapScorer } from './DotOverlapScorer';
+import { GoldOnHitScorer } from './GoldOnHitScorer';
+import { TeleportDeliveryScorer } from './TeleportDeliveryScorer';
 
 function tower(overrides: Partial<TowerType> & Pick<TowerType, 'id' | 'cost' | 'damage' | 'range' | 'fireRate'>): TowerType {
   return {
@@ -56,8 +58,20 @@ const BURN = tower({
   id: 'burn', cost: 70, damage: 15, range: 4, fireRate: 1500,
   traits: [{ id: 'direct_damage' }, { id: 'burn_dot', dps: 12, duration: 3000 }],
 });
+const SIPHON = tower({
+  id: 'siphon', cost: 50, damage: 5, range: 3, fireRate: 700,
+  traits: [{ id: 'direct_damage' }, { id: 'gold_on_hit', amount: 2, chance: 0.4 }],
+});
+const SOUL_DRAIN = tower({
+  id: 'soul_drain', cost: 90, damage: 18, range: 4, fireRate: 900,
+  traits: [{ id: 'direct_damage' }, { id: 'gold_per_kill_range', goldPerKill: 2 }],
+});
+const RIFT = tower({
+  id: 'rift', cost: 120, damage: 2, range: 3.5, fireRate: 3500,
+  traits: [{ id: 'teleport_delivery', stepsBase: 4, stepsPerLevel: 2 }],
+});
 
-const POOL = [WALL, DPS, SLOW, AURA, ROOT, MOBILE, BURN];
+const POOL = [WALL, DPS, SLOW, AURA, ROOT, MOBILE, BURN, SIPHON, SOUL_DRAIN, RIFT];
 
 function makeCtx(placedTowers: PlacedTower[], path: PathPoint[]): ScorerContext {
   const grid = new Grid(undefined, 5, 10);
@@ -167,5 +181,42 @@ describe('DotOverlapScorer', () => {
       { col: 5, row: 1, towerId: 'slow' },
     ], HORIZONTAL_PATH);
     expect(new DotOverlapScorer().contribute(ctx)).toBeGreaterThan(0);
+  });
+});
+
+describe('GoldOnHitScorer', () => {
+  it('returns 0 with no gold-trait towers', () => {
+    expect(new GoldOnHitScorer().contribute(makeCtx([{ col: 5, row: 2, towerId: 'dps' }], HORIZONTAL_PATH))).toBe(0);
+  });
+
+  it('returns positive for gold_on_hit tower covering path', () => {
+    const ctx = makeCtx([{ col: 5, row: 2, towerId: 'siphon' }], HORIZONTAL_PATH);
+    expect(new GoldOnHitScorer().contribute(ctx)).toBeGreaterThan(0);
+  });
+
+  it('returns positive for gold_per_kill_range tower covering path', () => {
+    const ctx = makeCtx([{ col: 5, row: 2, towerId: 'soul_drain' }], HORIZONTAL_PATH);
+    expect(new GoldOnHitScorer().contribute(ctx)).toBeGreaterThan(0);
+  });
+
+  it('returns 0 when gold-trait tower is far from path', () => {
+    const ctx = makeCtx([{ col: 5, row: 9, towerId: 'siphon' }], HORIZONTAL_PATH);
+    expect(new GoldOnHitScorer().contribute(ctx)).toBe(0);
+  });
+});
+
+describe('TeleportDeliveryScorer', () => {
+  it('returns 0 with no teleport towers', () => {
+    expect(new TeleportDeliveryScorer().contribute(makeCtx([{ col: 5, row: 2, towerId: 'dps' }], HORIZONTAL_PATH))).toBe(0);
+  });
+
+  it('returns positive for rift covering path', () => {
+    const ctx = makeCtx([{ col: 5, row: 2, towerId: 'rift' }], HORIZONTAL_PATH);
+    expect(new TeleportDeliveryScorer().contribute(ctx)).toBeGreaterThan(0);
+  });
+
+  it('returns 0 for rift far from path', () => {
+    const ctx = makeCtx([{ col: 5, row: 9, towerId: 'rift' }], HORIZONTAL_PATH);
+    expect(new TeleportDeliveryScorer().contribute(ctx)).toBe(0);
   });
 });

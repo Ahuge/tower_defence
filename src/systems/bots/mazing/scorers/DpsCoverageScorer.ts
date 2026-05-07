@@ -9,15 +9,21 @@
  * Two trait-aware adjustments to the raw DPS:
  *   1. expires_after_waves (Infernal Imp): the tower vanishes after
  *      N waves, so its lifetime contribution is `min(N, horizon) /
- *      horizon` of a permanent tower's. With horizon=10, an Imp
- *      (4 waves) contributes 40% — still strong enough to be picked
- *      early when budget is tight, fades naturally late-game when the
- *      planner wants long-run value.
- *   2. jackpot (Void Gambler/Oblivion): adds an instakill % chance
- *      per hit. Effective extra damage ≈ chance × representative HP.
- *      Without this, all 5 Void towers look identical to the planner
- *      (same role, similar damage); jackpot is the trait that makes
- *      Gambler distinctly worth its 15g.
+ *      horizon` of a permanent tower's. With horizon=20, an Imp
+ *      (4 waves) contributes 20% — still picked early when budget
+ *      is tight, fades naturally late-game when the planner wants
+ *      long-run value.
+ *   2. jackpot (Void Gambler/Oblivion): per-hit roll for instakill
+ *      (killChance) or whiff (missChance). Expected per-hit damage:
+ *        E[dmg] = killChance × representativeHp
+ *               + (1 - killChance - missChance) × damage
+ *               + missChance × 0
+ *      Boss case (1% effective on bosses since the trait quarters
+ *      killChance vs isBoss creeps) handled via a weighted average
+ *      with BOSS_FREQUENCY = 0.1. Representative HP 200 ≈ mid-late
+ *      game normal-creep HP — that's the regime where Gambler's
+ *      4% instakill is genuinely strong (a normal hit only chips
+ *      200hp creeps, instakills clear them outright).
  */
 import { ContributionScorer, ScorerContext } from './types';
 import { hasTrait } from '../../../traits/Trait';
@@ -26,19 +32,20 @@ import { hasTrait } from '../../../traits/Trait';
  *  the beam search's `waves` knob — the planner reasons about which
  *  towers will pay off across the *match*, not just the next few beam
  *  steps. Used to discount expiring towers: a 4-wave Imp under a 20-wave
- *  horizon contributes 20% of a permanent tower's coverage. With Imp's
- *  17.1 raw DPS × 0.2 = 3.4 effective vs Hellfire's 23.3, the planner
- *  prefers Hellfire — but Imp is still picked early when budget can't
- *  afford a 45g Hellfire (cheap × short-life still beats nothing). Swap
- *  to ScorerContext-plumbed in v3.1 so brain-search can tune per cell. */
+ *  horizon contributes 20% of a permanent tower's coverage. */
 const PLAN_HORIZON_WAVES = 20;
 
-/** Representative creep HP for the jackpot expected-damage uplift.
- *  100 ≈ mid-game normal creep HP; chosen so a 4% jackpot adds ~4
- *  effective damage per hit (Gambler 20→24), 15% adds ~15 (Oblivion
- *  80→95). Constant rather than wave-aware because the planner reasons
- *  about layout shape, not wave timing. */
-const JACKPOT_REPRESENTATIVE_HP = 100;
+/** Representative creep HP for the jackpot expected-damage calculation.
+ *  200 ≈ mid-late wave normal-creep HP; that's the regime where
+ *  instakills genuinely matter (a 20-damage Gambler hit chips ~10% of
+ *  the creep; an instakill clears 100%). */
+const JACKPOT_NORMAL_HP = 200;
+/** Representative boss HP. Bosses are ~10x normal at the same wave. */
+const JACKPOT_BOSS_HP = 2000;
+/** Fraction of hits that target a boss. Roughly 1 boss per ~10 normals
+ *  in mid-game waves. Used as a mixing weight between normal/boss
+ *  expected damage. */
+const BOSS_FREQUENCY = 0.1;
 
 export class DpsCoverageScorer implements ContributionScorer {
   readonly id = 'dps_coverage';
@@ -77,20 +84,15 @@ interface DpsTower {
 }
 
 /** Path cells within `tower.range` × effective DPS, where effective DPS
- *  bakes in jackpot (instakill chance × representative HP) and the
- *  expiring-tower lifespan factor. */
+ *  bakes in jackpot (instakill / whiff weighted across boss + normal)
+ *  and the expiring-tower lifespan factor. */
 function dpsCoverageForTower(
   tower: DpsTower,
   col: number, row: number,
   pathGeoms: { col: number; row: number }[][],
 ): number {
   const r2 = tower.range * tower.range;
-  const baseDamage = tower.damage;
-  // Jackpot uplift: chance × representative HP added to per-hit damage.
-  // Trait shape: { id: 'jackpot', chance: 0.04 } (Void Gambler).
-  const jackpot = tower.traits.find(t => t.id === 'jackpot') as { chance?: number } | undefined;
-  const jackpotChance = jackpot?.chance ?? 0;
-  const effectiveDamage = baseDamage + jackpotChance * JACKPOT_REPRESENTATIVE_HP;
+  const effectiveDamage = expectedDamagePerHit(tower);
   const dpsPerSec = effectiveDamage * 1000 / Math.max(tower.fireRate, 1);
   // Expiring-tower lifespan factor. Trait shape: { id: 'expires_after_waves', waves: 4 }.
   const expires = tower.traits.find(t => t.id === 'expires_after_waves') as { waves?: number } | undefined;
@@ -106,6 +108,32 @@ function dpsCoverageForTower(
     }
   }
   return covered * dpsPerSec * lifespanFactor;
+}
+
+/** Expected per-hit damage, accounting for jackpot's instakill +
+ *  whiff probability split. For non-jackpot towers this is just the
+ *  raw `tower.damage`. For jackpot towers, the player's perception is
+ *  driven by late-game outcomes (creeps with high HP get one-shot)
+ *  rather than the average — but the planner still reasons in expected
+ *  values, so we use representative HP constants that reflect that
+ *  late-game regime. */
+function expectedDamagePerHit(tower: DpsTower): number {
+  const jackpot = tower.traits.find(t => t.id === 'jackpot') as
+    { killChance?: number; missChance?: number } | undefined;
+  if (!jackpot) return tower.damage;
+  const killChance = jackpot.killChance ?? 0;
+  const missChance = jackpot.missChance ?? 0;
+  // Boss-case: TowerTraitHandlers quarters killChance for bosses.
+  const bossKillChance = killChance * 0.25;
+  const normalRegular = 1 - killChance - missChance;
+  const bossRegular = 1 - bossKillChance - missChance;
+  const eNormal =
+    killChance * JACKPOT_NORMAL_HP +
+    Math.max(0, normalRegular) * tower.damage;
+  const eBoss =
+    bossKillChance * JACKPOT_BOSS_HP +
+    Math.max(0, bossRegular) * tower.damage;
+  return (1 - BOSS_FREQUENCY) * eNormal + BOSS_FREQUENCY * eBoss;
 }
 
 void hasTrait;

@@ -123,8 +123,17 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
  *  When ctx.faction isn't in this table, the brain falls back to
  *  DEFAULT_MAZING_BRAIN_PARAMS (the infernal config). */
 export const MAZING_FACTION_CONFIGS: Record<string, Partial<MazingBrainParams>> = {
-  // v3-tuned: void winner 99/100 (was v2 98/100). Scorer toggles
+  // v3.1-tuned: void winner 99/100 (was v2 98/100). Scorer toggles
   // enabled aura_chain + cc_boost + slow_overlap with small weights.
+  // towerPickMode swapped 1 (random) → 0 (greedy) in v3.1 so the new
+  // GoldOnHitScorer / TeleportDeliveryScorer / jackpot-aware DPS terms
+  // can influence which Void tower wins each cell. Random mode weights
+  // by role only (all 5 Void towers are dps-single → uniform pick →
+  // cheapest wins on budget alone), so the trait-aware scorers had
+  // nothing to bite on. Brain-search at v3 baseline pre-dated v3.1;
+  // re-tune is queued. Greedy mode is ~10x more expensive per pick
+  // but with beamWidth=2 and small Void pool size (5 towers) the cost
+  // is bounded.
   void: {
     panicLives: 7, mazeSaturationThreshold: 0, maxWallPlacements: 7,
     highCoverageRatio: 1.3589, minDpsTowersForUlt: 4, stableLivesForUlt: 17,
@@ -134,7 +143,7 @@ export const MAZING_FACTION_CONFIGS: Record<string, Partial<MazingBrainParams>> 
     alpha: 4.877, beta: 0.9419, gamma: 0,
     deltaDps: 0.05, epsilonSlow: 0.1624, zetaAura: 0,
     beamWidth: 2, mutationsPerState: 15, waves: 12,
-    baseBudget: 104, budgetGrowth: 66, growBranchMaxLen: 6, towerPickMode: 1,
+    baseBudget: 104, budgetGrowth: 66, growBranchMaxLen: 6, towerPickMode: 0,
     pAddTower: 0.5683, pGrowBranch: 0.2686, pRemoveTower: 0.15, pSwapTower: 0,
     addBiasWall: 2.6923, addBiasDps: 0.2697, addBiasSlow: 0.6297, addBiasAura: 0.5991,
     confidenceFloor: 0.683,

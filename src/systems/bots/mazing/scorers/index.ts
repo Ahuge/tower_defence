@@ -18,6 +18,8 @@ import { AuraChainScorer } from './AuraChainScorer';
 import { CrowdControlBoostScorer } from './CrowdControlBoostScorer';
 import { MobileEngagementScorer } from './MobileEngagementScorer';
 import { DotOverlapScorer } from './DotOverlapScorer';
+import { GoldOnHitScorer } from './GoldOnHitScorer';
+import { TeleportDeliveryScorer } from './TeleportDeliveryScorer';
 
 /** Weights config — one knob per registered scorer. v2 → v3 migration:
  *    pathExtension ← α
@@ -42,6 +44,9 @@ export interface ScorerWeights {
   ccBoost: number;
   mobileEngagement: number;
   dotOverlap: number;
+  // v3.1 — trait-aware scorers for unique per-tower mechanics
+  goldOnHit: number;
+  teleportDelivery: number;
 }
 
 export interface ScorerToggles {
@@ -55,6 +60,9 @@ export interface ScorerToggles {
   ccBoost: boolean;
   mobileEngagement: boolean;
   dotOverlap: boolean;
+  // v3.1
+  goldOnHit: boolean;
+  teleportDelivery: boolean;
 }
 
 export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
@@ -70,6 +78,12 @@ export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
   ccBoost: 0,
   mobileEngagement: 0,
   dotOverlap: 0,
+  // v3.1 — trait-aware unique-tower scorers. Default-on at 1.0 because
+  // they're surfacing genuine mechanical value the v2/v3 score function
+  // missed (Siphon's gold compounding, Rift's path-extension-on-hit).
+  // brain-search re-tunes per cell.
+  goldOnHit: 1.0,
+  teleportDelivery: 1.0,
 };
 
 export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
@@ -87,6 +101,12 @@ export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
   ccBoost: false,
   mobileEngagement: false,
   dotOverlap: false,
+  // v3.1 — default-on. These read trait shapes that exist in the data
+  // for any tower (gold_on_hit, teleport_delivery) and contribute 0 for
+  // towers without them, so leaving them on for non-Void factions is a
+  // no-op rather than a regression.
+  goldOnHit: true,
+  teleportDelivery: true,
 };
 
 /** Build a ScorerRegistry from the weight + toggle config. v3 planner
@@ -110,6 +130,9 @@ export function buildDefaultRegistry(
     { scorer: new CrowdControlBoostScorer(), weight: w.ccBoost,        enabled: e.ccBoost },
     { scorer: new MobileEngagementScorer(),  weight: w.mobileEngagement, enabled: e.mobileEngagement },
     { scorer: new DotOverlapScorer(),        weight: w.dotOverlap,     enabled: e.dotOverlap },
+    // v3.1 — trait-aware unique-tower scorers, default-on.
+    { scorer: new GoldOnHitScorer(),         weight: w.goldOnHit,      enabled: e.goldOnHit },
+    { scorer: new TeleportDeliveryScorer(),  weight: w.teleportDelivery, enabled: e.teleportDelivery },
   ];
   return new ScorerRegistry(entries);
 }
