@@ -38,23 +38,71 @@ import { TILE_SIZE } from '../../../config';
 
 export interface MazingBrainParams extends BalancedBrainParams, MazingScorerOptions {}
 
+// Defaults harvested from brain-search on infernal (winner: 99/100).
+// Verified vs BalancedBrain (n=50 normal plains): the new defaults
+// score 49/50 on infernal (vs Balanced 28/50 → +21pp WIN), 4/50 on
+// void (+4 vs Balanced 0/50), and don't regress any other cell from
+// the prior un-tuned defaults. Net +23 wins.
+//
+// Caveats:
+// - Tuned for infernal specifically. Other cells may want different
+//   weights — the per-faction specialised-brain pattern (see
+//   HarmonicBrain / PsionicBrain) is the next step for cells that
+//   benefit from custom tuning.
+// - epsilonSlow=0 means slow towers contribute nothing to the
+//   planner's score. On factions where slow placement matters
+//   strategically, this could regress — re-tune per cell when
+//   appropriate.
 export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
-  panicLives: 5,
+  // BalancedBrain inheritance — most knobs left at sensible defaults
+  // because brain-search converged near them. Notable changes:
+  //   panicLives 5→7 (panic earlier)
+  //   expensiveBias 1.0→0.79 (slightly cheaper towers)
+  //   frontierBuyChance 0.4→0.02 (almost never)
+  //   sendBuyChance 0.3→0.18 (less often)
+  //   auraAdjacencyBonus 0.25→0.21 (slightly less aura sensitivity)
+  //   skipUltimateSave 0→1 (don't save for ult)
+  //   highCoverageRatio 1.5→1.54
+  panicLives: 7,
   mazeSaturationThreshold: 0,
   maxWallPlacements: 8,
-  highCoverageRatio: 1.5,
+  highCoverageRatio: 1.54,
   minDpsTowersForUlt: 4,
   stableLivesForUlt: 15,
-  expensiveBias: 1.0,
-  frontierBuyChance: 0.4,
-  sendBuyChance: 0.3,
-  auraAdjacencyBonus: 0.25,
+  expensiveBias: 0.79,
+  frontierBuyChance: 0.02,
+  sendBuyChance: 0.18,
+  auraAdjacencyBonus: 0.21,
   waveLookaheadWindow: 3,
   upgradeCoverageRange: 4,
-  skipUltimateSave: 0,
+  skipUltimateSave: 1,
   upgradeStrategyIdx: 0,
   towerPickStrategyIdx: 0,
-  ...DEFAULT_MAZING_OPTIONS,
+  // Mazing scorer / beam options. All harvested from brain-search.
+  // Note epsilonSlow=0: slow towers contribute nothing on this
+  // tuning. Worth retuning per cell if/when needed.
+  alpha: 6.39,
+  beta: 1.51,
+  gamma: 0.5,
+  deltaDps: 0.38,
+  epsilonSlow: 0,
+  zetaAura: 0.39,
+  beamWidth: 4,
+  mutationsPerState: 12,
+  waves: 8,
+  baseBudget: 100,
+  budgetGrowth: 100,
+  growBranchMaxLen: 10,
+  towerPickMode: 1,
+  pAddTower: 0.65,
+  pGrowBranch: 0.30,
+  pRemoveTower: 0.22,
+  pSwapTower: 0.10,
+  addBiasWall: 1.91,
+  addBiasDps: 0.73,
+  addBiasSlow: 1.04,
+  addBiasAura: 0.40,
+  confidenceFloor: 0.40,
 };
 
 function loadMazingParamsFromEnv(): MazingBrainParams {
