@@ -196,4 +196,8 @@ export const MAZING_BRAIN_SCHEMA: ParamSchema = {
   // scale; brain-search tunes 0..2 per cell. Default-on toggle.
   weight_wave_counter:      { min: 0.0, max: 2.0, default: 0.05, step: 0.15 },
   enable_wave_counter:      { min: 0, max: 1, default: 1, step: 1, integer: true },
+  // v3.4 — chain-damage extra bonus (Mech Tesla). 0 for non-chain
+  // towers; default 0.05 weight.
+  weight_chain_lightning:   { min: 0.0, max: 2.0, default: 0.05, step: 0.15 },
+  enable_chain_lightning:   { min: 0, max: 1, default: 1, step: 1, integer: true },
 };

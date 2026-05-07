@@ -123,6 +123,11 @@ export interface BeamOptions {
    *  bonus (legacy v3.2 behaviour). */
   weight_wave_counter: number;
   enable_wave_counter: number;
+  /** v3.4 NEW — chain-damage bonus (Mech Tesla). Models bounce damage
+   *  beyond what DpsCoverageScorer captures. 0 contribution for
+   *  non-chain towers. */
+  weight_chain_lightning: number;
+  enable_chain_lightning: number;
 }
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
@@ -166,6 +171,7 @@ export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   enable_gold_on_hit: 1, enable_teleport_delivery: 1,
   // v3.4 — wave-mix-aware counter bonus, default-on.
   weight_wave_counter: 0.05, enable_wave_counter: 1,
+  weight_chain_lightning: 0.05, enable_chain_lightning: 1,
 };
 
 const INVALID_SCORE = -1e9;
@@ -369,6 +375,7 @@ function scoreState(
         goldOnHit: opts.weight_gold_on_hit,
         teleportDelivery: opts.weight_teleport_delivery,
         waveCounter: opts.weight_wave_counter,
+        chainLightning: opts.weight_chain_lightning,
       },
       {
         slowOverlap: opts.enable_slow_overlap > 0,
@@ -379,6 +386,7 @@ function scoreState(
         goldOnHit: opts.enable_gold_on_hit > 0,
         teleportDelivery: opts.enable_teleport_delivery > 0,
         waveCounter: opts.enable_wave_counter > 0,
+        chainLightning: opts.enable_chain_lightning > 0,
       },
     );
 

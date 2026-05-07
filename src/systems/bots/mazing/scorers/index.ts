@@ -21,6 +21,7 @@ import { DotOverlapScorer } from './DotOverlapScorer';
 import { GoldOnHitScorer } from './GoldOnHitScorer';
 import { TeleportDeliveryScorer } from './TeleportDeliveryScorer';
 import { WaveCounterScorer } from './WaveCounterScorer';
+import { ChainLightningScorer } from './ChainLightningScorer';
 
 /** Weights config — one knob per registered scorer. v2 → v3 migration:
  *    pathExtension ← α
@@ -51,6 +52,9 @@ export interface ScorerWeights {
   // v3.4 — wave-mix-aware counter bonus (splash vs swarm, slow vs fast,
   // jackpot vs boss, etc.)
   waveCounter: number;
+  // v3.4 — chain damage (Mech Tesla). Models bounce damage uplift
+  // beyond what DpsCoverageScorer captures.
+  chainLightning: number;
 }
 
 export interface ScorerToggles {
@@ -69,6 +73,7 @@ export interface ScorerToggles {
   teleportDelivery: boolean;
   // v3.4
   waveCounter: boolean;
+  chainLightning: boolean;
 }
 
 export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
@@ -95,6 +100,11 @@ export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
   // can scale to thousands; matched to dpsCoverage's 0.05 weight so
   // counter-effective placements get a meaningful but bounded bonus.
   waveCounter: 0.05,
+  // v3.4 — chain lightning extra damage from bounces. Default 0.05
+  // matches dpsCoverage's scale (the scorer returns dpsRate × extra-
+  // damage-factor × pathCells which is comparable to dpsCoverage's
+  // dpsRate × pathCells for towers with the trait).
+  chainLightning: 0.05,
 };
 
 export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
@@ -122,6 +132,9 @@ export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
   // is empty (no upcoming waves available) so non-game callers /
   // legacy paths see no behaviour change.
   waveCounter: true,
+  // v3.4 — default-on. ChainLightningScorer returns 0 for towers
+  // without the chain_damage trait, so non-Mech factions are unaffected.
+  chainLightning: true,
 };
 
 /** Build a ScorerRegistry from the weight + toggle config. v3 planner
@@ -150,6 +163,7 @@ export function buildDefaultRegistry(
     { scorer: new TeleportDeliveryScorer(),  weight: w.teleportDelivery, enabled: e.teleportDelivery },
     // v3.4 — wave-mix-aware counter bonus.
     { scorer: new WaveCounterScorer(),       weight: w.waveCounter,    enabled: e.waveCounter },
+    { scorer: new ChainLightningScorer(),    weight: w.chainLightning, enabled: e.chainLightning },
   ];
   return new ScorerRegistry(entries);
 }
