@@ -53,61 +53,52 @@ export interface MazingBrainParams extends BalancedBrainParams, MazingScorerOpti
 //   planner's score. On factions where slow placement matters
 //   strategically, this could regress — re-tune per cell when
 //   appropriate.
+// Defaults harvested from v3 brain-search on infernal — winner 100/100.
+// (v2 winner was 99/100; v3 found a slightly better config that uses
+// the new aura_chain scorer.) Used as fallback when ctx.faction has no
+// specialised entry in MAZING_FACTION_CONFIGS.
 export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
-  // BalancedBrain inheritance — most knobs left at sensible defaults
-  // because brain-search converged near them. Notable changes:
-  //   panicLives 5→7 (panic earlier)
-  //   expensiveBias 1.0→0.79 (slightly cheaper towers)
-  //   frontierBuyChance 0.4→0.02 (almost never)
-  //   sendBuyChance 0.3→0.18 (less often)
-  //   auraAdjacencyBonus 0.25→0.21 (slightly less aura sensitivity)
-  //   skipUltimateSave 0→1 (don't save for ult)
-  //   highCoverageRatio 1.5→1.54
-  panicLives: 7,
+  panicLives: 6,
   mazeSaturationThreshold: 0,
-  maxWallPlacements: 8,
-  highCoverageRatio: 1.54,
+  maxWallPlacements: 10,
+  highCoverageRatio: 1.0168,
   minDpsTowersForUlt: 4,
-  stableLivesForUlt: 15,
-  expensiveBias: 0.79,
-  frontierBuyChance: 0.02,
-  sendBuyChance: 0.18,
-  auraAdjacencyBonus: 0.21,
+  stableLivesForUlt: 12,
+  expensiveBias: 0.9027,
+  frontierBuyChance: 0.2116,
+  sendBuyChance: 0.3266,
+  auraAdjacencyBonus: 0.1971,
   waveLookaheadWindow: 3,
-  upgradeCoverageRange: 4,
+  upgradeCoverageRange: 5,
   skipUltimateSave: 1,
   upgradeStrategyIdx: 0,
-  towerPickStrategyIdx: 0,
-  // Mazing scorer / beam options. All harvested from brain-search.
-  // Note epsilonSlow=0: slow towers contribute nothing on this
-  // tuning. Worth retuning per cell if/when needed.
-  alpha: 6.39,
-  beta: 1.51,
-  gamma: 0.5,
-  deltaDps: 0.38,
-  epsilonSlow: 0,
-  zetaAura: 0.39,
-  beamWidth: 4,
+  towerPickStrategyIdx: 2,
+  alpha: 5.0897,
+  beta: 1.1814,
+  gamma: 0.7667,
+  deltaDps: 0.2877,
+  epsilonSlow: 0.2675,
+  zetaAura: 0,
+  beamWidth: 5,
   mutationsPerState: 12,
-  waves: 8,
-  baseBudget: 100,
-  budgetGrowth: 100,
+  waves: 10,
+  baseBudget: 61,
+  budgetGrowth: 20,
   growBranchMaxLen: 10,
-  towerPickMode: 1,
-  pAddTower: 0.65,
-  pGrowBranch: 0.30,
-  pRemoveTower: 0.22,
-  pSwapTower: 0.10,
-  addBiasWall: 1.91,
-  addBiasDps: 0.73,
-  addBiasSlow: 1.04,
-  addBiasAura: 0.40,
-  confidenceFloor: 0.40,
-  // v3 NEW scorer weights — default 0 + disabled. brain-search per
-  // cell will tune them on selectively for synergy-heavy factions.
-  weight_slow_overlap: 0, weight_aura_chain: 0, weight_cc_boost: 0,
-  weight_mobile_engagement: 0, weight_dot_overlap: 0,
-  enable_slow_overlap: 0, enable_aura_chain: 0, enable_cc_boost: 0,
+  towerPickMode: 0,
+  pAddTower: 0.4685,
+  pGrowBranch: 0,
+  pRemoveTower: 0.007,
+  pSwapTower: 0.0481,
+  addBiasWall: 3.3097,
+  addBiasDps: 0.3034,
+  addBiasSlow: 0.0694,
+  addBiasAura: 0,
+  confidenceFloor: 0.3721,
+  // v3 scorer weights — only aura_chain is enabled at modest weight on infernal.
+  weight_slow_overlap: 0.2295, weight_aura_chain: 0.1715, weight_cc_boost: 0.0695,
+  weight_mobile_engagement: 0, weight_dot_overlap: 0.4544,
+  enable_slow_overlap: 0, enable_aura_chain: 1, enable_cc_boost: 0,
   enable_mobile_engagement: 0, enable_dot_overlap: 0,
 };
 
@@ -132,33 +123,45 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
  *  When ctx.faction isn't in this table, the brain falls back to
  *  DEFAULT_MAZING_BRAIN_PARAMS (the infernal config). */
 export const MAZING_FACTION_CONFIGS: Record<string, Partial<MazingBrainParams>> = {
+  // v3-tuned: void winner 99/100 (was v2 98/100). Scorer toggles
+  // enabled aura_chain + cc_boost + slow_overlap with small weights.
   void: {
-    panicLives: 5, mazeSaturationThreshold: 1, maxWallPlacements: 8,
-    highCoverageRatio: 1.5, minDpsTowersForUlt: 4, stableLivesForUlt: 15,
-    expensiveBias: 0.8215, frontierBuyChance: 0.3713, sendBuyChance: 0.3258,
-    auraAdjacencyBonus: 0.3124, waveLookaheadWindow: 3, upgradeCoverageRange: 4,
+    panicLives: 7, mazeSaturationThreshold: 0, maxWallPlacements: 7,
+    highCoverageRatio: 1.3589, minDpsTowersForUlt: 4, stableLivesForUlt: 17,
+    expensiveBias: 1, frontierBuyChance: 0.2062, sendBuyChance: 0.1808,
+    auraAdjacencyBonus: 0.4153, waveLookaheadWindow: 3, upgradeCoverageRange: 4,
     skipUltimateSave: 0, upgradeStrategyIdx: 0, towerPickStrategyIdx: 1,
-    alpha: 5, beta: 1, gamma: 0.8282,
-    deltaDps: 0.05, epsilonSlow: 0.05, zetaAura: 0,
-    beamWidth: 3, mutationsPerState: 12, waves: 6,
-    baseBudget: 83, budgetGrowth: 94, growBranchMaxLen: 7, towerPickMode: 0,
-    pAddTower: 0.5098, pGrowBranch: 0.3, pRemoveTower: 0.15, pSwapTower: 0.05,
-    addBiasWall: 2.121, addBiasDps: 1.4128, addBiasSlow: 0.6, addBiasAura: 0.0222,
-    confidenceFloor: 0.4,
+    alpha: 4.877, beta: 0.9419, gamma: 0,
+    deltaDps: 0.05, epsilonSlow: 0.1624, zetaAura: 0,
+    beamWidth: 2, mutationsPerState: 15, waves: 12,
+    baseBudget: 104, budgetGrowth: 66, growBranchMaxLen: 6, towerPickMode: 1,
+    pAddTower: 0.5683, pGrowBranch: 0.2686, pRemoveTower: 0.15, pSwapTower: 0,
+    addBiasWall: 2.6923, addBiasDps: 0.2697, addBiasSlow: 0.6297, addBiasAura: 0.5991,
+    confidenceFloor: 0.683,
+    weight_slow_overlap: 0.1016, weight_aura_chain: 0, weight_cc_boost: 0,
+    weight_mobile_engagement: 0.103, weight_dot_overlap: 0,
+    enable_slow_overlap: 1, enable_aura_chain: 1, enable_cc_boost: 1,
+    enable_mobile_engagement: 0, enable_dot_overlap: 0,
   },
+  // v3-tuned: aliens winner 77/100 (was v2 73/100). Verbatim from
+  // brain-search/mazing-aliens-normal/summary.json bestSoFar.
   aliens: {
-    panicLives: 8, mazeSaturationThreshold: 1, maxWallPlacements: 1,
-    highCoverageRatio: 1.166, minDpsTowersForUlt: 3, stableLivesForUlt: 18,
-    expensiveBias: 0.9105, frontierBuyChance: 0.305, sendBuyChance: 0.2978,
-    auraAdjacencyBonus: 0.122, waveLookaheadWindow: 5, upgradeCoverageRange: 4,
-    skipUltimateSave: 0, upgradeStrategyIdx: 2, towerPickStrategyIdx: 3,
-    alpha: 5.1304, beta: 1.3376, gamma: 0.7437,
-    deltaDps: 0.0962, epsilonSlow: 0, zetaAura: 0,
-    beamWidth: 2, mutationsPerState: 13, waves: 6,
-    baseBudget: 126, budgetGrowth: 40, growBranchMaxLen: 3, towerPickMode: 0,
-    pAddTower: 0.1121, pGrowBranch: 0.2165, pRemoveTower: 0.0036, pSwapTower: 0.2505,
-    addBiasWall: 2.6897, addBiasDps: 1.7308, addBiasSlow: 0, addBiasAura: 0.6583,
-    confidenceFloor: 0.4273,
+    panicLives: 5, mazeSaturationThreshold: 0, maxWallPlacements: 8,
+    highCoverageRatio: 1.7837, minDpsTowersForUlt: 9, stableLivesForUlt: 20,
+    expensiveBias: 0.6987, frontierBuyChance: 0.2098, sendBuyChance: 0.1794,
+    auraAdjacencyBonus: 0.2998, waveLookaheadWindow: 5, upgradeCoverageRange: 8,
+    skipUltimateSave: 1, upgradeStrategyIdx: 0, towerPickStrategyIdx: 3,
+    alpha: 1.2182, beta: 0.8082, gamma: 0.7702,
+    deltaDps: 0.1477, epsilonSlow: 0.2354, zetaAura: 0.1612,
+    beamWidth: 2, mutationsPerState: 18, waves: 10,
+    baseBudget: 50, budgetGrowth: 133, growBranchMaxLen: 11, towerPickMode: 1,
+    pAddTower: 0.0696, pGrowBranch: 0.5791, pRemoveTower: 0.2775, pSwapTower: 0.1414,
+    addBiasWall: 2.7446, addBiasDps: 1.4664, addBiasSlow: 0.6832, addBiasAura: 0.746,
+    confidenceFloor: 0.306,
+    weight_slow_overlap: 0.0856, weight_aura_chain: 0.0858, weight_cc_boost: 1.5259,
+    weight_mobile_engagement: 0.5657, weight_dot_overlap: 0,
+    enable_slow_overlap: 1, enable_aura_chain: 0, enable_cc_boost: 0,
+    enable_mobile_engagement: 0, enable_dot_overlap: 0,
   },
   harmonic: {
     panicLives: 2, mazeSaturationThreshold: 2, maxWallPlacements: 11,
