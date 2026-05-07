@@ -128,34 +128,36 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
  *  When ctx.faction isn't in this table, the brain falls back to
  *  DEFAULT_MAZING_BRAIN_PARAMS (the infernal config). */
 export const MAZING_FACTION_CONFIGS: Record<string, Partial<MazingBrainParams>> = {
-  // v3.1-tuned: void winner 99/100 (was v2 98/100). Scorer toggles
-  // enabled aura_chain + cc_boost + slow_overlap with small weights.
-  // towerPickMode swapped 1 (random) → 0 (greedy) in v3.1 so the new
-  // GoldOnHitScorer / TeleportDeliveryScorer / jackpot-aware DPS terms
-  // can influence which Void tower wins each cell. Random mode weights
-  // by role only (all 5 Void towers are dps-single → uniform pick →
-  // cheapest wins on budget alone), so the trait-aware scorers had
-  // nothing to bite on. Brain-search at v3 baseline pre-dated v3.1;
-  // re-tune is queued. Greedy mode is ~10x more expensive per pick
-  // but with beamWidth=2 and small Void pool size (5 towers) the cost
-  // is bounded.
+  // v3.2-tuned: void winner 99/100. Brain-search re-run with v3.1
+  // scorers in scope (gold_on_hit, teleport_delivery, urgency factor)
+  // confirms: for raw win rate, Gambler-spam is genuinely optimal —
+  // brain-search DISABLED gold_on_hit + teleport_delivery (both
+  // enable=0) and reverted to v3-style towerPickMode=1 (random) +
+  // towerPickStrategyIdx=1 (damage-per-cost). The new scorers don't
+  // help win rate; they trade win rate for tower-pool variety. This
+  // config preserves the 99% baseline.
+  // Variety override: callers wanting Siphons/Rifts/Spikes in the
+  // build can set MAZING_BRAIN_PARAMS env var with enable_gold_on_hit=1
+  // + enable_teleport_delivery=1. Expect ~3-8pp win-rate cost.
   void: {
-    panicLives: 7, mazeSaturationThreshold: 0, maxWallPlacements: 7,
-    highCoverageRatio: 1.3589, minDpsTowersForUlt: 4, stableLivesForUlt: 17,
-    expensiveBias: 1, frontierBuyChance: 0.2062, sendBuyChance: 0.1808,
-    auraAdjacencyBonus: 0.4153, waveLookaheadWindow: 3, upgradeCoverageRange: 4,
-    skipUltimateSave: 0, upgradeStrategyIdx: 0, towerPickStrategyIdx: 1,
-    alpha: 4.877, beta: 0.9419, gamma: 0,
-    deltaDps: 0.05, epsilonSlow: 0.1624, zetaAura: 0,
-    beamWidth: 2, mutationsPerState: 15, waves: 12,
-    baseBudget: 104, budgetGrowth: 66, growBranchMaxLen: 6, towerPickMode: 0,
-    pAddTower: 0.5683, pGrowBranch: 0.2686, pRemoveTower: 0.15, pSwapTower: 0,
-    addBiasWall: 2.6923, addBiasDps: 0.2697, addBiasSlow: 0.6297, addBiasAura: 0.5991,
-    confidenceFloor: 0.683,
-    weight_slow_overlap: 0.1016, weight_aura_chain: 0, weight_cc_boost: 0,
-    weight_mobile_engagement: 0.103, weight_dot_overlap: 0,
-    enable_slow_overlap: 1, enable_aura_chain: 1, enable_cc_boost: 1,
-    enable_mobile_engagement: 0, enable_dot_overlap: 0,
+    panicLives: 9, mazeSaturationThreshold: 0, maxWallPlacements: 11,
+    highCoverageRatio: 1.6, minDpsTowersForUlt: 7, stableLivesForUlt: 15,
+    expensiveBias: 1, frontierBuyChance: 0.29, sendBuyChance: 0.39,
+    auraAdjacencyBonus: 0.42, waveLookaheadWindow: 1, upgradeCoverageRange: 4,
+    skipUltimateSave: 1, upgradeStrategyIdx: 0, towerPickStrategyIdx: 1,
+    alpha: 3.84, beta: 1.16, gamma: 0.71,
+    deltaDps: 0.06, epsilonSlow: 0.11, zetaAura: 0.03,
+    beamWidth: 2, mutationsPerState: 13, waves: 7,
+    baseBudget: 100, budgetGrowth: 30, growBranchMaxLen: 8, towerPickMode: 1,
+    pAddTower: 0.52, pGrowBranch: 0.37, pRemoveTower: 0.01, pSwapTower: 0.02,
+    addBiasWall: 2.5, addBiasDps: 0.82, addBiasSlow: 0.2, addBiasAura: 0.9,
+    confidenceFloor: 0.23,
+    weight_slow_overlap: 0.44, weight_aura_chain: 0.61, weight_cc_boost: 0,
+    weight_mobile_engagement: 0.48, weight_dot_overlap: 0.07,
+    enable_slow_overlap: 0, enable_aura_chain: 0, enable_cc_boost: 1,
+    enable_mobile_engagement: 1, enable_dot_overlap: 0,
+    weight_gold_on_hit: 0.79, weight_teleport_delivery: 1.31,
+    enable_gold_on_hit: 0, enable_teleport_delivery: 0,
   },
   // v3-tuned: aliens winner 77/100 (was v2 73/100). Verbatim from
   // brain-search/mazing-aliens-normal/summary.json bestSoFar.
@@ -207,7 +209,35 @@ export const MAZING_FACTION_CONFIGS: Record<string, Partial<MazingBrainParams>> 
     addBiasWall: 2.84, addBiasDps: 1.25, addBiasSlow: 0, addBiasAura: 0,
     confidenceFloor: 0.22,
   },
-  // infernal: omitted — its winner IS the DEFAULT_MAZING_BRAIN_PARAMS.
+  // v3.2-tuned: infernal winner 99/100 (was v3 default 100/100, ~tie
+  // within noise). Notable: brain-search ENABLED gold_on_hit (weight
+  // 1.45) — Soul Drain's per-kill economy is genuine value the planner
+  // now models. teleport_delivery enabled=0 (Infernal has no teleport
+  // tower so the scorer always returned 0; brain-search dropped it to
+  // save the toggle slot). towerPickStrategyIdx changed 2 (fast-fire
+  // → Imp wins) to 0 (expensive-bias → mid/late towers win) which
+  // pairs with the v3.1 lifespan-decay so the planner naturally moves
+  // off Imps once budget allows Hellfires.
+  infernal: {
+    panicLives: 6, mazeSaturationThreshold: 0, maxWallPlacements: 9,
+    highCoverageRatio: 1.5, minDpsTowersForUlt: 4, stableLivesForUlt: 16,
+    expensiveBias: 0.54, frontierBuyChance: 0.41, sendBuyChance: 0.28,
+    auraAdjacencyBonus: 0.22, waveLookaheadWindow: 3, upgradeCoverageRange: 6,
+    skipUltimateSave: 0, upgradeStrategyIdx: 2, towerPickStrategyIdx: 0,
+    alpha: 4.87, beta: 0.53, gamma: 0.61,
+    deltaDps: 0.05, epsilonSlow: 0, zetaAura: 0,
+    beamWidth: 1, mutationsPerState: 12, waves: 9,
+    baseBudget: 52, budgetGrowth: 58, growBranchMaxLen: 12, towerPickMode: 1,
+    pAddTower: 0.49, pGrowBranch: 0.08, pRemoveTower: 0.25, pSwapTower: 0.08,
+    addBiasWall: 2.93, addBiasDps: 1.12, addBiasSlow: 0.7, addBiasAura: 0.47,
+    confidenceFloor: 0.33,
+    weight_slow_overlap: 0.3, weight_aura_chain: 0.49, weight_cc_boost: 0.15,
+    weight_mobile_engagement: 0.04, weight_dot_overlap: 0,
+    enable_slow_overlap: 0, enable_aura_chain: 1, enable_cc_boost: 1,
+    enable_mobile_engagement: 0, enable_dot_overlap: 0,
+    weight_gold_on_hit: 1.45, weight_teleport_delivery: 1.51,
+    enable_gold_on_hit: 1, enable_teleport_delivery: 0,
+  },
 
   // Military has TWO wall-classified towers (sandbag 8g + wire 25g) and
   // wants a long alternating maze (sandbag-sandbag-wire pattern) so the
