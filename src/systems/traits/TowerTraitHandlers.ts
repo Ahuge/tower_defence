@@ -726,20 +726,26 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
       if (trait._attackTimer <= 0) {
         trait._attackTimer = attackCooldown;
 
+        // Pass tower.col, tower.row to takeDamage so creep.lastHitCol/Row
+        // points back at the mobile unit's HOME cell. CircleDeathHandler
+        // uses that as the towerOwners lookup key — without it, mobile-
+        // unit kills mis-attribute (or fall through to playerIndex 0).
+        // Same fix needed for the stationary towers; they call
+        // creep.lastHitCol = this.col directly which works equivalently.
         if (attackSplash > 0) {
           for (const creep of ctx.allCreeps) {
             if (!creep.alive || creep.reached) continue;
             const cx = creep.x - tower.x;
             const cy = creep.y - tower.y;
             if (Math.sqrt(cx * cx + cy * cy) <= attackSplash) {
-              creep.takeDamage(attackDamage);
+              creep.takeDamage(attackDamage, tower.col, tower.row);
               tower.damageDealt += attackDamage;
             }
           }
           // Visual: AoE flash
           spawnAttackEffect(tower, null, attackSplash, ctx);
         } else {
-          target.takeDamage(attackDamage);
+          target.takeDamage(attackDamage, tower.col, tower.row);
           tower.damageDealt += attackDamage;
           // Visual: hit effect at target
           spawnAttackEffect(tower, target, 0, ctx);
