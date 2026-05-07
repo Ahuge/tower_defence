@@ -35,6 +35,7 @@ import { TowerType } from '../../../data/TowerTypes';
 import { TowerRole, getTowerRole } from '../../../data/TowerRoles';
 import { hasTrait, getTrait } from '../../traits/Trait';
 import { TILE_SIZE } from '../../../config';
+import { ScorerRegistry, buildDefaultRegistry } from './scorers';
 
 /** Score components per BFS run. */
 interface BfsScoreParts {
@@ -53,6 +54,12 @@ export interface BeamOptions {
   deltaDps: number;
   epsilonSlow: number;
   zetaAura: number;
+  /** v3: optional pre-built scorer registry. When set, overrides
+   *  the alpha/beta/gamma/delta/epsilon/zeta-derived registry that
+   *  scoreState would build per-call. The MazingScorer constructs
+   *  this once and threads it through; legacy callers that pass only
+   *  weight floats fall through to the auto-build path. */
+  registry?: ScorerRegistry;
   /** Beam search shape. */
   beamWidth: number;
   mutationsPerState: number;
@@ -232,9 +239,15 @@ function auraAmplification(
   return amplified * strength;
 }
 
-/** Score a state by applying its placedTowers to the baseline grid,
- *  measuring BFS metrics, and adding role-weighted role contributions.
- *  Restores the grid before returning. */
+/** v3: Score a state via the registered ContributionScorer modules.
+ *  Applies the state's placedTowers to baseline, runs BFS once, calls
+ *  every registered scorer with a shared ScorerContext, sums weighted
+ *  contributions. Restores baseline before returning.
+ *
+ *  The per-role tracker is preserved so MazingScorer.bestCell can
+ *  still bucket plan entries by role for confidence-floor veto. We
+ *  derive it from the registry's per-tower walk (enumerated separately
+ *  from the contribution sum — cheap second pass over placedTowers). */
 function scoreState(
   baseline: Grid,
   state: BeamState,
@@ -253,45 +266,76 @@ function scoreState(
   try {
     const bfs = bfsScoreMulti(baseline, paths);
     if (!bfs.success) {
-      return {
-        total: INVALID_SCORE,
-        perRole: emptyRoleScores(),
-      };
+      return { total: INVALID_SCORE, perRole: emptyRoleScores() };
     }
 
-    // BFS-workload component (v1 terms).
-    let total = (
-      opts.alpha * bfs.pathLength +
-      opts.beta * bfs.nodesExpanded +
-      opts.gamma * bfs.maxQueue
-    );
-
-    // Role-aware components — sum across placed towers, bucketed by
-    // role for the per-role best tracking. We need the BFS path
-    // geometry for coverage scoring; pull it once and reuse.
+    // Build path geometries once — every scorer that needs them shares
+    // the same array.
     const pathGeoms: PathPoint[][] = [];
     for (const seg of paths) {
       const m = findPathWithMetrics(baseline, seg.start, seg.end);
       if (m) pathGeoms.push(m.path);
     }
 
+    // Cache role lookup once per state-score so scorers don't all
+    // re-call getTowerRole.
+    const roleCache = new Map<string, TowerRole>();
+    const lookupRole = (id: string): TowerRole => {
+      let r = roleCache.get(id);
+      if (r === undefined) {
+        const t = lookupType(id);
+        r = t ? getTowerRole(t) : 'utility';
+        roleCache.set(id, r);
+      }
+      return r;
+    };
+
+    const ctx = {
+      grid: baseline,
+      paths,
+      towerPool: [] as TowerType[], // not needed for scoring; scorers use lookup
+      state: { placedTowers: state.placedTowers },
+      bfs,
+      pathGeometries: pathGeoms,
+      lookupTower: lookupType,
+      lookupRole,
+    };
+
+    // Pull the registry from opts (set by runBeam below). Falls back
+    // to a per-call default if absent (legacy callers).
+    const registry = opts.registry ?? buildDefaultRegistry({
+      pathExtension: opts.alpha,
+      bfsWork: opts.beta + opts.gamma,
+      dpsCoverage: opts.deltaDps,
+      slowValue: opts.epsilonSlow,
+      auraAmp: opts.zetaAura,
+    });
+
+    const total = registry.totalScore(ctx);
+
+    // Per-role tracking — same as v2 for MazingScorer's confidence
+    // floor. Walks placedTowers once, sums each role's max single-
+    // tower contribution. We derive role-buckets from the same
+    // contribution math the dps/slow/aura scorers use; if those
+    // scorers are disabled, the per-role bucket gets 0 for that role.
     const perRole = emptyRoleScores();
     for (const placed of state.placedTowers) {
+      const role = lookupRole(placed.towerId);
+      // Approximate per-role contribution via dps/slow/aura formulas
+      // matching the registered scorers' logic. This mirrors v2 — the
+      // bucket is used only as a confidence-floor signal, not for
+      // total scoring (registry.totalScore already covers that).
       const t = lookupType(placed.towerId);
       if (!t) continue;
-      const role = getTowerRole(t);
       let cellScore = 0;
       if (role === 'dps-single' || role === 'dps-splash') {
-        cellScore = opts.deltaDps * dpsCoverage(t, placed.col, placed.row, pathGeoms);
+        cellScore = dpsCoverage(t, placed.col, placed.row, pathGeoms);
       } else if (role === 'slow') {
-        cellScore = opts.epsilonSlow * slowValue(t, placed.col, placed.row, pathGeoms);
+        cellScore = slowValue(t, placed.col, placed.row, pathGeoms);
       } else if (role === 'aura') {
-        cellScore = opts.zetaAura * auraAmplification(t, placed.col, placed.row, state.placedTowers, lookupType);
+        cellScore = auraAmplification(t, placed.col, placed.row, state.placedTowers, lookupType);
       }
-      // Walls + utility get no role bonus — their value is purely
-      // path-extension via the α term.
-      perRole[role] = Math.max(perRole[role], cellScore);
-      total += cellScore;
+      if (cellScore > perRole[role]) perRole[role] = cellScore;
     }
     return { total, perRole };
   } finally {
