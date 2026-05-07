@@ -85,13 +85,13 @@ export interface BeamOptions {
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   alpha: 5.0, beta: 1.0, gamma: 0.5,
-  // Role weights — re-enabled now that phase 3+4 ship per-role bestCell
-  // and the brain's wishlist veto. Conservative defaults: path
-  // extension still dominates so the plan stays maze-shaped, but DPS /
-  // slow / aura contributions register so role-bucket queries return
-  // meaningfully-ranked cells. brain-search will retune once we have
-  // a comparison baseline.
-  deltaDps: 0.05, epsilonSlow: 0.05, zetaAura: 0.05,
+  // Role weights raised from 0.05 → 0.5. With α=5 the path-extension
+  // term contributes ~150-200 score units; previous δ=0.05 gave a
+  // single high-coverage DPS only ~22 units (barely a tiebreaker).
+  // 10× higher (0.5) puts a single DPS at ~220 — comparable to a
+  // wall placement's path-extension delta. Lets the planner actually
+  // weigh role contributions instead of treating them as noise.
+  deltaDps: 0.5, epsilonSlow: 0.5, zetaAura: 0.3,
   // Beam search shape — reduced from POC defaults to fit a 4s bot
   // decision budget with multiple bots running concurrently. POC
   // had beam=5 mutations=25 waves=15 = ~1875 evals/plan; the trim
