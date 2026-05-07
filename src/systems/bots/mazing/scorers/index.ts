@@ -22,6 +22,7 @@ import { GoldOnHitScorer } from './GoldOnHitScorer';
 import { TeleportDeliveryScorer } from './TeleportDeliveryScorer';
 import { WaveCounterScorer } from './WaveCounterScorer';
 import { ChainLightningScorer } from './ChainLightningScorer';
+import { BarrierCoherenceScorer } from './BarrierCoherenceScorer';
 
 /** Weights config — one knob per registered scorer. v2 → v3 migration:
  *    pathExtension ← α
@@ -55,6 +56,8 @@ export interface ScorerWeights {
   // v3.4 — chain damage (Mech Tesla). Models bounce damage uplift
   // beyond what DpsCoverageScorer captures.
   chainLightning: number;
+  // v3.5 — barrier coherence (proper-mazing structural prior).
+  barrierCoherence: number;
 }
 
 export interface ScorerToggles {
@@ -74,6 +77,8 @@ export interface ScorerToggles {
   // v3.4
   waveCounter: boolean;
   chainLightning: boolean;
+  // v3.5
+  barrierCoherence: boolean;
 }
 
 export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
@@ -105,6 +110,12 @@ export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
   // damage-factor × pathCells which is comparable to dpsCoverage's
   // dpsRate × pathCells for towers with the trait).
   chainLightning: 0.05,
+  // v3.5 — barrier-coherence structural prior. Default 0.3 — small
+  // bias toward complete-barrier serpentines without overpowering the
+  // existing brain-search-tuned configs (which were optimized without
+  // this term and shift slightly when it's added). brain-search re-runs
+  // can dial it up per cell where the prior actually helps.
+  barrierCoherence: 0.3,
 };
 
 export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
@@ -135,6 +146,9 @@ export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
   // v3.4 — default-on. ChainLightningScorer returns 0 for towers
   // without the chain_damage trait, so non-Mech factions are unaffected.
   chainLightning: true,
+  // v3.5 — default-on. Bonuses for any faction with wall-class towers;
+  // 0 contribution when no rows/cols meet the fill threshold.
+  barrierCoherence: true,
 };
 
 /** Build a ScorerRegistry from the weight + toggle config. v3 planner
@@ -164,6 +178,8 @@ export function buildDefaultRegistry(
     // v3.4 — wave-mix-aware counter bonus.
     { scorer: new WaveCounterScorer(),       weight: w.waveCounter,    enabled: e.waveCounter },
     { scorer: new ChainLightningScorer(),    weight: w.chainLightning, enabled: e.chainLightning },
+    // v3.5 — barrier-coherence structural prior.
+    { scorer: new BarrierCoherenceScorer(),  weight: w.barrierCoherence, enabled: e.barrierCoherence },
   ];
   return new ScorerRegistry(entries);
 }

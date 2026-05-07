@@ -200,4 +200,19 @@ export const MAZING_BRAIN_SCHEMA: ParamSchema = {
   // towers; default 0.05 weight.
   weight_chain_lightning:   { min: 0.0, max: 2.0, default: 0.05, step: 0.15 },
   enable_chain_lightning:   { min: 0, max: 1, default: 1, step: 1, integer: true },
+
+  // ── v3.5 NEW — barrier-coherence structural prior. Bonuses for
+  // complete row/col walls with single gaps (proper-mazing pattern).
+  // brain-search tunable but starting weight 1.0 because the bonuses
+  // are small absolute (5-30 per barrier) compared to alpha=5.0 ×
+  // pathLength which dominates the score.
+  weight_barrier_coherence: { min: 0.0, max: 5.0, default: 1.0, step: 0.5 },
+  enable_barrier_coherence: { min: 0, max: 1, default: 1, step: 1, integer: true },
+
+  // ── v3.5 NEW — mutation operator probability for the structural
+  // maze prior. Random `addTower` and random-walk `growBranchTyped`
+  // produce blob-like layouts; `growBarrier` fills entire row/col with
+  // walls and a single gap. Default 0.10 (modest — random ops still
+  // contribute useful diversity).
+  pGrowBarrier:             { min: 0.0, max: 0.6, default: 0.10, step: 0.05 },
 };

@@ -75,6 +75,11 @@ export interface BeamOptions {
   pGrowBranch: number;
   pRemoveTower: number;
   pSwapTower: number;
+  /** v3.5: probability of `growBarrier` mutation — fills a row or
+   *  column with walls except for one gap, producing complete-barrier
+   *  serpentine patterns. Default 0.10 (small, since the random-walk
+   *  ops still produce useful diversity). */
+  pGrowBarrier: number;
   /** Cap on how many cells `growBranch` paints in one mutation. */
   growBranchMaxLen: number;
   /** 0 = greedy (try every affordable tower per cell, keep best),
@@ -128,6 +133,11 @@ export interface BeamOptions {
    *  non-chain towers. */
   weight_chain_lightning: number;
   enable_chain_lightning: number;
+  /** v3.5 NEW — barrier coherence: rewards complete-row / complete-col
+   *  walls with single gaps (proper TD mazing structure). 0 = no
+   *  structural prior. */
+  weight_barrier_coherence: number;
+  enable_barrier_coherence: number;
 }
 
 export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
@@ -147,6 +157,9 @@ export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   baseBudget: 100,
   budgetGrowth: 80,
   pAddTower: 0.5, pGrowBranch: 0.3, pRemoveTower: 0.15, pSwapTower: 0.05,
+  // v3.5: small default — random ops still produce useful diversity;
+  // brain-search re-runs tune higher where structural mazes win.
+  pGrowBarrier: 0.05,
   growBranchMaxLen: 8,
   // Random-mode tower-pick is the default — greedy mode runs a full
   // state score per affordable tower per mutation attempt, which is
@@ -172,6 +185,9 @@ export const DEFAULT_BEAM_OPTIONS: BeamOptions = {
   // v3.4 — wave-mix-aware counter bonus, default-on.
   weight_wave_counter: 0.05, enable_wave_counter: 1,
   weight_chain_lightning: 0.05, enable_chain_lightning: 1,
+  // v3.5 — barrier-coherence prior, default-on at low weight (0.3) so
+  // it nudges toward structure without overpowering existing tuned configs.
+  weight_barrier_coherence: 0.3, enable_barrier_coherence: 1,
 };
 
 const INVALID_SCORE = -1e9;
@@ -379,6 +395,7 @@ function scoreState(
         teleportDelivery: opts.weight_teleport_delivery,
         waveCounter: opts.weight_wave_counter,
         chainLightning: opts.weight_chain_lightning,
+        barrierCoherence: opts.weight_barrier_coherence,
       },
       {
         slowOverlap: opts.enable_slow_overlap > 0,
@@ -390,6 +407,7 @@ function scoreState(
         teleportDelivery: opts.enable_teleport_delivery > 0,
         waveCounter: opts.enable_wave_counter > 0,
         chainLightning: opts.enable_chain_lightning > 0,
+        barrierCoherence: opts.enable_barrier_coherence > 0,
       },
     );
 
@@ -573,6 +591,87 @@ function growBranchTyped(
   return { placedTowers: placed, cost, score: -Infinity };
 }
 
+/** v3.5: structural maze-prior operator. Picks a row (or column) with
+ *  enough candidate cells, fills it with walls except for ONE gap
+ *  cell, producing a complete barrier with a single gap. This is the
+ *  pattern proper TD mazes use (full-row barrier with alternating-side
+ *  gaps); the random `addTower` and random-walk `growBranch` operators
+ *  alone won't reliably produce it because random placements rarely
+ *  form complete row-spanning barriers.
+ *
+ *  Implementation:
+ *    - Pick wall-class tower (cheapest, fallback to cheapest pool).
+ *    - Group candidate cells by row OR column (orientation chosen 50/50).
+ *    - Filter rows/cols with ≥4 candidate cells (minimum width to be
+ *      worth barriering).
+ *    - Pick one row/col uniformly at random.
+ *    - Pick a gap index — biased 60% toward edges (cells 0 or last) so
+ *      the gap matches the "alternating-side serpentine" pattern that
+ *      maximises path length, 40% interior for variety.
+ *    - Place walls on every cell except the gap, within budget.
+ *
+ *  Returns null if no eligible row/col exists or budget is exhausted. */
+function growBarrier(
+  state: BeamState, candidates: Cell[], budget: number, entry: PathPoint,
+  pool: TowerType[], opts: BeamOptions,
+): BeamState | null {
+  if (candidates.length === 0 || pool.length === 0) return null;
+  const walls = pool.filter(t => getTowerRole(t) === 'wall');
+  const wallTower = (walls.length > 0 ? walls : pool).reduce((a, b) => a.cost <= b.cost ? a : b);
+
+  // Orientation: row (axis='row', group by row) or column.
+  const axis: 'row' | 'col' = rng() < 0.5 ? 'row' : 'col';
+
+  // Group candidates by axis. Skip cells already occupied.
+  const byKey = new Map<number, Cell[]>();
+  for (const c of candidates) {
+    if (containsCell(state.placedTowers, c.col, c.row)) continue;
+    const key = axis === 'row' ? c.row : c.col;
+    let arr = byKey.get(key);
+    if (!arr) { arr = []; byKey.set(key, arr); }
+    arr.push(c);
+  }
+
+  // Eligible: ≥4 candidate cells in the row/col — narrower barriers
+  // don't extend the path enough to be worth the gold.
+  const eligible: { key: number; cells: Cell[] }[] = [];
+  for (const [key, cells] of byKey) {
+    if (cells.length >= 4) eligible.push({ key, cells });
+  }
+  if (eligible.length === 0) return null;
+
+  const pick = eligible[Math.floor(rng() * eligible.length)];
+  // Sort cells by the "free" axis (col within row, row within col)
+  // so gap-bias toward edges actually picks geometric edges.
+  pick.cells.sort((a, b) => axis === 'row' ? a.col - b.col : a.row - b.row);
+
+  // Gap index: 60% chance to pick first or last cell (edge gap),
+  // 40% interior. Edge gaps yield the alternating-serpentine shape
+  // the user's reference mazes demonstrate.
+  let gapIdx: number;
+  const gr = rng();
+  if (gr < 0.3) gapIdx = 0;
+  else if (gr < 0.6) gapIdx = pick.cells.length - 1;
+  else gapIdx = Math.floor(rng() * pick.cells.length);
+
+  // Place walls on every cell except the gap.
+  const placed = [...state.placedTowers];
+  let cost = state.cost;
+  let added = 0;
+  for (let i = 0; i < pick.cells.length; i++) {
+    if (i === gapIdx) continue;
+    const c = pick.cells[i];
+    const stepCost = placementCost(wallTower, c.col, c.row, entry);
+    if (cost + stepCost > budget) break;
+    placed.push({ col: c.col, row: c.row, towerId: wallTower.id });
+    cost += stepCost;
+    added++;
+  }
+  if (added === 0) return null;
+  void opts;
+  return { placedTowers: placed, cost, score: -Infinity };
+}
+
 function removeTower(state: BeamState): BeamState | null {
   if (state.placedTowers.length === 0) return null;
   return {
@@ -608,14 +707,19 @@ function swapTower(
   };
 }
 
-function pickOp(opts: BeamOptions): 'add' | 'grow' | 'remove' | 'swap' {
-  const total = opts.pAddTower + opts.pGrowBranch + opts.pRemoveTower + opts.pSwapTower;
+function pickOp(opts: BeamOptions): 'add' | 'grow' | 'remove' | 'swap' | 'barrier' {
+  const total = opts.pAddTower + opts.pGrowBranch + opts.pRemoveTower + opts.pSwapTower + (opts.pGrowBarrier ?? 0);
   if (total <= 0) return 'add';
   const r = rng() * total;
-  if (r < opts.pAddTower) return 'add';
-  if (r < opts.pAddTower + opts.pGrowBranch) return 'grow';
-  if (r < opts.pAddTower + opts.pGrowBranch + opts.pRemoveTower) return 'remove';
-  return 'swap';
+  let acc = opts.pAddTower;
+  if (r < acc) return 'add';
+  acc += opts.pGrowBranch;
+  if (r < acc) return 'grow';
+  acc += opts.pRemoveTower;
+  if (r < acc) return 'remove';
+  acc += opts.pSwapTower;
+  if (r < acc) return 'swap';
+  return 'barrier';
 }
 
 function mutate(
@@ -630,7 +734,8 @@ function mutate(
     if (op === 'add') next = addTower(state, candidates, budget, entry, pool, opts, baseline, paths, lookupType);
     else if (op === 'grow') next = growBranchTyped(state, candidates, budget, entry, pool, opts, opts.growBranchMaxLen);
     else if (op === 'remove') next = removeTower(state);
-    else next = swapTower(state, budget, pool, opts, lookupType);
+    else if (op === 'swap') next = swapTower(state, budget, pool, opts, lookupType);
+    else next = growBarrier(state, candidates, budget, entry, pool, opts);
     if (next) return next;
   }
   return null;

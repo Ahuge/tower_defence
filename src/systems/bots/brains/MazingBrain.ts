@@ -108,6 +108,9 @@ export const DEFAULT_MAZING_BRAIN_PARAMS: MazingBrainParams = {
   // v3.4 — wave-mix-aware counter bonus, default-on at small weight.
   weight_wave_counter: 0.05, enable_wave_counter: 1,
   weight_chain_lightning: 0.05, enable_chain_lightning: 1,
+  // v3.5 — barrier-coherence structural prior + maze-prior mutation op.
+  weight_barrier_coherence: 0.3, enable_barrier_coherence: 1,
+  pGrowBarrier: 0.05,
 };
 
 /** Per-faction MazingScorer configs harvested from brain-search runs.
