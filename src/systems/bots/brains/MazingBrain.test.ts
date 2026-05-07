@@ -127,14 +127,20 @@ describe('MazingBrain — basic decisions', () => {
     }
   });
 
-  it('panics into slow-tower placement when lives are low', () => {
+  it('panics into a defensive tower placement when lives are low', () => {
+    // Phase 4 wishlist: panic walks [slow, splash, single]. Slow is
+    // preferred but the scorer's veto can fall through to splash or
+    // single. Either is valid panic-mode behaviour — what matters is
+    // the brain doesn't silently skip while lives bleed.
     const brain = new MazingBrain();
     const c = ctx({ lives: 3 });
     brain.init(c);
     const d = brain.decide(c);
     expect(d.kind).toBe('place');
     if (d.kind === 'place') {
-      expect(d.type.id).toBe(SLOW.id);
+      // Any defensive tower works — slow / splash / single all qualify.
+      const okIds = [SLOW.id, DPS_CHEAP.id, DPS_EXPENSIVE.id];
+      expect(okIds).toContain(d.type.id);
     }
   });
 

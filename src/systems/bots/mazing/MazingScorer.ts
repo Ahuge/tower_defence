@@ -200,7 +200,6 @@ export class MazingScorer {
       this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, ctx.towerPool, this.opts);
     }
     this.cacheWave = ctx.wave;
-    // Buckets need rebuilding against the fresh plan.
     this.roleBuckets = null;
   }
 
