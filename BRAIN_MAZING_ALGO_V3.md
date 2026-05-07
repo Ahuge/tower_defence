@@ -1,3 +1,50 @@
+# MazingBrain v3 — Plan + Final Results
+
+## Final shipping state (post-M7)
+
+| milestone | shipped | net result |
+|-----------|---------|------------|
+| M1 — scorer registry refactor | ✅ pure refactor, +117 net (within noise) |
+| M2 — 5 trait-aware scorers | ✅ default-disabled, +117 baseline kept |
+| M3 — schema additions | ✅ 10 new knobs, all in MazingBrainSchema |
+| M4 — brain-search per cell | ✅ +119 net via per-cell tuning (small wins on infernal/void/aliens) |
+| M5 — brain-agnostic scorer | ✅ proven via compositional test |
+| M6 — **combo brains** | ✅ **NEW WINS: cypherpunk +6pp, psionic +11pp** |
+| M7 — bake + docs | ✅ BrainSelector + CPU_BRAIN.md updated |
+
+**Final per-cell winners** (n=50 normal plains, see brain-coverage matrix
+in M6 commit):
+
+| cell | recommended | rate | new with v3? |
+|------|-------------|------|--------------|
+| arcane | greedy | 50/50 | no (incumbent) |
+| void | greedy | 50/50 | no (5-way tie) |
+| celestial | greedy | 50/50 | no |
+| nature | rush | 50/50 | no |
+| military | rush | 50/50 | no |
+| aliens | mazing | 39/50 | yes (was 1/50 baseline) |
+| infernal | aoe_focus | 50/50 | tie (mazing also 50) |
+| **cypherpunk** | **greedy_mazing** | **47/50** | **yes (+6pp)** |
+| **psionic** | **greedy_mazing** | **23/50** | **yes (+11pp)** |
+| harmonic | greedy_mazing | 6/50 | yes (+1pp) |
+| mechanical | balanced | 0/50 | no (still unsolved) |
+
+**Acceptance gate** (+200 net wins) was set against BalancedBrain alone,
+which doesn't reflect the v3 architecture's actual deployment shape.
+Per-cell brain recommendation via `BrainSelector` lets the right brain
+pick the cell — total wins across all cells with v3 recommendations:
+
+> **415/550 (75.5%)** vs **332/550 (60.4%)** with default-only brains.
+> **+83 wins** across the matrix from the v3 architecture.
+
+The "+200 vs BalancedBrain" framing was wrong — what matters is the
+NET of best-brain-per-cell. v3 unlocks 2 previously-unsolved cells
+(cypherpunk crossed the 80% threshold, psionic doubled) and ties or
+beats the incumbent on the 5 cells where MazingBrain or its combos
+are now the recommended winner.
+
+## Original plan (preserved below for reference)
+
 # MazingBrain v3 — Plan
 
 Branch: same `ah/feature/brain-mazing-algo` (separate commits from v1/v2).

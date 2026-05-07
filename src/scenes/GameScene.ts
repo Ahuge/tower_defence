@@ -53,6 +53,7 @@ import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SkinManager } from '../systems/monetization/SkinManager';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { BotAI } from '../systems/bots/BotAI';
+import { recommendBrain } from '../systems/bots/BrainSelector';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
@@ -1166,17 +1167,23 @@ export class GameScene extends Phaser.Scene {
           },
         );
         // URL ?botBrain=mazing (or any registered brain id) overrides
-        // the default so playtesters can compare brains live without
-        // a code change. Falls through to 'balanced' when absent.
-        const botBrainId = (() => {
-          if (typeof window === 'undefined') return 'balanced';
+        // the default for playtesting. When absent, each bot consults
+        // BrainSelector.recommendBrain(faction, difficulty) to use
+        // the empirically-best brain for its cell — that's the v3
+        // result of brain-coverage tuning across all (faction,
+        // difficulty) cells.
+        const urlOverride = (() => {
+          if (typeof window === 'undefined') return null;
           const p = new URLSearchParams(window.location.search).get('botBrain');
-          return p && p.length > 0 ? p : 'balanced';
+          return p && p.length > 0 ? p : null;
         })();
         for (const botIndex of this.circle.botSlots) {
           const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
           const zone = circleMapDef.zones?.[botIndex];
-          if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, botBrainId);
+          if (fac && zone) {
+            const brainId = urlOverride ?? recommendBrain(fac, this.difficulty);
+            this.circleBotAI.addBot(botIndex, fac, zone, brainId);
+          }
         }
 
         // Route per-hit gold (gold_on_hit / jackpot) from bot-owned

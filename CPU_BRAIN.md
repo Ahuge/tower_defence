@@ -179,6 +179,65 @@ beam width, mutations per state, waves, mutation operator probs,
 confidence floor). The (μ+λ) ES tunes them per (faction, difficulty)
 cell.
 
+## v3: combo brains + per-cell recommendations
+
+v3 ships:
+1. **Brain-agnostic MazingScorer** — the spatial reasoner is now a pure
+   library that any brain can compose. No inheritance required.
+2. **Composable score function** via the `ContributionScorer` registry
+   in `src/systems/bots/mazing/scorers/`. Each scorer is one file.
+   Adding a new mechanic = drop a new file + register it.
+3. **Combo brains** in `src/systems/bots/brains/ComboMazingBrains.ts`:
+   `GreedyMazingBrain`, `RushMazingBrain`, `AOEFocusMazingBrain` —
+   each holds a delegate brain + MazingScorer, swaps the cell on
+   `place` decisions, passes everything else through.
+4. **`BrainSelector.recommendBrain(faction, difficulty)`** — single
+   source of truth for "which brain wins this cell" based on
+   brain-coverage results. Circle Co-op consults this when no URL
+   override is set.
+
+### Per-cell brain recommendations (n=50 normal plains)
+
+| faction | recommended brain | win rate |
+|---------|-------------------|----------|
+| arcane | greedy | 50/50 |
+| void | greedy | 50/50 (5-way tie) |
+| celestial | greedy | 50/50 |
+| nature | rush | 50/50 |
+| military | rush | 50/50 |
+| aliens | mazing | 39/50 |
+| infernal | aoe_focus | 50/50 (3-way tie) |
+| **cypherpunk** | **greedy_mazing** | **47/50** (was aoe_focus 41) |
+| **psionic** | **greedy_mazing** | **23/50** (was greedy 12) |
+| harmonic | greedy_mazing | 6/50 |
+| mechanical | balanced | 0/50 (none winnable yet) |
+
+Bolded = combo brain wins over both parents.
+
+### Composing your own brain
+
+Any brain can opt into the spatial reasoner via composition:
+
+```ts
+class MyCustomBrain implements BotBrain {
+  private scorer = new MazingScorer({ /* opts */ });
+  decide(ctx) {
+    // strategic decision: which tower?
+    const wishlist = this.buildWishlist(ctx);
+    // spatial decision: where?
+    for (const tower of wishlist) {
+      const pick = this.scorer.bestCell(ctx, tower);
+      if (pick) return { kind: 'place', col: pick.col, row: pick.row, type: tower };
+    }
+    return { kind: 'skip' };
+  }
+}
+```
+
+`MazingScorer.composition.test.ts` validates this pattern with a
+minimal example brain. The `ComboMazingBrains.ts` module shows
+production-ready compositions of three existing brains.
+
 ## Adding a new brain
 
 1. Implement `BotBrain` in `src/systems/bots/brains/<Name>Brain.ts`.
