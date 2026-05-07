@@ -29,6 +29,7 @@ import { Cell, BotContext } from '../BotBrain';
 import { runBeam, BeamOptions, BeamResult, DEFAULT_BEAM_OPTIONS, PlacedTower } from './AdversarialBeam';
 import { TowerType } from '../../../data/TowerTypes';
 import { TowerRole, getTowerRole } from '../../../data/TowerRoles';
+import { hasTrait } from '../../traits/Trait';
 
 export interface MazingScorerOptions extends BeamOptions {
   /** Confidence floor for the wishlist veto. v2 compares the cell's
@@ -197,7 +198,17 @@ export class MazingScorer {
         bestRoleScore: { 'wall': 0, 'dps-single': 0, 'dps-splash': 0, 'slow': 0, 'aura': 0, 'utility': 0 },
       };
     } else {
-      this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, ctx.towerPool, this.opts);
+      // Mobile-unit towers don't sit on grid cells — they wander from
+      // their placement spot, so spatial reasoning about position is
+      // meaningless. Filter those out of the long-term plan; the brain
+      // places them reactively via the wishlist fallback.
+      // Self-expiring towers (Infernal Imp) are NOT filtered — they're
+      // strong early-game and the score function downweights their
+      // contribution by remaining lifespan vs plan horizon (see
+      // ExpiringTowerScorer in scorers/), so they fade out naturally
+      // late-game without needing a hard exclude.
+      const planPool = ctx.towerPool.filter(t => !hasTrait(t.traits, 'mobile_unit'));
+      this.cachedPlan = runBeam(ctx.grid, ctx.candidateCells, paths, planPool, this.opts);
     }
     this.cacheWave = ctx.wave;
     this.roleBuckets = null;

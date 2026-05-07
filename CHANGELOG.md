@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-05-07
+
+### MazingBrain: trait-aware DPS scoring + sandbag/wire alternation + per-tower scorers
+
+User reported three behavioural quirks watching `?botBrain=mazing`:
+
+1. **Infernal: only builds Imps that expire and Fiends that immediately self-destruct.** Imps (`expires_after_waves: 4`) are strong waves 1–15 but become a gold sink late game; Fiends (`mobile_unit` kamikaze) wander off and explode on first contact. The adversarial-BFS planner treated both as permanent, parking 32 Imps in a 34-placement plan.
+
+   First attempt was a hard filter — too blunt; user pointed out Imps SHOULD still go down early when budget is tight. Reworked: filter only `mobile_unit` from the planner pool (those don't sit on cells, no spatial reasoning applies), and add a **lifespan-decay multiplier** in `DpsCoverageScorer`: tower contribution scales by `min(expires_after_waves, 20) / 20`. Imps' 4-wave life × 17.1 raw DPS becomes 3.4 effective DPS in the planner — still picked when no Hellfire is affordable (Imp 12g vs Hellfire 45g), but Hellfire wins on a fair gold comparison. Plan composition shifts from `32 imp + 1 hellfire + 1 soul_drain` → `14 imp + 3 soul_drain + 2 hellfire` — early-game imps preserved, late-game transition to Hellfire/Soul Drain emerges.
+
+2. **Military: only sandbags, never wire; stops mazing after 10 walls.** Both sandbag (8g) and wire (25g) are role=`wall` per `getTowerRole`, but `decideMaze` always asked for `walls[0]` = sandbag (pool order). User clarified the right pattern is *alternation*: sandbag is the cheap structural blocker; wire creates the slow zone where damage lands. Two adjacent wires waste gold because slow doesn't stack. Implemented `pickWallForCell()`: prefer wire by default, fall back to sandbag when an existing wire is within Chebyshev≤1 of the candidate cell (or when budget can't afford wire). Bumped `maxWallPlacements: 60` for Military — the brain's per-decision cooldown (~4s) and the path-extension diminishing returns inside `decideMaze` pace placements gradually, not all at once. Verified brain-decide simulation: 8 wire + 3 sandbag + 2 brawler (was 13 sandbag).
+
+3. **Void: only Gamblers — modeling unique traits is a v3.1 task.** All 5 Void towers are role=`dps-single` to the classifier, but their identity comes from traits the scorer ignored: Gambler's `jackpot` (4% instakill), Siphon's `gold_on_hit` (40% × +2g, economy compounder), Rift's `teleport_delivery` (push backward = path extension on demand), Oblivion's stacked traits.
+
+   Started here: added `jackpot` modeling to `DpsCoverageScorer` — effective damage = `damage + chance × representative_creep_hp` (constant 100 ≈ mid-game HP). Gambler 20→24, Oblivion 80→95. Preserves Void's 50/50 winrate while making the math reflect Gambler's worth. **Deferred to v3.1**: dedicated `GoldOnHitScorer` (Siphon economy compounding), `TeleportDeliveryScorer` (Rift backward-push as effective path extension), `JackpotScorer` for the boss case (1% instakill on bosses). These need careful per-trait modeling and brain-search re-tuning to make Spike/Siphon/Rift competitive picks against Gambler.
+
+**Verification**: 354/354 tests pass. Win-rate vs Balanced (n=50 normal plains): infernal 50/50 (unchanged at cap), aliens 39/50 (unchanged), harmonic 5/50 (unchanged within noise), nature 0/50 (unchanged), void 50/50 (unchanged), military 0/50 (unchanged — purely a visual-correctness fix). Arcane drifted -2 (0/50 vs 2/50 balanced) but production picks Greedy 50/50 for arcane via BrainSelector — non-issue.
+
 ## 2026-04-28
 
 ### Faction picker: Random renamed to Chaos, new "roll a real faction" Random added

@@ -194,6 +194,19 @@ export const MAZING_FACTION_CONFIGS: Record<string, Partial<MazingBrainParams>> 
     confidenceFloor: 0.22,
   },
   // infernal: omitted — its winner IS the DEFAULT_MAZING_BRAIN_PARAMS.
+
+  // Military has TWO wall-classified towers (sandbag 8g + wire 25g) and
+  // wants a long alternating maze (sandbag-sandbag-wire pattern) so the
+  // wire's slow field doesn't stack-waste. Default maxWallPlacements=10
+  // hard-caps the maze well before that strategy can densify. Bumped to
+  // 60 — the brain's per-decision cooldown (~4s between placements) and
+  // the path-extension diminishing-returns inside `decideMaze` will pace
+  // them gradually rather than dumping all 60 on wave 1 (each new wall
+  // contributes less to path length, so once the maze fills the
+  // reachable empty cells the brain naturally falls through to DPS).
+  military: {
+    maxWallPlacements: 60,
+  },
 };
 
 function loadMazingParamsFromEnv(): MazingBrainParams {
@@ -260,14 +273,26 @@ export class MazingBrain extends BalancedBrain {
     const walls = this.affordable(this.grouped.wall, ctx.budget);
     if (walls.length === 0) return { kind: 'skip' };
 
+    // Pick the wall to place. Common case (one wall type) → that wall.
+    // Multi-wall factions (Military: sandbag + wire) want to alternate
+    // along the maze — a slow-bearing wall (wire) only adds value where
+    // its slow field doesn't overlap an existing slow field. So: if the
+    // candidate cell is adjacent (Chebyshev≤1) to an already-placed
+    // slow-bearing wall, use a non-slow wall instead. Picking happens
+    // AFTER the scorer returns a cell so we can check adjacency.
+    const slowWall = walls.find(w => hasTrait(w.traits, 'barbed_wire') || hasTrait(w.traits, 'slow_on_hit')) ?? null;
+    const plainWall = walls.find(w => w !== slowWall) ?? slowWall;
+    const queryWall = slowWall ?? walls[0];
+
     // Per-role query: ask the scorer specifically for a wall cell.
     // Phase 3 returns role-bucketed picks, so this gets back a cell
     // the planner scored as "good for a wall" rather than "good for
     // anything" (which used to land us at DPS-best cells).
-    const pick = this.scorer.bestCell(ctx, walls[0]);
+    const pick = this.scorer.bestCell(ctx, queryWall);
     if (pick) {
+      const wall = this.pickWallForCell(pick.col, pick.row, slowWall, plainWall ?? queryWall, ctx);
       this.wallsPlaced++;
-      return { kind: 'place', col: pick.col, row: pick.row, type: walls[0] };
+      return { kind: 'place', col: pick.col, row: pick.row, type: wall };
     }
 
     // Fallback: parent's greedy single-cell scorer (always wall-extending).
@@ -276,8 +301,33 @@ export class MazingBrain extends BalancedBrain {
       this.wallsPlaced = this.params.maxWallPlacements;
       return { kind: 'skip' };
     }
+    const wall = this.pickWallForCell(best.col, best.row, slowWall, plainWall ?? queryWall, ctx);
     this.wallsPlaced++;
-    return { kind: 'place', col: best.col, row: best.row, type: walls[0] };
+    return { kind: 'place', col: best.col, row: best.row, type: wall };
+  }
+
+  /** Decide between a slow-bearing wall (e.g. mil_wire) and a plain
+   *  blocker (e.g. mil_sandbag) at a given cell. Slow effects don't
+   *  stack so two adjacent slow-walls waste the second's gold —
+   *  alternate by checking Chebyshev≤1 against already-placed slow
+   *  walls. When no slow-wall option exists (single-wall factions),
+   *  this just returns the plain wall. */
+  private pickWallForCell(
+    col: number, row: number,
+    slowWall: TowerType | null,
+    plainWall: TowerType,
+    ctx: BotContext,
+  ): TowerType {
+    if (!slowWall || slowWall === plainWall) return plainWall;
+    if (slowWall.cost > ctx.budget) return plainWall;
+    const slowIds = new Set([slowWall.id]);
+    for (const placed of ctx.placedTowers) {
+      if (!slowIds.has(placed.towerId)) continue;
+      if (Math.abs(placed.col - col) <= 1 && Math.abs(placed.row - row) <= 1) {
+        return plainWall;
+      }
+    }
+    return slowWall;
   }
 
   // ── decideDps ──────────────────────────────────────────────────
