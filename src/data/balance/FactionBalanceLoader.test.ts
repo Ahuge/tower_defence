@@ -34,14 +34,14 @@ describe('FactionBalanceLoader', () => {
   });
 
   it('patches a trait param and restores', () => {
-    const trait = TOWER_TYPES.void_gambler.traits.find(t => t.id === 'jackpot') as { killChance: number };
+    const trait = TOWER_TYPES.void_gambler.traits.find(t => t.id === 'jackpot') as unknown as { killChance: number };
     const before = trait.killChance;
     process.env[VAR] = JSON.stringify({ 'void_gambler.traits.jackpot.killChance': 0.20 });
     const restore = applyFactionBalance('void');
-    const after = TOWER_TYPES.void_gambler.traits.find(t => t.id === 'jackpot') as { killChance: number };
+    const after = TOWER_TYPES.void_gambler.traits.find(t => t.id === 'jackpot') as unknown as { killChance: number };
     expect(after.killChance).toBe(0.20);
     restore();
-    const restored = TOWER_TYPES.void_gambler.traits.find(t => t.id === 'jackpot') as { killChance: number };
+    const restored = TOWER_TYPES.void_gambler.traits.find(t => t.id === 'jackpot') as unknown as { killChance: number };
     expect(restored.killChance).toBe(before);
   });
 
@@ -112,16 +112,16 @@ describe('FactionBalanceLoader', () => {
   });
 
   it('successfully patches infernal Imp expires_after_waves', () => {
-    const trait = TOWER_TYPES.infernal_imp.traits.find(t => t.id === 'expires_after_waves') as { waves: number };
+    const trait = TOWER_TYPES.infernal_imp.traits.find(t => t.id === 'expires_after_waves') as unknown as { waves: number };
     const before = trait.waves;
     process.env.FACTION_BALANCE_INFERNAL_PARAMS = JSON.stringify({
       'infernal_imp.traits.expires_after_waves.waves': 8,
     });
     const restore = applyFactionBalance('infernal');
-    const after = TOWER_TYPES.infernal_imp.traits.find(t => t.id === 'expires_after_waves') as { waves: number };
+    const after = TOWER_TYPES.infernal_imp.traits.find(t => t.id === 'expires_after_waves') as unknown as { waves: number };
     expect(after.waves).toBe(8);
     restore();
-    const restored = TOWER_TYPES.infernal_imp.traits.find(t => t.id === 'expires_after_waves') as { waves: number };
+    const restored = TOWER_TYPES.infernal_imp.traits.find(t => t.id === 'expires_after_waves') as unknown as { waves: number };
     expect(restored.waves).toBe(before);
     delete process.env.FACTION_BALANCE_INFERNAL_PARAMS;
   });

@@ -32,6 +32,7 @@ import { FACTIONS } from '../data/Factions';
 import { getWavesForMode, generateEndlessWaves, WaveDefinition } from '../data/WaveDefinitions';
 import { getWaveDirector, listWaveDirectors } from '../systems/bots/WaveDirectorBrain';
 import { applyFactionBalance } from '../data/balance/FactionBalanceLoader';
+import { loadRosterExcludes } from '../data/balance/RosterFilter';
 // Side-effect imports: register WaveDirectors at module load.
 import '../systems/bots/wavedirectors/UniformWaveDirector';
 import '../systems/bots/wavedirectors/CounterPickWaveDirector';
@@ -262,7 +263,14 @@ async function runMatchInner(
     brain = brainFactory();
   }
 
-  const towerPool = factionDef.towerIds.map(id => getTowerType(id)).sort((a, b) => a.cost - b.cost);
+  // v5.4: ablation roster filter — when FACTION_ROSTER_<FACTION>_EXCLUDE
+  // is set, drop those towers from the bot's pool so we can measure each
+  // tower's contribution by Δ win rate vs the un-filtered baseline.
+  const rosterExcludes = loadRosterExcludes(config.faction);
+  const towerPool = factionDef.towerIds
+    .filter(id => !rosterExcludes.has(id))
+    .map(id => getTowerType(id))
+    .sort((a, b) => a.cost - b.cost);
   const candidateCells = buildCandidateCells(grid, mapDef);
   brain.init?.(makeCtx());
 
