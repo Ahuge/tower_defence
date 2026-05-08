@@ -59,10 +59,34 @@ describe('UniformWaveDirector', () => {
   });
 
   it('registerWaveDirector() lets new directors register at runtime', () => {
-    const fakeDir = { name: 'test_fake', materializeWaves: () => [] };
+    const fakeDir = {
+      name: 'test_fake',
+      init: () => {},
+      nextWave: () => ({ wave: 1, groups: [], spawnInterval: 1000, isBoss: false }),
+      materializeWaves: () => [],
+    };
     registerWaveDirector('test_fake', () => fakeDir);
     const looked = getWaveDirector('test_fake');
     expect(looked).not.toBeNull();
     expect(looked!.name).toBe('test_fake');
+  });
+
+  it('lazy nextWave produces same first-N waves as materializeWaves', () => {
+    const director = new UniformWaveDirector();
+    director.init({ matchMode: 'standard', waveCount: 10, defenderFaction: 'arcane' });
+    const lazy: any[] = [];
+    for (let i = 1; i <= 10; i++) {
+      lazy.push(director.nextWave({
+        waveIndex: i,
+        livesRemaining: 20,
+        defenderFaction: 'arcane',
+        observedTowers: [],
+        observedPath: null,
+      }));
+    }
+    const upfront = director.materializeWaves({
+      matchMode: 'standard', waveCount: 10, defenderFaction: 'arcane',
+    });
+    expect(lazy).toEqual(upfront);
   });
 });

@@ -24,6 +24,7 @@
  * observe the defender's tower placements and pick exploitative mixes.
  */
 import { WaveDefinition, MatchMode } from '../../data/WaveDefinitions';
+import { PathPoint } from '../Pathfinding';
 
 /** Context the director sees at materialization time. v4.1 needs only
  *  mode + count; v4.2+ adds observed-tower / observed-path inputs for
@@ -39,14 +40,43 @@ export interface WaveDirectorMaterializeContext {
   defenderFaction: string;
 }
 
+/** v4.2: per-wave context the director sees when generating the next
+ *  wave on demand. Includes the live observation of the defender's
+ *  state so reactive directors can respond to actual placements
+ *  rather than just match-start config. */
+export interface WaveObservation {
+  /** 1-indexed wave number being generated. */
+  waveIndex: number;
+  /** Defender's lives remaining. */
+  livesRemaining: number;
+  /** Faction the defender is playing. */
+  defenderFaction: string;
+  /** Towers the defender has placed up to this point. Reactive
+   *  directors inspect this to pick creep mixes that exploit gaps. */
+  observedTowers: { col: number; row: number; towerId: string; level: number }[];
+  /** Current creep path (after towers redirected it). */
+  observedPath: PathPoint[] | null;
+}
+
 export interface WaveDirectorBrain {
   /** Stable id used in MatchConfig and registries. */
   readonly name: string;
-  /** Build the full wave list for the match. Called once at match
-   *  start. Future directors that need per-wave reaction will lazily
-   *  generate via a `nextWave(ctx)` callback (v4.2+); for now this
-   *  upfront-materialize signature matches the static-generator API. */
-  materializeWaves(ctx: WaveDirectorMaterializeContext): WaveDefinition[];
+
+  /** v4.2: called once at match start before any waves run. Lets the
+   *  director precompute state (e.g. UniformWaveDirector materializes
+   *  the full static wave list once and serves from cache). */
+  init(ctx: WaveDirectorMaterializeContext): void;
+
+  /** v4.2: lazy per-wave generation. Called between waves with the
+   *  current observation; returns the next wave's composition. The
+   *  controller appends the returned WaveDefinition to its working
+   *  waves[] array. */
+  nextWave(obs: WaveObservation): WaveDefinition;
+
+  /** v4.1 legacy: build the full wave list upfront. Optional now —
+   *  callers can use init+nextWave instead. UniformWaveDirector still
+   *  implements this so v4.1 callers (and the test suite) keep working. */
+  materializeWaves?(ctx: WaveDirectorMaterializeContext): WaveDefinition[];
 }
 
 const registry = new Map<string, () => WaveDirectorBrain>();

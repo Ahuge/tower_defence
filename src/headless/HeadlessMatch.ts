@@ -147,21 +147,28 @@ async function runMatchInner(
   const frontierMgr = new FrontierManager(eventBus, incomeMgr, config.faction);
 
   // ---- Waves + paths ----
-  // v4.1: route through WaveDirectorBrain when configured. UniformWave-
-  // Director defers to getWavesForMode so behaviour is identical to
-  // pre-v4 runs. Smart directors (v4.2+) can react to faction/observed
-  // towers / wave count and produce different mixes.
+  // v4.2: route wave generation through WaveDirectorBrain when
+  // configured. The director either materialises upfront (v4.1 path,
+  // for backward-compat callers / tests) or generates lazily per wave
+  // via init+nextWave (v4.2 reactive path).
+  // When waveDirectorId is unset, use legacy static getWavesForMode().
   let waves: WaveDefinition[];
+  let director: import('../systems/bots/WaveDirectorBrain').WaveDirectorBrain | null = null;
   if (config.waveDirectorId) {
-    const director = getWaveDirector(config.waveDirectorId);
+    director = getWaveDirector(config.waveDirectorId);
     if (!director) {
       throw new Error(`Unknown waveDirectorId: ${config.waveDirectorId}. Registered: ${listWaveDirectors().join(', ')}`);
     }
-    waves = director.materializeWaves({
+    director.init({
       matchMode: config.matchMode,
       waveCount: config.waveCount,
       defenderFaction: config.faction,
     });
+    // For v4.2: start with empty waves[] and let the controller fetch
+    // lazily. For directors that still implement materializeWaves,
+    // we could pre-fill, but lazy is the cleaner default since v4.2+
+    // reactive directors need it.
+    waves = [];
   } else {
     waves = getWavesForMode(config.matchMode, config.waveCount);
   }
@@ -194,8 +201,9 @@ async function runMatchInner(
       eventBus.emit('waveStarted', waveNum);
     },
     onWaveCleared: (waveNum) => {
-      // Endless: append more waves as we run low.
-      if (config.matchMode === 'endless' && waveMgr.currentWave >= waveMgr.waves.length - 5) {
+      // Endless without director: append more waves as we run low.
+      // Director-driven endless extends via nextWave on demand instead.
+      if (config.matchMode === 'endless' && !director && waveMgr.currentWave >= waveMgr.waves.length - 5) {
         const nextStart = waveMgr.waves.length + 1;
         waveMgr.waves.push(...generateEndlessWaves(nextStart, 10));
       }
@@ -210,6 +218,26 @@ async function runMatchInner(
     },
     canStartWave: () => currentPath !== null,
   });
+
+  // v4.2: hook the director into the controller for lazy generation.
+  // The observation provider snapshots live state at the moment the
+  // controller asks for the next wave — placed towers, lives, current
+  // path — so reactive directors can use the actual game state, not
+  // just the match-start config.
+  if (director) {
+    const expectedTotal = config.matchMode === 'endless'
+      ? (config.maxWaves ?? 60)
+      : (config.waveCount ?? 30);
+    waveMgr.setDirector(director, (waveIndex) => ({
+      waveIndex,
+      livesRemaining: lives,
+      defenderFaction: config.faction,
+      observedTowers: towerMgr.towers.map(t => ({
+        col: t.col, row: t.row, towerId: t.typeDef.id, level: t.level,
+      })),
+      observedPath: currentPath,
+    }), expectedTotal);
+  }
 
   // ---- Brain ----
   // brainOverride lets the data-gen pipeline supply a wrapper
@@ -276,10 +304,11 @@ async function runMatchInner(
       frontierOptions: frontierOptions(),
       betweenWaves: waveMgr.betweenWaves,
       // Surface the next 3 waves so wave-lookahead brains can pick
-      // counter towers. The `waveMgr.currentWave` is already
-      // 1-indexed past the current wave, so `waves[currentWave]`
-      // is wave N+1 — exactly what we want as "upcoming".
-      upcomingWaves: waveMgr.waves.slice(waveMgr.currentWave, waveMgr.currentWave + 3),
+      // counter towers. peekAhead materialises any waves not yet
+      // committed by the director (legacy static-wave path returns
+      // the slice directly). Either way the brain sees the same
+      // shape it always has.
+      upcomingWaves: waveMgr.peekAhead(3),
     };
   }
 
