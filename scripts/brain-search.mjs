@@ -91,24 +91,32 @@ const isSearchingDirector = brainFlag === 'counter_pick';
 const fixedDefenderBrainId = isSearchingDirector
   ? (vsDefenderBrainFlag ?? 'mazing')
   : brainFlag;
-let fixedDefenderParams = null;
-if (vsDefenderParamsFile) {
-  try {
-    fixedDefenderParams = JSON.parse(readFileSync(vsDefenderParamsFile, 'utf8'));
-  } catch (err) {
-    console.error(`[brain-search] failed to load defender params from ${vsDefenderParamsFile}: ${err}`);
-    process.exit(1);
+// v4.6: comma-separated paths build a frozen-pool. Per-task round-robin
+// rotates through the pool so the searched side faces multiple opponent
+// versions across the eval, breaking overfit-to-latest dynamics.
+function loadParamsPool(spec, label) {
+  if (!spec) return null;
+  const paths = spec.split(',').map(s => s.trim()).filter(Boolean);
+  const pool = [];
+  for (const p of paths) {
+    try {
+      const doc = JSON.parse(readFileSync(p, 'utf8'));
+      // Accept either {params: {...}} (self-play frozen format) or
+      // {bestSoFar: {params: {...}}} (brain-search summary) or bare {...}.
+      const params = doc.params ?? doc.bestSoFar?.params ?? doc;
+      pool.push(params);
+    } catch (err) {
+      console.error(`[brain-search] failed to load ${label} params from ${p}: ${err}`);
+      process.exit(1);
+    }
   }
+  return pool.length > 0 ? pool : null;
 }
-let fixedDirectorParams = null;
-if (vsDirectorParamsFile) {
-  try {
-    fixedDirectorParams = JSON.parse(readFileSync(vsDirectorParamsFile, 'utf8'));
-  } catch (err) {
-    console.error(`[brain-search] failed to load director params from ${vsDirectorParamsFile}: ${err}`);
-    process.exit(1);
-  }
-}
+const fixedDefenderPool = loadParamsPool(vsDefenderParamsFile, 'defender');
+const fixedDirectorPool = loadParamsPool(vsDirectorParamsFile, 'director');
+// Backward-compat single-param accessors.
+const fixedDefenderParams = fixedDefenderPool?.[0] ?? null;
+const fixedDirectorParams = fixedDirectorPool?.[0] ?? null;
 // Director env-var name (only counter_pick supports v4.3 search; future
 // directors would extend this lookup).
 const DIRECTOR_ENV_NAMES = { counter_pick: 'COUNTER_PICK_PARAMS' };
@@ -241,33 +249,45 @@ function makeMatchConfig(seed) {
   return config;
 }
 
+/** v4.6: round-robin pool index from the task's seed-index. Round-robin
+ *  over the eval's seeds (rather than per-eval) means each eval's score
+ *  is averaged across opponents, which is the "robust against the pool"
+ *  measure we want. Keyed by seedIndex (0,1,2,...) not raw seed so
+ *  reproducibility holds. */
+function poolPickFor(pool, seedIndex) {
+  if (!pool || pool.length === 0) return null;
+  return pool[seedIndex % pool.length];
+}
+
 /** Build the worker-task envelope. Picks which side gets the searched
- *  params and which side gets the fixed (frozen) params. */
-function buildTask(taskId, config, searchedParams) {
+ *  params and which side gets the fixed (frozen) params. With v4.6
+ *  pools, opponent rotates per-seed across the pool entries. */
+function buildTask(taskId, config, searchedParams, seedIndex) {
   const task = { taskId, config };
   if (isSearchingDirector) {
     // Searched side is the director — its params go into directorParams.
-    // Defender side uses the fixed (frozen) params via the brain's env.
-    task.params = fixedDefenderParams ?? {};
+    // Defender side uses the rotating pool entry via the brain's env.
+    task.params = poolPickFor(fixedDefenderPool, seedIndex) ?? {};
     task.directorParams = searchedParams;
     task.directorEnvVar = DIRECTOR_ENV_NAMES[brainFlag];
   } else {
     // Searched side is the defender — params go into the brain env var.
-    // Director (if any) gets fixed params via directorParams envelope.
+    // Director (if any) gets the rotating pool entry via directorParams.
     task.params = searchedParams;
     if (vsDirectorIdFlag) {
-      task.directorParams = fixedDirectorParams ?? {};
+      task.directorParams = poolPickFor(fixedDirectorPool, seedIndex) ?? {};
       task.directorEnvVar = DIRECTOR_ENV_NAMES[vsDirectorIdFlag];
     }
   }
   return task;
 }
+void fixedDefenderParams; void fixedDirectorParams;  // legacy single-param vars retained for back-compat
 
 async function evaluateConfig(params, n, tag) {
   const tasks = [];
   for (let i = 0; i < n; i++) {
     const config = makeMatchConfig(i);
-    tasks.push(pool.dispatch(buildTask(nextTaskId++, config, params)));
+    tasks.push(pool.dispatch(buildTask(nextTaskId++, config, params, i)));
   }
   const results = await Promise.all(tasks);
   let wins = 0, errors = 0, totalWave = 0, totalDiversity = 0, diversityCount = 0;

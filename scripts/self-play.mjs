@@ -53,6 +53,7 @@ const workersFlag = getFlag('workers') ?? '4';
 const defenderEvalsFlag = getFlag('defender-evals') ?? '200';
 const directorEvalsFlag = getFlag('director-evals') ?? '120';
 const KFlag = parseInt(getFlag('k') ?? '3', 10);  // defender gens per director gen
+const poolSizeFlag = parseInt(getFlag('pool-size') ?? '3', 10);  // frozen-pool round-robin size
 const resumeFlag = argv.includes('--resume');
 const dryRunFlag = argv.includes('--dry-run');
 
@@ -175,12 +176,23 @@ function readSummary(dir) {
 
 // ── Phases ──────────────────────────────────────────────────────────
 
+/** Frozen-pool paths: last N existing gens of `kind` (defender|director),
+ *  highest-numbered first (latest opponent at pool[0]). v4.6 round-robin. */
+function frozenPool(kind, latestGen, size) {
+  const paths = [];
+  for (let i = latestGen; i >= 0 && paths.length < size; i--) {
+    const path = join(runDir, `${kind}-gen-${i}.json`);
+    if (existsSync(path)) paths.push(path);
+  }
+  return paths;
+}
+
 async function runDefenderPhase(round, currentDirectorGen) {
   const phaseDir = join(runDir, `round-${round}-defender-search`);
-  const directorParamsPath = join(runDir, `director-gen-${currentDirectorGen}.json`);
+  const directorPool = frozenPool('director', currentDirectorGen, poolSizeFlag);
   const seedPath = join(runDir, `defender-gen-${round - 1}.json`);
 
-  log(`round ${round} defender phase: searching mazing vs counter_pick (gen-${currentDirectorGen})`);
+  log(`round ${round} defender phase: searching mazing vs counter_pick pool [${directorPool.map(p => p.match(/director-gen-(\d+)/)?.[1]).join(',')}]`);
   await spawnBrainSearch([
     '--brain=mazing',
     `--faction=${factionFlag}`,
@@ -188,7 +200,7 @@ async function runDefenderPhase(round, currentDirectorGen) {
     `--workers=${workersFlag}`,
     `--max-evals=${defenderEvalsFlag}`,
     `--vs-director=counter_pick`,
-    `--vs-director-params=${directorParamsPath}`,
+    `--vs-director-params=${directorPool.join(',')}`,
     `--seed-from=${seedPath}`,
     `--resume=${phaseDir}`,
   ]);
@@ -205,10 +217,10 @@ async function runDefenderPhase(round, currentDirectorGen) {
 
 async function runDirectorPhase(round, currentDefenderGen) {
   const phaseDir = join(runDir, `round-${round}-director-search`);
-  const defenderParamsPath = join(runDir, `defender-gen-${currentDefenderGen}.json`);
+  const defenderPool = frozenPool('defender', currentDefenderGen, poolSizeFlag);
   const seedPath = join(runDir, `director-gen-${round - 1}.json`);
 
-  log(`round ${round} director phase: searching counter_pick vs mazing (gen-${currentDefenderGen})`);
+  log(`round ${round} director phase: searching counter_pick vs mazing pool [${defenderPool.map(p => p.match(/defender-gen-(\d+)/)?.[1]).join(',')}]`);
   await spawnBrainSearch([
     '--brain=counter_pick',
     `--faction=${factionFlag}`,
@@ -216,7 +228,7 @@ async function runDirectorPhase(round, currentDefenderGen) {
     `--workers=${workersFlag}`,
     `--max-evals=${directorEvalsFlag}`,
     `--vs-defender-brain=mazing`,
-    `--vs-defender-params=${defenderParamsPath}`,
+    `--vs-defender-params=${defenderPool.join(',')}`,
     `--seed-from=${seedPath}`,
     `--resume=${phaseDir}`,
   ]);
