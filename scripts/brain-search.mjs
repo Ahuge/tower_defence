@@ -61,6 +61,11 @@ const vsDefenderBrainFlag = getFlag('vs-defender-brain');     // 'mazing' etc
 const vsDefenderParamsFile = getFlag('vs-defender-params');   // path to JSON
 const vsDirectorIdFlag = getFlag('vs-director');              // 'counter_pick' etc
 const vsDirectorParamsFile = getFlag('vs-director-params');   // path to JSON
+// v5.3: when defender or director is being searched and we want to fix
+// the faction-balance to a specific tuned config (rather than running
+// at vanilla TOWER_TYPES values), point at a JSON of FactionBalanceSchema
+// dot-paths. Comma-separated for round-robin pool.
+const vsFactionParamsFile = getFlag('vs-faction-params');
 
 // ── jsdom + dynamic imports of TS sources ──────────────────────────
 await import('../src/headless/harness/jsdom-setup.ts');
@@ -80,15 +85,25 @@ if (brainFlag === 'balanced') {
   ({ MAZING_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/MazingBrainSchema.ts'));
 } else if (brainFlag === 'counter_pick') {
   ({ COUNTER_PICK_WAVE_DIRECTOR_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/CounterPickWaveDirectorSchema.ts'));
+} else if (brainFlag === 'faction_balance') {
+  // v5.3: faction-balance schema is generated per-faction from current
+  // TOWER_TYPES values, not a static export.
+  const { buildFactionBalanceSchema } = await import('../src/data/balance/FactionBalanceSchema.ts');
+  BRAIN_SCHEMA = buildFactionBalanceSchema(factionFlag);
 } else {
-  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus, mazing, counter_pick`);
+  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus, mazing, counter_pick, faction_balance`);
   process.exit(1);
 }
 
 // v4.3: when searching the director, the defender brain is fixed.
 // Default to mazing since it's the strongest defender we have.
 const isSearchingDirector = brainFlag === 'counter_pick';
-const fixedDefenderBrainId = isSearchingDirector
+// v5.3: when searching faction-balance, the defender brain is fixed
+// (mazing by default) and the searched params go into factionBalance-
+// Params instead of the brain's own env var. Both sides — defender and
+// faction-balance — can be searched separately; this flag picks which.
+const isSearchingFactionBalance = brainFlag === 'faction_balance';
+const fixedDefenderBrainId = (isSearchingDirector || isSearchingFactionBalance)
   ? (vsDefenderBrainFlag ?? 'mazing')
   : brainFlag;
 // v4.6: comma-separated paths build a frozen-pool. Per-task round-robin
@@ -114,6 +129,7 @@ function loadParamsPool(spec, label) {
 }
 const fixedDefenderPool = loadParamsPool(vsDefenderParamsFile, 'defender');
 const fixedDirectorPool = loadParamsPool(vsDirectorParamsFile, 'director');
+const fixedFactionPool = loadParamsPool(vsFactionParamsFile, 'faction-balance');
 // Backward-compat single-param accessors.
 const fixedDefenderParams = fixedDefenderPool?.[0] ?? null;
 const fixedDirectorParams = fixedDirectorPool?.[0] ?? null;
@@ -261,7 +277,8 @@ function poolPickFor(pool, seedIndex) {
 
 /** Build the worker-task envelope. Picks which side gets the searched
  *  params and which side gets the fixed (frozen) params. With v4.6
- *  pools, opponent rotates per-seed across the pool entries. */
+ *  pools, opponent rotates per-seed across the pool entries. v5.3
+ *  adds faction-balance as a third searchable side. */
 function buildTask(taskId, config, searchedParams, seedIndex) {
   const task = { taskId, config };
   if (isSearchingDirector) {
@@ -270,6 +287,23 @@ function buildTask(taskId, config, searchedParams, seedIndex) {
     task.params = poolPickFor(fixedDefenderPool, seedIndex) ?? {};
     task.directorParams = searchedParams;
     task.directorEnvVar = DIRECTOR_ENV_NAMES[brainFlag];
+    // Optional fixed faction-balance still applies even when tuning
+    // director (defender-vs-balanced-faction adversarial setup).
+    if (fixedFactionPool) {
+      task.factionBalanceParams = poolPickFor(fixedFactionPool, seedIndex) ?? {};
+    }
+  } else if (isSearchingFactionBalance) {
+    // Searched side is the faction itself — its params go into
+    // factionBalanceParams. Defender side uses the rotating pool entry
+    // via the brain's env (or empty = defaults).
+    task.params = poolPickFor(fixedDefenderPool, seedIndex) ?? {};
+    task.factionBalanceParams = searchedParams;
+    // Optional fixed director (e.g. tune faction-balance against
+    // counter_pick adversary instead of static waves).
+    if (vsDirectorIdFlag) {
+      task.directorParams = poolPickFor(fixedDirectorPool, seedIndex) ?? {};
+      task.directorEnvVar = DIRECTOR_ENV_NAMES[vsDirectorIdFlag];
+    }
   } else {
     // Searched side is the defender — params go into the brain env var.
     // Director (if any) gets the rotating pool entry via directorParams.
@@ -277,6 +311,11 @@ function buildTask(taskId, config, searchedParams, seedIndex) {
     if (vsDirectorIdFlag) {
       task.directorParams = poolPickFor(fixedDirectorPool, seedIndex) ?? {};
       task.directorEnvVar = DIRECTOR_ENV_NAMES[vsDirectorIdFlag];
+    }
+    // Faction-balance pool — pin the faction at a tuned config so the
+    // defender's search isn't dominated by faction-balance noise.
+    if (fixedFactionPool) {
+      task.factionBalanceParams = poolPickFor(fixedFactionPool, seedIndex) ?? {};
     }
   }
   return task;
