@@ -31,8 +31,9 @@ import { DIFFICULTIES } from '../data/Difficulty';
 import { FACTIONS } from '../data/Factions';
 import { getWavesForMode, generateEndlessWaves, WaveDefinition } from '../data/WaveDefinitions';
 import { getWaveDirector, listWaveDirectors } from '../systems/bots/WaveDirectorBrain';
-// Side-effect import: register UniformWaveDirector at module load.
+// Side-effect imports: register WaveDirectors at module load.
 import '../systems/bots/wavedirectors/UniformWaveDirector';
+import '../systems/bots/wavedirectors/CounterPickWaveDirector';
 import { getTowerType, TOWER_TYPES } from '../data/TowerTypes';
 import { FRONTIER_BUILDINGS, GENERIC_OUTPOSTS } from '../data/FrontierBuildings';
 import { STARTING_LIVES } from '../config';
