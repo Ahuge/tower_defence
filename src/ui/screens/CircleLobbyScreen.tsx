@@ -23,7 +23,7 @@ import { MapId, MapDefinition, MAPS } from '../../data/Maps';
 import { getCircleMapsForPlayerCount } from '../../data/CircleMaps';
 import { MapStorage, MapJSON } from '../../systems/MapStorage';
 import { DifficultyLevel } from '../../data/Difficulty';
-import { FACTION_ORDER, FACTIONS, FactionId } from '../../data/Factions';
+import { FACTION_ORDER, FACTIONS, FactionId, rollRandomRealFaction } from '../../data/Factions';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { TutorialManager } from '../../systems/Tutorial/TutorialManager';
 
@@ -331,14 +331,25 @@ export function CircleLobbyScreen() {
   };
 
   // ===================== Setup & launch =====================
-  const pickFaction = (fid: FactionId) => {
+  const pickFaction = (rawFid: FactionId) => {
     const circle = circleRef.current;
     if (!circle) return;
+    // 'random' is a UI-only picker token — resolve to a real faction
+    // immediately so the broadcast carries a concrete faction id.
+    // Without this the match starts with `faction: 'random'`, whose
+    // FACTIONS entry has an empty towerIds array, and the player ends
+    // up with no buildable towers (the bug that surfaced this fix).
+    // 'chaos' stays a real faction here — its rotating-pool behavior
+    // is handled by the engine, not by faction-id substitution.
+    const fid: FactionId = rawFid === 'random' ? rollRandomRealFaction() : rawFid;
     setMyFaction(fid);
     myFactionRef.current = fid;
     playerFactionsRef.current.set(circle.playerIndex, fid);
     bumpRoster();
-    setStatus(`You picked ${FACTIONS[fid].name}! Waiting for others...`);
+    const label = rawFid === 'random'
+      ? `Random rolled ${FACTIONS[fid].name}! Waiting for others...`
+      : `You picked ${FACTIONS[fid].name}! Waiting for others...`;
+    setStatus(label);
     const msg: GameMessage = {
       type: 'game_start',
       faction: fid,

@@ -115,6 +115,129 @@ instead of fattening the human's shared pool. 1v1 CPU bots fire
 through an approximation-only shadow sim (`OpponentSimulation`)
 and currently don't simulate per-hit traits — a known limitation.
 
+## MazingBrain — adversarial-BFS placement
+
+Subclass of `BalancedBrain` (`src/systems/bots/brains/MazingBrain.ts`)
+that swaps cell selection for an offline-cached **beam-search
+adversarial maze planner**. Inherits the entire decision pipeline —
+meta pass, phase machine, panic mode, ultimate save, upgrade, sell —
+unchanged from the parent.
+
+**What changes:** in `decideMaze` / `decideDps` / `decidePanic` /
+`tryPlaceUltimate`, instead of the parent's greedy `bestMazeCell` or
+coverage-based `scoreDpsCells`, MazingBrain calls
+`MazingScorer.bestCell(ctx, type)`. The scorer holds a cached layout
+plan produced by the adversarial beam search; the brain just walks
+the plan and picks the highest-priority cell that's still in its
+candidate pool.
+
+**The planner** (`src/systems/bots/mazing/AdversarialBeam.ts`,
+`MazingScorer.ts`) is a TypeScript port of the Python POC at
+`ml/mazing/adversarial_impl.py`, extended in v2 to be **tower-aware**.
+
+**v2 score function:**
+```
+α·path_length + β·nodes_expanded + γ·max_queue       ← BFS workload
++ δ·sum(dpsCoverage) + ε·sum(slowValue) + ζ·sum(auraAmplification)  ← role
+```
+
+Walls earn their value through the α term (path extension); DPS /
+slow / aura towers gain extra value from their role contributions
+when placed at coverage-good cells.
+
+**v2 mutation operators:** `addTower(towerId, x, y)` (greedy or random
+tower-pick), `growBranchTyped` (random walk placing cheapest wall),
+`removeTower`, `swapTower` (change a placed tower's type, keep cell).
+
+**v2 per-role bestCell:** `bestCell(ctx, towerType)` walks the plan
+in three tiers — exact tower-id match → same-role match → null. The
+brain's wishlist falls down to the next preference when null fires.
+
+**Cache invalidation** is wave-based: the cached plan replans iff
+the wave has advanced OR the bot's own placedTowers count has caught
+up to the cached plan's length. Cross-bot grid mutations don't
+invalidate — Circle Co-op zones are isolated.
+
+**Mobile units** stay on the parent's `scoreMobileCells` since the
+BFS-flavored ranking doesn't model wandering creep-engagement well.
+
+**Brain wishlist composition by phase:**
+- `decideMaze` → `[cheapest wall]`
+- `decideDps` → `[counter-pick, ...remaining splash, ...single, ...mobile]`
+- `decidePanic` → `[cheapest slow, ...splash, ...single]`
+- `tryPlaceUltimate` → `[the ult]`
+
+**Auto-tuning** via `scripts/brain-search.mjs`:
+```
+node --import tsx scripts/brain-search.mjs --brain=mazing \
+    --faction=arcane --difficulty=normal --probe=8
+```
+
+Schema at `src/headless/brain-search/MazingBrainSchema.ts` covers all
+inherited BalancedBrain knobs plus the mazing-specific ones (α, β, γ,
+beam width, mutations per state, waves, mutation operator probs,
+confidence floor). The (μ+λ) ES tunes them per (faction, difficulty)
+cell.
+
+## v3: combo brains + per-cell recommendations
+
+v3 ships:
+1. **Brain-agnostic MazingScorer** — the spatial reasoner is now a pure
+   library that any brain can compose. No inheritance required.
+2. **Composable score function** via the `ContributionScorer` registry
+   in `src/systems/bots/mazing/scorers/`. Each scorer is one file.
+   Adding a new mechanic = drop a new file + register it.
+3. **Combo brains** in `src/systems/bots/brains/ComboMazingBrains.ts`:
+   `GreedyMazingBrain`, `RushMazingBrain`, `AOEFocusMazingBrain` —
+   each holds a delegate brain + MazingScorer, swaps the cell on
+   `place` decisions, passes everything else through.
+4. **`BrainSelector.recommendBrain(faction, difficulty)`** — single
+   source of truth for "which brain wins this cell" based on
+   brain-coverage results. Circle Co-op consults this when no URL
+   override is set.
+
+### Per-cell brain recommendations (n=50 normal plains)
+
+| faction | recommended brain | win rate |
+|---------|-------------------|----------|
+| arcane | greedy | 50/50 |
+| void | greedy | 50/50 (5-way tie) |
+| celestial | greedy | 50/50 |
+| nature | rush | 50/50 |
+| military | rush | 50/50 |
+| aliens | mazing | 39/50 |
+| infernal | aoe_focus | 50/50 (3-way tie) |
+| **cypherpunk** | **greedy_mazing** | **47/50** (was aoe_focus 41) |
+| **psionic** | **greedy_mazing** | **23/50** (was greedy 12) |
+| harmonic | greedy_mazing | 6/50 |
+| mechanical | balanced | 0/50 (none winnable yet) |
+
+Bolded = combo brain wins over both parents.
+
+### Composing your own brain
+
+Any brain can opt into the spatial reasoner via composition:
+
+```ts
+class MyCustomBrain implements BotBrain {
+  private scorer = new MazingScorer({ /* opts */ });
+  decide(ctx) {
+    // strategic decision: which tower?
+    const wishlist = this.buildWishlist(ctx);
+    // spatial decision: where?
+    for (const tower of wishlist) {
+      const pick = this.scorer.bestCell(ctx, tower);
+      if (pick) return { kind: 'place', col: pick.col, row: pick.row, type: tower };
+    }
+    return { kind: 'skip' };
+  }
+}
+```
+
+`MazingScorer.composition.test.ts` validates this pattern with a
+minimal example brain. The `ComboMazingBrains.ts` module shows
+production-ready compositions of three existing brains.
+
 ## Adding a new brain
 
 1. Implement `BotBrain` in `src/systems/bots/brains/<Name>Brain.ts`.

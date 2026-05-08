@@ -1,5 +1,119 @@
 # Changelog
 
+## 2026-05-07
+
+### MazingBrain v3.4 — wave-mix-aware planner, variety fitness, trait coverage, BFS dedup
+
+Four milestones landed in v3.4 plus a v4 design doc.
+
+**M1 — Wave-mix-aware planner (`WaveCounterScorer`)**: ScorerContext gains a `creepMix` field (heavy/medium/light armor shares, group/flying/boss/fast shares, avg HP scale). `MazingScorer.ensurePlan` precomputes the mix from `ctx.upcomingWaves` and threads it through `runBeam`. New scorer adds counter-effectiveness bonus per placed tower scaled by path coverage:
+- splash_damage vs swarm/heavy/flying creeps
+- pierce_damage vs heavy armor
+- slow_on_hit vs fast creeps
+- jackpot/damage_amp vs bosses (HP-scaled)
+- chain_lightning vs group spawns
+
+Default weight 0.05; brain-search tunes per cell. Empty mix → 0 contribution (legacy behavior).
+
+**M3 — Variety as fitness term**: `MatchResult.towerIdCounts` records final tower distribution (levels collapsed). Brain-search's eval loop computes Shannon entropy of placements, normalized to `log(distinct_types)`. New CLI flag `--diversity-weight=N` adds `weight × entropy` to fitness. At `0.05` ties prefer variety; at `0.1` a 90% win-rate config with full variety beats a 95% monoculture. Default 0 (legacy pure-win-rate optimization).
+
+**M2 — Extended trait coverage**:
+- `AuraAmplificationScorer` now handles every aura trait we have data for: `adjacency_buff` (Mech), `damage_aura`/`rate_aura`/`crit_aura` (Harmonic), `spell_amp` (Arcane), `overclock_buff` (Mech Mortar). Previously the scorer only saw `adjacency_buff`, returning 0 for Harmonic's entire amplifier kit.
+- New `ChainLightningScorer` for Mech Tesla's `chain_damage`. Models bounce damage as a geometric falloff series (1 + falloff + falloff² + ... × baseDPS).
+- **First Mechanical win**: 0/50 → 1/50 at default weights. Tiny but a real signal that the math is correct. Brain-search re-tune (deferred) will scale this up.
+
+**M4 — BFS dedup (40% perf win)**: profiling showed `scoreState` runs BFS twice per call — once for metrics in `bfsScoreMulti`, once again per segment for path coordinates. Made `bfsScoreMulti` return path geometries alongside metrics so `scoreState` reuses them. Per-faction speedup: arcane/mechanical/celestial -38%, infernal -18%, void -20%.
+
+**v4 plan committed** as `BRAIN_V4_PLAN.md` — adversarial self-play between TowerPlacer and SendPicker brains, with paired-evolution brain-search alternating which side gets tuned. Phased implementation (4.1 SendPickerBrain interface → 4.5 per-faction self-play tuning), estimated 2-3 weeks. Open decisions documented (action space, evaluation cadence, match length, picker economy).
+
+**Verification across v3.4**: 361/361 tests pass. Win rates n=50 normal plains: void 50/50, infernal 50/50, aliens 39/50, harmonic 5/50, military 0/50, **mechanical 0/50 → 1/50**, nature 0/50 — no regressions; one new cell unlocked.
+
+### MazingBrain v3.2 (M4): brain-search re-tune void + infernal with v3.1 scorers in scope
+
+Re-ran `scripts/brain-search.mjs --brain=mazing --faction={void,infernal,military}` with v3.1's gold/teleport/jackpot scorers in the search space (300 evals × 4 workers, ~3 min each). Findings:
+
+**Infernal — clean win**: 99/100 with `enable_gold_on_hit=1, weight=1.45`. Soul Drain's per-kill economy is genuine value the planner now models. Brain-search also flipped `towerPickStrategyIdx: 2 (fast-fire)` → `0 (expensive-bias)` which pairs with v3.1's lifespan-decay so the planner naturally moves off Imps once budget allows Hellfires/Soul Drains. Brain plan now produces `12 imp + 3 hellfire + 2 soul_drain` (was all-Imp pre-v3.1). Promoted from DEFAULT to its own `MAZING_FACTION_CONFIGS.infernal` entry.
+
+**Void — brain-search disabled both new scorers**: 99/100 winner has `enable_gold_on_hit=0, enable_teleport_delivery=0`. Reverted `towerPickMode: 0 (greedy) → 1 (random)` and `towerPickStrategyIdx: 1 (damage-per-cost)` from v3.1. Conclusion: for raw win rate, Gambler-spam is genuinely optimal — adding Siphons/Rifts to the build trades win rate for tower-pool variety. Tested a `MAZING_BRAIN_PARAMS={"enable_gold_on_hit":1,"enable_teleport_delivery":1,"weight_gold_on_hit":2.0}` override and saw void drop to 4/50 (caveat: env override replaces the entire config rather than merging with the void-tuned values, so isn't a clean comparison — but the brain-search exploration was thorough enough to be load-bearing). Brain plan now produces `13 gambler + 2 spike` (was 40 gambler pre-v3.1) — Spikes earn cells now thanks to jackpot whiff modeling lowering Gambler's effective damage.
+
+**Military — no winning config found**: brain-search finished at 0/100. Mazing isn't viable for Military on plains/normal regardless of tuning; the cell remains the BrainSelector's `balanced` recommendation (also 0/50). v3.1's wire-alternation + `maxWallPlacements=60` is preserved as a behavior fix.
+
+**Brain plan composition (after v3.2 tuned configs):**
+
+| Faction | Pre-v3.1 plan | Post-v3.1 plan | Post-v3.2 plan |
+|---|---|---|---|
+| Void | 40 gambler | 29 gambler + 4 spike | 13 gambler + 2 spike |
+| Infernal | 32 imp + 1 hellfire + 1 drain | 14 imp + 3 drain + 2 hellfire | 12 imp + 3 hellfire + 2 drain |
+| Military | 13 sandbag | 8 wire + 3 sandbag + 2 brawler | (unchanged from v3.1) |
+
+**Win rates (n=50 normal plains, vs Balanced):** void 50/50 (was 49 in v3.1, +1 noise), infernal 50/50 (unchanged), aliens 39/50 (unchanged), harmonic 5/50 (unchanged), nature 0/50 (unchanged), military 0/50 (unchanged). 361/361 tests pass.
+
+**Variety vs win-rate trade-off — surfaced for v3.3**: brain-search's optimum on Void (Gambler-only) doesn't match the user's "play feels right when I see all 5 towers used" intuition. v3.3 could:
+- Add a `--maximize=variety` mode to brain-search that includes a tower-pool-diversity term in the fitness function alongside win rate
+- Expose a "casual" vs "competitive" toggle in the brain config so players watching co-op can opt into Siphon/Rift/Spike-heavy builds at the cost of ~5pp win rate
+- Per-cell rebalance the trait-trait synergies (Siphon adjacent to Gambler should multiply each other's value — current scorers are independent)
+
+Archived prior brain-search dirs to `brain-search/_v3-archive/` for reference.
+
+### MazingBrain v3.2 (M1+M2+M5): scorer knobs plumbed, gold urgency, breakdown diagnostic
+
+Three small wins setting up v3.2's brain-search re-tune (M4):
+
+**M1 — plumb v3.1 scorer knobs through `BeamOptions`.** `weight_gold_on_hit`, `weight_teleport_delivery`, `enable_gold_on_hit`, `enable_teleport_delivery` added to the options struct (defaults 1.0/enabled), threaded into the `buildDefaultRegistry` call site, and mirrored in `MazingBrainSchema.ts` so brain-search can per-cell-tune them (range 0..5 weights, 0/1 enables, default 1.0 weight to start the search at the sensible point rather than 0).
+
+**M2 — economic-urgency factor in `GoldOnHitScorer`.** Gold compounds: gold earned early funds more towers which earn more gold. Gold earned late, when the bot already has enough, is marginal. Added a `cost: number` field to `ScorerState` (cumulative gold spent in the planner's beam state) and `GoldOnHitScorer` now multiplies its contribution by `URGENCY_REFERENCE / (URGENCY_REFERENCE + state.cost)` with `URGENCY_REFERENCE=100`. Effect:
+- `state.cost=0` → urgency 1.00 (early game, gold towers worth full)
+- `state.cost=100` → urgency 0.50
+- `state.cost=500` → urgency 0.17
+- `state.cost=1000` → urgency 0.09 (late game, gold towers marginal)
+
+The state-cost view rather than per-tower-position is a simplification — every gold tower in the state shares the urgency of the moment. Good enough for the planner's heuristic.
+
+**M5 — `--breakdown` flag on `show-mazing-plan.mjs`.** Reconstructs a `ScorerContext` from the final plan state and asks the default registry for per-scorer contribution. Surfaces `goldOnHit` urgency factor at the bottom. Diagnostic-only, no behavior change.
+
+Verification: 361/361 tests pass. Win-rate vs Balanced (n=50 normal plains): void 49/50, infernal 50/50, aliens 39/50, harmonic 5/50, nature 0/50, military 0/50 — all unchanged from v3.1 baseline.
+
+**Known limitation**: at default `weight_gold_on_hit=1.0`, Siphons still don't outscore Gambler in Void's pickTowerGreedy compare (Gambler's DPS uplift edges out Siphon's gold by ~0.9 score units). M4 (brain-search re-tune Void) addresses this.
+
+### MazingBrain v3.1: GoldOnHitScorer + TeleportDeliveryScorer + boss-aware jackpot
+
+Three new trait-aware scorers landed so the planner can value Void's unique towers correctly. Without these, all 5 Void towers register as identical `dps-single` to the role classifier and the planner picked Gambler universally on cost grounds:
+
+- **`GoldOnHitScorer`** — values `gold_on_hit` (Void Siphon: 40% × +2g) and `gold_per_kill_range` (Infernal Soul Drain: +2g per kill in range) at 1 gold ≈ 1 DPS-unit. Per-tower contribution = chance × amount × shotsPerSec × pathCellsInRange × 0.5 for `gold_on_hit`, or goldPerKill × pathCellsInRange × 0.05 for `gold_per_kill_range`. Returns 0 for towers without either trait.
+- **`TeleportDeliveryScorer`** — values Void Rift's `teleport_delivery` (push backward N tiles per hit). Per-hit value = steps × DPS_PER_TILE_ESTIMATE × shotsPerSec, scaled by a path-coverage factor so Rifts that don't actually cover the path score 0.
+- **Boss-aware jackpot in `DpsCoverageScorer`** — fixed a bug from yesterday's commit (read trait field as `chance` but the actual property is `killChance`). Reworked the model: expected per-hit damage = killChance × representativeHp + (1 - killChance - missChance) × damage, weighted as 90% normal-creep / 10% boss. Boss case quarters killChance per the trait handler. Representative HP bumped to 200 (mid-late wave) which is the regime where Gambler's 4% instakill genuinely matters.
+
+Pivot in **MazingBrain.MAZING_FACTION_CONFIGS.void**: switched `towerPickMode: 1 → 0` (random → greedy). Random mode weights by role only, and all 5 Void towers share role=`dps-single`, so the new scorers had nothing to bite on — the planner picked Gambler purely because it was cheapest. Greedy mode evaluates each affordable tower's full state-score per cell, letting jackpot/gold/teleport contributions shape the choice. Cost is ~10x per pick but with `beamWidth=2` and 5 towers in Void's pool, total cost is bounded.
+
+**Plan composition shift on void/plains/wave 5**: `40 gambler` → `29 gambler + 4 spike + 0 siphon` via the brain (with faction config applied). Spikes now register because their `damage_variance` doesn't change expected damage but Gambler's expected dropped from 20→18.2 after fixing the jackpot whiff modeling, so Spikes (22 dmg) edge out Gambler at higher budgets. Siphon's gold contribution (~3.4 gold/sec at coverage=6) doesn't quite outscore Gambler's DPS uplift yet — needs brain-search re-tuning of `goldOnHit` weight per cell. Surfaced for v3.2.
+
+**Scorer registry additions** in `scorers/index.ts`:
+- `goldOnHit` and `teleportDelivery` weight + toggle fields added to `ScorerWeights` / `ScorerToggles`
+- Defaults: weight 1.0, enabled. Both scorers contribute 0 for towers without the relevant trait, so leaving them on for non-Void factions is a no-op rather than a regression.
+
+**Verification**: 361/361 tests pass (354 prior + 7 new for the two scorers). Win-rate vs Balanced (n=50 normal plains): infernal 50/50 unchanged, void 49/50 (-1 noise, was 50/50), military 0/50 unchanged, aliens 39/50 unchanged, harmonic 5/50 unchanged, nature 0/50 unchanged. No regressions across the matrix.
+
+**Deferred to v3.2**:
+- Plumb `weight_gold_on_hit` / `weight_teleport_delivery` through `BeamOptions` so brain-search can per-cell-tune them. Currently they use the registry's default 1.0.
+- Damage_variance modeling — Spike's range (50-150%) doesn't change expected damage but DOES change variance against high-HP creeps; could matter against bosses.
+- damage_amp_on_hit — Oblivion's stacked trait that amps subsequent hits' damage. Synergy with Oblivion's other traits is non-trivial.
+
+### MazingBrain: trait-aware DPS scoring + sandbag/wire alternation + per-tower scorers
+
+User reported three behavioural quirks watching `?botBrain=mazing`:
+
+1. **Infernal: only builds Imps that expire and Fiends that immediately self-destruct.** Imps (`expires_after_waves: 4`) are strong waves 1–15 but become a gold sink late game; Fiends (`mobile_unit` kamikaze) wander off and explode on first contact. The adversarial-BFS planner treated both as permanent, parking 32 Imps in a 34-placement plan.
+
+   First attempt was a hard filter — too blunt; user pointed out Imps SHOULD still go down early when budget is tight. Reworked: filter only `mobile_unit` from the planner pool (those don't sit on cells, no spatial reasoning applies), and add a **lifespan-decay multiplier** in `DpsCoverageScorer`: tower contribution scales by `min(expires_after_waves, 20) / 20`. Imps' 4-wave life × 17.1 raw DPS becomes 3.4 effective DPS in the planner — still picked when no Hellfire is affordable (Imp 12g vs Hellfire 45g), but Hellfire wins on a fair gold comparison. Plan composition shifts from `32 imp + 1 hellfire + 1 soul_drain` → `14 imp + 3 soul_drain + 2 hellfire` — early-game imps preserved, late-game transition to Hellfire/Soul Drain emerges.
+
+2. **Military: only sandbags, never wire; stops mazing after 10 walls.** Both sandbag (8g) and wire (25g) are role=`wall` per `getTowerRole`, but `decideMaze` always asked for `walls[0]` = sandbag (pool order). User clarified the right pattern is *alternation*: sandbag is the cheap structural blocker; wire creates the slow zone where damage lands. Two adjacent wires waste gold because slow doesn't stack. Implemented `pickWallForCell()`: prefer wire by default, fall back to sandbag when an existing wire is within Chebyshev≤1 of the candidate cell (or when budget can't afford wire). Bumped `maxWallPlacements: 60` for Military — the brain's per-decision cooldown (~4s) and the path-extension diminishing returns inside `decideMaze` pace placements gradually, not all at once. Verified brain-decide simulation: 8 wire + 3 sandbag + 2 brawler (was 13 sandbag).
+
+3. **Void: only Gamblers — modeling unique traits is a v3.1 task.** All 5 Void towers are role=`dps-single` to the classifier, but their identity comes from traits the scorer ignored: Gambler's `jackpot` (4% instakill), Siphon's `gold_on_hit` (40% × +2g, economy compounder), Rift's `teleport_delivery` (push backward = path extension on demand), Oblivion's stacked traits.
+
+   Started here: added `jackpot` modeling to `DpsCoverageScorer` — effective damage = `damage + chance × representative_creep_hp` (constant 100 ≈ mid-game HP). Gambler 20→24, Oblivion 80→95. Preserves Void's 50/50 winrate while making the math reflect Gambler's worth. **Deferred to v3.1**: dedicated `GoldOnHitScorer` (Siphon economy compounding), `TeleportDeliveryScorer` (Rift backward-push as effective path extension), `JackpotScorer` for the boss case (1% instakill on bosses). These need careful per-trait modeling and brain-search re-tuning to make Spike/Siphon/Rift competitive picks against Gambler.
+
+**Verification**: 354/354 tests pass. Win-rate vs Balanced (n=50 normal plains): infernal 50/50 (unchanged at cap), aliens 39/50 (unchanged), harmonic 5/50 (unchanged within noise), nature 0/50 (unchanged), void 50/50 (unchanged), military 0/50 (unchanged — purely a visual-correctness fix). Arcane drifted -2 (0/50 vs 2/50 balanced) but production picks Greedy 50/50 for arcane via BrainSelector — non-issue.
+
 ## 2026-04-28
 
 ### Faction picker: Random renamed to Chaos, new "roll a real faction" Random added

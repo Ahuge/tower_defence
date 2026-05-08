@@ -51,6 +51,21 @@ const probeFlag = getFlag('probe');
 const seedsFlag = getFlag('search-seeds');
 const validateSeedsFlag = getFlag('validate-seeds');
 const seedFromFlag = getFlag('seed-from');
+const diversityWeightFlag = getFlag('diversity-weight');
+
+// v4.3: two-agent flags. When --brain=counter_pick, we're searching the
+// director's params; the defender is fixed via --vs-defender-* flags.
+// When --brain=<defender>, the director can optionally be fixed via
+// --vs-director-* flags (default: no director, legacy v3 behaviour).
+const vsDefenderBrainFlag = getFlag('vs-defender-brain');     // 'mazing' etc
+const vsDefenderParamsFile = getFlag('vs-defender-params');   // path to JSON
+const vsDirectorIdFlag = getFlag('vs-director');              // 'counter_pick' etc
+const vsDirectorParamsFile = getFlag('vs-director-params');   // path to JSON
+// v5.3: when defender or director is being searched and we want to fix
+// the faction-balance to a specific tuned config (rather than running
+// at vanilla TOWER_TYPES values), point at a JSON of FactionBalanceSchema
+// dot-paths. Comma-separated for round-robin pool.
+const vsFactionParamsFile = getFlag('vs-faction-params');
 
 // ── jsdom + dynamic imports of TS sources ──────────────────────────
 await import('../src/headless/harness/jsdom-setup.ts');
@@ -66,10 +81,61 @@ if (brainFlag === 'balanced') {
   ({ GREEDY_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/GreedyBrainSchema.ts'));
 } else if (brainFlag === 'aoe_focus') {
   ({ AOE_FOCUS_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/AOEFocusBrainSchema.ts'));
+} else if (brainFlag === 'mazing') {
+  ({ MAZING_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/MazingBrainSchema.ts'));
+} else if (brainFlag === 'counter_pick') {
+  ({ COUNTER_PICK_WAVE_DIRECTOR_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/CounterPickWaveDirectorSchema.ts'));
+} else if (brainFlag === 'faction_balance') {
+  // v5.3: faction-balance schema is generated per-faction from current
+  // TOWER_TYPES values, not a static export.
+  const { buildFactionBalanceSchema } = await import('../src/data/balance/FactionBalanceSchema.ts');
+  BRAIN_SCHEMA = buildFactionBalanceSchema(factionFlag);
 } else {
-  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus`);
+  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus, mazing, counter_pick, faction_balance`);
   process.exit(1);
 }
+
+// v4.3: when searching the director, the defender brain is fixed.
+// Default to mazing since it's the strongest defender we have.
+const isSearchingDirector = brainFlag === 'counter_pick';
+// v5.3: when searching faction-balance, the defender brain is fixed
+// (mazing by default) and the searched params go into factionBalance-
+// Params instead of the brain's own env var. Both sides — defender and
+// faction-balance — can be searched separately; this flag picks which.
+const isSearchingFactionBalance = brainFlag === 'faction_balance';
+const fixedDefenderBrainId = (isSearchingDirector || isSearchingFactionBalance)
+  ? (vsDefenderBrainFlag ?? 'mazing')
+  : brainFlag;
+// v4.6: comma-separated paths build a frozen-pool. Per-task round-robin
+// rotates through the pool so the searched side faces multiple opponent
+// versions across the eval, breaking overfit-to-latest dynamics.
+function loadParamsPool(spec, label) {
+  if (!spec) return null;
+  const paths = spec.split(',').map(s => s.trim()).filter(Boolean);
+  const pool = [];
+  for (const p of paths) {
+    try {
+      const doc = JSON.parse(readFileSync(p, 'utf8'));
+      // Accept either {params: {...}} (self-play frozen format) or
+      // {bestSoFar: {params: {...}}} (brain-search summary) or bare {...}.
+      const params = doc.params ?? doc.bestSoFar?.params ?? doc;
+      pool.push(params);
+    } catch (err) {
+      console.error(`[brain-search] failed to load ${label} params from ${p}: ${err}`);
+      process.exit(1);
+    }
+  }
+  return pool.length > 0 ? pool : null;
+}
+const fixedDefenderPool = loadParamsPool(vsDefenderParamsFile, 'defender');
+const fixedDirectorPool = loadParamsPool(vsDirectorParamsFile, 'director');
+const fixedFactionPool = loadParamsPool(vsFactionParamsFile, 'faction-balance');
+// Backward-compat single-param accessors.
+const fixedDefenderParams = fixedDefenderPool?.[0] ?? null;
+const fixedDirectorParams = fixedDirectorPool?.[0] ?? null;
+// Director env-var name (only counter_pick supports v4.3 search; future
+// directors would extend this lookup).
+const DIRECTOR_ENV_NAMES = { counter_pick: 'COUNTER_PICK_PARAMS' };
 
 // ── Run dir + persistence ──────────────────────────────────────────
 const runId = `${brainFlag}-${factionFlag}-${difficultyFlag}`;
@@ -91,6 +157,7 @@ const cfg = { ...DEFAULT_MANAGER_CONFIG };
 if (maxEvalsFlag !== null) cfg.maxEvals = parseInt(maxEvalsFlag, 10);
 if (seedsFlag !== null) cfg.searchSeeds = parseInt(seedsFlag, 10);
 if (validateSeedsFlag !== null) cfg.validateSeeds = parseInt(validateSeedsFlag, 10);
+if (diversityWeightFlag !== null) cfg.diversityWeight = parseFloat(diversityWeightFlag);
 
 const manager = new BrainSearchManager(BRAIN_SCHEMA, cfg);
 
@@ -176,38 +243,138 @@ let nextTaskId = 1;
 let nextEvalId = manager.history.length + 1;
 
 function makeMatchConfig(seed) {
-  // Same seed-mixing rule as Batch.ts so this is reproducible across
-  // any other harness that uses (baseSeed, index) pairs.
-  return {
+  // v4.3: when searching the director, the defender brain is fixed.
+  // Otherwise, brainId is the searched brain.
+  const config = {
     faction: factionFlag,
     difficulty: difficultyFlag,
     mapId: 'plains',
-    brainId: brainFlag,
+    brainId: fixedDefenderBrainId,
     matchMode: 'standard',
     waveCount: 20,
     seed: (1 * 31 + seed * 7919) >>> 0,
   };
+  // Attach director when one is in play. When searching the director,
+  // brain=counter_pick → waveDirectorId=counter_pick; the env var
+  // COUNTER_PICK_PARAMS gets the per-eval params injected.
+  if (isSearchingDirector) {
+    config.waveDirectorId = brainFlag;  // 'counter_pick'
+  } else if (vsDirectorIdFlag) {
+    config.waveDirectorId = vsDirectorIdFlag;
+  }
+  return config;
 }
+
+/** v4.6: round-robin pool index from the task's seed-index. Round-robin
+ *  over the eval's seeds (rather than per-eval) means each eval's score
+ *  is averaged across opponents, which is the "robust against the pool"
+ *  measure we want. Keyed by seedIndex (0,1,2,...) not raw seed so
+ *  reproducibility holds. */
+function poolPickFor(pool, seedIndex) {
+  if (!pool || pool.length === 0) return null;
+  return pool[seedIndex % pool.length];
+}
+
+/** Build the worker-task envelope. Picks which side gets the searched
+ *  params and which side gets the fixed (frozen) params. With v4.6
+ *  pools, opponent rotates per-seed across the pool entries. v5.3
+ *  adds faction-balance as a third searchable side. */
+function buildTask(taskId, config, searchedParams, seedIndex) {
+  const task = { taskId, config };
+  if (isSearchingDirector) {
+    // Searched side is the director — its params go into directorParams.
+    // Defender side uses the rotating pool entry via the brain's env.
+    task.params = poolPickFor(fixedDefenderPool, seedIndex) ?? {};
+    task.directorParams = searchedParams;
+    task.directorEnvVar = DIRECTOR_ENV_NAMES[brainFlag];
+    // Optional fixed faction-balance still applies even when tuning
+    // director (defender-vs-balanced-faction adversarial setup).
+    if (fixedFactionPool) {
+      task.factionBalanceParams = poolPickFor(fixedFactionPool, seedIndex) ?? {};
+    }
+  } else if (isSearchingFactionBalance) {
+    // Searched side is the faction itself — its params go into
+    // factionBalanceParams. Defender side uses the rotating pool entry
+    // via the brain's env (or empty = defaults).
+    task.params = poolPickFor(fixedDefenderPool, seedIndex) ?? {};
+    task.factionBalanceParams = searchedParams;
+    // Optional fixed director (e.g. tune faction-balance against
+    // counter_pick adversary instead of static waves).
+    if (vsDirectorIdFlag) {
+      task.directorParams = poolPickFor(fixedDirectorPool, seedIndex) ?? {};
+      task.directorEnvVar = DIRECTOR_ENV_NAMES[vsDirectorIdFlag];
+    }
+  } else {
+    // Searched side is the defender — params go into the brain env var.
+    // Director (if any) gets the rotating pool entry via directorParams.
+    task.params = searchedParams;
+    if (vsDirectorIdFlag) {
+      task.directorParams = poolPickFor(fixedDirectorPool, seedIndex) ?? {};
+      task.directorEnvVar = DIRECTOR_ENV_NAMES[vsDirectorIdFlag];
+    }
+    // Faction-balance pool — pin the faction at a tuned config so the
+    // defender's search isn't dominated by faction-balance noise.
+    if (fixedFactionPool) {
+      task.factionBalanceParams = poolPickFor(fixedFactionPool, seedIndex) ?? {};
+    }
+  }
+  return task;
+}
+void fixedDefenderParams; void fixedDirectorParams;  // legacy single-param vars retained for back-compat
 
 async function evaluateConfig(params, n, tag) {
   const tasks = [];
   for (let i = 0; i < n; i++) {
     const config = makeMatchConfig(i);
-    tasks.push(pool.dispatch({ taskId: nextTaskId++, config, params }));
+    tasks.push(pool.dispatch(buildTask(nextTaskId++, config, params, i)));
   }
   const results = await Promise.all(tasks);
-  let wins = 0, errors = 0, totalWave = 0;
+  let wins = 0, errors = 0, totalWave = 0, totalDiversity = 0, diversityCount = 0;
   for (const r of results) {
     if (r.outcome === 'win') wins++;
     if (r.outcome === 'error') errors++;
     totalWave += r.waveReached || 0;
+    // Shannon entropy of placement distribution, normalised to [0,1]
+    // by max-entropy of N distinct types placed (uniform). Skip
+    // matches with no towers (errors/early-leaks).
+    if (r.towerIdCounts) {
+      const counts = Object.values(r.towerIdCounts);
+      const total = counts.reduce((s, c) => s + c, 0);
+      if (total > 1 && counts.length > 1) {
+        let entropy = 0;
+        for (const c of counts) {
+          if (c > 0) {
+            const p = c / total;
+            entropy -= p * Math.log(p);
+          }
+        }
+        const maxEntropy = Math.log(counts.length);
+        const norm = maxEntropy > 0 ? entropy / maxEntropy : 0;
+        totalDiversity += norm;
+        diversityCount++;
+      }
+    }
   }
+  // v4.3: when searching the director, flip the fitness — defender's
+  // loss is director's win. score=leak_rate so brain-search maximises
+  // leaks instead of wins. avgWave inverted similarly (lower wave-
+  // reached = bigger director win), but we keep avgWave's raw value
+  // and let the fitness term in BrainSearchManager pick — for
+  // directors, smaller avgWave is better, so the existing
+  // `avgWave/100 wave bonus` works the wrong direction. Cleanest:
+  // for director searches, store -avgWave so the fitness fn's
+  // `+ avgWave/100` term still rewards director-favourable runs.
+  const score = isSearchingDirector ? (1 - wins / n) : (wins / n);
+  const avgWaveForFitness = isSearchingDirector
+    ? -(totalWave / n)
+    : (totalWave / n);
   const evalRecord = {
     evalId: nextEvalId++,
     ts: Date.now(),
     params,
-    score: wins / n,
-    avgWave: totalWave / n,
+    score,
+    avgWave: avgWaveForFitness,
+    diversity: diversityCount > 0 ? totalDiversity / diversityCount : 0,
     n,
     tag,
   };

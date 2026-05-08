@@ -18,6 +18,14 @@ export class Grid {
   exits: { col: number; row: number }[];
   readonly rows: number;
   readonly cols: number;
+  /** Monotonic counter that bumps on every cell mutation through
+   *  placeTower / removeTower. Used by MazingScorer (and any other
+   *  consumer that wants to invalidate cached layouts when the grid
+   *  changes) — compare-equal means "grid is unchanged since you
+   *  cached your computation". Initial-state mutations during the
+   *  constructor are NOT counted, so a freshly-built grid starts at 0
+   *  regardless of its blocked-cell density. */
+  version: number = 0;
 
   constructor(mapDef?: MapDefinition, rows?: number, cols?: number) {
     this.rows = rows ?? GRID_ROWS;
@@ -80,12 +88,14 @@ export class Grid {
   placeTower(col: number, row: number): boolean {
     if (!this.canPlaceTower(col, row)) return false;
     this.cells[row][col] = CellType.Tower;
+    this.version++;
     return true;
   }
 
   removeTower(col: number, row: number): boolean {
     if (this.cells[row][col] !== CellType.Tower) return false;
     this.cells[row][col] = CellType.Empty;
+    this.version++;
     return true;
   }
 }

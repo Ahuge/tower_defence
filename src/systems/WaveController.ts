@@ -3,12 +3,20 @@ import { SpawnManager } from './SpawnManager';
 import { SendManager } from './SendManager';
 import { PathPoint } from './Pathfinding';
 import { DEBUG } from './DebugFlags';
+import { WaveDirectorBrain, WaveObservation } from './bots/WaveDirectorBrain';
 
 export interface WaveCallbacks {
   onWaveStart(wave: WaveDefinition, waveNum: number, totalWaves: number): void;
   onWaveCleared(waveNum: number): void;
   canStartWave(): boolean; // e.g. check if path exists
 }
+
+/** v4.2: callback the host (HeadlessMatch / GameScene) provides so the
+ *  controller can build a WaveObservation for the director without
+ *  reaching into match-level state. The host owns lives, towers, path
+ *  geometry; the controller calls this between waves to assemble the
+ *  context the director's `nextWave` needs. */
+export type WaveObservationProvider = (waveIndex: number) => WaveObservation;
 
 /** How often to log "wave still stuck" diagnostics, ms. */
 const STUCK_LOG_INTERVAL = 3000;
@@ -34,6 +42,17 @@ export class WaveController {
   /** ms since last stuck-log so we don't spam the console every frame. */
   private lastStuckLog: number = 0;
 
+  // v4.2: optional director-driven lazy generation. When set, the
+  // controller calls `director.nextWave(obs)` lazily as waves run out
+  // and appends the result to `this.waves`. When unset, `this.waves`
+  // is treated as a pre-computed static list (legacy v4.1 behaviour).
+  private director: WaveDirectorBrain | null = null;
+  private observationProvider: WaveObservationProvider | null = null;
+  /** Total waves the match expects. Used as the exhaustion bound when
+   *  director is set (so we don't generate forever). 0 = use waves.length
+   *  (legacy). */
+  private expectedTotal: number = 0;
+
   constructor(
     waves: WaveDefinition[],
     spawner: SpawnManager,
@@ -46,11 +65,42 @@ export class WaveController {
     this.callbacks = callbacks;
   }
 
+  /** v4.2: opt into director-driven lazy wave generation. Call after
+   *  construction with the director (already initialised via its own
+   *  `init`), the observation provider that the host implements, and
+   *  the total wave count the match expects. The controller starts
+   *  fetching from the director once it runs out of pre-loaded waves.
+   *  When `expectedTotal=0` (default), the director extends
+   *  indefinitely (intended for endless mode where the host caps via
+   *  maxWaves elsewhere). */
+  setDirector(
+    director: WaveDirectorBrain,
+    observationProvider: WaveObservationProvider,
+    expectedTotal: number = 0,
+  ): void {
+    this.director = director;
+    this.observationProvider = observationProvider;
+    this.expectedTotal = expectedTotal;
+  }
+
   /** Start the next wave. Returns false if can't start. */
   startWave(allPaths: (PathPoint[] | null)[]): boolean {
     if (!this.callbacks.canStartWave()) {
       if (DEBUG) console.warn('[wave] startWave rejected: canStartWave() === false (usually !currentPath)');
       return false;
+    }
+    // v4.2: lazy-fetch from director when we don't have a wave for
+    // this index yet. Done before the exhaustion check so we don't
+    // spuriously reject when the static array is empty but the director
+    // can still produce waves.
+    if (this.currentWave >= this.waves.length && this.director && this.observationProvider) {
+      if (this.expectedTotal > 0 && this.currentWave >= this.expectedTotal) {
+        if (DEBUG) console.warn(`[wave] startWave rejected: director-bounded total reached (${this.currentWave}/${this.expectedTotal})`);
+        return false;
+      }
+      const obs = this.observationProvider(this.currentWave + 1);
+      const next = this.director.nextWave(obs);
+      this.waves.push(next);
     }
     if (this.currentWave >= this.waves.length) {
       if (DEBUG) console.warn(`[wave] startWave rejected: all waves exhausted (${this.currentWave}/${this.waves.length})`);
@@ -117,8 +167,37 @@ export class WaveController {
     this.sendMgr.update(delta, currentPath, creeps);
   }
 
+  /** v4.2: ensure the next `count` waves are materialised in `waves[]`
+   *  by calling `director.nextWave()` for any missing entries. Called
+   *  by the host (e.g. HeadlessMatch.makeCtx) before the brain reads
+   *  `upcomingWaves` for counter-pick lookahead. The contract:
+   *  whatever the director commits via peekAhead is FROZEN — the
+   *  director cannot retroactively change a wave it has already
+   *  promised. Reactive directors observe the defender's state at
+   *  peek time and must accept that they see the state-as-of-now,
+   *  not the state-after-N-more-placements. */
+  peekAhead(count: number): WaveDefinition[] {
+    if (!this.director || !this.observationProvider) {
+      // Legacy path: just return the slice we already have.
+      return this.waves.slice(this.currentWave, this.currentWave + count);
+    }
+    const targetIndex = this.currentWave + count;
+    while (this.waves.length < targetIndex) {
+      if (this.expectedTotal > 0 && this.waves.length >= this.expectedTotal) break;
+      const nextIdx = this.waves.length + 1;
+      const obs = this.observationProvider(nextIdx);
+      this.waves.push(this.director.nextWave(obs));
+    }
+    return this.waves.slice(this.currentWave, this.currentWave + count);
+  }
+
   hasMoreWaves(): boolean {
-    return this.currentWave < this.waves.length;
+    if (this.currentWave < this.waves.length) return true;
+    // v4.2: when director-driven, we're not done until expectedTotal.
+    if (this.director && (this.expectedTotal === 0 || this.currentWave < this.expectedTotal)) {
+      return true;
+    }
+    return false;
   }
 
   isComplete(): boolean {

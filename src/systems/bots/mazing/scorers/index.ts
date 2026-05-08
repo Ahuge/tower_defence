@@ -1,0 +1,191 @@
+/**
+ * Default registration: maps weight knobs → ContributionScorer
+ * instances + weights for the v3 ScorerRegistry.
+ *
+ * Each entry mirrors a v2 weight field exactly (or a new v3 trait-
+ * aware scorer term). New scorers default to enabled=false / weight=0
+ * so M2 ships behaviour-equivalent to v2 — M4's brain-search re-tunes
+ * to find the new wins.
+ */
+import { RegisteredScorer, ScorerRegistry } from './types';
+import { PathExtensionScorer } from './PathExtensionScorer';
+import { BFSWorkScorer } from './BFSWorkScorer';
+import { DpsCoverageScorer } from './DpsCoverageScorer';
+import { SlowValueScorer } from './SlowValueScorer';
+import { AuraAmplificationScorer } from './AuraAmplificationScorer';
+import { SlowOverlapScorer } from './SlowOverlapScorer';
+import { AuraChainScorer } from './AuraChainScorer';
+import { CrowdControlBoostScorer } from './CrowdControlBoostScorer';
+import { MobileEngagementScorer } from './MobileEngagementScorer';
+import { DotOverlapScorer } from './DotOverlapScorer';
+import { GoldOnHitScorer } from './GoldOnHitScorer';
+import { TeleportDeliveryScorer } from './TeleportDeliveryScorer';
+import { WaveCounterScorer } from './WaveCounterScorer';
+import { ChainLightningScorer } from './ChainLightningScorer';
+import { BarrierCoherenceScorer } from './BarrierCoherenceScorer';
+
+/** Weights config — one knob per registered scorer. v2 → v3 migration:
+ *    pathExtension ← α
+ *    bfsWork       ← β + γ (BFSWorkScorer wraps both internally)
+ *    dpsCoverage   ← δ
+ *    slowValue     ← ε
+ *    auraAmp       ← ζ
+ *
+ *  v3 NEW (default 0 / disabled — M4 tunes them on):
+ *    slowOverlap, auraChain, ccBoost, mobileEngagement, dotOverlap
+ *
+ *  Each weight has an `enable` companion — toggling enable=false
+ *  zeros the contribution without reshuffling the weight tuning. */
+export interface ScorerWeights {
+  pathExtension: number;
+  bfsWork: number;
+  dpsCoverage: number;
+  slowValue: number;
+  auraAmp: number;
+  slowOverlap: number;
+  auraChain: number;
+  ccBoost: number;
+  mobileEngagement: number;
+  dotOverlap: number;
+  // v3.1 — trait-aware scorers for unique per-tower mechanics
+  goldOnHit: number;
+  teleportDelivery: number;
+  // v3.4 — wave-mix-aware counter bonus (splash vs swarm, slow vs fast,
+  // jackpot vs boss, etc.)
+  waveCounter: number;
+  // v3.4 — chain damage (Mech Tesla). Models bounce damage uplift
+  // beyond what DpsCoverageScorer captures.
+  chainLightning: number;
+  // v3.5 — barrier coherence (proper-mazing structural prior).
+  barrierCoherence: number;
+}
+
+export interface ScorerToggles {
+  pathExtension: boolean;
+  bfsWork: boolean;
+  dpsCoverage: boolean;
+  slowValue: boolean;
+  auraAmp: boolean;
+  slowOverlap: boolean;
+  auraChain: boolean;
+  ccBoost: boolean;
+  mobileEngagement: boolean;
+  dotOverlap: boolean;
+  // v3.1
+  goldOnHit: boolean;
+  teleportDelivery: boolean;
+  // v3.4
+  waveCounter: boolean;
+  chainLightning: boolean;
+  // v3.5
+  barrierCoherence: boolean;
+}
+
+export const DEFAULT_SCORER_WEIGHTS: ScorerWeights = {
+  // v2 terms
+  pathExtension: 5.0,
+  bfsWork: 1.5,
+  dpsCoverage: 0.05,
+  slowValue: 0.05,
+  auraAmp: 0.05,
+  // v3 NEW — defaults disabled until brain-search tunes them on
+  slowOverlap: 0,
+  auraChain: 0,
+  ccBoost: 0,
+  mobileEngagement: 0,
+  dotOverlap: 0,
+  // v3.1 — trait-aware unique-tower scorers. Default-on at 1.0 because
+  // they're surfacing genuine mechanical value the v2/v3 score function
+  // missed (Siphon's gold compounding, Rift's path-extension-on-hit).
+  // brain-search re-tunes per cell.
+  goldOnHit: 1.0,
+  teleportDelivery: 1.0,
+  // v3.4 — wave-mix-aware counter bonus. Default 0.05 (small) because
+  // the contribution is dpsRate × pathCells × share × multiplier, which
+  // can scale to thousands; matched to dpsCoverage's 0.05 weight so
+  // counter-effective placements get a meaningful but bounded bonus.
+  waveCounter: 0.05,
+  // v3.4 — chain lightning extra damage from bounces. Default 0.05
+  // matches dpsCoverage's scale (the scorer returns dpsRate × extra-
+  // damage-factor × pathCells which is comparable to dpsCoverage's
+  // dpsRate × pathCells for towers with the trait).
+  chainLightning: 0.05,
+  // v3.5 — barrier-coherence structural prior. Default 0.3 — small
+  // bias toward complete-barrier serpentines without overpowering the
+  // existing brain-search-tuned configs (which were optimized without
+  // this term and shift slightly when it's added). brain-search re-runs
+  // can dial it up per cell where the prior actually helps.
+  barrierCoherence: 0.3,
+};
+
+export const DEFAULT_SCORER_TOGGLES: ScorerToggles = {
+  pathExtension: true,
+  bfsWork: true,
+  dpsCoverage: true,
+  slowValue: true,
+  auraAmp: true,
+  // v3 NEW — disabled by default. M4 brain-search per cell will
+  // selectively enable + tune weights. Specifically the synergy-
+  // heavy cells (harmonic, psionic, nature, military) should
+  // benefit when the relevant scorer flips on with non-zero weight.
+  slowOverlap: false,
+  auraChain: false,
+  ccBoost: false,
+  mobileEngagement: false,
+  dotOverlap: false,
+  // v3.1 — default-on. These read trait shapes that exist in the data
+  // for any tower (gold_on_hit, teleport_delivery) and contribute 0 for
+  // towers without them, so leaving them on for non-Void factions is a
+  // no-op rather than a regression.
+  goldOnHit: true,
+  teleportDelivery: true,
+  // v3.4 — default-on. WaveCounterScorer returns 0 when ctx.creepMix
+  // is empty (no upcoming waves available) so non-game callers /
+  // legacy paths see no behaviour change.
+  waveCounter: true,
+  // v3.4 — default-on. ChainLightningScorer returns 0 for towers
+  // without the chain_damage trait, so non-Mech factions are unaffected.
+  chainLightning: true,
+  // v3.5 — default-on. Bonuses for any faction with wall-class towers;
+  // 0 contribution when no rows/cols meet the fill threshold.
+  barrierCoherence: true,
+};
+
+/** Build a ScorerRegistry from the weight + toggle config. v3 planner
+ *  calls this once at construction. */
+export function buildDefaultRegistry(
+  weights: Partial<ScorerWeights> = {},
+  toggles: Partial<ScorerToggles> = {},
+): ScorerRegistry {
+  const w = { ...DEFAULT_SCORER_WEIGHTS, ...weights };
+  const e = { ...DEFAULT_SCORER_TOGGLES, ...toggles };
+  const entries: RegisteredScorer[] = [
+    // v2 terms — always default on so legacy callers get v2 behaviour.
+    { scorer: new PathExtensionScorer(),    weight: w.pathExtension, enabled: e.pathExtension },
+    { scorer: new BFSWorkScorer(),          weight: w.bfsWork,        enabled: e.bfsWork },
+    { scorer: new DpsCoverageScorer(),      weight: w.dpsCoverage,    enabled: e.dpsCoverage },
+    { scorer: new SlowValueScorer(),        weight: w.slowValue,      enabled: e.slowValue },
+    { scorer: new AuraAmplificationScorer(), weight: w.auraAmp,       enabled: e.auraAmp },
+    // v3 NEW terms — default off + zero weight.
+    { scorer: new SlowOverlapScorer(),       weight: w.slowOverlap,    enabled: e.slowOverlap },
+    { scorer: new AuraChainScorer(),         weight: w.auraChain,      enabled: e.auraChain },
+    { scorer: new CrowdControlBoostScorer(), weight: w.ccBoost,        enabled: e.ccBoost },
+    { scorer: new MobileEngagementScorer(),  weight: w.mobileEngagement, enabled: e.mobileEngagement },
+    { scorer: new DotOverlapScorer(),        weight: w.dotOverlap,     enabled: e.dotOverlap },
+    // v3.1 — trait-aware unique-tower scorers, default-on.
+    { scorer: new GoldOnHitScorer(),         weight: w.goldOnHit,      enabled: e.goldOnHit },
+    { scorer: new TeleportDeliveryScorer(),  weight: w.teleportDelivery, enabled: e.teleportDelivery },
+    // v3.4 — wave-mix-aware counter bonus.
+    { scorer: new WaveCounterScorer(),       weight: w.waveCounter,    enabled: e.waveCounter },
+    { scorer: new ChainLightningScorer(),    weight: w.chainLightning, enabled: e.chainLightning },
+    // v3.5 — barrier-coherence structural prior.
+    { scorer: new BarrierCoherenceScorer(),  weight: w.barrierCoherence, enabled: e.barrierCoherence },
+  ];
+  return new ScorerRegistry(entries);
+}
+
+export { ScorerRegistry } from './types';
+export type {
+  ContributionScorer, RegisteredScorer, ScorerContext,
+  ScorerState, BfsMetrics, PathGeometries, PlacedTower,
+} from './types';

@@ -272,6 +272,18 @@ function TrainingDataSection() {
           Clear Stats
         </button>
       </div>
+      {/* v6.1.b: capture-campaign launcher. Plays one Standard match per
+          faction in a randomized order with auto-export between each.
+          Generates training data across the full faction matrix without
+          the player having to manually navigate after every match. */}
+      <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <div class="text-dim text-sm" style={{ marginBottom: '8px' }}>
+          Or play through every faction in one sitting:
+        </div>
+        <button class="btn btn-primary" onClick={() => UIBridge.show('capture-campaign')}>
+          Capture Campaign
+        </button>
+      </div>
     </div>
   );
 }

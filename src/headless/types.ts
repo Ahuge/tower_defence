@@ -32,6 +32,13 @@ export interface MatchConfig {
   maxSimMs?: number;
   /** Cap on waves simulated even in endless mode. Default 60. */
   maxWaves?: number;
+  /** v4.1: WaveDirectorBrain id registered in
+   *  `WaveDirectorBrain.ts`'s registry. When set, the director
+   *  materialises the match's waves instead of `getWavesForMode()`.
+   *  When unset, behaviour is identical to pre-v4 static-wave runs.
+   *  v4.1 ships only `'uniform'` (no-op wrapper around the static
+   *  generator); v4.2+ adds reactive directors. */
+  waveDirectorId?: string;
 }
 
 /** Per-match telemetry the aggregator consumes. Everything here is
@@ -58,4 +65,10 @@ export interface MatchResult {
    *  drift); different hash ⇒ the change actually altered placement
    *  decisions, so the win-rate delta carries real signal. */
   buildHash: string;
+  /** Tower-id distribution at match end: id → count of towers of
+   *  that type. Used by brain-search to compute placement diversity
+   *  (Shannon entropy) when --diversity-weight is set. Levels are
+   *  collapsed — a Lv2 Bolt and a Lv3 Bolt both count as `arcane_bolt`.
+   *  Empty map when no towers were placed. */
+  towerIdCounts: Record<string, number>;
 }

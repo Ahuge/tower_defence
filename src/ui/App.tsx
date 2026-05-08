@@ -16,6 +16,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { CircleLobbyScreen } from './screens/CircleLobbyScreen';
 import { GauntletPreviewScreen } from './screens/GauntletPreviewScreen';
+import { CaptureCampaignScreen } from './screens/CaptureCampaignScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { AppLoadingScreen } from './screens/AppLoadingScreen';
 import { GameSidebar } from './game/GameSidebar';
@@ -71,6 +72,7 @@ export function App() {
           {screen === 'settings' && <SettingsScreen />}
           {screen === 'lobby' && <LobbyScreen />}
           {screen === 'circle-lobby' && <CircleLobbyScreen />}
+          {screen === 'capture-campaign' && <CaptureCampaignScreen />}
         </div>
       )}
 

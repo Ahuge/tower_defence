@@ -30,6 +30,12 @@ import { MAPS } from '../data/Maps';
 import { DIFFICULTIES } from '../data/Difficulty';
 import { FACTIONS } from '../data/Factions';
 import { getWavesForMode, generateEndlessWaves, WaveDefinition } from '../data/WaveDefinitions';
+import { getWaveDirector, listWaveDirectors } from '../systems/bots/WaveDirectorBrain';
+import { applyFactionBalance } from '../data/balance/FactionBalanceLoader';
+import { loadRosterExcludes } from '../data/balance/RosterFilter';
+// Side-effect imports: register WaveDirectors at module load.
+import '../systems/bots/wavedirectors/UniformWaveDirector';
+import '../systems/bots/wavedirectors/CounterPickWaveDirector';
 import { getTowerType, TOWER_TYPES } from '../data/TowerTypes';
 import { FRONTIER_BUILDINGS, GENERIC_OUTPOSTS } from '../data/FrontierBuildings';
 import { STARTING_LIVES } from '../config';
@@ -43,6 +49,8 @@ import { BRAIN_REGISTRY } from '../systems/bots/BotBrain';
 import '../systems/traits/TowerTraitHandlers';
 import '../systems/traits/CreepTraitHandlers';
 import '../systems/bots/brains/BalancedBrain';
+import '../systems/bots/brains/MazingBrain';
+import '../systems/bots/brains/ComboMazingBrains';
 import '../systems/bots/brains/RushBrain';
 import '../systems/bots/brains/SynergyBrain';
 import '../systems/bots/brains/NatureBrain';
@@ -70,6 +78,12 @@ export async function runMatch(
   const maxSimMs = config.maxSimMs ?? 30 * 60 * 1000;
   const maxWaves = config.maxWaves ?? 60;
 
+  // v5.2: apply faction-balance overrides (env-injected per-task by
+  // brain-search-worker) before the match starts, restore at end.
+  // Patches TOWER_TYPES[<this faction>] only — other factions are not
+  // touched. Restore-in-finally pattern protects against patched state
+  // leaking across matches in the same worker process.
+  const restoreFactionBalance = applyFactionBalance(config.faction);
   try {
     return await runMatchInner(config, wallStart, stepMs, maxSimMs, maxWaves, brainOverride ?? null);
   } catch (err) {
@@ -85,8 +99,11 @@ export async function runMatch(
       simTimeMs: 0,
       wallTimeMs: Date.now() - wallStart,
       buildHash: '00000000',
+      towerIdCounts: {},
       error: (err as Error).message,
     };
+  } finally {
+    restoreFactionBalance();
   }
 }
 
@@ -141,7 +158,31 @@ async function runMatchInner(
   const frontierMgr = new FrontierManager(eventBus, incomeMgr, config.faction);
 
   // ---- Waves + paths ----
-  let waves: WaveDefinition[] = getWavesForMode(config.matchMode, config.waveCount);
+  // v4.2: route wave generation through WaveDirectorBrain when
+  // configured. The director either materialises upfront (v4.1 path,
+  // for backward-compat callers / tests) or generates lazily per wave
+  // via init+nextWave (v4.2 reactive path).
+  // When waveDirectorId is unset, use legacy static getWavesForMode().
+  let waves: WaveDefinition[];
+  let director: import('../systems/bots/WaveDirectorBrain').WaveDirectorBrain | null = null;
+  if (config.waveDirectorId) {
+    director = getWaveDirector(config.waveDirectorId);
+    if (!director) {
+      throw new Error(`Unknown waveDirectorId: ${config.waveDirectorId}. Registered: ${listWaveDirectors().join(', ')}`);
+    }
+    director.init({
+      matchMode: config.matchMode,
+      waveCount: config.waveCount,
+      defenderFaction: config.faction,
+    });
+    // For v4.2: start with empty waves[] and let the controller fetch
+    // lazily. For directors that still implement materializeWaves,
+    // we could pre-fill, but lazy is the cleaner default since v4.2+
+    // reactive directors need it.
+    waves = [];
+  } else {
+    waves = getWavesForMode(config.matchMode, config.waveCount);
+  }
   let currentWave = 0;
   let lives = STARTING_LIVES;
 
@@ -171,8 +212,9 @@ async function runMatchInner(
       eventBus.emit('waveStarted', waveNum);
     },
     onWaveCleared: (waveNum) => {
-      // Endless: append more waves as we run low.
-      if (config.matchMode === 'endless' && waveMgr.currentWave >= waveMgr.waves.length - 5) {
+      // Endless without director: append more waves as we run low.
+      // Director-driven endless extends via nextWave on demand instead.
+      if (config.matchMode === 'endless' && !director && waveMgr.currentWave >= waveMgr.waves.length - 5) {
         const nextStart = waveMgr.waves.length + 1;
         waveMgr.waves.push(...generateEndlessWaves(nextStart, 10));
       }
@@ -188,6 +230,26 @@ async function runMatchInner(
     canStartWave: () => currentPath !== null,
   });
 
+  // v4.2: hook the director into the controller for lazy generation.
+  // The observation provider snapshots live state at the moment the
+  // controller asks for the next wave — placed towers, lives, current
+  // path — so reactive directors can use the actual game state, not
+  // just the match-start config.
+  if (director) {
+    const expectedTotal = config.matchMode === 'endless'
+      ? (config.maxWaves ?? 60)
+      : (config.waveCount ?? 30);
+    waveMgr.setDirector(director, (waveIndex) => ({
+      waveIndex,
+      livesRemaining: lives,
+      defenderFaction: config.faction,
+      observedTowers: towerMgr.towers.map(t => ({
+        col: t.col, row: t.row, towerId: t.typeDef.id, level: t.level,
+      })),
+      observedPath: currentPath,
+    }), expectedTotal);
+  }
+
   // ---- Brain ----
   // brainOverride lets the data-gen pipeline supply a wrapper
   // (RecorderBrain, etc.) that captures decisions; production paths
@@ -201,7 +263,14 @@ async function runMatchInner(
     brain = brainFactory();
   }
 
-  const towerPool = factionDef.towerIds.map(id => getTowerType(id)).sort((a, b) => a.cost - b.cost);
+  // v5.4: ablation roster filter — when FACTION_ROSTER_<FACTION>_EXCLUDE
+  // is set, drop those towers from the bot's pool so we can measure each
+  // tower's contribution by Δ win rate vs the un-filtered baseline.
+  const rosterExcludes = loadRosterExcludes(config.faction);
+  const towerPool = factionDef.towerIds
+    .filter(id => !rosterExcludes.has(id))
+    .map(id => getTowerType(id))
+    .sort((a, b) => a.cost - b.cost);
   const candidateCells = buildCandidateCells(grid, mapDef);
   brain.init?.(makeCtx());
 
@@ -253,10 +322,11 @@ async function runMatchInner(
       frontierOptions: frontierOptions(),
       betweenWaves: waveMgr.betweenWaves,
       // Surface the next 3 waves so wave-lookahead brains can pick
-      // counter towers. The `waveMgr.currentWave` is already
-      // 1-indexed past the current wave, so `waves[currentWave]`
-      // is wave N+1 — exactly what we want as "upcoming".
-      upcomingWaves: waveMgr.waves.slice(waveMgr.currentWave, waveMgr.currentWave + 3),
+      // counter towers. peekAhead materialises any waves not yet
+      // committed by the director (legacy static-wave path returns
+      // the slice directly). Either way the brain sees the same
+      // shape it always has.
+      upcomingWaves: waveMgr.peekAhead(3),
     };
   }
 
@@ -349,6 +419,7 @@ async function runMatchInner(
     simTimeMs: simTime,
     wallTimeMs: Date.now() - wallStart,
     buildHash: hashBuild(towerMgr.towers),
+    towerIdCounts: countTowerIds(towerMgr.towers),
   };
 
   // ---- Decision dispatch ----
@@ -436,6 +507,16 @@ async function runMatchInner(
  *  builds produce identical hashes; any tower id/level/count
  *  difference flips it. Used by the harness to diagnose brain-noise
  *  (same build, moved winrate) vs. real signal (different build). */
+/** Tower-id distribution at match end, levels collapsed.  Used by
+ *  brain-search to compute placement diversity (Shannon entropy)
+ *  when --diversity-weight is set. Returns empty map for an empty
+ *  tower list. */
+function countTowerIds(towers: { typeDef: { id: string } }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of towers) out[t.typeDef.id] = (out[t.typeDef.id] ?? 0) + 1;
+  return out;
+}
+
 function hashBuild(towers: { typeDef: { id: string }; level: number }[]): string {
   const counts = new Map<string, number>();
   for (const t of towers) {

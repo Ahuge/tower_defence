@@ -53,6 +53,7 @@ import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SkinManager } from '../systems/monetization/SkinManager';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { BotAI } from '../systems/bots/BotAI';
+import { recommendBrain } from '../systems/bots/BrainSelector';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
@@ -844,9 +845,15 @@ export class GameScene extends Phaser.Scene {
     // Live-capture hook — when ?capture=1 (or localStorage flag) is
     // set, record every human place/upgrade/sell for offline retrain
     // of LearningBrain. No-op when capture mode is off.
+    // v6.1.c: pass mapId + modifier so the capture record knows which
+    // map each match was played on and whether a DraftModifier was
+    // active (the standard capture path forces modifier=null per
+    // CLAUDE.md; if a modifier ever leaks through, the ingest filter
+    // drops the rows for distribution-cleanliness vs the bot dataset).
     import('../systems/learning/LiveCapture').then(m => {
       if (m.isCaptureEnabled() && this.faction && this.matchMode === 'standard') {
-        m.startSession(this.faction, this.difficulty);
+        const modifierId = this.modifier ? this.modifier.id : null;
+        m.startSession(this.faction, this.difficulty, this.mapId, modifierId);
       }
     });
 
@@ -1165,10 +1172,24 @@ export class GameScene extends Phaser.Scene {
             return result.refund;
           },
         );
+        // URL ?botBrain=mazing (or any registered brain id) overrides
+        // the default for playtesting. When absent, each bot consults
+        // BrainSelector.recommendBrain(faction, difficulty) to use
+        // the empirically-best brain for its cell — that's the v3
+        // result of brain-coverage tuning across all (faction,
+        // difficulty) cells.
+        const urlOverride = (() => {
+          if (typeof window === 'undefined') return null;
+          const p = new URLSearchParams(window.location.search).get('botBrain');
+          return p && p.length > 0 ? p : null;
+        })();
         for (const botIndex of this.circle.botSlots) {
           const fac = this.circle.playerFactions.get(botIndex) as FactionId | undefined;
           const zone = circleMapDef.zones?.[botIndex];
-          if (fac && zone) this.circleBotAI.addBot(botIndex, fac, zone, 'balanced');
+          if (fac && zone) {
+            const brainId = urlOverride ?? recommendBrain(fac, this.difficulty);
+            this.circleBotAI.addBot(botIndex, fac, zone, brainId);
+          }
         }
 
         // Route per-hit gold (gold_on_hit / jackpot) from bot-owned
