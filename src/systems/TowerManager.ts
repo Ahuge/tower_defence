@@ -154,18 +154,26 @@ export class TowerManager {
       delta,
     };
 
-    // Reset harmonic aura accumulators + conduit link flags
+    // Reset harmonic aura accumulators + conduit link flags. Reset
+    // range to the tower's *current-level* base — using typeDef.range
+    // here would silently downgrade linear-upgraded towers back to L1
+    // range every frame they're under a Reach.
     for (const tower of this.towers) {
       (tower as any)._linkedByConduit = false;
       (tower as any)._conduitX = undefined;
       (tower as any)._conduitY = undefined;
       for (const trait of tower.traits) {
-        if (trait.id === '_harmonic_damage' || trait.id === '_harmonic_rate') {
-          trait.bonus = 0;
-        } else if (trait.id === '_harmonic_range') {
-          trait.bonus = 0;
-          tower.range = tower.typeDef.range * TILE_SIZE;
+        if (trait.id === '_harmonic_damage' || trait.id === '_harmonic_rate' || trait.id === '_harmonic_range') {
+          // multiplicative identity — every aura source compounds onto
+          // this fresh 1.0 each frame (damage/rate/range buffs are now
+          // value multipliers, not additive bonuses)
+          trait.bonus = 1;
+          if (trait.id === '_harmonic_range') {
+            tower.range = tower._basePxRange;
+          }
         } else if (trait.id === '_harmonic_crit') {
+          // chance asymptotes via 1 - (1-c)*(1-s); identity for that
+          // recurrence is c=0, not 1
           trait.chance = 0;
         }
       }
@@ -174,6 +182,21 @@ export class TowerManager {
     // Run trait updates (auras, buffs, TTL)
     for (const tower of this.towers) {
       tower.runTraitUpdates(traitCtx);
+    }
+
+    // Second pass: apply accumulated _harmonic_range bonuses to
+    // tower.range. Done here, not in the trait handler, because aura
+    // sources contribute their bonus during pass 1 — if a target tower
+    // ran its update before its source contributed (build-order
+    // dependent), it would apply bonus=0 and skip the buff for the
+    // whole frame. Doing it after pass 1 guarantees every contribution
+    // is in before we read it.
+    for (const tower of this.towers) {
+      for (const trait of tower.traits) {
+        if (trait.id === '_harmonic_range') {
+          tower.range = tower._basePxRange * (trait.bonus ?? 1);
+        }
+      }
     }
 
     // Collect gold and damage stats

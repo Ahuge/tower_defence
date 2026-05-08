@@ -87,10 +87,11 @@ export class TowerInfoPanel {
     const ultTag = tower.typeDef.ultimate ? ' [ULTIMATE]' : '';
     this.nameText.setText(`${tower.typeDef.name} Lv${tower.level}${ultTag}`);
 
-    // Base stats
+    // Base stats — `tower.range` is post-aura, so use `_basePxRange`
+    // (the pre-aura per-level range) for the "base" display line.
     const baseDmg = tower.damage;
     const baseRate = tower.fireRate;
-    const baseRange = tower.range / TILE_SIZE;
+    const baseRange = tower._basePxRange / TILE_SIZE;
 
     this.statsText.setText(
       `DMG: ${baseDmg}  RNG: ${baseRange.toFixed(1)}  SPD: ${baseRate}ms  [${tower.damageType}]`
@@ -110,9 +111,10 @@ export class TowerInfoPanel {
 
     if (adjDmg && adjDmg.bonus > 0) buffs.push(`+${adjDmg.bonus} DMG (adj)`);
     if (adjRate && adjRate.bonus > 0) buffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD (adj)`);
-    if (harmDmg && harmDmg.bonus > 0) buffs.push(`+${Math.round(harmDmg.bonus * 100)}% DMG`);
-    if (harmRate && harmRate.bonus > 0) buffs.push(`-${Math.round(harmRate.bonus * 100)}% SPD`);
-    if (harmRange && harmRange.bonus > 0) buffs.push(`+${(harmRange.bonus / TILE_SIZE).toFixed(1)} RNG`);
+    // Harmonic buffs are multiplier-style (bonus >= 1, identity 1).
+    if (harmDmg && harmDmg.bonus > 1) buffs.push(`+${Math.round((harmDmg.bonus - 1) * 100)}% DMG`);
+    if (harmRate && harmRate.bonus > 1) buffs.push(`+${Math.round((harmRate.bonus - 1) * 100)}% SPD`);
+    if (harmRange && harmRange.bonus > 1) buffs.push(`+${Math.round((harmRange.bonus - 1) * 100)}% RNG`);
     if (harmCrit && (harmCrit.chance ?? 0) > 0) buffs.push(`${Math.round((harmCrit.chance ?? 0) * 100)}% crit`);
     if (factionRate && factionRate.bonus > 0) buffs.push(`-${Math.round(factionRate.bonus * 100)}% SPD (faction)`);
     if (spellAmp && spellAmp.bonus > 0) buffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic`);
@@ -158,8 +160,9 @@ export class TowerInfoPanel {
     if (tower.canUpgrade()) {
       const next = tower.typeDef.upgrades[tower.level - 1];
       const deltas: string[] = [];
+      // Compare against pre-aura base range — `tower.range` is post-aura.
       const dmgDelta = next.damage - tower.damage;
-      const rangeDelta = next.range - tower.range / TILE_SIZE;
+      const rangeDelta = next.range - tower._basePxRange / TILE_SIZE;
       const rateDelta = next.fireRate - tower.fireRate;
 
       if (dmgDelta !== 0) deltas.push(`${dmgDelta > 0 ? '+' : ''}${dmgDelta} DMG`);

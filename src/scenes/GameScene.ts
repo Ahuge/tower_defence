@@ -1383,9 +1383,11 @@ export class GameScene extends Phaser.Scene {
     const rampUp = getTrait(tower.traits, 'ramp_up');
     if (adjDmg && adjDmg.bonus > 0) auraBuffs.push(`+${adjDmg.bonus} DMG (adj)`);
     if (adjRate && adjRate.bonus > 0) auraBuffs.push(`-${Math.round(adjRate.bonus * 100)}% SPD (adj)`);
-    if (harmDmg && harmDmg.bonus > 0) auraBuffs.push(`+${Math.round(harmDmg.bonus * 100)}% DMG`);
-    if (harmRate && harmRate.bonus > 0) auraBuffs.push(`-${Math.round(Math.min(0.8, harmRate.bonus) * 100)}% SPD`);
-    if (harmRange && harmRange.bonus > 0) auraBuffs.push(`+${(harmRange.bonus / TILE_SIZE).toFixed(1)} RNG`);
+    // Harmonic buffs are now multiplier-style (bonus >= 1 = no buff) —
+    // display the *effect*, (bonus - 1) * 100, only when actually buffed.
+    if (harmDmg && harmDmg.bonus > 1) auraBuffs.push(`+${Math.round((harmDmg.bonus - 1) * 100)}% DMG`);
+    if (harmRate && harmRate.bonus > 1) auraBuffs.push(`+${Math.round((harmRate.bonus - 1) * 100)}% SPD`);
+    if (harmRange && harmRange.bonus > 1) auraBuffs.push(`+${Math.round((harmRange.bonus - 1) * 100)}% RNG`);
     if (harmCrit && (harmCrit.chance ?? 0) > 0) auraBuffs.push(`${Math.round((harmCrit.chance ?? 0) * 100)}% crit x${harmCrit.multiplier ?? 2}`);
     if (factionRate && factionRate.bonus > 0) auraBuffs.push(`-${Math.round(factionRate.bonus * 100)}% SPD (faction)`);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') auraBuffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic`);
@@ -1398,27 +1400,33 @@ export class GameScene extends Phaser.Scene {
       auraBuffs.push(`Ramp ${stacks}/${maxStacks} (-${Math.round(reduction * 100)}% SPD)`);
     }
 
-    // Effective (post-buff) stats. Damage mirrors the pipeline in
-    // resolveDamageModifiers: flat adj bonus → harmonic % → spell amp
-    // (magic-only). Fire rate uses tower.getEffectiveFireRate() so
-    // we're always consistent with the runtime shot pacing. Range
-    // picks up harmonic range.
+    // Effective (post-buff) stats. Damage mirrors the runtime pipeline
+    // in resolveDamageModifiers: flat adj bonus → harmonic-damage
+    // multiplier (>=1, identity 1) → spell-amp (magic-only, additive
+    // fraction). Fire rate goes through tower.getEffectiveFireRate()
+    // so display is always consistent with runtime shot pacing.
+    // tower.range is already the post-aura value (TowerManager applies
+    // the harmonic-range multiplier in its second pass), so we read it
+    // directly — no further bonus addition.
     let effDmg = tower.damage;
     if (adjDmg && adjDmg.bonus > 0) effDmg += adjDmg.bonus;
-    if (harmDmg && harmDmg.bonus > 0) effDmg = Math.round(effDmg * (1 + harmDmg.bonus));
+    if (harmDmg && harmDmg.bonus > 1) effDmg = Math.round(effDmg * harmDmg.bonus);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') effDmg = Math.round(effDmg * (1 + spellAmp.bonus));
     const effFireRate = tower.getEffectiveFireRate();
-    let effRange = tower.range / TILE_SIZE;
-    if (harmRange && harmRange.bonus > 0) effRange += harmRange.bonus / TILE_SIZE;
+    const effRange = tower.range / TILE_SIZE;
 
     // Build the multi-option upgrade list (one entry per available
     // path — linear towers get length 1, branching towers get 2+).
     // Delta strings are precomputed relative to the tower's current
     // base stats so the UI only has to render text.
     const rawOptions = tower.getUpgradeOptions();
+    // Upgrade RNG deltas compare against the *pre-aura* base range
+    // (`_basePxRange`) — not `tower.range`, which is post-aura and
+    // would make a +0.5 tile upgrade look like -2 tiles when buffed.
+    const baseRangeTiles = tower._basePxRange / TILE_SIZE;
     const makeDelta = (o: { damage: number; range: number; fireRate: number }) => {
       const dd = o.damage - tower.damage;
-      const dr = o.range - tower.range / TILE_SIZE;
+      const dr = o.range - baseRangeTiles;
       const ds = o.fireRate - tower.fireRate;
       return {
         dmg: dd !== 0 ? `${dd > 0 ? '+' : ''}${dd} DMG` : '',
@@ -1445,7 +1453,7 @@ export class GameScene extends Phaser.Scene {
       cost: tower.typeDef.cost,
       sellValue: tower.getSellValue(),
       damage: tower.damage,
-      range: tower.range / TILE_SIZE,
+      range: tower._basePxRange / TILE_SIZE,
       fireRate: tower.fireRate,
       effectiveDamage: effDmg,
       effectiveRange: effRange,
