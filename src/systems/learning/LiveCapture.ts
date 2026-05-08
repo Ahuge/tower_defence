@@ -50,6 +50,10 @@ interface InFlightTurn {
   faction: string;
   difficulty: string;
   wave: number;
+  /** v6.1.c: ms elapsed from session start to this decision. Lets us
+   *  reconstruct the pacing of the match — how soon the player got
+   *  the maze up, how long they let waves stew before adjusting. */
+  decisionAtMs: number;
 }
 
 interface FinishedMatch {
@@ -60,6 +64,27 @@ interface FinishedMatch {
   outcome: 'win' | 'loss' | 'error';
   waveReached: number;
   turns: InFlightTurn[];
+  /** v6.1.c: capture-format version. Bump on schema changes so the
+   *  training-side ingest can detect / migrate / drop incompatible
+   *  rows. v1 = original schema (no timing, no quality fields). */
+  captureVersion: number;
+  /** v6.1.c: true when finishSession() was called via the abort path
+   *  (player quit out of the match) rather than a natural game-over
+   *  event. Training filters out aborted runs that died early since
+   *  they don't represent intentional play. */
+  aborted: boolean;
+  /** v6.1.c: the match's modifier-lock state. null when modifiers
+   *  were locked off (the standard capture path); the modifier id
+   *  when one was active despite the lock (signals data corruption,
+   *  ingest filter drops these rows). */
+  modifier: string | null;
+  /** v6.1.c: the map this match ran on. Currently always 'plains'
+   *  for standard mode but stored explicitly for forward compat. */
+  mapId: string;
+  /** v6.1.c: total wall time in ms from session start to finish.
+   *  Useful for cross-matching with thinkingMs and for filtering
+   *  unrealistically-fast matches (sub-1-min full play). */
+  durationMs: number;
 }
 
 const SESSION_KEY = 'learning.capture.session';
@@ -69,10 +94,14 @@ const ENABLE_KEY  = 'learning.capture';
 let session: {
   faction: string;
   difficulty: string;
+  mapId: string;
+  modifier: string | null;
   startedAt: number;
   turnIdx: number;
   turns: InFlightTurn[];
 } | null = null;
+
+const CAPTURE_VERSION = 2;
 
 export function isCaptureEnabled(): boolean {
   if (typeof window === 'undefined') return false;
@@ -94,11 +123,16 @@ export function setCaptureEnabled(enabled: boolean): void {
 /** Begin a new capture session. Idempotent — recalls overwrite the
  *  in-flight session, dropping its turns (so a quit-restart cycle
  *  doesn't bleed across matches). */
-export function startSession(faction: string, difficulty: string): void {
+export function startSession(
+  faction: string, difficulty: string,
+  mapId: string = 'plains', modifier: string | null = null,
+): void {
   if (!isCaptureEnabled()) { session = null; return; }
   session = {
     faction,
     difficulty,
+    mapId,
+    modifier,
     startedAt: Date.now(),
     turnIdx: 0,
     turns: [],
@@ -140,6 +174,10 @@ export function recordAction(ctx: BotContext, decision: BotDecision): void {
       if (decision.idx !== undefined) raw.idx = decision.idx;
       if (decision.defId) raw.defId = decision.defId;
     }
+    // v6.1.c: per-turn timestamp — ms offset from session start.
+    // Lets us reconstruct match pacing later without tracking a
+    // running thinking-time field.
+    const decisionAtMs = Date.now() - session.startedAt;
     const turn: InFlightTurn = {
       turnIdx: session.turnIdx++,
       stateFeatures: extractStateFeatures(ctx),
@@ -149,6 +187,7 @@ export function recordAction(ctx: BotContext, decision: BotDecision): void {
       faction: session.faction,
       difficulty: session.difficulty,
       wave: ctx.wave,
+      decisionAtMs,
     };
     session.turns.push(turn);
   } catch (err) {
@@ -159,8 +198,15 @@ export function recordAction(ctx: BotContext, decision: BotDecision): void {
 }
 
 /** Close out the current session with its outcome. Appends the
- *  finished match to localStorage rows; the player exports later. */
-export function finishSession(outcome: 'win' | 'loss' | 'error', waveReached: number): void {
+ *  finished match to localStorage rows; the player exports later.
+ *  v6.1.c: `aborted=true` flags non-natural endings (player quit
+ *  out via menu, scene-stop without a game-over event). Training
+ *  filters drop aborted runs that died early. */
+export function finishSession(
+  outcome: 'win' | 'loss' | 'error',
+  waveReached: number,
+  aborted: boolean = false,
+): void {
   if (!session) return;
   if (session.turns.length === 0) {
     // No actions captured (player quit before doing anything).
@@ -169,6 +215,7 @@ export function finishSession(outcome: 'win' | 'loss' | 'error', waveReached: nu
   }
   try {
     const matchId = Date.now();
+    const durationMs = matchId - session.startedAt;
     const finished: FinishedMatch = {
       matchId,
       generatedAt: new Date().toISOString(),
@@ -177,6 +224,11 @@ export function finishSession(outcome: 'win' | 'loss' | 'error', waveReached: nu
       outcome,
       waveReached,
       turns: session.turns,
+      captureVersion: CAPTURE_VERSION,
+      aborted,
+      modifier: session.modifier,
+      mapId: session.mapId,
+      durationMs,
     };
     if (typeof window !== 'undefined') {
       const existingRaw = window.localStorage.getItem(ROWS_KEY);
@@ -246,6 +298,16 @@ export function exportJSONL(): string {
           outcome: m.outcome,
           won,
           waveReached: m.waveReached,
+          // v6.1.c: per-turn timing
+          decisionAtMs: t.decisionAtMs ?? null,
+          // v6.1.c: match-level quality. Older matches without these
+          // fields export as nulls; ingest filter drops them when
+          // captureVersion < 2.
+          captureVersion: m.captureVersion ?? 1,
+          aborted: m.aborted ?? false,
+          modifier: m.modifier ?? null,
+          mapId: m.mapId ?? null,
+          durationMs: m.durationMs ?? null,
         }));
       }
     }

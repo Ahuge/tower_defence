@@ -82,6 +82,55 @@ def main() -> int:
         n_human = sum(1 for r in rows if r.get("brain") == "human")
         print(f"  rows tagged brain=human: {n_human:,} (weight × {human_weight:g})")
 
+    # v6.1.c: ingest-side quality filter for human captures. Drops
+    # rows belonging to matches that are unlikely to represent
+    # intentional / informative play. We filter at row level rather
+    # than match level because the JSONL is row-keyed; group by
+    # matchId, evaluate quality per group, drop rows from bad groups.
+    #
+    # Rules (per BRAIN_V6_PLAN.md v6.1.c, only applied to brain=human
+    # rows so bot data is unaffected):
+    #   1. Drop matches with < 30 decisions — too short to be informative.
+    #   2. Drop matches with `aborted=true && waveReached < 5` — quit
+    #      out before the kit was meaningfully tested.
+    #   3. Drop matches with non-null `modifier` — modifier-tainted
+    #      data has different distribution than the bot harness's
+    #      modifier=null runs (per CLAUDE.md modifier-lock pattern).
+    #   4. Drop matches with `captureVersion < 2` ONLY if the row also
+    #      has missing v6.1.c fields (legacy captures from before the
+    #      schema bump are still useful at face value, but we won't
+    #      filter them by aborted/modifier — they predate those fields).
+    human_rows = [r for r in rows if r.get("brain") == "human"]
+    if human_rows:
+        from collections import defaultdict
+        groups: dict[int, list[dict]] = defaultdict(list)
+        for r in human_rows:
+            groups[r.get("matchId", -1)].append(r)
+        kept_match_ids: set[int] = set()
+        dropped_short = 0
+        dropped_aborted = 0
+        dropped_modifier = 0
+        for mid, mrows in groups.items():
+            if len(mrows) < 30:
+                dropped_short += len(mrows)
+                continue
+            sample = mrows[0]
+            if sample.get("captureVersion", 1) >= 2:
+                if sample.get("aborted") and (sample.get("waveReached", 0) or 0) < 5:
+                    dropped_aborted += len(mrows)
+                    continue
+                if sample.get("modifier") is not None:
+                    dropped_modifier += len(mrows)
+                    continue
+            kept_match_ids.add(mid)
+        if dropped_short or dropped_aborted or dropped_modifier:
+            kept_human = [r for r in human_rows if r.get("matchId") in kept_match_ids]
+            bot_rows = [r for r in rows if r.get("brain") != "human"]
+            rows = bot_rows + kept_human
+            print(f"  v6.1.c filter: dropped {dropped_short:,} short, "
+                  f"{dropped_aborted:,} early-abort, {dropped_modifier:,} modifier-tainted human rows "
+                  f"({len(kept_human):,} human rows kept)")
+
     # --fan-human: duplicate each human row across all 10 bot
     # proposer one-hots so the human-learned signal is reachable
     # from any bot brain's proposal at inference. Without this, the

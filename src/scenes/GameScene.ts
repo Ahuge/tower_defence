@@ -845,9 +845,15 @@ export class GameScene extends Phaser.Scene {
     // Live-capture hook — when ?capture=1 (or localStorage flag) is
     // set, record every human place/upgrade/sell for offline retrain
     // of LearningBrain. No-op when capture mode is off.
+    // v6.1.c: pass mapId + modifier so the capture record knows which
+    // map each match was played on and whether a DraftModifier was
+    // active (the standard capture path forces modifier=null per
+    // CLAUDE.md; if a modifier ever leaks through, the ingest filter
+    // drops the rows for distribution-cleanliness vs the bot dataset).
     import('../systems/learning/LiveCapture').then(m => {
       if (m.isCaptureEnabled() && this.faction && this.matchMode === 'standard') {
-        m.startSession(this.faction, this.difficulty);
+        const modifierId = this.modifier ? this.modifier.id : null;
+        m.startSession(this.faction, this.difficulty, this.mapId, modifierId);
       }
     });
 
