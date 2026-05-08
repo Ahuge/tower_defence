@@ -7,6 +7,7 @@ import { GameStats } from '../../systems/StatsTracker';
 import { platformBridge } from '../../systems/platform';
 import { FACTIONS, FactionId } from '../../data/Factions';
 import { CoopPlayerStats } from '../../scenes/GameOverScene';
+import { isCaptureEnabled, getStats as getCaptureStats, downloadJSONL as downloadCapture } from '../../systems/learning/LiveCapture';
 
 interface Props { data: Record<string, unknown>; }
 
@@ -228,6 +229,18 @@ export function GameOverScreen({ data }: Props) {
         </div>
       )}
 
+      {/* v6.1: capture export prompt — only when training-data capture
+          is on and at least one match is recorded. Smart-tagged filename
+          (faction / difficulty / outcome / wave) makes it trivial for
+          the training pipeline to ingest without manual rename. */}
+      <CaptureExportPrompt
+        captureEnabled={isCaptureEnabled()}
+        faction={faction}
+        difficulty={data.difficulty as string | undefined}
+        won={won}
+        waveReached={wave}
+      />
+
       {/* Buttons */}
       <div class="ui-section" style={{ display: 'flex', justifyContent: 'center', gap: '12px', paddingBottom: '24px', flexWrap: 'wrap' }}>
         <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Play Again</button>
@@ -235,6 +248,45 @@ export function GameOverScreen({ data }: Props) {
         <button class="btn btn-primary" onClick={() => UIBridge.show('store')}>Store</button>
       </div>
     </>
+  );
+}
+
+/** v6.1: shown on the GameOverScreen when training-data capture is
+ *  on and at least one match is in the buffer. Lets the player save
+ *  their just-finished match with a smart filename so the training
+ *  pipeline can ingest without manual renaming. The capture buffer
+ *  isn't cleared on save; player can keep recording further matches
+ *  and batch-download from Settings → Training Data. */
+function CaptureExportPrompt({
+  captureEnabled, faction, difficulty, won, waveReached,
+}: {
+  captureEnabled: boolean;
+  faction: string | null;
+  difficulty: string | undefined;
+  won: boolean;
+  waveReached: number;
+}) {
+  if (!captureEnabled) return null;
+  const stats = getCaptureStats();
+  if (stats.matches === 0) return null;
+
+  const onSave = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    const factionTag = faction ?? 'unknown';
+    const diffTag = difficulty ?? 'normal';
+    const outcomeTag = won ? 'win' : 'loss';
+    const waveTag = `w${waveReached}`;
+    const filename = `human_${factionTag}_${diffTag}_${outcomeTag}_${waveTag}_${date}.jsonl`;
+    downloadCapture(filename);
+  };
+
+  return (
+    <div class="ui-section" style={{ paddingBottom: '12px', textAlign: 'center' }}>
+      <div class="text-dim text-sm" style={{ marginBottom: '6px' }}>
+        🎙️ Recording on — {stats.matches} match{stats.matches === 1 ? '' : 'es'} captured
+      </div>
+      <button class="btn btn-primary" onClick={onSave}>Save Recording</button>
+    </div>
   );
 }
 
