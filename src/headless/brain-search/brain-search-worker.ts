@@ -30,6 +30,12 @@ interface Task {
    *  COUNTER_PICK_PARAMS. Future directors register their own env
    *  prefix; the runner picks the right name. */
   directorEnvVar?: string;
+  /** v5.2: optional faction-balance params to inject. Keys are
+   *  dot-paths from FactionBalanceSchema (`<towerId>.<field>` or
+   *  `<towerId>.traits.<traitId>.<param>`). Forwarded to env var
+   *  `FACTION_BALANCE_<FACTION>_PARAMS` before the match runs;
+   *  HeadlessMatch's loader patches TOWER_TYPES from there. */
+  factionBalanceParams?: Record<string, number>;
 }
 
 function send(obj: unknown): void {
@@ -59,6 +65,17 @@ async function main(): Promise<void> {
         // Explicit absence: clear the env var so the director uses
         // its registered defaults (not stale params from a prior task).
         delete process.env[t.directorEnvVar];
+      }
+      // v5.2: faction-balance params, scoped to the match's faction.
+      // Always clear ALL FACTION_BALANCE_* vars first so a stale
+      // patch from a prior task can't leak. Then set the one for
+      // this task's faction if present.
+      for (const k of Object.keys(process.env)) {
+        if (k.startsWith('FACTION_BALANCE_')) delete process.env[k];
+      }
+      if (t.factionBalanceParams && t.config.faction) {
+        const factionVar = `FACTION_BALANCE_${t.config.faction.toUpperCase()}_PARAMS`;
+        process.env[factionVar] = JSON.stringify(t.factionBalanceParams);
       }
       try {
         const r = await runMatch(t.config);

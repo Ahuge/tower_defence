@@ -31,6 +31,7 @@ import { DIFFICULTIES } from '../data/Difficulty';
 import { FACTIONS } from '../data/Factions';
 import { getWavesForMode, generateEndlessWaves, WaveDefinition } from '../data/WaveDefinitions';
 import { getWaveDirector, listWaveDirectors } from '../systems/bots/WaveDirectorBrain';
+import { applyFactionBalance } from '../data/balance/FactionBalanceLoader';
 // Side-effect imports: register WaveDirectors at module load.
 import '../systems/bots/wavedirectors/UniformWaveDirector';
 import '../systems/bots/wavedirectors/CounterPickWaveDirector';
@@ -76,6 +77,12 @@ export async function runMatch(
   const maxSimMs = config.maxSimMs ?? 30 * 60 * 1000;
   const maxWaves = config.maxWaves ?? 60;
 
+  // v5.2: apply faction-balance overrides (env-injected per-task by
+  // brain-search-worker) before the match starts, restore at end.
+  // Patches TOWER_TYPES[<this faction>] only — other factions are not
+  // touched. Restore-in-finally pattern protects against patched state
+  // leaking across matches in the same worker process.
+  const restoreFactionBalance = applyFactionBalance(config.faction);
   try {
     return await runMatchInner(config, wallStart, stepMs, maxSimMs, maxWaves, brainOverride ?? null);
   } catch (err) {
@@ -94,6 +101,8 @@ export async function runMatch(
       towerIdCounts: {},
       error: (err as Error).message,
     };
+  } finally {
+    restoreFactionBalance();
   }
 }
 
