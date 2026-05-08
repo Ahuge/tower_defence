@@ -7,7 +7,9 @@ import { GameStats } from '../../systems/StatsTracker';
 import { platformBridge } from '../../systems/platform';
 import { FACTIONS, FactionId } from '../../data/Factions';
 import { CoopPlayerStats } from '../../scenes/GameOverScene';
-import { isCaptureEnabled, getStats as getCaptureStats, downloadJSONL as downloadCapture } from '../../systems/learning/LiveCapture';
+import { isCaptureEnabled, getStats as getCaptureStats, downloadJSONL as downloadCapture, clearAll as clearCaptures } from '../../systems/learning/LiveCapture';
+import { getState as getCampaignState, recordResultAndAdvance, setLastSavedFilename } from '../../systems/CaptureCampaign';
+import { FACTIONS as ALL_FACTIONS } from '../../data/Factions';
 
 interface Props { data: Record<string, unknown>; }
 
@@ -232,21 +234,37 @@ export function GameOverScreen({ data }: Props) {
       {/* v6.1: capture export prompt — only when training-data capture
           is on and at least one match is recorded. Smart-tagged filename
           (faction / difficulty / outcome / wave) makes it trivial for
-          the training pipeline to ingest without manual rename. */}
-      <CaptureExportPrompt
-        captureEnabled={isCaptureEnabled()}
+          the training pipeline to ingest without manual rename. When
+          we're inside a CaptureCampaign, this is replaced with the
+          dedicated campaign control below. */}
+      {!getCampaignState() && (
+        <CaptureExportPrompt
+          captureEnabled={isCaptureEnabled()}
+          faction={faction}
+          difficulty={data.difficulty as string | undefined}
+          won={won}
+          waveReached={wave}
+        />
+      )}
+
+      {/* v6.1.b: capture campaign progression — shows "Save & Next" or
+          "Skip Save & Next" when an active campaign is running. */}
+      <CampaignProgressionPrompt
         faction={faction}
         difficulty={data.difficulty as string | undefined}
         won={won}
         waveReached={wave}
       />
 
-      {/* Buttons */}
-      <div class="ui-section" style={{ display: 'flex', justifyContent: 'center', gap: '12px', paddingBottom: '24px', flexWrap: 'wrap' }}>
-        <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Play Again</button>
-        <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
-        <button class="btn btn-primary" onClick={() => UIBridge.show('store')}>Store</button>
-      </div>
+      {/* Buttons — hidden when in active capture campaign so the
+          campaign UI is the only path forward. */}
+      {!getCampaignState() && (
+        <div class="ui-section" style={{ display: 'flex', justifyContent: 'center', gap: '12px', paddingBottom: '24px', flexWrap: 'wrap' }}>
+          <button class="btn btn-gold btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Play Again</button>
+          <button class="btn btn-large" onClick={() => leaveViaInterstitial(() => UIBridge.showMenu(), continueAdShown)}>Menu</button>
+          <button class="btn btn-primary" onClick={() => UIBridge.show('store')}>Store</button>
+        </div>
+      )}
     </>
   );
 }
@@ -286,6 +304,84 @@ function CaptureExportPrompt({
         🎙️ Recording on — {stats.matches} match{stats.matches === 1 ? '' : 'es'} captured
       </div>
       <button class="btn btn-primary" onClick={onSave}>Save Recording</button>
+    </div>
+  );
+}
+
+/** v6.1.b: shown on GameOverScreen when an active capture campaign is
+ *  running. Replaces the normal Play Again / Menu / Store buttons.
+ *  "Save & Next Faction" downloads the just-finished match's recording
+ *  with a smart filename, marks the result, and launches the next
+ *  faction's standard match. "Skip Save" advances without downloading
+ *  (useful if the run was bad/short and not worth keeping). */
+function CampaignProgressionPrompt({
+  faction, difficulty, won, waveReached,
+}: {
+  faction: string | null;
+  difficulty: string | undefined;
+  won: boolean;
+  waveReached: number;
+}) {
+  const state = getCampaignState();
+  if (!state) return null;
+  const total = state.factionOrder.length;
+  // The just-finished match is at currentIndex; the NEXT faction will
+  // be after recordResultAndAdvance.
+  const finishedIdx = state.currentIndex;
+  const nextIdx = finishedIdx + 1;
+  const isFinal = nextIdx >= total;
+
+  const advance = (saveFirst: boolean) => {
+    let savedFilename: string | undefined;
+    if (saveFirst) {
+      const date = new Date().toISOString().slice(0, 10);
+      const factionTag = faction ?? 'unknown';
+      const diffTag = difficulty ?? state.difficulty;
+      const outcomeTag = won ? 'win' : 'loss';
+      savedFilename = `human_${factionTag}_${diffTag}_${outcomeTag}_w${waveReached}_${date}.jsonl`;
+      downloadCapture(savedFilename);
+    }
+    const nextFaction = recordResultAndAdvance(
+      won ? 'win' : 'loss',
+      waveReached,
+      savedFilename,
+    );
+    if (savedFilename) setLastSavedFilename(savedFilename);
+    // Clear the rolling capture buffer so the next match starts fresh.
+    // Without this, the next match's recording would include all prior
+    // matches in the campaign — every download would grow.
+    clearCaptures();
+    if (!nextFaction) {
+      // Campaign complete — go to summary screen.
+      UIBridge.show('capture-campaign');
+      return;
+    }
+    UIBridge.startScene('GameScene', {
+      mode: 'standard',
+      faction: nextFaction,
+      difficulty: state.difficulty,
+      map: 'plains',
+      modifier: null,
+    });
+  };
+
+  return (
+    <div class="ui-section" style={{ paddingBottom: '24px', textAlign: 'center' }}>
+      <div class="text-dim text-sm" style={{ marginBottom: '8px' }}>
+        🎙️ Capture Campaign — match {finishedIdx + 1} of {total}
+        {isFinal ? ' (last)' : ` · next: ${ALL_FACTIONS[state.factionOrder[nextIdx]]?.name ?? state.factionOrder[nextIdx]}`}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <button class="btn btn-gold btn-large" onClick={() => advance(true)}>
+          {isFinal ? 'Save & Finish' : 'Save & Next Faction'}
+        </button>
+        <button class="btn" onClick={() => advance(false)}>
+          {isFinal ? 'Skip Save & Finish' : 'Skip Save & Next'}
+        </button>
+        <button class="btn" onClick={() => UIBridge.show('capture-campaign')}>
+          Pause Campaign
+        </button>
+      </div>
     </div>
   );
 }
