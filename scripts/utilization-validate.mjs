@@ -247,3 +247,33 @@ if (redundant.length > 0) reportLines.push(`- **Redundant** with peers: ${redund
 if (brainGap.length > 0) reportLines.push(`- **Brain gap**: ${brainGap.map(c => c.id).join(', ')}. Trait isn't being modeled by the planner — file as missing scorer.`);
 writeFileSync(reportPath, reportLines.join('\n'));
 console.log(`report written to ${reportPath}`);
+
+// v5.5: structured JSON output for the gates checker. Produced alongside
+// the markdown so v5-gates.mjs can read it without parsing prose.
+const jsonReport = {
+  faction: factionFlag,
+  difficulty: difficultyFlag,
+  n: N,
+  flagThreshold,
+  defenderParamsFile: vsDefenderParamsFile ?? null,
+  factionParamsFile: vsFactionParamsFile ?? null,
+  baseline: { wins: baseline.wins, n: baseline.n, winRate: baseline.winRate },
+  utilization: utilReport.byId.map(s => ({
+    id: s.id,
+    utilization: s.utilization,
+    shareOfPlay: s.shareOfPlay,
+    totalPlacements: s.totalPlacements,
+    avgPlacements: s.avgPlacements,
+  })),
+  flaggedLow: utilReport.flaggedLow,
+  classifications: classifications.map(c => ({
+    id: c.id,
+    ablatedWinRate: c.ablatedWinRate,
+    delta: c.delta,
+    verdict: c.verdict,
+    redundancyVerdict: c.redundancyVerdict ?? null,
+  })),
+};
+const jsonPath = resolve(PROJECT_ROOT, outputDir, `validation-results-${factionFlag}.json`);
+writeFileSync(jsonPath, JSON.stringify(jsonReport, null, 2));
+console.log(`json results written to ${jsonPath}`);
