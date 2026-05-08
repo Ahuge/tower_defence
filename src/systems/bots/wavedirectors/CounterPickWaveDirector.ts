@@ -285,4 +285,22 @@ function sampleFromDistribution(probs: number[]): number {
   return probs.length - 1;
 }
 
-registerWaveDirector('counter_pick', () => new CounterPickWaveDirector());
+/** Read params from the COUNTER_PICK_PARAMS env var (JSON-encoded).
+ *  Lets brain-search inject director params per match without touching
+ *  source. Missing/invalid → defaults. Mirrors the same env-injection
+ *  pattern BalancedBrain / MazingBrain use. */
+function loadParamsFromEnv(): Partial<CounterPickParams> | undefined {
+  const raw = (typeof process !== 'undefined' && process.env)
+    ? process.env.COUNTER_PICK_PARAMS : undefined;
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as Partial<CounterPickParams>;
+  } catch {
+    return undefined;
+  }
+}
+
+registerWaveDirector('counter_pick', () => {
+  const envParams = loadParamsFromEnv();
+  return new CounterPickWaveDirector(envParams);
+});

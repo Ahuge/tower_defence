@@ -53,6 +53,15 @@ const validateSeedsFlag = getFlag('validate-seeds');
 const seedFromFlag = getFlag('seed-from');
 const diversityWeightFlag = getFlag('diversity-weight');
 
+// v4.3: two-agent flags. When --brain=counter_pick, we're searching the
+// director's params; the defender is fixed via --vs-defender-* flags.
+// When --brain=<defender>, the director can optionally be fixed via
+// --vs-director-* flags (default: no director, legacy v3 behaviour).
+const vsDefenderBrainFlag = getFlag('vs-defender-brain');     // 'mazing' etc
+const vsDefenderParamsFile = getFlag('vs-defender-params');   // path to JSON
+const vsDirectorIdFlag = getFlag('vs-director');              // 'counter_pick' etc
+const vsDirectorParamsFile = getFlag('vs-director-params');   // path to JSON
+
 // ── jsdom + dynamic imports of TS sources ──────────────────────────
 await import('../src/headless/harness/jsdom-setup.ts');
 const { BrainSearchManager, DEFAULT_MANAGER_CONFIG } = await import('../src/headless/brain-search/BrainSearchManager.ts');
@@ -69,10 +78,40 @@ if (brainFlag === 'balanced') {
   ({ AOE_FOCUS_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/AOEFocusBrainSchema.ts'));
 } else if (brainFlag === 'mazing') {
   ({ MAZING_BRAIN_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/MazingBrainSchema.ts'));
+} else if (brainFlag === 'counter_pick') {
+  ({ COUNTER_PICK_WAVE_DIRECTOR_SCHEMA: BRAIN_SCHEMA } = await import('../src/headless/brain-search/CounterPickWaveDirectorSchema.ts'));
 } else {
-  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus, mazing`);
+  console.error(`[brain-search] no schema for brain "${brainFlag}". Supported: balanced, greedy, aoe_focus, mazing, counter_pick`);
   process.exit(1);
 }
+
+// v4.3: when searching the director, the defender brain is fixed.
+// Default to mazing since it's the strongest defender we have.
+const isSearchingDirector = brainFlag === 'counter_pick';
+const fixedDefenderBrainId = isSearchingDirector
+  ? (vsDefenderBrainFlag ?? 'mazing')
+  : brainFlag;
+let fixedDefenderParams = null;
+if (vsDefenderParamsFile) {
+  try {
+    fixedDefenderParams = JSON.parse(readFileSync(vsDefenderParamsFile, 'utf8'));
+  } catch (err) {
+    console.error(`[brain-search] failed to load defender params from ${vsDefenderParamsFile}: ${err}`);
+    process.exit(1);
+  }
+}
+let fixedDirectorParams = null;
+if (vsDirectorParamsFile) {
+  try {
+    fixedDirectorParams = JSON.parse(readFileSync(vsDirectorParamsFile, 'utf8'));
+  } catch (err) {
+    console.error(`[brain-search] failed to load director params from ${vsDirectorParamsFile}: ${err}`);
+    process.exit(1);
+  }
+}
+// Director env-var name (only counter_pick supports v4.3 search; future
+// directors would extend this lookup).
+const DIRECTOR_ENV_NAMES = { counter_pick: 'COUNTER_PICK_PARAMS' };
 
 // ── Run dir + persistence ──────────────────────────────────────────
 const runId = `${brainFlag}-${factionFlag}-${difficultyFlag}`;
@@ -180,24 +219,55 @@ let nextTaskId = 1;
 let nextEvalId = manager.history.length + 1;
 
 function makeMatchConfig(seed) {
-  // Same seed-mixing rule as Batch.ts so this is reproducible across
-  // any other harness that uses (baseSeed, index) pairs.
-  return {
+  // v4.3: when searching the director, the defender brain is fixed.
+  // Otherwise, brainId is the searched brain.
+  const config = {
     faction: factionFlag,
     difficulty: difficultyFlag,
     mapId: 'plains',
-    brainId: brainFlag,
+    brainId: fixedDefenderBrainId,
     matchMode: 'standard',
     waveCount: 20,
     seed: (1 * 31 + seed * 7919) >>> 0,
   };
+  // Attach director when one is in play. When searching the director,
+  // brain=counter_pick → waveDirectorId=counter_pick; the env var
+  // COUNTER_PICK_PARAMS gets the per-eval params injected.
+  if (isSearchingDirector) {
+    config.waveDirectorId = brainFlag;  // 'counter_pick'
+  } else if (vsDirectorIdFlag) {
+    config.waveDirectorId = vsDirectorIdFlag;
+  }
+  return config;
+}
+
+/** Build the worker-task envelope. Picks which side gets the searched
+ *  params and which side gets the fixed (frozen) params. */
+function buildTask(taskId, config, searchedParams) {
+  const task = { taskId, config };
+  if (isSearchingDirector) {
+    // Searched side is the director — its params go into directorParams.
+    // Defender side uses the fixed (frozen) params via the brain's env.
+    task.params = fixedDefenderParams ?? {};
+    task.directorParams = searchedParams;
+    task.directorEnvVar = DIRECTOR_ENV_NAMES[brainFlag];
+  } else {
+    // Searched side is the defender — params go into the brain env var.
+    // Director (if any) gets fixed params via directorParams envelope.
+    task.params = searchedParams;
+    if (vsDirectorIdFlag) {
+      task.directorParams = fixedDirectorParams ?? {};
+      task.directorEnvVar = DIRECTOR_ENV_NAMES[vsDirectorIdFlag];
+    }
+  }
+  return task;
 }
 
 async function evaluateConfig(params, n, tag) {
   const tasks = [];
   for (let i = 0; i < n; i++) {
     const config = makeMatchConfig(i);
-    tasks.push(pool.dispatch({ taskId: nextTaskId++, config, params }));
+    tasks.push(pool.dispatch(buildTask(nextTaskId++, config, params)));
   }
   const results = await Promise.all(tasks);
   let wins = 0, errors = 0, totalWave = 0, totalDiversity = 0, diversityCount = 0;
@@ -226,12 +296,25 @@ async function evaluateConfig(params, n, tag) {
       }
     }
   }
+  // v4.3: when searching the director, flip the fitness — defender's
+  // loss is director's win. score=leak_rate so brain-search maximises
+  // leaks instead of wins. avgWave inverted similarly (lower wave-
+  // reached = bigger director win), but we keep avgWave's raw value
+  // and let the fitness term in BrainSearchManager pick — for
+  // directors, smaller avgWave is better, so the existing
+  // `avgWave/100 wave bonus` works the wrong direction. Cleanest:
+  // for director searches, store -avgWave so the fitness fn's
+  // `+ avgWave/100` term still rewards director-favourable runs.
+  const score = isSearchingDirector ? (1 - wins / n) : (wins / n);
+  const avgWaveForFitness = isSearchingDirector
+    ? -(totalWave / n)
+    : (totalWave / n);
   const evalRecord = {
     evalId: nextEvalId++,
     ts: Date.now(),
     params,
-    score: wins / n,
-    avgWave: totalWave / n,
+    score,
+    avgWave: avgWaveForFitness,
     diversity: diversityCount > 0 ? totalDiversity / diversityCount : 0,
     n,
     tag,
