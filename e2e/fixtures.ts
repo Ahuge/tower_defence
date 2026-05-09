@@ -48,7 +48,14 @@ export const test = base.extend<TDFixtures>({
             campaignState: {},
             careerHighStage: 0,
             towerChips: {},
-            flags: { first_game_complete: true },
+            // Pre-mark every shipped announcement as seen so the
+            // AnnouncementModal doesn't auto-pop over the tutorial /
+            // menu state the specs are exercising. Add new entries
+            // here when src/data/Announcements.ts gains an id.
+            flags: {
+              first_game_complete: true,
+              'announcement_seen.campaigns-released': true,
+            },
           }));
         } catch {}
       });
