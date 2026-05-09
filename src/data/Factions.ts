@@ -8,7 +8,9 @@
  *            resolved, downstream code only ever sees a real faction
  *            id; `random` itself never reaches GameScene.
  */
-export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'chaos' | 'random';
+import { rng } from '../systems/Rng';
+
+export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'chaos' | 'random' | 'coalition';
 
 export interface Faction {
   id: FactionId;
@@ -124,9 +126,21 @@ export const FACTIONS: Record<FactionId, Faction> = {
     secondaryColor: 0xff88ff,
     towerIds: [], // Resolved on selection — never used directly.
   },
+  coalition: {
+    id: 'coalition',
+    name: 'Coalition',
+    description: 'The Arcane march on the realm. The Coalition rallies — old stone, plain steel, no spells of our own. Hold what you have. Build it well. There is nothing else coming.',
+    primaryColor: 0x9aa3ad,
+    secondaryColor: 0xc8cfd6,
+    // Coalition starting kit. Specific Arcane campaign missions
+    // override `restrictions.allowedTowerIds` to expose a subset
+    // (M1 starts with arrow + cannon + coalition_wall only);
+    // replacements happen as the campaign progresses.
+    towerIds: ['arrow', 'cannon', 'sniper', 'coalition_wall', 'coalition_root'],
+  },
 };
 
-export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'chaos', 'random'];
+export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic', 'chaos', 'random', 'coalition'];
 
 /** Real, playable factions that resolve to a deterministic tower pool.
  *  Excludes `chaos` (rotating pool meta-faction) and `random` (the
@@ -135,9 +149,11 @@ export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'vo
 export const REAL_FACTIONS: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'];
 
 /** Pick one of the 11 real factions uniformly at random. Used to
- *  resolve the `'random'` picker token before any match logic runs. */
+ *  resolve the `'random'` picker token before any match logic runs.
+ *  Uses the seeded module RNG so headless replays + capture-mode
+ *  recordings stay deterministic against a fixed seed. */
 export function rollRandomRealFaction(): FactionId {
-  return REAL_FACTIONS[Math.floor(Math.random() * REAL_FACTIONS.length)];
+  return REAL_FACTIONS[Math.floor(rng() * REAL_FACTIONS.length)];
 }
 
 export function getFaction(id: FactionId): Faction {

@@ -13,11 +13,16 @@ export interface TutorialState {
   /** True once the player has either completed or dismissed the first-launch flow.
    *  Prevents `basics` from auto-launching on every page load. */
   dismissedFirstLaunch: boolean;
+  /** Plan 4: when true, suppress every `faction:*` auto-trigger.
+   *  The player can still replay any individual brief from the Help
+   *  carousel. Toggleable from the brief dialog itself and from
+   *  Settings later. */
+  skipAllFactionBriefs?: boolean;
   version: number;
 }
 
 function defaultState(): TutorialState {
-  return { completedTracks: [], dismissedFirstLaunch: false, version: STATE_VERSION };
+  return { completedTracks: [], dismissedFirstLaunch: false, skipAllFactionBriefs: false, version: STATE_VERSION };
 }
 
 export const TutorialPersistence = {
@@ -27,9 +32,17 @@ export const TutorialPersistence = {
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw) as Partial<TutorialState>;
       if (parsed.version !== STATE_VERSION) return defaultState();
+      // Defaults-merge so any new field added to TutorialState picks
+      // up its default value transparently for existing saves —
+      // matches the pattern in StorePersistence + PlayerProfileStore.
+      // Per-field coercions remain so a malformed legacy save can't
+      // smuggle a non-array / non-boolean past the runtime contract.
       return {
+        ...defaultState(),
+        ...parsed,
         completedTracks: Array.isArray(parsed.completedTracks) ? parsed.completedTracks : [],
         dismissedFirstLaunch: !!parsed.dismissedFirstLaunch,
+        skipAllFactionBriefs: !!parsed.skipAllFactionBriefs,
         version: STATE_VERSION,
       };
     } catch {
@@ -45,5 +58,16 @@ export const TutorialPersistence = {
   },
   reset(): void {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
+  },
+
+  /** Read / write the global "skip all faction briefs" toggle. */
+  isFactionBriefsSkipped(): boolean {
+    return !!TutorialPersistence.load().skipAllFactionBriefs;
+  },
+  setFactionBriefsSkipped(value: boolean): void {
+    const state = TutorialPersistence.load();
+    if (!!state.skipAllFactionBriefs === value) return;
+    state.skipAllFactionBriefs = value;
+    TutorialPersistence.save(state);
   },
 };

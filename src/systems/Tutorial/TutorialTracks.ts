@@ -215,80 +215,178 @@ const skipHint: TutorialTrack = {
   ],
 };
 
-/** First-launch orientation. Runs before any faction/mode has been chosen,
- *  so every target is either the Menu screen or a `screen` (centered) step. */
+/** Replays from the Help carousel only — no longer auto-fires (Plan 3
+ *  + 4: SplashScreen + FTG own first-launch onboarding, the `?`
+ *  carousel owns ongoing reference). Copy rewritten in Plan 4 from
+ *  the previous "What's Different" framing into plain teaching voice
+ *  per user feedback that the old version read like marketing. */
 const basics: TutorialTrack = {
   id: 'basics',
   name: 'Welcome Tour',
-  summary: 'What a tower defence is and what makes this one different.',
+  summary: 'A walk through how the genre, the maps, and the menu work.',
   steps: [
     {
       id: 'intro',
       target: { kind: 'screen' },
-      title: 'Welcome, Commander',
-      body: "A quick tour. You'll learn how the game works and what's unique about it. You can skip anytime.",
+      title: 'Quick Tour',
+      body: "Five short cards on how the game works. Skip any time.",
     },
     {
       id: 'td_basics',
       target: { kind: 'screen' },
-      title: 'The Basics',
-      body: 'Creeps walk from the spawn to your base. You can place towers along the way, towers kill creeps, dead creeps drop gold, and gold buys more towers. Leaks lose lives, lose too many lives and its game over.',
+      title: 'How a Match Plays',
+      body: 'Creeps walk from spawn to exit. Towers along the path kill them. Each kill drops gold. Spend gold on more towers. If too many creeps reach the exit, you lose.',
     },
     {
       id: 'mazing',
       target: { kind: 'screen' },
-      title: "What's Different: Mazing",
-      body: "Placing towers block creep paths. If you place them smartly you can force creeps to snake through your killzone. Mazing is the whole game and it's often more important than which towers you pick.",
+      title: 'Mazing',
+      body: "Towers block tiles. Placing them in a pattern bends the creep path into a long S-curve through your towers. The longer the path, the longer your towers shoot. This is the dominant skill.",
     },
     {
       id: 'income',
       target: { kind: 'screen' },
-      title: "What's Different: Income",
-      body: 'On Normal and above, just killing creeps is not enough. You have to invest in your income by challenging self-sent creeps (risky) or building Frontier structures (safer). More on that in-game.',
+      title: 'Income',
+      body: 'On Normal and above, kill gold alone is not enough. You also raise wave income by buying Frontier buildings (safe, slow) or sending extra creeps onto your own wave (risky, faster).',
     },
     {
       id: 'factions',
       target: { kind: 'screen' },
       title: '11 Factions',
-      body: "Each faction plays differently. Arcane crits, Nature poisons, Infernal sacrifices. When you pick one for the first time, you'll get a short primer.",
+      body: "Each faction plays differently. The first time you pick one, a 5-line brief explains its identity. Locked factions appear silhouetted in the picker.",
     },
     {
       id: 'map',
       target: { kind: 'dom', selector: SEL.menuMapGrid },
-      title: 'Pick a Map',
-      body: "Maps have different layouts, entry points, and constraints. Plains is a safe first pick. Random gives everyone the same uniquely generated map daily.",
+      title: 'Maps',
+      body: "Layouts vary in path length, entry count, and obstacles. Plains is straightforward. Random uses today\'s daily seed so everyone fights the same generated map.",
       placement: 'bottom',
     },
     {
       id: 'modes',
       target: { kind: 'dom', selector: SEL.menuModeCards },
       title: 'Game Modes',
-      body: 'Standard is the classic mode. Others change the economy or add heroes. You’ll see a short primer the first time you pick a different mode.',
+      body: 'Standard is the baseline. Endless removes the wave cap. Hero Defense adds an arena hero. Modes you haven\'t unlocked yet are hidden until you\'re ready.',
       placement: 'top',
     },
     {
       id: 'encyclopedia',
       target: { kind: 'dom', selector: SEL.menuEncyclopediaBtn },
       title: 'Encyclopedia',
-      body: 'Documents every tower, creep, and hero stats, traits, and ability descriptions. Open it any time you want to read before you fight.',
+      body: 'Stats and traits for every tower, creep, and hero. Read up on a faction before playing it.',
       placement: 'top',
     },
     {
       id: 'store',
       target: { kind: 'dom', selector: SEL.menuStoreBtn },
       title: 'Store',
-      body: 'Cosmetic skins for towers, heroes, and creeps, plus unlocks for the premium factions. Nothing in here is pay-to-win.',
+      body: 'Cosmetic skins and faction unlocks (paid with Shards earned in-game). No power purchases.',
       placement: 'top',
     },
     {
       id: 'done',
       target: { kind: 'dom', selector: SEL.menuModeStandard },
       title: "You're Ready",
-      body: "Start with Standard on Plains with Normal difficulty or take the guided practice match first.",
+      body: "Start with Standard on Plains, Normal difficulty. Or replay the guided First Tutorial from the ? menu.",
       placement: 'top',
       cta: {
-        label: 'Play Tutorial Match',
-        action: () => window.dispatchEvent(new Event('tutorial-launch-match')),
+        label: 'Replay First Tutorial',
+        action: () => window.dispatchEvent(new Event('tutorial-launch-ftg')),
+      },
+    },
+  ],
+};
+
+/** First Tutorial Game (Plan 3) — the cold-boot 5-minute onboarding
+ *  game launched from the splash. Deliberately slimmer than
+ *  `tutorial_match`: mazing + towers ONLY. No frontier, no sends, no
+ *  draft. The player learns the single most important skill of the
+ *  game (mazing) before being introduced to anything else.
+ *
+ *  Plays as Arcane on the tutorial map (single straight east-west
+ *  path through the vertical middle). Lives = 99 (TutorialMode
+ *  default), so leaks here are not fatal — but the script tries to
+ *  guide the player to a clean win.
+ *
+ *  On complete: PlayerProfile.markFirstGameComplete() fires (wired in
+ *  TutorialManager.complete) — sets the FTG flag so splash never
+ *  re-prompts, and grants a one-shot XP bonus that crosses L1→L2 so
+ *  the player sees the unlock loop immediately. */
+const ftg: TutorialTrack = {
+  id: 'ftg',
+  name: 'First Tutorial',
+  summary: 'A 5-minute starter — place towers, shape the path, win one short game.',
+  scrimless: true,
+  skipLabel: 'Quit',
+  steps: [
+    {
+      id: 'welcome',
+      target: { kind: 'screen' },
+      title: 'Welcome',
+      body: "Quick start. We'll place a couple of towers, run a few waves, and you're done. You can quit any time.",
+    },
+    {
+      id: 'pick_bolt',
+      target: { kind: 'dom', selector: SEL.dockBoltSlot },
+      title: 'Pick a Tower',
+      body: 'Tap the Arcane Bolt card in the dock. The basic Arcane tower.',
+      placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
+    },
+    {
+      id: 'place_first',
+      target: gridCellRect(10, 13, 5, 1),
+      title: 'Place It Here',
+      body: 'Drop the tower anywhere in the highlighted strip. Watch what happens to the creep path.',
+      placement: 'top-banner',
+      advanceOn: { event: 'towerPlaced' },
+    },
+    {
+      id: 'mazing',
+      target: { kind: 'screen' },
+      title: "That's Mazing",
+      body: "The path bent around your tower. Every tower you drop reshapes the route. Longer creep walk = more time your towers have to shoot. This is the heart of the game.",
+    },
+    {
+      id: 'pick_bolt_2',
+      target: { kind: 'dom', selector: SEL.dockBoltSlot },
+      title: 'Pick Bolt Again',
+      body: 'Select Arcane Bolt one more time. We need a second to make a real maze.',
+      placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
+    },
+    {
+      id: 'place_second',
+      target: nextMazeExtensionTarget(),
+      title: 'Extend the Maze',
+      body: 'Drop a second Bolt in the highlighted strip. The longer the detour, the longer your towers shoot.',
+      placement: 'top-banner',
+      advanceOn: { event: 'towerPlaced' },
+    },
+    {
+      id: 'start_wave_1',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Start Wave 1',
+      body: 'Tap Next Wave. A few slow creeps will spawn. Your two Bolts can handle them.',
+      placement: 'top',
+      advanceOn: { event: 'waveStarted' },
+    },
+    {
+      id: 'watch_wave_1',
+      target: { kind: 'dom', selector: SEL.statusGold },
+      title: 'Kills Drop Gold',
+      body: 'Watch your gold tick up — every kill pays. Wait for the wave to finish.',
+      placement: 'top-banner',
+      advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'done',
+      target: { kind: 'screen' },
+      title: "You're Set",
+      body: 'That\'s mazing and tower placement — the core of every match. Pick a faction and play a real game when you\'re ready.',
+      cta: {
+        label: 'Back to Menu',
+        action: () => window.dispatchEvent(new Event('tutorial-go-menu')),
       },
     },
   ],
@@ -665,39 +763,364 @@ const multiplayer: TutorialTrack = {
   ],
 };
 
-// ─── Per-faction content ────────────────────────────────────
-// Short stubs for now — 2 screens each. Faction-track author can flesh these
-// out into 4–5 step tours with canvas targets as content grows.
+// ─── Tutorial 3 (Versus vs CPU) ─────────────────────────────
+// Plan 4: a real 5-wave Versus session against a bot opponent. Lobby
+// auto-spins this up when the Help-carousel CTA fires (sets the
+// `__tutorialVsCpuQueued` window flag, which LobbyScreen consumes on
+// mount). Track runs inside GameScene with coach marks for the three
+// versus-specific UX surfaces: opponent minimap, send-to-opponent
+// (sends GO TO the opponent here, not yourself), and the ready vote.
+const tutorialVsCpu: TutorialTrack = {
+  id: 'tutorial_vs_cpu',
+  name: 'Versus Tutorial',
+  summary: 'Five-wave game against a CPU. Learn how sends and ready-votes work in 1v1.',
+  scrimless: true,
+  skipLabel: 'Quit',
+  steps: [
+    {
+      id: 'welcome',
+      target: { kind: 'screen' },
+      title: '1v1 vs CPU',
+      body: "Same as Standard — except your sends spawn on the opponent's map, and theirs spawn on yours. Five short waves. Lose, draw, or win — it's practice.",
+    },
+    {
+      id: 'sends_explainer',
+      target: { kind: 'dom', selector: SEL.econSendsTab },
+      title: 'Sends Go to Them',
+      body: 'In Versus, buying a send dumps creeps onto your opponent\'s map. You get permanent income, they get more to fight. Risky for them, profitable for you.',
+      placement: 'bottom-banner',
+      onEnter: () => { openSidebarPanel('economy'); switchEconTab('sends'); },
+    },
+    {
+      id: 'opponent_minimap',
+      target: { kind: 'screen' },
+      title: 'Opponent Minimap',
+      body: "Top-right shows the opponent's board — towers, lives, wave, ready status. Tap it to swap to a full opponent view.",
+    },
+    {
+      id: 'ready_vote',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Ready Vote',
+      body: 'Press the Start Wave button (or SPACE) to vote ready. The wave starts when both players ready up — or when the timer expires.',
+      placement: 'top',
+      onEnter: () => closeSidebarPanels(),
+    },
+    {
+      id: 'play_through',
+      target: { kind: 'screen' },
+      title: 'Play It Out',
+      body: 'Five waves. Try a send mid-game and watch your income climb. The CPU plays a balanced strategy — it\'s a safe sparring partner.',
+    },
+    {
+      id: 'done',
+      target: { kind: 'screen' },
+      title: "Versus Basics Down",
+      body: "When you\'re ready, jump back to the lobby for a real opponent — or run another vs CPU. Public matchmaking comes in a later release.",
+      cta: {
+        label: 'Back to Menu',
+        action: () => window.dispatchEvent(new Event('tutorial-go-menu')),
+      },
+    },
+  ],
+};
 
-function factionTrack(id: string, name: string, tip: string): TutorialTrack {
+// ─── Tutorial 2 (Economy) ─────────────────────────────
+// Plan 4: a gentle 4-wave embedded lesson on Hero Plains. Same in-game
+// shape as FTG (mode=tutorial, 99 lives, +250g start) but centred on
+// the three income sources: kill gold, frontier buildings, and
+// sends. The player can't fail — the lesson is told, not felt.
+//
+// Trigger entry points: the Help carousel ("Learn the Economy" tile)
+// and an end-of-FTG CTA. No auto-prompt.
+const tutorialEconomy: TutorialTrack = {
+  id: 'tutorial_economy',
+  name: 'Economy Lesson',
+  summary: 'Three income sources: kills, frontier buildings, sends. Quick guided round on Hero Plains.',
+  scrimless: true,
+  skipLabel: 'Quit',
+  steps: [
+    {
+      id: 'welcome',
+      target: { kind: 'screen' },
+      title: 'Three Ways to Get Gold',
+      body: 'Kills pay out, but on Normal+ you also need passive income. Four short waves to show you how.',
+    },
+    {
+      id: 'pick_bolt',
+      target: { kind: 'dom', selector: SEL.dockBoltSlot },
+      title: 'Place a Bolt',
+      body: 'Tap the Arcane Bolt card. Drop it on the path so something kills creeps in wave 1.',
+      placement: 'top',
+      advanceOn: { event: 'dockTowerSelected' },
+    },
+    {
+      id: 'place_first',
+      target: { kind: 'screen' },
+      title: 'Drop It',
+      body: 'Anywhere on the corridor works. Then start wave 1.',
+      placement: 'top-banner',
+      advanceOn: { event: 'towerPlaced' },
+    },
+    {
+      id: 'start_wave_1',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Start Wave 1',
+      body: 'Watch what happens to your gold balance as creeps die.',
+      placement: 'top',
+      advanceOn: { event: 'waveStarted' },
+    },
+    {
+      id: 'kill_gold',
+      target: { kind: 'dom', selector: SEL.statusGold },
+      title: 'Kills Drop Gold',
+      body: 'Every creep pays out. This is the first income source.',
+      placement: 'bottom',
+      advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'wave_income',
+      target: { kind: 'dom', selector: SEL.statusIncome },
+      title: '+ Per-Wave Income',
+      body: "See the +X/w next to your gold? That's wave income — you get it at the end of every wave whether you killed anything or not. Frontier buildings and sends both raise this.",
+      placement: 'bottom',
+    },
+    {
+      id: 'frontier_intro',
+      target: { kind: 'screen' },
+      title: 'Source 2 — Frontier',
+      body: "Frontier buildings tick income up every wave with no risk. They're the safe, slow option — quietly compound into most of your late-game gold.",
+    },
+    {
+      id: 'buy_frontier',
+      target: { kind: 'dom', selector: SEL.econFrontierTab },
+      title: 'Buy a Leyline Nexus',
+      body: 'Open the Frontier tab and buy the Leyline Nexus. Your wave income jumps next wave.',
+      placement: 'bottom-banner',
+      onEnter: () => { openSidebarPanel('economy'); switchEconTab('frontier'); },
+      advanceOn: { event: 'frontierPurchased' },
+    },
+    {
+      id: 'start_wave_2',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Start Wave 2',
+      body: "Run wave 2. After it, watch your wave-income figure tick up.",
+      placement: 'top',
+      onEnter: () => closeSidebarPanels(),
+      advanceOn: { event: 'waveStarted' },
+    },
+    {
+      id: 'watch_wave_2',
+      target: { kind: 'screen' },
+      title: 'Income Climbing',
+      body: "Frontier income compounds — every wave it pays. The earlier you buy, the more cumulative gold.",
+      placement: 'top-banner',
+      advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'sends_intro',
+      target: { kind: 'screen' },
+      title: 'Source 3 — Sends',
+      body: 'Sends spawn EXTRA creeps on your wave. Risky — more to fight — but each send permanently raises your wave income. The faster, riskier income.',
+    },
+    {
+      id: 'buy_send',
+      target: { kind: 'dom', selector: SEL.econSendsTab },
+      title: 'Queue a Send',
+      body: 'Open the Sends tab and queue a Standard send. Extra creeps will spawn on the next wave; if you survive, your income jumps permanently.',
+      placement: 'bottom-banner',
+      onEnter: () => { openSidebarPanel('economy'); switchEconTab('sends'); },
+      advanceOn: { event: 'sendPurchased' },
+    },
+    {
+      id: 'start_wave_3',
+      target: { kind: 'dom', selector: SEL.startWaveBtn },
+      title: 'Start Wave 3',
+      body: "Heavier wave coming because you sent. Survive it.",
+      placement: 'top',
+      onEnter: () => closeSidebarPanels(),
+      advanceOn: { event: 'waveStarted' },
+    },
+    {
+      id: 'watch_wave_3',
+      target: { kind: 'screen' },
+      title: 'Synthesis',
+      body: 'Kill gold + frontier ticks + send-driven income. All three together = winning the economy.',
+      placement: 'top-banner',
+      advanceOn: { event: 'waveCleared' },
+    },
+    {
+      id: 'done',
+      target: { kind: 'screen' },
+      title: "That's the Economy",
+      body: "On Normal and above, just killing creeps isn't enough. Mix all three. Frontier early, sends when you're stable, kill gold from a tight maze.",
+      cta: {
+        label: 'Back to Menu',
+        action: () => window.dispatchEvent(new Event('tutorial-go-menu')),
+      },
+    },
+  ],
+};
+
+// ─── JIT (Just-In-Time) lessons ─────────────────────────────
+// Plan 4: tiny one-step popovers fired the FIRST time a game-event
+// concept appears. Each fires once per profile, gated on
+// PlayerProfile flags (`jit_seen.{concept}`). They run scrimless so
+// the player can keep watching the wave; tap the popover to dismiss.
+
+function jitTrack(id: string, title: string, body: string): TutorialTrack {
+  return {
+    id,
+    name: title,
+    summary: body.length > 80 ? body.slice(0, 77) + '…' : body,
+    scrimless: true,
+    skipLabel: 'Got it',
+    steps: [{ id: 'tip', target: { kind: 'screen' }, title, body, placement: 'top-banner' }],
+  };
+}
+
+const jitFlying = jitTrack(
+  'jit_flying',
+  'Flying Creeps',
+  "These ignore your maze and fly straight to the exit. Some towers can't hit them — Arcane Bolt and Frost can.",
+);
+const jitRegen = jitTrack(
+  'jit_regen',
+  'Regenerating Creep',
+  'This creep heals between hits. You need sustained damage, not burst — keep it in your kill zone.',
+);
+const jitMage = jitTrack(
+  'jit_mage',
+  'Mage Creep',
+  'Mage creeps cast auras that buff nearby creeps. Mute them with Cypherpunk Rootkit, Celestial Ward, or kill them first.',
+);
+const jitBoss = jitTrack(
+  'jit_boss',
+  'Boss Wave',
+  'Bosses are massive. They cost 5 lives if they leak. Burn them down before they reach the end.',
+);
+const jitLeak = jitTrack(
+  'jit_leak',
+  'Watch the Path',
+  'Your last placement opened a leak in the maze. Place a tower or wall to close the gap.',
+);
+
+const jitTracks: TutorialTrack[] = [jitFlying, jitRegen, jitMage, jitBoss, jitLeak];
+
+// ─── Per-faction content ────────────────────────────────────
+// Plan 4: each brief is a 5-line teaching block — identity, opener,
+// key tower, key trap (what to avoid), win condition. Players can
+// suppress every brief with a global toggle (TutorialPersistence
+// .setFactionBriefsSkipped) — the Skip-all checkbox renders inline
+// on every brief intro step.
+
+interface FactionBriefContent {
+  identity: string;
+  opener: string;
+  keyTower: string;
+  keyTrap: string;
+  winCon: string;
+}
+
+function factionTrack(id: string, name: string, c: FactionBriefContent): TutorialTrack {
   return {
     id: `faction:${id}`,
-    name: `${name} Tip`,
-    summary: `One-line strategy pointer for ${name}.`,
+    name: `${name} Brief`,
+    summary: `Five-line overview of how ${name} plays.`,
     steps: [
-      {
-        id: 'tip',
-        target: { kind: 'screen' },
-        title: `${name} — Key Tip`,
-        body: tip,
-      },
+      { id: 'identity',   target: { kind: 'screen' }, title: `${name} — Identity`,        body: c.identity },
+      { id: 'opener',     target: { kind: 'screen' }, title: `${name} — Opener`,          body: c.opener },
+      { id: 'key_tower',  target: { kind: 'screen' }, title: `${name} — Key Tower`,       body: c.keyTower },
+      { id: 'key_trap',   target: { kind: 'screen' }, title: `${name} — Watch Out For`,   body: c.keyTrap },
+      { id: 'win_con',    target: { kind: 'screen' }, title: `${name} — How You Win`,     body: c.winCon },
     ],
   };
 }
 
 const factionTracks: TutorialTrack[] = [
-  factionTrack('arcane',     'Arcane',     'Stack crit towers on high-HP chokes. Arcane Meteor excels on grouped targets.'),
-  factionTrack('mechanical', 'Mechanical', 'Mech Wall lets you maze with your eyes closed. Railgun shreds elite creeps.'),
-  factionTrack('nature',     'Nature',     'Cluster Nature towers together — every adjacent buff stacks. Roots stop flyers cold.'),
-  factionTrack('void',       'Void',       'Gold-on-hit towers snowball if they survive. Don’t over-commit to any one build.'),
-  factionTrack('military',   'Military',   "Military units don't block the grid — use real walls/wire for mazing, units for damage."),
-  factionTrack('aliens',     'Aliens',     'Spam Swarmlings from the Hive Spire. Quantity is quality.'),
-  factionTrack('cypherpunk', 'Cypherpunk', 'Infect stacks turn creeps against each other. Keep the network online.'),
-  factionTrack('infernal',   'Infernal',   "Don't build Infernal long-term. Cash in their burst and replace."),
-  factionTrack('celestial',  'Celestial',  'Celestial towers can gain lives — stacking them turns leaks into non-events.'),
-  factionTrack('psionic',    'Psionic',    'Psionic shines vs heavily armored waves. Save it for elites.'),
-  factionTrack('harmonic',   'Harmonic',   'Plan the whole maze around your aura lattice. A disconnected Harmonic tower is a wasted slot.'),
-  factionTrack('chaos',      'Chaos',      'Buy what fits the wave. Bought towers persist, so commit to keepers.'),
+  factionTrack('arcane', 'Arcane', {
+    identity: 'High-fantasy precision magic. Crits, AoE, and damage amplification — efficient single-target kills with strong burst.',
+    opener:   'Bolt (25g) is the workhorse — drop two before wave 1, then add a Frost (35g) at the first curve. Income comes later.',
+    keyTower: 'Focus (90g) — sniper with 25% crit for 3x damage. Place on long sightlines so it gets full uptime on each creep.',
+    keyTrap:  'Skipping Mana Drain (120g) on shielded boss waves leaves your damage absorbed. One Drain near the boss path is mandatory.',
+    winCon:   'Stack a Meteor (200g) into your kill zone, max your Bolts, and let crits do the work. The Arcane Nova ultimate (700g) closes 100-wave runs.',
+  }),
+  factionTrack('mechanical', 'Mechanical', {
+    identity: 'Steampunk engineering. Cheap walls, heavy artillery, sustained burn. Wins on long maps with deep mazes.',
+    opener:   'Wall (10g) lets you maze with your eyes closed. Build the maze first, then drop a Turret (30g) at the first choke.',
+    keyTower: 'Mortar (120g) — extreme range, huge splash. One Mortar covers most of a small map; two cover everything.',
+    keyTrap:  'Walls everywhere with no DPS = leaks. Spend at least 60% of your gold on shooters, not bricks.',
+    winCon:   'Railgun (300g) pierces every creep in a line. Aim it down a long straight section — it deletes packs in one shot.',
+  }),
+  factionTrack('nature', 'Nature', {
+    identity: 'Living forest. Poison, roots, and adjacency synergy — every Nature tower next to another gets stronger.',
+    opener:   'Bramble Hedge (12g) doubles as wall and damage. Cluster three or four early, then add Root (25g) for the slow.',
+    keyTower: 'Blossom (60g) — no attack, but +25% damage and +15% fire rate to every adjacent tower per level. Sit it in the middle of a shooter cluster.',
+    keyTrap:  "Spreading towers thin kills your synergy. Nature wants tight 3x3 clusters, not a long thin line.",
+    winCon:   'Spore (100g) ticks 2-3% HP/s on every creep in range, ignoring armor. Two Spores wipe most boss waves outright.',
+  }),
+  factionTrack('void', 'Void', {
+    identity: 'Pure chaos. Gambling, random damage, gold generation, teleportation. High variance — explosive wins, brutal losses.',
+    opener:   'Gambler (15g, cheapest tower in the game) and Spike (30g, 50–150% damage) both swing wildly. Build many cheap, not few expensive.',
+    keyTower: 'Siphon (50g) — +1 gold per hit. One Siphon on a busy choke pays itself off by wave 5.',
+    keyTrap:  'Over-committing to a single build. Void wants spread bets; if your Gambler whiffs three waves you need a backup plan.',
+    winCon:   "Stack Siphons until you're rich, drop the Oblivion ultimate (900g), and let 15% instakills + +3g/hit carry you home.",
+  }),
+  factionTrack('military', 'Military', {
+    identity: 'Boots on the ground. Mobile units that walk to engage — they don\'t block the grid, so you maze with cheap walls instead.',
+    opener:   'Sandbag (8g, cheapest wall) for the maze, then Rifleman (40g, mobile ranged) to chase down stragglers.',
+    keyTower: 'Tank (120g) — slow but huge AoE explosive shells with massive range. One Tank deletes packs from across the map.',
+    keyTrap:  'Treating Riflemen / Brawlers as walls — they move. Plan your maze around the immobile Sandbag/Wire, not the units.',
+    winCon:   'Commander (750g) is a mobile fighter + adjacency aura. Drop it at the worst chokepoint and your whole army hits harder.',
+  }),
+  factionTrack('aliens', 'Aliens', {
+    identity: 'The hive. Cheap, fast-firing swarm units that overwhelm with quantity — every tower fires fast, none hit hard alone.',
+    opener:   'Spitter (12g) fires every 250ms — drop four before wave 1. Cheapest reliable DPS in the game.',
+    keyTower: 'Swarm Node (60g) — no attack, but every Alien tower in range fires 20% faster. Drop it in the middle of your swarm.',
+    keyTrap:  "One big tower instead of many small ones. Aliens lose to single-target heavy damage — stay swarmy.",
+    winCon:   "Hive Spire (180g) chains to 5 targets. One in your kill zone wipes packs; two delete everything. Overmind ultimate (700g) makes the whole faction faster.",
+  }),
+  factionTrack('cypherpunk', 'Cypherpunk', {
+    identity: 'Digital warfare. Hack creep behavior — make them walk backward, infect them with spreading viruses, mute their abilities.',
+    opener:   'Ping (15g) is a long-range chip-damage tower; build two early. Firewall (35g) chains to another Firewall — two of them lay a damaging beam between.',
+    keyTower: 'Virus (55g) — DoT that spreads to nearby creeps. One Virus on a chokepoint infects the whole wave.',
+    keyTrap:  'Building one Firewall alone. Firewalls only damage things between LINKED pairs — always build them in twos.',
+    winCon:   'Backdoor (90g) walks creeps backward, doubling their time in your kill zone. Stack it with DDoS root (150g) and Rootkit shred — Zero Day ultimate (800g) does it all at once.',
+  }),
+  factionTrack('infernal', 'Infernal', {
+    identity: 'Sacrifice and decay. Towers expire (Imp), lose damage per wave (Hellfire), or self-destruct (Fiend). Pure burst, no longevity.',
+    opener:   'Imp (12g) — 12 dmg every 700ms but expires after 4 waves. Spam them early, replace them constantly. Treat them as ammunition.',
+    keyTower: 'Soul Drain (90g) — +2 gold per kill within range. Drop near a chokepoint to fund the constant Imp turnover.',
+    keyTrap:  "Building Infernal long-term. Hellfire (45g) loses 15% damage per wave — sell it before it withers. Don’t fall in love with any tower.",
+    winCon:   'Cash in burst, replace constantly. Apocalypse ultimate (900g) is the closer — massive burn AoE + damage amp on the wave you need it.',
+  }),
+  factionTrack('celestial', 'Celestial', {
+    identity: 'Holy protection. Lower DPS than other factions, but towers can gain lives back, absorb leaks, and protect the player.',
+    opener:   'Acolyte (25g) is your basic shooter — 5% chance on nearby kill to grant +1 life. Stack three to start refunding leaks.',
+    keyTower: 'Sanctuary (150g) — absorbs 1 leaked creep entirely (recharges every 10 waves). One per chokepoint = one free leak per cycle.',
+    keyTrap:  "Treating Celestial like a damage faction. Your DPS is weak — Celestial wins by losing fewer lives than the cost of leaks.",
+    winCon:   'Stack Acolytes near chokes to refund lives, hold critical waves with Sanctuary absorbs. Absolution ultimate (600g) closes with holy AoE + 10% life-on-kill.',
+  }),
+  factionTrack('psionic', 'Psionic', {
+    identity: 'True damage and mind control. Bypasses armor entirely, plus tools to confuse / fear / slow creeps.',
+    opener:   'Probe (20g) — true damage, ignores all armor. Two early Probes chew through any armored opener.',
+    keyTower: 'Mesmer (45g) confuses creeps to walk backward 1.2s. Place at chokepoints to multiply your kill-zone uptime.',
+    keyTrap:  "Skipping Psionic on heavily-armored waves. If everyone else has 20+ armor, only Psionic is dealing full damage.",
+    winCon:   'Mind Spike (150g) at long range deletes mage creeps. Overmind ultimate (750g) is mass confusion + true damage AoE — saves armored boss waves.',
+  }),
+  factionTrack('harmonic', 'Harmonic', {
+    identity: 'Aura network. Towers are weak alone but devastating when their auras overlap — the placement-puzzle faction.',
+    opener:   'Drop a Resonator (20g) first, then surround it with one Amplifier (30g, +damage), one Quickener (40g, +AS), one Reach (50g, +range). Synergy is the gameplay.',
+    keyTower: 'Conduit (100g) — manually links 2-3 aura towers and shares their effects across the map at 70%. Bridges your network.',
+    keyTrap:  'A disconnected Harmonic tower is a wasted slot. Plan the whole maze around aura coverage, not individual placements.',
+    winCon:   "Crescendo ultimate (650g) is moderate DPS designed to soak every aura you've stacked. Build the lattice first, drop the Crescendo last.",
+  }),
+  factionTrack('chaos', 'Chaos', {
+    identity: 'Adapt or die. Each wave you get 6 random towers from all factions — bought towers persist, so commit to keepers.',
+    opener:   'Buy what fits the FIRST wave. The second-wave roll is different; you can\'t plan a build, only react.',
+    keyTower: "Whichever faction's ultimate you happen to roll. Save up for it — most ultimates carry the run on their own.",
+    keyTrap:  "Buying every tower offered. You'll go broke. Pick 1-2 per wave, save the rest for upgrades and ultimates.",
+    winCon:   'Synergy luck. If you get a Frost + Storm + Spore roll, lean hard into AoE. If you get Cypherpunk + Psionic, lean disrupt. Read the rolls.',
+  }),
 ];
 
 // ─── Per-mode content ───────────────────────────────────────
@@ -742,6 +1165,9 @@ const modeTracks: TutorialTrack[] = [
 // ─── Registry ───────────────────────────────────────────────
 
 const ALL: TutorialTrack[] = [
+  ftg,
+  tutorialEconomy,
+  tutorialVsCpu,
   basics,
   tutorialMatch,
   skipHint,
@@ -749,6 +1175,7 @@ const ALL: TutorialTrack[] = [
   incomeBattle,
   incomeHero,
   multiplayer,
+  ...jitTracks,
   ...factionTracks,
   ...modeTracks,
 ];

@@ -39,6 +39,14 @@ export class StandardLeakHandler implements LeakHandler {
   }
 
   onCreepLeaked(creep: Creep): number {
+    // M10 finale (and any future attacker-style hybrid): friendly
+    // sends are the player's OWN units walking into the CPU base.
+    // Reaching the end of their (reversed) path is neutral — not a
+    // leak, not a player-life loss. Just disappear.
+    if (creep.isFriendly) {
+      this.eventLog.gameMessage('Send reached the cabal\'s line — fades into the spire.');
+      return 0;
+    }
     // Celestial Sanctuary: consume a leak_absorb charge if any tower has one.
     // No range check — description is global ("Absorbs 1 leaked creep"),
     // and Sanctuary's placement is constrained enough by its other traits.
@@ -79,6 +87,35 @@ export class StandardDeathHandler implements DeathHandler {
     this.eventBus.emit('creepKilled', 0, killGold);
     this.statsTracker.recordKill();
     this.statsTracker.recordGoldEarned(killGold);
+  }
+}
+
+/** Attacker mode death handler: every kill funds the CPU defender's
+ *  treasury (which auto-spends on tower upgrades). The player's
+ *  economy is not credited — the player's "win" is leaks, not kills. */
+export class AttackerDeathHandler implements DeathHandler {
+  private economy: EconomyManager;  // for reading the kill-gold curve
+  private statsTracker: StatsTracker;
+  private eventBus: EventBus;
+  private addToDefenderTreasury: (amount: number) => void;
+
+  constructor(
+    economy: EconomyManager,
+    statsTracker: StatsTracker,
+    eventBus: EventBus,
+    addToDefenderTreasury: (amount: number) => void,
+  ) {
+    this.economy = economy;
+    this.statsTracker = statsTracker;
+    this.eventBus = eventBus;
+    this.addToDefenderTreasury = addToDefenderTreasury;
+  }
+
+  onCreepKilled(_creep: Creep): void {
+    const killGold = this.economy.getKillGold();
+    this.addToDefenderTreasury(killGold);
+    this.eventBus.emit('creepKilled', 0, 0); // 0 to player
+    this.statsTracker.recordKill();
   }
 }
 
@@ -149,6 +186,17 @@ export class CreepManager {
         leakCount++;
         creep.reached = false;
         creep.alive = false;
+        // Destroy any lingering sprite. Normally Creep.update tears
+        // down the sprite when the creep walks off the end of its
+        // path (pathIndex >= path.length), but `reached` can also be
+        // set externally — e.g. by the wave-stuck recovery path
+        // (forceLeakAllAlive) or any future leak-promotion logic.
+        // Without this, the leaked creep's sprite gets orphaned and
+        // sits frozen on the board forever.
+        if ((creep as any).sprite) {
+          (creep as any).sprite.destroy();
+          (creep as any).sprite = null;
+        }
       }
     }
 
@@ -166,6 +214,18 @@ export class CreepManager {
     this.creeps = this.creeps.filter(c => c.alive);
 
     return { totalLeakDamage, leakCount };
+  }
+
+  /** Auto-recovery: mark every alive creep as `reached` so the next
+   *  update tick processes them through the leak handler. Used by
+   *  WaveController when a wave has been stuck past the force-clear
+   *  threshold (typically a single creep mis-pathed after a tower
+   *  placement and the wave-end gate is waiting for it to finish).
+   *  Without this the entire match can hang on one stuck creep. */
+  forceLeakAllAlive(): void {
+    for (const creep of this.creeps) {
+      if (creep.alive) creep.reached = true;
+    }
   }
 
   /** Find nearest creep to a pixel position */

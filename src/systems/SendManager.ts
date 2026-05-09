@@ -24,6 +24,11 @@ export class SendManager {
    *  maze just like flying creeps in regular waves. Synced by
    *  GameScene alongside `SpawnManager.setFlyingPath`. */
   private flyingPath: PathPoint[] | null = null;
+  /** M10 finale: when set, sends use THIS path instead of the wave
+   *  creep currentPath. Lets the player's sends walk right→left
+   *  (into the CPU tower lattice) while wave creeps walk left→right
+   *  on the standard path. Null = use whatever the caller passes. */
+  private sendPathOverride: PathPoint[] | null = null;
 
   constructor(scene: Phaser.Scene, events: EventBus) {
     this.scene = scene;
@@ -35,6 +40,12 @@ export class SendManager {
       { col: entry.col, row: entry.row },
       { col: exit.col, row: exit.row },
     ];
+  }
+
+  /** M10 finale: set a per-send path override (right→left walker
+   *  through the CPU tower lattice). Pass null to clear. */
+  setSendPathOverride(path: PathPoint[] | null): void {
+    this.sendPathOverride = path;
   }
 
   /** Queue a send. `spawnOwnerIndex` lets the receiver credit the
@@ -76,7 +87,11 @@ export class SendManager {
   }
 
   update(delta: number, currentPath: PathPoint[] | null, creeps: Creep[]): void {
-    if (this.spawnQueue.length === 0 || !currentPath) return;
+    // M10 finale: send-path override beats the wave-creep current path.
+    // Lets the player's sends walk a different direction without
+    // affecting the standard wave-creep flow.
+    const effectivePath = this.sendPathOverride ?? currentPath;
+    if (this.spawnQueue.length === 0 || !effectivePath) return;
 
     this.spawnTimer -= delta;
     if (this.spawnTimer <= 0) {
@@ -92,7 +107,7 @@ export class SendManager {
         const ct = CREEP_TYPES[entry.creepType];
         const path = ct?.spawnBehavior === 'flying' && this.flyingPath
           ? this.flyingPath
-          : currentPath;
+          : effectivePath;
         const creep = new Creep(
           this.scene,
           [...path],
@@ -103,6 +118,15 @@ export class SendManager {
           (this.scene as any).creepFaction,
         );
         creep.spawnOwnerIndex = entry.spawnOwnerIndex;
+        creep.isSend = true;
+        // M10 finale: when a send-path override is active, sends are
+        // the player's own (decoy fodder). ownerIndex = the spawning
+        // player slot (defaults to 0 for single-player); player towers
+        // skip them via the same-team filter, CPU defenders target them.
+        if (this.sendPathOverride) {
+          creep.ownerIndex = entry.spawnOwnerIndex ?? 0;
+          creep.goalMode = 'attacking';
+        }
         creeps.push(creep);
       }
       this.spawnTimer = this.spawnInterval;

@@ -30,6 +30,11 @@ export interface CreepType {
   count: number; // per-unit spawn count (swarm = 3)
   traits: Trait[];
   spawnBehavior: SpawnBehavior;
+  /** Spawn-order tier within a wave. 'last' creeps sort to the end of
+   *  the wave's spawn queue regardless of group order. Used for
+   *  caster creeps so the threat is the wave's finale, not a random
+   *  mid-wave surprise. Default 'normal'. */
+  spawnOrder?: 'normal' | 'last';
   /** How this creep interprets difficulty. Returns modified params. */
   applyDifficulty(hints: DifficultyHints): ResolvedCreepParams;
 }
@@ -325,6 +330,261 @@ export const CREEP_TYPES: Record<string, CreepType> = {
         speedMult: hints.speed,
         countMult: Math.max(1, hints.count * 0.7),
         goldMult: hints.goldMult * 1.2, // bonus gold for the threat
+        extraTraits: [],
+      };
+    },
+  },
+
+  // ─── Plan A: Arcane Counterspell — caster creeps ───────────────
+  // Channel a spell after a delay; any damage interrupts. Designed
+  // to read clearly: a Sigil and a Scribe should look like distinct
+  // threats in the wave so the player learns to prioritize them.
+
+  arcane_sigil: {
+    id: 'arcane_sigil', name: 'Sigil',
+    description: 'Channels a tower-clearing pulse. Damage alone will not cancel the channel — bring Frost or Mana Drain.',
+    hpMultiplier: 12.0, speedMultiplier: 0.5, armor: 'heavy',
+    color: 0xaa44ff, size: 2.5, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      // 10s channel. Interruptible only by counter-magic towers (Frost,
+      // Mana Drain) via the `interrupts_channels` tower trait. Standard
+      // damage doesn't auto-cancel — the player has to BUILD the
+      // counter, not just have damage on the field.
+      channelStartAt: 1.5,
+      channelDuration: 10.0,
+      effectId: 'clear_towers_radius',
+      meta: { radius: 140 }, // 5 tiles — large enough to bite even loose mazing
+      interruptible: false,
+    }],
+    spawnBehavior: 'normal',
+    spawnOrder: 'last',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.9,
+        speedMult: hints.speed * 0.8,
+        countMult: 1,
+        goldMult: hints.goldMult * 1.5,
+        extraTraits: [],
+      };
+    },
+  },
+
+  // ─── M5 Crystal Warlords (rage timer on first hit) ─────────────
+  // Boss-tier creeps with channel_caster trait set to triggerOn:
+  // 'first_hit'. The rage clock doesn't start until the player
+  // engages — once you start damaging a Warlord you have ~25s to
+  // finish them before their rage fires (different effect per
+  // Warlord). interruptible: false so Frost can't pause the rage —
+  // only killing the Warlord stops it.
+
+  warlord_stalwart: {
+    id: 'warlord_stalwart', name: 'Stalwart Warlord',
+    description: 'Tanky vanguard. Rage on first hit: summons 6 fast reinforcements.',
+    hpMultiplier: 16.0, speedMultiplier: 0.40, armor: 'heavy',
+    color: 0xff8844, size: 2.2, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 15,
+      effectId: 'warlord_reinforcements',
+      meta: {},
+      interruptible: false, castCount: 1,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return { hpMult: hints.toughness * 0.95, speedMult: hints.speed * 0.7, countMult: 1, goldMult: hints.goldMult * 2.0, extraTraits: [] };
+    },
+  },
+
+  warlord_healer: {
+    id: 'warlord_healer', name: 'Healer Warlord',
+    description: 'Battlefield medic. Rage on first hit: heals every alive creep to full.',
+    hpMultiplier: 14.0, speedMultiplier: 0.65, armor: 'heavy',
+    color: 0x44ff88, size: 2.2, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 15,
+      effectId: 'warlord_heal_all',
+      meta: {},
+      interruptible: false, castCount: 1,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return { hpMult: hints.toughness * 0.95, speedMult: hints.speed * 0.7, countMult: 1, goldMult: hints.goldMult * 2.0, extraTraits: [] };
+    },
+  },
+
+  warlord_champion: {
+    id: 'warlord_champion', name: 'Champion Warlord',
+    description: 'Heavily armored. Rage on first hit: every alive creep gains a shield.',
+    hpMultiplier: 18.0, speedMultiplier: 0.40, armor: 'heavy',
+    color: 0xeecc88, size: 2.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 18,
+      effectId: 'warlord_shield_all',
+      meta: {},
+      interruptible: false, castCount: 1,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return { hpMult: hints.toughness * 0.95, speedMult: hints.speed * 0.7, countMult: 1, goldMult: hints.goldMult * 2.0, extraTraits: [] };
+    },
+  },
+
+  warlord_tactician: {
+    id: 'warlord_tactician', name: 'Tactician Warlord',
+    description: 'Field commander. FAST mover. Rage on first hit: every alive creep moves 60% faster.',
+    hpMultiplier: 14.0, speedMultiplier: 0.95, armor: 'heavy',
+    color: 0x66ccff, size: 2.2, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 12,
+      effectId: 'warlord_haste_all',
+      meta: {},
+      interruptible: false, castCount: 1,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return { hpMult: hints.toughness * 0.95, speedMult: hints.speed * 0.7, countMult: 1, goldMult: hints.goldMult * 2.0, extraTraits: [] };
+    },
+  },
+
+  warlord_captain: {
+    id: 'warlord_captain', name: 'Captain Warlord',
+    description: 'The vanguard\'s capstone. Rage on first hit: massive swarm summon.',
+    hpMultiplier: 22.0, speedMultiplier: 0.50, armor: 'heavy',
+    color: 0xff44aa, size: 2.6, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      triggerOn: 'first_hit', channelStartAt: 0, channelDuration: 18,
+      effectId: 'warlord_mass_summon',
+      meta: {},
+      interruptible: false, castCount: 1,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return { hpMult: hints.toughness, speedMult: hints.speed * 0.7, countMult: 1, goldMult: hints.goldMult * 2.5, extraTraits: [] };
+    },
+  },
+
+  // ─── M3 Ritual Circle Archmages ──────────────────────────────
+  // Boss-tier casters, each with a distinct named spell. interruptible:
+  // false, large size, heavy armor, very slow. Castable by Frost or
+  // Mana Drain. Designed to be the wave's centerpiece, not a swarm.
+
+  arcane_archmage_meteor: {
+    id: 'arcane_archmage_meteor', name: 'Meteora',
+    description: 'Boss caster. Channels meteor strikes. Counter with Frost or Mana Drain.',
+    hpMultiplier: 18.0, speedMultiplier: 0.4, armor: 'heavy',
+    color: 0xff6622, size: 2.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 11.0,
+      effectId: 'meteor_drop',
+      meta: { damage: 200, radius: 80 },
+      interruptible: false,
+      castCount: 2,
+      castCooldown: 5.0,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.95,
+        speedMult: hints.speed * 0.7,
+        countMult: 1,
+        goldMult: hints.goldMult * 2.5,
+        extraTraits: [],
+      };
+    },
+  },
+
+  arcane_archmage_storm: {
+    id: 'arcane_archmage_storm', name: 'Stormcaller',
+    description: 'Boss caster. Disables towers with chain lightning. Counter with Frost or Mana Drain.',
+    hpMultiplier: 18.0, speedMultiplier: 0.4, armor: 'heavy',
+    color: 0x4488cc, size: 2.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 10.0,
+      effectId: 'chain_lightning_on_towers',
+      meta: { count: 3, duration: 5 },
+      interruptible: false,
+      castCount: 2,
+      castCooldown: 5.0,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.95,
+        speedMult: hints.speed * 0.7,
+        countMult: 1,
+        goldMult: hints.goldMult * 2.5,
+        extraTraits: [],
+      };
+    },
+  },
+
+  arcane_archmage_necro: {
+    id: 'arcane_archmage_necro', name: 'Necromaster',
+    description: 'Boss caster. Summons shades from beyond. Counter with Frost or Mana Drain.',
+    hpMultiplier: 18.0, speedMultiplier: 0.4, armor: 'heavy',
+    color: 0x8833aa, size: 2.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 10.0,
+      effectId: 'summon_creeps_at_position',
+      meta: { count: 5, summonType: 'standard' },
+      interruptible: false,
+      castCount: 2,
+      castCooldown: 5.0,
+    }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.95,
+        speedMult: hints.speed * 0.7,
+        countMult: 1,
+        goldMult: hints.goldMult * 2.5,
+        extraTraits: [],
+      };
+    },
+  },
+
+  arcane_scribe: {
+    id: 'arcane_scribe', name: 'Scribe',
+    description: 'Channels a wave-buff repeatedly while it walks. Counter with Frost or Mana Drain — early.',
+    hpMultiplier: 3.0, speedMultiplier: 0.6, armor: 'medium',
+    color: 0xffd966, size: 1.4, count: 1,
+    traits: [{
+      id: 'channel_caster',
+      channelStartAt: 1.0,
+      channelDuration: 8.0,
+      effectId: 'buff_next_wave_hp',
+      meta: { percent: 0.20, summonCount: 3, summonType: 'standard' },
+      // Damage alone won't cancel — Frost or Mana Drain required, same
+      // as Sigil. Keeps the campaign's interrupt vocabulary consistent.
+      interruptible: false,
+      // Multi-channel: a Scribe channels for the entire duration of
+      // its walk — castCount 0 means unlimited. Combined with the
+      // +75% global buff cap and the per-cast 20%, the player still
+      // can't be infinitely punished, but every uninterrupted Scribe
+      // also drops 3 summoned creeps per cast — those don't cap.
+      castCount: 0,
+      castCooldown: 4.0,
+    }],
+    spawnBehavior: 'normal',
+    // No spawnOrder — Scribes interleave with the rest of the wave so
+    // the player can't just hold DPS for the back half.
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness,
+        speedMult: hints.speed * 0.85,
+        countMult: 1,
+        goldMult: hints.goldMult * 1.2,
         extraTraits: [],
       };
     },

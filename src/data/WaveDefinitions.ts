@@ -1,4 +1,4 @@
-export type MatchMode = 'standard' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet' | 'tutorial';
+export type MatchMode = 'standard' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet' | 'tutorial' | 'attacker';
 
 export interface WaveCreepGroup {
   creepType: string;
@@ -202,6 +202,12 @@ export function getWavesForMode(mode: MatchMode, waveCount?: number): WaveDefini
       return generateStandardWaves(10); // placeholder — actual waves come from GauntletMode.getStageWaves()
     case 'tutorial':
       return generateTutorialWaves();
+    case 'attacker':
+      // Attacker mode reuses Standard wave shapes — the player's
+      // creeps follow the normal spawn cadence. The role-reversal
+      // is handled at the GameScene level (no player tower
+      // placement, leaks count as attacker score).
+      return generateStandardWaves(waveCount ?? 10);
   }
 }
 

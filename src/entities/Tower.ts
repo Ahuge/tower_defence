@@ -126,6 +126,43 @@ export class Tower {
    *  inside drawTower, so short-circuiting is side-effect-free. */
   private _isHeadless: boolean = false;
 
+  /** Plan A: Stormcaller's chain_lightning_on_towers cast disables
+   *  towers for a few seconds. Decremented each frame in update();
+   *  while > 0, fire logic is skipped and a stunned overlay draws. */
+  _disabledRemaining: number = 0;
+
+  /** M10 finale: tower destructibility. Default undefined = invincible
+   *  (every existing mission). Set true on M10 CPU defender towers via
+   *  the `destructibleTowers` map field; the hero attacks them and they
+   *  die when hp hits 0. Player towers (mana drains) stay invincible. */
+  destructible?: boolean;
+  hp?: number;
+  maxHp?: number;
+  /** PRD 06 / M10 v2 — last time the hero damaged this tower (scene
+   *  time ms). Drives "X is attacking me" target priority: a CPU
+   *  tower that's been hit by the hero recently retaliates against
+   *  the hero before falling back to range-based picking. */
+  _lastHeroHitAt: number = 0;
+  /** Last time a SEND creep damaged this tower (scene time ms).
+   *  Same retaliation rule as _lastHeroHitAt but for sends. */
+  _lastSendHitAt: number = 0;
+  /** Last time this tower fired at the hero (scene time ms). The
+   *  hero's auto-attack priority bumps "towers that have been
+   *  shooting me" to the top of the cascade — retaliation reads
+   *  natural for the player. */
+  _lastAttackedHeroAt: number = 0;
+  /** Whether this tower is a "boss-tier" CPU defender. Drives the
+   *  golden HP-bar border treatment in the renderer. PRD 06 migrated
+   *  the M10 throne off this flag onto a `DestructibleStructure` with
+   *  `isMissionWinTarget`; the field stays here for any future
+   *  campaigns that want a single-cell bossy tower without a 3×3
+   *  structure. Phase mechanics now live on `DestructibleStructure.phaseHooks`
+   *  + `FinaleEffects` rather than Tower flags. */
+  isUlt?: boolean;
+  /** Last time the tower took damage (scene.time.now). Drives a brief
+   *  white-flash on the sprite. */
+  _lastHitAt: number = 0;
+
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
@@ -290,10 +327,69 @@ export class Tower {
       this.graphics.lineStyle(1, 0xff44ff, 0.2); // magenta
       this.graphics.strokeCircle(this.x, this.y, this.range);
     }
+
+    // M10 finale: HP bar above destructible CPU towers. Default
+    // undefined for every other mission so this is a free no-op.
+    // Hidden at full HP — only shows when the tower's been hit, so
+    // the unhit lattice doesn't read as visually noisy.
+    if (this.destructible && this.maxHp !== undefined && this.hp !== undefined && this.maxHp > 0 && this.hp < this.maxHp) {
+      const ratio = Math.max(0, Math.min(1, this.hp / this.maxHp));
+      const w = TILE_SIZE * 0.8;
+      const h = 3;
+      const x = this.x - w / 2;
+      const y = this.y - TILE_SIZE * 0.55;
+      // Match the creep HP bar palette so the visual language is
+      // consistent (green > 50%, orange > 25%, red below).
+      this.graphics.fillStyle(0x333333, 1);
+      this.graphics.fillRect(x, y, w, h);
+      const fillColor = ratio > 0.5 ? 0x44ff44 : ratio > 0.25 ? 0xffaa00 : 0xff2222;
+      this.graphics.fillStyle(fillColor, 1);
+      this.graphics.fillRect(x, y, w * ratio, h);
+      // Ult tower gets a special golden border so the player knows
+      // which one is the win-target.
+      if (this.isUlt) {
+        this.graphics.lineStyle(1, 0xffdd44, 1);
+        this.graphics.strokeRect(x, y, w, h);
+      }
+    }
+
+    // White-flash on damage (50ms after _lastHitAt). Cheap visual cue
+    // that the tower is being attacked. Sprite tint reverts the next
+    // frame because drawTower runs every tick.
+    if (this.destructible && this.sprite && this._lastHitAt > 0) {
+      const now = (this._scene as { time?: { now: number } }).time?.now ?? 0;
+      if (now - this._lastHitAt < 80) {
+        // setTintFill replaces sprite color (vs setTint which multiplies);
+        // headless stub doesn't accept args reliably so guard.
+        const s = this.sprite as { setTintFill?: (c: number) => void };
+        if (typeof s.setTintFill === 'function') s.setTintFill(0xffffff);
+      }
+    }
   }
 
   canUpgrade(): boolean {
     return this._remainingUpgrades.length > 0;
+  }
+
+  /** M10 finale: apply damage. No-op on non-destructible towers (the
+   *  vast majority — every player tower in every existing mission).
+   *  Returns true on the killing blow so the caller (Hero) can grant
+   *  rewards exactly once. _lastHitAt is set so drawTower can render
+   *  a brief white-flash on the sprite. */
+  takeDamage(amount: number): boolean {
+    if (!this.destructible || this.hp === undefined) return false;
+    if (this.hp <= 0) return false; // already dead this frame
+    this.hp -= amount;
+    this._lastHitAt = (this._scene as { time?: { now: number } }).time?.now ?? 0;
+    if (this.hp <= 0) {
+      this.hp = 0;
+      // Mark for cleanup. TowerManager.cleanupExpired() picks this up
+      // next frame and removes the tower from the grid + sprite +
+      // recalculates paths (handled in cleanupExpired for destructibles).
+      (this as { _expired?: boolean })._expired = true;
+      return true;
+    }
+    return false;
   }
 
   /** Cost of the DEFAULT next upgrade. Back-compat for code that
@@ -407,8 +503,11 @@ export class Tower {
   runTraitUpdates(ctx: UpdateContext): void {
     resolveTowerUpdates(this.traits, this, ctx);
     cleanupExpiredTraits(this.traits);
-    // Redraw towers with dynamic visuals each frame
-    const needsRedraw = hasTrait(this.traits, 'firewall_link') ||
+    // Redraw towers with dynamic visuals each frame. M10 destructibles
+    // need this to update their HP bar as the hero damages them; if we
+    // skipped redraw the bar would freeze at maxHp until upgrade/death.
+    const needsRedraw = this.destructible ||
+      hasTrait(this.traits, 'firewall_link') ||
       hasTrait(this.traits, 'conduit_link') ||
       hasTrait(this.traits, 'damage_aura') || hasTrait(this.traits, 'rate_aura') ||
       hasTrait(this.traits, 'range_aura') || hasTrait(this.traits, 'crit_aura');
@@ -443,6 +542,17 @@ export class Tower {
       this.sprite.setRotation(this._lastSpriteRotation);
     }
 
+    // Plan A: Stormcaller stun. Tick down the remaining disabled time;
+    // skip the fire block while > 0. Sprite tint applied separately
+    // in drawTower so it persists across non-fire frames.
+    if (this._disabledRemaining > 0) {
+      this._disabledRemaining = Math.max(0, this._disabledRemaining - delta / 1000);
+      if (this.sprite) this.sprite.setTint(0x4488cc);
+      return;
+    } else if (this.sprite) {
+      this.sprite.clearTint();
+    }
+
     const effectiveRate = this.getEffectiveFireRate();
     if (time - this.lastFired >= effectiveRate) {
       const target = this.findTarget(creeps);
@@ -460,6 +570,15 @@ export class Tower {
   findTarget(creeps: Creep[]): Creep | null {
     if (this._frameTargetValid) return this._frameTarget;
 
+    // Universal same-team filter (PRD post-M10-v4): a tower never
+    // targets a creep that shares its `ownerIndex`. Replaces the
+    // earlier `destructible`-branch hack and the `isFriendly` check
+    // for player towers — both fall out of ownership semantics now.
+    // Conventions: player towers default ownerIndex undefined → treated
+    // as 0 (player team). CPU defenders use 99. Wave creeps default
+    // to 99 (CPU team), player sends to the spawning player slot.
+    const myOwner = this.ownerIndex ?? 0;
+
     const mode: TargetingMode = this.typeDef.targeting ?? 'first';
     const weakestMode = mode === 'weakest';
     let best: Creep | null = null;
@@ -467,6 +586,11 @@ export class Tower {
 
     for (const creep of creeps) {
       if (!creep.alive || creep.reached) continue;
+      // Same-team skip — covers M10's player-skip-sends + CPU-skip-waves
+      // in one rule. For pre-M10 missions every wave creep defaults to
+      // ownerIndex = 99, every player tower → 0, so the comparison is
+      // 0 !== 99 → tower fires (preserves legacy behaviour).
+      if (creep.ownerIndex === myOwner) continue;
       const dx = creep.x - this.x;
       const dy = creep.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -683,6 +807,7 @@ export class Tower {
       hitTargets: [],
       goldEarned: 0,
       hitStats: stats,
+      towerOwnerIndex: this.ownerIndex,
     };
 
     resolveDamageModifiers(this.traits, ctx);
@@ -717,6 +842,7 @@ export class Tower {
       hitTargets: [],
       goldEarned: 0,
       hitStats: stats,
+      towerOwnerIndex: this.ownerIndex,
     };
 
     resolveDamageModifiers(this.traits, ctx);

@@ -12,14 +12,24 @@ import { TowerInfoPanelDOM } from './TowerInfoPanelDOM';
 import { CreepInfoPanelDOM } from './CreepInfoPanelDOM';
 import { UpcomingWavesDOM } from './UpcomingWavesDOM';
 import { EconomyPanelDOM } from './EconomyPanelDOM';
+import { MissionPanelDOM } from './MissionPanelDOM';
 import { GameUIStore } from '../GameUIStore';
 import { ResponsiveManager } from '../../systems/ResponsiveManager';
 
-type PanelId = 'waves' | 'economy' | 'tower' | 'creep';
+type PanelId = 'mission' | 'waves' | 'economy' | 'tower' | 'creep';
 
 export function GameSidebar() {
-  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence } = useGameUI();
-  const [openPanel, setOpenPanel] = useState<PanelId | null>('waves');
+  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence, missionPanel, matchMode } = useGameUI();
+  // Plan 12 attacker mode — the composer overlay is the only chrome
+  // the player needs between waves; sidebar's wave/economy panels are
+  // misleading (gold doesn't matter, upcoming-wave previews are stale
+  // until the player composes). Tower/creep info still lands as
+  // floating cards (see AttackerComposerOverlay's mobile branch).
+  const isAttacker = matchMode === 'attacker';
+  // Default to MISSION when this is a campaign run so the player sees
+  // their star objectives at the top of the sidebar without an extra
+  // tap; otherwise default to WAVES like before.
+  const [openPanel, setOpenPanel] = useState<PanelId | null>(missionPanel ? 'mission' : 'waves');
   const [showFloating, setShowFloating] = useState<'tower' | 'creep' | null>(null);
   // Measure status bar so the floating card can sit above it — its height
   // varies with flex-wrap (1-3 rows depending on viewport width and what's shown).
@@ -109,28 +119,47 @@ export function GameSidebar() {
         maxWidth: panelWidth, width: panelWidth,
         overflow: 'visible',
       }}>
-        <div data-tutorial-target="waves-panel">
+        {/* Plan 14 v2: campaign mission objective tracker. Sits above
+            Waves so the player's eyes land on their star goals first.
+            Hidden entirely on non-mission runs. */}
+        {missionPanel && (
           <CollapsiblePanel
-            title="WAVES"
-            open={openPanel === 'waves'}
-            onToggle={() => toggle('waves')}
-            badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
+            title="MISSION"
+            titleColor="var(--gold)"
+            open={openPanel === 'mission'}
+            onToggle={() => toggle('mission')}
+            badge={`${missionPanel.objectives.filter(o => o.met).length}/${missionPanel.objectives.length}★`}
           >
-            <UpcomingWavesDOM />
+            <MissionPanelDOM />
           </CollapsiblePanel>
-        </div>
+        )}
 
-        <div data-tutorial-target="economy-panel">
-          <CollapsiblePanel
-            title="ECONOMY"
-            titleColor="#ff8844"
-            open={openPanel === 'economy'}
-            onToggle={() => toggle('economy')}
-            badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
-          >
-            <EconomyPanelDOM />
-          </CollapsiblePanel>
-        </div>
+        {!isAttacker && (
+          <div data-tutorial-target="waves-panel">
+            <CollapsiblePanel
+              title="WAVES"
+              open={openPanel === 'waves'}
+              onToggle={() => toggle('waves')}
+              badge={`W${currentWave}${totalWaves > 0 ? `/${totalWaves}` : ''}`}
+            >
+              <UpcomingWavesDOM />
+            </CollapsiblePanel>
+          </div>
+        )}
+
+        {!isAttacker && (
+          <div data-tutorial-target="economy-panel">
+            <CollapsiblePanel
+              title="ECONOMY"
+              titleColor="#ff8844"
+              open={openPanel === 'economy'}
+              onToggle={() => toggle('economy')}
+              badge={`${gold}g | +${income}/w${essence ? ` | ${essence.rate.toFixed(1)}e/s` : ''}`}
+            >
+              <EconomyPanelDOM />
+            </CollapsiblePanel>
+          </div>
+        )}
 
         {/* Desktop/tablet: tower info inline in sidebar */}
         {!isPhone && selectedTower && (

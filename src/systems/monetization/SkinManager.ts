@@ -55,7 +55,7 @@ const FACTION_TO_THEME_ID: Record<FactionId, string> = {
   // Both meta-factions fall back to 'generic' — chaos rotates per
   // wave and has no fixed theme; random is resolved before any
   // theme lookup happens but is kept here for type completeness.
-  chaos: 'generic', random: 'generic',
+  chaos: 'generic', random: 'generic', coalition: 'generic',
 };
 
 /** Modes that should ALWAYS render the map's authored theme — the

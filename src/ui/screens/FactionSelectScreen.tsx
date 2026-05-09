@@ -4,8 +4,8 @@ import { Header } from '../components/Header';
 import { FACTION_ORDER, FACTIONS, FactionId, rollRandomRealFaction } from '../../data/Factions';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { MatchMode } from '../../data/WaveDefinitions';
-import { PlayerInventory, ShardWallet, FACTION_UNLOCK_COST } from '../../systems/monetization';
-import { useState } from 'preact/hooks';
+import { isFactionPlayable } from '../../systems/profile/UnlockGates';
+import { preloadFactionArt } from '../utils/preloadFactionArt';
 
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
 
@@ -13,8 +13,6 @@ interface Props { data: Record<string, unknown>; }
 
 export function FactionSelectScreen({ data }: Props) {
   const mode = (data.mode as MatchMode) ?? 'standard';
-  const [, setTick] = useState(0);
-  const rerender = () => setTick(t => t + 1);
 
   const selectFaction = (factionId: FactionId) => {
     // Resolve the 'random' picker token to one of 11 real factions
@@ -22,6 +20,10 @@ export function FactionSelectScreen({ data }: Props) {
     // multiplayer messages, training capture) only ever sees a real
     // faction id — keeps the surface area minimal.
     const resolvedFaction = factionId === 'random' ? rollRandomRealFaction() : factionId;
+    // Warm the browser cache for the chosen faction's splash + emblem
+    // so LoadingScreen and any downstream FactionUnlockSplash paint
+    // instantly. Fire-and-forget; payload is tiny post-WebP.
+    preloadFactionArt(resolvedFaction);
     const passData = { mode, faction: resolvedFaction, map: data.map, difficulty: data.difficulty, randomSeed: data.randomSeed, dailySeed: data.dailySeed, customMapDef: data.customMapDef, waveCount: data.waveCount };
     if (mode === 'hero_defense') { UIBridge.show('heroselect', passData); }
     else if (mode === 'gauntlet' || mode === 'endless') {
@@ -40,7 +42,12 @@ export function FactionSelectScreen({ data }: Props) {
         <div class="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
           {FACTION_ORDER.map(factionId => {
             const faction = FACTIONS[factionId];
-            const isLocked = !PlayerInventory.ownsFaction(factionId);
+            // Plan 5: a faction is locked here if it isn't yet *playable*
+            // (Shards spent OR legacy migration OR free root → playable).
+            // Tree screen handles the Shards purchase + campaign route;
+            // FactionSelect just routes the player to the tree for any
+            // locked faction.
+            const isLocked = !isFactionPlayable(factionId);
             const isChaos = factionId === 'chaos';
             const isRandom = factionId === 'random';
             const isMeta = isChaos || isRandom;
@@ -48,7 +55,7 @@ export function FactionSelectScreen({ data }: Props) {
             return (
               <div key={factionId} class={`card ${isLocked ? 'locked' : ''}`} style={{ minHeight: '160px' }}
                 onClick={() => isLocked
-                  ? (ShardWallet.canAfford(FACTION_UNLOCK_COST) && PlayerInventory.unlockFaction(factionId) && rerender())
+                  ? UIBridge.show('faction-tree')
                   : selectFaction(factionId)}>
                 <div class="card-accent" style={{ background: color }} />
                 <div class="card-name" style={{ marginTop: '6px', color: isMeta ? color : '#fff' }}>{faction.name}</div>
@@ -64,7 +71,7 @@ export function FactionSelectScreen({ data }: Props) {
                 {isLocked && (
                   <div class="lock-overlay">
                     <div class="lock-icon">LOCKED</div>
-                    <div class="lock-cost">{ShardWallet.canAfford(FACTION_UNLOCK_COST) ? `Tap to unlock — ${FACTION_UNLOCK_COST} Shards` : `${FACTION_UNLOCK_COST} Shards (have ${ShardWallet.getBalance()})`}</div>
+                    <div class="lock-cost">Tap → Faction Tree</div>
                   </div>
                 )}
               </div>

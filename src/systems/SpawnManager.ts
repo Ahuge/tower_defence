@@ -139,7 +139,15 @@ export class SpawnManager {
       const baseCount = group.count * (ct.count || 1);
       // Apply both per-creep difficulty scaling AND the global
       // coop team-size multiplier.
-      const actualCount = Math.round(baseCount * resolved.countMult * this.countMultiplier);
+      let actualCount = Math.round(baseCount * resolved.countMult * this.countMultiplier);
+      // Boss-per-spawn floor: on multi-entry maps, ensure each path
+      // gets at least one boss creep when this is a boss group. The
+      // round-robin distribution below assigns by `i % numPaths`, so
+      // making actualCount >= numPaths guarantees every spawn point
+      // sees a boss appear.
+      if (group.creepType === 'boss' && numPaths > 1) {
+        actualCount = Math.max(actualCount, numPaths);
+      }
 
       for (let i = 0; i < actualCount; i++) {
         const groupBurst = ct.spawnBehavior === 'group' ? 4 : 1;
@@ -161,6 +169,15 @@ export class SpawnManager {
       const j = Math.floor(this.rng() * (i + 1));
       [this.spawnQueue[i], this.spawnQueue[j]] = [this.spawnQueue[j], this.spawnQueue[i]];
     }
+    // Stable-partition 'last' creeps to the end. Caster creeps use this
+    // so they're the wave's finale, not a random mid-wave surprise the
+    // player can't telegraph against. Sort is stable so creeps sharing
+    // a tier preserve their post-shuffle order.
+    this.spawnQueue.sort((a, b) => {
+      const ta = CREEP_TYPES[a.creepType]?.spawnOrder === 'last' ? 1 : 0;
+      const tb = CREEP_TYPES[b.creepType]?.spawnOrder === 'last' ? 1 : 0;
+      return ta - tb;
+    });
 
     // Co-op: with N× the creep count, keep the wave duration roughly
     // constant by spawning N× faster. Without this the wave trickles
@@ -201,16 +218,36 @@ export class SpawnManager {
       // re-pathed mid-wave (see Creep.rerouteViaWaypoints). Non-
       // waypoint maps leave this null.
       const spawner = this.spawners ? this.spawners[entry.pathIndex] ?? null : null;
+      // Plan A: Counterspell channel-completion buff. Each completed
+      // `buff_next_wave_hp` cast adds to the running multiplier. Reads
+      // off the scene because it's a per-mission accumulator that
+      // SpawnManager doesn't otherwise need to know about.
+      const channelHpBuff = (this.scene as any)._channelHpBuff ?? 0;
+      const hpScaleWithBuff = entry.hpScale * (1 + channelHpBuff);
+      // Plan 12 v2 — Anti-magic Wagon: drain the scene-level pending
+      // wagon counter onto each new creep. First N spawned creeps
+      // inherit a 2-hit shield via Creep._wagonHits.
+      const sceneAny = this.scene as { _pendingWagonCount?: number };
       for (let b = 0; b < burstCount; b++) {
         const creep = new Creep(
           this.scene,
           [...path],
-          entry.hpScale,
+          hpScaleWithBuff,
           entry.speedScale,
           entry.isBoss,
           entry.creepType,
           (this.scene as any).creepFaction,
         );
+        // Stamp the buff value at spawn so the visualization layer
+        // can render a per-creep glow scaled to how buffed each one
+        // is. Zero-buff spawns leave the field absent → cheap default.
+        if (channelHpBuff > 0) {
+          (creep as { _channelBuff?: number })._channelBuff = channelHpBuff;
+        }
+        if ((sceneAny._pendingWagonCount ?? 0) > 0) {
+          creep._wagonHits = 2;
+          sceneAny._pendingWagonCount = (sceneAny._pendingWagonCount ?? 0) - 1;
+        }
         if (spawner) {
           creep.spawnerWaypoints = spawner.waypoints.map(p => ({ col: p.col, row: p.row }));
           creep.spawnerExit = { col: spawner.exit.col, row: spawner.exit.row };

@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+"""
+slice_high_res_art.py — Process the high-resolution art delivery in
+`resources/high_res_art/`:
+
+  - 11 individual splash PNGs (`splash_{faction}.png`) → copy directly
+    to `public/assets/{faction}/{faction}_splash.png`. The source file
+    `splash_mech.png` maps to faction id `mechanical`.
+
+  - One emblem reference sheet (`elmblems.png`, 1254×1254) → slice
+    each of the 11 emblems into its own file at
+    `public/assets/{faction}/{faction}_emblem.png`. Layout: 6 emblems
+    on the top row (arcane / mechanical / nature / void / military /
+    aliens), 5 on the bottom row (cypherpunk / infernal / celestial /
+    psionic / harmonic). Column boundaries detected by scanning each
+    row for dark vertical gutters.
+
+This supersedes the earlier `slice_art_pass.py` cuts on the composite
+preview — the bespoke files in `high_res_art/` are higher resolution
+and ship as separate assets, no slicing artifacts.
+"""
+import os
+import shutil
+import sys
+from PIL import Image
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# v2 has 4× higher-res splash + emblem files plus a new image_c.png
+# (6144×4096 parallax reference sheet). Fall back to v1 folder if v2
+# isn't present so the script still works on older deliveries.
+SRC_V2 = os.path.join(ROOT, 'resources', 'high_res_art_v2')
+SRC_V1 = os.path.join(ROOT, 'resources', 'high_res_art')
+SRC = SRC_V2 if os.path.isdir(SRC_V2) else SRC_V1
+PARALLAX_SHEET = os.path.join(SRC_V2, 'image_c.png')
+OUT = os.path.join(ROOT, 'public', 'assets')
+
+# Map source filename token → canonical faction id used in code.
+SPLASH_NAME_MAP = {
+    'arcane': 'arcane',
+    'mech': 'mechanical',
+    'nature': 'nature',
+    'void': 'void',
+    'military': 'military',
+    'aliens': 'aliens',
+    'cypherpunk': 'cypherpunk',
+    'infernal': 'infernal',
+    'celestial': 'celestial',
+    'psionic': 'psionic',
+    'harmonic': 'harmonic',
+}
+
+# Emblem layout — v2 sheet is 5016×5016 (4× v1's 1254×1254). Boundaries
+# auto-detected once and stored as constants. Top row: 6 emblems. Bottom
+# row: 5.
+EMBLEM_TOP_Y = (1160, 1880)  # emblem circle band (drops label text below)
+EMBLEM_TOP_X = [
+    (109, 862),    # arcane
+    (954, 1708),   # mechanical
+    (1786, 2532),  # nature
+    (2596, 3332),  # void
+    (3398, 4113),  # military
+    (4180, 4919),  # aliens
+]
+
+EMBLEM_BOT_Y = (2800, 3560)  # bottom-row emblem band
+EMBLEM_BOT_X = [
+    (134, 909),    # cypherpunk
+    (1140, 1910),  # infernal
+    (2106, 2882),  # celestial
+    (3058, 3816),  # psionic
+    (4018, 4784),  # harmonic
+]
+
+EMBLEM_TOP_FACTIONS = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens']
+EMBLEM_BOT_FACTIONS = ['cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic']
+
+# ─── Parallax sheet (v2 image_c.png, 6144×4096) ───────────────────
+# 11 factions × 4 sub-cells (composite + 3 layers). 6 factions on top
+# row (y=0..2080), 5 on bottom (y=2160..4096). Within each row's
+# faction column, the 3 layer images are at fixed y-bands; we crop
+# Layer 1 (Far), Layer 2 (Mid), Layer 3 (Fore).
+
+PARALLAX_TOP_FACTIONS = EMBLEM_TOP_FACTIONS
+PARALLAX_BOT_FACTIONS = EMBLEM_BOT_FACTIONS
+
+# Top-row faction columns. Even-spaced in 6 columns.
+PARALLAX_TOP_X = [
+    (i * (6144 // 6), (i + 1) * (6144 // 6)) for i in range(6)
+]
+# Bottom-row faction columns. Even-spaced in 5 columns.
+PARALLAX_BOT_X = [
+    (i * (6144 // 5), (i + 1) * (6144 // 5)) for i in range(5)
+]
+
+# Y-bands per layer per row. Measured by overlaying grid markers on
+# Arcane (top row) and Cypherpunk (bottom row) cells. Bottom-row
+# cells are slightly shorter than top-row cells, so the y-bands
+# differ — kept as separate tables instead of computed shifts.
+PARALLAX_TOP_LAYER_Y = {
+    'far':  (1370, 1545),  # Layer 1 - FAR BACKGROUND
+    'mid':  (1625, 1830),  # Layer 2 - MID SCENE
+    'fore': (1965, 2115),  # Layer 3 - FORE PARTICLES (between LAYER-2 + LAYER-3 labels)
+}
+PARALLAX_BOT_LAYER_Y = {
+    'far':  (3425, 3545),
+    'mid':  (3725, 3825),  # past LAYER 2 label
+    'fore': (3970, 4045),  # past LAYER 3 label
+}
+
+
+def ensure_dir(path: str) -> None:
+    os.makedirs(path, exist_ok=True)
+
+
+def copy_splashes(dry: bool) -> None:
+    """Each splash exports two files:
+       - {faction}_splash.png        — original landscape (desktop)
+       - {faction}_splash_mobile.png — center-cropped 9:16 portrait
+    The engine picks per-viewport via CSS media query or by reading the
+    portrait file when the viewport is narrow. Center-crop is a
+    reasonable v1; bespoke mobile compositions can replace this drop-in
+    later if the artist re-renders for portrait."""
+    print('— Splashes —')
+    for token, faction in SPLASH_NAME_MAP.items():
+        src = os.path.join(SRC, f'splash_{token}.png')
+        if not os.path.exists(src):
+            print(f'  WARN: missing {src}', file=sys.stderr)
+            continue
+        out_dir = os.path.join(OUT, faction)
+        ensure_dir(out_dir)
+
+        # 1) Landscape — direct copy.
+        out = os.path.join(out_dir, f'{faction}_splash.png')
+        if dry:
+            print(f'  [dry] would copy {src} → {out}')
+        else:
+            shutil.copyfile(src, out)
+            size_kb = os.path.getsize(out) / 1024
+            print(f'  ✓ {os.path.relpath(out, ROOT)}  (landscape, {size_kb:.0f} KB)')
+
+        # 2) Portrait — prefer a hand-authored mobile splash if one
+        #    exists at `splash_mobile_<faction>.png` (1530×2720, 9:16).
+        #    Fall back to center-cropping the landscape source for any
+        #    faction that hasn't shipped a bespoke mobile yet. Naming
+        #    intentionally uses the FACTION id (not the splash token)
+        #    so the artist's filename matches the engine's filename.
+        out_m = os.path.join(out_dir, f'{faction}_splash_mobile.png')
+        bespoke = os.path.join(SRC, f'splash_mobile_{faction}.png')
+        if os.path.exists(bespoke):
+            if dry:
+                print(f'  [dry] would copy bespoke {bespoke} → {out_m}')
+                continue
+            shutil.copyfile(bespoke, out_m)
+            size_kb = os.path.getsize(out_m) / 1024
+            print(f'  ✓ {os.path.relpath(out_m, ROOT)}  (portrait, bespoke, {size_kb:.0f} KB)')
+            continue
+        if dry:
+            print(f'  [dry] would center-crop portrait → {out_m}')
+            continue
+        img = Image.open(src).convert('RGBA')
+        w, h = img.size
+        # Target portrait aspect 9:16 → width = h * 9/16.
+        target_w = int(round(h * 9 / 16))
+        if target_w >= w:
+            # Source is already narrower than 9:16; just copy.
+            shutil.copyfile(src, out_m)
+        else:
+            x0 = (w - target_w) // 2
+            crop = img.crop((x0, 0, x0 + target_w, h))
+            crop.save(out_m, 'PNG', optimize=True)
+        size_kb = os.path.getsize(out_m) / 1024
+        print(f'  ✓ {os.path.relpath(out_m, ROOT)}  (portrait, auto-crop, {size_kb:.0f} KB)')
+
+
+def slice_emblems(dry: bool) -> None:
+    """Per-faction emblem files. Prefers an individual `emblem_{id}.png`
+    in the v2 source folder; falls back to slicing the multi-emblem
+    `elmblems.png` reference sheet for any faction that doesn't have
+    its own file (typical when art is delivered incrementally)."""
+    print('— Emblems —')
+    sheet_path = os.path.join(SRC, 'elmblems.png')
+    sheet = None  # lazy-load only if a fallback slice is needed.
+
+    all_factions = EMBLEM_TOP_FACTIONS + EMBLEM_BOT_FACTIONS
+    all_xs = EMBLEM_TOP_X + EMBLEM_BOT_X
+    sheet_y_for = (
+        [EMBLEM_TOP_Y] * len(EMBLEM_TOP_FACTIONS)
+        + [EMBLEM_BOT_Y] * len(EMBLEM_BOT_FACTIONS)
+    )
+
+    for faction, (x0, x1), (y0, y1) in zip(all_factions, all_xs, sheet_y_for):
+        out_dir = os.path.join(OUT, faction)
+        ensure_dir(out_dir)
+        out = os.path.join(out_dir, f'{faction}_emblem.png')
+
+        # 1) Per-faction individual file?
+        individual = os.path.join(SRC, f'emblem_{faction}.png')
+        if os.path.exists(individual):
+            if dry:
+                print(f'  [dry] would copy {individual} → {out}')
+                continue
+            shutil.copyfile(individual, out)
+            size_kb = os.path.getsize(out) / 1024
+            print(f'  ✓ {os.path.relpath(out, ROOT)}  (individual, {size_kb:.0f} KB)')
+            continue
+
+        # 2) Fallback — slice from the multi-emblem reference sheet.
+        if sheet is None:
+            if not os.path.exists(sheet_path):
+                print(f'  WARN: no individual emblem for {faction} and no sheet at {sheet_path}', file=sys.stderr)
+                continue
+            sheet = Image.open(sheet_path).convert('RGBA')
+
+        box = (x0 + 4, y0, x1 - 4, y1)
+        if dry:
+            print(f'  [dry] would slice {faction} from {sheet_path} {box}')
+            continue
+        crop = sheet.crop(box)
+        crop.save(out, 'PNG', optimize=True)
+        w, h = crop.size
+        size_kb = os.path.getsize(out) / 1024
+        print(f'  ✓ {os.path.relpath(out, ROOT)}  (sliced from sheet, {w}×{h}, {size_kb:.0f} KB)')
+
+
+def slice_parallax(dry: bool) -> None:
+    """Slice the v2 image_c.png parallax sheet into per-faction-per-layer
+    PNGs. Top row has 6 factions, bottom row has 5; each cell contains
+    a composite preview + 3 layer images (far / mid / fore)."""
+    print('— Parallax —')
+    if not os.path.exists(PARALLAX_SHEET):
+        print(f'  WARN: {PARALLAX_SHEET} not found — skipping parallax slice')
+        return
+    img = Image.open(PARALLAX_SHEET).convert('RGBA')
+    print(f'  source: {PARALLAX_SHEET}  ({img.size[0]}×{img.size[1]})')
+
+    def slice_row(factions: list[str], xs: list[tuple[int, int]],
+                  layer_ys: dict[str, tuple[int, int]]) -> None:
+        for (x0, x1), faction in zip(xs, factions):
+            # Bespoke high-res parallax wins. If the artist delivered a
+            # full-res `parallax/parallax_<faction>_far.png` (etc), skip
+            # the low-res sheet slice entirely — `import_parallax_v2.py`
+            # owns the good copy. Without this gate, every run of this
+            # script silently overwrites the high-res with the old slice.
+            bespoke = os.path.join(SRC, 'parallax', f'parallax_{faction}_far.png')
+            if os.path.exists(bespoke):
+                print(f'  ⤷ {faction}: bespoke high-res parallax exists, skipping sheet slice')
+                continue
+            out_dir = os.path.join(OUT, faction)
+            ensure_dir(out_dir)
+            for layer, (y0, y1) in layer_ys.items():
+                # Inset 4px on the left/right to drop any column-divider
+                # outline that crept in. Layers run edge-to-edge vertically.
+                box = (x0 + 8, y0, x1 - 8, y1)
+                out = os.path.join(out_dir, f'{faction}_parallax_{layer}.png')
+                if dry:
+                    print(f'  [dry] would crop {faction} parallax_{layer} from {box}')
+                    continue
+                crop = img.crop(box)
+                crop.save(out, 'PNG', optimize=True)
+                w, h = crop.size
+                size_kb = os.path.getsize(out) / 1024
+                print(f'  ✓ {os.path.relpath(out, ROOT)}  ({w}×{h}, {size_kb:.0f} KB)')
+
+    slice_row(PARALLAX_TOP_FACTIONS, PARALLAX_TOP_X, PARALLAX_TOP_LAYER_Y)
+    slice_row(PARALLAX_BOT_FACTIONS, PARALLAX_BOT_X, PARALLAX_BOT_LAYER_Y)
+
+
+if __name__ == '__main__':
+    dry = '--dry-run' in sys.argv
+    if dry:
+        print('(dry run — no files written)')
+    copy_splashes(dry)
+    slice_emblems(dry)
+    slice_parallax(dry)

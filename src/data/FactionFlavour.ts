@@ -135,6 +135,19 @@ export const FACTION_FLAVOUR: Record<string, string[]> = {
     "The Drum Kit maintains the beat. The beat maintains the killzone.",
     "Every performance is a masterpiece. Every audience is a casualty report.",
   ],
+
+  coalition: [
+    "Their wizards burn through every wall we have. We build more walls.",
+    "Stone, steel, banner. Nothing of theirs answers what they bring.",
+    "The Forge could not finish a Bolt in time. We march with what we have.",
+    "Every tower here was raised by hand. Nothing was given to us.",
+    "Hold the line. Help is not coming.",
+    "We have no spell to counter theirs. We have stone, and we have aim.",
+    "When the towers fall, the wall stays. When the wall falls, the gate. When the gate falls, us.",
+    "They are wizards. We are not. The wizards must die anyway.",
+    "Don't look at the sky. Look at the path. The path is what kills you.",
+    "Pile the stones high. Watch the slits. Spend nothing you do not have to.",
+  ],
 };
 
 export const GENERIC_FLAVOUR = [

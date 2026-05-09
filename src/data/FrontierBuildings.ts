@@ -125,6 +125,7 @@ export const FRONTIER_BUILDINGS: Record<FactionId, FrontierBuilding[]> = {
   ],
   chaos: [],
   random: [],
+  coalition: [],
 };
 
 /** Get all faction frontier buildings (for Chaos faction pool — picks

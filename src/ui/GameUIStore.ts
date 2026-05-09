@@ -38,6 +38,11 @@ export interface TowerStats {
   damage: number;
   range: number;
   fireRate: number;
+  /** Current HP — only set on destructible towers (M10 CPU defenders +
+   *  PRD 06 boss structures). Undefined on invincible player towers,
+   *  in which case the info panel hides the HP row. */
+  hp?: number;
+  maxHp?: number;
   /** Values after aura/buff resolution. Equal to base when no buffs active. */
   effectiveDamage: number;
   effectiveRange: number;
@@ -310,6 +315,112 @@ export interface GameUIState {
    *  frame; shallow-equality in the setter skips the notify when
    *  nothing changed. */
   circleRoster: CircleRosterState | null;
+  /** Plan 12: attacker-mode breakthrough progress. Populated only when
+   *  `matchMode === 'attacker'`. The HUD swaps "Lives: 999" for a
+   *  meaningful "Breakthrough: X / N" readout — in attacker mode the
+   *  player WANTS leaks, so the lives counter is misleading. */
+  attackerProgress: { leaks: number; threshold: number } | null;
+  /** Plan 14 v2: in-mission objective tracker state. Populated each
+   *  frame when a campaign mission is active; null otherwise. Drives
+   *  the MISSION sidebar panel — players see live which star
+   *  objectives they're currently meeting and which they still need. */
+  missionPanel: MissionPanelState | null;
+  /** Plan 12 v2: AttackerComposer snapshot. Set when an attacker
+   *  mission is between waves and the player should compose their
+   *  next wave; cleared while a wave is in flight. */
+  attackerComposer: AttackerComposerUIState | null;
+  /** M10 finale — HUD state for the summoning charge bar + tower count. */
+  finaleHud: FinaleHudState | null;
+}
+
+export interface MissionPanelState {
+  missionName: string;
+  archetypeId: string;
+  /** Each objective with its live met/unmet state evaluated against a
+   *  hypothetical "if I won right now" snapshot. Order: star 1 (always
+   *  "win"), star 2, star 3 if declared. */
+  objectives: Array<{ star: 1 | 2 | 3; label: string; met: boolean }>;
+}
+
+/** Plan 12 v2: snapshot of the AttackerComposer pushed to the DOM each
+ *  time the player adjusts a pick. The overlay reads this and renders
+ *  palette cards + a Send Wave button. Null when not in attacker v2
+ *  mode, or when the wave is in flight (composer hidden mid-wave). */
+export interface AttackerComposerUIState {
+  /** Palette entries visible at this mission's idx — the overlay maps
+   *  these to cards. */
+  entries: Array<{
+    creepType: string;
+    label: string;
+    cost: number;
+    description: string;
+    /** Currently-picked count of this entry. */
+    count: number;
+    /** Defender-prep HP multiplier for this creep type this wave.
+     *  1.0 = neutral. < 1 = creep is being countered. UI renders a
+     *  red badge with the percentage when < 1. */
+    prepMult: number;
+  }>;
+  /** Essence spent so far this wave. */
+  spent: number;
+  /** Total essence budget this wave. */
+  budget: number;
+  /** Wave number that will be sent when the player hits Send. */
+  waveNum: number;
+  /** True iff at least one creep is picked. Disables Send button below. */
+  canSend: boolean;
+  /** Plan 12 v2 Phase 2 — ability tray. Each entry is one ability the
+   *  player can queue for the next wave. cooldownRemaining > 0 grays
+   *  the button. queued = armed for Send. */
+  abilities: Array<{
+    id: string;
+    label: string;
+    description: string;
+    cooldown: number;
+    cooldownRemaining: number;
+    queued: boolean;
+  }>;
+  /** Plan 12 v2 Phase 2 — Anti-magic Wagon spend. */
+  wagon: {
+    count: number;
+    max: number;
+    costPerWagon: number;
+  };
+  /** Economy v3 — Reinforcement Camps. Persistent income buildings.
+   *  max=0 hides the row entirely (mission opted out). */
+  camps: {
+    count: number;
+    max: number;
+    costPerCamp: number;
+    incomePerWave: number;
+  };
+  /** Economy v3 — income breakdown for the header. The composer's
+   *  remaining + spent + budget already cover the spend bar; these
+   *  separate fields let the UI show "Carryover N + Income M = budget"
+   *  so the player understands their economy. */
+  carryover: number;
+  thisWaveIncome: number;
+  /** Plan 12 v2 Phase 2.5 — defender prep for this wave. Null = no
+   *  prep configured for the mission. UI renders the prep label +
+   *  description in the composer header. */
+  prep: { id: string; label: string; description: string } | null;
+}
+
+/** M10 finale — DOM HUD state for the charge meter + summon status.
+ *  Pushed each frame from GameScene when FinaleController is active.
+ *  Null on every other mission. */
+export interface FinaleHudState {
+  /** Charge in [0, 1]. UI renders a horizontal progress bar. */
+  charge: number;
+  /** True after the hero has summoned at least once (charge bar
+   *  becomes "ACTIVE" indicator instead of countdown). */
+  heroSummoned: boolean;
+  /** Hero's current HP / maxHP — null until first summon. */
+  heroHp: { hp: number; maxHp: number; alive: boolean; respawnIn: number } | null;
+  /** Count of CPU towers still alive (incl. Ult). */
+  cpuTowersRemaining: number;
+  /** Total CPU towers at scene start (constant). */
+  cpuTowersTotal: number;
 }
 
 export interface ContinueOffer {
@@ -361,6 +472,64 @@ function circleRosterEqual(a: CircleRosterState, b: CircleRosterState): boolean 
   return true;
 }
 
+/** Quantized cooldown comparison — sub-0.1s differences are below
+ *  display precision and shouldn't force a re-render. Used for both
+ *  ability cooldowns and accessory active cooldowns. */
+function cooldownEq(a: number, b: number): boolean {
+  return Math.round(a * 10) === Math.round(b * 10);
+}
+
+function abilityInfoEqual(a: AbilityInfo, b: AbilityInfo): boolean {
+  if (a.ready !== b.ready || a.upgrades !== b.upgrades) return false;
+  if (a.key !== b.key || a.name !== b.name) return false;
+  return cooldownEq(a.cooldown, b.cooldown);
+}
+
+function heroShopEqual(a: HeroShopState, b: HeroShopState): boolean {
+  if (a.heroName !== b.heroName || a.level !== b.level || a.maxLevel !== b.maxLevel) return false;
+  if (a.xp !== b.xp || a.xpNeeded !== b.xpNeeded) return false;
+  if (a.hp !== b.hp || a.maxHp !== b.maxHp) return false;
+  if (a.damage !== b.damage || a.attackSpeed !== b.attackSpeed) return false;
+  if (a.pendingUpgrades !== b.pendingUpgrades || a.nextRotationWave !== b.nextRotationWave) return false;
+  if (a.items.length !== b.items.length) return false;
+  for (let i = 0; i < a.items.length; i++) {
+    const x = a.items[i], y = b.items[i];
+    if (x.tier !== y.tier || x.cost !== y.cost || x.owned !== y.owned) return false;
+  }
+  if (a.tomes.length !== b.tomes.length) return false;
+  for (let i = 0; i < a.tomes.length; i++) {
+    if (a.tomes[i].id !== b.tomes[i].id || a.tomes[i].cost !== b.tomes[i].cost) return false;
+  }
+  if (a.equippedAccessories.length !== b.equippedAccessories.length) return false;
+  for (let i = 0; i < a.equippedAccessories.length; i++) {
+    const x = a.equippedAccessories[i], y = b.equippedAccessories[i];
+    if (x.id !== y.id || x.equipped !== y.equipped) return false;
+    if (!cooldownEq(x.cooldown ?? 0, y.cooldown ?? 0)) return false;
+  }
+  // Compare offers by `id`, `cost`, and `equipped` — an offer that flips
+  // to `equipped=true` post-buy is the same `id` and same array length
+  // but the UI needs to grey out its Buy button.
+  if (a.accessoryOffers.length !== b.accessoryOffers.length) return false;
+  for (let i = 0; i < a.accessoryOffers.length; i++) {
+    const x = a.accessoryOffers[i], y = b.accessoryOffers[i];
+    if (x.id !== y.id || x.cost !== y.cost || x.equipped !== y.equipped) return false;
+  }
+  // upgradeOptions can change `label` / `desc` while keeping `id` (e.g.
+  // a respec or stat-rebind path); compare all three to avoid stale UI.
+  if (a.upgradeOptions.length !== b.upgradeOptions.length) return false;
+  for (let i = 0; i < a.upgradeOptions.length; i++) {
+    const x = a.upgradeOptions[i], y = b.upgradeOptions[i];
+    if (x.id !== y.id || x.label !== y.label || x.desc !== y.desc) return false;
+  }
+  if (a.abilities.length !== b.abilities.length) return false;
+  for (let i = 0; i < a.abilities.length; i++) {
+    if (!abilityInfoEqual(a.abilities[i], b.abilities[i])) return false;
+  }
+  if ((a.ultimate === null) !== (b.ultimate === null)) return false;
+  if (a.ultimate && b.ultimate && !abilityInfoEqual(a.ultimate, b.ultimate)) return false;
+  return true;
+}
+
 // ─── Store ──────────────────────────────────────────────
 
 class GameUIStoreClass {
@@ -390,6 +559,12 @@ class GameUIStoreClass {
     onRequestSpeedBoost?: () => void;
     onPause?: () => void;
     onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
+    onAttackerAdjust?: (creepTypeId: string, delta: number) => void;
+    onAttackerClear?: () => void;
+    onAttackerSendWave?: () => void;
+    onAttackerAbilityToggle?: (abilityId: string) => void;
+    onAttackerWagonAdjust?: (delta: number) => void;
+    onAttackerCampsBuy?: () => void;
   } = {};
 
   private defaultState(): GameUIState {
@@ -420,7 +595,33 @@ class GameUIStoreClass {
       continueOffer: null,
       speedBoostRemainingSec: 0,
       circleRoster: null,
+      attackerProgress: null,
+      missionPanel: null,
+      attackerComposer: null,
+      finaleHud: null,
     };
+  }
+
+  /** M10 finale: push charge + hero state for the DOM HUD. Pass null
+   *  to hide. Skips notify when nothing changed (per-frame pump). */
+  setFinaleHud(next: FinaleHudState | null): void {
+    const prev = this.state.finaleHud;
+    if (prev === next) return;
+    if (prev && next
+      && Math.abs(prev.charge - next.charge) < 0.001
+      && prev.heroSummoned === next.heroSummoned
+      && prev.cpuTowersRemaining === next.cpuTowersRemaining
+      && prev.cpuTowersTotal === next.cpuTowersTotal
+      && (!prev.heroHp) === (!next.heroHp)
+      && (!prev.heroHp || !next.heroHp || (
+        prev.heroHp.hp === next.heroHp.hp
+        && prev.heroHp.alive === next.heroHp.alive
+        && Math.abs(prev.heroHp.respawnIn - next.heroHp.respawnIn) < 0.5
+      ))) {
+      return;
+    }
+    this.state = { ...this.state, finaleHud: next };
+    this.notify();
   }
 
   /** Replace the circle roster snapshot. Shallow-compares each row
@@ -431,6 +632,60 @@ class GameUIStoreClass {
     if (prev === next) return;
     if (prev && next && circleRosterEqual(prev, next)) return;
     this.state = { ...this.state, circleRoster: next };
+    this.notify();
+  }
+
+  /** Plan 12: push attacker-mode breakthrough progress for the HUD.
+   *  Pass null on non-attacker matches so StatusBarDOM falls back to
+   *  the regular Lives readout. Skips notify when nothing changed. */
+  setAttackerProgress(next: { leaks: number; threshold: number } | null): void {
+    const prev = this.state.attackerProgress;
+    if (prev === next) return;
+    if (prev && next && prev.leaks === next.leaks && prev.threshold === next.threshold) return;
+    this.state = { ...this.state, attackerProgress: next };
+    this.notify();
+  }
+
+  /** Plan 14 v2: push in-mission objective tracker state. Pushed each
+   *  frame from GameScene only on campaign mission runs. Skip notify
+   *  when nothing changed (compares per-objective met flag — labels +
+   *  archetype don't change once the mission starts). */
+  setMissionPanel(next: MissionPanelState | null): void {
+    const prev = this.state.missionPanel;
+    if (prev === next) return;
+    if (prev && next
+      && prev.missionName === next.missionName
+      && prev.objectives.length === next.objectives.length
+      && prev.objectives.every((o, i) => o.met === next.objectives[i].met)) return;
+    this.state = { ...this.state, missionPanel: next };
+    this.notify();
+  }
+
+  /** Plan 12 v2: push the attacker-composer snapshot. Pass null to
+   *  hide the overlay (e.g. while a wave is in flight). Skips notify
+   *  when nothing changed so the per-frame push is cheap. */
+  setAttackerComposer(next: AttackerComposerUIState | null): void {
+    const prev = this.state.attackerComposer;
+    if (prev === next) return;
+    if (prev && next
+      && prev.spent === next.spent
+      && prev.budget === next.budget
+      && prev.waveNum === next.waveNum
+      && prev.canSend === next.canSend
+      && prev.entries.length === next.entries.length
+      && prev.entries.every((e, i) => e.count === next.entries[i].count && e.creepType === next.entries[i].creepType && e.prepMult === next.entries[i].prepMult)
+      && (prev.prep?.id ?? null) === (next.prep?.id ?? null)
+      && prev.camps.count === next.camps.count
+      && prev.camps.max === next.camps.max
+      && prev.carryover === next.carryover
+      && prev.thisWaveIncome === next.thisWaveIncome
+      && prev.abilities.length === next.abilities.length
+      && prev.abilities.every((a, i) => a.cooldownRemaining === next.abilities[i].cooldownRemaining && a.queued === next.abilities[i].queued)
+      && prev.wagon.count === next.wagon.count
+      && prev.wagon.max === next.wagon.max) {
+      return;
+    }
+    this.state = { ...this.state, attackerComposer: next };
     this.notify();
   }
 
@@ -461,6 +716,18 @@ class GameUIStoreClass {
   /** Activate the game sidebar (called when GameScene starts) */
   activate(matchMode: string, totalWaves: number): void {
     this.state = { ...this.defaultState(), active: true, matchMode, totalWaves };
+    this.notify();
+  }
+
+  /** Replace totalWaves after activate. Phaser scene reuse keeps the
+   *  GameScene instance alive across matches, so `this.waves` from a
+   *  prior run can be stale at activate-time — without a follow-up
+   *  push the wave HUD shows the previous match's count (e.g. /20
+   *  bleeding into a 5-wave Hero Duel mission). GameScene calls this
+   *  immediately after `this.waves = getWavesForMode(...)`. */
+  setTotalWaves(totalWaves: number): void {
+    if (this.state.totalWaves === totalWaves) return;
+    this.state = { ...this.state, totalWaves };
     this.notify();
   }
 
@@ -570,8 +837,15 @@ class GameUIStoreClass {
     this.notify();
   }
 
-  /** Update hero shop state (Hero Defense mode) */
+  /** Update hero shop state (Hero Defense + M10 finale). Bailout when
+   *  the new snapshot is visually equivalent to the previous — the
+   *  controllers push every frame and ability cooldowns tick
+   *  continuously, so the naive `{...state, heroShop}` would force a
+   *  Preact re-render of EconomyPanelDOM + HeroItemsDOM 60+×/sec even
+   *  when nothing visible changed. */
   updateHeroShop(heroShop: HeroShopState): void {
+    const prev = this.state.heroShop;
+    if (prev && heroShopEqual(prev, heroShop)) return;
     this.state = { ...this.state, heroShop };
     this.notify();
   }
@@ -704,6 +978,36 @@ class GameUIStoreClass {
   requestDeselectTower(): void {
     if (this.callbacks.onDeselectTower) this.callbacks.onDeselectTower();
     else this.deselectTower();
+  }
+
+  /** Plan 12 v2: composer pick adjust (called by overlay +/- buttons). */
+  requestAttackerAdjust(creepTypeId: string, delta: number): void {
+    this.callbacks.onAttackerAdjust?.(creepTypeId, delta);
+  }
+
+  /** Plan 12 v2: clear all picks. */
+  requestAttackerClear(): void {
+    this.callbacks.onAttackerClear?.();
+  }
+
+  /** Plan 12 v2: lock picks and start the wave. */
+  requestAttackerSendWave(): void {
+    this.callbacks.onAttackerSendWave?.();
+  }
+
+  /** Plan 12 v2 Phase 2: toggle an ability armed/disarmed for next Send. */
+  requestAttackerAbilityToggle(abilityId: string): void {
+    this.callbacks.onAttackerAbilityToggle?.(abilityId);
+  }
+
+  /** Plan 12 v2 Phase 2: adjust the wagon count by ±1. */
+  requestAttackerWagonAdjust(delta: number): void {
+    this.callbacks.onAttackerWagonAdjust?.(delta);
+  }
+
+  /** Economy v3: build a Reinforcement Camp (+1, irreversible). */
+  requestAttackerCampsBuy(): void {
+    this.callbacks.onAttackerCampsBuy?.();
   }
 
   // ─── Subscription ───────────────────────────────────

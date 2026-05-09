@@ -34,6 +34,26 @@ export interface GameOverData {
   /** True when the local player is the bot-host in Circle Co-op.
    *  Used to tag the self-row in the roster. */
   coopLocalIndex?: number;
+  /** Plan 14: campaign mission summary. Populated only for runs
+   *  launched via `MissionRunner.start`. Drives the post-mission
+   *  star reveal + Next Mission CTA on GameOverScreen. */
+  missionResult?: MissionResultSummary;
+}
+
+export interface MissionResultSummary {
+  campaignFactionId: FactionId;
+  missionIdx: number;
+  missionName: string;
+  archetypeId: string;
+  stars: 0 | 1 | 2 | 3;
+  won: boolean;
+  /** Each star objective with its evaluated state. The first row is
+   *  always "Win the mission"; rows 2 + 3 are the per-mission star2
+   *  / star3 labels (omitted if the mission only declared one). */
+  objectives: Array<{ label: string; met: boolean }>;
+  /** Idx of the next mission to play, or null if this was the last
+   *  (or the run was a loss — losing doesn't unlock the next one). */
+  nextMissionIdx: number | null;
 }
 
 /** One row on the Circle Co-op end screen: identity + what they did

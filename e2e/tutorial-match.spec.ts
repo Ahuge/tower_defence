@@ -50,6 +50,9 @@ test.describe('tutorial match', () => {
     // in (`title="Tap to sign in"`), colliding with the Tutorials
     // help button by accessible name. Disambiguate by title.
     await page.getByTitle('Tutorials').click();
+    // Modal defaults to the How-To-Play carousel; flip to the tracks
+    // list before clicking a specific entry.
+    await page.getByRole('button', { name: 'All Tutorials →' }).click();
     await page.getByText('Tutorial Match').first().click();
 
     // 'welcome' — click-advance.
@@ -168,6 +171,9 @@ test.describe('tutorial match', () => {
     // in (`title="Tap to sign in"`), colliding with the Tutorials
     // help button by accessible name. Disambiguate by title.
     await page.getByTitle('Tutorials').click();
+    // Modal defaults to the How-To-Play carousel; flip to the tracks
+    // list before clicking a specific entry.
+    await page.getByRole('button', { name: 'All Tutorials →' }).click();
     await page.getByText('Tutorial Match').first().click();
     await waitForTutorialStep(page, 'welcome', 20_000);
 

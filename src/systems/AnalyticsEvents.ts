@@ -84,7 +84,23 @@ export type AnalyticsEvent =
   | { type: 'faction_tree_node_focused'; factionId: FactionId | string }
   | { type: 'faction_unlock_attempted'; factionId: FactionId | string; route: 'shards' | 'campaign' }
   | { type: 'faction_unlocked'; factionId: FactionId | string; route: 'shards' | 'campaign'; shardsSpent: number }
-  | { type: 'faction_unlock_failed'; factionId: FactionId | string; reason: string };
+  | { type: 'faction_unlock_failed'; factionId: FactionId | string; reason: string }
+
+  // ---- Campaign / mission lifecycle (Plan 10) ------------------------------
+  | { type: 'campaign_lobby_opened'; campaignFactionId: string }
+  | { type: 'mission_started'; campaignFactionId: string; missionIdx: number; archetypeId: string }
+  | { type: 'mission_completed'; campaignFactionId: string; missionIdx: number; archetypeId: string; stars: number; elapsedMs: number }
+  | { type: 'mission_failed'; campaignFactionId: string; missionIdx: number; archetypeId: string; atWave: number }
+  | { type: 'campaign_completed'; campaignFactionId: string; totalStars: number }
+
+  // ---- Campaign state v2 (Phase 0 of campaign-systems v2) ------------------
+  | { type: 'campaign_state_loaded'; factionId: string; hasState: boolean }
+  | { type: 'campaign_state_updated'; factionId: string; changedKeys: string[]; hadPriorState: boolean }
+
+  // ---- Arcane Counterspell (Plan A) -----------------------------------------
+  | { type: 'arcane_channel_started'; channelId: string; effectId: string; duration: number }
+  | { type: 'arcane_channel_interrupted'; channelId: string; effectId: string; source: 'damage' | 'death' | 'amf' | 'external'; percentRemaining: number }
+  | { type: 'arcane_channel_completed'; channelId: string; effectId: string };
 
 /** Convenience union of all event names. */
 export type EventName = AnalyticsEvent['type'];

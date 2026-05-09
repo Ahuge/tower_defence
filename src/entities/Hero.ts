@@ -4,8 +4,11 @@ import { ensureHeroSkinTexture } from '../systems/PaletteSwap';
 import { ItemSlot, ITEM_SLOTS, ITEM_SLOT_ORDER, getItemUpgradeCost } from '../data/HeroItems';
 import { AccessoryDef } from '../data/HeroAccessories';
 import { ArenaCreep } from './ArenaCreep';
+import type { Tower } from './Tower';
+import type { DestructibleStructure } from './DestructibleStructure';
 import { DamageNumberEntry, DMG_COLOR } from '../systems/FloatingDamage';
 import { ArenaEffect, FX } from '../systems/ArenaEffects';
+import { spawnHeroAbilityVfx } from '../systems/ArenaFloorRenderer';
 
 export interface AbilityState {
   def: AbilityDef;
@@ -123,6 +126,47 @@ export class Hero {
   // Arena bounds
   private arenaWidth: number;
   private arenaHeight: number;
+  /** M10 finale — instance-configurable respawn time. Defaults to the
+   *  static RESPAWN_TIME for backward compat with HeroDefenseMode;
+   *  FinaleController bumps it for the climax (~20s). */
+  respawnSeconds: number = Hero.RESPAWN_TIME;
+  /** M10 finale — anchor the hero respawns to. Defaults to the arena
+   *  centre (Hero Defense mode behaviour); FinaleController sets this
+   *  to the midpoint of the two summoning circles. */
+  spawnAnchor: { x: number; y: number };
+  /** M10 finale — world bounds for clamp + ability targeting. When set,
+   *  overrides arenaWidth/Height. FinaleController sets it to the
+   *  full grid pixel rect. */
+  worldBounds?: { minX: number; minY: number; maxX: number; maxY: number };
+
+  /** Interest Tome upgrade tier (0 = none, 1/2/3 = three escalating
+   *  ranks). Tier maps to interestRate in HeroEconomyController; both
+   *  fields move together when a tome is bought. Read by FinaleController
+   *  and HeroDefenseMode to compute end-of-wave interest. */
+  interestTier: number = 0;
+  /** Per-wave gold multiplier from Interest Tomes (e.g. 0.10 = +10%/wave). */
+  interestRate: number = 0;
+  /** M10 finale — clicked CPU damage target. When set, the hero
+   *  prioritizes attacking this target over any creep auto-attack.
+   *  Accepts a Tower (existing CPU defenders) OR a DestructibleStructure
+   *  (PRD 06 boss structures like the Archmage Throne). Cleared when
+   *  the target dies or the player clicks elsewhere. */
+  clickedTarget: Tower | DestructibleStructure | null = null;
+  /** M10 v2 — auto-retaliate target. Set by FinaleController when a
+   *  CPU tower has been shooting the hero recently (priority cascade
+   *  tier 1). Treated like `clickedTarget` for combat purposes but
+   *  cleared automatically — never overrides a player-clicked target,
+   *  and FinaleController re-evaluates it each tick. */
+  autoTarget: Tower | null = null;
+  /** M10 finale — count of CPU towers this hero has destroyed. Drives
+   *  the "Win without losing the hero" star objective + analytics. */
+  towersDestroyed: number = 0;
+  /** M10 finale — pre-computed pixel waypoints the hero walks along.
+   *  Replaces straight-line moveTarget walking when set, so the hero
+   *  pathfinds around blocked cells instead of getting stuck on walls.
+   *  FinaleController computes via findPath when the player issues a
+   *  move command or sets a tower target. */
+  pathWaypoints: { x: number; y: number }[] | null = null;
 
   static readonly RESPAWN_TIME = 10; // seconds
 
@@ -139,6 +183,7 @@ export class Hero {
     this.baseMoveSpeed = typeDef.moveSpeed;
     this.arenaWidth = arenaWidth;
     this.arenaHeight = arenaHeight;
+    this.spawnAnchor = { x, y };  // default to construct position
 
     this.abilities = typeDef.abilities.map(a => ({
       def: a,
@@ -372,8 +417,34 @@ export class Hero {
       return;
     }
 
-    // Move towards move target
-    if (this.moveTarget) {
+    // Move along pre-computed waypoint path (M10 finale pathfinding).
+    // Walks toward the next waypoint; advances when reached. Beats the
+    // legacy straight-line move when set so hero doesn't no-clip walls.
+    if (this.pathWaypoints && this.pathWaypoints.length > 0) {
+      const speed = this.getEffectiveSpeed();
+      let remaining = speed * dt;
+      while (remaining > 0 && this.pathWaypoints.length > 0) {
+        const wp = this.pathWaypoints[0];
+        const dx = wp.x - this.x;
+        const dy = wp.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= remaining) {
+          this.x = wp.x;
+          this.y = wp.y;
+          remaining -= dist;
+          this.pathWaypoints.shift();
+        } else {
+          this.x += (dx / dist) * remaining;
+          this.y += (dy / dist) * remaining;
+          remaining = 0;
+        }
+      }
+      if (this.pathWaypoints.length === 0) {
+        this.pathWaypoints = null;
+        this.moveTarget = null;
+      }
+    } else if (this.moveTarget) {
+      // Legacy straight-line move (Hero Defense / non-finale).
       const dx = this.moveTarget.x - this.x;
       const dy = this.moveTarget.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -390,9 +461,56 @@ export class Hero {
       }
     }
 
-    // Clamp to arena bounds
-    this.x = Math.max(20, Math.min(this.arenaWidth - 20, this.x));
-    this.y = Math.max(20, Math.min(this.arenaHeight - 20, this.y));
+    // Clamp to bounds. M10 finale uses worldBounds (full grid rect);
+    // every other mode uses the arena rectangle.
+    if (this.worldBounds) {
+      this.x = Math.max(this.worldBounds.minX + 20, Math.min(this.worldBounds.maxX - 20, this.x));
+      this.y = Math.max(this.worldBounds.minY + 20, Math.min(this.worldBounds.maxY - 20, this.y));
+    } else {
+      this.x = Math.max(20, Math.min(this.arenaWidth - 20, this.x));
+      this.y = Math.max(20, Math.min(this.arenaHeight - 20, this.y));
+    }
+
+    // M10 finale — prioritize the player's clicked CPU target (Tower or
+    // DestructibleStructure). Approach via pathfinding (FinaleController
+    // set pathWaypoints), then attack on cooldown. Straight-line fallback
+    // skipped when worldBounds is set (finale mode) — without a real path
+    // the hero just sits and waits for player to re-click.
+    let firedTowerThisFrame = false;
+    // Effective combat target: clicked (player-explicit) > auto (retaliation).
+    // The auto target is cleared if the source tower died or moved out of
+    // range — FinaleController re-evaluates each tick.
+    const effectiveTarget = this.clickedTarget ?? this.autoTarget;
+    if (effectiveTarget) {
+      const t = effectiveTarget;
+      const targetDead = !isClickedTargetAlive(t);
+      if (targetDead) {
+        // Clear whichever bucket pointed at the dead target.
+        if (this.clickedTarget === t) this.clickedTarget = null;
+        if (this.autoTarget === t) this.autoTarget = null;
+      } else {
+        const dx = t.x - this.x;
+        const dy = t.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= this.getEffectiveRange()) {
+          const attackInterval = 1000 / this.getEffectiveAttackSpeed();
+          const now = this.scene.time.now;
+          if (now - this.lastAttackTime >= attackInterval) {
+            this.attackTarget(t);
+            this.lastAttackTime = now;
+            firedTowerThisFrame = true;
+          }
+        } else if (!this.worldBounds && !this.moveTarget) {
+          // Legacy non-finale: straight-line walk. Finale path uses
+          // pathWaypoints (handled in the move block above), so this
+          // fallback only fires for old Hero Defense flows.
+          const speed = this.getEffectiveSpeed();
+          const move = speed * dt;
+          this.x += (dx / dist) * move;
+          this.y += (dy / dist) * move;
+        }
+      }
+    }
 
     // Find target
     if (!this.target || !this.target.alive) {
@@ -400,7 +518,7 @@ export class Hero {
     }
 
     // Auto-attack
-    if (this.target && this.target.alive) {
+    if (!firedTowerThisFrame && this.target && this.target.alive) {
       const dx = this.target.x - this.x;
       const dy = this.target.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -412,8 +530,10 @@ export class Hero {
           this.attack(this.target);
           this.lastAttackTime = now;
         }
-      } else if (!this.moveTarget) {
-        // Move towards target if no explicit move command
+      } else if (!this.moveTarget && !this.clickedTarget && !this.autoTarget && !this.pathWaypoints) {
+        // Move towards creep target only when the player has not
+        // commanded a destination. Otherwise the hero would fight
+        // its own move command (running off to creeps mid-walk).
         const speed = this.getEffectiveSpeed();
         const move = speed * dt;
         this.x += (dx / dist) * move;
@@ -432,6 +552,9 @@ export class Hero {
     let bestDist = Infinity;
     for (const c of creeps) {
       if (!c.alive) continue;
+      // M10 finale: skip player's own sends. They're decoy fodder, the
+      // hero doesn't fight its own team.
+      if ((c as { isFriendly?: boolean }).isFriendly) continue;
       const dx = c.x - this.x;
       const dy = c.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -476,6 +599,57 @@ export class Hero {
         dmgColor,
         graphics: g,
       });
+    }
+  }
+
+  /** M10 finale — apply damage to a CPU target (Tower or
+   *  DestructibleStructure). Mirrors `attack()` but routes damage
+   *  through `target.takeDamage` instead of the arena-creep pipeline.
+   *  Crit + lifesteal still apply; on-hit status effects (slow /
+   *  mark / chain) are no-op against towers/structures for v1
+   *  (immobile, can't be slowed; chain spread to creeps is v2
+   *  polish). Increments towersDestroyed on the killing blow for
+   *  analytics + star objective tracking. Both Tower and
+   *  DestructibleStructure expose the same `takeDamage(amount):
+   *  boolean` shape, so this works structurally. */
+  private attackTarget(target: Tower | DestructibleStructure): void {
+    let dmg = this.getEffectiveDamage();
+    let isCrit = false;
+    if (Math.random() < this.getCritChance()) {
+      let critMult = 1.5;
+      critMult += this.accSum('critDmgBonus');
+      dmg = Math.round(dmg * critMult);
+      isCrit = true;
+    }
+    const dmgColor = isCrit ? DMG_COLOR.CRIT : DMG_COLOR.NORMAL;
+    // Floating damage number above the target so the player sees feedback.
+    // Anchor above the target's pixel center; for multi-cell structures
+    // that's the structure center, which reads correctly.
+    this.pendingDamageNumbers.push({
+      x: target.x, y: target.y - 24,
+      text: String(dmg), color: dmgColor, duration: 0.6,
+    });
+    // Mark the target as "recently hit by hero" so its target-priority
+    // logic can retaliate: a tower that's been shot by the hero
+    // re-targets the hero before considering creeps in range.
+    if ('_lastHeroHitAt' in target) {
+      (target as { _lastHeroHitAt: number })._lastHeroHitAt = this.scene.time.now;
+    } else if ('embeddedTower' in target && target.embeddedTower) {
+      target.embeddedTower._lastHeroHitAt = this.scene.time.now;
+    }
+    const killed = target.takeDamage(dmg);
+    if (killed) {
+      this.towersDestroyed++;
+      this.clickedTarget = null; // clear so player can pick a new one
+    }
+    // Lifesteal (sum across accessories)
+    const ls = this.accSum('lifestealPct');
+    if (ls > 0) {
+      const heal = Math.round(dmg * ls);
+      if (heal > 0 && this.hp < this.maxHp) {
+        this.hp = Math.min(this.maxHp, this.hp + heal);
+        this.pendingDamageNumbers.push({ x: this.x, y: this.y - 20, text: `+${heal}`, color: DMG_COLOR.HEAL, duration: 0.6 });
+      }
     }
   }
 
@@ -596,6 +770,28 @@ export class Hero {
       this._animState = 'ability';
       this._abilityIndex = overrideDef ? 3 : index; // ultimate = slot 3
       this._abilityAnimTimer = 0.5; // show ability frame for 0.5s
+    }
+
+    // PRD 03: per-hero ability VFX. Spawned at the impact location
+    // when the sheet exists for this hero × ability combo. Layers on
+    // top of the existing procedural FX (no removal — both can co-exist
+    // for v1; we'll dial the procedurals back after authoring lands
+    // for all 11 heroes). No-op when this hero hasn't shipped a VFX
+    // sheet yet (v1 = mage / ranger / paladin only).
+    {
+      const heroId = this.typeDef.id;
+      const targetCreep = this.target ?? this.findTarget(arenaCreeps);
+      const fxX = targetX !== undefined
+        ? targetX
+        : (def.type === 'self_buff' || def.type === 'aoe' || def.key === 'E')
+          ? this.x
+          : (targetCreep?.x ?? this.x);
+      const fxY = targetY !== undefined
+        ? targetY
+        : (def.type === 'self_buff' || def.type === 'aoe' || def.key === 'E')
+          ? this.y
+          : (targetCreep?.y ?? this.y);
+      spawnHeroAbilityVfx(this.scene, heroId, def.key, fxX, fxY);
     }
 
     switch (def.type) {
@@ -813,7 +1009,7 @@ export class Hero {
     this.alive = false;
     this.hp = 0;
     this.deaths++;
-    this.respawnTimer = Hero.RESPAWN_TIME;
+    this.respawnTimer = this.respawnSeconds;
     this.target = null;
     this.moveTarget = null;
   }
@@ -822,8 +1018,15 @@ export class Hero {
     this.alive = true;
     this.maxHp = this.getEffectiveMaxHp();
     this.hp = this.maxHp;
-    this.x = this.arenaWidth / 2;
-    this.y = this.arenaHeight / 2;
+    // Default Hero Defense: respawn at arena centre. M10 finale: respawn
+    // at the configured spawnAnchor (midpoint of summoning circles).
+    if (this.worldBounds) {
+      this.x = this.spawnAnchor.x;
+      this.y = this.spawnAnchor.y;
+    } else {
+      this.x = this.arenaWidth / 2;
+      this.y = this.arenaHeight / 2;
+    }
     this.respawnTimer = 0;
     this.buffs = [];
     this.dodgeRemaining = 0;
@@ -1141,4 +1344,20 @@ export class Hero {
     for (const p of this.projectiles) p.graphics.destroy();
     this.projectiles = [];
   }
+}
+
+/** Liveness check shared by Hero target logic. Tower and
+ *  DestructibleStructure use slightly different shapes:
+ *   - Tower: alive when `destructible && !_expired && (hp ?? 1) > 0`
+ *   - DestructibleStructure: has an explicit `alive` getter
+ *  Returns false on any unexpected shape so dead targets are cleared. */
+function isClickedTargetAlive(t: Tower | DestructibleStructure): boolean {
+  if ('alive' in t && typeof (t as { alive?: unknown }).alive === 'boolean') {
+    return (t as { alive: boolean }).alive;
+  }
+  // Tower path
+  const tw = t as Tower;
+  if (!tw.destructible) return false;
+  if ((tw as { _expired?: boolean })._expired) return false;
+  return (tw.hp ?? 1) > 0;
 }

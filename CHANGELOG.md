@@ -28,6 +28,739 @@ Per-stack default lands at `0.07` for the three multiplier-style auras and `0.15
 
 Files: `src/entities/Tower.ts`, `src/systems/TowerManager.ts`, `src/systems/traits/TowerTraitHandlers.ts`, `src/data/TowerTypes.ts`, `src/headless/harness/ChangeCatalog.ts`. Tests + tsc clean.
 
+## 2026-05-06
+
+### M10 hero economy panel + decoupled HeroEconomyController
+
+M10 now has the full Hero Defense progression loop — items, tomes, accessories, ability upgrades — plugged into the existing DOM panel via a shared, mode-agnostic controller.
+
+**1. New `HeroEconomyController`** (`src/systems/hero/HeroEconomyController.ts`) owns purchase callbacks (buy item / tome / accessory / hero upgrade / ability upgrade), accessory shop rotation, and the hero-shop state push to `GameUIStore`. Configurable via `HeroEconomyOptions`: rotation cadence, initial rotation wave, opt-out of constructor's initial offer roll. Per-wave hooks are opt-in via the options bag (`healPercent`, `interestRate`, `onInterestPaid`) so each mode picks the knobs that fit.
+
+**2. Decoupling.** `HeroDefenseMode` no longer inlines the shop logic — it constructs a `HeroEconomyController` and delegates registerCallbacks / syncToDOM / onWaveCleared to it. `ArenaManager` lost `currentAccessoryOffers`, `nextRotationWave`, `rotateAccessories()`, `buyAccessory()` — those are the controller's job now. `ItemShopPanel` (legacy Phaser sidebar in HD) takes a `HeroEconomyController` in its constructor instead of an `ArenaManager`. Same panel, no behavior change — just sourced state.
+
+**3. M10 wiring.** `FinaleController` now takes `economy` + `eventLog` in `FinaleSetupArgs` and lazily constructs a `HeroEconomyController` when the hero first summons (rotation cadence 4 vs HD's 5, since the M10 match is longer). `GameScene.onWaveCleared` calls `_finaleController.onWaveCleared(waveNum)` after the active mode's hook — heals the hero 15%, pays interest, rotates the accessory offers. The Items tab in `EconomyPanelDOM` auto-shows when `heroShop` becomes non-null, so M10 gets the panel for free.
+
+**4. Tests.** New `HeroEconomyController.test.ts` covers accessory rotation cadence, custom cadence, skipInitialRoll, gold-spend gating on accessory buys, full-slots / duplicate / can't-afford rejection paths, healPercent / interestRate / onInterestPaid options, and destroy() shutdown. 16 new tests, suite total 555/555.
+
+## 2026-05-04
+
+### M10 v6 — projectiles, HUD, pathing focus, sprite origin, send trickle
+
+Seven fixes after v5 playtest:
+
+**1. "RESPAWN Infinitys" text bug.** v5 set `respawnSeconds = Infinity` to block auto-respawn, which the in-world overlay rendered as "RESPAWN ∞s". Now shows "AWAITING SUMMON" in lavender — the DOM HUD has the live charge percentage so the player has the actual progress.
+
+**2. DOM HUD shows charge bar while hero is dead.** `heroSummoned` stayed true once the hero existed, so on death the HUD kept showing the (frozen) hero HP bar instead of the refilling charge meter. New `showChargeBar = !heroSummoned || heroDead` flag flips it back to the charge UI on death; label changes to "RE-SUMMONING" so the player knows it's a refill.
+
+**3. CPU tower projectiles now match the normal attack visuals.** The earlier "random laser style" custom line is replaced with `createProjectileSprite` from the same spritesheet the tower uses to fire at creeps. Sprite tweens from tower to hero pixel position over `dist / projectileSpeed` ms, rotated to face the hero so directional sprites (arrows / bolts) point along their flight. Falls back to a Phaser circle if no sprite registered for that tower.
+
+**4. Hero attacks CPU towers — actually works now.** v5's pathfinding + this commit's "don't fight the player's command" change make the chain end-to-end: click tower → path to an adjacent cell → walk through the maze → in range → fire `attackTower` on cooldown → tower HP bar drops.
+
+**5. Hero pathing no longer fights with creep auto-target.** The auto-attack-creep walk-toward block is now gated on `!this.pathWaypoints` (in addition to the existing `!moveTarget && !clickedTowerTarget`). When the player has commanded a path, the hero ignores the creep auto-pathing pull. Hero still auto-attacks creeps that walk into its existing range — just doesn't chase them.
+
+**6. Hero sprite origin centered.** Hero Defense's default `setOrigin(0.5, 0.75)` made the sprite visually float ~one tile above the click position on the tile grid. FinaleController now overrides to `setOrigin(0.5, 0.5)` after the hero is constructed, so `hero.x/y` matches the visual center.
+
+**7. Sends trickle-damage CPU towers.** Each alive friendly send within 40px of a CPU tower deals 5 dps to that tower (debt accumulator handles sub-1 damages between frames). Sends still primarily decoy fire, but they also chip in. The whole send-fodder-strategy is now: spawn → walk into the lattice → draw fire from hero → die slowly while contributing trickle damage.
+
+### M10 v5 — re-summoning, hero pathfinding, HP redraw, tower projectiles
+
+Five fixes after v4 playtest:
+
+**1. HP bar redraw.** `Tower.runTraitUpdates` `needsRedraw` check excluded destructibles, so HP bars rendered once at construction and never updated. Damage was happening invisibly. Added `this.destructible` to the redraw set so the bar reflects live HP.
+
+**2. Hero re-summoning instead of auto-respawn.** Hero death used to start a 20s respawn timer. Now per user spec: hero death resets the charge meter to 0; the player has to charge again via Conduits to bring the hero back. Hero retains XP / items / level through the cycle (`Hero.respawn()` already preserves all state). `Hero.respawnSeconds` set to `Infinity` at finale construction so the internal timer never fires.
+
+**3. Hero pathfinding.** Hero used to walk straight-line and got stuck on perimeter walls / central arrow-cross. Added `Hero.pathWaypoints: {x,y}[]`. `FinaleController.moveHeroTo / setHeroTowerTarget` now compute a `findPath`-based pixel waypoint list; for tower targets, picks an adjacent walkable cell (the tower's own cell is blocked, so paths can't end on it). Hero walks waypoint-to-waypoint each frame, advancing on arrival. Straight-line fallback gated on `!worldBounds` so non-finale Hero Defense runs unchanged.
+
+**4. CPU tower → hero visual projectiles.** Damage was instant + invisible. Now each fire spawns a colored line from tower to hero (tower color, 3px, alpha 0.9), tweened to 0 alpha over 300ms.
+
+**5. Tower attack mechanism.** With pathfinding fixed and HP bars redrawing, the hero's existing attack-tower path is now end-to-end functional: click tower → FinaleController computes path to adjacent cell → hero walks through the maze → arrives in range → fires `attackTower` on cooldown → tower's HP bar visibly drops. The earlier "hero doesn't attack towers" report was downstream of pathing + HP-bar-not-updating.
+
+### M10 v4 — CPU towers shoot hero, friendly sends, hero collision, right-click gate
+
+Five fixes after v3 playtest:
+
+**1. CPU towers attack the hero.** New parallel pass in `FinaleController.update`: each frame, every alive destructible tower checks if the hero is in range. If yes AND no send is closer (decoy priority), and the tower's fire-rate cooldown has elapsed, it fires at the hero. Reuses `tower.lastFired` so the existing creep-fire path doesn't double-fire on the same tick. Damage is instant (no projectile flying — instant + flash + damage number is fine for v1; full projectile rendering is a polish item).
+
+**2. Player sends are friendly to player towers.** Sends used to be slaughtered by the player's own arcane_bolt / arcane_storm towers because the standard target-search saw them as creeps. New `Creep.isFriendly` field set by SendManager when a `sendPathOverride` is active (i.e., finale mode). Player towers' `findTarget` skips friendly creeps. CPU defender towers still target sends as designed.
+
+**3. Sends re-route around player-placed towers.** The reverse send path was computed once at scene init and stayed stale as the player built towers. Now `tryBuildTower` recomputes the reverse path via `findPath(exit, entry)` whenever the placement changed paths, and SendManager picks up the new override on next spawn.
+
+**4. Hero collision with blocked cells.** Hero used to no-clip through perimeter walls and the central arrow-cross divider. FinaleController now post-processes the hero each frame: convert pixel position to grid cell, check `CellType.Blocked`, restore the last valid pixel position when the hero would walk into a wall. Player towers and CPU towers still pass-through (hero is small enough; v2 polish could add tower collision if it feels weird).
+
+**5. Right-click sell gate.** Player could right-click-sell CPU defender towers. `handleRightClick` now checks `tower.destructible` and bails before invoking `towerMgr.sellTower`. CPU towers are tower-property of the cabal — only the hero kills them.
+
+### M10 v3 — bug fix + tower-interaction gate + open buildable
+
+Three fixes after v2 playtest:
+
+**Conduits-don't-charge bug.** The FinaleController was being passed `this._towers` (the underlying field, which is `[]` because TowerManager owns the live tower list) instead of `this.towers` (the getter that proxies to `towerMgr.towers`). Player-placed Conduits never appeared in the iteration, so `chargeContribution` returned 0 every frame. One-line fix in the update tick.
+
+**CPU tower interaction gate.** Clicking a CPU defender tower used to fall through to `enterInspectMode` — the player could open the inspect panel for the cabal's towers, even attempt to upgrade them. Now the click handler short-circuits on any CPU tower: when a hero exists + non-build mode → assault command, otherwise no-op. Inspect mode is unreachable for destructible CPU towers.
+
+**Open buildable zone.** Old `playerBuildableCells` was two narrow 8-cell rings around the circles, which forced a tight defense and confused the player about where they could build. Now the entire right half of the map (cols ≥ 18, just right of the central arrow-cross) is buildable. The player decides per-cell: damage tower for defense, or Mana Conduit specifically adjacent to a Circle (only the conduit's adjacency matters — non-adjacent conduits are wasted gold). Magenta tint dropped to 7% alpha so the wider zone doesn't overwhelm the eye.
+
+### M10 v2 — Mana Conduit tower, full kit, reversed paths, DOM HUD
+
+Four corrections after Phase 1 playtest reveal:
+
+**1. New Mana Conduit tower (`arcane_conduit`).** The summoning circle now charges from a *dedicated* tower instead of co-opting the Mana Drain. Conduits cost 40g, do no damage, exist only to feed the circle. Lets the player keep the full Arcane kit available for actual defense and treat conduits as a deliberate spend.
+
+**2. Full Arcane kit access.** M10's `restrictions.allowedTowerIds` opened up to the entire Arcane kit (Bolt / Frost / Storm / Focus / Mana Drain / Meteor / Nova) plus the new Conduit. Coalition Wall stays explicitly off (`noWalls: true`). Player decides per-cell whether the slot is offense (Bolt etc.) or summon-feed (Conduit).
+
+**3. Reversed path mechanics.** Wave creeps spawn at the LEFT edge (the cabal's own pets, walking past their own towers) and walk RIGHT toward the player's home — CPU towers ignore them. Player sends use a reversed path: spawn at the RIGHT edge (player's home) and walk LEFT into the CPU tower lattice — CPU towers DO target sends, drawing fire away from the hero. SendManager gains `setSendPathOverride(path)`; FinaleController computes the reverse path at scene init via `findPath(exit, entry)`. Tower.findTarget for destructible CPU towers now ignores wave creeps entirely (only sends in range fire targeting; hero is wired separately).
+
+**4. DOM HUD bar.** `GameUIStore.finaleHud` slice + new `FinaleHudDOM` component pinned top-centre. Two rows:
+- **Pre-summon**: lavender→teal "SUMMONING CHARGE" progress bar with percentage + a subtitle prompt explaining what the player needs to do.
+- **Post-summon**: hero name + HP bar (green→amber→red), or "HERO RESPAWN Xs" countdown when dead.
+- **Always**: "CABAL LATTICE: N / TOTAL destroyed" win-progress meter.
+
+Per-frame snapshot push from GameScene; equality check on the setter prevents 60Hz re-renders.
+
+`SummoningCircle.chargeContribution` updated to count `arcane_conduit` instead of `arcane_drain`. Test fixtures updated.
+
+### M10 The Reckoning: full Arcane finale siege
+
+The vanilla 30-wave standard mode M10 felt boring. Replaced with a unique siege climax:
+
+- Player builds **Mana Drains** in two magenta zones on the right side of the map (`playerBuildableCells` enforced at the placement gate, magenta tint overlay drawn at scene init).
+- Drains adjacent to either of the two **Summoning Circles** (Chebyshev distance ≤ 1 to any of the 2x2 footprint cells, no double-count) feed a single shared charge meter at `0.156%/s per drain`. 8 drains max → ~80s to first summon.
+- At 100% charge, the **Forge Mage hero** spawns at the midpoint between the two circles. Pre-leveled to 3 (Q+W ready); 20s respawn at the same anchor on death.
+- The hero **attacks CPU defender towers** when commanded (click on a tower to set target). Auto-attacks creeps when no tower target is set. Crit + lifesteal still apply; status effects no-op against towers in v1.
+- Pre-placed **destructible CPU towers** with HP — 22 Arcane towers + the Ult Throne (5000 HP) clustered on the left around the green exit. HP bars render above each. White-flash on hit.
+- **Path recompute on tower death**: every CPU tower the hero kills opens a creep shortcut. Wave creeps reroute through cleared cells. Ramping pressure as the hero pushes deeper — feedback loop.
+- **CPU tower target priority**: sends > non-send creeps > hero. Player sends decoy CPU defender fire while the hero closes distance.
+- **Ult Throne phase mechanics**: at 50% HP heals 10%, at 25% HP summons reinforcements (event log only in v1), at 10% HP doubles attack speed.
+- **Win condition**: zero alive destructible CPU towers → emit `gameWon`. The standard wave-cleared win is suppressed when the finale is active.
+- **Tower kill rewards**: 50g + 50xp per tower, 500g + 250xp on the Ult kill.
+- **Respawn countdown** overlay above the anchor when the hero is dead.
+- **Tower death VFX**: scale-up + fade-out tween + sprite white-flash on the killing blow.
+
+**New systems:**
+- `src/entities/SummoningCircle.ts` — 2x2 entity with charge ring + adjacent-drain count.
+- `src/systems/finale/FinaleController.ts` — owns hero, circles, charge, win-check, Ult phases, respawn overlay, kill rewards.
+- `src/data/Maps.ts:arcane_throne_finale` — 36×26 map matching the user's reference image.
+- `src/data/TowerTypes.ts:arcane_ult_throne` — boss tower for the win-target.
+
+**Schema additions (all optional, gated):**
+- `MapDefinition.playerBuildableCells / summoningCircles / destructibleTowers`.
+- `Tower.hp / maxHp / destructible / isUlt / takeDamage()`.
+- `MissionOverrides.finaleRules` and `'final_arcane'` archetype.
+- `Hero.spawnAnchor / worldBounds / respawnSeconds / clickedTowerTarget / towersDestroyed / attackTower()`.
+- `Creep.isSend` (set by SendManager).
+
+**Stars:** ★ = win; ★★ = win in <25 minutes; ★★★ = win without a single hero death.
+
+9 new tests (Tower.takeDamage + SummoningCircle.chargeContribution). Total 539 passing.
+
+### M10 Reckoning: pure-spellcraft kit, no Wall
+
+The final Arcane mission still listed `coalition_wall` in its allowed-tower set, which thematically didn't fit — by the showdown the player has earned the full Arcane lattice and shouldn't be falling back on plain stone. Dropped it from `allowedTowerIds` and added `noWalls: true` belt-and-braces so the dock UI can't sneak it back in.
+
+Story tweaked to acknowledge the transition: "The stone-and-mortar Walls are gone too: every coin we have left goes to spellcraft." Plus a callout that the map (`arcane_throne`) has three converging approaches.
+
+### M9: heavier waves + boss-per-spawn + real star objectives
+
+Three M9 fixes:
+
+**Heavier creep counts** — the 2-player team-size formula gave 3× creeps which felt thin across the two zones. New mission override `coopCreepCountMult` multiplies on top; M9 set to 2.5× → ~7.5× a solo wave. Two zones now feel like a real coordinated assault.
+
+**Boss per spawn point** — on multi-entry maps, boss waves used round-robin distribution that could leave a path with no boss if the boss count rounded to less than `numPaths`. Added a floor in `SpawnManager.startWave`: when the group is `creepType: 'boss'` and `numPaths > 1`, `actualCount` is bumped to at least `numPaths` so every entry sees a boss appear.
+
+**Star objectives** — M9 was awarding only 1/3 stars even on flawless runs. Star 2's predicate was `() => false` (placeholder for ally-life tracking that was never built), and star 3 only fires if star 2 was achieved (sequential). Replaced both with shared-lives predicates that work in circle co-op:
+- Star 2: win losing ≤5 shared lives
+- Star 3: win without losing any shared lives (a 0-leak run earns the full 3 stars)
+
+### M8 economy flip + M9 wave-progression + ally faction
+
+**M8 economy flip:** previous run felt too easy on the player's side. Pulled both levers:
+- Player essence cap: wave-1 80 → 60, growth 12/wave → 10/wave (W10 cap 188 → 150). Player now has to scrape together each wave.
+- CPU difficulty: 'normal' → 'hard' (1.5× kill-gold treasury, up from 1.0×). Combined with the existing wave-scaling (×1.0 W1 → ×2.0 W11) the CPU earns up to ×3.0 by late game.
+- CPU seed gold: 300 → 500. Wave 1 the bot can drop ~10-15 cheap towers before the player rushes Send.
+
+**M9 wave 2 hang:** after wave 1 cleared, the next-wave countdown never started. CircleManager.checkAllWavesCleared waits for every player slot (including bot slots) to enter playersWaveCleared, but bots have no agent to fire their own notify — so the host hung waiting for the bot. Fixed: notifyWaveCleared now auto-adds every bot slot to playersWaveCleared on the host, and startWaveCountdown auto-readies them in playersReady. Wave progression no longer blocks on bot input.
+
+**M9 ally faction:** the bot ally was being created with `this.faction` (Coalition), so it built basic arrow / cannon / sniper alongside the player's full Arcane kit. Changed the auto-bot setup to hardcode `'arcane'` faction — bot now builds Bolt / Frost / Storm / Focus / Mana Drain / Meteor / Nova, matching the player's loadout. Future faction campaigns can override via mission context when needed.
+
+### M8 attacker v3 followups: brain tuning, palette costs, faction confirmation
+
+Three fixes after M8 v3 first playtest reported "still Coalition, only 2 towers, T2 sends too strong."
+
+**AttackerDefenderBrain** — new brain id wrapping BalancedBrain with attacker-mode tuning. Default BalancedBrain treats coverage > 1.5× as "good enough, just upgrade now"; the bot would place 2 arcane_bolts that cover most of the corridor and then never place again. New brain bumps `highCoverageRatio` to 5.0, zeroes `panicLives` (the bot's "lives" is the player's 999-leak counter, not real HP), zeroes `maxWallPlacements` (Arcane has no walls), zeroes meta-economy probabilities (no sends/frontier wired in attacker mode), and skips ultimate-save so the bot doesn't hoard 700g for Nova. Bot now keeps placing as long as candidates + budget last.
+
+**Faction confirmation log** — `addBot` runs with the campaign's `creepFaction` (Arcane on M8). The defender brain instantiates with `FACTIONS.arcane.towerIds = ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova']`. To make this verifiable in-game, M8 now logs `Defender: Arcane CPU.` to the event log at scene init.
+
+**Palette cost rebalance** — T2 / T3 sends were dominating: 100e bought 8 Bulwarks or 7 Healers, both nearly unstoppable. T1 (Raider, Skirmisher) felt strictly worse. New costs:
+- Wolfpack 8 → 12, Bulwark 12 → 20, Healer 14 → 25, Smoker 9 → 14, Battering Ram 60 → 100.
+- Glider 10 → 8 (cheaper since the user reported it weak — flying bypass is situational against any non-mazed corridor).
+- Raider 5, Skirmisher 4 unchanged.
+
+100e budget now buys ~20 raiders OR 5 bulwarks OR 4 healers — T2 is a real spend decision instead of a strict upgrade.
+
+### M8 attacker v3: real Arcane CPU brain, full game
+
+The static defender lattice (arrow / cannon / sniper pre-placed at fixed positions, light upgrade ticks on top) was a thin "treadmill" — the player's strategy collapsed to "find the right composition once, repeat." Replaced with a real CPU brain playing a full game on the Arcane kit:
+
+- **No more pre-placed lattice**. `attacker_assault` map clears `preplacedTowers` + `expansionSockets`. The map is empty corridor when the mission starts; the CPU builds everything from scratch.
+- **BotAI defender** with the BalancedBrain spins up at scene init. Faction is the campaign's creep faction (M8 → Arcane), so the bot picks from `arcane_bolt / arcane_storm / arcane_focus / arcane_frost / arcane_drain / arcane_meteor / arcane_nova`. It mazes, builds, and upgrades exactly like a human Arcane player would.
+- **Economy plumbing**: `addAttackerDefenderGold` now credits the bot's `EconomyManager` via `creditKill`, with the existing `treasuryMult × waveScale` multipliers applied. Wave-start / wave-clear events fan out to the bot too, so its income mirrors a real player's economy.
+- **Seed gold**: 300g at scene init, enough for ~6 cheap towers wave 1 before kill-gold starts flowing in.
+- The legacy `tickAttackerDefenderUpgrades` upgrade-only picker is no longer called in the attacker update branch; the bot's `tick(delta)` runs in its place. The expansion-socket helper code stays in the file as dead-code-callable (kept for future maps that might still want the static-lattice + sockets mode), but `attacker_assault` doesn't trigger it.
+
+**M8 story** rewritten as a heist: the player is breaking in to steal the meteor archive (a tower they can't yet build), and the defending archmage is on the line in person — building, upgrading, calling in Frost and Mana Drain as needed. "Don't expect the same fight twice."
+
+### M8 attacker: CPU defender now builds new towers; M9: bot ally now actually exists
+
+Two related defender-side fixes.
+
+**M8** was wired with `attackerDefenderDifficulty: 'easy'` which has `maxExpansions: 0` — the static lattice never grew across the run regardless of treasury. Bumped to `'normal'` (1× treasury, up to 2 socket builds). The corridor's 4 expansion sockets now fill in over the run as the defender accumulates kill gold.
+
+**M9 (Allied Circle)** described a CPU partner in its story but didn't actually have one. Campaign missions launch straight into GameScene, bypassing CircleLobbyScene where the bot slot normally gets created — so `botSlots` was empty and the BotAI block never spun up. Added an auto-create path: when archetype is `coop_with_bot` and no `circle` is in the registry, GameScene now constructs a solo-host CircleManager + adds one bot with the player's faction, and the existing BotAI wiring picks it up.
+
+### M5 Warlords: tighter rage timers + speed differentiation
+
+Five Warlords were homogeneous mechanically — all had `channelDuration: 25` and similar `speedMultiplier` values (0.40–0.55). Engaging one effectively meant 25 seconds of buffer before the rage fired, which is plenty even with sloppy DPS. And every Warlord moved at the same crawl, so the player never had to reprioritize based on "who's about to leak."
+
+Tighter timers + per-role speeds:
+
+| Warlord | speed | rage duration |
+|---|---|---|
+| Stalwart | 0.40 (very slow) | 15s |
+| Healer | 0.65 (medium) | 15s |
+| Champion | 0.40 (very slow) | 18s |
+| Tactician | **0.95 (fast)** | **12s** |
+| Captain | 0.50 (slow) | 18s |
+
+Tactician is the standout — almost normal-creep speed, the shortest rage window, and their rage hastes everyone alive. The player now has to either burn them down on sight or eat a fast wave. Stalwart and Champion remain anvils. Captain stays the capstone but loses 7s of grace.
+
+Description updated on Tactician to call out the speed.
+
+### LoadingScreen Begin button: pointer-events fix
+
+The button rendered fine but couldn't be clicked — no cursor change on hover, no click response. Root cause: `#ui-root` carries `pointer-events: none` by default, only flipping to `auto` when a screen marks `.active`. UIBridge.startScene() clears `.active` before the LoadingScreen mounts (the loading screen lives in the gap between screens), so the entire loading overlay was inside a `pointer-events:none` container.
+
+Children with `pointer-events: auto` should still receive events through a `pointer-events:none` parent, but in practice the button wasn't being hit. Forcing explicit `pointer-events: auto` on the LoadingScreen's outer div fixes both the hover cursor and the click handler.
+
+### LoadingScreen Begin button — actually waits forever now
+
+Two bugs in the campaign-mission loading flow:
+
+- 10-second safety timer auto-dismissed the screen even when `requiresContinue=true`, defeating the purpose of the Begin gate.
+- 800ms min display time meant the loading bar barely showed before the button appeared (effectively skipping the loading-bar phase).
+
+Fixed:
+- Safety timer skipped entirely when `requiresContinue` is set. The screen now genuinely waits forever for the player's click.
+- Min display time bumped to 1500ms so the loading bar always animates fully at least once before the button can appear.
+- Button visibility now gates on BOTH `sceneReady` AND min-time elapsed, so the loading bar always plays through before the Begin button takes its place. Previously the button could appear in <100ms on fast scene loads, making clicks silently no-op until 800ms had passed.
+
+### Attacker mode economy v3 — temporal pressure + investment loop
+
+After the Defender-Prep playtest the mode still felt static — every wave was a one-shot decision with no consequence carrying forward. Adding a real economy curve so the player has to make timing decisions across the run.
+
+**Four mechanics ship together:**
+
+1. **Reinforcement Camps** — new line item in the composer. 50e once → +15e to every subsequent wave's income, max 2 camps. First-wave question: build a camp (skip offense to compound income) or push hard now? Camps persist across waves; once built they can't be refunded.
+
+2. **Income growth + carryover** — wave-1 income is 80e; each wave's cap rises by 12e (W10 cap = 188e). Unspent essence rolls forward, capped at 2× the current wave's income. Saving for a boss wave is now a real strategy. Composer header shows the breakdown: `income 92 + saved 70 = 162/180`.
+
+3. **CPU treasury wave-scaling** — defender treasury earns +10% per wave the player has been alive (×1.0 W1 → ×2.0 W11). Stalling forever is no longer free; the lattice gets meaner the longer you sit on essence.
+
+4. **Burst spawning** — attacker `spawnInterval` dropped from 150ms floor to 60ms floor. A 15-raider wave now flushes through in ~1s of charging column instead of a 9s trickle. Defender splash and slow towers actually matter; small-creep swarm comps are viable.
+
+**Composer config refactor** — `AttackerComposer` constructor now takes either a number (legacy) or an `AttackerEconomyConfig` object. New mission overrides on `MissionOverrides`: `attackerEssenceGrowthPerWave`, `attackerEssenceCarryoverMult`, `attackerCampMax`, `attackerCampCost`, `attackerCampIncome`. M8 wired with the v3 numbers above.
+
+9 new tests for carryover + camps + economy curve. Total 530 passing.
+
+### Attacker v2 Phase 2.5: Defender Prep + composer compaction
+
+After M8 first playtest the strategy collapsed into "always send boss + healer + bulwark" because the defender lattice was static. Adding a per-wave **Defender Prep** axis: each wave the defender announces what they're countering, and creeps of that type take a real HP penalty for the wave. Player has to rotate composition every 1-2 waves instead of finding one solved combo.
+
+**Five prep types** (`src/data/AttackerPreps.ts`):
+- **Sustained Fire** — all creeps -15% HP (broad pressure intro)
+- **Anti-Light** — light-armor creeps -35% HP (Skirmisher/Wolfpack/Smoker/Glider)
+- **Anti-Medium** — medium creeps -35% HP (Raider — single-target hit)
+- **Anti-Heavy** — heavy creeps -40% HP (Bulwark/Healer/Battering Ram)
+- **Anti-Air** — flying creeps -65% HP (Glider — hard counter)
+
+Prep applies as an HP multiplier on the per-group `hpScale` at wave-build time. Player sees the prep in the composer header (red banner with the description) and per-card red badge with the percentage on countered creeps BEFORE composing. They route around it.
+
+M8 ships a **10-wave prep order**: cycles all 5 preps with no two adjacent waves the same. Wave 1 is Sustained Fire (gentle); the order escalates through Anti-Heavy → Anti-Light → Anti-Medium → Anti-Air across the early waves so the player encounters every prep within the first half of the mission. Future faction attacker missions can ship their own prep order via `MissionOverrides.attackerPrepOrder`.
+
+### Composer UI compaction
+
+Phone overlay was overflowing the visible area with 8 creep cards + wagon + abilities. Tightened all paddings (10→8 / 6→3), shrunk creep card to a single row (description moves to the title attribute / hover tooltip), button sizes 24→22, fonts 12→11. Hard-capped to `60vh` on phone with internal scroll. The full panel including header, palette, wagon row, ability tray, and footer now fits comfortably in roughly half the screen on a 412×915 phone.
+
+11 new tests (AttackerPreps math + M8 prep order). Total 521 passing.
+
+## 2026-05-03
+
+### Attacker v2 — Phase 2 + Phase 3 (abilities, wagons, smart CPU)
+
+Lands the rest of the v2 plan from `notes/campaign-game-modes/09-attacker-v2-spec.md`. Player gains abilities + a mode-specific kit item; defender becomes adaptive.
+
+**Phase 2 — abilities, wagons:**
+- New `AttackerAbilities.ts` registry (mirrors ChannelEffects). Three v2 abilities: **Frenzy** (next-wave creeps move 2× speed), **Smoke Screen** (defender towers blinded for 5s at wave start), **Power Surge** (next-wave creeps gain +50% HP). Each has a wave-cooldown (3/4/3); composer ticks cooldowns down on `resetForWave`.
+- `AttackerComposer` extended with ability slots (`{def, cooldownRemaining, queued}`) + `toggleAbility / commitQueuedAbilities`. Effects dispatch at Send-Wave time so the wave's spawned creeps inherit the buff.
+- **Anti-magic Wagon** kit item — pre-wave, the player can spend essence (25e/wagon, max 2/wave) to grant the first N spawned creeps a 2-hit shield. New `Creep._wagonHits` field; `takeDamage()` short-circuits while shield > 0. `SpawnManager` reads `scene._pendingWagonCount` (set at Send Wave) and stamps the shield on each new creep.
+- UI: `AttackerComposerOverlay` adds a wagon spinner row + an ability tray (3 buttons with cooldown indicators + queued highlight). All gated through `GameUIStore.requestAttackerAbilityToggle / WagonAdjust`.
+
+**Phase 3 — smart CPU:**
+- New `CpuDefender.ts` with a hand-tuned counter table for `(towerId, creepType)` pairs. `arrow` strongly prefers fast/swarm/evasive; `cannon` prefers swarm/armored; `slow` prefers fast; `sniper` prefers boss/regen/armored. 11 tests pin the math.
+- `pickUpgradeTarget` combines a level-inverse base score (low-level catches up) with the counter multiplier vs the upcoming wave. Replaces the v1.5 lowest-level-first picker.
+- **Expansion sockets** — `MapDefinition` gains `expansionSockets[]`. The CPU may build new towers on these as treasury accumulates, picking the counter-best affordable tower from each socket's allowedTowerIds. Path is recomputed + creeps reroute on placement. `attacker_assault` ships with 4 sockets staggered along the corridor.
+- **Difficulty curve** — new `attackerDefenderDifficulty: 'easy' | 'normal' | 'hard'` on MissionOverrides. Easy = 0.5× treasury, no socket builds (M8's first-encounter setting). Normal = 1× + 2 builds. Hard = 1.5× + 4 builds. Treasury multiplier applied at `addAttackerDefenderGold` so downstream code stays simple.
+
+**M8** runs `attackerDefenderDifficulty: 'easy'` so the first attacker encounter doesn't include socket builds; later faction campaigns will tune up. CHANGELOG note for this slot is in the "v2 polish" entry below.
+
+### Attacker v2 polish: hide dock, mobile layout, M8 threshold tune
+
+Three fixes after first M8 v2 playtest.
+
+**Dock hidden in attacker mode** — `TowerDockDOM` returns null when `matchMode === 'attacker'`. The player isn't placing towers, the dock was dead chrome that overlapped the composer overlay.
+
+**Sidebar trims WAVES + ECONOMY in attacker mode** — `GameSidebar` hides those two panels (gold counter is meaningless, upcoming-wave previews are stale until the player composes). MISSION + tower/creep info panels remain.
+
+**Composer mobile layout** — on phone the overlay now occupies the full top row (left:8, right:8) instead of being clipped at right:12 with a 320px width that overflowed under the sidebar. Desktop is unchanged.
+
+**M8 threshold + star tune** — at 100e/wave the player can dump ~20 raiders in a single wave, so the v1 default 5-leak threshold gave instant-win on round 2. New `attackerLeakThreshold` per-mission override; M8 set to 12. Stars switch from leak-count (capped by instant-win) to wave-count: ★★ = win in ≤6 waves, ★★★ = win in ≤4. Rewards composer efficiency.
+
+### Attacker mode v2 — Phase 1 (composer + palette)
+
+Phase 1 of the Plan 12 v2 spec at `notes/campaign-game-modes/09-attacker-v2-spec.md`. The player composes each wave from a palette by spending a per-wave essence budget — no more reusing standard waves where the player commands creeps but doesn't pick them.
+
+**Engine** — three new files in `src/systems/attacker/` and `src/data/`:
+- `AttackerPalettes.ts` — 8-entry Coalition palette: Raider (5e), Skirmisher (4e), Wolfpack swarm (8e), Bulwark armored (12e), Healer regen (14e), Smoker evasive (9e), Glider flying (10e), Battering Ram boss (60e). 100e per wave produces ~10-20 raiders depending on mix.
+- `AttackerComposer.ts` — per-wave pick state (Map<creepType, count>), budget tracking, listener pattern for UI subscribe. `adjust(creepTypeId, delta)` clamps to budget + zero. `resetForWave(budget)` between waves.
+- `AttackerWaveBuilder.ts` — pure function: `(picks, waveNum) → WaveDefinition` with hpScale/speedScale curves matching the standard generator.
+
+**UI** — `src/ui/game/AttackerComposerOverlay.tsx` (Preact). Top-right overlay; appears when `GameUIStore.attackerComposer` is set. Header shows "COMPOSE WAVE N" + budget bar (teal→violet gradient). Palette cards with +/- buttons disabled when budget exhausted. Footer Clear + Send Wave buttons. Mounted in App.tsx alongside GameSidebar.
+
+**GameScene wiring** — `attackerComposer` field initialized when mission supplies `attackerEssencePerWave`. Subscribe pushes snapshot to GameUIStore on every adjust. Send Wave overrides `waves[currentWave]` with the built wave then calls `startWave()`. `onWaveCleared` resets composer for next wave (which fires the snapshot push). Generic Next-Wave button / SPACE blocked while composer is active — wave only starts via Send Wave.
+
+**M8 (Breach the Relay)** updated: `attackerEssencePerWave: 100`, `attackerPaletteFaction: 'coalition'`. Star objectives unchanged (8/12 leaks for stars 2/3).
+
+Phase 2 (abilities + lane choice + mode-specific kit items like Mana Drain → Anti-magic Wagon) and Phase 3 (smart CPU + per-faction polish) are queued per the spec.
+
+## 2026-05-02
+
+### Hero Defense art PRDs 01-03 — procedural pixel-art generation
+
+Three PRDs from `notes/art_prds/` shipped as Python generators + engine wire-up. All in the in-house pixel-art style (28 px scale, 1 px outlines, 3-color blob palette, NEAREST filter, no AA), matching existing terrain tilesets / structures / creep death animations. Hand-pixel polish remains a future option without changing engine consumers.
+
+**PRD 01 — Arena floor tileset** (`scripts/generate_arena_floor_tileset.py`). 11 sheets, 448×56 each (16 cols × 2 rows × 28 px). Row 0 = 12 ground variants + 4 accents (rune / gem / dots / pip); row 1 = 16 alpha-PNG faction prop tiles (crystal / cog / blob / skull / chip / etc). Engine consumer: new `ArenaFloorRenderer` paints tiles into a `RenderTexture` once at depth -100; deterministic per-cell so layouts are stable across replays.
+
+**PRD 02 — Per-faction HD base** (`scripts/generate_hero_base_sheets.py`). 11 sheets, 112×700 each (5 vertical damage frames × 112×140). Each frame's silhouette is a faction-specific shape (arch + spire / smelter + chimneys / tree shrine / floating shard / bunker / hive / server stack / altar / pillar / glass orb / tuning fork). Damage states reuse the silhouette and add cumulative chip-pixels / scorch / crack-lines / knock-out regions per level. New `ArenaBase` sprite class swaps frame on baseHp threshold (100/85/60/35/10/0 = frames 0-4). Replaces the legacy procedural blue rect when art loaded.
+
+**PRD 03 — Hero ability VFX** (`scripts/generate_hero_vfx_atlas.py`). 12 sheets v1: arcanist (mage) / ranger / paladin × Q / W / E / R. 384×64 each (6 frames × 64×64). 18 fps anticipation→peak→decay cadence. Four archetypes assigned per ability: `burst` (single-target hit spikes), `ring` (expanding AoE), `aura` (centered self-cast rays), `beam` (vertical beam + ground flare). New `spawnHeroAbilityVfx()` helper, called from `Hero.useAbility` at the resolved impact location. No-op when sheet not authored — procedural FX continue to play.
+
+`createHeroAbilityVfxAnimations()` registers play-once `repeat: 0` anims with the same defensive backstop timer as creep death animations (1.5× duration in case `animationcomplete` is dropped). All systems gate behind asset existence checks so missing files fall through to the procedural fallback.
+
+### Post-mission UX + in-mission star tracker + leak-sprite bug
+
+Three campaign-flow features in one batch.
+
+**Post-mission flow → campaign lobby + Next Mission CTA**. Per user: "We need to drop the player back in the campaign menu after they finish a campaign match, ideally some sort of lobby where they can press yes and go to the next campaign level." GameOverScreen now detects mission runs and renders a star reveal block + per-objective met/unmet rows + mission-flow buttons. Won + has-next: "Next Mission →" is the primary CTA. Won + last: "Campaign Lobby" is primary. Lost: "Retry Mission" is primary, lobby + menu fall-throughs always present.
+
+**In-mission objective tracker (sidebar MISSION panel)**. Per user: "I'd also like to see the things that give me stars throughout the mission and how I'm doing in realtime. Maybe a mission tab beside waves." New `MissionPanelDOM` renders inside `GameSidebar` above WAVES on campaign runs. Each frame GameScene pushes the live state of every star objective by evaluating its predicate against an "if I won this instant" snapshot — lives, sends bought, hero hp, attacker leaks, etc all tick the tracker live. Star icons fill / unfill in real time. Default-open on campaign runs so the player sees objectives without an extra tap.
+
+**Bugfix: leaked creep sprites orphaned**. User report: "creeps I leaked got about halfway before my lives counter went down and they stopped moving but their sprites are still there." Root cause: `CreepManager.update`'s leak-processing loop ran the leak handler and marked `creep.alive = false` but never destroyed the sprite. Normal end-of-path leaks (Creep.update sets reached=true AND destroys sprite) were fine, but the wave-stuck recovery path (`forceLeakAllAlive` from `WaveController`) only sets `reached = true` — sprite was orphaned. Fixed: leak loop now destroys any lingering sprite on the leaked creep.
+
+### Campaign mode now always available (level 1)
+
+User feedback: a fresh player should be able to dive into the Arcane campaign immediately rather than grinding to level 7 first. Campaigns ARE the polished onboarding path into the faction content, not a late-game reward. Drops `MODE_UNLOCK_LEVEL.campaign` from 7 → 1.
+
+### Bugfix: parallax v2 high-res silently overwritten by sheet slicer
+
+Discovered while investigating "the parallax in `public/assets/arcane/` isn't the new stuff." Cause: `slice_high_res_art.py`'s `slice_parallax` step writes to the same output paths as `import_parallax_v2.py` (`{faction}_parallax_{far,mid,fore}.png`), so any time the slicer ran (e.g. for splash imports) it silently re-overwrote the high-res with low-res slices from `image_c.png`.
+
+Fix: `slice_parallax` now skips any faction whose bespoke `parallax/parallax_<faction>_far.png` exists in the v2 source folder. `import_parallax_v2.py` retains exclusive ownership of those files for delivered factions; the sheet slicer continues to handle the 7 not-yet-delivered factions. Re-imported high-res for arcane / mech / nature / void; WebP refreshed.
+
+### Mechanical campaign — 10 missions, Iron Cascade
+
+Second complete campaign. Player fights AGAINST Mechanical across 10 missions; completing it unlocks playing AS Mechanical (alternate route to the Shards spend in the faction tree). Mechanical is a tier-1 unlock.
+
+Mission lineup leans on the new Plan 11/12/13 archetypes:
+- M1 Perimeter Breach — Standard with basic-kit restriction
+- M2 Supply Road — Standard 15 on serpentine
+- M3 The Depot Raid — **Heist** (steal back captured ordnance)
+- M4 Foundry Siege — **Base Defense** (factory under all-sides assault)
+- M5 Iron Convoy — Boss Rush (5 walker bosses)
+- M6 First Light — Speedrun (20 waves before they mobilize)
+- M7 Rationed Steel — Frugal (6 towers, half gold)
+- M8 Assembly Strike — **Attacker** (we strike their fortified line)
+- M9 The Ace — Hero vs Boss (Engineer vs the rival mech ace)
+- M10 Cascade Terminus — Final Showdown (30 waves at the core foundry)
+
+Tone is grimdark warhammer / war-machine — smoke, gears, oil, iron — counterpoint to Arcane's medieval-fantasy register. Reuses existing shared maps + the new archetype-default maps for the three new archetype missions; bespoke mech-tileset maps land in a follow-up.
+
+`mechanical.test.ts` covers shape + registry + predicate behavior (15 new tests, mirrors arcane.test.ts).
+
+### Bespoke mobile splashes — 10 of 11 factions
+
+Artist drop in `resources/high_res_art_v2/splash_mobile_<faction>.png` (1530 × 2720, 9:16 aspect, hand-authored portrait composition rather than landscape center-crop). 10 factions delivered (everyone except void, which continues to auto-crop from the landscape source until its bespoke version lands).
+
+Slicer update: `scripts/slice_high_res_art.py` now prefers the bespoke `splash_mobile_<faction>.png` if present, and falls back to center-cropping the landscape splash for any faction without one. Output filename + engine consumer paths unchanged — drop-in for `FactionUnlockSplash`, `LoadingScreen`, `CampaignLobbyScreen`.
+
+WebP refresh: bespoke 4.5MB sources compress to ~200KB on average (~5% of original). Total mobile splash bundle: 4.3MB across all 11 factions.
+
+### Bugfix: hero_vs_boss campaign missions never spawned a boss + ended early
+
+User report: "In campaign, hero defence mode mentions 5 waves then boss. I never got the boss, and the wave 5 ended with creeps still in the hero area but says victory."
+
+Two distinct issues, both fixed:
+
+1. **No boss spawned**. The `hero_vs_boss` archetype defaulted to a 5-wave standard script. Wave 5 isn't a boss wave under the standard wave generator (bosses fall on multiples of 10), so the player got a regular wave instead. Fix: when a mission's archetype is `hero_vs_boss`, GameScene mutates the LAST wave of the generated script to a single-creep boss wave at 1.4× hpScale. The existing engine handles the boss flag transparently from there.
+2. **Premature victory**. The wave-clear gate checked `this.creeps.length === 0` (path creeps) but ignored arena creeps in HD mode. With 10× creep spawn density and a hero mid-fight, the path drained while the arena was still busy → false victory. Fix: the gate now also waits for `arenaManager.arenaCreeps.every(c => !c.alive)` when an arena exists.
+
+### Bugfix: dead creeps could persist indefinitely (sprite cleanup race)
+
+User report: "lots of dead creeps with their art still just hanging around, no death animation or anything, just them there forever."
+
+`playCreepDeath` relied solely on `sprite.once('animationcomplete', destroy)` to clean up the corpse. Phaser 4 has documented edge cases where the event is swallowed (scene transitions, sprite re-targeted, animation interrupted) — the corpse then lives forever. Fix: in addition to the listener, schedule a backstop `delayedCall` at 1.5× the natural animation duration. The two race; whichever fires first destroys the sprite, the second is a no-op.
+
+### Plan 12 v1 polish — attacker HUD swap + intro hint
+
+The 999-lives counter was misleading in attacker mode (the player WANTS leaks). Three changes for clarity:
+
+- **`GameUIState.attackerProgress`**: new field `{ leaks, threshold } | null`, populated each frame by GameScene when `matchMode === 'attacker'`.
+- **StatusBarDOM**: shows "Breakthrough: 2/5" instead of "Lives: 999" in attacker mode. Color flips to green once threshold met (player knows they can stop pushing).
+- **Intro hint**: gameMessage event-log entry fires once at attacker-mode game start: "Attacker mode — you command the creeps. Get N through the defense to win." Persistent in the log so a player who misses it on first wave can scroll back.
+
+### Faction tree backdrop dim 48% → 25%
+
+Per user — the dark scrim behind the faction-detail modal was still too heavy after the v1 reduction. Dropped from `rgba(8,6,14,0.48)` to `rgba(8,6,14,0.25)`. Modal text contrast is preserved by the modal's own `--bg-surface` panel and border.
+
+### CampaignLobbyScreen — faction keyart hero background
+
+Wires the `_big_no_text` art delivery (`{faction}_keyart.webp`) into the campaign sub-scene lobby as a fixed-position background. Heavy radial vignette layered over it keeps the mission-card text readable. Falls back to the existing flat dark background for factions without keyart yet (psionic, harmonic, infernal, military, aliens, cypherpunk, celestial — until those land in the v2 parallax delivery). Currently visible on Arcane, Mechanical, Nature, Void.
+
+### High-res parallax v2 import — arcane / mech / nature / void
+
+Artist drop in `resources/high_res_art_v2/parallax/`. 6 files per faction (4 of 11 delivered so far). New `scripts/import_parallax_v2.py` routes them to the right engine slots:
+
+| Source | Destination | Purpose |
+|---|---|---|
+| `parallax_<faction>_far.png` | `<faction>_parallax_far.png` | parallax background — strict upgrade (2040×708 vs v1's smaller slice) |
+| `parallax_<faction>_mid.png` | `<faction>_parallax_mid.png` | parallax mid — RGBA, composites cleanly |
+| `parallax_<faction>_fore.png` | `<faction>_parallax_fore.png` | parallax foreground — auto-luminosity-mask if shipped as RGB so dark regions don't block lower layers |
+| `parallax_<faction>_big_no_text.png` | `<faction>_keyart.png` | NEW slot — square hero art (2040×1812) reserved for CampaignLobby / FactionTree detail panels |
+
+Skipped: `_big` (text overlay, baked-in title) and `_composite` (pre-flattened, no current consumer). Both stay under `resources/` as design references.
+
+**RGB → alpha auto-mask**: arcane and mech delivered the fore layer as opaque RGB which would block the mid+far layers when stacked. The importer applies a luminosity → alpha conversion (Rec.601 luminance × 1.4 bias) so dark sky/void becomes near-transparent while embers/crystals stay readable. Nature and void shipped as RGBA already and are copied straight through.
+
+**WebP refresh**: `_keyart` added to the convert script's pattern list. Re-running `convert_assets_to_webp.py` now produces 4 new `_keyart.webp` files at ~90-120KB each (down from ~3.6MB PNG).
+
+`FactionTreeScreen.FactionParallax` consumes the new files transparently — same paths, just higher quality. Keyart slot is staged for future wiring (next likely consumer: CampaignLobby hero background).
+
+### Faction art loading speed — WebP conversion (95% size reduction)
+
+User reported faction images and splash screen loading slowly. Cause: the high-res v2 art delivery shipped 2MB landscape splashes + 800KB emblems as PNG. New `scripts/convert_assets_to_webp.py` bulk-converts every `_splash` / `_splash_mobile` / `_emblem` / `_parallax_{far,mid,fore}` PNG to WebP at q=82.
+
+**Conversion impact**: 42.7 MB → 2.1 MB across 11 factions (4.9% of original size). Per-faction breakdown roughly: splash 2MB → 100KB, emblem 800KB → 50KB, parallax bundle 600KB → 25KB.
+
+**Component switch**: `FactionEmblem`, `FactionUnlockSplash`, `LoadingScreen`, and `FactionTreeScreen.parallaxSrc` all now point at `.webp` paths. WebP is universally supported in the target browser matrix (Chrome, Edge, Firefox 65+, Safari 14+, Capacitor WebView). PNG sources stay on disk as a defensive fallback for one release; cleanup PR after WebP ships verified.
+
+**Preload helper**: `src/ui/utils/preloadFactionArt.ts` — when the player picks a faction in `FactionSelectScreen`, fire-and-forget `<img>` prefetches for `_splash.webp`, `_splash_mobile.webp`, and `_emblem.webp` warm the browser HTTP cache. By the time they reach LoadingScreen / FactionUnlockSplash a few clicks later, the art is decoded and renders instantly.
+
+**Other tweaks**: `decoding="async"` added to FactionEmblem `<img>` so emblem decode happens off the main thread. Existing `loading="lazy"` retained — emblems in card lists shouldn't block initial paint.
+
+**Verification**: 440/440 vitest pass, tsc clean. `FactionEmblem.test.tsx` updated to assert WebP path.
+
+### Plan 12 v1 — Attacker mission archetype (pre-placed defender towers)
+
+Roles reverse: the player commands the creep waves and the map ships with a fixed defender lattice. v1 implementation per the roadmap — bespoke `attacker_assault` map with hand-placed Arrow/Cannon/Sniper/Frost-Trap towers along a central corridor, the player can't build, and the win condition flips at end-of-waves.
+
+**`MatchMode` extended**. Added `'attacker'` to the union in `WaveDefinitions.ts`. `getWavesForMode` calls `generateStandardWaves(waveCount ?? 10)` for it — same wave script as Standard, the asymmetry comes from the inverted player role rather than the spawn pattern.
+
+**`MapDefinition.preplacedTowers`**. New optional field: `Array<{ col, row, towerId }>`. Loaded after `TowerManager` init when `matchMode === 'attacker'`; each entry calls the same placement path a player would, but skips gold cost and faction gating (they're authored fixtures). The lattice for `attacker_assault` is 10 towers — Arrow pairs flanking the corridor for chip damage, Cannon mid-corridor for splash, two Sniper anchors at long range, and a Frost-Trap pair to slow boss waves through the kill zone.
+
+**GameScene attacker hooks**:
+- `lives = 999` so the existing zero-lives game-over check doesn't fire prematurely (the player WANTS leaks to happen).
+- `tryBuildTower` early-returns — no player tower placement.
+- Wave-complete branch flips: if all waves cleared and `creepsLeaked < ATTACKER_LEAK_THRESHOLD_DEFAULT (5)`, that's a defeat ("Defenders held"). At or above threshold = victory ("Breakthrough"). Threshold is a constant for v1; mission overrides will be threaded through `MissionContext` later.
+- `Analytics.gameEnd` and `PlayerProfile.awardGameEndXP` read `lives > 0` which correctly reports defeat (we explicitly zero lives in the under-threshold branch) or victory (lives stays at 999).
+
+**Archetype unstubbed**. `MissionArchetypes.attacker` now points at `attacker_assault` with `baseMode: 'attacker'`, 10 waves, normal difficulty. `CampaignDef.test.ts` updated to assert the new shape (was asserting the stub remained).
+
+**Out of scope for v1** (per the plan):
+- Dynamic AI defender via `BotAI` on `this.grid` — the plan v2 work, won't ship until creep-buff palette is also designed.
+- Essence-bought creep buffs / send composition picker — the player still gets standard "Z" sends, but a richer per-faction creep palette is the v2 piece.
+- Standalone top-level Attacker mode in the menu — campaign-only until data justifies promotion.
+
+**Verification**: 440/440 vitest pass, tsc clean.
+
+## 2026-05-01
+
+### High-res art v2 + parallax delivery + LoadingScreen splash
+
+Second drop of bespoke art replacing the v1 lower-res files. Same engine slots, higher fidelity, plus a net-new parallax delivery.
+
+**v2 files at `resources/high_res_art_v2/`**: 11 individual splash PNGs at 2164×816 (4× v1's 541×204), one 5016×5016 emblem reference sheet (4× v1's 1254×1254), and a brand-new 6144×4096 `image_c.png` parallax sheet containing all 33 layer cells (11 factions × Far / Mid / Fore).
+
+**`scripts/slice_high_res_art.py` updates**:
+- Reads from `resources/high_res_art_v2/` first, falls back to v1 if v2 isn't present.
+- Splash files copy directly with `mech → mechanical` name normalization.
+- Emblem cell boundaries auto-detected on the new 5016×5016 sheet (gutters between bright crests on dark background).
+- Parallax cells sliced from `image_c.png` with hand-tuned y-bands. Discovered the top and bottom rows have different label conventions (top is image-then-label, bottom is label-before-image) so the boundary tables are kept separate.
+- 11 splash + 11 emblem + 33 parallax PNGs land under `public/assets/{faction}/`. Engine slots (FactionEmblem, FactionUnlockSplash, FactionTreeScreen) consume the new files transparently — same paths as v1.
+
+**LoadingScreen now uses faction art**. Per the user's request: while GameScene loads, the player's faction splash key art renders as a 35%-opacity background layer with a radial vignette over it for text readability. Self-hides on load failure or for meta factions (`chaos` / `random`) — the existing radial gradient mood lighting remains as the universal fallback.
+
+**Two critical bug fixes shipped alongside**:
+- **MissionRunner faction default → `arcane`**. Plan 14 v1 Arcane campaign missions launched with `faction: null` because the mission overrides didn't specify a player faction. GameScene fell back to the generic Arrow/Cannon/Sniper/Frost-Trap pool. Default to Arcane (every player has it as the free root); long-term, a pre-mission faction picker UI replaces this.
+- **Wave-stuck auto-recovery after 30s**. `WaveController` now fires `onStuckForceClear` if a wave has been active >30s with no spawning, no sending, but creep count > 0. `CreepManager.forceLeakAllAlive()` marks every alive creep as `reached`, routing them through the existing leak handler. Player loses lives proportional to the leaks but the wave clears; previously a single mis-pathed creep could hang the entire match indefinitely (which is what the user hit).
+
+**Verification**: 438/438 vitest pass, tsc clean (client + server).
+
+## 2026-04-30
+
+### Art-pass extraction + Plans 11 / 13 v1 (Base Defense + Heist) + art PRD
+
+**Art-pass extraction.** A single 1536×1024 composite art-pass file (`resources/composite_art_theme.png`) sliced into 55 individual PNGs across `public/assets/{faction}/`. Per faction: `{faction}_emblem.png` (A1 row), `{faction}_splash.png` (A2 row), and a 3-layer parallax set `{faction}_parallax_far/mid/fore.png` (A3 grid). The composite's columns aren't aligned identically across rows — A1 emblems were detected by scanning for dark gutters between the bright crests, A2 splashes were hand-tuned (designer used wider cells on the left half / narrower on the right), A3 parallax was even-spaced from x=85..1528 because of the LAYER-label gutter on the left. Slicer lives in `scripts/slice_art_pass.py` and is regenerable.
+
+**FactionEmblem** now PNG-first with SVG fallback. Renders `/assets/{faction}/{faction}_emblem.png` as an `<img>` with a CSS `grayscale + brightness` filter for the locked state. If the image fails to load (offline / missing / `chaos` / `random`) the component falls through to the procedural SVG glyph from before so the tree never shows a broken-image icon.
+
+**FactionUnlockSplash** layers the per-faction splash key art behind the existing emblem + identity copy. Width-clamped to `min(90vw, 720px)`, blurred 0.5px and saturated, with a darkening radial vignette over it for text legibility. Self-hides the `<img>` on load failure — splash falls back to the radial-only mood lighting.
+
+**FactionTreeScreen** layers in the focused faction's 3-layer parallax (far / mid / fore) when a node is selected. Pan rates per the PRD A3 spec — far at 240s/cycle, mid at 120s, fore at 60s, all with `repeat-x` / `cover` for any viewport size. The default starfield still renders when no node is focused; selecting a node fades the homeworld scene in over it.
+
+**Plan 11 — Base Defense (v1)**. Archetype unstubbed. New `base_arena` map: 4 perimeter spawners (N/S/E/W edge midpoints) converging on a single central exit. The center cell is the "base" — a leak there costs lives like Standard. A 3×3 `noBuild` ring around the base prevents arm's-length walling. Corner pillars anchor the arena geometry and stop the player from fully encircling. v2 will add a bespoke Base entity with HP bar, hit-flash, and damage states (Plan 8-style polish); v1 reuses the standard lives counter for shipping speed.
+
+**Plan 13 — Heist (v1)**. Archetype unstubbed. New `heist_vault` map: reverse-direction layout with a vault structure on the east edge spawning creeps westward. Two diagonal walls force a serpentine kill funnel. The signature gold-on-ground mechanic (killed creeps drop pickups; surviving creeps absorb them up to capacity) is deferred to v2 — it needs a new `GoldDrop` entity plus per-creep `carriedGold` plumbing on the Creep base class. v1 ships as a reverse-path Standard variant which still feels distinct from the regular kit.
+
+**Plan 12 — Attacker stays stubbed**. The role-reversal needs net-new engine surface (creep-send picker UI, AI defender driver via existing `BalancedBrain`, win-by-leak condition flip). Tracked separately when that engine work is scoped — flipping a stub on a map alone wouldn't capture the design intent.
+
+**New art_prd.md** in `notes/` — production PRD covering 50+ assets across 6 categories (Faction visual identity, Campaign content, Tutorial / onboarding, Profile / progression, Generic UI, Future Hero Defense). Per asset: code, purpose, dimensions, format, composition spec, animation requirements, acceptance criteria, priority. Recommended 4-wave production sequencing so the asset backlog has a paced delivery cadence rather than 50 simultaneous deliverables.
+
+**Verification**: 438/438 vitest pass (+8 new, archetype tests rewritten for PNG-first behavior with SVG fallback). tsc clean.
+
+### Bespoke Arcane maps + procedural faction emblems + tree polish + unlock splash
+
+Picking up the open deferred items from Chunk A — visual identity for the faction tree and faction-themed maps for the Arcane campaign. Both done procedurally rather than with bespoke art so they ship without an asset pipeline.
+
+**Three new Arcane-tileset maps** (added inline in `Maps.ts` with the `arcane_crystal` terrain theme so blocked cells render as crystal formations):
+
+- **`arcane_outskirts`** — Mission 1 opener. Wide corridor with two offset crystal clusters; soft mazing hint, the player can route around either side.
+- **`arcane_pass`** — Mission 6 speedrun. Long winding S-shape from top-left to bottom-right with mirrored crystal walls forcing a serpentine route. Built specifically for time-attack scoring.
+- **`arcane_throne`** — Mission 10 final showdown. Three-entry approach (top, middle, bottom) converging on a central crystal nexus + unbuildable dais. Fortified funnel walls before the exit. The throne campaign closer.
+
+The Arcane campaign was updated — missions 1, 6, 10 now reference these instead of `plains` / `serpentine` / `siege`. Other missions still use existing standard maps; bespoke art for those is on the long-tail content track.
+
+**Procedural FactionEmblem component** (`src/ui/components/FactionEmblem.tsx`). Circular SVG crest pulled from the existing primary/secondary colors in `FACTIONS[id]`. Per-faction glyph: Arcane = 4-pointed star, Mechanical = gear, Nature = 3-petal flower, Void = spiral, Military = chevrons, Aliens = hexagon hive, Cypherpunk = bracket-circuit, Infernal = flame, Celestial = sun rays, Psionic = concentric brain-wave arcs, Harmonic = 3-circle network. Stroke-only at small sizes for silhouette legibility; locked variant uses a muted `#444/#666` palette. Hand-drawn art can drop into the same shell later — the emblem signature stays the same.
+
+**Faction tree visual polish**:
+- Animated CSS starfield background drifting at 60s/loop with two soft radial color washes.
+- Per-tier `↓` dividers between rows so the parent → child topology reads at a glance.
+- 2.4s pulsing halo (`box-shadow` keyframe) on every unlockable node so the next available step is visually obvious without a tutorial nudge.
+- Each tree node shows its emblem at 56px above the faction name + state badge.
+
+**FactionUnlockSplash** component — full-screen take-over after `attemptFactionUnlock` succeeds. Listens for a new `td-faction-unlocked` window event the unlock flow dispatches. Big 180px emblem with color-tinted drop-shadow glow + 3s glow-pulse animation, faction identity copy, "Begin Campaign" CTA when content is shipped or "Continue" otherwise. Decoupled from the tree screen via the window event so any future unlock surface (campaign-completion route, achievement route) gets the splash for free.
+
+**No bespoke art assets** in this drop. Every visual is procedural CSS / SVG. When real per-faction illustrations and parallax homeworld backgrounds land later, they slot into the same component shells without engine changes.
+
+**Verification**: 431/431 vitest pass (+12 new). tsc clean. Both changelogs updated.
+
+### Mission restrictions enforced + custom counters wired (Plan 14 v1.1)
+
+Cleanup pass on the open deferred items from Chunk A. Two real changes:
+
+**Restriction enforcement**. `noSends` and `noFrontier` mission restrictions were wired into the schema in Plan 10 but had no runtime gates — purchases would silently succeed. Now both the keyboard send paths (`SendPanel` callback) and the DOM-side callbacks (`GameUIStore.onSend` / `onFrontierPurchase`) short-circuit with a "Sends are disabled for this mission." / "Frontier buildings are disabled for this mission." event-log message before the spend hits.
+
+Implementation: `GameModeContext` gained a `missionRestrictions` field. `GameScene` populates it from `missionContext.restrictions` when the scene was launched as a mission. `StandardMode` + `BaseFrontierMode` read `ctx.missionRestrictions?.noSends` / `noFrontier` at the top of every purchase handler.
+
+**Custom counters**. Two new per-mission counters fed into `MissionResult.custom`:
+
+- `sendsBought` — incremented on the existing `sendPurchased` EventBus event. Always-on but only consumed by missions that care (the `sendPurchased` listener was already capturing for LiveCapture, so this is a single extra increment).
+- `heroHpMin` — fraction (0..1) sampled once per `update()` frame from `arenaManager.hero.hp / hero.maxHp`. Tracks the lowest the hero ever fell. Skipped when no hero exists.
+
+This lets two Arcane mission star-3 predicates flip from placeholder `() => false` to real conditions:
+
+- **Mission 3 "Hero never falls below 50% HP"** → `r.custom.heroHpMin >= 0.5`
+- **Mission 4 "Win without buying any sends"** → `r.custom.sendsBought === 0`
+
+Two other placeholders remain — **Mission 5 "Kill every warlord before halfway"** (needs per-creep distance-traveled tracking) and **Mission 9 "Ally never below 5 lives"** (needs co-op state inspection). Both deferred until the surfaces get the right hooks; players still earn 1-2 stars on those missions via the simpler conditions.
+
+**Verification**: 419/419 vitest pass (+5 new). tsc clean.
+
+### Faction Tree — unlock-via-Shards-and-campaign progression UI (Plan 5)
+
+The visible spine of progression. New `FactionTreeScreen` lets the player see all 11 factions, their unlock requirements, and their current state in the new two-step unlock model. Replaces the previous one-shot Shards spend in FactionSelect.
+
+**Tree shape** (locked with the user in conversation):
+
+```
+                Arcane (root, L1, free)
+                  /        |         \
+        Mechanical (L3) Nature (L3)  Void (L3)         (1000 Shards each)
+          /     \         /     \      /     \
+      Military Celestial Aliens Infernal Psionic Cypherpunk   (1500 each)
+                       \    |    |   /
+                       Harmonic (L18, 2000 Shards, requires any 4)
+```
+
+**Two-step unlock model**: pay Shards on the tree → unlocks that faction's campaign → beat the campaign → faction becomes playable in every non-campaign mode (Standard, Endless, Battle, etc.). Arcane is the free root and always playable. No rerolls, no refunds.
+
+**State machine** per node (drives the UI badge + CTA):
+- `locked_level` — Player Level too low; silhouette + L_ tooltip
+- `locked_parents` — parent(s) not yet Shards-unlocked
+- `locked_capstone` — Harmonic, needs 4 other unlocks first
+- `unlockable` — all gates clear, can spend Shards now
+- `campaign_pending` — Shards spent but campaign content not yet shipped (Mech/Nature/Void/specialists at this point)
+- `campaign_in_progress` — at least one mission won, not all
+- `playable` — Arcane (free root) OR Shards-unlocked + campaign complete OR legacy migration
+
+**Migration safety**: PlayerProfile's legacy migration (Plan 2) was extended — any faction the player already had in `td_store.unlockedFactions` gets pre-marked playable via `legacy_faction_playable.<id>` flags. Veterans keep their full roster on first launch with Plan 5; new players have only Arcane and walk the tree from there.
+
+**Purchase flow** (`attemptFactionUnlock`): checks Shards balance, parent gates, level gate, capstone N-of-any. Switched from legacy `PlayerInventory.ownsFaction` (which still treats `FREE_FACTIONS` of arcane/mech/nature/void/military/celestial as free) to Plan-5-aware `isFactionCampaignPurchased` so the new model wins. Emits `faction_unlock_attempted` / `faction_unlocked` / `faction_unlock_failed` to the existing Plan-1 analytics catalog.
+
+**FactionSelect** rewired — locked factions now tap into the tree screen rather than offering a one-shot Shards spend in place. Cleaner: the tree is the unlock surface, FactionSelect is "pick from your playable factions."
+
+**Menu** now exposes a Factions tile at L3+ (matches the first archetype unlock). Replaces the temporary single-Campaigns tile that Plan 14 v1 used as a stopgap. The tree itself routes to campaign lobbies for any faction whose content has shipped.
+
+New `'faction-tree'` ScreenId. New `src/data/FactionTree.ts` (graph spec). New `src/systems/profile/FactionUnlockFlow.ts` (purchase orchestration). New `src/ui/screens/FactionTreeScreen.tsx` (UI). UnlockGates extended with `isFactionPlayable` / `isFactionCampaignPurchased` / `isFactionCampaignComplete` / `getFactionNodeState`.
+
+**Verification**: 414/414 vitest pass (+25 new). tsc clean. Both changelogs updated.
+
+**Not shipped this plan**: bespoke per-faction emblem art, animated parallax homeworld backgrounds, edge animations between unlocked nodes, audio stings on unlock. Plan 5 v1 ships the structural shell + state machine; the polish art lands as a separate cosmetic-track release. Per-faction welcome splashes also deferred.
+
+### Arcane campaign — first complete 10-mission campaign (Plan 14 v1)
+
+The first piece of campaign content on top of Plan 10's framework. **Arcane Reckoning** — 10 missions where the player commands one of their unlocked factions and fights *against* Arcane creeps + bosses on Arcane-themed maps. Arcane is the free root faction in the Plan 5 tree, so beating this campaign rewards Cores + cosmetics rather than unlocking a new faction. It's the proof-of-concept demo that validates the unlock-via-campaign loop before the Mechanical campaign (Chunk C) lands with real faction-unlock stakes.
+
+**Mission lineup** (v1, no Plans 11/12/13):
+
+| # | Archetype | Map | Notes |
+|--:|-----------|-----|-------|
+| 1 | restriction | plains | First 4 towers only — soft opener |
+| 2 | standard | serpentine | 15 waves, winding path |
+| 3 | hero_vs_boss | hero_plains | Arcanist hero vs Archmage NPC |
+| 4 | restriction | fortress | No walls allowed (swap-in for Base Defense) |
+| 5 | boss_rush | crossroads | 5 boss-only waves on hard |
+| 6 | speedrun | serpentine | 20 waves, time-attack |
+| 7 | frugal | islands | 0.5× gold, 6-tower cap |
+| 8 | standard | spiral | 25-wave siege (swap-in for Attacker) |
+| 9 | coop_with_bot | circle_2p | Co-op with bot ally |
+| 10 | final_showdown | siege | 30 waves, hard, the closer |
+
+**Star objectives** per mission: 1 star = win, 2 = win + bonus condition (no leaks / fast clear / lives remaining etc.), 3 = stricter condition (perfect run / under N minutes etc.). Stars are monotonic (replays only upgrade). A handful of star-3 predicates are placeholder `() => false` where the underlying counter doesn't yet exist — hero HP-floor tracking, send count, per-creep "killed before halfway" markers. Players still earn 2 stars on those missions via the simpler condition; the 3-star path waits on a counter-instrumentation pass.
+
+**Story tone** is terse-mechanical medieval-fantasy report style. Each mission has ~50 words of narrative — a coalition pushing back against an Arcane invasion in stages. No in-character flourish, no internal canon hardlock — keeps each future campaign's lore self-contained.
+
+**Menu integration**: a new Campaigns tile on `MenuScreen` shows up at Player Level 7 (matches the existing `MODE_UNLOCK_LEVEL.campaign` gate). Opens the Arcane lobby directly. Plan 5's faction tree later supersedes this single tile with the full tree picker.
+
+**Restriction enforcement** in GameScene at the placement gate: `allowedTowerIds`, `allowedFactions`, `noWalls` (filters out `mech_wall` / `mil_sandbag` / `mil_wire`), `maxTowers` (counts non-walls only). Sends + frontier restrictions are wired in the schema but not yet enforced — wired in Chunk C alongside the Mechanical campaign.
+
+**Maps** are existing standard maps (plains, serpentine, fortress, crossroads, islands, spiral, circle_2p, siege, hero_plains). Bespoke Arcane-tileset maps deferred to a polish pass once Chunk C ships and we have content authoring tooling.
+
+**Verification**: 389/389 vitest pass (+15 new). tsc clean on client + server. Both changelogs updated.
+
+### Campaign framework — mission archetypes, MissionRunner, sub-scene lobby (Plan 10)
+
+Foundation for the Arcane / Mechanical / future campaigns. Ships the *invisible* infrastructure — schema, runtime orchestrator, lobby UI, profile state — without any campaign content. Plan 14 (Arcane) and the Mechanical campaign land next as content drops on top of this framework.
+
+**Schema** (`src/data/campaigns/CampaignDef.ts`). A campaign is 10 missions targeting one faction. Player fights *against* that faction in its tileset; beating all 10 unlocks playing AS that faction. Each mission picks a `MissionArchetype` and applies overrides — waveCount, difficulty, starting gold (delta or multiplier), lives, hero, modifier, restrictions (allowedFactions / allowedTowerIds / maxTowers / noWalls / noSends / noFrontier / forceHeroId). Star objectives are predicates evaluated at game-end against a `MissionResult` snapshot (won / wave / durationMs / livesRemaining / livesStart / goldRemaining / goldEarned / towerCount / perfectRun / custom counters).
+
+**Archetype catalog**. 8 v1 archetypes that reuse existing MatchModes:
+- `standard` — basic; 15 waves on Normal
+- `boss_rush` — 10-wave hard; campaigns swap creep mix at wave-script time
+- `speedrun` — 20 waves, time-attack scoring
+- `frugal` — 15 waves, 0.5× starting gold, 6 tower cap
+- `hero_vs_boss` — Hero Defense base mode, 5 waves
+- `coop_with_bot` — Circle Co-op base mode for solo practice
+- `final_showdown` — 30 waves, hard
+- `restriction` — Standard with allowedTowerIds / noWalls etc.
+
+Plus 3 stubs (`base_defense`, `attacker`, `heist`) reserved for Plans 11/12/13. Stub archetypes refuse to launch; the lobby surfaces them as "Coming Soon."
+
+**MissionRunner** orchestrates a single run. `start(campaign, missionIdx)` resolves archetype defaults + mission overrides into init data, threads a `MissionContext` through `UIBridge.startScene('GameScene', ...)`, and emits `mission_started`. GameScene applies the gold / lives / wave overrides at init and, at game-end, calls `MissionRunner.finalize(result)` — which evaluates star predicates (1 = win, 2 = win + objective, 3 = perfect run), calls `PlayerProfile.recordMissionResult`, and emits `mission_completed` / `mission_failed`. Final mission completion fires `campaign_completed`.
+
+**GameScene threading**. Init signature accepts `missionContext` + `missionGoldStart` + `missionGoldStartMult` + `missionLives`. Mission lives override beats both tutorial mode (99) and DraftModifier overrides. Gold delta + multiplier can both apply (delta first, then multiply by current). Game-end imports `MissionRunner` lazily and calls `finalize` only when the scene was launched as a mission.
+
+**`CampaignLobbyScreen`** — Preact full-screen lobby per faction. Linear 10-mission card list with star ratings (★/☆), archetype badge per card, locked silhouettes (mission N is locked until N-1 has ≥1 star), pre-mission story modal showing the mission's narrative intro + objective list before launching. Completion banner ("Campaign Complete") with the campaign's `outro` copy when all 10 missions are won. Faction color theming pulled from `FACTIONS[id].primaryColor`. New `'campaign-lobby'` ScreenId in UIBridge.
+
+**`PlayerProfile.campaignProgress`** reshaped from `{ factionId → count }` to `{ factionId → { missionIdx → stars } }`. Helpers: `getMissionStars`, `getCampaignProgress`, `getCampaignTotalStars`, `isMissionUnlocked`, `recordMissionResult`. Stars monotonic — replay can never downgrade. Mission N+1 unlocks at ≥1 star on mission N.
+
+**Analytics + server**. New events: `campaign_lobby_opened`, `mission_started`, `mission_completed`, `mission_failed`, `campaign_completed`. Server's per-event dim list extended with `campaignFactionId` + `archetypeId`. Summary `dimQueries` adds `campaignViews` / `missionsByFaction` / `missionsByArchetype` / `missionFailsByFaction` breakdowns.
+
+**Verification**: 374/374 vitest pass (+13 new). tsc clean on client and server.
+
+**Not shipped**: campaign content (Arcane / Mechanical / etc.). Lobby UI gracefully shows "no campaign loaded" if opened without a `data.campaign` payload.
+
+### Tutorial extensions — economy / vs-CPU / JIT / faction briefs / Help carousel (Plan 4)
+
+Rounds out the onboarding surface beyond Plan 3's FTG. New player or returning, every tutorial concept now has a JIT or opt-in track behind it. Per the roadmap user calls: gentle (no drama), real games (not just primer screens), terse voice (no flavor padding).
+
+**Tutorial 2 — Economy** (`tutorial_economy`). Four-wave embedded lesson on Hero Plains in tutorial mode (99 lives, can't fail). Teaches the three income sources in order: kill gold (wave 1), frontier buildings (wave 2), sends (wave 3), synthesis (wave 4). Reached from the ? Help carousel and via an end-of-FTG CTA. No auto-prompt — the user explicitly picked the gentle approach over the wave-4-spike "drama" alternative.
+
+**Tutorial 3 — vs CPU** (`tutorial_vs_cpu`). Real 5-wave Versus session against the existing `BalancedBrain` CPU opponent. Routes through the lobby's existing `startVsCpu` flow via a window flag (`__tutorialVsCpuQueued`) — Lobby auto-runs setup, queues `waveCount=5`, and calls `TutorialManager.queueInGameTrack('tutorial_vs_cpu')` right before scene-switch so the 10s pendingAfterMatchLoad TTL doesn't expire while the player is picking a faction. In-game coach marks cover the three Versus-specific surfaces: sends-go-to-opponent, opponent minimap, ready vote.
+
+**JIT (just-in-time) lessons.** Five new single-step scrimless popovers fired the first time the player encounters each archetype outside of a scripted tutorial: flying creeps (ignore the maze), regenerators (heal between hits), mage creeps (auras buff allies), bosses (cost 5 lives), and leaks (a creep made it past your towers). Idempotent via `PlayerProfile.flags.jit_seen.<concept>`. Suppressed during active tutorial tracks so they don't collide with the scripted lesson. Wired off the existing `creepSpawned` and `creepReached` EventBus events with a `mapCreepTypeToJITConcept` switch.
+
+**Faction briefs.** The old single-line "Key Tip" expanded to a 5-line teaching block per faction: *identity / opener / key tower / what to avoid / how you win*. 11 factions × 5 steps each, terse-mechanical voice — no flavor padding (the picked option). Each faction takes ~30 seconds to read. Auto-fires once per faction the first time it's picked in FactionSelect.
+
+**Skip-all-faction-briefs toggle.** New global persistent setting — when on, every `faction:*` auto-trigger early-returns in `TutorialManager.maybeAutoStart`. Reachable via a checkbox in the Help carousel's "All Tutorials" view. Player can still replay any specific brief on demand. Stored in `TutorialPersistence.skipAllFactionBriefs`.
+
+**Help carousel + basics rewrite.** Replaces the old "?" track-list drawer with a 6-card How To Play carousel — *Mazing / Income / Factions / Modes / Sends / Online*. ≤40 words per card, plain teaching voice. The carousel is the default view; an "All Tutorials →" link swaps to the full replay list. The legacy `basics` track copy was rewritten — the user-flagged "What's Different: Mazing / What's Different: Income" framing dropped (read like marketing), now reads as a normal walkthrough. End-of-`basics` CTA now launches the FTG instead of the longer tutorial_match.
+
+**No new analytics events** — Plan 1's `tutorial_track_started/completed/quit` plus `tutorial_step_seen/completed/skipped` already cover Tutorial 2 / 3 / JIT / brief funnels at the schema level. The new track ids show up automatically in summary `dim:` breakdowns by `trackId`.
+
+361/361 vitest pass (+14 new). tsc clean on client. Server unchanged this plan.
+
+### First Tutorial Game (FTG) splash + slim onboarding track (Plan 3 of progression roadmap)
+
+Replaces the menu-first onboarding with a contained tutorial-game-first flow. Net-new players now see a single splash card before the menu — large **Play Tutorial (~3 min)** button, small **Skip**. Tap Play and you go straight into a 5-minute scripted Arcane round on a single straight-corridor map. Tap Skip and you go to the menu, never re-prompted.
+
+Per the user-flagged "tutorial game mode has too much in it": the new `ftg` track is **mazing + towers ONLY**. Eight steps total — welcome, pick Bolt, place, mazing reveal, pick Bolt again, extend the maze, start wave 1, done. No frontier, no sends, no draft, no economy lesson. Income/sends introduction is deferred to Plan 4's separate `Tutorial 2` (Economy) and `Tutorial 3` (vs CPU) tracks.
+
+The existing longer `tutorial_match` track (covers economy + sends + frontier) is preserved as a Help-menu replay option but no longer the default first-time experience.
+
+Reuses the existing `TutorialMode` (99 lives, +250 starting gold) and the existing `tutorial` map. No new mode or map needed — Plan 3's value is the framing and the slimmer script.
+
+**On FTG complete**: `PlayerProfile.markFirstGameComplete()` sets the `first_game_complete` flag (so the splash never re-prompts on this device) and grants a one-shot 200 XP bonus that crosses L1 → L2 cleanly so the player immediately sees the unlock loop from Plan 2. Quitting the FTG mid-game returns to menu.
+
+**Migration**: legacy players (with `gamesPlayed > 0`) were already pre-marked at Plan 2 migration time as `first_game_complete=true`, so they never see the new splash — they go directly to menu like before.
+
+**Existing `basics` menu walkthrough**: no longer auto-fires on cold boot. Still available via the Help menu's `?` button. The user-flagged "What's Different" framing in basics is left for Plan 4 to overhaul.
+
+Server analytics already sliced `splash_play_tapped` / `splash_skip_tapped` from Plan 1, so the splash decision funnel is queryable from day one.
+
++10 unit tests covering the FTG track shape (8 expected step ids, no economy steps), `markFirstGameComplete` idempotency, and the migration path. 347/347 vitest pass. tsc clean.
+
+### Player Profile + Player Level + hidden-content menu (Plan 2 of progression roadmap)
+
+Builds the spine of long-term progression. New permanent global Player Level — distinct from the seasonal Battle Pass — gates the modes / maps / future faction-tree unlocks. Per the roadmap's user direction: **hide locked content** in the menu, **keep the faction list visible** (silhouettes come with the faction tree, Plan 5). The player should always see the next thing they're about to unlock.
+
+XP curve is `200 × level` per step. Standard 30 win on Normal = 150 XP. Hard +50%, Insane +100%. First-time faction +50, first-time map win +25. Defeat at wave 5+ awards 10 XP so unlucky runs aren't completely empty. L20 takes ~250–300 games — paced for "always something next week."
+
+**Mode unlock levels**: Endless L5, Hero Defense L8, Essence (Battle) L9, Versus L10, Co-op L12, Gauntlet L14. Career L15 and Campaign L7 are reserved for their own future plans.
+
+**Map unlock levels**: Crossroads L2, Fortress L4, Serpentine L5, Islands L6, Random L6, Gauntlet L8, Spiral L10, Siege L12.
+
+**Cores currency** added (parallel to Shards). Earned in Career mode (Plan 15) — spent on tower-chip upgrades (Plan 16). The hard rule is that Cores are never sold for money. That separation is what keeps the random-chip-token loop from feeling like pay-to-win.
+
+**Level-up modal** — full-screen take-over after each game-end with the new level + the list of unlocks revealed. Same modal handles the one-shot "Welcome back: starting at level X" banner for legacy players migrated from `td_store.gamesPlayed`. Migration is conservative (1 game ≈ 1 level, capped at L20) so nobody feels demoted.
+
+Every analytics event now auto-includes `playerLevel / cores / shards / unlockedFactionsCount` via the player-context hook landed in Plan 1.
+
+**Save format**: new `td_profile` localStorage key, deliberately separate from `td_store`. A Battle Pass season rollover wipes the seasonal slice; the spine of progression survives.
+
+New events: `profile_initialized`, `profile_migrated_from_legacy`, `xp_awarded`, `level_up`, `unlock_revealed`, `menu_locked_tile_tapped`. +30 unit tests on the XP curve + unlock gates.
+
+### Telemetry foundation (Plan 1 of progression roadmap)
+
+Foundation work — every later progression plan depends on being able to measure whether it's working.
+
+Typed analytics catalog (`AnalyticsEvents.ts`) with ~30 event shapes covering game lifecycle, onboarding, mode lifecycle, progression, monetization, encyclopedia, and achievements. New `Analytics.track<E>(name, payload)` typed entry point. Legacy `event(type, data)` preserved for back-compat — existing callsites unchanged.
+
+Every event now carries `platform`, `sessionId`, `ts`, and (after Plan 2) the player-level context. Stripped `undefined` fields before send so the server schema (`string | number | boolean`) stays clean.
+
+New `?debug`-gated `AnalyticsDebugPanel` — fixed bottom-left ring buffer of the last 200 events with filter + copy-as-JSON. Works even when network analytics are opted out, useful for verifying telemetry without a backend dashboard.
+
+Wired the high-leverage events that don't need later plans: tutorial track start/complete + step seen/completed/skipped + quit, Battle Pass XP awards + level-ups + premium purchase + reward claims, `mode_entered` / `mode_exited` with `durationMs`, cold-boot `app_boot`, `menu_view`. Future plans wire their own events at landing time.
+
+**Server side** (`server/src/index.ts`): schema docstring rewritten as a comprehensive event catalog, per-event dimension list extended with `trackId`, `stepId`, `factionId`, `route`, `unlockType`, `category`, `id`, `currency`. The summary + history endpoints now surface 17+ new event types and break down tutorial funnels by track, faction unlocks by route, achievements by id, and purchase mix by currency. Per-event KV cost stays approximately flat — events skip cheaply when they don't carry the dimension field.
+
 ## 2026-04-28
 
 ### Faction picker: Random renamed to Chaos, new "roll a real faction" Random added

@@ -57,6 +57,15 @@ export function LobbyScreen() {
 
   useEffect(() => {
     TutorialManager.onLobbyOpened();
+    // Plan 4 Tutorial 3: if the player came in via the Help carousel
+    // / vs-CPU CTA, skip the intro phase and go straight to setup
+    // with the CPU opponent already configured. The flag is consumed
+    // by launchGame later (waveCount=5 limit).
+    const flagHolder = window as unknown as { __tutorialVsCpuQueued?: boolean };
+    if (flagHolder.__tutorialVsCpuQueued) {
+      // Defer one tick so phase state has mounted.
+      setTimeout(() => startVsCpu(), 0);
+    }
     return () => {
       // Page-level cleanup. Skip tearing down the manager if we launched
       // into a game — GameScene needs it alive in the registry.
@@ -239,12 +248,24 @@ export function LobbyScreen() {
     Analytics.multiplayerStart('versus', 2);
     const game = UIBridge.getGame();
     if (game) game.registry.set('versus', versus);
+    // Plan 4 Tutorial 3: when launched from the Help carousel /
+    // tutorial CTA, restrict the game to 5 waves so the lesson is
+    // bounded AND queue the in-game coach marks now (the 10s TTL
+    // on pendingAfterMatchLoad would have expired if we'd set it
+    // back at the menu-tap moment).
+    const flagHolder = window as unknown as { __tutorialVsCpuQueued?: boolean };
+    const isVsCpuTutorial = !!flagHolder.__tutorialVsCpuQueued;
+    if (isVsCpuTutorial) {
+      flagHolder.__tutorialVsCpuQueued = false;
+      TutorialManager.queueInGameTrack('tutorial_vs_cpu');
+    }
     UIBridge.startScene('DraftScene', {
       mode: 'standard',
       faction: fid,
       map: selectedMap,
       difficulty: selectedDifficulty,
       customMapDef: customMapDefRef.current ?? undefined,
+      ...(isVsCpuTutorial ? { waveCount: 5 } : {}),
     });
   };
 

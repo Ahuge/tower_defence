@@ -11,6 +11,23 @@ import { FactionId } from '../data/Factions';
 import { createCreepSprite, getCreepSpriteScale, playCreepDeath, hasCreepSprites } from '../systems/CreepSpriteManager';
 import { rng } from '../systems/Rng';
 
+/** Value returned by `Creep.getAttackTarget` in goalMode='attacking'.
+ *  The creep walks the supplied path (or straight-line if no path
+ *  given), attacks `entity.takeDamage(amount)` when within attackRange,
+ *  and re-asks for a new target when `entity.alive === false`. */
+export interface CreepAttackTarget {
+  readonly x: number;
+  readonly y: number;
+  readonly alive?: boolean;
+  /** Pre-computed grid path from the creep's current cell to a cell
+   *  within attack range of the target. Owner of the callback (e.g.
+   *  FinaleController for M10 sends) supplies this so Creep stays
+   *  decoupled from grid + findPath. Empty / undefined → fall back
+   *  to straight-line movement. */
+  path?: { x: number; y: number }[];
+  takeDamage(amount: number): boolean;
+}
+
 const ARMOR_TIERS: ArmorType[] = ['light', 'medium', 'heavy'];
 
 export class Creep {
@@ -45,6 +62,64 @@ export class Creep {
    * where every creep belongs to the defender themselves).
    */
   spawnOwnerIndex: number | null = null;
+  /** Owner of this creep. Drives the universal "same-team-can't-target"
+   *  rule (Tower.findTarget skips creeps with the same ownerIndex as
+   *  the tower; sends/creeps with goalMode='attacking' skip towers
+   *  with the same owner). Conventions:
+   *    -  0..3 = a Player slot (single-player → 0; circle co-op → 0..3)
+   *    -  99   = CPU / enemy waves (default for spawned wave creeps)
+   *  Defaults to 99 so any spawn path that doesn't explicitly set
+   *  ownership produces an "enemy" creep — preserving existing
+   *  behaviour without per-call edits. */
+  ownerIndex: number = 99;
+  /** M10 finale (also useful for any future "decoy" mode): true when
+   *  the creep was spawned by SendManager as a player send (not a wave
+   *  creep). Distinct from ownerIndex — `isSend` is the SOURCE
+   *  (queued via the send panel) while ownerIndex is the TEAM. */
+  isSend: boolean = false;
+  /** Goal mode (PRD per user spec):
+   *    'pathing'   = walk to exit point along the existing path.
+   *    'attacking' = pathfind to the nearest enemy-owned destructible
+   *                  tower, attack until dead, repeat. Falls back to
+   *                  'pathing' once no enemy towers remain.
+   *  Defaults to 'pathing' — the existing single-direction behaviour. */
+  goalMode: 'pathing' | 'attacking' = 'pathing';
+  /** Attack range (in pixels) for goalMode='attacking'. Standard sends
+   *  / wave creeps are melee-ish (~40 px = 1.4 tiles). Flying / mage
+   *  variants can override to attack from further away. */
+  attackRange: number = 40;
+  /** @deprecated — use `ownerIndex !== 99` instead. Kept as a
+   *  compatibility shim so older code paths don't crash mid-refactor;
+   *  reads true when the creep is on a Player team. */
+  get isFriendly(): boolean { return this.ownerIndex >= 0 && this.ownerIndex < 99; }
+
+  // ─── Attacking Goal (PRD post-M10-v4) ────────────────────────────
+  /** Callback that returns the next enemy-owned target for a creep
+   *  in `goalMode='attacking'`. Owner of the callback (typically
+   *  FinaleController for M10 sends) is responsible for ownership
+   *  filtering — Creep just consumes the result. Returning null
+   *  signals "no targets remain" → creep falls back to Pathing Goal
+   *  and resumes walking the original path to exit. */
+  getAttackTarget?: (creep: Creep) => CreepAttackTarget | null;
+  /** Last frame the creep dealt damage to its current attacking
+   *  target. Drives the 1s-cadence (configurable per creep). */
+  _attackLastFiredAt: number = 0;
+  /** Cadence of attacks while in `goalMode='attacking'` (ms). 1000ms
+   *  by default — sends the same DPS-feel as the older opportunistic
+   *  send-chip mechanic. */
+  attackCadenceMs: number = 1000;
+  /** Damage dealt per attack while in `goalMode='attacking'`. Falls
+   *  back to `floor(maxHp / 100)` (min 1) when undefined — matches
+   *  the prior opportunistic-chip damage scale. */
+  attackDamage?: number;
+  /**
+   * Plan 12 v2 — Anti-magic Wagon shield. Number of incoming damage
+   * instances this creep can fully absorb before normal damage applies.
+   * Set at spawn time when the player has bought a wagon for this wave;
+   * the first N spawned creeps inherit the field. takeDamage() decrements
+   * and short-circuits while > 0. 0 / undefined = no shield.
+   */
+  _wagonHits: number = 0;
   /**
    * The spawner's ordered waypoint list + exit. Set by SpawnManager
    * when the creep is created from a circle-co-op map with
@@ -132,6 +207,30 @@ export class Creep {
       if (this.sprite) {
         const scale = getCreepSpriteScale(creepTypeId);
         this.sprite.setScale(scale);
+        // Plan A — caster creeps need to be unmistakable. Tint + slight
+        // upscale so even before the channel-bar appears, the player
+        // can pick them out of a crowd. Tint persists; status-effect
+        // tints (burn / slow / etc.) override transiently in update().
+        // Per-effect tint matches the halo color so cast type is
+        // readable from the sprite alone.
+        const casterTrait = this.traits.find(t => t.id === 'channel_caster');
+        if (casterTrait) {
+          const tints: Record<string, number> = {
+            clear_towers_radius: 0xff44ff,         // Sigil — magenta
+            buff_next_wave_hp: 0xffd966,           // Scribe — gold
+            meteor_drop: 0xff6622,                 // Meteora — hot orange
+            chain_lightning_on_towers: 0x4488cc,   // Stormcaller — blue
+            summon_creeps_at_position: 0xaa44dd,   // Necromaster — purple
+            warlord_reinforcements: 0xff8844,      // Stalwart — orange
+            warlord_heal_all: 0x44ff88,            // Healer — green
+            warlord_shield_all: 0xeecc88,          // Champion — gold
+            warlord_haste_all: 0x66ccff,           // Tactician — blue
+            warlord_mass_summon: 0xff44aa,         // Captain — magenta
+          };
+          const tint = tints[casterTrait.effectId as string] ?? 0xff44ff;
+          this.sprite.setTint(tint);
+          this.sprite.setScale(scale * 1.2);
+        }
       }
     }
     this._prevX = this.x;
@@ -171,6 +270,60 @@ export class Creep {
     // Trait updates (heal_aura, etc.) — suppressed when muted
     if (!this.statusEffects.isMuted()) {
       resolveCreepUpdates(this.traits, this, delta, nearbyCreeps ?? []);
+    }
+
+    // ─── Attacking Goal (PRD post-M10-v4) ──────────────────────────
+    // When goalMode='attacking', the creep ignores its exit path and
+    // walks straight-line toward the nearest enemy-owned destructible
+    // (resolved via `getAttackTarget`). Stops walking + attacks at
+    // 1s cadence when within attackRange. When all enemy targets are
+    // gone, falls back to Pathing Goal — resumes the original path.
+    if (this.goalMode === 'attacking' && this.getAttackTarget) {
+      const cb = this.getAttackTarget;
+      const candidate = cb(this);
+      if (candidate && candidate.alive !== false) {
+        const dx = candidate.x - this.x;
+        const dy = candidate.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= this.attackRange) {
+          // In range — stop and attack at the configured cadence.
+          this._attackLastFiredAt += delta;
+          if (this._attackLastFiredAt >= this.attackCadenceMs) {
+            this._attackLastFiredAt = 0;
+            const dmg = this.attackDamage ?? Math.max(1, Math.floor(this.maxHp / 100));
+            candidate.takeDamage(dmg);
+          }
+        } else if (candidate.path && candidate.path.length > 0) {
+          // Walk grid-pathed waypoints supplied by the callback. Pop
+          // the head waypoint as we reach it; on each tick walk toward
+          // the current head. Respects terrain + tower placements
+          // because the owner (FinaleController) computed the path
+          // via findPath against the live grid.
+          const move = this.speed * (delta / 1000);
+          const wp = candidate.path[0];
+          const wdx = wp.x - this.x, wdy = wp.y - this.y;
+          const wdist = Math.sqrt(wdx * wdx + wdy * wdy);
+          if (wdist <= move) {
+            this.x = wp.x;
+            this.y = wp.y;
+            candidate.path.shift();
+          } else if (wdist > 0) {
+            this.x += (wdx / wdist) * move;
+            this.y += (wdy / wdist) * move;
+          }
+        } else {
+          // Fallback: no path supplied — straight-line walk. Useful
+          // when the target is in line of sight or the owner couldn't
+          // pathfind (target unreachable; just close the gap).
+          const move = this.speed * (delta / 1000);
+          if (dist > 0) {
+            this.x += (dx / dist) * move;
+            this.y += (dy / dist) * move;
+          }
+        }
+        return;
+      }
+      // No targets — fall through to Pathing Goal below.
     }
 
     if (this.pathIndex >= this.path.length) {
@@ -263,6 +416,13 @@ export class Creep {
     if (towerCol !== undefined && towerRow !== undefined) {
       this.lastHitCol = towerCol;
       this.lastHitRow = towerRow;
+    }
+    // Plan 12 v2 — Anti-magic Wagon: each shield charge fully absorbs
+    // one damage instance, ignoring evasion / armor / accumulators
+    // entirely. Single-hit-equivalent regardless of incoming amount.
+    if (this._wagonHits > 0) {
+      this._wagonHits--;
+      return;
     }
     // Check evasion buff from mage auras
     const auraEvasion = this.statusEffects.getEvasionChance();

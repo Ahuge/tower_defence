@@ -85,8 +85,8 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
   // Level counts: how many upgrade levels each tower has (matches TowerTypes.ts)
   ...factionTowers('void_towers', ['void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion'],
     [4, 6, 6, 3, 1]),
-  ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova'],
-    [4, 3, 5, 4, 4, 3, 1]),
+  ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova', 'arcane_conduit'],
+    [4, 3, 5, 4, 4, 3, 1, 1]),
   ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
     [4, 6, 5, 4, 4, 5, 3, 3]),
   // 9-tower Nature sprite layout, matching the regenerated
@@ -113,6 +113,14 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
     [5, 4, 4, 3, 4]),
   ...factionTowers('harmonic_towers', ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo'],
     [6, 4, 3, 3, 4, 3, 1]),
+  // Coalition (Arcane-campaign default kit) — 5 columns, 1 level each.
+  // arrow / cannon / sniper currently fall back to Graphics primitives
+  // when no faction-defaulted sprite exists; mapping them to the
+  // Coalition sheet here means the Random faction roller also picks
+  // up the Coalition art for these generics (acceptable — they're
+  // visually neutral).
+  ...factionTowers('coalition_towers', ['arrow', 'cannon', 'sniper', 'coalition_wall', 'coalition_root'],
+    [1, 1, 1, 1, 1]),
 };
 
 const PROJECTILE_SPRITE_CONFIGS: Record<string, ProjectileSpriteConfig> = {
@@ -130,6 +138,7 @@ const PROJECTILE_SPRITE_CONFIGS: Record<string, ProjectileSpriteConfig> = {
   ...factionProj('celestial_proj', ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_sanctuary', 'celestial_absolution']),
   ...factionProj('psionic_proj', ['psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike', 'psi_overmind']),
   ...factionProj('harmonic_proj', ['harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener', 'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit', 'harmonic_crescendo']),
+  ...factionProj('coalition_proj', ['arrow', 'cannon', 'sniper', 'coalition_wall', 'coalition_root']),
 };
 
 /** Tower IDs that are mobile units (need walk-cycle frames instead of tower states) */
@@ -217,6 +226,9 @@ const FACTION_SHEETS: { towers: string; proj: string; hero: string; dir: string;
   { towers: 'celestial_towers', proj: 'celestial_proj', hero: 'celestial_hero', dir: 'celestial', towerCols: 5, projCols: 5 },
   { towers: 'psionic_towers', proj: 'psionic_proj', hero: 'psionic_hero', dir: 'psionic', towerCols: 5, projCols: 5 },
   { towers: 'harmonic_towers', proj: 'harmonic_proj', hero: 'harmonic_hero', dir: 'harmonic', towerCols: 7, projCols: 7 },
+  // Coalition — Arcane-campaign first-time default kit. No hero PNG
+  // (Coalition has no hero); the hero sheet load 404s harmlessly.
+  { towers: 'coalition_towers', proj: 'coalition_proj', hero: 'coalition_hero', dir: 'coalition', towerCols: 5, projCols: 5 },
 ];
 
 /** Hero ID → sheet key mapping */
@@ -244,6 +256,7 @@ export const TOWER_PREFIX_TO_FACTION: Record<string, FactionId> = {
   arcane:'arcane', mech:'mechanical', nature:'nature', void:'void',
   mil:'military', alien:'aliens', cyber:'cypherpunk', infernal:'infernal',
   celestial:'celestial', psi:'psionic', harmonic:'harmonic',
+  coalition:'coalition',
 };
 
 /** Get the faction ID for a tower ID */

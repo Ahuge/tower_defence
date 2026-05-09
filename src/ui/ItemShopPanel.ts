@@ -3,7 +3,7 @@ import { getSidebarWidth } from '../config';
 import { Hero } from '../entities/Hero';
 import { ITEM_SLOTS, ITEM_SLOT_ORDER } from '../data/HeroItems';
 import { EconomyManager } from '../systems/EconomyManager';
-import { ArenaManager } from '../systems/ArenaManager';
+import { HeroEconomyController } from '../systems/hero/HeroEconomyController';
 import { UIScale } from '../systems/UIScale';
 import { ResponsiveManager } from '../systems/ResponsiveManager';
 import { EventLog } from './EventLog';
@@ -13,7 +13,7 @@ import { PanelBase } from './PanelBase';
 export class ItemShopPanel extends PanelBase {
   private hero: Hero;
   private economy: EconomyManager;
-  private arenaManager: ArenaManager;
+  private econController: HeroEconomyController;
   private eventLog: EventLog;
   private grouped: boolean = false;
   private groupToggle!: Phaser.GameObjects.Text;
@@ -24,12 +24,12 @@ export class ItemShopPanel extends PanelBase {
     economy: EconomyManager,
     eventLog: EventLog,
     sidebarTopY: number,
-    arenaManager: ArenaManager,
+    econController: HeroEconomyController,
   ) {
     super(scene, 0, sidebarTopY, 28);
     this.hero = hero;
     this.economy = economy;
-    this.arenaManager = arenaManager;
+    this.econController = econController;
     this.eventLog = eventLog;
 
     this.buildStatic();
@@ -179,7 +179,7 @@ export class ItemShopPanel extends PanelBase {
     y += gap; this.dDivider(y); y += 6;
     const accCount = this.hero.accessories.length;
     this.dText(8, y, `ACCESSORIES (${accCount}/3)`, { fontSize: UIScale.font(11), color: '#cc66ff', fontFamily: 'monospace' });
-    this.dText(pw - 100, y, `Rotates: W${this.arenaManager.nextRotationWave}`,
+    this.dText(pw - 100, y, `Rotates: W${this.econController.nextRotationWave}`,
       { fontSize: UIScale.font(9), color: '#666666', fontFamily: 'monospace' });
     y += rh;
 
@@ -198,8 +198,8 @@ export class ItemShopPanel extends PanelBase {
     y += gap;
 
     // Shop offers
-    for (let i = 0; i < this.arenaManager.currentAccessoryOffers.length; i++) {
-      const acc = this.arenaManager.currentAccessoryOffers[i];
+    for (let i = 0; i < this.econController.currentAccessoryOffers.length; i++) {
+      const acc = this.econController.currentAccessoryOffers[i];
       const canAfford = this.economy.canAfford(acc.cost);
       const typeTag = acc.passive ? 'P' : 'A';
       const offerText = this.dText(8, y, `[${typeTag}] ${acc.name} — ${acc.cost}g`,
@@ -299,7 +299,7 @@ export class ItemShopPanel extends PanelBase {
   }
 
   private purchaseAccessory(offerIndex: number): void {
-    if (this.arenaManager.buyAccessory(offerIndex)) {
+    if (this.econController.buyAccessory(offerIndex)) {
       this.invalidate();
     }
   }
@@ -320,7 +320,7 @@ export class ItemShopPanel extends PanelBase {
       ...this.hero.abilities.map(a => Math.ceil(a.cooldownRemaining)),
       ...this.hero.abilityUpgrades,
       this.hero.ultimate ? Math.ceil(this.hero.ultimate.cooldownRemaining) : 0,
-      this.arenaManager.nextRotationWave,
+      this.econController.nextRotationWave,
     ].join(',');
 
     if (snap !== this.lastSnapshot) {

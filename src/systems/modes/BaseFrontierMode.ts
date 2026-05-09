@@ -29,6 +29,11 @@ export abstract class BaseFrontierMode implements GameMode {
       ctx.scene,
       this.frontierMgr,
       (building: FrontierBuilding) => {
+        // Plan 14: campaign mission noFrontier restriction.
+        if (ctx.missionRestrictions?.noFrontier) {
+          ctx.eventLog.gameMessage('Frontier buildings are disabled for this mission.');
+          return;
+        }
         if (ctx.economy.spend(building.cost)) {
           this.frontierMgr.purchaseBuilding(building);
           this.frontierPanel.updateOwned();
@@ -45,6 +50,10 @@ export abstract class BaseFrontierMode implements GameMode {
     // Register DOM frontier callbacks
     GameUIStore.registerCallbacks({
       onFrontierPurchase: (buildingId: string) => {
+        if (ctx.missionRestrictions?.noFrontier) {
+          ctx.eventLog.gameMessage('Frontier buildings are disabled for this mission.');
+          return;
+        }
         const building = this.frontierMgr.availableBuildings.find(b => b.id === buildingId);
         if (building && ctx.economy.spend(building.cost)) {
           const owned = this.frontierMgr.purchaseBuilding(building);

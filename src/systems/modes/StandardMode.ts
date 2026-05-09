@@ -30,6 +30,12 @@ export class StandardMode extends BaseFrontierMode {
     this.sendPanel = new SendPanel(ctx.scene, (opt: SendCreepOption, scaledCost: number, scaledIncome: number) => {
       if (!this.canStartWave()) return; // only between waves
       if (this.currentWave < opt.unlockWave) return; // not unlocked yet
+      // Plan 14: campaign mission noSends restriction (e.g. "Open
+      // Fortress" mission disables sends entirely).
+      if (ctx.missionRestrictions?.noSends) {
+        ctx.eventLog.gameMessage('Sends are disabled for this mission.');
+        return;
+      }
       if (!ctx.economy.spend(scaledCost)) return;
 
       if (ctx.versus && ctx.versus.isConnected()) {
@@ -67,6 +73,10 @@ export class StandardMode extends BaseFrontierMode {
         const income = getSendIncome(opt.incomeReward, this.currentWave);
         if (!this.canStartWave()) return;
         if (this.currentWave < opt.unlockWave) return;
+        if (ctx.missionRestrictions?.noSends) {
+          ctx.eventLog.gameMessage('Sends are disabled for this mission.');
+          return;
+        }
         if (!ctx.economy.spend(cost)) return;
         if (ctx.versus && ctx.versus.isConnected()) {
           ctx.versus.send({ type: 'send_purchased', sendOptionId: opt.id });

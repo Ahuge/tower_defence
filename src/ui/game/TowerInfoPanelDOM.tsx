@@ -13,6 +13,30 @@ export function TowerInfoPanelDOM() {
   return (
     <>
 
+      {/* HP bar — only rendered for destructible targets (M10 CPU defenders +
+          PRD 06 boss structures). Player towers leave hp/maxHp undefined and
+          this row hides. */}
+      {tower.hp !== undefined && tower.maxHp !== undefined && (
+        <div class="hp-row" style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
+            <span style={{ color: '#aaa' }}>HP</span>
+            <span style={{ color: tower.hp / tower.maxHp > 0.5 ? '#88ff88' : tower.hp / tower.maxHp > 0.2 ? '#ffaa44' : '#ff4422' }}>
+              {tower.hp} / {tower.maxHp}
+            </span>
+          </div>
+          <div style={{ height: 6, background: '#110022', border: '1px solid #444', borderRadius: 2, overflow: 'hidden' }}>
+            <div
+              style={{
+                width: `${Math.max(0, Math.min(100, (tower.hp / tower.maxHp) * 100))}%`,
+                height: '100%',
+                background: tower.hp / tower.maxHp > 0.5 ? '#88ff88' : tower.hp / tower.maxHp > 0.2 ? '#ffaa44' : '#ff4422',
+                transition: 'width 120ms linear',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Stats — shows effective (post-aura) values; base shown underneath
           as a strikethrough hint when a buff has shifted the number. */}
       <div class="stat-grid">

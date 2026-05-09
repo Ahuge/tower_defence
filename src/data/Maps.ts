@@ -1,7 +1,22 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 import { getCircleMap } from './CircleMaps';
 
-export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'circle_4p_hell_circle' | 'custom' | 'tutorial';
+export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islands' | 'gauntlet' | 'spiral' | 'siege' | 'random' | 'hero_plains' | 'circle_2p' | 'circle_3p' | 'circle_4p' | 'circle_4p_hell_circle' | 'custom' | 'tutorial'
+  // Plan 14 v1.1 — bespoke Arcane campaign maps. Use the
+  // arcane_crystal terrain theme so blocked cells render as crystal
+  // formations instead of generic walls.
+  | 'arcane_outskirts' | 'arcane_pass' | 'arcane_throne'
+  // Plan 11 — Base Defense. 4-edge spawn into a central base.
+  | 'base_arena'
+  // Plan 13 v1 — Heist. Vault on the east, exit to the west.
+  | 'heist_vault'
+  // Plan 12 v1 — Attacker. Open assault corridor with pre-placed
+  // defender towers; player commands the creeps.
+  | 'attacker_assault'
+  // Plan 14 M10 — finale siege. Player builds mana drains on the right
+  // to charge summoning circles, the hero attacks pre-placed CPU
+  // towers (with HP) on the left. Win = all CPU towers destroyed.
+  | 'arcane_throne_finale';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -44,6 +59,35 @@ export interface MapDefinition {
    *  gameplay. `entries` / `exits` are still populated (derived from
    *  spawners) so code paths that predate this feature keep working. */
   spawners?: SpawnerDef[];
+  /** Plan 12 — Attacker mode. Towers pre-placed by the defender
+   *  (the AI) at scene init. Player can't build their own; these
+   *  are the static defense the player's creep waves attempt to
+   *  break through. Ignored outside attacker missions. */
+  preplacedTowers?: { col: number; row: number; towerId: string }[];
+  /** Plan 12 v2 Phase 3 — Attacker mode expansion sockets. Cells
+   *  the CPU defender may build new towers on as treasury
+   *  accumulates. Each socket lists allowed tower ids; the CPU
+   *  picks the one that best counters the upcoming wave. Capped
+   *  per mission by `attackerDefenderDifficulty`. */
+  expansionSockets?: { col: number; row: number; allowedTowerIds: string[] }[];
+  /** M10 finale — cells the player is allowed to build on. When set,
+   *  the placement gate rejects player builds outside this set. Empty
+   *  / undefined = no restriction (every other mission). */
+  playerBuildableCells?: { col: number; row: number }[];
+  /** M10 finale — Summoning Circle structures. Each circle is 2x2 at
+   *  (col, row) top-left. Renders a charge ring; adjacent mana drains
+   *  feed a shared charge meter that summons the hero at 100%. */
+  summoningCircles?: { col: number; row: number; chargeRatePerDrain?: number }[];
+  /** M10 finale — pre-placed CPU defender towers WITH HP. Distinct from
+   *  `preplacedTowers` (attacker mode) so finale CPU towers carry HP
+   *  + destructible flag without polluting attacker_assault. The Ult
+   *  tower flags `isUlt: true` and triggers the ult_finale phase trait. */
+  destructibleTowers?: { col: number; row: number; towerId: string; hp: number; isUlt?: boolean }[];
+  /** Multi-tile boss structures the player must destroy. PRD 06 entry
+   *  point — see `src/data/DestructibleStructures.ts` for the registry
+   *  of allowed `id`s. Each structure occupies its `widthCells ×
+   *  heightCells` footprint at top-left = (col, row). */
+  destructibleStructures?: { id: string; col: number; row: number; hp?: number; isMissionWinTarget?: boolean; phaseHooks?: { [hpFraction: string]: string } }[];
 }
 
 export interface SpawnerDef {
@@ -360,6 +404,188 @@ export const MAPS: Record<MapId, MapDefinition> = {
     ],
     noBuild: [],
   },
+  // === Arcane campaign maps (Plan 14 v1.1) ===
+  // Plan 14 v1 launched the Arcane campaign on existing standard maps;
+  // v1.1 adds 3 bespoke Arcane-tileset maps for the marquee missions
+  // so the campaign feels like its own place. Crystal motifs (clusters
+  // of blocked cells via `circle()`) render via the `arcane_crystal`
+  // terrain theme. Layouts are intentionally kept on validated path
+  // shapes rather than radically new geometry — first content pass.
+
+  arcane_outskirts: {
+    id: 'arcane_outskirts',
+    name: 'Crystal Outskirts',
+    description: 'Wide corridor approaching the caverns. A central crystal cluster forces a single deflection.',
+    theme: 'arcane_crystal',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [
+      // Single central crystal cluster — visible obstacle, soft mazing
+      // hint, but the player can route around either side.
+      ...circle(MID_COL - 4, MID_ROW - 4, 3),
+      ...circle(MID_COL + 4, MID_ROW + 4, 3),
+    ],
+    noBuild: [],
+  },
+
+  arcane_pass: {
+    id: 'arcane_pass',
+    name: 'The Crystal Pass',
+    description: 'Long winding pass through crystal walls. Forces a serpentine route — built for speedruns.',
+    theme: 'arcane_crystal',
+    entries: [{ col: 0, row: 4 }],
+    exits: [{ col: GRID_COLS - 1, row: GRID_ROWS - 5 }],
+    blocked: [
+      // Two mirrored crystal walls force a long S-shape from top-left
+      // entry down to bottom-right exit.
+      // Top wall (forces creeps down)
+      ...rect(8, 0, 12, 9),
+      ...rect(8, 0, 22, 4),
+      // Bottom wall (forces creeps back up to weave)
+      ...rect(14, 12, 27, 17),
+      // Final wall guarding the exit
+      ...rect(24, 18, 28, 25),
+    ],
+    noBuild: [],
+  },
+
+  // === Base Defense (Plan 11) ===
+  // Open arena with 4 entries (one per edge) converging on a single
+  // exit at the geometric center. The exit cell is the "base" — a
+  // leak there costs lives. Player builds defensive structure
+  // anywhere; pathfinder routes each spawner to the central exit so
+  // a thoughtful maze can lengthen the walk for every direction.
+  // Light decorative blockers in each corner stop the player from
+  // fully ringing the base — they have to pick which lanes to wall.
+  base_arena: {
+    id: 'base_arena',
+    name: 'Citadel Arena',
+    description: 'Spawns from every side converging on the base. The whole map is your maze.',
+    theme: 'stone',
+    // Truly 360° threat — 32 spawn points distributed around the
+    // entire perimeter (8 per edge). Creeps round-robin across
+    // paths via the standard SpawnManager pathIndex split, so each
+    // wave hits the player from many directions simultaneously.
+    entries: [
+      // North edge (8 points, row 0)
+      { col: 2,  row: 0 }, { col: 6,  row: 0 }, { col: 11, row: 0 }, { col: 15, row: 0 },
+      { col: 20, row: 0 }, { col: 24, row: 0 }, { col: 29, row: 0 }, { col: 33, row: 0 },
+      // South edge (8 points, row GRID_ROWS - 1)
+      { col: 2,  row: GRID_ROWS - 1 }, { col: 6,  row: GRID_ROWS - 1 }, { col: 11, row: GRID_ROWS - 1 }, { col: 15, row: GRID_ROWS - 1 },
+      { col: 20, row: GRID_ROWS - 1 }, { col: 24, row: GRID_ROWS - 1 }, { col: 29, row: GRID_ROWS - 1 }, { col: 33, row: GRID_ROWS - 1 },
+      // West edge (8 points, col 0)
+      { col: 0, row: 1 },  { col: 0, row: 4 },  { col: 0, row: 8 },  { col: 0, row: 11 },
+      { col: 0, row: 14 }, { col: 0, row: 17 }, { col: 0, row: 21 }, { col: 0, row: 24 },
+      // East edge (8 points, col GRID_COLS - 1)
+      { col: GRID_COLS - 1, row: 1 },  { col: GRID_COLS - 1, row: 4 },  { col: GRID_COLS - 1, row: 8 },  { col: GRID_COLS - 1, row: 11 },
+      { col: GRID_COLS - 1, row: 14 }, { col: GRID_COLS - 1, row: 17 }, { col: GRID_COLS - 1, row: 21 }, { col: GRID_COLS - 1, row: 24 },
+    ],
+    // Single exit at the center — visualized as the "base."
+    exits: [{ col: MID_COL, row: MID_ROW }],
+    blocked: [
+      // Corner pillars — decorative obstructions that prevent the
+      // player from sealing the base behind a four-cell wall, and
+      // anchor a sense of "arena" geometry.
+      ...rect(4, 4, 5, 5),
+      ...rect(GRID_COLS - 6, 4, GRID_COLS - 5, 5),
+      ...rect(4, GRID_ROWS - 6, 5, GRID_ROWS - 5),
+      ...rect(GRID_COLS - 6, GRID_ROWS - 6, GRID_COLS - 5, GRID_ROWS - 5),
+    ],
+    // No noBuild ring — the player can build right up to the base.
+    // Pathfinder still prevents placement that would seal off any
+    // spawn from the exit, so the base remains reachable.
+    noBuild: [],
+  },
+
+  // === Attacker (Plan 12 v1) ===
+  // Long open assault corridor. The player commands the attacking
+  // creeps; the defender (AI) is represented by a fixed lattice of
+  // pre-placed towers along the path. Player can't build, can't
+  // upgrade — they watch each wave try to break through and (in
+  // future v2) buff their next wave with essence.
+  //
+  // Win: leak count >= mission threshold (set per-mission, default
+  // around 5 of the wave creeps surviving the gauntlet).
+  attacker_assault: {
+    id: 'attacker_assault',
+    name: 'The Assault Corridor',
+    description: 'You command the attack. The Arcane defender plays a full game — mazes, builds, upgrades.',
+    theme: 'stone',
+    entries: [{ col: 0, row: MID_ROW }],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [
+      // Outer arena walls — funnel the path through the central
+      // corridor where the CPU defender mazes their towers.
+      ...rect(0, 0, GRID_COLS - 1, 5),
+      ...rect(0, GRID_ROWS - 6, GRID_COLS - 1, GRID_ROWS - 1),
+    ],
+    noBuild: [],
+    // Plan 12 v3 — no static lattice. The CPU defender plays this
+    // map as a full game (BalancedBrain), placing + upgrading +
+    // mazing with the Arcane kit from a starting gold seed and
+    // kill-gold income. Removed the old pre-placed arrow / cannon /
+    // sniper lattice + expansion sockets; both are obsolete now
+    // that the brain owns the entire map.
+  },
+
+  // === Heist (Plan 13 v1) ===
+  // Reverse-direction map: creeps spawn from a vault on the east
+  // edge and try to escape west. v1 reuses the standard "creep
+  // exits = lives lost" semantics; v2 adds gold-on-ground (carried
+  // gold drops on death; surviving creeps absorb pickups) once the
+  // creep base class gains a `carriedGold` field.
+  //
+  // Vault placement: east-side narrow opening so the spawn pours
+  // out along a single column. Exit: west edge, full open. Two
+  // diagonal walls force creeps through a central kill funnel.
+  heist_vault: {
+    id: 'heist_vault',
+    name: 'The Vault Heist',
+    description: 'Loot pours from the eastern vault. Stop them before they reach the west exit.',
+    theme: 'stone',
+    entries: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    exits: [{ col: 0, row: MID_ROW }],
+    blocked: [
+      // Vault structure on the east side — implies a heavy stone
+      // building creeps stream out of.
+      ...rect(GRID_COLS - 4, MID_ROW - 4, GRID_COLS - 2, MID_ROW - 2),
+      ...rect(GRID_COLS - 4, MID_ROW + 2, GRID_COLS - 2, MID_ROW + 4),
+      // Central diagonal walls forcing a serpentine kill zone.
+      ...rect(MID_COL + 4, 4, MID_COL + 5, MID_ROW - 2),
+      ...rect(MID_COL - 4, MID_ROW + 2, MID_COL - 3, GRID_ROWS - 5),
+    ],
+    noBuild: [],
+  },
+
+  arcane_throne: {
+    id: 'arcane_throne',
+    name: 'The Arcane Throne',
+    description: 'The wizards\' inner sanctum. Three approaches converge on the central nexus.',
+    theme: 'arcane_crystal',
+    entries: [
+      { col: 0, row: 4 },
+      { col: 0, row: MID_ROW },
+      { col: 0, row: GRID_ROWS - 5 },
+    ],
+    exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: [
+      // Outer crystal pillars guard the throne's flanks.
+      ...rect(8, 6, 9, 9),
+      ...rect(8, GRID_ROWS - 10, 9, GRID_ROWS - 7),
+      // Central crystal nexus — the throne itself, decorative + forces
+      // attackers to thread around.
+      ...circle(MID_COL + 6, MID_ROW, 3),
+      // Funnel walls before the exit
+      ...rect(GRID_COLS - 8, 6, GRID_COLS - 7, MID_ROW - 2),
+      ...rect(GRID_COLS - 8, MID_ROW + 2, GRID_COLS - 7, GRID_ROWS - 7),
+    ],
+    noBuild: [
+      // The throne dais itself — visually striking but unbuildable so
+      // the player can't simply turtle on the central tile.
+      ...rect(MID_COL + 4, MID_ROW - 1, MID_COL + 5, MID_ROW + 1),
+    ],
+  },
+
   // === Circle Co-op Maps ===
   // Loaded from JSON under src/data/maps/circle/*.json via the
   // `CircleMaps` loader. Each map declares per-player spawners with
@@ -373,6 +599,135 @@ export const MAPS: Record<MapId, MapDefinition> = {
   circle_3p: getCircleMapById('circle_3p'),
   circle_4p: getCircleMapById('circle_4p'),
   circle_4p_hell_circle: getCircleMapById('circle_4p_hell_circle'),
+
+  // === M10 Arcane finale siege ===
+  // Layout matches the user's reference image:
+  //   - Brown perimeter walls + central arrow-cross divider (col ~17).
+  //   - LEFT half (cols 1-13): CPU territory. ~25 destructible Arcane
+  //     towers in scattered clusters around the green exit. The Ult
+  //     Throne sits behind the exit at (2, midRow).
+  //   - RIGHT half (cols 19-34): Player territory. Two magenta build
+  //     zones each ringing a 2x2 lavender Summoning Circle.
+  //   - Red entry at the right edge mid-row, green exit at the left
+  //     edge mid-row. Wave creeps walk right→left.
+  arcane_throne_finale: (() => {
+    const cols = GRID_COLS;          // 36
+    const rowsTop = 0, rowsBot = GRID_ROWS - 1;
+    const midRow = Math.floor(GRID_ROWS / 2);
+    // Outer wall around the perimeter (entry + exit cells stay open).
+    const outerWall: Pos[] = [];
+    for (let c = 0; c < cols; c++) { outerWall.push({ col: c, row: rowsTop }, { col: c, row: rowsBot }); }
+    for (let r = 1; r < rowsBot; r++) {
+      if (r !== midRow) {
+        outerWall.push({ col: 0, row: r }, { col: cols - 1, row: r });
+      }
+    }
+    // Central arrow-cross divider at col ~17 — forces creeps to detour
+    // around it. Vertical spine + horizontal arms forming a +/Y shape.
+    const centerCross: Pos[] = [
+      ...rect(17, 4, 17, 8),       // top vertical spine
+      ...rect(17, 14, 17, 20),     // bottom vertical spine
+      ...rect(15, 9, 19, 13),      // central thick body
+      { col: 18, row: 8 },
+      { col: 16, row: 11 }, { col: 20, row: 11 },
+      // Two lone blocks above + below the central body (matches the
+      // reference image's arrow-cross silhouette).
+      { col: 17, row: 2 },
+      { col: 17, row: 22 },
+    ];
+    // Pre-placed CPU defender towers — scattered clusters across the
+    // left half. Mix of Arcane kit + the Ult Throne.
+    const destructibleTowers = [
+      // Top cluster (rows 4-7)
+      { col: 2,  row: 5,  towerId: 'arcane_bolt',  hp: 500 },
+      { col: 4,  row: 4,  towerId: 'arcane_storm', hp: 600 },
+      { col: 6,  row: 6,  towerId: 'arcane_bolt',  hp: 500 },
+      { col: 8,  row: 5,  towerId: 'arcane_focus', hp: 700 },
+      { col: 10, row: 4,  towerId: 'arcane_storm', hp: 600 },
+      { col: 12, row: 5,  towerId: 'arcane_bolt',  hp: 500 },
+      // Mid cluster (rows 9-15) — densest, around the green exit
+      { col: 2,  row: 10, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 5,  row: 11, towerId: 'arcane_storm', hp: 600 },
+      { col: 7,  row: 10, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 9,  row: 12, towerId: 'arcane_focus', hp: 700 },
+      { col: 11, row: 11, towerId: 'arcane_storm', hp: 600 },
+      { col: 13, row: 10, towerId: 'arcane_bolt',  hp: 500 },
+      // The Archmage Throne moved to `destructibleStructures` (PRD 06):
+      // 3×3 boss structure with damage frames + win-target flag.
+      { col: 4,  row: 14, towerId: 'arcane_drain', hp: 800 },
+      { col: 6,  row: 13, towerId: 'arcane_storm', hp: 600 },
+      { col: 9,  row: 14, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 11, row: 13, towerId: 'arcane_focus', hp: 700 },
+      // Bottom cluster (rows 17-20)
+      { col: 2,  row: 17, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 4,  row: 19, towerId: 'arcane_storm', hp: 600 },
+      { col: 6,  row: 18, towerId: 'arcane_bolt',  hp: 500 },
+      { col: 8,  row: 17, towerId: 'arcane_focus', hp: 700 },
+      { col: 10, row: 19, towerId: 'arcane_storm', hp: 600 },
+      { col: 13, row: 18, towerId: 'arcane_bolt',  hp: 500 },
+    ];
+    // Two summoning circles — top + bottom of right half. 2x2 each,
+    // top-left corner specified.
+    const summoningCircles = [
+      { col: 30, row: 5 },
+      { col: 30, row: 17 },
+    ];
+    // Player buildable zones — the ENTIRE right half of the map (right
+    // of the central arrow-cross divider). The player decides per-cell:
+    // build damage towers (Bolt / Frost / Storm / etc.) for defense, or
+    // a Mana Conduit specifically adjacent to a Summoning Circle to
+    // charge the summon faster. Only the conduit-adjacency matters for
+    // charging — non-adjacent conduits are wasted gold.
+    const playerBuildableCells: Pos[] = [];
+    const buildableMinCol = 18;  // just right of the central arrow-cross
+    for (let c = buildableMinCol; c < cols - 1; c++) {
+      for (let r = 1; r < GRID_ROWS - 1; r++) {
+        playerBuildableCells.push({ col: c, row: r });
+      }
+    }
+    // PRD 06 — Archmage Throne destructible structure. 3×3 footprint
+    // anchored top-left at (2, midRow-2) so its center cell is (3, midRow-1)
+    // — shifted off the green exit row + one column inward from the
+    // outer wall so the throne reads as a separate boss structure
+    // rather than overlapping the leak path. `isMissionWinTarget` means
+    // FinaleController.checkWin() requires it to be dead before victory.
+    const destructibleStructures = [
+      { id: 'arcane_archmage_throne', col: 2, row: midRow - 2, hp: 5000, isMissionWinTarget: true },
+    ];
+    // The summoning circle footprints are noBuild so the player can't
+    // drop a tower on top of them. Throne footprint also noBuild +
+    // blocked (the structure occupies the cells, period).
+    const noBuild: Pos[] = [];
+    for (const c of summoningCircles) {
+      for (let dc = 0; dc <= 1; dc++) for (let dr = 0; dr <= 1; dr++) {
+        noBuild.push({ col: c.col + dc, row: c.row + dr });
+      }
+    }
+    for (const s of destructibleStructures) {
+      for (let dc = 0; dc < 3; dc++) for (let dr = 0; dr < 3; dr++) {
+        noBuild.push({ col: s.col + dc, row: s.row + dr });
+      }
+    }
+    return {
+      id: 'arcane_throne_finale' as MapId,
+      name: 'The Reckoning',
+      description: 'Siege the Arcane archmage spire. Charge your summoning circles, summon the mage, destroy the cabal\'s lattice.',
+      theme: 'arcane_crystal',
+      // Wave creeps are the cabal's own — they emerge from the spire
+      // (left edge, near the CPU towers) and walk RIGHT toward the
+      // player's home. CPU towers ignore them (same team). Player
+      // sends walk the reverse direction (right→left, into the
+      // tower lattice) and DO get shot at.
+      entries: [{ col: 0, row: midRow }],
+      exits: [{ col: cols - 1, row: midRow }],
+      blocked: [...outerWall, ...centerCross],
+      noBuild,
+      playerBuildableCells,
+      summoningCircles,
+      destructibleTowers,
+      destructibleStructures,
+    };
+  })(),
 };
 
 // (Legacy-shaped IIFE bodies removed; data lives in

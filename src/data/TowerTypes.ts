@@ -116,6 +116,34 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
 
   // ================================================================
+  // COALITION (Arcane-campaign first-time default kit)
+  // ================================================================
+  // Used only as the Coalition faction's tower set during the Arcane
+  // campaign. Reuses generic arrow/cannon/sniper above; adds a
+  // Coalition-specific wall (visually neutral steel — distinct from
+  // mech_wall's faction palette) and Briarroot (the AOE-root with
+  // `interrupts_channels` that serves as Mana Drain's narrative
+  // precursor). Stats for Briarroot roughly 70% of arcane_drain so
+  // the eventual swap feels like a real upgrade.
+  coalition_wall: def({
+    id: 'coalition_wall', name: 'Stone Wall', description: 'Quarried stone, mortared in haste. It will hold a wave or two. Pile them well.',
+    faction: 'coalition', damageType: 'physical', cost: 10, damage: 2, range: 1.5, fireRate: 2000,
+    color: 0x9aa3ad, projectileSpeed: 200, hotkey: '3',
+  }),
+  coalition_root: def({
+    id: 'coalition_root', name: 'Briarroot', description: 'Iron crown of thorns, dragged up from the old groves. Snares casters mid-spell — their words break on its barbs.',
+    faction: 'coalition', damageType: 'magic', cost: 100, damage: 6, range: 4, fireRate: 1100,
+    color: 0x668844, projectileSpeed: 320, hotkey: '5',
+    targeting: 'strongest',
+    traits: [
+      { id: 'direct_damage' },
+      { id: 'splash_damage', radius: 40 },
+      { id: 'slow_on_hit', duration: 1800, factor: 0.45 },
+      { id: 'interrupts_channels' },
+    ],
+  }),
+
+  // ================================================================
   // ARCANE (7) — Precision magic, crits, elements
   // ================================================================
   arcane_bolt: def({
@@ -129,11 +157,11 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   arcane_frost: def({
-    id: 'arcane_frost', name: 'Frost', description: 'Applies 65% slow for 2.5s. No upgrades needed.',
+    id: 'arcane_frost', name: 'Frost', description: 'Applies 65% slow for 2.5s. Interrupts caster channels. No upgrades needed.',
     faction: 'arcane', damageType: 'magic', cost: 35, damage: 4, range: 3, fireRate: 900,
     color: 0x88bbff, projectileSpeed: 280, hotkey: '2',
     targeting: 'fastest',
-    traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 2500, factor: 0.35 }],
+    traits: [{ id: 'direct_damage' }, { id: 'slow_on_hit', duration: 2500, factor: 0.35 }, { id: 'interrupts_channels' }],
     // No upgrades — it's balanced as a pure utility tower
   }),
   arcane_storm: def({
@@ -158,11 +186,11 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     ],
   }),
   arcane_drain: def({
-    id: 'arcane_drain', name: 'Mana Drain', description: 'Strips creep shields on hit.',
+    id: 'arcane_drain', name: 'Mana Drain', description: 'Strips creep shields and interrupts caster channels on hit.',
     faction: 'arcane', damageType: 'magic', cost: 120, damage: 10, range: 4.5, fireRate: 1000,
     color: 0x44aaff, projectileSpeed: 350, hotkey: '5',
     targeting: 'strongest',
-    traits: [{ id: 'direct_damage' }, { id: 'strip_shield' }],
+    traits: [{ id: 'direct_damage' }, { id: 'strip_shield' }, { id: 'interrupts_channels' }],
     upgrades: [
       { level: 2, cost: 80, damage: 18, range: 5, fireRate: 900 },
     ],
@@ -188,6 +216,39 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { id: 'damage_amp_on_hit', ampAmount: 0.2, duration: 4000 },
     ],
     // No upgrades — already the apex
+  }),
+  // ─── M10 Finale Ult Tower ──────────────────────────────────────
+  // The throne's firing module — embedded inside the
+  // `arcane_archmage_throne` DestructibleStructure (PRD 06) as the
+  // attack-capable component at the structure's center cell. Player
+  // towers can never reach this kit. The structure handles HP /
+  // damage frames / phase hooks; this tower handles the actual
+  // shoots-at-hero logic via the standard Tower fire pipeline.
+  // Phase mechanics (heal / summon / rage) are dispatched by
+  // FinaleEffects, which can mutate this tower's fireRate for "rage".
+  arcane_ult_throne: def({
+    id: 'arcane_ult_throne', name: 'The Archmage Throne',
+    description: 'CPU ult. Massive HP, devastating cast. Win-target of the M10 finale.',
+    faction: 'arcane', damageType: 'magic', cost: 0, damage: 80, range: 6, fireRate: 2200,
+    color: 0xffdd44, projectileSpeed: 320, hotkey: '0', ultimate: true,
+    traits: [
+      { id: 'splash_damage', radius: 64 },
+      { id: 'crit_chance', chance: 0.2, multiplier: 2.0 },
+    ],
+  }),
+  // ─── M10 Finale Mana Conduit ───────────────────────────────────
+  // A dedicated summoning-feeder. Does NOT attack — its only purpose
+  // is to sit adjacent to a Summoning Circle and contribute to the
+  // shared charge meter. Lets the player keep their full Arcane kit
+  // for actual defense + spend on conduits to summon the hero faster.
+  // Strategic axis: every g spent on a conduit is g not spent on
+  // damage towers, and the conduit MUST be in a magenta zone.
+  arcane_conduit: def({
+    id: 'arcane_conduit', name: 'Mana Conduit',
+    description: 'Channels arcane energy into a Summoning Circle. No attack — sit adjacent to a Circle to charge the summon.',
+    faction: 'arcane', damageType: 'magic', cost: 40, damage: 0, range: 0, fireRate: 999999,
+    color: 0xcc88ff, projectileSpeed: 0, hotkey: '8',
+    traits: [],
   }),
 
   // ================================================================

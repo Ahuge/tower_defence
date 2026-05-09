@@ -50,11 +50,15 @@ function getEquippedThemeLabel(towerId: string): string | null {
 }
 
 export function TowerDockDOM() {
-  const { towerBar, gold } = useGameUI();
+  const { towerBar, gold, matchMode } = useGameUI();
   const [tooltip, setTooltip] = useState<number | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
   const touchHandled = useRef(false);
+
+  // Plan 12 attacker mode — the player commands creeps, not towers.
+  // The dock is dead chrome and overlaps the composer overlay.
+  if (matchMode === 'attacker') return null;
 
   const startHold = useCallback((i: number) => {
     didLongPress.current = false;

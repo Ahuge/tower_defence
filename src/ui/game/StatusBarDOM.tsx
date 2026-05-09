@@ -8,11 +8,17 @@ import { platformBridge } from '../../systems/platform';
 import { isRewardInstant, BattlePass, PlayerInventory } from '../../systems/monetization';
 
 export function StatusBarDOM() {
-  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, paused, versusTimer, essence, speedBoostRemainingSec, matchMode } = useGameUI();
+  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, paused, versusTimer, essence, speedBoostRemainingSec, matchMode, attackerProgress } = useGameUI();
 
   if (!active) return null;
 
   const canStartWave = betweenWaves && (totalWaves === 0 || currentWave < totalWaves) && lives > 0;
+  // Plan 12: in attacker mode the player WANTS leaks. Show breakthrough
+  // progress instead of the otherwise-meaningless 999 lives counter.
+  // Color flips green once the threshold is met (you've already won
+  // pending wave clear) so the player knows they can stop pushing.
+  const isAttacker = matchMode === 'attacker' && attackerProgress;
+  const attackerMet = isAttacker && attackerProgress!.leaks >= attackerProgress!.threshold;
   const speedColors: Record<number, string> = { 0: '#c53d4a', 0.5: '#d98a2b', 1: '#b8a8b8', 1.5: '#cccc44', 2: '#e8b76d', 3: '#d98a2b' };
   const speedColor = speedColors[speed] ?? '#aaa';
 
@@ -41,7 +47,11 @@ export function StatusBarDOM() {
       {/* Stats */}
       <div class="status-stats">
         <span class="status-gold" data-tutorial-target="status-gold">Gold: {Math.floor(gold)}</span>
-        <span class="status-lives" data-tutorial-target="status-lives">{lives > 0 ? `Lives: ${lives}` : 'DEAD'}</span>
+        {isAttacker
+          ? <span class="status-lives" data-tutorial-target="status-lives" style={{ color: attackerMet ? '#7ee787' : undefined }}>
+              Breakthrough: {attackerProgress!.leaks}/{attackerProgress!.threshold}
+            </span>
+          : <span class="status-lives" data-tutorial-target="status-lives">{lives > 0 ? `Lives: ${lives}` : 'DEAD'}</span>}
         <span class="status-wave" data-tutorial-target="status-wave">Wave: {currentWave}{totalWaves > 0 ? `/${totalWaves}` : ''}</span>
         <span class="status-income" data-tutorial-target="status-income">+{income}/w</span>
         {essence && <span style={{ color: '#44ddff' }}>{Math.floor(essence.essence)}e ({essence.rate.toFixed(1)}/s)</span>}

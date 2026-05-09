@@ -6,11 +6,13 @@ import { HeroTypeDef } from '../data/HeroTypes';
 import { WaveDefinition } from '../data/WaveDefinitions';
 import { CREEP_TYPES } from '../data/CreepTypes';
 import { getEliteForWave, ArenaEliteDef } from '../data/ArenaElites';
-import { AccessoryDef, getRandomAccessories } from '../data/HeroAccessories';
 import { EconomyManager } from './EconomyManager';
 import { EventLog } from '../ui/EventLog';
 import { FloatingDamage } from './FloatingDamage';
 import { ArenaEffect, FX, drawEffect } from './ArenaEffects';
+import { applyHeroPendingEffects } from './finale/applyHeroPendingEffects';
+import { ArenaFloorRenderer, ArenaBase } from './ArenaFloorRenderer';
+import type { FactionId } from '../data/Factions';
 
 export interface ArenaCreepData {
   hp: number;
@@ -58,12 +60,15 @@ export class ArenaManager {
   // Graveyard for necromancer resurrections
   private graveyard: ArenaCreepData[] = [];
 
-  // Accessory shop rotation
-  currentAccessoryOffers: AccessoryDef[] = [];
-  nextRotationWave: number = 1; // rotates at wave 1, 6, 11, 16...
-
   // Respawn text
   private respawnText: Phaser.GameObjects.Text | null = null;
+
+  // Per-faction floor tileset (PRD 01). Optional — falls back to the
+  // procedural background painted by drawArena() when null.
+  private floorRenderer: ArenaFloorRenderer | null = null;
+  // Per-faction base sprite (PRD 02). Optional — falls back to the
+  // legacy procedural blue rect inside drawArena() when null.
+  private baseSprite: ArenaBase | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -73,6 +78,7 @@ export class ArenaManager {
     economy: EconomyManager,
     eventLog: EventLog,
     baseHp: number = 100,
+    creepFaction: FactionId | null = null,
   ) {
     this.scene = scene;
     this.economy = economy;
@@ -87,6 +93,21 @@ export class ArenaManager {
     this.graphics = scene.add.graphics().setDepth(10);
     this.floatingDamage = new FloatingDamage(scene);
 
+    // Paint the per-faction floor tileset (PRD 01) once into a render
+    // texture sitting at depth -100. Self-skips when the faction's
+    // tileset isn't loaded (chaos / random / missing assets), in
+    // which case drawArena()'s procedural fill takes over.
+    this.floorRenderer = new ArenaFloorRenderer(
+      scene, creepFaction ?? null, this.arenaX, this.arenaY, arenaWidth, arenaHeight,
+    );
+
+    // Per-faction base sprite (PRD 02). Anchored bottom-center at the
+    // right edge of the arena, just inside the wall. Frame swaps
+    // based on baseHp ratio — see ArenaBase.update().
+    const baseAnchorX = this.arenaX + arenaWidth - 60;
+    const baseAnchorY = arenaHeight - 8;
+    this.baseSprite = new ArenaBase(scene, creepFaction ?? null, baseAnchorX, baseAnchorY);
+
     // Spawn hero at center of arena (pixel coords relative to arena)
     const offsetX = getGridOffsetX();
     this.hero = new Hero(
@@ -98,8 +119,8 @@ export class ArenaManager {
       arenaHeight,
     );
 
-    // Initialize accessory rotation
-    this.currentAccessoryOffers = getRandomAccessories(3);
+    // Accessory rotation moved to HeroEconomyController — owned by
+    // HeroDefenseMode (HD) and FinaleController (M10).
 
     // Track mouse for targeting mode
     scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
@@ -190,63 +211,28 @@ export class ArenaManager {
     // Clean up dead creeps
     this.arenaCreeps = this.arenaCreeps.filter(c => c.alive);
 
-    // Process pending meteors
-    if (this.hero.pendingMeteor) {
-      const m = this.hero.pendingMeteor;
-      // Random position in arena
-      const mx = this.arenaX + 60 + Math.random() * (this.arenaWidth - 120);
-      const my = 30 + Math.random() * (this.arenaHeight - 60);
-      // Impact VFX
-      this.effects.push(FX.meteorImpact(mx, my, m.radius));
-      this.effects.push(FX.shockwave(mx, my, m.radius * 1.3, 0xff4400));
-      for (const creep of this.arenaCreeps) {
-        if (!creep.alive) continue;
-        const dx = creep.x - mx;
-        const dy = creep.y - my;
-        if (Math.sqrt(dx * dx + dy * dy) <= m.radius) {
-          creep.takeDamage(m.damage);
-          this.hero.totalDamageDealt += m.damage;
-          this.hero.pendingDamageNumbers.push({ x: creep.x, y: creep.y - 10, text: String(m.damage), color: '#cc66ff', duration: 1.0 });
-          if (!creep.alive) this.hero.kills++;
-        }
-      }
-      this.hero.pendingMeteor = null;
-    }
-
-    // Process splash attacks
-    for (const splash of this.hero.pendingSplash) {
-      this.effects.push(FX.aoeBlast(splash.x, splash.y, splash.radius, 0xff8844));
-      for (const creep of this.arenaCreeps) {
-        if (!creep.alive) continue;
-        const dx = creep.x - splash.x;
-        const dy = creep.y - splash.y;
-        if (Math.sqrt(dx * dx + dy * dy) <= splash.radius) {
-          creep.takeDamage(splash.damage);
-          this.hero.totalDamageDealt += splash.damage;
-          this.hero.pendingDamageNumbers.push({ x: creep.x, y: creep.y - 10, text: String(splash.damage), color: '#ff8844', duration: 0.6 });
-          if (!creep.alive) this.hero.kills++;
-        }
-      }
-    }
-    this.hero.pendingSplash.length = 0;
-
-    // Process chain lightning
-    if (this.hero.pendingChainLightning) {
-      const cl = this.hero.pendingChainLightning;
-      for (const creep of this.arenaCreeps) {
-        if (!creep.alive) continue;
-        const dx = creep.x - cl.x;
-        const dy = creep.y - cl.y;
-        if (Math.sqrt(dx * dx + dy * dy) <= 80) {
-          creep.takeDamage(cl.damage);
-          this.hero.totalDamageDealt += cl.damage;
-          this.hero.pendingDamageNumbers.push({ x: creep.x, y: creep.y - 10, text: String(cl.damage), color: '#44aaff', duration: 0.6 });
-          this.effects.push(FX.lightning(cl.x, cl.y, creep.x, creep.y));
-          if (!creep.alive) this.hero.kills++;
-        }
-      }
-      this.hero.pendingChainLightning = null;
-    }
+    // Drain hero's per-frame ability queues (meteor / splash / chain
+    // lightning). Shared with FinaleController via the helper. This
+    // arena renders effects via its own ArenaEffect queue; we hand the
+    // helper VFX hooks that push there.
+    applyHeroPendingEffects({
+      hero: this.hero,
+      targets: this.arenaCreeps,
+      pickMeteorPosition: () => ({
+        x: this.arenaX + 60 + Math.random() * (this.arenaWidth - 120),
+        y: 30 + Math.random() * (this.arenaHeight - 60),
+      }),
+      onMeteorVfx: (x, y, radius) => {
+        this.effects.push(FX.meteorImpact(x, y, radius));
+        this.effects.push(FX.shockwave(x, y, radius * 1.3, 0xff4400));
+      },
+      onSplashVfx: (x, y, radius) => {
+        this.effects.push(FX.aoeBlast(x, y, radius, 0xff8844));
+      },
+      onChainHitVfx: (sx, sy, hx, hy) => {
+        this.effects.push(FX.lightning(sx, sy, hx, hy));
+      },
+    });
 
     // Process reflect damage — apply to all creeps currently in attack range of hero
     if (this.hero.pendingReflectDamage > 0 && heroAlive) {
@@ -403,33 +389,6 @@ export class ArenaManager {
     this.hero.useAccessory(this.arenaCreeps);
   }
 
-  /** Buy an accessory by index in current offers */
-  buyAccessory(index: number): boolean {
-    const acc = this.currentAccessoryOffers[index];
-    if (!acc) return false;
-    if (this.hero.accessories.length >= Hero.MAX_ACCESSORIES) {
-      this.eventLog.gameMessage('Accessory slots full! (3/3)');
-      return false;
-    }
-    // Don't allow duplicate accessories
-    if (this.hero.accessories.some(a => a.id === acc.id)) {
-      this.eventLog.gameMessage('Already equipped!');
-      return false;
-    }
-    if (!this.economy.spend(acc.cost)) return false;
-    this.hero.equipAccessory(acc);
-    this.eventLog.gameMessage(`Equipped ${acc.name}! (${this.hero.accessories.length}/3)`);
-    return true;
-  }
-
-  /** Rotate accessory shop offers */
-  rotateAccessories(waveNum: number): void {
-    if (waveNum >= this.nextRotationWave) {
-      this.currentAccessoryOffers = getRandomAccessories(3, waveNum * 7919);
-      this.nextRotationWave = waveNum + 5;
-    }
-  }
-
   /** Spawn an elite arena enemy */
   private spawnElite(eliteDef: ArenaEliteDef, baseHp: number): void {
     const hp = Math.round(baseHp * eliteDef.hpMultiplier);
@@ -538,39 +497,68 @@ export class ArenaManager {
   drawArena(): void {
     this.graphics.clear();
 
-    // Arena background
-    this.graphics.fillStyle(0x1a1520, 1);
-    this.graphics.fillRect(this.arenaX, this.arenaY, this.arenaWidth, this.arenaHeight);
+    // Arena background — only paint the flat fallback when the
+    // floor renderer didn't take over. The renderer paints a faction
+    // tileset into a RenderTexture at depth -100, which already sits
+    // behind everything; this draws at depth 10 so the procedural
+    // version would sit ON TOP of the tileset and hide it.
+    if (!this.floorRenderer) {
+      this.graphics.fillStyle(0x1a1520, 1);
+      this.graphics.fillRect(this.arenaX, this.arenaY, this.arenaWidth, this.arenaHeight);
 
-    // Grid-like subtle pattern
-    this.graphics.lineStyle(1, 0x222222, 0.3);
-    for (let x = this.arenaX; x <= this.arenaX + this.arenaWidth; x += 40) {
-      this.graphics.lineBetween(x, 0, x, this.arenaHeight);
-    }
-    for (let y = 0; y <= this.arenaHeight; y += 40) {
-      this.graphics.lineBetween(this.arenaX, y, this.arenaX + this.arenaWidth, y);
+      // Grid-like subtle pattern (procedural fallback only)
+      this.graphics.lineStyle(1, 0x222222, 0.3);
+      for (let x = this.arenaX; x <= this.arenaX + this.arenaWidth; x += 40) {
+        this.graphics.lineBetween(x, 0, x, this.arenaHeight);
+      }
+      for (let y = 0; y <= this.arenaHeight; y += 40) {
+        this.graphics.lineBetween(this.arenaX, y, this.arenaX + this.arenaWidth, y);
+      }
     }
 
-    // Base structure on right edge
-    const baseX = this.arenaX + this.arenaWidth - 30;
+    // Base structure on right edge. Pixel-art sprite when a faction
+    // base sheet loaded; legacy procedural blue rect otherwise.
+    const hpRatio = this.baseHp / this.baseMaxHp;
+    const baseX = this.arenaX + this.arenaWidth - 60;
     const baseY = this.arenaHeight / 2;
-    this.graphics.fillStyle(0x4444aa, 0.8);
-    this.graphics.fillRect(baseX - 15, baseY - 40, 30, 80);
-    this.graphics.lineStyle(2, 0x6666dd, 1);
-    this.graphics.strokeRect(baseX - 15, baseY - 40, 30, 80);
+    let barX: number, barY: number, barW: number, barH: number;
+    if (this.baseSprite?.isActive()) {
+      this.baseSprite.update(hpRatio);
+      // Horizontal HP bar above the sprite. Sprite is 112×140 anchored
+      // bottom-center at (baseX, arenaHeight - 8); top of sprite is
+      // therefore at arenaHeight - 148. Gap of 6px above.
+      barW = 90;
+      barH = 8;
+      barX = baseX - barW / 2;
+      barY = (this.arenaHeight - 8) - 140 - barH - 6;
+    } else {
+      this.graphics.fillStyle(0x4444aa, 0.8);
+      this.graphics.fillRect(baseX - 15, baseY - 40, 30, 80);
+      this.graphics.lineStyle(2, 0x6666dd, 1);
+      this.graphics.strokeRect(baseX - 15, baseY - 40, 30, 80);
+      // Vertical HP bar overlay (legacy fallback) — original layout.
+      barW = 20;
+      barH = 70;
+      barX = baseX - barW / 2;
+      barY = baseY - barH / 2;
+    }
 
     // Base HP bar
-    const barW = 20;
-    const barH = 70;
-    const barX = baseX - barW / 2;
-    const barY = baseY - barH / 2;
-    const hpRatio = this.baseHp / this.baseMaxHp;
     this.graphics.fillStyle(0x222222, 1);
     this.graphics.fillRect(barX, barY, barW, barH);
     const hpColor = hpRatio > 0.5 ? 0x44ff44 : hpRatio > 0.25 ? 0xffaa44 : 0xff4444;
     this.graphics.fillStyle(hpColor, 1);
-    const filledH = barH * hpRatio;
-    this.graphics.fillRect(barX, barY + barH - filledH, barW, filledH);
+    if (this.baseSprite?.isActive()) {
+      // Horizontal: fill from left
+      const filledW = barW * hpRatio;
+      this.graphics.fillRect(barX, barY, filledW, barH);
+    } else {
+      // Vertical: fill from bottom up (legacy)
+      const filledH = barH * hpRatio;
+      this.graphics.fillRect(barX, barY + barH - filledH, barW, filledH);
+    }
+    this.graphics.lineStyle(1, 0x000000, 0.8);
+    this.graphics.strokeRect(barX, barY, barW, barH);
 
     // Base HP text
     this.graphics.fillStyle(0xffffff, 1);
@@ -637,5 +625,9 @@ export class ArenaManager {
     for (const c of this.arenaCreeps) c.destroy();
     if (this.respawnText) this.respawnText.destroy();
     this.floatingDamage.destroy();
+    this.floorRenderer?.destroy();
+    this.floorRenderer = null;
+    this.baseSprite?.destroy();
+    this.baseSprite = null;
   }
 }

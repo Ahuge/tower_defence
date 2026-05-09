@@ -239,9 +239,14 @@ export class TowerManager {
 
   /** Clean up expired towers (kamikaze, expired Imps, etc.) */
   cleanupExpired(): void {
+    let destructibleDied = false;
     for (let i = this.towers.length - 1; i >= 0; i--) {
       const tower = this.towers[i];
       if ((tower as any)._expired) {
+        // M10 finale: track if a destructible (CPU) tower died so the
+        // caller can recalc paths once after the loop. Creeps in flight
+        // need to re-route through cleared cells (feedback-loop design).
+        if (tower.destructible && !tower.isMobile) destructibleDied = true;
         tower.destroy();
         if (!tower.isMobile) {
           this.grid.removeTower(tower.col, tower.row);
@@ -249,6 +254,19 @@ export class TowerManager {
         this.towers.splice(i, 1);
       }
     }
+    if (destructibleDied) this._lastDestructibleDeathFlag = true;
+  }
+
+  /** M10 finale: read-and-clear flag set by cleanupExpired when a
+   *  destructible tower dies this frame. GameScene polls this and
+   *  recalcs paths + reroutes alive creeps. */
+  private _lastDestructibleDeathFlag: boolean = false;
+  consumeDestructibleDeathFlag(): boolean {
+    if (this._lastDestructibleDeathFlag) {
+      this._lastDestructibleDeathFlag = false;
+      return true;
+    }
+    return false;
   }
 
   /** Process wave-end tower effects: mobile reset, expiry, decay, life gain, leak absorb */

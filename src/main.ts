@@ -21,10 +21,12 @@ import { preheatIcons } from './ui/game/IconPreheat';
 import { TutorialManager } from './systems/Tutorial/TutorialManager';
 import { installPlatformBridge } from './systems/platform';
 import { Analytics } from './systems/AnalyticsClient';
+import { PlayerProfile } from './systems/profile/PlayerProfile';
 
 // Register trait handlers (side-effect imports)
 import './systems/traits/TowerTraitHandlers';
 import './systems/traits/CreepTraitHandlers';
+import './systems/traits/handlers/ChannelCasterHandler';
 
 // Eager-load the live-capture module so window.__learningCapture is
 // available from the menu (before any match starts). Module is
@@ -42,6 +44,11 @@ Analytics.track('app_boot', {
   viewportH: window.innerHeight || 0,
   touch: 'ontouchstart' in window || (navigator?.maxTouchPoints ?? 0) > 0,
 });
+
+// Bring up the player profile (level/xp/cores) and wire its snapshot
+// into Analytics so every event auto-includes player context. Idempotent.
+// Migrates a legacy player from gamesPlayed > 0 to a starting level.
+PlayerProfile.init();
 
 const gameHeight = ResponsiveManager.canvasHeight();
 

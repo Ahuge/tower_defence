@@ -84,6 +84,7 @@ test.describe('mobile', () => {
     // in (`title="Tap to sign in"`), colliding with the Tutorials
     // help button by accessible name. Disambiguate by title.
     await page.getByTitle('Tutorials').click();
+    await page.getByRole('button', { name: 'All Tutorials →' }).click();
     await page.getByText('Tutorial Match').first().click();
 
     await waitForTutorialStep(page, 'welcome', 20_000);
@@ -130,6 +131,7 @@ test.describe('mobile', () => {
     // in (`title="Tap to sign in"`), colliding with the Tutorials
     // help button by accessible name. Disambiguate by title.
     await page.getByTitle('Tutorials').click();
+    await page.getByRole('button', { name: 'All Tutorials →' }).click();
     await page.getByText('Tutorial Match').first().click();
 
     // Wait for the track to start, then fast-forward via the test
@@ -154,6 +156,7 @@ test.describe('mobile', () => {
     // in (`title="Tap to sign in"`), colliding with the Tutorials
     // help button by accessible name. Disambiguate by title.
     await page.getByTitle('Tutorials').click();
+    await page.getByRole('button', { name: 'All Tutorials →' }).click();
     await page.getByText('Tutorial Match').first().click();
 
     await waitForTutorialStep(page, 'welcome', 20_000);

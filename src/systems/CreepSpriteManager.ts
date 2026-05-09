@@ -28,6 +28,29 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   mage_armor: 12, mage_speed: 13, mage_evasion: 14, mage_heal: 15,
   // Aliases
   splitter_child: 3, // use swarm sprite for splitlings
+  // Plan A — caster aliases. Sigils ride the mage_armor sprite (the
+  // tankier, more visibly threatening mage); Scribes ride mage_heal
+  // (the spellcaster look). Halo overlay (ChannelBarOverlay) layers
+  // a faction glow on top so the player can read them as casters
+  // distinct from regular mages.
+  arcane_sigil: 12,
+  arcane_scribe: 15,
+  // M3 Archmages reuse mage sprite columns; the channel-bar halo +
+  // unique tints + boss-tier scale make them visually distinct.
+  // Meteora → mage_armor (col 12), tinted hot orange in Creep ctor.
+  arcane_archmage_meteor: 12,
+  // Stormcaller → mage_speed (col 13), tinted blue.
+  arcane_archmage_storm: 13,
+  // Necromaster → mage_evasion (col 14), tinted deep purple.
+  arcane_archmage_necro: 14,
+  // M5 Warlords ride the boss sprite (col 5) at 2.2-2.6 scale, with
+  // per-creep tint baked in Creep.ts. Same trick as the archmages
+  // but using the boss column for the heavier silhouette.
+  warlord_stalwart: 5,
+  warlord_healer: 5,
+  warlord_champion: 5,
+  warlord_tactician: 5,
+  warlord_captain: 5,
 };
 
 /** All faction IDs that have creep spritesheets */
@@ -112,7 +135,13 @@ export function createCreepSprite(
   return sprite;
 }
 
-/** Play death animation on a creep sprite, then destroy it */
+/** Play death animation on a creep sprite, then destroy it.
+ *  Defensive cleanup: in addition to the `animationcomplete` listener,
+ *  schedule a delayed destroy as a backstop. If the event fires first
+ *  the destroy is a no-op (Phaser checks `active`). If the event is
+ *  swallowed (scene transition mid-animation, or any Phaser 4 edge
+ *  case where the listener never fires), the timer fires anyway and
+ *  the corpse can't outlive the animation duration. */
 export function playCreepDeath(
   scene: Phaser.Scene,
   sprite: Phaser.GameObjects.Sprite,
@@ -120,11 +149,17 @@ export function playCreepDeath(
   creepTypeId: string,
 ): void {
   const deathKey = `creep_${faction}_${creepTypeId}_death`;
+  const safeDestroy = () => {
+    if (sprite && (sprite as any).active !== false) sprite.destroy();
+  };
   if (scene.anims.exists(deathKey)) {
     sprite.play(deathKey);
-    sprite.once('animationcomplete', () => {
-      sprite.destroy();
-    });
+    sprite.once('animationcomplete', safeDestroy);
+    // Backstop timer at 1.5× animation duration. DEATH_FRAMES / DEATH_FPS
+    // is the natural runtime; the cushion gives the listener room to
+    // win the race in the happy path.
+    const ms = Math.ceil((DEATH_FRAMES / DEATH_FPS) * 1500);
+    scene.time.delayedCall(ms, safeDestroy);
   } else {
     sprite.destroy();
   }

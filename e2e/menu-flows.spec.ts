@@ -35,33 +35,39 @@ test.describe('menu — help modal (? button)', () => {
     await gotoFresh();
     await dismissAllAutoTutorials(page);
 
-    // Click the ? button (portaled modal opens).
-    // ProfileAvatar renders a "?" button when no profile is signed
-    // in (`title="Tap to sign in"`), colliding with the Tutorials
-    // help button by accessible name. Disambiguate by title.
+    // Click the ? button (portaled modal opens to the How-To-Play
+    // carousel by default). ProfileAvatar renders a "?" button when
+    // no profile is signed in (`title="Tap to sign in"`), colliding
+    // with the Tutorials help button by accessible name; disambiguate
+    // by title.
     await page.getByTitle('Tutorials').click();
-    // The modal title is a styled <div>, not a semantic heading, so
-    // match by text rather than role.
-    await expect(page.getByText('Tutorials', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('How To Play', { exact: true }).first()).toBeVisible();
+
+    // Switch to the explicit tracks list — that's where the
+    // individual replay entries live.
+    await page.getByRole('button', { name: 'All Tutorials →' }).click();
+    await expect(page.getByText('All Tutorials', { exact: true }).first()).toBeVisible();
 
     // A well-known track should be listed (we don't assert the full
     // set — that's what the unit-level schema spec is for).
     await expect(page.getByText('Welcome Tour')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Close' }).click();
-    await expect(page.getByText('Tutorials', { exact: true }).first()).toBeHidden();
+    // `name: 'Close'` (loose) also matches a track button whose label
+    // text contains "Close" — use exact match for the modal's footer
+    // button.
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(page.getByText('All Tutorials', { exact: true }).first()).toBeHidden();
   });
 
   test('tutorial_match entry launches the match via launchTutorialMatch', async ({ page, gotoFresh }) => {
     await gotoFresh();
     await dismissAllAutoTutorials(page);
 
-    // ProfileAvatar renders a "?" button when no profile is signed
-    // in (`title="Tap to sign in"`), colliding with the Tutorials
-    // help button by accessible name. Disambiguate by title.
     await page.getByTitle('Tutorials').click();
-    await expect(page.getByText('Tutorials', { exact: true }).first()).toBeVisible();
-    // Click the Tutorial Match entry.
+    // Modal defaults to the How-To-Play carousel; flip to the tracks
+    // list before clicking a specific entry.
+    await page.getByRole('button', { name: 'All Tutorials →' }).click();
+    await expect(page.getByText('All Tutorials', { exact: true }).first()).toBeVisible();
     await page.getByText('Tutorial Match').first().click();
 
     // The match-load splash should appear ("PREPARING DEFENSES...").

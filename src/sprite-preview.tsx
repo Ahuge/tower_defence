@@ -43,6 +43,7 @@ const modules: Record<string, () => Promise<{ default: React.ComponentType }>> =
   'creeps-psionic': () => import('../psionic_creep_sprites'),
   'creeps-harmonic': () => import('../harmonic_creep_sprites'),
   'large-structures': () => import('../large_structure_sprites'),
+  'arcane-campaign': () => import('../arcane_campaign_sprites'),
   'structure-editor': () => import('../gauntlet_structure_editor'),
   'gauntlet-maps': () => import('../gauntlet_map_preview'),
 };
@@ -86,6 +87,8 @@ const FACTION_FILE_MAP: Record<string, { dir: string; canvases: string[] }> = {
   'terrain-psionic':    { dir: 'terrain', canvases: ['psionic_terrain_tileset', 'psionic_terrain_doodads'] },
   'terrain-harmonic':   { dir: 'terrain', canvases: ['harmonic_terrain_tileset', 'harmonic_terrain_doodads'] },
   'terrain-celestial':  { dir: 'terrain', canvases: ['celestial_terrain_tileset', 'celestial_terrain_doodads'] },
+  // Campaign one-offs (M10 finale assets etc.)
+  'arcane-campaign':    { dir: 'arena', canvases: ['struct_summoning_circle', 'struct_arcane_archmage_throne'] },
 };
 
 /** Mobile unit file mapping */
