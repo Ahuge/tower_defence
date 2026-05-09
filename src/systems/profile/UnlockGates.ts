@@ -144,6 +144,15 @@ export interface UnlockReveal {
   label: string;
 }
 
+/** Static feature-reveal table used by `unlocksAtLevel`. Hoisted to
+ *  module scope so the literal isn't rebuilt on every call (this is
+ *  on the per-faction-tile render path via `getFactionNodeState`). */
+const FEATURE_REVEALS: Record<number, { id: string; label: string }[]> = {
+  2: [{ id: 'frontier', label: 'Frontier income buildings' }],
+  4: [{ id: 'sends',    label: 'Send creeps (Z/X/C/V)' }],
+  5: [{ id: 'draft',    label: 'Draft modifiers' }],
+};
+
 /** Things that are revealed *exactly at* the given level. Used by the
  *  level-up modal and the menu's "More unlocks at L_" teaser. */
 export function unlocksAtLevel(level: number): UnlockReveal[] {
@@ -154,12 +163,6 @@ export function unlocksAtLevel(level: number): UnlockReveal[] {
   for (const [mapId, lvl] of Object.entries(MAP_UNLOCK_LEVEL)) {
     if (lvl === level) out.push({ type: 'map', id: mapId, label: prettyMapLabel(mapId) });
   }
-  // Plan-driven feature reveals.
-  const FEATURE_REVEALS: Record<number, { id: string; label: string }[]> = {
-    2: [{ id: 'frontier', label: 'Frontier income buildings' }],
-    4: [{ id: 'sends',    label: 'Send creeps (Z/X/C/V)' }],
-    5: [{ id: 'draft',    label: 'Draft modifiers' }],
-  };
   for (const f of FEATURE_REVEALS[level] ?? []) out.push({ type: 'feature', id: f.id, label: f.label });
   return out;
 }
@@ -221,18 +224,34 @@ export function isFactionPlayable(factionId: FactionId): boolean {
 }
 
 /** Compute tree-state for a node. Drives the UI badge + whether the
- *  unlock CTA fires. */
+ *  unlock CTA fires. Loads each underlying store *once* and reads
+ *  every gate from those snapshots — without this, the worst-case
+ *  path hits `PlayerProfileStore.load()` 3× and `StorePersistence.
+ *  load()` 2× per call, multiplied across ~12 faction tiles per
+ *  FactionTreeScreen render. */
 export function getFactionNodeState(factionId: FactionId): FactionNodeState {
   const node = getTreeNode(factionId);
   if (!node) return 'playable'; // chaos / random — not in tree
-  const level = getCurrentLevel();
 
-  if (isFactionPlayable(factionId)) return 'playable';
+  const profile = PlayerProfileStore.load();
+  const store = StorePersistence.load();
+  const level = levelFromXp(profile.xp);
+  const purchased = (id: FactionId) => id === 'arcane' || store.unlockedFactions.includes(id);
+  const playable = (id: FactionId): boolean => {
+    if (id === 'arcane' || id === 'chaos' || id === 'random') return true;
+    if (profile.flags[`legacy_faction_playable.${id}`]) return true;
+    if (!purchased(id)) return false;
+    const def = getCampaign(id);
+    if (!def) return false;
+    return isCampaignComplete(id, profile.campaignProgress[id] ?? {});
+  };
 
-  if (isFactionCampaignPurchased(factionId)) {
+  if (playable(factionId)) return 'playable';
+
+  if (purchased(factionId)) {
     const def = getCampaign(factionId);
     if (!def) return 'campaign_pending';
-    const progress = readCampaignProgress(factionId);
+    const progress = profile.campaignProgress[factionId] ?? {};
     return Object.values(progress).some(s => s >= 1) ? 'campaign_in_progress' : 'campaign_pending';
   }
 
@@ -241,13 +260,13 @@ export function getFactionNodeState(factionId: FactionId): FactionNodeState {
   if (node.requiresAnyN !== undefined) {
     let count = 0;
     for (const peer of ['mechanical', 'nature', 'void', 'military', 'celestial', 'aliens', 'infernal', 'psionic', 'cypherpunk'] as FactionId[]) {
-      if (isFactionCampaignPurchased(peer)) count++;
+      if (purchased(peer)) count++;
     }
     return count >= node.requiresAnyN ? 'unlockable' : 'locked_capstone';
   }
 
   for (const parentId of node.parents) {
-    if (!isFactionCampaignPurchased(parentId)) return 'locked_parents';
+    if (!purchased(parentId)) return 'locked_parents';
   }
   return 'unlockable';
 }

@@ -21,23 +21,23 @@ export function xpToNext(level: number): number {
   return Math.max(1, level) * 200;
 }
 
-/** Total XP required to *be at* `level`. L1=0, L2=200, L3=600, L4=1200… */
+/** Total XP required to *be at* `level`. L1=0, L2=200, L3=600, L4=1200…
+ *  Closed form: sum_{i=1..L-1} 200·i = 100 · (L-1) · L. */
 export function totalXpForLevel(level: number): number {
   if (level <= 1) return 0;
-  let total = 0;
-  for (let i = 1; i < level; i++) total += xpToNext(i);
-  return total;
+  return 100 * (level - 1) * level;
 }
 
-/** Compute level from total XP. Level >= 1 always. */
+/** Compute level from total XP. Level >= 1 always.
+ *  Inverts `totalXpForLevel`: 100·(L-1)·L ≤ xp → L = ⌊(1 + √(1 + xp/25)) / 2⌋,
+ *  then clamp to [1, SOFT_LEVEL_CAP]. Called per faction tile per
+ *  FactionTreeScreen render, so closed form keeps it O(1). */
 export function levelFromXp(xp: number): number {
-  let level = 1;
-  let remaining = xp;
-  while (remaining >= xpToNext(level) && level < SOFT_LEVEL_CAP) {
-    remaining -= xpToNext(level);
-    level++;
-  }
-  return level;
+  if (xp <= 0) return 1;
+  const lvl = Math.floor((1 + Math.sqrt(1 + xp / 25)) / 2);
+  if (lvl < 1) return 1;
+  if (lvl > SOFT_LEVEL_CAP) return SOFT_LEVEL_CAP;
+  return lvl;
 }
 
 /** XP within the current level (0..xpToNext(level)). */

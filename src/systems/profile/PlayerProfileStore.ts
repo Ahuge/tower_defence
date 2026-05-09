@@ -37,11 +37,10 @@ export interface PlayerProfileState {
   /** Bumped when the schema changes incompatibly. Migrate in load(). */
   schemaVersion: 1;
 
-  /** Current Player Level (>=1). Derived from xp on read but cached
-   *  here so we can detect level-up transitions in `addXP`. */
-  level: number;
-
-  /** Total accumulated XP. Curve: xpToNext(level) = 200 * level. */
+  /** Total accumulated XP. Level is derived via `levelFromXp(xp)` —
+   *  not stored, since a cached `level` would drift if the curve were
+   *  ever retuned and saves loaded with stale values. Curve:
+   *  xpToNext(level) = 200 * level. */
   xp: number;
 
   /** Cores currency balance — earned in Career, spent on tower chips. */
@@ -101,7 +100,6 @@ const MAX_CORE_TRANSACTIONS = 200;
 export function defaultProfileState(): PlayerProfileState {
   return {
     schemaVersion: 1,
-    level: 1,
     xp: 0,
     cores: 0,
     coreTransactions: [],

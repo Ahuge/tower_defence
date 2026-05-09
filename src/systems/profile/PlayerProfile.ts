@@ -26,6 +26,7 @@ import { CoreWallet } from '../wallets/CoreWallet';
 import {
   levelFromXp,
   xpProgressInLevel,
+  xpToNext,
   GameEndContext,
   xpForGameEnd,
 } from './PlayerLevel';
@@ -47,15 +48,9 @@ class PlayerProfileClass {
       this.maybeMigrateFromLegacy();
     }
 
-    // Reconcile cached level field with actual xp (in case a future
-    // schema change re-tunes the curve, the cache must follow).
-    PlayerProfileStore.update(s => {
-      s.level = levelFromXp(s.xp);
-    });
-
     const state = PlayerProfileStore.load();
     Analytics.track('profile_initialized', {
-      level: state.level,
+      level: levelFromXp(state.xp),
       cores: state.cores,
     });
 
@@ -66,7 +61,7 @@ class PlayerProfileClass {
       const s = PlayerProfileStore.load();
       const store = StorePersistence.load();
       return {
-        playerLevel: s.level,
+        playerLevel: levelFromXp(s.xp),
         cores: s.cores,
         shards: store.shards,
         unlockedFactionsCount: store.unlockedFactions.length,
@@ -87,12 +82,10 @@ class PlayerProfileClass {
     const inferred = Math.min(20, Math.max(1, Math.floor(store.gamesPlayed / 1)));
 
     PlayerProfileStore.update(s => {
-      s.level = inferred;
-      // Set xp to the start of this level so any future XP earnings
-      // count toward the next level normally.
-      let total = 0;
-      for (let i = 1; i < inferred; i++) total += i * 200;
-      s.xp = total;
+      // Set xp to the start of the inferred level so any future XP
+      // earnings count toward the next level normally. Closed-form
+      // triangular sum: Σ_{i=1..L-1} 200·i = 100·(L-1)·L.
+      s.xp = 100 * (inferred - 1) * inferred;
       s.migratedAt = Date.now();
       s.migratedFromInferredLevel = inferred;
       s.flags.migration_banner_pending = true;
@@ -119,7 +112,7 @@ class PlayerProfileClass {
   // ---- Read access ------------------------------------------------------
 
   getLevel(): number {
-    return PlayerProfileStore.load().level;
+    return levelFromXp(PlayerProfileStore.load().xp);
   }
 
   getXP(): number {
@@ -216,9 +209,7 @@ class PlayerProfileClass {
     // L1->L2 boundary cleanly for a brand-new player; older players
     // who somehow trigger this (re-running ftg from Help) get a
     // smaller relative bump.
-    const lvl = this.getLevel();
-    const bonus = Math.max(50, lvl * 200);
-    this.addXP(bonus, 'ftg-completed');
+    this.addXP(xpToNext(this.getLevel()), 'ftg-completed');
   }
 
   // ---- XP awarding ------------------------------------------------------
@@ -228,36 +219,29 @@ class PlayerProfileClass {
     if (amount <= 0) return { from: this.getLevel(), to: this.getLevel() };
 
     const fromLevel = this.getLevel();
+    // Single load+save round-trip: bump xp + push every reveal from
+    // each crossed level into the unlock lists in one update. Naive
+    // per-reveal `update()` calls would re-load + JSON.stringify the
+    // entire profile per unlocked mode/map (16+ writes for a
+    // 5-level/3-reveals burst).
     const state = PlayerProfileStore.update(s => {
       s.xp += amount;
-      s.level = levelFromXp(s.xp);
+      const newLevel = levelFromXp(s.xp);
+      for (let l = fromLevel + 1; l <= newLevel; l++) {
+        for (const r of unlocksAtLevel(l)) {
+          if (r.type === 'mode' && !s.unlockedModes.includes(r.id)) s.unlockedModes.push(r.id);
+          else if (r.type === 'map' && !s.unlockedMaps.includes(r.id)) s.unlockedMaps.push(r.id);
+        }
+      }
     });
-    const toLevel = state.level;
+    const toLevel = levelFromXp(state.xp);
 
     Analytics.track('xp_awarded', { amount, source: reason });
 
     if (toLevel > fromLevel) {
-      // Level-up sweep: for each level crossed, mark associated
-      // unlocks as revealed and emit telemetry. Most level-ups cross
-      // exactly one level but loops are cheap and correct against
-      // bulk XP awards that span multiple.
       for (let l = fromLevel + 1; l <= toLevel; l++) {
-        const reveals = unlocksAtLevel(l);
-        for (const r of reveals) {
-          if (r.type === 'mode') {
-            PlayerProfileStore.update(s => {
-              if (!s.unlockedModes.includes(r.id)) s.unlockedModes.push(r.id);
-            });
-          } else if (r.type === 'map') {
-            PlayerProfileStore.update(s => {
-              if (!s.unlockedMaps.includes(r.id)) s.unlockedMaps.push(r.id);
-            });
-          }
-          Analytics.track('unlock_revealed', {
-            unlockType: r.type,
-            id: r.id,
-            atLevel: l,
-          });
+        for (const r of unlocksAtLevel(l)) {
+          Analytics.track('unlock_revealed', { unlockType: r.type, id: r.id, atLevel: l });
         }
       }
       Analytics.track('level_up', { from: fromLevel, to: toLevel });
