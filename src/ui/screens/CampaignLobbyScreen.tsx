@@ -17,6 +17,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Header } from '../components/Header';
 import { ShardBadge } from '../components/ShardBadge';
+import { StarRating } from '../components/StarRating';
 import { UIBridge } from '../UIBridge';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { PlayerProfile } from '../../systems/profile/PlayerProfile';
@@ -25,16 +26,7 @@ import { isArchetypeStub, getArchetype } from '../../data/campaigns/MissionArche
 import type { CampaignDef, MissionDef } from '../../data/campaigns/CampaignDef';
 import { FACTIONS, type FactionId } from '../../data/Factions';
 import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
-
-const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
-
-/** Faction key art (square 2040×1812 hero piece, no title overlay).
- *  Available for factions delivered in the v2 art drop; missing files
- *  silently 404 and the consumer's onError hides the layer. */
-function keyartSrc(factionId: FactionId): string {
-  if (factionId === 'chaos' || factionId === 'random') return '';
-  return `${BASE_URL}assets/${factionId}/${factionId}_keyart.webp`;
-}
+import { factionKeyartSrc } from '../utils/factionAssets';
 
 interface Props {
   data: Record<string, unknown>;
@@ -43,7 +35,6 @@ interface Props {
 export function CampaignLobbyScreen({ data }: Props) {
   const campaign = data.campaign as CampaignDef | undefined;
   const autoSelectMissionIdx = data.autoSelectMissionIdx as number | undefined;
-  const [, setTick] = useState(0);
   const [pendingMission, setPendingMission] = useState<MissionDef | null>(null);
 
   useEffect(() => {
@@ -143,7 +134,7 @@ export function CampaignLobbyScreen({ data }: Props) {
     </div>
   ) : null;
 
-  const keyart = keyartSrc(campaign.factionId);
+  const keyart = factionKeyartSrc(campaign.factionId);
 
   return (
     <>
@@ -203,10 +194,19 @@ export function CampaignLobbyScreen({ data }: Props) {
           ) : null;
         })()}
 
+        {(() => {
+          // Hoist the campaign progress map once for the whole list —
+          // calling getMissionStars + isMissionUnlocked per tile would
+          // re-load the profile from localStorage 2× per mission.
+          const progress = PlayerProfile.getCampaignProgress(campaign.factionId);
+          const starsAt = (idx: number) => progress[idx] ?? 0;
+          return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '520px', margin: '0 auto' }}>
           {campaign.missions.map(mission => {
-            const stars = PlayerProfile.getMissionStars(campaign.factionId, mission.idx);
-            const unlocked = PlayerProfile.isMissionUnlocked(campaign.factionId, mission.idx);
+            const stars = starsAt(mission.idx);
+            // First mission unlocked by default; later ones need ≥1 star
+            // on the prior mission (matches PlayerProfile.isMissionUnlocked).
+            const unlocked = mission.idx === 0 || starsAt(mission.idx - 1) >= 1;
             const stub = isArchetypeStub(mission.archetype);
             const archetype = getArchetype(mission.archetype);
             const disabled = !unlocked || stub;
@@ -245,13 +245,13 @@ export function CampaignLobbyScreen({ data }: Props) {
                     {archetype.blurb}
                   </div>
                 </div>
-                <div style={{ fontSize: '14px', minWidth: '54px', textAlign: 'right', color: stars >= 1 ? 'var(--gold)' : 'var(--text-dim)' }}>
-                  {stars >= 1 ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '☆☆☆'}
-                </div>
+                <StarRating stars={stars} style={{ fontSize: '14px', minWidth: '54px', textAlign: 'right' }} />
               </button>
             );
           })}
         </div>
+          );
+        })()}
       </div>
       {storyModal}
     </>

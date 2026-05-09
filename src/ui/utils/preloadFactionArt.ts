@@ -10,8 +10,7 @@
  * onError fallbacks kick in just like before.
  */
 import type { FactionId } from '../../data/Factions';
-
-const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
+import { ASSET_BASE } from './factionAssets';
 
 const seen = new Set<string>();
 
@@ -28,7 +27,7 @@ function prefetch(url: string): void {
 
 export function preloadFactionArt(faction: FactionId): void {
   if (faction === 'chaos' || faction === 'random') return;
-  const base = `${BASE_URL}assets/${faction}/${faction}`;
+  const base = `${ASSET_BASE}assets/${faction}/${faction}`;
   // Splash both orientations — the consumer picks one based on viewport
   // but we don't know which here, and the bytes are tiny (~30KB mobile,
   // ~100KB landscape).

@@ -1,6 +1,7 @@
 import { UIBridge } from '../UIBridge';
 import { ShardBadge } from '../components/ShardBadge';
 import { Header } from '../components/Header';
+import { StarRating } from '../components/StarRating';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { ShardWallet, BattlePass } from '../../systems/monetization';
 import { GameStats } from '../../systems/StatsTracker';
@@ -257,7 +258,6 @@ export function GameOverScreen({ data }: Props) {
  *  badge prominently and lists every objective with met / unmet state.
  *  Sits between the stats grid and the action buttons. */
 function MissionSummary({ result }: { result: MissionResultSummary; continueAdShown: boolean }) {
-  const earned = '★'.repeat(result.stars) + '☆'.repeat(3 - result.stars);
   const subtitle = result.won
     ? (result.stars === 3 ? 'Perfect!' : result.stars === 2 ? 'Strong run.' : 'Mission won.')
     : 'Mission failed.';
@@ -270,7 +270,7 @@ function MissionSummary({ result }: { result: MissionResultSummary; continueAdSh
         background: 'rgba(255,170,68,0.06)',
         border: '1px solid rgba(255,170,68,0.25)',
       }}>
-        <div style={{ fontFamily: "'Silkscreen', monospace", fontSize: '36px', color: 'var(--gold)', letterSpacing: '0.1em' }}>{earned}</div>
+        <StarRating stars={result.stars} style={{ fontFamily: "'Silkscreen', monospace", fontSize: '36px', letterSpacing: '0.1em' }} />
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{subtitle}</div>
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
           {result.objectives.map((o, i) => (
@@ -296,12 +296,12 @@ function MissionSummary({ result }: { result: MissionResultSummary; continueAdSh
 function MissionButtons({ result, continueAdShown }: { result: MissionResultSummary; continueAdShown: boolean }) {
   const factionId = result.campaignFactionId;
   const goLobby = () => leaveViaInterstitial(() => {
-    const campaign = getCampaign(factionId as any);
+    const campaign = getCampaign(factionId);
     if (campaign) UIBridge.show('campaign-lobby', { campaign });
     else UIBridge.showMenu();
   }, continueAdShown);
   const goNext = () => leaveViaInterstitial(() => {
-    const campaign = getCampaign(factionId as any);
+    const campaign = getCampaign(factionId);
     if (campaign && result.nextMissionIdx !== null) {
       // Route through the campaign lobby with the next mission
       // pre-selected. The lobby auto-opens the story modal for it,
@@ -316,7 +316,7 @@ function MissionButtons({ result, continueAdShown }: { result: MissionResultSumm
     }
   }, continueAdShown);
   const goRetry = () => leaveViaInterstitial(() => {
-    const campaign = getCampaign(factionId as any);
+    const campaign = getCampaign(factionId);
     if (campaign) MissionRunner.start(campaign, result.missionIdx);
     else UIBridge.showMenu();
   }, continueAdShown);

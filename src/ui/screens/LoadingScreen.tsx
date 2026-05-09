@@ -8,25 +8,10 @@ import { FACTIONS, FactionId } from '../../data/Factions';
 import { MAPS, MapId } from '../../data/Maps';
 import { pickFlavour } from '../../data/FactionFlavour';
 import { UIBridge } from '../UIBridge';
+import { factionSplashSrc } from '../utils/factionAssets';
 
 function hexColor(n: number): string {
   return '#' + n.toString(16).padStart(6, '0');
-}
-
-const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
-
-/** Path to the player's faction splash key art. Returns '' for meta
- *  entries (chaos / random) and unknown ids — caller falls back to
- *  the radial-gradient mood lighting only.
- *
- *  Mobile variant (`{faction}_splash_mobile.png`) is a 9:16 portrait
- *  crop of the landscape source; the engine selects between them via
- *  a viewport-width media check below. */
-function factionSplashSrc(faction: string | null, mobile = false): string {
-  if (!faction || faction === 'random' || faction === 'chaos') return '';
-  const suffix = mobile ? '_splash_mobile' : '_splash';
-  // WebP — ~95% smaller payload than the PNG source.
-  return `${BASE_URL}assets/${faction}/${faction}${suffix}.webp`;
 }
 
 /** Reactive viewport portrait detection. Re-evaluates on resize so a
@@ -187,13 +172,16 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
     };
   }, [requiresContinue]);
 
-  if (!visible) return null;
-
+  // Hooks must run unconditionally on every render — keep this above
+  // the `!visible` early-return so the hook order stays stable when
+  // the component fades out.
   const isPortrait = useIsPortraitViewport();
   const splashImg = factionSplashSrc(
     typeof faction === 'string' ? faction : null,
     isPortrait,
   );
+
+  if (!visible) return null;
 
   return (
     <div style={{

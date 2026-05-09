@@ -41,7 +41,7 @@ export interface GameOverData {
 }
 
 export interface MissionResultSummary {
-  campaignFactionId: string;
+  campaignFactionId: FactionId;
   missionIdx: number;
   missionName: string;
   archetypeId: string;

@@ -3258,7 +3258,7 @@ export class GameScene extends Phaser.Scene {
     // bought, hero hp, attacker leaks, ...) rather than the final
     // numbers we don't have yet.
     if (this.missionContext) {
-      const campaign = getCampaign(this.missionContext.campaignFactionId as FactionId);
+      const campaign = getCampaign(this.missionContext.campaignFactionId);
       const missionDef = campaign?.missions[this.missionContext.missionIdx] ?? null;
       if (missionDef) {
         const livesStart = this._missionLives ?? STARTING_LIVES;
@@ -3875,7 +3875,7 @@ export class GameScene extends Phaser.Scene {
       // Re-resolve via the campaign registry since finalize cleared
       // the active session. We need the campaign + missionDef to render
       // the post-mission UI and offer the Next Mission jump.
-      const campaign = getCampaign(this.missionContext.campaignFactionId as FactionId);
+      const campaign = getCampaign(this.missionContext.campaignFactionId);
       const missionDef = campaign?.missions[this.missionContext.missionIdx] ?? null;
       data.missionResult = {
         campaignFactionId: this.missionContext.campaignFactionId,

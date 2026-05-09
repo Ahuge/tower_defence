@@ -43,6 +43,7 @@ import { ShardWallet } from '../../systems/monetization/ShardWallet';
 import { getCampaign } from '../../data/campaigns';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { FactionEmblem } from '../components/FactionEmblem';
+import { Fragment } from 'preact';
 
 function hex(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
 
@@ -159,14 +160,17 @@ export function FactionTreeScreen() {
           <div class="ui-section" style={{ paddingTop: 0 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '720px', margin: '0 auto' }}>
               {[0, 1, 2, 3].map((tier, i) => (
-                <>
-                  {i > 0 && <div key={`div-${tier}`} class="faction-tree-tier-divider">↓</div>}
-                  <TierRow key={tier} tier={tier} nodes={tiers[tier] ?? []}
+                // Fragment must own the iteration key — the inner
+                // children's `key` props don't help reconciliation
+                // when the outer element is the iterated node.
+                <Fragment key={tier}>
+                  {i > 0 && <div class="faction-tree-tier-divider">↓</div>}
+                  <TierRow tier={tier} nodes={tiers[tier] ?? []}
                     playerLevel={playerLevel}
                     shardBalance={shardBalance}
                     onTap={onNodeTap}
                     selectedId={selected} />
-                </>
+                </Fragment>
               ))}
             </div>
           </div>
@@ -375,13 +379,7 @@ function renderDetail(
 // to load, that layer self-removes via onError without breaking
 // the others.
 
-const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? "/";
-
-function parallaxSrc(factionId: FactionId, layer: "far" | "mid" | "fore"): string {
-  if (factionId === "chaos" || factionId === "random") return "";
-  // WebP — drops the 3-layer parallax bundle from ~600KB → ~25KB.
-  return `${BASE_URL}assets/${factionId}/${factionId}_parallax_${layer}.webp`;
-}
+import { factionParallaxSrc as parallaxSrc } from '../utils/factionAssets';
 
 function FactionParallax({ factionId }: { factionId: FactionId }) {
   return (

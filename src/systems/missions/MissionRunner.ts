@@ -15,6 +15,7 @@
  */
 
 import type { CampaignDef, MissionDef, MissionOverrides, MissionResult, StarCount } from '../../data/campaigns/CampaignDef';
+import type { FactionId } from '../../data/Factions';
 import { getArchetype, isArchetypeStub } from '../../data/campaigns/MissionArchetypes';
 import { UIBridge } from '../../ui/UIBridge';
 import { Analytics } from '../AnalyticsClient';
@@ -25,7 +26,7 @@ import { ParametricStory } from '../campaign/ParametricStory';
 /** Subset of MissionDef that GameScene actually reads. Distinct from
  *  the full def so the runtime contract is small and stable. */
 export interface MissionContext {
-  campaignFactionId: string;
+  campaignFactionId: FactionId;
   missionId: string;
   missionIdx: number;
   archetypeId: string;
