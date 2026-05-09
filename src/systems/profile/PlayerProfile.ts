@@ -23,6 +23,7 @@ import { Analytics } from '../AnalyticsClient';
 import { StorePersistence } from '../monetization/StorePersistence';
 import { PlayerProfileStore, PlayerProfileState } from './PlayerProfileStore';
 import { CoreWallet } from '../wallets/CoreWallet';
+import { ANNOUNCEMENT_CHANGED_EVENT } from '../../data/AnnouncementEvents';
 import {
   levelFromXp,
   xpProgressInLevel,
@@ -150,6 +151,28 @@ class PlayerProfileClass {
    *  guided tutorial. Drives the cold-boot splash decision in App.tsx. */
   isFirstGameComplete(): boolean {
     return this.getFlag('first_game_complete');
+  }
+
+  // ---- Announcements ---------------------------------------------------
+
+  /** True once the player has dismissed (read) the named announcement.
+   *  Persisted per-id under `flags.announcement_seen.<id>` so adding
+   *  new announcements doesn't disturb prior state. */
+  hasSeenAnnouncement(id: string): boolean {
+    return this.getFlag(`announcement_seen.${id}`);
+  }
+
+  /** Mark the announcement as read. Idempotent. Dispatches
+   *  ANNOUNCEMENT_CHANGED_EVENT so the avatar badge + mailbox can
+   *  re-render without subscribing to the whole profile store. */
+  markAnnouncementSeen(id: string): void {
+    if (this.hasSeenAnnouncement(id)) return;
+    this.setFlag(`announcement_seen.${id}`, true);
+    try {
+      window.dispatchEvent(new CustomEvent(ANNOUNCEMENT_CHANGED_EVENT, { detail: { id } }));
+    } catch {
+      // SSR / test envs: no window.
+    }
   }
 
   // ---- Campaign progress (Plan 10) -------------------------------------

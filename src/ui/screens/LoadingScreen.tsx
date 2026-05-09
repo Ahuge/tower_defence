@@ -9,27 +9,10 @@ import { MAPS, MapId } from '../../data/Maps';
 import { pickFlavour } from '../../data/FactionFlavour';
 import { UIBridge } from '../UIBridge';
 import { factionSplashSrc } from '../utils/factionAssets';
+import { useIsPortraitViewport } from '../hooks/useIsPortraitViewport';
 
 function hexColor(n: number): string {
   return '#' + n.toString(16).padStart(6, '0');
-}
-
-/** Reactive viewport portrait detection. Re-evaluates on resize so a
- *  rotated tablet swaps between landscape/portrait splashes cleanly. */
-function useIsPortraitViewport(): boolean {
-  const [portrait, setPortrait] = useState(() =>
-    typeof window !== 'undefined'
-      ? window.matchMedia('(max-aspect-ratio: 1/1)').matches
-      : false,
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(max-aspect-ratio: 1/1)');
-    const onChange = () => setPortrait(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return portrait;
 }
 
 // ─── Difficulty display ────────────────────────────────────

@@ -2,6 +2,22 @@
 
 ## 2026-05-08
 
+### Announcements: in-game release-notes modal + persistent mailbox
+
+New "announcements" framework so future content drops can take over the main menu the first time a returning player launches the build. First entry is `campaigns-released` — a recap of the campaign system, the faction-tree unlock route, mission archetypes, and the first-launch SplashScreen.
+
+**Behaviour.** On the menu, the *newest* unseen announcement auto-pops in a near-fullscreen modal. Closing it (button, ESC, click-out) marks it seen via `PlayerProfile.markAnnouncementSeen(id)`, which writes a `flags['announcement_seen.<id>']` key to localStorage and dispatches `td-announcements-changed` so the avatar badge + mailbox panel re-render live. Older announcements never auto-pop — they sit in the mailbox waiting to be re-read.
+
+**Mailbox** lives inside `SettingsScreen` (the player's profile page). Lists every announcement newest-first with a gold border + dot for unread items; row clicks fire `td-announcement-open` with the requested id, opening the modal in `reviewMode` so the seen flag isn't toggled.
+
+**Avatar badge.** `ProfileAvatar` overlays a red `9+`-capped pill on the upper-right whenever there are unseen announcements, anchored to the avatar size. Clicking the avatar still routes to Settings (where the mailbox lives), preserving the existing single-tap-to-profile contract.
+
+**Reusable shell.** Extracted a `<FullscreenOverlay>` component that owns the position-fixed scaffolding, scrim/gradient backdrop, ESC + click-out dismissal, and fade-in keyframe. Both `LevelUpModal` and `FactionUnlockSplash` now compose against it, so the announcement modal inherits identical motion + a11y from those existing surfaces.
+
+**Art status.** Modal currently renders with an accent-tinted radial-gradient placeholder (no baked text). Real keyart spec lives in `docs/art/announcement-campaigns-released.md` — coalition-of-heroes composition, dark-navy + gold palette, 1920×1080 landscape + 1080×1920 portrait WebP deliverables. Modal is shippable as-is; art is enhancement.
+
+Files: `src/data/Announcements.{ts,test.ts}`, `src/systems/profile/PlayerProfile.ts`, `src/ui/components/{AnnouncementModal,FullscreenOverlay,LevelUpModal,FactionUnlockSplash,ProfileAvatar}.tsx`, `src/ui/screens/SettingsScreen.tsx`, `src/ui/App.tsx`, `docs/art/announcement-campaigns-released.md`. 558 tests + tsc clean.
+
 ### Harmonic auras: order-dependent buff bug fix + Quickener uncapped exponential stacking
 
 Two changes to the Harmonic aura system shipped together as `ah/fix/harmonic-auras`.
