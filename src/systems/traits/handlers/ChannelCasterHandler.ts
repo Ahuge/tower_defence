@@ -44,10 +44,6 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
   }
   trait._creep = creep;
   trait._age = (trait._age ?? 0) + delta / 1000;
-  if (!trait._loggedTick) {
-    trait._loggedTick = true;
-    console.log(`[ChannelCaster] tick fired for creep ${creep._creepTypeId ?? '?'}, effect=${trait.effectId}, triggerOn=${trait.triggerOn ?? 'spawn'}`);
-  }
 
   const triggerOn = trait.triggerOn ?? 'spawn';
   const startAt = trait.channelStartAt ?? 1.0;
@@ -64,7 +60,9 @@ registerCreepUpdate('channel_caster', (trait: Trait, creep: any, delta: number) 
     // bookkeeping to start the cooldown for the next cast.
     const sys = ChannelSystem.forScene(creep._scene);
     sys.tick(trait._channelId, delta);
-    const chan = sys.listActive().find(c => c.id === trait._channelId);
+    // O(1) Map lookup — the previous `listActive().find(...)` allocated
+    // a fresh array per casting creep per frame.
+    const chan = sys.get(trait._channelId);
     if (!chan || chan.completed || chan.interrupted) {
       trait._channelId = null;
       trait._castsDone = castsDone + 1;

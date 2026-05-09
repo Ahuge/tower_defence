@@ -59,8 +59,10 @@ export function FactionUnlockSplash() {
     }
   };
 
-  // Reactive portrait detection — re-evaluates on rotate so a tablet
-  // swap doesn't wedge on the wrong aspect.
+  // Read aspect on render — splash is a one-shot take-over so
+  // re-evaluating per render is functionally equivalent to once-at-
+  // mount. If a future surface needs to survive a rotate, wire
+  // `mql.addEventListener('change', ...)` in a useEffect + drive state.
   const isPortrait = typeof window !== 'undefined'
     && window.matchMedia('(max-aspect-ratio: 1/1)').matches;
   const splashImg = splashSrc(factionId, isPortrait);

@@ -74,23 +74,30 @@ export class ChannelBarOverlay {
     const time = this.scene.time?.now ?? 0;
     this.updateBuffReadout(time);
 
+    const sys = ChannelSystem.peek(this.scene);
     const creeps: any[] = (this.scene as any).creeps ?? [];
 
-    // First pass: gold buff-glow around every channel-buffed creep.
-    // Renders BEFORE caster halos so caster-buffed creeps (rare, but
-    // possible if a Scribe's summons spawn during a buff state) layer
-    // their caster halo on top.
-    for (const creep of creeps) {
-      if (!creep || creep.alive === false) continue;
-      const buff = creep._channelBuff;
-      if (typeof buff === 'number' && buff > 0) {
-        this.drawBuffGlow(creep, buff, time);
+    // Buff-glow pass — only when a `_channelHpBuff` is currently
+    // active. Reads the scene field directly (not `buffText.visible`,
+    // which is lazy-created and would lag one frame on first
+    // activation). Saves the creep walk on every frame in non-
+    // Counterspell content.
+    if (this.getHpBuff() > 0) {
+      for (const creep of creeps) {
+        if (!creep || creep.alive === false) continue;
+        const buff = creep._channelBuff;
+        if (typeof buff === 'number' && buff > 0) {
+          this.drawBuffGlow(creep, buff, time);
+        }
       }
     }
 
-    // Second pass: caster halos for creeps with the channel_caster
-    // trait. Visible from spawn — without this, casters look identical
-    // to standard creeps until their channel-bar appears 1+s later.
+    // Caster halo pass — must run from caster spawn (the channel bar
+    // appears ~1s later via `channelStartAt`; without this halo casters
+    // look identical to standard creeps for that pre-cast window).
+    // CANNOT be gated on `peek(scene)` because the scene's
+    // ChannelSystem isn't created until the first cast fires. Cost
+    // is one getTrait scan per alive creep — trivial.
     for (const creep of creeps) {
       if (!creep || creep.alive === false || !creep.traits) continue;
       const trait = getTrait(creep.traits, 'channel_caster');
@@ -98,10 +105,11 @@ export class ChannelBarOverlay {
       this.drawHalo(creep, trait, time);
     }
 
-    // Second pass: channel bars for active channels.
-    const sys = ChannelSystem.peek(this.scene);
-    if (!sys) {
-      this.hideAllSecondsTexts();
+    // Channel-bar pass — only when at least one channel is registered.
+    // The combined `!sys || !sys.hasAny()` check narrows `sys` cleanly
+    // for the rest of the method without a non-null assertion.
+    if (!sys || !sys.hasAny()) {
+      if (this.secondsTexts.size > 0) this.hideAllSecondsTexts();
       return;
     }
     const all = sys.listActive();
@@ -133,11 +141,19 @@ export class ChannelBarOverlay {
     this.secondsTexts.clear();
   }
 
+  /** Cumulative `_channelHpBuff` percent set by the Scribe's
+   *  `buff_next_wave_hp` effect on the scene. 0 when no buff is
+   *  active. One read site for the cast — `update()` and
+   *  `updateBuffReadout` both call this. */
+  private getHpBuff(): number {
+    return ((this.scene as any)._channelHpBuff as number | undefined) ?? 0;
+  }
+
   /** HUD readout for the cumulative `_channelHpBuff` set by the
    *  Scribe's buff_next_wave_hp effect. Pulses gold when active so the
    *  player sees the cause of inflated wave HP bars. */
   private updateBuffReadout(time: number): void {
-    const buff = ((this.scene as any)._channelHpBuff as number | undefined) ?? 0;
+    const buff = this.getHpBuff();
     if (buff <= 0) {
       if (this.buffText) {
         this.buffText.setVisible(false);

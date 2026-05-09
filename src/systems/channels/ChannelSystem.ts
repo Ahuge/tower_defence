@@ -169,6 +169,19 @@ export class ChannelSystem {
     return Array.from(this.active.values());
   }
 
+  /** Direct lookup by channel id. O(1) — preferred over
+   *  `listActive().find(c => c.id === id)` from per-frame paths. */
+  get(channelId: string): ChannelInstance | null {
+    return this.active.get(channelId) ?? null;
+  }
+
+  /** True iff any channel is currently registered (started, not yet
+   *  pruned). Cheaper than `listActive().length > 0` since it doesn't
+   *  allocate. Useful as a per-frame early-out in HUD overlays. */
+  hasAny(): boolean {
+    return this.active.size > 0;
+  }
+
   getStats(): Readonly<ChannelStats> {
     return this.stats;
   }
