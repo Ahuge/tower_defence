@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AttackerComposer } from './AttackerComposer';
+import { AttackerComposer, AttackerEconomyConfig } from './AttackerComposer';
 import type { AttackerPalette } from '../../data/AttackerPalettes';
 import type { AttackerAbilityDef } from '../../data/AttackerAbilityDefs';
 
@@ -17,9 +17,24 @@ const ABILITIES: AttackerAbilityDef[] = [
   { id: 'b', label: 'B', description: '', effectId: 'b', cooldown: 2 },
 ];
 
+/** Build a default-everything economy at the given baseBudget — used by
+ *  the picks/abilities/wagons tests that don't care about growth or
+ *  carryover. The economy-v3 tests further down construct their own
+ *  configs to exercise specific knobs. */
+function eco(baseBudget: number, overrides: Partial<AttackerEconomyConfig> = {}): AttackerEconomyConfig {
+  return {
+    baseBudget,
+    growthPerWave: 0,
+    maxCarryoverMult: 0,
+    camps: { costPerCamp: 50, incomePerWave: 15, max: 0 },
+    wagon: { costPerWagon: 25, max: 2 },
+    ...overrides,
+  };
+}
+
 describe('AttackerComposer picks + budget', () => {
   it('respects budget when adding picks', () => {
-    const c = new AttackerComposer(PALETTE, 20);
+    const c = new AttackerComposer(PALETTE, eco(20));
     expect(c.adjust('standard', 4)).toBe(true);  // 20e
     expect(c.adjust('standard', 1)).toBe(false); // overflows
     expect(c.lockedPicks().length).toBe(1);
@@ -27,20 +42,20 @@ describe('AttackerComposer picks + budget', () => {
   });
 
   it('refuses negative count', () => {
-    const c = new AttackerComposer(PALETTE, 100);
+    const c = new AttackerComposer(PALETTE, eco(100));
     expect(c.adjust('standard', -1)).toBe(false);
   });
 
   it('clear() resets picks but preserves budget', () => {
-    const c = new AttackerComposer(PALETTE, 100);
+    const c = new AttackerComposer(PALETTE, eco(100));
     c.adjust('standard', 5);
     c.clear();
     expect(c.lockedPicks().length).toBe(0);
-    expect(c.getState().remainingEssence).toBe(100);
+    expect(c.getRemainingEssence()).toBe(100);
   });
 
   it('hasAnyPicks reflects state', () => {
-    const c = new AttackerComposer(PALETTE, 100);
+    const c = new AttackerComposer(PALETTE, eco(100));
     expect(c.hasAnyPicks()).toBe(false);
     c.adjust('standard', 1);
     expect(c.hasAnyPicks()).toBe(true);
@@ -51,7 +66,7 @@ describe('AttackerComposer picks + budget', () => {
 
 describe('AttackerComposer abilities', () => {
   it('toggles queued state when ready', () => {
-    const c = new AttackerComposer(PALETTE, 100, ABILITIES);
+    const c = new AttackerComposer(PALETTE, eco(100), ABILITIES);
     expect(c.toggleAbility('a')).toBe(true);
     expect(c.queuedAbilities().length).toBe(1);
     expect(c.toggleAbility('a')).toBe(true); // toggle off
@@ -59,7 +74,7 @@ describe('AttackerComposer abilities', () => {
   });
 
   it('refuses toggle while on cooldown', () => {
-    const c = new AttackerComposer(PALETTE, 100, ABILITIES);
+    const c = new AttackerComposer(PALETTE, eco(100), ABILITIES);
     c.toggleAbility('a');
     c.commitQueuedAbilities();
     // 'a' is now on cooldown 3.
@@ -68,7 +83,7 @@ describe('AttackerComposer abilities', () => {
   });
 
   it('cooldowns tick down each resetForWave', () => {
-    const c = new AttackerComposer(PALETTE, 100, ABILITIES);
+    const c = new AttackerComposer(PALETTE, eco(100), ABILITIES);
     c.toggleAbility('a');
     c.commitQueuedAbilities();
     expect(c.getState().abilities[0].cooldownRemaining).toBe(3);
@@ -135,7 +150,7 @@ describe('AttackerComposer economy v3 — camps', () => {
     const c = new AttackerComposer(PALETTE, ECONOMY);
     expect(c.adjustCamps(1)).toBe(true);
     expect(c.getState().camps.count).toBe(1);
-    expect(c.getState().remainingEssence).toBe(50);
+    expect(c.getRemainingEssence()).toBe(50);
   });
 
   it('built camps persist across resetForWave AND boost income', () => {
@@ -161,7 +176,7 @@ describe('AttackerComposer economy v3 — camps', () => {
     c.resetForWave(2);
     // Wave 2 starts with 115 budget; the previously-built camp is
     // already paid, doesn't drain wave 2.
-    expect(c.getState().remainingEssence).toBe(115);
+    expect(c.getRemainingEssence()).toBe(115);
   });
 
   it('camps capped at max', () => {
@@ -184,15 +199,15 @@ describe('AttackerComposer economy v3 — camps', () => {
 
 describe('AttackerComposer wagons', () => {
   it('costs essence per wagon (default 25)', () => {
-    const c = new AttackerComposer(PALETTE, 100);
+    const c = new AttackerComposer(PALETTE, eco(100));
     expect(c.adjustWagon(1)).toBe(true);
-    expect(c.getState().remainingEssence).toBe(75);
+    expect(c.getRemainingEssence()).toBe(75);
     expect(c.adjustWagon(1)).toBe(true);
-    expect(c.getState().remainingEssence).toBe(50);
+    expect(c.getRemainingEssence()).toBe(50);
   });
 
   it('caps at max (default 2)', () => {
-    const c = new AttackerComposer(PALETTE, 100);
+    const c = new AttackerComposer(PALETTE, eco(100));
     c.adjustWagon(1);
     c.adjustWagon(1);
     expect(c.adjustWagon(1)).toBe(false);
@@ -200,12 +215,12 @@ describe('AttackerComposer wagons', () => {
   });
 
   it('refuses when budget cannot afford', () => {
-    const c = new AttackerComposer(PALETTE, 20);
+    const c = new AttackerComposer(PALETTE, eco(20));
     expect(c.adjustWagon(1)).toBe(false); // wagon costs 25, budget 20
   });
 
   it('resets to 0 between waves', () => {
-    const c = new AttackerComposer(PALETTE, 100);
+    const c = new AttackerComposer(PALETTE, eco(100));
     c.adjustWagon(2);
     c.resetForWave(100);
     expect(c.getState().wagon.count).toBe(0);

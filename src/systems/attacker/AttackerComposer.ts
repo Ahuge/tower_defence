@@ -71,20 +71,8 @@ export interface AttackerEconomyConfig {
   wagon: { costPerWagon: number; max: number };
 }
 
-/** Default economy — used when callers pass a number budget for
- *  back-compat with the v1/v2 constructor signature. */
-const LEGACY_DEFAULTS = {
-  growthPerWave: 0,
-  maxCarryoverMult: 0,
-  camps: { costPerCamp: 50, incomePerWave: 15, max: 0 },
-  wagon: { costPerWagon: 25, max: 2 },
-};
-
 export interface ComposerState {
   picks: Map<string, AttackerPick>;
-  /** Essence remaining after current picks + wagons + camps purchased
-   *  this wave. */
-  remainingEssence: number;
   /** Total available this wave: thisWaveIncome + carryover. */
   budget: number;
   /** Carryover from the previous wave's leftover. UI displays this
@@ -113,23 +101,19 @@ export class AttackerComposer {
 
   constructor(
     palette: AttackerPalette,
-    budgetOrConfig: number | AttackerEconomyConfig,
+    economy: AttackerEconomyConfig,
     abilities: AttackerAbilityDef[] = [],
   ) {
     this.palette = palette;
-    this.economy = typeof budgetOrConfig === 'number'
-      ? { baseBudget: budgetOrConfig, ...LEGACY_DEFAULTS }
-      : budgetOrConfig;
-    const cfg = this.economy;
+    this.economy = economy;
     this.state = {
       picks: new Map(),
-      remainingEssence: cfg.baseBudget,
-      budget: cfg.baseBudget,
+      budget: economy.baseBudget,
       carryover: 0,
-      thisWaveIncome: cfg.baseBudget,
+      thisWaveIncome: economy.baseBudget,
       abilities: abilities.map(def => ({ def, cooldownRemaining: 0, queued: false })),
-      wagon: { count: 0, max: cfg.wagon.max, costPerWagon: cfg.wagon.costPerWagon },
-      camps: { count: 0, max: cfg.camps.max, costPerCamp: cfg.camps.costPerCamp, incomePerWave: cfg.camps.incomePerWave },
+      wagon: { count: 0, max: economy.wagon.max, costPerWagon: economy.wagon.costPerWagon },
+      camps: { count: 0, max: economy.camps.max, costPerCamp: economy.camps.costPerCamp, incomePerWave: economy.camps.incomePerWave },
       waveNum: 1,
     };
   }
@@ -147,8 +131,9 @@ export class AttackerComposer {
     const thisWaveIncome = cfg.baseBudget
       + cfg.growthPerWave * (nextWaveNum - 1)
       + camps.count * camps.incomePerWave;
+    const priorLeftover = this.state.budget - this.totalCost();
     const carryover = Math.min(
-      Math.max(0, this.state.remainingEssence),
+      Math.max(0, priorLeftover),
       thisWaveIncome * cfg.maxCarryoverMult,
     );
     const budget = thisWaveIncome + carryover;
@@ -158,7 +143,6 @@ export class AttackerComposer {
     }
     this.state = {
       picks: new Map(),
-      remainingEssence: budget,
       budget,
       carryover,
       thisWaveIncome,
@@ -189,7 +173,6 @@ export class AttackerComposer {
     } else {
       this.state.picks.set(creepTypeId, { entry, count: next });
     }
-    this.state.remainingEssence = this.state.budget - this.totalCost();
     this.notify();
     return true;
   }
@@ -215,7 +198,6 @@ export class AttackerComposer {
     const projected = this.totalCost() - before + after;
     if (projected > this.state.budget) return false;
     this.state.wagon.count = next;
-    this.state.remainingEssence = this.state.budget - this.totalCost();
     this.notify();
     return true;
   }
@@ -232,7 +214,6 @@ export class AttackerComposer {
     const projected = this.totalCost() - before + after;
     if (projected > this.state.budget) return false;
     this.state.camps.count = next;
-    this.state.remainingEssence = this.state.budget - this.totalCost();
     this.notify();
     return true;
   }
@@ -255,7 +236,6 @@ export class AttackerComposer {
   /** Clear picks (not wagons / camps / abilities). */
   clear(): void {
     this.state.picks.clear();
-    this.state.remainingEssence = this.state.budget - this.totalCost();
     this.notify();
   }
 
@@ -276,10 +256,17 @@ export class AttackerComposer {
     return () => this.listeners.delete(fn);
   }
 
+  /** Essence available after current picks + wagons + camps purchased
+   *  this wave. Derived from `budget - totalCost()` rather than cached
+   *  to avoid drift across the four mutators that change cost. */
+  getRemainingEssence(): number {
+    return this.state.budget - this.totalCost();
+  }
+
   /** Total essence committed this wave: picks + wagons + camps just
    *  bought. (Camps already built in earlier waves don't count — they
    *  were paid for then.) */
-  private totalCost(): number {
+  totalCost(): number {
     let total = 0;
     for (const pick of this.state.picks.values()) {
       total += pick.entry.cost * pick.count;

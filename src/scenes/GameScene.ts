@@ -97,7 +97,7 @@ import { buildAttackerWave } from '../systems/attacker/AttackerWaveBuilder';
 import { getAttackerPalette, visibleEntries } from '../data/AttackerPalettes';
 import { AttackerAbilities } from '../systems/attacker/AttackerAbilities';
 import { DEFAULT_ATTACKER_ABILITIES } from '../data/AttackerAbilityDefs';
-import { pickUpgradeTarget, pickExpansionBuild, getDifficultyConfig, type AttackerDifficulty, type ExpansionSocket } from '../systems/attacker/CpuDefender';
+import { getDifficultyConfig, type AttackerDifficulty } from '../systems/attacker/CpuDefender';
 import { getPrep, prepHpMultiplier } from '../data/AttackerPreps';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
@@ -402,15 +402,13 @@ export class GameScene extends Phaser.Scene {
    *  ignored otherwise. */
   private _missionSendsBought = 0;
   private _missionHeroHpMinFraction = 1;
-  /** Attacker mode: gold from creep kills routed to the defender's
-   *  treasury, spent automatically on upgrading their pre-placed
-   *  towers. Adaptive defense — the longer the player struggles, the
-   *  stronger the defense gets. */
-  private _attackerDefenderGold = 0;
-  /** Plan 12 v3 — bot AI driving the attacker mode CPU defender. The
-   *  bot plays a full game (places + mazes + upgrades) using the
-   *  BalancedBrain. One bot, plays as the campaign's creep faction
-   *  (e.g. Arcane on M8). Null on non-attacker missions. */
+  /** Attacker mode: bot AI driving the CPU defender. Plays a full
+   *  game (places + mazes + upgrades) using the BalancedBrain. One
+   *  bot, plays as the campaign's creep faction (e.g. Arcane on M8).
+   *  Null on non-attacker missions. Gold from creep kills credits the
+   *  bot via `addAttackerDefenderGold` so its treasury accumulates
+   *  spending power for placements + upgrades through the same
+   *  EconomyManager pipeline a human uses. */
   private _attackerCpuBotAI: BotAI | null = null;
   /** M10 finale — set of "col,row" cells the player is allowed to
    *  build on. Empty = no restriction (every other mission).
@@ -432,14 +430,9 @@ export class GameScene extends Phaser.Scene {
   /** Plan 12 v2: per-mission override for the leak threshold needed
    *  to win as attacker. Defaults to ATTACKER_LEAK_THRESHOLD_DEFAULT. */
   private _missionAttackerLeakThreshold?: number;
-  /** Plan 12 v2 Phase 3: defender AI difficulty. Default 'normal'. */
+  /** Defender AI difficulty. Default 'normal'. Read by
+   *  `addAttackerDefenderGold` to scale the bot's treasury. */
   private _missionAttackerDefenderDifficulty?: AttackerDifficulty;
-  /** Plan 12 v2 Phase 3: live socket pool — sockets shrink as the CPU
-   *  builds on them. Filled at create() from mapDef.expansionSockets. */
-  private _attackerOpenSockets: ExpansionSocket[] = [];
-  /** Plan 12 v2 Phase 3: count of expansion-socket builds the CPU has
-   *  already made this mission. Capped by the difficulty config. */
-  private _attackerExpansionsBuilt = 0;
   /** Plan 12 v2 Phase 2.5: per-wave defender prep order (ids resolve
    *  through AttackerPreps.ATTACKER_PREPS). Index = waveNum-1. */
   private _missionAttackerPrepOrder?: string[];
@@ -790,7 +783,6 @@ export class GameScene extends Phaser.Scene {
     this.viewingOpponent = false;
     this._attackerCpuBotAI = null;
     this._attackerInstantWinFired = false;
-    this._attackerDefenderGold = 0;
     // Only keep registry entries for the current mode
     if (this.matchMode !== 'circle_coop') {
       const oldCircle = this.registry.get('circle');
@@ -1227,16 +1219,6 @@ export class GameScene extends Phaser.Scene {
       );
     }
     // Plan 12 v2 Phase 3: snapshot expansion sockets from the map.
-    // CPU defender builds new towers on these as treasury fills up,
-    // capped by the mission's difficulty knob. (Legacy — v3 bot below
-    // supersedes this for missions where it spins up; the field is
-    // retained for backward compat with maps that still declare it.)
-    if (this.matchMode === 'attacker' && mapDef.expansionSockets) {
-      this._attackerOpenSockets = mapDef.expansionSockets.map(s => ({
-        col: s.col, row: s.row, allowedTowerIds: [...s.allowedTowerIds],
-      }));
-    }
-    this._attackerExpansionsBuilt = 0;
     // Plan 12 v3 — spin up the CPU defender bot. Plays a full game on
     // the same grid the player sees: places, mazes, upgrades using
     // BalancedBrain. Faction is the campaign's creep faction (M8 vs
@@ -4452,7 +4434,7 @@ export class GameScene extends Phaser.Scene {
     }));
     GameUIStore.setAttackerComposer({
       entries,
-      spent: state.budget - state.remainingEssence,
+      spent: this.attackerComposer.totalCost(),
       budget: state.budget,
       waveNum: this.currentWave + 1,
       canSend: this.attackerComposer.hasAnyPicks(),
@@ -4493,78 +4475,7 @@ export class GameScene extends Phaser.Scene {
   addAttackerDefenderGold(amount: number): void {
     const cfg = getDifficultyConfig(this._missionAttackerDefenderDifficulty ?? 'normal');
     const waveScale = 1 + 0.1 * Math.max(0, this.currentWave - 1);
-    const scaled = amount * cfg.treasuryMult * waveScale;
-    this._attackerCpuBotAI?.creditKill(0, scaled);
-    // Legacy field — retained for any HUD code that still reads it,
-    // but unused by the v3 bot path.
-    this._attackerDefenderGold += scaled;
-  }
-
-  /** Spend defender treasury on tower upgrades or expansion-socket
-   *  builds. Throttled so the player can SEE the defender adapting
-   *  rather than watching the lattice level up in one frame. Picks
-   *  the highest-counter-score affordable action vs. the upcoming
-   *  wave (Plan 12 v2 Phase 3 — was a flat lowest-level-first pick). */
-  private _attackerLastUpgradeAt = 0;
-  private tickAttackerDefenderUpgrades(): void {
-    const now = this.time.now;
-    if (now - this._attackerLastUpgradeAt < 1500) return;
-    if (this._attackerDefenderGold <= 0) return;
-
-    const cfg = getDifficultyConfig(this._missionAttackerDefenderDifficulty ?? 'normal');
-    const upcoming = this.currentWave < this.waves.length ? this.waves[this.currentWave] : null;
-
-    // 1) Try a counter-biased upgrade pick. Walls / mobile units skipped.
-    const upgrade = pickUpgradeTarget(this._towers, this._attackerDefenderGold, upcoming);
-
-    // 2) Try a counter-biased expansion-socket build. Skipped on
-    //    'easy' (maxExpansions = 0) and once the cap is hit.
-    let expansion: { socket: ExpansionSocket; towerId: string; cost: number } | null = null;
-    if (this._attackerExpansionsBuilt < cfg.maxExpansions && this._attackerOpenSockets.length > 0) {
-      expansion = pickExpansionBuild(
-        this._attackerOpenSockets,
-        this._attackerDefenderGold,
-        upcoming,
-        (id) => {
-          try { return getTowerType(id).cost; }
-          catch { return -1; }
-        },
-      );
-    }
-
-    // Prefer expansion when available — new towers reshape the kill
-    // zone more than another L+1 on an existing one. Only fall back
-    // to upgrade when nothing can be built.
-    if (expansion) {
-      try {
-        const towerType = getTowerType(expansion.towerId);
-        const result = this.towerMgr.placeTower(expansion.socket.col, expansion.socket.row, towerType, this.allPaths, () => {
-          this.recalculatePaths();
-          return this.allPaths;
-        });
-        if (result) {
-          this._attackerDefenderGold -= expansion.cost;
-          this._attackerExpansionsBuilt++;
-          this._attackerOpenSockets = this._attackerOpenSockets.filter(s => s !== expansion!.socket);
-          this._attackerLastUpgradeAt = now;
-          this.eventLog.gameMessage(`Defender deployed ${towerType.name} at ${expansion.socket.col},${expansion.socket.row}`);
-          if (result.pathsChanged) {
-            this.rerouteCreepsAroundTower(expansion.socket.col, expansion.socket.row);
-            this.drawPath();
-          }
-          return;
-        }
-      } catch (err) {
-        console.warn(`[attacker] expansion build failed at ${expansion.socket.col},${expansion.socket.row}:`, err);
-      }
-    }
-
-    if (upgrade) {
-      this._attackerDefenderGold -= upgrade.cost;
-      upgrade.tower.upgrade(null);
-      this._attackerLastUpgradeAt = now;
-      this.eventLog.gameMessage(`Defender reinforced ${upgrade.tower.typeDef.name} → L${upgrade.tower.level}`);
-    }
+    this._attackerCpuBotAI?.creditKill(0, amount * cfg.treasuryMult * waveScale);
   }
 
   /** Called by WaveController when a wave clears */
