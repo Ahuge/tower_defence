@@ -26,12 +26,33 @@ export const test = base.extend<TDFixtures>({
       // First navigation primes the origin so localStorage exists.
       await page.goto(`${baseURL}${pathSuffix}?test=1`);
       // Wipe any state from a previous run in the same browser
-      // context (Playwright reuses contexts per-test).
+      // context (Playwright reuses contexts per-test). Then mark the
+      // player as "returning" so the first-launch SplashScreen
+      // doesn't intercept the auto-start flows the tutorial tests
+      // depend on (basics → skip_hint → match-mode primers). The
+      // splash itself has its own dedicated test if/when one is
+      // needed; every other spec wants the post-splash menu state.
       await page.evaluate(() => {
         try { localStorage.clear(); } catch {}
         try { sessionStorage.clear(); } catch {}
+        try {
+          localStorage.setItem('td_profile', JSON.stringify({
+            schemaVersion: 1,
+            xp: 0,
+            cores: 0,
+            coreTransactions: [],
+            unlockedModes: ['standard', 'tutorial'],
+            unlockedMaps: ['plains', 'tutorial', 'hero_plains'],
+            unlockedFactionsLifetime: ['arcane'],
+            campaignProgress: {},
+            campaignState: {},
+            careerHighStage: 0,
+            towerChips: {},
+            flags: { first_game_complete: true },
+          }));
+        } catch {}
       });
-      // Navigate again so the reload picks up empty storage.
+      // Navigate again so the reload picks up the seeded profile.
       await page.goto(`${baseURL}${pathSuffix}?test=1`);
       // Wait for the debug hook to install (it imports lazily), then
       // wait for the splash to dismiss.
