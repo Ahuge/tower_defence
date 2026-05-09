@@ -73,11 +73,15 @@ export function App() {
   // While the splash is up, suppress everything else. Once the player
   // taps Play (FTG launches into GameScene which clears the screen)
   // or Skip (menu falls through normally), this gate releases.
+  // AppLoadingScreen is included so its `app-splash-dismissed` event
+  // still fires on first launch — without it, the test hook's
+  // `isBootComplete()` flag never flips and Playwright fixtures stall.
   if (showSplash && screen === 'menu') {
     return (
       <>
         <SplashScreen onDismissed={() => setShowSplash(false)} />
         <AnalyticsDebugPanel />
+        <AppLoadingScreen />
       </>
     );
   }
