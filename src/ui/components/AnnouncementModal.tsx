@@ -33,6 +33,27 @@ import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { UIBridge } from '../UIBridge';
 import { FullscreenOverlay } from './FullscreenOverlay';
 
+const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
+
+/** Picks the portrait hero art variant on tall viewports (phone), falls
+ *  back to the landscape file on wide viewports / when only landscape is
+ *  authored. Mirrors the same media query LoadingScreen uses. */
+function useIsPortraitViewport(): boolean {
+  const [portrait, setPortrait] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(max-aspect-ratio: 1/1)').matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-aspect-ratio: 1/1)');
+    const onChange = () => setPortrait(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return portrait;
+}
+
 export function AnnouncementModal() {
   const [active, setActive] = useState<Announcement | null>(null);
   /** True when the player explicitly opened a past announcement from
@@ -68,10 +89,15 @@ export function AnnouncementModal() {
     return () => { unsubScreen(); window.removeEventListener('td-announcement-open', onOpen); };
   }, [active]);
 
+  const isPortrait = useIsPortraitViewport();
+
   if (!active) return null;
   const accentColor = active.factionAccent
     ? '#' + FACTIONS[active.factionAccent].primaryColor.toString(16).padStart(6, '0')
     : 'var(--gold)';
+  const heroArtSrc = active.heroArt
+    ? `${BASE_URL}${(isPortrait && active.heroArtPortrait) ? active.heroArtPortrait : active.heroArt}`
+    : null;
 
   const dismiss = () => {
     if (!reviewMode) PlayerProfile.markAnnouncementSeen(active.id);
@@ -92,9 +118,8 @@ export function AnnouncementModal() {
         }
       `}</style>
 
-      {/* Hero art layer — placeholder noise gradient until the art-PRD
-          deliverables land. The art slot is here so swapping in a real
-          image is a one-line `<img>` insertion. */}
+      {/* Backdrop accent glow — sits behind the card and tints the
+          fullscreen scrim toward the announcement's faction colour. */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
         background: `radial-gradient(ellipse at 50% 35%, ${accentColor}22 0%, transparent 60%)`,
@@ -117,6 +142,25 @@ export function AnnouncementModal() {
           animation: 'announcementRise 320ms ease-out, announcementGlow 4s ease-in-out infinite',
         }}
       >
+        {heroArtSrc && (
+          <img
+            src={heroArtSrc}
+            alt=""
+            aria-hidden="true"
+            style={{
+              display: 'block',
+              width: 'calc(100% + clamp(40px, 8vw, 80px))',
+              margin: '-32px calc(clamp(20px, 4vw, 40px) * -1) 0',
+              aspectRatio: isPortrait ? '9 / 16' : '16 / 9',
+              objectFit: 'cover',
+              borderTopLeftRadius: '13px',
+              borderTopRightRadius: '13px',
+              maskImage: 'linear-gradient(to bottom, #000 70%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, #000 70%, transparent 100%)',
+            }}
+          />
+        )}
+
         <div style={{
           fontSize: '11px', letterSpacing: '0.18em', textTransform: 'uppercase',
           color: 'var(--text-dim)',
