@@ -23,6 +23,7 @@ import { Analytics } from '../AnalyticsClient';
 import { StorePersistence } from '../monetization/StorePersistence';
 import { PlayerProfileStore, PlayerProfileState } from './PlayerProfileStore';
 import { CoreWallet } from '../wallets/CoreWallet';
+import { ANNOUNCEMENT_CHANGED_EVENT } from '../../data/AnnouncementEvents';
 import {
   levelFromXp,
   xpProgressInLevel,
@@ -161,19 +162,16 @@ class PlayerProfileClass {
     return this.getFlag(`announcement_seen.${id}`);
   }
 
-  /** Mark the announcement as read. Idempotent. Dispatches a
-   *  `td-announcements-changed` window event so the profile-avatar
-   *  badge + the mailbox panel can re-render without subscribing to
-   *  the whole profile store. */
+  /** Mark the announcement as read. Idempotent. Dispatches
+   *  ANNOUNCEMENT_CHANGED_EVENT so the avatar badge + mailbox can
+   *  re-render without subscribing to the whole profile store. */
   markAnnouncementSeen(id: string): void {
     if (this.hasSeenAnnouncement(id)) return;
     this.setFlag(`announcement_seen.${id}`, true);
     try {
-      window.dispatchEvent(new CustomEvent('td-announcements-changed', { detail: { id } }));
+      window.dispatchEvent(new CustomEvent(ANNOUNCEMENT_CHANGED_EVENT, { detail: { id } }));
     } catch {
-      // SSR / non-browser test envs lack `window` — the in-memory
-      // flag is already updated, listeners that exist will re-read
-      // on their next render anyway.
+      // SSR / test envs: no window.
     }
   }
 

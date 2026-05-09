@@ -26,10 +26,6 @@ export interface FullscreenOverlayProps {
    *    content (hero art, large emblems) where the centre stays
    *    legible and the edges fall to deep black. */
   backdrop?: 'scrim' | 'gradient';
-  /** Suppress dismiss on backdrop click + ESC. Default false. Set to
-   *  true for modals that require an explicit user choice (none
-   *  today, but the prop is here for future "are you sure?" CTAs). */
-  modal?: boolean;
   /** Optional inline style override for the backdrop layer. Consumers
    *  with bespoke colours (e.g. faction-tinted scrim) can pass a
    *  partial style here without re-implementing the layout. */
@@ -44,27 +40,24 @@ export function FullscreenOverlay({
   onClose,
   zIndex = 9000,
   backdrop = 'scrim',
-  modal = false,
   backdropStyle,
   children,
 }: FullscreenOverlayProps) {
   // ESC closes — same affordance as the backdrop click. Bound at the
   // document level since the overlay isn't always focusable.
   useEffect(() => {
-    if (modal) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [modal, onClose]);
+  }, [onClose]);
 
-  const onBackdropClick = modal ? undefined : onClose;
   const bg = backdrop === 'gradient' ? GRADIENT_BG : SCRIM_BG;
 
   return (
     <div
-      onClick={onBackdropClick}
+      onClick={onClose}
       style={{
         position: 'fixed', inset: 0,
         background: bg,

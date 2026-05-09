@@ -22,6 +22,7 @@ import { useEffect, useState, useCallback } from 'preact/hooks';
 import { platformBridge } from '../../systems/platform';
 import type { PlayerProfile } from '../../systems/platform';
 import { getUnseenCount } from '../../data/Announcements';
+import { ANNOUNCEMENT_CHANGED_EVENT } from '../../data/AnnouncementEvents';
 
 interface Props {
   size?: number;
@@ -35,6 +36,16 @@ interface Props {
    * get the user to that screen.
    */
   onClickOverride?: () => void;
+}
+
+function computeTitle(
+  profile: PlayerProfile | null,
+  busy: boolean,
+  routesToSettings: boolean,
+): string {
+  if (!profile) return busy ? 'Signing in…' : 'Tap to sign in';
+  const base = `${profile.displayName} — ${profile.provider}`;
+  return routesToSettings ? `${base} · tap for settings` : base;
 }
 
 function initialsOf(name: string | null | undefined): string {
@@ -65,8 +76,8 @@ export function ProfileAvatar({ size = 32, onClickOverride }: Props) {
   // seen (modal close, mailbox row click) anywhere in the app.
   useEffect(() => {
     const onAnnouncements = () => setUnseenAnnouncements(getUnseenCount());
-    window.addEventListener('td-announcements-changed', onAnnouncements);
-    return () => window.removeEventListener('td-announcements-changed', onAnnouncements);
+    window.addEventListener(ANNOUNCEMENT_CHANGED_EVENT, onAnnouncements);
+    return () => window.removeEventListener(ANNOUNCEMENT_CHANGED_EVENT, onAnnouncements);
   }, []);
 
   // Click behaviour. The shared Header passes `onClickOverride` that
@@ -97,17 +108,8 @@ export function ProfileAvatar({ size = 32, onClickOverride }: Props) {
   }, [profile, busy, onClickOverride]);
 
   const hasImage = profile?.avatarUrl && !imgFailed;
-  // Clickable in every state when an override is wired (Header → Settings).
-  // Standalone use is still clickable only when there's no profile (legacy
-  // "tap to sign in" behaviour).
   const clickable = !!onClickOverride || !profile;
-  const title = profile
-    ? onClickOverride
-      ? `${profile.displayName} — ${profile.provider} · tap for settings`
-      : `${profile.displayName} — ${profile.provider}`
-    : busy
-      ? 'Signing in…'
-      : 'Tap to sign in';
+  const title = computeTitle(profile, busy, !!onClickOverride);
 
   const baseStyle = {
     width: `${size}px`,

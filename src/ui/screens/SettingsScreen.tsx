@@ -27,8 +27,14 @@ import {
   downloadJSONL as downloadCapture, clearAll as clearCaptures,
 } from '../../systems/learning/LiveCapture';
 import {
-  getAnnouncements, type Announcement,
+  getAnnouncements,
+  formatAnnouncementDate,
+  type Announcement,
 } from '../../data/Announcements';
+import {
+  ANNOUNCEMENT_CHANGED_EVENT,
+  ANNOUNCEMENT_OPEN_EVENT,
+} from '../../data/AnnouncementEvents';
 // Alias the singleton — the platform bridge above already imports
 // `PlayerProfile` as a type for its own profile shape, distinct from
 // our progression facade.
@@ -128,14 +134,14 @@ function MailboxSection() {
   // pip on each row updates without a manual refresh.
   useEffect(() => {
     const onChange = () => setTick(t => t + 1);
-    window.addEventListener('td-announcements-changed', onChange);
-    return () => window.removeEventListener('td-announcements-changed', onChange);
+    window.addEventListener(ANNOUNCEMENT_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(ANNOUNCEMENT_CHANGED_EVENT, onChange);
   }, []);
 
   if (list.length === 0) return null;
 
   const open = (a: Announcement) => {
-    window.dispatchEvent(new CustomEvent('td-announcement-open', { detail: { id: a.id } }));
+    window.dispatchEvent(new CustomEvent(ANNOUNCEMENT_OPEN_EVENT, { detail: { id: a.id } }));
   };
 
   return (
@@ -183,7 +189,7 @@ function MailboxSection() {
                 color: 'var(--text-dim)',
                 whiteSpace: 'nowrap',
                 fontFamily: 'VT323, ui-monospace, monospace',
-              }}>{a.publishedAt}</div>
+              }}>{formatAnnouncementDate(a.publishedAt)}</div>
               {!seen && (
                 <div
                   aria-label="unread"

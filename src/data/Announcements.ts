@@ -18,6 +18,18 @@
 import type { FactionId } from './Factions';
 import { PlayerProfile } from '../systems/profile/PlayerProfile';
 
+export { ANNOUNCEMENT_CHANGED_EVENT, ANNOUNCEMENT_OPEN_EVENT } from './AnnouncementEvents';
+
+/** "2026-05-09" → "May 9, 2026". Shared between modal headline + mailbox
+ *  row so they stay consistent. The registry validates date format in
+ *  Announcements.test.ts, so `toLocaleDateString` always sees a real
+ *  date; no parse-failure branch. */
+export function formatAnnouncementDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+}
+
 /** One body section. The modal renders these top-to-bottom; the
  *  mailbox preview only uses `summary` + the first `lead`. */
 export type AnnouncementSection =
