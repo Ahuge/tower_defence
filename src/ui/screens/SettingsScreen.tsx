@@ -26,6 +26,13 @@ import {
   getStats as getCaptureStats,
   downloadJSONL as downloadCapture, clearAll as clearCaptures,
 } from '../../systems/learning/LiveCapture';
+import {
+  getAnnouncements, type Announcement,
+} from '../../data/Announcements';
+// Alias the singleton — the platform bridge above already imports
+// `PlayerProfile` as a type for its own profile shape, distinct from
+// our progression facade.
+import { PlayerProfile as PlayerProfileFacade } from '../../systems/profile/PlayerProfile';
 
 export function SettingsScreen() {
   const [, setTick] = useState(0);
@@ -37,6 +44,7 @@ export function SettingsScreen() {
       <Header title="SETTINGS" back={() => UIBridge.show('menu')} />
       <div class="ui-section">
         <AccountSection profile={profile} rerender={rerender} />
+        <MailboxSection />
         <RestoreSection />
         <TutorialSection />
         <AnalyticsSection />
@@ -104,6 +112,94 @@ function providerLabel(provider: string): string {
     case 'web': return 'Web (anonymous)';
     default: return provider;
   }
+}
+
+// ─── Mailbox (announcements) ──────────────────────────────────
+
+/** Lists every announcement (read + unread), newest-first. Unread
+ *  rows are highlighted; clicking any row dispatches `td-announce
+ *  ment-open` so AnnouncementModal opens it in review-mode (the
+ *  modal won't re-mark-as-seen on close in that path). */
+function MailboxSection() {
+  const list = getAnnouncements();
+  const [, setTick] = useState(0);
+
+  // Re-render when the player marks something seen so the unread
+  // pip on each row updates without a manual refresh.
+  useEffect(() => {
+    const onChange = () => setTick(t => t + 1);
+    window.addEventListener('td-announcements-changed', onChange);
+    return () => window.removeEventListener('td-announcements-changed', onChange);
+  }, []);
+
+  if (list.length === 0) return null;
+
+  const open = (a: Announcement) => {
+    window.dispatchEvent(new CustomEvent('td-announcement-open', { detail: { id: a.id } }));
+  };
+
+  return (
+    <div class="settings-block" style={{ marginTop: '16px' }}>
+      <div class="ui-section-title">Mailbox</div>
+      <div class="text-dim text-sm mb-2">
+        Announcements from past releases. Tap any to re-read.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {list.map(a => {
+          const seen = PlayerProfileFacade.hasSeenAnnouncement(a.id);
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => open(a)}
+              class="card"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 12px',
+                textAlign: 'left',
+                cursor: 'pointer',
+                borderColor: seen ? undefined : 'var(--gold)',
+                opacity: seen ? 0.85 : 1,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontFamily: "'Silkscreen', monospace",
+                  fontSize: '13px',
+                  color: 'var(--gold)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{a.title}</div>
+                <div style={{
+                  fontSize: '11.5px',
+                  color: 'var(--text-secondary)',
+                  marginTop: '2px',
+                  lineHeight: 1.4,
+                }}>{a.summary}</div>
+              </div>
+              <div style={{
+                fontSize: '10px',
+                color: 'var(--text-dim)',
+                whiteSpace: 'nowrap',
+                fontFamily: 'VT323, ui-monospace, monospace',
+              }}>{a.publishedAt}</div>
+              {!seen && (
+                <div
+                  aria-label="unread"
+                  style={{
+                    width: '8px', height: '8px', borderRadius: '50%',
+                    background: 'var(--jewel-red, #d04848)',
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ─── Restore Purchases ────────────────────────────────────────

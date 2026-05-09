@@ -14,6 +14,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { FactionId } from '../../data/Factions';
 import { FACTIONS } from '../../data/Factions';
 import { FactionEmblem } from './FactionEmblem';
+import { FullscreenOverlay } from './FullscreenOverlay';
 import { UIBridge } from '../UIBridge';
 import { getCampaign } from '../../data/campaigns';
 
@@ -68,19 +69,11 @@ export function FactionUnlockSplash() {
   const splashImg = splashSrc(factionId, isPortrait);
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'radial-gradient(ellipse at center, rgba(20,12,30,0.96) 0%, rgba(8,5,12,0.99) 100%)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      zIndex: 800,
-      animation: 'unlockFade 280ms ease-out',
-      padding: '24px',
-      overflow: 'hidden',
-    }} onClick={dismiss}>
+    <FullscreenOverlay onClose={dismiss} backdrop="gradient" zIndex={800}>
       {/* Bespoke splash key art behind the emblem + text. Centered,
-          scaled to cover, with the existing radial vignette overlaying
-          for legibility. PNG missing → background gracefully renders
-          just the radial gradient. */}
+          scaled to cover, with a radial vignette overlaying for
+          legibility. PNG missing → background gracefully renders
+          just the gradient backdrop. */}
       {splashImg && (
         <img
           src={splashImg}
@@ -108,10 +101,6 @@ export function FactionUnlockSplash() {
         }} />
       )}
       <style>{`
-        @keyframes unlockFade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
         @keyframes unlockEmblemRise {
           from { opacity: 0; transform: scale(0.7); }
           to { opacity: 1; transform: scale(1); }
@@ -121,8 +110,8 @@ export function FactionUnlockSplash() {
           50%      { filter: drop-shadow(0 0 36px ${color}99); }
         }
       `}</style>
-      <div onClick={e => e.stopPropagation()}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', maxWidth: '520px', position: 'relative', zIndex: 2 }}>
+      <div
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', maxWidth: '520px', position: 'relative', zIndex: 2, padding: '24px' }}>
         <div style={{
           fontSize: '12px', color: 'var(--text-dim)', letterSpacing: '0.18em', textTransform: 'uppercase',
         }}>Faction Unlocked</div>
@@ -155,6 +144,6 @@ export function FactionUnlockSplash() {
           <button class="btn" onClick={dismiss}>Close</button>
         </div>
       </div>
-    </div>
+    </FullscreenOverlay>
   );
 }

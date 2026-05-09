@@ -16,6 +16,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { unlocksAtLevel, UnlockReveal } from '../../systems/profile/UnlockGates';
+import { FullscreenOverlay } from './FullscreenOverlay';
 
 interface QueueEntry {
   kind: 'level_up' | 'migration';
@@ -106,13 +107,7 @@ export function LevelUpModal() {
 
 function Modal({ children, onClose }: { children: preact.ComponentChildren; onClose: () => void }) {
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(8, 6, 14, 0.85)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 9000,
-      animation: 'fadein 200ms ease-out',
-    }} onClick={onClose}>
+    <FullscreenOverlay onClose={onClose}>
       <div style={{
         background: 'var(--bg-surface)',
         border: '1px solid var(--gold)',
@@ -121,9 +116,9 @@ function Modal({ children, onClose }: { children: preact.ComponentChildren; onCl
         textAlign: 'center',
         maxWidth: 'min(90vw, 460px)',
         boxShadow: '0 12px 48px rgba(255,170,68,0.15)',
-      }} onClick={e => e.stopPropagation()}>
+      }}>
         {children}
       </div>
-    </div>
+    </FullscreenOverlay>
   );
 }

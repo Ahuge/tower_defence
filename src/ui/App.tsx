@@ -33,6 +33,7 @@ import { BossWaveBanner } from './components/BossWaveBanner';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
 import { LevelUpModal } from './components/LevelUpModal';
 import { FactionUnlockSplash } from './components/FactionUnlockSplash';
+import { AnnouncementModal } from './components/AnnouncementModal';
 import { SplashScreen } from './screens/SplashScreen';
 import { AnalyticsDebugPanel } from './debug/AnalyticsDebugPanel';
 import { PlayerProfile } from '../systems/profile/PlayerProfile';
@@ -167,6 +168,11 @@ export function App() {
           window events dispatched by the Plan 5 unlock flow. Self-gates
           to null when no unlock is pending. */}
       <FactionUnlockSplash />
+
+      {/* Announcement modal — auto-pops the newest unseen announcement
+          on the menu screen. Mailbox row clicks fire `td-announcement-
+          open` to re-view past announcements. Self-gates internally. */}
+      <AnnouncementModal />
 
       {/* Analytics debug panel — gated on the `?debug` URL flag, renders
           nothing in normal play. Fixed bottom-left drawer. */}
