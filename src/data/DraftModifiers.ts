@@ -1,4 +1,5 @@
 import { Trait } from '../systems/traits/Trait';
+import { rng } from '../systems/Rng';
 
 export interface DraftModifier {
   id: string;
@@ -62,6 +63,6 @@ export const DRAFT_MODIFIERS: DraftModifier[] = [
 ];
 
 export function getRandomModifiers(count: number): DraftModifier[] {
-  const shuffled = [...DRAFT_MODIFIERS].sort(() => Math.random() - 0.5);
+  const shuffled = [...DRAFT_MODIFIERS].sort(() => rng() - 0.5);
   return shuffled.slice(0, count);
 }

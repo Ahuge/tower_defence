@@ -115,16 +115,22 @@ export class ChannelBarOverlay {
       this.drawSecondsRemaining(chan);
       visibleIds.add(chan.id);
     }
-    // Hide any seconds-text nodes whose channel is no longer in the
+    // Destroy any seconds-text nodes whose channel is no longer in the
     // top-3 ranked list (channel ended, was interrupted, or fell out
-    // of the cap). Lazy-recreated on demand below.
+    // of the cap). Long matches with many distinct channels would
+    // otherwise leak Phaser text nodes — `setVisible(false)` only
+    // suppresses rendering, doesn't free GPU/text-cache resources.
     for (const [id, node] of this.secondsTexts) {
-      if (!visibleIds.has(id)) node.setVisible(false);
+      if (!visibleIds.has(id)) {
+        node.destroy();
+        this.secondsTexts.delete(id);
+      }
     }
   }
 
   private hideAllSecondsTexts(): void {
-    for (const node of this.secondsTexts.values()) node.setVisible(false);
+    for (const node of this.secondsTexts.values()) node.destroy();
+    this.secondsTexts.clear();
   }
 
   /** HUD readout for the cumulative `_channelHpBuff` set by the

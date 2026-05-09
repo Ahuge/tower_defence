@@ -472,6 +472,64 @@ function circleRosterEqual(a: CircleRosterState, b: CircleRosterState): boolean 
   return true;
 }
 
+/** Quantized cooldown comparison — sub-0.1s differences are below
+ *  display precision and shouldn't force a re-render. Used for both
+ *  ability cooldowns and accessory active cooldowns. */
+function cooldownEq(a: number, b: number): boolean {
+  return Math.round(a * 10) === Math.round(b * 10);
+}
+
+function abilityInfoEqual(a: AbilityInfo, b: AbilityInfo): boolean {
+  if (a.ready !== b.ready || a.upgrades !== b.upgrades) return false;
+  if (a.key !== b.key || a.name !== b.name) return false;
+  return cooldownEq(a.cooldown, b.cooldown);
+}
+
+function heroShopEqual(a: HeroShopState, b: HeroShopState): boolean {
+  if (a.heroName !== b.heroName || a.level !== b.level || a.maxLevel !== b.maxLevel) return false;
+  if (a.xp !== b.xp || a.xpNeeded !== b.xpNeeded) return false;
+  if (a.hp !== b.hp || a.maxHp !== b.maxHp) return false;
+  if (a.damage !== b.damage || a.attackSpeed !== b.attackSpeed) return false;
+  if (a.pendingUpgrades !== b.pendingUpgrades || a.nextRotationWave !== b.nextRotationWave) return false;
+  if (a.items.length !== b.items.length) return false;
+  for (let i = 0; i < a.items.length; i++) {
+    const x = a.items[i], y = b.items[i];
+    if (x.tier !== y.tier || x.cost !== y.cost || x.owned !== y.owned) return false;
+  }
+  if (a.tomes.length !== b.tomes.length) return false;
+  for (let i = 0; i < a.tomes.length; i++) {
+    if (a.tomes[i].id !== b.tomes[i].id || a.tomes[i].cost !== b.tomes[i].cost) return false;
+  }
+  if (a.equippedAccessories.length !== b.equippedAccessories.length) return false;
+  for (let i = 0; i < a.equippedAccessories.length; i++) {
+    const x = a.equippedAccessories[i], y = b.equippedAccessories[i];
+    if (x.id !== y.id || x.equipped !== y.equipped) return false;
+    if (!cooldownEq(x.cooldown ?? 0, y.cooldown ?? 0)) return false;
+  }
+  // Compare offers by `id`, `cost`, and `equipped` — an offer that flips
+  // to `equipped=true` post-buy is the same `id` and same array length
+  // but the UI needs to grey out its Buy button.
+  if (a.accessoryOffers.length !== b.accessoryOffers.length) return false;
+  for (let i = 0; i < a.accessoryOffers.length; i++) {
+    const x = a.accessoryOffers[i], y = b.accessoryOffers[i];
+    if (x.id !== y.id || x.cost !== y.cost || x.equipped !== y.equipped) return false;
+  }
+  // upgradeOptions can change `label` / `desc` while keeping `id` (e.g.
+  // a respec or stat-rebind path); compare all three to avoid stale UI.
+  if (a.upgradeOptions.length !== b.upgradeOptions.length) return false;
+  for (let i = 0; i < a.upgradeOptions.length; i++) {
+    const x = a.upgradeOptions[i], y = b.upgradeOptions[i];
+    if (x.id !== y.id || x.label !== y.label || x.desc !== y.desc) return false;
+  }
+  if (a.abilities.length !== b.abilities.length) return false;
+  for (let i = 0; i < a.abilities.length; i++) {
+    if (!abilityInfoEqual(a.abilities[i], b.abilities[i])) return false;
+  }
+  if ((a.ultimate === null) !== (b.ultimate === null)) return false;
+  if (a.ultimate && b.ultimate && !abilityInfoEqual(a.ultimate, b.ultimate)) return false;
+  return true;
+}
+
 // ─── Store ──────────────────────────────────────────────
 
 class GameUIStoreClass {
@@ -779,8 +837,15 @@ class GameUIStoreClass {
     this.notify();
   }
 
-  /** Update hero shop state (Hero Defense mode) */
+  /** Update hero shop state (Hero Defense + M10 finale). Bailout when
+   *  the new snapshot is visually equivalent to the previous — the
+   *  controllers push every frame and ability cooldowns tick
+   *  continuously, so the naive `{...state, heroShop}` would force a
+   *  Preact re-render of EconomyPanelDOM + HeroItemsDOM 60+×/sec even
+   *  when nothing visible changed. */
   updateHeroShop(heroShop: HeroShopState): void {
+    const prev = this.state.heroShop;
+    if (prev && heroShopEqual(prev, heroShop)) return;
     this.state = { ...this.state, heroShop };
     this.notify();
   }

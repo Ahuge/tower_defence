@@ -138,6 +138,14 @@ export class Hero {
    *  overrides arenaWidth/Height. FinaleController sets it to the
    *  full grid pixel rect. */
   worldBounds?: { minX: number; minY: number; maxX: number; maxY: number };
+
+  /** Interest Tome upgrade tier (0 = none, 1/2/3 = three escalating
+   *  ranks). Tier maps to interestRate in HeroEconomyController; both
+   *  fields move together when a tome is bought. Read by FinaleController
+   *  and HeroDefenseMode to compute end-of-wave interest. */
+  interestTier: number = 0;
+  /** Per-wave gold multiplier from Interest Tomes (e.g. 0.10 = +10%/wave). */
+  interestRate: number = 0;
   /** M10 finale — clicked CPU damage target. When set, the hero
    *  prioritizes attacking this target over any creep auto-attack.
    *  Accepts a Tower (existing CPU defenders) OR a DestructibleStructure

@@ -13,6 +13,7 @@ import { EventBus } from '../systems/EventBus';
 import { EconomyManager } from '../systems/EconomyManager';
 import { SpawnManager } from '../systems/SpawnManager';
 import { InputManager } from '../systems/InputManager';
+import { rng } from '../systems/Rng';
 import { UIOverlay } from '../systems/UIOverlay';
 import { getTowerType, TOWER_ORDER, TOWER_TYPES, getAllFactionTowerIds } from '../data/TowerTypes';
 import { FactionId, getFaction, FACTIONS, FACTION_ORDER } from '../data/Factions';
@@ -565,14 +566,14 @@ export class GameScene extends Phaser.Scene {
     });
 
     const nonUlt = ownedTowerIds.filter(id => !getTowerType(id).ultimate);
-    const shuffled = [...nonUlt].sort(() => Math.random() - 0.5);
+    const shuffled = [...nonUlt].sort(() => rng() - 0.5);
     const pool = shuffled.slice(0, 6);
 
     // 5% chance to replace the last slot with a random ultimate tower
-    if (Math.random() < 0.05) {
+    if (rng() < 0.05) {
       const ultimates = ownedTowerIds.filter(id => getTowerType(id).ultimate);
       if (ultimates.length > 0) {
-        pool[5] = ultimates[Math.floor(Math.random() * ultimates.length)];
+        pool[5] = ultimates[Math.floor(rng() * ultimates.length)];
       }
     }
 

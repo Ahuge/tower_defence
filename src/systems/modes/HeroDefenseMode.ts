@@ -5,6 +5,13 @@ import { SEND_OPTIONS, SendCreepOption } from '../../data/SendCreepTypes';
 import { ArenaManager } from '../ArenaManager';
 import { ItemShopPanel } from '../../ui/ItemShopPanel';
 import { HeroEconomyController } from '../hero/HeroEconomyController';
+import { Tower } from '../../entities/Tower';
+
+/** Minimum scene shape this mode needs — used by Sanctuary-shield helpers
+ *  that reach into the scene's tower manager. Not a Phaser type because
+ *  GameModeContext.scene is typed as Phaser.Scene; we only need the
+ *  GameScene-specific `towerMgr`. */
+type SceneWithTowers = { towerMgr?: { towers: Tower[] } };
 
 const SEND_OPTIONS_MAP: Record<string, SendCreepOption> = {};
 for (const opt of SEND_OPTIONS) SEND_OPTIONS_MAP[opt.id] = opt;
@@ -34,7 +41,7 @@ export class HeroDefenseMode implements GameMode {
 
     // Install the Sanctuary shield hook on the arena so base damage is
     // routed through leak_absorb pools before the baseHp drops.
-    this.arenaManager.onBeforeBaseDamage = (dmg: number) => consumeSanctuaryShields(ctx.scene as any, dmg);
+    this.arenaManager.onBeforeBaseDamage = (dmg: number) => consumeSanctuaryShields(ctx.scene as SceneWithTowers, dmg);
 
     // Hero economy — owns purchase callbacks + accessory rotation.
     this.econController = new HeroEconomyController(
@@ -73,7 +80,7 @@ export class HeroDefenseMode implements GameMode {
   }
 
   private initSanctuaryShieldsIfNeeded(): void {
-    const scene = this.ctx.scene as any;
+    const scene = this.ctx.scene as SceneWithTowers;
     const towers = scene.towerMgr?.towers ?? [];
     const pool = Math.max(1, Math.floor(this.arenaManager.baseMaxHp * 0.05));
     for (const tower of towers) {
@@ -103,9 +110,9 @@ export class HeroDefenseMode implements GameMode {
     }
 
     // Heal hero 20%, apply interest, rotate accessories — delegated to
-    // HeroEconomyController. Read interest rate off the hero
-    // (set by Interest Tomes purchased via the controller).
-    const interestRate = (this.arenaManager.hero as unknown as { _interestRate?: number })._interestRate ?? 0.02;
+    // HeroEconomyController. Interest rate set by Interest Tomes
+    // purchased via the controller; defaults to 2% baseline.
+    const interestRate = this.arenaManager.hero.interestRate || 0.02;
     let interestPaid = 0;
     this.econController.onWaveCleared(waveNum, {
       healPercent: 0.2,
@@ -159,7 +166,7 @@ export class HeroDefenseMode implements GameMode {
    *  before the base takes damage. Called by ArenaManager when a creep
    *  hits the base. Returns how much of `damage` was absorbed. */
   absorbDamage(damage: number): number {
-    return consumeSanctuaryShields(this.ctx.scene as any, damage);
+    return consumeSanctuaryShields(this.ctx.scene as SceneWithTowers, damage);
   }
 
   destroy(): void {
@@ -172,7 +179,7 @@ export class HeroDefenseMode implements GameMode {
  *  `leak_absorb` trait shields on every Celestial Sanctuary tower in the
  *  scene, in the order they were placed, up to `damage`. Returns the
  *  amount actually absorbed. */
-function consumeSanctuaryShields(scene: { towerMgr?: { towers: any[] } }, damage: number): number {
+function consumeSanctuaryShields(scene: SceneWithTowers, damage: number): number {
   const towers = scene.towerMgr?.towers ?? [];
   let remaining = damage;
   for (const tower of towers) {

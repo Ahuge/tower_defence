@@ -7,6 +7,7 @@
 import { GRID_COLS, GRID_ROWS } from '../config';
 import { MapDefinition, LargeStructurePlacement } from './Maps';
 import { FactionId } from './Factions';
+import { rng } from '../systems/Rng';
 
 // Import map JSON files
 import arcaneMap from './maps/arcane.json';
@@ -137,11 +138,13 @@ export function getGauntletFactions(excludeFaction: FactionId): FactionId[] {
     .filter(f => f !== excludeFaction);
 }
 
-/** Shuffle an array (Fisher-Yates) */
+/** Shuffle an array (Fisher-Yates). Uses the seeded module RNG so a
+ *  gauntlet stage order can be reproduced from a known seed in
+ *  headless replays. */
 export function shuffleArray<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;

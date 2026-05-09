@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { HeroEconomyController } from './HeroEconomyController';
 import { EconomyManager } from '../EconomyManager';
 import { EventBus } from '../EventBus';
+import { getRandomAccessories } from '../../data/HeroAccessories';
 
 interface HeroStub {
   level: number;
@@ -84,16 +85,18 @@ function makeStubEventLog(): { messages: string[]; gameMessage: (s: string) => v
 function fresh() {
   const bus = new EventBus();
   const econ = new EconomyManager(bus);
-  // Accessories range 600..2000g, and getRandomAccessories without a
-  // seed uses Math.random() so per-CI-run the rolled offer at index 0
-  // can land on the priciest entry. Seed enough gold to afford the
-  // most expensive accessory + a bit, otherwise the "successful buy"
-  // test flakes on CI when the random roll lands on a 2000g item.
-  econ.addGold(5000);
+  // 2500g covers the worst-case accessory roll (max ~2000g) plus
+  // headroom for tome / level-up purchases in the buy-flow tests.
+  econ.addGold(2500);
   const hero = makeHero();
   const log = makeStubEventLog();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctrl = new HeroEconomyController(hero as any, econ, log as any);
+  // Module-level rng() drives accessory rolls, so a fresh test run
+  // depends on prior test execution order. Re-seed deterministically
+  // by replacing the offers with a fixed-seed roll — tests that buy
+  // index 0 still see the same accessory regardless of CI ordering.
+  ctrl.currentAccessoryOffers = getRandomAccessories(3, 1);
   return { ctrl, hero, econ, log };
 }
 

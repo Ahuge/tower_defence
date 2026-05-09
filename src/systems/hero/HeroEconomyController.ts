@@ -145,6 +145,7 @@ export class HeroEconomyController {
    *  on success. Failure modes (slots full, duplicate, can't afford)
    *  log a player-facing message via eventLog. */
   buyAccessory(index: number): boolean {
+    if (this.destroyed) return false;
     const acc = this.currentAccessoryOffers[index];
     if (!acc) return false;
     if (this.hero.accessories.length >= Hero.MAX_ACCESSORIES) {
@@ -167,6 +168,7 @@ export class HeroEconomyController {
   /** Roll a fresh batch of 3 offers if `waveNum` has passed the
    *  rotation threshold. Idempotent across the same wave. */
   rotateAccessories(waveNum: number): void {
+    if (this.destroyed) return;
     if (waveNum >= this.nextRotationWave) {
       // Seed with `waveNum * 7919` so the same wave produces the same
       // 3 offers in repeat playthroughs (per the existing HD pattern).
@@ -191,6 +193,7 @@ export class HeroEconomyController {
   // ─── Internal handlers ───────────────────────────────────────────
 
   private onBuyHeroItem(slotId: string): void {
+    if (this.destroyed) return;
     const slotIdx = ITEM_SLOT_ORDER.indexOf(slotId as typeof ITEM_SLOT_ORDER[number]);
     if (slotIdx < 0) return;
     const { canUpgrade, cost } = this.hero.canUpgradeItem(slotIdx);
@@ -202,6 +205,7 @@ export class HeroEconomyController {
   }
 
   private onBuyTome(tomeId: string): void {
+    if (this.destroyed) return;
     const hero = this.hero;
     if (tomeId === 'xp') {
       if (this.economy.spend(100)) {
@@ -221,12 +225,12 @@ export class HeroEconomyController {
         );
       }
     } else if (tomeId === 'interest') {
-      const tier = (hero as unknown as { _interestTier?: number })._interestTier ?? 0;
+      const tier = hero.interestTier;
       const costs = [200, 400, 800];
       const rates = [3, 4, 5];
       if (tier < 3 && this.economy.spend(costs[tier])) {
-        (hero as unknown as { _interestTier: number; _interestRate: number })._interestTier = tier + 1;
-        (hero as unknown as { _interestTier: number; _interestRate: number })._interestRate = rates[tier] / 100;
+        hero.interestTier = tier + 1;
+        hero.interestRate = rates[tier] / 100;
         this.eventLog.gameMessage(`Interest Tome: rate now ${rates[tier]}%!`);
       }
     }
@@ -237,10 +241,12 @@ export class HeroEconomyController {
   }
 
   private onHeroUpgrade(optionId: string): void {
+    if (this.destroyed) return;
     this.hero.applyUpgrade(optionId);
   }
 
   private onUpgradeAbility(abilityIndex: number): void {
+    if (this.destroyed) return;
     if (this.hero.pendingUpgrades > 0) this.hero.upgradeAbility(abilityIndex);
   }
 
@@ -267,7 +273,7 @@ export class HeroEconomyController {
       { id: 'xp', label: `XP Tome: +${50 + hero.level * 5} XP`, cost: 100 },
       { id: 'stat', label: 'Stat Tome: +5 DMG +30 HP +0.1 AS', cost: 250 + hero.tomeCount * 50 },
     ];
-    const interestTier = (hero as unknown as { _interestTier?: number })._interestTier ?? 0;
+    const interestTier = hero.interestTier;
     if (interestTier < 3) {
       const costs = [200, 400, 800];
       const rates = [3, 4, 5];

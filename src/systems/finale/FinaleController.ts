@@ -1197,7 +1197,7 @@ export class FinaleController {
    *  controller is null). */
   onWaveCleared(waveNum: number): void {
     if (!this.econController) return;
-    const interestRate = (this.hero as unknown as { _interestRate?: number } | null)?._interestRate ?? 0;
+    const interestRate = this.hero?.interestRate ?? 0;
     this.econController.onWaveCleared(waveNum, {
       // Hero gets 15% per-wave heal in finale (HD is 20%, but M10 is
       // longer + tower kills already drop XP/gold so the heal can be

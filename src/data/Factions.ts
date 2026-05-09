@@ -8,6 +8,8 @@
  *            resolved, downstream code only ever sees a real faction
  *            id; `random` itself never reaches GameScene.
  */
+import { rng } from '../systems/Rng';
+
 export type FactionId = 'arcane' | 'mechanical' | 'nature' | 'void' | 'military' | 'aliens' | 'cypherpunk' | 'infernal' | 'celestial' | 'psionic' | 'harmonic' | 'chaos' | 'random' | 'coalition';
 
 export interface Faction {
@@ -147,9 +149,11 @@ export const FACTION_ORDER: FactionId[] = ['arcane', 'mechanical', 'nature', 'vo
 export const REAL_FACTIONS: FactionId[] = ['arcane', 'mechanical', 'nature', 'void', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'psionic', 'harmonic'];
 
 /** Pick one of the 11 real factions uniformly at random. Used to
- *  resolve the `'random'` picker token before any match logic runs. */
+ *  resolve the `'random'` picker token before any match logic runs.
+ *  Uses the seeded module RNG so headless replays + capture-mode
+ *  recordings stay deterministic against a fixed seed. */
 export function rollRandomRealFaction(): FactionId {
-  return REAL_FACTIONS[Math.floor(Math.random() * REAL_FACTIONS.length)];
+  return REAL_FACTIONS[Math.floor(rng() * REAL_FACTIONS.length)];
 }
 
 export function getFaction(id: FactionId): Faction {
