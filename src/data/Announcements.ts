@@ -56,7 +56,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     title: 'Campaigns Released',
     summary: 'Story-driven faction campaigns, mission archetypes, and the Arcane M1–M10 storyline are live.',
     factionAccent: 'arcane',
-    heroArt: 'assets/announcements/campaigns_released_landscape.png',
+    heroArt: 'assets/announcements/campaigns_released_landscape.webp',
     body: [
       {
         kind: 'lead',
