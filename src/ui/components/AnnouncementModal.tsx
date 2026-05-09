@@ -17,6 +17,7 @@ import {
 import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { UIBridge } from '../UIBridge';
 import { ASSET_BASE } from '../utils/factionAssets';
+import { isBootComplete } from '../utils/bootStatus';
 import { useIsPortraitViewport } from '../hooks/useIsPortraitViewport';
 import { FullscreenOverlay } from './FullscreenOverlay';
 
@@ -36,8 +37,12 @@ export function AnnouncementModal() {
   activeRef.current = active;
 
   useEffect(() => {
+    // Auto-pop only AFTER the boot splash has dismissed — otherwise the
+    // modal would render behind AppLoadingScreen and pop fully-formed
+    // when the splash fades, which feels like a layering bug.
     const tryAutoPop = () => {
       if (activeRef.current) return;
+      if (!isBootComplete()) return;
       if (UIBridge.getScreen() !== 'menu') return;
       const next = getNewestUnseen();
       if (!next) return;
@@ -45,6 +50,7 @@ export function AnnouncementModal() {
     };
     tryAutoPop();
     const unsubScreen = UIBridge.onScreenChange(tryAutoPop);
+    window.addEventListener('app-splash-dismissed', tryAutoPop, { once: true });
 
     const onOpen = (ev: Event) => {
       const detail = (ev as CustomEvent).detail as { id?: string } | undefined;
@@ -56,6 +62,7 @@ export function AnnouncementModal() {
     window.addEventListener(ANNOUNCEMENT_OPEN_EVENT, onOpen);
     return () => {
       unsubScreen();
+      window.removeEventListener('app-splash-dismissed', tryAutoPop);
       window.removeEventListener(ANNOUNCEMENT_OPEN_EVENT, onOpen);
     };
   }, []);

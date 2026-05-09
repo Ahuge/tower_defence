@@ -65,7 +65,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'campaigns-released',
     publishedAt: '2026-05-09',
-    title: 'Campaigns Released',
+    title: 'Arcane Campaign',
     summary: 'Story-driven faction campaigns, mission archetypes, and the Arcane M1–M10 storyline are live.',
     factionAccent: 'arcane',
     heroArt: 'assets/announcements/campaigns_released_landscape.webp',
