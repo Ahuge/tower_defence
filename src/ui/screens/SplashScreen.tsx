@@ -15,7 +15,7 @@
  * (replay).
  */
 import { Analytics } from '../../systems/AnalyticsClient';
-import { TutorialPersistence } from '../../systems/Tutorial/TutorialPersistence';
+import { TutorialManager } from '../../systems/Tutorial/TutorialManager';
 import { useEffect } from 'preact/hooks';
 import { Header } from '../components/Header';
 
@@ -37,7 +37,7 @@ export function SplashScreen({ onDismissed }: Props) {
     // Fire BEFORE we mark dismissed so any subsequent maybeStartFirstLaunch
     // check still sees the same suppressed-state pre-dismissal.
     window.dispatchEvent(new Event('tutorial-launch-ftg'));
-    TutorialPersistence.markFirstLaunchDismissed();
+    TutorialManager.markFirstLaunchDismissed();
     onDismissed();
   };
 
@@ -45,7 +45,7 @@ export function SplashScreen({ onDismissed }: Props) {
     Analytics.track('splash_skip_tapped', {});
     // Persist so we never re-prompt on this device. They can replay
     // the FTG later via the Help menu's tutorial list.
-    TutorialPersistence.markFirstLaunchDismissed();
+    TutorialManager.markFirstLaunchDismissed();
     onDismissed();
   };
 

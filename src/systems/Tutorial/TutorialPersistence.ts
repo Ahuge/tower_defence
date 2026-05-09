@@ -32,7 +32,14 @@ export const TutorialPersistence = {
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw) as Partial<TutorialState>;
       if (parsed.version !== STATE_VERSION) return defaultState();
+      // Defaults-merge so any new field added to TutorialState picks
+      // up its default value transparently for existing saves —
+      // matches the pattern in StorePersistence + PlayerProfileStore.
+      // Per-field coercions remain so a malformed legacy save can't
+      // smuggle a non-array / non-boolean past the runtime contract.
       return {
+        ...defaultState(),
+        ...parsed,
         completedTracks: Array.isArray(parsed.completedTracks) ? parsed.completedTracks : [],
         dismissedFirstLaunch: !!parsed.dismissedFirstLaunch,
         skipAllFactionBriefs: !!parsed.skipAllFactionBriefs,
@@ -51,16 +58,6 @@ export const TutorialPersistence = {
   },
   reset(): void {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
-  },
-
-  /** Idempotent flip of `dismissedFirstLaunch`. Used by the cold-boot
-   *  splash so the next launch (or a re-mount during this session)
-   *  doesn't re-prompt. */
-  markFirstLaunchDismissed(): void {
-    const state = TutorialPersistence.load();
-    if (state.dismissedFirstLaunch) return;
-    state.dismissedFirstLaunch = true;
-    TutorialPersistence.save(state);
   },
 
   /** Read / write the global "skip all faction briefs" toggle. */

@@ -70,7 +70,18 @@ const TIMING = {
 export interface ActiveTutorial {
   track: TutorialTrack;
   stepIndex: number;
+  /** Convenience pointer to `track.steps[stepIndex]` — kept on the
+   *  shape so external readers (testHook, `useTutorial`) don't have to
+   *  index through `track.steps`. Always derived via `mkActive`; never
+   *  set in two places. */
   step: TutorialStep;
+}
+
+/** Build an `ActiveTutorial` with `step` derived from the position. The
+ *  three sites that mutate `this.active` route through this so the
+ *  redundant `step` field can never drift from `track.steps[stepIndex]`. */
+function mkActive(track: TutorialTrack, stepIndex: number): ActiveTutorial {
+  return { track, stepIndex, step: track.steps[stepIndex] };
 }
 
 /** Exported for tests — production code should only use the singleton
@@ -145,11 +156,7 @@ export class TutorialManagerClass {
    *  on the tutorial map, mode=tutorial → 99 lives + 250g start) but
    *  queues the slimmer `ftg` track instead. */
   launchFTG(): void {
-    this.pendingAfterMatchLoad = {
-      id: 'ftg',
-      replay: true,
-      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
-    };
+    this.queuePending('ftg', true);
     UIBridge.startScene('GameScene', {
       mode: 'tutorial',
       faction: 'arcane',
@@ -164,11 +171,7 @@ export class TutorialManagerClass {
    *  Track teaches kill gold, frontier income, and sends. Reachable
    *  from the Help carousel and an end-of-FTG CTA. */
   launchEconomyTutorial(): void {
-    this.pendingAfterMatchLoad = {
-      id: 'tutorial_economy',
-      replay: true,
-      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
-    };
+    this.queuePending('tutorial_economy', true);
     UIBridge.startScene('GameScene', {
       mode: 'tutorial',
       faction: 'arcane',
@@ -206,22 +209,14 @@ export class TutorialManagerClass {
    *  pendingAfterMatchLoad by setting it RIGHT before the scene
    *  switch — match-loading-dismissed will fire within seconds. */
   queueInGameTrack(trackId: string): void {
-    this.pendingAfterMatchLoad = {
-      id: trackId,
-      replay: true,
-      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
-    };
+    this.queuePending(trackId, true);
   }
 
   /** Kick off the scripted tutorial match. Starts GameScene in tutorial
    *  mode and queues the `tutorial_match` track to launch once the
    *  faction-load splash finishes fading out. */
   launchTutorialMatch(): void {
-    this.pendingAfterMatchLoad = {
-      id: 'tutorial_match',
-      replay: true,
-      expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
-    };
+    this.queuePending('tutorial_match', true);
     UIBridge.startScene('GameScene', {
       mode: 'tutorial',
       faction: 'arcane',
@@ -316,7 +311,7 @@ export class TutorialManagerClass {
     if (this.active) return;
     const track = getTrack(trackId);
     if (!track || track.steps.length === 0) return;
-    this.active = { track, stepIndex: 0, step: track.steps[0] };
+    this.active = mkActive(track, 0);
     Analytics.track('tutorial_track_started', { trackId });
     Analytics.track('tutorial_step_seen', { trackId, stepId: track.steps[0].id });
     this.rebindEventAdvance();
@@ -333,9 +328,8 @@ export class TutorialManagerClass {
       this.complete();
       return;
     }
-    const nextStep = track.steps[stepIndex + 1];
-    this.active = { track, stepIndex: stepIndex + 1, step: nextStep };
-    Analytics.track('tutorial_step_seen', { trackId: track.id, stepId: nextStep.id });
+    this.active = mkActive(track, stepIndex + 1);
+    Analytics.track('tutorial_step_seen', { trackId: track.id, stepId: this.active.step.id });
     this.rebindEventAdvance();
     this.runStepEnter();
     this.notify();
@@ -456,7 +450,7 @@ export class TutorialManagerClass {
     if (this.active) this.clearActive();
     const track = getTrack(trackId);
     if (!track || track.steps.length === 0) return;
-    this.active = { track, stepIndex: 0, step: track.steps[0] };
+    this.active = mkActive(track, 0);
     this.rebindEventAdvance();
     this.runStepEnter();
     this.notify();
@@ -538,9 +532,16 @@ export class TutorialManagerClass {
       null;
     if (!trackId) return;
     if (this.isCompleted(trackId)) return;
+    this.queuePending(trackId, false);
+  }
+
+  /** Queue a track to fire when match-loading-dismissed next emits.
+   *  Centralises the TTL math so every caller can't accidentally drift
+   *  the expiry window. */
+  private queuePending(id: string, replay: boolean): void {
     this.pendingAfterMatchLoad = {
-      id: trackId,
-      replay: false,
+      id,
+      replay,
       expiresAt: Date.now() + TIMING.PENDING_MATCH_LOAD_TTL_MS,
     };
   }
@@ -549,10 +550,13 @@ export class TutorialManagerClass {
     if (this.active) return;
     if (this.isCompleted(trackId)) return;
     if (!getTrack(trackId)) return;
-    // Plan 4: a single global toggle suppresses every faction:* brief
-    // for veterans who don't want to be re-introduced to a faction.
-    // The Help carousel still lets them replay any individual brief.
-    if (trackId.startsWith('faction:') && TutorialPersistence.isFactionBriefsSkipped()) return;
+    // A single global toggle suppresses every faction:* brief for
+    // veterans who don't want to be re-introduced to a faction. The
+    // Help carousel still lets them replay any individual brief.
+    // Read off the in-memory `persisted` snapshot — going through
+    // TutorialPersistence.isFactionBriefsSkipped() would re-parse
+    // localStorage on every screen change.
+    if (trackId.startsWith('faction:') && this.persisted.skipAllFactionBriefs) return;
     // Small delay lets the target DOM mount before we try to resolve it.
     setTimeout(() => {
       if (this.active) return;
@@ -596,7 +600,13 @@ export class TutorialManagerClass {
     TutorialPersistence.save(this.persisted);
   }
 
-  private markFirstLaunchDismissed(): void {
+  /** Idempotent flip of `dismissedFirstLaunch`. Public so the cold-boot
+   *  SplashScreen can mark first-launch done without going around the
+   *  manager — routing through `this.persisted` keeps the in-memory
+   *  snapshot in sync with localStorage (the prior parallel
+   *  `TutorialPersistence.markFirstLaunchDismissed` re-read from disk
+   *  and let the manager's snapshot drift). */
+  markFirstLaunchDismissed(): void {
     if (this.persisted.dismissedFirstLaunch) return;
     this.persisted = { ...this.persisted, dismissedFirstLaunch: true };
     TutorialPersistence.save(this.persisted);
