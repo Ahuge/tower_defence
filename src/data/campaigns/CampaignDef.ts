@@ -171,30 +171,26 @@ export interface MissionOverrides {
    *  combined with a higher goldStart, gives speedrun missions a
    *  bursty start-with-everything-spend-it-down feel. Default 1.0. */
   killGoldMult?: number;
-  /** Plan 12 v2: per-wave essence budget the attacker spends in the
-   *  composer. Required for `archetype: 'attacker'` v2 missions; ignored
-   *  otherwise. */
+  /** Per-wave essence budget the attacker spends in the composer.
+   *  Required for `archetype: 'attacker'` missions; ignored otherwise. */
   attackerEssencePerWave?: number;
-  /** Plan 12 v2: which palette to use. Defaults to 'coalition' (the
-   *  Arcane-campaign neutral kit). Future faction campaigns will register
-   *  their own palettes and reference them here. */
+  /** Which palette to use. Defaults to 'coalition' (the Arcane-campaign
+   *  neutral kit). Future faction campaigns register their own palettes
+   *  and reference them here. */
   attackerPaletteFaction?: FactionId | 'coalition';
-  /** Plan 12 v2: number of leaks needed for the player (attacker) to
-   *  win. Default 5; missions with fat budgets / many waves should set
-   *  it higher so the run isn't won on wave 1 by dumping. */
+  /** Number of leaks needed for the player (attacker) to win. Default
+   *  5; missions with fat budgets / many waves should set it higher
+   *  so the run isn't won on wave 1 by dumping. */
   attackerLeakThreshold?: number;
-  /** Plan 12 v2 Phase 3: defender-AI difficulty for attacker missions.
-   *  easy = no new builds + 0.5x treasury, normal = 2 socket builds +
-   *  1x treasury, hard = 4 socket builds + 1.5x treasury. Default
-   *  'normal'. */
+  /** Defender-AI difficulty: easy = 0.5× treasury, normal = 1×, hard
+   *  = 1.5×. Default 'normal'. */
   attackerDefenderDifficulty?: 'easy' | 'normal' | 'hard';
-  /** Plan 12 v2 Phase 2.5: per-wave defender prep order. Each entry
-   *  is a prep id from AttackerPreps.ts. Length should match wave
-   *  count (or be longer — extras ignored). When undefined, no prep
-   *  applies. Strategic axis: forces player composition rotation
-   *  across the run. */
+  /** Per-wave defender prep order. Each entry is a prep id from
+   *  AttackerPreps.ts. Length should match wave count (or be longer —
+   *  extras ignored). Undefined = no prep applies. Strategic axis:
+   *  forces player composition rotation across the run. */
   attackerPrepOrder?: string[];
-  // ─── Plan 12 v2 economy v3 ────────────────────────────────────
+  // ─── Attacker economy v3 ───────────────────────────────────────
   /** Additive income growth per wave: wave-N cap = base + growth × (N-1).
    *  0 = flat budget every wave (legacy behaviour). */
   attackerEssenceGrowthPerWave?: number;
@@ -263,8 +259,10 @@ export interface CampaignDef<TState = unknown> {
 export type StarCount = 0 | 1 | 2 | 3;
 
 // ─── Archetype IDs ──────────────────────────────────────────
-// Plan 10 v1 ships the archetypes that reuse existing MatchModes.
-// Plans 11/12/13 add the new ones (BaseDefense, Attacker, Heist).
+// Live archetype values are in MissionArchetypes.ARCHETYPES; stubs
+// (no implementation yet, MissionRunner refuses to launch them) are
+// in STUB_ARCHETYPES. The union here covers both so MissionDef
+// references are type-safe across plan boundaries.
 
 export type MissionArchetypeId =
   | 'standard'            // Standard with override knobs
@@ -275,15 +273,14 @@ export type MissionArchetypeId =
   | 'coop_with_bot'       // Circle co-op with a bot ally on the player's side
   | 'final_showdown'      // Standard 30 on the campaign's flagship map
   | 'restriction'         // Standard with allowedTowerIds / noWalls / etc.
-  // Plans 11/12/13.
-  | 'base_defense'
-  | 'attacker'
-  | 'heist'
-  // Phase 0 v2 archetypes — registered as stubs; gameplay lands with
-  // Plans A (Arcane Counterspell) and B (Mech Cascade).
-  | 'interrupt'                    // Plan A: caster-channel disruption
-  | 'interrupt_combo'              // Plan A: chain-stun on adjacent casters
-  | 'interrupt_cascade'            // Plan A: completed casts permadebuff towers
-  | 'attacker_role_reversal'       // Plan B: Foundry Floor / Assembly Strike I+II
-  | 'boss_rush_visible_assembly'   // Plan B: walker bosses spawn missing parts
-  | 'final_arcane';                // M10 finale — siege the archmage spire with summoned hero
+  | 'base_defense'        // Omni-directional spawn → central exit
+  | 'attacker'            // Player commands the creep waves
+  | 'heist'               // Reverse path; loot escapes from a vault
+  | 'interrupt'           // Caster-channel disruption
+  // Stubs — see STUB_ARCHETYPES.
+  | 'interrupt_combo'
+  | 'interrupt_cascade'
+  | 'attacker_role_reversal'
+  | 'boss_rush_visible_assembly'
+  // M10 finale — siege the archmage spire with summoned hero.
+  | 'final_arcane';

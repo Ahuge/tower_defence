@@ -4,23 +4,14 @@
  * Lifecycle:
  *   1. CampaignLobby calls `MissionRunner.start(campaignDef, missionIdx)`.
  *   2. Runner builds a `MissionContext`, threads it into `GameScene.init`
- *      via a registry slot the scene reads on boot, and shows the
- *      pre-mission story modal (handled by the lobby; runner just
- *      starts the scene).
+ *      via a registry slot the scene reads on boot. The pre-mission
+ *      story modal is owned by the lobby — runner just starts the scene.
  *   3. GameScene runs as normal with mission overrides applied (lives,
  *      gold, waveCount, restrictions). On game-end, the scene fires
- *      the `gameOver` / `gameWon` EventBus events and emits the
- *      `game_end` analytics event.
- *   4. The runner snapshots the result into a `MissionResult`,
- *      evaluates the mission's star objectives, and calls
- *      `PlayerProfile.recordMissionResult` to persist stars.
- *   5. The lobby re-mounts on its own (via UIBridge.show); the runner
- *      doesn't navigate. Calling code reads stars via PlayerProfile.
- *
- * Plan 10 ships the framework only — the actual stars-saving and
- * lobby-re-mount paths are stubbed where they touch deferred features
- * (PlayerProfile.recordMissionResult lives in Plan 10 too; the
- * objective evaluation is real).
+ *      the `gameOver` / `gameWon` EventBus events.
+ *   4. `finalize(result)` evaluates the mission's star objectives and
+ *      calls `PlayerProfile.recordMissionResult` to persist stars.
+ *   5. The lobby re-mounts on its own; the runner doesn't navigate.
  */
 
 import type { CampaignDef, MissionDef, MissionOverrides, MissionResult, StarCount } from '../../data/campaigns/CampaignDef';
@@ -39,8 +30,6 @@ export interface MissionContext {
   missionIdx: number;
   archetypeId: string;
   restrictions: NonNullable<MissionDef['overrides']['restrictions']>;
-  /** Predicate-bearing objective spec; runner evaluates them at game-end. */
-  objectives: MissionDef['objectives'];
 }
 
 class MissionRunnerClass {
@@ -87,7 +76,6 @@ class MissionRunnerClass {
       missionIdx: mission.idx,
       archetypeId: mission.archetype,
       restrictions: merged.restrictions ?? {},
-      objectives: mission.objectives,
     };
 
     // Default the player faction to Arcane when the mission doesn't
@@ -153,6 +141,10 @@ class MissionRunnerClass {
       return 0;
     }
     const mission = session.mission;
+    // Snapshot prior stars BEFORE recordMissionResult so we can detect
+    // first-completion (drives the once-per-campaign campaign_completed
+    // analytics emit at the bottom).
+    const priorStars = PlayerProfile.getMissionStars(session.campaign.factionId, mission.idx);
     let stars: StarCount = 0;
     if (result.won) {
       stars = 1;
@@ -196,8 +188,12 @@ class MissionRunnerClass {
     }
 
     // Detect campaign completion — when the final mission just earned
-    // its first star (mission idx 9 going from 0/3 → 1+/3).
-    if (result.won && mission.idx === session.campaign.missions.length - 1) {
+    // its first star (priorStars 0 → stars >= 1). Without the prior-
+    // stars guard, replays of the final mission would re-fire the
+    // analytics every time and inflate the campaign-clear count.
+    if (result.won
+      && mission.idx === session.campaign.missions.length - 1
+      && priorStars === 0) {
       Analytics.track('campaign_completed', {
         campaignFactionId: session.campaign.factionId,
         totalStars: PlayerProfile.getCampaignTotalStars(session.campaign.factionId),
