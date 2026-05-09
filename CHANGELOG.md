@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-05-08
+
+### Harmonic auras: order-dependent buff bug fix + Quickener uncapped exponential stacking
+
+Two changes to the Harmonic aura system shipped together as `ah/fix/harmonic-auras`.
+
+**Order-dependent range buff (bug fix).** `range_aura` (Reach) was silently doing nothing whenever the buffed tower had been built *before* the Reach. The buff is applied via the `_harmonic_range` virtual trait, accumulated each frame by `range_aura` and applied directly to `tower.range` inside the trait's per-frame update. But within `TowerManager.updateTowers`'s single iteration over towers, a target processed before its source ran its apply step on `bonus = 0`, missing every contribution that frame and every frame after. Fixed by:
+
+- Adding a `_basePxRange` field on `Tower` that tracks the post-upgrade pre-aura range (set in the constructor and on both upgrade paths). The per-frame reset in `TowerManager` now uses this instead of `typeDef.range`, fixing a side-bug where linear-upgraded towers under a Reach were silently downgraded back to L1 range every frame.
+- Moving the `_harmonic_range` apply out of the trait handler and into a dedicated second pass in `TowerManager.updateTowers`, after every aura source has contributed. Order independence guaranteed.
+
+**All Harmonic auras switched to multiplicative compounding (balance).** Every aura source now compounds onto the buffed tower's running multiplier instead of additively summing into a hard-capped scalar. Stacks 7+ at the old caps were pure wasted gold; the new model has no cap and every additional stack still meaningfully scales the effect.
+
+Per-stack values are tuned per aura so 5-stack power is roughly equivalent to the old additive-cap power, and stacks 6+ scale beyond what the old model could express:
+
+| Aura | Old | New | 5 stacks | 10 stacks |
+|---|---|---|---|---|
+| `damage_aura` (Amplifier) | +20% additive per stack, uncapped (linear ramp, eventually game-breaking) | `(1 + 0.15 × level)` multiplicative | +101% (parity with old +100%) | +305% (vs old +200%) |
+| `rate_aura` (Quickener) | +15% additive per stack, capped at 80% reduction (5× speed) | `(1 + 0.10 × level)` fire-rate multiplier, 50ms cooldown floor | +61% speed | +159% speed |
+| `range_aura` (Reach) | +1.5 tiles additive per stack, uncapped | `(1 + 0.10 × level)` range multiplier (proportional to base range) | +61% range | +159% range |
+| `crit_aura` (Critical Mass) | +15% additive chance per stack, capped at 80% | `1 − (1−c)(1−0.20)` chance compound | 67% chance | 89% chance, 99% at 20 |
+
+Per-stack default lands at `0.07` for the three multiplier-style auras and `0.15` for crit chance. Conduit's `shareAura` and re-emit pathway switched from `addOrRefreshTrait` (which silently overwrote direct-source contributions) to compounding-via-find, so a Conduit feeding into a tower that's already getting a direct aura now actually adds to it instead of clobbering. Range buff is now proportional rather than absolute — so a Sniper at 7-tile base under one Reach gains 0.49 tiles, while a Resonator at 3.5 tiles only gains 0.245; long-range towers benefit more proportionally.
+
+**Order-dependent range buff (bug fix, shipped same branch).** `range_aura` was silently doing nothing whenever the buffed tower was placed *before* the Reach. `_harmonic_range`'s apply step ran once per frame inside the trait handler; if the target tower was iterated before the source, it applied bonus=0 and missed every contribution. Fixed by moving the apply into a dedicated second pass in `TowerManager.updateTowers` that runs after every aura source has contributed. Side-bug fixed: per-frame reset previously used `tower.typeDef.range` (always base level), silently downgrading linear-upgraded towers to L1 range every frame they were under a Reach — now uses `Tower._basePxRange` which tracks the current post-upgrade pre-aura range.
+
+Files: `src/entities/Tower.ts`, `src/systems/TowerManager.ts`, `src/systems/traits/TowerTraitHandlers.ts`, `src/data/TowerTypes.ts`, `src/headless/harness/ChangeCatalog.ts`. Tests + tsc clean.
+
 ## 2026-04-28
 
 ### Faction picker: Random renamed to Chaos, new "roll a real faction" Random added

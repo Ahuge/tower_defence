@@ -171,10 +171,10 @@
 | Tower | Cost | Key Traits |
 |-------|------|------------|
 | Resonator | 20g | Basic DPS. Weak alone, powerful with aura stacking. 4 levels. |
-| Amplifier | 30g | No attack. +20% damage aura (red). Stacks with other Amplifiers. |
-| Quickener | 40g | No attack. +15% fire rate aura (green). |
-| Reach | 50g | No attack. +1.5 tile range aura (blue). |
-| Critical Mass | 80g | No attack. 15% crit chance aura (magenta). |
+| Amplifier | 30g | No attack. +15% damage aura (red) — stacks multiplicatively, no cap. 5 in range ≈ +101% damage, 10 ≈ +305%. |
+| Quickener | 40g | No attack. +10% fire rate aura (green) — stacks multiplicatively, no cap. 5 in range ≈ +61% speed, 10 ≈ +159%. |
+| Reach | 50g | No attack. +10% range aura (blue) — stacks multiplicatively, no cap. 5 in range ≈ +61% range, 10 ≈ +159%. |
+| Critical Mass | 80g | No attack. +20% crit chance per stack at 2× (magenta) — chance compounds via 1−(1−c)(1−s) and asymptotes to 100%. 5 in range ≈ 67%, 10 ≈ 89%, 20 ≈ 99%. |
 | Conduit | 100g | Manual link: press L to link 2-3 aura towers. Shares their effects at 70%. |
 | **Crescendo** | **650g** | Ultimate. Moderate DPS designed for maximum aura stacking. |
 

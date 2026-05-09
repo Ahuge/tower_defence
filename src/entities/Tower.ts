@@ -103,6 +103,12 @@ export class Tower {
   sprite: Phaser.GameObjects.Sprite | null = null;
   private _scene: Phaser.Scene;
 
+  /** Post-upgrade pre-aura range in px. TowerManager resets `range` to
+   *  this each frame before harmonic auras stack onto it. Stays in sync
+   *  with `range` on construct + on each upgrade. typeDef.range is the
+   *  *base* level range so we can't use it after a linear upgrade. */
+  _basePxRange: number = 0;
+
   /** Mobile unit sprite — track previous position for direction detection */
   private _prevX: number = 0;
   private _prevY: number = 0;
@@ -149,6 +155,7 @@ export class Tower {
     if (rangeBonus) {
       this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
     }
+    this._basePxRange = this.range;
 
     this._scene = scene;
     this._prevX = this.x;
@@ -361,6 +368,7 @@ export class Tower {
       if (rangeBonus) {
         this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
       }
+      this._basePxRange = this.range;
 
       // Destroy old sprite and create a new one from the swapped
       // typeDef so the tower visibly changes on the board.
@@ -387,6 +395,7 @@ export class Tower {
     if (rangeBonus) {
       this.range += (rangeBonus.bonus ?? 0) * TILE_SIZE;
     }
+    this._basePxRange = this.range;
 
     this.drawTower();
   }

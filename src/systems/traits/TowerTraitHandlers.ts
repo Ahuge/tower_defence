@@ -4,7 +4,7 @@ import { rng } from '../Rng';
 import {
   registerDelivery, registerDamageMod, registerFireRateMod,
   registerHitEffect, registerOnFire, registerTowerUpdate,
-  Trait, HitContext, UpdateContext, addOrRefreshTrait,
+  Trait, HitContext, UpdateContext,
 } from './Trait';
 
 /**
@@ -1052,116 +1052,155 @@ registerTowerUpdate('spawn_swarmlings_per_wave', (_trait: Trait, _tower: any, _c
 // ============================================================
 
 /**
- * Harmonic aura system — all auras STACK additively.
- * Each aura handler adds to the buff trait's bonus.
- * The _harmonic_* buff traits reset each frame via _ttl expiry
- * and get re-added by active auras, accumulating from all sources.
+ * Harmonic aura system — all auras STACK MULTIPLICATIVELY (compound,
+ * no cap). Each source contributes a (1 + percent*level) factor that
+ * compounds onto the buff trait's running multiplier each frame; the
+ * _harmonic_* buff traits are reset to identity (1.0 for damage/rate/
+ * range, 0 for crit chance) each frame in TowerManager and re-built
+ * from active sources. Per-aura defaults are tuned so 5-stack power
+ * ≈ old additive-cap power: damage 0.15 (+101% at 5), rate 0.10 (+61%),
+ * range 0.10 (+61%), crit 0.20 (≈67% at 5). Every additional stack
+ * still meaningfully scales without a cliff. crit_aura uses
+ * 1 - (1-c)*(1-s) so chance asymptotes to 1.
  */
 
-/** Damage aura: +X% damage to all towers in range (stacks) */
+/** Compound a multiplier-style buff (damage/rate/range) onto a target's
+ *  trait array. find-or-create: if the buff is already present this
+ *  frame (e.g. a previous source contributed, or Conduit fed in), the
+ *  factor multiplies into the running bonus; otherwise the buff is
+ *  pushed at `factor`. No-op when factor <= 1 — saves a trait-list
+ *  walk + push for towers that aren't actually getting buffed. */
+function compoundMul(traits: Trait[], buffId: string, factor: number): void {
+  if (factor <= 1) return;
+  const existing = traits.find((t: Trait) => t.id === buffId);
+  if (existing) {
+    existing.bonus = (existing.bonus ?? 1) * factor;
+    existing._ttl = 200;
+  } else {
+    traits.push({ id: buffId, bonus: factor, _ttl: 200 });
+  }
+}
+
+/** Compound a probability-style buff (crit chance) via 1 - (1-c)(1-s)
+ *  so the running chance asymptotes to 1 across stacks. Multiplier is
+ *  max-pooled across sources; a single high-multiplier source wins. */
+function compoundCrit(traits: Trait[], stack: number, multiplier: number): void {
+  if (stack <= 0) return;
+  const existing = traits.find((t: Trait) => t.id === '_harmonic_crit');
+  if (existing) {
+    existing.chance = 1 - (1 - (existing.chance ?? 0)) * (1 - stack);
+    existing.multiplier = Math.max(existing.multiplier ?? 2, multiplier);
+    existing._ttl = 200;
+  } else {
+    traits.push({ id: '_harmonic_crit', chance: stack, multiplier, _ttl: 200 });
+  }
+}
+
+/** Damage aura: each Amplifier multiplies damage by (1 + percent*level)
+ *  — stacks compound, no cap. With percent=0.15 default at L1, five
+ *  stacks ≈ ×2.01 (+101%, parity with the old uncapped +20%×5), ten
+ *  stacks ≈ ×4.05 (+305%). */
 registerTowerUpdate('damage_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  const bonus = (trait.percent ?? 0.2) * tower.level;
+  const factor = 1 + (trait.percent ?? 0.15) * tower.level;
   const range = tower.range || (TILE_SIZE * 4);
+  const r2 = range * range;
   for (const other of ctx.allTowers) {
     if (other === tower) continue;
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
-    if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      const existing = other.traits.find((t: any) => t.id === '_harmonic_damage');
-      if (existing) {
-        existing.bonus += bonus; // stack!
-        existing._ttl = 200;
-      } else {
-        other.traits.push({ id: '_harmonic_damage', bonus, _ttl: 200 });
-      }
-    }
+    if (dx * dx + dy * dy <= r2) compoundMul(other.traits, '_harmonic_damage', factor);
   }
 });
 
 registerDamageMod('_harmonic_damage', (trait: Trait, damage: number, _ctx: HitContext) => {
-  return Math.round(damage * (1 + (trait.bonus ?? 0)));
+  return Math.round(damage * (trait.bonus ?? 1));
 });
 registerTowerUpdate('_harmonic_damage', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
-  // Reset bonus for next frame's accumulation (if not expired, it gets re-added)
-  if (trait._ttl <= 0) trait.bonus = 0;
+  if (trait._ttl <= 0) trait.bonus = 1;
 });
 
-/** Rate aura: +X% fire rate to all towers in range (stacks) */
+/** Rate aura: each Quickener multiplies the buffed tower's firing
+ *  speed by (1 + percent*level) — stacks compound, no cap. The bonus
+ *  field stores the running speed-multiplier (1.0 = no buff), reset
+ *  to 1.0 each frame in TowerManager. With the default percent of
+ *  0.10 at L1, five Quickeners yield 1.10^5 ≈ 1.61× speed (+61%),
+ *  ten yield 1.10^10 ≈ 2.59× (+159%) — every additional stack still
+ *  meaningfully accelerates fire rate. */
 registerTowerUpdate('rate_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  const bonus = (trait.percent ?? 0.15) * tower.level;
+  const factor = 1 + (trait.percent ?? 0.10) * tower.level;
   const range = tower.range || (TILE_SIZE * 4);
+  const r2 = range * range;
   for (const other of ctx.allTowers) {
     if (other === tower) continue;
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
-    if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      const existing = other.traits.find((t: any) => t.id === '_harmonic_rate');
-      if (existing) {
-        existing.bonus += bonus;
-        existing._ttl = 200;
-      } else {
-        other.traits.push({ id: '_harmonic_rate', bonus, _ttl: 200 });
-      }
-    }
+    if (dx * dx + dy * dy <= r2) compoundMul(other.traits, '_harmonic_rate', factor);
   }
 });
 
+// 50ms cooldown floor (= 20 fires/sec) keeps the projectile system
+// sane at extreme stack counts. Below that, the gain in DPS is
+// invisible anyway and we'd risk per-frame fire saturation.
+const _HARMONIC_RATE_FLOOR_MS = 50;
 registerFireRateMod('_harmonic_rate', (trait: Trait, rate: number, _tower: any) => {
-  return Math.round(rate * (1 - Math.min(0.8, trait.bonus ?? 0))); // cap at 80% reduction
+  const mult = trait.bonus ?? 1;
+  if (mult <= 1) return rate;
+  return Math.max(_HARMONIC_RATE_FLOOR_MS, Math.round(rate / mult));
 });
 registerTowerUpdate('_harmonic_rate', (trait: Trait, _tower: any, ctx: UpdateContext) => {
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
-  if (trait._ttl <= 0) trait.bonus = 0;
+  // identity = 1 (multiplicative): if the source disappears between
+  // TowerManager's reset and the next frame, leave bonus at neutral
+  // rather than 0 (which would divide-by-zero through the floor).
+  if (trait._ttl <= 0) trait.bonus = 1;
 });
 
-/** Range aura: +X tiles range to all towers in range (stacks) */
+/** Range aura: each Reach multiplies the buffed tower's range by
+ *  (1 + percent*level) — stacks compound, no cap. The bonus field
+ *  stores the running range multiplier (1.0 = no buff). Note: this
+ *  scales tile range proportionally, so high-range towers get larger
+ *  absolute gains than short-range towers. With percent=0.10 default
+ *  at L1, five Reaches give ×1.61 range (+61%), ten give ×2.59 (+159%). */
 registerTowerUpdate('range_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  const bonus = (trait.tiles ?? 1.5) * tower.level;
+  const factor = 1 + (trait.percent ?? 0.10) * tower.level;
   const range = tower.range || (TILE_SIZE * 4);
+  const r2 = range * range;
   for (const other of ctx.allTowers) {
     if (other === tower) continue;
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
-    if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      const existing = other.traits.find((t: any) => t.id === '_harmonic_range');
-      if (existing) {
-        existing.bonus += bonus * TILE_SIZE;
-        existing._ttl = 200;
-      } else {
-        other.traits.push({ id: '_harmonic_range', bonus: bonus * TILE_SIZE, _ttl: 200 });
-      }
-    }
+    if (dx * dx + dy * dy <= r2) compoundMul(other.traits, '_harmonic_range', factor);
   }
 });
 
-registerTowerUpdate('_harmonic_range', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  // Apply accumulated range bonus
-  const baseRange = tower.typeDef.range * TILE_SIZE;
-  tower.range = baseRange + (trait.bonus ?? 0);
+registerTowerUpdate('_harmonic_range', (trait: Trait, _tower: any, ctx: UpdateContext) => {
+  // Bonus is applied to tower.range in TowerManager's second pass —
+  // doing it here would race with aura-source contributions when a
+  // target tower runs before its source in the per-frame iteration.
+  // We only tick TTL here so the trait can expire when sources drop.
   trait._ttl = (trait._ttl ?? 0) - ctx.delta;
-  if (trait._ttl <= 0) trait.bonus = 0;
+  // identity = 1: TowerManager's pass-2 multiplies tower.range by this
+  // bonus, so 0 would zero out the range for one frame after expiry.
+  if (trait._ttl <= 0) trait.bonus = 1;
 });
 
-/** Crit aura: grants stacking crit chance to towers in range */
+/** Crit aura: each Critical Mass compounds crit chance via
+ *  1 - (1-existing) * (1-stack) — chance asymptotes to 1.0 (never
+ *  exceeds 100%, never caps off at the old hard 0.8). Multiplier is
+ *  max-pooled across sources so a single high-multiplier source
+ *  always wins; stacking only deepens the proc rate. With chance=0.20
+ *  default, five stacks ≈ 67%, ten ≈ 89%, twenty ≈ 99%. */
 registerTowerUpdate('crit_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
-  const chance = (trait.chance ?? 0.15) * tower.level;
+  const stack = (trait.chance ?? 0.20) * tower.level;
   const multiplier = trait.multiplier ?? 2;
   const range = tower.range || (TILE_SIZE * 4);
+  const r2 = range * range;
   for (const other of ctx.allTowers) {
     if (other === tower) continue;
     const dx = other.x - tower.x;
     const dy = other.y - tower.y;
-    if (Math.sqrt(dx * dx + dy * dy) <= range) {
-      const existing = other.traits.find((t: any) => t.id === '_harmonic_crit');
-      if (existing) {
-        existing.chance = Math.min(0.8, (existing.chance ?? 0) + chance); // stack, cap 80%
-        existing.multiplier = Math.max(existing.multiplier ?? 2, multiplier);
-        existing._ttl = 200;
-      } else {
-        other.traits.push({ id: '_harmonic_crit', chance: Math.min(0.8, chance), multiplier, _ttl: 200 });
-      }
-    }
+    if (dx * dx + dy * dy <= r2) compoundCrit(other.traits, stack, multiplier);
   }
 });
 
@@ -1244,37 +1283,24 @@ registerTowerUpdate('conduit_link', (trait: Trait, tower: any, ctx: UpdateContex
       const sourceAuraId = harmonicBuffIds[buff.id];
       if (lt.traits.some((t: any) => t.id === sourceAuraId)) continue;
 
+      const ltR2 = ltRange * ltRange;
+      // Re-emit at reEmitEffectiveness of the inherited buff's *effect*.
+      // For multiplier-style buffs (damage/rate/range) the "effect" is
+      // `bonus - 1`, so we propagate `1 + (bonus - 1) * eff`. For crit
+      // chance, "effect" is the chance itself.
       for (const other of ctx.allTowers) {
         if (other === lt || linkedSet.has(other) || other === tower) continue;
         const dx = other.x - lt.x;
         const dy = other.y - lt.y;
-        if (Math.sqrt(dx * dx + dy * dy) > ltRange) continue;
+        if (dx * dx + dy * dy > ltR2) continue;
 
-        if (buff.id === '_harmonic_damage') {
-          addOrRefreshTrait(other.traits, {
-            id: '_harmonic_damage',
-            bonus: (buff.bonus ?? 0) * reEmitEffectiveness,
-            _ttl: 200,
-          });
-        } else if (buff.id === '_harmonic_rate') {
-          addOrRefreshTrait(other.traits, {
-            id: '_harmonic_rate',
-            bonus: (buff.bonus ?? 0) * reEmitEffectiveness,
-            _ttl: 200,
-          });
-        } else if (buff.id === '_harmonic_range') {
-          addOrRefreshTrait(other.traits, {
-            id: '_harmonic_range',
-            bonus: (buff.bonus ?? 0) * reEmitEffectiveness,
-            _ttl: 200,
-          });
+        if (buff.id === '_harmonic_damage' || buff.id === '_harmonic_rate' || buff.id === '_harmonic_range') {
+          compoundMul(other.traits, buff.id,
+            1 + ((buff.bonus ?? 1) - 1) * reEmitEffectiveness);
         } else if (buff.id === '_harmonic_crit') {
-          addOrRefreshTrait(other.traits, {
-            id: '_harmonic_crit',
-            chance: Math.min(0.5, (buff.chance ?? 0) * reEmitEffectiveness),
-            multiplier: buff.multiplier ?? 2,
-            _ttl: 200,
-          });
+          compoundCrit(other.traits,
+            (buff.chance ?? 0) * reEmitEffectiveness,
+            buff.multiplier ?? 2);
         }
       }
     }
@@ -1283,43 +1309,32 @@ registerTowerUpdate('conduit_link', (trait: Trait, tower: any, ctx: UpdateContex
 
 function shareAura(auraTrait: Trait, fromTower: any, ctx: UpdateContext, conduitLevel: number): void {
   const range = fromTower.range || (TILE_SIZE * 4);
+  const r2 = range * range;
   const effectiveness = 0.7; // shared auras are 70% as strong
 
   for (const other of ctx.allTowers) {
     if (other === fromTower) continue;
     const dx = other.x - fromTower.x;
     const dy = other.y - fromTower.y;
-    if (Math.sqrt(dx * dx + dy * dy) > range) continue;
+    if (dx * dx + dy * dy > r2) continue;
 
     switch (auraTrait.id) {
       case 'damage_aura':
-        addOrRefreshTrait(other.traits, {
-          id: '_harmonic_damage',
-          bonus: (auraTrait.percent ?? 0.2) * conduitLevel * effectiveness,
-          _ttl: 200,
-        });
+        compoundMul(other.traits, '_harmonic_damage',
+          1 + (auraTrait.percent ?? 0.15) * conduitLevel * effectiveness);
         break;
       case 'rate_aura':
-        addOrRefreshTrait(other.traits, {
-          id: '_harmonic_rate',
-          bonus: (auraTrait.percent ?? 0.15) * conduitLevel * effectiveness,
-          _ttl: 200,
-        });
+        compoundMul(other.traits, '_harmonic_rate',
+          1 + (auraTrait.percent ?? 0.10) * conduitLevel * effectiveness);
         break;
       case 'range_aura':
-        addOrRefreshTrait(other.traits, {
-          id: '_harmonic_range',
-          bonus: (auraTrait.tiles ?? 1.5) * conduitLevel * effectiveness * TILE_SIZE,
-          _ttl: 200,
-        });
+        compoundMul(other.traits, '_harmonic_range',
+          1 + (auraTrait.percent ?? 0.10) * conduitLevel * effectiveness);
         break;
       case 'crit_aura':
-        addOrRefreshTrait(other.traits, {
-          id: '_harmonic_crit',
-          chance: Math.min(0.5, (auraTrait.chance ?? 0.15) * conduitLevel * effectiveness),
-          multiplier: auraTrait.multiplier ?? 2,
-          _ttl: 200,
-        });
+        compoundCrit(other.traits,
+          (auraTrait.chance ?? 0.20) * conduitLevel * effectiveness,
+          auraTrait.multiplier ?? 2);
         break;
     }
   }
