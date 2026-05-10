@@ -55,6 +55,7 @@ export const test = base.extend<TDFixtures>({
             flags: {
               first_game_complete: true,
               'announcement_seen.campaigns-released': true,
+              'announcement_seen.mech-campaign-iron-cascade': true,
             },
           }));
         } catch {}

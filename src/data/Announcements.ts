@@ -63,6 +63,43 @@ export interface Announcement {
  *  matter for correctness, but reviewers will look at the top first. */
 export const ANNOUNCEMENTS: Announcement[] = [
   {
+    id: 'mech-campaign-iron-cascade',
+    publishedAt: '2026-05-10',
+    title: 'Iron Cascade',
+    summary: 'The Mechanical campaign is live — ten missions of Vael vs Voss, a new finale mechanic, and Voss\'s Suppression Pylons across the frontier.',
+    factionAccent: 'mechanical',
+    body: [
+      {
+        kind: 'lead',
+        text: 'Lord-Architect Voss has outlawed magic. Master Vael — Arcane archmage of the Eastern Spire — has ten engagements to break the foundries and end the cascade.',
+      },
+      {
+        kind: 'feature',
+        title: 'A Three-Act Arc',
+        body: 'M1–M3 defend the spire\'s outposts and recover stolen tomes. M4 is the inciting loss — the spire falls. M5–M7 pursue Voss east on rationed reserves. M8–M10 strike at his industrial heart: a saboteur attacker run, a duel with his Ace, and the throne overthrow.',
+      },
+      {
+        kind: 'feature',
+        title: 'Suppression Pylons',
+        body: 'Voss\'s signature device. Pre-placed on M2 / M5 / M6 / M8, indestructible by spell, project a stress field that stalls Arcane towers inside it after a few shots. Click a pylon to channel a 2.5s counter — mutes it for 15s. Carry the rhythm or lose the engagement.',
+      },
+      {
+        kind: 'feature',
+        title: 'M10 — The Overthrow',
+        body: 'New finale mechanic. A pre-placed Workshop trains Raider units on a gold + cooldown gate; three global upgrade tiers (Plate / Edge / Tread) stamp at build time, not retroactively. Four power generators each guard a tower cluster — destroying a generator cascade-kills its towers, and the Throne is invulnerable until every generator falls. Permadeath Raiders, no caps, no auto-respawn. Squad-management TD inside the campaign\'s last hour.',
+      },
+      {
+        kind: 'feature',
+        title: 'Mechanical Unlocked on Completion',
+        body: 'Beating M10 unlocks Mechanical in every other mode for free — the spoils of Voss\'s foundry. Players who already paid Shards for Mechanical get the Cores refund as normal.',
+      },
+      {
+        kind: 'paragraph',
+        text: 'Story copy + Mech-themed visuals. Bespoke art is rolling in over the next drops; the gameplay is shippable today.',
+      },
+    ],
+  },
+  {
     id: 'campaigns-released',
     publishedAt: '2026-05-09',
     title: 'Arcane Campaign',

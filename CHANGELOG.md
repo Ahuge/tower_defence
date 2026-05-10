@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-05-10
+
+### Mechanical Campaign — Iron Cascade
+
+Second campaign shipped: 10 missions, the new `final_sabotage` archetype, a recurring Suppression Pylon antagonist mechanic, and a story arc that puts an Arcane archmage (Master Vael) against a Mech tyrant (Lord-Architect Voss) who has outlawed magic.
+
+**Story arc.** Three acts. M1–M3 defend the Eastern Spire and recover stolen tomes. M4 *Spire Falls* — the inciting loss; the spire is overrun and Vael flees east with the codex. M5–M7 pursue Voss's column on rationed reserves. M8–M10 strike into his industrial heart: a saboteur attacker mission, a Hero Duel against his Ace, and the throne overthrow.
+
+**Suppression Pylons** — Voss's recurring anti-arcane device. Pre-placed on the map, cannot be destroyed in M1–M9, project a Chebyshev tile radius that suppresses player towers inside it: every shot accumulates 1 stress; at 5 stress the tower stalls for 3s via the existing `_disabledRemaining` channel. Player counter: click the pylon to start a 2.5s channel that mutes it for 15s. Pylons appear on M2 (the canyon bottleneck), M5 (Iron Convoy boss-route), M6 (First Light speedrun gates), and M8 (Voss's assembly-line gates).
+
+**M10 The Overthrow** — new `final_sabotage` archetype. The player no longer builds Mana Drains and summons a hero (that's M10 Arcane); instead, a pre-placed **Workshop** trains **Raider** units on a gold + cooldown gate. Three global upgrade tiers per axis (Plate / Edge / Tread, 600 / 1200 / 1800g each); upgrades stamp on Raiders at *build time only* — already-alive Raiders keep what they were born with, so spend-vs-train is a real economic decision. No cap; gold + cooldown rate-limits naturally. No auto-respawn — Raiders permadeath.
+
+**Generators + Throne gating.** Four pre-placed Generators each own a cluster of CPU defender towers via a `linkedTowers` cell list. When a Generator dies, its linked towers cascade-power-down (set `_expired = true`, no XP/gold reward). The Throne (Voss himself) starts `_invulnerable`; once every Generator is down, the throne becomes mortal and is the win-condition target. Generators are inert HP bags — they don't fire (cosmetically still visible as mortar silhouettes pending bespoke art).
+
+**Workshop HUD** — DOM panel bottom-right. Shows generator progress ("X / N down" → "THRONE EXPOSED"), Train Raider button (cost + cooldown gauge + alive count), and three upgrade rows with current tier + next-tier cost. Clicks dispatch window events the GameScene listens for. Mounts only when `sabotageRules` is set on the mission.
+
+**Render layers + click model.** `SabotageRender` draws Workshop (placeholder box), Raiders (orange circles with HP bars), and selection-highlight outlines. `SuppressionRender` draws each pylon (diamond + radius circle) plus a clockwise channel-progress arc. Click priority: pylon-channel > sabotage interactions (workshop-train / raider-select / cpu-target) > standard tower placement.
+
+**Shared infrastructure** lifted out for reuse. New `placeCpuTowers` helper in `src/systems/finale/cpuPlacement.ts` dedupes the destructible-tower placement loop between `FinaleController` (Arcane M10) and `SabotageController` (Mech M10). New `CampaignDef.defaultPlayerFaction` + `defaultMapThemeOverride` flow through a `campaignDefaults` merge layer in `MissionRunner` — drops 10× per-mission `faction: 'arcane'` from `mechanical.ts` and works the same way `defaultMapThemeOverride: 'factory'` already does. `SuppressionPylonSpec` interface shared between `MapDefinition` and `MissionOverrides`. `SabotageEvents.ts` exports typed window-event names.
+
+**Bug fix bundle on top of the campaign:** the throne originally sat at col 1 (adjacent to the entry wall), which blocked the only creep-spawn cell from finding a path. Moved to col 3. Pylon cells on shared maps are now auto-marked `noBuild` so a build-mode click can't drop a tower on top of one. M10 should now play end-to-end.
+
+Files: `src/data/campaigns/mechanical.ts`, `src/data/campaigns/CampaignDef.ts`, `src/data/campaigns/MissionArchetypes.ts`, `src/data/Maps.ts` (added `mech_throne_finale` + schema fields), `src/systems/sabotage/*` (NEW: SabotageController, Workshop, WorkshopUpgrades, SabotageRender, SabotageEvents), `src/systems/suppression/*` (NEW: SuppressionManager, SuppressionRender), `src/systems/finale/cpuPlacement.ts` (NEW), `src/entities/{Raider,SuppressionPylon}.ts` (NEW), `src/entities/Tower.ts` (fields), `src/ui/game/SabotageHudDOM.tsx` (NEW), `src/ui/GameUIStore.ts`. 45 new vitest specs, 610 total. tsc clean.
+
 ## 2026-05-08
 
 ### Announcements: in-game release-notes modal + persistent mailbox
