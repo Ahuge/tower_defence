@@ -91,6 +91,7 @@ import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
 import { SuppressionManager } from '../systems/suppression/SuppressionManager';
+import { SabotageController } from '../systems/sabotage/SabotageController';
 import type { DestructibleStructure } from '../entities/DestructibleStructure';
 import { DESTRUCTIBLE_STRUCTURES } from '../data/DestructibleStructures';
 import { AttackerComposer } from '../systems/attacker/AttackerComposer';
@@ -455,12 +456,17 @@ export class GameScene extends Phaser.Scene {
   /** M10 finale — when set, GameScene instantiates a FinaleController
    *  which owns the hero, summoning circles, and tower-kill win check. */
   private _missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules'];
+  /** Mech M10 finale — when set, GameScene instantiates a
+   *  SabotageController which owns the throne, generators, Workshop,
+   *  Raider squad, and win check. Distinct from finaleRules. */
+  private _missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules'];
+  private _sabotageController: import('../systems/sabotage/SabotageController').SabotageController | null = null;
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules'] }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules'] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -492,6 +498,7 @@ export class GameScene extends Phaser.Scene {
     this._missionAttackerCampIncome = data.missionAttackerCampIncome;
     this._missionCoopCreepCountMult = data.missionCoopCreepCountMult;
     this._missionFinaleRules = data.missionFinaleRules;
+    this._missionSabotageRules = data.missionSabotageRules;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -513,7 +520,7 @@ export class GameScene extends Phaser.Scene {
       // surviving N waves). Capping at 20 would soft-lock the run
       // because the player would run out of waves before destroying
       // all 22 CPU defenders.
-      const isFinale = data.missionFinaleRules != null;
+      const isFinale = data.missionFinaleRules != null || data.missionSabotageRules != null;
       if (capActive && this.matchMode === 'standard' && !isFinale) {
         this.waveCount = 20;
       }
@@ -1186,6 +1193,40 @@ export class GameScene extends Phaser.Scene {
     // GameScene.update. Skipped when the map has no pylons.
     if (mapDef.suppressionPylons && mapDef.suppressionPylons.length > 0) {
       this._suppressionMgr = new SuppressionManager(mapDef.suppressionPylons);
+    }
+    // Mech M10 finale — instantiate the SabotageController. Reuses
+    // the destructibleTowers map field (with isGenerator/isThrone tags
+    // stamped on the relevant entries) and a `workshop` cell from a
+    // dedicated map field. Skipped when the mission has no
+    // sabotageRules.
+    if (this._missionSabotageRules && mapDef.destructibleTowers && mapDef.workshop) {
+      // M10 finale, mirroring the Arcane M10 path: sends walk RIGHT →
+      // LEFT (reverse path) so player-queued sends pressure the CPU
+      // territory rather than escape the player's own base.
+      if (mapDef.entries[0] && mapDef.exits[0]) {
+        const reversePath = findPath(this.grid, mapDef.exits[0], mapDef.entries[0]);
+        if (reversePath) this.sendMgr.setSendPathOverride(reversePath);
+      }
+      const SabotageControllerCls = SabotageController;
+      this._sabotageController = new SabotageControllerCls({
+        rules: this._missionSabotageRules,
+        destructibleTowers: mapDef.destructibleTowers,
+        workshop: {
+          col: mapDef.workshop.col,
+          row: mapDef.workshop.row,
+          pixelX: gridX(mapDef.workshop.col),
+          pixelY: gridY(mapDef.workshop.row),
+        },
+        towerMgr: this.towerMgr,
+        onThroneVulnerable: () => {
+          this.eventLog.gameMessage('The throne shield falls. Voss is mortal.');
+        },
+        onWin: () => {
+          this.eventLog.gameMessage('The Cascade-Architect is silenced. The foundry burns.');
+          this.eventBus.emit('gameWon');
+          this.goToGameOver(true);
+        },
+      });
     }
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
@@ -3099,6 +3140,17 @@ export class GameScene extends Phaser.Scene {
     // every other mission.
     if (this._suppressionMgr) {
       this._suppressionMgr.update(time, this.towers as any);
+    }
+    if (this._sabotageController) {
+      // Cast the live tower / creep arrays through `unknown` — the
+      // controller only needs the duck-typed RaiderTarget shape, but
+      // Tower / Creep don't formally implement it.
+      this._sabotageController.update(
+        time,
+        delta,
+        this.creeps as unknown as Parameters<typeof this._sabotageController.update>[2],
+        this.towers as unknown as Parameters<typeof this._sabotageController.update>[3],
+      );
     }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,

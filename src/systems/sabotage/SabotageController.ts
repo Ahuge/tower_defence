@@ -24,6 +24,9 @@
 import type { Tower } from '../../entities/Tower';
 import type { TowerManager } from '../TowerManager';
 import { getTowerType } from '../../data/TowerTypes';
+import { Raider, type RaiderTarget } from '../../entities/Raider';
+import { Workshop } from './Workshop';
+import type { UpgradeKind } from './WorkshopUpgrades';
 
 export const CPU_INDEX_SABOTAGE = 99;
 
@@ -46,6 +49,10 @@ export interface SabotageSetupArgs {
     linkedTowers?: { col: number; row: number }[];
     isThrone?: boolean;
   }[];
+  /** Workshop placement. The Workshop is the player's barracks — it
+   *  trains Raiders and owns the global upgrade tiers. Optional only
+   *  for tests; production callers always supply one. */
+  workshop?: { col: number; row: number; pixelX: number; pixelY: number };
   towerMgr: TowerManager;
   /** Fired exactly once when the throne's HP reaches 0. */
   onWin?: () => void;
@@ -53,6 +60,12 @@ export interface SabotageSetupArgs {
    *  before the throne becomes vulnerable. The HUD/event log can use
    *  this to telegraph the phase shift. */
   onThroneVulnerable?: () => void;
+  /** Fired each time a Raider is successfully trained. The host
+   *  scene uses this to attach a sprite + register input handlers.
+   *  Pure-logic tests can ignore it. */
+  onRaiderSpawned?: (raider: Raider) => void;
+  /** Fired each time a Raider dies (alive flag flips false). */
+  onRaiderDied?: (raider: Raider) => void;
 }
 
 export class SabotageController {
@@ -69,12 +82,32 @@ export class SabotageController {
   private winFired = false;
   private onWin?: () => void;
   private onThroneVulnerable?: () => void;
+  private onRaiderSpawned?: (raider: Raider) => void;
+  private onRaiderDied?: (raider: Raider) => void;
+
+  /** Workshop instance — null when no workshop spec was supplied (tests
+   *  for the win condition only). */
+  private workshop: Workshop | null = null;
+  private workshopPixel: { x: number; y: number } | null = null;
+
+  /** Live raiders. Order is spawn order. Includes recently-dead so
+   *  the host scene can read the squad after-the-fact; pruned each
+   *  update tick. */
+  private raiders: Raider[] = [];
+  private nextRaiderId = 1;
 
   constructor(args: SabotageSetupArgs) {
     this.rules = args.rules;
     this.towerMgr = args.towerMgr;
     this.onWin = args.onWin;
     this.onThroneVulnerable = args.onThroneVulnerable;
+    this.onRaiderSpawned = args.onRaiderSpawned;
+    this.onRaiderDied = args.onRaiderDied;
+
+    if (args.workshop) {
+      this.workshop = new Workshop({ col: args.workshop.col, row: args.workshop.row });
+      this.workshopPixel = { x: args.workshop.pixelX, y: args.workshop.pixelY };
+    }
 
     const ownerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX_SABOTAGE;
     const defaultHp = this.rules.cpuTowerHpDefault ?? 600;
@@ -110,7 +143,15 @@ export class SabotageController {
     }
   }
 
-  update(): void {
+  /** Per-frame tick.
+   *
+   *  - `now` / `deltaMs` — Phaser scene clock + frame time.
+   *  - `creeps` / `cpuTowers` — current alive hostiles each raider may
+   *    auto-target. The controller filters internally; callers can
+   *    pass the full lists.
+   *
+   *  Both args are optional for win-condition-only tests. */
+  update(now = 0, deltaMs = 0, creeps: RaiderTarget[] = [], cpuTargets: RaiderTarget[] = []): void {
     // Drain any newly-dead generators we haven't processed yet. Death
     // is detected by hp<=0 (Tower.takeDamage drives it to 0 and sets
     // _expired); the WeakSet prevents double-firing the cascade.
@@ -132,11 +173,74 @@ export class SabotageController {
       this.onThroneVulnerable?.();
     }
 
+    // Tick the raider squad. Hostiles list = alive wave creeps + alive
+    // CPU defender towers. Cleanup dead raiders + fire the death
+    // callback once each.
+    if (this.raiders.length > 0) {
+      const liveTargets: RaiderTarget[] = [];
+      for (const t of cpuTargets) if (t.alive) liveTargets.push(t);
+      for (const c of creeps) if (c.alive) liveTargets.push(c);
+      const survivors: Raider[] = [];
+      for (const r of this.raiders) {
+        if (!r.alive) {
+          this.onRaiderDied?.(r);
+          continue;
+        }
+        r.update(now, deltaMs, liveTargets);
+        if (!r.alive) this.onRaiderDied?.(r);
+        else survivors.push(r);
+      }
+      this.raiders = survivors;
+    }
+
     // Win = throne destroyed.
     if (!this.winFired && this.throne && ((this.throne as { _expired?: boolean })._expired || (this.throne.hp ?? 1) <= 0)) {
       this.winFired = true;
       this.onWin?.();
     }
+  }
+
+  // ─── Workshop / Raider API ─────────────────────────────────────
+
+  getWorkshop(): Workshop | null { return this.workshop; }
+  getRaiders(): Raider[] { return this.raiders; }
+
+  /** Train a Raider via the Workshop. Returns true on success.
+   *  `debit(amount)` is the player's gold debit callback; the
+   *  Workshop internally enforces cooldown + cost. */
+  trainRaider(now: number, debit: (amount: number) => boolean): boolean {
+    if (!this.workshop || !this.workshopPixel) return false;
+    return this.workshop.tryTrain(now, debit, (stats) => {
+      const raider = new Raider({
+        id: this.nextRaiderId++,
+        x: this.workshopPixel!.x,
+        y: this.workshopPixel!.y,
+        hp: stats.hp,
+        attack: stats.attack,
+        speed: stats.speed,
+      });
+      this.raiders.push(raider);
+      this.onRaiderSpawned?.(raider);
+    });
+  }
+
+  /** Buy the next tier in `kind`. Returns true on success. */
+  buyUpgrade(kind: UpgradeKind, debit: (amount: number) => boolean): boolean {
+    if (!this.workshop) return false;
+    return this.workshop.tryUpgrade(kind, debit);
+  }
+
+  /** Set the manual target for a single raider. The controller
+   *  surface lets GameScene route a click on a CPU tower / creep
+   *  through here without exposing the Raider list directly. */
+  setRaiderTarget(raider: Raider, target: RaiderTarget | null): void {
+    if (!this.raiders.includes(raider)) return;
+    raider.setManualTarget(target);
+  }
+
+  /** Find a raider by id (UI / click hit testing). */
+  findRaiderById(id: number): Raider | null {
+    return this.raiders.find(r => r.id === id) ?? null;
   }
 
   /** True iff every generator placed at scene init is dead. Used by

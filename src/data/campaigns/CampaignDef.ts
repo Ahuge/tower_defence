@@ -223,6 +223,14 @@ export interface MissionOverrides {
     cpuTowerOwnerIndex?: number;
     towerKillReward?: { gold?: number; xp?: number; ultGold?: number; ultXp?: number };
   };
+  /** Mech finale (M10) rules. When present, GameScene instantiates a
+   *  SabotageController which owns the throne / generators / Workshop
+   *  / Raider squad / win condition. Other missions leave this
+   *  undefined. */
+  sabotageRules?: {
+    cpuTowerHpDefault?: number;
+    cpuTowerOwnerIndex?: number;
+  };
 }
 
 /** The 10-mission campaign. */
@@ -283,4 +291,6 @@ export type MissionArchetypeId =
   | 'attacker_role_reversal'
   | 'boss_rush_visible_assembly'
   // M10 finale — siege the archmage spire with summoned hero.
-  | 'final_arcane';
+  | 'final_arcane'
+  // Mech M10 finale — sabotage Voss's foundry with a Raider squad.
+  | 'final_sabotage';

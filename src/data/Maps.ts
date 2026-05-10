@@ -16,7 +16,12 @@ export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islan
   // Plan 14 M10 — finale siege. Player builds mana drains on the right
   // to charge summoning circles, the hero attacks pre-placed CPU
   // towers (with HP) on the left. Win = all CPU towers destroyed.
-  | 'arcane_throne_finale';
+  | 'arcane_throne_finale'
+  // Mech M10 — Voss's foundry. Player Workshop on the right trains
+  // Raiders. 4 generators each guard a CPU tower cluster on the left.
+  // Throne (Voss) at the far west, invulnerable until generators are
+  // down. Win = throne destroyed.
+  | 'mech_throne_finale';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -111,6 +116,10 @@ export interface MapDefinition {
    *  player towers inside it after a few shots. SuppressionManager
    *  owns the runtime state; player counters them via channel. */
   suppressionPylons?: { col: number; row: number; radius?: number }[];
+  /** Mech M10 finale — Workshop placement. The player's barracks for
+   *  training Raiders. SabotageController owns the runtime
+   *  Workshop instance + spawns Raiders at this cell's pixel center. */
+  workshop?: { col: number; row: number };
 }
 
 export interface SpawnerDef {
@@ -749,6 +758,97 @@ export const MAPS: Record<MapId, MapDefinition> = {
       summoningCircles,
       destructibleTowers,
       destructibleStructures,
+    };
+  })(),
+
+  // === Mech M10 finale: The Overthrow ===
+  //   - LEFT half (cols 1-13): Voss's foundry. Throne (col 2, midRow),
+  //     four generators distributed vertically, each with 3-4 linked
+  //     CPU defender towers nearby. Throne is invulnerable until every
+  //     generator dies; SabotageController wires that gating.
+  //   - RIGHT half (cols 18-34): player territory. Workshop pre-placed
+  //     at (32, midRow); buildable zone covers the rest. Player trains
+  //     Raiders at the Workshop and walks them across the map to chip
+  //     down generators + the throne.
+  //   - Wave creeps spawn from the throne side (col 0, midRow) and
+  //     walk RIGHT toward the player's base. Sends walk reverse.
+  mech_throne_finale: (() => {
+    const cols = GRID_COLS;
+    const rowsTop = 0, rowsBot = GRID_ROWS - 1;
+    const midRow = Math.floor(GRID_ROWS / 2);
+    // Outer perimeter wall (entry + exit cells stay open at midRow).
+    const outerWall: Pos[] = [];
+    for (let c = 0; c < cols; c++) outerWall.push({ col: c, row: rowsTop }, { col: c, row: rowsBot });
+    for (let r = 1; r < rowsBot; r++) {
+      if (r !== midRow) outerWall.push({ col: 0, row: r }, { col: cols - 1, row: r });
+    }
+    // Central cross divider — same shape as Arcane finale to force a
+    // consistent path topology.
+    const centerCross: Pos[] = [
+      ...rect(17, 4, 17, 8),
+      ...rect(17, 14, 17, 20),
+      ...rect(15, 9, 19, 13),
+      { col: 18, row: 8 },
+      { col: 16, row: 11 }, { col: 20, row: 11 },
+      { col: 17, row: 2 },
+      { col: 17, row: 22 },
+    ];
+
+    // Four generators distributed vertically on the left. Each owns
+    // a small cluster of linked CPU towers — when the generator dies,
+    // SabotageController expires the linked towers immediately.
+    // v1 placeholder: render the generator as a mortar (large, distinct
+    // silhouette). A bespoke generator sprite + structure entry comes
+    // in a follow-up art pass.
+    const G = (col: number, row: number, linked: { col: number; row: number }[]) => ({
+      col, row, towerId: 'mech_mortar', hp: 1200,
+      isGenerator: true, linkedTowers: linked,
+    });
+    const T = (col: number, row: number, towerId = 'mech_turret') => ({
+      col, row, towerId, hp: 500,
+    });
+    const generatorTopLinks = [{ col: 4, row: 4 }, { col: 6, row: 5 }, { col: 8, row: 4 }];
+    const generatorMid1Links = [{ col: 4, row: 9 }, { col: 6, row: 10 }, { col: 8, row: 9 }];
+    const generatorMid2Links = [{ col: 4, row: 14 }, { col: 6, row: 15 }, { col: 8, row: 14 }];
+    const generatorBotLinks = [{ col: 4, row: 19 }, { col: 6, row: 20 }, { col: 8, row: 19 }];
+
+    const destructibleTowers = [
+      // Throne (Voss) — far west, invulnerable until generators down.
+      { col: 1, row: midRow, towerId: 'mech_titan', hp: 5000, isThrone: true },
+      // Top cluster — generator + linked turrets.
+      G(11, 4, generatorTopLinks),
+      ...generatorTopLinks.map(c => T(c.col, c.row)),
+      // Mid-1 cluster.
+      G(11, 9, generatorMid1Links),
+      ...generatorMid1Links.map(c => T(c.col, c.row)),
+      // Mid-2 cluster.
+      G(11, 14, generatorMid2Links),
+      ...generatorMid2Links.map(c => T(c.col, c.row)),
+      // Bottom cluster.
+      G(11, 19, generatorBotLinks),
+      ...generatorBotLinks.map(c => T(c.col, c.row)),
+    ];
+
+    // Player buildable zone — entire right half, mirrors Arcane M10.
+    const playerBuildableCells: Pos[] = [];
+    for (let c = 18; c < cols - 1; c++) {
+      for (let r = 1; r < GRID_ROWS - 1; r++) {
+        playerBuildableCells.push({ col: c, row: r });
+      }
+    }
+
+    return {
+      id: 'mech_throne_finale' as MapId,
+      name: 'The Overthrow',
+      description: 'Storm Voss\'s foundry. Train raiders, drop the generators, end the tyrant.',
+      theme: 'factory',
+      entries: [{ col: 0, row: midRow }],
+      exits: [{ col: cols - 1, row: midRow }],
+      blocked: [...outerWall, ...centerCross],
+      noBuild: [],
+      playerBuildableCells,
+      destructibleTowers,
+      workshop: { col: 32, row: midRow },
     };
   })(),
 };

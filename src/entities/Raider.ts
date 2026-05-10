@@ -11,7 +11,15 @@
  * file is headless-testable.
  */
 
-import type { Damageable } from '../systems/finale/Damageable';
+/** Minimal contract a Raider can target. Tower (when destructible)
+ *  and Creep both fit this without needing to declare conformance —
+ *  duck typing is all the raider needs. */
+export interface RaiderTarget {
+  x: number;
+  y: number;
+  alive: boolean;
+  takeDamage(amount: number): boolean | void;
+}
 
 export interface RaiderConfig {
   /** Stable id. The controller assigns sequentially so tests + UIs
@@ -51,7 +59,7 @@ export class Raider {
   /** Player-set target. While non-null, the raider walks toward this
    *  target and attacks it preferentially. Cleared automatically when
    *  the target dies. */
-  manualTarget: Damageable | null = null;
+  manualTarget: RaiderTarget | null = null;
 
   /** Last `now` (ms) the raider fired. -Infinity = never. */
   private _lastFiredAt: number = -Infinity;
@@ -83,7 +91,7 @@ export class Raider {
   /** Set the player-clicked target. Pass null to clear and revert to
    *  auto-target behavior. The raider will continue any in-flight
    *  attack on the previous target — no instant cancel. */
-  setManualTarget(target: Damageable | null): void {
+  setManualTarget(target: RaiderTarget | null): void {
     this.manualTarget = target;
   }
 
@@ -91,7 +99,7 @@ export class Raider {
    *  `targets`), walks toward it if out of range, fires at it if in
    *  range and the cooldown has elapsed. Returns the raider's current
    *  effective target (for VFX hooks); null when nothing in sight. */
-  update(now: number, deltaMs: number, targets: Damageable[]): Damageable | null {
+  update(now: number, deltaMs: number, targets: RaiderTarget[]): RaiderTarget | null {
     if (!this.alive) return null;
 
     const target = this._resolveTarget(targets);
@@ -115,7 +123,7 @@ export class Raider {
   }
 
   /** Manual > auto. Manual cleared if dead. */
-  private _resolveTarget(targets: Damageable[]): Damageable | null {
+  private _resolveTarget(targets: RaiderTarget[]): RaiderTarget | null {
     if (this.manualTarget && !this.manualTarget.alive) {
       this.manualTarget = null;
     }
@@ -123,8 +131,8 @@ export class Raider {
     return this._nearestAlive(targets);
   }
 
-  private _nearestAlive(targets: Damageable[]): Damageable | null {
-    let best: Damageable | null = null;
+  private _nearestAlive(targets: RaiderTarget[]): RaiderTarget | null {
+    let best: RaiderTarget | null = null;
     let bestDist = Infinity;
     for (const t of targets) {
       if (!t.alive) continue;
@@ -137,7 +145,7 @@ export class Raider {
     return best;
   }
 
-  private _walkToward(target: Damageable, deltaMs: number): void {
+  private _walkToward(target: RaiderTarget, deltaMs: number): void {
     const dx = target.x - this.x;
     const dy = target.y - this.y;
     const d = Math.sqrt(dx * dx + dy * dy);

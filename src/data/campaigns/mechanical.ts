@@ -242,25 +242,33 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 10 — Final Showdown — the core foundry
+    // 10 — Final Sabotage — Voss's foundry, Workshop + Raider squad
+    // climax. Player trains raiders at the Workshop on the right, walks
+    // them west to destroy the four generators (each kills its linked
+    // CPU tower cluster on death), then the throne becomes mortal and
+    // is the win-condition target.
     {
-      id: 'cascade_terminus',
+      id: 'the_overthrow',
       idx: 9,
-      name: 'Cascade Terminus',
+      name: 'The Overthrow',
       story:
-        "Their core foundry. Thirty waves of the deepest reserve they have. Walkers off the line, " +
-        "still smoking from forging. The engineering corps says if we cut power to the core, the " +
-        "whole cascade goes with it — no more crawlers, no more walkers, no more line. " +
-        "End it tonight or we do this again next year, with worse odds.",
-      archetype: 'final_showdown',
+        "His foundry-throne. Voss is on it. Every walker still on the line, every pilot still " +
+        "drawing breath, called home to defend him. The four power cores hold his shield up — drop " +
+        "them and he is mortal. Train your raiders, send them deep, end this.",
+      archetype: 'final_sabotage',
       overrides: {
-        mapId: 'spiral',
+        faction: 'arcane',
+        mapId: 'mech_throne_finale',
         difficulty: 'hard',
-        waveCount: 30,
+        waveCount: 999,
+        sabotageRules: {
+          cpuTowerHpDefault: 600,
+          cpuTowerOwnerIndex: 99,
+        },
       },
       objectives: {
-        star2: { label: 'Win with at least 10 lives remaining', predicate: r => r.livesRemaining >= 10 },
-        star3: { label: 'Win without using a continue', predicate: r => r.won && r.perfectRun },
+        star2: { label: 'Win in under 25 minutes', predicate: r => r.won && r.durationMs < 25 * 60 * 1000 },
+        star3: { label: 'Win without losing a life', predicate: r => r.won && r.livesRemaining === r.livesStart },
       },
     },
   ],

@@ -189,4 +189,100 @@ describe('SabotageController', () => {
     expect(throne.maxHp).toBe(999);
     expect(throne.hp).toBe(999);
   });
+
+  describe('workshop + raider squad integration', () => {
+    function makeCtrl() {
+      const mgr = makeTowerMgr();
+      const ctrl = new SabotageController({
+        rules: {},
+        towerMgr: mgr,
+        workshop: { col: 30, row: 10, pixelX: 900, pixelY: 300 },
+        destructibleTowers: [
+          { col: 0, row: 0, towerId: 'mech_throne', hp: 100, isThrone: true },
+        ],
+      });
+      return { mgr, ctrl };
+    }
+
+    it('trainRaider succeeds and spawns at workshop pixel', () => {
+      const { ctrl } = makeCtrl();
+      const wallet = { bal: 1000, debit(n: number) { if (this.bal < n) return false; this.bal -= n; return true; } };
+      expect(ctrl.trainRaider(0, wallet.debit.bind(wallet))).toBe(true);
+      expect(ctrl.getRaiders().length).toBe(1);
+      const r = ctrl.getRaiders()[0];
+      expect(r.x).toBe(900);
+      expect(r.y).toBe(300);
+      expect(wallet.bal).toBe(850);
+    });
+
+    it('train returns false when no workshop is configured', () => {
+      const mgr = makeTowerMgr();
+      const ctrl = new SabotageController({
+        rules: {}, towerMgr: mgr, destructibleTowers: [],
+      });
+      const debit = vi.fn(() => true);
+      expect(ctrl.trainRaider(0, debit)).toBe(false);
+      expect(debit).not.toHaveBeenCalled();
+    });
+
+    it('upgrades persist across raider deaths and apply to NEW raiders only', () => {
+      const { ctrl } = makeCtrl();
+      const wallet = { bal: 99_999, debit(n: number) { this.bal -= n; return true; } };
+      const debit = wallet.debit.bind(wallet);
+      ctrl.trainRaider(0, debit);
+      const earlyRaider = ctrl.getRaiders()[0];
+      const earlyHp = earlyRaider.maxHp;
+      ctrl.buyUpgrade('plate', debit);
+      ctrl.trainRaider(99_999, debit);
+      const lateRaider = ctrl.getRaiders()[1];
+      expect(lateRaider.maxHp).toBeGreaterThan(earlyHp);
+      // Killing the early raider doesn't retro-upgrade anyone.
+      earlyRaider.takeDamage(99_999);
+      expect(earlyRaider.alive).toBe(false);
+    });
+
+    it('update ticks raiders and prunes dead ones', () => {
+      const { ctrl } = makeCtrl();
+      const onDied = vi.fn();
+      // Reach into the controller — install the death hook by reconstructing
+      // (cleaner than mutating private state).
+      const mgr2 = makeTowerMgr();
+      const ctrl2 = new SabotageController({
+        rules: {}, towerMgr: mgr2,
+        workshop: { col: 30, row: 10, pixelX: 900, pixelY: 300 },
+        destructibleTowers: [],
+        onRaiderDied: onDied,
+      });
+      const debit = (_n: number) => true;
+      ctrl2.trainRaider(0, debit);
+      const r = ctrl2.getRaiders()[0];
+      r.takeDamage(r.maxHp);
+      ctrl2.update(0, 16, [], []);
+      expect(ctrl2.getRaiders()).toHaveLength(0);
+      expect(onDied).toHaveBeenCalledOnce();
+    });
+
+    it('setRaiderTarget routes through the raider only when it owns the unit', () => {
+      const { ctrl } = makeCtrl();
+      const debit = (_n: number) => true;
+      ctrl.trainRaider(0, debit);
+      const r = ctrl.getRaiders()[0];
+      const fakeTarget = { x: 0, y: 0, alive: true, takeDamage: () => false };
+      ctrl.setRaiderTarget(r, fakeTarget);
+      expect(r.manualTarget).toBe(fakeTarget);
+      // A raider not owned by this controller is a no-op.
+      const stranger: any = { setManualTarget: vi.fn() };
+      ctrl.setRaiderTarget(stranger, fakeTarget);
+      expect(stranger.setManualTarget).not.toHaveBeenCalled();
+    });
+
+    it('findRaiderById returns the matching raider or null', () => {
+      const { ctrl } = makeCtrl();
+      const debit = (_n: number) => true;
+      ctrl.trainRaider(0, debit);
+      const r = ctrl.getRaiders()[0];
+      expect(ctrl.findRaiderById(r.id)).toBe(r);
+      expect(ctrl.findRaiderById(9999)).toBeNull();
+    });
+  });
 });
