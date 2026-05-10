@@ -230,6 +230,10 @@ export interface MissionOverrides {
   sabotageRules?: {
     cpuTowerHpDefault?: number;
     cpuTowerOwnerIndex?: number;
+    /** Workshop train cost (gold). Default 150g. */
+    workshopTrainCost?: number;
+    /** Workshop cooldown between trains (ms). Default 5000. */
+    workshopTrainCooldownMs?: number;
   };
 }
 

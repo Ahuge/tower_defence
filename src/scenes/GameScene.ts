@@ -1153,6 +1153,16 @@ export class GameScene extends Phaser.Scene {
     // tracks the shared charge meter, summons the hero on first 100%
     // charge, and watches for the win condition. Skipped on every
     // other mission (when finaleRules is undefined).
+    // Mutual exclusion — a mission def is final_arcane (mana-drain
+    // charging + summoned hero) OR final_sabotage (workshop + raider
+    // squad), never both. The throne tower handling diverges between
+    // the two controllers (FinaleController treats it as a regular
+    // CPU tower; SabotageController gates it on _invulnerable until
+    // generators die). If a future mission accidentally sets both
+    // rules, surface the conflict instead of silently double-running.
+    if (this._missionFinaleRules && this._missionSabotageRules) {
+      throw new Error('Mission has both finaleRules and sabotageRules — these archetypes are mutually exclusive.');
+    }
     if (this._missionFinaleRules && mapDef.summoningCircles && mapDef.destructibleTowers) {
       // M10 finale: sends walk RIGHT → LEFT (player's home back into
       // the CPU tower lattice) while wave creeps walk LEFT → RIGHT.

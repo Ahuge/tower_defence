@@ -144,6 +144,15 @@ export class Tower {
    *  false once that's true. takeDamage() short-circuits while set. */
   _invulnerable: boolean = false;
 
+  /** Lifecycle marker. Set true by `takeDamage()` on the killing blow
+   *  (or by mission controllers when an entity is consumed without HP
+   *  damage, e.g. a generator's linked towers powering down). The
+   *  next-frame `TowerManager.cleanupExpired()` removes the tower
+   *  from the grid + sprite + recalculates paths. Was previously
+   *  set + read via `(tower as any)._expired` casts; declaring the
+   *  field here removes the cast smell. */
+  _expired?: boolean;
+
   /** Mech finale: cells of CPU towers this generator powers. When the
    *  generator dies, SabotageController kills every linked tower
    *  (sets _expired = true, no rewards). Empty for non-generator
@@ -420,7 +429,7 @@ export class Tower {
       // Mark for cleanup. TowerManager.cleanupExpired() picks this up
       // next frame and removes the tower from the grid + sprite +
       // recalculates paths (handled in cleanupExpired for destructibles).
-      (this as { _expired?: boolean })._expired = true;
+      this._expired = true;
       return true;
     }
     return false;

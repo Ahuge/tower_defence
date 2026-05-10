@@ -104,6 +104,16 @@ describe('Raider', () => {
     expect(far.takeDamageCalls).toEqual([r.attack]);
   });
 
+  it('clears already-dead manual target on the next update tick', () => {
+    const r = makeRaider({ x: 0, y: 0, range: 1000 });
+    const corpse = makeTarget(50, 0, 30);
+    (corpse as { alive: boolean }).alive = false;
+    r.setManualTarget(corpse);
+    expect(r.manualTarget).toBe(corpse);
+    r.update(0, 16, []);
+    expect(r.manualTarget).toBeNull();
+  });
+
   it('clears manual target when it dies', () => {
     const r = makeRaider({ x: 0, y: 0, range: 1000 });
     const target = makeTarget(50, 0, 30);

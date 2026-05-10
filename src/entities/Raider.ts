@@ -11,9 +11,12 @@
  * file is headless-testable.
  */
 
-/** Minimal contract a Raider can target. Tower (when destructible)
- *  and Creep both fit this without needing to declare conformance —
- *  duck typing is all the raider needs. */
+/** Minimal contract a Raider can target. Deliberately narrower than
+ *  the existing `Damageable` interface — Tower's `takeDamage` returns
+ *  boolean (killing-blow signal) while Creep's returns void, and
+ *  Raiders need to hit both. The `boolean | void` return is the
+ *  superset that lets a single targeting list cover creeps + CPU
+ *  towers without wrapping. */
 export interface RaiderTarget {
   x: number;
   y: number;

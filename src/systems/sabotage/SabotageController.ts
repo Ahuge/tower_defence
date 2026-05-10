@@ -1,22 +1,21 @@
 /**
  * SabotageController — owns the Mechanical M10 finale state.
  *
- * v1 scope (this file):
- *   - Place destructible CPU towers, generators, and the throne from
- *     the map's `destructibleTowers` field. Generators own a list of
- *     linked CPU tower cells; the throne starts invulnerable.
- *   - Watch generator deaths each frame; on a generator's killing blow,
- *     expire every tower at one of its `linkedTowers` cells (no gold
- *     or XP reward — they're powered down, not killed).
- *   - Watch "all generators dead": flip throne._invulnerable = false so
- *     the player's units can finish him.
- *   - Watch the throne's death: fire onWin exactly once.
+ * Places destructible CPU towers, generators, and the throne from the
+ * map's `destructibleTowers` field. Generators own a list of linked
+ * CPU tower cells (death cascades + powers them down); the throne
+ * starts invulnerable and only flips mortal once every generator is
+ * dead.
  *
- * v2 (follow-up commits): Workshop building, Raider squad, hero
- * spawn/respawn, hero economy.
+ * Owns the Workshop + the Raider squad. Workshop trains Raiders on a
+ * gold + cooldown gate, with three global upgrade tiers stamped at
+ * spawn time. Per-frame `update()` walks each Raider against the
+ * current hostile list (alive CPU creeps + alive CPU towers), prunes
+ * dead raiders, and fires win callback when the throne dies.
  *
- * Design parallels FinaleController (Arcane M10) but drops the
- * Arcane-specific summoning-circle + charge-meter machinery. Tower
+ * Parallels FinaleController (Arcane M10) but drops the Arcane-
+ * specific summoning-circle + charge-meter machinery — the player
+ * trains a squad here rather than charging a hero. Tower
  * destructibility, _expired cleanup, and ownerIndex stamping are the
  * shared PRD-06 bedrock both controllers ride on.
  */
@@ -36,6 +35,10 @@ export interface SabotageRules {
   /** ownerIndex stamped on every CPU tower placed by this controller.
    *  Defaults to 99 (matches FinaleController's CPU_INDEX). */
   cpuTowerOwnerIndex?: number;
+  /** Workshop train cost (gold). Default 150g. */
+  workshopTrainCost?: number;
+  /** Workshop cooldown between trains (ms). Default 5000. */
+  workshopTrainCooldownMs?: number;
 }
 
 export interface SabotageSetupArgs {
@@ -95,6 +98,14 @@ export class SabotageController {
    *  update tick. */
   private raiders: Raider[] = [];
   private nextRaiderId = 1;
+  /** ownerIndex used for "is this creep CPU-side hostile?" filter.
+   *  Cached at construction so the per-frame raider tick doesn't
+   *  re-resolve from rules. */
+  private readonly cpuOwnerIndex: number;
+  /** Scratch array reused each frame for the raider targeting list,
+   *  to avoid the GC cost of allocating a fresh array per tick when
+   *  raiders are alive. */
+  private readonly _liveTargetScratch: RaiderTarget[] = [];
 
   constructor(args: SabotageSetupArgs) {
     this.rules = args.rules;
@@ -103,9 +114,15 @@ export class SabotageController {
     this.onThroneVulnerable = args.onThroneVulnerable;
     this.onRaiderSpawned = args.onRaiderSpawned;
     this.onRaiderDied = args.onRaiderDied;
+    this.cpuOwnerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX_SABOTAGE;
 
     if (args.workshop) {
-      this.workshop = new Workshop({ col: args.workshop.col, row: args.workshop.row });
+      this.workshop = new Workshop({
+        col: args.workshop.col,
+        row: args.workshop.row,
+        trainCost: this.rules.workshopTrainCost,
+        trainCooldownMs: this.rules.workshopTrainCooldownMs,
+      });
       this.workshopPixel = { x: args.workshop.pixelX, y: args.workshop.pixelY };
     }
 
@@ -160,9 +177,9 @@ export class SabotageController {
       if (this.drainedGenerators.has(gen)) continue;
       this.drainedGenerators.add(gen);
       for (const cell of gen.generatorLinkedCells ?? []) {
-        const target = this.cpuTowers.find(t => t.col === cell.col && t.row === cell.row && !(t as { _expired?: boolean })._expired);
+        const target = this.cpuTowers.find(t => t.col === cell.col && t.row === cell.row && !t._expired);
         if (!target) continue;
-        (target as { _expired?: boolean })._expired = true;
+        target._expired = true;
       }
     }
 
@@ -173,13 +190,23 @@ export class SabotageController {
       this.onThroneVulnerable?.();
     }
 
-    // Tick the raider squad. Hostiles list = alive wave creeps + alive
-    // CPU defender towers. Cleanup dead raiders + fire the death
-    // callback once each.
+    // Tick the raider squad. Hostiles list = alive wave creeps
+    // (CPU-team only — player sends should be safe) + alive CPU
+    // defender towers. Reuse the scratch array to avoid per-frame
+    // GC pressure at 60Hz × N raiders.
     if (this.raiders.length > 0) {
-      const liveTargets: RaiderTarget[] = [];
+      this._liveTargetScratch.length = 0;
+      const liveTargets = this._liveTargetScratch;
       for (const t of cpuTargets) if (t.alive) liveTargets.push(t);
-      for (const c of creeps) if (c.alive) liveTargets.push(c);
+      for (const c of creeps) {
+        if (!c.alive) continue;
+        // Skip player-sent creeps. CPU-team default is 99; player sends
+        // carry the spawning player slot (0+). Treat 'no ownerIndex' as
+        // hostile so test mocks don't have to set it.
+        const owner = (c as { ownerIndex?: number }).ownerIndex;
+        if (owner !== undefined && owner !== this.cpuOwnerIndex) continue;
+        liveTargets.push(c);
+      }
       const survivors: Raider[] = [];
       for (const r of this.raiders) {
         if (!r.alive) {
@@ -194,7 +221,7 @@ export class SabotageController {
     }
 
     // Win = throne destroyed.
-    if (!this.winFired && this.throne && ((this.throne as { _expired?: boolean })._expired || (this.throne.hp ?? 1) <= 0)) {
+    if (!this.winFired && this.throne && (this.throne._expired || (this.throne.hp ?? 1) <= 0)) {
       this.winFired = true;
       this.onWin?.();
     }
@@ -247,7 +274,7 @@ export class SabotageController {
    *  the throne-vulnerability gate; exposed so HUD code can render
    *  "X / N generators down" without poking internals. */
   getAliveGeneratorCount(): number {
-    return this.generators.filter(g => !(g as { _expired?: boolean })._expired && (g.hp ?? 0) > 0).length;
+    return this.generators.filter(g => !g._expired && (g.hp ?? 0) > 0).length;
   }
 
   getTotalGeneratorCount(): number {

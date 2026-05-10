@@ -83,6 +83,26 @@ describe('SuppressionManager', () => {
     expect(t._stress).toBe(1);
   });
 
+  it('remute extends the mute window when the new end-time is later', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    expect(mgr.mutePylonAt(5, 5, 1000, 5_000)).toBe(true); // mute until 6000
+    expect(mgr.mutePylonAt(5, 5, 2000, 8_000)).toBe(true); // mute until 10000 — extends
+    const t = makeTower(5, 5);
+    fire(mgr, t, 9_500);
+    expect(t._stress).toBe(0);
+    fire(mgr, t, 10_500);
+    expect(t._stress).toBe(1);
+  });
+
+  it('remute is a no-op when the new end-time is earlier', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    expect(mgr.mutePylonAt(5, 5, 1000, 10_000)).toBe(true);  // mute until 11000
+    expect(mgr.mutePylonAt(5, 5, 1000, 2_000)).toBe(true);   // would mute until 3000 — ignored
+    const t = makeTower(5, 5);
+    fire(mgr, t, 5_000);
+    expect(t._stress).toBe(0); // longer mute still active
+  });
+
   it('mute returns false when no pylon at the cell', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
     expect(mgr.mutePylonAt(0, 0, 0)).toBe(false);
