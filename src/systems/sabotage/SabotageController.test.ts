@@ -275,4 +275,64 @@ describe('SabotageController', () => {
       expect(ctrl.findRaiderById(9999)).toBeNull();
     });
   });
+
+  describe('CPU towers attack raiders', () => {
+    function setup() {
+      const mgr = makeTowerMgr();
+      const ctrl = new SabotageController({
+        ...baseArgs(mgr),
+        destructibleTowers: [
+          { col: 5, row: 5, towerId: 'mech_turret', hp: 600 },
+          { col: 0, row: 0, towerId: 'mech_throne', hp: 100, isThrone: true },
+        ],
+      });
+      // Configure the CPU turret with combat stats and pixel position
+      // (the placement helper doesn't set damage/range/fireRate on
+      // the test mock — production Tower carries these from typeDef).
+      const turret = (mgr.towers as any)[0];
+      turret.x = 100;
+      turret.y = 100;
+      turret.damage = 25;
+      turret.range = 200;
+      turret.fireRate = 1000;
+      turret.lastFired = -Infinity;
+      return { mgr, ctrl, turret };
+    }
+
+    it('damages the closest in-range raider when cooldown is available', () => {
+      const { ctrl, turret } = setup();
+      ctrl.trainRaider(0);
+      const r = ctrl.getRaiders()[0];
+      r.x = 100; r.y = 150;       // 50px → in range (200)
+      ctrl.update(5_000, 16, [], []);
+      expect(r.hp).toBe(r.maxHp - turret.damage);
+      expect(turret.lastFired).toBe(5_000);
+    });
+
+    it('does not fire on cooldown', () => {
+      const { ctrl, turret } = setup();
+      ctrl.trainRaider(0);
+      const r = ctrl.getRaiders()[0];
+      r.x = 100; r.y = 150;
+      ctrl.update(5_000, 16, [], []);
+      const hpAfter1 = r.hp;
+      ctrl.update(5_500, 16, [], []);  // 500ms < 1000ms fireRate
+      expect(r.hp).toBe(hpAfter1);
+    });
+
+    it('skips out-of-range raiders', () => {
+      const { ctrl } = setup();
+      ctrl.trainRaider(0);
+      const r = ctrl.getRaiders()[0];
+      r.x = 1000; r.y = 1000;     // way out of range
+      ctrl.update(5_000, 16, [], []);
+      expect(r.hp).toBe(r.maxHp);
+    });
+
+    it('skips when no raiders are alive', () => {
+      const { ctrl, turret } = setup();
+      ctrl.update(5_000, 16, [], []);
+      expect(turret.lastFired).toBe(-Infinity);
+    });
+  });
 });

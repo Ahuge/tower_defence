@@ -170,6 +170,13 @@ export class SabotageController {
       this.onThroneVulnerable?.();
     }
 
+    // CPU defender towers attack raiders. Standard tower update runs
+    // first and handles CPU-vs-creep sends (via ownership-based
+    // findTarget); raiders aren't in the creeps list, so we apply
+    // damage in a parallel pass here. Only fires if the tower hasn't
+    // already shot this tick — if it just hit a send, skip.
+    this._cpuTowersAttackRaiders(now);
+
     // Tick the raider squad. Hostiles list = alive wave creeps
     // (CPU-team only — player sends should be safe) + alive CPU
     // defender towers. Reuse the scratch array to avoid per-frame
@@ -265,5 +272,40 @@ export class SabotageController {
 
   private _allGeneratorsDead(): boolean {
     return this.getAliveGeneratorCount() === 0;
+  }
+
+  /** Walk the alive CPU defender list. Each tower with cooldown
+   *  available + a raider in range deals one tick of damage to the
+   *  closest raider. Skipped silently when no raiders are alive. */
+  private _cpuTowersAttackRaiders(now: number): void {
+    if (this.raiders.length === 0) return;
+    for (const tower of this.cpuTowers) {
+      if (tower._expired) continue;
+      if (tower.hp !== undefined && tower.hp <= 0) continue;
+      // Tower fired this tick already (at a send via standard path).
+      if (now - tower.lastFired < tower.fireRate) continue;
+      const target = this._closestRaiderInRange(tower);
+      if (!target) continue;
+      target.takeDamage(tower.damage);
+      tower.lastFired = now;
+    }
+  }
+
+  private _closestRaiderInRange(tower: Tower): Raider | null {
+    const rangeSq = tower.range * tower.range;
+    let best: Raider | null = null;
+    let bestDist = Infinity;
+    for (const r of this.raiders) {
+      if (!r.alive) continue;
+      const dx = r.x - tower.x;
+      const dy = r.y - tower.y;
+      const d = dx * dx + dy * dy;
+      if (d > rangeSq) continue;
+      if (d < bestDist) {
+        bestDist = d;
+        best = r;
+      }
+    }
+    return best;
   }
 }
