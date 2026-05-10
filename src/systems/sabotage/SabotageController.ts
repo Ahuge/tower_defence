@@ -128,6 +128,11 @@ export class SabotageController {
       if (spec.isGenerator) {
         tower.isGenerator = true;
         tower.generatorLinkedCells = spec.linkedTowers ?? [];
+        // Generators are inert HP bags — never fire. Block the
+        // standard updateTowers pipeline from picking them via the
+        // existing _disabledRemaining channel (Infinity stays Infinity
+        // through the per-frame `Math.max(0, x - delta/1000)` decay).
+        tower._disabledRemaining = Infinity;
         this.generators.push(tower);
       }
       if (spec.isThrone) {
@@ -282,6 +287,11 @@ export class SabotageController {
     for (const tower of this.cpuTowers) {
       if (tower._expired) continue;
       if (tower.hp !== undefined && tower.hp <= 0) continue;
+      // Generators are inert HP bags — they're strategic priority
+      // targets (kill = linked-tower cascade) but don't shoot. Skipping
+      // them here also avoids the placeholder mech_mortar visual
+      // splash-killing the squad with each tick.
+      if (tower.isGenerator) continue;
       // Tower fired this tick already (at a send via standard path).
       if (now - tower.lastFired < tower.fireRate) continue;
       const target = this._closestRaiderInRange(tower);

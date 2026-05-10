@@ -821,7 +821,11 @@ export const MAPS: Record<MapId, MapDefinition> = {
 
     const destructibleTowers = [
       // Throne (Voss) — far west, invulnerable until generators down.
-      { col: 1, row: midRow, towerId: 'mech_titan', hp: 5000, isThrone: true },
+      // Sits at col 3 (not col 1) so creeps spawning at (0, midRow)
+      // have clear cells (1, midRow) and (2, midRow) to walk into
+      // before they need to detour around the throne. col-1 placement
+      // would wall off the only open entry cell.
+      { col: 3, row: midRow, towerId: 'mech_titan', hp: 5000, isThrone: true },
       // Top cluster — generator + linked turrets.
       G(11, 4, generatorTopLinks),
       ...generatorTopLinks.map(c => T(c.col, c.row)),
