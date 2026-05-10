@@ -1246,6 +1246,27 @@ export class GameScene extends Phaser.Scene {
         },
       });
       this._sabotageRender = new SabotageRender(this, workshopPx, () => this._selectedRaider);
+
+      // SabotageHudDOM dispatches these on button clicks. The
+      // controller methods enforce gold + cooldown internally so the
+      // listener can be a thin wire.
+      const onTrain = () => {
+        if (!this._sabotageController) return;
+        this._sabotageController.trainRaider(this.time?.now ?? 0);
+      };
+      const onUpgrade = (ev: Event) => {
+        if (!this._sabotageController) return;
+        const detail = (ev as CustomEvent).detail as { kind?: 'plate' | 'edge' | 'tread' } | undefined;
+        if (!detail?.kind) return;
+        this._sabotageController.buyUpgrade(detail.kind);
+      };
+      window.addEventListener('td-sabotage-train', onTrain);
+      window.addEventListener('td-sabotage-upgrade', onUpgrade);
+      this.events.once('shutdown', () => {
+        window.removeEventListener('td-sabotage-train', onTrain);
+        window.removeEventListener('td-sabotage-upgrade', onUpgrade);
+        GameUIStore.setSabotageHud(null);
+      });
     }
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
@@ -2928,6 +2949,33 @@ export class GameScene extends Phaser.Scene {
     return null;
   }
 
+  /** Push the SabotageHud state to GameUIStore so the DOM panel can
+   *  render. Called every frame; the store internally short-circuits
+   *  when nothing meaningful changed. */
+  private _pushSabotageHud(now: number): void {
+    const ctrl = this._sabotageController;
+    if (!ctrl) return;
+    const ws = ctrl.getWorkshop();
+    const levels = ws.getLevels();
+    const raidersAlive = ctrl.getRaiders().filter(r => r.alive).length;
+    const generatorsTotal = ctrl.getTotalGeneratorCount();
+    const generatorsAlive = ctrl.getAliveGeneratorCount();
+    GameUIStore.setSabotageHud({
+      workshopCooldownMs: ws.cooldownRemaining(now),
+      trainCost: ws.trainCost,
+      upgradeLevels: levels,
+      nextUpgradeCost: {
+        plate: ws.nextUpgradeCost('plate'),
+        edge: ws.nextUpgradeCost('edge'),
+        tread: ws.nextUpgradeCost('tread'),
+      },
+      raidersAlive,
+      generatorsAlive,
+      generatorsTotal,
+      throneVulnerable: generatorsAlive === 0 && generatorsTotal > 0,
+    });
+  }
+
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
     // Plan 12: in attacker mode the player commands creeps, not
@@ -3235,6 +3283,7 @@ export class GameScene extends Phaser.Scene {
       );
       if (this._selectedRaider && !this._selectedRaider.alive) this._selectedRaider = null;
       this._sabotageRender?.update(this._sabotageController);
+      this._pushSabotageHud(time);
     }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,

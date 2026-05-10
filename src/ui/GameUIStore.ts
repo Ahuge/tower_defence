@@ -331,6 +331,8 @@ export interface GameUIState {
   attackerComposer: AttackerComposerUIState | null;
   /** M10 finale — HUD state for the summoning charge bar + tower count. */
   finaleHud: FinaleHudState | null;
+  /** Mech M10 finale — HUD for the Workshop + raider squad. */
+  sabotageHud: SabotageHudState | null;
 }
 
 export interface MissionPanelState {
@@ -409,6 +411,25 @@ export interface AttackerComposerUIState {
 /** M10 finale — DOM HUD state for the charge meter + summon status.
  *  Pushed each frame from GameScene when FinaleController is active.
  *  Null on every other mission. */
+/** Mech finale: HUD state for the Workshop panel + progress readouts. */
+export interface SabotageHudState {
+  /** ms remaining on the Workshop's train cooldown. 0 = ready. */
+  workshopCooldownMs: number;
+  /** Gold cost of one Raider train. */
+  trainCost: number;
+  /** Current upgrade tier per axis (0..3). */
+  upgradeLevels: { plate: number; edge: number; tread: number };
+  /** Cost of the NEXT tier per axis, or null when maxed. */
+  nextUpgradeCost: { plate: number | null; edge: number | null; tread: number | null };
+  /** Count of player Raiders currently alive. */
+  raidersAlive: number;
+  /** Generator progress for the throne-vulnerability gate. */
+  generatorsAlive: number;
+  generatorsTotal: number;
+  /** True once every generator is dead and the throne can be killed. */
+  throneVulnerable: boolean;
+}
+
 export interface FinaleHudState {
   /** Charge in [0, 1]. UI renders a horizontal progress bar. */
   charge: number;
@@ -599,7 +620,29 @@ class GameUIStoreClass {
       missionPanel: null,
       attackerComposer: null,
       finaleHud: null,
+      sabotageHud: null,
     };
+  }
+
+  /** Mech M10: push Workshop / squad state. Skips notify when nothing
+   *  meaningful changed (per-frame pump). */
+  setSabotageHud(next: SabotageHudState | null): void {
+    const prev = this.state.sabotageHud;
+    if (prev === next) return;
+    if (prev && next
+      && Math.abs(prev.workshopCooldownMs - next.workshopCooldownMs) < 50
+      && prev.trainCost === next.trainCost
+      && prev.upgradeLevels.plate === next.upgradeLevels.plate
+      && prev.upgradeLevels.edge === next.upgradeLevels.edge
+      && prev.upgradeLevels.tread === next.upgradeLevels.tread
+      && prev.raidersAlive === next.raidersAlive
+      && prev.generatorsAlive === next.generatorsAlive
+      && prev.generatorsTotal === next.generatorsTotal
+      && prev.throneVulnerable === next.throneVulnerable) {
+      return;
+    }
+    this.state = { ...this.state, sabotageHud: next };
+    this.notify();
   }
 
   /** M10 finale: push charge + hero state for the DOM HUD. Pass null
