@@ -70,27 +70,27 @@ describe('Mechanical campaign — registered', () => {
 });
 
 describe('Mechanical mission predicates', () => {
-  const assemblyStrike = MECHANICAL_CAMPAIGN.missions[7];
-  const aceDuel = MECHANICAL_CAMPAIGN.missions[8];
+  const saboteurVanguard = MECHANICAL_CAMPAIGN.missions[7];
+  const theAce = MECHANICAL_CAMPAIGN.missions[8];
 
-  it('assembly_strike star2 fires when 8+ raiders broke through', () => {
+  it('saboteur_vanguard star2 fires when 8+ raiders broke through', () => {
     const r = { ...FRESH_RESULT, custom: { attackerLeaks: 8 } };
-    expect(assemblyStrike.objectives.star2!.predicate(r)).toBe(true);
+    expect(saboteurVanguard.objectives.star2!.predicate(r)).toBe(true);
   });
 
-  it('assembly_strike star2 fails when fewer than 8 broke through', () => {
+  it('saboteur_vanguard star2 fails when fewer than 8 broke through', () => {
     const r = { ...FRESH_RESULT, custom: { attackerLeaks: 7 } };
-    expect(assemblyStrike.objectives.star2!.predicate(r)).toBe(false);
+    expect(saboteurVanguard.objectives.star2!.predicate(r)).toBe(false);
   });
 
-  it('ace_duel star2 fires when heroHpMin >= 0.5 on a win', () => {
+  it('the_ace star2 fires when heroHpMin >= 0.5 on a win', () => {
     const r = { ...FRESH_RESULT, custom: { heroHpMin: 0.6 } };
-    expect(aceDuel.objectives.star2!.predicate(r)).toBe(true);
+    expect(theAce.objectives.star2!.predicate(r)).toBe(true);
   });
 
-  it('ace_duel star2 fails on a loss even with full HP', () => {
+  it('the_ace star2 fails on a loss even with full HP', () => {
     const r = { ...FRESH_RESULT, won: false, custom: { heroHpMin: 1 } };
-    expect(aceDuel.objectives.star2!.predicate(r)).toBe(false);
+    expect(theAce.objectives.star2!.predicate(r)).toBe(false);
   });
 });
 

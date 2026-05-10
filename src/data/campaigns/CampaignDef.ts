@@ -235,6 +235,11 @@ export interface MissionOverrides {
     /** Workshop cooldown between trains (ms). Default 5000. */
     workshopTrainCooldownMs?: number;
   };
+  /** Mech campaign — per-mission Suppression Pylon placements. Lets a
+   *  mission stamp Voss's anti-arcane devices onto a shared map (e.g.
+   *  serpentine, fortress) without a bespoke copy. GameScene prefers
+   *  this list over the map's own `suppressionPylons` when present. */
+  suppressionPylons?: { col: number; row: number; radius?: number }[];
 }
 
 /** The 10-mission campaign. */

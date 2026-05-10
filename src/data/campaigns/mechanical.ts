@@ -1,26 +1,25 @@
 /**
- * Mechanical Campaign — second campaign, ships in tier-1 progression.
+ * Mechanical Campaign — Iron Cascade.
  *
- * Player fights AGAINST the Mechanical faction across 10 missions.
- * Mechanical is a tier-1 unlock (1000 Shards in the faction tree, parent
- * of Military and Cypherpunk) — completing this campaign unlocks playing
- * AS Mechanical without a Shards spend, OR rewards Cores for players who
- * already paid Shards.
+ * Player POV: Master Vael, an Arcane archmage of the Eastern Spire.
+ * Antagonist: Lord-Architect Voss — a human tyrant who has built an
+ * industrial war-machine empire and is moving to outlaw and erase
+ * arcane magic. Vael fights with the Arcane tower kit throughout
+ * (the campaign-default `faction: 'arcane'` is set on every mission
+ * via `defaultMapThemeOverride: 'factory'` + per-mission overrides).
  *
- * v1 lineup leans on the new Plan 11/12/13 archetypes proper:
- *   Mission 4 = Base Defense  (factory under attack from every side)
- *   Mission 8 = Attacker      (we strike their assembly line)
- *   Mission 3 = Heist         (steal back captured ordnance)
- * Plus Boss Rush, Speedrun, Frugal, Hero-vs-Boss, Final Showdown.
+ * Story arc — three acts:
+ *   Act I  (M1–M3): Defend the spire's outer holdings while messengers
+ *                   warn the rest of the order. Recover stolen tomes.
+ *   Act II (M4–M7): The Spire falls in M4 — Vael flees with the codex.
+ *                   Pursue Voss's column across his frontier; ration
+ *                   what was salvaged.
+ *   Act III(M8–M10): Strike at Voss's industrial heart. Beat his Ace,
+ *                   then storm his foundry-throne.
  *
- * Story tone: terse-industrial military report style. Where Arcane reads
- * medieval-fantasy, Mechanical reads grimdark warhammer / war-machine.
- * Smoke, gear, oil, iron. The player is the human resistance pushing
- * back the machine column.
- *
- * Bespoke mech-tileset maps will land in a follow-up; v1 uses the
- * existing shared maps (plains, crossroads, serpentine, etc.) plus the
- * archetype-default maps for Base Defense / Attacker / Heist.
+ * Voss's signature device — Suppression Pylons — appears across M2,
+ * M5, M6, M8 as a recurring hazard that stalls Vael's towers until
+ * the player channels them. The pylons in M10 are the Throne itself.
  */
 
 import type { CampaignDef } from './CampaignDef';
@@ -28,31 +27,37 @@ import type { CampaignDef } from './CampaignDef';
 export const MECHANICAL_CAMPAIGN: CampaignDef = {
   factionId: 'mechanical',
   name: 'Iron Cascade',
+  defaultMapThemeOverride: 'factory',
   intro:
-    "Their factories woke up. A column of smoke now stains the western horizon every morning. " +
-    "Crawler-scouts probe our perimeter; the heavy walkers will follow. Ten engagements stand " +
-    "between us and silencing the assembly line. We do not negotiate with machines.",
+    "Lord-Architect Voss has outlawed magic. His foundries woke a year ago; his criers now ride " +
+    "the eastern roads warning that any spire-keep flying our colours will be put to the torch. " +
+    "Master Vael, the codex is in your keeping. Hold while you can. When you cannot, run east " +
+    "with what remains, and find the way to silence him.",
   outro:
-    "The core foundry burns. Their walkers stand silent on the assembly floor, unfinished. " +
-    "Steel is just steel again. You commanded the line that broke the cascade — the rest of " +
-    "the engineering corps owes you their next coil of cable. New trees will grow on the slag.",
+    "The throne shield held until the last generator went down. Voss died beneath his own roof, " +
+    "and the foundries answered to no one for the first time in a generation. The codex is whole. " +
+    "Your apprentices have already hung sigils in the rafters above the assembly floor — the iron " +
+    "burns differently now. New spires will rise.",
   missions: [
-    // 1 — Standard intro with basic kit restriction
+    // ─── Act I — Defend ───────────────────────────────────────
+
+    // 1 — Listening post. Basic Arcane kit only; Voss's scouts probe.
     {
       id: 'perimeter_breach',
       idx: 0,
-      name: 'Perimeter Breach',
+      name: 'Listening Post',
       story:
-        "Crawler scouts. Light and fast. Your sergeant says they're the welcome mat — there'll be " +
-        "heavies behind. We have basic kit at the listening post: bolt, frost, a wall, nothing fancy. " +
-        "Hold them off the wire and prove the post is worth resupplying.",
+        "Voss's scouts on the eastern road, light and quick — the welcome mat for the column behind. " +
+        "We hold the listening post until Yuna's rider clears the pass with the warning. Bolt, frost, " +
+        "and a stormcaller — your basic kit. Make every sigil count.",
       archetype: 'restriction',
       overrides: {
+        faction: 'arcane',
         mapId: 'plains',
         difficulty: 'easy',
         waveCount: 10,
         restrictions: {
-          allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'mech_wall'],
+          allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus'],
         },
       },
       objectives: {
@@ -61,20 +66,25 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 2 — Standard 15 with terrain choke + winding map
+    // 2 — Canyon road. First encounter with a Suppression Pylon.
     {
-      id: 'supply_road',
+      id: 'the_pass',
       idx: 1,
-      name: 'Supply Road',
+      name: 'The Pass',
       story:
-        "Their column moves on a single road through the canyon. We hold the chokepoint or the " +
-        "front-line goes hungry. Fifteen waves. Their armor scales fast — shred it before the road " +
-        "opens up onto the plain.",
+        "Refugees from Briarroot are coming through the canyon — three abbots, a dozen apprentices, " +
+        "the salvaged glassware. Voss's column is on the road behind them. He has set one of his " +
+        "anti-arcane pylons at the bottleneck — the field stalls our spells in pulses. Channel it " +
+        "when you can; hold the line either way.",
       archetype: 'standard',
       overrides: {
+        faction: 'arcane',
         mapId: 'serpentine',
         difficulty: 'normal',
         waveCount: 15,
+        suppressionPylons: [
+          { col: 18, row: 12, radius: 5 },
+        ],
       },
       objectives: {
         star2: { label: 'Win with 70% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.7) },
@@ -82,17 +92,18 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 3 — Heist (Plan 13): steal back captured ordnance
+    // 3 — Heist. Voss's couriers carry stolen Arcane tomes east.
     {
-      id: 'depot_raid',
+      id: 'the_cipher',
       idx: 2,
-      name: 'The Depot Raid',
+      name: 'The Cipher',
       story:
-        "Last week they overran a forward depot and dragged off a year of our ordnance. The crates " +
-        "are stacked in a steel hangar; the column is moving them out tonight. Stop the convoy. " +
-        "Whatever leaves with them, we don't get back.",
+        "Voss's couriers raided the Briarroot library before they burned it. The tomes are in a " +
+        "guarded vault now, and tonight a convoy moves them east — out of the order's reach forever. " +
+        "Stop the convoy. Whatever leaves with them, we lose to industrial study and never see again.",
       archetype: 'heist',
       overrides: {
+        faction: 'arcane',
         mapId: 'heist_vault',
         difficulty: 'normal',
         waveCount: 10,
@@ -106,17 +117,20 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 4 — Base Defense (Plan 11): factory under all-sides assault
+    // ─── Act II — Strike Out ──────────────────────────────────
+
+    // 4 — The Spire falls. The inciting loss that drives the rest.
     {
-      id: 'foundry_siege',
+      id: 'spire_falls',
       idx: 3,
-      name: 'Foundry Siege',
+      name: 'Spire Falls',
       story:
-        "Word came back wrong. The column we were chasing was a feint — their walkers circled and " +
-        "are converging on our own foundry from every direction. The forge is the war. If it falls " +
-        "we have no rifles tomorrow. Hold every approach.",
+        "Voss has the spire surrounded. Walkers from every approach, no resupply, the codex in the " +
+        "vault below. Hold every direction long enough for the apprentices to flee with what they can " +
+        "carry. We do not win here — we last. When the gates break, you run east with the codex.",
       archetype: 'base_defense',
       overrides: {
+        faction: 'arcane',
         mapId: 'base_arena',
         difficulty: 'normal',
         waveCount: 15,
@@ -127,20 +141,25 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 5 — Boss Rush — convoy of heavy walkers
+    // 5 — Iron Convoy. Five flagship walkers; pylons cover the road.
     {
       id: 'iron_convoy',
       idx: 4,
       name: 'Iron Convoy',
       story:
-        "Five of their flagship walkers broke from the main column. Each one is a fortress on tracks " +
-        "— heavy plating, anti-air, and a chassis cannon that ranges past anything we have at the " +
-        "front. No rank-and-file. Just five killings, in order. Burst them down before they range up.",
+        "Five of Voss's flagship walkers broke from the column to pursue you east. Each one is a " +
+        "fortress on tracks. Two of his pylons sit on the open ground — burst the walkers down between " +
+        "stalls, or the road eats us.",
       archetype: 'boss_rush',
       overrides: {
+        faction: 'arcane',
         mapId: 'crossroads',
         difficulty: 'hard',
         waveCount: 5,
+        suppressionPylons: [
+          { col: 12, row: 10, radius: 4 },
+          { col: 22, row: 14, radius: 4 },
+        ],
       },
       objectives: {
         star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
@@ -148,20 +167,26 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 6 — Speedrun — strike before they mobilize
+    // 6 — Speedrun. Strike Voss's rail yard before he mobilises.
     {
       id: 'first_light',
       idx: 5,
       name: 'First Light',
       story:
-        "Intelligence says they need 18 hours to fully mobilize the assembly line at the rail yard. " +
-        "Two divisions of theirs are in transit. Hit them in the open — twenty waves' worth of armor " +
-        "in motion — before they dig in. Speed is the order of the day.",
+        "Eighteen hours before Voss's rail yard finishes its mobilisation. Hit it now and his next " +
+        "column dies on the assembly floor. Three of his pylons line the approach. Speed is the " +
+        "instruction; pylons interrupt the speed; channel them in stride or accept the timer slipping.",
       archetype: 'speedrun',
       overrides: {
+        faction: 'arcane',
         mapId: 'fortress',
         difficulty: 'normal',
         waveCount: 20,
+        suppressionPylons: [
+          { col: 8, row: 8, radius: 4 },
+          { col: 18, row: 14, radius: 4 },
+          { col: 28, row: 10, radius: 4 },
+        ],
       },
       objectives: {
         star2: { label: 'Finish in under 12 minutes', predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
@@ -169,17 +194,18 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 7 — Frugal — supplies were lost in mission 3 if you didn't 3-star
+    // 7 — Frugal. Aftermath of the spire's fall: half the resources.
     {
-      id: 'rationed_steel',
+      id: 'rationed_mana',
       idx: 6,
-      name: 'Rationed Steel',
+      name: 'Rationed Mana',
       story:
-        "Ammunition, brass, even the wire is running out. Half the gold, six emplacements — that's " +
-        "the allocation. The forge is melting silverware to keep us in shells. Make every placement " +
-        "earn its weight in the metal it cost to build.",
+        "The spire's reserves were lost in the basement vault when Voss took the keep. Half the gold, " +
+        "six emplacements, a great deal of pride. Make every sigil earn its place in a kit that does " +
+        "not exist anymore.",
       archetype: 'frugal',
       overrides: {
+        faction: 'arcane',
         mapId: 'islands',
         difficulty: 'normal',
         waveCount: 15,
@@ -190,20 +216,27 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 8 — Attacker (Plan 12): we strike their assembly line
+    // ─── Act III — Their Country ──────────────────────────────
+
+    // 8 — Attacker. Player commands raiders to break Voss's assembly.
     {
-      id: 'assembly_strike',
+      id: 'saboteur_vanguard',
       idx: 7,
-      name: 'Assembly Strike',
+      name: 'Saboteur Vanguard',
       story:
-        "Their line is fortified. Towers, walls, kill-corridors — they built the place to grind us. " +
-        "We don't have the artillery to soften it. We have raiders, and the line has one route through. " +
-        "Get enough of our column past their guns and the assembly stops.",
+        "Voss's assembly line, fortified, kill-corridors, anti-arcane pylons covering every gate. We " +
+        "do not have the artillery to soften it; we have the coalition's raiders, and the line has " +
+        "exactly one route through. Get enough of them past the guns and the assembly stops.",
       archetype: 'attacker',
       overrides: {
+        faction: 'arcane',
         mapId: 'attacker_assault',
         difficulty: 'normal',
         waveCount: 10,
+        suppressionPylons: [
+          { col: 14, row: 8, radius: 4 },
+          { col: 14, row: 18, radius: 4 },
+        ],
       },
       objectives: {
         star2: {
@@ -217,17 +250,18 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 9 — Hero vs Boss — rival mech ace
+    // 9 — Hero vs Boss. Voss's general — his "voice in the field."
     {
-      id: 'ace_duel',
+      id: 'the_ace',
       idx: 8,
       name: 'The Ace',
       story:
-        "Their best pilot stepped out of his walker and onto the field. Coordinates included. " +
-        "Five waves of guard, then him. We sent the Engineer — if anyone can read a war-machine in " +
-        "single combat it's her. Win this and we know how their command chain breaks.",
+        "Voss's pilot stepped out of his walker and onto open ground. We sent the Engineer — " +
+        "if anyone reads a war-machine in single combat, it's her. Win this and we know how Voss's " +
+        "command chain breaks. Lose, and the Architect hears from his own mouth that we're soft.",
       archetype: 'hero_vs_boss',
       overrides: {
+        faction: 'arcane',
         mapId: 'hero_plains',
         difficulty: 'normal',
         waveCount: 5,
@@ -242,11 +276,7 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
     },
 
-    // 10 — Final Sabotage — Voss's foundry, Workshop + Raider squad
-    // climax. Player trains raiders at the Workshop on the right, walks
-    // them west to destroy the four generators (each kills its linked
-    // CPU tower cluster on death), then the throne becomes mortal and
-    // is the win-condition target.
+    // 10 — The Overthrow. SabotageController owns the climax.
     {
       id: 'the_overthrow',
       idx: 9,

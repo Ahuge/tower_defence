@@ -461,6 +461,10 @@ export class GameScene extends Phaser.Scene {
    *  SabotageController which owns the throne, generators, Workshop,
    *  Raider squad, and win check. Distinct from finaleRules. */
   private _missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules'];
+  /** Mech campaign — per-mission pylon overrides. GameScene prefers
+   *  these over the map's own `suppressionPylons` so a shared map
+   *  (e.g. serpentine) can host different pylon layouts per mission. */
+  private _missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons'];
   private _sabotageController: import('../systems/sabotage/SabotageController').SabotageController | null = null;
   private _sabotageRender: SabotageRender | null = null;
   /** Click-to-target: the player's most-recently clicked-on raider.
@@ -472,7 +476,7 @@ export class GameScene extends Phaser.Scene {
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules'] }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules']; missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons'] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -505,6 +509,7 @@ export class GameScene extends Phaser.Scene {
     this._missionCoopCreepCountMult = data.missionCoopCreepCountMult;
     this._missionFinaleRules = data.missionFinaleRules;
     this._missionSabotageRules = data.missionSabotageRules;
+    this._missionSuppressionPylons = data.missionSuppressionPylons;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -1207,8 +1212,13 @@ export class GameScene extends Phaser.Scene {
     // declares pre-placed pylons; SuppressionManager owns runtime
     // state (mute timers, per-tower stress) and is ticked from
     // GameScene.update. Skipped when the map has no pylons.
-    if (mapDef.suppressionPylons && mapDef.suppressionPylons.length > 0) {
-      this._suppressionMgr = new SuppressionManager(mapDef.suppressionPylons);
+    // Prefer per-mission overrides (campaign def) over map-level pylons
+    // so shared maps don't need bespoke copies for each Mech mission.
+    const pylons = (this._missionSuppressionPylons && this._missionSuppressionPylons.length > 0)
+      ? this._missionSuppressionPylons
+      : mapDef.suppressionPylons;
+    if (pylons && pylons.length > 0) {
+      this._suppressionMgr = new SuppressionManager(pylons);
     }
     // Mech M10 finale — instantiate the SabotageController. Reuses
     // the destructibleTowers map field (with isGenerator/isThrone tags
