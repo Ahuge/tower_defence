@@ -82,7 +82,25 @@ export interface MapDefinition {
    *  `preplacedTowers` (attacker mode) so finale CPU towers carry HP
    *  + destructible flag without polluting attacker_assault. The Ult
    *  tower flags `isUlt: true` and triggers the ult_finale phase trait. */
-  destructibleTowers?: { col: number; row: number; towerId: string; hp: number; isUlt?: boolean }[];
+  destructibleTowers?: {
+    col: number;
+    row: number;
+    towerId: string;
+    hp: number;
+    /** Arcane finale — Ult tower flag. Triggers the ult_finale phase
+     *  trait (heal at 50%, reinforcements at 25%, rage-fire at 10%). */
+    isUlt?: boolean;
+    /** Mech finale — generator flag. On death, the SabotageController
+     *  expires every tower whose cell appears in `linkedTowers`. */
+    isGenerator?: boolean;
+    /** Mech finale — towers this generator powers (cells). When the
+     *  generator dies, each tower at one of these cells is killed. */
+    linkedTowers?: { col: number; row: number }[];
+    /** Mech finale — throne (Voss). Invulnerable until every alive
+     *  generator on the map is destroyed; then mortal, and destroying
+     *  it wins the mission. */
+    isThrone?: boolean;
+  }[];
   /** Multi-tile boss structures the player must destroy. PRD 06 entry
    *  point — see `src/data/DestructibleStructures.ts` for the registry
    *  of allowed `id`s. Each structure occupies its `widthCells ×

@@ -139,6 +139,26 @@ export class Tower {
    *  outside Mech-campaign missions. */
   _stress: number = 0;
 
+  /** Mech finale: throne (Voss) is invulnerable until every generator
+   *  on the map has been destroyed. SabotageController flips this to
+   *  false once that's true. takeDamage() short-circuits while set. */
+  _invulnerable: boolean = false;
+
+  /** Mech finale: cells of CPU towers this generator powers. When the
+   *  generator dies, SabotageController kills every linked tower
+   *  (sets _expired = true, no rewards). Empty for non-generator
+   *  towers. Only meaningful when `destructible` is also true. */
+  generatorLinkedCells?: { col: number; row: number }[];
+
+  /** Mech finale: tags this tower as a generator so the controller
+   *  knows to drop its `generatorLinkedCells` on death. */
+  isGenerator?: boolean;
+
+  /** Mech finale: tags this tower as the master throne (Voss). The
+   *  throne is the win-condition target — destroying it ends the
+   *  mission. While any generator is alive, _invulnerable is true. */
+  isThrone?: boolean;
+
   /** M10 finale: tower destructibility. Default undefined = invincible
    *  (every existing mission). Set true on M10 CPU defender towers via
    *  the `destructibleTowers` map field; the hero attacks them and they
@@ -387,6 +407,12 @@ export class Tower {
   takeDamage(amount: number): boolean {
     if (!this.destructible || this.hp === undefined) return false;
     if (this.hp <= 0) return false; // already dead this frame
+    // Mech finale: throne tower is invulnerable until every generator
+    // is down. SabotageController flips this to false once the last
+    // generator dies; before then, even direct hits are no-op (the
+    // hit is silent, not deflected — the spec says invulnerable, the
+    // VFX layer can render "shield held" if it wants).
+    if (this._invulnerable) return false;
     this.hp -= amount;
     this._lastHitAt = (this._scene as { time?: { now: number } }).time?.now ?? 0;
     if (this.hp <= 0) {
