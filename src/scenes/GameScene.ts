@@ -92,6 +92,7 @@ import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
 import { SuppressionManager } from '../systems/suppression/SuppressionManager';
 import { SabotageController } from '../systems/sabotage/SabotageController';
+import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import type { DestructibleStructure } from '../entities/DestructibleStructure';
 import { DESTRUCTIBLE_STRUCTURES } from '../data/DestructibleStructures';
 import { AttackerComposer } from '../systems/attacker/AttackerComposer';
@@ -461,6 +462,11 @@ export class GameScene extends Phaser.Scene {
    *  Raider squad, and win check. Distinct from finaleRules. */
   private _missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules'];
   private _sabotageController: import('../systems/sabotage/SabotageController').SabotageController | null = null;
+  private _sabotageRender: SabotageRender | null = null;
+  /** Click-to-target: the player's most-recently clicked-on raider.
+   *  Subsequent click on a hostile cell sets that raider's manual
+   *  target. Cleared when the selected raider dies. */
+  private _selectedRaider: import('../entities/Raider').Raider | null = null;
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
@@ -1218,14 +1224,15 @@ export class GameScene extends Phaser.Scene {
         if (reversePath) this.sendMgr.setSendPathOverride(reversePath);
       }
       const SabotageControllerCls = SabotageController;
+      const workshopPx = { x: gridX(mapDef.workshop.col), y: gridY(mapDef.workshop.row) };
       this._sabotageController = new SabotageControllerCls({
         rules: this._missionSabotageRules,
         destructibleTowers: mapDef.destructibleTowers,
         workshop: {
           col: mapDef.workshop.col,
           row: mapDef.workshop.row,
-          pixelX: gridX(mapDef.workshop.col),
-          pixelY: gridY(mapDef.workshop.row),
+          pixelX: workshopPx.x,
+          pixelY: workshopPx.y,
         },
         economy: this.economy,
         towerMgr: this.towerMgr,
@@ -1238,6 +1245,7 @@ export class GameScene extends Phaser.Scene {
           this.goToGameOver(true);
         },
       });
+      this._sabotageRender = new SabotageRender(this, workshopPx, () => this._selectedRaider);
     }
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
@@ -2386,6 +2394,11 @@ export class GameScene extends Phaser.Scene {
 
   handleClick(col: number, row: number): void {
     this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
+    // Mech M10 finale: workshop click trains a raider; raider click
+    // selects; CPU-target click sets the selected raider's manual
+    // target; empty cell clears selection. Runs before the Arcane
+    // finale branch — they're mutually exclusive missions.
+    if (this._sabotageController && this.handleSabotageClick(col, row)) return;
     // M10 finale: clicks on CPU defender towers are special-cased.
     // - With a hero alive + non-build mode: assault command.
     // - Otherwise: swallow the click — never enter inspect/upgrade
@@ -2857,6 +2870,64 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** Mech M10: route a click through the sabotage interaction model.
+   *  Returns true when the click was consumed (caller short-circuits
+   *  the normal handler). */
+  private handleSabotageClick(col: number, row: number): boolean {
+    const ctrl = this._sabotageController!;
+    const mapDef = this.getMapDef();
+    const time = this.time?.now ?? 0;
+
+    // Workshop tile → train a raider.
+    if (mapDef.workshop && col === mapDef.workshop.col && row === mapDef.workshop.row) {
+      if (ctrl.trainRaider(time)) {
+        this.eventLog.gameMessage('Raider trained.');
+      } else {
+        const cd = ctrl.getWorkshop().cooldownRemaining(time);
+        if (cd > 0) this.eventLog.gameMessage(`Workshop on cooldown (${(cd / 1000).toFixed(1)}s).`);
+        else this.eventLog.gameMessage('Not enough gold for a raider.');
+      }
+      return true;
+    }
+
+    // Raider click → select it for the next-click target dispatch.
+    const px = gridX(col), py = gridY(row);
+    const RAIDER_PICK_RADIUS_SQ = (TILE_SIZE * 0.7) * (TILE_SIZE * 0.7);
+    for (const r of ctrl.getRaiders()) {
+      if (!r.alive) continue;
+      const dx = r.x - px, dy = r.y - py;
+      if (dx * dx + dy * dy <= RAIDER_PICK_RADIUS_SQ) {
+        this._selectedRaider = r;
+        return true;
+      }
+    }
+
+    // With a raider selected: a click on a CPU tower / generator /
+    // throne sets that raider's manual target. Bare-cell click with
+    // a selected raider clears the selection.
+    if (this._selectedRaider) {
+      const cpuTower = this.findCpuTowerAt(col, row);
+      if (cpuTower) {
+        ctrl.setRaiderTarget(
+          this._selectedRaider,
+          cpuTower as unknown as Parameters<typeof ctrl.setRaiderTarget>[1],
+        );
+        return true;
+      }
+      this._selectedRaider = null;
+      return true;
+    }
+
+    return false;
+  }
+
+  private findCpuTowerAt(col: number, row: number): import('../entities/Tower').Tower | null {
+    for (const t of this.towers) {
+      if (t.col === col && t.row === row && t.destructible && !t._expired) return t;
+    }
+    return null;
+  }
+
   private tryBuildTower(col: number, row: number): void {
     if (!this.selectedBuildType) return;
     // Plan 12: in attacker mode the player commands creeps, not
@@ -3162,6 +3233,8 @@ export class GameScene extends Phaser.Scene {
         this.creeps as unknown as Parameters<typeof this._sabotageController.update>[2],
         this.towers as unknown as Parameters<typeof this._sabotageController.update>[3],
       );
+      if (this._selectedRaider && !this._selectedRaider.alive) this._selectedRaider = null;
+      this._sabotageRender?.update(this._sabotageController);
     }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,
