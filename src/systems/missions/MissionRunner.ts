@@ -71,6 +71,9 @@ class MissionRunnerClass {
     if (campaign.defaultPlayerFaction !== undefined) {
       campaignDefaults.faction = campaign.defaultPlayerFaction;
     }
+    if (campaign.defaultMapThemeOverride !== undefined) {
+      campaignDefaults.mapThemeOverride = campaign.defaultMapThemeOverride;
+    }
     const merged = { ...archetype.defaults, ...campaignDefaults, ...dynamic, ...mission.overrides };
 
     this.active = { campaign, mission, startedAt: Date.now() };
@@ -88,13 +91,11 @@ class MissionRunnerClass {
       restrictions: merged.restrictions ?? {},
     };
 
-    // Default the player faction to Arcane when the mission doesn't
-    // specify one — Arcane is the free root, every player has it
-    // unlocked, and without a faction GameScene falls back to the
-    // generic Arrow/Cannon/Sniper/Frost-Trap pool which doesn't
-    // match the campaign's design intent. Future iteration: a
-    // pre-mission picker letting the player choose any of their
-    // playable factions, defaulting to Arcane.
+    // Final fallback when neither the mission nor the campaign sets a
+    // faction — defaults to Arcane (the free root, always unlocked).
+    // Without it, GameScene would fall through to the generic
+    // Arrow/Cannon/Sniper/Frost-Trap pool, which never matches a
+    // campaign's design intent.
     UIBridge.startScene('GameScene', {
       mode: archetype.baseMode,
       faction: merged.faction ?? 'arcane',
@@ -111,7 +112,7 @@ class MissionRunnerClass {
       missionLives: merged.lives,
       missionWaveScript: merged.waveScript,
       missionPrePlacedTowers: merged.prePlacedTowers,
-      missionMapThemeOverride: merged.mapThemeOverride ?? campaign.defaultMapThemeOverride,
+      missionMapThemeOverride: merged.mapThemeOverride,
       missionAutoChainWaves: merged.autoChainWaves,
       missionKillGoldMult: merged.killGoldMult,
       missionAttackerEssencePerWave: merged.attackerEssencePerWave,
