@@ -423,11 +423,12 @@ export interface SabotageHudState {
   nextUpgradeCost: { plate: number | null; edge: number | null; tread: number | null };
   /** Count of player Raiders currently alive. */
   raidersAlive: number;
-  /** Generator progress for the throne-vulnerability gate. */
+  /** Generator progress for the throne-vulnerability gate. The
+   *  derived `throneVulnerable = generatorsAlive === 0 &&
+   *  generatorsTotal > 0` is computed where it's read; pre-storing
+   *  it would just be a sync footgun. */
   generatorsAlive: number;
   generatorsTotal: number;
-  /** True once every generator is dead and the throne can be killed. */
-  throneVulnerable: boolean;
 }
 
 export interface FinaleHudState {
@@ -637,8 +638,7 @@ class GameUIStoreClass {
       && prev.upgradeLevels.tread === next.upgradeLevels.tread
       && prev.raidersAlive === next.raidersAlive
       && prev.generatorsAlive === next.generatorsAlive
-      && prev.generatorsTotal === next.generatorsTotal
-      && prev.throneVulnerable === next.throneVulnerable) {
+      && prev.generatorsTotal === next.generatorsTotal) {
       return;
     }
     this.state = { ...this.state, sabotageHud: next };

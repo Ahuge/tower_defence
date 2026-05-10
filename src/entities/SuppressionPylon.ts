@@ -67,4 +67,23 @@ export class SuppressionPylon {
     if (this.channelStartedAt === null) return 0;
     return Math.max(0, Math.min(1, (now - this.channelStartedAt) / durationMs));
   }
+
+  /** Start a channel at `now`. Idempotent — re-calling with a later
+   *  start replaces the prior start. Callers should gate on
+   *  `isActive` / `isChanneling` for the user-facing rules. */
+  beginChannel(now: number): void {
+    this.channelStartedAt = now;
+  }
+
+  /** Cancel an in-progress channel without applying the mute. */
+  cancelChannel(): void {
+    this.channelStartedAt = null;
+  }
+
+  /** Apply the mute window and clear the channel slot in one call —
+   *  used by the manager when a channel's duration has elapsed. */
+  completeChannel(now: number, muteDurationMs: number): void {
+    this.mute(now, muteDurationMs);
+    this.channelStartedAt = null;
+  }
 }

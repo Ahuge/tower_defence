@@ -33,6 +33,15 @@ export interface LargeStructurePlacement {
   row: number;
 }
 
+/** Suppression Pylon placement — shared between MapDefinition and
+ *  per-mission overrides on CampaignDef so the schema doesn't drift. */
+export interface SuppressionPylonSpec {
+  col: number;
+  row: number;
+  /** Chebyshev tile radius. Default 5 = covers an 11×11 square. */
+  radius?: number;
+}
+
 export interface MapDefinition {
   id: MapId;
   name: string;
@@ -115,7 +124,7 @@ export interface MapDefinition {
    *  invulnerable, project a tile-radius stress field that stalls
    *  player towers inside it after a few shots. SuppressionManager
    *  owns the runtime state; player counters them via channel. */
-  suppressionPylons?: { col: number; row: number; radius?: number }[];
+  suppressionPylons?: SuppressionPylonSpec[];
   /** Mech M10 finale — Workshop placement. The player's barracks for
    *  training Raiders. SabotageController owns the runtime
    *  Workshop instance + spawns Raiders at this cell's pixel center. */

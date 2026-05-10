@@ -22,6 +22,11 @@
 
 import { SuppressionPylon, type SuppressionPylonInit } from '../../entities/SuppressionPylon';
 
+/** Outcome of a `startChannelAt` call. Lets the caller render
+ *  distinct feedback per failure mode without re-querying pylon
+ *  state. */
+export type ChannelStartResult = 'started' | 'no_pylon' | 'already_muted' | 'already_channeling';
+
 /** Player tower contract — the manager only reads what it needs. */
 export interface SuppressibleTower {
   col: number;
@@ -90,17 +95,17 @@ export class SuppressionManager {
     return true;
   }
 
-  /** Start a channel on the pylon at the given cell. No-op if no
-   *  pylon there, or if a channel is already in progress, or if the
-   *  pylon is currently muted (no value in re-channeling). Returns
-   *  true on a successful start. */
-  startChannelAt(col: number, row: number, now: number): boolean {
+  /** Try to start a channel on the pylon at the given cell. The
+   *  return value disambiguates the failure modes so callers can
+   *  surface different feedback ("already muted" vs "already
+   *  channeling" vs "no pylon") without re-reading pylon state. */
+  startChannelAt(col: number, row: number, now: number): ChannelStartResult {
     const pylon = this.pylons.find(p => p.col === col && p.row === row);
-    if (!pylon) return false;
-    if (pylon.isChanneling(now, CHANNEL_DURATION_MS)) return false;
-    if (!pylon.isActive(now)) return false; // already muted
-    pylon.channelStartedAt = now;
-    return true;
+    if (!pylon) return 'no_pylon';
+    if (!pylon.isActive(now)) return 'already_muted';
+    if (pylon.isChanneling(now, CHANNEL_DURATION_MS)) return 'already_channeling';
+    pylon.beginChannel(now);
+    return 'started';
   }
 
   /** Cancel an in-progress channel on the given cell. Returns true
@@ -108,7 +113,7 @@ export class SuppressionManager {
   cancelChannelAt(col: number, row: number): boolean {
     const pylon = this.pylons.find(p => p.col === col && p.row === row);
     if (!pylon || pylon.channelStartedAt === null) return false;
-    pylon.channelStartedAt = null;
+    pylon.cancelChannel();
     return true;
   }
 
@@ -127,9 +132,7 @@ export class SuppressionManager {
     for (const pylon of this.pylons) {
       if (pylon.channelStartedAt === null) continue;
       if (now - pylon.channelStartedAt < CHANNEL_DURATION_MS) continue;
-      // Channel completed — apply mute and clear the channel slot.
-      pylon.mute(now, DEFAULT_CHANNEL_MS);
-      pylon.channelStartedAt = null;
+      pylon.completeChannel(now, DEFAULT_CHANNEL_MS);
     }
   }
 

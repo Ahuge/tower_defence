@@ -111,7 +111,7 @@ describe('SuppressionManager', () => {
 
   it('startChannelAt then update past channel duration mutes the pylon', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
-    expect(mgr.startChannelAt(5, 5, 1000)).toBe(true);
+    expect(mgr.startChannelAt(5, 5, 1000)).toBe('started');
     const t = makeTower(5, 5);
     // Mid-channel — pylon is still active, towers still suppressed.
     fire(mgr, t, 2000);
@@ -122,16 +122,17 @@ describe('SuppressionManager', () => {
     expect(t._stress).toBe(1); // mute prevented further accumulation
   });
 
-  it('startChannelAt rejects on an already-muted pylon', () => {
+  it('startChannelAt returns specific failure modes', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    expect(mgr.startChannelAt(0, 0, 0)).toBe('no_pylon');
     mgr.mutePylonAt(5, 5, 0, 10_000);
-    expect(mgr.startChannelAt(5, 5, 100)).toBe(false);
+    expect(mgr.startChannelAt(5, 5, 100)).toBe('already_muted');
   });
 
   it('startChannelAt rejects when a channel is already in progress', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
-    expect(mgr.startChannelAt(5, 5, 0)).toBe(true);
-    expect(mgr.startChannelAt(5, 5, 100)).toBe(false);
+    expect(mgr.startChannelAt(5, 5, 0)).toBe('started');
+    expect(mgr.startChannelAt(5, 5, 100)).toBe('already_channeling');
   });
 
   it('cancelChannelAt clears an in-progress channel', () => {

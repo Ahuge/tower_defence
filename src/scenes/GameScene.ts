@@ -94,6 +94,11 @@ import { SuppressionManager } from '../systems/suppression/SuppressionManager';
 import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
+import {
+  SABOTAGE_TRAIN_EVENT,
+  SABOTAGE_UPGRADE_EVENT,
+  type SabotageUpgradeEventDetail,
+} from '../systems/sabotage/SabotageEvents';
 import type { DestructibleStructure } from '../entities/DestructibleStructure';
 import { DESTRUCTIBLE_STRUCTURES } from '../data/DestructibleStructures';
 import { AttackerComposer } from '../systems/attacker/AttackerComposer';
@@ -1269,15 +1274,15 @@ export class GameScene extends Phaser.Scene {
       };
       const onUpgrade = (ev: Event) => {
         if (!this._sabotageController) return;
-        const detail = (ev as CustomEvent).detail as { kind?: 'plate' | 'edge' | 'tread' } | undefined;
+        const detail = (ev as CustomEvent).detail as Partial<SabotageUpgradeEventDetail> | undefined;
         if (!detail?.kind) return;
         this._sabotageController.buyUpgrade(detail.kind);
       };
-      window.addEventListener('td-sabotage-train', onTrain);
-      window.addEventListener('td-sabotage-upgrade', onUpgrade);
+      window.addEventListener(SABOTAGE_TRAIN_EVENT, onTrain);
+      window.addEventListener(SABOTAGE_UPGRADE_EVENT, onUpgrade);
       this.events.once('shutdown', () => {
-        window.removeEventListener('td-sabotage-train', onTrain);
-        window.removeEventListener('td-sabotage-upgrade', onUpgrade);
+        window.removeEventListener(SABOTAGE_TRAIN_EVENT, onTrain);
+        window.removeEventListener(SABOTAGE_UPGRADE_EVENT, onUpgrade);
         GameUIStore.setSabotageHud(null);
       });
     }
@@ -2436,9 +2441,10 @@ export class GameScene extends Phaser.Scene {
       const pylon = this._suppressionMgr.pylonAt(col, row);
       if (pylon) {
         const now = this.time?.now ?? 0;
-        if (this._suppressionMgr.startChannelAt(col, row, now)) {
+        const result = this._suppressionMgr.startChannelAt(col, row, now);
+        if (result === 'started') {
           this.eventLog.gameMessage('Channeling suppression pylon…');
-        } else if (!pylon.isActive(now)) {
+        } else if (result === 'already_muted') {
           this.eventLog.gameMessage('Pylon already muted.');
         }
         return;
@@ -3001,7 +3007,6 @@ export class GameScene extends Phaser.Scene {
       raidersAlive,
       generatorsAlive,
       generatorsTotal,
-      throneVulnerable: generatorsAlive === 0 && generatorsTotal > 0,
     });
   }
 

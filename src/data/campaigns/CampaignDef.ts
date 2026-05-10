@@ -239,7 +239,7 @@ export interface MissionOverrides {
    *  mission stamp Voss's anti-arcane devices onto a shared map (e.g.
    *  serpentine, fortress) without a bespoke copy. GameScene prefers
    *  this list over the map's own `suppressionPylons` when present. */
-  suppressionPylons?: { col: number; row: number; radius?: number }[];
+  suppressionPylons?: import('../Maps').SuppressionPylonSpec[];
 }
 
 /** The 10-mission campaign. */
@@ -270,6 +270,14 @@ export interface CampaignDef<TState = unknown> {
    *  arcane-themed copies of every map. Per-mission `mapThemeOverride`
    *  takes precedence when both are set. */
   defaultMapThemeOverride?: string;
+  /** Campaign-wide player tower-kit faction. The Mech campaign uses
+   *  `'arcane'` (Vael's POV — fighting Voss with the Arcane kit
+   *  throughout) without having to repeat `faction: 'arcane'` on
+   *  every mission's overrides. Per-mission `faction` takes
+   *  precedence; missions that omit it inherit this default; if both
+   *  are absent, MissionRunner falls back to the player's currently
+   *  selected faction. */
+  defaultPlayerFaction?: FactionId;
 }
 
 /** Star count earned (0 = not attempted, 1-3 = stars). */

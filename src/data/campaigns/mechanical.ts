@@ -4,9 +4,9 @@
  * Player POV: Master Vael, an Arcane archmage of the Eastern Spire.
  * Antagonist: Lord-Architect Voss — a human tyrant who has built an
  * industrial war-machine empire and is moving to outlaw and erase
- * arcane magic. Vael fights with the Arcane tower kit throughout
- * (the campaign-default `faction: 'arcane'` is set on every mission
- * via `defaultMapThemeOverride: 'factory'` + per-mission overrides).
+ * arcane magic. Vael fights with the Arcane tower kit throughout —
+ * `defaultPlayerFaction: 'arcane'` on the campaign def applies to
+ * every mission, no per-mission override needed.
  *
  * Story arc — three acts:
  *   Act I  (M1–M3): Defend the spire's outer holdings while messengers
@@ -28,6 +28,7 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
   factionId: 'mechanical',
   name: 'Iron Cascade',
   defaultMapThemeOverride: 'factory',
+  defaultPlayerFaction: 'arcane',
   intro:
     "Lord-Architect Voss has outlawed magic. His foundries woke a year ago; his criers now ride " +
     "the eastern roads warning that any spire-keep flying our colours will be put to the torch. " +
@@ -52,7 +53,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "and a stormcaller — your basic kit. Make every sigil count.",
       archetype: 'restriction',
       overrides: {
-        faction: 'arcane',
         mapId: 'plains',
         difficulty: 'easy',
         waveCount: 10,
@@ -78,7 +78,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "when you can; hold the line either way.",
       archetype: 'standard',
       overrides: {
-        faction: 'arcane',
         mapId: 'serpentine',
         difficulty: 'normal',
         waveCount: 15,
@@ -103,7 +102,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "Stop the convoy. Whatever leaves with them, we lose to industrial study and never see again.",
       archetype: 'heist',
       overrides: {
-        faction: 'arcane',
         mapId: 'heist_vault',
         difficulty: 'normal',
         waveCount: 10,
@@ -130,7 +128,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "carry. We do not win here — we last. When the gates break, you run east with the codex.",
       archetype: 'base_defense',
       overrides: {
-        faction: 'arcane',
         mapId: 'base_arena',
         difficulty: 'normal',
         waveCount: 15,
@@ -152,7 +149,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "stalls, or the road eats us.",
       archetype: 'boss_rush',
       overrides: {
-        faction: 'arcane',
         mapId: 'crossroads',
         difficulty: 'hard',
         waveCount: 5,
@@ -178,7 +174,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "instruction; pylons interrupt the speed; channel them in stride or accept the timer slipping.",
       archetype: 'speedrun',
       overrides: {
-        faction: 'arcane',
         mapId: 'fortress',
         difficulty: 'normal',
         waveCount: 20,
@@ -205,7 +200,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "not exist anymore.",
       archetype: 'frugal',
       overrides: {
-        faction: 'arcane',
         mapId: 'islands',
         difficulty: 'normal',
         waveCount: 15,
@@ -229,7 +223,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "exactly one route through. Get enough of them past the guns and the assembly stops.",
       archetype: 'attacker',
       overrides: {
-        faction: 'arcane',
         mapId: 'attacker_assault',
         difficulty: 'normal',
         waveCount: 10,
@@ -261,7 +254,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "command chain breaks. Lose, and the Architect hears from his own mouth that we're soft.",
       archetype: 'hero_vs_boss',
       overrides: {
-        faction: 'arcane',
         mapId: 'hero_plains',
         difficulty: 'normal',
         waveCount: 5,
@@ -287,11 +279,6 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "them and he is mortal. Train your raiders, send them deep, end this.",
       archetype: 'final_sabotage',
       overrides: {
-        // Vael (Arcane archmage POV) commands the squad — player keeps
-        // the Arcane tower kit + builds Mech raiders via the Workshop.
-        // Mission belongs to the Mechanical campaign for unlock credit;
-        // the in-mission tower roster is intentionally Arcane.
-        faction: 'arcane',
         mapId: 'mech_throne_finale',
         difficulty: 'hard',
         waveCount: 999,

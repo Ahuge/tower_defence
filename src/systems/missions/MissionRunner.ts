@@ -62,7 +62,16 @@ class MissionRunnerClass {
         console.warn(`[MissionRunner] dynamicOverrides threw for ${mission.id}:`, err);
       }
     }
-    const merged = { ...archetype.defaults, ...dynamic, ...mission.overrides };
+    // Merge order (lowest-to-highest priority): archetype defaults <
+    // campaign-wide knobs < dynamic overrides < per-mission overrides.
+    // Campaign knobs sit between archetype defaults and per-mission
+    // so a mission can still override (e.g. Hero Duel mission inside
+    // the Mech campaign could pick a non-default faction).
+    const campaignDefaults: Partial<typeof mission.overrides> = {};
+    if (campaign.defaultPlayerFaction !== undefined) {
+      campaignDefaults.faction = campaign.defaultPlayerFaction;
+    }
+    const merged = { ...archetype.defaults, ...campaignDefaults, ...dynamic, ...mission.overrides };
 
     this.active = { campaign, mission, startedAt: Date.now() };
     Analytics.track('mission_started', {

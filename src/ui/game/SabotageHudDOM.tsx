@@ -19,9 +19,11 @@
  * coexists), or the AttackerComposerOverlay (right, also gated).
  */
 import { useGameUISelector } from '../hooks/useGameUI';
-
-const TRAIN_EVENT = 'td-sabotage-train';
-const UPGRADE_EVENT = 'td-sabotage-upgrade';
+import {
+  SABOTAGE_TRAIN_EVENT,
+  SABOTAGE_UPGRADE_EVENT,
+  type SabotageUpgradeEventDetail,
+} from '../../systems/sabotage/SabotageEvents';
 
 export function SabotageHudDOM() {
   const hud = useGameUISelector(s => s.sabotageHud);
@@ -30,10 +32,11 @@ export function SabotageHudDOM() {
   const cooldownReady = hud.workshopCooldownMs <= 0;
   const cooldownLabel = cooldownReady ? 'Ready' : `${(hud.workshopCooldownMs / 1000).toFixed(1)}s`;
   const generatorsRemaining = hud.generatorsAlive;
+  const throneVulnerable = hud.generatorsAlive === 0 && hud.generatorsTotal > 0;
 
-  const train = () => window.dispatchEvent(new Event(TRAIN_EVENT));
-  const upgrade = (kind: 'plate' | 'edge' | 'tread') => {
-    window.dispatchEvent(new CustomEvent(UPGRADE_EVENT, { detail: { kind } }));
+  const train = () => window.dispatchEvent(new Event(SABOTAGE_TRAIN_EVENT));
+  const upgrade = (kind: SabotageUpgradeEventDetail['kind']) => {
+    window.dispatchEvent(new CustomEvent(SABOTAGE_UPGRADE_EVENT, { detail: { kind } }));
   };
 
   return (
@@ -54,10 +57,10 @@ export function SabotageHudDOM() {
       <div style={{
         fontFamily: "'VT323', ui-monospace, monospace",
         fontSize: '14px', letterSpacing: '1px',
-        color: hud.throneVulnerable ? '#ffdd44' : 'var(--text-primary)',
+        color: throneVulnerable ? '#ffdd44' : 'var(--text-primary)',
         marginBottom: '8px',
       }}>
-        {hud.throneVulnerable
+        {throneVulnerable
           ? 'THRONE EXPOSED'
           : `GENERATORS  ${hud.generatorsTotal - generatorsRemaining} / ${hud.generatorsTotal}`}
       </div>
