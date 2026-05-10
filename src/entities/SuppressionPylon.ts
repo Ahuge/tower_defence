@@ -27,6 +27,12 @@ export class SuppressionPylon {
    *  and renders as dimmed. */
   mutedUntil: number = 0;
 
+  /** Wall-clock ms when the player started channeling this pylon, or
+   *  null when no channel is active. While channeling, stress is NOT
+   *  suppressed — the pylon is still active until the channel
+   *  completes (mute applied) or is cancelled. */
+  channelStartedAt: number | null = null;
+
   constructor(init: SuppressionPylonInit) {
     this.col = init.col;
     this.row = init.row;
@@ -49,5 +55,16 @@ export class SuppressionPylon {
   contains(col: number, row: number): boolean {
     return Math.abs(col - this.col) <= this.radius
       && Math.abs(row - this.row) <= this.radius;
+  }
+
+  /** True iff a channel is currently in progress (not finished yet). */
+  isChanneling(now: number, durationMs: number): boolean {
+    return this.channelStartedAt !== null && (now - this.channelStartedAt) < durationMs;
+  }
+
+  /** Channel progress in [0, 1], or 0 when no channel is active. */
+  channelProgress(now: number, durationMs: number): number {
+    if (this.channelStartedAt === null) return 0;
+    return Math.max(0, Math.min(1, (now - this.channelStartedAt) / durationMs));
   }
 }

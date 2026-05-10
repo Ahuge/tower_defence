@@ -91,6 +91,7 @@ import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
 import { SuppressionManager } from '../systems/suppression/SuppressionManager';
+import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import type { DestructibleStructure } from '../entities/DestructibleStructure';
@@ -424,6 +425,7 @@ export class GameScene extends Phaser.Scene {
    *  when the loaded map declares `suppressionPylons`. Ticked each
    *  frame to bump tower stress. Null on every other mission. */
   private _suppressionMgr: SuppressionManager | null = null;
+  private _suppressionRender: SuppressionRender | null = null;
   /** One-shot latch — instant victory when leak threshold hits, no
    *  matter how many waves remain. Existing wave-end loss path still
    *  fires for the defender-held case. */
@@ -1219,6 +1221,7 @@ export class GameScene extends Phaser.Scene {
       : mapDef.suppressionPylons;
     if (pylons && pylons.length > 0) {
       this._suppressionMgr = new SuppressionManager(pylons);
+      this._suppressionRender = new SuppressionRender(this);
     }
     // Mech M10 finale — instantiate the SabotageController. Reuses
     // the destructibleTowers map field (with isGenerator/isThrone tags
@@ -2425,6 +2428,22 @@ export class GameScene extends Phaser.Scene {
 
   handleClick(col: number, row: number): void {
     this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
+    // Mech campaign: clicking on a Suppression Pylon starts a 2.5s
+    // channel. Highest click priority because pylons sit on noBuild
+    // cells — letting tower-build / raider-select swallow the click
+    // first would never let the player counter them.
+    if (this._suppressionMgr) {
+      const pylon = this._suppressionMgr.pylonAt(col, row);
+      if (pylon) {
+        const now = this.time?.now ?? 0;
+        if (this._suppressionMgr.startChannelAt(col, row, now)) {
+          this.eventLog.gameMessage('Channeling suppression pylon…');
+        } else if (!pylon.isActive(now)) {
+          this.eventLog.gameMessage('Pylon already muted.');
+        }
+        return;
+      }
+    }
     // Mech M10 finale: workshop click trains a raider; raider click
     // selects; CPU-target click sets the selected raider's manual
     // target; empty cell clears selection. Runs before the Arcane
@@ -3280,6 +3299,7 @@ export class GameScene extends Phaser.Scene {
     // every other mission.
     if (this._suppressionMgr) {
       this._suppressionMgr.update(time, this.towers as any);
+      this._suppressionRender?.update(this._suppressionMgr, time);
     }
     if (this._sabotageController) {
       // Cast the live tower / creep arrays through `unknown` — the

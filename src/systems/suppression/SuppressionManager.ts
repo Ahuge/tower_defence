@@ -41,6 +41,10 @@ export interface SuppressibleTower {
 const STRESS_THRESHOLD = 5;
 const STALL_SECONDS = 3;
 const DEFAULT_CHANNEL_MS = 15_000;
+/** How long the player must hold a channel on a pylon for the mute
+ *  to apply. Shorter than the mute itself so channeling feels worth
+ *  the time investment. */
+const CHANNEL_DURATION_MS = 2_500;
 
 export class SuppressionManager {
   readonly pylons: SuppressionPylon[];
@@ -53,9 +57,11 @@ export class SuppressionManager {
    *  inside an active pylon, and trigger stalls at threshold. Per-
    *  tower bookkeeping (`_suppressionSeenLastFired`) lives on Tower,
    *  matching the codebase's "instance field" convention rather than
-   *  a side WeakMap. */
+   *  a side WeakMap. Also resolves any in-progress player channels
+   *  whose duration has elapsed. */
   update(now: number, towers: SuppressibleTower[]): void {
     if (this.pylons.length === 0) return;
+    this._resolveChannels(now);
     for (const tower of towers) {
       if (!tower || tower._expired) continue;
       // Only player towers. Voss's own CPU towers (ownerIndex 99)
@@ -82,6 +88,49 @@ export class SuppressionManager {
     if (!pylon) return false;
     pylon.mute(now, durationMs);
     return true;
+  }
+
+  /** Start a channel on the pylon at the given cell. No-op if no
+   *  pylon there, or if a channel is already in progress, or if the
+   *  pylon is currently muted (no value in re-channeling). Returns
+   *  true on a successful start. */
+  startChannelAt(col: number, row: number, now: number): boolean {
+    const pylon = this.pylons.find(p => p.col === col && p.row === row);
+    if (!pylon) return false;
+    if (pylon.isChanneling(now, CHANNEL_DURATION_MS)) return false;
+    if (!pylon.isActive(now)) return false; // already muted
+    pylon.channelStartedAt = now;
+    return true;
+  }
+
+  /** Cancel an in-progress channel on the given cell. Returns true
+   *  if a channel was actually cancelled. */
+  cancelChannelAt(col: number, row: number): boolean {
+    const pylon = this.pylons.find(p => p.col === col && p.row === row);
+    if (!pylon || pylon.channelStartedAt === null) return false;
+    pylon.channelStartedAt = null;
+    return true;
+  }
+
+  /** UI helper — channel duration in ms, exposed so renderers can
+   *  compute progress without a separate constant. */
+  getChannelDurationMs(): number {
+    return CHANNEL_DURATION_MS;
+  }
+
+  /** UI helper — mute window in ms applied on a successful channel. */
+  getMuteDurationMs(): number {
+    return DEFAULT_CHANNEL_MS;
+  }
+
+  private _resolveChannels(now: number): void {
+    for (const pylon of this.pylons) {
+      if (pylon.channelStartedAt === null) continue;
+      if (now - pylon.channelStartedAt < CHANNEL_DURATION_MS) continue;
+      // Channel completed — apply mute and clear the channel slot.
+      pylon.mute(now, DEFAULT_CHANNEL_MS);
+      pylon.channelStartedAt = null;
+    }
   }
 
   /** True iff the cell is occupied by a pylon (not whether the pylon

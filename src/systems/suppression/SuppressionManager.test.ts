@@ -109,6 +109,42 @@ describe('SuppressionManager', () => {
     expect(mgr.mutePylonAt(0, 0, 0)).toBe(false);
   });
 
+  it('startChannelAt then update past channel duration mutes the pylon', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    expect(mgr.startChannelAt(5, 5, 1000)).toBe(true);
+    const t = makeTower(5, 5);
+    // Mid-channel — pylon is still active, towers still suppressed.
+    fire(mgr, t, 2000);
+    expect(t._stress).toBe(1);
+    // After channel duration (2.5s default), update applies mute.
+    mgr.update(1000 + mgr.getChannelDurationMs() + 1, []);
+    fire(mgr, t, 5000);
+    expect(t._stress).toBe(1); // mute prevented further accumulation
+  });
+
+  it('startChannelAt rejects on an already-muted pylon', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    mgr.mutePylonAt(5, 5, 0, 10_000);
+    expect(mgr.startChannelAt(5, 5, 100)).toBe(false);
+  });
+
+  it('startChannelAt rejects when a channel is already in progress', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    expect(mgr.startChannelAt(5, 5, 0)).toBe(true);
+    expect(mgr.startChannelAt(5, 5, 100)).toBe(false);
+  });
+
+  it('cancelChannelAt clears an in-progress channel', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    mgr.startChannelAt(5, 5, 0);
+    expect(mgr.cancelChannelAt(5, 5)).toBe(true);
+    // Cancelling should NOT auto-mute when update fires later.
+    mgr.update(10_000, []);
+    const t = makeTower(5, 5);
+    fire(mgr, t, 11_000);
+    expect(t._stress).toBe(1);
+  });
+
   it('skips CPU-team towers (ownerIndex !== 0/undefined)', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5, radius: 3 }]);
     const cpu = makeTower(5, 5, { ownerIndex: 99 });
