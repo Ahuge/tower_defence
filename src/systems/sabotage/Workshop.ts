@@ -24,9 +24,17 @@ import {
  *  instantiating the Raider entity. */
 export type TrainRaiderCallback = (stats: RaiderStats) => void;
 
+/** Spender contract — `EconomyManager.spend(cost)` matches this shape
+ *  exactly. Defining a structural interface lets Workshop tests pass
+ *  a 3-line stub without dragging the full economy in. */
+export interface GoldSpender {
+  spend(cost: number): boolean;
+}
+
 export interface WorkshopConfig {
   col: number;
   row: number;
+  economy: GoldSpender;
   /** Gold cost per Raider train. Default 150g. */
   trainCost?: number;
   /** Cooldown (ms) between trains. Default 5000ms. */
@@ -41,6 +49,7 @@ export class Workshop {
   readonly row: number;
   readonly trainCost: number;
   readonly trainCooldownMs: number;
+  private readonly economy: GoldSpender;
 
   /** Last `now` (ms) at which a Raider was trained. -Infinity until
    *  the first train so cooldown does not gate the opening shot. */
@@ -51,6 +60,7 @@ export class Workshop {
   constructor(cfg: WorkshopConfig) {
     this.col = cfg.col;
     this.row = cfg.row;
+    this.economy = cfg.economy;
     this.trainCost = cfg.trainCost ?? DEFAULT_TRAIN_COST;
     this.trainCooldownMs = cfg.trainCooldownMs ?? DEFAULT_TRAIN_CD_MS;
   }
@@ -74,24 +84,22 @@ export class Workshop {
   }
 
   /** Try to spend gold + train a raider. Returns true on success.
-   *  `debit(amount)` returns true if it took the gold, false if the
-   *  player can't afford. The Workshop only commits the cooldown +
-   *  callback when the debit succeeds. */
-  tryTrain(now: number, debit: (amount: number) => boolean, onTrain: TrainRaiderCallback): boolean {
+   *  Atomic: cooldown commits only when the gold debit succeeds. */
+  tryTrain(now: number, onTrain: TrainRaiderCallback): boolean {
     if (!this.canTrainAt(now)) return false;
-    if (!debit(this.trainCost)) return false;
+    if (!this.economy.spend(this.trainCost)) return false;
     this._lastTrainAt = now;
     onTrain(statsForLevels(this._levels));
     return true;
   }
 
   /** Try to buy the next tier in `kind`. Returns true on success.
-   *  Same debit contract as tryTrain — atomic gold + level commit. */
-  tryUpgrade(kind: UpgradeKind, debit: (amount: number) => boolean): boolean {
+   *  Atomic gold + level commit. */
+  tryUpgrade(kind: UpgradeKind): boolean {
     const currentLevel = this._levels[kind];
     if (currentLevel >= MAX_TIER) return false;
     const cost = UPGRADE_TIERS[kind][currentLevel + 1].cost;
-    if (!debit(cost)) return false;
+    if (!this.economy.spend(cost)) return false;
     this._levels[kind] = currentLevel + 1;
     return true;
   }

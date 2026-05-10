@@ -42,6 +42,7 @@ import { Grid, CellType } from '../Grid';
 import { findPath, PathPoint } from '../Pathfinding';
 import { createProjectileSprite, hasProjectileSprite } from '../SpriteManager';
 import { Damageable } from './Damageable';
+import { placeCpuTowers } from './cpuPlacement';
 import { dispatchFinaleEffect } from './FinaleEffects';
 import { applyHeroPendingEffects, PendingHittable } from './applyHeroPendingEffects';
 import { rng } from '../Rng';
@@ -147,30 +148,13 @@ export class FinaleController {
     this.onHeroSpawned = args.onHeroSpawned;
     this.onWin = args.onWin;
 
-    // Place destructible CPU towers. Free placement (no cost). Stamp
-    // ownerIndex + destructible + hp on each.
+    // Place destructible CPU towers via the shared helper. Caller
+    // here just stamps the Arcane-specific isUlt flag.
     const ownerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX;
     const defaultHp = this.rules.cpuTowerHpDefault ?? 600;
-    for (const spec of args.destructibleTowers) {
-      try {
-        const towerType = getTowerType(spec.towerId);
-        const result = this.towerMgr.placeTower(
-          spec.col, spec.row, towerType,
-          [], () => [],
-          true,  // free
-        );
-        if (result) {
-          const t = result.tower;
-          t.destructible = true;
-          t.ownerIndex = ownerIndex;
-          t.maxHp = spec.hp ?? defaultHp;
-          t.hp = t.maxHp;
-          if (spec.isUlt) t.isUlt = true;
-          this.cpuTowers.push(t);
-        }
-      } catch (err) {
-        console.warn(`[FinaleController] failed to place CPU tower ${spec.towerId} at ${spec.col},${spec.row}:`, err);
-      }
+    for (const { spec, tower } of placeCpuTowers(this.towerMgr, args.destructibleTowers, ownerIndex, defaultHp)) {
+      if (spec.isUlt) tower.isUlt = true;
+      this.cpuTowers.push(tower);
     }
 
     // PRD 06: Place destructible boss structures. For each placement:

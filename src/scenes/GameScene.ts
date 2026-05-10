@@ -1227,6 +1227,7 @@ export class GameScene extends Phaser.Scene {
           pixelX: gridX(mapDef.workshop.col),
           pixelY: gridY(mapDef.workshop.row),
         },
+        economy: this.economy,
         towerMgr: this.towerMgr,
         onThroneVulnerable: () => {
           this.eventLog.gameMessage('The throne shield falls. Voss is mortal.');

@@ -7,6 +7,7 @@ function makeTower(col: number, row: number, opts: Partial<SuppressibleTower> = 
     lastFired: 0,
     _stress: 0,
     _disabledRemaining: 0,
+    _suppressionSeenLastFired: -Infinity,
     ...opts,
   };
 }

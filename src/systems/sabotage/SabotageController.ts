@@ -22,10 +22,10 @@
 
 import type { Tower } from '../../entities/Tower';
 import type { TowerManager } from '../TowerManager';
-import { getTowerType } from '../../data/TowerTypes';
 import { Raider, type RaiderTarget } from '../../entities/Raider';
-import { Workshop } from './Workshop';
+import { Workshop, type GoldSpender } from './Workshop';
 import type { UpgradeKind } from './WorkshopUpgrades';
+import { placeCpuTowers, type BaseCpuTowerSpec } from '../finale/cpuPlacement';
 
 export const CPU_INDEX_SABOTAGE = 99;
 
@@ -52,10 +52,13 @@ export interface SabotageSetupArgs {
     linkedTowers?: { col: number; row: number }[];
     isThrone?: boolean;
   }[];
-  /** Workshop placement. The Workshop is the player's barracks — it
-   *  trains Raiders and owns the global upgrade tiers. Optional only
-   *  for tests; production callers always supply one. */
-  workshop?: { col: number; row: number; pixelX: number; pixelY: number };
+  /** Workshop placement. The Workshop trains Raiders and owns the
+   *  global upgrade tiers. Required — every production mission has
+   *  one and the controller is meaningless without it. */
+  workshop: { col: number; row: number; pixelX: number; pixelY: number };
+  /** Gold-spending hook. EconomyManager satisfies the interface
+   *  directly; tests can pass a 3-line stub. */
+  economy: GoldSpender;
   towerMgr: TowerManager;
   /** Fired exactly once when the throne's HP reaches 0. */
   onWin?: () => void;
@@ -76,10 +79,6 @@ export class SabotageController {
   private towerMgr: TowerManager;
   private cpuTowers: Tower[] = [];
   private generators: Tower[] = [];
-  /** Generators whose linked-tower kill cascade has already been
-   *  processed. Prevents the cascade firing twice if update() runs
-   *  multiple times after death. */
-  private drainedGenerators = new WeakSet<Tower>();
   private throne: Tower | null = null;
   private throneVulnerableFired = false;
   private winFired = false;
@@ -88,10 +87,8 @@ export class SabotageController {
   private onRaiderSpawned?: (raider: Raider) => void;
   private onRaiderDied?: (raider: Raider) => void;
 
-  /** Workshop instance — null when no workshop spec was supplied (tests
-   *  for the win condition only). */
-  private workshop: Workshop | null = null;
-  private workshopPixel: { x: number; y: number } | null = null;
+  private readonly workshop: Workshop;
+  private readonly workshopPixel: { x: number; y: number };
 
   /** Live raiders. Order is spawn order. Includes recently-dead so
    *  the host scene can read the squad after-the-fact; pruned each
@@ -116,47 +113,29 @@ export class SabotageController {
     this.onRaiderDied = args.onRaiderDied;
     this.cpuOwnerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX_SABOTAGE;
 
-    if (args.workshop) {
-      this.workshop = new Workshop({
-        col: args.workshop.col,
-        row: args.workshop.row,
-        trainCost: this.rules.workshopTrainCost,
-        trainCooldownMs: this.rules.workshopTrainCooldownMs,
-      });
-      this.workshopPixel = { x: args.workshop.pixelX, y: args.workshop.pixelY };
-    }
+    this.workshop = new Workshop({
+      col: args.workshop.col,
+      row: args.workshop.row,
+      economy: args.economy,
+      trainCost: this.rules.workshopTrainCost,
+      trainCooldownMs: this.rules.workshopTrainCooldownMs,
+    });
+    this.workshopPixel = { x: args.workshop.pixelX, y: args.workshop.pixelY };
 
     const ownerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX_SABOTAGE;
     const defaultHp = this.rules.cpuTowerHpDefault ?? 600;
-
-    for (const spec of args.destructibleTowers) {
-      try {
-        const towerType = getTowerType(spec.towerId);
-        const result = this.towerMgr.placeTower(
-          spec.col, spec.row, towerType,
-          [], () => [],
-          true,
-        );
-        if (!result) continue;
-        const t = result.tower;
-        t.destructible = true;
-        t.ownerIndex = ownerIndex;
-        t.maxHp = spec.hp ?? defaultHp;
-        t.hp = t.maxHp;
-        if (spec.isGenerator) {
-          t.isGenerator = true;
-          t.generatorLinkedCells = spec.linkedTowers ?? [];
-          this.generators.push(t);
-        }
-        if (spec.isThrone) {
-          t.isThrone = true;
-          t._invulnerable = true;
-          this.throne = t;
-        }
-        this.cpuTowers.push(t);
-      } catch (err) {
-        console.warn(`[SabotageController] failed to place ${spec.towerId} at ${spec.col},${spec.row}:`, err);
+    for (const { spec, tower } of placeCpuTowers(this.towerMgr, args.destructibleTowers, ownerIndex, defaultHp)) {
+      if (spec.isGenerator) {
+        tower.isGenerator = true;
+        tower.generatorLinkedCells = spec.linkedTowers ?? [];
+        this.generators.push(tower);
       }
+      if (spec.isThrone) {
+        tower.isThrone = true;
+        tower._invulnerable = true;
+        this.throne = tower;
+      }
+      this.cpuTowers.push(tower);
     }
   }
 
@@ -171,11 +150,12 @@ export class SabotageController {
   update(now = 0, deltaMs = 0, creeps: RaiderTarget[] = [], cpuTargets: RaiderTarget[] = []): void {
     // Drain any newly-dead generators we haven't processed yet. Death
     // is detected by hp<=0 (Tower.takeDamage drives it to 0 and sets
-    // _expired); the WeakSet prevents double-firing the cascade.
+    // _expired); the per-tower _generatorDrained flag prevents double-
+    // firing the cascade across multiple updates after death.
     for (const gen of this.generators) {
       if ((gen.hp ?? 1) > 0) continue;
-      if (this.drainedGenerators.has(gen)) continue;
-      this.drainedGenerators.add(gen);
+      if (gen._generatorDrained) continue;
+      gen._generatorDrained = true;
       for (const cell of gen.generatorLinkedCells ?? []) {
         const target = this.cpuTowers.find(t => t.col === cell.col && t.row === cell.row && !t._expired);
         if (!target) continue;
@@ -229,19 +209,18 @@ export class SabotageController {
 
   // ─── Workshop / Raider API ─────────────────────────────────────
 
-  getWorkshop(): Workshop | null { return this.workshop; }
+  getWorkshop(): Workshop { return this.workshop; }
   getRaiders(): Raider[] { return this.raiders; }
 
-  /** Train a Raider via the Workshop. Returns true on success.
-   *  `debit(amount)` is the player's gold debit callback; the
-   *  Workshop internally enforces cooldown + cost. */
-  trainRaider(now: number, debit: (amount: number) => boolean): boolean {
-    if (!this.workshop || !this.workshopPixel) return false;
-    return this.workshop.tryTrain(now, debit, (stats) => {
+  /** Train a Raider via the Workshop. Returns true on success. The
+   *  Workshop internally enforces cooldown + gold cost via the
+   *  injected EconomyManager. */
+  trainRaider(now: number): boolean {
+    return this.workshop.tryTrain(now, (stats) => {
       const raider = new Raider({
         id: this.nextRaiderId++,
-        x: this.workshopPixel!.x,
-        y: this.workshopPixel!.y,
+        x: this.workshopPixel.x,
+        y: this.workshopPixel.y,
         hp: stats.hp,
         attack: stats.attack,
         speed: stats.speed,
@@ -252,9 +231,8 @@ export class SabotageController {
   }
 
   /** Buy the next tier in `kind`. Returns true on success. */
-  buyUpgrade(kind: UpgradeKind, debit: (amount: number) => boolean): boolean {
-    if (!this.workshop) return false;
-    return this.workshop.tryUpgrade(kind, debit);
+  buyUpgrade(kind: UpgradeKind): boolean {
+    return this.workshop.tryUpgrade(kind);
   }
 
   /** Set the manual target for a single raider. The controller

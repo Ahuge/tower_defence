@@ -797,9 +797,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     // Four generators distributed vertically on the left. Each owns
     // a small cluster of linked CPU towers — when the generator dies,
     // SabotageController expires the linked towers immediately.
-    // v1 placeholder: render the generator as a mortar (large, distinct
-    // silhouette). A bespoke generator sprite + structure entry comes
-    // in a follow-up art pass.
+    // TODO(art): bespoke generator sprite — currently reuses mech_mortar silhouette.
     const G = (col: number, row: number, linked: { col: number; row: number }[]) => ({
       col, row, towerId: 'mech_mortar', hp: 1200,
       isGenerator: true, linkedTowers: linked,

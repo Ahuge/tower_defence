@@ -257,6 +257,10 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         "them and he is mortal. Train your raiders, send them deep, end this.",
       archetype: 'final_sabotage',
       overrides: {
+        // Vael (Arcane archmage POV) commands the squad — player keeps
+        // the Arcane tower kit + builds Mech raiders via the Workshop.
+        // Mission belongs to the Mechanical campaign for unlock credit;
+        // the in-mission tower roster is intentionally Arcane.
         faction: 'arcane',
         mapId: 'mech_throne_finale',
         difficulty: 'hard',

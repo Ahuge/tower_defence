@@ -47,20 +47,42 @@ function makeTowerMgr(): TowerManager {
   } as unknown as TowerManager;
 }
 
-/** Tower-type registry stub — getTowerType is called for each spec, so
- *  we register a pass-through entry. Vitest auto-mocks the data file. */
 vi.mock('../../data/TowerTypes', () => ({
   getTowerType: (id: string) => ({ id, name: id, cost: 0, fireRate: 1000, damage: 1, range: 0 }),
 }));
 
+/** Simple gold-spender stub matching `EconomyManager.spend`'s shape. */
+function makeEconomy(initial = 99_999) {
+  let bal = initial;
+  return {
+    spend(cost: number) {
+      if (bal < cost) return false;
+      bal -= cost;
+      return true;
+    },
+    balance: () => bal,
+  };
+}
+
+const TEST_WORKSHOP = { col: 30, row: 10, pixelX: 900, pixelY: 300 };
 const NO_LINKS: { col: number; row: number }[] = [];
+
+/** Args every test needs (workshop + economy are required). */
+function baseArgs(towerMgr: TowerManager) {
+  return {
+    rules: {},
+    towerMgr,
+    workshop: TEST_WORKSHOP,
+    economy: makeEconomy(),
+    destructibleTowers: [] as { col: number; row: number; towerId: string; hp: number; isGenerator?: boolean; linkedTowers?: { col: number; row: number }[]; isThrone?: boolean }[],
+  };
+}
 
 describe('SabotageController', () => {
   it('places destructible towers + generators + throne with the right flags', () => {
     const mgr = makeTowerMgr();
     const ctrl = new SabotageController({
-      rules: {},
-      towerMgr: mgr,
+      ...baseArgs(mgr),
       destructibleTowers: [
         { col: 1, row: 1, towerId: 'mech_turret', hp: 600 },
         { col: 5, row: 5, towerId: 'mech_generator', hp: 1200, isGenerator: true, linkedTowers: [{ col: 1, row: 1 }] },
@@ -76,8 +98,7 @@ describe('SabotageController', () => {
   it('expires linked towers when the generator dies', () => {
     const mgr = makeTowerMgr();
     const ctrl = new SabotageController({
-      rules: {},
-      towerMgr: mgr,
+      ...baseArgs(mgr),
       destructibleTowers: [
         { col: 1, row: 1, towerId: 'mech_turret', hp: 600 },
         { col: 2, row: 2, towerId: 'mech_turret', hp: 600 },
@@ -97,8 +118,7 @@ describe('SabotageController', () => {
     const mgr = makeTowerMgr();
     const onThroneVulnerable = vi.fn();
     const ctrl = new SabotageController({
-      rules: {},
-      towerMgr: mgr,
+      ...baseArgs(mgr),
       destructibleTowers: [
         { col: 5, row: 5, towerId: 'mech_generator', hp: 100, isGenerator: true, linkedTowers: NO_LINKS },
         { col: 6, row: 6, towerId: 'mech_generator', hp: 100, isGenerator: true, linkedTowers: NO_LINKS },
@@ -110,13 +130,12 @@ describe('SabotageController', () => {
     const [g1, g2] = (mgr.towers as any).slice(0, 2);
     g1.takeDamage(100);
     ctrl.update();
-    expect(ctrl.getThrone()?._invulnerable).toBe(true); // one alive
+    expect(ctrl.getThrone()?._invulnerable).toBe(true);
     expect(onThroneVulnerable).not.toHaveBeenCalled();
     g2.takeDamage(100);
     ctrl.update();
     expect(ctrl.getThrone()?._invulnerable).toBe(false);
     expect(onThroneVulnerable).toHaveBeenCalledTimes(1);
-    // Idempotency: extra updates don't refire.
     ctrl.update();
     expect(onThroneVulnerable).toHaveBeenCalledTimes(1);
   });
@@ -124,8 +143,7 @@ describe('SabotageController', () => {
   it('throne is invulnerable to damage while any generator is alive', () => {
     const mgr = makeTowerMgr();
     new SabotageController({
-      rules: {},
-      towerMgr: mgr,
+      ...baseArgs(mgr),
       destructibleTowers: [
         { col: 5, row: 5, towerId: 'mech_generator', hp: 100, isGenerator: true, linkedTowers: NO_LINKS },
         { col: 0, row: 0, towerId: 'mech_throne', hp: 1000, isThrone: true },
@@ -141,14 +159,12 @@ describe('SabotageController', () => {
     const mgr = makeTowerMgr();
     const onWin = vi.fn();
     const ctrl = new SabotageController({
-      rules: {},
-      towerMgr: mgr,
+      ...baseArgs(mgr),
       destructibleTowers: [
         { col: 0, row: 0, towerId: 'mech_throne', hp: 100, isThrone: true },
       ],
       onWin,
     });
-    // No generators → throne becomes vulnerable on first update.
     ctrl.update();
     const throne = ctrl.getThrone()!;
     expect(throne._invulnerable).toBe(false);
@@ -162,8 +178,7 @@ describe('SabotageController', () => {
   it('handles a generator with no linked towers cleanly', () => {
     const mgr = makeTowerMgr();
     const ctrl = new SabotageController({
-      rules: {},
-      towerMgr: mgr,
+      ...baseArgs(mgr),
       destructibleTowers: [
         { col: 5, row: 5, towerId: 'mech_generator', hp: 100, isGenerator: true /* linkedTowers omitted */ },
       ],
@@ -179,8 +194,8 @@ describe('SabotageController', () => {
   it('uses default hp when spec.hp is missing on the throne', () => {
     const mgr = makeTowerMgr();
     new SabotageController({
+      ...baseArgs(mgr),
       rules: { cpuTowerHpDefault: 999 },
-      towerMgr: mgr,
       destructibleTowers: [
         { col: 0, row: 0, towerId: 'mech_throne', hp: undefined as unknown as number, isThrone: true },
       ],
@@ -191,86 +206,62 @@ describe('SabotageController', () => {
   });
 
   describe('workshop + raider squad integration', () => {
-    function makeCtrl() {
+    function makeCtrl(extra: Partial<Parameters<typeof baseArgs>[0]> & { economy?: ReturnType<typeof makeEconomy>; onRaiderDied?: (r: unknown) => void } = {}) {
       const mgr = makeTowerMgr();
+      const economy = extra.economy ?? makeEconomy();
       const ctrl = new SabotageController({
-        rules: {},
-        towerMgr: mgr,
-        workshop: { col: 30, row: 10, pixelX: 900, pixelY: 300 },
+        ...baseArgs(mgr),
+        economy,
         destructibleTowers: [
           { col: 0, row: 0, towerId: 'mech_throne', hp: 100, isThrone: true },
         ],
+        onRaiderDied: extra.onRaiderDied,
       });
-      return { mgr, ctrl };
+      return { mgr, ctrl, economy };
     }
 
     it('trainRaider succeeds and spawns at workshop pixel', () => {
-      const { ctrl } = makeCtrl();
-      const wallet = { bal: 1000, debit(n: number) { if (this.bal < n) return false; this.bal -= n; return true; } };
-      expect(ctrl.trainRaider(0, wallet.debit.bind(wallet))).toBe(true);
+      const economy = makeEconomy(1000);
+      const { ctrl } = makeCtrl({ economy });
+      expect(ctrl.trainRaider(0)).toBe(true);
       expect(ctrl.getRaiders().length).toBe(1);
       const r = ctrl.getRaiders()[0];
       expect(r.x).toBe(900);
       expect(r.y).toBe(300);
-      expect(wallet.bal).toBe(850);
-    });
-
-    it('train returns false when no workshop is configured', () => {
-      const mgr = makeTowerMgr();
-      const ctrl = new SabotageController({
-        rules: {}, towerMgr: mgr, destructibleTowers: [],
-      });
-      const debit = vi.fn(() => true);
-      expect(ctrl.trainRaider(0, debit)).toBe(false);
-      expect(debit).not.toHaveBeenCalled();
+      expect(economy.balance()).toBe(850);
     });
 
     it('upgrades persist across raider deaths and apply to NEW raiders only', () => {
       const { ctrl } = makeCtrl();
-      const wallet = { bal: 99_999, debit(n: number) { this.bal -= n; return true; } };
-      const debit = wallet.debit.bind(wallet);
-      ctrl.trainRaider(0, debit);
+      ctrl.trainRaider(0);
       const earlyRaider = ctrl.getRaiders()[0];
       const earlyHp = earlyRaider.maxHp;
-      ctrl.buyUpgrade('plate', debit);
-      ctrl.trainRaider(99_999, debit);
+      ctrl.buyUpgrade('plate');
+      ctrl.trainRaider(99_999);
       const lateRaider = ctrl.getRaiders()[1];
       expect(lateRaider.maxHp).toBeGreaterThan(earlyHp);
-      // Killing the early raider doesn't retro-upgrade anyone.
       earlyRaider.takeDamage(99_999);
       expect(earlyRaider.alive).toBe(false);
     });
 
     it('update ticks raiders and prunes dead ones', () => {
-      const { ctrl } = makeCtrl();
       const onDied = vi.fn();
-      // Reach into the controller — install the death hook by reconstructing
-      // (cleaner than mutating private state).
-      const mgr2 = makeTowerMgr();
-      const ctrl2 = new SabotageController({
-        rules: {}, towerMgr: mgr2,
-        workshop: { col: 30, row: 10, pixelX: 900, pixelY: 300 },
-        destructibleTowers: [],
-        onRaiderDied: onDied,
-      });
-      const debit = (_n: number) => true;
-      ctrl2.trainRaider(0, debit);
-      const r = ctrl2.getRaiders()[0];
+      const { ctrl } = makeCtrl({ onRaiderDied: onDied });
+      ctrl.trainRaider(0);
+      const r = ctrl.getRaiders()[0];
       r.takeDamage(r.maxHp);
-      ctrl2.update(0, 16, [], []);
-      expect(ctrl2.getRaiders()).toHaveLength(0);
+      ctrl.update(0, 16, [], []);
+      expect(ctrl.getRaiders()).toHaveLength(0);
       expect(onDied).toHaveBeenCalledOnce();
     });
 
     it('setRaiderTarget routes through the raider only when it owns the unit', () => {
       const { ctrl } = makeCtrl();
-      const debit = (_n: number) => true;
-      ctrl.trainRaider(0, debit);
+      ctrl.trainRaider(0);
       const r = ctrl.getRaiders()[0];
       const fakeTarget = { x: 0, y: 0, alive: true, takeDamage: () => false };
       ctrl.setRaiderTarget(r, fakeTarget);
       expect(r.manualTarget).toBe(fakeTarget);
-      // A raider not owned by this controller is a no-op.
       const stranger: any = { setManualTarget: vi.fn() };
       ctrl.setRaiderTarget(stranger, fakeTarget);
       expect(stranger.setManualTarget).not.toHaveBeenCalled();
@@ -278,8 +269,7 @@ describe('SabotageController', () => {
 
     it('findRaiderById returns the matching raider or null', () => {
       const { ctrl } = makeCtrl();
-      const debit = (_n: number) => true;
-      ctrl.trainRaider(0, debit);
+      ctrl.trainRaider(0);
       const r = ctrl.getRaiders()[0];
       expect(ctrl.findRaiderById(r.id)).toBe(r);
       expect(ctrl.findRaiderById(9999)).toBeNull();

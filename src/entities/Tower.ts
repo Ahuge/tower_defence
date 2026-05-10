@@ -139,6 +139,11 @@ export class Tower {
    *  outside Mech-campaign missions. */
   _stress: number = 0;
 
+  /** SuppressionManager bookkeeping — last `lastFired` value the
+   *  manager observed. Lets it detect "this tower fired since the
+   *  prior tick" without a fire event. -Infinity = never observed. */
+  _suppressionSeenLastFired: number = -Infinity;
+
   /** Mech finale: throne (Voss) is invulnerable until every generator
    *  on the map has been destroyed. SabotageController flips this to
    *  false once that's true. takeDamage() short-circuits while set. */
@@ -162,6 +167,11 @@ export class Tower {
   /** Mech finale: tags this tower as a generator so the controller
    *  knows to drop its `generatorLinkedCells` on death. */
   isGenerator?: boolean;
+
+  /** Mech finale: SabotageController bookkeeping — set true once the
+   *  controller has drained this generator's linked towers. Prevents
+   *  the cascade firing twice if update() runs after the dead frame. */
+  _generatorDrained?: boolean;
 
   /** Mech finale: tags this tower as the master throne (Voss). The
    *  throne is the win-condition target — destroying it ends the

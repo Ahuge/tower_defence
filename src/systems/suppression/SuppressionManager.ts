@@ -30,6 +30,9 @@ export interface SuppressibleTower {
   _expired?: boolean;
   _stress: number;
   _disabledRemaining: number;
+  /** Per-tower state the manager tracks — last `lastFired` value it
+   *  observed. -Infinity = never. Tower declares this default. */
+  _suppressionSeenLastFired: number;
   /** Defenders / CPU towers (M10) shouldn't be suppressed by Voss's
    *  own pylons. ownerIndex 0 / undefined = player team. */
   ownerIndex?: number;
@@ -42,27 +45,25 @@ const DEFAULT_CHANNEL_MS = 15_000;
 export class SuppressionManager {
   readonly pylons: SuppressionPylon[];
 
-  /** Per-tower last-seen-fire timestamp. Used to detect "tower fired
-   *  this tick" without requiring a fire event. */
-  private _seenLastFired = new WeakMap<SuppressibleTower, number>();
-
   constructor(pylons: SuppressionPylonInit[]) {
     this.pylons = pylons.map(p => new SuppressionPylon(p));
   }
 
   /** Per-frame: walk the tower list, bump stress on those that fired
-   *  inside an active pylon, and trigger stalls at threshold. */
+   *  inside an active pylon, and trigger stalls at threshold. Per-
+   *  tower bookkeeping (`_suppressionSeenLastFired`) lives on Tower,
+   *  matching the codebase's "instance field" convention rather than
+   *  a side WeakMap. */
   update(now: number, towers: SuppressibleTower[]): void {
     if (this.pylons.length === 0) return;
     for (const tower of towers) {
       if (!tower || tower._expired) continue;
-      // Only player towers (ownerIndex 0 / undefined). Voss's own
-      // CPU towers in M10 sit at ownerIndex 99 and are immune.
+      // Only player towers. Voss's own CPU towers (ownerIndex 99)
+      // are immune to his own suppression.
       if ((tower.ownerIndex ?? 0) !== 0) continue;
 
-      const seen = this._seenLastFired.get(tower) ?? 0;
-      if (tower.lastFired <= seen) continue;
-      this._seenLastFired.set(tower, tower.lastFired);
+      if (tower.lastFired <= tower._suppressionSeenLastFired) continue;
+      tower._suppressionSeenLastFired = tower.lastFired;
 
       if (!this._inAnyActivePylon(tower, now)) continue;
 
