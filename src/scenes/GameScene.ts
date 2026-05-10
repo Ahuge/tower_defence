@@ -90,6 +90,7 @@ import { getCampaign } from '../data/campaigns';
 import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
+import { SuppressionManager } from '../systems/suppression/SuppressionManager';
 import type { DestructibleStructure } from '../entities/DestructibleStructure';
 import { DESTRUCTIBLE_STRUCTURES } from '../data/DestructibleStructures';
 import { AttackerComposer } from '../systems/attacker/AttackerComposer';
@@ -417,6 +418,10 @@ export class GameScene extends Phaser.Scene {
   /** M10 finale — owns hero, summoning circles, charge meter, and
    *  win-condition check. Null on every other mission. */
   private _finaleController: import('../systems/finale/FinaleController').FinaleController | null = null;
+  /** Mechanical campaign — Voss's Suppression Pylons. Instantiated
+   *  when the loaded map declares `suppressionPylons`. Ticked each
+   *  frame to bump tower stress. Null on every other mission. */
+  private _suppressionMgr: SuppressionManager | null = null;
   /** One-shot latch — instant victory when leak threshold hits, no
    *  matter how many waves remain. Existing wave-end loss path still
    *  fires for the defender-held case. */
@@ -1174,6 +1179,13 @@ export class GameScene extends Phaser.Scene {
           this.goToGameOver(true);
         },
       });
+    }
+    // Mechanical campaign — Voss's Suppression Pylons. The map data
+    // declares pre-placed pylons; SuppressionManager owns runtime
+    // state (mute timers, per-tower stress) and is ticked from
+    // GameScene.update. Skipped when the map has no pylons.
+    if (mapDef.suppressionPylons && mapDef.suppressionPylons.length > 0) {
+      this._suppressionMgr = new SuppressionManager(mapDef.suppressionPylons);
     }
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
@@ -3085,6 +3097,9 @@ export class GameScene extends Phaser.Scene {
     // win-check, Ult phase mechanics). The hero auto-attacks wave
     // creeps in range; clicked tower targets take priority. No-op on
     // every other mission.
+    if (this._suppressionMgr) {
+      this._suppressionMgr.update(time, this.towers as any);
+    }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,
       // which is where placeTower actually adds them. The underlying

@@ -88,6 +88,11 @@ export interface MapDefinition {
    *  of allowed `id`s. Each structure occupies its `widthCells ×
    *  heightCells` footprint at top-left = (col, row). */
   destructibleStructures?: { id: string; col: number; row: number; hp?: number; isMissionWinTarget?: boolean; phaseHooks?: { [hpFraction: string]: string } }[];
+  /** Mechanical campaign — Voss's Suppression Pylons. Pre-placed,
+   *  invulnerable, project a tile-radius stress field that stalls
+   *  player towers inside it after a few shots. SuppressionManager
+   *  owns the runtime state; player counters them via channel. */
+  suppressionPylons?: { col: number; row: number; radius?: number }[];
 }
 
 export interface SpawnerDef {

@@ -131,6 +131,14 @@ export class Tower {
    *  while > 0, fire logic is skipped and a stunned overlay draws. */
   _disabledRemaining: number = 0;
 
+  /** Mechanical campaign: Voss's Suppression Pylons disrupt arcane
+   *  channels. SuppressionManager polls `lastFired` and bumps this
+   *  counter whenever a tower in an active pylon's radius fires.
+   *  At threshold (default 5) the tower stalls (writes
+   *  `_disabledRemaining`) and stress resets to 0. Untouched
+   *  outside Mech-campaign missions. */
+  _stress: number = 0;
+
   /** M10 finale: tower destructibility. Default undefined = invincible
    *  (every existing mission). Set true on M10 CPU defender towers via
    *  the `destructibleTowers` map field; the hero attacks them and they
