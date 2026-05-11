@@ -10,9 +10,14 @@
  *     Raider squad. Violet stone + gold runes. Single static frame, 32×32.
  *     Bakes to `assets/arena/struct_workshop.png`.
  *
- *   Forthcoming: Suppression Pylon (Mech/steampunk), Generator (Mech),
- *   Raider (Arcane apprentice with walk cycle), Voss's Throne (Mech 3×3
- *   boss structure).
+ *   - Suppression Pylon (M2/M5/M6/M8 + M10) — Voss's industrial anti-
+ *     arcane apparatus. Brass tripod + smokestack + chamber with a
+ *     captured violet heart. 8-frame sheet, 32×32 each. Frames 0-3
+ *     are the active pulse loop, 4-5 are channeling, 6-7 are muted.
+ *     Bakes to `assets/arena/struct_suppression_pylon.png`.
+ *
+ *   Forthcoming: Generator (Mech), Raider (Arcane apprentice with walk
+ *   cycle), Voss's Throne (Mech 3×3 boss structure).
  */
 import { useRef, useEffect, useState } from 'react';
 import { C_base as ArcBase } from './arcane_sprites';
@@ -148,12 +153,208 @@ function drawWorkshopSheet(ctx: CanvasRenderingContext2D) {
 }
 
 // ============================================================
+// SUPPRESSION PYLON — Voss's anti-arcane apparatus
+// ============================================================
+// 32×32 × 8 frames stacked vertically. Industrial brass tripod
+// supporting a smokestack column + reactor chamber that cradles a
+// captured violet heart. Frames split into three states the
+// SuppressionRender consumer picks by:
+//   F0..F3  active pulse loop (dim → bright → dim → mid)
+//   F4..F5  channeling (player counter — cracked aperture + sparks)
+//   F6..F7  muted (dormant; dim heart, cold coils)
+// The outer field circle + clockwise channel-progress arc stay as
+// Phaser gfx overlays in SuppressionRender — the sprite is the
+// device itself.
+
+const SP_W = 32;
+const SP_H = 32;
+const SP_FRAMES = 8;
+
+const SP_SHAD       = '#0a0808';                 // outline / deepest shadow
+const SP_BRASS_DK   = MechBase.DKBRZ;            // #995522 — pipe shadow
+const SP_BRASS_MD   = MechBase.BRONZE;           // #cc8833 — pipe mid
+const SP_BRASS_LT   = MechBase.LTBRZ;            // #ddaa55 — pipe highlight
+const SP_BRASS_HI   = MechBase.TAN;              // #eebb66 — brightest brass
+const SP_IRON_DK    = MechBase.DKSTL;            // #666666 — iron shadow
+const SP_IRON_MD    = MechBase.STEEL;            // #888888 — iron mid
+const SP_IRON_LT    = MechBase.LTSTL;            // #aaaaaa — iron highlight
+const SP_RIVET      = MechBase.RIVET;            // #555555 — bolt heads
+const SP_SMOKE_DK   = MechBase.SMOKE;            // #665555
+const SP_SMOKE_LT   = MechBase.LTSMK;            // #887777
+const SP_HEART_DK   = '#221038';                 // captured-violet deep
+const SP_HEART_MD   = '#5530a8';
+const SP_HEART_BR   = '#9966ff';
+const SP_HEART_HI   = '#dccaff';
+const SP_HEART_PL   = '#ffffff';                 // brightest pulse
+const SP_SPARK      = MechTower.SPARK;           // #ffff88 — channeling sparks
+const SP_CRACK      = '#ffeeaa';                 // crack-line highlight
+
+/** Draws the shared tripod + smokestack + reactor frame. State-
+ *  specific bits (heart brightness, smoke, sparks) layer on top
+ *  per-frame. `yOff` is the vertical offset into the sheet. */
+function drawPylonChassis(ctx: CanvasRenderingContext2D, yOff: number) {
+  // ─── TRIPOD BASE (rows 26-30) ─────────────────────────────
+  // Three angled legs splayed to the corners.
+  // Left leg.
+  rect(ctx, 4, yOff + 28, 4, 2, SP_BRASS_DK);
+  rect(ctx, 5, yOff + 27, 3, 1, SP_BRASS_MD);
+  rect(ctx, 6, yOff + 26, 2, 1, SP_BRASS_LT);
+  rect(ctx, 7, yOff + 24, 2, 2, SP_BRASS_DK);
+  rect(ctx, 8, yOff + 23, 1, 1, SP_BRASS_MD);
+  // Right leg.
+  rect(ctx, 24, yOff + 28, 4, 2, SP_BRASS_DK);
+  rect(ctx, 24, yOff + 27, 3, 1, SP_BRASS_MD);
+  rect(ctx, 24, yOff + 26, 2, 1, SP_BRASS_LT);
+  rect(ctx, 23, yOff + 24, 2, 2, SP_BRASS_DK);
+  rect(ctx, 23, yOff + 23, 1, 1, SP_BRASS_MD);
+  // Centre foot.
+  rect(ctx, 13, yOff + 30, 6, 1, SP_SHAD);
+  rect(ctx, 12, yOff + 28, 8, 2, SP_BRASS_DK);
+  rect(ctx, 13, yOff + 27, 6, 1, SP_BRASS_MD);
+  rect(ctx, 13, yOff + 26, 6, 1, SP_BRASS_LT);
+  // Bolt heads on the centre foot.
+  px(ctx, 13, yOff + 28, SP_RIVET);
+  px(ctx, 18, yOff + 28, SP_RIVET);
+
+  // ─── CENTRAL PIPE (rows 18-26) ────────────────────────────
+  // Vertical brass tube connecting base to reactor.
+  rect(ctx, 13, yOff + 18, 6, 8, SP_BRASS_DK);          // shadow
+  rect(ctx, 14, yOff + 18, 4, 8, SP_BRASS_MD);          // mid
+  rect(ctx, 14, yOff + 18, 1, 8, SP_BRASS_LT);          // left-edge highlight
+  rect(ctx, 17, yOff + 18, 1, 8, SP_BRASS_DK);          // right-edge shadow
+  // Pipe rings.
+  rect(ctx, 12, yOff + 21, 8, 1, SP_BRASS_DK);
+  rect(ctx, 13, yOff + 21, 6, 1, SP_BRASS_LT);
+  rect(ctx, 12, yOff + 24, 8, 1, SP_BRASS_DK);
+  rect(ctx, 13, yOff + 24, 6, 1, SP_BRASS_LT);
+
+  // ─── REACTOR CHAMBER (rows 8-18) ──────────────────────────
+  // Bulbous iron housing that cradles the captured violet heart.
+  // Bottom-flare collar.
+  rect(ctx, 10, yOff + 17, 12, 1, SP_IRON_DK);
+  rect(ctx, 11, yOff + 16, 10, 1, SP_IRON_MD);
+  // Main chamber body.
+  rect(ctx, 10, yOff + 9, 12, 7, SP_IRON_DK);
+  rect(ctx, 11, yOff + 9, 10, 7, SP_IRON_MD);
+  rect(ctx, 11, yOff + 9, 1, 7, SP_IRON_LT);            // left highlight
+  rect(ctx, 20, yOff + 9, 1, 7, SP_IRON_DK);            // right shadow
+  rect(ctx, 11, yOff + 9, 10, 1, SP_IRON_LT);           // top highlight
+  // Rivets around the chamber.
+  px(ctx, 11, yOff + 10, SP_RIVET);
+  px(ctx, 20, yOff + 10, SP_RIVET);
+  px(ctx, 11, yOff + 14, SP_RIVET);
+  px(ctx, 20, yOff + 14, SP_RIVET);
+  // Aperture frame — diamond cut in the chamber face that exposes
+  // the heart. Iron bevel on the outside, heart fills the inside.
+  rect(ctx, 13, yOff + 10, 6, 5, SP_SHAD);              // recess
+  rect(ctx, 13, yOff + 10, 1, 5, SP_IRON_DK);
+  rect(ctx, 18, yOff + 10, 1, 5, SP_IRON_DK);
+  rect(ctx, 14, yOff + 9,  4, 1, SP_IRON_DK);
+  rect(ctx, 14, yOff + 15, 4, 1, SP_IRON_DK);
+
+  // ─── SMOKESTACK CAP (rows 3-8) ────────────────────────────
+  // Top of the chamber tapers into a stack.
+  rect(ctx, 12, yOff + 7,  8, 2, SP_IRON_DK);
+  rect(ctx, 13, yOff + 7,  6, 1, SP_IRON_MD);
+  rect(ctx, 14, yOff + 5,  4, 3, SP_BRASS_DK);
+  rect(ctx, 15, yOff + 5,  2, 3, SP_BRASS_MD);
+  rect(ctx, 13, yOff + 4,  6, 1, SP_BRASS_HI);          // collar
+  rect(ctx, 14, yOff + 3,  4, 1, SP_BRASS_DK);
+}
+
+/** Fills the heart aperture (cols 14-17, rows 10-14 inside chassis). */
+function drawPylonHeart(ctx: CanvasRenderingContext2D, yOff: number, brightness: number) {
+  // brightness 0..1 → dim to bright. We pick a colour palette by
+  // bucket so each frame reads as a clean step.
+  let core: string, mid: string, halo: string;
+  if (brightness < 0.15) {
+    core = SP_HEART_DK; mid = SP_HEART_DK; halo = SP_HEART_DK;
+  } else if (brightness < 0.4) {
+    core = SP_HEART_MD; mid = SP_HEART_DK; halo = SP_HEART_DK;
+  } else if (brightness < 0.7) {
+    core = SP_HEART_BR; mid = SP_HEART_MD; halo = SP_HEART_DK;
+  } else if (brightness < 0.95) {
+    core = SP_HEART_HI; mid = SP_HEART_BR; halo = SP_HEART_MD;
+  } else {
+    core = SP_HEART_PL; mid = SP_HEART_HI; halo = SP_HEART_BR;
+  }
+  // Fill aperture with banded brightness.
+  rect(ctx, 14, yOff + 10, 4, 5, halo);
+  rect(ctx, 14, yOff + 11, 4, 3, mid);
+  rect(ctx, 15, yOff + 12, 2, 1, core);
+  // Outer halo bleeding past the aperture edges (only when bright).
+  if (brightness >= 0.4) {
+    rect(ctx, 13, yOff + 11, 1, 3, withAlpha(halo, 0.45));
+    rect(ctx, 18, yOff + 11, 1, 3, withAlpha(halo, 0.45));
+    px(ctx, 14, yOff + 9,  withAlpha(halo, 0.35));
+    px(ctx, 17, yOff + 9,  withAlpha(halo, 0.35));
+    px(ctx, 14, yOff + 15, withAlpha(halo, 0.35));
+    px(ctx, 17, yOff + 15, withAlpha(halo, 0.35));
+  }
+}
+
+/** Smoke wisps off the stack — only meaningful when the heart is
+ *  energetic enough to drive the convection. */
+function drawPylonSmoke(ctx: CanvasRenderingContext2D, yOff: number, intensity: number) {
+  if (intensity <= 0) return;
+  px(ctx, 15, yOff + 2, withAlpha(SP_SMOKE_LT, intensity));
+  px(ctx, 16, yOff + 1, withAlpha(SP_SMOKE_DK, intensity));
+  if (intensity >= 0.5) {
+    px(ctx, 14, yOff + 0, withAlpha(SP_SMOKE_LT, intensity * 0.6));
+    px(ctx, 17, yOff + 2, withAlpha(SP_SMOKE_DK, intensity));
+  }
+}
+
+/** Channeling-state overlay: cracks across the aperture + sparks
+ *  at the base of the heart. */
+function drawPylonChannelOverlay(ctx: CanvasRenderingContext2D, yOff: number, advancement: number) {
+  // Cracks — diagonal lines across the iron aperture frame.
+  px(ctx, 13, yOff + 11, SP_CRACK);
+  px(ctx, 14, yOff + 12, SP_CRACK);
+  px(ctx, 18, yOff + 13, SP_CRACK);
+  if (advancement >= 0.5) {
+    px(ctx, 12, yOff + 10, SP_CRACK);
+    px(ctx, 19, yOff + 14, SP_CRACK);
+    px(ctx, 15, yOff + 9,  SP_CRACK);
+  }
+  // Sparks erupting upward from the heart base.
+  px(ctx, 15, yOff + 16, SP_SPARK);
+  px(ctx, 17, yOff + 16, SP_SPARK);
+  if (advancement >= 0.5) {
+    px(ctx, 14, yOff + 17, SP_SPARK);
+    px(ctx, 18, yOff + 17, SP_SPARK);
+  }
+}
+
+function drawSuppressionPylonSheet(ctx: CanvasRenderingContext2D) {
+  // Heart brightness + smoke per frame. Active pulse runs 4 frames
+  // with a classic bright-dim-bright sinusoid. Channeling holds the
+  // mid brightness so the cracks read against a visible heart.
+  // Muted is cold — heart all but dead.
+  const heartByFrame = [0.55, 0.85, 1.0, 0.85, 0.6, 0.4, 0.15, 0.1];
+  const smokeByFrame = [0.4, 0.7, 1.0, 0.6, 0.5, 0.4, 0,   0];
+
+  for (let f = 0; f < SP_FRAMES; f++) {
+    const yOff = f * SP_H;
+    drawPylonChassis(ctx, yOff);
+    drawPylonHeart(ctx, yOff, heartByFrame[f]);
+    drawPylonSmoke(ctx, yOff, smokeByFrame[f]);
+    if (f === 4 || f === 5) {
+      const adv = f === 4 ? 0.4 : 0.8;
+      drawPylonChannelOverlay(ctx, yOff, adv);
+    }
+  }
+}
+
+// ============================================================
 // REACT COMPONENT — preview + download
 // ============================================================
 
 export default function MechCampaignSprites() {
   const wsRef = useRef<HTMLCanvasElement>(null);
   const wsPv = useRef<HTMLCanvasElement>(null);
+  const spRef = useRef<HTMLCanvasElement>(null);
+  const spPv = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -183,6 +384,38 @@ export default function MechCampaignSprites() {
     pCtx.restore();
     pCtx.strokeStyle = '#1a1a2a';
     pCtx.strokeRect(80, 10, WS_W * scale, WS_H * scale);
+
+    // ----- Suppression Pylon sheet (32×256, 8 frames stacked) -----
+    const sp = spRef.current!;
+    sp.width = SP_W;
+    sp.height = SP_H * SP_FRAMES;
+    const sCtx = sp.getContext('2d')!;
+    sCtx.imageSmoothingEnabled = false;
+    drawSuppressionPylonSheet(sCtx);
+
+    const spv = spPv.current!;
+    const spScale = 5;
+    const labelH = 14;
+    spv.width = SP_W * spScale + 110;
+    spv.height = (SP_H * spScale + labelH) * SP_FRAMES + 10;
+    const sPCtx = spv.getContext('2d')!;
+    sPCtx.imageSmoothingEnabled = false;
+    sPCtx.fillStyle = '#07050c';
+    sPCtx.fillRect(0, 0, spv.width, spv.height);
+    const frameLabels = ['Active 0', 'Active 1', 'Active 2', 'Active 3', 'Channel A', 'Channel B', 'Muted A', 'Muted B'];
+    for (let i = 0; i < SP_FRAMES; i++) {
+      const by = i * (SP_H * spScale + labelH) + 5;
+      sPCtx.fillStyle = SP_HEART_BR;
+      sPCtx.font = 'bold 10px monospace';
+      sPCtx.fillText(`F${i} ${frameLabels[i]}`, 4, by + (SP_H * spScale) / 2 + 4);
+      sPCtx.save();
+      sPCtx.translate(110, by);
+      sPCtx.scale(spScale, spScale);
+      sPCtx.drawImage(sp, 0, i * SP_H, SP_W, SP_H, 0, 0, SP_W, SP_H);
+      sPCtx.restore();
+      sPCtx.strokeStyle = '#1a1a2a';
+      sPCtx.strokeRect(110, by, SP_W * spScale, SP_H * spScale);
+    }
 
     setReady(true);
   }, []);
@@ -224,6 +457,39 @@ export default function MechCampaignSprites() {
           <div style={{ color: WS_LAV, fontSize: 11, marginBottom: 4 }}>preview (8×)</div>
           <canvas
             ref={wsPv}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ color: SP_HEART_BR, margin: 0, fontSize: 15 }}>
+          MECH CAMPAIGN — Suppression Pylon (Voss's Industrial Apparatus)
+        </h2>
+        {ready && (
+          <button
+            onClick={dl(spRef as React.RefObject<HTMLCanvasElement>, 'struct_suppression_pylon.png')}
+            style={{
+              background: SP_BRASS_MD, color: '#fff', border: 'none', padding: '5px 14px',
+              borderRadius: 3, cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', fontSize: 11,
+            }}
+          >
+            Download Suppression Pylon PNG
+          </button>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+        <div>
+          <div style={{ color: SP_HEART_BR, fontSize: 11, marginBottom: 4 }}>raw sheet (32×256, 8 frames)</div>
+          <canvas
+            ref={spRef}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+        <div>
+          <div style={{ color: SP_HEART_BR, fontSize: 11, marginBottom: 4 }}>preview (5×)</div>
+          <canvas
+            ref={spPv}
             style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
           />
         </div>
