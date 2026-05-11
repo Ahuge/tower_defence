@@ -68,6 +68,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     title: 'Iron Cascade',
     summary: 'The Mechanical campaign is live — ten missions of Vael vs Voss, a new finale mechanic, and Voss\'s Suppression Pylons across the frontier.',
     factionAccent: 'mechanical',
+    heroArt: 'assets/announcements/mech_campaign_iron_cascade_landscape.webp',
     body: [
       {
         kind: 'lead',
