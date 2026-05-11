@@ -116,11 +116,12 @@ export class Raider {
 
     if (now - this._lastFiredAt >= this.fireRateMs) {
       this._lastFiredAt = now;
-      target.takeDamage(this.attack);
+      const killed = target.takeDamage(this.attack);
       // If the killing blow felled our manual target, clear it so the
       // raider falls back to auto-target on the next tick instead of
-      // walking back to a corpse.
-      if (this.manualTarget && !this.manualTarget.alive) this.manualTarget = null;
+      // walking back to a corpse. Thread the return value so systems
+      // that rely on kill signals (XP, triggers) are properly wired.
+      if (this.manualTarget && (!this.manualTarget.alive || killed)) this.manualTarget = null;
     }
     return target;
   }

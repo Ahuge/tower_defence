@@ -39,7 +39,8 @@ export class SuppressionPylon {
     this.radius = init.radius ?? 5;
   }
 
-  isActive(now: number): boolean {
+  /** True iff this pylon is currently suppressing (not muted). */
+  isSuppressing(now: number): boolean {
     return now >= this.mutedUntil;
   }
 
@@ -62,10 +63,14 @@ export class SuppressionPylon {
     return this.channelStartedAt !== null && (now - this.channelStartedAt) < durationMs;
   }
 
-  /** Channel progress in [0, 1], or 0 when no channel is active. */
+  /** Channel progress in [0, 1], or 0 when no channel is active or
+   *  the channel has elapsed. Self-cleaning so renderers don't depend
+   *  on the manager having resolved the channel first. */
   channelProgress(now: number, durationMs: number): number {
     if (this.channelStartedAt === null) return 0;
-    return Math.max(0, Math.min(1, (now - this.channelStartedAt) / durationMs));
+    const elapsed = now - this.channelStartedAt;
+    if (elapsed >= durationMs) return 0;
+    return Math.max(0, elapsed / durationMs);
   }
 
   /** Start a channel at `now`. Idempotent — re-calling with a later

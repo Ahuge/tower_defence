@@ -158,6 +158,10 @@ export class Tower {
    *  field here removes the cast smell. */
   _expired?: boolean;
 
+  /** Structural conformance to `RaiderTarget` — raiders check
+   *  `.alive` when scanning CPU towers for auto-targeting. */
+  get alive(): boolean { return !this._expired; }
+
   /** Mech finale: cells of CPU towers this generator powers. When the
    *  generator dies, SabotageController kills every linked tower
    *  (sets _expired = true, no rewards). Empty for non-generator

@@ -1,21 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { Raider } from './Raider';
-import type { Damageable } from '../systems/finale/Damageable';
+import { Raider, type RaiderTarget } from './Raider';
 
-function makeTarget(x: number, y: number, hp = 100): Damageable & { takeDamageCalls: number[] } {
+function makeTarget(x: number, y: number, hp = 100): RaiderTarget & { takeDamageCalls: number[] } {
   const t: any = {
-    id: 'mock',
     x, y,
-    col: Math.floor(x / 32),
-    row: Math.floor(y / 32),
-    widthCells: 1,
-    heightCells: 1,
     hp,
-    maxHp: hp,
     alive: true,
-    factionId: 'mechanical',
-    ownerIndex: 99,
-    isMissionWinTarget: false,
     takeDamageCalls: [] as number[],
     takeDamage(amount: number) {
       this.takeDamageCalls.push(amount);
@@ -107,7 +97,7 @@ describe('Raider', () => {
   it('clears already-dead manual target on the next update tick', () => {
     const r = makeRaider({ x: 0, y: 0, range: 1000 });
     const corpse = makeTarget(50, 0, 30);
-    (corpse as { alive: boolean }).alive = false;
+    corpse.alive = false;
     r.setManualTarget(corpse);
     expect(r.manualTarget).toBe(corpse);
     r.update(0, 16, []);

@@ -58,15 +58,24 @@ export class SuppressionManager {
     this.pylons = pylons.map(p => new SuppressionPylon(p));
   }
 
+  /** Resolve in-progress player channels whose duration has elapsed.
+   *  Public so tests can drive channel resolution without iterating
+   *  towers. */
+  resolveChannels(now: number): void {
+    for (const pylon of this.pylons) {
+      if (pylon.channelStartedAt === null) continue;
+      if (now - pylon.channelStartedAt < CHANNEL_DURATION_MS) continue;
+      pylon.completeChannel(now, DEFAULT_CHANNEL_MS);
+    }
+  }
+
   /** Per-frame: walk the tower list, bump stress on those that fired
    *  inside an active pylon, and trigger stalls at threshold. Per-
    *  tower bookkeeping (`_suppressionSeenLastFired`) lives on Tower,
    *  matching the codebase's "instance field" convention rather than
-   *  a side WeakMap. Also resolves any in-progress player channels
-   *  whose duration has elapsed. */
-  update(now: number, towers: SuppressibleTower[]): void {
+   *  a side WeakMap. */
+  processTowers(now: number, towers: SuppressibleTower[]): void {
     if (this.pylons.length === 0) return;
-    this._resolveChannels(now);
     for (const tower of towers) {
       if (!tower || tower._expired) continue;
       // Only player towers. Voss's own CPU towers (ownerIndex 99)
@@ -86,10 +95,16 @@ export class SuppressionManager {
     }
   }
 
+  /** Per-frame tick: resolve channels, then process tower stress. */
+  update(now: number, towers: SuppressibleTower[]): void {
+    this.resolveChannels(now);
+    this.processTowers(now, towers);
+  }
+
   /** Mute the pylon at the given cell. Returns true if a pylon was
    *  found and muted, false otherwise. */
   mutePylonAt(col: number, row: number, now: number, durationMs = DEFAULT_CHANNEL_MS): boolean {
-    const pylon = this.pylons.find(p => p.col === col && p.row === row);
+    const pylon = this._pylonAt(col, row);
     if (!pylon) return false;
     pylon.mute(now, durationMs);
     return true;
@@ -98,11 +113,21 @@ export class SuppressionManager {
   /** Try to start a channel on the pylon at the given cell. The
    *  return value disambiguates the failure modes so callers can
    *  surface different feedback ("already muted" vs "already
-   *  channeling" vs "no pylon") without re-reading pylon state. */
+   *  channeling" vs "no pylon") without re-reading pylon state.
+   *  If a stale channel (elapsed but not yet resolved by the frame
+   *  tick) is detected, it is completed here so the old mute isn't
+   *  silently discarded. */
   startChannelAt(col: number, row: number, now: number): ChannelStartResult {
-    const pylon = this.pylons.find(p => p.col === col && p.row === row);
+    const pylon = this._pylonAt(col, row);
     if (!pylon) return 'no_pylon';
-    if (!pylon.isActive(now)) return 'already_muted';
+    // Resolve any stale channel first — a frame hitch or timing edge
+    // case could leave channelStartedAt set past CHANNEL_DURATION_MS
+    // without _resolveChannels having completed it yet.
+    if (pylon.channelStartedAt !== null && now - pylon.channelStartedAt >= CHANNEL_DURATION_MS) {
+      pylon.completeChannel(now, DEFAULT_CHANNEL_MS);
+      return 'already_muted';
+    }
+    if (!pylon.isSuppressing(now)) return 'already_muted';
     if (pylon.isChanneling(now, CHANNEL_DURATION_MS)) return 'already_channeling';
     pylon.beginChannel(now);
     return 'started';
@@ -111,7 +136,7 @@ export class SuppressionManager {
   /** Cancel an in-progress channel on the given cell. Returns true
    *  if a channel was actually cancelled. */
   cancelChannelAt(col: number, row: number): boolean {
-    const pylon = this.pylons.find(p => p.col === col && p.row === row);
+    const pylon = this._pylonAt(col, row);
     if (!pylon || pylon.channelStartedAt === null) return false;
     pylon.cancelChannel();
     return true;
@@ -128,24 +153,20 @@ export class SuppressionManager {
     return DEFAULT_CHANNEL_MS;
   }
 
-  private _resolveChannels(now: number): void {
-    for (const pylon of this.pylons) {
-      if (pylon.channelStartedAt === null) continue;
-      if (now - pylon.channelStartedAt < CHANNEL_DURATION_MS) continue;
-      pylon.completeChannel(now, DEFAULT_CHANNEL_MS);
-    }
-  }
-
   /** True iff the cell is occupied by a pylon (not whether the pylon
    *  is currently active). Used by GameScene's input gate to detect
    *  channel clicks vs other cell interactions. */
   pylonAt(col: number, row: number): SuppressionPylon | null {
-    return this.pylons.find(p => p.col === col && p.row === row) ?? null;
+    return this._pylonAt(col, row) ?? null;
+  }
+
+  private _pylonAt(col: number, row: number): SuppressionPylon | undefined {
+    return this.pylons.find(p => p.col === col && p.row === row);
   }
 
   private _inAnyActivePylon(tower: SuppressibleTower, now: number): boolean {
     for (const p of this.pylons) {
-      if (!p.isActive(now)) continue;
+      if (!p.isSuppressing(now)) continue;
       if (p.contains(tower.col, tower.row)) return true;
     }
     return false;

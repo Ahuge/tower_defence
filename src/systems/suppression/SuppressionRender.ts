@@ -43,7 +43,7 @@ export class SuppressionRender {
   private drawPylon(p: SuppressionPylon, now: number, channelDurationMs: number): void {
     const x = gridX(p.col);
     const y = gridY(p.row);
-    const active = p.isActive(now);
+    const active = p.isSuppressing(now);
 
     // Field-of-effect outline — circle (visual cue that the radius is
     // square would lie about Chebyshev's actual cell coverage, but a
