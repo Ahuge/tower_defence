@@ -15,9 +15,14 @@
  *     captured violet heart. 8-frame sheet, 32×32 each. Frames 0-3
  *     are the active pulse loop, 4-5 are channeling, 6-7 are muted.
  *     Bakes to `assets/arena/struct_suppression_pylon.png`.
+ *   - Generator (M10) — Voss's power-cell tower. Cluster of 4 on the
+ *     M10 map; each gates a tower cluster (cascade-kills its linked
+ *     towers on death) and the throne shield. 4 damage frames, 32×32
+ *     each. Inert HP bag — doesn't fire. Bakes to
+ *     `assets/arena/struct_generator.png`.
  *
- *   Forthcoming: Generator (Mech), Raider (Arcane apprentice with walk
- *   cycle), Voss's Throne (Mech 3×3 boss structure).
+ *   Forthcoming: Raider (Arcane apprentice with walk cycle), Voss's
+ *   Throne (Mech 3×3 boss structure).
  */
 import { useRef, useEffect, useState } from 'react';
 import { C_base as ArcBase } from './arcane_sprites';
@@ -347,6 +352,189 @@ function drawSuppressionPylonSheet(ctx: CanvasRenderingContext2D) {
 }
 
 // ============================================================
+// GENERATOR — Voss's power cell (M10)
+// ============================================================
+// 32×32 × 4 frames stacked vertically (100/66/33/0% HP). Iron base
+// ring + three stacked coil-rings rising up the central post; an
+// arcing forge-orange current runs between them at full HP and dies
+// out as damage progresses. Status indicator on the side cycles
+// green → amber → red → black. Inert HP bag in gameplay — the
+// sprite tells the story but the device doesn't fire.
+
+const GN_W = 32;
+const GN_H = 32;
+const GN_FRAMES = 4;
+
+const GN_SHAD       = '#0a0808';
+const GN_IRON_DK    = MechBase.DKSTL;            // #666666
+const GN_IRON_MD    = MechBase.STEEL;            // #888888
+const GN_IRON_LT    = MechBase.LTSTL;            // #aaaaaa
+const GN_BRASS_DK   = MechBase.DKBRZ;
+const GN_BRASS_MD   = MechBase.BRONZE;
+const GN_BRASS_LT   = MechBase.LTBRZ;
+const GN_BRASS_HI   = MechBase.TAN;
+const GN_RIVET      = MechBase.RIVET;
+const GN_ARC_DK     = MechTower.DFORG;           // #cc3300
+const GN_ARC_MD     = MechTower.FORG;            // #ff4400
+const GN_ARC_HI     = MechTower.LFORG;           // #ff6622
+const GN_ARC_WT     = '#ffeebb';                 // arc core
+const GN_STAT_GR    = '#44dd66';
+const GN_STAT_AM    = '#ddaa44';
+const GN_STAT_RD    = '#dd4444';
+const GN_STAT_OFF   = '#222222';
+const GN_SMOKE_DK   = MechBase.SMOKE;
+const GN_SMOKE_LT   = MechBase.LTSMK;
+
+interface GeneratorState {
+  /** 0..3 = coils still standing (intact upward).  */
+  coilsAlive: number;
+  /** 0..1 — arc brightness. 0 = dead, 1 = pristine. */
+  arcStrength: number;
+  /** Status indicator colour. */
+  statusColor: string;
+  /** Smoke wisp intensity. */
+  smoke: number;
+}
+
+const GENERATOR_STATES: GeneratorState[] = [
+  { coilsAlive: 3, arcStrength: 1.0, statusColor: GN_STAT_GR,  smoke: 0.4 }, // 100% HP
+  { coilsAlive: 2, arcStrength: 0.6, statusColor: GN_STAT_AM,  smoke: 0.7 }, // 66%
+  { coilsAlive: 1, arcStrength: 0.3, statusColor: GN_STAT_RD,  smoke: 1.0 }, // 33%
+  { coilsAlive: 0, arcStrength: 0,   statusColor: GN_STAT_OFF, smoke: 0   }, // 0%  (dead)
+];
+
+function drawGeneratorChassis(ctx: CanvasRenderingContext2D, yOff: number) {
+  // ─── BASE RING (rows 24-30) ───────────────────────────────
+  rect(ctx, 5, yOff + 30, 22, 1, GN_SHAD);              // ground shadow
+  rect(ctx, 4, yOff + 28, 24, 2, GN_IRON_DK);           // base ring shadow
+  rect(ctx, 5, yOff + 27, 22, 1, GN_IRON_MD);           // base step
+  rect(ctx, 6, yOff + 26, 20, 1, GN_IRON_LT);           // top edge highlight
+  rect(ctx, 6, yOff + 25, 20, 1, GN_IRON_MD);           // base top
+  // Brass collar on the base.
+  rect(ctx, 9, yOff + 24, 14, 1, GN_BRASS_DK);
+  rect(ctx, 10, yOff + 23, 12, 1, GN_BRASS_MD);
+  rect(ctx, 11, yOff + 22, 10, 1, GN_BRASS_LT);
+  // Bolts on the base ring corners.
+  for (const x of [5, 11, 20, 26]) {
+    px(ctx, x, yOff + 28, GN_RIVET);
+  }
+
+  // ─── SIDE STRUTS (rows 7-22) ──────────────────────────────
+  // Brass vertical rails running up the sides.
+  rect(ctx, 8, yOff + 8, 1, 14, GN_BRASS_DK);
+  rect(ctx, 9, yOff + 7, 1, 15, GN_BRASS_MD);
+  rect(ctx, 22, yOff + 7, 1, 15, GN_BRASS_MD);
+  rect(ctx, 23, yOff + 8, 1, 14, GN_BRASS_DK);
+  // Cross-braces.
+  rect(ctx, 9, yOff + 13, 14, 1, GN_BRASS_DK);
+  rect(ctx, 9, yOff + 18, 14, 1, GN_BRASS_DK);
+  px(ctx, 10, yOff + 13, GN_BRASS_HI);
+  px(ctx, 21, yOff + 13, GN_BRASS_HI);
+}
+
+/** Draw one coil ring centred at (cx, cy). The ring is a chunky
+ *  horizontal disc with a darker rim. */
+function drawCoil(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
+  rect(ctx, cx - 4, cy,     8, 1, GN_IRON_DK);          // top rim shadow
+  rect(ctx, cx - 5, cy + 1, 10, 1, GN_IRON_DK);
+  rect(ctx, cx - 5, cy + 2, 10, 1, GN_IRON_MD);         // body
+  rect(ctx, cx - 5, cy + 3, 10, 1, GN_IRON_LT);         // highlight band
+  rect(ctx, cx - 4, cy + 4, 8, 1, GN_IRON_MD);
+  rect(ctx, cx - 4, cy + 5, 8, 1, GN_SHAD);             // bottom rim shadow
+  // Side bolts.
+  px(ctx, cx - 5, cy + 2, GN_RIVET);
+  px(ctx, cx + 4, cy + 2, GN_RIVET);
+}
+
+function drawGeneratorCoils(ctx: CanvasRenderingContext2D, yOff: number, coilsAlive: number) {
+  // Coil positions (rows 7, 13, 19 — bottom to top: 0, 1, 2).
+  const positions = [
+    { cx: 16, cy: yOff + 19 }, // bottom coil
+    { cx: 16, cy: yOff + 13 }, // middle coil
+    { cx: 16, cy: yOff + 7  }, // top coil
+  ];
+  for (let i = 0; i < coilsAlive; i++) {
+    drawCoil(ctx, positions[i].cx, positions[i].cy);
+  }
+  // Wreckage where coils have fallen out — broken rim fragments on
+  // the floor + bent struts above.
+  for (let i = coilsAlive; i < 3; i++) {
+    if (i === 2) {
+      // Top coil broken: bent strut tops.
+      px(ctx, 9,  yOff + 7, GN_IRON_DK);
+      px(ctx, 22, yOff + 7, GN_IRON_DK);
+      px(ctx, 10, yOff + 6, GN_BRASS_DK);
+    } else if (i === 1) {
+      // Middle coil broken: stub fragments.
+      px(ctx, 13, yOff + 14, GN_IRON_DK);
+      px(ctx, 18, yOff + 14, GN_IRON_DK);
+    } else if (i === 0) {
+      // Bottom coil broken: collapsed column.
+      rect(ctx, 13, yOff + 20, 6, 1, GN_SHAD);
+      rect(ctx, 14, yOff + 21, 4, 1, GN_IRON_DK);
+    }
+  }
+}
+
+function drawGeneratorArc(ctx: CanvasRenderingContext2D, yOff: number, strength: number) {
+  if (strength <= 0) return;
+  // Vertical arc running through the centre. Thicker + brighter at
+  // higher strength.
+  // Outermost glow band.
+  for (let y = yOff + 8; y <= yOff + 22; y++) {
+    px(ctx, 15, y, withAlpha(GN_ARC_DK, 0.5 * strength));
+    px(ctx, 17, y, withAlpha(GN_ARC_DK, 0.5 * strength));
+  }
+  // Mid band.
+  for (let y = yOff + 9; y <= yOff + 21; y++) {
+    px(ctx, 16, y, withAlpha(GN_ARC_HI, strength));
+  }
+  // White-hot core at high strength only.
+  if (strength >= 0.6) {
+    px(ctx, 16, yOff + 10, GN_ARC_WT);
+    px(ctx, 16, yOff + 16, GN_ARC_WT);
+    px(ctx, 16, yOff + 20, GN_ARC_WT);
+  }
+  // Branch arcs (small horizontal flickers) at full strength.
+  if (strength >= 0.85) {
+    px(ctx, 14, yOff + 11, GN_ARC_MD);
+    px(ctx, 18, yOff + 17, GN_ARC_MD);
+    px(ctx, 13, yOff + 14, GN_ARC_HI);
+    px(ctx, 19, yOff + 19, GN_ARC_HI);
+  }
+}
+
+function drawGeneratorStatus(ctx: CanvasRenderingContext2D, yOff: number, color: string) {
+  // Status indicator on the right strut.
+  px(ctx, 24, yOff + 22, GN_SHAD);
+  px(ctx, 25, yOff + 22, color);
+  px(ctx, 26, yOff + 22, GN_SHAD);
+  px(ctx, 25, yOff + 21, withAlpha(color, 0.5));
+}
+
+function drawGeneratorSmoke(ctx: CanvasRenderingContext2D, yOff: number, intensity: number) {
+  if (intensity <= 0) return;
+  px(ctx, 16, yOff + 5,  withAlpha(GN_SMOKE_LT, intensity));
+  px(ctx, 15, yOff + 3,  withAlpha(GN_SMOKE_DK, intensity * 0.85));
+  if (intensity >= 0.6) {
+    px(ctx, 17, yOff + 2, withAlpha(GN_SMOKE_LT, intensity * 0.7));
+    px(ctx, 14, yOff + 1, withAlpha(GN_SMOKE_DK, intensity * 0.5));
+  }
+}
+
+function drawGeneratorSheet(ctx: CanvasRenderingContext2D) {
+  for (let f = 0; f < GN_FRAMES; f++) {
+    const yOff = f * GN_H;
+    const state = GENERATOR_STATES[f];
+    drawGeneratorChassis(ctx, yOff);
+    drawGeneratorCoils(ctx, yOff, state.coilsAlive);
+    drawGeneratorArc(ctx, yOff, state.arcStrength);
+    drawGeneratorStatus(ctx, yOff, state.statusColor);
+    drawGeneratorSmoke(ctx, yOff, state.smoke);
+  }
+}
+
+// ============================================================
 // REACT COMPONENT — preview + download
 // ============================================================
 
@@ -355,6 +543,8 @@ export default function MechCampaignSprites() {
   const wsPv = useRef<HTMLCanvasElement>(null);
   const spRef = useRef<HTMLCanvasElement>(null);
   const spPv = useRef<HTMLCanvasElement>(null);
+  const gnRef = useRef<HTMLCanvasElement>(null);
+  const gnPv = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -415,6 +605,37 @@ export default function MechCampaignSprites() {
       sPCtx.restore();
       sPCtx.strokeStyle = '#1a1a2a';
       sPCtx.strokeRect(110, by, SP_W * spScale, SP_H * spScale);
+    }
+
+    // ----- Generator sheet (32×128, 4 damage frames) -----
+    const gn = gnRef.current!;
+    gn.width = GN_W;
+    gn.height = GN_H * GN_FRAMES;
+    const gCtx = gn.getContext('2d')!;
+    gCtx.imageSmoothingEnabled = false;
+    drawGeneratorSheet(gCtx);
+
+    const gpv = gnPv.current!;
+    const gScale = 6;
+    gpv.width = GN_W * gScale + 110;
+    gpv.height = (GN_H * gScale + labelH) * GN_FRAMES + 10;
+    const gPCtx = gpv.getContext('2d')!;
+    gPCtx.imageSmoothingEnabled = false;
+    gPCtx.fillStyle = '#07050c';
+    gPCtx.fillRect(0, 0, gpv.width, gpv.height);
+    const hpLabels = ['100% HP', '66% HP', '33% HP', '0% HP'];
+    for (let i = 0; i < GN_FRAMES; i++) {
+      const by = i * (GN_H * gScale + labelH) + 5;
+      gPCtx.fillStyle = GN_BRASS_LT;
+      gPCtx.font = 'bold 10px monospace';
+      gPCtx.fillText(`F${i} ${hpLabels[i]}`, 4, by + (GN_H * gScale) / 2 + 4);
+      gPCtx.save();
+      gPCtx.translate(110, by);
+      gPCtx.scale(gScale, gScale);
+      gPCtx.drawImage(gn, 0, i * GN_H, GN_W, GN_H, 0, 0, GN_W, GN_H);
+      gPCtx.restore();
+      gPCtx.strokeStyle = '#1a1a2a';
+      gPCtx.strokeRect(110, by, GN_W * gScale, GN_H * gScale);
     }
 
     setReady(true);
@@ -490,6 +711,39 @@ export default function MechCampaignSprites() {
           <div style={{ color: SP_HEART_BR, fontSize: 11, marginBottom: 4 }}>preview (5×)</div>
           <canvas
             ref={spPv}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ color: GN_BRASS_LT, margin: 0, fontSize: 15 }}>
+          MECH CAMPAIGN — Generator (Voss's Power Cell)
+        </h2>
+        {ready && (
+          <button
+            onClick={dl(gnRef as React.RefObject<HTMLCanvasElement>, 'struct_generator.png')}
+            style={{
+              background: GN_ARC_MD, color: '#fff', border: 'none', padding: '5px 14px',
+              borderRadius: 3, cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', fontSize: 11,
+            }}
+          >
+            Download Generator PNG
+          </button>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+        <div>
+          <div style={{ color: GN_BRASS_LT, fontSize: 11, marginBottom: 4 }}>raw sheet (32×128, 4 frames)</div>
+          <canvas
+            ref={gnRef}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+        <div>
+          <div style={{ color: GN_BRASS_LT, fontSize: 11, marginBottom: 4 }}>preview (6×)</div>
+          <canvas
+            ref={gnPv}
             style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
           />
         </div>

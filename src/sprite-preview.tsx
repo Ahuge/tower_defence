@@ -90,7 +90,7 @@ const FACTION_FILE_MAP: Record<string, { dir: string; canvases: string[] }> = {
   'terrain-celestial':  { dir: 'terrain', canvases: ['celestial_terrain_tileset', 'celestial_terrain_doodads'] },
   // Campaign one-offs (M10 finale assets etc.)
   'arcane-campaign':    { dir: 'arena', canvases: ['struct_summoning_circle', 'struct_arcane_archmage_throne'] },
-  'mech-campaign':      { dir: 'arena', canvases: ['struct_workshop', 'struct_suppression_pylon'] },
+  'mech-campaign':      { dir: 'arena', canvases: ['struct_workshop', 'struct_suppression_pylon', 'struct_generator'] },
 };
 
 /** Mobile unit file mapping */
