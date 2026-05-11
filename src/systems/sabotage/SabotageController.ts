@@ -26,6 +26,12 @@ import { Raider, type RaiderTarget } from '../../entities/Raider';
 import { Workshop, type GoldSpender } from './Workshop';
 import type { UpgradeKind } from './WorkshopUpgrades';
 import { placeCpuTowers, type BaseCpuTowerSpec } from '../finale/cpuPlacement';
+import {
+  GENERATOR_TEXTURE,
+  VOSS_THRONE_TEXTURE,
+  generatorFrameForHp,
+  thronePristineFrame,
+} from './SabotageAssets';
 
 export const CPU_INDEX_SABOTAGE = 99;
 
@@ -133,11 +139,18 @@ export class SabotageController {
         // existing _disabledRemaining channel (Infinity stays Infinity
         // through the per-frame `Math.max(0, x - delta/1000)` decay).
         tower._disabledRemaining = Infinity;
+        // Swap the tower's mech_mortar placeholder sprite to the
+        // bespoke generator sheet. Frame 0 = full HP; SabotageRender
+        // advances the frame as the generator takes damage.
+        tower.sprite?.setTexture(GENERATOR_TEXTURE, generatorFrameForHp(1));
         this.generators.push(tower);
       }
       if (spec.isThrone) {
         tower.isThrone = true;
         tower._invulnerable = true;
+        // Swap the placeholder mech_titan sprite to the bespoke Voss
+        // throne sheet. Starts on the pristine "shield up" frame.
+        tower.sprite?.setTexture(VOSS_THRONE_TEXTURE, thronePristineFrame());
         this.throne = tower;
       }
       this.cpuTowers.push(tower);
@@ -223,6 +236,9 @@ export class SabotageController {
 
   getWorkshop(): Workshop { return this.workshop; }
   getRaiders(): Raider[] { return this.raiders; }
+  /** Live generator list (includes recently-dead — SabotageRender
+   *  needs them for damage-frame indexing until the next cleanup). */
+  getGenerators(): Tower[] { return this.generators; }
 
   /** Train a Raider via the Workshop. Returns true on success. The
    *  Workshop internally enforces cooldown + gold cost via the

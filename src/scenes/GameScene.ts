@@ -95,6 +95,14 @@ import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import {
+  preloadMechCampaignAssets,
+  GENERATOR_TEXTURE,
+  VOSS_THRONE_TEXTURE,
+  generatorFrameForHp,
+  throneFrameForHp,
+  thronePristineFrame,
+} from '../systems/sabotage/SabotageAssets';
+import {
   SABOTAGE_TRAIN_EVENT,
   SABOTAGE_UPGRADE_EVENT,
   type SabotageUpgradeEventDetail,
@@ -613,6 +621,7 @@ export class GameScene extends Phaser.Scene {
     preloadHeroAbilityVfx(this);
     preloadSummoningCircle(this);
     preloadArchmageThrone(this);
+    preloadMechCampaignAssets(this);
   }
 
   create(): void {
@@ -3315,7 +3324,7 @@ export class GameScene extends Phaser.Scene {
     // every other mission.
     if (this._suppressionMgr) {
       this._suppressionMgr.update(time, this.towers as any);
-      this._suppressionRender?.update(this._suppressionMgr, time);
+      this._suppressionRender?.update(this._suppressionMgr, time, delta);
     }
     if (this._sabotageController) {
       // Cast the live tower / creep arrays through `unknown` — the
@@ -3328,7 +3337,7 @@ export class GameScene extends Phaser.Scene {
         this.towers as unknown as Parameters<typeof this._sabotageController.update>[3],
       );
       if (this._selectedRaider && !this._selectedRaider.alive) this._selectedRaider = null;
-      this._sabotageRender?.update(this._sabotageController);
+      this._sabotageRender?.update(this._sabotageController, delta);
       this._pushSabotageHud(time);
     }
     if (this._finaleController) {
