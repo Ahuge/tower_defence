@@ -33,7 +33,12 @@
  *     `assets/arena/struct_voss_throne.png`.
  */
 import { useRef, useEffect, useState } from 'react';
-import { C_base as ArcBase } from './arcane_sprites';
+import * as Arcane from './arcane_sprites';
+import * as Mechanical from './mechanical_sprites';
+
+const ArcBase = Arcane.C_base;
+const MechBase = Mechanical.C_base;
+const MechTower = Mechanical.C_tower;
 
 // ===== HELPERS =====
 function px(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
@@ -73,7 +78,8 @@ const WS_VIOLET     = ArcBase.BRVIO;       // #6644ff — magic glow
 const WS_LAV        = ArcBase.LAV;         // #cc88ff — bright lavender
 const WS_PLLAV      = ArcBase.PLLAV;       // #eeccff — palest lavender highlight
 
-function drawWorkshopSheet(ctx: CanvasRenderingContext2D) {
+export const WORKSHOP_DIMS = { W: WS_W, H: WS_H, FRAMES: WS_FRAMES };
+export function drawWorkshopSheet(ctx: CanvasRenderingContext2D) {
   // ─── DAIS (bottom octagonal base, rows 24-30) ────────────
   // Wide bottom row, narrower upper rows — fakes octagonal shape.
   rect(ctx, 6, 30, 20, 1, WS_SHAD);              // ground shadow
@@ -339,7 +345,8 @@ function drawPylonChannelOverlay(ctx: CanvasRenderingContext2D, yOff: number, ad
   }
 }
 
-function drawSuppressionPylonSheet(ctx: CanvasRenderingContext2D) {
+export const SUPPRESSION_PYLON_DIMS = { W: SP_W, H: SP_H, FRAMES: SP_FRAMES };
+export function drawSuppressionPylonSheet(ctx: CanvasRenderingContext2D) {
   // Heart brightness + smoke per frame. Active pulse runs 4 frames
   // with a classic bright-dim-bright sinusoid. Channeling holds the
   // mid brightness so the cracks read against a visible heart.
@@ -530,7 +537,8 @@ function drawGeneratorSmoke(ctx: CanvasRenderingContext2D, yOff: number, intensi
   }
 }
 
-function drawGeneratorSheet(ctx: CanvasRenderingContext2D) {
+export const GENERATOR_DIMS = { W: GN_W, H: GN_H, FRAMES: GN_FRAMES };
+export function drawGeneratorSheet(ctx: CanvasRenderingContext2D) {
   for (let f = 0; f < GN_FRAMES; f++) {
     const yOff = f * GN_H;
     const state = GENERATOR_STATES[f];
@@ -668,7 +676,8 @@ function drawRaiderFrame(ctx: CanvasRenderingContext2D, yOff: number, f: number)
   px(ctx, sparkX, sparkY, RD_PLLAV);
 }
 
-function drawRaiderSheet(ctx: CanvasRenderingContext2D) {
+export const RAIDER_DIMS = { W: RD_W, H: RD_H, FRAMES: RD_FRAMES };
+export function drawRaiderSheet(ctx: CanvasRenderingContext2D) {
   for (let f = 0; f < RD_FRAMES; f++) {
     drawRaiderFrame(ctx, f * RD_H, f);
   }
@@ -881,7 +890,8 @@ function drawThroneSmoke(ctx: CanvasRenderingContext2D, yOff: number, intensity:
   }
 }
 
-function drawVossThroneSheet(ctx: CanvasRenderingContext2D) {
+export const VOSS_THRONE_DIMS = { W: TV_W, H: TV_H, FRAMES: TV_FRAMES };
+export function drawVossThroneSheet(ctx: CanvasRenderingContext2D) {
   for (let f = 0; f < TV_FRAMES; f++) {
     const yOff = f * TV_H;
     const state = THRONE_STATES[f];
