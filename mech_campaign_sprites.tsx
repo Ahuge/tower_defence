@@ -20,9 +20,13 @@
  *     towers on death) and the throne shield. 4 damage frames, 32×32
  *     each. Inert HP bag — doesn't fire. Bakes to
  *     `assets/arena/struct_generator.png`.
+ *   - Raider (M10) — Vael's apprentice. Player-trained mobile unit
+ *     that walks across the map and sabotages Voss's foundry.
+ *     Inspired by the existing arcane_creep mage variants — hooded,
+ *     violet robe, golden chest rune, glowing wand. 4-frame walk
+ *     cycle at 32×32. Bakes to `assets/arena/raider.png`.
  *
- *   Forthcoming: Raider (Arcane apprentice with walk cycle), Voss's
- *   Throne (Mech 3×3 boss structure).
+ *   Forthcoming: Voss's Throne (Mech 3×3 boss structure).
  */
 import { useRef, useEffect, useState } from 'react';
 import { C_base as ArcBase } from './arcane_sprites';
@@ -535,6 +539,138 @@ function drawGeneratorSheet(ctx: CanvasRenderingContext2D) {
 }
 
 // ============================================================
+// RAIDER — Vael's apprentice (M10 player unit)
+// ============================================================
+// 32×32 × 4-frame walk cycle stacked vertically. Hooded apprentice
+// silhouette inspired by the existing arcane_creep_sprites Mage
+// variants — same violet robe + glowing-rune language, scaled to a
+// player-unit size. Faces south (down-screen) by convention; the
+// in-engine sprite rotates to track the manual target.
+
+const RD_W = 32;
+const RD_H = 32;
+const RD_FRAMES = 4;
+
+const RD_VOID       = ArcBase.VOID;
+const RD_SHAD       = ArcBase.SHAD;
+const RD_ROBE_DK    = ArcBase.DVIO;
+const RD_ROBE_MD    = ArcBase.DKVIO;
+const RD_ROBE_LT    = ArcBase.MDVIO;
+const RD_ROBE_HI    = ArcBase.BRVIO;
+const RD_RUNE       = '#ffcc44';
+const RD_RUNE_HI    = '#ffee99';
+const RD_LAV        = ArcBase.LAV;
+const RD_PLLAV      = ArcBase.PLLAV;
+const RD_WAND       = '#aa8866';
+const RD_WAND_DK    = '#664422';
+const RD_WHITE      = '#ffffff';
+
+function drawRaiderFrame(ctx: CanvasRenderingContext2D, yOff: number, f: number) {
+  // Per-frame bob + leg/arm swing offsets. Classic 4-step cycle:
+  // f0 + f2 are "planted" frames; f1 swings left lead, f3 swings
+  // right lead.
+  const bob = [0, -1, 0, 1][f];
+  const lOff = [0, 1, 0, -1][f];
+  const rOff = [0, -1, 0, 1][f];
+  const by = yOff + 4 + bob;
+
+  // ─── DROP SHADOW (always at sprite floor) ───────────────
+  rect(ctx, 11, yOff + 30, 10, 1, withAlpha(RD_VOID, 0.55));
+
+  // ─── HOOD ────────────────────────────────────────────────
+  // Triangular apex narrowing to the brow.
+  px(ctx, 16, by, RD_ROBE_LT);
+  rect(ctx, 15, by + 1, 3, 1, RD_ROBE_DK);
+  px(ctx, 15, by + 1, RD_ROBE_LT);
+  rect(ctx, 14, by + 2, 5, 1, RD_ROBE_MD);
+  px(ctx, 14, by + 2, RD_ROBE_LT);
+  rect(ctx, 13, by + 3, 7, 2, RD_ROBE_MD);
+  rect(ctx, 13, by + 3, 1, 2, RD_ROBE_LT);     // left-edge highlight
+  rect(ctx, 19, by + 3, 1, 2, RD_ROBE_DK);     // right-edge shadow
+  // Fold detail.
+  px(ctx, 15, by + 3, RD_ROBE_HI);
+  px(ctx, 17, by + 3, RD_ROBE_HI);
+
+  // ─── FACE SHADOW + GLOWING EYES ──────────────────────────
+  rect(ctx, 14, by + 5, 5, 2, RD_VOID);
+  px(ctx, 14, by + 5, RD_ROBE_DK);
+  px(ctx, 18, by + 5, RD_ROBE_DK);
+  // Eyes — golden rune-gold, brighter inner pixel.
+  px(ctx, 14, by + 6, RD_RUNE);
+  px(ctx, 17, by + 6, RD_RUNE);
+  px(ctx, 15, by + 6, RD_RUNE_HI);
+  px(ctx, 18, by + 6, RD_RUNE_HI);
+
+  // ─── ROBE BODY (cascade wider toward the feet) ───────────
+  // Upper torso (just below the hood).
+  rect(ctx, 12, by + 7, 8, 3, RD_ROBE_MD);
+  rect(ctx, 12, by + 7, 1, 3, RD_ROBE_LT);     // left highlight
+  rect(ctx, 19, by + 7, 1, 3, RD_ROBE_DK);     // right shadow
+  // Mid-body — wider.
+  rect(ctx, 11, by + 10, 10, 4, RD_ROBE_DK);
+  rect(ctx, 11, by + 10, 1, 4, RD_ROBE_LT);
+  rect(ctx, 20, by + 10, 1, 4, RD_VOID);
+  // Lower-body — widest section approaching the hem.
+  rect(ctx, 10, by + 14, 12, 4, RD_ROBE_DK);
+  rect(ctx, 10, by + 14, 2, 4, RD_ROBE_MD);
+  rect(ctx, 11, by + 14, 1, 4, RD_ROBE_LT);
+  rect(ctx, 20, by + 14, 2, 4, RD_VOID);
+  // Hem — deep shadow at the very bottom.
+  rect(ctx, 10, by + 18, 12, 1, RD_VOID);
+
+  // ─── CHEST RUNE — golden sigil on the robe ───────────────
+  px(ctx, 15, by + 10, RD_RUNE);
+  px(ctx, 16, by + 10, RD_RUNE);
+  px(ctx, 16, by + 11, RD_RUNE_HI);
+  px(ctx, 15, by + 12, RD_RUNE);
+  px(ctx, 16, by + 12, RD_RUNE);
+
+  // ─── WAND (held in the right hand, gem top) ──────────────
+  // Shaft running along the right side.
+  rect(ctx, 22, by + 4, 1, 9, RD_WAND);
+  rect(ctx, 23, by + 4, 1, 9, RD_WAND_DK);
+  // Wand grip wrap (binding lines).
+  px(ctx, 22, by + 7, RD_WAND_DK);
+  px(ctx, 22, by + 10, RD_WAND_DK);
+  // Gem tip — violet orb with white core.
+  px(ctx, 21, by + 2, RD_ROBE_HI);
+  px(ctx, 22, by + 2, RD_LAV);
+  px(ctx, 23, by + 2, RD_LAV);
+  px(ctx, 24, by + 2, RD_ROBE_HI);
+  px(ctx, 22, by + 1, RD_WHITE);
+  px(ctx, 23, by + 1, RD_PLLAV);
+  px(ctx, 22, by + 3, RD_ROBE_HI);
+  px(ctx, 23, by + 3, RD_LAV);
+  // Faint magical glow around the gem.
+  px(ctx, 21, by + 1, withAlpha(RD_LAV, 0.4));
+  px(ctx, 24, by + 1, withAlpha(RD_LAV, 0.4));
+
+  // ─── LEFT ARM (extended outward in conjuring pose) ───────
+  rect(ctx, 8 + lOff, by + 9, 3, 2, RD_ROBE_MD);
+  rect(ctx, 8 + lOff, by + 9, 1, 2, RD_ROBE_LT);
+  // Wisp at the fingertip — pale spell motif.
+  px(ctx, 7 + lOff, by + 10, RD_PLLAV);
+
+  // ─── FEET (swap with lOff/rOff per frame for walk anim) ──
+  rect(ctx, 12 + lOff, by + 19, 3, 2, RD_ROBE_DK);
+  px(ctx, 12 + lOff, by + 19, RD_ROBE_MD);
+  rect(ctx, 17 + rOff, by + 19, 3, 2, RD_VOID);
+  px(ctx, 19 + rOff, by + 19, RD_ROBE_DK);
+
+  // ─── ORBITING SPARKLE (faint, atmospheric) ───────────────
+  // Single floating pixel cycles position per frame.
+  const sparkX = [9, 24, 22, 8][f];
+  const sparkY = [yOff + 12, yOff + 9, yOff + 22, yOff + 17][f];
+  px(ctx, sparkX, sparkY, RD_PLLAV);
+}
+
+function drawRaiderSheet(ctx: CanvasRenderingContext2D) {
+  for (let f = 0; f < RD_FRAMES; f++) {
+    drawRaiderFrame(ctx, f * RD_H, f);
+  }
+}
+
+// ============================================================
 // REACT COMPONENT — preview + download
 // ============================================================
 
@@ -545,6 +681,8 @@ export default function MechCampaignSprites() {
   const spPv = useRef<HTMLCanvasElement>(null);
   const gnRef = useRef<HTMLCanvasElement>(null);
   const gnPv = useRef<HTMLCanvasElement>(null);
+  const rdRef = useRef<HTMLCanvasElement>(null);
+  const rdPv = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -636,6 +774,37 @@ export default function MechCampaignSprites() {
       gPCtx.restore();
       gPCtx.strokeStyle = '#1a1a2a';
       gPCtx.strokeRect(110, by, GN_W * gScale, GN_H * gScale);
+    }
+
+    // ----- Raider sheet (32×128, 4-frame walk cycle) -----
+    const rd = rdRef.current!;
+    rd.width = RD_W;
+    rd.height = RD_H * RD_FRAMES;
+    const rCtx = rd.getContext('2d')!;
+    rCtx.imageSmoothingEnabled = false;
+    drawRaiderSheet(rCtx);
+
+    const rpv = rdPv.current!;
+    const rScale = 6;
+    rpv.width = RD_W * rScale + 110;
+    rpv.height = (RD_H * rScale + labelH) * RD_FRAMES + 10;
+    const rPCtx = rpv.getContext('2d')!;
+    rPCtx.imageSmoothingEnabled = false;
+    rPCtx.fillStyle = '#07050c';
+    rPCtx.fillRect(0, 0, rpv.width, rpv.height);
+    const walkLabels = ['Plant', 'L lead', 'Plant', 'R lead'];
+    for (let i = 0; i < RD_FRAMES; i++) {
+      const by = i * (RD_H * rScale + labelH) + 5;
+      rPCtx.fillStyle = RD_LAV;
+      rPCtx.font = 'bold 10px monospace';
+      rPCtx.fillText(`F${i} ${walkLabels[i]}`, 4, by + (RD_H * rScale) / 2 + 4);
+      rPCtx.save();
+      rPCtx.translate(110, by);
+      rPCtx.scale(rScale, rScale);
+      rPCtx.drawImage(rd, 0, i * RD_H, RD_W, RD_H, 0, 0, RD_W, RD_H);
+      rPCtx.restore();
+      rPCtx.strokeStyle = '#1a1a2a';
+      rPCtx.strokeRect(110, by, RD_W * rScale, RD_H * rScale);
     }
 
     setReady(true);
@@ -744,6 +913,39 @@ export default function MechCampaignSprites() {
           <div style={{ color: GN_BRASS_LT, fontSize: 11, marginBottom: 4 }}>preview (6×)</div>
           <canvas
             ref={gnPv}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ color: RD_LAV, margin: 0, fontSize: 15 }}>
+          MECH CAMPAIGN — Raider (Vael's Apprentice)
+        </h2>
+        {ready && (
+          <button
+            onClick={dl(rdRef as React.RefObject<HTMLCanvasElement>, 'raider.png')}
+            style={{
+              background: RD_ROBE_HI, color: '#fff', border: 'none', padding: '5px 14px',
+              borderRadius: 3, cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', fontSize: 11,
+            }}
+          >
+            Download Raider PNG
+          </button>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+        <div>
+          <div style={{ color: RD_LAV, fontSize: 11, marginBottom: 4 }}>raw sheet (32×128, 4 frames)</div>
+          <canvas
+            ref={rdRef}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+        <div>
+          <div style={{ color: RD_LAV, fontSize: 11, marginBottom: 4 }}>preview (6×)</div>
+          <canvas
+            ref={rdPv}
             style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
           />
         </div>
