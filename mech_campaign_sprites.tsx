@@ -25,8 +25,12 @@
  *     Inspired by the existing arcane_creep mage variants — hooded,
  *     violet robe, golden chest rune, glowing wand. 4-frame walk
  *     cycle at 32×32. Bakes to `assets/arena/raider.png`.
- *
- *   Forthcoming: Voss's Throne (Mech 3×3 boss structure).
+ *   - Voss's Throne (M10) — the campaign's win-condition target.
+ *     Steampunk iron seat with Voss helmeted in the centre, flanking
+ *     vent pipes, suppression-violet halo while generators are alive.
+ *     5 damage frames at 32×32 (single-tile placement for v1; defer
+ *     the 3×3 destructibleStructures migration). Bakes to
+ *     `assets/arena/struct_voss_throne.png`.
  */
 import { useRef, useEffect, useState } from 'react';
 import { C_base as ArcBase } from './arcane_sprites';
@@ -671,6 +675,224 @@ function drawRaiderSheet(ctx: CanvasRenderingContext2D) {
 }
 
 // ============================================================
+// VOSS'S THRONE — M10 win-condition target
+// ============================================================
+// 32×32 × 5 damage frames stacked vertically. Steampunk iron seat
+// with Voss helmeted in the centre, two vent pipes flanking the
+// throne, a suppression-violet halo over the helmet while
+// generators are alive (frame 0). Damage frames progressively
+// shatter the armour, pop the rivets, dim the halo, and crumple
+// the figure.
+
+const TV_W = 32;
+const TV_H = 32;
+const TV_FRAMES = 5;
+
+const TV_SHAD       = '#0a0808';
+const TV_IRON_DK    = MechBase.DKSTL;
+const TV_IRON_MD    = MechBase.STEEL;
+const TV_IRON_LT    = MechBase.LTSTL;
+const TV_IRON_HI    = MechBase.WTSTL;
+const TV_BRASS_DK   = MechBase.DKBRZ;
+const TV_BRASS_MD   = MechBase.BRONZE;
+const TV_BRASS_LT   = MechBase.LTBRZ;
+const TV_RIVET      = MechBase.RIVET;
+const TV_CAPE_DK    = MechTower.DKRED;           // #882222
+const TV_CAPE_MD    = MechTower.RED;             // #cc3333
+const TV_CAPE_LT    = MechTower.LTRED;           // #ff5555
+const TV_HELM_DK    = '#332222';
+const TV_HELM_MD    = '#553333';
+const TV_HELM_HI    = '#776655';
+const TV_EYE        = '#ff4422';                 // forge-eye glow
+const TV_HALO_DK    = '#5530a8';
+const TV_HALO_BR    = '#9966ff';
+const TV_HALO_HI    = '#dccaff';
+const TV_SMOKE_DK   = MechBase.SMOKE;
+const TV_SMOKE_LT   = MechBase.LTSMK;
+
+interface ThroneState {
+  /** Halo brightness 0..1. Dims as generators fall; goes black at 0%. */
+  halo: number;
+  /** Armour-shatter level 0..4 (rivets pop, plates crack, then breach). */
+  damage: number;
+  /** Smoke intensity off the vent pipes. */
+  smoke: number;
+  /** Voss's pose: 0 = upright, 1 = slumped (only at 0% HP). */
+  slumped: 0 | 1;
+}
+
+const THRONE_STATES: ThroneState[] = [
+  { halo: 1.0,  damage: 0, smoke: 0.4, slumped: 0 }, // 100% — invulnerable
+  { halo: 0.65, damage: 1, smoke: 0.6, slumped: 0 }, // 75%
+  { halo: 0.35, damage: 2, smoke: 0.9, slumped: 0 }, // 50%
+  { halo: 0.1,  damage: 3, smoke: 1.0, slumped: 0 }, // 25% — shield down
+  { halo: 0,    damage: 4, smoke: 0.2, slumped: 1 }, // 0%   — dead
+];
+
+function drawThroneChassis(ctx: CanvasRenderingContext2D, yOff: number, damage: number) {
+  // ─── DAIS BASE (rows 25-30) ────────────────────────────────
+  rect(ctx, 4, yOff + 30, 24, 1, TV_SHAD);              // ground shadow
+  rect(ctx, 4, yOff + 28, 24, 2, TV_IRON_DK);
+  rect(ctx, 5, yOff + 27, 22, 1, TV_IRON_MD);
+  rect(ctx, 6, yOff + 26, 20, 1, TV_IRON_LT);
+  rect(ctx, 6, yOff + 25, 20, 1, TV_IRON_MD);
+  // Dais bolts (pop progressively with damage).
+  const baseBolts = [[6, 28], [12, 28], [19, 28], [25, 28]];
+  for (let i = 0; i < baseBolts.length; i++) {
+    if (i < 4 - damage) px(ctx, baseBolts[i][0], yOff + baseBolts[i][1], TV_RIVET);
+  }
+
+  // ─── VENT PIPES (flanking the throne) ─────────────────────
+  // Left pipe.
+  rect(ctx, 4, yOff + 9, 2, 17, TV_BRASS_DK);
+  rect(ctx, 5, yOff + 9, 1, 17, TV_BRASS_MD);
+  // Right pipe.
+  rect(ctx, 26, yOff + 9, 2, 17, TV_BRASS_DK);
+  rect(ctx, 26, yOff + 9, 1, 17, TV_BRASS_MD);
+  // Pipe collar rings.
+  rect(ctx, 4, yOff + 13, 2, 1, TV_BRASS_LT);
+  rect(ctx, 26, yOff + 13, 2, 1, TV_BRASS_LT);
+  rect(ctx, 4, yOff + 19, 2, 1, TV_BRASS_LT);
+  rect(ctx, 26, yOff + 19, 2, 1, TV_BRASS_LT);
+
+  // ─── THRONE BACK (rows 8-22) ──────────────────────────────
+  // High iron backplate behind Voss.
+  rect(ctx, 8, yOff + 8, 16, 14, TV_IRON_DK);            // shadow
+  rect(ctx, 9, yOff + 8, 14, 14, TV_IRON_MD);            // body
+  rect(ctx, 9, yOff + 8, 1, 14, TV_IRON_LT);             // left highlight
+  rect(ctx, 22, yOff + 8, 1, 14, TV_SHAD);               // right shadow
+  rect(ctx, 9, yOff + 8, 14, 1, TV_IRON_LT);             // top highlight
+  // Crown ornament — three iron spikes at the top.
+  if (damage <= 2) {
+    px(ctx, 12, yOff + 7, TV_IRON_LT);
+    px(ctx, 16, yOff + 7, TV_IRON_HI);
+    px(ctx, 20, yOff + 7, TV_IRON_LT);
+  }
+  // Plate cracks scale with damage.
+  if (damage >= 1) {
+    px(ctx, 10, yOff + 11, TV_SHAD);
+    px(ctx, 21, yOff + 14, TV_SHAD);
+  }
+  if (damage >= 2) {
+    px(ctx, 13, yOff + 13, TV_SHAD);
+    px(ctx, 19, yOff + 19, TV_SHAD);
+    rect(ctx, 9, yOff + 16, 2, 1, TV_SHAD);
+  }
+  if (damage >= 3) {
+    rect(ctx, 21, yOff + 11, 2, 2, TV_SHAD);             // armour breach right
+    rect(ctx, 9, yOff + 19, 3, 1, TV_SHAD);              // breach left
+  }
+  if (damage >= 4) {
+    rect(ctx, 13, yOff + 17, 7, 2, TV_SHAD);             // huge centre breach
+    rect(ctx, 10, yOff + 14, 2, 3, TV_SHAD);
+  }
+
+  // ─── ARM RESTS ────────────────────────────────────────────
+  rect(ctx, 7, yOff + 19, 3, 5, TV_IRON_DK);
+  rect(ctx, 8, yOff + 19, 1, 5, TV_IRON_MD);
+  rect(ctx, 22, yOff + 19, 3, 5, TV_IRON_DK);
+  rect(ctx, 23, yOff + 19, 1, 5, TV_IRON_MD);
+}
+
+function drawVoss(ctx: CanvasRenderingContext2D, yOff: number, slumped: number, damage: number) {
+  const ySlump = slumped ? 2 : 0;
+  // ─── CAPE (behind Voss, draped over the throne) ──────────
+  if (damage <= 3) {
+    rect(ctx, 12, yOff + 14 + ySlump, 8, 8, TV_CAPE_DK);
+    rect(ctx, 13, yOff + 14 + ySlump, 6, 8, TV_CAPE_MD);
+    rect(ctx, 13, yOff + 14 + ySlump, 1, 8, TV_CAPE_LT);
+  } else {
+    // Burnt cape at 0% HP.
+    rect(ctx, 12, yOff + 16, 8, 6, TV_HELM_DK);
+  }
+
+  // ─── HELMET (industrial half-mask) ───────────────────────
+  // Helmet crown.
+  rect(ctx, 13, yOff + 11 + ySlump, 6, 1, TV_HELM_DK);
+  rect(ctx, 12, yOff + 12 + ySlump, 8, 2, TV_HELM_MD);
+  rect(ctx, 12, yOff + 12 + ySlump, 1, 2, TV_HELM_HI);
+  rect(ctx, 19, yOff + 12 + ySlump, 1, 2, TV_HELM_DK);
+  // Visor slot.
+  rect(ctx, 13, yOff + 13 + ySlump, 6, 1, TV_SHAD);
+  if (damage < 4) {
+    // Forge-eye glow through the visor.
+    px(ctx, 14, yOff + 13 + ySlump, TV_EYE);
+    px(ctx, 17, yOff + 13 + ySlump, TV_EYE);
+  }
+  // Helmet jaw.
+  rect(ctx, 13, yOff + 14 + ySlump, 6, 1, TV_HELM_MD);
+  px(ctx, 13, yOff + 14 + ySlump, TV_HELM_HI);
+
+  // ─── CHEST PLATE ─────────────────────────────────────────
+  if (damage < 4) {
+    rect(ctx, 12, yOff + 15 + ySlump, 8, 4, TV_IRON_DK);
+    rect(ctx, 13, yOff + 15 + ySlump, 6, 4, TV_IRON_MD);
+    rect(ctx, 13, yOff + 15 + ySlump, 1, 4, TV_IRON_LT);
+    // Central rivet.
+    px(ctx, 15, yOff + 17 + ySlump, TV_RIVET);
+    px(ctx, 16, yOff + 17 + ySlump, TV_RIVET);
+    // Damage cracks on the plate.
+    if (damage >= 2) px(ctx, 14, yOff + 18, TV_SHAD);
+    if (damage >= 3) rect(ctx, 17, yOff + 17, 2, 1, TV_SHAD);
+  } else {
+    // Slumped husk — torso collapsed.
+    rect(ctx, 13, yOff + 19, 6, 2, TV_HELM_DK);
+  }
+
+  // ─── HANDS ON ARMRESTS ───────────────────────────────────
+  if (damage < 4) {
+    rect(ctx, 8, yOff + 18, 2, 1, TV_HELM_MD);
+    rect(ctx, 22, yOff + 18, 2, 1, TV_HELM_MD);
+    px(ctx, 8, yOff + 18, TV_HELM_HI);
+  }
+}
+
+function drawThroneHalo(ctx: CanvasRenderingContext2D, yOff: number, brightness: number) {
+  if (brightness <= 0) return;
+  // Crescent halo over Voss's head — 3 concentric arcs.
+  const cx = 16, cy = yOff + 9;
+  // Inner core.
+  rect(ctx, cx - 2, cy, 4, 1, withAlpha(TV_HALO_HI, brightness));
+  px(ctx, cx - 3, cy + 1, withAlpha(TV_HALO_BR, brightness));
+  px(ctx, cx + 2, cy + 1, withAlpha(TV_HALO_BR, brightness));
+  // Outer arc.
+  if (brightness >= 0.5) {
+    rect(ctx, cx - 4, cy - 1, 8, 1, withAlpha(TV_HALO_BR, brightness * 0.7));
+    px(ctx, cx - 5, cy, withAlpha(TV_HALO_DK, brightness * 0.6));
+    px(ctx, cx + 4, cy, withAlpha(TV_HALO_DK, brightness * 0.6));
+  }
+  // Pale apex (only at near-full brightness).
+  if (brightness >= 0.85) {
+    px(ctx, cx, cy - 2, withAlpha(TV_HALO_HI, brightness));
+  }
+}
+
+function drawThroneSmoke(ctx: CanvasRenderingContext2D, yOff: number, intensity: number) {
+  if (intensity <= 0) return;
+  // Left pipe smoke.
+  px(ctx, 5, yOff + 7, withAlpha(TV_SMOKE_LT, intensity));
+  px(ctx, 4, yOff + 5, withAlpha(TV_SMOKE_DK, intensity * 0.85));
+  // Right pipe smoke.
+  px(ctx, 26, yOff + 7, withAlpha(TV_SMOKE_LT, intensity));
+  px(ctx, 27, yOff + 5, withAlpha(TV_SMOKE_DK, intensity * 0.85));
+  if (intensity >= 0.7) {
+    px(ctx, 6, yOff + 3, withAlpha(TV_SMOKE_LT, intensity * 0.7));
+    px(ctx, 25, yOff + 3, withAlpha(TV_SMOKE_LT, intensity * 0.7));
+  }
+}
+
+function drawVossThroneSheet(ctx: CanvasRenderingContext2D) {
+  for (let f = 0; f < TV_FRAMES; f++) {
+    const yOff = f * TV_H;
+    const state = THRONE_STATES[f];
+    drawThroneChassis(ctx, yOff, state.damage);
+    drawVoss(ctx, yOff, state.slumped, state.damage);
+    drawThroneHalo(ctx, yOff, state.halo);
+    drawThroneSmoke(ctx, yOff, state.smoke);
+  }
+}
+
+// ============================================================
 // REACT COMPONENT — preview + download
 // ============================================================
 
@@ -683,6 +905,8 @@ export default function MechCampaignSprites() {
   const gnPv = useRef<HTMLCanvasElement>(null);
   const rdRef = useRef<HTMLCanvasElement>(null);
   const rdPv = useRef<HTMLCanvasElement>(null);
+  const tvRef = useRef<HTMLCanvasElement>(null);
+  const tvPv = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -805,6 +1029,37 @@ export default function MechCampaignSprites() {
       rPCtx.restore();
       rPCtx.strokeStyle = '#1a1a2a';
       rPCtx.strokeRect(110, by, RD_W * rScale, RD_H * rScale);
+    }
+
+    // ----- Voss's Throne sheet (32×160, 5 damage frames) -----
+    const tv = tvRef.current!;
+    tv.width = TV_W;
+    tv.height = TV_H * TV_FRAMES;
+    const tCtx = tv.getContext('2d')!;
+    tCtx.imageSmoothingEnabled = false;
+    drawVossThroneSheet(tCtx);
+
+    const tpv = tvPv.current!;
+    const tScale = 6;
+    tpv.width = TV_W * tScale + 130;
+    tpv.height = (TV_H * tScale + labelH) * TV_FRAMES + 10;
+    const tPCtx = tpv.getContext('2d')!;
+    tPCtx.imageSmoothingEnabled = false;
+    tPCtx.fillStyle = '#07050c';
+    tPCtx.fillRect(0, 0, tpv.width, tpv.height);
+    const throneLabels = ['100% (shield up)', '75%', '50%', '25% (shield down)', '0% (dead)'];
+    for (let i = 0; i < TV_FRAMES; i++) {
+      const by = i * (TV_H * tScale + labelH) + 5;
+      tPCtx.fillStyle = TV_HALO_BR;
+      tPCtx.font = 'bold 10px monospace';
+      tPCtx.fillText(`F${i} ${throneLabels[i]}`, 4, by + (TV_H * tScale) / 2 + 4);
+      tPCtx.save();
+      tPCtx.translate(130, by);
+      tPCtx.scale(tScale, tScale);
+      tPCtx.drawImage(tv, 0, i * TV_H, TV_W, TV_H, 0, 0, TV_W, TV_H);
+      tPCtx.restore();
+      tPCtx.strokeStyle = '#1a1a2a';
+      tPCtx.strokeRect(130, by, TV_W * tScale, TV_H * tScale);
     }
 
     setReady(true);
@@ -946,6 +1201,39 @@ export default function MechCampaignSprites() {
           <div style={{ color: RD_LAV, fontSize: 11, marginBottom: 4 }}>preview (6×)</div>
           <canvas
             ref={rdPv}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ color: TV_HALO_BR, margin: 0, fontSize: 15 }}>
+          MECH CAMPAIGN — Voss's Throne (M10 Win Target)
+        </h2>
+        {ready && (
+          <button
+            onClick={dl(tvRef as React.RefObject<HTMLCanvasElement>, 'struct_voss_throne.png')}
+            style={{
+              background: TV_CAPE_MD, color: '#fff', border: 'none', padding: '5px 14px',
+              borderRadius: 3, cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', fontSize: 11,
+            }}
+          >
+            Download Voss's Throne PNG
+          </button>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+        <div>
+          <div style={{ color: TV_HALO_BR, fontSize: 11, marginBottom: 4 }}>raw sheet (32×160, 5 frames)</div>
+          <canvas
+            ref={tvRef}
+            style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
+          />
+        </div>
+        <div>
+          <div style={{ color: TV_HALO_BR, fontSize: 11, marginBottom: 4 }}>preview (6×)</div>
+          <canvas
+            ref={tvPv}
             style={{ background: '#000', imageRendering: 'pixelated', display: 'block' }}
           />
         </div>
