@@ -101,13 +101,7 @@ export const DESTRUCTIBLE_STRUCTURES: Record<string, DestructibleStructureDef> =
     textureKey: 'struct_voss_throne',
     damageFrames: 5,
     defaultHp: 5000,
-    // The procedural 32×32 sprite has visible empty pixels around the
-    // throne body (~25% padding). Scale 1.4× so the rendered throne
-    // visually fills more than the 3×3 grid footprint — gameplay
-    // footprint stays 3×3, but the visual reads as the imposing boss
-    // the campaign climax wants. Native 84×84 art could drop this
-    // back to 1.0.
-    displayScaleMult: 1.4,
+    // Sprite is natively 84×84 (matching Arcane's). Identity scale.
   },
   // Future:
   //   mech_war_furnace: { 4×3, 6000hp, 5 frames, embeddedTowerId: 'mech_titan' },

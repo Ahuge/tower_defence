@@ -686,38 +686,46 @@ export function drawRaiderSheet(ctx: CanvasRenderingContext2D) {
 // ============================================================
 // VOSS'S THRONE — M10 win-condition target
 // ============================================================
-// 32×32 × 5 damage frames stacked vertically. Steampunk iron seat
-// with Voss helmeted in the centre, two vent pipes flanking the
-// throne, a suppression-violet halo over the helmet while
-// generators are alive (frame 0). Damage frames progressively
-// shatter the armour, pop the rivets, dim the halo, and crumple
-// the figure.
+// 84×84 × 5 damage frames stacked vertically (84×420 sheet). Native
+// resolution matches the Arcane Archmage Throne so the sprite fills
+// its 3×3 grid footprint at 1.0× display scale.
+//
+// Steampunk iron throne with Voss helmeted in the centre, two large
+// vent pipes flanking the throne with brass collar rings + steam,
+// suppression-violet halo over the helmet while generators are alive
+// (frame 0), red cape draping behind, tiered iron dais base, and a
+// crown of iron spikes at the top. Damage frames progressively
+// shatter the armour, pop the rivets, dim the halo, breach the chest
+// plate, and finally crumple Voss into a charred husk.
 
-const TV_W = 32;
-const TV_H = 32;
+const TV_W = 84;
+const TV_H = 84;
 const TV_FRAMES = 5;
 
 const TV_SHAD       = '#0a0808';
-const TV_IRON_DK    = MechBase.DKSTL;
-const TV_IRON_MD    = MechBase.STEEL;
-const TV_IRON_LT    = MechBase.LTSTL;
-const TV_IRON_HI    = MechBase.WTSTL;
-const TV_BRASS_DK   = MechBase.DKBRZ;
-const TV_BRASS_MD   = MechBase.BRONZE;
-const TV_BRASS_LT   = MechBase.LTBRZ;
-const TV_RIVET      = MechBase.RIVET;
+const TV_IRON_DK    = MechBase.DKSTL;            // #666666
+const TV_IRON_MD    = MechBase.STEEL;            // #888888
+const TV_IRON_LT    = MechBase.LTSTL;            // #aaaaaa
+const TV_IRON_HI    = MechBase.WTSTL;            // #cccccc
+const TV_BRASS_DK   = MechBase.DKBRZ;            // #995522
+const TV_BRASS_MD   = MechBase.BRONZE;           // #cc8833
+const TV_BRASS_LT   = MechBase.LTBRZ;            // #ddaa55
+const TV_BRASS_HI   = MechBase.TAN;              // #eebb66
+const TV_RIVET      = MechBase.RIVET;            // #555555
 const TV_CAPE_DK    = MechTower.DKRED;           // #882222
 const TV_CAPE_MD    = MechTower.RED;             // #cc3333
 const TV_CAPE_LT    = MechTower.LTRED;           // #ff5555
 const TV_HELM_DK    = '#332222';
 const TV_HELM_MD    = '#553333';
-const TV_HELM_HI    = '#776655';
+const TV_HELM_LT    = '#776655';
 const TV_EYE        = '#ff4422';                 // forge-eye glow
+const TV_EYE_HI     = '#ffeebb';                 // bright eye core
 const TV_HALO_DK    = '#5530a8';
 const TV_HALO_BR    = '#9966ff';
 const TV_HALO_HI    = '#dccaff';
-const TV_SMOKE_DK   = MechBase.SMOKE;
-const TV_SMOKE_LT   = MechBase.LTSMK;
+const TV_HALO_PL    = '#ffffff';
+const TV_SMOKE_DK   = MechBase.SMOKE;            // #665555
+const TV_SMOKE_LT   = MechBase.LTSMK;            // #887777
 
 interface ThroneState {
   /** Halo brightness 0..1. Dims as generators fall; goes black at 0%. */
@@ -738,155 +746,293 @@ const THRONE_STATES: ThroneState[] = [
   { halo: 0,    damage: 4, smoke: 0.2, slumped: 1 }, // 0%   — dead
 ];
 
+// All coordinates below are relative to a single 84×84 frame; the
+// `yOff` param is added per-frame inside the master draw loop.
+
 function drawThroneChassis(ctx: CanvasRenderingContext2D, yOff: number, damage: number) {
-  // ─── DAIS BASE (rows 25-30) ────────────────────────────────
-  rect(ctx, 4, yOff + 30, 24, 1, TV_SHAD);              // ground shadow
-  rect(ctx, 4, yOff + 28, 24, 2, TV_IRON_DK);
-  rect(ctx, 5, yOff + 27, 22, 1, TV_IRON_MD);
-  rect(ctx, 6, yOff + 26, 20, 1, TV_IRON_LT);
-  rect(ctx, 6, yOff + 25, 20, 1, TV_IRON_MD);
-  // Dais bolts (pop progressively with damage).
-  const baseBolts = [[6, 28], [12, 28], [19, 28], [25, 28]];
+  // ─── DAIS BASE (rows 66-82) ───────────────────────────────
+  // Two-tier dais: wide bottom + narrower top step. Bolts pop with
+  // damage progression.
+  rect(ctx, 8, yOff + 82, 68, 2, TV_SHAD);                // ground shadow
+  rect(ctx, 8, yOff + 76, 68, 6, TV_IRON_DK);             // bottom tier
+  rect(ctx, 10, yOff + 74, 64, 2, TV_IRON_MD);            // bottom-tier top
+  rect(ctx, 10, yOff + 72, 64, 2, TV_IRON_LT);            // top edge highlight
+  rect(ctx, 14, yOff + 68, 56, 4, TV_IRON_DK);            // top tier shadow
+  rect(ctx, 16, yOff + 66, 52, 2, TV_IRON_MD);            // top tier face
+  rect(ctx, 16, yOff + 64, 52, 2, TV_IRON_LT);            // top-tier highlight
+  // Brass collar trim running across the top-tier edge.
+  rect(ctx, 18, yOff + 62, 48, 2, TV_BRASS_DK);
+  rect(ctx, 19, yOff + 61, 46, 1, TV_BRASS_MD);
+  rect(ctx, 19, yOff + 60, 46, 1, TV_BRASS_LT);
+  // Dais bolts on the bottom tier (4 visible). Pop progressively.
+  const baseBolts = [[14, 79], [30, 79], [54, 79], [70, 79]];
   for (let i = 0; i < baseBolts.length; i++) {
-    if (i < 4 - damage) px(ctx, baseBolts[i][0], yOff + baseBolts[i][1], TV_RIVET);
+    if (i < 4 - damage) {
+      rect(ctx, baseBolts[i][0], yOff + baseBolts[i][1], 2, 2, TV_RIVET);
+    }
+  }
+  // Carved-stone notches along the bottom tier.
+  for (let x = 12; x < 76; x += 6) {
+    px(ctx, x, yOff + 76, TV_SHAD);
+    px(ctx, x, yOff + 80, TV_SHAD);
   }
 
   // ─── VENT PIPES (flanking the throne) ─────────────────────
-  // Left pipe.
-  rect(ctx, 4, yOff + 9, 2, 17, TV_BRASS_DK);
-  rect(ctx, 5, yOff + 9, 1, 17, TV_BRASS_MD);
-  // Right pipe.
-  rect(ctx, 26, yOff + 9, 2, 17, TV_BRASS_DK);
-  rect(ctx, 26, yOff + 9, 1, 17, TV_BRASS_MD);
-  // Pipe collar rings.
-  rect(ctx, 4, yOff + 13, 2, 1, TV_BRASS_LT);
-  rect(ctx, 26, yOff + 13, 2, 1, TV_BRASS_LT);
-  rect(ctx, 4, yOff + 19, 2, 1, TV_BRASS_LT);
-  rect(ctx, 26, yOff + 19, 2, 1, TV_BRASS_LT);
-
-  // ─── THRONE BACK (rows 8-22) ──────────────────────────────
-  // High iron backplate behind Voss.
-  rect(ctx, 8, yOff + 8, 16, 14, TV_IRON_DK);            // shadow
-  rect(ctx, 9, yOff + 8, 14, 14, TV_IRON_MD);            // body
-  rect(ctx, 9, yOff + 8, 1, 14, TV_IRON_LT);             // left highlight
-  rect(ctx, 22, yOff + 8, 1, 14, TV_SHAD);               // right shadow
-  rect(ctx, 9, yOff + 8, 14, 1, TV_IRON_LT);             // top highlight
-  // Crown ornament — three iron spikes at the top.
-  if (damage <= 2) {
-    px(ctx, 12, yOff + 7, TV_IRON_LT);
-    px(ctx, 16, yOff + 7, TV_IRON_HI);
-    px(ctx, 20, yOff + 7, TV_IRON_LT);
+  // Left pipe — runs full height from canopy down to dais.
+  rect(ctx, 10, yOff + 22, 6, 42, TV_BRASS_DK);           // shadow
+  rect(ctx, 11, yOff + 22, 4, 42, TV_BRASS_MD);           // body
+  rect(ctx, 11, yOff + 22, 1, 42, TV_BRASS_LT);           // left highlight
+  rect(ctx, 14, yOff + 22, 1, 42, TV_BRASS_DK);           // right shadow
+  // Right pipe (mirror).
+  rect(ctx, 68, yOff + 22, 6, 42, TV_BRASS_DK);
+  rect(ctx, 69, yOff + 22, 4, 42, TV_BRASS_MD);
+  rect(ctx, 69, yOff + 22, 1, 42, TV_BRASS_LT);
+  rect(ctx, 72, yOff + 22, 1, 42, TV_BRASS_DK);
+  // Pipe collar rings (4 per pipe).
+  for (const ringY of [30, 40, 50, 60]) {
+    rect(ctx, 9, yOff + ringY, 8, 2, TV_BRASS_DK);
+    rect(ctx, 10, yOff + ringY, 6, 1, TV_BRASS_HI);
+    rect(ctx, 67, yOff + ringY, 8, 2, TV_BRASS_DK);
+    rect(ctx, 68, yOff + ringY, 6, 1, TV_BRASS_HI);
   }
+  // Pipe caps at the top (steam-vent flares).
+  rect(ctx, 8, yOff + 20, 10, 2, TV_BRASS_DK);
+  rect(ctx, 9, yOff + 19, 8, 1, TV_BRASS_MD);
+  rect(ctx, 10, yOff + 18, 6, 1, TV_BRASS_LT);
+  rect(ctx, 66, yOff + 20, 10, 2, TV_BRASS_DK);
+  rect(ctx, 67, yOff + 19, 8, 1, TV_BRASS_MD);
+  rect(ctx, 68, yOff + 18, 6, 1, TV_BRASS_LT);
+
+  // ─── CANOPY (top spanning between pipes, rows 14-22) ──────
+  // Riveted steel overhang above the throne.
+  rect(ctx, 16, yOff + 22, 52, 2, TV_IRON_DK);
+  rect(ctx, 18, yOff + 20, 48, 2, TV_IRON_MD);
+  rect(ctx, 20, yOff + 18, 44, 2, TV_IRON_LT);
+  rect(ctx, 22, yOff + 16, 40, 2, TV_IRON_MD);
+  rect(ctx, 22, yOff + 16, 40, 1, TV_IRON_HI);
+  // Crown spike — central peak rising from the canopy.
+  rect(ctx, 38, yOff + 12, 8, 4, TV_IRON_DK);
+  rect(ctx, 39, yOff + 11, 6, 1, TV_IRON_MD);
+  if (damage <= 2) {
+    rect(ctx, 40, yOff + 8, 4, 3, TV_IRON_LT);
+    rect(ctx, 41, yOff + 6, 2, 2, TV_IRON_HI);
+    px(ctx, 41, yOff + 4, TV_IRON_HI);
+    px(ctx, 42, yOff + 4, TV_IRON_HI);
+  }
+  // Two side spikes on the canopy.
+  if (damage <= 2) {
+    rect(ctx, 28, yOff + 14, 2, 2, TV_IRON_LT);
+    rect(ctx, 54, yOff + 14, 2, 2, TV_IRON_LT);
+  }
+  // Canopy rivets (6 visible across the underside).
+  for (const bx of [22, 32, 42, 52, 62]) {
+    px(ctx, bx, yOff + 22, TV_RIVET);
+  }
+
+  // ─── THRONE BACK (rows 22-60) ─────────────────────────────
+  // High iron backplate behind Voss.
+  rect(ctx, 22, yOff + 24, 40, 36, TV_IRON_DK);           // shadow
+  rect(ctx, 24, yOff + 24, 36, 36, TV_IRON_MD);           // body
+  rect(ctx, 24, yOff + 24, 1, 36, TV_IRON_LT);            // left highlight
+  rect(ctx, 59, yOff + 24, 1, 36, TV_SHAD);               // right shadow
+  rect(ctx, 24, yOff + 24, 36, 1, TV_IRON_LT);            // top highlight
+
   // Plate cracks scale with damage.
   if (damage >= 1) {
-    px(ctx, 10, yOff + 11, TV_SHAD);
-    px(ctx, 21, yOff + 14, TV_SHAD);
+    rect(ctx, 26, yOff + 30, 2, 1, TV_SHAD);
+    rect(ctx, 55, yOff + 38, 2, 1, TV_SHAD);
+    px(ctx, 28, yOff + 35, TV_SHAD);
+    px(ctx, 52, yOff + 45, TV_SHAD);
   }
   if (damage >= 2) {
-    px(ctx, 13, yOff + 13, TV_SHAD);
-    px(ctx, 19, yOff + 19, TV_SHAD);
-    rect(ctx, 9, yOff + 16, 2, 1, TV_SHAD);
+    rect(ctx, 32, yOff + 32, 3, 1, TV_SHAD);
+    rect(ctx, 50, yOff + 52, 3, 1, TV_SHAD);
+    rect(ctx, 25, yOff + 42, 4, 1, TV_SHAD);
   }
   if (damage >= 3) {
-    rect(ctx, 21, yOff + 11, 2, 2, TV_SHAD);             // armour breach right
-    rect(ctx, 9, yOff + 19, 3, 1, TV_SHAD);              // breach left
+    rect(ctx, 54, yOff + 28, 5, 4, TV_SHAD);              // armour breach right
+    rect(ctx, 25, yOff + 50, 5, 3, TV_SHAD);              // breach left
   }
   if (damage >= 4) {
-    rect(ctx, 13, yOff + 17, 7, 2, TV_SHAD);             // huge centre breach
-    rect(ctx, 10, yOff + 14, 2, 3, TV_SHAD);
+    rect(ctx, 32, yOff + 42, 18, 5, TV_SHAD);             // huge centre breach
+    rect(ctx, 26, yOff + 32, 6, 8, TV_SHAD);
   }
 
-  // ─── ARM RESTS ────────────────────────────────────────────
-  rect(ctx, 7, yOff + 19, 3, 5, TV_IRON_DK);
-  rect(ctx, 8, yOff + 19, 1, 5, TV_IRON_MD);
-  rect(ctx, 22, yOff + 19, 3, 5, TV_IRON_DK);
-  rect(ctx, 23, yOff + 19, 1, 5, TV_IRON_MD);
+  // ─── ARM RESTS (rows 50-66, flanking the throne center) ──
+  rect(ctx, 18, yOff + 50, 8, 14, TV_IRON_DK);
+  rect(ctx, 19, yOff + 50, 6, 14, TV_IRON_MD);
+  rect(ctx, 19, yOff + 50, 1, 14, TV_IRON_LT);
+  rect(ctx, 19, yOff + 50, 6, 1, TV_IRON_HI);
+  rect(ctx, 58, yOff + 50, 8, 14, TV_IRON_DK);
+  rect(ctx, 59, yOff + 50, 6, 14, TV_IRON_MD);
+  rect(ctx, 59, yOff + 50, 1, 14, TV_IRON_LT);
+  rect(ctx, 59, yOff + 50, 6, 1, TV_IRON_HI);
+  // Brass armrest caps.
+  rect(ctx, 18, yOff + 49, 8, 1, TV_BRASS_DK);
+  rect(ctx, 19, yOff + 48, 6, 1, TV_BRASS_MD);
+  rect(ctx, 58, yOff + 49, 8, 1, TV_BRASS_DK);
+  rect(ctx, 59, yOff + 48, 6, 1, TV_BRASS_MD);
 }
 
 function drawVoss(ctx: CanvasRenderingContext2D, yOff: number, slumped: number, damage: number) {
-  const ySlump = slumped ? 2 : 0;
+  const ySlump = slumped ? 4 : 0;
   // ─── CAPE (behind Voss, draped over the throne) ──────────
   if (damage <= 3) {
-    rect(ctx, 12, yOff + 14 + ySlump, 8, 8, TV_CAPE_DK);
-    rect(ctx, 13, yOff + 14 + ySlump, 6, 8, TV_CAPE_MD);
-    rect(ctx, 13, yOff + 14 + ySlump, 1, 8, TV_CAPE_LT);
+    rect(ctx, 30, yOff + 38 + ySlump, 24, 24, TV_CAPE_DK);
+    rect(ctx, 32, yOff + 38 + ySlump, 20, 24, TV_CAPE_MD);
+    rect(ctx, 32, yOff + 38 + ySlump, 2, 24, TV_CAPE_LT);
+    // Cape folds.
+    rect(ctx, 36, yOff + 50 + ySlump, 1, 10, TV_CAPE_DK);
+    rect(ctx, 47, yOff + 50 + ySlump, 1, 10, TV_CAPE_DK);
   } else {
     // Burnt cape at 0% HP.
-    rect(ctx, 12, yOff + 16, 8, 6, TV_HELM_DK);
+    rect(ctx, 32, yOff + 44, 20, 18, TV_HELM_DK);
+    rect(ctx, 34, yOff + 46, 16, 14, TV_SHAD);
   }
 
-  // ─── HELMET (industrial half-mask) ───────────────────────
+  // ─── HELMET (industrial half-mask, rows 30-44) ──────────
   // Helmet crown.
-  rect(ctx, 13, yOff + 11 + ySlump, 6, 1, TV_HELM_DK);
-  rect(ctx, 12, yOff + 12 + ySlump, 8, 2, TV_HELM_MD);
-  rect(ctx, 12, yOff + 12 + ySlump, 1, 2, TV_HELM_HI);
-  rect(ctx, 19, yOff + 12 + ySlump, 1, 2, TV_HELM_DK);
-  // Visor slot.
-  rect(ctx, 13, yOff + 13 + ySlump, 6, 1, TV_SHAD);
+  rect(ctx, 33, yOff + 28 + ySlump, 18, 2, TV_HELM_DK);
+  rect(ctx, 31, yOff + 30 + ySlump, 22, 6, TV_HELM_DK);    // shadow
+  rect(ctx, 32, yOff + 30 + ySlump, 20, 6, TV_HELM_MD);    // body
+  rect(ctx, 32, yOff + 30 + ySlump, 2, 6, TV_HELM_LT);     // left highlight
+  rect(ctx, 50, yOff + 30 + ySlump, 2, 6, TV_HELM_DK);     // right shadow
+  // Helmet apex spike — small finial on top.
+  if (damage <= 2) {
+    rect(ctx, 40, yOff + 26 + ySlump, 4, 2, TV_BRASS_DK);
+    rect(ctx, 41, yOff + 25 + ySlump, 2, 1, TV_BRASS_MD);
+    px(ctx, 41, yOff + 24 + ySlump, TV_BRASS_HI);
+  }
+  // Visor slot — dark recess across the face.
+  rect(ctx, 32, yOff + 36 + ySlump, 20, 3, TV_SHAD);
   if (damage < 4) {
     // Forge-eye glow through the visor.
-    px(ctx, 14, yOff + 13 + ySlump, TV_EYE);
-    px(ctx, 17, yOff + 13 + ySlump, TV_EYE);
+    rect(ctx, 36, yOff + 37 + ySlump, 3, 1, TV_EYE);
+    px(ctx, 37, yOff + 37 + ySlump, TV_EYE_HI);
+    rect(ctx, 45, yOff + 37 + ySlump, 3, 1, TV_EYE);
+    px(ctx, 46, yOff + 37 + ySlump, TV_EYE_HI);
+    // Eye-glow bleed.
+    px(ctx, 36, yOff + 38 + ySlump, withAlpha(TV_EYE, 0.5));
+    px(ctx, 47, yOff + 38 + ySlump, withAlpha(TV_EYE, 0.5));
   }
-  // Helmet jaw.
-  rect(ctx, 13, yOff + 14 + ySlump, 6, 1, TV_HELM_MD);
-  px(ctx, 13, yOff + 14 + ySlump, TV_HELM_HI);
+  // Helmet jaw / mouth-guard.
+  rect(ctx, 32, yOff + 39 + ySlump, 20, 4, TV_HELM_MD);
+  rect(ctx, 32, yOff + 39 + ySlump, 2, 4, TV_HELM_LT);
+  rect(ctx, 50, yOff + 39 + ySlump, 2, 4, TV_HELM_DK);
+  // Brass rivets on the jaw.
+  for (const rx of [35, 41, 47]) {
+    px(ctx, rx, yOff + 41 + ySlump, TV_BRASS_DK);
+    px(ctx, rx + 1, yOff + 41 + ySlump, TV_BRASS_HI);
+  }
+
+  // ─── SHOULDER PAULDRONS ────────────────────────────────────
+  if (damage < 4) {
+    // Left pauldron.
+    rect(ctx, 26, yOff + 44 + ySlump, 8, 4, TV_IRON_DK);
+    rect(ctx, 27, yOff + 44 + ySlump, 6, 4, TV_IRON_MD);
+    rect(ctx, 27, yOff + 44 + ySlump, 1, 4, TV_IRON_LT);
+    rect(ctx, 26, yOff + 43 + ySlump, 8, 1, TV_IRON_LT);
+    px(ctx, 30, yOff + 46 + ySlump, TV_RIVET);
+    // Right pauldron.
+    rect(ctx, 50, yOff + 44 + ySlump, 8, 4, TV_IRON_DK);
+    rect(ctx, 51, yOff + 44 + ySlump, 6, 4, TV_IRON_MD);
+    rect(ctx, 51, yOff + 44 + ySlump, 1, 4, TV_IRON_LT);
+    rect(ctx, 50, yOff + 43 + ySlump, 8, 1, TV_IRON_LT);
+    px(ctx, 54, yOff + 46 + ySlump, TV_RIVET);
+  }
 
   // ─── CHEST PLATE ─────────────────────────────────────────
   if (damage < 4) {
-    rect(ctx, 12, yOff + 15 + ySlump, 8, 4, TV_IRON_DK);
-    rect(ctx, 13, yOff + 15 + ySlump, 6, 4, TV_IRON_MD);
-    rect(ctx, 13, yOff + 15 + ySlump, 1, 4, TV_IRON_LT);
-    // Central rivet.
-    px(ctx, 15, yOff + 17 + ySlump, TV_RIVET);
-    px(ctx, 16, yOff + 17 + ySlump, TV_RIVET);
+    rect(ctx, 32, yOff + 44 + ySlump, 20, 14, TV_IRON_DK);  // shadow
+    rect(ctx, 33, yOff + 44 + ySlump, 18, 14, TV_IRON_MD);  // body
+    rect(ctx, 33, yOff + 44 + ySlump, 2, 14, TV_IRON_LT);   // left highlight
+    rect(ctx, 49, yOff + 44 + ySlump, 2, 14, TV_IRON_DK);   // right shadow
+    // Central rivets — three in a column.
+    for (const ry of [47, 50, 53]) {
+      rect(ctx, 41, yOff + ry + ySlump, 2, 1, TV_RIVET);
+    }
+    // Brass collar across the top of the chest.
+    rect(ctx, 33, yOff + 44 + ySlump, 18, 1, TV_BRASS_DK);
+    rect(ctx, 34, yOff + 43 + ySlump, 16, 1, TV_BRASS_MD);
     // Damage cracks on the plate.
-    if (damage >= 2) px(ctx, 14, yOff + 18, TV_SHAD);
-    if (damage >= 3) rect(ctx, 17, yOff + 17, 2, 1, TV_SHAD);
+    if (damage >= 1) {
+      rect(ctx, 35, yOff + 48 + ySlump, 2, 1, TV_SHAD);
+      rect(ctx, 46, yOff + 51 + ySlump, 2, 1, TV_SHAD);
+    }
+    if (damage >= 2) {
+      rect(ctx, 38, yOff + 53 + ySlump, 3, 1, TV_SHAD);
+      rect(ctx, 47, yOff + 47 + ySlump, 1, 4, TV_SHAD);
+    }
+    if (damage >= 3) {
+      rect(ctx, 44, yOff + 50 + ySlump, 4, 3, TV_SHAD);     // breach
+      rect(ctx, 35, yOff + 55 + ySlump, 3, 2, TV_SHAD);
+    }
   } else {
-    // Slumped husk — torso collapsed.
-    rect(ctx, 13, yOff + 19, 6, 2, TV_HELM_DK);
+    // Slumped husk — torso collapsed, slight slump offset.
+    rect(ctx, 34, yOff + 56, 16, 6, TV_HELM_DK);
+    rect(ctx, 36, yOff + 58, 12, 4, TV_SHAD);
   }
 
   // ─── HANDS ON ARMRESTS ───────────────────────────────────
   if (damage < 4) {
-    rect(ctx, 8, yOff + 18, 2, 1, TV_HELM_MD);
-    rect(ctx, 22, yOff + 18, 2, 1, TV_HELM_MD);
-    px(ctx, 8, yOff + 18, TV_HELM_HI);
+    // Left hand.
+    rect(ctx, 20, yOff + 52 + ySlump, 6, 3, TV_HELM_MD);
+    rect(ctx, 20, yOff + 52 + ySlump, 6, 1, TV_HELM_LT);
+    px(ctx, 20, yOff + 53 + ySlump, TV_HELM_LT);
+    // Right hand.
+    rect(ctx, 58, yOff + 52 + ySlump, 6, 3, TV_HELM_MD);
+    rect(ctx, 58, yOff + 52 + ySlump, 6, 1, TV_HELM_LT);
+    px(ctx, 63, yOff + 53 + ySlump, TV_HELM_DK);
   }
 }
 
 function drawThroneHalo(ctx: CanvasRenderingContext2D, yOff: number, brightness: number) {
   if (brightness <= 0) return;
-  // Crescent halo over Voss's head — 3 concentric arcs.
-  const cx = 16, cy = yOff + 9;
-  // Inner core.
-  rect(ctx, cx - 2, cy, 4, 1, withAlpha(TV_HALO_HI, brightness));
-  px(ctx, cx - 3, cy + 1, withAlpha(TV_HALO_BR, brightness));
-  px(ctx, cx + 2, cy + 1, withAlpha(TV_HALO_BR, brightness));
-  // Outer arc.
-  if (brightness >= 0.5) {
-    rect(ctx, cx - 4, cy - 1, 8, 1, withAlpha(TV_HALO_BR, brightness * 0.7));
-    px(ctx, cx - 5, cy, withAlpha(TV_HALO_DK, brightness * 0.6));
-    px(ctx, cx + 4, cy, withAlpha(TV_HALO_DK, brightness * 0.6));
+  // Halo over Voss's helmet. Concentric arcs in violet — brighter
+  // inner core fading outward.
+  const cx = 42, cy = yOff + 24;
+  // Innermost glow (always present when halo is on).
+  rect(ctx, cx - 8, cy, 16, 2, withAlpha(TV_HALO_HI, brightness));
+  rect(ctx, cx - 10, cy + 2, 20, 1, withAlpha(TV_HALO_BR, brightness));
+  rect(ctx, cx - 6, cy - 2, 12, 2, withAlpha(TV_HALO_HI, brightness * 0.9));
+  // Mid-arc — only at mid+ brightness.
+  if (brightness >= 0.3) {
+    rect(ctx, cx - 12, cy - 1, 24, 1, withAlpha(TV_HALO_BR, brightness * 0.8));
+    rect(ctx, cx - 14, cy + 3, 28, 1, withAlpha(TV_HALO_DK, brightness * 0.6));
   }
-  // Pale apex (only at near-full brightness).
-  if (brightness >= 0.85) {
-    px(ctx, cx, cy - 2, withAlpha(TV_HALO_HI, brightness));
+  // Outer halo — bright tiers only.
+  if (brightness >= 0.5) {
+    rect(ctx, cx - 16, cy - 2, 32, 1, withAlpha(TV_HALO_BR, brightness * 0.5));
+    rect(ctx, cx - 18, cy + 4, 36, 1, withAlpha(TV_HALO_DK, brightness * 0.4));
+    // Side-radial spokes.
+    rect(ctx, cx - 20, cy + 1, 3, 1, withAlpha(TV_HALO_BR, brightness * 0.4));
+    rect(ctx, cx + 17, cy + 1, 3, 1, withAlpha(TV_HALO_BR, brightness * 0.4));
+  }
+  // White-hot core flare — only at near-full brightness.
+  if (brightness >= 0.8) {
+    rect(ctx, cx - 4, cy, 8, 2, withAlpha(TV_HALO_PL, brightness * 0.8));
+    rect(ctx, cx - 2, cy - 1, 4, 1, withAlpha(TV_HALO_PL, brightness));
+    rect(ctx, cx - 2, cy + 2, 4, 1, withAlpha(TV_HALO_PL, brightness * 0.7));
   }
 }
 
 function drawThroneSmoke(ctx: CanvasRenderingContext2D, yOff: number, intensity: number) {
   if (intensity <= 0) return;
-  // Left pipe smoke.
-  px(ctx, 5, yOff + 7, withAlpha(TV_SMOKE_LT, intensity));
-  px(ctx, 4, yOff + 5, withAlpha(TV_SMOKE_DK, intensity * 0.85));
-  // Right pipe smoke.
-  px(ctx, 26, yOff + 7, withAlpha(TV_SMOKE_LT, intensity));
-  px(ctx, 27, yOff + 5, withAlpha(TV_SMOKE_DK, intensity * 0.85));
-  if (intensity >= 0.7) {
-    px(ctx, 6, yOff + 3, withAlpha(TV_SMOKE_LT, intensity * 0.7));
-    px(ctx, 25, yOff + 3, withAlpha(TV_SMOKE_LT, intensity * 0.7));
+  // Left pipe smoke wisps.
+  rect(ctx, 11, yOff + 14, 4, 2, withAlpha(TV_SMOKE_LT, intensity));
+  rect(ctx, 12, yOff + 12, 2, 2, withAlpha(TV_SMOKE_DK, intensity * 0.9));
+  px(ctx, 13, yOff + 10, withAlpha(TV_SMOKE_DK, intensity * 0.7));
+  if (intensity >= 0.6) {
+    rect(ctx, 10, yOff + 8, 3, 1, withAlpha(TV_SMOKE_LT, intensity * 0.5));
+    px(ctx, 14, yOff + 6, withAlpha(TV_SMOKE_DK, intensity * 0.4));
+  }
+  // Right pipe smoke (mirror).
+  rect(ctx, 69, yOff + 14, 4, 2, withAlpha(TV_SMOKE_LT, intensity));
+  rect(ctx, 70, yOff + 12, 2, 2, withAlpha(TV_SMOKE_DK, intensity * 0.9));
+  px(ctx, 70, yOff + 10, withAlpha(TV_SMOKE_DK, intensity * 0.7));
+  if (intensity >= 0.6) {
+    rect(ctx, 71, yOff + 8, 3, 1, withAlpha(TV_SMOKE_LT, intensity * 0.5));
+    px(ctx, 69, yOff + 6, withAlpha(TV_SMOKE_DK, intensity * 0.4));
   }
 }
 
@@ -1050,7 +1196,9 @@ export default function MechCampaignSprites() {
     drawVossThroneSheet(tCtx);
 
     const tpv = tvPv.current!;
-    const tScale = 6;
+    // 84×84 frames are already chunky — 3× preview scale keeps the
+    // preview pane compact (84 × 3 × 5 frames ≈ 1260 px tall).
+    const tScale = 3;
     tpv.width = TV_W * tScale + 130;
     tpv.height = (TV_H * tScale + labelH) * TV_FRAMES + 10;
     const tPCtx = tpv.getContext('2d')!;
