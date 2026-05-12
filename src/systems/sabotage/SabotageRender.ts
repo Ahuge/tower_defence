@@ -33,6 +33,10 @@ const RAIDER_SELECTED_RADIUS = 14;
 /** Walk-cycle cadence — ms per frame. Slow enough that the four-frame
  *  shuffle reads as a steady stride at the raider's default 90 px/s. */
 const WALK_FRAME_MS = 150;
+/** Forge-orange tint for the generator → linked-tower power lines. */
+const POWER_LINE_COLOR = 0xff8844;
+/** Period (ms) for the power-line pulse animation along each link. */
+const POWER_LINE_PULSE_MS = 1500;
 
 export class SabotageRender {
   private gfx: Phaser.GameObjects.Graphics;
@@ -60,13 +64,15 @@ export class SabotageRender {
 
   /** Per-frame tick: advance walk anim, sync per-raider sprite
    *  positions, prune stale raider sprites, refresh damage-tier
-   *  frames on generators + throne, redraw HP bars / selection rings. */
-  update(controller: SabotageController, deltaMs = 0): void {
+   *  frames on generators + throne, redraw HP bars / selection rings,
+   *  and trace power-lines from each live generator to its linked
+   *  CPU towers (telegraphs the cascade-kill relationship). */
+  update(controller: SabotageController, deltaMs = 0, now = 0): void {
     this.walkClock = (this.walkClock + deltaMs) % (WALK_FRAME_MS * 4);
     const walkFrame = Math.floor(this.walkClock / WALK_FRAME_MS);
     this.syncRaiderSprites(controller, walkFrame);
     this.syncDamageFrames(controller);
-    this.drawOverlays(controller);
+    this.drawOverlays(controller, now);
   }
 
   destroy(): void {
@@ -122,15 +128,52 @@ export class SabotageRender {
     }
   }
 
-  // ─── HP BARS + SELECTION RING (graphics overlay) ─────────
+  // ─── HP BARS + SELECTION RING + POWER LINES ──────────────
 
-  private drawOverlays(controller: SabotageController): void {
+  private drawOverlays(controller: SabotageController, now: number): void {
     this.gfx.clear();
+    this.drawGeneratorPowerLines(controller, now);
     const selected = this.getSelected();
     for (const r of controller.getRaiders()) {
       if (!r.alive) continue;
       if (r === selected) this.drawSelectionRing(r);
       this.drawHpBar(r);
+    }
+  }
+
+  /** For each live generator, trace a thin forge-orange line to every
+   *  linked CPU tower. A bright pulse cycles along each link to
+   *  reinforce direction-of-flow. Players learn "this generator powers
+   *  these towers" by looking, instead of by surprise when a generator
+   *  death cascade-kills a cluster. */
+  private drawGeneratorPowerLines(controller: SabotageController, now: number): void {
+    for (const gen of controller.getGenerators()) {
+      if (gen._expired) continue;
+      if (gen.hp !== undefined && gen.hp <= 0) continue;
+      const cells = gen.generatorLinkedCells ?? [];
+      if (cells.length === 0) continue;
+      // HP-scaled alpha so the visual fades as the generator weakens
+      // (a hint that the link is about to break).
+      const hpRatio = gen.maxHp ? Math.max(0, (gen.hp ?? 0) / gen.maxHp) : 1;
+      const baseAlpha = 0.25 + 0.25 * hpRatio;
+      for (const cell of cells) {
+        const target = controller.findCpuTowerAt(cell.col, cell.row);
+        if (!target || target._expired) continue;
+        // Static line.
+        this.gfx.lineStyle(1, POWER_LINE_COLOR, baseAlpha);
+        this.gfx.beginPath();
+        this.gfx.moveTo(gen.x, gen.y);
+        this.gfx.lineTo(target.x, target.y);
+        this.gfx.strokePath();
+        // Pulse dot — one bright pixel that walks from generator to
+        // target on a 1.5s cycle so the player can see which way the
+        // power is flowing.
+        const t = (now % POWER_LINE_PULSE_MS) / POWER_LINE_PULSE_MS;
+        const px = gen.x + (target.x - gen.x) * t;
+        const py = gen.y + (target.y - gen.y) * t;
+        this.gfx.fillStyle(POWER_LINE_COLOR, Math.min(1, baseAlpha + 0.4));
+        this.gfx.fillCircle(px, py, 2);
+      }
     }
   }
 

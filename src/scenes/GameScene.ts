@@ -3341,7 +3341,7 @@ export class GameScene extends Phaser.Scene {
         this.towers as unknown as RaiderTarget[],
       );
       if (this._selectedRaider && !this._selectedRaider.alive) this._selectedRaider = null;
-      this._sabotageRender?.update(this._sabotageController, delta);
+      this._sabotageRender?.update(this._sabotageController, delta, time);
       this._pushSabotageHud(time);
     }
     if (this._finaleController) {
