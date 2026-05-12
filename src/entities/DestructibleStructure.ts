@@ -134,8 +134,13 @@ export class DestructibleStructure implements Damageable {
       // identity scale; textures authored smaller (e.g. Mech's 32×32
       // pixel-art throne placed on a 3×3 = 84px footprint) scale up
       // to fill, preserving pixel sharpness via NEAREST filtering.
-      const targetW = this.widthCells * TILE_SIZE;
-      const targetH = this.heightCells * TILE_SIZE;
+      //
+      // `displayScaleMult` lets a structure visually OVERFLOW its
+      // gameplay footprint — useful when the source sprite has empty
+      // pixels around its subject. Default 1.0.
+      const scaleMult = def.displayScaleMult ?? 1.0;
+      const targetW = this.widthCells * TILE_SIZE * scaleMult;
+      const targetH = this.heightCells * TILE_SIZE * scaleMult;
       this.sprite.setDisplaySize?.(targetW, targetH);
       // Nearest-neighbour filter so the upscale doesn't blur — pixel
       // art stays crisp.

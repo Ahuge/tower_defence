@@ -42,6 +42,13 @@ export interface DestructibleStructureDef {
   /** Optional: embed a tower at the center cell to provide firing
    *  capability. The structure inherits the tower's HP (delegated). */
   embeddedTowerId?: string;
+  /** Multiplier on the rendered sprite size relative to the grid
+   *  footprint (default 1.0). Useful when the sprite has empty
+   *  pixels around its subject (so the gameplay footprint is correct
+   *  but the visual reads small) — bump above 1.0 to make the sprite
+   *  visually overflow the footprint without changing pathfinding.
+   *  Common in game art for buildings / boss structures. */
+  displayScaleMult?: number;
   /** HP-fraction → effect-id phase hooks. Each fires at most once when
    *  HP first drops to or below the fraction. Effect handlers live in
    *  `FinaleEffects`. */
@@ -94,6 +101,13 @@ export const DESTRUCTIBLE_STRUCTURES: Record<string, DestructibleStructureDef> =
     textureKey: 'struct_voss_throne',
     damageFrames: 5,
     defaultHp: 5000,
+    // The procedural 32×32 sprite has visible empty pixels around the
+    // throne body (~25% padding). Scale 1.4× so the rendered throne
+    // visually fills more than the 3×3 grid footprint — gameplay
+    // footprint stays 3×3, but the visual reads as the imposing boss
+    // the campaign climax wants. Native 84×84 art could drop this
+    // back to 1.0.
+    displayScaleMult: 1.4,
   },
   // Future:
   //   mech_war_furnace: { 4×3, 6000hp, 5 frames, embeddedTowerId: 'mech_titan' },
