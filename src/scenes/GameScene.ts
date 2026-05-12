@@ -2443,6 +2443,18 @@ export class GameScene extends Phaser.Scene {
       this.hoverGraphics.lineStyle(1, color, 0.6);
       this.hoverGraphics.strokeRect(gridLeftX(col), gridY(row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
 
+      // Mech campaign: warn the player when the hovered cell sits
+      // inside an active Suppression Pylon's radius. Towers placed
+      // here will accumulate stress and stall — visible up-front is
+      // kinder than a surprise mid-fight.
+      if (this._suppressionMgr && this._suppressionMgr.isCellInActivePylon(col, row, this.time?.now ?? 0)) {
+        const violet = 0xcc88ff;
+        this.hoverGraphics.fillStyle(violet, 0.18);
+        this.hoverGraphics.fillRect(gridLeftX(col), gridY(row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+        this.hoverGraphics.lineStyle(1, violet, 0.6);
+        this.hoverGraphics.strokeRect(gridLeftX(col), gridY(row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+      }
+
       if (canPlace) {
         let range = towerType.range;
         const rangeBonus = (this.modifier?.towerTraits ?? []).find(t => t.id === 'range_bonus');
@@ -3317,7 +3329,7 @@ export class GameScene extends Phaser.Scene {
     // every other mission.
     if (this._suppressionMgr) {
       this._suppressionMgr.update(time, this.towers as unknown as SuppressibleTower[]);
-      this._suppressionRender?.update(this._suppressionMgr, time, delta);
+      this._suppressionRender?.update(this._suppressionMgr, time, delta, this.towers);
     }
     if (this._sabotageController) {
       // Tower (with the new `alive` getter) + Creep both satisfy the

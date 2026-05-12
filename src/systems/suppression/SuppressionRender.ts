@@ -14,6 +14,7 @@ import { TILE_SIZE, gridX, gridY } from '../../config';
 import type { SuppressionManager } from './SuppressionManager';
 import type { SuppressionPylon } from '../../entities/SuppressionPylon';
 import { SUPPRESSION_PYLON_TEXTURE } from '../sabotage/SabotageAssets';
+import type { Tower } from '../../entities/Tower';
 
 const FIELD_OUTLINE_ACTIVE = 0xcc88ff;
 const FIELD_OUTLINE_MUTED  = 0x553366;
@@ -38,13 +39,19 @@ export class SuppressionRender {
     this.gfx.setDepth(17);
   }
 
-  update(mgr: SuppressionManager, now: number, deltaMs = 0): void {
+  update(mgr: SuppressionManager, now: number, deltaMs = 0, towers: Tower[] = []): void {
     this.pulseClock = (this.pulseClock + deltaMs) % PULSE_PERIOD_MS;
     this.gfx.clear();
     const channelDuration = mgr.getChannelDurationMs();
     for (const pylon of mgr.pylons) {
       this.syncSprite(pylon, now, channelDuration);
       this.drawFieldAndChannel(pylon, now, channelDuration);
+    }
+    // Per-tower suppression indicator — violet dust above any tower
+    // accumulating stress. Lets the player see "this tower is being
+    // suppressed" without having to notice the missed shots.
+    if (towers.length > 0) {
+      this.drawSuppressionIndicators(towers, now);
     }
   }
 
@@ -79,6 +86,37 @@ export class SuppressionRender {
       this.pylonSprites.set(pylon, sprite);
     }
     sprite.setFrame(this.pylonFrame(pylon, now, channelDurationMs));
+  }
+
+  /** Draw a small violet sparkle above each tower with active stress.
+   *  Brightness scales with stress level (0 → 5 stacks). Players see
+   *  the suppression building up instead of being blindsided by a
+   *  sudden 3s stall on the 5th shot. */
+  private drawSuppressionIndicators(towers: Tower[], now: number): void {
+    for (const t of towers) {
+      if (t._expired) continue;
+      if ((t.ownerIndex ?? 0) !== 0) continue;
+      const stress = t._stress;
+      if (stress <= 0) continue;
+      // Intensity rises 0..1 across the 5 stress stacks.
+      const intensity = Math.min(1, stress / 5);
+      const alpha = 0.4 + 0.5 * intensity;
+      const dustColor = 0xcc88ff;
+      const cx = t.x;
+      const cy = t.y - TILE_SIZE * 0.55;
+      // Two small dust pixels, slightly offset, jitter per-frame using
+      // `now` so the dust feels alive instead of static.
+      const jitter = (Math.floor(now / 80) % 4) - 2; // -2..1
+      this.gfx.fillStyle(dustColor, alpha);
+      this.gfx.fillRect(cx - 2 + jitter, cy, 2, 2);
+      this.gfx.fillRect(cx + 1 - jitter, cy + 2, 2, 2);
+      // At high stress, add a 3rd glow + a brighter halo so the player
+      // sees "this one's about to stall."
+      if (intensity >= 0.6) {
+        this.gfx.fillStyle(0xeebbff, alpha);
+        this.gfx.fillRect(cx, cy - 2, 2, 2);
+      }
+    }
   }
 
   private drawFieldAndChannel(p: SuppressionPylon, now: number, channelDurationMs: number): void {

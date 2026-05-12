@@ -151,6 +151,18 @@ export class SuppressionManager {
     return this.pylons.find(p => p.col === col && p.row === row) ?? null;
   }
 
+  /** True iff the given cell sits inside any currently-active (non-
+   *  muted) pylon's radius. Used by GameScene to tint the build-mode
+   *  preview when a player is about to drop a tower in a suppression
+   *  field — so the player doesn't place into the field unaware. */
+  isCellInActivePylon(col: number, row: number, now: number): boolean {
+    for (const p of this.pylons) {
+      if (!p.isActive(now)) continue;
+      if (p.contains(col, row)) return true;
+    }
+    return false;
+  }
+
   private _inAnyActivePylon(tower: SuppressibleTower, now: number): boolean {
     for (const p of this.pylons) {
       if (!p.isActive(now)) continue;
