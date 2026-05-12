@@ -62,10 +62,15 @@ export class SuppressionPylon {
     return this.channelStartedAt !== null && (now - this.channelStartedAt) < durationMs;
   }
 
-  /** Channel progress in [0, 1], or 0 when no channel is active. */
+  /** Channel progress in [0, 1], or 0 when no channel is active OR the
+   *  channel has already elapsed past its duration. Self-cleaning so
+   *  renderers don't depend on the manager having resolved the channel
+   *  first — a renderer reading mid-frame won't see a stale `1.0`. */
   channelProgress(now: number, durationMs: number): number {
     if (this.channelStartedAt === null) return 0;
-    return Math.max(0, Math.min(1, (now - this.channelStartedAt) / durationMs));
+    const elapsed = now - this.channelStartedAt;
+    if (elapsed >= durationMs) return 0;
+    return Math.max(0, elapsed / durationMs);
   }
 
   /** Start a channel at `now`. Idempotent — re-calling with a later

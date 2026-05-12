@@ -90,10 +90,11 @@ import { getCampaign } from '../data/campaigns';
 import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
-import { SuppressionManager } from '../systems/suppression/SuppressionManager';
+import { SuppressionManager, type SuppressibleTower } from '../systems/suppression/SuppressionManager';
 import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
+import type { RaiderTarget } from '../entities/Raider';
 import {
   preloadMechCampaignAssets,
   GENERATOR_TEXTURE,
@@ -482,6 +483,12 @@ export class GameScene extends Phaser.Scene {
   private _missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons'];
   private _sabotageController: import('../systems/sabotage/SabotageController').SabotageController | null = null;
   private _sabotageRender: SabotageRender | null = null;
+  /** Stored window-event listener refs so they can be torn down by
+   *  any lifecycle path (shutdown, fast restart without shutdown).
+   *  Was previously local consts inside the controller init block —
+   *  that worked for the normal shutdown path but leaked on re-init. */
+  private _onSabotageTrain: (() => void) | null = null;
+  private _onSabotageUpgrade: ((ev: Event) => void) | null = null;
   /** Click-to-target: the player's most-recently clicked-on raider.
    *  Subsequent click on a hostile cell sets that raider's manual
    *  target. Cleared when the selected raider dies. */
@@ -1288,23 +1295,18 @@ export class GameScene extends Phaser.Scene {
       // SabotageHudDOM dispatches these on button clicks. The
       // controller methods enforce gold + cooldown internally so the
       // listener can be a thin wire.
-      const onTrain = () => {
+      this._onSabotageTrain = () => {
         if (!this._sabotageController) return;
         this._sabotageController.trainRaider(this.time?.now ?? 0);
       };
-      const onUpgrade = (ev: Event) => {
+      this._onSabotageUpgrade = (ev: Event) => {
         if (!this._sabotageController) return;
         const detail = (ev as CustomEvent).detail as Partial<SabotageUpgradeEventDetail> | undefined;
         if (!detail?.kind) return;
         this._sabotageController.buyUpgrade(detail.kind);
       };
-      window.addEventListener(SABOTAGE_TRAIN_EVENT, onTrain);
-      window.addEventListener(SABOTAGE_UPGRADE_EVENT, onUpgrade);
-      this.events.once('shutdown', () => {
-        window.removeEventListener(SABOTAGE_TRAIN_EVENT, onTrain);
-        window.removeEventListener(SABOTAGE_UPGRADE_EVENT, onUpgrade);
-        GameUIStore.setSabotageHud(null);
-      });
+      window.addEventListener(SABOTAGE_TRAIN_EVENT, this._onSabotageTrain);
+      window.addEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
     }
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
@@ -2950,7 +2952,8 @@ export class GameScene extends Phaser.Scene {
    *  Returns true when the click was consumed (caller short-circuits
    *  the normal handler). */
   private handleSabotageClick(col: number, row: number): boolean {
-    const ctrl = this._sabotageController!;
+    const ctrl = this._sabotageController;
+    if (!ctrl) return false;
     const mapDef = this.getMapDef();
     const time = this.time?.now ?? 0;
 
@@ -2982,12 +2985,9 @@ export class GameScene extends Phaser.Scene {
     // throne sets that raider's manual target. Bare-cell click with
     // a selected raider clears the selection.
     if (this._selectedRaider) {
-      const cpuTower = this.findCpuTowerAt(col, row);
+      const cpuTower = ctrl.findCpuTowerAt(col, row);
       if (cpuTower) {
-        ctrl.setRaiderTarget(
-          this._selectedRaider,
-          cpuTower as unknown as Parameters<typeof ctrl.setRaiderTarget>[1],
-        );
+        ctrl.setRaiderTarget(this._selectedRaider, cpuTower);
         return true;
       }
       this._selectedRaider = null;
@@ -2995,13 +2995,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     return false;
-  }
-
-  private findCpuTowerAt(col: number, row: number): import('../entities/Tower').Tower | null {
-    for (const t of this.towers) {
-      if (t.col === col && t.row === row && t.destructible && !t._expired) return t;
-    }
-    return null;
   }
 
   /** Push the SabotageHud state to GameUIStore so the DOM panel can
@@ -3323,18 +3316,17 @@ export class GameScene extends Phaser.Scene {
     // creeps in range; clicked tower targets take priority. No-op on
     // every other mission.
     if (this._suppressionMgr) {
-      this._suppressionMgr.update(time, this.towers as any);
+      this._suppressionMgr.update(time, this.towers as unknown as SuppressibleTower[]);
       this._suppressionRender?.update(this._suppressionMgr, time, delta);
     }
     if (this._sabotageController) {
-      // Cast the live tower / creep arrays through `unknown` — the
-      // controller only needs the duck-typed RaiderTarget shape, but
-      // Tower / Creep don't formally implement it.
+      // Tower (with the new `alive` getter) + Creep both satisfy the
+      // RaiderTarget shape structurally — no `as unknown as` needed.
       this._sabotageController.update(
         time,
         delta,
-        this.creeps as unknown as Parameters<typeof this._sabotageController.update>[2],
-        this.towers as unknown as Parameters<typeof this._sabotageController.update>[3],
+        this.creeps as unknown as RaiderTarget[],
+        this.towers as unknown as RaiderTarget[],
       );
       if (this._selectedRaider && !this._selectedRaider.alive) this._selectedRaider = null;
       this._sabotageRender?.update(this._sabotageController, delta);
@@ -4995,6 +4987,28 @@ export class GameScene extends Phaser.Scene {
     }
     this.uiCamera = null;
     this.uiLayer = null;
+    // Mech campaign cleanup — destroy sabotage / suppression Graphics
+    // objects + remove window event listeners + clear HUD state +
+    // null all refs. Listeners live on class fields so they tear
+    // down through any lifecycle path (this method, re-init without
+    // a prior shutdown, fast-restart).
+    if (this._onSabotageTrain) {
+      window.removeEventListener(SABOTAGE_TRAIN_EVENT, this._onSabotageTrain);
+      this._onSabotageTrain = null;
+    }
+    if (this._onSabotageUpgrade) {
+      window.removeEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
+      this._onSabotageUpgrade = null;
+    }
+    this._suppressionRender?.destroy();
+    this._suppressionRender = null;
+    this._suppressionMgr = null;
+    this._sabotageRender?.destroy();
+    this._sabotageRender = null;
+    this._sabotageController = null;
+    this._selectedRaider = null;
+    GameUIStore.setSabotageHud(null);
+
     // Clear event listeners
     this.events.off('shutdown');
     this.events.off('addedtoscene');

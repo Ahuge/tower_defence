@@ -276,6 +276,13 @@ export class SabotageController {
     return this.raiders.find(r => r.id === id) ?? null;
   }
 
+  /** Find a live CPU defender tower at the given cell. Scans the
+   *  controller's own list instead of letting GameScene walk the
+   *  global tower pool. */
+  findCpuTowerAt(col: number, row: number): Tower | null {
+    return this.cpuTowers.find(t => t.col === col && t.row === row && !t._expired) ?? null;
+  }
+
   /** True iff every generator placed at scene init is dead. Used by
    *  the throne-vulnerability gate; exposed so HUD code can render
    *  "X / N generators down" without poking internals. */

@@ -638,7 +638,10 @@ class GameUIStoreClass {
       && prev.upgradeLevels.tread === next.upgradeLevels.tread
       && prev.raidersAlive === next.raidersAlive
       && prev.generatorsAlive === next.generatorsAlive
-      && prev.generatorsTotal === next.generatorsTotal) {
+      && prev.generatorsTotal === next.generatorsTotal
+      && prev.nextUpgradeCost.plate === next.nextUpgradeCost.plate
+      && prev.nextUpgradeCost.edge === next.nextUpgradeCost.edge
+      && prev.nextUpgradeCost.tread === next.nextUpgradeCost.tread) {
       return;
     }
     this.state = { ...this.state, sabotageHud: next };

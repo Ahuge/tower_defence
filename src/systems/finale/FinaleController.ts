@@ -612,7 +612,7 @@ export class FinaleController {
         return {
           x: target.x,
           y: target.y,
-          alive: 'alive' in target ? target.alive : !((target as { _expired?: boolean })._expired) && (target.hp ?? 0) > 0,
+          alive: target.alive,
           path: pathPx,
           takeDamage: (amount: number) => {
             const killed = target.takeDamage(amount);

@@ -98,10 +98,18 @@ export class SuppressionManager {
   /** Try to start a channel on the pylon at the given cell. The
    *  return value disambiguates the failure modes so callers can
    *  surface different feedback ("already muted" vs "already
-   *  channeling" vs "no pylon") without re-reading pylon state. */
+   *  channeling" vs "no pylon") without re-reading pylon state.
+   *  If a stale channel (elapsed but not yet resolved by the per-
+   *  frame tick — possible after a frame hitch or paused window)
+   *  is detected, complete it here so the mute isn't silently
+   *  discarded. */
   startChannelAt(col: number, row: number, now: number): ChannelStartResult {
     const pylon = this.pylons.find(p => p.col === col && p.row === row);
     if (!pylon) return 'no_pylon';
+    if (pylon.channelStartedAt !== null && now - pylon.channelStartedAt >= CHANNEL_DURATION_MS) {
+      pylon.completeChannel(now, DEFAULT_CHANNEL_MS);
+      return 'already_muted';
+    }
     if (!pylon.isActive(now)) return 'already_muted';
     if (pylon.isChanneling(now, CHANNEL_DURATION_MS)) return 'already_channeling';
     pylon.beginChannel(now);
