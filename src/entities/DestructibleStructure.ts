@@ -129,6 +129,18 @@ export class DestructibleStructure implements Damageable {
       this.sprite = addSprite.call(args.scene.add, this.x, this.y, def.textureKey, 0);
       this.sprite.setDepth?.(2); // above floor, below towers/creeps
       this.sprite.setOrigin?.(0.5, 0.5);
+      // Scale to the structure's grid footprint. Textures authored at
+      // exactly footprint-px (e.g. Arcane's 84×84 = 3×28) end up at
+      // identity scale; textures authored smaller (e.g. Mech's 32×32
+      // pixel-art throne placed on a 3×3 = 84px footprint) scale up
+      // to fill, preserving pixel sharpness via NEAREST filtering.
+      const targetW = this.widthCells * TILE_SIZE;
+      const targetH = this.heightCells * TILE_SIZE;
+      this.sprite.setDisplaySize?.(targetW, targetH);
+      // Nearest-neighbour filter so the upscale doesn't blur — pixel
+      // art stays crisp.
+      const tex = this.sprite.texture as { setFilter?: (mode: number) => void } | undefined;
+      tex?.setFilter?.(Phaser.Textures.FilterMode.NEAREST);
     } else if (typeof (args.scene.add as { graphics?: () => Phaser.GameObjects.Graphics }).graphics === 'function') {
       this.graphics = args.scene.add.graphics();
       this.graphics.setDepth?.(2);

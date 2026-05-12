@@ -820,12 +820,6 @@ export const MAPS: Record<MapId, MapDefinition> = {
     const generatorBotLinks = [{ col: 4, row: 19 }, { col: 6, row: 20 }, { col: 8, row: 19 }];
 
     const destructibleTowers = [
-      // Throne (Voss) — far west, invulnerable until generators down.
-      // Sits at col 3 (not col 1) so creeps spawning at (0, midRow)
-      // have clear cells (1, midRow) and (2, midRow) to walk into
-      // before they need to detour around the throne. col-1 placement
-      // would wall off the only open entry cell.
-      { col: 3, row: midRow, towerId: 'mech_titan', hp: 5000, isThrone: true },
       // Top cluster — generator + linked turrets.
       G(11, 4, generatorTopLinks),
       ...generatorTopLinks.map(c => T(c.col, c.row)),
@@ -838,6 +832,16 @@ export const MAPS: Record<MapId, MapDefinition> = {
       // Bottom cluster.
       G(11, 19, generatorBotLinks),
       ...generatorBotLinks.map(c => T(c.col, c.row)),
+    ];
+
+    // Voss's Throne — 3×3 destructible boss structure. Top-left at
+    // (col 3, row midRow-1) so the footprint spans cols 3-5 × rows
+    // midRow-1..midRow+1, center cell at (4, midRow). Leaves cols
+    // 1-2 of the entry row open so creeps spawning at (0, midRow)
+    // can walk east to (2, midRow), then detour above/below to
+    // route around the throne to the open east corridor.
+    const destructibleStructures = [
+      { id: 'mech_voss_throne', col: 3, row: midRow - 1, hp: 5000, isMissionWinTarget: true },
     ];
 
     // Player buildable zone — entire right half, mirrors Arcane M10.
@@ -859,6 +863,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
       noBuild: [],
       playerBuildableCells,
       destructibleTowers,
+      destructibleStructures,
       workshop: { col: 32, row: midRow },
     };
   })(),

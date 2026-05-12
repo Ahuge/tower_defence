@@ -276,6 +276,24 @@ describe('SabotageController', () => {
     });
   });
 
+  describe('throne as destructibleStructure (PRD-06)', () => {
+    it('skips structure placement when scene / grid are not provided', () => {
+      // Headless construction without scene/grid — the structure path
+      // short-circuits, the controller still functions for the
+      // win-condition tests that don't use the throne-structure path.
+      const mgr = makeTowerMgr();
+      const ctrl = new SabotageController({
+        ...baseArgs(mgr),
+        destructibleStructures: [
+          { id: 'mech_voss_throne', col: 3, row: 12, hp: 5000, isMissionWinTarget: true },
+        ],
+        destructibleTowers: [],
+      });
+      expect(ctrl.getThroneStructure()).toBeNull();
+      expect(ctrl.getStructures()).toHaveLength(0);
+    });
+  });
+
   describe('CPU towers attack raiders', () => {
     function setup() {
       const mgr = makeTowerMgr();

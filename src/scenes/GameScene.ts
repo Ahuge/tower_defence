@@ -1280,6 +1280,9 @@ export class GameScene extends Phaser.Scene {
       this._sabotageController = new SabotageControllerCls({
         rules: this._missionSabotageRules,
         destructibleTowers: mapDef.destructibleTowers,
+        destructibleStructures: mapDef.destructibleStructures,
+        scene: this,
+        grid: this.grid,
         workshop: {
           col: mapDef.workshop.col,
           row: mapDef.workshop.row,

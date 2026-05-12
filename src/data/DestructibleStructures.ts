@@ -81,6 +81,20 @@ export const DESTRUCTIBLE_STRUCTURES: Record<string, DestructibleStructureDef> =
       '0.10': 'arcane_throne_rage',
     },
   },
+  /** Mech M10 — Voss's foundry-throne. 3×3 boss structure with five
+   *  damage frames + halo dimming on the sprite. No embedded tower —
+   *  the throne is inert; the win condition is just "throne dead."
+   *  SabotageController flips invulnerable to false once every
+   *  generator is down. */
+  mech_voss_throne: {
+    id: 'mech_voss_throne',
+    name: 'Voss\'s Throne',
+    widthCells: 3,
+    heightCells: 3,
+    textureKey: 'struct_voss_throne',
+    damageFrames: 5,
+    defaultHp: 5000,
+  },
   // Future:
   //   mech_war_furnace: { 4×3, 6000hp, 5 frames, embeddedTowerId: 'mech_titan' },
   //   nature_elder_tree: { 3×4, 4500hp, 5 frames, embeddedTowerId: undefined  /* passive */ },

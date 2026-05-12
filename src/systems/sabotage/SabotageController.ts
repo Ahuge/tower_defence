@@ -26,12 +26,17 @@ import { Raider, type RaiderTarget } from '../../entities/Raider';
 import { Workshop, type GoldSpender, type EnqueueResult } from './Workshop';
 import type { UpgradeKind } from './WorkshopUpgrades';
 import { placeCpuTowers, type BaseCpuTowerSpec } from '../finale/cpuPlacement';
+import { DestructibleStructure } from '../../entities/DestructibleStructure';
+import {
+  getDestructibleStructureDef,
+  type DestructibleStructurePlacement,
+} from '../../data/DestructibleStructures';
+import { Grid, CellType } from '../Grid';
 import {
   GENERATOR_TEXTURE,
-  VOSS_THRONE_TEXTURE,
   generatorFrameForHp,
-  thronePristineFrame,
 } from './SabotageAssets';
+import type * as Phaser from 'phaser';
 
 export const CPU_INDEX_SABOTAGE = 99;
 
@@ -56,8 +61,21 @@ export interface SabotageSetupArgs {
     hp: number;
     isGenerator?: boolean;
     linkedTowers?: { col: number; row: number }[];
+    /** Pre-PRD06 placeholder — kept for back-compat with tests that
+     *  still place the throne as a destructibleTowers entry. New
+     *  missions go through `destructibleStructures` instead. */
     isThrone?: boolean;
   }[];
+  /** PRD-06 destructibleStructures — the throne goes here for Mech
+   *  M10. Empty / undefined when no boss structure is placed via
+   *  the 3×3 footprint path. */
+  destructibleStructures?: DestructibleStructurePlacement[];
+  /** Scene reference — needed when destructibleStructures is non-empty
+   *  so the DestructibleStructure constructor can attach its sprite. */
+  scene?: Phaser.Scene;
+  /** Grid reference — needed for structure-placement noBuild/Blocked
+   *  bookkeeping (mirrors FinaleController). */
+  grid?: Grid;
   /** Workshop placement. The Workshop trains Raiders and owns the
    *  global upgrade tiers. Required — every production mission has
    *  one and the controller is meaningless without it. */
@@ -86,6 +104,12 @@ export class SabotageController {
   private cpuTowers: Tower[] = [];
   private generators: Tower[] = [];
   private throne: Tower | null = null;
+  /** PRD-06 throne — when the map places Voss via destructibleStructures,
+   *  the throne lives here as a 3×3 DestructibleStructure instead of
+   *  the legacy single-cell Tower path. The two are mutually
+   *  exclusive; whichever the map uses, that one is non-null. */
+  private throneStructure: DestructibleStructure | null = null;
+  private cpuStructures: DestructibleStructure[] = [];
   private throneVulnerableFired = false;
   private winFired = false;
   private onWin?: () => void;
@@ -148,12 +172,45 @@ export class SabotageController {
       if (spec.isThrone) {
         tower.isThrone = true;
         tower._invulnerable = true;
-        // Swap the placeholder mech_titan sprite to the bespoke Voss
-        // throne sheet. Starts on the pristine "shield up" frame.
-        tower.sprite?.setTexture(VOSS_THRONE_TEXTURE, thronePristineFrame());
         this.throne = tower;
       }
       this.cpuTowers.push(tower);
+    }
+
+    // Place destructibleStructures (PRD-06 path). The throne for Mech
+    // M10 lives here as a 3×3 boss structure with proper damage
+    // frames + HP-bar handling delegated to DestructibleStructure.
+    if (args.destructibleStructures && args.scene && args.grid) {
+      for (const placement of args.destructibleStructures) {
+        try {
+          const def = getDestructibleStructureDef(placement.id);
+          const structure = new DestructibleStructure({
+            scene: args.scene,
+            placement,
+            embeddedTower: null,
+            factionId: 'mechanical',
+            ownerIndex,
+          });
+          this.cpuStructures.push(structure);
+          // Block every cell in the WxH footprint. Without this,
+          // creeps would pathfind THROUGH the throne.
+          for (const cell of structure.getOccupiedCells()) {
+            if (cell.row < 0 || cell.row >= args.grid.cells.length) continue;
+            if (cell.col < 0 || cell.col >= args.grid.cells[0].length) continue;
+            args.grid.cells[cell.row][cell.col] = CellType.Blocked;
+          }
+          // The throne starts invulnerable while any generator is
+          // alive — flipped to false in update() once the cascade
+          // brings them all down. This mirrors the destructibleTowers
+          // throne path that the structures path is replacing.
+          if (placement.isMissionWinTarget) {
+            structure.invulnerable = true;
+            this.throneStructure = structure;
+          }
+        } catch (err) {
+          console.warn(`[SabotageController] failed to place structure ${placement.id}:`, err);
+        }
+      }
     }
   }
 
@@ -187,11 +244,25 @@ export class SabotageController {
       }
     }
 
-    // Throne becomes mortal once every generator is gone.
-    if (!this.throneVulnerableFired && this.throne && this._allGeneratorsDead()) {
-      this.throneVulnerableFired = true;
-      this.throne._invulnerable = false;
-      this.onThroneVulnerable?.();
+    // Throne becomes mortal once every generator is gone. Handles both
+    // the legacy single-cell Tower path AND the PRD-06 structure path
+    // — whichever the map uses, the controller flips its invulnerable
+    // flag in lockstep.
+    if (!this.throneVulnerableFired && this._allGeneratorsDead()) {
+      const hasThrone = this.throne !== null || this.throneStructure !== null;
+      if (hasThrone) {
+        this.throneVulnerableFired = true;
+        if (this.throne) this.throne._invulnerable = false;
+        if (this.throneStructure) this.throneStructure.invulnerable = false;
+        this.onThroneVulnerable?.();
+      }
+    }
+
+    // Tick destructible structures (damage-frame swap + HP-bar
+    // redraw). Win-condition check below scans both Tower-based and
+    // Structure-based throne.
+    for (const s of this.cpuStructures) {
+      s.draw();
     }
 
     // CPU defender towers attack raiders. Standard tower update runs
@@ -231,10 +302,15 @@ export class SabotageController {
       this.raiders = survivors;
     }
 
-    // Win = throne destroyed.
-    if (!this.winFired && this.throne && (this.throne._expired || (this.throne.hp ?? 1) <= 0)) {
-      this.winFired = true;
-      this.onWin?.();
+    // Win = throne destroyed. Handles both paths — Tower throne dies
+    // when _expired or hp<=0; Structure throne dies when !alive.
+    if (!this.winFired) {
+      const throneDeadTower = this.throne && (this.throne._expired || (this.throne.hp ?? 1) <= 0);
+      const throneDeadStructure = this.throneStructure && !this.throneStructure.alive;
+      if (throneDeadTower || throneDeadStructure) {
+        this.winFired = true;
+        this.onWin?.();
+      }
     }
   }
 
@@ -318,6 +394,17 @@ export class SabotageController {
 
   getThrone(): Tower | null {
     return this.throne;
+  }
+
+  /** PRD-06 throne (Voss as a 3×3 destructibleStructure). Either this
+   *  OR `getThrone()` is set per mission, never both. */
+  getThroneStructure(): DestructibleStructure | null {
+    return this.throneStructure;
+  }
+
+  /** All destructible structures owned by the controller. */
+  getStructures(): DestructibleStructure[] {
+    return this.cpuStructures;
   }
 
   private _allGeneratorsDead(): boolean {
