@@ -70,6 +70,7 @@ export function SabotageHudDOM() {
         type="button"
         onClick={train}
         disabled={!cooldownReady}
+        title="Conjure an apprentice mage at the Workshop. Stats stamped from your current upgrade tiers at build time."
         style={{
           width: '100%',
           padding: '8px',
@@ -88,7 +89,7 @@ export function SabotageHudDOM() {
           <span style={{ fontSize: '12px' }}>{hud.trainCost}g</span>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
-          {cooldownLabel} · {hud.raidersAlive} alive
+          {cooldownLabel}
         </div>
       </button>
 
@@ -100,9 +101,12 @@ export function SabotageHudDOM() {
       }}>
         Squad Upgrades
       </div>
-      <UpgradeButton kind="plate" label="Plate" tier={hud.upgradeLevels.plate} cost={hud.nextUpgradeCost.plate} onClick={upgrade} />
-      <UpgradeButton kind="edge" label="Edge" tier={hud.upgradeLevels.edge} cost={hud.nextUpgradeCost.edge} onClick={upgrade} />
-      <UpgradeButton kind="tread" label="Tread" tier={hud.upgradeLevels.tread} cost={hud.nextUpgradeCost.tread} onClick={upgrade} />
+      <UpgradeButton kind="plate" label="Plate" tier={hud.upgradeLevels.plate} cost={hud.nextUpgradeCost.plate} onClick={upgrade}
+        tooltip="Plate — Raider HP. Tiers add +50% / +100% / +150%. Stamped on raiders trained AFTER the upgrade buys; existing raiders keep what they were born with." />
+      <UpgradeButton kind="edge" label="Edge" tier={hud.upgradeLevels.edge} cost={hud.nextUpgradeCost.edge} onClick={upgrade}
+        tooltip="Edge — Raider attack damage. Tiers add +50% / +100% / +150%. Applies to newly-trained raiders only." />
+      <UpgradeButton kind="tread" label="Tread" tier={hud.upgradeLevels.tread} cost={hud.nextUpgradeCost.tread} onClick={upgrade}
+        tooltip="Tread — Raider move speed. Tiers add +25% / +50% / +75%. Speed compounds harder than HP/damage so the per-tier bump is gentler. Applies to new raiders only." />
     </div>
   );
 }
@@ -113,6 +117,7 @@ function UpgradeButton(props: {
   tier: number;
   cost: number | null;
   onClick: (k: 'plate' | 'edge' | 'tread') => void;
+  tooltip: string;
 }) {
   const maxed = props.cost === null;
   const tier = props.tier;
@@ -122,6 +127,7 @@ function UpgradeButton(props: {
       type="button"
       onClick={() => props.onClick(props.kind)}
       disabled={maxed}
+      title={props.tooltip}
       style={{
         width: '100%',
         padding: '6px 8px',

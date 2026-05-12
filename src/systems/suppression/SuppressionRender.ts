@@ -18,13 +18,19 @@ import { SUPPRESSION_PYLON_TEXTURE } from '../sabotage/SabotageAssets';
 const FIELD_OUTLINE_ACTIVE = 0xcc88ff;
 const FIELD_OUTLINE_MUTED  = 0x553366;
 const CHANNEL_RING         = 0xffdd44;
+const CHANNEL_START_FLASH  = 0xffeebb;
 const PULSE_PERIOD_MS      = 1000;  // 4 frames × 250ms = 1s breath cycle
+/** Duration of the "channel just started" flash in ms. */
+const CHANNEL_START_FLASH_MS = 220;
 
 export class SuppressionRender {
   private gfx: Phaser.GameObjects.Graphics;
   private pylonSprites = new Map<SuppressionPylon, Phaser.GameObjects.Sprite>();
   private scene: Phaser.Scene;
   private pulseClock = 0;
+  /** Per-pylon flash timer state — when the channel began (so the
+   *  renderer can show a fading flash without polling the manager). */
+  private flashStartedAt = new WeakMap<SuppressionPylon, number>();
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -79,9 +85,51 @@ export class SuppressionRender {
     const x = gridX(p.col);
     const y = gridY(p.row);
     const active = p.isActive(now);
-    // Field-of-effect outline circle — visualises the stress radius.
-    this.gfx.lineStyle(1, active ? FIELD_OUTLINE_ACTIVE : FIELD_OUTLINE_MUTED, active ? 0.45 : 0.2);
-    this.gfx.strokeCircle(x, y, p.radius * TILE_SIZE);
+    const fullRadius = p.radius * TILE_SIZE;
+    // Field-of-effect outline circle.
+    //
+    // - Active: full radius at moderate alpha, violet — "the pylon is
+    //   currently suppressing inside this area."
+    // - Muted: the circle SHRINKS inward over the mute duration,
+    //   acting as a countdown — full radius at start of mute, zero
+    //   when the mute is about to expire. Players see a clear
+    //   "the field is closing in again, channel another or move."
+    let renderRadius = fullRadius;
+    let outlineColor = FIELD_OUTLINE_ACTIVE;
+    let outlineAlpha = 0.45;
+    if (!active) {
+      const remainingMs = Math.max(0, p.mutedUntil - now);
+      // Map remaining-mute-time onto [0, fullRadius]. Visible from full
+      // size (just muted) down to tiny (about to re-activate).
+      const muteWindow = 15_000; // matches DEFAULT_CHANNEL_MS in SuppressionManager
+      const ratio = Math.min(1, remainingMs / muteWindow);
+      renderRadius = fullRadius * ratio;
+      outlineColor = FIELD_OUTLINE_MUTED;
+      outlineAlpha = 0.3;
+    }
+    if (renderRadius > 1) {
+      this.gfx.lineStyle(1, outlineColor, outlineAlpha);
+      this.gfx.strokeCircle(x, y, renderRadius);
+    }
+    // Channel-start flash — bright golden burst that fades over a
+    // short window. Triggered by detecting the leading edge of
+    // channelStartedAt (compare against the stored timer).
+    if (p.channelStartedAt !== null) {
+      const stored = this.flashStartedAt.get(p);
+      if (stored !== p.channelStartedAt) {
+        this.flashStartedAt.set(p, p.channelStartedAt);
+      }
+    }
+    const flashStart = this.flashStartedAt.get(p);
+    if (flashStart !== undefined) {
+      const flashElapsed = now - flashStart;
+      if (flashElapsed >= 0 && flashElapsed <= CHANNEL_START_FLASH_MS) {
+        const flashAlpha = 1 - flashElapsed / CHANNEL_START_FLASH_MS;
+        const flashR = TILE_SIZE * 0.5 + 6 + flashElapsed * 0.04;
+        this.gfx.lineStyle(2, CHANNEL_START_FLASH, flashAlpha);
+        this.gfx.strokeCircle(x, y, flashR);
+      }
+    }
     // Channel progress ring — only while channeling, active state.
     if (p.channelStartedAt !== null && active) {
       const progress = p.channelProgress(now, channelDurationMs);
