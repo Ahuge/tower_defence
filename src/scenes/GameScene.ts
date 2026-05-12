@@ -106,6 +106,7 @@ import {
 import {
   SABOTAGE_TRAIN_EVENT,
   SABOTAGE_UPGRADE_EVENT,
+  SABOTAGE_PANEL_CLOSE_EVENT,
   type SabotageUpgradeEventDetail,
 } from '../systems/sabotage/SabotageEvents';
 import type { DestructibleStructure } from '../entities/DestructibleStructure';
@@ -489,10 +490,16 @@ export class GameScene extends Phaser.Scene {
    *  that worked for the normal shutdown path but leaked on re-init. */
   private _onSabotageTrain: (() => void) | null = null;
   private _onSabotageUpgrade: ((ev: Event) => void) | null = null;
+  private _onSabotagePanelClose: (() => void) | null = null;
   /** Click-to-target: the player's most-recently clicked-on raider.
    *  Subsequent click on a hostile cell sets that raider's manual
    *  target. Cleared when the selected raider dies. */
   private _selectedRaider: import('../entities/Raider').Raider | null = null;
+  /** Mech M10: whether the Workshop panel is currently open. Toggled
+   *  by clicking the Workshop tile; closed by clicking anywhere off
+   *  the workshop / dispatching the close event. Drives the
+   *  SabotageHudDOM render mode. */
+  private _workshopPanelOpen: boolean = false;
   /** Plan 12 v2: composer instance for the current attacker mission.
    *  Built in setupAttackerComposer() on init when the mission supplies
    *  an essence budget; null otherwise. */
@@ -1297,7 +1304,13 @@ export class GameScene extends Phaser.Scene {
       // listener can be a thin wire.
       this._onSabotageTrain = () => {
         if (!this._sabotageController) return;
-        this._sabotageController.trainRaider(this.time?.now ?? 0);
+        // Train clicks enqueue rather than instant-train — the
+        // workshop's per-frame queue tick handles the actual spawn
+        // when the cooldown elapses, so the player can stack up to
+        // MAX_QUEUE pre-paid raiders.
+        const result = this._sabotageController.enqueueRaider();
+        if (result === 'queue_full') this.eventLog.gameMessage('Workshop queue full.');
+        else if (result === 'broke') this.eventLog.gameMessage('Not enough gold for a raider.');
       };
       this._onSabotageUpgrade = (ev: Event) => {
         if (!this._sabotageController) return;
@@ -1305,8 +1318,12 @@ export class GameScene extends Phaser.Scene {
         if (!detail?.kind) return;
         this._sabotageController.buyUpgrade(detail.kind);
       };
+      this._onSabotagePanelClose = () => {
+        this._workshopPanelOpen = false;
+      };
       window.addEventListener(SABOTAGE_TRAIN_EVENT, this._onSabotageTrain);
       window.addEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
+      window.addEventListener(SABOTAGE_PANEL_CLOSE_EVENT, this._onSabotagePanelClose);
     }
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
@@ -2969,15 +2986,12 @@ export class GameScene extends Phaser.Scene {
     const mapDef = this.getMapDef();
     const time = this.time?.now ?? 0;
 
-    // Workshop tile → train a raider.
+    // Workshop tile → toggle the workshop panel open/closed. Training
+    // happens via the panel's Train button (which dispatches the
+    // SABOTAGE_TRAIN_EVENT); tile-click instant-train is gone — the
+    // tile-click is purely a UI affordance now.
     if (mapDef.workshop && col === mapDef.workshop.col && row === mapDef.workshop.row) {
-      if (ctrl.trainRaider(time)) {
-        this.eventLog.gameMessage('Raider trained.');
-      } else {
-        const cd = ctrl.getWorkshop().cooldownRemaining(time);
-        if (cd > 0) this.eventLog.gameMessage(`Workshop on cooldown (${(cd / 1000).toFixed(1)}s).`);
-        else this.eventLog.gameMessage('Not enough gold for a raider.');
-      }
+      this._workshopPanelOpen = !this._workshopPanelOpen;
       return true;
     }
 
@@ -3032,6 +3046,9 @@ export class GameScene extends Phaser.Scene {
       raidersAlive,
       generatorsAlive,
       generatorsTotal,
+      workshopPanelOpen: this._workshopPanelOpen,
+      queueCount: ws.getQueueCount(),
+      queueMax: ws.getQueueMax(),
     });
   }
 
@@ -5012,6 +5029,11 @@ export class GameScene extends Phaser.Scene {
       window.removeEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
       this._onSabotageUpgrade = null;
     }
+    if (this._onSabotagePanelClose) {
+      window.removeEventListener(SABOTAGE_PANEL_CLOSE_EVENT, this._onSabotagePanelClose);
+      this._onSabotagePanelClose = null;
+    }
+    this._workshopPanelOpen = false;
     this._suppressionRender?.destroy();
     this._suppressionRender = null;
     this._suppressionMgr = null;

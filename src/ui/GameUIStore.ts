@@ -429,6 +429,15 @@ export interface SabotageHudState {
    *  it would just be a sync footgun. */
   generatorsAlive: number;
   generatorsTotal: number;
+  /** True while the player has the Workshop selected — the HUD
+   *  swaps from the minimal status badge to the full train + upgrade
+   *  panel. Toggled by clicking the Workshop tile. */
+  workshopPanelOpen: boolean;
+  /** Number of raiders currently queued at the Workshop (paid for,
+   *  awaiting cooldown). 0..3. */
+  queueCount: number;
+  /** Maximum queue depth. */
+  queueMax: number;
 }
 
 export interface FinaleHudState {
@@ -641,7 +650,10 @@ class GameUIStoreClass {
       && prev.generatorsTotal === next.generatorsTotal
       && prev.nextUpgradeCost.plate === next.nextUpgradeCost.plate
       && prev.nextUpgradeCost.edge === next.nextUpgradeCost.edge
-      && prev.nextUpgradeCost.tread === next.nextUpgradeCost.tread) {
+      && prev.nextUpgradeCost.tread === next.nextUpgradeCost.tread
+      && prev.workshopPanelOpen === next.workshopPanelOpen
+      && prev.queueCount === next.queueCount
+      && prev.queueMax === next.queueMax) {
       return;
     }
     this.state = { ...this.state, sabotageHud: next };

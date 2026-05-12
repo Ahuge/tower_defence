@@ -5,6 +5,7 @@
 
 export const SABOTAGE_TRAIN_EVENT = 'td-sabotage-train';
 export const SABOTAGE_UPGRADE_EVENT = 'td-sabotage-upgrade';
+export const SABOTAGE_PANEL_CLOSE_EVENT = 'td-sabotage-panel-close';
 
 export interface SabotageUpgradeEventDetail {
   kind: 'plate' | 'edge' | 'tread';

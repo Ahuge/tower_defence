@@ -23,7 +23,7 @@
 import type { Tower } from '../../entities/Tower';
 import type { TowerManager } from '../TowerManager';
 import { Raider, type RaiderTarget } from '../../entities/Raider';
-import { Workshop, type GoldSpender } from './Workshop';
+import { Workshop, type GoldSpender, type EnqueueResult } from './Workshop';
 import type { UpgradeKind } from './WorkshopUpgrades';
 import { placeCpuTowers, type BaseCpuTowerSpec } from '../finale/cpuPlacement';
 import {
@@ -166,6 +166,12 @@ export class SabotageController {
    *
    *  Both args are optional for win-condition-only tests. */
   update(now = 0, deltaMs = 0, creeps: RaiderTarget[] = [], cpuTargets: RaiderTarget[] = []): void {
+    // Workshop queue tick — dequeue at most one Raider per frame when
+    // the cooldown elapses. Stats are stamped at SPAWN time from the
+    // current upgrade levels, not enqueue time, so a queue placed
+    // before an upgrade benefits from the upgrade once it lands.
+    this.workshop.tickQueue(now, (stats) => this._spawnRaider(stats));
+
     // Drain any newly-dead generators we haven't processed yet. Death
     // is detected by hp<=0 (Tower.takeDamage drives it to 0 and sets
     // _expired); the per-tower _generatorDrained flag prevents double-
@@ -240,22 +246,38 @@ export class SabotageController {
    *  needs them for damage-frame indexing until the next cleanup). */
   getGenerators(): Tower[] { return this.generators; }
 
+  /** Spawn one Raider via the Workshop's stats. Pure helper — no
+   *  cooldown / gold check, the caller (`trainRaider`, `tickQueue`)
+   *  is responsible for gating. */
+  private _spawnRaider(stats: import('./WorkshopUpgrades').RaiderStats): void {
+    const raider = new Raider({
+      id: this.nextRaiderId++,
+      x: this.workshopPixel.x,
+      y: this.workshopPixel.y,
+      hp: stats.hp,
+      attack: stats.attack,
+      speed: stats.speed,
+    });
+    this.raiders.push(raider);
+    this.onRaiderSpawned?.(raider);
+  }
+
   /** Train a Raider via the Workshop. Returns true on success. The
    *  Workshop internally enforces cooldown + gold cost via the
-   *  injected EconomyManager. */
+   *  injected EconomyManager.
+   *
+   *  Kept for tests that exercise the immediate-train path. The
+   *  HUD-driven training path goes through enqueueRaider + tickQueue. */
   trainRaider(now: number): boolean {
-    return this.workshop.tryTrain(now, (stats) => {
-      const raider = new Raider({
-        id: this.nextRaiderId++,
-        x: this.workshopPixel.x,
-        y: this.workshopPixel.y,
-        hp: stats.hp,
-        attack: stats.attack,
-        speed: stats.speed,
-      });
-      this.raiders.push(raider);
-      this.onRaiderSpawned?.(raider);
-    });
+    return this.workshop.tryTrain(now, (stats) => this._spawnRaider(stats));
+  }
+
+  /** Pay gold up front and queue a Raider build. Returns the outcome
+   *  so the HUD can render "queued" / "queue full" / "broke" feedback
+   *  distinctly. The actual Raider spawn happens later inside the
+   *  per-frame queue tick when the cooldown elapses. */
+  enqueueRaider(): EnqueueResult {
+    return this.workshop.tryEnqueue();
   }
 
   /** Buy the next tier in `kind`. Returns true on success. */

@@ -100,4 +100,60 @@ describe('Workshop', () => {
     w.tryTrain(0, (s) => { stamped = s; });
     expect(stamped).toEqual(preview);
   });
+
+  describe('queue', () => {
+    it('enqueues up to the max + reports queue_full beyond', () => {
+      const economy = makeEconomy(99_999);
+      const w = new Workshop({ col: 0, row: 0, economy });
+      expect(w.tryEnqueue()).toBe('queued');
+      expect(w.tryEnqueue()).toBe('queued');
+      expect(w.tryEnqueue()).toBe('queued');
+      expect(w.getQueueCount()).toBe(3);
+      expect(w.tryEnqueue()).toBe('queue_full');
+      expect(w.getQueueCount()).toBe(3);
+    });
+
+    it('enqueue returns broke when gold is insufficient + does not consume queue slot', () => {
+      const economy = makeEconomy(50);
+      const w = new Workshop({ col: 0, row: 0, economy });
+      expect(w.tryEnqueue()).toBe('broke');
+      expect(w.getQueueCount()).toBe(0);
+    });
+
+    it('tickQueue spawns one raider per cooldown elapse', () => {
+      const economy = makeEconomy(99_999);
+      const w = new Workshop({ col: 0, row: 0, economy, trainCooldownMs: 5000 });
+      w.tryEnqueue(); w.tryEnqueue();
+      const stats: unknown[] = [];
+      const onTrain = (s: unknown) => stats.push(s);
+      // First tick at t=0: cooldown is "Ready" so spawns immediately.
+      w.tickQueue(0, onTrain as never);
+      expect(stats.length).toBe(1);
+      expect(w.getQueueCount()).toBe(1);
+      // Mid-cooldown tick: no spawn.
+      w.tickQueue(2000, onTrain as never);
+      expect(stats.length).toBe(1);
+      // After cooldown: second spawn.
+      w.tickQueue(5000, onTrain as never);
+      expect(stats.length).toBe(2);
+      expect(w.getQueueCount()).toBe(0);
+      // Empty queue: no-op.
+      w.tickQueue(10_000, onTrain as never);
+      expect(stats.length).toBe(2);
+    });
+
+    it('upgrades bought mid-queue apply to subsequent spawned raiders', () => {
+      const economy = makeEconomy(99_999);
+      const w = new Workshop({ col: 0, row: 0, economy, trainCooldownMs: 1000 });
+      w.tryEnqueue(); w.tryEnqueue();
+      const stamped: import('./WorkshopUpgrades').RaiderStats[] = [];
+      const onTrain = (s: import('./WorkshopUpgrades').RaiderStats) => stamped.push(s);
+      w.tickQueue(0, onTrain);
+      // Buy Plate before the second spawn.
+      w.tryUpgrade('plate');
+      w.tickQueue(1000, onTrain);
+      // Second raider should have higher HP than the first.
+      expect(stamped[1].hp).toBeGreaterThan(stamped[0].hp);
+    });
+  });
 });

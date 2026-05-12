@@ -43,6 +43,11 @@ export interface WorkshopConfig {
 
 const DEFAULT_TRAIN_COST = 150;
 const DEFAULT_TRAIN_CD_MS = 5000;
+const MAX_QUEUE = 3;
+
+/** Outcome of a `tryEnqueue` call. Lets the HUD render distinct
+ *  feedback per failure mode without re-querying workshop state. */
+export type EnqueueResult = 'queued' | 'broke' | 'queue_full';
 
 export class Workshop {
   readonly col: number;
@@ -54,6 +59,10 @@ export class Workshop {
   /** Last `now` (ms) at which a Raider was trained. -Infinity until
    *  the first train so cooldown does not gate the opening shot. */
   private _lastTrainAt = -Infinity;
+
+  /** Queued train count (already paid for). Decrements one at a time
+   *  as the cooldown elapses inside `tickQueue`. Capped at MAX_QUEUE. */
+  private _queue = 0;
 
   private _levels: UpgradeLevels = { plate: 0, edge: 0, tread: 0 };
 
@@ -91,6 +100,38 @@ export class Workshop {
     this._lastTrainAt = now;
     onTrain(statsForLevels(this._levels));
     return true;
+  }
+
+  /** Number of raiders currently queued (paid-for, waiting for the
+   *  cooldown timer to dequeue them). 0..MAX_QUEUE. */
+  getQueueCount(): number { return this._queue; }
+
+  /** Hard cap on queue depth (3 — enough to let the player commit to
+   *  a push without locking up all their gold). */
+  getQueueMax(): number { return MAX_QUEUE; }
+
+  /** Try to enqueue one Raider build. Atomic gold + queue commit.
+   *  The actual spawn happens later inside `tickQueue` when the
+   *  cooldown elapses — this just reserves a slot and pays. */
+  tryEnqueue(): EnqueueResult {
+    if (this._queue >= MAX_QUEUE) return 'queue_full';
+    if (!this.economy.spend(this.trainCost)) return 'broke';
+    this._queue += 1;
+    return 'queued';
+  }
+
+  /** Per-frame tick: dequeue one Raider if the cooldown is ready and
+   *  the queue has at least one entry. Workshop stamps current
+   *  upgrade levels onto the spawned stats — so a Raider enqueued
+   *  BEFORE an upgrade still inherits the level at SPAWN time, not at
+   *  enqueue time. Intentional: encourages "queue + upgrade ↑ + new
+   *  raiders come out buffed" sequencing. */
+  tickQueue(now: number, onTrain: TrainRaiderCallback): void {
+    if (this._queue <= 0) return;
+    if (!this.canTrainAt(now)) return;
+    this._queue -= 1;
+    this._lastTrainAt = now;
+    onTrain(statsForLevels(this._levels));
   }
 
   /** Try to buy the next tier in `kind`. Returns true on success.
