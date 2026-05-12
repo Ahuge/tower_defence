@@ -1276,7 +1276,26 @@ export class GameScene extends Phaser.Scene {
         if (reversePath) this.sendMgr.setSendPathOverride(reversePath);
       }
       const SabotageControllerCls = SabotageController;
-      const workshopPx = { x: gridX(mapDef.workshop.col), y: gridY(mapDef.workshop.row) };
+      // Workshop is a 2×2 footprint anchored at (col, row) top-left.
+      // Centre pixel = midpoint of the four-cell rectangle. Each
+      // footprint cell is blocked in the grid (so creeps + raiders
+      // path around the building) and removed from the player's
+      // buildable set (so a tower can't drop onto the workshop).
+      const wsCol = mapDef.workshop.col;
+      const wsRow = mapDef.workshop.row;
+      const wsCenter = {
+        x: (gridX(wsCol) + gridX(wsCol + 1)) / 2,
+        y: (gridY(wsRow) + gridY(wsRow + 1)) / 2,
+      };
+      for (let dc = 0; dc < 2; dc++) {
+        for (let dr = 0; dr < 2; dr++) {
+          const c = wsCol + dc, r = wsRow + dr;
+          if (this.grid.cells[r] && this.grid.cells[r][c] === CellType.Empty) {
+            this.grid.cells[r][c] = CellType.Blocked;
+          }
+          this._playerBuildableSet.delete(`${c},${r}`);
+        }
+      }
       this._sabotageController = new SabotageControllerCls({
         rules: this._missionSabotageRules,
         destructibleTowers: mapDef.destructibleTowers,
@@ -1284,10 +1303,10 @@ export class GameScene extends Phaser.Scene {
         scene: this,
         grid: this.grid,
         workshop: {
-          col: mapDef.workshop.col,
-          row: mapDef.workshop.row,
-          pixelX: workshopPx.x,
-          pixelY: workshopPx.y,
+          col: wsCol,
+          row: wsRow,
+          pixelX: wsCenter.x,
+          pixelY: wsCenter.y,
         },
         economy: this.economy,
         towerMgr: this.towerMgr,
@@ -1300,7 +1319,7 @@ export class GameScene extends Phaser.Scene {
           this.goToGameOver(true);
         },
       });
-      this._sabotageRender = new SabotageRender(this, workshopPx, () => this._selectedRaider);
+      this._sabotageRender = new SabotageRender(this, wsCenter, () => this._selectedRaider);
 
       // SabotageHudDOM dispatches these on button clicks. The
       // controller methods enforce gold + cooldown internally so the
@@ -2989,13 +3008,17 @@ export class GameScene extends Phaser.Scene {
     const mapDef = this.getMapDef();
     const time = this.time?.now ?? 0;
 
-    // Workshop tile → toggle the workshop panel open/closed. Training
-    // happens via the panel's Train button (which dispatches the
-    // SABOTAGE_TRAIN_EVENT); tile-click instant-train is gone — the
-    // tile-click is purely a UI affordance now.
-    if (mapDef.workshop && col === mapDef.workshop.col && row === mapDef.workshop.row) {
-      this._workshopPanelOpen = !this._workshopPanelOpen;
-      return true;
+    // Workshop 2×2 footprint → toggle the workshop panel open/closed.
+    // Training happens via the panel's Train button (which dispatches
+    // SABOTAGE_TRAIN_EVENT); tile-click is purely a UI affordance now.
+    if (mapDef.workshop) {
+      const wsCol = mapDef.workshop.col;
+      const wsRow = mapDef.workshop.row;
+      const inWorkshop = col >= wsCol && col < wsCol + 2 && row >= wsRow && row < wsRow + 2;
+      if (inWorkshop) {
+        this._workshopPanelOpen = !this._workshopPanelOpen;
+        return true;
+      }
     }
 
     // Raider click → select it for the next-click target dispatch.

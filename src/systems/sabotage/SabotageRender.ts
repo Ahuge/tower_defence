@@ -14,6 +14,7 @@
  */
 
 import * as Phaser from 'phaser';
+import { TILE_SIZE } from '../../config';
 import type { SabotageController } from './SabotageController';
 import type { Raider } from '../../entities/Raider';
 import {
@@ -60,6 +61,12 @@ export class SabotageRender {
     this.gfx.setDepth(19);
     this.workshopSprite = scene.add.image(workshopPixel.x, workshopPixel.y, WORKSHOP_TEXTURE);
     this.workshopSprite.setDepth(15);
+    // Workshop occupies a 2×2 footprint on the grid. Scale the 32×32
+    // sprite up to 56×56 (2 × TILE_SIZE) so it fills the footprint.
+    // NEAREST filter keeps the pixel art crisp through the upscale.
+    this.workshopSprite.setDisplaySize?.(TILE_SIZE * 2, TILE_SIZE * 2);
+    const tex = this.workshopSprite.texture as { setFilter?: (mode: number) => void } | undefined;
+    tex?.setFilter?.(Phaser.Textures.FilterMode.NEAREST);
   }
 
   /** Per-frame tick: advance walk anim, sync per-raider sprite
