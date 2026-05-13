@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SuppressionManager, type SuppressibleTower } from './SuppressionManager';
+import { SIPHON_STACK_THRESHOLD, SuppressionManager, type SuppressibleTower } from './SuppressionManager';
+import { gridX, gridY, TILE_SIZE } from '../../config';
 
 function makeTower(col: number, row: number, opts: Partial<SuppressibleTower> = {}): SuppressibleTower {
   return {
@@ -176,5 +177,71 @@ describe('SuppressionManager', () => {
     expect(mgr.pylonAt(5, 5)?.col).toBe(5);
     expect(mgr.pylonAt(10, 10)?.row).toBe(10);
     expect(mgr.pylonAt(0, 0)).toBeNull();
+  });
+
+  // ─── Siphon stacks (Mana Drain auto-channel) ────────────────
+
+  it('applyStacks accumulates below threshold without muting', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    const pylon = mgr.pylons[0];
+    expect(mgr.applyStacks(pylon, 1, 0)).toBe(false);
+    expect(mgr.applyStacks(pylon, 1, 100)).toBe(false);
+    expect(pylon.siphonStacks).toBe(2);
+    expect(pylon.isActive(200)).toBe(true);
+  });
+
+  it('applyStacks at threshold mutes the pylon and resets stacks', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    const pylon = mgr.pylons[0];
+    const triggered = mgr.applyStacks(pylon, SIPHON_STACK_THRESHOLD, 1000);
+    expect(triggered).toBe(true);
+    expect(pylon.siphonStacks).toBe(0);
+    expect(pylon.isActive(2000)).toBe(false);
+  });
+
+  it('applyStacks clamps at threshold (extra stacks do not bank)', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    const pylon = mgr.pylons[0];
+    mgr.applyStacks(pylon, 100, 1000);
+    expect(pylon.siphonStacks).toBe(0); // muted + reset
+    // After mute expires, stacks start fresh at 0, NOT at the overflow.
+    mgr.update(1000 + 16_000, []);
+    expect(pylon.siphonStacks).toBe(0);
+  });
+
+  it('applyStacks on a muted pylon is a no-op (no stacking during mute)', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    const pylon = mgr.pylons[0];
+    mgr.mutePylonAt(5, 5, 1000, 10_000);
+    expect(mgr.applyStacks(pylon, 1, 2000)).toBe(false);
+    expect(pylon.siphonStacks).toBe(0);
+  });
+
+  it('manual channel completion mutes via applyStacks (stacks reset, mute applied)', () => {
+    const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+    expect(mgr.startChannelAt(5, 5, 1000)).toBe('started');
+    // Tick past channel duration so _resolveChannels fires.
+    mgr.update(1000 + mgr.getChannelDurationMs() + 1, []);
+    const pylon = mgr.pylons[0];
+    expect(pylon.siphonStacks).toBe(0);
+    expect(pylon.isActive(1000 + mgr.getChannelDurationMs() + 2)).toBe(false);
+  });
+
+  it('getActivePylonsInRangeOf includes only in-range active pylons', () => {
+    // Two pylons at very different positions.
+    const mgr = new SuppressionManager([
+      { col: 5, row: 5 },     // close to the test point
+      { col: 30, row: 20 },   // far away
+    ]);
+    // Use the same gridX/gridY the manager uses, so the comparison is
+    // offset-correct under any grid setup.
+    const x = gridX(5);
+    const y = gridY(5);
+    const inRange = mgr.getActivePylonsInRangeOf(x, y, TILE_SIZE * 4, 0);
+    expect(inRange.length).toBe(1);
+    expect(inRange[0].col).toBe(5);
+    // Mute the close one — should drop out of the returned set.
+    mgr.mutePylonAt(5, 5, 0, 10_000);
+    expect(mgr.getActivePylonsInRangeOf(x, y, TILE_SIZE * 4, 100).length).toBe(0);
   });
 });

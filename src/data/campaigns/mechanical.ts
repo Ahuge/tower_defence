@@ -73,16 +73,22 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       name: 'The Pass',
       story:
         "Refugees from Briarroot are coming through the canyon — three abbots, a dozen apprentices, " +
-        "the salvaged glassware. Voss's column is on the road behind them. He has set one of his " +
-        "anti-arcane pylons at the bottleneck — the field stalls our spells in pulses. Channel it " +
-        "when you can; hold the line either way.",
+        "the salvaged glassware. Voss's column is on the road behind them. He has seeded three of his " +
+        "anti-arcane pylons across the canyon — every corridor stalls in pulses. Channel them when you " +
+        "can; hold the line either way.",
       archetype: 'standard',
       overrides: {
         mapId: 'serpentine',
         difficulty: 'normal',
         waveCount: 15,
+        // Three pylons cover the three open corridors of serpentine
+        // (top, middle, bottom). Forces the player to either spread
+        // through suppression fields or channel them — a maze in one
+        // safe corner is no longer viable.
         suppressionPylons: [
+          { col: 12, row: 3,  radius: 4 },
           { col: 18, row: 12, radius: 5 },
+          { col: 24, row: 22, radius: 4 },
         ],
       },
       objectives: {

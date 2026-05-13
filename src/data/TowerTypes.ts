@@ -190,7 +190,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     faction: 'arcane', damageType: 'magic', cost: 120, damage: 10, range: 4.5, fireRate: 1000,
     color: 0x44aaff, projectileSpeed: 350, hotkey: '5',
     targeting: 'strongest',
-    traits: [{ id: 'direct_damage' }, { id: 'strip_shield' }, { id: 'interrupts_channels' }],
+    traits: [{ id: 'direct_damage' }, { id: 'strip_shield' }, { id: 'interrupts_channels' }, { id: 'siphons_pylons' }],
     upgrades: [
       { level: 2, cost: 80, damage: 18, range: 5, fireRate: 900 },
     ],

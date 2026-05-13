@@ -29,11 +29,13 @@ import {
   cleanupExpiredTraits, UpdateContext,
 } from '../systems/traits/Trait';
 import { Creep } from './Creep';
+import type { SuppressionPylon } from './SuppressionPylon';
+import type { SuppressionManager } from '../systems/suppression/SuppressionManager';
 
 interface Projectile {
   x: number;
   y: number;
-  target: Creep;
+  target: Creep | null;
   destX: number;
   destY: number;
   speed: number;
@@ -51,6 +53,10 @@ interface Projectile {
   dirY?: number;
   /** Set of creeps already damaged by this pierce beam */
   piercedCreeps?: Set<Creep>;
+  /** When set, this projectile is a Mana Drain siphon shot aimed at
+   *  a Suppression Pylon. On impact, applies +1 siphon stack via
+   *  SuppressionManager and dies — no creep damage path. */
+  pylonTarget?: SuppressionPylon;
 }
 
 export class Tower {
@@ -619,6 +625,15 @@ export class Tower {
         resolveOnFire(this.traits, this, targetIdx);
         this.fire(target);
         this.lastFired = time;
+      } else if (hasTrait(this.traits, 'siphons_pylons')) {
+        // Mana Drain fallback: no creeps in range, look for an active
+        // Suppression Pylon to siphon. Each hit applies +1 siphon
+        // stack; at threshold the pylon mutes (see SuppressionManager).
+        const pylon = this.findPylonTarget(time);
+        if (pylon) {
+          this.firePylon(pylon);
+          this.lastFired = time;
+        }
       }
     }
 
@@ -674,6 +689,67 @@ export class Tower {
     this._frameTarget = best;
     this._frameTargetValid = true;
     return best;
+  }
+
+  /** Mana Drain fallback target acquisition. Reads the scene-attached
+   *  SuppressionManager (set by GameScene during scene init when the
+   *  map declares pylons). Returns the closest active pylon in range,
+   *  or null if no pylons / none in range / no manager.
+   *
+   *  Range comparison uses pylon pixel center vs tower pixel position
+   *  (this.range * TILE_SIZE), matching the creep-targeting rule. */
+  private findPylonTarget(now: number): SuppressionPylon | null {
+    const mgr = (this._scene as unknown as { _suppressionMgr?: SuppressionManager })._suppressionMgr;
+    if (!mgr) return null;
+    const candidates = mgr.getActivePylonsInRangeOf(this.x, this.y, this.range * TILE_SIZE, now);
+    if (candidates.length === 0) return null;
+    let best: SuppressionPylon | null = null;
+    let bestDist = Infinity;
+    for (const p of candidates) {
+      const dx = gridX(p.col) - this.x;
+      const dy = gridY(p.row) - this.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  /** Spawn a projectile aimed at a Suppression Pylon. On impact the
+   *  projectile applies +1 siphon stack via SuppressionManager.
+   *  Reuses the standard Mana Drain projectile sprite — visually the
+   *  tower is "shooting the pylon," which is the entire point. */
+  firePylon(pylon: SuppressionPylon): void {
+    const scene = this._scene;
+    const g = scene.add.graphics();
+    g.setDepth(15);
+    const destX = gridX(pylon.col);
+    const destY = gridY(pylon.row);
+    const projSprite = hasProjectileSprite(this.typeId)
+      ? createProjectileSprite(scene, this.typeId, this.x, this.y)
+      : null;
+    this.projectiles.push({
+      x: this.x,
+      y: this.y,
+      target: null,
+      destX,
+      destY,
+      speed: this.typeDef.projectileSpeed,
+      graphics: g,
+      locationBased: true,
+      age: 0,
+      sprite: projSprite ?? undefined,
+      towerId: this.typeId,
+      pylonTarget: pylon,
+    });
+    if (this.sprite) {
+      setTowerSpriteState(this.sprite, this.typeId, 'fire', this.level);
+      scene.time.delayedCall(200, () => {
+        if (this.sprite) setTowerSpriteState(this.sprite, this.typeId, 'idle', this.level);
+      });
+    }
   }
 
   fire(target: Creep): void {
@@ -737,7 +813,7 @@ export class Tower {
       const p = this.projectiles[i];
 
       // If target died: location-based projectiles continue, tracking ones disappear
-      if (!p.target.alive && !p.locationBased) {
+      if (p.target && !p.target.alive && !p.locationBased) {
         p.graphics.destroy();
         if (p.sprite) p.sprite.destroy();
         this.projectiles.splice(i, 1);
@@ -745,12 +821,12 @@ export class Tower {
       }
 
       // Move toward target (if alive and tracking) or destination (location-based)
-      const tx = (p.target.alive && !p.locationBased) ? p.target.x : p.destX;
-      const ty = (p.target.alive && !p.locationBased) ? p.target.y : p.destY;
+      const tx = (p.target && p.target.alive && !p.locationBased) ? p.target.x : p.destX;
+      const ty = (p.target && p.target.alive && !p.locationBased) ? p.target.y : p.destY;
 
       // Update destination if target is still alive (track moving targets)
       // Location-based projectiles (splash/meteor) lock their destination at fire time
-      if (p.target.alive && !p.locationBased) {
+      if (p.target && p.target.alive && !p.locationBased) {
         p.destX = p.target.x;
         p.destY = p.target.y;
       }
@@ -815,8 +891,10 @@ export class Tower {
           continue;
         }
 
-        if (p.target.alive) {
-          this.onProjectileHit(p, allCreeps);
+        if (p.pylonTarget) {
+          this.onProjectileHitPylon(p);
+        } else if (p.target && p.target.alive) {
+          this.onProjectileHit(p as Projectile & { target: Creep }, allCreeps);
         } else {
           this.onProjectileHitLocation(p, allCreeps);
         }
@@ -850,7 +928,7 @@ export class Tower {
     }
   }
 
-  private onProjectileHit(p: Projectile, allCreeps: Creep[]): void {
+  private onProjectileHit(p: Projectile & { target: Creep }, allCreeps: Creep[]): void {
     // Stamp kill credit for co-op tower ownership
     p.target.lastHitCol = this.col;
     p.target.lastHitRow = this.row;
@@ -877,6 +955,17 @@ export class Tower {
     for (const key of Object.keys(stats)) {
       this.hitStatsAccum[key] = (this.hitStatsAccum[key] ?? 0) + stats[key];
     }
+  }
+
+  /** Mana Drain pylon impact — apply +1 siphon stack to the targeted
+   *  pylon. SuppressionManager handles threshold/mute internally. No
+   *  damage pipeline runs (no creep, no traits applied). */
+  private onProjectileHitPylon(p: Projectile): void {
+    if (!p.pylonTarget) return;
+    const mgr = (this._scene as unknown as { _suppressionMgr?: SuppressionManager })._suppressionMgr;
+    if (!mgr) return;
+    const now = this._scene.time?.now ?? 0;
+    mgr.applyStacks(p.pylonTarget, 1, now);
   }
 
   private onProjectileHitLocation(p: Projectile, allCreeps: Creep[]): void {

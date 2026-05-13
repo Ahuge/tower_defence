@@ -33,10 +33,29 @@ export class SuppressionPylon {
    *  completes (mute applied) or is cancelled. */
   channelStartedAt: number | null = null;
 
+  /** Siphon-drain stacks accumulated from Mana Drain projectiles
+   *  (and from manual channels, which apply the full threshold at
+   *  completion). Clamped [0, STACK_THRESHOLD]. Hitting the threshold
+   *  triggers a mute and resets to 0. Persistent — does not decay
+   *  while unused. */
+  siphonStacks: number = 0;
+
   constructor(init: SuppressionPylonInit) {
     this.col = init.col;
     this.row = init.row;
     this.radius = init.radius ?? 5;
+  }
+
+  /** Add `n` stacks, clamping at `threshold`. Returns true iff this
+   *  call took the pylon to (or past) threshold. */
+  addStacks(n: number, threshold: number): boolean {
+    const before = this.siphonStacks;
+    this.siphonStacks = Math.min(threshold, before + Math.max(0, n));
+    return before < threshold && this.siphonStacks >= threshold;
+  }
+
+  resetStacks(): void {
+    this.siphonStacks = 0;
   }
 
   isActive(now: number): boolean {

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-05-13
+
+### Mana Drain ↔ Suppression Pylon siphon mechanic
+
+Mana Drains now literally attack Suppression Pylons. When a Mana Drain (`arcane_drain`) has no creep target in range, it falls back to firing siphon projectiles at the closest active pylon. Each impact applies +1 `siphon_drain` stack to the pylon; at 5 stacks the pylon mutes for 15s (same outcome as the manual click-channel). One drain solo = ~5s to channel, then 15s muted, repeat — pylons spend the majority of the match dim once you commit a 120g drain to the cluster.
+
+**Stack model unifies both pathways.** The 2.5s manual channel now applies the full threshold (5 stacks) at completion, routing through the same `applyStacks` path. Single source of truth, no parallel state.
+
+**Visual.** Five forge-blue dots above each pylon fill as stacks accumulate. Reads cleanly at a glance: "this pylon is 3/5 of the way to a mute." Existing 2.5s channel ring stays for manual-input feedback. No new sprite work — the standard Mana Drain projectile is the visual for siphon shots.
+
+**M2 "The Pass" pylon density** bumped from 1 → 3 pylons spanning the top / middle / bottom corridors of `serpentine`. Player can no longer maze in a single safe corner; every corridor stalls in pulses now. Story copy updated accordingly. Other pylon missions (M5, M6, M8) unchanged.
+
+**Arcane M3 + M4 bugfixes (bundled).** M3 *Ritual Circle* starting gold +75 (100 → 175) so the Coalition kit can field a Sniper + Frost before the wave-3 archmage. M4 *Spire Under Siege* boss-per-spawn floor capped at `min(numPaths, 4)`: the previous formula scaled bosses to match path count, which meant `base_arena`'s 32 entries turned wave-10's "1 boss" group into 32 simultaneous bosses. Cap only bites on `base_arena` (the only multi-entry map with >4 paths); all other maps unchanged.
+
+Files: `src/entities/SuppressionPylon.ts` (siphonStacks + addStacks/resetStacks), `src/systems/suppression/SuppressionManager.ts` (`SIPHON_STACK_THRESHOLD`, `applyStacks`, `getActivePylonsInRangeOf`, manual channel routed through stacks), `src/systems/suppression/SuppressionRender.ts` (5-dot indicator), `src/entities/Tower.ts` (pylonTarget projectile field, findPylonTarget, firePylon, onProjectileHitPylon), `src/data/TowerTypes.ts` (`siphons_pylons` trait on `arcane_drain`), `src/data/campaigns/mechanical.ts` (M2 pylon density), `src/data/campaigns/arcane.ts` (M3 goldStart), `src/systems/SpawnManager.ts` (boss cap). 6 new tests, 621 total.
+
 ## 2026-05-10
 
 ### Mechanical Campaign — Iron Cascade

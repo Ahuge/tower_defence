@@ -21,6 +21,7 @@
  */
 
 import { SuppressionPylon, type SuppressionPylonInit } from '../../entities/SuppressionPylon';
+import { gridX, gridY } from '../../config';
 
 /** Outcome of a `startChannelAt` call. Lets the caller render
  *  distinct feedback per failure mode without re-querying pylon
@@ -50,6 +51,10 @@ const DEFAULT_CHANNEL_MS = 15_000;
  *  to apply. Shorter than the mute itself so channeling feels worth
  *  the time investment. */
 const CHANNEL_DURATION_MS = 2_500;
+/** Siphon-drain stacks needed to mute a pylon. Mana Drain projectiles
+ *  apply 1 stack each; manual channel applies the full threshold at
+ *  completion (so manual click still = full mute, drains automate). */
+export const SIPHON_STACK_THRESHOLD = 5;
 
 export class SuppressionManager {
   readonly pylons: SuppressionPylon[];
@@ -95,6 +100,42 @@ export class SuppressionManager {
     return true;
   }
 
+  /** Apply `n` siphon-drain stacks to a pylon. When stacks reach
+   *  `SIPHON_STACK_THRESHOLD` the pylon mutes (default 15s) and stacks
+   *  reset. This is the unified entry-point for both Mana Drain
+   *  projectile hits (n=1) and manual channel completion
+   *  (n=THRESHOLD). Returns true if the call triggered a mute. */
+  applyStacks(pylon: SuppressionPylon, n: number, now: number): boolean {
+    if (!pylon) return false;
+    if (!pylon.isActive(now)) return false;
+    const reachedThreshold = pylon.addStacks(n, SIPHON_STACK_THRESHOLD);
+    if (reachedThreshold) {
+      pylon.mute(now, DEFAULT_CHANNEL_MS);
+      pylon.resetStacks();
+      pylon.channelStartedAt = null;
+      return true;
+    }
+    return false;
+  }
+
+  /** Lookup helper for Tower targeting — return all currently-active
+   *  (non-muted) pylons whose center cell is within `rangePx` pixel
+   *  distance of `(x, y)`. Used by Mana Drains (siphons_pylons trait)
+   *  to fall back to a pylon target when no creep is in range. */
+  getActivePylonsInRangeOf(x: number, y: number, rangePx: number, now: number): SuppressionPylon[] {
+    const result: SuppressionPylon[] = [];
+    const r2 = rangePx * rangePx;
+    for (const p of this.pylons) {
+      if (!p.isActive(now)) continue;
+      const px = gridX(p.col);
+      const py = gridY(p.row);
+      const dx = px - x;
+      const dy = py - y;
+      if (dx * dx + dy * dy <= r2) result.push(p);
+    }
+    return result;
+  }
+
   /** Try to start a channel on the pylon at the given cell. The
    *  return value disambiguates the failure modes so callers can
    *  surface different feedback ("already muted" vs "already
@@ -107,7 +148,7 @@ export class SuppressionManager {
     const pylon = this.pylons.find(p => p.col === col && p.row === row);
     if (!pylon) return 'no_pylon';
     if (pylon.channelStartedAt !== null && now - pylon.channelStartedAt >= CHANNEL_DURATION_MS) {
-      pylon.completeChannel(now, DEFAULT_CHANNEL_MS);
+      this.applyStacks(pylon, SIPHON_STACK_THRESHOLD, now);
       return 'already_muted';
     }
     if (!pylon.isActive(now)) return 'already_muted';
@@ -140,7 +181,10 @@ export class SuppressionManager {
     for (const pylon of this.pylons) {
       if (pylon.channelStartedAt === null) continue;
       if (now - pylon.channelStartedAt < CHANNEL_DURATION_MS) continue;
-      pylon.completeChannel(now, DEFAULT_CHANNEL_MS);
+      // Manual channel completes by applying the full stack threshold,
+      // which triggers the mute + stack reset through the unified
+      // applyStacks path.
+      this.applyStacks(pylon, SIPHON_STACK_THRESHOLD, now);
     }
   }
 

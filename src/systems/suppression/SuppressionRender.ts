@@ -11,7 +11,7 @@
 
 import * as Phaser from 'phaser';
 import { TILE_SIZE, gridX, gridY } from '../../config';
-import type { SuppressionManager } from './SuppressionManager';
+import { SIPHON_STACK_THRESHOLD, type SuppressionManager } from './SuppressionManager';
 import type { SuppressionPylon } from '../../entities/SuppressionPylon';
 import { SUPPRESSION_PYLON_TEXTURE } from '../sabotage/SabotageAssets';
 import type { Tower } from '../../entities/Tower';
@@ -23,6 +23,9 @@ const CHANNEL_START_FLASH  = 0xffeebb;
 const PULSE_PERIOD_MS      = 1000;  // 4 frames × 250ms = 1s breath cycle
 /** Duration of the "channel just started" flash in ms. */
 const CHANNEL_START_FLASH_MS = 220;
+/** Stack dot palette — forge-blue (matches Mana Drain projectile). */
+const STACK_DOT_FILLED = 0x44aaff;
+const STACK_DOT_EMPTY  = 0x223344;
 
 export class SuppressionRender {
   private gfx: Phaser.GameObjects.Graphics;
@@ -46,6 +49,7 @@ export class SuppressionRender {
     for (const pylon of mgr.pylons) {
       this.syncSprite(pylon, now, channelDuration);
       this.drawFieldAndChannel(pylon, now, channelDuration);
+      this.drawStackDots(pylon, now);
     }
     // Per-tower suppression indicator — violet dust above any tower
     // accumulating stress. Lets the player see "this tower is being
@@ -116,6 +120,29 @@ export class SuppressionRender {
         this.gfx.fillStyle(0xeebbff, alpha);
         this.gfx.fillRect(cx, cy - 2, 2, 2);
       }
+    }
+  }
+
+  /** Render `SIPHON_STACK_THRESHOLD` small dots above the pylon —
+   *  filled forge-blue for accumulated stacks, dim for empty. Reads
+   *  cleanly at a glance: "this pylon is 3/5 of the way to a mute."
+   *  Hidden while muted (no stacks during the mute window). */
+  private drawStackDots(p: SuppressionPylon, now: number): void {
+    if (!p.isActive(now) && p.siphonStacks === 0) return;
+    const stacks = p.siphonStacks;
+    const cx = gridX(p.col);
+    const cy = gridY(p.row) - TILE_SIZE * 0.7;
+    const dotR = 1.7;
+    const spacing = 5;
+    const totalW = (SIPHON_STACK_THRESHOLD - 1) * spacing;
+    const startX = cx - totalW / 2;
+    for (let i = 0; i < SIPHON_STACK_THRESHOLD; i++) {
+      const x = startX + i * spacing;
+      const filled = i < stacks;
+      const color = filled ? STACK_DOT_FILLED : STACK_DOT_EMPTY;
+      const alpha = filled ? 1 : 0.55;
+      this.gfx.fillStyle(color, alpha);
+      this.gfx.fillCircle(x, cy, dotR);
     }
   }
 
