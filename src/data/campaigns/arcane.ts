@@ -193,6 +193,10 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         mapId: 'arcane_pass',
         difficulty: 'normal',
         waveCount: 6,
+        // Bump starting gold so the player can afford a first Frost
+        // (35g) plus a Sniper (50g) on top of the usual opening Arrow
+        // + Cannon — Coalition kit is broad and tight at base 100g.
+        goldStart: 75,
         // M3 Coalition kit: Arrow + Cannon + Wall + Sniper + Frost
         // (Frost newly unlocked). No pre-placement — player must build
         // their own counter coverage now.
