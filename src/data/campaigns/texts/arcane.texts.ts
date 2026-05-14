@@ -16,9 +16,11 @@ export const ARCANE_TEXTS: CampaignTexts = {
   campaign: {
     name: 'Arcane Reckoning',
     intro:
-      "The Crystal Caverns spilled their wizards across our borders. Their towers glow at every horizon. " +
-      "Hold the line through ten engagements — repel the invasion at every approach to the capital. " +
-      "Arcane is already a faction you command; this campaign is a proving ground.",
+      "The Arcane Cabal emerged from the Crystal Caverns without warning. Their spell towers burn across the frontier, and every battle pushes them closer to the capital.\n" +
+        "\n" +
+        "The Coalition cannot match their magic directly. Instead, the Forge has begun tearing apart captured Arcane weapons and rebuilding them for our own armies.\n" +
+        "\n" +
+        "Hold the line through ten engagements. Survive long enough, and their magic will become ours.",
     outro:
       "Their archmages are spent, their meteors fall on rubble, and the caverns retreat behind their crystal walls. " +
       "You hold the field. Future campaigns will reshape your roster — start by picking the next faction tree branch.",
@@ -28,9 +30,11 @@ export const ARCANE_TEXTS: CampaignTexts = {
     first_sigil: {
       name: 'First Sigil',
       story:
-`Their scouts plant glyphs along the eastern path. Each glyph that finishes its sigil clears a ring of stone — your towers within reach go to dust. Stop the channel and the ring stays standing. Easy first one. There will be harder ones.
+`Cabal scouts are planting sigils along the eastern road. Once a sigil completes its channel, everything around it collapses, towers and stone alike.
 
-The Coalition Forge has left an Arcane Frost on the field — captured tech, beyond your craft to make more of yet. Build your maze around it; let no Sigil walk past without it speaking.`,
+Stop the channel before the rune completes.
+
+The Coalition Forge recovered a damaged Arcane Frost tower from an earlier skirmish. We cannot build more yet, but its slowing magic may be enough to stop the sigils before they trigger.`,
       objectives: {
         star2: 'Interrupt at least 1 Sigil',
         star3: 'No Sigil completed its channel',
@@ -41,9 +45,11 @@ The Coalition Forge has left an Arcane Frost on the field — captured tech, bey
     the_library: {
       name: 'The Library',
       story:
-`They've made the chapter library a forward camp. Their scribes channel from inside it — every uninterrupted passage strengthens the next wave's bones. The pattern compounds. Don't let them write more than they have to.
+`The Cabal seized the chapter library and turned it into a ritual post. Their scribes are recording battle chants between waves, strengthening every force that follows.
 
-Coalition reinforcements arrive — a Sniper to extend your reach, and two more Frosts taken at the outskirts. Position them at the serpent's bends; the scribes will not dance around your fire.`,
+The longer they write uninterrupted, the stronger the enemy becomes.
+
+Coalition reinforcements have arrived: a Sniper team for long-range pressure, and two additional Frost towers recovered near the outskirts. Maze around them carefully the scribes rely on distance to survive.`,
       objectives: {
         star2: 'Interrupt at least 3 Scribes',
         star3: 'No Scribe completed its channel',
@@ -54,9 +60,13 @@ Coalition reinforcements arrive — a Sniper to extend your reach, and two more 
     ritual_circle: {
       name: 'Ritual Circle',
       story:
-`Three archmages have set the standing stones glowing. They've come to channel openly. The Necromaster pulls dead things back across the threshold first — softer than what's behind him. Then Stormcaller, who chains lightning across our lines. Last comes Meteora, who calls fire down on stone — towers will not survive her cast.
+`Three archmages have begun an open ritual at the standing stones.
 
-We recovered Frost technology from a captured archmage's notebook. The Coalition Forge can replicate it now — the Frost is yours to deploy. Counter their casts or be erased.`,
+The Necromancer arrives first, raising fallen enemies back into the fight. Then comes the Stormcaller, chaining lightning across clustered defenses. Last comes the Starcaller, whose meteor strikes can destroy entire tower lines in seconds.
+
+The Forge finally cracked the Frost Spire schematics. For the first time, we can deploy Arcane towers ourselves.
+
+Interrupt their casting or lose the field.`,
       objectives: {
         star2: 'Interrupt at least 3 Archmage channels',
         star3: 'No Archmage completed any channel',
@@ -67,9 +77,13 @@ We recovered Frost technology from a captured archmage's notebook. The Coalition
     spire_siege: {
       name: 'Spire Under Siege',
       story:
-`Their wizards charted our high command. Meteors fall from every horizon — they have us encircled, and four columns advance on the spire at once. No flank to hold. Stop everything that gets close.
+`The Cabal found our command center.
 
-An old druid from the deep groves answered our call. She brought iron-thorn crowns — Briarroot — that snare casters mid-spell, the same as Frost. New tool, same purpose.`,
+Meteor fire rains from every direction while four assault columns close in at once. There is no safe flank anymore, only the walls you build.
+
+A druid from the deep groves has joined the defense. Her Briarroot snares can interrupt spellcasters mid-channel, much like the Frost Spires.
+
+Different weapon. Same purpose. Stop the casts before they land.`,
       objectives: {
         star2: 'Win without losing a life',
         star3: 'Win with 80% lives remaining',
@@ -80,9 +94,15 @@ An old druid from the deep groves answered our call. She brought iron-thorn crow
     crystal_warlords: {
       name: 'Crystal Warlords',
       story:
-`Five of their warlords broke from the main host. Each is a boss in their own right — heavy, slow, shielded. No regular waves, just this convoy. The intelligence is grim: the moment you land a blow on any of them, they will start to rage. You have about half a minute before the rage breaks. Kill them before then or eat the consequences — reinforcements, healing, hastes, swarms.
+`Five Cabal warlords have broken from the main invasion force.
 
-The Forge finished the Bolt prototype overnight. Coalition Arrows are recalled from every battery — every emplacement now wields Bolt instead. Same stance, sharper teeth.`,
+No lesser troops. No screening lines. Just the convoy.
+
+Intelligence warns that once wounded, each warlord enters a brief Arcane frenzy. If they survive long enough, they will trigger devastating reinforcements, healing surges, haste rituals, swarm calls, and worse.
+
+Bring them down quickly.
+
+Overnight, the Forge completed the Bolt platform prototype. Standard Arrow emplacements are being retired across the front in its favor.`,
       objectives: {
         star2: 'No Warlord rage went off',
         star3: 'Win without losing a life',
@@ -93,9 +113,13 @@ The Forge finished the Bolt prototype overnight. Coalition Arrows are recalled f
     forced_march: {
       name: 'Forced March',
       story:
-`Reinforcements are still days away. The Forge issued you a war-chest up front — empty it well, because the column will not stop and stragglers pay half what they used to. The next wave begins before the last is done. There is no breath between them.
+`Reinforcements are still days away.
 
-The cabal's Storm spell is reverse-engineered. The Cannons came home this morning; in their place, Storm drums hammer chained lightning across packed ranks.`,
+The Forge has emptied its reserves into your hands. Make sure you spend wisely. The enemy column will not slow, and stragglers yield only scraps of salvage.
+
+Waves now overlap. There will be no pause between assaults.
+
+The Cabal’s lightning rituals have finally been reverse-engineered. Cannon batteries are being replaced with Storm platforms capable of chaining Arcane strikes through dense formations.`,
       objectives: {
         star2: 'Finish in under 12 minutes',
         star3: 'Finish in under 9 minutes',
@@ -106,9 +130,15 @@ The cabal's Storm spell is reverse-engineered. The Cannons came home this mornin
     starved_winter: {
       name: 'Starved Winter',
       story:
-`Coffers are empty. Half the gold, six tower slots — make it work. The Arcane march does not stop because we ran out of coin. Pick your six and pick well.
+`Winter came early. The treasury did not survive it.
 
-The Snipers came down off the walls last week. The Forge replaced them with arcane Focus crystals — long range, single-target, prone to the strongest creep on the field.`,
+Supplies are rationed. Tower capacity is limited. Every placement must count.
+
+The Cabal advance anyway.
+
+Sniper detachments have been withdrawn from the walls and replaced with Arcane Focus crystals — long-range towers that lock onto the strongest enemy in sight.
+
+Six towers. Half the gold. Hold anyway.`,
       objectives: {
         star2: 'Win using only 5 towers',
         star3: 'Win without losing a life',
@@ -119,9 +149,15 @@ The Snipers came down off the walls last week. The Forge replaced them with arca
     breach_relay: {
       name: 'Breach the Relay',
       story:
-`The cabal hoards the meteor schematics behind their lattice. We need that archive — a tower we can't yet build, an answer to the spells they've been throwing at us. Push twelve raiders through and the archive is ours.
+`Deep behind the front line lies the Cabal relay lattice, the network coordinating their meteor strikes across the war.
 
-Their archmage is on the line in person, building and re-building the maze as our column comes through. She mazes, she upgrades, she calls in Frost and Mana Drain as needed. Don't expect the same fight twice.`,
+Inside is the archive we need: the schematics for their meteor towers.
+
+Push twelve raiders through the defenses and the archive is ours.
+
+Their presiding archmage commands the battlefield directly, rebuilding defenses as fast as we break them. Expect shifting mazes, emergency Frost deployments, and Mana Drain traps throughout the assault.
+
+This battle will not stay predictable for long.`,
       objectives: {
         star2: 'Break through in 6 waves or fewer',
         star3: 'Break through in 4 waves or fewer',
@@ -132,9 +168,17 @@ Their archmage is on the line in person, building and re-building the maze as ou
     allied_circle: {
       name: 'Allied Circle',
       story:
-`A neighbouring hold sent reinforcements but they're green — you train them in the field. Two fronts, two defenders. Cover for each other.
+`A neighboring hold has finally sent reinforcements, but their defenders are inexperienced.
 
-Briarroot served well, but the druid says the brambles fade in the cabal's anti-magic fields. The Forge has refined her work into Mana Drain — same interrupt, more punch, drains shields off the heaviest. And from the captured archmage's library, Meteor. The drum platforms are ready. Save the cooldown for what matters.`,
+Two fronts must hold together. Support each other or both lines collapse.
+
+The druids warn that Briarroot snares weaken inside heavy anti-magic fields. In response, the Forge refined the design into Mana Drain, a stronger interrupt capable of stripping Arcane shielding from elite targets.
+
+And from the captured relay archive, our greatest prize yet:
+
+Meteor platforms are now operational.
+
+Save their charge for the moments that matter.`,
       objectives: {
         star2: 'Win losing 5 or fewer shared lives',
         star3: 'Win without losing a single shared life',
@@ -145,9 +189,21 @@ Briarroot served well, but the druid says the brambles fade in the cabal's anti-
     reckoning: {
       name: 'The Reckoning',
       story:
-`The cabal's lattice ringed around their spire — every Arcane tower the Forge ever feared, stacked between us and the throne. The Archmage Throne anchors the back: she's the one we have to break. We don't have the towers to siege a fortress this big.
+`The Cabal’s final fortress surrounds the crystal spire at the heart of their lattice.
 
-What we have is the Forge's last gift: TWO summoning circles. Pour Mana Drains around them and the circles charge — at full charge they call the Forge mage herself, the only one of us who ever beat an archmage in a duel. Hold the line while the circles charge. Then she walks west and breaks every tower in her path. Don't let her die in vain.`,
+Every Arcane weapon we once feared stands between us and the ruling Archmage.
+
+We cannot break a fortress like this through siege alone.
+
+So the Forge prepared one final gamble.
+
+Two summoning circles have been deployed at the front. Feed them with Mana Drain energy and they will call forth Forgemaster Serelyn, the only Coalition mage ever to defeat an archmage in single combat.
+
+Once summoned, she will carve a path straight through the fortress defenses.
+
+Hold the line until the ritual completes.
+
+Then make sure her sacrifice means something.`,
       objectives: {
         star2: 'Win in under 25 minutes',
         star3: 'Win without losing the hero (zero deaths)',
