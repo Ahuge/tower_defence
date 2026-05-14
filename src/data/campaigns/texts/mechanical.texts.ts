@@ -30,6 +30,8 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
         "\n" +
         "Master Vael, the codex is in your keeping.\n" +
         "\n" +
+        "One of Voss's own engineers fled the foundries with warnings of what he is building and how little time remains to stop it.\n" +
+        "\n" +
         "Hold the frontier while you can. When you cannot, flee east with what remains and find a way to silence the foundries before they erase the old world entirely.",
     outro:
     "The throne shield held until the last generator failed.\n" +
@@ -66,13 +68,13 @@ It will have to be enough tonight.`,
     the_pass: {
       name: 'The Pass',
       story:
-`Refugees from the Arcane Order are fleeing through the canyon, three abbots, a dozen apprentices, and whatever relics they could carry before the libraries burned.
+`Voss's advance column reached the canyon roads ahead of schedule.
 
-Voss's column marches the road behind them.
+Three Suppression Pylons now line the pass. Every pulse disrupts nearby Arcane channels, stalling towers and weakening defensive casts across the corridor.
 
-Three Suppression Pylons now line the canyon walls. Their pulses disrupt Arcane channels and stall nearby towers whenever they activate.
+The Engineer believes the pylons can be temporarily disabled between pulses.
 
-Disable them when you can.
+Do it when you can.
 
 Hold the pass either way.`,
       objectives: {
@@ -85,13 +87,15 @@ Hold the pass either way.`,
     the_cipher: {
       name: 'The Cipher',
       story:
-`Voss's raiders struck the Briarroot archives before the fires spread.
+`Voss's raiders struck one of the Arcane Order's hidden libraries before the fires spread.
 
 The surviving tomes now travel east inside an armored convoy bound for the foundries. Once they arrive, every spell within them becomes fuel for industrial study.
 
+The Engineer warned us this would happen. Voss does not burn knowledge he can weaponize.
+
 We intercept the convoy tonight.
 
-Anything that reaches the foundries is knowledge we may never reclaim.`,
+Anything that reaches the foundries strengthens the machines hunting us.`,
       objectives: {
         star2: 'Win without buying any sends',
         star3: 'Win with 80% lives remaining',
@@ -125,7 +129,9 @@ Hold every front long enough for the apprentices to escape with what they can ca
 
 Each one is a fortress of iron and artillery moving on rails.
 
-Two Suppression Pylons dominate the open ground ahead. Their pulses stall our towers between firing cycles. Burst the walkers down during the gaps or be overrun.`,
+The Engineer helped design their outer plating before she abandoned the foundries. She says the armor vents briefly whenever the Suppression Pylons cycle.
+
+Two pylons dominate the open ground ahead. Burst the walkers down during the gaps or be overrun.`,
       objectives: {
         star2: 'Win without losing a life',
         star3: 'Finish in under 7 minutes',
@@ -142,9 +148,9 @@ If we strike now, the next war column dies before it ever leaves the assembly fl
 
 Three Suppression Pylons guard the approach lines. Every pulse delays our advance and bleeds precious time from the assault.
 
-Speed is the strategy.
+The Engineer mapped the rail schedules before she fled the foundries. Her timings give us one chance to hit the yard before the line activates.
 
-Either disable the pylons on the move, or accept the clock turning against you.`,
+Speed is the strategy.`,
       objectives: {
         star2: 'Finish in under 12 minutes',
         star3: 'Finish in under 9 minutes',
@@ -176,7 +182,7 @@ Hold with less than we were built for.`,
 
 We do not have the artillery to break it from range.
 
-What we have are Coalition raiders and exactly one breach route through the guns.
+What we have are Coalition raiders and the Engineer's stolen schematics showing exactly one route through the guns.
 
 Get enough raiders inside the complex and the assembly line stops.`,
       objectives: {
@@ -191,13 +197,13 @@ Get enough raiders inside the complex and the assembly line stops.`,
       story:
 `Voss's ace pilot finally stepped out from behind his war machine.
 
-We sent the Engineer to meet him.
+The Engineer asked for this fight herself.
 
-If anyone alive understands how to break a walker in single combat, it is her.
+She helped build the early walker frames before she deserted the foundries, and if anyone alive understands how to break one in single combat, it is her.
 
-Win here and we learn how Voss's command chain survives the battlefield.
+Win here and we learn how Voss's command structure survives the battlefield.
 
-Lose, and the Architect learns we were never a real threat.`,
+Lose, and the Architect learns his machines still own us.`,
       objectives: {
         star2: 'Hero never falls below 50% HP',
         star3: 'Clear all 5 waves in under 6 minutes',
