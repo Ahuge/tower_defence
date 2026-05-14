@@ -18,12 +18,21 @@ export const ARCANE_TEXTS: CampaignTexts = {
     intro:
       "The Arcane Cabal emerged from the Crystal Caverns without warning. Their spell towers burn across the frontier, and every battle pushes them closer to the capital.\n" +
         "\n" +
-        "The Coalition cannot match their magic directly. Instead, the Forge has begun tearing apart captured Arcane weapons and rebuilding them for our own armies.\n" +
+        "The Coalition cannot match their magic directly. Instead, the Forge has begun tearing apart captured Arcane weapons and rebuilding them for our own armies. The Forgemaster believes every spell they cast can be turned against them.\n" +
         "\n" +
         "Hold the line through ten engagements. Survive long enough, and their magic will become ours.",
     outro:
-      "Their archmages are spent, their meteors fall on rubble, and the caverns retreat behind their crystal walls. " +
-      "You hold the field. Future campaigns will reshape your roster — start by picking the next faction tree branch.",
+    "The Cabal retreats behind the crystal walls of the caverns. Their relay lattice is shattered, their archmages scattered, their meteor fire silenced.\n" +
+        "\n" +
+        "But the Coalition that survived this war is not the one that entered it.\n" +
+        "\n" +
+        "Forge towers now stand where steel once held the line. Arcane crystals burn beside Coalition banners. The weapons we feared became the weapons that carried us through the siege.\n" +
+        "\n" +
+        "The Forgemaster calls it adaptation.\n" +
+        "\n" +
+        "Others call it the beginning of something else.\n" +
+        "\n" +
+        "The frontier holds for now.",
   },
   missions: {
     // ─── M1 — First Sigil (interrupt tutorial) ────────────────────
@@ -64,7 +73,7 @@ Coalition reinforcements have arrived: a Sniper team for long-range pressure, an
 
 The Necromancer arrives first, raising fallen enemies back into the fight. Then comes the Stormcaller, chaining lightning across clustered defenses. Last comes the Starcaller, whose meteor strikes can destroy entire tower lines in seconds.
 
-The Forge finally cracked the Frost Spire schematics. For the first time, we can deploy Arcane towers ourselves.
+The Forgemaster finally cracked the Frost Spire schematics. For the first time, we can deploy Arcane towers ourselves.
 
 Interrupt their casting or lose the field.`,
       objectives: {
@@ -79,9 +88,11 @@ Interrupt their casting or lose the field.`,
       story:
 `The Cabal found our command center.
 
-Meteor fire rains from every direction while four assault columns close in at once. There is no safe flank anymore, only the walls you build.
+Meteor fire rains from every direction while four assault columns close in at once. Their relay lattice now stretches across the entire frontier. Every surviving spire feeds targeting data into the next strike.
 
-A druid from the deep groves has joined the defense. Her Briarroot snares can interrupt spellcasters mid-channel, much like the Frost Spires.
+There is no safe flank anymore. Only the walls you build.
+
+The Forge deployed a new anti-caster weapon overnight: Runebreaker restraints. Buried launchers fire hooked arcane chains that bind spellcasters mid-channel, interrupting their rituals before completion.
 
 Different weapon. Same purpose. Stop the casts before they land.`,
       objectives: {
@@ -102,7 +113,7 @@ Intelligence warns that once wounded, each warlord enters a brief Arcane frenzy.
 
 Bring them down quickly.
 
-Overnight, the Forge completed the Bolt platform prototype. Standard Arrow emplacements are being retired across the front in its favor.`,
+Overnight, the Forge completed the Bolt platform prototype. Standard Arrow emplacements are being retired across the front in its favor. Coalition steel is disappearing from the battlefield one tower at a time.`,
       objectives: {
         star2: 'No Warlord rage went off',
         star3: 'Win without losing a life',
@@ -119,7 +130,7 @@ The Forge has emptied its reserves into your hands. Make sure you spend wisely. 
 
 Waves now overlap. There will be no pause between assaults.
 
-The Cabal’s lightning rituals have finally been reverse-engineered. Cannon batteries are being replaced with Storm platforms capable of chaining Arcane strikes through dense formations.`,
+The Cabal's lightning rituals have finally been reverse-engineered. By order of the Forgemaster, Cannon batteries are being dismantled and replaced with Storm platforms capable of chaining Arcane strikes through dense formations.`,
       objectives: {
         star2: 'Finish in under 12 minutes',
         star3: 'Finish in under 9 minutes',
@@ -138,7 +149,9 @@ The Cabal advance anyway.
 
 Sniper detachments have been withdrawn from the walls and replaced with Arcane Focus crystals — long-range towers that lock onto the strongest enemy in sight.
 
-Six towers. Half the gold. Hold anyway.`,
+Six towers. Half the gold. Hold anyway.
+
+Some veterans no longer call this a Coalition army. The Forge no longer argues with them.`,
       objectives: {
         star2: 'Win using only 5 towers',
         star3: 'Win without losing a life',
@@ -157,6 +170,8 @@ Push twelve raiders through the defenses and the archive is ours.
 
 Their presiding archmage commands the battlefield directly, rebuilding defenses as fast as we break them. Expect shifting mazes, emergency Frost deployments, and Mana Drain traps throughout the assault.
 
+The Forgemaster believes that if we seize the archive, the Cabal will lose their final advantage.
+
 This battle will not stay predictable for long.`,
       objectives: {
         star2: 'Break through in 6 waves or fewer',
@@ -172,7 +187,7 @@ This battle will not stay predictable for long.`,
 
 Two fronts must hold together. Support each other or both lines collapse.
 
-The druids warn that Briarroot snares weaken inside heavy anti-magic fields. In response, the Forge refined the design into Mana Drain, a stronger interrupt capable of stripping Arcane shielding from elite targets.
+Runebreaker restraints performed well across the frontier, but the Cabal adapted quickly. In response, the Forge refined the design into Mana Drain, a stronger interrupt capable of stripping Arcane shielding from elite targets.
 
 And from the captured relay archive, our greatest prize yet:
 
@@ -189,7 +204,7 @@ Save their charge for the moments that matter.`,
     reckoning: {
       name: 'The Reckoning',
       story:
-`The Cabal’s final fortress surrounds the crystal spire at the heart of their lattice.
+`The Cabal's final fortress surrounds the crystal spire at the heart of their lattice.
 
 Every Arcane weapon we once feared stands between us and the ruling Archmage.
 
@@ -199,11 +214,9 @@ So the Forge prepared one final gamble.
 
 Two summoning circles have been deployed at the front. Feed them with Mana Drain energy and they will call forth Forgemaster Serelyn, the only Coalition mage ever to defeat an archmage in single combat.
 
-Once summoned, she will carve a path straight through the fortress defenses.
-
 Hold the line until the ritual completes.
 
-Then make sure her sacrifice means something.`,
+Then let her finish what the Coalition started.`,
       objectives: {
         star2: 'Win in under 25 minutes',
         star3: 'Win without losing the hero (zero deaths)',
