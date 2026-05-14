@@ -19,17 +19,15 @@
  */
 
 import type { CampaignDef } from './CampaignDef';
+import { ARCANE_TEXTS } from './texts/arcane.texts';
+
+const T = ARCANE_TEXTS;
 
 export const ARCANE_CAMPAIGN: CampaignDef = {
   factionId: 'arcane',
-  name: 'Arcane Reckoning',
-  intro:
-    "The Crystal Caverns spilled their wizards across our borders. Their towers glow at every horizon. " +
-    "Hold the line through ten engagements — repel the invasion at every approach to the capital. " +
-    "Arcane is already a faction you command; this campaign is a proving ground.",
-  outro:
-    "Their archmages are spent, their meteors fall on rubble, and the caverns retreat behind their crystal walls. " +
-    "You hold the field. Future campaigns will reshape your roster — start by picking the next faction tree branch.",
+  name: T.campaign.name,
+  intro: T.campaign.intro,
+  outro: T.campaign.outro,
   // Render every mission's map in the arcane-crystal tileset for
   // visual cohesion. Most missions reuse non-arcane maps (serpentine /
   // crossroads / islands / etc.) for their geometry; this override
@@ -43,13 +41,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'first_sigil',
       idx: 0,
-      name: 'First Sigil',
-      story:
-        "Their scouts plant glyphs along the eastern path. Each glyph that finishes its sigil clears a ring of stone — " +
-        "your towers within reach go to dust. Stop the channel and the ring stays standing. Easy first one. " +
-        "There will be harder ones.\n\n" +
-        "The Coalition Forge has left an Arcane Frost on the field — captured tech, beyond your craft to make more of yet. " +
-        "Build your maze around it; let no Sigil walk past without it speaking.",
+      name: T.missions.first_sigil.name,
+      story: T.missions.first_sigil.story,
       archetype: 'interrupt',
       overrides: {
         // Coalition default kit per locked design (notes/campaign-game-modes/07).
@@ -92,8 +85,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         ],
       },
       objectives: {
-        star2: { label: 'Interrupt at least 1 Sigil', predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 1 },
-        star3: { label: 'No Sigil completed its channel', predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0 },
+        star2: { label: T.missions.first_sigil.objectives.star2, predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 1 },
+        star3: { label: T.missions.first_sigil.objectives.star3, predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0 },
       },
     },
 
@@ -103,12 +96,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'the_library',
       idx: 1,
-      name: 'The Library',
-      story:
-        "They've made the chapter library a forward camp. Their scribes channel from inside it — every uninterrupted " +
-        "passage strengthens the next wave's bones. The pattern compounds. Don't let them write more than they have to.\n\n" +
-        "Coalition reinforcements arrive — a Sniper to extend your reach, and two more Frosts taken at the outskirts. " +
-        "Position them at the serpent's bends; the scribes will not dance around your fire.",
+      name: T.missions.the_library.name,
+      story: T.missions.the_library.story,
       archetype: 'interrupt',
       overrides: {
         // Coalition kit + Sniper unlock per progression.
@@ -162,8 +151,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         ],
       },
       objectives: {
-        star2: { label: 'Interrupt at least 3 Scribes', predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 3 },
-        star3: { label: 'No Scribe completed its channel', predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0 },
+        star2: { label: T.missions.the_library.objectives.star2, predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 3 },
+        star3: { label: T.missions.the_library.objectives.star3, predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0 },
       },
     },
 
@@ -174,13 +163,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'ritual_circle',
       idx: 2,
-      name: 'Ritual Circle',
-      story:
-        "Three archmages have set the standing stones glowing. They've come to channel openly. The Necromaster pulls " +
-        "dead things back across the threshold first — softer than what's behind him. Then Stormcaller, who chains " +
-        "lightning across our lines. Last comes Meteora, who calls fire down on stone — towers will not survive her cast.\n\n" +
-        "We recovered Frost technology from a captured archmage's notebook. The Coalition Forge can replicate it now — " +
-        "the Frost is yours to deploy. Counter their casts or be erased.",
+      name: T.missions.ritual_circle.name,
+      story: T.missions.ritual_circle.story,
       archetype: 'interrupt',
       overrides: {
         // Coalition kit + Frost unlock — first mission Frost is
@@ -257,12 +241,12 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // in finale = 12 cast attempts. 3 interrupts is the "you
         // engaged with the mechanic" bar.
         star2: {
-          label: 'Interrupt at least 3 Archmage channels',
+          label: T.missions.ritual_circle.objectives.star2,
           predicate: r => r.won && ((r.custom.channelsInterrupted as number) ?? 0) >= 3,
         },
         // Star 3: zero cast completions. The flawless run.
         star3: {
-          label: 'No Archmage completed any channel',
+          label: T.missions.ritual_circle.objectives.star3,
           predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0,
         },
       },
@@ -272,12 +256,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'spire_siege',
       idx: 3,
-      name: 'Spire Under Siege',
-      story:
-        "Their wizards charted our high command. Meteors fall from every horizon — they have us encircled, " +
-        "and four columns advance on the spire at once. No flank to hold. Stop everything that gets close.\n\n" +
-        "An old druid from the deep groves answered our call. She brought iron-thorn crowns — Briarroot — that " +
-        "snare casters mid-spell, the same as Frost. New tool, same purpose.",
+      name: T.missions.spire_siege.name,
+      story: T.missions.spire_siege.story,
       archetype: 'base_defense',
       overrides: {
         faction: 'coalition',
@@ -290,8 +270,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         },
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Win with 80% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
+        star2: { label: T.missions.spire_siege.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.spire_siege.objectives.star3, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
       },
     },
 
@@ -304,14 +284,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'crystal_warlords',
       idx: 4,
-      name: 'Crystal Warlords',
-      story:
-        "Five of their warlords broke from the main host. Each is a boss in their own right — heavy, slow, " +
-        "shielded. No regular waves, just this convoy. The intelligence is grim: the moment you land a blow on " +
-        "any of them, they will start to rage. You have about half a minute before the rage breaks. Kill them " +
-        "before then or eat the consequences — reinforcements, healing, hastes, swarms.\n\n" +
-        "The Forge finished the Bolt prototype overnight. Coalition Arrows are recalled from every battery — " +
-        "every emplacement now wields Bolt instead. Same stance, sharper teeth.",
+      name: T.missions.crystal_warlords.name,
+      story: T.missions.crystal_warlords.story,
       archetype: 'boss_rush',
       overrides: {
         faction: 'coalition',
@@ -352,10 +326,10 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // ChannelSystem's stats counts completed channels including
         // warlord rages; if any rage completed, this fails.
         star2: {
-          label: 'No Warlord rage went off',
+          label: T.missions.crystal_warlords.objectives.star2,
           predicate: r => r.won && ((r.custom.channelsCompleted as number) ?? 0) === 0,
         },
-        star3: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.crystal_warlords.objectives.star3, predicate: r => r.livesRemaining === r.livesStart },
       },
     },
 
@@ -368,13 +342,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'forced_march',
       idx: 5,
-      name: 'Forced March',
-      story:
-        "Reinforcements are still days away. The Forge issued you a war-chest up front — empty it well, because " +
-        "the column will not stop and stragglers pay half what they used to. The next wave begins before the last " +
-        "is done. There is no breath between them.\n\n" +
-        "The cabal's Storm spell is reverse-engineered. The Cannons came home this morning; in their place, Storm " +
-        "drums hammer chained lightning across packed ranks.",
+      name: T.missions.forced_march.name,
+      story: T.missions.forced_march.story,
       archetype: 'speedrun',
       overrides: {
         faction: 'coalition',
@@ -437,8 +406,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         })(),
       },
       objectives: {
-        star2: { label: 'Finish in under 12 minutes', predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
-        star3: { label: 'Finish in under 9 minutes', predicate: r => r.won && r.durationMs < 9 * 60 * 1000 },
+        star2: { label: T.missions.forced_march.objectives.star2, predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
+        star3: { label: T.missions.forced_march.objectives.star3, predicate: r => r.won && r.durationMs < 9 * 60 * 1000 },
       },
     },
 
@@ -446,12 +415,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'starved_winter',
       idx: 6,
-      name: 'Starved Winter',
-      story:
-        "Coffers are empty. Half the gold, six tower slots — make it work. The Arcane march does not stop because " +
-        "we ran out of coin. Pick your six and pick well.\n\n" +
-        "The Snipers came down off the walls last week. The Forge replaced them with arcane Focus crystals — long " +
-        "range, single-target, prone to the strongest creep on the field.",
+      name: T.missions.starved_winter.name,
+      story: T.missions.starved_winter.story,
       archetype: 'frugal',
       overrides: {
         faction: 'coalition',
@@ -464,8 +429,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         },
       },
       objectives: {
-        star2: { label: 'Win using only 5 towers', predicate: r => r.won && r.towerCount <= 5 },
-        star3: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
+        star2: { label: T.missions.starved_winter.objectives.star2, predicate: r => r.won && r.towerCount <= 5 },
+        star3: { label: T.missions.starved_winter.objectives.star3, predicate: r => r.livesRemaining === r.livesStart },
       },
     },
 
@@ -473,12 +438,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'breach_relay',
       idx: 7,
-      name: 'Breach the Relay',
-      story:
-        "The cabal hoards the meteor schematics behind their lattice. We need that archive — a tower we can't yet " +
-        "build, an answer to the spells they've been throwing at us. Push twelve raiders through and the archive is ours.\n\n" +
-        "Their archmage is on the line in person, building and re-building the maze as our column comes through. " +
-        "She mazes, she upgrades, she calls in Frost and Mana Drain as needed. Don't expect the same fight twice.",
+      name: T.missions.breach_relay.name,
+      story: T.missions.breach_relay.story,
       archetype: 'attacker',
       overrides: {
         faction: 'coalition',
@@ -538,11 +499,11 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // instant-wins so total-leak objectives can't go higher than
         // it. Reward composing efficiency: fewer waves = more stars.
         star2: {
-          label: 'Break through in 6 waves or fewer',
+          label: T.missions.breach_relay.objectives.star2,
           predicate: r => r.won && r.wave <= 6,
         },
         star3: {
-          label: 'Break through in 4 waves or fewer',
+          label: T.missions.breach_relay.objectives.star3,
           predicate: r => r.won && r.wave <= 4,
         },
       },
@@ -552,14 +513,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'allied_circle',
       idx: 8,
-      name: 'Allied Circle',
-      story:
-        "A neighbouring hold sent reinforcements but they're green — you train them in the field. " +
-        "Two fronts, two defenders. Cover for each other.\n\n" +
-        "Briarroot served well, but the druid says the brambles fade in the cabal's anti-magic fields. The Forge " +
-        "has refined her work into Mana Drain — same interrupt, more punch, drains shields off the heaviest. " +
-        "And from the captured archmage's library, Meteor. The drum platforms are ready. Save the cooldown for " +
-        "what matters.",
+      name: T.missions.allied_circle.name,
+      story: T.missions.allied_circle.story,
       archetype: 'coop_with_bot',
       overrides: {
         faction: 'coalition',
@@ -582,11 +537,11 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         // Shared-lives co-op: track team lives lost rather than ally-
         // specific (which the engine doesn't separate in shared mode).
         star2: {
-          label: 'Win losing 5 or fewer shared lives',
+          label: T.missions.allied_circle.objectives.star2,
           predicate: r => r.won && (r.livesStart - r.livesRemaining) <= 5,
         },
         star3: {
-          label: 'Win without losing a single shared life',
+          label: T.missions.allied_circle.objectives.star3,
           predicate: r => r.won && r.livesRemaining === r.livesStart,
         },
       },
@@ -596,15 +551,8 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
     {
       id: 'reckoning',
       idx: 9,
-      name: 'The Reckoning',
-      story:
-        "The cabal's lattice ringed around their spire — every Arcane tower the Forge ever feared, " +
-        "stacked between us and the throne. The Archmage Throne anchors the back: she's the one we have " +
-        "to break. We don't have the towers to siege a fortress this big.\n\n" +
-        "What we have is the Forge's last gift: TWO summoning circles. Pour Mana Drains around them and " +
-        "the circles charge — at full charge they call the Forge mage herself, the only one of us who " +
-        "ever beat an archmage in a duel. Hold the line while the circles charge. Then she walks west " +
-        "and breaks every tower in her path. Don't let her die in vain.",
+      name: T.missions.reckoning.name,
+      story: T.missions.reckoning.story,
       archetype: 'final_arcane',
       overrides: {
         faction: 'coalition',
@@ -636,11 +584,11 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
       },
       objectives: {
         star2: {
-          label: 'Win in under 25 minutes',
+          label: T.missions.reckoning.objectives.star2,
           predicate: r => r.won && r.durationMs < 25 * 60 * 1000,
         },
         star3: {
-          label: 'Win without losing the hero (zero deaths)',
+          label: T.missions.reckoning.objectives.star3,
           predicate: r => r.won && (r.custom.heroDeaths ?? 99) === 0,
         },
       },

@@ -23,22 +23,17 @@
  */
 
 import type { CampaignDef } from './CampaignDef';
+import { MECHANICAL_TEXTS } from './texts/mechanical.texts';
+
+const T = MECHANICAL_TEXTS;
 
 export const MECHANICAL_CAMPAIGN: CampaignDef = {
   factionId: 'mechanical',
-  name: 'Iron Cascade',
+  name: T.campaign.name,
   defaultMapThemeOverride: 'factory',
   defaultPlayerFaction: 'arcane',
-  intro:
-    "Lord-Architect Voss has outlawed magic. His foundries woke a year ago; his criers now ride " +
-    "the eastern roads warning that any spire-keep flying our colours will be put to the torch. " +
-    "Master Vael, the codex is in your keeping. Hold while you can. When you cannot, run east " +
-    "with what remains, and find the way to silence him.",
-  outro:
-    "The throne shield held until the last generator went down. Voss died beneath his own roof, " +
-    "and the foundries answered to no one for the first time in a generation. The codex is whole. " +
-    "Your apprentices have already hung sigils in the rafters above the assembly floor — the iron " +
-    "burns differently now. New spires will rise.",
+  intro: T.campaign.intro,
+  outro: T.campaign.outro,
   missions: [
     // ─── Act I — Defend ───────────────────────────────────────
 
@@ -46,11 +41,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'perimeter_breach',
       idx: 0,
-      name: 'Listening Post',
-      story:
-        "Voss's scouts on the eastern road, light and quick — the welcome mat for the column behind. " +
-        "We hold the listening post until Yuna's rider clears the pass with the warning. Bolt, frost, " +
-        "and a stormcaller — your basic kit. Make every sigil count.",
+      name: T.missions.perimeter_breach.name,
+      story: T.missions.perimeter_breach.story,
       archetype: 'restriction',
       overrides: {
         mapId: 'plains',
@@ -61,8 +53,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         },
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Win with under 8 towers placed', predicate: r => r.towerCount <= 8 },
+        star2: { label: T.missions.perimeter_breach.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.perimeter_breach.objectives.star3, predicate: r => r.towerCount <= 8 },
       },
     },
 
@@ -70,12 +62,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'the_pass',
       idx: 1,
-      name: 'The Pass',
-      story:
-        "Refugees from Briarroot are coming through the canyon — three abbots, a dozen apprentices, " +
-        "the salvaged glassware. Voss's column is on the road behind them. He has seeded three of his " +
-        "anti-arcane pylons across the canyon — every corridor stalls in pulses. Channel them when you " +
-        "can; hold the line either way.",
+      name: T.missions.the_pass.name,
+      story: T.missions.the_pass.story,
       archetype: 'standard',
       overrides: {
         mapId: 'serpentine',
@@ -92,8 +80,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         ],
       },
       objectives: {
-        star2: { label: 'Win with 70% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.7) },
-        star3: { label: 'Finish in under 9 minutes', predicate: r => r.durationMs < 9 * 60 * 1000 },
+        star2: { label: T.missions.the_pass.objectives.star2, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.7) },
+        star3: { label: T.missions.the_pass.objectives.star3, predicate: r => r.durationMs < 9 * 60 * 1000 },
       },
     },
 
@@ -101,11 +89,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'the_cipher',
       idx: 2,
-      name: 'The Cipher',
-      story:
-        "Voss's couriers raided the Briarroot library before they burned it. The tomes are in a " +
-        "guarded vault now, and tonight a convoy moves them east — out of the order's reach forever. " +
-        "Stop the convoy. Whatever leaves with them, we lose to industrial study and never see again.",
+      name: T.missions.the_cipher.name,
+      story: T.missions.the_cipher.story,
       archetype: 'heist',
       overrides: {
         mapId: 'heist_vault',
@@ -114,10 +99,10 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
       objectives: {
         star2: {
-          label: 'Win without buying any sends',
+          label: T.missions.the_cipher.objectives.star2,
           predicate: r => r.won && (r.custom.sendsBought as number ?? 0) === 0,
         },
-        star3: { label: 'Win with 80% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
+        star3: { label: T.missions.the_cipher.objectives.star3, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
       },
     },
 
@@ -127,11 +112,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'spire_falls',
       idx: 3,
-      name: 'Spire Falls',
-      story:
-        "Voss has the spire surrounded. Walkers from every approach, no resupply, the codex in the " +
-        "vault below. Hold every direction long enough for the apprentices to flee with what they can " +
-        "carry. We do not win here — we last. When the gates break, you run east with the codex.",
+      name: T.missions.spire_falls.name,
+      story: T.missions.spire_falls.story,
       archetype: 'base_defense',
       overrides: {
         mapId: 'base_arena',
@@ -139,8 +121,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         waveCount: 15,
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Win with 80% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
+        star2: { label: T.missions.spire_falls.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.spire_falls.objectives.star3, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
       },
     },
 
@@ -148,11 +130,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'iron_convoy',
       idx: 4,
-      name: 'Iron Convoy',
-      story:
-        "Five of Voss's flagship walkers broke from the column to pursue you east. Each one is a " +
-        "fortress on tracks. Two of his pylons sit on the open ground — burst the walkers down between " +
-        "stalls, or the road eats us.",
+      name: T.missions.iron_convoy.name,
+      story: T.missions.iron_convoy.story,
       archetype: 'boss_rush',
       overrides: {
         mapId: 'crossroads',
@@ -164,8 +143,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         ],
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Finish in under 7 minutes', predicate: r => r.won && r.durationMs < 7 * 60 * 1000 },
+        star2: { label: T.missions.iron_convoy.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.iron_convoy.objectives.star3, predicate: r => r.won && r.durationMs < 7 * 60 * 1000 },
       },
     },
 
@@ -173,11 +152,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'first_light',
       idx: 5,
-      name: 'First Light',
-      story:
-        "Eighteen hours before Voss's rail yard finishes its mobilisation. Hit it now and his next " +
-        "column dies on the assembly floor. Three of his pylons line the approach. Speed is the " +
-        "instruction; pylons interrupt the speed; channel them in stride or accept the timer slipping.",
+      name: T.missions.first_light.name,
+      story: T.missions.first_light.story,
       archetype: 'speedrun',
       overrides: {
         mapId: 'fortress',
@@ -190,8 +166,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         ],
       },
       objectives: {
-        star2: { label: 'Finish in under 12 minutes', predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
-        star3: { label: 'Finish in under 9 minutes', predicate: r => r.won && r.durationMs < 9 * 60 * 1000 },
+        star2: { label: T.missions.first_light.objectives.star2, predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
+        star3: { label: T.missions.first_light.objectives.star3, predicate: r => r.won && r.durationMs < 9 * 60 * 1000 },
       },
     },
 
@@ -199,11 +175,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'rationed_mana',
       idx: 6,
-      name: 'Rationed Mana',
-      story:
-        "The spire's reserves were lost in the basement vault when Voss took the keep. Half the gold, " +
-        "six emplacements, a great deal of pride. Make every sigil earn its place in a kit that does " +
-        "not exist anymore.",
+      name: T.missions.rationed_mana.name,
+      story: T.missions.rationed_mana.story,
       archetype: 'frugal',
       overrides: {
         mapId: 'islands',
@@ -211,8 +184,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         waveCount: 15,
       },
       objectives: {
-        star2: { label: 'Win using only 5 towers', predicate: r => r.won && r.towerCount <= 5 },
-        star3: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
+        star2: { label: T.missions.rationed_mana.objectives.star2, predicate: r => r.won && r.towerCount <= 5 },
+        star3: { label: T.missions.rationed_mana.objectives.star3, predicate: r => r.livesRemaining === r.livesStart },
       },
     },
 
@@ -222,11 +195,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'saboteur_vanguard',
       idx: 7,
-      name: 'Saboteur Vanguard',
-      story:
-        "Voss's assembly line, fortified, kill-corridors, anti-arcane pylons covering every gate. We " +
-        "do not have the artillery to soften it; we have the coalition's raiders, and the line has " +
-        "exactly one route through. Get enough of them past the guns and the assembly stops.",
+      name: T.missions.saboteur_vanguard.name,
+      story: T.missions.saboteur_vanguard.story,
       archetype: 'attacker',
       overrides: {
         mapId: 'attacker_assault',
@@ -239,11 +209,11 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
       objectives: {
         star2: {
-          label: 'Break through with 8+ raiders',
+          label: T.missions.saboteur_vanguard.objectives.star2,
           predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 8,
         },
         star3: {
-          label: 'Break through with 12+ raiders',
+          label: T.missions.saboteur_vanguard.objectives.star3,
           predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 12,
         },
       },
@@ -253,11 +223,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'the_ace',
       idx: 8,
-      name: 'The Ace',
-      story:
-        "Voss's pilot stepped out of his walker and onto open ground. We sent the Engineer — " +
-        "if anyone reads a war-machine in single combat, it's her. Win this and we know how Voss's " +
-        "command chain breaks. Lose, and the Architect hears from his own mouth that we're soft.",
+      name: T.missions.the_ace.name,
+      story: T.missions.the_ace.story,
       archetype: 'hero_vs_boss',
       overrides: {
         mapId: 'hero_plains',
@@ -267,10 +234,10 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
       objectives: {
         star2: {
-          label: 'Hero never falls below 50% HP',
+          label: T.missions.the_ace.objectives.star2,
           predicate: r => r.won && (r.custom.heroHpMin as number ?? 1) >= 0.5,
         },
-        star3: { label: 'Clear all 5 waves in under 6 minutes', predicate: r => r.won && r.durationMs < 6 * 60 * 1000 },
+        star3: { label: T.missions.the_ace.objectives.star3, predicate: r => r.won && r.durationMs < 6 * 60 * 1000 },
       },
     },
 
@@ -278,11 +245,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     {
       id: 'the_overthrow',
       idx: 9,
-      name: 'The Overthrow',
-      story:
-        "His foundry-throne. Voss is on it. Every walker still on the line, every pilot still " +
-        "drawing breath, called home to defend him. The four power cores hold his shield up — drop " +
-        "them and he is mortal. Train your raiders, send them deep, end this.",
+      name: T.missions.the_overthrow.name,
+      story: T.missions.the_overthrow.story,
       archetype: 'final_sabotage',
       overrides: {
         mapId: 'mech_throne_finale',
@@ -294,8 +258,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         },
       },
       objectives: {
-        star2: { label: 'Win in under 25 minutes', predicate: r => r.won && r.durationMs < 25 * 60 * 1000 },
-        star3: { label: 'Win without losing a life', predicate: r => r.won && r.livesRemaining === r.livesStart },
+        star2: { label: T.missions.the_overthrow.objectives.star2, predicate: r => r.won && r.durationMs < 25 * 60 * 1000 },
+        star3: { label: T.missions.the_overthrow.objectives.star3, predicate: r => r.won && r.livesRemaining === r.livesStart },
       },
     },
   ],
