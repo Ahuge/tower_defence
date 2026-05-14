@@ -264,7 +264,7 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         mapId: 'base_arena',
         difficulty: 'normal',
         waveCount: 15,
-        // M4 Coalition kit + Briarroot (new slot).
+        // M4 Coalition kit + Runebreaker (new slot).
         restrictions: {
           allowedTowerIds: ['arrow', 'cannon', 'coalition_wall', 'sniper', 'arcane_frost', 'coalition_root'],
         },
@@ -448,7 +448,7 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         waveCount: 10,
         // M8 doesn't grant a tower unlock — the player isn't placing
         // towers in attacker mode anyway. Mana Drain unlock moved to M9.
-        // Kit is the M7-end state (Briarroot still last) for narrative
+        // Kit is the M7-end state (Runebreaker still last) for narrative
         // consistency if the player checks the bar.
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'arcane_storm', 'coalition_wall', 'arcane_focus', 'arcane_frost', 'coalition_root'],
@@ -521,7 +521,7 @@ export const ARCANE_CAMPAIGN: CampaignDef = {
         mapId: 'circle_2p',
         difficulty: 'normal',
         waveCount: 15,
-        // M9: Briarroot → Mana Drain (deferred from M8) AND + Meteor.
+        // M9: Runebreaker → Mana Drain (deferred from M8) AND + Meteor.
         // Two unlocks at once because M8 doesn't grant towers (attacker
         // mode), and the campaign progression needs to land somewhere.
         restrictions: {
