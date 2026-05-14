@@ -24,22 +24,38 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
   campaign: {
     name: 'Iron Cascade',
     intro:
-      "Lord-Architect Voss has outlawed magic. His foundries woke a year ago; his criers now ride " +
-      "the eastern roads warning that any spire-keep flying our colours will be put to the torch. " +
-      "Master Vael, the codex is in your keeping. Hold while you can. When you cannot, run east " +
-      "with what remains, and find the way to silence him.",
+    "Lord-Architect Voss has outlawed magic.\n" +
+        "\n" +
+        "A year ago his foundries awakened. Now his criers ride the eastern roads declaring that every spire flying Arcane colours will be burned to the ground.\n" +
+        "\n" +
+        "Master Vael, the codex is in your keeping.\n" +
+        "\n" +
+        "Hold the frontier while you can. When you cannot, flee east with what remains and find a way to silence the foundries before they erase the old world entirely.",
     outro:
-      "The throne shield held until the last generator went down. Voss died beneath his own roof, " +
-      "and the foundries answered to no one for the first time in a generation. The codex is whole. " +
-      "Your apprentices have already hung sigils in the rafters above the assembly floor — the iron " +
-      "burns differently now. New spires will rise.",
+    "The throne shield held until the last generator failed.\n" +
+        "\n" +
+        "Voss died beneath the roof of his own foundry, and for the first time in a generation the assembly lines answered to no master.\n" +
+        "\n" +
+        "The codex survived.\n" +
+        "\n" +
+        "Already, apprentices hang Arcane sigils above the silent factory floors. The old spires are gone, but their magic now lives inside iron, steam, and furnace light.\n" +
+        "\n" +
+        "The iron burns differently now.\n" +
+        "\n" +
+        "New spires will rise.",
   },
   missions: {
     // ─── M1 — Listening Post (basic kit) ──────────────────────────
     perimeter_breach: {
       name: 'Listening Post',
       story:
-`Voss's scouts on the eastern road, light and quick — the welcome mat for the column behind. We hold the listening post until Yuna's rider clears the pass with the warning. Bolt, frost, and a stormcaller — your basic kit. Make every sigil count.`,
+`Voss's scouts reached the eastern road ahead of the main column, fast riders and light walkers sent to cut our warning lines.
+
+We hold the listening post until Yuna's messenger clears the mountain pass with news of the invasion.
+
+Bolt towers, Frost sigils, and a single Stormcaller stand ready. It is not enough for a war.
+
+It will have to be enough tonight.`,
       objectives: {
         star2: 'Win without losing a life',
         star3: 'Win with under 8 towers placed',
@@ -50,7 +66,15 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     the_pass: {
       name: 'The Pass',
       story:
-`Refugees from Briarroot are coming through the canyon — three abbots, a dozen apprentices, the salvaged glassware. Voss's column is on the road behind them. He has seeded three of his anti-arcane pylons across the canyon — every corridor stalls in pulses. Channel them when you can; hold the line either way.`,
+`Refugees from the Arcane Order are fleeing through the canyon, three abbots, a dozen apprentices, and whatever relics they could carry before the libraries burned.
+
+Voss's column marches the road behind them.
+
+Three Suppression Pylons now line the canyon walls. Their pulses disrupt Arcane channels and stall nearby towers whenever they activate.
+
+Disable them when you can.
+
+Hold the pass either way.`,
       objectives: {
         star2: 'Win with 70% lives remaining',
         star3: 'Finish in under 9 minutes',
@@ -61,7 +85,13 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     the_cipher: {
       name: 'The Cipher',
       story:
-`Voss's couriers raided the Briarroot library before they burned it. The tomes are in a guarded vault now, and tonight a convoy moves them east — out of the order's reach forever. Stop the convoy. Whatever leaves with them, we lose to industrial study and never see again.`,
+`Voss's raiders struck the Briarroot archives before the fires spread.
+
+The surviving tomes now travel east inside an armored convoy bound for the foundries. Once they arrive, every spell within them becomes fuel for industrial study.
+
+We intercept the convoy tonight.
+
+Anything that reaches the foundries is knowledge we may never reclaim.`,
       objectives: {
         star2: 'Win without buying any sends',
         star3: 'Win with 80% lives remaining',
@@ -72,7 +102,15 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     spire_falls: {
       name: 'Spire Falls',
       story:
-`Voss has the spire surrounded. Walkers from every approach, no resupply, the codex in the vault below. Hold every direction long enough for the apprentices to flee with what they can carry. We do not win here — we last. When the gates break, you run east with the codex.`,
+`Voss has surrounded the spire.
+
+Walkers press from every approach. Supply lines are gone. The codex waits in the vault beneath the keep.
+
+We are not defending the spire anymore.
+
+We are buying time.
+
+Hold every front long enough for the apprentices to escape with what they can carry. When the gates finally break, take the codex and run east.`,
       objectives: {
         star2: 'Win without losing a life',
         star3: 'Win with 80% lives remaining',
@@ -83,7 +121,11 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     iron_convoy: {
       name: 'Iron Convoy',
       story:
-`Five of Voss's flagship walkers broke from the column to pursue you east. Each one is a fortress on tracks. Two of his pylons sit on the open ground — burst the walkers down between stalls, or the road eats us.`,
+`Five of Voss's flagship walkers broke from the main column to pursue us east.
+
+Each one is a fortress of iron and artillery moving on rails.
+
+Two Suppression Pylons dominate the open ground ahead. Their pulses stall our towers between firing cycles. Burst the walkers down during the gaps or be overrun.`,
       objectives: {
         star2: 'Win without losing a life',
         star3: 'Finish in under 7 minutes',
@@ -94,7 +136,15 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     first_light: {
       name: 'First Light',
       story:
-`Eighteen hours before Voss's rail yard finishes its mobilisation. Hit it now and his next column dies on the assembly floor. Three of his pylons line the approach. Speed is the instruction; pylons interrupt the speed; channel them in stride or accept the timer slipping.`,
+`Voss's rail yard will complete mobilization by dawn.
+
+If we strike now, the next war column dies before it ever leaves the assembly floor.
+
+Three Suppression Pylons guard the approach lines. Every pulse delays our advance and bleeds precious time from the assault.
+
+Speed is the strategy.
+
+Either disable the pylons on the move, or accept the clock turning against you.`,
       objectives: {
         star2: 'Finish in under 12 minutes',
         star3: 'Finish in under 9 minutes',
@@ -105,7 +155,13 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     rationed_mana: {
       name: 'Rationed Mana',
       story:
-`The spire's reserves were lost in the basement vault when Voss took the keep. Half the gold, six emplacements, a great deal of pride. Make every sigil earn its place in a kit that does not exist anymore.`,
+`The spire's reserves were lost when Voss seized the vaults beneath the keep.
+
+Half the gold. Six emplacements. No reserves behind them.
+
+The old tower formations are gone now. Every sigil must justify the mana spent to sustain it.
+
+Hold with less than we were built for.`,
       objectives: {
         star2: 'Win using only 5 towers',
         star3: 'Win without losing a life',
@@ -116,7 +172,13 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     saboteur_vanguard: {
       name: 'Saboteur Vanguard',
       story:
-`Voss's assembly line, fortified, kill-corridors, anti-arcane pylons covering every gate. We do not have the artillery to soften it; we have the coalition's raiders, and the line has exactly one route through. Get enough of them past the guns and the assembly stops.`,
+`Voss's assembly line stretches across the valley behind layered kill-corridors and Suppression Pylons.
+
+We do not have the artillery to break it from range.
+
+What we have are Coalition raiders and exactly one breach route through the guns.
+
+Get enough raiders inside the complex and the assembly line stops.`,
       objectives: {
         star2: 'Break through with 8+ raiders',
         star3: 'Break through with 12+ raiders',
@@ -127,7 +189,15 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     the_ace: {
       name: 'The Ace',
       story:
-`Voss's pilot stepped out of his walker and onto open ground. We sent the Engineer — if anyone reads a war-machine in single combat, it's her. Win this and we know how Voss's command chain breaks. Lose, and the Architect hears from his own mouth that we're soft.`,
+`Voss's ace pilot finally stepped out from behind his war machine.
+
+We sent the Engineer to meet him.
+
+If anyone alive understands how to break a walker in single combat, it is her.
+
+Win here and we learn how Voss's command chain survives the battlefield.
+
+Lose, and the Architect learns we were never a real threat.`,
       objectives: {
         star2: 'Hero never falls below 50% HP',
         star3: 'Clear all 5 waves in under 6 minutes',
@@ -138,7 +208,15 @@ export const MECHANICAL_TEXTS: CampaignTexts = {
     the_overthrow: {
       name: 'The Overthrow',
       story:
-`His foundry-throne. Voss is on it. Every walker still on the line, every pilot still drawing breath, called home to defend him. The four power cores hold his shield up — drop them and he is mortal. Train your raiders, send them deep, end this.`,
+`The foundry-throne stands ahead.
+
+Voss waits behind its shield while every surviving walker and pilot in the region converges on the factory district to defend him.
+
+Four power cores sustain the throne shield. Destroy them, and the Architect becomes mortal.
+
+Train the raiders. Send them deep into the foundry.
+
+End this before the machines regroup.`,
       objectives: {
         star2: 'Win in under 25 minutes',
         star3: 'Win without losing a life',
