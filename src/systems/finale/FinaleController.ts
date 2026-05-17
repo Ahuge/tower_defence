@@ -41,7 +41,7 @@ import { gridX, gridY, GRID_COLS, GRID_ROWS, TILE_SIZE, getGridOffsetX, pixelToC
 import { Grid, CellType } from '../Grid';
 import { findPath, PathPoint } from '../Pathfinding';
 import { createProjectileSprite, hasProjectileSprite } from '../SpriteManager';
-import { Damageable } from './Damageable';
+import { Damageable } from '../../entities/Damageable';
 import { placeCpuTowers } from './cpuPlacement';
 import { dispatchFinaleEffect } from './FinaleEffects';
 import { applyHeroPendingEffects, PendingHittable } from './applyHeroPendingEffects';

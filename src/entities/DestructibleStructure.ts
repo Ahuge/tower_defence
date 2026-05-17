@@ -20,7 +20,7 @@ import * as Phaser from 'phaser';
 import { TILE_SIZE, gridX, gridY, gridLeftX } from '../config';
 import { Tower } from './Tower';
 import { DestructibleStructureDef, DestructibleStructurePlacement, getDestructibleStructureDef } from '../data/DestructibleStructures';
-import { Damageable } from '../systems/finale/Damageable';
+import { Damageable } from './Damageable';
 import { destructibleStructureFrame } from '../systems/ArenaFloorRenderer';
 
 export class DestructibleStructure implements Damageable {

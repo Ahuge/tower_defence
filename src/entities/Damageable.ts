@@ -1,8 +1,8 @@
 /**
  * Damageable — unified interface for things the M10 finale's hero
  * (and queued sends) can attack. Implemented by `Tower` (when its
- * `destructible` flag is true) and `DestructibleStructure` (the new
- * PRD 06 entity for multi-tile boss structures).
+ * `destructible` sub-object is non-null) and `DestructibleStructure`
+ * (the PRD 06 entity for multi-tile boss structures).
  *
  * The hero's `findTarget<T extends Damageable>` and the send-creep
  * "attack adjacent CPU destructible" pathway both consume this
@@ -12,7 +12,40 @@
  * answer): exposes footprint dims, faction ownership, and the
  * mission-win-target flag so callers can prioritize / filter without
  * casting back to the concrete type.
+ *
+ * Lives in `entities/` (not `systems/finale/`) — campaign-agnostic
+ * primitive. Hero attacks, send attacks, raider attacks, future
+ * destructible mechanics all route through this contract.
  */
+
+/** Where damage came from. Drives retaliation priority on the
+ *  receiving entity (e.g. a CPU tower whose hero hit it recently
+ *  retaliates against the hero before falling back to range-based
+ *  targeting). Typed so a typo at a call site fails at compile time
+ *  instead of silently falling into `'unknown'`. */
+export type DamageSource = 'hero' | 'send' | 'creep' | 'tower' | 'raider' | 'unknown';
+
+/** Per-source last-hit timestamps (scene time ms). Lookups use the
+ *  `lastBy` accessor; writes use `log`. -Infinity marks "never hit by
+ *  this source." Held by every Damageable so retaliation logic works
+ *  uniformly for Tower and DestructibleStructure (and any future
+ *  destructible entity). */
+export interface AssailantLog {
+  log(source: DamageSource, now: number): void;
+  lastBy(source: DamageSource): number;
+}
+
+/** Default factory — flat in-memory record. Cheap; one allocation per
+ *  destructible entity. Per-source state stays public via the getter
+ *  so the implementation can switch to a Map / Int32Array later if
+ *  the per-frame retaliation lookup ever becomes a hot path. */
+export function createAssailantLog(): AssailantLog {
+  const last: Partial<Record<DamageSource, number>> = {};
+  return {
+    log(source, now) { last[source] = now; },
+    lastBy(source) { return last[source] ?? -Infinity; },
+  };
+}
 
 /** Generic damage target. Tower and DestructibleStructure both
  *  implement this. */
@@ -51,13 +84,23 @@ export interface Damageable {
   /** When true, FinaleController.checkWin() requires this target to
    *  be dead before firing onWin. */
   readonly isMissionWinTarget: boolean;
+  /** Per-source last-hit log. Lets retaliation logic ("X is attacking
+   *  me — fire back at X first") work uniformly across destructible
+   *  entity kinds. Optional for back-compat with Damageable
+   *  implementations that haven't migrated yet; remove the `?` after
+   *  all implementers carry one. */
+  readonly assailants?: AssailantLog;
 
   /**
    * Apply damage. Returns true on the killing blow (HP just hit 0),
    * false otherwise. Implementations are responsible for marking
    * themselves expired — callers should NOT mutate hp directly.
+   *
+   * `source` lets the receiving entity log who hit it (for retaliation
+   * priority). Optional for back-compat; defaults to 'unknown' inside
+   * implementations that read it.
    */
-  takeDamage(amount: number): boolean;
+  takeDamage(amount: number, source?: DamageSource): boolean;
 }
 
 /** Cheap "is this a Damageable?" runtime check — lets handlers safely
