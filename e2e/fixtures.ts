@@ -180,6 +180,7 @@ declare global {
       isGameSceneActive: () => boolean;
       getSabotageStatus: () => SabotageStatusSnapshot | null;
       forceKillSabotageTarget: (kind: 'generator' | 'throne', idx?: number) => boolean;
+      getMissionStars: (campaignFactionId: string, missionIdx: number) => number;
       onceEvent: (event: string, timeoutMs?: number) => Promise<unknown[]>;
       launchCampaignMission: (campaignFactionId: string, missionIdx: number) => boolean;
     };

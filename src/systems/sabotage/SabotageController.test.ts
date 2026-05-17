@@ -287,6 +287,83 @@ describe('SabotageController', () => {
     });
   });
 
+  describe('forceKillTarget (e2e damage primitive)', () => {
+    it('kills a generator by index + reports the cascade event', () => {
+      const mgr = makeTowerMgr();
+      const onGeneratorKilled = vi.fn();
+      const ctrl = new SabotageController({
+        ...baseArgs(mgr),
+        destructibleTowers: [
+          { col: 5, row: 5, towerId: 'mech_generator', hp: 1200, isGenerator: true, linkedTowers: NO_LINKS },
+          { col: 6, row: 6, towerId: 'mech_generator', hp: 1200, isGenerator: true, linkedTowers: NO_LINKS },
+        ],
+        onGeneratorKilled,
+      });
+      expect(ctrl.forceKillTarget('generator', 1)).toBe(true);
+      ctrl.update();
+      expect(onGeneratorKilled).toHaveBeenCalledExactlyOnceWith(1);
+      expect(ctrl.getAliveGeneratorCount()).toBe(1);
+    });
+
+    it('returns false on out-of-range generator index', () => {
+      const mgr = makeTowerMgr();
+      const ctrl = new SabotageController({
+        ...baseArgs(mgr),
+        destructibleTowers: [
+          { col: 5, row: 5, towerId: 'mech_generator', hp: 100, isGenerator: true, linkedTowers: NO_LINKS },
+        ],
+      });
+      expect(ctrl.forceKillTarget('generator', 99)).toBe(false);
+      expect(ctrl.forceKillTarget('generator', -1)).toBe(false);
+      expect(ctrl.getAliveGeneratorCount()).toBe(1);
+    });
+
+    it('returns false when the throne is invulnerable (gate not bypassed)', () => {
+      const mgr = makeTowerMgr();
+      const onWin = vi.fn();
+      const ctrl = new SabotageController({
+        ...baseArgs(mgr),
+        destructibleTowers: [
+          { col: 5, row: 5, towerId: 'mech_generator', hp: 100, isGenerator: true, linkedTowers: NO_LINKS },
+          { col: 0, row: 0, towerId: 'mech_throne', hp: 5000, isThrone: true },
+        ],
+        onWin,
+      });
+      expect(ctrl.forceKillTarget('throne')).toBe(false);
+      expect(ctrl.getThrone()?.hp).toBe(5000);
+      expect(onWin).not.toHaveBeenCalled();
+    });
+
+    it('kills the throne once generators are down + fires onWin', () => {
+      const mgr = makeTowerMgr();
+      const onWin = vi.fn();
+      const ctrl = new SabotageController({
+        ...baseArgs(mgr),
+        destructibleTowers: [
+          { col: 0, row: 0, towerId: 'mech_throne', hp: 5000, isThrone: true },
+        ],
+        onWin,
+      });
+      ctrl.update(); // no generators → throne flips vulnerable
+      expect(ctrl.forceKillTarget('throne')).toBe(true);
+      ctrl.update();
+      expect(onWin).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns false on a target that has already been killed', () => {
+      const mgr = makeTowerMgr();
+      const ctrl = new SabotageController({
+        ...baseArgs(mgr),
+        destructibleTowers: [
+          { col: 5, row: 5, towerId: 'mech_generator', hp: 100, isGenerator: true, linkedTowers: NO_LINKS },
+        ],
+      });
+      expect(ctrl.forceKillTarget('generator', 0)).toBe(true);
+      // Second kill on the same generator — already dead, returns false.
+      expect(ctrl.forceKillTarget('generator', 0)).toBe(false);
+    });
+  });
+
   describe('throne as destructibleStructure (PRD-06)', () => {
     it('skips structure placement when scene / grid are not provided', () => {
       // Headless construction without scene/grid — the structure path

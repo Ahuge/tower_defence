@@ -24,6 +24,7 @@ import { GameUIStore } from './ui/GameUIStore';
 import type { GameEvents } from './systems/EventBus';
 import { getCampaign } from './data/campaigns';
 import { MissionRunner } from './systems/missions/MissionRunner';
+import { PlayerProfile } from './systems/profile/PlayerProfile';
 import type { FactionId } from './data/Factions';
 import type { SabotageController } from './systems/sabotage/SabotageController';
 
@@ -91,8 +92,13 @@ interface TestHook {
    *  Damageable.takeDamage path. Routes through controller
    *  invulnerability gates — kills on the throne while generators
    *  are alive are no-ops, by design. Returns false on bad index
-   *  or no active sabotage mission. */
+   *  or no active sabotage mission. Generator kind requires `idx`;
+   *  passing undefined returns false. */
   forceKillSabotageTarget: (kind: 'generator' | 'throne', idx?: number) => boolean;
+  /** Read mission stars from the player profile. Returns 0 for missions
+   *  not yet completed. Decouples specs from the profile's on-disk
+   *  schema — campaignProgress could move + the spec keeps working. */
+  getMissionStars: (campaignFactionId: string, missionIdx: number) => number;
   /** Wait for one occurrence of a GameEvent. Returns a promise that
    *  resolves with the event's arguments or rejects on timeout. */
   onceEvent: <K extends keyof GameEvents>(event: K, timeoutMs?: number) => Promise<Parameters<GameEvents[K]>>;
@@ -185,7 +191,10 @@ function getSabotageStatus(): SabotageStatus | null {
 function forceKillSabotageTarget(kind: 'generator' | 'throne', idx?: number): boolean {
   const ctrl = getSabotageController();
   if (!ctrl) return false;
-  if (kind === 'generator') return ctrl.forceKillTarget('generator', idx ?? -1);
+  if (kind === 'generator') {
+    if (typeof idx !== 'number') return false;
+    return ctrl.forceKillTarget('generator', idx);
+  }
   return ctrl.forceKillTarget('throne');
 }
 
@@ -250,6 +259,7 @@ export function installTestHook(): void {
     isGameSceneActive,
     getSabotageStatus,
     forceKillSabotageTarget,
+    getMissionStars: (factionId, idx) => PlayerProfile.getMissionStars(factionId, idx),
     onceEvent,
     launchCampaignMission,
     showScreen: (screen: string, data: Record<string, unknown> = {}) => {
