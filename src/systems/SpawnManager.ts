@@ -140,13 +140,12 @@ export class SpawnManager {
       // Apply both per-creep difficulty scaling AND the global
       // coop team-size multiplier.
       let actualCount = Math.round(baseCount * resolved.countMult * this.countMultiplier);
-      // Boss-per-spawn floor: on multi-entry maps, ensure each path
-      // gets at least one boss creep when this is a boss group. The
-      // round-robin distribution below assigns by `i % numPaths`, so
-      // making actualCount >= numPaths guarantees every spawn point
-      // sees a boss appear.
+      // Boss-per-spawn floor: on multi-entry maps, ensure several
+      // spawn points see a boss. Capped at 4 so high-entry maps
+      // (base_arena has 32) don't flood the player with 32 bosses on
+      // a single wave-10 boss group.
       if (group.creepType === 'boss' && numPaths > 1) {
-        actualCount = Math.max(actualCount, numPaths);
+        actualCount = Math.max(actualCount, Math.min(numPaths, 4));
       }
 
       for (let i = 0; i < actualCount; i++) {

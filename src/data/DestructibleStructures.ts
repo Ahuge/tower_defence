@@ -42,6 +42,13 @@ export interface DestructibleStructureDef {
   /** Optional: embed a tower at the center cell to provide firing
    *  capability. The structure inherits the tower's HP (delegated). */
   embeddedTowerId?: string;
+  /** Multiplier on the rendered sprite size relative to the grid
+   *  footprint (default 1.0). Useful when the sprite has empty
+   *  pixels around its subject (so the gameplay footprint is correct
+   *  but the visual reads small) — bump above 1.0 to make the sprite
+   *  visually overflow the footprint without changing pathfinding.
+   *  Common in game art for buildings / boss structures. */
+  displayScaleMult?: number;
   /** HP-fraction → effect-id phase hooks. Each fires at most once when
    *  HP first drops to or below the fraction. Effect handlers live in
    *  `FinaleEffects`. */
@@ -80,6 +87,21 @@ export const DESTRUCTIBLE_STRUCTURES: Record<string, DestructibleStructureDef> =
       '0.25': 'arcane_throne_summon_reinforcements',
       '0.10': 'arcane_throne_rage',
     },
+  },
+  /** Mech M10 — Voss's foundry-throne. 3×3 boss structure with five
+   *  damage frames + halo dimming on the sprite. No embedded tower —
+   *  the throne is inert; the win condition is just "throne dead."
+   *  SabotageController flips invulnerable to false once every
+   *  generator is down. */
+  mech_voss_throne: {
+    id: 'mech_voss_throne',
+    name: 'Voss\'s Throne',
+    widthCells: 3,
+    heightCells: 3,
+    textureKey: 'struct_voss_throne',
+    damageFrames: 5,
+    defaultHp: 5000,
+    // Sprite is natively 84×84 (matching Arcane's). Identity scale.
   },
   // Future:
   //   mech_war_furnace: { 4×3, 6000hp, 5 frames, embeddedTowerId: 'mech_titan' },

@@ -29,11 +29,13 @@ import {
   cleanupExpiredTraits, UpdateContext,
 } from '../systems/traits/Trait';
 import { Creep } from './Creep';
+import type { SuppressionPylon } from './SuppressionPylon';
+import type { SuppressionManager } from '../systems/suppression/SuppressionManager';
 
 interface Projectile {
   x: number;
   y: number;
-  target: Creep;
+  target: Creep | null;
   destX: number;
   destY: number;
   speed: number;
@@ -51,6 +53,10 @@ interface Projectile {
   dirY?: number;
   /** Set of creeps already damaged by this pierce beam */
   piercedCreeps?: Set<Creep>;
+  /** When set, this projectile is a Mana Drain siphon shot aimed at
+   *  a Suppression Pylon. On impact, applies +1 siphon stack via
+   *  SuppressionManager and dies — no creep damage path. */
+  pylonTarget?: SuppressionPylon;
 }
 
 export class Tower {
@@ -130,6 +136,58 @@ export class Tower {
    *  towers for a few seconds. Decremented each frame in update();
    *  while > 0, fire logic is skipped and a stunned overlay draws. */
   _disabledRemaining: number = 0;
+
+  /** Mechanical campaign: Voss's Suppression Pylons disrupt arcane
+   *  channels. SuppressionManager polls `lastFired` and bumps this
+   *  counter whenever a tower in an active pylon's radius fires.
+   *  At threshold (default 5) the tower stalls (writes
+   *  `_disabledRemaining`) and stress resets to 0. Untouched
+   *  outside Mech-campaign missions. */
+  _stress: number = 0;
+
+  /** SuppressionManager bookkeeping — last `lastFired` value the
+   *  manager observed. Lets it detect "this tower fired since the
+   *  prior tick" without a fire event. -Infinity = never observed. */
+  _suppressionSeenLastFired: number = -Infinity;
+
+  /** Mech finale: throne (Voss) is invulnerable until every generator
+   *  on the map has been destroyed. SabotageController flips this to
+   *  false once that's true. takeDamage() short-circuits while set. */
+  _invulnerable: boolean = false;
+
+  /** Lifecycle marker. Set true by `takeDamage()` on the killing blow
+   *  (or by mission controllers when an entity is consumed without HP
+   *  damage, e.g. a generator's linked towers powering down). The
+   *  next-frame `TowerManager.cleanupExpired()` removes the tower
+   *  from the grid + sprite + recalculates paths. Was previously
+   *  set + read via `(tower as any)._expired` casts; declaring the
+   *  field here removes the cast smell. */
+  _expired?: boolean;
+
+  /** Structural conformance to `RaiderTarget` — raiders read `.alive`
+   *  when scanning CPU towers for auto-targeting. Lets the duck-type
+   *  resolve without `as unknown as` casts at the call sites. */
+  get alive(): boolean { return !this._expired; }
+
+  /** Mech finale: cells of CPU towers this generator powers. When the
+   *  generator dies, SabotageController kills every linked tower
+   *  (sets _expired = true, no rewards). Empty for non-generator
+   *  towers. Only meaningful when `destructible` is also true. */
+  generatorLinkedCells?: { col: number; row: number }[];
+
+  /** Mech finale: tags this tower as a generator so the controller
+   *  knows to drop its `generatorLinkedCells` on death. */
+  isGenerator?: boolean;
+
+  /** Mech finale: SabotageController bookkeeping — set true once the
+   *  controller has drained this generator's linked towers. Prevents
+   *  the cascade firing twice if update() runs after the dead frame. */
+  _generatorDrained?: boolean;
+
+  /** Mech finale: tags this tower as the master throne (Voss). The
+   *  throne is the win-condition target — destroying it ends the
+   *  mission. While any generator is alive, _invulnerable is true. */
+  isThrone?: boolean;
 
   /** M10 finale: tower destructibility. Default undefined = invincible
    *  (every existing mission). Set true on M10 CPU defender towers via
@@ -379,6 +437,12 @@ export class Tower {
   takeDamage(amount: number): boolean {
     if (!this.destructible || this.hp === undefined) return false;
     if (this.hp <= 0) return false; // already dead this frame
+    // Mech finale: throne tower is invulnerable until every generator
+    // is down. SabotageController flips this to false once the last
+    // generator dies; before then, even direct hits are no-op (the
+    // hit is silent, not deflected — the spec says invulnerable, the
+    // VFX layer can render "shield held" if it wants).
+    if (this._invulnerable) return false;
     this.hp -= amount;
     this._lastHitAt = (this._scene as { time?: { now: number } }).time?.now ?? 0;
     if (this.hp <= 0) {
@@ -386,7 +450,7 @@ export class Tower {
       // Mark for cleanup. TowerManager.cleanupExpired() picks this up
       // next frame and removes the tower from the grid + sprite +
       // recalculates paths (handled in cleanupExpired for destructibles).
-      (this as { _expired?: boolean })._expired = true;
+      this._expired = true;
       return true;
     }
     return false;
@@ -561,6 +625,15 @@ export class Tower {
         resolveOnFire(this.traits, this, targetIdx);
         this.fire(target);
         this.lastFired = time;
+      } else if (hasTrait(this.traits, 'siphons_pylons')) {
+        // Mana Drain fallback: no creeps in range, look for an active
+        // Suppression Pylon to siphon. Each hit applies +1 siphon
+        // stack; at threshold the pylon mutes (see SuppressionManager).
+        const pylon = this.findPylonTarget(time);
+        if (pylon) {
+          this.firePylon(pylon);
+          this.lastFired = time;
+        }
       }
     }
 
@@ -616,6 +689,67 @@ export class Tower {
     this._frameTarget = best;
     this._frameTargetValid = true;
     return best;
+  }
+
+  /** Mana Drain fallback target acquisition. Reads the scene-attached
+   *  SuppressionManager (set by GameScene during scene init when the
+   *  map declares pylons). Returns the closest active pylon in range,
+   *  or null if no pylons / none in range / no manager.
+   *
+   *  Range comparison uses pylon pixel center vs tower pixel position
+   *  (this.range * TILE_SIZE), matching the creep-targeting rule. */
+  private findPylonTarget(now: number): SuppressionPylon | null {
+    const mgr = (this._scene as unknown as { _suppressionMgr?: SuppressionManager })._suppressionMgr;
+    if (!mgr) return null;
+    const candidates = mgr.getActivePylonsInRangeOf(this.x, this.y, this.range * TILE_SIZE, now);
+    if (candidates.length === 0) return null;
+    let best: SuppressionPylon | null = null;
+    let bestDist = Infinity;
+    for (const p of candidates) {
+      const dx = gridX(p.col) - this.x;
+      const dy = gridY(p.row) - this.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  /** Spawn a projectile aimed at a Suppression Pylon. On impact the
+   *  projectile applies +1 siphon stack via SuppressionManager.
+   *  Reuses the standard Mana Drain projectile sprite — visually the
+   *  tower is "shooting the pylon," which is the entire point. */
+  firePylon(pylon: SuppressionPylon): void {
+    const scene = this._scene;
+    const g = scene.add.graphics();
+    g.setDepth(15);
+    const destX = gridX(pylon.col);
+    const destY = gridY(pylon.row);
+    const projSprite = hasProjectileSprite(this.typeId)
+      ? createProjectileSprite(scene, this.typeId, this.x, this.y)
+      : null;
+    this.projectiles.push({
+      x: this.x,
+      y: this.y,
+      target: null,
+      destX,
+      destY,
+      speed: this.typeDef.projectileSpeed,
+      graphics: g,
+      locationBased: true,
+      age: 0,
+      sprite: projSprite ?? undefined,
+      towerId: this.typeId,
+      pylonTarget: pylon,
+    });
+    if (this.sprite) {
+      setTowerSpriteState(this.sprite, this.typeId, 'fire', this.level);
+      scene.time.delayedCall(200, () => {
+        if (this.sprite) setTowerSpriteState(this.sprite, this.typeId, 'idle', this.level);
+      });
+    }
   }
 
   fire(target: Creep): void {
@@ -679,7 +813,7 @@ export class Tower {
       const p = this.projectiles[i];
 
       // If target died: location-based projectiles continue, tracking ones disappear
-      if (!p.target.alive && !p.locationBased) {
+      if (p.target && !p.target.alive && !p.locationBased) {
         p.graphics.destroy();
         if (p.sprite) p.sprite.destroy();
         this.projectiles.splice(i, 1);
@@ -687,12 +821,12 @@ export class Tower {
       }
 
       // Move toward target (if alive and tracking) or destination (location-based)
-      const tx = (p.target.alive && !p.locationBased) ? p.target.x : p.destX;
-      const ty = (p.target.alive && !p.locationBased) ? p.target.y : p.destY;
+      const tx = (p.target && p.target.alive && !p.locationBased) ? p.target.x : p.destX;
+      const ty = (p.target && p.target.alive && !p.locationBased) ? p.target.y : p.destY;
 
       // Update destination if target is still alive (track moving targets)
       // Location-based projectiles (splash/meteor) lock their destination at fire time
-      if (p.target.alive && !p.locationBased) {
+      if (p.target && p.target.alive && !p.locationBased) {
         p.destX = p.target.x;
         p.destY = p.target.y;
       }
@@ -757,8 +891,10 @@ export class Tower {
           continue;
         }
 
-        if (p.target.alive) {
-          this.onProjectileHit(p, allCreeps);
+        if (p.pylonTarget) {
+          this.onProjectileHitPylon(p);
+        } else if (p.target && p.target.alive) {
+          this.onProjectileHit(p as Projectile & { target: Creep }, allCreeps);
         } else {
           this.onProjectileHitLocation(p, allCreeps);
         }
@@ -792,7 +928,7 @@ export class Tower {
     }
   }
 
-  private onProjectileHit(p: Projectile, allCreeps: Creep[]): void {
+  private onProjectileHit(p: Projectile & { target: Creep }, allCreeps: Creep[]): void {
     // Stamp kill credit for co-op tower ownership
     p.target.lastHitCol = this.col;
     p.target.lastHitRow = this.row;
@@ -819,6 +955,17 @@ export class Tower {
     for (const key of Object.keys(stats)) {
       this.hitStatsAccum[key] = (this.hitStatsAccum[key] ?? 0) + stats[key];
     }
+  }
+
+  /** Mana Drain pylon impact — apply +1 siphon stack to the targeted
+   *  pylon. SuppressionManager handles threshold/mute internally. No
+   *  damage pipeline runs (no creep, no traits applied). */
+  private onProjectileHitPylon(p: Projectile): void {
+    if (!p.pylonTarget) return;
+    const mgr = (this._scene as unknown as { _suppressionMgr?: SuppressionManager })._suppressionMgr;
+    if (!mgr) return;
+    const now = this._scene.time?.now ?? 0;
+    mgr.applyStacks(p.pylonTarget, 1, now);
   }
 
   private onProjectileHitLocation(p: Projectile, allCreeps: Creep[]): void {

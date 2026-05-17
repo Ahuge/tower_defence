@@ -1,96 +1,96 @@
 /**
- * Mechanical Campaign — second campaign, ships in tier-1 progression.
+ * Mechanical Campaign — Iron Cascade.
  *
- * Player fights AGAINST the Mechanical faction across 10 missions.
- * Mechanical is a tier-1 unlock (1000 Shards in the faction tree, parent
- * of Military and Cypherpunk) — completing this campaign unlocks playing
- * AS Mechanical without a Shards spend, OR rewards Cores for players who
- * already paid Shards.
+ * Player POV: Master Vael, an Arcane archmage of the Eastern Spire.
+ * Antagonist: Lord-Architect Voss — a human tyrant who has built an
+ * industrial war-machine empire and is moving to outlaw and erase
+ * arcane magic. Vael fights with the Arcane tower kit throughout —
+ * `defaultPlayerFaction: 'arcane'` on the campaign def applies to
+ * every mission, no per-mission override needed.
  *
- * v1 lineup leans on the new Plan 11/12/13 archetypes proper:
- *   Mission 4 = Base Defense  (factory under attack from every side)
- *   Mission 8 = Attacker      (we strike their assembly line)
- *   Mission 3 = Heist         (steal back captured ordnance)
- * Plus Boss Rush, Speedrun, Frugal, Hero-vs-Boss, Final Showdown.
+ * Story arc — three acts:
+ *   Act I  (M1–M3): Defend the spire's outer holdings while messengers
+ *                   warn the rest of the order. Recover stolen tomes.
+ *   Act II (M4–M7): The Spire falls in M4 — Vael flees with the codex.
+ *                   Pursue Voss's column across his frontier; ration
+ *                   what was salvaged.
+ *   Act III(M8–M10): Strike at Voss's industrial heart. Beat his Ace,
+ *                   then storm his foundry-throne.
  *
- * Story tone: terse-industrial military report style. Where Arcane reads
- * medieval-fantasy, Mechanical reads grimdark warhammer / war-machine.
- * Smoke, gear, oil, iron. The player is the human resistance pushing
- * back the machine column.
- *
- * Bespoke mech-tileset maps will land in a follow-up; v1 uses the
- * existing shared maps (plains, crossroads, serpentine, etc.) plus the
- * archetype-default maps for Base Defense / Attacker / Heist.
+ * Voss's signature device — Suppression Pylons — appears across M2,
+ * M5, M6, M8 as a recurring hazard that stalls Vael's towers until
+ * the player channels them. The pylons in M10 are the Throne itself.
  */
 
 import type { CampaignDef } from './CampaignDef';
+import { MECHANICAL_TEXTS } from './texts/mechanical.texts';
+
+const T = MECHANICAL_TEXTS;
 
 export const MECHANICAL_CAMPAIGN: CampaignDef = {
   factionId: 'mechanical',
-  name: 'Iron Cascade',
-  intro:
-    "Their factories woke up. A column of smoke now stains the western horizon every morning. " +
-    "Crawler-scouts probe our perimeter; the heavy walkers will follow. Ten engagements stand " +
-    "between us and silencing the assembly line. We do not negotiate with machines.",
-  outro:
-    "The core foundry burns. Their walkers stand silent on the assembly floor, unfinished. " +
-    "Steel is just steel again. You commanded the line that broke the cascade — the rest of " +
-    "the engineering corps owes you their next coil of cable. New trees will grow on the slag.",
+  name: T.campaign.name,
+  defaultMapThemeOverride: 'factory',
+  defaultPlayerFaction: 'arcane',
+  intro: T.campaign.intro,
+  outro: T.campaign.outro,
   missions: [
-    // 1 — Standard intro with basic kit restriction
+    // ─── Act I — Defend ───────────────────────────────────────
+
+    // 1 — Listening post. Basic Arcane kit only; Voss's scouts probe.
     {
       id: 'perimeter_breach',
       idx: 0,
-      name: 'Perimeter Breach',
-      story:
-        "Crawler scouts. Light and fast. Your sergeant says they're the welcome mat — there'll be " +
-        "heavies behind. We have basic kit at the listening post: bolt, frost, a wall, nothing fancy. " +
-        "Hold them off the wire and prove the post is worth resupplying.",
+      name: T.missions.perimeter_breach.name,
+      story: T.missions.perimeter_breach.story,
       archetype: 'restriction',
       overrides: {
         mapId: 'plains',
         difficulty: 'easy',
         waveCount: 10,
         restrictions: {
-          allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'mech_wall'],
+          allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus'],
         },
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Win with under 8 towers placed', predicate: r => r.towerCount <= 8 },
+        star2: { label: T.missions.perimeter_breach.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.perimeter_breach.objectives.star3, predicate: r => r.towerCount <= 8 },
       },
     },
 
-    // 2 — Standard 15 with terrain choke + winding map
+    // 2 — Canyon road. First encounter with a Suppression Pylon.
     {
-      id: 'supply_road',
+      id: 'the_pass',
       idx: 1,
-      name: 'Supply Road',
-      story:
-        "Their column moves on a single road through the canyon. We hold the chokepoint or the " +
-        "front-line goes hungry. Fifteen waves. Their armor scales fast — shred it before the road " +
-        "opens up onto the plain.",
+      name: T.missions.the_pass.name,
+      story: T.missions.the_pass.story,
       archetype: 'standard',
       overrides: {
         mapId: 'serpentine',
         difficulty: 'normal',
         waveCount: 15,
+        // Three pylons cover the three open corridors of serpentine
+        // (top, middle, bottom). Forces the player to either spread
+        // through suppression fields or channel them — a maze in one
+        // safe corner is no longer viable.
+        suppressionPylons: [
+          { col: 12, row: 3,  radius: 4 },
+          { col: 18, row: 12, radius: 5 },
+          { col: 24, row: 22, radius: 4 },
+        ],
       },
       objectives: {
-        star2: { label: 'Win with 70% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.7) },
-        star3: { label: 'Finish in under 9 minutes', predicate: r => r.durationMs < 9 * 60 * 1000 },
+        star2: { label: T.missions.the_pass.objectives.star2, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.7) },
+        star3: { label: T.missions.the_pass.objectives.star3, predicate: r => r.durationMs < 9 * 60 * 1000 },
       },
     },
 
-    // 3 — Heist (Plan 13): steal back captured ordnance
+    // 3 — Heist. Voss's couriers carry stolen Arcane tomes east.
     {
-      id: 'depot_raid',
+      id: 'the_cipher',
       idx: 2,
-      name: 'The Depot Raid',
-      story:
-        "Last week they overran a forward depot and dragged off a year of our ordnance. The crates " +
-        "are stacked in a steel hangar; the column is moving them out tonight. Stop the convoy. " +
-        "Whatever leaves with them, we don't get back.",
+      name: T.missions.the_cipher.name,
+      story: T.missions.the_cipher.story,
       archetype: 'heist',
       overrides: {
         mapId: 'heist_vault',
@@ -99,22 +99,21 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
       objectives: {
         star2: {
-          label: 'Win without buying any sends',
+          label: T.missions.the_cipher.objectives.star2,
           predicate: r => r.won && (r.custom.sendsBought as number ?? 0) === 0,
         },
-        star3: { label: 'Win with 80% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
+        star3: { label: T.missions.the_cipher.objectives.star3, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
       },
     },
 
-    // 4 — Base Defense (Plan 11): factory under all-sides assault
+    // ─── Act II — Strike Out ──────────────────────────────────
+
+    // 4 — The Spire falls. The inciting loss that drives the rest.
     {
-      id: 'foundry_siege',
+      id: 'spire_falls',
       idx: 3,
-      name: 'Foundry Siege',
-      story:
-        "Word came back wrong. The column we were chasing was a feint — their walkers circled and " +
-        "are converging on our own foundry from every direction. The forge is the war. If it falls " +
-        "we have no rifles tomorrow. Hold every approach.",
+      name: T.missions.spire_falls.name,
+      story: T.missions.spire_falls.story,
       archetype: 'base_defense',
       overrides: {
         mapId: 'base_arena',
@@ -122,62 +121,62 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         waveCount: 15,
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Win with 80% lives remaining', predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
+        star2: { label: T.missions.spire_falls.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.spire_falls.objectives.star3, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.8) },
       },
     },
 
-    // 5 — Boss Rush — convoy of heavy walkers
+    // 5 — Iron Convoy. Five flagship walkers; pylons cover the road.
     {
       id: 'iron_convoy',
       idx: 4,
-      name: 'Iron Convoy',
-      story:
-        "Five of their flagship walkers broke from the main column. Each one is a fortress on tracks " +
-        "— heavy plating, anti-air, and a chassis cannon that ranges past anything we have at the " +
-        "front. No rank-and-file. Just five killings, in order. Burst them down before they range up.",
+      name: T.missions.iron_convoy.name,
+      story: T.missions.iron_convoy.story,
       archetype: 'boss_rush',
       overrides: {
         mapId: 'crossroads',
         difficulty: 'hard',
         waveCount: 5,
+        suppressionPylons: [
+          { col: 12, row: 10, radius: 4 },
+          { col: 22, row: 14, radius: 4 },
+        ],
       },
       objectives: {
-        star2: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
-        star3: { label: 'Finish in under 7 minutes', predicate: r => r.won && r.durationMs < 7 * 60 * 1000 },
+        star2: { label: T.missions.iron_convoy.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
+        star3: { label: T.missions.iron_convoy.objectives.star3, predicate: r => r.won && r.durationMs < 7 * 60 * 1000 },
       },
     },
 
-    // 6 — Speedrun — strike before they mobilize
+    // 6 — Speedrun. Strike Voss's rail yard before he mobilises.
     {
       id: 'first_light',
       idx: 5,
-      name: 'First Light',
-      story:
-        "Intelligence says they need 18 hours to fully mobilize the assembly line at the rail yard. " +
-        "Two divisions of theirs are in transit. Hit them in the open — twenty waves' worth of armor " +
-        "in motion — before they dig in. Speed is the order of the day.",
+      name: T.missions.first_light.name,
+      story: T.missions.first_light.story,
       archetype: 'speedrun',
       overrides: {
         mapId: 'fortress',
         difficulty: 'normal',
         waveCount: 20,
+        suppressionPylons: [
+          { col: 8, row: 8, radius: 4 },
+          { col: 18, row: 14, radius: 4 },
+          { col: 28, row: 10, radius: 4 },
+        ],
       },
       objectives: {
-        star2: { label: 'Finish in under 12 minutes', predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
-        star3: { label: 'Finish in under 9 minutes', predicate: r => r.won && r.durationMs < 9 * 60 * 1000 },
+        star2: { label: T.missions.first_light.objectives.star2, predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
+        star3: { label: T.missions.first_light.objectives.star3, predicate: r => r.won && r.durationMs < 9 * 60 * 1000 },
       },
     },
 
-    // 7 — Frugal — supplies were lost in mission 3 if you didn't 3-star
+    // 7 — Frugal. Aftermath of the spire's fall: half the resources.
     {
-      id: 'rationed_steel',
+      id: 'rationed_mana',
       idx: 6,
-      name: 'Rationed Steel',
-      story:
-        "Ammunition, brass, even the wire is running out. Half the gold, six emplacements — that's " +
-        "the allocation. The forge is melting silverware to keep us in shells. Make every placement " +
-        "earn its weight in the metal it cost to build.",
+      name: T.missions.rationed_mana.name,
+      story: T.missions.rationed_mana.story,
       archetype: 'frugal',
       overrides: {
         mapId: 'islands',
@@ -185,47 +184,47 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         waveCount: 15,
       },
       objectives: {
-        star2: { label: 'Win using only 5 towers', predicate: r => r.won && r.towerCount <= 5 },
-        star3: { label: 'Win without losing a life', predicate: r => r.livesRemaining === r.livesStart },
+        star2: { label: T.missions.rationed_mana.objectives.star2, predicate: r => r.won && r.towerCount <= 5 },
+        star3: { label: T.missions.rationed_mana.objectives.star3, predicate: r => r.livesRemaining === r.livesStart },
       },
     },
 
-    // 8 — Attacker (Plan 12): we strike their assembly line
+    // ─── Act III — Their Country ──────────────────────────────
+
+    // 8 — Attacker. Player commands raiders to break Voss's assembly.
     {
-      id: 'assembly_strike',
+      id: 'saboteur_vanguard',
       idx: 7,
-      name: 'Assembly Strike',
-      story:
-        "Their line is fortified. Towers, walls, kill-corridors — they built the place to grind us. " +
-        "We don't have the artillery to soften it. We have raiders, and the line has one route through. " +
-        "Get enough of our column past their guns and the assembly stops.",
+      name: T.missions.saboteur_vanguard.name,
+      story: T.missions.saboteur_vanguard.story,
       archetype: 'attacker',
       overrides: {
         mapId: 'attacker_assault',
         difficulty: 'normal',
         waveCount: 10,
+        suppressionPylons: [
+          { col: 14, row: 8, radius: 4 },
+          { col: 14, row: 18, radius: 4 },
+        ],
       },
       objectives: {
         star2: {
-          label: 'Break through with 8+ raiders',
+          label: T.missions.saboteur_vanguard.objectives.star2,
           predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 8,
         },
         star3: {
-          label: 'Break through with 12+ raiders',
+          label: T.missions.saboteur_vanguard.objectives.star3,
           predicate: r => r.won && (r.custom.attackerLeaks as number ?? 0) >= 12,
         },
       },
     },
 
-    // 9 — Hero vs Boss — rival mech ace
+    // 9 — Hero vs Boss. Voss's general — his "voice in the field."
     {
-      id: 'ace_duel',
+      id: 'the_ace',
       idx: 8,
-      name: 'The Ace',
-      story:
-        "Their best pilot stepped out of his walker and onto the field. Coordinates included. " +
-        "Five waves of guard, then him. We sent the Engineer — if anyone can read a war-machine in " +
-        "single combat it's her. Win this and we know how their command chain breaks.",
+      name: T.missions.the_ace.name,
+      story: T.missions.the_ace.story,
       archetype: 'hero_vs_boss',
       overrides: {
         mapId: 'hero_plains',
@@ -235,32 +234,32 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
       },
       objectives: {
         star2: {
-          label: 'Hero never falls below 50% HP',
+          label: T.missions.the_ace.objectives.star2,
           predicate: r => r.won && (r.custom.heroHpMin as number ?? 1) >= 0.5,
         },
-        star3: { label: 'Clear all 5 waves in under 6 minutes', predicate: r => r.won && r.durationMs < 6 * 60 * 1000 },
+        star3: { label: T.missions.the_ace.objectives.star3, predicate: r => r.won && r.durationMs < 6 * 60 * 1000 },
       },
     },
 
-    // 10 — Final Showdown — the core foundry
+    // 10 — The Overthrow. SabotageController owns the climax.
     {
-      id: 'cascade_terminus',
+      id: 'the_overthrow',
       idx: 9,
-      name: 'Cascade Terminus',
-      story:
-        "Their core foundry. Thirty waves of the deepest reserve they have. Walkers off the line, " +
-        "still smoking from forging. The engineering corps says if we cut power to the core, the " +
-        "whole cascade goes with it — no more crawlers, no more walkers, no more line. " +
-        "End it tonight or we do this again next year, with worse odds.",
-      archetype: 'final_showdown',
+      name: T.missions.the_overthrow.name,
+      story: T.missions.the_overthrow.story,
+      archetype: 'final_sabotage',
       overrides: {
-        mapId: 'spiral',
+        mapId: 'mech_throne_finale',
         difficulty: 'hard',
-        waveCount: 30,
+        waveCount: 999,
+        sabotageRules: {
+          cpuTowerHpDefault: 600,
+          cpuTowerOwnerIndex: 99,
+        },
       },
       objectives: {
-        star2: { label: 'Win with at least 10 lives remaining', predicate: r => r.livesRemaining >= 10 },
-        star3: { label: 'Win without using a continue', predicate: r => r.won && r.perfectRun },
+        star2: { label: T.missions.the_overthrow.objectives.star2, predicate: r => r.won && r.durationMs < 25 * 60 * 1000 },
+        star3: { label: T.missions.the_overthrow.objectives.star3, predicate: r => r.won && r.livesRemaining === r.livesStart },
       },
     },
   ],

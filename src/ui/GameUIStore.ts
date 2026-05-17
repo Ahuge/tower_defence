@@ -331,6 +331,8 @@ export interface GameUIState {
   attackerComposer: AttackerComposerUIState | null;
   /** M10 finale — HUD state for the summoning charge bar + tower count. */
   finaleHud: FinaleHudState | null;
+  /** Mech M10 finale — HUD for the Workshop + raider squad. */
+  sabotageHud: SabotageHudState | null;
 }
 
 export interface MissionPanelState {
@@ -409,6 +411,35 @@ export interface AttackerComposerUIState {
 /** M10 finale — DOM HUD state for the charge meter + summon status.
  *  Pushed each frame from GameScene when FinaleController is active.
  *  Null on every other mission. */
+/** Mech finale: HUD state for the Workshop panel + progress readouts. */
+export interface SabotageHudState {
+  /** ms remaining on the Workshop's train cooldown. 0 = ready. */
+  workshopCooldownMs: number;
+  /** Gold cost of one Raider train. */
+  trainCost: number;
+  /** Current upgrade tier per axis (0..3). */
+  upgradeLevels: { plate: number; edge: number; tread: number };
+  /** Cost of the NEXT tier per axis, or null when maxed. */
+  nextUpgradeCost: { plate: number | null; edge: number | null; tread: number | null };
+  /** Count of player Raiders currently alive. */
+  raidersAlive: number;
+  /** Generator progress for the throne-vulnerability gate. The
+   *  derived `throneVulnerable = generatorsAlive === 0 &&
+   *  generatorsTotal > 0` is computed where it's read; pre-storing
+   *  it would just be a sync footgun. */
+  generatorsAlive: number;
+  generatorsTotal: number;
+  /** True while the player has the Workshop selected — the HUD
+   *  swaps from the minimal status badge to the full train + upgrade
+   *  panel. Toggled by clicking the Workshop tile. */
+  workshopPanelOpen: boolean;
+  /** Number of raiders currently queued at the Workshop (paid for,
+   *  awaiting cooldown). 0..3. */
+  queueCount: number;
+  /** Maximum queue depth. */
+  queueMax: number;
+}
+
 export interface FinaleHudState {
   /** Charge in [0, 1]. UI renders a horizontal progress bar. */
   charge: number;
@@ -599,7 +630,34 @@ class GameUIStoreClass {
       missionPanel: null,
       attackerComposer: null,
       finaleHud: null,
+      sabotageHud: null,
     };
+  }
+
+  /** Mech M10: push Workshop / squad state. Skips notify when nothing
+   *  meaningful changed (per-frame pump). */
+  setSabotageHud(next: SabotageHudState | null): void {
+    const prev = this.state.sabotageHud;
+    if (prev === next) return;
+    if (prev && next
+      && Math.abs(prev.workshopCooldownMs - next.workshopCooldownMs) < 50
+      && prev.trainCost === next.trainCost
+      && prev.upgradeLevels.plate === next.upgradeLevels.plate
+      && prev.upgradeLevels.edge === next.upgradeLevels.edge
+      && prev.upgradeLevels.tread === next.upgradeLevels.tread
+      && prev.raidersAlive === next.raidersAlive
+      && prev.generatorsAlive === next.generatorsAlive
+      && prev.generatorsTotal === next.generatorsTotal
+      && prev.nextUpgradeCost.plate === next.nextUpgradeCost.plate
+      && prev.nextUpgradeCost.edge === next.nextUpgradeCost.edge
+      && prev.nextUpgradeCost.tread === next.nextUpgradeCost.tread
+      && prev.workshopPanelOpen === next.workshopPanelOpen
+      && prev.queueCount === next.queueCount
+      && prev.queueMax === next.queueMax) {
+      return;
+    }
+    this.state = { ...this.state, sabotageHud: next };
+    this.notify();
   }
 
   /** M10 finale: push charge + hero state for the DOM HUD. Pass null

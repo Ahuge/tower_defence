@@ -63,40 +63,78 @@ export interface Announcement {
  *  matter for correctness, but reviewers will look at the top first. */
 export const ANNOUNCEMENTS: Announcement[] = [
   {
+    id: 'mech-campaign-iron-cascade',
+    publishedAt: '2026-05-10',
+    title: 'Iron Cascade',
+    summary: 'The Mechanical campaign is live. Ten missions of collapsing spires, industrial warfare, and the hunt for Lord-Architect Voss.',
+    factionAccent: 'mechanical',
+    heroArt: 'assets/announcements/mech_campaign_iron_cascade_landscape.webp',
+    body: [
+      {
+        kind: 'lead',
+        text: 'Lord-Architect Voss has outlawed magic. As Master Vael of the Eastern Spire, you must survive the fall of the old world, pursue the foundry-legions across the frontier, and bring down the machines before they consume the last Arcane strongholds.',
+      },
+      {
+        kind: 'feature',
+        title: 'A Three-Act Campaign',
+        body: 'Defend Arcane outposts, recover stolen tomes, survive the fall of the Eastern Spire, and strike back against Voss\'s industrial empire. The campaign escalates from desperate defensive battles into sabotage missions, mechanized duels, and a final assault on the foundry-throne itself.',
+      },
+      {
+        kind: 'feature',
+        title: 'Suppression Pylons',
+        body: 'Voss\'s signature anti-Arcane weapon appears throughout the campaign. These towering field generators periodically disrupt nearby towers, forcing players to either disable them mid-battle or fight through stalled defenses. Carry the rhythm of the pylons, or lose the line.',
+      },
+      {
+        kind: 'feature',
+        title: 'M10 — The Overthrow',
+        body: 'The finale introduces a new assault-focused mission structure. Train Raider squads from a forward Workshop, upgrade them throughout the battle, and push deep into the foundry complex while dismantling the shield network protecting Voss\'s throne. Destroy the generators, collapse the defenses, and bring the Architect down inside his own fortress.',
+      },
+      {
+        kind: 'feature',
+        title: 'Mechanical Faction Unlock',
+        body: 'Complete Iron Cascade to unlock the Mechanical faction across every other game mode. Players who already purchased Mechanical with Shards receive their Core refund automatically.',
+      },
+      {
+        kind: 'paragraph',
+        text: 'Mechanical visuals, faction storylines, and campaign presentation continue to expand in future drops. The full ten-mission campaign is playable now.',
+      },
+    ],
+  },
+  {
     id: 'campaigns-released',
     publishedAt: '2026-05-09',
     title: 'Arcane Campaign',
-    summary: 'Story-driven faction campaigns, mission archetypes, and the Arcane M1–M10 storyline are live.',
+    summary: 'Faction campaigns, mission archetypes, and the full Arcane M1–M10 storyline are now live.',
     factionAccent: 'arcane',
     heroArt: 'assets/announcements/campaigns_released_landscape.webp',
     body: [
       {
         kind: 'lead',
-        text: 'The campaign system shipped. Pick a faction, beat their ten-mission storyline, and unlock them in every other mode along the way.',
+        text: 'The campaign system has arrived. Choose a faction, fight through its ten-mission storyline, and unlock new towers, powers, and playable factions along the way.',
       },
       {
         kind: 'feature',
         title: 'Arcane Campaign — M1 to M10',
-        body: 'Ten hand-authored missions that take the Arcane Coalition from Briarroot patrol duty all the way to The Reckoning at the Archmage Spire — a hybrid siege finale where you summon a controllable mage hero and raze a fortified throne.',
+        body: 'Fight through ten handcrafted missions as the Coalition struggles against the Arcane Cabal invasion. What begins as a desperate defense slowly transforms into a war fought with stolen Arcane weapons, culminating in The Reckoning, a final siege where you summon the Forgemaster herself to break the Cabal fortress.',
       },
       {
         kind: 'feature',
         title: 'Mission Archetypes',
-        body: 'Beyond Standard, missions can ship as Boss Rush, Speedrun, Frugal-loadout, Hero Duel, Coop-with-Bot, Restriction, or Final Showdown. Each archetype defaults the difficulty + wave count + restrictions so the design stays consistent across a campaign.',
+        body: 'Campaign missions now span multiple archetypes including Boss Rush, Speedrun, Frugal Loadout, Hero Duel, Co-op Defense, Restriction Missions, and Final Showdowns. Each archetype ships with tailored rules, pacing, and objectives built around its scenario.',
       },
       {
         kind: 'feature',
         title: 'Faction Tree Unlock Route',
-        body: 'Factions tier off Arcane (free root). Spend Shards to purchase a faction\'s campaign, beat the campaign, and the faction becomes playable in every other mode. Capstone factions like Harmonic require unlocking N peers first.',
+        body: 'Arcane serves as the starting faction path. Spend Shards to unlock new faction campaigns, complete them to make those factions playable across every game mode, and progress deeper into advanced faction branches. Capstone factions like Harmonic require multiple faction completions before they unlock.',
       },
       {
         kind: 'feature',
         title: 'First-Launch Onboarding',
-        body: 'Brand-new players land on a welcome splash that offers a 3-minute guided tutorial round. Returning players boot straight into the menu with the existing tutorial-on-demand carousel.',
+        body: 'New players now begin with an optional guided tutorial run designed to teach the fundamentals in under three minutes. Returning players still boot directly into the main menu with tutorial access available on demand.',
       },
       {
         kind: 'paragraph',
-        text: 'Every campaign mission tracks per-mission stars (1 for win, 2-3 for objectives), rolls into a per-faction completion bar, and feeds the cross-campaign total in your profile.',
+        text: 'Every campaign mission tracks star objectives, faction completion progress, and your overall cross-campaign completion total in the player profile.',
       },
     ],
   },

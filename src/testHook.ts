@@ -22,6 +22,11 @@ import { TutorialManager } from './systems/Tutorial/TutorialManager';
 import { TutorialPersistence } from './systems/Tutorial/TutorialPersistence';
 import { GameUIStore } from './ui/GameUIStore';
 import type { GameEvents } from './systems/EventBus';
+import { getCampaign } from './data/campaigns';
+import { MissionRunner } from './systems/missions/MissionRunner';
+import { PlayerProfile } from './systems/profile/PlayerProfile';
+import type { FactionId } from './data/Factions';
+import type { SabotageController } from './systems/sabotage/SabotageController';
 
 declare global {
   interface Window {
@@ -29,6 +34,8 @@ declare global {
     __td_test?: TestHook;
   }
 }
+
+type SabotageStatus = ReturnType<SabotageController['getSnapshot']>;
 
 interface TestHook {
   /** Synthesise a click on the grid at the given cell. Maps world
@@ -73,6 +80,33 @@ interface TestHook {
   /** True once the app-startup splash has emitted its "dismissed"
    *  signal. Tests poll this before interacting with the menu. */
   isBootComplete: () => boolean;
+  /** True once the GameScene is active and tickable. The smoke spec
+   *  polls this after `launchCampaignMission` to know when the
+   *  mission's setup is done and the SabotageController is wired. */
+  isGameSceneActive: () => boolean;
+  /** Snapshot of the M10 SabotageController state. Returns null when
+   *  no sabotage mission is active. The spec asserts on this instead
+   *  of poking controller internals. */
+  getSabotageStatus: () => SabotageStatus | null;
+  /** E2E-only: drive a sabotage target to 0 hp through the real
+   *  Damageable.takeDamage path. Routes through controller
+   *  invulnerability gates — kills on the throne while generators
+   *  are alive are no-ops, by design. Returns false on bad index
+   *  or no active sabotage mission. Generator kind requires `idx`;
+   *  passing undefined returns false. */
+  forceKillSabotageTarget: (kind: 'generator' | 'throne', idx?: number) => boolean;
+  /** Read mission stars from the player profile. Returns 0 for missions
+   *  not yet completed. Decouples specs from the profile's on-disk
+   *  schema — campaignProgress could move + the spec keeps working. */
+  getMissionStars: (campaignFactionId: string, missionIdx: number) => number;
+  /** Wait for one occurrence of a GameEvent. Returns a promise that
+   *  resolves with the event's arguments or rejects on timeout. */
+  onceEvent: <K extends keyof GameEvents>(event: K, timeoutMs?: number) => Promise<Parameters<GameEvents[K]>>;
+  /** Launch a campaign mission programmatically. Bypasses the lobby
+   *  UI clicks — used by every campaign e2e spec to skip straight to
+   *  the gameplay being tested. Returns false on unknown faction id
+   *  or missing mission idx. */
+  launchCampaignMission: (campaignFactionId: string, missionIdx: number) => boolean;
   /** Navigate to a specific DOM screen. Thin wrapper around
    *  UIBridge.show — exposed for the Play Store screenshot capture
    *  script which needs to drive through Menu / Store / Draft /
@@ -132,6 +166,72 @@ function emitGameEvent<K extends keyof GameEvents>(event: K, ...args: Parameters
   return true;
 }
 
+function getSabotageController(): SabotageController | null {
+  const game = UIBridge.getGame();
+  if (!game) return null;
+  const scene = game.scene.getScene('GameScene') as unknown as
+    { _sabotageController?: SabotageController | null } | null;
+  return scene?._sabotageController ?? null;
+}
+
+function isGameSceneActive(): boolean {
+  const game = UIBridge.getGame();
+  if (!game) return false;
+  const scene = game.scene.getScene('GameScene');
+  // scene.sys.settings.active flips true once Phaser's scene manager
+  // has finished start(); .isActive() is the public read.
+  return !!(scene && typeof (scene as { scene?: { isActive?: () => boolean } }).scene?.isActive === 'function'
+    && (scene as { scene: { isActive: () => boolean } }).scene.isActive());
+}
+
+function getSabotageStatus(): SabotageStatus | null {
+  return getSabotageController()?.getSnapshot() ?? null;
+}
+
+function forceKillSabotageTarget(kind: 'generator' | 'throne', idx?: number): boolean {
+  const ctrl = getSabotageController();
+  if (!ctrl) return false;
+  if (kind === 'generator') {
+    if (typeof idx !== 'number') return false;
+    return ctrl.forceKillTarget('generator', idx);
+  }
+  return ctrl.forceKillTarget('throne');
+}
+
+function onceEvent<K extends keyof GameEvents>(event: K, timeoutMs = 10_000): Promise<Parameters<GameEvents[K]>> {
+  return new Promise((resolve, reject) => {
+    const game = UIBridge.getGame();
+    if (!game) {
+      reject(new Error('onceEvent: no active game'));
+      return;
+    }
+    const scene = game.scene.getScene('GameScene') as unknown as
+      { eventBus?: { on: (ev: K, fn: GameEvents[K]) => void; off: (ev: K, fn: GameEvents[K]) => void } } | null;
+    if (!scene?.eventBus) {
+      reject(new Error(`onceEvent(${event}): no eventBus on GameScene`));
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const handler = ((...args: unknown[]) => {
+      if (timer) clearTimeout(timer);
+      scene.eventBus!.off(event, handler as GameEvents[K]);
+      resolve(args as Parameters<GameEvents[K]>);
+    }) as GameEvents[K];
+    scene.eventBus.on(event, handler);
+    timer = setTimeout(() => {
+      scene.eventBus!.off(event, handler as GameEvents[K]);
+      reject(new Error(`onceEvent(${event}): timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+}
+
+function launchCampaignMission(campaignFactionId: string, missionIdx: number): boolean {
+  const def = getCampaign(campaignFactionId as FactionId);
+  if (!def) return false;
+  if (missionIdx < 0 || missionIdx >= def.missions.length) return false;
+  return MissionRunner.start(def, missionIdx);
+}
+
 function jumpToTutorialStep(stepId: string, maxSteps = 50): boolean {
   for (let guard = 0; guard < maxSteps; guard++) {
     const active = TutorialManager.getActive();
@@ -156,6 +256,12 @@ export function installTestHook(): void {
       location.reload();
     },
     isBootComplete: () => bootComplete,
+    isGameSceneActive,
+    getSabotageStatus,
+    forceKillSabotageTarget,
+    getMissionStars: (factionId, idx) => PlayerProfile.getMissionStars(factionId, idx),
+    onceEvent,
+    launchCampaignMission,
     showScreen: (screen: string, data: Record<string, unknown> = {}) => {
       // Cast through unknown — UIBridge.show's ScreenId union is
       // private to ../ui/UIBridge, but the test hook accepts any

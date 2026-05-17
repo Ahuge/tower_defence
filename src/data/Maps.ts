@@ -16,7 +16,12 @@ export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islan
   // Plan 14 M10 — finale siege. Player builds mana drains on the right
   // to charge summoning circles, the hero attacks pre-placed CPU
   // towers (with HP) on the left. Win = all CPU towers destroyed.
-  | 'arcane_throne_finale';
+  | 'arcane_throne_finale'
+  // Mech M10 — Voss's foundry. Player Workshop on the right trains
+  // Raiders. 4 generators each guard a CPU tower cluster on the left.
+  // Throne (Voss) at the far west, invulnerable until generators are
+  // down. Win = throne destroyed.
+  | 'mech_throne_finale';
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -26,6 +31,15 @@ export interface LargeStructurePlacement {
   col: number;
   /** Top-left grid row */
   row: number;
+}
+
+/** Suppression Pylon placement — shared between MapDefinition and
+ *  per-mission overrides on CampaignDef so the schema doesn't drift. */
+export interface SuppressionPylonSpec {
+  col: number;
+  row: number;
+  /** Chebyshev tile radius. Default 5 = covers an 11×11 square. */
+  radius?: number;
 }
 
 export interface MapDefinition {
@@ -82,12 +96,39 @@ export interface MapDefinition {
    *  `preplacedTowers` (attacker mode) so finale CPU towers carry HP
    *  + destructible flag without polluting attacker_assault. The Ult
    *  tower flags `isUlt: true` and triggers the ult_finale phase trait. */
-  destructibleTowers?: { col: number; row: number; towerId: string; hp: number; isUlt?: boolean }[];
+  destructibleTowers?: {
+    col: number;
+    row: number;
+    towerId: string;
+    hp: number;
+    /** Arcane finale — Ult tower flag. Triggers the ult_finale phase
+     *  trait (heal at 50%, reinforcements at 25%, rage-fire at 10%). */
+    isUlt?: boolean;
+    /** Mech finale — generator flag. On death, the SabotageController
+     *  expires every tower whose cell appears in `linkedTowers`. */
+    isGenerator?: boolean;
+    /** Mech finale — towers this generator powers (cells). When the
+     *  generator dies, each tower at one of these cells is killed. */
+    linkedTowers?: { col: number; row: number }[];
+    /** Mech finale — throne (Voss). Invulnerable until every alive
+     *  generator on the map is destroyed; then mortal, and destroying
+     *  it wins the mission. */
+    isThrone?: boolean;
+  }[];
   /** Multi-tile boss structures the player must destroy. PRD 06 entry
    *  point — see `src/data/DestructibleStructures.ts` for the registry
    *  of allowed `id`s. Each structure occupies its `widthCells ×
    *  heightCells` footprint at top-left = (col, row). */
   destructibleStructures?: { id: string; col: number; row: number; hp?: number; isMissionWinTarget?: boolean; phaseHooks?: { [hpFraction: string]: string } }[];
+  /** Mechanical campaign — Voss's Suppression Pylons. Pre-placed,
+   *  invulnerable, project a tile-radius stress field that stalls
+   *  player towers inside it after a few shots. SuppressionManager
+   *  owns the runtime state; player counters them via channel. */
+  suppressionPylons?: SuppressionPylonSpec[];
+  /** Mech M10 finale — Workshop placement. The player's barracks for
+   *  training Raiders. SabotageController owns the runtime
+   *  Workshop instance + spawns Raiders at this cell's pixel center. */
+  workshop?: { col: number; row: number };
 }
 
 export interface SpawnerDef {
@@ -726,6 +767,104 @@ export const MAPS: Record<MapId, MapDefinition> = {
       summoningCircles,
       destructibleTowers,
       destructibleStructures,
+    };
+  })(),
+
+  // === Mech M10 finale: The Overthrow ===
+  //   - LEFT half (cols 1-13): Voss's foundry. Throne (col 2, midRow),
+  //     four generators distributed vertically, each with 3-4 linked
+  //     CPU defender towers nearby. Throne is invulnerable until every
+  //     generator dies; SabotageController wires that gating.
+  //   - RIGHT half (cols 18-34): player territory. Workshop pre-placed
+  //     at (32, midRow); buildable zone covers the rest. Player trains
+  //     Raiders at the Workshop and walks them across the map to chip
+  //     down generators + the throne.
+  //   - Wave creeps spawn from the throne side (col 0, midRow) and
+  //     walk RIGHT toward the player's base. Sends walk reverse.
+  mech_throne_finale: (() => {
+    const cols = GRID_COLS;
+    const rowsTop = 0, rowsBot = GRID_ROWS - 1;
+    const midRow = Math.floor(GRID_ROWS / 2);
+    // Outer perimeter wall (entry + exit cells stay open at midRow).
+    const outerWall: Pos[] = [];
+    for (let c = 0; c < cols; c++) outerWall.push({ col: c, row: rowsTop }, { col: c, row: rowsBot });
+    for (let r = 1; r < rowsBot; r++) {
+      if (r !== midRow) outerWall.push({ col: 0, row: r }, { col: cols - 1, row: r });
+    }
+    // Central cross divider — same shape as Arcane finale to force a
+    // consistent path topology.
+    const centerCross: Pos[] = [
+      ...rect(17, 4, 17, 8),
+      ...rect(17, 14, 17, 20),
+      ...rect(15, 9, 19, 13),
+      { col: 18, row: 8 },
+      { col: 16, row: 11 }, { col: 20, row: 11 },
+      { col: 17, row: 2 },
+      { col: 17, row: 22 },
+    ];
+
+    // Four generators distributed vertically on the left. Each owns
+    // a small cluster of linked CPU towers — when the generator dies,
+    // SabotageController expires the linked towers immediately.
+    // TODO(art): bespoke generator sprite — currently reuses mech_mortar silhouette.
+    const G = (col: number, row: number, linked: { col: number; row: number }[]) => ({
+      col, row, towerId: 'mech_mortar', hp: 1200,
+      isGenerator: true, linkedTowers: linked,
+    });
+    const T = (col: number, row: number, towerId = 'mech_turret') => ({
+      col, row, towerId, hp: 500,
+    });
+    const generatorTopLinks = [{ col: 4, row: 4 }, { col: 6, row: 5 }, { col: 8, row: 4 }];
+    const generatorMid1Links = [{ col: 4, row: 9 }, { col: 6, row: 10 }, { col: 8, row: 9 }];
+    const generatorMid2Links = [{ col: 4, row: 14 }, { col: 6, row: 15 }, { col: 8, row: 14 }];
+    const generatorBotLinks = [{ col: 4, row: 19 }, { col: 6, row: 20 }, { col: 8, row: 19 }];
+
+    const destructibleTowers = [
+      // Top cluster — generator + linked turrets.
+      G(11, 4, generatorTopLinks),
+      ...generatorTopLinks.map(c => T(c.col, c.row)),
+      // Mid-1 cluster.
+      G(11, 9, generatorMid1Links),
+      ...generatorMid1Links.map(c => T(c.col, c.row)),
+      // Mid-2 cluster.
+      G(11, 14, generatorMid2Links),
+      ...generatorMid2Links.map(c => T(c.col, c.row)),
+      // Bottom cluster.
+      G(11, 19, generatorBotLinks),
+      ...generatorBotLinks.map(c => T(c.col, c.row)),
+    ];
+
+    // Voss's Throne — 3×3 destructible boss structure. Top-left at
+    // (col 3, row midRow-1) so the footprint spans cols 3-5 × rows
+    // midRow-1..midRow+1, center cell at (4, midRow). Leaves cols
+    // 1-2 of the entry row open so creeps spawning at (0, midRow)
+    // can walk east to (2, midRow), then detour above/below to
+    // route around the throne to the open east corridor.
+    const destructibleStructures = [
+      { id: 'mech_voss_throne', col: 3, row: midRow - 1, hp: 5000, isMissionWinTarget: true },
+    ];
+
+    // Player buildable zone — entire right half, mirrors Arcane M10.
+    const playerBuildableCells: Pos[] = [];
+    for (let c = 18; c < cols - 1; c++) {
+      for (let r = 1; r < GRID_ROWS - 1; r++) {
+        playerBuildableCells.push({ col: c, row: r });
+      }
+    }
+
+    return {
+      id: 'mech_throne_finale' as MapId,
+      name: 'The Overthrow',
+      description: 'Storm Voss\'s foundry. Train raiders, drop the generators, end the tyrant.',
+      theme: 'factory',
+      entries: [{ col: 0, row: midRow }],
+      exits: [{ col: cols - 1, row: midRow }],
+      blocked: [...outerWall, ...centerCross],
+      noBuild: [],
+      playerBuildableCells,
+      destructibleTowers,
+      destructibleStructures,
+      workshop: { col: 32, row: midRow },
     };
   })(),
 };

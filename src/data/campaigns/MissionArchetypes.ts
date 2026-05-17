@@ -131,6 +131,17 @@ const ARCHETYPES: Record<string, MissionArchetype> = {
     baseMode: 'standard',
     defaults: { waveCount: 999, difficulty: 'hard' },
   },
+  /** Mech M10 finale — Workshop trains Raiders, Raiders sabotage
+   *  generators + the throne. Endless waves; win = throne destroyed,
+   *  loss = lives at 0. Distinct controller from final_arcane (no
+   *  summoning circles, no charge meter, squad instead of single hero). */
+  final_sabotage: {
+    id: 'final_sabotage',
+    label: 'The Overthrow',
+    blurb: 'Train raiders, drop the generators, end the tyrant.',
+    baseMode: 'standard',
+    defaults: { waveCount: 999, difficulty: 'hard' },
+  },
 };
 
 /** Forward-compat placeholders — registered so the `MissionArchetypeId`
