@@ -27,6 +27,7 @@ import { PlayerProfile } from './systems/profile/PlayerProfile';
 import './systems/traits/TowerTraitHandlers';
 import './systems/traits/CreepTraitHandlers';
 import './systems/traits/handlers/ChannelCasterHandler';
+import './systems/sabotage/SabotageTraits';
 
 // Eager-load the live-capture module so window.__learningCapture is
 // available from the menu (before any match starts). Module is

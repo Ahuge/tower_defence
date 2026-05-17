@@ -153,11 +153,6 @@ export class Tower {
    *  prior tick" without a fire event. -Infinity = never observed. */
   _suppressionSeenLastFired: number = -Infinity;
 
-  /** Mech finale: throne (Voss) is invulnerable until every generator
-   *  on the map has been destroyed. SabotageController flips this to
-   *  false once that's true. takeDamage() short-circuits while set. */
-  _invulnerable: boolean = false;
-
   /** Lifecycle marker. Set true by `takeDamage()` on the killing blow
    *  (or by mission controllers when an entity is consumed without HP
    *  damage, e.g. a generator's linked towers powering down). The
@@ -171,26 +166,6 @@ export class Tower {
    *  when scanning CPU towers for auto-targeting. Lets the duck-type
    *  resolve without `as unknown as` casts at the call sites. */
   get alive(): boolean { return !this._expired; }
-
-  /** Mech finale: cells of CPU towers this generator powers. When the
-   *  generator dies, SabotageController kills every linked tower
-   *  (sets _expired = true, no rewards). Empty for non-generator
-   *  towers. Only meaningful when `destructible` is also true. */
-  generatorLinkedCells?: { col: number; row: number }[];
-
-  /** Mech finale: tags this tower as a generator so the controller
-   *  knows to drop its `generatorLinkedCells` on death. */
-  isGenerator?: boolean;
-
-  /** Mech finale: SabotageController bookkeeping — set true once the
-   *  controller has drained this generator's linked towers. Prevents
-   *  the cascade firing twice if update() runs after the dead frame. */
-  _generatorDrained?: boolean;
-
-  /** Mech finale: tags this tower as the master throne (Voss). The
-   *  throne is the win-condition target — destroying it ends the
-   *  mission. While any generator is alive, _invulnerable is true. */
-  isThrone?: boolean;
 
   /** M10 finale: tower destructibility. Null = invincible (every
    *  player tower in every existing mission). Non-null only on M10

@@ -130,7 +130,8 @@ export class SabotageRender {
       // F0 — "shield up". The throne is invulnerable while any
       // generator is alive, so F0 stays pinned until SabotageController
       // flips _invulnerable. Once mortal, frame tracks HP.
-      const frame = throne._invulnerable ? 0 : throneFrameForHp(throne.destructible.hp / throne.destructible.maxHp);
+      const invulnerable = throne.traits.some(t => t.id === 'invulnerable');
+      const frame = invulnerable ? 0 : throneFrameForHp(throne.destructible.hp / throne.destructible.maxHp);
       throne.sprite.setFrame(frame);
     }
   }
@@ -157,7 +158,8 @@ export class SabotageRender {
     for (const gen of controller.getGenerators()) {
       if (gen._expired) continue;
       if (gen.destructible && gen.destructible.hp <= 0) continue;
-      const cells = gen.generatorLinkedCells ?? [];
+      const genTrait = gen.traits.find(t => t.id === 'mech_generator') as { linkedCells?: { col: number; row: number }[] } | undefined;
+      const cells = genTrait?.linkedCells ?? [];
       if (cells.length === 0) continue;
       // HP-scaled alpha so the visual fades as the generator weakens
       // (a hint that the link is about to break).
