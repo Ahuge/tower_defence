@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-05-17
+
+### Mech M10 Playwright e2e coverage
+
+Two specs in `e2e/m10-overthrow.spec.ts` lock in regression coverage for "The Overthrow" finale:
+
+1. **Smoke** — programmatic mission launch via `MissionRunner.start('mechanical', 9)`, polls until `SabotageController` is initialised, asserts every generator is alive and the throne is invulnerable at boot. Catches "campaign launch broke" and "M10 map definition lost its generators/throne" regressions.
+
+2. **Happy path** — drives the win-condition chain end-to-end. Force-kills each generator one at a time through the real `Damageable.takeDamage` path, asserting the throne stays invulnerable until the *last* generator dies. Then subscribes to `gameWon` via `__td_test.onceEvent`, force-kills the throne, and asserts the player profile recorded ≥1 star for M10. Includes a negative assertion that a throne kill before generators are down returns false — implicitly tests the controller's invulnerability gate.
+
+**Runtime:** ~22s for both specs (43s wall including the shared playwright build). Under the PRD's <60s target.
+
+**New `GameEvents`:** `mech_generator_killed`, `mech_throne_killed`, `mech_workshop_used`, `mech_raider_spawned`. Two of the four are wired now and consumed by the spec; the other two are reserved for the future workshop-UI / raider e2e specs and Analytics funnels.
+
+**New `__td_test` hooks:** `isGameSceneActive`, `getSabotageStatus`, `forceKillSabotageTarget`, `onceEvent`, `launchCampaignMission`. Three are generic (will be reused by campaign #3+ specs); two are M10-specific.
+
+**SabotageController gains** `getSnapshot()` (plain-object state pass-through), `forceKillTarget(kind, idx)` (e2e-only damage primitive), `onGeneratorKilled` and `onThroneKilled` callbacks (the latter fires before `onWin` so subscribers wanting the lower-level signal don't race the GameOver scene swap — asserted via `vi.fn` invocationCallOrder in the unit suite).
+
+Design rationale in `docs/m10-e2e-prd.md`. Files: `src/systems/EventBus.ts`, `src/systems/sabotage/SabotageController.ts` (+test), `src/scenes/GameScene.ts`, `src/testHook.ts`, `e2e/fixtures.ts`, `e2e/m10-overthrow.spec.ts`, `docs/m10-e2e-prd.md`.
+
 ## 2026-05-13
 
 ### Mana Drain ↔ Suppression Pylon siphon mechanic
