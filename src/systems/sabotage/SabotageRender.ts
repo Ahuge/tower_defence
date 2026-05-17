@@ -122,15 +122,16 @@ export class SabotageRender {
   private syncDamageFrames(controller: SabotageController): void {
     for (const gen of controller.getGenerators()) {
       if (gen._expired) continue;
-      if (!gen.sprite || gen.maxHp === undefined || gen.hp === undefined) continue;
-      gen.sprite.setFrame(generatorFrameForHp(gen.hp / gen.maxHp));
+      if (!gen.sprite || !gen.destructible) continue;
+      gen.sprite.setFrame(generatorFrameForHp(gen.destructible.hp / gen.destructible.maxHp));
     }
     const throne = controller.getThrone();
-    if (throne && throne.sprite && throne.maxHp !== undefined && throne.hp !== undefined) {
+    if (throne && throne.sprite && throne.destructible) {
       // F0 — "shield up". The throne is invulnerable while any
       // generator is alive, so F0 stays pinned until SabotageController
       // flips _invulnerable. Once mortal, frame tracks HP.
-      const frame = throne._invulnerable ? 0 : throneFrameForHp(throne.hp / throne.maxHp);
+      const invulnerable = throne.traits.some(t => t.id === 'invulnerable');
+      const frame = invulnerable ? 0 : throneFrameForHp(throne.destructible.hp / throne.destructible.maxHp);
       throne.sprite.setFrame(frame);
     }
   }
@@ -156,12 +157,13 @@ export class SabotageRender {
   private drawGeneratorPowerLines(controller: SabotageController, now: number): void {
     for (const gen of controller.getGenerators()) {
       if (gen._expired) continue;
-      if (gen.hp !== undefined && gen.hp <= 0) continue;
-      const cells = gen.generatorLinkedCells ?? [];
+      if (gen.destructible && gen.destructible.hp <= 0) continue;
+      const genTrait = gen.traits.find(t => t.id === 'mech_generator') as { linkedCells?: { col: number; row: number }[] } | undefined;
+      const cells = genTrait?.linkedCells ?? [];
       if (cells.length === 0) continue;
       // HP-scaled alpha so the visual fades as the generator weakens
       // (a hint that the link is about to break).
-      const hpRatio = gen.maxHp ? Math.max(0, (gen.hp ?? 0) / gen.maxHp) : 1;
+      const hpRatio = gen.destructible ? Math.max(0, gen.destructible.hp / gen.destructible.maxHp) : 1;
       const baseAlpha = 0.25 + 0.25 * hpRatio;
       for (const cell of cells) {
         const target = controller.findCpuTowerAt(cell.col, cell.row);

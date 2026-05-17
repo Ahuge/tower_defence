@@ -22,23 +22,40 @@
 
 import { SuppressionPylon, type SuppressionPylonInit } from '../../entities/SuppressionPylon';
 import { gridX, gridY } from '../../config';
+import { CellType, type Grid } from '../Grid';
+import { type Trait, getTrait } from '../traits/Trait';
+
+/** Per-tower suppression state, carried on a `suppressible` trait when
+ *  a tower first comes under a pylon's influence. Lazy-attached by
+ *  SuppressionManager rather than declared on every tower at
+ *  construction (most towers in most missions never see a pylon). */
+export interface SuppressibleTraitState extends Trait {
+  id: 'suppressible';
+  /** Per-tick stress count. At `STRESS_THRESHOLD` the tower stalls
+   *  and the count resets. */
+  stress: number;
+  /** Last `lastFired` value the manager observed for this tower —
+   *  detects "this tower fired since the prior tick" without an
+   *  event bus subscription. -Infinity = never observed. */
+  seenLastFired: number;
+}
 
 /** Outcome of a `startChannelAt` call. Lets the caller render
  *  distinct feedback per failure mode without re-querying pylon
  *  state. */
 export type ChannelStartResult = 'started' | 'no_pylon' | 'already_muted' | 'already_channeling';
 
-/** Player tower contract — the manager only reads what it needs. */
+/** Player tower contract — the manager only reads what it needs.
+ *  Suppression state (stress, seenLastFired) lives on the
+ *  `suppressible` trait when present; lazy-attached by the manager
+ *  rather than declared on every tower at construction. */
 export interface SuppressibleTower {
   col: number;
   row: number;
   lastFired: number;
   _expired?: boolean;
-  _stress: number;
   _disabledRemaining: number;
-  /** Per-tower state the manager tracks — last `lastFired` value it
-   *  observed. -Infinity = never. Tower declares this default. */
-  _suppressionSeenLastFired: number;
+  traits: Trait[];
   /** Defenders / CPU towers (M10) shouldn't be suppressed by Voss's
    *  own pylons. ownerIndex 0 / undefined = player team. */
   ownerIndex?: number;
@@ -59,16 +76,51 @@ export const SIPHON_STACK_THRESHOLD = 5;
 export class SuppressionManager {
   readonly pylons: SuppressionPylon[];
 
-  constructor(pylons: SuppressionPylonInit[]) {
+  constructor(pylons: SuppressionPylonInit[], grid?: Grid) {
     this.pylons = pylons.map(p => new SuppressionPylon(p));
+    if (grid) this._validatePylonCells(grid);
+  }
+
+  /** Defensive runtime check: pylon cells must end up as `NoBuild`. The
+   *  click handler at the top of GameScene.handleClick assumes pylon
+   *  cells are not buildable (priority intercept for channel input);
+   *  the rest of the code assumes creeps don't spawn/exit on a pylon.
+   *
+   *  Auto-converts `Empty` cells to `NoBuild` (matching the old inline
+   *  logic in GameScene). For `Entry` / `Exit` / `Blocked` / `Tower`,
+   *  loudly warns: a designer or authoring tool placed a pylon where
+   *  the invariant doesn't hold and downstream behavior fragments.
+   *  Throwing was rejected — a broken pylon shouldn't break a whole
+   *  mission boot; the warning is enough to find this in the console.
+   *
+   *  Idempotent. Safe on out-of-bounds cells (skipped without warn —
+   *  out-of-bounds is already a separate map-validation bug). */
+  private _validatePylonCells(grid: Grid): void {
+    for (const pylon of this.pylons) {
+      const row = grid.cells[pylon.row];
+      if (!row) continue;
+      const cell = row[pylon.col];
+      if (cell === undefined) continue;
+      if (cell === CellType.Empty) {
+        row[pylon.col] = CellType.NoBuild;
+        continue;
+      }
+      if (cell === CellType.NoBuild) continue; // already correct
+      const name = CellType[cell] ?? `Unknown(${cell})`;
+      console.warn(
+        `[SuppressionManager] pylon at (${pylon.col}, ${pylon.row}) sits on ` +
+        `${name} — expected Empty or NoBuild. The click-handler invariant ` +
+        `(pylon-channel intercept assumes !buildable) may fragment. Fix ` +
+        `the map definition or authoring tool.`,
+      );
+    }
   }
 
   /** Per-frame: walk the tower list, bump stress on those that fired
    *  inside an active pylon, and trigger stalls at threshold. Per-
-   *  tower bookkeeping (`_suppressionSeenLastFired`) lives on Tower,
-   *  matching the codebase's "instance field" convention rather than
-   *  a side WeakMap. Also resolves any in-progress player channels
-   *  whose duration has elapsed. */
+   *  tower bookkeeping lives on the `suppressible` trait, lazily
+   *  attached on first need. Also resolves any in-progress player
+   *  channels whose duration has elapsed. */
   update(now: number, towers: SuppressibleTower[]): void {
     if (this.pylons.length === 0) return;
     this._resolveChannels(now);
@@ -78,17 +130,29 @@ export class SuppressionManager {
       // are immune to his own suppression.
       if ((tower.ownerIndex ?? 0) !== 0) continue;
 
-      if (tower.lastFired <= tower._suppressionSeenLastFired) continue;
-      tower._suppressionSeenLastFired = tower.lastFired;
+      const s = this._stateOf(tower);
+      if (tower.lastFired <= s.seenLastFired) continue;
+      s.seenLastFired = tower.lastFired;
 
       if (!this._inAnyActivePylon(tower, now)) continue;
 
-      tower._stress++;
-      if (tower._stress >= STRESS_THRESHOLD) {
-        tower._stress = 0;
+      s.stress++;
+      if (s.stress >= STRESS_THRESHOLD) {
+        s.stress = 0;
         tower._disabledRemaining = STALL_SECONDS;
       }
     }
+  }
+
+  /** Look up the tower's suppressible state, attaching the trait on
+   *  first call. Cheap when the trait is already present; one-time
+   *  allocation when first needed. */
+  private _stateOf(tower: SuppressibleTower): SuppressibleTraitState {
+    const existing = getTrait(tower.traits, 'suppressible') as SuppressibleTraitState | undefined;
+    if (existing) return existing;
+    const fresh: SuppressibleTraitState = { id: 'suppressible', stress: 0, seenLastFired: -Infinity };
+    tower.traits.push(fresh);
+    return fresh;
   }
 
   /** Mute the pylon at the given cell. Returns true if a pylon was

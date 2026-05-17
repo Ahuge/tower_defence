@@ -1,5 +1,6 @@
 import { ArmorType, DamageType } from '../../data/CreepTypes';
 import { calculateDamage } from '../DamageCalculator';
+import type { DamageSource } from '../../entities/Damageable';
 
 // --- Core Types ---
 
@@ -79,6 +80,30 @@ type CreepDamageFn = (trait: Trait, damage: number) => number;
 type CreepUpdateFn = (trait: Trait, creep: any, delta: number, nearbyCreeps: any[]) => void;
 type CreepDrawFn = (trait: Trait, creep: any, graphics: any) => void;
 
+// --- Lifecycle / damage / render pipeline (Tower-side, v2 refactor) ---
+
+/** Veto = "this damage should not apply at all" (e.g. M10 throne is
+ *  invulnerable while generators alive, shield-bubble absorbs the hit).
+ *  OR semantics: any handler returning true vetoes the damage. */
+type DamageVetoFn = (trait: Trait, amount: number, source: DamageSource, tower: any) => boolean;
+/** Modifier = chained multiplier/transform on the incoming amount
+ *  (resists, vulnerability buffs, partial absorb). Run after veto. */
+type DamageModifierFn = (trait: Trait, amount: number, source: DamageSource, tower: any) => number;
+/** onTakeDamage = side-effect after damage applied (animations,
+ *  events, retaliation flagging). Cannot change the amount. */
+type OnTakeDamageFn = (trait: Trait, amount: number, source: DamageSource, tower: any) => void;
+/** onKill = killing-blow hook. Fires after hp <= 0 + _expired set,
+ *  before the next-frame cleanup. */
+type OnKillFn = (trait: Trait, source: DamageSource, tower: any) => void;
+/** onSpawn / onDespawn — lifecycle hooks. Fire on construction
+ *  (after trait list is materialised) and at cleanup time. */
+type OnSpawnFn = (trait: Trait, tower: any) => void;
+type OnDespawnFn = (trait: Trait, tower: any) => void;
+/** Overlay draw — each trait can paint on top of the base tower
+ *  render. Replaces drawTower's hard-coded campaign-specific
+ *  conditionals (golden ult border, conduit link arc, etc.). */
+type OverlayDrawFn = (trait: Trait, tower: any, graphics: any, scene: any) => void;
+
 // --- Registry ---
 
 const deliveryReg = new Map<string, DeliveryFn>();
@@ -90,6 +115,13 @@ const towerUpdateReg = new Map<string, TowerUpdateFn>();
 const creepDamageReg = new Map<string, CreepDamageFn>();
 const creepUpdateReg = new Map<string, CreepUpdateFn>();
 const creepDrawReg = new Map<string, CreepDrawFn>();
+const damageVetoReg = new Map<string, DamageVetoFn>();
+const damageModifierReg = new Map<string, DamageModifierFn>();
+const onTakeDamageReg = new Map<string, OnTakeDamageFn>();
+const onKillReg = new Map<string, OnKillFn>();
+const onSpawnReg = new Map<string, OnSpawnFn>();
+const onDespawnReg = new Map<string, OnDespawnFn>();
+const overlayDrawReg = new Map<string, OverlayDrawFn>();
 
 // --- Registration ---
 
@@ -102,6 +134,13 @@ export function registerTowerUpdate(id: string, fn: TowerUpdateFn) { towerUpdate
 export function registerCreepDamage(id: string, fn: CreepDamageFn) { creepDamageReg.set(id, fn); }
 export function registerCreepUpdate(id: string, fn: CreepUpdateFn) { creepUpdateReg.set(id, fn); }
 export function registerCreepDraw(id: string, fn: CreepDrawFn) { creepDrawReg.set(id, fn); }
+export function registerDamageVeto(id: string, fn: DamageVetoFn) { damageVetoReg.set(id, fn); }
+export function registerDamageModifier(id: string, fn: DamageModifierFn) { damageModifierReg.set(id, fn); }
+export function registerOnTakeDamage(id: string, fn: OnTakeDamageFn) { onTakeDamageReg.set(id, fn); }
+export function registerOnKill(id: string, fn: OnKillFn) { onKillReg.set(id, fn); }
+export function registerOnSpawn(id: string, fn: OnSpawnFn) { onSpawnReg.set(id, fn); }
+export function registerOnDespawn(id: string, fn: OnDespawnFn) { onDespawnReg.set(id, fn); }
+export function registerOverlayDraw(id: string, fn: OverlayDrawFn) { overlayDrawReg.set(id, fn); }
 
 // --- Resolution Pipeline ---
 
@@ -201,6 +240,78 @@ export function resolveCreepDraw(traits: Trait[], creep: any, graphics: any): vo
     if (fn) {
       fn(trait, creep, graphics);
     }
+  }
+}
+
+// --- Tower lifecycle / damage / render resolvers (v2) ---
+
+/** Run the damage-veto pipeline. OR semantics: any handler returning
+ *  true vetoes the damage entirely. Caller short-circuits on true. */
+export function resolveDamageVeto(traits: Trait[], amount: number, source: DamageSource, tower: any): boolean {
+  for (const trait of traits) {
+    const fn = damageVetoReg.get(trait.id);
+    if (fn && fn(trait, amount, source, tower)) return true;
+  }
+  return false;
+}
+
+/** Run the damage-modifier chain on a Tower-side hit. Each handler
+ *  takes the current amount and returns the new amount; order is
+ *  trait-list order. Run AFTER veto, BEFORE applying to hp. */
+export function resolveTowerDamageModifiers(traits: Trait[], amount: number, source: DamageSource, tower: any): number {
+  let a = amount;
+  for (const trait of traits) {
+    const fn = damageModifierReg.get(trait.id);
+    if (fn) a = fn(trait, a, source, tower);
+  }
+  return a;
+}
+
+/** Side-effect hooks after damage applied (animations, retaliation
+ *  flagging). Cannot change the amount; runs even on 0-amount hits
+ *  if any trait wants to react to "I was targeted but absorbed." */
+export function resolveOnTakeDamage(traits: Trait[], amount: number, source: DamageSource, tower: any): void {
+  for (const trait of traits) {
+    const fn = onTakeDamageReg.get(trait.id);
+    if (fn) fn(trait, amount, source, tower);
+  }
+}
+
+/** Killing-blow hook. Fires once, after hp <= 0 and _expired = true. */
+export function resolveOnKill(traits: Trait[], source: DamageSource, tower: any): void {
+  for (const trait of traits) {
+    const fn = onKillReg.get(trait.id);
+    if (fn) fn(trait, source, tower);
+  }
+}
+
+/** Lifecycle: tower constructed and trait list materialised. Run
+ *  once at the end of Tower's constructor. */
+export function resolveOnSpawn(traits: Trait[], tower: any): void {
+  for (const trait of traits) {
+    const fn = onSpawnReg.get(trait.id);
+    if (fn) fn(trait, tower);
+  }
+}
+
+/** Lifecycle: tower about to be cleaned up (next-frame after _expired).
+ *  Run before grid removal so handlers can read final state. */
+export function resolveOnDespawn(traits: Trait[], tower: any): void {
+  for (const trait of traits) {
+    const fn = onDespawnReg.get(trait.id);
+    if (fn) fn(trait, tower);
+  }
+}
+
+/** Run each trait's overlay-draw handler after the base tower render.
+ *  Replaces drawTower's campaign-specific conditionals — each campaign
+ *  registers its own overlay (golden ult border, conduit link, hack
+ *  glow, etc.) and drawTower just iterates. Order is trait-list order;
+ *  Phaser graphics compositing makes overlapping draws additive. */
+export function resolveOverlayDraw(traits: Trait[], tower: any, graphics: any, scene: any): void {
+  for (const trait of traits) {
+    const fn = overlayDrawReg.get(trait.id);
+    if (fn) fn(trait, tower, graphics, scene);
   }
 }
 

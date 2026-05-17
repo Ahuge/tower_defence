@@ -8,7 +8,7 @@ import { StatsTracker } from './StatsTracker';
 import { EventLog } from '../ui/EventLog';
 import { getTowerType, TowerType } from '../data/TowerTypes';
 import { DraftModifier } from '../data/DraftModifiers';
-import { UpdateContext } from './traits/Trait';
+import { UpdateContext, removeTrait } from './traits/Trait';
 import { Tower } from '../entities/Tower';
 import { Creep } from '../entities/Creep';
 
@@ -159,9 +159,11 @@ export class TowerManager {
     // here would silently downgrade linear-upgraded towers back to L1
     // range every frame they're under a Reach.
     for (const tower of this.towers) {
-      (tower as any)._linkedByConduit = false;
-      (tower as any)._conduitX = undefined;
-      (tower as any)._conduitY = undefined;
+      // Strip the previous frame's conduit-linked trait — the
+      // conduit_link handler below re-stamps it on towers that are
+      // still in range. The trait carries srcX/srcY for the overlay
+      // line back to the conduit source.
+      removeTrait(tower.traits, 'conduit_linked');
       for (const trait of tower.traits) {
         if (trait.id === '_harmonic_damage' || trait.id === '_harmonic_rate' || trait.id === '_harmonic_range') {
           // multiplicative identity — every aura source compounds onto

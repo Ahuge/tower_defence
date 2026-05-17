@@ -41,7 +41,7 @@ import { gridX, gridY, GRID_COLS, GRID_ROWS, TILE_SIZE, getGridOffsetX, pixelToC
 import { Grid, CellType } from '../Grid';
 import { findPath, PathPoint } from '../Pathfinding';
 import { createProjectileSprite, hasProjectileSprite } from '../SpriteManager';
-import { Damageable } from './Damageable';
+import { Damageable } from '../../entities/Damageable';
 import { placeCpuTowers } from './cpuPlacement';
 import { dispatchFinaleEffect } from './FinaleEffects';
 import { applyHeroPendingEffects, PendingHittable } from './applyHeroPendingEffects';
@@ -149,11 +149,12 @@ export class FinaleController {
     this.onWin = args.onWin;
 
     // Place destructible CPU towers via the shared helper. Caller
-    // here just stamps the Arcane-specific isUlt flag.
+    // here pushes the arcane_ult_target trait on the ult tower so
+    // its golden HP-bar border + ult-tier kill rewards trigger.
     const ownerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX;
     const defaultHp = this.rules.cpuTowerHpDefault ?? 600;
     for (const { spec, tower } of placeCpuTowers(this.towerMgr, args.destructibleTowers, ownerIndex, defaultHp)) {
-      if (spec.isUlt) tower.isUlt = true;
+      if (spec.isUlt) tower.traits.push({ id: 'arcane_ult_target' });
       this.cpuTowers.push(tower);
     }
 
@@ -432,7 +433,7 @@ export class FinaleController {
         const rangeSq = t.range * t.range;
         // ─── Tier 1: creeps_attacking_it (sends that recently hit it) ───
         let target: { x: number; y: number; isHero?: boolean; creep?: Creep } | null = null;
-        if (now - t._lastSendHitAt < ATTACKING_WINDOW_MS) {
+        if (now - t.assailants.lastBy('send') < ATTACKING_WINDOW_MS) {
           let bestDist = Infinity;
           for (const c of creeps as Creep[]) {
             if (!c.alive || c.reached || !c.isSend) continue;
@@ -443,7 +444,7 @@ export class FinaleController {
           }
         }
         // ─── Tier 2: hero_attacking_it (hero recently hit it) ───
-        if (!target && hero && hero.alive && now - t._lastHeroHitAt < ATTACKING_WINDOW_MS) {
+        if (!target && hero && hero.alive && now - t.assailants.lastBy('hero') < ATTACKING_WINDOW_MS) {
           const dx = heroX - t.x, dy = heroY - t.y;
           if (dx * dx + dy * dy <= rangeSq) {
             target = { x: heroX, y: heroY, isHero: true };
@@ -511,8 +512,9 @@ export class FinaleController {
         for (const t of this.cpuTowers) {
           if ((t as { _expired?: boolean })._expired && !(t as { _killRewardGranted?: boolean })._killRewardGranted) {
             (t as { _killRewardGranted?: boolean })._killRewardGranted = true;
-            const gold = t.isUlt ? (reward.ultGold ?? 500) : (reward.gold ?? 50);
-            const xp = t.isUlt ? (reward.ultXp ?? 250) : (reward.xp ?? 50);
+            const isUlt = t.traits.some(tr => tr.id === 'arcane_ult_target');
+            const gold = isUlt ? (reward.ultGold ?? 500) : (reward.gold ?? 50);
+            const xp = isUlt ? (reward.ultXp ?? 250) : (reward.xp ?? 50);
             const econ = (this.scene as { economy?: { addGold: (n: number) => void } }).economy;
             econ?.addGold?.(gold);
             this.hero.grantXP(xp);
@@ -531,7 +533,7 @@ export class FinaleController {
               });
             }
             const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
-            log?.gameMessage?.(t.isUlt
+            log?.gameMessage?.(isUlt
               ? `THE THRONE FALLS — ${gold}g, ${xp}xp.`
               : `Defender tower destroyed (+${gold}g, +${xp}xp).`);
           }
@@ -615,9 +617,8 @@ export class FinaleController {
           alive: target.alive,
           path: pathPx,
           takeDamage: (amount: number) => {
-            const killed = target.takeDamage(amount);
+            const killed = target.takeDamage(amount, 'send');
             fd?.spawn?.(target.x, target.y - 18, String(amount), '#ffaa44');
-            (target as { _lastSendHitAt?: number })._lastSendHitAt = (this.scene as { time?: { now: number } }).time?.now ?? 0;
             return killed;
           },
         };
@@ -636,7 +637,7 @@ export class FinaleController {
     // tower falls, the shield drops.
     let aliveTowerCount = 0;
     for (const t of this.cpuTowers) {
-      if (!(t as { _expired?: boolean })._expired && (t.hp ?? 0) > 0) aliveTowerCount++;
+      if (!(t as { _expired?: boolean })._expired && (t.destructible?.hp ?? 0) > 0) aliveTowerCount++;
     }
     for (const s of this.cpuStructures) {
       s.invulnerable = s.isMissionWinTarget && aliveTowerCount > 0;
@@ -670,7 +671,7 @@ export class FinaleController {
     if (!this.winFired && this.firstSpawnDone) {
       let aliveTowers = 0;
       for (const t of this.cpuTowers) {
-        if (!(t as { _expired?: boolean })._expired && (t.hp ?? 0) > 0) aliveTowers++;
+        if (!(t as { _expired?: boolean })._expired && (t.destructible?.hp ?? 0) > 0) aliveTowers++;
       }
       let aliveWinTargets = 0;
       for (const s of this.cpuStructures) {
@@ -896,7 +897,7 @@ export class FinaleController {
 
   /** Snapshot of all alive CPU towers. Used by win-check + UI. */
   getCpuTowers(): Tower[] {
-    return this.cpuTowers.filter(t => !(t as { _expired?: boolean })._expired && (t.hp ?? 1) > 0);
+    return this.cpuTowers.filter(t => !(t as { _expired?: boolean })._expired && (t.destructible?.hp ?? 1) > 0);
   }
 
   /** Sprite-based projectile from a tower to the hero. Uses the

@@ -1248,19 +1248,13 @@ export class GameScene extends Phaser.Scene {
       ? this._missionSuppressionPylons
       : mapDef.suppressionPylons;
     if (pylons && pylons.length > 0) {
-      this._suppressionMgr = new SuppressionManager(pylons);
+      // SuppressionManager validates pylon cells against the grid:
+      // auto-converts Empty → NoBuild so the click handler's pylon-
+      // channel intercept stays load-bearing, and loudly warns if a
+      // pylon ended up on Entry/Exit/Blocked/Tower (downstream
+      // assumptions would fragment in that case).
+      this._suppressionMgr = new SuppressionManager(pylons, this.grid);
       this._suppressionRender = new SuppressionRender(this);
-      // Mark pylon cells as noBuild so the player can't drop a tower on
-      // top of one. The click handler at the top of handleClick already
-      // intercepts pylon-cell clicks for channeling — without this, a
-      // build-mode click on a pylon cell would silently fail validation
-      // somewhere further down OR the cell would accept a build that
-      // visually overlaps the pylon. Marking noBuild surfaces the
-      // invariant cleanly at the grid layer.
-      for (const p of pylons) {
-        const row = this.grid.cells[p.row];
-        if (row && row[p.col] === CellType.Empty) row[p.col] = CellType.NoBuild;
-      }
     }
     // Mech M10 finale — instantiate the SabotageController. Reuses
     // the destructibleTowers map field (with isGenerator/isThrone tags
@@ -2249,8 +2243,8 @@ export class GameScene extends Phaser.Scene {
       // throne embedded tower). Player can inspect HP / stats but not
       // sell/upgrade.
       owned: tower.ownerIndex !== CPU_INDEX && this.canModifyTower(tower.col, tower.row),
-      hp: tower.hp,
-      maxHp: tower.maxHp,
+      hp: tower.destructible?.hp,
+      maxHp: tower.destructible?.maxHp,
       traits,
       auraBuffs,
       upgradePreview,

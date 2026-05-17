@@ -2,28 +2,33 @@ import { describe, expect, it, vi } from 'vitest';
 import { SabotageController } from './SabotageController';
 import type { Tower } from '../../entities/Tower';
 import type { TowerManager } from '../TowerManager';
+import { createAssailantLog } from '../../entities/Damageable';
 
 /** Minimal Tower stand-in. Mimics the fields SabotageController reads
- *  + a takeDamage that drives hp to zero and sets _expired. */
+ *  + a takeDamage that drives hp to zero and sets _expired. Mirrors
+ *  the v2 destructible sub-object shape — cpuPlacement stamps the
+ *  state via createDestructibleState; the controller pushes
+ *  mech_generator / mech_throne / invulnerable trait entries onto
+ *  `traits`. */
 function makeTower(col: number, row: number): Partial<Tower> {
   const t: any = {
     col, row,
-    hp: undefined,
-    maxHp: undefined,
-    destructible: false,
+    destructible: null,
+    assailants: createAssailantLog(),
     ownerIndex: 0,
     _expired: false,
-    _invulnerable: false,
-    isGenerator: false,
-    isThrone: false,
-    generatorLinkedCells: undefined,
+    traits: [],
     takeDamage(amount: number) {
-      if (!this.destructible || this.hp === undefined) return false;
-      if (this.hp <= 0) return false;
-      if (this._invulnerable) return false;
-      this.hp -= amount;
-      if (this.hp <= 0) {
-        this.hp = 0;
+      if (!this.destructible) return false;
+      if (this.destructible.hp <= 0) return false;
+      // Mirror the trait-veto check: if the tower carries an
+      // 'invulnerable' trait, the real Tower.takeDamage would return
+      // false at the veto step. Match that here so tests asserting
+      // "kill throne while generators alive is a no-op" pass.
+      if (this.traits.some((tr: { id: string }) => tr.id === 'invulnerable')) return false;
+      this.destructible.hp -= amount;
+      if (this.destructible.hp <= 0) {
+        this.destructible.hp = 0;
         this._expired = true;
         return true;
       }
@@ -91,8 +96,9 @@ describe('SabotageController', () => {
     });
     expect(ctrl.getTotalGeneratorCount()).toBe(1);
     expect(ctrl.getAliveGeneratorCount()).toBe(1);
-    expect(ctrl.getThrone()?._invulnerable).toBe(true);
-    expect(ctrl.getThrone()?.isThrone).toBe(true);
+    const throneTraits = ctrl.getThrone()?.traits.map(t => t.id) ?? [];
+    expect(throneTraits).toContain('invulnerable');
+    expect(throneTraits).toContain('mech_throne');
   });
 
   it('expires linked towers when the generator dies', () => {
@@ -108,7 +114,7 @@ describe('SabotageController', () => {
       onGeneratorKilled,
     });
     const generator = (mgr.towers as any)[2] as Partial<Tower>;
-    generator.takeDamage!(generator.maxHp!);
+    generator.takeDamage!(generator.destructible!.maxHp);
     ctrl.update();
     const linked1 = (mgr.towers as any)[0];
     const linked2 = (mgr.towers as any)[1];
@@ -129,15 +135,16 @@ describe('SabotageController', () => {
       ],
       onThroneVulnerable,
     });
-    expect(ctrl.getThrone()?._invulnerable).toBe(true);
+    const hasInvuln = () => ctrl.getThrone()?.traits.some(t => t.id === 'invulnerable') ?? false;
+    expect(hasInvuln()).toBe(true);
     const [g1, g2] = (mgr.towers as any).slice(0, 2);
     g1.takeDamage(100);
     ctrl.update();
-    expect(ctrl.getThrone()?._invulnerable).toBe(true);
+    expect(hasInvuln()).toBe(true);
     expect(onThroneVulnerable).not.toHaveBeenCalled();
     g2.takeDamage(100);
     ctrl.update();
-    expect(ctrl.getThrone()?._invulnerable).toBe(false);
+    expect(hasInvuln()).toBe(false);
     expect(onThroneVulnerable).toHaveBeenCalledTimes(1);
     ctrl.update();
     expect(onThroneVulnerable).toHaveBeenCalledTimes(1);
@@ -154,7 +161,7 @@ describe('SabotageController', () => {
     });
     const throne = (mgr.towers as any)[1];
     throne.takeDamage(9999);
-    expect(throne.hp).toBe(1000);
+    expect(throne.destructible.hp).toBe(1000);
     expect(throne._expired).toBe(false);
   });
 
@@ -172,7 +179,7 @@ describe('SabotageController', () => {
     });
     ctrl.update();
     const throne = ctrl.getThrone()!;
-    expect(throne._invulnerable).toBe(false);
+    expect(throne.traits.some(t => t.id === 'invulnerable')).toBe(false);
     (throne as any).takeDamage(100);
     ctrl.update();
     expect(onWin).toHaveBeenCalledTimes(1);
@@ -212,8 +219,8 @@ describe('SabotageController', () => {
       ],
     });
     const throne = (mgr.towers as any)[0];
-    expect(throne.maxHp).toBe(999);
-    expect(throne.hp).toBe(999);
+    expect(throne.destructible.maxHp).toBe(999);
+    expect(throne.destructible.hp).toBe(999);
   });
 
   describe('workshop + raider squad integration', () => {
@@ -330,7 +337,7 @@ describe('SabotageController', () => {
         onWin,
       });
       expect(ctrl.forceKillTarget('throne')).toBe(false);
-      expect(ctrl.getThrone()?.hp).toBe(5000);
+      expect(ctrl.getThrone()?.destructible?.hp).toBe(5000);
       expect(onWin).not.toHaveBeenCalled();
     });
 

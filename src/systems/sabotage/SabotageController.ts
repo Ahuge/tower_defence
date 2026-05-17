@@ -36,6 +36,7 @@ import {
   GENERATOR_TEXTURE,
   generatorFrameForHp,
 } from './SabotageAssets';
+import { getTrait, hasTrait, removeTrait } from '../traits/Trait';
 import type * as Phaser from 'phaser';
 
 export const CPU_INDEX_SABOTAGE = 99;
@@ -120,6 +121,12 @@ export class SabotageController {
   private cpuStructures: DestructibleStructure[] = [];
   private throneVulnerableFired = false;
   private winFired = false;
+  /** Controller-private bookkeeping: generators whose linked-tower
+   *  cascade has already fired. Replaces the per-tower
+   *  `_generatorDrained` flag (cleaner separation — tower entities
+   *  don't carry per-controller state). WeakSet so the entries free
+   *  when towers are cleaned up. */
+  private _drained: WeakSet<Tower> = new WeakSet();
   private onWin?: () => void;
   private onThroneKilled?: () => void;
   private onThroneVulnerable?: () => void;
@@ -168,8 +175,7 @@ export class SabotageController {
     const defaultHp = this.rules.cpuTowerHpDefault ?? 600;
     for (const { spec, tower } of placeCpuTowers(this.towerMgr, args.destructibleTowers, ownerIndex, defaultHp)) {
       if (spec.isGenerator) {
-        tower.isGenerator = true;
-        tower.generatorLinkedCells = spec.linkedTowers ?? [];
+        tower.traits.push({ id: 'mech_generator', linkedCells: spec.linkedTowers ?? [] });
         // Generators are inert HP bags — never fire. Block the
         // standard updateTowers pipeline from picking them via the
         // existing _disabledRemaining channel (Infinity stays Infinity
@@ -182,8 +188,8 @@ export class SabotageController {
         this.generators.push(tower);
       }
       if (spec.isThrone) {
-        tower.isThrone = true;
-        tower._invulnerable = true;
+        tower.traits.push({ id: 'mech_throne' });
+        tower.traits.push({ id: 'invulnerable' });
         this.throne = tower;
       }
       this.cpuTowers.push(tower);
@@ -243,30 +249,33 @@ export class SabotageController {
 
     // Drain any newly-dead generators we haven't processed yet. Death
     // is detected by hp<=0 (Tower.takeDamage drives it to 0 and sets
-    // _expired); the per-tower _generatorDrained flag prevents double-
-    // firing the cascade across multiple updates after death.
+    // _expired). The per-controller _drained WeakSet (not a per-tower
+    // flag — bookkeeping is controller-private) prevents double-firing
+    // the cascade across multiple updates after death.
     for (let i = 0; i < this.generators.length; i++) {
       const gen = this.generators[i];
-      if ((gen.hp ?? 1) > 0) continue;
-      if (gen._generatorDrained) continue;
-      gen._generatorDrained = true;
+      if ((gen.destructible?.hp ?? 1) > 0) continue;
+      if (this._drained.has(gen)) continue;
+      this._drained.add(gen);
       this.onGeneratorKilled?.(i);
-      for (const cell of gen.generatorLinkedCells ?? []) {
+      const genTrait = getTrait(gen.traits, 'mech_generator') as { linkedCells: { col: number; row: number }[] } | undefined;
+      for (const cell of genTrait?.linkedCells ?? []) {
         const target = this.cpuTowers.find(t => t.col === cell.col && t.row === cell.row && !t._expired);
         if (!target) continue;
         target._expired = true;
       }
     }
 
-    // Throne becomes mortal once every generator is gone. Handles both
-    // the legacy single-cell Tower path AND the PRD-06 structure path
-    // — whichever the map uses, the controller flips its invulnerable
-    // flag in lockstep.
+    // Throne becomes mortal once every generator is gone. Removing the
+    // 'invulnerable' trait flips the damage-veto pipeline — the
+    // Damageable.takeDamage path now applies damage normally. For the
+    // structure-throne (PRD-06), we still flip its boolean directly
+    // since DestructibleStructure doesn't carry traits.
     if (!this.throneVulnerableFired && this._allGeneratorsDead()) {
       const hasThrone = this.throne !== null || this.throneStructure !== null;
       if (hasThrone) {
         this.throneVulnerableFired = true;
-        if (this.throne) this.throne._invulnerable = false;
+        if (this.throne) removeTrait(this.throne.traits, 'invulnerable');
         if (this.throneStructure) this.throneStructure.invulnerable = false;
         this.onThroneVulnerable?.();
       }
@@ -319,7 +328,7 @@ export class SabotageController {
     // Win = throne destroyed. Handles both paths — Tower throne dies
     // when _expired or hp<=0; Structure throne dies when !alive.
     if (!this.winFired) {
-      const throneDeadTower = this.throne && (this.throne._expired || (this.throne.hp ?? 1) <= 0);
+      const throneDeadTower = this.throne && (this.throne._expired || (this.throne.destructible?.hp ?? 1) <= 0);
       const throneDeadStructure = this.throneStructure && !this.throneStructure.alive;
       if (throneDeadTower || throneDeadStructure) {
         this.winFired = true;
@@ -400,7 +409,7 @@ export class SabotageController {
    *  the throne-vulnerability gate; exposed so HUD code can render
    *  "X / N generators down" without poking internals. */
   getAliveGeneratorCount(): number {
-    return this.generators.filter(g => !g._expired && (g.hp ?? 0) > 0).length;
+    return this.generators.filter(g => !g._expired && (g.destructible?.hp ?? 0) > 0).length;
   }
 
   getTotalGeneratorCount(): number {
@@ -433,17 +442,17 @@ export class SabotageController {
   } {
     const generators = this.generators.map((g, idx) => ({
       idx,
-      alive: !g._expired && (g.hp ?? 0) > 0,
-      hp: g.hp ?? 0,
-      maxHp: g.maxHp ?? 0,
+      alive: !g._expired && (g.destructible?.hp ?? 0) > 0,
+      hp: g.destructible?.hp ?? 0,
+      maxHp: g.destructible?.maxHp ?? 0,
     }));
     let throne: { alive: boolean; invulnerable: boolean; hp: number; maxHp: number } | null = null;
     if (this.throne) {
       throne = {
-        alive: !this.throne._expired && (this.throne.hp ?? 0) > 0,
-        invulnerable: this.throne._invulnerable,
-        hp: this.throne.hp ?? 0,
-        maxHp: this.throne.maxHp ?? 0,
+        alive: !this.throne._expired && (this.throne.destructible?.hp ?? 0) > 0,
+        invulnerable: hasTrait(this.throne.traits, 'invulnerable'),
+        hp: this.throne.destructible?.hp ?? 0,
+        maxHp: this.throne.destructible?.maxHp ?? 0,
       };
     } else if (this.throneStructure) {
       throne = {
@@ -467,13 +476,13 @@ export class SabotageController {
     if (kind === 'generator') {
       if (idx === undefined || idx < 0 || idx >= this.generators.length) return false;
       const gen = this.generators[idx];
-      if (gen._expired || (gen.hp ?? 0) <= 0) return false;
-      gen.takeDamage(gen.maxHp ?? gen.hp ?? 1);
+      if (gen._expired || (gen.destructible?.hp ?? 0) <= 0) return false;
+      gen.takeDamage(gen.destructible?.maxHp ?? 1);
       return true;
     }
     if (this.throne) {
-      if (this.throne._expired || (this.throne.hp ?? 0) <= 0) return false;
-      return this.throne.takeDamage(this.throne.maxHp ?? this.throne.hp ?? 1);
+      if (this.throne._expired || (this.throne.destructible?.hp ?? 0) <= 0) return false;
+      return this.throne.takeDamage(this.throne.destructible?.maxHp ?? 1);
     }
     if (this.throneStructure) {
       if (!this.throneStructure.alive) return false;
@@ -493,12 +502,12 @@ export class SabotageController {
     if (this.raiders.length === 0) return;
     for (const tower of this.cpuTowers) {
       if (tower._expired) continue;
-      if (tower.hp !== undefined && tower.hp <= 0) continue;
+      if (tower.destructible && tower.destructible.hp <= 0) continue;
       // Generators are inert HP bags — they're strategic priority
       // targets (kill = linked-tower cascade) but don't shoot. Skipping
       // them here also avoids the placeholder mech_mortar visual
       // splash-killing the squad with each tick.
-      if (tower.isGenerator) continue;
+      if (hasTrait(tower.traits, 'mech_generator')) continue;
       // Tower fired this tick already (at a send via standard path).
       if (now - tower.lastFired < tower.fireRate) continue;
       const target = this._closestRaiderInRange(tower);
