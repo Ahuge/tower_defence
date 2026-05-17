@@ -22,6 +22,7 @@
 
 import { SuppressionPylon, type SuppressionPylonInit } from '../../entities/SuppressionPylon';
 import { gridX, gridY } from '../../config';
+import { CellType, type Grid } from '../Grid';
 
 /** Outcome of a `startChannelAt` call. Lets the caller render
  *  distinct feedback per failure mode without re-querying pylon
@@ -59,8 +60,44 @@ export const SIPHON_STACK_THRESHOLD = 5;
 export class SuppressionManager {
   readonly pylons: SuppressionPylon[];
 
-  constructor(pylons: SuppressionPylonInit[]) {
+  constructor(pylons: SuppressionPylonInit[], grid?: Grid) {
     this.pylons = pylons.map(p => new SuppressionPylon(p));
+    if (grid) this._validatePylonCells(grid);
+  }
+
+  /** Defensive runtime check: pylon cells must end up as `NoBuild`. The
+   *  click handler at the top of GameScene.handleClick assumes pylon
+   *  cells are not buildable (priority intercept for channel input);
+   *  the rest of the code assumes creeps don't spawn/exit on a pylon.
+   *
+   *  Auto-converts `Empty` cells to `NoBuild` (matching the old inline
+   *  logic in GameScene). For `Entry` / `Exit` / `Blocked` / `Tower`,
+   *  loudly warns: a designer or authoring tool placed a pylon where
+   *  the invariant doesn't hold and downstream behavior fragments.
+   *  Throwing was rejected — a broken pylon shouldn't break a whole
+   *  mission boot; the warning is enough to find this in the console.
+   *
+   *  Idempotent. Safe on out-of-bounds cells (skipped without warn —
+   *  out-of-bounds is already a separate map-validation bug). */
+  private _validatePylonCells(grid: Grid): void {
+    for (const pylon of this.pylons) {
+      const row = grid.cells[pylon.row];
+      if (!row) continue;
+      const cell = row[pylon.col];
+      if (cell === undefined) continue;
+      if (cell === CellType.Empty) {
+        row[pylon.col] = CellType.NoBuild;
+        continue;
+      }
+      if (cell === CellType.NoBuild) continue; // already correct
+      const name = CellType[cell] ?? `Unknown(${cell})`;
+      console.warn(
+        `[SuppressionManager] pylon at (${pylon.col}, ${pylon.row}) sits on ` +
+        `${name} — expected Empty or NoBuild. The click-handler invariant ` +
+        `(pylon-channel intercept assumes !buildable) may fragment. Fix ` +
+        `the map definition or authoring tool.`,
+      );
+    }
   }
 
   /** Per-frame: walk the tower list, bump stress on those that fired

@@ -1,6 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SIPHON_STACK_THRESHOLD, SuppressionManager, type SuppressibleTower } from './SuppressionManager';
+import { CellType, Grid } from '../Grid';
 import { gridX, gridY, TILE_SIZE } from '../../config';
+
+/** Minimal Grid stand-in with a fixed shape — no MapDefinition needed.
+ *  Tests stamp specific cells; `cells[row][col]` is reachable as on
+ *  the real Grid. */
+function makeGrid(rows = 20, cols = 30): Grid {
+  // Construct without a MapDefinition; the no-arg path initializes
+  // cells to Empty and skips entry/exit population.
+  const g = new Grid(undefined, rows, cols);
+  return g;
+}
 
 function makeTower(col: number, row: number, opts: Partial<SuppressibleTower> = {}): SuppressibleTower {
   return {
@@ -225,6 +236,75 @@ describe('SuppressionManager', () => {
     const pylon = mgr.pylons[0];
     expect(pylon.siphonStacks).toBe(0);
     expect(pylon.isActive(1000 + mgr.getChannelDurationMs() + 2)).toBe(false);
+  });
+
+  // ─── Pylon-cell invariant (grid auto-stamp + warning) ───────
+
+  describe('pylon-cell invariant', () => {
+    it('auto-converts Empty pylon cells to NoBuild', () => {
+      const grid = makeGrid();
+      new SuppressionManager([{ col: 5, row: 5 }], grid);
+      expect(grid.cells[5][5]).toBe(CellType.NoBuild);
+    });
+
+    it('leaves already-NoBuild cells untouched (idempotent)', () => {
+      const grid = makeGrid();
+      grid.cells[5][5] = CellType.NoBuild;
+      new SuppressionManager([{ col: 5, row: 5 }], grid);
+      expect(grid.cells[5][5]).toBe(CellType.NoBuild);
+    });
+
+    it('warns when a pylon sits on Entry/Exit/Blocked/Tower', () => {
+      const grid = makeGrid();
+      grid.cells[2][2] = CellType.Entry;
+      grid.cells[3][3] = CellType.Exit;
+      grid.cells[4][4] = CellType.Blocked;
+      grid.cells[6][6] = CellType.Tower;
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      new SuppressionManager(
+        [
+          { col: 2, row: 2 },
+          { col: 3, row: 3 },
+          { col: 4, row: 4 },
+          { col: 6, row: 6 },
+        ],
+        grid,
+      );
+      expect(warn).toHaveBeenCalledTimes(4);
+      // Invariant violations are warnings, not mutations — cell types
+      // stay as the designer placed them so the bug is visible in-game.
+      expect(grid.cells[2][2]).toBe(CellType.Entry);
+      expect(grid.cells[3][3]).toBe(CellType.Exit);
+      expect(grid.cells[4][4]).toBe(CellType.Blocked);
+      expect(grid.cells[6][6]).toBe(CellType.Tower);
+      warn.mockRestore();
+    });
+
+    it('silently skips pylons placed out of grid bounds (no warn, no crash)', () => {
+      const grid = makeGrid(10, 10);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      // row out-of-range, then col out-of-range, then both.
+      expect(() => new SuppressionManager(
+        [
+          { col: 5, row: 99 },
+          { col: 99, row: 5 },
+          { col: 99, row: 99 },
+        ],
+        grid,
+      )).not.toThrow();
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it('no-arg construction (no grid) skips the invariant entirely', () => {
+      // Headless construction without a grid — manager still works for
+      // suppression-logic tests that don't care about the invariant.
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const mgr = new SuppressionManager([{ col: 5, row: 5 }]);
+      expect(mgr.pylons).toHaveLength(1);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
   });
 
   it('getActivePylonsInRangeOf includes only in-range active pylons', () => {
