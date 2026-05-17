@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-05-18
+
+### Tower.ts bag-of-flags refactor (v2)
+
+Two campaigns shipped, two campaigns' worth of mission-specific flags accreted on `Tower.ts`. Each new campaign would have piled on another 5–8 fields. This refactor extracts every mission-specific concern off the base class onto declarative traits, so campaign #3+ adds zero `Tower.ts` lines.
+
+**Design** (in `docs/tower-bag-of-flags-v2-plan.md`): three new pipelines on `Tower` replace hard-coded forks.
+
+1. **Damage pipeline** — `Tower.takeDamage(amount, source?)` flows through `resolveDamageVeto` → `resolveTowerDamageModifiers` → apply → `resolveOnTakeDamage` → `resolveOnKill`. Future shields, % resists, last-stand mechanics hang off these registries as trait handlers. Composable, not boolean.
+2. **Render-hooks registry** — `drawTower` ends with `resolveOverlayDraw(traits, ...)`. Campaign overlays (golden ult border, conduit link arc, future hack/decrypt visuals) register as trait handlers; `drawTower` no longer knows about any specific campaign.
+3. **Trait lifecycle extension** — `Trait.ts` gains `onSpawn` / `onDespawn` / `onTakeDamage` / `onKill` / `onOverlayDraw` registries paralleling the existing `onFire` / `towerUpdate` registries. Purely additive.
+
+**What moved to traits.** Mech finale tags (`mech_generator` carrying `linkedCells`, `mech_throne`, `invulnerable`), suppression state (`suppressible` with `stress` + `seenLastFired`), Arcane finale (`arcane_ult_target`), conduit linking (`conduit_linked` with `srcX` / `srcY`). Controllers stay for orchestration but read traits instead of stamping flags on `Tower`.
+
+**What stayed on `Tower`** (intentional, per the plan): `_disabledRemaining` (generic status, future StatusEffects target), `_expired` / `alive` (lifecycle — used by non-destructible towers too), `_lastAttackedHeroAt` (outbound retaliation, not bag-of-flags). Destructibility grouped into a single `Tower.destructible: DestructibleState | null` sub-object (hp / maxHp / lastHitAt); inbound retaliation onto `Tower.assailants: AssailantLog` (last-hit timestamps by source type, shared with `DestructibleStructure`).
+
+**Three `(this as any)` casts in `drawTower`** that have been embarrassing since they landed are gone — replaced by typed trait state.
+
+**Sequencing.** Seven commits, each self-contained with `npx tsc --noEmit` clean + full unit suite green + M10 e2e green after each. Test count: 626 → 645. The M10 e2e (`e2e/m10-overthrow.spec.ts`) is the integration safety net — asserts on `SabotageController.getSnapshot()` state, not flag shapes, so it caught regressions through the rewrite.
+
+Files: `src/entities/Tower.ts`, `src/entities/Destructibility.ts` (new), `src/entities/Damageable.ts` (lifted from `systems/finale/`), `src/systems/traits/Trait.ts` (+test), `src/systems/sabotage/SabotageTraits.ts` (new), `src/systems/finale/FinaleTraits.ts` (new), `src/systems/traits/TowerTraitHandlers.ts`, `src/systems/sabotage/SabotageController.ts` (+test), `src/systems/suppression/SuppressionManager.ts` (+test), `src/systems/suppression/SuppressionRender.ts`, `src/systems/finale/FinaleController.ts`, `src/systems/finale/cpuPlacement.ts`, `src/entities/DestructibleStructure.ts`, `src/entities/Hero.ts`, `src/scenes/GameScene.ts`, `src/systems/TowerManager.ts`, `src/main.ts`, `src/entities/Tower.takeDamage.test.ts`.
+
+### Suppression pylon-cell invariant
+
+The pylon-on-noBuild assumption (load-bearing for the GameScene click-handler's pylon-channel intercept) moved out of GameScene's inline stamp loop into `SuppressionManager`'s constructor. Auto-converts Empty → NoBuild (preserves old behavior); warns loudly when a pylon sits on Entry/Exit/Blocked/Tower without mutating the cell type (so the bug stays visible in-game). Silently skips out-of-bounds pylons. Five new tests.
+
 ## 2026-05-17
 
 ### Mech M10 Playwright e2e coverage
