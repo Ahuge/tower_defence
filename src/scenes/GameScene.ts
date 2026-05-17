@@ -2243,8 +2243,8 @@ export class GameScene extends Phaser.Scene {
       // throne embedded tower). Player can inspect HP / stats but not
       // sell/upgrade.
       owned: tower.ownerIndex !== CPU_INDEX && this.canModifyTower(tower.col, tower.row),
-      hp: tower.hp,
-      maxHp: tower.maxHp,
+      hp: tower.destructible?.hp,
+      maxHp: tower.destructible?.maxHp,
       traits,
       auraBuffs,
       upgradePreview,

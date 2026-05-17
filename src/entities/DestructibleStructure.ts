@@ -21,6 +21,7 @@ import { TILE_SIZE, gridX, gridY, gridLeftX } from '../config';
 import { Tower } from './Tower';
 import { DestructibleStructureDef, DestructibleStructurePlacement, getDestructibleStructureDef } from '../data/DestructibleStructures';
 import { Damageable } from './Damageable';
+import { createDestructibleState } from './Destructibility';
 import { destructibleStructureFrame } from '../systems/ArenaFloorRenderer';
 
 export class DestructibleStructure implements Damageable {
@@ -110,10 +111,8 @@ export class DestructibleStructure implements Damageable {
     // If we have an embedded tower, mirror our HP onto it so all the
     // existing hp/maxHp/destructible code paths Just Work.
     if (this.embeddedTower) {
-      this.embeddedTower.destructible = true;
+      this.embeddedTower.destructible = createDestructibleState(this.maxHp);
       this.embeddedTower.ownerIndex = args.ownerIndex;
-      this.embeddedTower.maxHp = this.maxHp;
-      this.embeddedTower.hp = this.maxHp;
       // Mark the tower as a structure-attached attacker so other
       // systems can recognise the relationship if needed.
       (this.embeddedTower as { _structureRef?: DestructibleStructure })._structureRef = this;
@@ -165,19 +164,20 @@ export class DestructibleStructure implements Damageable {
   // ── Damageable conformance ────────────────────────────────────
 
   get hp(): number {
-    if (this.embeddedTower) return this.embeddedTower.hp ?? 0;
+    if (this.embeddedTower) return this.embeddedTower.destructible?.hp ?? 0;
     return this.standaloneHp;
   }
   set hp(v: number) {
-    if (this.embeddedTower) this.embeddedTower.hp = v;
-    else this.standaloneHp = v;
+    if (this.embeddedTower) {
+      if (this.embeddedTower.destructible) this.embeddedTower.destructible.hp = v;
+    } else this.standaloneHp = v;
   }
 
   get alive(): boolean {
     if (this._expired) return false;
     if (this.embeddedTower) {
       const exp = (this.embeddedTower as { _expired?: boolean })._expired;
-      return !exp && (this.embeddedTower.hp ?? 0) > 0;
+      return !exp && (this.embeddedTower.destructible?.hp ?? 0) > 0;
     }
     return this.standaloneHp > 0;
   }

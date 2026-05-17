@@ -13,6 +13,7 @@
 import type { Tower } from '../../entities/Tower';
 import type { TowerManager } from '../TowerManager';
 import { getTowerType } from '../../data/TowerTypes';
+import { createDestructibleState } from '../../entities/Destructibility';
 
 export interface BaseCpuTowerSpec {
   col: number;
@@ -52,10 +53,8 @@ export function placeCpuTowers<T extends BaseCpuTowerSpec>(
       );
       if (!result) continue;
       const t = result.tower;
-      t.destructible = true;
       t.ownerIndex = ownerIndex;
-      t.maxHp = spec.hp ?? defaultHp;
-      t.hp = t.maxHp;
+      t.destructible = createDestructibleState(spec.hp ?? defaultHp);
       out.push({ spec, tower: t });
     } catch (err) {
       console.warn(`[cpuPlacement] failed to place ${spec.towerId} at ${spec.col},${spec.row}:`, err);

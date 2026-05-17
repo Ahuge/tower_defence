@@ -4,6 +4,9 @@ import { TowerType, TowerUpgrade, TOWER_TYPES, TargetingMode } from '../data/Tow
 import { DamageType } from '../data/CreepTypes';
 import { HitTarget } from '../systems/traits/Trait';
 import { hasTowerSprite, isMobileTowerSprite, shouldTowerRotate, createTowerSprite, setTowerSpriteState, updateMobileTowerSprite, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
+import { type DestructibleState, createDestructibleState } from './Destructibility';
+import { type AssailantLog, createAssailantLog, type DamageSource } from './Damageable';
+import { resolveDamageVeto, resolveTowerDamageModifiers, resolveOnTakeDamage, resolveOnKill } from '../systems/traits/Trait';
 
 /** One upgrade option presented to the player. A linear tower has
  *  a single option (branchId=null). A branching tower surfaces the
@@ -189,37 +192,36 @@ export class Tower {
    *  mission. While any generator is alive, _invulnerable is true. */
   isThrone?: boolean;
 
-  /** M10 finale: tower destructibility. Default undefined = invincible
-   *  (every existing mission). Set true on M10 CPU defender towers via
-   *  the `destructibleTowers` map field; the hero attacks them and they
-   *  die when hp hits 0. Player towers (mana drains) stay invincible. */
-  destructible?: boolean;
-  hp?: number;
-  maxHp?: number;
-  /** PRD 06 / M10 v2 — last time the hero damaged this tower (scene
-   *  time ms). Drives "X is attacking me" target priority: a CPU
-   *  tower that's been hit by the hero recently retaliates against
-   *  the hero before falling back to range-based picking. */
-  _lastHeroHitAt: number = 0;
-  /** Last time a SEND creep damaged this tower (scene time ms).
-   *  Same retaliation rule as _lastHeroHitAt but for sends. */
-  _lastSendHitAt: number = 0;
-  /** Last time this tower fired at the hero (scene time ms). The
-   *  hero's auto-attack priority bumps "towers that have been
-   *  shooting me" to the top of the cascade — retaliation reads
-   *  natural for the player. */
+  /** M10 finale: tower destructibility. Null = invincible (every
+   *  player tower in every existing mission). Non-null only on M10
+   *  CPU defender towers; the hero attacks them and they die when
+   *  hp hits 0. Set via `setDestructible(maxHp)` at placement.
+   *
+   *  Holds hp / maxHp / lastHitAt — used to be three separate optional
+   *  fields. Grouping reduces "is this destructible?" branching and
+   *  lets Tower formally satisfy the Damageable interface once a
+   *  later commit adds the remaining read-only conformance fields. */
+  destructible: DestructibleState | null = null;
+  /** Per-source last-hit timestamps (hero / send / creep / tower /
+   *  raider). Replaces the scattered `_lastHeroHitAt` / `_lastSendHitAt`
+   *  pair (incoming damage log). Always present; on non-destructible
+   *  towers it's just unused. */
+  readonly assailants: AssailantLog = createAssailantLog();
+  /** Outbound retaliation tracker — when this tower last *fired at*
+   *  the hero (scene time ms). The hero's auto-attack priority bumps
+   *  "towers that have been shooting me" to the top of the cascade
+   *  so retaliation reads natural for the player. Distinct from the
+   *  inbound `assailants` log: this is "I attacked X" not "X attacked
+   *  me," so it stays as its own field rather than flipping into
+   *  AssailantLog. */
   _lastAttackedHeroAt: number = 0;
   /** Whether this tower is a "boss-tier" CPU defender. Drives the
    *  golden HP-bar border treatment in the renderer. PRD 06 migrated
    *  the M10 throne off this flag onto a `DestructibleStructure` with
    *  `isMissionWinTarget`; the field stays here for any future
    *  campaigns that want a single-cell bossy tower without a 3×3
-   *  structure. Phase mechanics now live on `DestructibleStructure.phaseHooks`
-   *  + `FinaleEffects` rather than Tower flags. */
+   *  structure. (Will move to `arcane_ult_target` trait in commit 6.) */
   isUlt?: boolean;
-  /** Last time the tower took damage (scene.time.now). Drives a brief
-   *  white-flash on the sprite. */
-  _lastHitAt: number = 0;
 
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
@@ -386,12 +388,12 @@ export class Tower {
       this.graphics.strokeCircle(this.x, this.y, this.range);
     }
 
-    // M10 finale: HP bar above destructible CPU towers. Default
-    // undefined for every other mission so this is a free no-op.
-    // Hidden at full HP — only shows when the tower's been hit, so
-    // the unhit lattice doesn't read as visually noisy.
-    if (this.destructible && this.maxHp !== undefined && this.hp !== undefined && this.maxHp > 0 && this.hp < this.maxHp) {
-      const ratio = Math.max(0, Math.min(1, this.hp / this.maxHp));
+    // M10 finale: HP bar above destructible CPU towers. Null for
+    // every player tower in every existing mission so this is a
+    // free no-op. Hidden at full HP — only shows when the tower's
+    // been hit, so the unhit lattice doesn't read as visually noisy.
+    if (this.destructible && this.destructible.maxHp > 0 && this.destructible.hp < this.destructible.maxHp) {
+      const ratio = Math.max(0, Math.min(1, this.destructible.hp / this.destructible.maxHp));
       const w = TILE_SIZE * 0.8;
       const h = 3;
       const x = this.x - w / 2;
@@ -404,19 +406,20 @@ export class Tower {
       this.graphics.fillStyle(fillColor, 1);
       this.graphics.fillRect(x, y, w * ratio, h);
       // Ult tower gets a special golden border so the player knows
-      // which one is the win-target.
+      // which one is the win-target. (Will move to arcane_ult_target
+      // overlay-draw handler in commit 6.)
       if (this.isUlt) {
         this.graphics.lineStyle(1, 0xffdd44, 1);
         this.graphics.strokeRect(x, y, w, h);
       }
     }
 
-    // White-flash on damage (50ms after _lastHitAt). Cheap visual cue
+    // White-flash on damage (~80ms after lastHitAt). Cheap visual cue
     // that the tower is being attacked. Sprite tint reverts the next
     // frame because drawTower runs every tick.
-    if (this.destructible && this.sprite && this._lastHitAt > 0) {
+    if (this.destructible && this.sprite && this.destructible.lastHitAt > -Infinity) {
       const now = (this._scene as { time?: { now: number } }).time?.now ?? 0;
-      if (now - this._lastHitAt < 80) {
+      if (now - this.destructible.lastHitAt < 80) {
         // setTintFill replaces sprite color (vs setTint which multiplies);
         // headless stub doesn't accept args reliably so guard.
         const s = this.sprite as { setTintFill?: (c: number) => void };
@@ -429,28 +432,43 @@ export class Tower {
     return this._remainingUpgrades.length > 0;
   }
 
-  /** M10 finale: apply damage. No-op on non-destructible towers (the
-   *  vast majority — every player tower in every existing mission).
-   *  Returns true on the killing blow so the caller (Hero) can grant
-   *  rewards exactly once. _lastHitAt is set so drawTower can render
-   *  a brief white-flash on the sprite. */
-  takeDamage(amount: number): boolean {
-    if (!this.destructible || this.hp === undefined) return false;
-    if (this.hp <= 0) return false; // already dead this frame
-    // Mech finale: throne tower is invulnerable until every generator
-    // is down. SabotageController flips this to false once the last
-    // generator dies; before then, even direct hits are no-op (the
-    // hit is silent, not deflected — the spec says invulnerable, the
-    // VFX layer can render "shield held" if it wants).
-    if (this._invulnerable) return false;
-    this.hp -= amount;
-    this._lastHitAt = (this._scene as { time?: { now: number } }).time?.now ?? 0;
-    if (this.hp <= 0) {
-      this.hp = 0;
+  /** Apply damage through the v2 damage pipeline:
+   *
+   *    veto → modifier chain → apply → onTakeDamage → onKill
+   *
+   *  - Veto runs first (OR semantics; any trait returning true vetoes
+   *    the entire damage event). M10 throne's "invulnerable while
+   *    generators alive" gate lives here as a trait handler (commit 4).
+   *  - Modifier chain transforms the amount (resists, shields, etc.).
+   *  - apply: hp -= final, log assailant, lastHitAt updated.
+   *  - onKill fires once when hp hits 0; the caller (Hero / sends)
+   *    reads the return value to grant rewards exactly once.
+   *
+   *  Non-destructible towers (every player tower in every existing
+   *  mission) short-circuit — no traits run, no hp change. The vast
+   *  majority of calls land here. */
+  takeDamage(amount: number, source: DamageSource = 'unknown'): boolean {
+    if (!this.destructible) return false;
+    const d = this.destructible;
+    if (d.hp <= 0) return false; // already dead this frame
+    if (resolveDamageVeto(this.traits, amount, source, this)) return false;
+    const final = resolveTowerDamageModifiers(this.traits, amount, source, this);
+    if (final <= 0) {
+      resolveOnTakeDamage(this.traits, 0, source, this);
+      return false;
+    }
+    d.hp -= final;
+    const now = (this._scene as { time?: { now: number } }).time?.now ?? 0;
+    d.lastHitAt = now;
+    this.assailants.log(source, now);
+    resolveOnTakeDamage(this.traits, final, source, this);
+    if (d.hp <= 0) {
+      d.hp = 0;
       // Mark for cleanup. TowerManager.cleanupExpired() picks this up
       // next frame and removes the tower from the grid + sprite +
       // recalculates paths (handled in cleanupExpired for destructibles).
       this._expired = true;
+      resolveOnKill(this.traits, source, this);
       return true;
     }
     return false;

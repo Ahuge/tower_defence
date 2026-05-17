@@ -247,7 +247,7 @@ export class SabotageController {
     // firing the cascade across multiple updates after death.
     for (let i = 0; i < this.generators.length; i++) {
       const gen = this.generators[i];
-      if ((gen.hp ?? 1) > 0) continue;
+      if ((gen.destructible?.hp ?? 1) > 0) continue;
       if (gen._generatorDrained) continue;
       gen._generatorDrained = true;
       this.onGeneratorKilled?.(i);
@@ -319,7 +319,7 @@ export class SabotageController {
     // Win = throne destroyed. Handles both paths — Tower throne dies
     // when _expired or hp<=0; Structure throne dies when !alive.
     if (!this.winFired) {
-      const throneDeadTower = this.throne && (this.throne._expired || (this.throne.hp ?? 1) <= 0);
+      const throneDeadTower = this.throne && (this.throne._expired || (this.throne.destructible?.hp ?? 1) <= 0);
       const throneDeadStructure = this.throneStructure && !this.throneStructure.alive;
       if (throneDeadTower || throneDeadStructure) {
         this.winFired = true;
@@ -400,7 +400,7 @@ export class SabotageController {
    *  the throne-vulnerability gate; exposed so HUD code can render
    *  "X / N generators down" without poking internals. */
   getAliveGeneratorCount(): number {
-    return this.generators.filter(g => !g._expired && (g.hp ?? 0) > 0).length;
+    return this.generators.filter(g => !g._expired && (g.destructible?.hp ?? 0) > 0).length;
   }
 
   getTotalGeneratorCount(): number {
@@ -433,17 +433,17 @@ export class SabotageController {
   } {
     const generators = this.generators.map((g, idx) => ({
       idx,
-      alive: !g._expired && (g.hp ?? 0) > 0,
-      hp: g.hp ?? 0,
-      maxHp: g.maxHp ?? 0,
+      alive: !g._expired && (g.destructible?.hp ?? 0) > 0,
+      hp: g.destructible?.hp ?? 0,
+      maxHp: g.destructible?.maxHp ?? 0,
     }));
     let throne: { alive: boolean; invulnerable: boolean; hp: number; maxHp: number } | null = null;
     if (this.throne) {
       throne = {
-        alive: !this.throne._expired && (this.throne.hp ?? 0) > 0,
+        alive: !this.throne._expired && (this.throne.destructible?.hp ?? 0) > 0,
         invulnerable: this.throne._invulnerable,
-        hp: this.throne.hp ?? 0,
-        maxHp: this.throne.maxHp ?? 0,
+        hp: this.throne.destructible?.hp ?? 0,
+        maxHp: this.throne.destructible?.maxHp ?? 0,
       };
     } else if (this.throneStructure) {
       throne = {
@@ -467,13 +467,13 @@ export class SabotageController {
     if (kind === 'generator') {
       if (idx === undefined || idx < 0 || idx >= this.generators.length) return false;
       const gen = this.generators[idx];
-      if (gen._expired || (gen.hp ?? 0) <= 0) return false;
-      gen.takeDamage(gen.maxHp ?? gen.hp ?? 1);
+      if (gen._expired || (gen.destructible?.hp ?? 0) <= 0) return false;
+      gen.takeDamage(gen.destructible?.maxHp ?? 1);
       return true;
     }
     if (this.throne) {
-      if (this.throne._expired || (this.throne.hp ?? 0) <= 0) return false;
-      return this.throne.takeDamage(this.throne.maxHp ?? this.throne.hp ?? 1);
+      if (this.throne._expired || (this.throne.destructible?.hp ?? 0) <= 0) return false;
+      return this.throne.takeDamage(this.throne.destructible?.maxHp ?? 1);
     }
     if (this.throneStructure) {
       if (!this.throneStructure.alive) return false;
@@ -493,7 +493,7 @@ export class SabotageController {
     if (this.raiders.length === 0) return;
     for (const tower of this.cpuTowers) {
       if (tower._expired) continue;
-      if (tower.hp !== undefined && tower.hp <= 0) continue;
+      if (tower.destructible && tower.destructible.hp <= 0) continue;
       // Generators are inert HP bags — they're strategic priority
       // targets (kill = linked-tower cascade) but don't shoot. Skipping
       // them here also avoids the placeholder mech_mortar visual

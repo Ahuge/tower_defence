@@ -2,15 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { SabotageController } from './SabotageController';
 import type { Tower } from '../../entities/Tower';
 import type { TowerManager } from '../TowerManager';
+import { createAssailantLog } from '../../entities/Damageable';
 
 /** Minimal Tower stand-in. Mimics the fields SabotageController reads
- *  + a takeDamage that drives hp to zero and sets _expired. */
+ *  + a takeDamage that drives hp to zero and sets _expired. Mirrors
+ *  the v2 destructible sub-object shape — cpuPlacement stamps the
+ *  state via createDestructibleState, so the mock just needs the
+ *  initial null + a takeDamage that flows through the sub-object. */
 function makeTower(col: number, row: number): Partial<Tower> {
   const t: any = {
     col, row,
-    hp: undefined,
-    maxHp: undefined,
-    destructible: false,
+    destructible: null,
+    assailants: createAssailantLog(),
     ownerIndex: 0,
     _expired: false,
     _invulnerable: false,
@@ -18,12 +21,12 @@ function makeTower(col: number, row: number): Partial<Tower> {
     isThrone: false,
     generatorLinkedCells: undefined,
     takeDamage(amount: number) {
-      if (!this.destructible || this.hp === undefined) return false;
-      if (this.hp <= 0) return false;
+      if (!this.destructible) return false;
+      if (this.destructible.hp <= 0) return false;
       if (this._invulnerable) return false;
-      this.hp -= amount;
-      if (this.hp <= 0) {
-        this.hp = 0;
+      this.destructible.hp -= amount;
+      if (this.destructible.hp <= 0) {
+        this.destructible.hp = 0;
         this._expired = true;
         return true;
       }
@@ -108,7 +111,7 @@ describe('SabotageController', () => {
       onGeneratorKilled,
     });
     const generator = (mgr.towers as any)[2] as Partial<Tower>;
-    generator.takeDamage!(generator.maxHp!);
+    generator.takeDamage!(generator.destructible!.maxHp);
     ctrl.update();
     const linked1 = (mgr.towers as any)[0];
     const linked2 = (mgr.towers as any)[1];
@@ -154,7 +157,7 @@ describe('SabotageController', () => {
     });
     const throne = (mgr.towers as any)[1];
     throne.takeDamage(9999);
-    expect(throne.hp).toBe(1000);
+    expect(throne.destructible.hp).toBe(1000);
     expect(throne._expired).toBe(false);
   });
 
@@ -212,8 +215,8 @@ describe('SabotageController', () => {
       ],
     });
     const throne = (mgr.towers as any)[0];
-    expect(throne.maxHp).toBe(999);
-    expect(throne.hp).toBe(999);
+    expect(throne.destructible.maxHp).toBe(999);
+    expect(throne.destructible.hp).toBe(999);
   });
 
   describe('workshop + raider squad integration', () => {
@@ -330,7 +333,7 @@ describe('SabotageController', () => {
         onWin,
       });
       expect(ctrl.forceKillTarget('throne')).toBe(false);
-      expect(ctrl.getThrone()?.hp).toBe(5000);
+      expect(ctrl.getThrone()?.destructible?.hp).toBe(5000);
       expect(onWin).not.toHaveBeenCalled();
     });
 

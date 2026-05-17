@@ -631,13 +631,20 @@ export class Hero {
     });
     // Mark the target as "recently hit by hero" so its target-priority
     // logic can retaliate: a tower that's been shot by the hero
-    // re-targets the hero before considering creeps in range.
-    if ('_lastHeroHitAt' in target) {
-      (target as { _lastHeroHitAt: number })._lastHeroHitAt = this.scene.time.now;
-    } else if ('embeddedTower' in target && target.embeddedTower) {
-      target.embeddedTower._lastHeroHitAt = this.scene.time.now;
+    // re-targets the hero before considering creeps in range. The
+    // hit log lives on AssailantLog under the unified Damageable
+    // contract; the takeDamage call below also writes the timestamp,
+    // but doing it up-front lets the embedded-tower case (where the
+    // hero may be hitting a structure that delegates to its tower)
+    // get the log too.
+    const assailants = (target as { assailants?: { log: (s: string, n: number) => void } }).assailants;
+    if (assailants) {
+      assailants.log('hero', this.scene.time.now);
+    } else {
+      const embedded = (target as { embeddedTower?: Tower }).embeddedTower;
+      if (embedded) embedded.assailants.log('hero', this.scene.time.now);
     }
-    const killed = target.takeDamage(dmg);
+    const killed = target.takeDamage(dmg, 'hero');
     if (killed) {
       this.towersDestroyed++;
       this.clickedTarget = null; // clear so player can pick a new one
@@ -1359,5 +1366,5 @@ function isClickedTargetAlive(t: Tower | DestructibleStructure): boolean {
   const tw = t as Tower;
   if (!tw.destructible) return false;
   if ((tw as { _expired?: boolean })._expired) return false;
-  return (tw.hp ?? 1) > 0;
+  return tw.destructible.hp > 0;
 }
