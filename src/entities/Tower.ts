@@ -140,19 +140,6 @@ export class Tower {
    *  while > 0, fire logic is skipped and a stunned overlay draws. */
   _disabledRemaining: number = 0;
 
-  /** Mechanical campaign: Voss's Suppression Pylons disrupt arcane
-   *  channels. SuppressionManager polls `lastFired` and bumps this
-   *  counter whenever a tower in an active pylon's radius fires.
-   *  At threshold (default 5) the tower stalls (writes
-   *  `_disabledRemaining`) and stress resets to 0. Untouched
-   *  outside Mech-campaign missions. */
-  _stress: number = 0;
-
-  /** SuppressionManager bookkeeping — last `lastFired` value the
-   *  manager observed. Lets it detect "this tower fired since the
-   *  prior tick" without a fire event. -Infinity = never observed. */
-  _suppressionSeenLastFired: number = -Infinity;
-
   /** Lifecycle marker. Set true by `takeDamage()` on the killing blow
    *  (or by mission controllers when an entity is consumed without HP
    *  damage, e.g. a generator's linked towers powering down). The

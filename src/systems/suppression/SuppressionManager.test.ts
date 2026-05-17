@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SIPHON_STACK_THRESHOLD, SuppressionManager, type SuppressibleTower } from './SuppressionManager';
+import { SIPHON_STACK_THRESHOLD, SuppressionManager, type SuppressibleTower, type SuppressibleTraitState } from './SuppressionManager';
 import { CellType, Grid } from '../Grid';
 import { gridX, gridY, TILE_SIZE } from '../../config';
+import { getTrait } from '../traits/Trait';
 
 /** Minimal Grid stand-in with a fixed shape — no MapDefinition needed.
  *  Tests stamp specific cells; `cells[row][col]` is reachable as on
@@ -17,11 +18,17 @@ function makeTower(col: number, row: number, opts: Partial<SuppressibleTower> = 
   return {
     col, row,
     lastFired: 0,
-    _stress: 0,
     _disabledRemaining: 0,
-    _suppressionSeenLastFired: -Infinity,
+    traits: [],
     ...opts,
   };
+}
+
+/** Read the suppressible trait's stress, defaulting to 0 when the
+ *  manager hasn't attached the trait yet. Replaces the old `t._stress`
+ *  read pattern; the trait is lazy-attached on first fire-in-radius. */
+function stressOf(t: SuppressibleTower): number {
+  return (getTrait(t.traits, 'suppressible') as SuppressibleTraitState | undefined)?.stress ?? 0;
 }
 
 /** Simulate one tower fire by bumping `lastFired` and calling update. */
@@ -35,7 +42,7 @@ describe('SuppressionManager', () => {
     const mgr = new SuppressionManager([]);
     const t = makeTower(5, 5);
     for (let i = 0; i < 10; i++) fire(mgr, t, i + 1);
-    expect(t._stress).toBe(0);
+    expect(stressOf(t)).toBe(0);
     expect(t._disabledRemaining).toBe(0);
   });
 
@@ -43,7 +50,7 @@ describe('SuppressionManager', () => {
     const mgr = new SuppressionManager([{ col: 0, row: 0, radius: 2 }]);
     const t = makeTower(10, 10);
     for (let i = 0; i < 10; i++) fire(mgr, t, i + 1);
-    expect(t._stress).toBe(0);
+    expect(stressOf(t)).toBe(0);
   });
 
   it('increments stress on each fire when in radius', () => {
@@ -52,7 +59,7 @@ describe('SuppressionManager', () => {
     fire(mgr, t, 1);
     fire(mgr, t, 2);
     fire(mgr, t, 3);
-    expect(t._stress).toBe(3);
+    expect(stressOf(t)).toBe(3);
     expect(t._disabledRemaining).toBe(0);
   });
 
@@ -60,7 +67,7 @@ describe('SuppressionManager', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5, radius: 3 }]);
     const t = makeTower(5, 5);
     for (let i = 0; i < 5; i++) fire(mgr, t, i + 1);
-    expect(t._stress).toBe(0);
+    expect(stressOf(t)).toBe(0);
     expect(t._disabledRemaining).toBe(3);
   });
 
@@ -71,7 +78,7 @@ describe('SuppressionManager', () => {
     // Same lastFired — manager should not re-count.
     mgr.update(2, [t]);
     mgr.update(3, [t]);
-    expect(t._stress).toBe(1);
+    expect(stressOf(t)).toBe(1);
   });
 
   it('respects pylon Chebyshev radius edges', () => {
@@ -80,8 +87,8 @@ describe('SuppressionManager', () => {
     const outside = makeTower(8, 5);  // one beyond: |8-5| = 3
     fire(mgr, inside, 1);
     fire(mgr, outside, 1);
-    expect(inside._stress).toBe(1);
-    expect(outside._stress).toBe(0);
+    expect(stressOf(inside)).toBe(1);
+    expect(stressOf(outside)).toBe(0);
   });
 
   it('mute suppresses stress accumulation for the window', () => {
@@ -90,10 +97,10 @@ describe('SuppressionManager', () => {
     expect(mgr.mutePylonAt(5, 5, 1000, 5_000)).toBe(true);
     fire(mgr, t, 2000);
     fire(mgr, t, 3000);
-    expect(t._stress).toBe(0);
+    expect(stressOf(t)).toBe(0);
     // After the mute window expires, stress accumulates again.
     fire(mgr, t, 7_000);
-    expect(t._stress).toBe(1);
+    expect(stressOf(t)).toBe(1);
   });
 
   it('remute extends the mute window when the new end-time is later', () => {
@@ -102,9 +109,9 @@ describe('SuppressionManager', () => {
     expect(mgr.mutePylonAt(5, 5, 2000, 8_000)).toBe(true); // mute until 10000 — extends
     const t = makeTower(5, 5);
     fire(mgr, t, 9_500);
-    expect(t._stress).toBe(0);
+    expect(stressOf(t)).toBe(0);
     fire(mgr, t, 10_500);
-    expect(t._stress).toBe(1);
+    expect(stressOf(t)).toBe(1);
   });
 
   it('remute is a no-op when the new end-time is earlier', () => {
@@ -113,7 +120,7 @@ describe('SuppressionManager', () => {
     expect(mgr.mutePylonAt(5, 5, 1000, 2_000)).toBe(true);   // would mute until 3000 — ignored
     const t = makeTower(5, 5);
     fire(mgr, t, 5_000);
-    expect(t._stress).toBe(0); // longer mute still active
+    expect(stressOf(t)).toBe(0); // longer mute still active
   });
 
   it('mute returns false when no pylon at the cell', () => {
@@ -127,11 +134,11 @@ describe('SuppressionManager', () => {
     const t = makeTower(5, 5);
     // Mid-channel — pylon is still active, towers still suppressed.
     fire(mgr, t, 2000);
-    expect(t._stress).toBe(1);
+    expect(stressOf(t)).toBe(1);
     // After channel duration (2.5s default), update applies mute.
     mgr.update(1000 + mgr.getChannelDurationMs() + 1, []);
     fire(mgr, t, 5000);
-    expect(t._stress).toBe(1); // mute prevented further accumulation
+    expect(stressOf(t)).toBe(1); // mute prevented further accumulation
   });
 
   it('startChannelAt returns specific failure modes', () => {
@@ -155,21 +162,21 @@ describe('SuppressionManager', () => {
     mgr.update(10_000, []);
     const t = makeTower(5, 5);
     fire(mgr, t, 11_000);
-    expect(t._stress).toBe(1);
+    expect(stressOf(t)).toBe(1);
   });
 
   it('skips CPU-team towers (ownerIndex !== 0/undefined)', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5, radius: 3 }]);
     const cpu = makeTower(5, 5, { ownerIndex: 99 });
     for (let i = 0; i < 10; i++) fire(mgr, cpu, i + 1);
-    expect(cpu._stress).toBe(0);
+    expect(stressOf(cpu)).toBe(0);
   });
 
   it('skips expired towers', () => {
     const mgr = new SuppressionManager([{ col: 5, row: 5, radius: 3 }]);
     const t = makeTower(5, 5, { _expired: true });
     fire(mgr, t, 1);
-    expect(t._stress).toBe(0);
+    expect(stressOf(t)).toBe(0);
   });
 
   it('multiple pylons covering the same tower count once per fire', () => {
@@ -180,7 +187,7 @@ describe('SuppressionManager', () => {
     const t = makeTower(5, 5);
     fire(mgr, t, 1);
     fire(mgr, t, 2);
-    expect(t._stress).toBe(2); // not 4 — fire-once-per-tick semantics
+    expect(stressOf(t)).toBe(2); // not 4 — fire-once-per-tick semantics
   });
 
   it('pylonAt returns the right pylon', () => {

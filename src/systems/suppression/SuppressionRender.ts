@@ -100,7 +100,8 @@ export class SuppressionRender {
     for (const t of towers) {
       if (t._expired) continue;
       if ((t.ownerIndex ?? 0) !== 0) continue;
-      const stress = t._stress;
+      const trait = t.traits.find(tr => tr.id === 'suppressible') as { stress?: number } | undefined;
+      const stress = trait?.stress ?? 0;
       if (stress <= 0) continue;
       // Intensity rises 0..1 across the 5 stress stacks.
       const intensity = Math.min(1, stress / 5);
