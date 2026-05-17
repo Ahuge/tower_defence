@@ -86,10 +86,18 @@ export interface SabotageSetupArgs {
   towerMgr: TowerManager;
   /** Fired exactly once when the throne's HP reaches 0. */
   onWin?: () => void;
+  /** Fired exactly once just before `onWin`, on the same frame the
+   *  throne dies. Separate callback so subscribers wanting the lower-
+   *  level signal can run before the win handler swaps scenes. */
+  onThroneKilled?: () => void;
   /** Fired the first time every generator on the map is dead, just
    *  before the throne becomes vulnerable. The HUD/event log can use
    *  this to telegraph the phase shift. */
   onThroneVulnerable?: () => void;
+  /** Fired each time a generator's HP reaches 0 (drain detected),
+   *  before the linked-tower cascade runs. `idx` is the generator's
+   *  position in the controller's init-order list. */
+  onGeneratorKilled?: (idx: number) => void;
   /** Fired each time a Raider is successfully trained. The host
    *  scene uses this to attach a sprite + register input handlers.
    *  Pure-logic tests can ignore it. */
@@ -113,7 +121,9 @@ export class SabotageController {
   private throneVulnerableFired = false;
   private winFired = false;
   private onWin?: () => void;
+  private onThroneKilled?: () => void;
   private onThroneVulnerable?: () => void;
+  private onGeneratorKilled?: (idx: number) => void;
   private onRaiderSpawned?: (raider: Raider) => void;
   private onRaiderDied?: (raider: Raider) => void;
 
@@ -138,7 +148,9 @@ export class SabotageController {
     this.rules = args.rules;
     this.towerMgr = args.towerMgr;
     this.onWin = args.onWin;
+    this.onThroneKilled = args.onThroneKilled;
     this.onThroneVulnerable = args.onThroneVulnerable;
+    this.onGeneratorKilled = args.onGeneratorKilled;
     this.onRaiderSpawned = args.onRaiderSpawned;
     this.onRaiderDied = args.onRaiderDied;
     this.cpuOwnerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX_SABOTAGE;
@@ -233,10 +245,12 @@ export class SabotageController {
     // is detected by hp<=0 (Tower.takeDamage drives it to 0 and sets
     // _expired); the per-tower _generatorDrained flag prevents double-
     // firing the cascade across multiple updates after death.
-    for (const gen of this.generators) {
+    for (let i = 0; i < this.generators.length; i++) {
+      const gen = this.generators[i];
       if ((gen.hp ?? 1) > 0) continue;
       if (gen._generatorDrained) continue;
       gen._generatorDrained = true;
+      this.onGeneratorKilled?.(i);
       for (const cell of gen.generatorLinkedCells ?? []) {
         const target = this.cpuTowers.find(t => t.col === cell.col && t.row === cell.row && !t._expired);
         if (!target) continue;
@@ -309,6 +323,7 @@ export class SabotageController {
       const throneDeadStructure = this.throneStructure && !this.throneStructure.alive;
       if (throneDeadTower || throneDeadStructure) {
         this.winFired = true;
+        this.onThroneKilled?.();
         this.onWin?.();
       }
     }

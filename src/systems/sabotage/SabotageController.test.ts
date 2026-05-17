@@ -97,6 +97,7 @@ describe('SabotageController', () => {
 
   it('expires linked towers when the generator dies', () => {
     const mgr = makeTowerMgr();
+    const onGeneratorKilled = vi.fn();
     const ctrl = new SabotageController({
       ...baseArgs(mgr),
       destructibleTowers: [
@@ -104,6 +105,7 @@ describe('SabotageController', () => {
         { col: 2, row: 2, towerId: 'mech_turret', hp: 600 },
         { col: 5, row: 5, towerId: 'mech_generator', hp: 1200, isGenerator: true, linkedTowers: [{ col: 1, row: 1 }, { col: 2, row: 2 }] },
       ],
+      onGeneratorKilled,
     });
     const generator = (mgr.towers as any)[2] as Partial<Tower>;
     generator.takeDamage!(generator.maxHp!);
@@ -112,6 +114,7 @@ describe('SabotageController', () => {
     const linked2 = (mgr.towers as any)[1];
     expect(linked1._expired).toBe(true);
     expect(linked2._expired).toBe(true);
+    expect(onGeneratorKilled).toHaveBeenCalledExactlyOnceWith(0);
   });
 
   it('throne becomes vulnerable + fires callback once every generator is down', () => {
@@ -158,12 +161,14 @@ describe('SabotageController', () => {
   it('fires onWin exactly once when the throne dies', () => {
     const mgr = makeTowerMgr();
     const onWin = vi.fn();
+    const onThroneKilled = vi.fn();
     const ctrl = new SabotageController({
       ...baseArgs(mgr),
       destructibleTowers: [
         { col: 0, row: 0, towerId: 'mech_throne', hp: 100, isThrone: true },
       ],
       onWin,
+      onThroneKilled,
     });
     ctrl.update();
     const throne = ctrl.getThrone()!;
@@ -171,8 +176,14 @@ describe('SabotageController', () => {
     (throne as any).takeDamage(100);
     ctrl.update();
     expect(onWin).toHaveBeenCalledTimes(1);
+    expect(onThroneKilled).toHaveBeenCalledTimes(1);
+    // onThroneKilled must fire *before* onWin so an e2e harness waiting
+    // on the lower-level signal doesn't race the GameOver scene swap.
+    expect(onThroneKilled.mock.invocationCallOrder[0])
+      .toBeLessThan(onWin.mock.invocationCallOrder[0]);
     ctrl.update();
     expect(onWin).toHaveBeenCalledTimes(1);
+    expect(onThroneKilled).toHaveBeenCalledTimes(1);
   });
 
   it('handles a generator with no linked towers cleanly', () => {

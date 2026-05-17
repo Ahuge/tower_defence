@@ -1313,6 +1313,15 @@ export class GameScene extends Phaser.Scene {
         onThroneVulnerable: () => {
           this.eventLog.gameMessage('The throne shield falls. Voss is mortal.');
         },
+        onGeneratorKilled: (idx) => {
+          this.eventBus.emit('mech_generator_killed', idx);
+        },
+        onThroneKilled: () => {
+          this.eventBus.emit('mech_throne_killed');
+        },
+        onRaiderSpawned: (raider) => {
+          this.eventBus.emit('mech_raider_spawned', raider.id);
+        },
         onWin: () => {
           this.eventLog.gameMessage('The Cascade-Architect is silenced. The foundry burns.');
           this.eventBus.emit('gameWon');
@@ -1333,6 +1342,7 @@ export class GameScene extends Phaser.Scene {
         const result = this._sabotageController.enqueueRaider();
         if (result === 'queue_full') this.eventLog.gameMessage('Workshop queue full.');
         else if (result === 'broke') this.eventLog.gameMessage('Not enough gold for a raider.');
+        else if (result === 'queued') this.eventBus.emit('mech_workshop_used');
       };
       this._onSabotageUpgrade = (ev: Event) => {
         if (!this._sabotageController) return;

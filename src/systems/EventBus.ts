@@ -25,6 +25,21 @@ export interface GameEvents {
    *  pattern for AI training. */
   frontierActionPerformed: (event: { action: 'overcharge' | 'dig' | 'harvest'; idx?: number; defId?: string }) => void;
   dockTowerSelected: (index: number, towerId: string | null) => void;
+  /** Mech M10 — one generator has just been drained (hp hit 0 + cascade
+   *  about to fire). `generatorIdx` indexes into the controller's
+   *  generators list at scene-init order. Subscribed by the e2e harness
+   *  and reserved for Analytics + HUD telegraphs. */
+  mech_generator_killed: (generatorIdx: number) => void;
+  /** Mech M10 — throne hp has just hit 0. Fires once, in the same frame
+   *  as `gameWon` but slightly earlier so subscribers wanting the lower-
+   *  level signal don't race the GameOver scene swap. */
+  mech_throne_killed: () => void;
+  /** Mech M10 — workshop train action just succeeded (raider enqueued or
+   *  trained outright). Reserved for the workshop-UI e2e spec and
+   *  funnel-style analytics. */
+  mech_workshop_used: () => void;
+  /** Mech M10 — a raider has just spawned out of the workshop queue. */
+  mech_raider_spawned: (raiderId: number) => void;
 }
 
 export class EventBus {
