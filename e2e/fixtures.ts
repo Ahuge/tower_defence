@@ -160,6 +160,11 @@ export async function dismissAllAutoTutorials(page: Page): Promise<void> {
 /** Ambient type for TypeScript in spec files. Playwright specs use
  *  window.__td_test directly via page.evaluate, and TS needs to
  *  know the shape. */
+interface SabotageStatusSnapshot {
+  generators: { idx: number; alive: boolean; hp: number; maxHp: number }[];
+  throne: { alive: boolean; invulnerable: boolean; hp: number; maxHp: number } | null;
+}
+
 declare global {
   interface Window {
     __td_test?: {
@@ -172,6 +177,11 @@ declare global {
       getActiveTutorialTrack: () => string | null;
       resetTutorialState: () => void;
       isBootComplete: () => boolean;
+      isGameSceneActive: () => boolean;
+      getSabotageStatus: () => SabotageStatusSnapshot | null;
+      forceKillSabotageTarget: (kind: 'generator' | 'throne', idx?: number) => boolean;
+      onceEvent: (event: string, timeoutMs?: number) => Promise<unknown[]>;
+      launchCampaignMission: (campaignFactionId: string, missionIdx: number) => boolean;
     };
   }
 }

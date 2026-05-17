@@ -422,6 +422,66 @@ export class SabotageController {
     return this.cpuStructures;
   }
 
+  /** Plain-object snapshot for the e2e test hook. Stable shape that
+   *  tests assert against without poking private fields or routing
+   *  through `as any`. Index order matches scene-init order, so a
+   *  generator's index here is the same idx emitted by
+   *  `mech_generator_killed`. */
+  getSnapshot(): {
+    generators: { idx: number; alive: boolean; hp: number; maxHp: number }[];
+    throne: { alive: boolean; invulnerable: boolean; hp: number; maxHp: number } | null;
+  } {
+    const generators = this.generators.map((g, idx) => ({
+      idx,
+      alive: !g._expired && (g.hp ?? 0) > 0,
+      hp: g.hp ?? 0,
+      maxHp: g.maxHp ?? 0,
+    }));
+    let throne: { alive: boolean; invulnerable: boolean; hp: number; maxHp: number } | null = null;
+    if (this.throne) {
+      throne = {
+        alive: !this.throne._expired && (this.throne.hp ?? 0) > 0,
+        invulnerable: this.throne._invulnerable,
+        hp: this.throne.hp ?? 0,
+        maxHp: this.throne.maxHp ?? 0,
+      };
+    } else if (this.throneStructure) {
+      throne = {
+        alive: this.throneStructure.alive,
+        invulnerable: this.throneStructure.invulnerable,
+        hp: this.throneStructure.hp,
+        maxHp: this.throneStructure.maxHp,
+      };
+    }
+    return { generators, throne };
+  }
+
+  /** E2E-only: drive a sabotage target's hp to zero through the real
+   *  Damageable.takeDamage path. Returns false on bad target / bad
+   *  index — the spec asserts on this return value to catch off-by-one
+   *  bugs in `getSnapshot`. Does NOT bypass invulnerability gates; a
+   *  throne kill before all generators are down is a no-op. */
+  forceKillTarget(kind: 'generator', idx: number): boolean;
+  forceKillTarget(kind: 'throne'): boolean;
+  forceKillTarget(kind: 'generator' | 'throne', idx?: number): boolean {
+    if (kind === 'generator') {
+      if (idx === undefined || idx < 0 || idx >= this.generators.length) return false;
+      const gen = this.generators[idx];
+      if (gen._expired || (gen.hp ?? 0) <= 0) return false;
+      gen.takeDamage(gen.maxHp ?? gen.hp ?? 1);
+      return true;
+    }
+    if (this.throne) {
+      if (this.throne._expired || (this.throne.hp ?? 0) <= 0) return false;
+      return this.throne.takeDamage(this.throne.maxHp ?? this.throne.hp ?? 1);
+    }
+    if (this.throneStructure) {
+      if (!this.throneStructure.alive) return false;
+      return this.throneStructure.takeDamage(this.throneStructure.maxHp);
+    }
+    return false;
+  }
+
   private _allGeneratorsDead(): boolean {
     return this.getAliveGeneratorCount() === 0;
   }
