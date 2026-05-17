@@ -6,7 +6,7 @@ import { HitTarget } from '../systems/traits/Trait';
 import { hasTowerSprite, isMobileTowerSprite, shouldTowerRotate, createTowerSprite, setTowerSpriteState, updateMobileTowerSprite, hasProjectileSprite, createProjectileSprite, playProjectileImpact } from '../systems/SpriteManager';
 import { type DestructibleState, createDestructibleState } from './Destructibility';
 import { type AssailantLog, createAssailantLog, type DamageSource } from './Damageable';
-import { resolveDamageVeto, resolveTowerDamageModifiers, resolveOnTakeDamage, resolveOnKill } from '../systems/traits/Trait';
+import { resolveDamageVeto, resolveTowerDamageModifiers, resolveOnTakeDamage, resolveOnKill, resolveOverlayDraw } from '../systems/traits/Trait';
 
 /** One upgrade option presented to the player. A linear tower has
  *  a single option (branchId=null). A branching tower surfaces the
@@ -177,14 +177,6 @@ export class Tower {
    *  me," so it stays as its own field rather than flipping into
    *  AssailantLog. */
   _lastAttackedHeroAt: number = 0;
-  /** Whether this tower is a "boss-tier" CPU defender. Drives the
-   *  golden HP-bar border treatment in the renderer. PRD 06 migrated
-   *  the M10 throne off this flag onto a `DestructibleStructure` with
-   *  `isMissionWinTarget`; the field stays here for any future
-   *  campaigns that want a single-cell bossy tower without a 3×3
-   *  structure. (Will move to `arcane_ult_target` trait in commit 6.) */
-  isUlt?: boolean;
-
   constructor(scene: Phaser.Scene, col: number, row: number, towerType: TowerType) {
     this.col = col;
     this.row = row;
@@ -367,13 +359,6 @@ export class Tower {
       const fillColor = ratio > 0.5 ? 0x44ff44 : ratio > 0.25 ? 0xffaa00 : 0xff2222;
       this.graphics.fillStyle(fillColor, 1);
       this.graphics.fillRect(x, y, w * ratio, h);
-      // Ult tower gets a special golden border so the player knows
-      // which one is the win-target. (Will move to arcane_ult_target
-      // overlay-draw handler in commit 6.)
-      if (this.isUlt) {
-        this.graphics.lineStyle(1, 0xffdd44, 1);
-        this.graphics.strokeRect(x, y, w, h);
-      }
     }
 
     // White-flash on damage (~80ms after lastHitAt). Cheap visual cue
@@ -388,6 +373,13 @@ export class Tower {
         if (typeof s.setTintFill === 'function') s.setTintFill(0xffffff);
       }
     }
+
+    // v2 overlay-draw pipeline: each trait that registered an
+    // overlay-draw handler paints on top of the base render. Examples:
+    // arcane_ult_target (golden HP-bar border), conduit-link arc.
+    // Replaces what used to be hard-coded `if (this.isUlt) ...`
+    // branches in this function.
+    resolveOverlayDraw(this.traits, this, this.graphics, this._scene);
   }
 
   canUpgrade(): boolean {

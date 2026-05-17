@@ -149,11 +149,12 @@ export class FinaleController {
     this.onWin = args.onWin;
 
     // Place destructible CPU towers via the shared helper. Caller
-    // here just stamps the Arcane-specific isUlt flag.
+    // here pushes the arcane_ult_target trait on the ult tower so
+    // its golden HP-bar border + ult-tier kill rewards trigger.
     const ownerIndex = this.rules.cpuTowerOwnerIndex ?? CPU_INDEX;
     const defaultHp = this.rules.cpuTowerHpDefault ?? 600;
     for (const { spec, tower } of placeCpuTowers(this.towerMgr, args.destructibleTowers, ownerIndex, defaultHp)) {
-      if (spec.isUlt) tower.isUlt = true;
+      if (spec.isUlt) tower.traits.push({ id: 'arcane_ult_target' });
       this.cpuTowers.push(tower);
     }
 
@@ -511,8 +512,9 @@ export class FinaleController {
         for (const t of this.cpuTowers) {
           if ((t as { _expired?: boolean })._expired && !(t as { _killRewardGranted?: boolean })._killRewardGranted) {
             (t as { _killRewardGranted?: boolean })._killRewardGranted = true;
-            const gold = t.isUlt ? (reward.ultGold ?? 500) : (reward.gold ?? 50);
-            const xp = t.isUlt ? (reward.ultXp ?? 250) : (reward.xp ?? 50);
+            const isUlt = t.traits.some(tr => tr.id === 'arcane_ult_target');
+            const gold = isUlt ? (reward.ultGold ?? 500) : (reward.gold ?? 50);
+            const xp = isUlt ? (reward.ultXp ?? 250) : (reward.xp ?? 50);
             const econ = (this.scene as { economy?: { addGold: (n: number) => void } }).economy;
             econ?.addGold?.(gold);
             this.hero.grantXP(xp);
@@ -531,7 +533,7 @@ export class FinaleController {
               });
             }
             const log = (this.scene as { eventLog?: { gameMessage?: (s: string) => void } }).eventLog;
-            log?.gameMessage?.(t.isUlt
+            log?.gameMessage?.(isUlt
               ? `THE THRONE FALLS — ${gold}g, ${xp}xp.`
               : `Defender tower destroyed (+${gold}g, +${xp}xp).`);
           }
