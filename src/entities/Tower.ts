@@ -313,17 +313,6 @@ export class Tower {
       }
     }
 
-    // Show link indicator on aura towers connected via Conduit
-    if ((this as any)._linkedByConduit) {
-      this.graphics.lineStyle(1, 0xffcc44, 0.5);
-      this.graphics.strokeCircle(this.x, this.y, s + 5);
-      // Faint line back to conduit
-      if ((this as any)._conduitX !== undefined) {
-        this.graphics.lineStyle(1, 0xffcc44, 0.15);
-        this.graphics.lineBetween(this.x, this.y, (this as any)._conduitX, (this as any)._conduitY);
-      }
-    }
-
     // Harmonic aura range indicators (each type has distinct color)
     if (hasTrait(this.traits, 'damage_aura')) {
       this.graphics.lineStyle(1, 0xff4444, 0.2); // red

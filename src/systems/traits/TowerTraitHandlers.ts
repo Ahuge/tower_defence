@@ -5,6 +5,7 @@ import { ChannelSystem } from '../channels/ChannelSystem';
 import {
   registerDelivery, registerDamageMod, registerFireRateMod,
   registerHitEffect, registerOnFire, registerTowerUpdate,
+  registerOverlayDraw, addOrRefreshTrait, removeTrait,
   Trait, HitContext, UpdateContext,
 } from './Trait';
 
@@ -1270,11 +1271,13 @@ registerTowerUpdate('conduit_link', (trait: Trait, tower: any, ctx: UpdateContex
     return { x: t.x, y: t.y, color: auraColors[auraTrait?.id] ?? 0xffcc44 };
   });
 
-  // Mark linked towers
+  // Mark linked towers via the `conduit_linked` trait. Each frame
+  // TowerManager strips the trait at the top of the reset pass; the
+  // conduit handler re-stamps it here. The trait's overlay-draw
+  // handler (registered below) paints the linked-indicator circle +
+  // faint line back to the conduit on the tower's render pass.
   for (const lt of linkedTowers) {
-    lt._linkedByConduit = true;
-    lt._conduitX = tower.x;
-    lt._conduitY = tower.y;
+    addOrRefreshTrait(lt.traits, { id: 'conduit_linked', srcX: tower.x, srcY: tower.y });
   }
 
   // Share auras between each pair of linked towers
@@ -1370,3 +1373,25 @@ function shareAura(auraTrait: Trait, fromTower: any, ctx: UpdateContext, conduit
     }
   }
 }
+
+// ─── conduit_linked overlay draw ────────────────────────────────
+// The aura-side cosmetic: a faint yellow circle around any tower
+// linked-by-conduit, plus a faint connecting line back to the
+// conduit source. Trait is re-stamped each frame by the conduit_link
+// handler above and stripped at TowerManager's reset pass; this
+// overlay handler runs after Tower.drawTower's base render via the
+// v2 resolveOverlayDraw pipeline.
+//
+// Replaces three `(this as any)` field reads on Tower (`_linkedByConduit`
+// / `_conduitX` / `_conduitY`) with typed trait state.
+registerOverlayDraw('conduit_linked', (trait, tower, graphics) => {
+  const s = TILE_SIZE * 0.35;
+  graphics.lineStyle(1, 0xffcc44, 0.5);
+  graphics.strokeCircle(tower.x, tower.y, s + 5);
+  const srcX = (trait as { srcX?: number }).srcX;
+  const srcY = (trait as { srcY?: number }).srcY;
+  if (typeof srcX === 'number' && typeof srcY === 'number') {
+    graphics.lineStyle(1, 0xffcc44, 0.15);
+    graphics.lineBetween(tower.x, tower.y, srcX, srcY);
+  }
+});
