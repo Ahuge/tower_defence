@@ -34,6 +34,10 @@ export const NAMED_SPAWNS: Record<number, readonly NamedSpawn[]> = {
   2: [
     { typeId: 'inheritor_old_woman', col: 18, row: 10, ruinId: 'inn_hearth' },
   ],
+  // M4 — The Road of Crows
+  3: [
+    { typeId: 'inheritor_cethric', col: 18, row: 13, ruinId: 'crossroads' },
+  ],
 };
 
 /** Convenience accessor. Returns an empty array for missions with no

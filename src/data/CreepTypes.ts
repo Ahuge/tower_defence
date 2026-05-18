@@ -705,6 +705,20 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  inheritor_cethric: {
+    id: 'inheritor_cethric',
+    name: 'Cethric the Crow-Priest',
+    description: 'A hooded crow-priest, cross-legged at the marsh crossroads. He does not turn his head.',
+    hpMultiplier: 1, speedMultiplier: 0, armor: 'light',
+    color: 0x4a4a52, size: 1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      return {
+        hpMult: 1, speedMult: 1, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {

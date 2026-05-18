@@ -41,3 +41,14 @@ describe('GreenwardSpawns — M3 Old Woman of Eadwin', () => {
     expect(oldWoman!.ruinId).toBe('inn_hearth');
   });
 });
+
+describe('GreenwardSpawns — M4 Cethric the Crow-Priest', () => {
+  it('binds to the crossroads ruin at col 18, row 13', () => {
+    const spawns = namedSpawnsFor(3); // M4 = idx 3
+    const cethric = spawns.find(s => s.typeId === 'inheritor_cethric');
+    expect(cethric).toBeTruthy();
+    expect(cethric!.col).toBe(18);
+    expect(cethric!.row).toBe(13);
+    expect(cethric!.ruinId).toBe('crossroads');
+  });
+});
