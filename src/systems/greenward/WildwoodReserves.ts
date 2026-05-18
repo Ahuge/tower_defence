@@ -21,9 +21,23 @@
 
 import { CampaignState } from '../campaign/CampaignState';
 
-/** Persisted Greenward campaign state slot. Add fields here as the
- *  campaign grows (ModeLeanTracker tally lands as a sibling in
- *  Phase 2 commit 7). Stored verbatim in PlayerProfile.campaignState. */
+/** Persisted slot for Caer Wenna — the player's first Elder Treant,
+ *  bound to a name once she has lived through at least one mission.
+ *  Owned by PersistedTowerState.ts; declared here so the entire
+ *  Greenward campaign state shape lives in one place.
+ *
+ *  null when no Elder has been placed yet OR the player's first
+ *  Elder was placed in a mission too late to claim the name (M7+). */
+export interface CaerWennaState {
+  /** Mission idx when the player first placed an Elder Treant in the
+   *  Greenward campaign. Only counts as Caer Wenna if ≤ 5 (M1-M6). */
+  spawnedInMissionIdx: number;
+}
+
+/** Persisted Greenward campaign state slot. Stored verbatim in
+ *  PlayerProfile.campaignState. Add fields here as the campaign
+ *  grows (ModeLeanTracker tally lands as a sibling in Phase 2
+ *  commit 7). */
 export interface GreenwardState {
   /** 0-100 (inclusive). Drains per-tower-placement; regen between
    *  missions. Hard cap at MAX_AFTER_SPEND once any spending has
@@ -33,6 +47,10 @@ export interface GreenwardState {
    *  is MAX_AFTER_SPEND rather than INITIAL. Persisted so the cap
    *  survives mission boundaries. */
   hasSpent: boolean;
+  /** First Elder Treant placed in the campaign. null until placed,
+   *  or if the player's first Elder went down too late to earn the
+   *  name (M7+). Drives the M7/M8 "grove cannot spare her" refusal. */
+  caerWenna: CaerWennaState | null;
 }
 
 const FACTION_ID = 'nature';
@@ -48,6 +66,7 @@ export const MAX_AFTER_SPEND = 95;
 export const DEFAULT_GREENWARD_STATE: GreenwardState = {
   reserves: INITIAL_RESERVES,
   hasSpent: false,
+  caerWenna: null,
 };
 
 /** Read the current Greenward state, returning the default when no
@@ -80,6 +99,7 @@ export function deduct(amount: number): boolean {
   const state = getGreenwardState();
   if (state.reserves < amount) return false;
   CampaignState.set<GreenwardState>(FACTION_ID, {
+    ...state,
     reserves: state.reserves - amount,
     hasSpent: true,
   });
@@ -96,8 +116,8 @@ export function refund(amount: number): number {
   const cap = state.hasSpent ? MAX_AFTER_SPEND : INITIAL_RESERVES;
   const next = Math.min(state.reserves + amount, cap);
   CampaignState.set<GreenwardState>(FACTION_ID, {
+    ...state,
     reserves: next,
-    hasSpent: state.hasSpent,
   });
   return next;
 }
