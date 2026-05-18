@@ -72,8 +72,19 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     last_hand_talavar: {
       name: 'The Last Hand at Talavar',
+      // Writer-reviewed via 3-versions blind-compare. Winner: Draft C
+      // (Theris-as-mirror dialogue) with the subagent's suggested trim
+      // applied to the lamp line.
       story:
-        "The casino town Ardax is leaving. The Dealer hands him three cards: \"On the road, Voidsmith. Pick one.\" First Pact draw. Theris is at his elbow.",
+        "\"He's dealt you three,\" she said.\n" +
+        "\n" +
+        "\"I see them.\"\n" +
+        "\n" +
+        "\"You always think you see them, Ardax. Pick the one that hurts the least.\"\n" +
+        "\n" +
+        "\"The one that hurts the least is the one he wants me to pick.\"\n" +
+        "\n" +
+        "Theris laughed — the dry laugh, the one she saved for me. The Dealer didn't move. Behind us, Talavar's last lamp went out. I picked.",
       objectives: {
         star2: 'Win the mission.',
         star3: 'Accepted a Wager.',
@@ -82,8 +93,13 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     road_west: {
       name: 'The Road West',
+      // Writer-reviewed via 3-versions blind-compare. Winner: Draft A
+      // (Ardax notices the silhouette in private) with the subagent's
+      // suggested edit on the "keeping pace" line.
       story:
-        "Bounty hunters on the road. A silhouette walks parallel along the far ridge — Ardax pretends not to look. Theris doesn't pretend.",
+        "The road got narrow before noon. The hunters were maybe a hill back; I could hear the bell on one of their horses, which meant they wanted me to hear it.\n" +
+        "\n" +
+        "I'd been walking maybe an hour when I noticed the figure on the far ridge — keeping our pace exactly, which is the part I didn't like. I didn't tell Theris. Theris didn't tell me she'd noticed. We made a kind of pact about that one. Some pacts you don't read aloud.",
       objectives: {
         star2: 'Win the mission.',
         star3: "Won with Debt non-increasing.",
@@ -92,8 +108,15 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     silvermine_creek: {
       name: 'Silvermine Creek',
+      // Writer-reviewed via 3-versions blind-compare. Winner: Draft B
+      // (town scene — Ardax's history with Silvermine Creek) with the
+      // subagent's suggested verb edit on the widow line.
       story:
-        "A frontier town. The deck draws heavy this mission — three high-risk Wagers. The Dealer is curious how Ardax is going to handle it.",
+        "I'd owed money in this town twice. The first time was for a horse that died on me before I made the next county. The second was for a horse that didn't die — the man it belonged to died instead, and his widow kept the marker and never called it in, which is a worse kind of debt than a paid one.\n" +
+        "\n" +
+        "Theris said, \"You don't have to stop here.\"\n" +
+        "\n" +
+        "I did. The Dealer was already laying out three cards on a counter that wasn't his to lay them out on.",
       objectives: {
         star2: 'Win the mission.',
         star3: 'Accepted a high-tier Wager and succeeded.',
@@ -104,8 +127,15 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     ferrymans_game: {
       name: "The Ferryman's Game",
+      // Writer-reviewed via 3-versions blind-compare. Winner: Draft C
+      // (internal — the mother's bad-mirror image) with the subagent's
+      // edit on the closing trade-off line.
       story:
-        "River crossing. Tonight Ardax notices that one of his towers has a twin he didn't place. \"Cute.\" He can sell the mirror, but it costs him.",
+        "A river is just a long table you can't sit down at. I'd been told I'd cross at the ferry; the ferry was the kind that runs on a man rather than a current.\n" +
+        "\n" +
+        "I placed a Gambler. The Counterfactual placed his — a half-second later, three tiles over, inverted in colour the way the bad-mirror in my mother's parlour used to invert me. It fired at half rate; that was, I supposed, his idea of fair play.\n" +
+        "\n" +
+        "I could sell it. He'd watch me sell it. He'd cost me a fistful of coin and a sliver of pride. I considered it for the length of a breath.",
       objectives: {
         star2: 'Win the mission.',
         star3: 'Did not sell the mirror tower.',
