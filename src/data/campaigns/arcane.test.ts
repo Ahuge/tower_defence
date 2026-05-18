@@ -73,16 +73,20 @@ describe('Campaign registry', () => {
     expect(getCampaign('arcane')).toBe(ARCANE_CAMPAIGN);
   });
 
-  it('Void returns null until its content ships', () => {
-    // Nature shipped in Campaign #3 (The Greenward).
-    expect(getCampaign('void')).toBeNull();
+  it('Cypherpunk returns null until its content ships', () => {
+    // Nature shipped in Campaign #3 (The Greenward); Void ships in
+    // Campaign #4 (Snake Eyes); Cypherpunk is the next un-shipped
+    // real faction in the union and is the canonical "no campaign
+    // yet" sentinel for this regression test.
+    expect(getCampaign('cypherpunk')).toBeNull();
   });
 
-  it('listCampaigns includes arcane, mechanical, and nature', () => {
+  it('listCampaigns includes arcane, mechanical, nature, and void', () => {
     const ids = listCampaigns().map(c => c.factionId);
     expect(ids).toContain('arcane');
     expect(ids).toContain('mechanical');
     expect(ids).toContain('nature');
+    expect(ids).toContain('void');
   });
 });
 

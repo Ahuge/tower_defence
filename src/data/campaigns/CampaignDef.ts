@@ -323,4 +323,9 @@ export type MissionArchetypeId =
   | 'final_sabotage'
   // Greenward M10 finale — Caer Lythen three-setpiece (Courtyard /
   // Nave / Throne). Nave choice gated by campaign mode-lean.
-  | 'final_greenward';
+  | 'final_greenward'
+  // Snake Eyes M10 finale — the Counterfactual's Mirror. Three
+  // setpieces (Approach / Mirror Lane / The Table) with a single
+  // ending whose epilogue paragraph is stitched from final-state
+  // by EpilogueComposer. Stub until commit 17.
+  | 'final_void';

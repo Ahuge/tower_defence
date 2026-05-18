@@ -152,6 +152,19 @@ const ARCHETYPES: Record<string, MissionArchetype> = {
     baseMode: 'standard',
     defaults: { waveCount: 999, difficulty: 'hard' },
   },
+  /** Snake Eyes M10 finale — the Counterfactual's Mirror. Three
+   *  setpieces (Approach / Mirror Lane / The Table) plus a single
+   *  illustrated ending whose epilogue paragraph is stitched from
+   *  final-state by EpilogueComposer. Registered up-front so the
+   *  M10 mission def can reference it; the actual three-setpiece
+   *  controller + Mirror Lane paired-grid runtime land in commit 17. */
+  final_void: {
+    id: 'final_void',
+    label: 'The Mirror',
+    blurb: "Three setpieces. One table. Ardax sits across from himself.",
+    baseMode: 'standard',
+    defaults: { waveCount: 999, difficulty: 'hard' },
+  },
 };
 
 /** Forward-compat placeholders — registered so the `MissionArchetypeId`

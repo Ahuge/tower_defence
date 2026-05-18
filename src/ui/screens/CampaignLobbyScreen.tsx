@@ -115,7 +115,20 @@ export function CampaignLobbyScreen({ data }: Props) {
           color: factionColor,
           margin: '4px 0 16px',
         }}>{pendingMission.name}</div>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '20px' }}>
+        <div style={{
+          fontSize: '13px',
+          color: 'var(--text-secondary)',
+          lineHeight: 1.6,
+          marginBottom: '20px',
+          // Mission stories often span multiple paragraphs separated
+          // by literal newlines (backtick template literals in the
+          // .texts files; or "\n\n"-joined string concatenations in
+          // Snake Eyes). Without pre-wrap, every \n collapses to a
+          // single space — running 3-paragraph briefings into one
+          // wall. Pre-wrap preserves authored breaks across every
+          // campaign.
+          whiteSpace: 'pre-wrap' as const,
+        }}>
           {pendingMission.story}
         </div>
         <div style={{ marginBottom: '20px' }}>

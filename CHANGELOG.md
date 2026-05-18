@@ -2,6 +2,32 @@
 
 ## 2026-05-18 (continued)
 
+### Campaign #4 — Snake Eyes (Void)
+
+The fourth campaign — the Void faction's "Snake Eyes" — shipped end-to-end through a 22-commit phased plan plus follow-up PRs for bespoke maps, illustrated Wager card faces, and the M10 paired-grid e2e (per the plan doc split). Design + writer-reviewed prose locked in `docs/snake-eyes-campaign-plan.md`.
+
+**POV.** Ardax — a degenerate gambler who owes the House more than the House can collect. Stable cocky tone throughout; first-person past-tense narration, noir antihero register. **Antagonist face:** **The Counterfactual** — the version of Ardax who took the safe bet twenty years ago. Escalates across M2 (silhouette) → M4 (mirror tower) → M7 (Mirror Walker creep variant) → M10 (boss). **Persistent named character:** **Theris**, Ardax's partner gambler — rides with him M1-M5, cashes out at M6 with a note ("I cashed out, Ardax. You should too."), appears on the Counterfactual's side at M10. **Destination:** the **Counterfactual's Mirror** — a paired-grid M10 setpiece where Ardax sits across from himself.
+
+**Two campaign-unique systems shipped:**
+
+- **The Pactbook** (signature) — pre-mission 12-card deck draw. Each mission the Dealer deals 3 Wagers (tier-weighted per mission); Ardax picks 1 or declines all (+20g Debt). 12 cards across 3 tiers (small / medium / high-risk). Tier-1: Coin Flip, House Cut, Sleeve Card, Markers. Tier-2: Double Down, Echo Ledger, Loaded Dice, Hot Streak. Tier-3: Pact of Zeros, Inverted Stakes, Counterfactual's Cut, Mirror Wager. Wager mutators route through the bag-of-flags v2 trait pipeline — zero edits to `Tower.ts`. Campaign-wide tally persisted; M10 epilogue reads dominant tier.
+
+- **Debt × Divergence** (supporting) — persistent campaign pressure. Ardax starts owing the House 800g. Per-mission interest +50g (one-shot-cancellable by defeating M8's Collector), leak surcharge +5g/leak, decline penalty +20g. Win paydown = base 100g + (50 × Divergence) g — Divergence is the per-mission risk-tally from accepted Wagers (0-10 clamped, +1/+2/+3 per accepted tier). Defer paying down → late-mission **Dealer Actions** geometrically escalate (≥1000g bounty wave; ≥1300g random tower repossession; ≥1600g one Wager slot voided; ≥2000g two slots voided + extra bounty). The pressure curve makes the campaign winnable for an aggressive risk-taker and crushing for a cashout-and-decline player.
+
+**The Counterfactual** spawns through `CounterfactualSpawner` (silhouette / mirror tower / Mirror Walker creep — three escalating beats keyed on mission idx). The M10 boss runs through `CounterfactualMirrorController` — a three-setpiece state machine (Approach → Mirror Lane paired-grid → The Table boss). Boss HP scales on lifetime Pactbook tally (clamped [2000, 12000]).
+
+**Theris** rides via `TheresInterludes` — narrative-only, no per-tower hook. Mid-M6 overlay + post-M6 note + M10 mirror-table presence.
+
+**Personalised M10 epilogue** — Snake Eyes' answer to Greenward's three-Nave fork. A single illustrated tableau + a 4-sentence epilogue stitched by `EpilogueComposer` from 11 writer-authored fragments across 4 axes (Debt × Divergence × Theris × Pactbook-tally) = **54 reachable text-states**. Reads as written-for-this-run.
+
+**Card-flip end animation** — three playing-card-styled flip-reveals at 400ms / 900ms / 1400ms (ME / vs / HIM), epilogue body fades in at 1900ms. Polish move above Greenward's static reveal.
+
+**M10 setpiece 2 — Mirror Lane** — paired-grid mechanic via `MirrorLaneController`. Player + Counterfactual each clear their own waves; first to laneLength wins. Player's lifetime Divergence biases pressure coefficients (high Divergence → harsher player grid, lighter Counterfactual grid — recklessness costs you in the rematch). Same controller backs the tier-3 Mirror Wager card on regular missions (no Divergence bias there).
+
+**Test count.** ~150 new tests across `src/systems/voidc/` + `src/ui/campaign/` + `src/ui/screens/`. 1082 → 1169 across the campaign build. All green.
+
+**Files.** `docs/snake-eyes-campaign-plan.md`; `src/data/campaigns/snake-eyes.ts` (+test); `src/data/campaigns/texts/snake-eyes.texts.ts`; `src/data/campaigns/CampaignDef.ts` (+ `final_void` archetype id); `src/data/campaigns/MissionArchetypes.ts` (+ `final_void` registration); `src/data/campaigns/index.ts` (registration); `src/data/CreepTypes.ts` (+ `void_collector` boss creep); `src/systems/voidc/{DebtTracker,DivergenceTracker,Pactbook,WagerEffects,DealerActions,CounterfactualSpawner,TheresInterludes,CollectorBehavior,MirrorLaneController,CounterfactualMirrorController,EpilogueComposer}.ts` (+ tests for each); `src/systems/voidc/wagers/{tier1,tier2,tier3,index}.ts` (+ tests); `src/ui/campaign/{VoidStatePanel,PactbookPanel}.tsx` (+ tests); `src/ui/screens/SnakeEyesEndingPanel.tsx` (+ tests); `src/main.ts` (side-effect registrations).
+
 ### Campaign #3 — The Greenward
 
 The third campaign — the Nature faction's "The Greenward" — shipped end-to-end across four phases (22-commit core plan + three follow-up PRs for named characters, bespoke maps, and the M10 endings UI). Design + writer-reviewed prose locked in `docs/greenward-campaign-plan.md`.
