@@ -180,6 +180,11 @@ declare global {
       isGameSceneActive: () => boolean;
       getSabotageStatus: () => SabotageStatusSnapshot | null;
       forceKillSabotageTarget: (kind: 'generator' | 'throne', idx?: number) => boolean;
+      getGreenwardStatus: () => {
+        ruins: { id: string; mode: 'ceremony' | 'siege' | 'mercy'; claimed: boolean; progress01: number }[];
+        claimedByMode: { ceremony: number; siege: number; mercy: number };
+        finale: { active: string; resolvedNaveMode: string | null } | null;
+      } | null;
       getMissionStars: (campaignFactionId: string, missionIdx: number) => number;
       onceEvent: (event: string, timeoutMs?: number) => Promise<unknown[]>;
       launchCampaignMission: (campaignFactionId: string, missionIdx: number) => boolean;

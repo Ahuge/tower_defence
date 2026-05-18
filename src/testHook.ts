@@ -95,6 +95,14 @@ interface TestHook {
    *  or no active sabotage mission. Generator kind requires `idx`;
    *  passing undefined returns false. */
   forceKillSabotageTarget: (kind: 'generator' | 'throne', idx?: number) => boolean;
+  /** Greenward snapshot — ConsecrationManager state + the resolved
+   *  finale state when M10 is active. Returns null on non-Greenward
+   *  missions. */
+  getGreenwardStatus: () => {
+    ruins: { id: string; mode: 'ceremony' | 'siege' | 'mercy'; claimed: boolean; progress01: number }[];
+    claimedByMode: { ceremony: number; siege: number; mercy: number };
+    finale: { active: string; resolvedNaveMode: string | null } | null;
+  } | null;
   /** Read mission stars from the player profile. Returns 0 for missions
    *  not yet completed. Decouples specs from the profile's on-disk
    *  schema — campaignProgress could move + the spec keeps working. */
@@ -232,6 +240,35 @@ function launchCampaignMission(campaignFactionId: string, missionIdx: number): b
   return MissionRunner.start(def, missionIdx);
 }
 
+interface GreenwardSceneRef {
+  _greenwardController?: {
+    consecration: {
+      getSnapshot: () => {
+        ruins: { id: string; mode: 'ceremony' | 'siege' | 'mercy'; claimed: boolean; progress01: number }[];
+        claimedByMode: { ceremony: number; siege: number; mercy: number };
+        allMercyWatchersUnharmed: boolean;
+      };
+    };
+  } | null;
+  _greenwardFinaleController?: {
+    getSnapshot: () => { active: string; resolvedNaveMode: string | null };
+  } | null;
+}
+
+function getGreenwardStatus(): ReturnType<NonNullable<Window['__td_test']>['getGreenwardStatus']> {
+  const game = UIBridge.getGame();
+  if (!game) return null;
+  const scene = game.scene.getScene('GameScene') as unknown as GreenwardSceneRef | null;
+  if (!scene?._greenwardController) return null;
+  const snap = scene._greenwardController.consecration.getSnapshot();
+  const finale = scene._greenwardFinaleController ? scene._greenwardFinaleController.getSnapshot() : null;
+  return {
+    ruins: snap.ruins,
+    claimedByMode: snap.claimedByMode,
+    finale,
+  };
+}
+
 function jumpToTutorialStep(stepId: string, maxSteps = 50): boolean {
   for (let guard = 0; guard < maxSteps; guard++) {
     const active = TutorialManager.getActive();
@@ -259,6 +296,7 @@ export function installTestHook(): void {
     isGameSceneActive,
     getSabotageStatus,
     forceKillSabotageTarget,
+    getGreenwardStatus,
     getMissionStars: (factionId, idx) => PlayerProfile.getMissionStars(factionId, idx),
     onceEvent,
     launchCampaignMission,
