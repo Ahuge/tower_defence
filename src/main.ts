@@ -32,10 +32,22 @@ import './systems/finale/FinaleTraits';
 
 // Register campaign lobby panels (side-effect imports)
 import './ui/campaign/GreenwardStatePanel';
-import './ui/campaign/VoidStatePanel';
 
-// Register Snake Eyes Wager-effect handlers (side-effect import)
-import './systems/voidc/wagers';
+// Snake Eyes campaign — async side-effect registrations (VoidStatePanel
+// registers into the CampaignStatePanelRegistry; wagers/index.ts
+// populates the WagerEffects handler registry). Dynamic-imported so
+// they don't bloat the synchronous boot path on slow runners (mobile
+// playwright CI was hitting the 15s __td_test boot timeout when these
+// were eager). Both registrations land before the player can possibly
+// reach a Pactbook draw or the Void campaign lobby (boot → menu →
+// campaign tab takes seconds in the worst case; async resolves in
+// tens of milliseconds).
+Promise.all([
+  import('./ui/campaign/VoidStatePanel'),
+  import('./systems/voidc/wagers'),
+]).catch(err =>
+  console.error('[snake-eyes] failed to register campaign side-effects:', err),
+);
 
 // Eager-load the live-capture module so window.__learningCapture is
 // available from the menu (before any match starts). Module is
