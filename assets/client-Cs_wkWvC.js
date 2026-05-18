@@ -1,1 +1,0 @@
-import{n as e}from"./chunk-Ww0NqxWx.js";import{a as t,i as n,o as r,r as i}from"./compat.module-CNviworr.js";function a(e){return{render:function(t){n(t,e)},unmount:function(){t(e)}}}function o(e,t){return r(t,e),a(e)}var s,c=e((()=>{i(),s={createRoot:a,hydrateRoot:o}}));export{c as n,s as t};
