@@ -94,6 +94,43 @@ describe('Mechanical mission predicates', () => {
   });
 });
 
+describe('Mech narrative-gameplay buildout', () => {
+  // Pins that the narrative-promised creeps actually appear in the
+  // wave scripts. Without these, a future refactor could silently
+  // strip the flagship walkers from M5 and the mission would render
+  // generic creeps again — the bug the buildout was fixing.
+
+  it('M5 Iron Convoy wave script ships 5 flagship-walker waves', () => {
+    const m5 = MECHANICAL_CAMPAIGN.missions[4];
+    expect(m5.id).toBe('iron_convoy');
+    expect(m5.overrides.waveScript, 'M5 should have a custom wave script').toBeDefined();
+    const waves = m5.overrides.waveScript!;
+    expect(waves.length).toBe(5);
+    for (const w of waves) {
+      const hasFlagship = w.groups.some(g => g.creepType === 'mech_flagship_walker');
+      expect(hasFlagship, `wave ${w.wave} should contain a flagship`).toBe(true);
+      expect(w.isBoss).toBe(true);
+    }
+  });
+
+  it('M5 wave 1 is a cold-open — single flagship, no escort', () => {
+    const m5 = MECHANICAL_CAMPAIGN.missions[4];
+    const wave1 = m5.overrides.waveScript![0];
+    expect(wave1.groups.length).toBe(1);
+    expect(wave1.groups[0].creepType).toBe('mech_flagship_walker');
+    expect(wave1.groups[0].count).toBe(1);
+  });
+
+  it('M5 final wave has the largest escort (escalation)', () => {
+    const m5 = MECHANICAL_CAMPAIGN.missions[4];
+    const waves = m5.overrides.waveScript!;
+    const totalCreepsIn = (i: number) =>
+      waves[i].groups.reduce((s, g) => s + g.count, 0);
+    expect(totalCreepsIn(4)).toBeGreaterThan(totalCreepsIn(0));
+    expect(totalCreepsIn(4)).toBeGreaterThanOrEqual(totalCreepsIn(3));
+  });
+});
+
 describe('isCampaignComplete — mechanical', () => {
   it('false when no missions are won', () => {
     expect(isCampaignComplete('mechanical', {})).toBe(false);

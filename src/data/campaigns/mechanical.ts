@@ -127,6 +127,11 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     },
 
     // 5 — Iron Convoy. Five flagship walkers; pylons cover the road.
+    // Narrative: "armor vents briefly whenever the Suppression
+    // Pylons cycle. Burst the walkers down during the gaps."
+    // The flagship_walker creep carries the mech_pylon_vent_armor
+    // trait (commit 2) — takes 60% bonus damage while a player-
+    // channeled pylon is muted.
     {
       id: 'iron_convoy',
       idx: 4,
@@ -140,6 +145,39 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         suppressionPylons: [
           { col: 12, row: 10, radius: 4 },
           { col: 22, row: 14, radius: 4 },
+        ],
+        // Five flagship-walker waves with escalating escort. Each
+        // wave is ONE flagship as the boss + a growing support
+        // column. The vent-armor mechanic gates damage on
+        // pylon-muted windows, so the player learns to alternate
+        // channel timing with focused burst on the boss.
+        waveScript: [
+          { wave: 1, isBoss: true, spawnInterval: 0,
+            groups: [
+              { creepType: 'mech_flagship_walker', count: 1, hpScale: 80, speedScale: 1 },
+            ] },
+          { wave: 2, isBoss: true, spawnInterval: 350,
+            groups: [
+              { creepType: 'mech_flagship_walker', count: 1, hpScale: 95, speedScale: 1 },
+              { creepType: 'mech_armored_walker',  count: 2, hpScale: 95, speedScale: 1 },
+            ] },
+          { wave: 3, isBoss: true, spawnInterval: 280,
+            groups: [
+              { creepType: 'mech_flagship_walker', count: 1, hpScale: 115, speedScale: 1 },
+              { creepType: 'mech_skiff',           count: 4, hpScale: 115, speedScale: 1 },
+            ] },
+          { wave: 4, isBoss: true, spawnInterval: 280,
+            groups: [
+              { creepType: 'mech_flagship_walker', count: 1, hpScale: 140, speedScale: 1 },
+              { creepType: 'mech_armored_walker',  count: 2, hpScale: 140, speedScale: 1 },
+              { creepType: 'mech_skiff',           count: 4, hpScale: 140, speedScale: 1 },
+            ] },
+          { wave: 5, isBoss: true, spawnInterval: 240,
+            groups: [
+              { creepType: 'mech_flagship_walker', count: 1, hpScale: 170, speedScale: 1 },
+              { creepType: 'mech_armored_walker',  count: 3, hpScale: 170, speedScale: 1 },
+              { creepType: 'mech_skiff',           count: 6, hpScale: 170, speedScale: 1 },
+            ] },
         ],
       },
       objectives: {
