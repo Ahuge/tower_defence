@@ -177,6 +177,16 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_crows',
         difficulty: 'normal',
         waveCount: 10,
+        greenwardRules: {
+          ruins: [
+            // Cethric's crossroads — the first full Mercy mission.
+            // Splash tower placement near this cell triggers the
+            // AoE-warning overlay.
+            { id: 'crossroads',  col: 18, row: 13, mode: 'mercy' },
+            // Eastern Blossom-Ceremony on the road back to the Wildwood.
+            { id: 'eastern_road', col: 26, row: 13, mode: 'ceremony' },
+          ],
+        },
       },
       objectives: {
         star2: {
@@ -202,6 +212,18 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_river',
         difficulty: 'normal',
         waveCount: 10,
+        greenwardRules: {
+          ruins: [
+            // The headwater — Ceremony with a per-mission timer
+            // managed by the mission's controller hook (sets
+            // headwaterClaimed=true on completion before the salt
+            // timer expires).
+            { id: 'headwater', col: 30, row: 13, mode: 'ceremony' },
+            // Two Siege ruins downstream — Inheritor-held pools.
+            { id: 'river_west', col: 8,  row: 13, mode: 'siege' },
+            { id: 'river_east', col: 18, row: 13, mode: 'siege' },
+          ],
+        },
       },
       objectives: {
         star2: {
@@ -228,6 +250,16 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_tarrenford',
         difficulty: 'normal',
         waveCount: 12,
+        greenwardRules: {
+          ruins: [
+            // The chapel — Hennel hands Marra a flower at the gate.
+            { id: 'chapel',      col: 14, row: 8,  mode: 'ceremony' },
+            // The old well.
+            { id: 'well',        col: 18, row: 13, mode: 'ceremony' },
+            // The wheat field at the south edge.
+            { id: 'wheat_field', col: 22, row: 18, mode: 'ceremony' },
+          ],
+        },
       },
       objectives: {
         star2: {
@@ -253,6 +285,16 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_weddingstone',
         difficulty: 'hard',
         waveCount: 12,
+        greenwardRules: {
+          ruins: [
+            // The altar — the Stone Bride (Watcher) stands here.
+            // Mercy: don't touch her. Her livery identifier (slow
+            // walk) is per-creep at spawn time.
+            { id: 'altar',    col: 18, row: 10, mode: 'mercy' },
+            // The pavilion — Siege the wedding party who circle the bride.
+            { id: 'pavilion', col: 18, row: 18, mode: 'siege' },
+          ],
+        },
       },
       objectives: {
         star2: {

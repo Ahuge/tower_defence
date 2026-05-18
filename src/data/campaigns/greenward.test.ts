@@ -113,3 +113,44 @@ describe('Greenward Act I missions — Consecration wiring', () => {
     }
   });
 });
+
+describe('Greenward Act II missions — Consecration wiring', () => {
+  it('M4 declares one Mercy (Cethric) + one Ceremony', () => {
+    const m = GREENWARD_CAMPAIGN.missions[3];
+    const modes = m.overrides.greenwardRules?.ruins.map(r => r.mode) ?? [];
+    expect(modes).toContain('mercy');
+    expect(modes).toContain('ceremony');
+    expect(modes).toHaveLength(2);
+  });
+
+  it('M5 declares one Ceremony (headwater) + two Siege', () => {
+    const m = GREENWARD_CAMPAIGN.missions[4];
+    const modes = m.overrides.greenwardRules?.ruins.map(r => r.mode) ?? [];
+    expect(modes.filter(x => x === 'ceremony')).toHaveLength(1);
+    expect(modes.filter(x => x === 'siege')).toHaveLength(2);
+    expect(m.overrides.greenwardRules?.ruins.find(r => r.id === 'headwater')).toBeTruthy();
+  });
+
+  it('M6 declares three Ceremony ruins (the warm spot)', () => {
+    const m = GREENWARD_CAMPAIGN.missions[5];
+    const modes = m.overrides.greenwardRules?.ruins.map(r => r.mode) ?? [];
+    expect(modes.every(x => x === 'ceremony')).toBe(true);
+    expect(modes).toHaveLength(3);
+  });
+
+  it('M7 declares one Mercy (bride) + one Siege', () => {
+    const m = GREENWARD_CAMPAIGN.missions[6];
+    const modes = m.overrides.greenwardRules?.ruins.map(r => r.mode) ?? [];
+    expect(modes).toContain('mercy');
+    expect(modes).toContain('siege');
+    expect(modes).toHaveLength(2);
+  });
+
+  it('every Act II ruin has a unique id within its mission', () => {
+    for (const idx of [3, 4, 5, 6]) {
+      const ruins = GREENWARD_CAMPAIGN.missions[idx].overrides.greenwardRules?.ruins ?? [];
+      const ids = new Set(ruins.map(r => r.id));
+      expect(ids.size).toBe(ruins.length);
+    }
+  });
+});
