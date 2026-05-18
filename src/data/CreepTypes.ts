@@ -787,6 +787,35 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  // Snake Eyes M8 — the Dealer's enforcer. Lobs damage tokens at the
+  // player's towers (disabling them temporarily, not destroying them
+  // — see CollectorBehavior). Defeating the Collector marks
+  // SnakeEyesState.collectorDefeatedAt and cancels next mission's
+  // interest charge. Bossier than the M8 Inheritor cycle but slower;
+  // the threat is to your board, not to your lives.
+  void_collector: {
+    id: 'void_collector',
+    name: 'The Collector',
+    description: "The Dealer's hand on the road. Doesn't take lives — takes towers. Kill him before he taxes you off the board.",
+    hpMultiplier: 12, speedMultiplier: 0.55, armor: 'heavy',
+    color: 0x3a2a3a, size: 1.5, count: 1,
+    // Trait id `void_collector_disable` is forward-declared here +
+    // implemented in src/systems/voidc/CollectorBehavior.ts. The
+    // creep update handler picks a target tower + emits a
+    // tower-disable event each tick the cooldown elapses.
+    traits: [{ id: 'void_collector_disable', tokenIntervalMs: 4000, disableDurationMs: 6000, rangeCells: 6 }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 12,
+        speedMult: hints.speed * 0.55,
+        countMult: 1, // never multi-spawned; boss
+        goldMult: hints.goldMult * 5, // bounty on defeating him
+        extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {
