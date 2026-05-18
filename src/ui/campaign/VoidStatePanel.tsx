@@ -144,13 +144,20 @@ export function VoidStatePanel(_props: Props) {
           }}>
             PACTBOOK TALLY
           </div>
-          <div role="list" aria-label="Pactbook outcome tally" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+          {/* Two grouped rows: accepted-by-tier on row 1, outcome
+              on row 2. Outcome labels chosen via 3-versions blind-
+              compare — winner: gambler-verb set ("passed / cashed /
+              bust") for tonal fit + scan-density over plain English
+              ("won / lost") and casino-POV ("paid out / burned"). */}
+          <div role="list" aria-label="Accepted Wagers by tier" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: '6px' }}>
             <TallyChip label="T1" srLabel="Tier 1 (small) Wagers accepted" value={state.pactbookTally.acceptedT1} accent={VOID_VIOLET} />
             <TallyChip label="T2" srLabel="Tier 2 (medium) Wagers accepted" value={state.pactbookTally.acceptedT2} accent={VOID_VIOLET} />
             <TallyChip label="T3" srLabel="Tier 3 (high-risk) Wagers accepted" value={state.pactbookTally.acceptedT3} accent={VOID_GOLD} />
+          </div>
+          <div role="list" aria-label="Pactbook outcomes" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
             <TallyChip label="passed" srLabel="Wagers declined (passed)" value={state.pactbookTally.declined} accent={DIM_TEXT} />
-            <TallyChip label="won" srLabel="Accepted Wagers that paid out" value={state.pactbookTally.succeeded} accent={SNAKE_EYES_PALETTE.settledGreen} />
-            <TallyChip label="lost" srLabel="Accepted Wagers that failed" value={state.pactbookTally.failed} accent={SNAKE_EYES_PALETTE.lossRed} />
+            <TallyChip label="cashed" srLabel="Accepted Wagers that paid out (cashed)" value={state.pactbookTally.succeeded} accent={SNAKE_EYES_PALETTE.settledGreen} />
+            <TallyChip label="bust" srLabel="Accepted Wagers that failed (bust)" value={state.pactbookTally.failed} accent={SNAKE_EYES_PALETTE.lossRed} />
           </div>
         </div>
       )}
