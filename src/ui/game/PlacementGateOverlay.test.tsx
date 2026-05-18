@@ -81,4 +81,18 @@ describe('PlacementGateOverlay', () => {
     expect(commit?.getAttribute('aria-label')).toContain('Confirm');
     expect(cancel?.getAttribute('aria-label')).toContain('Cancel');
   });
+
+  it('renders a drag handle over the ghost cell', () => {
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    expect(container.querySelector('[data-testid="placement-gate-drag-handle"]')).not.toBeNull();
+  });
+
+  it('drag handle is touch-action:none (disables browser gestures mid-drag)', () => {
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+    const style = handle.getAttribute('style') ?? '';
+    expect(style).toContain('touch-action');
+  });
 });
