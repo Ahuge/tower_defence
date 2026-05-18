@@ -258,6 +258,11 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     },
 
     // 9 — Hero vs Boss. Voss's general — his "voice in the field."
+    // Narrative: the Engineer asked for this fight. She helped build
+    // early walker frames before deserting and knows how to break
+    // one in single combat. The mission delivers the Ace as a named
+    // boss (mech_ace_pilot) with escalating walker support across
+    // 5 waves — phases of the duel, not generic boss-rush.
     {
       id: 'the_ace',
       idx: 8,
@@ -269,6 +274,40 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         difficulty: 'normal',
         waveCount: 5,
         heroId: 'engineer',
+        // Five-phase duel. The Ace shows up every wave (he's the
+        // mission's antagonist). Wave 1 is the Ace alone — the
+        // Engineer's introduction shot. Subsequent waves layer in
+        // walker frames the Engineer specifically claims expertise
+        // against. hpScale climbs so the Ace stays a credible
+        // threat as the player's hero levels up.
+        waveScript: [
+          { wave: 1, isBoss: true, spawnInterval: 0,
+            groups: [
+              { creepType: 'mech_ace_pilot',       count: 1, hpScale: 90,  speedScale: 1 },
+            ] },
+          { wave: 2, isBoss: true, spawnInterval: 400,
+            groups: [
+              { creepType: 'mech_ace_pilot',       count: 1, hpScale: 105, speedScale: 1 },
+              { creepType: 'mech_light_walker',    count: 2, hpScale: 105, speedScale: 1 },
+            ] },
+          { wave: 3, isBoss: true, spawnInterval: 400,
+            groups: [
+              { creepType: 'mech_ace_pilot',       count: 1, hpScale: 125, speedScale: 1 },
+              { creepType: 'mech_armored_walker',  count: 2, hpScale: 125, speedScale: 1 },
+            ] },
+          { wave: 4, isBoss: true, spawnInterval: 320,
+            groups: [
+              { creepType: 'mech_ace_pilot',       count: 1, hpScale: 145, speedScale: 1 },
+              { creepType: 'mech_light_walker',    count: 3, hpScale: 145, speedScale: 1 },
+              { creepType: 'mech_armored_walker',  count: 1, hpScale: 145, speedScale: 1 },
+            ] },
+          { wave: 5, isBoss: true, spawnInterval: 280,
+            groups: [
+              { creepType: 'mech_ace_pilot',       count: 1, hpScale: 175, speedScale: 1 },
+              { creepType: 'mech_armored_walker',  count: 2, hpScale: 175, speedScale: 1 },
+              { creepType: 'mech_light_walker',    count: 2, hpScale: 175, speedScale: 1 },
+            ] },
+        ],
       },
       objectives: {
         star2: {

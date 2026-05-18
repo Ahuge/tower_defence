@@ -129,6 +129,35 @@ describe('Mech narrative-gameplay buildout', () => {
     expect(totalCreepsIn(4)).toBeGreaterThan(totalCreepsIn(0));
     expect(totalCreepsIn(4)).toBeGreaterThanOrEqual(totalCreepsIn(3));
   });
+
+  it('M9 The Ace wave script ships 5 Ace-pilot waves with walker support', () => {
+    const m9 = MECHANICAL_CAMPAIGN.missions[8];
+    expect(m9.id).toBe('the_ace');
+    expect(m9.overrides.waveScript, 'M9 should have a custom wave script').toBeDefined();
+    const waves = m9.overrides.waveScript!;
+    expect(waves.length).toBe(5);
+    for (const w of waves) {
+      const hasAce = w.groups.some(g => g.creepType === 'mech_ace_pilot');
+      expect(hasAce, `wave ${w.wave} should contain the Ace`).toBe(true);
+    }
+  });
+
+  it('M9 wave 1 is the introduction shot — Ace alone', () => {
+    const m9 = MECHANICAL_CAMPAIGN.missions[8];
+    const wave1 = m9.overrides.waveScript![0];
+    expect(wave1.groups.length).toBe(1);
+    expect(wave1.groups[0].creepType).toBe('mech_ace_pilot');
+  });
+
+  it('M9 hpScale escalates wave over wave (Ace stays a credible threat)', () => {
+    const m9 = MECHANICAL_CAMPAIGN.missions[8];
+    const waves = m9.overrides.waveScript!;
+    for (let i = 1; i < waves.length; i++) {
+      const prev = waves[i - 1].groups[0].hpScale;
+      const curr = waves[i].groups[0].hpScale;
+      expect(curr, `wave ${i + 1} hpScale should exceed wave ${i}`).toBeGreaterThan(prev);
+    }
+  });
 });
 
 describe('isCampaignComplete — mechanical', () => {
