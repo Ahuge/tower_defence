@@ -29,6 +29,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { composeEpilogue } from '../../systems/voidc/EpilogueComposer';
 import { SNAKE_EYES_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
+import { UIScale } from '../../systems/UIScale';
 
 const VOID_VIOLET = SNAKE_EYES_PALETTE.violet;
 const VOID_GOLD = SNAKE_EYES_PALETTE.gold;
@@ -101,11 +102,11 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
       data-testid="snake-eyes-ending"
       style={{
         textAlign: 'center' as const,
-        padding: '24px 16px 32px',
+        padding: `${UIScale.space(24)}px ${UIScale.space(16)}px ${UIScale.space(32)}px`,
         background: SNAKE_EYES_PALETTE.surface.ending,
         border: `1px solid ${SNAKE_EYES_PALETTE.border.endingViolet}`,
         borderRadius: '12px',
-        margin: '16px auto',
+        margin: `${UIScale.space(16)}px auto`,
         maxWidth: '640px',
       }}
     >
@@ -113,9 +114,9 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
         style={{
           fontFamily: "'Silkscreen', monospace",
           color: VOID_VIOLET,
-          fontSize: '20px',
+          fontSize: UIScale.font(20),
           letterSpacing: '0.08em',
-          marginBottom: '20px',
+          marginBottom: `${UIScale.space(20)}px`,
         }}
       >
         THE COUNTERFACTUAL'S MIRROR
@@ -125,8 +126,8 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
         style={{
           display: 'flex' as const,
           justifyContent: 'center' as const,
-          gap: '16px',
-          marginBottom: '24px',
+          gap: `${UIScale.space(16)}px`,
+          marginBottom: `${UIScale.space(24)}px`,
           perspective: '600px',
         }}
         // Allow the parent itself to be focused for click-anywhere-to-skip
@@ -153,7 +154,7 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
           // ships everywhere; Crimson Text + Lora are graceful
           // fallbacks for systems that have web fonts.
           fontFamily: "'Crimson Text', 'Lora', Georgia, 'Times New Roman', serif",
-          fontSize: '15px',
+          fontSize: UIScale.fontCapped(15, 32),
           lineHeight: 1.75,
           color: 'var(--text-primary)',
           textAlign: 'left' as const,
@@ -169,8 +170,8 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
 
       {!showBody && (
         <div style={{
-          marginTop: '12px',
-          fontSize: '10px',
+          marginTop: `${UIScale.space(12)}px`,
+          fontSize: UIScale.fontCapped(10, 20),
           color: 'var(--text-dim)',
           opacity: 0.6,
           letterSpacing: '0.05em',
@@ -189,8 +190,8 @@ function FlipCard({ idx, glyph, glyphLabel, isFlipped }:
       data-testid={`flip-card-${idx}`}
       data-flipped={isFlipped ? 'true' : 'false'}
       style={{
-        width: '80px',
-        height: '120px',
+        width: `${UIScale.space(80)}px`,
+        height: `${UIScale.space(120)}px`,
         position: 'relative' as const,
         transformStyle: 'preserve-3d' as const,
         transition: 'transform 0.35s ease-out',
@@ -221,7 +222,7 @@ function FlipCard({ idx, glyph, glyphLabel, isFlipped }:
           borderRadius: '6px',
           color: VOID_GOLD,
           fontFamily: "'Silkscreen', monospace",
-          fontSize: '46px',
+          fontSize: UIScale.font(46),
           display: 'flex' as const,
           alignItems: 'center' as const,
           justifyContent: 'center' as const,

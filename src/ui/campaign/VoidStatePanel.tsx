@@ -29,6 +29,7 @@ import {
 } from '../../systems/voidc/DebtTracker';
 import { DEALER_THRESHOLDS, computeDealerActions } from '../../systems/voidc/DealerActions';
 import { SNAKE_EYES_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
+import { UIScale } from '../../systems/UIScale';
 
 const VOID_VIOLET = SNAKE_EYES_PALETTE.violet;
 const VOID_GOLD = SNAKE_EYES_PALETTE.gold;
@@ -81,16 +82,16 @@ export function VoidStatePanel(_props: Props) {
       background: SNAKE_EYES_PALETTE.surface.statePanel,
       border: `1px solid ${SNAKE_EYES_PALETTE.border.statePanel}`,
       borderRadius: '8px',
-      padding: '12px 16px',
+      padding: `${UIScale.space(12)}px ${UIScale.space(16)}px`,
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '12px',
+      fontSize: UIScale.fontCapped(12, 24),
       color: PRIMARY_TEXT,
     }}>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: VOID_VIOLET,
-        fontSize: '13px',
-        marginBottom: '8px',
+        fontSize: UIScale.fontCapped(13, 26),
+        marginBottom: `${UIScale.space(8)}px`,
         letterSpacing: '0.05em',
       }}>
         THE HOUSE LEDGER
@@ -110,7 +111,7 @@ export function VoidStatePanel(_props: Props) {
             ? `Settled with the House (overpaid by ${Math.abs(state.debt)} gold)`
             : `${state.debt} gold of Debt out of ${DEBT_METER_MAX}`
         }
-        style={{ position: 'relative', height: '14px', background: SNAKE_EYES_PALETTE.meterTrack, borderRadius: '3px', overflow: 'hidden' }}
+        style={{ position: 'relative', height: `${UIScale.space(14)}px`, background: SNAKE_EYES_PALETTE.meterTrack, borderRadius: '3px', overflow: 'hidden' }}
       >
         <div style={{
           position: 'absolute', inset: 0,
@@ -132,13 +133,13 @@ export function VoidStatePanel(_props: Props) {
           each tick. Teaches the Dealer mechanic at a glance: the
           player sees their Debt growing toward the next labelled
           number. */}
-      <div style={{ position: 'relative', height: '14px', marginTop: '2px' }}>
+      <div style={{ position: 'relative', height: `${UIScale.space(14)}px`, marginTop: `${UIScale.space(2)}px` }}>
         <ThresholdLabel pct={(DEALER_THRESHOLDS.BOUNTY_WAVE / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.BOUNTY_WAVE} />
         <ThresholdLabel pct={(DEALER_THRESHOLDS.REPOSSESS / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.REPOSSESS} />
         <ThresholdLabel pct={(DEALER_THRESHOLDS.VOID_SLOT / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.VOID_SLOT} />
         <ThresholdLabel pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '11px', color: DIM_TEXT }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: `${UIScale.space(4)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT }}>
         <span>{settled
           ? <span style={{ color: SNAKE_EYES_PALETTE.settledGreen }}>
               settled — overpaid by {Math.abs(state.debt)}g
@@ -149,18 +150,18 @@ export function VoidStatePanel(_props: Props) {
       </div>
 
       {(actions.bountyWaves + actions.repossesses + actions.wagerSlotsVoided) > 0 && (
-        <div class="snake-eyes-dealer-caption" style={{ marginTop: '8px', fontSize: '11px', color: VOID_GOLD, fontStyle: 'italic' }}>
+        <div class="snake-eyes-dealer-caption" style={{ marginTop: `${UIScale.space(8)}px`, fontSize: UIScale.fontCapped(11, 22), color: VOID_GOLD, fontStyle: 'italic' }}>
           {dealerCaption(actions)}
         </div>
       )}
 
       {hasAnyTally && (
-        <div style={{ marginTop: '12px' }}>
+        <div style={{ marginTop: `${UIScale.space(12)}px` }}>
           <div style={{
             fontFamily: "'Silkscreen', monospace",
             color: VOID_VIOLET,
-            fontSize: '13px',
-            marginBottom: '6px',
+            fontSize: UIScale.fontCapped(13, 26),
+            marginBottom: `${UIScale.space(6)}px`,
             letterSpacing: '0.05em',
           }}>
             PACTBOOK TALLY
@@ -170,12 +171,12 @@ export function VoidStatePanel(_props: Props) {
               compare — winner: gambler-verb set ("passed / cashed /
               bust") for tonal fit + scan-density over plain English
               ("won / lost") and casino-POV ("paid out / burned"). */}
-          <div role="list" aria-label="Accepted Wagers by tier" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: '6px' }}>
+          <div role="list" aria-label="Accepted Wagers by tier" style={{ display: 'flex', gap: `${UIScale.space(8)}px`, flexWrap: 'wrap' as const, marginBottom: `${UIScale.space(6)}px` }}>
             <TallyChip label="T1" srLabel="Tier 1 (small) Wagers accepted" value={state.pactbookTally.acceptedT1} accent={VOID_VIOLET} />
             <TallyChip label="T2" srLabel="Tier 2 (medium) Wagers accepted" value={state.pactbookTally.acceptedT2} accent={VOID_VIOLET} />
             <TallyChip label="T3" srLabel="Tier 3 (high-risk) Wagers accepted" value={state.pactbookTally.acceptedT3} accent={VOID_GOLD} />
           </div>
-          <div role="list" aria-label="Pactbook outcomes" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+          <div role="list" aria-label="Pactbook outcomes" style={{ display: 'flex', gap: `${UIScale.space(8)}px`, flexWrap: 'wrap' as const }}>
             <TallyChip label="passed" srLabel="Wagers declined (passed)" value={state.pactbookTally.declined} accent={DIM_TEXT} />
             <TallyChip label="cashed" srLabel="Accepted Wagers that paid out (cashed)" value={state.pactbookTally.succeeded} accent={SNAKE_EYES_PALETTE.settledGreen} />
             <TallyChip label="bust" srLabel="Accepted Wagers that failed (bust)" value={state.pactbookTally.failed} accent={SNAKE_EYES_PALETTE.lossRed} />
@@ -184,12 +185,12 @@ export function VoidStatePanel(_props: Props) {
       )}
 
       {state.lastMissionDivergence > 0 && (
-        <div style={{ marginTop: '10px', fontSize: '11px', color: DIM_TEXT }}>
+        <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT }}>
           last mission ran at <span style={{ color: VOID_GOLD }}>{state.lastMissionDivergence}/10</span> Divergence
         </div>
       )}
 
-      <div style={{ marginTop: '10px', fontSize: '11px', color: DIM_TEXT, fontStyle: 'italic' }}>
+      <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT, fontStyle: 'italic' }}>
         {state.theresStatus === 'with_ardax'
           ? 'Theris rides with you.'
           : 'Theris cashed out.'}
@@ -223,7 +224,7 @@ function ThresholdLabel({ pct, value }: { pct: number; value: number }) {
       top: '0',
       left: `${pct}%`,
       transform: 'translateX(-50%)',
-      fontSize: '9px',
+      fontSize: UIScale.fontCapped(9, 18),
       fontFamily: "'Silkscreen', monospace",
       color: 'var(--text-dim)',
       letterSpacing: '0.05em',
@@ -237,17 +238,17 @@ function ThresholdLabel({ pct, value }: { pct: number; value: number }) {
 function TallyChip({ label, srLabel, value, accent }: { label: string; srLabel: string; value: number; accent: string }) {
   return (
     <div role="listitem" aria-label={`${srLabel}: ${value}`} style={{
-      padding: '4px 8px',
+      padding: `${UIScale.space(4)}px ${UIScale.space(8)}px`,
       borderRadius: '3px',
       background: 'rgba(0,0,0,0.25)',
       border: `1px solid ${accent === DIM_TEXT ? SNAKE_EYES_PALETTE.border.fainter : accent}`,
-      minWidth: '40px',
+      minWidth: `${UIScale.space(40)}px`,
       textAlign: 'center' as const,
     }}>
-      <div style={{ fontSize: '10px', color: DIM_TEXT, letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: UIScale.fontCapped(10, 20), color: DIM_TEXT, letterSpacing: '0.05em' }}>{label}</div>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
-        fontSize: '14px',
+        fontSize: UIScale.fontCapped(14, 28),
         color: accent,
         marginTop: '1px',
       }}>{value}</div>

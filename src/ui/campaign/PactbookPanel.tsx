@@ -34,6 +34,7 @@ import type { Pactbook, Wager } from '../../systems/voidc/Pactbook';
 import { getWagerEffect } from '../../systems/voidc/WagerEffects';
 import { SNAKE_EYES_PALETTE, TIER_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
 import { PAYDOWN_BASE, PAYDOWN_PER_DIVERGENCE } from '../../systems/voidc/DebtTracker';
+import { UIScale } from '../../systems/UIScale';
 
 /** Duration of the per-card deal-in animation (ms). Mirrors the
  *  CSS animation length in ui.css `.snake-eyes-wager-card.is-dealing-in`. */
@@ -128,6 +129,12 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
   // UI takes over only after the pulse + onResolved.
   if (pactbook.isResolved() && acknowledgingIdx === null) return null;
 
+  // Phone target: stack the cards into one column instead of three-
+  // wide. On a 360px viewport, three side-by-side cards crammed each
+  // into ~110px is unreadable; stacking gives each card the full
+  // width with margin.
+  const gridCols = UIScale.isPhone ? 1 : drawn.length;
+
   return (
     <div
       role="dialog"
@@ -135,7 +142,7 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
       style={{
         maxWidth: '880px',
         margin: '0 auto',
-        padding: '24px 18px',
+        padding: `${UIScale.space(24)}px ${UIScale.space(18)}px`,
         fontFamily: 'system-ui, sans-serif',
         color: 'var(--text-primary)',
       }}
@@ -143,30 +150,30 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: SNAKE_EYES_PALETTE.violet,
-        fontSize: '16px',
+        fontSize: UIScale.font(16),
         letterSpacing: '0.08em',
         textAlign: 'center' as const,
-        marginBottom: '4px',
+        marginBottom: `${UIScale.space(4)}px`,
       }}>
         THE DEALER DEALS
       </div>
       <div style={{
         textAlign: 'center' as const,
-        fontSize: '13px',
+        fontSize: UIScale.fontCapped(13, 26),
         color: 'var(--text-dim)',
-        marginBottom: '20px',
+        marginBottom: `${UIScale.space(20)}px`,
         fontStyle: 'italic' as const,
       }}>
         Pick one. Or pass all three — and pay the price.
-        <span style={{ display: 'block', fontSize: '11px', marginTop: '2px', opacity: 0.7 }}>
+        <span style={{ display: 'block', fontSize: UIScale.fontCapped(11, 22), marginTop: `${UIScale.space(2)}px`, opacity: 0.7 }}>
           (1/2/3 to pick, D to decline)
         </span>
       </div>
 
       <div style={{
         display: 'grid' as const,
-        gridTemplateColumns: `repeat(${drawn.length}, 1fr)`,
-        gap: '12px',
+        gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
+        gap: `${UIScale.space(12)}px`,
       }}>
         {drawn.map((wager, idx) => (
           <WagerCard
@@ -180,21 +187,22 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
         ))}
       </div>
 
-      <div style={{ textAlign: 'center' as const, marginTop: '20px' }}>
+      <div style={{ textAlign: 'center' as const, marginTop: `${UIScale.space(20)}px` }}>
         <button
           ref={declineRef}
           class="snake-eyes-decline-btn"
           aria-label="Decline all three Wagers and add 20 gold to Debt"
           onClick={declineAll}
           style={{
-            padding: '10px 24px',
+            padding: `${UIScale.space(10)}px ${UIScale.space(24)}px`,
             background: SNAKE_EYES_PALETTE.surface.decline,
             border: `1px solid ${SNAKE_EYES_PALETTE.border.subtle}`,
             color: 'var(--text-dim)',
             fontFamily: "'Silkscreen', monospace",
-            fontSize: '12px',
+            fontSize: UIScale.fontCapped(12, 24),
             letterSpacing: '0.06em',
             borderRadius: '4px',
+            minHeight: `${UIScale.space(44)}px`, // WCAG touch target floor
           }}
         >
           DECLINE ALL (+20g Debt)
@@ -241,15 +249,15 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
       aria-keyshortcuts={String(idx + 1)}
       onClick={onSelect}
       style={{
-        padding: '12px 14px 14px',
+        padding: `${UIScale.space(12)}px ${UIScale.space(14)}px ${UIScale.space(14)}px`,
         background: palette.bg,
         border: `2px solid ${palette.border}`,
         borderRadius: '6px',
         color: 'var(--text-primary)',
         display: 'flex' as const,
         flexDirection: 'column' as const,
-        gap: '8px',
-        minHeight: '220px',
+        gap: `${UIScale.space(8)}px`,
+        minHeight: `${UIScale.space(220)}px`,
         position: 'relative' as const,
       }}
     >
@@ -260,15 +268,15 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
         aria-hidden="true"
         style={{
           position: 'absolute' as const,
-          top: '10px',
-          left: '10px',
-          width: '22px',
-          height: '22px',
+          top: `${UIScale.space(10)}px`,
+          left: `${UIScale.space(10)}px`,
+          width: `${UIScale.space(22)}px`,
+          height: `${UIScale.space(22)}px`,
           borderRadius: '50%',
           background: palette.border,
           color: '#0a050f',
           fontFamily: "'Silkscreen', monospace",
-          fontSize: '13px',
+          fontSize: UIScale.fontCapped(13, 26),
           fontWeight: 700,
           display: 'flex' as const,
           alignItems: 'center' as const,
@@ -281,22 +289,22 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
 
       {/* Tier label header — pads left of the badge */}
       <div style={{
-        fontSize: '10px',
+        fontSize: UIScale.fontCapped(10, 20),
         letterSpacing: '0.08em',
         color: palette.border,
         fontFamily: "'Silkscreen', monospace",
-        marginLeft: '32px',
-        lineHeight: '22px',
+        marginLeft: `${UIScale.space(32)}px`,
+        lineHeight: `${UIScale.space(22)}px`,
       }}>
         {palette.label.toUpperCase()}
       </div>
 
       {/* Wager name */}
       <div style={{
-        fontSize: '17px',
+        fontSize: UIScale.font(17),
         fontWeight: 600,
         lineHeight: 1.2,
-        marginTop: '4px',
+        marginTop: `${UIScale.space(4)}px`,
       }}>
         {wager.name}
       </div>
@@ -305,10 +313,10 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
           PRIMARY readable element (was visually equal to flavor). */}
       {summary && (
         <div style={{
-          fontSize: '13px',
+          fontSize: UIScale.fontCapped(13, 26),
           color: 'var(--text-primary)',
           lineHeight: 1.35,
-          paddingTop: '4px',
+          paddingTop: `${UIScale.space(4)}px`,
         }}>
           {summary}
         </div>
@@ -316,7 +324,7 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
 
       {/* Flavor — atmospheric/quote, now visually subordinate. */}
       <div style={{
-        fontSize: '11px',
+        fontSize: UIScale.fontCapped(11, 22),
         color: 'var(--text-dim)',
         fontStyle: 'italic' as const,
         lineHeight: 1.4,
@@ -333,8 +341,8 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
         justifyContent: 'space-between' as const,
         alignItems: 'center' as const,
         fontFamily: "'Silkscreen', monospace",
-        fontSize: '11px',
-        paddingTop: '6px',
+        fontSize: UIScale.fontCapped(11, 22),
+        paddingTop: `${UIScale.space(6)}px`,
         borderTop: `1px solid ${SNAKE_EYES_PALETTE.border.cardDivider}`,
         color: 'var(--text-primary)',
         opacity: 0.95,
