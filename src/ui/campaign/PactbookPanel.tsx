@@ -29,11 +29,19 @@
  * illustrated card faces). Programmatic art good enough to ship.
  */
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import type { Pactbook, Wager } from '../../systems/voidc/Pactbook';
 import { getWagerEffect } from '../../systems/voidc/WagerEffects';
 import { SNAKE_EYES_PALETTE, TIER_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
 import { PAYDOWN_BASE, PAYDOWN_PER_DIVERGENCE } from '../../systems/voidc/DebtTracker';
+
+/** Duration of the per-card deal-in animation (ms). Mirrors the
+ *  CSS animation length in ui.css `.snake-eyes-wager-card.is-dealing-in`. */
+const DEAL_IN_DURATION_MS = 450 + 240; // last card delay + animation
+/** How long the selected-card acknowledgment pulse plays before
+ *  the panel unmounts (onResolved fires). Mirrors ui.css
+ *  `.snake-eyes-wager-card.is-acknowledging`. */
+const ACKNOWLEDGE_PULSE_MS = 500;
 
 interface PactbookPanelProps {
   pactbook: Pactbook;
@@ -48,31 +56,41 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
   const drawn = pactbook.getDrawn();
   const cardRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const declineRef = useRef<HTMLButtonElement | null>(null);
+  // Index of the card the player just selected (drives the
+  // acknowledgment pulse + delays onResolved). null until accepted.
+  const [acknowledgingIdx, setAcknowledgingIdx] = useState<number | null>(null);
 
-  // Accept-by-id stays a single concern. Wrapping for the keyboard
-  // shortcuts too so the same path drives mouse + key.
+  // Accept-by-id stays a single concern. The acknowledgment pulse
+  // runs for ACKNOWLEDGE_PULSE_MS before onResolved fires, so the
+  // player sees their pick selected before the panel unmounts.
   const accept = useCallback(
-    (wager: Wager) => {
+    (wager: Wager, idx: number) => {
+      if (acknowledgingIdx !== null) return; // ignore re-entry mid-pulse
       const w = pactbook.accept(wager.id);
-      onResolved({ kind: 'accepted', wager: w });
+      setAcknowledgingIdx(idx);
+      window.setTimeout(() => {
+        onResolved({ kind: 'accepted', wager: w });
+      }, ACKNOWLEDGE_PULSE_MS);
     },
-    [pactbook, onResolved],
+    [pactbook, onResolved, acknowledgingIdx],
   );
   const declineAll = useCallback(() => {
+    if (acknowledgingIdx !== null) return; // ignore mid-acknowledge
     pactbook.declineAll();
     onResolved({ kind: 'declined' });
-  }, [pactbook, onResolved]);
+  }, [pactbook, onResolved, acknowledgingIdx]);
 
   // Keyboard handler. Bound on the panel-level div so it catches
   // even when no card has focus yet (e.g. the player just opened
   // the modal and hits "1").
   const onKeyDown = useCallback((e: KeyboardEvent) => {
     if (pactbook.isResolved()) return;
+    if (acknowledgingIdx !== null) return; // ignore key input mid-pulse
     if (e.key === '1' || e.key === '2' || e.key === '3') {
       const idx = parseInt(e.key, 10) - 1;
       if (idx < drawn.length) {
         e.preventDefault();
-        accept(drawn[idx]);
+        accept(drawn[idx], idx);
       }
       return;
     }
@@ -90,7 +108,7 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
       e.preventDefault();
       cardRefs.current[nextIdx]?.focus();
     }
-  }, [drawn, accept, declineAll, pactbook]);
+  }, [drawn, accept, declineAll, pactbook, acknowledgingIdx]);
 
   // Bind key handler on mount. useEffect not the JSX onKeyDown so it
   // fires regardless of where focus lives within the document.
@@ -105,7 +123,10 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
   }, []);
 
   if (drawn.length === 0) return null;
-  if (pactbook.isResolved()) return null;
+  // Stay mounted during the acknowledgment pulse so the player sees
+  // their selection highlighted before onResolved fires. The mission
+  // UI takes over only after the pulse + onResolved.
+  if (pactbook.isResolved() && acknowledgingIdx === null) return null;
 
   return (
     <div
@@ -152,8 +173,9 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
             key={`${wager.id}-${idx}`}
             wager={wager}
             idx={idx}
+            isAcknowledging={acknowledgingIdx === idx}
             buttonRef={el => (cardRefs.current[idx] = el)}
-            onSelect={() => accept(wager)}
+            onSelect={() => accept(wager, idx)}
           />
         ))}
       </div>
@@ -185,14 +207,21 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
 interface WagerCardProps {
   wager: Wager;
   idx: number;
+  isAcknowledging: boolean;
   buttonRef: (el: HTMLButtonElement | null) => void;
   onSelect: () => void;
 }
 
-function WagerCard({ wager, idx, buttonRef, onSelect }: WagerCardProps) {
+function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCardProps) {
   const palette = TIER_PALETTE[wager.tier - 1];
   const effect = getWagerEffect(wager.effectId);
   const summary = effect?.meta.summary ?? '';
+  const classes = [
+    'snake-eyes-wager-card',
+    'is-dealing-in',
+    `deal-${idx}`,
+    isAcknowledging ? 'is-acknowledging' : '',
+  ].filter(Boolean).join(' ');
   // Predicted base paydown if this Wager is the only one accepted
   // this mission (the campaign rule — single Wager per mission).
   // Divergence after-accept = wager.tier (resets per mission, +tier
@@ -207,7 +236,7 @@ function WagerCard({ wager, idx, buttonRef, onSelect }: WagerCardProps) {
   return (
     <button
       ref={buttonRef}
-      class="snake-eyes-wager-card"
+      class={classes}
       aria-label={accessibleLabel}
       aria-keyshortcuts={String(idx + 1)}
       onClick={onSelect}
