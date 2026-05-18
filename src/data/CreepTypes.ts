@@ -719,6 +719,20 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  inheritor_stone_bride: {
+    id: 'inheritor_stone_bride',
+    name: 'The Stone Bride',
+    description: 'A bride turned to stone forty winters ago; her veil is moss now. Walks slower than the wedding-stone livery — the visual cue Marra reads to spare her.',
+    hpMultiplier: 1.2, speedMultiplier: 0.55, armor: 'heavy',
+    color: 0xc0bcb0, size: 1.1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      return {
+        hpMult: 1.2, speedMult: 0.55, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {

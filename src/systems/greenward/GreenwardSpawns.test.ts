@@ -52,3 +52,25 @@ describe('GreenwardSpawns — M4 Cethric the Crow-Priest', () => {
     expect(cethric!.ruinId).toBe('crossroads');
   });
 });
+
+describe('GreenwardSpawns — M7 Stone Bride', () => {
+  it('binds to the altar ruin at col 18, row 10', () => {
+    const spawns = namedSpawnsFor(6); // M7 = idx 6
+    const bride = spawns.find(s => s.typeId === 'inheritor_stone_bride');
+    expect(bride).toBeTruthy();
+    expect(bride!.col).toBe(18);
+    expect(bride!.row).toBe(10);
+    expect(bride!.ruinId).toBe('altar');
+  });
+
+  it('Stone Bride walks slower than the wedding-stone livery (visual cue)', () => {
+    // The visual cue the writer specified: "she walks slower than
+    // the rest." Wedding-Stone livery speed is 0.65 (from PR #74);
+    // Stone Bride is 0.55. The diff is small enough to read as
+    // hesitation but large enough that an attentive player can
+    // tell on a several-tile walk.
+    const livery = getCreepType('inheritor_wedding_stone');
+    const bride  = getCreepType('inheritor_stone_bride');
+    expect(bride.speedMultiplier).toBeLessThan(livery.speedMultiplier);
+  });
+});

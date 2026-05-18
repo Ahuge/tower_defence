@@ -38,6 +38,13 @@ export const NAMED_SPAWNS: Record<number, readonly NamedSpawn[]> = {
   3: [
     { typeId: 'inheritor_cethric', col: 18, row: 13, ruinId: 'crossroads' },
   ],
+  // M7 — Wedding-Stone. The Stone Bride is the altar's Watcher;
+  // she mingles into the wedding-stone livery so Marra cannot tell
+  // from above which is the bride. Slow-walk + visual cue is the
+  // identifier the writer specified.
+  6: [
+    { typeId: 'inheritor_stone_bride', col: 18, row: 10, ruinId: 'altar' },
+  ],
 };
 
 /** Convenience accessor. Returns an empty array for missions with no
