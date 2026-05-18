@@ -248,6 +248,57 @@ function greenwardEadwinRuins(): Pos[] {
   ];
 }
 
+function greenwardMarshPatches(): Pos[] {
+  // Marsh patches at irregular intervals — water-themed.
+  // Critically: leave a "safe pocket" buffer around Cethric (col 18,
+  // row 13) so splash placement nearby is intentional not accidental.
+  const ps: Pos[] = [];
+  // North-west marsh
+  for (let c = 4; c <= 10; c += 2) for (let r = 4; r <= 8; r += 2) ps.push({ col: c, row: r });
+  // South-east marsh
+  for (let c = 24; c <= 30; c += 2) for (let r = 16; r <= 20; r += 2) ps.push({ col: c, row: r });
+  // South-west marsh
+  for (let c = 4; c <= 8; c += 2) for (let r = 18; r <= 22; r += 2) ps.push({ col: c, row: r });
+  // Filter out anything within 2 cells of Cethric (Chebyshev) — keep the safe pocket.
+  return ps.filter(p => Math.max(Math.abs(p.col - 18), Math.abs(p.row - 13)) > 2);
+}
+
+function greenwardRiverBanks(): Pos[] {
+  // Linear river: top + bottom banks forming a 5-row corridor in
+  // the middle. The river itself isn't blocked — creeps walk it.
+  const ps: Pos[] = [];
+  for (let c = 0; c < GRID_COLS; c++) {
+    ps.push({ col: c, row: 9 });
+    ps.push({ col: c, row: 17 });
+  }
+  return ps;
+}
+
+function greenwardTarrenfordBuildings(): Pos[] {
+  // Chapel footprint NE (3x3), well center, wheat field rows south.
+  const ps: Pos[] = [];
+  // Chapel
+  for (let c = 12; c <= 16; c++) for (let r = 6; r <= 9; r++) ps.push({ col: c, row: r });
+  // Wheat field rows
+  for (let c = 18; c <= 28; c += 2) ps.push({ col: c, row: 19 });
+  for (let c = 18; c <= 28; c += 2) ps.push({ col: c, row: 21 });
+  return ps;
+}
+
+function greenwardWeddingPavilion(): Pos[] {
+  // Circular pillar arrangement around the altar at (18, 10).
+  const ps: Pos[] = [];
+  const pillars: Pos[] = [
+    { col: 14, row: 8 },  { col: 22, row: 8 },
+    { col: 12, row: 11 }, { col: 24, row: 11 },
+    { col: 14, row: 14 }, { col: 22, row: 14 },
+  ];
+  ps.push(...pillars);
+  // Feast tables at south edge.
+  for (let c = 14; c <= 22; c += 2) ps.push({ col: c, row: 21 });
+  return ps;
+}
+
 export const MAPS: Record<MapId, MapDefinition> = {
   plains: {
     id: 'plains',
@@ -991,10 +1042,86 @@ export const MAPS: Record<MapId, MapDefinition> = {
     // The inn-hearth + village square ruins are noBuild.
     noBuild: greenwardEadwinRuins(),
   },
-  greenward_crows:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_crows',        name: 'Road of Crows',   theme: 'water' },
-  greenward_river:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_river',        name: 'Dry River',       theme: 'water' },
-  greenward_tarrenford:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_tarrenford',   name: 'Tarrenford',      theme: 'forest' },
-  greenward_weddingstone: { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_weddingstone', name: 'Wedding-Stone',   theme: 'stone' },
+  // Act II — Salt Roads. Marsh crossroads, dying river, still-alive
+  // Tarrenford, frozen wedding pavilion.
+
+  greenward_crows: {
+    id: 'greenward_crows',
+    name: 'The Road of Crows',
+    description: 'Marsh crossroads. Cethric sits cross-legged at the meeting of paths.',
+    theme: 'water',
+    // Multi-path crossroads — two entries (N+S) and two exits (E+W).
+    entries: [
+      { col: 17, row: 0 },
+      { col: 17, row: GRID_ROWS - 1 },
+    ],
+    exits: [
+      { col: 0,             row: 13 },
+      { col: GRID_COLS - 1, row: 13 },
+    ],
+    blocked: greenwardMarshPatches(),
+    // crossroads (Mercy — Cethric) + eastern_road (Ceremony)
+    noBuild: [
+      { col: 18, row: 13 }, // crossroads
+      { col: 26, row: 13 }, // eastern_road
+    ],
+  },
+
+  greenward_river: {
+    id: 'greenward_river',
+    name: 'The Dry River',
+    description: 'A river going salt as Marra watches. The headwater is upstream.',
+    theme: 'water',
+    // Linear east-to-west river. The headwater is east; creeps
+    // approach from the east, exit to the west toward the Wildwood.
+    entries: [{ col: GRID_COLS - 1, row: 13 }],
+    exits:   [{ col: 0,             row: 13 }],
+    blocked: greenwardRiverBanks(),
+    // headwater (Ceremony at east) + river_west + river_east (Siege).
+    noBuild: [
+      { col: 30, row: 13 }, // headwater
+      { col: 8,  row: 13 }, // river_west
+      { col: 18, row: 13 }, // river_east
+    ],
+  },
+
+  greenward_tarrenford: {
+    id: 'greenward_tarrenford',
+    name: 'Tarrenford',
+    description: 'A village still alive. Chapel, well, wheat. Forty-seven people.',
+    theme: 'forest',
+    // North entry, south exit — Inheritors approach the village from
+    // above; civilians cross the path in both directions.
+    entries: [{ col: MID_COL, row: 0 }],
+    exits:   [{ col: MID_COL, row: GRID_ROWS - 1 }],
+    blocked: greenwardTarrenfordBuildings(),
+    // chapel + well + wheat_field — three Ceremony ruins.
+    noBuild: [
+      { col: 14, row: 8 },  // chapel
+      { col: 18, row: 13 }, // well
+      { col: 22, row: 18 }, // wheat_field
+    ],
+  },
+
+  greenward_weddingstone: {
+    id: 'greenward_weddingstone',
+    name: 'Wedding-Stone',
+    description: 'A wedding turned to stone. The bride still stands at the altar.',
+    theme: 'stone',
+    // Two entries (E+W, the wedding party approaches from both
+    // sides) + one north exit (the cleared path the bride was
+    // meant to walk).
+    entries: [
+      { col: 0,             row: 13 },
+      { col: GRID_COLS - 1, row: 13 },
+    ],
+    exits: [{ col: MID_COL, row: 0 }],
+    blocked: greenwardWeddingPavilion(),
+    noBuild: [
+      { col: 18, row: 10 }, // altar (Mercy)
+      { col: 18, row: 18 }, // pavilion (Siege)
+    ],
+  },
   greenward_court:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_court',        name: 'Stillborn Court', theme: 'stone' },
   greenward_lastgarden:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_lastgarden',   name: 'Last Garden',     theme: 'mountain' },
   greenward_cathedral:    { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_cathedral',    name: 'Caer Lythen',     theme: 'arcane_crystal' },

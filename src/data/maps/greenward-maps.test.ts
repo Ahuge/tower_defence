@@ -32,36 +32,48 @@ const ACT_I_MAPS: { mapId: MapId; missionIdx: number; name: string }[] = [
   { mapId: 'greenward_eadwin',   missionIdx: 2, name: 'M3 Eadwin' },
 ];
 
+const ACT_II_MAPS: { mapId: MapId; missionIdx: number; name: string }[] = [
+  { mapId: 'greenward_crows',        missionIdx: 3, name: 'M4 Road of Crows' },
+  { mapId: 'greenward_river',        missionIdx: 4, name: 'M5 Dry River' },
+  { mapId: 'greenward_tarrenford',   missionIdx: 5, name: 'M6 Tarrenford' },
+  { mapId: 'greenward_weddingstone', missionIdx: 6, name: 'M7 Wedding-Stone' },
+];
+
+function assertMapShape(mapId: MapId, missionIdx: number, name: string) {
+  it('has at least one entry + one exit', () => {
+    const def = MAPS[mapId];
+    expect(def.entries.length).toBeGreaterThanOrEqual(1);
+    expect(def.exits.length).toBeGreaterThanOrEqual(1);
+  });
+  it('every Consecration ruin cell is NoBuild (not Blocked)', () => {
+    const grid = loadGreenwardMap(mapId);
+    for (const r of ruinsFor(missionIdx)) {
+      expect(
+        grid.cells[r.row][r.col],
+        `${name} ruin "${r.id}" at (${r.col}, ${r.row}) — expected NoBuild`,
+      ).toBe(CellType.NoBuild);
+    }
+  });
+  it('pathfind from first entry to first exit succeeds', () => {
+    const grid = loadGreenwardMap(mapId);
+    const path = findPath(grid, grid.entry, grid.exit);
+    expect(path, `${name} — no path entry → exit`).not.toBeNull();
+    expect(path!.length).toBeGreaterThan(0);
+  });
+  it('description is non-empty (narrative anchor)', () => {
+    const def = MAPS[mapId];
+    expect(def.description.length).toBeGreaterThan(10);
+  });
+}
+
 describe('Greenward bespoke maps — Act I', () => {
   for (const { mapId, missionIdx, name } of ACT_I_MAPS) {
-    describe(name, () => {
-      it('has at least one entry + one exit', () => {
-        const def = MAPS[mapId];
-        expect(def.entries.length).toBeGreaterThanOrEqual(1);
-        expect(def.exits.length).toBeGreaterThanOrEqual(1);
-      });
+    describe(name, () => assertMapShape(mapId, missionIdx, name));
+  }
+});
 
-      it('every Consecration ruin cell is NoBuild (not Blocked)', () => {
-        const grid = loadGreenwardMap(mapId);
-        for (const r of ruinsFor(missionIdx)) {
-          expect(
-            grid.cells[r.row][r.col],
-            `${name} ruin "${r.id}" at (${r.col}, ${r.row}) — expected NoBuild`,
-          ).toBe(CellType.NoBuild);
-        }
-      });
-
-      it('pathfind from first entry to first exit succeeds', () => {
-        const grid = loadGreenwardMap(mapId);
-        const path = findPath(grid, grid.entry, grid.exit);
-        expect(path, `${name} — no path entry → exit`).not.toBeNull();
-        expect(path!.length).toBeGreaterThan(0);
-      });
-
-      it('description is non-empty (narrative anchor)', () => {
-        const def = MAPS[mapId];
-        expect(def.description.length).toBeGreaterThan(10);
-      });
-    });
+describe('Greenward bespoke maps — Act II', () => {
+  for (const { mapId, missionIdx, name } of ACT_II_MAPS) {
+    describe(name, () => assertMapShape(mapId, missionIdx, name));
   }
 });
