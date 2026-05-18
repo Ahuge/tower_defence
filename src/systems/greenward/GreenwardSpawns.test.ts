@@ -74,3 +74,31 @@ describe('GreenwardSpawns — M7 Stone Bride', () => {
     expect(bride.speedMultiplier).toBeLessThan(livery.speedMultiplier);
   });
 });
+
+describe('GreenwardSpawns — M8 The Child', () => {
+  it('binds to the_child ruin at col 22, row 13', () => {
+    const spawns = namedSpawnsFor(7); // M8 = idx 7
+    const child = spawns.find(s => s.typeId === 'inheritor_child');
+    expect(child).toBeTruthy();
+    expect(child!.col).toBe(22);
+    expect(child!.row).toBe(13);
+    expect(child!.ruinId).toBe('the_child');
+  });
+
+  it('Child has elevated HP for AoE-positioning survivability', () => {
+    // Child has high-ish HP because she threads through M8 boss
+    // waves where splash damage is a real risk. The Mercy
+    // condition is "no damage" — the high HP isn't to ensure
+    // she survives any damage at all (notifyWatcherDamaged flips
+    // mercyTouched on any hit), it's to ensure splash from a
+    // grazing tower placement is recoverable.
+    const child = getCreepType('inheritor_child');
+    expect(child.hpMultiplier).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('Child grants no gold (Watcher, not target)', () => {
+    const c = getCreepType('inheritor_child');
+    const r = c.applyDifficulty({ toughness: 1, speed: 1, count: 1, goldMult: 1, toughnessPerWave: 0 });
+    expect(r.goldMult).toBe(0);
+  });
+});

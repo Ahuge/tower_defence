@@ -45,6 +45,12 @@ export const NAMED_SPAWNS: Record<number, readonly NamedSpawn[]> = {
   6: [
     { typeId: 'inheritor_stone_bride', col: 18, row: 10, ruinId: 'altar' },
   ],
+  // M8 — The Stillborn Court. The Child Watcher walks behind the
+  // boss host without ever fighting. Knight + Herald (commit 5)
+  // are the actual boss creeps.
+  7: [
+    { typeId: 'inheritor_child', col: 22, row: 13, ruinId: 'the_child' },
+  ],
 };
 
 /** Convenience accessor. Returns an empty array for missions with no

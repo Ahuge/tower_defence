@@ -733,6 +733,24 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  inheritor_child: {
+    id: 'inheritor_child',
+    name: 'The Child',
+    description: 'A small Inheritor with a banner of withered flowers. Walks with the host but never fights. Touching her fails the Mercy condition.',
+    hpMultiplier: 2, speedMultiplier: 0.5, armor: 'medium',
+    color: 0xb89878, size: 0.75, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      // High HP, slow speed pinned across difficulties — the AoE-
+      // positioning puzzle is the same on every setting. Player
+      // needs survivability margin since the Child threads through
+      // boss waves where splash placement matters.
+      return {
+        hpMult: 2, speedMult: 0.5, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {
