@@ -2,9 +2,9 @@
  * PactbookPanel — pre-mission Wager draw + pick UI for the Snake
  * Eyes campaign.
  *
- * Phase 4 commit 19. Renders the 3 drawn Wagers as playing-card-
- * styled tiles + an "All three pass" decline button. Player picks
- * exactly one tile (accept) OR declines all (one-shot penalty).
+ * Renders the 3 (or fewer, under Dealer pressure) drawn Wagers as
+ * playing-card-styled tiles + a decline button. Player picks exactly
+ * one tile (accept) OR declines all (one-shot penalty).
  *
  * Lifecycle is driven by the caller (MissionRunner): construct a
  * Pactbook instance, call `draw(count, weights, excludeIds)`, then
@@ -12,17 +12,24 @@
  * fires with the resolution shape so MissionRunner can record + boot
  * the mission with the accepted Wager's effect active.
  *
- * The component is intentionally pure presentation — all state
- * mutations (accept tally, decline penalty, etc.) happen inside
- * Pactbook.accept / Pactbook.declineAll. The component just dispatches.
+ * Accessibility (Polish 4+5):
+ * - Keyboard: 1/2/3 accept; D (or Esc) declines all; arrow keys
+ *   move focus between cards; Enter / Space activate the focused
+ *   element (browser default for <button>).
+ * - ARIA: each card carries an aria-label composing tier + name +
+ *   summary so screen readers announce the full bet, not just
+ *   "button". The decline button spells out "20 gold" (not "20g").
+ * - Visual feedback: hover / focus-visible / active states live in
+ *   ui.css (`.snake-eyes-wager-card`), so inline mouseenter handlers
+ *   are gone — touch users and screen readers now see the same
+ *   feedback as mouse hover.
  *
- * Card art lands in a follow-up PR (12 illustrated card faces);
- * commit 19 renders programmatic playing-card-styled tiles with
- * tier-coloured borders, the Wager name, and the flavour line.
- * Good enough to ship + iterate on.
+ * Pure presentation — Pactbook.accept / Pactbook.declineAll do the
+ * actual state mutation. Card art lands in a follow-up PR (12
+ * illustrated card faces). Programmatic art good enough to ship.
  */
 
-import React from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import type { Pactbook, Wager } from '../../systems/voidc/Pactbook';
 import { getWagerEffect } from '../../systems/voidc/WagerEffects';
 import { SNAKE_EYES_PALETTE, TIER_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
@@ -38,22 +45,79 @@ interface PactbookPanelProps {
 
 export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
   const drawn = pactbook.getDrawn();
-  if (drawn.length === 0) {
-    return null;
-  }
-  // Already resolved → render the chosen card only.
-  if (pactbook.isResolved()) {
-    return null; // The mission UI takes over once accept/decline fired.
-  }
+  const cardRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const declineRef = useRef<HTMLButtonElement | null>(null);
+
+  // Accept-by-id stays a single concern. Wrapping for the keyboard
+  // shortcuts too so the same path drives mouse + key.
+  const accept = useCallback(
+    (wager: Wager) => {
+      const w = pactbook.accept(wager.id);
+      onResolved({ kind: 'accepted', wager: w });
+    },
+    [pactbook, onResolved],
+  );
+  const declineAll = useCallback(() => {
+    pactbook.declineAll();
+    onResolved({ kind: 'declined' });
+  }, [pactbook, onResolved]);
+
+  // Keyboard handler. Bound on the panel-level div so it catches
+  // even when no card has focus yet (e.g. the player just opened
+  // the modal and hits "1").
+  const onKeyDown = useCallback((e: KeyboardEvent) => {
+    if (pactbook.isResolved()) return;
+    if (e.key === '1' || e.key === '2' || e.key === '3') {
+      const idx = parseInt(e.key, 10) - 1;
+      if (idx < drawn.length) {
+        e.preventDefault();
+        accept(drawn[idx]);
+      }
+      return;
+    }
+    if (e.key === 'd' || e.key === 'D' || e.key === 'Escape') {
+      e.preventDefault();
+      declineAll();
+      return;
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      const active = document.activeElement;
+      const currentIdx = cardRefs.current.findIndex(r => r === active);
+      if (currentIdx === -1) return;
+      const delta = e.key === 'ArrowLeft' ? -1 : 1;
+      const nextIdx = (currentIdx + delta + drawn.length) % drawn.length;
+      e.preventDefault();
+      cardRefs.current[nextIdx]?.focus();
+    }
+  }, [drawn, accept, declineAll, pactbook]);
+
+  // Bind key handler on mount. useEffect not the JSX onKeyDown so it
+  // fires regardless of where focus lives within the document.
+  useEffect(() => {
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onKeyDown]);
+
+  // Autofocus the first card on mount so keyboard users land somewhere.
+  useEffect(() => {
+    cardRefs.current[0]?.focus();
+  }, []);
+
+  if (drawn.length === 0) return null;
+  if (pactbook.isResolved()) return null;
 
   return (
-    <div style={{
-      maxWidth: '880px',
-      margin: '0 auto',
-      padding: '24px 18px',
-      fontFamily: 'system-ui, sans-serif',
-      color: 'var(--text-primary)',
-    }}>
+    <div
+      role="dialog"
+      aria-label="Pactbook — pick a Wager"
+      style={{
+        maxWidth: '880px',
+        margin: '0 auto',
+        padding: '24px 18px',
+        fontFamily: 'system-ui, sans-serif',
+        color: 'var(--text-primary)',
+      }}
+    >
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: SNAKE_EYES_PALETTE.violet,
@@ -72,6 +136,9 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
         fontStyle: 'italic' as const,
       }}>
         Pick one. Or pass all three — and pay the price.
+        <span style={{ display: 'block', fontSize: '11px', marginTop: '2px', opacity: 0.7 }}>
+          (1/2/3 to pick, D to decline)
+        </span>
       </div>
 
       <div style={{
@@ -83,20 +150,19 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
           <WagerCard
             key={`${wager.id}-${idx}`}
             wager={wager}
-            onSelect={() => {
-              const w = pactbook.accept(wager.id);
-              onResolved({ kind: 'accepted', wager: w });
-            }}
+            idx={idx}
+            buttonRef={el => (cardRefs.current[idx] = el)}
+            onSelect={() => accept(wager)}
           />
         ))}
       </div>
 
       <div style={{ textAlign: 'center' as const, marginTop: '20px' }}>
         <button
-          onClick={() => {
-            pactbook.declineAll();
-            onResolved({ kind: 'declined' });
-          }}
+          ref={declineRef}
+          class="snake-eyes-decline-btn"
+          aria-label="Decline all three Wagers and add 20 gold to Debt"
+          onClick={declineAll}
           style={{
             padding: '10px 24px',
             background: SNAKE_EYES_PALETTE.surface.decline,
@@ -106,43 +172,46 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
             fontSize: '12px',
             letterSpacing: '0.06em',
             borderRadius: '4px',
-            cursor: 'pointer',
           }}
         >
-          ALL THREE PASS (+20g Debt)
+          DECLINE ALL (+20g Debt)
         </button>
       </div>
     </div>
   );
 }
 
-function WagerCard({ wager, onSelect }: { wager: Wager; onSelect: () => void }) {
+interface WagerCardProps {
+  wager: Wager;
+  idx: number;
+  buttonRef: (el: HTMLButtonElement | null) => void;
+  onSelect: () => void;
+}
+
+function WagerCard({ wager, idx, buttonRef, onSelect }: WagerCardProps) {
   const palette = TIER_PALETTE[wager.tier - 1];
   const effect = getWagerEffect(wager.effectId);
   const summary = effect?.meta.summary ?? '';
+  const accessibleLabel =
+    `${palette.label} Wager: ${wager.name}. ${summary || wager.flavor}. Press ${idx + 1} or click to accept.`;
 
   return (
     <button
+      ref={buttonRef}
+      class="snake-eyes-wager-card"
+      aria-label={accessibleLabel}
+      aria-keyshortcuts={String(idx + 1)}
       onClick={onSelect}
       style={{
-        textAlign: 'left' as const,
         padding: '14px 14px 16px',
         background: palette.bg,
         border: `2px solid ${palette.border}`,
         borderRadius: '6px',
         color: 'var(--text-primary)',
-        cursor: 'pointer',
-        transition: 'transform 0.12s ease-out',
         display: 'flex' as const,
         flexDirection: 'column' as const,
         gap: '8px',
         minHeight: '180px',
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)';
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
       }}
     >
       <div style={{

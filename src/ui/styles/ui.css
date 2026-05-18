@@ -404,3 +404,66 @@
 @media (min-width: 2800px) {
   .ui-screen { padding-inline: clamp(2rem, 8vw, 8rem); }
 }
+
+/* ─── Snake Eyes — Pactbook draw screen ──────────────────────────
+   PactbookPanel renders 3 Wager cards + a decline button. Hover /
+   focus / active states centralised here so the JSX stays declarative
+   (no inline mouseenter handlers) and screen-reader / keyboard users
+   get a visible focus ring. */
+.snake-eyes-wager-card {
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, border-color 0.12s ease-out;
+  outline: none;
+}
+.snake-eyes-wager-card:hover,
+.snake-eyes-wager-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.snake-eyes-wager-card:focus-visible {
+  outline: 2px solid #d4b04a;
+  outline-offset: 2px;
+}
+.snake-eyes-wager-card:active {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.snake-eyes-wager-card.is-acknowledging {
+  /* 500ms pulse on the selected card before the panel unmounts. */
+  animation: snake-eyes-wager-pulse 0.5s ease-out;
+}
+@keyframes snake-eyes-wager-pulse {
+  0%   { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(212, 176, 74, 0.6); }
+  60%  { transform: translateY(-6px); box-shadow: 0 10px 26px rgba(212, 176, 74, 0.85); }
+  100% { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+}
+
+/* Staggered deal-in for the three drawn Wagers. */
+.snake-eyes-wager-card.is-dealing-in {
+  animation: snake-eyes-wager-deal-in 0.45s ease-out backwards;
+}
+.snake-eyes-wager-card.is-dealing-in.deal-0 { animation-delay: 0ms; }
+.snake-eyes-wager-card.is-dealing-in.deal-1 { animation-delay: 120ms; }
+.snake-eyes-wager-card.is-dealing-in.deal-2 { animation-delay: 240ms; }
+@keyframes snake-eyes-wager-deal-in {
+  0%   { opacity: 0; transform: translateY(20px) rotate(-2deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(0); }
+}
+
+.snake-eyes-decline-btn {
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  outline: none;
+}
+.snake-eyes-decline-btn:hover,
+.snake-eyes-decline-btn:focus-visible {
+  background: rgba(80, 80, 95, 0.6);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--text-primary);
+}
+.snake-eyes-decline-btn:focus-visible {
+  outline: 2px solid #d4b04a;
+  outline-offset: 2px;
+}
+
