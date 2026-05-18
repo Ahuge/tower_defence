@@ -52,7 +52,7 @@
 
 **Frontier:** Sacred Grove 55g (+3g/wave, grows +2g/wave; harvest = stacks × 5g) / Ancient Grove 225g (+22g/wave, same grow mechanic).
 
-**Campaign #3 — "The Greenward" (in progress)** — POV: Marra Greenward, the Druid who argued against the pact to spread the Wildwood south and lost the vote. Now bound to execute it. Player runs the Nature kit through 10 missions south to Caer Lythen, the Sun-Cathedral. Two unique systems: **Consecration Modes** (Ceremony / Siege / Mercy ruin claims per mission, with a campaign-wide tally that gates the M10 Nave) + **Wildwood Reserves** (persistent campaign resource that depletes mission-to-mission; never fully recovers). The player's first Elder Treant binds to a named character — **Caer Wenna** — and refuses re-placement in M7/M8 once she has "grown old." Recurring antagonist face: **The Heron of Eadwin** (silhouette M3 → watching M6 → walking M8 → at the altar M10). See `docs/greenward-campaign-plan.md` for the full design.
+**Campaign #3 — "The Greenward"** — POV: Marra Greenward, the Druid who argued against the pact to spread the Wildwood south and lost the vote. Now bound to execute it. Player runs the Nature kit through 10 missions south to Caer Lythen, the Sun-Cathedral. Two unique systems: **Consecration Modes** (Ceremony / Siege / Mercy ruin claims per mission, with a campaign-wide tally that gates the M10 Nave) + **Wildwood Reserves** (persistent campaign resource that depletes mission-to-mission; never fully recovers). The player's first Elder Treant binds to a named character — **Caer Wenna** — and refuses re-placement in M7/M8 once she has "grown old." Recurring antagonist face: **The Heron of Eadwin** (silhouette M3 → watching M6 → walking M8 → at the altar M10). See `docs/greenward-campaign-plan.md` for the full design.
 
 ---
 
@@ -68,6 +68,8 @@
 | **Oblivion** | **900g** | Ultimate. 15% instakill, +3g/hit, extreme variance + damage amp. |
 
 **Frontier:** The Rift 35g (gamble 0-15g/wave) / Abyssal Rift 160g (gamble 0-80g/wave).
+
+**Campaign #4 — "Snake Eyes"** — POV: **Ardax**, a degenerate gambler who owes the House more than the House can collect. Stable cocky tone throughout (first-person past-tense noir antihero); the joke is that he doesn't take it seriously even at the Mirror. Player runs the Void kit through 10 missions west across the gambling-frontier to **The Counterfactual's Mirror** at M10. Two unique systems: **The Pactbook** (pre-mission 12-card deck — draw 3, pick 1; cards are tiered mutators that bias gameplay for a single mission and accumulate into a campaign tally) + **Debt × Divergence** (Ardax starts owing 800g; risky Pacts multiply paydown; deferring Debt → late-mission Dealer pulls levers — bounty waves, tower repossessions, voided Wager slots). Antagonist face: **The Counterfactual** (silhouette M2 → mirror tower M4 → Mirror Walker creep M7 → boss M10). Persistent named character: **Theris**, partner gambler — rides with him M1-M5, cashes out at M6, returns on the Counterfactual's side at M10. M10 ships a SINGLE illustrated tableau + personalised epilogue stitched from 11 fragments across 54 reachable states. See `docs/snake-eyes-campaign-plan.md` for the full design.
 
 ---
 
