@@ -240,6 +240,16 @@ export interface MissionOverrides {
    *  serpentine, fortress) without a bespoke copy. GameScene prefers
    *  this list over the map's own `suppressionPylons` when present. */
   suppressionPylons?: import('../Maps').SuppressionPylonSpec[];
+  /** Campaign #3 — The Greenward. Per-mission Consecration setup:
+   *  ruin tiles + their modes, plus the bindings for which creeps
+   *  count as defenders / Watchers for each ruin. GreenwardMissionController
+   *  constructs from this at scene init. Missing on non-Greenward
+   *  missions (and most Greenward missions will land their actual
+   *  bindings in their per-mission commit). */
+  greenwardRules?: {
+    /** Ruin tiles + their modes. Order is not significant. */
+    ruins: import('../../systems/greenward/ConsecrationManager').RuinSpec[];
+  };
 }
 
 /** The 10-mission campaign. */

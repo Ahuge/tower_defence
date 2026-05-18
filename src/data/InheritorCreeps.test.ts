@@ -61,14 +61,14 @@ describe('Inheritor creeps — type-specific shape', () => {
 
   it('Civilian grants zero gold via the applyDifficulty hook', () => {
     const c = getCreepType('inheritor_civilian');
-    const resolved = c.applyDifficulty({ toughness: 1, speed: 1, count: 1, goldMult: 1 });
+    const resolved = c.applyDifficulty({ toughness: 1, speed: 1, count: 1, goldMult: 1, toughnessPerWave: 0 });
     expect(resolved.goldMult).toBe(0);
   });
 
   it('Civilian does NOT scale with difficulty (constraint, not threat)', () => {
     const c = getCreepType('inheritor_civilian');
-    const easy = c.applyDifficulty({ toughness: 0.5, speed: 0.8, count: 1, goldMult: 0.5 });
-    const insane = c.applyDifficulty({ toughness: 2.5, speed: 1.3, count: 1.5, goldMult: 2 });
+    const easy = c.applyDifficulty({ toughness: 0.5, speed: 0.8, count: 1, goldMult: 0.5, toughnessPerWave: 0 });
+    const insane = c.applyDifficulty({ toughness: 2.5, speed: 1.3, count: 1.5, goldMult: 2, toughnessPerWave: 0 });
     expect(easy.hpMult).toBe(1);
     expect(insane.hpMult).toBe(1);
     expect(easy.speedMult).toBe(1);
