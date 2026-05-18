@@ -467,3 +467,22 @@
   outline-offset: 2px;
 }
 
+
+/* Snake Eyes — VoidStatePanel motion */
+.snake-eyes-debt-tick.is-next {
+  /* The next threshold the player will cross — gentle pulse keeps
+     the imminent Dealer action visible without being obnoxious. */
+  animation: snake-eyes-tick-pulse 1.8s ease-in-out infinite;
+}
+@keyframes snake-eyes-tick-pulse {
+  0%, 100% { opacity: 0.4; box-shadow: none; }
+  50%      { opacity: 1.0; box-shadow: 0 0 6px rgba(212, 176, 74, 0.7); }
+}
+.snake-eyes-dealer-caption {
+  animation: snake-eyes-caption-slide-in 0.4s ease-out backwards;
+}
+@keyframes snake-eyes-caption-slide-in {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+

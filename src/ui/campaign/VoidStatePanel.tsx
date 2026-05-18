@@ -43,6 +43,24 @@ interface Props {
  *  caps; the actual Debt readout continues to render numerically. */
 const DEBT_METER_MAX = DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID + 200; // 2200
 
+/** Compute the next threshold the player will cross from their
+ *  current Debt position. Returns null if they're already past all
+ *  thresholds OR negative (settled). The matching tick gets pulsed
+ *  via the `.is-next` CSS class so the imminent Dealer action stays
+ *  visually present. */
+function nextThreshold(debt: number): number | null {
+  if (debt < 0) return null;
+  for (const t of [
+    DEALER_THRESHOLDS.BOUNTY_WAVE,
+    DEALER_THRESHOLDS.REPOSSESS,
+    DEALER_THRESHOLDS.VOID_SLOT,
+    DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID,
+  ]) {
+    if (debt < t) return t;
+  }
+  return null;
+}
+
 export function VoidStatePanel(_props: Props) {
   const state = getSnakeEyesState();
   const actions = computeDealerActions(state.debt);
@@ -56,6 +74,7 @@ export function VoidStatePanel(_props: Props) {
   const debtClamped = Math.max(0, Math.min(DEBT_METER_MAX, state.debt));
   const debtPct = (debtClamped / DEBT_METER_MAX) * 100;
   const settled = state.debt < 0;
+  const upcomingThreshold = nextThreshold(state.debt);
 
   return (
     <div style={{
@@ -101,11 +120,13 @@ export function VoidStatePanel(_props: Props) {
             : `linear-gradient(90deg, ${VOID_VIOLET}, ${VOID_GOLD})`,
           transition: 'width 0.3s ease-out',
         }} />
-        {/* Threshold tick marks */}
-        <ThresholdTick pct={(DEALER_THRESHOLDS.BOUNTY_WAVE / DEBT_METER_MAX) * 100} />
-        <ThresholdTick pct={(DEALER_THRESHOLDS.REPOSSESS / DEBT_METER_MAX) * 100} />
-        <ThresholdTick pct={(DEALER_THRESHOLDS.VOID_SLOT / DEBT_METER_MAX) * 100} />
-        <ThresholdTick pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} />
+        {/* Threshold tick marks. The next-threshold tick gets the
+            .is-next class for a gentle pulse — "this is what the
+            Dealer's waiting for." */}
+        <ThresholdTick pct={(DEALER_THRESHOLDS.BOUNTY_WAVE / DEBT_METER_MAX) * 100} isNext={upcomingThreshold === DEALER_THRESHOLDS.BOUNTY_WAVE} />
+        <ThresholdTick pct={(DEALER_THRESHOLDS.REPOSSESS / DEBT_METER_MAX) * 100} isNext={upcomingThreshold === DEALER_THRESHOLDS.REPOSSESS} />
+        <ThresholdTick pct={(DEALER_THRESHOLDS.VOID_SLOT / DEBT_METER_MAX) * 100} isNext={upcomingThreshold === DEALER_THRESHOLDS.VOID_SLOT} />
+        <ThresholdTick pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} isNext={upcomingThreshold === DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID} />
       </div>
       {/* Threshold-label strip — sits under the bar, aligns with
           each tick. Teaches the Dealer mechanic at a glance: the
@@ -128,7 +149,7 @@ export function VoidStatePanel(_props: Props) {
       </div>
 
       {(actions.bountyWaves + actions.repossesses + actions.wagerSlotsVoided) > 0 && (
-        <div style={{ marginTop: '8px', fontSize: '11px', color: VOID_GOLD, fontStyle: 'italic' }}>
+        <div class="snake-eyes-dealer-caption" style={{ marginTop: '8px', fontSize: '11px', color: VOID_GOLD, fontStyle: 'italic' }}>
           {dealerCaption(actions)}
         </div>
       )}
@@ -177,16 +198,19 @@ export function VoidStatePanel(_props: Props) {
   );
 }
 
-function ThresholdTick({ pct }: { pct: number }) {
+function ThresholdTick({ pct, isNext = false }: { pct: number; isNext?: boolean }) {
   return (
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      bottom: 0,
-      left: `${pct}%`,
-      width: '1px',
-      background: SNAKE_EYES_PALETTE.meterTick,
-    }} />
+    <div
+      class={isNext ? 'snake-eyes-debt-tick is-next' : 'snake-eyes-debt-tick'}
+      style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: `${pct}%`,
+        width: isNext ? '2px' : '1px',
+        background: SNAKE_EYES_PALETTE.meterTick,
+      }}
+    />
   );
 }
 
