@@ -94,6 +94,19 @@ export interface WagerEffectHandler {
    *  this tower type. */
   getTraitsForTower?(towerTypeId: string): Trait[];
 
+  /** Mission-wide hook: a wave just cleared. `leaked` is true if any
+   *  creep leaked during that wave. Receives the current flag bag
+   *  + must return an updated bag (or void for no-op).
+   *
+   *  Used by streak-style Wagers (Hot Streak) and any Wager that
+   *  reads end-of-wave outcomes. Caller invokes once per wave clear;
+   *  state lives in the returned flag bag (caller owns persistence). */
+  onWaveCleared?(
+    ctx: WagerEffectContext,
+    leaked: boolean,
+    currentFlags: WagerMissionFlags,
+  ): WagerMissionFlags | void;
+
   /** Static metadata for HUD + analytics. */
   meta: {
     /** Human-readable summary shown on the Pactbook card + active-
