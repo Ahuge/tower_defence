@@ -24,6 +24,11 @@
 
 import type { CampaignDef } from './CampaignDef';
 import { MECHANICAL_TEXTS } from './texts/mechanical.texts';
+import {
+  buildPassColumn,
+  buildSpireFalls,
+  buildRailYardAssault,
+} from './MechWaveScripts';
 
 const T = MECHANICAL_TEXTS;
 
@@ -38,6 +43,9 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     // ─── Act I — Defend ───────────────────────────────────────
 
     // 1 — Listening post. Basic Arcane kit only; Voss's scouts probe.
+    // Narrative: "fast riders and light walkers sent to cut our
+    // warning lines." Wave script delivers exactly that — scouts
+    // early, light walkers mid, mixed late.
     {
       id: 'perimeter_breach',
       idx: 0,
@@ -51,6 +59,55 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         restrictions: {
           allowedTowerIds: ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus'],
         },
+        waveScript: [
+          { wave: 1, isBoss: false, spawnInterval: 700,
+            groups: [
+              { creepType: 'mech_scout',        count: 6, hpScale: 20, speedScale: 1 },
+            ] },
+          { wave: 2, isBoss: false, spawnInterval: 650,
+            groups: [
+              { creepType: 'mech_scout',        count: 8, hpScale: 24, speedScale: 1 },
+            ] },
+          { wave: 3, isBoss: false, spawnInterval: 600,
+            groups: [
+              { creepType: 'mech_scout',        count: 6, hpScale: 28, speedScale: 1 },
+              { creepType: 'mech_light_walker', count: 2, hpScale: 28, speedScale: 1 },
+            ] },
+          { wave: 4, isBoss: false, spawnInterval: 550,
+            groups: [
+              { creepType: 'mech_scout',        count: 5, hpScale: 32, speedScale: 1 },
+              { creepType: 'mech_light_walker', count: 4, hpScale: 32, speedScale: 1 },
+            ] },
+          { wave: 5, isBoss: false, spawnInterval: 500,
+            groups: [
+              { creepType: 'mech_light_walker', count: 7, hpScale: 38, speedScale: 1 },
+            ] },
+          { wave: 6, isBoss: false, spawnInterval: 480,
+            groups: [
+              { creepType: 'mech_scout',        count: 6, hpScale: 42, speedScale: 1 },
+              { creepType: 'mech_light_walker', count: 5, hpScale: 42, speedScale: 1 },
+            ] },
+          { wave: 7, isBoss: false, spawnInterval: 450,
+            groups: [
+              { creepType: 'mech_light_walker', count: 8, hpScale: 48, speedScale: 1 },
+              { creepType: 'mech_scout',        count: 4, hpScale: 48, speedScale: 1 },
+            ] },
+          { wave: 8, isBoss: false, spawnInterval: 420,
+            groups: [
+              { creepType: 'mech_light_walker', count: 6, hpScale: 54, speedScale: 1 },
+              { creepType: 'mech_scout',        count: 8, hpScale: 54, speedScale: 1 },
+            ] },
+          { wave: 9, isBoss: false, spawnInterval: 400,
+            groups: [
+              { creepType: 'mech_light_walker', count: 8, hpScale: 60, speedScale: 1 },
+              { creepType: 'mech_scout',        count: 6, hpScale: 60, speedScale: 1 },
+            ] },
+          { wave: 10, isBoss: false, spawnInterval: 380,
+            groups: [
+              { creepType: 'mech_light_walker', count: 10, hpScale: 70, speedScale: 1 },
+              { creepType: 'mech_scout',        count: 8,  hpScale: 70, speedScale: 1 },
+            ] },
+        ],
       },
       objectives: {
         star2: { label: T.missions.perimeter_breach.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
@@ -59,6 +116,11 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     },
 
     // 2 — Canyon road. First encounter with a Suppression Pylon.
+    // Narrative: "Voss's advance column reached the canyon roads."
+    // Wave script delivers a literal advance column — scouts open
+    // the road, skiff escorts press through the suppression fields,
+    // light walkers form the main body, armored walkers anchor the
+    // tail. The column compresses across 15 waves.
     {
       id: 'the_pass',
       idx: 1,
@@ -78,6 +140,7 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
           { col: 18, row: 12, radius: 5 },
           { col: 24, row: 22, radius: 4 },
         ],
+        waveScript: buildPassColumn(),
       },
       objectives: {
         star2: { label: T.missions.the_pass.objectives.star2, predicate: r => r.livesRemaining >= Math.ceil(r.livesStart * 0.7) },
@@ -109,6 +172,8 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
     // ─── Act II — Strike Out ──────────────────────────────────
 
     // 4 — The Spire falls. The inciting loss that drives the rest.
+    // Narrative: "Walkers press from every approach." Walker-heavy
+    // waves on the 4-edge base_defense arena. See buildSpireFalls.
     {
       id: 'spire_falls',
       idx: 3,
@@ -119,6 +184,7 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
         mapId: 'base_arena',
         difficulty: 'normal',
         waveCount: 15,
+        waveScript: buildSpireFalls(),
       },
       objectives: {
         star2: { label: T.missions.spire_falls.objectives.star2, predicate: r => r.livesRemaining === r.livesStart },
@@ -202,6 +268,10 @@ export const MECHANICAL_CAMPAIGN: CampaignDef = {
           { col: 18, row: 14, radius: 4 },
           { col: 28, row: 10, radius: 4 },
         ],
+        // Rail-yard waves — 20 tight intervals; scout/skiff swarms
+        // with walker frames rolling off the assembly mid-mission.
+        // See buildRailYardAssault for the curve.
+        waveScript: buildRailYardAssault(),
       },
       objectives: {
         star2: { label: T.missions.first_light.objectives.star2, predicate: r => r.won && r.durationMs < 12 * 60 * 1000 },
