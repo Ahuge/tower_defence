@@ -39,6 +39,11 @@ const ACT_II_MAPS: { mapId: MapId; missionIdx: number; name: string }[] = [
   { mapId: 'greenward_weddingstone', missionIdx: 6, name: 'M7 Wedding-Stone' },
 ];
 
+const ACT_III_PRE_FINALE_MAPS: { mapId: MapId; missionIdx: number; name: string }[] = [
+  { mapId: 'greenward_court',      missionIdx: 7, name: 'M8 Stillborn Court' },
+  { mapId: 'greenward_lastgarden', missionIdx: 8, name: 'M9 Last Garden' },
+];
+
 function assertMapShape(mapId: MapId, missionIdx: number, name: string) {
   it('has at least one entry + one exit', () => {
     const def = MAPS[mapId];
@@ -76,4 +81,14 @@ describe('Greenward bespoke maps — Act II', () => {
   for (const { mapId, missionIdx, name } of ACT_II_MAPS) {
     describe(name, () => assertMapShape(mapId, missionIdx, name));
   }
+});
+
+describe('Greenward bespoke maps — Act III pre-finale', () => {
+  for (const { mapId, missionIdx, name } of ACT_III_PRE_FINALE_MAPS) {
+    describe(name, () => assertMapShape(mapId, missionIdx, name));
+  }
+
+  it('M8 declares three entries (Stillborn Court three doors)', () => {
+    expect(MAPS.greenward_court.entries.length).toBe(3);
+  });
 });

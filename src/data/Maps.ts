@@ -299,6 +299,34 @@ function greenwardWeddingPavilion(): Pos[] {
   return ps;
 }
 
+function greenwardCourtGeometry(): Pos[] {
+  // Three-door courtyard: pillars + interior partitions. Each
+  // pillar cluster is between two doors so the boss-rush feels
+  // architectural, not arena.
+  const ps: Pos[] = [];
+  // Outer south wall with three door-gaps at cols 6, 18, 30.
+  for (let c = 0; c < GRID_COLS; c++) {
+    if (c !== 6 && c !== 18 && c !== 30) ps.push({ col: c, row: GRID_ROWS - 1 });
+  }
+  // Two interior pillar pairs.
+  for (let r = 8; r <= 12; r += 2) {
+    ps.push({ col: 12, row: r });
+    ps.push({ col: 24, row: r });
+  }
+  return ps;
+}
+
+function greenwardWatchtowerDefenses(): Pos[] {
+  // M9 attacker map — pre-placed defender tower positions where the
+  // mission's attacker-archetype hook drops Inheritor defenders.
+  // For map purposes these are Blocked cells (towers occupy them).
+  return [
+    { col: 8,  row: 11 },
+    { col: 10, row: 13 },
+    { col: 8,  row: 15 },
+  ];
+}
+
 export const MAPS: Record<MapId, MapDefinition> = {
   plains: {
     id: 'plains',
@@ -1122,8 +1150,43 @@ export const MAPS: Record<MapId, MapDefinition> = {
       { col: 18, row: 18 }, // pavilion (Siege)
     ],
   },
-  greenward_court:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_court',        name: 'Stillborn Court', theme: 'stone' },
-  greenward_lastgarden:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_lastgarden',   name: 'Last Garden',     theme: 'mountain' },
+  // Act III pre-finale — Stillborn Court + Last Garden.
+
+  greenward_court: {
+    id: 'greenward_court',
+    name: 'The Stillborn Court',
+    description: 'A courtyard with three doors. The Inheritor host enters; the Child watches.',
+    theme: 'stone',
+    // Three doors at the south edge — Knight, Herald, Child cycle.
+    entries: [
+      { col: 6,  row: GRID_ROWS - 1 },
+      { col: 18, row: GRID_ROWS - 1 },
+      { col: 30, row: GRID_ROWS - 1 },
+    ],
+    // Single north exit — leak path toward Caer Lythen.
+    exits: [{ col: MID_COL, row: 0 }],
+    blocked: greenwardCourtGeometry(),
+    // court_grounds Siege + the_child Mercy.
+    noBuild: [
+      { col: 14, row: 13 }, // court_grounds
+      { col: 22, row: 13 }, // the_child
+    ],
+  },
+
+  greenward_lastgarden: {
+    id: 'greenward_lastgarden',
+    name: 'The Last Garden',
+    description: 'An Inheritor watchtower on the road to Caer Lythen. Built of grove-wood.',
+    theme: 'mountain',
+    // Attacker mode: Marra SENDS from the east toward the watchtower
+    // at the west. Reversed entry/exit semantics — entry is where
+    // the player's creeps start (east), exit is the Inheritor
+    // territory (west) the watchtower defends.
+    entries: [{ col: GRID_COLS - 1, row: 13 }],
+    exits:   [{ col: 0,             row: 13 }],
+    blocked: greenwardWatchtowerDefenses(),
+    noBuild: [{ col: 6, row: 13 }], // watchtower
+  },
   greenward_cathedral:    { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_cathedral',    name: 'Caer Lythen',     theme: 'arcane_crystal' },
 };
 
