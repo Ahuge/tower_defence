@@ -51,6 +51,12 @@ export interface GreenwardState {
    *  or if the player's first Elder went down too late to earn the
    *  name (M7+). Drives the M7/M8 "grove cannot spare her" refusal. */
   caerWenna: CaerWennaState | null;
+  /** Campaign-wide Consecration mode tally. Increments per mission
+   *  from `ConsecrationManager.getSnapshot().claimedByMode`. Gates
+   *  the M10 Nave choice — Ceremony-lean unlocks the Ceremony path,
+   *  Mercy-lean unlocks the Mercy path; otherwise the Nave falls
+   *  back to Siege. */
+  modeLean: { ceremony: number; siege: number; mercy: number };
 }
 
 const FACTION_ID = 'nature';
@@ -67,6 +73,7 @@ export const DEFAULT_GREENWARD_STATE: GreenwardState = {
   reserves: INITIAL_RESERVES,
   hasSpent: false,
   caerWenna: null,
+  modeLean: { ceremony: 0, siege: 0, mercy: 0 },
 };
 
 /** Read the current Greenward state, returning the default when no
