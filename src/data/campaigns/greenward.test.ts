@@ -173,3 +173,32 @@ describe('Greenward Act III pre-finale (M8-M9) — Consecration wiring', () => {
     expect(ruins[0].id).toBe('watchtower');
   });
 });
+
+describe('Greenward M10 finale (Caer Lythen) — three setpieces', () => {
+  it('declares Courtyard / Nave / Throne ruins in that order', () => {
+    const m = GREENWARD_CAMPAIGN.missions[9];
+    const ids = m.overrides.greenwardRules?.ruins.map(r => r.id) ?? [];
+    expect(ids).toEqual(['courtyard', 'nave', 'throne']);
+  });
+
+  it('Courtyard is always Siege', () => {
+    const m = GREENWARD_CAMPAIGN.missions[9];
+    const courtyard = m.overrides.greenwardRules?.ruins.find(r => r.id === 'courtyard');
+    expect(courtyard?.mode).toBe('siege');
+  });
+
+  it('Throne is always Siege (consequence-defense after the Nave)', () => {
+    const m = GREENWARD_CAMPAIGN.missions[9];
+    const throne = m.overrides.greenwardRules?.ruins.find(r => r.id === 'throne');
+    expect(throne?.mode).toBe('siege');
+  });
+
+  // Nave's mode is mutated at runtime by the GreenwardFinaleController
+  // (lands in a follow-up commit). The data here is a placeholder; the
+  // assertion below documents the intent.
+  it('Nave initial-mode is a placeholder ("mercy" in data; runtime overrides)', () => {
+    const m = GREENWARD_CAMPAIGN.missions[9];
+    const nave = m.overrides.greenwardRules?.ruins.find(r => r.id === 'nave');
+    expect(nave?.mode).toBe('mercy');
+  });
+});

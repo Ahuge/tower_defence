@@ -384,8 +384,10 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
 
     // M10 — Caer Lythen. Three setpieces (Courtyard / Nave / Throne).
     // Nave gated by campaign mode-lean. final_greenward archetype
-    // currently a stub; MissionRunner refuses to launch until the
-    // controller lands (Phase 3 commit 19).
+    // currently a stub; the full three-setpiece GreenwardFinaleController
+    // lands in a follow-up commit. The Consecration rules + per-setpiece
+    // ruin layout are wired here so when the controller arrives it
+    // reads from this data.
     {
       id: 'caer_lythen',
       idx: 9,
@@ -396,6 +398,25 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_cathedral',
         difficulty: 'hard',
         waveCount: 999,
+        greenwardRules: {
+          ruins: [
+            // Setpiece 1 — Courtyard. Always Siege (the outer guard
+            // must fall — no choice). Caer Wenna's absence is
+            // mechanically punishing here; the wave the player would
+            // have walked past with her placed bites without her.
+            { id: 'courtyard', col: 6,  row: 13, mode: 'siege' },
+            // Setpiece 2 — Nave. The choice. Initial mode is 'mercy'
+            // as the placeholder; the GreenwardFinaleController
+            // mutates this at runtime based on the player's mode-lean
+            // (Ceremony lean → ceremony, Mercy lean → mercy, else →
+            // siege fallback. Reserves-zero in the Courtyard also
+            // narrows to siege regardless).
+            { id: 'nave',      col: 18, row: 13, mode: 'mercy' },
+            // Setpiece 3 — Throne. Fixed Siege after the Nave's
+            // consequence (defense against the world's reaction).
+            { id: 'throne',    col: 30, row: 13, mode: 'siege' },
+          ],
+        },
       },
       objectives: {
         star2: { label: T.missions.caer_lythen.objectives.star2, predicate: r => r.won },
