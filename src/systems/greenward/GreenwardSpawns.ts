@@ -58,3 +58,15 @@ export const NAMED_SPAWNS: Record<number, readonly NamedSpawn[]> = {
 export function namedSpawnsFor(missionIdx: number): readonly NamedSpawn[] {
   return NAMED_SPAWNS[missionIdx] ?? [];
 }
+
+/** Boss-kill listeners — maps creep typeIds whose death flips a
+ *  GreenwardMissionCustom flag. GameScene's creep-killed event
+ *  subscriber consults this when the active mission is Greenward.
+ *
+ *  Distinct from `NAMED_SPAWNS` because bosses arrive via the normal
+ *  wave-script (boss_rush archetype) rather than scene-init spawns —
+ *  they don't need cell coords, just a death-side trigger. */
+export const BOSS_KILL_CUSTOM_FLAGS: Record<string, string> = {
+  inheritor_knight: 'knightKilled',
+  inheritor_herald: 'heraldKilled',
+};

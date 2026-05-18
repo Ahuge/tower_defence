@@ -751,6 +751,42 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  inheritor_knight: {
+    id: 'inheritor_knight',
+    name: 'The Knight',
+    description: 'A Knight in heavy armor who never blooded a sword. M8 boss-rush — high HP, heavy armor, slow.',
+    hpMultiplier: 8, speedMultiplier: 0.8, armor: 'heavy',
+    color: 0x6a6a78, size: 1.4, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 8,
+        speedMult: hints.speed * 0.8,
+        countMult: 1, // never multi-spawned; boss
+        goldMult: hints.goldMult * 5, // boss bounty
+        extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_herald: {
+    id: 'inheritor_herald',
+    name: 'The Herald',
+    description: 'A banner-bearer who never spoke an announcement. M8 boss-rush — medium HP, faster than the Knight, banner billowing silent.',
+    hpMultiplier: 5, speedMultiplier: 1, armor: 'medium',
+    color: 0x886878, size: 1.3, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 5,
+        speedMult: hints.speed,
+        countMult: 1,
+        goldMult: hints.goldMult * 4,
+        extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {

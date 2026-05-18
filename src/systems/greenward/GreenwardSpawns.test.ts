@@ -4,7 +4,7 @@
  * cell + ruin binding.
  */
 import { describe, it, expect } from 'vitest';
-import { NAMED_SPAWNS, namedSpawnsFor } from './GreenwardSpawns';
+import { NAMED_SPAWNS, namedSpawnsFor, BOSS_KILL_CUSTOM_FLAGS } from './GreenwardSpawns';
 import { getCreepType } from '../../data/CreepTypes';
 
 describe('GreenwardSpawns — registry shape', () => {
@@ -72,6 +72,41 @@ describe('GreenwardSpawns — M7 Stone Bride', () => {
     const livery = getCreepType('inheritor_wedding_stone');
     const bride  = getCreepType('inheritor_stone_bride');
     expect(bride.speedMultiplier).toBeLessThan(livery.speedMultiplier);
+  });
+});
+
+describe('GreenwardSpawns — M8 Knight + Herald bosses', () => {
+  it('Knight registers a knightKilled flag in the boss kill-listeners', () => {
+    expect(BOSS_KILL_CUSTOM_FLAGS.inheritor_knight).toBe('knightKilled');
+  });
+
+  it('Herald registers a heraldKilled flag', () => {
+    expect(BOSS_KILL_CUSTOM_FLAGS.inheritor_herald).toBe('heraldKilled');
+  });
+
+  it('Knight has higher HP than Herald (heavier boss)', () => {
+    const k = getCreepType('inheritor_knight');
+    const h = getCreepType('inheritor_herald');
+    expect(k.hpMultiplier).toBeGreaterThan(h.hpMultiplier);
+  });
+
+  it('Knight is heavy-armored; Herald is medium', () => {
+    expect(getCreepType('inheritor_knight').armor).toBe('heavy');
+    expect(getCreepType('inheritor_herald').armor).toBe('medium');
+  });
+
+  it('Both bosses pay boss-tier gold via applyDifficulty', () => {
+    const k = getCreepType('inheritor_knight').applyDifficulty({ toughness: 1, speed: 1, count: 1, goldMult: 1, toughnessPerWave: 0 });
+    const h = getCreepType('inheritor_herald').applyDifficulty({ toughness: 1, speed: 1, count: 1, goldMult: 1, toughnessPerWave: 0 });
+    expect(k.goldMult).toBeGreaterThanOrEqual(4);
+    expect(h.goldMult).toBeGreaterThanOrEqual(3);
+  });
+
+  it('Both bosses pin countMult to 1 (never multi-spawned)', () => {
+    const k = getCreepType('inheritor_knight').applyDifficulty({ toughness: 2, speed: 1, count: 3, goldMult: 1, toughnessPerWave: 0 });
+    const h = getCreepType('inheritor_herald').applyDifficulty({ toughness: 2, speed: 1, count: 3, goldMult: 1, toughnessPerWave: 0 });
+    expect(k.countMult).toBe(1);
+    expect(h.countMult).toBe(1);
   });
 });
 
