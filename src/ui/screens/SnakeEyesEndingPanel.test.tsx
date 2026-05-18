@@ -48,12 +48,17 @@ describe('SnakeEyesEndingPanel', () => {
     expect(container.textContent).toContain('One last hand.');
   });
 
-  it('renders three flip cards labelled ME / vs / HIM', () => {
+  it('renders three flip cards with the snake-eyes-and-six dice glyphs', () => {
     const { container } = render(<SnakeEyesEndingPanel />);
     const text = container.textContent ?? '';
-    expect(text).toContain('ME');
-    expect(text).toContain('vs');
-    expect(text).toContain('HIM');
+    // Cards 0+1 are both ⚀ (snake eyes); card 2 is ⚅ (six).
+    // Chosen via 3-versions blind-compare — the campaign title made
+    // diegetic at the climactic frame.
+    expect(text).toContain('⚀');
+    expect(text).toContain('⚅');
+    // Sanity: at least 2 snake-eye pips for the "snake eyes" pair.
+    const matches = text.match(/⚀/g) ?? [];
+    expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 });
 

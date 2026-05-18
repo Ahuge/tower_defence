@@ -155,14 +155,20 @@ function FlipCard({ idx, delayMs }: { idx: number; delayMs: number }) {
           borderRadius: '6px',
           color: VOID_GOLD,
           fontFamily: "'Silkscreen', monospace",
-          fontSize: '32px',
+          fontSize: '46px',
           display: 'flex' as const,
           alignItems: 'center' as const,
           justifyContent: 'center' as const,
+          lineHeight: 1,
         }}
+        aria-label={idx === 2 ? 'a six' : 'a one'}
       >
-        {/* Three cards spell the moment: "ME", "vs", "HIM" */}
-        {idx === 0 ? 'ME' : idx === 1 ? 'vs' : 'HIM'}
+        {/* The three glyphs spell the campaign at the climactic frame:
+            ⚀ ⚀ ⚅ — snake eyes (Ardax's worst possible roll, the
+            campaign's title) vs the six (the Counterfactual's best
+            possible roll, the safe play that always wins). Chosen
+            via 3-versions blind-compare. */}
+        {idx === 0 ? '⚀' : idx === 1 ? '⚀' : '⚅'}
       </div>
     </div>
   );
