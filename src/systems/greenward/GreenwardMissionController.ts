@@ -62,11 +62,19 @@ export interface GreenwardMissionCustom {
   distinctTowerTypesUsed: number;
   /** M10 only: the player committed to a non-Siege Nave path. */
   naveCommittedNonSiege: boolean;
+  /** M10 only: which mode the Nave resolved to. Threaded into
+   *  MissionResult.custom by GameScene.goToGameOver at game-end by
+   *  reading `_greenwardFinaleController.getSnapshot().resolvedNaveMode`.
+   *  Null on non-M10 missions and when the courtyard never claimed
+   *  (player lost before reaching the nave). The GameOverScreen
+   *  reads this to render the corresponding ending tableau + outro. */
+  naveResolvedMode: 'ceremony' | 'mercy' | 'siege' | null;
 }
 
 function defaultCustom(reservesAtStart: number): GreenwardMissionCustom {
   return {
     ruinsClaimed: 0,
+    naveResolvedMode: null,
     ceremonyClaims: 0,
     siegeClaims: 0,
     mercyClaims: 0,

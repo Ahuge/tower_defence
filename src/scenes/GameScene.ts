@@ -4223,7 +4223,15 @@ export class GameScene extends Phaser.Scene {
           // shared predicates (which read defensively via `?? false`
           // / `?? 0`) keep working on the other campaigns.
           ...(this._greenwardController
-            ? (this._greenwardController.finalize(getReserves()) as unknown as Record<string, number | boolean>)
+            ? (() => {
+                // Inject the M10 Nave resolution before finalize so
+                // the controller can ship it in the custom payload.
+                // GameOverScreen reads this to render the matching
+                // ending tableau + outro.
+                const naveMode = this._greenwardFinaleController?.getSnapshot().resolvedNaveMode ?? null;
+                this._greenwardController.setCustom('naveResolvedMode', naveMode);
+                return this._greenwardController.finalize(getReserves()) as unknown as Record<string, number | boolean | null | string>;
+              })()
             : {}),
         },
       };
