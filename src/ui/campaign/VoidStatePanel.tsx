@@ -257,12 +257,16 @@ function TallyChip({ label, srLabel, value, accent }: { label: string; srLabel: 
 }
 
 function dealerCaption(actions: ReturnType<typeof computeDealerActions>): string {
+  // Phrasing chosen via 3-versions blind-compare. Winner: diegetic
+  // "Note on the table:" — the caption reads as a note Ardax is
+  // looking at, not UI chrome. Scales cleanly across short + long
+  // action lists (the colon frames any payload size).
   const parts: string[] = [];
   if (actions.bountyWaves > 0) parts.push(actions.bountyWaves === 1 ? 'a bounty wave' : `${actions.bountyWaves} bounty waves`);
   if (actions.repossesses > 0) parts.push('one tower repossession');
   if (actions.wagerSlotsVoided > 0) parts.push(actions.wagerSlotsVoided === 1 ? 'one voided Wager slot' : `${actions.wagerSlotsVoided} voided Wager slots`);
   if (parts.length === 0) return '';
-  return `The Dealer will visit next mission: ${parts.join(' + ')}.`;
+  return `Note on the table: ${parts.join(' + ')}, next mission.`;
 }
 
 CampaignStatePanelRegistry.register('void', VoidStatePanel);
