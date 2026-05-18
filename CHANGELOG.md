@@ -2,9 +2,9 @@
 
 ## 2026-05-18 (continued)
 
-### Campaign #3 — The Greenward (in progress)
+### Campaign #3 — The Greenward
 
-Foundation + core systems for the third campaign — the Nature faction's "The Greenward," shipping in 22 commits across four phases. Design + writer-reviewed prose locked in `docs/greenward-campaign-plan.md`. Currently 15 of 22 commits landed; remaining work covers the M10 three-setpiece controller, e2e spec, and content polish.
+The third campaign — the Nature faction's "The Greenward" — shipped end-to-end across four phases (22-commit core plan + three follow-up PRs for named characters, bespoke maps, and the M10 endings UI). Design + writer-reviewed prose locked in `docs/greenward-campaign-plan.md`.
 
 **POV.** Marra Greenward — the Druid who argued against the pact to spread the Wildwood south, lost the vote, and is now bound to execute it. **Antagonists:** the Inheritors — things that moved into empty thrones. **Recurring figure:** the Heron of Eadwin, escalating across M3 / M6 / M8 / M10. **Destination:** Caer Lythen, the Sun-Cathedral.
 
@@ -20,15 +20,21 @@ Foundation + core systems for the third campaign — the Nature faction's "The G
 
 **Heron of Eadwin** spritesheet (4 frames: silhouette / watching / walking / kneeling) bakes via `greenward_campaign_sprites.tsx` and `scripts/render_greenward_campaign_sprites.ts`. `HeronSpawner` state machine picks the right frame per mission idx + (at M10) mode-lean.
 
-**Inheritor creep variants** (6) added to `CREEP_TYPES`: Road-Walker (slow baseline), Den-Walker (lurker), Messenger (fast/fragile), River-Crawler (water-only), Civilian (zero gold, no difficulty scaling — constraint, not threat), Wedding-Stone (slow, heavy-armored). Boss variants (Knight / Herald / Child) and named Watchers (Old Woman / Cethric / Stone Bride) land per-mission.
+**Inheritor creep variants** (6) added to `CREEP_TYPES`: Road-Walker (slow baseline), Den-Walker (lurker), Messenger (fast/fragile), River-Crawler (water-only), Civilian (zero gold, no difficulty scaling — constraint, not threat), Wedding-Stone (slow, heavy-armored).
+
+**Named characters shipped** (PR #75): the M8 bosses Knight + Herald arrive via the boss-rush wave-script and flip typed `BossKillFlag` entries on death; the Watchers — Old Woman (M3), Cethric (M4), Stone Bride (M7), Child (M8) — instantiate via a unified `spawnGreenwardNamed` pipeline. Stationary Watchers spawn at fixed cells with a single-point path; the Stone Bride mingles into the wedding-stone livery wave and the controller's per-frame resolver binds the first matching typeId. The named-spawn registry is a discriminated union (`watcher_at_cell` | `watcher_in_wave`) so the compiler enforces variant contracts and future campaigns reuse the dispatcher without modification.
 
 **`GreenwardMissionController`** is the per-mission orchestrator that wires Consecration + Mercy + ModeLean writeback through `MissionResult.custom`. `GameScene` + `MissionRunner` thread `missionGreenwardRules` from each mission def through scene init, ticks the controller each frame, and writes the typed custom payload at game-end alongside the existing finale / sabotage / counterspell counters.
 
-**All 10 missions' Consecration ruin specs wired** (M1-M10). Mode distribution: Ceremony 7, Siege 7, Mercy 5 — matching the writer-reviewed plan exactly. M10 (Caer Lythen) gets three setpiece ruins (Courtyard / Nave / Throne); the runtime three-setpiece state machine lands in a follow-up.
+**All 10 missions' Consecration ruin specs wired** (M1-M10). Mode distribution: Ceremony 7, Siege 7, Mercy 5 — matching the writer-reviewed plan exactly. M10 (Caer Lythen) gets three setpiece ruins (Courtyard / Nave / Throne); the runtime three-setpiece state machine drives the finale.
 
-**Status: complete (22 / 22 commits).** The Greenward campaign is shipped end-to-end through the 22-commit execution plan. M1-M9 boot through Consecration / Reserves / Caer Wenna / ModeLean; M10 runs the three-setpiece state machine with Nave gating by campaign mode-lean (or Reserves-zero narrowing to Siege); each of the three M10 endings has its illustrated tableau frame in `greenward_endings.png` + a writer-locked outro paragraph in `GREENWARD_M10_ENDINGS`. Map themes vary across the 10 missions (forest / stone / water / generic / mountain / arcane_crystal) per the "v1 procedural OK" stance — full bespoke map layouts remain as the natural follow-up. Playwright smoke spec (`e2e/greenward-smoke.spec.ts`) covers M1 ruin shape + M10 setpiece bootup; the M10 happy-path-to-ending spec is the natural extension and lands when the GameOver UI wires the ending-tableau display. Final unit-suite count: 778 tests, all green. Plan + remaining content polish tracking lives in `docs/greenward-campaign-plan.md`.
+**Bespoke maps for every mission** (PR #77). M1-M10 each ship a hand-authored JSON layout in `src/data/maps/greenward/` instead of procedural fallbacks — entries/exits, ruin cell coords, and terrain themes per the writer's mission notes. Pathfind invariants enforced by `greenward-maps.test.ts`: every entry reaches at least one exit and every exit is reachable from at least one entry (catches dead-letter regressions a single-pair check would miss).
 
-**Test count.** 700 → 768 across 14 new test files in `src/systems/greenward/` + creep / campaign shape tests. All green.
+**M10 endings UI** (PR #76). The three writer-locked outro tableaux in `greenward_endings.png` get framed end-card scenes wired to the three Nave paths (Ceremony / Mercy / Siege). Playwright spec covers force-claiming each setpiece (`courtyard → nave → throne → complete`) with `waitForFunction`-backed polling so the assertion fires the moment the finale state advances rather than on a fixed timeout.
+
+**Status: shipped.** The campaign boots M1-M9 through Consecration / Reserves / Caer Wenna / ModeLean; M10 runs the three-setpiece state machine with Nave gating by campaign mode-lean (or Reserves-zero narrowing to Siege); each of the three M10 endings has its illustrated tableau frame + a writer-locked outro paragraph in `GREENWARD_M10_ENDINGS`. Playwright smoke (`e2e/greenward-smoke.spec.ts`) covers M1 ruin shape + M10 setpiece bootup; `e2e/greenward-m10-endings.spec.ts` covers all three Nave-path endings end-to-end.
+
+**Test count.** 700 → 801 across new test files in `src/systems/greenward/`, `src/data/maps/`, plus creep / campaign shape tests. All green.
 
 Files: `docs/greenward-campaign-plan.md` (committed in commit 1), `src/data/campaigns/greenward.ts` (+test), `src/data/campaigns/texts/greenward.texts.ts`, `src/data/CreepTypes.ts` (+test), `src/data/Maps.ts` (stub map ids), `src/data/campaigns/CampaignDef.ts` (`final_greenward` archetype id + `greenwardRules` field), `src/data/campaigns/MissionArchetypes.ts` (stub registration), `src/data/campaigns/index.ts`, `src/systems/greenward/{WildwoodReserves,PersistedTowerState,ConsecrationManager,MercyWatcher,ModeLeanTracker,HeronSpawner,GreenwardMissionController}.ts` (+tests for each), `src/ui/campaign/GreenwardStatePanel.tsx`, `src/main.ts` (side-effect import), `src/scenes/GameScene.ts` (+ MissionRunner.ts), `greenward_campaign_sprites.tsx` (root, per project sprite convention), `scripts/render_greenward_campaign_sprites.ts`, `public/assets/arena/{heron_of_eadwin,inheritor_base}.png`.
 
