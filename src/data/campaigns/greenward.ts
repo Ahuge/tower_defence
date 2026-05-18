@@ -323,6 +323,18 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_court',
         difficulty: 'hard',
         waveCount: 8,
+        greenwardRules: {
+          ruins: [
+            // The court grounds — Siege. Auto-claims when Knight +
+            // Herald die. The mission's per-spawn hook flips
+            // knightKilled / heraldKilled on the GreenwardController.
+            { id: 'court_grounds', col: 14, row: 13, mode: 'siege' },
+            // The Child's procession — Mercy. The Child Watcher
+            // follows the Inheritor host but never fights. Touching
+            // her fails star 3.
+            { id: 'the_child',     col: 22, row: 13, mode: 'mercy' },
+          ],
+        },
       },
       objectives: {
         star2: {
@@ -350,6 +362,16 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_lastgarden',
         difficulty: 'hard',
         waveCount: 8,
+        greenwardRules: {
+          ruins: [
+            // The Inheritor watchtower at the western edge of the
+            // map. Single Siege ruin — claimed by the attacker creeps
+            // breaking through the watchtower's defender towers.
+            // distinctCreepUnitsSent counter is bumped by the per-
+            // creep send hook for star 3.
+            { id: 'watchtower', col: 6, row: 13, mode: 'siege' },
+          ],
+        },
       },
       objectives: {
         star2: { label: T.missions.last_garden.objectives.star2, predicate: r => r.won },

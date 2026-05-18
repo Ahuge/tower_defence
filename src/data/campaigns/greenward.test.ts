@@ -154,3 +154,22 @@ describe('Greenward Act II missions — Consecration wiring', () => {
     }
   });
 });
+
+describe('Greenward Act III pre-finale (M8-M9) — Consecration wiring', () => {
+  it('M8 declares one Siege (court) + one Mercy (Child)', () => {
+    const m = GREENWARD_CAMPAIGN.missions[7];
+    const modes = m.overrides.greenwardRules?.ruins.map(r => r.mode) ?? [];
+    expect(modes).toContain('siege');
+    expect(modes).toContain('mercy');
+    expect(modes).toHaveLength(2);
+    expect(m.overrides.greenwardRules?.ruins.find(r => r.id === 'the_child')?.mode).toBe('mercy');
+  });
+
+  it('M9 declares a single Siege ruin (watchtower)', () => {
+    const m = GREENWARD_CAMPAIGN.missions[8];
+    const ruins = m.overrides.greenwardRules?.ruins ?? [];
+    expect(ruins).toHaveLength(1);
+    expect(ruins[0].mode).toBe('siege');
+    expect(ruins[0].id).toBe('watchtower');
+  });
+});
