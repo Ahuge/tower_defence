@@ -1,6 +1,36 @@
 # Changelog
 
-## 2026-05-18
+## 2026-05-18 (continued)
+
+### Campaign #3 — The Greenward (in progress)
+
+Foundation + core systems for the third campaign — the Nature faction's "The Greenward," shipping in 22 commits across four phases. Design + writer-reviewed prose locked in `docs/greenward-campaign-plan.md`. Currently 15 of 22 commits landed; remaining work covers the M10 three-setpiece controller, e2e spec, and content polish.
+
+**POV.** Marra Greenward — the Druid who argued against the pact to spread the Wildwood south, lost the vote, and is now bound to execute it. **Antagonists:** the Inheritors — things that moved into empty thrones. **Recurring figure:** the Heron of Eadwin, escalating across M3 / M6 / M8 / M10. **Destination:** Caer Lythen, the Sun-Cathedral.
+
+**Two campaign-unique systems shipped:**
+
+- **Consecration Modes** (signature) — per-mission ruin tiles claimed in one of three modes. Ceremony (place a Blossom adjacent + hold a 10s channel without it being damaged), Siege (auto-claims when bound Inheritor defenders die), Mercy (claims when defenders die provided the bound Watcher took no damage). 4-adjacency Blossom detection, idempotent damage tracking, snapshot API the UI + e2e read. Lives in `ConsecrationManager` + `MercyWatcherTracker`. 29 tests.
+
+- **Wildwood Reserves** (supporting) — campaign-wide persistent resource. Starts at 100. Per-mission regen of +10 applied at the start of each mission *after* the first. Hard cap at 95 once any spending occurs ("the Wildwood never fully recovers" — the campaign's mechanical thesis). Stored under `PlayerProfile.campaignState['nature']` via the existing `CampaignState` plumbing.
+
+**Caer Wenna tower-grief beat.** The player's first Elder Treant placed in M1-M6 binds to a persistent "Caer Wenna" slot. In M7 and M8 specifically she refuses re-placement — "the grove cannot spare her again." From M9 onward the refusal lifts; new Elders are just Elders. M8's intro acknowledges her loss: *"The eastern slope where Wenna stood is quiet now."*
+
+**Mode-lean tally.** Each mission's claims feed `ModeLeanTracker`. ≥3 Ceremony claims unlocks the Ceremony path at the M10 Nave; ≥3 Mercy claims unlocks the Mercy path; otherwise the Nave falls back to Siege. Both can be unlocked at once. Surfaced in the **GreenwardStatePanel** (registered with `CampaignStatePanelRegistry`) — the lobby's faction-state slot, populated for the first time by any campaign in this codebase.
+
+**Heron of Eadwin** spritesheet (4 frames: silhouette / watching / walking / kneeling) bakes via `greenward_campaign_sprites.tsx` and `scripts/render_greenward_campaign_sprites.ts`. `HeronSpawner` state machine picks the right frame per mission idx + (at M10) mode-lean.
+
+**Inheritor creep variants** (6) added to `CREEP_TYPES`: Road-Walker (slow baseline), Den-Walker (lurker), Messenger (fast/fragile), River-Crawler (water-only), Civilian (zero gold, no difficulty scaling — constraint, not threat), Wedding-Stone (slow, heavy-armored). Boss variants (Knight / Herald / Child) and named Watchers (Old Woman / Cethric / Stone Bride) land per-mission.
+
+**`GreenwardMissionController`** is the per-mission orchestrator that wires Consecration + Mercy + ModeLean writeback through `MissionResult.custom`. `GameScene` + `MissionRunner` thread `missionGreenwardRules` from each mission def through scene init, ticks the controller each frame, and writes the typed custom payload at game-end alongside the existing finale / sabotage / counterspell counters.
+
+**All 10 missions' Consecration ruin specs wired** (M1-M10). Mode distribution: Ceremony 7, Siege 7, Mercy 5 — matching the writer-reviewed plan exactly. M10 (Caer Lythen) gets three setpiece ruins (Courtyard / Nave / Throne); the runtime three-setpiece state machine lands in a follow-up.
+
+**Status as of this commit.** Phases 1 + 2 + most of 3 (15 of 22 commits). Remaining: the M10 `GreenwardFinaleController` (three-setpiece state machine that gates the Nave on mode-lean / Reserves-zero), three M10 ending tableaux, full bespoke maps for the 10 missions (currently plains-stub reskins per the "v1 procedural OK" stance), and a Playwright e2e spec for a smoke + happy-path run. Plan + remaining-work tracking lives in `docs/greenward-campaign-plan.md`.
+
+**Test count.** 700 → 768 across 14 new test files in `src/systems/greenward/` + creep / campaign shape tests. All green.
+
+Files: `docs/greenward-campaign-plan.md` (committed in commit 1), `src/data/campaigns/greenward.ts` (+test), `src/data/campaigns/texts/greenward.texts.ts`, `src/data/CreepTypes.ts` (+test), `src/data/Maps.ts` (stub map ids), `src/data/campaigns/CampaignDef.ts` (`final_greenward` archetype id + `greenwardRules` field), `src/data/campaigns/MissionArchetypes.ts` (stub registration), `src/data/campaigns/index.ts`, `src/systems/greenward/{WildwoodReserves,PersistedTowerState,ConsecrationManager,MercyWatcher,ModeLeanTracker,HeronSpawner,GreenwardMissionController}.ts` (+tests for each), `src/ui/campaign/GreenwardStatePanel.tsx`, `src/main.ts` (side-effect import), `src/scenes/GameScene.ts` (+ MissionRunner.ts), `greenward_campaign_sprites.tsx` (root, per project sprite convention), `scripts/render_greenward_campaign_sprites.ts`, `public/assets/arena/{heron_of_eadwin,inheritor_base}.png`.
 
 ### Tower.ts bag-of-flags refactor (v2)
 

@@ -52,6 +52,8 @@
 
 **Frontier:** Sacred Grove 55g (+3g/wave, grows +2g/wave; harvest = stacks × 5g) / Ancient Grove 225g (+22g/wave, same grow mechanic).
 
+**Campaign #3 — "The Greenward" (in progress)** — POV: Marra Greenward, the Druid who argued against the pact to spread the Wildwood south and lost the vote. Now bound to execute it. Player runs the Nature kit through 10 missions south to Caer Lythen, the Sun-Cathedral. Two unique systems: **Consecration Modes** (Ceremony / Siege / Mercy ruin claims per mission, with a campaign-wide tally that gates the M10 Nave) + **Wildwood Reserves** (persistent campaign resource that depletes mission-to-mission; never fully recovers). The player's first Elder Treant binds to a named character — **Caer Wenna** — and refuses re-placement in M7/M8 once she has "grown old." Recurring antagonist face: **The Heron of Eadwin** (silhouette M3 → watching M6 → walking M8 → at the altar M10). See `docs/greenward-campaign-plan.md` for the full design.
+
 ---
 
 ## Void (5 towers)
