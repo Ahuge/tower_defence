@@ -144,8 +144,16 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     wheel_of_cipher: {
       name: 'Wheel of Cipher',
+      // Writer-reviewed via 3-versions blind-compare. Winner: Draft A
+      // (time-pressure cold open) with the subagent's edit on the
+      // wrist line. Note: original draft slipped into third-person;
+      // first-person normalized here for consistency with M1-M4.
       story:
-        "Casino town, the Wheel spinning all night. Ardax has six minutes. Between waves, the Dealer interjects: \"You're slow tonight, Voidsmith. The boss is watching.\" First mention of who Ardax owes.",
+        "The Wheel spun and I had six minutes. Six minutes was generous — the Wheel of Cipher took its time when it wanted to, and the men who owned it had decided tonight it wouldn't. I could feel the table reading me through the floor: the dust shifting, the hands at my wrists running warmer than they ought to.\n" +
+        "\n" +
+        "Then the Dealer's voice, flat in the air beside me: \"You're slow tonight, Voidsmith. The boss is watching.\"\n" +
+        "\n" +
+        "Boss. So there was one. I'd been wondering.",
       objectives: {
         star2: 'Win the mission.',
         star3: 'Cleared in ≤6 minutes.',
@@ -154,8 +162,13 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     theris_goodbye: {
       name: "Theris's Goodbye",
+      // Writer-reviewed via 3-versions blind-compare. Winner: Draft B
+      // (Theris reads better than I do) with the subagent's edit
+      // ("We always do.") for the closing sting on reread.
       story:
-        "Theris is the bot. Mid-mission text overlay: \"Theris drew the King of Coins. She won.\" End-of-mission interlude: the note. Wager-tier draws this mission lean small/medium — Ardax is distracted.",
+        "Theris reads a table better than I do. She always has. She has never said so, and I have never said so, and what we share at a table is the kind of fluency you don't name.\n" +
+        "\n" +
+        "Tonight she took my left flank and I took my right and the Dealer dealt to us both for the first time, which Theris took as a courtesy and I took as a warning. \"He's getting bored,\" she said. We played anyway. We always do.",
       objectives: {
         star2: 'Win the mission.',
         star3: 'Won + Theris bot alive at end + Debt paid down.',
@@ -164,8 +177,13 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     mirror_walkers: {
       name: 'Mirror Walkers',
+      // Writer-reviewed via 3-versions blind-compare. Winner: Draft B
+      // (Mirror Walkers arrive, gait-recognition image) with the
+      // subagent's tighten on the Siphon line.
       story:
-        "Ardax's Siphon is \"off the table\" — Pact-locked. A new creep variant — Mirror Walkers — copies your last tower placement at low percent, drops double gold when killed.",
+        "The first one came around the bend exactly the way I would have come around the bend. Same stride. Same little hitch at the third step that I'd never noticed I had until it was walking back at me. Behind it: more, all of them mine.\n" +
+        "\n" +
+        "The Dealer had pulled my Siphon, which I might have argued if there'd been anyone to argue to. Theris was the last man who would've shouted at me about that.",
       objectives: {
         star2: 'Win the mission.',
         star3: 'Won + ≥3 Mirror Walkers killed.',
