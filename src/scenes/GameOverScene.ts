@@ -54,6 +54,10 @@ export interface MissionResultSummary {
   /** Idx of the next mission to play, or null if this was the last
    *  (or the run was a loss — losing doesn't unlock the next one). */
   nextMissionIdx: number | null;
+  /** Greenward M10 only — which Nave path resolved. GameOverScreen
+   *  reads this to render the corresponding ending tableau + outro.
+   *  Undefined on non-M10 missions. */
+  naveResolvedMode?: 'ceremony' | 'mercy' | 'siege' | null;
 }
 
 /** One row on the Circle Co-op end screen: identity + what they did

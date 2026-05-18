@@ -4262,6 +4262,11 @@ export class GameScene extends Phaser.Scene {
         // OR the player lost — losing doesn't unlock the next one).
         nextMissionIdx: (won && campaign && this.missionContext.missionIdx + 1 < campaign.missions.length)
           ? this.missionContext.missionIdx + 1 : null,
+        // Greenward M10 only — copy through from custom so GameOverScreen
+        // doesn't have to dig through the bag. The dynamic-Greenward
+        // fields come via the spread above + aren't statically known
+        // to TS, so we cast through the bag at this single readsite.
+        naveResolvedMode: ((missionResult.custom as { naveResolvedMode?: 'ceremony' | 'mercy' | 'siege' | null }).naveResolvedMode) ?? null,
       };
       void active; // suppress unused
     }
