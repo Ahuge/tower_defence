@@ -142,6 +142,16 @@ const ARCHETYPES: Record<string, MissionArchetype> = {
     baseMode: 'standard',
     defaults: { waveCount: 999, difficulty: 'hard' },
   },
+  /** Greenward M10 finale — three setpieces (Courtyard / Nave / Throne).
+   *  GreenwardFinaleController drives the state machine; the Nave's
+   *  mode is decided at runtime from campaign mode-lean + Reserves. */
+  final_greenward: {
+    id: 'final_greenward',
+    label: 'The Sun-Cathedral',
+    blurb: 'Three setpieces. One choice. The forest decides what it becomes.',
+    baseMode: 'standard',
+    defaults: { waveCount: 999, difficulty: 'hard' },
+  },
 };
 
 /** Forward-compat placeholders — registered so the `MissionArchetypeId`

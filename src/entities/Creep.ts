@@ -147,6 +147,15 @@ export class Creep {
    *  going through the chain of Phaser graphics Proxy traps. Never
    *  set in the real game; always set in HeadlessScene. */
   private _isHeadless: boolean = false;
+  /** Auto-incrementing instance id. Stable across the creep's
+   *  lifetime; used by per-creep registries that can't carry the
+   *  Creep instance directly (e.g. MercyWatcherTracker binds by
+   *  numeric id so the controller stays Phaser-free in tests).
+   *  Reset is unnecessary — overflow at 2^53 is functionally
+   *  impossible within a single match. */
+  static _nextId: number = 1;
+  readonly id: number = Creep._nextId++;
+
   /** Sub-1-hp damage accumulator. `Math.round`ing every individual hit
    *  used to floor anything below 0.5 hp to 0, which silently zeroed
    *  out tick-based traits (Firewall beam, burn DoT, poison) on high-

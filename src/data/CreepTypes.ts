@@ -589,6 +589,204 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+  // ─── Campaign #3 — The Greenward (Inheritors) ──────────────────
+  // The Inheritors are what moved into the empty thrones after the
+  // southern kingdoms fell. Recurring across all 10 Greenward
+  // missions. Boss variants (Knight / Herald / Child / etc.) and
+  // named Watchers (Old Woman / Cethric / Stone Bride / Heron) land
+  // in their mission commits; the entries below are the common
+  // wave-fodder variants used across multiple missions.
+  //
+  // Visual palette: pale/grey-faded, gold accents (faded kingdom
+  // livery). Distinguishes them from typical creep colours.
+
+  inheritor_road_walker: {
+    id: 'inheritor_road_walker',
+    name: 'Road-Walker',
+    description: 'A ragged figure on the road. Slow and patient. The most common Inheritor.',
+    hpMultiplier: 1, speedMultiplier: 0.9, armor: 'medium',
+    color: 0xa8a094, size: 1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty: defaultDifficulty,
+  },
+
+  inheritor_den_walker: {
+    id: 'inheritor_den_walker',
+    name: 'Den-Walker',
+    description: 'Lurker who has made a den in a ruin. Slightly tougher than a Road-Walker.',
+    hpMultiplier: 1.4, speedMultiplier: 0.8, armor: 'medium',
+    color: 0x7a705a, size: 1.1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty: defaultDifficulty,
+  },
+
+  inheritor_messenger: {
+    id: 'inheritor_messenger',
+    name: 'Messenger',
+    description: 'Faster, fragile. They bring nothing and take nothing.',
+    hpMultiplier: 0.6, speedMultiplier: 1.6, armor: 'light',
+    color: 0xc8b888, size: 0.85, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.8,
+        speedMult: hints.speed * 1.1,
+        countMult: hints.count,
+        goldMult: hints.goldMult,
+        extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_river_crawler: {
+    id: 'inheritor_river_crawler',
+    name: 'River-Crawler',
+    description: 'Water-borne Inheritor. Only appears where rivers run salt.',
+    hpMultiplier: 1.2, speedMultiplier: 1.1, armor: 'light',
+    color: 0x88a098, size: 0.95, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty: defaultDifficulty,
+  },
+
+  inheritor_civilian: {
+    id: 'inheritor_civilian',
+    name: 'Civilian',
+    description: 'Non-Inheritor friendly — a townsperson the grove was promised. Must not be killed.',
+    hpMultiplier: 0.4, speedMultiplier: 1, armor: 'light',
+    color: 0xddccaa, size: 0.9, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    // Civilians give NO gold and don't apply difficulty scaling —
+    // they're a constraint, not a reward target.
+    applyDifficulty(hints) {
+      return {
+        hpMult: 1,
+        speedMult: 1,
+        countMult: hints.count,
+        goldMult: 0,
+        extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_wedding_stone: {
+    id: 'inheritor_wedding_stone',
+    name: 'Wedding-Stone Walker',
+    description: 'A wedding party turned to stone. Slow, heavy, mossed. The bride is among them.',
+    hpMultiplier: 1.6, speedMultiplier: 0.65, armor: 'heavy',
+    color: 0xa8a0a0, size: 1.1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 1.1, // stone holds heavily
+        speedMult: hints.speed * 0.95,
+        countMult: hints.count,
+        goldMult: hints.goldMult,
+        extraTraits: [],
+      };
+    },
+  },
+
+  // ─── Greenward named Watchers + bosses ─────────────────────────
+  // Each named Watcher pins its HP/speed regardless of difficulty —
+  // the Mercy mechanic is "don't touch her at any difficulty," so
+  // scaling her HP makes no sense. Gold mult is pinned to 0 for the
+  // same reason civilians don't pay out: she isn't a target.
+
+  inheritor_old_woman: {
+    id: 'inheritor_old_woman',
+    name: 'The Old Woman of Eadwin',
+    description: 'The innkeeper at the hearth. She does not look up.',
+    hpMultiplier: 0.8, speedMultiplier: 0, armor: 'light',
+    color: 0xddccaa, size: 1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      return {
+        hpMult: 1, speedMult: 1, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_cethric: {
+    id: 'inheritor_cethric',
+    name: 'Cethric the Crow-Priest',
+    description: 'A hooded crow-priest, cross-legged at the marsh crossroads. He does not turn his head.',
+    hpMultiplier: 1, speedMultiplier: 0, armor: 'light',
+    color: 0x4a4a52, size: 1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      return {
+        hpMult: 1, speedMult: 1, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_stone_bride: {
+    id: 'inheritor_stone_bride',
+    name: 'The Stone Bride',
+    description: 'A bride turned to stone forty winters ago; her veil is moss now. Walks slower than the wedding-stone livery — the visual cue Marra reads to spare her.',
+    hpMultiplier: 1.2, speedMultiplier: 0.55, armor: 'heavy',
+    color: 0xc0bcb0, size: 1.1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      return {
+        hpMult: 1.2, speedMult: 0.55, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_child: {
+    id: 'inheritor_child',
+    name: 'The Child',
+    description: 'A small Inheritor with a banner of withered flowers. Walks with the host but never fights. Touching her fails the Mercy condition.',
+    hpMultiplier: 2, speedMultiplier: 0.5, armor: 'medium',
+    color: 0xb89878, size: 0.75, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      // High HP, slow speed pinned across difficulties — the AoE-
+      // positioning puzzle is the same on every setting. Player
+      // needs survivability margin since the Child threads through
+      // boss waves where splash placement matters.
+      return {
+        hpMult: 2, speedMult: 0.5, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_knight: {
+    id: 'inheritor_knight',
+    name: 'The Knight',
+    description: 'A Knight in heavy armor who never blooded a sword. M8 boss-rush — high HP, heavy armor, slow.',
+    hpMultiplier: 8, speedMultiplier: 0.8, armor: 'heavy',
+    color: 0x6a6a78, size: 1.4, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 8,
+        speedMult: hints.speed * 0.8,
+        countMult: 1, // never multi-spawned; boss
+        goldMult: hints.goldMult * 5, // boss bounty
+        extraTraits: [],
+      };
+    },
+  },
+
+  inheritor_herald: {
+    id: 'inheritor_herald',
+    name: 'The Herald',
+    description: 'A banner-bearer who never spoke an announcement. M8 boss-rush — medium HP, faster than the Knight, banner billowing silent.',
+    hpMultiplier: 5, speedMultiplier: 1, armor: 'medium',
+    color: 0x886878, size: 1.3, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 5,
+        speedMult: hints.speed,
+        countMult: 1,
+        goldMult: hints.goldMult * 4,
+        extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {

@@ -30,6 +30,9 @@ import './systems/traits/handlers/ChannelCasterHandler';
 import './systems/sabotage/SabotageTraits';
 import './systems/finale/FinaleTraits';
 
+// Register campaign lobby panels (side-effect imports)
+import './ui/campaign/GreenwardStatePanel';
+
 // Eager-load the live-capture module so window.__learningCapture is
 // available from the menu (before any match starts). Module is
 // otherwise no-op until capture is enabled via URL param or
