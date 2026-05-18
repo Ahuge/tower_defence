@@ -194,8 +194,13 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     snake_eyes_proper: {
       name: 'Snake Eyes',
+      // Writer-reviewed via 3-versions blind-compare. Winner:
+      // Draft B (Two hundred coin in my pocket) with the banner
+      // line tightened per the subagent's edit.
       story:
-        "The Dealer's enforcer arrives. The Collector — a creep that lobs damage tokens at your towers (not at your lives). Defeat the Collector to cancel next mission's interest.",
+        "Two hundred coin in my pocket. That was generous, given the kind of week I'd had, and stingy, given the kind of night I was about to have.\n" +
+        "\n" +
+        "The Collector came down the road on foot. He didn't speak. He didn't have to — the Dealer had said for him. A tower fell silent on my left flank like a man remembering something embarrassing. I sold nothing. I had nothing to sell.",
       objectives: {
         star2: 'The Collector defeated.',
         star3: 'The Collector defeated + Debt ≤ Debt at mission start.',
@@ -204,8 +209,15 @@ export const SNAKE_EYES_TEXTS: CampaignTexts = {
 
     burning_pactbook: {
       name: 'Burning the Pactbook',
+      // Writer-reviewed via 3-versions blind-compare. Winner:
+      // Draft A (the role reversal opening) with "eight missions"
+      // replacing "sixty-some missions" for campaign-continuity.
       story:
-        "Ardax fronts his own ledger. He sends Gambler-tokens, Spike-tokens, Siphon-tokens, Rift-tokens against a defended grid. The defender? The Counterfactual. The mirror is on the other side.",
+        "Tonight I was the road. Tonight I was the hunters. Tonight I was the bell on the horse a hill back.\n" +
+        "\n" +
+        "I'd been on the other end of the table for eight missions, and the Dealer had finally given me a hand to deal. The Counterfactual was setting his towers up on the far side of the grid the way a man arranges a chessboard he expects to win.\n" +
+        "\n" +
+        "I sent a wave of Gambler-tokens first. Cheap. Profane. Mine. We'd see how he liked them.",
       objectives: {
         star2: 'Win the mission.',
         star3: 'Won + ≥3 distinct creep-token types sent.',
