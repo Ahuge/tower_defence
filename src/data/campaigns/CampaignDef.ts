@@ -310,4 +310,7 @@ export type MissionArchetypeId =
   // M10 finale — siege the archmage spire with summoned hero.
   | 'final_arcane'
   // Mech M10 finale — sabotage Voss's foundry with a Raider squad.
-  | 'final_sabotage';
+  | 'final_sabotage'
+  // Greenward M10 finale — Caer Lythen three-setpiece (Courtyard /
+  // Nave / Throne). Nave choice gated by campaign mode-lean.
+  | 'final_greenward';

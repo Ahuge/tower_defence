@@ -21,7 +21,20 @@ export type MapId = 'plains' | 'crossroads' | 'fortress' | 'serpentine' | 'islan
   // Raiders. 4 generators each guard a CPU tower cluster on the left.
   // Throne (Voss) at the far west, invulnerable until generators are
   // down. Win = throne destroyed.
-  | 'mech_throne_finale';
+  | 'mech_throne_finale'
+  // Campaign #3 — The Greenward (Nature). Ten bespoke maps; each
+  // mission's per-mission commit replaces the skeleton stub with the
+  // real JSON. See docs/greenward-campaign-plan.md.
+  | 'greenward_boundary'      // M1 — wayshrine at the Wildwood edge
+  | 'greenward_meadow'        // M2 — salt-tinted meadow with cairns
+  | 'greenward_eadwin'        // M3 — inn-village, Heron intro
+  | 'greenward_crows'         // M4 — marsh crossroads, Cethric
+  | 'greenward_river'         // M5 — drying river, speedrun
+  | 'greenward_tarrenford'    // M6 — village with chapel + well + wheat
+  | 'greenward_weddingstone'  // M7 — frozen wedding pavilion
+  | 'greenward_court'         // M8 — courtyard with three doors
+  | 'greenward_lastgarden'    // M9 — Inheritor watchtower, attacker mode
+  | 'greenward_cathedral';    // M10 — Caer Lythen three-setpiece
 
 /** A multi-tile structure rendered as a single large sprite */
 export interface LargeStructurePlacement {
@@ -171,6 +184,19 @@ function circle(cx: number, cy: number, radius: number): Pos[] {
   }
   return ps;
 }
+
+// Reusable template used by Greenward map stubs at the bottom of
+// MAPS. Cloned with `...MAPS_PLAINS_TEMPLATE` so per-mission commits
+// (10-19 in the Greenward execution plan) can replace each entry
+// independently without touching this template.
+const MAPS_PLAINS_TEMPLATE: Omit<MapDefinition, 'id' | 'name'> = {
+  description: 'Greenward — stub map. Replaced by per-mission commit.',
+  theme: 'forest',
+  entries: [{ col: 0, row: MID_ROW }],
+  exits: [{ col: GRID_COLS - 1, row: MID_ROW }],
+  blocked: [],
+  noBuild: [],
+};
 
 export const MAPS: Record<MapId, MapDefinition> = {
   plains: {
@@ -867,6 +893,21 @@ export const MAPS: Record<MapId, MapDefinition> = {
       workshop: { col: 32, row: midRow },
     };
   })(),
+
+  // ── Campaign #3 — Greenward map stubs ──────────────────────────
+  // Each one is a `plains` reskin for now. Per-mission commits (10-19
+  // in the Greenward execution plan) replace these with the real maps
+  // authored via the editor. See docs/greenward-campaign-plan.md.
+  greenward_boundary:     { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_boundary',     name: 'Boundary Stones' },
+  greenward_meadow:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_meadow',       name: 'Salt Meadow' },
+  greenward_eadwin:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_eadwin',       name: 'Eadwin' },
+  greenward_crows:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_crows',        name: 'Road of Crows' },
+  greenward_river:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_river',        name: 'Dry River' },
+  greenward_tarrenford:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_tarrenford',   name: 'Tarrenford' },
+  greenward_weddingstone: { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_weddingstone', name: 'Wedding-Stone' },
+  greenward_court:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_court',        name: 'Stillborn Court' },
+  greenward_lastgarden:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_lastgarden',   name: 'Last Garden' },
+  greenward_cathedral:    { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_cathedral',    name: 'Caer Lythen' },
 };
 
 // (Legacy-shaped IIFE bodies removed; data lives in

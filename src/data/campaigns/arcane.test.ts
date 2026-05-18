@@ -73,15 +73,16 @@ describe('Campaign registry', () => {
     expect(getCampaign('arcane')).toBe(ARCANE_CAMPAIGN);
   });
 
-  it('Nature / Void return null until their content ships', () => {
-    expect(getCampaign('nature')).toBeNull();
+  it('Void returns null until its content ships', () => {
+    // Nature shipped in Campaign #3 (The Greenward).
     expect(getCampaign('void')).toBeNull();
   });
 
-  it('listCampaigns includes arcane and mechanical', () => {
+  it('listCampaigns includes arcane, mechanical, and nature', () => {
     const ids = listCampaigns().map(c => c.factionId);
     expect(ids).toContain('arcane');
     expect(ids).toContain('mechanical');
+    expect(ids).toContain('nature');
   });
 });
 

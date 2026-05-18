@@ -10,10 +10,12 @@ import type { CampaignDef } from './CampaignDef';
 import type { FactionId } from '../Factions';
 import { ARCANE_CAMPAIGN } from './arcane';
 import { MECHANICAL_CAMPAIGN } from './mechanical';
+import { GREENWARD_CAMPAIGN } from './greenward';
 
 const CAMPAIGNS: Partial<Record<FactionId, CampaignDef>> = {
   arcane: ARCANE_CAMPAIGN,
   mechanical: MECHANICAL_CAMPAIGN,
+  nature: GREENWARD_CAMPAIGN,
 };
 
 /** Returns the campaign def for a faction, or null if not yet shipped. */
