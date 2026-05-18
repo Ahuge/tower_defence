@@ -130,3 +130,70 @@ describe('SnakeEyesEndingPanel — animation timing', () => {
     expect(bodyShown(container)).toBe(true);
   });
 });
+
+describe('SnakeEyesEndingPanel — skip on keypress', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  function flipped(container: Element, idx: 0 | 1 | 2): boolean {
+    return container.querySelector(`[data-testid="flip-card-${idx}"]`)
+      ?.getAttribute('data-flipped') === 'true';
+  }
+  function bodyShown(container: Element): boolean {
+    return container.querySelector('[data-testid="snake-eyes-epilogue-body"]')
+      ?.getAttribute('data-shown') === 'true';
+  }
+
+  it('Enter immediately reveals all cards + body', () => {
+    const { container } = render(<SnakeEyesEndingPanel />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); });
+    expect(flipped(container, 0)).toBe(true);
+    expect(flipped(container, 1)).toBe(true);
+    expect(flipped(container, 2)).toBe(true);
+    expect(bodyShown(container)).toBe(true);
+  });
+
+  it('Space skips', () => {
+    const { container } = render(<SnakeEyesEndingPanel />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' })); });
+    expect(bodyShown(container)).toBe(true);
+  });
+
+  it('Escape skips', () => {
+    const { container } = render(<SnakeEyesEndingPanel />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); });
+    expect(bodyShown(container)).toBe(true);
+  });
+
+  it('Arrow keys skip', () => {
+    const { container } = render(<SnakeEyesEndingPanel />);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' })); });
+    expect(bodyShown(container)).toBe(true);
+  });
+
+  it('keys are ignored once already revealed', () => {
+    const { container } = render(<SnakeEyesEndingPanel />);
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(bodyShown(container)).toBe(true);
+    // Subsequent Enter should be a no-op (already revealed, doesn't crash).
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); });
+    expect(bodyShown(container)).toBe(true);
+  });
+
+  it("press-any-key hint visible during reveal, hidden after", () => {
+    const { container } = render(<SnakeEyesEndingPanel />);
+    expect(container.textContent).toContain('press any key to reveal');
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(container.textContent).not.toContain('press any key to reveal');
+  });
+});
+
+describe('SnakeEyesEndingPanel — typography', () => {
+  it('epilogue body uses a serif font stack', () => {
+    const { container } = render(<SnakeEyesEndingPanel />);
+    const body = container.querySelector('[data-testid="snake-eyes-epilogue-body"]') as HTMLElement;
+    const ff = body?.style?.fontFamily ?? '';
+    // Either Georgia or one of the serif fallbacks should be present.
+    expect(ff.toLowerCase()).toContain('serif');
+  });
+});
