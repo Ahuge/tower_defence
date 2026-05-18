@@ -1,11 +1,34 @@
 /**
  * Tests for GreenwardSpawns — verifies each named character's
  * spawn record is registered to the right mission with the right
- * cell + ruin binding.
+ * cell + ruin binding. Discriminated-union shape lets the compiler
+ * separate watcher-at-cell vs watcher-in-wave variants; tests use
+ * narrowing assertions on `kind` before touching cell-only fields.
  */
 import { describe, it, expect } from 'vitest';
-import { NAMED_SPAWNS, namedSpawnsFor, BOSS_KILL_CUSTOM_FLAGS } from './GreenwardSpawns';
+import {
+  NAMED_SPAWNS,
+  namedSpawnsFor,
+  BOSS_KILL_CUSTOM_FLAGS,
+  type NamedSpawn,
+  type WatcherAtCellSpawn,
+  type WatcherInWaveSpawn,
+} from './GreenwardSpawns';
 import { getCreepType } from '../../data/CreepTypes';
+
+/** Test helper: narrow a NamedSpawn to WatcherAtCellSpawn or fail
+ *  the test with a clear message. Keeps individual cases free of
+ *  TS-style type guards. */
+function asAtCell(s: NamedSpawn | undefined): WatcherAtCellSpawn {
+  expect(s).toBeTruthy();
+  expect(s!.kind).toBe('watcher_at_cell');
+  return s as WatcherAtCellSpawn;
+}
+function asInWave(s: NamedSpawn | undefined): WatcherInWaveSpawn {
+  expect(s).toBeTruthy();
+  expect(s!.kind).toBe('watcher_in_wave');
+  return s as WatcherInWaveSpawn;
+}
 
 describe('GreenwardSpawns — registry shape', () => {
   it('namedSpawnsFor returns empty array for missions without named spawns', () => {
@@ -20,11 +43,36 @@ describe('GreenwardSpawns — registry shape', () => {
     }
   });
 
-  it('Watcher entries (ruinId set) have a stable ruinId convention', () => {
+  it('every spawn has a non-empty ruinId', () => {
     for (const spawns of Object.values(NAMED_SPAWNS)) {
       for (const s of spawns) {
-        if (s.ruinId !== null) {
-          expect(s.ruinId.length).toBeGreaterThan(0);
+        expect(s.ruinId.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('every spawn declares a known kind', () => {
+    const known = new Set(['watcher_at_cell', 'watcher_in_wave']);
+    for (const spawns of Object.values(NAMED_SPAWNS)) {
+      for (const s of spawns) {
+        expect(known.has(s.kind)).toBe(true);
+      }
+    }
+  });
+
+  it('watcher_at_cell entries carry concrete cell coords', () => {
+    // Stationarity itself comes from the spawn pipeline (single-point
+    // path in spawnGreenwardNamed), not the CreepType's speedMultiplier
+    // — e.g. the Child has speedMultiplier=0.5 but still stays put
+    // because her path is one waypoint long. So we only require the
+    // record to carry valid cell coords; rendering stays at that cell.
+    for (const spawns of Object.values(NAMED_SPAWNS)) {
+      for (const s of spawns) {
+        if (s.kind === 'watcher_at_cell') {
+          expect(Number.isFinite(s.col)).toBe(true);
+          expect(Number.isFinite(s.row)).toBe(true);
+          expect(s.col).toBeGreaterThanOrEqual(0);
+          expect(s.row).toBeGreaterThanOrEqual(0);
         }
       }
     }
@@ -32,35 +80,35 @@ describe('GreenwardSpawns — registry shape', () => {
 });
 
 describe('GreenwardSpawns — M3 Old Woman of Eadwin', () => {
-  it('binds to inn_hearth at col 18, row 10', () => {
+  it('is a watcher_at_cell bound to inn_hearth at col 18, row 10', () => {
     const spawns = namedSpawnsFor(2); // M3 = idx 2
-    const oldWoman = spawns.find(s => s.typeId === 'inheritor_old_woman');
-    expect(oldWoman).toBeTruthy();
-    expect(oldWoman!.col).toBe(18);
-    expect(oldWoman!.row).toBe(10);
-    expect(oldWoman!.ruinId).toBe('inn_hearth');
+    const oldWoman = asAtCell(spawns.find(s => s.typeId === 'inheritor_old_woman'));
+    expect(oldWoman.col).toBe(18);
+    expect(oldWoman.row).toBe(10);
+    expect(oldWoman.ruinId).toBe('inn_hearth');
   });
 });
 
 describe('GreenwardSpawns — M4 Cethric the Crow-Priest', () => {
-  it('binds to the crossroads ruin at col 18, row 13', () => {
+  it('is a watcher_at_cell bound to crossroads at col 18, row 13', () => {
     const spawns = namedSpawnsFor(3); // M4 = idx 3
-    const cethric = spawns.find(s => s.typeId === 'inheritor_cethric');
-    expect(cethric).toBeTruthy();
-    expect(cethric!.col).toBe(18);
-    expect(cethric!.row).toBe(13);
-    expect(cethric!.ruinId).toBe('crossroads');
+    const cethric = asAtCell(spawns.find(s => s.typeId === 'inheritor_cethric'));
+    expect(cethric.col).toBe(18);
+    expect(cethric.row).toBe(13);
+    expect(cethric.ruinId).toBe('crossroads');
   });
 });
 
 describe('GreenwardSpawns — M7 Stone Bride', () => {
-  it('binds to the altar ruin at col 18, row 10', () => {
+  it('is a watcher_in_wave bound to the altar (no fixed cell — mingled in wave)', () => {
     const spawns = namedSpawnsFor(6); // M7 = idx 6
-    const bride = spawns.find(s => s.typeId === 'inheritor_stone_bride');
-    expect(bride).toBeTruthy();
-    expect(bride!.col).toBe(18);
-    expect(bride!.row).toBe(10);
-    expect(bride!.ruinId).toBe('altar');
+    const bride = asInWave(spawns.find(s => s.typeId === 'inheritor_stone_bride'));
+    expect(bride.ruinId).toBe('altar');
+    // Compile-time: `bride` has no col/row. Runtime: the controller
+    // resolves the binding by scanning live creeps each tick, so no
+    // up-front cell coords are required (or present).
+    expect((bride as unknown as Record<string, unknown>).col).toBeUndefined();
+    expect((bride as unknown as Record<string, unknown>).row).toBeUndefined();
   });
 
   it('Stone Bride walks slower than the wedding-stone livery (visual cue)', () => {
@@ -111,13 +159,12 @@ describe('GreenwardSpawns — M8 Knight + Herald bosses', () => {
 });
 
 describe('GreenwardSpawns — M8 The Child', () => {
-  it('binds to the_child ruin at col 22, row 13', () => {
+  it('is a watcher_at_cell bound to the_child ruin at col 22, row 13', () => {
     const spawns = namedSpawnsFor(7); // M8 = idx 7
-    const child = spawns.find(s => s.typeId === 'inheritor_child');
-    expect(child).toBeTruthy();
-    expect(child!.col).toBe(22);
-    expect(child!.row).toBe(13);
-    expect(child!.ruinId).toBe('the_child');
+    const child = asAtCell(spawns.find(s => s.typeId === 'inheritor_child'));
+    expect(child.col).toBe(22);
+    expect(child.row).toBe(13);
+    expect(child.ruinId).toBe('the_child');
   });
 
   it('Child has elevated HP for AoE-positioning survivability', () => {

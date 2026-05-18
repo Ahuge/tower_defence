@@ -1,72 +1,110 @@
 /**
  * GreenwardSpawns — per-mission named-character spawn declarations.
  *
- * Each named Watcher / boss in the Greenward campaign is declared
- * here as a `NamedSpawn` record. GameScene reads the list for the
- * active mission at scene init, instantiates the corresponding
- * Creep(s) at the recorded cell(s), and (for Watcher entries) calls
- * `MercyWatcherTracker.attach` with the resulting creep id +
- * ruinId.
+ * Each named Watcher in the Greenward campaign is declared here as a
+ * `NamedSpawn` record. Two spawn-kinds cover the variants:
  *
- * This module is the data layer; the actual Creep instantiation
- * lives in GameScene's mission-init hook for Greenward. Per-mission
- * commits across this PR add their named-character entries to the
- * mission-keyed registry below.
+ *   - **WatcherAtCellSpawn** — the named creep is placed at a fixed
+ *     cell at scene init. Doesn't walk (its CreepType has
+ *     `speedMultiplier: 0`). The bind to MercyWatcherTracker fires
+ *     immediately at spawn time.
+ *     Used by: Old Woman (M3), Cethric (M4), Child (M8).
+ *
+ *   - **WatcherInWaveSpawn** — the named creep arrives via the
+ *     mission's normal wave-script. This record registers a pending
+ *     binding; GreenwardMissionController.tick scans newly-spawned
+ *     creeps each frame, and the first one with the matching typeId
+ *     gets bound to the Watcher ruin. Lets a named creep mingle
+ *     into a livery wave (e.g. Stone Bride hidden among
+ *     wedding-stone livery in M7).
+ *
+ * Architecture is future-proof: a new campaign declares its own
+ * NamedSpawn entries against the same mission-idx-keyed registry,
+ * adds its creep types, and the GameScene dispatch handles them
+ * uniformly. The discriminated `kind` field lets the compiler
+ * enforce the spawn-pipeline contract per variant.
+ *
+ * Bosses (Knight / Herald) don't appear here — they arrive via the
+ * normal wave-script and use BOSS_KILL_CUSTOM_FLAGS for the
+ * death-side flag flip. Distinct concerns kept on distinct registries.
  */
 
-export interface NamedSpawn {
-  /** CREEP_TYPES id — `inheritor_old_woman`, `inheritor_cethric`, etc. */
+/** Stationary Watcher placed at a fixed cell at scene init. */
+export interface WatcherAtCellSpawn {
+  kind: 'watcher_at_cell';
+  /** Creep typeId. Should have `speedMultiplier: 0` so the spawned
+   *  creep stays at its cell after instantiation. */
   typeId: string;
-  /** Spawn cell. */
+  /** Cell where the creep is placed. */
   col: number;
   row: number;
-  /** When set, GameScene's spawn hook calls
-   *  `MercyWatcherTracker.attach({ creepId, col, row, ruinId })`
-   *  after instantiation. Null = boss / non-Watcher (no binding). */
-  ruinId: string | null;
+  /** ConsecrationManager Mercy ruin this Watcher binds to. */
+  ruinId: string;
 }
 
+/** Watcher who arrives via the mission's wave-script. The first creep
+ *  observed in CreepManager.creeps with the matching typeId gets
+ *  bound. Lets a named creep mingle into a wave of livery walkers. */
+export interface WatcherInWaveSpawn {
+  kind: 'watcher_in_wave';
+  /** Creep typeId. The mission's wave-script (in MissionOverrides)
+   *  must include this typeId for the binding to ever fire. */
+  typeId: string;
+  /** ConsecrationManager Mercy ruin this Watcher binds to. */
+  ruinId: string;
+}
+
+export type NamedSpawn = WatcherAtCellSpawn | WatcherInWaveSpawn;
+
 /** Mission-idx → ordered list of named spawns. Empty for missions
- *  without named characters. Per-mission commits in this PR populate
- *  each entry. */
+ *  without named characters. */
 export const NAMED_SPAWNS: Record<number, readonly NamedSpawn[]> = {
-  // M3 — The Circle at Eadwin
+  // M3 — The Circle at Eadwin. Old Woman sits at the hearth.
   2: [
-    { typeId: 'inheritor_old_woman', col: 18, row: 10, ruinId: 'inn_hearth' },
+    { kind: 'watcher_at_cell', typeId: 'inheritor_old_woman', col: 18, row: 10, ruinId: 'inn_hearth' },
   ],
-  // M4 — The Road of Crows
+  // M4 — The Road of Crows. Cethric at the crossroads.
   3: [
-    { typeId: 'inheritor_cethric', col: 18, row: 13, ruinId: 'crossroads' },
+    { kind: 'watcher_at_cell', typeId: 'inheritor_cethric', col: 18, row: 13, ruinId: 'crossroads' },
   ],
-  // M7 — Wedding-Stone. The Stone Bride is the altar's Watcher;
-  // she mingles into the wedding-stone livery so Marra cannot tell
-  // from above which is the bride. Slow-walk + visual cue is the
-  // identifier the writer specified.
+  // M7 — Wedding-Stone. The Stone Bride is wave-mingled — the
+  // mission's wave-script must include `inheritor_stone_bride`
+  // alongside wedding-stone livery for the binding to fire on her
+  // spawn. The first stone-bride creep observed binds to the altar
+  // ruin. Visual cue (slow-walk + moss-veil) distinguishes her
+  // mid-wave for the player.
   6: [
-    { typeId: 'inheritor_stone_bride', col: 18, row: 10, ruinId: 'altar' },
+    { kind: 'watcher_in_wave', typeId: 'inheritor_stone_bride', ruinId: 'altar' },
   ],
-  // M8 — The Stillborn Court. The Child Watcher walks behind the
-  // boss host without ever fighting. Knight + Herald (commit 5)
-  // are the actual boss creeps.
+  // M8 — The Stillborn Court. The Child walks behind the host.
+  // Knight + Herald spawn via the boss-rush wave-script (no named
+  // spawn entry — see BOSS_KILL_CUSTOM_FLAGS below).
   7: [
-    { typeId: 'inheritor_child', col: 22, row: 13, ruinId: 'the_child' },
+    { kind: 'watcher_at_cell', typeId: 'inheritor_child', col: 22, row: 13, ruinId: 'the_child' },
   ],
 };
 
 /** Convenience accessor. Returns an empty array for missions with no
- *  named spawns rather than null, so callers can iterate safely. */
+ *  named spawns so callers can iterate safely. */
 export function namedSpawnsFor(missionIdx: number): readonly NamedSpawn[] {
   return NAMED_SPAWNS[missionIdx] ?? [];
 }
 
+/** GreenwardMissionCustom flag a boss-kill flips. Used as the value
+ *  type for BOSS_KILL_CUSTOM_FLAGS so the call site at GameScene
+ *  doesn't need a cast. Extend this union when adding new boss
+ *  types — the compiler will flag missing entries downstream. */
+export type BossKillFlag = 'knightKilled' | 'heraldKilled';
+
 /** Boss-kill listeners — maps creep typeIds whose death flips a
- *  GreenwardMissionCustom flag. GameScene's creep-killed event
- *  subscriber consults this when the active mission is Greenward.
+ *  GreenwardMissionCustom boolean flag. GameScene's per-frame
+ *  scan of CreepManager.justDiedCreeps consults this when the
+ *  active mission is Greenward.
  *
- *  Distinct from `NAMED_SPAWNS` because bosses arrive via the normal
- *  wave-script (boss_rush archetype) rather than scene-init spawns —
- *  they don't need cell coords, just a death-side trigger. */
-export const BOSS_KILL_CUSTOM_FLAGS: Record<string, string> = {
+ *  Distinct from NAMED_SPAWNS because bosses arrive via the normal
+ *  wave-script (boss_rush archetype) — they don't need cell coords
+ *  or pre-spawn binding, just a death-side trigger. */
+export const BOSS_KILL_CUSTOM_FLAGS: Readonly<Record<string, BossKillFlag>> = {
   inheritor_knight: 'knightKilled',
   inheritor_herald: 'heraldKilled',
 };
