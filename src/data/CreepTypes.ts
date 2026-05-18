@@ -685,6 +685,26 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  // ─── Greenward named Watchers + bosses ─────────────────────────
+  // Each named Watcher pins its HP/speed regardless of difficulty —
+  // the Mercy mechanic is "don't touch her at any difficulty," so
+  // scaling her HP makes no sense. Gold mult is pinned to 0 for the
+  // same reason civilians don't pay out: she isn't a target.
+
+  inheritor_old_woman: {
+    id: 'inheritor_old_woman',
+    name: 'The Old Woman of Eadwin',
+    description: 'The innkeeper at the hearth. She does not look up.',
+    hpMultiplier: 0.8, speedMultiplier: 0, armor: 'light',
+    color: 0xddccaa, size: 1, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty() {
+      return {
+        hpMult: 1, speedMult: 1, countMult: 1, goldMult: 0, extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {
