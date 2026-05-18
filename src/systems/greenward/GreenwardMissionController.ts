@@ -24,6 +24,19 @@
 import { ConsecrationManager, type RuinSpec, type ConsecrationTower } from './ConsecrationManager';
 import { MercyWatcherTracker } from './MercyWatcher';
 import { recordMission } from './ModeLeanTracker';
+import type { WatcherInWaveSpawn } from './GreenwardSpawns';
+
+/** Minimal creep contract for tick-side scanning. Real Creep carries
+ *  more fields but the controller reads only id / typeId / hp / cell.
+ *  Defined here (not imported from Creep) so the controller stays
+ *  Phaser-free for unit tests. */
+export interface NamedCreepRef {
+  id: number;
+  creepTypeId: string;
+  hp: number;
+  col: number;
+  row: number;
+}
 
 export interface GreenwardMissionRules {
   ruins: RuinSpec[];
@@ -103,6 +116,11 @@ export class GreenwardMissionController {
    *  M3 chant timer, M9 distinct-creep-units). Merged into the custom
    *  output at game-end. */
   private readonly extra: Partial<GreenwardMissionCustom> = {};
+  /** Pending WatcherInWaveSpawn entries — the wave-script will spawn
+   *  a creep of each typeId; the controller's tick scans live creeps
+   *  and binds the first match to MercyWatcherTracker, then removes
+   *  the entry from this list. */
+  private pendingWatcherBindings: WatcherInWaveSpawn[] = [];
 
   constructor(rules: GreenwardMissionRules, reservesAtStart: number) {
     this.consecration = new ConsecrationManager(rules.ruins);
@@ -110,10 +128,61 @@ export class GreenwardMissionController {
     this.reservesAtStart = reservesAtStart;
   }
 
-  /** Per-frame tick. Forwards to ConsecrationManager.update for
-   *  Ceremony progress. */
-  tick(now: number, deltaMs: number, towers: ConsecrationTower[]): void {
+  /** Register a wave-mingled Watcher binding. Stays pending until a
+   *  creep of the matching typeId appears in the per-frame tick. */
+  registerPendingWatcherBinding(spawn: WatcherInWaveSpawn): void {
+    this.pendingWatcherBindings.push(spawn);
+  }
+
+  /** Per-frame tick. Three concerns:
+   *
+   *    1. Ceremony channel progress (forwarded to ConsecrationManager).
+   *
+   *    2. Resolve pending WatcherInWave bindings — scan `creeps` for
+   *       the first one matching each pending typeId; bind + remove
+   *       from the pending list.
+   *
+   *    3. HP-change scan for bound Watchers — push the creep's
+   *       current HP to MercyWatcherTracker.notifyHpChanged so any
+   *       damage taken flips mercyWatcherTouched on the ruin.
+   *
+   *  Concerns 2 and 3 are no-ops when no watchers are bound (the
+   *  common case across the campaign — most missions have zero or
+   *  one Watcher). The per-frame cost is one creep scan with early
+   *  exits, not measurable. */
+  tick(
+    now: number,
+    deltaMs: number,
+    towers: ConsecrationTower[],
+    creeps: readonly NamedCreepRef[] = [],
+  ): void {
     this.consecration.update(now, deltaMs, towers);
+    this._resolvePendingBindings(creeps);
+    this._scanWatcherHp(creeps);
+  }
+
+  private _resolvePendingBindings(creeps: readonly NamedCreepRef[]): void {
+    if (this.pendingWatcherBindings.length === 0) return;
+    for (let i = this.pendingWatcherBindings.length - 1; i >= 0; i--) {
+      const pending = this.pendingWatcherBindings[i];
+      const match = creeps.find(c => c.creepTypeId === pending.typeId);
+      if (!match) continue;
+      this.mercyWatcher.attach(
+        { creepId: match.id, col: match.col, row: match.row, ruinId: pending.ruinId },
+        match.hp,
+      );
+      this.pendingWatcherBindings.splice(i, 1);
+    }
+  }
+
+  private _scanWatcherHp(creeps: readonly NamedCreepRef[]): void {
+    const bindings = this.mercyWatcher.getBindings();
+    if (bindings.length === 0) return;
+    for (const binding of bindings) {
+      const creep = creeps.find(c => c.id === binding.creepId);
+      if (!creep) continue;
+      this.mercyWatcher.notifyHpChanged(binding.creepId, creep.hp);
+    }
   }
 
   /** External setter — mission-specific code (e.g. M3's chant

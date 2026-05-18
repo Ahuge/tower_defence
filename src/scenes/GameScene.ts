@@ -97,6 +97,8 @@ import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import { GreenwardMissionController } from '../systems/greenward/GreenwardMissionController';
 import { GreenwardFinaleController } from '../systems/greenward/GreenwardFinaleController';
 import { getReserves, applyMissionRegen } from '../systems/greenward/WildwoodReserves';
+import { BOSS_KILL_CUSTOM_FLAGS } from '../systems/greenward/GreenwardSpawns';
+import { spawnGreenwardNamed } from '../systems/greenward/spawnGreenwardNamed';
 import type { RaiderTarget } from '../entities/Raider';
 import {
   preloadMechCampaignAssets,
@@ -1599,6 +1601,23 @@ export class GameScene extends Phaser.Scene {
     const creepOverlay = this.add.graphics();
     creepOverlay.setDepth(10);
     this.creepMgr.setOverlay(creepOverlay);
+
+    // Campaign #3 — Greenward named-character spawn dispatch.
+    // Runs AFTER CreepManager init so the spawned Watcher creeps can
+    // be pushed into the tracked list. WatcherAtCell entries spawn
+    // immediately + bind to MercyWatcherTracker; WatcherInWave entries
+    // register pending bindings on the controller for its per-frame
+    // resolution. No-op on non-Greenward missions (the controller is
+    // null + namedSpawnsFor returns []).
+    if (this._greenwardController && this.missionContext) {
+      spawnGreenwardNamed({
+        scene: this,
+        creepMgr: this.creepMgr,
+        controller: this._greenwardController,
+        missionIdx: this.missionContext.missionIdx,
+        creepFaction: this.creepFaction ?? undefined,
+      });
+    }
 
     // Wave controller
     this.waveMgr = new WaveController(this.waves, this.spawner, this.sendMgr, {
@@ -3441,9 +3460,27 @@ export class GameScene extends Phaser.Scene {
     if (this._greenwardController) {
       // Forward per-frame to ConsecrationManager (Ceremony channel
       // progression). Towers passed structurally — Tower has col/row/typeId.
-      this._greenwardController.tick(time, delta, this.towers as unknown as { col: number; row: number; typeId: string }[]);
+      // Live creeps also passed so the controller can resolve pending
+      // wave-watcher bindings + scan watcher HP for damage events.
+      this._greenwardController.tick(
+        time,
+        delta,
+        this.towers as unknown as { col: number; row: number; typeId: string }[],
+        this.creepMgr.creeps as unknown as { id: number; creepTypeId: string; hp: number; col: number; row: number }[],
+      );
       // M10 setpiece state-machine — runs on top of the mission tick.
       this._greenwardFinaleController?.tick();
+      // Boss-kill detection — scan just-died creeps for named-boss
+      // typeIds and flip the corresponding GreenwardMissionCustom
+      // flag. Per-frame scan rather than event subscription because
+      // the existing creepKilled event doesn't carry typeId.
+      // The BOSS_KILL_CUSTOM_FLAGS value is already typed as
+      // BossKillFlag (a subset of keyof GreenwardMissionCustom), so
+      // no cast is needed at the setCustom call site.
+      for (const dead of this.creepMgr.justDiedCreeps) {
+        const flag = BOSS_KILL_CUSTOM_FLAGS[dead.creepTypeId];
+        if (flag) this._greenwardController.setCustom(flag, true);
+      }
     }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,
