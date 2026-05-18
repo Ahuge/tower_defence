@@ -89,6 +89,8 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
       </div>
 
       <div
+        data-testid="snake-eyes-epilogue-body"
+        data-shown={showBody ? 'true' : 'false'}
         style={{
           fontFamily: 'system-ui, sans-serif',
           fontSize: '14px',
@@ -117,6 +119,8 @@ function FlipCard({ idx, delayMs }: { idx: number; delayMs: number }) {
 
   return (
     <div
+      data-testid={`flip-card-${idx}`}
+      data-flipped={flipped ? 'true' : 'false'}
       style={{
         width: '80px',
         height: '120px',
