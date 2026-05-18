@@ -1382,9 +1382,19 @@ export class GameScene extends Phaser.Scene {
       );
       // M10 only — also construct the three-setpiece finale state
       // machine. Detection: the mission archetype is final_greenward.
-      // The archetypeId arrives via missionContext.
+      // The archetypeId arrives via missionContext. onComplete fires
+      // when the Throne setpiece claims — emit gameWon + transition
+      // to GameOver, mirroring the Mech sabotage / Arcane finale
+      // onWin pattern.
       if (this.missionContext?.archetypeId === 'final_greenward') {
-        this._greenwardFinaleController = new GreenwardFinaleController(this._greenwardController);
+        this._greenwardFinaleController = new GreenwardFinaleController(
+          this._greenwardController,
+          () => {
+            this.eventLog.gameMessage('Caer Lythen has heard the forest.');
+            this.eventBus.emit('gameWon');
+            this.goToGameOver(true);
+          },
+        );
       }
     }
 
@@ -4223,7 +4233,15 @@ export class GameScene extends Phaser.Scene {
           // shared predicates (which read defensively via `?? false`
           // / `?? 0`) keep working on the other campaigns.
           ...(this._greenwardController
-            ? (this._greenwardController.finalize(getReserves()) as unknown as Record<string, number | boolean>)
+            ? (() => {
+                // Inject the M10 Nave resolution before finalize so
+                // the controller can ship it in the custom payload.
+                // GameOverScreen reads this to render the matching
+                // ending tableau + outro.
+                const naveMode = this._greenwardFinaleController?.getSnapshot().resolvedNaveMode ?? null;
+                this._greenwardController.setCustom('naveResolvedMode', naveMode);
+                return this._greenwardController.finalize(getReserves()) as unknown as Record<string, number | boolean | null | string>;
+              })()
             : {}),
         },
       };
@@ -4254,6 +4272,11 @@ export class GameScene extends Phaser.Scene {
         // OR the player lost — losing doesn't unlock the next one).
         nextMissionIdx: (won && campaign && this.missionContext.missionIdx + 1 < campaign.missions.length)
           ? this.missionContext.missionIdx + 1 : null,
+        // Greenward M10 only — copy through from custom so GameOverScreen
+        // doesn't have to dig through the bag. The dynamic-Greenward
+        // fields come via the spread above + aren't statically known
+        // to TS, so we cast through the bag at this single readsite.
+        naveResolvedMode: ((missionResult.custom as { naveResolvedMode?: 'ceremony' | 'mercy' | 'siege' | null }).naveResolvedMode) ?? null,
       };
       void active; // suppress unused
     }

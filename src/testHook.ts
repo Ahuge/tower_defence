@@ -103,6 +103,12 @@ interface TestHook {
     claimedByMode: { ceremony: number; siege: number; mercy: number };
     finale: { active: string; resolvedNaveMode: string | null } | null;
   } | null;
+  /** E2E-only: force a Greenward ruin to its claimed state. Routes
+   *  through ConsecrationManager.forceClaim. Returns false on bad
+   *  id or no active Greenward mission. Used by the M10 endings
+   *  e2e to walk Courtyard → Nave → Throne without exercising the
+   *  full per-mode claim mechanics. */
+  forceClaimGreenwardRuin: (ruinId: string) => boolean;
   /** Read mission stars from the player profile. Returns 0 for missions
    *  not yet completed. Decouples specs from the profile's on-disk
    *  schema — campaignProgress could move + the spec keeps working. */
@@ -269,6 +275,20 @@ function getGreenwardStatus(): ReturnType<NonNullable<Window['__td_test']>['getG
   };
 }
 
+interface GreenwardForceClaimRef {
+  _greenwardController?: {
+    consecration: { forceClaim: (id: string) => boolean };
+  } | null;
+}
+
+function forceClaimGreenwardRuin(ruinId: string): boolean {
+  const game = UIBridge.getGame();
+  if (!game) return false;
+  const scene = game.scene.getScene('GameScene') as unknown as GreenwardForceClaimRef | null;
+  if (!scene?._greenwardController) return false;
+  return scene._greenwardController.consecration.forceClaim(ruinId);
+}
+
 function jumpToTutorialStep(stepId: string, maxSteps = 50): boolean {
   for (let guard = 0; guard < maxSteps; guard++) {
     const active = TutorialManager.getActive();
@@ -297,6 +317,7 @@ export function installTestHook(): void {
     getSabotageStatus,
     forceKillSabotageTarget,
     getGreenwardStatus,
+    forceClaimGreenwardRuin,
     getMissionStars: (factionId, idx) => PlayerProfile.getMissionStars(factionId, idx),
     onceEvent,
     launchCampaignMission,

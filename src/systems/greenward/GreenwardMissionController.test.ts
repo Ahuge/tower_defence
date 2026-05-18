@@ -78,6 +78,21 @@ describe('GreenwardMissionController — finalize', () => {
     expect(out.civiliansKilled).toBe(3);
   });
 
+  it('naveResolvedMode threads through from setCustom into the custom payload', () => {
+    const c = new GreenwardMissionController(rules([]), 100);
+    // GameScene calls this with the resolved mode from
+    // _greenwardFinaleController.getSnapshot() at game-end.
+    c.setCustom('naveResolvedMode', 'mercy' as const);
+    const out = c.finalize(100);
+    expect(out.naveResolvedMode).toBe('mercy');
+  });
+
+  it('naveResolvedMode defaults to null when unset (non-M10 missions / pre-courtyard losses)', () => {
+    const c = new GreenwardMissionController(rules([]), 100);
+    const out = c.finalize(100);
+    expect(out.naveResolvedMode).toBeNull();
+  });
+
   it('advances ModeLeanTracker exactly once per finalize call', () => {
     resetModeLean();
     const c = new GreenwardMissionController(

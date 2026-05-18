@@ -140,6 +140,41 @@ describe('GreenwardFinaleController — Nave resolution', () => {
   });
 });
 
+describe('GreenwardFinaleController — onComplete callback', () => {
+  it('fires exactly once when the throne claims and active reaches "complete"', () => {
+    const calls: number[] = [];
+    const onComplete = () => { calls.push(Date.now()); };
+    const mission = new GreenwardMissionController({
+      ruins: [
+        { id: SETPIECE_RUIN_IDS.courtyard, col: 6,  row: 13, mode: 'siege' },
+        { id: SETPIECE_RUIN_IDS.nave,      col: 18, row: 13, mode: 'mercy' },
+        { id: SETPIECE_RUIN_IDS.throne,    col: 30, row: 13, mode: 'siege' },
+      ],
+    }, INITIAL_RESERVES);
+    const finale = new GreenwardFinaleController(mission, onComplete);
+
+    mission.consecration.bindDefender(SETPIECE_RUIN_IDS.courtyard, 1);
+    mission.consecration.notifyCreepKilled(1);
+    finale.tick();
+    expect(calls.length).toBe(0);
+
+    mission.consecration.bindDefender(SETPIECE_RUIN_IDS.nave, 2);
+    mission.consecration.notifyCreepKilled(2);
+    finale.tick();
+    expect(calls.length).toBe(0);
+
+    mission.consecration.bindDefender(SETPIECE_RUIN_IDS.throne, 3);
+    mission.consecration.notifyCreepKilled(3);
+    finale.tick();
+    expect(calls.length).toBe(1);
+
+    // Subsequent ticks do not re-fire.
+    finale.tick();
+    finale.tick();
+    expect(calls.length).toBe(1);
+  });
+});
+
 describe('GreenwardFinaleController — snapshot', () => {
   it('reports active setpiece + resolved Nave mode', () => {
     const { mission, finale } = setupM10();

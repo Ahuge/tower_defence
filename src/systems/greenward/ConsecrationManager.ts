@@ -125,6 +125,19 @@ export class ConsecrationManager {
     return Array.from(this.states.values());
   }
 
+  /** E2E-only: force a ruin to its claimed state. Routes through
+   *  the same state-machine post-condition that the real mode-claim
+   *  logic ends in (`claimed = true` + `progress01 = 1` for
+   *  ceremony). Returns false on bad id. */
+  forceClaim(id: string): boolean {
+    const s = this.states.get(id);
+    if (!s) return false;
+    if (s.claimed) return false;
+    s.claimed = true;
+    if (s.spec.mode === 'ceremony') s.progress01 = 1;
+    return true;
+  }
+
   /** Lookup by id. */
   getRuin(id: string): RuinClaimState | null {
     return this.states.get(id) ?? null;

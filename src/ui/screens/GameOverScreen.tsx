@@ -10,6 +10,7 @@ import { FACTIONS, FactionId } from '../../data/Factions';
 import { CoopPlayerStats, MissionResultSummary } from '../../scenes/GameOverScene';
 import { getCampaign } from '../../data/campaigns';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
+import { GreenwardEndingPanel } from './GreenwardEndingPanel';
 
 interface Props { data: Record<string, unknown>; }
 
@@ -230,6 +231,12 @@ export function GameOverScreen({ data }: Props) {
             <Stat label="Abilities Used" value={String(heroStats.abilitiesUsed)} />
           </div>
         </div>
+      )}
+
+      {/* Greenward M10 — render the resolved ending tableau + outro
+          ABOVE the regular mission summary. Only on M10 wins. */}
+      {missionResult && missionResult.won && missionResult.archetypeId === 'final_greenward' && (
+        <GreenwardEndingPanel resolvedMode={missionResult.naveResolvedMode} />
       )}
 
       {/* Mission summary — only for campaign mission runs. Shows

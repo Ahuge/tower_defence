@@ -185,6 +185,7 @@ declare global {
         claimedByMode: { ceremony: number; siege: number; mercy: number };
         finale: { active: string; resolvedNaveMode: string | null } | null;
       } | null;
+      forceClaimGreenwardRuin: (ruinId: string) => boolean;
       getMissionStars: (campaignFactionId: string, missionIdx: number) => number;
       onceEvent: (event: string, timeoutMs?: number) => Promise<unknown[]>;
       launchCampaignMission: (campaignFactionId: string, missionIdx: number) => boolean;
