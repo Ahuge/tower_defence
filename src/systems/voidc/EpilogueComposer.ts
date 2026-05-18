@@ -77,6 +77,15 @@ const DIVERGENCE_FRAGMENTS: Readonly<Record<DivergenceBand, string>> = {
     "I'd taken every Wager the Dealer had laid down, the way a man takes every step on a bridge that's already burning.",
 };
 
+// NOTE on `with_ardax`: in normal campaign progression, Theris always
+// flips to cashed_out at M6 win → this fragment is unreachable on a
+// canonical run. It is reachable in two edge cases:
+//   1. Player wins M10 on a save where M6 was skipped (defensive —
+//      MissionRunner should gate M10 unlock on M6 completion).
+//   2. Game-over fires from outside the M10 mission (theoretical).
+// The fragment reads tonally as the "happy-but-bitter" alternative —
+// Theris stayed. Locked here so the epilogue never renders an empty
+// string even on edge-case state.
 const THERIS_FRAGMENTS: Readonly<Record<TherisStatus, string>> = {
   with_ardax:
     "Theris was at my shoulder, which was a kindness I hadn't earned and a courtesy she hadn't asked for.",

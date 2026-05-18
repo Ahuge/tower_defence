@@ -35,10 +35,12 @@
  */
 
 import { getSnakeEyesState, setSnakeEyesState, type TherisStatus } from './DebtTracker';
+import { M6_THERIS_GOODBYE, M10_COUNTERFACTUAL_MIRROR } from './SnakeEyesMissionIds';
 
-/** Mission idx of M6 (Theris's Goodbye). Used for the lifecycle
- *  gates here + by mission-runner integration. */
-export const THERIS_GOODBYE_MISSION_IDX = 5;
+/** Mission idx of M6 (Theris's Goodbye). Re-exported as a named
+ *  constant for backwards-compat with the original test file; new
+ *  callers should import from SnakeEyesMissionIds directly. */
+export const THERIS_GOODBYE_MISSION_IDX = M6_THERIS_GOODBYE;
 
 /** Wave number on which the mid-mission overlay fires. Around the
  *  midpoint so the player has time to register Theris is doing
@@ -83,7 +85,7 @@ export function triggerFarewellInterlude(missionIdx: number): string | null {
  *  cleared to unlock M10), but the explicit gate makes the M10
  *  setpiece controller's contract readable. */
 export function shouldRenderAtCounterfactualTable(missionIdx: number): boolean {
-  if (missionIdx !== 9) return false; // M10 = idx 9
+  if (missionIdx !== M10_COUNTERFACTUAL_MIRROR) return false;
   return getStatus() === 'cashed_out';
 }
 

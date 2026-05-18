@@ -46,12 +46,18 @@ export type CounterfactualBeat =
  *  Non-Snake-Eyes missions return 'none'. Other missions in the
  *  Snake Eyes campaign that don't carry a Counterfactual beat (M1,
  *  M3, M5, M6, M8, M9) also return 'none'. */
+import {
+  M2_ROAD_WEST,
+  M4_FERRYMANS_GAME,
+  M7_MIRROR_WALKERS,
+} from './SnakeEyesMissionIds';
+
 export function getCounterfactualBeat(missionIdx: number): CounterfactualBeat {
   switch (missionIdx) {
-    case 1: return 'silhouette';      // M2 — Road West
-    case 3: return 'mirror_tower';    // M4 — Ferryman's Game
-    case 6: return 'mirror_walker';   // M7 — Mirror Walkers
-    default: return 'none';
+    case M2_ROAD_WEST:      return 'silhouette';
+    case M4_FERRYMANS_GAME: return 'mirror_tower';
+    case M7_MIRROR_WALKERS: return 'mirror_walker';
+    default:                return 'none';
   }
 }
 

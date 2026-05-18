@@ -138,14 +138,11 @@ describe('MirrorLaneController — tied resolution', () => {
     expect(c.getSnapshot().laneGap).toBe(0);
   });
 
-  it('forceResolve with null is rejected? actually null means in-progress', () => {
+  it('forceResolve(null) is a no-op — winner stays unresolved + later resolve still wins', () => {
     const c = new MirrorLaneController({ laneLength: 5 });
     c.forceResolve(null);
-    // null was passed but the guard checks `winner === null` to allow,
-    // and assigns. Verify behavior:
     expect(c.getWinner()).toBeNull();
-    // Subsequent forceResolve('player') should succeed (still
-    // unresolved after a null forceResolve).
+    // After a no-op force, a real force-resolve still works.
     c.forceResolve('player');
     expect(c.getWinner()).toBe('player');
   });

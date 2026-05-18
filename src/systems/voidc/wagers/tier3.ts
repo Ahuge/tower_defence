@@ -83,6 +83,15 @@ const mirrorWager: WagerEffectHandler = {
     // anywhere else the multiplier is 1 (the Pactbook success
     // criterion separately enforces that `mirrorWagerWon` was the
     // win pathway).
+    //
+    // INTEGRATION CONTRACT (Phase 3 follow-up PR): GameScene must
+    // write `mirrorWagerWon: true` into MissionResult.custom when
+    // the active mission has the `mirror_wager_active` flag AND the
+    // MirrorLaneController's getWinner() returned 'player'. Until
+    // that call site exists, this card resolves as a 1× paydown
+    // success-on-any-win (the success criterion in Pactbook.ts also
+    // becomes a no-op flag-miss → fail). Both ends fail closed,
+    // which is the safer default.
     return result.won && result.custom['mirrorWagerWon'] ? 3 : 1;
   },
 };

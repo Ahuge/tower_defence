@@ -140,8 +140,15 @@ registerDamageMod(ECHO_LEDGER_TRAIT_ID, (trait, damage, _ctx) => {
 });
 
 /** Damage modifier for Loaded Dice. Per-shot RNG — Math.random
- *  in production. Tests inject deterministic RNG by replacing the
- *  handler temporarily (see test file). */
+ *  in production. Tests inject deterministic RNG via `_rng` on the
+ *  trait stamp; production never sets that field (the typeof guard
+ *  falls back to Math.random).
+ *
+ *  TEST-ONLY CONVENTION: `trait._rng` is a leading-underscore-tagged
+ *  test-injection hook. The Trait interface allows arbitrary keys
+ *  (`[key: string]: any`); a future refactor that adds a typed RNG
+ *  to the trait pipeline must check for collision with this name
+ *  before re-purposing it. */
 registerDamageMod(LOADED_DICE_TRAIT_ID, (trait, damage, _ctx) => {
   const critChance = typeof trait.critChance === 'number' ? trait.critChance : 0.3;
   const critMult   = typeof trait.critMult   === 'number' ? trait.critMult   : 2.0;
