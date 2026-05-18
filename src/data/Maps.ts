@@ -894,20 +894,21 @@ export const MAPS: Record<MapId, MapDefinition> = {
     };
   })(),
 
-  // ── Campaign #3 — Greenward map stubs ──────────────────────────
-  // Each one is a `plains` reskin for now. Per-mission commits (10-19
-  // in the Greenward execution plan) replace these with the real maps
-  // authored via the editor. See docs/greenward-campaign-plan.md.
-  greenward_boundary:     { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_boundary',     name: 'Boundary Stones' },
-  greenward_meadow:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_meadow',       name: 'Salt Meadow' },
-  greenward_eadwin:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_eadwin',       name: 'Eadwin' },
-  greenward_crows:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_crows',        name: 'Road of Crows' },
-  greenward_river:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_river',        name: 'Dry River' },
-  greenward_tarrenford:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_tarrenford',   name: 'Tarrenford' },
-  greenward_weddingstone: { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_weddingstone', name: 'Wedding-Stone' },
-  greenward_court:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_court',        name: 'Stillborn Court' },
-  greenward_lastgarden:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_lastgarden',   name: 'Last Garden' },
-  greenward_cathedral:    { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_cathedral',    name: 'Caer Lythen' },
+  // ── Campaign #3 — Greenward maps ───────────────────────────────
+  // v1: each map uses the plains-template layout for terrain shape
+  // but a distinct `theme` so the player sees different palettes
+  // mission-to-mission. Full bespoke layouts (blocked cells, multi-
+  // entry / multi-exit) land in a content polish pass.
+  greenward_boundary:     { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_boundary',     name: 'Boundary Stones', theme: 'forest' },
+  greenward_meadow:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_meadow',       name: 'Salt Meadow',     theme: 'generic' },
+  greenward_eadwin:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_eadwin',       name: 'Eadwin',          theme: 'stone' },
+  greenward_crows:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_crows',        name: 'Road of Crows',   theme: 'water' },
+  greenward_river:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_river',        name: 'Dry River',       theme: 'water' },
+  greenward_tarrenford:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_tarrenford',   name: 'Tarrenford',      theme: 'forest' },
+  greenward_weddingstone: { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_weddingstone', name: 'Wedding-Stone',   theme: 'stone' },
+  greenward_court:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_court',        name: 'Stillborn Court', theme: 'stone' },
+  greenward_lastgarden:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_lastgarden',   name: 'Last Garden',     theme: 'mountain' },
+  greenward_cathedral:    { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_cathedral',    name: 'Caer Lythen',     theme: 'arcane_crystal' },
 };
 
 // (Legacy-shaped IIFE bodies removed; data lives in

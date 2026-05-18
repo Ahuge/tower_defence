@@ -74,6 +74,19 @@ describe('Greenward campaign — shape', () => {
       expect(m.overrides.mapId).toMatch(/^greenward_/);
     }
   });
+
+  it('Greenward map stubs each have a theme assigned', async () => {
+    // Map themes give per-mission visual distinction even on the
+    // shared plains-template layout. Variety check: at least 4
+    // distinct themes across the 10 maps (forest / stone / water
+    // / generic / mountain / arcane_crystal mix).
+    const { MAPS } = await import('../Maps');
+    const greenwardThemes = Object.values(MAPS)
+      .filter(m => m.id.startsWith('greenward_'))
+      .map(m => m.theme);
+    expect(greenwardThemes).toHaveLength(10);
+    expect(new Set(greenwardThemes).size).toBeGreaterThanOrEqual(4);
+  });
 });
 
 describe('Campaign registry — Greenward', () => {
