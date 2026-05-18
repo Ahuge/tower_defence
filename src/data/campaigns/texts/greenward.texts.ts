@@ -30,6 +30,44 @@
 
 import type { CampaignTexts } from './types';
 
+/** M10 endings — three outro paragraphs, one per resolved Nave mode.
+ *  Displayed at game-over alongside the corresponding tableau frame
+ *  from `greenward_endings.png` (frame 0 = ceremony, 1 = mercy, 2 = siege).
+ *
+ *  These are NOT in the CampaignTexts shape (which has a single outro
+ *  per campaign) — Greenward branches its outro. Per-ending text
+ *  lives here as a sibling export so future campaigns with branching
+ *  endings can copy the pattern. */
+export const GREENWARD_M10_ENDINGS = {
+  ceremony: {
+    title: 'The Cathedral Crowned',
+    outro:
+      "Marra sang the long song at the altar, and the cathedral answered. Vines wrote across the stained glass. The sun came in golden through the broken east window.\n" +
+      "\n" +
+      "The Heron of Eadwin watched until the last verse. He bowed his head when the bell took its first leaf.\n" +
+      "\n" +
+      "The grain at the threshold is green now.",
+  },
+  mercy: {
+    title: 'The Cathedral Preserved',
+    outro:
+      "Marra did not take the cathedral. She let the cathedral hold itself, and brought the forest only to its doorstep.\n" +
+      "\n" +
+      "The Heron of Eadwin lay down on the altar at the end. He said: \"You spared the watchers. I was the last of them.\" Then he was quiet.\n" +
+      "\n" +
+      "The kingdoms have a place to come back to, if any of them ever do.",
+  },
+  siege: {
+    title: 'The Cathedral Hollow',
+    outro:
+      "Marra brought the forest entire. There is no cathedral now — only stones beneath roots, the columns toppled, the bells in the moss.\n" +
+      "\n" +
+      "The Heron of Eadwin met her at the doors. He said: \"Then we both go honest into the wood.\" The fight was brief and not ceremonious.\n" +
+      "\n" +
+      "The Wildwood has reached its border to the south. There will be no more Inheritors here.",
+  },
+} as const;
+
 export const GREENWARD_TEXTS: CampaignTexts = {
   campaign: {
     name: 'The Greenward',

@@ -82,6 +82,22 @@ describe('Campaign registry — Greenward', () => {
   });
 });
 
+describe('Greenward M10 endings — text branches', () => {
+  it('has three distinct branched outros (ceremony / mercy / siege)', async () => {
+    const { GREENWARD_M10_ENDINGS } = await import('./texts/greenward.texts');
+    expect(GREENWARD_M10_ENDINGS.ceremony.outro.length).toBeGreaterThan(40);
+    expect(GREENWARD_M10_ENDINGS.mercy.outro.length).toBeGreaterThan(40);
+    expect(GREENWARD_M10_ENDINGS.siege.outro.length).toBeGreaterThan(40);
+    // Outros must be distinct prose, not duplicates.
+    expect(GREENWARD_M10_ENDINGS.ceremony.outro).not.toBe(GREENWARD_M10_ENDINGS.mercy.outro);
+    expect(GREENWARD_M10_ENDINGS.mercy.outro).not.toBe(GREENWARD_M10_ENDINGS.siege.outro);
+    expect(GREENWARD_M10_ENDINGS.ceremony.outro).not.toBe(GREENWARD_M10_ENDINGS.siege.outro);
+    // Each ending has a distinct title.
+    const titles = [GREENWARD_M10_ENDINGS.ceremony.title, GREENWARD_M10_ENDINGS.mercy.title, GREENWARD_M10_ENDINGS.siege.title];
+    expect(new Set(titles).size).toBe(3);
+  });
+});
+
 describe('Greenward Act I missions — Consecration wiring', () => {
   it('M1 declares one Ceremony ruin', () => {
     const m = GREENWARD_CAMPAIGN.missions[0];

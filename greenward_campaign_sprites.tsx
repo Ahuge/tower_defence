@@ -240,6 +240,135 @@ export function drawInheritorSheet(ctx: CanvasRenderingContext2D) {
   }
 }
 
+// ─── M10 ending tableaux (commit 19) ─────────────────────────────
+//
+// Three illustrated end-cards, one per Nave resolution. 128×96 each.
+// Procedural pixel art per "v1 OK" stance — three distinct images
+// that read at a glance, paired with the outro paragraph from the
+// texts file at GameOver time.
+
+const TABLEAU_W = 128;
+const TABLEAU_H = 96;
+export const TABLEAU_DIMS = { W: TABLEAU_W, H: TABLEAU_H, FRAMES: 1 };
+
+// Sky / stone palettes for the cathedral backdrops.
+const STONE_LIT = '#a8a094';
+const STONE_DK  = '#5b5650';
+const VINE_GREEN = '#4d8b3e';
+const VINE_DK    = '#2a4d22';
+const GOLD_LIGHT = '#e8c878';
+const SUNRAY     = '#fff0b8';
+const HERON_C    = '#8a8e96';
+const DUSK       = '#3a3548';
+
+function fillBackground(ctx: CanvasRenderingContext2D, color: string) {
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, TABLEAU_W, TABLEAU_H);
+}
+
+/** Ceremony ending — "Sun-Cathedral crowned in vines, light through
+ *  stained glass." Stone façade overgrown with vines, golden sunray
+ *  through a window. */
+export function drawEndingCeremony(ctx: CanvasRenderingContext2D) {
+  fillBackground(ctx, DUSK);
+  // Cathedral wall — stone bands across the bottom half.
+  rect(ctx, 8, 40, 112, 56, STONE_DK);
+  for (let y = 44; y < 88; y += 8) rect(ctx, 8, y, 112, 1, STONE_LIT);
+  // Tall arched window — stained glass.
+  rect(ctx, 56, 50, 16, 36, GOLD_LIGHT);
+  rect(ctx, 56, 48, 16, 2,  GOLD_LIGHT);
+  rect(ctx, 60, 50, 8,  36, STONE_LIT);
+  // Cross-bar of the window.
+  rect(ctx, 56, 64, 16, 2, STONE_DK);
+  // Sun ray emerging from the window.
+  for (let r = 0; r < 18; r++) {
+    rect(ctx, 64 - r, 26 + r, 1 + r * 2, 1, SUNRAY);
+  }
+  // Vines crawling up the walls.
+  for (let x = 16; x < 56; x += 8) {
+    rect(ctx, x, 40, 2, 50, VINE_GREEN);
+    rect(ctx, x - 2, 50, 2, 2, VINE_GREEN);
+    rect(ctx, x + 2, 60, 2, 2, VINE_DK);
+  }
+  for (let x = 76; x < 116; x += 8) {
+    rect(ctx, x, 40, 2, 50, VINE_GREEN);
+    rect(ctx, x - 2, 55, 2, 2, VINE_DK);
+    rect(ctx, x + 2, 70, 2, 2, VINE_GREEN);
+  }
+}
+
+/** Mercy ending — "The Heron asleep on the throne, the cathedral
+ *  preserved around him." A throne with the Heron kneeling on it,
+ *  unbroken stone, quiet. */
+export function drawEndingMercy(ctx: CanvasRenderingContext2D) {
+  fillBackground(ctx, '#1f1f28');
+  // Throne — center, dark stone with gold trim.
+  rect(ctx, 48, 36, 32, 40, STONE_DK);
+  rect(ctx, 48, 36, 32, 2,  GOLD_LIGHT); // gold trim top
+  rect(ctx, 48, 72, 32, 2,  GOLD_LIGHT); // gold trim bottom
+  rect(ctx, 50, 38, 28, 36, STONE_LIT); // cushion / seat
+  // Floor.
+  rect(ctx, 0, 76, TABLEAU_W, 20, STONE_DK);
+  // Heron kneeling on the throne — center.
+  rect(ctx, 56, 64, 16, 6, HERON_C);
+  rect(ctx, 58, 70, 12, 1, '#5b6068');
+  // Neck bowed forward.
+  rect(ctx, 70, 60, 3, 5, HERON_C);
+  rect(ctx, 72, 56, 4, 4, HERON_C);
+  rect(ctx, 76, 58, 4, 1, GOLD_LIGHT); // beak
+  rect(ctx, 76, 59, 3, 1, GOLD_LIGHT);
+  // Soft halo around the throne — gold light.
+  for (let r = 0; r < 6; r++) {
+    const a = 4 - r * 0.5;
+    ctx.fillStyle = `rgba(232, 200, 120, ${a * 0.06})`;
+    ctx.fillRect(48 - r * 2, 36 - r, 32 + r * 4, 40 + r * 2);
+  }
+}
+
+/** Siege ending — "The cathedral hollow, the forest entire."
+ *  Broken stone, walls overgrown completely, the cathedral
+ *  consumed by the forest. */
+export function drawEndingSiege(ctx: CanvasRenderingContext2D) {
+  fillBackground(ctx, '#1a2418');
+  // Tree canopy filling the upper half — dense green.
+  rect(ctx, 0, 0, TABLEAU_W, 48, VINE_DK);
+  for (let x = 4; x < TABLEAU_W; x += 6) {
+    rect(ctx, x, 4, 2, 8, VINE_GREEN);
+    rect(ctx, x - 2, 12, 4, 6, VINE_GREEN);
+    rect(ctx, x + 1, 24, 2, 8, VINE_DK);
+  }
+  // Cathedral ruins — broken stone columns, mostly toppled.
+  rect(ctx, 16, 56, 6, 30, STONE_DK);
+  rect(ctx, 14, 86, 10, 2, STONE_DK);
+  rect(ctx, 40, 62, 6, 24, STONE_LIT);
+  rect(ctx, 38, 86, 10, 2, STONE_LIT);
+  rect(ctx, 64, 50, 8, 38, STONE_DK);
+  rect(ctx, 62, 88, 12, 2, STONE_DK);
+  rect(ctx, 92, 70, 6, 18, STONE_LIT);
+  // Forest floor — fallen leaves + roots cracking the stones.
+  rect(ctx, 0, 88, TABLEAU_W, 8, VINE_DK);
+  for (let x = 8; x < TABLEAU_W; x += 12) {
+    rect(ctx, x, 84, 2, 4, VINE_GREEN);
+  }
+  // Vines snaking up the broken columns.
+  rect(ctx, 14, 60, 2, 24, VINE_GREEN);
+  rect(ctx, 38, 65, 2, 20, VINE_GREEN);
+  rect(ctx, 62, 55, 2, 30, VINE_GREEN);
+  rect(ctx, 90, 75, 2, 14, VINE_GREEN);
+}
+
+/** Stacked sheet of all three endings (Ceremony / Mercy / Siege).
+ *  Phaser reads frames top-to-bottom. */
+export function drawEndingTableauxSheet(ctx: CanvasRenderingContext2D) {
+  ctx.clearRect(0, 0, TABLEAU_W, TABLEAU_H * 3);
+  ctx.save(); ctx.translate(0, 0);              drawEndingCeremony(ctx); ctx.restore();
+  ctx.save(); ctx.translate(0, TABLEAU_H);      drawEndingMercy(ctx);    ctx.restore();
+  ctx.save(); ctx.translate(0, TABLEAU_H * 2);  drawEndingSiege(ctx);    ctx.restore();
+}
+
+/** Dim const for the 3-frame stacked sheet. */
+export const TABLEAU_SHEET_DIMS = { W: TABLEAU_W, H: TABLEAU_H, FRAMES: 3 };
+
 // ─── Preview component (sprite-preview pipeline) ─────────────────
 // Mirrors the Mech / Arcane preview components — sprite-preview.tsx
 // imports each campaign's module by name. Renders a single canvas
