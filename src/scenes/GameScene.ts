@@ -797,6 +797,11 @@ export class GameScene extends Phaser.Scene {
         GameUIStore.setAttackerComposer(null);
         this.startWave();
       },
+      // Place-and-approve gate handlers — the PlacementGateOverlay
+      // DOM component invokes these via GameUIStore.
+      onPlacementCommit: () => this.commitPlacementGate(),
+      onPlacementCancel: () => this.cancelPlacementGate(),
+      onPlacementMove: (col, row) => this.movePlacementGhost(col, row),
     });
 
     // Create sprite animations from loaded sheets
@@ -3202,6 +3207,7 @@ export class GameScene extends Phaser.Scene {
     if (isPlaceAndApproveEnabled()) {
       this._placementGate.placeGhost(col, row, towerType.id);
       this._drawPlacementGhost();
+      GameUIStore.setPlacementGhost({ col, row, towerTypeId: towerType.id });
       return;
     }
 
@@ -3251,6 +3257,7 @@ export class GameScene extends Phaser.Scene {
   commitPlacementGate(): void {
     const spec = this._placementGate.consumeForCommit();
     this._ghostGraphics.clear();
+    GameUIStore.setPlacementGhost(null);
     if (!spec) return;
     // Re-validate at commit time as a defensive guard. The gate may
     // have been pending across a state change (a wave starting, an
@@ -3284,6 +3291,7 @@ export class GameScene extends Phaser.Scene {
   cancelPlacementGate(): void {
     this._placementGate.cancel();
     this._ghostGraphics.clear();
+    GameUIStore.setPlacementGhost(null);
   }
 
   /** Move the pending ghost to a new cell. Used by both drag-mode
@@ -3296,7 +3304,11 @@ export class GameScene extends Phaser.Scene {
     if (!this.grid.canPlaceTower(col, row)) return false;
     if (!this.canBuildInZone(col, row)) return false;
     const changed = this._placementGate.moveGhost(col, row);
-    if (changed) this._drawPlacementGhost();
+    if (changed) {
+      this._drawPlacementGhost();
+      const g = this._placementGate.getGhost();
+      if (g) GameUIStore.setPlacementGhost({ col: g.col, row: g.row, towerTypeId: g.towerTypeId });
+    }
     return changed;
   }
 

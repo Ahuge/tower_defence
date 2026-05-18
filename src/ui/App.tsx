@@ -27,6 +27,7 @@ import { FinaleHudDOM } from './game/FinaleHudDOM';
 import { SabotageHudDOM } from './game/SabotageHudDOM';
 import { TowerDockDOM } from './game/TowerDockDOM';
 import { StatusBarDOM } from './game/StatusBarDOM';
+import { PlacementGateOverlay } from './game/PlacementGateOverlay';
 import { CircleRosterDOM } from './game/CircleRosterDOM';
 import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { AchievementToast } from './components/AchievementToast';
@@ -123,6 +124,7 @@ export function App() {
       {!screen && <AttackerComposerOverlay />}
       {!screen && <FinaleHudDOM />}
       {!screen && <SabotageHudDOM />}
+      {!screen && <PlacementGateOverlay />}
 
       {/* Continue-ad modal — renders only when GameScene offers a revive
           on lives→0. Self-gates on GameUIStore.continueOffer so no-op

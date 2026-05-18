@@ -304,6 +304,11 @@ export interface GameUIState {
   essence: EssenceState | null;
   /** Hero item shop state (Hero Defense mode) */
   heroShop: HeroShopState | null;
+  /** Place-and-approve pending ghost. When non-null, the player has
+   *  staged a placement and the PlacementGateOverlay DOM component
+   *  renders tick/X buttons over the cell. GameScene mirrors its
+   *  internal PlacementGateController state into this slot. */
+  placementGhost: { col: number; row: number; towerTypeId: string } | null;
   /** Continue-ad offer. Set when the player's lives hit zero and we
    *  can still legitimately offer a revive. Drives the
    *  ContinueOfferModal in the DOM layer; GameScene sets it and pauses
@@ -596,7 +601,18 @@ class GameUIStoreClass {
     onAttackerAbilityToggle?: (abilityId: string) => void;
     onAttackerWagonAdjust?: (delta: number) => void;
     onAttackerCampsBuy?: () => void;
+    /** Place-and-approve: confirm the staged placement. */
+    onPlacementCommit?: () => void;
+    /** Place-and-approve: discard the staged placement. */
+    onPlacementCancel?: () => void;
+    /** Place-and-approve: drag/re-tap reposition. */
+    onPlacementMove?: (col: number, row: number) => void;
   } = {};
+
+  /** Place-and-approve handlers used by PlacementGateOverlay. */
+  onPlacementCommit(): void { this.callbacks.onPlacementCommit?.(); }
+  onPlacementCancel(): void { this.callbacks.onPlacementCancel?.(); }
+  onPlacementMove(col: number, row: number): void { this.callbacks.onPlacementMove?.(col, row); }
 
   private defaultState(): GameUIState {
     return {
@@ -631,7 +647,23 @@ class GameUIStoreClass {
       attackerComposer: null,
       finaleHud: null,
       sabotageHud: null,
+      placementGhost: null,
     };
+  }
+
+  /** Place-and-approve: GameScene mirrors its pending-ghost state
+   *  here. Null = no pending placement. Shallow-equal skip on the
+   *  same cell+type avoids per-frame churn (the setter is called
+   *  from the controller's lifecycle, not per-frame, but tests +
+   *  drag pointermove can re-fire with the same value). */
+  setPlacementGhost(ghost: GameUIState['placementGhost']): void {
+    const prev = this.state.placementGhost;
+    if (prev === ghost) return;
+    if (prev && ghost && prev.col === ghost.col && prev.row === ghost.row && prev.towerTypeId === ghost.towerTypeId) {
+      return;
+    }
+    this.state = { ...this.state, placementGhost: ghost };
+    this.notify();
   }
 
   /** Mech M10: push Workshop / squad state. Skips notify when nothing
