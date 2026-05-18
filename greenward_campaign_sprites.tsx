@@ -167,6 +167,79 @@ export function drawHeronSheet(ctx: CanvasRenderingContext2D) {
   drawHeronKneeling  (ctx, 3 * HERON_H);
 }
 
+// ─── Inheritor base sprite (commit 9) ────────────────────────────
+//
+// A single canonical Inheritor draw used by Road-Walker, Den-Walker,
+// Messenger, and River-Crawler types via per-creep palette swaps
+// passed in by the caller. Pale/grey body, gold accent at the cuff,
+// hood drawn over the face — the Inheritors are recognisable as a
+// fallen-kingdom livery before they're recognisable as people.
+//
+// 24×24 frame. 4-direction walk cycle (NESW), 4 frames each =
+// 16-frame sheet. The renderer downsizes to the per-creep `size`
+// multiplier at draw time.
+
+const INHERITOR_BODY_DEFAULT  = '#a8a094';
+const INHERITOR_BODY_DK       = '#5f5b54';
+const INHERITOR_GOLD          = '#c8a04b';
+const INHERITOR_FACE_SHADOW   = '#1a1820';
+
+const INHERITOR_W = 24;
+const INHERITOR_H = 24;
+const INHERITOR_FRAMES = 4;  // single direction × 4 walk frames
+export const INHERITOR_DIMS = { W: INHERITOR_W, H: INHERITOR_H, FRAMES: INHERITOR_FRAMES };
+
+/** Draw one Inheritor frame. `bodyColor` defaults to the base palette
+ *  but each creep type can pass its own (e.g. River-Crawler tints
+ *  bluer; Wedding-Stone tints stonier). `phase` is 0..3 for the
+ *  walk-cycle. */
+export function drawInheritor(
+  ctx: CanvasRenderingContext2D,
+  yOff: number,
+  phase: number,
+  bodyColor: string = INHERITOR_BODY_DEFAULT,
+) {
+  const stride = phase % 2 === 0 ? 0 : 1; // alternating stride between frames
+
+  // Robe / hooded body — 10 wide × 12 tall, centred.
+  rect(ctx, 7,  yOff + 8,  10, 12, bodyColor);
+  // Robe hem — slight darker band at the bottom.
+  rect(ctx, 7,  yOff + 19, 10, 1,  INHERITOR_BODY_DK);
+  // Robe shadow on one side.
+  rect(ctx, 14, yOff + 9,  3,  10, INHERITOR_BODY_DK);
+  // Hood drape over shoulders.
+  rect(ctx, 6,  yOff + 6,  12, 3,  INHERITOR_BODY_DK);
+  // Head (hidden in hood — just the face-shadow).
+  rect(ctx, 9,  yOff + 4,  6,  4,  INHERITOR_FACE_SHADOW);
+  // Hood top.
+  rect(ctx, 8,  yOff + 2,  8,  3,  bodyColor);
+  rect(ctx, 8,  yOff + 2,  8,  1,  INHERITOR_BODY_DK);
+  // Gold cuff — faded kingdom livery.
+  rect(ctx, 7,  yOff + 13, 10, 1,  INHERITOR_GOLD);
+  // Legs — alternate stride for walk cycle.
+  if (stride === 0) {
+    rect(ctx, 9,  yOff + 20, 2, 3, INHERITOR_BODY_DK);
+    rect(ctx, 13, yOff + 20, 2, 3, INHERITOR_BODY_DK);
+  } else {
+    rect(ctx, 10, yOff + 20, 2, 3, INHERITOR_BODY_DK);
+    rect(ctx, 12, yOff + 20, 2, 3, INHERITOR_BODY_DK);
+  }
+  // Small motion blur — one pixel trailing on every-other frame.
+  if (phase === 1 || phase === 3) {
+    px(ctx, 6, yOff + 21, INHERITOR_BODY_DK);
+  }
+}
+
+/** Draw the 4-frame walk cycle sheet (single direction) for the
+ *  base Inheritor sprite. Stacked vertically; Phaser reads frames
+ *  top-to-bottom. */
+export function drawInheritorSheet(ctx: CanvasRenderingContext2D) {
+  ctx.clearRect(0, 0, INHERITOR_W, INHERITOR_H * INHERITOR_FRAMES);
+  for (let i = 0; i < INHERITOR_FRAMES; i++) {
+    drawInheritor(ctx, i * INHERITOR_H, i);
+  }
+}
+
 // ─── Preview component (sprite-preview pipeline) ─────────────────
 // Mirrors the Mech / Arcane preview components — sprite-preview.tsx
 // imports each campaign's module by name. Renders a single canvas

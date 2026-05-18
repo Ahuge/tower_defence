@@ -16,6 +16,7 @@ import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   drawHeronSheet, HERON_DIMS,
+  drawInheritorSheet, INHERITOR_DIMS,
 } from '../greenward_campaign_sprites';
 
 const OUT_DIR = join(__dirname, '..', 'public', 'assets', 'arena');
@@ -28,7 +29,8 @@ interface SheetSpec {
 }
 
 const SHEETS: SheetSpec[] = [
-  { name: 'heron_of_eadwin.png', dims: HERON_DIMS, draw: drawHeronSheet },
+  { name: 'heron_of_eadwin.png',     dims: HERON_DIMS,     draw: drawHeronSheet },
+  { name: 'inheritor_base.png',      dims: INHERITOR_DIMS, draw: drawInheritorSheet },
 ];
 
 for (const sheet of SHEETS) {
