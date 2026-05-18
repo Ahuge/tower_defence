@@ -186,9 +186,9 @@ function circle(cx: number, cy: number, radius: number): Pos[] {
 }
 
 // Reusable template used by Greenward map stubs at the bottom of
-// MAPS. Cloned with `...MAPS_PLAINS_TEMPLATE` so per-mission commits
-// (10-19 in the Greenward execution plan) can replace each entry
-// independently without touching this template.
+// MAPS. Cloned with `...MAPS_PLAINS_TEMPLATE` so each Greenward map
+// entry can be authored independently. Maps not yet authored fall
+// back to this template.
 const MAPS_PLAINS_TEMPLATE: Omit<MapDefinition, 'id' | 'name'> = {
   description: 'Greenward — stub map. Replaced by per-mission commit.',
   theme: 'forest',
@@ -197,6 +197,56 @@ const MAPS_PLAINS_TEMPLATE: Omit<MapDefinition, 'id' | 'name'> = {
   blocked: [],
   noBuild: [],
 };
+
+// ─── Greenward map helpers ─────────────────────────────────────
+// Reusable helpers for hand-authoring Greenward maps without an
+// editor. Each returns Pos[] suitable for blocked / noBuild fields.
+
+function greenwardForestEdge(): Pos[] {
+  // Sparse forest along the north + south edges of M1 — narrows
+  // the player's view into a single road corridor through the
+  // open middle band.
+  const ps: Pos[] = [];
+  for (let c = 0; c < GRID_COLS; c++) {
+    // Sparse top / bottom rows
+    if (c % 3 === 0) {
+      ps.push({ col: c, row: 1 });
+      ps.push({ col: c, row: GRID_ROWS - 2 });
+    }
+  }
+  return ps;
+}
+
+function greenwardSaltCairns(): Pos[] {
+  // The two cairn cells are noBuild — the player can't drop a tower
+  // ON the shepherd's marker but mazes around it.
+  return [
+    { col: 14, row: 8 },
+    { col: 14, row: 18 },
+    { col: 22, row: 13 },
+  ];
+}
+
+function greenwardEadwinBuildings(): Pos[] {
+  // Inn block (NE) — 3x3 footprint
+  const ps: Pos[] = [];
+  for (let c = 16; c <= 20; c++) {
+    for (let r = 7; r <= 9; r++) ps.push({ col: c, row: r });
+  }
+  // Shop fronts (central E-W band, sparse)
+  for (let c = 10; c <= 26; c += 4) {
+    ps.push({ col: c, row: 13 });
+    ps.push({ col: c, row: 14 });
+  }
+  return ps;
+}
+
+function greenwardEadwinRuins(): Pos[] {
+  return [
+    { col: 18, row: 10 }, // inn_hearth Mercy
+    { col: 14, row: 15 }, // village_square Siege
+  ];
+}
 
 export const MAPS: Record<MapId, MapDefinition> = {
   plains: {
@@ -895,13 +945,52 @@ export const MAPS: Record<MapId, MapDefinition> = {
   })(),
 
   // ── Campaign #3 — Greenward maps ───────────────────────────────
-  // v1: each map uses the plains-template layout for terrain shape
-  // but a distinct `theme` so the player sees different palettes
-  // mission-to-mission. Full bespoke layouts (blocked cells, multi-
-  // entry / multi-exit) land in a content polish pass.
-  greenward_boundary:     { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_boundary',     name: 'Boundary Stones', theme: 'forest' },
-  greenward_meadow:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_meadow',       name: 'Salt Meadow',     theme: 'generic' },
-  greenward_eadwin:       { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_eadwin',       name: 'Eadwin',          theme: 'stone' },
+  // Act I — Border. Forest-edge wayshrine, salt meadow, inn-village.
+
+  greenward_boundary: {
+    id: 'greenward_boundary',
+    name: 'The Boundary Stones',
+    description: 'A road leaving the Wildwood at sunrise. The wayshrine waits at the road\'s end.',
+    theme: 'forest',
+    // Creeps approach from the east (the south kingdoms); they walk
+    // toward the Wildwood (west exit).
+    entries: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    exits:   [{ col: 0,             row: MID_ROW }],
+    blocked: greenwardForestEdge(),
+    // Wayshrine cell — noBuild so the player can't drop a tower
+    // ON the shrine but mazes around it.
+    noBuild: [{ col: 18, row: 13 }],
+  },
+
+  greenward_meadow: {
+    id: 'greenward_meadow',
+    name: 'The Salt Meadow',
+    description: 'A meadow turned saline. Two cairns + a barrow. Open and exposed.',
+    theme: 'generic',
+    // Two entries (north + south) — Inheritors creep in from both
+    // flanks, suggesting Marra is exposed in the middle of the field.
+    entries: [
+      { col: 17, row: 0 },
+      { col: 17, row: GRID_ROWS - 1 },
+    ],
+    exits: [{ col: 0, row: MID_ROW }],
+    blocked: [], // The meadow is OPEN by design — salt killed everything.
+    noBuild: greenwardSaltCairns(),
+  },
+
+  greenward_eadwin: {
+    id: 'greenward_eadwin',
+    name: 'The Circle at Eadwin',
+    description: 'An inn-village. Hearth still burning. Strange chants in the square.',
+    theme: 'stone',
+    entries: [{ col: GRID_COLS - 1, row: MID_ROW }],
+    exits:   [{ col: 0,             row: MID_ROW }],
+    // Inn block (NE) + shop fronts in a central band create a
+    // forced weave through the village.
+    blocked: greenwardEadwinBuildings(),
+    // The inn-hearth + village square ruins are noBuild.
+    noBuild: greenwardEadwinRuins(),
+  },
   greenward_crows:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_crows',        name: 'Road of Crows',   theme: 'water' },
   greenward_river:        { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_river',        name: 'Dry River',       theme: 'water' },
   greenward_tarrenford:   { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_tarrenford',   name: 'Tarrenford',      theme: 'forest' },
