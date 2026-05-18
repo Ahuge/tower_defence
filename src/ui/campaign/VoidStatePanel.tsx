@@ -28,9 +28,10 @@ import {
   INITIAL_DEBT,
 } from '../../systems/voidc/DebtTracker';
 import { DEALER_THRESHOLDS, computeDealerActions } from '../../systems/voidc/DealerActions';
+import { SNAKE_EYES_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
 
-const VOID_VIOLET = '#a288d0';
-const VOID_GOLD = '#d4b04a';
+const VOID_VIOLET = SNAKE_EYES_PALETTE.violet;
+const VOID_GOLD = SNAKE_EYES_PALETTE.gold;
 const DIM_TEXT = 'var(--text-dim)';
 const PRIMARY_TEXT = 'var(--text-primary)';
 
@@ -58,8 +59,8 @@ export function VoidStatePanel(_props: Props) {
 
   return (
     <div style={{
-      background: 'rgba(16, 8, 24, 0.4)',
-      border: '1px solid rgba(162, 136, 208, 0.3)',
+      background: SNAKE_EYES_PALETTE.surface.statePanel,
+      border: `1px solid ${SNAKE_EYES_PALETTE.border.statePanel}`,
       borderRadius: '8px',
       padding: '12px 16px',
       fontFamily: 'system-ui, sans-serif',
@@ -77,7 +78,7 @@ export function VoidStatePanel(_props: Props) {
       </div>
 
       {/* Debt-meter with threshold tick marks */}
-      <div style={{ position: 'relative', height: '14px', background: 'rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: '14px', background: SNAKE_EYES_PALETTE.meterTrack, borderRadius: '3px', overflow: 'hidden' }}>
         <div style={{
           position: 'absolute', inset: 0,
           width: `${debtPct}%`,
@@ -93,7 +94,7 @@ export function VoidStatePanel(_props: Props) {
         <ThresholdTick pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '11px', color: DIM_TEXT }}>
-        <span>{settled ? <span style={{ color: 'rgba(60, 200, 90, 0.9)' }}>settled with the House</span> : `Debt ${state.debt}g`}</span>
+        <span>{settled ? <span style={{ color: SNAKE_EYES_PALETTE.settledGreen }}>settled with the House</span> : `Debt ${state.debt}g`}</span>
         <span>start {INITIAL_DEBT}g</span>
       </div>
 
@@ -119,8 +120,8 @@ export function VoidStatePanel(_props: Props) {
             <TallyChip label="T2" value={state.pactbookTally.acceptedT2} accent={VOID_VIOLET} />
             <TallyChip label="T3" value={state.pactbookTally.acceptedT3} accent={VOID_GOLD} />
             <TallyChip label="passed" value={state.pactbookTally.declined} accent={DIM_TEXT} />
-            <TallyChip label="won" value={state.pactbookTally.succeeded} accent={'rgba(60, 200, 90, 0.9)'} />
-            <TallyChip label="lost" value={state.pactbookTally.failed} accent={'rgba(220, 80, 80, 0.85)'} />
+            <TallyChip label="won" value={state.pactbookTally.succeeded} accent={SNAKE_EYES_PALETTE.settledGreen} />
+            <TallyChip label="lost" value={state.pactbookTally.failed} accent={SNAKE_EYES_PALETTE.lossRed} />
           </div>
         </div>
       )}
@@ -148,7 +149,7 @@ function ThresholdTick({ pct }: { pct: number }) {
       bottom: 0,
       left: `${pct}%`,
       width: '1px',
-      background: 'rgba(255,255,255,0.4)',
+      background: SNAKE_EYES_PALETTE.meterTick,
     }} />
   );
 }
@@ -159,7 +160,7 @@ function TallyChip({ label, value, accent }: { label: string; value: number; acc
       padding: '4px 8px',
       borderRadius: '3px',
       background: 'rgba(0,0,0,0.25)',
-      border: `1px solid ${accent === DIM_TEXT ? 'rgba(255,255,255,0.08)' : accent}`,
+      border: `1px solid ${accent === DIM_TEXT ? SNAKE_EYES_PALETTE.border.fainter : accent}`,
       minWidth: '40px',
       textAlign: 'center' as const,
     }}>

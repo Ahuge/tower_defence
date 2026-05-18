@@ -25,6 +25,7 @@
 import React from 'react';
 import type { Pactbook, Wager } from '../../systems/voidc/Pactbook';
 import { getWagerEffect } from '../../systems/voidc/WagerEffects';
+import { SNAKE_EYES_PALETTE, TIER_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
 
 interface PactbookPanelProps {
   pactbook: Pactbook;
@@ -34,12 +35,6 @@ interface PactbookPanelProps {
       | { kind: 'declined' }
   ) => void;
 }
-
-const TIER_PALETTE: { border: string; bg: string; label: string }[] = [
-  { border: '#a288d0', bg: 'rgba(40, 30, 60, 0.6)', label: 'Tier 1' },
-  { border: '#d4b04a', bg: 'rgba(50, 40, 20, 0.6)', label: 'Tier 2' },
-  { border: '#d04848', bg: 'rgba(55, 24, 30, 0.6)', label: 'Tier 3' },
-];
 
 export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
   const drawn = pactbook.getDrawn();
@@ -61,7 +56,7 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
     }}>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
-        color: '#a288d0',
+        color: SNAKE_EYES_PALETTE.violet,
         fontSize: '16px',
         letterSpacing: '0.08em',
         textAlign: 'center' as const,
@@ -104,8 +99,8 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
           }}
           style={{
             padding: '10px 24px',
-            background: 'rgba(40, 40, 50, 0.5)',
-            border: '1px solid rgba(255,255,255,0.18)',
+            background: SNAKE_EYES_PALETTE.surface.decline,
+            border: `1px solid ${SNAKE_EYES_PALETTE.border.subtle}`,
             color: 'var(--text-dim)',
             fontFamily: "'Silkscreen', monospace",
             fontSize: '12px',
@@ -179,7 +174,7 @@ function WagerCard({ wager, onSelect }: { wager: Wager; onSelect: () => void }) 
           color: 'var(--text-primary)',
           opacity: 0.85,
           paddingTop: '6px',
-          borderTop: '1px solid rgba(255,255,255,0.1)',
+          borderTop: `1px solid ${SNAKE_EYES_PALETTE.border.cardDivider}`,
         }}>
           {summary}
         </div>

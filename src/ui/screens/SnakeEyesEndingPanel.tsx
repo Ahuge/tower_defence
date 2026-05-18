@@ -23,9 +23,10 @@
 
 import { useEffect, useState } from 'react';
 import { composeEpilogue } from '../../systems/voidc/EpilogueComposer';
+import { SNAKE_EYES_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
 
-const VOID_VIOLET = '#a288d0';
-const VOID_GOLD = '#d4b04a';
+const VOID_VIOLET = SNAKE_EYES_PALETTE.violet;
+const VOID_GOLD = SNAKE_EYES_PALETTE.gold;
 
 /** Per-card reveal delays (ms). The third card lands at 1400ms;
  *  the tableau body fades in 500ms after. */
@@ -53,8 +54,8 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
       style={{
         textAlign: 'center' as const,
         padding: '24px 16px 32px',
-        background: 'rgba(16, 8, 24, 0.55)',
-        border: `1px solid ${VOID_VIOLET}55`,
+        background: SNAKE_EYES_PALETTE.surface.ending,
+        border: `1px solid ${SNAKE_EYES_PALETTE.border.endingViolet}`,
         borderRadius: '12px',
         margin: '16px auto',
         maxWidth: '640px',
@@ -136,7 +137,7 @@ function FlipCard({ idx, delayMs }: { idx: number; delayMs: number }) {
           position: 'absolute' as const,
           inset: 0,
           backfaceVisibility: 'hidden' as const,
-          background: 'linear-gradient(135deg, rgba(40, 24, 60, 0.95), rgba(20, 14, 32, 0.95))',
+          background: `linear-gradient(135deg, ${SNAKE_EYES_PALETTE.cardBack.from}, ${SNAKE_EYES_PALETTE.cardBack.to})`,
           border: `1px solid ${VOID_VIOLET}`,
           borderRadius: '6px',
           backgroundImage: `repeating-linear-gradient(45deg, transparent 0 6px, ${VOID_VIOLET}22 6px 7px)`,
@@ -149,7 +150,7 @@ function FlipCard({ idx, delayMs }: { idx: number; delayMs: number }) {
           inset: 0,
           backfaceVisibility: 'hidden' as const,
           transform: 'rotateY(180deg)',
-          background: 'rgba(8, 4, 16, 0.95)',
+          background: SNAKE_EYES_PALETTE.cardFace,
           border: `1px solid ${VOID_GOLD}`,
           borderRadius: '6px',
           color: VOID_GOLD,
