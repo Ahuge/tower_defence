@@ -327,6 +327,37 @@ function greenwardWatchtowerDefenses(): Pos[] {
   ];
 }
 
+function greenwardCathedralGeometry(): Pos[] {
+  // M10 — three-section cathedral. Dense Blocked-cell barriers
+  // separate Courtyard (cols 0-11) / Nave (cols 12-23) / Throne
+  // (cols 24-35) into three visually-distinct zones while still
+  // permitting pathfind through chokepoint gaps.
+  const ps: Pos[] = [];
+
+  // Courtyard / Nave divider — vertical wall at col 11 with a gap
+  // at the mid-row.
+  for (let r = 0; r < GRID_ROWS; r++) {
+    if (r !== MID_ROW) ps.push({ col: 11, row: r });
+  }
+  // Nave / Throne divider — vertical wall at col 24 with a gap.
+  for (let r = 0; r < GRID_ROWS; r++) {
+    if (r !== MID_ROW) ps.push({ col: 24, row: r });
+  }
+
+  // Nave pillars — four columns flanking the central nave aisle.
+  for (let r = 9; r <= 17; r += 4) {
+    ps.push({ col: 15, row: r });
+    ps.push({ col: 21, row: r });
+  }
+
+  // Throne dais — 3x3 footprint at the east end.
+  for (let c = 31; c <= 33; c++) {
+    for (let r = 12; r <= 14; r++) ps.push({ col: c, row: r });
+  }
+
+  return ps;
+}
+
 export const MAPS: Record<MapId, MapDefinition> = {
   plains: {
     id: 'plains',
@@ -1187,7 +1218,28 @@ export const MAPS: Record<MapId, MapDefinition> = {
     blocked: greenwardWatchtowerDefenses(),
     noBuild: [{ col: 6, row: 13 }], // watchtower
   },
-  greenward_cathedral:    { ...MAPS_PLAINS_TEMPLATE, id: 'greenward_cathedral',    name: 'Caer Lythen',     theme: 'arcane_crystal' },
+  // M10 — Caer Lythen, the Sun-Cathedral. Three-section setpiece
+  // map: Courtyard / Nave / Throne. Dense Blocked-cell barriers
+  // create the visual zoning while preserving pathfind through
+  // chokepoint gaps at the mid-row.
+
+  greenward_cathedral: {
+    id: 'greenward_cathedral',
+    name: 'Caer Lythen, the Sun-Cathedral',
+    description: 'Three setpieces. Courtyard, Nave, Throne. The Heron waits at the altar.',
+    theme: 'arcane_crystal',
+    // West entry (Courtyard) → east exit (Throne consequence wave).
+    entries: [{ col: 0,             row: MID_ROW }],
+    exits:   [{ col: GRID_COLS - 1, row: MID_ROW }],
+    blocked: greenwardCathedralGeometry(),
+    // Three setpiece ruins — courtyard (Siege), nave (mode resolved
+    // at runtime by GreenwardFinaleController), throne (Siege).
+    noBuild: [
+      { col: 6,  row: 13 }, // courtyard
+      { col: 18, row: 13 }, // nave
+      { col: 30, row: 13 }, // throne
+    ],
+  },
 };
 
 // (Legacy-shaped IIFE bodies removed; data lives in

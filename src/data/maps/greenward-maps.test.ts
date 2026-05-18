@@ -92,3 +92,33 @@ describe('Greenward bespoke maps — Act III pre-finale', () => {
     expect(MAPS.greenward_court.entries.length).toBe(3);
   });
 });
+
+describe('Greenward bespoke maps — M10 Caer Lythen', () => {
+  describe('M10 Caer Lythen', () => assertMapShape('greenward_cathedral', 9, 'M10 Caer Lythen'));
+
+  it('declares three setpiece ruins (Courtyard / Nave / Throne)', () => {
+    const grid = loadGreenwardMap('greenward_cathedral');
+    const expected: { col: number; row: number; id: string }[] = [
+      { col: 6,  row: 13, id: 'courtyard' },
+      { col: 18, row: 13, id: 'nave' },
+      { col: 30, row: 13, id: 'throne' },
+    ];
+    for (const r of expected) {
+      expect(grid.cells[r.row][r.col], `${r.id} should be NoBuild`).toBe(CellType.NoBuild);
+    }
+  });
+
+  it('vertical divider walls separate the three sections with mid-row gaps', () => {
+    const grid = loadGreenwardMap('greenward_cathedral');
+    // Courtyard / Nave divider at col 11 — wall above + below mid-row.
+    expect(grid.cells[0][11]).toBe(CellType.Blocked);
+    expect(grid.cells[5][11]).toBe(CellType.Blocked);
+    expect(grid.cells[20][11]).toBe(CellType.Blocked);
+    expect(grid.cells[25][11]).toBe(CellType.Blocked);
+    // Mid-row gap — pathfind threads through here.
+    expect(grid.cells[13][11]).not.toBe(CellType.Blocked);
+    // Nave / Throne divider at col 24 — same shape.
+    expect(grid.cells[0][24]).toBe(CellType.Blocked);
+    expect(grid.cells[13][24]).not.toBe(CellType.Blocked);
+  });
+});
