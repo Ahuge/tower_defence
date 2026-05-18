@@ -59,11 +59,43 @@ function assertMapShape(mapId: MapId, missionIdx: number, name: string) {
       ).toBe(CellType.NoBuild);
     }
   });
-  it('pathfind from first entry to first exit succeeds', () => {
+  it('pathfind succeeds from every entry to at least one exit', () => {
+    // Multi-entry maps (M2 / M4 / M7 / M8) must verify EACH entry
+    // reaches some exit — otherwise a misplaced Blocked cluster
+    // could orphan a spawner without the test catching it. We don't
+    // require every entry → every exit combo: spawners pick the
+    // shortest path each, so "at least one exit reachable per entry"
+    // is the gameplay contract.
     const grid = loadGreenwardMap(mapId);
-    const path = findPath(grid, grid.entry, grid.exit);
-    expect(path, `${name} — no path entry → exit`).not.toBeNull();
-    expect(path!.length).toBeGreaterThan(0);
+    for (const entry of grid.entries) {
+      let reached = false;
+      for (const exit of grid.exits) {
+        const path = findPath(grid, entry, exit);
+        if (path && path.length > 0) { reached = true; break; }
+      }
+      expect(
+        reached,
+        `${name} entry (${entry.col}, ${entry.row}) — no path to any exit`,
+      ).toBe(true);
+    }
+  });
+
+  it('pathfind succeeds from at least one entry to every exit', () => {
+    // The reverse direction — every exit must be reachable from
+    // SOME entry. Catches the rarer case where an entry-only-reachable
+    // exit gets walled off but the entries still see another exit.
+    const grid = loadGreenwardMap(mapId);
+    for (const exit of grid.exits) {
+      let reached = false;
+      for (const entry of grid.entries) {
+        const path = findPath(grid, entry, exit);
+        if (path && path.length > 0) { reached = true; break; }
+      }
+      expect(
+        reached,
+        `${name} exit (${exit.col}, ${exit.row}) — no entry reaches it`,
+      ).toBe(true);
+    }
   });
   it('description is non-empty (narrative anchor)', () => {
     const def = MAPS[mapId];
