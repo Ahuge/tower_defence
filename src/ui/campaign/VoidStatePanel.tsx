@@ -77,8 +77,22 @@ export function VoidStatePanel(_props: Props) {
         THE HOUSE LEDGER
       </div>
 
-      {/* Debt-meter with threshold tick marks */}
-      <div style={{ position: 'relative', height: '14px', background: SNAKE_EYES_PALETTE.meterTrack, borderRadius: '3px', overflow: 'hidden' }}>
+      {/* Debt-meter with threshold tick marks. The bar carries
+          role="meter" + aria-value* so screen readers announce
+          "Debt: 800 of 2200" with the threshold context. */}
+      <div
+        role="meter"
+        aria-label="House Debt"
+        aria-valuenow={Math.max(0, state.debt)}
+        aria-valuemin={0}
+        aria-valuemax={DEBT_METER_MAX}
+        aria-valuetext={
+          settled
+            ? `Settled with the House (overpaid by ${Math.abs(state.debt)} gold)`
+            : `${state.debt} gold of Debt out of ${DEBT_METER_MAX}`
+        }
+        style={{ position: 'relative', height: '14px', background: SNAKE_EYES_PALETTE.meterTrack, borderRadius: '3px', overflow: 'hidden' }}
+      >
         <div style={{
           position: 'absolute', inset: 0,
           width: `${debtPct}%`,
@@ -115,13 +129,13 @@ export function VoidStatePanel(_props: Props) {
           }}>
             PACTBOOK TALLY
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
-            <TallyChip label="T1" value={state.pactbookTally.acceptedT1} accent={VOID_VIOLET} />
-            <TallyChip label="T2" value={state.pactbookTally.acceptedT2} accent={VOID_VIOLET} />
-            <TallyChip label="T3" value={state.pactbookTally.acceptedT3} accent={VOID_GOLD} />
-            <TallyChip label="passed" value={state.pactbookTally.declined} accent={DIM_TEXT} />
-            <TallyChip label="won" value={state.pactbookTally.succeeded} accent={SNAKE_EYES_PALETTE.settledGreen} />
-            <TallyChip label="lost" value={state.pactbookTally.failed} accent={SNAKE_EYES_PALETTE.lossRed} />
+          <div role="list" aria-label="Pactbook outcome tally" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+            <TallyChip label="T1" srLabel="Tier 1 (small) Wagers accepted" value={state.pactbookTally.acceptedT1} accent={VOID_VIOLET} />
+            <TallyChip label="T2" srLabel="Tier 2 (medium) Wagers accepted" value={state.pactbookTally.acceptedT2} accent={VOID_VIOLET} />
+            <TallyChip label="T3" srLabel="Tier 3 (high-risk) Wagers accepted" value={state.pactbookTally.acceptedT3} accent={VOID_GOLD} />
+            <TallyChip label="passed" srLabel="Wagers declined (passed)" value={state.pactbookTally.declined} accent={DIM_TEXT} />
+            <TallyChip label="won" srLabel="Accepted Wagers that paid out" value={state.pactbookTally.succeeded} accent={SNAKE_EYES_PALETTE.settledGreen} />
+            <TallyChip label="lost" srLabel="Accepted Wagers that failed" value={state.pactbookTally.failed} accent={SNAKE_EYES_PALETTE.lossRed} />
           </div>
         </div>
       )}
@@ -154,9 +168,9 @@ function ThresholdTick({ pct }: { pct: number }) {
   );
 }
 
-function TallyChip({ label, value, accent }: { label: string; value: number; accent: string }) {
+function TallyChip({ label, srLabel, value, accent }: { label: string; srLabel: string; value: number; accent: string }) {
   return (
-    <div style={{
+    <div role="listitem" aria-label={`${srLabel}: ${value}`} style={{
       padding: '4px 8px',
       borderRadius: '3px',
       background: 'rgba(0,0,0,0.25)',
