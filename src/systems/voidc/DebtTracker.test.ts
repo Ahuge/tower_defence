@@ -19,6 +19,7 @@ import {
   applyLeaks,
   applyDeclinePenalty,
   applyWinPaydown,
+  applyDebtDelta,
   markCollectorDefeated,
   resetSnakeEyesState,
 } from './DebtTracker';
@@ -185,12 +186,57 @@ describe('DebtTracker — applyWinPaydown', () => {
     expect(applyWinPaydown(-Infinity)).toBe(-PAYDOWN_BASE);
   });
 
+  it('multiplier=2 doubles the paydown (Inverted Stakes perfect run)', () => {
+    const delta = applyWinPaydown(0, 2);
+    expect(delta).toBe(-2 * PAYDOWN_BASE);
+  });
+
+  it('multiplier=0 zeros the paydown (Inverted Stakes with a leak)', () => {
+    const delta = applyWinPaydown(5, 0);
+    expect(delta).toBe(0);
+    expect(getDebt()).toBe(INITIAL_DEBT);
+  });
+
+  it('multiplier=3 triples paydown (Mirror Wager win)', () => {
+    const delta = applyWinPaydown(10, 3);
+    expect(delta).toBe(-3 * (PAYDOWN_BASE + 10 * PAYDOWN_PER_DIVERGENCE));
+    expect(delta).toBe(-1800);
+  });
+
+  it('NaN multiplier falls back to 1 (defensive guard)', () => {
+    expect(applyWinPaydown(0, NaN)).toBe(-PAYDOWN_BASE);
+  });
+
   it('Debt can go negative ("settled with the House")', () => {
     // Start near zero, then pay down generously.
     applyWinPaydown(10); // -600 → debt 200
     applyWinPaydown(10); // -600 → debt -400
     expect(getDebt()).toBe(INITIAL_DEBT - 1200);
     expect(getDebt()).toBeLessThan(0);
+  });
+});
+
+describe('DebtTracker — applyDebtDelta', () => {
+  it("applies a negative delta (Counterfactual's Cut)", () => {
+    expect(applyDebtDelta(-100)).toBe(-100);
+    expect(getDebt()).toBe(INITIAL_DEBT - 100);
+  });
+
+  it("applies a positive delta (future Dealer's Eye)", () => {
+    expect(applyDebtDelta(+200)).toBe(+200);
+    expect(getDebt()).toBe(INITIAL_DEBT + 200);
+  });
+
+  it('0 delta is a no-op', () => {
+    const before = getDebt();
+    expect(applyDebtDelta(0)).toBe(0);
+    expect(getDebt()).toBe(before);
+  });
+
+  it('NaN delta is a no-op (defensive guard)', () => {
+    const before = getDebt();
+    expect(applyDebtDelta(NaN)).toBe(0);
+    expect(getDebt()).toBe(before);
   });
 });
 

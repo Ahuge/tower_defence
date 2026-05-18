@@ -13,6 +13,8 @@
 
 import { registerTier1WagerEffects } from './tier1';
 import { registerTier2WagerEffects } from './tier2';
+import { registerTier3WagerEffects } from './tier3';
 
 registerTier1WagerEffects();
 registerTier2WagerEffects();
+registerTier3WagerEffects();

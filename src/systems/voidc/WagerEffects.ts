@@ -37,6 +37,7 @@
  */
 
 import type { Trait } from '../traits/Trait';
+import type { MissionResult } from '../../data/campaigns/CampaignDef';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -71,6 +72,10 @@ export interface WagerEffectHandler {
   onMissionStart?(ctx: WagerEffectContext): {
     /** Add this to the player's starting gold. Negative reduces it. */
     goldDelta?: number;
+    /** One-shot Debt delta applied at accept time. Negative pays
+     *  down Debt (Counterfactual's Cut: pay -100g now); positive
+     *  adds (The Dealer's Eye: +200g Debt for a future free Pact). */
+    debtDelta?: number;
     /** Flags merged into the mission flag bag. */
     flags?: WagerMissionFlags;
   } | void;
@@ -106,6 +111,12 @@ export interface WagerEffectHandler {
     leaked: boolean,
     currentFlags: WagerMissionFlags,
   ): WagerMissionFlags | void;
+
+  /** Multiplier applied to the win-paydown amount at mission end.
+   *  Default (omitted) = 1. Inverted Stakes returns 2 on perfect
+   *  run, 0 on any leak. Reads the final MissionResult so the
+   *  decision is anchored to actually-observed outcome. */
+  getPaydownMultiplier?(result: MissionResult): number;
 
   /** Static metadata for HUD + analytics. */
   meta: {

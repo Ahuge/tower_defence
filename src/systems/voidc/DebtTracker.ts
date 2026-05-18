@@ -194,16 +194,35 @@ export function applyDeclinePenalty(): number {
 }
 
 /** Apply mission-win paydown. `divergence` is the player's accepted-
- *  Wager risk-tally for the mission (0-10, capped). Returns the
- *  Debt-delta applied (negative = paid down). */
-export function applyWinPaydown(divergence: number): number {
-  // Defensive NaN guard — divergence is integer-clean in normal
-  // paths (DivergenceTracker.getCurrent), but a runtime corruption
-  // here would silently NaN the Debt counter forever. Cheap.
-  const safe = Number.isFinite(divergence) ? divergence : 0;
-  const clamped = Math.max(0, Math.min(10, Math.floor(safe)));
+ *  Wager risk-tally for the mission (0-10, capped). `multiplier`
+ *  scales the entire paydown (Inverted Stakes returns 2 on perfect
+ *  run, 0 on any leak — see WagerEffectHandler.getPaydownMultiplier).
+ *  Multiplier defaults to 1; defensive NaN/Infinity guard.
+ *
+ *  Returns the Debt-delta applied (negative = paid down; 0 if
+ *  multiplier was 0; finite otherwise). */
+export function applyWinPaydown(divergence: number, multiplier: number = 1): number {
+  // Defensive NaN/Infinity guards on both inputs.
+  const safeDiv = Number.isFinite(divergence) ? divergence : 0;
+  const safeMult = Number.isFinite(multiplier) ? multiplier : 1;
+  const clamped = Math.max(0, Math.min(10, Math.floor(safeDiv)));
   const state = getSnakeEyesState();
-  const delta = -(PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE * clamped);
+  // Normalize -0 → +0 (occurs when multiplier=0): keeps downstream
+  // equality checks clean (`delta === 0` matches both).
+  const raw = -(PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE * clamped) * safeMult;
+  const delta = raw === 0 ? 0 : raw;
+  setSnakeEyesState({ ...state, debt: state.debt + delta });
+  return delta;
+}
+
+/** Apply a one-shot Debt delta. Used by Wager onMissionStart's
+ *  debtDelta channel (Counterfactual's Cut pays down 100g at
+ *  accept; The Dealer's Eye adds Debt up front). Returns the
+ *  delta applied. Skip the call if delta is 0 (no-op + skips
+ *  the localStorage write). */
+export function applyDebtDelta(delta: number): number {
+  if (!Number.isFinite(delta) || delta === 0) return 0;
+  const state = getSnakeEyesState();
   setSnakeEyesState({ ...state, debt: state.debt + delta });
   return delta;
 }
