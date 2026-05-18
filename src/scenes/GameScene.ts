@@ -94,6 +94,8 @@ import { SuppressionManager, type SuppressibleTower } from '../systems/suppressi
 import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
+import { GreenwardMissionController } from '../systems/greenward/GreenwardMissionController';
+import { getReserves, applyMissionRegen } from '../systems/greenward/WildwoodReserves';
 import type { RaiderTarget } from '../entities/Raider';
 import {
   preloadMechCampaignAssets,
@@ -484,6 +486,12 @@ export class GameScene extends Phaser.Scene {
   private _missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons'];
   private _sabotageController: import('../systems/sabotage/SabotageController').SabotageController | null = null;
   private _sabotageRender: SabotageRender | null = null;
+  /** Campaign #3 — Greenward per-mission Consecration rules. When set,
+   *  GameScene constructs a GreenwardMissionController at init, ticks
+   *  it each frame, and writes its custom payload into MissionResult
+   *  at game-end. Null on non-Greenward missions. */
+  private _missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules'];
+  private _greenwardController: import('../systems/greenward/GreenwardMissionController').GreenwardMissionController | null = null;
   /** Stored window-event listener refs so they can be torn down by
    *  any lifecycle path (shutdown, fast restart without shutdown).
    *  Was previously local consts inside the controller init block —
@@ -505,7 +513,7 @@ export class GameScene extends Phaser.Scene {
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules']; missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons'] }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules']; missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons']; missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules'] }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -539,6 +547,7 @@ export class GameScene extends Phaser.Scene {
     this._missionFinaleRules = data.missionFinaleRules;
     this._missionSabotageRules = data.missionSabotageRules;
     this._missionSuppressionPylons = data.missionSuppressionPylons;
+    this._missionGreenwardRules = data.missionGreenwardRules;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -1351,6 +1360,24 @@ export class GameScene extends Phaser.Scene {
       window.addEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
       window.addEventListener(SABOTAGE_PANEL_CLOSE_EVENT, this._onSabotagePanelClose);
     }
+
+    // Campaign #3 — Greenward per-mission Consecration setup. The
+    // mission def's `greenwardRules.ruins` drives the per-mission
+    // ruin tiles + modes. Construction here; per-frame tick lives
+    // in update(); writeback to MissionResult lives in goToGameOver.
+    if (this._missionGreenwardRules) {
+      // Apply the regen tick BEFORE snapshotting reservesAtStart so
+      // the player gets the visible "+10 per mission" before the
+      // mission's own deductions kick in. This is the mechanical
+      // contract: between missions, Wildwood breathes.
+      applyMissionRegen();
+      const reservesAtStart = getReserves();
+      this._greenwardController = new GreenwardMissionController(
+        this._missionGreenwardRules,
+        reservesAtStart,
+      );
+    }
+
     // Plan 12 attacker mode — drop the map's pre-placed defender
     // towers onto the grid as the AI-side defense the player's
     // creeps must break through. Free placements (no gold cost),
@@ -3391,6 +3418,11 @@ export class GameScene extends Phaser.Scene {
       this._sabotageRender?.update(this._sabotageController, delta, time);
       this._pushSabotageHud(time);
     }
+    if (this._greenwardController) {
+      // Forward per-frame to ConsecrationManager (Ceremony channel
+      // progression). Towers passed structurally — Tower has col/row/typeId.
+      this._greenwardController.tick(time, delta, this.towers as unknown as { col: number; row: number; typeId: string }[]);
+    }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,
       // which is where placeTower actually adds them. The underlying
@@ -4174,6 +4206,13 @@ export class GameScene extends Phaser.Scene {
           // 0 by default so star-3 predicates resolving against this
           // field on non-finale missions don't trip.
           heroDeaths: this._finaleController?.getHero()?.deaths ?? 0,
+          // Campaign #3 — Greenward custom counters. Empty / safe-
+          // defaults when this isn't a Greenward mission so the
+          // shared predicates (which read defensively via `?? false`
+          // / `?? 0`) keep working on the other campaigns.
+          ...(this._greenwardController
+            ? (this._greenwardController.finalize(getReserves()) as unknown as Record<string, number | boolean>)
+            : {}),
         },
       };
       const stars = MissionRunner.finalize(missionResult);
