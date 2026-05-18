@@ -68,6 +68,14 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_boundary',
         difficulty: 'easy',
         waveCount: 8,
+        greenwardRules: {
+          ruins: [
+            // The wayshrine — the campaign's first Ceremony. Cell
+            // chosen at mid-map so the player has lateral space to
+            // place the Blossom on either flank.
+            { id: 'wayshrine', col: 18, row: 13, mode: 'ceremony' },
+          ],
+        },
       },
       objectives: {
         star2: { label: T.missions.boundary_stones.objectives.star2, predicate: r => r.won },
@@ -95,6 +103,17 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         restrictions: {
           allowedTowerIds: ['nature_bramble', 'nature_root'],
         },
+        greenwardRules: {
+          ruins: [
+            // Two shepherds' cairns spread vertically + one barrow
+            // Inheritor-den off-center. Placement makes the three
+            // approaches mutually-supporting from a maze in the
+            // central corridor.
+            { id: 'cairn_north', col: 14, row: 8,  mode: 'ceremony' },
+            { id: 'cairn_south', col: 14, row: 18, mode: 'ceremony' },
+            { id: 'barrow',      col: 22, row: 13, mode: 'siege' },
+          ],
+        },
       },
       objectives: {
         star2: { label: T.missions.salt_meadow.objectives.star2, predicate: r => r.won },
@@ -119,6 +138,17 @@ export const GREENWARD_CAMPAIGN: CampaignDef = {
         mapId: 'greenward_eadwin',
         difficulty: 'normal',
         waveCount: 12,
+        greenwardRules: {
+          ruins: [
+            // The inn-hearth — the campaign's first Mercy. The old
+            // woman (Watcher) sits at the hearth; the player must
+            // not touch her. AoE-warning UI tints any splash tower
+            // hovered over this cell.
+            { id: 'inn_hearth',     col: 18, row: 10, mode: 'mercy' },
+            // The square — Siege through the chanting Road-Walkers.
+            { id: 'village_square', col: 14, row: 15, mode: 'siege' },
+          ],
+        },
       },
       objectives: {
         star2: {

@@ -82,3 +82,34 @@ describe('Campaign registry — Greenward', () => {
     expect(getCampaign('nature')).toBe(GREENWARD_CAMPAIGN);
   });
 });
+
+describe('Greenward Act I missions — Consecration wiring', () => {
+  it('M1 declares one Ceremony ruin', () => {
+    const m = GREENWARD_CAMPAIGN.missions[0];
+    expect(m.overrides.greenwardRules?.ruins).toHaveLength(1);
+    expect(m.overrides.greenwardRules?.ruins[0].mode).toBe('ceremony');
+  });
+
+  it('M2 declares two Ceremony + one Siege', () => {
+    const m = GREENWARD_CAMPAIGN.missions[1];
+    const modes = m.overrides.greenwardRules?.ruins.map(r => r.mode) ?? [];
+    expect(modes.filter(x => x === 'ceremony')).toHaveLength(2);
+    expect(modes.filter(x => x === 'siege')).toHaveLength(1);
+  });
+
+  it('M3 declares one Siege + one Mercy (first Mercy of the campaign)', () => {
+    const m = GREENWARD_CAMPAIGN.missions[2];
+    const modes = m.overrides.greenwardRules?.ruins.map(r => r.mode) ?? [];
+    expect(modes).toContain('siege');
+    expect(modes).toContain('mercy');
+    expect(modes).toHaveLength(2);
+  });
+
+  it('every Act I ruin has a unique id within its mission', () => {
+    for (const idx of [0, 1, 2]) {
+      const ruins = GREENWARD_CAMPAIGN.missions[idx].overrides.greenwardRules?.ruins ?? [];
+      const ids = new Set(ruins.map(r => r.id));
+      expect(ids.size).toBe(ruins.length);
+    }
+  });
+});
