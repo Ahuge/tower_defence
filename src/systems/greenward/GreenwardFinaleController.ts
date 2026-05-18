@@ -53,11 +53,14 @@ export const SETPIECE_RUIN_IDS: Record<Exclude<Setpiece, 'complete'>, string> = 
 
 export class GreenwardFinaleController {
   private readonly mission: GreenwardMissionController;
+  private readonly onComplete?: () => void;
   private active: Setpiece = 'courtyard';
   private resolvedNaveMode: RuinMode | null = null;
+  private completeFired = false;
 
-  constructor(mission: GreenwardMissionController) {
+  constructor(mission: GreenwardMissionController, onComplete?: () => void) {
     this.mission = mission;
+    this.onComplete = onComplete;
   }
 
   /** Currently-active setpiece. Advances when its ruin claims. */
@@ -92,6 +95,12 @@ export class GreenwardFinaleController {
         break;
       }
       case 'complete': break;
+    }
+    // Fire onComplete exactly once when we reach 'complete'. The
+    // callback wires up to GameScene → emit gameWon → goToGameOver.
+    if (this.active === 'complete' && !this.completeFired) {
+      this.completeFired = true;
+      this.onComplete?.();
     }
   }
 

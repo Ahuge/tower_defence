@@ -1382,9 +1382,19 @@ export class GameScene extends Phaser.Scene {
       );
       // M10 only — also construct the three-setpiece finale state
       // machine. Detection: the mission archetype is final_greenward.
-      // The archetypeId arrives via missionContext.
+      // The archetypeId arrives via missionContext. onComplete fires
+      // when the Throne setpiece claims — emit gameWon + transition
+      // to GameOver, mirroring the Mech sabotage / Arcane finale
+      // onWin pattern.
       if (this.missionContext?.archetypeId === 'final_greenward') {
-        this._greenwardFinaleController = new GreenwardFinaleController(this._greenwardController);
+        this._greenwardFinaleController = new GreenwardFinaleController(
+          this._greenwardController,
+          () => {
+            this.eventLog.gameMessage('Caer Lythen has heard the forest.');
+            this.eventBus.emit('gameWon');
+            this.goToGameOver(true);
+          },
+        );
       }
     }
 
