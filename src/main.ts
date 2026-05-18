@@ -32,6 +32,10 @@ import './systems/finale/FinaleTraits';
 
 // Register campaign lobby panels (side-effect imports)
 import './ui/campaign/GreenwardStatePanel';
+import './ui/campaign/VoidStatePanel';
+
+// Register Snake Eyes Wager-effect handlers (side-effect import)
+import './systems/voidc/wagers';
 
 // Eager-load the live-capture module so window.__learningCapture is
 // available from the menu (before any match starts). Module is
