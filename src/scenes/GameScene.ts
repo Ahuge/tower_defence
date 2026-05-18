@@ -95,6 +95,7 @@ import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import { GreenwardMissionController } from '../systems/greenward/GreenwardMissionController';
+import { GreenwardFinaleController } from '../systems/greenward/GreenwardFinaleController';
 import { getReserves, applyMissionRegen } from '../systems/greenward/WildwoodReserves';
 import type { RaiderTarget } from '../entities/Raider';
 import {
@@ -492,6 +493,9 @@ export class GameScene extends Phaser.Scene {
    *  at game-end. Null on non-Greenward missions. */
   private _missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules'];
   private _greenwardController: import('../systems/greenward/GreenwardMissionController').GreenwardMissionController | null = null;
+  /** M10 only — three-setpiece state machine. Non-null only on the
+   *  Greenward final_greenward mission. */
+  private _greenwardFinaleController: import('../systems/greenward/GreenwardFinaleController').GreenwardFinaleController | null = null;
   /** Stored window-event listener refs so they can be torn down by
    *  any lifecycle path (shutdown, fast restart without shutdown).
    *  Was previously local consts inside the controller init block —
@@ -1376,6 +1380,12 @@ export class GameScene extends Phaser.Scene {
         this._missionGreenwardRules,
         reservesAtStart,
       );
+      // M10 only — also construct the three-setpiece finale state
+      // machine. Detection: the mission archetype is final_greenward.
+      // The archetypeId arrives via missionContext.
+      if (this.missionContext?.archetypeId === 'final_greenward') {
+        this._greenwardFinaleController = new GreenwardFinaleController(this._greenwardController);
+      }
     }
 
     // Plan 12 attacker mode — drop the map's pre-placed defender
@@ -3422,6 +3432,8 @@ export class GameScene extends Phaser.Scene {
       // Forward per-frame to ConsecrationManager (Ceremony channel
       // progression). Towers passed structurally — Tower has col/row/typeId.
       this._greenwardController.tick(time, delta, this.towers as unknown as { col: number; row: number; typeId: string }[]);
+      // M10 setpiece state-machine — runs on top of the mission tick.
+      this._greenwardFinaleController?.tick();
     }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,

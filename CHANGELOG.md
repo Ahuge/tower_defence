@@ -26,7 +26,7 @@ Foundation + core systems for the third campaign — the Nature faction's "The G
 
 **All 10 missions' Consecration ruin specs wired** (M1-M10). Mode distribution: Ceremony 7, Siege 7, Mercy 5 — matching the writer-reviewed plan exactly. M10 (Caer Lythen) gets three setpiece ruins (Courtyard / Nave / Throne); the runtime three-setpiece state machine lands in a follow-up.
 
-**Status as of this commit.** Phases 1 + 2 + most of 3 (15 of 22 commits). Remaining: the M10 `GreenwardFinaleController` (three-setpiece state machine that gates the Nave on mode-lean / Reserves-zero), three M10 ending tableaux, full bespoke maps for the 10 missions (currently plains-stub reskins per the "v1 procedural OK" stance), and a Playwright e2e spec for a smoke + happy-path run. Plan + remaining-work tracking lives in `docs/greenward-campaign-plan.md`.
+**Status as of this commit.** Phases 1 + 2 + Phase 3 framework + M10 finale state machine (18 of 22 commits). The Greenward campaign is mechanically functional end-to-end: M1-M9 boot and run through Consecration / Reserves / Caer Wenna / ModeLean; M10 runs the three-setpiece state machine with Nave gating by campaign mode-lean (or Reserves-zero narrowing to Siege). Remaining: three M10 ending tableaux (sprite work + outro paragraph wiring), bespoke maps for the 10 missions (currently plains-stub reskins per the "v1 procedural OK" stance), and a Playwright e2e spec for a smoke + happy-path run through the M10 endings. Plan + remaining-work tracking lives in `docs/greenward-campaign-plan.md`.
 
 **Test count.** 700 → 768 across 14 new test files in `src/systems/greenward/` + creep / campaign shape tests. All green.
 
