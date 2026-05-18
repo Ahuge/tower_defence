@@ -107,8 +107,23 @@ export function VoidStatePanel(_props: Props) {
         <ThresholdTick pct={(DEALER_THRESHOLDS.VOID_SLOT / DEBT_METER_MAX) * 100} />
         <ThresholdTick pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} />
       </div>
+      {/* Threshold-label strip — sits under the bar, aligns with
+          each tick. Teaches the Dealer mechanic at a glance: the
+          player sees their Debt growing toward the next labelled
+          number. */}
+      <div style={{ position: 'relative', height: '14px', marginTop: '2px' }}>
+        <ThresholdLabel pct={(DEALER_THRESHOLDS.BOUNTY_WAVE / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.BOUNTY_WAVE} />
+        <ThresholdLabel pct={(DEALER_THRESHOLDS.REPOSSESS / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.REPOSSESS} />
+        <ThresholdLabel pct={(DEALER_THRESHOLDS.VOID_SLOT / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.VOID_SLOT} />
+        <ThresholdLabel pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID} />
+      </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '11px', color: DIM_TEXT }}>
-        <span>{settled ? <span style={{ color: SNAKE_EYES_PALETTE.settledGreen }}>settled with the House</span> : `Debt ${state.debt}g`}</span>
+        <span>{settled
+          ? <span style={{ color: SNAKE_EYES_PALETTE.settledGreen }}>
+              settled — overpaid by {Math.abs(state.debt)}g
+            </span>
+          : `Debt ${state.debt}g`
+        }</span>
         <span>start {INITIAL_DEBT}g</span>
       </div>
 
@@ -165,6 +180,26 @@ function ThresholdTick({ pct }: { pct: number }) {
       width: '1px',
       background: SNAKE_EYES_PALETTE.meterTick,
     }} />
+  );
+}
+
+function ThresholdLabel({ pct, value }: { pct: number; value: number }) {
+  // Anchor each label horizontally-centered above its tick. Using
+  // translateX(-50%) so the digit width doesn't drift the alignment.
+  return (
+    <div aria-hidden="true" style={{
+      position: 'absolute' as const,
+      top: '0',
+      left: `${pct}%`,
+      transform: 'translateX(-50%)',
+      fontSize: '9px',
+      fontFamily: "'Silkscreen', monospace",
+      color: 'var(--text-dim)',
+      letterSpacing: '0.05em',
+      whiteSpace: 'nowrap' as const,
+    }}>
+      {value}
+    </div>
   );
 }
 
