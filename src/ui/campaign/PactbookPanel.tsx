@@ -33,6 +33,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import type { Pactbook, Wager } from '../../systems/voidc/Pactbook';
 import { getWagerEffect } from '../../systems/voidc/WagerEffects';
 import { SNAKE_EYES_PALETTE, TIER_PALETTE } from '../../systems/voidc/SnakeEyesPalette';
+import { PAYDOWN_BASE, PAYDOWN_PER_DIVERGENCE } from '../../systems/voidc/DebtTracker';
 
 interface PactbookPanelProps {
   pactbook: Pactbook;
@@ -192,8 +193,16 @@ function WagerCard({ wager, idx, buttonRef, onSelect }: WagerCardProps) {
   const palette = TIER_PALETTE[wager.tier - 1];
   const effect = getWagerEffect(wager.effectId);
   const summary = effect?.meta.summary ?? '';
+  // Predicted base paydown if this Wager is the only one accepted
+  // this mission (the campaign rule — single Wager per mission).
+  // Divergence after-accept = wager.tier (resets per mission, +tier
+  // on accept). Outcome multipliers (Inverted Stakes 2×, Mirror Wager
+  // 3×) are NOT factored — those are surprise upside.
+  const previewPaydown = PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE * wager.tier;
   const accessibleLabel =
-    `${palette.label} Wager: ${wager.name}. ${summary || wager.flavor}. Press ${idx + 1} or click to accept.`;
+    `${palette.label} Wager: ${wager.name}. ${summary || wager.flavor}. ` +
+    `Adds ${wager.tier} Divergence; pays down approximately ${previewPaydown} gold of Debt on win. ` +
+    `Press ${idx + 1} or click to accept.`;
 
   return (
     <button
@@ -203,7 +212,7 @@ function WagerCard({ wager, idx, buttonRef, onSelect }: WagerCardProps) {
       aria-keyshortcuts={String(idx + 1)}
       onClick={onSelect}
       style={{
-        padding: '14px 14px 16px',
+        padding: '12px 14px 14px',
         background: palette.bg,
         border: `2px solid ${palette.border}`,
         borderRadius: '6px',
@@ -211,43 +220,99 @@ function WagerCard({ wager, idx, buttonRef, onSelect }: WagerCardProps) {
         display: 'flex' as const,
         flexDirection: 'column' as const,
         gap: '8px',
-        minHeight: '180px',
+        minHeight: '220px',
+        position: 'relative' as const,
       }}
     >
+      {/* Tier badge — circular, colour-coded. Top-left so it
+          scans first. Carries the tier digit so colourblind users
+          have a redundant non-colour signal. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute' as const,
+          top: '10px',
+          left: '10px',
+          width: '22px',
+          height: '22px',
+          borderRadius: '50%',
+          background: palette.border,
+          color: '#0a050f',
+          fontFamily: "'Silkscreen', monospace",
+          fontSize: '13px',
+          fontWeight: 700,
+          display: 'flex' as const,
+          alignItems: 'center' as const,
+          justifyContent: 'center' as const,
+          boxShadow: '0 0 0 2px rgba(0, 0, 0, 0.35)',
+        }}
+      >
+        {wager.tier}
+      </div>
+
+      {/* Tier label header — pads left of the badge */}
       <div style={{
         fontSize: '10px',
         letterSpacing: '0.08em',
         color: palette.border,
         fontFamily: "'Silkscreen', monospace",
+        marginLeft: '32px',
+        lineHeight: '22px',
       }}>
         {palette.label.toUpperCase()}
       </div>
+
+      {/* Wager name */}
       <div style={{
         fontSize: '17px',
         fontWeight: 600,
         lineHeight: 1.2,
+        marginTop: '4px',
       }}>
         {wager.name}
       </div>
-      <div style={{
-        fontSize: '12px',
-        color: 'var(--text-dim)',
-        fontStyle: 'italic' as const,
-        flex: 1,
-      }}>
-        "{wager.flavor}"
-      </div>
+
+      {/* Summary — actually-actionable effect description, now the
+          PRIMARY readable element (was visually equal to flavor). */}
       {summary && (
         <div style={{
-          fontSize: '11px',
+          fontSize: '13px',
           color: 'var(--text-primary)',
-          opacity: 0.85,
-          paddingTop: '6px',
-          borderTop: `1px solid ${SNAKE_EYES_PALETTE.border.cardDivider}`,
+          lineHeight: 1.35,
+          paddingTop: '4px',
         }}>
           {summary}
         </div>
       )}
+
+      {/* Flavor — atmospheric/quote, now visually subordinate. */}
+      <div style={{
+        fontSize: '11px',
+        color: 'var(--text-dim)',
+        fontStyle: 'italic' as const,
+        lineHeight: 1.4,
+        flex: 1,
+      }}>
+        "{wager.flavor}"
+      </div>
+
+      {/* Footer — Divergence delta + base paydown preview. The
+          two numbers actually-different readers across the 3-card
+          draw scan against. */}
+      <div style={{
+        display: 'flex' as const,
+        justifyContent: 'space-between' as const,
+        alignItems: 'center' as const,
+        fontFamily: "'Silkscreen', monospace",
+        fontSize: '11px',
+        paddingTop: '6px',
+        borderTop: `1px solid ${SNAKE_EYES_PALETTE.border.cardDivider}`,
+        color: 'var(--text-primary)',
+        opacity: 0.95,
+      }}>
+        <span style={{ color: palette.border }}>+{wager.tier} DIV</span>
+        <span style={{ color: SNAKE_EYES_PALETTE.gold }}>≈ −{previewPaydown}g</span>
+      </div>
     </button>
   );
 }

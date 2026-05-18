@@ -100,6 +100,38 @@ describe('PactbookPanel — accessibility', () => {
   });
 });
 
+describe('PactbookPanel — information design', () => {
+  it('renders Divergence delta + paydown preview on each card', () => {
+    const pb = new Pactbook({ rng: () => 0.5 });
+    pb.draw(3, [1, 0, 0]); // tier-1 only
+    const { container } = render(<PactbookPanel pactbook={pb} onResolved={() => {}} />);
+    const text = container.textContent ?? '';
+    // Tier 1 → +1 DIV, paydown 100 + 50 = 150g (PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE*1)
+    expect(text).toContain('+1 DIV');
+    expect(text).toContain('≈ −150g');
+  });
+
+  it('paydown preview scales with tier', () => {
+    const pb = new Pactbook({ rng: () => 0.5 });
+    pb.draw(3, [0, 0, 1]); // tier-3 only
+    const { container } = render(<PactbookPanel pactbook={pb} onResolved={() => {}} />);
+    const text = container.textContent ?? '';
+    // Tier 3 → +3 DIV, paydown 100 + 150 = 250g
+    expect(text).toContain('+3 DIV');
+    expect(text).toContain('≈ −250g');
+  });
+
+  it("aria-label spells out the divergence + paydown for screen readers", () => {
+    const pb = new Pactbook({ rng: () => 0.5 });
+    pb.draw(3, [1, 0, 0]);
+    const { container } = render(<PactbookPanel pactbook={pb} onResolved={() => {}} />);
+    const card = container.querySelector('.snake-eyes-wager-card');
+    const label = card?.getAttribute('aria-label') ?? '';
+    expect(label).toContain('1 Divergence');
+    expect(label).toContain('150 gold');
+  });
+});
+
 describe('PactbookPanel — keyboard shortcuts', () => {
   it('"1" key fires onResolved with the first card', () => {
     const pb = new Pactbook({ rng: () => 0.5 });
