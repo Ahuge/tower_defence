@@ -197,7 +197,11 @@ export function applyDeclinePenalty(): number {
  *  Wager risk-tally for the mission (0-10, capped). Returns the
  *  Debt-delta applied (negative = paid down). */
 export function applyWinPaydown(divergence: number): number {
-  const clamped = Math.max(0, Math.min(10, Math.floor(divergence)));
+  // Defensive NaN guard — divergence is integer-clean in normal
+  // paths (DivergenceTracker.getCurrent), but a runtime corruption
+  // here would silently NaN the Debt counter forever. Cheap.
+  const safe = Number.isFinite(divergence) ? divergence : 0;
+  const clamped = Math.max(0, Math.min(10, Math.floor(safe)));
   const state = getSnakeEyesState();
   const delta = -(PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE * clamped);
   setSnakeEyesState({ ...state, debt: state.debt + delta });

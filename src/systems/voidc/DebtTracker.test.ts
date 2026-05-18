@@ -175,6 +175,16 @@ describe('DebtTracker — applyWinPaydown', () => {
     expect(delta).toBe(-(PAYDOWN_BASE + 3 * PAYDOWN_PER_DIVERGENCE));
   });
 
+  it('NaN divergence is treated as 0 (defensive guard)', () => {
+    const delta = applyWinPaydown(NaN);
+    expect(delta).toBe(-PAYDOWN_BASE);
+  });
+
+  it('Infinity divergence is treated as 0 (defensive guard)', () => {
+    expect(applyWinPaydown(Infinity)).toBe(-PAYDOWN_BASE);
+    expect(applyWinPaydown(-Infinity)).toBe(-PAYDOWN_BASE);
+  });
+
   it('Debt can go negative ("settled with the House")', () => {
     // Start near zero, then pay down generously.
     applyWinPaydown(10); // -600 → debt 200
