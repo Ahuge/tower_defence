@@ -42,18 +42,27 @@ test.describe('Greenward M10 — endings walkthrough', () => {
     await gotoFresh();
     await launchM10(page);
 
-    // Force-claim the three setpiece ruins in order. The
-    // FinaleController's per-frame tick walks Courtyard → Nave →
-    // Throne as each claims; the Nave resolves to Siege because
-    // no mode-lean has been accrued (fresh install).
+    // Force-claim the three setpiece ruins in order. After each
+    // claim we poll the FinaleController's snapshot for the
+    // setpiece transition to advance — no fixed sleeps. The poll
+    // resolves in ~1 Phaser tick; the 5s timeout is the upper
+    // bound for slow CI runners.
+    const expectedAfter: Record<string, string> = {
+      courtyard: 'nave',
+      nave:      'throne',
+      throne:    'complete',
+    };
     for (const ruinId of ['courtyard', 'nave', 'throne']) {
       const claimed = await page.evaluate(
         (id) => window.__td_test!.forceClaimGreenwardRuin(id),
         ruinId,
       );
       expect(claimed, `forceClaimGreenwardRuin('${ruinId}') should succeed`).toBe(true);
-      // Allow one update tick for the FinaleController to advance.
-      await page.waitForTimeout(50);
+      await page.waitForFunction(
+        (next) => window.__td_test?.getGreenwardStatus()?.finale?.active === next,
+        expectedAfter[ruinId],
+        { timeout: 5_000 },
+      );
     }
 
     // Wait for gameWon. The throne claim triggers M10's win path
