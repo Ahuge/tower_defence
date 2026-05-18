@@ -123,6 +123,8 @@ import { AttackerAbilities } from '../systems/attacker/AttackerAbilities';
 import { DEFAULT_ATTACKER_ABILITIES } from '../data/AttackerAbilityDefs';
 import { getDifficultyConfig, type AttackerDifficulty } from '../systems/attacker/CpuDefender';
 import { getPrep, prepHpMultiplier } from '../data/AttackerPreps';
+import { PlacementGateController } from '../systems/placement/PlacementGateController';
+import { isPlaceAndApproveEnabled } from '../systems/placement/PlaceAndApproveSetting';
 
 type SelectionMode = 'build' | 'inspect' | 'inspect_creep' | 'link' | 'none';
 
@@ -349,6 +351,13 @@ export class GameScene extends Phaser.Scene {
   private _gameStartTime: number = 0;
   hoverGraphics!: Phaser.GameObjects.Graphics;
   rangeGraphics!: Phaser.GameObjects.Graphics;
+  /** Place-and-approve gate — when enabled, tryBuildTower stages
+   *  a ghost instead of committing. Tick / X / drag / re-tap via
+   *  the PlacementGateOverlay DOM component (commit 4). */
+  private _placementGate: PlacementGateController = new PlacementGateController();
+  /** Graphics layer for the ghost cell highlight. Drawn during
+   *  the per-frame render pass next to hoverGraphics. */
+  private _ghostGraphics!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('GameScene');
@@ -1686,6 +1695,9 @@ export class GameScene extends Phaser.Scene {
     this.pathGraphics = this.add.graphics().setDepth(1);
     this.hoverGraphics = this.add.graphics().setDepth(20);
     this.rangeGraphics = this.add.graphics().setDepth(19);
+    // Place-and-approve ghost — drawn above range graphics so the
+    // pending cell stays visible against tower-range overlays.
+    this._ghostGraphics = this.add.graphics().setDepth(21);
 
     // Sidebar — DOM UI handles all panels now.
     // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
@@ -3178,6 +3190,21 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Place-and-approve gate: when enabled (phone default ON,
+    // desktop opt-in), stage a ghost placement instead of committing
+    // immediately. The DOM overlay (PlacementGateOverlay, commit 4)
+    // exposes tick / X / drag / re-tap. Gold deduction stays here
+    // and fires only on commit via commitPlacementGate(). Captures
+    // are deferred to the commit path too — we don't snapshot ghosts.
+    //
+    // Attacker mode is already early-returned at the top of this
+    // method (line ~3156), so we don't need to re-check here.
+    if (isPlaceAndApproveEnabled()) {
+      this._placementGate.placeGhost(col, row, towerType.id);
+      this._drawPlacementGhost();
+      return;
+    }
+
     // Capture BEFORE placement so the snapshot is the pre-action state.
     this._captureHumanAction({ kind: 'place', col, row, type: towerType });
 
@@ -3209,6 +3236,92 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  // ─── Place-and-approve gate (commit 3) ───────────────────────
+  // Public API used by the PlacementGateOverlay DOM component
+  // (commit 4) + tests. The controller is the state machine; this
+  // section ties it to the existing place-tower path.
+
+  /** Commit the pending ghost placement. Re-runs the validity
+   *  gate (cell still buildable + still affordable; could have
+   *  changed during the pulse on a mid-wave Mech repossession or
+   *  Pylon cycle). On success, runs the standard place-tower path
+   *  exactly as tryBuildTower would have without the gate. */
+  commitPlacementGate(): void {
+    const spec = this._placementGate.consumeForCommit();
+    this._ghostGraphics.clear();
+    if (!spec) return;
+    // Re-validate at commit time as a defensive guard. The gate may
+    // have been pending across a state change (a wave starting, an
+    // adjacent tower placing through a different path).
+    if (!this.grid.canPlaceTower(spec.col, spec.row)) return;
+    if (!this.canBuildInZone(spec.col, spec.row)) return;
+    const towerType = getTowerType(spec.towerTypeId);
+    const cost = this.towerMgr.getEffectiveCost(towerType.cost);
+    if (!this.economy.canAfford(cost)) return;
+    // Hand off to the existing place-tower path. Capture happens
+    // here, not on placeGhost — we don't snapshot ghosts.
+    this._captureHumanAction({ kind: 'place', col: spec.col, row: spec.row, type: towerType });
+    const result = this.towerMgr.placeTower(spec.col, spec.row, towerType, this.allPaths, () => {
+      this.recalculatePaths();
+      return this.allPaths;
+    });
+    if (!result) return;
+    if (this.circle) {
+      this.towerOwners.set(`${spec.col},${spec.row}`, this.circle.playerIndex);
+      this.circle.broadcast({ type: 'tower_placed', towerId: towerType.id, col: spec.col, row: spec.row });
+    }
+    this.versus?.send({ type: 'tower_placed', towerId: towerType.id, col: spec.col, row: spec.row });
+    if (result.pathsChanged) {
+      this.rerouteCreepsAroundTower(spec.col, spec.row);
+      this.drawPath();
+    }
+  }
+
+  /** Cancel the pending ghost. Clears the controller + ghost
+   *  graphics. No gold spent — a cancelled ghost costs zero. */
+  cancelPlacementGate(): void {
+    this._placementGate.cancel();
+    this._ghostGraphics.clear();
+  }
+
+  /** Move the pending ghost to a new cell. Used by both drag-mode
+   *  pointermove and re-tap teleport. Re-renders the ghost on
+   *  state change. Returns true if the ghost moved. */
+  movePlacementGhost(col: number, row: number): boolean {
+    // Defensive: only allow moves to cells that pass the basic
+    // placement gate. Off-grid or blocked cells are silently
+    // ignored — the player keeps the ghost where it was.
+    if (!this.grid.canPlaceTower(col, row)) return false;
+    if (!this.canBuildInZone(col, row)) return false;
+    const changed = this._placementGate.moveGhost(col, row);
+    if (changed) this._drawPlacementGhost();
+    return changed;
+  }
+
+  /** Read the pending ghost for the overlay component. */
+  getPlacementGhost(): ReturnType<PlacementGateController['getGhost']> {
+    return this._placementGate.getGhost();
+  }
+
+  /** Draw the ghost cell highlight. Cheap — single fill + stroke
+   *  on a dedicated graphics layer. Called on placeGhost + move. */
+  private _drawPlacementGhost(): void {
+    this._ghostGraphics.clear();
+    const ghost = this._placementGate.getGhost();
+    if (!ghost) return;
+    const x = gridLeftX(ghost.col);
+    const y = gridY(ghost.row) - TILE_SIZE / 2;
+    // Amber/gold tint — distinguishes from the green/red hover
+    // (valid/invalid) and matches the campaign's "pending decision"
+    // visual register.
+    const colorFill = 0xd4b04a;
+    const colorBorder = 0xffd97a;
+    this._ghostGraphics.fillStyle(colorFill, 0.22);
+    this._ghostGraphics.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+    this._ghostGraphics.lineStyle(2, colorBorder, 0.9);
+    this._ghostGraphics.strokeRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
   }
 
   /** Debug: ms accumulated since we last printed the stuck-creep
