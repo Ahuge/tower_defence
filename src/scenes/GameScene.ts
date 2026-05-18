@@ -97,6 +97,7 @@ import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import { GreenwardMissionController } from '../systems/greenward/GreenwardMissionController';
 import { GreenwardFinaleController } from '../systems/greenward/GreenwardFinaleController';
 import { getReserves, applyMissionRegen } from '../systems/greenward/WildwoodReserves';
+import { BOSS_KILL_CUSTOM_FLAGS } from '../systems/greenward/GreenwardSpawns';
 import type { RaiderTarget } from '../entities/Raider';
 import {
   preloadMechCampaignAssets,
@@ -3434,6 +3435,16 @@ export class GameScene extends Phaser.Scene {
       this._greenwardController.tick(time, delta, this.towers as unknown as { col: number; row: number; typeId: string }[]);
       // M10 setpiece state-machine — runs on top of the mission tick.
       this._greenwardFinaleController?.tick();
+      // Boss-kill detection — scan just-died creeps for named-boss
+      // typeIds and flip the corresponding GreenwardMissionCustom
+      // flag. Per-frame scan rather than event subscription because
+      // the existing creepKilled event doesn't carry typeId.
+      for (const dead of this.creepMgr.justDiedCreeps) {
+        const flag = BOSS_KILL_CUSTOM_FLAGS[dead.creepTypeId];
+        if (flag) {
+          this._greenwardController.setCustom(flag as 'knightKilled' | 'heraldKilled', true);
+        }
+      }
     }
     if (this._finaleController) {
       // Use the getter `this.towers` — proxies to TowerManager.towers,
