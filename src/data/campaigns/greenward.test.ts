@@ -30,9 +30,8 @@ describe('Greenward campaign — shape', () => {
     expect(ids.size).toBe(10);
   });
 
-  it('non-finale missions use real (non-stub) archetypes', () => {
-    for (let i = 0; i < 9; i++) {
-      const m = GREENWARD_CAMPAIGN.missions[i];
+  it('every mission uses a real (non-stub) archetype', () => {
+    for (const m of GREENWARD_CAMPAIGN.missions) {
       expect(isArchetypeStub(m.archetype)).toBe(false);
     }
   });

@@ -142,6 +142,16 @@ const ARCHETYPES: Record<string, MissionArchetype> = {
     baseMode: 'standard',
     defaults: { waveCount: 999, difficulty: 'hard' },
   },
+  /** Greenward M10 finale — three setpieces (Courtyard / Nave / Throne).
+   *  GreenwardFinaleController drives the state machine; the Nave's
+   *  mode is decided at runtime from campaign mode-lean + Reserves. */
+  final_greenward: {
+    id: 'final_greenward',
+    label: 'The Sun-Cathedral',
+    blurb: 'Three setpieces. One choice. The forest decides what it becomes.',
+    baseMode: 'standard',
+    defaults: { waveCount: 999, difficulty: 'hard' },
+  },
 };
 
 /** Forward-compat placeholders — registered so the `MissionArchetypeId`
@@ -176,18 +186,6 @@ const STUB_ARCHETYPES: Record<string, MissionArchetype> = {
     blurb: 'Walker bosses arrive missing parts you stole.',
     baseMode: 'standard',
     defaults: { waveCount: 5, difficulty: 'hard' },
-  },
-  /** Greenward M10 finale — three-setpiece Caer Lythen (Courtyard /
-   *  Nave / Throne). Nave path gated by campaign mode-lean. Real
-   *  implementation lands when the GreenwardController arrives;
-   *  currently a stub so the campaign def + texts can compile and
-   *  reference it. */
-  final_greenward: {
-    id: 'final_greenward',
-    label: 'The Sun-Cathedral',
-    blurb: 'Three setpieces. One choice. The forest decides what it becomes.',
-    baseMode: 'standard',
-    defaults: { waveCount: 999, difficulty: 'hard' },
   },
 };
 
