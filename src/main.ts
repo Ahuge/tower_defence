@@ -32,21 +32,22 @@ import './systems/finale/FinaleTraits';
 
 // Register campaign lobby panels (side-effect imports)
 import './ui/campaign/GreenwardStatePanel';
+// VoidStatePanel registers eagerly so the campaign-lobby render
+// path's `CampaignStatePanelRegistry.get('void')` always sees it.
+// The lobby reads the registry inside an IIFE at render time and
+// won't re-render if the entry appears later — a race we observed
+// during audit. The panel itself is a tiny React component; the
+// parse cost is negligible. (The boot-time weight that triggered
+// the mobile-e2e timeout was wagers/, not VoidStatePanel.)
+import './ui/campaign/VoidStatePanel';
 
-// Snake Eyes campaign — async side-effect registrations (VoidStatePanel
-// registers into the CampaignStatePanelRegistry; wagers/index.ts
-// populates the WagerEffects handler registry). Dynamic-imported so
-// they don't bloat the synchronous boot path on slow runners (mobile
-// playwright CI was hitting the 15s __td_test boot timeout when these
-// were eager). Both registrations land before the player can possibly
-// reach a Pactbook draw or the Void campaign lobby (boot → menu →
-// campaign tab takes seconds in the worst case; async resolves in
-// tens of milliseconds).
-Promise.all([
-  import('./ui/campaign/VoidStatePanel'),
-  import('./systems/voidc/wagers'),
-]).catch(err =>
-  console.error('[snake-eyes] failed to register campaign side-effects:', err),
+// Snake Eyes Wager-effect handlers — dynamic-imported so the
+// Trait.ts registerDamageMod calls + 12-card deck eval don't bloat
+// the synchronous boot path. Player can't reach a Pactbook draw
+// before the menu → campaign → mission flow (seconds at minimum),
+// so async resolution (tens of ms) lands well ahead of need.
+import('./systems/voidc/wagers').catch(err =>
+  console.error('[snake-eyes] failed to register Wager effects:', err),
 );
 
 // Eager-load the live-capture module so window.__learningCapture is
