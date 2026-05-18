@@ -252,3 +252,29 @@ registerCreepDraw('evasion', (_trait: Trait, creep: any, g: any) => {
     g.strokeCircle(creep.x, creep.y, baseSize * creep.size + 2);
   }
 });
+
+// ============================================================
+// Mech Iron Cascade — Flagship Walker armor-vent (M5)
+// ============================================================
+//
+// The flagship walker (`mech_flagship_walker`) carries the
+// `mech_pylon_vent_armor` trait. Narrative: heavy plate while
+// Voss's Suppression Pylons cycle; armor vents briefly whenever a
+// pylon is silenced — exposed under-plating that the Arcane kit
+// can burst through. Mechanically: while at least one pylon is
+// channel-muted (player has earned the vent window), incoming
+// damage on the walker is multiplied by `trait.bonusDamageMult`
+// (default 1.6× → 60% bonus). Otherwise damage is unchanged.
+//
+// Reads the active SuppressionManager via the module-level
+// singleton (ActiveSuppressionManager) — trait handlers don't get
+// scene context, so the singleton bridges the gap. GameScene
+// registers the active manager on Mech-mission init.
+
+import { isAnyPylonMutedNow } from '../suppression/ActiveSuppressionManager';
+
+registerCreepDamage('mech_pylon_vent_armor', (trait: Trait, damage: number) => {
+  if (!isAnyPylonMutedNow()) return damage;
+  const mult = typeof trait.bonusDamageMult === 'number' ? trait.bonusDamageMult : 1.6;
+  return damage * mult;
+});
