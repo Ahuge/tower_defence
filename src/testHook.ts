@@ -126,6 +126,17 @@ interface TestHook {
    *  script which needs to drive through Menu / Store / Draft /
    *  etc. without following the real button-click flow. */
   showScreen: (screen: string, data?: Record<string, unknown>) => void;
+  /** Set the active GameScene's main camera zoom + optional scroll.
+   *  Used by the place-and-approve e2e to verify the gate's icons
+   *  track the live camera through pinch-zoom / pan. Returns false
+   *  when the GameScene isn't active. */
+  setCameraZoom: (zoom: number, scrollX?: number, scrollY?: number) => boolean;
+  /** Directly stage a placement ghost — used by the place-and-approve
+   *  e2e to set up the gate without driving the full select-tower +
+   *  click-cell flow (the cell positions move with zoom, so isolating
+   *  the projection from input is more readable). Returns false if
+   *  no GameScene is active. */
+  stagePlacementGhost: (towerTypeId: string, col: number, row: number) => boolean;
 }
 
 let bootComplete = false;
@@ -326,6 +337,25 @@ export function installTestHook(): void {
       // private to ../ui/UIBridge, but the test hook accepts any
       // string so scripts don't have to import that type.
       UIBridge.show(screen as Parameters<typeof UIBridge.show>[0], data);
+    },
+    setCameraZoom: (zoom: number, scrollX?: number, scrollY?: number) => {
+      const game = UIBridge.getGame();
+      if (!game) return false;
+      const scene = game.scene.getScene('GameScene') as unknown as {
+        cameras?: { main?: { setZoom: (z: number) => void; setScroll: (x: number, y: number) => void; scrollX: number; scrollY: number } };
+      } | null;
+      const cam = scene?.cameras?.main;
+      if (!cam) return false;
+      cam.setZoom(zoom);
+      if (scrollX !== undefined || scrollY !== undefined) {
+        cam.setScroll(scrollX ?? cam.scrollX, scrollY ?? cam.scrollY);
+      }
+      return true;
+    },
+    stagePlacementGhost: (towerTypeId: string, col: number, row: number) => {
+      if (!isGameSceneActive()) return false;
+      GameUIStore.setPlacementGhost({ col, row, towerTypeId });
+      return true;
     },
   };
   // One-line breadcrumb — handy when a test fails and you open the

@@ -6,6 +6,7 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/preact';
 import { PlacementGateOverlay } from './PlacementGateOverlay';
 import { GameUIStore } from '../GameUIStore';
+import { UIBridge } from '../UIBridge';
 
 afterEach(() => {
   cleanup();
@@ -196,5 +197,182 @@ describe('PlacementGateOverlay — double-tap to commit', () => {
     // Real tap right after — should NOT commit (drag reset the tracker).
     tapHandle(handle, 150, 150);
     expect(commits).toBe(0);
+  });
+});
+
+describe('PlacementGateOverlay — camera-zoom/scroll-aware projection', () => {
+  // Regression test: the v1 fix (FIT-letterbox) didn't account for the
+  // game camera's live zoom + scroll, so the tick/X icons appeared
+  // disconnected from the dashed ghost cell as soon as the player
+  // pinch-zoomed or pan-dragged the playfield. Two user screenshots
+  // (bad_click_to_placement.png, bad_click_to_placement_2.png) confirm
+  // the icons land in a global, zoom-invariant location while the
+  // ghost cell is rendered in zoomed/panned coords.
+
+  function withFakeCamera(
+    zoom: number,
+    scrollX: number,
+    scrollY: number,
+    fn: () => void,
+    viewport?: { x: number; y: number; width: number; height: number },
+  ) {
+    // Default viewport = full canvas (1008×720). Tests that need to
+    // simulate the phone-clipped viewport pass an explicit one.
+    const vp = viewport ?? { x: 0, y: 0, width: 1008, height: 720 };
+    const fakeGame = {
+      scene: {
+        getScene: () => ({
+          cameras: {
+            main: {
+              worldView: {
+                x: scrollX,
+                y: scrollY,
+                width: vp.width / zoom,
+                height: vp.height / zoom,
+              },
+              x: vp.x,
+              y: vp.y,
+              width: vp.width,
+              height: vp.height,
+            },
+          },
+        }),
+      },
+    };
+    const original = UIBridge.getGame;
+    UIBridge.getGame = () => fakeGame as unknown as ReturnType<typeof original>;
+    try { fn(); } finally { UIBridge.getGame = original; }
+  }
+
+  it('tile-size in screen px factors in camera zoom', () => {
+    // At zoom=2 the tile reads twice as big on screen as at zoom=1.
+    // The hit area + cell highlight read this from anchor.tileSize, so
+    // the rendered cell box scales with the live camera.
+    let baselineWidth = 0;
+    withFakeCamera(1, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 10, row: 8, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      const w = (handle.getAttribute('style') ?? '').match(/width:\s*([\d.]+)px/);
+      expect(w).not.toBeNull();
+      baselineWidth = parseFloat(w![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    let zoomedWidth = 0;
+    withFakeCamera(2, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 10, row: 8, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      const w = (handle.getAttribute('style') ?? '').match(/width:\s*([\d.]+)px/);
+      zoomedWidth = parseFloat(w![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    // 2× zoom → ~2× tile size on screen.
+    expect(zoomedWidth / baselineWidth).toBeCloseTo(2, 1);
+  });
+
+  it('cell screen-position shifts with camera scroll', () => {
+    // Same target cell, different camera scroll — the screen anchor
+    // must move. Without the fix the anchor was zoom-invariant and the
+    // icons floated in their old place while the ghost moved with the
+    // camera, producing the disconnected-icons screenshot.
+    let leftA = 0;
+    withFakeCamera(1, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 18, row: 13, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      leftA = parseFloat((handle.getAttribute('style') ?? '').match(/left:\s*([\d.]+)px/)![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    let leftB = 0;
+    withFakeCamera(1, 200, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 18, row: 13, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      leftB = parseFloat((handle.getAttribute('style') ?? '').match(/left:\s*([\d.]+)px/)![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    // Camera scrolled right by 200 world-px → cell's screen-X shifts
+    // left by 200 (× FIT scale). Sign of the delta is the regression.
+    expect(leftB).toBeLessThan(leftA);
+    expect(leftA - leftB).toBeGreaterThan(100);
+  });
+
+  it('phone-clipped viewport: cell projects to the camera viewport, not the canvas DOM rect', () => {
+    // Regression test for the user-reported mobile bug: icons sit at
+    // the top of the screen instead of over the ghost cell. Cause:
+    // on phone, CameraController clips the camera viewport to the
+    // area ABOVE the UI bars (status / tower-bar / control-bar).
+    // The canvas DOM rect is the full screen but the camera renders
+    // only into the top portion. A world point at v=0.5 of the
+    // worldView lands at v=0.5 of the camera viewport, NOT at v=0.5
+    // of the canvas DOM rect.
+    //
+    // Stub a phone-ish setup: canvas 1008×2241 intrinsic (the value
+    // ResponsiveManager.canvasHeight() produces on a portrait
+    // viewport), camera viewport clipped to (0, 0, 1008, 1700) — the
+    // top portion above the UI bars. Canvas DOM rect 360×800 (full
+    // viewport).
+    document.getElementById('game-root')?.remove();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1008;
+    canvas.height = 2241;
+    const root = document.createElement('div');
+    root.id = 'game-root';
+    root.appendChild(canvas);
+    document.body.appendChild(root);
+    canvas.getBoundingClientRect = () => ({
+      left: 0, top: 0, right: 360, bottom: 800,
+      width: 360, height: 800, x: 0, y: 0, toJSON: () => ({}),
+    });
+
+    const phoneViewport = { x: 0, y: 0, width: 1008, height: 1700 };
+    withFakeCamera(1, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 18, row: 13, towerTypeId: 'arcane_bolt' });
+      const { container } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      const style = handle.getAttribute('style') ?? '';
+      const topPx = parseFloat(style.match(/top:\s*([\d.]+)px/)![1]);
+      // Cell at row 13: gridY ≈ 378 world-px. World→viewport: v ≈
+      // 378 / 1700 ≈ 0.222. Viewport→canvas-pixel: y ≈ 0 + 0.222 *
+      // 1700 = 378. Canvas-pixel→CSS via cssScale = 800/2241 ≈ 0.357
+      // → CSS y ≈ 135.
+      //
+      // BUGGED formula (rect.top + v*rect.height with v from worldView
+      // and rect.height = 800): 0.222 * 800 ≈ 178. Same ballpark, but
+      // when the camera viewport is clipped to a fraction of the
+      // canvas, the discrepancy grows. The real bug is at the BOTTOM
+      // of the playfield: cell at row 25 → worldY ≈ 714 → v = 0.42
+      // → fixed projection puts it at canvas-px 714 → CSS 255 (still
+      // inside the viewport at 80% down the visible play area).
+      // Bugged projection puts it at 0.42 * 800 = 336 CSS, which is
+      // ALSO ~80% down the canvas — but the canvas is twice as tall
+      // as the viewport, so 336 lands in the UI-bar region.
+      //
+      // Spot-check: the rendered top must be at least 50px (i.e. not
+      // pinned to the screen top), and within ~25% of the screen
+      // height for a row-13 cell on this viewport.
+      expect(topPx, `handle y should be inside the playfield region`).toBeGreaterThan(50);
+      expect(topPx).toBeLessThan(400);
+    }, phoneViewport);
+
+    // Also check row 25 (bottom of the playfield) lands inside the
+    // viewport's bottom edge, not in the UI-bar region.
+    withFakeCamera(1, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 18, row: 25, towerTypeId: 'arcane_bolt' });
+      const { container } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      const topPx = parseFloat((handle.getAttribute('style') ?? '').match(/top:\s*([\d.]+)px/)![1]);
+      // gridY(25) ≈ 714. canvas-pixel y = 714 (inside viewport).
+      // CSS y = 714 * 800/2241 ≈ 255. The clipped viewport ends at
+      // canvas-pixel y=1700 → CSS y=607. So the cell at 255 should
+      // be well inside the viewport's CSS range (0..607).
+      expect(topPx).toBeGreaterThan(100);
+      expect(topPx).toBeLessThan(607);
+    }, phoneViewport);
   });
 });

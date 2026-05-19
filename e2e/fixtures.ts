@@ -189,6 +189,8 @@ declare global {
       getMissionStars: (campaignFactionId: string, missionIdx: number) => number;
       onceEvent: (event: string, timeoutMs?: number) => Promise<unknown[]>;
       launchCampaignMission: (campaignFactionId: string, missionIdx: number) => boolean;
+      setCameraZoom: (zoom: number, scrollX?: number, scrollY?: number) => boolean;
+      stagePlacementGhost: (towerTypeId: string, col: number, row: number) => boolean;
     };
   }
 }

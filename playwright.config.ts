@@ -22,7 +22,15 @@ export default defineConfig({
   // a generous default; fast ones still finish quickly.
   timeout: 30_000,
   expect: { timeout: 5_000 },
-  fullyParallel: false, // preview server is single-origin; serialising avoids port contention and splash-timing overlap
+  // Bumping workers > 1 is on the table (each worker has its own
+  // browser context so localStorage doesn't leak), but the webServer
+  // start sequence races with `fullyParallel: true` — the preview
+  // server takes ~30s to build + boot, and parallel workers fire off
+  // page.goto before it's reachable. Solving that needs either a
+  // pre-built dist served by a separate process or a webServer
+  // health-check endpoint; out of scope for the projection fix.
+  // Tracked as a follow-up.
+  fullyParallel: false,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',

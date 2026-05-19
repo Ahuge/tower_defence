@@ -35,6 +35,7 @@ import { useGameUI } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 import { gridX, gridY, TILE_SIZE, pixelToCol, pixelToRow } from '../../config';
 import { UIScale } from '../../systems/UIScale';
+import { UIBridge } from '../UIBridge';
 
 /** Resolve the active Phaser canvas element. Mounted into
  *  `#game-root` by main.ts; falls back to the first canvas in the
@@ -54,81 +55,111 @@ interface ScreenAnchor {
   tileSize: number;
 }
 
-/** Phaser is configured with Scale.FIT + CENTER_BOTH (see main.ts):
- *  the canvas's INTRINSIC pixel buffer (canvas.width / canvas.height)
- *  stays at the configured GAME_WIDTH / GAME_HEIGHT, but the DOM
- *  element is sized to FIT the viewport with aspect preserved and
- *  centered in any remaining space. The rendered playfield occupies
- *  a sub-region of the canvas DOM rect — letterbox bars at top/bottom
- *  on portrait viewports (or left/right on landscape), depending on
- *  aspect mismatch.
+/** Snapshot of the Phaser camera transform plus the canvas's DOM
+ *  rect. Both directions of cell↔screen projection read from this.
  *
- *  The original projection assumed canvas-fill (no letterbox), which
- *  put the tick/X buttons at the wrong screen location on mobile.
- *  This helper computes the *actual displayed* sub-rect of the
- *  Phaser content within the canvas DOM rect. */
-interface FittedCanvasRect {
-  /** Page-relative left edge of the displayed Phaser content. */
-  left: number;
-  /** Page-relative top edge of the displayed Phaser content. */
-  top: number;
-  /** Width of the displayed Phaser content (post-FIT). */
-  width: number;
-  /** Height of the displayed Phaser content (post-FIT). */
-  height: number;
-  /** Canvas-pixel → displayed-pixel scale factor. */
-  scale: number;
+ *  Why we track BOTH `viewport` and `worldView`: on phone,
+ *  CameraController clips the main camera's viewport to the area
+ *  above the UI bars (`cam.setViewport(0, 0, canvas.width, viewportH)`).
+ *  The canvas DOM element fills the whole screen but the camera
+ *  renders into only its top portion — the bottom is reserved for
+ *  the status / tower-bar / control-bar HUDs. A world point at the
+ *  centre of the worldView lands at the centre of the VIEWPORT,
+ *  NOT at the centre of the canvas DOM rect.
+ *
+ *  Naïve formula (testHook.getCellClientPos): `rect.left +
+ *  ((worldX - wv.x) / wv.width) * rect.width`. This puts the centre
+ *  of the worldView at the centre of the canvas DOM rect — which on
+ *  phone is the centre of the SCREEN, not the centre of the rendered
+ *  playfield. Icons drift up toward the canvas top while the
+ *  player's cell sits visually centred inside the clipped viewport.
+ *
+ *  Correct chain: world → canvas-pixel (via viewport + worldView) →
+ *  CSS-pixel (via canvas DOM rect ÷ canvas intrinsic). */
+interface CameraProjection {
+  /** Visible world rect (world pixels). */
+  worldView: { x: number; y: number; width: number; height: number };
+  /** Camera viewport on the canvas pixel buffer (canvas pixels). On
+   *  desktop this is (0, 0, canvas.width, canvas.height); on phone
+   *  it's clipped to the area above the UI bars. */
+  viewport: { x: number; y: number; width: number; height: number };
+  /** Canvas DOM rect (CSS pixels). */
+  rect: { left: number; top: number; width: number; height: number };
+  /** Canvas intrinsic pixel-buffer dimensions. */
+  canvasW: number;
+  canvasH: number;
 }
 
-function getFittedCanvasRect(): FittedCanvasRect | null {
+function getCameraProjection(): CameraProjection | null {
   const canvas = getCanvas();
   if (!canvas) return null;
   const rect = canvas.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return null;
-  // FIT preserves aspect — the bottleneck is the smaller of the
-  // two scale factors.
-  const fitScale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
-  const displayedWidth = canvas.width * fitScale;
-  const displayedHeight = canvas.height * fitScale;
-  // CENTER_BOTH letterbox offset within the DOM rect.
-  const offsetX = (rect.width - displayedWidth) / 2;
-  const offsetY = (rect.height - displayedHeight) / 2;
+  const fallback: CameraProjection = {
+    worldView: { x: 0, y: 0, width: canvas.width, height: canvas.height },
+    viewport:  { x: 0, y: 0, width: canvas.width, height: canvas.height },
+    rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+    canvasW: canvas.width,
+    canvasH: canvas.height,
+  };
+  const game = UIBridge.getGame();
+  if (!game) return fallback;
+  const scene = game.scene.getScene('GameScene') as unknown as {
+    cameras?: { main?: {
+      worldView?: { x: number; y: number; width: number; height: number };
+      x: number; y: number; width: number; height: number;
+    } };
+  } | undefined;
+  const cam = scene?.cameras?.main;
+  if (!cam) return fallback;
+  const wv = cam.worldView;
+  if (!wv || wv.width === 0 || wv.height === 0) return fallback;
   return {
-    left: rect.left + offsetX,
-    top: rect.top + offsetY,
-    width: displayedWidth,
-    height: displayedHeight,
-    scale: fitScale,
+    worldView: { x: wv.x, y: wv.y, width: wv.width, height: wv.height },
+    viewport:  { x: cam.x, y: cam.y, width: cam.width, height: cam.height },
+    rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+    canvasW: canvas.width,
+    canvasH: canvas.height,
   };
 }
 
 function projectCellToScreen(col: number, row: number): ScreenAnchor | null {
-  const fit = getFittedCanvasRect();
-  if (!fit) return null;
-  // Cell center in world coords (relative to canvas's intrinsic
-  // dimensions). gridX / gridY include the dynamic grid offset.
+  const proj = getCameraProjection();
+  if (!proj) return null;
   const worldX = gridX(col);
   const worldY = gridY(row);
+  // World → canvas-pixel: the worldView is what's visible inside
+  // the camera's viewport rect on the canvas pixel buffer.
+  const u = (worldX - proj.worldView.x) / proj.worldView.width;
+  const v = (worldY - proj.worldView.y) / proj.worldView.height;
+  const canvasPxX = proj.viewport.x + u * proj.viewport.width;
+  const canvasPxY = proj.viewport.y + v * proj.viewport.height;
+  // Canvas-pixel → CSS-pixel via the DOM rect scale.
+  const cssScaleX = proj.rect.width  / proj.canvasW;
+  const cssScaleY = proj.rect.height / proj.canvasH;
   return {
-    x: fit.left + worldX * fit.scale,
-    y: fit.top + worldY * fit.scale,
-    tileSize: TILE_SIZE * fit.scale,
+    x: proj.rect.left + canvasPxX * cssScaleX,
+    y: proj.rect.top  + canvasPxY * cssScaleY,
+    tileSize: TILE_SIZE * (proj.viewport.width / proj.worldView.width) * cssScaleX,
   };
 }
 
-/** Inverse of projectCellToScreen: viewport pixel → grid cell.
- *  Used by the drag handler. Correctly accounts for the FIT
- *  letterbox offset. */
+/** Inverse of projectCellToScreen: viewport pixel → grid cell. */
 function screenToCell(screenX: number, screenY: number): { col: number; row: number } | null {
-  const fit = getFittedCanvasRect();
-  if (!fit) return null;
-  // Translate page coords into displayed-canvas coords, then divide
-  // out the FIT scale to recover canvas-intrinsic coords.
-  const canvasX = (screenX - fit.left) / fit.scale;
-  const canvasY = (screenY - fit.top)  / fit.scale;
+  const proj = getCameraProjection();
+  if (!proj) return null;
+  // CSS-pixel → canvas-pixel → world. Inverse of projectCellToScreen.
+  const cssScaleX = proj.rect.width  / proj.canvasW;
+  const cssScaleY = proj.rect.height / proj.canvasH;
+  const canvasPxX = (screenX - proj.rect.left) / cssScaleX;
+  const canvasPxY = (screenY - proj.rect.top)  / cssScaleY;
+  const u = (canvasPxX - proj.viewport.x) / proj.viewport.width;
+  const v = (canvasPxY - proj.viewport.y) / proj.viewport.height;
+  const worldX = proj.worldView.x + u * proj.worldView.width;
+  const worldY = proj.worldView.y + v * proj.worldView.height;
   return {
-    col: pixelToCol(canvasX),
-    row: pixelToRow(canvasY),
+    col: pixelToCol(worldX),
+    row: pixelToRow(worldY),
   };
 }
 
@@ -144,7 +175,11 @@ const TAP_TRAVEL_THRESHOLD_PX = 6;
 
 export function PlacementGateOverlay() {
   const { placementGhost } = useGameUI();
-  // Re-render on resize / orientation change / canvas scale.
+  // Re-render on resize / orientation change. While the placement
+  // gate is active (placementGhost set), also rAF-tick every frame
+  // so the icons track live camera zoom + scroll — the player can
+  // pinch-zoom or pan-drag the playfield while the gate is showing,
+  // and the anchor coords must follow.
   const [, setTick] = useState(0);
   useEffect(() => {
     const onResize = () => setTick(t => t + 1);
@@ -155,6 +190,16 @@ export function PlacementGateOverlay() {
       window.removeEventListener('orientationchange', onResize);
     };
   }, []);
+  useEffect(() => {
+    if (!placementGhost) return;
+    let raf = 0;
+    const tick = () => {
+      setTick(t => (t + 1) | 0);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [placementGhost]);
 
   if (!placementGhost) return null;
   const anchor = projectCellToScreen(placementGhost.col, placementGhost.row);
