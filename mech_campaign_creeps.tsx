@@ -31,6 +31,7 @@ const C = {
   GLASS: '#aaccdd', MID: '#7a6a34', LBRASS: '#9a8a54',
   VOID: '#3a2a12', WHITE: '#ffffff',
   RED: '#ff4444', VENT_RED: '#ff3322', VENT_GLOW: '#ffaa66',
+  GOLD: '#ccaa44', GOLD_LT: '#ffdd88',
   GEAR: '#777766', DKGEAR: '#555544',
   ORANGE: '#ff8833', SHIELD: '#88ccff', DKSHIELD: '#4488bb',
   SPARK: '#ffdd88', WARN: '#ff2222',
@@ -66,63 +67,131 @@ const CREEP_NAMES = [
 const ROW_NAMES = ['Walk 0', 'Walk 1', 'Walk 2', 'Walk 3', 'Death 0', 'Death 1', 'Death 2'];
 
 // ============================================================
-// COL 0: mech_scout — Two-wheel mono-strider (motorcycle silhouette)
+// COL 0: mech_scout — Horizontal speeder bike
 // ============================================================
-// A vertical "Segway-on-wheels" rider: top wheel, frame post, lower
-// wheel. Slim rider hunched between. Reads as FAST + thin profile.
+// REDRAW (v2). v1 was a vertical "stack-of-circles" that didn't
+// read as a bike at sprite scale. New composition: low-slung
+// horizontal speeder. Big drive wheel in back, small skid wheel
+// forward, long handlebars, rider crouched flat over the body.
+// Reads FAST and HORIZONTAL — fills the full frame width and
+// silhouettes against an empty road.
 function drawScout(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    const lean = [0, 0, 1, 0][f];   // forward-lean sway
-    const spin = f;                  // wheel rotation phase
-    // Top wheel (smaller — handlebar wheel)
-    const twy = 4;
-    b(13 + lean, twy, 6, 6, C.DKSTEEL);
-    b(14 + lean, twy + 1, 4, 4, C.STEEL);
-    // wheel spokes — rotate phase
-    const sa = (spin) * Math.PI / 2;
-    p(16 + lean + Math.round(Math.cos(sa) * 2), twy + 2 + Math.round(Math.sin(sa) * 2), C.LTSTEEL);
-    p(16 + lean - Math.round(Math.cos(sa) * 2), twy + 2 - Math.round(Math.sin(sa) * 2), C.LTSTEEL);
-    p(16 + lean, twy + 2, C.RIVET);
-    // Frame post running top wheel → lower wheel
-    b(15 + lean, twy + 6, 2, 12, C.BRASS);
-    b(15 + lean, twy + 6, 1, 12, C.HI);
-    // Handle / steering forks (jut left-right of top wheel)
-    b(11 + lean, twy + 3, 2, 1, C.STEEL); p(11 + lean, twy + 3, C.LTSTEEL);
-    b(19 + lean, twy + 3, 2, 1, C.DKSTEEL);
-    // Rider — slim, hunched over frame
-    // helmet
-    b(14, 9, 4, 3, C.BRASS); b(14, 9, 4, 1, C.HI);
-    p(15, 10, C.AMBER); p(16, 10, C.AMBER); // visor
-    // torso lean
-    b(13, 12, 6, 5, C.COPPER);
-    b(13, 12, 1, 5, C.HI); b(18, 13, 1, 4, C.DK);
-    b(14, 13, 4, 1, C.DKAMBER); // chest band
-    // arms gripping handlebars
-    b(11, 12, 2, 2, C.BRASS); b(11, 12, 1, 2, C.HI);
-    b(19, 12, 2, 2, C.DK);
-    // Lower wheel (larger — drive wheel)
-    const bwy = 22;
-    b(11, bwy, 10, 8, C.DKSTEEL);
-    b(12, bwy + 1, 8, 6, C.STEEL);
-    b(13, bwy + 2, 6, 4, C.DKSTEEL);
-    p(16, bwy + 3, C.RIVET); p(16, bwy + 4, C.RIVET); // hub
-    // tread blocks rotate with phase
-    const tx0 = 12 + ((spin + 0) % 4);
-    const tx1 = 12 + ((spin + 2) % 4);
-    p(tx0, bwy, C.VOID); p(tx0 + 4, bwy + 7, C.VOID);
-    p(tx1 + 4, bwy, C.VOID); p(tx1, bwy + 7, C.VOID);
-    // spokes
+    const lean = [0, -1, 0, -1][f];  // bob (suspension cycle)
+    const spin = f;                   // wheel rotation phase
+    const speedF = [0, 1, 2, 1][f];  // speed-line offset cycle
+
+    // ─── REAR DRIVE WHEEL (large, on the right) ───────────
+    const rwx = 21, rwy = 18 + lean;
+    b(rwx, rwy, 8, 8, C.DKSTEEL);
+    b(rwx + 1, rwy + 1, 6, 6, C.STEEL);
+    b(rwx + 2, rwy + 2, 4, 4, C.DKSTEEL);
+    // hub + bolt
+    b(rwx + 3, rwy + 3, 2, 2, C.RIVET);
+    p(rwx + 3, rwy + 3, C.LTSTEEL);
+    // tread blocks (rotate around perimeter)
+    const tBlocks = [[0, 3], [3, 0], [6, 3], [3, 6]];
+    const tShift = spin % 4;
+    for (let i = 0; i < tBlocks.length; i++) {
+      const [tx, ty] = tBlocks[(i + tShift) % 4];
+      p(rwx + tx, rwy + ty, C.VOID);
+      if (i === 0) p(rwx + tx, rwy + ty + 1, C.VOID);
+    }
+    // spokes — rotating
     const sb = spin * Math.PI / 2;
-    p(16 + Math.round(Math.cos(sb) * 3), bwy + 3 + Math.round(Math.sin(sb) * 2), C.LTSTEEL);
-    p(16 - Math.round(Math.cos(sb) * 3), bwy + 3 - Math.round(Math.sin(sb) * 2), C.LTSTEEL);
-    // Speed lines off the back (scout = fast)
-    p(7, 18, C.AMBER); p(8, 19, C.SPARK); p(6, 20, C.AMBER);
-    p(9, 21, C.SPARK);
-    // shadow
-    b(13, 30, 6, 1, C.VOID);
+    p(rwx + 4 + Math.round(Math.cos(sb) * 3), rwy + 4 + Math.round(Math.sin(sb) * 3), C.LTSTEEL);
+    p(rwx + 4 - Math.round(Math.cos(sb) * 3), rwy + 4 - Math.round(Math.sin(sb) * 3), C.LTSTEEL);
+
+    // ─── FRONT SKID WHEEL (small, on the left) ────────────
+    const fwx = 4, fwy = 22 + lean;
+    b(fwx, fwy, 5, 5, C.DKSTEEL);
+    b(fwx + 1, fwy + 1, 3, 3, C.STEEL);
+    p(fwx + 2, fwy + 2, C.RIVET);
+    // spokes
+    p(fwx + 2 + Math.round(Math.cos(sb) * 1), fwy + 2 + Math.round(Math.sin(sb) * 1), C.LTSTEEL);
+
+    // ─── CHASSIS — long horizontal beam ───────────────────
+    const chy = 16 + lean;
+    // main frame plate
+    b(7, chy, 18, 4, C.BRASS);
+    b(7, chy, 18, 1, C.LBRASS);          // top highlight
+    b(7, chy + 3, 18, 1, C.DK);          // underside shadow
+    b(7, chy, 1, 4, C.HI);
+    b(24, chy, 1, 4, C.DK);
+    // engine cowling (mid-bulge, more detail)
+    b(13, chy - 2, 8, 2, C.COPPER);
+    b(13, chy - 2, 8, 1, C.HI);
+    // exhaust ports — animated glow
+    const ePulse = (f % 2 === 0) ? C.AMBER : C.SPARK;
+    p(7, chy + 2, ePulse); p(6, chy + 2, C.GLOW);
+    p(5, chy + 2, C.SMOKE); p(4, chy + 1, C.SMOKE);
+    // engine vent lines
+    p(15, chy - 1, C.DKAMBER); p(17, chy - 1, C.DKAMBER); p(19, chy - 1, C.DKAMBER);
+    // engine intake
+    b(14, chy + 1, 6, 2, C.DKSTEEL);
+    p(15, chy + 1, C.AMBER); p(18, chy + 1, C.AMBER);
+    // rivets along beam
+    p(9, chy, C.RIVET); p(12, chy + 3, C.RIVET);
+    p(20, chy, C.RIVET); p(23, chy + 3, C.RIVET);
+
+    // ─── HANDLEBAR (extends forward) ──────────────────────
+    // long forward stem
+    b(2, chy + 1, 5, 1, C.STEEL);
+    p(2, chy, C.LTSTEEL);
+    // grip
+    b(1, chy - 1, 2, 3, C.DKSTEEL);
+    p(1, chy - 1, C.STEEL);
+    // brake lever
+    p(3, chy - 1, C.STEEL); p(4, chy - 2, C.STEEL);
+
+    // ─── RIDER — crouched flat over the bike ──────────────
+    const ry = chy - 4;
+    // helmet (aerodynamic, forward-tilted)
+    b(11, ry, 6, 4, C.BRASS);
+    b(11, ry, 6, 1, C.HI);
+    b(11, ry, 1, 4, C.LBRASS);
+    b(16, ry + 1, 1, 3, C.DK);
+    // forward-pointing visor band (the rider is looking FORWARD)
+    b(10, ry + 1, 4, 2, C.DKSTEEL);
+    b(10, ry + 2, 4, 1, C.AMBER);
+    p(10, ry + 2, C.SPARK); p(11, ry + 2, C.WHITE);
+    // helmet rear fin (aerodynamic)
+    p(17, ry, C.HI); p(18, ry + 1, C.DK);
+    // torso — leaning forward
+    b(13, ry + 4, 6, 4, C.COPPER);
+    b(13, ry + 4, 1, 4, C.HI);
+    b(18, ry + 4, 1, 4, C.DK);
+    // racing stripe down the back
+    b(14, ry + 4, 1, 4, C.AMBER);
+    b(15, ry + 5, 1, 2, C.SPARK);
+    // shoulder/arm reaching forward to handlebar
+    b(9, ry + 4, 4, 2, C.COPPER);
+    b(9, ry + 4, 4, 1, C.HI);
+    b(6, ry + 5, 3, 2, C.COPPER);
+    p(5, ry + 5, C.COPPER); // hand on grip
+    // rear arm (closer, slightly bent at engine)
+    b(18, ry + 5, 3, 2, C.DK);
+    // legs tucked along the chassis
+    b(19, ry + 8, 3, 3, C.COPPER);
+    b(19, ry + 8, 1, 3, C.HI);
+    b(20, ry + 11, 2, 2, C.DKAMBER);
+
+    // ─── MOTION — speed lines (very prominent) ────────────
+    // long horizontal streaks trailing behind the bike
+    b(1 - speedF, chy, 4, 1, C.AMBER);
+    b(2 - speedF, chy + 2, 3, 1, C.SPARK);
+    p(0, chy + 4, C.SMOKE);
+    // exhaust plume
+    p(9 + speedF, rwy + 8, C.SMOKE); p(11 + speedF, rwy + 7, C.SMOKE);
+    p(6 + speedF, rwy + 6, C.SMOKE);
+    // dust kicked up by wheels
+    p(rwx - 1, rwy + 9, C.SMOKE);
+    p(fwx + 5, fwy + 5, C.SMOKE);
+    // shadow under bike
+    b(5, 30, 22, 1, C.VOID);
   } else {
-    drawDeathMech(p, b, f - 4, 16, 16);
+    drawDeathMech(p, b, f - 4, 16, 18);
   }
 }
 
@@ -401,85 +470,151 @@ function drawFlagship(c: CanvasRenderingContext2D, o: number[], f: number) {
 }
 
 // ============================================================
-// COL 5: mech_ace_pilot — Visor + thrusters, hover-step
+// COL 5: mech_ace_pilot — Heroic jet-ace
 // ============================================================
-// Hero-pilot silhouette. Slim humanoid with a wraparound visor
-// helmet, sleek body suit, twin jet thrusters at the hip blasting
-// downward. Translucent shield bubble (shield trait). Faster, more
-// elegant than the heavy walkers — named-boss read.
+// REDRAW (v2). v1 was a small generic robot with a halo. New
+// composition pushes the named-boss read with:
+//   - Larger 6×6 chest emblem (gold ace insignia "1" pip) — visible
+//     even at 40% game scale, the signature feature
+//   - Flowing scarf streaming behind on every walk frame
+//   - Asymmetric pose: extended forward arm holding a sidearm/baton,
+//     read as "leader giving an order"
+//   - Helmet with extended crest fin (more silhouette)
+//   - Cape billowing from shoulders + dynamic flame plume below
+// Reads as HERO + FAST. Distinct silhouette: tall + crest + scarf
+// tail trailing left + thruster plume below.
 function drawAcePilot(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, -1, 0, -1][f]; // hover bob
-    const cy = 6 + bob;
-    // Shield bubble (drawn FIRST, behind body)
-    const shieldPulse = (f % 2 === 0) ? C.SHIELD : C.DKSHIELD;
-    // ring outline
-    b(8, cy + 2, 16, 1, shieldPulse);
-    b(7, cy + 3, 1, 14, shieldPulse);
-    b(24, cy + 3, 1, 14, shieldPulse);
-    b(8, cy + 17, 16, 1, shieldPulse);
-    // soft inner glow specks
-    p(10, cy + 5, shieldPulse);
-    p(22, cy + 14, shieldPulse);
+    const scarfWave = [0, 1, 2, 1][f]; // scarf cycle
+    const cy = 4 + bob;
 
-    // Helmet — wraparound visor
+    // ─── SHIELD BUBBLE (drawn behind everything) ─────────
+    const shieldPulse = (f % 2 === 0) ? C.SHIELD : C.DKSHIELD;
+    // upper arc
+    b(9, cy + 2, 14, 1, shieldPulse);
+    p(8, cy + 3, shieldPulse); p(23, cy + 3, shieldPulse);
+    // sides
+    b(7, cy + 4, 1, 14, shieldPulse);
+    b(24, cy + 4, 1, 14, shieldPulse);
+    // lower arc
+    p(8, cy + 18, shieldPulse); p(23, cy + 18, shieldPulse);
+    b(9, cy + 19, 14, 1, shieldPulse);
+    // hex-grid energy specks
+    p(11, cy + 6, shieldPulse); p(20, cy + 8, shieldPulse);
+    p(9, cy + 13, shieldPulse); p(22, cy + 15, shieldPulse);
+
+    // ─── CAPE / SCARF — behind the body, flowing back ────
+    // Long scarf tail trailing to the left (back of stride)
+    const sx = 6 - scarfWave;
+    b(sx, cy + 8, 4, 2, C.RED);
+    b(sx, cy + 8, 4, 1, C.GOLD_LT);
+    p(sx - 1, cy + 9, C.RED);
+    p(sx + scarfWave, cy + 10, C.RED);
+    p(sx + 1, cy + 11, C.RED);
+    // shoulder cape
+    b(10, cy + 7, 3, 6, C.RED);
+    b(10, cy + 7, 3, 1, C.VENT_GLOW);
+    p(10, cy + 12, C.RED);
+
+    // ─── HELMET — with prominent crest fin ───────────────
     b(12, cy, 8, 6, C.DKSTEEL);
     b(12, cy, 8, 1, C.STEEL);
-    b(12, cy, 1, 6, C.STEEL);
-    // Visor band — bright cyan reflection across forehead
-    b(13, cy + 1, 6, 2, C.GLASS);
-    b(13, cy + 1, 6, 1, C.WHITE);
-    p(14, cy + 2, C.SHIELD); p(17, cy + 2, C.SHIELD);
-    // helmet crest fin
-    p(15, cy - 1, C.STEEL); p(16, cy - 1, C.STEEL);
-    p(16, cy - 2, C.AMBER);
-    // chin guard
+    b(12, cy, 1, 6, C.LTSTEEL);
+    b(19, cy + 1, 1, 5, C.VOID);
+    // Crest fin (extends 3 pixels up — silhouette anchor)
+    b(15, cy - 3, 2, 1, C.GOLD);
+    b(15, cy - 2, 2, 1, C.GOLD_LT);
+    b(15, cy - 1, 2, 1, C.AMBER);
+    p(14, cy - 1, C.AMBER); p(17, cy - 1, C.AMBER);
+    // Visor band — bright wraparound
+    b(13, cy + 2, 6, 2, C.GLASS);
+    b(13, cy + 2, 6, 1, C.WHITE);
+    p(14, cy + 3, C.SHIELD); p(15, cy + 3, C.WHITE);
+    p(17, cy + 3, C.SHIELD); p(18, cy + 3, C.WHITE);
+    // jaw guard
     b(13, cy + 4, 6, 1, C.STEEL);
-    p(15, cy + 5, C.DKSTEEL); p(16, cy + 5, C.DKSTEEL);
+    b(14, cy + 5, 4, 1, C.DKSTEEL);
 
-    // Torso — sleek bodysuit with chest emblem
+    // ─── TORSO — sleek with LARGE ace emblem ─────────────
     b(12, cy + 6, 8, 8, C.STEEL);
     b(12, cy + 6, 8, 1, C.LTSTEEL);
     b(12, cy + 6, 1, 8, C.LTSTEEL);
     b(19, cy + 7, 1, 7, C.DKSTEEL);
     b(12, cy + 13, 8, 1, C.DKSTEEL);
-    // Chest emblem (ace insignia — diamond + amber pip)
-    b(15, cy + 8, 2, 3, C.DKSTEEL);
-    p(15, cy + 9, C.AMBER); p(16, cy + 9, C.AMBER);
-    p(15, cy + 10, C.WHITE);
-    // Shoulder pauldrons
-    b(10, cy + 6, 2, 3, C.BRASS);
-    b(10, cy + 6, 1, 3, C.HI);
-    b(20, cy + 6, 2, 3, C.DK);
-    b(21, cy + 7, 1, 2, C.VOID);
-    // Arms (close to body, jet-pose)
-    b(11, cy + 9, 2, 4, C.STEEL);
-    b(19, cy + 9, 2, 4, C.STEEL);
-    p(11, cy + 9, C.LTSTEEL); p(20, cy + 9, C.DKSTEEL);
-    // Hip / belt
-    b(12, cy + 14, 8, 2, C.DKSTEEL);
-    b(12, cy + 14, 8, 1, C.STEEL);
-    p(15, cy + 15, C.AMBER); p(16, cy + 15, C.AMBER);
+    // LARGE chest emblem — 6×6 with gold-ringed dark-center "1" pip
+    // (the signature feature — must read at 40% scale)
+    b(13, cy + 7, 6, 6, C.DKSTEEL);
+    b(13, cy + 7, 6, 1, C.GOLD);
+    b(13, cy + 12, 6, 1, C.GOLD);
+    b(13, cy + 7, 1, 6, C.GOLD);
+    b(18, cy + 7, 1, 6, C.GOLD);
+    // central single-pip (snake-eye "1" — campaign tie + ace nod)
+    b(15, cy + 9, 2, 2, C.AMBER);
+    p(15, cy + 9, C.GOLD_LT); p(16, cy + 10, C.WHITE);
+    // gleam highlight (animated)
+    if (f % 2 === 0) p(13, cy + 8, C.GOLD_LT);
+    else p(18, cy + 11, C.GOLD_LT);
 
-    // Twin thrusters — jet pods on either hip (no legs — hovers)
-    b(10, cy + 16, 3, 3, C.DKSTEEL);
-    b(10, cy + 16, 3, 1, C.STEEL);
-    b(19, cy + 16, 3, 3, C.DKSTEEL);
-    b(19, cy + 16, 3, 1, C.STEEL);
-    // jet flames (animate phase)
-    const flame1 = (f % 2 === 0) ? C.AMBER : C.SPARK;
-    const flame2 = (f % 2 === 0) ? C.SPARK : C.AMBER;
-    b(10, cy + 19, 3, 2, flame1);
-    b(11, cy + 21, 1, 2, flame2);
-    p(11, cy + 23, C.WHITE);
-    b(19, cy + 19, 3, 2, flame1);
-    b(20, cy + 21, 1, 2, flame2);
-    p(20, cy + 23, C.WHITE);
-    // Center exhaust trail (extra panache)
+    // ─── PAULDRONS — sharper, more heroic ────────────────
+    b(9, cy + 6, 3, 4, C.GOLD);
+    b(9, cy + 6, 3, 1, C.GOLD_LT);
+    b(9, cy + 6, 1, 4, C.WHITE);
+    p(11, cy + 9, C.DKAMBER);
+    b(20, cy + 6, 3, 4, C.GOLD);
+    b(20, cy + 6, 3, 1, C.GOLD_LT);
+    b(22, cy + 7, 1, 3, C.COPPER);
+    // pauldron spikes (signature jagged edge)
+    p(8, cy + 6, C.GOLD); p(8, cy + 7, C.GOLD_LT);
+    p(23, cy + 6, C.GOLD); p(23, cy + 7, C.GOLD_LT);
+
+    // ─── ARMS — extended forward pose ────────────────────
+    // Left arm extended forward (giving an order)
+    b(8, cy + 10, 2, 3, C.STEEL);
+    b(8, cy + 10, 1, 3, C.LTSTEEL);
+    b(6, cy + 12, 3, 2, C.STEEL);
+    // sidearm/baton in hand
+    b(3, cy + 12, 4, 2, C.DKSTEEL);
+    b(3, cy + 12, 4, 1, C.STEEL);
+    p(2, cy + 13, C.DKSTEEL);
+    // muzzle glow
+    p(2, cy + 12, (f % 2 === 0) ? C.AMBER : C.SPARK);
+    // Right arm at side (closer to body)
+    b(20, cy + 10, 2, 3, C.STEEL);
+    p(21, cy + 12, C.DKSTEEL);
+
+    // ─── HIP / BELT (gold trim) ──────────────────────────
+    b(12, cy + 14, 8, 2, C.DKSTEEL);
+    b(12, cy + 14, 8, 1, C.GOLD);
+    b(15, cy + 14, 2, 2, C.GOLD_LT); // buckle
+    p(15, cy + 15, C.AMBER);
+
+    // ─── THRUSTER PODS (more prominent than v1) ──────────
+    b(10, cy + 16, 4, 3, C.DKSTEEL);
+    b(10, cy + 16, 4, 1, C.STEEL);
+    b(11, cy + 17, 2, 1, C.AMBER); // intake glow
+    b(18, cy + 16, 4, 3, C.DKSTEEL);
+    b(18, cy + 16, 4, 1, C.STEEL);
+    b(19, cy + 17, 2, 1, C.AMBER);
+
+    // ─── LARGE jet flame plumes ──────────────────────────
+    const flame1 = (f % 2 === 0) ? C.VENT_GLOW : C.AMBER;
+    const flame2 = (f % 2 === 0) ? C.AMBER : C.SPARK;
+    // Left plume
+    b(10, cy + 19, 4, 2, C.AMBER);
+    b(11, cy + 21, 2, 2, flame1);
+    b(11, cy + 23, 2, 1, flame2);
+    p(12, cy + 25, C.WHITE);
+    // Right plume
+    b(18, cy + 19, 4, 2, C.AMBER);
+    b(19, cy + 21, 2, 2, flame1);
+    b(19, cy + 23, 2, 1, flame2);
+    p(20, cy + 25, C.WHITE);
+    // Centre exhaust trail (between plumes)
     p(15, cy + 19, flame2); p(16, cy + 19, flame2);
     p(15, cy + 21, flame1); p(16, cy + 21, flame1);
-    p(16, cy + 23, C.AMBER);
+    p(15, cy + 23, flame2); p(16, cy + 24, C.AMBER);
   } else {
     drawDeathMech(p, b, f - 4, 16, 16);
   }
@@ -493,34 +628,79 @@ function drawDeathMech(
   b: (x: number, y: number, w: number, h: number, cl: string) => void,
   deathFrame: number, cx: number, cy: number
 ) {
+  // REDRAW (v2): expanded from the slim original into a denser
+  // 3-stage debris field matching the density of
+  // `mechanical_creep_sprites.tsx`'s drawDeathMech.
   if (deathFrame === 0) {
+    // Frame 0: sparks fly, body breaking apart
     b(cx - 4, cy - 4, 10, 10, C.BRASS);
     b(cx - 3, cy - 5, 8, 2, C.BRASS);
+    b(cx - 2, cy - 6, 6, 1, C.HI);
+    b(cx - 3, cy + 6, 8, 2, C.DK);
+    b(cx - 2, cy + 7, 4, 1, C.VOID);
+    // shading
     b(cx - 4, cy - 4, 2, 10, C.HI);
     b(cx + 4, cy - 2, 2, 8, C.DK);
-    p(cx, cy - 5, C.SPARK); p(cx + 2, cy - 3, C.SPARK);
-    p(cx - 2, cy - 3, C.AMBER); p(cx - 3, cy + 1, C.SPARK);
-    p(cx + 3, cy, C.SPARK); p(cx, cy + 2, C.SPARK);
+    // crack / break lines fanning out
+    p(cx, cy - 5, C.SPARK); p(cx + 1, cy - 4, C.AMBER);
+    p(cx + 2, cy - 3, C.SPARK); p(cx + 3, cy - 2, C.AMBER);
+    p(cx - 2, cy - 3, C.AMBER); p(cx - 3, cy - 2, C.SPARK);
+    p(cx - 1, cy, C.AMBER); p(cx + 3, cy, C.SPARK);
+    p(cx - 3, cy + 1, C.SPARK); p(cx + 1, cy + 1, C.AMBER);
+    p(cx, cy + 2, C.SPARK); p(cx - 2, cy + 3, C.AMBER);
+    p(cx + 2, cy + 3, C.AMBER); p(cx + 4, cy + 2, C.AMBER);
+    // sparks flying outward
     p(cx - 6, cy - 3, C.SPARK); p(cx + 7, cy - 4, C.SPARK);
+    p(cx - 5, cy + 5, C.AMBER); p(cx + 6, cy + 4, C.AMBER);
+    p(cx - 7, cy + 1, C.SPARK); p(cx + 8, cy + 1, C.SPARK);
+    // glow at centre
     b(cx - 1, cy - 1, 3, 3, C.AMBER);
-    p(cx, cy, C.WHITE);
+    p(cx, cy, C.WHITE); p(cx - 1, cy, C.SPARK); p(cx + 1, cy, C.SPARK);
   } else if (deathFrame === 1) {
-    b(cx - 6, cy - 6, 3, 2, C.BRASS);
-    b(cx + 5, cy - 6, 2, 2, C.STEEL);
-    b(cx - 7, cy - 1, 2, 2, C.BRASS);
+    // Frame 1: parts flying apart, big debris field
+    // large fragments around perimeter
+    b(cx - 6, cy - 6, 3, 2, C.BRASS); p(cx - 6, cy - 6, C.HI);
+    b(cx + 5, cy - 6, 2, 2, C.STEEL); p(cx + 6, cy - 6, C.LTSTEEL);
+    b(cx - 7, cy - 1, 2, 2, C.BRASS); p(cx - 7, cy - 1, C.HI);
     b(cx + 6, cy - 1, 2, 3, C.DK);
     b(cx - 6, cy + 5, 2, 2, C.DKSTEEL);
-    b(cx + 5, cy + 5, 3, 2, C.BRASS);
+    b(cx + 5, cy + 5, 3, 2, C.BRASS); p(cx + 7, cy + 6, C.DK);
+    b(cx - 1, cy - 7, 2, 2, C.STEEL); p(cx, cy - 7, C.LTSTEEL);
+    b(cx - 1, cy + 6, 2, 2, C.DK);
+    // gears + screws scattered
     p(cx - 3, cy - 3, C.GEAR); p(cx + 3, cy - 3, C.RIVET);
-    p(cx - 4, cy - 4, C.SPARK); p(cx + 4, cy + 4, C.AMBER);
+    p(cx - 3, cy + 3, C.RIVET); p(cx + 3, cy + 3, C.GEAR);
+    p(cx - 2, cy - 1, C.COPPER); p(cx + 2, cy + 1, C.COPPER);
+    p(cx - 4, cy, C.GEAR); p(cx + 4, cy, C.GEAR);
+    // sparks
+    p(cx - 4, cy - 4, C.SPARK); p(cx + 4, cy - 4, C.SPARK);
+    p(cx - 4, cy + 4, C.AMBER); p(cx + 4, cy + 4, C.AMBER);
+    p(cx - 8, cy + 2, C.SPARK); p(cx + 9, cy + 2, C.SPARK);
+    // centre flash
     b(cx - 1, cy - 1, 3, 3, C.WHITE);
+    p(cx, cy, C.WHITE);
   } else {
+    // Frame 2: settled pile of gears, dust fading
+    // scattered tiny debris
     p(cx - 2, cy + 2, C.GEAR); p(cx + 1, cy + 3, C.RIVET);
+    p(cx - 1, cy + 3, C.DKSTEEL); p(cx + 2, cy + 2, C.GEAR);
     p(cx, cy + 4, C.RIVET); p(cx + 3, cy + 3, C.DKSTEEL);
+    p(cx - 3, cy + 3, C.RIVET);
+    // small pile at centre bottom
     b(cx - 2, cy + 1, 5, 2, C.DKSTEEL);
     b(cx - 1, cy + 1, 3, 1, C.STEEL);
+    p(cx, cy + 1, C.RIVET); p(cx + 1, cy + 2, C.GEAR);
+    // wider scattered fragments
+    p(cx - 5, cy + 4, C.BRASS); p(cx + 5, cy + 4, C.DKSTEEL);
+    p(cx - 6, cy + 2, C.GEAR);
+    // fading dust around the pile
     p(cx - 8, cy - 4, C.SMOKE); p(cx + 9, cy - 5, C.SMOKE);
-    p(cx - 6, cy - 7, C.SPARK);
+    p(cx - 5, cy + 7, C.SMOKE); p(cx + 6, cy + 8, C.SMOKE);
+    p(cx, cy - 9, C.SMOKE); p(cx + 2, cy + 9, C.SMOKE);
+    p(cx - 4, cy - 7, C.SMOKE);
+    // last spark embers
+    p(cx - 6, cy - 7, C.SPARK); p(cx + 7, cy - 7, C.DKAMBER);
+    p(cx - 2, cy - 5, C.AMBER);
   }
 }
 
