@@ -239,7 +239,10 @@ function DragHandle({ x, y, size }: DragHandleProps) {
         downAt.current = { x: e.clientX, y: e.clientY, ts: Date.now() };
         // Capture so we keep getting move events even if the
         // pointer leaves the handle's bounding rect.
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        // Guarded: jsdom (test env) doesn't implement setPointerCapture.
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        } catch { /* swallow — jsdom or older browser */ }
         e.preventDefault();
       }}
       onPointerMove={(e: PointerEvent) => {
