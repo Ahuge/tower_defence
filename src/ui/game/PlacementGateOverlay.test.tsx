@@ -6,6 +6,7 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/preact';
 import { PlacementGateOverlay } from './PlacementGateOverlay';
 import { GameUIStore } from '../GameUIStore';
+import { UIBridge } from '../UIBridge';
 
 afterEach(() => {
   cleanup();
@@ -196,5 +197,86 @@ describe('PlacementGateOverlay — double-tap to commit', () => {
     // Real tap right after — should NOT commit (drag reset the tracker).
     tapHandle(handle, 150, 150);
     expect(commits).toBe(0);
+  });
+});
+
+describe('PlacementGateOverlay — camera-zoom/scroll-aware projection', () => {
+  // Regression test: the v1 fix (FIT-letterbox) didn't account for the
+  // game camera's live zoom + scroll, so the tick/X icons appeared
+  // disconnected from the dashed ghost cell as soon as the player
+  // pinch-zoomed or pan-dragged the playfield. Two user screenshots
+  // (bad_click_to_placement.png, bad_click_to_placement_2.png) confirm
+  // the icons land in a global, zoom-invariant location while the
+  // ghost cell is rendered in zoomed/panned coords.
+
+  function withFakeCamera(zoom: number, scrollX: number, scrollY: number, fn: () => void) {
+    const fakeGame = {
+      scene: {
+        getScene: () => ({
+          cameras: { main: { zoom, scrollX, scrollY } },
+        }),
+      },
+    };
+    const original = UIBridge.getGame;
+    UIBridge.getGame = () => fakeGame as unknown as ReturnType<typeof original>;
+    try { fn(); } finally { UIBridge.getGame = original; }
+  }
+
+  it('tile-size in screen px factors in camera zoom', () => {
+    // At zoom=2 the tile reads twice as big on screen as at zoom=1.
+    // The hit area + cell highlight read this from anchor.tileSize, so
+    // the rendered cell box scales with the live camera.
+    let baselineWidth = 0;
+    withFakeCamera(1, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 10, row: 8, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      const w = (handle.getAttribute('style') ?? '').match(/width:\s*([\d.]+)px/);
+      expect(w).not.toBeNull();
+      baselineWidth = parseFloat(w![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    let zoomedWidth = 0;
+    withFakeCamera(2, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 10, row: 8, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      const w = (handle.getAttribute('style') ?? '').match(/width:\s*([\d.]+)px/);
+      zoomedWidth = parseFloat(w![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    // 2× zoom → ~2× tile size on screen.
+    expect(zoomedWidth / baselineWidth).toBeCloseTo(2, 1);
+  });
+
+  it('cell screen-position shifts with camera scroll', () => {
+    // Same target cell, different camera scroll — the screen anchor
+    // must move. Without the fix the anchor was zoom-invariant and the
+    // icons floated in their old place while the ghost moved with the
+    // camera, producing the disconnected-icons screenshot.
+    let leftA = 0;
+    withFakeCamera(1, 0, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 18, row: 13, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      leftA = parseFloat((handle.getAttribute('style') ?? '').match(/left:\s*([\d.]+)px/)![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    let leftB = 0;
+    withFakeCamera(1, 200, 0, () => {
+      GameUIStore.setPlacementGhost({ col: 18, row: 13, towerTypeId: 'arcane_bolt' });
+      const { container, unmount } = render(<PlacementGateOverlay />);
+      const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+      leftB = parseFloat((handle.getAttribute('style') ?? '').match(/left:\s*([\d.]+)px/)![1]);
+      unmount();
+      GameUIStore.setPlacementGhost(null);
+    });
+    // Camera scrolled right by 200 world-px → cell's screen-X shifts
+    // left by 200 (× FIT scale). Sign of the delta is the regression.
+    expect(leftB).toBeLessThan(leftA);
+    expect(leftA - leftB).toBeGreaterThan(100);
   });
 });

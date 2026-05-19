@@ -35,6 +35,7 @@ import { useGameUI } from '../hooks/useGameUI';
 import { GameUIStore } from '../GameUIStore';
 import { gridX, gridY, TILE_SIZE, pixelToCol, pixelToRow } from '../../config';
 import { UIScale } from '../../systems/UIScale';
+import { UIBridge } from '../UIBridge';
 
 /** Resolve the active Phaser canvas element. Mounted into
  *  `#game-root` by main.ts; falls back to the first canvas in the
@@ -102,33 +103,70 @@ function getFittedCanvasRect(): FittedCanvasRect | null {
   };
 }
 
+/** Resolve the active game-world camera (the zoom-able one that
+ *  renders the playfield, NOT the 1:1 UI camera). Returns a default
+ *  identity when the scene isn't ready yet (cold-boot before
+ *  GameScene init has run). */
+interface GameCameraState {
+  zoom: number;
+  scrollX: number;
+  scrollY: number;
+}
+function getGameCameraState(): GameCameraState {
+  const game = UIBridge.getGame();
+  // First-frame / pre-init guard. With no live scene, treat as
+  // identity (zoom=1, scroll=0) so projection falls back to the
+  // canvas-pixel = world-pixel assumption.
+  if (!game) return { zoom: 1, scrollX: 0, scrollY: 0 };
+  const scene = game.scene.getScene('GameScene') as unknown as {
+    cameras?: { main?: { zoom: number; scrollX: number; scrollY: number } };
+  } | undefined;
+  const cam = scene?.cameras?.main;
+  if (!cam) return { zoom: 1, scrollX: 0, scrollY: 0 };
+  return { zoom: cam.zoom, scrollX: cam.scrollX, scrollY: cam.scrollY };
+}
+
 function projectCellToScreen(col: number, row: number): ScreenAnchor | null {
   const fit = getFittedCanvasRect();
   if (!fit) return null;
-  // Cell center in world coords (relative to canvas's intrinsic
-  // dimensions). gridX / gridY include the dynamic grid offset.
+  const cam = getGameCameraState();
+  // Cell center in world coords (relative to the game world). gridX
+  // / gridY include the dynamic grid offset.
   const worldX = gridX(col);
   const worldY = gridY(row);
+  // Phaser camera: a world point at (worldX, worldY) renders to
+  // canvas-pixel (worldX - scrollX) * zoom (assuming camera.x=0 for
+  // the main camera). The FIT pass then scales the canvas to the
+  // displayed DOM rect.
+  const canvasX = (worldX - cam.scrollX) * cam.zoom;
+  const canvasY = (worldY - cam.scrollY) * cam.zoom;
   return {
-    x: fit.left + worldX * fit.scale,
-    y: fit.top + worldY * fit.scale,
-    tileSize: TILE_SIZE * fit.scale,
+    x: fit.left + canvasX * fit.scale,
+    y: fit.top + canvasY * fit.scale,
+    // Tile size in screen pixels factors in BOTH camera zoom and
+    // FIT scale, so the hit area / cell highlight matches what the
+    // player sees on screen at the current zoom.
+    tileSize: TILE_SIZE * cam.zoom * fit.scale,
   };
 }
 
 /** Inverse of projectCellToScreen: viewport pixel → grid cell.
  *  Used by the drag handler. Correctly accounts for the FIT
- *  letterbox offset. */
+ *  letterbox offset AND the game camera's zoom/scroll. */
 function screenToCell(screenX: number, screenY: number): { col: number; row: number } | null {
   const fit = getFittedCanvasRect();
   if (!fit) return null;
-  // Translate page coords into displayed-canvas coords, then divide
-  // out the FIT scale to recover canvas-intrinsic coords.
+  const cam = getGameCameraState();
+  // Translate page coords into displayed-canvas coords, undo the
+  // FIT scale to recover canvas-intrinsic coords, then undo the
+  // camera zoom+scroll to recover world coords.
   const canvasX = (screenX - fit.left) / fit.scale;
   const canvasY = (screenY - fit.top)  / fit.scale;
+  const worldX = canvasX / cam.zoom + cam.scrollX;
+  const worldY = canvasY / cam.zoom + cam.scrollY;
   return {
-    col: pixelToCol(canvasX),
-    row: pixelToRow(canvasY),
+    col: pixelToCol(worldX),
+    row: pixelToRow(worldY),
   };
 }
 
@@ -144,7 +182,11 @@ const TAP_TRAVEL_THRESHOLD_PX = 6;
 
 export function PlacementGateOverlay() {
   const { placementGhost } = useGameUI();
-  // Re-render on resize / orientation change / canvas scale.
+  // Re-render on resize / orientation change. While the placement
+  // gate is active (placementGhost set), also rAF-tick every frame
+  // so the icons track live camera zoom + scroll — the player can
+  // pinch-zoom or pan-drag the playfield while the gate is showing,
+  // and the anchor coords must follow.
   const [, setTick] = useState(0);
   useEffect(() => {
     const onResize = () => setTick(t => t + 1);
@@ -155,6 +197,16 @@ export function PlacementGateOverlay() {
       window.removeEventListener('orientationchange', onResize);
     };
   }, []);
+  useEffect(() => {
+    if (!placementGhost) return;
+    let raf = 0;
+    const tick = () => {
+      setTick(t => (t + 1) | 0);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [placementGhost]);
 
   if (!placementGhost) return null;
   const anchor = projectCellToScreen(placementGhost.col, placementGhost.row);
