@@ -210,10 +210,23 @@ describe('PlacementGateOverlay — camera-zoom/scroll-aware projection', () => {
   // ghost cell is rendered in zoomed/panned coords.
 
   function withFakeCamera(zoom: number, scrollX: number, scrollY: number, fn: () => void) {
+    // Canvas intrinsic dims match the test beforeEach (1008×720).
+    // The projection reads `cam.worldView` directly — at zoom z and
+    // scroll (sx, sy), the visible world rect is
+    // (sx, sy, canvas.W / z, canvas.H / z).
     const fakeGame = {
       scene: {
         getScene: () => ({
-          cameras: { main: { zoom, scrollX, scrollY } },
+          cameras: {
+            main: {
+              worldView: {
+                x: scrollX,
+                y: scrollY,
+                width: 1008 / zoom,
+                height: 720 / zoom,
+              },
+            },
+          },
         }),
       },
     };
