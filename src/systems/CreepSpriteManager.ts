@@ -53,6 +53,29 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   warlord_captain: 5,
 };
 
+/**
+ * Bespoke-art override sheet for the Snake Eyes campaign.
+ *
+ * Currently a single-creep sheet (1 col × 7 rows = 64×448) for
+ * The Collector, the M8 named-boss enforcer. The Dealer's hand on
+ * the road — banker's coat, top hat, gold-coin face stamped with
+ * the snake-eyes "1" pip. Without bespoke art he falls back to
+ * col 0 of the void faction sheet (a generic void blob), which
+ * undercuts his read as the campaign's named antagonist.
+ *
+ * Runtime resolveSheet() prefers this sheet for void_collector
+ * if loaded, with cold-start fallback to the void faction sheet.
+ *
+ * Adding more Snake Eyes creep variants later: extend
+ * snake_eyes_creep_sprites.tsx with more draw fns, expand the
+ * sheet dimensions, and add the id → column mapping here.
+ */
+const SNAKE_EYES_CAMPAIGN_TO_COL: Record<string, number> = {
+  void_collector: 0,
+};
+const SNAKE_EYES_CAMPAIGN_SHEET_KEY = 'creeps_snake_eyes_campaign';
+const SNAKE_EYES_CAMPAIGN_COLS = 1;
+
 /** All faction IDs that have creep spritesheets */
 const CREEP_FACTIONS: FactionId[] = [
   'arcane', 'mechanical', 'nature', 'void', 'military',
@@ -61,6 +84,32 @@ const CREEP_FACTIONS: FactionId[] = [
 
 function sheetKey(faction: FactionId): string {
   return `creeps_${faction}`;
+}
+
+/**
+ * Resolve which sheet + column a creep id should render from.
+ *
+ * Snake Eyes campaign creeps ride their own dedicated sheet so
+ * named characters like The Collector get a bespoke silhouette
+ * rather than a generic void-faction fallback. Cold-start safety:
+ * falls back to the faction sheet if the campaign sheet hasn't
+ * been loaded yet.
+ */
+function resolveSheet(
+  scene: Phaser.Scene,
+  faction: FactionId,
+  creepTypeId: string,
+): { key: string; col: number; cols: number } | null {
+  if (creepTypeId in SNAKE_EYES_CAMPAIGN_TO_COL && scene.textures.exists(SNAKE_EYES_CAMPAIGN_SHEET_KEY)) {
+    return {
+      key: SNAKE_EYES_CAMPAIGN_SHEET_KEY,
+      col: SNAKE_EYES_CAMPAIGN_TO_COL[creepTypeId],
+      cols: SNAKE_EYES_CAMPAIGN_COLS,
+    };
+  }
+  const key = sheetKey(faction);
+  if (!scene.textures.exists(key)) return null;
+  return { key, col: CREEP_TYPE_TO_COL[creepTypeId] ?? 0, cols: COLS };
 }
 
 /** Preload all creep spritesheets (call in scene.preload) */
@@ -73,38 +122,72 @@ export function preloadCreepSprites(scene: Phaser.Scene): void {
       frameHeight: FRAME_SIZE,
     });
   }
+  // Snake Eyes campaign bespoke sheet (1 col × 7 rows = 64×448).
+  if (!scene.textures.exists(SNAKE_EYES_CAMPAIGN_SHEET_KEY)) {
+    scene.load.spritesheet(SNAKE_EYES_CAMPAIGN_SHEET_KEY, 'assets/creeps/snake_eyes_creeps.png', {
+      frameWidth: FRAME_SIZE,
+      frameHeight: FRAME_SIZE,
+    });
+  }
 }
 
 /** Create walk + death animations for a given creep faction (call in scene.create) */
 export function createCreepAnimations(scene: Phaser.Scene, faction: FactionId): void {
   const key = sheetKey(faction);
-  if (!scene.textures.exists(key)) return;
-
-  for (const [typeId, col] of Object.entries(CREEP_TYPE_TO_COL)) {
-    // Walk animation (rows 0-3)
-    const walkKey = `creep_${faction}_${typeId}_walk`;
-    if (!scene.anims.exists(walkKey)) {
-      scene.anims.create({
-        key: walkKey,
-        frames: Array.from({ length: WALK_FRAMES }, (_, row) => ({
-          key, frame: row * COLS + col,
-        })),
-        frameRate: WALK_FPS,
-        repeat: -1,
-      });
+  if (scene.textures.exists(key)) {
+    for (const [typeId, col] of Object.entries(CREEP_TYPE_TO_COL)) {
+      const walkKey = `creep_${faction}_${typeId}_walk`;
+      if (!scene.anims.exists(walkKey)) {
+        scene.anims.create({
+          key: walkKey,
+          frames: Array.from({ length: WALK_FRAMES }, (_, row) => ({
+            key, frame: row * COLS + col,
+          })),
+          frameRate: WALK_FPS,
+          repeat: -1,
+        });
+      }
+      const deathKey = `creep_${faction}_${typeId}_death`;
+      if (!scene.anims.exists(deathKey)) {
+        scene.anims.create({
+          key: deathKey,
+          frames: Array.from({ length: DEATH_FRAMES }, (_, i) => ({
+            key, frame: (4 + i) * COLS + col,
+          })),
+          frameRate: DEATH_FPS,
+          repeat: 0,
+        });
+      }
     }
-
-    // Death animation (rows 4-6)
-    const deathKey = `creep_${faction}_${typeId}_death`;
-    if (!scene.anims.exists(deathKey)) {
-      scene.anims.create({
-        key: deathKey,
-        frames: Array.from({ length: DEATH_FRAMES }, (_, i) => ({
-          key, frame: (4 + i) * COLS + col,
-        })),
-        frameRate: DEATH_FPS,
-        repeat: 0,
-      });
+  }
+  // Snake Eyes campaign animations — row stride matches the 1-col
+  // sheet (each row is just frame index `row`).
+  if (scene.textures.exists(SNAKE_EYES_CAMPAIGN_SHEET_KEY)) {
+    for (const [typeId, col] of Object.entries(SNAKE_EYES_CAMPAIGN_TO_COL)) {
+      const walkKey = `creep_${faction}_${typeId}_walk`;
+      if (!scene.anims.exists(walkKey)) {
+        scene.anims.create({
+          key: walkKey,
+          frames: Array.from({ length: WALK_FRAMES }, (_, row) => ({
+            key: SNAKE_EYES_CAMPAIGN_SHEET_KEY,
+            frame: row * SNAKE_EYES_CAMPAIGN_COLS + col,
+          })),
+          frameRate: WALK_FPS,
+          repeat: -1,
+        });
+      }
+      const deathKey = `creep_${faction}_${typeId}_death`;
+      if (!scene.anims.exists(deathKey)) {
+        scene.anims.create({
+          key: deathKey,
+          frames: Array.from({ length: DEATH_FRAMES }, (_, i) => ({
+            key: SNAKE_EYES_CAMPAIGN_SHEET_KEY,
+            frame: (4 + i) * SNAKE_EYES_CAMPAIGN_COLS + col,
+          })),
+          frameRate: DEATH_FPS,
+          repeat: 0,
+        });
+      }
     }
   }
 }
@@ -117,16 +200,12 @@ export function createCreepSprite(
   x: number,
   y: number,
 ): Phaser.GameObjects.Sprite | null {
-  const key = sheetKey(faction);
-  if (!scene.textures.exists(key)) return null;
-
-  const col = CREEP_TYPE_TO_COL[creepTypeId] ?? 0;
-  const frame = col; // row 0, column = col
-  const sprite = scene.add.sprite(x, y, key, frame);
+  const resolved = resolveSheet(scene, faction, creepTypeId);
+  if (!resolved) return null;
+  const sprite = scene.add.sprite(x, y, resolved.key, resolved.col);
   sprite.setDepth(10);
   sprite.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
-  // Start walk animation
   const walkKey = `creep_${faction}_${creepTypeId}_walk`;
   if (scene.anims.exists(walkKey)) {
     sprite.play(walkKey);
