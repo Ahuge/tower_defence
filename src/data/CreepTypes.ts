@@ -816,6 +816,147 @@ export const CREEP_TYPES: Record<string, CreepType> = {
       };
     },
   },
+
+  // ─── Iron Cascade (Mech campaign) creep variants ────────────────
+  // Voss's industrial war-machine roster. The campaign narrative
+  // references these by name across M1/M2/M4/M5/M6/M9 but they
+  // didn't exist until this commit — every mission rendered generic
+  // creeps. Adding them here unblocks per-mission wave scripts in
+  // commits 3-5 of the Mech narrative-gameplay buildout.
+
+  // Light, fast riders. Voss's frontline scouts (M1 "fast riders",
+  // M6 "rail-yard" mobility). Burst-damage food.
+  mech_scout: {
+    id: 'mech_scout',
+    name: 'Scout Rider',
+    description: "Voss's outriders — single-pilot frames with no plating. Fast, fragile, sent ahead of every column.",
+    hpMultiplier: 0.55, speedMultiplier: 1.8, armor: 'light',
+    color: 0xc0c8d0, size: 0.85, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.55,
+        speedMult: hints.speed * 1.8,
+        countMult: hints.count,
+        goldMult: hints.goldMult * 0.7, // cheap kills
+        extraTraits: [],
+      };
+    },
+  },
+
+  // Light military skiffs — fast and arrive in groups. Pair with
+  // scouts in early waves to overwhelm; alone they're not threatening.
+  mech_skiff: {
+    id: 'mech_skiff',
+    name: 'Skiff',
+    description: 'Two-pilot scouting frames with light brass plating. Arrives in pairs.',
+    hpMultiplier: 0.4, speedMultiplier: 1.4, armor: 'light',
+    color: 0xa08858, size: 0.8, count: 2, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 0.4,
+        speedMult: hints.speed * 1.4,
+        countMult: hints.count,
+        goldMult: hints.goldMult * 0.8,
+        extraTraits: [],
+      };
+    },
+  },
+
+  // Standard Mech infantry walker. Backbone of mid waves. Medium
+  // armor + moderate speed — the workhorse that the narrative
+  // collectively calls "walkers."
+  mech_light_walker: {
+    id: 'mech_light_walker',
+    name: 'Light Walker',
+    description: "Voss's standard battlefield walker. Two-leg frame, plate over the boilers, slow but not slow enough.",
+    hpMultiplier: 1.2, speedMultiplier: 0.9, armor: 'medium',
+    color: 0x788090, size: 1.0, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 1.2,
+        speedMult: hints.speed * 0.9,
+        countMult: hints.count,
+        goldMult: hints.goldMult,
+        extraTraits: [],
+      };
+    },
+  },
+
+  // Heavy walker. Late-mid threat that requires sustained focus.
+  // Heavy armor means physical-damage towers struggle without
+  // armor-pen (Bolt's pierce, Storm's lightning). Voss's "armored
+  // column" anchor.
+  mech_armored_walker: {
+    id: 'mech_armored_walker',
+    name: 'Armored Walker',
+    description: 'Four-leg siege walker plated over its mana-furnace. Slow, hard-armored, lethal if not stopped.',
+    hpMultiplier: 2.5, speedMultiplier: 0.7, armor: 'heavy',
+    color: 0x3a3e48, size: 1.15, count: 1, traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 2.5,
+        speedMult: hints.speed * 0.7,
+        countMult: hints.count,
+        goldMult: hints.goldMult * 1.3,
+        extraTraits: [],
+      };
+    },
+  },
+
+  // M5 marquee — Voss's flagship walker. Tank-class HP + heavy
+  // armor + the `mech_pylon_vent_armor` trait that opens the
+  // armor-vents when any Suppression Pylon is muted (channeled by
+  // the player). Narrative: "armor vents briefly whenever the
+  // Suppression Pylons cycle." The trait is registered in commit
+  // 2 (the actual damage-vulnerability handler).
+  mech_flagship_walker: {
+    id: 'mech_flagship_walker',
+    name: 'Flagship Walker',
+    description: "Voss's flagship — a six-leg siege engine on its own rails. Heavily plated, but the engineer's schematics say the armor vents when the pylons are silenced.",
+    hpMultiplier: 10, speedMultiplier: 0.5, armor: 'heavy',
+    color: 0x2a1818, size: 1.45, count: 1,
+    // Trait id is forward-declared here; the Trait.ts handler that
+    // queries SuppressionManager + applies the bonus-damage
+    // vulnerability lives in commit 2.
+    traits: [{ id: 'mech_pylon_vent_armor', bonusDamageMult: 1.6 }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 10,
+        speedMult: hints.speed * 0.5,
+        countMult: 1, // never multi-spawned; boss
+        goldMult: hints.goldMult * 4,
+        extraTraits: [],
+      };
+    },
+  },
+
+  // M9 marquee — Voss's named pilot. Faster than a walker, evasive,
+  // shielded. The "Ace" the Engineer specifically asked to fight.
+  // Single-instance per spawn; the M9 wave script chains him in
+  // escalating phases.
+  mech_ace_pilot: {
+    id: 'mech_ace_pilot',
+    name: 'The Ace',
+    description: "Voss's voice in the field. A custom walker frame piloted by his ace — fast, evasive, and bulwarked behind a kinetic shield until pressed.",
+    hpMultiplier: 6, speedMultiplier: 1.1, armor: 'medium',
+    color: 0xd8b048, size: 1.25, count: 1,
+    traits: [{ id: 'shield', hpPercent: 0.35 }],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 6,
+        speedMult: hints.speed * 1.1,
+        countMult: 1, // single Ace per wave
+        goldMult: hints.goldMult * 3,
+        extraTraits: [],
+      };
+    },
+  },
 };
 
 export function getCreepType(id: string): CreepType {

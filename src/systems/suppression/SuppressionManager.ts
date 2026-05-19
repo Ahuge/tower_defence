@@ -75,10 +75,26 @@ export const SIPHON_STACK_THRESHOLD = 5;
 
 export class SuppressionManager {
   readonly pylons: SuppressionPylon[];
+  /** Last `now` value passed into `update()`. Used by
+   *  `hasAnyMutedPylonNow()` so trait handlers that don't get scene
+   *  time can query the current pylon state without a stale read.
+   *  Initialised to 0 (no pylons muted yet). */
+  private _lastUpdateNow: number = 0;
 
   constructor(pylons: SuppressionPylonInit[], grid?: Grid) {
     this.pylons = pylons.map(p => new SuppressionPylon(p));
     if (grid) this._validatePylonCells(grid);
+  }
+
+  /** True iff at least one pylon is currently muted (channel-active).
+   *  Reads `_lastUpdateNow` — must follow at least one `update()` call
+   *  to be meaningful. Used by the `mech_pylon_vent_armor` trait
+   *  (M5 flagship walker) to apply bonus damage during vent windows. */
+  hasAnyMutedPylonNow(): boolean {
+    for (const p of this.pylons) {
+      if (!p.isActive(this._lastUpdateNow)) return true;
+    }
+    return false;
   }
 
   /** Defensive runtime check: pylon cells must end up as `NoBuild`. The
@@ -122,6 +138,7 @@ export class SuppressionManager {
    *  attached on first need. Also resolves any in-progress player
    *  channels whose duration has elapsed. */
   update(now: number, towers: SuppressibleTower[]): void {
+    this._lastUpdateNow = now;
     if (this.pylons.length === 0) return;
     this._resolveChannels(now);
     for (const tower of towers) {

@@ -91,6 +91,7 @@ import { ChannelBarOverlay } from '../ui/game/ChannelBarOverlay';
 import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
 import { SuppressionManager, type SuppressibleTower } from '../systems/suppression/SuppressionManager';
+import { setActiveSuppressionManager } from '../systems/suppression/ActiveSuppressionManager';
 import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
@@ -1284,6 +1285,11 @@ export class GameScene extends Phaser.Scene {
       // assumptions would fragment in that case).
       this._suppressionMgr = new SuppressionManager(pylons, this.grid);
       this._suppressionRender = new SuppressionRender(this);
+      // Expose the manager via the module-level singleton so the
+      // `mech_pylon_vent_armor` creep-damage trait can query muted-
+      // pylon state without scene context. Cleared on scene
+      // shutdown (see shutdown hook below).
+      setActiveSuppressionManager(this._suppressionMgr);
     }
     // Mech M10 finale — instantiate the SabotageController. Reuses
     // the destructibleTowers map field (with isGenerator/isThrone tags
@@ -5258,6 +5264,11 @@ export class GameScene extends Phaser.Scene {
   /** Clean up on scene shutdown (returning to menu, restarting) */
   shutdown(): void {
     GameUIStore.deactivate();
+    // Clear the active-SuppressionManager singleton so the next
+    // scene doesn't inherit a stale reference (the
+    // mech_pylon_vent_armor trait queries this from the creep
+    // damage pipeline).
+    setActiveSuppressionManager(null);
     // Destroy all towers and their sprites
     for (const t of this._towers) t.destroy();
     this._towers = [];

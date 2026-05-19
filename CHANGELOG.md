@@ -2,6 +2,26 @@
 
 ## 2026-05-18 (continued)
 
+### Iron Cascade (Mech) narrative-gameplay buildout
+
+User-flagged: "Mech campaign has some cool narrative things that don't materialize into gameplay, ie talking about the walkers and how the engineer can take them down, just 5 easy normal waves spawn for that mission and it feels very disjointed." The campaign's narrative referenced specific enemy types (walkers, scouts, the Ace pilot, flagship walkers with vent-armor) but the wave content was generic — zero Mech-specific creep types existed and every mission ran the default wave generator.
+
+This buildout fixes the disjoint end-to-end across 6 commits:
+
+- **Six new mech_* creep variants** (CreepTypes.ts): Scout Rider (fast/fragile), Skiff (light/grouped), Light Walker (medium-armored standard), Armored Walker (heavy/slow), Flagship Walker (boss with vent-armor trait), The Ace (named M9 boss with shield).
+- **mech_pylon_vent_armor trait** — M5 flagship walker takes 60% bonus damage while any Suppression Pylon is channel-muted. Bridges the creep-damage trait pipeline (no scene context) to the active SuppressionManager via a module-level singleton (`ActiveSuppressionManager`) that GameScene sets on Mech-mission init + clears on shutdown.
+- **M5 Iron Convoy** (the marquee fix) — custom 5-wave script with escalating flagship-walker bosses + escort. Each flagship carries the vent-armor trait; the 2 Pylons gate the damage windows. Cold-open wave 1 is a single flagship alone (learn the mechanic), wave 5 layers 1 flagship + 3 armored + 6 skiffs.
+- **M9 The Ace** — 5-phase duel against the named Ace pilot with escalating walker support. Wave 1: Ace alone. Waves 2-5 add light + armored walker squadrons. hpScale ramps 90 → 175 so the Ace stays credible as the Engineer hero levels up.
+- **M1, M2, M4, M6** lighter wave-script alignment (`MechWaveScripts.ts`):
+  - M1 Listening Post: scouts open, walkers join mid (matches "fast riders and light walkers").
+  - M2 The Pass: 15-wave column composition through canyon Pylons (scouts → skiffs → walkers → armored).
+  - M4 Spire Falls: walker-heavy 15 waves on base_defense (matches "walkers press from every approach").
+  - M6 First Light: 20-wave rail-yard assault with tightening spawn intervals.
+
+Architecture: builder functions in `MechWaveScripts.ts` keep mechanical.ts readable. M5 + M9 wave scripts stay inline (marquee missions worth reading top-to-bottom). M3 (Cipher heist), M7 (Rationed Mana frugal), M8 (Saboteur attacker), M10 (Overthrow finale) had narrative-gameplay alignment already — left untouched.
+
+**Test count.** 1232 → 1251 across 24 new tests in MechCreeps.test.ts, ActiveSuppressionManager.test.ts, mechanical.test.ts.
+
 ### Campaign #4 — Snake Eyes (Void)
 
 The fourth campaign — the Void faction's "Snake Eyes" — shipped end-to-end through a 22-commit phased plan plus follow-up PRs for bespoke maps, illustrated Wager card faces, and the M10 paired-grid e2e (per the plan doc split). Design + writer-reviewed prose locked in `docs/snake-eyes-campaign-plan.md`.
