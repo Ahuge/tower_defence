@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-Dk_wUBWI.js";function t(){n=n+1831565813|0;let e=Math.imul(n^n>>>15,1|n);return e=e+Math.imul(e^e>>>7,61|e)^e,((e^e>>>14)>>>0)/4294967296}var n,r=e((()=>{n=(Date.now()>>>0^(typeof performance<`u`?performance.now():0)>>>0)>>>0}));export{t as n,r as t};
