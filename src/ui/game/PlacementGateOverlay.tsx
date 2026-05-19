@@ -4,23 +4,30 @@
  *
  * Subscribes to GameUIStore.placementGhost; when non-null, projects
  * the ghost's grid cell to screen-pixel coords via the Phaser
- * canvas's bounding rect + the project's gridX/gridY helpers, then
- * renders two buttons anchored above the cell.
+ * canvas's FIT-aware bounding rect + the project's gridX/gridY
+ * helpers, then renders two buttons anchored above the cell.
  *
  * Buttons fire GameUIStore.onPlacementCommit / onPlacementCancel
  * which route through GameScene's commitPlacementGate /
  * cancelPlacementGate.
  *
- * Projection math:
- *   World coords of cell center: (gridX(col), gridY(row))
- *   Canvas DOM rect:             canvas.getBoundingClientRect()
- *   Scale factor:                rect.width / canvasWidth
- *   Screen X = rect.left + (worldX * scaleX)
- *   Screen Y = rect.top  + (worldY * scaleY)
+ * Projection — FIT-letterbox aware:
+ *   Phaser is configured with Scale.FIT + CENTER_BOTH. The canvas
+ *   DOM rect can be larger than the rendered playfield (letterbox
+ *   bars top/bottom on portrait, left/right on landscape). We
+ *   compute the actual displayed sub-rect via
+ *   min(rect.W/canvas.W, rect.H/canvas.H) and account for the
+ *   center-offset before projecting cell coords to screen pixels.
  *
- * Re-projects on every render (cheap; canvas rect read is one
- * native call). Window-resize listener forces re-render so the
- * overlay tracks orientation changes / address-bar collapse.
+ * Drag + double-tap:
+ *   - Pointerdown+pointermove on the drag handle drags the ghost.
+ *   - Double-tap (two pointerups within 400ms on the handle, no
+ *     meaningful drag in between) commits the placement — mobile
+ *     ergonomic alternative to reaching the tick button.
+ *
+ * Re-projects on every render. Window-resize + orientationchange
+ * listeners force re-renders so the overlay tracks orientation
+ * changes / address-bar collapse.
  */
 
 import { useEffect, useState, useRef } from 'preact/hooks';
@@ -47,41 +54,93 @@ interface ScreenAnchor {
   tileSize: number;
 }
 
-function projectCellToScreen(col: number, row: number): ScreenAnchor | null {
+/** Phaser is configured with Scale.FIT + CENTER_BOTH (see main.ts):
+ *  the canvas's INTRINSIC pixel buffer (canvas.width / canvas.height)
+ *  stays at the configured GAME_WIDTH / GAME_HEIGHT, but the DOM
+ *  element is sized to FIT the viewport with aspect preserved and
+ *  centered in any remaining space. The rendered playfield occupies
+ *  a sub-region of the canvas DOM rect — letterbox bars at top/bottom
+ *  on portrait viewports (or left/right on landscape), depending on
+ *  aspect mismatch.
+ *
+ *  The original projection assumed canvas-fill (no letterbox), which
+ *  put the tick/X buttons at the wrong screen location on mobile.
+ *  This helper computes the *actual displayed* sub-rect of the
+ *  Phaser content within the canvas DOM rect. */
+interface FittedCanvasRect {
+  /** Page-relative left edge of the displayed Phaser content. */
+  left: number;
+  /** Page-relative top edge of the displayed Phaser content. */
+  top: number;
+  /** Width of the displayed Phaser content (post-FIT). */
+  width: number;
+  /** Height of the displayed Phaser content (post-FIT). */
+  height: number;
+  /** Canvas-pixel → displayed-pixel scale factor. */
+  scale: number;
+}
+
+function getFittedCanvasRect(): FittedCanvasRect | null {
   const canvas = getCanvas();
   if (!canvas) return null;
   const rect = canvas.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return null;
-  const scaleX = rect.width / canvas.width;
-  const scaleY = rect.height / canvas.height;
-  // Cell center in world coords.
+  // FIT preserves aspect — the bottleneck is the smaller of the
+  // two scale factors.
+  const fitScale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
+  const displayedWidth = canvas.width * fitScale;
+  const displayedHeight = canvas.height * fitScale;
+  // CENTER_BOTH letterbox offset within the DOM rect.
+  const offsetX = (rect.width - displayedWidth) / 2;
+  const offsetY = (rect.height - displayedHeight) / 2;
+  return {
+    left: rect.left + offsetX,
+    top: rect.top + offsetY,
+    width: displayedWidth,
+    height: displayedHeight,
+    scale: fitScale,
+  };
+}
+
+function projectCellToScreen(col: number, row: number): ScreenAnchor | null {
+  const fit = getFittedCanvasRect();
+  if (!fit) return null;
+  // Cell center in world coords (relative to canvas's intrinsic
+  // dimensions). gridX / gridY include the dynamic grid offset.
   const worldX = gridX(col);
   const worldY = gridY(row);
   return {
-    x: rect.left + worldX * scaleX,
-    y: rect.top + worldY * scaleY,
-    tileSize: TILE_SIZE * Math.min(scaleX, scaleY),
+    x: fit.left + worldX * fit.scale,
+    y: fit.top + worldY * fit.scale,
+    tileSize: TILE_SIZE * fit.scale,
   };
 }
 
 /** Inverse of projectCellToScreen: viewport pixel → grid cell.
- *  Used by the drag handler to convert pointer-move events to
- *  movePlacementGhost calls. Returns null if the canvas isn't
- *  mounted or the point falls outside it. */
+ *  Used by the drag handler. Correctly accounts for the FIT
+ *  letterbox offset. */
 function screenToCell(screenX: number, screenY: number): { col: number; row: number } | null {
-  const canvas = getCanvas();
-  if (!canvas) return null;
-  const rect = canvas.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) return null;
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const canvasX = (screenX - rect.left) * scaleX;
-  const canvasY = (screenY - rect.top) * scaleY;
+  const fit = getFittedCanvasRect();
+  if (!fit) return null;
+  // Translate page coords into displayed-canvas coords, then divide
+  // out the FIT scale to recover canvas-intrinsic coords.
+  const canvasX = (screenX - fit.left) / fit.scale;
+  const canvasY = (screenY - fit.top)  / fit.scale;
   return {
     col: pixelToCol(canvasX),
     row: pixelToRow(canvasY),
   };
 }
+
+/** Double-tap detection window (ms). Two pointerups on the drag
+ *  handle within this window commit the placement. Tuned for mobile
+ *  ergonomics — long enough to forgive a slow second tap, short
+ *  enough to not mis-fire on intentional single taps. */
+const DOUBLE_TAP_WINDOW_MS = 400;
+/** Drag-distance threshold (px). Pointerup-after-down only counts
+ *  as a tap if the total move was below this; longer travel was a
+ *  drag and shouldn't count toward the double-tap. */
+const TAP_TRAVEL_THRESHOLD_PX = 6;
 
 export function PlacementGateOverlay() {
   const { placementGhost } = useGameUI();
@@ -120,10 +179,9 @@ export function PlacementGateOverlay() {
         zIndex: 800,
       }}
     >
-      {/* Drag handle covers the ghost cell. Pointer-down enters
-          drag mode; pointer-move calls movePlacementGhost; pointer-up
-          ends. The handle is transparent — the ghost cell is rendered
-          by the Phaser graphics layer underneath. */}
+      {/* Drag handle covers the ghost cell. Pointer-down + pointer-
+          move drags the ghost; pointer-up either ends drag or counts
+          as the first/second half of a double-tap (commit). */}
       <DragHandle
         x={anchor.x}
         y={anchor.y}
@@ -153,12 +211,24 @@ interface DragHandleProps {
   size: number;
 }
 
-/** Transparent drag handle over the ghost cell. Pointer events
- *  convert to grid cells via screenToCell + dispatch via the store.
- *  Touch-action: none disables browser-level gestures (scroll /
- *  pinch-zoom) while the player is mid-drag. */
+/** Transparent drag handle over the ghost cell. Three responsibilities:
+ *
+ *   1. Pointer-down + pointer-move dispatches `movePlacementGhost`
+ *      via the store so the ghost follows the finger.
+ *   2. Pointer-up after no meaningful drag travel counts as a TAP.
+ *      Two taps within DOUBLE_TAP_WINDOW_MS commit the placement —
+ *      mobile ergonomic alternative to reaching the tick button.
+ *   3. `touch-action: none` disables browser scroll / pinch so the
+ *      drag isn't fighting the page.
+ */
 function DragHandle({ x, y, size }: DragHandleProps) {
   const dragging = useRef(false);
+  // Track pointer-down position so we can distinguish a tap from a
+  // drag at pointer-up time.
+  const downAt = useRef<{ x: number; y: number; ts: number } | null>(null);
+  // Last pointer-up that counted as a tap. If this fires twice within
+  // DOUBLE_TAP_WINDOW_MS we treat it as a double-tap commit.
+  const lastTapTs = useRef<number>(0);
 
   return (
     <div
@@ -166,6 +236,7 @@ function DragHandle({ x, y, size }: DragHandleProps) {
       role="presentation"
       onPointerDown={(e: PointerEvent) => {
         dragging.current = true;
+        downAt.current = { x: e.clientX, y: e.clientY, ts: Date.now() };
         // Capture so we keep getting move events even if the
         // pointer leaves the handle's bounding rect.
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -179,8 +250,34 @@ function DragHandle({ x, y, size }: DragHandleProps) {
       onPointerUp={(e: PointerEvent) => {
         dragging.current = false;
         try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* swallow */ }
+        // Double-tap-to-commit: detect a tap (low travel since
+        // pointerdown) within DOUBLE_TAP_WINDOW_MS of the prior tap.
+        const down = downAt.current;
+        downAt.current = null;
+        if (!down) return;
+        const dx = e.clientX - down.x;
+        const dy = e.clientY - down.y;
+        const travel = Math.hypot(dx, dy);
+        if (travel > TAP_TRAVEL_THRESHOLD_PX) {
+          // It was a drag, not a tap. Reset the tap tracker so a
+          // drag-then-tap doesn't accidentally fire a double-tap
+          // commit on the very next tap.
+          lastTapTs.current = 0;
+          return;
+        }
+        const now = Date.now();
+        if (lastTapTs.current && now - lastTapTs.current <= DOUBLE_TAP_WINDOW_MS) {
+          // Second tap inside the window — commit.
+          lastTapTs.current = 0;
+          GameUIStore.onPlacementCommit();
+          return;
+        }
+        lastTapTs.current = now;
       }}
-      onPointerCancel={() => { dragging.current = false; }}
+      onPointerCancel={() => {
+        dragging.current = false;
+        downAt.current = null;
+      }}
       style={{
         position: 'absolute' as const,
         left: `${x}px`,
