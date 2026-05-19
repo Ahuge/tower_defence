@@ -22,6 +22,9 @@ import { Analytics } from '../AnalyticsClient';
 import { PlayerProfile } from '../profile/PlayerProfile';
 import { CampaignState } from '../campaign/CampaignState';
 import { ParametricStory } from '../campaign/ParametricStory';
+// Phase B (aspect refactor): startV2 path. Feature-detected via
+// `'buildRuntime' in ext`. Legacy `start` keeps working until Phase E.
+import type { CampaignExtension, MissionEntry, CampaignCtx } from '../campaign/types';
 
 /** Subset of MissionDef that GameScene actually reads. Distinct from
  *  the full def so the runtime contract is small and stable. */
@@ -216,6 +219,107 @@ class MissionRunnerClass {
 
     this.active = null;
     return stars;
+  }
+
+  /**
+   * Phase B (aspect refactor) — alternate launch path for campaigns
+   * that have been ported to `CampaignExtension`. Resolves the
+   * per-mission RuntimeAspects bundle, applies `MissionState`
+   * dynamic overrides if present, and threads the bundle through
+   * `UIBridge.startScene` as `campaignRuntime`.
+   *
+   * Phase B has no callers — every shipped campaign still drives
+   * the legacy `start` path above. Phases C/D rewrite each campaign
+   * to a `CampaignExtension` and switch the lobby to route through
+   * `startV2`. Phase E deletes the legacy `start` body.
+   */
+  startV2<TState, TCfg>(
+    ext: CampaignExtension<TState, TCfg>,
+    missionIdx: number,
+  ): boolean {
+    const baseMission = ext.missions[missionIdx];
+    if (!baseMission) {
+      console.warn(`[MissionRunner.v2] no mission at idx ${missionIdx} in campaign ${ext.factionId}`);
+      return false;
+    }
+    // Read state (defaults if first run); let MissionState aspect
+    // transform the entry. Wholesale rewrite — `applyDynamicOverrides`
+    // returns a NEW entry rather than a delta merge.
+    const state = ext.missionState
+      ? ext.missionState.read()
+      : ext.initialState;
+    let mission: MissionEntry<TCfg, TState> = baseMission;
+    if (ext.missionState?.applyDynamicOverrides) {
+      try {
+        mission = ext.missionState.applyDynamicOverrides(state, baseMission);
+      } catch (err) {
+        console.warn(`[MissionRunner.v2] applyDynamicOverrides threw for ${baseMission.id}:`, err);
+      }
+    }
+
+    const ctx: CampaignCtx<TState> = {
+      factionId: ext.factionId,
+      missionIdx: mission.idx,
+      state,
+    };
+    const runtime = ext.buildRuntime(ctx, mission);
+
+    // The active session uses the legacy `CampaignDef` / `MissionDef`
+    // shape for finalize compatibility during Phase B. Phase E folds
+    // this so `active` carries the new `CampaignExtension`.
+    Analytics.track('mission_started', {
+      campaignFactionId: ext.factionId,
+      missionIdx: mission.idx,
+      archetypeId: `v2:${mission.core.mode}`,
+    });
+
+    // Story resolution — UISurface.parametricStory takes precedence
+    // when present; otherwise fall back to the literal entry.story.
+    const story = ext.ui?.parametricStory
+      ? ext.ui.parametricStory(mission as MissionEntry<unknown, TState>, { state, lastResult: null })
+      : ParametricStory.resolve(mission.story, { state, lastResult: null });
+
+    UIBridge.startScene('GameScene', {
+      mode: mission.core.mode,
+      faction: mission.core.faction ?? ext.defaultPlayerFaction ?? 'arcane',
+      map: mission.core.mapId,
+      difficulty: mission.core.difficulty ?? 'normal',
+      modifier: mission.core.modifier ?? null,
+      heroId: mission.core.mode === 'hero_defense' ? mission.core.heroId : null,
+      creepFaction: mission.core.creepFaction ?? ext.factionId,
+      waveCount: mission.core.waveCount,
+      // Phase B: only the engine-level Core fields ride the legacy
+      // passthrough. Campaign-specific knobs (finaleRules, sabotageRules,
+      // etc.) move into the runtime aspect bundle.
+      missionGoldStart: mission.core.goldStart,
+      missionGoldStartMult: mission.core.goldStartMult,
+      missionLives: mission.core.lives,
+      missionWaveScript: mission.core.waveScript,
+      missionMapThemeOverride: mission.core.mapThemeOverride ?? ext.defaultMapThemeOverride,
+      missionAutoChainWaves: mission.core.autoChainWaves,
+      missionKillGoldMult: mission.core.killGoldMult,
+      ...(mission.core.mode === 'attacker' ? {
+        missionAttackerEssencePerWave: mission.core.attackerEssencePerWave,
+        missionAttackerPaletteFaction: mission.core.attackerPaletteFaction,
+        missionAttackerLeakThreshold: mission.core.attackerLeakThreshold,
+        missionAttackerDefenderDifficulty: mission.core.attackerDefenderDifficulty,
+        missionAttackerPrepOrder: mission.core.attackerPrepOrder,
+        missionAttackerEssenceGrowthPerWave: mission.core.attackerEssenceGrowthPerWave,
+        missionAttackerEssenceCarryoverMult: mission.core.attackerEssenceCarryoverMult,
+        missionAttackerCampMax: mission.core.attackerCampMax,
+        missionAttackerCampCost: mission.core.attackerCampCost,
+        missionAttackerCampIncome: mission.core.attackerCampIncome,
+      } : {}),
+      ...(mission.core.mode === 'circle_coop' ? {
+        missionCoopCreepCountMult: mission.core.coopCreepCountMult,
+      } : {}),
+      // The new path — what makes this `startV2` rather than `start`.
+      campaignRuntime: runtime,
+      loadingMissionTitle: mission.name,
+      loadingMissionStory: story,
+      loadingRequiresContinue: true,
+    });
+    return true;
   }
 
   /** True while a mission is in flight. Used by GameScene to gate

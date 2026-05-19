@@ -92,6 +92,14 @@ import { ChannelSystem } from '../systems/channels/ChannelSystem';
 import { FinaleController, CPU_INDEX } from '../systems/finale/FinaleController';
 import { SuppressionManager, type SuppressibleTower } from '../systems/suppression/SuppressionManager';
 import { setActiveSuppressionManager } from '../systems/suppression/ActiveSuppressionManager';
+// Phase B (aspect refactor): the per-mission runtime bundle, the
+// host-side WorldMutator implementation, and the gameplay-aspect →
+// EventBus bridge. Phase B threads these through but no shipped
+// campaign uses the new path yet; legacy `_missionXxxRules` fields
+// continue to drive shipped behaviour. Phases C/D port each campaign.
+import type { RuntimeAspects } from '../systems/campaign/types';
+import { WorldMutatorImpl, type WorldHost } from '../systems/campaign/WorldMutator';
+import { attachGameplayAspect } from '../systems/campaign/EventBusBridge';
 import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
@@ -504,6 +512,17 @@ export class GameScene extends Phaser.Scene {
    *  it each frame, and writes its custom payload into MissionResult
    *  at game-end. Null on non-Greenward missions. */
   private _missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules'];
+  /** Phase B: per-mission aspect bundle from `CampaignExtension.buildRuntime`.
+   *  Populated by `MissionRunner.startV2`; null on legacy + non-campaign
+   *  scenes. Replaces the per-campaign `_missionXxxRules` field set in
+   *  Phase E. */
+  private _campaignRuntime: RuntimeAspects | null = null;
+  /** Phase B: concrete `WorldMutator` used by `SetupAspect.install`.
+   *  One instance per mission; `shutdown()` undoes every mutation. */
+  private _campaignWorld: WorldMutatorImpl | null = null;
+  /** Phase B: detach handle from `attachGameplayAspect`. Calling this
+   *  unsubscribes the runtime's gameplay handlers from the EventBus. */
+  private _campaignGameplayDetach: (() => void) | null = null;
   private _greenwardController: import('../systems/greenward/GreenwardMissionController').GreenwardMissionController | null = null;
   /** M10 only — three-setpiece state machine. Non-null only on the
    *  Greenward final_greenward mission. */
@@ -529,7 +548,7 @@ export class GameScene extends Phaser.Scene {
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules']; missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons']; missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules'] }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules']; missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons']; missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules']; campaignRuntime?: RuntimeAspects }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -564,6 +583,10 @@ export class GameScene extends Phaser.Scene {
     this._missionSabotageRules = data.missionSabotageRules;
     this._missionSuppressionPylons = data.missionSuppressionPylons;
     this._missionGreenwardRules = data.missionGreenwardRules;
+    // Phase B (aspect refactor): capture the per-mission runtime
+    // bundle from MissionRunner.startV2. Cast is unavoidable because
+    // UIBridge.startScene's payload type is `Record<string, unknown>`.
+    this._campaignRuntime = (data.campaignRuntime as RuntimeAspects | undefined) ?? null;
     // Reset Plan A scene-level state that lives as duck-typed fields
     // on `this`. Phaser reuses scene instances across matches, so
     // without this an inflated _channelHpBuff from a Counterspell
@@ -2155,6 +2178,29 @@ export class GameScene extends Phaser.Scene {
     if (!this.uiCamera) {
       this.setupUiCamera();
     }
+
+    // Phase B (aspect refactor): install per-mission campaign aspects.
+    // Runs after every subsystem is up so a Setup aspect can mutate
+    // tower placements, suppression registry, grid cells, etc. against
+    // a live scene. The Setup helpers no-op in Phase B because no
+    // shipped campaign uses startV2 yet — Phase C wires the host
+    // methods (`installPrePlacedTowers`, …) as each campaign needs
+    // them. The plumbing here is stable.
+    if (this._campaignRuntime) {
+      this._campaignWorld = new WorldMutatorImpl(this as unknown as WorldHost);
+      if (this._campaignRuntime.setup) {
+        try {
+          this._campaignRuntime.setup.install(this._campaignWorld);
+        } catch (err) {
+          console.warn('[GameScene] campaign setup aspect threw:', err);
+        }
+      }
+      if (this._campaignRuntime.gameplay) {
+        this._campaignGameplayDetach = attachGameplayAspect(
+          this.eventBus, this._campaignRuntime.gameplay,
+        );
+      }
+    }
   }
 
   /** Set up dual camera: main camera zooms game objects, UI camera stays at 1x.
@@ -3470,6 +3516,18 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (this.paused) return;
+
+    // Phase B (aspect refactor): tick the per-mission lifecycle aspect.
+    // Legacy `_finaleController` / `_sabotageController` / etc. ticks
+    // remain in place below; this dispatches the new path. Both can
+    // coexist during the migration (Phase E removes the legacy ticks).
+    if (this._campaignRuntime?.lifecycle) {
+      try {
+        this._campaignRuntime.lifecycle.update(delta);
+      } catch (err) {
+        console.warn('[GameScene] campaign lifecycle threw on update:', err);
+      }
+    }
 
     // Path flow indicator (uses real delta — visual effect is independent
     // of game speed). Dims while a wave is active so it doesn't compete
@@ -5264,6 +5322,27 @@ export class GameScene extends Phaser.Scene {
   /** Clean up on scene shutdown (returning to menu, restarting) */
   shutdown(): void {
     GameUIStore.deactivate();
+    // Phase B (aspect refactor): tear down the campaign runtime in
+    // strict reverse-install order — gameplay first (drop EventBus
+    // subscriptions before the bus is cleared below), then lifecycle
+    // shutdown, then WorldMutator undos. Each step is guarded so a
+    // throw doesn't leave a dangling subscription / pending undo.
+    if (this._campaignGameplayDetach) {
+      try { this._campaignGameplayDetach(); } catch (err) {
+        console.warn('[GameScene] campaign gameplay detach threw:', err);
+      }
+      this._campaignGameplayDetach = null;
+    }
+    if (this._campaignRuntime?.lifecycle) {
+      try { this._campaignRuntime.lifecycle.shutdown(); } catch (err) {
+        console.warn('[GameScene] campaign lifecycle shutdown threw:', err);
+      }
+    }
+    if (this._campaignWorld) {
+      this._campaignWorld.shutdown();
+      this._campaignWorld = null;
+    }
+    this._campaignRuntime = null;
     // Clear the active-SuppressionManager singleton so the next
     // scene doesn't inherit a stale reference (the
     // mech_pylon_vent_armor trait queries this from the creep

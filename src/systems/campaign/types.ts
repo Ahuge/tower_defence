@@ -212,16 +212,21 @@ export interface LifecycleAspect {
 /** Gameplay — per-mission, subscribes to game events. The
  *  EventBusBridge auto-subscribes at scene init and auto-unsubscribes
  *  at shutdown. Handlers are typed-per-event; an extension implements
- *  only the events it needs. */
+ *  only the events it needs. Signatures mirror `EventBus.GameEvents`
+ *  so the bridge is a 1:1 forward — campaigns don't need to know how
+ *  the engine emits, only what arrives. */
 export interface GameplayAspect {
-  onWaveStart?(wave: number): void;
-  onWaveEnd?(wave: number): void;
-  onCreepSpawned?(creepId: string, creepType: string): void;
-  onCreepDeath?(creepId: string): void;
-  onCreepLeak?(creepId: string): void;
-  onTowerPlaced?(towerId: string, col: number, row: number): void;
-  onTowerSold?(towerId: string): void;
-  onMissionEnd?(result: MissionResult): void;
+  onTowerPlaced?(col: number, row: number, towerId: string): void;
+  onTowerSold?(col: number, row: number): void;
+  onCreepKilled?(creepId: number, gold: number): void;
+  onCreepReached?(creepId: number): void;
+  onCreepSpawned?(creepTypeId: string): void;
+  onWaveStarted?(waveNum: number): void;
+  onWaveCleared?(waveNum: number): void;
+  onGoldChanged?(amount: number, newTotal: number): void;
+  onLivesChanged?(newLives: number): void;
+  onGameOver?(): void;
+  onGameWon?(): void;
 }
 
 /** Intercept — per-mission, consumes player input before the
