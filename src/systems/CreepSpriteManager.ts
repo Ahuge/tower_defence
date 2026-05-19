@@ -54,6 +54,37 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
 };
 
 /**
+ * Bespoke-art override sheet for the Greenward inheritor creeps.
+ *
+ * The Greenward campaign introduces twelve named "inheritor" creeps —
+ * the old woman, the child, the knight, the herald — each with a
+ * story beat. Without bespoke art they fall back to col 0 of the
+ * faction sheet and all render as generic "standard" creeps,
+ * defeating the campaign's emotional rhythm (the user shouldn't
+ * see "old woman" approach as a generic blob).
+ *
+ * Each id maps to its column in `greenward_campaign_creeps.png` (12
+ * cols × 7 rows = 768×448). Runtime resolveSheet() prefers this
+ * sheet for inheritor_* ids; cold-start fallback is faction col 0.
+ */
+const GREENWARD_CAMPAIGN_TO_COL: Record<string, number> = {
+  inheritor_road_walker:   0,
+  inheritor_den_walker:    1,
+  inheritor_messenger:     2,
+  inheritor_river_crawler: 3,
+  inheritor_civilian:      4,
+  inheritor_wedding_stone: 5,
+  inheritor_old_woman:     6,
+  inheritor_cethric:       7,
+  inheritor_stone_bride:   8,
+  inheritor_child:         9,
+  inheritor_knight:        10,
+  inheritor_herald:        11,
+};
+const GREENWARD_CAMPAIGN_SHEET_KEY = 'creeps_greenward_campaign';
+const GREENWARD_CAMPAIGN_COLS = 12;
+
+/**
  * Bespoke-art override sheet for the Snake Eyes campaign.
  *
  * Currently a single-creep sheet (1 col × 7 rows = 64×448) for
@@ -62,13 +93,6 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
  * the snake-eyes "1" pip. Without bespoke art he falls back to
  * col 0 of the void faction sheet (a generic void blob), which
  * undercuts his read as the campaign's named antagonist.
- *
- * Runtime resolveSheet() prefers this sheet for void_collector
- * if loaded, with cold-start fallback to the void faction sheet.
- *
- * Adding more Snake Eyes creep variants later: extend
- * snake_eyes_creep_sprites.tsx with more draw fns, expand the
- * sheet dimensions, and add the id → column mapping here.
  */
 const SNAKE_EYES_CAMPAIGN_TO_COL: Record<string, number> = {
   void_collector: 0,
@@ -89,17 +113,24 @@ function sheetKey(faction: FactionId): string {
 /**
  * Resolve which sheet + column a creep id should render from.
  *
- * Snake Eyes campaign creeps ride their own dedicated sheet so
- * named characters like The Collector get a bespoke silhouette
- * rather than a generic void-faction fallback. Cold-start safety:
- * falls back to the faction sheet if the campaign sheet hasn't
- * been loaded yet.
+ * Each campaign with bespoke creep art ships its own dedicated sheet.
+ * The resolver checks each campaign map BEFORE falling back to the
+ * faction sheet, so a campaign creep gets its own silhouette. Cold-
+ * start safety: if a campaign sheet hasn't loaded yet we fall through
+ * to the faction sheet's alias from CREEP_TYPE_TO_COL.
  */
 function resolveSheet(
   scene: Phaser.Scene,
   faction: FactionId,
   creepTypeId: string,
 ): { key: string; col: number; cols: number } | null {
+  if (creepTypeId in GREENWARD_CAMPAIGN_TO_COL && scene.textures.exists(GREENWARD_CAMPAIGN_SHEET_KEY)) {
+    return {
+      key: GREENWARD_CAMPAIGN_SHEET_KEY,
+      col: GREENWARD_CAMPAIGN_TO_COL[creepTypeId],
+      cols: GREENWARD_CAMPAIGN_COLS,
+    };
+  }
   if (creepTypeId in SNAKE_EYES_CAMPAIGN_TO_COL && scene.textures.exists(SNAKE_EYES_CAMPAIGN_SHEET_KEY)) {
     return {
       key: SNAKE_EYES_CAMPAIGN_SHEET_KEY,
@@ -122,12 +153,57 @@ export function preloadCreepSprites(scene: Phaser.Scene): void {
       frameHeight: FRAME_SIZE,
     });
   }
+  // Greenward campaign bespoke sheet (12 cols × 7 rows = 768×448).
+  if (!scene.textures.exists(GREENWARD_CAMPAIGN_SHEET_KEY)) {
+    scene.load.spritesheet(GREENWARD_CAMPAIGN_SHEET_KEY, 'assets/creeps/greenward_campaign_creeps.png', {
+      frameWidth: FRAME_SIZE,
+      frameHeight: FRAME_SIZE,
+    });
+  }
   // Snake Eyes campaign bespoke sheet (1 col × 7 rows = 64×448).
   if (!scene.textures.exists(SNAKE_EYES_CAMPAIGN_SHEET_KEY)) {
     scene.load.spritesheet(SNAKE_EYES_CAMPAIGN_SHEET_KEY, 'assets/creeps/snake_eyes_creeps.png', {
       frameWidth: FRAME_SIZE,
       frameHeight: FRAME_SIZE,
     });
+  }
+}
+
+/**
+ * Helper: register walk + death animations for a campaign sheet.
+ * Each campaign sheet has its own column count (row stride).
+ */
+function registerCampaignAnims(
+  scene: Phaser.Scene,
+  faction: FactionId,
+  sheetKey: string,
+  toCol: Record<string, number>,
+  sheetCols: number,
+) {
+  if (!scene.textures.exists(sheetKey)) return;
+  for (const [typeId, col] of Object.entries(toCol)) {
+    const walkKey = `creep_${faction}_${typeId}_walk`;
+    if (!scene.anims.exists(walkKey)) {
+      scene.anims.create({
+        key: walkKey,
+        frames: Array.from({ length: WALK_FRAMES }, (_, row) => ({
+          key: sheetKey, frame: row * sheetCols + col,
+        })),
+        frameRate: WALK_FPS,
+        repeat: -1,
+      });
+    }
+    const deathKey = `creep_${faction}_${typeId}_death`;
+    if (!scene.anims.exists(deathKey)) {
+      scene.anims.create({
+        key: deathKey,
+        frames: Array.from({ length: DEATH_FRAMES }, (_, i) => ({
+          key: sheetKey, frame: (4 + i) * sheetCols + col,
+        })),
+        frameRate: DEATH_FPS,
+        repeat: 0,
+      });
+    }
   }
 }
 
@@ -160,36 +236,9 @@ export function createCreepAnimations(scene: Phaser.Scene, faction: FactionId): 
       }
     }
   }
-  // Snake Eyes campaign animations — row stride matches the 1-col
-  // sheet (each row is just frame index `row`).
-  if (scene.textures.exists(SNAKE_EYES_CAMPAIGN_SHEET_KEY)) {
-    for (const [typeId, col] of Object.entries(SNAKE_EYES_CAMPAIGN_TO_COL)) {
-      const walkKey = `creep_${faction}_${typeId}_walk`;
-      if (!scene.anims.exists(walkKey)) {
-        scene.anims.create({
-          key: walkKey,
-          frames: Array.from({ length: WALK_FRAMES }, (_, row) => ({
-            key: SNAKE_EYES_CAMPAIGN_SHEET_KEY,
-            frame: row * SNAKE_EYES_CAMPAIGN_COLS + col,
-          })),
-          frameRate: WALK_FPS,
-          repeat: -1,
-        });
-      }
-      const deathKey = `creep_${faction}_${typeId}_death`;
-      if (!scene.anims.exists(deathKey)) {
-        scene.anims.create({
-          key: deathKey,
-          frames: Array.from({ length: DEATH_FRAMES }, (_, i) => ({
-            key: SNAKE_EYES_CAMPAIGN_SHEET_KEY,
-            frame: (4 + i) * SNAKE_EYES_CAMPAIGN_COLS + col,
-          })),
-          frameRate: DEATH_FPS,
-          repeat: 0,
-        });
-      }
-    }
-  }
+  // Campaign-bespoke animations — each has its own column count.
+  registerCampaignAnims(scene, faction, GREENWARD_CAMPAIGN_SHEET_KEY, GREENWARD_CAMPAIGN_TO_COL, GREENWARD_CAMPAIGN_COLS);
+  registerCampaignAnims(scene, faction, SNAKE_EYES_CAMPAIGN_SHEET_KEY, SNAKE_EYES_CAMPAIGN_TO_COL, SNAKE_EYES_CAMPAIGN_COLS);
 }
 
 /** Create a creep sprite for a given faction and type */
