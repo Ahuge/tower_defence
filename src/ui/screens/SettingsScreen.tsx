@@ -27,6 +27,12 @@ import {
   downloadJSONL as downloadCapture, clearAll as clearCaptures,
 } from '../../systems/learning/LiveCapture';
 import {
+  isPlaceAndApproveEnabled,
+  getRawPreference as getPlaceAndApprovePref,
+  setPreference as setPlaceAndApprovePref,
+} from '../../systems/placement/PlaceAndApproveSetting';
+import { ResponsiveManager } from '../../systems/ResponsiveManager';
+import {
   getAnnouncements,
   formatAnnouncementDate,
   type Announcement,
@@ -53,6 +59,7 @@ export function SettingsScreen() {
         <MailboxSection />
         <RestoreSection />
         <TutorialSection />
+        <AccessibilitySection />
         <AnalyticsSection />
         <TrainingDataSection />
         <AboutSection />
@@ -287,6 +294,60 @@ function TutorialSection() {
 }
 
 // ─── Analytics opt-out ────────────────────────────────────────
+
+// ─── Accessibility (place-and-approve gate) ─────────────────
+
+function AccessibilitySection() {
+  // Track the explicit preference so the toggle reflects user state,
+  // not the platform-default-derived effective state. Both readers
+  // refresh on toggle via the local rerender.
+  const [pref, setPref] = useState(() => getPlaceAndApprovePref());
+  const effective = isPlaceAndApproveEnabled();
+  const phoneDefault = ResponsiveManager.isPhone();
+
+  const toggle = () => {
+    // Tri-state: explicit on → explicit off → default (clear).
+    const next = pref === null
+      ? (effective ? 'off' as const : 'on' as const)
+      : pref === 'on'
+        ? 'off' as const
+        : 'on' as const;
+    setPlaceAndApprovePref(next);
+    setPref(next);
+  };
+
+  const clearToDefault = () => {
+    setPlaceAndApprovePref(null);
+    setPref(null);
+  };
+
+  const stateLabel =
+    pref === null ? `default (${phoneDefault ? 'on' : 'off'} for ${phoneDefault ? 'phone' : 'desktop'})`
+    : pref === 'on' ? 'on'
+    : 'off';
+
+  return (
+    <div class="settings-block" style={{ marginTop: '16px' }}>
+      <div class="ui-section-title">Accessibility</div>
+      <div class="text-dim text-sm mb-2">
+        Place-and-approve: when on, tapping a tower cell stages a ghost placement first — confirm with the tick or cancel with the X. Drag the ghost or tap another cell to reposition before confirming. Helps prevent mis-taps on mobile.
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <input type="checkbox" checked={effective} onChange={toggle} />
+        <span>Enable place-and-approve <span class="text-dim">— currently {stateLabel}</span></span>
+      </label>
+      {pref !== null && (
+        <button
+          class="btn"
+          style={{ marginTop: '8px', fontSize: '11px' }}
+          onClick={clearToDefault}
+        >
+          Reset to platform default
+        </button>
+      )}
+    </div>
+  );
+}
 
 function AnalyticsSection() {
   // Read + write localStorage directly — Analytics already persists

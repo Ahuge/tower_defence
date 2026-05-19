@@ -1,0 +1,200 @@
+/**
+ * Smoke tests for PlacementGateOverlay — renders / hides based on
+ * GameUIStore.placementGhost; fires commit / cancel callbacks.
+ */
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { render, cleanup, fireEvent } from '@testing-library/preact';
+import { PlacementGateOverlay } from './PlacementGateOverlay';
+import { GameUIStore } from '../GameUIStore';
+
+afterEach(() => {
+  cleanup();
+  GameUIStore.setPlacementGhost(null);
+  // Best-effort callback reset between tests.
+  GameUIStore.registerCallbacks({});
+});
+
+beforeEach(() => {
+  // Mount a fake canvas so projectCellToScreen has something to read.
+  // 1008 × 720 mirrors the production GAME_WIDTH / GAME_HEIGHT roughly.
+  const canvas = document.createElement('canvas');
+  canvas.width = 1008;
+  canvas.height = 720;
+  const root = document.createElement('div');
+  root.id = 'game-root';
+  root.appendChild(canvas);
+  document.body.appendChild(root);
+  // Stub getBoundingClientRect so jsdom returns non-zero dims.
+  canvas.getBoundingClientRect = () => ({
+    left: 0, top: 0, right: 1008, bottom: 720,
+    width: 1008, height: 720, x: 0, y: 0, toJSON: () => ({}),
+  });
+});
+
+afterEach(() => {
+  document.getElementById('game-root')?.remove();
+});
+
+describe('PlacementGateOverlay', () => {
+  it('renders nothing when no ghost is staged', () => {
+    const { container } = render(<PlacementGateOverlay />);
+    expect(container.querySelector('[data-testid="placement-gate-overlay"]')).toBeNull();
+  });
+
+  it('renders tick + cancel buttons when a ghost is staged', () => {
+    GameUIStore.setPlacementGhost({ col: 10, row: 8, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    expect(container.querySelector('[data-testid="placement-gate-overlay"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="place-and-approve-commit"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="place-and-approve-cancel"]')).not.toBeNull();
+  });
+
+  it('fires onPlacementCommit when the tick is clicked', () => {
+    let commits = 0;
+    GameUIStore.registerCallbacks({
+      onPlacementCommit: () => { commits++; },
+    });
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const tick = container.querySelector('[data-testid="place-and-approve-commit"]') as HTMLButtonElement;
+    fireEvent.click(tick);
+    expect(commits).toBe(1);
+  });
+
+  it('fires onPlacementCancel when the X is clicked', () => {
+    let cancels = 0;
+    GameUIStore.registerCallbacks({
+      onPlacementCancel: () => { cancels++; },
+    });
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const cancel = container.querySelector('[data-testid="place-and-approve-cancel"]') as HTMLButtonElement;
+    fireEvent.click(cancel);
+    expect(cancels).toBe(1);
+  });
+
+  it('buttons have screen-reader-friendly aria-labels', () => {
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const commit = container.querySelector('[data-testid="place-and-approve-commit"]');
+    const cancel = container.querySelector('[data-testid="place-and-approve-cancel"]');
+    expect(commit?.getAttribute('aria-label')).toContain('Confirm');
+    expect(cancel?.getAttribute('aria-label')).toContain('Cancel');
+  });
+
+  it('renders a drag handle over the ghost cell', () => {
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    expect(container.querySelector('[data-testid="placement-gate-drag-handle"]')).not.toBeNull();
+  });
+
+  it('drag handle is touch-action:none (disables browser gestures mid-drag)', () => {
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+    const style = handle.getAttribute('style') ?? '';
+    expect(style).toContain('touch-action');
+  });
+});
+
+describe('PlacementGateOverlay — FIT-aware projection (portrait mobile fix)', () => {
+  // Regression test for PR #79 mobile bug: tick/X were offset to the
+  // top-left because the projection ignored Phaser's Scale.FIT
+  // letterbox. On portrait viewports (canvas aspect 1.4:1 inside a
+  // viewport ~0.46:1), there's a top + bottom letterbox the original
+  // math didn't account for.
+  beforeEach(() => {
+    // Stub a portrait viewport: canvas internal 1008x720 (aspect ~1.4),
+    // rendered into a 540x1170 viewport box. With FIT, the rendered
+    // playfield is 540 wide × ~386 tall, centered vertically with
+    // ~392px of letterbox top + bottom.
+    document.getElementById('game-root')?.remove();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1008;
+    canvas.height = 720;
+    const root = document.createElement('div');
+    root.id = 'game-root';
+    root.appendChild(canvas);
+    document.body.appendChild(root);
+    canvas.getBoundingClientRect = () => ({
+      left: 0, top: 0, right: 540, bottom: 1170,
+      width: 540, height: 1170, x: 0, y: 0, toJSON: () => ({}),
+    });
+  });
+
+  it('drag handle is positioned inside the FIT-letterboxed playfield, not the full DOM rect', () => {
+    GameUIStore.setPlacementGhost({ col: 18, row: 13, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+    const style = handle.getAttribute('style') ?? '';
+    // FIT scale = min(540/1008, 1170/720) = min(0.536, 1.625) = 0.536
+    // Letterbox offset top = (1170 - 720*0.536) / 2 ≈ 392
+    // Pre-fix bug: tick lands near top:0 of the page.
+    const topMatch = style.match(/top:\s*([\d.]+)px/);
+    expect(topMatch, 'handle should have a top px value').not.toBeNull();
+    const topPx = parseFloat(topMatch![1]);
+    expect(topPx, 'handle y should be in the playfield region, not at the page top').toBeGreaterThan(200);
+  });
+
+  it('commit + cancel buttons land near the ghost cell on portrait mobile', () => {
+    GameUIStore.setPlacementGhost({ col: 18, row: 13, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+    const commit = container.querySelector('[data-testid="place-and-approve-commit"]') as HTMLElement;
+    const cancel = container.querySelector('[data-testid="place-and-approve-cancel"]') as HTMLElement;
+
+    const handleTop = parseFloat((handle.getAttribute('style') ?? '').match(/top:\s*([\d.]+)px/)![1]);
+    const commitTop = parseFloat((commit.getAttribute('style') ?? '').match(/top:\s*([\d.]+)px/)![1]);
+    const cancelTop = parseFloat((cancel.getAttribute('style') ?? '').match(/top:\s*([\d.]+)px/)![1]);
+
+    // Buttons sit ABOVE the handle (lower top px) — same vertical band.
+    expect(commitTop).toBeLessThan(handleTop);
+    expect(cancelTop).toBeLessThan(handleTop);
+    // Both buttons at the same y (they flank the cell).
+    expect(Math.abs(commitTop - cancelTop)).toBeLessThan(1);
+    // Within ~one tile of the handle vertically — not off-screen.
+    expect(handleTop - commitTop).toBeLessThan(120);
+  });
+});
+
+describe('PlacementGateOverlay — double-tap to commit', () => {
+  function tapHandle(handle: HTMLElement, atX: number = 100, atY: number = 100): void {
+    handle.dispatchEvent(new PointerEvent('pointerdown', { clientX: atX, clientY: atY, pointerId: 1, bubbles: true }));
+    handle.dispatchEvent(new PointerEvent('pointerup',   { clientX: atX, clientY: atY, pointerId: 1, bubbles: true }));
+  }
+
+  it('a single tap does NOT commit', () => {
+    let commits = 0;
+    GameUIStore.registerCallbacks({ onPlacementCommit: () => { commits++; } });
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+    tapHandle(handle);
+    expect(commits).toBe(0);
+  });
+
+  it('two taps within the double-tap window commit the placement', () => {
+    let commits = 0;
+    GameUIStore.registerCallbacks({ onPlacementCommit: () => { commits++; } });
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+    tapHandle(handle);
+    tapHandle(handle);
+    expect(commits).toBe(1);
+  });
+
+  it('a long-travel pointerup is a drag, NOT a tap — does not contribute to double-tap', () => {
+    let commits = 0;
+    GameUIStore.registerCallbacks({ onPlacementCommit: () => { commits++; } });
+    GameUIStore.setPlacementGhost({ col: 5, row: 5, towerTypeId: 'arcane_bolt' });
+    const { container } = render(<PlacementGateOverlay />);
+    const handle = container.querySelector('[data-testid="placement-gate-drag-handle"]') as HTMLElement;
+    // First "tap" — but with high travel (drag).
+    handle.dispatchEvent(new PointerEvent('pointerdown', { clientX: 100, clientY: 100, pointerId: 1, bubbles: true }));
+    handle.dispatchEvent(new PointerEvent('pointerup',   { clientX: 200, clientY: 100, pointerId: 1, bubbles: true }));
+    // Real tap right after — should NOT commit (drag reset the tracker).
+    tapHandle(handle, 150, 150);
+    expect(commits).toBe(0);
+  });
+});
