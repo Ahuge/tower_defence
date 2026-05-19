@@ -55,24 +55,39 @@ interface ScreenAnchor {
   tileSize: number;
 }
 
-/** Snapshot of the Phaser game camera's currently-visible world
- *  rectangle plus the canvas's DOM rect. Source of truth for both
- *  projection directions. We use Phaser's own `cam.worldView`
- *  rather than rebuilding it from scrollX/zoom because the camera
- *  has a `origin` that the raw scroll value does NOT include —
- *  reconstructing the visible rect by hand was off-by-half-viewport
- *  in some configs and produced a "scaled multiple toward bottom-
- *  right" offset on screen. The test-hook's `getCellClientPos` uses
- *  the exact same formula; aligning here keeps the gate's icons
- *  consistent with where `clickCell` already lands. */
+/** Snapshot of the Phaser camera transform plus the canvas's DOM
+ *  rect. Both directions of cell↔screen projection read from this.
+ *
+ *  Why we track BOTH `viewport` and `worldView`: on phone,
+ *  CameraController clips the main camera's viewport to the area
+ *  above the UI bars (`cam.setViewport(0, 0, canvas.width, viewportH)`).
+ *  The canvas DOM element fills the whole screen but the camera
+ *  renders into only its top portion — the bottom is reserved for
+ *  the status / tower-bar / control-bar HUDs. A world point at the
+ *  centre of the worldView lands at the centre of the VIEWPORT,
+ *  NOT at the centre of the canvas DOM rect.
+ *
+ *  Naïve formula (testHook.getCellClientPos): `rect.left +
+ *  ((worldX - wv.x) / wv.width) * rect.width`. This puts the centre
+ *  of the worldView at the centre of the canvas DOM rect — which on
+ *  phone is the centre of the SCREEN, not the centre of the rendered
+ *  playfield. Icons drift up toward the canvas top while the
+ *  player's cell sits visually centred inside the clipped viewport.
+ *
+ *  Correct chain: world → canvas-pixel (via viewport + worldView) →
+ *  CSS-pixel (via canvas DOM rect ÷ canvas intrinsic). */
 interface CameraProjection {
-  /** World rect currently visible. */
+  /** Visible world rect (world pixels). */
   worldView: { x: number; y: number; width: number; height: number };
-  /** Canvas's displayed DOM rect (CSS pixels). Already includes any
-   *  letterbox offset because the canvas DOM rect IS the rendered
-   *  position on screen — Phaser's FIT scales the canvas's CSS
-   *  size, not its intrinsic dimensions. */
+  /** Camera viewport on the canvas pixel buffer (canvas pixels). On
+   *  desktop this is (0, 0, canvas.width, canvas.height); on phone
+   *  it's clipped to the area above the UI bars. */
+  viewport: { x: number; y: number; width: number; height: number };
+  /** Canvas DOM rect (CSS pixels). */
   rect: { left: number; top: number; width: number; height: number };
+  /** Canvas intrinsic pixel-buffer dimensions. */
+  canvasW: number;
+  canvasH: number;
 }
 
 function getCameraProjection(): CameraProjection | null {
@@ -80,51 +95,52 @@ function getCameraProjection(): CameraProjection | null {
   if (!canvas) return null;
   const rect = canvas.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return null;
+  const fallback: CameraProjection = {
+    worldView: { x: 0, y: 0, width: canvas.width, height: canvas.height },
+    viewport:  { x: 0, y: 0, width: canvas.width, height: canvas.height },
+    rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+    canvasW: canvas.width,
+    canvasH: canvas.height,
+  };
   const game = UIBridge.getGame();
-  if (!game) {
-    // Cold-boot / test-env fallback — the canvas exists but the
-    // Phaser game hasn't booted. Project assuming the canvas's
-    // intrinsic dimensions equal the world view (identity camera).
-    return {
-      worldView: { x: 0, y: 0, width: canvas.width, height: canvas.height },
-      rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-    };
-  }
+  if (!game) return fallback;
   const scene = game.scene.getScene('GameScene') as unknown as {
-    cameras?: { main?: { worldView?: { x: number; y: number; width: number; height: number } } };
+    cameras?: { main?: {
+      worldView?: { x: number; y: number; width: number; height: number };
+      x: number; y: number; width: number; height: number;
+    } };
   } | undefined;
-  const wv = scene?.cameras?.main?.worldView;
-  if (!wv || wv.width === 0 || wv.height === 0) {
-    return {
-      worldView: { x: 0, y: 0, width: canvas.width, height: canvas.height },
-      rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-    };
-  }
+  const cam = scene?.cameras?.main;
+  if (!cam) return fallback;
+  const wv = cam.worldView;
+  if (!wv || wv.width === 0 || wv.height === 0) return fallback;
   return {
     worldView: { x: wv.x, y: wv.y, width: wv.width, height: wv.height },
+    viewport:  { x: cam.x, y: cam.y, width: cam.width, height: cam.height },
     rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+    canvasW: canvas.width,
+    canvasH: canvas.height,
   };
 }
 
 function projectCellToScreen(col: number, row: number): ScreenAnchor | null {
   const proj = getCameraProjection();
   if (!proj) return null;
-  // Cell center in world coords. Mirror the testHook.ts
-  // getCellClientPos formula exactly so the gate icons render at
-  // the same screen position as `__td_test.clickCell` lands.
   const worldX = gridX(col);
   const worldY = gridY(row);
+  // World → canvas-pixel: the worldView is what's visible inside
+  // the camera's viewport rect on the canvas pixel buffer.
   const u = (worldX - proj.worldView.x) / proj.worldView.width;
   const v = (worldY - proj.worldView.y) / proj.worldView.height;
-  // One tile in screen pixels = one tile's world width × the
-  // worldView→DOM ratio. Equivalent to `TILE_SIZE × zoom × cssScale`
-  // since worldView.width = camera.width / zoom and cssScale =
-  // rect.width / camera.width.
-  const tileSize = TILE_SIZE * (proj.rect.width / proj.worldView.width);
+  const canvasPxX = proj.viewport.x + u * proj.viewport.width;
+  const canvasPxY = proj.viewport.y + v * proj.viewport.height;
+  // Canvas-pixel → CSS-pixel via the DOM rect scale.
+  const cssScaleX = proj.rect.width  / proj.canvasW;
+  const cssScaleY = proj.rect.height / proj.canvasH;
   return {
-    x: proj.rect.left + u * proj.rect.width,
-    y: proj.rect.top  + v * proj.rect.height,
-    tileSize,
+    x: proj.rect.left + canvasPxX * cssScaleX,
+    y: proj.rect.top  + canvasPxY * cssScaleY,
+    tileSize: TILE_SIZE * (proj.viewport.width / proj.worldView.width) * cssScaleX,
   };
 }
 
@@ -132,8 +148,13 @@ function projectCellToScreen(col: number, row: number): ScreenAnchor | null {
 function screenToCell(screenX: number, screenY: number): { col: number; row: number } | null {
   const proj = getCameraProjection();
   if (!proj) return null;
-  const u = (screenX - proj.rect.left) / proj.rect.width;
-  const v = (screenY - proj.rect.top)  / proj.rect.height;
+  // CSS-pixel → canvas-pixel → world. Inverse of projectCellToScreen.
+  const cssScaleX = proj.rect.width  / proj.canvasW;
+  const cssScaleY = proj.rect.height / proj.canvasH;
+  const canvasPxX = (screenX - proj.rect.left) / cssScaleX;
+  const canvasPxY = (screenY - proj.rect.top)  / cssScaleY;
+  const u = (canvasPxX - proj.viewport.x) / proj.viewport.width;
+  const v = (canvasPxY - proj.viewport.y) / proj.viewport.height;
   const worldX = proj.worldView.x + u * proj.worldView.width;
   const worldY = proj.worldView.y + v * proj.worldView.height;
   return {

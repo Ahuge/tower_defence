@@ -22,19 +22,17 @@ export default defineConfig({
   // a generous default; fast ones still finish quickly.
   timeout: 30_000,
   expect: { timeout: 5_000 },
-  // Each Playwright worker runs in its own browser context with
-  // isolated localStorage / sessionStorage, so cross-test state
-  // leakage isn't a concern. The vite preview server handles
-  // concurrent requests fine. Workers=4 typically quarters the
-  // local run on a multi-core dev box; we stop short of 8 because
-  // a 720p Chromium instance + a heavy Phaser scene runs ~250-400MB
-  // RSS each — 4 fits comfortably in 4-8GB of free RAM; 8 will hit
-  // swap on most laptops and produce flaky timing. CI keeps the
-  // serial config (1 worker, no parallelism) because GitHub runners
-  // are 2-core / 7GB and 4 workers would over-subscribe the box.
-  fullyParallel: true,
+  // Bumping workers > 1 is on the table (each worker has its own
+  // browser context so localStorage doesn't leak), but the webServer
+  // start sequence races with `fullyParallel: true` — the preview
+  // server takes ~30s to build + boot, and parallel workers fire off
+  // page.goto before it's reachable. Solving that needs either a
+  // pre-built dist served by a separate process or a webServer
+  // health-check endpoint; out of scope for the projection fix.
+  // Tracked as a follow-up.
+  fullyParallel: false,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 4,
+  workers: 1,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
 
   use: {
