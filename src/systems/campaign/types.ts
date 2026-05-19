@@ -1,0 +1,428 @@
+/**
+ * Campaign Extension types — the post-refactor schema.
+ *
+ * See `docs/campaign-aspects-refactor-prd.md` and
+ * `docs/adr/0001-campaigns-as-aspect-modules.md`. Glossary in
+ * `CONTEXT.md`.
+ *
+ * Status: Phase A — these types exist alongside the legacy
+ * `MissionDef` / `MissionOverrides` / `CampaignDef` schema in
+ * `src/data/campaigns/CampaignDef.ts`. Nothing consumes them yet.
+ * Phase B wires `MissionRunner` + `GameScene` to a `RuntimeAspects`
+ * bundle; Phases C/D port the four shipped campaigns; Phases E/F
+ * delete the legacy schema.
+ *
+ * Design intent:
+ *
+ *  - Each Campaign is a single module that exports a
+ *    `CampaignExtension<TState, TCfg>`. `TState` is the campaign's
+ *    cross-mission persistent state; `TCfg` is the typed payload on
+ *    each `MissionEntry.campaign`. Both are opaque at the registry
+ *    boundary, fully typed inside the campaign module.
+ *
+ *  - The shared mission schema (`MissionEntry`) is reduced to
+ *    identity + objectives + a discriminated `CoreMissionConfig`
+ *    keyed by Base Mode + the typed `campaign: TCfg` payload. The
+ *    god-object `MissionOverrides` disappears.
+ *
+ *  - Per-mission behaviour is expressed via `buildRuntime(ctx, mission)`,
+ *    which returns a bundle of optional **Aspects** — narrow role
+ *    interfaces each consumed by exactly one engine subsystem.
+ *
+ *  - Mission State (cross-mission persistent state) and UI Surface
+ *    (panels, parametric stories, epilogue) are campaign-wide, not
+ *    per-mission, so they live as optional fields on the
+ *    `CampaignExtension` itself rather than in `RuntimeAspects`.
+ */
+
+import type { FactionId } from '../../data/Factions';
+import type { MapId, SuppressionPylonSpec } from '../../data/Maps';
+import type { DraftModifier } from '../../data/DraftModifiers';
+import type { HeroId } from '../../data/HeroTypes';
+import type { DifficultyLevel } from '../../data/Difficulty';
+import type { WaveDefinition } from '../../data/WaveDefinitions';
+import type { MissionResult } from '../../data/campaigns/CampaignDef';
+
+// ─── Base Modes ─────────────────────────────────────────────
+// The engine-level shape of a mission. See CONTEXT.md ("Base Mode")
+// for what does and doesn't qualify. Heist and base_defense are
+// Map Topologies, NOT base modes — they reuse the standard engine
+// with different map entry/exit layouts.
+
+export type BaseMode = 'standard' | 'hero_defense' | 'circle_coop' | 'attacker';
+
+// ─── Mission Restrictions ───────────────────────────────────
+// Identical shape to legacy `MissionRestrictions`. Kept on
+// CoreMissionConfig because they're engine-level (input model
+// concerns), not campaign-specific.
+
+export interface MissionRestrictions {
+  allowedFactions?: FactionId[];
+  allowedTowerIds?: string[];
+  maxTowers?: number;
+  noWalls?: boolean;
+  noSends?: boolean;
+  noFrontier?: boolean;
+  forceHeroId?: HeroId;
+}
+
+// ─── Core Mission Config (discriminated by Base Mode) ───────
+// Engine-level knobs that exist regardless of campaign. The
+// discriminant `mode` makes mutually-exclusive fields structural —
+// e.g. `attackerEssencePerWave` only exists on the attacker
+// variant, no runtime guard needed.
+
+/** Fields common to every Base Mode. */
+interface CoreMissionConfigBase {
+  /** Map id. Required — campaigns ship with bespoke faction-themed maps. */
+  mapId: MapId;
+  /** Wave count override. Tutorial archetypes use small numbers;
+   *  final showdowns use 30+. */
+  waveCount?: number;
+  /** Difficulty override. Default 'normal'. */
+  difficulty?: DifficultyLevel;
+  /** Starting gold delta. */
+  goldStart?: number;
+  /** Starting gold multiplier (0.5 = "half cost / half gold"). */
+  goldStartMult?: number;
+  /** Lives override. */
+  lives?: number;
+  /** Mission-bound modifier (e.g. lava-tile environment). */
+  modifier?: DraftModifier;
+  /** Faction the player commands. Defaults via campaign's
+   *  `defaultPlayerFaction`, then player's currently-selected faction. */
+  faction?: FactionId;
+  /** Creep faction. Defaults to the campaign's faction. */
+  creepFaction?: FactionId;
+  /** Restriction set (towers, sends, frontier). */
+  restrictions?: MissionRestrictions;
+  /** Per-mission wave script. Replaces the global generator. */
+  waveScript?: WaveDefinition[];
+  /** Force a specific terrain theme regardless of the map's authored one. */
+  mapThemeOverride?: string;
+  /** Auto-chain waves: N seconds between waves; undefined = manual. */
+  autoChainWaves?: number;
+  /** Multiplier applied to creep kill-gold. <1 reduces income. */
+  killGoldMult?: number;
+}
+
+/** Standard base mode — defender tower defence with the player commanding. */
+export interface StandardConfig extends CoreMissionConfigBase {
+  mode: 'standard';
+}
+
+/** Hero defense — the player owns a single named hero on the field. */
+export interface HeroDefenseConfig extends CoreMissionConfigBase {
+  mode: 'hero_defense';
+  heroId: HeroId;
+}
+
+/** Circle co-op — the player + bots share defence around a centre point. */
+export interface CircleCoopConfig extends CoreMissionConfigBase {
+  mode: 'circle_coop';
+  /** Extra multiplier applied on top of the team-size formula. 1.0 = none. */
+  coopCreepCountMult?: number;
+}
+
+/** Attacker — the player commands the creep waves; the CPU defends. */
+export interface AttackerConfig extends CoreMissionConfigBase {
+  mode: 'attacker';
+  /** Per-wave essence budget the attacker spends in the composer. */
+  attackerEssencePerWave: number;
+  /** Palette faction for the attacker's send menu. */
+  attackerPaletteFaction?: FactionId | 'coalition';
+  /** Number of leaks needed for the player (attacker) to win. */
+  attackerLeakThreshold?: number;
+  /** Defender-AI difficulty. */
+  attackerDefenderDifficulty?: 'easy' | 'normal' | 'hard';
+  /** Per-wave defender prep order. */
+  attackerPrepOrder?: string[];
+  /** Additive income growth per wave. */
+  attackerEssenceGrowthPerWave?: number;
+  /** Carryover cap as a multiple of the current wave's income. */
+  attackerEssenceCarryoverMult?: number;
+  /** Max Reinforcement Camps the player can build this mission. */
+  attackerCampMax?: number;
+  /** Essence cost to build one camp. */
+  attackerCampCost?: number;
+  /** Permanent income each camp adds to every subsequent wave. */
+  attackerCampIncome?: number;
+}
+
+/** Engine-level mission config, discriminated by base mode. */
+export type CoreMissionConfig =
+  | StandardConfig
+  | HeroDefenseConfig
+  | CircleCoopConfig
+  | AttackerConfig;
+
+// ─── Mission Entry ──────────────────────────────────────────
+// A single Mission inside a Campaign. Reduced from the legacy
+// `MissionDef` to identity + objectives + CoreMissionConfig +
+// typed campaign payload.
+
+export type MissionObjective = (r: MissionResult) => boolean;
+
+/** Story can be a literal or a function reading campaign state. */
+export type MissionStory<TState = unknown> =
+  | string
+  | ((ctx: { state: TState; lastResult: MissionResult | null }) => string);
+
+export interface MissionEntry<TCfg = unknown, TState = unknown> {
+  /** Stable id within the campaign. */
+  id: string;
+  /** Display order in the lobby (0..9). */
+  idx: number;
+  /** Display name. */
+  name: string;
+  /** Two-paragraph story beat for the pre-mission modal. */
+  story: MissionStory<TState>;
+  /** Star objectives. Star 1 is always "win"; star 2/3 optional. */
+  objectives: {
+    star2?: { label: string; predicate: MissionObjective };
+    star3?: { label: string; predicate: MissionObjective };
+  };
+  /** Engine-level config (Base Mode-discriminated). */
+  core: CoreMissionConfig;
+  /** Typed campaign-specific payload. Opaque to the registry; the
+   *  campaign module reads it inside its aspects. */
+  campaign: TCfg;
+}
+
+// ─── Aspects ────────────────────────────────────────────────
+// Six narrow role interfaces. A Campaign Extension exposes any
+// subset.
+
+/** Setup — per-mission, one-shot. Mutates the world at scene init.
+ *  Receives a WorldMutator that knows how to install pre-placed
+ *  towers, suppression pylons, summoning circles, workshops, ruin
+ *  cells, etc. Undo is the world mutator's responsibility (each
+ *  mutation records itself so shutdown can roll back). */
+export interface SetupAspect {
+  install(world: WorldMutator): void;
+}
+
+/** Lifecycle — per-mission, per-frame loop + cleanup. Hosts
+ *  campaign-specific controllers (Sabotage, GreenwardMission, etc.). */
+export interface LifecycleAspect {
+  update(deltaMs: number): void;
+  shutdown(): void;
+}
+
+/** Gameplay — per-mission, subscribes to game events. The
+ *  EventBusBridge auto-subscribes at scene init and auto-unsubscribes
+ *  at shutdown. Handlers are typed-per-event; an extension implements
+ *  only the events it needs. */
+export interface GameplayAspect {
+  onWaveStart?(wave: number): void;
+  onWaveEnd?(wave: number): void;
+  onCreepSpawned?(creepId: string, creepType: string): void;
+  onCreepDeath?(creepId: string): void;
+  onCreepLeak?(creepId: string): void;
+  onTowerPlaced?(towerId: string, col: number, row: number): void;
+  onTowerSold?(towerId: string): void;
+  onMissionEnd?(result: MissionResult): void;
+}
+
+/** Intercept — per-mission, consumes player input before the
+ *  default handler. Each handler returns `true` if it consumed the
+ *  action (suppressing the default behaviour) or `false` to let the
+ *  default run. */
+export interface InterceptAspect {
+  onCellClick?(col: number, row: number): boolean;
+  onCellHover?(col: number, row: number): boolean;
+  onTowerClick?(towerId: string): boolean;
+}
+
+/** Mission State — per-campaign (one instance ever, not per-mission).
+ *  Owns the typed Campaign State lifecycle: read state, transform a
+ *  Mission Entry via dynamic overrides at start, write state at end,
+ *  tick between missions. `applyDynamicOverrides` returns a NEW
+ *  `MissionEntry` (wholesale rewrite — more powerful than the old
+ *  `Partial<MissionOverrides>` merge, and authors must be explicit). */
+export interface MissionStateAspect<TState, TCfg = unknown> {
+  /** Defaults used on first read after install. */
+  defaults: TState;
+  /** Read current state from the persistent store; falls back to
+   *  `defaults` if the slot is empty. */
+  read(): TState;
+  /** Write new state to the persistent store. */
+  write(next: TState): void;
+  /** Transform a mission entry at start using current state. Return
+   *  the original entry unchanged when no dynamic adjustment applies. */
+  applyDynamicOverrides(state: TState, entry: MissionEntry<TCfg, TState>): MissionEntry<TCfg, TState>;
+  /** Update state at mission end using the result. */
+  applyMissionResult(state: TState, result: MissionResult): TState;
+  /** Update state in the gap between two missions (e.g. Greenward
+   *  Wildwood reserves regen `+10`). Runs after `applyMissionResult`
+   *  and before the next mission's `applyDynamicOverrides`. */
+  tickBetweenMissions?(state: TState): TState;
+}
+
+/** UI Surface — per-campaign. Provides state panels, parametric
+ *  story text, and end-of-campaign epilogue text. */
+export interface UISurfaceAspect<TState = unknown> {
+  /** Pre-mission story text. Defaults to the literal `mission.story`
+   *  string when not provided. When provided, runs every time the
+   *  modal opens so parametric strings reflect current state. */
+  parametricStory?(
+    mission: MissionEntry<unknown, TState>,
+    ctx: { state: TState; lastResult: MissionResult | null },
+  ): string;
+  /** End-of-campaign epilogue text. Stitched from final-state at
+   *  campaign completion (e.g. Snake Eyes' `EpilogueComposer`). */
+  epilogue?(state: TState): string;
+  /** State panel registrations rendered in the campaign lobby. */
+  panels?: CampaignStatePanel<TState>[];
+}
+
+/** A state-panel surface rendered in the campaign lobby. Shape kept
+ *  loose pending Phase B's UI integration. */
+export interface CampaignStatePanel<TState = unknown> {
+  id: string;
+  /** Phase B replaces this with the actual Preact component type. */
+  render(state: TState): unknown;
+}
+
+// ─── Runtime bundle ─────────────────────────────────────────
+// What `buildRuntime` returns: the per-mission aspect bundle.
+// Mission State and UI Surface live on the extension itself, NOT
+// here, because they're campaign-wide.
+
+export interface RuntimeAspects {
+  setup?: SetupAspect;
+  lifecycle?: LifecycleAspect;
+  gameplay?: GameplayAspect;
+  intercept?: InterceptAspect;
+}
+
+// ─── World mutator ──────────────────────────────────────────
+// Helper interface passed to Setup aspects. Each method records its
+// mutation in a `mutations[]` list so `shutdown` can undo cleanly.
+// Phase B implements the concrete `WorldMutator` against `GameScene`;
+// the type here is the interface aspects program against.
+
+export interface PrePlacedTowerSpec {
+  towerId: string;
+  col: number;
+  row: number;
+}
+
+export interface SummoningCircleSpec {
+  col: number;
+  row: number;
+  /** Phase C may add per-circle config (charge requirement etc.). */
+}
+
+export interface WorkshopSpec {
+  col: number;
+  row: number;
+  /** Workshop train cost (gold). Default 150g. */
+  trainCost?: number;
+  /** Workshop cooldown between trains (ms). Default 5000. */
+  trainCooldownMs?: number;
+}
+
+export interface DestructibleTowerSpec {
+  towerId: string;
+  col: number;
+  row: number;
+  hp?: number;
+  ownerIndex?: number;
+}
+
+export interface ActionInterceptHandle {
+  /** Detach the intercept. Called automatically on Setup undo. */
+  release(): void;
+}
+
+export interface WorldMutator {
+  /** Install one or more pre-placed towers on the grid. */
+  installPrePlacedTowers(towers: PrePlacedTowerSpec[]): void;
+  /** Install Suppression Pylon devices. Each pylon is registered with
+   *  the suppression manager (consumed by `mech_pylon_vent_armor`). */
+  installSuppressionPylons(pylons: SuppressionPylonSpec[]): void;
+  /** Install summoning circles (Arcane M10 finale). */
+  installSummoningCircles(circles: SummoningCircleSpec[]): void;
+  /** Install destructible CPU towers (M10 finales — destroy-to-win). */
+  installDestructibleTowers(towers: DestructibleTowerSpec[]): void;
+  /** Install a Workshop (Mech M10 — trains Raider squad). */
+  installWorkshop(spec: WorkshopSpec): void;
+  /** Mark grid cells as ruins (Greenward consecration tracker). */
+  applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void;
+  /** Register a click-intercept on a specific cell. The handler runs
+   *  before the default tower-placement handler; returning true
+   *  consumes the click. */
+  registerActionIntercept(
+    cell: { col: number; row: number },
+    handler: () => boolean,
+  ): ActionInterceptHandle;
+  /** Override the send path (heist / base-defence map topologies). */
+  setSendPathOverride(spec: {
+    entries?: Array<{ col: number; row: number }>;
+    exits?: Array<{ col: number; row: number }>;
+  }): void;
+}
+
+// ─── Campaign context (passed to buildRuntime) ──────────────
+// Read-only view of the world the runtime is being built into.
+// Aspects use this to read state at install time (e.g. a Setup
+// aspect reading current campaign state to decide how many pylons
+// to install).
+
+export interface CampaignCtx<TState = unknown> {
+  factionId: FactionId;
+  missionIdx: number;
+  /** Current campaign state at the moment `buildRuntime` runs (after
+   *  `applyDynamicOverrides`, before the mission starts). Aspects
+   *  capture by reference if they need to react to live state — but
+   *  cross-mission state mutation is the Mission State aspect's job. */
+  state: TState;
+}
+
+// ─── Campaign Extension ─────────────────────────────────────
+// The single module per Campaign. Exposes mission list + typed
+// Campaign State + optional Mission State / UI Surface aspects +
+// a `buildRuntime` factory for per-mission Aspects.
+
+export interface CampaignExtension<TState, TCfg> {
+  /** Faction this campaign targets — the faction the player fights
+   *  AGAINST and unlocks by completing. */
+  factionId: FactionId;
+  /** Display name (e.g. "Arcane Reckoning"). */
+  name: string;
+  /** Long-form intro shown when the campaign lobby first opens. */
+  intro: string;
+  /** Long-form outro after the final mission win. May be a literal or
+   *  read state. The UI Surface's `epilogue(state)` takes precedence
+   *  when present. */
+  outro: string;
+  /** Cosmetic banner / lobby art id. */
+  bannerId?: string;
+  /** Audio loop id for the lobby. */
+  audioLoopId?: string;
+  /** Initial campaign state used on first read after install. */
+  initialState: TState;
+  /** Campaign-wide terrain theme override applied to every mission. */
+  defaultMapThemeOverride?: string;
+  /** Campaign-wide player tower-kit faction (e.g. Mech campaign uses
+   *  `arcane` throughout — Vael's POV). Per-mission `core.faction`
+   *  takes precedence; missions that omit it inherit this default. */
+  defaultPlayerFaction?: FactionId;
+  /** 10 missions in order. */
+  missions: MissionEntry<TCfg, TState>[];
+  /** Optional cross-mission state aspect. */
+  missionState?: MissionStateAspect<TState, TCfg>;
+  /** Optional UI Surface aspect. */
+  ui?: UISurfaceAspect<TState>;
+  /** Per-mission factory: returns the Aspect bundle for the mission
+   *  being launched. Called by `MissionRunner` immediately before the
+   *  GameScene starts. */
+  buildRuntime(
+    ctx: CampaignCtx<TState>,
+    mission: MissionEntry<TCfg, TState>,
+  ): RuntimeAspects;
+}
+
+// ─── Star count (re-exported for convenience) ──────────────
+export type StarCount = 0 | 1 | 2 | 3;
