@@ -117,11 +117,15 @@ const CREEP_NAMES = [
 const ROW_NAMES = ['Walk 0', 'Walk 1', 'Walk 2', 'Walk 3', 'Death 0', 'Death 1', 'Death 2'];
 
 // ============================================================
-// COL 0: inheritor_road_walker (B) — Stick-figure briar
+// COL 0: inheritor_road_walker (B) — Bundle of bramble/briar
 // ============================================================
-// A figure made of woven twigs and briar. Tall, gangly, leaf-hood
-// pulled low. Reads as scarecrow-haunted: not quite a person, not
-// quite a thing. The basic "common inheritor" that fills early waves.
+// REDRAW (v2). v1 had stick-thin twig limbs that disappeared at
+// sprite scale (1-2 pixel limbs ≈ sub-pixel after game shrink).
+// v2 reads the figure as a BUNDLE of bramble — thicker body with
+// barbs jutting OUTWARD on both sides (silhouette anchors), a leaf
+// hood pulled low, glowing eyes, jagged thorny limbs (3-4 wide so
+// they survive shrink), and visible leaves clinging to the body.
+// Reads as: scarecrow / haunted bramble. Distinct.
 function drawRoadWalker(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
@@ -129,39 +133,70 @@ function drawRoadWalker(c: CanvasRenderingContext2D, o: number[], f: number) {
     const legA = [0, 1, 0, -1][f];
     const legB = [0, -1, 0, 1][f];
     const by = 4 + bob;
-    // Leaf hood — broad crown of leaves
-    b(11, by, 10, 1, C.LEAF_DK);
-    b(10, by + 1, 12, 2, C.LEAF);
-    b(11, by + 1, 10, 1, C.LEAF_LT);
-    // hanging leaves at hood rim
-    p(10, by + 3, C.LEAF_DK); p(21, by + 3, C.LEAF_DK);
-    // Twig face — dark inside the hood
-    b(12, by + 3, 8, 3, C.SHAD);
-    // glowing pinpoint eyes
-    p(14, by + 4, C.LEAF_LT); p(17, by + 4, C.LEAF_LT);
-    // Twig neck
-    b(15, by + 6, 2, 1, C.WOOD);
-    // Briar torso — woven, gappy
-    b(12, by + 7, 8, 6, C.WOOD_DK);
-    // weave gaps revealed
-    p(13, by + 8, C.WOOD); p(15, by + 9, C.WOOD);
-    p(17, by + 9, C.WOOD); p(13, by + 11, C.WOOD);
-    p(18, by + 11, C.WOOD);
-    // briar barbs jutting
-    p(11, by + 8, C.WOOD); p(20, by + 8, C.WOOD);
-    p(11, by + 10, C.WOOD); p(20, by + 10, C.WOOD);
-    // Twig arms (stick-thin)
-    b(10, by + 8, 1, 4, C.WOOD_DK);
-    b(21, by + 8, 1, 4, C.WOOD_DK);
-    p(9, by + 11, C.WOOD); p(22, by + 11, C.WOOD); // jagged claw ends
-    // Twig legs
-    b(13 + legA, by + 13, 1, 6, C.WOOD_DK);
-    b(18 + legB, by + 13, 1, 6, C.WOOD_DK);
-    // Foot tufts
-    p(12 + legA, by + 19, C.LEAF_DK);
-    p(19 + legB, by + 19, C.LEAF_DK);
-    p(13 + legA, by + 20, C.LEAF);
-    p(18 + legB, by + 20, C.LEAF);
+    // ─── LEAF HOOD ─── broad, draped low
+    b(10, by, 12, 1, C.LEAF_DK);
+    b(9, by + 1, 14, 2, C.LEAF);
+    b(10, by + 1, 12, 1, C.LEAF_LT);
+    // jagged hood rim — left/right pointed leaves
+    p(9, by + 3, C.LEAF_DK); p(8, by + 3, C.LEAF_DK);
+    p(22, by + 3, C.LEAF_DK); p(23, by + 3, C.LEAF_DK);
+    p(9, by + 4, C.LEAF); p(22, by + 4, C.LEAF);
+    // hood interior — black shadow with bright eyes
+    b(12, by + 3, 8, 3, C.BLACK);
+    p(14, by + 4, C.LEAF_LT); p(17, by + 4, C.LEAF_LT); // glow eyes
+    p(14, by + 5, C.GREEN); p(17, by + 5, C.GREEN);
+    // jaw line (jagged twig mouth)
+    p(15, by + 5, C.WOOD_DK); p(16, by + 5, C.WOOD_DK);
+
+    // ─── TORSO ─── thick bundle of bramble (not stick-thin)
+    b(11, by + 6, 10, 8, C.WOOD_DK);
+    b(11, by + 6, 10, 1, C.WOOD);
+    b(11, by + 13, 10, 1, C.BLACK);
+    // diagonal weave/bramble pattern (intentionally visible at scale)
+    b(12, by + 7, 8, 1, C.WOOD);
+    b(11, by + 9, 10, 1, C.SHAD);
+    b(12, by + 11, 8, 1, C.WOOD);
+    p(13, by + 8, C.WOOD_LT); p(17, by + 8, C.WOOD_LT);
+    p(15, by + 10, C.WOOD_LT); p(18, by + 10, C.WOOD_LT);
+    p(13, by + 12, C.WOOD_LT);
+    // small leaf clings on the body
+    p(12, by + 8, C.LEAF); p(19, by + 9, C.LEAF);
+    p(13, by + 11, C.LEAF_DK); p(18, by + 12, C.LEAF_DK);
+
+    // ─── BARBS jutting OUTWARD (silhouette anchors) ──────
+    // left side — three barbs
+    p(10, by + 7, C.WOOD); p(9, by + 7, C.WOOD_DK);
+    p(10, by + 9, C.WOOD); p(9, by + 10, C.WOOD_DK);
+    p(10, by + 12, C.WOOD); p(9, by + 12, C.WOOD_DK);
+    // right side — three barbs
+    p(21, by + 7, C.WOOD); p(22, by + 7, C.WOOD_DK);
+    p(21, by + 10, C.WOOD); p(22, by + 11, C.WOOD_DK);
+    p(21, by + 13, C.WOOD); p(22, by + 13, C.WOOD_DK);
+
+    // ─── ARMS — thicker (2-wide) with thorny extensions ──
+    b(9, by + 8, 2, 5, C.WOOD_DK);
+    b(9, by + 8, 1, 5, C.WOOD);
+    // thorn-claw ends
+    p(8, by + 12, C.WOOD); p(7, by + 13, C.WOOD_DK);
+    p(8, by + 13, C.WOOD_DK);
+    // right arm
+    b(21, by + 8, 2, 5, C.WOOD_DK);
+    b(22, by + 8, 1, 5, C.SHAD);
+    p(23, by + 12, C.WOOD); p(24, by + 13, C.WOOD_DK);
+    p(23, by + 13, C.WOOD_DK);
+
+    // ─── LEGS — thicker (2-wide) with root-tufts ─────────
+    b(12 + legA, by + 14, 2, 5, C.WOOD_DK);
+    b(12 + legA, by + 14, 1, 5, C.WOOD);
+    b(18 + legB, by + 14, 2, 5, C.WOOD_DK);
+    b(18 + legB, by + 14, 1, 5, C.WOOD);
+    // root tufts at feet
+    b(11 + legA, by + 19, 4, 1, C.LEAF_DK);
+    b(11 + legA, by + 20, 4, 1, C.LEAF);
+    p(11 + legA, by + 20, C.LEAF_DK); p(14 + legA, by + 20, C.LEAF_DK);
+    b(17 + legB, by + 19, 4, 1, C.LEAF_DK);
+    b(17 + legB, by + 20, 4, 1, C.LEAF);
+    p(17 + legB, by + 20, C.LEAF_DK); p(20 + legB, by + 20, C.LEAF_DK);
   } else {
     drawDeathStoneAndPetals(p, b, f - 4, 16, 14);
   }
@@ -170,46 +205,84 @@ function drawRoadWalker(c: CanvasRenderingContext2D, o: number[], f: number) {
 // ============================================================
 // COL 1: inheritor_den_walker (A) — Crouched four-limb stalker
 // ============================================================
-// Low-slung, ape-like crouch. Two long forelimbs touch ground.
-// Eyes glow under matted hair. Reads as "feral kin" — the inheritor
-// who lived too long among the briars.
+// REDRAW (v2). v1 read as a hunched-blob because the figure was
+// drawn all in C.SHAD (one dark color) against the dark background.
+// v2 uses lighter shades (CLOTH/SKIN) for the body so the silhouette
+// reads, and pushes the forelimbs forward at a clearer 45° angle so
+// the four-limb knuckle-walker pose is unmistakable. Glowing eyes
+// (still feral) anchor the head position.
 function drawDenWalker(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
     const bob = [0, -1, 0, -1][f];
     const armSway = [0, 1, 0, -1][f];
-    const by = 12 + bob;
-    // Hunched back/shoulders silhouette (high arc)
-    b(11, by, 10, 4, C.SHAD);
-    b(11, by, 10, 1, C.WOOD_DK);
-    // matted hair on top
-    b(12, by - 1, 8, 1, C.WOOD_DK);
-    p(13, by - 2, C.WOOD_DK); p(17, by - 2, C.WOOD_DK);
-    // Head, down low (looking at ground)
-    b(13, by + 4, 6, 3, C.SKIN_DK);
-    b(13, by + 4, 6, 1, C.WOOD_DK); // hair fringe
-    // Glowing feral eyes
-    p(14, by + 5, C.LEAF_LT); p(17, by + 5, C.LEAF_LT);
-    // Long forelimbs — touching ground far ahead of body
-    b(7 + armSway, by + 2, 2, 3, C.SKIN_DK);
-    b(8 + armSway, by + 5, 2, 5, C.SKIN_DK);
-    // knuckle hand
-    b(7 + armSway, by + 10, 4, 2, C.SHAD);
-    p(7 + armSway, by + 10, C.WOOD_DK);
-    // Other forelimb (counter-phase)
-    b(23 - armSway, by + 2, 2, 3, C.SKIN_DK);
-    b(22 - armSway, by + 5, 2, 5, C.SKIN_DK);
-    b(21 - armSway, by + 10, 4, 2, C.SHAD);
-    p(24 - armSway, by + 10, C.WOOD_DK);
-    // Hind legs (shorter, planted)
-    b(12, by + 4, 2, 3, C.SKIN_DK);
-    b(11, by + 7, 3, 2, C.SHAD);
-    b(18, by + 4, 2, 3, C.SKIN_DK);
-    b(18, by + 7, 3, 2, C.SHAD);
-    // Tail-like rag
-    b(20, by + 1, 2, 4, C.CLOTH_DK);
+    const cy = 14 + bob;
+
+    // ─── ARCHED BACK / HUNCH ─── lighter coloring so it reads
+    // Mid-height torso/back curving up to a hump
+    b(9, cy, 14, 5, C.CLOTH);
+    b(9, cy, 14, 1, C.CLOTH_LT);
+    b(9, cy + 4, 14, 1, C.CLOTH_DK);
+    b(9, cy, 1, 5, C.CLOTH_LT);
+    b(22, cy, 1, 5, C.SHAD);
+    // spinal hump (centre raised)
+    b(13, cy - 2, 6, 2, C.CLOTH);
+    b(13, cy - 2, 6, 1, C.CLOTH_LT);
+    b(13, cy - 1, 6, 1, C.CLOTH);
+    // matted spine ridge
+    p(15, cy - 2, C.WOOD_DK); p(16, cy - 2, C.WOOD_DK);
+    p(15, cy - 1, C.WOOD_DK); p(16, cy - 1, C.WOOD_DK);
+    // matted fur tufts on shoulders
+    p(10, cy, C.WOOD_DK); p(11, cy - 1, C.WOOD_DK);
+    p(20, cy, C.WOOD_DK); p(21, cy - 1, C.WOOD_DK);
+
+    // ─── HEAD ─── drops down forward of the body
+    b(7, cy + 3, 6, 4, C.SKIN_DK);
+    b(7, cy + 3, 6, 1, C.SKIN);
+    b(7, cy + 3, 1, 4, C.SKIN);
+    // matted hair fringe over the face
+    b(7, cy + 3, 6, 1, C.WOOD_DK);
+    p(7, cy + 4, C.WOOD_DK); p(12, cy + 4, C.WOOD_DK);
+    // Glowing feral eyes — primary head anchor
+    p(8, cy + 5, C.LEAF_LT); p(11, cy + 5, C.LEAF_LT);
+    p(8, cy + 6, C.GREEN); p(11, cy + 6, C.GREEN);
+    // teeth/snarl
+    p(9, cy + 6, C.WHITE); p(10, cy + 6, C.WHITE);
+
+    // ─── FORELIMBS ─── thicker (3-wide) at a clear 45° forward
+    // Front-left forelimb (extends down-forward)
+    b(6 + armSway, cy + 5, 3, 3, C.SKIN_DK);
+    b(6 + armSway, cy + 5, 1, 3, C.SKIN);
+    b(5 + armSway, cy + 8, 3, 4, C.SKIN_DK);
+    // knuckle/hand planted on ground
+    b(4 + armSway, cy + 12, 5, 2, C.SHAD);
+    b(4 + armSway, cy + 12, 5, 1, C.WOOD_DK);
+    // claw points
+    p(4 + armSway, cy + 14, C.WOOD_DK);
+    p(8 + armSway, cy + 14, C.WOOD_DK);
+
+    // Front-right forelimb (counter-phase, slightly different angle)
+    b(13, cy + 5, 3, 3, C.SKIN_DK);
+    b(13, cy + 5, 1, 3, C.SKIN);
+    b(12 - armSway, cy + 8, 3, 4, C.SKIN_DK);
+    b(11 - armSway, cy + 12, 5, 2, C.SHAD);
+    b(11 - armSway, cy + 12, 5, 1, C.WOOD_DK);
+    p(11 - armSway, cy + 14, C.WOOD_DK);
+    p(15 - armSway, cy + 14, C.WOOD_DK);
+
+    // ─── HIND LEGS ─── shorter, crouched
+    b(19, cy + 5, 3, 4, C.SKIN_DK);
+    b(19, cy + 5, 1, 4, C.SKIN);
+    b(18, cy + 9, 4, 3, C.SHAD);
+    p(18, cy + 11, C.WOOD_DK); p(21, cy + 11, C.WOOD_DK);
+    p(19, cy + 12, C.WOOD_DK); p(21, cy + 12, C.WOOD_DK);
+
+    // ─── RAG TAIL / WAIST WRAP ─── animates with sway
+    b(22 - armSway, cy + 1, 2, 5, C.CLOTH_DK);
+    p(23 - armSway, cy + 6, C.CLOTH_DK);
+    p(24 - armSway, cy + 4, C.CLOTH_DK);
   } else {
-    drawDeathStoneAndPetals(p, b, f - 4, 16, 18);
+    drawDeathStoneAndPetals(p, b, f - 4, 16, 22);
   }
 }
 
@@ -365,51 +438,97 @@ function drawCivilian(c: CanvasRenderingContext2D, o: number[], f: number) {
 }
 
 // ============================================================
-// COL 5: inheritor_wedding_stone (C) — Stone mourner
+// COL 5: inheritor_wedding_stone (C) — Stone mourner, elbows out
 // ============================================================
-// Tall stone figure, robed, hands lifted to cover face. Reads as
-// "monument come walking" — the wedding-stone made flesh. Slow,
-// idle sway not a march.
+// REDRAW (v2). v1 had hands flat on face — at sprite scale the
+// hands disappeared and it read as "tall grey monolith." v2 pushes
+// ELBOWS OUT WIDE (a triangular "M"-shape silhouette over the
+// head) so the "head in hands" pose is unmistakable in pure
+// silhouette. The body is darker grey to distinguish from
+// stone_bride (col 8, white). Tear-streaks visible down the cheeks.
 function drawWeddingStone(c: CanvasRenderingContext2D, o: number[], f: number) {
   const { p, b } = mk(c, o, GRID, GRID, PX);
   if (f <= 3) {
-    const sway = [0, 0, -1, 0][f]; // very slow drift
-    const by = 4 + sway;
-    // Head/cowl
-    b(12, by, 8, 6, C.STONE);
-    b(12, by, 8, 1, C.STONE_HI);
-    b(12, by, 1, 6, C.STONE_LT);
-    b(19, by + 1, 1, 5, C.STONE_DK);
-    // face is BEHIND hands — so just shadow
-    b(14, by + 3, 4, 2, C.SHAD);
-    // Hands covering face (palms inward, knuckles facing viewer)
-    b(13, by + 2, 3, 4, C.STONE_LT);
-    b(13, by + 2, 1, 4, C.STONE_HI);
-    b(13, by + 5, 3, 1, C.STONE_DK);
-    // finger lines
-    p(14, by + 3, C.STONE_DK); p(15, by + 4, C.STONE_DK);
-    b(16, by + 2, 3, 4, C.STONE_LT);
-    b(16, by + 5, 3, 1, C.STONE_DK);
-    p(17, by + 3, C.STONE_DK); p(18, by + 4, C.STONE_DK);
-    // Wrists
-    b(13, by + 6, 2, 1, C.STONE_DK);
-    b(17, by + 6, 2, 1, C.STONE_DK);
-    // Robe — long, columnar
-    b(10, by + 7, 12, 14, C.STONE);
-    b(10, by + 7, 12, 1, C.STONE_HI);
-    b(10, by + 7, 1, 14, C.STONE_LT);
-    b(21, by + 8, 1, 13, C.STONE_DK);
-    // Robe drapery — vertical folds
-    b(13, by + 8, 1, 12, C.STONE_DK);
-    b(16, by + 8, 1, 12, C.STONE_LT);
-    b(19, by + 8, 1, 12, C.STONE_DK);
-    // Hemline carved stone
-    b(9, by + 21, 14, 2, C.STONE_DK);
-    b(9, by + 21, 14, 1, C.STONE);
-    p(10, by + 23, C.SHAD); p(21, by + 23, C.SHAD);
-    // Subtle moss/petal at base
-    p(11, by + 22, C.MOSS); p(20, by + 22, C.MOSS);
-    p(14, by + 23, C.PETAL); // one pink petal stuck to the hem
+    const sway = [0, 0, -1, 0][f];
+    const tearF = (f % 2);
+    const by = 5 + sway;
+
+    // ─── ELBOWS-OUT ARMS (silhouette anchor) ─────────────
+    // Form an "M" over the head — elbows extend out to x=8 and x=23
+    // (3+ pixels wider than the body). This is the redraw's key.
+    // Upper arms — diagonal from shoulders up & out to elbows
+    b(7, by + 2, 3, 3, C.STONE_DK);
+    b(7, by + 2, 1, 3, C.STONE);
+    p(6, by + 3, C.STONE_DK); p(6, by + 4, C.STONE_DK); // elbow point
+    b(22, by + 2, 3, 3, C.STONE_DK);
+    b(24, by + 2, 1, 3, C.SHAD);
+    p(25, by + 3, C.STONE_DK); p(25, by + 4, C.STONE_DK); // elbow point
+    // Forearms — diagonal from elbows down & in to hands
+    b(8, by + 5, 3, 3, C.STONE_DK);
+    b(8, by + 5, 1, 3, C.STONE);
+    b(21, by + 5, 3, 3, C.STONE_DK);
+    b(23, by + 5, 1, 3, C.SHAD);
+    // sleeve drapery hanging from elbows
+    b(6, by + 5, 2, 4, C.STONE_DK);
+    b(6, by + 5, 1, 4, C.STONE);
+    p(7, by + 9, C.SHAD);
+    b(24, by + 5, 2, 4, C.STONE_DK);
+    b(25, by + 5, 1, 4, C.SHAD);
+    p(24, by + 9, C.SHAD);
+
+    // ─── HANDS — meet at face level, palms facing viewer ─
+    // Left hand
+    b(10, by + 6, 3, 4, C.STONE_LT);
+    b(10, by + 6, 1, 4, C.STONE_HI);
+    b(10, by + 9, 3, 1, C.STONE);
+    // finger lines (vertical creases)
+    p(11, by + 7, C.STONE); p(11, by + 8, C.STONE);
+    p(12, by + 7, C.STONE);
+    // Right hand
+    b(19, by + 6, 3, 4, C.STONE_LT);
+    b(21, by + 6, 1, 4, C.STONE);
+    b(19, by + 9, 3, 1, C.STONE);
+    p(20, by + 7, C.STONE); p(20, by + 8, C.STONE);
+    p(19, by + 7, C.STONE_DK);
+    // gap between hands (face is here, dark)
+    b(13, by + 4, 6, 6, C.BLACK);
+    // ONE EYE just visible peeking out (sorrow-anchor)
+    p(15, by + 6, C.STONE_LT);
+    // tear streaks (animate)
+    p(15, by + 7 + tearF, C.STONE_LT);
+    p(16, by + 8, C.STONE_LT);
+    p(15, by + 9, C.STONE_LT);
+
+    // ─── HOODED CROWN over the hands ─────────────────────
+    b(11, by, 10, 3, C.STONE_DK);
+    b(11, by, 10, 1, C.STONE);
+    b(11, by, 1, 3, C.STONE);
+    b(20, by, 1, 3, C.SHAD);
+    // hood drapery falling alongside
+    p(11, by + 3, C.STONE_DK); p(20, by + 3, C.STONE_DK);
+    // cowl peak (pointed top)
+    p(15, by - 1, C.STONE_DK); p(16, by - 1, C.STONE_DK);
+
+    // ─── ROBE BODY ─── long, columnar, darker than bride
+    b(11, by + 10, 10, 12, C.STONE_DK);
+    b(11, by + 10, 10, 1, C.STONE);
+    b(11, by + 10, 1, 12, C.STONE);
+    b(20, by + 10, 1, 12, C.SHAD);
+    // Vertical fold lines (the carved-stone "drapery" beat)
+    b(14, by + 11, 1, 11, C.SHAD);
+    b(17, by + 11, 1, 11, C.STONE);
+    // Sash across the chest (greenward signature element)
+    b(11, by + 13, 10, 1, C.MOSS);
+    b(12, by + 14, 8, 1, C.GREEN);
+    // ─── HEMLINE ── carved stone base
+    b(9, by + 22, 14, 2, C.STONE_DK);
+    b(9, by + 22, 14, 1, C.STONE);
+    p(10, by + 24, C.SHAD); p(21, by + 24, C.SHAD);
+    // moss at base
+    p(12, by + 22, C.MOSS); p(19, by + 23, C.MOSS);
+    p(11, by + 23, C.MOSS); p(20, by + 23, C.MOSS);
+    // single pink petal on the hem
+    p(15, by + 23, C.PETAL_LT);
   } else {
     drawDeathStoneAndPetals(p, b, f - 4, 16, 16);
   }
@@ -546,43 +665,104 @@ function drawStoneBride(c: CanvasRenderingContext2D, o: number[], f: number) {
     const sway = [0, -1, 0, -1][f];
     const veilFlow = (f % 2);
     const by = 3 + sway;
-    // VEIL crown (tiara of dried blossoms)
-    b(13, by, 6, 1, C.STONE_LT);
-    p(13, by - 1, C.PETAL); p(15, by - 1, C.PETAL_LT); p(18, by - 1, C.PETAL);
+    // REDRAW (v2). v1 looked too similar to wedding_stone in
+    // silhouette (both tall pale columns). v2 distinguishes by:
+    //   - VEIL FLOWS WIDE to one side (asymmetric — anchors silhouette)
+    //   - LARGE bridal bouquet held in front (visible pink/green cluster)
+    //   - White-stone palette (vs wedding-stone's grey)
+    //   - Veil reaches BELOW the shoulders + drapes outward
+
+    // ─── TIARA / CROWN ─── ring of blossoms
+    b(13, by, 6, 1, C.GOLD);
+    p(13, by - 1, C.PETAL); p(14, by - 1, C.PETAL_LT);
+    p(15, by - 1, C.PETAL); p(16, by - 1, C.PETAL_LT);
+    p(17, by - 1, C.PETAL); p(18, by - 1, C.PETAL_LT);
     p(14, by + 1, C.GOLD); p(17, by + 1, C.GOLD);
-    // VEIL — long flowing white
-    b(11, by + 1, 10, 9, C.BONE);
-    b(11, by + 1, 10, 1, C.WHITE);
-    b(11, by + 1, 1, 9, C.STONE_HI);
-    b(20, by + 1, 1, 9, C.STONE_LT);
-    // veil bottom feathered edge (animates)
-    p(11, by + 10, C.BONE);
-    p(13 + veilFlow, by + 11, C.STONE_HI);
-    p(17 - veilFlow, by + 11, C.STONE_HI);
-    p(20, by + 10, C.BONE);
-    // Face hidden inside veil — pale silhouette + closed eyes
-    b(13, by + 4, 6, 3, C.STONE_HI);
-    p(15, by + 5, C.STONE_DK); p(17, by + 5, C.STONE_DK); // closed eyes
-    // Gown body (stone)
-    b(9, by + 10, 14, 12, C.STONE_LT);
-    b(9, by + 10, 14, 1, C.STONE_HI);
-    b(9, by + 10, 1, 12, C.STONE_HI);
-    b(22, by + 10, 1, 12, C.STONE_DK);
-    // Gown bodice seam
-    b(15, by + 11, 2, 8, C.STONE);
-    // Carved stone ornamentation
-    p(12, by + 13, C.STONE_DK); p(20, by + 13, C.STONE_DK);
-    p(13, by + 17, C.STONE_DK); p(19, by + 17, C.STONE_DK);
-    // MOSS creeping up the gown (greenward signature)
-    p(10, by + 19, C.MOSS); p(11, by + 20, C.MOSS); p(9, by + 21, C.MOSS);
-    p(22, by + 18, C.MOSS); p(21, by + 20, C.MOSS); p(22, by + 21, C.MOSS);
-    p(14, by + 21, C.MOSS); p(18, by + 22, C.MOSS);
+
+    // ─── VEIL ─── flows out asymmetrically to one side
+    // Crown of the veil over the head
+    b(11, by + 1, 10, 4, C.WHITE);
+    b(11, by + 1, 10, 1, C.PALE);
+    b(11, by + 1, 1, 4, C.PALE);
+    b(20, by + 1, 1, 4, C.STONE_HI);
+    // VEIL FLOWING TO THE LEFT (asymmetric — silhouette anchor)
+    // Drapes out 4-5 pixels wider than the body on the left
+    b(6 + veilFlow, by + 4, 5, 7, C.WHITE);
+    b(6 + veilFlow, by + 4, 5, 1, C.PALE);
+    p(5 + veilFlow, by + 5, C.WHITE);
+    p(5 + veilFlow, by + 7, C.WHITE);
+    p(5 + veilFlow, by + 9, C.PALE);
+    // veil edge feathering
+    p(7 + veilFlow, by + 11, C.WHITE);
+    p(8 + veilFlow, by + 12, C.PALE);
+    p(9 + veilFlow, by + 11, C.WHITE);
+    // right side of veil — drapes shorter, gives the asymmetric read
+    b(21, by + 4, 3, 5, C.WHITE);
+    b(21, by + 4, 3, 1, C.PALE);
+    p(24, by + 6, C.PALE);
+    p(23, by + 9, C.PALE);
+
+    // ─── FACE inside veil (pale, closed eyes — sorrow-anchor) ─
+    b(13, by + 5, 6, 3, C.BONE);
+    b(13, by + 5, 6, 1, C.STONE_HI);
+    // closed-eye lash lines
+    b(14, by + 6, 2, 1, C.STONE_DK);
+    b(17, by + 6, 2, 1, C.STONE_DK);
+    // a single tear on the cheek (animates)
+    p(15, by + 7 + veilFlow, C.PALE);
+
+    // ─── BODICE ─── narrower than the gown skirt
+    b(12, by + 8, 8, 4, C.WHITE);
+    b(12, by + 8, 8, 1, C.PALE);
+    b(12, by + 8, 1, 4, C.PALE);
+    b(19, by + 8, 1, 4, C.STONE_HI);
+    // corset lacing (vertical centre seam — bridal detail)
+    b(15, by + 9, 2, 3, C.GOLD);
+    p(15, by + 9, C.GOLD_LT); p(16, by + 11, C.GOLD_LT);
+    // lacing cross-strings
+    p(14, by + 10, C.GOLD); p(17, by + 10, C.GOLD);
+
+    // ─── HANDS holding a LARGE bouquet in front ──────────
+    // hands
+    b(11, by + 12, 2, 2, C.STONE_HI);
+    b(19, by + 12, 2, 2, C.STONE_HI);
+    // BOUQUET — visible cluster of pink/green held front-and-center
+    // (the brief's signature differentiator)
+    // green leaf base
+    b(13, by + 12, 6, 4, C.LEAF_DK);
+    b(13, by + 12, 6, 1, C.LEAF);
+    b(13, by + 15, 6, 1, C.GREEN_DK);
+    // pink blossoms on top of the bouquet
+    p(13, by + 11, C.PETAL); p(14, by + 11, C.PETAL_LT);
+    p(15, by + 11, C.PETAL); p(16, by + 11, C.PETAL_LT);
+    p(17, by + 11, C.PETAL); p(18, by + 11, C.PETAL_LT);
+    p(14, by + 12, C.PETAL_LT); p(16, by + 12, C.PETAL_LT);
+    p(13, by + 13, C.PETAL); p(18, by + 13, C.PETAL);
+    p(15, by + 14, C.PETAL_LT); p(17, by + 14, C.PETAL);
+    // ribbon trailing down from bouquet
+    b(15, by + 16, 2, 3, C.PETAL);
+    p(15, by + 18, C.PETAL_LT); p(16, by + 19, C.PETAL_LT);
+
+    // ─── GOWN SKIRT ─── wider below the bouquet
+    b(10, by + 16, 12, 7, C.WHITE);
+    b(10, by + 16, 12, 1, C.PALE);
+    b(10, by + 16, 1, 7, C.PALE);
+    b(21, by + 16, 1, 7, C.STONE_HI);
+    // skirt folds (vertical creases — wider gown read)
+    b(13, by + 17, 1, 6, C.PALE);
+    b(18, by + 17, 1, 6, C.PALE);
+    // MOSS creeping up the gown (signature)
+    p(10, by + 21, C.MOSS); p(11, by + 22, C.MOSS);
+    p(21, by + 21, C.MOSS); p(22, by + 22, C.MOSS);
+    p(14, by + 22, C.MOSS); p(17, by + 22, C.MOSS);
     // Hemline
-    b(8, by + 22, 16, 2, C.STONE_DK);
-    b(8, by + 22, 16, 1, C.STONE);
-    // Floating petals
-    p(7, by + 8 + veilFlow, C.PETAL);
-    p(25, by + 12 - veilFlow, C.PETAL_LT);
+    b(9, by + 23, 14, 1, C.PALE);
+
+    // ─── DRIFTING PETALS around the figure ───────────────
+    p(4, by + 6 + veilFlow, C.PETAL);
+    p(26, by + 10 - veilFlow, C.PETAL_LT);
+    p(7, by + 15, C.PETAL);
+    p(25, by + 18, C.PETAL_LT);
   } else {
     drawDeathStoneAndPetals(p, b, f - 4, 16, 16);
   }
@@ -808,6 +988,26 @@ function drawDeathStoneAndPetals(
   b: (x: number, y: number, w: number, h: number, cl: string) => void,
   deathFrame: number, cx: number, cy: number
 ) {
+  // REDRAW (v2): added a LARGE 5×5 hero petal that drifts up across
+  // all three frames so the death anim reads as "petal release"
+  // even at game scale. v1's death frames looked near-identical
+  // when small because the petals were 1-pixel specks.
+
+  // ── LARGE HERO PETAL ── starts at chest, rises across frames
+  const heroPetalY = cy - 4 - deathFrame * 3; // drifts UP each frame
+  const heroPetalX = cx + (deathFrame - 1) * 2; // drifts sideways
+  // 5×5 stylised petal — outline + body + highlight
+  b(heroPetalX - 2, heroPetalY - 2, 5, 5, C.PETAL);
+  b(heroPetalX - 2, heroPetalY - 2, 5, 1, C.PETAL_LT);
+  b(heroPetalX - 2, heroPetalY - 2, 1, 5, C.PETAL_LT);
+  p(heroPetalX, heroPetalY, C.WHITE);            // bright centre
+  p(heroPetalX - 1, heroPetalY - 1, C.PETAL_LT); // inner highlight
+  p(heroPetalX + 1, heroPetalY + 1, C.ROBE);     // shadow side
+  p(heroPetalX + 2, heroPetalY, C.ROBE_DK);      // edge shadow
+  // small companion petal trailing behind
+  p(heroPetalX - 3, heroPetalY + 1, C.PETAL);
+  p(heroPetalX - 4, heroPetalY + 2, C.PETAL_LT);
+
   if (deathFrame === 0) {
     // Crack open — pale stone column with cracks
     b(cx - 4, cy - 6, 8, 12, C.STONE_LT);
@@ -815,29 +1015,37 @@ function drawDeathStoneAndPetals(
     b(cx - 4, cy + 5, 8, 1, C.STONE_DK);
     b(cx - 4, cy - 6, 1, 12, C.STONE_HI);
     b(cx + 3, cy - 6, 1, 12, C.STONE_DK);
-    // crack lines
+    // crack lines (jagged break across face)
     p(cx, cy - 5, C.SHAD); p(cx, cy - 3, C.SHAD); p(cx, cy - 1, C.SHAD);
     p(cx - 1, cy + 1, C.SHAD); p(cx, cy + 3, C.SHAD);
     p(cx + 1, cy + 1, C.SHAD);
-    // first petals escape
+    p(cx - 2, cy - 2, C.SHAD); p(cx + 2, cy - 2, C.SHAD);
+    p(cx - 1, cy + 4, C.SHAD); p(cx + 1, cy + 4, C.SHAD);
+    // first small petals escape
     p(cx - 6, cy - 4, C.PETAL); p(cx + 6, cy - 2, C.PETAL_LT);
     p(cx - 5, cy + 2, C.PETAL_LT);
+    p(cx - 8, cy, C.PETAL); p(cx + 7, cy + 4, C.PETAL);
   } else if (deathFrame === 1) {
     // Burst — fragments fly, petals scatter
-    // chunks
     b(cx - 6, cy - 6, 3, 3, C.STONE_LT);
     b(cx + 4, cy - 5, 3, 2, C.STONE);
     b(cx - 5, cy + 1, 3, 3, C.STONE);
     b(cx + 4, cy + 2, 3, 3, C.STONE_LT);
     b(cx - 1, cy - 1, 3, 3, C.STONE_HI);
     p(cx - 6, cy - 6, C.STONE_HI); p(cx + 6, cy + 4, C.STONE_DK);
+    // extra fragments
+    b(cx + 2, cy - 7, 2, 2, C.STONE_LT);
+    b(cx - 7, cy + 4, 2, 2, C.STONE);
     // moss flecks from inside
     p(cx, cy, C.MOSS); p(cx - 2, cy + 1, C.MOSS); p(cx + 2, cy - 1, C.MOSS);
-    // burst of petals
+    p(cx - 3, cy - 4, C.MOSS); p(cx + 1, cy + 3, C.MOSS);
+    // burst of petals (more than v1)
     p(cx - 7, cy, C.PETAL); p(cx + 7, cy, C.PETAL_LT);
     p(cx, cy - 7, C.PETAL_LT); p(cx, cy + 7, C.PETAL);
     p(cx - 5, cy - 5, C.PETAL); p(cx + 5, cy - 5, C.PETAL_LT);
     p(cx - 5, cy + 5, C.PETAL_LT); p(cx + 5, cy + 5, C.PETAL);
+    p(cx - 8, cy - 3, C.PETAL); p(cx + 8, cy - 3, C.PETAL_LT);
+    p(cx - 8, cy + 3, C.PETAL_LT); p(cx + 8, cy + 3, C.PETAL);
   } else {
     // Settled — low stone pile + drifting petals
     b(cx - 5, cy + 3, 10, 3, C.STONE_DK);
@@ -847,12 +1055,15 @@ function drawDeathStoneAndPetals(
     p(cx - 6, cy + 5, C.STONE);
     p(cx + 6, cy + 5, C.STONE_DK);
     p(cx - 7, cy + 4, C.STONE_DK);
+    p(cx + 7, cy + 3, C.STONE);
     // drifting petals (final frame — graceful aftermath)
     p(cx - 4, cy - 6, C.PETAL); p(cx + 5, cy - 5, C.PETAL_LT);
     p(cx - 7, cy - 2, C.PETAL_LT); p(cx + 7, cy - 1, C.PETAL);
     p(cx - 2, cy - 8, C.PETAL); p(cx + 3, cy - 8, C.PETAL_LT);
+    p(cx, cy - 10, C.PETAL_LT);
     // moss on the pile
     p(cx - 2, cy + 3, C.MOSS); p(cx + 1, cy + 4, C.MOSS);
+    p(cx + 3, cy + 3, C.MOSS); p(cx - 4, cy + 4, C.MOSS);
   }
 }
 
