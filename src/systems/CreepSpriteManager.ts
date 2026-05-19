@@ -52,14 +52,14 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   warlord_tactician: 5,
   warlord_captain: 5,
   // ─── Iron Cascade (Mech) campaign creep aliases ──────────────
-  // Without these the new mech_* creeps fall back to col 0 and all
-  // render identically — defeating the narrative buildout. Each id
-  // aliases to the closest-shape existing column from the Mech
-  // faction sheet; per-creep tint comes from each creep's `color`
-  // field (CreepTypes.ts), which Creep.takeDamage applies on
-  // construction via setTint. Bespoke flagship + Ace art is a
-  // future polish PR — these aliases ship visual differentiation
-  // for all 6 mech_* creeps NOW.
+  // Regression-pin (kept in sync with MechCreeps.test.ts): these
+  // values are intentionally distinct columns so a future edit
+  // can't silently collapse two creeps onto the same alias and
+  // re-introduce the "they all look identical" bug. Bespoke art
+  // lives on a separate sheet — see MECH_CAMPAIGN_TO_COL below
+  // — and routing through `resolveSheet()` swaps the sheet at
+  // runtime. The values here are the fallback if the campaign
+  // sheet fails to load.
   mech_scout:           1, // fast — light rider silhouette
   mech_skiff:           3, // swarm — light grouped frame
   mech_light_walker:    0, // standard — workhorse infantry
@@ -69,14 +69,33 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
 };
 
 /**
+ * Bespoke-art override sheet for the Mech campaign creep variants.
+ *
+ * Each id maps to its column in `mech_campaign_creeps.png` (6 cols ×
+ * 7 rows = 384×448, baked by `scripts/render_mech_campaign_creeps.ts`).
+ * Runtime resolveSheet() prefers this sheet for mech_* ids; if the
+ * sheet failed to load we fall back to the closest-shape alias on
+ * the mechanical faction sheet (see CREEP_TYPE_TO_COL above).
+ */
+const MECH_CAMPAIGN_TO_COL: Record<string, number> = {
+  mech_scout:           0,
+  mech_skiff:           1,
+  mech_light_walker:    2,
+  mech_armored_walker:  3,
+  mech_flagship_walker: 4,
+  mech_ace_pilot:       5,
+};
+const MECH_CAMPAIGN_SHEET_KEY = 'creeps_mech_campaign';
+const MECH_CAMPAIGN_COLS = 6;
+
+/**
  * Bespoke-art override sheet for the Greenward inheritor creeps.
  *
  * The Greenward campaign introduces twelve named "inheritor" creeps —
  * the old woman, the child, the knight, the herald — each with a
  * story beat. Without bespoke art they fall back to col 0 of the
  * faction sheet and all render as generic "standard" creeps,
- * defeating the campaign's emotional rhythm (the user shouldn't
- * see "old woman" approach as a generic blob).
+ * defeating the campaign's emotional rhythm.
  *
  * Each id maps to its column in `greenward_campaign_creeps.png` (12
  * cols × 7 rows = 768×448). Runtime resolveSheet() prefers this
@@ -128,17 +147,25 @@ function sheetKey(faction: FactionId): string {
 /**
  * Resolve which sheet + column a creep id should render from.
  *
- * Each campaign with bespoke creep art ships its own dedicated sheet.
+ * Each campaign with bespoke creep art ships its own dedicated
+ * sheet (mech_campaign, greenward_campaign, snake_eyes_campaign).
  * The resolver checks each campaign map BEFORE falling back to the
- * faction sheet, so a campaign creep gets its own silhouette. Cold-
- * start safety: if a campaign sheet hasn't loaded yet we fall through
- * to the faction sheet's alias from CREEP_TYPE_TO_COL.
+ * faction sheet, so a campaign creep gets its own silhouette.
+ * Cold-start safety: if a campaign sheet hasn't loaded yet we fall
+ * through to the faction sheet's alias from CREEP_TYPE_TO_COL.
  */
 function resolveSheet(
   scene: Phaser.Scene,
   faction: FactionId,
   creepTypeId: string,
 ): { key: string; col: number; cols: number } | null {
+  if (creepTypeId in MECH_CAMPAIGN_TO_COL && scene.textures.exists(MECH_CAMPAIGN_SHEET_KEY)) {
+    return {
+      key: MECH_CAMPAIGN_SHEET_KEY,
+      col: MECH_CAMPAIGN_TO_COL[creepTypeId],
+      cols: MECH_CAMPAIGN_COLS,
+    };
+  }
   if (creepTypeId in GREENWARD_CAMPAIGN_TO_COL && scene.textures.exists(GREENWARD_CAMPAIGN_SHEET_KEY)) {
     return {
       key: GREENWARD_CAMPAIGN_SHEET_KEY,
@@ -164,6 +191,13 @@ export function preloadCreepSprites(scene: Phaser.Scene): void {
     const key = sheetKey(faction);
     if (scene.textures.exists(key)) continue;
     scene.load.spritesheet(key, `assets/creeps/${faction}_creeps.png`, {
+      frameWidth: FRAME_SIZE,
+      frameHeight: FRAME_SIZE,
+    });
+  }
+  // Mech campaign bespoke sheet (6 cols × 7 rows = 384×448).
+  if (!scene.textures.exists(MECH_CAMPAIGN_SHEET_KEY)) {
+    scene.load.spritesheet(MECH_CAMPAIGN_SHEET_KEY, 'assets/creeps/mech_campaign_creeps.png', {
       frameWidth: FRAME_SIZE,
       frameHeight: FRAME_SIZE,
     });
@@ -252,6 +286,7 @@ export function createCreepAnimations(scene: Phaser.Scene, faction: FactionId): 
     }
   }
   // Campaign-bespoke animations — each has its own column count.
+  registerCampaignAnims(scene, faction, MECH_CAMPAIGN_SHEET_KEY, MECH_CAMPAIGN_TO_COL, MECH_CAMPAIGN_COLS);
   registerCampaignAnims(scene, faction, GREENWARD_CAMPAIGN_SHEET_KEY, GREENWARD_CAMPAIGN_TO_COL, GREENWARD_CAMPAIGN_COLS);
   registerCampaignAnims(scene, faction, SNAKE_EYES_CAMPAIGN_SHEET_KEY, SNAKE_EYES_CAMPAIGN_TO_COL, SNAKE_EYES_CAMPAIGN_COLS);
 }

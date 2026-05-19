@@ -14,6 +14,58 @@ import { join } from 'node:path';
 
 const SRC = readFileSync('src/systems/CreepSpriteManager.ts', 'utf-8');
 
+describe('CreepSpriteManager — Mech campaign bespoke routing', () => {
+  const MECH_IDS = [
+    'mech_scout', 'mech_skiff', 'mech_light_walker',
+    'mech_armored_walker', 'mech_flagship_walker', 'mech_ace_pilot',
+  ] as const;
+
+  const block = SRC.match(/MECH_CAMPAIGN_TO_COL[^=]*=\s*\{([^}]+)\}/s)?.[1] ?? '';
+
+  it('MECH_CAMPAIGN_TO_COL is declared', () => {
+    expect(block.length).toBeGreaterThan(0);
+  });
+
+  it('every mech_* creep id has a column', () => {
+    for (const id of MECH_IDS) {
+      expect(block, `${id} should appear in MECH_CAMPAIGN_TO_COL`).toMatch(
+        new RegExp(`${id}:\\s+\\d+`)
+      );
+    }
+  });
+
+  it('mech_* columns are all distinct (no two creeps share a silhouette)', () => {
+    const cols = new Set<string>();
+    for (const id of MECH_IDS) {
+      const m = block.match(new RegExp(`${id}:\\s+(\\d+)`));
+      expect(m, `${id} should be mapped`).not.toBeNull();
+      cols.add(m![1]);
+    }
+    expect(cols.size, '6 ids → 6 distinct columns').toBe(6);
+  });
+
+  it('mech_* columns fit the 6-col sheet (0..5)', () => {
+    for (const id of MECH_IDS) {
+      const m = block.match(new RegExp(`${id}:\\s+(\\d+)`));
+      const col = parseInt(m![1], 10);
+      expect(col).toBeGreaterThanOrEqual(0);
+      expect(col).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it('preloader registers the campaign sheet', () => {
+    expect(SRC).toMatch(/mech_campaign_creeps\.png/);
+  });
+
+  it('campaign sheet asset has been baked', () => {
+    const assetPath = join('public', 'assets', 'creeps', 'mech_campaign_creeps.png');
+    expect(
+      existsSync(assetPath),
+      `${assetPath} must exist — run scripts/render_mech_campaign_creeps.ts`,
+    ).toBe(true);
+  });
+});
+
 describe('CreepSpriteManager — Greenward bespoke routing', () => {
   const INHERITOR_IDS = [
     'inheritor_road_walker', 'inheritor_den_walker', 'inheritor_messenger',
