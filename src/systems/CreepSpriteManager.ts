@@ -51,6 +51,21 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   warlord_champion: 5,
   warlord_tactician: 5,
   warlord_captain: 5,
+  // ─── Iron Cascade (Mech) campaign creep aliases ──────────────
+  // Without these the new mech_* creeps fall back to col 0 and all
+  // render identically — defeating the narrative buildout. Each id
+  // aliases to the closest-shape existing column from the Mech
+  // faction sheet; per-creep tint comes from each creep's `color`
+  // field (CreepTypes.ts), which Creep.takeDamage applies on
+  // construction via setTint. Bespoke flagship + Ace art is a
+  // future polish PR — these aliases ship visual differentiation
+  // for all 6 mech_* creeps NOW.
+  mech_scout:           1, // fast — light rider silhouette
+  mech_skiff:           3, // swarm — light grouped frame
+  mech_light_walker:    0, // standard — workhorse infantry
+  mech_armored_walker:  2, // armored — heavy plate
+  mech_flagship_walker: 5, // boss — heavy boss silhouette
+  mech_ace_pilot:       8, // shielded — shield trait + named boss
 };
 
 /**

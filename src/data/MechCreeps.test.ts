@@ -100,3 +100,36 @@ describe('Mech creep variants — difficulty scaling', () => {
     expect(out.goldMult).toBeLessThan(1);
   });
 });
+
+describe('Mech creep variants — sprite aliasing (visual differentiation)', () => {
+  // Without these aliases, every new mech_* creep falls back to
+  // col 0 in CreepSpriteManager.CREEP_TYPE_TO_COL and all six render
+  // identically. Regression-pin the alias mapping so a future edit
+  // can't silently strip them — that bug was the user's complaint
+  // and the reason this commit exists.
+  it('CreepSpriteManager has aliases for every new mech_* creep', async () => {
+    const { readFileSync } = await import('fs');
+    const src = readFileSync('src/systems/CreepSpriteManager.ts', 'utf-8');
+    expect(src).toMatch(/mech_scout:\s+1/);
+    expect(src).toMatch(/mech_skiff:\s+3/);
+    expect(src).toMatch(/mech_light_walker:\s+0/);
+    expect(src).toMatch(/mech_armored_walker:\s+2/);
+    expect(src).toMatch(/mech_flagship_walker:\s+5/);
+    expect(src).toMatch(/mech_ace_pilot:\s+8/);
+  });
+
+  it('the aliases use distinct sprite columns (so creeps look different)', async () => {
+    const { readFileSync } = await import('fs');
+    const src = readFileSync('src/systems/CreepSpriteManager.ts', 'utf-8');
+    const cols = new Set<string>();
+    for (const id of ['mech_scout', 'mech_skiff', 'mech_light_walker',
+                      'mech_armored_walker', 'mech_flagship_walker', 'mech_ace_pilot']) {
+      const m = src.match(new RegExp(`${id}:\\s+(\\d+)`));
+      expect(m, `${id} should appear in the alias map`).not.toBeNull();
+      cols.add(m![1]);
+    }
+    // 6 ids → 6 distinct columns. If two share a column the player
+    // can't tell them apart — defeating the buildout.
+    expect(cols.size).toBe(6);
+  });
+});
