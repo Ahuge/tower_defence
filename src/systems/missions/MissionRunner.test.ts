@@ -69,7 +69,7 @@ describe('MissionRunner — v2 analytics shape', () => {
     vi.spyOn(PlayerProfile, 'getCampaignTotalStars').mockReturnValue(0);
   });
 
-  it('startV2 emits mission_started with archetypeId="v2:standard"', () => {
+  it('startV2 emits mission_started with the mission archetypeId', () => {
     const trackSpy = vi.spyOn(Analytics, 'track').mockImplementation(() => {});
     MissionRunner.startV2(FAKE_EXT, 0);
     const startCall = trackSpy.mock.calls.find(([name]) => name === 'mission_started');
@@ -77,7 +77,7 @@ describe('MissionRunner — v2 analytics shape', () => {
     expect(startCall![1]).toMatchObject({
       campaignFactionId: 'mechanical',
       missionIdx: 0,
-      archetypeId: 'v2:standard',
+      archetypeId: 'standard',
     });
     MissionRunner.abort(); // teardown
   });
@@ -92,7 +92,7 @@ describe('MissionRunner — v2 analytics shape', () => {
     expect(completedCall![1]).toMatchObject({
       campaignFactionId: 'mechanical',
       missionIdx: 0,
-      archetypeId: 'v2:standard',
+      archetypeId: 'standard',
       stars: 1,
     });
     // The regression we're locking out: archetypeId was undefined
@@ -110,7 +110,7 @@ describe('MissionRunner — v2 analytics shape', () => {
     expect(failedCall![1]).toMatchObject({
       campaignFactionId: 'mechanical',
       missionIdx: 0,
-      archetypeId: 'v2:standard',
+      archetypeId: 'standard',
       atWave: 3,
     });
     expect((failedCall![1] as { archetypeId: unknown }).archetypeId).not.toBeUndefined();
@@ -126,18 +126,19 @@ describe('MissionRunner — v2 analytics shape', () => {
     expect(failedCall![1]).toMatchObject({
       campaignFactionId: 'mechanical',
       missionIdx: 0,
-      archetypeId: 'v2:standard',
+      archetypeId: 'standard',
       atWave: 0,
     });
     expect((failedCall![1] as { archetypeId: unknown }).archetypeId).not.toBeUndefined();
   });
 
-  it('mission base mode flows through to the analytics archetypeId (attacker → v2:attacker)', () => {
+  it('attacker mission entry preserves its archetypeId on analytics', () => {
     const attackerExt: CampaignExtension<Record<string, never>, { kind: 'plain' }> = {
       ...FAKE_EXT,
       missions: [
         {
           ...FAKE_EXT.missions[0],
+          archetypeId: 'attacker',
           core: { mode: 'attacker', mapId: 'attacker_assault', waveCount: 10, difficulty: 'normal' },
         },
       ],
@@ -145,7 +146,7 @@ describe('MissionRunner — v2 analytics shape', () => {
     const trackSpy = vi.spyOn(Analytics, 'track').mockImplementation(() => {});
     MissionRunner.startV2(attackerExt, 0);
     const startCall = trackSpy.mock.calls.find(([name]) => name === 'mission_started');
-    expect(startCall![1]).toMatchObject({ archetypeId: 'v2:attacker' });
+    expect(startCall![1]).toMatchObject({ archetypeId: 'attacker' });
     MissionRunner.abort();
   });
 });

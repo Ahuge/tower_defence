@@ -235,7 +235,15 @@ class MissionRunnerClass {
       return false;
     }
 
-    const archetypeId = `v2:${mission.core.mode}`;
+    // Use the campaign-author-declared `archetypeId` from MissionEntry —
+    // this matches what GameOverScreen / GameScene archetype branches
+    // (final_greenward / hero_vs_boss / coop_with_bot / …) read from
+    // `missionContext.archetypeId` and what analytics emits as the
+    // mission_completed / mission_failed `archetypeId` field. Falls
+    // back to the engine-level mode for missions that omit the
+    // declarative id (shouldn't happen — `archetypeId` is required —
+    // but the fallback keeps the analytics non-undefined).
+    const archetypeId = mission.archetypeId || mission.core.mode;
     this.active = {
       ext: ext as CampaignExtension<unknown, unknown>,
       mission: mission as MissionEntry<unknown, unknown>,
@@ -265,7 +273,7 @@ class MissionRunnerClass {
       campaignFactionId: ext.factionId,
       missionId: mission.id,
       missionIdx: mission.idx,
-      archetypeId: `v2:${mission.core.mode}`,
+      archetypeId,
       restrictions: mission.core.restrictions ?? {},
     };
 
