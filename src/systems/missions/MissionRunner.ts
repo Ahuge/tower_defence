@@ -14,16 +14,12 @@
  *   5. The lobby re-mounts on its own; the runner doesn't navigate.
  */
 
-import type { CampaignDef, MissionDef, MissionOverrides, MissionResult, StarCount } from '../../data/campaigns/CampaignDef';
+import type { CampaignDef, MissionDef, MissionResult, StarCount } from '../../data/campaigns/CampaignDef';
 import type { FactionId } from '../../data/Factions';
-import { getArchetype, isArchetypeStub } from '../../data/campaigns/MissionArchetypes';
 import { UIBridge } from '../../ui/UIBridge';
 import { Analytics } from '../AnalyticsClient';
 import { PlayerProfile } from '../profile/PlayerProfile';
-import { CampaignState } from '../campaign/CampaignState';
 import { ParametricStory } from '../campaign/ParametricStory';
-// Phase B (aspect refactor): startV2 path. Feature-detected via
-// `'buildRuntime' in ext`. Legacy `start` keeps working until Phase E.
 import type { CampaignExtension, MissionEntry, CampaignCtx } from '../campaign/types';
 import { getCampaignExtension } from '../campaign/CampaignRegistry';
 
@@ -51,120 +47,28 @@ class MissionRunnerClass {
     startedAt: number;
   } | null = null;
 
-  /** Start a mission. Returns true if the launch succeeded. */
+  /** Start a mission. Returns true if the launch succeeded.
+   *
+   *  Phase E3: this used to host a 100-line legacy body that read
+   *  `mission.archetype`, merged archetype defaults with per-mission
+   *  overrides, and threaded 25 fields into `UIBridge.startScene`.
+   *  Every campaign now ships as a `CampaignExtension` registered
+   *  in `CampaignRegistry`; the legacy body is dead code. This
+   *  function is now a registry lookup + `startV2` redirect — every
+   *  caller (CampaignLobbyScreen, GameOverScreen, testHook) keeps
+   *  passing legacy `CampaignDef` objects, but the dispatch reads
+   *  only the factionId.
+   *
+   *  Returns false if no extension is registered for the faction —
+   *  a runtime guard against a future regression where a campaign
+   *  module fails to load. */
   start(campaign: CampaignDef, missionIdx: number): boolean {
-    // Phase C4: feature-detect at the legacy entry point. If a Campaign
-    // Extension is registered for this faction, route through startV2.
-    // Callers (CampaignLobbyScreen, GameOverScreen, testHook) keep
-    // passing legacy CampaignDef objects; the registry is the
-    // authoritative dispatch source.
     const ext = getCampaignExtension(campaign.factionId);
-    if (ext) return this.startV2(ext, missionIdx);
-
-    const mission = campaign.missions[missionIdx];
-    if (!mission) {
-      console.warn(`[MissionRunner] no mission at idx ${missionIdx} in campaign ${campaign.factionId}`);
+    if (!ext) {
+      console.warn(`[MissionRunner] no CampaignExtension registered for faction ${campaign.factionId} — cannot launch mission ${missionIdx}`);
       return false;
     }
-    if (isArchetypeStub(mission.archetype)) {
-      console.warn(`[MissionRunner] archetype "${mission.archetype}" is a stub — mission ${mission.id} cannot launch yet`);
-      return false;
-    }
-    const archetype = getArchetype(mission.archetype);
-
-    // v2: read campaign state and let the mission compute additional
-    // overrides on top of static config. v1 missions skip this branch
-    // because dynamicOverrides is undefined and initialState is null.
-    let dynamic: Partial<MissionOverrides> = {};
-    if (mission.dynamicOverrides && campaign.initialState !== undefined) {
-      const state = CampaignState.get(campaign.factionId, campaign.initialState);
-      try {
-        dynamic = mission.dynamicOverrides(state) ?? {};
-      } catch (err) {
-        console.warn(`[MissionRunner] dynamicOverrides threw for ${mission.id}:`, err);
-      }
-    }
-    // Merge order (lowest-to-highest priority): archetype defaults <
-    // campaign-wide knobs < dynamic overrides < per-mission overrides.
-    // Campaign knobs sit between archetype defaults and per-mission
-    // so a mission can still override (e.g. Hero Duel mission inside
-    // the Mech campaign could pick a non-default faction).
-    const campaignDefaults: Partial<typeof mission.overrides> = {};
-    if (campaign.defaultPlayerFaction !== undefined) {
-      campaignDefaults.faction = campaign.defaultPlayerFaction;
-    }
-    if (campaign.defaultMapThemeOverride !== undefined) {
-      campaignDefaults.mapThemeOverride = campaign.defaultMapThemeOverride;
-    }
-    const merged = { ...archetype.defaults, ...campaignDefaults, ...dynamic, ...mission.overrides };
-
-    this.active = { campaign, mission, archetypeId: mission.archetype, startedAt: Date.now() };
-    Analytics.track('mission_started', {
-      campaignFactionId: campaign.factionId,
-      missionIdx: mission.idx,
-      archetypeId: mission.archetype,
-    });
-
-    const context: MissionContext = {
-      campaignFactionId: campaign.factionId,
-      missionId: mission.id,
-      missionIdx: mission.idx,
-      archetypeId: mission.archetype,
-      restrictions: merged.restrictions ?? {},
-    };
-
-    // Final fallback when neither the mission nor the campaign sets a
-    // faction — defaults to Arcane (the free root, always unlocked).
-    // Without it, GameScene would fall through to the generic
-    // Arrow/Cannon/Sniper/Frost-Trap pool, which never matches a
-    // campaign's design intent.
-    UIBridge.startScene('GameScene', {
-      mode: archetype.baseMode,
-      faction: merged.faction ?? 'arcane',
-      map: merged.mapId,
-      difficulty: merged.difficulty ?? 'normal',
-      modifier: merged.modifier ?? null,
-      heroId: merged.heroId ?? null,
-      creepFaction: merged.creepFaction ?? campaign.factionId,
-      waveCount: merged.waveCount,
-      missionContext: context,
-      // GameScene reads these on init() to apply mission-style overrides.
-      missionGoldStart: merged.goldStart,
-      missionGoldStartMult: merged.goldStartMult,
-      missionLives: merged.lives,
-      missionWaveScript: merged.waveScript,
-      missionPrePlacedTowers: merged.prePlacedTowers,
-      missionMapThemeOverride: merged.mapThemeOverride,
-      missionAutoChainWaves: merged.autoChainWaves,
-      missionKillGoldMult: merged.killGoldMult,
-      missionAttackerEssencePerWave: merged.attackerEssencePerWave,
-      missionAttackerPaletteFaction: merged.attackerPaletteFaction,
-      missionAttackerLeakThreshold: merged.attackerLeakThreshold,
-      missionAttackerDefenderDifficulty: merged.attackerDefenderDifficulty,
-      missionAttackerPrepOrder: merged.attackerPrepOrder,
-      missionAttackerEssenceGrowthPerWave: merged.attackerEssenceGrowthPerWave,
-      missionAttackerEssenceCarryoverMult: merged.attackerEssenceCarryoverMult,
-      missionAttackerCampMax: merged.attackerCampMax,
-      missionAttackerCampCost: merged.attackerCampCost,
-      missionAttackerCampIncome: merged.attackerCampIncome,
-      missionCoopCreepCountMult: merged.coopCreepCountMult,
-      missionFinaleRules: merged.finaleRules,
-      missionSabotageRules: merged.sabotageRules,
-      missionSuppressionPylons: merged.suppressionPylons,
-      missionGreenwardRules: merged.greenwardRules,
-      // LoadingScreen briefing — show the mission name + story text
-      // there, and gate dismissal on a "Begin" button so the player
-      // can read the brief without time pressure.
-      loadingMissionTitle: mission.name,
-      loadingMissionStory: ParametricStory.resolve(mission.story, {
-        state: campaign.initialState !== undefined
-          ? CampaignState.get(campaign.factionId, campaign.initialState)
-          : null,
-        lastResult: null,
-      }),
-      loadingRequiresContinue: true,
-    });
-    return true;
+    return this.startV2(ext, missionIdx);
   }
 
   /** Called by GameScene when a campaign mission ends. The scene knows
@@ -191,21 +95,6 @@ class MissionRunnerClass {
     }
 
     PlayerProfile.recordMissionResult(session.campaign.factionId, mission.idx, stars);
-
-    // v1: legacy stateUpdater hook on MissionDef. Used by parametric-
-    // story campaigns that haven't been ported to a CampaignExtension
-    // yet. Phase F removes this when every campaign is on the v2 path.
-    if (mission.stateUpdater && session.campaign.initialState !== undefined) {
-      try {
-        const prev = CampaignState.get(session.campaign.factionId, session.campaign.initialState);
-        const next = mission.stateUpdater(result, prev);
-        if (next && typeof next === 'object') {
-          CampaignState.set(session.campaign.factionId, next);
-        }
-      } catch (err) {
-        console.warn(`[MissionRunner] stateUpdater threw for ${mission.id}:`, err);
-      }
-    }
 
     // v2: MissionStateAspect.applyMissionResult — writes cross-mission
     // state at mission-end (e.g. Greenward's Wildwood reserves spend
