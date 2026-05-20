@@ -16,7 +16,7 @@ import { FACTIONS } from '../../data/Factions';
 import { FactionEmblem } from './FactionEmblem';
 import { FullscreenOverlay } from './FullscreenOverlay';
 import { UIBridge } from '../UIBridge';
-import { getCampaign } from '../../data/campaigns';
+import { getCampaign } from '../../systems/campaign/CampaignRegistry';
 
 const BASE_URL: string = (import.meta as any).env?.BASE_URL ?? '/';
 

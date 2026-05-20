@@ -65,6 +65,15 @@ export function listCampaignExtensions(): CampaignExtension<unknown, unknown>[] 
   );
 }
 
+// Phase F compat re-exports — legacy callers used `getCampaign` /
+// `listCampaigns` from `data/campaigns/index.ts` which returned the
+// legacy `CampaignDef` shape. Now they return the new `CampaignExtension`,
+// but the callers' read patterns (factionId, name, missions[].name,
+// missions[].idx, missions[].objectives, missions[].story) overlap.
+// Each caller's import path swap is a one-line change.
+export const getCampaign = getCampaignExtension;
+export const listCampaigns = listCampaignExtensions;
+
 /**
  * True if a campaign is fully completed (every mission has ≥1 star).
  * Lives in the registry rather than `PlayerProfile` so the answer

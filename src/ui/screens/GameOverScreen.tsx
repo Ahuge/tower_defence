@@ -8,7 +8,7 @@ import { GameStats } from '../../systems/StatsTracker';
 import { platformBridge } from '../../systems/platform';
 import { FACTIONS, FactionId } from '../../data/Factions';
 import { CoopPlayerStats, MissionResultSummary } from '../../scenes/GameOverScene';
-import { getCampaign } from '../../data/campaigns';
+import { getCampaign } from '../../systems/campaign/CampaignRegistry';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
 import { GreenwardEndingPanel } from './GreenwardEndingPanel';
 
