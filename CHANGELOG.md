@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-05-20
+
+### Campaign-as-Aspect-Modules refactor
+
+Three-week, 23-commit refactor of the campaign system from a flat `MissionOverrides` god-object schema into composable per-campaign `CampaignExtension` modules with six narrow aspect interfaces. The before-state had 30+ fields on `MissionOverrides`, ~half of them campaign-specific (`finaleRules` / `sabotageRules` / `greenwardRules` / `suppressionPylons` / attacker knobs / coop knobs), `MissionRunner.start` threading 25 of those fields field-by-field into `UIBridge.startScene`, and `GameScene.init` branching on each `*Rules` field to instantiate per-campaign controllers. Adding any new campaign-specific mechanic required edits across `CampaignDef.ts`, `MissionRunner.ts`, and `GameScene.ts` in lockstep.
+
+The grill session that drove the design lives in `docs/campaign-aspects-refactor-prd.md`; the architectural decision + rejected alternatives are in `docs/adr/0001-campaigns-as-aspect-modules.md`; the glossary is `CONTEXT.md`.
+
+After the refactor:
+- Each campaign is a single module (`src/data/campaigns/<faction>.ts`) exposing a typed `CampaignExtension<TState, TCfg>`. `TState` is the campaign's cross-mission persistent state (`{}` for Mech / Arcane, `GreenwardState` for Greenward); `TCfg` is the per-mission payload (`MechMissionCfg` is a discriminated union of `'plain' | 'pylons' | 'sabotage'`).
+- Six aspect interfaces, each consumed by exactly one engine subsystem:
+  - **Setup** — one-shot world mutation through `WorldMutator` helpers
+  - **Lifecycle** — per-frame `update` + `shutdown`
+  - **Gameplay** — auto-subscribed event handlers via `EventBusBridge`
+  - **Intercept** — consume player input before defaults (Mech pylon channel)
+  - **MissionState** — cross-mission state lifecycle (Greenward reserves regen, runs in `MissionRunner.startV2` before scene init via `tickBetweenMissions`)
+  - **UISurface** — campaign-specific panels + parametric story + epilogue
+- `MissionRunner.start` collapsed from 100 lines to 6 — a registry lookup that redirects to `startV2`. The 25-field `UIBridge.startScene` passthrough is gone.
+- `MissionRunner.finalize` now feeds `MissionStateAspect.applyMissionResult` cleanly; the legacy `mission.stateUpdater` v1 hook is gone.
+- `GameScene.init` lost the four `if (this._missionXxxRules) { ... }` dispatch branches + the runtime `throw new Error('Mission has both finaleRules and sabotageRules')` — the discriminated cfg payload makes mutual exclusion structural.
+- The 17-entry `MissionArchetype` runtime registry collapsed to a 16-entry display lookup (`ArchetypeLabels.ts`); the runtime info (baseMode, defaults, stub flag) moved onto `MissionEntry` itself (`core.mode`, `unlaunchable`).
+- Snake Eyes M10 (Counterfactual's Mirror) stays unlaunchable via a `kind: 'final_unimplemented'` cfg discriminator that throws in `buildRuntime` — failure surfaces at mission start instead of silently in gameplay.
+
+Phase breakdown:
+- **A** — Type foundation (`types.ts`, `CampaignRegistry.ts`)
+- **B** — Engine plumbing (`WorldMutator`, `EventBusBridge`, GameScene capture/dispatch/teardown)
+- **C** — Mech port + cutover (5 sub-commits: scaffold → pylons aspect → sabotage skeleton → host methods + intercept → routing flip)
+- **D** — Arcane, Greenward, Snake Eyes ports (D0 wires `MissionStateAspect`, D1/D2/D3 port each campaign)
+- **E** — Legacy cleanup (`_missionXxxRules` fields + dispatch branches + `MissionRunner.start` body + the runtime mutex throw + the `unknown as` cast)
+- **F** — Schema deletion (legacy data files + tests + `CampaignDef.ts` + `MissionArchetypes.ts` + `data/campaigns/index.ts`; rename `*-v2.ts` → canonical names; CHANGELOG/README updates)
+
+Validation across the refactor:
+- vitest: 1270/1270 pass post-cleanup (was 1329 pre-refactor; the delta is dropped legacy + parity tests, plus new aspect tests)
+- Playwright e2e: M10 Overthrow + Greenward smoke pass on desktop + mobile across every phase
+- Two checkpoint reviews (Phase C, Phase D) each surfaced ~5 High/Medium concerns that landed as follow-up commits before moving on
+
+Branch: `ah/refactor/campaign-aspects`.
+
 ## 2026-05-18 (continued)
 
 ### Iron Cascade (Mech) narrative-gameplay buildout

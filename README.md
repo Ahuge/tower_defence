@@ -85,6 +85,29 @@ Fiend: [mobile_unit(speed:180, engageRange:0.5, selfDestruct:true)]
 Absolution: [splash_damage(72), life_on_kill(0.10), mute_mage_aura, bonus_vs_boss(0.3)]
 ```
 
+### Campaign Architecture
+Each shipped campaign (Arcane / Mechanical / Greenward / Snake Eyes) is a `CampaignExtension` — a module exposing its mission list + optional aspects that the engine consumes:
+
+```
+src/data/campaigns/<faction>.ts        — extension definition + missions
+src/systems/<faction>/<name>Runtime.ts — per-aspect runtime code
+src/systems/campaign/                  — generic infrastructure
+  types.ts                             — CampaignExtension, MissionEntry, 6 aspects
+  CampaignRegistry.ts                  — register/lookup by factionId
+  WorldMutator.ts                      — host-method dispatch
+  EventBusBridge.ts                    — Gameplay aspect ↔ EventBus
+```
+
+Six aspects (each optional, each consumed by one engine subsystem):
+- **Setup** — one-shot world mutation at scene init (pre-placed towers, suppression pylons, sabotage M10, …)
+- **Lifecycle** — per-frame `update()` + `shutdown()`
+- **Gameplay** — auto-subscribed event handlers (wave/creep/tower)
+- **Intercept** — consume player input before defaults (e.g. Mech pylon channel)
+- **MissionState** — cross-mission state read/write/tick (Greenward Wildwood Reserves)
+- **UISurface** — campaign-specific UI panels + story + epilogue
+
+See `docs/campaign-aspects-refactor-prd.md` and `docs/adr/0001-campaigns-as-aspect-modules.md` for the decision history; `CONTEXT.md` is the glossary.
+
 ### Creep Types (14)
 Standard, Fast, Armored, Swarm, Healer, Boss, Group, Splitter, Shielded, Evasive, Flying, Iron/Haste/Mist/Heal Mage.
 
