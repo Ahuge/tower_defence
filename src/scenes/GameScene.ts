@@ -106,7 +106,7 @@ import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import { GreenwardMissionController } from '../systems/greenward/GreenwardMissionController';
 import { GreenwardFinaleController } from '../systems/greenward/GreenwardFinaleController';
-import { getReserves, applyMissionRegen } from '../systems/greenward/WildwoodReserves';
+import { getReserves } from '../systems/greenward/WildwoodReserves';
 import { BOSS_KILL_CUSTOM_FLAGS } from '../systems/greenward/GreenwardSpawns';
 import { spawnGreenwardNamed } from '../systems/greenward/spawnGreenwardNamed';
 import type { RaiderTarget } from '../entities/Raider';
@@ -495,24 +495,17 @@ export class GameScene extends Phaser.Scene {
    *  wave fatter than usual" pressure works without rewriting the
    *  generator. Undefined = no change. */
   private _missionCoopCreepCountMult?: number;
-  /** M10 finale — when set, GameScene instantiates a FinaleController
-   *  which owns the hero, summoning circles, and tower-kill win check. */
-  private _missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules'];
-  /** Mech M10 finale — when set, GameScene instantiates a
-   *  SabotageController which owns the throne, generators, Workshop,
-   *  Raider squad, and win check. Distinct from finaleRules. */
-  private _missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules'];
-  /** Mech campaign — per-mission pylon overrides. GameScene prefers
-   *  these over the map's own `suppressionPylons` so a shared map
-   *  (e.g. serpentine) can host different pylon layouts per mission. */
-  private _missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons'];
+  // Phase E2: `_missionFinaleRules` / `_missionSabotageRules` /
+  // `_missionSuppressionPylons` / `_missionGreenwardRules` were
+  // legacy passthrough fields that every campaign now routes around
+  // via its `CampaignExtension`. The Setup aspect calls the host
+  // method (`installArcaneFinale`, `installMechSabotage`, etc.)
+  // directly through the WorldMutator; no scene-level state mirror
+  // needed. The `_sabotageController` + `_sabotageRender` controller
+  // handles survive — they're scene-lifetime objects the aspect Setup
+  // populates and `update()` / `handleClick()` / `shutdown()` read.
   private _sabotageController: import('../systems/sabotage/SabotageController').SabotageController | null = null;
   private _sabotageRender: SabotageRender | null = null;
-  /** Campaign #3 — Greenward per-mission Consecration rules. When set,
-   *  GameScene constructs a GreenwardMissionController at init, ticks
-   *  it each frame, and writes its custom payload into MissionResult
-   *  at game-end. Null on non-Greenward missions. */
-  private _missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules'];
   /** Phase B: per-mission aspect bundle from `CampaignExtension.buildRuntime`.
    *  Populated by `MissionRunner.startV2`; null on legacy + non-campaign
    *  scenes. Replaces the per-campaign `_missionXxxRules` field set in
@@ -580,10 +573,11 @@ export class GameScene extends Phaser.Scene {
     this._missionAttackerCampCost = data.missionAttackerCampCost;
     this._missionAttackerCampIncome = data.missionAttackerCampIncome;
     this._missionCoopCreepCountMult = data.missionCoopCreepCountMult;
-    this._missionFinaleRules = data.missionFinaleRules;
-    this._missionSabotageRules = data.missionSabotageRules;
-    this._missionSuppressionPylons = data.missionSuppressionPylons;
-    this._missionGreenwardRules = data.missionGreenwardRules;
+    // Phase E2: legacy `mission*Rules` data fields are no longer read.
+    // Every campaign's Setup aspect calls the host method directly
+    // through the WorldMutator — the data flow is `MissionRunner.startV2`
+    // → `extension.buildRuntime(...)` → aspect Setup → `installArcaneFinale`
+    // / etc. on `this`.
     // Phase B (aspect refactor): capture the per-mission runtime
     // bundle from MissionRunner.startV2. Cast is unavoidable because
     // UIBridge.startScene's payload type is `Record<string, unknown>`.
@@ -1243,73 +1237,21 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
-    // M10 finale: instantiate the FinaleController. It places the
-    // destructible CPU towers (with HP), creates the SummoningCircles,
-    // tracks the shared charge meter, summons the hero on first 100%
-    // charge, and watches for the win condition. Skipped on every
-    // other mission (when finaleRules is undefined).
-    // Mutual exclusion — a mission def is final_arcane (mana-drain
-    // charging + summoned hero) OR final_sabotage (workshop + raider
-    // squad), never both. The throne tower handling diverges between
-    // the two controllers (FinaleController treats it as a regular
-    // CPU tower; SabotageController gates it on _invulnerable until
-    // generators die). If a future mission accidentally sets both
-    // rules, surface the conflict instead of silently double-running.
-    if (this._missionFinaleRules && this._missionSabotageRules) {
-      throw new Error('Mission has both finaleRules and sabotageRules — these archetypes are mutually exclusive.');
-    }
-    // C4 refactor: install body moved into `installArcaneFinale`.
-    // The legacy `_missionFinaleRules` branch dispatches to the same
-    // method as the aspect path.
-    if (this._missionFinaleRules && mapDef.summoningCircles && mapDef.destructibleTowers) {
-      this.installArcaneFinale(this._missionFinaleRules);
-    }
-    // Mechanical campaign — Voss's Suppression Pylons. The map data
-    // declares pre-placed pylons; SuppressionManager owns runtime
-    // state (mute timers, per-tower stress) and is ticked from
-    // GameScene.update. Skipped when the map has no pylons.
-    // Prefer per-mission overrides (campaign def) over map-level pylons
-    // so shared maps don't need bespoke copies for each Mech mission.
-    // C4 refactor: the install body moved into the
-    // `installSuppressionPylons` host method so the Mech aspect Setup
-    // can call it via the WorldMutator. The legacy path here still
-    // resolves the pylons list the same way and dispatches to the
-    // same method — behaviour identical, just one indirection.
-    const pylons = (this._missionSuppressionPylons && this._missionSuppressionPylons.length > 0)
-      ? this._missionSuppressionPylons
-      : mapDef.suppressionPylons;
-    if (pylons && pylons.length > 0) {
-      this.installSuppressionPylons(pylons);
-    }
-    // Mech M10 finale — instantiate the SabotageController. Reuses
-    // the destructibleTowers map field (with isGenerator/isThrone tags
-    // stamped on the relevant entries) and a `workshop` cell from a
-    // dedicated map field. Skipped when the mission has no
-    // sabotageRules.
-    // C4 refactor: install body moved into the `installMechSabotage`
-    // host method so the Mech aspect Setup can call it via the
-    // WorldMutator. The legacy path here still gates on the same
-    // preconditions and dispatches to the same method.
-    if (this._missionSabotageRules && mapDef.destructibleTowers && mapDef.workshop) {
-      this.installMechSabotage(this._missionSabotageRules);
-    }
-
-    // Campaign #3 — Greenward per-mission Consecration setup.
-    // C4-style refactor: legacy path applies regen + dispatches to
-    // the `installGreenwardRules` host method. The aspect path skips
-    // regen here (already done in MissionRunner.startV2's
-    // tickBetweenMissions) and calls the same host method.
-    if (this._missionGreenwardRules) {
-      // Apply the regen tick BEFORE the controller reads reserves so
-      // the player gets the visible "+10 per mission" before the
-      // mission's own deductions kick in. The aspect path applies
-      // this via MissionState.tickBetweenMissions; the host method
-      // itself trusts that reserves are at the post-tick value.
-      applyMissionRegen();
-      this.installGreenwardRules(
-        this._missionGreenwardRules,
-        this.missionContext?.archetypeId === 'final_greenward',
-      );
+    // Phase E2: legacy `if (this._missionXxxRules)` dispatch blocks
+    // for Arcane finale / Mech sabotage / Mech suppression pylons /
+    // Greenward consecration deleted. Every campaign now drives the
+    // same host methods via its aspect Setup through `WorldMutator`,
+    // which fires earlier in `init()` (around the `_campaignRuntime`
+    // setup block). Map-level `mapDef.suppressionPylons` defaults
+    // for shared maps move into a dedicated init path below if any
+    // map ever ships pylons WITHOUT a Mech mission registering them
+    // (today every pylon-using map is Mech-only).
+    if (mapDef.suppressionPylons && mapDef.suppressionPylons.length > 0
+        && !this._suppressionMgr) {
+      // Map declares pylons but the aspect Setup didn't install them
+      // (non-Mech mission landing on a pylon-tagged map). Fall back
+      // to the map-level defaults so the cells still mute towers.
+      this.installSuppressionPylons(mapDef.suppressionPylons);
     }
 
     // Plan 12 attacker mode — drop the map's pre-placed defender
@@ -3250,11 +3192,11 @@ export class GameScene extends Phaser.Scene {
 
   /** Greenward — construct per-mission ConsecrationManager-backed
    *  controller + (when finale) the three-setpiece state machine.
-   *  Reserves are assumed already at the post-tick value (legacy
-   *  path called `applyMissionRegen` before dispatching; aspect
-   *  path applied it via `MissionStateAspect.tickBetweenMissions`).
-   *  The host reads current reserves via `getReserves()` to seed
-   *  the controller's mid-mission deduct/refund math. */
+   *  Reserves are assumed already at the post-tick value — the
+   *  `MissionStateAspect.tickBetweenMissions` hook runs in
+   *  `MissionRunner.startV2` before the scene starts. The host
+   *  reads current reserves via `getReserves()` to seed the
+   *  controller's mid-mission deduct/refund math. */
   installGreenwardRules(rules: { ruins: import('../systems/greenward/ConsecrationManager').RuinSpec[] }, isFinale: boolean): void {
     const reservesAtStart = getReserves();
     this._greenwardController = new GreenwardMissionController(rules, reservesAtStart);
