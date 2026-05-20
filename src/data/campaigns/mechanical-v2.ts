@@ -30,6 +30,7 @@ import {
   buildRailYardAssault,
 } from './MechWaveScripts';
 import { mechPylonsRuntime } from '../../systems/mechanical/MechPylonsRuntime';
+import { mechSabotageRuntime } from '../../systems/mechanical/MechSabotageRuntime';
 
 const T = MECHANICAL_TEXTS;
 
@@ -357,12 +358,18 @@ export const MECHANICAL_EXTENSION: CampaignExtension<MechState, MechMissionCfg> 
   defaultPlayerFaction: 'arcane',
   missions: MISSIONS,
   buildRuntime: (_ctx, mission) => {
-    // C2: pylon missions (M2, M5, M6, M8) get the Suppression Pylons
-    // aspect bundle. Sabotage M10 lands in C3; plain missions return
-    // no aspects (the legacy code path still owns their setup for now,
-    // but the empty bundle is a valid no-op once C4 cuts over).
+    // C2: pylon missions get Setup + Intercept aspects.
+    // C3: sabotage missions get the Lifecycle skeleton (Setup +
+    // controller construction land in C4).
+    // Plain missions return an empty bundle — once C4 cuts over,
+    // the legacy `_mission*Rules` branches in GameScene disappear
+    // and an empty bundle is the right answer for missions that
+    // don't need any campaign-specific runtime.
     if (mission.campaign.kind === 'pylons') {
       return mechPylonsRuntime(mission.campaign.pylons);
+    }
+    if (mission.campaign.kind === 'sabotage') {
+      return mechSabotageRuntime(mission.campaign.sabotage);
     }
     return {};
   },
