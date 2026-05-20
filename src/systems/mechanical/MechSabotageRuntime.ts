@@ -32,26 +32,29 @@
  *               talks to the engine via direct callbacks today, so a
  *               gameplay aspect may not be needed.
  */
-import type { RuntimeAspects, LifecycleAspect } from '../campaign/types';
+import type { RuntimeAspects, SetupAspect, LifecycleAspect } from '../campaign/types';
 import type { MechSabotageRules } from '../../data/campaigns/mechanical-v2';
 
-export function mechSabotageRuntime(_rules: MechSabotageRules): RuntimeAspects {
-  // Lifecycle stubs let C4 grow the runtime in place without
-  // changing the buildRuntime dispatch in MECHANICAL_EXTENSION.
-  // C2's MechPylonsRuntime returns Setup + Intercept; this skeleton
-  // returns Lifecycle so the type surface for Sabotage is staked out
-  // — Setup is added in C4 once the workshop + destructibles route
-  // through WorldMutator instead of GameScene directly.
-  const lifecycle: LifecycleAspect = {
-    update: () => {
-      // C4: if SabotageController grows per-frame state that isn't
-      // already driven by event bus subscriptions, tick it here.
-    },
-    shutdown: () => {
-      // C4: window.removeEventListener for SABOTAGE_TRAIN_EVENT,
-      // SABOTAGE_UPGRADE_EVENT, SABOTAGE_PANEL_CLOSE_EVENT; dispose
-      // controller + render.
+export function mechSabotageRuntime(rules: MechSabotageRules): RuntimeAspects {
+  // C4: Setup forwards to the host's `installMechSabotage` method
+  // (lives on GameScene). The host atomically constructs
+  // SabotageController + SabotageRender, blocks the workshop 2×2
+  // footprint, reverses the send path, and wires the SABOTAGE_*_EVENT
+  // DOM listeners. Single rich method instead of split installs —
+  // SabotageController's deps don't split cleanly across calls.
+  const setup: SetupAspect = {
+    install(world) {
+      world.installMechSabotage(rules);
     },
   };
-  return { lifecycle };
+  // The host owns the controller's per-frame ticking + shutdown
+  // teardown (still done in GameScene.update + shutdown today). The
+  // Lifecycle hooks are present-but-empty so future per-aspect state
+  // (e.g. workshop panel auto-close on shutdown) has a place to land
+  // without changing the aspect bundle's shape.
+  const lifecycle: LifecycleAspect = {
+    update: () => { /* host ticks SabotageController in GameScene.update */ },
+    shutdown: () => { /* host removes listeners + nulls refs in GameScene.shutdown */ },
+  };
+  return { setup, lifecycle };
 }

@@ -26,6 +26,17 @@ import type {
 } from './types';
 import type { SuppressionPylonSpec } from '../../data/Maps';
 
+/** Shape of Mech M10 sabotage rules at the host boundary. Duplicated
+ *  from `data/campaigns/mechanical-v2.ts` so the WorldMutator infra
+ *  doesn't import campaign-data — keeps the dependency direction
+ *  campaign → infrastructure, never the reverse. */
+export interface MechSabotageRulesShape {
+  cpuTowerHpDefault?: number;
+  cpuTowerOwnerIndex?: number;
+  workshopTrainCost?: number;
+  workshopTrainCooldownMs?: number;
+}
+
 /**
  * Narrow protocol that the engine satisfies — currently `GameScene`.
  * Each method is optional in Phase B; aspect helpers no-op when their
@@ -38,6 +49,12 @@ export interface WorldHost {
   installSummoningCircles?(circles: SummoningCircleSpec[]): void;
   installDestructibleTowers?(towers: DestructibleTowerSpec[]): void;
   installWorkshop?(spec: WorkshopSpec): void;
+  /** Mech M10 sabotage finale — single atomic install of
+   *  SabotageController + render + DOM event listeners + send-path
+   *  reverse. The host owns the map (`mapDef.workshop`, `.destructibleTowers`,
+   *  `.destructibleStructures`, `.entries`, `.exits`), so passing only
+   *  rules keeps the aspect API narrow. */
+  installMechSabotage?(rules: MechSabotageRulesShape): void;
   applyRuinCells?(cells: Array<{ col: number; row: number; mode?: string }>): void;
   registerActionIntercept?(
     cell: { col: number; row: number },
@@ -54,6 +71,7 @@ export interface WorldHost {
   removeSummoningCircles?(): void;
   removeDestructibleTowers?(): void;
   removeWorkshop?(): void;
+  removeMechSabotage?(): void;
   clearRuinCells?(): void;
   clearSendPathOverride?(): void;
 }
@@ -96,6 +114,11 @@ export class WorldMutatorImpl implements WorldMutator {
   installWorkshop(spec: WorkshopSpec): void {
     this.host.installWorkshop?.(spec);
     this.mutations.push(() => this.host.removeWorkshop?.());
+  }
+
+  installMechSabotage(rules: MechSabotageRulesShape): void {
+    this.host.installMechSabotage?.(rules);
+    this.mutations.push(() => this.host.removeMechSabotage?.());
   }
 
   applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void {
