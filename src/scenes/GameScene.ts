@@ -4503,7 +4503,6 @@ export class GameScene extends Phaser.Scene {
         },
       };
       const stars = MissionRunner.finalize(missionResult);
-      const active = MissionRunner.getActive(); // null after finalize, so capture before
       // Re-resolve via the campaign registry since finalize cleared
       // the active session. We need the campaign + missionDef to render
       // the post-mission UI and offer the Next Mission jump.
@@ -4535,7 +4534,6 @@ export class GameScene extends Phaser.Scene {
         // to TS, so we cast through the bag at this single readsite.
         naveResolvedMode: ((missionResult.custom as { naveResolvedMode?: 'ceremony' | 'mercy' | 'siege' | null }).naveResolvedMode) ?? null,
       };
-      void active; // suppress unused
     }
 
     // Live-capture session close — appends this match's turns to
