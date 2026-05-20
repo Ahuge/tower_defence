@@ -143,6 +143,14 @@ interface TestHook {
    *  `mech_ace_pilot` after the v2 routing). Returns null when no
    *  GameScene is active. */
   getScheduledWaves: () => null | { wave: number; isBoss: boolean; groups: { creepType: string; count: number }[] }[];
+  /** Snapshot the active Circle (co-op) state — used by e2e tests
+   *  that need to confirm a campaign coop_with_bot mission instantiated
+   *  a bot ally with the right faction. Returns null when the scene
+   *  isn't running Circle mode. */
+  getCircleStatus: () => null | {
+    botSlots: number[];
+    playerFactions: { [slot: number]: string };
+  };
 }
 
 let bootComplete = false;
@@ -377,6 +385,18 @@ export function installTestHook(): void {
         isBoss: w.isBoss,
         groups: w.groups.map(g => ({ creepType: g.creepType, count: g.count })),
       }));
+    },
+    getCircleStatus: () => {
+      const game = UIBridge.getGame();
+      if (!game) return null;
+      const scene = game.scene.getScene('GameScene') as unknown as {
+        circle?: { botSlots: number[]; playerFactions: Map<number, string> } | null;
+      } | null;
+      const c = scene?.circle;
+      if (!c) return null;
+      const factions: { [slot: number]: string } = {};
+      c.playerFactions.forEach((fac, slot) => { factions[slot] = fac; });
+      return { botSlots: [...c.botSlots], playerFactions: factions };
     },
   };
   // One-line breadcrumb — handy when a test fails and you open the
