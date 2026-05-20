@@ -127,8 +127,10 @@ export interface CircleCoopConfig extends CoreMissionConfigBase {
 /** Attacker — the player commands the creep waves; the CPU defends. */
 export interface AttackerConfig extends CoreMissionConfigBase {
   mode: 'attacker';
-  /** Per-wave essence budget the attacker spends in the composer. */
-  attackerEssencePerWave: number;
+  /** Per-wave essence budget the attacker spends in the composer.
+   *  When undefined, GameScene falls back to the non-composer attacker
+   *  path (legacy parity — Mech M8 ships without a budget). */
+  attackerEssencePerWave?: number;
   /** Palette faction for the attacker's send menu. */
   attackerPaletteFaction?: FactionId | 'coalition';
   /** Number of leaks needed for the player (attacker) to win. */
