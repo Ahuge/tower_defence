@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { ParametricStory } from './ParametricStory';
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+import type { MissionResult } from './types';
 
 interface MechState { ore: number; ingots: number }
 

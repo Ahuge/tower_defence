@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { MAPS, type MapId } from '../Maps';
-import { GREENWARD_CAMPAIGN } from '../campaigns/greenward';
+import { GREENWARD_EXTENSION as GREENWARD_CAMPAIGN } from '../campaigns/greenward-v2';
 import { Grid, CellType } from '../../systems/Grid';
 import { findPath } from '../../systems/Pathfinding';
 
@@ -23,7 +23,10 @@ function loadGreenwardMap(id: MapId): Grid {
 
 function ruinsFor(missionIdx: number): { col: number; row: number; id: string }[] {
   const m = GREENWARD_CAMPAIGN.missions[missionIdx];
-  return (m?.overrides.greenwardRules?.ruins ?? []).map(r => ({ col: r.col, row: r.row, id: r.id }));
+  // Greenward v2 cfg payload always carries `ruins[]` on both
+  // 'consecration' and 'final' kinds.
+  const cfg = m?.campaign as { ruins?: { col: number; row: number; id: string }[] } | undefined;
+  return (cfg?.ruins ?? []).map(r => ({ col: r.col, row: r.row, id: r.id }));
 }
 
 const ACT_I_MAPS: { mapId: MapId; missionIdx: number; name: string }[] = [

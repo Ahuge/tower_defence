@@ -17,7 +17,7 @@ import {
   M9_BURNING_PACTBOOK,
   M10_COUNTERFACTUAL_MIRROR,
 } from './SnakeEyesMissionIds';
-import { SNAKE_EYES_CAMPAIGN } from '../../data/campaigns/snake-eyes';
+import { SNAKE_EYES_EXTENSION as SNAKE_EYES_CAMPAIGN } from '../../data/campaigns/snake-eyes-v2';
 
 describe('SnakeEyesMissionIds — alignment with SNAKE_EYES_CAMPAIGN', () => {
   // Each pair: (constant, expected mission id string in snake-eyes.ts).

@@ -30,7 +30,7 @@
  * lands in Phase 4 commit 19.
  */
 
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+import type { MissionResult } from '../campaign/types';
 import {
   getSnakeEyesState,
   setSnakeEyesState,

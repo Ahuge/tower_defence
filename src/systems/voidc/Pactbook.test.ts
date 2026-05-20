@@ -19,7 +19,7 @@ import {
   INITIAL_DEBT,
   DECLINE_PENALTY,
 } from './DebtTracker';
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+import type { MissionResult } from '../campaign/types';
 
 beforeEach(() => {
   resetSnakeEyesState();

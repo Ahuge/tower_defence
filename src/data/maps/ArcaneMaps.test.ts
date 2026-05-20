@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { MAPS, type MapId } from '../Maps';
-import { ARCANE_CAMPAIGN } from '../campaigns/arcane';
+import { ARCANE_EXTENSION as ARCANE_CAMPAIGN } from '../campaigns/arcane-v2';
 
 const ARCANE_MAP_IDS: MapId[] = ['arcane_outskirts', 'arcane_pass', 'arcane_throne'];
 
@@ -81,19 +81,19 @@ describe('Plan 11 / Plan 13 v1 maps', () => {
 });
 
 describe('Arcane campaign references the bespoke maps', () => {
-  const used = new Set(ARCANE_CAMPAIGN.missions.map(m => m.overrides.mapId));
+  const used = new Set(ARCANE_CAMPAIGN.missions.map(m => m.core.mapId));
 
   it('mission 1 (Crystal Outskirts) uses arcane_outskirts', () => {
-    expect(ARCANE_CAMPAIGN.missions[0].overrides.mapId).toBe('arcane_outskirts');
+    expect(ARCANE_CAMPAIGN.missions[0].core.mapId).toBe('arcane_outskirts');
   });
 
   it('mission 6 (Forced March / speedrun) uses arcane_pass', () => {
-    expect(ARCANE_CAMPAIGN.missions[5].overrides.mapId).toBe('arcane_pass');
+    expect(ARCANE_CAMPAIGN.missions[5].core.mapId).toBe('arcane_pass');
   });
 
   it('mission 10 (The Reckoning / final_arcane) uses arcane_throne_finale', () => {
-    expect(ARCANE_CAMPAIGN.missions[9].overrides.mapId).toBe('arcane_throne_finale');
-    expect(ARCANE_CAMPAIGN.missions[9].archetype).toBe('final_arcane');
+    expect(ARCANE_CAMPAIGN.missions[9].core.mapId).toBe('arcane_throne_finale');
+    expect(ARCANE_CAMPAIGN.missions[9].archetypeId).toBe('final_arcane');
   });
 
   it('every map referenced by the campaign exists in MAPS', () => {
