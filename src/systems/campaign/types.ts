@@ -355,6 +355,11 @@ export interface WorldMutator {
   installDestructibleTowers(towers: DestructibleTowerSpec[]): void;
   /** Install a Workshop (Mech M10 — trains Raider squad). */
   installWorkshop(spec: WorkshopSpec): void;
+  /** Mech M10 sabotage — atomic install of SabotageController + render
+   *  + DOM listeners + send-path reverse. The host reads workshop /
+   *  destructibles / entries / exits from its mapDef; the aspect just
+   *  declares "this mission is sabotage" with the rules. */
+  installMechSabotage(rules: import('./WorldMutator').MechSabotageRulesShape): void;
   /** Mark grid cells as ruins (Greenward consecration tracker). */
   applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void;
   /** Register a click-intercept on a specific cell. The handler runs

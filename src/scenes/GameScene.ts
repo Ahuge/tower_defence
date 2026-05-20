@@ -98,7 +98,8 @@ import { setActiveSuppressionManager } from '../systems/suppression/ActiveSuppre
 // campaign uses the new path yet; legacy `_missionXxxRules` fields
 // continue to drive shipped behaviour. Phases C/D port each campaign.
 import type { RuntimeAspects } from '../systems/campaign/types';
-import { WorldMutatorImpl, type WorldHost } from '../systems/campaign/WorldMutator';
+import { WorldMutatorImpl, type WorldHost, type MechSabotageRulesShape } from '../systems/campaign/WorldMutator';
+import type { SuppressionPylonSpec } from '../data/Maps';
 import { attachGameplayAspect } from '../systems/campaign/EventBusBridge';
 import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
@@ -1297,117 +1298,28 @@ export class GameScene extends Phaser.Scene {
     // GameScene.update. Skipped when the map has no pylons.
     // Prefer per-mission overrides (campaign def) over map-level pylons
     // so shared maps don't need bespoke copies for each Mech mission.
+    // C4 refactor: the install body moved into the
+    // `installSuppressionPylons` host method so the Mech aspect Setup
+    // can call it via the WorldMutator. The legacy path here still
+    // resolves the pylons list the same way and dispatches to the
+    // same method — behaviour identical, just one indirection.
     const pylons = (this._missionSuppressionPylons && this._missionSuppressionPylons.length > 0)
       ? this._missionSuppressionPylons
       : mapDef.suppressionPylons;
     if (pylons && pylons.length > 0) {
-      // SuppressionManager validates pylon cells against the grid:
-      // auto-converts Empty → NoBuild so the click handler's pylon-
-      // channel intercept stays load-bearing, and loudly warns if a
-      // pylon ended up on Entry/Exit/Blocked/Tower (downstream
-      // assumptions would fragment in that case).
-      this._suppressionMgr = new SuppressionManager(pylons, this.grid);
-      this._suppressionRender = new SuppressionRender(this);
-      // Expose the manager via the module-level singleton so the
-      // `mech_pylon_vent_armor` creep-damage trait can query muted-
-      // pylon state without scene context. Cleared on scene
-      // shutdown (see shutdown hook below).
-      setActiveSuppressionManager(this._suppressionMgr);
+      this.installSuppressionPylons(pylons);
     }
     // Mech M10 finale — instantiate the SabotageController. Reuses
     // the destructibleTowers map field (with isGenerator/isThrone tags
     // stamped on the relevant entries) and a `workshop` cell from a
     // dedicated map field. Skipped when the mission has no
     // sabotageRules.
+    // C4 refactor: install body moved into the `installMechSabotage`
+    // host method so the Mech aspect Setup can call it via the
+    // WorldMutator. The legacy path here still gates on the same
+    // preconditions and dispatches to the same method.
     if (this._missionSabotageRules && mapDef.destructibleTowers && mapDef.workshop) {
-      // M10 finale, mirroring the Arcane M10 path: sends walk RIGHT →
-      // LEFT (reverse path) so player-queued sends pressure the CPU
-      // territory rather than escape the player's own base.
-      if (mapDef.entries[0] && mapDef.exits[0]) {
-        const reversePath = findPath(this.grid, mapDef.exits[0], mapDef.entries[0]);
-        if (reversePath) this.sendMgr.setSendPathOverride(reversePath);
-      }
-      const SabotageControllerCls = SabotageController;
-      // Workshop is a 2×2 footprint anchored at (col, row) top-left.
-      // Centre pixel = midpoint of the four-cell rectangle. Each
-      // footprint cell is blocked in the grid (so creeps + raiders
-      // path around the building) and removed from the player's
-      // buildable set (so a tower can't drop onto the workshop).
-      const wsCol = mapDef.workshop.col;
-      const wsRow = mapDef.workshop.row;
-      const wsCenter = {
-        x: (gridX(wsCol) + gridX(wsCol + 1)) / 2,
-        y: (gridY(wsRow) + gridY(wsRow + 1)) / 2,
-      };
-      for (let dc = 0; dc < 2; dc++) {
-        for (let dr = 0; dr < 2; dr++) {
-          const c = wsCol + dc, r = wsRow + dr;
-          if (this.grid.cells[r] && this.grid.cells[r][c] === CellType.Empty) {
-            this.grid.cells[r][c] = CellType.Blocked;
-          }
-          this._playerBuildableSet.delete(`${c},${r}`);
-        }
-      }
-      this._sabotageController = new SabotageControllerCls({
-        rules: this._missionSabotageRules,
-        destructibleTowers: mapDef.destructibleTowers,
-        destructibleStructures: mapDef.destructibleStructures,
-        scene: this,
-        grid: this.grid,
-        workshop: {
-          col: wsCol,
-          row: wsRow,
-          pixelX: wsCenter.x,
-          pixelY: wsCenter.y,
-        },
-        economy: this.economy,
-        towerMgr: this.towerMgr,
-        onThroneVulnerable: () => {
-          this.eventLog.gameMessage('The throne shield falls. Voss is mortal.');
-        },
-        onGeneratorKilled: (idx) => {
-          this.eventBus.emit('mech_generator_killed', idx);
-        },
-        onThroneKilled: () => {
-          this.eventBus.emit('mech_throne_killed');
-        },
-        onRaiderSpawned: (raider) => {
-          this.eventBus.emit('mech_raider_spawned', raider.id);
-        },
-        onWin: () => {
-          this.eventLog.gameMessage('The Cascade-Architect is silenced. The foundry burns.');
-          this.eventBus.emit('gameWon');
-          this.goToGameOver(true);
-        },
-      });
-      this._sabotageRender = new SabotageRender(this, wsCenter, () => this._selectedRaider);
-
-      // SabotageHudDOM dispatches these on button clicks. The
-      // controller methods enforce gold + cooldown internally so the
-      // listener can be a thin wire.
-      this._onSabotageTrain = () => {
-        if (!this._sabotageController) return;
-        // Train clicks enqueue rather than instant-train — the
-        // workshop's per-frame queue tick handles the actual spawn
-        // when the cooldown elapses, so the player can stack up to
-        // MAX_QUEUE pre-paid raiders.
-        const result = this._sabotageController.enqueueRaider();
-        if (result === 'queue_full') this.eventLog.gameMessage('Workshop queue full.');
-        else if (result === 'broke') this.eventLog.gameMessage('Not enough gold for a raider.');
-        else if (result === 'queued') this.eventBus.emit('mech_workshop_used');
-      };
-      this._onSabotageUpgrade = (ev: Event) => {
-        if (!this._sabotageController) return;
-        const detail = (ev as CustomEvent).detail as Partial<SabotageUpgradeEventDetail> | undefined;
-        if (!detail?.kind) return;
-        this._sabotageController.buyUpgrade(detail.kind);
-      };
-      this._onSabotagePanelClose = () => {
-        this._workshopPanelOpen = false;
-      };
-      window.addEventListener(SABOTAGE_TRAIN_EVENT, this._onSabotageTrain);
-      window.addEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
-      window.addEventListener(SABOTAGE_PANEL_CLOSE_EVENT, this._onSabotagePanelClose);
+      this.installMechSabotage(this._missionSabotageRules);
     }
 
     // Campaign #3 — Greenward per-mission Consecration setup. The
@@ -2645,6 +2557,11 @@ export class GameScene extends Phaser.Scene {
 
   handleClick(col: number, row: number): void {
     this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
+    // Phase C4: campaign Intercept aspect gets first crack at the
+    // click. Returns true → consumed (e.g. Mech pylon channel start).
+    // When `_campaignRuntime` is null (every non-aspect-routed mission
+    // today) this no-ops and the legacy branches below run unchanged.
+    if (this._campaignRuntime?.intercept?.onCellClick?.(col, row)) return;
     // Mech campaign: clicking on a Suppression Pylon starts a 2.5s
     // channel. Highest click priority because pylons sit on noBuild
     // cells — letting tower-build / raider-select swallow the click
@@ -3187,6 +3104,124 @@ export class GameScene extends Phaser.Scene {
 
     return false;
   }
+
+  // ─── Mech campaign — WorldHost methods (Phase C4) ──────────────
+  // These are the install/remove hooks WorldMutator forwards to from
+  // the Mech aspect's Setup. The bodies are the legacy `init()` blocks,
+  // lifted intact so the legacy code path can call them via the same
+  // entry point — single source of truth. `_campaignRuntime`-routed
+  // missions call these through WorldMutator; non-routed missions
+  // (every shipped mission today) call them directly from init().
+  // Phase F deletes the direct callsites once every campaign is routed.
+
+  /** Install Suppression Pylons (Mech M2/M5/M6/M8). Creates the
+   *  SuppressionManager + Render, publishes the manager via the
+   *  module-level singleton consumed by the `mech_pylon_vent_armor`
+   *  creep-damage trait, and validates pylon cells against the grid
+   *  (auto-converts Empty → NoBuild so the click intercept stays
+   *  load-bearing). */
+  installSuppressionPylons(pylons: SuppressionPylonSpec[]): void {
+    if (pylons.length === 0) return;
+    this._suppressionMgr = new SuppressionManager(pylons, this.grid);
+    this._suppressionRender = new SuppressionRender(this);
+    setActiveSuppressionManager(this._suppressionMgr);
+  }
+
+  /** No-op: shutdown already clears suppression state in shutdown().
+   *  Hook present so WorldMutator's undo bookkeeping can call it
+   *  without an undefined-method check. Phase E unifies the cleanup. */
+  removeSuppressionPylons(): void { /* see shutdown() */ }
+
+  /** Install the Mech M10 sabotage runtime — SabotageController +
+   *  SabotageRender + Workshop 2×2 grid block + send-path reverse +
+   *  DOM event listeners. Reads workshop / destructibles / entries /
+   *  exits from `this.mapDef`. */
+  installMechSabotage(rules: MechSabotageRulesShape): void {
+    const mapDef = this.mapDef;
+    if (!mapDef.destructibleTowers || !mapDef.workshop) return;
+    // M10 finale, mirroring the Arcane M10 path: sends walk RIGHT →
+    // LEFT (reverse path) so player-queued sends pressure the CPU
+    // territory rather than escape the player's own base.
+    if (mapDef.entries[0] && mapDef.exits[0]) {
+      const reversePath = findPath(this.grid, mapDef.exits[0], mapDef.entries[0]);
+      if (reversePath) this.sendMgr.setSendPathOverride(reversePath);
+    }
+    // Workshop is a 2×2 footprint anchored at (col, row) top-left.
+    // Centre pixel = midpoint of the four-cell rectangle. Each
+    // footprint cell is blocked in the grid (so creeps + raiders
+    // path around the building) and removed from the player's
+    // buildable set (so a tower can't drop onto the workshop).
+    const wsCol = mapDef.workshop.col;
+    const wsRow = mapDef.workshop.row;
+    const wsCenter = {
+      x: (gridX(wsCol) + gridX(wsCol + 1)) / 2,
+      y: (gridY(wsRow) + gridY(wsRow + 1)) / 2,
+    };
+    for (let dc = 0; dc < 2; dc++) {
+      for (let dr = 0; dr < 2; dr++) {
+        const c = wsCol + dc, r = wsRow + dr;
+        if (this.grid.cells[r] && this.grid.cells[r][c] === CellType.Empty) {
+          this.grid.cells[r][c] = CellType.Blocked;
+        }
+        this._playerBuildableSet.delete(`${c},${r}`);
+      }
+    }
+    this._sabotageController = new SabotageController({
+      rules,
+      destructibleTowers: mapDef.destructibleTowers,
+      destructibleStructures: mapDef.destructibleStructures,
+      scene: this,
+      grid: this.grid,
+      workshop: { col: wsCol, row: wsRow, pixelX: wsCenter.x, pixelY: wsCenter.y },
+      economy: this.economy,
+      towerMgr: this.towerMgr,
+      onThroneVulnerable: () => {
+        this.eventLog.gameMessage('The throne shield falls. Voss is mortal.');
+      },
+      onGeneratorKilled: (idx) => {
+        this.eventBus.emit('mech_generator_killed', idx);
+      },
+      onThroneKilled: () => {
+        this.eventBus.emit('mech_throne_killed');
+      },
+      onRaiderSpawned: (raider) => {
+        this.eventBus.emit('mech_raider_spawned', raider.id);
+      },
+      onWin: () => {
+        this.eventLog.gameMessage('The Cascade-Architect is silenced. The foundry burns.');
+        this.eventBus.emit('gameWon');
+        this.goToGameOver(true);
+      },
+    });
+    this._sabotageRender = new SabotageRender(this, wsCenter, () => this._selectedRaider);
+
+    // SabotageHudDOM dispatches these on button clicks. The
+    // controller methods enforce gold + cooldown internally so the
+    // listener can be a thin wire.
+    this._onSabotageTrain = () => {
+      if (!this._sabotageController) return;
+      const result = this._sabotageController.enqueueRaider();
+      if (result === 'queue_full') this.eventLog.gameMessage('Workshop queue full.');
+      else if (result === 'broke') this.eventLog.gameMessage('Not enough gold for a raider.');
+      else if (result === 'queued') this.eventBus.emit('mech_workshop_used');
+    };
+    this._onSabotageUpgrade = (ev: Event) => {
+      if (!this._sabotageController) return;
+      const detail = (ev as CustomEvent).detail as Partial<SabotageUpgradeEventDetail> | undefined;
+      if (!detail?.kind) return;
+      this._sabotageController.buyUpgrade(detail.kind);
+    };
+    this._onSabotagePanelClose = () => {
+      this._workshopPanelOpen = false;
+    };
+    window.addEventListener(SABOTAGE_TRAIN_EVENT, this._onSabotageTrain);
+    window.addEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
+    window.addEventListener(SABOTAGE_PANEL_CLOSE_EVENT, this._onSabotagePanelClose);
+  }
+
+  /** No-op: shutdown() already removes the SABOTAGE_*_EVENT listeners
+   *  and disposes the controller. Phase E unifies the cleanup. */
+  removeMechSabotage(): void { /* see shutdown() */ }
 
   /** Push the SabotageHud state to GameUIStore so the DOM panel can
    *  render. Called every frame; the store internally short-circuits
