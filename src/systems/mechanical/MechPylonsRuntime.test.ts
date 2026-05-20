@@ -170,8 +170,6 @@ describe('MECHANICAL_EXTENSION.buildRuntime — Phase C2 dispatch', () => {
     expect(aspects).toEqual({});
   });
 
-  it('M10 the_overthrow: sabotage mission returns empty bundle in C2 (sabotage aspects land in C3)', () => {
-    const aspects = MECHANICAL_EXTENSION.buildRuntime(ctx, MECHANICAL_EXTENSION.missions[9]);
-    expect(aspects).toEqual({});
-  });
+  // Sabotage mission dispatch is exercised in `MechSabotageRuntime.test.ts`
+  // — keeps the per-runtime test responsibilities clean.
 });
