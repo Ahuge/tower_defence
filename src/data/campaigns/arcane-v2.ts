@@ -18,6 +18,7 @@
  */
 
 import type { CampaignExtension, MissionEntry, PrePlacedTowerSpec } from '../../systems/campaign/types';
+import type { HeroId } from '../HeroTypes';
 import { ARCANE_TEXTS } from './texts/arcane.texts';
 import { arcanePrePlacedRuntime } from '../../systems/arcane/ArcanePrePlacedRuntime';
 import { arcaneFinaleRuntime } from '../../systems/arcane/ArcaneFinaleRuntime';
@@ -33,7 +34,7 @@ export type ArcaneState = Record<string, never>;
 const INITIAL_STATE: ArcaneState = {};
 
 export interface ArcaneFinaleRules {
-  heroId: 'arcanist' | 'engineer' | 'forge_mage' | 'shadow_blade';
+  heroId: HeroId;
   heroStartingLevel?: number;
   heroRespawnSeconds?: number;
   chargeRatePerDrain: number;

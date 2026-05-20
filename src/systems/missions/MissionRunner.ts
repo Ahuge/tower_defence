@@ -214,6 +214,13 @@ class MissionRunnerClass {
     // (see startV2). Resolved via the campaign registry: legacy
     // missions don't register an extension so this branch is skipped
     // for them.
+    //
+    // NOTE: this runs AFTER `recordMissionResult(stars)` above, so a
+    // MissionStateAspect impl can't influence stars (its updates are
+    // strictly post-stars). If a future campaign wants
+    // state-derived star bonuses ("you finished with >50 reserves
+    // = bonus star"), the ordering needs to flip — applyMissionResult
+    // first, then stars computed from the new state. Phase E item.
     const ext = getCampaignExtension(session.campaign.factionId);
     if (ext?.missionState) {
       try {

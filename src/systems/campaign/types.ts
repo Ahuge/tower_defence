@@ -353,6 +353,23 @@ export interface RuinSpecLike {
   mode: 'ceremony' | 'siege' | 'mercy';
 }
 
+/**
+ * WorldMutator — install* helpers that aspect Setup methods call.
+ *
+ * TODO(Phase E): the campaign-specific install methods
+ * (`installMechSabotage`, `installArcaneFinale`, `installGreenwardRules`)
+ * have re-introduced the god-object pattern the refactor was supposed
+ * to retire. They're here because the relevant controllers' constructors
+ * don't decompose into the narrow primitives (`installSummoningCircles`,
+ * `installDestructibleTowers`, etc.) without changing the controller
+ * APIs themselves. Phase E should either:
+ *   - Fold these into a generic `installControllerByKind(kind, payload)`
+ *     dispatcher, OR
+ *   - Refactor the underlying controllers to compose from narrow
+ *     install primitives + small adapter classes.
+ * Until then, accept the tradeoff: each new finale campaign adds one
+ * method here. Campaign #5+ should NOT add a fourth without revisiting.
+ */
 export interface WorldMutator {
   /** Install one or more pre-placed towers on the grid. */
   installPrePlacedTowers(towers: PrePlacedTowerSpec[]): void;
