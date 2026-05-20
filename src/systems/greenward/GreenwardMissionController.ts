@@ -3,7 +3,8 @@
  * ConsecrationManager + MercyWatcherTracker + per-mission ModeLean
  * contribution + MissionResult.custom writeback.
  *
- * Constructed from `MissionOverrides.greenwardRules` at scene init.
+ * Constructed by `GameScene.installGreenwardRules` from the Greenward
+ * aspect's per-mission ruin spec (`mission.campaign.ruins`).
  * GameScene's mission-init code:
  *
  *   1. Reads `mission.overrides.greenwardRules` if present.

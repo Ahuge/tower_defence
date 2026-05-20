@@ -280,4 +280,90 @@ describe('MissionRunner — MissionStateAspect wiring (D0)', () => {
     expect(recordSpy).toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalled();
   });
+
+  it('applyMissionResult — returned state is persisted via write()', () => {
+    const { ext, counters, state } = makeStateExt();
+    registerCampaign(ext);
+    const writesBefore = counters.writes;
+    MissionRunner.startV2(ext, 0);
+    MissionRunner.finalize(FAKE_RESULT);
+    // tickBetweenMissions adds 10 to counter, applyMissionResult adds 100.
+    // Both write paths must have fired.
+    expect(counters.writes).toBeGreaterThan(writesBefore);
+    expect(state.counter).toBe(110);
+  });
+});
+
+// ─── Phase F review fixes ─────────────────────────────────────────
+// Locks the two contracts the Phase F review surfaced as missing
+// coverage: buildRuntime-throws refusal + unlaunchable refusal +
+// isFinaleMission propagation.
+
+describe('MissionRunner — launchability refusal contracts', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(UIBridge, 'startScene').mockImplementation(() => {});
+    vi.spyOn(PlayerProfile, 'recordMissionResult').mockImplementation(() => {});
+    vi.spyOn(PlayerProfile, 'getMissionStars').mockReturnValue(0);
+    vi.spyOn(Analytics, 'track').mockImplementation(() => {});
+  });
+
+  it('startV2 returns false when buildRuntime throws — runner stays inactive', () => {
+    const throwingExt: CampaignExtension<Record<string, never>, { kind: 'plain' }> = {
+      ...FAKE_EXT,
+      buildRuntime: () => { throw new Error('forced refusal'); },
+    };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ok = MissionRunner.startV2(throwingExt, 0);
+    expect(ok).toBe(false);
+    expect(MissionRunner.isActive()).toBe(false);
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('startV2 refuses unlaunchable missions BEFORE calling buildRuntime', () => {
+    let buildCalled = false;
+    const unlaunchableExt: CampaignExtension<Record<string, never>, { kind: 'plain' }> = {
+      ...FAKE_EXT,
+      missions: [{ ...FAKE_EXT.missions[0], unlaunchable: true }],
+      buildRuntime: () => { buildCalled = true; return {}; },
+    };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ok = MissionRunner.startV2(unlaunchableExt, 0);
+    expect(ok).toBe(false);
+    expect(buildCalled, 'buildRuntime must not run on unlaunchable missions').toBe(false);
+    expect(MissionRunner.isActive()).toBe(false);
+    expect(warnSpy).toHaveBeenCalled();
+  });
+});
+
+describe('MissionRunner — isFinaleMission flag propagation', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(PlayerProfile, 'recordMissionResult').mockImplementation(() => {});
+    vi.spyOn(Analytics, 'track').mockImplementation(() => {});
+  });
+
+  it('passes isFinaleMission: true for the last mission in the campaign', () => {
+    const startSpy = vi.spyOn(UIBridge, 'startScene').mockImplementation(() => {});
+    // FAKE_EXT only has one mission, so idx 0 IS the last mission.
+    MissionRunner.startV2(FAKE_EXT, 0);
+    const sceneData = startSpy.mock.calls[0]?.[1] as { isFinaleMission?: boolean };
+    expect(sceneData.isFinaleMission).toBe(true);
+    MissionRunner.abort();
+  });
+
+  it('passes isFinaleMission: false for non-last missions', () => {
+    const startSpy = vi.spyOn(UIBridge, 'startScene').mockImplementation(() => {});
+    const twoMissionExt: CampaignExtension<Record<string, never>, { kind: 'plain' }> = {
+      ...FAKE_EXT,
+      missions: [
+        FAKE_EXT.missions[0],
+        { ...FAKE_EXT.missions[0], id: 'm2', idx: 1, name: 'Mission 2' },
+      ],
+    };
+    MissionRunner.startV2(twoMissionExt, 0);
+    const sceneData = startSpy.mock.calls[0]?.[1] as { isFinaleMission?: boolean };
+    expect(sceneData.isFinaleMission).toBe(false);
+    MissionRunner.abort();
+  });
 });

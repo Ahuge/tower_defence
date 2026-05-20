@@ -11,11 +11,11 @@
  * itself doesn't call `applyMissionRegen` — the regen happened
  * earlier in the launch pipeline.
  *
- * Lifecycle is present-but-empty — the host still owns per-frame
- * tick + shutdown teardown of both controllers today. Phase E
- * moves the tear-down here once the legacy GameScene paths drop.
+ * No Lifecycle aspect: host still owns per-frame tick + shutdown
+ * teardown of both controllers via `GameScene.update` +
+ * `GameScene.removeGreenwardRules`.
  */
-import type { RuntimeAspects, SetupAspect, LifecycleAspect } from '../campaign/types';
+import type { RuntimeAspects, SetupAspect } from '../campaign/types';
 import type { RuinSpec } from './ConsecrationManager';
 
 export interface GreenwardRuntimeConfig {
@@ -29,11 +29,5 @@ export function greenwardRuntime(cfg: GreenwardRuntimeConfig): RuntimeAspects {
       world.installGreenwardRules(cfg.rules, cfg.isFinale);
     },
   };
-  // TODO(Phase E): move legacy GreenwardController teardown out of
-  // GameScene.shutdown into a real Lifecycle.shutdown body.
-  const lifecycle: LifecycleAspect = {
-    update: () => { /* host ticks GreenwardMissionController + Finale in GameScene.update */ },
-    shutdown: () => { /* host disposes refs in GameScene.shutdown */ },
-  };
-  return { setup, lifecycle };
+  return { setup };
 }
