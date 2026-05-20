@@ -33,7 +33,7 @@
  *               gameplay aspect may not be needed.
  */
 import type { RuntimeAspects, SetupAspect, LifecycleAspect } from '../campaign/types';
-import type { MechSabotageRules } from '../../data/campaigns/mechanical-v2';
+import type { MechSabotageRules } from '../../data/campaigns/mechanical';
 
 export function mechSabotageRuntime(rules: MechSabotageRules): RuntimeAspects {
   // C4: Setup forwards to the host's `installMechSabotage` method

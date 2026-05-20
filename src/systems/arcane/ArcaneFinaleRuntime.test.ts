@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { arcaneFinaleRuntime } from './ArcaneFinaleRuntime';
 import type { WorldMutator } from '../campaign/types';
-import type { ArcaneFinaleRules } from '../../data/campaigns/arcane-v2';
+import type { ArcaneFinaleRules } from '../../data/campaigns/arcane';
 
 function makeFakeMutator(): WorldMutator & { calls: string[]; finaleArg: unknown } {
   const state = { calls: [] as string[], finaleArg: null as unknown };

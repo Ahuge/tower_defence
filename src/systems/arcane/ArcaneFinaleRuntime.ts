@@ -9,7 +9,7 @@
  * deps don't split cleanly across calls.
  */
 import type { RuntimeAspects, SetupAspect, LifecycleAspect } from '../campaign/types';
-import type { ArcaneFinaleRules } from '../../data/campaigns/arcane-v2';
+import type { ArcaneFinaleRules } from '../../data/campaigns/arcane';
 
 export function arcaneFinaleRuntime(rules: ArcaneFinaleRules): RuntimeAspects {
   const setup: SetupAspect = {

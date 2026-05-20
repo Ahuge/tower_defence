@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { MAPS, type MapId } from '../Maps';
-import { ARCANE_EXTENSION as ARCANE_CAMPAIGN } from '../campaigns/arcane-v2';
+import { ARCANE_EXTENSION as ARCANE_CAMPAIGN } from '../campaigns/arcane';
 
 const ARCANE_MAP_IDS: MapId[] = ['arcane_outskirts', 'arcane_pass', 'arcane_throne'];
 
