@@ -32,32 +32,25 @@
  *               talks to the engine via direct callbacks today, so a
  *               gameplay aspect may not be needed.
  */
-import type { RuntimeAspects, SetupAspect, LifecycleAspect } from '../campaign/types';
+import type { RuntimeAspects, SetupAspect } from '../campaign/types';
 import type { MechSabotageRules } from '../../data/campaigns/mechanical';
 
 export function mechSabotageRuntime(rules: MechSabotageRules): RuntimeAspects {
-  // C4: Setup forwards to the host's `installMechSabotage` method
-  // (lives on GameScene). The host atomically constructs
-  // SabotageController + SabotageRender, blocks the workshop 2×2
-  // footprint, reverses the send path, and wires the SABOTAGE_*_EVENT
-  // DOM listeners. Single rich method instead of split installs —
-  // SabotageController's deps don't split cleanly across calls.
+  // Setup forwards to the host's `installMechSabotage` method (lives
+  // on GameScene). The host atomically constructs SabotageController
+  // + SabotageRender, blocks the workshop 2×2 footprint, reverses the
+  // send path, and wires the SABOTAGE_*_EVENT DOM listeners. Single
+  // rich method instead of split installs — SabotageController's deps
+  // don't split cleanly across calls.
+  //
+  // No Lifecycle aspect: host still owns the controller's per-frame
+  // tick + shutdown teardown via `GameScene.update` /
+  // `GameScene.removeMechSabotage`. If a future need lands (workshop
+  // panel auto-close, per-frame raider HUD, …), add a Lifecycle then.
   const setup: SetupAspect = {
     install(world) {
       world.installMechSabotage(rules);
     },
   };
-  // The host owns the controller's per-frame ticking + shutdown
-  // teardown (still done in GameScene.update + shutdown today). The
-  // Lifecycle hooks are present-but-empty so future per-aspect state
-  // (e.g. workshop panel auto-close on shutdown) has a place to land
-  // without changing the aspect bundle's shape.
-  // TODO(Phase E): remove this Lifecycle if it's still empty when the
-  //   legacy `_sabotageController` / `SABOTAGE_*_EVENT` teardown moves
-  //   out of GameScene.shutdown. An empty Lifecycle is dead weight.
-  const lifecycle: LifecycleAspect = {
-    update: () => { /* host ticks SabotageController in GameScene.update */ },
-    shutdown: () => { /* host removes listeners + nulls refs in GameScene.shutdown */ },
-  };
-  return { setup, lifecycle };
+  return { setup };
 }

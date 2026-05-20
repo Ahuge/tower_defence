@@ -1,16 +1,10 @@
 /**
- * Campaign Extension types — the post-refactor schema.
+ * Campaign Extension types — the authoritative schema after the
+ * campaign-aspect refactor.
  *
  * See `docs/campaign-aspects-refactor-prd.md` and
  * `docs/adr/0001-campaigns-as-aspect-modules.md`. Glossary in
  * `CONTEXT.md`.
- *
- * Status: Phase A — these types exist alongside the legacy
- * `MissionDef` / `MissionOverrides` / `CampaignDef` schema in
- * `src/data/campaigns/CampaignDef.ts`. Nothing consumes them yet.
- * Phase B wires `MissionRunner` + `GameScene` to a `RuntimeAspects`
- * bundle; Phases C/D port the four shipped campaigns; Phases E/F
- * delete the legacy schema.
  *
  * Design intent:
  *
@@ -57,7 +51,12 @@ export interface MissionResult {
   towerCount: number;
   /** No leaks, no continues. */
   perfectRun: boolean;
-  /** Custom counters mode-specific archetypes write here. */
+  /** Custom counters mode-specific archetypes write here. Readers
+   *  MUST coerce when reading — the value type is a union and a
+   *  field that one campaign writes as a `number` could be written
+   *  as `null | undefined` by a different campaign (or absent
+   *  entirely). Use `(r.custom.x as number ?? 0)` patterns, never
+   *  `r.custom.x === true` — that fails on string-encoded payloads. */
   custom: { [key: string]: number | boolean | null | string };
 }
 

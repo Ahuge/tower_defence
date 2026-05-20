@@ -24,11 +24,9 @@ import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
 import { getArchetypeLabel } from '../../data/campaigns/ArchetypeLabels';
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
-// Compat aliases — the lobby's `MissionDef` / `CampaignDef` names
-// continue to refer to the new types so the rest of the file reads
-// cleanly. Phase F+ collapses these aliases.
-type MissionDef = MissionEntry<unknown, unknown>;
-type CampaignDef = CampaignExtension<unknown, unknown>;
+
+type Mission = MissionEntry<unknown, unknown>;
+type Campaign = CampaignExtension<unknown, unknown>;
 import { FACTIONS, type FactionId } from '../../data/Factions';
 import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
 import { factionKeyartSrc } from '../utils/factionAssets';
@@ -38,9 +36,9 @@ interface Props {
 }
 
 export function CampaignLobbyScreen({ data }: Props) {
-  const campaign = data.campaign as CampaignDef | undefined;
+  const campaign = data.campaign as Campaign | undefined;
   const autoSelectMissionIdx = data.autoSelectMissionIdx as number | undefined;
-  const [pendingMission, setPendingMission] = useState<MissionDef | null>(null);
+  const [pendingMission, setPendingMission] = useState<Mission | null>(null);
 
   useEffect(() => {
     if (campaign) {
@@ -82,7 +80,7 @@ export function CampaignLobbyScreen({ data }: Props) {
   ).length;
   const isCampaignDone = completedCount === missionCount;
 
-  const launch = (mission: MissionDef) => {
+  const launch = (mission: Mission) => {
     if (!PlayerProfile.isMissionUnlocked(campaign.factionId, mission.idx)) return;
     if ((mission.unlaunchable ?? false)) return;
     setPendingMission(null);

@@ -32,10 +32,12 @@ const RULES: ArcaneFinaleRules = {
 };
 
 describe('arcaneFinaleRuntime', () => {
-  it('returns Setup + Lifecycle aspects', () => {
+  it('returns only a Setup aspect — host owns FinaleController lifecycle', () => {
     const aspects = arcaneFinaleRuntime(RULES);
     expect(aspects.setup).toBeDefined();
-    expect(aspects.lifecycle).toBeDefined();
+    expect(aspects.lifecycle).toBeUndefined();
+    expect(aspects.gameplay).toBeUndefined();
+    expect(aspects.intercept).toBeUndefined();
   });
 
   it('Setup forwards rules through WorldMutator.installArcaneFinale', () => {
@@ -46,9 +48,4 @@ describe('arcaneFinaleRuntime', () => {
     expect(world.finaleArg).toEqual(RULES);
   });
 
-  it('Lifecycle update + shutdown are no-ops (host owns the controller today)', () => {
-    const aspects = arcaneFinaleRuntime(RULES);
-    expect(() => aspects.lifecycle!.update(16)).not.toThrow();
-    expect(() => aspects.lifecycle!.shutdown()).not.toThrow();
-  });
 });

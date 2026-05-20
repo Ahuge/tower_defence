@@ -161,16 +161,12 @@ class MissionRunnerClass {
   }
 
   /**
-   * Phase B (aspect refactor) — alternate launch path for campaigns
-   * that have been ported to `CampaignExtension`. Resolves the
-   * per-mission RuntimeAspects bundle, applies `MissionState`
-   * dynamic overrides if present, and threads the bundle through
-   * `UIBridge.startScene` as `campaignRuntime`.
-   *
-   * Phase B has no callers — every shipped campaign still drives
-   * the legacy `start` path above. Phases C/D rewrite each campaign
-   * to a `CampaignExtension` and switch the lobby to route through
-   * `startV2`. Phase E deletes the legacy `start` body.
+   * Launch a mission via its `CampaignExtension`. Resolves the
+   * per-mission RuntimeAspects bundle, ticks between-mission state
+   * (Greenward reserves regen), applies dynamic overrides if any,
+   * and threads the bundle through `UIBridge.startScene` as
+   * `campaignRuntime`. Refuses missions marked `unlaunchable` (Snake
+   * Eyes M10 today) and gracefully catches `buildRuntime` throws.
    */
   startV2<TState, TCfg>(
     ext: CampaignExtension<TState, TCfg>,
@@ -179,6 +175,16 @@ class MissionRunnerClass {
     const baseMission = ext.missions[missionIdx];
     if (!baseMission) {
       console.warn(`[MissionRunner.v2] no mission at idx ${missionIdx} in campaign ${ext.factionId}`);
+      return false;
+    }
+    // Early refusal of `unlaunchable` missions (Snake Eyes M10 today).
+    // Without this, the only stop is the `buildRuntime` throw caught
+    // further down — which works but means failure-mode behaviour
+    // depends on a side effect of a method one campaign happens to
+    // implement. Local check first; defense-in-depth via try/catch
+    // below.
+    if (baseMission.unlaunchable) {
+      console.warn(`[MissionRunner.v2] mission ${baseMission.id} is marked unlaunchable — refusing launch`);
       return false;
     }
     // Read state (defaults if first run); let MissionState aspect
@@ -300,6 +306,11 @@ class MissionRunnerClass {
       } : {}),
       // The new path — what makes this `startV2` rather than `start`.
       campaignRuntime: runtime,
+      // True when this is the campaign's final mission. GameScene uses
+      // it for behaviours that need to know "this is the M10 finale"
+      // without coupling to the legacy magic-number `waveCount === 999`
+      // signal (e.g. skipping the capture-mode 20-wave cap).
+      isFinaleMission: missionIdx === ext.missions.length - 1,
       loadingMissionTitle: mission.name,
       loadingMissionStory: story,
       loadingRequiresContinue: true,

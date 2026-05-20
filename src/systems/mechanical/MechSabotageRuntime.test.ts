@@ -31,10 +31,10 @@ function makeFakeMutator(): WorldMutator & { calls: string[]; sabotageArg: unkno
 }
 
 describe('mechSabotageRuntime — Setup aspect', () => {
-  it('returns both Setup and Lifecycle aspects', () => {
+  it('returns only a Setup aspect — host owns SabotageController lifecycle', () => {
     const aspects = mechSabotageRuntime({ cpuTowerHpDefault: 600, cpuTowerOwnerIndex: 99 });
     expect(aspects.setup).toBeDefined();
-    expect(aspects.lifecycle).toBeDefined();
+    expect(aspects.lifecycle).toBeUndefined();
     expect(aspects.gameplay).toBeUndefined();
     expect(aspects.intercept).toBeUndefined();
   });
@@ -56,30 +56,12 @@ describe('mechSabotageRuntime — Setup aspect', () => {
   });
 });
 
-describe('mechSabotageRuntime — Lifecycle aspect', () => {
-  it('Lifecycle.update is a no-op (host ticks the controller in GameScene.update)', () => {
-    const aspects = mechSabotageRuntime({});
-    expect(() => aspects.lifecycle!.update(16)).not.toThrow();
-  });
-
-  it('Lifecycle.shutdown is a no-op (host owns teardown in GameScene.shutdown)', () => {
-    const aspects = mechSabotageRuntime({});
-    expect(() => aspects.lifecycle!.shutdown()).not.toThrow();
-  });
-
-  it('shutdown is idempotent — calling twice does not throw', () => {
-    const aspects = mechSabotageRuntime({});
-    aspects.lifecycle!.shutdown();
-    expect(() => aspects.lifecycle!.shutdown()).not.toThrow();
-  });
-});
-
 describe('MECHANICAL_EXTENSION.buildRuntime — sabotage dispatch', () => {
   const ctx = { factionId: 'mechanical' as const, missionIdx: 9, state: {} };
 
-  it('M10 the_overthrow: dispatches to mechSabotageRuntime — setup + lifecycle present', () => {
+  it('M10 the_overthrow: dispatches to mechSabotageRuntime — setup present', () => {
     const aspects = MECHANICAL_EXTENSION.buildRuntime(ctx, MECHANICAL_EXTENSION.missions[9]);
     expect(aspects.setup).toBeDefined();
-    expect(aspects.lifecycle).toBeDefined();
+    expect(aspects.lifecycle).toBeUndefined();
   });
 });

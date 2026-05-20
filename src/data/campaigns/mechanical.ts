@@ -21,7 +21,7 @@
  * legacy, this file's path may be renamed back to `mechanical.ts`.
  */
 
-import type { CampaignExtension, MissionEntry, CoreMissionConfig } from '../../systems/campaign/types';
+import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
 import type { SuppressionPylonSpec } from '../Maps';
 import { MECHANICAL_TEXTS } from './texts/mechanical.texts';
 import {
@@ -391,8 +391,3 @@ export const MECHANICAL_EXTENSION: CampaignExtension<MechState, MechMissionCfg> 
 // Idempotent — re-importing this module (HMR, test setup) overwrites
 // the registry slot with the same value.
 registerCampaign(MECHANICAL_EXTENSION);
-
-// Re-export the CoreMissionConfig type for the parity test — the test
-// reads from both this extension and the legacy CampaignDef and needs
-// to type-narrow the discriminated core.
-export type { CoreMissionConfig };
