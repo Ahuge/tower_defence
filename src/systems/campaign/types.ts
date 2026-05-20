@@ -360,6 +360,10 @@ export interface WorldMutator {
    *  destructibles / entries / exits from its mapDef; the aspect just
    *  declares "this mission is sabotage" with the rules. */
   installMechSabotage(rules: import('./WorldMutator').MechSabotageRulesShape): void;
+  /** Arcane M10 finale — atomic install of FinaleController + summoning
+   *  circles + destructible towers + send-path reverse. Host reads
+   *  summoning circles / destructibles / entries / exits from mapDef. */
+  installArcaneFinale(rules: import('./WorldMutator').ArcaneFinaleRulesShape): void;
   /** Mark grid cells as ruins (Greenward consecration tracker). */
   applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void;
   /** Register a click-intercept on a specific cell. The handler runs

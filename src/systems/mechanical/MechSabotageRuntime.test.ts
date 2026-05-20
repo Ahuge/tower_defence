@@ -20,6 +20,7 @@ function makeFakeMutator(): WorldMutator & { calls: string[]; sabotageArg: unkno
     installDestructibleTowers: () => { state.calls.push('installDestructibleTowers'); },
     installWorkshop: () => { state.calls.push('installWorkshop'); },
     installMechSabotage: (r) => { state.calls.push('installMechSabotage'); state.sabotageArg = r; },
+    installArcaneFinale: () => { state.calls.push('installArcaneFinale'); },
     applyRuinCells: () => { state.calls.push('applyRuinCells'); },
     registerActionIntercept: () => ({ release: () => undefined }),
     setSendPathOverride: () => { state.calls.push('setSendPathOverride'); },
