@@ -389,8 +389,11 @@ export function installTestHook(): void {
     getCircleStatus: () => {
       const game = UIBridge.getGame();
       if (!game) return null;
+      // `circle.botSlots` is a `Set<number>` on the live CircleManager;
+      // the snapshot below converts to an array via spread so the
+      // return shape stays JSON-serialisable across the Playwright bridge.
       const scene = game.scene.getScene('GameScene') as unknown as {
-        circle?: { botSlots: number[]; playerFactions: Map<number, string> } | null;
+        circle?: { botSlots: Set<number>; playerFactions: Map<number, string> } | null;
       } | null;
       const c = scene?.circle;
       if (!c) return null;
