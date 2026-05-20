@@ -52,6 +52,9 @@ export function mechSabotageRuntime(rules: MechSabotageRules): RuntimeAspects {
   // Lifecycle hooks are present-but-empty so future per-aspect state
   // (e.g. workshop panel auto-close on shutdown) has a place to land
   // without changing the aspect bundle's shape.
+  // TODO(Phase E): remove this Lifecycle if it's still empty when the
+  //   legacy `_sabotageController` / `SABOTAGE_*_EVENT` teardown moves
+  //   out of GameScene.shutdown. An empty Lifecycle is dead weight.
   const lifecycle: LifecycleAspect = {
     update: () => { /* host ticks SabotageController in GameScene.update */ },
     shutdown: () => { /* host removes listeners + nulls refs in GameScene.shutdown */ },

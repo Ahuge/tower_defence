@@ -38,8 +38,18 @@ export interface MissionContext {
 }
 
 class MissionRunnerClass {
-  /** The mission currently being played, if any. Null between runs. */
-  private active: { campaign: CampaignDef; mission: MissionDef; startedAt: number } | null = null;
+  /** The mission currently being played, if any. Null between runs.
+   *  `archetypeId` is captured here so `finalize` / `abort` can emit
+   *  it on analytics without re-reading `mission.archetype` — the v2
+   *  `MissionEntry` shape has no `archetype` field, so legacy reads
+   *  would silently ship `undefined`. start() captures the real id,
+   *  startV2() captures the synthesized `v2:${mode}` string. */
+  private active: {
+    campaign: CampaignDef;
+    mission: MissionDef;
+    archetypeId: string;
+    startedAt: number;
+  } | null = null;
 
   /** Start a mission. Returns true if the launch succeeded. */
   start(campaign: CampaignDef, missionIdx: number): boolean {
@@ -88,7 +98,7 @@ class MissionRunnerClass {
     }
     const merged = { ...archetype.defaults, ...campaignDefaults, ...dynamic, ...mission.overrides };
 
-    this.active = { campaign, mission, startedAt: Date.now() };
+    this.active = { campaign, mission, archetypeId: mission.archetype, startedAt: Date.now() };
     Analytics.track('mission_started', {
       campaignFactionId: campaign.factionId,
       missionIdx: mission.idx,
@@ -182,8 +192,19 @@ class MissionRunnerClass {
 
     PlayerProfile.recordMissionResult(session.campaign.factionId, mission.idx, stars);
 
-    // v2: write to campaign state. Runs after stars are recorded so
-    // failure analytics still emit even if the updater throws.
+    // v1: legacy stateUpdater hook on MissionDef. v2 missions use the
+    // `MissionStateAspect` (declared in `types.ts`) which exposes
+    // `applyMissionResult` + `tickBetweenMissions`. Those are NOT yet
+    // wired here — Phase D ports Greenward / Snake Eyes, which are the
+    // first campaigns to need them. Wiring up:
+    //   1. Resolve the extension via `getCampaignExtension(factionId)`.
+    //   2. If `ext.missionState`, call `applyMissionResult(state, result)`
+    //      and `tickBetweenMissions(state)` in order, persisting via
+    //      `ext.missionState.write(next)`.
+    // TODO(Phase D): wire `MissionStateAspect`. Until then, Greenward
+    //   and Snake Eyes MUST stay on the legacy `MissionRunner.start`
+    //   path (no extension registered) — Mech is the only campaign
+    //   safely routable through `startV2` today.
     if (mission.stateUpdater && session.campaign.initialState !== undefined) {
       try {
         const prev = CampaignState.get(session.campaign.factionId, session.campaign.initialState);
@@ -200,7 +221,7 @@ class MissionRunnerClass {
       Analytics.track('mission_completed', {
         campaignFactionId: session.campaign.factionId,
         missionIdx: mission.idx,
-        archetypeId: mission.archetype,
+        archetypeId: session.archetypeId,
         stars,
         elapsedMs: result.durationMs,
       });
@@ -208,7 +229,7 @@ class MissionRunnerClass {
       Analytics.track('mission_failed', {
         campaignFactionId: session.campaign.factionId,
         missionIdx: mission.idx,
-        archetypeId: mission.archetype,
+        archetypeId: session.archetypeId,
         atWave: result.wave,
       });
     }
@@ -280,16 +301,18 @@ class MissionRunnerClass {
     // (factionId, initialState, idx, id, objectives, missions.length);
     // the cast is safe at runtime. Phase E unifies `active` as a
     // discriminated union and drops the cast.
+    const archetypeId = `v2:${mission.core.mode}`;
     this.active = {
       campaign: ext as unknown as CampaignDef,
       mission: mission as unknown as MissionDef,
+      archetypeId,
       startedAt: Date.now(),
     };
 
     Analytics.track('mission_started', {
       campaignFactionId: ext.factionId,
       missionIdx: mission.idx,
-      archetypeId: `v2:${mission.core.mode}`,
+      archetypeId,
     });
 
     // Story resolution — UISurface.parametricStory takes precedence
@@ -374,7 +397,7 @@ class MissionRunnerClass {
     Analytics.track('mission_failed', {
       campaignFactionId: this.active.campaign.factionId,
       missionIdx: this.active.mission.idx,
-      archetypeId: this.active.mission.archetype,
+      archetypeId: this.active.archetypeId,
       atWave: 0,
     });
     this.active = null;
