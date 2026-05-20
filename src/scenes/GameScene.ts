@@ -978,7 +978,17 @@ export class GameScene extends Phaser.Scene {
     // Without this the last wave is just escalating standard creeps and
     // the player never sees a flagship enemy. Mutates the wave script
     // in-place; the rest of the engine reads the boss flag transparently.
-    if (this.missionContext?.archetypeId === 'hero_vs_boss' && this.waves.length > 0) {
+    //
+    // Only applies to missions that DIDN'T ship a custom waveScript —
+    // missions like Mech M9 "The Ace" hand-author every wave as an
+    // explicit `isBoss: true` phase of a duel, and clobbering the
+    // final wave with a generic boss creep would replace the named
+    // antagonist with a stock model. The guard preserves the auto-
+    // promotion's original intent ("rescue the default-generated wave
+    // tail") while honouring per-mission scripts.
+    if (this.missionContext?.archetypeId === 'hero_vs_boss'
+        && this.waves.length > 0
+        && !this._missionWaveScript) {
       const last = this.waves[this.waves.length - 1];
       const baseHp = last.groups[0]?.hpScale ?? 100;
       this.waves[this.waves.length - 1] = {
