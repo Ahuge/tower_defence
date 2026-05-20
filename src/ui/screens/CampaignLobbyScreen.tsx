@@ -22,8 +22,13 @@ import { UIBridge } from '../UIBridge';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
-import { isArchetypeStub, getArchetype } from '../../data/campaigns/MissionArchetypes';
-import type { CampaignDef, MissionDef } from '../../data/campaigns/CampaignDef';
+import { getArchetype } from '../../data/campaigns/MissionArchetypes';
+import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
+// Compat aliases — the lobby's `MissionDef` / `CampaignDef` names
+// continue to refer to the new types so the rest of the file reads
+// cleanly. Phase F+ collapses these aliases.
+type MissionDef = MissionEntry<unknown, unknown>;
+type CampaignDef = CampaignExtension<unknown, unknown>;
 import { FACTIONS, type FactionId } from '../../data/Factions';
 import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
 import { factionKeyartSrc } from '../utils/factionAssets';
@@ -53,7 +58,7 @@ export function CampaignLobbyScreen({ data }: Props) {
     const next = campaign.missions[autoSelectMissionIdx];
     if (!next) return;
     if (!PlayerProfile.isMissionUnlocked(campaign.factionId, next.idx)) return;
-    if (isArchetypeStub(next.archetype)) return;
+    if ((next.unlaunchable ?? false)) return;
     setPendingMission(next);
   }, [campaign?.factionId, autoSelectMissionIdx]);
 
@@ -79,7 +84,7 @@ export function CampaignLobbyScreen({ data }: Props) {
 
   const launch = (mission: MissionDef) => {
     if (!PlayerProfile.isMissionUnlocked(campaign.factionId, mission.idx)) return;
-    if (isArchetypeStub(mission.archetype)) return;
+    if ((mission.unlaunchable ?? false)) return;
     setPendingMission(null);
     MissionRunner.start(campaign, mission.idx);
   };
@@ -220,8 +225,8 @@ export function CampaignLobbyScreen({ data }: Props) {
             // First mission unlocked by default; later ones need ≥1 star
             // on the prior mission (matches PlayerProfile.isMissionUnlocked).
             const unlocked = mission.idx === 0 || starsAt(mission.idx - 1) >= 1;
-            const stub = isArchetypeStub(mission.archetype);
-            const archetype = getArchetype(mission.archetype);
+            const stub = (mission.unlaunchable ?? false);
+            const archetype = getArchetype(mission.archetypeId as Parameters<typeof getArchetype>[0]);
             const disabled = !unlocked || stub;
             return (
               <button key={mission.id}

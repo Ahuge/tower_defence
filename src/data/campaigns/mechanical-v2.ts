@@ -75,6 +75,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'perimeter_breach',
     idx: 0,
+    archetypeId: 'restriction',
     name: T.missions.perimeter_breach.name,
     story: T.missions.perimeter_breach.story,
     core: {
@@ -108,6 +109,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'the_pass',
     idx: 1,
+    archetypeId: 'standard',
     name: T.missions.the_pass.name,
     story: T.missions.the_pass.story,
     core: {
@@ -134,6 +136,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'the_cipher',
     idx: 2,
+    archetypeId: 'heist',
     name: T.missions.the_cipher.name,
     story: T.missions.the_cipher.story,
     core: {
@@ -157,6 +160,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'spire_falls',
     idx: 3,
+    archetypeId: 'base_defense',
     name: T.missions.spire_falls.name,
     story: T.missions.spire_falls.story,
     core: {
@@ -176,6 +180,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'iron_convoy',
     idx: 4,
+    archetypeId: 'boss_rush',
     name: T.missions.iron_convoy.name,
     story: T.missions.iron_convoy.story,
     core: {
@@ -207,6 +212,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'first_light',
     idx: 5,
+    archetypeId: 'speedrun',
     name: T.missions.first_light.name,
     story: T.missions.first_light.story,
     core: {
@@ -233,6 +239,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'rationed_mana',
     idx: 6,
+    archetypeId: 'frugal',
     name: T.missions.rationed_mana.name,
     story: T.missions.rationed_mana.story,
     // Frugal-archetype defaults fold into core here: goldStartMult 0.5
@@ -259,6 +266,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'saboteur_vanguard',
     idx: 7,
+    archetypeId: 'attacker',
     name: T.missions.saboteur_vanguard.name,
     story: T.missions.saboteur_vanguard.story,
     core: {
@@ -292,6 +300,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'the_ace',
     idx: 8,
+    archetypeId: 'hero_vs_boss',
     name: T.missions.the_ace.name,
     story: T.missions.the_ace.story,
     core: {
@@ -321,6 +330,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
   {
     id: 'the_overthrow',
     idx: 9,
+    archetypeId: 'final_sabotage',
     name: T.missions.the_overthrow.name,
     story: T.missions.the_overthrow.story,
     core: {

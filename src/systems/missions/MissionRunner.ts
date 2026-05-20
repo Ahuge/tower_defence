@@ -63,7 +63,7 @@ class MissionRunnerClass {
    *  Returns false if no extension is registered for the faction —
    *  a runtime guard against a future regression where a campaign
    *  module fails to load. */
-  start(campaign: CampaignDef, missionIdx: number): boolean {
+  start(campaign: { factionId: FactionId }, missionIdx: number): boolean {
     const ext = getCampaignExtension(campaign.factionId);
     if (!ext) {
       console.warn(`[MissionRunner] no CampaignExtension registered for faction ${campaign.factionId} — cannot launch mission ${missionIdx}`);

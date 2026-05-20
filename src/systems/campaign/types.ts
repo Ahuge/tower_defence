@@ -189,6 +189,18 @@ export interface MissionEntry<TCfg = unknown, TState = unknown> {
   /** Typed campaign-specific payload. Opaque to the registry; the
    *  campaign module reads it inside its aspects. */
   campaign: TCfg;
+  /** Display archetype id — e.g. `'interrupt'`, `'boss_rush'`, `'speedrun'`,
+   *  `'final_arcane'`. Used by the campaign lobby to render the mission
+   *  card's subtitle + blurb. Lookup table lives in
+   *  `src/data/campaigns/MissionArchetypes.ts`. Distinct from the
+   *  engine-level `core.mode`: many missions are `'standard'` mode
+   *  but show different archetype labels in the UI. */
+  archetypeId: string;
+  /** When true, the lobby renders the mission as unimplemented and
+   *  `MissionRunner.startV2` is expected to refuse the launch (e.g.
+   *  Snake Eyes M10 until the Counterfactual controller lands).
+   *  Defaults to false. */
+  unlaunchable?: boolean;
 }
 
 // ─── Aspects ────────────────────────────────────────────────
