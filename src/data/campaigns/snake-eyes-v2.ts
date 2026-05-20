@@ -45,6 +45,7 @@ export type SnakeEyesMissionCfg =
 const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   {
     id: 'last_hand_talavar', idx: 0,
+    archetypeId: 'interrupt',
     name: T.missions.last_hand_talavar.name,
     story: T.missions.last_hand_talavar.story,
     core: { mode: 'standard', mapId: 'crossroads', difficulty: 'easy', waveCount: 8 },
@@ -56,6 +57,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'road_west', idx: 1,
+    archetypeId: 'interrupt',
     name: T.missions.road_west.name,
     story: T.missions.road_west.story,
     core: { mode: 'standard', mapId: 'plains', difficulty: 'normal', waveCount: 10 },
@@ -67,6 +69,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'silvermine_creek', idx: 2,
+    archetypeId: 'interrupt',
     name: T.missions.silvermine_creek.name,
     story: T.missions.silvermine_creek.story,
     core: { mode: 'standard', mapId: 'crossroads', difficulty: 'normal', waveCount: 12 },
@@ -78,6 +81,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'ferrymans_game', idx: 3,
+    archetypeId: 'interrupt',
     name: T.missions.ferrymans_game.name,
     story: T.missions.ferrymans_game.story,
     core: { mode: 'standard', mapId: 'crossroads', difficulty: 'normal', waveCount: 12 },
@@ -89,6 +93,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'wheel_of_cipher', idx: 4,
+    archetypeId: 'speedrun',
     name: T.missions.wheel_of_cipher.name,
     story: T.missions.wheel_of_cipher.story,
     // Speedrun archetype defaults: waveCount 20, normal. M5 overrides
@@ -102,6 +107,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'theris_goodbye', idx: 5,
+    archetypeId: 'coop_with_bot',
     name: T.missions.theris_goodbye.name,
     story: T.missions.theris_goodbye.story,
     core: { mode: 'circle_coop', mapId: 'plains', difficulty: 'normal', waveCount: 12 },
@@ -113,6 +119,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'mirror_walkers', idx: 6,
+    archetypeId: 'restriction',
     name: T.missions.mirror_walkers.name,
     story: T.missions.mirror_walkers.story,
     core: {
@@ -127,6 +134,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'snake_eyes_proper', idx: 7,
+    archetypeId: 'frugal',
     name: T.missions.snake_eyes_proper.name,
     story: T.missions.snake_eyes_proper.story,
     // Frugal archetype defaults fold in: goldStartMult 0.5, maxTowers 6.
@@ -144,6 +152,7 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'burning_pactbook', idx: 8,
+    archetypeId: 'attacker',
     name: T.missions.burning_pactbook.name,
     story: T.missions.burning_pactbook.story,
     core: {
@@ -161,6 +170,11 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   },
   {
     id: 'counterfactual_mirror', idx: 9,
+    archetypeId: 'final_void',
+    // Counterfactual three-setpiece controller unimplemented — lobby
+    // renders this as locked, MissionRunner refuses the launch. See
+    // file header for the deferred-implementation context.
+    unlaunchable: true,
     name: T.missions.counterfactual_mirror.name,
     story: T.missions.counterfactual_mirror.story,
     core: { mode: 'standard', mapId: 'gauntlet', difficulty: 'hard', waveCount: 999 },

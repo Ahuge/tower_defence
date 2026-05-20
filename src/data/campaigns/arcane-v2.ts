@@ -58,6 +58,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'first_sigil',
     idx: 0,
+    archetypeId: 'interrupt',
     name: T.missions.first_sigil.name,
     story: T.missions.first_sigil.story,
     core: {
@@ -93,6 +94,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'the_library',
     idx: 1,
+    archetypeId: 'interrupt',
     name: T.missions.the_library.name,
     story: T.missions.the_library.story,
     core: {
@@ -144,6 +146,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'ritual_circle',
     idx: 2,
+    archetypeId: 'interrupt',
     name: T.missions.ritual_circle.name,
     story: T.missions.ritual_circle.story,
     core: {
@@ -188,6 +191,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'spire_siege',
     idx: 3,
+    archetypeId: 'base_defense',
     name: T.missions.spire_siege.name,
     story: T.missions.spire_siege.story,
     core: {
@@ -207,6 +211,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'crystal_warlords',
     idx: 4,
+    archetypeId: 'boss_rush',
     name: T.missions.crystal_warlords.name,
     story: T.missions.crystal_warlords.story,
     core: {
@@ -247,6 +252,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'forced_march',
     idx: 5,
+    archetypeId: 'speedrun',
     name: T.missions.forced_march.name,
     story: T.missions.forced_march.story,
     core: {
@@ -309,6 +315,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'starved_winter',
     idx: 6,
+    archetypeId: 'frugal',
     name: T.missions.starved_winter.name,
     story: T.missions.starved_winter.story,
     // Frugal-archetype defaults fold into core: goldStartMult 0.5,
@@ -334,6 +341,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'breach_relay',
     idx: 7,
+    archetypeId: 'attacker',
     name: T.missions.breach_relay.name,
     story: T.missions.breach_relay.story,
     core: {
@@ -366,6 +374,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'allied_circle',
     idx: 8,
+    archetypeId: 'coop_with_bot',
     name: T.missions.allied_circle.name,
     story: T.missions.allied_circle.story,
     core: {
@@ -386,6 +395,7 @@ const MISSIONS: MissionEntry<ArcaneMissionCfg, ArcaneState>[] = [
   {
     id: 'reckoning',
     idx: 9,
+    archetypeId: 'final_arcane',
     name: T.missions.reckoning.name,
     story: T.missions.reckoning.story,
     core: {

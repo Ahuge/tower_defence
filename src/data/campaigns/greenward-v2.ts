@@ -30,6 +30,7 @@ export type GreenwardMissionCfg =
 const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   {
     id: 'boundary_stones', idx: 0,
+    archetypeId: 'interrupt',
     name: T.missions.boundary_stones.name,
     story: T.missions.boundary_stones.story,
     core: { mode: 'standard', mapId: 'greenward_boundary', difficulty: 'easy', waveCount: 8 },
@@ -41,6 +42,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'salt_meadow', idx: 1,
+    archetypeId: 'restriction',
     name: T.missions.salt_meadow.name,
     story: T.missions.salt_meadow.story,
     core: {
@@ -62,6 +64,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'circle_at_eadwin', idx: 2,
+    archetypeId: 'interrupt',
     name: T.missions.circle_at_eadwin.name,
     story: T.missions.circle_at_eadwin.story,
     core: { mode: 'standard', mapId: 'greenward_eadwin', difficulty: 'normal', waveCount: 12 },
@@ -79,6 +82,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'road_of_crows', idx: 3,
+    archetypeId: 'interrupt',
     name: T.missions.road_of_crows.name,
     story: T.missions.road_of_crows.story,
     core: { mode: 'standard', mapId: 'greenward_crows', difficulty: 'normal', waveCount: 10 },
@@ -96,6 +100,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'dry_river', idx: 4,
+    archetypeId: 'speedrun',
     name: T.missions.dry_river.name,
     story: T.missions.dry_river.story,
     core: { mode: 'standard', mapId: 'greenward_river', difficulty: 'normal', waveCount: 10 },
@@ -114,6 +119,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'tarrenford', idx: 5,
+    archetypeId: 'coop_with_bot',
     name: T.missions.tarrenford.name,
     story: T.missions.tarrenford.story,
     core: { mode: 'circle_coop', mapId: 'greenward_tarrenford', difficulty: 'normal', waveCount: 12 },
@@ -132,6 +138,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'wedding_stone', idx: 6,
+    archetypeId: 'frugal',
     name: T.missions.wedding_stone.name,
     story: T.missions.wedding_stone.story,
     // Frugal archetype defaults: goldStartMult 0.5 + maxTowers 6.
@@ -154,6 +161,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'stillborn_court', idx: 7,
+    archetypeId: 'boss_rush',
     name: T.missions.stillborn_court.name,
     story: T.missions.stillborn_court.story,
     core: { mode: 'standard', mapId: 'greenward_court', difficulty: 'hard', waveCount: 8 },
@@ -171,6 +179,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'last_garden', idx: 8,
+    archetypeId: 'attacker',
     name: T.missions.last_garden.name,
     story: T.missions.last_garden.story,
     // Attacker archetype default mapId is 'attacker_assault' but
@@ -189,6 +198,7 @@ const MISSIONS: MissionEntry<GreenwardMissionCfg, GreenwardState>[] = [
   },
   {
     id: 'caer_lythen', idx: 9,
+    archetypeId: 'final_greenward',
     name: T.missions.caer_lythen.name,
     story: T.missions.caer_lythen.story,
     core: { mode: 'standard', mapId: 'greenward_cathedral', difficulty: 'hard', waveCount: 999 },

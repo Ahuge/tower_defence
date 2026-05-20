@@ -33,6 +33,7 @@ const FAKE_EXT: CampaignExtension<Record<string, never>, { kind: 'plain' }> = {
     {
       id: 'm1',
       idx: 0,
+      archetypeId: 'standard',
       name: 'Mission 1',
       story: '',
       objectives: {},
@@ -202,7 +203,7 @@ function makeStateExt(): {
     initialState: { counter: 0 },
     missions: [
       {
-        id: 'm1', idx: 0, name: 'M1', story: '', objectives: {},
+        id: 'm1', idx: 0, archetypeId: 'standard', name: 'M1', story: '', objectives: {},
         core: { mode: 'standard', mapId: 'plains', waveCount: 5, difficulty: 'easy' },
         campaign: { kind: 'plain' },
       } as MissionEntry<{ kind: 'plain' }, { counter: number }>,
