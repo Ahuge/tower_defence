@@ -41,7 +41,25 @@ import type { DraftModifier } from '../../data/DraftModifiers';
 import type { HeroId } from '../../data/HeroTypes';
 import type { DifficultyLevel } from '../../data/Difficulty';
 import type { WaveDefinition } from '../../data/WaveDefinitions';
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+/** Game-end snapshot used to evaluate mission objective predicates.
+ *  Moved out of the legacy `CampaignDef.ts` in Phase F so it lives
+ *  with the rest of the aspect-runtime types. The runtime contract
+ *  between GameScene → MissionRunner.finalize → MissionObjective
+ *  predicate / MissionStateAspect.applyMissionResult uses this shape. */
+export interface MissionResult {
+  won: boolean;
+  wave: number;
+  durationMs: number;
+  livesRemaining: number;
+  livesStart: number;
+  goldRemaining: number;
+  goldEarned: number;
+  towerCount: number;
+  /** No leaks, no continues. */
+  perfectRun: boolean;
+  /** Custom counters mode-specific archetypes write here. */
+  custom: { [key: string]: number | boolean | null | string };
+}
 
 // ─── Base Modes ─────────────────────────────────────────────
 // The engine-level shape of a mission. See CONTEXT.md ("Base Mode")

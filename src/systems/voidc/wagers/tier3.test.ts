@@ -18,7 +18,7 @@ import {
   getWagerEffect,
   type WagerEffectContext,
 } from '../WagerEffects';
-import type { MissionResult } from '../../../data/campaigns/CampaignDef';
+import type { MissionResult } from '../../campaign/types';
 
 beforeEach(() => {
   _resetWagerEffectsForTest();

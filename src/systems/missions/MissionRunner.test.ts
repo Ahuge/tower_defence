@@ -21,7 +21,7 @@ import { PlayerProfile } from '../profile/PlayerProfile';
 import { registerCampaign } from '../campaign/CampaignRegistry';
 import type { CampaignExtension, MissionStateAspect, MissionEntry } from '../campaign/types';
 import type { FactionId } from '../../data/Factions';
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+import type { MissionResult } from '../campaign/types';
 
 const FAKE_EXT: CampaignExtension<Record<string, never>, { kind: 'plain' }> = {
   factionId: 'mechanical',

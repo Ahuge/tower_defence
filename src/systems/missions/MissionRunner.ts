@@ -14,23 +14,25 @@
  *   5. The lobby re-mounts on its own; the runner doesn't navigate.
  */
 
-import type { CampaignDef, MissionDef, MissionResult, StarCount } from '../../data/campaigns/CampaignDef';
+import type {
+  CampaignExtension, MissionEntry, CampaignCtx,
+  MissionResult, MissionRestrictions, StarCount,
+} from '../campaign/types';
 import type { FactionId } from '../../data/Factions';
 import { UIBridge } from '../../ui/UIBridge';
 import { Analytics } from '../AnalyticsClient';
 import { PlayerProfile } from '../profile/PlayerProfile';
 import { ParametricStory } from '../campaign/ParametricStory';
-import type { CampaignExtension, MissionEntry, CampaignCtx } from '../campaign/types';
 import { getCampaignExtension } from '../campaign/CampaignRegistry';
 
-/** Subset of MissionDef that GameScene actually reads. Distinct from
- *  the full def so the runtime contract is small and stable. */
+/** Subset of a mission a GameScene-side consumer needs. Kept small so
+ *  the runtime contract is stable across the schema evolution. */
 export interface MissionContext {
   campaignFactionId: FactionId;
   missionId: string;
   missionIdx: number;
   archetypeId: string;
-  restrictions: NonNullable<MissionDef['overrides']['restrictions']>;
+  restrictions: MissionRestrictions;
 }
 
 class MissionRunnerClass {

@@ -25,7 +25,7 @@ import {
   type GreenwardState,
 } from './WildwoodReserves';
 import type { MissionStateAspect } from '../campaign/types';
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+import type { MissionResult } from '../campaign/types';
 
 const FACTION_ID = 'nature';
 

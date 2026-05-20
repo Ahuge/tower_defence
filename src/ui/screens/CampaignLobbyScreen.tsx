@@ -22,7 +22,7 @@ import { UIBridge } from '../UIBridge';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
-import { getArchetype } from '../../data/campaigns/MissionArchetypes';
+import { getArchetypeLabel } from '../../data/campaigns/ArchetypeLabels';
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
 // Compat aliases — the lobby's `MissionDef` / `CampaignDef` names
 // continue to refer to the new types so the rest of the file reads
@@ -226,7 +226,7 @@ export function CampaignLobbyScreen({ data }: Props) {
             // on the prior mission (matches PlayerProfile.isMissionUnlocked).
             const unlocked = mission.idx === 0 || starsAt(mission.idx - 1) >= 1;
             const stub = (mission.unlaunchable ?? false);
-            const archetype = getArchetype(mission.archetypeId as Parameters<typeof getArchetype>[0]);
+            const archetype = getArchetypeLabel(mission.archetypeId);
             const disabled = !unlocked || stub;
             return (
               <button key={mission.id}

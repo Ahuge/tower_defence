@@ -37,7 +37,7 @@
  */
 
 import type { Trait } from '../traits/Trait';
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+import type { MissionResult } from '../campaign/types';
 
 // ─── Types ───────────────────────────────────────────────────────
 

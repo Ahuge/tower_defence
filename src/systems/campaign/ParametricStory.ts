@@ -18,7 +18,7 @@
  * picked. v1 missions remain plain strings — `ctx` is unused for them.
  */
 
-import type { MissionResult } from '../../data/campaigns/CampaignDef';
+import type { MissionResult } from './types';
 
 export interface StoryContext<TState = unknown> {
   /** Current campaign state for the faction. */

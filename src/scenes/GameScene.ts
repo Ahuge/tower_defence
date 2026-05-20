@@ -542,7 +542,7 @@ export class GameScene extends Phaser.Scene {
    *  an essence budget; null otherwise. */
   attackerComposer: AttackerComposer | null = null;
 
-  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; missionFinaleRules?: import('../data/campaigns/CampaignDef').MissionOverrides['finaleRules']; missionSabotageRules?: import('../data/campaigns/CampaignDef').MissionOverrides['sabotageRules']; missionSuppressionPylons?: import('../data/campaigns/CampaignDef').MissionOverrides['suppressionPylons']; missionGreenwardRules?: import('../data/campaigns/CampaignDef').MissionOverrides['greenwardRules']; campaignRuntime?: RuntimeAspects }): void {
+  init(data: { mode?: MatchMode; faction?: FactionId | null; map?: MapId; modifier?: DraftModifier | null; difficulty?: DifficultyLevel; heroId?: HeroId; randomSeed?: number; dailySeed?: boolean; creepFaction?: FactionId; gauntletOrder?: FactionId[]; customMapDef?: MapDefinition; waveCount?: number; missionContext?: import('../systems/missions/MissionRunner').MissionContext; missionGoldStart?: number; missionGoldStartMult?: number; missionLives?: number; missionWaveScript?: import('../data/WaveDefinitions').WaveDefinition[]; missionPrePlacedTowers?: { towerId: string; col: number; row: number }[]; missionMapThemeOverride?: string; missionAutoChainWaves?: number; missionKillGoldMult?: number; missionAttackerEssencePerWave?: number; missionAttackerPaletteFaction?: FactionId | 'coalition'; missionAttackerLeakThreshold?: number; missionAttackerDefenderDifficulty?: AttackerDifficulty; missionAttackerPrepOrder?: string[]; missionAttackerEssenceGrowthPerWave?: number; missionAttackerEssenceCarryoverMult?: number; missionAttackerCampMax?: number; missionAttackerCampCost?: number; missionAttackerCampIncome?: number; missionCoopCreepCountMult?: number; campaignRuntime?: RuntimeAspects }): void {
     this.matchMode = data.mode || 'standard';
     this.faction = data.faction ?? null;
     this.mapId = data.map || 'plains';
@@ -603,7 +603,10 @@ export class GameScene extends Phaser.Scene {
       // surviving N waves). Capping at 20 would soft-lock the run
       // because the player would run out of waves before destroying
       // all 22 CPU defenders.
-      const isFinale = data.missionFinaleRules != null || data.missionSabotageRules != null;
+      // Detect M10 finales by their endless-wave gate. Every shipped
+      // M10 (Arcane, Mech, Greenward, Snake Eyes) sets waveCount: 999;
+      // capping at 20 would soft-lock the run.
+      const isFinale = data.waveCount === 999;
       if (capActive && this.matchMode === 'standard' && !isFinale) {
         this.waveCount = 20;
       }
