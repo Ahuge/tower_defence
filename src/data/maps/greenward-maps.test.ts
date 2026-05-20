@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { MAPS, type MapId } from '../Maps';
-import { GREENWARD_EXTENSION as GREENWARD_CAMPAIGN } from '../campaigns/greenward-v2';
+import { GREENWARD_EXTENSION as GREENWARD_CAMPAIGN } from '../campaigns/greenward';
 import { Grid, CellType } from '../../systems/Grid';
 import { findPath } from '../../systems/Pathfinding';
 

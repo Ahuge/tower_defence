@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { mechSabotageRuntime } from './MechSabotageRuntime';
-import { MECHANICAL_EXTENSION } from '../../data/campaigns/mechanical-v2';
+import { MECHANICAL_EXTENSION } from '../../data/campaigns/mechanical';
 import type { WorldMutator } from '../campaign/types';
 
 function makeFakeMutator(): WorldMutator & { calls: string[]; sabotageArg: unknown } {

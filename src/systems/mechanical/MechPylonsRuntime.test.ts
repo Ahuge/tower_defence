@@ -27,7 +27,7 @@ import {
   setActiveSuppressionManager,
   _resetActiveSuppressionManagerForTest,
 } from '../suppression/ActiveSuppressionManager';
-import { MECHANICAL_EXTENSION } from '../../data/campaigns/mechanical-v2';
+import { MECHANICAL_EXTENSION } from '../../data/campaigns/mechanical';
 import type { SuppressionPylonSpec } from '../../data/Maps';
 import type { WorldMutator } from '../campaign/types';
 

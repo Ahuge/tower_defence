@@ -32,10 +32,10 @@ import './systems/finale/FinaleTraits';
 
 // Register Campaign Extensions (side-effect imports). Phases C/D
 // register each campaign as it's ported to the aspect-based path.
-import './data/campaigns/mechanical-v2';
-import './data/campaigns/arcane-v2';
-import './data/campaigns/greenward-v2';
-import './data/campaigns/snake-eyes-v2';
+import './data/campaigns/mechanical';
+import './data/campaigns/arcane';
+import './data/campaigns/greenward';
+import './data/campaigns/snake-eyes';
 
 // Register campaign lobby panels (side-effect imports)
 import './ui/campaign/GreenwardStatePanel';

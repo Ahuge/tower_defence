@@ -27,7 +27,7 @@ import type {
 import type { SuppressionPylonSpec } from '../../data/Maps';
 
 /** Shape of Mech M10 sabotage rules at the host boundary. Duplicated
- *  from `data/campaigns/mechanical-v2.ts` so the WorldMutator infra
+ *  from `data/campaigns/mechanical.ts` so the WorldMutator infra
  *  doesn't import campaign-data — keeps the dependency direction
  *  campaign → infrastructure, never the reverse. */
 export interface MechSabotageRulesShape {
@@ -38,7 +38,7 @@ export interface MechSabotageRulesShape {
 }
 
 /** Shape of Arcane M10 finale rules at the host boundary. Duplicated
- *  from `data/campaigns/arcane-v2.ts` for the same reason as
+ *  from `data/campaigns/arcane.ts` for the same reason as
  *  `MechSabotageRulesShape`. `heroId` re-imports the HeroId union from
  *  data so a typo at the aspect or campaign-data layer is caught at
  *  compile time — FinaleController only `console.warn`s on a missing
