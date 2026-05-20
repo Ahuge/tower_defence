@@ -18,7 +18,9 @@ import { MissionRunner } from './MissionRunner';
 import { Analytics } from '../AnalyticsClient';
 import { UIBridge } from '../../ui/UIBridge';
 import { PlayerProfile } from '../profile/PlayerProfile';
-import type { CampaignExtension } from '../campaign/types';
+import { registerCampaign } from '../campaign/CampaignRegistry';
+import type { CampaignExtension, MissionStateAspect, MissionEntry } from '../campaign/types';
+import type { FactionId } from '../../data/Factions';
 import type { MissionResult } from '../../data/campaigns/CampaignDef';
 
 const FAKE_EXT: CampaignExtension<Record<string, never>, { kind: 'plain' }> = {
@@ -144,5 +146,137 @@ describe('MissionRunner — v2 analytics shape', () => {
     const startCall = trackSpy.mock.calls.find(([name]) => name === 'mission_started');
     expect(startCall![1]).toMatchObject({ archetypeId: 'v2:attacker' });
     MissionRunner.abort();
+  });
+});
+
+// ─── MissionStateAspect wiring (D0) ─────────────────────────────
+// Phase D0 hooks `MissionStateAspect.applyMissionResult` into
+// `MissionRunner.finalize` (writes at mission-end) and
+// `tickBetweenMissions` into `MissionRunner.startV2` (writes
+// between-mission state changes BEFORE applyDynamicOverrides reads
+// it). The test extension uses a unique factionId so registry
+// pollution from other test files can't leak in.
+
+interface StateExtCounters {
+  applyMissionResultCalls: number;
+  tickBetweenMissionsCalls: number;
+  writes: number;
+}
+
+function makeStateExt(): {
+  ext: CampaignExtension<{ counter: number }, { kind: 'plain' }>;
+  counters: StateExtCounters;
+  state: { counter: number };
+} {
+  const counters: StateExtCounters = {
+    applyMissionResultCalls: 0,
+    tickBetweenMissionsCalls: 0,
+    writes: 0,
+  };
+  const liveState = { counter: 0 };
+  const missionState: MissionStateAspect<{ counter: number }, { kind: 'plain' }> = {
+    defaults: { counter: 0 },
+    read: () => liveState,
+    write: (next) => {
+      counters.writes += 1;
+      liveState.counter = next.counter;
+    },
+    applyDynamicOverrides: (_state, entry) => entry,
+    applyMissionResult: (state, _result) => {
+      counters.applyMissionResultCalls += 1;
+      return { counter: state.counter + 100 };
+    },
+    tickBetweenMissions: (state) => {
+      counters.tickBetweenMissionsCalls += 1;
+      return { counter: state.counter + 10 };
+    },
+  };
+  // Use a faction id that isn't likely to collide with a registered
+  // production campaign. Casting to FactionId — registry stores
+  // unknown so the cast is safe at runtime.
+  const ext: CampaignExtension<{ counter: number }, { kind: 'plain' }> = {
+    factionId: '__test_state' as unknown as FactionId,
+    name: 'State Test',
+    intro: '',
+    outro: '',
+    initialState: { counter: 0 },
+    missions: [
+      {
+        id: 'm1', idx: 0, name: 'M1', story: '', objectives: {},
+        core: { mode: 'standard', mapId: 'plains', waveCount: 5, difficulty: 'easy' },
+        campaign: { kind: 'plain' },
+      } as MissionEntry<{ kind: 'plain' }, { counter: number }>,
+    ],
+    missionState,
+    buildRuntime: () => ({}),
+  };
+  return { ext, counters, state: liveState };
+}
+
+describe('MissionRunner — MissionStateAspect wiring (D0)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(UIBridge, 'startScene').mockImplementation(() => {});
+    vi.spyOn(PlayerProfile, 'recordMissionResult').mockImplementation(() => {});
+    vi.spyOn(PlayerProfile, 'getMissionStars').mockReturnValue(0);
+    vi.spyOn(PlayerProfile, 'getCampaignTotalStars').mockReturnValue(0);
+    vi.spyOn(Analytics, 'track').mockImplementation(() => {});
+  });
+
+  it('startV2 calls tickBetweenMissions before applyDynamicOverrides', () => {
+    const { ext, counters, state } = makeStateExt();
+    // Pre-seed state so the tick is observable.
+    state.counter = 5;
+    MissionRunner.startV2(ext, 0);
+    expect(counters.tickBetweenMissionsCalls).toBe(1);
+    // Tick added 10 (5 + 10 = 15); persisted via write().
+    expect(state.counter).toBe(15);
+    expect(counters.writes).toBeGreaterThanOrEqual(1);
+    MissionRunner.abort();
+  });
+
+  it('finalize calls applyMissionResult on the registered extension', () => {
+    const { ext, counters, state } = makeStateExt();
+    registerCampaign(ext);
+    MissionRunner.startV2(ext, 0);
+    const beforeFinalize = counters.applyMissionResultCalls;
+    MissionRunner.finalize(FAKE_RESULT);
+    expect(counters.applyMissionResultCalls).toBe(beforeFinalize + 1);
+    // applyMissionResult adds 100; state should reflect that.
+    // Starting state was 0, tick brought it to 10, then applyMissionResult: 10 + 100 = 110.
+    expect(state.counter).toBe(110);
+  });
+
+  it('campaigns without missionState aspect do not throw at finalize (Mech-style)', () => {
+    // FAKE_EXT has no missionState; finalize must skip the v2 hook
+    // and complete cleanly.
+    MissionRunner.startV2(FAKE_EXT, 0);
+    expect(() => MissionRunner.finalize(FAKE_RESULT)).not.toThrow();
+  });
+
+  it('tickBetweenMissions throwing does not block the mission launch', () => {
+    const { ext } = makeStateExt();
+    if (ext.missionState) {
+      ext.missionState.tickBetweenMissions = () => { throw new Error('boom'); };
+    }
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(MissionRunner.startV2(ext, 0)).toBe(true);
+    expect(warnSpy).toHaveBeenCalled();
+    MissionRunner.abort();
+  });
+
+  it('applyMissionResult throwing does not block stars from being recorded', () => {
+    const recordSpy = vi.spyOn(PlayerProfile, 'recordMissionResult');
+    const { ext } = makeStateExt();
+    if (ext.missionState) {
+      ext.missionState.applyMissionResult = () => { throw new Error('boom'); };
+    }
+    registerCampaign(ext);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    MissionRunner.startV2(ext, 0);
+    MissionRunner.finalize(FAKE_RESULT);
+    // Stars persisted even though state aspect threw.
+    expect(recordSpy).toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalled();
   });
 });

@@ -192,19 +192,9 @@ class MissionRunnerClass {
 
     PlayerProfile.recordMissionResult(session.campaign.factionId, mission.idx, stars);
 
-    // v1: legacy stateUpdater hook on MissionDef. v2 missions use the
-    // `MissionStateAspect` (declared in `types.ts`) which exposes
-    // `applyMissionResult` + `tickBetweenMissions`. Those are NOT yet
-    // wired here — Phase D ports Greenward / Snake Eyes, which are the
-    // first campaigns to need them. Wiring up:
-    //   1. Resolve the extension via `getCampaignExtension(factionId)`.
-    //   2. If `ext.missionState`, call `applyMissionResult(state, result)`
-    //      and `tickBetweenMissions(state)` in order, persisting via
-    //      `ext.missionState.write(next)`.
-    // TODO(Phase D): wire `MissionStateAspect`. Until then, Greenward
-    //   and Snake Eyes MUST stay on the legacy `MissionRunner.start`
-    //   path (no extension registered) — Mech is the only campaign
-    //   safely routable through `startV2` today.
+    // v1: legacy stateUpdater hook on MissionDef. Used by parametric-
+    // story campaigns that haven't been ported to a CampaignExtension
+    // yet. Phase F removes this when every campaign is on the v2 path.
     if (mission.stateUpdater && session.campaign.initialState !== undefined) {
       try {
         const prev = CampaignState.get(session.campaign.factionId, session.campaign.initialState);
@@ -214,6 +204,26 @@ class MissionRunnerClass {
         }
       } catch (err) {
         console.warn(`[MissionRunner] stateUpdater threw for ${mission.id}:`, err);
+      }
+    }
+
+    // v2: MissionStateAspect.applyMissionResult — writes cross-mission
+    // state at mission-end (e.g. Greenward's Wildwood reserves spend
+    // on a Ceremony mission, Snake Eyes' Pactbook debt update).
+    // `tickBetweenMissions` runs at the START of the NEXT mission
+    // (see startV2). Resolved via the campaign registry: legacy
+    // missions don't register an extension so this branch is skipped
+    // for them.
+    const ext = getCampaignExtension(session.campaign.factionId);
+    if (ext?.missionState) {
+      try {
+        const prev = ext.missionState.read();
+        const next = ext.missionState.applyMissionResult(prev, result);
+        if (next && typeof next === 'object') {
+          ext.missionState.write(next);
+        }
+      } catch (err) {
+        console.warn(`[MissionRunner.v2] applyMissionResult threw for ${mission.id}:`, err);
       }
     }
 
@@ -275,9 +285,25 @@ class MissionRunnerClass {
     // Read state (defaults if first run); let MissionState aspect
     // transform the entry. Wholesale rewrite — `applyDynamicOverrides`
     // returns a NEW entry rather than a delta merge.
-    const state = ext.missionState
+    //
+    // Order: tickBetweenMissions FIRST (writes between-mission state
+    // changes like Greenward's Wildwood reserves regen so the new
+    // values are visible to applyDynamicOverrides), THEN read the
+    // possibly-ticked state and pass it to applyDynamicOverrides.
+    let state = ext.missionState
       ? ext.missionState.read()
       : ext.initialState;
+    if (ext.missionState?.tickBetweenMissions) {
+      try {
+        const ticked = ext.missionState.tickBetweenMissions(state);
+        if (ticked && typeof ticked === 'object') {
+          state = ticked;
+          ext.missionState.write(state);
+        }
+      } catch (err) {
+        console.warn(`[MissionRunner.v2] tickBetweenMissions threw for ${baseMission.id}:`, err);
+      }
+    }
     let mission: MissionEntry<TCfg, TState> = baseMission;
     if (ext.missionState?.applyDynamicOverrides) {
       try {
