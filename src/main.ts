@@ -35,6 +35,7 @@ import './systems/finale/FinaleTraits';
 import './data/campaigns/mechanical-v2';
 import './data/campaigns/arcane-v2';
 import './data/campaigns/greenward-v2';
+import './data/campaigns/snake-eyes-v2';
 
 // Register campaign lobby panels (side-effect imports)
 import './ui/campaign/GreenwardStatePanel';

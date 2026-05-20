@@ -28,12 +28,13 @@ describe('snake-eyes-v2 — campaign-level parity', () => {
     }
   });
 
-  it('is intentionally NOT registered (M10 Counterfactual controller unimplemented)', () => {
-    // If this fails, someone uncommented the registerCampaign(...) call
-    // in snake-eyes-v2.ts without landing the M10 controller. Routing
-    // Snake Eyes through startV2 lets M10 launch into a broken state
-    // because v2 has no stub-refusal — see file header comment.
-    expect(getCampaignExtension('void')).toBeNull();
+  it('is registered (M1-M9 route via aspect path; M10 gated by buildRuntime throw)', () => {
+    // Phase E1 flipped the registration. M10's `final_unimplemented`
+    // throw in `buildRuntime` keeps the unlaunchable contract — startV2
+    // catches the throw and refuses the launch (same UX as the legacy
+    // stub refusal). When the Counterfactual controller lands, M10's
+    // cfg flips to `{ kind: 'final', ... }` and the throw goes away.
+    expect(getCampaignExtension('void')).not.toBeNull();
   });
 });
 

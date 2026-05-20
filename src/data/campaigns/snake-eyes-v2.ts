@@ -26,6 +26,7 @@
  */
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
 import { SNAKE_EYES_TEXTS } from './texts/snake-eyes.texts';
+import { registerCampaign } from '../../systems/campaign/CampaignRegistry';
 
 const T = SNAKE_EYES_TEXTS;
 
@@ -200,8 +201,11 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
   },
 };
 
-// INTENTIONALLY UNREGISTERED. See file header — M10's Counterfactual
-// controller isn't implemented yet; registering would let M10 launch
-// into a broken state. Uncomment when the controller lands:
-//
-//   registerCampaign(SNAKE_EYES_EXTENSION);
+// Phase E1: Snake Eyes registers like the other 3 campaigns. M1-M9
+// flow through the aspect path. M10 is guarded by the `buildRuntime`
+// throw on `kind: 'final_unimplemented'` — `startV2` catches the
+// throw, warns, and refuses the launch (same UX as the legacy stub
+// refusal). Once the Counterfactual controller lands, M10's payload
+// flips from `final_unimplemented` to a real `{ kind: 'final', ... }`
+// and the throw disappears.
+registerCampaign(SNAKE_EYES_EXTENSION);

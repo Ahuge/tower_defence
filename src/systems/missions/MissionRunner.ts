@@ -325,7 +325,17 @@ class MissionRunnerClass {
       missionIdx: mission.idx,
       state,
     };
-    const runtime = ext.buildRuntime(ctx, mission);
+    // `buildRuntime` may throw for missions whose runtime isn't yet
+    // implemented (e.g. Snake Eyes M10 `final_unimplemented` until
+    // the Counterfactual controller lands). Match the legacy stub-
+    // refusal UX: warn + refuse the launch.
+    let runtime;
+    try {
+      runtime = ext.buildRuntime(ctx, mission);
+    } catch (err) {
+      console.warn(`[MissionRunner.v2] buildRuntime threw for ${mission.id} — mission cannot launch:`, err);
+      return false;
+    }
 
     // Phase C4: populate `this.active` with cast-bridged shape so
     // `finalize()` finds the session and runs its objective /
