@@ -98,7 +98,7 @@ import { setActiveSuppressionManager } from '../systems/suppression/ActiveSuppre
 // campaign uses the new path yet; legacy `_missionXxxRules` fields
 // continue to drive shipped behaviour. Phases C/D port each campaign.
 import type { RuntimeAspects } from '../systems/campaign/types';
-import { WorldMutatorImpl, type WorldHost, type MechSabotageRulesShape } from '../systems/campaign/WorldMutator';
+import { WorldMutatorImpl, type WorldHost, type MechSabotageRulesShape, type ArcaneFinaleRulesShape } from '../systems/campaign/WorldMutator';
 import type { SuppressionPylonSpec } from '../data/Maps';
 import { attachGameplayAspect } from '../systems/campaign/EventBusBridge';
 import { SuppressionRender } from '../systems/suppression/SuppressionRender';
@@ -1258,39 +1258,11 @@ export class GameScene extends Phaser.Scene {
     if (this._missionFinaleRules && this._missionSabotageRules) {
       throw new Error('Mission has both finaleRules and sabotageRules — these archetypes are mutually exclusive.');
     }
+    // C4 refactor: install body moved into `installArcaneFinale`.
+    // The legacy `_missionFinaleRules` branch dispatches to the same
+    // method as the aspect path.
     if (this._missionFinaleRules && mapDef.summoningCircles && mapDef.destructibleTowers) {
-      // M10 finale: sends walk RIGHT → LEFT (player's home back into
-      // the CPU tower lattice) while wave creeps walk LEFT → RIGHT.
-      // Compute the reversed path once at scene init and feed it to
-      // SendManager so finale sends use it instead of the standard
-      // entry→exit path.
-      if (mapDef.entries[0] && mapDef.exits[0]) {
-        const entry = mapDef.entries[0];
-        const exit = mapDef.exits[0];
-        const reversePath = findPath(this.grid, exit, entry);
-        if (reversePath) {
-          this.sendMgr.setSendPathOverride(reversePath);
-        }
-      }
-      this._finaleController = new FinaleController({
-        scene: this,
-        rules: this._missionFinaleRules,
-        destructibleTowers: mapDef.destructibleTowers,
-        destructibleStructures: mapDef.destructibleStructures ?? [],
-        summoningCircles: mapDef.summoningCircles,
-        towerMgr: this.towerMgr,
-        grid: this.grid,
-        economy: this.economy,
-        eventLog: this.eventLog,
-        onHeroSpawned: () => {
-          this.eventLog.gameMessage('A pillar of light — the Forge mage answers the call!');
-        },
-        onWin: () => {
-          this.eventLog.gameMessage('The spire falls. Every tower in the cabal\'s lattice is dust.');
-          this.eventBus.emit('gameWon');
-          this.goToGameOver(true);
-        },
-      });
+      this.installArcaneFinale(this._missionFinaleRules);
     }
     // Mechanical campaign — Voss's Suppression Pylons. The map data
     // declares pre-placed pylons; SuppressionManager owns runtime
@@ -3222,6 +3194,44 @@ export class GameScene extends Phaser.Scene {
   /** No-op: shutdown() already removes the SABOTAGE_*_EVENT listeners
    *  and disposes the controller. Phase E unifies the cleanup. */
   removeMechSabotage(): void { /* see shutdown() */ }
+
+  /** Install Arcane M10 finale — FinaleController + summoning circles
+   *  + destructible towers + send-path reverse. Reads summoningCircles
+   *  / destructibleTowers / destructibleStructures / entries / exits
+   *  from `this.mapDef`. */
+  installArcaneFinale(rules: ArcaneFinaleRulesShape): void {
+    const mapDef = this.mapDef;
+    if (!mapDef.summoningCircles || !mapDef.destructibleTowers) return;
+    // M10 finale: sends walk RIGHT → LEFT so player-queued sends
+    // pressure the CPU tower lattice rather than escape the player's
+    // home base.
+    if (mapDef.entries[0] && mapDef.exits[0]) {
+      const reversePath = findPath(this.grid, mapDef.exits[0], mapDef.entries[0]);
+      if (reversePath) this.sendMgr.setSendPathOverride(reversePath);
+    }
+    this._finaleController = new FinaleController({
+      scene: this,
+      rules: rules as unknown as ConstructorParameters<typeof FinaleController>[0]['rules'],
+      destructibleTowers: mapDef.destructibleTowers,
+      destructibleStructures: mapDef.destructibleStructures ?? [],
+      summoningCircles: mapDef.summoningCircles,
+      towerMgr: this.towerMgr,
+      grid: this.grid,
+      economy: this.economy,
+      eventLog: this.eventLog,
+      onHeroSpawned: () => {
+        this.eventLog.gameMessage('A pillar of light — the Forge mage answers the call!');
+      },
+      onWin: () => {
+        this.eventLog.gameMessage('The spire falls. Every tower in the cabal\'s lattice is dust.');
+        this.eventBus.emit('gameWon');
+        this.goToGameOver(true);
+      },
+    });
+  }
+
+  /** No-op: shutdown() already clears `_finaleController`. */
+  removeArcaneFinale(): void { /* see shutdown() */ }
 
   /** Push the SabotageHud state to GameUIStore so the DOM panel can
    *  render. Called every frame; the store internally short-circuits

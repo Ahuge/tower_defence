@@ -30,10 +30,10 @@ import './systems/traits/handlers/ChannelCasterHandler';
 import './systems/sabotage/SabotageTraits';
 import './systems/finale/FinaleTraits';
 
-// Register Campaign Extensions (side-effect imports). Phase C4 routed
-// Mech through the aspect-based path; Phase D will add Arcane,
-// Greenward, and Snake Eyes as they're ported.
+// Register Campaign Extensions (side-effect imports). Phases C/D
+// register each campaign as it's ported to the aspect-based path.
 import './data/campaigns/mechanical-v2';
+import './data/campaigns/arcane-v2';
 
 // Register campaign lobby panels (side-effect imports)
 import './ui/campaign/GreenwardStatePanel';

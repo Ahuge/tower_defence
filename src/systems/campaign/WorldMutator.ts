@@ -37,6 +37,19 @@ export interface MechSabotageRulesShape {
   workshopTrainCooldownMs?: number;
 }
 
+/** Shape of Arcane M10 finale rules at the host boundary. Duplicated
+ *  from `data/campaigns/arcane-v2.ts` for the same reason as
+ *  `MechSabotageRulesShape`. */
+export interface ArcaneFinaleRulesShape {
+  heroId: string;
+  heroStartingLevel?: number;
+  heroRespawnSeconds?: number;
+  chargeRatePerDrain: number;
+  cpuTowerHpDefault?: number;
+  cpuTowerOwnerIndex?: number;
+  towerKillReward?: { gold?: number; xp?: number; ultGold?: number; ultXp?: number };
+}
+
 /**
  * Narrow protocol that the engine satisfies — currently `GameScene`.
  * Each method is optional in Phase B; aspect helpers no-op when their
@@ -55,6 +68,11 @@ export interface WorldHost {
    *  `.destructibleStructures`, `.entries`, `.exits`), so passing only
    *  rules keeps the aspect API narrow. */
   installMechSabotage?(rules: MechSabotageRulesShape): void;
+  /** Arcane M10 finale — single atomic install of FinaleController +
+   *  summoning circles + destructible towers + send-path reverse.
+   *  The host reads summoningCircles / destructibleTowers / entries /
+   *  exits from its mapDef; the aspect just declares the rules. */
+  installArcaneFinale?(rules: ArcaneFinaleRulesShape): void;
   applyRuinCells?(cells: Array<{ col: number; row: number; mode?: string }>): void;
   registerActionIntercept?(
     cell: { col: number; row: number },
@@ -72,6 +90,7 @@ export interface WorldHost {
   removeDestructibleTowers?(): void;
   removeWorkshop?(): void;
   removeMechSabotage?(): void;
+  removeArcaneFinale?(): void;
   clearRuinCells?(): void;
   clearSendPathOverride?(): void;
 }
@@ -119,6 +138,11 @@ export class WorldMutatorImpl implements WorldMutator {
   installMechSabotage(rules: MechSabotageRulesShape): void {
     this.host.installMechSabotage?.(rules);
     this.mutations.push(() => this.host.removeMechSabotage?.());
+  }
+
+  installArcaneFinale(rules: ArcaneFinaleRulesShape): void {
+    this.host.installArcaneFinale?.(rules);
+    this.mutations.push(() => this.host.removeArcaneFinale?.());
   }
 
   applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void {
