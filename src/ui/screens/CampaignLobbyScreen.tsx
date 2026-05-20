@@ -24,12 +24,12 @@ import { PlayerProfile } from '../../systems/profile/PlayerProfile';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
 import { getArchetypeLabel } from '../../data/campaigns/ArchetypeLabels';
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
-
-type Mission = MissionEntry<unknown, unknown>;
-type Campaign = CampaignExtension<unknown, unknown>;
 import { FACTIONS, type FactionId } from '../../data/Factions';
 import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
 import { factionKeyartSrc } from '../utils/factionAssets';
+
+type Mission = MissionEntry<unknown, unknown>;
+type Campaign = CampaignExtension<unknown, unknown>;
 
 interface Props {
   data: Record<string, unknown>;
