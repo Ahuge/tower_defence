@@ -343,6 +343,16 @@ export interface ActionInterceptHandle {
   release(): void;
 }
 
+/** Shape of a Greenward ruin spec at the host boundary. Duplicated
+ *  from `systems/greenward/ConsecrationManager.ts` so the WorldMutator
+ *  infra doesn't import campaign-specific code. */
+export interface RuinSpecLike {
+  id: string;
+  col: number;
+  row: number;
+  mode: 'ceremony' | 'siege' | 'mercy';
+}
+
 export interface WorldMutator {
   /** Install one or more pre-placed towers on the grid. */
   installPrePlacedTowers(towers: PrePlacedTowerSpec[]): void;
@@ -364,6 +374,11 @@ export interface WorldMutator {
    *  circles + destructible towers + send-path reverse. Host reads
    *  summoning circles / destructibles / entries / exits from mapDef. */
   installArcaneFinale(rules: import('./WorldMutator').ArcaneFinaleRulesShape): void;
+  /** Greenward — install per-mission Consecration runtime + (when
+   *  finale) the three-setpiece controller. `MissionStateAspect.
+   *  tickBetweenMissions` has already applied reserves regen before
+   *  this runs — host MUST NOT regen reserves itself. */
+  installGreenwardRules(rules: { ruins: RuinSpecLike[] }, isFinale: boolean): void;
   /** Mark grid cells as ruins (Greenward consecration tracker). */
   applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void;
   /** Register a click-intercept on a specific cell. The handler runs

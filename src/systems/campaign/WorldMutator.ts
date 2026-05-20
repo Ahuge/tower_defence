@@ -73,6 +73,13 @@ export interface WorldHost {
    *  The host reads summoningCircles / destructibleTowers / entries /
    *  exits from its mapDef; the aspect just declares the rules. */
   installArcaneFinale?(rules: ArcaneFinaleRulesShape): void;
+  /** Greenward — install the per-mission Consecration runtime
+   *  (`GreenwardMissionController`) plus, when `isFinale`, the
+   *  three-setpiece `GreenwardFinaleController`. The aspect path
+   *  has already applied between-mission reserves regen via
+   *  `MissionStateAspect.tickBetweenMissions`, so the host method
+   *  must NOT regen reserves itself. */
+  installGreenwardRules?(rules: { ruins: import('./types').RuinSpecLike[] }, isFinale: boolean): void;
   applyRuinCells?(cells: Array<{ col: number; row: number; mode?: string }>): void;
   registerActionIntercept?(
     cell: { col: number; row: number },
@@ -91,6 +98,7 @@ export interface WorldHost {
   removeWorkshop?(): void;
   removeMechSabotage?(): void;
   removeArcaneFinale?(): void;
+  removeGreenwardRules?(): void;
   clearRuinCells?(): void;
   clearSendPathOverride?(): void;
 }
@@ -143,6 +151,11 @@ export class WorldMutatorImpl implements WorldMutator {
   installArcaneFinale(rules: ArcaneFinaleRulesShape): void {
     this.host.installArcaneFinale?.(rules);
     this.mutations.push(() => this.host.removeArcaneFinale?.());
+  }
+
+  installGreenwardRules(rules: { ruins: import('./types').RuinSpecLike[] }, isFinale: boolean): void {
+    this.host.installGreenwardRules?.(rules, isFinale);
+    this.mutations.push(() => this.host.removeGreenwardRules?.());
   }
 
   applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void {

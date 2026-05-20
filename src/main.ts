@@ -34,6 +34,7 @@ import './systems/finale/FinaleTraits';
 // register each campaign as it's ported to the aspect-based path.
 import './data/campaigns/mechanical-v2';
 import './data/campaigns/arcane-v2';
+import './data/campaigns/greenward-v2';
 
 // Register campaign lobby panels (side-effect imports)
 import './ui/campaign/GreenwardStatePanel';

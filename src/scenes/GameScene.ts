@@ -1294,37 +1294,22 @@ export class GameScene extends Phaser.Scene {
       this.installMechSabotage(this._missionSabotageRules);
     }
 
-    // Campaign #3 — Greenward per-mission Consecration setup. The
-    // mission def's `greenwardRules.ruins` drives the per-mission
-    // ruin tiles + modes. Construction here; per-frame tick lives
-    // in update(); writeback to MissionResult lives in goToGameOver.
+    // Campaign #3 — Greenward per-mission Consecration setup.
+    // C4-style refactor: legacy path applies regen + dispatches to
+    // the `installGreenwardRules` host method. The aspect path skips
+    // regen here (already done in MissionRunner.startV2's
+    // tickBetweenMissions) and calls the same host method.
     if (this._missionGreenwardRules) {
-      // Apply the regen tick BEFORE snapshotting reservesAtStart so
+      // Apply the regen tick BEFORE the controller reads reserves so
       // the player gets the visible "+10 per mission" before the
-      // mission's own deductions kick in. This is the mechanical
-      // contract: between missions, Wildwood breathes.
+      // mission's own deductions kick in. The aspect path applies
+      // this via MissionState.tickBetweenMissions; the host method
+      // itself trusts that reserves are at the post-tick value.
       applyMissionRegen();
-      const reservesAtStart = getReserves();
-      this._greenwardController = new GreenwardMissionController(
+      this.installGreenwardRules(
         this._missionGreenwardRules,
-        reservesAtStart,
+        this.missionContext?.archetypeId === 'final_greenward',
       );
-      // M10 only — also construct the three-setpiece finale state
-      // machine. Detection: the mission archetype is final_greenward.
-      // The archetypeId arrives via missionContext. onComplete fires
-      // when the Throne setpiece claims — emit gameWon + transition
-      // to GameOver, mirroring the Mech sabotage / Arcane finale
-      // onWin pattern.
-      if (this.missionContext?.archetypeId === 'final_greenward') {
-        this._greenwardFinaleController = new GreenwardFinaleController(
-          this._greenwardController,
-          () => {
-            this.eventLog.gameMessage('Caer Lythen has heard the forest.');
-            this.eventBus.emit('gameWon');
-            this.goToGameOver(true);
-          },
-        );
-      }
     }
 
     // Plan 12 attacker mode — drop the map's pre-placed defender
@@ -3232,6 +3217,32 @@ export class GameScene extends Phaser.Scene {
 
   /** No-op: shutdown() already clears `_finaleController`. */
   removeArcaneFinale(): void { /* see shutdown() */ }
+
+  /** Greenward — construct per-mission ConsecrationManager-backed
+   *  controller + (when finale) the three-setpiece state machine.
+   *  Reserves are assumed already at the post-tick value (legacy
+   *  path called `applyMissionRegen` before dispatching; aspect
+   *  path applied it via `MissionStateAspect.tickBetweenMissions`).
+   *  The host reads current reserves via `getReserves()` to seed
+   *  the controller's mid-mission deduct/refund math. */
+  installGreenwardRules(rules: { ruins: import('../systems/greenward/ConsecrationManager').RuinSpec[] }, isFinale: boolean): void {
+    const reservesAtStart = getReserves();
+    this._greenwardController = new GreenwardMissionController(rules, reservesAtStart);
+    if (isFinale) {
+      this._greenwardFinaleController = new GreenwardFinaleController(
+        this._greenwardController,
+        () => {
+          this.eventLog.gameMessage('Caer Lythen has heard the forest.');
+          this.eventBus.emit('gameWon');
+          this.goToGameOver(true);
+        },
+      );
+    }
+  }
+
+  /** No-op: shutdown() already clears `_greenwardController` and
+   *  `_greenwardFinaleController`. Phase E unifies. */
+  removeGreenwardRules(): void { /* see shutdown() */ }
 
   /** Push the SabotageHud state to GameUIStore so the DOM panel can
    *  render. Called every frame; the store internally short-circuits
