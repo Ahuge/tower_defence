@@ -25,6 +25,7 @@ import { ParametricStory } from '../campaign/ParametricStory';
 // Phase B (aspect refactor): startV2 path. Feature-detected via
 // `'buildRuntime' in ext`. Legacy `start` keeps working until Phase E.
 import type { CampaignExtension, MissionEntry, CampaignCtx } from '../campaign/types';
+import { getCampaignExtension } from '../campaign/CampaignRegistry';
 
 /** Subset of MissionDef that GameScene actually reads. Distinct from
  *  the full def so the runtime contract is small and stable. */
@@ -42,6 +43,14 @@ class MissionRunnerClass {
 
   /** Start a mission. Returns true if the launch succeeded. */
   start(campaign: CampaignDef, missionIdx: number): boolean {
+    // Phase C4: feature-detect at the legacy entry point. If a Campaign
+    // Extension is registered for this faction, route through startV2.
+    // Callers (CampaignLobbyScreen, GameOverScreen, testHook) keep
+    // passing legacy CampaignDef objects; the registry is the
+    // authoritative dispatch source.
+    const ext = getCampaignExtension(campaign.factionId);
+    if (ext) return this.startV2(ext, missionIdx);
+
     const mission = campaign.missions[missionIdx];
     if (!mission) {
       console.warn(`[MissionRunner] no mission at idx ${missionIdx} in campaign ${campaign.factionId}`);
@@ -264,9 +273,19 @@ class MissionRunnerClass {
     };
     const runtime = ext.buildRuntime(ctx, mission);
 
-    // The active session uses the legacy `CampaignDef` / `MissionDef`
-    // shape for finalize compatibility during Phase B. Phase E folds
-    // this so `active` carries the new `CampaignExtension`.
+    // Phase C4: populate `this.active` with cast-bridged shape so
+    // `finalize()` finds the session and runs its objective /
+    // analytics / persistence path uniformly across legacy + v2
+    // missions. Finalize reads only fields that overlap both shapes
+    // (factionId, initialState, idx, id, objectives, missions.length);
+    // the cast is safe at runtime. Phase E unifies `active` as a
+    // discriminated union and drops the cast.
+    this.active = {
+      campaign: ext as unknown as CampaignDef,
+      mission: mission as unknown as MissionDef,
+      startedAt: Date.now(),
+    };
+
     Analytics.track('mission_started', {
       campaignFactionId: ext.factionId,
       missionIdx: mission.idx,
@@ -279,6 +298,20 @@ class MissionRunnerClass {
       ? ext.ui.parametricStory(mission as MissionEntry<unknown, TState>, { state, lastResult: null })
       : ParametricStory.resolve(mission.story, { state, lastResult: null });
 
+    // Phase C4: GameScene's post-game finalize block is gated on
+    // `this.missionContext` being non-null. Thread one through so v2-
+    // routed missions emit their mission_completed analytics + record
+    // stars on PlayerProfile + render the post-mission UI the same
+    // way legacy missions do. The legacy `MissionRestrictions` field
+    // is the merged restriction set off `mission.core.restrictions`.
+    const missionContext: MissionContext = {
+      campaignFactionId: ext.factionId,
+      missionId: mission.id,
+      missionIdx: mission.idx,
+      archetypeId: `v2:${mission.core.mode}`,
+      restrictions: mission.core.restrictions ?? {},
+    };
+
     UIBridge.startScene('GameScene', {
       mode: mission.core.mode,
       faction: mission.core.faction ?? ext.defaultPlayerFaction ?? 'arcane',
@@ -288,6 +321,7 @@ class MissionRunnerClass {
       heroId: mission.core.mode === 'hero_defense' ? mission.core.heroId : null,
       creepFaction: mission.core.creepFaction ?? ext.factionId,
       waveCount: mission.core.waveCount,
+      missionContext,
       // Phase B: only the engine-level Core fields ride the legacy
       // passthrough. Campaign-specific knobs (finaleRules, sabotageRules,
       // etc.) move into the runtime aspect bundle.
