@@ -207,10 +207,7 @@ describe('mechanical-v2 — objective predicates behave identically', () => {
   );
 });
 
-describe('mechanical-v2 — buildRuntime contract', () => {
-  it('buildRuntime returns an empty aspect bundle in C1 (aspects land in C2/C3)', () => {
-    const m = v2.missions[1]; // the_pass — should later get the pylons setup aspect
-    const aspects = v2.buildRuntime({ factionId: 'mechanical', missionIdx: 1, state: {} }, m);
-    expect(aspects).toEqual({});
-  });
-});
+// `buildRuntime` dispatch is exercised in
+// `src/systems/mechanical/MechPylonsRuntime.test.ts` once C2's aspects
+// land. The parity suite above covers data integrity; runtime wiring
+// belongs next to the runtime under test.
