@@ -31,6 +31,7 @@ import {
 } from './MechWaveScripts';
 import { mechPylonsRuntime } from '../../systems/mechanical/MechPylonsRuntime';
 import { mechSabotageRuntime } from '../../systems/mechanical/MechSabotageRuntime';
+import { registerCampaign } from '../../systems/campaign/CampaignRegistry';
 
 const T = MECHANICAL_TEXTS;
 
@@ -374,6 +375,12 @@ export const MECHANICAL_EXTENSION: CampaignExtension<MechState, MechMissionCfg> 
     return {};
   },
 };
+
+// Phase C4: register the Mech extension at module load so
+// `MissionRunner.start` can feature-detect and route through `startV2`.
+// Idempotent — re-importing this module (HMR, test setup) overwrites
+// the registry slot with the same value.
+registerCampaign(MECHANICAL_EXTENSION);
 
 // Re-export the CoreMissionConfig type for the parity test — the test
 // reads from both this extension and the legacy CampaignDef and needs
