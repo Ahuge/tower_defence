@@ -29,10 +29,20 @@ const REGISTRY: Partial<Record<FactionId, CampaignExtension<unknown, unknown>>> 
  * Register a Campaign Extension. Called from each campaign module's
  * top level (side-effect import in `main.ts`). Idempotent: re-registering
  * the same factionId overwrites — Hot Module Replacement-safe.
+ *
+ * Dev-mode overwrite warning catches accidental two-extensions-on-one-faction
+ * (e.g. legacy `mechanical.ts` and new `mechanical-v2.ts` both registering
+ * during Phase F's migration window).
  */
 export function registerCampaign<TState, TCfg>(
   ext: CampaignExtension<TState, TCfg>,
 ): void {
+  if (REGISTRY[ext.factionId] && typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    console.warn(
+      `[CampaignRegistry] overwriting extension for faction "${ext.factionId}". ` +
+      'Two modules likely both call registerCampaign for the same factionId.',
+    );
+  }
   // Stored as `unknown,unknown` at the boundary; callers narrow via
   // the campaign-specific consumer paths inside each campaign module.
   REGISTRY[ext.factionId] = ext as CampaignExtension<unknown, unknown>;

@@ -39,9 +39,12 @@ export interface MechSabotageRulesShape {
 
 /** Shape of Arcane M10 finale rules at the host boundary. Duplicated
  *  from `data/campaigns/arcane-v2.ts` for the same reason as
- *  `MechSabotageRulesShape`. */
+ *  `MechSabotageRulesShape`. `heroId` re-imports the HeroId union from
+ *  data so a typo at the aspect or campaign-data layer is caught at
+ *  compile time — FinaleController only `console.warn`s on a missing
+ *  hero, so a string-typed boundary would ship silently broken M10. */
 export interface ArcaneFinaleRulesShape {
-  heroId: string;
+  heroId: import('../../data/HeroTypes').HeroId;
   heroStartingLevel?: number;
   heroRespawnSeconds?: number;
   chargeRatePerDrain: number;

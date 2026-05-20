@@ -185,7 +185,19 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
   initialState: INITIAL_STATE,
   defaultPlayerFaction: 'void',
   missions: MISSIONS,
-  buildRuntime: () => ({}),
+  buildRuntime: (_ctx, mission) => {
+    // Hard fail if someone registers Snake Eyes without landing the
+    // M10 Counterfactual controller — otherwise startV2 would launch
+    // a 999-wave run with no Counterfactual controller. Fail loud at
+    // mission start rather than silently in gameplay.
+    if (mission.campaign.kind === 'final_unimplemented') {
+      throw new Error(
+        `[Snake Eyes] M10 (${mission.id}) has no runtime — Counterfactual ` +
+        `three-setpiece controller is unimplemented. See snake-eyes-v2.ts header.`,
+      );
+    }
+    return {};
+  },
 };
 
 // INTENTIONALLY UNREGISTERED. See file header — M10's Counterfactual

@@ -90,11 +90,20 @@ describe('snake-eyes-v2 — campaign payload', () => {
 });
 
 describe('snake-eyes-v2 — buildRuntime', () => {
-  it('returns an empty aspect bundle for every mission (no per-mission setup yet)', () => {
-    const ctx = { factionId: 'void' as const, missionIdx: 0, state: {} };
-    for (let i = 0; i < 10; i++) {
+  const ctx = { factionId: 'void' as const, missionIdx: 0, state: {} };
+
+  it('returns an empty aspect bundle for plain missions M1..M9', () => {
+    for (let i = 0; i < 9; i++) {
       const aspects = v2.buildRuntime(ctx, v2.missions[i]);
       expect(aspects).toEqual({});
     }
+  });
+
+  it('throws for M10 (final_unimplemented) — guards against premature registration', () => {
+    // If anyone uncomments `registerCampaign(SNAKE_EYES_EXTENSION)`
+    // before landing the Counterfactual controller, `startV2` would
+    // launch M10 into a broken 999-wave run. The throw fails loud at
+    // mission start instead.
+    expect(() => v2.buildRuntime(ctx, v2.missions[9])).toThrow(/M10.*Counterfactual/);
   });
 });

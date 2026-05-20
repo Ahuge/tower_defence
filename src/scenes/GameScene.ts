@@ -3084,10 +3084,16 @@ export class GameScene extends Phaser.Scene {
     setActiveSuppressionManager(this._suppressionMgr);
   }
 
-  /** No-op: shutdown already clears suppression state in shutdown().
-   *  Hook present so WorldMutator's undo bookkeeping can call it
-   *  without an undefined-method check. Phase E unifies the cleanup. */
-  removeSuppressionPylons(): void { /* see shutdown() */ }
+  /** Real teardown: destroy the render layer + null the manager refs
+   *  + clear the singleton consumed by `mech_pylon_vent_armor`. Both
+   *  `shutdown()` and the WorldMutator undo path call this — second
+   *  call is a safe no-op. */
+  removeSuppressionPylons(): void {
+    this._suppressionRender?.destroy();
+    this._suppressionRender = null;
+    this._suppressionMgr = null;
+    setActiveSuppressionManager(null);
+  }
 
   /** Install the Mech M10 sabotage runtime — SabotageController +
    *  SabotageRender + Workshop 2×2 grid block + send-path reverse +
@@ -3176,9 +3182,30 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener(SABOTAGE_PANEL_CLOSE_EVENT, this._onSabotagePanelClose);
   }
 
-  /** No-op: shutdown() already removes the SABOTAGE_*_EVENT listeners
-   *  and disposes the controller. Phase E unifies the cleanup. */
-  removeMechSabotage(): void { /* see shutdown() */ }
+  /** Real teardown: remove the SABOTAGE_*_EVENT window listeners, destroy
+   *  the render layer, null the controller refs. Both `shutdown()` and
+   *  the WorldMutator undo path call this — second call is a safe no-op
+   *  thanks to the null-guards. */
+  removeMechSabotage(): void {
+    if (this._onSabotageTrain) {
+      window.removeEventListener(SABOTAGE_TRAIN_EVENT, this._onSabotageTrain);
+      this._onSabotageTrain = null;
+    }
+    if (this._onSabotageUpgrade) {
+      window.removeEventListener(SABOTAGE_UPGRADE_EVENT, this._onSabotageUpgrade);
+      this._onSabotageUpgrade = null;
+    }
+    if (this._onSabotagePanelClose) {
+      window.removeEventListener(SABOTAGE_PANEL_CLOSE_EVENT, this._onSabotagePanelClose);
+      this._onSabotagePanelClose = null;
+    }
+    this._workshopPanelOpen = false;
+    this._sabotageRender?.destroy();
+    this._sabotageRender = null;
+    this._sabotageController = null;
+    this._selectedRaider = null;
+    GameUIStore.setSabotageHud(null);
+  }
 
   /** Install Arcane M10 finale — FinaleController + summoning circles
    *  + destructible towers + send-path reverse. Reads summoningCircles
@@ -3196,7 +3223,7 @@ export class GameScene extends Phaser.Scene {
     }
     this._finaleController = new FinaleController({
       scene: this,
-      rules: rules as unknown as ConstructorParameters<typeof FinaleController>[0]['rules'],
+      rules,
       destructibleTowers: mapDef.destructibleTowers,
       destructibleStructures: mapDef.destructibleStructures ?? [],
       summoningCircles: mapDef.summoningCircles,
@@ -3215,8 +3242,11 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** No-op: shutdown() already clears `_finaleController`. */
-  removeArcaneFinale(): void { /* see shutdown() */ }
+  /** Real teardown: null the FinaleController ref so a stale instance
+   *  doesn't bleed into the next scene's `update()` tick. */
+  removeArcaneFinale(): void {
+    this._finaleController = null;
+  }
 
   /** Greenward — construct per-mission ConsecrationManager-backed
    *  controller + (when finale) the three-setpiece state machine.
@@ -3240,9 +3270,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** No-op: shutdown() already clears `_greenwardController` and
-   *  `_greenwardFinaleController`. Phase E unifies. */
-  removeGreenwardRules(): void { /* see shutdown() */ }
+  /** Real teardown: null both Greenward controllers so a stale instance
+   *  doesn't bleed into the next mission's tick / finalize path. */
+  removeGreenwardRules(): void {
+    this._greenwardController = null;
+    this._greenwardFinaleController = null;
+  }
 
   /** Push the SabotageHud state to GameUIStore so the DOM panel can
    *  render. Called every frame; the store internally short-circuits
@@ -5454,6 +5487,14 @@ export class GameScene extends Phaser.Scene {
     this._sabotageController = null;
     this._selectedRaider = null;
     GameUIStore.setSabotageHud(null);
+    // Arcane M10 + Greenward — null these here too in case the legacy
+    // path (no WorldMutator) ran, so a stale controller doesn't tick
+    // on the next scene boot. The aspect path's `removeArcaneFinale` /
+    // `removeGreenwardRules` already did this earlier in `shutdown()`
+    // via WorldMutator.shutdown — second null is a safe no-op.
+    this._finaleController = null;
+    this._greenwardController = null;
+    this._greenwardFinaleController = null;
 
     // Clear event listeners
     this.events.off('shutdown');
