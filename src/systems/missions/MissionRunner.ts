@@ -35,14 +35,15 @@ export interface MissionContext {
 
 class MissionRunnerClass {
   /** The mission currently being played, if any. Null between runs.
-   *  `archetypeId` is captured here so `finalize` / `abort` can emit
-   *  it on analytics without re-reading `mission.archetype` — the v2
-   *  `MissionEntry` shape has no `archetype` field, so legacy reads
-   *  would silently ship `undefined`. start() captures the real id,
-   *  startV2() captures the synthesized `v2:${mode}` string. */
+   *  Phase E4: holds the new-shape `CampaignExtension` + `MissionEntry`
+   *  directly — the legacy `CampaignDef` / `MissionDef` cast bridge is
+   *  gone now that every campaign is registered as an extension and
+   *  `start` redirects to `startV2`. `archetypeId` is captured because
+   *  `MissionEntry` has no `archetype` field; finalize / abort emit
+   *  the synthesized `v2:${mode}` value on analytics. */
   private active: {
-    campaign: CampaignDef;
-    mission: MissionDef;
+    ext: CampaignExtension<unknown, unknown>;
+    mission: MissionEntry<unknown, unknown>;
     archetypeId: string;
     startedAt: number;
   } | null = null;
@@ -84,7 +85,7 @@ class MissionRunnerClass {
     // Snapshot prior stars BEFORE recordMissionResult so we can detect
     // first-completion (drives the once-per-campaign campaign_completed
     // analytics emit at the bottom).
-    const priorStars = PlayerProfile.getMissionStars(session.campaign.factionId, mission.idx);
+    const priorStars = PlayerProfile.getMissionStars(session.ext.factionId, mission.idx);
     let stars: StarCount = 0;
     if (result.won) {
       stars = 1;
@@ -94,7 +95,7 @@ class MissionRunnerClass {
       if (stars === 2 && star3 && star3.predicate(result)) stars = 3;
     }
 
-    PlayerProfile.recordMissionResult(session.campaign.factionId, mission.idx, stars);
+    PlayerProfile.recordMissionResult(session.ext.factionId, mission.idx, stars);
 
     // v2: MissionStateAspect.applyMissionResult — writes cross-mission
     // state at mission-end (e.g. Greenward's Wildwood reserves spend
@@ -110,7 +111,7 @@ class MissionRunnerClass {
     // state-derived star bonuses ("you finished with >50 reserves
     // = bonus star"), the ordering needs to flip — applyMissionResult
     // first, then stars computed from the new state. Phase E item.
-    const ext = getCampaignExtension(session.campaign.factionId);
+    const ext = getCampaignExtension(session.ext.factionId);
     if (ext?.missionState) {
       try {
         const prev = ext.missionState.read();
@@ -125,7 +126,7 @@ class MissionRunnerClass {
 
     if (result.won) {
       Analytics.track('mission_completed', {
-        campaignFactionId: session.campaign.factionId,
+        campaignFactionId: session.ext.factionId,
         missionIdx: mission.idx,
         archetypeId: session.archetypeId,
         stars,
@@ -133,7 +134,7 @@ class MissionRunnerClass {
       });
     } else {
       Analytics.track('mission_failed', {
-        campaignFactionId: session.campaign.factionId,
+        campaignFactionId: session.ext.factionId,
         missionIdx: mission.idx,
         archetypeId: session.archetypeId,
         atWave: result.wave,
@@ -145,11 +146,11 @@ class MissionRunnerClass {
     // stars guard, replays of the final mission would re-fire the
     // analytics every time and inflate the campaign-clear count.
     if (result.won
-      && mission.idx === session.campaign.missions.length - 1
+      && mission.idx === session.ext.missions.length - 1
       && priorStars === 0) {
       Analytics.track('campaign_completed', {
-        campaignFactionId: session.campaign.factionId,
-        totalStars: PlayerProfile.getCampaignTotalStars(session.campaign.factionId),
+        campaignFactionId: session.ext.factionId,
+        totalStars: PlayerProfile.getCampaignTotalStars(session.ext.factionId),
       });
     }
 
@@ -226,17 +227,10 @@ class MissionRunnerClass {
       return false;
     }
 
-    // Phase C4: populate `this.active` with cast-bridged shape so
-    // `finalize()` finds the session and runs its objective /
-    // analytics / persistence path uniformly across legacy + v2
-    // missions. Finalize reads only fields that overlap both shapes
-    // (factionId, initialState, idx, id, objectives, missions.length);
-    // the cast is safe at runtime. Phase E unifies `active` as a
-    // discriminated union and drops the cast.
     const archetypeId = `v2:${mission.core.mode}`;
     this.active = {
-      campaign: ext as unknown as CampaignDef,
-      mission: mission as unknown as MissionDef,
+      ext: ext as CampaignExtension<unknown, unknown>,
+      mission: mission as MissionEntry<unknown, unknown>,
       archetypeId,
       startedAt: Date.now(),
     };
@@ -317,9 +311,13 @@ class MissionRunnerClass {
     return this.active !== null;
   }
 
-  getActive(): { campaign: CampaignDef; mission: MissionDef } | null {
+  /** Returns the active session's extension + mission, or null. The
+   *  only caller (GameScene's post-finalize block) had captured the
+   *  result but never used it — calling code re-resolves via the
+   *  campaign registry. Kept for compatibility / future use. */
+  getActive(): { ext: CampaignExtension<unknown, unknown>; mission: MissionEntry<unknown, unknown> } | null {
     if (!this.active) return null;
-    return { campaign: this.active.campaign, mission: this.active.mission };
+    return { ext: this.active.ext, mission: this.active.mission };
   }
 
   /** Bail out without finalizing — used when the player quits to
@@ -327,7 +325,7 @@ class MissionRunnerClass {
   abort(): void {
     if (!this.active) return;
     Analytics.track('mission_failed', {
-      campaignFactionId: this.active.campaign.factionId,
+      campaignFactionId: this.active.ext.factionId,
       missionIdx: this.active.mission.idx,
       archetypeId: this.active.archetypeId,
       atWave: 0,
