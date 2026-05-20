@@ -137,6 +137,12 @@ interface TestHook {
    *  the projection from input is more readable). Returns false if
    *  no GameScene is active. */
   stagePlacementGhost: (towerTypeId: string, col: number, row: number) => boolean;
+  /** Snapshot the active GameScene's scheduled wave script — used by
+   *  e2e regression tests that need to assert specific creep types
+   *  in specific waves (e.g. Mech M9 ensures wave 5 still contains
+   *  `mech_ace_pilot` after the v2 routing). Returns null when no
+   *  GameScene is active. */
+  getScheduledWaves: () => null | { wave: number; isBoss: boolean; groups: { creepType: string; count: number }[] }[];
 }
 
 let bootComplete = false;
@@ -356,6 +362,21 @@ export function installTestHook(): void {
       if (!isGameSceneActive()) return false;
       GameUIStore.setPlacementGhost({ col, row, towerTypeId });
       return true;
+    },
+    getScheduledWaves: () => {
+      const game = UIBridge.getGame();
+      if (!game) return null;
+      const scene = game.scene.getScene('GameScene') as unknown as {
+        waves?: { wave: number; isBoss: boolean; groups: { creepType: string; count: number }[] }[];
+      } | null;
+      if (!scene?.waves) return null;
+      // Shallow snapshot — copy each wave entry's identifying fields
+      // so the caller can serialize across the Playwright bridge.
+      return scene.waves.map(w => ({
+        wave: w.wave,
+        isBoss: w.isBoss,
+        groups: w.groups.map(g => ({ creepType: g.creepType, count: g.count })),
+      }));
     },
   };
   // One-line breadcrumb — handy when a test fails and you open the
