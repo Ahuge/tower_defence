@@ -21,7 +21,7 @@ import { ShardBadge } from '../components/ShardBadge';
 import { UIBridge } from '../UIBridge';
 import { listTreeNodes } from '../../data/FactionTree';
 import { FACTIONS, type FactionId } from '../../data/Factions';
-import { getCampaign } from '../../data/campaigns';
+import { getCampaign } from '../../systems/campaign/CampaignRegistry';
 import {
   isFactionCampaignPurchased, isFactionCampaignComplete,
   isFactionPlayable, getCurrentLevel,

@@ -26,7 +26,7 @@ import { PlayerProfileStore } from './PlayerProfileStore';
 import { levelFromXp } from './PlayerLevel';
 import { StorePersistence } from '../monetization/StorePersistence';
 import { getTreeNode } from '../../data/FactionTree';
-import { getCampaign, isCampaignComplete } from '../../data/campaigns';
+import { getCampaign, isCampaignComplete } from '../../systems/campaign/CampaignRegistry';
 import type { FactionId } from '../../data/Factions';
 
 // We deliberately do NOT import PlayerProfile here — UnlockGates is

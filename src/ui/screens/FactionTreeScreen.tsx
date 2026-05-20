@@ -40,7 +40,7 @@ import { attemptFactionUnlock } from '../../systems/profile/FactionUnlockFlow';
 import { FACTIONS, type FactionId } from '../../data/Factions';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { ShardWallet } from '../../systems/monetization/ShardWallet';
-import { getCampaign } from '../../data/campaigns';
+import { getCampaign } from '../../systems/campaign/CampaignRegistry';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { FactionEmblem } from '../components/FactionEmblem';
 import { Fragment } from 'preact';

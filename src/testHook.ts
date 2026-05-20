@@ -22,7 +22,7 @@ import { TutorialManager } from './systems/Tutorial/TutorialManager';
 import { TutorialPersistence } from './systems/Tutorial/TutorialPersistence';
 import { GameUIStore } from './ui/GameUIStore';
 import type { GameEvents } from './systems/EventBus';
-import { getCampaign } from './data/campaigns';
+import { getCampaign } from './systems/campaign/CampaignRegistry';
 import { MissionRunner } from './systems/missions/MissionRunner';
 import { PlayerProfile } from './systems/profile/PlayerProfile';
 import type { FactionId } from './data/Factions';
