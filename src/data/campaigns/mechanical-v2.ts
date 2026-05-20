@@ -29,6 +29,7 @@ import {
   buildSpireFalls,
   buildRailYardAssault,
 } from './MechWaveScripts';
+import { mechPylonsRuntime } from '../../systems/mechanical/MechPylonsRuntime';
 
 const T = MECHANICAL_TEXTS;
 
@@ -355,7 +356,16 @@ export const MECHANICAL_EXTENSION: CampaignExtension<MechState, MechMissionCfg> 
   defaultMapThemeOverride: 'factory',
   defaultPlayerFaction: 'arcane',
   missions: MISSIONS,
-  buildRuntime: () => ({}),
+  buildRuntime: (_ctx, mission) => {
+    // C2: pylon missions (M2, M5, M6, M8) get the Suppression Pylons
+    // aspect bundle. Sabotage M10 lands in C3; plain missions return
+    // no aspects (the legacy code path still owns their setup for now,
+    // but the empty bundle is a valid no-op once C4 cuts over).
+    if (mission.campaign.kind === 'pylons') {
+      return mechPylonsRuntime(mission.campaign.pylons);
+    }
+    return {};
+  },
 };
 
 // Re-export the CoreMissionConfig type for the parity test — the test
