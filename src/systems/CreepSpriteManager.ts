@@ -258,6 +258,20 @@ function registerCampaignAnims(
 
 /** Create walk + death animations for a given creep faction (call in scene.create) */
 export function createCreepAnimations(scene: Phaser.Scene, faction: FactionId): void {
+  // Campaign-bespoke animations register FIRST so they win the
+  // `if (!scene.anims.exists(walkKey))` guard below. Otherwise the
+  // CREEP_TYPE_TO_COL fallback aliases (mech_light_walker: 0, etc.)
+  // would claim the anim key with the faction sheet and silently
+  // overwrite the bespoke sprite at sprite.play() time — the creep's
+  // initial texture is the campaign sheet but the animation swaps it
+  // straight back to the faction sheet's "standard" col 0. The
+  // aliases exist as cold-start fallbacks if the campaign sheet
+  // failed to load; reordering here makes them act like fallbacks
+  // instead of always-on overrides.
+  registerCampaignAnims(scene, faction, MECH_CAMPAIGN_SHEET_KEY, MECH_CAMPAIGN_TO_COL, MECH_CAMPAIGN_COLS);
+  registerCampaignAnims(scene, faction, GREENWARD_CAMPAIGN_SHEET_KEY, GREENWARD_CAMPAIGN_TO_COL, GREENWARD_CAMPAIGN_COLS);
+  registerCampaignAnims(scene, faction, SNAKE_EYES_CAMPAIGN_SHEET_KEY, SNAKE_EYES_CAMPAIGN_TO_COL, SNAKE_EYES_CAMPAIGN_COLS);
+
   const key = sheetKey(faction);
   if (scene.textures.exists(key)) {
     for (const [typeId, col] of Object.entries(CREEP_TYPE_TO_COL)) {
@@ -285,10 +299,6 @@ export function createCreepAnimations(scene: Phaser.Scene, faction: FactionId): 
       }
     }
   }
-  // Campaign-bespoke animations — each has its own column count.
-  registerCampaignAnims(scene, faction, MECH_CAMPAIGN_SHEET_KEY, MECH_CAMPAIGN_TO_COL, MECH_CAMPAIGN_COLS);
-  registerCampaignAnims(scene, faction, GREENWARD_CAMPAIGN_SHEET_KEY, GREENWARD_CAMPAIGN_TO_COL, GREENWARD_CAMPAIGN_COLS);
-  registerCampaignAnims(scene, faction, SNAKE_EYES_CAMPAIGN_SHEET_KEY, SNAKE_EYES_CAMPAIGN_TO_COL, SNAKE_EYES_CAMPAIGN_COLS);
 }
 
 /** Create a creep sprite for a given faction and type */
