@@ -1,6 +1,20 @@
 # Changelog
 
-## 2026-05-20
+## 2026-05-21
+
+### Mech campaign — fix bespoke walker / scout / skiff sprites being silently overridden
+
+`createCreepAnimations` in `CreepSpriteManager.ts` registered the faction-sheet animations *before* the campaign-bespoke ones. For every mech campaign creep id (`mech_scout`, `mech_skiff`, `mech_light_walker`, `mech_armored_walker`, `mech_flagship_walker`, `mech_ace_pilot`), the faction loop iterated over `CREEP_TYPE_TO_COL`'s fallback aliases first and claimed the anim key `creep_mechanical_<id>_walk` with the faction sheet. The subsequent `registerCampaignAnims` call hit its own `if (!scene.anims.exists(walkKey))` guard, no-opped, and the bespoke art never reached the screen.
+
+In-game flow: `createCreepSprite` correctly resolved to the campaign sheet and built the sprite from the bespoke frame, but `sprite.play(walkKey)` immediately swapped the texture back to the faction sheet at the aliased fallback column. Net effect: every mech campaign creep rendered as its faction-sheet fallback shape — `mech_light_walker` as the standard mech, `mech_scout` as the fast mech, `mech_armored_walker` as the armored mech, etc. — even though the bespoke tripod walker / siege walker / scout / skiff / flagship / ace-pilot pixels were sitting in `mech_campaign_creeps.png` the whole time.
+
+Fixed by reordering `createCreepAnimations` so campaign animations register first. The faction loop's `if (!scene.anims.exists)` guard now skips the aliased mech_* keys when the campaign sheet is present, and the aliases revert to their intended role of cold-start fallback (used only if the campaign sheet failed to load).
+
+### Mech M6 — rebalance walker presence
+
+`buildRailYardAssault` (M6 First Light) was spawning walkers so sparsely that the bespoke walker art on `mech_campaign_creeps` cols 2 and 3 barely got screen time. Old script gated `mech_light_walker` to wave ≥4 and `mech_armored_walker` to wave ≥10, with peak counts of 6 and 3 against 10 scouts + 12 skiffs — walkers were ~23% of the wave budget across the mission.
+
+Rewired the composition so walkers carry the rail-yard visual story: light walkers spawn from wave 1 with `2 + floor(i/2)` count (peak 12), armored walkers join from wave 5 with `1 + floor((i-5)/3)` (peak 6). Scouts/skiffs reduced to perimeter/air-screen role. Walkers now sit at ~48% of total creeps with light walkers dominating mid-to-late waves, matching the "rail yard mobilizing — frames rolling off the assembly line" narrative.
 
 ### Campaign-as-Aspect-Modules refactor
 

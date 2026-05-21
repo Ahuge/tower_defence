@@ -182,10 +182,12 @@ export function buildSpireFalls(): WaveDefinition[] {
   ];
 }
 
-/** M6 First Light — speedrun strike on the rail yard. Rail-themed
- *  waves: fast scout + skiff swarms with periodic walker frames
- *  rolling off the assembly line. Higher creep density per wave
- *  matches the "rail yard mobilizing" narrative. */
+/** M6 First Light — speedrun strike on the rail yard. The yard's
+ *  whole purpose is producing walker frames, so walkers are the
+ *  main body from wave 1; scouts + skiffs are the perimeter screen
+ *  and air cover that rolls alongside them. Armored frames join
+ *  mid-line. Bespoke walker art (mech_campaign_creeps cols 2/3)
+ *  carries the rail-yard visual story. */
 export function buildRailYardAssault(): WaveDefinition[] {
   // 20 waves; spawn intervals stay tight throughout (rail-yard
   // pace) and hpScale ramps moderately so the speedrun stays
@@ -195,15 +197,14 @@ export function buildRailYardAssault(): WaveDefinition[] {
     const hp = 26 + i * 6;
     const spawn = Math.max(220, 480 - i * 12);
     const groups: WaveDefinition['groups'] = [];
-    // Rail-yard composition: more skiffs + scouts than walkers
-    // (the yard is producing light frames; heavies are mid-line).
-    groups.push({ creepType: 'mech_scout', count: 4 + Math.floor(i / 3), hpScale: hp, speedScale: 1 });
-    groups.push({ creepType: 'mech_skiff', count: 2 + Math.floor(i / 2), hpScale: hp, speedScale: 1 });
-    if (i >= 4) {
-      groups.push({ creepType: 'mech_light_walker', count: 1 + Math.floor(i / 4), hpScale: hp, speedScale: 1 });
-    }
-    if (i >= 10) {
-      groups.push({ creepType: 'mech_armored_walker', count: 1 + Math.floor((i - 10) / 4), hpScale: hp, speedScale: 1 });
+    // Rail-yard composition: walkers dominate (main product),
+    // scouts + skiffs screen the perimeter. Armored heavies
+    // start joining at wave 5 once the yard's heavy line spins up.
+    groups.push({ creepType: 'mech_light_walker', count: 2 + Math.floor(i / 2), hpScale: hp, speedScale: 1 });
+    groups.push({ creepType: 'mech_scout', count: 3 + Math.floor(i / 4), hpScale: hp, speedScale: 1 });
+    groups.push({ creepType: 'mech_skiff', count: 2 + Math.floor(i / 3), hpScale: hp, speedScale: 1 });
+    if (i >= 5) {
+      groups.push({ creepType: 'mech_armored_walker', count: 1 + Math.floor((i - 5) / 3), hpScale: hp, speedScale: 1 });
     }
     waves.push({ wave: i, isBoss: i === 20, spawnInterval: spawn, groups });
   }
