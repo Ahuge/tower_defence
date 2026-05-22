@@ -25,9 +25,12 @@ import type { CampaignExtension, MissionEntry } from '../../systems/campaign/typ
 import type { SuppressionPylonSpec } from '../Maps';
 import { MECHANICAL_TEXTS } from './texts/mechanical.texts';
 import {
+  buildArmoredConvoy,
   buildPassColumn,
   buildSpireFalls,
   buildRailYardAssault,
+  buildRationedSiege,
+  buildThroneSiege,
 } from './MechWaveScripts';
 import { mechPylonsRuntime } from '../../systems/mechanical/MechPylonsRuntime';
 import { mechSabotageRuntime } from '../../systems/mechanical/MechSabotageRuntime';
@@ -144,6 +147,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
       mapId: 'heist_vault',
       difficulty: 'normal',
       waveCount: 10,
+      waveScript: buildArmoredConvoy(),
     },
     campaign: { kind: 'plain' },
     objectives: {
@@ -253,6 +257,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
       waveCount: 15,
       goldStartMult: 0.5,
       restrictions: { maxTowers: 6 },
+      waveScript: buildRationedSiege(),
     },
     campaign: { kind: 'plain' },
     objectives: {
@@ -338,6 +343,7 @@ const MISSIONS: MissionEntry<MechMissionCfg, MechState>[] = [
       mapId: 'mech_throne_finale',
       difficulty: 'hard',
       waveCount: 999,
+      waveScript: buildThroneSiege(),
     },
     campaign: {
       kind: 'sabotage',

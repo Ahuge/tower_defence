@@ -2,6 +2,20 @@
 
 ## 2026-05-21
 
+### Mech campaign — custom wave scripts for M3, M7, M10 (bespoke creep coverage)
+
+Three mech missions were using default wave generation and spawning generic mechanical-faction creeps (`standard` / `fast` / `armored` / `swarm`) instead of the bespoke `mech_*` campaign art. Audit found:
+
+- **M3 The Cipher** — lore promises "an armored convoy bound for the foundries," player fought generic mechs.
+- **M7 Rationed Mana** — neutral lore, but visual identity broke mid-act.
+- **M10 The Overthrow** — finale lore promises "every surviving walker and pilot in the region converges on the factory district to defend him," player fought generic standard/fast/armored mechs and never saw a single flagship or ace pilot. Worst miss in the campaign and it was the finale.
+
+Added three new wave-script builders in `MechWaveScripts.ts`:
+
+- **`buildArmoredConvoy`** (M3, 10 waves) — scouts open as forward outriders → skiffs screen the air → `mech_armored_walker` becomes the convoy body from wave 3 → wave 10 boss plays as the convoy lead arriving in force (8 armored + 4 light + 5 skiff). Light walkers join mid-script so the convoy reads as a full column rather than just heavy units.
+- **`buildRationedSiege`** (M7, 15 waves) — Iron Cascade tempo but lighter counts than M2/M4, since the player has half gold + a 6-tower cap and the restriction is the challenge. Scouts open, light walkers form the body, armored frames join mid-campaign, skiffs harass island chokepoints. No ace/flagship — those are reserved for M5 and M9.
+- **`buildThroneSiege`** (M10, 999 waves) — endless throne-siege generator that delivers the lore's promised convergence. Light + armored walkers as the backbone, skiff air harass every wave, scout probes on odd waves, `mech_ace_pilot` interludes every 5th wave (Voss's surviving aces), `mech_flagship_walker` capstones every 8th wave (M5's named flagships reappearing as throne defenders). HP scales steadily so the 999-wave tail stays meaningful past wave 50; counts cap at 8-12 per type so late waves stay readable. Win condition unchanged (throne-down, not survival).
+
 ### Mech campaign — fix bespoke walker / scout / skiff sprites being silently overridden
 
 `createCreepAnimations` in `CreepSpriteManager.ts` registered the faction-sheet animations *before* the campaign-bespoke ones. For every mech campaign creep id (`mech_scout`, `mech_skiff`, `mech_light_walker`, `mech_armored_walker`, `mech_flagship_walker`, `mech_ace_pilot`), the faction loop iterated over `CREEP_TYPE_TO_COL`'s fallback aliases first and claimed the anim key `creep_mechanical_<id>_walk` with the faction sheet. The subsequent `registerCampaignAnims` call hit its own `if (!scene.anims.exists(walkKey))` guard, no-opped, and the bespoke art never reached the screen.
