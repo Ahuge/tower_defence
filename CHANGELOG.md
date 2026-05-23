@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-05-22
+
+### Snake Eyes — wire DebtTracker into the mission lifecycle (the 800g actually moves now)
+
+Integration audit of the four shipped campaigns surfaced that Snake Eyes was the only campaign whose `buildRuntime` returned `{}` for every mission — meaning none of its bespoke systems (Pactbook, DebtTracker, EpilogueComposer, CollectorBehavior) were actually invoked at runtime. The starting 800g Debt that `VoidStatePanel` rendered in the campaign lobby never changed across missions, because nobody was calling `applyMissionStart` / `applyLeaks` / `applyDeclinePenalty`. The mutator functions were tested and stable; they just had no caller.
+
+Also surfaced: the file `src/data/campaigns/snake-eyes.ts` declared `SnakeEyesState = Record<string, never>` while `src/systems/voidc/DebtTracker.ts` declared an unrelated typed `SnakeEyesState` interface with the real shape (debt, pactbookTally, theresStatus, …). Two types with the same name in different files, occupying the same `CampaignState` slot keyed by `'void'`. Latent foot-gun: `MissionRunner.startV2` would have read `ext.initialState = {}` as a fallback if the missionState aspect was ever absent, clobbering the persistent slot.
+
+This commit:
+
+- **Unifies the type.** `snake-eyes.ts` now re-exports `SnakeEyesState` from `DebtTracker.ts`. The two declarations collapse to one.
+- **Builds `snakeEyesMissionStateAspect`** that calls `applyMissionStart(entry.idx)` in `applyDynamicOverrides` (interest tick at every mission start) and `applyLeaks(missionLeakCount)` in `applyMissionResult` (leak surcharge at mission end). Pattern mirrors `greenwardMissionStateAspect`.
+- **Adds a per-mission gameplay aspect** via `buildRuntime` that listens to `onCreepReached` and increments a module-level leak counter consumed by `applyMissionResult`. The counter is the accurate leak-count source — `result.livesStart - result.livesRemaining` would over-charge for boss leaks (5 lives each = 1 actual leak in the surcharge model).
+- **Sets `initialState: DEFAULT_SNAKE_EYES_STATE`** so the fallback path inside `MissionRunner.startV2` writes the right shape if the missionState aspect were ever stripped.
+- **Tests:** 10 new unit tests covering interest accumulation across missions, leak surcharge via counter, fallback to livesLost when the counter is empty, and counter reset between missions. All passing.
+
+What still doesn't work (deferred to follow-up commits): the 3-card `PactbookPanel` UI is implemented but never rendered, the `SnakeEyesEndingPanel` post-M10 panel is implemented but never rendered, the `CollectorBehavior` for M8 isn't instantiated, and the M10 Counterfactual three-setpiece controller is unimplemented (intentional — `buildRuntime` throws on `final_unimplemented`).
+
 ## 2026-05-21
 
 ### Mech campaign — custom wave scripts for M3, M7, M10 (bespoke creep coverage)

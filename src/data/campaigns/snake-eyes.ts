@@ -27,11 +27,24 @@
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
 import { SNAKE_EYES_TEXTS } from './texts/snake-eyes.texts';
 import { registerCampaign } from '../../systems/campaign/CampaignRegistry';
+import {
+  DEFAULT_SNAKE_EYES_STATE,
+  type SnakeEyesState,
+} from '../../systems/voidc/DebtTracker';
+import {
+  snakeEyesMissionStateAspect,
+  recordMissionLeak,
+} from '../../systems/voidc/SnakeEyesMissionStateAspect';
 
 const T = SNAKE_EYES_TEXTS;
 
-export type SnakeEyesState = Record<string, never>;
-const INITIAL_STATE: SnakeEyesState = {};
+// Re-export the canonical state type from DebtTracker so legacy
+// consumers importing `SnakeEyesState` from this file still resolve.
+// The previous declaration `Record<string, never>` was wrong — it
+// contradicted the DebtTracker's typed `SnakeEyesState` interface
+// and would have clobbered the persistent state slot if the extension
+// had ever written through `ext.initialState`.
+export type { SnakeEyesState };
 
 // All 10 Snake Eyes missions are structurally "plain" — there are
 // no per-mission ruin specs / pylon specs / etc. The Pactbook and
@@ -197,9 +210,10 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
   name: T.campaign.name,
   intro: T.campaign.intro,
   outro: T.campaign.outro,
-  initialState: INITIAL_STATE,
+  initialState: DEFAULT_SNAKE_EYES_STATE,
   defaultPlayerFaction: 'void',
   missions: MISSIONS,
+  missionState: snakeEyesMissionStateAspect,
   buildRuntime: (_ctx, mission) => {
     // Hard fail if someone registers Snake Eyes without landing the
     // M10 Counterfactual controller — otherwise startV2 would launch
@@ -211,7 +225,16 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
         `three-setpiece controller is unimplemented. See snake-eyes-v2.ts header.`,
       );
     }
-    return {};
+    // Per-mission gameplay aspect: count leaks for the
+    // `applyMissionResult` surcharge. Module-level counter consumed in
+    // `snakeEyesMissionStateAspect.applyMissionResult` and reset there.
+    return {
+      gameplay: {
+        onCreepReached(_creepId: number) {
+          recordMissionLeak();
+        },
+      },
+    };
   },
 };
 
