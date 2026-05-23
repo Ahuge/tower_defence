@@ -10,6 +10,11 @@ import { pickFlavour } from '../../data/FactionFlavour';
 import { UIBridge } from '../UIBridge';
 import { factionSplashSrc } from '../utils/factionAssets';
 import { useIsPortraitViewport } from '../hooks/useIsPortraitViewport';
+import { PactbookPanel } from '../campaign/PactbookPanel';
+import {
+  getMissionPactbook,
+  isMissionPactbookResolved,
+} from '../../systems/voidc/ActiveMissionPactbook';
 
 function hexColor(n: number): string {
   return '#' + n.toString(16).padStart(6, '0');
@@ -47,14 +52,34 @@ interface LoadingScreenProps {
   /** When true, screen waits for player to click "Begin" before
    *  dismissing instead of auto-dismissing on scene-ready. */
   requiresContinue?: boolean;
+  /** Campaign factionId (e.g. 'void') when launching a campaign
+   *  mission. Drives per-campaign pre-mission UI surfaces — currently
+   *  the Snake Eyes PactbookPanel. */
+  campaignFactionId?: string;
 }
 
-export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missionTitle, missionStory, requiresContinue }: LoadingScreenProps) {
+export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missionTitle, missionStory, requiresContinue, campaignFactionId }: LoadingScreenProps) {
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
   const [minElapsedUI, setMinElapsedUI] = useState(false);
   const flavourRef = useRef(pickFlavour(faction));
+
+  // ─── Pactbook gate (Snake Eyes campaign only) ───────────────────
+  // The Snake Eyes `buildRuntime` instantiates a per-mission Pactbook
+  // via `beginMissionPactbook()` before this screen mounts. We pull
+  // the instance once and render it via PactbookPanel. The Begin
+  // button is additionally gated on the panel being resolved
+  // (accepted or declined). If somehow the Pactbook isn't there
+  // (e.g. wagers/ side-effect import skipped, edge case), we treat
+  // it as already-resolved so the player isn't soft-locked.
+  const isSnakeEyes = campaignFactionId === 'void';
+  const pactbookRef = useRef<ReturnType<typeof getMissionPactbook>>(
+    isSnakeEyes ? getMissionPactbook() : null,
+  );
+  const [pactbookResolved, setPactbookResolved] = useState(
+    isSnakeEyes ? isMissionPactbookResolved() : true,
+  );
 
   const fDef = faction && faction !== 'random' ? FACTIONS[faction as FactionId] : null;
   const fColor = fDef ? hexColor(fDef.primaryColor) : '#888888';
@@ -319,12 +344,29 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
           {wavesLabel && <InfoPill label="Waves" value={wavesLabel} />}
         </div>
 
+        {/* Snake Eyes PactbookPanel — three wager cards + decline.
+            Rendered inline above the Begin button. Player resolves
+            (accept one or decline all) before the Begin button enables.
+            The Pactbook instance is created in Snake Eyes' buildRuntime
+            BEFORE this screen mounts, so getMissionPactbook() always
+            returns non-null inside a Snake Eyes mission. The
+            conditional null check is defensive for retry / edge flows. */}
+        {isSnakeEyes && pactbookRef.current && !pactbookResolved && (
+          <div style={{ marginBottom: '24px' }}>
+            <PactbookPanel
+              pactbook={pactbookRef.current}
+              onResolved={() => setPactbookResolved(true)}
+            />
+          </div>
+        )}
+
         {/* Progress bar transforms into a Begin button when the scene
-            is ready AND the min-time has elapsed (campaign only).
-            Until both are true the loading bar keeps animating. For
-            non-campaign loads, the bar just keeps animating until
+            is ready AND the min-time has elapsed (campaign only) AND
+            the Pactbook (for Snake Eyes missions) has been resolved.
+            Until all three are true the loading bar keeps animating.
+            For non-campaign loads, the bar just keeps animating until
             auto-dismiss fires. */}
-        {requiresContinue && sceneReady && minElapsedUI ? (
+        {requiresContinue && sceneReady && minElapsedUI && pactbookResolved ? (
           <button
             onClick={() => window.dispatchEvent(new Event('loading-screen-continue'))}
             style={{

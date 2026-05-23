@@ -45,6 +45,7 @@ import {
   applyLeaks,
   type SnakeEyesState,
 } from './DebtTracker';
+import { resolveActiveWagerAtMissionEnd } from './ActiveMissionPactbook';
 
 // ─── Per-mission leak counter ────────────────────────────────────
 // Reset on every `applyMissionResult` and on module load. The
@@ -121,6 +122,13 @@ export const snakeEyesMissionStateAspect: MissionStateAspect<SnakeEyesState, any
     const livesLost = Math.max(0, result.livesStart - result.livesRemaining);
     const leakCount = counterCount > 0 ? counterCount : livesLost;
     if (leakCount > 0) applyLeaks(leakCount);
+
+    // Resolve the active wager (if any). The accepted wager's
+    // success / failure feeds into the campaign tally; the win-paydown
+    // pays down a chunk of Debt for accepted-wager wins. No-op if the
+    // player declined all three or the panel never instantiated.
+    resolveActiveWagerAtMissionEnd(result);
+
     return getSnakeEyesState();
   },
 };

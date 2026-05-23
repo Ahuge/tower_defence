@@ -2,6 +2,27 @@
 
 ## 2026-05-22
 
+### Snake Eyes — render PactbookPanel before each mission (the 3 wager cards actually appear now)
+
+Follow-up to the same-day DebtTracker wiring commit. The 3-card PactbookPanel was already implemented and tested but lived as orphaned code — no scene rendered it. This commit threads it into the pre-mission `LoadingScreen` so the player actually sees the wagers and can accept one or decline all.
+
+New `ActiveMissionPactbook` module is a single-instance bridge between the DOM-side `PactbookPanel` and the scene-side gameplay aspects. Snake Eyes' `buildRuntime` now calls `beginMissionPactbook()` at mission launch (which constructs a new `Pactbook`, draws 3 cards from the deck weighted by the Dealer's threshold table, and stores the instance). `LoadingScreen` reads `getMissionPactbook()` when `campaignFactionId === 'void'`, renders the panel inline above the Begin button, and gates the Begin button on the player resolving the panel. The accepted Wager survives in module state across the loading → gameplay transition so future commits can wire `WagerEffectHandler` hooks (gold modifier, on-wave-cleared, paydown multiplier) into GameScene.
+
+At mission end, `snakeEyesMissionStateAspect.applyMissionResult` calls `resolveActiveWagerAtMissionEnd(result)`. For accepted Wagers this:
+- Updates the cross-mission Pactbook tally (succeeded / failed counters that `VoidStatePanel` displays)
+- Applies base win-paydown on victory (`PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE × wager.tier`), reducing Debt by 150g for a Tier 1, 200g for Tier 2, 250g for Tier 3 — first meaningful Debt paydown the player can earn.
+- Clears state so the next mission starts fresh.
+
+Threading added a new `campaignFactionId` field on `LoadingData` / `LoadingScreen` props — distinct from `faction` (which is the player's faction). For Snake Eyes both happen to be `'void'` but the distinction matters for future campaigns where the player may play a different faction than the campaign's defender.
+
+What still doesn't work (next follow-ups):
+- **Mid-mission wager effects.** The `WagerEffectHandler` registry has handlers for all 12 cards (gold delta, debt delta, trait injection, kill-gold modifier, on-wave-cleared streak logic, paydown multiplier). None are read at runtime — that's a separate GameScene integration. Currently a wager is purely cosmetic during gameplay; only the tally + base paydown apply.
+- **The Collector (M8) boss.** `CollectorBehavior` exists but isn't instantiated anywhere.
+- **M10 Counterfactual.** `buildRuntime` still throws on `final_unimplemented`.
+- **`SnakeEyesEndingPanel`** for M10 win. Deferred until M10 is launchable.
+
+Tests: 12 new for `ActiveMissionPactbook` covering Pactbook lifecycle (begin / replace-on-retry / decline / accept), `resolveActiveWagerAtMissionEnd` returning the accepted wager, win-paydown applying only on victory, tally counter updates, and decline penalty. Combined with the 10 from Pass 1 and the prior 287 voidc/ tests: 1293 total passing.
+
 ### Snake Eyes — wire DebtTracker into the mission lifecycle (the 800g actually moves now)
 
 Integration audit of the four shipped campaigns surfaced that Snake Eyes was the only campaign whose `buildRuntime` returned `{}` for every mission — meaning none of its bespoke systems (Pactbook, DebtTracker, EpilogueComposer, CollectorBehavior) were actually invoked at runtime. The starting 800g Debt that `VoidStatePanel` rendered in the campaign lobby never changed across missions, because nobody was calling `applyMissionStart` / `applyLeaks` / `applyDeclinePenalty`. The mutator functions were tested and stable; they just had no caller.

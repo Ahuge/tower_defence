@@ -322,6 +322,11 @@ class MissionRunnerClass {
       loadingMissionTitle: mission.name,
       loadingMissionStory: story,
       loadingRequiresContinue: true,
+      // Threading the campaign factionId lets LoadingScreen render
+      // campaign-specific pre-mission UI (Snake Eyes' PactbookPanel,
+      // future per-campaign briefing widgets). Differs from
+      // `faction` (above) which is the player's faction.
+      loadingCampaignFactionId: ext.factionId,
     });
     return true;
   }
