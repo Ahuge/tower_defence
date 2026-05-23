@@ -31,11 +31,8 @@ import {
   DEFAULT_SNAKE_EYES_STATE,
   type SnakeEyesState,
 } from '../../systems/voidc/DebtTracker';
-import {
-  snakeEyesMissionStateAspect,
-  recordMissionLeak,
-} from '../../systems/voidc/SnakeEyesMissionStateAspect';
-import { beginMissionPactbook } from '../../systems/voidc/ActiveMissionPactbook';
+import { snakeEyesMissionStateAspect } from '../../systems/voidc/SnakeEyesMissionStateAspect';
+import { SnakeEyesMissionController } from '../../systems/voidc/SnakeEyesMissionController';
 
 const T = SNAKE_EYES_TEXTS;
 
@@ -226,26 +223,19 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
         `three-setpiece controller is unimplemented. See snake-eyes-v2.ts header.`,
       );
     }
-    // Instantiate a fresh Pactbook for this mission. The pre-mission
-    // LoadingScreen reads it via `getMissionPactbook()` and renders
-    // the 3-card PactbookPanel; the player resolves the panel before
-    // the Begin button enables. The accepted wager (if any) is then
-    // available to in-mission consumers via `getActiveWager()` and is
-    // resolved at mission end by `applyMissionResult`.
-    //
-    // Why here in buildRuntime rather than in the LoadingScreen on
-    // mount: buildRuntime runs once per mission launch BEFORE
-    // UIBridge.startScene, so the Pactbook is guaranteed to exist
-    // by the time the loading screen mounts and queries for it.
-    beginMissionPactbook();
-
-    // Per-mission gameplay aspect: count leaks for the
-    // `applyMissionResult` surcharge. Module-level counter consumed in
-    // `snakeEyesMissionStateAspect.applyMissionResult` and reset there.
+    // Construct the per-mission controller. Owns the Pactbook + leak
+    // counter + wager-resolution logic. Returned as the `lifecycle`
+    // aspect so MissionRunner stores it on `active.runtime.lifecycle`;
+    // `LoadingScreen` reaches it via `getActiveSnakeEyesController()`,
+    // the gameplay aspect closure-captures it for `recordLeak`, and
+    // the missionState aspect reads it via the same typed accessor in
+    // `applyMissionResult`.
+    const controller = new SnakeEyesMissionController();
     return {
+      lifecycle: controller,
       gameplay: {
         onCreepReached(_creepId: number) {
-          recordMissionLeak();
+          controller.recordLeak();
         },
       },
     };

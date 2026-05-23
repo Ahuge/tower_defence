@@ -48,6 +48,12 @@ class MissionRunnerClass {
     mission: MissionEntry<unknown, unknown>;
     archetypeId: string;
     startedAt: number;
+    /** The per-mission RuntimeAspects bundle returned by
+     *  `ext.buildRuntime(...)`. Captured here so DOM-land consumers
+     *  (e.g. LoadingScreen rendering a campaign's pre-mission UI)
+     *  can read the live aspect instances without poking module
+     *  globals. Cleared on finalize/abort with the rest of `active`. */
+    runtime: import('../campaign/types').RuntimeAspects;
   } | null = null;
 
   /** Start a mission. Returns true if the launch succeeded.
@@ -200,7 +206,7 @@ class MissionRunnerClass {
       : ext.initialState;
     if (ext.missionState?.tickBetweenMissions) {
       try {
-        const ticked = ext.missionState.tickBetweenMissions(state);
+        const ticked = ext.missionState.tickBetweenMissions(state, baseMission);
         if (ticked && typeof ticked === 'object') {
           state = ticked;
           ext.missionState.write(state);
@@ -249,6 +255,7 @@ class MissionRunnerClass {
       mission: mission as MissionEntry<unknown, unknown>,
       archetypeId,
       startedAt: Date.now(),
+      runtime,
     };
 
     Analytics.track('mission_started', {
@@ -344,6 +351,18 @@ class MissionRunnerClass {
   getActive(): { ext: CampaignExtension<unknown, unknown>; mission: MissionEntry<unknown, unknown> } | null {
     if (!this.active) return null;
     return { ext: this.active.ext, mission: this.active.mission };
+  }
+
+  /** Returns the active mission's RuntimeAspects bundle, or null if
+   *  no mission is in flight. The single typed pipe for DOM-land
+   *  consumers (e.g. `LoadingScreen`) to reach the live aspect
+   *  instances without poking campaign-internal module globals.
+   *
+   *  Consumers should use `instanceof` narrowing on the lifecycle
+   *  aspect when they need a campaign-specific controller — see
+   *  `getActiveSnakeEyesController()` for the pattern. */
+  getCurrentRuntime(): import('../campaign/types').RuntimeAspects | null {
+    return this.active?.runtime ?? null;
   }
 
   /** Bail out without finalizing — used when the player quits to

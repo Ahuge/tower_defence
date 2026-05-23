@@ -290,9 +290,19 @@ export interface MissionStateAspect<TState, TCfg = unknown> {
   /** Update state at mission end using the result. */
   applyMissionResult(state: TState, result: MissionResult): TState;
   /** Update state in the gap between two missions (e.g. Greenward
-   *  Wildwood reserves regen `+10`). Runs after `applyMissionResult`
-   *  and before the next mission's `applyDynamicOverrides`. */
-  tickBetweenMissions?(state: TState): TState;
+   *  Wildwood reserves regen `+10`, Snake Eyes' +50g Debt interest
+   *  charge). Runs after the prior `applyMissionResult` and before
+   *  the next mission's `applyDynamicOverrides`. Receives the
+   *  upcoming `MissionEntry` so the implementation can branch on
+   *  `entry.idx` (e.g. Snake Eyes' Collector-cancellation check
+   *  needs to know which mission is about to start).
+   *
+   *  Note: most implementations ignore `entry` — it's there for the
+   *  rare case where between-mission state transforms need to read
+   *  the upcoming mission's id / idx / campaign payload to decide.
+   *  Greenward's regen, for instance, doesn't care which mission
+   *  is next. */
+  tickBetweenMissions?(state: TState, entry: MissionEntry<TCfg, TState>): TState;
 }
 
 /** UI Surface — per-campaign. Provides state panels, parametric
