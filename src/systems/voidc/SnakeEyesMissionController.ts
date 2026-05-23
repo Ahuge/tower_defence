@@ -212,15 +212,49 @@ export class SnakeEyesMissionController implements LifecycleAspect {
     this._m10.damageBoss(Number.MAX_SAFE_INTEGER);
   }
 
+  /** One-shot guard for the M10 win-trigger emit. GameScene checks
+   *  `m10.isWon()` every frame; without a guard the `gameWon` event
+   *  + goToGameOver call would fire on every subsequent tick. This
+   *  returns true exactly once per controller lifetime (the first
+   *  call when isWon flips true) and false on every subsequent call.
+   *
+   *  Lives on the controller (not GameScene) so the guard's lifetime
+   *  is bound to the scene's `_campaignRuntime` — per ADR-0003 the
+   *  scene-lifetime state should die with the controller, not
+   *  persist on a GameScene field that resets only at field-decl
+   *  time. Future replay flows that rebuild the controller get a
+   *  fresh guard automatically. */
+  consumeM10WinTrigger(): boolean {
+    if (this._m10WinFired) return false;
+    if (!this._m10 || !this._m10.isWon()) return false;
+    this._m10WinFired = true;
+    return true;
+  }
+  private _m10WinFired: boolean = false;
+
   /** Mark the player as having lost the current setpiece (lives
    *  reached zero). The controller flips to the appropriate
-   *  loss-stage. */
+   *  loss-stage. Mirror Lane is normally resolved by the race
+   *  (`completeMirrorLane` reads the lane winner) — but if lives
+   *  hit zero mid-race we force-resolve the lane in the
+   *  Counterfactual's favor so the stage transitions correctly
+   *  rather than getting stuck in `mirror_lane`. The EpilogueComposer
+   *  + future state-readers see `isLost() === true` uniformly. */
   m10MarkLost(): void {
     if (!this._m10) return;
     const stage = this._m10.getStage();
-    if (stage === 'approach') this._m10.failApproach();
-    else if (stage === 'table') this._m10.failTable();
-    // Mirror Lane loss is driven by the lane's race, not lives-zero.
+    if (stage === 'approach') {
+      this._m10.failApproach();
+    } else if (stage === 'table') {
+      this._m10.failTable();
+    } else if (stage === 'mirror_lane') {
+      // forceResolve is the test/edge-case hook MirrorLaneController
+      // ships for exactly this scenario (caller terminates the lane
+      // outside the natural race). completeMirrorLane reads the
+      // winner and flips the M10 stage to lost_mirror_lane.
+      this._m10.getMirrorLaneController().forceResolve('counterfactual');
+      this._m10.completeMirrorLane();
+    }
   }
 
   // ─── Pactbook accessors ──────────────────────────────────────────

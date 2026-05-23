@@ -817,6 +817,40 @@ export const CREEP_TYPES: Record<string, CreepType> = {
     },
   },
 
+  // Snake Eyes M10 — The Counterfactual. Boss creep that resolves
+  // the campaign's central conceit: the mirror-image gambler Ardax
+  // could have been. Spawns on M10 wave 11 (the Table setpiece) after
+  // Approach + Mirror Lane resolve. Death triggers
+  // `m10MarkBossDefeated` → mission win → `SnakeEyesEndingPanel`.
+  //
+  // Boss-tier HP baseline. The actual on-creep HP is overridden at
+  // spawn time by GameScene from `counterfactualBossHp(tally)` so
+  // lifetime Pactbook acceptance/decline drives the difficulty. See
+  // SnakeEyesMissionController.getM10Controller().getSnapshot().bossHpMax.
+  // The wave-script `hpScale` is the v1 fallback baseline.
+  //
+  // Has its OWN typeId (not generic `boss`) so the GameScene boss-
+  // kill detection can narrow on a Snake-Eyes-specific creep without
+  // colliding with the generic `boss` creep that other waves spawn.
+  void_counterfactual: {
+    id: 'void_counterfactual',
+    name: 'The Counterfactual',
+    description: "The deal you didn't take. Wearing your coat. Waiting at your table.",
+    hpMultiplier: 12, speedMultiplier: 0.6, armor: 'heavy',
+    color: 0x2a1840, size: 1.6, count: 1,
+    traits: [],
+    spawnBehavior: 'normal',
+    applyDifficulty(hints) {
+      return {
+        hpMult: hints.toughness * 12,
+        speedMult: hints.speed * 0.6,
+        countMult: 1, // never multi-spawned; boss
+        goldMult: hints.goldMult * 5,
+        extraTraits: [],
+      };
+    },
+  },
+
   // ─── Iron Cascade (Mech campaign) creep variants ────────────────
   // Voss's industrial war-machine roster. The campaign narrative
   // references these by name across M1/M2/M4/M5/M6/M9 but they

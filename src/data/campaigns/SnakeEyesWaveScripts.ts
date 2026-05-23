@@ -197,22 +197,25 @@ export function buildSnakeEyesM10Waves(): WaveDefinition[] {
         { creepType: 'evasive',  count: 3, hpScale: 110, speedScale: 1 },
       ] },
     // ─── Setpiece 3 — The Table ──────────────────────────────────
-    // Single boss = The Counterfactual. HP scaled at spawn-time in
-    // GameScene from `controller.getM10Controller().getSnapshot().bossHpMax`
-    // so lifetime Pactbook acceptance/decline tally drives boss size.
-    // Wave-script hpScale is the v1 baseline (200) used if the spawn-
-    // time scale doesn't fire (defensive — production always scales).
+    // The Counterfactual boss creep — its own typeId so GameScene's
+    // M10 boss-kill detection can narrow on `void_counterfactual`
+    // without colliding with the generic `boss` creep used by other
+    // waves / campaigns. Wave-script `hpScale` is the v1 baseline;
+    // GameScene overrides on spawn from
+    // `controller.getM10Controller().getSnapshot().bossHpMax` so
+    // lifetime Pactbook tally drives true difficulty (see the
+    // M10-polish PRD for the spawn-time override commit).
     { wave: 11, isBoss: true, spawnInterval: 0,
       groups: [
-        { creepType: 'boss', count: 1, hpScale: 200, speedScale: 0.8 },
+        { creepType: 'void_counterfactual', count: 1, hpScale: 200, speedScale: 0.8 },
       ] },
     // Backstop wave 12 — only reached if the player next-waves past
     // the boss without killing him (e.g. abuse pause flow). Keeps
     // the run from going silent if M10's win-detection misfires.
     { wave: 12, isBoss: true, spawnInterval: 340,
       groups: [
-        { creepType: 'boss',    count: 1,  hpScale: 240, speedScale: 0.8 },
-        { creepType: 'armored', count: 10, hpScale: 130, speedScale: 0.95 },
+        { creepType: 'void_counterfactual', count: 1,  hpScale: 240, speedScale: 0.8 },
+        { creepType: 'armored',             count: 10, hpScale: 130, speedScale: 0.95 },
       ] },
   ];
 }
