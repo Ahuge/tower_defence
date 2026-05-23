@@ -105,6 +105,7 @@ import { SuppressionRender } from '../systems/suppression/SuppressionRender';
 import { SabotageController } from '../systems/sabotage/SabotageController';
 import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import { GreenwardMissionController } from '../systems/greenward/GreenwardMissionController';
+import { SnakeEyesMissionController } from '../systems/voidc/SnakeEyesMissionController';
 import { GreenwardFinaleController } from '../systems/greenward/GreenwardFinaleController';
 import { getReserves } from '../systems/greenward/WildwoodReserves';
 import { BOSS_KILL_CUSTOM_FLAGS } from '../systems/greenward/GreenwardSpawns';
@@ -1449,6 +1450,16 @@ export class GameScene extends Phaser.Scene {
     // read per-player kill counts without threading a supplier down
     // through the constructor chain.
     this.circleDeathHandler = circleDeathHandler;
+    // Per-campaign kill-gold transform. Snake Eyes routes through its
+    // controller so the active Wager's `modifyCreepKillGold` can shape
+    // gold (House Cut: -10% +1g; Markers: +1g/Siphon-hit via tower
+    // trait; etc.). Other campaigns pass undefined → standard path.
+    // Done via instanceof narrowing per ADR-0003; the GameScene only
+    // sees the typed controller, not a generic "wager" concept.
+    const goldTransform: ((g: number) => number) | undefined =
+      this._campaignRuntime?.lifecycle instanceof SnakeEyesMissionController
+        ? (g) => (this._campaignRuntime!.lifecycle as SnakeEyesMissionController).modifyCreepKillGold(g)
+        : undefined;
     const deathHandler = circleDeathHandler
       ?? (this.matchMode === 'attacker'
         ? new AttackerDeathHandler(
@@ -1460,7 +1471,9 @@ export class GameScene extends Phaser.Scene {
           // defaults — used by speedrun-style missions to blunt
           // income so the player relies on the bumped goldStart.
           this._missionKillGoldMult
-            ?? (this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1))));
+            ?? (this.matchMode === 'hero_defense' ? 0.3 : (this.modifier?.killGoldMult ?? 1)),
+          goldTransform,
+        ));
     this.creepMgr = new CreepManager(leakHandler, deathHandler);
     // Shared procedural overlay for all creeps (HP bars, shadows,
     // status rings). Replaces the previous per-creep Graphics — 1
@@ -2024,6 +2037,29 @@ export class GameScene extends Phaser.Scene {
         this._campaignGameplayDetach = attachGameplayAspect(
           this.eventBus, this._campaignRuntime.gameplay,
         );
+      }
+      // Phase 3 — Snake Eyes Wager-effect scene-side wiring. The
+      // gameplay aspect handles event-driven hooks that need only
+      // controller state (onCreepReached, onWaveStarted, onWaveCleared).
+      // Two hooks need a scene-side handle the gameplay aspect doesn't
+      // have:
+      //   - applyMissionStartEffects(economy) → needs EconomyManager
+      //     so onMissionStart's goldDelta can credit the player.
+      //   - per-tower trait injection → needs TowerManager.getTowerAt
+      //     to push wager-supplied traits onto the live tower instance
+      //     after towerPlaced fires.
+      // Wired here via instanceof narrowing per ADR-0003. Listener
+      // unwinds with this.eventBus.clear() on scene shutdown.
+      if (this._campaignRuntime.lifecycle instanceof SnakeEyesMissionController) {
+        const seCtrl = this._campaignRuntime.lifecycle;
+        seCtrl.applyMissionStartEffects(this.economy);
+        this.eventBus.on('towerPlaced', (col: number, row: number, towerId: string) => {
+          const extras = seCtrl.getTraitsForTower(towerId);
+          if (extras.length === 0) return;
+          const tower = this.towerMgr.getTowerAt(col, row);
+          if (!tower) return;
+          for (const t of extras) tower.traits.push({ ...t });
+        });
       }
     }
   }

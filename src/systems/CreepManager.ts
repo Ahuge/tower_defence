@@ -74,16 +74,31 @@ export class StandardDeathHandler implements DeathHandler {
   private statsTracker: StatsTracker;
   private eventBus: EventBus;
   private killGoldMult: number;
+  /** Optional campaign-supplied transform applied AFTER killGoldMult.
+   *  Snake Eyes uses this to delegate to
+   *  `SnakeEyesMissionController.modifyCreepKillGold`, which forwards
+   *  to the active Wager's effect handler. The transform receives the
+   *  post-mult gold and returns the final amount credited.
+   *  Modifier-mode killGoldMult continues to apply first. */
+  private goldTransform: ((baseGold: number) => number) | undefined;
 
-  constructor(economy: EconomyManager, statsTracker: StatsTracker, eventBus: EventBus, killGoldMult: number) {
+  constructor(
+    economy: EconomyManager,
+    statsTracker: StatsTracker,
+    eventBus: EventBus,
+    killGoldMult: number,
+    goldTransform?: (baseGold: number) => number,
+  ) {
     this.economy = economy;
     this.statsTracker = statsTracker;
     this.eventBus = eventBus;
     this.killGoldMult = killGoldMult;
+    this.goldTransform = goldTransform;
   }
 
   onCreepKilled(creep: Creep): void {
-    const killGold = Math.round(this.economy.getKillGold() * this.killGoldMult);
+    const multGold = Math.round(this.economy.getKillGold() * this.killGoldMult);
+    const killGold = this.goldTransform ? this.goldTransform(multGold) : multGold;
     this.eventBus.emit('creepKilled', 0, killGold);
     this.statsTracker.recordKill();
     this.statsTracker.recordGoldEarned(killGold);

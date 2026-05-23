@@ -2,6 +2,24 @@
 
 ## 2026-05-23
 
+### Snake Eyes Phase 3 — mid-mission Wager effects actually fire now
+
+The `WagerEffectHandler` interface had impls for all 12 Pactbook cards (Coin Flip's RNG roll, House Cut's kill-gold tax, Markers' Siphon-only trait, Hot Streak's wave-clear counter, Inverted Stakes' paydown multiplier, etc.) but nothing in `GameScene` ever called the hooks. Accepted wagers updated the cross-mission tally + applied a flat-tier paydown, but during gameplay they were cosmetic — no gold modification, no trait injection, no on-wave-cleared logic, no paydown scaling.
+
+This commit wires every hook in the interface:
+
+- **`onMissionStart(ctx)`** — runs once when `GameScene.create` finishes the runtime install (Snake Eyes only). Applies `goldDelta` via `EconomyManager.addGold`, `debtDelta` via `applyDebtDelta`, and merges `flags` into the controller's mission flag bag.
+- **`modifyCreepKillGold(ctx, base)`** — `StandardDeathHandler` ctor now accepts an optional `goldTransform: (base) => number` that runs after the mission killGoldMult. Snake Eyes passes a transform that delegates to `controller.modifyCreepKillGold` (which forwards to the handler). House Cut's "-10% +1g" now actually reduces gold per kill; future tier-2 wagers that modify gold-per-kill plug in for free.
+- **`getTraitsForTower(towerTypeId)`** — `GameScene` listens to `towerPlaced` for Snake Eyes missions and pushes wager-supplied traits onto the live `Tower` instance via `TowerManager.getTowerAt`. Markers' `void_markers_siphon` trait now reaches the Siphon tower; future per-tower wagers compose without GameScene edits.
+- **`onWaveCleared(ctx, leaked, flags)`** — the gameplay aspect's `onWaveStarted` / `onWaveCleared` callbacks dispatch to `controller.onWaveStartedHook` / `onWaveClearedHook`. The controller snapshots leak count at wave start and derives the `leaked` boolean from the delta, then forwards to the handler. Hot Streak's streak counter now updates per wave; the handler's returned flag bag is persisted on the controller.
+- **`getPaydownMultiplier(result)`** — `resolveWagerAtMissionEnd` now reads the handler's multiplier. Inverted Stakes' "2× on perfect-run, 0 on any leak" actually applies — a perfect T3 win pays down 500g instead of the flat 250g, a leaked T3 win pays down 0g instead of 250g.
+
+`SnakeEyesMissionController` grew the dispatch infrastructure: `getWagerHandler` / `getWagerContext` / `getFlags` / `setFlag(s)` / `modifyCreepKillGold` / `getTraitsForTower` / `onWaveStartedHook` / `onWaveClearedHook` / `applyMissionStartEffects(economy)`. The mission flag bag (typed `WagerMissionFlags`) and per-wave leak snapshot live on the controller — no new module globals (ADR-0003 holds).
+
+GameScene's instanceof-narrowed Snake Eyes wiring sits next to the existing `_campaignRuntime` aspect install block. The narrowing pattern matches ADR-0003's recommendation for scene-side dispatch that needs scene-specific handles (EconomyManager + TowerManager here).
+
+Tests: 12 new on `SnakeEyesMissionController.test.ts` covering no-op when no wager / no-op when handler doesn't implement / dispatch when handler does (House Cut + Markers + Sleeve Card + Coin Flip + Inverted Stakes); `applyMissionStartEffects` idempotence + goldDelta + flag merge; per-wave hook firing without throw; paydown multiplier scaling (Inverted Stakes 2× perfect, 0× leaked). All 1305 tests pass.
+
 ### Architecture catch-up: ADR-0003 + ADR-0002 schedule + UISurface migration (B1)
 
 Architecture-review pass against the campaign-aspects PRD surfaced three plan-vs-reality gaps. All three closed in this batch:

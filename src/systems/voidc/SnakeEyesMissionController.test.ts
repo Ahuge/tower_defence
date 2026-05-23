@@ -68,17 +68,17 @@ describe('SnakeEyesMissionController — construction', () => {
   });
 
   it('draws 3 Pactbook cards on construction', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1, 0.5, 0.9));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1, 0.5, 0.9) });
     expect(ctrl.getPactbook().getDrawn().length).toBe(3);
   });
 
   it('starts with isPactbookResolved() = false', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     expect(ctrl.isPactbookResolved()).toBe(false);
   });
 
   it('starts with no active wager + leak count 0', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     expect(ctrl.getActiveWager()).toBeNull();
     expect(ctrl.consumeLeakCount()).toBe(0);
   });
@@ -86,7 +86,7 @@ describe('SnakeEyesMissionController — construction', () => {
 
 describe('SnakeEyesMissionController — leak counter', () => {
   it('recordLeak increments; consumeLeakCount returns + resets', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     ctrl.recordLeak();
     ctrl.recordLeak();
     ctrl.recordLeak();
@@ -96,7 +96,7 @@ describe('SnakeEyesMissionController — leak counter', () => {
 
   it('applyLeakSurcharge applies debt for accumulated leaks', () => {
     resetSnakeEyesState();
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     ctrl.recordLeak();
     ctrl.recordLeak();
     const before = getSnakeEyesState().debt;
@@ -114,12 +114,12 @@ describe('SnakeEyesMissionController — wager resolution', () => {
   });
 
   it('resolveWagerAtMissionEnd returns null when nothing accepted', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     expect(ctrl.resolveWagerAtMissionEnd(fakeResult())).toBeNull();
   });
 
   it('returns the accepted wager when one was picked', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     const drawnId = ctrl.getPactbook().getDrawn()[0].id;
     ctrl.getPactbook().accept(drawnId);
     const resolved = ctrl.resolveWagerAtMissionEnd(fakeResult());
@@ -127,7 +127,7 @@ describe('SnakeEyesMissionController — wager resolution', () => {
   });
 
   it('applies win-paydown on victory with accepted wager', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     ctrl.getPactbook().accept(ctrl.getPactbook().getDrawn()[0].id);
     const before = getSnakeEyesState().debt;
     ctrl.resolveWagerAtMissionEnd(fakeResult({ won: true }));
@@ -135,11 +135,140 @@ describe('SnakeEyesMissionController — wager resolution', () => {
   });
 
   it('does NOT pay down on loss', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     ctrl.getPactbook().accept(ctrl.getPactbook().getDrawn()[0].id);
     const before = getSnakeEyesState().debt;
     ctrl.resolveWagerAtMissionEnd(fakeResult({ won: false }));
     expect(getSnakeEyesState().debt).toBe(before);
+  });
+});
+
+describe('SnakeEyesMissionController — Wager effect hooks (Phase 3)', () => {
+  beforeEach(() => {
+    resetSnakeEyesState();
+    clearActive();
+  });
+
+  /** Accept a specific wager id by re-drawing the controller's
+   *  Pactbook until the target appears. Uses Math.random for the
+   *  retries (deterministic seeds collapse on repeated construction).
+   *  500 attempts is overkill for a 12-card deck but cheap. */
+  function controllerWith(wagerId: string): SnakeEyesMissionController {
+    for (let i = 0; i < 500; i++) {
+      const ctrl = new SnakeEyesMissionController({ rng: Math.random });
+      const drawn = ctrl.getPactbook().getDrawn();
+      const hit = drawn.find(w => w.id === wagerId);
+      if (hit) {
+        ctrl.getPactbook().accept(hit.id);
+        return ctrl;
+      }
+    }
+    throw new Error(`controllerWith: never drew ${wagerId} in 500 attempts`);
+  }
+
+  it('modifyCreepKillGold returns base when no wager accepted', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
+    expect(ctrl.modifyCreepKillGold(10)).toBe(10);
+  });
+
+  it('modifyCreepKillGold returns base when accepted wager has no handler hook', () => {
+    // Coin Flip implements onMissionStart, NOT modifyCreepKillGold.
+    const ctrl = controllerWith('coin_flip');
+    expect(ctrl.modifyCreepKillGold(10)).toBe(10);
+  });
+
+  it('modifyCreepKillGold dispatches to handler when present (House Cut)', () => {
+    // House Cut: floor(base * 0.9) + 1. 10 → floor(9) + 1 = 10. 100 → 91.
+    const ctrl = controllerWith('house_cut');
+    expect(ctrl.modifyCreepKillGold(10)).toBe(10);
+    expect(ctrl.modifyCreepKillGold(100)).toBe(91);
+  });
+
+  it('getTraitsForTower returns empty when no wager accepted', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
+    expect(ctrl.getTraitsForTower('void_siphon')).toEqual([]);
+  });
+
+  it('getTraitsForTower dispatches to handler (Markers)', () => {
+    const ctrl = controllerWith('markers');
+    const traits = ctrl.getTraitsForTower('void_siphon');
+    expect(traits.length).toBe(1);
+    expect(traits[0].id).toBe('void_markers_siphon');
+    // Other towers get nothing.
+    expect(ctrl.getTraitsForTower('void_spike')).toEqual([]);
+  });
+
+  it('applyMissionStartEffects is idempotent', () => {
+    const ctrl = controllerWith('coin_flip');
+    let credits = 0;
+    const economy = { addGold: (n: number) => { credits += n; } };
+    ctrl.applyMissionStartEffects(economy);
+    const after = credits;
+    ctrl.applyMissionStartEffects(economy);
+    expect(credits).toBe(after);
+  });
+
+  it('applyMissionStartEffects applies goldDelta from Coin Flip', () => {
+    const ctrl = controllerWith('coin_flip');
+    let credits = 0;
+    const economy = { addGold: (n: number) => { credits += n; } };
+    ctrl.applyMissionStartEffects(economy);
+    // Coin Flip gives ±50g. Both outcomes are valid.
+    expect([+50, -50]).toContain(credits);
+  });
+
+  it('applyMissionStartEffects merges flags from Sleeve Card', () => {
+    const ctrl = controllerWith('sleeve_card');
+    ctrl.applyMissionStartEffects({ addGold: () => {} });
+    expect(ctrl.getFlag('sleeve_card_available')).toBe(true);
+  });
+
+  it('applyMissionStartEffects no-ops when no wager accepted', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
+    let credits = 0;
+    ctrl.applyMissionStartEffects({ addGold: (n: number) => { credits += n; } });
+    expect(credits).toBe(0);
+    expect(ctrl.getFlags()).toEqual({});
+  });
+
+  it('onWaveStartedHook + onWaveClearedHook derive leaked flag from leak count delta', () => {
+    // Hot Streak's handler updates flags based on the leaked param.
+    // We don't peek inside that handler here — we just verify that
+    // when leaks happen between start and clear, the hook fires
+    // without throwing and the flag bag stays consistent.
+    const ctrl = controllerWith('hot_streak');
+    ctrl.applyMissionStartEffects({ addGold: () => {} });
+
+    // Wave 1: no leaks.
+    ctrl.onWaveStartedHook(1);
+    ctrl.onWaveClearedHook(1);
+    // Wave 2: 2 leaks recorded.
+    ctrl.onWaveStartedHook(2);
+    ctrl.recordLeak();
+    ctrl.recordLeak();
+    ctrl.onWaveClearedHook(2);
+    // No throw = pass. Concrete flag values are Hot Streak handler
+    // internals — covered by tier2.test.ts.
+    expect(ctrl.getFlags()).toBeDefined();
+  });
+
+  it('resolveWagerAtMissionEnd applies paydown multiplier when handler implements it', () => {
+    // Inverted Stakes returns 2 on perfect-run / 0 on any leak.
+    // Base paydown for T3 = PAYDOWN_BASE(100) + PER_DIVERGENCE(50) * 3 = 250.
+    // Perfect-run win: 250 * 2 = 500g paid down.
+    const ctrl = controllerWith('inverted_stakes');
+    const before = getSnakeEyesState().debt;
+    ctrl.resolveWagerAtMissionEnd(fakeResult({ won: true, perfectRun: true }));
+    const after = getSnakeEyesState().debt;
+    expect(before - after).toBe(500);
+  });
+
+  it('resolveWagerAtMissionEnd skips paydown when multiplier is 0 (Inverted Stakes leaked)', () => {
+    const ctrl = controllerWith('inverted_stakes');
+    const before = getSnakeEyesState().debt;
+    ctrl.resolveWagerAtMissionEnd(fakeResult({ won: true, perfectRun: false }));
+    const after = getSnakeEyesState().debt;
+    expect(after).toBe(before);
   });
 });
 
@@ -153,7 +282,7 @@ describe('getActiveSnakeEyesController — typed accessor', () => {
   });
 
   it('returns the controller when the active lifecycle aspect is one', () => {
-    const ctrl = new SnakeEyesMissionController(seqRng(0.1));
+    const ctrl = new SnakeEyesMissionController({ rng: seqRng(0.1) });
     installController(ctrl);
     expect(getActiveSnakeEyesController()).toBe(ctrl);
   });

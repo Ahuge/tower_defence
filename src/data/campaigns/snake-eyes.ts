@@ -228,7 +228,7 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
       },
     ],
   },
-  buildRuntime: (_ctx, mission) => {
+  buildRuntime: (ctx, mission) => {
     // Hard fail if someone registers Snake Eyes without landing the
     // M10 Counterfactual controller — otherwise startV2 would launch
     // a 999-wave run with no Counterfactual controller. Fail loud at
@@ -240,21 +240,35 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
       );
     }
     // Construct the per-mission controller. Owns the Pactbook + leak
-    // counter + wager-resolution logic. Returned as the `lifecycle`
-    // aspect so MissionRunner stores it on `active.runtime.lifecycle`;
-    // `LoadingScreen` reaches it via `getActiveSnakeEyesController()`,
-    // the gameplay aspect closure-captures it for `recordLeak`, and
-    // the missionState aspect reads it via the same typed accessor in
-    // `applyMissionResult`.
-    const controller = new SnakeEyesMissionController();
+    // counter + wager-resolution logic + Wager-effect dispatch.
+    // Returned as the `lifecycle` aspect so MissionRunner stores it
+    // on `active.runtime.lifecycle`; `LoadingScreen` reaches it via
+    // `getActiveSnakeEyesController()`; the gameplay aspect closure-
+    // captures it for the per-event hooks below; the missionState
+    // aspect reads it via the same typed accessor in `applyMissionResult`.
+    const controller = new SnakeEyesMissionController({ missionIdx: ctx.missionIdx });
     return {
       lifecycle: controller,
       gameplay: {
         onCreepReached(_creepId: number) {
           controller.recordLeak();
         },
+        // Wave-cleared Wager hook (Phase 3): snapshot leak count at
+        // wave start so the cleared hook can derive the `leaked` flag.
+        // These don't need scene access — the controller owns the
+        // counter + flag bag.
+        onWaveStarted(waveNum: number) {
+          controller.onWaveStartedHook(waveNum);
+        },
+        onWaveCleared(waveNum: number) {
+          controller.onWaveClearedHook(waveNum);
+        },
       },
     };
+    // Per-tower trait injection + Wager onMissionStart side effects
+    // live in GameScene (need scene-side handles to TowerManager +
+    // EconomyManager) — see the SnakeEyesMissionController instanceof
+    // branch in GameScene.create after the runtime install.
   },
 };
 
