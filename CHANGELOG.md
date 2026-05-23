@@ -2,6 +2,14 @@
 
 ## 2026-05-23
 
+### Pre-merge review fixes: ADR-0002 + Snake Eyes smoke e2e
+
+Self-review pass against the campaign-aspects PR flagged three pre-merge items:
+
+- **ADR-0002 `docs/adr/0002-deferred-worldmutator-god-object.md`** — promotes the TODO comment at `types.ts:399` into a proper architectural decision record. Documents the three campaign-specific install methods (`installMechSabotage`, `installArcaneFinale`, `installGreenwardRules`) that reintroduce the god-object pattern ADR-0001 was supposed to retire, captures the two resolution paths (generic dispatcher OR narrow primitive composition), and locks in the hard constraint that campaign #5 must NOT add a fourth `install<CampaignName><Verb>` method without one of the resolution paths shipping first. The code comment at `types.ts:399` now points at the ADR instead of carrying its own TODO.
+
+- **Snake Eyes smoke e2e `e2e/snake-eyes-smoke.spec.ts`** — closes the integration-coverage gap on the three Snake Eyes wiring passes. Four tests: M1 launches with a 3-wager Pactbook + starting Debt 800g; accepting flips Pactbook.isResolved and records acceptedId; declining all three applies the +20g penalty; `getSnakeEyesStatus` returns null inside a non-void mission (instanceof narrowing works as designed). Pairs with three new testHook helpers — `getSnakeEyesStatus`, `acceptSnakeEyesWager`, `declineSnakeEyesWagers` — that read through `getActiveSnakeEyesController()` (typed, no module globals).
+
 ### Snake Eyes — architectural refactor (Pass 2.5) — restore aspect-pattern symmetry with Greenward
 
 Architectural review of Passes 1 + 2 surfaced four smells that an architectural-review session pinned down:
