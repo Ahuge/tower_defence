@@ -131,6 +131,30 @@ interface TestHook {
    *  Returns false when no active Snake Eyes mission or panel
    *  already resolved. */
   declineSnakeEyesWagers: () => boolean;
+  /** E2E-only: Snake Eyes M10 setpiece snapshot. Returns the
+   *  CounterfactualMirrorController stage + lane snapshot for
+   *  e2e assertions. Null when not in a Snake Eyes M10 mission. */
+  getSnakeEyesM10Status: () => {
+    stage: string;
+    approachCleared: number;
+    approachTotal: number;
+    laneGap: number;
+    laneWinner: string | null;
+    bossHpRemaining: number;
+    bossHpMax: number;
+    isWon: boolean;
+    isLost: boolean;
+  } | null;
+  /** E2E-only: advance one M10 Approach wave clear. Returns false on
+   *  non-M10 missions or after the Approach setpiece has flipped. */
+  m10AdvanceApproach: () => boolean;
+  /** E2E-only: force the player to win the M10 Mirror Lane race.
+   *  Stage flips to 'table'. Returns false when not in mirror_lane. */
+  m10ForcePlayerLaneWin: () => boolean;
+  /** E2E-only: force the Counterfactual boss kill (skips actual
+   *  combat). Stage flips to 'complete' → gameWon fires. Returns
+   *  false when not in the Table stage. */
+  m10ForceBossKill: () => boolean;
   /** Read mission stars from the player profile. Returns 0 for missions
    *  not yet completed. Decouples specs from the profile's on-disk
    *  schema — campaignProgress could move + the spec keeps working. */
@@ -393,6 +417,56 @@ function declineSnakeEyesWagers(): boolean {
   return true;
 }
 
+function getSnakeEyesM10Status(): ReturnType<NonNullable<Window['__td_test']>['getSnakeEyesM10Status']> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveSnakeEyesController } = require('./systems/voidc/SnakeEyesMissionController') as typeof import('./systems/voidc/SnakeEyesMissionController');
+  const controller = getActiveSnakeEyesController();
+  const m10 = controller?.getM10Controller();
+  if (!m10) return null;
+  const snap = m10.getSnapshot();
+  return {
+    stage: snap.stage,
+    approachCleared: snap.approachWavesCleared,
+    approachTotal: snap.approachWavesTotal,
+    laneGap: snap.mirrorLane.laneGap,
+    laneWinner: snap.mirrorLane.winner,
+    bossHpRemaining: snap.bossHpRemaining,
+    bossHpMax: snap.bossHpMax,
+    isWon: m10.isWon(),
+    isLost: m10.isLost(),
+  };
+}
+
+function m10AdvanceApproach(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveSnakeEyesController } = require('./systems/voidc/SnakeEyesMissionController') as typeof import('./systems/voidc/SnakeEyesMissionController');
+  const controller = getActiveSnakeEyesController();
+  const m10 = controller?.getM10Controller();
+  if (!m10 || m10.getStage() !== 'approach') return false;
+  controller!._forceM10ApproachAdvance();
+  return true;
+}
+
+function m10ForcePlayerLaneWin(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveSnakeEyesController } = require('./systems/voidc/SnakeEyesMissionController') as typeof import('./systems/voidc/SnakeEyesMissionController');
+  const controller = getActiveSnakeEyesController();
+  const m10 = controller?.getM10Controller();
+  if (!m10 || m10.getStage() !== 'mirror_lane') return false;
+  controller!._forceM10PlayerLaneWin();
+  return true;
+}
+
+function m10ForceBossKill(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveSnakeEyesController } = require('./systems/voidc/SnakeEyesMissionController') as typeof import('./systems/voidc/SnakeEyesMissionController');
+  const controller = getActiveSnakeEyesController();
+  const m10 = controller?.getM10Controller();
+  if (!m10 || m10.getStage() !== 'table') return false;
+  controller!._forceM10BossKill();
+  return true;
+}
+
 function jumpToTutorialStep(stepId: string, maxSteps = 50): boolean {
   for (let guard = 0; guard < maxSteps; guard++) {
     const active = TutorialManager.getActive();
@@ -425,6 +499,10 @@ export function installTestHook(): void {
     getSnakeEyesStatus,
     acceptSnakeEyesWager,
     declineSnakeEyesWagers,
+    getSnakeEyesM10Status,
+    m10AdvanceApproach,
+    m10ForcePlayerLaneWin,
+    m10ForceBossKill,
     getMissionStars: (factionId, idx) => PlayerProfile.getMissionStars(factionId, idx),
     onceEvent,
     launchCampaignMission,

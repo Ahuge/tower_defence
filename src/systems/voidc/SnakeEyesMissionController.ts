@@ -212,6 +212,35 @@ export class SnakeEyesMissionController implements LifecycleAspect {
     this._m10.damageBoss(Number.MAX_SAFE_INTEGER);
   }
 
+  /** Tracked creep ids that have already had their HP scaled by
+   *  `m10ScaleCounterfactualHp`. Prevents repeated overrides on the
+   *  same Counterfactual instance — a per-frame caller can dispatch
+   *  this safely and the controller deduplicates. */
+  private readonly _scaledCounterfactualIds: Set<number> = new Set();
+
+  /** Override the Counterfactual creep's HP to the tally-scaled
+   *  `bossHpMax` from `counterfactualBossHp(tally)`. Idempotent per
+   *  creep id — once a Counterfactual is scaled, subsequent calls
+   *  for the same id are no-ops.
+   *
+   *  Called from GameScene per-frame during M10's `table` stage on
+   *  any `void_counterfactual` creep in the live list. Without this,
+   *  the wave-script `hpScale: 200` baseline determines difficulty
+   *  and the snake-eyes-campaign-plan's "Acceptance-heavy runs leave
+   *  a bigger boss; decline-heavy runs leave a smaller boss" beat is
+   *  gameplay-invisible.
+   *
+   *  Generic over the minimal creep contract so the controller stays
+   *  unit-testable without a real Creep instance. */
+  m10ScaleCounterfactualHp<T extends { id: number; hp: number; maxHp: number }>(creep: T): void {
+    if (!this._m10) return;
+    if (this._scaledCounterfactualIds.has(creep.id)) return;
+    const bossHpMax = this._m10.getSnapshot().bossHpMax;
+    creep.hp = bossHpMax;
+    creep.maxHp = bossHpMax;
+    this._scaledCounterfactualIds.add(creep.id);
+  }
+
   /** One-shot guard for the M10 win-trigger emit. GameScene checks
    *  `m10.isWon()` every frame; without a guard the `gameWon` event
    *  + goToGameOver call would fire on every subsequent tick. This
@@ -511,6 +540,37 @@ export class SnakeEyesMissionController implements LifecycleAspect {
    *  should treat the map as private. */
   _getActiveCollectorCountForTest(): number {
     return this._collectors.size;
+  }
+
+  // ─── M10 test-only seams ────────────────────────────────────────
+  // These bypass the natural mission flow so e2e tests can fast-
+  // forward through the three setpieces without authoring 12 waves
+  // of inputs. Production code never calls these; they live behind
+  // the _ prefix as a strong "test only" convention (matches
+  // _resetMissionLeakCounter / _clearMissionPactbook in the same
+  // module / file).
+
+  /** Force-advance one Approach wave clear. Test-only. */
+  _forceM10ApproachAdvance(): void {
+    if (!this._m10) return;
+    this._m10.advanceApproachWave();
+  }
+
+  /** Force the player to win the Mirror Lane race outright (lane gap
+   *  ≥ laneLength). Flips stage to 'table'. Test-only. */
+  _forceM10PlayerLaneWin(): void {
+    if (!this._m10) return;
+    if (this._m10.getStage() !== 'mirror_lane') return;
+    const lane = this._m10.getMirrorLaneController();
+    lane.forceResolve('player');
+    this._m10.completeMirrorLane();
+  }
+
+  /** Force the Counterfactual boss-kill path. Test-only. */
+  _forceM10BossKill(): void {
+    if (!this._m10) return;
+    if (this._m10.getStage() !== 'table') return;
+    this._m10.damageBoss(Number.MAX_SAFE_INTEGER);
   }
 
   // ─── Mission-end resolution ─────────────────────────────────────

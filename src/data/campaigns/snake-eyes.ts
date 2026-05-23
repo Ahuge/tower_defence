@@ -251,10 +251,18 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
       star3: {
         // Star 3 — Mirror Lane won outright (laneGap >= 2 per
         // CounterfactualMirrorController.mirrorLaneWonOutright).
-        // Snapshot captured in MissionResult.custom at finalize time
-        // by GameScene; fallback to false when absent.
+        // Reads directly from the active controller (typed accessor;
+        // pattern symmetric with M8 star-3). The controller is still
+        // alive at finalize time — MissionRunner.finalize doesn't
+        // clear it until after stars are computed. No GameScene IIFE
+        // / MissionResult.custom contract needed (deleted in the same
+        // commit; the field was orphaned with this refactor).
         label: T.missions.counterfactual_mirror.objectives.star3,
-        predicate: (r) => r.won && (r.custom.mirrorLaneWonOutright as boolean | undefined) === true,
+        predicate: (r) => {
+          if (!r.won) return false;
+          const ctrl = getActiveSnakeEyesController();
+          return ctrl?.getM10Controller()?.mirrorLaneWonOutright() === true;
+        },
       },
     },
   },

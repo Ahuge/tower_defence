@@ -2,6 +2,22 @@
 
 ## 2026-05-23
 
+### Snake Eyes M10 polish — all four items shipped per docs/snake-eyes-m10-polish-prd.md
+
+Followed the PRD's recommended D → B → C → A sequencing:
+
+- **Polish-D — Star-3 predicate reads through controller, not `MissionResult.custom`.** M10 star-3 was `r.won && (r.custom.mirrorLaneWonOutright as boolean | undefined) === true` — populated by a GameScene IIFE at finalize time. Refactored to read directly via `getActiveSnakeEyesController()?.getM10Controller()?.mirrorLaneWonOutright()`. The fragile string contract between the predicate (read) and the GameScene IIFE (write) is gone; pattern is now symmetric with M8 star-3 (read through controller). Deleted the GameScene IIFE — it had only this one consumer.
+
+- **Polish-B — Counterfactual boss HP scales from `counterfactualBossHp(tally)` at spawn.** Previously the wave-script `hpScale: 200` baseline determined difficulty regardless of the player's Pactbook tally. Now the controller's `m10ScaleCounterfactualHp(creep)` overrides `creep.hp` and `creep.maxHp` to the controller's `bossHpMax` (2000-12000 range based on lifetime accepted-T1/T2/T3 - declined). GameScene's existing instanceof Snake Eyes block scans live creeps for `void_counterfactual` and dispatches per-frame; controller dedupes via an internal Set keyed by creep id so the override applies exactly once per Counterfactual instance. Snake-eyes-campaign-plan's "Acceptance-heavy runs leave a bigger boss" beat is now gameplay-visible.
+
+- **Polish-C — M10 launch e2e + testHook fast-forward seams.** New `e2e/snake-eyes-m10.spec.ts` covers the four-stage flow: launch (no `final_unimplemented` throw); 5 approach-advances flip stage to `mirror_lane`; force-player-lane-win flips to `table`; force-boss-kill flips `isWon` and the `SnakeEyesEndingPanel` renders (queried via the existing `data-testid="snake-eyes-ending"`). Three new controller test-only seams (`_forceM10ApproachAdvance`, `_forceM10PlayerLaneWin`, `_forceM10BossKill`) following the `_resetMissionLeakCounter` / `_clearMissionPactbook` convention; four new testHook entries route through them. Spec doesn't fight the simulated CF lane timer or wave-by-wave play — it asserts the wiring through `MissionRunner` + `GameScene` + `GameOverScreen` holds together.
+
+- **Polish-A — Mirror Lane HUD strip.** New `src/ui/campaign/MirrorLaneHud.tsx` (~150 LOC Preact). Self-gates on `getActiveSnakeEyesController()?.getM10Controller()?.getStage() === 'mirror_lane'` via 10Hz polling — renders nothing outside the setpiece. Shows player lane progress / lane-gap chip (green when player is ahead; red when behind) / Counterfactual lane progress with the Snake Eyes palette (violet for player, gold for CF, matching the lobby tier visual language). Closes the comprehension gap from v1 where the lane race was invisible because the player had no UI reading the simulated Counterfactual clears. `pointerEvents: 'none'` so the HUD overlay never blocks game-canvas clicks.
+
+Tests: 2 new on `SnakeEyesMissionController.test.ts` for the HP scaling override (overrides on first call; idempotent on repeat; no-op for non-M10 controllers). All 1326 tests pass. tsc clean. New e2e spec gated on `?test=1` (the existing convention).
+
+This closes the Snake Eyes M10 polish PRD end-to-end. Remaining Snake Eyes follow-ups (full paired-grid Mirror Lane render, bespoke Counterfactual sprite art) are deliberate non-goals per the PRD section 4 and stay tracked there.
+
 ### Snake Eyes M10 — review pre-merge fixes + polish PRD
 
 Three pre-merge fixes from the architecture review on PR #85:
