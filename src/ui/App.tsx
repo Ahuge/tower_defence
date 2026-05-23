@@ -32,6 +32,7 @@ import { CircleRosterDOM } from './game/CircleRosterDOM';
 import { ContinueOfferModal } from './game/ContinueOfferModal';
 import { AchievementToast } from './components/AchievementToast';
 import { BossWaveBanner } from './components/BossWaveBanner';
+import { MirrorLaneHud } from './campaign/MirrorLaneHud';
 import { TutorialOverlay } from './tutorial/TutorialOverlay';
 import { LevelUpModal } from './components/LevelUpModal';
 import { FactionUnlockSplash } from './components/FactionUnlockSplash';
@@ -140,6 +141,11 @@ export function App() {
       {/* Boss-wave banner — fires when GameScene.onWaveStart hits an
           isBoss wave. Self-gates on the td-boss-wave-started event. */}
       <BossWaveBanner />
+
+      {/* Snake Eyes M10 Mirror Lane HUD strip — self-gates on the
+          M10 controller stage; renders nothing outside the
+          mirror_lane setpiece. */}
+      <MirrorLaneHud />
 
       {/* Loading screen — overlays everything during game scene load */}
       {loading && (

@@ -460,6 +460,39 @@ describe('SnakeEyesMissionController — M10 finale', () => {
     expect(m10.getMirrorLaneController().getSnapshot().counterfactualWave).toBe(1);
   });
 
+  it('m10ScaleCounterfactualHp overrides hp + maxHp on first call, no-ops on repeat', () => {
+    setSnakeEyesState({
+      ...getSnakeEyesState(),
+      pactbookTally: {
+        acceptedT1: 0, acceptedT2: 0, acceptedT3: 4,
+        declined: 0, succeeded: 4, failed: 0,
+      },
+    });
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    const expectedHp = m10.getSnapshot().bossHpMax;
+    expect(expectedHp).toBe(5000 + 4 * 400); // 6600
+
+    const fakeCreep = { id: 42, hp: 200, maxHp: 200 };
+    ctrl.m10ScaleCounterfactualHp(fakeCreep);
+    expect(fakeCreep.hp).toBe(expectedHp);
+    expect(fakeCreep.maxHp).toBe(expectedHp);
+
+    // Repeat call — already-scaled creep is left alone, even if its
+    // hp was damaged in the interim (we don't want to re-heal it).
+    fakeCreep.hp = 100;
+    ctrl.m10ScaleCounterfactualHp(fakeCreep);
+    expect(fakeCreep.hp).toBe(100); // unchanged
+  });
+
+  it('m10ScaleCounterfactualHp is a no-op on non-M10 controllers', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 0 });
+    const fakeCreep = { id: 42, hp: 200, maxHp: 200 };
+    ctrl.m10ScaleCounterfactualHp(fakeCreep);
+    expect(fakeCreep.hp).toBe(200);
+    expect(fakeCreep.maxHp).toBe(200);
+  });
+
   it('update does NOT tick CF lane outside the mirror_lane stage', () => {
     const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
     // Still in approach. 30s tick.

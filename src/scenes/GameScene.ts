@@ -3633,6 +3633,16 @@ export class GameScene extends Phaser.Scene {
         const m10 = seCtrl.getM10Controller();
         if (m10) {
           if (m10.getStage() === 'table') {
+            // HP scaling — override each live void_counterfactual
+            // creep's HP from the tally-scaled bossHpMax. Idempotent
+            // per creep id (the controller dedupes). Applied per
+            // frame so a creep that spawns mid-frame still gets the
+            // override on its first appearance in the live list.
+            for (const live of this.creepMgr.creeps) {
+              if (live.creepTypeId === 'void_counterfactual') {
+                seCtrl.m10ScaleCounterfactualHp(live);
+              }
+            }
             for (const dead of this.creepMgr.justDiedCreeps) {
               // Narrowed on the Snake-Eyes-specific id (not generic
               // 'boss') so future commits that spawn `boss` creeps
@@ -4605,19 +4615,11 @@ export class GameScene extends Phaser.Scene {
                 return this._greenwardController.finalize(getReserves()) as unknown as Record<string, number | boolean | null | string>;
               })()
             : {}),
-          // Snake Eyes M10 — Mirror Lane outright-win snapshot for
-          // the star-3 predicate. Always returns a typed record (not
-          // a union with optional fields) so TS narrowing into
-          // MissionResult.custom doesn't go bad. Safe when this isn't
-          // a Snake Eyes mission (controller absent → false). For
-          // Snake Eyes M1-M9 the m10 sub-controller is null so this
-          // stays false (no Mirror Lane on those missions).
-          ...((): Record<string, number | string | boolean | null> => {
-            if (!(this._campaignRuntime?.lifecycle instanceof SnakeEyesMissionController)) return {};
-            const m10 = this._campaignRuntime.lifecycle.getM10Controller();
-            if (!m10) return {};
-            return { mirrorLaneWonOutright: m10.mirrorLaneWonOutright() };
-          })(),
+          // (Snake Eyes M10 star-3 reads the Mirror Lane outright-win
+          // state directly from the active controller — see the M10
+          // star-3 predicate in snake-eyes.ts. No GameScene IIFE
+          // populating MissionResult.custom needed; the controller is
+          // alive at finalize time.)
         },
       };
       const stars = MissionRunner.finalize(missionResult);
