@@ -396,19 +396,14 @@ export interface RuinSpecLike {
 /**
  * WorldMutator — install* helpers that aspect Setup methods call.
  *
- * TODO(Phase E): the campaign-specific install methods
- * (`installMechSabotage`, `installArcaneFinale`, `installGreenwardRules`)
- * have re-introduced the god-object pattern the refactor was supposed
- * to retire. They're here because the relevant controllers' constructors
- * don't decompose into the narrow primitives (`installSummoningCircles`,
- * `installDestructibleTowers`, etc.) without changing the controller
- * APIs themselves. Phase E should either:
- *   - Fold these into a generic `installControllerByKind(kind, payload)`
- *     dispatcher, OR
- *   - Refactor the underlying controllers to compose from narrow
- *     install primitives + small adapter classes.
- * Until then, accept the tradeoff: each new finale campaign adds one
- * method here. Campaign #5+ should NOT add a fourth without revisiting.
+ * KNOWN DEBT — see `docs/adr/0002-deferred-worldmutator-god-object.md`.
+ * The campaign-specific install methods (`installMechSabotage`,
+ * `installArcaneFinale`, `installGreenwardRules`) reintroduce the
+ * god-object pattern ADR-0001 was supposed to retire — three exceptions
+ * for the four shipped campaigns. Campaign #5 must NOT add a fourth
+ * `install<CampaignName><Verb>` method here. Before campaign #5 lands,
+ * one of the two ADR-0002 resolution paths (generic dispatcher OR
+ * narrow primitive composition) must ship.
  */
 export interface WorldMutator {
   /** Install one or more pre-placed towers on the grid. */

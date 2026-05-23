@@ -109,6 +109,28 @@ interface TestHook {
    *  e2e to walk Courtyard → Nave → Throne without exercising the
    *  full per-mode claim mechanics. */
   forceClaimGreenwardRuin: (ruinId: string) => boolean;
+  /** Snake Eyes snapshot — persistent Debt + the active mission's
+   *  Pactbook state (drawn wager ids + accepted id if any). Returns
+   *  null when no Snake Eyes mission is active. */
+  getSnakeEyesStatus: () => {
+    debt: number;
+    firstMissionStarted: boolean;
+    pactbook: {
+      drawn: { id: string; tier: 1 | 2 | 3 }[];
+      acceptedId: string | null;
+      declined: boolean;
+    } | null;
+  } | null;
+  /** E2E-only: accept a Pactbook wager by id without driving the
+   *  PactbookPanel UI. Routes through the active SnakeEyesMissionController.
+   *  Returns false on bad id, no active Snake Eyes mission, or panel
+   *  already resolved. */
+  acceptSnakeEyesWager: (wagerId: string) => boolean;
+  /** E2E-only: decline all three drawn Pactbook wagers. Mirrors the
+   *  PactbookPanel's decline button + applies the +20g penalty.
+   *  Returns false when no active Snake Eyes mission or panel
+   *  already resolved. */
+  declineSnakeEyesWagers: () => boolean;
   /** Read mission stars from the player profile. Returns 0 for missions
    *  not yet completed. Decouples specs from the profile's on-disk
    *  schema — campaignProgress could move + the spec keeps working. */
@@ -314,6 +336,63 @@ function forceClaimGreenwardRuin(ruinId: string): boolean {
   return scene._greenwardController.consecration.forceClaim(ruinId);
 }
 
+// ─── Snake Eyes ──────────────────────────────────────────────────
+// Tests for the Pactbook draw + Debt lifecycle. The controller +
+// state imports are lazy (dynamic require) so the test-hook module
+// itself doesn't statically depend on the Snake Eyes runtime — keeps
+// the production-build tree-shaking clean if Snake Eyes is ever
+// gated behind a feature flag.
+
+function getSnakeEyesStatus(): ReturnType<NonNullable<Window['__td_test']>['getSnakeEyesStatus']> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getSnakeEyesState } = require('./systems/voidc/DebtTracker') as typeof import('./systems/voidc/DebtTracker');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveSnakeEyesController } = require('./systems/voidc/SnakeEyesMissionController') as typeof import('./systems/voidc/SnakeEyesMissionController');
+  const controller = getActiveSnakeEyesController();
+  // No active controller = not in a Snake Eyes mission. Don't return
+  // the persistent state by itself — the spec needs the controller
+  // reference to assert on the Pactbook, and a null return tells it
+  // clearly that the mission isn't a Snake Eyes one.
+  if (!controller) return null;
+  const state = getSnakeEyesState();
+  const pb = controller.getPactbook();
+  return {
+    debt: state.debt,
+    firstMissionStarted: state.firstMissionStarted,
+    pactbook: {
+      drawn: pb.getDrawn().map(w => ({ id: w.id, tier: w.tier })),
+      acceptedId: pb.getSelected()?.id ?? null,
+      declined: pb.isDeclined(),
+    },
+  };
+}
+
+function acceptSnakeEyesWager(wagerId: string): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveSnakeEyesController } = require('./systems/voidc/SnakeEyesMissionController') as typeof import('./systems/voidc/SnakeEyesMissionController');
+  const controller = getActiveSnakeEyesController();
+  if (!controller) return false;
+  const pb = controller.getPactbook();
+  if (pb.isResolved()) return false;
+  try {
+    pb.accept(wagerId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function declineSnakeEyesWagers(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveSnakeEyesController } = require('./systems/voidc/SnakeEyesMissionController') as typeof import('./systems/voidc/SnakeEyesMissionController');
+  const controller = getActiveSnakeEyesController();
+  if (!controller) return false;
+  const pb = controller.getPactbook();
+  if (pb.isResolved()) return false;
+  pb.declineAll();
+  return true;
+}
+
 function jumpToTutorialStep(stepId: string, maxSteps = 50): boolean {
   for (let guard = 0; guard < maxSteps; guard++) {
     const active = TutorialManager.getActive();
@@ -343,6 +422,9 @@ export function installTestHook(): void {
     forceKillSabotageTarget,
     getGreenwardStatus,
     forceClaimGreenwardRuin,
+    getSnakeEyesStatus,
+    acceptSnakeEyesWager,
+    declineSnakeEyesWagers,
     getMissionStars: (factionId, idx) => PlayerProfile.getMissionStars(factionId, idx),
     onceEvent,
     launchCampaignMission,
