@@ -11,6 +11,7 @@ import { CoopPlayerStats, MissionResultSummary } from '../../scenes/GameOverScen
 import { getCampaign } from '../../systems/campaign/CampaignRegistry';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
 import { GreenwardEndingPanel } from './GreenwardEndingPanel';
+import { SnakeEyesEndingPanel } from './SnakeEyesEndingPanel';
 
 interface Props { data: Record<string, unknown>; }
 
@@ -237,6 +238,15 @@ export function GameOverScreen({ data }: Props) {
           ABOVE the regular mission summary. Only on M10 wins. */}
       {missionResult && missionResult.won && missionResult.archetypeId === 'final_greenward' && (
         <GreenwardEndingPanel resolvedMode={missionResult.naveResolvedMode} />
+      )}
+
+      {/* Snake Eyes M10 — three-card flip reveal + EpilogueComposer
+          personalised epilogue. Reads the live SnakeEyesState
+          (composeEpilogue() reaches it via getSnakeEyesState).
+          Renders only on win — losses route through the standard
+          mission-summary path without the tableau. */}
+      {missionResult && missionResult.won && missionResult.archetypeId === 'final_void' && (
+        <SnakeEyesEndingPanel />
       )}
 
       {/* Mission summary — only for campaign mission runs. Shows

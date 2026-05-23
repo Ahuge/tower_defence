@@ -41,6 +41,7 @@ import {
   CollectorBehavior,
   type CollectorTargetTower,
 } from './CollectorBehavior';
+import { CounterfactualMirrorController } from './CounterfactualMirrorController';
 import type { Trait } from '../traits/Trait';
 import type { LifecycleAspect, MissionResult } from '../campaign/types';
 import { MissionRunner } from '../missions/MissionRunner';
@@ -87,6 +88,11 @@ export interface SnakeEyesMissionControllerOptions {
    *  mission-gated handlers can branch (e.g. wagers that change
    *  behaviour after M5 once the player has more Debt headroom). */
   missionIdx?: number;
+  /** True when this controller owns the M10 finale. Triggers
+   *  construction of the wrapped `CounterfactualMirrorController`
+   *  (three-setpiece state machine + Mirror Lane + boss-HP scaling).
+   *  buildRuntime sets this when `mission.campaign.kind === 'final'`. */
+  isM10?: boolean;
 }
 
 export class SnakeEyesMissionController implements LifecycleAspect {
@@ -114,6 +120,17 @@ export class SnakeEyesMissionController implements LifecycleAspect {
    *  second call from GameScene re-init / hot reload paths. */
   private _missionStartApplied: boolean = false;
 
+  /** Wrapped M10 three-setpiece controller. Null for M1-M9. Read
+   *  by GameScene via `getM10Controller()` and driven from the
+   *  Snake Eyes wiring block (per-frame state advancement +
+   *  win/loss propagation). */
+  private readonly _m10: CounterfactualMirrorController | null;
+  /** Per-frame accumulator (ms) for the simulated Counterfactual
+   *  Mirror Lane race. Ticks once per second in `update`; when it
+   *  crosses the interval (~10s × CF pressure coefficient), advances
+   *  the Counterfactual side of the lane. Reset on stage transitions. */
+  private _mirrorLaneTimerMs: number = 0;
+
   constructor(opts: SnakeEyesMissionControllerOptions = {}) {
     this._rng = opts.rng ?? Math.random;
     this._missionIdx = opts.missionIdx ?? 0;
@@ -124,6 +141,86 @@ export class SnakeEyesMissionController implements LifecycleAspect {
     // — both run before this controller is constructed in buildRuntime.
     // The snapshot is consumed by M8's star-3 predicate at finalize time.
     this._debtAtStart = getSnakeEyesState().debt;
+    // M10 finale gets the three-setpiece sub-controller. Boss-HP
+    // scaling reads the live Pactbook tally (including this mission's
+    // accepted wager — applyMissionResult hasn't run yet, but the
+    // tally was bumped at accept time by Pactbook.accept).
+    this._m10 = opts.isM10 ? new CounterfactualMirrorController() : null;
+  }
+
+  /** The wrapped M10 controller, or null on M1-M9. GameScene reads
+   *  this via instanceof narrowing on the lifecycle aspect and drives
+   *  the three-setpiece progression. Stable for the controller's
+   *  lifetime — created in ctor, destroyed with the controller. */
+  getM10Controller(): CounterfactualMirrorController | null {
+    return this._m10;
+  }
+
+  /** Per-wave-clear dispatcher for M10 setpiece advancement. Called
+   *  from the gameplay aspect's `onWaveCleared`. No-op on M1-M9.
+   *
+   *  Wave 1-5 → advanceApproachWave (controller flips to Mirror Lane
+   *  after the 5th clear). Wave 6-10 → recordPlayerClear on the
+   *  Mirror Lane sub-controller (simulated CF clears are GameScene's
+   *  responsibility via per-wave timer). The wave 11 boss kill is
+   *  handled separately via `m10MarkBossDefeated`. */
+  m10OnWaveCleared(waveNum: number): void {
+    if (!this._m10) return;
+    const stage = this._m10.getStage();
+    if (stage === 'approach') {
+      this._m10.advanceApproachWave();
+      return;
+    }
+    if (stage === 'mirror_lane') {
+      // Wave clear on the player side. Leak count is read from this
+      // controller's per-wave leak snapshot (set by onWaveStartedHook
+      // for the wager flag bag; same delta works here).
+      const leaks = Math.max(0, this._leakCount - this._leakCountAtWaveStart);
+      this._m10.getMirrorLaneController().recordPlayerClear(leaks);
+      // Check if MirrorLane resolved this clear (player won) so the
+      // stage flips to 'table' for the boss spawn.
+      this._m10.completeMirrorLane();
+    }
+  }
+
+  /** Per-wave-cleared snapshot helper used by the Mirror Lane.
+   *  Returns this mission's accumulated leak count for HUD display. */
+  m10GetLeakCount(): number {
+    return this._leakCount;
+  }
+
+  /** Manually tick a simulated Counterfactual clear on the Mirror
+   *  Lane. GameScene calls this on a per-wave timer (interval
+   *  derived from getPressureCoefficients) so the CF side advances
+   *  against the player's actual clears. Simulated leak count is
+   *  always 0 — the CF lane is auto-played. */
+  m10TickCounterfactualLaneClear(): void {
+    if (!this._m10) return;
+    if (this._m10.getStage() !== 'mirror_lane') return;
+    this._m10.getMirrorLaneController().recordCounterfactualClear(0);
+    this._m10.completeMirrorLane();
+  }
+
+  /** Mark the Counterfactual boss as defeated. GameScene calls this
+   *  when a creep of the boss type dies during M10's `table` stage.
+   *  Flips the controller's stage to 'complete' which makes
+   *  `isWon()` true; the GameScene game-over watcher fires next tick. */
+  m10MarkBossDefeated(): void {
+    if (!this._m10) return;
+    if (this._m10.getStage() !== 'table') return;
+    // damageBoss(huge) flips internal HP to 0 → stage = 'complete'.
+    this._m10.damageBoss(Number.MAX_SAFE_INTEGER);
+  }
+
+  /** Mark the player as having lost the current setpiece (lives
+   *  reached zero). The controller flips to the appropriate
+   *  loss-stage. */
+  m10MarkLost(): void {
+    if (!this._m10) return;
+    const stage = this._m10.getStage();
+    if (stage === 'approach') this._m10.failApproach();
+    else if (stage === 'table') this._m10.failTable();
+    // Mirror Lane loss is driven by the lane's race, not lives-zero.
   }
 
   // ─── Pactbook accessors ──────────────────────────────────────────
@@ -424,9 +521,28 @@ export class SnakeEyesMissionController implements LifecycleAspect {
 
   // ─── LifecycleAspect ────────────────────────────────────────────
 
-  /** No per-frame work today. Reserved for future mid-mission wager
-   *  effects that need a tick (e.g. streak timers, debuff auras). */
-  update(_deltaMs: number): void {}
+  /** Per-frame tick. M10 only — simulates the Counterfactual side of
+   *  the Mirror Lane race by ticking `recordCounterfactualClear` on
+   *  a timer derived from the lane's pressure coefficients (CF coasts
+   *  faster at high Divergence — the reckless player gets punished).
+   *  No-op on M1-M9 (M10 sub-controller is null). */
+  update(deltaMs: number): void {
+    if (!this._m10) return;
+    if (this._m10.getStage() !== 'mirror_lane') {
+      this._mirrorLaneTimerMs = 0;
+      return;
+    }
+    this._mirrorLaneTimerMs += deltaMs;
+    const coef = this._m10.getMirrorLaneController().getPressureCoefficients();
+    // Base interval 10s per lane clear at coef=1.0.
+    // Lower coef (CF coasts) → shorter interval → CF clears faster.
+    // Higher coef (CF strained) → longer interval → CF clears slower.
+    const intervalMs = 10_000 * coef.counterfactualPressure;
+    if (this._mirrorLaneTimerMs >= intervalMs) {
+      this._mirrorLaneTimerMs -= intervalMs;
+      this.m10TickCounterfactualLaneClear();
+    }
+  }
 
   /** Scene tear-down. The controller doesn't own any GameScene-owned
    *  resources (no graphics objects, no event subscriptions — those

@@ -2,6 +2,30 @@
 
 ## 2026-05-23
 
+### Snake Eyes M10 — Counterfactual finale launchable + epilogue panel renders
+
+M10 (`counterfactual_mirror`) was the last orphaned piece of the Snake Eyes campaign. The mission was marked `unlaunchable: true` with `kind: 'final_unimplemented'` and `buildRuntime` threw on launch. The pure-logic state machine (`CounterfactualMirrorController` + `MirrorLaneController`), the boss-HP scaling formula (`counterfactualBossHp`), and the personalised epilogue (`EpilogueComposer` + `SnakeEyesEndingPanel`) were all implemented + tested but never instantiated.
+
+This commit closes the loop end-to-end:
+
+- **`kind: 'final'` discriminator** added to `SnakeEyesMissionCfg`. M10 entry now uses it. The `final_unimplemented` variant stays in the union as a defensive throw so a stale fixture pinned back can't silently bypass the implementation.
+- **`SnakeEyesMissionController`** gains an optional wrapped `CounterfactualMirrorController` (constructed when `isM10: true`). Pattern: the per-mission controller hosts the M10 sub-controller as a getter; the campaign's `buildRuntime` flips `isM10` based on the cfg kind. ADR-0003 holds — runtime state stays on the controller, no module globals.
+- **Per-frame `update` ticks the simulated Counterfactual Mirror Lane race** (v1 — single-grid simulation; full paired-grid rendering is a follow-up). Interval derived from `getPressureCoefficients().counterfactualPressure`: base 10s × pressure coefficient, so high-Divergence runs (player took risks) have a CF that coasts faster on his lane.
+- **Per-wave setpiece advancement** via gameplay aspect's `onWaveCleared` → `controller.m10OnWaveCleared(waveNum)`. Waves 1-5 = Approach (advance after each clear; flip to Mirror Lane on wave 5). Waves 6-10 = Mirror Lane (each player clear records on the lane race; player wins → stage flips to Table). Wave 11+ = Table.
+- **Custom 12-wave script `buildSnakeEyesM10Waves`** in `SnakeEyesWaveScripts.ts`. 5 Approach + 5 Mirror Lane + 1 Counterfactual boss + 1 backstop. `waveCount: 999` (matches Mech sabotage finale) so the player can't run out of waves while fighting the boss.
+- **GameScene per-frame win/loss propagation**: while M10 is in 'table' stage, scan `creepMgr.justDiedCreeps` for `creepTypeId === 'boss'` → `controller.m10MarkBossDefeated`. When `m10.isWon()` fires (once, guarded by `_m10WonFired`), emit `gameWon` + `goToGameOver(true)`. Lives-zero in Approach → `m10MarkLost` (epilogue composer reads the loss-stage at finalize).
+- **`MissionResult.custom.mirrorLaneWonOutright`** populated at finalize from `m10.mirrorLaneWonOutright()` so the M10 star-3 predicate (won + Mirror Lane won by ≥2 wave gap) is readable from the standard star-evaluation path.
+- **`GameOverScreen`** renders `SnakeEyesEndingPanel` parallel to `GreenwardEndingPanel`, branched on `missionResult.archetypeId === 'final_void' && won`. Panel reads live `SnakeEyesState` via `composeEpilogue()` to stitch the personalised epilogue from 11 paragraph fragments.
+
+**Known v1 limitations** (deferred to follow-ups):
+- Mirror Lane is a single-grid simulation. The paired-grid visual (two grids side-by-side, towers mirrored at half stats) is a multi-week UI lift. The mechanical race + win-condition + lane-gap-for-star-3 all work via the controllers; the player just doesn't see the CF grid as a parallel render.
+- Counterfactual boss HP at spawn time uses the wave-script's `hpScale` (200) rather than the controller's tally-scaled `bossHpMax`. The pure-logic HP scaling is tested + working; the spawn-time HP override is a follow-up.
+- No bespoke Counterfactual creep sprite yet — boss type reused. Add `void_counterfactual` to `CreepTypes.ts` + a bespoke sprite in a follow-up PR.
+
+Tests: 11 new on `SnakeEyesMissionController.test.ts` covering M1-M9 no m10 sub-controller; M10 controller construction; Approach wave advancement; Mirror Lane player-clear recording; CF lane tick; player wins lane race → table; CF wins → lost_mirror_lane; boss kill → complete; lives-zero → lost_approach; update ticks CF lane after interval; update is no-op outside mirror_lane stage. All 1324 tests pass.
+
+This closes the Snake Eyes orphaned-systems list end-to-end. Every campaign feature in the snake-eyes-campaign-plan now has a working runtime path: DebtTracker (Pass 1) → PactbookPanel (Pass 2) → Wager effects (Phase 3) → Collector (M8 commit) → Counterfactual three-setpiece + EpilogueComposer (this commit).
+
 ### Snake Eyes M8 — the Collector actually shows up + does his job
 
 The M8 mission (`snake_eyes_proper`) lore narrates "The Collector came down the road on foot" — the Dealer's enforcer who taxes the player's towers (temporarily disabling them) and whose defeat cancels next mission's interest charge. `CollectorBehavior.ts` had the per-creep state machine + tower-disable event emission since the original snake-eyes-campaign-plan, but nothing instantiated it or wove it into the wave script.
