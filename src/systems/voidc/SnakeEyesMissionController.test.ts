@@ -13,6 +13,7 @@ import {
 import {
   resetSnakeEyesState,
   getSnakeEyesState,
+  setSnakeEyesState,
   INITIAL_DEBT,
 } from './DebtTracker';
 import { MissionRunner } from '../missions/MissionRunner';
@@ -269,6 +270,99 @@ describe('SnakeEyesMissionController — Wager effect hooks (Phase 3)', () => {
     ctrl.resolveWagerAtMissionEnd(fakeResult({ won: true, perfectRun: false }));
     const after = getSnakeEyesState().debt;
     expect(after).toBe(before);
+  });
+});
+
+describe('SnakeEyesMissionController — M8 Collector', () => {
+  beforeEach(() => {
+    resetSnakeEyesState();
+    clearActive();
+  });
+
+  function fakeTower(col: number, row: number): { col: number; row: number; alive: boolean } {
+    return { col, row, alive: true };
+  }
+  function fakeCreep(id: number, typeId: string, col: number, row: number): { id: number; creepTypeId: string; col: number; row: number } {
+    return { id, creepTypeId: typeId, col, row };
+  }
+
+  it('tickCollectors lazy-creates a behavior on first sighting', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    expect(ctrl._getActiveCollectorCountForTest()).toBe(0);
+    const towers = [fakeTower(5, 5)];
+    const creeps = [fakeCreep(42, 'void_collector', 4, 5)];
+    ctrl.tickCollectors(0, towers, creeps, () => {});
+    expect(ctrl._getActiveCollectorCountForTest()).toBe(1);
+  });
+
+  it('tickCollectors ignores non-collector creeps', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    ctrl.tickCollectors(0, [fakeTower(5, 5)], [fakeCreep(1, 'standard', 4, 5)], () => {});
+    expect(ctrl._getActiveCollectorCountForTest()).toBe(0);
+  });
+
+  it('tickCollectors fires disable callback after the token cooldown elapses', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    const towers = [fakeTower(5, 5)];
+    const creeps = [fakeCreep(42, 'void_collector', 4, 5)];
+    const calls: Array<{ col: number; durationMs: number }> = [];
+    const disableFn = (tower: { col: number }, ms: number) => calls.push({ col: tower.col, durationMs: ms });
+
+    // First tick — schedules next fire, no event yet (per CollectorBehavior).
+    ctrl.tickCollectors(0, towers, creeps, disableFn);
+    expect(calls.length).toBe(0);
+
+    // After cooldown (4s default), behavior emits → disableFn called.
+    ctrl.tickCollectors(5000, towers, creeps, disableFn);
+    expect(calls.length).toBe(1);
+    expect(calls[0].col).toBe(5);
+    expect(calls[0].durationMs).toBe(6000);
+  });
+
+  it('onCollectorMaybeKilled marks state.collectorDefeatedAt = missionIdx', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    // Spawn a Collector so the behavior is tracked.
+    ctrl.tickCollectors(0, [fakeTower(5, 5)], [fakeCreep(42, 'void_collector', 4, 5)], () => {});
+    expect(getSnakeEyesState().collectorDefeatedAt).toBeNull();
+    ctrl.onCollectorMaybeKilled(42);
+    expect(getSnakeEyesState().collectorDefeatedAt).toBe(7);
+    expect(ctrl._getActiveCollectorCountForTest()).toBe(0);
+  });
+
+  it('onCollectorMaybeKilled is a no-op for non-Collector creep ids', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    ctrl.onCollectorMaybeKilled(999);
+    expect(getSnakeEyesState().collectorDefeatedAt).toBeNull();
+  });
+
+  it('onCollectorMaybeReached removes the Collector WITHOUT marking defeated', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    ctrl.tickCollectors(0, [fakeTower(5, 5)], [fakeCreep(42, 'void_collector', 4, 5)], () => {});
+    expect(ctrl._getActiveCollectorCountForTest()).toBe(1);
+    ctrl.onCollectorMaybeReached(42);
+    expect(ctrl._getActiveCollectorCountForTest()).toBe(0);
+    expect(getSnakeEyesState().collectorDefeatedAt).toBeNull();
+  });
+
+  it('wasCollectorDefeatedThisMission reflects the kill', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    ctrl.tickCollectors(0, [fakeTower(5, 5)], [fakeCreep(42, 'void_collector', 4, 5)], () => {});
+    expect(ctrl.wasCollectorDefeatedThisMission()).toBe(false);
+    ctrl.onCollectorMaybeKilled(42);
+    expect(ctrl.wasCollectorDefeatedThisMission()).toBe(true);
+  });
+
+  it('getDebtAtStart captures the post-tickBetweenMissions debt', () => {
+    // Simulate the missionState aspect having applied interest before
+    // the controller was constructed: write 850 into state, then
+    // construct the controller.
+    setSnakeEyesState({ ...getSnakeEyesState(), debt: 850 });
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 7 });
+    expect(ctrl.getDebtAtStart()).toBe(850);
+
+    // Subsequent debt mutations don't shift the snapshot.
+    setSnakeEyesState({ ...getSnakeEyesState(), debt: 900 });
+    expect(ctrl.getDebtAtStart()).toBe(850);
   });
 });
 
