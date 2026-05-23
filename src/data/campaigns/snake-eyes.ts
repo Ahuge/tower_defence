@@ -35,6 +35,7 @@ import {
   snakeEyesMissionStateAspect,
   recordMissionLeak,
 } from '../../systems/voidc/SnakeEyesMissionStateAspect';
+import { beginMissionPactbook } from '../../systems/voidc/ActiveMissionPactbook';
 
 const T = SNAKE_EYES_TEXTS;
 
@@ -225,6 +226,19 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
         `three-setpiece controller is unimplemented. See snake-eyes-v2.ts header.`,
       );
     }
+    // Instantiate a fresh Pactbook for this mission. The pre-mission
+    // LoadingScreen reads it via `getMissionPactbook()` and renders
+    // the 3-card PactbookPanel; the player resolves the panel before
+    // the Begin button enables. The accepted wager (if any) is then
+    // available to in-mission consumers via `getActiveWager()` and is
+    // resolved at mission end by `applyMissionResult`.
+    //
+    // Why here in buildRuntime rather than in the LoadingScreen on
+    // mount: buildRuntime runs once per mission launch BEFORE
+    // UIBridge.startScene, so the Pactbook is guaranteed to exist
+    // by the time the loading screen mounts and queries for it.
+    beginMissionPactbook();
+
     // Per-mission gameplay aspect: count leaks for the
     // `applyMissionResult` surcharge. Module-level counter consumed in
     // `snakeEyesMissionStateAspect.applyMissionResult` and reset there.

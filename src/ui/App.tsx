@@ -152,6 +152,7 @@ export function App() {
           missionTitle={loading.missionTitle}
           missionStory={loading.missionStory}
           requiresContinue={loading.requiresContinue}
+          campaignFactionId={loading.campaignFactionId}
         />
       )}
 

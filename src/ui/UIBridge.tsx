@@ -25,6 +25,13 @@ export interface LoadingData {
    *  "Begin" button after the scene loads instead of auto-dismissing.
    *  Used for campaign missions so the player can read the briefing. */
   requiresContinue?: boolean;
+  /** Campaign factionId, when launching a campaign mission. Used by
+   *  LoadingScreen to render campaign-specific pre-mission UI (Snake
+   *  Eyes' PactbookPanel, future per-campaign briefing widgets).
+   *  Differs from `faction` which is the *player's* faction — for
+   *  Snake Eyes both happen to be 'void' but other campaigns may
+   *  have player faction ≠ campaign factionId. */
+  campaignFactionId?: string;
 }
 
 class UIBridgeClass {
@@ -72,6 +79,7 @@ class UIBridgeClass {
         missionTitle: data.loadingMissionTitle as string | undefined,
         missionStory: data.loadingMissionStory as string | undefined,
         requiresContinue: data.loadingRequiresContinue as boolean | undefined,
+        campaignFactionId: data.loadingCampaignFactionId as string | undefined,
       };
       for (const fn of this._loadingListeners) fn(this._loading);
     }
