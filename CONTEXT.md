@@ -82,6 +82,23 @@ The Snake Eyes Campaign's cross-mission debt ledger. The player accepts mid-run 
 **Epilogue Composer**:
 Snake Eyes' end-of-campaign text generator. Reads final Campaign State and stitches a single illustrated ending. Lives on the Snake Eyes UI Surface as `ui.epilogue(state)`.
 
+**Inscription**:
+The Iron Cascade Campaign's per-mission player verb. Vael paints a ground glyph drawn from the **Codex** onto a grid tile; the glyph triggers an effect. Each Inscription has one of three **Inscription Shapes**: consumable, persistent, aura. The player drafts five from owned Codex pages before each mission and brings two.
+_Avoid_: Sigil (collides with the `arcane_sigil` creep type), spell, rune.
+
+**Inscription Shape**:
+A discriminator on every Inscription. **Consumable** fires immediately and is spent (2 base charges per mission). **Persistent** stays painted on a path tile for the whole mission (1 placement). **Aura** is painted on any tile and buffs every tower in the surrounding 3×3 zone for the whole mission (1 placement); some auras are single-target instead of zone-wide.
+
+**Codex**:
+Iron Cascade's typed **Campaign State**. Tracks Inscriptions owned across missions — every mission win lets Vael choose 2 of 3 new Inscriptions to add to the Codex; a loss adds 1 of 3. Once the pool is fully owned, additional picks become **Duplicate Stacks** that upgrade an owned Inscription. Replaces the previously-empty `MechState = Record<string, never>` slot.
+_Avoid_: Codex pages list, library, schematic library.
+
+**Duplicate Stack**:
+A Codex unlock past the initial 16-Inscription pool. Each stack upgrades an owned Inscription one tier — consumables gain +1 charge (cap 5), persistents gain +1 placement (cap 3), auras gain +2 to zone width (3×3 → 5×5 → 7×7, cap 7×7).
+
+**Salvage Core**:
+Iron Cascade Mission M7's unique verb. A walker creep on death drops a Core sprite on the ground for ~6 seconds; click-pickup adds it to the player's M7 Core counter. Every 5 Cores grants +1 emplacement slot above the M7 6-tower cap, max +3 slots per mission. M7-only; no other mission spawns Cores.
+
 ## Relationships
 
 - A **Campaign** has exactly ten **Missions**, listed in a **Campaign Extension**.
@@ -112,3 +129,4 @@ Snake Eyes' end-of-campaign text generator. Reads final Campaign State and stitc
 - "archetype" was used historically to mean both **Base Mode** and a config-defaults bundle — resolved: there is no longer a separate archetype concept. Base Mode picks the engine; defaults live in helper builder functions used by mission authors.
 - "rules" was used in field names (`finaleRules`, `sabotageRules`, `greenwardRules`) for what is really **Campaign Config**. New code should use `campaign:` as the field name on `MissionEntry`.
 - "Campaign" historically meant the JSON-shape `CampaignDef`. Now it means the runtime **Campaign Extension** — the def-shape collapses inside.
+- "Sigil" was reused for Iron Cascade's player-painted ground glyphs in early design — collides with `arcane_sigil` creep type. Resolved: the player-verb term is **Inscription**, the per-shape and per-Inscription names use varied terms (Mark, Glyph, Brand, Rune, Lattice) but the umbrella term is Inscription.
