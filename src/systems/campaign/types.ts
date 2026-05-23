@@ -324,8 +324,9 @@ export interface UISurfaceAspect<TState = unknown> {
 
 /** A state-panel surface rendered in the campaign lobby. The render
  *  return is typed as `unknown` so this generic interface stays
- *  framework-agnostic; the lobby narrows to the Preact `ComponentType`
- *  shape at the consumption site (`CampaignStatePanelRegistry`). */
+ *  framework-agnostic; the lobby (`CampaignLobbyScreen`) narrows to
+ *  the Preact `ComponentChildren` shape at the consumption site. Each
+ *  campaign exposes its panels via `CampaignExtension.ui.panels`. */
 export interface CampaignStatePanel<TState = unknown> {
   id: string;
   render(state: TState): unknown;

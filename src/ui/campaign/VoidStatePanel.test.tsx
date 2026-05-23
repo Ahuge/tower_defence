@@ -1,10 +1,10 @@
 /**
  * Smoke tests for VoidStatePanel. The full visual is covered by
- * Playwright in a follow-up; here we pin the registration + the
- * dealerCaption logic.
+ * Playwright in a follow-up; here we pin the registration via the
+ * Snake Eyes extension's `ui.panels` aspect.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
+import { SNAKE_EYES_EXTENSION } from '../../data/campaigns/snake-eyes';
 import { resetSnakeEyesState, applyDebtDelta } from '../../systems/voidc/DebtTracker';
 import './VoidStatePanel';
 
@@ -12,14 +12,18 @@ beforeEach(() => {
   resetSnakeEyesState();
 });
 
-describe('VoidStatePanel — registration', () => {
-  it('is registered for the void faction', () => {
-    expect(CampaignStatePanelRegistry.get('void')).toBeDefined();
+describe('VoidStatePanel — registration via extension ui.panels', () => {
+  it('is exposed on the Snake Eyes extension', () => {
+    expect(SNAKE_EYES_EXTENSION.ui).toBeDefined();
+    expect(SNAKE_EYES_EXTENSION.ui!.panels).toBeDefined();
+    expect(SNAKE_EYES_EXTENSION.ui!.panels!.length).toBeGreaterThan(0);
   });
 
-  it('returns a component when looked up', () => {
-    const Component = CampaignStatePanelRegistry.get('void');
-    expect(typeof Component).toBe('function');
+  it('renders a panel when invoked', () => {
+    const panels = SNAKE_EYES_EXTENSION.ui!.panels!;
+    const state = SNAKE_EYES_EXTENSION.missionState?.read() ?? SNAKE_EYES_EXTENSION.initialState;
+    const out = panels[0].render(state);
+    expect(out).toBeDefined();
   });
 });
 

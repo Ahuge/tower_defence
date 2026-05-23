@@ -2,6 +2,16 @@
 
 ## 2026-05-23
 
+### Architecture catch-up: ADR-0003 + ADR-0002 schedule + UISurface migration (B1)
+
+Architecture-review pass against the campaign-aspects PRD surfaced three plan-vs-reality gaps. All three closed in this batch:
+
+- **ADR-0003 (new)** documents the per-campaign Mission Controller pattern + the cross-DOM access pattern established by Pass 2.5. Locks in: every campaign's per-mission runtime state lives in a `<Campaign>MissionController` class implementing `LifecycleAspect`; module globals for runtime state are forbidden; DOM consumers reach the controller via `MissionRunner.getCurrentRuntime()` + `instanceof` narrowing in a typed `getActive<Campaign>Controller()` accessor. Pattern is mandatory for new campaigns, not retroactive for the existing four. Includes naming convention, testing guidance, and a constraint that future aspect types must be behaviour interfaces, not state containers.
+
+- **ADR-0002 schedule** — promotes the open TODO into a concrete trigger. The `WorldMutator` god-object regression (three campaign-specific install methods) gets refactored as commit #1 of the campaign-#5 design PR, BEFORE any new install method exists. Two-deferral hard stop: campaign #5 can defer the fix only with an explicit ADR-0004 + reviewer sign-off; campaign #6 cannot start without the fix shipping. Status line tracks the next review.
+
+- **UISurface migration (B1 carry-through)** — completes the original PRD Phase F deliverable that got skipped. `CampaignStatePanelRegistry.ts` and its two side-effect imports in `main.ts` are deleted; Greenward and Snake Eyes lobby panels now live on each extension's `ui.panels` field (the typed channel that already existed in `UISurfaceAspect` since Phase A). `CampaignLobbyScreen` reads `campaign.ui?.panels` and renders each, passing the extension's current `missionState.read()` (or `initialState` as fallback) as the state arg. Existing panels ignore the state — they still read via module-level getters — but the typed pipe is there for future panels that want pure state-as-props. Pattern fragmentation closed: per-campaign lobby UI flows through one channel, not two.
+
 ### Pre-merge review fixes: ADR-0002 + Snake Eyes smoke e2e
 
 Self-review pass against the campaign-aspects PR flagged three pre-merge items:

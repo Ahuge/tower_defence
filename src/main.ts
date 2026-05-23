@@ -37,16 +37,11 @@ import './data/campaigns/arcane';
 import './data/campaigns/greenward';
 import './data/campaigns/snake-eyes';
 
-// Register campaign lobby panels (side-effect imports)
-import './ui/campaign/GreenwardStatePanel';
-// VoidStatePanel registers eagerly so the campaign-lobby render
-// path's `CampaignStatePanelRegistry.get('void')` always sees it.
-// The lobby reads the registry inside an IIFE at render time and
-// won't re-render if the entry appears later — a race we observed
-// during audit. The panel itself is a tiny React component; the
-// parse cost is negligible. (The boot-time weight that triggered
-// the mobile-e2e timeout was wagers/, not VoidStatePanel.)
-import './ui/campaign/VoidStatePanel';
+// Campaign lobby panels are wired via each extension's `ui.panels`
+// field (see GREENWARD_EXTENSION / SNAKE_EYES_EXTENSION). No
+// side-effect imports needed here — the panel components are imported
+// directly by the campaign modules above and rendered by the lobby
+// via the extension's ui surface.
 
 // Snake Eyes Wager-effect handlers — dynamic-imported so the
 // Trait.ts registerDamageMod calls + 12-card deck eval don't bloat

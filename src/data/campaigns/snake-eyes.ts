@@ -31,8 +31,10 @@ import {
   DEFAULT_SNAKE_EYES_STATE,
   type SnakeEyesState,
 } from '../../systems/voidc/DebtTracker';
+import { h } from 'preact';
 import { snakeEyesMissionStateAspect } from '../../systems/voidc/SnakeEyesMissionStateAspect';
 import { SnakeEyesMissionController } from '../../systems/voidc/SnakeEyesMissionController';
+import { VoidStatePanel } from '../../ui/campaign/VoidStatePanel';
 
 const T = SNAKE_EYES_TEXTS;
 
@@ -212,6 +214,20 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
   defaultPlayerFaction: 'void',
   missions: MISSIONS,
   missionState: snakeEyesMissionStateAspect,
+  // Per-extension UI surface. The lobby reads `ui.panels` and renders
+  // VoidStatePanel above the mission list. Replaces the prior
+  // CampaignStatePanelRegistry side-effect-import path. `state` is
+  // currently unused by the panel (it reads via getSnakeEyesState
+  // module getter); the typed channel exists for future panels that
+  // want pure state-as-props.
+  ui: {
+    panels: [
+      {
+        id: 'debt-meter',
+        render: (_state) => h(VoidStatePanel, { factionId: 'void' }),
+      },
+    ],
+  },
   buildRuntime: (_ctx, mission) => {
     // Hard fail if someone registers Snake Eyes without landing the
     // M10 Counterfactual controller — otherwise startV2 would launch
