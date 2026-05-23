@@ -14,6 +14,7 @@
  * shows the mission's `story` copy and the active star objectives
  * before launching the run.
  */
+import type { ComponentChildren } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { Header } from '../components/Header';
 import { ShardBadge } from '../components/ShardBadge';
@@ -25,7 +26,6 @@ import { MissionRunner } from '../../systems/missions/MissionRunner';
 import { getArchetypeLabel } from '../../data/campaigns/ArchetypeLabels';
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
 import { FACTIONS, type FactionId } from '../../data/Factions';
-import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
 import { factionKeyartSrc } from '../utils/factionAssets';
 
 type Mission = MissionEntry<unknown, unknown>;
@@ -202,12 +202,22 @@ export function CampaignLobbyScreen({ data }: Props) {
         </div>
 
         {(() => {
-          const StatePanel = CampaignStatePanelRegistry.get(campaign.factionId);
-          return StatePanel ? (
+          // Per-extension UI surface: render every panel the campaign
+          // exposes via `ui.panels`. Read state through the missionState
+          // aspect so panels that opt into state-as-props (future
+          // campaigns) get the live value; existing panels ignore it
+          // and read via module-level getters. Falls back to
+          // `initialState` for campaigns without a missionState aspect.
+          const panels = campaign.ui?.panels;
+          if (!panels || panels.length === 0) return null;
+          const state = campaign.missionState?.read() ?? campaign.initialState;
+          return (
             <div style={{ maxWidth: '520px', margin: '0 auto 16px' }}>
-              <StatePanel factionId={campaign.factionId} />
+              {panels.map((p) => (
+                <div key={p.id}>{p.render(state) as ComponentChildren}</div>
+              ))}
             </div>
-          ) : null;
+          );
         })()}
 
         {(() => {

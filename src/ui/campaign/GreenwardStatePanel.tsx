@@ -1,8 +1,10 @@
 /**
  * GreenwardStatePanel — Greenward campaign's lobby state readout.
  *
- * Renders in the campaign lobby's `CampaignStatePanelRegistry` slot
- * (between header and mission list). Shows:
+ * Rendered in the campaign lobby's per-extension `ui.panels` slot
+ * (between header and mission list). The Greenward extension wires
+ * this component via `GREENWARD_EXTENSION.ui.panels` in `greenward.ts`.
+ * Shows:
  *
  *   - Wildwood Reserves meter — visual sap-fill on a 0..100 scale,
  *     with the "post-spend cap" line at 95 indicated subtly.
@@ -10,14 +12,8 @@
  *     Mercy). Hidden until at least one ruin has been claimed across
  *     the campaign (avoids cluttering the lobby on a fresh install).
  *   - Caer Wenna status — a small "bound / lost" line when applicable.
- *
- * Side-effect registration at the bottom of the module wires this
- * into CampaignStatePanelRegistry under the 'nature' faction key.
- * Import for side effects from main.ts via the campaign-systems
- * bootstrap line.
  */
 
-import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
 import {
   getReserves,
   INITIAL_RESERVES,
@@ -155,4 +151,3 @@ function captionForLean(lean: ModeLean): string {
   }
 }
 
-CampaignStatePanelRegistry.register('nature', GreenwardStatePanel);

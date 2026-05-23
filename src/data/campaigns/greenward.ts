@@ -13,6 +13,7 @@
  * ruins via `kind: 'consecration'` (M1–M9) or `kind: 'final'` (M10,
  * the three-setpiece Caer Lythen finale).
  */
+import { h } from 'preact';
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
 import type { RuinSpec } from '../../systems/greenward/ConsecrationManager';
 import { GREENWARD_TEXTS } from './texts/greenward.texts';
@@ -20,6 +21,7 @@ import { greenwardRuntime } from '../../systems/greenward/GreenwardRuntime';
 import { greenwardMissionStateAspect } from '../../systems/greenward/GreenwardMissionStateAspect';
 import { DEFAULT_GREENWARD_STATE, type GreenwardState } from '../../systems/greenward/WildwoodReserves';
 import { registerCampaign } from '../../systems/campaign/CampaignRegistry';
+import { GreenwardStatePanel } from '../../ui/campaign/GreenwardStatePanel';
 
 const T = GREENWARD_TEXTS;
 
@@ -226,6 +228,22 @@ export const GREENWARD_EXTENSION: CampaignExtension<GreenwardState, GreenwardMis
   defaultPlayerFaction: 'nature',
   missions: MISSIONS,
   missionState: greenwardMissionStateAspect,
+  // Per-extension UI surface — the campaign lobby reads `ui.panels`
+  // and renders each panel's component above the mission list.
+  // Replaces the prior CampaignStatePanelRegistry side-effect-import
+  // pattern. The `state` argument the lobby passes is currently ignored
+  // by GreenwardStatePanel (which reads via the existing module-level
+  // getters in WildwoodReserves / ModeLeanTracker / PersistedTowerState);
+  // the typed channel exists for future panels that want pure
+  // state-as-props.
+  ui: {
+    panels: [
+      {
+        id: 'wildwood-reserves',
+        render: (_state) => h(GreenwardStatePanel, { factionId: 'nature' }),
+      },
+    ],
+  },
   buildRuntime: (_ctx, mission) => {
     return greenwardRuntime({
       rules: { ruins: mission.campaign.ruins },

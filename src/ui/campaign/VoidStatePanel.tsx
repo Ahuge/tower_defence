@@ -1,8 +1,10 @@
 /**
  * VoidStatePanel — Snake Eyes campaign's lobby state readout.
  *
- * Renders in the campaign lobby's `CampaignStatePanelRegistry` slot
- * (between header and mission list). Shows:
+ * Rendered in the campaign lobby's per-extension `ui.panels` slot
+ * (between header and mission list). The Snake Eyes extension wires
+ * this component via `SNAKE_EYES_EXTENSION.ui.panels` in
+ * `snake-eyes.ts`. Shows:
  *
  *   - **Debt meter** — current Debt vs threshold lines (1000 /
  *     1300 / 1600 / 2000). The Dealer's pressure escalates each
@@ -15,14 +17,8 @@
  *   - **Last-mission Divergence** — small chip showing the prior
  *     mission's risk posture. Hidden if no mission completed yet.
  *   - **Theris status** — italic one-line "with you" / "cashed out."
- *
- * Side-effect registration at the bottom of the module wires this
- * into CampaignStatePanelRegistry under the 'void' faction key.
- * Imported for side effects from main.ts via the campaign-systems
- * bootstrap.
  */
 
-import { CampaignStatePanelRegistry } from '../../systems/campaign/CampaignStatePanelRegistry';
 import {
   getSnakeEyesState,
   INITIAL_DEBT,
@@ -269,4 +265,3 @@ function dealerCaption(actions: ReturnType<typeof computeDealerActions>): string
   return `Note on the table: ${parts.join(' + ')}, next mission.`;
 }
 
-CampaignStatePanelRegistry.register('void', VoidStatePanel);
