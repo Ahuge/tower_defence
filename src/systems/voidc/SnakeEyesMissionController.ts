@@ -8,74 +8,225 @@
  *   - The active `Pactbook` instance (3 drawn Wagers + selection)
  *   - The per-mission leak counter (consumed by the missionState
  *     aspect's `applyMissionResult` to compute the Debt surcharge)
+ *   - The Wager mission-start one-shot flag (so onMissionStart fires
+ *     exactly once after the player accepts in PactbookPanel)
+ *   - The mutable Wager flag bag (carries `WagerMissionFlags` returned
+ *     by `onMissionStart` and updated by `onWaveCleared`)
+ *   - Per-wave leak-count snapshot (for the on-wave-cleared `leaked`
+ *     boolean — see `onWaveStartedHook` / `onWaveClearedHook`)
  *
- * Architectural rationale (see ADR-0001 + the Pass 2.5 review): the
- * earlier pass shipped these as module globals (`ActiveMissionPactbook.ts`
- * + a `_missionLeakCount` in the missionState aspect). That worked but
- * broke pattern symmetry with `GreenwardMissionController` — Greenward
- * already owns its per-mission runtime state inside a class that is the
- * Lifecycle aspect. This file restores that symmetry: every Snake Eyes
- * mission now has exactly one controller instance whose lifecycle is
- * bound to the scene tear-down via `LifecycleAspect.shutdown`.
- *
- * Cross-DOM access path: DOM-land consumers (LoadingScreen rendering
- * the PactbookPanel) read the controller via `getActiveSnakeEyesController()`
- * which calls `MissionRunner.getCurrentRuntime()` and narrows the
- * `lifecycle` aspect with `instanceof`. No module globals; no untyped
- * casts at consumption sites.
+ * Architectural rationale (see ADR-0001, ADR-0003): every campaign's
+ * per-mission runtime state lives in a controller class that IS the
+ * Lifecycle aspect. Module globals for runtime state are forbidden
+ * by ADR-0003. Cross-DOM consumers reach the controller via
+ * `getActiveSnakeEyesController()` — typed `instanceof` narrowing
+ * over `MissionRunner.getCurrentRuntime()`.
  */
 import { Pactbook, type Wager } from './Pactbook';
-import { applyLeaks, applyWinPaydown } from './DebtTracker';
+import {
+  applyDebtDelta,
+  applyLeaks,
+  applyWinPaydown,
+  PAYDOWN_BASE,
+  PAYDOWN_PER_DIVERGENCE,
+} from './DebtTracker';
+import {
+  getWagerEffect,
+  type WagerEffectContext,
+  type WagerEffectHandler,
+  type WagerMissionFlags,
+} from './WagerEffects';
+import type { Trait } from '../traits/Trait';
 import type { LifecycleAspect, MissionResult } from '../campaign/types';
 import { MissionRunner } from '../missions/MissionRunner';
 
+export interface SnakeEyesMissionControllerOptions {
+  /** Optional deterministic RNG. Defaults to Math.random — tests
+   *  inject a seeded sequence. The RNG is held for both Pactbook
+   *  draws AND for Wager-effect onMissionStart hooks (e.g.
+   *  Coin Flip rolls 50/50 using this source). */
+  rng?: () => number;
+  /** Mission idx (0..9). Threaded into the WagerEffectContext so
+   *  mission-gated handlers can branch (e.g. wagers that change
+   *  behaviour after M5 once the player has more Debt headroom). */
+  missionIdx?: number;
+}
+
 export class SnakeEyesMissionController implements LifecycleAspect {
-  /** The mission's Pactbook. Constructed eagerly in the ctor so the
-   *  pre-mission `PactbookPanel` always has something to render the
-   *  moment it mounts. */
   private readonly _pactbook: Pactbook;
-
-  /** Per-mission leak counter — incremented by `recordLeak()`
-   *  (called from the gameplay aspect's `onCreepReached`) and
-   *  consumed-and-reset by `consumeLeakCount()` (called from the
-   *  missionState aspect's `applyMissionResult`). */
+  private readonly _rng: () => number;
+  private readonly _missionIdx: number;
   private _leakCount: number = 0;
+  /** Per-wave snapshot of `_leakCount` taken at `onWaveStartedHook`.
+   *  Used by `onWaveClearedHook` to derive the `leaked` flag passed
+   *  to the Wager handler. Resets every wave start. */
+  private _leakCountAtWaveStart: number = 0;
+  /** Mission-wide Wager flag bag. Mutated by `applyMissionStartEffects`
+   *  (initial seed from handler.onMissionStart) and `onWaveClearedHook`
+   *  (handler.onWaveCleared returns a new bag). Read by any system
+   *  that gates on a wager-set flag (e.g. the free-sell path for
+   *  Sleeve Card reads `flags.sleeve_card_available`). */
+  private _flags: WagerMissionFlags = {};
+  /** True once `applyMissionStartEffects` has run. Guards against a
+   *  second call from GameScene re-init / hot reload paths. */
+  private _missionStartApplied: boolean = false;
 
-  constructor(rng?: () => number) {
-    this._pactbook = new Pactbook(rng ? { rng } : {});
+  constructor(opts: SnakeEyesMissionControllerOptions = {}) {
+    this._rng = opts.rng ?? Math.random;
+    this._missionIdx = opts.missionIdx ?? 0;
+    this._pactbook = new Pactbook({ rng: this._rng });
     this._pactbook.draw();
   }
 
   // ─── Pactbook accessors ──────────────────────────────────────────
 
-  /** The drawn Pactbook for this mission. `PactbookPanel` passes this
-   *  to its `pactbook` prop. */
   getPactbook(): Pactbook {
     return this._pactbook;
   }
 
-  /** The Wager the player accepted, or null if they declined / haven't
-   *  picked yet. Consumed by `WagerEffectHandler` hooks at gameplay
-   *  time. */
   getActiveWager(): Wager | null {
     return this._pactbook.getSelected();
   }
 
-  /** True iff the player resolved the panel (accepted or declined).
-   *  `LoadingScreen` reads this to gate the Begin button. */
   isPactbookResolved(): boolean {
     return this._pactbook.isResolved();
   }
 
+  // ─── Wager handler accessors ────────────────────────────────────
+
+  /** Returns the registered handler for the active Wager, or null if
+   *  no wager is accepted, the wager has no registered effect, or
+   *  the player declined. Centralises the "active wager → handler"
+   *  lookup so callers don't repeat it. */
+  getWagerHandler(): WagerEffectHandler | null {
+    const wager = this.getActiveWager();
+    if (!wager) return null;
+    return getWagerEffect(wager.effectId);
+  }
+
+  /** Builds a fresh `WagerEffectContext` for handler calls. The
+   *  context is rebuilt each call so hooks always see the controller's
+   *  current `_rng` and `_missionIdx` — both immutable today but
+   *  rebuilding keeps the contract explicit. */
+  getWagerContext(): WagerEffectContext {
+    return { rng: this._rng, missionIdx: this._missionIdx };
+  }
+
+  /** Read-only view of the current Wager flag bag. Mutators MUST go
+   *  through `setFlags` so the controller stays the single owner of
+   *  the bag (test isolation hazard otherwise). */
+  getFlags(): Readonly<WagerMissionFlags> {
+    return this._flags;
+  }
+
+  /** Replace the flag bag wholesale. Caller passes the bag returned
+   *  by a handler hook (`onMissionStart` returning `{ flags }`, or
+   *  `onWaveCleared` returning a new map). Internal — gameplay
+   *  aspects call this via `applyMissionStartEffects` /
+   *  `onWaveClearedHook` rather than directly. */
+  setFlags(next: WagerMissionFlags): void {
+    this._flags = { ...next };
+  }
+
+  /** Convenience: read a single flag without exposing the whole bag.
+   *  Used by GameScene paths that gate on a specific wager flag (e.g.
+   *  the sell path reading `sleeve_card_available`). Returns
+   *  undefined when the key is absent. */
+  getFlag(key: string): number | string | boolean | undefined {
+    return this._flags[key];
+  }
+
+  /** Set / overwrite a single flag. Used to "consume" a one-shot
+   *  flag (e.g. set `sleeve_card_available` to false after the
+   *  player uses it). */
+  setFlag(key: string, value: number | string | boolean): void {
+    this._flags = { ...this._flags, [key]: value };
+  }
+
+  // ─── Wager hook dispatchers ─────────────────────────────────────
+
+  /** Modify kill gold via the active handler. Returns `baseGold`
+   *  unchanged when no wager is active or the handler doesn't
+   *  implement the hook. Called from the gameplay-side gold pipeline
+   *  (see `StandardDeathHandler`'s optional `goldTransform`). */
+  modifyCreepKillGold(baseGold: number): number {
+    const handler = this.getWagerHandler();
+    if (!handler?.modifyCreepKillGold) return baseGold;
+    return handler.modifyCreepKillGold(this.getWagerContext(), baseGold);
+  }
+
+  /** Per-tower trait injection at spawn. Returns extra traits from
+   *  the active wager handler (or empty array). Called from the
+   *  gameplay aspect's `onTowerPlaced` handler, which looks up the
+   *  tower via `TowerManager.getTowerAt` and pushes these onto
+   *  `tower.traits`. */
+  getTraitsForTower(towerTypeId: string): Trait[] {
+    const handler = this.getWagerHandler();
+    if (!handler?.getTraitsForTower) return [];
+    return handler.getTraitsForTower(towerTypeId);
+  }
+
+  /** Snapshot the current leak count so `onWaveClearedHook` can
+   *  derive the `leaked` boolean. Called from the gameplay aspect's
+   *  `onWaveStarted`. Idempotent — calling multiple times within
+   *  a single wave just resets the snapshot. */
+  onWaveStartedHook(_waveNum: number): void {
+    this._leakCountAtWaveStart = this._leakCount;
+  }
+
+  /** Per-wave Wager hook. Derives `leaked` from the leak-count delta
+   *  since `onWaveStartedHook` and forwards to the handler's
+   *  `onWaveCleared`. Persists any returned flag bag. Called from
+   *  the gameplay aspect's `onWaveCleared`. */
+  onWaveClearedHook(_waveNum: number): void {
+    const handler = this.getWagerHandler();
+    if (!handler?.onWaveCleared) return;
+    const leaked = this._leakCount > this._leakCountAtWaveStart;
+    const next = handler.onWaveCleared(this.getWagerContext(), leaked, this._flags);
+    if (next && typeof next === 'object') {
+      this._flags = next;
+    }
+  }
+
+  // ─── Mission lifecycle ──────────────────────────────────────────
+
+  /** Apply the active wager's `onMissionStart` one-shot side effects.
+   *  Called by GameScene at scene-create-time AFTER the scene's
+   *  economy has been initialised with starting gold. Idempotent —
+   *  subsequent calls no-op (guarded by `_missionStartApplied`).
+   *
+   *  Effects:
+   *    - `goldDelta` → `economy.addGold(delta)` (negative reduces).
+   *    - `debtDelta` → `applyDebtDelta(delta)` (DebtTracker module).
+   *    - `flags` → wholesale-replaces the controller's flag bag.
+   *
+   *  `economy` is passed in (not captured in the ctor) so the
+   *  controller doesn't hold a long-lived scene reference — the scene
+   *  reference lives for exactly the duration of this call. */
+  applyMissionStartEffects(economy: { addGold(amount: number): void }): void {
+    if (this._missionStartApplied) return;
+    this._missionStartApplied = true;
+    const handler = this.getWagerHandler();
+    if (!handler?.onMissionStart) return;
+    const result = handler.onMissionStart(this.getWagerContext());
+    if (!result) return;
+    if (typeof result.goldDelta === 'number' && result.goldDelta !== 0) {
+      economy.addGold(result.goldDelta);
+    }
+    if (typeof result.debtDelta === 'number' && result.debtDelta !== 0) {
+      applyDebtDelta(result.debtDelta);
+    }
+    if (result.flags) {
+      this._flags = { ...this._flags, ...result.flags };
+    }
+  }
+
   // ─── Leak counter ────────────────────────────────────────────────
 
-  /** Called from the per-mission gameplay aspect on each leak event. */
   recordLeak(): void {
     this._leakCount += 1;
   }
 
-  /** Consumes the leak count and resets it. Called by the missionState
-   *  aspect's `applyMissionResult`. */
   consumeLeakCount(): number {
     const c = this._leakCount;
     this._leakCount = 0;
@@ -85,22 +236,30 @@ export class SnakeEyesMissionController implements LifecycleAspect {
   // ─── Mission-end resolution ─────────────────────────────────────
 
   /** Resolve the active wager at mission end. Updates the cross-
-   *  mission Pactbook tally (succeeded / failed) and applies base
-   *  win-paydown for accepted wagers on victory. Returns the
-   *  accepted Wager (for analytics) or null if there was none.
-   *
-   *  Caller: `snakeEyesMissionStateAspect.applyMissionResult`. */
+   *  mission Pactbook tally (succeeded / failed) and applies win-
+   *  paydown for accepted wagers on victory. The paydown is the base
+   *  amount (PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE × tier) multiplied
+   *  by the handler's `getPaydownMultiplier(result)` if it implements
+   *  one. Inverted Stakes (T3) returns 2 on perfect-run / 0 on any
+   *  leak; default (omitted) = 1. Returns the accepted Wager (for
+   *  analytics) or null if there was none. */
   resolveWagerAtMissionEnd(result: MissionResult): Wager | null {
     const accepted = this._pactbook.getSelected();
     if (!accepted) return null;
-    // Tally + success/fail counter update lives on Pactbook.
     this._pactbook.resolveOutcome(result);
     if (result.won) {
-      // Divergence = accepted-tier risk (T1=1, T2=2, T3=3). Matches
-      // the "Debt × Divergence" shorthand in the Snake Eyes campaign
-      // plan. Future Wager-effect handlers may scale this further via
-      // their `getPaydownMultiplier` hook (Pass 3 work).
-      applyWinPaydown(accepted.tier);
+      const handler = this.getWagerHandler();
+      const mult = handler?.getPaydownMultiplier?.(result) ?? 1;
+      if (mult !== 1) {
+        // Custom multiplier: bypass DebtTracker.applyWinPaydown
+        // (which doesn't take a multiplier param) and compute +
+        // apply the scaled paydown via applyDebtDelta.
+        const base = PAYDOWN_BASE + PAYDOWN_PER_DIVERGENCE * accepted.tier;
+        const scaled = Math.round(-base * mult);
+        if (scaled !== 0) applyDebtDelta(scaled);
+      } else {
+        applyWinPaydown(accepted.tier);
+      }
     }
     return accepted;
   }
@@ -117,13 +276,13 @@ export class SnakeEyesMissionController implements LifecycleAspect {
   // ─── LifecycleAspect ────────────────────────────────────────────
 
   /** No per-frame work today. Reserved for future mid-mission wager
-   *  effects that need a tick (e.g. streak timers). */
+   *  effects that need a tick (e.g. streak timers, debuff auras). */
   update(_deltaMs: number): void {}
 
   /** Scene tear-down. The controller doesn't own any GameScene-owned
    *  resources (no graphics objects, no event subscriptions — those
    *  are handled by the gameplay aspect via EventBusBridge). Pactbook
-   *  state is discarded with the controller instance. */
+   *  state, flag bag, and counters are discarded with the instance. */
   shutdown(): void {
     // No-op for now; placeholder so the contract is explicit.
   }
