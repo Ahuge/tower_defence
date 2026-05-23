@@ -109,3 +109,110 @@ export function buildSnakeEyesM8Waves(): WaveDefinition[] {
       ] },
   ];
 }
+
+/** M10 Counterfactual's Mirror — the three-setpiece finale.
+ *
+ *  Wave layout maps to the three setpieces in
+ *  CounterfactualMirrorController:
+ *
+ *    Waves 1-5: Approach — the cathedral-casino's outer hall.
+ *      Standard escalating waves. Each clear advances
+ *      `controller.advanceApproachWave()`; after 5 clears the stage
+ *      flips to 'mirror_lane'.
+ *    Waves 6-10: Mirror Lane — single-grid v1 simulation. Player
+ *      clears advance the Mirror Lane controller's player side via
+ *      `recordPlayerClear`; the simulated Counterfactual side ticks
+ *      automatically (GameScene timer drives `recordCounterfactualClear`
+ *      based on `getPressureCoefficients`). First to laneLength wins
+ *      the lane; player win → stage flips to 'table', loss → mission
+ *      lost.
+ *    Wave 11: The Table — the Counterfactual boss spawns alone. HP
+ *      from `counterfactualBossHp(tally)`; in v1 the wave-script
+ *      hpScale gives a meaningful baseline (300) and GameScene
+ *      multiplies on spawn for tally-scaled difficulty. Boss kill
+ *      flips stage to 'complete' → mission won.
+ *    Wave 12: Backstop boss escort (only reached if the player
+ *      somehow leaves the wave-11 boss alive long enough to next-
+ *      wave through). Standard creeps to keep pressure if the boss
+ *      is still up.
+ *
+ *  waveCount in the mission entry is 999 (endless-until-win-trigger,
+ *  matching the Mech sabotage pattern), so the player can't run out
+ *  of waves while fighting the boss. */
+export function buildSnakeEyesM10Waves(): WaveDefinition[] {
+  return [
+    // ─── Setpiece 1 — Approach ───────────────────────────────────
+    { wave: 1, isBoss: false, spawnInterval: 600,
+      groups: [{ creepType: 'standard', count: 8, hpScale: 30, speedScale: 1 }] },
+    { wave: 2, isBoss: false, spawnInterval: 560,
+      groups: [
+        { creepType: 'standard', count: 8, hpScale: 36, speedScale: 1 },
+        { creepType: 'fast',     count: 3, hpScale: 36, speedScale: 1.05 },
+      ] },
+    { wave: 3, isBoss: false, spawnInterval: 520,
+      groups: [
+        { creepType: 'standard', count: 6, hpScale: 42, speedScale: 1 },
+        { creepType: 'armored',  count: 3, hpScale: 42, speedScale: 0.95 },
+        { creepType: 'fast',     count: 4, hpScale: 42, speedScale: 1.05 },
+      ] },
+    { wave: 4, isBoss: false, spawnInterval: 500,
+      groups: [
+        { creepType: 'armored', count: 5, hpScale: 50, speedScale: 0.95 },
+        { creepType: 'swarm',   count: 6, hpScale: 50, speedScale: 1.1 },
+      ] },
+    { wave: 5, isBoss: false, spawnInterval: 480,
+      groups: [
+        { creepType: 'armored',  count: 6, hpScale: 60, speedScale: 0.95 },
+        { creepType: 'shielded', count: 2, hpScale: 60, speedScale: 1 },
+        { creepType: 'fast',     count: 6, hpScale: 60, speedScale: 1.05 },
+      ] },
+    // ─── Setpiece 2 — Mirror Lane ────────────────────────────────
+    // Player + Counterfactual race. Player clears feed
+    // recordPlayerClear; simulated CF clears tick via GameScene timer.
+    { wave: 6, isBoss: false, spawnInterval: 460,
+      groups: [
+        { creepType: 'standard', count: 10, hpScale: 70, speedScale: 1 },
+        { creepType: 'fast',     count: 5,  hpScale: 70, speedScale: 1.05 },
+      ] },
+    { wave: 7, isBoss: false, spawnInterval: 440,
+      groups: [
+        { creepType: 'armored', count: 6, hpScale: 80, speedScale: 0.95 },
+        { creepType: 'swarm',   count: 8, hpScale: 80, speedScale: 1.1 },
+      ] },
+    { wave: 8, isBoss: false, spawnInterval: 420,
+      groups: [
+        { creepType: 'fast',     count: 8, hpScale: 90, speedScale: 1.05 },
+        { creepType: 'shielded', count: 3, hpScale: 90, speedScale: 1 },
+      ] },
+    { wave: 9, isBoss: false, spawnInterval: 400,
+      groups: [
+        { creepType: 'armored', count: 7,  hpScale: 100, speedScale: 0.95 },
+        { creepType: 'swarm',   count: 10, hpScale: 100, speedScale: 1.1 },
+        { creepType: 'evasive', count: 2,  hpScale: 100, speedScale: 1 },
+      ] },
+    { wave: 10, isBoss: false, spawnInterval: 380,
+      groups: [
+        { creepType: 'armored',  count: 8, hpScale: 110, speedScale: 0.95 },
+        { creepType: 'shielded', count: 3, hpScale: 110, speedScale: 1 },
+        { creepType: 'evasive',  count: 3, hpScale: 110, speedScale: 1 },
+      ] },
+    // ─── Setpiece 3 — The Table ──────────────────────────────────
+    // Single boss = The Counterfactual. HP scaled at spawn-time in
+    // GameScene from `controller.getM10Controller().getSnapshot().bossHpMax`
+    // so lifetime Pactbook acceptance/decline tally drives boss size.
+    // Wave-script hpScale is the v1 baseline (200) used if the spawn-
+    // time scale doesn't fire (defensive — production always scales).
+    { wave: 11, isBoss: true, spawnInterval: 0,
+      groups: [
+        { creepType: 'boss', count: 1, hpScale: 200, speedScale: 0.8 },
+      ] },
+    // Backstop wave 12 — only reached if the player next-waves past
+    // the boss without killing him (e.g. abuse pause flow). Keeps
+    // the run from going silent if M10's win-detection misfires.
+    { wave: 12, isBoss: true, spawnInterval: 340,
+      groups: [
+        { creepType: 'boss',    count: 1,  hpScale: 240, speedScale: 0.8 },
+        { creepType: 'armored', count: 10, hpScale: 130, speedScale: 0.95 },
+      ] },
+  ];
+}

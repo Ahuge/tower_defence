@@ -512,6 +512,11 @@ export class GameScene extends Phaser.Scene {
    *  scenes. Replaces the per-campaign `_missionXxxRules` field set in
    *  Phase E. */
   private _campaignRuntime: RuntimeAspects | null = null;
+  /** Snake Eyes M10 — one-shot guard so the `gameWon` emit + game-over
+   *  routing fires exactly once when the Counterfactual is defeated.
+   *  Without this, the per-frame win check fires every tick after the
+   *  boss dies. Reset to false on scene shutdown. */
+  private _m10WonFired: boolean = false;
   /** Phase B: concrete `WorldMutator` used by `SetupAspect.install`.
    *  One instance per mission; `shutdown()` undoes every mutation. */
   private _campaignWorld: WorldMutatorImpl | null = null;
@@ -3616,7 +3621,8 @@ export class GameScene extends Phaser.Scene {
       // Stormcaller-stun mechanism on Tower. No-op when no Collector
       // is alive (the iteration sees zero void_collector creeps).
       if (this._campaignRuntime.lifecycle instanceof SnakeEyesMissionController) {
-        this._campaignRuntime.lifecycle.tickCollectors(
+        const seCtrl = this._campaignRuntime.lifecycle;
+        seCtrl.tickCollectors(
           time,
           this.towers,
           this.creepMgr.creeps as unknown as { id: number; creepTypeId: string; col: number; row: number }[],
@@ -3624,6 +3630,40 @@ export class GameScene extends Phaser.Scene {
             tower._disabledRemaining = durationMs / 1000;
           },
         );
+        // M10 — boss-kill detection + win/loss propagation. Scan
+        // justDiedCreeps for the boss creep type while in the Table
+        // setpiece; that flips the controller's stage to 'complete'.
+        // Then watch isWon/isLost and trigger gameWon / loss screen.
+        // No-op on M1-M9 (m10 is null).
+        const m10 = seCtrl.getM10Controller();
+        if (m10) {
+          if (m10.getStage() === 'table') {
+            for (const dead of this.creepMgr.justDiedCreeps) {
+              if (dead.creepTypeId === 'boss') {
+                seCtrl.m10MarkBossDefeated();
+                break;
+              }
+            }
+          }
+          // Lives-zero → mark setpiece lost so the game-over path
+          // routes through the M10 loss flow (the existing standard
+          // lives-zero handler already fires gameOver; we just want
+          // the controller's stage to reflect it for the epilogue
+          // composer's state read).
+          if (this.lives <= 0 && !m10.isLost() && !m10.isWon()) {
+            seCtrl.m10MarkLost();
+          }
+          // Win trigger — boss dead. Mirror Mech sabotage's pattern:
+          // emit gameWon + goToGameOver(true). The
+          // SnakeEyesEndingPanel renders from GameOverScreen on the
+          // 'final_void' archetypeId branch.
+          if (m10.isWon() && !this._m10WonFired) {
+            this._m10WonFired = true;
+            this.eventLog.gameMessage("The Counterfactual folds.");
+            this.eventBus.emit('gameWon');
+            this.goToGameOver(true);
+          }
+        }
       }
     }
 
@@ -4567,6 +4607,19 @@ export class GameScene extends Phaser.Scene {
                 return this._greenwardController.finalize(getReserves()) as unknown as Record<string, number | boolean | null | string>;
               })()
             : {}),
+          // Snake Eyes M10 — Mirror Lane outright-win snapshot for
+          // the star-3 predicate. Always returns a typed record (not
+          // a union with optional fields) so TS narrowing into
+          // MissionResult.custom doesn't go bad. Safe when this isn't
+          // a Snake Eyes mission (controller absent → false). For
+          // Snake Eyes M1-M9 the m10 sub-controller is null so this
+          // stays false (no Mirror Lane on those missions).
+          ...((): Record<string, number | string | boolean | null> => {
+            if (!(this._campaignRuntime?.lifecycle instanceof SnakeEyesMissionController)) return {};
+            const m10 = this._campaignRuntime.lifecycle.getM10Controller();
+            if (!m10) return {};
+            return { mirrorLaneWonOutright: m10.mirrorLaneWonOutright() };
+          })(),
         },
       };
       const stars = MissionRunner.finalize(missionResult);

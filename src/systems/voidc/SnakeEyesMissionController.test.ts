@@ -366,6 +366,108 @@ describe('SnakeEyesMissionController — M8 Collector', () => {
   });
 });
 
+describe('SnakeEyesMissionController — M10 finale', () => {
+  beforeEach(() => {
+    resetSnakeEyesState();
+    clearActive();
+  });
+
+  it('M1-M9 controller has no m10 sub-controller', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 0 });
+    expect(ctrl.getM10Controller()).toBeNull();
+  });
+
+  it('M10 controller (isM10) constructs the three-setpiece sub-controller', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller();
+    expect(m10).not.toBeNull();
+    expect(m10!.getStage()).toBe('approach');
+  });
+
+  it('m10OnWaveCleared advances Approach setpiece per wave', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    for (let i = 1; i <= 4; i++) {
+      ctrl.m10OnWaveCleared(i);
+      expect(m10.getStage()).toBe('approach');
+    }
+    ctrl.m10OnWaveCleared(5);
+    expect(m10.getStage()).toBe('mirror_lane');
+  });
+
+  it('m10OnWaveCleared records player clears on Mirror Lane', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    // Walk through Approach.
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    expect(m10.getStage()).toBe('mirror_lane');
+    // Player clears one Mirror Lane wave.
+    ctrl.m10OnWaveCleared(6);
+    expect(m10.getMirrorLaneController().getSnapshot().playerWave).toBe(1);
+  });
+
+  it('m10TickCounterfactualLaneClear advances the CF side', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    expect(m10.getStage()).toBe('mirror_lane');
+    ctrl.m10TickCounterfactualLaneClear();
+    expect(m10.getMirrorLaneController().getSnapshot().counterfactualWave).toBe(1);
+  });
+
+  it('player winning the Mirror Lane race flips stage to table', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    // Player clears 5 Mirror Lane waves before CF advances at all.
+    for (let i = 6; i <= 10; i++) ctrl.m10OnWaveCleared(i);
+    expect(m10.getStage()).toBe('table');
+  });
+
+  it('CF winning the Mirror Lane race flips stage to lost_mirror_lane', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    for (let i = 0; i < 5; i++) ctrl.m10TickCounterfactualLaneClear();
+    expect(m10.getStage()).toBe('lost_mirror_lane');
+  });
+
+  it('m10MarkBossDefeated flips stage to complete', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    // Fast-forward to table stage by walking through Approach + Mirror Lane.
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    for (let i = 6; i <= 10; i++) ctrl.m10OnWaveCleared(i);
+    expect(m10.getStage()).toBe('table');
+    ctrl.m10MarkBossDefeated();
+    expect(m10.isWon()).toBe(true);
+    expect(m10.getStage()).toBe('complete');
+  });
+
+  it('m10MarkLost in Approach flips stage to lost_approach', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    ctrl.m10MarkLost();
+    expect(ctrl.getM10Controller()!.getStage()).toBe('lost_approach');
+    expect(ctrl.getM10Controller()!.isLost()).toBe(true);
+  });
+
+  it('update ticks the simulated Counterfactual lane clear after the interval', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    // Default interval 10s × 1.0 (no divergence bias here). Tick 11s.
+    ctrl.update(11_000);
+    expect(m10.getMirrorLaneController().getSnapshot().counterfactualWave).toBe(1);
+  });
+
+  it('update does NOT tick CF lane outside the mirror_lane stage', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    // Still in approach. 30s tick.
+    ctrl.update(30_000);
+    expect(ctrl.getM10Controller()!.getMirrorLaneController().getSnapshot().counterfactualWave).toBe(0);
+  });
+});
+
 describe('getActiveSnakeEyesController — typed accessor', () => {
   beforeEach(() => {
     clearActive();

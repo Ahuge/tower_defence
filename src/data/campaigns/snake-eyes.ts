@@ -39,7 +39,10 @@ import {
 } from '../../systems/voidc/SnakeEyesMissionController';
 import { VoidStatePanel } from '../../ui/campaign/VoidStatePanel';
 import { getSnakeEyesState } from '../../systems/voidc/DebtTracker';
-import { buildSnakeEyesM8Waves } from './SnakeEyesWaveScripts';
+import {
+  buildSnakeEyesM8Waves,
+  buildSnakeEyesM10Waves,
+} from './SnakeEyesWaveScripts';
 
 const T = SNAKE_EYES_TEXTS;
 
@@ -58,6 +61,11 @@ export type { SnakeEyesState };
 // controller lands and starts needing per-mission config.
 export type SnakeEyesMissionCfg =
   | { kind: 'plain' }
+  | { kind: 'final' }
+  // Kept in the union for any in-flight migration that pinned to the
+  // throw-on-launch behaviour. M10 now ships as `kind: 'final'`
+  // (CounterfactualMirrorController wired). Remove once no fixtures
+  // reference this discriminator.
   | { kind: 'final_unimplemented' };
 
 const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
@@ -219,23 +227,35 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
   {
     id: 'counterfactual_mirror', idx: 9,
     archetypeId: 'final_void',
-    // Counterfactual three-setpiece controller unimplemented — lobby
-    // renders this as locked, MissionRunner refuses the launch. See
-    // file header for the deferred-implementation context.
-    unlaunchable: true,
     name: T.missions.counterfactual_mirror.name,
     story: T.missions.counterfactual_mirror.story,
-    core: { mode: 'standard', mapId: 'gauntlet', difficulty: 'hard', waveCount: 999 },
-    // `final_unimplemented` — the cfg discriminator preserves the
-    // legacy `STUB_ARCHETYPES.final_void` semantics: this mission
-    // shouldn't launch through any path until the Counterfactual
-    // three-setpiece controller is built. The extension is NOT
-    // registered, so M10 stays on the legacy path's stub refusal
-    // for now.
-    campaign: { kind: 'final_unimplemented' },
+    // M10 finale — three setpieces (Approach / Mirror Lane / The
+    // Table) driven by CounterfactualMirrorController. Win condition
+    // is bossKilled, not wave-clear-N. waveCount 999 mirrors the
+    // Mech sabotage finale's "endless until win-trigger" pattern.
+    // GameScene's instanceof Snake Eyes block detects controller.isWon
+    // / isLost per frame and fires the corresponding game-over.
+    core: {
+      mode: 'standard',
+      mapId: 'gauntlet',
+      difficulty: 'hard',
+      waveCount: 999,
+      waveScript: buildSnakeEyesM10Waves(),
+    },
+    campaign: { kind: 'final' },
     objectives: {
-      star2: { label: T.missions.counterfactual_mirror.objectives.star2, predicate: (r) => r.won },
-      star3: { label: T.missions.counterfactual_mirror.objectives.star3, predicate: (r) => r.won && r.perfectRun },
+      star2: {
+        label: T.missions.counterfactual_mirror.objectives.star2,
+        predicate: (r) => r.won,
+      },
+      star3: {
+        // Star 3 — Mirror Lane won outright (laneGap >= 2 per
+        // CounterfactualMirrorController.mirrorLaneWonOutright).
+        // Snapshot captured in MissionResult.custom at finalize time
+        // by GameScene; fallback to false when absent.
+        label: T.missions.counterfactual_mirror.objectives.star3,
+        predicate: (r) => r.won && (r.custom.mirrorLaneWonOutright as boolean | undefined) === true,
+      },
     },
   },
 ];
@@ -264,24 +284,31 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
     ],
   },
   buildRuntime: (ctx, mission) => {
-    // Hard fail if someone registers Snake Eyes without landing the
-    // M10 Counterfactual controller — otherwise startV2 would launch
-    // a 999-wave run with no Counterfactual controller. Fail loud at
-    // mission start rather than silently in gameplay.
+    // Defensive: any leftover `final_unimplemented` from a stale
+    // fixture lands here as an explicit refusal. The production M10
+    // entry now ships as `kind: 'final'` and constructs the
+    // CounterfactualMirrorController below — this throw guards a
+    // future regression where the discriminator gets pinned back
+    // mid-merge.
     if (mission.campaign.kind === 'final_unimplemented') {
       throw new Error(
-        `[Snake Eyes] M10 (${mission.id}) has no runtime — Counterfactual ` +
-        `three-setpiece controller is unimplemented. See snake-eyes-v2.ts header.`,
+        `[Snake Eyes] M10 (${mission.id}) marked final_unimplemented — ` +
+        `the cfg discriminator should be 'final' now. See snake-eyes.ts.`,
       );
     }
     // Construct the per-mission controller. Owns the Pactbook + leak
-    // counter + wager-resolution logic + Wager-effect dispatch.
+    // counter + wager-resolution logic + Wager-effect dispatch +
+    // (M10 only) the wrapped CounterfactualMirrorController.
     // Returned as the `lifecycle` aspect so MissionRunner stores it
     // on `active.runtime.lifecycle`; `LoadingScreen` reaches it via
     // `getActiveSnakeEyesController()`; the gameplay aspect closure-
     // captures it for the per-event hooks below; the missionState
     // aspect reads it via the same typed accessor in `applyMissionResult`.
-    const controller = new SnakeEyesMissionController({ missionIdx: ctx.missionIdx });
+    const isM10 = mission.campaign.kind === 'final';
+    const controller = new SnakeEyesMissionController({
+      missionIdx: ctx.missionIdx,
+      isM10,
+    });
     return {
       lifecycle: controller,
       gameplay: {
@@ -310,6 +337,11 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
         },
         onWaveCleared(waveNum: number) {
           controller.onWaveClearedHook(waveNum);
+          // M10 setpiece advancement — Approach wave clear advances
+          // the stage; Mirror Lane wave clear records on the player
+          // side of the lane race. No-op on M1-M9 (controller's M10
+          // sub-controller is null).
+          controller.m10OnWaveCleared(waveNum);
         },
       },
     };
