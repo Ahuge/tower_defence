@@ -51,6 +51,11 @@ const CREEP_TYPE_TO_COL: Record<string, number> = {
   warlord_champion: 5,
   warlord_tactician: 5,
   warlord_captain: 5,
+  // Snake Eyes M10 — The Counterfactual rides the boss sprite (col 5)
+  // for the v1 silhouette. Bespoke art is a follow-up (see the
+  // Snake Eyes M10 polish PRD). Without this alias the creep would
+  // render as col 0 (generic standard) — wrong-feel for a boss.
+  void_counterfactual: 5,
   // ─── Iron Cascade (Mech) campaign creep aliases ──────────────
   // Regression-pin (kept in sync with MechCreeps.test.ts): these
   // values are intentionally distinct columns so a future edit

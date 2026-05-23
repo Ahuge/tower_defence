@@ -2,6 +2,20 @@
 
 ## 2026-05-23
 
+### Snake Eyes M10 — review pre-merge fixes + polish PRD
+
+Three pre-merge fixes from the architecture review on PR #85:
+
+- **`void_counterfactual` creep type** — replaces the generic `boss` creep on M10 wave 11/12. Removes the structural-by-coincidence risk where a future commit adding a `boss` creep anywhere in M10 would silently trigger `m10MarkBossDefeated` mid-mission. The wave script + the GameScene boss-kill detection both narrow on the Snake-Eyes-specific id now. Sprite-alias added to `CREEP_TYPE_TO_COL` (col 5 — boss silhouette as the v1 stand-in; bespoke art is in the polish PRD).
+
+- **`m10MarkLost` handles the `mirror_lane` stage** — previously only `approach` and `table` had loss branches; lives-zero during Mirror Lane left the controller stuck in `mirror_lane` even after GameScene's standard game-over fired. Mirror Lane loss now calls `MirrorLaneController.forceResolve('counterfactual')` + `completeMirrorLane` so the controller transitions to `lost_mirror_lane` cleanly. EpilogueComposer + any future stage-readers see `isLost() === true` uniformly across all loss paths.
+
+- **One-shot M10 win guard moved from GameScene to controller** — was a `_m10WonFired: boolean = false` private field on GameScene. Per ADR-0003, scene-lifetime state should die with the controller, not persist on a GameScene field that resets only at field-declaration time. New `controller.consumeM10WinTrigger()` returns true exactly once (the first frame `m10.isWon()` is true) and false on every subsequent call. Round-trips correctly with the scene's `_campaignRuntime` on replay.
+
+Also adds **`docs/snake-eyes-m10-polish-prd.md`** — bundles the four remaining v1 deferrals from the review (Mirror Lane HUD strip, boss HP scales from `counterfactualBossHp(tally)` at spawn, M10 launch e2e spec, M10 star-3 predicate refactored to read through the controller instead of `MissionResult.custom`). Each item is small (10-200 LOC) and independently shippable; PRD prescribes recommended sequencing (D → B → C → A) so each follow-up commit is cheap to review.
+
+All 1324 tests pass. tsc clean.
+
 ### Snake Eyes M10 — Counterfactual finale launchable + epilogue panel renders
 
 M10 (`counterfactual_mirror`) was the last orphaned piece of the Snake Eyes campaign. The mission was marked `unlaunchable: true` with `kind: 'final_unimplemented'` and `buildRuntime` threw on launch. The pure-logic state machine (`CounterfactualMirrorController` + `MirrorLaneController`), the boss-HP scaling formula (`counterfactualBossHp`), and the personalised epilogue (`EpilogueComposer` + `SnakeEyesEndingPanel`) were all implemented + tested but never instantiated.

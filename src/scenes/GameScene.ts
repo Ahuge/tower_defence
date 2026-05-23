@@ -512,11 +512,6 @@ export class GameScene extends Phaser.Scene {
    *  scenes. Replaces the per-campaign `_missionXxxRules` field set in
    *  Phase E. */
   private _campaignRuntime: RuntimeAspects | null = null;
-  /** Snake Eyes M10 — one-shot guard so the `gameWon` emit + game-over
-   *  routing fires exactly once when the Counterfactual is defeated.
-   *  Without this, the per-frame win check fires every tick after the
-   *  boss dies. Reset to false on scene shutdown. */
-  private _m10WonFired: boolean = false;
   /** Phase B: concrete `WorldMutator` used by `SetupAspect.install`.
    *  One instance per mission; `shutdown()` undoes every mutation. */
   private _campaignWorld: WorldMutatorImpl | null = null;
@@ -3639,7 +3634,10 @@ export class GameScene extends Phaser.Scene {
         if (m10) {
           if (m10.getStage() === 'table') {
             for (const dead of this.creepMgr.justDiedCreeps) {
-              if (dead.creepTypeId === 'boss') {
+              // Narrowed on the Snake-Eyes-specific id (not generic
+              // 'boss') so future commits that spawn `boss` creeps
+              // anywhere in M10 can't accidentally trigger the win.
+              if (dead.creepTypeId === 'void_counterfactual') {
                 seCtrl.m10MarkBossDefeated();
                 break;
               }
@@ -3654,11 +3652,11 @@ export class GameScene extends Phaser.Scene {
             seCtrl.m10MarkLost();
           }
           // Win trigger — boss dead. Mirror Mech sabotage's pattern:
-          // emit gameWon + goToGameOver(true). The
-          // SnakeEyesEndingPanel renders from GameOverScreen on the
-          // 'final_void' archetypeId branch.
-          if (m10.isWon() && !this._m10WonFired) {
-            this._m10WonFired = true;
+          // emit gameWon + goToGameOver(true). The one-shot guard
+          // lives on the controller (per ADR-0003) — the controller
+          // dies with the scene's _campaignRuntime so the flag round-
+          // trips correctly across mission restarts / retries.
+          if (seCtrl.consumeM10WinTrigger()) {
             this.eventLog.gameMessage("The Counterfactual folds.");
             this.eventBus.emit('gameWon');
             this.goToGameOver(true);
