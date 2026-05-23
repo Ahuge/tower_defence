@@ -3608,6 +3608,23 @@ export class GameScene extends Phaser.Scene {
       } catch (err) {
         console.warn('[GameScene] campaign lifecycle threw on update:', err);
       }
+      // M8 Collector — per-frame tick for Snake Eyes missions. The
+      // controller iterates live creeps, lazy-spawns a CollectorBehavior
+      // for each void_collector, ticks each, and fires the disable
+      // callback on token cooldown. The callback writes
+      // `tower._disabledRemaining` in seconds — reusing the existing
+      // Stormcaller-stun mechanism on Tower. No-op when no Collector
+      // is alive (the iteration sees zero void_collector creeps).
+      if (this._campaignRuntime.lifecycle instanceof SnakeEyesMissionController) {
+        this._campaignRuntime.lifecycle.tickCollectors(
+          time,
+          this.towers,
+          this.creepMgr.creeps as unknown as { id: number; creepTypeId: string; col: number; row: number }[],
+          (tower, durationMs) => {
+            tower._disabledRemaining = durationMs / 1000;
+          },
+        );
+      }
     }
 
     // Path flow indicator (uses real delta — visual effect is independent

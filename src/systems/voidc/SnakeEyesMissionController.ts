@@ -27,6 +27,7 @@ import {
   applyDebtDelta,
   applyLeaks,
   applyWinPaydown,
+  getSnakeEyesState,
   PAYDOWN_BASE,
   PAYDOWN_PER_DIVERGENCE,
 } from './DebtTracker';
@@ -36,9 +37,45 @@ import {
   type WagerEffectHandler,
   type WagerMissionFlags,
 } from './WagerEffects';
+import {
+  CollectorBehavior,
+  type CollectorTargetTower,
+} from './CollectorBehavior';
 import type { Trait } from '../traits/Trait';
 import type { LifecycleAspect, MissionResult } from '../campaign/types';
 import { MissionRunner } from '../missions/MissionRunner';
+
+/** Minimal contract for the per-frame creep snapshot the controller
+ *  iterates to find live Collectors. Real Creep has many more fields;
+ *  the controller only reads these four. */
+export interface CollectorCreepRef {
+  id: number;
+  creepTypeId: string;
+  col: number;
+  row: number;
+}
+
+/** Minimal tower contract the controller's `tickCollectors` accepts.
+ *  No `id` field — towers don't have a stable numeric id; the
+ *  controller synthesises one from the array index for
+ *  `CollectorBehavior.tick`, then maps back to the live tower ref
+ *  when invoking the disable callback. */
+export interface TickCollectorsTower {
+  col: number;
+  row: number;
+  alive?: boolean;
+}
+
+/** Callback signature for applying a Collector disable event to a
+ *  tower. Caller (GameScene) receives the live tower reference and
+ *  writes `tower._disabledRemaining = durationMs / 1000` — the
+ *  existing Stormcaller-stun mechanism doubles as the Collector-token
+ *  disable. Typed as the minimal contract so the controller stays
+ *  unit-testable without a real Tower. */
+export type CollectorDisableFn<T extends TickCollectorsTower = TickCollectorsTower> = (
+  tower: T,
+  durationMs: number,
+) => void;
 
 export interface SnakeEyesMissionControllerOptions {
   /** Optional deterministic RNG. Defaults to Math.random — tests
@@ -56,6 +93,12 @@ export class SnakeEyesMissionController implements LifecycleAspect {
   private readonly _pactbook: Pactbook;
   private readonly _rng: () => number;
   private readonly _missionIdx: number;
+  /** Debt at the moment the controller was constructed — i.e. AFTER
+   *  the missionState aspect's `tickBetweenMissions` applied the
+   *  interest tick. Captured for M8's star-3 "Debt ≤ Debt at mission
+   *  start" objective: predicate compares this to `getSnakeEyesState().debt`
+   *  at finalize time. */
+  private readonly _debtAtStart: number;
   private _leakCount: number = 0;
   /** Per-wave snapshot of `_leakCount` taken at `onWaveStartedHook`.
    *  Used by `onWaveClearedHook` to derive the `leaked` flag passed
@@ -76,6 +119,11 @@ export class SnakeEyesMissionController implements LifecycleAspect {
     this._missionIdx = opts.missionIdx ?? 0;
     this._pactbook = new Pactbook({ rng: this._rng });
     this._pactbook.draw();
+    // Capture the debt-at-start snapshot AFTER tickBetweenMissions
+    // (which applied the interest tick) and AFTER applyDynamicOverrides
+    // — both run before this controller is constructed in buildRuntime.
+    // The snapshot is consumed by M8's star-3 predicate at finalize time.
+    this._debtAtStart = getSnakeEyesState().debt;
   }
 
   // ─── Pactbook accessors ──────────────────────────────────────────
@@ -231,6 +279,107 @@ export class SnakeEyesMissionController implements LifecycleAspect {
     const c = this._leakCount;
     this._leakCount = 0;
     return c;
+  }
+
+  // ─── Collector (M8) ─────────────────────────────────────────────
+  // The Collector is M8's boss creep: slow, doesn't damage lives,
+  // periodically lobs "tokens" that temporarily disable player
+  // towers. Defeating it sets state.collectorDefeatedAt so the next
+  // mission's interest charge is cancelled. Per-creep behavior lives
+  // in CollectorBehavior; this map tracks active instances keyed by
+  // creep id.
+  //
+  // Lifecycle is reactive (not event-driven on spawn) so the controller
+  // doesn't need a spawn callback: tickCollectors lazy-creates a
+  // behavior the first time it sees a void_collector creep. Kills go
+  // through onCollectorMaybeKilled (fires DebtTracker.markCollectorDefeated
+  // via behavior.onDefeated); leaks go through onCollectorMaybeReached
+  // (silent removal — leaking the Collector is NOT a defeat).
+  private readonly _collectors: Map<number, CollectorBehavior> = new Map();
+
+  /** Per-frame tick: ensures each live void_collector creep has an
+   *  active CollectorBehavior, ticks each one with the creep's current
+   *  position + the player's towers, and applies any disable event via
+   *  the supplied `disableFn`. Called from GameScene's update loop via
+   *  the instanceof-narrowed Snake Eyes block.
+   *
+   *  `towers` is the player's full tower list; the behavior picks the
+   *  nearest live one in range (Chebyshev cells) per token cooldown.
+   *  `disableFn(towerId, durationMs)` is the side-effect application
+   *  — kept as a callback so the controller stays unit-testable
+   *  without a scene reference. */
+  tickCollectors<T extends TickCollectorsTower>(
+    now: number,
+    towers: readonly T[],
+    creeps: readonly CollectorCreepRef[],
+    disableFn: CollectorDisableFn<T>,
+  ): void {
+    // Synthesize CollectorBehavior's required `id` from the array
+    // index. The behavior returns the same index back inside
+    // `event.towerId`, which we map back to the live tower ref.
+    // Indexes are stable for the duration of a single tick — callers
+    // mustn't mutate the towers list between tick + disable callbacks.
+    const synth: CollectorTargetTower[] = towers.map((t, i) => ({
+      id: i, col: t.col, row: t.row, alive: t.alive,
+    }));
+    for (const creep of creeps) {
+      if (creep.creepTypeId !== 'void_collector') continue;
+      let behavior = this._collectors.get(creep.id);
+      if (!behavior) {
+        behavior = new CollectorBehavior();
+        this._collectors.set(creep.id, behavior);
+      }
+      const event = behavior.tick(now, { col: creep.col, row: creep.row }, synth);
+      if (event) {
+        const target = towers[event.towerId];
+        if (target) disableFn(target, event.disableDurationMs);
+      }
+    }
+  }
+
+  /** Event handler — the gameplay aspect's `onCreepKilled(creepId)`
+   *  dispatches here. If the killed creep was a tracked Collector,
+   *  mark it defeated (writes `state.collectorDefeatedAt` via
+   *  `markCollectorDefeated` inside `behavior.onDefeated`) and remove
+   *  from the map. No-op for non-Collector creeps. */
+  onCollectorMaybeKilled(creepId: number): void {
+    const behavior = this._collectors.get(creepId);
+    if (!behavior) return;
+    behavior.onDefeated(this._missionIdx);
+    this._collectors.delete(creepId);
+  }
+
+  /** Event handler — the gameplay aspect's `onCreepReached(creepId)`
+   *  dispatches here. If the Collector leaked, remove from the map
+   *  WITHOUT marking it defeated (leaking the Collector is a loss,
+   *  not a win). No-op for non-Collector creeps. */
+  onCollectorMaybeReached(creepId: number): void {
+    this._collectors.delete(creepId);
+  }
+
+  /** Was the Collector defeated this mission? Reads through DebtTracker's
+   *  persistent state — `collectorDefeatedAt === this._missionIdx`
+   *  iff the player killed the Collector this run. Consumed by M8's
+   *  star-2 / star-3 predicates. Safe to call at finalize time
+   *  (predicates run BEFORE the next mission's applyMissionStart
+   *  clears the flag). */
+  wasCollectorDefeatedThisMission(): boolean {
+    const state = getSnakeEyesState();
+    return state.collectorDefeatedAt === this._missionIdx;
+  }
+
+  /** Debt at the moment this mission started (post-interest tick).
+   *  Consumed by M8's star-3 predicate to compare against current
+   *  Debt at finalize. Stable for the lifetime of this controller
+   *  instance — never mutates. */
+  getDebtAtStart(): number {
+    return this._debtAtStart;
+  }
+
+  /** Test-only inspection of the active Collector map. Real callers
+   *  should treat the map as private. */
+  _getActiveCollectorCountForTest(): number {
+    return this._collectors.size;
   }
 
   // ─── Mission-end resolution ─────────────────────────────────────

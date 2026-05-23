@@ -33,8 +33,13 @@ import {
 } from '../../systems/voidc/DebtTracker';
 import { h } from 'preact';
 import { snakeEyesMissionStateAspect } from '../../systems/voidc/SnakeEyesMissionStateAspect';
-import { SnakeEyesMissionController } from '../../systems/voidc/SnakeEyesMissionController';
+import {
+  SnakeEyesMissionController,
+  getActiveSnakeEyesController,
+} from '../../systems/voidc/SnakeEyesMissionController';
 import { VoidStatePanel } from '../../ui/campaign/VoidStatePanel';
+import { getSnakeEyesState } from '../../systems/voidc/DebtTracker';
+import { buildSnakeEyesM8Waves } from './SnakeEyesWaveScripts';
 
 const T = SNAKE_EYES_TEXTS;
 
@@ -152,15 +157,45 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
     story: T.missions.snake_eyes_proper.story,
     // Frugal archetype defaults fold in: goldStartMult 0.5, maxTowers 6.
     // Per-mission goldStart 200 overrides the multiplier path.
+    // Custom wave script puts the Collector boss on wave 7 — the
+    // default generator can't produce `void_collector`. See
+    // SnakeEyesWaveScripts.ts for the per-wave composition rationale.
     core: {
       mode: 'standard', mapId: 'gauntlet', difficulty: 'hard', waveCount: 12,
       goldStart: 200, goldStartMult: 0.5,
       restrictions: { maxTowers: 6 },
+      waveScript: buildSnakeEyesM8Waves(),
     },
     campaign: { kind: 'plain' },
+    // Star predicates read DebtTracker state directly because
+    // `markCollectorDefeated(missionIdx)` writes `collectorDefeatedAt`
+    // synchronously during gameplay (in CollectorBehavior.onDefeated
+    // → SnakeEyesMissionController.onCollectorMaybeKilled). The flag
+    // is intact at finalize time — it doesn't get consumed until the
+    // NEXT mission's applyMissionStart. The hardcoded `=== 7` matches
+    // this entry's idx (snake_eyes_proper is M8 in 1-indexed, idx 7
+    // in 0-indexed).
     objectives: {
-      star2: { label: T.missions.snake_eyes_proper.objectives.star2, predicate: (r) => r.won },
-      star3: { label: T.missions.snake_eyes_proper.objectives.star3, predicate: (r) => r.won && r.perfectRun },
+      star2: {
+        label: T.missions.snake_eyes_proper.objectives.star2,
+        predicate: (r) => r.won && getSnakeEyesState().collectorDefeatedAt === 7,
+      },
+      star3: {
+        label: T.missions.snake_eyes_proper.objectives.star3,
+        // Star-2 condition + Debt didn't grow this mission. The
+        // pre-mission Debt snapshot is captured in the controller's
+        // ctor (after tickBetweenMissions applied the interest tick)
+        // and read via getActiveSnakeEyesController. Safe at finalize
+        // — predicates run before the next mission's controller
+        // construction clears the active runtime.
+        predicate: (r) => {
+          if (!r.won) return false;
+          if (getSnakeEyesState().collectorDefeatedAt !== 7) return false;
+          const ctrl = getActiveSnakeEyesController();
+          if (!ctrl) return false;
+          return getSnakeEyesState().debt <= ctrl.getDebtAtStart();
+        },
+      },
     },
   },
   {
@@ -250,8 +285,21 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
     return {
       lifecycle: controller,
       gameplay: {
-        onCreepReached(_creepId: number) {
+        onCreepReached(creepId: number) {
           controller.recordLeak();
+          // Collector reached the exit → silent removal from the
+          // active-Collector map (leaking the Collector is NOT a
+          // defeat; no markCollectorDefeated). The controller's
+          // onCollectorMaybeReached is a cheap no-op when the id
+          // isn't in the map, so we can call it for every creep.
+          controller.onCollectorMaybeReached(creepId);
+        },
+        onCreepKilled(creepId: number) {
+          // Collector kill detection — same pattern as reached.
+          // Behavior.onDefeated calls markCollectorDefeated which
+          // writes state.collectorDefeatedAt; M8 star predicates
+          // read that synchronously at finalize.
+          controller.onCollectorMaybeKilled(creepId);
         },
         // Wave-cleared Wager hook (Phase 3): snapshot leak count at
         // wave start so the cleared hook can derive the `leaked` flag.

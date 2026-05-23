@@ -2,6 +2,30 @@
 
 ## 2026-05-23
 
+### Snake Eyes M8 — the Collector actually shows up + does his job
+
+The M8 mission (`snake_eyes_proper`) lore narrates "The Collector came down the road on foot" — the Dealer's enforcer who taxes the player's towers (temporarily disabling them) and whose defeat cancels next mission's interest charge. `CollectorBehavior.ts` had the per-creep state machine + tower-disable event emission since the original snake-eyes-campaign-plan, but nothing instantiated it or wove it into the wave script.
+
+This commit closes the loop:
+
+- **Custom 12-wave script** `buildSnakeEyesM8Waves` in new `SnakeEyesWaveScripts.ts` (matches `MechWaveScripts.ts` pattern). Default standard-mode generator can't produce `void_collector`. The Collector arrives on wave 7 with armored escort, mid-mission, after the player has had 6 waves to build out to the 6-tower cap. Killing him grants the 5× gold bounty from `CreepTypes.applyDifficulty` — a meaningful injection for the frugal economy.
+
+- **`SnakeEyesMissionController` gains Collector management**: a private map of `CollectorBehavior` instances keyed by creep id; `tickCollectors(now, towers, creeps, disableFn)` lazy-creates a behavior on first sighting of each void_collector, ticks it with the creep's position + tower list, fires the disable callback when a token cooldown elapses. `onCollectorMaybeKilled(creepId)` dispatches to `behavior.onDefeated` (which writes `state.collectorDefeatedAt` via `markCollectorDefeated`); `onCollectorMaybeReached(creepId)` silently removes the entry without marking defeated (a leaked Collector is not a defeat). `wasCollectorDefeatedThisMission()` reads the persistent flag for star predicates.
+
+- **Snake Eyes gameplay aspect** now dispatches `onCreepKilled` / `onCreepReached` to the controller's new methods. The controller's collector map is a cheap no-op when the id isn't tracked, so the dispatch is unconditional per event.
+
+- **GameScene update loop** drives `controller.tickCollectors` per frame via the existing instanceof-narrowed Snake Eyes block. The disable callback writes `tower._disabledRemaining = durationMs / 1000` — reusing the existing Stormcaller-stun field on Tower. No new disable mechanism added.
+
+- **M8 star objectives wired**: star 2 = `won && collectorDefeatedAt === 7`; star 3 = star 2 conditions + `state.debt <= ctrl.getDebtAtStart()`. The controller's debt-at-start snapshot is captured in its ctor (after `tickBetweenMissions` applied the interest tick, before mission start). Lore-faithful: "Collector defeated + Debt ≤ Debt at mission start" requires either accepting a wager that paid down at least 50g OR a no-leak run + Collector bounty offsetting the +50g interest.
+
+- **Tower-disable contract**: `CollectorDisableFn<T>` takes a typed tower reference + duration. Generic over the minimal `TickCollectorsTower` interface so the controller stays unit-testable without a real Tower. Caller (GameScene) supplies the live Tower; the callback writes `_disabledRemaining` directly.
+
+Tests: 8 new on `SnakeEyesMissionController.test.ts` covering tickCollectors lazy-create + ignore-non-collectors + disable-on-cooldown; `onCollectorMaybeKilled` marks state + removes from map; `onCollectorMaybeReached` removes without marking; `wasCollectorDefeatedThisMission` reflects state; `getDebtAtStart` snapshot stability. All 1313 tests pass.
+
+What still doesn't work (next backlog items):
+- **M10 Counterfactual** — still throws `final_unimplemented`. Three-setpiece controller + Mirror Lane paired grid not built.
+- **M10 `EpilogueComposer` rendering** — deferred until M10 launches.
+
 ### Snake Eyes Phase 3 — mid-mission Wager effects actually fire now
 
 The `WagerEffectHandler` interface had impls for all 12 Pactbook cards (Coin Flip's RNG roll, House Cut's kill-gold tax, Markers' Siphon-only trait, Hot Streak's wave-clear counter, Inverted Stakes' paydown multiplier, etc.) but nothing in `GameScene` ever called the hooks. Accepted wagers updated the cross-mission tally + applied a flat-tier paydown, but during gameplay they were cosmetic — no gold modification, no trait injection, no on-wave-cleared logic, no paydown scaling.
