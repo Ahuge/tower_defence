@@ -11,10 +11,7 @@ import { UIBridge } from '../UIBridge';
 import { factionSplashSrc } from '../utils/factionAssets';
 import { useIsPortraitViewport } from '../hooks/useIsPortraitViewport';
 import { PactbookPanel } from '../campaign/PactbookPanel';
-import {
-  getMissionPactbook,
-  isMissionPactbookResolved,
-} from '../../systems/voidc/ActiveMissionPactbook';
+import { getActiveSnakeEyesController } from '../../systems/voidc/SnakeEyesMissionController';
 
 function hexColor(n: number): string {
   return '#' + n.toString(16).padStart(6, '0');
@@ -66,19 +63,18 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
   const flavourRef = useRef(pickFlavour(faction));
 
   // ─── Pactbook gate (Snake Eyes campaign only) ───────────────────
-  // The Snake Eyes `buildRuntime` instantiates a per-mission Pactbook
-  // via `beginMissionPactbook()` before this screen mounts. We pull
-  // the instance once and render it via PactbookPanel. The Begin
-  // button is additionally gated on the panel being resolved
-  // (accepted or declined). If somehow the Pactbook isn't there
-  // (e.g. wagers/ side-effect import skipped, edge case), we treat
-  // it as already-resolved so the player isn't soft-locked.
+  // The Snake Eyes `buildRuntime` constructs a SnakeEyesMissionController
+  // (which is the Lifecycle aspect) before this screen mounts. We pull
+  // the controller via the typed accessor and pass its Pactbook to the
+  // panel. The Begin button is additionally gated on the panel being
+  // resolved (accepted or declined). If the controller isn't there
+  // (mismatched campaign / future regression), we treat as resolved so
+  // the player isn't soft-locked.
   const isSnakeEyes = campaignFactionId === 'void';
-  const pactbookRef = useRef<ReturnType<typeof getMissionPactbook>>(
-    isSnakeEyes ? getMissionPactbook() : null,
-  );
+  const controllerRef = useRef(isSnakeEyes ? getActiveSnakeEyesController() : null);
+  const pactbookRef = useRef(controllerRef.current?.getPactbook() ?? null);
   const [pactbookResolved, setPactbookResolved] = useState(
-    isSnakeEyes ? isMissionPactbookResolved() : true,
+    controllerRef.current?.isPactbookResolved() ?? true,
   );
 
   const fDef = faction && faction !== 'random' ? FACTIONS[faction as FactionId] : null;
@@ -347,10 +343,11 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
         {/* Snake Eyes PactbookPanel — three wager cards + decline.
             Rendered inline above the Begin button. Player resolves
             (accept one or decline all) before the Begin button enables.
-            The Pactbook instance is created in Snake Eyes' buildRuntime
-            BEFORE this screen mounts, so getMissionPactbook() always
-            returns non-null inside a Snake Eyes mission. The
-            conditional null check is defensive for retry / edge flows. */}
+            The SnakeEyesMissionController is constructed in
+            buildRuntime BEFORE this screen mounts; we read it via
+            getActiveSnakeEyesController() — typed instanceof narrowing,
+            no module globals. The null check is defensive for retry /
+            edge flows. */}
         {isSnakeEyes && pactbookRef.current && !pactbookResolved && (
           <div style={{ marginBottom: '24px' }}>
             <PactbookPanel

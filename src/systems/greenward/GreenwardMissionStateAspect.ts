@@ -67,8 +67,9 @@ export const greenwardMissionStateAspect: MissionStateAspect<GreenwardState, any
    *  `WildwoodReserves.ts`: +10 to reserves, capped at INITIAL when
    *  no spending has occurred and at MAX_AFTER_SPEND once it has.
    *  Returns the new state — MissionRunner.startV2 persists it
-   *  via `write()`. */
-  tickBetweenMissions(state: GreenwardState): GreenwardState {
+   *  via `write()`. `entry` is accepted to match the aspect interface
+   *  but not read — Greenward's regen is mission-agnostic. */
+  tickBetweenMissions(state: GreenwardState, _entry): GreenwardState {
     const cap = state.hasSpent ? MAX_AFTER_SPEND : INITIAL_RESERVES;
     const nextReserves = Math.min(state.reserves + REGEN_PER_MISSION, cap);
     return { ...state, reserves: nextReserves };

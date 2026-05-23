@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-05-23
+
+### Snake Eyes — architectural refactor (Pass 2.5) — restore aspect-pattern symmetry with Greenward
+
+Architectural review of Passes 1 + 2 surfaced four smells that an architectural-review session pinned down:
+
+- The new `ActiveMissionPactbook` was a module-singleton — typed but global-mutable, reintroducing exactly the god-object pattern ADR-0001's aspect refactor was designed to retire.
+- `snakeEyesMissionStateAspect.applyDynamicOverrides` ran side effects (`applyMissionStart`) on a hook the interface documents as pure entry transformation. Set a "you can side-effect any aspect hook" precedent that defeats the narrow-typed-interface design.
+- The module-level `_missionLeakCount` shared state between the per-mission gameplay aspect and the per-campaign missionState aspect via untyped globals. Test isolation hazard, orphan-on-error hazard, single-process assumption baked in.
+- Snake Eyes ended up implementing all of the above DIFFERENTLY from Greenward, which owns its per-mission state in a `GreenwardMissionController` class that IS the Lifecycle aspect. Two patterns is worse than one.
+
+This commit fixes all four by aligning Snake Eyes to Greenward's shape, and improves the shared aspect interface so both campaigns can use the cleaner pattern:
+
+**Aspect interface change.** `MissionStateAspect.tickBetweenMissions(state, entry)` now accepts the upcoming `MissionEntry`. The earlier "we can't know entry.idx in tickBetweenMissions" justification for the side-effect-in-applyDynamicOverrides was real but the right fix was the interface, not the abuse. Greenward's regen ignores the new parameter (still mission-agnostic) so the change is backwards-compatible.
+
+**New `MissionRunner.getCurrentRuntime()` accessor.** Returns the active `RuntimeAspects` bundle. Single typed pipe for DOM-land consumers (`LoadingScreen`) to reach the live aspect instances without module-global access. Cleared automatically with `this.active` on finalize/abort.
+
+**New `SnakeEyesMissionController` class.** Implements `LifecycleAspect`. Owns the active `Pactbook` (eagerly constructed + drawn in ctor), the per-mission leak counter, and wager resolution. `buildRuntime` returns it as the `lifecycle` aspect, so the same `_campaignRuntime.lifecycle.shutdown()` GameScene already invokes will tear it down on scene end — no orphan window.
+
+**New `getActiveSnakeEyesController()` typed accessor.** Reads `MissionRunner.getCurrentRuntime()` and narrows `.lifecycle` via `instanceof SnakeEyesMissionController`. Consumed by `LoadingScreen`. Three properties: typed at the consumption site; honest about the cast (instanceof, not `as`); returns null cleanly if the current mission is a different campaign or none is active.
+
+**`snakeEyesMissionStateAspect` simplified.** `applyDynamicOverrides` is now a pure pass-through. `tickBetweenMissions(state, entry)` does the interest tick (was previously misplaced in `applyDynamicOverrides`). `applyMissionResult` delegates leak-surcharge and wager-resolution to the controller via the typed accessor — module-level `_missionLeakCount` deleted. Pattern now mirrors `greenwardMissionStateAspect` exactly.
+
+**Deletes.** `ActiveMissionPactbook.ts` + its test file (folded into the controller). Net diff: +218 / -480.
+
+Pattern symmetry table (both campaigns):
+
+| Concern | Greenward | Snake Eyes (now) |
+|---|---|---|
+| `applyDynamicOverrides` | pure pass-through | pure pass-through |
+| Per-mission runtime state | `GreenwardMissionController` (Lifecycle) | `SnakeEyesMissionController` (Lifecycle) |
+| Cross-aspect communication | through controller methods | through controller methods |
+| `tickBetweenMissions` | pure transform | pure transform |
+| DOM-land access pattern | (n/a — no pre-mission UI yet) | `getActive<X>Controller()` via MissionRunner |
+
+Tests: all 1293 passing (no regressions). New `SnakeEyesMissionController` test file covers construction (draws 3 cards), leak counter recording + consumption, wager resolution returning the accepted Wager + applying win-paydown on victory + skipping on loss, and the typed accessor narrowing correctly (returns the controller for Snake Eyes, null for other campaigns, null when no mission is active).
+
 ## 2026-05-22
 
 ### Snake Eyes — render PactbookPanel before each mission (the 3 wager cards actually appear now)

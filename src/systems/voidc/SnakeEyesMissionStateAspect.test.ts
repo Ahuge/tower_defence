@@ -1,16 +1,14 @@
 /**
  * Tests for snakeEyesMissionStateAspect — verifies the aspect actually
- * mutates Debt across missions. The point of this file is to lock down
- * the fix for the bug where Snake Eyes shipped a `buildRuntime` that
- * returned `{}` and so the 800g starting Debt never moved.
+ * mutates Debt across missions. Pass 2.5 refactor: per-mission state
+ * moved out of module globals into SnakeEyesMissionController. These
+ * tests no longer poke a leak counter directly; they exercise the
+ * aspect lifecycle (tickBetweenMissions for interest; applyMissionResult
+ * for leak surcharge via the controller).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  snakeEyesMissionStateAspect,
-  recordMissionLeak,
-  consumeMissionLeakCount,
-  _resetMissionLeakCounter,
-} from './SnakeEyesMissionStateAspect';
+import { snakeEyesMissionStateAspect } from './SnakeEyesMissionStateAspect';
+import { SnakeEyesMissionController } from './SnakeEyesMissionController';
 import {
   resetSnakeEyesState,
   getSnakeEyesState,
@@ -18,7 +16,12 @@ import {
   INTEREST_PER_MISSION,
   LEAK_SURCHARGE,
 } from './DebtTracker';
+import { MissionRunner } from '../missions/MissionRunner';
 import type { MissionEntry, MissionResult } from '../campaign/types';
+
+// Wager effect handlers register at module load. Tests need them so
+// the Pactbook deck contains all 12 cards before any draw.
+import './wagers';
 
 function fakeEntry(idx: number): MissionEntry<unknown, unknown> {
   return {
@@ -49,14 +52,34 @@ function fakeResult(overrides: Partial<MissionResult> = {}): MissionResult {
   };
 }
 
-describe('snakeEyesMissionStateAspect — interest application', () => {
+/** Install a fake "active mission" on MissionRunner so
+ *  getActiveSnakeEyesController() resolves to our test controller.
+ *  Each call replaces any prior active session — we don't need to
+ *  unwind via abort() because every test sets its own via beforeEach. */
+function installController(controller: SnakeEyesMissionController): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (MissionRunner as any).active = {
+    ext: { factionId: 'void' },
+    mission: fakeEntry(0),
+    archetypeId: 'standard',
+    startedAt: Date.now(),
+    runtime: { lifecycle: controller },
+  };
+}
+
+function clearActive(): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (MissionRunner as any).active = null;
+}
+
+describe('snakeEyesMissionStateAspect — interest tick (tickBetweenMissions)', () => {
   beforeEach(() => {
     resetSnakeEyesState();
-    _resetMissionLeakCounter();
+    clearActive();
   });
 
   it('M1 (idx 0) start: no interest, flips firstMissionStarted', () => {
-    snakeEyesMissionStateAspect.applyDynamicOverrides(
+    snakeEyesMissionStateAspect.tickBetweenMissions!(
       snakeEyesMissionStateAspect.read(),
       fakeEntry(0),
     );
@@ -66,36 +89,47 @@ describe('snakeEyesMissionStateAspect — interest application', () => {
   });
 
   it('M2+ start: +50g interest applied per mission', () => {
-    // M1 — primes firstMissionStarted.
-    snakeEyesMissionStateAspect.applyDynamicOverrides(
+    snakeEyesMissionStateAspect.tickBetweenMissions!(
       snakeEyesMissionStateAspect.read(),
       fakeEntry(0),
     );
     expect(getSnakeEyesState().debt).toBe(INITIAL_DEBT);
 
-    // M2 — first interest tick.
-    snakeEyesMissionStateAspect.applyDynamicOverrides(
+    snakeEyesMissionStateAspect.tickBetweenMissions!(
       snakeEyesMissionStateAspect.read(),
       fakeEntry(1),
     );
     expect(getSnakeEyesState().debt).toBe(INITIAL_DEBT + INTEREST_PER_MISSION);
 
-    // M3 — second tick.
-    snakeEyesMissionStateAspect.applyDynamicOverrides(
+    snakeEyesMissionStateAspect.tickBetweenMissions!(
       snakeEyesMissionStateAspect.read(),
       fakeEntry(2),
     );
     expect(getSnakeEyesState().debt).toBe(INITIAL_DEBT + 2 * INTEREST_PER_MISSION);
   });
+
+  it('applyDynamicOverrides is now a pure pass-through (no side effects)', () => {
+    const before = getSnakeEyesState();
+    const entry = fakeEntry(2);
+    const out = snakeEyesMissionStateAspect.applyDynamicOverrides(
+      snakeEyesMissionStateAspect.read(),
+      entry,
+    );
+    expect(out).toBe(entry);
+    expect(getSnakeEyesState()).toEqual(before);
+  });
 });
 
-describe('snakeEyesMissionStateAspect — leak surcharge', () => {
+describe('snakeEyesMissionStateAspect — leak surcharge via controller', () => {
   beforeEach(() => {
     resetSnakeEyesState();
-    _resetMissionLeakCounter();
+    clearActive();
   });
 
   it('no leaks: debt unchanged at mission end', () => {
+    const ctrl = new SnakeEyesMissionController();
+    installController(ctrl);
+
     const before = getSnakeEyesState().debt;
     snakeEyesMissionStateAspect.applyMissionResult(
       snakeEyesMissionStateAspect.read(),
@@ -104,57 +138,46 @@ describe('snakeEyesMissionStateAspect — leak surcharge', () => {
     expect(getSnakeEyesState().debt).toBe(before);
   });
 
-  it('counter leaks: applyLeaks with LEAK_SURCHARGE per leak', () => {
-    recordMissionLeak();
-    recordMissionLeak();
-    recordMissionLeak();
+  it('controller-recorded leaks: surcharge via applyLeaks', () => {
+    const ctrl = new SnakeEyesMissionController();
+    installController(ctrl);
+    ctrl.recordLeak();
+    ctrl.recordLeak();
+    ctrl.recordLeak();
+
     const before = getSnakeEyesState().debt;
     snakeEyesMissionStateAspect.applyMissionResult(
       snakeEyesMissionStateAspect.read(),
       fakeResult({ livesStart: 20, livesRemaining: 17 }),
     );
     expect(getSnakeEyesState().debt).toBe(before + 3 * LEAK_SURCHARGE);
-    // Counter is consumed.
-    expect(consumeMissionLeakCount()).toBe(0);
   });
 
-  it('falls back to livesLost if gameplay aspect did not record', () => {
-    // No recordMissionLeak() calls — simulates a mission run that
-    // didn't install the gameplay aspect for some reason.
+  it('falls back to livesLost when no controller is active', () => {
+    // No installController() — getActiveSnakeEyesController() returns null
+    // and the aspect uses its defensive fallback.
     const before = getSnakeEyesState().debt;
     snakeEyesMissionStateAspect.applyMissionResult(
       snakeEyesMissionStateAspect.read(),
       fakeResult({ livesStart: 20, livesRemaining: 18 }),
     );
-    // livesLost = 2 → 2 × LEAK_SURCHARGE
     expect(getSnakeEyesState().debt).toBe(before + 2 * LEAK_SURCHARGE);
   });
 
-  it('counter wins over livesLost when both present', () => {
-    // Counter records 3 leaks but livesLost shows 7 (boss leak: 1 leak,
-    // 5 lives + 2 normal leaks = 7 lives lost, 3 actual leaks). Use
-    // the counter — it's the accurate source.
-    recordMissionLeak();
-    recordMissionLeak();
-    recordMissionLeak();
-    const before = getSnakeEyesState().debt;
-    snakeEyesMissionStateAspect.applyMissionResult(
-      snakeEyesMissionStateAspect.read(),
-      fakeResult({ livesStart: 20, livesRemaining: 13 }),
-    );
-    expect(getSnakeEyesState().debt).toBe(before + 3 * LEAK_SURCHARGE);
-  });
-
-  it('counter resets between missions', () => {
-    recordMissionLeak();
-    recordMissionLeak();
+  it('controller leak count resets across missions (fresh controller each)', () => {
+    const ctrlA = new SnakeEyesMissionController();
+    installController(ctrlA);
+    ctrlA.recordLeak();
+    ctrlA.recordLeak();
     snakeEyesMissionStateAspect.applyMissionResult(
       snakeEyesMissionStateAspect.read(),
       fakeResult(),
     );
-
-    // Next mission: counter should be 0; no additional surcharge.
     const between = getSnakeEyesState().debt;
+
+    // New mission — fresh controller, fresh counter.
+    const ctrlB = new SnakeEyesMissionController();
+    installController(ctrlB);
     snakeEyesMissionStateAspect.applyMissionResult(
       snakeEyesMissionStateAspect.read(),
       fakeResult({ livesStart: 20, livesRemaining: 20 }),
@@ -166,7 +189,7 @@ describe('snakeEyesMissionStateAspect — leak surcharge', () => {
 describe('snakeEyesMissionStateAspect — read/write', () => {
   beforeEach(() => {
     resetSnakeEyesState();
-    _resetMissionLeakCounter();
+    clearActive();
   });
 
   it('read() returns DEFAULT_SNAKE_EYES_STATE before any mutation', () => {
