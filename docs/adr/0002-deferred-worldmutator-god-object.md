@@ -48,6 +48,37 @@ This constraint is encoded in:
 - This ADR itself
 - The PR description for any future campaign #5
 
+## Resolution trigger
+
+The constraint above is a *prohibition* on growth, not a schedule for the fix. Without an explicit trigger this ADR will be discovered by a campaign-#5 author treating it as a surprise blocker.
+
+**Trigger: campaign #5 design PR — the WorldMutator refactor lands as its first commit, BEFORE any new `install<NewCampaign><Verb>` method exists.**
+
+Why this trigger and not a date:
+
+- A calendar date detached from real work invites slipping ("we'll do it next month") and pile-on ("let's bundle it with the next big PR"). Both delay indefinitely.
+- A campaign-#5-blocker trigger means the work happens *exactly* when it has a concrete next-user — which is when the design is freshest.
+- The refactor is small (~10 call-site rewrites for Path A, more for Path B). Bundling it as commit 1 of the campaign-#5 PR adds <1 day of work and keeps the changes co-located with the new campaign that motivates them.
+
+**Sequencing within the campaign-#5 PR (recommended):**
+
+1. **Commit 1** — `WorldMutator` refactor. Implements Path A (generic `installCampaignController(kind, payload)` dispatcher) by default. Rewrites the four existing call sites in Mech / Arcane / Greenward Setup aspects. No campaign-#5 code yet. Tests + tsc clean.
+2. **Commit 2+** — campaign-#5 implementation uses the new dispatcher. Adding the campaign costs zero new `WorldMutator` methods.
+
+If campaign-#5 is genuinely urgent and the refactor can't fit:
+
+- Document the exception in that PR's description.
+- File an ADR-0004 explaining the second deferral with a new (harder) trigger — e.g. "campaign #6 cannot start until WorldMutator is fixed."
+- Treat each subsequent deferral as a cost: the longer the regression persists, the harder the fix gets as more code accretes against the god-object shape.
+
+**Two-deferral hard stop.** This ADR allows one deferral (campaign #5 → forced trigger). A second deferral (campaign #5 ships without the refactor) requires an explicit ADR-0004 with reviewer sign-off. A third deferral is not permitted — campaign #6 cannot start until `WorldMutator` is fixed.
+
+## Status
+
+**OPEN** — awaiting trigger. No campaign #5 design PR exists as of this ADR's authorship. When that PR opens, link it from this ADR's status line.
+
+Last status review: 2026-05-23 (this commit).
+
 ## Considered alternatives
 
 - **Block PR #85 on a full fix.** Rejected: each finale controller refactor is ~200 lines across multiple files; doing three of them in PR #85 would double the diff size and delay every other phase's review. The regression is bounded (three methods, no path for growth), the workaround is clearly documented, and the four campaigns ship working today.
