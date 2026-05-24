@@ -99,20 +99,24 @@ Earlier attempts at using `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*` f
 
 The pre-wrap and `UIScale.font()` pin tests in `src/ui/mobileFirst.test.ts` catch the two highest-frequency regression classes, but they don't catch sizing judgment calls (a `fontCapped(13, 26)` value is technically valid but visually wrong for body prose). The screenshot harness is the safety net for those judgment calls.
 
-**Sizing guidance for `UIScale.fontCapped(desktopPx, maxPhonePx)`:**
+**Sizing guidance:**
 
-The fundamental rule: **`maxPhonePx` should be ≤ `desktopPx + 2`** in nearly every case. Phone scaling exists to add ~1–2px of breathing room, not to upscale the UI 1.5–2.5×. A previous attempt at this (22/24/28px caps for "touch readability") produced lobby screens where mission names wrapped to 4 lines and panel headers like "THE HOUSE LEDGER" wrapped to 2 — visually hostile. Real touch targets are the *tappable button/card areas* (handled via `UIScale.space()` for padding); the *text inside them* should sit close to desktop sizing.
+The fundamental rule learned the hard way over four rounds of phone polish on 2026-05-24: **raw px is fine on phone, don't reach for UIScale unless something is actually broken.** Chrome on mobile renders 13px CSS text at a comfortable reading size. The peer screens across this app (campaign menu, faction tree, loadout) all use raw px and render fine. Adding `UIScale.fontCapped(N, N+1)` to every site doesn't materially improve readability and produces inconsistent-feeling pages where some elements scale and others don't.
 
-Concrete cap policy:
-- Long-form prose (intros, story bodies, multi-paragraph briefings): `fontCapped(13, 16)`. Maximum ~16px on phone. Bigger turns paragraphs into walls.
-- Pixel-font headers in Silkscreen / VT323: cap at `desktop + 1`. Pixel fonts are visually heavier than proportional fonts at the same em-height; a 24px Silkscreen header looks like a 28px DM Sans header and wraps on narrow viewports.
-- Body labels, archetype blurbs, numeric readouts, italic captions: cap at `desktop + 1`.
-- Section headers (THE HOUSE LEDGER, WILDWOOD RESERVES, PACTBOOK TALLY): cap at `desktop + 1`.
-- Mission-card glyphs ("01", "02"…): cap at `desktop + 2`. Already prominent in pixel font.
-- Cinema-scale headlines (M10 endings, page titles in `<Header>` component): cap at `desktop + 4–6`. These are the only places larger caps are correct.
-- Never use `UIScale.font(N)` (uncapped) in `.tsx` files — the pin test bans it. The phone 2.5× upscale with no ceiling produces 40–115px text from typical desktop values.
+When `UIScale` IS warranted:
+- **`UIScale.font(N)` (uncapped) is banned in .tsx** — the pin test in `src/ui/mobileFirst.test.ts` catches it. Phone 2.5× upscale with no ceiling produces 40+px text from typical desktop values (the original 43px Snake Eyes Wager-name bug).
+- **`UIScale.fontCapped` is appropriate when** a single text element legitimately needs to be larger on phone (e.g. a touch-only Begin button, a status bar in a Phaser scene). For these, cap at `desktop + 1–2` to add breathing room without dominating. Don't apply blanket caps across a whole component "for consistency."
+- **Long-form prose** — leave at raw px. The 13px intro that ships across all four campaigns reads fine on phone. Don't upscale.
+- **Latent overflow bugs** (e.g. debt-meter threshold labels overlapping in tight pixel gaps) get a targeted compact-format fix + a single capped font, not a blanket pass.
 
-If unsure, start with `fontCapped(N, N + 1)` and only widen the cap after seeing the phone render confirm the element looks small. Erring small + iterating is cheap; erring large produces "huge ugly changes" feedback like the lobby polish round-3 disaster of 2026-05-24.
+When unsure: ship raw px first, take the phone screenshot, then add `fontCapped` only at the specific sites that look broken in the render. The screenshot harness (`e2e/_screenshots.spec.ts`) is the source of truth, not the cap policy.
+
+The history that produced this guidance:
+1. Round 1 added `fontCapped(N, 22–28)` "for touch readability" → "THE HOUSE LEDGER" wrapped to 2 lines, "01" mission glyph dominated cards.
+2. Round 2 dialed caps to `+1` "for breathing room" → looked redundant vs raw px peer screens.
+3. Round 3 reverted to raw px (matches baseline). Looks right.
+
+The only enduring file changes from the polish work: `whiteSpace: pre-wrap` on prose, the 2 `UIScale.font` → `fontCapped` fixes in PactbookPanel, the LoadingScreen scroll fix, the mission card layout fix, the debt-meter compact label format. Everything else reverted.
 
 ## Conventions
 - Compile check (`npx tsc --noEmit`) after every change

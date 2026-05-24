@@ -26,7 +26,6 @@ import {
   type ModeLean,
 } from '../../systems/greenward/ModeLeanTracker';
 import { isCaerWennaBound } from '../../systems/greenward/PersistedTowerState';
-import { UIScale } from '../../systems/UIScale';
 
 const NATURE_GREEN = '#33aa44';
 const SAP_GREEN = '#88cc55';
@@ -50,23 +49,23 @@ export function GreenwardStatePanel(_props: Props) {
       background: 'rgba(8, 16, 8, 0.4)',
       border: '1px solid rgba(51, 170, 68, 0.3)',
       borderRadius: '8px',
-      padding: `${UIScale.space(12)}px ${UIScale.space(16)}px`,
+      padding: '12px 16px',
       fontFamily: 'system-ui, sans-serif',
-      fontSize: UIScale.fontCapped(12, 13),
+      fontSize: '12px',
       color: PRIMARY_TEXT,
     }}>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: NATURE_GREEN,
-        fontSize: UIScale.fontCapped(13, 14),
-        marginBottom: `${UIScale.space(8)}px`,
+        fontSize: '13px',
+        marginBottom: '8px',
         letterSpacing: '0.05em',
       }}>
         WILDWOOD RESERVES
       </div>
 
       {/* Sap-meter — bar with cap-line */}
-      <div style={{ position: 'relative', height: `${UIScale.space(14)}px`, background: 'rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: '14px', background: 'rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'hidden' }}>
         <div style={{
           position: 'absolute', inset: 0,
           width: `${reservesPct}%`,
@@ -81,35 +80,35 @@ export function GreenwardStatePanel(_props: Props) {
           background: 'rgba(255,255,255,0.5)',
         }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: `${UIScale.space(4)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '11px', color: DIM_TEXT }}>
         <span>{reserves} / {INITIAL_RESERVES}</span>
         <span>cap {MAX_AFTER_SPEND}</span>
       </div>
 
       {showLean && (
-        <div style={{ marginTop: `${UIScale.space(12)}px` }}>
+        <div style={{ marginTop: '12px' }}>
           <div style={{
             fontFamily: "'Silkscreen', monospace",
             color: NATURE_GREEN,
-            fontSize: UIScale.fontCapped(13, 14),
-            marginBottom: `${UIScale.space(6)}px`,
+            fontSize: '13px',
+            marginBottom: '6px',
             letterSpacing: '0.05em',
           }}>
             MODE-LEAN TALLY
           </div>
-          <div style={{ display: 'flex', gap: `${UIScale.space(12)}px`, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <LeanBadge label="Ceremony" count={lean.ceremony} threshold={LEAN_THRESHOLD} highlighted={lean.lean === 'ceremony' || lean.lean === 'both'} />
             <LeanBadge label="Siege" count={lean.siege} threshold={LEAN_THRESHOLD} highlighted={lean.lean === 'siege' && lean.ceremony === 0 && lean.mercy === 0} />
             <LeanBadge label="Mercy" count={lean.mercy} threshold={LEAN_THRESHOLD} highlighted={lean.lean === 'mercy' || lean.lean === 'both'} />
           </div>
-          <div style={{ marginTop: `${UIScale.space(6)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT, fontStyle: 'italic' }}>
+          <div style={{ marginTop: '6px', fontSize: '11px', color: DIM_TEXT, fontStyle: 'italic' }}>
             {captionForLean(lean.lean)}
           </div>
         </div>
       )}
 
       {wennaBound && (
-        <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT, fontStyle: 'italic' }}>
+        <div style={{ marginTop: '10px', fontSize: '11px', color: DIM_TEXT, fontStyle: 'italic' }}>
           Caer Wenna walks with you.
         </div>
       )}
@@ -122,18 +121,18 @@ function LeanBadge({ label, count, threshold, highlighted }: { label: string; co
   return (
     <div style={{
       flex: 1,
-      padding: `${UIScale.space(6)}px ${UIScale.space(8)}px`,
+      padding: '6px 8px',
       borderRadius: '4px',
       background: highlighted ? 'rgba(51, 170, 68, 0.18)' : 'rgba(0,0,0,0.25)',
       border: `1px solid ${highlighted ? NATURE_GREEN : 'rgba(255,255,255,0.08)'}`,
       textAlign: 'center' as const,
     }}>
-      <div style={{ fontSize: UIScale.fontCapped(11, 12), color: highlighted ? PRIMARY_TEXT : DIM_TEXT, letterSpacing: '0.05em' }}>
+      <div style={{ fontSize: '11px', color: highlighted ? PRIMARY_TEXT : DIM_TEXT, letterSpacing: '0.05em' }}>
         {label}
       </div>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
-        fontSize: UIScale.fontCapped(16, 17),
+        fontSize: '16px',
         color: met ? NATURE_GREEN : PRIMARY_TEXT,
         marginTop: '2px',
       }}>
