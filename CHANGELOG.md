@@ -2,6 +2,20 @@
 
 ## 2026-05-23
 
+### Arcane M1+M2 — restore pre-placed Frost towers (Phase E3 regression)
+
+Pre-merge campaign audit caught a silent regression introduced by Phase E3 (commit `8cce9054`): the legacy `missionPrePlacedTowers: merged.prePlacedTowers` data-passthrough was deleted from `MissionRunner.start`, expecting the new aspect path (`arcanePrePlacedRuntime` → `world.installPrePlacedTowers(towers)`) to take over. But `WorldMutatorImpl.installPrePlacedTowers` forwards via `this.host.installPrePlacedTowers?.(towers)` — optional chaining — and `GameScene` was never given the host method. Net effect: M1 and M2 ship without their pre-placed Frost towers, the entire Arcane campaign's early-game Frost-interrupt teaching path is missing, and the regression is silent (no console warning).
+
+Fixed:
+
+- **Added `installPrePlacedTowers(towers)` and `removePrePlacedTowers(towers)` host methods on `GameScene`.** The install method lifts the existing inline loop from `GameScene.init` into a reusable method; the remove method is a documented no-op (pre-placed towers live for the scene's lifetime; Phaser tears the towerMgr down with the scene). The inline loop now calls the new method too, so the legacy `_missionPrePlacedTowers` data path (currently unused but typed) still works if anything ever re-introduces it.
+- **Imported `PrePlacedTowerSpec` type** alongside the existing `RuntimeAspects` from `systems/campaign/types`.
+- **New regression-pin test `src/scenes/GameScene.hostMethods.test.ts`** — 10 static-text assertions that every documented `WorldHost` install/remove method exists in `GameScene.ts`. Static-text style matches the existing `MechCreeps.test.ts` pattern; catches the gap before a Phaser scene mount + cheap to run. Pairs with `WorldMutator.test.ts` (which already verifies the forwarding semantics) to close the chain: both ends + every link verified.
+
+All 1338 tests pass (was 1328; +10 from the new pin file). tsc clean. Arcane M1+M2 will now place Frost towers as intended.
+
+## 2026-05-23
+
 ### Snake Eyes M10 polish — all four items shipped per docs/snake-eyes-m10-polish-prd.md
 
 Followed the PRD's recommended D → B → C → A sequencing:

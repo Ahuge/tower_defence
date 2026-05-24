@@ -97,7 +97,7 @@ import { setActiveSuppressionManager } from '../systems/suppression/ActiveSuppre
 // EventBus bridge. Phase B threads these through but no shipped
 // campaign uses the new path yet; legacy `_missionXxxRules` fields
 // continue to drive shipped behaviour. Phases C/D port each campaign.
-import type { RuntimeAspects } from '../systems/campaign/types';
+import type { RuntimeAspects, PrePlacedTowerSpec } from '../systems/campaign/types';
 import { WorldMutatorImpl, type WorldHost, type MechSabotageRulesShape, type ArcaneFinaleRulesShape } from '../systems/campaign/WorldMutator';
 import type { SuppressionPylonSpec } from '../data/Maps';
 import { attachGameplayAspect } from '../systems/campaign/EventBusBridge';
@@ -1289,19 +1289,14 @@ export class GameScene extends Phaser.Scene {
     // Mission-supplied pre-placed towers (Coalition Arcane campaign).
     // Independent of the attacker-mode pre-placements above — a
     // mission can drop a Frost on M1 to teach the interrupt verb
-    // before the tower is buildable.
+    // before the tower is buildable. Legacy `_missionPrePlacedTowers`
+    // data passthrough was deleted in Phase E3; the aspect path now
+    // calls `installPrePlacedTowers` directly from the Arcane Setup
+    // aspect (see installPrePlacedTowers below). This branch is kept
+    // as a fallback in case any future legacy mission re-introduces
+    // the data field.
     if (this._missionPrePlacedTowers && this._missionPrePlacedTowers.length > 0) {
-      for (const spec of this._missionPrePlacedTowers) {
-        try {
-          const towerType = getTowerType(spec.towerId);
-          this.towerMgr.placeTower(spec.col, spec.row, towerType, this.allPaths, () => {
-            this.recalculatePaths();
-            return this.allPaths;
-          });
-        } catch (err) {
-          console.warn(`[mission] failed to pre-place ${spec.towerId} at ${spec.col},${spec.row}`, err);
-        }
-      }
+      this.installPrePlacedTowers(this._missionPrePlacedTowers);
     }
     if (this.matchMode === 'attacker') {
       // Intro hint — explain the inverted role at game start. The
@@ -3069,6 +3064,44 @@ export class GameScene extends Phaser.Scene {
    *  creep-damage trait, and validates pylon cells against the grid
    *  (auto-converts Empty → NoBuild so the click intercept stays
    *  load-bearing). */
+  /** Install pre-placed towers — stamps each spec onto the grid via
+   *  `towerMgr.placeTower` with `free=true`. Used by Arcane M1/M2 to
+   *  gift the player a Frost tower before Frost is buildable so the
+   *  interrupt verb is teachable from the first wave. Pre-Phase-E3
+   *  this was a one-shot inline loop reading `_missionPrePlacedTowers`
+   *  off the data passthrough; Phase E3 deleted that data field
+   *  (legacy schema cleanup) without adding this host method, which
+   *  silently broke the aspect path's `world.installPrePlacedTowers(...)`
+   *  → `host.installPrePlacedTowers?.(...)` chain (optional chaining
+   *  no-op'd because the host method didn't exist).
+   *
+   *  Called from the aspect Setup install for Arcane M1/M2 missions
+   *  whose campaign payload carries `kind: 'pre_placed'`. */
+  installPrePlacedTowers(towers: PrePlacedTowerSpec[]): void {
+    if (towers.length === 0) return;
+    for (const spec of towers) {
+      try {
+        const towerType = getTowerType(spec.towerId);
+        this.towerMgr.placeTower(spec.col, spec.row, towerType, this.allPaths, () => {
+          this.recalculatePaths();
+          return this.allPaths;
+        }, true /* free */);
+      } catch (err) {
+        console.warn(`[mission] failed to pre-place ${spec.towerId} at ${spec.col},${spec.row}`, err);
+      }
+    }
+  }
+
+  /** No-op — pre-placed towers live for the scene's lifetime; Phaser
+   *  tears the whole scene + towerMgr down on shutdown, so there's
+   *  nothing for this method to do specifically. Defined so the
+   *  WorldMutator's `removePrePlacedTowers?.(towers)` undo callback
+   *  isn't a silent miss and so the pattern symmetry with the other
+   *  install/remove pairs holds. */
+  removePrePlacedTowers(_towers: PrePlacedTowerSpec[]): void {
+    // no-op
+  }
+
   installSuppressionPylons(pylons: SuppressionPylonSpec[]): void {
     if (pylons.length === 0) return;
     this._suppressionMgr = new SuppressionManager(pylons, this.grid);
