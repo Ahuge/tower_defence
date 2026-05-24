@@ -451,6 +451,34 @@ describe('SnakeEyesMissionController — M10 finale', () => {
     expect(ctrl.getM10Controller()!.isLost()).toBe(true);
   });
 
+  it('m10MarkLost in Mirror Lane force-resolves CF win + flips to lost_mirror_lane', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    const m10 = ctrl.getM10Controller()!;
+    // Walk through Approach to land in mirror_lane.
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    expect(m10.getStage()).toBe('mirror_lane');
+    // Lives-zero mid-lane: forceResolve('counterfactual') + completeMirrorLane.
+    ctrl.m10MarkLost();
+    expect(m10.getStage()).toBe('lost_mirror_lane');
+    expect(m10.isLost()).toBe(true);
+    expect(m10.getMirrorLaneController().getWinner()).toBe('counterfactual');
+  });
+
+  it('consumeM10WinTrigger returns true exactly once after isWon flips', () => {
+    const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
+    // Before isWon flips: false.
+    expect(ctrl.consumeM10WinTrigger()).toBe(false);
+    // Fast-forward to table + boss kill.
+    for (let i = 1; i <= 5; i++) ctrl.m10OnWaveCleared(i);
+    for (let i = 6; i <= 10; i++) ctrl.m10OnWaveCleared(i);
+    ctrl.m10MarkBossDefeated();
+    expect(ctrl.getM10Controller()!.isWon()).toBe(true);
+    // First call after win: true. Subsequent: false.
+    expect(ctrl.consumeM10WinTrigger()).toBe(true);
+    expect(ctrl.consumeM10WinTrigger()).toBe(false);
+    expect(ctrl.consumeM10WinTrigger()).toBe(false);
+  });
+
   it('update ticks the simulated Counterfactual lane clear after the interval', () => {
     const ctrl = new SnakeEyesMissionController({ rng: Math.random, missionIdx: 9, isM10: true });
     const m10 = ctrl.getM10Controller()!;
