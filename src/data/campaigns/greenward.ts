@@ -22,6 +22,7 @@ import { greenwardMissionStateAspect } from '../../systems/greenward/GreenwardMi
 import { DEFAULT_GREENWARD_STATE, type GreenwardState } from '../../systems/greenward/WildwoodReserves';
 import { registerCampaign } from '../../systems/campaign/CampaignRegistry';
 import { GreenwardStatePanel } from '../../ui/campaign/GreenwardStatePanel';
+import { GreenwardEndingPanel } from '../../ui/screens/GreenwardEndingPanel';
 
 const T = GREENWARD_TEXTS;
 
@@ -243,6 +244,13 @@ export const GREENWARD_EXTENSION: CampaignExtension<GreenwardState, GreenwardMis
         render: (_state) => h(GreenwardStatePanel, { factionId: 'nature' }),
       },
     ],
+    // M10-win ending panel. Reads naveResolvedMode from the result's
+    // custom bag (GreenwardMissionController.setCustom flushes it
+    // during finalize). Replaces the prior `archetypeId === 'final_greenward'`
+    // branch in GameOverScreen.
+    endingPanel: (ctx) => h(GreenwardEndingPanel, {
+      resolvedMode: ctx.custom.naveResolvedMode as 'ceremony' | 'mercy' | 'siege' | null | undefined,
+    }),
   },
   buildRuntime: (_ctx, mission) => {
     return greenwardRuntime({

@@ -38,6 +38,7 @@ import {
   getActiveSnakeEyesController,
 } from '../../systems/voidc/SnakeEyesMissionController';
 import { VoidStatePanel } from '../../ui/campaign/VoidStatePanel';
+import { SnakeEyesEndingPanel } from '../../ui/screens/SnakeEyesEndingPanel';
 import { getSnakeEyesState } from '../../systems/voidc/DebtTracker';
 import {
   buildSnakeEyesM8Waves,
@@ -290,6 +291,11 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
         render: (_state) => h(VoidStatePanel, { factionId: 'void' }),
       },
     ],
+    // M10-win ending panel — the card-flip reveal + personalised
+    // EpilogueComposer paragraph. Reads live SnakeEyesState internally
+    // via composeEpilogue(); doesn't need anything from ctx. Replaces
+    // the prior `archetypeId === 'final_void'` branch in GameOverScreen.
+    endingPanel: (_ctx) => h(SnakeEyesEndingPanel, { epilogue: undefined }),
   },
   buildRuntime: (ctx, mission) => {
     // Defensive: any leftover `final_unimplemented` from a stale
