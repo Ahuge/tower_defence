@@ -52,13 +52,13 @@ export function GreenwardStatePanel(_props: Props) {
       borderRadius: '8px',
       padding: `${UIScale.space(12)}px ${UIScale.space(16)}px`,
       fontFamily: 'system-ui, sans-serif',
-      fontSize: UIScale.fontCapped(12, 24),
+      fontSize: UIScale.fontCapped(12, 13),
       color: PRIMARY_TEXT,
     }}>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: NATURE_GREEN,
-        fontSize: UIScale.fontCapped(13, 26),
+        fontSize: UIScale.fontCapped(13, 14),
         marginBottom: `${UIScale.space(8)}px`,
         letterSpacing: '0.05em',
       }}>
@@ -81,7 +81,7 @@ export function GreenwardStatePanel(_props: Props) {
           background: 'rgba(255,255,255,0.5)',
         }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: `${UIScale.space(4)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: `${UIScale.space(4)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT }}>
         <span>{reserves} / {INITIAL_RESERVES}</span>
         <span>cap {MAX_AFTER_SPEND}</span>
       </div>
@@ -91,7 +91,7 @@ export function GreenwardStatePanel(_props: Props) {
           <div style={{
             fontFamily: "'Silkscreen', monospace",
             color: NATURE_GREEN,
-            fontSize: UIScale.fontCapped(13, 26),
+            fontSize: UIScale.fontCapped(13, 14),
             marginBottom: `${UIScale.space(6)}px`,
             letterSpacing: '0.05em',
           }}>
@@ -102,14 +102,14 @@ export function GreenwardStatePanel(_props: Props) {
             <LeanBadge label="Siege" count={lean.siege} threshold={LEAN_THRESHOLD} highlighted={lean.lean === 'siege' && lean.ceremony === 0 && lean.mercy === 0} />
             <LeanBadge label="Mercy" count={lean.mercy} threshold={LEAN_THRESHOLD} highlighted={lean.lean === 'mercy' || lean.lean === 'both'} />
           </div>
-          <div style={{ marginTop: `${UIScale.space(6)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT, fontStyle: 'italic' }}>
+          <div style={{ marginTop: `${UIScale.space(6)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT, fontStyle: 'italic' }}>
             {captionForLean(lean.lean)}
           </div>
         </div>
       )}
 
       {wennaBound && (
-        <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT, fontStyle: 'italic' }}>
+        <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT, fontStyle: 'italic' }}>
           Caer Wenna walks with you.
         </div>
       )}
@@ -128,12 +128,12 @@ function LeanBadge({ label, count, threshold, highlighted }: { label: string; co
       border: `1px solid ${highlighted ? NATURE_GREEN : 'rgba(255,255,255,0.08)'}`,
       textAlign: 'center' as const,
     }}>
-      <div style={{ fontSize: UIScale.fontCapped(11, 22), color: highlighted ? PRIMARY_TEXT : DIM_TEXT, letterSpacing: '0.05em' }}>
+      <div style={{ fontSize: UIScale.fontCapped(11, 12), color: highlighted ? PRIMARY_TEXT : DIM_TEXT, letterSpacing: '0.05em' }}>
         {label}
       </div>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
-        fontSize: UIScale.fontCapped(16, 28),
+        fontSize: UIScale.fontCapped(16, 17),
         color: met ? NATURE_GREEN : PRIMARY_TEXT,
         marginTop: '2px',
       }}>
