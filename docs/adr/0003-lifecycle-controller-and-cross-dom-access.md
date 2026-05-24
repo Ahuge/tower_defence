@@ -82,20 +82,31 @@ The pattern above eliminates all four — the controller lives on `MissionRunner
 - Mission Controller classes are unit-testable in isolation (construct with seeded RNG, call methods, assert state — see `SnakeEyesMissionController.test.ts`).
 - Cross-DOM access can be tested by stubbing `MissionRunner.active.runtime` in tests via a typed helper (the Snake Eyes tests do this with a `(MissionRunner as any).active = ...` cast; a follow-up could add a `MissionRunner._setActiveForTesting()` seam).
 
-### Migration cost for existing campaigns
+### Adoption status across existing campaigns (audit finding, 2026-05-23)
 
-Existing campaigns already follow this pattern to varying degrees:
+Honest accounting:
 
-- **Greenward** — `GreenwardMissionController` predates the pattern but matches it exactly. No work.
-- **Snake Eyes** — `SnakeEyesMissionController` was the trigger for this ADR. Matches exactly.
-- **Mech** — `SabotageController` (M10) implements LifecycleAspect via the `mechSabotageRuntime` adapter. Close to the pattern but the controller class itself isn't directly returned as the aspect — the wrapper is. Not worth refactoring unless a DOM consumer needs the M10 sabotage state.
-- **Arcane** — `ArcaneFinaleController` (M10) is the same shape as Mech's. Same call: leave alone until a consumer needs it.
+- **Snake Eyes** — `SnakeEyesMissionController`. Sole canonical implementation. Returned as `lifecycle` aspect; accessed via `getActiveSnakeEyesController()` (a one-liner over `MissionRunner.getActiveLifecycle(ctor)` since item 1 of the campaign-#5-unblocker PR landed).
+- **Greenward** — `GreenwardMissionController`. Predates this ADR. Does NOT follow the pattern: constructed in a god-object host method (`installGreenwardRules`), stored on a `_greenwardController` private field on GameScene, ticked from GameScene's update loop. No typed accessor — no DOM consumer of mid-mission state.
+- **Mech** — `SabotageController` (M10). Same shape as Greenward. Stored on `_sabotageController` GameScene private field.
+- **Arcane** — `ArcaneFinaleController` (M10). Same shape as Greenward + Mech.
 
-The pattern is mandatory for new campaigns, not retroactive on existing ones.
+**Three of four campaigns use the legacy pattern; one (Snake Eyes) uses the new one.** The original ADR framed adoption as "no work — they already match." The audit found the opposite: the new pattern is followed by 1 of 4 campaigns, the legacy pattern by 3 of 4. Both work; neither is silently broken.
+
+### Revised position on legacy controllers
+
+The three legacy controllers (Greenward / Mech / Arcane) **stay grandfathered indefinitely.** No migration planned. Reasons:
+
+1. **They work.** Each has been tested through M10 flows; their owning GameScene `_*Controller` fields are the longest-running campaign infrastructure in the codebase.
+2. **No DOM consumer needs them.** The new pattern's main payoff is `getActive<Campaign>Controller()` cross-DOM access. The legacy three don't have mid-mission DOM components today (PactbookPanel is Snake Eyes; Mirror Lane HUD is Snake Eyes; GreenwardStatePanel is lobby-only, reads via module getters). The migration cost ~200 LOC per campaign with no observable benefit.
+3. **Mixed pattern is the pragmatic equilibrium.** Forcing symmetry costs effort that produces no user-facing change.
+
+If a future feature on Greenward/Mech/Arcane needs DOM-side controller state access, the migration becomes the entry-cost for that feature. Until then: the legacy pattern is acceptable for these three campaigns.
 
 ### Constraints on future work
 
-- **Campaign #5** must follow this pattern from the start. PR review for any new campaign checks the controller class, the typed accessor, and the absence of module-level mutable state in the campaign's directory.
+- **Campaign #5+ must use this pattern from the start.** PR review for any new campaign checks the controller class, the typed accessor, and the absence of module-level mutable state in the campaign's directory.
+- **`MissionRunner.getActiveLifecycle(ctor)` is the single helper** for typed Lifecycle aspect access. Each campaign's accessor is a one-liner. Don't reinvent `instanceof`-narrowing in per-campaign code.
 - **Future ADRs that add new aspect types** (e.g. a `PreMissionUIAspect` discussed in the Inscription design) should specify whether the new aspect type is allowed to host runtime state or whether all state belongs in the Mission Controller. Default answer: Mission Controller. The new aspect type is a behaviour interface, not a state container.
 
 ### Open question deferred

@@ -1,18 +1,20 @@
-# Accept a temporary `WorldMutator` god-object regression for the four shipped campaigns
+# Accept `WorldMutator` campaign-specific install methods as the canonical pattern
+
+**Status:** SUPERSEDES the prior "hard constraint + two-deferral hard stop" version of this ADR. Updated 2026-05-23 after an audit revealed the regression is more entrenched than originally captured.
 
 ## Context
 
-ADR-0001 cited the legacy `MissionOverrides` god-object — a flat interface that grew per-campaign fields (`finaleRules`, `sabotageRules`, `greenwardRules`, ...) — as the central problem to retire. The Campaign Extension refactor solved this for *mission data*: each campaign's per-mission payload is a discriminated `TCfg` union opaque at the registry boundary and fully typed inside the campaign module.
+ADR-0001's `MissionOverrides` god-object retirement was clean for *mission data*: each campaign's per-mission payload is a discriminated `TCfg` union opaque at the registry boundary and fully typed inside the campaign module. That refactor is solid.
 
-`WorldMutator` is a separate interface. It's the helper passed to `SetupAspect.install(world: WorldMutator)` so per-mission setup code can stamp pre-placed towers, install pylons, place ruins, etc. The intent in Phase B was that `WorldMutator` would expose only **narrow, faction-agnostic primitives** — `installPrePlacedTower(spec)`, `installSummoningCircle(spec)`, `installRuins(specs)`, `installPylons(specs)` — and each campaign's Setup aspect would compose those primitives into the layout it needed.
+`WorldMutator` is a different surface. It's the helper passed to `SetupAspect.install(world: WorldMutator)` so per-mission setup code can stamp pre-placed towers, install pylons, place ruins, etc. The original Phase B intent was that `WorldMutator` would expose only **narrow, faction-agnostic primitives** — `installPrePlacedTower(spec)`, `installSummoningCircle(spec)`, `installRuins(specs)`, `installPylons(specs)` — and each campaign's Setup aspect would compose those primitives into the layout it needed.
 
-Three campaigns' finale controllers don't decompose cleanly into those primitives without changing the controller constructors themselves:
+That intent didn't survive contact with the four campaigns' finale controllers:
 
 - **Arcane M10** — `ArcaneFinaleController` ctor takes a single `ArcaneFinaleRules` object (charge meter rules, CPU tower specs, hero summon config). Decomposing into narrow installs would require splitting the rules into ~4 separate calls + adding a "register the finale controller object" step.
-- **Mech M10** — `SabotageController` ctor takes a `MechSabotageRules` object (CPU tower HP defaults, owner index, workshop train cost/cooldown) + needs hooks for generator-killed callbacks. Same shape as Arcane's.
-- **Greenward** — `GreenwardMissionController` ctor takes a `GreenwardRules` payload that includes the per-mission `ruins[]` plus the M10 setpiece flag. The ruins themselves *do* decompose to `installRuins(...)`, but the controller's lifecycle hooks (mid-mission `deduct()`, `finalize()`) need an owning install path.
+- **Mech M10** — `SabotageController` ctor takes a `MechSabotageRules` object plus needs hooks for generator-killed callbacks. Same shape as Arcane's.
+- **Greenward** — `GreenwardMissionController` ctor takes a payload that includes the per-mission `ruins[]` plus the M10 setpiece flag. The ruins themselves decompose to `installRuins(...)`, but the controller's lifecycle hooks (mid-mission `deduct()`, `finalize()`) need an owning install path.
 
-To keep Phase B unblocked and ship the four campaigns on the new architecture, `WorldMutator` grew three campaign-specific install methods:
+Phase B shipped three campaign-specific install methods to unblock the four campaigns:
 
 ```ts
 installMechSabotage(rules: MechSabotageRules): void;
@@ -20,74 +22,54 @@ installArcaneFinale(rules: ArcaneFinaleRules): void;
 installGreenwardRules(rules: GreenwardRules): void;
 ```
 
-These methods reintroduce exactly the per-campaign-field-on-a-shared-interface pattern that ADR-0001 was supposed to retire — just shifted from the data schema to the world-install schema.
+Plus the originally-narrow `installPrePlacedTowers` (which Arcane M1/M2 uses) and `installSuppressionPylons` (which Mech pylons use). The remaining "narrow primitives" (`installSummoningCircles`, `installDestructibleTowers`, `installWorkshop`, `applyRuinCells`, `registerActionIntercept`, `setSendPathOverride`) were declared but **never called by any aspect** — they remain in the interface as latent infrastructure with zero clients.
 
-## Decision
+## Original decision (prior version of this ADR) and why it didn't hold
 
-**Accept the regression for now, with a hard constraint on future campaigns.** The campaign-specific install methods stay in `WorldMutator` until either of the following resolution paths lands:
+The 2026-05-22 version of this ADR framed the three god-object methods as "exceptions to be refactored before campaign #5 lands" via Path A (generic dispatcher) or Path B (narrow primitive composition). The 2026-05-23 audit found:
 
-**Path A — generic dispatcher.** Replace the three methods with a single:
+1. **5 of 5 `world.install*` calls in production go through a campaign-specific method.** The narrow primitives in the WorldMutator interface have zero callers. They are dead surface area.
+2. **No campaign was ever ported to the narrow-primitive path.** The reference implementation for "Path B" was never built; we can't claim the path works without a worked example.
+3. **The "two-deferral hard stop" gate** was based on a pretense that decomposition is the right answer. The decomposition has been theoretically-possible-but-never-attempted for three campaigns; demanding it as a gate for campaign #5 imposes a load-bearing assumption that nobody has validated.
 
-```ts
-installCampaignController(kind: string, payload: unknown): void;
-```
+## Revised decision
 
-Implementations dispatch on `kind` to construct the right controller. Untyped at the boundary; campaign module owns the typing of its `payload` shape; `WorldMutator` interface stays closed to new campaigns. This is the same shape as `MissionEntry.campaign: TCfg` already uses successfully for per-mission data.
+**Campaign-specific install methods on `WorldMutator` are the canonical pattern** for per-campaign atomic setup (controller + render layer + send-path overrides + DOM listeners + state init). The decomposition into narrow primitives is rejected as the canonical path — it imposes adapter weight on every campaign with no observed benefit. Each campaign's finale controller is its own bespoke construction; trying to compose them through generic primitives is a shape mismatch.
 
-**Path B — narrow primitive composition.** Refactor each finale controller's constructor to take 2-4 narrow install primitives (`installDestructibleTowers`, `installChargeMeter`, `installControllerLifecycle`) and have each Setup aspect compose those instead. More work; preserves end-to-end typing.
+Campaign #5 adds `install<Campaign5>Rules(rules)` if it has a similar shape. No ADR-0004 deferral required; no hard-stop gate. The methods accumulate at the rate of ~1 per campaign with a complex finale (so ~5-7 by the time all 12 factions have campaigns), which is acceptable for a known-bounded set.
 
-Either is acceptable; Path A is cheaper and matches the existing TCfg pattern.
+The narrow primitives stay in the WorldMutator interface as **latent infrastructure**, available if a future campaign happens to be decomposable. None of the existing 4 found them useful; that's data.
 
-## Hard constraint until resolved
+## Why this revision is honest about a known regression
 
-**Campaign #5 must NOT add a fourth `install<CampaignName><Verb>` method to `WorldMutator`.** A fourth method tips the regression from "three exceptions for the four shipped campaigns" to "the established pattern for new campaigns." Before campaign #5 lands, one of the two resolution paths above must ship.
+The original ADR framed the situation as "three exceptions waiting to be cleaned up." The audit found "this IS the cleanup; the narrow-primitive alternative was never adopted because it doesn't fit the shape." Two-deferral hard stops on theoretical refactors that nobody has done is theater. Better to:
 
-This constraint is encoded in:
+1. Acknowledge the pattern that actually works (`install<Campaign>Rules`).
+2. Remove the artificial gate.
+3. Document the bounded growth rate (~1 method per campaign).
+4. Set a real expectation: when 7+ such methods exist (~all factions have campaigns), the cost-benefit may shift back toward decomposition. At that point a future ADR can revisit.
 
-- A code comment at `src/systems/campaign/types.ts:399-412` pointing at this ADR
-- This ADR itself
-- The PR description for any future campaign #5
+## Considered alternatives (this revision)
 
-## Resolution trigger
+- **Keep the original two-deferral hard stop.** Rejected: nobody has built the decomposed alternative; the gate is theater without a worked example.
+- **Delete the unused narrow primitives.** Rejected: small maintenance cost (~6 dead methods in an interface) vs. preserving optionality for a future campaign that *is* decomposable. The mocks in test files would also need updating across 5 files. Defer the deletion until either (a) a future campaign confirms the narrow path works OR (b) the dead surface starts genuinely impeding refactors.
+- **Migrate one existing campaign to narrow primitives as a worked example.** Rejected for this PR's scope: ~200 LOC of controller-constructor refactor per campaign to extract narrow installs. Higher priority work (item 4 of the architecture review — freezing the data passthrough) provides more value at lower cost.
 
-The constraint above is a *prohibition* on growth, not a schedule for the fix. Without an explicit trigger this ADR will be discovered by a campaign-#5 author treating it as a surprise blocker.
+## Constraints on future work (revised, lighter than the original)
 
-**Trigger: campaign #5 design PR — the WorldMutator refactor lands as its first commit, BEFORE any new `install<NewCampaign><Verb>` method exists.**
-
-Why this trigger and not a date:
-
-- A calendar date detached from real work invites slipping ("we'll do it next month") and pile-on ("let's bundle it with the next big PR"). Both delay indefinitely.
-- A campaign-#5-blocker trigger means the work happens *exactly* when it has a concrete next-user — which is when the design is freshest.
-- The refactor is small (~10 call-site rewrites for Path A, more for Path B). Bundling it as commit 1 of the campaign-#5 PR adds <1 day of work and keeps the changes co-located with the new campaign that motivates them.
-
-**Sequencing within the campaign-#5 PR (recommended):**
-
-1. **Commit 1** — `WorldMutator` refactor. Implements Path A (generic `installCampaignController(kind, payload)` dispatcher) by default. Rewrites the four existing call sites in Mech / Arcane / Greenward Setup aspects. No campaign-#5 code yet. Tests + tsc clean.
-2. **Commit 2+** — campaign-#5 implementation uses the new dispatcher. Adding the campaign costs zero new `WorldMutator` methods.
-
-If campaign-#5 is genuinely urgent and the refactor can't fit:
-
-- Document the exception in that PR's description.
-- File an ADR-0004 explaining the second deferral with a new (harder) trigger — e.g. "campaign #6 cannot start until WorldMutator is fixed."
-- Treat each subsequent deferral as a cost: the longer the regression persists, the harder the fix gets as more code accretes against the god-object shape.
-
-**Two-deferral hard stop.** This ADR allows one deferral (campaign #5 → forced trigger). A second deferral (campaign #5 ships without the refactor) requires an explicit ADR-0004 with reviewer sign-off. A third deferral is not permitted — campaign #6 cannot start until `WorldMutator` is fixed.
-
-## Status
-
-**OPEN** — awaiting trigger. No campaign #5 design PR exists as of this ADR's authorship. When that PR opens, link it from this ADR's status line.
-
-Last status review: 2026-05-23 (this commit).
-
-## Considered alternatives
-
-- **Block PR #85 on a full fix.** Rejected: each finale controller refactor is ~200 lines across multiple files; doing three of them in PR #85 would double the diff size and delay every other phase's review. The regression is bounded (three methods, no path for growth), the workaround is clearly documented, and the four campaigns ship working today.
-- **Accept the regression silently with no ADR.** Rejected: the TODO comment at types.ts:399 was honest but trivially erodes — a future PR could remove the TODO without anyone noticing the architectural drift. An ADR forces a deliberate decision at the next campaign.
-- **Discriminated union `kind: 'mech_sabotage' | 'arcane_finale' | 'greenward_rules'`.** Rejected: still a god-object in disguise, with the additional cost of every install site having to read the kind. Path A above is the discriminated-union approach but punts the dispatch to a single method, which is materially simpler.
+- **Campaign #5 may add `install<Campaign5>Rules`** without an ADR-0004. Document in the campaign-#5 PR description that the method is per the precedent.
+- **Watch for shape changes.** If campaign #5's needs decompose cleanly into 2-3 narrow primitives, prefer that path — the narrow infrastructure is still there. Only fall back to `install<Campaign5>Rules` when the controller's deps don't split cleanly.
+- **Audit at campaign #7.** When the count of `install<Campaign>Rules` methods reaches 7+, file a new ADR weighing decomposition cost vs. accumulated god-object weight. That review has actual data (the campaigns' constructor shapes) to inform it, instead of speculation.
 
 ## Consequences
 
-- `WorldMutator` carries three campaign-specific install methods until campaign #5 (or a focused refactor PR) forces resolution.
-- Future maintainers reading `WorldMutator` see the three exceptions and the comment pointing at this ADR. The pattern is "exception, not example."
-- Campaign #5 review must check this ADR before merge; the constraint section above is the check-gate.
-- If the resolution lands as Path A, every existing `installMech...` / `installArcane...` / `installGreenward...` call site gets rewritten to `installCampaignController(kind, payload)` — mechanical change, ~10 call sites total across the four campaigns.
+- `WorldMutator`'s god-object install methods are documented as canonical rather than transitional. Future maintainers see one pattern, not "exception, not example."
+- The narrow primitives stay in the interface as latent — clearly labelled in the code as "available but unused; campaigns prefer atomic install methods."
+- ADR-0004 is freed up for the next genuinely-deferred decision (rather than being held by an artificial "second deferral" gate).
+- The cost ceiling is real: ~1 install method per campaign. At 7+ methods, revisit.
+
+## Status
+
+**ACCEPTED** as of 2026-05-23. No campaign #5 design exists yet; this ADR pre-emptively unblocks one.
+
+Last status review: 2026-05-23.
