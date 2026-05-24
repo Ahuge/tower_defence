@@ -10,8 +10,7 @@ import { FACTIONS, FactionId } from '../../data/Factions';
 import { CoopPlayerStats, MissionResultSummary } from '../../scenes/GameOverScene';
 import { getCampaign } from '../../systems/campaign/CampaignRegistry';
 import { MissionRunner } from '../../systems/missions/MissionRunner';
-import { GreenwardEndingPanel } from './GreenwardEndingPanel';
-import { SnakeEyesEndingPanel } from './SnakeEyesEndingPanel';
+import type { ComponentChildren } from 'preact';
 
 interface Props { data: Record<string, unknown>; }
 
@@ -234,20 +233,22 @@ export function GameOverScreen({ data }: Props) {
         </div>
       )}
 
-      {/* Greenward M10 — render the resolved ending tableau + outro
-          ABOVE the regular mission summary. Only on M10 wins. */}
-      {missionResult && missionResult.won && missionResult.archetypeId === 'final_greenward' && (
-        <GreenwardEndingPanel resolvedMode={missionResult.naveResolvedMode} />
-      )}
-
-      {/* Snake Eyes M10 — three-card flip reveal + EpilogueComposer
-          personalised epilogue. Reads the live SnakeEyesState
-          (composeEpilogue() reaches it via getSnakeEyesState).
-          Renders only on win — losses route through the standard
-          mission-summary path without the tableau. */}
-      {missionResult && missionResult.won && missionResult.archetypeId === 'final_void' && (
-        <SnakeEyesEndingPanel />
-      )}
+      {/* Per-campaign M10-win ending panel. Each campaign extension
+          populates `ui.endingPanel` with whatever VNode it wants
+          rendered above the mission summary. Polymorphic dispatch
+          replaces the prior `archetypeId === 'final_X'` branches —
+          a new campaign with a custom M10 ending plugs in by
+          populating its extension's `ui.endingPanel`, no edit here. */}
+      {missionResult && missionResult.won && (() => {
+        const campaign = getCampaign(missionResult.campaignFactionId);
+        const panel = campaign?.ui?.endingPanel;
+        if (!panel) return null;
+        return panel({
+          won: missionResult.won,
+          missionIdx: missionResult.missionIdx,
+          custom: missionResult.custom ?? {},
+        }) as ComponentChildren;
+      })()}
 
       {/* Mission summary — only for campaign mission runs. Shows
           per-objective star reveal + a "Next Mission" CTA so the

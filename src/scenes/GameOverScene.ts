@@ -56,8 +56,18 @@ export interface MissionResultSummary {
   nextMissionIdx: number | null;
   /** Greenward M10 only — which Nave path resolved. GameOverScreen
    *  reads this to render the corresponding ending tableau + outro.
-   *  Undefined on non-M10 missions. */
+   *  Undefined on non-M10 missions. Kept as a top-level field for
+   *  backwards-compat with the legacy `archetypeId === 'final_greenward'`
+   *  branch; new ending panels should read from `custom` instead. */
   naveResolvedMode?: 'ceremony' | 'mercy' | 'siege' | null;
+  /** The raw `MissionResult.custom` bag — campaign-specific star
+   *  predicates and ending panels read fields from here. Per-campaign
+   *  values: Arcane uses `channelsInterrupted/Completed/heroDeaths`;
+   *  Greenward uses `reservesRemaining/watcherUnharmed/headwaterClaimed/
+   *  naveResolvedMode/...`; Snake Eyes uses `attackerLeaks`; Mech
+   *  uses `attackerLeaks/sendsBought`. Populated from
+   *  `missionResult.custom` in `GameScene` finalize. */
+  custom?: Readonly<{ [key: string]: number | boolean | null | string }>;
 }
 
 /** One row on the Circle Co-op end screen: identity + what they did

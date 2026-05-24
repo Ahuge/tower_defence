@@ -2,6 +2,28 @@
 
 ## 2026-05-23
 
+### Campaign-#5 unblockers — items 1-4 from the future-proofing audit
+
+Architecture review for the next campaign surfaced 7 sharp friction points; items 1-4 ship now (this commit + the two ADR commits + the items-1+4 MissionRunner commit), items 5-7 deferred to a separate post-merge PR.
+
+**Items shipped (across 3 commits):**
+
+- **Item 1 — `MissionRunner.getActiveLifecycle<T>(ctor)` generic accessor.** Centralises the `instanceof`-narrowing-over-getCurrentRuntime pattern (ADR-0003) so every campaign's typed accessor is a one-liner. Migrated `getActiveSnakeEyesController` as the worked example. Campaign #5 copies the accessor verbatim, replaces the controller class — no per-campaign reinvention of the narrowing.
+
+- **Item 2 — `UISurfaceAspect.endingPanel` for per-campaign M10-win panels.** Replaces the prior `archetypeId === 'final_X'` branching in GameOverScreen. Greenward + Snake Eyes extensions populate `ui.endingPanel`; GameOverScreen reads it polymorphically via `getCampaign(factionId)?.ui?.endingPanel?.(ctx)`. New campaign with a custom M10 ending plugs in by populating its extension, no shared-file edit. New `CampaignEndingContext` type (won + missionIdx + custom bag) keeps the engine layer pure (no import from `scenes/`). `MissionResultSummary` gains a `custom` field so panels can read mission-specific data without GameScene hoisting per-campaign fields.
+
+- **Item 3 — ADR-0002 + ADR-0003 reality-aligning revisions.** ADR-0002 originally framed three god-object install methods as "exceptions to be refactored." Audit revealed 5 of 5 production `world.install*` calls go through campaign-specific methods, and the alternative narrow-primitive path has zero callers. Revised ADR-0002 accepts campaign-specific install methods as the canonical pattern (no ADR-0004 deferral required for campaign #5); narrow primitives stay as latent infrastructure. ADR-0003 originally claimed Greenward + Snake Eyes both "match the pattern." Audit revealed only Snake Eyes (1 of 4) follows the new Lifecycle-aspect controller pattern; legacy controllers (Greenward/Mech/Arcane on private GameScene fields) are now grandfathered indefinitely. Both ADRs now honest about the actual code shape.
+
+- **Item 4 — Freeze MissionRunner data passthrough.** Strong "DATA PASSTHROUGH — CLOSED FOR ADDITIONS" comment block at the UIBridge.startScene data assembly in `MissionRunner.startV2`. New campaign-shape knobs go through `MissionEntry.campaign` (typed TCfg discriminator) or `MissionEntry.core` (engine config), never through new `mission*` data-passthrough fields. Convention also captured in `CONTEXT.md` under a new "Author conventions" section. Inline comment is at the exact line a contributor would otherwise add a 57th field.
+
+**Items deferred to a follow-up PR (after this branch merges):**
+
+- Item 5: Remove optional chaining from `WorldMutatorImpl` host dispatch — convert silent regressions into tsc errors.
+- Item 6: Migrate one legacy controller (Greenward most likely) to the Snake Eyes Lifecycle-aspect pattern as a worked example for ADR-0003.
+- Item 7: Type `MissionResult.custom` per-campaign — closes the silent-collision risk between campaigns that happen to pick the same key name.
+
+All 1338 tests pass. tsc clean. The pattern-fragmentation cost for campaign #5 author is materially smaller: one accessor pattern (item 1), one ending-panel pattern (item 2), no architectural-gate ceremony (item 3), no data-passthrough additions (item 4).
+
 ### Arcane M1+M2 — restore pre-placed Frost towers (Phase E3 regression)
 
 Pre-merge campaign audit caught a silent regression introduced by Phase E3 (commit `8cce9054`): the legacy `missionPrePlacedTowers: merged.prePlacedTowers` data-passthrough was deleted from `MissionRunner.start`, expecting the new aspect path (`arcanePrePlacedRuntime` → `world.installPrePlacedTowers(towers)`) to take over. But `WorldMutatorImpl.installPrePlacedTowers` forwards via `this.host.installPrePlacedTowers?.(towers)` — optional chaining — and `GameScene` was never given the host method. Net effect: M1 and M2 ship without their pre-placed Frost towers, the entire Arcane campaign's early-game Frost-interrupt teaching path is missing, and the regression is silent (no console warning).

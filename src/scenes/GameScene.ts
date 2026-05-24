@@ -4686,6 +4686,10 @@ export class GameScene extends Phaser.Scene {
         // fields come via the spread above + aren't statically known
         // to TS, so we cast through the bag at this single readsite.
         naveResolvedMode: ((missionResult.custom as { naveResolvedMode?: 'ceremony' | 'mercy' | 'siege' | null }).naveResolvedMode) ?? null,
+        // Pass through the full custom bag so per-campaign ending
+        // panels can read their own fields without GameScene knowing
+        // about each campaign's custom keys.
+        custom: missionResult.custom,
       };
     }
 

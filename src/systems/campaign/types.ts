@@ -306,7 +306,8 @@ export interface MissionStateAspect<TState, TCfg = unknown> {
 }
 
 /** UI Surface — per-campaign. Provides state panels, parametric
- *  story text, and end-of-campaign epilogue text. */
+ *  story text, end-of-campaign epilogue text, and the M10-win ending
+ *  panel rendered above the mission summary on GameOverScreen. */
 export interface UISurfaceAspect<TState = unknown> {
   /** Pre-mission story text. Defaults to the literal `mission.story`
    *  string when not provided. When provided, runs every time the
@@ -320,6 +321,28 @@ export interface UISurfaceAspect<TState = unknown> {
   epilogue?(state: TState): string;
   /** State panel registrations rendered in the campaign lobby. */
   panels?: CampaignStatePanel<TState>[];
+  /** M10-win ending panel rendered ABOVE the regular mission summary
+   *  on `GameOverScreen`. Receives a minimal `CampaignEndingContext`
+   *  (won + missionIdx + the result's `custom` bag) so the panel can
+   *  read mission-specific fields (e.g. Greenward's `naveResolvedMode`
+   *  from `custom`). Returns null/undefined to skip the panel; renders
+   *  the returned VNode otherwise.
+   *
+   *  Replaces the prior `archetypeId === 'final_X'` branching in
+   *  GameOverScreen — each new campaign with a custom M10 ending
+   *  populates this field, no shared-file edit needed. */
+  endingPanel?(ctx: CampaignEndingContext): unknown;
+}
+
+/** Minimal context passed to `UISurfaceAspect.endingPanel`. Structural
+ *  subset of `MissionResultSummary`; lives in `types.ts` to keep the
+ *  UI Surface interface engine-layer-pure (no import from `scenes/`).
+ *  GameOverScreen builds one of these from its `MissionResultSummary`
+ *  when invoking the per-campaign ending panel. */
+export interface CampaignEndingContext {
+  won: boolean;
+  missionIdx: number;
+  custom: Readonly<{ [key: string]: number | boolean | null | string }>;
 }
 
 /** A state-panel surface rendered in the campaign lobby. The render
