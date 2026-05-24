@@ -191,11 +191,17 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
       background: '#15101a',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: fadeOut ? 0 : 1,
       transition: 'opacity 200ms ease',
-      padding: '24px',
-      overflow: 'hidden',
+      // Allow scrolling when content overflows the viewport — the
+      // Snake Eyes Pactbook gate adds 3 stacked Wager cards + Begin
+      // button on top of the existing splash + info pills, easily
+      // exceeding a phone viewport. Previously `overflow: hidden` on
+      // this fixed container clipped the cards and stranded the
+      // Begin button below the fold. The inner wrapper handles
+      // flex-centering when content fits; otherwise the page scrolls.
+      overflowY: 'auto' as const,
+      overflowX: 'hidden' as const,
       // The parent #ui-root has pointer-events:none whenever no DOM
       // screen is active (UIBridge clears the .active class on
       // startScene). The button inside this loading screen wouldn't
@@ -205,7 +211,10 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
       {/* Bespoke faction splash — landscape art behind the foreground
           UI text. Self-hides via onError when the asset is missing
           (meta factions, broken installs) so the radial gradient
-          fallback is the only thing rendered. */}
+          fallback is the only thing rendered. `position: fixed` so the
+          splash stays anchored to the viewport when the content
+          scrolls (was `absolute`, which scrolled with the content and
+          left the lower half of the page bare). */}
       {splashImg && (
         <img
           src={splashImg}
@@ -213,7 +222,7 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
           aria-hidden="true"
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           style={{
-            position: 'absolute',
+            position: 'fixed',
             inset: 0,
             width: '100%',
             height: '100%',
@@ -228,22 +237,35 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
       {/* Vignette over the splash so foreground text + progress
           bar stay readable. Strongest in the centre column where
           the title sits, weaker at the edges so the splash art
-          shows through. */}
+          shows through. Also fixed-position to stay anchored on
+          scroll. */}
       {splashImg && (
         <div style={{
-          position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
           background: 'radial-gradient(ellipse at center, rgba(21, 16, 26, 0.85) 0%, rgba(21, 16, 26, 0.55) 50%, rgba(21, 16, 26, 0.75) 100%)',
         }} />
       )}
       {/* Background glow — faction colored radial. Sits above the splash
-          for the colored mood-lighting boost. */}
+          for the colored mood-lighting boost. Fixed-position alongside
+          the splash + vignette. */}
       <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
+        position: 'fixed', inset: 0, pointerEvents: 'none',
         background: `radial-gradient(ellipse at center, ${fColor}15 0%, ${fColor}08 40%, transparent 70%)`,
       }} />
 
-      {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '600px', width: '100%' }}>
+      {/* Scroll container — fills viewport, flex-centers content
+          when it fits, scrolls when it doesn't. `min-height: 100%`
+          on the inner wrapper preserves the centered-on-short
+          content look while allowing growth. */}
+      <div style={{
+        position: 'relative', zIndex: 1,
+        minHeight: '100%',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+        boxSizing: 'border-box',
+      }}>
+      <div style={{ textAlign: 'center', maxWidth: '600px', width: '100%' }}>
         {/* Headline — mission title (when set) or faction name */}
         <div style={{
           fontFamily: "'Silkscreen', ui-sans-serif, sans-serif",
@@ -410,6 +432,7 @@ export function LoadingScreen({ faction, map, difficulty, mode, waveCount, missi
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* CSS animations for the progress bar + Begin-button pulse */}

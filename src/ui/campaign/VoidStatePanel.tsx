@@ -214,21 +214,37 @@ function ThresholdTick({ pct, isNext = false }: { pct: number; isNext?: boolean 
 function ThresholdLabel({ pct, value }: { pct: number; value: number }) {
   // Anchor each label horizontally-centered above its tick. Using
   // translateX(-50%) so the digit width doesn't drift the alignment.
+  //
+  // Tick positions on a 280px-wide phone meter sit at ~127/165/204/255px
+  // — gaps of 38–51px between ticks. A 4-digit "1000" label at the
+  // previous 18px phone font width comfortably exceeded those gaps,
+  // so adjacent labels overlapped into "1 0 0 1 3 0 0" mush. Two
+  // changes: (1) compact format ("1k" / "1.3k" / "1.6k" / "2k") cuts
+  // worst-case width from 4 chars to 3; (2) the phone cap drops from
+  // 18px to 12px — still legible, fits the tick-gap budget.
   return (
     <div aria-hidden="true" style={{
       position: 'absolute' as const,
       top: '0',
       left: `${pct}%`,
       transform: 'translateX(-50%)',
-      fontSize: UIScale.fontCapped(9, 18),
+      fontSize: UIScale.fontCapped(9, 12),
       fontFamily: "'Silkscreen', monospace",
       color: 'var(--text-dim)',
       letterSpacing: '0.05em',
       whiteSpace: 'nowrap' as const,
     }}>
-      {value}
+      {compactDebtLabel(value)}
     </div>
   );
+}
+
+/** Compact a Debt threshold value for the bar's tick label.
+ *  1000 → "1k", 1300 → "1.3k", etc. Keeps the threshold's order of
+ *  magnitude legible without spending screen on trailing zeros. */
+function compactDebtLabel(value: number): string {
+  const k = value / 1000;
+  return k === Math.floor(k) ? `${k}k` : `${k.toFixed(1)}k`;
 }
 
 function TallyChip({ label, srLabel, value, accent }: { label: string; srLabel: string; value: number; accent: string }) {
