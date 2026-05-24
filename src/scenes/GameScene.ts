@@ -114,6 +114,7 @@ import { SabotageRender } from '../systems/sabotage/SabotageRender';
 import { GreenwardMissionController } from '../systems/greenward/GreenwardMissionController';
 import { SnakeEyesMissionController } from '../systems/voidc/SnakeEyesMissionController';
 import { GreenwardFinaleController } from '../systems/greenward/GreenwardFinaleController';
+import { GreenwardCampaignLifecycle } from '../systems/greenward/GreenwardCampaignLifecycle';
 import { getReserves } from '../systems/greenward/WildwoodReserves';
 import { BOSS_KILL_CUSTOM_FLAGS } from '../systems/greenward/GreenwardSpawns';
 import { spawnGreenwardNamed } from '../systems/greenward/spawnGreenwardNamed';
@@ -3298,6 +3299,18 @@ export class GameScene extends Phaser.Scene {
           this.eventBus.emit('gameWon');
           this.goToGameOver(true);
         },
+      );
+    }
+    // Item 6 worked-example for ADR-0003: populate the lifecycle
+    // wrapper so DOM consumers can reach the controllers through
+    // `getActiveGreenwardController()` without grepping for an
+    // `instanceof` narrowing. The wrapper does not own tick/teardown —
+    // this scene's `_greenwardController` field still does — it's
+    // a reachability bridge over `MissionRunner.getActiveLifecycle`.
+    if (this._campaignRuntime?.lifecycle instanceof GreenwardCampaignLifecycle) {
+      this._campaignRuntime.lifecycle.setControllers(
+        this._greenwardController,
+        this._greenwardFinaleController,
       );
     }
   }
