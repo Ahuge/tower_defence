@@ -397,14 +397,30 @@ export interface RuinSpecLike {
 /**
  * WorldMutator — install* helpers that aspect Setup methods call.
  *
- * KNOWN DEBT — see `docs/adr/0002-deferred-worldmutator-god-object.md`.
- * The campaign-specific install methods (`installMechSabotage`,
- * `installArcaneFinale`, `installGreenwardRules`) reintroduce the
- * god-object pattern ADR-0001 was supposed to retire — three exceptions
- * for the four shipped campaigns. Campaign #5 must NOT add a fourth
- * `install<CampaignName><Verb>` method here. Before campaign #5 lands,
- * one of the two ADR-0002 resolution paths (generic dispatcher OR
- * narrow primitive composition) must ship.
+ * Two flavours of install methods coexist by design (see
+ * `docs/adr/0002-deferred-worldmutator-god-object.md`):
+ *
+ *   - **Campaign-specific atomic installs** (`installMechSabotage`,
+ *     `installArcaneFinale`, `installGreenwardRules`,
+ *     `installPrePlacedTowers`, `installSuppressionPylons`) —
+ *     the canonical pattern. Each takes a single rich rules object
+ *     and the host atomically constructs the controller + render +
+ *     send-path overrides + DOM listeners. ADR-0002 accepts this as
+ *     the pattern; campaigns whose finale controller doesn't
+ *     decompose cleanly into narrow primitives should add a new
+ *     `install<Campaign>Rules` method here without ceremony.
+ *
+ *   - **Narrow primitives** (`installSummoningCircles`,
+ *     `installDestructibleTowers`, `installWorkshop`, `applyRuinCells`,
+ *     `registerActionIntercept`, `setSendPathOverride`) — latent
+ *     infrastructure with no current callers. None of the four
+ *     shipped campaigns found them useful in practice. Preserved so a
+ *     future campaign that genuinely decomposes can use them; will
+ *     be deleted if no campaign adopts them by ~campaign #7.
+ *
+ * Future campaign #5+: pick the atomic install path by default; fall
+ * back to narrow-primitive composition only if your controller's deps
+ * decompose cleanly across 2-3 calls.
  */
 export interface WorldMutator {
   /** Install one or more pre-placed towers on the grid. */
