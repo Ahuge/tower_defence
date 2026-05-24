@@ -181,7 +181,22 @@ export function CampaignLobbyScreen({ data }: Props) {
       <Header title={campaign.name.toUpperCase()} back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       <div class="ui-section">
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto', lineHeight: 1.55 }}>
+          <div style={{
+            fontSize: '13px',
+            color: 'var(--text-secondary)',
+            maxWidth: '600px',
+            margin: '0 auto',
+            lineHeight: 1.55,
+            // Campaign intros concatenate paragraphs with literal `\n`
+            // (`"para1\n" + "\n" + "para2"`). Without pre-wrap every
+            // break collapses into a single space and the briefing
+            // reads as one wall. Pre-wrap preserves author intent
+            // across all four shipping campaigns. The pre-mission
+            // story modal a few lines below already does this; the
+            // wrapper just missed the same treatment.
+            whiteSpace: 'pre-wrap' as const,
+            textAlign: 'left' as const,
+          }}>
             {campaign.intro}
           </div>
           <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-dim)' }}>
@@ -194,6 +209,10 @@ export function CampaignLobbyScreen({ data }: Props) {
               marginTop: '14px', padding: '10px 14px',
               background: 'rgba(255,170,68,0.12)', borderLeft: `3px solid ${factionColor}`,
               fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.55, textAlign: 'left',
+              // Outros use the same multi-paragraph `"\n" + "\n" + …`
+              // shape as intros — see the matching note on the intro
+              // div above.
+              whiteSpace: 'pre-wrap' as const,
             }}>
               <div style={{ fontFamily: "'Silkscreen', monospace", color: factionColor, marginBottom: '4px' }}>Campaign Complete</div>
               {campaign.outro}
