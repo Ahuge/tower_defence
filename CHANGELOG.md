@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-05-24
+
+### Campaign lobby + Pactbook gate — mobile polish
+
+Player flagged the Snake Eyes pre-game flow as cramped on phone. Investigation surfaced five distinct issues; three universal to every campaign, one Greenward-only, one Snake Eyes-only.
+
+- **Intro/outro paragraph collapse (all 4 campaigns).** Every campaign concatenates its intro/outro with literal `"\n" + "\n"` newlines, but the lobby's intro and "Campaign Complete" boxes were missing `whiteSpace: pre-wrap`. Result: every paragraph break collapsed into one space — Snake Eyes' "He's already here." beat, Arcane's three-stanza brief, Greenward's three-paragraph charge, Mech's six-paragraph charge all read as one wall of text. The pre-mission story modal in the same file already did this correctly; the wrapper just missed the same treatment. Fixed by adding `whiteSpace: pre-wrap` to both blocks.
+
+- **CampaignLobbyScreen had zero UIScale calls (all 4 campaigns).** Every fontSize / padding / margin was a raw px value — the named anti-pattern per CLAUDE.md "Mobile/Phone UI". On a 360-css-px phone the 13px intro text, 11px archetype blurb, 10px badges, and 14px star ratings read tight. Replaced every site with `UIScale.fontCapped(desktopPx, maxPhonePx)` for fonts and `UIScale.space(desktopPx)` for spacing. Caps chosen per-element (26-36px for headlines, 22-24px for body, 18-22px for badge/blurb) so phone scaling doesn't stretch elements past their row height. Same pattern that `VoidStatePanel` and `PactbookPanel` already follow. Also added `flexWrap: 'wrap'` + `minWidth: 0` to the mission card header so long mission names + archetype badges don't get pushed off-screen by 1.6× phone scaling.
+
+- **GreenwardStatePanel raw px (Greenward only).** Was never given the UIScale treatment its sibling `VoidStatePanel` got. ~15 sites updated to mirror the Void panel's pattern (`fontCapped` for fonts, `space` for spacing). Reserves meter, mode-lean tally, and Caer Wenna line now scale legibly on phone.
+
+- **PactbookPanel cards too tall on phone (Snake Eyes only).** Each card had `minHeight: UIScale.space(220) = 440px` on phone — designed as a desktop side-by-side row-equaliser. On phone the panel stacks 1-column (already handled correctly), so the floor forced ~1700px of pointless scroll for the gate (~3.5 viewport heights to read 3 cards + decline button). Changed to `UIScale.isPhone ? 0 : UIScale.space(220)` — content fills naturally on phone; desktop equalisation preserved. Cuts the Pactbook gate to ~2 viewport heights.
+
+Three commits, each independently shippable. tsc clean. 1345/1345 vitest pass — no regressions.
+
 ## 2026-05-23
 
 ### Campaign-#5 unblockers — items 5-7 (round 2)

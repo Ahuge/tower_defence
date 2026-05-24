@@ -257,7 +257,15 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
         display: 'flex' as const,
         flexDirection: 'column' as const,
         gap: `${UIScale.space(8)}px`,
-        minHeight: `${UIScale.space(220)}px`,
+        // Desktop renders the three cards side-by-side; the 220px
+        // floor keeps them visually row-equalised when summary/flavor
+        // lengths differ. On phone the panel stacks 1-column (see
+        // `gridCols` above), and each card's content already produces
+        // a reasonable height — applying the same floor would force
+        // ~440px per card × 3 cards = ~1700px of pointless scroll for
+        // the gate. Drop the floor on phone so the Pactbook fits in
+        // ~2 viewport heights instead of ~3.5.
+        minHeight: UIScale.isPhone ? 0 : `${UIScale.space(220)}px`,
         position: 'relative' as const,
       }}
     >
