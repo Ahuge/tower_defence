@@ -647,20 +647,17 @@ export class SnakeEyesMissionController implements LifecycleAspect {
   }
 }
 
-/** Typed accessor for DOM-land consumers (LoadingScreen). Reads the
- *  active campaign runtime from `MissionRunner` and narrows the
- *  `lifecycle` aspect with `instanceof`. Returns null if:
+/** Typed accessor for DOM-land consumers (LoadingScreen + lobby +
+ *  mid-mission HUD). Delegates to `MissionRunner.getActiveLifecycle`
+ *  which centralises the `instanceof`-narrowing-over-getCurrentRuntime
+ *  pattern (ADR-0003). Returns null if:
  *    - No mission is in flight, OR
  *    - The active mission's runtime isn't a Snake Eyes one (e.g. the
  *      player is in a different campaign).
  *
- *  This replaces the prior `getMissionPactbook()` module-global
- *  accessor and gives the type checker something to verify at every
- *  consumption site. */
+ *  Future campaigns: copy this one-liner, replacing the controller
+ *  class. The instanceof check + null routing happen inside
+ *  `MissionRunner.getActiveLifecycle`. */
 export function getActiveSnakeEyesController(): SnakeEyesMissionController | null {
-  const runtime = MissionRunner.getCurrentRuntime();
-  if (runtime?.lifecycle instanceof SnakeEyesMissionController) {
-    return runtime.lifecycle;
-  }
-  return null;
+  return MissionRunner.getActiveLifecycle(SnakeEyesMissionController);
 }

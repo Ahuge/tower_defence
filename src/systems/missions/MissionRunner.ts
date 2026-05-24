@@ -294,9 +294,32 @@ class MissionRunnerClass {
       creepFaction: mission.core.creepFaction ?? ext.factionId,
       waveCount: mission.core.waveCount,
       missionContext,
+      // ─── DATA PASSTHROUGH — CLOSED FOR ADDITIONS ───────────────
+      //
+      // The `mission*` fields below are the legacy data passthrough.
+      // Campaign #5+ MUST NOT add new ones — push campaign-specific
+      // knobs through one of the two typed channels instead:
+      //
+      //   1. `MissionEntry.campaign: TCfg` — discriminated payload
+      //      typed inside the campaign module, opaque at this registry
+      //      boundary. The campaign's `buildRuntime` reads it and
+      //      shapes the per-mission aspect bundle.
+      //
+      //   2. `MissionEntry.core: CoreMissionConfig` — base-mode-level
+      //      shared engine config (already discriminated by `mode`).
+      //
+      // The fields here are grandfathered for backwards compat with
+      // the pre-aspect-refactor schema. New fields here re-introduce
+      // the `MissionOverrides` god-object pattern ADR-0001 retired
+      // — every new field in this block bloats GameScene's `init`
+      // signature, `_mission*` private fields, and any sub-scene
+      // that re-routes mission state. The campaign aspect path is
+      // strictly cheaper end-to-end.
+      //
       // Phase B: only the engine-level Core fields ride the legacy
       // passthrough. Campaign-specific knobs (finaleRules, sabotageRules,
       // etc.) move into the runtime aspect bundle.
+      // ────────────────────────────────────────────────────────────
       missionGoldStart: mission.core.goldStart,
       missionGoldStartMult: mission.core.goldStartMult,
       missionLives: mission.core.lives,
@@ -358,11 +381,35 @@ class MissionRunnerClass {
    *  consumers (e.g. `LoadingScreen`) to reach the live aspect
    *  instances without poking campaign-internal module globals.
    *
-   *  Consumers should use `instanceof` narrowing on the lifecycle
-   *  aspect when they need a campaign-specific controller — see
-   *  `getActiveSnakeEyesController()` for the pattern. */
+   *  Prefer `getActiveLifecycle(ctor)` below when you need a
+   *  campaign-specific Lifecycle controller — it does the instanceof
+   *  narrowing in one place so each campaign's typed accessor is a
+   *  one-liner. */
   getCurrentRuntime(): import('../campaign/types').RuntimeAspects | null {
     return this.active?.runtime ?? null;
+  }
+
+  /** Returns the active mission's lifecycle aspect narrowed to the
+   *  given constructor type, or null when no mission is in flight OR
+   *  the active lifecycle isn't an instance of `ctor`. The single
+   *  helper every campaign-specific accessor delegates to — pattern
+   *  established by Snake Eyes' `getActiveSnakeEyesController` (ADR-0003).
+   *
+   *  Each campaign's accessor becomes a one-liner:
+   *
+   *    export function getActive<Campaign>Controller(): <Campaign>MissionController | null {
+   *      return MissionRunner.getActiveLifecycle(<Campaign>MissionController);
+   *    }
+   *
+   *  Type guards via `instanceof` keep the narrowing honest — if the
+   *  current mission belongs to a different campaign, the lifecycle
+   *  aspect is a different class and the accessor returns null. */
+  getActiveLifecycle<T>(ctor: new (...args: never[]) => T): T | null {
+    const runtime = this.getCurrentRuntime();
+    if (runtime?.lifecycle instanceof ctor) {
+      return runtime.lifecycle as T;
+    }
+    return null;
   }
 
   /** Bail out without finalizing — used when the player quits to
