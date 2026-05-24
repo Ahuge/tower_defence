@@ -112,3 +112,9 @@ Snake Eyes' end-of-campaign text generator. Reads final Campaign State and stitc
 - "archetype" was used historically to mean both **Base Mode** and a config-defaults bundle — resolved: there is no longer a separate archetype concept. Base Mode picks the engine; defaults live in helper builder functions used by mission authors.
 - "rules" was used in field names (`finaleRules`, `sabotageRules`, `greenwardRules`) for what is really **Campaign Config**. New code should use `campaign:` as the field name on `MissionEntry`.
 - "Campaign" historically meant the JSON-shape `CampaignDef`. Now it means the runtime **Campaign Extension** — the def-shape collapses inside.
+
+## Author conventions
+
+- **MissionRunner data passthrough is closed for additions.** The `mission*` fields threaded from `MissionRunner.startV2` to `GameScene.init` (`missionGoldStart`, `missionLives`, `missionWaveScript`, `missionAttacker*` etc.) are grandfathered for backwards compat with the pre-aspect schema. New campaign-shape knobs go through `MissionEntry.campaign: TCfg` (typed inside the campaign module, opaque at the registry) or `MissionEntry.core: CoreMissionConfig` (shared engine config). Adding to the passthrough re-introduces the `MissionOverrides` god-object pattern ADR-0001 retired. See the inline DO NOT EXTEND comment block in `MissionRunner.startV2`.
+- **Cross-DOM access to per-mission state goes through `MissionRunner.getActiveLifecycle(ctor)`.** Each campaign's typed accessor (e.g. `getActiveSnakeEyesController`) is a one-liner. Don't reinvent `instanceof`-narrowing in per-campaign code. See ADR-0003.
+- **M10-win ending panels go on `UISurfaceAspect.endingPanel`.** Each campaign's extension populates it; `GameOverScreen` reads polymorphically. No `archetypeId === 'final_X'` branches in shared UI.
