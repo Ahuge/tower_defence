@@ -278,8 +278,18 @@ export function CampaignLobbyScreen({ data }: Props) {
                 onClick={() => setPendingMission(mission)}
                 class="card"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: `${UIScale.space(14)}px`,
-                  padding: `${UIScale.space(14)}px ${UIScale.space(16)}px`,
+                  display: 'flex', alignItems: 'center',
+                  // Interior layout values (gap / padding / minWidths
+                  // below) stay at desktop sizes. UIScale.space()
+                  // doubles them on phone, which eats so much
+                  // horizontal real estate that "THE LAST HAND AT
+                  // TALAVAR" gets squeezed into a ~96px middle
+                  // column and wraps one word per line. The card
+                  // itself (the <button>) is the tap target; its
+                  // outer width on phone is already viewport-wide
+                  // via the maxWidth: 520px container.
+                  gap: '14px',
+                  padding: '14px 16px',
                   textAlign: 'left',
                   cursor: disabled ? 'not-allowed' : 'pointer',
                   opacity: disabled ? 0.55 : 1,
@@ -287,24 +297,15 @@ export function CampaignLobbyScreen({ data }: Props) {
                 }}>
                 <div style={{
                   fontFamily: "'Silkscreen', monospace",
-                  // Mission number "01" — was 34px on phone (massively
-                  // dwarfed the title row + ate ~⅓ of the card width).
-                  // Pixel-font numerals at 22px are already loud; the
-                  // tap target is the whole card, not this glyph.
                   fontSize: UIScale.fontCapped(20, 22),
                   color: stars >= 1 ? factionColor : 'var(--text-dim)',
-                  minWidth: `${UIScale.space(36)}px`,
+                  minWidth: '36px',
                   textAlign: 'center',
                 }}>
                   {String(mission.idx + 1).padStart(2, '0')}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: `${UIScale.space(8)}px`, flexWrap: 'wrap' as const }}>
-                    {/* Silkscreen mission name — was 24px on phone, which
-                        wrapped "THE LAST HAND AT TALAVERA" to 4 lines.
-                        Pixel-font Silkscreen is visually heavier than
-                        DM Sans at the same em-height; 14px reads as a
-                        section header without forcing line breaks. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' as const }}>
                     <span style={{ fontFamily: "'Silkscreen', monospace", fontSize: UIScale.fontCapped(13, 14) }}>{mission.name}</span>
                     <span style={{ fontSize: UIScale.fontCapped(10, 11), color: 'var(--text-dim)', padding: '1px 6px', border: '1px solid var(--text-dim)', borderRadius: '3px' }}>
                       {archetype.label}
@@ -312,14 +313,11 @@ export function CampaignLobbyScreen({ data }: Props) {
                     {stub && <span style={{ fontSize: UIScale.fontCapped(10, 11), color: 'var(--gold)' }}>Coming Soon</span>}
                     {!unlocked && !stub && <span style={{ fontSize: UIScale.fontCapped(10, 11), color: 'var(--text-dim)' }}>🔒 Locked</span>}
                   </div>
-                  {/* Archetype blurb — was 22px and wrapped 6 lines.
-                      Body labels stay close to desktop; the card is the
-                      tap target, the blurb is just descriptor text. */}
-                  <div style={{ fontSize: UIScale.fontCapped(11, 12), color: 'var(--text-secondary)', marginTop: `${UIScale.space(2)}px` }}>
+                  <div style={{ fontSize: UIScale.fontCapped(11, 12), color: 'var(--text-secondary)', marginTop: '2px' }}>
                     {archetype.blurb}
                   </div>
                 </div>
-                <StarRating stars={stars} style={{ fontSize: UIScale.fontCapped(14, 15), minWidth: `${UIScale.space(54)}px`, textAlign: 'right' }} />
+                <StarRating stars={stars} style={{ fontSize: UIScale.fontCapped(14, 15), minWidth: '54px', textAlign: 'right' }} />
               </button>
             );
           })}
