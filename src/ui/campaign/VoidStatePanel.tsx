@@ -80,13 +80,13 @@ export function VoidStatePanel(_props: Props) {
       borderRadius: '8px',
       padding: `${UIScale.space(12)}px ${UIScale.space(16)}px`,
       fontFamily: 'system-ui, sans-serif',
-      fontSize: UIScale.fontCapped(12, 24),
+      fontSize: UIScale.fontCapped(12, 13),
       color: PRIMARY_TEXT,
     }}>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: VOID_VIOLET,
-        fontSize: UIScale.fontCapped(13, 26),
+        fontSize: UIScale.fontCapped(13, 14),
         marginBottom: `${UIScale.space(8)}px`,
         letterSpacing: '0.05em',
       }}>
@@ -135,7 +135,7 @@ export function VoidStatePanel(_props: Props) {
         <ThresholdLabel pct={(DEALER_THRESHOLDS.VOID_SLOT / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.VOID_SLOT} />
         <ThresholdLabel pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: `${UIScale.space(4)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: `${UIScale.space(4)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT }}>
         <span>{settled
           ? <span style={{ color: SNAKE_EYES_PALETTE.settledGreen }}>
               settled — overpaid by {Math.abs(state.debt)}g
@@ -146,7 +146,7 @@ export function VoidStatePanel(_props: Props) {
       </div>
 
       {(actions.bountyWaves + actions.repossesses + actions.wagerSlotsVoided) > 0 && (
-        <div class="snake-eyes-dealer-caption" style={{ marginTop: `${UIScale.space(8)}px`, fontSize: UIScale.fontCapped(11, 22), color: VOID_GOLD, fontStyle: 'italic' }}>
+        <div class="snake-eyes-dealer-caption" style={{ marginTop: `${UIScale.space(8)}px`, fontSize: UIScale.fontCapped(11, 12), color: VOID_GOLD, fontStyle: 'italic' }}>
           {dealerCaption(actions)}
         </div>
       )}
@@ -156,7 +156,7 @@ export function VoidStatePanel(_props: Props) {
           <div style={{
             fontFamily: "'Silkscreen', monospace",
             color: VOID_VIOLET,
-            fontSize: UIScale.fontCapped(13, 26),
+            fontSize: UIScale.fontCapped(13, 14),
             marginBottom: `${UIScale.space(6)}px`,
             letterSpacing: '0.05em',
           }}>
@@ -181,12 +181,12 @@ export function VoidStatePanel(_props: Props) {
       )}
 
       {state.lastMissionDivergence > 0 && (
-        <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT }}>
+        <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT }}>
           last mission ran at <span style={{ color: VOID_GOLD }}>{state.lastMissionDivergence}/10</span> Divergence
         </div>
       )}
 
-      <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 22), color: DIM_TEXT, fontStyle: 'italic' }}>
+      <div style={{ marginTop: `${UIScale.space(10)}px`, fontSize: UIScale.fontCapped(11, 12), color: DIM_TEXT, fontStyle: 'italic' }}>
         {state.theresStatus === 'with_ardax'
           ? 'Theris rides with you.'
           : 'Theris cashed out.'}
@@ -257,10 +257,10 @@ function TallyChip({ label, srLabel, value, accent }: { label: string; srLabel: 
       minWidth: `${UIScale.space(40)}px`,
       textAlign: 'center' as const,
     }}>
-      <div style={{ fontSize: UIScale.fontCapped(10, 20), color: DIM_TEXT, letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: UIScale.fontCapped(10, 11), color: DIM_TEXT, letterSpacing: '0.05em' }}>{label}</div>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
-        fontSize: UIScale.fontCapped(14, 28),
+        fontSize: UIScale.fontCapped(14, 15),
         color: accent,
         marginTop: '1px',
       }}>{value}</div>

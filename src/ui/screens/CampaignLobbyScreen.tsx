@@ -110,12 +110,16 @@ export function CampaignLobbyScreen({ data }: Props) {
       }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ fontSize: UIScale.fontCapped(12, 24), color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
+        <div style={{ fontSize: UIScale.fontCapped(12, 13), color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
           MISSION {pendingMission.idx + 1}
         </div>
         <div style={{
           fontFamily: "'Silkscreen', monospace",
-          fontSize: UIScale.fontCapped(22, 36),
+          // Silkscreen at 36px on phone wrapped "HAND AT TALAVAR" badly
+          // (pixel-font glyphs are visually heavier than proportional
+          // fonts at the same em). 24px is the practical ceiling for
+          // Silkscreen headers in a modal body before wrap-ugliness.
+          fontSize: UIScale.fontCapped(22, 24),
           color: factionColor,
           margin: `${UIScale.space(4)}px 0 ${UIScale.space(16)}px`,
         }}>{pendingMission.name}</div>
@@ -138,8 +142,8 @@ export function CampaignLobbyScreen({ data }: Props) {
           {pendingMission.story}
         </div>
         <div style={{ marginBottom: `${UIScale.space(20)}px` }}>
-          <div style={{ fontSize: UIScale.fontCapped(11, 22), color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: `${UIScale.space(6)}px` }}>Objectives</div>
-          <div style={{ fontSize: UIScale.fontCapped(12, 24), color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+          <div style={{ fontSize: UIScale.fontCapped(11, 12), color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: `${UIScale.space(6)}px` }}>Objectives</div>
+          <div style={{ fontSize: UIScale.fontCapped(12, 13), color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             <div>★ Win the mission</div>
             {pendingMission.objectives.star2 && <div>★★ {pendingMission.objectives.star2.label}</div>}
             {pendingMission.objectives.star3 && <div>★★★ {pendingMission.objectives.star3.label}</div>}
@@ -211,7 +215,7 @@ export function CampaignLobbyScreen({ data }: Props) {
           }}>
             {campaign.intro}
           </div>
-          <div style={{ marginTop: `${UIScale.space(12)}px`, fontSize: UIScale.fontCapped(12, 24), color: 'var(--text-dim)' }}>
+          <div style={{ marginTop: `${UIScale.space(12)}px`, fontSize: UIScale.fontCapped(12, 14), color: 'var(--text-dim)' }}>
             Progress: <span style={{ color: factionColor }}>{completedCount}/{missionCount}</span>
             {' · '}
             <span style={{ color: 'var(--gold)' }}>{totalStars}/{missionCount * 3} stars</span>
@@ -221,7 +225,7 @@ export function CampaignLobbyScreen({ data }: Props) {
               marginTop: `${UIScale.space(14)}px`, padding: `${UIScale.space(10)}px ${UIScale.space(14)}px`,
               background: 'rgba(255,170,68,0.12)', borderLeft: `3px solid ${factionColor}`,
               // Long-form prose; see the matching intro cap above.
-              fontSize: UIScale.fontCapped(12, 15), color: 'var(--text-primary)', lineHeight: 1.55, textAlign: 'left',
+              fontSize: UIScale.fontCapped(12, 14), color: 'var(--text-primary)', lineHeight: 1.55, textAlign: 'left',
               // Outros use the same multi-paragraph `"\n" + "\n" + …`
               // shape as intros — see the matching note on the intro
               // div above.
@@ -283,7 +287,11 @@ export function CampaignLobbyScreen({ data }: Props) {
                 }}>
                 <div style={{
                   fontFamily: "'Silkscreen', monospace",
-                  fontSize: UIScale.fontCapped(20, 34),
+                  // Mission number "01" — was 34px on phone (massively
+                  // dwarfed the title row + ate ~⅓ of the card width).
+                  // Pixel-font numerals at 22px are already loud; the
+                  // tap target is the whole card, not this glyph.
+                  fontSize: UIScale.fontCapped(20, 22),
                   color: stars >= 1 ? factionColor : 'var(--text-dim)',
                   minWidth: `${UIScale.space(36)}px`,
                   textAlign: 'center',
@@ -292,18 +300,26 @@ export function CampaignLobbyScreen({ data }: Props) {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: `${UIScale.space(8)}px`, flexWrap: 'wrap' as const }}>
-                    <span style={{ fontFamily: "'Silkscreen', monospace", fontSize: UIScale.fontCapped(13, 24) }}>{mission.name}</span>
-                    <span style={{ fontSize: UIScale.fontCapped(10, 18), color: 'var(--text-dim)', padding: '1px 6px', border: '1px solid var(--text-dim)', borderRadius: '3px' }}>
+                    {/* Silkscreen mission name — was 24px on phone, which
+                        wrapped "THE LAST HAND AT TALAVERA" to 4 lines.
+                        Pixel-font Silkscreen is visually heavier than
+                        DM Sans at the same em-height; 14px reads as a
+                        section header without forcing line breaks. */}
+                    <span style={{ fontFamily: "'Silkscreen', monospace", fontSize: UIScale.fontCapped(13, 14) }}>{mission.name}</span>
+                    <span style={{ fontSize: UIScale.fontCapped(10, 11), color: 'var(--text-dim)', padding: '1px 6px', border: '1px solid var(--text-dim)', borderRadius: '3px' }}>
                       {archetype.label}
                     </span>
-                    {stub && <span style={{ fontSize: UIScale.fontCapped(10, 18), color: 'var(--gold)' }}>Coming Soon</span>}
-                    {!unlocked && !stub && <span style={{ fontSize: UIScale.fontCapped(10, 18), color: 'var(--text-dim)' }}>🔒 Locked</span>}
+                    {stub && <span style={{ fontSize: UIScale.fontCapped(10, 11), color: 'var(--gold)' }}>Coming Soon</span>}
+                    {!unlocked && !stub && <span style={{ fontSize: UIScale.fontCapped(10, 11), color: 'var(--text-dim)' }}>🔒 Locked</span>}
                   </div>
-                  <div style={{ fontSize: UIScale.fontCapped(11, 22), color: 'var(--text-secondary)', marginTop: `${UIScale.space(2)}px` }}>
+                  {/* Archetype blurb — was 22px and wrapped 6 lines.
+                      Body labels stay close to desktop; the card is the
+                      tap target, the blurb is just descriptor text. */}
+                  <div style={{ fontSize: UIScale.fontCapped(11, 12), color: 'var(--text-secondary)', marginTop: `${UIScale.space(2)}px` }}>
                     {archetype.blurb}
                   </div>
                 </div>
-                <StarRating stars={stars} style={{ fontSize: UIScale.fontCapped(14, 26), minWidth: `${UIScale.space(54)}px`, textAlign: 'right' }} />
+                <StarRating stars={stars} style={{ fontSize: UIScale.fontCapped(14, 15), minWidth: `${UIScale.space(54)}px`, textAlign: 'right' }} />
               </button>
             );
           })}
