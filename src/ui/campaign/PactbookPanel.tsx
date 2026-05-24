@@ -150,7 +150,12 @@ export function PactbookPanel({ pactbook, onResolved }: PactbookPanelProps) {
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: SNAKE_EYES_PALETTE.violet,
-        fontSize: UIScale.font(16),
+        // Was `UIScale.font(16)` = 40px on phone (16 × 2.5). At that
+        // size on a 360px viewport it ate ~one line of vertical real
+        // estate and pushed the Wager cards below the fold. Capped to
+        // 24px on phone — still bold/silkscreen header energy without
+        // dominating the viewport.
+        fontSize: UIScale.fontCapped(16, 24),
         letterSpacing: '0.08em',
         textAlign: 'center' as const,
         marginBottom: `${UIScale.space(4)}px`,
@@ -309,7 +314,12 @@ function WagerCard({ wager, idx, isAcknowledging, buttonRef, onSelect }: WagerCa
 
       {/* Wager name */}
       <div style={{
-        fontSize: UIScale.font(17),
+        // Was `UIScale.font(17)` = 43px on phone (17 × 2.5). At that
+        // size "The Counterfactual's Cut" wrapped to 3 lines and each
+        // card consumed ~half a viewport. Capped to 22px — still the
+        // largest text on the card so the wager identity scans first,
+        // but the card actually fits its content.
+        fontSize: UIScale.fontCapped(17, 22),
         fontWeight: 600,
         lineHeight: 1.2,
         marginTop: `${UIScale.space(4)}px`,

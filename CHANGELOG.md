@@ -2,6 +2,18 @@
 
 ## 2026-05-24
 
+### Pactbook gate + Debt meter — round 2 mobile polish
+
+Follow-up to the lobby fixes earlier today. Player flagged three remaining issues from a fresh phone session.
+
+- **Debt-meter threshold labels overlapped on phone.** `UIScale.fontCapped(9, 18) = 18px` was too large for the tick-gap budget — on a 280px-wide phone meter, ticks sit at ~127/165/204/255px (gaps of 38–51px), and four 4-digit "1000/1300/1600/2000" labels at 18px Silkscreen comfortably exceeded those gaps. Adjacent labels collided into "1 0 0 1 3 0 0" mush. Two fixes layered: (1) compact format ("1k" / "1.3k" / "1.6k" / "2k") drops worst-case label width from 4 chars to 3; (2) phone cap drops from 18px to 12px. Each tick now has breathing room and the order-of-magnitude reads cleanly.
+
+- **LoadingScreen was not scrollable, stranding the Pactbook gate above the fold.** The outer `position: fixed` container carried `overflow: hidden` — fine before campaigns, but the Snake Eyes Pactbook gate adds 3 stacked Wager cards + Begin button to the existing splash + info pills, easily exceeding a phone viewport. The cards rendered, then got clipped, and the Begin button sat below the fold with no way to reach it. Restructured: outer container becomes `overflowY: auto`, an inner wrapper handles flex-centering (so short content still sits centered as before), and the splash + vignette + glow backgrounds moved from `position: absolute` to `position: fixed` so they stay anchored to the viewport during scroll instead of scrolling out the top.
+
+- **Pactbook Wager name + "DEALER DEALS" header used uncapped `UIScale.font(N)`.** Two sites used the uncapped form: header at `font(16) = 40px` on phone, wager name at `font(17) = 43px`. The wager name in particular caused "The Counterfactual's Cut" to wrap to 3 lines and each card to consume ~half a viewport. Switched both to `fontCapped` — header at 24px cap, wager name at 22px cap. Cards still scan name-first but no longer dominate the screen.
+
+Together: the Snake Eyes pre-mission flow on a 360-css-px phone now reads the intro paragraphs, the Debt meter with legible threshold ticks, and a Pactbook gate that fits in ~1.5 viewport heights (was 3.5 before the earlier minHeight fix + un-scrollable container before this one).
+
 ### Campaign lobby + Pactbook gate — mobile polish
 
 Player flagged the Snake Eyes pre-game flow as cramped on phone. Investigation surfaced five distinct issues; three universal to every campaign, one Greenward-only, one Snake Eyes-only.
