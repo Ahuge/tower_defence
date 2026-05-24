@@ -87,15 +87,17 @@ UI tasks are not complete until they've been visually verified at phone viewport
 **Required workflow for any UI change touching `src/ui/`:**
 
 1. Make the change + run `npx tsc --noEmit` and the relevant vitest suite.
-2. **Take a phone-viewport screenshot via the chrome-devtools-mcp tools** before declaring done:
-   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page` (or `select_page` if one is open)
-   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__resize_page` width=360 height=740
-   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page` to the dev-server URL of the screen you touched
-   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot`
-3. Visually compare the screenshot against (a) the screen's peer screens in the app for sizing consistency, and (b) the user's previous screenshots if they were the original bug source.
-4. If the screen requires interaction to reach (e.g. mid-mission UI, Pactbook gate), use `click` / `evaluate_script` / `navigate_page` to drive it there before screenshotting.
+2. **Take a phone-viewport screenshot via the Playwright harness** before declaring done:
+   ```
+   npx playwright test e2e/_screenshots.spec.ts --project=mobile
+   ```
+   This launches the production build (`npm run preview`), opens the Snake Eyes campaign lobby at Pixel 7 viewport (412×915), and writes `e2e/_screenshots/01-lobby-top.png` through `05-story-modal.png`. Use the Read tool on each PNG to view it.
+3. Visually compare the screenshots against the user's most recent phone screenshots if any, and against the peer screens in the same app (the campaign menu's 12px body is the baseline for "feels right" on phone).
+4. To capture a different screen, edit the spec — the harness is committed to be reusable. `__td_test.showScreen('campaign-lobby', { campaign: … })` and other testHook helpers drive navigation without clicking through the menu chain.
 
-If the dev server isn't running, start it (`npm run dev`, background) before taking the screenshot. The pre-wrap and `UIScale.font()` pin tests in `src/ui/mobileFirst.test.ts` catch the two highest-frequency regression classes, but they don't catch sizing judgment calls (long-form prose at 26px is technically capped but visually wrong). The screenshot is the safety net for those.
+Earlier attempts at using `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*` failed because the MCP server expects a Linux Chrome binary at `/opt/google/chrome/chrome`, which doesn't exist in this WSL2 environment (Chrome is Windows-side at `/mnt/c/Program Files/Google/Chrome/Application/chrome.exe`). The Playwright harness has its own browser install via `@playwright/test` and works.
+
+The pre-wrap and `UIScale.font()` pin tests in `src/ui/mobileFirst.test.ts` catch the two highest-frequency regression classes, but they don't catch sizing judgment calls (a `fontCapped(13, 26)` value is technically valid but visually wrong for body prose). The screenshot harness is the safety net for those judgment calls.
 
 **Sizing guidance for `UIScale.fontCapped(desktopPx, maxPhonePx)`:**
 
