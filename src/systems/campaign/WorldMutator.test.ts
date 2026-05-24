@@ -2,8 +2,7 @@
  * WorldMutatorImpl — install / shutdown semantics.
  *
  * Pins:
- *   - install* helpers forward to the host method when present.
- *   - install* helpers no-op when the host doesn't implement them.
+ *   - install* helpers forward to the host method.
  *   - shutdown() runs undos in reverse order (LIFO).
  *   - shutdown() is safe to call twice.
  *   - Empty input arrays skip both the host call and the undo record.
@@ -11,33 +10,50 @@
 import { describe, it, expect, vi } from 'vitest';
 import { WorldMutatorImpl, type WorldHost } from './WorldMutator';
 
+/** Build a complete WorldHost with vi.fn() stubs for every method, so
+ *  tests can pass a partial override and rely on the rest being safe
+ *  no-ops. Required since item 5 of the campaign-#5-unblocker audit
+ *  made every WorldHost method non-optional. */
+function makeHost(overrides: Partial<WorldHost> = {}): WorldHost {
+  return {
+    installPrePlacedTowers: vi.fn(),
+    installSuppressionPylons: vi.fn(),
+    installSummoningCircles: vi.fn(),
+    installDestructibleTowers: vi.fn(),
+    installWorkshop: vi.fn(),
+    installMechSabotage: vi.fn(),
+    installArcaneFinale: vi.fn(),
+    installGreenwardRules: vi.fn(),
+    applyRuinCells: vi.fn(),
+    registerActionIntercept: vi.fn(() => ({ release: () => { /* no-op */ } })),
+    setSendPathOverride: vi.fn(),
+    removePrePlacedTowers: vi.fn(),
+    removeSuppressionPylons: vi.fn(),
+    removeSummoningCircles: vi.fn(),
+    removeDestructibleTowers: vi.fn(),
+    removeWorkshop: vi.fn(),
+    removeMechSabotage: vi.fn(),
+    removeArcaneFinale: vi.fn(),
+    removeGreenwardRules: vi.fn(),
+    clearRuinCells: vi.fn(),
+    clearSendPathOverride: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe('WorldMutatorImpl', () => {
   it('installPrePlacedTowers forwards to the host', () => {
     const installPrePlacedTowers = vi.fn();
-    const mut = new WorldMutatorImpl({ installPrePlacedTowers });
+    const mut = new WorldMutatorImpl(makeHost({ installPrePlacedTowers }));
     mut.installPrePlacedTowers([{ towerId: 'a', col: 0, row: 0 }]);
     expect(installPrePlacedTowers).toHaveBeenCalledTimes(1);
     expect(installPrePlacedTowers.mock.calls[0][0]).toEqual([{ towerId: 'a', col: 0, row: 0 }]);
   });
 
-  it('installs no-op when host does not implement the method', () => {
-    const mut = new WorldMutatorImpl({});
-    // Should not throw.
-    mut.installPrePlacedTowers([{ towerId: 'a', col: 0, row: 0 }]);
-    mut.installSuppressionPylons([{ col: 1, row: 1, radius: 3 }]);
-    mut.installSummoningCircles([{ col: 2, row: 2 }]);
-    mut.installDestructibleTowers([{ towerId: 't', col: 3, row: 3 }]);
-    mut.installWorkshop({ col: 4, row: 4 });
-    mut.applyRuinCells([{ col: 5, row: 5 }]);
-    mut.setSendPathOverride({});
-    mut.shutdown();
-    // No assertions — the test passes if nothing throws.
-  });
-
   it('skips empty arrays (no host call, no undo)', () => {
     const installPrePlacedTowers = vi.fn();
     const removePrePlacedTowers = vi.fn();
-    const mut = new WorldMutatorImpl({ installPrePlacedTowers, removePrePlacedTowers });
+    const mut = new WorldMutatorImpl(makeHost({ installPrePlacedTowers, removePrePlacedTowers }));
     mut.installPrePlacedTowers([]);
     mut.shutdown();
     expect(installPrePlacedTowers).not.toHaveBeenCalled();
@@ -46,12 +62,12 @@ describe('WorldMutatorImpl', () => {
 
   it('shutdown runs undos in reverse install order', () => {
     const calls: string[] = [];
-    const host: WorldHost = {
-      installPrePlacedTowers: () => calls.push('install-towers'),
-      installWorkshop: () => calls.push('install-workshop'),
-      removePrePlacedTowers: () => calls.push('undo-towers'),
-      removeWorkshop: () => calls.push('undo-workshop'),
-    };
+    const host = makeHost({
+      installPrePlacedTowers: () => { calls.push('install-towers'); },
+      installWorkshop: () => { calls.push('install-workshop'); },
+      removePrePlacedTowers: () => { calls.push('undo-towers'); },
+      removeWorkshop: () => { calls.push('undo-workshop'); },
+    });
     const mut = new WorldMutatorImpl(host);
     mut.installPrePlacedTowers([{ towerId: 'a', col: 0, row: 0 }]);
     mut.installWorkshop({ col: 1, row: 1 });
@@ -63,11 +79,7 @@ describe('WorldMutatorImpl', () => {
 
   it('shutdown is safe to call twice', () => {
     const remove = vi.fn();
-    const host: WorldHost = {
-      installPrePlacedTowers: () => {},
-      removePrePlacedTowers: remove,
-    };
-    const mut = new WorldMutatorImpl(host);
+    const mut = new WorldMutatorImpl(makeHost({ removePrePlacedTowers: remove }));
     mut.installPrePlacedTowers([{ towerId: 'a', col: 0, row: 0 }]);
     mut.shutdown();
     mut.shutdown();
@@ -76,12 +88,10 @@ describe('WorldMutatorImpl', () => {
 
   it('a throwing undo does not abort the rest of shutdown', () => {
     const calls: string[] = [];
-    const host: WorldHost = {
-      installPrePlacedTowers: () => {},
-      installWorkshop: () => {},
-      removePrePlacedTowers: () => calls.push('undo-towers'),
+    const host = makeHost({
+      removePrePlacedTowers: () => { calls.push('undo-towers'); },
       removeWorkshop: () => { throw new Error('boom'); },
-    };
+    });
     const mut = new WorldMutatorImpl(host);
     mut.installPrePlacedTowers([{ towerId: 'a', col: 0, row: 0 }]);
     mut.installWorkshop({ col: 1, row: 1 });

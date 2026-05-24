@@ -97,7 +97,14 @@ import { setActiveSuppressionManager } from '../systems/suppression/ActiveSuppre
 // EventBus bridge. Phase B threads these through but no shipped
 // campaign uses the new path yet; legacy `_missionXxxRules` fields
 // continue to drive shipped behaviour. Phases C/D port each campaign.
-import type { RuntimeAspects, PrePlacedTowerSpec } from '../systems/campaign/types';
+import type {
+  RuntimeAspects,
+  PrePlacedTowerSpec,
+  SummoningCircleSpec,
+  DestructibleTowerSpec,
+  WorkshopSpec,
+  ActionInterceptHandle,
+} from '../systems/campaign/types';
 import { WorldMutatorImpl, type WorldHost, type MechSabotageRulesShape, type ArcaneFinaleRulesShape } from '../systems/campaign/WorldMutator';
 import type { SuppressionPylonSpec } from '../data/Maps';
 import { attachGameplayAspect } from '../systems/campaign/EventBusBridge';
@@ -3301,6 +3308,60 @@ export class GameScene extends Phaser.Scene {
     this._greenwardController = null;
     this._greenwardFinaleController = null;
   }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Latent WorldHost primitives — no-ops today. Required by the
+  // `WorldHost` interface (item 5 of the campaign-#5-unblocker audit:
+  // every method on the host is required, not optional, so a missing
+  // implementation is a tsc error rather than a silent runtime no-op).
+  //
+  // No campaign aspect currently calls `world.installSummoningCircles`
+  // / `installDestructibleTowers` / `installWorkshop` / `applyRuinCells`
+  // / `registerActionIntercept` / `setSendPathOverride` directly —
+  // Arcane M10 + Mech M10 + Greenward install their setpieces through
+  // the campaign-specific composite methods above (`installArcaneFinale`
+  // etc.). These narrow primitives are preserved per ADR-0002 in case
+  // a future campaign decomposes cleanly into them. If unused by
+  // ~campaign #7 they can be deleted alongside the interface entries.
+  // ────────────────────────────────────────────────────────────────────
+
+  installSummoningCircles(_circles: SummoningCircleSpec[]): void {
+    // no-op — see latent-primitives note above
+  }
+  removeSummoningCircles(): void { /* no-op */ }
+
+  installDestructibleTowers(_towers: DestructibleTowerSpec[]): void {
+    // no-op — see latent-primitives note above
+  }
+  removeDestructibleTowers(): void { /* no-op */ }
+
+  installWorkshop(_spec: WorkshopSpec): void {
+    // no-op — see latent-primitives note above
+  }
+  removeWorkshop(): void { /* no-op */ }
+
+  applyRuinCells(_cells: Array<{ col: number; row: number; mode?: string }>): void {
+    // no-op — see latent-primitives note above
+  }
+  clearRuinCells(): void { /* no-op */ }
+
+  registerActionIntercept(
+    _cell: { col: number; row: number },
+    _handler: () => boolean,
+  ): ActionInterceptHandle {
+    return { release: () => { /* no-op */ } };
+  }
+
+  setSendPathOverride(_spec: {
+    entries?: Array<{ col: number; row: number }>;
+    exits?: Array<{ col: number; row: number }>;
+  }): void {
+    // no-op — see latent-primitives note above. (Note: the real
+    // send-path-reverse used by Arcane/Mech M10 goes through
+    // `this.sendMgr.setSendPathOverride(...)` inside the composite
+    // install methods, not through this WorldHost entry point.)
+  }
+  clearSendPathOverride(): void { /* no-op */ }
 
   /** Push the SabotageHud state to GameUIStore so the DOM panel can
    *  render. Called every frame; the store internally short-circuits
