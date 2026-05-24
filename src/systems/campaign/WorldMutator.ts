@@ -55,55 +55,66 @@ export interface ArcaneFinaleRulesShape {
 
 /**
  * Narrow protocol that the engine satisfies — currently `GameScene`.
- * Each method is optional in Phase B; aspect helpers no-op when their
- * host method is absent. Phase C lifts mandatory ones to required as
- * each campaign needs them.
+ * Every method is REQUIRED (item 5 of the campaign-#5-unblocker
+ * audit). Previously each was optional with `?.()` forwarding inside
+ * `WorldMutatorImpl`, which meant a missing host method silently
+ * no-op'd (the Phase E3 Arcane pre-placed-Frost regression was
+ * exactly this class of bug). Required methods convert that class of
+ * regression into a tsc error at the boundary: deleting a host
+ * method without removing its aspect callers won't compile.
+ *
+ * GameScene implements the unused narrow primitives (installSummoning
+ * Circles / installDestructibleTowers / installWorkshop / applyRuin
+ * Cells / registerActionIntercept / setSendPathOverride) as no-ops.
+ * They're latent infrastructure per ADR-0002 — preserved in case a
+ * future campaign decomposes cleanly into them, deleted at ~campaign
+ * #7 if nobody adopts.
  */
 export interface WorldHost {
-  installPrePlacedTowers?(towers: PrePlacedTowerSpec[]): void;
-  installSuppressionPylons?(pylons: SuppressionPylonSpec[]): void;
-  installSummoningCircles?(circles: SummoningCircleSpec[]): void;
-  installDestructibleTowers?(towers: DestructibleTowerSpec[]): void;
-  installWorkshop?(spec: WorkshopSpec): void;
+  installPrePlacedTowers(towers: PrePlacedTowerSpec[]): void;
+  installSuppressionPylons(pylons: SuppressionPylonSpec[]): void;
+  installSummoningCircles(circles: SummoningCircleSpec[]): void;
+  installDestructibleTowers(towers: DestructibleTowerSpec[]): void;
+  installWorkshop(spec: WorkshopSpec): void;
   /** Mech M10 sabotage finale — single atomic install of
    *  SabotageController + render + DOM event listeners + send-path
    *  reverse. The host owns the map (`mapDef.workshop`, `.destructibleTowers`,
    *  `.destructibleStructures`, `.entries`, `.exits`), so passing only
    *  rules keeps the aspect API narrow. */
-  installMechSabotage?(rules: MechSabotageRulesShape): void;
+  installMechSabotage(rules: MechSabotageRulesShape): void;
   /** Arcane M10 finale — single atomic install of FinaleController +
    *  summoning circles + destructible towers + send-path reverse.
    *  The host reads summoningCircles / destructibleTowers / entries /
    *  exits from its mapDef; the aspect just declares the rules. */
-  installArcaneFinale?(rules: ArcaneFinaleRulesShape): void;
+  installArcaneFinale(rules: ArcaneFinaleRulesShape): void;
   /** Greenward — install the per-mission Consecration runtime
    *  (`GreenwardMissionController`) plus, when `isFinale`, the
    *  three-setpiece `GreenwardFinaleController`. The aspect path
    *  has already applied between-mission reserves regen via
    *  `MissionStateAspect.tickBetweenMissions`, so the host method
    *  must NOT regen reserves itself. */
-  installGreenwardRules?(rules: { ruins: import('./types').RuinSpecLike[] }, isFinale: boolean): void;
-  applyRuinCells?(cells: Array<{ col: number; row: number; mode?: string }>): void;
-  registerActionIntercept?(
+  installGreenwardRules(rules: { ruins: import('./types').RuinSpecLike[] }, isFinale: boolean): void;
+  applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void;
+  registerActionIntercept(
     cell: { col: number; row: number },
     handler: () => boolean,
   ): ActionInterceptHandle;
-  setSendPathOverride?(spec: {
+  setSendPathOverride(spec: {
     entries?: Array<{ col: number; row: number }>;
     exits?: Array<{ col: number; row: number }>;
   }): void;
-  // Undo hooks — Phase C adds matching `remove*` methods so each
-  // `install*` mutation can be cleanly rolled back at shutdown.
-  removePrePlacedTowers?(towers: PrePlacedTowerSpec[]): void;
-  removeSuppressionPylons?(): void;
-  removeSummoningCircles?(): void;
-  removeDestructibleTowers?(): void;
-  removeWorkshop?(): void;
-  removeMechSabotage?(): void;
-  removeArcaneFinale?(): void;
-  removeGreenwardRules?(): void;
-  clearRuinCells?(): void;
-  clearSendPathOverride?(): void;
+  // Undo hooks — every `install*` mutation has a `remove*` counterpart
+  // so `WorldMutatorImpl.shutdown` can roll back cleanly in LIFO order.
+  removePrePlacedTowers(towers: PrePlacedTowerSpec[]): void;
+  removeSuppressionPylons(): void;
+  removeSummoningCircles(): void;
+  removeDestructibleTowers(): void;
+  removeWorkshop(): void;
+  removeMechSabotage(): void;
+  removeArcaneFinale(): void;
+  removeGreenwardRules(): void;
+  clearRuinCells(): void;
+  clearSendPathOverride(): void;
 }
 
 /**
@@ -119,61 +130,59 @@ export class WorldMutatorImpl implements WorldMutator {
 
   installPrePlacedTowers(towers: PrePlacedTowerSpec[]): void {
     if (towers.length === 0) return;
-    this.host.installPrePlacedTowers?.(towers);
-    this.mutations.push(() => this.host.removePrePlacedTowers?.(towers));
+    this.host.installPrePlacedTowers(towers);
+    this.mutations.push(() => this.host.removePrePlacedTowers(towers));
   }
 
   installSuppressionPylons(pylons: SuppressionPylonSpec[]): void {
     if (pylons.length === 0) return;
-    this.host.installSuppressionPylons?.(pylons);
-    this.mutations.push(() => this.host.removeSuppressionPylons?.());
+    this.host.installSuppressionPylons(pylons);
+    this.mutations.push(() => this.host.removeSuppressionPylons());
   }
 
   installSummoningCircles(circles: SummoningCircleSpec[]): void {
     if (circles.length === 0) return;
-    this.host.installSummoningCircles?.(circles);
-    this.mutations.push(() => this.host.removeSummoningCircles?.());
+    this.host.installSummoningCircles(circles);
+    this.mutations.push(() => this.host.removeSummoningCircles());
   }
 
   installDestructibleTowers(towers: DestructibleTowerSpec[]): void {
     if (towers.length === 0) return;
-    this.host.installDestructibleTowers?.(towers);
-    this.mutations.push(() => this.host.removeDestructibleTowers?.());
+    this.host.installDestructibleTowers(towers);
+    this.mutations.push(() => this.host.removeDestructibleTowers());
   }
 
   installWorkshop(spec: WorkshopSpec): void {
-    this.host.installWorkshop?.(spec);
-    this.mutations.push(() => this.host.removeWorkshop?.());
+    this.host.installWorkshop(spec);
+    this.mutations.push(() => this.host.removeWorkshop());
   }
 
   installMechSabotage(rules: MechSabotageRulesShape): void {
-    this.host.installMechSabotage?.(rules);
-    this.mutations.push(() => this.host.removeMechSabotage?.());
+    this.host.installMechSabotage(rules);
+    this.mutations.push(() => this.host.removeMechSabotage());
   }
 
   installArcaneFinale(rules: ArcaneFinaleRulesShape): void {
-    this.host.installArcaneFinale?.(rules);
-    this.mutations.push(() => this.host.removeArcaneFinale?.());
+    this.host.installArcaneFinale(rules);
+    this.mutations.push(() => this.host.removeArcaneFinale());
   }
 
   installGreenwardRules(rules: { ruins: import('./types').RuinSpecLike[] }, isFinale: boolean): void {
-    this.host.installGreenwardRules?.(rules, isFinale);
-    this.mutations.push(() => this.host.removeGreenwardRules?.());
+    this.host.installGreenwardRules(rules, isFinale);
+    this.mutations.push(() => this.host.removeGreenwardRules());
   }
 
   applyRuinCells(cells: Array<{ col: number; row: number; mode?: string }>): void {
     if (cells.length === 0) return;
-    this.host.applyRuinCells?.(cells);
-    this.mutations.push(() => this.host.clearRuinCells?.());
+    this.host.applyRuinCells(cells);
+    this.mutations.push(() => this.host.clearRuinCells());
   }
 
   registerActionIntercept(
     cell: { col: number; row: number },
     handler: () => boolean,
   ): ActionInterceptHandle {
-    const handle = this.host.registerActionIntercept?.(cell, handler) ?? {
-      release: () => { /* no-op when host doesn't support intercepts */ },
-    };
+    const handle = this.host.registerActionIntercept(cell, handler);
     this.mutations.push(() => handle.release());
     // Wrap so the caller's release() also pops the entry; otherwise
     // shutdown would call release twice (harmless but noisy). We
@@ -186,8 +195,8 @@ export class WorldMutatorImpl implements WorldMutator {
     entries?: Array<{ col: number; row: number }>;
     exits?: Array<{ col: number; row: number }>;
   }): void {
-    this.host.setSendPathOverride?.(spec);
-    this.mutations.push(() => this.host.clearSendPathOverride?.());
+    this.host.setSendPathOverride(spec);
+    this.mutations.push(() => this.host.clearSendPathOverride());
   }
 
   /** Run every recorded undo in reverse. Safe to call multiple times. */
