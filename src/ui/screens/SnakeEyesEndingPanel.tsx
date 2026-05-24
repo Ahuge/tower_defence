@@ -114,7 +114,12 @@ export function SnakeEyesEndingPanel({ epilogue }: Props) {
         style={{
           fontFamily: "'Silkscreen', monospace",
           color: VOID_VIOLET,
-          fontSize: UIScale.font(20),
+          // Cinema-scale title for the M10 reveal. `font(20)` was
+          // 50px on phone (2.5× upscale) which would dominate a
+          // 360px viewport beyond cinematic intent — capped to 28px
+          // so it stays the largest text on the panel without
+          // breaking layout. Desktop still gets 20px.
+          fontSize: UIScale.fontCapped(20, 28),
           letterSpacing: '0.08em',
           marginBottom: `${UIScale.space(20)}px`,
         }}
@@ -222,7 +227,12 @@ function FlipCard({ idx, glyph, glyphLabel, isFlipped }:
           borderRadius: '6px',
           color: VOID_GOLD,
           fontFamily: "'Silkscreen', monospace",
-          fontSize: UIScale.font(46),
+          // Tarot-glyph face — large by design, but `font(46)` was
+          // 115px on phone, which can overflow the card's own
+          // dimensions when the card isn't scaled up the same 2.5×.
+          // Capped at 56px on phone — still glyph-as-hero scale,
+          // bounded to the card face.
+          fontSize: UIScale.fontCapped(46, 56),
           display: 'flex' as const,
           alignItems: 'center' as const,
           justifyContent: 'center' as const,
