@@ -27,6 +27,7 @@ import { getArchetypeLabel } from '../../data/campaigns/ArchetypeLabels';
 import type { CampaignExtension, MissionEntry } from '../../systems/campaign/types';
 import { FACTIONS, type FactionId } from '../../data/Factions';
 import { factionKeyartSrc } from '../utils/factionAssets';
+import { UIScale } from '../../systems/UIScale';
 
 type Mission = MissionEntry<unknown, unknown>;
 type Campaign = CampaignExtension<unknown, unknown>;
@@ -95,7 +96,7 @@ export function CampaignLobbyScreen({ data }: Props) {
       background: 'rgba(8, 6, 14, 0.92)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 700,
-      padding: '16px',
+      padding: `${UIScale.space(16)}px`,
     }}
       onClick={() => setPendingMission(null)}
     >
@@ -103,26 +104,26 @@ export function CampaignLobbyScreen({ data }: Props) {
         background: 'var(--bg-surface)',
         border: `1px solid ${factionColor}`,
         borderRadius: '12px',
-        padding: '24px 28px',
+        padding: `${UIScale.space(24)}px ${UIScale.space(28)}px`,
         maxWidth: 'min(520px, 100%)',
         boxShadow: '0 18px 48px rgba(0,0,0,0.7)',
       }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ fontSize: '12px', color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
+        <div style={{ fontSize: UIScale.fontCapped(12, 24), color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
           MISSION {pendingMission.idx + 1}
         </div>
         <div style={{
           fontFamily: "'Silkscreen', monospace",
-          fontSize: '22px',
+          fontSize: UIScale.fontCapped(22, 36),
           color: factionColor,
-          margin: '4px 0 16px',
+          margin: `${UIScale.space(4)}px 0 ${UIScale.space(16)}px`,
         }}>{pendingMission.name}</div>
         <div style={{
-          fontSize: '13px',
+          fontSize: UIScale.fontCapped(13, 26),
           color: 'var(--text-secondary)',
           lineHeight: 1.6,
-          marginBottom: '20px',
+          marginBottom: `${UIScale.space(20)}px`,
           // Mission stories often span multiple paragraphs separated
           // by literal newlines (backtick template literals in the
           // .texts files; or "\n\n"-joined string concatenations in
@@ -134,15 +135,15 @@ export function CampaignLobbyScreen({ data }: Props) {
         }}>
           {pendingMission.story}
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Objectives</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+        <div style={{ marginBottom: `${UIScale.space(20)}px` }}>
+          <div style={{ fontSize: UIScale.fontCapped(11, 22), color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: `${UIScale.space(6)}px` }}>Objectives</div>
+          <div style={{ fontSize: UIScale.fontCapped(12, 24), color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             <div>★ Win the mission</div>
             {pendingMission.objectives.star2 && <div>★★ {pendingMission.objectives.star2.label}</div>}
             {pendingMission.objectives.star3 && <div>★★★ {pendingMission.objectives.star3.label}</div>}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: `${UIScale.space(10)}px`, justifyContent: 'flex-end' }}>
           <button class="btn" onClick={() => setPendingMission(null)}>Back</button>
           <button class="btn btn-gold" onClick={() => launch(pendingMission)}>Begin</button>
         </div>
@@ -180,9 +181,9 @@ export function CampaignLobbyScreen({ data }: Props) {
       )}
       <Header title={campaign.name.toUpperCase()} back={() => UIBridge.show('menu')} rightContent={<ShardBadge />} />
       <div class="ui-section">
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: `${UIScale.space(24)}px` }}>
           <div style={{
-            fontSize: '13px',
+            fontSize: UIScale.fontCapped(13, 26),
             color: 'var(--text-secondary)',
             maxWidth: '600px',
             margin: '0 auto',
@@ -199,22 +200,22 @@ export function CampaignLobbyScreen({ data }: Props) {
           }}>
             {campaign.intro}
           </div>
-          <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-dim)' }}>
+          <div style={{ marginTop: `${UIScale.space(12)}px`, fontSize: UIScale.fontCapped(12, 24), color: 'var(--text-dim)' }}>
             Progress: <span style={{ color: factionColor }}>{completedCount}/{missionCount}</span>
             {' · '}
             <span style={{ color: 'var(--gold)' }}>{totalStars}/{missionCount * 3} stars</span>
           </div>
           {isCampaignDone && (
             <div style={{
-              marginTop: '14px', padding: '10px 14px',
+              marginTop: `${UIScale.space(14)}px`, padding: `${UIScale.space(10)}px ${UIScale.space(14)}px`,
               background: 'rgba(255,170,68,0.12)', borderLeft: `3px solid ${factionColor}`,
-              fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.55, textAlign: 'left',
+              fontSize: UIScale.fontCapped(12, 24), color: 'var(--text-primary)', lineHeight: 1.55, textAlign: 'left',
               // Outros use the same multi-paragraph `"\n" + "\n" + …`
               // shape as intros — see the matching note on the intro
               // div above.
               whiteSpace: 'pre-wrap' as const,
             }}>
-              <div style={{ fontFamily: "'Silkscreen', monospace", color: factionColor, marginBottom: '4px' }}>Campaign Complete</div>
+              <div style={{ fontFamily: "'Silkscreen', monospace", color: factionColor, marginBottom: `${UIScale.space(4)}px` }}>Campaign Complete</div>
               {campaign.outro}
             </div>
           )}
@@ -231,7 +232,7 @@ export function CampaignLobbyScreen({ data }: Props) {
           if (!panels || panels.length === 0) return null;
           const state = campaign.missionState?.read() ?? campaign.initialState;
           return (
-            <div style={{ maxWidth: '520px', margin: '0 auto 16px' }}>
+            <div style={{ maxWidth: '520px', margin: `0 auto ${UIScale.space(16)}px` }}>
               {panels.map((p) => (
                 <div key={p.id}>{p.render(state) as ComponentChildren}</div>
               ))}
@@ -246,7 +247,7 @@ export function CampaignLobbyScreen({ data }: Props) {
           const progress = PlayerProfile.getCampaignProgress(campaign.factionId);
           const starsAt = (idx: number) => progress[idx] ?? 0;
           return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '520px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: `${UIScale.space(8)}px`, maxWidth: '520px', margin: '0 auto' }}>
           {campaign.missions.map(mission => {
             const stars = starsAt(mission.idx);
             // First mission unlocked by default; later ones need ≥1 star
@@ -261,8 +262,8 @@ export function CampaignLobbyScreen({ data }: Props) {
                 onClick={() => setPendingMission(mission)}
                 class="card"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '14px',
-                  padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', gap: `${UIScale.space(14)}px`,
+                  padding: `${UIScale.space(14)}px ${UIScale.space(16)}px`,
                   textAlign: 'left',
                   cursor: disabled ? 'not-allowed' : 'pointer',
                   opacity: disabled ? 0.55 : 1,
@@ -270,27 +271,27 @@ export function CampaignLobbyScreen({ data }: Props) {
                 }}>
                 <div style={{
                   fontFamily: "'Silkscreen', monospace",
-                  fontSize: '20px',
+                  fontSize: UIScale.fontCapped(20, 34),
                   color: stars >= 1 ? factionColor : 'var(--text-dim)',
-                  minWidth: '36px',
+                  minWidth: `${UIScale.space(36)}px`,
                   textAlign: 'center',
                 }}>
                   {String(mission.idx + 1).padStart(2, '0')}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontFamily: "'Silkscreen', monospace", fontSize: '13px' }}>{mission.name}</span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '1px 6px', border: '1px solid var(--text-dim)', borderRadius: '3px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: `${UIScale.space(8)}px`, flexWrap: 'wrap' as const }}>
+                    <span style={{ fontFamily: "'Silkscreen', monospace", fontSize: UIScale.fontCapped(13, 24) }}>{mission.name}</span>
+                    <span style={{ fontSize: UIScale.fontCapped(10, 18), color: 'var(--text-dim)', padding: '1px 6px', border: '1px solid var(--text-dim)', borderRadius: '3px' }}>
                       {archetype.label}
                     </span>
-                    {stub && <span style={{ fontSize: '10px', color: 'var(--gold)' }}>Coming Soon</span>}
-                    {!unlocked && !stub && <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>🔒 Locked</span>}
+                    {stub && <span style={{ fontSize: UIScale.fontCapped(10, 18), color: 'var(--gold)' }}>Coming Soon</span>}
+                    {!unlocked && !stub && <span style={{ fontSize: UIScale.fontCapped(10, 18), color: 'var(--text-dim)' }}>🔒 Locked</span>}
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  <div style={{ fontSize: UIScale.fontCapped(11, 22), color: 'var(--text-secondary)', marginTop: `${UIScale.space(2)}px` }}>
                     {archetype.blurb}
                   </div>
                 </div>
-                <StarRating stars={stars} style={{ fontSize: '14px', minWidth: '54px', textAlign: 'right' }} />
+                <StarRating stars={stars} style={{ fontSize: UIScale.fontCapped(14, 26), minWidth: `${UIScale.space(54)}px`, textAlign: 'right' }} />
               </button>
             );
           })}
