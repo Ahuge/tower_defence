@@ -80,6 +80,29 @@ The game supports phone screens (<600px viewport). All UI sizing MUST go through
 - Tower bar, control bar, status bar anchor to canvas bottom (not `GAME_HEIGHT`).
 - Sidebar panels use `getSidebarWidth()` for full-screen overlay on phone.
 
+## Mobile-first workflow — REQUIRED for every UI change
+
+UI tasks are not complete until they've been visually verified at phone viewport size. Three rounds of "fixed!" → user screenshots → "still broken" happened because the assistant declared done after `tsc + vitest` passed, having never looked at the actual rendered page on phone. Tests and types can't catch "this text is huge compared to its peers" or "this card overflows the viewport" — only a render check does.
+
+**Required workflow for any UI change touching `src/ui/`:**
+
+1. Make the change + run `npx tsc --noEmit` and the relevant vitest suite.
+2. **Take a phone-viewport screenshot via the chrome-devtools-mcp tools** before declaring done:
+   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page` (or `select_page` if one is open)
+   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__resize_page` width=360 height=740
+   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page` to the dev-server URL of the screen you touched
+   - `mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot`
+3. Visually compare the screenshot against (a) the screen's peer screens in the app for sizing consistency, and (b) the user's previous screenshots if they were the original bug source.
+4. If the screen requires interaction to reach (e.g. mid-mission UI, Pactbook gate), use `click` / `evaluate_script` / `navigate_page` to drive it there before screenshotting.
+
+If the dev server isn't running, start it (`npm run dev`, background) before taking the screenshot. The pre-wrap and `UIScale.font()` pin tests in `src/ui/mobileFirst.test.ts` catch the two highest-frequency regression classes, but they don't catch sizing judgment calls (long-form prose at 26px is technically capped but visually wrong). The screenshot is the safety net for those.
+
+**Sizing guidance for `UIScale.fontCapped(desktopPx, maxPhonePx)`:**
+- Long-form prose (intros, story bodies, multi-paragraph briefings): cap at ≤16px on phone. Phone readers don't need prose upscaled — it just produces walls of giant text.
+- Short labels / button text / single-line headers: cap 22–28px. These are touch targets and benefit from upscaling.
+- Cinema-scale headlines (M10 endings, faction splash, hero deaths): cap 28–32px. Even "huge by design" needs a viewport-relative ceiling.
+- Never use `UIScale.font(N)` (uncapped) in `.tsx` files — the pin test bans it. The phone 2.5× upscale with no ceiling produces 40–115px text from typical desktop values.
+
 ## Conventions
 - Compile check (`npx tsc --noEmit`) after every change
 - Commit messages: descriptive, multi-line, explain the "why"

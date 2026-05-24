@@ -2,6 +2,19 @@
 
 ## 2026-05-24
 
+### Mobile-first guardrails — pin tests + workflow
+
+Three rounds of phone polish + a player-flagged regression each round made it clear the failure mode wasn't bad code, it was the assistant declaring UI work "done" after `tsc + vitest` without ever rendering the page on a phone. Adding two pin tests + a documented workflow step so the next assistant can't make the same mistake.
+
+- **New pin test `src/ui/mobileFirst.test.ts` with two checks.**
+  - **Ban uncapped `UIScale.font(N)` in DOM components.** The `font()` helper multiplies the desktop value by 2.5 on phone with no ceiling — `font(17)` becomes 43px. That's how the Snake Eyes Wager name (`The Counterfactual's Cut`) wrapped to 3 lines and each card consumed half a viewport. The pin scans every `.tsx` under `src/ui/` for `UIScale.font(...)` that isn't `.fontCapped(...)` and fails the build with a message pointing at the offending lines. Two latent uses in `SnakeEyesEndingPanel.tsx` (`font(20)` → 50px M10 title, `font(46)` → 115px tarot glyph) were caught + fixed by the audit — both would have shipped broken on phone the first time a player reached the M10 ending.
+  - **Prose render sites must declare `whiteSpace: pre-wrap`.** Pins the four sites that render author-written multi-paragraph briefings (`{campaign.intro}`, `{campaign.outro}`, `{mission.story}`, `{pendingMission.story}`) and checks the enclosing styled element has `whiteSpace` declared. Catches the original regression (Snake Eyes intro collapsed to a wall of text because the lobby div missed `pre-wrap` while the story modal had it).
+  - Both pins sanity-verified by injecting + reverting a violation, confirming the test catches it with a useful error message.
+
+- **CLAUDE.md "Mobile-first workflow" section.** Documents the required phone-screenshot step via the `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*` tools (`new_page` → `resize_page width=360 height=740` → `navigate_page` → `take_screenshot`) before declaring any UI task done. Also documents the `fontCapped(desktopPx, maxPhonePx)` sizing guidance the audit converged on: prose ≤16, labels 22–28, headlines 28–32, never uncapped.
+
+Skipped (per architect review): a scoped raw-px ban on `fontSize: 'Npx'` literals. There are 229 across `src/ui/` — most ship fine, banning would be a maintenance allowlist game. The two pins above cover the high-frequency regression classes; the screenshot workflow covers the judgment calls (long-form prose at the maximum cap can still be visually wrong, only a render check catches that).
+
 ### Pactbook gate + Debt meter — round 2 mobile polish
 
 Follow-up to the lobby fixes earlier today. Player flagged three remaining issues from a fresh phone session.
