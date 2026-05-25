@@ -301,7 +301,20 @@ export interface MissionStateAspect<TState, TCfg = unknown> {
    *  rare case where between-mission state transforms need to read
    *  the upcoming mission's id / idx / campaign payload to decide.
    *  Greenward's regen, for instance, doesn't care which mission
-   *  is next. */
+   *  is next.
+   *
+   *  Contract: the returned state is **authoritative** — `MissionRunner.
+   *  startV2` calls `write(returned)` after this. Implementations
+   *  MAY have side effects on the persistent slot during the call
+   *  (e.g. Snake Eyes' `applyMissionStart` writes through the
+   *  DebtTracker module's mutator and returns `getSnakeEyesState()`
+   *  to satisfy the contract); the subsequent `write(returned)` is
+   *  idempotent in that case. Implementations SHOULD prefer being
+   *  pure (mutate-and-return like Greenward's regen) — purity makes
+   *  the function trivially testable and keeps the persistent-slot
+   *  write a single, predictable event. Side-effecting impls are
+   *  acceptable when they delegate to a pre-existing module-level
+   *  mutator that has its own test coverage. */
   tickBetweenMissions?(state: TState, entry: MissionEntry<TCfg, TState>): TState;
 }
 

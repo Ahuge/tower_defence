@@ -197,6 +197,14 @@ const MISSIONS: MissionEntry<SnakeEyesMissionCfg, SnakeEyesState>[] = [
         // and read via getActiveSnakeEyesController. Safe at finalize
         // — predicates run before the next mission's controller
         // construction clears the active runtime.
+        //
+        // Timing: `MissionRunner.finalize` evaluates star predicates
+        // BEFORE calling `applyMissionResult`, so the `debt` read here
+        // is pre-surcharge / pre-paydown. The semantics are "did Debt
+        // grow during gameplay" — leaking creeps during M8 won't cost
+        // you the star (the surcharge lands after stars are awarded),
+        // and paying the Wager down at mission-end can't earn you the
+        // star either. Intended.
         predicate: (r) => {
           if (!r.won) return false;
           if (getSnakeEyesState().collectorDefeatedAt !== 7) return false;
