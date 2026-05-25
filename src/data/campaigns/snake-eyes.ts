@@ -366,11 +366,31 @@ export const SNAKE_EYES_EXTENSION: CampaignExtension<SnakeEyesState, SnakeEyesMi
           controller.m10OnWaveCleared(waveNum);
         },
       },
+      // Late-init scene-side wiring. Runs AFTER setup + gameplay-
+      // bridge, so the wager handler's onMissionStart side effects
+      // (gold delta, debt delta, flag-bag seed) land on a fully-
+      // initialised economy. The towerPlaced listener uses the typed
+      // SceneHandles.towerMgr to push wager-supplied traits onto the
+      // live tower instance after each placement.
+      //
+      // Previously lived inline in GameScene as an `instanceof
+      // SnakeEyesMissionController` block — moved here so all Snake
+      // Eyes wiring lives in one module. Returns a detach function
+      // that unsubscribes the listener; GameScene.shutdown calls it
+      // before eventBus.clear (so the unsubscribe lands on a live bus).
+      attach(handles) {
+        controller.applyMissionStartEffects(handles.economy);
+        const onTowerPlaced = (col: number, row: number, towerId: string) => {
+          const extras = controller.getTraitsForTower(towerId);
+          if (extras.length === 0) return;
+          const tower = handles.towerMgr.getTowerAt(col, row);
+          if (!tower) return;
+          for (const t of extras) tower.traits.push({ ...t });
+        };
+        handles.eventBus.on('towerPlaced', onTowerPlaced);
+        return () => handles.eventBus.off('towerPlaced', onTowerPlaced);
+      },
     };
-    // Per-tower trait injection + Wager onMissionStart side effects
-    // live in GameScene (need scene-side handles to TowerManager +
-    // EconomyManager) — see the SnakeEyesMissionController instanceof
-    // branch in GameScene.create after the runtime install.
   },
 };
 
