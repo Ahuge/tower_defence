@@ -18,7 +18,29 @@ export interface ArchetypeLabel {
   blurb: string;
 }
 
-export const ARCHETYPE_LABELS: Record<string, ArchetypeLabel> = {
+/** Source-of-truth union for archetype ids. Used as `MissionEntry.archetypeId`'s
+ *  type so a typo on a campaign mission becomes a tsc error instead of a
+ *  silent fallback to `'standard'`. Adding a new archetype: add a key to
+ *  `ARCHETYPE_LABELS` below, then this union widens automatically. */
+export type ArchetypeId =
+  | 'standard'
+  | 'restriction'
+  | 'speedrun'
+  | 'boss_rush'
+  | 'frugal'
+  | 'heist'
+  | 'base_defense'
+  | 'attacker'
+  | 'coop_with_bot'
+  | 'hero_vs_boss'
+  | 'interrupt'
+  | 'final_showdown'
+  | 'final_arcane'
+  | 'final_sabotage'
+  | 'final_greenward'
+  | 'final_void';
+
+export const ARCHETYPE_LABELS: Record<ArchetypeId, ArchetypeLabel> = {
   standard:        { label: 'Standard',       blurb: 'Hold the line — classic tower defence.' },
   restriction:     { label: 'Restriction',    blurb: 'Win with a constrained loadout.' },
   speedrun:        { label: 'Speedrun',       blurb: 'Clear fast. Time-attack scoring.' },
@@ -37,7 +59,9 @@ export const ARCHETYPE_LABELS: Record<string, ArchetypeLabel> = {
   final_void:      { label: 'The Mirror',     blurb: "Three setpieces. One table. Ardax sits across from himself." },
 };
 
-/** Lookup with safe fallback to 'standard'. */
-export function getArchetypeLabel(archetypeId: string): ArchetypeLabel {
+/** Lookup. Argument typed as `ArchetypeId` so all call sites get tsc
+ *  coverage on the input; the `??` fallback survives only for the edge
+ *  case where a stale string-keyed cast slips past the type system. */
+export function getArchetypeLabel(archetypeId: ArchetypeId): ArchetypeLabel {
   return ARCHETYPE_LABELS[archetypeId] ?? ARCHETYPE_LABELS.standard;
 }

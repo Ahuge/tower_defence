@@ -526,6 +526,12 @@ export class GameScene extends Phaser.Scene {
   /** Phase B: detach handle from `attachGameplayAspect`. Calling this
    *  unsubscribes the runtime's gameplay handlers from the EventBus. */
   private _campaignGameplayDetach: (() => void) | null = null;
+  /** Detach handle returned from `RuntimeAspects.attach(handles)`.
+   *  Unsubscribes any scene-side listeners the campaign registered at
+   *  attach time (e.g. Snake Eyes' towerPlaced wager-trait injection).
+   *  Runs in `shutdown()` between gameplay-detach and lifecycle-shutdown
+   *  so detach has live access to the eventBus + controller. */
+  private _campaignAttachDetach: (() => void) | null = null;
   private _greenwardController: import('../systems/greenward/GreenwardMissionController').GreenwardMissionController | null = null;
   /** M10 only — three-setpiece state machine. Non-null only on the
    *  Greenward final_greenward mission. */
@@ -2041,28 +2047,32 @@ export class GameScene extends Phaser.Scene {
           this.eventBus, this._campaignRuntime.gameplay,
         );
       }
-      // Phase 3 — Snake Eyes Wager-effect scene-side wiring. The
-      // gameplay aspect handles event-driven hooks that need only
-      // controller state (onCreepReached, onWaveStarted, onWaveCleared).
-      // Two hooks need a scene-side handle the gameplay aspect doesn't
-      // have:
-      //   - applyMissionStartEffects(economy) → needs EconomyManager
-      //     so onMissionStart's goldDelta can credit the player.
-      //   - per-tower trait injection → needs TowerManager.getTowerAt
-      //     to push wager-supplied traits onto the live tower instance
-      //     after towerPlaced fires.
-      // Wired here via instanceof narrowing per ADR-0003. Listener
-      // unwinds with this.eventBus.clear() on scene shutdown.
-      if (this._campaignRuntime.lifecycle instanceof SnakeEyesMissionController) {
-        const seCtrl = this._campaignRuntime.lifecycle;
-        seCtrl.applyMissionStartEffects(this.economy);
-        this.eventBus.on('towerPlaced', (col: number, row: number, towerId: string) => {
-          const extras = seCtrl.getTraitsForTower(towerId);
-          if (extras.length === 0) return;
-          const tower = this.towerMgr.getTowerAt(col, row);
-          if (!tower) return;
-          for (const t of extras) tower.traits.push({ ...t });
-        });
+      // Late-init attach — runs last so the campaign can register
+      // listeners that close over fully-initialised subsystems. The
+      // `SceneHandles` adapter exposes a narrow surface (economy +
+      // towerMgr.getTowerAt + eventBus) so campaign code stays
+      // decoupled from GameScene's internals. See the `attach` /
+      // `SceneHandles` JSDoc in `systems/campaign/types.ts` for the
+      // contract. Replaces the prior `instanceof SnakeEyesMissionController`
+      // block here — that scene-side bypass is now formalised into a
+      // first-class aspect.
+      if (this._campaignRuntime.attach) {
+        const handles = {
+          economy: this.economy,
+          // Normalize the engine's `Tower | undefined` to the public
+          // SceneHandles contract `{ traits } | null`. Campaign code
+          // shouldn't have to disambiguate the two empty results.
+          towerMgr: { getTowerAt: (c: number, r: number) => this.towerMgr.getTowerAt(c, r) ?? null },
+          eventBus: this.eventBus,
+        };
+        try {
+          const detach = this._campaignRuntime.attach(handles);
+          if (typeof detach === 'function') {
+            this._campaignAttachDetach = detach;
+          }
+        } catch (err) {
+          console.warn('[GameScene] campaign attach threw:', err);
+        }
       }
     }
   }
@@ -5592,6 +5602,12 @@ export class GameScene extends Phaser.Scene {
         console.warn('[GameScene] campaign gameplay detach threw:', err);
       }
       this._campaignGameplayDetach = null;
+    }
+    if (this._campaignAttachDetach) {
+      try { this._campaignAttachDetach(); } catch (err) {
+        console.warn('[GameScene] campaign attach detach threw:', err);
+      }
+      this._campaignAttachDetach = null;
     }
     if (this._campaignRuntime?.lifecycle) {
       try { this._campaignRuntime.lifecycle.shutdown(); } catch (err) {

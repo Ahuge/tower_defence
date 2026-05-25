@@ -35,6 +35,45 @@ import type { DraftModifier } from '../../data/DraftModifiers';
 import type { HeroId } from '../../data/HeroTypes';
 import type { DifficultyLevel } from '../../data/Difficulty';
 import type { WaveDefinition } from '../../data/WaveDefinitions';
+import type { ArchetypeId } from '../../data/campaigns/ArchetypeLabels';
+import type { EventBus } from '../EventBus';
+import type { Trait } from '../traits/Trait';
+/** Source-of-truth union of valid `MissionResult.custom` keys.
+ *
+ *  Two complementary safety layers protect this bag from typos and
+ *  cross-campaign collisions:
+ *
+ *    1. **This union** (compile-time, reader+writer-side) — any
+ *       `r.custom.X` access on a key not in this list is a tsc error.
+ *       So is `result.custom = { foo: 1 }` for an unknown `foo`.
+ *
+ *    2. `customKeys.test.ts` (runtime, writer-side) — scans source
+ *       for un-namespaced new keys per the `<factionId>_*` convention.
+ *
+ *  Adding a new key: append it here AND ensure the customKeys pin test
+ *  is satisfied (either by using the `<factionId>_*` prefix or by
+ *  adding to GRANDFATHERED with a justification comment).
+ *
+ *  Why a single union (not per-campaign generics): every reader of
+ *  `MissionResult` would otherwise need to know which campaign owns
+ *  the result, which doesn't survive the data flowing through
+ *  `EventBus.gameWon` / analytics / GameOverScreen. The union is
+ *  conservative — keys you don't own are still readable as `undefined`,
+ *  but typos fail at compile. */
+export type MissionResultCustomKey =
+  // arcane
+  | 'channelsCompleted' | 'channelsInterrupted' | 'heroDeaths'
+  // greenward
+  | 'ceremonyClaims' | 'chantInterruptedFastMs' | 'childUnharmed'
+  | 'civiliansKilled' | 'distinctCreepUnitsSent' | 'distinctTowerTypesUsed'
+  | 'headwaterClaimed' | 'heraldKilled' | 'knightKilled' | 'mercyClaims'
+  | 'naveCommittedNonSiege' | 'naveResolvedMode' | 'reservesRemaining'
+  | 'reservesSpent' | 'ruinsClaimed' | 'siegeClaims' | 'watcherUnharmed'
+  // mech
+  | 'attackerLeaks' | 'heroHpMin' | 'sendsBought'
+  // void
+  | 'hotStreakHit' | 'mirrorWagerWon';
+
 /** Game-end snapshot used to evaluate mission objective predicates.
  *  Moved out of the legacy `CampaignDef.ts` in Phase F so it lives
  *  with the rest of the aspect-runtime types. The runtime contract
@@ -51,13 +90,14 @@ export interface MissionResult {
   towerCount: number;
   /** No leaks, no continues. */
   perfectRun: boolean;
-  /** Custom counters mode-specific archetypes write here. Readers
-   *  MUST coerce when reading — the value type is a union and a
-   *  field that one campaign writes as a `number` could be written
-   *  as `null | undefined` by a different campaign (or absent
-   *  entirely). Use `(r.custom.x as number ?? 0)` patterns, never
+  /** Custom counters mode-specific archetypes write here. Keys are
+   *  typed (see `MissionResultCustomKey` above) so reader and writer
+   *  typos fail at compile. Value type is a union — a field that one
+   *  campaign writes as a `number` could be written as
+   *  `null | undefined` by a different campaign (or absent entirely).
+   *  Use `(r.custom.x as number ?? 0)` patterns, never
    *  `r.custom.x === true` — that fails on string-encoded payloads. */
-  custom: { [key: string]: number | boolean | null | string };
+  custom: Partial<Record<MissionResultCustomKey, number | boolean | null | string>>;
 }
 
 // ─── Base Modes ─────────────────────────────────────────────
@@ -208,11 +248,13 @@ export interface MissionEntry<TCfg = unknown, TState = unknown> {
   campaign: TCfg;
   /** Display archetype id — e.g. `'interrupt'`, `'boss_rush'`, `'speedrun'`,
    *  `'final_arcane'`. Used by the campaign lobby to render the mission
-   *  card's subtitle + blurb. Lookup table lives in
-   *  `src/data/campaigns/MissionArchetypes.ts`. Distinct from the
-   *  engine-level `core.mode`: many missions are `'standard'` mode
-   *  but show different archetype labels in the UI. */
-  archetypeId: string;
+   *  card's subtitle + blurb. Source-of-truth union lives in
+   *  `src/data/campaigns/ArchetypeLabels.ts`. Distinct from the engine-
+   *  level `core.mode`: many missions are `'standard'` mode but show
+   *  different archetype labels in the UI. Typed as `ArchetypeId` (const
+   *  union) so a typo like `'frugol'` fails at tsc rather than silently
+   *  falling back to `'standard'`. */
+  archetypeId: ArchetypeId;
   /** When true, the lobby renders the mission as unimplemented and
    *  `MissionRunner.startV2` is expected to refuse the launch (e.g.
    *  Snake Eyes M10 until the Counterfactual controller lands).
@@ -378,6 +420,61 @@ export interface RuntimeAspects {
   lifecycle?: LifecycleAspect;
   gameplay?: GameplayAspect;
   intercept?: InterceptAspect;
+  /** Late-init scene-handle attach. Runs AFTER setup + gameplay-bridge
+   *  + every subsystem is up. The two payoffs this exists for:
+   *
+   *    1. **Event handlers that need scene refs.** The `GameplayAspect`
+   *       bridge forwards `EventBus` events to typed handlers, but the
+   *       bridge can't pass `TowerManager` / `EconomyManager` refs —
+   *       so a handler that wants to "apply this trait to the tower
+   *       that was just placed" has nowhere to reach them from. The
+   *       Snake Eyes wager-trait listener is the canonical example
+   *       (per-tower trait injection on `towerPlaced`).
+   *
+   *    2. **One-shot scene-side effects keyed off the controller.**
+   *       Snake Eyes' `applyMissionStartEffects(economy)` credits the
+   *       player with the wager's `goldDelta`. Needs `economy` for one
+   *       call; nothing else.
+   *
+   *  Return a detach function (or void). The detach runs in
+   *  `GameScene.shutdown` BEFORE the EventBus is cleared, so any
+   *  per-listener `bus.off` inside it has a live bus to talk to. */
+  attach?(handles: SceneHandles): (() => void) | void;
+}
+
+/** Narrow scene-handle bundle passed to `RuntimeAspects.attach`.
+ *
+ *  Intentionally narrow — only the methods one or more shipped
+ *  aspects actually call. Growing this interface is fine when a new
+ *  campaign needs a new handle; the deliberate friction is that you
+ *  have to come HERE (and to `GameScene`'s adapter that builds it)
+ *  to do so. That visibility is the point: campaign code can't
+ *  reach random scene internals via a `GameScene` reference, only
+ *  the surface exposed here.
+ *
+ *  The shapes below are structural duck types — they don't import
+ *  `EconomyManager` / `TowerManager` / `Tower` directly so the type
+ *  surface stays decoupled from the engine class hierarchy. The
+ *  adapter in `GameScene.create` is the one place where the structural
+ *  match becomes nominal. */
+export interface SceneHandles {
+  /** Add or subtract gold. Negative subtracts. Used by Wager
+   *  `onMissionStart.goldDelta` and similar one-shot economy effects. */
+  economy: { addGold(amount: number): void };
+  /** Look up the live tower at a grid cell, or null if the cell is
+   *  empty. The returned shape exposes only `traits` for mutation;
+   *  campaigns wanting other tower mutations should add narrow
+   *  methods here rather than widening this type to the full Tower
+   *  class (which would tempt access to private fields). */
+  towerMgr: {
+    getTowerAt(col: number, row: number): { traits: Trait[] } | null;
+  };
+  /** The runtime event bus. Already wired to the `GameplayAspect`
+   *  handlers via `attachGameplayAspect`; available here for
+   *  attach-time listeners that need scene-side context the bridge
+   *  can't pass (e.g. Snake Eyes' towerPlaced wager-trait injection
+   *  reads `towerMgr` AND subscribes to the event). */
+  eventBus: EventBus;
 }
 
 // ─── World mutator ──────────────────────────────────────────
