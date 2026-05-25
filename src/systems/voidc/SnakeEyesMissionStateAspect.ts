@@ -101,7 +101,14 @@ export const snakeEyesMissionStateAspect: MissionStateAspect<SnakeEyesState, any
       // — but guards against future regression where buildRuntime is
       // skipped, e.g. an integration test). Use livesLost as the
       // leak-count approximation; over-charges for boss leaks but
-      // better than silently dropping the surcharge.
+      // better than silently dropping the surcharge. Warn loudly so
+      // the regression doesn't ship undetected — a silent over-charge
+      // is the worst of both options.
+      console.warn(
+        '[SnakeEyesMissionStateAspect] applyMissionResult ran without an active controller — ' +
+        'falling back to livesLost-derived surcharge. buildRuntime should always have set the ' +
+        'lifecycle aspect; investigate the call site that bypassed it.',
+      );
       const livesLost = Math.max(0, result.livesStart - result.livesRemaining);
       if (livesLost > 0) applyLeaks(livesLost);
     }
