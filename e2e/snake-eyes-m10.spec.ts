@@ -108,13 +108,22 @@ test.describe('Snake Eyes M10 — Counterfactual finale', () => {
     }
     await page.evaluate(() => window.__td_test?.m10ForcePlayerLaneWin());
 
-    // Boss kill — flips stage to complete.
-    const killed = await page.evaluate(() => window.__td_test?.m10ForceBossKill() ?? false);
-    expect(killed).toBe(true);
-
-    const status = await page.evaluate(() => window.__td_test?.getSnakeEyesM10Status() ?? null);
-    expect(status!.isWon).toBe(true);
-    expect(status!.stage).toBe('complete');
+    // Boss kill — flips stage to complete. Capture the killed flag AND
+    // the status snapshot in the same page.evaluate call. If we split
+    // them across two evaluates, Phaser's update loop ticks between the
+    // calls, GameScene detects `consumeM10WinTrigger() === true`, emits
+    // `gameWon`, and tears the scene down — clearing MissionRunner.active
+    // so the second evaluate sees a null controller. CI is fast enough
+    // to reliably lose this race; the test was flaky in v1 of this spec.
+    const result = await page.evaluate(() => {
+      const killed = window.__td_test?.m10ForceBossKill() ?? false;
+      const status = window.__td_test?.getSnakeEyesM10Status() ?? null;
+      return { killed, status };
+    });
+    expect(result.killed).toBe(true);
+    expect(result.status, 'controller torn down before snapshot — race regression').not.toBeNull();
+    expect(result.status!.isWon).toBe(true);
+    expect(result.status!.stage).toBe('complete');
 
     // The boss-kill flips controller state; the gameWon emit happens
     // on the NEXT GameScene update tick (per-frame check). Poll for
