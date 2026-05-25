@@ -70,6 +70,14 @@
   --rarity-mythic:    #e85a7a;
 
   /* ── Spacing scale ── */
+  /* --space-tight is a 2px sub-token for the fine-grained gaps that
+   *  show up between adjacent label rows (e.g. the gap between an
+   *  archetype label and its blurb, or between a TallyChip's label
+   *  + value). Added 2026-05-24 during the campaign-UI token migration;
+   *  the 8pt grid couldn't represent these without snapping them up
+   *  to 4px, which produced visible vertical drift on dense panels.
+   *  Use sparingly — most spacing should sit on --space-1 .. --space-8. */
+  --space-tight: 0.125rem; /* 2px */
   --space-1: 0.25rem;   /* 4px */
   --space-2: 0.5rem;    /* 8px */
   --space-3: 0.75rem;   /* 12px */
@@ -80,10 +88,21 @@
   --space-8: 4rem;      /* 64px */
 
   /* ── Type scale (DOM-side, not Phaser UIScale) ── */
+  /* --text-2xs is for fine-print labels (archetype badges, threshold
+   *  ticks, "Coming Soon" / "Locked" tags). Smaller than --text-xs
+   *  because pixel-font monospace badges read clearly even at 10px.
+   *  Added in the 2026-05-24 token migration. */
+  --text-2xs:  0.625rem;   /* 10px */
   --text-xs:   0.75rem;    /* 12px */
   --text-sm:   0.875rem;   /* 14px */
   --text-base: 1rem;       /* 16px */
   --text-lg:   1.125rem;   /* 18px */
+  /* --text-pixel-glyph sits between --text-lg and --text-xl. Sized
+   *  for the campaign lobby's per-mission Silkscreen "01"/"02"/...
+   *  glyph (mission card has 10 visible instances per scroll) — its
+   *  visual weight in pixel-font is closer to --text-xl than --text-lg.
+   *  Specific-use; reuse only for similarly weighted pixel-font glyphs. */
+  --text-pixel-glyph: 1.25rem; /* 20px */
   --text-xl:   1.5rem;     /* 24px */
   --text-2xl:  2rem;       /* 32px */
   --text-3xl:  3rem;       /* 48px */
