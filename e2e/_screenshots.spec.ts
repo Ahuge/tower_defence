@@ -56,16 +56,16 @@ test.describe('Snake Eyes lobby — mobile screenshots', () => {
     // Give the lobby a tick to settle (keyart load, layout paint).
     await page.waitForTimeout(400);
 
+    // All screenshots are viewport-only (fullPage:false). The chat
+    // reader chokes on tall PNGs (>~1500px tall), and `fullPage:true`
+    // on a campaign lobby produces ~2500px images. Four short viewport
+    // screenshots covering top / ledger / cards / modal give the same
+    // visual coverage without the size blow-up.
+
     // Screenshot 1: lobby top (header, intro paragraphs)
     await page.screenshot({
       path: 'e2e/_screenshots/01-lobby-top.png',
       fullPage: false,
-    });
-
-    // Screenshot 2: full lobby (intro + ledger + mission list)
-    await page.screenshot({
-      path: 'e2e/_screenshots/02-lobby-fullpage.png',
-      fullPage: true,
     });
 
     // Scroll to the ledger panel and screenshot just that region
@@ -77,7 +77,7 @@ test.describe('Snake Eyes lobby — mobile screenshots', () => {
     });
     await page.waitForTimeout(200);
     await page.screenshot({
-      path: 'e2e/_screenshots/03-lobby-ledger.png',
+      path: 'e2e/_screenshots/02-lobby-ledger.png',
       fullPage: false,
     });
 
@@ -90,7 +90,7 @@ test.describe('Snake Eyes lobby — mobile screenshots', () => {
     });
     await page.waitForTimeout(200);
     await page.screenshot({
-      path: 'e2e/_screenshots/04-lobby-mission-cards.png',
+      path: 'e2e/_screenshots/03-lobby-mission-cards.png',
       fullPage: false,
     });
 
@@ -99,7 +99,7 @@ test.describe('Snake Eyes lobby — mobile screenshots', () => {
     await page.waitForSelector('text=Objectives', { timeout: 5_000 });
     await page.waitForTimeout(200);
     await page.screenshot({
-      path: 'e2e/_screenshots/05-story-modal.png',
+      path: 'e2e/_screenshots/04-story-modal.png',
       fullPage: false,
     });
 

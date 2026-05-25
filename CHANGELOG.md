@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-05-25
+
+### Campaign lobby + VoidStatePanel — token migration
+
+Followed up the 05-24 raw-px polish work by migrating the campaign lobby (`CampaignLobbyScreen.tsx`) and the Snake Eyes state panel (`VoidStatePanel.tsx`) off raw px values onto the design-token scale defined in `src/ui/styles/tokens.css`. Goal: one source of truth for the type/spacing scale instead of ~80 inline literals scattered across two files, so the next campaign UI inherits sizing decisions rather than re-discovering them.
+
+- **Type scale tokens consumed inline.** Every `fontSize: '11px'` / `'12px'` / `'13px'` / `'22px'` was replaced with `var(--text-xs)` / `var(--text-sm)` / `var(--text-xl)` etc. Some elements snap by 1–2px (13→14, 11→12, 22→24) — all changes are within the visual-noise floor for non-prose elements and were verified by the Playwright screenshot harness.
+- **Two new tokens for legitimate edge cases.** `--text-2xs` (10px) for fine-print labels (archetype badges, threshold ticks, "Coming Soon" tags) and `--text-pixel-glyph` (20px) for the campaign lobby's per-mission Silkscreen "01"/"02"/… glyph — between `--text-lg` and `--text-xl` in visual weight. Both tokens are commented in `tokens.css` explaining their narrow use.
+- **Spacing tokens consumed inline.** Every `marginTop: '6px'` / `padding: '14px 16px'` / `gap: '10px'` was replaced with the 8pt-grid spacing tokens. Added `--space-tight` (2px) for the fine-grained gaps that exist between adjacent label rows where 4px would produce visible vertical drift.
+- **Border radii consumed inline.** `'3px'` → `var(--radius-sm)` (4px), `'8px'` → `var(--radius-md)`, `'12px'` → `var(--radius-lg)`.
+
+### Screenshot harness — viewport-only captures
+
+The Playwright spec at `e2e/_screenshots.spec.ts` was previously capturing a `fullPage: true` PNG of the whole lobby (~2500px tall) which choked the chat reader on view. Dropped that capture; the four scrolled viewport-only screenshots (`01-lobby-top`, `02-lobby-ledger`, `03-lobby-mission-cards`, `04-story-modal`) give the same visual coverage at ~150KB each instead of one mega-PNG.
+
 ## 2026-05-24
 
 ### Mobile-first guardrails — pin tests + workflow

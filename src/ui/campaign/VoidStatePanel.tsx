@@ -76,17 +76,17 @@ export function VoidStatePanel(_props: Props) {
     <div style={{
       background: SNAKE_EYES_PALETTE.surface.statePanel,
       border: `1px solid ${SNAKE_EYES_PALETTE.border.statePanel}`,
-      borderRadius: '8px',
-      padding: '12px 16px',
+      borderRadius: 'var(--radius-md)',
+      padding: 'var(--space-3) var(--space-4)',
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '12px',
+      fontSize: 'var(--text-xs)',
       color: PRIMARY_TEXT,
     }}>
       <div style={{
         fontFamily: "'Silkscreen', monospace",
         color: VOID_VIOLET,
-        fontSize: '13px',
-        marginBottom: '8px',
+        fontSize: 'var(--text-sm)',
+        marginBottom: 'var(--space-2)',
         letterSpacing: '0.05em',
       }}>
         THE HOUSE LEDGER
@@ -106,7 +106,7 @@ export function VoidStatePanel(_props: Props) {
             ? `Settled with the House (overpaid by ${Math.abs(state.debt)} gold)`
             : `${state.debt} gold of Debt out of ${DEBT_METER_MAX}`
         }
-        style={{ position: 'relative', height: '14px', background: SNAKE_EYES_PALETTE.meterTrack, borderRadius: '3px', overflow: 'hidden' }}
+        style={{ position: 'relative', height: '14px', background: SNAKE_EYES_PALETTE.meterTrack, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}
       >
         <div style={{
           position: 'absolute', inset: 0,
@@ -128,13 +128,13 @@ export function VoidStatePanel(_props: Props) {
           each tick. Teaches the Dealer mechanic at a glance: the
           player sees their Debt growing toward the next labelled
           number. */}
-      <div style={{ position: 'relative', height: '14px', marginTop: '2px' }}>
+      <div style={{ position: 'relative', height: '14px', marginTop: 'var(--space-tight)' }}>
         <ThresholdLabel pct={(DEALER_THRESHOLDS.BOUNTY_WAVE / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.BOUNTY_WAVE} />
         <ThresholdLabel pct={(DEALER_THRESHOLDS.REPOSSESS / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.REPOSSESS} />
         <ThresholdLabel pct={(DEALER_THRESHOLDS.VOID_SLOT / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.VOID_SLOT} />
         <ThresholdLabel pct={(DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID / DEBT_METER_MAX) * 100} value={DEALER_THRESHOLDS.EXTRA_BOUNTY_AND_VOID} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '11px', color: DIM_TEXT }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-1)', fontSize: 'var(--text-xs)', color: DIM_TEXT }}>
         <span>{settled
           ? <span style={{ color: SNAKE_EYES_PALETTE.settledGreen }}>
               settled — overpaid by {Math.abs(state.debt)}g
@@ -145,18 +145,18 @@ export function VoidStatePanel(_props: Props) {
       </div>
 
       {(actions.bountyWaves + actions.repossesses + actions.wagerSlotsVoided) > 0 && (
-        <div class="snake-eyes-dealer-caption" style={{ marginTop: '8px', fontSize: '11px', color: VOID_GOLD, fontStyle: 'italic' }}>
+        <div class="snake-eyes-dealer-caption" style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-xs)', color: VOID_GOLD, fontStyle: 'italic' }}>
           {dealerCaption(actions)}
         </div>
       )}
 
       {hasAnyTally && (
-        <div style={{ marginTop: '12px' }}>
+        <div style={{ marginTop: 'var(--space-3)' }}>
           <div style={{
             fontFamily: "'Silkscreen', monospace",
             color: VOID_VIOLET,
-            fontSize: '13px',
-            marginBottom: '6px',
+            fontSize: 'var(--text-sm)',
+            marginBottom: 'var(--space-2)',
             letterSpacing: '0.05em',
           }}>
             PACTBOOK TALLY
@@ -166,12 +166,12 @@ export function VoidStatePanel(_props: Props) {
               compare — winner: gambler-verb set ("passed / cashed /
               bust") for tonal fit + scan-density over plain English
               ("won / lost") and casino-POV ("paid out / burned"). */}
-          <div role="list" aria-label="Accepted Wagers by tier" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: '6px' }}>
+          <div role="list" aria-label="Accepted Wagers by tier" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' as const, marginBottom: 'var(--space-2)' }}>
             <TallyChip label="T1" srLabel="Tier 1 (small) Wagers accepted" value={state.pactbookTally.acceptedT1} accent={VOID_VIOLET} />
             <TallyChip label="T2" srLabel="Tier 2 (medium) Wagers accepted" value={state.pactbookTally.acceptedT2} accent={VOID_VIOLET} />
             <TallyChip label="T3" srLabel="Tier 3 (high-risk) Wagers accepted" value={state.pactbookTally.acceptedT3} accent={VOID_GOLD} />
           </div>
-          <div role="list" aria-label="Pactbook outcomes" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+          <div role="list" aria-label="Pactbook outcomes" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' as const }}>
             <TallyChip label="passed" srLabel="Wagers declined (passed)" value={state.pactbookTally.declined} accent={DIM_TEXT} />
             <TallyChip label="cashed" srLabel="Accepted Wagers that paid out (cashed)" value={state.pactbookTally.succeeded} accent={SNAKE_EYES_PALETTE.settledGreen} />
             <TallyChip label="bust" srLabel="Accepted Wagers that failed (bust)" value={state.pactbookTally.failed} accent={SNAKE_EYES_PALETTE.lossRed} />
@@ -180,12 +180,12 @@ export function VoidStatePanel(_props: Props) {
       )}
 
       {state.lastMissionDivergence > 0 && (
-        <div style={{ marginTop: '10px', fontSize: '11px', color: DIM_TEXT }}>
+        <div style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: DIM_TEXT }}>
           last mission ran at <span style={{ color: VOID_GOLD }}>{state.lastMissionDivergence}/10</span> Divergence
         </div>
       )}
 
-      <div style={{ marginTop: '10px', fontSize: '11px', color: DIM_TEXT, fontStyle: 'italic' }}>
+      <div style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: DIM_TEXT, fontStyle: 'italic' }}>
         {state.theresStatus === 'with_ardax'
           ? 'Theris rides with you.'
           : 'Theris cashed out.'}
@@ -226,7 +226,7 @@ function ThresholdLabel({ pct, value }: { pct: number; value: number }) {
       top: '0',
       left: `${pct}%`,
       transform: 'translateX(-50%)',
-      fontSize: '9px',
+      fontSize: 'var(--text-2xs)',
       fontFamily: "'Silkscreen', monospace",
       color: 'var(--text-dim)',
       letterSpacing: '0.05em',
@@ -248,8 +248,8 @@ function compactDebtLabel(value: number): string {
 function TallyChip({ label, srLabel, value, accent }: { label: string; srLabel: string; value: number; accent: string }) {
   return (
     <div role="listitem" aria-label={`${srLabel}: ${value}`} style={{
-      padding: '4px 8px',
-      borderRadius: '3px',
+      padding: 'var(--space-1) var(--space-2)',
+      borderRadius: 'var(--radius-sm)',
       background: 'rgba(0,0,0,0.25)',
       border: `1px solid ${accent === DIM_TEXT ? SNAKE_EYES_PALETTE.border.fainter : accent}`,
       minWidth: '40px',
