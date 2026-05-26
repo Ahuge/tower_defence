@@ -2,6 +2,19 @@
 
 ## 2026-05-26
 
+### RL BC Step 3+3.5 — rollout generator + distribution probe
+
+The BC training-data pipeline. `LearningBrain` (D2 locked at Step 0) wrapped with the new `ObsRecorderBrain`, run across N matches, dumps gzipped per-match JSONL with (`obs.grid`, `obs.globals`, `obs.mask`, `action_index`) per decision. Sibling of the existing `RecorderBrain` (which records 56-dim features for xgboost) but writes the v1.1 ObsTensor + flat ActionSpace surface that `PPOBrain` will consume.
+
+- **`src/systems/bots/learning/ObsRecorderBrain.ts`** (new). Wraps an inner BotBrain, captures `(ObsTensor, action_index)` per decision. `attachMatch` forwarded to inner if needed. Out-of-scope actions (`send`, `frontier`, `frontierManage`) silently dropped — the BC action space doesn't encode them — but the inner brain still gets to play them so the match plays out correctly.
+- **`scripts/generate-bc-rollouts.mjs`** (new). CLI: `--matches=N --factions=arcane,mechanical --inner-brain=learning --waves=10 --out=rollouts/bc/<run_id>`. Per-match output is gzipped JSONL; row encodes obs/mask as base64 of the underlying ArrayBuffer + the schema version. Plus a `manifest.json` with per-faction decision/drop stats. Smoke run (50 matches per faction): 19s wall, 14,739 decisions, 1.1% drop rate.
+- **`scripts/inspect-rollout-distribution.mjs`** (new). Reads rollouts back, reports action class distribution per faction and globally, mask sparsity histogram, and a D4 recommendation. Used by BC Step 3.5 to lock the skip-handling strategy.
+- **`.gitignore`**: `/rollouts/` added. Like `/ml/training-data/`, these are large generated artifacts that regenerate from a seed.
+
+**D4 locked: inverse-frequency weighting on cross-entropy.** Skip is 61% of the smoke dataset (Arcane 32%, Mechanical 87%). Plain uniform CE would collapse to always-skip on Mechanical; the recommendation matches bc-plan §D4 most-likely answer.
+
+**Real finding surfaced before scaling up.** LearningBrain on Arcane normal/plains/10-wave is a one-action policy: 68% `place(slot=0)` (the cheapest tower) + 32% `skip` + 0% upgrades + 0% sells. Wins 100% with this degenerate strategy because the map+difficulty is trivially easy. Mechanical labels are healthier (87% skip + varied slots 0–3 + 2.4% upgrades + mixed wins/losses). The BC student will clone this — fine for hitting DoD thresholds, potentially problematic for PPO exploration headroom. Details + tradeoffs in `notes/rl/bc-decision-d4.md`.
+
 ### RL BC Step 1+2 — PPOBrain skeleton + spatial action helpers
 
 The neural-policy brain lands. Loads an ONNX model trained via BC (initial) and PPO self-play (later phases); samples actions from a masked softmax over the flat `ActionSpace` indices. Falls back to `BalancedBrain` when no model file is present, the file fails to load, the schema version is stale, or the brain isn't attached to a Match — same "game stays usable without a committed model" pattern `LearningBrain` uses.

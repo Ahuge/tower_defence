@@ -39,3 +39,8 @@ harness-runs/
 /ml/.venv/
 # /ml/captured/ is NOT ignored — those are committed human-played
 # JSONL files (hand-collected positive examples for hard cells).
+# BC + PPO rollouts (large generated JSONL training data). Each
+# run lives under rollouts/{purpose}/{run_id}/. Like
+# ml/training-data, these regenerate from a seed and aren't worth
+# committing.
+/rollouts/
