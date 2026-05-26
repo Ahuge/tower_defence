@@ -27,7 +27,7 @@ import { TOWER_TYPES, getTowerType } from '../../../data/TowerTypes';
 import { BotContext } from '../BotBrain';
 import { NUM_TOWER_SLOTS, getFactionTowerIds, slotForTowerId, towerIdForSlot } from './FactionVocab';
 
-export const OBS_ACTION_SCHEMA_VERSION = 'v1.0';
+export const OBS_ACTION_SCHEMA_VERSION = 'v1.1';
 
 export const NUM_CELLS = GRID_COLS * GRID_ROWS;
 

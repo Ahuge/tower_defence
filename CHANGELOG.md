@@ -2,6 +2,18 @@
 
 ## 2026-05-26
 
+### RL BC Step 0.5 — ObsTensor v1.1 schema (upcomingWaves)
+
+Closes the v1.0 information-asymmetry gap surfaced during the BC plan re-evaluation. Both `BalancedBrain` and `LearningBrain` read `ctx.upcomingWaves` (next 3 wave defs) when picking counter towers — without that signal in the observation, the BC student would learn from labels informed by inputs it can't see.
+
+- **`src/systems/bots/learning/ObsTensor.ts`**: globals expand from 7 to 25 floats. Indices 7..24 encode the upcomingWaves summary — 3 waves × 6 features each: `(armor_light_count, armor_medium_count, armor_heavy_count, flying_count, is_boss, total_hp_scale)`. Counts normalized by 50 and clipped to `[0, 1]`; hp_scale by 10. Missing waves zero-padded (`Float32Array` is zero-init).
+- **`src/systems/bots/learning/ActionSpace.ts`**: `OBS_ACTION_SCHEMA_VERSION` bumps `v1.0 → v1.1`. The schema version is stamped onto every ONNX export via `models/ppo-policy.meta.json`; `PPOBrain` (BC step 1) will refuse stale-version loads.
+- **`src/systems/bots/learning/ObsTensor.test.ts`**: 2 new tests cover the new globals — every per-wave block is non-zero at match start, every value stays in `[0, 1]`.
+
+Land BEFORE any rollouts are generated — wrong-schema rollouts would have to be regenerated.
+
+Verification: `tsc --noEmit` exit 0. `vitest run src/headless/ src/systems/bots/learning/` → 80/80 pass (was 78/78, +2 new).
+
 ### RL BC Step 0 — clone-source decision gate
 
 Before starting Behavior Cloning we needed to confirm which brain to clone. The PRD's Phase 1 risk #1 says "if BalancedBrain is too weak a baseline, rebase off PR #68 (MazingBrain)." Re-evaluation of the BC plan flagged that this gate was supposed to fire at end-of-Phase-1 and hadn't.

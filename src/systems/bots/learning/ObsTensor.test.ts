@@ -37,10 +37,10 @@ describe('ObsTensor shape + ranges', () => {
     expect(obs.grid.length).toBe(13104);
   });
 
-  it('globals length = 7', () => {
-    expect(OBS_GLOBALS).toBe(7);
+  it('globals length = 25 (v1.1 schema, includes upcomingWaves)', () => {
+    expect(OBS_GLOBALS).toBe(25);
     const obs = fromMatch(new Match(cfg('arcane')));
-    expect(obs.globals.length).toBe(7);
+    expect(obs.globals.length).toBe(25);
   });
 
   it('mask length matches ACTION_SPACE_SIZE', () => {
@@ -88,6 +88,37 @@ describe('ObsTensor channel semantics', () => {
   it('wave channel is 0 before first wave', () => {
     const obs = fromMatch(new Match(cfg('arcane')));
     expect(obs.globals[2]).toBe(0);
+  });
+
+  it('upcomingWaves summary (indices 7..24) is populated at match start', () => {
+    const obs = fromMatch(new Match(cfg('arcane')));
+    // At match start the first 3 waves are upcoming; at least one
+    // wave-feature index should be non-zero (waves have creep groups
+    // with at least one armor category).
+    let anyNonZero = false;
+    for (let i = 7; i < 25; i++) {
+      if (obs.globals[i] !== 0) { anyNonZero = true; break; }
+    }
+    expect(anyNonZero, 'expected at least one upcomingWaves feature populated at match start').toBe(true);
+
+    // Specifically, every per-wave block (6 floats each) should
+    // have either some armor count or is_boss or some hp_scale set
+    // — none should be all-zero at match start.
+    for (let w = 0; w < 3; w++) {
+      const base = 7 + w * 6;
+      let blockSum = 0;
+      for (let f = 0; f < 6; f++) blockSum += obs.globals[base + f];
+      expect(blockSum, `wave-block ${w} should not be all-zero at match start`).toBeGreaterThan(0);
+    }
+  });
+
+  it('upcomingWaves values stay in [0, 1] (normalization)', () => {
+    const obs = fromMatch(new Match(cfg('arcane')));
+    for (let i = 7; i < 25; i++) {
+      const v = obs.globals[i];
+      expect(v, `globals[${i}]`).toBeGreaterThanOrEqual(0);
+      expect(v, `globals[${i}]`).toBeLessThanOrEqual(1);
+    }
   });
 
   it('entry+exit channel (12) marks the plains spawn/leak cells', () => {
