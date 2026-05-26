@@ -2,6 +2,21 @@
 
 ## 2026-05-25
 
+### RL G2 — flat ActionSpace + ObsTensor for the PPO policy
+
+Second step toward self-play PPO training. The headless sim is now produceable as fixed-shape tensors a neural policy can consume, and `BotDecision`s are encoded as integer indices the policy can sample after a masked softmax.
+
+- **`src/systems/bots/learning/FactionVocab.ts`** (new). Per-faction cost-sorted tower slot mapping. Slot N = the N-th cheapest tower in this faction's pool — same sort order `Match.setup` already produces. `NUM_TOWER_SLOTS = 8` (max across Arcane/Mechanical/etc.); Arcane has 7 towers so its slot 7 is permanently masked off.
+- **`src/systems/bots/learning/ActionSpace.ts`** (new). Flat-indexed integer action space `[0, 9361)` covering `place(tower_slot, cell)` (7488 indices), `upgrade(cell)` (936), `sell(cell)` (936), `skip` (1). Per-faction tower vocab via the mask. `encodeAction`/`decodeAction` round-trip; `legalMask(ctx)` returns a `Uint8Array` matching what `Match.applyDecision` will actually accept (between-waves-only for `place`, both phases for `upgrade`/`sell`, skip always legal). Branch picks on `upgrade` are auto-default for Phase 1-2 — deferred encoding to Phase 2.5 if eval shows it matters.
+- **`src/systems/bots/learning/ObsTensor.ts`** (new). Game state → tensors. Grid: `Float32Array` shape `[14, 26, 36]` = 13,104 floats. Channels: 0..7 tower-by-slot occupancy; 8 path cell; 9 buildable-empty; 10 blocked unwalkable (+ out-of-grid padding); 11 NoBuild walkable; 12 entry/exit; 13 creep density. `Blocked` and `NoBuild` are distinct on purpose — they both refuse towers but `NoBuild` is walkable so creeps can cross, and collapsing them would hide path-planning signal. Globals: 7-vec (gold/lives/wave normalized, between-waves, sim-time, faction one-hot). Mask: forwarded from `ActionSpace.legalMask`.
+- **`Match.ts`** small additions. Exposed `observe()` (BotContext snapshot), `getCreeps()`, `getGrid()`, `getAllPaths()`, `getSimTimeMs()` so `ObsTensor` can read live state without going through the brain pipeline. All four methods are read-only views on existing private fields — no behavior change.
+- **Spec doc** at `notes/rl/action-and-observation-spec.md` (gitignored under `notes/`) — source of truth for the schema. `OBS_ACTION_SCHEMA_VERSION = "v1.0"`. Future schema bumps (opponent visibility for sabotage in G6, branch encoding) will trip a refusal in `PPOBrain` on stale ONNX loads.
+- **`ActionSpace.test.ts` + `ObsTensor.test.ts`** — 31 tests covering: action-space sizing, encode/decode round-trip for every legal index per faction, mask shape, skip always legal, mask non-empty across a full match smoke (200 steps), place-mask reflects candidate cells exactly, in-wave gating correct, observation shapes match spec, every grid/globals value finite and in [0,1], faction one-hot correct, terrain channels reflect grid state, entry/exit channel covers spawn/leak cells.
+
+Sized for PPO: 9361 actions × `Uint8Array` mask = under 10 KB per state. 13,104 grid floats = ~52 KB. Rollout JSONL row ≈ 65 KB pretty / 11 KB gzipped — acceptable for the `rollouts/{run_id}/*.jsonl` pipeline the trainer will consume.
+
+Tests: `tsc --noEmit` exit 0. `vitest run src/headless/ src/systems/bots/learning/` → 78 passed, 2 pre-existing skips.
+
 ### RL G1 — Match class + TwoSidedMatch harness
 
 First step toward self-play PPO training on the headless sim. Two pieces of plumbing land here, gated by tests and isolated from the live game.

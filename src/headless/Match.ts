@@ -200,6 +200,39 @@ export class Match {
     return this.result();
   }
 
+  /** Snapshot the BotContext for this Match's player. Same object
+   *  the brain sees during `step()`. Exposed for ActionSpace /
+   *  ObsTensor builders that need to inspect game state without
+   *  driving a decision. */
+  observe() {
+    return this.makeCtx();
+  }
+
+  /** Live creep list — exposed for ObsTensor's per-cell density
+   *  channel. Returns the actual array, not a snapshot; callers
+   *  must not mutate. */
+  getCreeps() {
+    return this.creepMgr.creeps;
+  }
+
+  /** Live grid reference — exposed for ObsTensor's terrain channels.
+   *  Returns the actual grid, not a snapshot; callers must not mutate. */
+  getGrid() {
+    return this.grid;
+  }
+
+  /** Active map definition — exposed for ObsTensor's path/entry/exit
+   *  channels (path cells are derived from `allPaths`). */
+  getAllPaths() {
+    return this.allPaths;
+  }
+
+  /** Current sim time in ms. Exposed so observation builders don't
+   *  have to allocate a full `result()` object just to read it. */
+  getSimTimeMs(): number {
+    return this.simTime;
+  }
+
   // ===========================================================
   //                          SETUP
   // ===========================================================
