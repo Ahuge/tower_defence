@@ -2,6 +2,26 @@
 
 ## 2026-05-26
 
+### RL BC Step 4 — PyTorch network + trainer + ONNX export (+ recorder bug fix)
+
+The supervised-learning half of BC lands. PyTorch conv-only policy trained on the rollouts; ONNX export round-trips into `PPOBrain`'s loader contract; held-out top-1 hits 77% on the 50-match smoke dataset (way above the PRD's 25% DoD threshold).
+
+- **`ml/networks/policy.py`** (new). `PPOPolicyNet`: 14ch grid + 25 globals broadcast → 3 stride-1 padded convs (32→64→64 channels) → per-cell 1×1 conv action head (10 channels: 8 place slots + upgrade + sell) + globally-pooled scalar trunk → skip-logit + value heads. **69,484 params** — well under the PRD's <500k target (PRD §6 P2-T3). Globals broadcast happens *inside* the model so the ONNX export captures the tile-and-concat op natively; on the Node side, `PPOBrain.decideAsync` will pass `grid` and `globals` as separate inputs (the earlier `buildModelInput` helper is now redundant for the real path).
+- **`ml/data/jsonl_dataset.py`** (new). `BCRolloutDataset` reads gzipped JSONL produced by the rollout generator, decodes base64 obs/mask, and exposes a PyTorch `Dataset`. **Holdout split is by `match_id`** (GAP-G from the BC plan re-eval) — correlated states from the same match never leak across train/val. `class_frequencies` helper builds the inverse-frequency weights for the trainer.
+- **`ml/train_bc.py`** (new). Masked cross-entropy with inverse-frequency class weights (D4 lock). AdamW + gradient clipping at 1.0. TensorBoard logging (`runs/bc-<ts>/`). Saves best-validation-top1 to `<out>.pt`, exports ONNX to `<out>.onnx` with input names `grid`/`globals` and output names `spatial_logits`/`skip_logit`/`value` (matching `PPOBrain.decideAsync`'s contract). Writes `<out>.meta.json` with schema version + training stats.
+- **Recorder bug fix** (`src/systems/bots/learning/ObsRecorderBrain.ts`). **Discovered during BC step 4 smoke**: 20.9% of recorded `(obs, action)` rows had actions that were masked off under their own mask. Root cause: in-wave brain decide is called every 30 ticks, and `Match.runOneIteration` accepts only `upgrade`/`sell` decisions during waves — but the inner brain (LearningBrain, BalancedBrain) often proposes `place` actions in-wave anyway, which Match silently ignores. The recorder was capturing those proposals as labels Match wouldn't actually accept, yielding NLL ≈ 1e9 on masked-target rows and training losses of ~4M (vs ~0.04 expected). Fix: filter rows in `ObsRecorderBrain.decide` where `obs.mask[action_index] === 0`. Counted via new `dropped.illegalUnderMask` field. After fix: 0/10210 illegal rows in smoke; train loss 0.04, val top-1 77.2%.
+- **`ml/requirements.txt`**: `torch>=2.4`, `tensorboard>=2.16`, `onnx>=1.17` added (plus `onnxscript` pulled by `torch.onnx.export`). Venv lives at `ml/.venv` (gitignored).
+- **`.gitignore`**: `/runs/`, `/models/bc-*`, `/models/ppo-*`, `/models/runs-*` added (per-run training artifacts). `models/brain-q-model.json` stays committed (canonical LearningBrain model).
+
+Smoke training (50 matches/faction × 10 epochs) hits:
+| metric | train | val |
+|---|---|---|
+| loss | 0.044 | 0.073 |
+| top-1 | 75% | **77.2%** |
+| top-5 | — | 94.6% |
+
+DoD targets (PRD §7 P2-T4) for top-1 are ≥25%. **Way past on smoke. The full 1000-matches/faction run is deferred to BC Step 5** where we also validate `PPOBrain(bc-best.onnx)` vs `RandomBrain` and `BalancedBrain` end-to-end via an async Match driver. The smoke ONNX (`models/bc-smoke.*`) is sitting locally for the round-trip check.
+
 ### RL BC Step 3+3.5 — rollout generator + distribution probe
 
 The BC training-data pipeline. `LearningBrain` (D2 locked at Step 0) wrapped with the new `ObsRecorderBrain`, run across N matches, dumps gzipped per-match JSONL with (`obs.grid`, `obs.globals`, `obs.mask`, `action_index`) per decision. Sibling of the existing `RecorderBrain` (which records 56-dim features for xgboost) but writes the v1.1 ObsTensor + flat ActionSpace surface that `PPOBrain` will consume.

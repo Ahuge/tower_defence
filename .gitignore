@@ -36,6 +36,7 @@ harness-runs/
 /brain-search/
 /ml/training-data/
 /ml/__pycache__/
+/ml/**/__pycache__/
 /ml/.venv/
 # /ml/captured/ is NOT ignored — those are committed human-played
 # JSONL files (hand-collected positive examples for hard cells).
@@ -44,3 +45,15 @@ harness-runs/
 # ml/training-data, these regenerate from a seed and aren't worth
 # committing.
 /rollouts/
+
+# TensorBoard / training run logs. Regenerated per-run.
+/runs/
+
+# Per-run model artifacts: BC + PPO checkpoints stamped with run
+# IDs (e.g. models/bc-smoke.*, models/bc-2026-05-26-*.onnx). The
+# canonical LearningBrain xgboost model (`brain-q-model.json`) IS
+# committed — anything else under models/ is regenerable training
+# output.
+/models/bc-*
+/models/ppo-*
+/models/runs-*

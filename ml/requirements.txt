@@ -1,2 +1,6 @@
 xgboost>=2.0.0
 numpy>=1.24
+# BC + PPO trainers (added 2026-05-26 for the neural policy pipeline)
+torch>=2.4
+tensorboard>=2.16
+onnx>=1.17

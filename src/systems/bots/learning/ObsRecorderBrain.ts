@@ -64,7 +64,7 @@ export class ObsRecorderBrain implements BotBrain {
   match: Match | null = null;
 
   readonly rows: ObsRecordRow[] = [];
-  readonly dropped = { send: 0, frontier: 0, frontierManage: 0 };
+  readonly dropped = { send: 0, frontier: 0, frontierManage: 0, illegalUnderMask: 0 };
   readonly matchId: string;
   private tick = 0;
 
@@ -103,13 +103,26 @@ export class ObsRecorderBrain implements BotBrain {
     }
 
     if (obs) {
-      this.rows.push({
-        matchId: this.matchId,
-        tick: this.tick,
-        faction: ctx.faction,
-        action: encodeAction(asd, ctx.faction),
-        obs,
-      });
+      const actionIdx = encodeAction(asd, ctx.faction);
+      // Filter: drop rows where the inner brain's proposal is
+      // illegal under our own legalMask. This happens most often
+      // in the in-wave brain-decide branch (every 30 ticks of
+      // sim time) where Match.runOneIteration only accepts
+      // `upgrade` and `sell` decisions but BalancedBrain /
+      // LearningBrain may still propose `place`. Match silently
+      // ignores those, and so should the recorder — otherwise we'd
+      // train the policy on labels Match wouldn't actually accept.
+      if (obs.mask[actionIdx] === 0) {
+        this.dropped.illegalUnderMask++;
+      } else {
+        this.rows.push({
+          matchId: this.matchId,
+          tick: this.tick,
+          faction: ctx.faction,
+          action: actionIdx,
+          obs,
+        });
+      }
     }
     return decision;
   }

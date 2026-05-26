@@ -104,7 +104,7 @@ let totalDropped = 0;
 for (const faction of opts.factions) {
   const factionDir = join(opts.out, faction);
   mkdirSync(factionDir, { recursive: true });
-  manifest.factions[faction] = { matches: 0, decisions: 0, dropped: { send: 0, frontier: 0, frontierManage: 0 } };
+  manifest.factions[faction] = { matches: 0, decisions: 0, dropped: { send: 0, frontier: 0, frontierManage: 0, illegalUnderMask: 0 } };
 
   for (let i = 0; i < opts.matches; i++) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
@@ -147,8 +147,9 @@ for (const faction of opts.factions) {
     manifest.factions[faction].dropped.send += recorder.dropped.send;
     manifest.factions[faction].dropped.frontier += recorder.dropped.frontier;
     manifest.factions[faction].dropped.frontierManage += recorder.dropped.frontierManage;
+    manifest.factions[faction].dropped.illegalUnderMask += recorder.dropped.illegalUnderMask;
     totalRows += recorder.rows.length;
-    totalDropped += recorder.dropped.send + recorder.dropped.frontier + recorder.dropped.frontierManage;
+    totalDropped += recorder.dropped.send + recorder.dropped.frontier + recorder.dropped.frontierManage + recorder.dropped.illegalUnderMask;
 
     if ((i + 1) % 10 === 0 || i === opts.matches - 1) {
       const dt = (Date.now() - t0) / 1000;
