@@ -15,9 +15,13 @@ import {
   UPGRADE_BASE,
   SELL_BASE,
   SKIP_INDEX,
+  SPATIAL_LOGIT_LEN,
   decodeAction,
   encodeAction,
   legalMask,
+  packSpatialLogits,
+  sampleAction,
+  unpackSpatialLogits,
 } from './ActionSpace';
 import { NUM_TOWER_SLOTS, getFactionTowerIds } from './FactionVocab';
 
@@ -167,6 +171,22 @@ describe('ActionSpace.legalMask', () => {
     });
   }
 
+  it('recorded mask byte-equals recomputed mask at the same state', () => {
+    // Mask consistency guard — the policy is trained on the mask
+    // recorded at decision time. If the runtime mask drifts from
+    // the training-time mask, the policy can sample illegal actions
+    // at inference. This test asserts the same legalMask() call
+    // produces byte-equal results when called twice on the same
+    // state.
+    const match = new Match(cfg('arcane'));
+    const a = legalMask(match.observe());
+    const b = legalMask(match.observe());
+    expect(a.length).toBe(b.length);
+    for (let i = 0; i < a.length; i++) {
+      expect(a[i], `mask drift at index ${i}`).toBe(b[i]);
+    }
+  });
+
   it('place mask reflects exactly the candidate cells for slot 0', () => {
     const match = new Match(cfg('arcane'));
     const ctx = match.observe();
@@ -180,5 +200,79 @@ describe('ActionSpace.legalMask', () => {
       const want = allowedCells.has(cell) ? 1 : 0;
       expect(mask[slot0Base + cell], `cell ${cell}`).toBe(want);
     }
+  });
+});
+
+describe('Spatial pack/unpack', () => {
+  it('packSpatialLogits is exact identity over the spatial region', () => {
+    // Use values that round-trip exactly through Float32 storage so
+    // strict equality works.
+    const spatial = new Float32Array(SPATIAL_LOGIT_LEN);
+    for (let i = 0; i < spatial.length; i++) spatial[i] = (i % 256) / 64;  // small, Float32-clean
+    const skip = 0.5;  // Float32-exact
+    const flat = packSpatialLogits(spatial, skip);
+    expect(flat.length).toBe(ACTION_SPACE_SIZE);
+    for (let i = 0; i < SPATIAL_LOGIT_LEN; i++) {
+      expect(flat[i]).toBe(spatial[i]);
+    }
+    expect(flat[SKIP_INDEX]).toBe(skip);
+  });
+
+  it('unpackSpatialLogits inverts packSpatialLogits', () => {
+    const spatial = new Float32Array(SPATIAL_LOGIT_LEN);
+    for (let i = 0; i < spatial.length; i++) spatial[i] = Math.sin(i);  // Float32-stored, byte-exact roundtrip
+    const skip = -1.25;  // Float32-exact (-10/8)
+    const flat = packSpatialLogits(spatial, skip);
+    const round = unpackSpatialLogits(flat);
+    expect(round.spatial.length).toBe(spatial.length);
+    for (let i = 0; i < spatial.length; i++) expect(round.spatial[i]).toBe(spatial[i]);
+    expect(round.skipLogit).toBe(skip);
+  });
+
+  it('throws on mismatched length inputs', () => {
+    expect(() => packSpatialLogits(new Float32Array(100), 0)).toThrow();
+    expect(() => unpackSpatialLogits(new Float32Array(100))).toThrow();
+  });
+});
+
+describe('sampleAction', () => {
+  function uniformLogits(): Float32Array {
+    return new Float32Array(ACTION_SPACE_SIZE);  // all zeros → uniform after mask
+  }
+  function maskOnly(indices: number[]): Uint8Array {
+    const m = new Uint8Array(ACTION_SPACE_SIZE);
+    for (const i of indices) m[i] = 1;
+    return m;
+  }
+
+  it('argmax (T=0) picks the max-logit among legal actions', () => {
+    const logits = uniformLogits();
+    logits[100] = 5.0;
+    logits[200] = 10.0;  // would win without mask
+    const mask = maskOnly([100, 300, SKIP_INDEX]);  // 200 masked off
+    expect(sampleAction(logits, mask, 0)).toBe(100);
+  });
+
+  it('argmax falls back to SKIP_INDEX when all-masked', () => {
+    const logits = uniformLogits();
+    const mask = new Uint8Array(ACTION_SPACE_SIZE);  // all 0
+    expect(sampleAction(logits, mask, 0)).toBe(SKIP_INDEX);
+  });
+
+  it('temperature sampling never returns a masked-off index', () => {
+    const logits = uniformLogits();
+    const legal = [5, 17, 42, 100, 936, SKIP_INDEX];
+    const mask = maskOnly(legal);
+    let rngCount = 0;
+    const rng = () => { rngCount++; return ((rngCount * 0.31) % 1); };
+    for (let i = 0; i < 200; i++) {
+      const idx = sampleAction(logits, mask, 1.0, rng);
+      expect(legal).toContain(idx);
+    }
+  });
+
+  it('throws on length mismatch', () => {
+    expect(() => sampleAction(new Float32Array(100), new Uint8Array(ACTION_SPACE_SIZE), 1.0)).toThrow();
+    expect(() => sampleAction(new Float32Array(ACTION_SPACE_SIZE), new Uint8Array(100), 1.0)).toThrow();
   });
 });

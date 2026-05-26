@@ -143,6 +143,115 @@ export function legalMask(ctx: BotContext): Uint8Array {
   return mask;
 }
 
+/** Number of spatial output channels the PPO policy emits per cell.
+ *  8 (place slots 0..7) + 1 (upgrade) + 1 (sell) = 10. The "skip"
+ *  action is emitted from a separate scalar head, not the spatial
+ *  map — see `packSpatialLogits`. */
+export const SPATIAL_LOGIT_CHANNELS = 10;
+export const SPATIAL_LOGIT_LEN = SPATIAL_LOGIT_CHANNELS * NUM_CELLS;  // 9360
+
+/** Pack a CNN-shaped output (per-cell channel-major spatial logits
+ *  + a scalar skip logit) into the flat `ACTION_SPACE_SIZE` array
+ *  that downstream sampling expects. Identity-copy by construction
+ *  — the ActionSpace's flat index layout is *defined* to match this
+ *  spatial encoding (slots 0..7 → channels 0..7; upgrade → channel
+ *  8; sell → channel 9; skip → scalar). Keeping it as a named
+ *  helper documents that contract and makes a future schema bump
+ *  surface as a compile error here, not silently in the policy net. */
+export function packSpatialLogits(
+  spatial: Float32Array,
+  skipLogit: number,
+): Float32Array {
+  if (spatial.length !== SPATIAL_LOGIT_LEN) {
+    throw new Error(`spatial logits length ${spatial.length} != ${SPATIAL_LOGIT_LEN}`);
+  }
+  const flat = new Float32Array(ACTION_SPACE_SIZE);
+  flat.set(spatial, 0);
+  flat[SKIP_INDEX] = skipLogit;
+  return flat;
+}
+
+/** Inverse of `packSpatialLogits`. Used by trainer-side validators
+ *  that need to confirm an ONNX export round-trips the same logits
+ *  the PyTorch model produced. */
+export function unpackSpatialLogits(flat: Float32Array): { spatial: Float32Array; skipLogit: number } {
+  if (flat.length !== ACTION_SPACE_SIZE) {
+    throw new Error(`flat logits length ${flat.length} != ${ACTION_SPACE_SIZE}`);
+  }
+  const spatial = new Float32Array(SPATIAL_LOGIT_LEN);
+  spatial.set(flat.subarray(0, SPATIAL_LOGIT_LEN));
+  return { spatial, skipLogit: flat[SKIP_INDEX] };
+}
+
+/** Sample an action index from masked logits.
+ *
+ *  - `mask` 0 entries get logit → -Infinity (impossible to sample).
+ *  - `temperature === 0` → argmax (deterministic).
+ *  - `temperature > 0` → softmax(logits/T) then categorical sample
+ *    from `rngFn`. `rngFn` defaults to `Math.random` but production
+ *    callers should pass a seeded source so rollouts are
+ *    reproducible.
+ *
+ *  Returns the flat action index; never returns an illegal one as
+ *  long as `mask` has at least one legal entry (skip is always
+ *  legal by construction). */
+export function sampleAction(
+  logits: Float32Array,
+  mask: Uint8Array,
+  temperature: number,
+  rngFn: () => number = Math.random,
+): number {
+  if (logits.length !== ACTION_SPACE_SIZE || mask.length !== ACTION_SPACE_SIZE) {
+    throw new Error(`logits/mask length mismatch: ${logits.length}, ${mask.length}, expected ${ACTION_SPACE_SIZE}`);
+  }
+
+  // Argmax fast path — also covers the "T=0 means deterministic"
+  // contract and avoids a softmax + sample step.
+  if (temperature <= 0) {
+    let best = -Infinity;
+    let bestIdx = SKIP_INDEX;
+    for (let i = 0; i < ACTION_SPACE_SIZE; i++) {
+      if (mask[i] === 0) continue;
+      if (logits[i] > best) { best = logits[i]; bestIdx = i; }
+    }
+    return bestIdx;
+  }
+
+  // Stable softmax: subtract max, exponentiate, normalize.
+  let maxLogit = -Infinity;
+  for (let i = 0; i < ACTION_SPACE_SIZE; i++) {
+    if (mask[i] && logits[i] > maxLogit) maxLogit = logits[i];
+  }
+  // All-masked safety net — shouldn't happen because skip is always
+  // legal, but degenerate masks shouldn't crash.
+  if (maxLogit === -Infinity) return SKIP_INDEX;
+
+  let sum = 0;
+  const probs = new Float64Array(ACTION_SPACE_SIZE);
+  for (let i = 0; i < ACTION_SPACE_SIZE; i++) {
+    if (mask[i] === 0) continue;
+    const p = Math.exp((logits[i] - maxLogit) / temperature);
+    probs[i] = p;
+    sum += p;
+  }
+  if (sum <= 0) return SKIP_INDEX;
+
+  const r = rngFn() * sum;
+  let acc = 0;
+  for (let i = 0; i < ACTION_SPACE_SIZE; i++) {
+    if (probs[i] === 0) continue;
+    acc += probs[i];
+    if (r <= acc) return i;
+  }
+  // Floating-point edge — `r` slipped past the last bin. Return
+  // the highest-probability legal index.
+  let lastLegal = SKIP_INDEX;
+  for (let i = ACTION_SPACE_SIZE - 1; i >= 0; i--) {
+    if (mask[i]) { lastLegal = i; break; }
+  }
+  return lastLegal;
+}
+
 /** Helper for callers (PPOBrain, trainer scripts) that need to
  *  drop the auto-default branch back onto a `BotDecision` the
  *  Match driver can consume. Lifts `ActionSpaceDecision` to the

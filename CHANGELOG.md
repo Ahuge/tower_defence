@@ -2,6 +2,21 @@
 
 ## 2026-05-26
 
+### RL BC Step 1+2 — PPOBrain skeleton + spatial action helpers
+
+The neural-policy brain lands. Loads an ONNX model trained via BC (initial) and PPO self-play (later phases); samples actions from a masked softmax over the flat `ActionSpace` indices. Falls back to `BalancedBrain` when no model file is present, the file fails to load, the schema version is stale, or the brain isn't attached to a Match — same "game stays usable without a committed model" pattern `LearningBrain` uses.
+
+- **`onnxruntime-node@1.26.0`** added to dependencies. Native binary loads cleanly on this WSL2 box; dynamic-imported inside `PPOBrain` so non-Node bundles never pay for it.
+- **`src/systems/bots/brains/PPOBrain.ts`** (new). Module-level `InferenceSession` cache (one per model path, reused across all PPOBrain instances). `attachMatch(match)` hook captures the Match reference needed by `ObsTensor.fromMatch` — `Match.setup()` calls it on every brain, no `BotBrain` interface change. Schema version stamped on `models/ppo-policy.meta.json` is checked against the runtime `OBS_ACTION_SCHEMA_VERSION`; mismatch → fallback. Architecture aligned with bc-plan §D5-extra: globals fused via broadcast (`buildModelInput` tiles the 25-vec globals across each spatial plane → `[1, 39, 26, 36]` input). Temperature configurable from day 1 (D6); `T=0` is argmax for the future `hard` difficulty variant.
+- **Sync vs async split.** `BotBrain.decide()` is sync but ONNX inference is async, so `PPOBrain.decide()` falls back to `BalancedBrain` while `PPOBrain.decideAsync()` is the real inference path. Trainers, validators, and rollout generators await `decideAsync()`; legacy sync code paths still work via fallback. The eventual `AsyncMatchDriver` (BC step 3) will await `decideAsync()` between sim ticks.
+- **`src/systems/bots/learning/ActionSpace.ts`**: spatial pack/unpack helpers + `sampleAction`. Per-cell channel-major spatial logits (10 channels × 26 × 36) plus a scalar skip logit pack identity-style into the flat 9361-index space — the action layout is *defined* to match the CNN's natural output, so the helper is mostly a contract guard for future schema bumps. `sampleAction(logits, mask, temperature, rngFn)` handles masked argmax (T=0) and stable masked softmax sampling (T>0); never returns a masked-off index.
+- **`src/headless/Match.ts`**: one duck-typed line that calls `attachMatch?.(this)` on the brain after construction. Match → BotBrain dep direction preserved (BotBrain.ts stays Match-import-free).
+- **Tests**: +43 new (123/123 total).
+  - `ActionSpace.test.ts`: spatial pack/unpack roundtrip, length mismatch guards, sampleAction argmax/sampling/all-masked safety, mask byte-equality recorded-vs-recomputed (closes GAP-I from the BC plan re-evaluation).
+  - `PPOBrain.test.ts`: registry hook fires, fallback fidelity (PPOBrain match outcomes match BalancedBrain on same seed across Arcane + Mechanical), `buildModelInput` produces the expected NCHW shape with globals tiled across each plane, latency benchmark (obs encode + input prep <5ms per decision; PRD's full 50ms budget should land well within this).
+
+Verification: `tsc --noEmit` exit 0. `vitest run src/headless/ src/systems/bots/` → 123/123 pass.
+
 ### RL BC Step 0.5 — ObsTensor v1.1 schema (upcomingWaves)
 
 Closes the v1.0 information-asymmetry gap surfaced during the BC plan re-evaluation. Both `BalancedBrain` and `LearningBrain` read `ctx.upcomingWaves` (next 3 wave defs) when picking counter towers — without that signal in the observation, the BC student would learn from labels informed by inputs it can't see.

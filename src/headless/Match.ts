@@ -301,6 +301,13 @@ export class Match {
       if (!brainFactory) throw new Error(`unknown brain: ${this.config.brainId}`);
       this.brain = brainFactory();
     }
+    // Duck-typed Match-attach hook. Brains that need full live state
+    // (PPOBrain for ObsTensor, future obs-recording brains) implement
+    // `attachMatch(this)`. Keeps the canonical BotBrain interface free
+    // of a Match-shaped circular dep — Match imports BotBrain, not the
+    // other way around.
+    const attachable = this.brain as { attachMatch?: (m: Match) => void };
+    attachable.attachMatch?.(this);
 
     this.towerPool = factionDef.towerIds.map(id => getTowerType(id)).sort((a, b) => a.cost - b.cost);
     this.candidateCells = buildCandidateCells(this.grid);
