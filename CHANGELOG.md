@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-05-25
+
+### RL G1 — Match class + TwoSidedMatch harness
+
+First step toward self-play PPO training on the headless sim. Two pieces of plumbing land here, gated by tests and isolated from the live game.
+
+- **`Match` class** (`src/headless/Match.ts`, new). The old `runMatchInner` async function was a ~340-line closure — fine for one-shot batch runs but blocked any external tick-by-tick driver (RL rollouts, sabotage event injection, mid-match snapshots). Refactored into a class with `step()` / `isDone()` / `result()` / `runToEnd()`. `HeadlessMatch.runMatch` is now a 30-line shim that delegates to `new Match(cfg).runToEnd()`. All existing callers (`Batch`, `brain-search-worker`, the determinism snapshot test) work unchanged.
+- **RNG save/restore in `src/systems/Rng.ts`** (3 LOC, additive). Added `getRngState()` / `setRngState(s)`. The module-level mulberry32 singleton is shared process-wide, so two `Match` instances running in the same process would otherwise stomp each other's PRNG. Each Match holds an `rngState` field and wraps both its constructor body and every `step()` in save/restore — singleton looks identical to outside callers when no Match is active, scoped to whichever Match is currently executing otherwise. Avoids the wider blast radius of threading instance-Rng through dozens of trait/frontier callers; the singleton's behavior is byte-identical for live game callers (`seedRng` / `rng` unchanged).
+- **`TwoSidedMatch`** (`src/headless/TwoSidedMatch.ts`, new). Drives two `Match` instances in interleaved lockstep on a shared seed. G1 scope is no-sabotage / no cross-communication — both sides defend the same mirrored wave list independently. The lockstep shape is on purpose so G6 (Phase 2.5 sabotage) only needs to add an event queue between sides, not a new driver.
+- **`TwoSidedConfig` + `TwoSidedResult` types** in `src/headless/types.ts`.
+- **`src/headless/two-sided.test.ts`** (new). 41 tests, all green: 10 seeds × {arcane, mechanical} × {same-brain → both sides identical, rerun → both sides identical both calls} = 40, +1 diff-brain divergence sanity. Bonus over the original plan — `simTimeMs` is in the digest, tightening the invariant: same-process two-sided is fully deterministic at the tick level, even though the pre-existing single-process snapshot test still excludes `simTimeMs` for rerun-across-processes drift.
+
+Live game is unaffected — `grep -rn "from.*headless" src/scenes/ src/systems/multiplayer/ src/main.ts` returns empty, so the refactor has zero static dependency from any path the player exercises.
+
+PRD context, codebase audit, G1 plan, and ELO history scaffold live under `notes/rl/` (gitignored as personal planning notes).
+
 ## 2026-05-18 (continued)
 
 ### Iron Cascade (Mech) narrative-gameplay buildout

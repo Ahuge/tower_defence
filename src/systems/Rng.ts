@@ -24,6 +24,22 @@ export function seedRng(seed: number): void {
   state = seed >>> 0;
 }
 
+/** Read the current PRNG state. Used by the Match class to capture
+ *  this instance's RNG progress at the end of a step() so the next
+ *  invocation can resume exactly where it left off — letting two
+ *  Matches share the singleton without stomping each other. */
+export function getRngState(): number {
+  return state;
+}
+
+/** Restore a previously-captured PRNG state. Mirror of
+ *  `getRngState`. Match calls this at the start of step() to swap
+ *  in its own state, and again at the end to restore whatever was
+ *  active before. */
+export function setRngState(s: number): void {
+  state = s >>> 0;
+}
+
 /** Draw the next value in [0, 1). Drop-in replacement for
  *  `Math.random()` — same return contract so call sites just
  *  swap the identifier. */

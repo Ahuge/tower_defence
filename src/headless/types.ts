@@ -34,6 +34,41 @@ export interface MatchConfig {
   maxWaves?: number;
 }
 
+/** Config for a two-sided headless match — two `Match` instances
+ *  step in lockstep on the same shared seed. Used for self-play
+ *  RL training: both sides defend the same mirrored wave list
+ *  independently; the only differences across sides are the brains
+ *  driving them and (in Phase 2.5+) any sabotage events injected
+ *  between sides mid-match.
+ *
+ *  G1 scope is no-sabotage: A and B run as fully independent
+ *  defends on a shared seed. With identical brains the result
+ *  must be bit-identical across sides; with different brains the
+ *  divergence reflects only the brain's decisions, not any RNG
+ *  drift.
+ */
+export interface TwoSidedConfig {
+  faction: FactionId;
+  difficulty: DifficultyLevel;
+  mapId: MapId;
+  matchMode: 'standard';
+  waveCount: number;
+  /** Shared across both sides — same wave RNG, same trait rolls. */
+  seed: number;
+  brainIdA: string;
+  brainIdB: string;
+  stepMs?: number;
+  maxSimMs?: number;
+  maxWaves?: number;
+}
+
+export interface TwoSidedResult {
+  config: TwoSidedConfig;
+  sideA: MatchResult;
+  sideB: MatchResult;
+  wallTimeMs: number;
+}
+
 /** Per-match telemetry the aggregator consumes. Everything here is
  *  JSON-serialisable so results can be written line-by-line to
  *  `results.jsonl` and read back without custom deserialisers. */
