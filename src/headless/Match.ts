@@ -200,6 +200,37 @@ export class Match {
     return this.result();
   }
 
+  /** Async equivalent of `step()` that awaits the brain's
+   *  `decideAsync` if it exists, else falls back to sync `decide`.
+   *  Used by validators / rollout generators that drive PPOBrain
+   *  (whose real inference path is async, because onnxruntime-node
+   *  returns a Promise from `session.run`).
+   *
+   *  The sync `step()` path stays the canonical one — determinism
+   *  tests, two-sided lockstep, batch runner — because BotBrain's
+   *  contract is sync. `stepAsync` is the opt-in escape hatch. */
+  async stepAsync(): Promise<void> {
+    if (this.finished) return;
+    const prev = getRngState();
+    setRngState(this.rngState);
+    try {
+      await this.runOneIterationAsync();
+    } catch (err) {
+      this.error = err as Error;
+      this.outcome = 'error';
+      this.finished = true;
+    } finally {
+      this.rngState = getRngState();
+      setRngState(prev);
+    }
+  }
+
+  /** Async equivalent of `runToEnd()`. */
+  async runToEndAsync(): Promise<MatchResult> {
+    while (!this.finished) await this.stepAsync();
+    return this.result();
+  }
+
   /** Snapshot the BotContext for this Match's player. Same object
    *  the brain sees during `step()`. Exposed for ActionSpace /
    *  ObsTensor builders that need to inspect game state without
@@ -317,6 +348,75 @@ export class Match {
   // ===========================================================
   //                       PER-ITERATION
   // ===========================================================
+
+  /** Dispatch brain.decide to its async variant if defined.
+   *  PPOBrain exposes `decideAsync` for ONNX inference; everything
+   *  else falls through to the sync `decide`. */
+  private async brainDecideAsync(ctx: BotContext) {
+    const ab = this.brain as { decideAsync?: (ctx: BotContext) => Promise<BotDecision> };
+    if (ab.decideAsync) return ab.decideAsync(ctx);
+    return this.brain.decide(ctx);
+  }
+
+  /** Async mirror of `runOneIteration`. Body MUST stay structurally
+   *  identical to its sync sibling — only the two `brain.decide`
+   *  call sites swap to `await this.brainDecideAsync`. If you change
+   *  one, change the other or the determinism snapshot test will
+   *  drift between the two paths. */
+  private async runOneIterationAsync(): Promise<void> {
+    if (this.simTime >= this.maxSimMs || this.currentWave > this.maxWaves) {
+      this.finished = true;
+      return;
+    }
+
+    while (this.waveMgr.betweenWaves) {
+      const decision = await this.brainDecideAsync(this.makeCtx());
+      if (decision.kind === 'skip') break;
+      const applied = this.applyDecision(decision);
+      if (!applied) break;
+      this.brainTicksSinceProgress = 0;
+    }
+
+    if (!this.waveMgr.hasMoreWaves() && this.creepMgr.creeps.length === 0) {
+      this.outcome = 'win';
+      this.finished = true;
+      return;
+    }
+    if (this.waveMgr.betweenWaves) {
+      const started = this.waveMgr.startWave(this.allPaths);
+      if (!started) {
+        this.recalcPaths();
+        this.currentPath = this.allPaths.find(p => p !== null) ?? null;
+        if (!this.currentPath) {
+          this.outcome = 'error';
+          this.finished = true;
+          return;
+        }
+      }
+    }
+
+    this.scene.tick(this.stepMs);
+    this.towerMgr.updateTowers(this.simTime, this.stepMs, this.creepMgr.creeps, this.creepMgr.justDiedCreeps);
+    this.towerMgr.cleanupExpired();
+    const leak = this.creepMgr.update(this.stepMs);
+    this.lives -= leak.totalLeakDamage;
+    if (this.lives <= 0) {
+      this.outcome = 'loss';
+      this.finished = true;
+      return;
+    }
+    this.waveMgr.updateSpawning(this.stepMs, this.allPaths, this.currentPath, this.creepMgr.creeps);
+    this.waveMgr.checkWaveComplete(this.creepMgr.creeps.length, this.stepMs);
+    this.simTime += this.stepMs;
+    this.brainTicksSinceProgress++;
+
+    if (this.brainTicksSinceProgress % 30 === 0) {
+      const decision = await this.brainDecideAsync(this.makeCtx());
+      if (decision.kind === 'upgrade' || decision.kind === 'sell') {
+        this.applyDecision(decision);
+      }
+    }
+  }
 
   private runOneIteration(): void {
     // Loop guard — was the outer while condition in runMatchInner.

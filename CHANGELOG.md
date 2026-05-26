@@ -2,6 +2,33 @@
 
 ## 2026-05-26
 
+### RL BC Step 5 — end-to-end validation; DoD passed on smoke
+
+BC student loads via PPOBrain, drives a real Match through async inference, and clears the PRD's BC Definition of Done on Arcane and Mechanical — even on the 50-match-per-faction smoke dataset.
+
+- **`src/headless/Match.ts`**: adds `stepAsync()` / `runToEndAsync()` + private `brainDecideAsync(ctx)` helper + `runOneIterationAsync()` (structural mirror of `runOneIteration` with `await` at the two `brain.decide` sites). Existing sync `step()` / `runToEnd()` unchanged — determinism snapshot test, two-sided harness, batch runner stay sync. `stepAsync` is the opt-in escape hatch when the brain (PPOBrain) needs awaitable ONNX inference. Comment on `runOneIterationAsync` flags that the two flavors MUST stay in sync structurally.
+- **`src/systems/bots/brains/PPOBrain.ts`**: fixed `decideAsync` to pass `grid` and `globals` as separate ONNX inputs (matches the Python network's two-input signature). Previous draft concatenated them and called the input `"spatial"` — that contract was from before the model owned the broadcast internally.
+- **`scripts/validate-bc.mjs`** (new). Loads the BC ONNX, runs PPOBrain through `runToEndAsync` across N matches × 2 factions × {ppo, random→dumb, balanced}. Reports per-cell win rate, avg wave reached, avg lives remaining. Includes the PRD DoD check (BC win rate ≥85% absolute vs Random baseline; ≥30% absolute vs Balanced baseline) and appends per-row results to `notes/rl/elo-history.csv`.
+
+**N=50 results on `models/bc-smoke.onnx`** (trained on 50 matches/faction × 10 epochs from BC Step 4):
+
+| brain | faction | win rate | avg wave | avg lives |
+|---|---|---|---|---|
+| **ppo** (bc-smoke) | **arcane** | **100%** | 10.0 | 19.8 |
+| **ppo** (bc-smoke) | **mechanical** | **90%** | 9.7 | 11.7 |
+| random (→ dumb) | arcane | 0% | 3.7 | 0 |
+| random (→ dumb) | mechanical | 0% | 3.9 | 0 |
+| balanced | arcane | 40% | 7.3 | 2.2 |
+| balanced | mechanical | 88% | 9.5 | 8.3 |
+
+DoD check (PRD §7 P2-T4): **PASS on both factions, both thresholds.**
+
+Worth surfacing: **PPO matches LearningBrain on Arcane (both 100%) and beats it on Mechanical (90% vs Learning's 76% from BC Step 0).** Likely the conv net's spatial generalization helps on novel states beyond the xgboost teacher's training distribution. Could also be Mechanical seed variance — the 76% Step 0 number used a different seed-base. Either way, the BC student is at least as strong as its teacher on this map+difficulty.
+
+Caveat: this is the SMOKE dataset (50 matches/faction). The bc-plan's full first run is 1000/faction. Smoke already clears DoD, so the full run is now a "headroom verification" rather than a "did the pipeline work" question.
+
+Validation throughput on CPU: ~1.45 matches/s through PPOBrain (vs ~5.5/s without ONNX in the rollout gen). 300 matches = 207s wall. Sub-1ms ONNX inference per decision × ~150 decisions per match.
+
 ### RL BC Step 4 — PyTorch network + trainer + ONNX export (+ recorder bug fix)
 
 The supervised-learning half of BC lands. PyTorch conv-only policy trained on the rollouts; ONNX export round-trips into `PPOBrain`'s loader contract; held-out top-1 hits 77% on the 50-match smoke dataset (way above the PRD's 25% DoD threshold).

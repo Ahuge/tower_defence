@@ -273,15 +273,18 @@ export class PPOBrain implements BotBrain {
     }
 
     const obs = obsFromMatch(this.match);
-    const input = buildModelInput(obs.grid, obs.globals);
 
-    // Build input tensor. We dynamic-import ort here so this method
-    // is a no-op when no model is loaded.
+    // Two-input ONNX contract — the Python network broadcasts the
+    // 25-vec globals into channels internally, so we pass them
+    // separately. Older drafts of PPOBrain concatenated on the JS
+    // side (buildModelInput); that helper is now legacy.
     const ort = await import('onnxruntime-node');
-    const inputTensor = new ort.Tensor('float32', input, [1, OBS_CHANNELS + OBS_GLOBALS, GRID_ROWS, GRID_COLS]);
+    const gridTensor = new ort.Tensor('float32', obs.grid, [1, OBS_CHANNELS, GRID_ROWS, GRID_COLS]);
+    const globalsTensor = new ort.Tensor('float32', obs.globals, [1, OBS_GLOBALS]);
 
-    const results = await this.session.run({ spatial: inputTensor as unknown as Parameters<typeof this.session.run>[0]['spatial'] });
-    // Output schema: spatial_logits [1, 10, 26, 36], skip_logit [1, 1].
+    const feeds = { grid: gridTensor, globals: globalsTensor } as unknown as Record<string, unknown>;
+    const results = await this.session.run(feeds);
+    // Output schema: spatial_logits [1, 10, 26, 36], skip_logit [1, 1], value [1, 1].
     const spatialOut = results.spatial_logits?.data;
     const skipOut = results.skip_logit?.data;
     if (!spatialOut || !skipOut) {
