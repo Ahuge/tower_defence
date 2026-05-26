@@ -51,6 +51,7 @@ function parseArgs() {
     meta: 'models/bc-smoke.meta.json',
     matches: 50,
     waves: 10,
+    difficulty: 'normal',
     seedBase: 9000,
     factions: ['arcane', 'mechanical'],
     temperature: 1.0,
@@ -62,6 +63,7 @@ function parseArgs() {
     else if (a.startsWith('--meta=')) out.meta = a.slice('--meta='.length);
     else if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
     else if (a.startsWith('--waves=')) out.waves = parseInt(a.slice('--waves='.length), 10);
+    else if (a.startsWith('--difficulty=')) out.difficulty = a.slice('--difficulty='.length);
     else if (a.startsWith('--seed-base=')) out.seedBase = parseInt(a.slice('--seed-base='.length), 10);
     else if (a.startsWith('--factions=')) out.factions = a.slice('--factions='.length).split(',');
     else if (a.startsWith('--temperature=')) out.temperature = parseFloat(a.slice('--temperature='.length));
@@ -93,7 +95,7 @@ if (!session) {
 async function runMatchWithBrain(brainKind, faction, seed) {
   const cfg = {
     faction,
-    difficulty: 'normal',
+    difficulty: opts.difficulty,
     mapId: 'plains',
     brainId: brainKind === 'ppo' ? 'ppo' : brainKind,
     matchMode: 'standard',
@@ -187,7 +189,7 @@ for (const brainKind of brainOrder) {
   for (const faction of opts.factions) {
     const s = stats[brainKind][faction];
     const snapshotPath = brainKind === 'ppo' ? opts.model : `brain:${brainKind}`;
-    rows.push(`${dateIso},BC-step5,${snapshotPath},${faction},solo-defense-${opts.waves}wave,${s.total},${s.wins},${(s.wins / s.total).toFixed(4)},,${opts.label}`);
+    rows.push(`${dateIso},${opts.label},${snapshotPath},${faction},solo-defense-${opts.difficulty}-${opts.waves}wave,${s.total},${s.wins},${(s.wins / s.total).toFixed(4)},,${opts.label}`);
   }
 }
 if (existsSync(opts.csv)) {

@@ -264,12 +264,34 @@ export class PPOBrain implements BotBrain {
    *  back so dropping PPOBrain into legacy code paths doesn't
    *  hard-fail; it just under-performs. */
   async decideAsync(ctx: BotContext): Promise<BotDecision> {
+    const stats = await this.decideAsyncWithStats(ctx);
+    return stats.decision;
+  }
+
+  /** Same as `decideAsync` but also returns the action's flat
+   *  index, log-probability under the current policy, and the
+   *  value-head prediction for the state. PPO rollout recording
+   *  needs all three to compute the policy-gradient ratio and
+   *  GAE advantages later.
+   *
+   *  When the session isn't loaded (fallback path), `actionIdx` is
+   *  set to `SKIP_INDEX` and `logProb`/`value` to 0. The trainer
+   *  must filter fallback rows before training — see
+   *  PPORecorderBrain. */
+  async decideAsyncWithStats(ctx: BotContext): Promise<{
+    decision: BotDecision;
+    actionIdx: number;
+    logProb: number;
+    value: number;
+    fellBack: boolean;
+  }> {
     if (!this.session) {
       const cached = SESSION_CACHE.get(this.modelPath);
       if (cached !== undefined) this.session = cached;
     }
     if (!this.match || !this.session) {
-      return this.fallback?.decide(ctx) ?? { kind: 'skip' };
+      const fallbackDecision = this.fallback?.decide(ctx) ?? { kind: 'skip' };
+      return { decision: fallbackDecision, actionIdx: -1, logProb: 0, value: 0, fellBack: true };
     }
 
     const obs = obsFromMatch(this.match);
@@ -284,18 +306,72 @@ export class PPOBrain implements BotBrain {
 
     const feeds = { grid: gridTensor, globals: globalsTensor } as unknown as Record<string, unknown>;
     const results = await this.session.run(feeds);
-    // Output schema: spatial_logits [1, 10, 26, 36], skip_logit [1, 1], value [1, 1].
     const spatialOut = results.spatial_logits?.data;
     const skipOut = results.skip_logit?.data;
+    const valueOut = results.value?.data;
     if (!spatialOut || !skipOut) {
-      return this.fallback?.decide(ctx) ?? { kind: 'skip' };
+      const fallbackDecision = this.fallback?.decide(ctx) ?? { kind: 'skip' };
+      return { decision: fallbackDecision, actionIdx: -1, logProb: 0, value: 0, fellBack: true };
     }
 
     const flatLogits = packSpatialLogits(spatialOut as Float32Array, (skipOut as Float32Array)[0]);
     const actionIdx = sampleAction(flatLogits, obs.mask, this.temperature, this.rngFn);
+    const logProb = maskedLogProb(flatLogits, obs.mask, actionIdx, this.temperature);
+    const valueScalar = valueOut ? (valueOut as Float32Array)[0] : 0;
+
     const decoded: ActionSpaceDecision = decodeAction(actionIdx, ctx.faction);
-    return toBotDecision(decoded);
+    return {
+      decision: toBotDecision(decoded),
+      actionIdx,
+      logProb,
+      value: valueScalar,
+      fellBack: false,
+    };
   }
+}
+
+/** Compute log p(action | obs) under the masked softmax distribution
+ *  that `sampleAction` samples from. Used by PPORecorderBrain to
+ *  capture the on-policy log-prob for PPO's importance-ratio
+ *  numerator at training time.
+ *
+ *  Matches the temperature + mask convention in sampleAction: legal
+ *  logits are divided by T (when T>0) then softmaxed; illegal
+ *  logits never contribute to the partition. T=0 is the argmax case
+ *  (deterministic) — log_prob is 0 if action is the argmax legal
+ *  one, else -Infinity. */
+function maskedLogProb(logits: Float32Array, mask: Uint8Array, actionIdx: number, temperature: number): number {
+  if (actionIdx < 0 || actionIdx >= logits.length) return 0;
+  if (mask[actionIdx] === 0) return -Infinity;
+
+  if (temperature <= 0) {
+    // Argmax case — log p is 0 if actionIdx is the argmax legal,
+    // -inf otherwise.
+    let best = -Infinity;
+    let bestIdx = -1;
+    for (let i = 0; i < logits.length; i++) {
+      if (mask[i] === 0) continue;
+      if (logits[i] > best) { best = logits[i]; bestIdx = i; }
+    }
+    return bestIdx === actionIdx ? 0 : -Infinity;
+  }
+
+  // Standard log_softmax over masked logits, divided by T.
+  let maxScaled = -Infinity;
+  for (let i = 0; i < logits.length; i++) {
+    if (mask[i] === 0) continue;
+    const s = logits[i] / temperature;
+    if (s > maxScaled) maxScaled = s;
+  }
+  if (maxScaled === -Infinity) return 0;
+
+  let sumExp = 0;
+  for (let i = 0; i < logits.length; i++) {
+    if (mask[i] === 0) continue;
+    sumExp += Math.exp(logits[i] / temperature - maxScaled);
+  }
+  const actionScaled = logits[actionIdx] / temperature - maxScaled;
+  return actionScaled - Math.log(sumExp);
 }
 
 registerBrain('ppo', () => new PPOBrain());
