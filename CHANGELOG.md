@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-05-26
+
+### RL BC Step 0 — clone-source decision gate
+
+Before starting Behavior Cloning we needed to confirm which brain to clone. The PRD's Phase 1 risk #1 says "if BalancedBrain is too weak a baseline, rebase off PR #68 (MazingBrain)." Re-evaluation of the BC plan flagged that this gate was supposed to fire at end-of-Phase-1 and hadn't.
+
+- **`scripts/eval-clone-source.mjs`** (new). Runs 100 single-side matches per cell on Arcane + Mechanical at normal/plains/10-waves, for `BalancedBrain` and `LearningBrain` (the xgboost ensemble over 11 sub-brains). Uses the existing `expandMatrix` + `runBatch` + `aggregate` infrastructure from `Batch.ts`. Total 400 matches in ~22s wall.
+
+**Outcome:**
+
+| Faction | BalancedBrain | LearningBrain | Δ |
+|---|---|---|---|
+| Arcane | 53% | **100%** | +47% |
+| Mechanical | **84%** | 76% | -8% |
+| Mean | | | +19.5% |
+
+LearningBrain hugely stronger on Arcane (it clears all 5 wins out of every 5 attempts), slightly weaker on Mechanical. The mean Δ of +19.5% cleared the script's hard `>15%` rebase threshold, but the underlying picture isn't "Balanced is too weak across the board" — it's "LearningBrain has very different per-faction competence." The right call isn't to rebase onto MazingBrain; it's to clone LearningBrain instead of BalancedBrain. PR #68 stays in pocket as a fallback if BC vs LearningBrain still misses DoD.
+
+D2 lands as `LearningBrain`. Known risk: Mechanical asymmetry. Mitigation will be to weight rollout generation toward Mechanical (e.g. 60/40 Mech/Arcane) so the BC policy sees more of LearningBrain's Mechanical decisions.
+
 ## 2026-05-25
 
 ### RL G2 — flat ActionSpace + ObsTensor for the PPO policy
