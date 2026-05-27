@@ -1,6 +1,47 @@
 # Changelog
 
-## 2026-05-26
+## 2026-05-27
+
+### RL long-match finding — standard mode has a wave-25 difficulty cliff
+
+User asked to try longer matches (30-50 rounds). Tested the existing multi-brain BC (trained on normal/10w) across a wave-count sweep and uncovered a sharp game-balance cliff that bounds what BC and PPO can do.
+
+**Existing multi-brain BC (trained on normal/10w) at varying validation lengths:**
+
+| Validation matchup | Arcane wins/20 | Mechanical wins/20 | avg wave |
+|---|---|---|---|
+| normal/10w | 95% | 100% | 10 |
+| normal/15w | **100%** | 95% | 15 |
+| normal/20w | **90%** | 15% | 19.9 |
+| normal/25w | **0%** | 0% | 21.1 |
+| normal/30w | 0% (running) | 0% (running) | — |
+| hard/15w | 15% | 5% | 13.7 |
+| hard/20w | 0% | 0% | 13.7 |
+| hard/25w | 0% | 0% | 13.8 |
+
+Two cliffs visible:
+1. **normal mode: wave 22-25** — Arcane plays through ~21 waves then collapses regardless of waveCount.
+2. **hard mode: wave 13-15** — Arcane plays through ~14 waves then collapses regardless of waveCount.
+
+**Root cause is game design, not BC.** Independently, single-seed spot-checks of the source brains themselves:
+
+- `LearningBrain` at normal/30w arcane: loss wave 21
+- `BalancedBrain` at normal/20w arcane: loss wave 17
+- All four source brains at normal/30w mech: loss by wave 11-15
+- All four source brains at hard/30w: loss by wave 4-15
+
+**None of the existing brains can play through 22+ waves on normal or 15+ waves on hard.** The wave generator scales creep HP/speed/count per-wave faster than these brains can keep up. The user's "30-50 round" goal isn't tractable via current source brains.
+
+**Attempted fix that didn't help:** trained a fresh multi-brain BC on normal/30w data (`models/bc-multi-w30-ec_0_0.pt`, top-1 92.9%, entropy 0.18). Wins **0%** at normal/30w validation, even though training accuracy was high — the source brains' labels past wave 20 are "what to do while losing," and BC dutifully clones losing play. More training data at a difficulty no brain can win at doesn't help.
+
+**Paths forward (next session, not in this commit):**
+
+1. **PPO at hard/20w from the existing multi-brain BC.** Sweet spot of "BC has 15% Arcane wins at hard/15w" + "20 waves is past the standard cliff." PPO has real headroom to learn beyond BC.
+2. **Endless mode.** `getWavesForMode('endless', N)` uses a flatter difficulty ramp by design — explicitly intended for long matches. Worth trying.
+3. **Modify the wave generator** to cap difficulty growth past wave 20 (game-balance change; out of RL scope per PRD §10).
+4. **Train PPO MUCH longer** (100+ iters) from a competent BC starting point. PPO learning rate × iterations should eventually extend the policy's competence past BC's ceiling.
+
+For now: the trained `bc-multi-w30-ec_0_0` artifact stays local (gitignored). Not promoting to a committed model; the 30-wave training data didn't pay off.
 
 ### RL BC-broaden — unblocked PPO stability via multi-brain training data
 
