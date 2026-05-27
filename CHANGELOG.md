@@ -2,6 +2,20 @@
 
 ## 2026-05-26
 
+### RL match renderer — node-canvas → webm for visual policy inspection
+
+After scoping the Puppeteer + live-game route at 5-7hr (GameScene archaeology, sub-tick determinism gap, onnxruntime-web bundling), switched to a pure-CLI node-canvas renderer that gets the same job done in under 2hr. Coarse visuals (colored squares + dots) but accurate — every tower placement, creep path, wave tick, and HUD value comes straight from the same `Match` class headless training uses.
+
+- **`src/headless/MatchRenderer.ts`** (new). Pure renderer. Takes a Canvas 2D context (works with node-canvas or browser canvas) and a live `Match`; draws background, grid cells (path/blocked/NoBuild/entry/exit color-coded), faint path overlay, towers (faction-primary color with slot number), creeps (armor-type color dot with HP bar above), HUD strip (faction/gold/lives/wave/state/sim-time). `CANVAS_W=1008`, `CANVAS_H=784` (game area + 56px HUD).
+- **`scripts/record-render.mjs`** (new). Spawns a Match with chosen `(brain, faction, difficulty, waves, seed)`, runs to completion via `step()` or `stepAsync()` depending on brain, captures every Nth sim step (default 4 → ~7.8 fps real-time, 4x speedup at 30 fps output) to PNG, pipes the sequence through `ffmpeg -c:v libvpx-vp9 -crf 30` → webm. Auto-cleans the temp PNG dir unless `--keep-frames`.
+
+Visual verification artifacts produced for the G3 smoke claims (all gitignored, regenerable from `(brain, seed)`):
+- `media/balanced-arcane-hard15-s14000.webm` (205 KB, 22s) — Balanced loses early; matches the 0% win rate from validation
+- `media/ppo-arcane-hard15-s14000.webm` (577 KB, 58s) — PPO holds longer; loses at wave 12
+- `media/ppo-arcane-hard15-s434000.webm` (560 KB, 55s) — PPO at the validation's first seed
+
+The policy visibly places slot-0 (cheapest Arcane Bolt) along the path, holds against early waves, and either survives or breaks late as the difficulty curves up. Matches what the 70%-win-rate validation numbers would predict — no shenanigans.
+
 ### RL trace recorder — first step toward visual match playback
 
 User asked for a way to see PPO actually play so they can sanity-check the validation numbers visually. This is the first piece of that pipeline: a deterministic action-trace recorder. Live-game replay + Puppeteer canvas capture follow in a later commit (scope is bigger than I initially estimated — see open thread in `notes/rl/`).
