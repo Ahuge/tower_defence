@@ -65,6 +65,7 @@ function parseArgs() {
     temperature: 0.0,
     frameEvery: 4,
     fps: 30,
+    mode: 'standard',
     out: null,
     keepFrames: false,
   };
@@ -80,6 +81,7 @@ function parseArgs() {
     else if (a.startsWith('--temperature=')) out.temperature = parseFloat(a.slice('--temperature='.length));
     else if (a.startsWith('--frame-every=')) out.frameEvery = parseInt(a.slice('--frame-every='.length), 10);
     else if (a.startsWith('--fps=')) out.fps = parseInt(a.slice('--fps='.length), 10);
+    else if (a.startsWith('--mode=')) out.mode = a.slice('--mode='.length);
     else if (a.startsWith('--out=')) out.out = a.slice('--out='.length);
     else if (a === '--keep-frames') out.keepFrames = true;
   }
@@ -127,7 +129,7 @@ const cfg = {
   difficulty: opts.difficulty,
   mapId: opts.mapId,
   brainId: opts.brain,
-  matchMode: 'standard',
+  matchMode: opts.mode,
   waveCount: opts.waves,
   seed: opts.seed,
 };

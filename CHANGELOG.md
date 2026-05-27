@@ -2,6 +2,56 @@
 
 ## 2026-05-27
 
+### RL path 1 — PPO at normal/standard_long/30w: 30-wave match WON after 10 iters
+
+After the `standard_long` mode landed, ran path 1 of yesterday's long-match plan: train PPO from a fresh multi-brain BC trained at normal/standard_long/30w to see if RL extends the policy past the BC ceiling.
+
+**Setup:**
+
+1. **Re-generated BC training data at standard_long/30w.** Multi-brain (learning + balanced + greedy + rush) × 50 matches × 2 factions × normal difficulty / 30 waves / standard_long mode. 78,378 rows total (vs 35k at standard/10w, 67k at standard/30w).
+2. **Trained BC** (`models/bc-multi-stdlong-w30.pt`): top-1=89.6%, entropy=0.21, 373 distinct classes.
+3. **PPO 10 iters** at normal/standard_long/30w, matches-per-iter=8/faction, mazePerCell=0.001, lr=3e-4, warm-started from the BC above.
+
+**Per-iter PPO stats (10 iters, ~22min wall total, ~130s/iter):**
+
+| iter | transitions | r_mean | KL | entropy |
+|---|---|---|---|---|
+| 1 | 6553 | +0.0047 | 0.060 | 0.328 |
+| 2 | 6142 | +0.0026 | 0.032 | 0.605 |
+| 3 | 5490 | +0.0021 | 0.031 | 0.721 |
+| 4 | 6273 | +0.0024 | 0.024 | 0.640 |
+| 5 | 6158 | +0.0025 | 0.024 | 0.675 |
+| 6 | 5724 | +0.0022 | 0.026 | 0.623 |
+| 7 | 6548 | +0.0024 | 0.025 | 0.687 |
+| 8 | 5623 | +0.0016 | 0.028 | 0.544 |
+| 9 | 5780 | +0.0015 | 0.024 | 0.379 |
+
+KL stable inside <0.1 throughout. Multi-brain BC + maze reward 0.001 + lr=3e-4 = stable PPO at long horizons.
+
+**Validation at standard_long/30w (N=20, seed-base=20000):**
+
+| temperature | brain | Arcane | Mechanical |
+|---|---|---|---|
+| 1.0 | BC (starting point) | **50%** | 10% |
+| 1.0 | PPO (10 iters) | 0% | 0% |
+| **0.3** | **PPO (10 iters)** | **80%** | 0% |
+| 1.0 | Balanced | 20% | 5% |
+| 1.0 | Random | 0% | 0% |
+
+**Big finding: PPO's policy broadened (entropy 0.21 → ~0.6) during training. At T=1.0 the broader sampling samples bad actions; at T=0.3 the underlying improved policy is reliably picked.** Stronger than BC (50% → 80%) at the same matchup, with the full 30-round horizon achieved (visible in `media/ppo-stdlong-w30-10iter-T03-s620000.webm` — win wave 30 with 18/20 lives).
+
+**Connects to two earlier findings:**
+- The "argmax strictly worse than sampling on BC" finding applies to BC's narrow policy. After PPO broadens the policy, the inverse holds: argmax-ish temperature is much *better* than full sampling.
+- The G5 difficulty-variant design (per `bc-plan.md`) had `hard=T=0.7, medium=T=1.2, easy=T=2.0`. **On a PPO-trained policy that mapping is roughly right.** On a raw BC policy it was inverted. G5 should pick the right mapping based on which checkpoint is in play.
+
+**Mechanical still 0%.** Same wall as the wave-11 issue from earlier today. PPO didn't improve Mech in 10 iters; either needs different reward shape for Mech specifically, or more iters, or just isn't solvable with current sources.
+
+**Reward design observation:** during training, `r_mean` was always positive (+0.0015 to +0.0047) even though most matches were losing — because per-wave-clear (+0.1) × ~15 waves > loss penalty (−1). At long-match training the wave-clear bonus dominates. Future PPO runs should consider either bigger outcome reward (±5) or smaller wave bonus (+0.02) so losses are properly penalized.
+
+**`scripts/record-render.mjs`** also got the `--mode` arg in this commit.
+
+Snapshot at `models/ppo-stdlong-w30-10iter.{pt,onnx,meta.json}` (gitignored; regenerable from seed).
+
 ### RL `standard_long` match mode — capped-difficulty variant for long-match training
 
 User picked path 2 of the long-match options: modify the wave generator to flatten the difficulty past wave 20 so RL training can run across the 30-50 wave horizon they originally wanted. Implemented as a NEW match mode (`standard_long`) rather than mutating canonical `standard`, so live-game players keep their existing difficulty curve and PRD §10's "don't change game design" stays satisfied for non-RL paths.
