@@ -2,6 +2,50 @@
 
 ## 2026-05-27
 
+### RL path 1 continuation — 50-iter PPO Arcane-only: SOLVED at T=0 (100% win, 0 lives lost)
+
+Continued PPO training from the 10-iter checkpoint, Arcane only this time (Mech still 0% so we focused effort), 40 more iters at standard_long/30w / matches-per-iter=8 / lr=3e-4. Per-iter ~75s, total ~50min wall.
+
+**Training stayed stable through all 50 iters**:
+- KL bounded (0.005-0.060 throughout — never approached the 0.1 health threshold)
+- entropy grew 0.21 (BC) → 0.4 (10-iter) → 1.2 (50-iter); policy keeps broadening
+- r_mean stayed positive throughout
+
+**Validation at standard_long/30w (Arcane only, N=20, seed-base=20000):**
+
+| temperature | 50-iter PPO win% | avg wave | avg lives lost |
+|---|---|---|---|
+| **0.0** (argmax) | **100%** | **30.0** | **0** ← perfect |
+| 0.1 | 100% | 30.0 | 2.9 |
+| 0.2 | 60% | 26.1 | 9.9 |
+| 0.3 | 75% | 28.6 | 9.9 |
+| 0.5 | 85% | 28.6 | 7.2 |
+| 1.0 | 0% (extrapolated from earlier; broader policy = more sampling noise) |
+
+**T=0 argmax wins 20/20 with no lives lost on any of the 20 30-wave matches.** Arcane standard_long/30w is solved.
+
+**Headline trajectory (Arcane, standard_long/30w, win rate):**
+
+| checkpoint | best T | win rate |
+|---|---|---|
+| Random | — | 0% |
+| Balanced | 1.0 | 20% |
+| BC (multi-brain stdlong-w30) starting point | 1.0 | **50%** |
+| **PPO 10-iter** | 0.3 | **80%** |
+| **PPO 50-iter** | **0.0** | **100%** |
+
+PPO closed the entire gap from 50% to 100% wins in 50 iters (~70 min total wall time including the original 10-iter run). At every iter the OPTIMAL inference temperature drops — because the policy's distribution broadens during training so the argmax becomes the right pick.
+
+**Visual:** `media/ppo-stdlong-50iter-T01-arcane.webm` — win wave 30 with 19/20 lives.
+
+**Connects (and resolves) the earlier "argmax strictly worse than sampling" finding.** That finding was correct *for the narrow BC policy*. For PPO-broadened policies the inverse holds: argmax is the *best* inference setting. The G5 difficulty mapping (`bc-plan.md` D6: `hard=0.7, medium=1.2, easy=2.0`) is exactly backwards for a competent PPO policy. The right mapping is `hard=0.0, medium=0.3, easy=1.0+`. Updated thinking for G5 in the next plan iteration.
+
+**Mech: still 0%** at standard_long/30w. Arcane-only PPO didn't touch it. Same wall as the wave-11 issue. Future session.
+
+**Reward observation revisited:** Earlier I worried that `+0.1 per wave clear` was dominating `±1 outcome` and creating wrong incentives. The 50-iter result shows the agent eventually figured out that *fully winning* (clearing all 30 waves + +1 outcome) > *partially winning* (clearing 20 waves + -1 outcome). PPO found the global optimum despite the dense reward shaping. Worth bookkeeping but not urgent to rebalance.
+
+Snapshots at `models/ppo-stdlong-w30-{10,50}iter.{pt,onnx,meta.json}` (gitignored). `models/ppo-policy.onnx` is the current best (= 50-iter).
+
 ### RL path 1 — PPO at normal/standard_long/30w: 30-wave match WON after 10 iters
 
 After the `standard_long` mode landed, ran path 1 of yesterday's long-match plan: train PPO from a fresh multi-brain BC trained at normal/standard_long/30w to see if RL extends the policy past the BC ceiling.
