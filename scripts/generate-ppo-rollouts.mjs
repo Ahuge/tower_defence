@@ -56,6 +56,7 @@ function parseArgs() {
     factions: ['arcane', 'mechanical'],
     difficulty: 'hard',
     waves: 15,
+    mode: 'standard',
     seedBase: 12000,
     temperature: 1.0,
     model: 'models/ppo-policy.onnx',
@@ -67,6 +68,7 @@ function parseArgs() {
     else if (a.startsWith('--factions=')) out.factions = a.slice('--factions='.length).split(',');
     else if (a.startsWith('--difficulty=')) out.difficulty = a.slice('--difficulty='.length);
     else if (a.startsWith('--waves=')) out.waves = parseInt(a.slice('--waves='.length), 10);
+    else if (a.startsWith('--mode=')) out.mode = a.slice('--mode='.length);
     else if (a.startsWith('--seed-base=')) out.seedBase = parseInt(a.slice('--seed-base='.length), 10);
     else if (a.startsWith('--temperature=')) out.temperature = parseFloat(a.slice('--temperature='.length));
     else if (a.startsWith('--model=')) out.model = a.slice('--model='.length);
@@ -143,7 +145,7 @@ for (const faction of opts.factions) {
       difficulty: opts.difficulty,
       mapId: 'plains',
       brainId: 'ppo',  // unused because brainOverride wins
-      matchMode: 'standard',
+      matchMode: opts.mode,
       waveCount: opts.waves,
       seed,
     }, recorder);

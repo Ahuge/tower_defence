@@ -60,6 +60,8 @@ function parseArgs() {
     innerBrain: 'learning',
     seedBase: 5000,
     waveCount: 10,
+    mode: 'standard',
+    difficulty: 'normal',
     out: null,
   };
   for (const a of args) {
@@ -69,6 +71,8 @@ function parseArgs() {
     else if (a.startsWith('--seed-base=')) out.seedBase = parseInt(a.slice('--seed-base='.length), 10);
     else if (a.startsWith('--out=')) out.out = a.slice('--out='.length);
     else if (a.startsWith('--waves=')) out.waveCount = parseInt(a.slice('--waves='.length), 10);
+    else if (a.startsWith('--mode=')) out.mode = a.slice('--mode='.length);
+    else if (a.startsWith('--difficulty=')) out.difficulty = a.slice('--difficulty='.length);
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -108,16 +112,16 @@ for (const faction of opts.factions) {
 
   for (let i = 0; i < opts.matches; i++) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
-    const matchId = `${faction}-s${seed}-w${opts.waveCount}`;
+    const matchId = `${faction}-s${seed}-${opts.mode}-${opts.difficulty}-w${opts.waveCount}`;
     const inner = innerFactory();
     const recorder = new ObsRecorderBrain(inner, matchId);
 
     const match = new Match({
       faction,
-      difficulty: 'normal',
+      difficulty: opts.difficulty,
       mapId: 'plains',
       brainId: opts.innerBrain,       // not used because brainOverride wins
-      matchMode: 'standard',
+      matchMode: opts.mode,
       waveCount: opts.waveCount,
       seed,
     }, recorder);

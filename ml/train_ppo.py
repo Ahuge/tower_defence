@@ -240,6 +240,7 @@ def generate_rollouts(opts: argparse.Namespace, iter_idx: int, model_path: str) 
         f'--factions={",".join(opts.factions)}',
         f'--difficulty={opts.difficulty}',
         f'--waves={opts.waves}',
+        f'--mode={opts.mode}',
         f'--seed-base={opts.seed_base + iter_idx * 9973}',
         f'--temperature={opts.temperature}',
         f'--model={model_path}',
@@ -272,6 +273,7 @@ def main():
     ap.add_argument('--factions', default='arcane,mechanical')
     ap.add_argument('--difficulty', default='hard')
     ap.add_argument('--waves', type=int, default=15)
+    ap.add_argument('--mode', default='standard', help='matchMode passed through to rollout gen + Match. Use "standard_long" for long-match training.')
     ap.add_argument('--seed-base', type=int, default=12000)
     ap.add_argument('--temperature', type=float, default=1.0)
     ap.add_argument('--gamma', type=float, default=0.995)
