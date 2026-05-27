@@ -13,7 +13,7 @@
 import type { CanvasRenderingContext2D as NodeCanvasContext } from 'canvas';
 import { Match } from './Match';
 import { CellType, Grid } from '../systems/Grid';
-import { GRID_COLS, GRID_ROWS, TILE_SIZE, STARTING_LIVES } from '../config';
+import { GRID_COLS, GRID_ROWS, TILE_SIZE, STARTING_LIVES, getGridOffsetX, getGridOffsetY } from '../config';
 import { FACTIONS, FactionId } from '../data/Factions';
 import { getFactionTowerIds } from '../systems/bots/learning/FactionVocab';
 
@@ -164,11 +164,20 @@ function drawTowers(ctx: Ctx, match: Match): void {
 }
 
 function drawCreeps(ctx: Ctx, match: Match): void {
+  // Creep positions are stored in WORLD pixel coords via `gridX(col)`
+  // / `gridY(row)`, which include `ResponsiveManager.gridOffsetX()`.
+  // In a headless context ResponsiveManager.init() never fires, so
+  // the mode defaults to 'desktop' and the offset is SIDEBAR_WIDTH
+  // (360 px). Path / tower / entry drawing above uses RAW col*TILE
+  // coords with no offset — subtract here to align creeps with the
+  // grid we just drew.
+  const offX = getGridOffsetX();
+  const offY = getGridOffsetY();
   const creeps = match.getCreeps();
   for (const c of creeps) {
     if (!c.alive) continue;
-    const cx = c.x;
-    const cy = c.y;
+    const cx = c.x - offX;
+    const cy = c.y - offY;
     if (!isFinite(cx) || !isFinite(cy)) continue;
 
     // Color by armor type (or flying). Creep has `creepType` field
