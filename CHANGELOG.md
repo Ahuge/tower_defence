@@ -2,6 +2,18 @@
 
 ## 2026-05-26
 
+### RL finding — PPOBrain argmax is strictly worse than sampling on BC-derived policies
+
+Visual regen surfaced an architectural observation worth recording. The first render batch ran with `temperature=0` (argmax) and all 4 PPO arcane matches lost identically at wave 12 / 0 lives. The G3 validation that produced the 70% Arcane / 35% Mechanical win rates ran with `temperature=1.0` (sampling). Re-rendering at T=1.0 showed PPO actually winning (2/3 in a small sample, consistent with the 70% headline).
+
+**Cause:** BC produced a hyper-narrow policy ("always slot 0" + skip; entropy ~0.18). At T=0 the policy locks into a deterministic strategy that hits a degenerate local optimum and loses the same way every match. Even small RNG perturbations (different match seeds → different state sequences) don't break it out of the locked-in pattern because the relative ordering of logits is preserved under argmax. Sampling forces exploration that opens up genuinely winning lines.
+
+**Connection to the G3 training finding:** the KL=1.45 spike on PPO iter 0 has the same root cause — BC's distribution is so narrow that any gradient perturbation produces huge KL because the softmax is near-degenerate.
+
+**Implications for G5 (difficulty variants):** the bc-plan's original mapping (`hard=T=0.7, medium=T=1.2, easy=T=2.0`) assumes lower temperature = stronger play, which is the standard assumption in RL. On *this* policy it inverts — T=0 is the WEAKEST option, T=1.0 is roughly the peak, T>1.0 starts degrading via random exploration. G5 design needs to either (a) wait until PPO training broadens the policy beyond BC's narrow seed, or (b) map difficulty to action-space restriction (no tier-3 towers for `easy`) rather than temperature.
+
+No code change beyond what shipped in the previous renderer-fix commit; this entry exists as a durable record so the finding survives.
+
 ### RL match renderer — node-canvas → webm for visual policy inspection
 
 After scoping the Puppeteer + live-game route at 5-7hr (GameScene archaeology, sub-tick determinism gap, onnxruntime-web bundling), switched to a pure-CLI node-canvas renderer that gets the same job done in under 2hr. Coarse visuals (colored squares + dots) but accurate — every tower placement, creep path, wave tick, and HUD value comes straight from the same `Match` class headless training uses.
