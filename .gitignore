@@ -49,6 +49,12 @@ harness-runs/
 # TensorBoard / training run logs. Regenerated per-run.
 /runs/
 
+# Captured match traces (JSON action sequences) + rendered media.
+# Each trace + .webm regenerates from a (brain, faction, seed,
+# difficulty, waves) tuple, so committing them adds noise.
+/traces/
+/media/
+
 # Per-run model artifacts: BC + PPO checkpoints stamped with run
 # IDs (e.g. models/bc-smoke.*, models/bc-2026-05-26-*.onnx). The
 # canonical LearningBrain xgboost model (`brain-q-model.json`) IS

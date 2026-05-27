@@ -2,6 +2,15 @@
 
 ## 2026-05-26
 
+### RL trace recorder — first step toward visual match playback
+
+User asked for a way to see PPO actually play so they can sanity-check the validation numbers visually. This is the first piece of that pipeline: a deterministic action-trace recorder. Live-game replay + Puppeteer canvas capture follow in a later commit (scope is bigger than I initially estimated — see open thread in `notes/rl/`).
+
+- **`scripts/record-trace.mjs`** (new). Runs a single headless match with any registered brain (incl. PPO via ONNX) at a chosen `(faction, difficulty, waves, seed)` and writes `traces/<id>.json`: the per-tick action sequence + outcome + buildHash + metadata. Uses `temperature=0` (argmax) by default so the trace is reproducible.
+- **`.gitignore`**: `/traces/` and `/media/` added (per-run artifacts).
+
+The trace file is what the live-game replay mode will consume — it's the bridge between "PPO ran headlessly and won" and "render this exact match in the browser." Recorder works regardless of which rendering path we pick (Puppeteer + live game, node-canvas headless renderer, or a separate replay page).
+
 ### RL G3 — PPO self-play loop running end-to-end (2-iter smoke)
 
 The PPO loop lands. Node rollout generator wraps PPOBrain with a recorder that captures (obs, action, log_prob, value, reward, done). Python orchestrator spawns the rollout subprocess, computes GAE, runs the PPO clipped objective, exports ONNX, loops.
