@@ -57,14 +57,26 @@ from networks.policy import (
 from data.jsonl_dataset import BCRolloutDataset, class_frequencies
 
 
-def masked_cross_entropy(logits: torch.Tensor, action: torch.Tensor, mask: torch.Tensor, class_weight: torch.Tensor | None = None) -> torch.Tensor:
+def masked_cross_entropy(
+    logits: torch.Tensor,
+    action: torch.Tensor,
+    mask: torch.Tensor,
+    class_weight: torch.Tensor | None = None,
+    ent_coef: float = 0.0,
+) -> tuple[torch.Tensor, dict]:
     """
     logits:       [N, A]   raw policy logits
     action:       [N]      target action index in [0, A)
     mask:         [N, A]   uint8/bool — 1=legal, 0=illegal
     class_weight: [A]      per-class weight (None for uniform)
+    ent_coef:     float    weight of the entropy bonus subtracted
+                           from the loss. 0 = pure imitation; 0.01+
+                           encourages broader output distributions
+                           (use to make PPO updates from the BC
+                           checkpoint less fragile — see
+                           `notes/rl/bc-broaden-plan.md`).
 
-    Returns scalar loss = mean weighted -log P(action | obs, mask).
+    Returns (scalar loss, stats dict with `ce_loss`, `entropy`).
     """
     # Mask: set illegal-action logits to a large negative so they
     # never contribute to the partition function. -1e9 is enough
@@ -78,8 +90,25 @@ def masked_cross_entropy(logits: torch.Tensor, action: torch.Tensor, mask: torch
     nll = -log_probs.gather(1, action.unsqueeze(1)).squeeze(1)  # [N]
     if class_weight is not None:
         w = class_weight[action]  # [N]
-        return (nll * w).mean()
-    return nll.mean()
+        ce_loss = (nll * w).mean()
+    else:
+        ce_loss = nll.mean()
+
+    # Entropy of the masked distribution. Illegal indices contribute
+    # 0 to the sum because exp(-1e9) ≈ 0 (so p_i * log p_i is
+    # negligible there; we explicitly zero them just for numeric
+    # cleanliness).
+    if ent_coef != 0.0:
+        probs = log_probs.exp()
+        # Multiply by mask so illegal slots can't contribute even
+        # under float32 underflow corner cases.
+        ent_per_row = -(probs * log_probs * mask_f).sum(dim=-1)  # [N]
+        entropy = ent_per_row.mean()
+    else:
+        entropy = torch.tensor(0.0, device=logits.device)
+
+    loss = ce_loss - ent_coef * entropy
+    return loss, {'ce_loss': ce_loss.item(), 'entropy': entropy.item()}
 
 
 def topk_correct(logits: torch.Tensor, action: torch.Tensor, mask: torch.Tensor, k: int) -> int:
@@ -109,10 +138,11 @@ def make_class_weights(train_counts: np.ndarray, n_train: int) -> torch.Tensor:
     return torch.from_numpy(w)
 
 
-def evaluate(model: PPOPolicyNet, loader: DataLoader, device: torch.device, class_weight: torch.Tensor | None) -> dict:
+def evaluate(model: PPOPolicyNet, loader: DataLoader, device: torch.device, class_weight: torch.Tensor | None, ent_coef: float = 0.0) -> dict:
     model.eval()
     total = 0
     loss_sum = 0.0
+    ent_sum = 0.0
     top1 = 0
     top5 = 0
     with torch.no_grad():
@@ -122,14 +152,18 @@ def evaluate(model: PPOPolicyNet, loader: DataLoader, device: torch.device, clas
             action = batch['action'].to(device)
             mask = batch['mask'].to(device)
             logits = model.flat_logits(grid, globals_vec)
-            loss = masked_cross_entropy(logits, action, mask, class_weight)
+            # Always compute entropy for monitoring even if ent_coef=0 — the
+            # bc-broaden gate cares about absolute entropy of the policy.
+            loss, stats = masked_cross_entropy(logits, action, mask, class_weight, ent_coef=max(ent_coef, 1e-30))
             n = action.shape[0]
             total += n
             loss_sum += loss.item() * n
+            ent_sum += stats['entropy'] * n
             top1 += topk_correct(logits, action, mask, 1)
             top5 += topk_correct(logits, action, mask, 5)
     return {
         'loss': loss_sum / max(1, total),
+        'entropy': ent_sum / max(1, total),
         'top1': top1 / max(1, total),
         'top5': top5 / max(1, total),
         'n': total,
@@ -175,6 +209,7 @@ def main():
     ap.add_argument('--schema-version', default='v1.1')
     ap.add_argument('--log-dir', default='runs/bc')
     ap.add_argument('--smoke', action='store_true', help='1-epoch smoke run for pipeline validation')
+    ap.add_argument('--ent-coef', type=float, default=0.0, help='entropy regularization coefficient. 0 = pure imitation. 0.01+ broadens the policy distribution so PPO updates from this BC are less fragile. See notes/rl/bc-broaden-plan.md.')
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -231,7 +266,7 @@ def main():
             mask = batch['mask'].to(device)
 
             logits = model.flat_logits(grid, globals_vec)
-            loss = masked_cross_entropy(logits, action, mask, cw)
+            loss, train_stats = masked_cross_entropy(logits, action, mask, cw, ent_coef=args.ent_coef)
 
             opt.zero_grad()
             loss.backward()
@@ -244,19 +279,21 @@ def main():
             ep_top1 += topk_correct(logits, action, mask, 1)
             global_step += 1
             writer.add_scalar('train/loss_step', loss.item(), global_step)
+            writer.add_scalar('train/entropy_step', train_stats['entropy'], global_step)
 
         train_loss = ep_loss / max(1, ep_n)
         train_top1 = ep_top1 / max(1, ep_n)
-        val_stats = evaluate(model, val_loader, device, cw)
+        val_stats = evaluate(model, val_loader, device, cw, ent_coef=args.ent_coef)
 
         writer.add_scalar('train/loss_epoch', train_loss, epoch)
         writer.add_scalar('train/top1_epoch', train_top1, epoch)
+        writer.add_scalar('val/entropy', val_stats['entropy'], epoch)
         writer.add_scalar('val/loss', val_stats['loss'], epoch)
         writer.add_scalar('val/top1', val_stats['top1'], epoch)
         writer.add_scalar('val/top5', val_stats['top5'], epoch)
 
         dt = time.time() - t0
-        print(f'epoch {epoch:3d}  train: loss={train_loss:.4f} top1={train_top1*100:.1f}%  val: loss={val_stats["loss"]:.4f} top1={val_stats["top1"]*100:.1f}% top5={val_stats["top5"]*100:.1f}%  ({dt:.1f}s)')
+        print(f'epoch {epoch:3d}  train: loss={train_loss:.4f} top1={train_top1*100:.1f}%  val: loss={val_stats["loss"]:.4f} top1={val_stats["top1"]*100:.1f}% top5={val_stats["top5"]*100:.1f}% entropy={val_stats["entropy"]:.3f}  ({dt:.1f}s)')
 
         if val_stats['top1'] > best_top1:
             best_top1 = val_stats['top1']
@@ -269,6 +306,10 @@ def main():
     export_onnx(model, onnx_path, device)
     print(f'[train_bc] exported ONNX: {onnx_path}')
 
+    # Final entropy measurement on the best checkpoint — the
+    # bc-broaden gate cares about this absolute value to decide if
+    # the policy is broad enough for stable PPO.
+    final_val = evaluate(model, val_loader, device, cw, ent_coef=max(args.ent_coef, 1e-30))
     meta = {
         'schemaVersion': args.schema_version,
         'createdAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
@@ -277,6 +318,8 @@ def main():
         'valSize': len(val_ds),
         'distinctClasses': int(seen),
         'bestValTop1': best_top1,
+        'finalValEntropy': final_val['entropy'],
+        'entCoef': args.ent_coef,
         'epochs': n_epochs,
         'lr': args.lr,
         'batchSize': args.batch_size,

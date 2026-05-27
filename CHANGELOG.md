@@ -2,6 +2,52 @@
 
 ## 2026-05-26
 
+### RL BC-broaden — unblocked PPO stability via multi-brain training data
+
+The previous PPO collapse (maze reward → KL=1.78 → 0/8 wins at iter 1) was rooted in BC's near-degenerate policy (entropy ≈ 0.15). Fix: broaden BC's training distribution so PPO updates from this checkpoint don't blow up the softmax. Strategy from `notes/rl/bc-broaden-plan.md`: A (entropy regularization in BC loss) + C (multi-brain mixture training data).
+
+**Implementation:**
+
+- **`ml/train_bc.py`**: `--ent-coef` CLI arg + entropy term in `masked_cross_entropy`. Loss = CE_weighted − ent_coef × H(π) over the masked distribution. Default 0.0 (backward-compat). Validation reports per-epoch entropy; meta.json records `finalValEntropy` + `entCoef`.
+- **Multi-brain rollout generation:** ran `generate-bc-rollouts.mjs` four times for `{learning, balanced, greedy, rush}` at normal/10w, 50 matches each. Total 35,773 rows, all unioned via existing `BCRolloutDataset` (already accepted multiple `run_dirs`). No code change needed there.
+
+**ent_coef sweep results** (multi-brain union, 10 epochs):
+
+| ent_coef | val top-1 | val entropy |
+|---|---|---|
+| 0.0 | **89.2%** | 0.290 |
+| 0.01 | 81.3% | **2.548** |
+| 0.05 | 56.2% | 3.685 |
+| 0.2 | 67.1% | 3.929 |
+
+Two surprises: (1) multi-brain alone (ec=0.0) doubled BC's entropy (0.29 vs original single-brain 0.15) from multi-modal labels — no entropy reg needed to broaden. (2) ec=0.05 has worse top-1 than ec=0.2 — not monotone; intermediate regularization is the worst spot.
+
+**Validation at normal/10w (BC's training matchup):**
+
+| BC variant | Arcane | Mechanical | entropy |
+|---|---|---|---|
+| Original single-brain (bc-smoke) | 100% | 90% | 0.15 |
+| **Multi-brain ec=0.0** | **95%** | **100%** | **0.29** |
+| Multi-brain ec=0.01 | 0% | 0% | 2.55 |
+
+ec=0.01 over-regularized; the broad distribution sampled wrong actions enough to collapse competence. **ec=0.0 (multi-brain alone) is the winner**: keeps 95-100% win rate while doubling entropy.
+
+**PPO stability re-test from multi-brain ec=0.0 BC** (2 iters × 8 matches/faction, hard/15w, mazePerCell=0.001):
+
+| | Iter 0 | Iter 1 |
+|---|---|---|
+| Arcane wins/8 | 2 (25%) | **4 (50%)** ← +2 wins in one iter |
+| Mechanical wins/8 | 0 | 0 |
+| KL | **+0.012** | **+0.019** |
+| Entropy | 0.21 | 0.23 (growing) |
+| Maze reward (Arc) | 0.004 | **0.018** (growing 4.5×) |
+
+KL dropped from 1.45-1.78 (previous attempts) to **0.012-0.019** — well inside the healthy <0.1 PPO range. Arcane wins doubled in one iter, maze reward growing. PPO is stable AND learning.
+
+**Visual confirmation:** `media/ppo-broadened-arcane-s434000.webm` — PPO wins wave 15 with 10 lives remaining. Compare to pre-fix runs where even 2 PPO iters with maze reward 0.001 collapsed Arcane to wave-3 losses.
+
+**The result:** the three convergent findings from this morning (BC entropy too narrow, argmax worse than sampling, any reward term destabilizes PPO) had one root cause and one fix — multi-brain training data alone broadened entropy enough for PPO stability without sacrificing BC competence. Entropy regularization (the originally-proposed fix) actually *over-corrected* unless tuned carefully; multi-brain alone was sufficient.
+
 ### RL maze-shaping reward + finding: BC-derived policy too fragile for added reward signals
 
 Idea: reward PPO for placements that lengthen the creep path (mazing). The current win/loss + per-wave reward signals capture *whether* you win but not the spatial structure of *how*. Mazing is a structural strategy invisible to outcome reward at the difficulty PPO is learning at, and BC didn't capture it ("always slot 0 along the path" loses to harder difficulty even though it works at normal/10w). A path-length delta reward should give PPO a direct gradient for the kind of decisions BalancedBrain's `MazePlanner` (and PR #68's `MazingScorer`) score explicitly.
