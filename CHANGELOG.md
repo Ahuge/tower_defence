@@ -2,6 +2,35 @@
 
 ## 2026-05-26
 
+### RL maze-shaping reward + finding: BC-derived policy too fragile for added reward signals
+
+Idea: reward PPO for placements that lengthen the creep path (mazing). The current win/loss + per-wave reward signals capture *whether* you win but not the spatial structure of *how*. Mazing is a structural strategy invisible to outcome reward at the difficulty PPO is learning at, and BC didn't capture it ("always slot 0 along the path" loses to harder difficulty even though it works at normal/10w). A path-length delta reward should give PPO a direct gradient for the kind of decisions BalancedBrain's `MazePlanner` (and PR #68's `MazingScorer`) score explicitly.
+
+**Implementation:**
+
+- `src/systems/bots/learning/PPORecorderBrain.ts`: `RewardConfig.mazePerCell` added (default `0.001`, tunable; `0` disables). Between consecutive `decide()` calls, the recorder diffs `getAllPaths()` total length and attributes the delta × coefficient to the **previous** row's reward — the action that caused the path change. Finalize captures the trailing delta too, so the last placement gets credit. Tracked via `totalMazeReward` for manifest surfacing.
+- `scripts/generate-ppo-rollouts.mjs`: manifest now reports `totalMazeReward` per faction.
+
+**Smoke results: PPO collapsed at both coefficients tried.**
+
+| run | mazePerCell | LR | iter 0 KL | iter 0 Arc wins | iter 1 Arc wins | render |
+|---|---|---|---|---|---|---|
+| (G3 baseline, no maze) | 0 | 3e-4 | 1.45 | — | — | seed 434000: WIN wave 15 (BC), then drift |
+| maze-0.005 | 0.005 | 3e-4 | **1.78** | 7/8 (87%) | **0/8** | seed 434000: loss wave 3 |
+| maze-0.001 + lr=1e-4 | 0.001 | 1e-4 | 0.75 | (not captured) | — | seed 434000: loss wave 4 |
+
+**Lesson — same architectural finding from earlier in the day, sharper:** BC's policy is so narrow (entropy ~0.15) that *any* new gradient term (maze reward, larger LR, even sampling-vs-argmax) destabilizes the softmax distribution and PPO updates blow it up. The 0.005 coefficient amplified KL (1.78 > 1.45 baseline). The 0.001 + smaller LR run looked saner KL-wise (0.75) but still collapsed Arcane to wave-3 losses. **It's not about the maze coefficient. PPO+BC is fragile.**
+
+**What to do about it (next-session candidates, not in this commit):**
+
+1. **Broaden the BC starting policy first.** Train BC with explicit entropy regularization or label-smoothing so the initial distribution isn't so narrow. PPO then has room to absorb new reward terms.
+2. **PPO warm-up phase.** First N iters with reward = outcome-only (no maze, no per-wave). Once the policy entropy passes some threshold, add the auxiliary rewards.
+3. **Hard KL trust region.** Early-stop the PPO epoch if KL > 0.1. Current code only clips the ratio, not the KL.
+4. **Train PPO from random init instead of BC.** Loses the warm-start speedup but avoids the brittleness. Higher variance, more wall time.
+5. **Stronger BC training set.** 50 matches × 10 epochs (current smoke) is thin; 1000 matches × more epochs may produce a less degenerate policy.
+
+The maze-reward code is correct and stays in. Just unused at non-zero default until one of the above stabilizations lands. Default lowered from `0.005` → `0.001` so accidental use doesn't blow up.
+
 ### RL finding — PPOBrain argmax is strictly worse than sampling on BC-derived policies
 
 Visual regen surfaced an architectural observation worth recording. The first render batch ran with `temperature=0` (argmax) and all 4 PPO arcane matches lost identically at wave 12 / 0 lives. The G3 validation that produced the 70% Arcane / 35% Mechanical win rates ran with `temperature=1.0` (sampling). Re-rendering at T=1.0 showed PPO actually winning (2/3 in a small sample, consistent with the 70% headline).

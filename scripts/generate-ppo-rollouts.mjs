@@ -177,6 +177,10 @@ for (const faction of opts.factions) {
     for (const k of Object.keys(recorder.dropped)) {
       manifest.factions[faction].dropped[k] += recorder.dropped[k];
     }
+    if (manifest.factions[faction].totalMazeReward === undefined) {
+      manifest.factions[faction].totalMazeReward = 0;
+    }
+    manifest.factions[faction].totalMazeReward += recorder.totalMazeReward;
     totalRows += rows.length;
     totalDropped += Object.values(recorder.dropped).reduce((a, b) => a + b, 0);
 

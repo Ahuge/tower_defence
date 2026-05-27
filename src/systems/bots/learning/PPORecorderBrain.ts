@@ -42,6 +42,13 @@ export interface RewardConfig {
   perWaveBonus: number;
   winBonus: number;
   lossPenalty: number;
+  /** Per-cell reward for changes in total creep-path length. Positive
+   *  for placements that lengthen the maze; negative for sells that
+   *  shorten it. Attributed (one step late) to the action that
+   *  caused the change. Default `0.005`: a 50-cell maze extension
+   *  contributes ~0.25 reward, roughly one wave-clear's worth.
+   *  Set to 0 to disable maze shaping. */
+  mazePerCell: number;
 }
 
 export const DEFAULT_REWARD: RewardConfig = {
@@ -49,6 +56,12 @@ export const DEFAULT_REWARD: RewardConfig = {
   perWaveBonus: 0.1,
   winBonus: 1.0,
   lossPenalty: -1.0,
+  // 0.005 was tried first; 2-iter PPO from BC collapsed (Arcane
+  // 0/8 wins at iter 1 vs 7/8 at iter 0, KL=1.78 → catastrophic
+  // policy drift). Lowered to 0.001 — still gives signal (a
+  // 100-cell maze contributes 0.1 reward, one wave's worth) but
+  // small enough that gradient updates don't blow up.
+  mazePerCell: 0.001,
 };
 
 export class PPORecorderBrain implements BotBrain {
@@ -61,6 +74,10 @@ export class PPORecorderBrain implements BotBrain {
   readonly rows: PPORecordRow[] = [];
   readonly dropped = { fallback: 0, send: 0, frontier: 0, frontierManage: 0, illegalUnderMask: 0 };
   private lastWaveSeen = 0;
+  private lastPathLen = -1;  // -1 = uninitialized; set on first decide.
+  /** Sum of `mazePerCell * delta` rewards attributed across all
+   *  rows of this match. Surfaced for tuning + diagnostics. */
+  totalMazeReward = 0;
   private tick = 0;
 
   constructor(inner: PPOBrain, matchId: string, reward: RewardConfig = DEFAULT_REWARD) {
@@ -79,10 +96,40 @@ export class PPORecorderBrain implements BotBrain {
     this.inner.init?.(ctx);
   }
 
+  /** Total length (in cells) summed across all active creep paths.
+   *  Used to drive the maze-shaping term in the reward — placements
+   *  that force creeps to detour increase this number, which then
+   *  flows into the previous decision's reward via attribution. */
+  private computePathLength(): number {
+    if (!this.match) return 0;
+    const paths = this.match.getAllPaths();
+    let total = 0;
+    for (const p of paths) if (p) total += p.length;
+    return total;
+  }
+
   /** Async path used by `Match.stepAsync` when our caller drove the
    *  match via `runToEndAsync`. This is the real production path
    *  for PPO rollout gen. */
   async decideAsync(ctx: BotContext): Promise<BotDecision> {
+    // Maze-reward attribution: the path-length delta caused by the
+    // PREVIOUS decision becomes observable here, after Match has
+    // applied that decision and recomputed paths. Attribute it to
+    // the row we recorded last turn. First decide() has nothing to
+    // attribute (lastPathLen=-1), so skip then.
+    if (this.match && this.reward.mazePerCell !== 0) {
+      const newLen = this.computePathLength();
+      if (this.lastPathLen >= 0 && this.rows.length > 0) {
+        const delta = newLen - this.lastPathLen;
+        if (delta !== 0) {
+          const r = this.reward.mazePerCell * delta;
+          this.rows[this.rows.length - 1].reward += r;
+          this.totalMazeReward += r;
+        }
+      }
+      this.lastPathLen = newLen;
+    }
+
     this.tick++;
     const obs = this.match ? obsFromMatch(this.match) : null;
     const stats = await this.inner.decideAsyncWithStats(ctx);
@@ -146,10 +193,27 @@ export class PPORecorderBrain implements BotBrain {
   }
 
   /** Finalize the episode: set `done=true` on the last row, add
-   *  the terminal win/loss bonus to its reward. Returns the same
-   *  rows for the writer to serialize. */
+   *  the terminal win/loss bonus to its reward. Also capture any
+   *  remaining maze-reward delta (the final action's path-length
+   *  effect that no subsequent decide() would have observed).
+   *  Returns the same rows for the writer to serialize. */
   finalize(outcome: 'win' | 'loss' | 'timeout' | 'error'): PPORecordRow[] {
     if (this.rows.length === 0) return this.rows;
+
+    // Final maze-reward attribution: the last action's path-length
+    // impact never got observed by a subsequent decide() call.
+    // Capture it now so the action gets credit for any maze it
+    // built at the very end. Same scaling as in-match attribution.
+    if (this.match && this.reward.mazePerCell !== 0 && this.lastPathLen >= 0) {
+      const finalLen = this.computePathLength();
+      const delta = finalLen - this.lastPathLen;
+      if (delta !== 0) {
+        const r = this.reward.mazePerCell * delta;
+        this.rows[this.rows.length - 1].reward += r;
+        this.totalMazeReward += r;
+      }
+    }
+
     const last = this.rows[this.rows.length - 1];
     last.done = true;
     if (outcome === 'win') last.reward += this.reward.winBonus;
