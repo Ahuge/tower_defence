@@ -2,6 +2,44 @@
 
 ## 2026-05-27
 
+### RL `standard_long` match mode — capped-difficulty variant for long-match training
+
+User picked path 2 of the long-match options: modify the wave generator to flatten the difficulty past wave 20 so RL training can run across the 30-50 wave horizon they originally wanted. Implemented as a NEW match mode (`standard_long`) rather than mutating canonical `standard`, so live-game players keep their existing difficulty curve and PRD §10's "don't change game design" stays satisfied for non-RL paths.
+
+**Mechanism:**
+
+`generateStandardWaves(count, flattenAt?)` gets a new optional second argument. When set:
+- **HP scaling clamps** at `flattenAt`: `baseHp = 20 + waveNum * 8 + min(waveNum, flattenAt)² * 0.4`. Past `flattenAt` HP grows linearly (~+8/wave) instead of quadratically.
+- **Composition cycles** waves 11-`flattenAt` past `flattenAt`. Avoids the wave 21+ creep packs (healer+armored, regenerator clusters, flying squadrons) that the current rule-based source brains can't handle.
+
+The canonical `standard` path passes no `flattenAt` and gets the existing behavior byte-identical.
+
+`MatchMode = 'standard' | 'standard_long' | 'endless' | ...`; `MatchConfig.matchMode` similarly widened. `Match.ts` already special-cases only `'endless'`, so `standard_long` flows through the standard code path naturally.
+
+**Tuning:**
+
+First try at `flattenAt=20` only gave +1 wave of headroom (LearningBrain Arcane: standard wave 21 → standard_long wave 22). Why: wave 19-20 compositions introduce flying creeps and mages, which the rule brains can't handle, and those got included in the cycled compositions. Empirically chose `flattenAt=15` — drops flying/healer/mage from the cycled compositions while still using waves 11-15 (swarm, evasive, shielded, splitter introduced) for variety.
+
+**Result at `flattenAt=15` (seed 20000, LearningBrain unless noted):**
+
+| matchup | standard/50w | standard_long/50w |
+|---|---|---|
+| normal Arcane | wave 21 | **wave 30** |
+| normal Arcane (BalancedBrain) | — | **wave 42** |
+| normal Mechanical | wave 11 | wave 11 (Mech has a separate wall around wave 11 unrelated to wave generator) |
+| hard Arcane | wave ~15 | wave 15 (hard difficulty's own creep stat multipliers cap us here regardless) |
+
+BalancedBrain on Arcane reaches wave 42 of a 50-wave cap. That's the 30-50 round training horizon the user originally asked for.
+
+**What this does NOT fix:**
+
+- **Mechanical bottleneck.** Mech caps at wave 11 in both modes — the issue isn't HP/composition scaling, it's that LearningBrain's Mechanical play has an inherent limitation around wave 11 (likely a specific creep type or economy choice). Out of scope for `standard_long`.
+- **Hard difficulty.** Hard mode's per-creep multipliers (via `DIFFICULTIES.hard`) compound on top of the wave-generator output, so hard/standard_long still caps around wave 15. RL training at long horizons should use normal/standard_long, not hard.
+
+`scripts/endless-spot-check.mjs` reused as the verification harness — same trial format, now covers `standard_long` too.
+
+**Next:** path 1 of yesterday's plan — PPO trained at normal/standard_long across many iterations to see if RL can extend the policy beyond BalancedBrain's wave-42 ceiling.
+
 ### RL long-match finding — endless mode is HARDER than standard, not flatter
 
 Followed up the wave-25 cliff finding by testing endless mode (`getWavesForMode('endless', ...)`). User had hoped endless might use a flatter difficulty ramp suitable for long-match RL training. **The opposite is true.**

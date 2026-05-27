@@ -13,11 +13,13 @@ export interface MatchConfig {
    *  placements + upgrades + economy decisions on behalf of the
    *  "player". */
   brainId: string;
-  /** Match mode — 'standard' or 'endless' for v1. Other modes
-   *  (circle_coop, versus, hero_defense, gauntlet) can be added
-   *  later; they each have extra setup that's out of scope for the
-   *  first balance-testing pass. */
-  matchMode: 'standard' | 'endless';
+  /** Match mode — 'standard', 'standard_long', or 'endless' for v1.
+   *  `standard_long` is a capped-difficulty variant of standard used
+   *  for long-match RL training (caps the quadratic HP term at
+   *  wave 20). Other modes (circle_coop, versus, hero_defense,
+   *  gauntlet) need extra setup; out of scope for the first
+   *  balance-testing pass. */
+  matchMode: 'standard' | 'standard_long' | 'endless';
   /** Total waves to play. Ignored for endless — endless runs until
    *  the bot loses or hits `maxWaves` as a safety cap. */
   waveCount?: number;

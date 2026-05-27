@@ -1,4 +1,4 @@
-export type MatchMode = 'standard' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet' | 'tutorial' | 'attacker';
+export type MatchMode = 'standard' | 'standard_long' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet' | 'tutorial' | 'attacker';
 
 export interface WaveCreepGroup {
   creepType: string;
@@ -14,12 +14,41 @@ export interface WaveDefinition {
   isBoss: boolean;
 }
 
-function generateStandardWaves(count: number): WaveDefinition[] {
+/** Generate standard-mode waves.
+ *
+ *  `flattenAt` optionally enables long-match mode:
+ *  - HP quadratic term is clamped at `flattenAt` (past that wave,
+ *    HP grows linearly at ~+8/wave instead of quadratically).
+ *  - Wave composition past `flattenAt` cycles through the wave
+ *    11-20 composition patterns instead of switching to the
+ *    harder wave 21+ compositions (healer+armored packs, fast
+ *    rushes, regenerator clusters, etc.).
+ *
+ *  Together these let RL training reach 30-50+ waves without the
+ *  current source brains hitting a wall. Canonical `standard`
+ *  mode (no flatten) is unchanged for live-game players.
+ *
+ *  At flattenAt=20:
+ *    - HP at wave 25: 20+200+160=380 (vs 20+200+250=470 unflattened)
+ *    - HP at wave 50: 20+400+160=580 (vs 20+400+1000=1420 unflattened)
+ *    - Wave 25 composition uses wave 15's mix (swarm/evasive/armored)
+ *      not wave 25's regenerator pack.
+ */
+function generateStandardWaves(count: number, flattenAt?: number): WaveDefinition[] {
   const waves: WaveDefinition[] = [];
 
   for (let i = 0; i < count; i++) {
     const waveNum = i + 1;
-    const baseHp = Math.round(20 + waveNum * 8 + waveNum * waveNum * 0.4);
+    const effW = flattenAt !== undefined ? Math.min(waveNum, flattenAt) : waveNum;
+    const baseHp = Math.round(20 + waveNum * 8 + effW * effW * 0.4);
+    // When flattening, also clamp the wave-number used for the
+    // composition dispatch below. Past `flattenAt` we cycle through
+    // the wave 11-20 compositions (varied but tractable for current
+    // brains) rather than the wave 21+ compositions (healer packs,
+    // regenerator clusters) that the rule brains can't survive.
+    const dispatchW = flattenAt !== undefined && waveNum > flattenAt
+      ? 11 + ((waveNum - flattenAt - 1) % (flattenAt - 10))
+      : waveNum;
     const baseSpeed = 1 + waveNum * 0.02;
     const interval = Math.max(150, 600 - waveNum * 12);
 
@@ -36,52 +65,52 @@ function generateStandardWaves(count: number): WaveDefinition[] {
 
     const groups: WaveCreepGroup[] = [];
 
-    if (waveNum <= 3) {
+    if (dispatchW <= 3) {
       // Early: just standard
-      groups.push({ creepType: 'standard', count: 5 + waveNum, hpScale: baseHp, speedScale: baseSpeed });
-    } else if (waveNum <= 6) {
+      groups.push({ creepType: 'standard', count: 5 + dispatchW, hpScale: baseHp, speedScale: baseSpeed });
+    } else if (dispatchW <= 6) {
       // Introduce fast
-      groups.push({ creepType: 'standard', count: 4 + waveNum, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'standard', count: 4 + dispatchW, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 2, hpScale: baseHp, speedScale: baseSpeed });
-    } else if (waveNum <= 9) {
+    } else if (dispatchW <= 9) {
       // Introduce armored + group
-      groups.push({ creepType: 'standard', count: 3 + waveNum, hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'standard', count: 3 + dispatchW, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'armored', count: 1, hpScale: baseHp, speedScale: baseSpeed });
-      if (waveNum >= 8) {
+      if (dispatchW >= 8) {
         groups.push({ creepType: 'group', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       }
-    } else if (waveNum <= 15) {
+    } else if (dispatchW <= 15) {
       // Introduce swarm, evasive, splitter
-      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.7), hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'standard', count: Math.floor(dispatchW * 0.7), hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'armored', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'swarm', count: 2, hpScale: baseHp, speedScale: baseSpeed });
-      if (waveNum >= 12) {
+      if (dispatchW >= 12) {
         groups.push({ creepType: 'evasive', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       }
-      if (waveNum >= 13) {
+      if (dispatchW >= 13) {
         groups.push({ creepType: 'shielded', count: 1, hpScale: baseHp, speedScale: baseSpeed });
       }
-      if (waveNum >= 14) {
+      if (dispatchW >= 14) {
         groups.push({ creepType: 'splitter', count: 1, hpScale: baseHp, speedScale: baseSpeed });
       }
-    } else if (waveNum <= 20) {
+    } else if (dispatchW <= 20) {
       // Introduce mages, flying
-      groups.push({ creepType: 'standard', count: Math.floor(waveNum * 0.5), hpScale: baseHp, speedScale: baseSpeed });
+      groups.push({ creepType: 'standard', count: Math.floor(dispatchW * 0.5), hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'fast', count: 4, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'armored', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'swarm', count: 3, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'evasive', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'splitter', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       groups.push({ creepType: 'shielded', count: 2, hpScale: baseHp, speedScale: baseSpeed });
-      if (waveNum >= 18) {
+      if (dispatchW >= 18) {
         groups.push({ creepType: 'healer', count: 1, hpScale: baseHp, speedScale: baseSpeed });
         // Mage type rotates
         const mageTypes = ['mage_armor', 'mage_speed', 'mage_evasion', 'mage_heal'];
-        groups.push({ creepType: mageTypes[waveNum % mageTypes.length], count: 1, hpScale: baseHp, speedScale: baseSpeed });
+        groups.push({ creepType: mageTypes[dispatchW % mageTypes.length], count: 1, hpScale: baseHp, speedScale: baseSpeed });
       }
-      if (waveNum >= 19) {
+      if (dispatchW >= 19) {
         groups.push({ creepType: 'flying', count: 2, hpScale: baseHp, speedScale: baseSpeed });
       }
     } else if (waveNum <= 22) {
@@ -186,6 +215,17 @@ export function getWavesForMode(mode: MatchMode, waveCount?: number): WaveDefini
   switch (mode) {
     case 'standard':
       return generateStandardWaves(waveCount ?? 30);
+    case 'standard_long':
+      // Capped-difficulty variant of standard, intended for RL
+      // training across long horizons. Wave generator caps the
+      // quadratic HP term at wave 15 (linear past that), AND
+      // cycles wave 11-15 compositions past wave 15 (avoids
+      // flying/healers/mages which the rule-based source brains
+      // can't handle reliably). flattenAt=15 was chosen
+      // empirically: at flattenAt=20 the brains still hit wave-19
+      // flying creeps and die at wave 22; at 15 they survive
+      // significantly longer.
+      return generateStandardWaves(waveCount ?? 50, 15);
     case 'endless':
       return generateEndlessWaves(1, 20); // initial batch; more appended at runtime
     case 'battle':

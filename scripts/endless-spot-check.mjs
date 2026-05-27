@@ -15,11 +15,15 @@ await import('../src/systems/bots/brains/PsionicBrain.ts');
 await import('../src/systems/bots/brains/LearningBrain.ts');
 
 const trials = [
-  { brain: 'learning',  faction: 'arcane',     difficulty: 'normal', mode: 'endless',  maxWaves: 50 },
-  { brain: 'balanced',  faction: 'arcane',     difficulty: 'normal', mode: 'endless',  maxWaves: 50 },
-  { brain: 'learning',  faction: 'mechanical', difficulty: 'normal', mode: 'endless',  maxWaves: 50 },
+  // standard for baseline
   { brain: 'learning',  faction: 'arcane',     difficulty: 'normal', mode: 'standard', maxWaves: 50, waveCount: 50 },
-  { brain: 'learning',  faction: 'arcane',     difficulty: 'hard',   mode: 'endless',  maxWaves: 50 },
+  { brain: 'learning',  faction: 'mechanical', difficulty: 'normal', mode: 'standard', maxWaves: 50, waveCount: 50 },
+  // standard_long — capped-quadratic variant, should reach much further
+  { brain: 'learning',  faction: 'arcane',     difficulty: 'normal', mode: 'standard_long', maxWaves: 50, waveCount: 50 },
+  { brain: 'balanced',  faction: 'arcane',     difficulty: 'normal', mode: 'standard_long', maxWaves: 50, waveCount: 50 },
+  { brain: 'learning',  faction: 'mechanical', difficulty: 'normal', mode: 'standard_long', maxWaves: 50, waveCount: 50 },
+  { brain: 'learning',  faction: 'arcane',     difficulty: 'hard',   mode: 'standard_long', maxWaves: 50, waveCount: 50 },
+  { brain: 'learning',  faction: 'arcane',     difficulty: 'normal', mode: 'standard_long', maxWaves: 100, waveCount: 100 },
 ];
 
 for (const t of trials) {
