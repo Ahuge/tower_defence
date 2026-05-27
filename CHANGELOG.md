@@ -2,6 +2,32 @@
 
 ## 2026-05-27
 
+### RL long-match finding — endless mode is HARDER than standard, not flatter
+
+Followed up the wave-25 cliff finding by testing endless mode (`getWavesForMode('endless', ...)`). User had hoped endless might use a flatter difficulty ramp suitable for long-match RL training. **The opposite is true.**
+
+Endless HP scaling: `20 + waveNum*10 + waveNum²*0.5 + max(0, waveNum-50)²*0.3`
+Standard HP scaling: `20 + waveNum*8 + waveNum²*0.4`
+
+Endless's per-wave coefficient is 10/8 = 1.25× and its quadratic is 0.5/0.4 = 1.25× standard, *plus* a quartic-ish ramp past wave 50. Endless is a "harder-than-standard infinite challenge," not a flat long-match mode.
+
+Spot-check at seed 20000, LearningBrain on Arcane (best brain-faction combo):
+- standard/50w → loss wave 21
+- **endless/50w → loss wave 17** ← steeper, dies earlier
+- endless/50w mechanical → loss wave 10
+- endless/hard arcane → loss wave 13
+
+**Conclusion:** the game has no natural 30-50 wave matchup where current brains can win. The wave generator's quadratic difficulty ramp puts a wall at ~wave 22 for standard, ~wave 17 for endless, ~wave 15 for hard difficulty regardless of mode.
+
+`scripts/endless-spot-check.mjs` committed for future re-tests; lets you check brain-vs-mode combos without needing to extend `record-trace.mjs` with a `--mode` arg.
+
+**Real options for long-match RL** (out of scope this commit):
+1. **PPO trained at hard/20w for 100+ iters** — let RL discover plays the rule-based teachers haven't found. Multi-brain BC's KL=0.012 stability means we can run long.
+2. **Modify the wave generator** to cap the quadratic term past wave 20 — game-design change, PRD §10 puts it out of RL scope, but it's the right gameplay fix if "30-50 wave matches" is genuinely the goal.
+3. **Build a stronger source brain** (PR #68's MazingBrain may help) and re-clone — adds depth to BC's ceiling.
+
+For the next concrete RL chunk, option 1 (PPO long at hard/20w) is the lowest-cost test of "can RL extend the policy past BC's ceiling." That's what the whole pipeline was designed for.
+
 ### RL long-match finding — standard mode has a wave-25 difficulty cliff
 
 User asked to try longer matches (30-50 rounds). Tested the existing multi-brain BC (trained on normal/10w) across a wave-count sweep and uncovered a sharp game-balance cliff that bounds what BC and PPO can do.
