@@ -2,6 +2,44 @@
 
 ## 2026-05-27
 
+### RL turn-count reward + maze optimizer (separate tool, integration deferred)
+
+**Diagnostic** (rendered BalancedBrain on the same map): Balanced builds a tight **BLOB at the entry**, not zigzag. PPO builds parallel **LINES**. The user's fig2 ideal (extended zigzag) is neither algorithm's local optimum. None of the three reward terms we'd tried (linear maze, linear coverage, multiplicative L×C) distinguishes shape — blob, lines, and zigzag can have similar coverage and length.
+
+**Turn-count reward** added (`turnsRewardK`, default 0.05). `computePathTurns` counts cells in the path where direction changes from the previous step. Straight = 0 turns, blob = ~4, fig2 zigzag = 10-20. Per-decision: a blocker that adds 2 turns gives +0.10 reward — comparable to a wave clear, strong but not dominant.
+
+20-iter PPO at normal/standard_long_scaled/50w arcane (multiplicative L×C kept; turns added on top):
+
+| temperature | win% | avg wave |
+|---|---|---|
+| 0.0 | 0% | **35.8** |
+| 0.1 | 0% | 35.5 |
+| 0.3 | 0% | 35.1 |
+| 0.5 | 0% | 34.8 |
+
+Seed 620000: loss wave 35 (vs 35 multiplicative-only, 33 additive, 31 BC). Marginal lift on top of multiplicative; the per-decision turn signal isn't dramatic enough to break the agent out of its local minimum.
+
+**Maze optimizer** built as a standalone tool (`scripts/maze-optimizer.mjs`). Greedy on-path-only candidate search + random restarts + swap-based hill-climb post-pass. Reuses game's existing `Grid` + `findPath` so its semantics match what creeps actually do.
+
+**Plains map results:**
+- Baseline path length: **36**
+- Bounded budget=20: 64 (1.8×)
+- **Unbounded: 464 (368 walls placed, ~42% of placeable cells, near-Hamiltonian serpentine using all 26 rows with 27 vertical direction changes)**
+
+For comparison: our PPO policy currently produces path length ~30, which is **7% of the optimum (464)**. Massive headroom.
+
+**Why none of the reward shaping landed the user-wanted maze:**
+
+The core blocker isn't reward design — it's that the agent's PPO updates from a converged BC starting point are too small to find a maze. The local gradient at parallel-rows is good enough that even multiplicative L×C and turn-count combined only nudge it +2-4 average waves. The optimizer points at path length 464 but the agent's policy is exploring around path length 30. PPO needs either a much stronger signal toward the global optimum, or a different objective entirely.
+
+**Integration plan with the optimizer** (next session — NOT in this commit):
+- Cache the optimizer's `W*` wall set for the active map at training startup
+- Each PPO rollout, compute `agent_path_length / W*_path_length` and add `α × ratio` to reward (suggested α ≈ 0.1)
+- Optionally include the W* wall set as an extra observation channel so the agent can "see" the target maze
+- Use top-N optimizer outputs as a difficulty proxy (best maze = hard target, weaker mazes = easier targets)
+
+Subagent output: `traces/mazes/plains-b20.json` (bounded budget=20 + the unbounded variant from the second agent's update — both schemas supported via `--wall-budget=null`).
+
 ### RL multiplicative L×C reward: maze gradient strictly steeper, modest visible improvement
 
 After path E rejection (correctly — plains has more maze flexibility, not less) we gamed out the reward numbers for three layouts:

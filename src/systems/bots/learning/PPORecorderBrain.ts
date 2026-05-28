@@ -90,6 +90,25 @@ export interface RewardConfig {
    *
    *  Set to 0 to disable. */
   lengthCoverageProductK: number;
+
+  /** Reward per direction change in the creep path. Added 2026-05-27
+   *  after diagnostic showed BalancedBrain builds a BLOB at the
+   *  entry and PPO builds parallel LINES — neither algorithm
+   *  builds the user-aesthetic ZIGZAG because total-coverage and
+   *  total-length rewards don't distinguish shape (blob, lines,
+   *  and zigzag can all have similar coverage and similar length).
+   *
+   *  Turns directly measure zigzag-iness: count cells in path
+   *  where direction (dx, dy) differs from the previous cell's
+   *  direction. Straight path has 0 turns; tight blob has ~4;
+   *  fig2-style zigzag has 10-20.
+   *
+   *  Default `0.05`: a blocker that forces 2 new turns adds
+   *  +0.10 reward — comparable to a wave clear, strong but not
+   *  dominant over outcome.
+   *
+   *  Set to 0 to disable. */
+  turnsRewardK: number;
 }
 
 export const DEFAULT_REWARD: RewardConfig = {
@@ -112,6 +131,11 @@ export const DEFAULT_REWARD: RewardConfig = {
   // K=0.0005: scale comparable to existing per-wave shaping
   // (~1.9 total at typical match end vs ~1.5 for 15 wave clears).
   lengthCoverageProductK: 0.0005,
+  // Turn-count reward: K × (direction-changes in path).
+  // K=0.05: blocker adding 2 turns gives +0.10 reward, comparable
+  // to a wave clear. Directly measures zigzag vs blob vs lines
+  // (all three of which can have similar coverage and length).
+  turnsRewardK: 0.05,
 };
 
 export class PPORecorderBrain implements BotBrain {
@@ -127,6 +151,7 @@ export class PPORecorderBrain implements BotBrain {
   private lastPathLen = -1;  // -1 = uninitialized; set on first decide.
   private lastCoverage = -1; // -1 = uninitialized; set on first decide.
   private lastLengthCoverageProduct = -1; // same convention
+  private lastTurns = -1; // same convention
   /** Sum of `mazePerCell * delta` rewards attributed across all
    *  rows of this match. Surfaced for tuning + diagnostics. */
   totalMazeReward = 0;
@@ -137,6 +162,10 @@ export class PPORecorderBrain implements BotBrain {
    *  rows. Surfaced for manifest stats so we can tell whether the
    *  multiplicative term is firing. */
   totalProductReward = 0;
+  /** Sum of `turnsRewardK * delta` rewards across all rows.
+   *  Surfaced for manifest stats so we can verify the
+   *  zigzag-specific term is contributing. */
+  totalTurnsReward = 0;
   private tick = 0;
 
   constructor(inner: PPOBrain, matchId: string, reward: RewardConfig = DEFAULT_REWARD) {
@@ -206,6 +235,31 @@ export class PPORecorderBrain implements BotBrain {
     return count;
   }
 
+  /** Count direction changes in the creep path. Each cell where
+   *  the direction (dx, dy) differs from the previous step counts
+   *  as 1 turn. Straight path = 0; tight blob = ~4; fig2 zigzag
+   *  = 10-20. Direct measure of "zigzag-iness" — neither
+   *  coverage nor length can distinguish lines from blobs from
+   *  zigzags but this can. */
+  private computePathTurns(): number {
+    if (!this.match) return 0;
+    const paths = this.match.getAllPaths();
+    let turns = 0;
+    for (const path of paths) {
+      if (!path || path.length < 3) continue;
+      let prevDx = path[1].col - path[0].col;
+      let prevDy = path[1].row - path[0].row;
+      for (let i = 2; i < path.length; i++) {
+        const dx = path[i].col - path[i - 1].col;
+        const dy = path[i].row - path[i - 1].row;
+        if (dx !== prevDx || dy !== prevDy) turns++;
+        prevDx = dx;
+        prevDy = dy;
+      }
+    }
+    return turns;
+  }
+
   /** Async path used by `Match.stepAsync` when our caller drove the
    *  match via `runToEndAsync`. This is the real production path
    *  for PPO rollout gen. */
@@ -262,6 +316,22 @@ export class PPORecorderBrain implements BotBrain {
         }
       }
       this.lastLengthCoverageProduct = newProduct;
+    }
+
+    // Turn-count attribution. Same one-step-late pattern.
+    // Directly measures zigzag-iness — BalancedBrain's blob and
+    // PPO's lines both have ~0-4 turns; fig2 zigzag has 10-20.
+    if (this.match && this.reward.turnsRewardK !== 0) {
+      const newTurns = this.computePathTurns();
+      if (this.lastTurns >= 0 && this.rows.length > 0) {
+        const delta = newTurns - this.lastTurns;
+        if (delta !== 0) {
+          const r = this.reward.turnsRewardK * delta;
+          this.rows[this.rows.length - 1].reward += r;
+          this.totalTurnsReward += r;
+        }
+      }
+      this.lastTurns = newTurns;
     }
 
     this.tick++;
@@ -369,6 +439,17 @@ export class PPORecorderBrain implements BotBrain {
         const r = this.reward.lengthCoverageProductK * delta;
         this.rows[this.rows.length - 1].reward += r;
         this.totalProductReward += r;
+      }
+    }
+
+    // Trailing-delta capture for turns.
+    if (this.match && this.reward.turnsRewardK !== 0 && this.lastTurns >= 0) {
+      const finalTurns = this.computePathTurns();
+      const delta = finalTurns - this.lastTurns;
+      if (delta !== 0) {
+        const r = this.reward.turnsRewardK * delta;
+        this.rows[this.rows.length - 1].reward += r;
+        this.totalTurnsReward += r;
       }
     }
 
