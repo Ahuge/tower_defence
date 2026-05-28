@@ -2,6 +2,53 @@
 
 ## 2026-05-27
 
+### RL multiplicative L×C reward: maze gradient strictly steeper, modest visible improvement
+
+After path E rejection (correctly — plains has more maze flexibility, not less) we gamed out the reward numbers for three layouts:
+
+| layout | path L | towers | coverage C | additive reward (current) | multiplicative L×C |
+|---|---|---|---|---|---|
+| (b) Straight + 32 parallel | 20 | 32 | 288 | 1.54 | 5,760 |
+| (a) Zigzag + 20 towers | 26 | 20 | 250 | 1.38 | 6,500 |
+| (c) Vertical snake + 100 | 200 | 100 | 2000 | 11.0 | 400,000 |
+
+Additive ranks them (b) > (a). Multiplicative ranks them (a) > (b). The per-decision delta from "20-cell straight path, 10 towers" state:
+
+| placement | new L | new C | additive Δ | multiplicative Δ (K=0.0005) |
+|---|---|---|---|---|
+| parallel tower (+9 cov, +0 maze) | 20 | 109 | **+0.045** | +0.09 |
+| blocker (+2 maze, +5 cov) | 22 | 105 | +0.035 | **+0.155** |
+| blocker (+5 maze, +5 cov) | 25 | 105 | +0.050 | **+0.31** |
+
+Under additive, first maze move is *worse* than parallel (+0.035 vs +0.045) — the agent never explores. Multiplicative reverses this at every step (+0.155 vs +0.09 for the same first maze move).
+
+**Implementation:** `lengthCoverageProductK` added to `RewardConfig` (default 0.0005). `mazePerCell` and `coveragePerUnit` zeroed out — clean ablation, multiplicative is the only shaping term active. `computePathLength × computePathCoverage` tracked between consecutive `decide()` calls, delta attributed to previous row's reward (same one-step-late pattern). Trailing delta captured in `finalize()`. `totalProductReward` exposed via manifest stats.
+
+**Result: 20-iter PPO at normal/standard_long_scaled/50w arcane** (from same BC as previous experiments):
+
+| temperature | win% | avg wave | vs additive (prev run) |
+|---|---|---|---|
+| 0.0 | 0% | **33.7** | additive was 29.8 (+4) |
+| 0.1 | 0% | 33.6 | 30.1 (+3.5) |
+| 0.3 | 0% | 33.5 | 31.6 (+2) |
+| 0.5 | 0% | 34.4 | 32.7 (+2) |
+
+Seed 620000 single-match comparison:
+- BC alone: loss wave 31
+- Additive (maze 0.005, cov 0.005): loss wave 33
+- **Multiplicative (K=0.0005): loss wave 35**
+
+**The math worked on the margin.** The agent gets to wave ~34 average instead of ~31, the per-decision gradient does favor mazing under the new reward, but the change isn't visually dramatic — placements look incrementally better but not transformatively maze-shaped.
+
+Training was stable throughout: KL 0.014-0.058, r_mean +0.013 to +0.021 (highest we've recorded, confirming the multiplicative term is firing strongly).
+
+**What's still in the way of dramatic maze behavior** (next-experiment candidates):
+- The reward favors blockers but only marginally for *small* detours. The agent needs to discover that **stacking** blockers compounds rewards, but each first-blocker step still pays modestly.
+- 20 iters from BC may not be enough; the trajectory shows PPO is still climbing. Possibly run 50-100 iters.
+- Coverage is computed against PLACED towers only — a "trap" of empty cells inside a maze gets no credit until a tower fills it. Reward fires AFTER both maze cell exists AND tower is placed. May need to separate "extend path opportunity" from "fill path with tower."
+
+Snapshot at `models/ppo-product-20iter.{pt,onnx,meta.json}` (gitignored).
+
 ### RL `standard_long_scaled` mode + reward rebalance: rewards alone aren't the lever for maze shape
 
 User-flagged after seeing the 50-iter render: coverage reward made PPO converge faster but didn't change shape — still parallel rows along the natural path. Tried three things together: (C) reward rebalance (maze 5×, coverage 0.5×), (D) harder/longer matches, and a new "really long map that continues scaling."

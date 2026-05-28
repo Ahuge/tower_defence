@@ -67,6 +67,29 @@ export interface RewardConfig {
    *
    *  Set to 0 to disable coverage shaping. */
   coveragePerUnit: number;
+
+  /** Reward coefficient on the MULTIPLICATIVE product
+   *  `path_length × coverage_pairs`. Added 2026-05-27 after
+   *  gaming out reward numbers for {straight, zigzag, snake}
+   *  layouts showed that additive `mazePerCell + coveragePerUnit`
+   *  is structurally biased toward straight-path + many-parallel-
+   *  towers — coverage scales linearly with path length so adding
+   *  parallel towers always beats a small detour.
+   *
+   *  Multiplying length × coverage makes the term `L²`-shaped in
+   *  path length: the marginal reward of adding 1 detour cell
+   *  grows with the path length already accumulated, so the
+   *  agent gets a stronger gradient toward extending mazes.
+   *
+   *  Default `0.0005`: at typical match end (~25 cells path × 150
+   *  coverage = 3750 product), this contributes ~1.9 total
+   *  reward — comparable scale to the per-wave shaping (15 waves
+   *  × 0.1 = 1.5). Per-decision delta of ~+200 (path +2, cov +5)
+   *  → +0.10 reward, beats per-decision parallel-row delta of
+   *  +0.05 in the math.
+   *
+   *  Set to 0 to disable. */
+  lengthCoverageProductK: number;
 }
 
 export const DEFAULT_REWARD: RewardConfig = {
@@ -74,15 +97,21 @@ export const DEFAULT_REWARD: RewardConfig = {
   perWaveBonus: 0.1,
   winBonus: 1.0,
   lossPenalty: -1.0,
-  // Rebalanced 2026-05-27: previous (mazePerCell=0.001,
-  // coveragePerUnit=0.01) made coverage dominate. Both signals
-  // accrued from parallel-rows along the path, so the agent had
-  // no incentive to take the riskier maze-building option. New
-  // balance (5× maze, 0.5× coverage) makes maze the dominant
-  // signal — extending the path gives ~0.025/cell which beats
-  // the per-tower coverage bonus (~0.025 per 5-cell range).
-  mazePerCell: 0.005,
-  coveragePerUnit: 0.005,
+  // Linear maze/coverage rewards retired 2026-05-27 in favor of
+  // the multiplicative L×C term. The linear pair was structurally
+  // biased toward dense parallel rows because coverage scales
+  // linearly with path length (each new parallel tower adds 9
+  // coverage; each new detour cell adds only its own coverage
+  // contribution + the linear maze bonus). See the layout
+  // gaming-out exercise: even at maze 5× / coverage ½×, the
+  // straight-path layout had higher total reward than the
+  // zigzag with fewer towers. Multiplicative L×C reverses that.
+  mazePerCell: 0,
+  coveragePerUnit: 0,
+  // Multiplicative reward: K × (path_length × coverage_pairs).
+  // K=0.0005: scale comparable to existing per-wave shaping
+  // (~1.9 total at typical match end vs ~1.5 for 15 wave clears).
+  lengthCoverageProductK: 0.0005,
 };
 
 export class PPORecorderBrain implements BotBrain {
@@ -97,12 +126,17 @@ export class PPORecorderBrain implements BotBrain {
   private lastWaveSeen = 0;
   private lastPathLen = -1;  // -1 = uninitialized; set on first decide.
   private lastCoverage = -1; // -1 = uninitialized; set on first decide.
+  private lastLengthCoverageProduct = -1; // same convention
   /** Sum of `mazePerCell * delta` rewards attributed across all
    *  rows of this match. Surfaced for tuning + diagnostics. */
   totalMazeReward = 0;
   /** Sum of `coveragePerUnit * delta` rewards attributed across all
    *  rows of this match. Surfaced for tuning + diagnostics. */
   totalCoverageReward = 0;
+  /** Sum of `lengthCoverageProductK * delta` rewards across all
+   *  rows. Surfaced for manifest stats so we can tell whether the
+   *  multiplicative term is firing. */
+  totalProductReward = 0;
   private tick = 0;
 
   constructor(inner: PPOBrain, matchId: string, reward: RewardConfig = DEFAULT_REWARD) {
@@ -211,6 +245,25 @@ export class PPORecorderBrain implements BotBrain {
       this.lastCoverage = newCov;
     }
 
+    // Multiplicative L×C attribution. Same one-step-late pattern.
+    // The math from the layout-gaming exercise: this term makes
+    // the reward super-linear in path length so longer mazes get
+    // strictly better marginal returns than denser parallel rows.
+    if (this.match && this.reward.lengthCoverageProductK !== 0) {
+      const newLen = this.computePathLength();
+      const newCov = this.computePathCoverage();
+      const newProduct = newLen * newCov;
+      if (this.lastLengthCoverageProduct >= 0 && this.rows.length > 0) {
+        const delta = newProduct - this.lastLengthCoverageProduct;
+        if (delta !== 0) {
+          const r = this.reward.lengthCoverageProductK * delta;
+          this.rows[this.rows.length - 1].reward += r;
+          this.totalProductReward += r;
+        }
+      }
+      this.lastLengthCoverageProduct = newProduct;
+    }
+
     this.tick++;
     const obs = this.match ? obsFromMatch(this.match) : null;
     const stats = await this.inner.decideAsyncWithStats(ctx);
@@ -303,6 +356,19 @@ export class PPORecorderBrain implements BotBrain {
         const r = this.reward.coveragePerUnit * delta;
         this.rows[this.rows.length - 1].reward += r;
         this.totalCoverageReward += r;
+      }
+    }
+
+    // Trailing-delta capture for multiplicative product.
+    if (this.match && this.reward.lengthCoverageProductK !== 0 && this.lastLengthCoverageProduct >= 0) {
+      const finalLen = this.computePathLength();
+      const finalCov = this.computePathCoverage();
+      const finalProduct = finalLen * finalCov;
+      const delta = finalProduct - this.lastLengthCoverageProduct;
+      if (delta !== 0) {
+        const r = this.reward.lengthCoverageProductK * delta;
+        this.rows[this.rows.length - 1].reward += r;
+        this.totalProductReward += r;
       }
     }
 
