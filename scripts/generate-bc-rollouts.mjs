@@ -69,6 +69,10 @@ function parseArgs() {
      *  runs (provides upgrade / sell / send decisions once W* is
      *  exhausted). */
     optimizerWalls: null,
+    /** Comma-separated list of inner brain ids — rotates through
+     *  them across matches for type-diversity. Overrides --inner-brain
+     *  when set. Example: --inner-brains=balanced,aoefocus,greedy */
+    innerBrains: null,
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -80,6 +84,7 @@ function parseArgs() {
     else if (a.startsWith('--mode=')) out.mode = a.slice('--mode='.length);
     else if (a.startsWith('--difficulty=')) out.difficulty = a.slice('--difficulty='.length);
     else if (a.startsWith('--optimizer-walls=')) out.optimizerWalls = a.slice('--optimizer-walls='.length);
+    else if (a.startsWith('--inner-brains=')) out.innerBrains = a.slice('--inner-brains='.length).split(',');
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -124,8 +129,14 @@ const manifest = {
   factions: {},
 };
 
-const innerFactory = BRAIN_REGISTRY[opts.innerBrain];
-if (!innerFactory) throw new Error(`unknown inner brain: ${opts.innerBrain}`);
+// Inner brain rotation: when --inner-brains=A,B,C is set, rotate
+// per-match through that list. Otherwise use --inner-brain.
+const innerBrainIds = opts.innerBrains ?? [opts.innerBrain];
+for (const id of innerBrainIds) {
+  if (!BRAIN_REGISTRY[id]) throw new Error(`unknown inner brain: ${id}`);
+}
+const pickInnerFactory = (matchIdx) => BRAIN_REGISTRY[innerBrainIds[matchIdx % innerBrainIds.length]];
+manifest.innerBrains = innerBrainIds;
 
 const t0 = Date.now();
 let totalRows = 0;
@@ -139,8 +150,10 @@ for (const faction of opts.factions) {
   for (let i = 0; i < opts.matches; i++) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
     const matchId = `${faction}-s${seed}-${opts.mode}-${opts.difficulty}-w${opts.waveCount}`;
-    const inner = innerFactory();
-    const teacher = targetWalls ? new OptimizerBrain({ inner, targetWalls }) : inner;
+    const inner = pickInnerFactory(i)();
+    const teacher = targetWalls
+      ? new OptimizerBrain({ inner, targetWalls, seed, topK: 5 })
+      : inner;
     const recorder = new ObsRecorderBrain(teacher, matchId);
 
     const match = new Match({

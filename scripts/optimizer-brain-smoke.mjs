@@ -37,7 +37,7 @@ async function runWithBrain(brainFactory, label) {
   let stats = null;
   for (const seed of seeds) {
     try {
-      const brain = brainFactory();
+      const brain = brainFactory(seed);
       const m = new Match({
         faction: FACTION, difficulty: DIFFICULTY, mapId: 'plains',
         brainId: 'placeholder', matchMode: 'standard',
@@ -68,7 +68,7 @@ async function runWithBrain(brainFactory, label) {
 }
 
 const baselineRes = await runWithBrain(() => new BalancedBrain(), 'balanced');
-const optimizerRes = await runWithBrain(() => new OptimizerBrain({ targetWalls }), 'optimizer');
+const optimizerRes = await runWithBrain((seed) => new OptimizerBrain({ targetWalls, seed, topK: 5 }), 'optimizer');
 
 // Confirm hashes diverge — the wrapper should be changing placement.
 let overlap = 0;
