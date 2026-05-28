@@ -28,7 +28,7 @@
  *     grid_b64, globals_b64, mask_b64,
  *     schema_version: "v1.1" }
  */
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { Buffer } from 'node:buffer';
@@ -51,6 +51,7 @@ await import('../src/systems/bots/brains/NatureBrain.ts');
 await import('../src/systems/bots/brains/HarmonicBrain.ts');
 await import('../src/systems/bots/brains/PsionicBrain.ts');
 await import('../src/systems/bots/brains/LearningBrain.ts');
+const { OptimizerBrain } = await import('../src/systems/bots/brains/OptimizerBrain.ts');
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -63,6 +64,11 @@ function parseArgs() {
     mode: 'standard',
     difficulty: 'normal',
     out: null,
+    /** When set, wraps the inner brain in OptimizerBrain using the
+     *  W* wall list loaded from this JSON file. Inner brain still
+     *  runs (provides upgrade / sell / send decisions once W* is
+     *  exhausted). */
+    optimizerWalls: null,
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -73,6 +79,7 @@ function parseArgs() {
     else if (a.startsWith('--waves=')) out.waveCount = parseInt(a.slice('--waves='.length), 10);
     else if (a.startsWith('--mode=')) out.mode = a.slice('--mode='.length);
     else if (a.startsWith('--difficulty=')) out.difficulty = a.slice('--difficulty='.length);
+    else if (a.startsWith('--optimizer-walls=')) out.optimizerWalls = a.slice('--optimizer-walls='.length);
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -88,12 +95,31 @@ function b64FromTyped(arr) {
 const opts = parseArgs();
 console.log('[generate-bc-rollouts] opts:', opts);
 
+// Load optimizer W* once at startup. Reused across every match.
+let targetWalls = null;
+if (opts.optimizerWalls) {
+  if (!existsSync(opts.optimizerWalls)) {
+    console.error(`[generate-bc-rollouts] optimizer-walls file not found: ${opts.optimizerWalls}`);
+    process.exit(1);
+  }
+  const raw = JSON.parse(readFileSync(opts.optimizerWalls, 'utf8'));
+  const entry = Array.isArray(raw) ? raw[0] : raw;
+  if (!entry?.walls || !Array.isArray(entry.walls)) {
+    console.error(`[generate-bc-rollouts] optimizer-walls JSON missing 'walls' array`);
+    process.exit(1);
+  }
+  targetWalls = entry.walls;
+  console.log(`[generate-bc-rollouts] loaded W* ${targetWalls.length} walls; optimum path=${entry.pathLength}, baseline=${entry.baselinePathLength}`);
+}
+
 mkdirSync(opts.out, { recursive: true });
 const manifest = {
   runId: opts.out.split('/').pop(),
   startedAt: new Date().toISOString(),
   schemaVersion: OBS_ACTION_SCHEMA_VERSION,
   innerBrain: opts.innerBrain,
+  outerBrain: targetWalls ? 'optimizer' : null,
+  optimizerWalls: opts.optimizerWalls,
   waveCount: opts.waveCount,
   factions: {},
 };
@@ -114,7 +140,8 @@ for (const faction of opts.factions) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
     const matchId = `${faction}-s${seed}-${opts.mode}-${opts.difficulty}-w${opts.waveCount}`;
     const inner = innerFactory();
-    const recorder = new ObsRecorderBrain(inner, matchId);
+    const teacher = targetWalls ? new OptimizerBrain({ inner, targetWalls }) : inner;
+    const recorder = new ObsRecorderBrain(teacher, matchId);
 
     const match = new Match({
       faction,
