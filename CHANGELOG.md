@@ -2,6 +2,37 @@
 
 ## 2026-05-27
 
+### RL coverage reward — shapes PPO toward path-through-tower-kill-zones
+
+User-flagged after watching the 50-iter PPO render: the policy was building long *parallel rows* of towers along the natural straight path instead of forcing real zigzag mazes. At 238s in the video, a single placement REDIRECTED the path entirely and bypassed most of the existing maze — and the agent had no signal that it had just self-sabotaged.
+
+**Diagnosis:** the existing reward (outcome + per-wave + per-tick + maze-length) doesn't distinguish "path goes through tower kill zones" from "path goes around tower kill zones." User's idea: reward `Σ (tower, path-cell-in-range)` pairs. Captures "creep time spent in any tower's attack range" directly.
+
+**Implementation** in `src/systems/bots/learning/PPORecorderBrain.ts`:
+
+- `RewardConfig.coveragePerUnit` (default 0.01). 
+- `computePathCoverage()`: iterates `allPaths × placedTowers`, counts `(tower, path-cell)` pairs where Euclidean distance² ≤ `getTowerType(tower).range²`.
+- Attribution: between successive `decide()` calls, diff coverage and add `delta × coveragePerUnit` to the previous row's reward. Same one-step-late pattern as `mazePerCell`. Final delta captured in `finalize()`.
+- Manifest surfaces `totalCoverageReward` per faction.
+- Calibration: typical good placement adds 5-10 coverage pairs ≈ +0.05-0.10 reward (one wave-clear's worth). Catastrophic redirect (moves 30-50 path cells out of 5+ towers) costs -0.3 to -0.5.
+
+**Result on 20-iter PPO from BC with coverage reward enabled** (standard_long/30w arcane, N=20, seed-base=20000):
+
+| temperature | 20-iter+coverage win% | avg lives remaining |
+|---|---|---|
+| **0.0** | **100%** | 16.1 |
+| 0.1 | 100% | 17.9 |
+| 0.3 | 90% | 15.1 |
+| 0.5 | 95% | 15.2 |
+
+**Coverage reward got PPO to 100% win rate in 20 iters** vs the 50 iters needed without it. Faster convergence — the agent gets stronger gradient signal about placement quality.
+
+**Side-effect:** the final iter had KL=0.35 (above the healthy <0.1 target). The coverage reward signal is larger-magnitude than maze reward, which destabilizes the gradient as the policy converges. Mitigations for next iteration: lower `coveragePerUnit` to 0.005, OR drop LR in late iters, OR cap KL early-stop.
+
+**Visual** (`media/ppo-coverage-20iter-T0-arcane.webm`): wave-30 win at seed 620000 with 19/20 lives. The shape question — does the policy now build maze-like structures vs parallel rows — visible in the video. Side-by-side comparison with the 50-iter no-coverage render at the same seed is informative.
+
+Snapshot at `models/ppo-coverage-20iter.{pt,onnx,meta.json}` (gitignored).
+
 ### RL path 1 continuation — 50-iter PPO Arcane-only: SOLVED at T=0 (100% win, 0 lives lost)
 
 Continued PPO training from the 10-iter checkpoint, Arcane only this time (Mech still 0% so we focused effort), 40 more iters at standard_long/30w / matches-per-iter=8 / lr=3e-4. Per-iter ~75s, total ~50min wall.

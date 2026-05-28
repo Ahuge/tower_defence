@@ -24,6 +24,7 @@ import { BotBrain, BotContext, BotDecision } from '../BotBrain';
 import { Match } from '../../../headless/Match';
 import { PPOBrain } from '../brains/PPOBrain';
 import { fromMatch as obsFromMatch, Obs } from './ObsTensor';
+import { getTowerType } from '../../../data/TowerTypes';
 
 export interface PPORecordRow {
   matchId: string;
@@ -49,6 +50,23 @@ export interface RewardConfig {
    *  contributes ~0.25 reward, roughly one wave-clear's worth.
    *  Set to 0 to disable maze shaping. */
   mazePerCell: number;
+
+  /** Per-pair reward for changes in total `(tower, path-cell-in-range)`
+   *  coverage. Captures whether the agent's tower placements are
+   *  actually positioned along the path the creeps will walk.
+   *  Penalizes placements that REDIRECT the path away from
+   *  existing towers (the self-sabotage failure mode the 50-iter
+   *  smoke exhibited at 238s in the render). Positive for
+   *  placements that extend the maze THROUGH existing towers'
+   *  attack zones.
+   *
+   *  Default `0.01`: a typical good placement adds 5-10 coverage
+   *  pairs (≈ +0.05-0.10, one wave-clear's worth). A catastrophic
+   *  redirect that moves 30-50 path cells out of 5+ towers'
+   *  ranges costs -0.5 to -1.0.
+   *
+   *  Set to 0 to disable coverage shaping. */
+  coveragePerUnit: number;
 }
 
 export const DEFAULT_REWARD: RewardConfig = {
@@ -62,6 +80,12 @@ export const DEFAULT_REWARD: RewardConfig = {
   // 100-cell maze contributes 0.1 reward, one wave's worth) but
   // small enough that gradient updates don't blow up.
   mazePerCell: 0.001,
+  // Coverage reward: see RewardConfig.coveragePerUnit docs.
+  // Addresses the "parallel-rows-not-mazes" failure mode observed
+  // in the 50-iter PPO at standard_long/30w — agent built long
+  // straight tower rows along the natural path instead of forcing
+  // zigzag detours through tower kill zones.
+  coveragePerUnit: 0.01,
 };
 
 export class PPORecorderBrain implements BotBrain {
@@ -75,9 +99,13 @@ export class PPORecorderBrain implements BotBrain {
   readonly dropped = { fallback: 0, send: 0, frontier: 0, frontierManage: 0, illegalUnderMask: 0 };
   private lastWaveSeen = 0;
   private lastPathLen = -1;  // -1 = uninitialized; set on first decide.
+  private lastCoverage = -1; // -1 = uninitialized; set on first decide.
   /** Sum of `mazePerCell * delta` rewards attributed across all
    *  rows of this match. Surfaced for tuning + diagnostics. */
   totalMazeReward = 0;
+  /** Sum of `coveragePerUnit * delta` rewards attributed across all
+   *  rows of this match. Surfaced for tuning + diagnostics. */
+  totalCoverageReward = 0;
   private tick = 0;
 
   constructor(inner: PPOBrain, matchId: string, reward: RewardConfig = DEFAULT_REWARD) {
@@ -108,6 +136,45 @@ export class PPORecorderBrain implements BotBrain {
     return total;
   }
 
+  /** Total `(tower, path-cell-in-range)` pair count across all owned
+   *  towers and all active paths. Higher = the policy's towers are
+   *  better positioned along the path creeps will walk; placement
+   *  changes that REDIRECT the path away from existing towers (the
+   *  self-sabotage failure mode) cause this to drop sharply, which
+   *  then flows into the reward via attribution.
+   *
+   *  Range check uses Euclidean distance² <= range² to match how
+   *  the game's tower-targeting actually evaluates LoS. Range
+   *  comes from the tower type definition. */
+  private computePathCoverage(): number {
+    if (!this.match) return 0;
+    const ctx = this.match.observe();
+    const paths = this.match.getAllPaths();
+    if (ctx.placedTowers.length === 0) return 0;
+
+    // Precompute (tower, range²) for the inner loop.
+    const towers: Array<{ col: number; row: number; r2: number }> = [];
+    for (const t of ctx.placedTowers) {
+      const def = getTowerType(t.towerId);
+      if (!def) continue;
+      towers.push({ col: t.col, row: t.row, r2: def.range * def.range });
+    }
+    if (towers.length === 0) return 0;
+
+    let count = 0;
+    for (const path of paths) {
+      if (!path) continue;
+      for (const cell of path) {
+        for (const t of towers) {
+          const dx = t.col - cell.col;
+          const dy = t.row - cell.row;
+          if (dx * dx + dy * dy <= t.r2) count++;
+        }
+      }
+    }
+    return count;
+  }
+
   /** Async path used by `Match.stepAsync` when our caller drove the
    *  match via `runToEndAsync`. This is the real production path
    *  for PPO rollout gen. */
@@ -128,6 +195,23 @@ export class PPORecorderBrain implements BotBrain {
         }
       }
       this.lastPathLen = newLen;
+    }
+
+    // Coverage-reward attribution: same one-step-late pattern.
+    // Captures placements that route the path through tower kill
+    // zones (positive delta) vs placements that redirect the path
+    // away from existing towers (large negative delta).
+    if (this.match && this.reward.coveragePerUnit !== 0) {
+      const newCov = this.computePathCoverage();
+      if (this.lastCoverage >= 0 && this.rows.length > 0) {
+        const delta = newCov - this.lastCoverage;
+        if (delta !== 0) {
+          const r = this.reward.coveragePerUnit * delta;
+          this.rows[this.rows.length - 1].reward += r;
+          this.totalCoverageReward += r;
+        }
+      }
+      this.lastCoverage = newCov;
     }
 
     this.tick++;
@@ -211,6 +295,17 @@ export class PPORecorderBrain implements BotBrain {
         const r = this.reward.mazePerCell * delta;
         this.rows[this.rows.length - 1].reward += r;
         this.totalMazeReward += r;
+      }
+    }
+
+    // Same trailing-delta capture for coverage.
+    if (this.match && this.reward.coveragePerUnit !== 0 && this.lastCoverage >= 0) {
+      const finalCov = this.computePathCoverage();
+      const delta = finalCov - this.lastCoverage;
+      if (delta !== 0) {
+        const r = this.reward.coveragePerUnit * delta;
+        this.rows[this.rows.length - 1].reward += r;
+        this.totalCoverageReward += r;
       }
     }
 

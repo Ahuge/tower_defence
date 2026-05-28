@@ -181,8 +181,10 @@ for (const faction of opts.factions) {
     }
     if (manifest.factions[faction].totalMazeReward === undefined) {
       manifest.factions[faction].totalMazeReward = 0;
+      manifest.factions[faction].totalCoverageReward = 0;
     }
     manifest.factions[faction].totalMazeReward += recorder.totalMazeReward;
+    manifest.factions[faction].totalCoverageReward += recorder.totalCoverageReward;
     totalRows += rows.length;
     totalDropped += Object.values(recorder.dropped).reduce((a, b) => a + b, 0);
 
