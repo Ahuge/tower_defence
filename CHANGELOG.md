@@ -1,5 +1,51 @@
 # Changelog
 
+## 2026-05-28
+
+### RL optimizer-overlap reward: didn't move the needle (W* signal too coarse)
+
+Wired the maze optimizer's `W*` wall set into PPORecorderBrain as a per-placement bonus. Reward shaping path (option 1 from the planning convo) — no schema change, no retrain, smallest possible integration.
+
+**Implementation:**
+
+- `RewardConfig.optimizerOverlapK` (default 0). Per place action, if the cell is in `W*`, agent gets `+K` reward (same-step attribution since the action is the placement).
+- `PPORecorderBrain` 4th constructor arg `targetMazeWalls?: Array<{col, row}>` → stored as `Set<"col,row">` for O(1) lookup.
+- `generate-ppo-rollouts.mjs` `--optimizer-walls=path/to/json` flag loads the optimizer JSON at startup, overrides DEFAULT_REWARD with `optimizerOverlapK=0.05`, passes wall list to every match's recorder.
+- `train_ppo.py` `--optimizer-walls=PATH` threads through to the subprocess.
+- Manifest exposes `totalOptimizerReward` per faction so we can verify the bonus is firing.
+
+**Cached optimum:** `traces/mazes/plains-unbounded.json` — path length 460, 360 walls.
+
+**Results — 20-iter PPO with optimizer reward, normal/standard_long_scaled/50w arcane:**
+
+| temperature | win% | avg wave |
+|---|---|---|
+| 0.0 | 0% | 34.0 |
+| 0.1 | 0% | 34.1 |
+| 0.3 | 0% | 35.3 |
+| 0.5 | 0% | 33.8 |
+
+**Comparison to prior reward configs at same matchup:**
+
+| reward config | best avg wave |
+|---|---|
+| BC baseline | 27 |
+| multiplicative L×C only | 33.7 |
+| + turns (K=0.05) | **35.8** |
+| + optimizer-overlap (K=0.05) | 35.3 |
+
+**The optimizer-overlap reward didn't help meaningfully** — slightly regressed avg wave vs turns-only (35.3 vs 35.8 at the best temperature). Training was stable (KL 0.016, r_mean +0.023 highest we've recorded), so the bonus IS firing — it just doesn't differentiate.
+
+**Why:** `W*` has 360 cells out of ~876 placeable on plains (~40% of grid). A *random* tower placement has 40% probability of landing in `W*`. The +0.05 bonus per W* placement gives random play ~+0.30 reward over 15 towers; all-in-W* play gives ~+0.75. The gradient between "good" and "bad" placement is too small to overcome PPO's conservative updates from the BC starting point.
+
+**Two paths forward to try next:**
+
+1. **Asymmetric reward**: `+K` for W* placements, `-K` for non-W*. Same magnitude but the gradient between aligned vs random is now `2K × n_towers` not `K × n_towers`. Stronger signal at same K.
+2. **Selective W*** — instead of "all 360 walls," use only the "high-leverage" cells (those whose removal shortens the optimizer's path most). Probably ~30-50 cells. Much sharper signal.
+3. **Channel observation (option 2 from the planning convo)** — let the agent SEE W* via a new ObsTensor channel. Schema bump + full retrain but agent can plan.
+
+Snapshot: `models/ppo-opt-20iter.{pt,onnx,meta.json}` (gitignored).
+
 ## 2026-05-27
 
 ### RL turn-count reward + maze optimizer (separate tool, integration deferred)

@@ -109,6 +109,23 @@ export interface RewardConfig {
    *
    *  Set to 0 to disable. */
   turnsRewardK: number;
+
+  /** Per-placement bonus when the agent places a tower on a cell
+   *  that's in the cached maze optimizer's `W*` wall set. Added
+   *  2026-05-27 after the maze-optimizer subagent showed plains'
+   *  optimal serpentine reaches path length 460 with 360 walls
+   *  (vs the agent's current ~30-cell paths = 7% of the optimum).
+   *
+   *  Reward shaping toward W* gives the agent a gradient *toward*
+   *  the planning solution rather than asking it to discover the
+   *  serpentine from scratch via local exploration.
+   *
+   *  Default `0.05`: with 15-20 towers per match, even if all are
+   *  in W* the agent gets +0.75-1.0 reward — meaningful but not
+   *  dominant over outcome (±1).
+   *
+   *  Set to 0 to disable. */
+  optimizerOverlapK: number;
 }
 
 export const DEFAULT_REWARD: RewardConfig = {
@@ -136,6 +153,12 @@ export const DEFAULT_REWARD: RewardConfig = {
   // to a wave clear. Directly measures zigzag vs blob vs lines
   // (all three of which can have similar coverage and length).
   turnsRewardK: 0.05,
+  // Optimizer overlap reward: K per tower placed on a W* cell.
+  // K=0.05: 15-20 towers all in W* contributes +0.75-1.0
+  // (meaningful but not dominant). Default 0 to keep the reward
+  // OFF unless caller wires up targetMazeWalls — most code paths
+  // (existing BC rollout gen, validate-bc) don't need it.
+  optimizerOverlapK: 0,
 };
 
 export class PPORecorderBrain implements BotBrain {
@@ -166,13 +189,32 @@ export class PPORecorderBrain implements BotBrain {
    *  Surfaced for manifest stats so we can verify the
    *  zigzag-specific term is contributing. */
   totalTurnsReward = 0;
+  /** Sum of `optimizerOverlapK` × placements-in-W* across all
+   *  rows. Surfaced so we can verify the agent is actually
+   *  finding W* cells more often than chance. */
+  totalOptimizerReward = 0;
+  /** Cells in the cached maze optimizer's `W*` set, encoded as
+   *  `"col,row"` strings for O(1) lookup. Caller passes this
+   *  via the optional 4th constructor arg; PPORecorderBrain
+   *  treats it as read-only. */
+  private targetMazeWallSet: Set<string> = new Set();
   private tick = 0;
 
-  constructor(inner: PPOBrain, matchId: string, reward: RewardConfig = DEFAULT_REWARD) {
+  constructor(
+    inner: PPOBrain,
+    matchId: string,
+    reward: RewardConfig = DEFAULT_REWARD,
+    targetMazeWalls?: Array<{ col: number; row: number }>,
+  ) {
     this.inner = inner;
     this.matchId = matchId;
     this.reward = reward;
     this.name = `PPORecorder(${inner.name})`;
+    if (targetMazeWalls && targetMazeWalls.length > 0) {
+      for (const w of targetMazeWalls) {
+        this.targetMazeWallSet.add(`${w.col},${w.row}`);
+      }
+    }
   }
 
   attachMatch(match: Match): void {
@@ -370,6 +412,21 @@ export class PPORecorderBrain implements BotBrain {
       if (ctxNow.wave > this.lastWaveSeen) {
         stepReward += this.reward.perWaveBonus * (ctxNow.wave - this.lastWaveSeen);
         this.lastWaveSeen = ctxNow.wave;
+      }
+    }
+
+    // Optimizer-overlap bonus: same-step attribution since the
+    // action being taken IS the place. If this placement is on a
+    // cell the maze optimizer marked as a wall in its `W*`
+    // solution, agent gets K extra reward. Drives the policy
+    // gradient toward placements that match the offline-computed
+    // optimum, without locking it in (agent still free to
+    // deviate; just loses the bonus).
+    if (stats.decision.kind === 'place' && this.reward.optimizerOverlapK !== 0 && this.targetMazeWallSet.size > 0) {
+      const key = `${stats.decision.col},${stats.decision.row}`;
+      if (this.targetMazeWallSet.has(key)) {
+        stepReward += this.reward.optimizerOverlapK;
+        this.totalOptimizerReward += this.reward.optimizerOverlapK;
       }
     }
 

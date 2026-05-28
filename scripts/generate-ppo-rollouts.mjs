@@ -23,7 +23,7 @@
  *   --temperature=1.0
  *   --out=rollouts/ppo/<run_id>
  */
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { Buffer } from 'node:buffer';
@@ -62,6 +62,7 @@ function parseArgs() {
     model: 'models/ppo-policy.onnx',
     meta: 'models/ppo-policy.meta.json',
     out: null,
+    optimizerWalls: null,
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -74,6 +75,7 @@ function parseArgs() {
     else if (a.startsWith('--model=')) out.model = a.slice('--model='.length);
     else if (a.startsWith('--meta=')) out.meta = a.slice('--meta='.length);
     else if (a.startsWith('--out=')) out.out = a.slice('--out='.length);
+    else if (a.startsWith('--optimizer-walls=')) out.optimizerWalls = a.slice('--optimizer-walls='.length);
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -88,6 +90,30 @@ function b64FromTyped(arr) {
 
 const opts = parseArgs();
 console.log('[generate-ppo-rollouts] opts:', opts);
+
+// Load optimizer's W* if specified. Single load at startup; same
+// W* passed to every match's PPORecorderBrain so the optimizer-
+// overlap bonus can fire.
+let targetMazeWalls = null;
+let rewardOverride = null;
+if (opts.optimizerWalls) {
+  if (!existsSync(opts.optimizerWalls)) {
+    console.error(`[generate-ppo-rollouts] optimizer-walls file not found: ${opts.optimizerWalls}`);
+    process.exit(1);
+  }
+  const raw = JSON.parse(readFileSync(opts.optimizerWalls, 'utf8'));
+  const entry = Array.isArray(raw) ? raw[0] : raw;
+  if (!entry?.walls || !Array.isArray(entry.walls)) {
+    console.error(`[generate-ppo-rollouts] optimizer-walls JSON missing 'walls' array`);
+    process.exit(1);
+  }
+  targetMazeWalls = entry.walls;
+  // Pull the reward config from PPORecorderBrain's default + override
+  // optimizerOverlapK so the bonus fires.
+  const { DEFAULT_REWARD } = await import('../src/systems/bots/learning/PPORecorderBrain.ts');
+  rewardOverride = { ...DEFAULT_REWARD, optimizerOverlapK: 0.05 };
+  console.log(`[generate-ppo-rollouts] loaded W* with ${targetMazeWalls.length} walls (optimum path=${entry.pathLength}); optimizerOverlapK=${rewardOverride.optimizerOverlapK}`);
+}
 
 if (!existsSync(opts.model)) {
   console.error(`[generate-ppo-rollouts] model not found: ${opts.model}`);
@@ -138,7 +164,7 @@ for (const faction of opts.factions) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
     const matchId = `${faction}-s${seed}-d${opts.difficulty}-w${opts.waves}`;
     const ppo = new PPOBrain({ modelPath: opts.model, metaPath: opts.meta, temperature: opts.temperature });
-    const recorder = new PPORecorderBrain(ppo, matchId);
+    const recorder = new PPORecorderBrain(ppo, matchId, rewardOverride ?? undefined, targetMazeWalls ?? undefined);
 
     const match = new Match({
       faction,
@@ -184,11 +210,13 @@ for (const faction of opts.factions) {
       manifest.factions[faction].totalCoverageReward = 0;
       manifest.factions[faction].totalProductReward = 0;
       manifest.factions[faction].totalTurnsReward = 0;
+      manifest.factions[faction].totalOptimizerReward = 0;
     }
     manifest.factions[faction].totalMazeReward += recorder.totalMazeReward;
     manifest.factions[faction].totalCoverageReward += recorder.totalCoverageReward;
     manifest.factions[faction].totalProductReward += recorder.totalProductReward;
     manifest.factions[faction].totalTurnsReward += recorder.totalTurnsReward;
+    manifest.factions[faction].totalOptimizerReward += recorder.totalOptimizerReward;
     totalRows += rows.length;
     totalDropped += Object.values(recorder.dropped).reduce((a, b) => a + b, 0);
 
