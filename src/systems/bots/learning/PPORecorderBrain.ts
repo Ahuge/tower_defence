@@ -74,18 +74,15 @@ export const DEFAULT_REWARD: RewardConfig = {
   perWaveBonus: 0.1,
   winBonus: 1.0,
   lossPenalty: -1.0,
-  // 0.005 was tried first; 2-iter PPO from BC collapsed (Arcane
-  // 0/8 wins at iter 1 vs 7/8 at iter 0, KL=1.78 → catastrophic
-  // policy drift). Lowered to 0.001 — still gives signal (a
-  // 100-cell maze contributes 0.1 reward, one wave's worth) but
-  // small enough that gradient updates don't blow up.
-  mazePerCell: 0.001,
-  // Coverage reward: see RewardConfig.coveragePerUnit docs.
-  // Addresses the "parallel-rows-not-mazes" failure mode observed
-  // in the 50-iter PPO at standard_long/30w — agent built long
-  // straight tower rows along the natural path instead of forcing
-  // zigzag detours through tower kill zones.
-  coveragePerUnit: 0.01,
+  // Rebalanced 2026-05-27: previous (mazePerCell=0.001,
+  // coveragePerUnit=0.01) made coverage dominate. Both signals
+  // accrued from parallel-rows along the path, so the agent had
+  // no incentive to take the riskier maze-building option. New
+  // balance (5× maze, 0.5× coverage) makes maze the dominant
+  // signal — extending the path gives ~0.025/cell which beats
+  // the per-tower coverage bonus (~0.025 per 5-cell range).
+  mazePerCell: 0.005,
+  coveragePerUnit: 0.005,
 };
 
 export class PPORecorderBrain implements BotBrain {

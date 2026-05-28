@@ -1,4 +1,4 @@
-export type MatchMode = 'standard' | 'standard_long' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet' | 'tutorial' | 'attacker';
+export type MatchMode = 'standard' | 'standard_long' | 'standard_long_scaled' | 'endless' | 'battle' | 'hero_defense' | 'circle_coop' | 'gauntlet' | 'tutorial' | 'attacker';
 
 export interface WaveCreepGroup {
   creepType: string;
@@ -34,13 +34,25 @@ export interface WaveDefinition {
  *    - Wave 25 composition uses wave 15's mix (swarm/evasive/armored)
  *      not wave 25's regenerator pack.
  */
-function generateStandardWaves(count: number, flattenAt?: number): WaveDefinition[] {
+function generateStandardWaves(
+  count: number,
+  flattenAt?: number,
+  linearScalePast?: number,
+  linearRate = 15,
+): WaveDefinition[] {
   const waves: WaveDefinition[] = [];
 
   for (let i = 0; i < count; i++) {
     const waveNum = i + 1;
     const effW = flattenAt !== undefined ? Math.min(waveNum, flattenAt) : waveNum;
-    const baseHp = Math.round(20 + waveNum * 8 + effW * effW * 0.4);
+    // Linear ramp kicks in past `linearScalePast` — adds `linearRate`
+    // HP per wave on top of the (now-clamped) quadratic. Used by
+    // `standard_long_scaled` to keep long matches non-trivial
+    // without the standard mode's runaway quadratic.
+    const linearBonus = linearScalePast !== undefined
+      ? Math.max(0, waveNum - linearScalePast) * linearRate
+      : 0;
+    const baseHp = Math.round(20 + waveNum * 8 + effW * effW * 0.4 + linearBonus);
     // When flattening, also clamp the wave-number used for the
     // composition dispatch below. Past `flattenAt` we cycle through
     // the wave 11-20 compositions (varied but tractable for current
@@ -226,6 +238,23 @@ export function getWavesForMode(mode: MatchMode, waveCount?: number): WaveDefini
       // flying creeps and die at wave 22; at 15 they survive
       // significantly longer.
       return generateStandardWaves(waveCount ?? 50, 15);
+    case 'standard_long_scaled':
+      // Same composition cap as standard_long (no flying/healer
+      // packs) but with a LINEAR scaling ramp past wave 20.
+      // standard_long was effectively flat past wave 15, so the
+      // agent had no need to evolve mid-match strategy. This mode
+      // continues to scale HP at +15/wave linearly so wave 50 is
+      // ~3x harder than wave 20. Designed for RL curriculum where
+      // the policy needs to adapt to growing difficulty over a
+      // long match (the 'really long map' the user asked for).
+      //
+      // HP comparison:
+      //   wave 10  standard 140  long 140  long_scaled 140
+      //   wave 20  standard 340  long 270  long_scaled 270
+      //   wave 30  standard 620  long 270  long_scaled 420
+      //   wave 50  standard 1420 long 270  long_scaled 720
+      //   wave 100 standard ~4500 long 270 long_scaled 1470
+      return generateStandardWaves(waveCount ?? 50, 15, 20, 15);
     case 'endless':
       return generateEndlessWaves(1, 20); // initial batch; more appended at runtime
     case 'battle':

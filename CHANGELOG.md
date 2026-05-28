@@ -2,6 +2,61 @@
 
 ## 2026-05-27
 
+### RL `standard_long_scaled` mode + reward rebalance: rewards alone aren't the lever for maze shape
+
+User-flagged after seeing the 50-iter render: coverage reward made PPO converge faster but didn't change shape — still parallel rows along the natural path. Tried three things together: (C) reward rebalance (maze 5×, coverage 0.5×), (D) harder/longer matches, and a new "really long map that continues scaling."
+
+**`standard_long_scaled` mode** (new):
+- Same composition cap as `standard_long` (cycles waves 11-15 past wave 15 — no flying/healer packs)
+- Adds a LINEAR HP ramp past wave 20 (+15 HP per wave)
+- Designed for RL curriculum over 50+ wave matches with steady-not-exploding difficulty
+
+HP comparison at key waves:
+
+| wave | standard | standard_long | **standard_long_scaled** |
+|---|---|---|---|
+| 10 | 140 | 140 | 140 |
+| 20 | 340 | 270 | 270 |
+| 30 | 620 | 270 | **420** |
+| 50 | 1420 | 270 | **720** |
+| 100 | ~4500 | 270 | **1470** |
+
+`generateStandardWaves(count, flattenAt?, linearScalePast?, linearRate=15)` now takes 4 params; `standard_long_scaled` calls it with `(50, 15, 20, 15)`. Single-seed brain test (LearningBrain Arc seed 20000):
+- standard/50w: wave 21 — standard_long/50w: wave 30 — standard_long_scaled/50w: wave 24
+
+**Reward rebalance**: `mazePerCell` 0.001 → 0.005 (5×), `coveragePerUnit` 0.01 → 0.005 (½). Maze becomes the dominant signal.
+
+**Results** at normal/standard_long_scaled/50w (BC: 89.1% top1, 0.25 entropy, 0% wins, avg wave 27 → real headroom for PPO):
+
+| | Arcane @ T=0 | T=0.1 | T=0.3 | T=0.5 |
+|---|---|---|---|---|
+| BC alone | (avg wave 27) | | | |
+| **PPO 20-iter** | 0% (avg wave 29.8) | 0% (30.1) | 0% (31.6) | 0% (32.7) |
+
+PPO pushed avg wave 27→33 (+5-6 waves) but didn't crack the 50-wave win threshold. Stable training (KL 0.024 final, entropy 0.74).
+
+**Visual comparison** (seed 620000, T=0.3):
+- BC: loss wave 31, parallel-rows layout
+- PPO 20-iter (rebalanced): loss wave 33, **same parallel-rows layout** per user inspection
+
+**Conclusion: reward weight rebalancing is not the lever for maze shape.** The agent reaches the same local optimum regardless of how we scale maze-vs-coverage. The "parallel rows along the natural path" strategy is *structurally optimal* under all reward shapes we've tried because:
+
+1. Maze reward is per-cell; parallel rows don't add path cells but they don't subtract either
+2. Coverage reward favors towers-near-path; parallel rows ARE towers-near-path
+3. Both maze + coverage reward TOO conservatively → agent never explores risky maze-building
+
+What we haven't yet tried that could move the needle:
+- **(E) Different map**: plains has wide-open terrain. A faction map with natural chokepoints would *require* mazing to be effective.
+- **Coverage × length composite**: reward `path_length × tower_coverage` (multiplicative) instead of additive. Rewards path that goes through *many* tower zones.
+- **Counterfactual placement reward**: at each placement, compute "would the match outcome be different without this tower?" Expensive but directly objective-aligned.
+
+Snapshots:
+- `models/bc-multi-scaled-normal50.{pt,onnx,meta.json}`: BC at normal/scaled/50w
+- `models/bc-multi-scaled-hard50.{pt,onnx,meta.json}`: BC at hard/scaled/50w (0% wins; hard is too hard for current brains)
+- `models/ppo-scaled-normal-20iter.{pt,onnx,meta.json}`: PPO 20-iter at normal/scaled/50w
+
+`scripts/scaled-check.mjs` is a one-off spot-checker for the new mode, committed for future re-runs.
+
 ### RL coverage reward — shapes PPO toward path-through-tower-kill-zones
 
 User-flagged after watching the 50-iter PPO render: the policy was building long *parallel rows* of towers along the natural straight path instead of forcing real zigzag mazes. At 238s in the video, a single placement REDIRECTED the path entirely and bypassed most of the existing maze — and the agent had no signal that it had just self-sabotaged.

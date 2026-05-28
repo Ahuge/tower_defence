@@ -19,7 +19,7 @@ export interface MatchConfig {
    *  wave 20). Other modes (circle_coop, versus, hero_defense,
    *  gauntlet) need extra setup; out of scope for the first
    *  balance-testing pass. */
-  matchMode: 'standard' | 'standard_long' | 'endless';
+  matchMode: 'standard' | 'standard_long' | 'standard_long_scaled' | 'endless';
   /** Total waves to play. Ignored for endless — endless runs until
    *  the bot loses or hits `maxWaves` as a safety cap. */
   waveCount?: number;
