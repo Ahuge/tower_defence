@@ -110,6 +110,28 @@ export interface RewardConfig {
    *  Set to 0 to disable. */
   turnsRewardK: number;
 
+  /** Reward proportional to how "boxed in" the creep path is. For
+   *  each cell on the creep path, count how many of its 4-neighbors
+   *  are walls/towers. Summed across all path cells; one-step-late
+   *  attribution (delta credited to the previous decision).
+   *
+   *  Why this exists (added 2026-05-29 after observing PPO v3b
+   *  webms): the agent figured out HOW to add turns but kept
+   *  letting the path open back up wide on the right of the map.
+   *  Turn-count rewards zigzag entries; box-in rewards CORRIDORS —
+   *  i.e. cells with walls on both sides, no creep choice.
+   *
+   *  Scale of the metric in practice:
+   *    - Single straight path (no walls): 0
+   *    - Path with walls on one side: ~N (1 per path cell)
+   *    - Tight corridor (walls both sides): ~2N
+   *    - Maze with corners (3 walls around): up to ~3N
+   *
+   *  K=0.02: a corridor section of 10 cells adds ~20 sum, which
+   *  at K=0.02 = +0.4 reward. Comparable to a wave clear but not
+   *  outcome-dominant. */
+  boxInRewardK: number;
+
   /** Per-placement bonus when the agent places a tower on a cell
    *  that's in the cached maze optimizer's `W*` wall set. Added
    *  2026-05-27 after the maze-optimizer subagent showed plains'
@@ -153,6 +175,13 @@ export const DEFAULT_REWARD: RewardConfig = {
   // to a wave clear. Directly measures zigzag vs blob vs lines
   // (all three of which can have similar coverage and length).
   turnsRewardK: 0.05,
+  // Box-in reward: K × (sum over path cells of #wall-neighbors).
+  // K=0.02: tight 10-cell corridor (2 walls/cell) adds +0.4.
+  // Directly measures the "creeps have no choice" property the
+  // turn-count reward MISSES — turn-count rewards entries to the
+  // maze but not corridor depth. Default 0 to keep the reward
+  // OFF unless caller opts in.
+  boxInRewardK: 0,
   // Optimizer overlap reward: K per tower placed on a W* cell.
   // K=0.05: 15-20 towers all in W* contributes +0.75-1.0
   // (meaningful but not dominant). Default 0 to keep the reward
@@ -175,6 +204,7 @@ export class PPORecorderBrain implements BotBrain {
   private lastCoverage = -1; // -1 = uninitialized; set on first decide.
   private lastLengthCoverageProduct = -1; // same convention
   private lastTurns = -1; // same convention
+  private lastBoxIn = -1; // same convention
   /** Sum of `mazePerCell * delta` rewards attributed across all
    *  rows of this match. Surfaced for tuning + diagnostics. */
   totalMazeReward = 0;
@@ -189,6 +219,9 @@ export class PPORecorderBrain implements BotBrain {
    *  Surfaced for manifest stats so we can verify the
    *  zigzag-specific term is contributing. */
   totalTurnsReward = 0;
+  /** Sum of `boxInRewardK * delta` rewards across all rows.
+   *  Surfaced for manifest stats. */
+  totalBoxInReward = 0;
   /** Sum of `optimizerOverlapK` × placements-in-W* across all
    *  rows. Surfaced so we can verify the agent is actually
    *  finding W* cells more often than chance. */
@@ -275,6 +308,50 @@ export class PPORecorderBrain implements BotBrain {
       }
     }
     return count;
+  }
+
+  /** Sum over all creep-path cells of the count of wall-neighbors
+   *  in their 4-neighborhood. Measures "boxed-in-ness" of the
+   *  path — high when the path is a tight corridor with walls
+   *  hugging both sides, low when the path runs through open
+   *  ground.
+   *
+   *  Worked example: a path of length N through a tight corridor
+   *  (walls on both sides) sums to ~2N. A path through open
+   *  ground with no walls nearby sums to ~0. Corner cells with
+   *  3 walls around get score 3.
+   *
+   *  This is structurally different from turn-count: a long
+   *  straight corridor between walls has 0 turns but high box-in;
+   *  a single zigzag entry has high turn count but low box-in if
+   *  most of the path is in the open.
+   *
+   *  Wall = anything that blocks placement (towers, blocked,
+   *  nobuild, entry/exit). Cells walked-through still count as
+   *  "not a wall" — only true obstacles contribute. */
+  private computeBoxIn(): number {
+    if (!this.match) return 0;
+    const grid = this.match.getGrid();
+    const paths = this.match.getAllPaths();
+    let sum = 0;
+    const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (const path of paths) {
+      if (!path) continue;
+      for (const cell of path) {
+        for (const [dc, dr] of NEIGHBORS) {
+          const c = cell.col + dc;
+          const r = cell.row + dr;
+          // Out-of-grid counts as wall — corridor against the
+          // map edge is just as confining as against a tower.
+          if (c < 0 || c >= grid.cols || r < 0 || r >= grid.rows) {
+            sum++;
+            continue;
+          }
+          if (!grid.isWalkable(c, r)) sum++;
+        }
+      }
+    }
+    return sum;
   }
 
   /** Count direction changes in the creep path. Each cell where
@@ -374,6 +451,23 @@ export class PPORecorderBrain implements BotBrain {
         }
       }
       this.lastTurns = newTurns;
+    }
+
+    // Box-in attribution. Same one-step-late pattern. Rewards
+    // placements that compress the path against existing walls —
+    // a wall hugging the path adds 1 per adjacent path cell,
+    // creating corridors with walls on both sides.
+    if (this.match && this.reward.boxInRewardK !== 0) {
+      const newBoxIn = this.computeBoxIn();
+      if (this.lastBoxIn >= 0 && this.rows.length > 0) {
+        const delta = newBoxIn - this.lastBoxIn;
+        if (delta !== 0) {
+          const r = this.reward.boxInRewardK * delta;
+          this.rows[this.rows.length - 1].reward += r;
+          this.totalBoxInReward += r;
+        }
+      }
+      this.lastBoxIn = newBoxIn;
     }
 
     this.tick++;

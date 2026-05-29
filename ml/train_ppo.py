@@ -249,6 +249,8 @@ def generate_rollouts(opts: argparse.Namespace, iter_idx: int, model_path: str) 
     ]
     if opts.optimizer_walls:
         cmd.append(f'--optimizer-walls={opts.optimizer_walls}')
+    if opts.box_in_k != 0:
+        cmd.append(f'--box-in-k={opts.box_in_k}')
     print(f'[iter {iter_idx}] rollout: {" ".join(cmd)}')
     res = subprocess.run(cmd, capture_output=False)
     if res.returncode != 0:
@@ -277,6 +279,7 @@ def main():
     ap.add_argument('--waves', type=int, default=15)
     ap.add_argument('--mode', default='standard', help='matchMode passed through to rollout gen + Match. Use "standard_long" for long-match training.')
     ap.add_argument('--optimizer-walls', default=None, help='Path to maze-optimizer JSON. When set, PPORecorderBrain awards a per-placement bonus for towers placed on W* cells.')
+    ap.add_argument('--box-in-k', type=float, default=0.0, help='boxInRewardK — per-path-cell wall-neighbor sum delta. Rewards walls that hug the creep path, forming corridors. Default 0 (off).')
     ap.add_argument('--seed-base', type=int, default=12000)
     ap.add_argument('--temperature', type=float, default=1.0)
     ap.add_argument('--gamma', type=float, default=0.995)

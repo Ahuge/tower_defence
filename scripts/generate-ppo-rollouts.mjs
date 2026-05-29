@@ -63,6 +63,7 @@ function parseArgs() {
     meta: 'models/ppo-policy.meta.json',
     out: null,
     optimizerWalls: null,
+    boxInK: 0,
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -76,6 +77,7 @@ function parseArgs() {
     else if (a.startsWith('--meta=')) out.meta = a.slice('--meta='.length);
     else if (a.startsWith('--out=')) out.out = a.slice('--out='.length);
     else if (a.startsWith('--optimizer-walls=')) out.optimizerWalls = a.slice('--optimizer-walls='.length);
+    else if (a.startsWith('--box-in-k=')) out.boxInK = parseFloat(a.slice('--box-in-k='.length));
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -108,11 +110,15 @@ if (opts.optimizerWalls) {
     process.exit(1);
   }
   targetMazeWalls = entry.walls;
-  // Pull the reward config from PPORecorderBrain's default + override
-  // optimizerOverlapK so the bonus fires.
   const { DEFAULT_REWARD } = await import('../src/systems/bots/learning/PPORecorderBrain.ts');
   rewardOverride = { ...DEFAULT_REWARD, optimizerOverlapK: 0.05 };
   console.log(`[generate-ppo-rollouts] loaded W* with ${targetMazeWalls.length} walls (optimum path=${entry.pathLength}); optimizerOverlapK=${rewardOverride.optimizerOverlapK}`);
+}
+// Box-in reward override (independent of optimizer-walls).
+if (opts.boxInK !== 0) {
+  const { DEFAULT_REWARD } = await import('../src/systems/bots/learning/PPORecorderBrain.ts');
+  rewardOverride = { ...(rewardOverride ?? DEFAULT_REWARD), boxInRewardK: opts.boxInK };
+  console.log(`[generate-ppo-rollouts] boxInRewardK=${opts.boxInK}`);
 }
 
 if (!existsSync(opts.model)) {
@@ -211,12 +217,14 @@ for (const faction of opts.factions) {
       manifest.factions[faction].totalProductReward = 0;
       manifest.factions[faction].totalTurnsReward = 0;
       manifest.factions[faction].totalOptimizerReward = 0;
+      manifest.factions[faction].totalBoxInReward = 0;
     }
     manifest.factions[faction].totalMazeReward += recorder.totalMazeReward;
     manifest.factions[faction].totalCoverageReward += recorder.totalCoverageReward;
     manifest.factions[faction].totalProductReward += recorder.totalProductReward;
     manifest.factions[faction].totalTurnsReward += recorder.totalTurnsReward;
     manifest.factions[faction].totalOptimizerReward += recorder.totalOptimizerReward;
+    manifest.factions[faction].totalBoxInReward += recorder.totalBoxInReward;
     totalRows += rows.length;
     totalDropped += Object.values(recorder.dropped).reduce((a, b) => a + b, 0);
 
