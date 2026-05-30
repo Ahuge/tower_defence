@@ -64,6 +64,7 @@ function parseArgs() {
     out: null,
     optimizerWalls: null,
     boxInK: 0,
+    corridorK: 0,
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -78,6 +79,7 @@ function parseArgs() {
     else if (a.startsWith('--out=')) out.out = a.slice('--out='.length);
     else if (a.startsWith('--optimizer-walls=')) out.optimizerWalls = a.slice('--optimizer-walls='.length);
     else if (a.startsWith('--box-in-k=')) out.boxInK = parseFloat(a.slice('--box-in-k='.length));
+    else if (a.startsWith('--corridor-k=')) out.corridorK = parseFloat(a.slice('--corridor-k='.length));
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -119,6 +121,11 @@ if (opts.boxInK !== 0) {
   const { DEFAULT_REWARD } = await import('../src/systems/bots/learning/PPORecorderBrain.ts');
   rewardOverride = { ...(rewardOverride ?? DEFAULT_REWARD), boxInRewardK: opts.boxInK };
   console.log(`[generate-ppo-rollouts] boxInRewardK=${opts.boxInK}`);
+}
+if (opts.corridorK !== 0) {
+  const { DEFAULT_REWARD } = await import('../src/systems/bots/learning/PPORecorderBrain.ts');
+  rewardOverride = { ...(rewardOverride ?? DEFAULT_REWARD), corridorRewardK: opts.corridorK };
+  console.log(`[generate-ppo-rollouts] corridorRewardK=${opts.corridorK}`);
 }
 
 if (!existsSync(opts.model)) {
@@ -218,6 +225,7 @@ for (const faction of opts.factions) {
       manifest.factions[faction].totalTurnsReward = 0;
       manifest.factions[faction].totalOptimizerReward = 0;
       manifest.factions[faction].totalBoxInReward = 0;
+      manifest.factions[faction].totalCorridorReward = 0;
     }
     manifest.factions[faction].totalMazeReward += recorder.totalMazeReward;
     manifest.factions[faction].totalCoverageReward += recorder.totalCoverageReward;
@@ -225,6 +233,7 @@ for (const faction of opts.factions) {
     manifest.factions[faction].totalTurnsReward += recorder.totalTurnsReward;
     manifest.factions[faction].totalOptimizerReward += recorder.totalOptimizerReward;
     manifest.factions[faction].totalBoxInReward += recorder.totalBoxInReward;
+    manifest.factions[faction].totalCorridorReward += recorder.totalCorridorReward;
     totalRows += rows.length;
     totalDropped += Object.values(recorder.dropped).reduce((a, b) => a + b, 0);
 

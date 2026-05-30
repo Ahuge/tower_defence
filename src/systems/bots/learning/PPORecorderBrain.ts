@@ -132,6 +132,25 @@ export interface RewardConfig {
    *  outcome-dominant. */
   boxInRewardK: number;
 
+  /** Strict corridor reward: only counts path cells with walls on
+   *  BOTH sides of an axis (left+right or up+down). Soft box-in
+   *  (boxInRewardK above) credits a wall on ANY side, but that
+   *  rewards "tower below the path" as much as "tower on both
+   *  sides", and v3c's webm showed the agent loved the cheap
+   *  one-sided pattern.
+   *
+   *  Score per path cell: +1 per OPPOSING pair of walls. Max 2
+   *  per cell (vertical-pair AND horizontal-pair = full intersection).
+   *
+   *  This is what the user actually wants when they say "boxed in":
+   *  creeps in a tight corridor with no escape. A one-sided wall
+   *  is not a corridor; an opposing pair is.
+   *
+   *  K=0.05: a tight 10-cell corridor (full opposing pairs)
+   *  contributes +0.5 (or +1.0 if double-axis at intersections).
+   *  Comparable to a wave clear. Set to 0 to disable. */
+  corridorRewardK: number;
+
   /** Per-placement bonus when the agent places a tower on a cell
    *  that's in the cached maze optimizer's `W*` wall set. Added
    *  2026-05-27 after the maze-optimizer subagent showed plains'
@@ -182,6 +201,11 @@ export const DEFAULT_REWARD: RewardConfig = {
   // maze but not corridor depth. Default 0 to keep the reward
   // OFF unless caller opts in.
   boxInRewardK: 0,
+  // Corridor reward: K × (sum over path cells of opposing-pair-walls).
+  // K=0.05: stricter than box-in — only credits a path cell when
+  // walls are on BOTH sides of the same axis (left+right or
+  // up+down). Encourages true corridors. Default 0 to keep OFF.
+  corridorRewardK: 0,
   // Optimizer overlap reward: K per tower placed on a W* cell.
   // K=0.05: 15-20 towers all in W* contributes +0.75-1.0
   // (meaningful but not dominant). Default 0 to keep the reward
@@ -205,6 +229,7 @@ export class PPORecorderBrain implements BotBrain {
   private lastLengthCoverageProduct = -1; // same convention
   private lastTurns = -1; // same convention
   private lastBoxIn = -1; // same convention
+  private lastCorridor = -1; // same convention
   /** Sum of `mazePerCell * delta` rewards attributed across all
    *  rows of this match. Surfaced for tuning + diagnostics. */
   totalMazeReward = 0;
@@ -222,6 +247,9 @@ export class PPORecorderBrain implements BotBrain {
   /** Sum of `boxInRewardK * delta` rewards across all rows.
    *  Surfaced for manifest stats. */
   totalBoxInReward = 0;
+  /** Sum of `corridorRewardK * delta` rewards across all rows.
+   *  Surfaced for manifest stats. */
+  totalCorridorReward = 0;
   /** Sum of `optimizerOverlapK` × placements-in-W* across all
    *  rows. Surfaced so we can verify the agent is actually
    *  finding W* cells more often than chance. */
@@ -354,6 +382,52 @@ export class PPORecorderBrain implements BotBrain {
     return sum;
   }
 
+  /** Strict corridor metric: for each path cell, +1 for every
+   *  OPPOSING pair of walls (left+right OR up+down). One-sided
+   *  walls score 0. Max per cell = 2 (full intersection).
+   *
+   *  This is the "tight corridor" signal box-in misses — box-in
+   *  rewards any wall-neighbor symmetrically, so one-sided walls
+   *  get half-credit. Corridor reward gives 0 credit until BOTH
+   *  sides exist, sharpening the gradient toward true confinement.
+   *
+   *  Worked example on the user's diagram:
+   *    □□□□......
+   *    ...□......
+   *    .□.□......
+   *    S□.□.....E
+   *    □□.□......
+   *    ...□......
+   *    .□□□......
+   *  The path cells INSIDE the corridor have walls on both sides
+   *  vertically → +1 per cell. Path cells in the open area on
+   *  the right have no walls → 0. */
+  private computeCorridor(): number {
+    if (!this.match) return 0;
+    const grid = this.match.getGrid();
+    const paths = this.match.getAllPaths();
+    let sum = 0;
+    for (const path of paths) {
+      if (!path) continue;
+      for (const cell of path) {
+        const wL = !this.cellWalkable(grid, cell.col - 1, cell.row);
+        const wR = !this.cellWalkable(grid, cell.col + 1, cell.row);
+        const wU = !this.cellWalkable(grid, cell.col, cell.row - 1);
+        const wD = !this.cellWalkable(grid, cell.col, cell.row + 1);
+        if (wL && wR) sum++;
+        if (wU && wD) sum++;
+      }
+    }
+    return sum;
+  }
+
+  /** Out-of-grid counts as wall — corridor along map edge is just
+   *  as confining as against a tower. Same convention as box-in. */
+  private cellWalkable(grid: ReturnType<Match['getGrid']>, col: number, row: number): boolean {
+    if (col < 0 || col >= grid.cols || row < 0 || row >= grid.rows) return false;
+    return grid.isWalkable(col, row);
+  }
+
   /** Count direction changes in the creep path. Each cell where
    *  the direction (dx, dy) differs from the previous step counts
    *  as 1 turn. Straight path = 0; tight blob = ~4; fig2 zigzag
@@ -468,6 +542,24 @@ export class PPORecorderBrain implements BotBrain {
         }
       }
       this.lastBoxIn = newBoxIn;
+    }
+
+    // Corridor attribution. Stricter than box-in — only credits
+    // path cells with walls on BOTH sides of the same axis. This
+    // is the gradient that distinguishes "tower placed below the
+    // path" (box-in fires, corridor doesn't) from "tower placed
+    // to complete a corridor" (both fire).
+    if (this.match && this.reward.corridorRewardK !== 0) {
+      const newCorridor = this.computeCorridor();
+      if (this.lastCorridor >= 0 && this.rows.length > 0) {
+        const delta = newCorridor - this.lastCorridor;
+        if (delta !== 0) {
+          const r = this.reward.corridorRewardK * delta;
+          this.rows[this.rows.length - 1].reward += r;
+          this.totalCorridorReward += r;
+        }
+      }
+      this.lastCorridor = newCorridor;
     }
 
     this.tick++;
