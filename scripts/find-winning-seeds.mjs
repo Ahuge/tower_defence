@@ -6,8 +6,10 @@ await import('../src/systems/bots/brains/PPOBrain.ts');
 const modelPath = process.argv[2] ?? 'models/ppo-bc-opt-v3c.onnx';
 await preloadPPOModel(modelPath, modelPath.replace('.onnx', '.meta.json'));
 const found = [];
-for (let i = 0; i < 30; i++) {
-  const seed = 14000 + i;
+const startSeed = parseInt(process.argv[3] ?? '14000', 10);
+const N = parseInt(process.argv[4] ?? '30', 10);
+for (let i = 0; i < N; i++) {
+  const seed = startSeed + i;
   const r = await runMatch({
     faction: 'arcane', difficulty: 'normal', mapId: 'plains',
     brainId: 'ppo', matchMode: 'standard',
