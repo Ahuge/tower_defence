@@ -73,6 +73,18 @@ function parseArgs() {
      *  them across matches for type-diversity. Overrides --inner-brain
      *  when set. Example: --inner-brains=balanced,aoefocus,greedy */
     innerBrains: null,
+    /** Per-match W* transformations. Comma-separated, rotates
+     *  alongside innerBrains. Each value is one of:
+     *    identity         — W* used as-is
+     *    flip-v           — reflect rows across MID_ROW (top-bottom
+     *                       swap; entry/exit row stays fixed)
+     *    shift-up-N       — shift all rows by -N (drops OOB cells)
+     *    shift-down-N     — shift all rows by +N (drops OOB cells)
+     *  Example: --w-transforms=identity,flip-v
+     *  Default ['identity'] — no augmentation. */
+    wTransforms: null,
+    /** MID_ROW for vertical reflection. Default 13 (plains). */
+    midRow: 13,
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -85,6 +97,8 @@ function parseArgs() {
     else if (a.startsWith('--difficulty=')) out.difficulty = a.slice('--difficulty='.length);
     else if (a.startsWith('--optimizer-walls=')) out.optimizerWalls = a.slice('--optimizer-walls='.length);
     else if (a.startsWith('--inner-brains=')) out.innerBrains = a.slice('--inner-brains='.length).split(',');
+    else if (a.startsWith('--w-transforms=')) out.wTransforms = a.slice('--w-transforms='.length).split(',');
+    else if (a.startsWith('--mid-row=')) out.midRow = parseInt(a.slice('--mid-row='.length), 10);
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -138,6 +152,42 @@ for (const id of innerBrainIds) {
 const pickInnerFactory = (matchIdx) => BRAIN_REGISTRY[innerBrainIds[matchIdx % innerBrainIds.length]];
 manifest.innerBrains = innerBrainIds;
 
+// W* transformation rotation: per-match-deterministic. Same
+// transform applies to all matches with the same idx % len.
+const transformIds = opts.wTransforms ?? ['identity'];
+manifest.wTransforms = transformIds;
+const GRID_ROWS = 26; // matches src/config.ts
+const GRID_COLS = 36;
+function applyTransform(walls, id, midRow) {
+  if (!walls) return walls;
+  if (id === 'identity') return walls;
+  if (id === 'flip-v') {
+    // Reflect across midRow: row r → 2*midRow - r. Keeps cells in
+    // midRow fixed. Cells that map out of bounds get dropped.
+    return walls
+      .map(w => ({ col: w.col, row: 2 * midRow - w.row }))
+      .filter(w => w.row >= 0 && w.row < GRID_ROWS && w.col >= 0 && w.col < GRID_COLS);
+  }
+  if (id.startsWith('shift-up-')) {
+    const n = parseInt(id.slice('shift-up-'.length), 10);
+    return walls
+      .map(w => ({ col: w.col, row: w.row - n }))
+      .filter(w => w.row >= 0 && w.row < GRID_ROWS);
+  }
+  if (id.startsWith('shift-down-')) {
+    const n = parseInt(id.slice('shift-down-'.length), 10);
+    return walls
+      .map(w => ({ col: w.col, row: w.row + n }))
+      .filter(w => w.row >= 0 && w.row < GRID_ROWS);
+  }
+  throw new Error(`unknown w-transform: ${id}`);
+}
+const pickWalls = (matchIdx) => applyTransform(
+  targetWalls,
+  transformIds[matchIdx % transformIds.length],
+  opts.midRow,
+);
+
 const t0 = Date.now();
 let totalRows = 0;
 let totalDropped = 0;
@@ -151,8 +201,9 @@ for (const faction of opts.factions) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
     const matchId = `${faction}-s${seed}-${opts.mode}-${opts.difficulty}-w${opts.waveCount}`;
     const inner = pickInnerFactory(i)();
-    const teacher = targetWalls
-      ? new OptimizerBrain({ inner, targetWalls, seed, topK: 5 })
+    const matchWalls = pickWalls(i);
+    const teacher = matchWalls
+      ? new OptimizerBrain({ inner, targetWalls: matchWalls, seed, topK: 5 })
       : inner;
     const recorder = new ObsRecorderBrain(teacher, matchId);
 
