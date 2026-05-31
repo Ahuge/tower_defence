@@ -47,6 +47,7 @@ import { BotBrain, BotContext, BotDecision, Cell, registerBrain } from '../BotBr
 import { BalancedBrain } from './BalancedBrain';
 import { PathPoint } from '../../Pathfinding';
 import { TowerType } from '../../../data/TowerTypes';
+import { scoreMazeCells } from '../MazePlanner';
 
 /** A wall the optimizer says should exist. */
 export interface OptimizerWall {
@@ -67,6 +68,20 @@ export interface OptimizerBrainOptions {
    *  fully deterministic (legacy v1 behaviour); K=5 gives notable
    *  diversity without sacrificing maze coherence. Default 5. */
   topK?: number;
+  /** Picking strategy:
+   *    'chebyshev' — pick from K nearest unbuilt W* cells (legacy).
+   *    'progressive' — pick from K cells with highest current
+   *                    path-length GAIN (cells that extend the
+   *                    current creep path NOW). Falls back to
+   *                    chebyshev when no cell has positive gain
+   *                    so the maze keeps building.
+   *
+   *  Added 2026-05-31 after v5 webm review: reflected-W* mazes
+   *  had agents placing bottom-half walls when the current creep
+   *  path was in row 13, producing towers that did nothing for
+   *  many waves while lives bled. Progressive picking forces every
+   *  placement to immediately compress the path. */
+  pickMode?: 'chebyshev' | 'progressive';
   /** Per-match seed used by both cell-selection and tower-type
    *  randomisation. Driven by match seed in scripts that construct
    *  OptimizerBrain per match. Default 0 (legacy). */
@@ -100,6 +115,7 @@ export class OptimizerBrain implements BotBrain {
   private inner: BotBrain;
   private targetWalls: OptimizerWall[];
   private topK: number;
+  private pickMode: 'chebyshev' | 'progressive';
   private rng: XorShift32;
   /** Cells in W* we've already placed at, keyed "col,row". Public
    *  for diagnostic / telemetry use. */
@@ -122,6 +138,7 @@ export class OptimizerBrain implements BotBrain {
     this.inner = opts.inner ?? new BalancedBrain();
     this.targetWalls = opts.targetWalls ?? [];
     this.topK = Math.max(1, opts.topK ?? 5);
+    this.pickMode = opts.pickMode ?? 'chebyshev';
     this.rng = new XorShift32(opts.seed ?? 0);
   }
 
@@ -243,6 +260,9 @@ export class OptimizerBrain implements BotBrain {
    *  at random via per-match seeded RNG. K=1 → deterministic legacy
    *  behaviour. K>1 → diverse mazes across matches with same W*. */
   private pickTargetTopK(ctx: BotContext): Cell | null {
+    if (this.pickMode === 'progressive') {
+      return this.pickTargetProgressive(ctx);
+    }
     const pathCells = collectPathCells(ctx.allPaths);
     if (pathCells.length === 0) return null;
 
@@ -260,6 +280,70 @@ export class OptimizerBrain implements BotBrain {
     candidates.sort((a, b) => a.dist - b.dist);
     const topK = candidates.slice(0, Math.min(this.topK, candidates.length));
     return this.rng.pick(topK).cell;
+  }
+
+  /** Progressive picker: score each unbuilt W* cell by how much it
+   *  EXTENDS the current creep path right now. Pick uniformly from
+   *  the top-K by gain. Falls back to chebyshev when no cell has
+   *  positive gain (so the maze keeps building from the frontier
+   *  even when no individual cell adds path).
+   *
+   *  This is what the user wants when they say "build progressively
+   *  out from existing structure" — each placement immediately
+   *  compresses the creep path instead of sitting unused waiting
+   *  for the maze to fill in around it. */
+  private pickTargetProgressive(ctx: BotContext): Cell | null {
+    const pathCells = collectPathCells(ctx.allPaths);
+    if (pathCells.length === 0) return null;
+
+    // Build a candidate list of unbuilt + placeable W* cells.
+    const unbuiltCells: Cell[] = [];
+    for (const w of this.targetWalls) {
+      const key = `${w.col},${w.row}`;
+      if (this.builtSet.has(key)) continue;
+      if (!ctx.grid.canPlaceTower(w.col, w.row)) continue;
+      unbuiltCells.push({ col: w.col, row: w.row });
+    }
+    if (unbuiltCells.length === 0) return null;
+
+    // Score each by current path-gain. scoreMazeCells re-runs A*
+    // for each candidate so it's not free — cap at 30 candidates
+    // (MazePlanner's default) and pre-filter to the K-cheby-closest
+    // so the scoring set is always relevant to the current path.
+    const SCORE_CAP = 30;
+    let scoringPool = unbuiltCells;
+    if (unbuiltCells.length > SCORE_CAP) {
+      // Pre-filter by Chebyshev distance to current path so we score
+      // the cells closest to action.
+      const scored = unbuiltCells.map(c => ({
+        c,
+        d: minChebyshev(c.col, c.row, pathCells),
+      }));
+      scored.sort((a, b) => a.d - b.d);
+      scoringPool = scored.slice(0, SCORE_CAP).map(s => s.c);
+    }
+
+    const scored = scoreMazeCells(ctx.grid, scoringPool, SCORE_CAP, ctx.allPaths);
+
+    // Sort by gain DESC. Only consider cells with positive gain
+    // first; if none, fall through to chebyshev.
+    const positiveGain = scored.filter(s => s.gain > 0).sort((a, b) => b.gain - a.gain);
+    if (positiveGain.length > 0) {
+      const topK = positiveGain.slice(0, Math.min(this.topK, positiveGain.length));
+      const pick = this.rng.pick(topK);
+      return { col: pick.col, row: pick.row };
+    }
+
+    // No cell currently extends the path. Fall back to chebyshev
+    // (pick closest-to-path unbuilt cell) to keep the maze
+    // building from the frontier rather than stalling.
+    const fallbackScored = unbuiltCells.map(c => ({
+      c,
+      d: minChebyshev(c.col, c.row, pathCells),
+    }));
+    fallbackScored.sort((a, b) => a.d - b.d);
+    const topK = fallbackScored.slice(0, Math.min(this.topK, fallbackScored.length));
+    return this.rng.pick(topK).c;
   }
 }
 

@@ -85,6 +85,11 @@ function parseArgs() {
     wTransforms: null,
     /** MID_ROW for vertical reflection. Default 13 (plains). */
     midRow: 13,
+    /** OptimizerBrain pick mode: 'chebyshev' (default) or
+     *  'progressive' (score by current path-gain, fall back to
+     *  chebyshev). Progressive forces every placement to
+     *  immediately compress the path. */
+    pickMode: 'chebyshev',
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -99,6 +104,7 @@ function parseArgs() {
     else if (a.startsWith('--inner-brains=')) out.innerBrains = a.slice('--inner-brains='.length).split(',');
     else if (a.startsWith('--w-transforms=')) out.wTransforms = a.slice('--w-transforms='.length).split(',');
     else if (a.startsWith('--mid-row=')) out.midRow = parseInt(a.slice('--mid-row='.length), 10);
+    else if (a.startsWith('--pick-mode=')) out.pickMode = a.slice('--pick-mode='.length);
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -203,7 +209,7 @@ for (const faction of opts.factions) {
     const inner = pickInnerFactory(i)();
     const matchWalls = pickWalls(i);
     const teacher = matchWalls
-      ? new OptimizerBrain({ inner, targetWalls: matchWalls, seed, topK: 5 })
+      ? new OptimizerBrain({ inner, targetWalls: matchWalls, seed, topK: 5, pickMode: opts.pickMode })
       : inner;
     const recorder = new ObsRecorderBrain(teacher, matchId);
 
