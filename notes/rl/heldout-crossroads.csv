@@ -1,0 +1,5 @@
+map,name,n,wins,winRate,ciLow,ciHigh,avgWave,avgLives
+crossroads,dumb,100,0,0.0000,0.0000,0.0370,4.46,0.00
+crossroads,balanced,100,0,0.0000,0.0000,0.0370,6.86,0.00
+crossroads,bc-v4,100,0,0.0000,0.0000,0.0370,4.00,0.00
+crossroads,ppo-v4,100,0,0.0000,0.0000,0.0370,5.00,0.00
