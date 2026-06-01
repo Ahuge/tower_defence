@@ -76,16 +76,26 @@ export class OnlineMazeOptimizerBrain implements BotBrain {
   private K: number;
   private coverageRange: number;
   /** Telemetry */
-  public stats = {
+  public stats: {
+    decisions: number;
+    placesBetweenWaves: number;
+    delegatesInWave: number;
+    skipsLowBudget: number;
+    skipsNoCandidate: number;
+    nearPathPoolSizes: number[];
+    scoredCounts: number[];
+    topGains: number[];
+    placements: any[];
+  } = {
     decisions: 0,
     placesBetweenWaves: 0,
     delegatesInWave: 0,
     skipsLowBudget: 0,
     skipsNoCandidate: 0,
-    // Diagnostic histograms
     nearPathPoolSizes: [],
     scoredCounts: [],
     topGains: [],
+    placements: [],
   };
 
   constructor(opts: OnlineMazeOptimizerBrainOptions = {}) {
@@ -116,22 +126,35 @@ export class OnlineMazeOptimizerBrain implements BotBrain {
       return this.inWave.decide(ctx);
     }
 
-    // Score K best maze cells from the current empty-cell pool.
-    // Pre-filter to cells WITHIN K_dist of any current creep path —
-    // scoreMazeCells's default behaviour is to randomly sample from
-    // ctx.candidateCells (~900 cells on plains), which means most
-    // sampled cells are far from the path and have gain=0. Pre-
-    // filtering to ~50-150 near-path cells lets us score ALL of
-    // them within the same time budget, finding actual useful walls.
-    const NEAR_PATH_DIST = 3;
-    const nearPath = ctx.candidateCells.filter(c =>
-      minChebyshevToPath(c.col, c.row, ctx.allPaths) <= NEAR_PATH_DIST,
-    );
-    // If pre-filter is too aggressive (e.g. weird maps), fall back
-    // to the full candidate set.
-    const poolToScore = nearPath.length >= 5 ? nearPath : ctx.candidateCells;
-    // Pass maxCandidates = pool.length so scoreMazeCells doesn't
-    // re-sample — we already pre-filtered, all of these matter.
+    // Build candidate set the same way the offline maze-optimizer
+    // does (scripts/maze-optimizer.mjs greedyFromSeed): every path
+    // cell PLUS the 4-neighbours of every path cell. This catches
+    // "close the detour" cells that score gain=0 individually but
+    // cluster to force longer paths.
+    //
+    // CRITICAL: the offline optimizer accepts gain=0 walls (its
+    // docstring: "Accept the best wall even if it doesn't strictly
+    // improve"). Greedy walls cumulate — adding many gain=0 walls
+    // eventually forces gain>0 detours by closing alternative
+    // routes. My v1 brain rejected gain=0 walls and got stuck at
+    // path=38 on plains, never letting clusters form.
+    const candidateSet = new Map<string, Cell>();
+    const addCand = (col: number, row: number) => {
+      if (col < 0 || col >= ctx.grid.cols || row < 0 || row >= ctx.grid.rows) return;
+      if (!ctx.grid.canPlaceTower(col, row)) return;
+      candidateSet.set(`${col},${row}`, { col, row });
+    };
+    for (const p of ctx.allPaths) {
+      if (!p) continue;
+      for (const cell of p) {
+        addCand(cell.col, cell.row);
+        addCand(cell.col + 1, cell.row);
+        addCand(cell.col - 1, cell.row);
+        addCand(cell.col, cell.row + 1);
+        addCand(cell.col, cell.row - 1);
+      }
+    }
+    const poolToScore = Array.from(candidateSet.values());
     const scored = scoreMazeCells(ctx.grid, poolToScore, poolToScore.length, ctx.allPaths);
     this.stats.nearPathPoolSizes.push(poolToScore.length);
     this.stats.scoredCounts.push(scored.length);
@@ -148,47 +171,66 @@ export class OnlineMazeOptimizerBrain implements BotBrain {
       return this.inWave.decide(ctx);
     }
 
-    // 1-ply lookahead over (cell, tower_type). For each affordable tower,
-    // for each useful cell, score = α × maze_gain + β × dps_coverage.
-    // dps_coverage = number of path cells within tower.range of the cell,
-    // after the placement reroutes the path.
+    // Two-stage decision (mirrors the offline maze-optimizer's flow):
+    //
+    // Stage A: if any candidate has POSITIVE mazeGain, ALWAYS pick the
+    // highest-gain cell. Maze-building dominates DPS — that's the
+    // entire pivot from "online greedy DPS" to "online greedy maze".
+    //
+    // Stage B: if max gain == 0 (path can't be extended this step),
+    // fall back to DPS placement at the cell with highest path coverage.
+    //
+    // Why: scoreMazeCells is path-adjacent so even gain=0 cells are
+    // structurally close to the maze. Placing them DOES make
+    // marginal progress (later placements at the new path-adjacent
+    // frontier may compound). Switching to DPS at this point gets
+    // some kill-power on creeps while still preserving an opening
+    // for future maze-building.
     let bestScore = -Infinity;
     let bestCell: Cell | null = null;
     let bestType: TowerType | null = null;
-
-    // Pre-compute current path total — useful for normalising maze_gain
-    // versus dps_coverage in the score.
     const currentPathLen = totalPathLength(ctx.allPaths);
 
-    for (const cellScore of usefulCells.slice(0, this.K)) {
-      const cell: Cell = { col: cellScore.col, row: cellScore.row };
-      const mazeGain = cellScore.gain; // path length added by this wall
+    const maxGain = usefulCells[0]?.gain ?? 0;
 
-      for (const type of affordable) {
-        // Coverage: path cells within `range` of the placed cell, using
-        // the NEW path (post-placement). We approximate by counting cells
-        // from the CURRENT path within range — the new path will be
-        // similar shape but longer, and the tower covers ~the same
-        // cells either way. Cheap approximation.
-        const range = type.range ?? this.coverageRange;
-        const coverage = countPathCellsInRange(ctx.allPaths, cell, range);
-
-        // Score weights — keep maze-gain and coverage in comparable units.
-        // Maze gain is in CELLS (typically 1-10 per placement).
-        // Coverage is in path-cell hits (typically 5-50).
-        // DPS multiplier: more expensive towers do more per cell hit.
-        const dps = type.damage * 1000 / Math.max(type.fireRate, 1);
-        const coverageScore = coverage * dps / 100; // normalise
-
-        // Mild preference for cheaper towers when scores tie (don't burn
-        // budget on expensive towers when a cheap one does the same job).
-        const costPenalty = type.cost / 1000;
-
-        const score = mazeGain * 5 + coverageScore - costPenalty;
-        if (score > bestScore) {
-          bestScore = score;
-          bestCell = cell;
-          bestType = type;
+    if (maxGain > 0) {
+      // Stage A: pick best gain cell. Tower type = mid-cost preferred
+      // (we want functional DPS even on a wall cell, not just
+      // cheapest). Bias to cheapest when affordable is small.
+      for (const cellScore of usefulCells.filter(s => s.gain === maxGain)) {
+        const cell: Cell = { col: cellScore.col, row: cellScore.row };
+        for (const type of affordable) {
+          const range = type.range ?? this.coverageRange;
+          const coverage = countPathCellsInRange(ctx.allPaths, cell, range);
+          const dps = type.damage * 1000 / Math.max(type.fireRate, 1);
+          const coverageScore = coverage * dps / 100;
+          // Maze-gain weighted heavily (gain*50 vs coverage*small).
+          const score = cellScore.gain * 50 + coverageScore - type.cost / 1000;
+          if (score > bestScore) {
+            bestScore = score;
+            bestCell = cell;
+            bestType = type;
+          }
+        }
+      }
+    } else {
+      // Stage B: no maze progress this step. Place a DPS tower at
+      // the path-adjacent cell with maximum kill-zone coverage. Use
+      // the FULL near-path candidate set (since maze cells are at
+      // current path which has gain=0).
+      for (const cellScore of usefulCells) {
+        const cell: Cell = { col: cellScore.col, row: cellScore.row };
+        for (const type of affordable) {
+          const range = type.range ?? this.coverageRange;
+          const coverage = countPathCellsInRange(ctx.allPaths, cell, range);
+          const dps = type.damage * 1000 / Math.max(type.fireRate, 1);
+          const coverageScore = coverage * dps / 100;
+          const score = coverageScore - type.cost / 1000;
+          if (score > bestScore) {
+            bestScore = score;
+            bestCell = cell;
+            bestType = type;
+          }
         }
       }
     }
@@ -200,6 +242,26 @@ export class OnlineMazeOptimizerBrain implements BotBrain {
     }
 
     this.stats.placesBetweenWaves++;
+    // Recompute best-score diagnostics for telemetry.
+    const bestRange = bestType.range ?? this.coverageRange;
+    const bestCoverage = countPathCellsInRange(ctx.allPaths, bestCell, bestRange);
+    const bestMazeGainEntry = usefulCells.find(s => s.col === bestCell.col && s.row === bestCell.row);
+    // Top-5 candidates by gain for diagnostics.
+    const topByGain = [...usefulCells].sort((a, b) => b.gain - a.gain).slice(0, 5)
+      .map(s => `(${s.col},${s.row}):g${s.gain}`).join(' ');
+    this.stats.placements.push({
+      wave: ctx.wave,
+      gold: ctx.budget,
+      col: bestCell.col,
+      row: bestCell.row,
+      type: bestType.id,
+      typeCost: bestType.cost,
+      mazeGain: bestMazeGainEntry?.gain ?? 0,
+      coverage: bestCoverage,
+      score: bestScore,
+      currentPathLen,
+      topGainCells: topByGain,
+    });
     return { kind: 'place', col: bestCell.col, row: bestCell.row, type: bestType };
   }
 }
