@@ -90,6 +90,15 @@ function parseArgs() {
      *  chebyshev). Progressive forces every placement to
      *  immediately compress the path. */
     pickMode: 'chebyshev',
+    /** Map rotation: comma-separated list of mapIds. Per match,
+     *  cycle through this list. For each map, W* is loaded from
+     *  `traces/mazes/<mapId>-bound30.json` (override with
+     *  --walls-template). Forces the policy to learn maze concepts
+     *  across geometries rather than memorizing one map's cells.
+     *  Default: single map from --map. */
+    maps: null,
+    map: 'plains',
+    wallsTemplate: 'traces/mazes/{map}-bound30.json',
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -105,6 +114,9 @@ function parseArgs() {
     else if (a.startsWith('--w-transforms=')) out.wTransforms = a.slice('--w-transforms='.length).split(',');
     else if (a.startsWith('--mid-row=')) out.midRow = parseInt(a.slice('--mid-row='.length), 10);
     else if (a.startsWith('--pick-mode=')) out.pickMode = a.slice('--pick-mode='.length);
+    else if (a.startsWith('--maps=')) out.maps = a.slice('--maps='.length).split(',');
+    else if (a.startsWith('--map=')) out.map = a.slice('--map='.length);
+    else if (a.startsWith('--walls-template=')) out.wallsTemplate = a.slice('--walls-template='.length);
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -120,22 +132,38 @@ function b64FromTyped(arr) {
 const opts = parseArgs();
 console.log('[generate-bc-rollouts] opts:', opts);
 
-// Load optimizer W* once at startup. Reused across every match.
-let targetWalls = null;
+// Build map rotation. When --maps=A,B,C is set, cycle per match
+// and load W* by template per map. When --optimizer-walls=path is
+// set instead, use that single W* for all matches with --map.
+const mapList = opts.maps ?? [opts.map];
+const wallsByMap = new Map();
 if (opts.optimizerWalls) {
+  // Legacy single-W* mode.
   if (!existsSync(opts.optimizerWalls)) {
     console.error(`[generate-bc-rollouts] optimizer-walls file not found: ${opts.optimizerWalls}`);
     process.exit(1);
   }
   const raw = JSON.parse(readFileSync(opts.optimizerWalls, 'utf8'));
   const entry = Array.isArray(raw) ? raw[0] : raw;
-  if (!entry?.walls || !Array.isArray(entry.walls)) {
-    console.error(`[generate-bc-rollouts] optimizer-walls JSON missing 'walls' array`);
-    process.exit(1);
+  wallsByMap.set(opts.map, entry.walls);
+  console.log(`[generate-bc-rollouts] loaded W* ${entry.walls.length} walls for ${opts.map} (single-W* mode)`);
+} else if (opts.maps) {
+  // Multi-map mode: load one W* per mapId.
+  for (const m of mapList) {
+    const path = opts.wallsTemplate.replace('{map}', m);
+    if (!existsSync(path)) {
+      console.error(`[generate-bc-rollouts] W* missing for map=${m} at ${path}`);
+      process.exit(1);
+    }
+    const raw = JSON.parse(readFileSync(path, 'utf8'));
+    const entry = Array.isArray(raw) ? raw[0] : raw;
+    wallsByMap.set(m, entry.walls);
+    console.log(`[generate-bc-rollouts] loaded W* for ${m}: ${entry.walls.length} walls, path=${entry.pathLength}`);
   }
-  targetWalls = entry.walls;
-  console.log(`[generate-bc-rollouts] loaded W* ${targetWalls.length} walls; optimum path=${entry.pathLength}, baseline=${entry.baselinePathLength}`);
 }
+// Legacy single-W* code paths reference `targetWalls`. Keep it as
+// the W* for the default map so non-multi-map invocations work.
+let targetWalls = wallsByMap.get(opts.map) ?? null;
 
 mkdirSync(opts.out, { recursive: true });
 const manifest = {
@@ -188,11 +216,9 @@ function applyTransform(walls, id, midRow) {
   }
   throw new Error(`unknown w-transform: ${id}`);
 }
-const pickWalls = (matchIdx) => applyTransform(
-  targetWalls,
-  transformIds[matchIdx % transformIds.length],
-  opts.midRow,
-);
+// pickWalls inlined into the match loop now that we have per-match
+// map selection. See for(...) below.
+manifest.maps = mapList;
 
 const t0 = Date.now();
 let totalRows = 0;
@@ -205,9 +231,19 @@ for (const faction of opts.factions) {
 
   for (let i = 0; i < opts.matches; i++) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
-    const matchId = `${faction}-s${seed}-${opts.mode}-${opts.difficulty}-w${opts.waveCount}`;
+    // Pick map for this match. Per-match deterministic cycling so
+    // (seed, i) → same map → same trajectory across reruns.
+    const matchMap = mapList[i % mapList.length];
+    // W* for the chosen map — falls back to legacy targetWalls if
+    // multi-map mode isn't enabled.
+    const baseWalls = wallsByMap.get(matchMap) ?? targetWalls;
+    const matchWalls = applyTransform(
+      baseWalls,
+      transformIds[i % transformIds.length],
+      opts.midRow,
+    );
+    const matchId = `${faction}-${matchMap}-s${seed}-${opts.mode}-${opts.difficulty}-w${opts.waveCount}`;
     const inner = pickInnerFactory(i)();
-    const matchWalls = pickWalls(i);
     const teacher = matchWalls
       ? new OptimizerBrain({ inner, targetWalls: matchWalls, seed, topK: 5, pickMode: opts.pickMode })
       : inner;
@@ -216,7 +252,7 @@ for (const faction of opts.factions) {
     const match = new Match({
       faction,
       difficulty: opts.difficulty,
-      mapId: 'plains',
+      mapId: matchMap,
       brainId: opts.innerBrain,       // not used because brainOverride wins
       matchMode: opts.mode,
       waveCount: opts.waveCount,

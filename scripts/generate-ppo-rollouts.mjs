@@ -65,6 +65,11 @@ function parseArgs() {
     optimizerWalls: null,
     boxInK: 0,
     corridorK: 0,
+    // Multi-map support: rotate maps per match. When --maps=A,B,C
+    // is set, cycle through; when --map=X is set, use that single
+    // map (default plains).
+    maps: null,
+    map: 'plains',
   };
   for (const a of args) {
     if (a.startsWith('--matches=')) out.matches = parseInt(a.slice('--matches='.length), 10);
@@ -80,6 +85,8 @@ function parseArgs() {
     else if (a.startsWith('--optimizer-walls=')) out.optimizerWalls = a.slice('--optimizer-walls='.length);
     else if (a.startsWith('--box-in-k=')) out.boxInK = parseFloat(a.slice('--box-in-k='.length));
     else if (a.startsWith('--corridor-k=')) out.corridorK = parseFloat(a.slice('--corridor-k='.length));
+    else if (a.startsWith('--maps=')) out.maps = a.slice('--maps='.length).split(',');
+    else if (a.startsWith('--map=')) out.map = a.slice('--map='.length);
   }
   if (!out.out) {
     const runId = `${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -173,16 +180,18 @@ for (const faction of opts.factions) {
     dropped: { fallback: 0, send: 0, frontier: 0, frontierManage: 0, illegalUnderMask: 0 },
   };
 
+  const mapList = opts.maps ?? [opts.map];
   for (let i = 0; i < opts.matches; i++) {
     const seed = (opts.seedBase * 31 + i * 7919) >>> 0;
-    const matchId = `${faction}-s${seed}-d${opts.difficulty}-w${opts.waves}`;
+    const matchMap = mapList[i % mapList.length];
+    const matchId = `${faction}-${matchMap}-s${seed}-d${opts.difficulty}-w${opts.waves}`;
     const ppo = new PPOBrain({ modelPath: opts.model, metaPath: opts.meta, temperature: opts.temperature });
     const recorder = new PPORecorderBrain(ppo, matchId, rewardOverride ?? undefined, targetMazeWalls ?? undefined);
 
     const match = new Match({
       faction,
       difficulty: opts.difficulty,
-      mapId: 'plains',
+      mapId: matchMap,
       brainId: 'ppo',  // unused because brainOverride wins
       matchMode: opts.mode,
       waveCount: opts.waves,
