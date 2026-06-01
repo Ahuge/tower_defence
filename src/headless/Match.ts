@@ -24,6 +24,35 @@
  * currently executing.
  */
 import { PathPoint, findPath } from '../systems/Pathfinding';
+
+/** Snapshot of a Match at a between-wave moment. See Match.snapshot() /
+ *  Match.restoreFromSnapshot(). Designed for rung 2 beam-search
+ *  lookahead — no creep state, no projectile state, no cooldowns.
+ *  Restricted to between-wave moments to keep the scope tractable. */
+export interface MatchSnapshot {
+  rngState: number;
+  currentWave: number;
+  lives: number;
+  simTime: number;
+  brainTicksSinceProgress: number;
+  finished: boolean;
+  outcome: MatchResult['outcome'];
+  gold: number;
+  totalGoldEarned: number;
+  totalGoldSpent: number;
+  creepsKilled: number;
+  towers: Array<{
+    col: number;
+    row: number;
+    typeId: string;
+    level: number;
+    chosenBranch?: string;
+    totalInvested: number;
+  }>;
+  totalTowersBuilt: number;
+  waveMgrCurrentWave: number;
+  waveMgrBetweenWaves: boolean;
+}
 import { Grid } from '../systems/Grid';
 import { EventBus } from '../systems/EventBus';
 import { EconomyManager } from '../systems/EconomyManager';
@@ -223,6 +252,86 @@ export class Match {
       this.rngState = getRngState();
       setRngState(prev);
     }
+  }
+
+  /** Capture the minimum state needed to reconstruct this Match
+   *  at a between-wave moment. Used by beam-search lookahead in
+   *  rung 2 of the search-based pivot (see notes/rl/mcts-plan-v3.md).
+   *
+   *  Restricted to between-wave moments because:
+   *    - No live creeps to serialize (creep state is complex)
+   *    - No in-flight projectiles
+   *    - Tower runtime state (cooldowns) doesn't matter
+   *
+   *  Throws if called mid-wave. */
+  snapshot(): MatchSnapshot {
+    if (!this.waveMgr.betweenWaves && this.currentWave > 0) {
+      throw new Error(`Match.snapshot() only supported between waves (currentWave=${this.currentWave}, waveActive=${this.waveMgr.waveActive})`);
+    }
+    return {
+      rngState: this.rngState,
+      currentWave: this.currentWave,
+      lives: this.lives,
+      simTime: this.simTime,
+      brainTicksSinceProgress: this.brainTicksSinceProgress,
+      finished: this.finished,
+      outcome: this.outcome,
+      gold: this.economy.gold,
+      totalGoldEarned: this.statsTracker.stats.totalGoldEarned,
+      totalGoldSpent: this.statsTracker.stats.totalGoldSpent,
+      creepsKilled: this.statsTracker.stats.creepsKilled,
+      towers: this.towerMgr.towers.map(t => ({
+        col: t.col,
+        row: t.row,
+        typeId: t.typeId,
+        level: t.level,
+        chosenBranch: t.chosenBranch,
+        totalInvested: t.totalInvested,
+      })),
+      totalTowersBuilt: this.towerMgr.totalTowersBuilt,
+      waveMgrCurrentWave: this.waveMgr.currentWave,
+      waveMgrBetweenWaves: this.waveMgr.betweenWaves,
+    };
+  }
+
+  /** Reconstruct a Match from a snapshot. The fresh Match runs
+   *  setup as normal (so managers + callbacks are wired) then
+   *  applies the snapshot's state on top. Returns the new Match. */
+  static restoreFromSnapshot(config: MatchConfig, snapshot: MatchSnapshot, brainOverride?: BotBrain | null): Match {
+    const m = new Match(config, brainOverride);
+    // Restore scalars first so any subsequent recalcPaths / placeTower
+    // operations see the right wave / lives / gold.
+    m.rngState = snapshot.rngState;
+    m.currentWave = snapshot.currentWave;
+    m.lives = snapshot.lives;
+    m.simTime = snapshot.simTime;
+    m.brainTicksSinceProgress = snapshot.brainTicksSinceProgress;
+    m.finished = snapshot.finished;
+    m.outcome = snapshot.outcome;
+    m.economy.gold = snapshot.gold;
+    m.statsTracker.stats.totalGoldEarned = snapshot.totalGoldEarned;
+    m.statsTracker.stats.totalGoldSpent = snapshot.totalGoldSpent;
+    m.statsTracker.stats.creepsKilled = snapshot.creepsKilled;
+    m.waveMgr.currentWave = snapshot.waveMgrCurrentWave;
+    m.waveMgr.betweenWaves = snapshot.waveMgrBetweenWaves;
+    // Re-place towers via free=true (skip economy checks since gold
+    // was already set above). placeTower mutates the grid, so paths
+    // will be recomputed after the loop.
+    for (const t of snapshot.towers) {
+      const towerType = getTowerType(t.typeId);
+      const result = m.towerMgr.placeTower(t.col, t.row, towerType, m.allPaths, () => m.recalcPaths(), true);
+      if (result) {
+        // Apply upgrades to reach the right level.
+        while (result.tower.level < t.level) {
+          result.tower.upgrade(t.chosenBranch ?? null);
+        }
+        result.tower.totalInvested = t.totalInvested;
+      }
+    }
+    m.towerMgr.totalTowersBuilt = snapshot.totalTowersBuilt;
+    m.recalcPaths();
+    m.currentPath = m.allPaths.find(p => p !== null) ?? null;
+    return m;
   }
 
   /** Async equivalent of `runToEnd()`. */
