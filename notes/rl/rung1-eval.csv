@@ -1,0 +1,16 @@
+brain,map,n,wins,winRate,ciLow,ciHigh,avgWave,avgLives,errors
+dumb,plains,100,0,0.0000,0.0000,0.0370,3.80,0.00,0
+balanced,plains,100,1,0.0100,0.0018,0.0545,10.35,0.02,0
+online-optimizer,plains,100,0,0.0000,0.0000,0.0370,16.18,0.00,0
+dumb,crossroads,100,0,0.0000,0.0000,0.0370,4.82,0.00,0
+balanced,crossroads,100,0,0.0000,0.0000,0.0370,6.35,0.00,0
+online-optimizer,crossroads,100,0,0.0000,0.0000,0.0370,5.00,0.00,0
+dumb,fortress,100,0,0.0000,0.0000,0.0370,3.52,0.00,0
+balanced,fortress,100,0,0.0000,0.0000,0.0370,6.00,0.00,0
+online-optimizer,fortress,100,100,1.0000,0.9630,1.0000,25.00,11.25,0
+dumb,serpentine,100,0,0.0000,0.0000,0.0370,10.18,0.00,0
+balanced,serpentine,100,98,0.9800,0.9300,0.9945,24.97,14.52,0
+online-optimizer,serpentine,100,22,0.2200,0.1500,0.3107,24.88,0.67,0
+dumb,gauntlet,100,0,0.0000,0.0000,0.0370,3.79,0.00,0
+balanced,gauntlet,100,0,0.0000,0.0000,0.0370,5.36,0.00,0
+online-optimizer,gauntlet,100,0,0.0000,0.0000,0.0370,5.72,0.00,0
