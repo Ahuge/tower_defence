@@ -1,0 +1,115 @@
+{
+  "runId": "v1",
+  "startedAt": "2026-06-02T13:58:19.501Z",
+  "opts": {
+    "brains": [
+      "online-opt",
+      "balanced",
+      "beam-d2-w5"
+    ],
+    "maps": [
+      "plains",
+      "crossroads",
+      "fortress",
+      "serpentine"
+    ],
+    "matchesPerCell": 100,
+    "waves": 25,
+    "difficulty": "normal",
+    "mode": "standard",
+    "seedBase": 60000,
+    "out": "data/vnet-selfplay/v1",
+    "faction": "arcane"
+  },
+  "cells": {
+    "online-opt@plains": {
+      "matches": 100,
+      "rows": 1676,
+      "wins": 0,
+      "errors": 0,
+      "wallSec": 18.707
+    },
+    "balanced@plains": {
+      "matches": 100,
+      "rows": 1140,
+      "wins": 2,
+      "errors": 0,
+      "wallSec": 7.528
+    },
+    "beam-d2-w5@plains": {
+      "matches": 100,
+      "rows": 2522,
+      "wins": 48,
+      "errors": 0,
+      "wallSec": 1006.139
+    },
+    "online-opt@crossroads": {
+      "matches": 100,
+      "rows": 2404,
+      "wins": 9,
+      "errors": 0,
+      "wallSec": 69.283
+    },
+    "balanced@crossroads": {
+      "matches": 100,
+      "rows": 666,
+      "wins": 0,
+      "errors": 0,
+      "wallSec": 5.633
+    },
+    "beam-d2-w5@crossroads": {
+      "matches": 100,
+      "rows": 2600,
+      "wins": 100,
+      "errors": 0,
+      "wallSec": 2325.136
+    },
+    "online-opt@fortress": {
+      "matches": 100,
+      "rows": 2596,
+      "wins": 98,
+      "errors": 0,
+      "wallSec": 79.499
+    },
+    "balanced@fortress": {
+      "matches": 100,
+      "rows": 646,
+      "wins": 0,
+      "errors": 0,
+      "wallSec": 4.87
+    },
+    "beam-d2-w5@fortress": {
+      "matches": 100,
+      "rows": 2590,
+      "wins": 92,
+      "errors": 0,
+      "wallSec": 2308.015
+    },
+    "online-opt@serpentine": {
+      "matches": 100,
+      "rows": 2600,
+      "wins": 100,
+      "errors": 0,
+      "wallSec": 57.589
+    },
+    "balanced@serpentine": {
+      "matches": 100,
+      "rows": 2577,
+      "wins": 95,
+      "errors": 0,
+      "wallSec": 28.292
+    },
+    "beam-d2-w5@serpentine": {
+      "matches": 100,
+      "rows": 2600,
+      "wins": 100,
+      "errors": 0,
+      "wallSec": 1756.584
+    }
+  },
+  "endedAt": "2026-06-02T16:06:06.888Z",
+  "totalMatches": 1200,
+  "totalRows": 24617,
+  "totalWins": 644,
+  "totalSec": 7667.387
+}
