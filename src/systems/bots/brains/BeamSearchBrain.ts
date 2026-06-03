@@ -181,15 +181,37 @@ export class BeamSearchBrain implements BotBrain {
     // to skip explicit placement when rung1's choice is already best.
     out.push({ placement: null, label: 'defer-rung1' });
 
-    // Take up to (beamWidth - 1) cells. Order them by Chebyshev
-    // distance to the path's MIDDLE (heuristic — middle of map
-    // tends to be where good placements live).
-    const slots = Math.max(1, this.beamWidth - 1);
-    for (const c of cells.slice(0, slots)) {
-      out.push({
-        placement: { col: c.col, row: c.row, type: cheapest },
-        label: `${c.col},${c.row}/${cheapest.id}`,
-      });
+    // Type variety: include the K most expensive affordable types
+    // (more DPS-per-cell at the cost of more gold). For each type,
+    // try the top-N cells. K * N + 1 candidates total.
+    //
+    // Why: previously every candidate used arcane_bolt (cheapest).
+    // Beam never compared "should this be a bolt vs a frost vs a
+    // storm at this cell?" Including type variety lets the lookahead
+    // score discover that more expensive DPS towers preserve more
+    // lives, even at the cost of slower wall coverage.
+    const typesToConsider: TowerType[] = [];
+    // Always include cheapest (often the right call for pure walls).
+    typesToConsider.push(affordable[0]);
+    // Include the most-expensive affordable + the middle one.
+    // Total ≤3 types so 3 cells × 3 types ≤9 candidates.
+    if (affordable.length >= 3) typesToConsider.push(affordable[Math.floor(affordable.length / 2)]);
+    if (affordable.length >= 2) typesToConsider.push(affordable[affordable.length - 1]);
+    // De-duplicate by id (in case affordable.length=1, etc.).
+    const uniqTypes = [...new Map(typesToConsider.map(t => [t.id, t])).values()];
+
+    const remainingSlots = Math.max(1, this.beamWidth - 1);
+    const cellsPerType = Math.max(1, Math.floor(remainingSlots / uniqTypes.length));
+    const topCells = cells.slice(0, cellsPerType);
+    for (const c of topCells) {
+      for (const t of uniqTypes) {
+        if (out.length >= this.beamWidth) break;
+        out.push({
+          placement: { col: c.col, row: c.row, type: t },
+          label: `${c.col},${c.row}/${t.id}`,
+        });
+      }
+      if (out.length >= this.beamWidth) break;
     }
     return out;
   }
