@@ -33,13 +33,13 @@ import { BalancedBrain } from './BalancedBrain';
 import { Match, MatchSnapshot } from '../../../headless/Match';
 import { TowerType } from '../../../data/TowerTypes';
 
-interface Candidate {
+export interface BeamCandidate {
   /** null = "defer to rung1 — don't commit to a specific placement" */
   placement: { col: number; row: number; type: TowerType } | null;
   label: string;
 }
 
-interface ScoredCandidate extends Candidate {
+export interface ScoredCandidate extends BeamCandidate {
   score: number;
   waveReached: number;
   livesRemaining: number;
@@ -71,6 +71,10 @@ export class BeamSearchBrain implements BotBrain {
   private matchConfig: any;
   private matchRef: { current: Match | null };
   private inWave: BotBrain;
+  /** Exposed for data-recording: the full scored candidate list from
+   *  the most recent between-wave decide(). Stale when the last call
+   *  was in-wave (nulled every decide() to prevent reading old data). */
+  public lastScored: ScoredCandidate[] | null = null;
   public stats = {
     decisions: 0,
     placesViaBeam: 0,
@@ -95,6 +99,7 @@ export class BeamSearchBrain implements BotBrain {
 
   decide(ctx: BotContext): BotDecision {
     this.stats.decisions++;
+    this.lastScored = null; // clear stale data from prior call
 
     if (!ctx.betweenWaves) {
       this.stats.delegatesInWave++;
@@ -131,6 +136,9 @@ export class BeamSearchBrain implements BotBrain {
     // Score each candidate by N-wave smart lookahead.
     const scored: ScoredCandidate[] = candidates.map(c => this.scoreCandidate(snap, c));
 
+    // Store for data-recording (BeamDataRecorder reads this after decide()).
+    this.lastScored = scored;
+
     // Sort descending by score.
     scored.sort((a, b) => b.score - a.score);
     const best = scored[0];
@@ -150,9 +158,28 @@ export class BeamSearchBrain implements BotBrain {
     };
   }
 
+  /** Public access to beam's scored candidate list — used by
+   *  QRankerBeamBrain to blend Q-net values with beam's rollout
+   *  scores. Returns null if preconditions fail (mid-wave, no
+   *  affordable tower, can't snapshot, no candidates). The caller
+   *  is responsible for falling back when this returns null. */
+  public scoreCandidates(ctx: BotContext): ScoredCandidate[] | null {
+    if (!ctx.betweenWaves) { this.lastScored = null; return null; }
+    const affordable = ctx.towerPool.filter(t => t.cost <= ctx.budget);
+    if (affordable.length === 0) { this.lastScored = null; return null; }
+    const match = this.matchRef.current;
+    if (!match) { this.lastScored = null; return null; }
+    let snap: MatchSnapshot;
+    try { snap = match.snapshot(); } catch { this.lastScored = null; return null; }
+    const candidates = this.generateCandidates(ctx);
+    if (candidates.length === 0) { this.lastScored = null; return null; }
+    this.lastScored = candidates.map(c => this.scoreCandidate(snap, c));
+    return this.lastScored;
+  }
+
   /** Build candidate set: top-(K-1) path-adjacent placements with
    *  cheapest affordable tower + 1 "defer-to-rung1" sentinel. */
-  private generateCandidates(ctx: BotContext): Candidate[] {
+  private generateCandidates(ctx: BotContext): BeamCandidate[] {
     const affordable = ctx.towerPool.filter(t => t.cost <= ctx.budget);
     if (affordable.length === 0) return [];
     const cheapest = affordable[0];
@@ -176,7 +203,7 @@ export class BeamSearchBrain implements BotBrain {
     }
     const cells = Array.from(cellSet.values());
 
-    const out: Candidate[] = [];
+    const out: BeamCandidate[] = [];
     // Always include "defer to rung1" — gives the brain the option
     // to skip explicit placement when rung1's choice is already best.
     out.push({ placement: null, label: 'defer-rung1' });
@@ -219,7 +246,7 @@ export class BeamSearchBrain implements BotBrain {
   /** Score one candidate by simulating it forward `lookaheadWaves`
    *  waves with a smart brain (OnlineMazeOptimizerBrain) playing.
    *  Returns higher score = more desirable. */
-  private scoreCandidate(snap: MatchSnapshot, cand: Candidate): ScoredCandidate {
+  private scoreCandidate(snap: MatchSnapshot, cand: BeamCandidate): ScoredCandidate {
     // Use a fresh OnlineMazeOptimizerBrain for lookahead — it
     // continues the maze-building strategy after our committed
     // first move.

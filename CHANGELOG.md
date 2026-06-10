@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-06-03
+
+### RL rung 5: Q-network closed out — ship rung 2 (beam search) as final
+
+Three-step diagnostic ladder + R5.0 gate killed the Q-network research direction. Beam search (rung 2) ships as the final RL deliverable, with gauntlet baseline revised up to **36%** (n=50, CI [24-50%]) — materially stronger than the 23% reported earlier.
+
+**Diagnostic A — positional bias check (PASSED):** Argmax-place from `qnet-v1.pt` across 4 training maps gives cross-map top-10 Jaccard = **0.02**. Encoder is conditioning on map geometry. Within-map top-5 concentration = 93.8% (expected for tower defense).
+
+**Diagnostic B — sell-block re-eval (FAILED):** Forced QPolicyBrain to forbid sell-of-recently-placed-cell. Still 0/20 across all 5 maps. Action distribution shows **place rate = sell rate on every map** — Q's preference order is `[sell-recent-place, one-good-place, skip]`. Blocking sells just shifts mass to skip. Mode collapse, not OOD noise.
+
+**R5.0 Gate — Q-as-ranker α sweep (FAILED):** Built `QRankerBeamBrain` wrapping beam's K-candidate rollout + Q lookup, z-score normalized + linear blend `α·beam_z + (1-α)·q_z`. Confirmation at n=50 on gauntlet:
+
+| α | wins | CI | avgWave |
+|---|---|---|---|
+| 0.5 (Q blend) | 0/50 | [0.0%, 7.1%] | 6.4 |
+| 1.0 (pure beam) | 18/50 | [24.1%, 49.9%] | 20.4 |
+
+Q-blending **degrades beam by 29 percentage points** on the held-out map. Q's relative values among in-distribution beam candidates are anti-correlated with what wins — mode collapse poisons even constrained ranking.
+
+**Why the multi-day plan was wrong:** assumed (a) Q's argmax failure was OOD action garbage (CQL would suppress) and (b) self-play would close train/inference gap. Diagnostic B falsified (a) — the failure is in-distribution mode collapse, not OOD. MC-regression Q with one taken action per state provides no gradient for "what's the SECOND-best action here?" so Q learns a single demonstrator-imitated action per state and degenerates around it.
+
+**Saved compute:** ~50 hours. Honest budget for the multi-day plan was 50-70 real hours; pre-eval diagnostics consumed ~3 hours total.
+
+**What ships:**
+- `BeamSearchBrain` (rung 2) as the RL deliverable.
+- Gauntlet 36% (n=50), plains 35%, crossroads 100%, fortress 97%, serpentine 100% (arcane, normal, 25 waves).
+- `qnet-v1.{pt,onnx}` retained for reference; `QPolicyBrain` + `QRankerBeamBrain` kept as deadcode in the experimental harness.
+
+**Postmortem:** `notes/rl/qnet-rung5-results.md`.
+
 ## 2026-05-28
 
 ### RL optimizer-overlap reward: didn't move the needle (W* signal too coarse)
