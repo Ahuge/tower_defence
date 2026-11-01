@@ -608,7 +608,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mil_heavy', name: 'Tank', description: 'Mobile area of effect. Slow but long range. Fires explosive shells.',
     faction: 'military', damageType: 'physical', cost: 120, damage: 30, range: 5, fireRate: 2000,
     color: 0x4a6741, projectileSpeed: 180, hotkey: '5',
-    traits: [{ id: 'mobile_unit', moveSpeed: 60, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 48 }],
+    traits: [{ id: 'mobile_unit', moveSpeed: 60, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 84 }],
     upgrades: [
       { level: 2, cost: 100, damage: 45, range: 5.5, fireRate: 1800 },
       { level: 3, cost: 160, damage: 65, range: 6, fireRate: 1500 },
