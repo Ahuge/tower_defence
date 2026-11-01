@@ -878,6 +878,16 @@ registerDamageMod('bonus_vs_mage', (trait: Trait, damage: number, ctx: HitContex
   return damage;
 });
 
+// --- Bonus vs armored (Mech Piercer — the armor-piercing answer) ---
+registerDamageMod('bonus_vs_armored', (trait: Trait, damage: number, ctx: HitContext) => {
+  const target = ctx.target as any;
+  const armor = target.armor ?? target.armorFlat ?? 0;
+  if (armor > 0) {
+    return Math.round(damage * (1 + (trait.bonus ?? 0.5)));
+  }
+  return damage;
+});
+
 // --- Life on kill (Celestial — chance to gain life) ---
 // Reads ctx.justDiedCreeps, which CreepManager populates in processKills
 // (before the dead-creep filter) so kills from the previous tick are still

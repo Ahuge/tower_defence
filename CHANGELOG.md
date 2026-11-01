@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-01
+
+### Piercer: bonus vs armored (+50%)
+
+Alex wasn't sure the Piercer's true_damage alone moved the needle enough on Hard. Added `bonus_vs_armored` damage modifier (+50% vs armored targets), following the existing `bonus_vs_boss`/`bonus_vs_mage` pattern. The Piercer now ignores armor AND hits armored creeps 50% harder — a dedicated armor-killer, not just an armor-ignorer.
+
 ## 2026-10-31
 
 ### Mech: Wall 8g, Turret L2 Piercer branch
