@@ -5,7 +5,7 @@
     "waveReached": 5,
     "livesRemaining": 18,
     "goldEarned": 150,
-    "goldSpent": 200,
+    "goldSpent": 198,
     "creepsKilled": 30,
     "towersBuilt": 5
   },
@@ -135,7 +135,7 @@
     "waveReached": 3,
     "livesRemaining": 0,
     "goldEarned": 35,
-    "goldSpent": 130,
+    "goldSpent": 128,
     "creepsKilled": 7,
     "towersBuilt": 3
   }

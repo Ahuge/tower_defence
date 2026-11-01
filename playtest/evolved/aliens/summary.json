@@ -1,0 +1,35 @@
+{
+  "faction": "aliens",
+  "best": {
+    "evalId": 20,
+    "ts": 1793494128857,
+    "params": {
+      "mazeTowers": 5,
+      "slowByWave": 2,
+      "aoeByWave": 5,
+      "sniperByWave": 6,
+      "secondSlowByWave": 8,
+      "burstByWave": 12,
+      "expandFirst": 9,
+      "maxCheap": 12,
+      "panicLives": 12,
+      "ultTowers": 5,
+      "ultLives": 15,
+      "ultSaveByWave": 18,
+      "upgradeReserve": 31,
+      "expensiveBias": 0,
+      "linkerPairs": 2,
+      "aaEnabled": 1,
+      "buffZone": 1,
+      "sniperUpgFirst": 0,
+      "supportByWave": 5,
+      "maxSupport": 1
+    },
+    "score": 0.75,
+    "avgWave": 19.916666666666668,
+    "n": 12,
+    "tag": "search"
+  },
+  "evals": 41,
+  "wallMs": 117663
+}

@@ -256,7 +256,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   mech_wall: def({
     id: 'mech_wall', name: 'Wall', description: 'Dirt spike cheap maze filler. Barely attacks.',
-    faction: 'mechanical', damageType: 'physical', cost: 10, damage: 2, range: 1.5, fireRate: 2000,
+    faction: 'mechanical', damageType: 'physical', cost: 8, damage: 2, range: 1.5, fireRate: 2000,
     color: 0x998866, projectileSpeed: 200, hotkey: '1',
     // No upgrades — it's a 10g blocker
   }),
@@ -266,9 +266,43 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     color: 0xcc8833, projectileSpeed: 350, hotkey: '2',
     traits: [{ id: 'direct_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }],
     upgrades: [
-      { level: 2, cost: 35, damage: 16, range: 3.5, fireRate: 750 },
+      // L2 is the branch point. Default = standard Turret (raw DPS).
+      // Branch = Piercer, which swaps the tower's typeDef to
+      // mech_piercer (see below) — mech's armor-ignoring answer.
+      {
+        level: 2, cost: 35, damage: 16, range: 3.5, fireRate: 750,
+        branchLabel: 'Turret',
+        branches: [{ id: 'piercer', label: 'Piercer', transformsTo: 'mech_piercer' }],
+      },
       { level: 3, cost: 60, damage: 24, range: 4, fireRate: 680 },
       { level: 4, cost: 100, damage: 35, range: 4, fireRate: 600 },
+    ],
+  }),
+  // Piercer — not in `Factions.mechanical.towerIds`, so it can't be
+  // placed directly from the tower dock. Only reachable via Turret's
+  // L2 branch. Its `cost` is charged as the one-time branch-switch
+  // fee. `upgrades` contains L3-L5, continuing the engine's level
+  // counter from where Turret left off (L2 on swap).
+  //
+  // Design: mech's armor-ignoring answer (the faction's only
+  // true_damage). Keeps ramp_up — still a turret at heart. The AP
+  // path trades raw DPS for armor ignore at L2-L4, then L5 is the
+  // "super high damage, super high cost" capstone.
+  //
+  // ART NEEDED: black-barrel turret variant. Add as 9th column in
+  // mech_towers.png (see SpriteManager) when the sprite is ready.
+  mech_piercer: def({
+    id: 'mech_piercer', name: 'Piercer',
+    description: 'Black-barrel armor-piercing turret. Ignores armor. Slow, deliberate, devastating.',
+    role: 'dps-single',
+    faction: 'mechanical', damageType: 'physical',
+    cost: 45, damage: 12, range: 3.5, fireRate: 850,
+    color: 0x2a2a2a, projectileSpeed: 450, projectileColor: 0x111111, hotkey: '',
+    traits: [{ id: 'true_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }],
+    upgrades: [
+      { level: 3, cost: 70, damage: 20, range: 3.5, fireRate: 800 },
+      { level: 4, cost: 120, damage: 34, range: 4, fireRate: 750 },
+      { level: 5, cost: 200, damage: 60, range: 4.5, fireRate: 700 },
     ],
   }),
   mech_flamethrower: def({
