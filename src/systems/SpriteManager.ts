@@ -87,8 +87,13 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
     [4, 6, 6, 3, 1]),
   ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova', 'arcane_conduit'],
     [4, 3, 5, 4, 4, 3, 1, 1]),
-  ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
-    [4, 6, 5, 4, 4, 5, 3, 3]),
+  ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan',
+     'mech_piercer'],
+    [4, 6, 5, 4, 4, 5, 3, 3, 4]),
+  // NOTE: mech_piercer (9th col) is only reachable via Turret's L2
+  // branch — not a dock-selectable starter. Column reserved here so
+  // SpriteManager knows about it; the black-barrel art goes in
+  // mech_towers.png col 9 when ready.
   // 9-tower Nature sprite layout, matching the regenerated
   // `nature_towers.png` (576×1536, 9 cols × 24 rows). The 9th
   // entry (`nature_razor_bramble`) is NOT a selectable starter —
