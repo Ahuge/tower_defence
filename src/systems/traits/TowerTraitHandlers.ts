@@ -894,9 +894,16 @@ registerDamageMod('bonus_vs_armored', (trait: Trait, damage: number, ctx: HitCon
 // Damage multiplies by the target's armor: the armor itself becomes
 // the weapon. Useless vs unarmored (turret's job), devastating vs
 // tanks. This is what makes the Piercer NOT just "turret but better."
+//
+// Armor is tiered: light=1, medium=2, heavy=3 (bosses are heavy).
 registerDamageMod('armor_scaling_damage', (trait: Trait, damage: number, ctx: HitContext) => {
   const target = ctx.target as any;
-  const armor = target.armor ?? target.armorFlat ?? 0;
+  const armorTier = target.armor;
+  const TIERS: Record<string, number> = { light: 1, medium: 2, heavy: 3 };
+  // Also support numeric armor (armorFlat) for flexibility.
+  const armor = typeof armorTier === 'string'
+    ? (TIERS[armorTier] ?? 0)
+    : (target.armorFlat ?? armorTier ?? 0);
   const scale = trait.scale ?? 0.75;
   if (armor > 0) {
     return Math.round(damage * (1 + armor * scale));
