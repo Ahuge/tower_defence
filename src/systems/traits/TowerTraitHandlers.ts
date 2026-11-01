@@ -726,8 +726,12 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
     }
   }
 
-  // Full map awareness: find closest creep anywhere on the map
+  // Aggro: find closest creep within the tower's range.
+  // Previously this had "full map awareness" (no range limit), causing
+  // units like the Fiend to slowly walk toward distant creeps even when
+  // placed as a fallback. Now respects tower.range.
   if (!target) {
+    const aggroRange = (tower.range || (TILE_SIZE * 4));
     let closest = null;
     let closestDist = Infinity;
     for (const creep of ctx.allCreeps) {
@@ -735,7 +739,7 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
       const dx = creep.x - tower.x;
       const dy = creep.y - tower.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < closestDist) {
+      if (dist <= aggroRange && dist < closestDist) {
         closest = creep;
         closestDist = dist;
       }
