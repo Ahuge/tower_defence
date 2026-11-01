@@ -547,6 +547,19 @@ registerHitEffect('root_on_hit', (trait: Trait, ctx: HitContext) => {
   }
 });
 
+registerHitEffect('stun_on_hit', (trait: Trait, ctx: HitContext) => {
+  // Stun: stops movement (via root). 100% chance for artillery.
+  const baseChance = trait.chance ?? 1.0;
+  const chance = Math.min(1.0, baseChance);
+  const baseDuration = trait.duration ?? 1000;
+  const duration = levelScale(baseDuration, ctx.towerLevel, 0.15);
+  for (const target of ctx.hitTargets) {
+    if (rng() < chance) {
+      (target as any).statusEffects?.apply('root', duration, 1);
+    }
+  }
+});
+
 // ============================================================
 // Tower update traits (per-frame)
 // ============================================================

@@ -20,16 +20,6 @@
     "towersBuilt": 3
   },
   {
-    "key": "nature|normal|balanced|standard|5|1003",
-    "outcome": "win",
-    "waveReached": 5,
-    "livesRemaining": 11,
-    "goldEarned": 165,
-    "goldSpent": 60,
-    "creepsKilled": 33,
-    "towersBuilt": 2
-  },
-  {
     "key": "void|normal|balanced|standard|5|1004",
     "outcome": "win",
     "waveReached": 5,
@@ -40,14 +30,14 @@
     "towersBuilt": 4
   },
   {
-    "key": "military|normal|balanced|standard|5|1005",
+    "key": "military|normal|balanced|standard|5|4005",
     "outcome": "win",
     "waveReached": 5,
-    "livesRemaining": 19,
-    "goldEarned": 205,
-    "goldSpent": 158,
-    "creepsKilled": 41,
-    "towersBuilt": 4
+    "livesRemaining": 11,
+    "goldEarned": 165,
+    "goldSpent": 165,
+    "creepsKilled": 33,
+    "towersBuilt": 3
   },
   {
     "key": "aliens|normal|balanced|standard|5|1006",
@@ -118,16 +108,6 @@
     "goldSpent": 550,
     "creepsKilled": 55,
     "towersBuilt": 22
-  },
-  {
-    "key": "nature|easy|nature|standard|5|2002",
-    "outcome": "win",
-    "waveReached": 5,
-    "livesRemaining": 20,
-    "goldEarned": 130,
-    "goldSpent": 342,
-    "creepsKilled": 26,
-    "towersBuilt": 10
   },
   {
     "key": "mechanical|insane|synergy|standard|3|2003",

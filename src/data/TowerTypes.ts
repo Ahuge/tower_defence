@@ -570,10 +570,10 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   mil_sandbag: def({
     id: 'mil_sandbag', name: 'Sandbag', description: 'Dirt cheap maze filler. No attack.',
-    faction: 'military', damageType: 'physical', cost: 8, damage: 0, range: 0, fireRate: 99999,
+    faction: 'military', damageType: 'physical', cost: 4, damage: 0, range: 0, fireRate: 99999,
     color: 0x998877, projectileSpeed: 0, hotkey: '1',
     traits: [],
-    // No upgrades — it's an 8g blocker
+    // No upgrades — it's a 4g blocker
   }),
   mil_wire: def({
     id: 'mil_wire', name: 'Barbed Wire', description: 'Slows adjacent creeps by 40%. No attack.',
@@ -623,6 +623,33 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { id: 'adjacency_buff', damagePercent: 0.2, ratePercent: 0.1 },
     ],
     // No upgrades — the Commander leads by presence
+  }),
+  mil_sniper: def({
+    id: 'mil_sniper', name: 'Sniper', description: 'Mobile. Extreme range, high single-target damage. Slow fire rate, slow movement.',
+    faction: 'military', damageType: 'physical', cost: 85, damage: 80, range: 9, fireRate: 2500,
+    color: 0x2f4f2f, projectileSpeed: 800, hotkey: '4',
+    traits: [
+      { id: 'direct_damage' },
+      { id: 'mobile_unit', moveSpeed: 50, engageRange: 8.5, leashRange: 12, attackCooldown: 2500 },
+    ],
+    upgrades: [
+      { level: 2, cost: 70, damage: 120, range: 9.5, fireRate: 2300 },
+      { level: 3, cost: 120, damage: 180, range: 10, fireRate: 2100 },
+    ],
+  }),
+  mil_artillery: def({
+    id: 'mil_artillery', name: 'Artillery', description: 'Static. Massive AoE. Stuns and inflicts Vulnerable (+25% damage taken). Very slow.',
+    faction: 'military', damageType: 'physical', cost: 220, damage: 50, range: 7, fireRate: 4000,
+    color: 0x4a4a4a, projectileSpeed: 200, hotkey: '5',
+    traits: [
+      { id: 'splash_damage', radius: 120 },
+      { id: 'stun_on_hit', chance: 1.0, duration: 1200 },
+      { id: 'damage_amp_on_hit', ampAmount: 0.25, duration: 4000 },
+    ],
+    upgrades: [
+      { level: 2, cost: 180, damage: 75, range: 7.5, fireRate: 3800 },
+      { level: 3, cost: 300, damage: 110, range: 8, fireRate: 3500 },
+    ],
   }),
 
   // ================================================================
