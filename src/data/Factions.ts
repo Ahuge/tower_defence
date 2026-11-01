@@ -60,7 +60,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
     description: 'Mobile units that move to engage. Walls, wire, and boots on the ground.',
     primaryColor: 0x556b2f,
     secondaryColor: 0x8fbc8f,
-    towerIds: ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander'],
+    towerIds: ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_sniper', 'mil_heavy', 'mil_artillery', 'mil_commander'],
   },
   aliens: {
     id: 'aliens',
