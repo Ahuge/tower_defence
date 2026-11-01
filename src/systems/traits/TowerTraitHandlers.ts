@@ -879,11 +879,27 @@ registerDamageMod('bonus_vs_mage', (trait: Trait, damage: number, ctx: HitContex
 });
 
 // --- Bonus vs armored (Mech Piercer — the armor-piercing answer) ---
+// DEPRECATED: replaced by armor_scaling_damage below. The flat +50%
+// didn't give the Piercer a distinct identity from the turret.
 registerDamageMod('bonus_vs_armored', (trait: Trait, damage: number, ctx: HitContext) => {
   const target = ctx.target as any;
   const armor = target.armor ?? target.armorFlat ?? 0;
   if (armor > 0) {
     return Math.round(damage * (1 + (trait.bonus ?? 0.5)));
+  }
+  return damage;
+});
+
+// --- Armor-scaling damage (Mech Piercer v2 — specific identity) ---
+// Damage multiplies by the target's armor: the armor itself becomes
+// the weapon. Useless vs unarmored (turret's job), devastating vs
+// tanks. This is what makes the Piercer NOT just "turret but better."
+registerDamageMod('armor_scaling_damage', (trait: Trait, damage: number, ctx: HitContext) => {
+  const target = ctx.target as any;
+  const armor = target.armor ?? target.armorFlat ?? 0;
+  const scale = trait.scale ?? 0.75;
+  if (armor > 0) {
+    return Math.round(damage * (1 + armor * scale));
   }
   return damage;
 });
