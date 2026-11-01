@@ -482,6 +482,10 @@ export class Tower {
       this.damage = newDef.damage;
       this.range = newDef.range * TILE_SIZE;
       this.fireRate = newDef.fireRate;
+      // CRITICAL: swap traits to the new definition's traits.
+      // Without this, a branched tower keeps its old traits (e.g. Piercer
+      // would lack true_damage/armor_scaling_damage).
+      this.traits = newDef.traits.map(t => ({ ...t }));
       this.totalInvested += newDef.cost;
       this._remainingUpgrades = newDef.upgrades.slice();
 
