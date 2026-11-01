@@ -2,6 +2,19 @@
 
 ## 2026-11-01
 
+### Piercer v2: armor-scaling damage (specific identity)
+
+Alex tested the Piercer (PR #88) and it "doesn't feel like it's moving the needle." The flat +50% vs armored didn't give it a distinct identity from the normal turret.
+
+Rebuilt: **damage scales with target armor** (`armor_scaling_damage` trait, 0.75 per armor point). The armor itself becomes the weapon.
+- vs 0 armor: 10 dmg (turret is better — Piercer is NOT a generalist)
+- vs 2 armor: 25 dmg
+- vs 5 armor: 47.5 dmg
+
+Also faster (700 vs 850 fireRate) and base damage tuned down (10 vs 12) so the scaling is the story, not the stats. Upgrades scaled accordingly (L5: 55 dmg).
+
+The Piercer is now a specialist: useless vs swarms, devastating vs tanks. Build it when you see armor coming, not as a default.
+
 ### Piercer: bonus vs armored (+50%)
 
 Alex wasn't sure the Piercer's true_damage alone moved the needle enough on Hard. Added `bonus_vs_armored` damage modifier (+50% vs armored targets), following the existing `bonus_vs_boss`/`bonus_vs_mage` pattern. The Piercer now ignores armor AND hits armored creeps 50% harder — a dedicated armor-killer, not just an armor-ignorer.

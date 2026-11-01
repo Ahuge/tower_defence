@@ -293,16 +293,16 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // mech_towers.png (see SpriteManager) when the sprite is ready.
   mech_piercer: def({
     id: 'mech_piercer', name: 'Piercer',
-    description: 'Black-barrel armor-piercing turret. Ignores armor. Slow, deliberate, devastating.',
+    description: 'Black-barrel armor-piercing turret. Damage scales with target armor — the heavier they are, the harder it hits. Weak vs unarmored.',
     role: 'dps-single',
     faction: 'mechanical', damageType: 'physical',
-    cost: 45, damage: 12, range: 3.5, fireRate: 850,
+    cost: 45, damage: 10, range: 3.5, fireRate: 700,
     color: 0x2a2a2a, projectileSpeed: 450, projectileColor: 0x111111, hotkey: '',
-    traits: [{ id: 'true_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }, { id: 'bonus_vs_armored', bonus: 0.5 }],
+    traits: [{ id: 'true_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }, { id: 'armor_scaling_damage', scale: 0.75 }],
     upgrades: [
-      { level: 3, cost: 70, damage: 20, range: 3.5, fireRate: 800 },
-      { level: 4, cost: 120, damage: 34, range: 4, fireRate: 750 },
-      { level: 5, cost: 200, damage: 60, range: 4.5, fireRate: 700 },
+      { level: 3, cost: 70, damage: 18, range: 3.5, fireRate: 680 },
+      { level: 4, cost: 120, damage: 30, range: 4, fireRate: 650 },
+      { level: 5, cost: 200, damage: 55, range: 4.5, fireRate: 620 },
     ],
   }),
   mech_flamethrower: def({
