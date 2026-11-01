@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-31
+
+### `?unlock=true` — unlock-all-factions URL flag
+
+Alex needed a way to playtest every faction without grinding the shard/campaign unlock flow for balance recordings. Added `UNLOCK_ALL_FACTIONS` to `src/systems/DebugFlags.ts` following the existing `?debug` URL-flag pattern: visiting the game with `?unlock=true` makes `isFactionPlayable()` and the faction-tree `playable` check return true for every faction. It bypasses the gates at runtime only — nothing is written to stored unlock progress, so his real campaign/shard state is untouched when the flag is off.
+
 ## 2026-05-25
 
 ### Campaign lobby + VoidStatePanel — token migration

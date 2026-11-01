@@ -27,6 +27,7 @@ import { levelFromXp } from './PlayerLevel';
 import { StorePersistence } from '../monetization/StorePersistence';
 import { getTreeNode } from '../../data/FactionTree';
 import { getCampaign, isCampaignComplete } from '../../systems/campaign/CampaignRegistry';
+import { UNLOCK_ALL_FACTIONS } from '../DebugFlags';
 import type { FactionId } from '../../data/Factions';
 
 // We deliberately do NOT import PlayerProfile here — UnlockGates is
@@ -216,6 +217,7 @@ export function isFactionCampaignComplete(factionId: FactionId): boolean {
  *  may also pre-grant playable status to factions the player already
  *  used pre-Plan-5 via `legacy_faction_playable.<id>` flags. */
 export function isFactionPlayable(factionId: FactionId): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
   if (factionId === 'arcane') return true;
   if (factionId === 'chaos' || factionId === 'random') return true; // meta — not gated
   if (readProfileFlag(`legacy_faction_playable.${factionId}`)) return true;
@@ -238,6 +240,7 @@ export function getFactionNodeState(factionId: FactionId): FactionNodeState {
   const level = levelFromXp(profile.xp);
   const purchased = (id: FactionId) => id === 'arcane' || store.unlockedFactions.includes(id);
   const playable = (id: FactionId): boolean => {
+    if (UNLOCK_ALL_FACTIONS) return true;
     if (id === 'arcane' || id === 'chaos' || id === 'random') return true;
     if (profile.flags[`legacy_faction_playable.${id}`]) return true;
     if (!purchased(id)) return false;
