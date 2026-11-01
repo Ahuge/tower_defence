@@ -1,0 +1,33 @@
+{
+  "faction": "mechanical",
+  "best": {
+    "evalId": 32,
+    "ts": 1793493802779,
+    "params": {
+      "mazeTowers": 4,
+      "slowByWave": 0,
+      "aoeByWave": 2,
+      "sniperByWave": 6,
+      "secondSlowByWave": 8,
+      "burstByWave": 11,
+      "expandFirst": 12,
+      "maxCheap": 8,
+      "panicLives": 12,
+      "ultTowers": 5,
+      "ultLives": 14,
+      "ultSaveByWave": 15,
+      "upgradeReserve": 28,
+      "expensiveBias": 0.3,
+      "linkerPairs": 1,
+      "aaEnabled": 1,
+      "buffZone": 0,
+      "sniperUpgFirst": 0
+    },
+    "score": 0.3333333333333333,
+    "avgWave": 18.833333333333332,
+    "n": 12,
+    "tag": "search"
+  },
+  "evals": 56,
+  "wallMs": 75073
+}

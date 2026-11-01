@@ -1,0 +1,499 @@
+/**
+ * StrategistBrain — faction-agnostic parameterized strategy.
+ *
+ * The "knowledge" half of the learning system: expert strategy encoded
+ * as structure, with every judgment call exposed as a tunable knob.
+ * An evolution strategy (playtest/evolve.mts, reusing the repo's
+ * BrainSearchManager) then converges the knobs per faction.
+ *
+ * Encoded expert knowledge (from playtesting + the user's expertise):
+ *  - Maze with CHEAP damaging towers early (psionic: Probe 20g; the
+ *    "maze weaker towers" insight). Never maze with 0-damage towers.
+ *  - Slow online ASAP — it multiplies all other DPS.
+ *  - Linkers (cypherpunk Firewall, harmonic Conduit) are placed in
+ *    PAIRS within link range; a lone linker does nothing. The user
+ *    rates Firewall "amazing" — it gets its own build priority.
+ *  - Anti-shield before boss waves (where the faction has one).
+ *  - Anti-air splash on the flyer corridor when flying approaches
+ *    (flyers ignore the maze; run-1 lesson).
+ *  - Upgrades before expansion loses (run-1 lesson): only first-level
+ *    upgrades until the board has width.
+ *  - Panic early (lives<=13): spend everything, stop saving.
+ *
+ * Every role resolves from the faction's towerPool, so factions with
+ * missing roles (no slow, no splash, no linker) simply skip those
+ * steps — the brain never crashes on a thin roster.
+ */
+import type { BotBrain, BotContext, BotDecision, Cell } from '../src/systems/bots/BotBrain';
+import type { TowerType } from '../src/data/TowerTypes';
+import { groupByRole } from '../src/data/TowerRoles';
+import { hasTrait } from '../src/systems/traits/Trait';
+import { bestMazeCell, pathCellsWithinRange } from '../src/systems/bots/MazePlanner';
+import type { PathPoint } from '../src/systems/Pathfinding';
+
+export interface StrategistParams {
+  /** Maze-extending placements prioritized before pure coverage. */
+  mazeTowers: number;
+  /** Have a slow tower by this wave (0 = second tower). */
+  slowByWave: number;
+  /** Have AoE (splash) online by this wave. */
+  aoeByWave: number;
+  /** Have a sniper (longest-range single) by this wave. */
+  sniperByWave: number;
+  /** Second slow tower by this wave. */
+  secondSlowByWave: number;
+  /** Big burst AoE by this wave. */
+  burstByWave: number;
+  /** Only first-level upgrades until this many towers stand. */
+  expandFirst: number;
+  /** Cap on cheap-DPS fill towers. */
+  maxCheap: number;
+  /** Lives <= this: panic, spend everything. */
+  panicLives: number;
+  /** Ultimate needs this many towers standing. */
+  ultTowers: number;
+  /** Ultimate needs this many lives. */
+  ultLives: number;
+  /** Start saving for the ultimate at this wave. */
+  ultSaveByWave: number;
+  /** Gold held back from upgrades for the next tower buy. */
+  upgradeReserve: number;
+  /** 0 = cheapest DPS when filling, 1 = most expensive. */
+  expensiveBias: number;
+  /** Linker pairs (firewall/conduit) to build. */
+  linkerPairs: number;
+  /** 1 = fill DPS inside slow-aura zones when they exist. */
+  buffZone: number;
+  /** 1 = upgrade the sniper (long-range single) before cheap DPS. */
+  sniperUpgFirst: number;
+  /** Have a support-aura tower by this wave. */
+  supportByWave: number;
+  /** Cap on support-aura towers. */
+  maxSupport: number;
+  /** 1 = place anti-air splash when flying approaches. */
+  aaEnabled: number;
+}
+
+export const DEFAULT_STRATEGIST_PARAMS: StrategistParams = {
+  mazeTowers: 4,
+  slowByWave: 0,
+  aoeByWave: 4,
+  sniperByWave: 6,
+  secondSlowByWave: 8,
+  burstByWave: 12,
+  expandFirst: 10,
+  maxCheap: 8,
+  panicLives: 13,
+  ultTowers: 6,
+  ultLives: 15,
+  ultSaveByWave: 16,
+  upgradeReserve: 40,
+  expensiveBias: 0.3,
+  linkerPairs: 2,
+  aaEnabled: 1,
+  buffZone: 1,
+  sniperUpgFirst: 0,
+  supportByWave: 5,
+  maxSupport: 2,
+};
+
+interface Roles {
+  cheapDps?: TowerType;
+  dpsPool: TowerType[];      // damage>0, cost ascending
+  splash?: TowerType;        // cheapest dps-splash
+  slow?: TowerType;          // cheapest slow applicator
+  sniper?: TowerType;        // longest-range dps-single
+  antiShield?: TowerType;    // strip_shield
+  burst?: TowerType;         // priciest dps-splash (if != splash)
+  ultimate?: TowerType;      // priciest attacker
+  linker?: TowerType;        // firewall_link / conduit_link
+  linkRange: number;
+  support?: TowerType;       // ally-buff aura (swarm node etc.)
+}
+
+const LINK_TRAITS = ['firewall_link', 'conduit_link'];
+// Slow applicators: classic slows, roots, reverses, and linker beams
+// (cypherpunk Firewall's beam is a 50% slow — the faction's core control).
+const SLOW_TRAITS = ['slow_on_hit', 'slow_aura', 'barbed_wire', 'root_on_hit', 'hack_reverse'];
+// Support auras: buff nearby allied towers (aliens Swarm Node's +20%
+// fire rate is the faction's core synergy — a 0-damage tower that
+// naive DPS filters ignore, the same trap as the firewall).
+const SUPPORT_AURAS = ['faction_speed_aura', 'commander_aura', 'damage_aura',
+  'rate_aura', 'range_aura', 'crit_aura', 'tower_aura_damage'];
+
+export class StrategistBrain implements BotBrain {
+  readonly name = 'Strategist (playtest)';
+  readonly params: StrategistParams;
+  private roles: Roles = { dpsPool: [], linkRange: 8 };
+  private aaDone = false;
+  private pendingLinker: Cell | null = null;
+
+  constructor(params?: Partial<StrategistParams>) {
+    this.params = { ...DEFAULT_STRATEGIST_PARAMS, ...(params ?? {}) };
+  }
+
+  init(ctx: BotContext): void {
+    const pool = ctx.towerPool;
+    const grouped = groupByRole(pool);
+    const dps = pool.filter(t => t.damage > 0).sort((a, b) => a.cost - b.cost);
+    const splash = dps.filter(t => hasTrait(t.traits, 'splash_damage')).sort((a, b) => a.cost - b.cost);
+    const single = dps.filter(t => !hasTrait(t.traits, 'splash_damage'));
+    const slowCands = pool.filter(t =>
+      SLOW_TRAITS.some(id => hasTrait(t.traits, id)) || grouped.slow.includes(t));
+    const linkCands = pool.filter(t => LINK_TRAITS.some(id => hasTrait(t.traits, id)));
+    const linkTrait = linkCands[0]?.traits.find(t => LINK_TRAITS.includes(t.id)) as
+      { linkRange?: number } | undefined;
+    const supportCands = pool.filter(t => SUPPORT_AURAS.some(id => hasTrait(t.traits, id)));
+    this.roles = {
+      dpsPool: dps,
+      cheapDps: dps[0],
+      splash: splash[0],
+      slow: slowCands.sort((a, b) => a.cost - b.cost)[0],
+      sniper: [...single].sort((a, b) => b.range - a.range)[0],
+      antiShield: dps.find(t => hasTrait(t.traits, 'strip_shield')),
+      burst: splash.length > 1 ? splash[splash.length - 1] : undefined,
+      ultimate: dps[dps.length - 1],
+      linker: linkCands.sort((a, b) => a.cost - b.cost)[0],
+      linkRange: linkTrait?.linkRange ?? 8,
+      support: supportCands.sort((a, b) => a.cost - b.cost)[0],
+    };
+    // Sniper must differ from the cheap DPS to be a distinct step.
+    if (this.roles.sniper && this.roles.cheapDps && this.roles.sniper.id === this.roles.cheapDps.id) {
+      this.roles.sniper = undefined;
+    }
+    if (this.roles.burst && this.roles.splash && this.roles.burst.id === this.roles.splash.id) {
+      this.roles.burst = undefined;
+    }
+  }
+
+  // -- helpers ---------------------------------------------------------
+
+  private mainPath(ctx: BotContext): PathPoint[] {
+    return ctx.allPaths.find((p): p is PathPoint[] => !!p && p.length > 0) ?? [];
+  }
+
+  private coverageCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const path = this.mainPath(ctx);
+    if (path.length === 0 || ctx.candidateCells.length === 0) return null;
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return bestScore > 0 ? best : null;
+  }
+
+  private mazeCell(ctx: BotContext): Cell | null {
+    const m = bestMazeCell(ctx.grid, ctx.candidateCells, 30, ctx.allPaths);
+    return m && m.gain > 0 ? { col: m.col, row: m.row } : null;
+  }
+
+  /** Cell on the flyers' straight-line corridor (they ignore the maze). */
+  private aaCell(ctx: BotContext): Cell | null {
+    const { entry, exit } = ctx.grid as unknown as {
+      entry: { col: number; row: number }; exit: { col: number; row: number };
+    };
+    if (!entry || !exit || ctx.candidateCells.length === 0) return null;
+    const dx = exit.col - entry.col, dy = exit.row - entry.row;
+    const len2 = dx * dx + dy * dy || 1;
+    let best: Cell | null = null, bestD = Infinity;
+    for (const c of ctx.candidateCells) {
+      const t = Math.max(0, Math.min(1, ((c.col - entry.col) * dx + (c.row - entry.row) * dy) / len2));
+      const px = entry.col + t * dx - c.col, py = entry.row + t * dy - c.row;
+      const d = px * px + py * py;
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    return best;
+  }
+
+  private place(ctx: BotContext, t: TowerType | undefined, cell: Cell | null): BotDecision {
+    if (!t || !cell || ctx.budget < t.cost) return { kind: 'skip' };
+    return { kind: 'place', col: cell.col, row: cell.row, type: t };
+  }
+
+  private count(ctx: BotContext, t: TowerType | undefined): number {
+    if (!t) return 0;
+    return ctx.placedTowers.filter(p => p.towerId === t.id).length;
+  }
+
+  /** DPS fill pick: expensiveBias interpolates cheapest→priciest. */
+  private fillTower(): TowerType | undefined {
+    const pool = this.roles.dpsPool.filter(t => t !== this.roles.linker);
+    if (pool.length === 0) return undefined;
+    const idx = Math.round(this.params.expensiveBias * (pool.length - 1));
+    return pool[Math.max(0, Math.min(pool.length - 1, idx))];
+  }
+
+  private bestUpgrade(ctx: BotContext, budget: number, firstLevelOnly: boolean): BotDecision | null {
+    const sniperFirst = this.params.sniperUpgFirst >= 1;
+    const prio = (id: string) => {
+      const r = this.roles;
+      if (sniperFirst && r.sniper && id === r.sniper.id) return 0;
+      if (r.cheapDps && id === r.cheapDps.id) return sniperFirst ? 1 : 0;
+      if (r.splash && id === r.splash.id) return sniperFirst ? 2 : 1;
+      if (r.sniper && id === r.sniper.id) return sniperFirst ? 3 : 2;
+      return 4;
+    };
+    const cands = ctx.placedTowers
+      .filter(t => t.upgradeCost > 0 && t.upgradeCost <= budget && (!firstLevelOnly || t.level === 1))
+      .sort((a, b) => prio(a.towerId) - prio(b.towerId) || a.upgradeCost - b.upgradeCost);
+    if (cands.length === 0) return null;
+    return { kind: 'upgrade', col: cands[0].col, row: cands[0].row };
+  }
+
+  // -- the strategy ----------------------------------------------------
+
+  decide(ctx: BotContext): BotDecision {
+    return this.choose(ctx);
+  }
+
+  private choose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    if (!r.cheapDps) return { kind: 'skip' }; // no damage at all: nothing to do
+
+    const bossSoon = (ctx.upcomingWaves ?? []).some(w => w.isBoss);
+    const flyingSoon = (ctx.upcomingWaves ?? []).some(w =>
+      w.groups.some(g => /flying/i.test(g.creepType)));
+    const panic = ctx.lives <= p.panicLives;
+    const n = (t: TowerType | undefined) => this.count(ctx, t);
+
+    // Mid-wave: only upgrades, and only in panic.
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    // Urgent (panic) mode: run the normal build with every timing gate
+    // lifted and no savings held back — buy core tech the moment it is
+    // affordable instead of dribbling gold into filler.
+    const urgent = panic;
+    const gate = (w: number) => urgent || ctx.wave >= w;
+
+    // 1. Opener: maze with cheap damaging towers (never 0-damage).
+    if (ctx.placedTowers.length === 0) {
+      return this.place(ctx, r.cheapDps, this.mazeCell(ctx) ?? this.coverageCell(ctx, r.cheapDps));
+    }
+    // 2. Linker pairs FIRST (firewall/conduit): they are the faction's
+    //    core when present — a lone linker does nothing, so the pair
+    //    is placed as a unit with the beam lying along the path.
+    {
+      const d = this.linkerStep(ctx);
+      if (d.kind !== 'skip') return d;
+    }
+    // 3. Slow online.
+    if (r.slow && n(r.slow) === 0 && gate(p.slowByWave)) {
+      const d = this.place(ctx, r.slow, this.coverageCell(ctx, r.slow));
+      if (d.kind !== 'skip') return d;
+    }
+    // 4. Boss tech.
+    if (bossSoon && r.antiShield && n(r.antiShield) === 0) {
+      const d = this.place(ctx, r.antiShield, this.coverageCell(ctx, r.antiShield));
+      if (d.kind !== 'skip') return d;
+    }
+    // 5. AoE online.
+    if (r.splash && n(r.splash) === 0 && gate(p.aoeByWave)) {
+      const d = this.place(ctx, r.splash, this.coverageCell(ctx, r.splash));
+      if (d.kind !== 'skip') return d;
+    }
+    // 5b. Support aura (swarm node etc.): placed to cover the DPS
+    //     cluster, never for path coverage.
+    if (r.support && n(r.support) < p.maxSupport && gate(p.supportByWave)) {
+      const d = this.place(ctx, r.support, this.supportCell(ctx, r.support));
+      if (d.kind !== 'skip') return d;
+    }
+    // 6. Sniper.
+    if (r.sniper && n(r.sniper) === 0 && gate(p.sniperByWave)) {
+      const d = this.place(ctx, r.sniper, this.coverageCell(ctx, r.sniper));
+      if (d.kind !== 'skip') return d;
+    }
+    // 7. Second slow.
+    if (r.slow && n(r.slow) < 2 && gate(p.secondSlowByWave)) {
+      const d = this.place(ctx, r.slow, this.coverageCell(ctx, r.slow));
+      if (d.kind !== 'skip') return d;
+    }
+    // 8. Anti-air splash on the flyer corridor.
+    if (p.aaEnabled >= 1 && flyingSoon && !this.aaDone && r.splash) {
+      const cell = this.aaCell(ctx);
+      if (cell && ctx.budget >= r.splash.cost) {
+        this.aaDone = true;
+        return this.place(ctx, r.splash, cell);
+      }
+    }
+    // 9. Upgrades: width before height.
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - (urgent ? 0 : p.upgradeReserve),
+        ctx.placedTowers.length < p.expandFirst);
+      if (up) return up;
+    }
+    // 10. Burst AoE late.
+    if (r.burst && n(r.burst) === 0 && gate(p.burstByWave)) {
+      const d = this.place(ctx, r.burst, this.coverageCell(ctx, r.burst));
+      if (d.kind !== 'skip') return d;
+    }
+    // 11. Ultimate: save only when stable (never save in urgent mode).
+    if (r.ultimate && n(r.ultimate) === 0 && (urgent || ctx.wave >= p.ultSaveByWave) &&
+        ctx.lives >= p.ultLives && ctx.placedTowers.length >= p.ultTowers &&
+        ctx.budget >= r.ultimate.cost) {
+      return this.place(ctx, r.ultimate, this.coverageCell(ctx, r.ultimate));
+    }
+    // 12. Fill: maze-extending DPS, then coverage. In urgent mode, hold
+    //     gold for unbuilt core tech (slow/splash/linkers) instead of
+    //     ping-spamming into a wall — the old death spiral.
+    const corePending = (r.slow && n(r.slow) === 0) || (r.splash && n(r.splash) === 0) ||
+      (r.linker && p.linkerPairs > 0 && n(r.linker) < p.linkerPairs * 2);
+    const fill = this.fillTower();
+    if (fill && n(r.cheapDps) < p.maxCheap && !(urgent && corePending)) {
+      // Slow-zone first: DPS inside an aura gets the slow multiplier.
+      // Then maze extension with cheap towers, then plain coverage.
+      const bz = p.buffZone >= 1 ? this.buffZoneCell(ctx, fill) : null;
+      const mz = !bz && ctx.placedTowers.length < p.mazeTowers ? this.mazeCell(ctx) : null;
+      const d = this.place(ctx, fill, bz ?? mz ?? this.coverageCell(ctx, fill));
+      if (d.kind !== 'skip') return d;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Path cells lying along the beam segment a→b (within 0.6 cells).
+   * A longitudinal beam — lying ALONG the path — keeps creeps inside
+   * the damage+slow zone for seconds; a perpendicular beam only
+   * grazes them. This is the core of the firewall/conduit strategy.
+   */
+  private beamOverlap(a: Cell, b: Cell, path: PathPoint[]): number {
+    const dx = b.col - a.col, dy = b.row - a.row;
+    const len2 = dx * dx + dy * dy;
+    const R = this.roles.linkRange;
+    if (len2 < 4 || len2 > R * R) return -1; // too close or out of link range
+    let n = 0;
+    for (const p of path) {
+      const t = ((p.col - a.col) * dx + (p.row - a.row) * dy) / len2;
+      if (t < 0 || t > 1) continue;
+      const px = a.col + t * dx - p.col, py = a.row + t * dy - p.row;
+      if (px * px + py * py <= 0.36) n++;
+    }
+    return n;
+  }
+
+  /**
+   * Find the best linker PAIR as a unit: the two cells whose beam
+   * covers the most path. If a lone linker already stands (odd
+   * count), anchor the search on it.
+   */
+  private findLinkerPair(ctx: BotContext, linker: TowerType): { a: Cell; b: Cell } | null {
+    const path = this.mainPath(ctx);
+    if (path.length === 0 || ctx.candidateCells.length === 0) return null;
+    // Towers placed ON the path reroute it — invalidating the beam
+    // geometry we score against. Pair candidates must be off-path so
+    // the beam they form actually survives placement.
+    const onPath = new Set(path.map(p => `${p.col},${p.row}`));
+    const scored = ctx.candidateCells
+      .filter(c => !onPath.has(`${c.col},${c.row}`))
+      .map(c => ({ c, s: pathCellsWithinRange(c, path, linker.range) }))
+      .filter(x => x.s > 0)
+      .sort((x, y) => y.s - x.s)
+      .slice(0, 40);
+    if (scored.length === 0) return null;
+    let best: { a: Cell; b: Cell } | null = null, bestScore = 0;
+    const existing = ctx.placedTowers.filter(t => t.towerId === linker.id);
+    if (existing.length % 2 === 1) {
+      const a = { col: existing[existing.length - 1].col, row: existing[existing.length - 1].row };
+      for (const { c } of scored) {
+        const s = this.beamOverlap(a, c, path);
+        if (s > bestScore) { bestScore = s; best = { a, b: c }; }
+      }
+      return best;
+    }
+    const cands = scored.map(x => x.c);
+    const offPath = ctx.candidateCells.filter(c => !onPath.has(`${c.col},${c.row}`));
+    for (const a of cands) {
+      for (const b of offPath) {
+        if (a.col === b.col && a.row === b.row) continue;
+        const s = this.beamOverlap(a, b, path);
+        if (s > bestScore) { bestScore = s; best = { a, b }; }
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Towers on the board projecting an aura worth clustering DPS in:
+   * slow auras (creeps longer in range) and support auras (allied
+   * fire-rate/damage buffs). Generic across factions.
+   */
+  private auraAnchors(ctx: BotContext): { col: number; row: number; range: number }[] {
+    const out: { col: number; row: number; range: number }[] = [];
+    for (const pt of ctx.placedTowers) {
+      const def = ctx.towerPool.find(t => t.id === pt.towerId);
+      if (!def) continue;
+      if (hasTrait(def.traits, 'slow_aura') || SUPPORT_AURAS.some(id => hasTrait(def.traits, id))) {
+        out.push({ col: pt.col, row: pt.row, range: def.range });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Best cell for a support tower: maximizes the number of allied
+   * DPS towers inside its aura. Support goes where the army is,
+   * not where the path is.
+   */
+  private supportCell(ctx: BotContext, support: TowerType): Cell | null {
+    if (ctx.candidateCells.length === 0) return null;
+    const dpsIds = new Set(ctx.towerPool.filter(t => t.damage > 0).map(t => t.id));
+    const dps = ctx.placedTowers.filter(p => dpsIds.has(p.towerId));
+    if (dps.length === 0) return null;
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      let n = 0;
+      for (const d of dps) {
+        const dx = d.col - c.col, dy = d.row - c.row;
+        if (dx * dx + dy * dy <= support.range * support.range) n++;
+      }
+      if (n > bestScore) { bestScore = n; best = c; }
+    }
+    return bestScore > 0 ? best : null;
+  }
+
+  /**
+   * Best cell inside a slow-aura zone: DPS placed here gets the
+   * slow multiplier (creeps spend longer in range). Scored by zone
+   * overlap first, path coverage second.
+   */
+  private buffZoneCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const anchors = this.auraAnchors(ctx);
+    if (anchors.length === 0 || ctx.candidateCells.length === 0) return null;
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -Infinity;
+    for (const c of ctx.candidateCells) {
+      let n = 0;
+      for (const a of anchors) {
+        const dx = a.col - c.col, dy = a.row - c.row;
+        if (dx * dx + dy * dy <= a.range * a.range) n++;
+      }
+      if (n === 0) continue;
+      const cov = path.length ? pathCellsWithinRange(c, path, tower.range) : 0;
+      const s = n * 100 + cov;
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best;
+  }
+
+  /** One linker-pair build step: places 'a', remembers 'b' for next call. */
+  private linkerStep(ctx: BotContext): BotDecision {
+    const r = this.roles, p = this.params;
+    if (!r.linker || p.linkerPairs <= 0) return { kind: 'skip' };
+    if (this.count(ctx, r.linker) >= p.linkerPairs * 2) return { kind: 'skip' };
+    if (this.pendingLinker) {
+      const cell = this.pendingLinker;
+      this.pendingLinker = null;
+      return this.place(ctx, r.linker, cell);
+    }
+    const pair = this.findLinkerPair(ctx, r.linker);
+    if (!pair) return { kind: 'skip' };
+    this.pendingLinker = pair.b;
+    return this.place(ctx, r.linker, pair.a);
+  }
+}

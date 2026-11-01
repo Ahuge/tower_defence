@@ -1,0 +1,31 @@
+{
+  "faction": "cypherpunk",
+  "best": {
+    "evalId": 38,
+    "ts": 1793492819157,
+    "params": {
+      "mazeTowers": 4,
+      "slowByWave": 0,
+      "aoeByWave": 4,
+      "sniperByWave": 7,
+      "secondSlowByWave": 7,
+      "burstByWave": 12,
+      "expandFirst": 9,
+      "maxCheap": 11,
+      "panicLives": 14,
+      "ultTowers": 6,
+      "ultLives": 17,
+      "ultSaveByWave": 13,
+      "upgradeReserve": 48,
+      "expensiveBias": 0.4013821443979103,
+      "linkerPairs": 4,
+      "aaEnabled": 1
+    },
+    "score": 0.96,
+    "avgWave": 19.82,
+    "n": 50,
+    "tag": "validate"
+  },
+  "evals": 68,
+  "wallMs": 345037
+}
