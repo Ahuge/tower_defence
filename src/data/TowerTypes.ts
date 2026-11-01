@@ -298,7 +298,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     faction: 'mechanical', damageType: 'physical',
     cost: 45, damage: 10, range: 3.5, fireRate: 700,
     color: 0x2a2a2a, projectileSpeed: 450, projectileColor: 0x111111, hotkey: '',
-    traits: [{ id: 'true_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }, { id: 'armor_scaling_damage', scale: 0.75 }],
+    traits: [{ id: 'true_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }, { id: 'armor_scaling_damage', scale: 1.0 }],
     upgrades: [
       { level: 3, cost: 70, damage: 18, range: 3.5, fireRate: 680 },
       { level: 4, cost: 120, damage: 30, range: 4, fireRate: 650 },
