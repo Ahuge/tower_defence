@@ -10,6 +10,24 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-11-01',
+    title: 'Piercer v2: armor-scaling boss-killer',
+    changes: [
+      'Mech Turret L2 Piercer branch rebuilt with a specific identity: damage scales with target armor (×0.75 per tier). The armor itself becomes the weapon.',
+      'vs unarmored: 10 dmg (normal turret wins) · vs light: 18 · vs medium: 25 · vs heavy (bosses): 33',
+      'Faster fire rate (700), tuned base damage — the scaling is the story, not the stats. Specialist, not generalist: build turrets for waves, Piercers for bosses.',
+    ],
+  },
+  {
+    date: '2026-10-31',
+    title: 'Mech balance: wall 8g + Piercer branch',
+    changes: [
+      'Wall 10g → 8g. On Hard\'s 0.6× gold, the old cost punished the wall-spam maze that Hard demands.',
+      'New Turret L2 branch: the Piercer. The faction\'s first armor-ignoring tower (true_damage + ramp_up), scaling to L5 (200g, 60 dmg). Black-barrel procedural art.',
+      'New ?unlock=true URL flag: bypasses faction unlock gates for playtesting. Runtime only, doesn\'t touch campaign progress.',
+    ],
+  },
+  {
     date: '2026-05-01',
     title: 'High-res art v2 + parallax delivery + LoadingScreen splash + game-stuck fixes',
     changes: [
