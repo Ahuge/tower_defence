@@ -1,0 +1,37 @@
+{
+  "faction": "harmonic",
+  "best": {
+    "evalId": 25,
+    "ts": 1793511885940,
+    "params": {
+      "mazeTowers": 6,
+      "slowByWave": 2,
+      "aoeByWave": 4,
+      "sniperByWave": 5,
+      "secondSlowByWave": 8,
+      "burstByWave": 12,
+      "expandFirst": 10,
+      "maxCheap": 5,
+      "panicLives": 13,
+      "ultTowers": 7,
+      "ultLives": 20,
+      "ultSaveByWave": 17,
+      "upgradeReserve": 40,
+      "expensiveBias": 0.08123279610438813,
+      "linkerPairs": 1,
+      "aaEnabled": 1,
+      "buffZone": 1,
+      "sniperUpgFirst": 1,
+      "supportByWave": 6,
+      "maxSupport": 1,
+      "harmonicResonators": 5,
+      "harmonicAuras": 6
+    },
+    "score": 1,
+    "avgWave": 20,
+    "n": 50,
+    "tag": "validate"
+  },
+  "evals": 25,
+  "wallMs": 69087
+}

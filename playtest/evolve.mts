@@ -41,12 +41,20 @@ type Match = { outcome: string; waveReached: number };
 
 const argv = process.argv.slice(2);
 const flag = (name: string, def: string): string => {
-  const m = argv.find(a => a === `--${name}` || a.startsWith(`--${name}=`));
-  if (!m) return def;
-  return m.includes('=') ? m.split('=').slice(1).join('=') : def;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === `--${name}` && i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+      return argv[i + 1]; // --flag value
+    }
+    if (a.startsWith(`--${name}=`)) {
+      return a.split('=').slice(1).join('='); // --flag=value
+    }
+  }
+  return def;
 };
 
 const faction = flag('faction', 'cypherpunk');
+const difficulty = flag('difficulty', 'normal');
 const maxEvals = parseInt(flag('max-evals', '60'), 10);
 const searchSeeds = parseInt(flag('search-seeds', '12'), 10);
 const validateSeeds = parseInt(flag('validate-seeds', '50'), 10);
@@ -54,7 +62,7 @@ const mu = parseInt(flag('mu', '2'), 10);
 const lambda = parseInt(flag('lambda', '8'), 10);
 const baseSeed = parseInt(flag('base-seed', '5000'), 10);
 
-const runDir = join('playtest', 'evolved', faction);
+const runDir = join('playtest', 'evolved', `${faction}-${difficulty}`);
 mkdirSync(runDir, { recursive: true });
 const evalLogPath = join(runDir, 'evaluations.jsonl');
 
@@ -83,7 +91,7 @@ async function evalParams(
   const id = evalId; // seeds derive from the eval id for determinism
   for (let s = 0; s < n; s++) {
     const r = await runMatch({
-      faction, difficulty: 'normal', mapId: 'plains', brainId: 'strategist',
+      faction, difficulty: difficulty as 'normal' | 'hard', mapId: 'plains', brainId: 'strategist',
       matchMode: 'standard', waveCount: 20, seed: seedFor(id, s),
     }, new StrategistBrain(params));
     if (r.outcome === 'win') wins++;
