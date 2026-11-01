@@ -904,7 +904,7 @@ registerDamageMod('armor_scaling_damage', (trait: Trait, damage: number, ctx: Hi
   const armor = typeof armorTier === 'string'
     ? (TIERS[armorTier] ?? 0)
     : (target.armorFlat ?? armorTier ?? 0);
-  const scale = trait.scale ?? 0.75;
+  const scale = trait.scale ?? 1.0;
   if (armor > 0) {
     return Math.round(damage * (1 + armor * scale));
   }
