@@ -121,6 +121,11 @@ interface Roles {
   reach?: TowerType;         // range_aura
   amplifier?: TowerType;     // damage_aura
   quickener?: TowerType;     // rate_aura
+  // Mech-specific: wall for maze construction.
+  wall?: TowerType;          // cheap maze filler (mech_wall)
+  // Psionic-specific: mesmer (confuse) is core on Hard, not optional.
+  mesmer?: TowerType;        // confuse_on_hit
+  terror?: TowerType;        // slow_aura
 }
 
 const LINK_TRAITS = ['firewall_link', 'conduit_link'];
@@ -147,7 +152,9 @@ export class StrategistBrain implements BotBrain {
   init(ctx: BotContext): void {
     const pool = ctx.towerPool;
     const grouped = groupByRole(pool);
-    const dps = pool.filter(t => t.damage > 0).sort((a, b) => a.cost - b.cost);
+    // Walls are maze filler, not DPS — exclude from the damage pool
+    // (mech_wall at 8g would otherwise shadow the real cheap DPS).
+    const dps = pool.filter(t => t.damage > 0 && !t.id.includes('wall')).sort((a, b) => a.cost - b.cost);
     const splash = dps.filter(t => hasTrait(t.traits, 'splash_damage')).sort((a, b) => a.cost - b.cost);
     const single = dps.filter(t => !hasTrait(t.traits, 'splash_damage'));
     const slowCands = pool.filter(t =>
@@ -171,6 +178,9 @@ export class StrategistBrain implements BotBrain {
       reach: pool.filter(t => hasTrait(t.traits, 'range_aura')).sort((a, b) => a.cost - b.cost)[0],
       amplifier: pool.filter(t => hasTrait(t.traits, 'damage_aura')).sort((a, b) => a.cost - b.cost)[0],
       quickener: pool.filter(t => hasTrait(t.traits, 'rate_aura')).sort((a, b) => a.cost - b.cost)[0],
+      wall: pool.filter(t => t.id.includes('wall')).sort((a, b) => a.cost - b.cost)[0],
+      mesmer: pool.filter(t => hasTrait(t.traits, 'confuse_on_hit')).sort((a, b) => a.cost - b.cost)[0],
+      terror: pool.filter(t => hasTrait(t.traits, 'slow_aura')).sort((a, b) => a.cost - b.cost)[0],
     };
     // Sniper must differ from the cheap DPS to be a distinct step.
     if (this.roles.sniper && this.roles.cheapDps && this.roles.sniper.id === this.roles.cheapDps.id) {
@@ -268,6 +278,18 @@ export class StrategistBrain implements BotBrain {
     // aura stacking (user's expert knowledge). Dedicated path below.
     if (ctx.faction === 'harmonic' && (r.reach || r.amplifier || r.quickener)) {
       return this.harmonicChoose(ctx);
+    }
+    // Mech: wall-maze + turret spam (entry kill-box, ramp_up clustering).
+    if (ctx.faction === 'mechanical' && r.wall && r.cheapDps) {
+      return this.mechChoose(ctx);
+    }
+    // Aliens: spitter-width (cheap spam, acid for armor).
+    if (ctx.faction === 'aliens' && r.cheapDps) {
+      return this.aliensChoose(ctx);
+    }
+    // Psionic: confuse-trap (mesmer corridor + terror slow + probe spam).
+    if (ctx.faction === 'psionic' && r.mesmer && r.terror) {
+      return this.psionicChoose(ctx);
     }
     if (!r.cheapDps) return { kind: 'skip' }; // no damage at all: nothing to do
 
@@ -462,6 +484,183 @@ export class StrategistBrain implements BotBrain {
       if (s > bestScore) { bestScore = s; best = c; }
     }
     return bestScore > 0 ? best : null;
+  }
+
+  /**
+   * Cell maximizing coverage of the path's ENTRY segment (first ~8 path
+   * cells). The mech kill-box anchors here: walls maze the entry,
+   * turrets cluster for ramp_up focus fire.
+   */
+  private entryCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const path = this.mainPath(ctx);
+    if (path.length === 0 || ctx.candidateCells.length === 0) return null;
+    const entrySeg = path.slice(0, 8);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      const s = pathCellsWithinRange(c, entrySeg, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return bestScore > 0 ? best : null;
+  }
+
+  /**
+   * Mech wall-maze strategy (expert knowledge from user's Hard recordings).
+   *
+   * The faction's game: cheap walls (8g) maze the ENTRY, turrets cluster
+   * for ramp_up (fire rate ramps on same target — focus fire compounds).
+   * Shredders for armor, flamethrowers on the path. On Hard, the wall
+   * count goes up (dedicated maze pieces, not turret-walls).
+   */
+  private mechChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const n = (t: TowerType | undefined) => this.count(ctx, t);
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const turret = r.cheapDps; // mech_turret
+    const wall = r.wall;
+
+    // 1. Turret spam FIRST: DPS to survive the early waves. Walls don't
+    //    kill — they come later. Target ~30 (user's Hard count).
+    if (turret && n(turret) < 30) {
+      const d = this.place(ctx, turret, this.entryCell(ctx, turret));
+      if (d.kind !== 'skip') return d;
+    }
+    // 2. Walls at w9+: maze extension mid-game (user places 6 at w9,
+    //    2 more at w19). Dedicated 8g maze pieces.
+    if (wall && ctx.wave >= 9 && n(wall) < 8) {
+      const d = this.place(ctx, wall, this.mazeCell(ctx) ?? this.entryCell(ctx, wall));
+      if (d.kind !== 'skip') return d;
+    }
+    // 3. Shredder for armor (3 in user's build).
+    const shredCands = (ctx.towerPool ?? []).filter(t => hasTrait(t.traits, 'armor_shred_on_hit'));
+    const shredderT = shredCands.sort((a, b) => a.cost - b.cost)[0];
+    if (shredderT && n(shredderT) < 3) {
+      const d = this.place(ctx, shredderT, this.entryCell(ctx, shredderT));
+      if (d.kind !== 'skip') return d;
+    }
+    // 4. Upgrades: turrets first (the DPS core).
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 30, false);
+      if (up) return up;
+    }
+    // 5. More turrets past 30 if gold allows.
+    if (turret) {
+      const d = this.place(ctx, turret, this.entryCell(ctx, turret) ?? this.coverageCell(ctx, turret));
+      if (d.kind !== 'skip') return d;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Aliens spitter-width strategy (expert knowledge from user's Hard win).
+   *
+   * 88 spitters (12g, 3dmg, 250ms). The game is WIDTH, not height:
+   * drown the map in cheap fast attackers, acid for armor shred,
+   * swarm node for the fire-rate aura. Minimal upgrades.
+   */
+  private aliensChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const n = (t: TowerType | undefined) => this.count(ctx, t);
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const spitter = r.cheapDps; // alien_spitter
+    const acidCands = (ctx.towerPool ?? []).filter(t => hasTrait(t.traits, 'armor_shred_on_hit'));
+    const acid = acidCands.sort((a, b) => a.cost - b.cost)[0];
+    const swarmNode = r.support; // alien_swarm_node (faction_speed_aura)
+
+    // 1. Spitter spam: width is the strategy. No cap — keep buying.
+    if (spitter) {
+      const d = this.place(ctx, spitter, this.coverageCell(ctx, spitter));
+      if (d.kind !== 'skip') return d;
+    }
+    // 2. Acid for armor (5 in user's build).
+    if (acid && n(acid) < 5) {
+      const d = this.place(ctx, acid, this.coverageCell(ctx, acid));
+      if (d.kind !== 'skip') return d;
+    }
+    // 3. Swarm node for the fire-rate aura (1).
+    if (swarmNode && n(swarmNode) < 1) {
+      const d = this.place(ctx, swarmNode, this.supportCell(ctx, swarmNode));
+      if (d.kind !== 'skip') return d;
+    }
+    // 4. Minimal upgrades (user did 7 in 144 turns).
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 50, true); // first-level only
+      if (up) return up;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Psionic confuse-trap strategy (expert knowledge from user's Hard win).
+   *
+   * Mesmer (confuse: creep walks backward) + Terror (50% slow aura)
+   * creates a ping-pong trap: creeps oscillate in place instead of
+   * advancing. Probes (true_damage, ignores armor) grind them down.
+   * Mesmer is CORE on Hard (34 in user's win), not the luxury the
+   * Normal specialist claimed.
+   */
+  private psionicChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const n = (t: TowerType | undefined) => this.count(ctx, t);
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const probe = r.cheapDps; // psi_probe (true_damage)
+    const mesmer = r.mesmer;   // psi_mesmer (confuse)
+    const terror = r.terror;   // psi_terror (slow_aura)
+
+    // 1. Probe spam: the DPS core (65 in user's win). True damage
+    //    ignores armor — the grind that kills trapped creeps.
+    if (probe && n(probe) < 60) {
+      const d = this.place(ctx, probe, this.coverageCell(ctx, probe));
+      if (d.kind !== 'skip') return d;
+    }
+    // 2. Mesmer corridor: wide band along the path (34 in user's win).
+    //    Confuse makes creeps walk backward — the trap.
+    if (mesmer && n(mesmer) < 30) {
+      const d = this.place(ctx, mesmer, this.coverageCell(ctx, mesmer));
+      if (d.kind !== 'skip') return d;
+    }
+    // 3. Terror slow zones at choke points (7 in user's win).
+    if (terror && n(terror) < 7) {
+      const d = this.place(ctx, terror, this.coverageCell(ctx, terror));
+      if (d.kind !== 'skip') return d;
+    }
+    // 4. Minimal upgrades (user did 8 in 141 turns) — control > DPS.
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 50, true);
+      if (up) return up;
+    }
+    // 5. More probes past 60.
+    if (probe) {
+      const d = this.place(ctx, probe, this.coverageCell(ctx, probe));
+      if (d.kind !== 'skip') return d;
+    }
+    return { kind: 'skip' };
   }
 
   /**
