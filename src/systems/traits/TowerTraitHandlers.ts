@@ -1065,10 +1065,10 @@ registerTowerUpdate('decay_per_wave', (_trait: Trait, _tower: any, _ctx: UpdateC
 
 // --- Gold per kill in range (Infernal Soul Drain) ---
 registerTowerUpdate('gold_per_kill_range', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  if (ctx.justDiedCreeps.length === 0) return;
   const goldPerKill = trait.goldPerKill ?? 2;
   const range = tower.range || (TILE_SIZE * 4);
-  for (const creep of ctx.allCreeps) {
-    if (creep.alive || creep.reached || creep.hp > -900) continue;
+  for (const creep of ctx.justDiedCreeps) {
     const dx = creep.x - tower.x;
     const dy = creep.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {
