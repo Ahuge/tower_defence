@@ -17,6 +17,7 @@
 
 import type { BotBrain, BotContext, BotDecision, Cell } from '../src/systems/bots/BotBrain.ts';
 import { StrategistBrain } from './StrategistBrain.ts';
+import { DIRECTOR_BRAIN_SCHEMA } from './DirectorBrainSchema.ts';
 
 type Mode = 'cruising' | 'close' | 'struggling';
 
@@ -33,6 +34,9 @@ export class DirectorBrain implements BotBrain {
   // The faction strategies are the vocabulary, not the plan.
   private strategist = new StrategistBrain();
 
+  // Tunable knobs (from schema, set via setParams).
+  private params: Record<string, number>;
+
   // Wave history for assessment.
   private history: WaveRecord[] = [];
   private lastLives: number | null = null;
@@ -40,6 +44,23 @@ export class DirectorBrain implements BotBrain {
 
   // Savings goal: tower ID we're saving for, if any.
   private savingsGoal: string | null = null;
+
+  constructor(params?: Record<string, number>) {
+    this.params = { ...this.defaults(), ...(params ?? {}) };
+    this.strategist.setParams?.(this.params);
+  }
+
+  private defaults(): Record<string, number> {
+    const d: Record<string, number> = {};
+    for (const [k, v] of Object.entries(DIRECTOR_BRAIN_SCHEMA)) {
+      d[k] = v.default;
+    }
+    return d;
+  }
+
+  setParams(params: Record<string, number>): void {
+    this.params = { ...this.defaults(), ...params };
+  }
 
   init(ctx: BotContext): void {
     this.strategist.init(ctx);
@@ -102,28 +123,29 @@ export class DirectorBrain implements BotBrain {
   }
 
   private assess(ctx: BotContext): Mode {
+    const p = this.params;
     // Need sufficient history — early waves don't prove anything.
     // (Losing 0 lives on waves 1-3 doesn't mean you're cruising.)
-    if (this.history.length < 5) return 'close';
+    if (this.history.length < p.historyNeeded) return 'close';
 
     const recent = this.history.slice(-3);
     const totalLost = recent.reduce((s, r) => s + r.livesLost, 0);
     const avgLost = totalLost / recent.length;
 
     // Struggling: losing lives consistently or critically low.
-    if (ctx.lives <= 5) return 'struggling';
-    if (avgLost >= 2) return 'struggling';
+    if (ctx.lives <= p.strugglingLives) return 'struggling';
+    if (avgLost >= p.strugglingAvg) return 'struggling';
 
     // Close: losing some lives, or trend worsening.
-    if (avgLost >= 0.5) return 'close';
+    if (avgLost >= p.closeAvg) return 'close';
     if (recent.length >= 2) {
       const trend = recent[recent.length - 1].livesLost - recent[0].livesLost;
       if (trend > 0) return 'close'; // getting worse
     }
 
-    // Cruising: 5+ waves, no lives lost, stable.
-    // Require 3 consecutive clean waves to be confident.
-    const cleanStreak = this.history.slice(-3).every(r => r.livesLost === 0);
+    // Cruising: enough history, no lives lost, stable.
+    // Require clean streak to be confident.
+    const cleanStreak = this.history.slice(-Math.ceil(p.cleanStreak)).every(r => r.livesLost === 0);
     if (!cleanStreak) return 'close';
 
     return 'cruising';
@@ -134,9 +156,10 @@ export class DirectorBrain implements BotBrain {
    * How much gold can we gamble on future bets?
    */
   private riskBudget(ctx: BotContext, mode: Mode): number {
+    const p = this.params;
     switch (mode) {
-      case 'cruising': return Math.floor(ctx.budget * 0.5);
-      case 'close': return Math.floor(ctx.budget * 0.2);
+      case 'cruising': return Math.floor(ctx.budget * p.cruisingRisk);
+      case 'close': return Math.floor(ctx.budget * p.closeRisk);
       case 'struggling': return 0;
     }
   }

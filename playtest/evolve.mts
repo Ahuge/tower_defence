@@ -21,12 +21,24 @@ await import('../src/headless/harness/jsdom-setup.ts');
 const uw = <T>(m: unknown): T => (m as { default?: T }).default ?? (m as T);
 const { BrainSearchManager } = uw<{ BrainSearchManager: new (...a: never[]) => Evolver }>(
   await import('../src/headless/brain-search/BrainSearchManager.ts'));
-const { StrategistBrain } = uw<{ StrategistBrain: new (p?: Record<string, number>) => Brain }>(
-  await import('./StrategistBrain.ts'));
-const { STRATEGIST_BRAIN_SCHEMA } = uw<{ STRATEGIST_BRAIN_SCHEMA: object }>(
-  await import('./StrategistBrainSchema.ts'));
 const { runMatch } = uw<{ runMatch: (c: object, b?: unknown) => Promise<Match> }>(
   await import('../src/headless/HeadlessMatch.ts'));
+
+// Brain selection: --brain=strategist (default) or --brain=director
+const brainArg = (process.argv.find(a => a.startsWith('--brain=')) ?? '--brain=strategist').split('=')[1];
+const isDirector = brainArg === 'director';
+
+const { StrategistBrain } = uw<{ StrategistBrain: new (p?: Record<string, number>) => Brain }>(
+  await import('./StrategistBrain.ts'));
+const { DirectorBrain } = uw<{ DirectorBrain: new (p?: Record<string, number>) => Brain }>(
+  await import('./DirectorBrain.ts'));
+const { STRATEGIST_BRAIN_SCHEMA } = uw<{ STRATEGIST_BRAIN_SCHEMA: object }>(
+  await import('./StrategistBrainSchema.ts'));
+const { DIRECTOR_BRAIN_SCHEMA } = uw<{ DIRECTOR_BRAIN_SCHEMA: object }>(
+  await import('./DirectorBrainSchema.ts'));
+
+const BrainClass = isDirector ? DirectorBrain : StrategistBrain;
+const Schema = isDirector ? DIRECTOR_BRAIN_SCHEMA : STRATEGIST_BRAIN_SCHEMA;
 
 type Evolver = {
   shouldContinue(): { continue: boolean; reason: string };
@@ -62,11 +74,11 @@ const mu = parseInt(flag('mu', '2'), 10);
 const lambda = parseInt(flag('lambda', '8'), 10);
 const baseSeed = parseInt(flag('base-seed', '5000'), 10);
 
-const runDir = join('playtest', 'evolved', `${faction}-${difficulty}`);
+const runDir = join('playtest', 'evolved', `${faction}-${difficulty}${isDirector ? '-director' : ''}`);
 mkdirSync(runDir, { recursive: true });
 const evalLogPath = join(runDir, 'evaluations.jsonl');
 
-const manager = new BrainSearchManager(STRATEGIST_BRAIN_SCHEMA, {
+const manager = new BrainSearchManager(Schema, {
   mu, lambda, maxEvals, searchSeeds, validateSeeds,
   autoValidateThreshold: 0.8,
   perfectScoreThreshold: 0.98,
@@ -93,7 +105,7 @@ async function evalParams(
     const r = await runMatch({
       faction, difficulty: difficulty as 'normal' | 'hard', mapId: 'plains', brainId: 'strategist',
       matchMode: 'standard', waveCount: 20, seed: seedFor(id, s),
-    }, new StrategistBrain(params));
+    }, new BrainClass(params));
     if (r.outcome === 'win') wins++;
     waveSum += r.waveReached;
   }
