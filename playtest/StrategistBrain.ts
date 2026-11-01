@@ -28,6 +28,28 @@ import type { BotBrain, BotContext, BotDecision, Cell } from '../src/systems/bot
 import type { TowerType } from '../src/data/TowerTypes';
 import { groupByRole } from '../src/data/TowerRoles';
 import { hasTrait } from '../src/systems/traits/Trait';
+
+/**
+ * WishlistItem — a single strategic intent.
+ *
+ * The brain owns WHAT it wants (tower, role, priority). The scorer
+ * owns WHERE (cell selection). If the scorer vetoes (low confidence),
+ * the brain falls through to the next wishlist item.
+ *
+ * Stolen from PR #68's MazingBrain pattern: separate strategic intent
+ * from spatial intent.
+ */
+interface WishlistItem {
+  tower: TowerType;
+  /** Max copies of this tower in the wishlist. */
+  maxCount: number;
+  /** Higher = earlier in the wishlist. */
+  priority: number;
+  /** Cell scorer for this item. Returns null if vetoed. */
+  scorer: (ctx: BotContext, tower: TowerType) => Cell | null;
+  /** Minimum path coverage for confidence. Below this, veto. */
+  minCoverage?: number;
+}
 import { bestMazeCell, pathCellsWithinRange } from '../src/systems/bots/MazePlanner';
 import type { PathPoint } from '../src/systems/Pathfinding';
 
@@ -270,6 +292,36 @@ export class StrategistBrain implements BotBrain {
 
   decide(ctx: BotContext): BotDecision {
     return this.choose(ctx);
+  }
+
+  /**
+   * Walk a wishlist: for each item (priority order), ask the scorer
+   * for a cell. If the scorer vetoes (null or low coverage), fall
+   * through to the next item. Returns the first placeable decision,
+   * or skip if all vetoed.
+   *
+   * This separates strategic intent (the wishlist) from spatial
+   * intent (the scorer) — PR #68's pattern.
+   */
+  private walkWishlist(ctx: BotContext, wishlist: WishlistItem[]): BotDecision {
+    const n = (t: TowerType | undefined) => this.count(ctx, t);
+    // Sort by priority (higher first)
+    const sorted = [...wishlist].sort((a, b) => b.priority - a.priority);
+    for (const item of sorted) {
+      if (n(item.tower) >= item.maxCount) continue;
+      if ((item.tower.cost ?? 999) > ctx.budget) continue;
+      const cell = item.scorer(ctx, item.tower);
+      if (!cell) continue; // vetoed: no cell
+      // Confidence check: does the cell cover enough path?
+      if (item.minCoverage !== undefined) {
+        const path = this.mainPath(ctx);
+        const coverage = pathCellsWithinRange(cell, path, item.tower.range);
+        if (coverage < item.minCoverage) continue; // vetoed: low confidence
+      }
+      const d = this.place(ctx, item.tower, cell);
+      if (d.kind !== 'skip') return d;
+    }
+    return { kind: 'skip' };
   }
 
   private choose(ctx: BotContext): BotDecision {
@@ -522,7 +574,6 @@ export class StrategistBrain implements BotBrain {
    */
   private mechChoose(ctx: BotContext): BotDecision {
     const p = this.params, r = this.roles;
-    const n = (t: TowerType | undefined) => this.count(ctx, t);
     const panic = ctx.lives <= p.panicLives;
 
     if (!ctx.betweenWaves) {
@@ -535,29 +586,32 @@ export class StrategistBrain implements BotBrain {
 
     const turret = r.cheapDps; // mech_turret
     const wall = r.wall;
-
-    // 1. Turret spam FIRST: DPS to survive the early waves. Walls don't
-    //    kill — they come later. Target ~30 (user's Hard count).
-    if (turret && n(turret) < 30) {
-      const d = this.place(ctx, turret, this.entryCell(ctx, turret));
-      if (d.kind !== 'skip') return d;
-    }
-    // 2. Walls at w9+: maze extension mid-game (user places 6 at w9,
-    //    2 more at w19). Dedicated 8g maze pieces.
-    if (wall && ctx.wave >= 9 && n(wall) < 8) {
-      const d = this.place(ctx, wall, this.mazeCell(ctx) ?? this.entryCell(ctx, wall));
-      if (d.kind !== 'skip') return d;
-    }
-    // 3. Shredder for armor (3 in user's build).
     const shredCands = (ctx.towerPool ?? []).filter(t => hasTrait(t.traits, 'armor_shred_on_hit'));
     const shredderT = shredCands.sort((a, b) => a.cost - b.cost)[0];
-    if (shredderT && n(shredderT) < 3) {
-      const d = this.place(ctx, shredderT, this.entryCell(ctx, shredderT));
-      if (d.kind !== 'skip') return d;
-    }
-    // 4. Piercer branches: upgrade L1 turrets to L2 via the piercer
-    //    branch (true_damage + ramp_up). The armor-ignoring answer mech
-    //    was missing until PR #87. Prefer piercer over plain L2.
+
+    // Wishlist: turrets (DPS) → walls (maze, w9+) → shredders (armor).
+    const wishlist: WishlistItem[] = [];
+    if (turret) wishlist.push({
+      tower: turret, maxCount: 30, priority: 3,
+      scorer: (c, t) => this.entryCell(c, t),
+      minCoverage: 2,
+    });
+    if (wall && ctx.wave >= 9) wishlist.push({
+      tower: wall, maxCount: 8, priority: 2,
+      scorer: (c, t) => this.mazeCell(c) ?? this.entryCell(c, t),
+      // Walls don't need coverage — they're maze structure.
+    });
+    if (shredderT) wishlist.push({
+      tower: shredderT, maxCount: 3, priority: 1,
+      scorer: (c, t) => this.entryCell(c, t),
+      minCoverage: 2,
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Piercer branches: upgrade L1 turrets to L2 via the piercer
+    // branch (true_damage + ramp_up). Prefer piercer over plain L2.
     {
       const l1turret = ctx.placedTowers.find(t =>
         t.towerId === turret?.id && t.level === 1 &&
@@ -566,15 +620,15 @@ export class StrategistBrain implements BotBrain {
         return { kind: 'upgrade', col: l1turret.col, row: l1turret.row, branch: 'piercer' };
       }
     }
-    // 5. Upgrades: turrets first (the DPS core).
+    // Upgrades: turrets first (the DPS core).
     {
       const up = this.bestUpgrade(ctx, ctx.budget - 30, false);
       if (up) return up;
     }
-    // 5. More turrets past 30 if gold allows.
+    // More turrets past 30 if gold allows (no veto).
     if (turret) {
-      const d = this.place(ctx, turret, this.entryCell(ctx, turret) ?? this.coverageCell(ctx, turret));
-      if (d.kind !== 'skip') return d;
+      const d2 = this.place(ctx, turret, this.entryCell(ctx, turret) ?? this.coverageCell(ctx, turret));
+      if (d2.kind !== 'skip') return d2;
     }
     return { kind: 'skip' };
   }
@@ -588,7 +642,6 @@ export class StrategistBrain implements BotBrain {
    */
   private aliensChoose(ctx: BotContext): BotDecision {
     const p = this.params, r = this.roles;
-    const n = (t: TowerType | undefined) => this.count(ctx, t);
     const panic = ctx.lives <= p.panicLives;
 
     if (!ctx.betweenWaves) {
@@ -604,25 +657,29 @@ export class StrategistBrain implements BotBrain {
     const acid = acidCands.sort((a, b) => a.cost - b.cost)[0];
     const swarmNode = r.support; // alien_swarm_node (faction_speed_aura)
 
-    // 1. Spitter spam: width is the strategy. No cap — keep buying.
-    //    EXIT-focused (user's spitters: cols 20-35) — wide exit zone,
-    //    not the narrow last-8. Like harmonic, the kill zone anchors
-    //    at the exit on Hard.
-    if (spitter) {
-      const d = this.place(ctx, spitter, this.exitZoneCell(ctx, spitter, 16) ?? this.coverageCell(ctx, spitter));
-      if (d.kind !== 'skip') return d;
-    }
-    // 2. Acid for armor (5 in user's build) — exit cluster.
-    if (acid && n(acid) < 5) {
-      const d = this.place(ctx, acid, this.exitZoneCell(ctx, acid, 16) ?? this.coverageCell(ctx, acid));
-      if (d.kind !== 'skip') return d;
-    }
-    // 3. Swarm node for the fire-rate aura (1).
-    if (swarmNode && n(swarmNode) < 1) {
-      const d = this.place(ctx, swarmNode, this.supportCell(ctx, swarmNode));
-      if (d.kind !== 'skip') return d;
-    }
-    // 4. Minimal upgrades (user did 7 in 144 turns).
+    // Wishlist: spitters (width) → acid (armor) → swarm node (aura).
+    // EXIT-focused wide zone (user's spitters: cols 20-35).
+    const wishlist: WishlistItem[] = [];
+    if (spitter) wishlist.push({
+      tower: spitter, maxCount: 999, priority: 3, // no cap — width is the strategy
+      scorer: (c, t) => this.exitZoneCell(c, t, 16) ?? this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    if (acid) wishlist.push({
+      tower: acid, maxCount: 5, priority: 2,
+      scorer: (c, t) => this.exitZoneCell(c, t, 16) ?? this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    if (swarmNode) wishlist.push({
+      tower: swarmNode, maxCount: 1, priority: 1,
+      scorer: (c, t) => this.supportCell(c, t),
+      // Support doesn't need path coverage — it buffs towers.
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Minimal upgrades (user did 7 in 144 turns).
     {
       const up = this.bestUpgrade(ctx, ctx.budget - 50, true); // first-level only
       if (up) return up;
@@ -641,7 +698,6 @@ export class StrategistBrain implements BotBrain {
    */
   private psionicChoose(ctx: BotContext): BotDecision {
     const p = this.params, r = this.roles;
-    const n = (t: TowerType | undefined) => this.count(ctx, t);
     const panic = ctx.lives <= p.panicLives;
 
     if (!ctx.betweenWaves) {
@@ -656,33 +712,37 @@ export class StrategistBrain implements BotBrain {
     const mesmer = r.mesmer;   // psi_mesmer (confuse)
     const terror = r.terror;   // psi_terror (slow_aura)
 
-    // 1. Probe spam: the DPS core (65 in user's win). True damage
-    //    ignores armor — the grind that kills trapped creeps.
-    //    LEFT-HALF band (user's probes: cols 0-18).
-    if (probe && n(probe) < 60) {
-      const d = this.place(ctx, probe, this.leftHalfCell(ctx, probe) ?? this.coverageCell(ctx, probe));
-      if (d.kind !== 'skip') return d;
-    }
-    // 2. Mesmer corridor: wide band along the path (34 in user's win).
-    //    Confuse makes creeps walk backward — the trap. Left half.
-    if (mesmer && n(mesmer) < 30) {
-      const d = this.place(ctx, mesmer, this.leftHalfCell(ctx, mesmer) ?? this.coverageCell(ctx, mesmer));
-      if (d.kind !== 'skip') return d;
-    }
-    // 3. Terror slow zones at choke points (7 in user's win). Left half.
-    if (terror && n(terror) < 7) {
-      const d = this.place(ctx, terror, this.leftHalfCell(ctx, terror) ?? this.coverageCell(ctx, terror));
-      if (d.kind !== 'skip') return d;
-    }
+    // Wishlist: strategic intent (WHAT), scorer owns WHERE.
+    // Priority order: probes (DPS core) → mesmers (trap) → terrors (slow).
+    const wishlist: WishlistItem[] = [];
+    if (probe) wishlist.push({
+      tower: probe, maxCount: 60, priority: 3,
+      scorer: (c, t) => this.leftHalfCell(c, t) ?? this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    if (mesmer) wishlist.push({
+      tower: mesmer, maxCount: 30, priority: 2,
+      scorer: (c, t) => this.leftHalfCell(c, t) ?? this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    if (terror) wishlist.push({
+      tower: terror, maxCount: 7, priority: 1,
+      scorer: (c, t) => this.leftHalfCell(c, t) ?? this.coverageCell(c, t),
+      minCoverage: 3, // slow needs good coverage to matter
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
     // 4. Minimal upgrades (user did 8 in 141 turns) — control > DPS.
     {
       const up = this.bestUpgrade(ctx, ctx.budget - 50, true);
       if (up) return up;
     }
-    // 5. More probes past 60.
+    // 5. More probes past 60 (no max, no veto — fill gaps).
     if (probe) {
-      const d = this.place(ctx, probe, this.coverageCell(ctx, probe));
-      if (d.kind !== 'skip') return d;
+      const d2 = this.place(ctx, probe, this.coverageCell(ctx, probe));
+      if (d2.kind !== 'skip') return d2;
     }
     return { kind: 'skip' };
   }
