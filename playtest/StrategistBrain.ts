@@ -475,9 +475,18 @@ export class StrategistBrain implements BotBrain {
    * pre-damaged and die inside the stacked aura field.
    */
   private exitCell(ctx: BotContext, tower: TowerType): Cell | null {
+    return this.exitZoneCell(ctx, tower, 8);
+  }
+
+  /**
+   * Cell maximizing coverage of the last N path cells. Wider zones
+   * (e.g. 16) suit exit-anchored width strategies like aliens'
+   * spitter spam (user's zone: cols 20-35).
+   */
+  private exitZoneCell(ctx: BotContext, tower: TowerType, n: number): Cell | null {
     const path = this.mainPath(ctx);
     if (path.length === 0 || ctx.candidateCells.length === 0) return null;
-    const exitSeg = path.slice(Math.max(0, path.length - 8));
+    const exitSeg = path.slice(Math.max(0, path.length - n));
     let best: Cell | null = null, bestScore = -1;
     for (const c of ctx.candidateCells) {
       const s = pathCellsWithinRange(c, exitSeg, tower.range);
@@ -546,7 +555,18 @@ export class StrategistBrain implements BotBrain {
       const d = this.place(ctx, shredderT, this.entryCell(ctx, shredderT));
       if (d.kind !== 'skip') return d;
     }
-    // 4. Upgrades: turrets first (the DPS core).
+    // 4. Piercer branches: upgrade L1 turrets to L2 via the piercer
+    //    branch (true_damage + ramp_up). The armor-ignoring answer mech
+    //    was missing until PR #87. Prefer piercer over plain L2.
+    {
+      const l1turret = ctx.placedTowers.find(t =>
+        t.towerId === turret?.id && t.level === 1 &&
+        (t.upgradeCost ?? 999) <= ctx.budget);
+      if (l1turret) {
+        return { kind: 'upgrade', col: l1turret.col, row: l1turret.row, branch: 'piercer' };
+      }
+    }
+    // 5. Upgrades: turrets first (the DPS core).
     {
       const up = this.bestUpgrade(ctx, ctx.budget - 30, false);
       if (up) return up;
@@ -585,13 +605,16 @@ export class StrategistBrain implements BotBrain {
     const swarmNode = r.support; // alien_swarm_node (faction_speed_aura)
 
     // 1. Spitter spam: width is the strategy. No cap — keep buying.
+    //    EXIT-focused (user's spitters: cols 20-35) — wide exit zone,
+    //    not the narrow last-8. Like harmonic, the kill zone anchors
+    //    at the exit on Hard.
     if (spitter) {
-      const d = this.place(ctx, spitter, this.coverageCell(ctx, spitter));
+      const d = this.place(ctx, spitter, this.exitZoneCell(ctx, spitter, 16) ?? this.coverageCell(ctx, spitter));
       if (d.kind !== 'skip') return d;
     }
-    // 2. Acid for armor (5 in user's build).
+    // 2. Acid for armor (5 in user's build) — exit cluster.
     if (acid && n(acid) < 5) {
-      const d = this.place(ctx, acid, this.coverageCell(ctx, acid));
+      const d = this.place(ctx, acid, this.exitZoneCell(ctx, acid, 16) ?? this.coverageCell(ctx, acid));
       if (d.kind !== 'skip') return d;
     }
     // 3. Swarm node for the fire-rate aura (1).
@@ -635,19 +658,20 @@ export class StrategistBrain implements BotBrain {
 
     // 1. Probe spam: the DPS core (65 in user's win). True damage
     //    ignores armor — the grind that kills trapped creeps.
+    //    LEFT-HALF band (user's probes: cols 0-18).
     if (probe && n(probe) < 60) {
-      const d = this.place(ctx, probe, this.coverageCell(ctx, probe));
+      const d = this.place(ctx, probe, this.leftHalfCell(ctx, probe) ?? this.coverageCell(ctx, probe));
       if (d.kind !== 'skip') return d;
     }
     // 2. Mesmer corridor: wide band along the path (34 in user's win).
-    //    Confuse makes creeps walk backward — the trap.
+    //    Confuse makes creeps walk backward — the trap. Left half.
     if (mesmer && n(mesmer) < 30) {
-      const d = this.place(ctx, mesmer, this.coverageCell(ctx, mesmer));
+      const d = this.place(ctx, mesmer, this.leftHalfCell(ctx, mesmer) ?? this.coverageCell(ctx, mesmer));
       if (d.kind !== 'skip') return d;
     }
-    // 3. Terror slow zones at choke points (7 in user's win).
+    // 3. Terror slow zones at choke points (7 in user's win). Left half.
     if (terror && n(terror) < 7) {
-      const d = this.place(ctx, terror, this.coverageCell(ctx, terror));
+      const d = this.place(ctx, terror, this.leftHalfCell(ctx, terror) ?? this.coverageCell(ctx, terror));
       if (d.kind !== 'skip') return d;
     }
     // 4. Minimal upgrades (user did 8 in 141 turns) — control > DPS.
@@ -661,6 +685,24 @@ export class StrategistBrain implements BotBrain {
       if (d.kind !== 'skip') return d;
     }
     return { kind: 'skip' };
+  }
+
+  /**
+   * Cell in the LEFT HALF of the map (cols 0-18) maximizing path
+   * coverage. The psionic trap corridor lives here: mesmer band +
+   * terror slow zones + probe spam, all in the left-mid field.
+   */
+  private leftHalfCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const path = this.mainPath(ctx);
+    if (path.length === 0 || ctx.candidateCells.length === 0) return null;
+    const leftCells = ctx.candidateCells.filter(c => c.col <= 18);
+    if (leftCells.length === 0) return this.coverageCell(ctx, tower);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of leftCells) {
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return bestScore > 0 ? best : null;
   }
 
   /**
