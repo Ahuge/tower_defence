@@ -222,7 +222,7 @@ export function getProjectileSpriteConfig(towerId: string): ProjectileSpriteConf
 const FACTION_SHEETS: { towers: string; proj: string; hero: string; dir: string; towerCols: number; projCols: number }[] = [
   { towers: 'void_towers', proj: 'void_proj', hero: 'void_hero', dir: 'void', towerCols: 5, projCols: 5 },
   { towers: 'arcane_towers', proj: 'arcane_proj', hero: 'arcane_hero', dir: 'arcane', towerCols: 7, projCols: 7 },
-  { towers: 'mech_towers', proj: 'mech_proj', hero: 'mech_hero', dir: 'mechanical', towerCols: 8, projCols: 8 },
+  { towers: 'mech_towers', proj: 'mech_proj', hero: 'mech_hero', dir: 'mechanical', towerCols: 9, projCols: 8 },
   { towers: 'nature_towers', proj: 'nature_proj', hero: 'nature_hero', dir: 'nature', towerCols: 6, projCols: 6 },
   { towers: 'mil_towers', proj: 'mil_proj', hero: 'mil_hero', dir: 'military', towerCols: 6, projCols: 6 },
   { towers: 'alien_towers', proj: 'alien_proj', hero: 'alien_hero', dir: 'aliens', towerCols: 8, projCols: 8 },
