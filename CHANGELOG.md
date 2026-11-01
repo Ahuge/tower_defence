@@ -8,7 +8,11 @@ Two balance changes from Alex's Hard-mode playtesting (he barely won mech Hard w
 
 - **Wall 10g → 8g.** The wall "barely attacks" — it's purely a maze tax. On Hard's 0.6× gold, the old cost punished the wall-spam maze that Hard demands.
 - **Turret L2 armor-piercing branch → Piercer.** New `mech_piercer` TowerType, reachable only via Turret's L2 upgrade branch (not dock-placeable). It's the faction's only `true_damage` (ignores armor), keeps `ramp_up`, and scales to L5: 200g for 60 damage at 4.5 range — the "super high damage, super high cost" capstone. The L2→L4 AP path trades raw DPS for armor ignore vs the standard turret line, so it's a real choice.
-- **Art needed:** black-barrel turret variant. Column 9 in `mech_towers.png` is reserved in SpriteManager; the PNG needs the new art.
+- **Art:** black-barrel turret variant generated programmatically in `mechanical_sprites.tsx` (9th column). `mechanical_towers.png` and the gilded/factory_fresh skins regenerated at 9 columns.
+
+### `?unlock=true` — unlock-all-factions URL flag
+
+Alex needed a way to playtest every faction without grinding the shard/campaign unlock flow for balance recordings. Added `UNLOCK_ALL_FACTIONS` to `src/systems/DebugFlags.ts` following the existing `?debug` URL-flag pattern: visiting the game with `?unlock=true` makes `isFactionPlayable()` and the faction-tree `playable` check return true for every faction. It bypasses the gates at runtime only — nothing is written to stored unlock progress, so his real campaign/shard state is untouched when the flag is off.
 
 ## 2026-05-25
 
