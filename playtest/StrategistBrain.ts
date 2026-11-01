@@ -72,6 +72,10 @@ export interface StrategistParams {
   maxSupport: number;
   /** 1 = place anti-air splash when flying approaches. */
   aaEnabled: number;
+  /** Harmonic: target resonator (DPS core) count — "a few, upgraded hard". */
+  harmonicResonators: number;
+  /** Harmonic: target total aura count (reach+amplifier+quickener). */
+  harmonicAuras: number;
 }
 
 export const DEFAULT_STRATEGIST_PARAMS: StrategistParams = {
@@ -95,6 +99,8 @@ export const DEFAULT_STRATEGIST_PARAMS: StrategistParams = {
   sniperUpgFirst: 0,
   supportByWave: 5,
   maxSupport: 2,
+  harmonicResonators: 4,
+  harmonicAuras: 12,
 };
 
 interface Roles {
@@ -109,6 +115,12 @@ interface Roles {
   linker?: TowerType;        // firewall_link / conduit_link
   linkRange: number;
   support?: TowerType;       // ally-buff aura (swarm node etc.)
+  // Harmonic-specific: the three aura types, resolved separately so the
+  // brain can stack them in the expert order (reach first — it compounds
+  // the other auras' radii — then amplifier, then quickener).
+  reach?: TowerType;         // range_aura
+  amplifier?: TowerType;     // damage_aura
+  quickener?: TowerType;     // rate_aura
 }
 
 const LINK_TRAITS = ['firewall_link', 'conduit_link'];
@@ -156,6 +168,9 @@ export class StrategistBrain implements BotBrain {
       linker: linkCands.sort((a, b) => a.cost - b.cost)[0],
       linkRange: linkTrait?.linkRange ?? 8,
       support: supportCands.sort((a, b) => a.cost - b.cost)[0],
+      reach: pool.filter(t => hasTrait(t.traits, 'range_aura')).sort((a, b) => a.cost - b.cost)[0],
+      amplifier: pool.filter(t => hasTrait(t.traits, 'damage_aura')).sort((a, b) => a.cost - b.cost)[0],
+      quickener: pool.filter(t => hasTrait(t.traits, 'rate_aura')).sort((a, b) => a.cost - b.cost)[0],
     };
     // Sniper must differ from the cheap DPS to be a distinct step.
     if (this.roles.sniper && this.roles.cheapDps && this.roles.sniper.id === this.roles.cheapDps.id) {
@@ -249,6 +264,11 @@ export class StrategistBrain implements BotBrain {
 
   private choose(ctx: BotContext): BotDecision {
     const p = this.params, r = this.roles;
+    // Harmonic plays a different game: exit gauntlet + multiplicative
+    // aura stacking (user's expert knowledge). Dedicated path below.
+    if (ctx.faction === 'harmonic' && (r.reach || r.amplifier || r.quickener)) {
+      return this.harmonicChoose(ctx);
+    }
     if (!r.cheapDps) return { kind: 'skip' }; // no damage at all: nothing to do
 
     const bossSoon = (ctx.upcomingWaves ?? []).some(w => w.isBoss);
@@ -354,6 +374,94 @@ export class StrategistBrain implements BotBrain {
       if (d.kind !== 'skip') return d;
     }
     return { kind: 'skip' };
+  }
+
+  /**
+   * Harmonic exit-gauntlet strategy (expert knowledge from the user's
+   * Hard-mode recordings).
+   *
+   * The faction's identity is multiplicative aura stacking with no cap:
+   * Amplifier (+damage), Quickener (+fire rate), Reach (+range) — and
+   * Reach compounds the OTHER auras' radii (two-pass trait system), so
+   * it goes first to grow the stacking field. The DPS core is a FEW
+   * resonators ("weak alone, powerful with auras"), upgraded hard,
+   * sitting inside the stacked field. On low-gold difficulties the
+   * cluster anchors at the EXIT (creeps walk the whole map taking chip
+   * damage, die in the kill zone) and expands backward as waves harden.
+   */
+  private harmonicChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const n = (t: TowerType | undefined) => this.count(ctx, t);
+    const panic = ctx.lives <= p.panicLives;
+
+    // Mid-wave: only upgrades, and only in panic.
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const dps = r.cheapDps; // resonator
+    const auraCount = n(r.reach) + n(r.amplifier) + n(r.quickener);
+
+    // 1. Anchor the DPS core at the exit: a few resonators.
+    if (dps && n(dps) < p.harmonicResonators) {
+      const d = this.place(ctx, dps, this.exitCell(ctx, dps));
+      if (d.kind !== 'skip') return d;
+    }
+    // 2. Aura stack, expert order: REACH first (compounds every other
+    //    aura's radius), then AMPLIFIER (damage), then QUICKENER (rate).
+    //    Multiplicative with no cap — count is the damage scaler.
+    if (r.reach && n(r.reach) < Math.ceil(p.harmonicAuras / 3)) {
+      const d = this.place(ctx, r.reach, this.exitCell(ctx, r.reach));
+      if (d.kind !== 'skip') return d;
+    }
+    if (r.amplifier && n(r.amplifier) < Math.ceil(p.harmonicAuras / 3)) {
+      const d = this.place(ctx, r.amplifier, this.exitCell(ctx, r.amplifier));
+      if (d.kind !== 'skip') return d;
+    }
+    if (r.quickener && n(r.quickener) < Math.floor(p.harmonicAuras / 3)) {
+      const d = this.place(ctx, r.quickener, this.exitCell(ctx, r.quickener));
+      if (d.kind !== 'skip') return d;
+    }
+    // 3. Upgrades: the resonators inside the stacked field are the
+    //    damage — height before width. Keep only a small reserve so
+    //    gold compounds into the core instead of idling.
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 30, false);
+      if (up) return up;
+    }
+    // 4. More auras past the initial targets — no cap on the stacking.
+    const auraTypes = [r.reach, r.amplifier, r.quickener].filter(Boolean) as TowerType[];
+    for (const a of auraTypes) {
+      const d = this.place(ctx, a, this.exitCell(ctx, a));
+      if (d.kind !== 'skip') return d;
+    }
+    // 5. Backward expansion: extend the kill zone toward mid-map.
+    if (dps) {
+      const d = this.place(ctx, dps, this.coverageCell(ctx, dps));
+      if (d.kind !== 'skip') return d;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Cell maximizing coverage of the path's EXIT segment (last ~8 path
+   * cells). The harmonic gauntlet anchors here: creeps arrive
+   * pre-damaged and die inside the stacked aura field.
+   */
+  private exitCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const path = this.mainPath(ctx);
+    if (path.length === 0 || ctx.candidateCells.length === 0) return null;
+    const exitSeg = path.slice(Math.max(0, path.length - 8));
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      const s = pathCellsWithinRange(c, exitSeg, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return bestScore > 0 ? best : null;
   }
 
   /**
