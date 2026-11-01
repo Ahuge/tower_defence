@@ -4916,9 +4916,9 @@ export class GameScene extends Phaser.Scene {
     this.pauseOverlay.add(dim);
     registerUi(dim);
 
-    // Panel
-    const panelW = 260;
-    const panelH = 180;
+    // Panel — larger for mobile touch targets
+    const panelW = 300;
+    const panelH = 260;
     const px = cx - panelW / 2;
     const py = cy - panelH / 2;
 
@@ -4930,31 +4930,52 @@ export class GameScene extends Phaser.Scene {
     this.pauseOverlay.add(panel);
     registerUi(panel);
 
-    const title = this.add.text(cx, py + 20, 'PAUSED', {
-      fontSize: '24px', color: '#ffffff', fontFamily: 'monospace',
+    const title = this.add.text(cx, py + 28, 'PAUSED', {
+      fontSize: '28px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(title);
     registerUi(title);
 
+    // Helper for touch-friendly buttons
+    const makeButton = (y: number, label: string, color: string, hoverColor: string, onClick: () => void) => {
+      // Background rect for larger touch target (min 48px height)
+      const btnBg = this.add.graphics();
+      btnBg.fillStyle(0x2a2a2a, 1);
+      btnBg.fillRoundedRect(cx - 120, y - 22, 240, 44, 8);
+      btnBg.lineStyle(1, 0x555555, 1);
+      btnBg.strokeRoundedRect(cx - 120, y - 22, 240, 44, 8);
+      this.pauseOverlay!.add(btnBg);
+      registerUi(btnBg);
+
+      const btn = this.add.text(cx, y, label, {
+        fontSize: '18px', color, fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(51);
+      this.pauseOverlay!.add(btn);
+      registerUi(btn);
+
+      // Make both bg and text interactive
+      btnBg.setInteractive(new Phaser.Geom.Rectangle(cx - 120, y - 22, 240, 44), Phaser.Geom.Rectangle.Contains);
+      btn.setInteractive({ useHandCursor: true });
+      const handler = () => onClick();
+      btnBg.on('pointerdown', handler);
+      btn.on('pointerdown', handler);
+      btnBg.on('pointerover', () => { btn.setColor(hoverColor); btnBg.clear(); btnBg.fillStyle(0x3a3a3a, 1); btnBg.fillRoundedRect(cx - 120, y - 22, 240, 44, 8); });
+      btnBg.on('pointerout', () => { btn.setColor(color); btnBg.clear(); btnBg.fillStyle(0x2a2a2a, 1); btnBg.fillRoundedRect(cx - 120, y - 22, 240, 44, 8); });
+      btn.on('pointerover', () => btn.setColor(hoverColor));
+      btn.on('pointerout', () => btn.setColor(color));
+    };
+
     // Resume button
-    const resumeBtn = this.add.text(cx, py + 70, '[ Resume ]', {
-      fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
-    }).setOrigin(0.5).setDepth(51);
-    this.pauseOverlay.add(resumeBtn);
-    registerUi(resumeBtn);
-    resumeBtn.setInteractive({ useHandCursor: true });
-    resumeBtn.on('pointerdown', () => this.togglePause());
-    resumeBtn.on('pointerover', () => resumeBtn.setColor('#88ff88'));
-    resumeBtn.on('pointerout', () => resumeBtn.setColor('#44ff44'));
+    makeButton(py + 75, 'Resume', '#44ff44', '#88ff88', () => this.togglePause());
+
+    // Encyclopedia button — opens faction encyclopedia modal
+    makeButton(py + 130, 'Encyclopedia', '#66aaff', '#aaccff', () => {
+      // Don't unpause, just open the encyclopedia over the pause menu
+      GameUIStore.setEncyclopediaOpen(true);
+    });
 
     // Exit to menu button
-    const exitBtn = this.add.text(cx, py + 110, '[ Exit to Menu ]', {
-      fontSize: '16px', color: '#ff8844', fontFamily: 'monospace',
-    }).setOrigin(0.5).setDepth(51);
-    this.pauseOverlay.add(exitBtn);
-    registerUi(exitBtn);
-    exitBtn.setInteractive({ useHandCursor: true });
-    exitBtn.on('pointerdown', () => {
+    makeButton(py + 185, 'Exit to Menu', '#ff8844', '#ffbb77', () => {
       this.hidePauseMenu();
       setGridOffsetY(0);
       this.versus?.close();
@@ -4963,12 +4984,10 @@ export class GameScene extends Phaser.Scene {
       this.registry.remove('circle');
       goToMenu();
     });
-    exitBtn.on('pointerover', () => exitBtn.setColor('#ffbb77'));
-    exitBtn.on('pointerout', () => exitBtn.setColor('#ff8844'));
 
     // Hint
     const hint = this.add.text(cx, py + panelH - 16, 'Press P to resume', {
-      fontSize: '10px', color: '#666666', fontFamily: 'monospace',
+      fontSize: '11px', color: '#666666', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51);
     this.pauseOverlay.add(hint);
     registerUi(hint);

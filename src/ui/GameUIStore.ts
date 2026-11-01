@@ -281,6 +281,8 @@ export interface GameUIState {
   speedBoostRemainingSec: number;
   /** Is game paused */
   paused: boolean;
+  /** Is faction encyclopedia modal open (in-game) */
+  encyclopediaOpen: boolean;
   /** Total income per wave */
   income: number;
   /** Is wave active */
@@ -629,6 +631,7 @@ class GameUIStoreClass {
       matchMode: 'standard',
       speed: 1,
       paused: false,
+      encyclopediaOpen: false,
       income: 0,
       waveActive: false,
       betweenWaves: false,
@@ -891,6 +894,12 @@ class GameUIStoreClass {
   /** Update paused state */
   setPaused(paused: boolean): void {
     this.state = { ...this.state, paused };
+    this.notify();
+  }
+
+  /** Open/close the in-game faction encyclopedia modal */
+  setEncyclopediaOpen(open: boolean): void {
+    this.state = { ...this.state, encyclopediaOpen: open };
     this.notify();
   }
 
