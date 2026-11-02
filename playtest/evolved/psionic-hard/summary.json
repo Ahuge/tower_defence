@@ -1,0 +1,37 @@
+{
+  "faction": "psionic",
+  "best": {
+    "evalId": 19,
+    "ts": 1793543544583,
+    "params": {
+      "mazeTowers": 4,
+      "slowByWave": 0,
+      "aoeByWave": 4,
+      "sniperByWave": 6,
+      "secondSlowByWave": 8,
+      "burstByWave": 12,
+      "expandFirst": 9,
+      "maxCheap": 6,
+      "panicLives": 13,
+      "ultTowers": 6,
+      "ultLives": 13,
+      "ultSaveByWave": 15,
+      "upgradeReserve": 52,
+      "expensiveBias": 0.2194563283638981,
+      "linkerPairs": 0,
+      "aaEnabled": 1,
+      "buffZone": 1,
+      "sniperUpgFirst": 1,
+      "supportByWave": 5,
+      "maxSupport": 3,
+      "harmonicResonators": 4,
+      "harmonicAuras": 12
+    },
+    "score": 0,
+    "avgWave": 10.75,
+    "n": 12,
+    "tag": "search"
+  },
+  "evals": 64,
+  "wallMs": 92359
+}

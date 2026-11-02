@@ -1,0 +1,22 @@
+{
+  "faction": "psionic",
+  "best": {
+    "evalId": 29,
+    "ts": 1793550946307,
+    "params": {
+      "cruisingRisk": 0.522360245858763,
+      "closeRisk": 0.16810266190159381,
+      "historyNeeded": 5,
+      "cleanStreak": 2,
+      "strugglingLives": 5,
+      "strugglingAvg": 1.2318539997341826,
+      "closeAvg": 0.5595290398155944
+    },
+    "score": 0,
+    "avgWave": 12.7,
+    "n": 10,
+    "tag": "search"
+  },
+  "evals": 40,
+  "wallMs": 73274
+}

@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-11-01T07:25:38.836Z",
+  "difficulty": "normal",
+  "brains": [
+    "balanced",
+    "greedy",
+    "rush"
+  ],
+  "factions": [
+    "arcane",
+    "mechanical",
+    "nature",
+    "void",
+    "military",
+    "aliens",
+    "cypherpunk",
+    "infernal",
+    "celestial",
+    "psionic",
+    "harmonic"
+  ],
+  "seedsPerCell": 5,
+  "totalMatches": 165,
+  "totalTurns": 49649,
+  "wins": 46,
+  "losses": 119,
+  "errors": 0,
+  "wallTimeSec": "74.6"
+}

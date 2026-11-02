@@ -50,7 +50,83 @@ interface InFlightTurn {
   faction: string;
   difficulty: string;
   wave: number;
+  /** Exact gold at action time (stateFeatures has normalized gold_norm). */
+  gold: number;
+  /** Exact lives at action time. */
+  lives: number;
 }
+
+/** Snapshot of a single tower for wave-start inventory. */
+export interface TowerSnapshot {
+  towerId: string;
+  col: number;
+  row: number;
+  level: number;
+  /** Cumulative damage dealt by this tower instance this match. */
+  damageDealt: number;
+  /** Cumulative gold earned by this tower instance this match (e.g. soul_drain). */
+  goldEarned: number;
+}
+
+/** Composition of an incoming wave — what the player is about to face. */
+export interface WaveComposition {
+  creepType: string;
+  count: number;
+  armorTier?: string;
+}
+
+/** Recorded at wave start: full state snapshot. */
+export interface WaveStartEvent {
+  eventType: 'wave_start';
+  wave: number;
+  gold: number;
+  lives: number;
+  /** All placed towers with positions, levels, and cumulative stats. */
+  towers: TowerSnapshot[];
+  /** What creeps are coming this wave. */
+  composition: WaveComposition[];
+  /** For chaos mode: which tower IDs are currently available. */
+  availableTowers?: string[];
+}
+
+/** Per-tower damage dealt during a single wave. */
+export interface TowerWaveDamage {
+  towerId: string;
+  col: number;
+  row: number;
+  damageDealt: number;
+}
+
+/** Breakdown of gold income sources for a wave. */
+export interface IncomeBreakdown {
+  kills: number;
+  waveBonus: number;
+  sends: number;
+  traits: number;
+  other: number;
+}
+
+/** Details of creeps that leaked during a wave. */
+export interface LeakDetail {
+  creepType: string;
+  count: number;
+  damage: number;
+}
+
+/** Recorded at wave clear: summary of what happened. */
+export interface WaveEndEvent {
+  eventType: 'wave_end';
+  wave: number;
+  gold: number;
+  lives: number;
+  livesLost: number;
+  leaks: LeakDetail[];
+  income: IncomeBreakdown;
+  /** Per-tower damage for this wave only (delta from wave start). */
+  towerDamage: TowerWaveDamage[];
+}
+
+type CaptureEvent = WaveStartEvent | WaveEndEvent;
 
 interface FinishedMatch {
   matchId: number;
@@ -60,6 +136,10 @@ interface FinishedMatch {
   outcome: 'win' | 'loss' | 'error';
   waveReached: number;
   turns: InFlightTurn[];
+  /** Wave-start snapshots and wave-end summaries, in chronological order. */
+  events: CaptureEvent[];
+  /** Per-tower cumulative damage for the whole match, keyed by tower instance. */
+  towerTotals: TowerWaveDamage[];
 }
 
 const SESSION_KEY = 'learning.capture.session';
@@ -72,6 +152,13 @@ let session: {
   startedAt: number;
   turnIdx: number;
   turns: InFlightTurn[];
+  events: CaptureEvent[];
+  /** Income accumulator for the current wave, by source. Reset at wave start. */
+  waveIncome: IncomeBreakdown;
+  /** Tower damage at wave start, for computing per-wave deltas. Key: `${col},${row}` */
+  waveStartDamage: Map<string, number>;
+  /** Lives at wave start, for computing lives lost. */
+  waveStartLives: number;
 } | null = null;
 
 export function isCaptureEnabled(): boolean {
@@ -102,6 +189,10 @@ export function startSession(faction: string, difficulty: string): void {
     startedAt: Date.now(),
     turnIdx: 0,
     turns: [],
+    events: [],
+    waveIncome: { kills: 0, waveBonus: 0, sends: 0, traits: 0, other: 0 },
+    waveStartDamage: new Map(),
+    waveStartLives: 0,
   };
   try {
     if (typeof window !== 'undefined') {
@@ -149,6 +240,8 @@ export function recordAction(ctx: BotContext, decision: BotDecision): void {
       faction: session.faction,
       difficulty: session.difficulty,
       wave: ctx.wave,
+      gold: ctx.budget ?? 0,
+      lives: ctx.lives ?? 0,
     };
     session.turns.push(turn);
   } catch (err) {
@@ -158,9 +251,93 @@ export function recordAction(ctx: BotContext, decision: BotDecision): void {
   }
 }
 
+/** Record a wave-start snapshot. Call from GameScene's onWaveStart.
+ *  Captures full board state, tower inventory, and incoming wave composition. */
+export function recordWaveStart(
+  wave: number,
+  gold: number,
+  lives: number,
+  towers: TowerSnapshot[],
+  composition: WaveComposition[],
+  availableTowers?: string[],
+): void {
+  if (!session) return;
+  try {
+    // Reset per-wave accumulators
+    session.waveIncome = { kills: 0, waveBonus: 0, sends: 0, traits: 0, other: 0 };
+    session.waveStartDamage = new Map(
+      towers.map(t => [`${t.col},${t.row}`, t.damageDealt])
+    );
+    session.waveStartLives = lives;
+    const event: WaveStartEvent = {
+      eventType: 'wave_start',
+      wave,
+      gold,
+      lives,
+      towers,
+      composition,
+      availableTowers,
+    };
+    session.events.push(event);
+  } catch (err) {
+    if (typeof console !== 'undefined') console.warn('[LiveCapture] recordWaveStart failed:', err);
+  }
+}
+
+/** Record gold income by source. Call from economy hooks.
+ *  Sources: 'kills' | 'waveBonus' | 'sends' | 'traits' | 'other' */
+export function recordIncome(source: keyof IncomeBreakdown, amount: number): void {
+  if (!session) return;
+  try {
+    session.waveIncome[source] += amount;
+  } catch { /* ignore */ }
+}
+
+/** Record a wave-end summary. Call from GameScene's onWaveCleared.
+ *  Computes per-tower damage deltas from wave-start baselines. */
+export function recordWaveEnd(
+  wave: number,
+  gold: number,
+  lives: number,
+  leaks: LeakDetail[],
+  towers: TowerSnapshot[],
+): void {
+  if (!session) return;
+  try {
+    const livesLost = session.waveStartLives - lives;
+    const towerDamage: TowerWaveDamage[] = towers.map(t => {
+      const key = `${t.col},${t.row}`;
+      const startDamage = session!.waveStartDamage.get(key) ?? 0;
+      return {
+        towerId: t.towerId,
+        col: t.col,
+        row: t.row,
+        damageDealt: t.damageDealt - startDamage,
+      };
+    });
+    const event: WaveEndEvent = {
+      eventType: 'wave_end',
+      wave,
+      gold,
+      lives,
+      livesLost,
+      leaks,
+      income: { ...session.waveIncome },
+      towerDamage,
+    };
+    session.events.push(event);
+  } catch (err) {
+    if (typeof console !== 'undefined') console.warn('[LiveCapture] recordWaveEnd failed:', err);
+  }
+}
+
 /** Close out the current session with its outcome. Appends the
  *  finished match to localStorage rows; the player exports later. */
-export function finishSession(outcome: 'win' | 'loss' | 'error', waveReached: number): void {
+export function finishSession(
+  outcome: 'win' | 'loss' | 'error',
+  waveReached: number,
+  finalTowers?: TowerSnapshot[],
+): void {
   if (!session) return;
   if (session.turns.length === 0) {
     // No actions captured (player quit before doing anything).
@@ -169,6 +346,12 @@ export function finishSession(outcome: 'win' | 'loss' | 'error', waveReached: nu
   }
   try {
     const matchId = Date.now();
+    const towerTotals: TowerWaveDamage[] = (finalTowers ?? []).map(t => ({
+      towerId: t.towerId,
+      col: t.col,
+      row: t.row,
+      damageDealt: t.damageDealt,
+    }));
     const finished: FinishedMatch = {
       matchId,
       generatedAt: new Date().toISOString(),
@@ -177,6 +360,8 @@ export function finishSession(outcome: 'win' | 'loss' | 'error', waveReached: nu
       outcome,
       waveReached,
       turns: session.turns,
+      events: session.events,
+      towerTotals,
     };
     if (typeof window !== 'undefined') {
       const existingRaw = window.localStorage.getItem(ROWS_KEY);
@@ -221,7 +406,13 @@ export function getStats(): { matches: number; wins: number; turns: number } {
 
 /** Export everything captured as JSONL. Same row schema as
  *  ml/training-data/turns.jsonl from the headless harness, so the
- *  exported file appends directly. */
+ *  exported file appends directly.
+ *
+ *  Row types:
+ *  - turn rows: per-action decisions (existing schema + gold/lives)
+ *  - event rows: wave_start / wave_end snapshots (rowType: 'event')
+ *  - summary row: per-match tower totals (rowType: 'match_summary')
+ */
 export function exportJSONL(): string {
   if (typeof window === 'undefined') return '';
   try {
@@ -234,6 +425,7 @@ export function exportJSONL(): string {
       for (const t of m.turns) {
         lines.push(JSON.stringify({
           matchId: m.matchId,
+          rowType: 'turn',
           turnIdx: t.turnIdx,
           stateFeatures: t.stateFeatures,
           actionFeatures: t.actionFeatures,
@@ -243,6 +435,36 @@ export function exportJSONL(): string {
           brain: 'human',
           difficulty: t.difficulty,
           wave: t.wave,
+          gold: t.gold,
+          lives: t.lives,
+          outcome: m.outcome,
+          won,
+          waveReached: m.waveReached,
+        }));
+      }
+      // Wave events (wave_start / wave_end snapshots)
+      for (const e of (m.events ?? [])) {
+        lines.push(JSON.stringify({
+          matchId: m.matchId,
+          rowType: 'event',
+          ...e,
+          faction: m.faction,
+          brain: 'human',
+          difficulty: m.difficulty,
+          outcome: m.outcome,
+          won,
+          waveReached: m.waveReached,
+        }));
+      }
+      // Per-match tower damage totals
+      if (m.towerTotals && m.towerTotals.length > 0) {
+        lines.push(JSON.stringify({
+          matchId: m.matchId,
+          rowType: 'match_summary',
+          towerTotals: m.towerTotals,
+          faction: m.faction,
+          brain: 'human',
+          difficulty: m.difficulty,
           outcome: m.outcome,
           won,
           waveReached: m.waveReached,

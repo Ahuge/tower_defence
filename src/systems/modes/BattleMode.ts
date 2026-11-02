@@ -95,6 +95,11 @@ export class BattleMode implements GameMode {
     this.ctx.statsTracker.recordGoldEarned(income);
     if (breakdown.sends > 0) {
       this.ctx.statsTracker.recordSendsEarned(breakdown.sends);
+      // Live-capture: track send income
+      const sendAmount = breakdown.sends;
+      void import('../learning/LiveCapture').then(m => {
+        if (m.isCaptureEnabled()) m.recordIncome('sends', sendAmount);
+      }).catch(() => {});
     }
   }
 

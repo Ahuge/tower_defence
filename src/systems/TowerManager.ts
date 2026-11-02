@@ -213,6 +213,11 @@ export class TowerManager {
         } else {
           this.economy.addGold(tower.goldEarned);
           this.statsTracker.recordGoldEarned(tower.goldEarned);
+          // Live-capture: track trait gold income (soul_drain, gold_on_hit, etc.)
+          const goldAmount = tower.goldEarned;
+          void import('./learning/LiveCapture').then(m => {
+            if (m.isCaptureEnabled()) m.recordIncome('traits', goldAmount);
+          }).catch(() => {});
         }
         this.statsTracker.recordTowerGold(tower.typeId, tower.goldEarned);
         tower.goldEarned = 0;
