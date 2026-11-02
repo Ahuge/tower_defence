@@ -28,6 +28,7 @@ import type { BotBrain, BotContext, BotDecision, Cell } from '../src/systems/bot
 import type { TowerType } from '../src/data/TowerTypes';
 import { groupByRole } from '../src/data/TowerRoles';
 import { hasTrait } from '../src/systems/traits/Trait';
+import { LearnedScorer } from './LearnedScorer';
 
 /**
  * WishlistItem — a single strategic intent.
@@ -98,6 +99,8 @@ export interface StrategistParams {
   harmonicResonators: number;
   /** Harmonic: target total aura count (reach+amplifier+quickener). */
   harmonicAuras: number;
+  /** 1 = use learned placement scorer (imitation learning) instead of hand-coded spatial scorers. */
+  useLearnedScorer: number;
 }
 
 export const DEFAULT_STRATEGIST_PARAMS: StrategistParams = {
@@ -123,6 +126,7 @@ export const DEFAULT_STRATEGIST_PARAMS: StrategistParams = {
   maxSupport: 2,
   harmonicResonators: 4,
   harmonicAuras: 12,
+  useLearnedScorer: 0,
 };
 
 interface Roles {
@@ -166,9 +170,33 @@ export class StrategistBrain implements BotBrain {
   private roles: Roles = { dpsPool: [], linkRange: 8 };
   private aaDone = false;
   private pendingLinker: Cell | null = null;
+  /** Learned placement scorer (imitation learning from Alex's replays).
+   *  When enabled and a model exists for the faction, replaces hand-coded
+   *  spatial scorers. Toggle via params.useLearnedScorer. */
+  private learnedScorer: LearnedScorer | null = null;
 
   constructor(params?: Partial<StrategistParams>) {
     this.params = { ...DEFAULT_STRATEGIST_PARAMS, ...(params ?? {}) };
+    if (this.params.useLearnedScorer) {
+      this.learnedScorer = new LearnedScorer();
+    }
+  }
+
+  /**
+   * Choose a cell using the learned scorer if enabled, otherwise fall back
+   * to the provided hand-coded scorer. This lets us A/B test learned vs
+   * manual positioning.
+   */
+  private smartCell(
+    ctx: BotContext,
+    tower: TowerType,
+    fallback: (c: BotContext, t: TowerType) => Cell | null,
+  ): Cell | null {
+    if (this.learnedScorer && this.learnedScorer.hasModel(ctx.faction as string)) {
+      const learned = this.learnedScorer.scorerFn(ctx, tower);
+      if (learned) return learned;
+    }
+    return fallback(ctx, tower);
   }
 
   init(ctx: BotContext): void {
@@ -729,13 +757,14 @@ export class StrategistBrain implements BotBrain {
     const wishlist: WishlistItem[] = [];
     if (probe) wishlist.push({
       tower: probe, maxCount: 60, priority: 3,
-      scorer: (c, t) => this.leftHalfCell(c, t) ?? this.coverageCell(c, t),
+      scorer: (c, t) => this.smartCell(c, t, (cc, tt) => this.leftHalfCell(cc, tt) ?? this.coverageCell(cc, tt)),
       minCoverage: 2,
     });
     if (mesmer) wishlist.push({
       tower: mesmer, maxCount: 30, priority: 2,
       // Interleave with probes: Alex's win has mesmers avg 1.0 tiles from nearest probe
-      scorer: (c, t) => this.adjacentToProbeCell(c, t),
+      // Learned scorer should capture this automatically if enabled
+      scorer: (c, t) => this.smartCell(c, t, (cc, tt) => this.adjacentToProbeCell(cc, tt)),
       minCoverage: 2,
     });
     if (terror) wishlist.push({
