@@ -840,13 +840,21 @@ export class StrategistBrain implements BotBrain {
     const backdoor = pool.find(t => t.id === 'cyber_backdoor');
 
     const wishlist: WishlistItem[] = [];
-    // Firewalls first — they're the star, everything positions around them
+    // Pings FIRST for early defense (Alex: 7 pings before first firewall)
+    // Firewalls do 0 damage — need DPS to survive wave 1
+    if (ping) wishlist.push({
+      tower: ping, maxCount: 7, priority: 5,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Firewalls: the star, rectangle formation
+    // Alex: (35,7) and (27,7) on wave 1, then (34,13) and (26,13) on wave 7
     if (firewall) wishlist.push({
       tower: firewall, maxCount: 4, priority: 4,
-      scorer: (c, t) => this.corridorCell(c, t),
+      scorer: (c, t) => this.firewallRectangleCell(c, t),
       minCoverage: 3,
     });
-    // Pings: the DPS backbone (Alex: 43, avg 2.4 tiles from firewall)
+    // More pings: the DPS backbone (Alex: 43 total, avg 2.4 tiles from firewall)
     if (ping) wishlist.push({
       tower: ping, maxCount: 43, priority: 3,
       scorer: (c, t) => this.nearFirewallCell(c, t),
@@ -989,6 +997,78 @@ export class StrategistBrain implements BotBrain {
       if (s > bestScore) { bestScore = s; best = c; }
     }
     return best ?? this.leftHalfCell(ctx, tower);
+  }
+
+  /**
+   * Cell for firewall rectangle formation (cypherpunk kill-corridor).
+   * Alex's pattern: 4 firewalls at rectangle corners.
+   * Wave 1: (35,7) and (27,7) — top edge
+   * Wave 7: (34,13) and (26,13) — bottom edge
+   * Rectangle: 8 cols wide, 6 rows tall, on right side of map.
+   */
+  private firewallRectangleCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const firewalls = ctx.placedTowers.filter(p => 
+      p.towerId.includes('firewall')
+    );
+    const path = this.mainPath(ctx);
+    
+    if (firewalls.length === 0) {
+      // First firewall: right side, upper area, good path coverage
+      // Alex's first: (35, 7)
+      let best: Cell | null = null, bestScore = -1;
+      for (const c of ctx.candidateCells) {
+        // Right side of map (cols 25-35), upper-middle (rows 5-10)
+        if (c.col < 25 || c.col > 35 || c.row < 5 || c.row > 10) continue;
+        const s = pathCellsWithinRange(c, path, tower.range);
+        if (s > bestScore) { bestScore = s; best = c; }
+      }
+      return best ?? this.coverageCell(ctx, tower);
+    }
+    
+    if (firewalls.length === 1) {
+      // Second firewall: 8 cols left on same row (top edge)
+      // Alex: (35,7) -> (27,7)
+      const first = firewalls[0];
+      const targetCol = first.col - 8;
+      const targetRow = first.row;
+      // Find candidate closest to target
+      let best: Cell | null = null, bestDist = Infinity;
+      for (const c of ctx.candidateCells) {
+        const d = Math.hypot(c.col - targetCol, c.row - targetRow);
+        if (d < bestDist) { bestDist = d; best = c; }
+      }
+      return best;
+    }
+    
+    if (firewalls.length === 2) {
+      // Third firewall: 6 rows down, aligned with first (bottom-right corner)
+      // Alex: (35,7) -> (34,13)
+      const first = firewalls[0];
+      const targetCol = first.col - 1; // slight inset
+      const targetRow = first.row + 6;
+      let best: Cell | null = null, bestDist = Infinity;
+      for (const c of ctx.candidateCells) {
+        const d = Math.hypot(c.col - targetCol, c.row - targetRow);
+        if (d < bestDist) { bestDist = d; best = c; }
+      }
+      return best;
+    }
+    
+    if (firewalls.length === 3) {
+      // Fourth firewall: 6 rows down, aligned with second (bottom-left corner)
+      // Alex: (27,7) -> (26,13)
+      const second = firewalls[1];
+      const targetCol = second.col - 1;
+      const targetRow = second.row + 6;
+      let best: Cell | null = null, bestDist = Infinity;
+      for (const c of ctx.candidateCells) {
+        const d = Math.hypot(c.col - targetCol, c.row - targetRow);
+        if (d < bestDist) { bestDist = d; best = c; }
+      }
+      return best;
+    }
+    
+    return null; // Already have 4
   }
 
   /**
