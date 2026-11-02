@@ -734,7 +734,8 @@ export class StrategistBrain implements BotBrain {
     });
     if (mesmer) wishlist.push({
       tower: mesmer, maxCount: 30, priority: 2,
-      scorer: (c, t) => this.leftHalfCell(c, t) ?? this.coverageCell(c, t),
+      // Interleave with probes: Alex's win has mesmers avg 1.0 tiles from nearest probe
+      scorer: (c, t) => this.adjacentToProbeCell(c, t),
       minCoverage: 2,
     });
     if (terror) wishlist.push({
@@ -845,20 +846,20 @@ export class StrategistBrain implements BotBrain {
       scorer: (c, t) => this.corridorCell(c, t),
       minCoverage: 3,
     });
-    // Pings: the DPS backbone (Alex: 43)
+    // Pings: the DPS backbone (Alex: 43, avg 2.4 tiles from firewall)
     if (ping) wishlist.push({
       tower: ping, maxCount: 43, priority: 3,
-      scorer: (c, t) => this.corridorCell(c, t) ?? this.coverageCell(c, t),
+      scorer: (c, t) => this.nearFirewallCell(c, t),
       minCoverage: 2,
     });
     // DDoS/backdoor: CC to keep creeps in the corridor
     if (ddos) wishlist.push({
       tower: ddos, maxCount: 8, priority: 2,
-      scorer: (c, t) => this.corridorCell(c, t) ?? this.coverageCell(c, t),
+      scorer: (c, t) => this.nearFirewallCell(c, t),
     });
     if (backdoor) wishlist.push({
       tower: backdoor, maxCount: 8, priority: 1,
-      scorer: (c, t) => this.corridorCell(c, t) ?? this.coverageCell(c, t),
+      scorer: (c, t) => this.nearFirewallCell(c, t),
     });
 
     const d = this.walkWishlist(ctx, wishlist);
@@ -928,9 +929,10 @@ export class StrategistBrain implements BotBrain {
       minCoverage: 2,
     });
     // Artillery: static fire base, stun + vulnerable (Alex: 7, "savior")
+    // Clustered together: Alex's at (7,8), (9,10), (9,8), (7,6)
     if (artillery) wishlist.push({
       tower: artillery, maxCount: 7, priority: 1,
-      scorer: (c, t) => this.coverageCell(c, t),
+      scorer: (c, t) => this.artilleryClusterCell(c, t),
       minCoverage: 3, // needs good coverage for the AoE to matter
     });
 
@@ -961,6 +963,79 @@ export class StrategistBrain implements BotBrain {
       if (s > bestScore) { bestScore = s; best = c; }
     }
     return bestScore > 0 ? best : null;
+  }
+
+  /**
+   * Cell adjacent to an existing probe (for mesmer interleaving).
+   * Alex's psionic win: mesmers average 1.0 tiles from nearest probe.
+   * Places mesmers to interleave with the probe base for permanent trap.
+   */
+  private adjacentToProbeCell(ctx: BotContext, tower: TowerType): Cell | null {
+    // Find existing probes
+    const probes = ctx.placedTowers.filter(p => p.towerId.includes('probe'));
+    if (probes.length === 0) return this.leftHalfCell(ctx, tower);
+    // Find candidate cells within 2 tiles of a probe, maximizing path coverage
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      // Check if within 2 tiles of any probe
+      const nearProbe = probes.some(p => 
+        Math.abs(p.col - c.col) <= 2 && Math.abs(p.row - c.row) <= 2
+      );
+      if (!nearProbe) continue;
+      // Also in left half (psionic corridor)
+      if (c.col > 18) continue;
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best ?? this.leftHalfCell(ctx, tower);
+  }
+
+  /**
+   * Cell near existing firewalls (for cypherpunk kill-corridor).
+   * Alex's win: pings average 2.4 tiles from nearest firewall.
+   * Firewalls at (35,7), (27,7), (34,13), (26,13) form a rectangle.
+   */
+  private nearFirewallCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const firewalls = ctx.placedTowers.filter(p => 
+      p.towerId.includes('firewall')
+    );
+    if (firewalls.length === 0) return this.coverageCell(ctx, tower);
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      // Within 4 tiles of a firewall (Alex: max 4.2, avg 2.4)
+      const nearFW = firewalls.some(f =>
+        Math.hypot(f.col - c.col, f.row - c.row) <= 4
+      );
+      if (!nearFW) continue;
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best ?? this.coverageCell(ctx, tower);
+  }
+
+  /**
+   * Cell for artillery cluster (military fire base).
+   * Alex's win: artillery at (7,8), (9,10), (9,8), (7,6) — tight cluster.
+   * Places new artillery within 3 tiles of existing artillery.
+   */
+  private artilleryClusterCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const artys = ctx.placedTowers.filter(p => 
+      p.towerId.includes('artillery')
+    );
+    if (artys.length === 0) return this.coverageCell(ctx, tower);
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      const nearArty = artys.some(a =>
+        Math.hypot(a.col - c.col, a.row - c.row) <= 3
+      );
+      if (!nearArty) continue;
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best ?? this.coverageCell(ctx, tower);
   }
 
   /**
