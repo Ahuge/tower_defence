@@ -2,32 +2,31 @@
 
 ## 2026-11-01
 
-### Piercer v2: armor-scaling damage (specific identity)
+### Mech: Piercer armor-killer + wall 8g
 
-Alex tested the Piercer (PR #88) and it "doesn't feel like it's moving the needle." The flat +50% vs armored didn't give it a distinct identity from the normal turret.
-
-Rebuilt: **damage scales with target armor** (`armor_scaling_damage` trait, 0.75 per armor point). The armor itself becomes the weapon.
-- vs 0 armor: 10 dmg (turret is better — Piercer is NOT a generalist)
-- vs 2 armor: 25 dmg
-- vs 5 armor: 47.5 dmg
-
-Also faster (700 vs 850 fireRate) and base damage tuned down (10 vs 12) so the scaling is the story, not the stats. Upgrades scaled accordingly (L5: 55 dmg).
-
-The Piercer is now a specialist: useless vs swarms, devastating vs tanks. Build it when you see armor coming, not as a default.
-
-### Piercer: bonus vs armored (+50%)
-
-Alex wasn't sure the Piercer's true_damage alone moved the needle enough on Hard. Added `bonus_vs_armored` damage modifier (+50% vs armored targets), following the existing `bonus_vs_boss`/`bonus_vs_mage` pattern. The Piercer now ignores armor AND hits armored creeps 50% harder — a dedicated armor-killer, not just an armor-ignorer.
-
-## 2026-10-31
-
-### Mech: Wall 8g, Turret L2 Piercer branch
-
-Two balance changes from Alex's Hard-mode playtesting (he barely won mech Hard with 1 life, and flagged armor as the faction's pressure point):
+Alex barely won mech Hard with 1 life and flagged armor as the faction's pressure point. Two changes:
 
 - **Wall 10g → 8g.** The wall "barely attacks" — it's purely a maze tax. On Hard's 0.6× gold, the old cost punished the wall-spam maze that Hard demands.
-- **Turret L2 armor-piercing branch → Piercer.** New `mech_piercer` TowerType, reachable only via Turret's L2 upgrade branch (not dock-placeable). It's the faction's only `true_damage` (ignores armor), keeps `ramp_up`, and scales to L5: 200g for 60 damage at 4.5 range — the "super high damage, super high cost" capstone. The L2→L4 AP path trades raw DPS for armor ignore vs the standard turret line, so it's a real choice.
-- **Art:** black-barrel turret variant generated programmatically in `mechanical_sprites.tsx` (9th column). `mechanical_towers.png` and the gilded/factory_fresh skins regenerated at 9 columns.
+- **Turret L2 Piercer branch.** New `mech_piercer` TowerType, reachable only via Turret's L2 upgrade branch (not dock-placeable). The faction's only `true_damage` (ignores armor), keeps `ramp_up`, scales to L5 (200g, 55 dmg).
+
+The Piercer went through three iterations during playtesting. The flat +50% vs armored (PR #88) "didn't feel like it was moving the needle" — it lacked a distinct identity from the normal turret. Rebuilt as **armor-scaling damage** (PR #89): damage × (1 + armorTier × scale), so the armor itself becomes the weapon. Useless vs swarms (10 dmg vs 0 armor), devastating vs tanks (40 dmg vs heavy at base, 220 at L5). Scale bumped 0.75 → 1.0 (PR #92) after more testing.
+
+Also fixed a critical bug (PR #93): branch transformations never swapped `tower.traits`, so the Piercer was a reskinned turret with no actual abilities. Now fixed for all branches.
+
+- **Art:** black-barrel turret variant generated programmatically (9th spritesheet column).
+
+### Military rework: Sniper + Artillery, sandbag 4g
+
+Alex found military "hard hard hard" on Hard — the tank splash felt invisible, the melee Brawler went unbuilt, and sandbags were too expensive for the maze-heavy play the faction demands.
+
+- **Sandbag 8g → 4g.** Cheapest wall in the game. The maze tax had to go.
+- **Brawler dropped** from the faction (Alex never built it; definition kept for compat).
+- **Sniper (85g, mobile).** Alex picked sniper from the brainstorm and insisted "sniper needs to be a unit." `mobile_unit` (moveSpeed 50, engageRange 8.5) + direct damage: 80 dmg, range 9, 2500 fireRate. The mobile precision piece — great leak support.
+- **Artillery (220g, static).** The fire base: 50 dmg, range 7, 4000 fireRate, splash 120px, `stun_on_hit` (1.2s) + `damage_amp_on_hit` (+25% vulnerable, 4s). Alex: "stun and inflict vulnerable." Pairs with the Sniper as the static hammer to the Sniper's mobile scalpel.
+
+Cost ladder: 4 (sandbag) → 25 (wire) → 40 (rifleman) → 85 (sniper) → 120 (tank) → 220 (artillery) → 750 (commander). Tank splash also bumped 48→84px (PR #96) so it's actually noticeable.
+
+## 2026-10-31
 
 ### `?unlock=true` — unlock-all-factions URL flag
 
