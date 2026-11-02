@@ -29,10 +29,18 @@ export class EconomyManager {
 
     events.on('creepKilled', (_id: number, reward: number) => {
       this.addGold(reward);
+      // Live-capture: track kill income by source
+      void import('./learning/LiveCapture').then(m => {
+        if (m.isCaptureEnabled()) m.recordIncome('kills', reward);
+      }).catch(() => {});
     });
 
     events.on('waveCleared', () => {
       this.addGold(WAVE_CLEAR_BONUS);
+      // Live-capture: track wave-clear bonus
+      void import('./learning/LiveCapture').then(m => {
+        if (m.isCaptureEnabled()) m.recordIncome('waveBonus', WAVE_CLEAR_BONUS);
+      }).catch(() => {});
     });
 
     events.on('waveStarted', (waveNum: number) => {

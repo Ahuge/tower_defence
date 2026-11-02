@@ -137,6 +137,8 @@ export class AttackerDeathHandler implements DeathHandler {
 export interface LeakResult {
   totalLeakDamage: number;
   leakCount: number;
+  /** Per-creep-type breakdown of leaks (for capture/analytics). */
+  leakedTypes: { creepType: string; count: number; damage: number }[];
 }
 
 /**
@@ -194,11 +196,18 @@ export class CreepManager {
     // Process leaks via handler
     let totalLeakDamage = 0;
     let leakCount = 0;
+    const leakedTypes = new Map<string, { count: number; damage: number }>();
     for (const creep of this.creeps) {
       if (creep.reached) {
         const damage = this.leakHandler.onCreepLeaked(creep);
         totalLeakDamage += damage;
         leakCount++;
+        // Track per-type breakdown for capture/analytics
+        const ctype = (creep as any).typeId ?? (creep as any).creepType ?? 'unknown';
+        const entry = leakedTypes.get(ctype) ?? { count: 0, damage: 0 };
+        entry.count++;
+        entry.damage += damage;
+        leakedTypes.set(ctype, entry);
         creep.reached = false;
         creep.alive = false;
         // Destroy any lingering sprite. Normally Creep.update tears
@@ -228,7 +237,15 @@ export class CreepManager {
     // Clean up dead
     this.creeps = this.creeps.filter(c => c.alive);
 
-    return { totalLeakDamage, leakCount };
+    return {
+      totalLeakDamage,
+      leakCount,
+      leakedTypes: [...leakedTypes.entries()].map(([creepType, v]) => ({
+        creepType,
+        count: v.count,
+        damage: v.damage,
+      })),
+    };
   }
 
   /** Auto-recovery: mark every alive creep as `reached` so the next
