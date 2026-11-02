@@ -343,6 +343,18 @@ export class StrategistBrain implements BotBrain {
     if (ctx.faction === 'psionic' && r.mesmer && r.terror) {
       return this.psionicChoose(ctx);
     }
+    // Void: siphon spam (economy gamble — weak early, pays off via +gold per hit).
+    if (ctx.faction === 'void' && r.cheapDps) {
+      return this.voidChoose(ctx);
+    }
+    // Cypherpunk: firewall kill-corridors (position CC around firewall zones).
+    if (ctx.faction === 'cypherpunk' && r.linker) {
+      return this.cypherpunkChoose(ctx);
+    }
+    // Military: sniper/artillery coordination (mobile precision + static fire base).
+    if (ctx.faction === 'military' && r.wall) {
+      return this.militaryChoose(ctx);
+    }
     if (!r.cheapDps) return { kind: 'skip' }; // no damage at all: nothing to do
 
     const bossSoon = (ctx.upcomingWaves ?? []).some(w => w.isBoss);
@@ -742,6 +754,192 @@ export class StrategistBrain implements BotBrain {
     // 5. More probes past 60 (no max, no veto — fill gaps).
     if (probe) {
       const d2 = this.place(ctx, probe, this.coverageCell(ctx, probe));
+      if (d2.kind !== 'skip') return d2;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Void: siphon spam. Alex's Hard win: 151 siphons, 55 rifts, 0 upgrades.
+   * Siphons are "a gamble early" — weak but pay off via 40% chance of +2g
+   * per hit. Pure spam, no upgrades. Rifts teleport creeps backward.
+   */
+  private voidChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    // Find siphon and rift in the pool
+    const pool = ctx.towerPool;
+    const siphon = pool.find(t => t.id === 'void_siphon');
+    const rift = pool.find(t => t.id === 'void_rift');
+    const gambler = pool.find(t => t.id === 'void_gambler');
+
+    const wishlist: WishlistItem[] = [];
+    // Siphons: the core — spam them (Alex: 151 in a win, 0 upgrades)
+    if (siphon) wishlist.push({
+      tower: siphon, maxCount: 150, priority: 3,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Rifts: teleport utility (Alex: 55)
+    if (rift) wishlist.push({
+      tower: rift, maxCount: 55, priority: 2,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Gamblers: economy boost (Alex: 7)
+    if (gambler) wishlist.push({
+      tower: gambler, maxCount: 7, priority: 1,
+      scorer: (c, t) => this.coverageCell(c, t),
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // No upgrades — pure spam per Alex's win (0 upgrades in 220 turns)
+    // Fill remaining budget with more siphons
+    if (siphon) {
+      const d2 = this.place(ctx, siphon, this.coverageCell(ctx, siphon));
+      if (d2.kind !== 'skip') return d2;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Cypherpunk: firewall kill-corridors. Alex's Hard win: 43 pings,
+   * 4 firewalls, 8 ddos, 8 backdoor, 5 zeroday. "Firewall is the star,
+   * but we are making kill corridors and placing towers that slow, stun
+   * or reverse the creeps so they stay in that kill corridor."
+   * Positioning is everything — CC around firewall zones.
+   */
+  private cypherpunkChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const pool = ctx.towerPool;
+    const ping = pool.find(t => t.id === 'cyber_ping');
+    const firewall = r.linker; // cyber_firewall has firewall_link trait
+    const ddos = pool.find(t => t.id === 'cyber_ddos');
+    const backdoor = pool.find(t => t.id === 'cyber_backdoor');
+
+    const wishlist: WishlistItem[] = [];
+    // Firewalls first — they're the star, everything positions around them
+    if (firewall) wishlist.push({
+      tower: firewall, maxCount: 4, priority: 4,
+      scorer: (c, t) => this.corridorCell(c, t),
+      minCoverage: 3,
+    });
+    // Pings: the DPS backbone (Alex: 43)
+    if (ping) wishlist.push({
+      tower: ping, maxCount: 43, priority: 3,
+      scorer: (c, t) => this.corridorCell(c, t) ?? this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // DDoS/backdoor: CC to keep creeps in the corridor
+    if (ddos) wishlist.push({
+      tower: ddos, maxCount: 8, priority: 2,
+      scorer: (c, t) => this.corridorCell(c, t) ?? this.coverageCell(c, t),
+    });
+    if (backdoor) wishlist.push({
+      tower: backdoor, maxCount: 8, priority: 1,
+      scorer: (c, t) => this.corridorCell(c, t) ?? this.coverageCell(c, t),
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Minimal upgrades (Alex: 2 in 286 turns)
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 50, true);
+      if (up) return up;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Cell maximizing coverage of the firewall corridor — for cypherpunk,
+   * we want towers clustered around firewall positions to keep creeps
+   * in the kill zone. Falls back to general coverage.
+   */
+  private corridorCell(ctx: BotContext, tower: TowerType): Cell | null {
+    // For now, use coverage-based placement. Future: track firewall
+    // positions and bias toward them.
+    return this.coverageCell(ctx, tower);
+  }
+
+  /**
+   * Military: sniper/artillery coordination. Alex's Hard win with new
+   * towers: 33 sandbags, 13 riflemen, 10 snipers, 7 artillery, 5 heavies.
+   * "Artillery is a savior, snipers are great leak support."
+   * Sniper: mobile precision (80 dmg, range 9). Artillery: static fire
+   * base (stun + vulnerable).
+   */
+  private militaryChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const pool = ctx.towerPool;
+    const sandbag = r.wall; // 4g, cheapest wall
+    const rifleman = pool.find(t => t.id === 'mil_rifleman');
+    const sniper = pool.find(t => t.id === 'mil_sniper');
+    const artillery = pool.find(t => t.id === 'mil_artillery');
+    const heavy = pool.find(t => t.id === 'mil_heavy');
+
+    const wishlist: WishlistItem[] = [];
+    // Sandbags: maze foundation (Alex: 33, cheapest wall in game)
+    if (sandbag) wishlist.push({
+      tower: sandbag, maxCount: 33, priority: 4,
+      scorer: (c, t) => this.mazeCell(c),
+    });
+    // Riflemen: early cheap DPS (Alex: 13)
+    if (rifleman) wishlist.push({
+      tower: rifleman, maxCount: 13, priority: 3,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Snipers: mobile precision, leak support (Alex: 10)
+    if (sniper) wishlist.push({
+      tower: sniper, maxCount: 10, priority: 2,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Artillery: static fire base, stun + vulnerable (Alex: 7, "savior")
+    if (artillery) wishlist.push({
+      tower: artillery, maxCount: 7, priority: 1,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 3, // needs good coverage for the AoE to matter
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Heavies as backup (Alex: 5)
+    if (heavy && ctx.budget >= (heavy.cost ?? 999)) {
+      const d2 = this.place(ctx, heavy, this.coverageCell(ctx, heavy));
       if (d2.kind !== 'skip') return d2;
     }
     return { kind: 'skip' };
