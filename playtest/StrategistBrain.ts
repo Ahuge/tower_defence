@@ -855,18 +855,24 @@ export class StrategistBrain implements BotBrain {
       minCoverage: 3,
     });
     // More pings: the DPS backbone (Alex: 43 total, avg 2.4 tiles from firewall)
+    // But at wave 10+, shift to CC — Alex goes all-in on backdoor/ddos wall
+    const pingPriority = ctx.wave >= 10 ? 1 : 3;
+    const ccPriority = ctx.wave >= 10 ? 3 : 2;
     if (ping) wishlist.push({
-      tower: ping, maxCount: 43, priority: 3,
+      tower: ping, maxCount: 43, priority: pingPriority,
       scorer: (c, t) => this.nearFirewallCell(c, t),
       minCoverage: 2,
     });
     // DDoS/backdoor: CC to keep creeps in the corridor
+    // Alex wave 10: 5 backdoors in a row at (29-33, 8), ddos at (30,12)
+    // Alex wave 13: 4 more ddos clustered at (27-29, 11-12)
+    // At wave 10+, these are TOP priority — Alex goes all-in on CC wall
     if (ddos) wishlist.push({
-      tower: ddos, maxCount: 8, priority: 2,
+      tower: ddos, maxCount: 8, priority: ccPriority,
       scorer: (c, t) => this.nearFirewallCell(c, t),
     });
     if (backdoor) wishlist.push({
-      tower: backdoor, maxCount: 8, priority: 1,
+      tower: backdoor, maxCount: 8, priority: ccPriority,
       scorer: (c, t) => this.nearFirewallCell(c, t),
     });
 
@@ -1069,6 +1075,42 @@ export class StrategistBrain implements BotBrain {
     }
     
     return null; // Already have 4
+  }
+
+  /**
+   * Cell for CC wall formation (cypherpunk).
+   * Alex wave 10: 5 backdoors in horizontal line at row 8, cols 29-33
+   * Alex wave 10-13: ddos clustered at (27-30, 11-12)
+   * Forms a wall to lock creeps in the firewall corridor.
+   */
+  private ccWallCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const firewalls = ctx.placedTowers.filter(p => 
+      p.towerId.includes('firewall')
+    );
+    if (firewalls.length === 0) return this.nearFirewallCell(ctx, tower);
+    
+    // Find the firewall rectangle bounds
+    const fwCols = firewalls.map(f => f.col);
+    const fwRows = firewalls.map(f => f.row);
+    const minCol = Math.min(...fwCols), maxCol = Math.max(...fwCols);
+    const minRow = Math.min(...fwRows), maxRow = Math.max(...fwRows);
+    
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    
+    for (const c of ctx.candidateCells) {
+      // Place CC in/around the firewall rectangle
+      // Backdoors: prefer top edge (row ~8), ddos: prefer middle
+      const inRect = c.col >= minCol - 2 && c.col <= maxCol + 2 &&
+                     c.row >= minRow - 2 && c.row <= maxRow + 2;
+      if (!inRect) continue;
+      
+      const s = pathCellsWithinRange(c, path, tower.range);
+      // Bonus for forming a horizontal line (backdoor wall)
+      const lineBonus = 0;
+      if (s + lineBonus > bestScore) { bestScore = s + lineBonus; best = c; }
+    }
+    return best ?? this.nearFirewallCell(ctx, tower);
   }
 
   /**
