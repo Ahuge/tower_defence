@@ -48,16 +48,38 @@ function traitLabel(trait: { id: string; [k: string]: unknown }): string | null 
   }
 }
 
-export function FactionEncyclopediaModal({ factionId, onClose }: { factionId: FactionId; onClose: () => void }) {
-  const faction = FACTIONS[factionId];
+export function FactionEncyclopediaModal({
+  factionId,
+  towerIds,
+  onClose
+}: {
+  factionId?: FactionId;
+  towerIds?: string[];
+  onClose: () => void
+}) {
+  const faction = factionId ? FACTIONS[factionId] : null;
   const towers = useMemo(() => {
+    // Custom tower list (chaos mode) takes precedence
+    if (towerIds && towerIds.length > 0) {
+      return towerIds
+        .map(tId => getTowerType(tId))
+        .filter(Boolean);
+    }
     if (!faction) return [];
     return faction.towerIds
       .map(tId => getTowerType(tId))
       .filter(Boolean);
-  }, [faction]);
+  }, [faction, towerIds]);
 
-  if (!faction) return null;
+  // For chaos mode (custom list), use generic styling
+  const isChaosMode = !factionId && towerIds && towerIds.length > 0;
+  const primaryColor = faction ? hexColor(faction.primaryColor) : '#aa66ff';
+  const title = faction ? faction.name : 'Chaos Towers';
+  const description = faction
+    ? faction.description
+    : 'Rotating towers from all factions — this is what\'s available right now.';
+
+  if (!faction && !isChaosMode) return null;
 
   const modal = (
     <div
@@ -75,7 +97,7 @@ export function FactionEncyclopediaModal({ factionId, onClose }: { factionId: Fa
         onClick={(e) => e.stopPropagation()}
         style={{
           background: '#1a1a2e', borderRadius: '12px',
-          border: `2px solid ${hexColor(faction.primaryColor)}`,
+          border: `2px solid ${primaryColor}`,
           maxWidth: '600px', width: '100%',
           maxHeight: '85vh', display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
@@ -85,14 +107,14 @@ export function FactionEncyclopediaModal({ factionId, onClose }: { factionId: Fa
         <div style={{
           padding: '16px', borderBottom: '1px solid #333',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: hexColor(faction.primaryColor) + '22',
+          background: primaryColor + '22',
         }}>
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: hexColor(faction.primaryColor) }}>
-              {faction.name}
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: primaryColor }}>
+              {title}
             </div>
             <div style={{ fontSize: '13px', color: '#aaa', marginTop: '4px' }}>
-              {faction.description}
+              {description}
             </div>
           </div>
           <button
@@ -164,8 +186,8 @@ export function FactionEncyclopediaModal({ factionId, onClose }: { factionId: Fa
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {traits.map((label, i) => (
                       <span key={i} style={{
-                        background: hexColor(faction.primaryColor) + '33',
-                        border: `1px solid ${hexColor(faction.primaryColor)}66`,
+                        background: primaryColor + '33',
+                        border: `1px solid ${primaryColor}66`,
                         color: '#fff', fontSize: '12px',
                         padding: '4px 8px', borderRadius: '12px',
                       }}>

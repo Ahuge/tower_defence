@@ -58,10 +58,22 @@ export function TowerDockDOM() {
   const didLongPress = useRef(false);
   const touchHandled = useRef(false);
 
-  // Get current faction from first tower
-  const factionId: FactionId | null = useMemo(() => {
-    if (towerBar.towers.length === 0) return null;
-    return getTowerFaction(towerBar.towers[0].id) as FactionId | null;
+  // Get current faction from first tower, or detect chaos mode
+  // (towers from multiple factions = chaos mode, show custom list)
+  const { factionId, chaosTowerIds } = useMemo(() => {
+    if (towerBar.towers.length === 0) return { factionId: null, chaosTowerIds: null };
+    const factions = new Set(towerBar.towers.map(t => getTowerFaction(t.id)));
+    if (factions.size > 1) {
+      // Chaos mode: towers from multiple factions, show exactly what's in the bar
+      return {
+        factionId: null,
+        chaosTowerIds: towerBar.towers.map(t => t.id),
+      };
+    }
+    return {
+      factionId: getTowerFaction(towerBar.towers[0].id) as FactionId | null,
+      chaosTowerIds: null,
+    };
   }, [towerBar.towers]);
 
   // Plan 12 attacker mode — the player commands creeps, not towers.
@@ -97,7 +109,7 @@ export function TowerDockDOM() {
     <>
       <div class="tower-dock" role="toolbar" aria-label="Tower selection" data-tutorial-target="tower-dock">
         {/* Encyclopedia button */}
-        {factionId && (
+        {(factionId || chaosTowerIds) && (
           <div class="dock-slot-wrapper">
             <div
               class="dock-slot dock-encyclopedia-btn"
@@ -204,9 +216,10 @@ export function TowerDockDOM() {
         );
       })}
       </div>
-      {encyclopediaOpen && factionId && (
+      {encyclopediaOpen && (factionId || chaosTowerIds) && (
         <FactionEncyclopediaModal
-          factionId={factionId}
+          factionId={factionId ?? undefined}
+          towerIds={chaosTowerIds ?? undefined}
           onClose={() => GameUIStore.setEncyclopediaOpen(false)}
         />
       )}
