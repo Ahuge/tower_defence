@@ -1,0 +1,37 @@
+{
+  "faction": "void",
+  "best": {
+    "evalId": 9,
+    "ts": 1793603802190,
+    "params": {
+      "mazeTowers": 4,
+      "slowByWave": 0,
+      "aoeByWave": 4,
+      "sniperByWave": 6,
+      "secondSlowByWave": 8,
+      "burstByWave": 12,
+      "expandFirst": 8,
+      "maxCheap": 10,
+      "panicLives": 14,
+      "ultTowers": 7,
+      "ultLives": 15,
+      "ultSaveByWave": 15,
+      "upgradeReserve": 36,
+      "expensiveBias": 0.284911457531881,
+      "linkerPairs": 0,
+      "aaEnabled": 0,
+      "buffZone": 1,
+      "sniperUpgFirst": 0,
+      "supportByWave": 6,
+      "maxSupport": 2,
+      "harmonicResonators": 4,
+      "harmonicAuras": 12
+    },
+    "score": 0,
+    "avgWave": 5.083333333333333,
+    "n": 12,
+    "tag": "search"
+  },
+  "evals": 56,
+  "wallMs": 9382
+}
