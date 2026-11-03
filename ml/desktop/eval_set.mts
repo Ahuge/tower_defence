@@ -22,7 +22,7 @@ const { StrategistBrain } = await import('../../playtest/StrategistBrain.ts');
 
 import { writeFileSync, readFileSync } from 'node:fs';
 
-// Fixed eval set: 11 factions x 2 difficulties x 5 seeds = 110 matches
+// Fixed eval set: 11 factions x 2 difficulties x 25 seeds = 550 matches
 // Seeds are fixed so results are comparable across runs
 const FACTIONS = [
   'void', 'cypherpunk', 'military', 'psionic', 'mechanical',
@@ -30,7 +30,9 @@ const FACTIONS = [
 ] as const;
 
 const DIFFICULTIES = ['normal', 'hard'] as const;
-const SEEDS = [100, 200, 300, 400, 500];  // fixed
+const SEEDS = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
+               1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000,
+               2100, 2200, 2300, 2400, 2500];  // fixed
 
 interface EvalResult {
   faction: string;

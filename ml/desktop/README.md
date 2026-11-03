@@ -99,6 +99,12 @@ node --import tsx ml/desktop/eval_set.mts --compare ml/desktop/eval-baseline.jso
 110 matches (11 factions × 2 difficulties × 5 fixed seeds).
 Current baseline: **17/110 wins (15.5%), avg wave 13.1** (2026-11-02).
 
+**5x eval** (550 matches, 25 seeds per cell):
+```bash
+node --import tsx ml/desktop/eval_set.mts --out ml/desktop/eval-5x.json
+```
+Takes ~3-4x longer but gives tighter confidence intervals.
+
 Run this after every model iteration to track progress.
 
 ## What you're training
