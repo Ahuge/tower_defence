@@ -51,6 +51,37 @@ python ml/desktop/combine_data.py \
 
 Expert placements get 10x weight — they're higher quality.
 
+### Step 2b: Procedural generation (optional, round 2)
+
+Two proc gen approaches to expand beyond bot knowledge:
+
+**A. Augment expert data** (fast, CPU-only):
+```bash
+# Jitter positions ±2 tiles + mirror boards → 790 becomes ~5,000+
+python ml/desktop/augment_expert.py \
+  --expert ml/placement-data.jsonl \
+  --out ml/desktop/augmented-expert.jsonl \
+  --mirror
+```
+
+**B. Simulate procedural patterns** (slower, generates novel strategies):
+```bash
+# Generate placements via patterns (random/cluster/corridor/grid),
+# simulate in headless harness for real win/loss labels
+node --import tsx ml/desktop/procgen_simulate.mts --count 2000 --out ml/desktop/procgen.jsonl
+```
+
+Then combine everything:
+```bash
+python ml/desktop/combine_data.py \
+  --synthetic ml/desktop/synthetic.jsonl \
+  --expert ml/placement-data.jsonl \
+  --augmented ml/desktop/augmented-expert.jsonl \
+  --procgen ml/desktop/procgen.jsonl \
+  --out ml/desktop/combined-v2.jsonl \
+  --expert-weight 10 --augment-weight 3 --procgen-weight 2
+```
+
 ### Step 3: Train on GPU (~30-60 min on 4080)
 
 ```bash

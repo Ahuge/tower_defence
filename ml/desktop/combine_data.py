@@ -11,53 +11,101 @@ from collections import Counter
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--synthetic', required=True, help='Synthetic placements JSONL')
-    p.add_argument('--expert', required=True, help='Expert placements JSONL (ml/placement-data.jsonl)')
+    p.add_argument('--synthetic', required=False, default=None, help='Synthetic placements JSONL')
+    p.add_argument('--expert', required=False, default=None, help='Expert placements JSONL (ml/placement-data.jsonl)')
+    p.add_argument('--augmented', required=False, default=None, help='Augmented expert JSONL (from augment_expert.py)')
+    p.add_argument('--procgen', required=False, default=None, help='Proc gen JSONL (from procgen_simulate.mts)')
     p.add_argument('--out', required=True, help='Output combined JSONL')
     p.add_argument('--expert-weight', type=int, default=10, help='How many times to repeat expert data')
+    p.add_argument('--augment-weight', type=int, default=3, help='Weight for augmented expert data')
+    p.add_argument('--procgen-weight', type=int, default=2, help='Weight for proc gen data (wins only)')
     args = p.parse_args()
     
     examples = []
     
     # Load synthetic (weight 1)
-    synth_count = 0
-    for line in open(args.synthetic):
-        r = json.loads(line)
-        # Convert to training format
-        examples.append({
-            'faction': r['faction'],
-            'towerId': r['towerId'],
-            'chosen': r['chosen'],
-            'board': r['board'],
-            'wave': r['wave'],
-            'source': 'synthetic',
-        })
-        synth_count += 1
-    
-    # Load expert (weight N)
-    expert_count = 0
-    for line in open(args.expert):
-        r = json.loads(line)
-        for _ in range(args.expert_weight):
+    if args.synthetic:
+        synth_count = 0
+        for line in open(args.synthetic):
+            r = json.loads(line)
             examples.append({
                 'faction': r['faction'],
                 'towerId': r['towerId'],
                 'chosen': r['chosen'],
                 'board': r['board'],
                 'wave': r['wave'],
-                'source': 'expert',
+                'source': 'synthetic',
             })
-            expert_count += 1
+            synth_count += 1
+        print(f"Synthetic: {synth_count}")
     
-    print(f"Synthetic: {synth_count}")
-    print(f"Expert (x{args.expert_weight}): {expert_count}")
-    print(f"Total: {len(examples)}")
+    # Load expert (weight N)
+    if args.expert:
+        expert_count = 0
+        for line in open(args.expert):
+            r = json.loads(line)
+            for _ in range(args.expert_weight):
+                examples.append({
+                    'faction': r['faction'],
+                    'towerId': r['towerId'],
+                    'chosen': r['chosen'],
+                    'board': r['board'],
+                    'wave': r['wave'],
+                    'source': 'expert',
+                })
+                expert_count += 1
+        print(f"Expert (x{args.expert_weight}): {expert_count}")
+    
+    # Load augmented expert (weight M)
+    if args.augmented:
+        aug_count = 0
+        for line in open(args.augmented):
+            r = json.loads(line)
+            for _ in range(args.augment_weight):
+                examples.append({
+                    'faction': r['faction'],
+                    'towerId': r['towerId'],
+                    'chosen': r['chosen'],
+                    'board': r['board'],
+                    'wave': r['wave'],
+                    'source': r.get('source', 'augmented'),
+                })
+                aug_count += 1
+        print(f"Augmented (x{args.augment_weight}): {aug_count}")
+    
+    # Load proc gen (wins only, weight P)
+    # Losses are skipped — a placement in a losing game isn't necessarily bad
+    if args.procgen:
+        proc_count = 0
+        proc_skipped = 0
+        for line in open(args.procgen):
+            r = json.loads(line)
+            if not r.get('won', False):
+                proc_skipped += 1
+                continue
+            for _ in range(args.procgen_weight):
+                examples.append({
+                    'faction': r['faction'],
+                    'towerId': r['towerId'],
+                    'chosen': r['chosen'],
+                    'board': r['board'],
+                    'wave': r['wave'],
+                    'source': f"procgen-{r.get('pattern', 'unknown')}",
+                })
+                proc_count += 1
+        print(f"Proc gen wins (x{args.procgen_weight}): {proc_count} (skipped {proc_skipped} losses)")
     
     # Stats by faction
     c = Counter(e['faction'] for e in examples)
     print("\nBy faction:")
     for faction, n in sorted(c.items()):
         print(f"  {faction}: {n}")
+    
+    # Stats by source
+    s = Counter(e['source'] for e in examples)
+    print("\nBy source:")
+    for source, n in sorted(s.items()):
+        print(f"  {source}: {n}")
     
     with open(args.out, 'w') as f:
         for e in examples:
