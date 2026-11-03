@@ -41,7 +41,8 @@ export class LearnedScorer {
     // Load models for specified factions (or all if not specified)
     const modelDir = join(dirname(fileURLToPath(import.meta.url)), 'models');
     const toLoad = factions ?? ['void', 'cypherpunk', 'military', 'psionic', 
-                                 'mechanical', 'harmonic', 'aliens', 'chaos'];
+                                 'mechanical', 'harmonic', 'aliens', 'chaos',
+                                 'arcane', 'nature', 'infernal', 'celestial'];
     for (const faction of toLoad) {
       const path = join(modelDir, `scorer-${faction}.json`);
       if (existsSync(path)) {

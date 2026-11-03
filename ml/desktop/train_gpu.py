@@ -89,7 +89,7 @@ class PlacementDataset(Dataset):
         return torch.tensor(feats, dtype=torch.float32), torch.tensor([label], dtype=torch.float32)
 
 class ScorerMLP(nn.Module):
-    """Bigger than CPU version: 14 -> 128 -> 64 -> 1"""
+    """Bigger than CPU version: 13 -> 128 -> 64 -> 1"""
     def __init__(self, input_dim):
         super().__init__()
         self.net = nn.Sequential(

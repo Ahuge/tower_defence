@@ -67,6 +67,7 @@ Uses CUDA automatically if available. The 4080 should train 100 epochs in under 
 ### Step 4: Export for game use
 
 ```bash
+source venv-gpu/bin/activate  # torch must come from the venv, not system python
 python ml/desktop/export_for_game.py \
   --models ml/desktop/models/ \
   --out playtest/models/
@@ -148,8 +149,8 @@ A placement policy: given (board state, tower to place), where to put it.
 - Distance to nearest same-type tower
 - Wave, tower count (global)
 
-**Architecture**: MLP 14 -> 128 -> 64 -> 1 with dropout.
-Bigger than the CPU version (which was 14 -> 64 -> 32 -> 1).
+**Architecture**: MLP 13 -> 128 -> 64 -> 1 with dropout.
+Bigger than the CPU version (which was 13 -> 64 -> 32 -> 1).
 
 **Loss**: Binary cross-entropy. Alex's chosen cell = 1, random alternatives = 0.
 
