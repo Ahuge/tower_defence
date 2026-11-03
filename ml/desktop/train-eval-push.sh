@@ -13,13 +13,14 @@ set -e
 BRANCH="feature/imitation-placement"
 DATA_FILE="${1:-ml/desktop/combined.jsonl}"
 EVAL_NAME="${2:-eval-v2}"
+EPOCHS="${3:-100}"
 EVAL_FILE="ml/desktop/${EVAL_NAME}.json"
 
 cd "$(git rev-parse --show-toplevel)"
 
 echo "=== Step 1: Training ==="
 source venv-gpu/bin/activate
-python ml/desktop/train_gpu.py --data "$DATA_FILE" --epochs 100 --out ml/desktop/models/ 2>&1 | tee ml/desktop/train.log
+python ml/desktop/train_gpu.py --data "$DATA_FILE" --epochs "$EPOCHS" --out ml/desktop/models/ 2>&1 | tee ml/desktop/train.log
 
 echo ""
 echo "=== Step 2: Exporting ==="
