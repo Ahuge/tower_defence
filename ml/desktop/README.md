@@ -107,6 +107,36 @@ Takes ~3-4x longer but gives tighter confidence intervals.
 
 Run this after every model iteration to track progress.
 
+## Recursive Self-Improvement
+
+The pipeline can improve itself. After each eval:
+
+```bash
+# Analyze weaknesses and auto-modify generator + eval
+python ml/desktop/recursive_improve.py --eval ml/desktop/eval-new.json
+
+# This will:
+# 1. Identify weakest factions (lowest win rate)
+# 2. Modify generate_data.mts to oversample them 3x
+# 3. Track what worked in ml/desktop/improve-history.json
+# 4. Suggest next steps
+
+# Then regenerate, retrain, re-eval:
+node --import tsx ml/desktop/generate_data.mts --count 5000 --out ml/desktop/synthetic-v2.jsonl
+python ml/desktop/combine_data.py --synthetic ml/desktop/synthetic-v2.jsonl --expert ml/placement-data.jsonl --out ml/desktop/combined-v2.jsonl
+python ml/desktop/train_gpu.py --data ml/desktop/combined-v2.jsonl --out ml/desktop/models-v2/
+node --import tsx ml/desktop/eval_set.mts --learned --out ml/desktop/eval-v2.json
+node --import tsx ml/desktop/eval_set.mts --compare ml/desktop/eval-baseline.json ml/desktop/eval-v2.json
+
+# Feed the comparison back into the loop:
+python ml/desktop/recursive_improve.py --eval ml/desktop/eval-v2.json
+```
+
+The improver tracks which strategies (oversampling, eval hardening, etc.)
+actually improve win rates and prioritizes what works. It's a simple
+meta-learner — not magic, but it automates the "what should we try next?"
+question.
+
 ## What you're training
 
 A placement policy: given (board state, tower to place), where to put it.
