@@ -81,6 +81,26 @@ Converts PyTorch models to JSON for the TypeScript LearnedScorer.
 # Enable in StrategistBrain via params: { useLearnedScorer: 1 }
 ```
 
+## Evaluation
+
+We have a fixed benchmark to measure progress:
+
+```bash
+# Baseline (hand-coded scorers)
+node --import tsx ml/desktop/eval_set.mts --out ml/desktop/eval-baseline.json
+
+# With learned scorer
+node --import tsx ml/desktop/eval_set.mts --learned --out ml/desktop/eval-learned.json
+
+# Compare
+node --import tsx ml/desktop/eval_set.mts --compare ml/desktop/eval-baseline.json ml/desktop/eval-learned.json
+```
+
+110 matches (11 factions × 2 difficulties × 5 fixed seeds).
+Current baseline: **17/110 wins (15.5%), avg wave 13.1** (2026-11-02).
+
+Run this after every model iteration to track progress.
+
 ## What you're training
 
 A placement policy: given (board state, tower to place), where to put it.
