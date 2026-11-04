@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-04T00:13:40.649Z",
+  "timestamp": "2026-11-04T08:46:10.776Z",
   "config": {
     "useLearnedScorer": true
   },
@@ -1059,28 +1059,28 @@
       "difficulty": "normal",
       "seed": 100,
       "won": false,
-      "waveReached": 17
+      "waveReached": 18
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 200,
       "won": false,
-      "waveReached": 17
+      "waveReached": 18
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 300,
       "won": false,
-      "waveReached": 17
+      "waveReached": 18
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 400,
-      "won": false,
-      "waveReached": 18
+      "won": true,
+      "waveReached": 20
     },
     {
       "faction": "psionic",
@@ -1094,14 +1094,14 @@
       "difficulty": "normal",
       "seed": 600,
       "won": false,
-      "waveReached": 16
+      "waveReached": 18
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 700,
       "won": false,
-      "waveReached": 18
+      "waveReached": 19
     },
     {
       "faction": "psionic",
@@ -1114,8 +1114,8 @@
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 900,
-      "won": false,
-      "waveReached": 17
+      "won": true,
+      "waveReached": 20
     },
     {
       "faction": "psionic",
@@ -1129,7 +1129,7 @@
       "difficulty": "normal",
       "seed": 1100,
       "won": false,
-      "waveReached": 17
+      "waveReached": 18
     },
     {
       "faction": "psionic",
@@ -1143,105 +1143,105 @@
       "difficulty": "normal",
       "seed": 1300,
       "won": false,
-      "waveReached": 17
+      "waveReached": 16
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 1400,
       "won": false,
-      "waveReached": 17
+      "waveReached": 18
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 1500,
-      "won": false,
-      "waveReached": 16
+      "won": true,
+      "waveReached": 20
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 1600,
       "won": false,
-      "waveReached": 18
+      "waveReached": 17
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 1700,
       "won": false,
-      "waveReached": 17
+      "waveReached": 18
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 1800,
       "won": false,
-      "waveReached": 17
+      "waveReached": 16
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 1900,
       "won": false,
-      "waveReached": 16
+      "waveReached": 17
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 2000,
       "won": false,
-      "waveReached": 17
+      "waveReached": 18
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 2100,
       "won": false,
-      "waveReached": 18
+      "waveReached": 19
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 2200,
       "won": false,
-      "waveReached": 18
+      "waveReached": 19
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 2300,
       "won": false,
-      "waveReached": 18
+      "waveReached": 19
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 2400,
       "won": false,
-      "waveReached": 18
+      "waveReached": 19
     },
     {
       "faction": "psionic",
       "difficulty": "normal",
       "seed": 2500,
       "won": false,
-      "waveReached": 17
+      "waveReached": 13
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 100,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 200,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
@@ -1255,7 +1255,7 @@
       "difficulty": "hard",
       "seed": 400,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
@@ -1276,42 +1276,42 @@
       "difficulty": "hard",
       "seed": 700,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 800,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 900,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 1000,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 1100,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 1200,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
@@ -1325,7 +1325,7 @@
       "difficulty": "hard",
       "seed": 1400,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
@@ -1339,21 +1339,21 @@
       "difficulty": "hard",
       "seed": 1600,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 1700,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
       "difficulty": "hard",
       "seed": 1800,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
@@ -1381,7 +1381,7 @@
       "difficulty": "hard",
       "seed": 2200,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "psionic",
@@ -1402,7 +1402,7 @@
       "difficulty": "hard",
       "seed": 2500,
       "won": false,
-      "waveReached": 8
+      "waveReached": 9
     },
     {
       "faction": "mechanical",
@@ -3872,9 +3872,9 @@
       "avgWave": 13.28
     },
     "psionic": {
-      "wins": 0,
+      "wins": 3,
       "total": 50,
-      "avgWave": 12.82
+      "avgWave": 13.46
     },
     "mechanical": {
       "wins": 0,
@@ -3913,9 +3913,9 @@
     }
   },
   "overall": {
-    "wins": 88,
+    "wins": 91,
     "total": 550,
-    "winRate": 0.16,
-    "avgWave": 12.881818181818181
+    "winRate": 0.16545454545454547,
+    "avgWave": 12.94
   }
 }
