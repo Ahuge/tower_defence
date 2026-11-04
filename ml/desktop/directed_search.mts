@@ -16,6 +16,7 @@
  *     --factions void,celestial,mechanical \
  *     --variations 200 \
  *     --lookback 3 \
+ *     --perturb 5 \
  *     --out ml/desktop/directed.jsonl
  */
 
@@ -35,6 +36,7 @@ const getArg = (name: string, def: string) => {
 const FACTIONS = getArg('factions', 'void,celestial,mechanical,military,cypherpunk,psionic').split(',');
 const VARIATIONS = parseInt(getArg('variations', '200'));
 const LOOKBACK = parseInt(getArg('lookback', '3'));  // waves before death to branch from
+const PERTURB = parseInt(getArg('perturb', '3'));  // ±tiles for placement perturbation
 const OUT = getArg('out', 'ml/desktop/directed.jsonl');
 const SEEDS = [100, 200, 300, 400, 500];  // subset for speed
 
@@ -112,8 +114,8 @@ async function runWithVariations(
       if (ctx.wave >= branchWave) {
         // Try random nearby cells
         for (let attempt = 0; attempt < 10; attempt++) {
-          const dc = Math.floor(rand() * 7) - 3;  // ±3 tiles
-          const dr = Math.floor(rand() * 7) - 3;
+          const dc = Math.floor(rand() * (PERTURB * 2 + 1)) - PERTURB;
+          const dr = Math.floor(rand() * (PERTURB * 2 + 1)) - PERTURB;
           const nc = col + dc, nr = row + dr;
           if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS &&
               ctx.candidateCells.some((c: any) => c.col === nc && c.row === nr)) {
