@@ -448,7 +448,7 @@ export function drawTowers(ctx:any){
       if(s===3){p(15,17,C.DKGLD);p(16,18,C.DKGLD);b(15,0,2,2,C.SHADOW);}
     },
   ];
-  const cols=5,rows=T_TOTAL_ROWS;
+  const cols=6,rows=T_TOTAL_ROWS;
   // Layout: for each level (1..T_MAX_LVL), 4 state rows; towers with fewer levels get blank cells
   for(let col=0;col<cols;col++){
     const maxLvl=T_LEVELS[col];
@@ -1082,7 +1082,7 @@ export default function App(){
         {tabs.map(t=>(
           <div key={t.id} style={{display:tab===t.id?'block':'none'}}>
             <canvas ref={t.pvRef} style={{display:view==='preview'?'block':'none',maxWidth:'100%'}} data-label={`Celestial ${t.label} (Preview)`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'}/>
-            <canvas ref={t.ref} data-label={`Celestial ${t.label}`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?5*P_CELL*3:5*T_CELL*2,border:'1px solid #332200'}}/>
+            <canvas ref={t.ref} data-label={`Celestial ${t.label}`} data-frame-size={t.id==='projectiles'?'32x32':t.id==='hero'?'64x128':'64x64'} style={{display:view==='actual'?'block':'none',imageRendering:'pixelated',width:t.id==='hero'?8*H_CW*1.5:t.id==='projectiles'?5*P_CELL*3:6*T_CELL*2,border:'1px solid #332200'}}/>
           </div>
         ))}
       </div>
