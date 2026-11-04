@@ -256,7 +256,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   mech_wall: def({
     id: 'mech_wall', name: 'Wall', description: 'Dirt spike cheap maze filler. Barely attacks.',
-    faction: 'mechanical', damageType: 'physical', cost: 10, damage: 2, range: 1.5, fireRate: 2000,
+    faction: 'mechanical', damageType: 'physical', cost: 8, damage: 2, range: 1.5, fireRate: 2000,
     color: 0x998866, projectileSpeed: 200, hotkey: '1',
     // No upgrades — it's a 10g blocker
   }),
@@ -266,9 +266,43 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     color: 0xcc8833, projectileSpeed: 350, hotkey: '2',
     traits: [{ id: 'direct_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }],
     upgrades: [
-      { level: 2, cost: 35, damage: 16, range: 3.5, fireRate: 750 },
+      // L2 is the branch point. Default = standard Turret (raw DPS).
+      // Branch = Piercer, which swaps the tower's typeDef to
+      // mech_piercer (see below) — mech's armor-ignoring answer.
+      {
+        level: 2, cost: 35, damage: 16, range: 3.5, fireRate: 750,
+        branchLabel: 'Turret',
+        branches: [{ id: 'piercer', label: 'Piercer', transformsTo: 'mech_piercer' }],
+      },
       { level: 3, cost: 60, damage: 24, range: 4, fireRate: 680 },
       { level: 4, cost: 100, damage: 35, range: 4, fireRate: 600 },
+    ],
+  }),
+  // Piercer — not in `Factions.mechanical.towerIds`, so it can't be
+  // placed directly from the tower dock. Only reachable via Turret's
+  // L2 branch. Its `cost` is charged as the one-time branch-switch
+  // fee. `upgrades` contains L3-L5, continuing the engine's level
+  // counter from where Turret left off (L2 on swap).
+  //
+  // Design: mech's armor-ignoring answer (the faction's only
+  // true_damage). Keeps ramp_up — still a turret at heart. The AP
+  // path trades raw DPS for armor ignore at L2-L4, then L5 is the
+  // "super high damage, super high cost" capstone.
+  //
+  // ART NEEDED: black-barrel turret variant. Add as 9th column in
+  // mech_towers.png (see SpriteManager) when the sprite is ready.
+  mech_piercer: def({
+    id: 'mech_piercer', name: 'Piercer',
+    description: 'Black-barrel armor-piercing turret. Damage scales with target armor — the heavier they are, the harder it hits. Weak vs unarmored.',
+    role: 'dps-single',
+    faction: 'mechanical', damageType: 'physical',
+    cost: 45, damage: 10, range: 3.5, fireRate: 700,
+    color: 0x2a2a2a, projectileSpeed: 450, projectileColor: 0x111111, hotkey: '',
+    traits: [{ id: 'true_damage' }, { id: 'ramp_up', maxStacks: 5, reductionPerStack: 0.08 }, { id: 'armor_scaling_damage', scale: 1.0 }],
+    upgrades: [
+      { level: 3, cost: 70, damage: 18, range: 3.5, fireRate: 680 },
+      { level: 4, cost: 120, damage: 30, range: 4, fireRate: 650 },
+      { level: 5, cost: 200, damage: 55, range: 4.5, fireRate: 620 },
     ],
   }),
   mech_flamethrower: def({
@@ -536,10 +570,10 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // ================================================================
   mil_sandbag: def({
     id: 'mil_sandbag', name: 'Sandbag', description: 'Dirt cheap maze filler. No attack.',
-    faction: 'military', damageType: 'physical', cost: 8, damage: 0, range: 0, fireRate: 99999,
+    faction: 'military', damageType: 'physical', cost: 4, damage: 0, range: 0, fireRate: 99999,
     color: 0x998877, projectileSpeed: 0, hotkey: '1',
     traits: [],
-    // No upgrades — it's an 8g blocker
+    // No upgrades — it's a 4g blocker
   }),
   mil_wire: def({
     id: 'mil_wire', name: 'Barbed Wire', description: 'Slows adjacent creeps by 40%. No attack.',
@@ -574,7 +608,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'mil_heavy', name: 'Tank', description: 'Mobile area of effect. Slow but long range. Fires explosive shells.',
     faction: 'military', damageType: 'physical', cost: 120, damage: 30, range: 5, fireRate: 2000,
     color: 0x4a6741, projectileSpeed: 180, hotkey: '5',
-    traits: [{ id: 'mobile_unit', moveSpeed: 60, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 48 }],
+    traits: [{ id: 'mobile_unit', moveSpeed: 60, engageRange: 4.5, leashRange: 7, attackCooldown: 2000 }, { id: 'splash_damage', radius: 84 }],
     upgrades: [
       { level: 2, cost: 100, damage: 45, range: 5.5, fireRate: 1800 },
       { level: 3, cost: 160, damage: 65, range: 6, fireRate: 1500 },
@@ -589,6 +623,33 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { id: 'adjacency_buff', damagePercent: 0.2, ratePercent: 0.1 },
     ],
     // No upgrades — the Commander leads by presence
+  }),
+  mil_sniper: def({
+    id: 'mil_sniper', name: 'Sniper', description: 'Mobile. Extreme range, high single-target damage. Slow fire rate, slow movement.',
+    faction: 'military', damageType: 'physical', cost: 85, damage: 80, range: 9, fireRate: 2500,
+    color: 0x2f4f2f, projectileSpeed: 800, hotkey: '4',
+    traits: [
+      { id: 'direct_damage' },
+      { id: 'mobile_unit', moveSpeed: 50, engageRange: 8.5, leashRange: 12, attackCooldown: 2500 },
+    ],
+    upgrades: [
+      { level: 2, cost: 70, damage: 120, range: 9.5, fireRate: 2300 },
+      { level: 3, cost: 120, damage: 180, range: 10, fireRate: 2100 },
+    ],
+  }),
+  mil_artillery: def({
+    id: 'mil_artillery', name: 'Artillery', description: 'Static. Massive AoE. Stuns and inflicts Vulnerable (+25% damage taken). Very slow.',
+    faction: 'military', damageType: 'physical', cost: 220, damage: 50, range: 7, fireRate: 4000,
+    color: 0x4a4a4a, projectileSpeed: 200, hotkey: '5',
+    traits: [
+      { id: 'splash_damage', radius: 120 },
+      { id: 'stun_on_hit', chance: 1.0, duration: 1200 },
+      { id: 'damage_amp_on_hit', ampAmount: 0.25, duration: 4000 },
+    ],
+    upgrades: [
+      { level: 2, cost: 180, damage: 75, range: 7.5, fireRate: 3800 },
+      { level: 3, cost: 300, damage: 110, range: 8, fireRate: 3500 },
+    ],
   }),
 
   // ================================================================

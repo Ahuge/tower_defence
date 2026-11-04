@@ -14,6 +14,38 @@ Alex found celestial boring to play — acolyte and ult were the only interestin
 - New traits: `life_execute`, `life_scaling`, `acolyte_blessing_aura`. HitContext/UpdateContext gain optional `getLives`/`spendLives`/`tower` fields, wired through TowerManager in both GameScene and headless.
 - Sprites: Martyr (hooded executioner with greatsword) and Prophet (robed seer with glowing scroll) added to celestial_sprites.tsx; sheet regenerated.
 
+## 2026-11-01
+
+### Mech: Piercer armor-killer + wall 8g
+
+Alex barely won mech Hard with 1 life and flagged armor as the faction's pressure point. Two changes:
+
+- **Wall 10g → 8g.** The wall "barely attacks" — it's purely a maze tax. On Hard's 0.6× gold, the old cost punished the wall-spam maze that Hard demands.
+- **Turret L2 Piercer branch.** New `mech_piercer` TowerType, reachable only via Turret's L2 upgrade branch (not dock-placeable). The faction's only `true_damage` (ignores armor), keeps `ramp_up`, scales to L5 (200g, 55 dmg).
+
+The Piercer went through three iterations during playtesting. The flat +50% vs armored (PR #88) "didn't feel like it was moving the needle" — it lacked a distinct identity from the normal turret. Rebuilt as **armor-scaling damage** (PR #89): damage × (1 + armorTier × scale), so the armor itself becomes the weapon. Useless vs swarms (10 dmg vs 0 armor), devastating vs tanks (40 dmg vs heavy at base, 220 at L5). Scale bumped 0.75 → 1.0 (PR #92) after more testing.
+
+Also fixed a critical bug (PR #93): branch transformations never swapped `tower.traits`, so the Piercer was a reskinned turret with no actual abilities. Now fixed for all branches.
+
+- **Art:** black-barrel turret variant generated programmatically (9th spritesheet column).
+
+### Military rework: Sniper + Artillery, sandbag 4g
+
+Alex found military "hard hard hard" on Hard — the tank splash felt invisible, the melee Brawler went unbuilt, and sandbags were too expensive for the maze-heavy play the faction demands.
+
+- **Sandbag 8g → 4g.** Cheapest wall in the game. The maze tax had to go.
+- **Brawler dropped** from the faction (Alex never built it; definition kept for compat).
+- **Sniper (85g, mobile).** Alex picked sniper from the brainstorm and insisted "sniper needs to be a unit." `mobile_unit` (moveSpeed 50, engageRange 8.5) + direct damage: 80 dmg, range 9, 2500 fireRate. The mobile precision piece — great leak support.
+- **Artillery (220g, static).** The fire base: 50 dmg, range 7, 4000 fireRate, splash 120px, `stun_on_hit` (1.2s) + `damage_amp_on_hit` (+25% vulnerable, 4s). Alex: "stun and inflict vulnerable." Pairs with the Sniper as the static hammer to the Sniper's mobile scalpel.
+
+Cost ladder: 4 (sandbag) → 25 (wire) → 40 (rifleman) → 85 (sniper) → 120 (tank) → 220 (artillery) → 750 (commander). Tank splash also bumped 48→84px (PR #96) so it's actually noticeable.
+
+## 2026-10-31
+
+### `?unlock=true` — unlock-all-factions URL flag
+
+Alex needed a way to playtest every faction without grinding the shard/campaign unlock flow for balance recordings. Added `UNLOCK_ALL_FACTIONS` to `src/systems/DebugFlags.ts` following the existing `?debug` URL-flag pattern: visiting the game with `?unlock=true` makes `isFactionPlayable()` and the faction-tree `playable` check return true for every faction. It bypasses the gates at runtime only — nothing is written to stored unlock progress, so his real campaign/shard state is untouched when the flag is off.
+
 ## 2026-05-25
 
 ### Campaign lobby + VoidStatePanel — token migration

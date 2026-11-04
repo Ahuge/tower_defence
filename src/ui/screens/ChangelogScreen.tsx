@@ -20,6 +20,32 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    date: '2026-11-01',
+    title: 'Military rework: Sniper + Artillery',
+    changes: [
+      'New Sniper (85g, mobile): long-range precision unit, great leak support.',
+      'New Artillery (220g): static fire base with stun + vulnerable debuff. Pairs with Sniper as hammer to its scalpel.',
+      'Sandbag 8g → 4g (cheapest wall in the game). Brawler removed from faction.',
+      'Tank splash 48 → 84px so it\'s actually noticeable.',
+    ],
+  },
+  {
+    date: '2026-11-01',
+    title: 'Mech: Piercer armor-killer + wall 8g',
+    changes: [
+      'Wall 10g → 8g. On Hard\'s 0.6× gold, the old cost punished the wall-spam maze that Hard demands.',
+      'New Turret L2 branch: the Piercer. Damage scales with target armor — useless vs swarms, devastating vs tanks and bosses.',
+      'Fixed branch upgrades not swapping tower traits (Piercer was a reskinned turret with no abilities).',
+    ],
+  },
+  {
+    date: '2026-10-31',
+    title: 'Unlock-all-factions URL flag',
+    changes: [
+      'New ?unlock=true URL flag: bypasses faction unlock gates for playtesting. Runtime only, doesn\'t touch campaign progress.',
+    ],
+  },
+  {
     date: '2026-05-01',
     title: 'High-res art v2 + parallax delivery + LoadingScreen splash + game-stuck fixes',
     changes: [

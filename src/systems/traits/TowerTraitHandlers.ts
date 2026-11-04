@@ -547,6 +547,19 @@ registerHitEffect('root_on_hit', (trait: Trait, ctx: HitContext) => {
   }
 });
 
+registerHitEffect('stun_on_hit', (trait: Trait, ctx: HitContext) => {
+  // Stun: stops movement (via root). 100% chance for artillery.
+  const baseChance = trait.chance ?? 1.0;
+  const chance = Math.min(1.0, baseChance);
+  const baseDuration = trait.duration ?? 1000;
+  const duration = levelScale(baseDuration, ctx.towerLevel, 0.15);
+  for (const target of ctx.hitTargets) {
+    if (rng() < chance) {
+      (target as any).statusEffects?.apply('root', duration, 1);
+    }
+  }
+});
+
 // ============================================================
 // Tower update traits (per-frame)
 // ============================================================
@@ -726,8 +739,12 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
     }
   }
 
-  // Full map awareness: find closest creep anywhere on the map
+  // Aggro: find closest creep within the tower's range.
+  // Previously this had "full map awareness" (no range limit), causing
+  // units like the Fiend to slowly walk toward distant creeps even when
+  // placed as a fallback. Now respects tower.range.
   if (!target) {
+    const aggroRange = (tower.range || (TILE_SIZE * 4));
     let closest = null;
     let closestDist = Infinity;
     for (const creep of ctx.allCreeps) {
@@ -735,7 +752,7 @@ registerTowerUpdate('mobile_unit', (trait: Trait, tower: any, ctx: UpdateContext
       const dx = creep.x - tower.x;
       const dy = creep.y - tower.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < closestDist) {
+      if (dist <= aggroRange && dist < closestDist) {
         closest = creep;
         closestDist = dist;
       }
@@ -874,6 +891,39 @@ registerDamageMod('bonus_vs_mage', (trait: Trait, damage: number, ctx: HitContex
   const isMage = target.creepType?.id?.includes('mage');
   if (isMage) {
     return Math.round(damage * (1 + (trait.bonus ?? 0.5)));
+  }
+  return damage;
+});
+
+// --- Bonus vs armored (Mech Piercer — the armor-piercing answer) ---
+// DEPRECATED: replaced by armor_scaling_damage below. The flat +50%
+// didn't give the Piercer a distinct identity from the turret.
+registerDamageMod('bonus_vs_armored', (trait: Trait, damage: number, ctx: HitContext) => {
+  const target = ctx.target as any;
+  const armor = target.armor ?? target.armorFlat ?? 0;
+  if (armor > 0) {
+    return Math.round(damage * (1 + (trait.bonus ?? 0.5)));
+  }
+  return damage;
+});
+
+// --- Armor-scaling damage (Mech Piercer v2 — specific identity) ---
+// Damage multiplies by the target's armor: the armor itself becomes
+// the weapon. Useless vs unarmored (turret's job), devastating vs
+// tanks. This is what makes the Piercer NOT just "turret but better."
+//
+// Armor is tiered: light=1, medium=2, heavy=3 (bosses are heavy).
+registerDamageMod('armor_scaling_damage', (trait: Trait, damage: number, ctx: HitContext) => {
+  const target = ctx.target as any;
+  const armorTier = target.armor;
+  const TIERS: Record<string, number> = { light: 1, medium: 2, heavy: 3 };
+  // Also support numeric armor (armorFlat) for flexibility.
+  const armor = typeof armorTier === 'string'
+    ? (TIERS[armorTier] ?? 0)
+    : (target.armorFlat ?? armorTier ?? 0);
+  const scale = trait.scale ?? 1.0;
+  if (armor > 0) {
+    return Math.round(damage * (1 + armor * scale));
   }
   return damage;
 });
@@ -1035,10 +1085,10 @@ registerTowerUpdate('decay_per_wave', (_trait: Trait, _tower: any, _ctx: UpdateC
 
 // --- Gold per kill in range (Infernal Soul Drain) ---
 registerTowerUpdate('gold_per_kill_range', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  if (ctx.justDiedCreeps.length === 0) return;
   const goldPerKill = trait.goldPerKill ?? 2;
   const range = tower.range || (TILE_SIZE * 4);
-  for (const creep of ctx.allCreeps) {
-    if (creep.alive || creep.reached || creep.hp > -900) continue;
+  for (const creep of ctx.justDiedCreeps) {
     const dx = creep.x - tower.x;
     const dy = creep.y - tower.y;
     if (Math.sqrt(dx * dx + dy * dy) <= range) {

@@ -11,6 +11,8 @@ import { TILE_SIZE } from '../../config';
 import { getSkinDef, DockStyle, getThemeLabelFromSuffix } from '../../systems/monetization';
 import { PlayerInventory } from '../../systems/monetization/PlayerInventory';
 import { getTowerFaction } from '../../systems/SpriteManager';
+import { FactionEncyclopediaModal } from './FactionEncyclopediaModal';
+import { FactionId } from '../../data/Factions';
 
 function hexColor(n: number): string { return '#' + n.toString(16).padStart(6, '0'); }
 
@@ -50,11 +52,29 @@ function getEquippedThemeLabel(towerId: string): string | null {
 }
 
 export function TowerDockDOM() {
-  const { towerBar, gold, matchMode } = useGameUI();
+  const { towerBar, gold, matchMode, encyclopediaOpen } = useGameUI();
   const [tooltip, setTooltip] = useState<number | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
   const touchHandled = useRef(false);
+
+  // Get current faction from first tower, or detect chaos mode
+  // (towers from multiple factions = chaos mode, show custom list)
+  const { factionId, chaosTowerIds } = useMemo(() => {
+    if (towerBar.towers.length === 0) return { factionId: null, chaosTowerIds: null };
+    const factions = new Set(towerBar.towers.map(t => getTowerFaction(t.id)));
+    if (factions.size > 1) {
+      // Chaos mode: towers from multiple factions, show exactly what's in the bar
+      return {
+        factionId: null,
+        chaosTowerIds: towerBar.towers.map(t => t.id),
+      };
+    }
+    return {
+      factionId: getTowerFaction(towerBar.towers[0].id) as FactionId | null,
+      chaosTowerIds: null,
+    };
+  }, [towerBar.towers]);
 
   // Plan 12 attacker mode — the player commands creeps, not towers.
   // The dock is dead chrome and overlaps the composer overlay.
@@ -86,8 +106,27 @@ export function TowerDockDOM() {
   if (towerBar.towers.length === 0) return null;
 
   return (
-    <div class="tower-dock" role="toolbar" aria-label="Tower selection" data-tutorial-target="tower-dock">
-      {towerBar.towers.map((tower, i) => {
+    <>
+      <div class="tower-dock" role="toolbar" aria-label="Tower selection" data-tutorial-target="tower-dock">
+        {/* Encyclopedia button */}
+        {(factionId || chaosTowerIds) && (
+          <div class="dock-slot-wrapper">
+            <div
+              class="dock-slot dock-encyclopedia-btn"
+              onClick={() => GameUIStore.setEncyclopediaOpen(true)}
+              title="Open faction encyclopedia"
+              style={{
+                borderColor: '#88888866',
+                background: '#22222288',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', minWidth: '44px',
+              }}
+            >
+              <span style={{ fontSize: '24px', color: '#aaa' }}>?</span>
+            </div>
+          </div>
+        )}
+        {towerBar.towers.map((tower, i) => {
         const selected = towerBar.selectedIndex === i;
         const canAfford = gold >= tower.cost;
         const dock = getDockStyle(tower.id);
@@ -176,7 +215,15 @@ export function TowerDockDOM() {
           </div>
         );
       })}
-    </div>
+      </div>
+      {encyclopediaOpen && (factionId || chaosTowerIds) && (
+        <FactionEncyclopediaModal
+          factionId={factionId ?? undefined}
+          towerIds={chaosTowerIds ?? undefined}
+          onClose={() => GameUIStore.setEncyclopediaOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

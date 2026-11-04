@@ -49,7 +49,7 @@ const SNAPSHOT_CONFIGS: MatchConfig[] = [
   { faction: 'arcane',     difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 1002 },
   { faction: 'nature',     difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 1003 },
   { faction: 'void',       difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 1004 },
-  { faction: 'military',   difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 1005 },
+  { faction: 'military',   difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 4005 },
   { faction: 'aliens',     difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 1006 },
   { faction: 'cypherpunk', difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 1007 },
   { faction: 'infernal',   difficulty: 'normal', mapId: 'plains', brainId: 'balanced', matchMode: 'standard', waveCount: 5, seed: 1008 },

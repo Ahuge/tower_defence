@@ -87,8 +87,13 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
     [4, 6, 6, 3, 1]),
   ...factionTowers('arcane_towers', ['arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus', 'arcane_drain', 'arcane_meteor', 'arcane_nova', 'arcane_conduit'],
     [4, 3, 5, 4, 4, 3, 1, 1]),
-  ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan'],
-    [4, 6, 5, 4, 4, 5, 3, 3]),
+  ...factionTowers('mech_towers', ['mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla', 'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan',
+     'mech_piercer'],
+    [4, 6, 5, 4, 4, 5, 3, 3, 4]),
+  // NOTE: mech_piercer (9th col) is only reachable via Turret's L2
+  // branch — not a dock-selectable starter. Column reserved here so
+  // SpriteManager knows about it; the black-barrel art goes in
+  // mech_towers.png col 9 when ready.
   // 9-tower Nature sprite layout, matching the regenerated
   // `nature_towers.png` (576×1536, 9 cols × 24 rows). The 9th
   // entry (`nature_razor_bramble`) is NOT a selectable starter —
@@ -99,7 +104,7 @@ const TOWER_SPRITE_CONFIGS: Record<string, TowerSpriteConfig> = {
      'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder',
      'nature_razor_bramble'],
     [5, 2, 3, 3, 3, 3, 3, 1, 3]),
-  ...factionTowers('mil_towers', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_brawler', 'mil_heavy', 'mil_commander'],
+  ...factionTowers('mil_towers', ['mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_sniper', 'mil_heavy', 'mil_artillery', 'mil_commander'],
     [2, 4, 5, 5, 3, 3]),
   ...factionTowers('alien_towers', ['alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid', 'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind'],
     [4, 3, 3, 4, 4, 3, 2, 3]),
@@ -217,9 +222,9 @@ export function getProjectileSpriteConfig(towerId: string): ProjectileSpriteConf
 const FACTION_SHEETS: { towers: string; proj: string; hero: string; dir: string; towerCols: number; projCols: number }[] = [
   { towers: 'void_towers', proj: 'void_proj', hero: 'void_hero', dir: 'void', towerCols: 5, projCols: 5 },
   { towers: 'arcane_towers', proj: 'arcane_proj', hero: 'arcane_hero', dir: 'arcane', towerCols: 7, projCols: 7 },
-  { towers: 'mech_towers', proj: 'mech_proj', hero: 'mech_hero', dir: 'mechanical', towerCols: 8, projCols: 8 },
+  { towers: 'mech_towers', proj: 'mech_proj', hero: 'mech_hero', dir: 'mechanical', towerCols: 9, projCols: 8 },
   { towers: 'nature_towers', proj: 'nature_proj', hero: 'nature_hero', dir: 'nature', towerCols: 6, projCols: 6 },
-  { towers: 'mil_towers', proj: 'mil_proj', hero: 'mil_hero', dir: 'military', towerCols: 6, projCols: 6 },
+  { towers: 'mil_towers', proj: 'mil_proj', hero: 'mil_hero', dir: 'military', towerCols: 7, projCols: 6 },
   { towers: 'alien_towers', proj: 'alien_proj', hero: 'alien_hero', dir: 'aliens', towerCols: 8, projCols: 8 },
   { towers: 'cyber_towers', proj: 'cyber_proj', hero: 'cyber_hero', dir: 'cypherpunk', towerCols: 7, projCols: 7 },
   { towers: 'infernal_towers', proj: 'infernal_proj', hero: 'infernal_hero', dir: 'infernal', towerCols: 6, projCols: 6 },

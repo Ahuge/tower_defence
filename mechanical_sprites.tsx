@@ -153,8 +153,8 @@ function mSteam(p:any,x:number,y:number,size:number){
 }
 
 // ===== TOWER LEVEL DATA =====
-// levels per tower: Wall=4, Turret=6, Flamethrower=5, Tesla=4, Mortar=4, Shredder=5, Railgun=3, Titan=3
-const T_LEVELS=[4,6,5,4,4,5,3,3];
+// levels per tower: Wall=4, Turret=6, Flamethrower=5, Tesla=4, Mortar=4, Shredder=5, Railgun=3, Titan=3, Piercer=4
+const T_LEVELS=[4,6,5,4,4,5,3,3,4];
 const T_MAX_LVL=6; // max across all towers → rows = T_MAX_LVL * 4 states = 24
 const T_ROWS_PER_LVL=4;
 const T_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 24 rows total
@@ -740,11 +740,74 @@ export function drawTowers(ctx:CanvasRenderingContext2D){
         p(turX+2,turY+turH-2,C.DKSTL);p(turX+turW-3,turY+turH-2,C.DKSTL);
       }
     },
+    // 8: Piercer — Black-barrel armor-piercing turret (Turret L2 branch).
+    // Same silhouette as the Turret, but the barrel and accents are
+    // blackened steel instead of warm brown. Grows more menacing
+    // with level: longer black barrel, red-hot muzzle ring at L3+.
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const L=lvl;
+      mBase(p,b,23,20,s===1?1:s===2?2:0);
+      // Swivel mount base — dark steel, reinforced at higher levels
+      const mountW=6+Math.min(L-1,3)*1;const mountX=16-Math.floor(mountW/2);
+      b(mountX-1,18,mountW+2,5,C.VOID);b(mountX,18,mountW,4,C.DKGRAY);
+      b(mountX+1,18,mountW-2,1,C.GRAY);
+      // Rotation ring — dark with red markers
+      const ringR=4+Math.min(L-1,2);
+      for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*ringR),20+Math.round(Math.sin(a)*2),i%2?C.DKRED:C.VOID);}
+      // Piercer body — dark steel housing (blackened turret)
+      const rot=s===1?1:s===2?-1:0;
+      const tW=8+Math.min(L-1,4)*1;const tH=5+Math.min(L-1,3)*1;
+      const tX=16-Math.floor(tW/2)+rot;const tY=16-Math.floor(tH/2);
+      b(tX-1,tY,tW+2,tH+2,C.VOID);b(tX,tY,tW,tH+1,C.DKGRAY);b(tX+1,tY,tW-2,tH,C.GRAY);
+      // Top plate — black
+      b(tX,tY-1,tW,1,C.VOID);b(tX+1,tY-1,tW-2,1,C.DKGRAY);
+      lvlArmor(p,b,tX+1,tY+1,tW-2,tH-2,L);
+      // BLACK BARREL — longer and thicker at higher levels
+      const blen=(s===2?14:12)+Math.min(L-1,4)*1;
+      const barrelY=tY+Math.floor(tH/2);
+      // Additional black barrels at high levels
+      if(L>=3){
+        b(tX+tW+rot,barrelY-2,blen-2,1,C.VOID);b(tX+tW+rot,barrelY-2,blen-3,1,C.DKGRAY);
+        b(tX+tW+rot,barrelY+2,blen-2,1,C.VOID);b(tX+tW+rot,barrelY-2,blen-3,1,C.DKGRAY);
+      }
+      if(L>=4){
+        b(tX+tW+rot,barrelY-3,blen-4,1,C.VOID);
+        b(tX+tW+rot,barrelY+3,blen-4,1,C.VOID);
+      }
+      // Main black barrel
+      b(tX+tW+rot,barrelY,blen,2,C.VOID);b(tX+tW+rot,barrelY,blen,1,C.DKGRAY);
+      p(tX+tW+rot+blen-1,barrelY,C.GRAY);
+      // Muzzle — black with red-hot ring at L2+
+      const muzzleX=tX+tW+rot+blen-1;
+      b(muzzleX,barrelY-1,1,4,C.VOID);
+      if(L>=2){p(muzzleX,barrelY-1,C.DKRED);p(muzzleX,barrelY+2,C.DKRED);}
+      // Rivets on housing
+      lvlRivets(p,16+rot,tY+Math.floor(tH/2),L,3);
+      p(tX+1+rot,barrelY,C.RIVET);p(tX+tW-2+rot,barrelY,C.RIVET);
+      // Ammo belt — armor-piercing rounds (dark with red tips)
+      b(tX-2+rot,tY+tH-1,3,2,C.VOID);p(tX-2+rot,tY+tH-1,C.DKRED);
+      if(L>=3){b(tX-3+rot,tY+tH,2,2,C.VOID);p(tX-3+rot,tY+tH,C.RED);}
+      // Level 3+: exhaust
+      lvlExhaust(p,b,tX-1+rot,tY-2,L);
+      // Level 3+: gears
+      lvlGears(p,tX+rot,tY+tH+2,L);
+      if(s===2){
+        const mx=muzzleX+1;
+        p(mx,barrelY-1,C.WSPARK);p(mx,barrelY+1,C.WSPARK);p(mx+1,barrelY,C.SPARK);
+        p(mx-1,barrelY-2,C.RED);p(mx-1,barrelY+2,C.RED);
+        b(mx,barrelY,2,1,C.WHITE);mSteam(p,mx-2,barrelY-2,3);
+      }
+      if(s===3){
+        p(20,13,C.DKSMK);p(24,14,C.DKSMK);p(16,12,C.DKSMK);
+        mSteam(p,tX+tW-4,10,4);
+      }
+      lvlSteam(p,3,12,L);
+    },
   ];
-  // Layout: 24 rows × 8 cols
+  // Layout: 24 rows × 9 cols
   // For each tower (col), for each level (0..T_MAX_LVL-1), for each state (0..3)
   // Row = lvlIndex * 4 + state
-  const cols=8,rows=T_ROWS;
+  const cols=9,rows=T_ROWS;
   for(let col=0;col<cols;col++){
     const maxLvl=T_LEVELS[col];
     for(let lvlIdx=0;lvlIdx<T_MAX_LVL;lvlIdx++){
@@ -1431,7 +1494,7 @@ export function drawHero(ctx:CanvasRenderingContext2D){
 }
 
 // ===== LABELS =====
-const T_NAMES=['Wall','Turret','Flamethrower','Tesla','Mortar','Shredder','Railgun','Titan Cannon'];
+const T_NAMES=['Wall','Turret','Flamethrower','Tesla','Mortar','Shredder','Railgun','Titan Cannon','Piercer'];
 const T_STATES=['Idle','Charge','Fire','Cooldown'];
 const T_LVL_LABELS=Array.from({length:T_MAX_LVL},(_,i)=>`Lv${i+1}`);
 const P_NAMES=['Ricochet','Bullet','Flame','Lightning','Shell','Blade','Rail Beam','Titan Shell'];

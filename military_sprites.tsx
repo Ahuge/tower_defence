@@ -97,11 +97,11 @@ function camoPatch(p:any,x:number,y:number,s:number){
 }
 
 // ===== TOWER LEVEL COUNTS =====
-const T_LEVELS=[2,4,5,5,3,3]; // Sandbag, Wire, Rifleman, Brawler, HeavyGunner, Commander
+const T_LEVELS=[2,4,5,3,3,3,3]; // Sandbag, Wire, Rifleman, Sniper, Tank, Artillery, Commander
 const T_MAX_LVL=5; // max across all towers
 const T_ROWS_PER_LVL=4;
 const T_ROWS=T_MAX_LVL*T_ROWS_PER_LVL; // 20 rows: 4 states per level
-const T_COLS=6;
+const T_COLS=7;
 
 // Per-tower base parameters (tMilBase not called by towers, but drawBase provides pedestal-only rendering)
 const baseYs=[22,22,22,22,22,22];
@@ -298,95 +298,88 @@ export function drawTowers(ctx:any){
       }
       b(cx-4,legY+9,8,1,C.DKBRN);
     },
-    // 3: Brawler — mobile unit, level = muscle/armor progression (1-5)
+    // 3: Sniper — mobile unit, ghillie suit, level = camo/gear progression (1-3)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const cx=16;
-      const legOff=s===1?1:0, legOff2=s===1?-1:0;
-      const headY=5,torY=12,legY=22;
-      const punchExt=s===2?4:0;
+      const crouch=s===1?1:0;
+      const headY=10+crouch,torY=16+crouch,legY=24;
+      const aimDir=s===2?1:0;
 
-      // Head — beret improves
-      const beretColor=lv>=4?C.BLACK:C.DKRED;
-      const beretLight=lv>=4?C.DGRAY:C.RED;
-      b(cx-3,headY,6,2,beretColor);b(cx-2,headY-1,5,1,beretLight);
-      p(cx+2,headY-1,beretColor);
-      // Lv3+: beret badge
-      if(lv>=3){p(cx-1,headY,C.GOLD);}
-      // Lv5: elite beret with gold trim
-      if(lv>=5){b(cx-3,headY+1,6,1,C.GOLD);}
-      // Face
-      b(cx-2,headY+2,4,3,C.SKIN);
-      p(cx-1,headY+2,C.DKSKIN);p(cx+1,headY+2,C.DKSKIN);
-      p(cx,headY+4,C.DKSKIN);
-      // Lv4+: war paint / scar
-      if(lv>=4){p(cx+1,headY+3,C.DKRED);}
+      // Ghillie suit base — mottled greens/browns
+      const ghillie1=lv>=2?C.DKSAGE:C.OLIVE;
+      const ghillie2=lv>=2?C.SAGE:C.DKSAGE;
+      const ghillie3=C.BROWN;
 
-      // Torso — gets bulkier and more armored
-      const torsoW=lv>=3?10:8, torsoOff=Math.floor(torsoW/2);
-      b(cx-torsoOff,torY,torsoW,9,C.OLIVE);b(cx-torsoOff+1,torY,torsoW-2,8,C.SAGE);
-      // Dog tags
-      p(cx,torY+1,C.LGRAY);p(cx,torY+2,C.METAL);
-      // Lv2+: tactical vest
+      // Legs — crouched/prone
+      b(cx-4,legY,8,4,ghillie1);
+      b(cx-3,legY,6,3,ghillie2);
+      // Ghillie leafy texture on legs
+      p(cx-4,legY,C.DKOLV);p(cx+3,legY+1,ghillie3);p(cx-2,legY+2,C.DKOLV);
+      p(cx+1,legY+3,ghillie3);p(cx-3,legY+1,C.OLIVE);
+      // Boots
+      b(cx-4,legY+4,3,2,C.DKBRN);b(cx+1,legY+4,3,2,C.DKBRN);
+
+      // Torso — ghillie covered, prone
+      b(cx-5,torY,10,7,ghillie1);
+      b(cx-4,torY,8,6,ghillie2);
+      // Leafy strands
+      p(cx-5,torY+1,C.DKOLV);p(cx+4,torY+2,ghillie3);p(cx-3,torY+4,C.OLIVE);
+      p(cx+2,torY+5,C.DKOLV);p(cx,torY+3,ghillie3);p(cx-4,torY+6,C.DKOLV);
+      p(cx+3,torY+1,C.OLIVE);p(cx-1,torY+2,ghillie3);
+      // Lv2+: better camo with more variation
       if(lv>=2){
-        b(cx-3,torY+1,6,2,C.DKSAGE);
-        p(cx-2,torY+1,C.BROWN);p(cx+2,torY+1,C.BROWN); // pouches
+        p(cx-4,torY+2,C.BROWN);p(cx+1,torY+1,C.DKOLV);p(cx-2,torY+5,C.SAGE);
+        p(cx+4,torY+4,C.BROWN);
       }
-      // Lv3+: shoulder pads
+      // Lv3: elite ghillie with 3D leaf clusters
       if(lv>=3){
-        b(cx-torsoOff-1,torY,2,3,C.DKSAGE);b(cx+torsoOff-1,torY,2,3,C.DKSAGE);
-      }
-      // Lv4+: armored plates on chest
-      if(lv>=4){
-        b(cx-2,torY+2,4,4,C.METAL);b(cx-1,torY+3,2,2,C.LGRAY);
-      }
-      // Lv5: gold championship belt
-      if(lv>=5){
-        b(cx-torsoOff,torY+8,torsoW,1,C.DKGOLD);p(cx,torY+8,C.GOLD);p(cx-1,torY+8,C.LTGOLD);p(cx+1,torY+8,C.LTGOLD);
-      } else {
-        b(cx-torsoOff,torY+8,torsoW,1,C.BROWN);
-        p(cx-3,torY+8,C.DKGOLD);p(cx+2,torY+8,C.DKGOLD);
+        b(cx-5,torY+2,2,2,C.DKSAGE);b(cx+3,torY+4,2,2,C.OLIVE);
+        p(cx-5,torY+2,C.SAGE);p(cx+4,torY+5,C.DKSAGE);
       }
 
-      // Arms — bigger with level
-      const armW=lv>=3?4:3;
-      if(s===2){
-        b(cx+4,torY+1,2+punchExt,2,C.SKIN);b(cx+4,torY,2,2,C.OLIVE);
-        // Fist — bigger at high levels
-        const fistSz=lv>=4?4:3;
-        b(cx+7,torY,fistSz,fistSz,C.SKIN);b(cx+8,torY,fistSz-1,fistSz-1,C.LTSKIN);
-        // Lv3+: brass knuckles
-        if(lv>=3){b(cx+7,torY,fistSz,1,C.METAL);p(cx+8,torY,C.LGRAY);}
-        // Lv5: spiked gauntlet
-        if(lv>=5){p(cx+7+fistSz,torY-1,C.METAL);p(cx+7+fistSz,torY+1,C.METAL);}
-        // Impact lines
-        p(cx+11,torY-1,C.FLASH);p(cx+11,torY+1,C.FLASH);p(cx+12,torY,C.FLASH);
-        b(cx-6,torY+2,2,4,C.SKIN);b(cx-6,torY+1,2,2,C.OLIVE);
-      } else {
-        b(cx-6,torY+1+(s===1?1:0),armW,6,C.SKIN);b(cx-6,torY+(s===1?1:0),2,2,C.OLIVE);
-        b(cx+4,torY+1-(s===1?1:0),armW,6,C.SKIN);b(cx+4,torY-(s===1?1:0),2,2,C.OLIVE);
-        p(cx-6,torY+6+(s===1?1:0),C.LTSKIN);p(cx+armW+1,torY+6-(s===1?1:0),C.LTSKIN);
-      }
+      // Head — hood with face opening
+      b(cx-3,headY,6,5,ghillie1);
+      b(cx-2,headY+1,4,3,C.SKIN);
+      p(cx-1,headY+2,C.DKSKIN);p(cx+1,headY+2,C.DKSKIN);
+      // Ghillie hood fringe
+      p(cx-3,headY,C.DKOLV);p(cx+2,headY,C.DKOLV);p(cx-3,headY+4,ghillie3);
+      p(cx+2,headY+4,ghillie3);
+      // Lv2+: face paint
+      if(lv>=2){p(cx-2,headY+1,C.DKOLV);p(cx+1,headY+1,C.DKOLV);}
 
-      // Legs — cargo pants, heavier boots at higher levels
-      b(cx-3+legOff,legY,3,7,C.DKSAGE);
-      b(cx+1+legOff2,legY,3,7,C.DKSAGE);
-      p(cx-2+legOff,legY+3,C.OLIVE);p(cx+2+legOff2,legY+3,C.OLIVE);
-      // Lv3+: shin guards
-      if(lv>=3){p(cx-2+legOff,legY+5,C.METAL);p(cx+2+legOff2,legY+5,C.METAL);}
-      const bootW=lv>=3?5:4;
-      b(cx-4+legOff,legY+7,bootW,2,lv>=4?C.BLACK:C.DKBRN);
-      b(cx+legOff2,legY+7,bootW,2,lv>=4?C.BLACK:C.DKBRN);
-
-      // Special (s===3) — battle cry
-      if(s===3){
-        p(cx-5,torY-2,C.SKIN);p(cx-5,torY-3,C.SKIN);
-        p(cx+5,torY-2,C.SKIN);p(cx+5,torY-3,C.SKIN);
-        const cryRange=lv>=3?4:3;
-        for(let i=0;i<cryRange;i++){p(cx+7+i,torY-4+i,C.LTRED);p(cx-7-i,torY-4+i,C.LTRED);}
-        p(cx,headY-2,lv>=5?C.GOLD:C.RED);
-        p(cx-1,headY-2,lv>=5?C.LTGOLD:C.DKRED);p(cx+1,headY-2,lv>=5?C.LTGOLD:C.DKRED);
+      // Sniper rifle — long barrel extending right
+      const rifleY=torY+2;
+      const barrelLen=lv>=3?22:lv>=2?20:18;
+      // Stock
+      b(cx+2,rifleY,4,2,C.BROWN);b(cx+2,rifleY,4,1,C.LTBRN);
+      // Body
+      b(cx+6,rifleY,4,2,C.DGRAY);b(cx+6,rifleY,4,1,C.MGRAY);
+      // Long barrel
+      b(cx+10,rifleY,barrelLen-4,1,C.BLACK);
+      b(cx+10,rifleY,2,1,C.DGRAY);
+      // Muzzle brake (lv2+)
+      if(lv>=2){b(cx+10+barrelLen-4,rifleY-1,2,3,C.DGRAY);p(cx+11+barrelLen-4,rifleY,C.BLACK);}
+      // Scope on top
+      b(cx+5,rifleY-2,3,1,C.BLACK);b(cx+5,rifleY-3,3,1,C.DGRAY);
+      p(cx+6,rifleY-3,C.LTBLUE);
+      // Lv3: suppressor + bipod
+      if(lv>=3){
+        b(cx+10+barrelLen-4,rifleY,4,1,C.DGRAY);
+        b(cx+4,rifleY+2,1,3,C.DGRAY);b(cx+8,rifleY+2,1,3,C.DGRAY);
       }
-      b(cx-4,legY+9,9,1,C.DKBRN);
+      // Arms holding rifle
+      b(cx+1,rifleY+1,3,2,C.SKIN);b(cx+1,rifleY+1,3,1,ghillie2);
+
+      // Ground shadow
+      b(cx-6,legY+6,13,1,C.DKBRN);
+      // Idle sway
+      if(s===0){p(cx-5,torY+3,ghillie2);}
+      // Attack: muzzle flash
+      if(s===2||aimDir){
+        const mx=cx+10+barrelLen+(lv>=3?4:0);
+        p(mx,rifleY,C.FLASH);p(mx+1,rifleY,C.FLASH);p(mx,rifleY-1,C.LTGOLD);
+        p(mx,rifleY+1,C.LTGOLD);p(mx+2,rifleY,C.WHITE);
+      }
     },
     // 4: Tank — mobile armored vehicle (was Heavy Gunner), level = bigger hull/armor (1-3)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -452,7 +445,98 @@ export function drawTowers(ctx:any){
       p(cx,hy+Math.floor(hullH/2),C.GOLD);
       if(lv>=2){p(cx-1,hy+Math.floor(hullH/2),C.DKGOLD);p(cx+1,hy+Math.floor(hullH/2),C.DKGOLD);}
     },
-    // 5: Commander (Ultimate) — mobile unit, level = rank/decoration progression (1-3)
+    // 5: Artillery — static heavy gun, level = bigger barrel/armor (1-3)
+    (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const cx=16;
+      const baseY=22;
+
+      // Concrete circular platform
+      b(cx-9,baseY,18,6,C.MGRAY);
+      b(cx-8,baseY,16,5,C.LGRAY);
+      b(cx-7,baseY,14,1,C.WHITE);
+      // Platform bolts
+      p(cx-7,baseY+2,C.DGRAY);p(cx+6,baseY+2,C.DGRAY);
+      p(cx-7,baseY+4,C.DGRAY);p(cx+6,baseY+4,C.DGRAY);
+      // Lv2+: reinforced platform
+      if(lv>=2){b(cx-9,baseY+6,18,2,C.DGRAY);}
+
+      // Sandbag ring around base
+      for(let i=0;i<5;i++){
+        const bx=cx-8+i*4;
+        b(bx,baseY+6,3,2,C.SAND);b(bx,baseY+6,3,1,C.LTSAND);
+      }
+
+      // Central pivot mount
+      b(cx-3,baseY-4,6,4,C.DGRAY);
+      b(cx-2,baseY-4,4,3,C.MGRAY);
+      // Rotation gear
+      p(cx-3,baseY-1,C.BLACK);p(cx+2,baseY-1,C.BLACK);
+
+      // Cannon barrel — angled upward to the right
+      const barrelLen=lv>=3?18:lv>=2?16:14;
+      const barrelW=lv>=3?4:3;
+      // Barrel base (breech)
+      b(cx-1,baseY-8,5,5,C.DGRAY);
+      b(cx,baseY-8,3,4,C.MGRAY);
+      // Barrel extending up-right at 45 degrees
+      for(let i=0;i<barrelLen;i++){
+        const bx=cx+2+Math.floor(i*0.7);
+        const by=baseY-8-Math.floor(i*0.7);
+        b(bx,by,barrelW,barrelW,i%2===0?C.BLACK:C.DGRAY);
+        if(i%3===0)p(bx,by,C.MGRAY);
+      }
+      // Muzzle brake
+      const mx=cx+2+Math.floor((barrelLen-1)*0.7);
+      const my=baseY-8-Math.floor((barrelLen-1)*0.7);
+      b(mx-1,my-1,barrelW+2,barrelW+2,C.DGRAY);
+      p(mx+1,my+1,C.BLACK);
+      // Lv3: thermal sleeve on barrel
+      if(lv>=3){
+        for(let i=4;i<10;i++){
+          const bx=cx+2+Math.floor(i*0.7);
+          const by=baseY-8-Math.floor(i*0.7);
+          p(bx,by,C.DKRED);
+        }
+      }
+
+      // Armored shield (lv2+)
+      if(lv>=2){
+        b(cx-6,baseY-10,4,8,C.OLIVE);
+        b(cx-5,baseY-10,2,7,C.SAGE);
+        p(cx-6,baseY-8,C.DKOLV);p(cx-6,baseY-5,C.DKOLV);
+      }
+
+      // Shell crates on left
+      b(cx-11,baseY+1,4,4,C.BROWN);
+      b(cx-11,baseY+1,4,1,C.LTBRN);
+      p(cx-10,baseY+2,C.DKBRN);p(cx-9,baseY+3,C.DKBRN);
+      b(cx-11,baseY-2,3,3,C.DKBRN);
+      // Shells stacked
+      p(cx-10,baseY-1,C.METAL);p(cx-9,baseY-1,C.METAL);
+      // Lv3: ammo loader mechanism
+      if(lv>=3){
+        b(cx-4,baseY-6,2,4,C.METAL);
+        p(cx-4,baseY-5,C.LGRAY);p(cx-3,baseY-4,C.LGRAY);
+      }
+
+      // Ground shadow
+      b(cx-10,baseY+8,20,1,C.DKBRN);
+
+      // Firing animation — recoil + muzzle flash
+      if(s===2){
+        // Recoil: barrel shifts back slightly (visual only)
+        // Muzzle flash at barrel tip
+        const fx=mx+2, fy=my-1;
+        b(fx,fy,4,4,C.FLASH);b(fx+1,fy+1,2,2,C.WHITE);
+        p(fx-1,fy+1,C.LTGOLD);p(fx+4,fy+2,C.ORANGE);
+        p(fx+1,fy-1,C.LTGOLD);p(fx+2,fy+4,C.ORANGE);
+        // Smoke puff
+        p(fx+5,fy,C.LGRAY);p(fx+6,fy-1,C.MGRAY);
+      }
+      // Idle: slight barrel sway
+      if(s===0){p(mx,my,C.DGRAY);}
+    },
+    // 6: Commander (Ultimate) — mobile unit, level = rank/decoration progression (1-3)
     (c:any,o:number[],s:number,lv:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
       const cx=16;
       const legOff=s===1?1:0, legOff2=s===1?-1:0;
@@ -1071,7 +1155,7 @@ export function drawHero(ctx:any){
 }
 
 // ===== LABELS =====
-const T_NAMES=['Sandbag','Barbed Wire','Rifleman','Brawler','Tank','Commander'];
+const T_NAMES=['Sandbag','Barbed Wire','Rifleman','Sniper','Tank','Artillery','Commander'];
 const T_STATE_NAMES=['Idle','Walk/Charge','Attack/Fire','Special/Cooldown'];
 const P_NAMES=['Pebble','Spark','Bullet','Fist Wave','Burst','Gold Slash'];
 const P_STATES=['Travel 1','Travel 2','Travel 3','Impact 1','Impact 2','Impact 3'];
