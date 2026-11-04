@@ -15,10 +15,12 @@ def main():
     p.add_argument('--expert', required=False, default=None, help='Expert placements JSONL (ml/placement-data.jsonl)')
     p.add_argument('--augmented', required=False, default=None, help='Augmented expert JSONL (from augment_expert.py)')
     p.add_argument('--procgen', required=False, default=None, help='Proc gen JSONL (from procgen_simulate.mts)')
+    p.add_argument('--directed', required=False, default=None, help='Directed search JSONL (from directed_search.mts)')
     p.add_argument('--out', required=True, help='Output combined JSONL')
     p.add_argument('--expert-weight', type=int, default=10, help='How many times to repeat expert data')
     p.add_argument('--augment-weight', type=int, default=3, help='Weight for augmented expert data')
     p.add_argument('--procgen-weight', type=int, default=2, help='Weight for proc gen data (wins only)')
+    p.add_argument('--directed-weight', type=int, default=5, help='Weight for directed search data (improved variations)')
     args = p.parse_args()
     
     examples = []
@@ -94,6 +96,25 @@ def main():
                 })
                 proc_count += 1
         print(f"Proc gen wins (x{args.procgen_weight}): {proc_count} (skipped {proc_skipped} losses)")
+    
+    # Load directed search (improved variations — these survived longer than baseline)
+    # Weight higher because they're targeted discoveries, not random
+    if args.directed:
+        dir_count = 0
+        for line in open(args.directed):
+            r = json.loads(line)
+            # Keep all directed results — even non-wins are improvements over baseline
+            for _ in range(args.directed_weight):
+                examples.append({
+                    'faction': r['faction'],
+                    'towerId': r['towerId'],
+                    'chosen': r['chosen'],
+                    'board': r['board'],
+                    'wave': r['wave'],
+                    'source': 'directed-search',
+                })
+                dir_count += 1
+        print(f"Directed search (x{args.directed_weight}): {dir_count}")
     
     # Stats by faction
     c = Counter(e['faction'] for e in examples)
