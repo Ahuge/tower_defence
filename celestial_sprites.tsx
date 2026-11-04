@@ -1002,18 +1002,18 @@ export default function App(){
 
   useEffect(()=>{
     // Towers
-    const tc=tRef.current!;tc.width=5*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
+    const tc=tRef.current!;tc.width=6*T_CELL;tc.height=T_TOTAL_ROWS*T_CELL;
     const tCtx=tc.getContext('2d')!;tCtx.imageSmoothingEnabled=false;
     drawTowers(tCtx);
     // Tower preview
     const tpv=tPv.current!;const tS=2,tLW=66,tLH=13;
-    tpv.width=tLW+5*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
+    tpv.width=tLW+6*T_CELL*tS;tpv.height=T_TOTAL_ROWS*(T_CELL*tS+tLH)+10;
     const tpc=tpv.getContext('2d')!;tpc.imageSmoothingEnabled=false;
     tpc.fillStyle='#0a0808';tpc.fillRect(0,0,tpv.width,tpv.height);
     for(let r=0;r<T_TOTAL_ROWS;r++){const by=r*(T_CELL*tS+tLH)+5;tpc.fillStyle=r%T_STATES_PER_LVL===0?'#ddbb44':'#ccaa44';tpc.font='bold 9px monospace';tpc.fillText(T_ROW_LABELS[r],3,by+T_CELL*tS/2+3);
       // Draw level separator line
       if(r%T_STATES_PER_LVL===0&&r>0){tpc.strokeStyle='#665500';tpc.beginPath();tpc.moveTo(0,by-2);tpc.lineTo(tpv.width,by-2);tpc.stroke();}
-      for(let cc=0;cc<5;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#332200';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);
+      for(let cc=0;cc<6;cc++){const bx_=tLW+cc*T_CELL*tS;tpc.save();tpc.translate(bx_,by);tpc.scale(tS,tS);tpc.drawImage(tc,cc*T_CELL,r*T_CELL,T_CELL,T_CELL,0,0,T_CELL,T_CELL);tpc.restore();tpc.strokeStyle='#332200';tpc.strokeRect(bx_,by,T_CELL*tS,T_CELL*tS);
         // Show tower names above the first row of level 1
         if(r===0){tpc.fillStyle='#aa9966';tpc.font='9px monospace';tpc.fillText(T_NAMES[cc]+` (${T_LEVELS[cc]}lvl)`,bx_+2,by-2);}
         // Grey out cells for towers that don't have this level
