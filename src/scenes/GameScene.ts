@@ -2149,7 +2149,13 @@ export class GameScene extends Phaser.Scene {
         case 'armor_shred_on_hit': traits.push('Armor shred'); break;
         case 'damage_amp_on_hit': traits.push(`+${Math.round((t.ampAmount ?? 0.15) * 100)}% vuln`); break;
         case 'life_execute': traits.push(`Execute (spends lives)`); break;
-        case 'life_scaling': traits.push(`Scales with lives`); break;
+        case 'life_scaling': {
+          const lives = this.lives ?? 20;
+          const dpl = t.damagePerLife ?? 0.5;
+          const scaledDmg = Math.round(tower.damage + lives * dpl);
+          traits.push(`Scales with lives (${scaledDmg} DMG @ ${lives} lives)`);
+          break;
+        }
         case 'acolyte_blessing_aura': traits.push(`Blesses acolytes`); break;
         case 'root_on_hit': traits.push(`${Math.round((t.chance ?? 0.2) * 100)}% root`); break;
         case 'adjacency_buff': traits.push('Adj. aura'); break;
@@ -2184,6 +2190,8 @@ export class GameScene extends Phaser.Scene {
     if (factionRate && factionRate.bonus > 0) auraBuffs.push(`-${Math.round(factionRate.bonus * 100)}% SPD (faction)`);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') auraBuffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic`);
     if (overclock && overclock.bonus > 0) auraBuffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (OC)`);
+    const blessed = getTrait(tower.traits, '_blessed');
+    if (blessed && (blessed.bonus ?? 0) > 0) auraBuffs.push(`Blessed (${Math.round((blessed.bonus ?? 0) * 100)}% life)`);
     if (rampUp && (rampUp._stacks ?? 0) > 0) {
       const stacks = rampUp._stacks as number;
       const perStack = (rampUp.reductionPerStack ?? 0.08) as number;
@@ -2204,6 +2212,13 @@ export class GameScene extends Phaser.Scene {
     if (adjDmg && adjDmg.bonus > 0) effDmg += adjDmg.bonus;
     if (harmDmg && harmDmg.bonus > 1) effDmg = Math.round(effDmg * harmDmg.bonus);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') effDmg = Math.round(effDmg * (1 + spellAmp.bonus));
+    // Life scaling (Celestial Prophet): damage grows with life total
+    const lifeScaling = getTrait(tower.traits, 'life_scaling');
+    if (lifeScaling) {
+      const lives = this.lives ?? 20;
+      const damagePerLife = lifeScaling.damagePerLife ?? 0.5;
+      effDmg = Math.round(effDmg + lives * damagePerLife);
+    }
     const effFireRate = tower.getEffectiveFireRate();
     const effRange = tower.range / TILE_SIZE;
 

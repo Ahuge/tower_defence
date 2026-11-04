@@ -44,6 +44,23 @@ function traitLabel(trait: { id: string; [k: string]: unknown }): string | null 
     case 'firewall_link': return 'Link Beam';
     case 'barbed_wire': return 'Barbed Wire';
     case 'commander_aura': return 'Commander Aura';
+    case 'life_on_kill': return `${Math.round((trait.chance as number ?? 0.05) * 100)}% Life on Kill`;
+    case 'life_execute': {
+      const minProc = Math.round(((trait.baseChance as number) ?? 0.05) * 100);
+      const maxProc = Math.round(((trait.maxChance as number) ?? 0.20) * 100);
+      const cost = trait.cost ?? 10;
+      const threshold = trait.threshold ?? 50;
+      return `Execute ${minProc}-${maxProc}% (spends ${cost} lives, needs ${threshold}+)`;
+    }
+    case 'life_scaling': {
+      const dpl = trait.damagePerLife as number ?? 0.5;
+      const frpl = trait.fireRatePerLife as number ?? 5;
+      return `+${dpl} DMG/life, -${frpl}ms/life`;
+    }
+    case 'acolyte_blessing_aura': return `Bless: ${Math.round(((trait.blessingChance as number) ?? 0.075) * 100)}% life for acolytes in range`;
+    case 'mute_mage_aura': return 'Silences mages in range';
+    case 'bonus_vs_boss': return `+${Math.round((trait.bonus as number ?? 0.5) * 100)}% vs Boss`;
+    case 'leak_absorb': return `Absorbs ${trait.maxCharges ?? 1} leak(s)`;
     default: return (trait.id as string).replace(/_/g, ' ');
   }
 }
@@ -199,7 +216,18 @@ export function FactionEncyclopediaModal({
 
                 {t.upgrades.length > 0 && (
                   <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
-                    {t.upgrades.length} upgrade{t.upgrades.length > 1 ? 's' : ''} available
+                    <div style={{ marginBottom: '4px', color: '#aaa' }}>Upgrades:</div>
+                    {t.upgrades.map((u: any, ui: number) => (
+                      <div key={ui} style={{ marginLeft: '8px', marginBottom: '2px' }}>
+                        <span style={{ color: '#ffdd44' }}>Lv{u.level} ({u.cost}g):</span>
+                        {' '}DMG <b style={{ color: '#fff' }}>{u.damage}</b>
+                        {' '}RNG <b style={{ color: '#fff' }}>{u.range}</b>
+                        {' '}SPD <b style={{ color: '#fff' }}>{u.fireRate}ms</b>
+                        {u.transformsTo && (
+                          <span style={{ color: '#ff88ff' }}> → {u.transformsTo}</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
