@@ -799,20 +799,20 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // CELESTIAL (5) — Holy protection. Gain lives, block leaks, mute mages.
   // ================================================================
   celestial_acolyte: def({
-    id: 'celestial_acolyte', name: 'Acolyte', description: 'Light damage. 5% chance on nearby kill to gain +1 life.',
+    id: 'celestial_acolyte', name: 'Acolyte', description: 'Light damage. 2% chance on nearby kill to gain +1 life (7.5% in Ward range).',
     faction: 'celestial', damageType: 'magic', cost: 25, damage: 14, range: 4.5, fireRate: 800,
     color: 0xffffaa, projectileSpeed: 350, hotkey: '1',
-    traits: [{ id: 'direct_damage' }, { id: 'life_on_kill', chance: 0.05 }],
+    traits: [{ id: 'direct_damage' }, { id: 'life_on_kill', chance: 0.02 }],
     upgrades: [
       { level: 2, cost: 30, damage: 16, range: 4, fireRate: 700 },
       { level: 3, cost: 55, damage: 24, range: 4.5, fireRate: 600 },
     ],
   }),
   celestial_ward: def({
-    id: 'celestial_ward', name: 'Ward', description: 'No attack. Mutes all creep mage abilities in range.',
+    id: 'celestial_ward', name: 'Ward', description: 'No attack. Mutes mage abilities in range. Boosts nearby Acolytes\' life gain to 7.5%.',
     faction: 'celestial', damageType: 'magic', cost: 40, damage: 0, range: 4, fireRate: 99999,
     color: 0xffddaa, projectileSpeed: 0, hotkey: '2',
-    traits: [{ id: 'mute_mage_aura' }],
+    traits: [{ id: 'mute_mage_aura' }, { id: 'acolyte_blessing_aura', blessingChance: 0.075 }],
     upgrades: [
       { level: 2, cost: 45, damage: 0, range: 5, fireRate: 99999 },
       { level: 3, cost: 80, damage: 0, range: 6, fireRate: 99999 },
@@ -829,19 +829,30 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { level: 3, cost: 150, damage: 110, range: 6, fireRate: 1400 },
     ],
   }),
-  celestial_sanctuary: def({
-    id: 'celestial_sanctuary', name: 'Sanctuary', description: 'Absorbs 1 leaked creep. Recharges every 10 waves.',
-    faction: 'celestial', damageType: 'magic', cost: 150, damage: 15, range: 4, fireRate: 1000,
-    color: 0xffffff, projectileSpeed: 350, hotkey: '4',
-    traits: [{ id: 'direct_damage' }, { id: 'leak_absorb', maxCharges: 1, rechargeWaves: 10 }],
+  celestial_martyr: def({
+    id: 'celestial_martyr', name: 'Martyr', description: 'Spends lives to execute creeps. Proc chance grows with your life total.',
+    faction: 'celestial', damageType: 'magic', cost: 120, damage: 25, range: 5, fireRate: 1200,
+    color: 0xfff0cc, projectileSpeed: 400, hotkey: '4',
+    traits: [{ id: 'direct_damage' }, { id: 'life_execute', threshold: 50, cost: 10, baseChance: 0.05, maxChance: 0.20, scaleLives: 110 }],
     upgrades: [
-      { level: 2, cost: 120, damage: 25, range: 4.5, fireRate: 900 },
+      { level: 2, cost: 100, damage: 35, range: 5.5, fireRate: 1100 },
+      { level: 3, cost: 180, damage: 50, range: 6, fireRate: 1000 },
+    ],
+  }),
+  celestial_prophet: def({
+    id: 'celestial_prophet', name: 'Prophet', description: 'Grows stronger with your life total. Weak at low lives, devastating when blessed.',
+    faction: 'celestial', damageType: 'magic', cost: 180, damage: 10, range: 5.5, fireRate: 1500,
+    color: 0xffffdd, projectileSpeed: 380, hotkey: '5',
+    traits: [{ id: 'direct_damage' }, { id: 'life_scaling', damagePerLife: 0.5, fireRatePerLife: 5, minFireRate: 400 }],
+    upgrades: [
+      { level: 2, cost: 150, damage: 15, range: 5.5, fireRate: 1400 },
+      { level: 3, cost: 250, damage: 22, range: 6, fireRate: 1300 },
     ],
   }),
   celestial_absolution: def({
     id: 'celestial_absolution', name: 'Absolution', description: 'ULTIMATE. Huge holy area of effect. 10% life gain on kill. Mutes mages.',
     faction: 'celestial', damageType: 'magic', cost: 600, damage: 60, range: 5, fireRate: 1200,
-    color: 0xfff8e0, projectileSpeed: 350, hotkey: '5', ultimate: true,
+    color: 0xfff8e0, projectileSpeed: 350, hotkey: '6', ultimate: true,
     traits: [
       { id: 'splash_damage', radius: 72 },
       { id: 'life_on_kill', chance: 0.10 },

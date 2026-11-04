@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-04
+
+### Celestial rework: Martyr + Prophet replace Sanctuary
+
+Alex found celestial boring to play — acolyte and ult were the only interesting towers, the rest felt like weak support. This rework gives the faction two new mid-game playmakers built around its life-gain identity.
+
+- **Sanctuary removed.** Alex never built it ("not feeling it"). The `leak_absorb` trait handler stays for backwards compat.
+- **New: Martyr (120g, hotkey 4).** Holy executioner that spends your lives to insta-kill creeps. Proc chance scales with life total: 5% at 50 lives → 20% at 110+. Only triggers above 50 lives, costs 10 lives per proc. Per-tower toggle in the info panel (heart button) to enable/disable spending. Bosses take 4x damage instead of insta-kill (same quartering as Gambler's jackpot).
+- **New: Prophet (180g, hotkey 5).** Damage and attack speed scale with lives: ~14 DPS at 20 lives (underpowered), ~42 DPS at 75 (worth it), ~83 DPS at 125 (overpowered). Gives players the choice between RNG execute (Martyr) and reliable scaling damage (Prophet).
+- **Acolyte nerf + Ward synergy.** Acolyte `life_on_kill` 5% → 2%. Ward gains `acolyte_blessing_aura`: nearby acolytes get 7.5% life-on-kill while in Ward range. Makes Ward an active positioning decision instead of a mute-bot you place and forget.
+- **Absolution hotkey 5 → 6** (Prophet takes 5).
+- New traits: `life_execute`, `life_scaling`, `acolyte_blessing_aura`. HitContext/UpdateContext gain optional `getLives`/`spendLives`/`tower` fields, wired through TowerManager in both GameScene and headless.
+- Sprites: Martyr (hooded executioner with greatsword) and Prophet (robed seer with glowing scroll) added to celestial_sprites.tsx; sheet regenerated.
+
 ## 2026-05-25
 
 ### Campaign lobby + VoidStatePanel — token migration

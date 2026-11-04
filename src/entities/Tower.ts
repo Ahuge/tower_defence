@@ -905,6 +905,9 @@ export class Tower {
       goldEarned: 0,
       hitStats: stats,
       towerOwnerIndex: this.ownerIndex,
+      tower: this,
+      getLives: (this as any)._getLives,
+      spendLives: (this as any)._spendLives,
     };
 
     resolveDamageModifiers(this.traits, ctx);
@@ -951,6 +954,9 @@ export class Tower {
       goldEarned: 0,
       hitStats: stats,
       towerOwnerIndex: this.ownerIndex,
+      tower: this,
+      getLives: (this as any)._getLives,
+      spendLives: (this as any)._spendLives,
     };
 
     resolveDamageModifiers(this.traits, ctx);

@@ -99,7 +99,7 @@ function tSpire(p:any,b:any,x:number,y:number,h:number,w:number,c1:string,c2:str
 }
 
 // ===== LEVEL COUNTS PER TOWER =====
-const T_LEVELS=[5,5,4,2,2]; // Acolyte, Ward, Smite, Sanctuary, Absolution
+const T_LEVELS=[5,5,4,3,3,2]; // Acolyte, Ward, Smite, Martyr, Prophet, Absolution
 const T_MAX_LVL=5;
 const T_STATES_PER_LVL=4; // idle, charge, fire, cooldown
 const T_TOTAL_ROWS=T_MAX_LVL*T_STATES_PER_LVL; // 20
@@ -309,56 +309,82 @@ export function drawTowers(ctx:any){
       }
       if(s===3){p(14,4,C.DKGLD);p(17,5,C.DKGLD);b(15,6,2,1,C.SHADOW);}
     },
-    // Sanctuary — small temple/shrine with absorbing light (2 levels)
+    // Martyr — hooded executioner with greatsword, white/gold (3 levels)
     (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
-      const pw=lvlPedW(24,lvl);
-      tPedestal(p,b,25,pw,s===1?1:s===2?2:0);
-      tLevelTrim(p,b,25,pw,lvl);
+      const pw=lvlPedW(22,lvl);
+      tPedestal(p,b,24,pw,s===1?1:s===2?2:0);
+      tLevelTrim(p,b,24,pw,lvl);
       const br=s>=1,fl=s===2;
-      const isHigh=lvl>=2;
-      // Temple base structure — larger at level 2
-      const tw=isHigh?18:16,tx=16-Math.floor(tw/2);
-      b(tx,14,tw,10,C.MARBLE);b(tx+1,14,tw-2,10,C.LTMARB);
-      // Pillars — extra pillars at level 2
-      b(tx,10,2,14,C.MARBLE);b(tx+1,10,1,14,C.LTMARB);
-      b(tx+tw-2,10,2,14,C.MARBLE);b(tx+tw-2,10,1,14,C.LTMARB);
-      if(isHigh){b(tx+Math.floor(tw/3),10,2,14,C.DKMARB);b(tx+tw-Math.floor(tw/3)-2,10,2,14,C.DKMARB);}
-      // Roof / triangle top — taller at level 2
-      const roofH=isHigh?8:6;
-      for(let i=0;i<roofH;i++){
-        const rw=tw-i*2;
-        b(16-Math.floor(rw/2),9-i,rw,1,i<2?C.GOLD:i<Math.floor(roofH*0.6)?C.LTGLD:C.PGOLD);
+      const fy=12;
+      // Hooded robe — darker at low levels, radiant white at high
+      const robeCol=lvl>=3?C.WHITE:lvl>=2?C.WHOLY:C.HOLY;
+      const robeDark=lvl>=3?C.WHOLY:lvl>=2?C.HOLY:C.DKMARB;
+      b(13,fy+2,6,10,robeCol);b(14,fy+2,4,10,robeDark);
+      // Hood
+      b(13,fy,6,4,robeDark);b(14,fy+1,4,2,C.DKSHADOW);
+      // Glowing eyes in hood shadow — brighter at higher levels
+      p(14,fy+2,br?C.BRIGHTYEL:C.GOLD);p(17,fy+2,br?C.BRIGHTYEL:C.GOLD);
+      if(lvl>=2){p(15,fy+2,C.WHITE);p(16,fy+2,C.WHITE);}
+      // Greatsword held vertical — longer/b brighter at higher levels
+      const swordH=lvl>=3?16:lvl>=2?14:12;
+      const sx=22;
+      b(sx,fy+10-swordH,2,swordH,lvl>=2?C.WHITE:C.LTMARB);
+      b(sx,fy+10-swordH,1,swordH,C.PGOLD);
+      // Crossguard
+      b(sx-2,fy+10,6,1,C.GOLD);p(sx-2,fy+10,C.DKGLD);p(sx+3,fy+10,C.DKGLD);
+      // Pommel
+      p(sx,fy+11,C.GOLD);p(sx+1,fy+11,C.GOLD);
+      // Blood-red sash at level 3 (martyr's sacrifice)
+      if(lvl>=3){b(13,fy+6,6,2,C.AMBER);p(14,fy+6,C.BRIGHTYEL);p(17,fy+6,C.BRIGHTYEL);}
+      // Halo — cracked/broken motif at higher levels (sacrifice theme)
+      if(lvl>=2){tHalo(p,16,fy-3,4,fl);if(lvl>=3){p(16,fy-7,C.DKGLD);p(18,fy-5,C.DKGLD);}}
+      else tHalo(p,16,fy-2,3,fl);
+      // Execution glow particles
+      if(br){p(10,fy+4,fl?C.WHITE:C.PGOLD);p(23,fy+6,fl?C.WHITE:C.PGOLD);p(12,fy+12,C.LTYEL);}
+      if(fl){p(8,fy+2,C.WHITE);p(25,fy+4,C.WHITE);p(16,fy-8,C.BRIGHTYEL);}
+      if(s===3){p(15,fy+2,C.DKMARB);p(16,fy+6,C.DKMARB);}
+    },
+    // Prophet — robed seer with glowing scroll/tablet (3 levels)
+    (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
+      const pw=lvlPedW(22,lvl);
+      tPedestal(p,b,24,pw,s===1?1:s===2?2:0);
+      tLevelTrim(p,b,24,pw,lvl);
+      const br=s>=1,fl=s===2;
+      const fy=12;
+      // Flowing robes — deep gold/white, more ornate at higher levels
+      const robeCol=lvl>=3?C.WHITE:lvl>=2?C.LTGLD:C.PGOLD;
+      const trimCol=lvl>=3?C.BRIGHTYEL:lvl>=2?C.GOLD:C.DKGLD;
+      b(13,fy+3,6,9,robeCol);b(14,fy+3,4,9,C.WHOLY);
+      // Robe trim — more elaborate at higher levels
+      p(13,fy+5,trimCol);p(18,fy+5,trimCol);p(13,fy+9,trimCol);p(18,fy+9,trimCol);
+      if(lvl>=2){p(14,fy+7,trimCol);p(17,fy+7,trimCol);}
+      if(lvl>=3){b(13,fy+11,6,1,trimCol);}
+      // Hood with deep shadow
+      b(13,fy,6,4,C.DKGLD);b(14,fy+1,4,3,C.DKSHADOW);
+      // Intense glowing eyes — the prophet's sight
+      p(14,fy+2,fl?C.WHITE:C.BRIGHTYEL);p(17,fy+2,fl?C.WHITE:C.BRIGHTYEL);
+      p(15,fy+2,C.WHITE);p(16,fy+2,C.WHITE);
+      if(lvl>=3){p(14,fy+1,C.LTYEL);p(17,fy+1,C.LTYEL);}
+      // Scroll/tablet held in hands — glowing with prophecies
+      b(10,fy+6,3,5,C.MARBLE);b(10,fy+6,3,1,C.WHITE);
+      // Glowing runes on scroll — more at higher levels
+      const runeCount=2+lvl;
+      for(let i=0;i<runeCount;i++){p(11,fy+7+i,br?C.BRIGHTYEL:C.GOLD);}
+      // Raised hand channeling
+      b(19,fy+4,2,4,robeCol);p(19,fy+3,fl?C.WHITE:C.BRIGHTYEL);p(20,fy+3,fl?C.WHITE:C.BRIGHTYEL);
+      // Prophetic visions — floating runes around head at higher levels
+      if(lvl>=2&&br){
+        p(10,fy-2,C.PGOLD);p(22,fy-2,C.PGOLD);p(11,fy-4,C.LTYEL);p(21,fy-4,C.LTYEL);
+        if(lvl>=3){p(16,fy-6,fl?C.WHITE:C.BRIGHTYEL);p(12,fy-5,C.GOLD);p(20,fy-5,C.GOLD);}
       }
-      p(16,9-roofH+1,C.WHITE);
-      // Cross at peak — bigger at level 2
-      p(16,9-roofH,C.GOLD);p(15,9-roofH+1,C.GOLD);p(17,9-roofH+1,C.GOLD);p(16,9-roofH+2,C.GOLD);
-      if(isHigh){p(14,9-roofH+1,C.LTGLD);p(18,9-roofH+1,C.LTGLD);p(16,9-roofH-1,C.WHITE);}
-      // Door/opening
-      const dw=isHigh?8:6,dh=isHigh?8:7;
-      b(16-Math.floor(dw/2),17,dw,dh,C.SHADOW);b(16-Math.floor(dw/2)+1,17,dw-2,dh,C.DKSHADOW);
-      // Absorbing light inside
+      // Large halo — the prophet's divine connection
+      tMultiHalo(p,16,fy-2,lvl>=3?3:lvl>=2?2:1,fl);
+      // Power aura — stronger at higher levels
       if(br){
-        b(14,18,4,4,fl?C.BRIGHTYEL:C.PGOLD);b(15,18,2,4,fl?C.WHITE:C.LTYEL);
-        p(15,19,C.WHITE);p(16,20,fl?C.WHITE:C.PGOLD);
-        if(isHigh){b(13,19,6,3,fl?C.BRIGHTYEL:C.PGOLD);b(14,19,4,2,fl?C.WHITE:C.LTYEL);}
+        const auraR=2+lvl;
+        for(let i=0;i<4+lvl*2;i++){const a=i*Math.PI*2/(4+lvl*2);p(16+Math.round(Math.cos(a)*auraR),fy+6+Math.round(Math.sin(a)*auraR),fl?C.WHITE:C.LTYEL);}
       }
-      // Light spiral inward
-      if(fl){
-        const pts=[[5,12],[27,11],[3,18],[29,17],[6,22],[26,21],[10,8],[22,7]];
-        pts.forEach(([x,y],i)=>p(x,y,i%2===0?C.PGOLD:C.LTYEL));
-        p(11,15,C.PGOLD);p(21,15,C.PGOLD);p(12,13,C.LTYEL);p(20,13,C.LTYEL);
-        if(isHigh){
-          for(let i=0;i<8;i++){const a=i*Math.PI/4;p(16+Math.round(Math.cos(a)*12),16+Math.round(Math.sin(a)*8),C.PGOLD);}
-        }
-      }
-      // Charge particles
-      if(br&&!fl){p(6,10,C.PGOLD);p(26,10,C.PGOLD);p(5,15,C.LTYEL);p(27,15,C.LTYEL);}
-      // Golden window accents — more at level 2
-      p(tx+3,12,C.GOLD);p(tx+tw-4,12,C.GOLD);p(tx+3,15,C.DKGLD);p(tx+tw-4,15,C.DKGLD);
-      if(isHigh){p(tx+5,13,C.LTGLD);p(tx+tw-6,13,C.LTGLD);}
-      // Halo above temple at level 2
-      if(isHigh)tHalo(p,16,9-roofH-2,5,fl);
-      if(s===3){b(14,18,4,4,C.SHADOW);p(15,19,C.DKGLD);}
+      if(s===3){p(15,fy+2,C.DKMARB);p(16,fy+6,C.DKMARB);}
     },
     // Absolution (Ultimate) — grand cathedral spire (2 levels)
     (c:any,o:number[],s:number,lvl:number)=>{const{p,b}=mk(c,o,T_G,T_G,T_PX);
@@ -956,7 +982,7 @@ export function drawHero(ctx:any){
 }
 
 // ===== LABELS =====
-const T_NAMES=['Acolyte','Ward','Smite','Sanctuary','Absolution'];
+const T_NAMES=['Acolyte','Ward','Smite','Martyr','Prophet','Absolution'];
 const T_STATE_NAMES=['Idle','Charge','Fire','Cooldown'];
 const T_ROW_LABELS:string[]=[];
 for(let lvl=1;lvl<=T_MAX_LVL;lvl++)for(const st of T_STATE_NAMES)T_ROW_LABELS.push(`L${lvl} ${st}`);

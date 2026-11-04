@@ -886,7 +886,10 @@ registerDamageMod('bonus_vs_mage', (trait: Trait, damage: number, ctx: HitContex
 // filtered out — so the proc never fired. Fix: iterate the explicit kill list.
 registerTowerUpdate('life_on_kill', (trait: Trait, tower: any, ctx: UpdateContext) => {
   if (ctx.justDiedCreeps.length === 0) return;
-  const chance = trait.chance ?? 0.05;
+  // Ward blessing overrides the base chance while in range
+  // (_blessed is stamped by acolyte_blessing_aura with the blessed chance in `bonus`)
+  const blessed = tower.traits?.find((t: any) => t.id === '_blessed');
+  const chance = blessed?.bonus ?? trait.chance ?? 0.05;
   const range = tower.range || (TILE_SIZE * 5);
   for (const creep of ctx.justDiedCreeps) {
     const dx = creep.x - tower.x;
@@ -1394,4 +1397,74 @@ registerOverlayDraw('conduit_linked', (trait, tower, graphics) => {
     graphics.lineStyle(1, 0xffcc44, 0.15);
     graphics.lineBetween(tower.x, tower.y, srcX, srcY);
   }
+});
+
+// --- Acolyte blessing aura (Celestial Ward) ---
+// Wards amplify nearby Acolytes: their life_on_kill chance is boosted
+// to blessingChance (default 0.075) while in Ward range. The Ward keeps
+// its mute_mage_aura — this is an additional aura. Uses the TTL buff
+// pattern so the blessing expires when the acolyte leaves range.
+registerTowerUpdate('acolyte_blessing_aura', (trait: Trait, tower: any, ctx: UpdateContext) => {
+  const range = tower.range || (TILE_SIZE * 4);
+  const blessingChance = trait.blessingChance ?? 0.075;
+  for (const other of ctx.allTowers) {
+    if (other === tower) continue;
+    if (other.typeId !== 'celestial_acolyte' && other.typeDef?.id !== 'celestial_acolyte') continue;
+    const dx = other.x - tower.x;
+    const dy = other.y - tower.y;
+    if (Math.sqrt(dx * dx + dy * dy) > range) continue;
+    accumulateBuff(other, '_blessed', blessingChance, ctx.time);
+  }
+});
+
+// --- Life execute (Celestial Martyr) ---
+// On hit: if the tower's life spending is enabled and current lives exceed
+// the threshold, roll a proc chance that scales with lives. On proc, spend
+// lives and insta-kill the target (99999 damage, same as jackpot).
+registerDamageMod('life_execute', (trait: Trait, damage: number, ctx: HitContext) => {
+  const tower = ctx.tower;
+  // Per-tower toggle — default on
+  if (tower && (tower as any)._lifeSpendingEnabled === false) return damage;
+  const getLives = ctx.getLives;
+  const spendLives = ctx.spendLives;
+  if (!getLives || !spendLives) return damage;
+
+  const lives = getLives();
+  const threshold = trait.threshold ?? 50;
+  if (lives <= threshold) return damage;
+
+  const cost = trait.cost ?? 10;
+  const baseChance = trait.baseChance ?? 0.05;
+  const maxChance = trait.maxChance ?? 0.20;
+  const scaleLives = trait.scaleLives ?? 110;
+  const t = Math.min(1, (lives - threshold) / Math.max(1, scaleLives - threshold));
+  const chance = baseChance + (maxChance - baseChance) * t;
+
+  if (rng() < chance) {
+    spendLives(cost);
+    // Don't insta-kill bosses — same quartering as jackpot
+    if (ctx.target.isBoss) return damage * 4;
+    return 99999;
+  }
+  return damage;
+});
+
+// --- Life scaling (Celestial Prophet) ---
+// Damage and fire rate scale with current lives. Implemented as both a
+// damage mod and a fire rate mod.
+registerDamageMod('life_scaling', (trait: Trait, damage: number, ctx: HitContext) => {
+  const getLives = ctx.getLives;
+  if (!getLives) return damage;
+  const lives = getLives();
+  const damagePerLife = trait.damagePerLife ?? 0.5;
+  return damage + lives * damagePerLife;
+});
+
+registerFireRateMod('life_scaling', (trait: Trait, rate: number, tower: any) => {
+  const getLives = (tower as any)?._getLives as (() => number) | undefined;
+  if (!getLives) return rate;
+  const lives = getLives();
+  const fireRatePerLife = trait.fireRatePerLife ?? 5;
+  const minFireRate = trait.minFireRate ?? 400;
+  return Math.max(minFireRate, rate - lives * fireRatePerLife);
 });

@@ -53,6 +53,12 @@ export interface HitContext {
    *  don't have to set it; undefined falls back to friend-fire-on
    *  behaviour. */
   towerOwnerIndex?: number;
+  /** The firing tower instance. Optional for backwards compat. */
+  tower?: any;
+  /** Callback to read current lives. Set by GameScene/headless. */
+  getLives?: () => number;
+  /** Callback to spend lives immediately. Set by GameScene/headless. */
+  spendLives?: (n: number) => void;
 }
 
 export interface UpdateContext {
@@ -66,6 +72,8 @@ export interface UpdateContext {
   justDiedCreeps: any[];
   time: number;
   delta: number;
+  /** Callback to read current lives. Set by GameScene/headless via TowerManager. */
+  getLives?: () => number;
 }
 
 // --- Handler Signatures ---

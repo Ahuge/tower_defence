@@ -1266,6 +1266,9 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
+    // Lives access for Celestial Martyr/Prophet traits
+    this.towerMgr.getLives = () => this.lives;
+    this.towerMgr.spendLives = (n: number) => { this.lives = Math.max(0, this.lives - n); };
     // Phase E2: legacy `if (this._missionXxxRules)` dispatch blocks
     // for Arcane finale / Mech sabotage / Mech suppression pylons /
     // Greenward consecration deleted. Every campaign now drives the
@@ -2145,6 +2148,9 @@ export class GameScene extends Phaser.Scene {
         case 'pierce_delivery': traits.push('Pierce'); break;
         case 'armor_shred_on_hit': traits.push('Armor shred'); break;
         case 'damage_amp_on_hit': traits.push(`+${Math.round((t.ampAmount ?? 0.15) * 100)}% vuln`); break;
+        case 'life_execute': traits.push(`Execute (spends lives)`); break;
+        case 'life_scaling': traits.push(`Scales with lives`); break;
+        case 'acolyte_blessing_aura': traits.push(`Blesses acolytes`); break;
         case 'root_on_hit': traits.push(`${Math.round((t.chance ?? 0.2) * 100)}% root`); break;
         case 'adjacency_buff': traits.push('Adj. aura'); break;
         case 'damage_variance': traits.push(`Var ${Math.round((t.min ?? 0.5) * 100)}-${Math.round((t.max ?? 1.5) * 100)}%`); break;
@@ -3833,7 +3839,7 @@ export class GameScene extends Phaser.Scene {
     // Pass justDiedCreeps so life_on_kill (Celestial) can react to deaths from
     // the previous frame — the list is populated in processKills before the
     // dead-creep filter runs, then read here.
-    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps, this.creepMgr.justDiedCreeps);
+    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps, this.creepMgr.justDiedCreeps, () => this.lives);
 
     // Keep the selected tower's range circle in sync with its position
     // (mobile units move) and persistent across other graphics clears.

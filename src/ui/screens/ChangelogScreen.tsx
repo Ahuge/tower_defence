@@ -10,6 +10,16 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-11-04',
+    title: 'Celestial rework: Martyr + Prophet',
+    changes: [
+      'Sanctuary removed — replaced by two new mid-game towers built around the life-gain identity',
+      'New: Martyr (120g). Spends your lives to execute creeps — proc chance scales 5%→20% with life total. Per-tower toggle to enable/disable spending.',
+      'New: Prophet (180g). Damage and attack speed scale with lives — weak at 20, strong at 75, devastating at 125+.',
+      'Acolyte life-on-kill 5% → 2%, but Ward now blesses nearby acolytes to 7.5% — makes Ward an active positioning choice.',
+    ],
+  },
+  {
     date: '2026-05-01',
     title: 'High-res art v2 + parallax delivery + LoadingScreen splash + game-stuck fixes',
     changes: [
