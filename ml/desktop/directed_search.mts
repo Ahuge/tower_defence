@@ -174,7 +174,20 @@ async function main() {
       let bestVariations: SearchResult[] = [];
       
       for (let v = 0; v < VARIATIONS; v++) {
-        const result = await runWithVariations(faction, seed, branchWave, seed * 1000 + v);
+        if (v % 25 === 0) {
+          console.log(`    variation ${v}/${VARIATIONS} (best so far: wave ${bestSurvived})`);
+        }
+        // Timeout each variation at 120s — a hanging match shouldn't block the whole run
+        const result = await Promise.race([
+          runWithVariations(faction, seed, branchWave, seed * 1000 + v),
+          new Promise<null>((_, reject) => 
+            setTimeout(() => reject(new Error('variation timeout')), 120000)
+          ),
+        ]).catch(err => {
+          console.log(`    variation ${v}: ${err.message}, skipping`);
+          return null;
+        });
+        if (!result) continue;
         
         if (result.survivedTo > bestSurvived) {
           bestSurvived = result.survivedTo;
