@@ -813,22 +813,25 @@ export class StrategistBrain implements BotBrain {
     const gambler = pool.find(t => t.id === 'void_gambler');
 
     const wishlist: WishlistItem[] = [];
-    // Siphons: the core — spam them (Alex: 151 in a win, 0 upgrades)
+    // Gamblers: OPENING — Alex places 11 at entry (col 0-1) waves 0-1.
+    // Cheap + 4% insta-kill + fast attack = strong early. Then pivot to siphons for economy.
+    // (Game 2 was pure gambler spam test — it works.)
+    if (gambler) wishlist.push({
+      tower: gambler, maxCount: 50, priority: ctx.wave <= 1 ? 5 : 2,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Siphons: the core economy — spam them after gambler opening (Alex: 133 in win, 0 upgrades)
     if (siphon) wishlist.push({
       tower: siphon, maxCount: 150, priority: 3,
       scorer: (c, t) => this.coverageCell(c, t),
       minCoverage: 2,
     });
-    // Rifts: teleport utility (Alex: 55)
+    // Rifts: teleport utility, late game (Alex: 44, waves 10+)
     if (rift) wishlist.push({
       tower: rift, maxCount: 55, priority: 2,
       scorer: (c, t) => this.coverageCell(c, t),
       minCoverage: 2,
-    });
-    // Gamblers: economy boost (Alex: 7)
-    if (gambler) wishlist.push({
-      tower: gambler, maxCount: 7, priority: 1,
-      scorer: (c, t) => this.coverageCell(c, t),
     });
 
     const d = this.walkWishlist(ctx, wishlist);
