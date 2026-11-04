@@ -61,6 +61,31 @@ function traitLabel(trait: { id: string; [k: string]: unknown }): string | null 
     case 'mute_mage_aura': return 'Silences mages in range';
     case 'bonus_vs_boss': return `+${Math.round((trait.bonus as number ?? 0.5) * 100)}% vs Boss`;
     case 'leak_absorb': return `Absorbs ${trait.maxCharges ?? 1} leak(s)`;
+    case 'bonus_vs_mage': return `+${Math.round((trait.bonus as number ?? 0.5) * 100)}% vs Mage`;
+    case 'confuse_on_hit': return `Confuse ${((trait.duration as number ?? 1200) / 1000).toFixed(1)}s`;
+    case 'crit_aura': return `Crit Aura ${Math.round((trait.chance as number ?? 0.2) * 100)}% x${trait.multiplier ?? 2}`;
+    case 'damage_aura': return `+${Math.round((trait.percent as number ?? 0.15) * 100)}% DMG Aura`;
+    case 'damage_variance': return `DMG ${Math.round((trait.min as number ?? 0.5) * 100)}-${Math.round((trait.max as number ?? 1.5) * 100)}%`;
+    case 'jackpot': return `${Math.round((trait.killChance as number ?? 0.04) * 100)}% Insta-kill`;
+    case 'strip_shield': return 'Strips Shields';
+    case 'virus_spread': return `Virus ${trait.dps ?? 10}dps, spreads`;
+    case 'slow_aura': return `Slow Aura ${Math.round((1 - (trait.factor as number ?? 0.5)) * 100)}%`;
+    case 'range_aura': return `+${Math.round((trait.percent as number ?? 0.1) * 100)}% RNG Aura`;
+    case 'rate_aura': return `+${Math.round((trait.percent as number ?? 0.1) * 100)}% AS Aura`;
+    case 'growth_scaling': return `+${Math.round((trait.growthPercent as number ?? 0.08) * 100)}%/wave growth`;
+    case 'conduit_link': return 'Conduit Link';
+    case 'hack_reverse': return 'Hack Reverse';
+    case 'interrupts_channels': return 'Interrupts Channels';
+    case 'siphons_pylons': return 'Siphons Pylons';
+    case 'spawn_swarmlings_per_wave': return `Spawns ${trait.count ?? 1} swarmlings/wave`;
+    case 'decay_per_wave': return `-${Math.round((trait.percent as number ?? 0.1) * 100)}%/wave decay`;
+    case 'expires_after_waves': return `Expires after ${trait.waves ?? 5} waves`;
+    case 'razor': return 'Razor';
+    case 'piercer': return 'Piercer';
+    case 'sniper': return 'Sniper';
+    case 'arrow': return 'Arrow';
+    case 'cannon': return 'Cannon';
+    case 'slow': return 'Slow';
     default: return (trait.id as string).replace(/_/g, ' ');
   }
 }
