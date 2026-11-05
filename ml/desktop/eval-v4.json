@@ -1,0 +1,3921 @@
+{
+  "timestamp": "2026-11-05T03:45:16.501Z",
+  "config": {
+    "useLearnedScorer": true
+  },
+  "results": [
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "void",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "void",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 3
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "cypherpunk",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "military",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 11
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 11
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "military",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "psionic",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "mechanical",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "harmonic",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 10
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 10
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 11
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 11
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 11
+    },
+    {
+      "faction": "aliens",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "arcane",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 11
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 16
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 17
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 15
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "nature",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 14
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 12
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 13
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 11
+    },
+    {
+      "faction": "nature",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 19
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": true,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 20
+    },
+    {
+      "faction": "infernal",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 18
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 100,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 200,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 500,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 700,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 800,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 900,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 8
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 9
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "normal",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 7
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 100,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 200,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 300,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 400,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 500,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 600,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 700,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 800,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 900,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1000,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1100,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1200,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1300,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1400,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1500,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1600,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1700,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1800,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 1900,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 2000,
+      "won": false,
+      "waveReached": 4
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 2100,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 2200,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 2300,
+      "won": false,
+      "waveReached": 5
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 2400,
+      "won": false,
+      "waveReached": 6
+    },
+    {
+      "faction": "celestial",
+      "difficulty": "hard",
+      "seed": 2500,
+      "won": false,
+      "waveReached": 5
+    }
+  ],
+  "byFaction": {
+    "void": {
+      "wins": 0,
+      "total": 50,
+      "avgWave": 5.2
+    },
+    "cypherpunk": {
+      "wins": 0,
+      "total": 50,
+      "avgWave": 15.42
+    },
+    "military": {
+      "wins": 0,
+      "total": 50,
+      "avgWave": 13.28
+    },
+    "psionic": {
+      "wins": 7,
+      "total": 50,
+      "avgWave": 13.42
+    },
+    "mechanical": {
+      "wins": 0,
+      "total": 50,
+      "avgWave": 8.16
+    },
+    "harmonic": {
+      "wins": 28,
+      "total": 50,
+      "avgWave": 14.8
+    },
+    "aliens": {
+      "wins": 1,
+      "total": 50,
+      "avgWave": 16.08
+    },
+    "arcane": {
+      "wins": 20,
+      "total": 50,
+      "avgWave": 17.12
+    },
+    "nature": {
+      "wins": 2,
+      "total": 50,
+      "avgWave": 12.56
+    },
+    "infernal": {
+      "wins": 37,
+      "total": 50,
+      "avgWave": 19.76
+    },
+    "celestial": {
+      "wins": 0,
+      "total": 50,
+      "avgWave": 6.5
+    }
+  },
+  "overall": {
+    "wins": 95,
+    "total": 550,
+    "winRate": 0.17272727272727273,
+    "avgWave": 12.936363636363636
+  }
+}
