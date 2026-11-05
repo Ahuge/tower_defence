@@ -28,6 +28,10 @@ FILES = [
     'alex_aliens_hard_human.jsonl',       # aliens win
     'alex_infernal_econ.jsonl',           # arcane, celestial, infernal wins
     'alex_military_nature.jsonl',         # nature win
+    'alex_void_2026-11-04_1793807584275.jsonl',  # void win (gambler opening)
+    'alex_void_2026-11-04_1793808508111.jsonl',  # void win (pure gamblers)
+    'alex_celestial_2026-11-04_1793808114275.jsonl',  # celestial win (144 acolytes)
+    'alex_celestial_2026-11-04_1793808983155.jsonl',  # celestial win (acolytes + smites)
 ]
 
 def extract():
