@@ -8,6 +8,11 @@ Takes Alex's 790 expert placements and generates plausible variations:
 
 This turns 790 examples into ~5,000+ anchored to real strategy.
 
+Note on gold/lives: jitter/mirror copy the whole example dict (dict(ex)),
+so gold/lives ride along unchanged. That's correct — the decision was made
+at that gold/lives state, and the augmented position is a counterfactual of
+the same decision moment. Expert data recorded before gold/lives capture
+simply has no such fields, and combine_data.py defaults them to full.
 Usage:
     python ml/desktop/augment_expert.py \
       --expert ml/placement-data.jsonl \

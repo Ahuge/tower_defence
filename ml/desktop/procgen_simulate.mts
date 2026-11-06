@@ -115,6 +115,8 @@ interface ProcGenPlacement {
   towerId: string;
   chosen: [number, number];
   board: [string, number, number][];
+  gold: number;  // economy.gold at decision time
+  lives: number;  // lives remaining at decision time
   won: boolean;
 }
 
@@ -155,6 +157,8 @@ async function runProcGenMatch(
           towerId: d.type.id,
           chosen: [cell.col, cell.row],
           board: [...board],
+          gold: ctx.budget,
+          lives: ctx.lives,
           won: false,
         });
         board.push([d.type.id, cell.col, cell.row]);

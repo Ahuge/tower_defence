@@ -213,7 +213,7 @@ for the interactive diagram and explorer):
 - Distance to nearest same-type tower
 - Distance to creep path (plains: row 13) / 20
 - Wave, tower count (global)
-- Gold / 500, tower cost / 500, lives / 20
+- Gold / 1000, tower cost / 500, lives / 100
 
 **Architecture**: MLP 17 -> 128 -> 64 -> 1 with dropout 0.3.
 Bigger than the CPU version (which was 13 -> 64 -> 32 -> 1).
@@ -226,12 +226,17 @@ Bigger than the CPU version (which was 13 -> 64 -> 32 -> 1).
 is defined by `FEATURE_NAMES` in train_gpu.py. A cross-language parity test
 (same board state in both) is the way to verify after any change.
 
-**Legacy data caveat**: existing training examples don't record gold or
-lives, so those default to full (500/20) during training — near-constant
-until new captures include them. Tower cost and path distance are derived
-from data already present (tower id, row), so they're informative on legacy
-data too. Follow-ups: record gold/lives in the capture format, and in the
-headless data generators (they know budget/lives at decision time).
+**Gold/lives in training data**: all three headless generators
+(`generate_data.mts`, `procgen_simulate.mts`, `directed_search.mts`) record
+`gold` (ctx.budget) and `lives` (ctx.lives) at decision time, and
+`combine_data.py` passes them through to the combined output. `train_gpu.py`
+reads them via `ex.get('gold', 1000.0)` / `ex.get('lives', 100.0)`. The
+augmenter (`augment_expert.py`) copies them unchanged with the rest of the
+example dict. Legacy data (generated/captured before this change) lacks the
+fields and defaults to full (1000/100) — near-constant until regenerated.
+Tower cost and path distance are derived from data already present (tower
+id, row), so they're informative on legacy data too. Remaining follow-up:
+record gold/lives in the human capture format (`?capture=1` recordings).
 
 **Stale models**: models in `playtest/models/` trained on the old 13-feature
 set will NOT work with the 17-feature code — the TypeScript side detects

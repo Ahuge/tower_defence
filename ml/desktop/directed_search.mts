@@ -42,6 +42,15 @@ const SEEDS = [100, 200, 300, 400, 500];  // subset for speed
 
 const COLS = 36, ROWS = 26;
 
+interface VariationPlacement {
+  towerId: string;
+  col: number;
+  row: number;
+  gold: number;  // economy.gold at decision time
+  lives: number;  // lives remaining at decision time
+  wave: number;  // actual wave at decision time (was approximated as i/10)
+}
+
 interface SearchResult {
   faction: string;
   seed: number;
@@ -50,7 +59,7 @@ interface SearchResult {
   variation: number;
   survivedTo: number;
   won: boolean;
-  placements: [string, number, number][];  // [towerId, col, row]
+  placements: VariationPlacement[];
 }
 
 /**
@@ -93,9 +102,9 @@ async function runWithVariations(
   seed: number,
   branchWave: number,
   variationSeed: number,
-): Promise<{ survivedTo: number; won: boolean; placements: [string, number, number][] }> {
+): Promise<{ survivedTo: number; won: boolean; placements: VariationPlacement[] }> {
   const brain = new StrategistBrain();
-  const placements: [string, number, number][] = [];
+  const placements: VariationPlacement[] = [];
   
   // Use variationSeed to perturb RNG for placement decisions
   let rngState = variationSeed;
@@ -125,7 +134,7 @@ async function runWithVariations(
         }
       }
       
-      placements.push([d.type.id, col, row]);
+      placements.push({ towerId: d.type.id, col, row, gold: ctx.budget, lives: ctx.lives, wave: ctx.wave });
       return { ...d, col, row };
     }
     return d;
@@ -207,14 +216,17 @@ async function main() {
           // Write placements as training data
           // Convert to the format expected by combine_data.py
           for (let i = 0; i < result.placements.length; i++) {
-            const [towerId, col, row] = result.placements[i];
-            const board: [string, number, number][] = result.placements.slice(0, i) as [string, number, number][];
+            const p = result.placements[i];
+            const board: [string, number, number][] = result.placements.slice(0, i).map(
+              (q) => [q.towerId, q.col, q.row] as [string, number, number]);
             appendFileSync(OUT, JSON.stringify({
               faction,
-              towerId,
-              chosen: [col, row],
+              towerId: p.towerId,
+              chosen: [p.col, p.row],
               board,
-              wave: Math.floor(i / 10),  // approximate wave
+              wave: p.wave,
+              gold: p.gold,
+              lives: p.lives,
               won: result.won,
               source: 'directed-search',
               seed,

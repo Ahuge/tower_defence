@@ -41,6 +41,8 @@ interface Placement {
   towerId: string;
   chosen: [number, number];
   board: [string, number, number][];  // [towerId, col, row] for all previous
+  gold: number;  // economy.gold at decision time
+  lives: number;  // lives remaining at decision time
   won: boolean;
 }
 
@@ -73,6 +75,8 @@ async function generateOne(
         towerId: d.type.id,
         chosen: [d.col, d.row],
         board: [...board],
+        gold: ctx.budget,
+        lives: ctx.lives,
         won: false,  // filled in after match
       });
       board.push([d.type.id, d.col, d.row]);

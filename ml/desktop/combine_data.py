@@ -36,6 +36,8 @@ def main():
                 'chosen': r['chosen'],
                 'board': r['board'],
                 'wave': r['wave'],
+                'gold': r.get('gold', 1000.0),
+                'lives': r.get('lives', 100.0),
                 'source': 'synthetic',
             })
             synth_count += 1
@@ -53,6 +55,8 @@ def main():
                     'chosen': r['chosen'],
                     'board': r['board'],
                     'wave': r['wave'],
+                    'gold': r.get('gold', 1000.0),
+                    'lives': r.get('lives', 100.0),
                     'source': 'expert',
                 })
                 expert_count += 1
@@ -70,6 +74,8 @@ def main():
                     'chosen': r['chosen'],
                     'board': r['board'],
                     'wave': r['wave'],
+                    'gold': r.get('gold', 1000.0),
+                    'lives': r.get('lives', 100.0),
                     'source': r.get('source', 'augmented'),
                 })
                 aug_count += 1
@@ -92,6 +98,8 @@ def main():
                     'chosen': r['chosen'],
                     'board': r['board'],
                     'wave': r['wave'],
+                    'gold': r.get('gold', 1000.0),
+                    'lives': r.get('lives', 100.0),
                     'source': f"procgen-{r.get('pattern', 'unknown')}",
                 })
                 proc_count += 1
@@ -111,6 +119,8 @@ def main():
                     'chosen': r['chosen'],
                     'board': r['board'],
                     'wave': r['wave'],
+                    'gold': r.get('gold', 1000.0),
+                    'lives': r.get('lives', 100.0),
                     'source': 'directed-search',
                 })
                 dir_count += 1
