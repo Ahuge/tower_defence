@@ -347,11 +347,10 @@ export class RLBrain implements BotBrain {
    * Patch the pending step's reward from deltas since it was
    * recorded:
    *   +0.1 per wave cleared
-   *   +0.002 per gold gained (contribution capped at +0.2)
+   *   +0.002 per gold gained (contribution capped at +0.2, floored
+   *     at 0 — spending gold must NOT be punished, otherwise the
+   *     agent learns to never build anything)
    *   -0.5 per life lost
-   * Spending gold between steps shows up as a negative gold delta
-   * (uncapped below) — that is the contract; the terminal bonus
-   * and wave-clear rewards dominate it.
    */
   private settlePendingReward(ctx: BotContext): void {
     if (!this.pending) return;
@@ -361,7 +360,7 @@ export class RLBrain implements BotBrain {
     const livesLost = Math.max(0, lives - ctx.lives);
     step.reward =
       0.1 * wavesCleared +
-      Math.min(0.002 * goldDelta, 0.2) -
+      Math.min(0.002 * Math.max(0, goldDelta), 0.2) -
       0.5 * livesLost;
     this.pending = null;
   }
