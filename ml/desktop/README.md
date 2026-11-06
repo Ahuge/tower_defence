@@ -137,6 +137,19 @@ node --import tsx ml/desktop/eval_set.mts --out ml/desktop/eval-5x.json
 ```
 Takes ~3-4x longer but gives tighter confidence intervals.
 
+### Watching replays
+
+Every eval run saves replays to `ml/desktop/replays/<eval-name>/` — all wins
+plus ~1% of losses — with an `index.json` listing them. Open
+`ml/desktop/replay-viewer.html` directly in a browser (no server needed):
+
+- **Replay tab**: load one replay JSON, watch placements play back on the
+  plains grid (Play/Pause, step, 1x–8x speed, click a placement to jump to it).
+  Also accepts `?replay=<path>` and drag-and-drop.
+- **Heatmap tab**: load a whole folder of replays and see where the bot places
+  towers on average — yellow→red intensity per cell, with faction / outcome /
+  tower / best-games (wave ≥ 18) filters and a top-10 cell list.
+
 Run this after every model iteration to track progress.
 
 ## Recursive Self-Improvement
