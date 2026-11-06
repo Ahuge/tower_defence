@@ -107,6 +107,11 @@ export class HeroDefenseMode implements GameMode {
     // Sends in HD also pay at 0.5×; record that against ROI.
     if (breakdown.sends > 0) {
       this.ctx.statsTracker.recordSendsEarned(Math.round(breakdown.sends * 0.5));
+      // Live-capture: track send income
+      const sendAmount = Math.round(breakdown.sends * 0.5);
+      void import('../learning/LiveCapture').then(m => {
+        if (m.isCaptureEnabled()) m.recordIncome('sends', sendAmount);
+      }).catch(() => {});
     }
 
     // Heal hero 20%, apply interest, rotate accessories — delegated to
