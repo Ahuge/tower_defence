@@ -111,13 +111,13 @@
     <div class="data-grid" id="dataGrid"></div>
   </section>
 </main>
-<div class="footer">Tower Defence — imitation learning pipeline. Data embedded from eval-baseline through eval-v5. Load newer eval JSONs to update.</div>
+<div class="footer">Tower Defence — imitation learning pipeline. Data embedded from eval-baseline through eval-v7. Load newer eval JSONs to update.</div>
 
 <script>
 "use strict";
-// ── Embedded data (baseline through eval-v5) ──────────────────────────
-const EMBEDDED_EVALS = {"eval-baseline":{"timestamp":"2026-11-03T00:17:15.805Z","overall":{"wins":17,"total":110,"winRate":0.15454545454545454,"avgWave":13.127272727272727},"byFaction":{"void":{"wins":0,"total":10,"avgWave":5.8},"cypherpunk":{"wins":0,"total":10,"avgWave":15.6},"military":{"wins":0,"total":10,"avgWave":12.9},"psionic":{"wins":0,"total":10,"avgWave":15.3},"mechanical":{"wins":0,"total":10,"avgWave":8.2},"harmonic":{"wins":6,"total":10,"avgWave":15.3},"aliens":{"wins":0,"total":10,"avgWave":15.5},"arcane":{"wins":3,"total":10,"avgWave":16.6},"nature":{"wins":0,"total":10,"avgWave":12.5},"infernal":{"wins":8,"total":10,"avgWave":19.8},"celestial":{"wins":0,"total":10,"avgWave":6.9}}},"eval-v2":{"timestamp":"2026-11-03T19:01:59.662Z","overall":{"wins":88,"total":550,"winRate":0.16,"avgWave":13.092727272727272},"byFaction":{"void":{"wins":0,"total":50,"avgWave":5.2},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":13.28},"psionic":{"wins":0,"total":50,"avgWave":15.14},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":2,"total":50,"avgWave":12.56},"infernal":{"wins":37,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.5}}},"eval-v3":{"timestamp":"2026-11-04T08:46:10.776Z","overall":{"wins":91,"total":550,"winRate":0.16545454545454547,"avgWave":12.94},"byFaction":{"void":{"wins":0,"total":50,"avgWave":5.2},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":13.28},"psionic":{"wins":3,"total":50,"avgWave":13.46},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":2,"total":50,"avgWave":12.56},"infernal":{"wins":37,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.5}}},"eval-v4":{"timestamp":"2026-11-05T17:57:07.244Z","overall":{"wins":89,"total":550,"winRate":0.1618181818181818,"avgWave":12.843636363636364},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":4,"total":50,"avgWave":16.52},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":9.7},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}},"eval-v5":{"timestamp":"2026-11-06T11:12:12.326Z","overall":{"wins":98,"total":550,"winRate":0.1781818181818182,"avgWave":12.74},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":13,"total":50,"avgWave":16.78},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":8.3},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}}};
-const EMBEDDED_TRAIN = {"round":"eval-v5","totalExamples":897947,"epochs":300,"perFaction":{"aliens":{"examples":102967,"valLoss":0.2019},"arcane":{"examples":98546,"valLoss":0.1166},"celestial":{"examples":69630,"valLoss":0.0412},"chaos":{"examples":2850,"valLoss":0.0896},"cypherpunk":{"examples":81582,"valLoss":0.2256},"harmonic":{"examples":11838,"valLoss":0.094},"infernal":{"examples":303851,"valLoss":0.2225},"mechanical":{"examples":6174,"valLoss":0.0925},"military":{"examples":30054,"valLoss":0.335},"nature":{"examples":4018,"valLoss":0.1095},"psionic":{"examples":101081,"valLoss":0.2305},"void":{"examples":85356,"valLoss":0.069}}};
+// ── Embedded data (baseline through eval-v7) ──────────────────────────
+const EMBEDDED_EVALS = {"eval-baseline":{"timestamp":"2026-11-03T00:17:15.805Z","overall":{"wins":17,"total":110,"winRate":0.15454545454545454,"avgWave":13.127272727272727},"byFaction":{"void":{"wins":0,"total":10,"avgWave":5.8},"cypherpunk":{"wins":0,"total":10,"avgWave":15.6},"military":{"wins":0,"total":10,"avgWave":12.9},"psionic":{"wins":0,"total":10,"avgWave":15.3},"mechanical":{"wins":0,"total":10,"avgWave":8.2},"harmonic":{"wins":6,"total":10,"avgWave":15.3},"aliens":{"wins":0,"total":10,"avgWave":15.5},"arcane":{"wins":3,"total":10,"avgWave":16.6},"nature":{"wins":0,"total":10,"avgWave":12.5},"infernal":{"wins":8,"total":10,"avgWave":19.8},"celestial":{"wins":0,"total":10,"avgWave":6.9}}},"eval-v2":{"timestamp":"2026-11-03T19:01:59.662Z","overall":{"wins":88,"total":550,"winRate":0.16,"avgWave":13.092727272727272},"byFaction":{"void":{"wins":0,"total":50,"avgWave":5.2},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":13.28},"psionic":{"wins":0,"total":50,"avgWave":15.14},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":2,"total":50,"avgWave":12.56},"infernal":{"wins":37,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.5}}},"eval-v3":{"timestamp":"2026-11-04T08:46:10.776Z","overall":{"wins":91,"total":550,"winRate":0.16545454545454547,"avgWave":12.94},"byFaction":{"void":{"wins":0,"total":50,"avgWave":5.2},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":13.28},"psionic":{"wins":3,"total":50,"avgWave":13.46},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":2,"total":50,"avgWave":12.56},"infernal":{"wins":37,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.5}}},"eval-v4":{"timestamp":"2026-11-05T17:57:07.244Z","overall":{"wins":89,"total":550,"winRate":0.1618181818181818,"avgWave":12.843636363636364},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":4,"total":50,"avgWave":16.52},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":9.7},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}},"eval-v5":{"timestamp":"2026-11-06T11:12:12.326Z","overall":{"wins":98,"total":550,"winRate":0.1781818181818182,"avgWave":12.74},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":13,"total":50,"avgWave":16.78},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":8.3},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}},"eval-v7":{"timestamp":"2026-11-06T20:02:38.494Z","overall":{"wins":85,"total":550,"winRate":0.15454545454545454,"avgWave":12.289090909090909},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":0,"total":50,"avgWave":11.82},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":8.3},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}}};
+const EMBEDDED_TRAIN = {"round":"eval-v7","totalExamples":169075,"epochs":300,"perFaction":{"aliens":{"examples":12542,"valLoss":0.2038},"arcane":{"examples":9493,"valLoss":0.1615},"celestial":{"examples":16373,"valLoss":0.1034},"cypherpunk":{"examples":15335,"valLoss":0.2003},"harmonic":{"examples":1091,"valLoss":0.1031},"infernal":{"examples":37996,"valLoss":0.2087},"mechanical":{"examples":2555,"valLoss":0.0947},"military":{"examples":1159,"valLoss":0.1002},"nature":{"examples":3130,"valLoss":0.0967},"psionic":{"examples":12466,"valLoss":0.2467},"void":{"examples":56935,"valLoss":0.2079}}};
 
 // ── State ─────────────────────────────────────────────────────────────
 let evals = {};   // name -> {timestamp, overall, byFaction}
@@ -409,12 +409,13 @@ function renderInsights() {
   const last = evals[roundOrder[roundOrder.length - 1]];
   const lastName = roundLabel(roundOrder[roundOrder.length - 1]);
 
-  // Overall trend
+  // Overall trend (keyed on win RATE, not raw win count — totals differ per round)
   const winDelta = last.overall.wins - first.overall.wins;
-  const winDeltaPct = ((last.overall.winRate - first.overall.winRate) * 100).toFixed(1);
-  if (winDelta > 0) items.push({ cls: 'good', html: 'Overall win rate rose <b>' + fmtPct(first.overall.winRate) + ' → ' + fmtPct(last.overall.winRate) + '</b> (' + first.overall.wins + ' → ' + last.overall.wins + ' wins, +' + winDeltaPct + 'pp) from baseline to ' + esc(lastName) + '.' });
-  else if (winDelta < 0) items.push({ cls: 'bad', html: 'Overall win rate fell <b>' + fmtPct(first.overall.winRate) + ' → ' + fmtPct(last.overall.winRate) + '</b> from baseline to ' + esc(lastName) + '.' });
-  else items.push({ cls: '', html: 'Overall win rate is flat at <b>' + fmtPct(last.overall.winRate) + '</b>.' });
+  const winDeltaRate = last.overall.winRate - first.overall.winRate;
+  const winDeltaPct = (winDeltaRate * 100).toFixed(1);
+  if (winDeltaRate > 0.001) items.push({ cls: 'good', html: 'Overall win rate rose <b>' + fmtPct(first.overall.winRate) + ' → ' + fmtPct(last.overall.winRate) + '</b> (' + first.overall.wins + ' → ' + last.overall.wins + ' wins, +' + winDeltaPct + 'pp) from baseline to ' + esc(lastName) + '.' });
+  else if (winDeltaRate < -0.001) items.push({ cls: 'bad', html: 'Overall win rate fell <b>' + fmtPct(first.overall.winRate) + ' → ' + fmtPct(last.overall.winRate) + '</b> from baseline to ' + esc(lastName) + '.' });
+  else items.push({ cls: '', html: 'Overall win rate is flat at <b>' + fmtPct(last.overall.winRate) + '</b> (' + first.overall.wins + ' → ' + last.overall.wins + ' wins, but on a larger match set) from baseline to ' + esc(lastName) + '.' });
 
   // Biggest improver (wins)
   let bestGain = null, bestGainFaction = null;
@@ -474,6 +475,44 @@ function renderInsights() {
     if (d > 0) items.push({ cls: 'good', html: 'Latest round (' + esc(lastName) + ') gained <b>+' + d + ' wins</b> vs ' + esc(prevName) + ' (' + prev.overall.wins + ' → ' + last.overall.wins + ').' });
     else if (d < 0) items.push({ cls: 'bad', html: 'Latest round (' + esc(lastName) + ') lost <b>' + d + ' wins</b> vs ' + esc(prevName) + ' (' + prev.overall.wins + ' → ' + last.overall.wins + ').' });
     else items.push({ cls: '', html: 'Latest round (' + esc(lastName) + ') is flat vs ' + esc(prevName) + ' (' + last.overall.wins + ' wins).' });
+  }
+  // Biggest single-round per-faction collapse (adjacent rounds)
+  let worstSingleDrop = null, worstSingleFaction = null, worstSingleFrom = null, worstSingleTo = null;
+  for (let i = 1; i < roundOrder.length; i++) {
+    const p = evals[roundOrder[i - 1]];
+    const c = evals[roundOrder[i]];
+    for (const f of FACTION_ORDER) {
+      const w0 = (p.byFaction[f] || {}).wins || 0;
+      const w1 = (c.byFaction[f] || {}).wins || 0;
+      if (worstSingleDrop === null || (w1 - w0) < worstSingleDrop) {
+        worstSingleDrop = w1 - w0; worstSingleFaction = f;
+        worstSingleFrom = roundOrder[i - 1]; worstSingleTo = roundOrder[i];
+      }
+    }
+  }
+  if (worstSingleDrop !== null && worstSingleDrop <= -5) {
+    const w0 = (evals[worstSingleFrom].byFaction[worstSingleFaction] || {}).wins || 0;
+    const w1 = (evals[worstSingleTo].byFaction[worstSingleFaction] || {}).wins || 0;
+    items.push({ cls: 'bad', html: '<b>' + esc(worstSingleFaction) + '</b> collapsed in a single round: <b>' + w0 + ' → ' + w1 + ' wins</b> (' + esc(roundLabel(worstSingleFrom)) + ' → ' + esc(roundLabel(worstSingleTo)) + '). The regression is one faction, not a broad decline.' });
+  }
+  // Byte-identical factions between the last two rounds
+  if (roundOrder.length > 1) {
+    const prev = evals[roundOrder[roundOrder.length - 2]];
+    const identical = FACTION_ORDER.filter(f => {
+      const a = prev.byFaction[f] || {}, b = last.byFaction[f] || {};
+      return (a.wins || 0) === (b.wins || 0) && Math.abs((a.avgWave || 0) - (b.avgWave || 0)) < 0.005;
+    });
+    const changed = FACTION_ORDER.filter(f => !identical.includes(f));
+    if (identical.length >= FACTION_ORDER.length / 2) {
+      items.push({ cls: 'warn', html: '<b>' + identical.length + ' of ' + FACTION_ORDER.length + ' factions are byte-identical</b> to the previous round (same wins, same avg wave). Only ' + changed.map(esc).join(', ') + ' moved at all — the new features changed almost nothing about what the model does.' });
+    }
+  }
+  // Data/feature improvement that made things worse
+  if (roundOrder.length > 1) {
+    const prev = evals[roundOrder[roundOrder.length - 2]];
+    if (last.overall.wins < prev.overall.wins) {
+      items.push({ cls: 'bad', html: 'Better data + cleaner features = <b>worse results</b>. This is the third time a data/feature improvement round has failed to help — the v2 retrain on identical data, v3 with 13× more data (zero decision change), and now ' + esc(lastName) + ' with 11 clean features, gold/lives recorded, and 300 epochs (' + prev.overall.wins + ' → ' + last.overall.wins + ' wins). The bottleneck is the imitation approach itself, not data or features.' });
+    }
   }
   // Val loss vs wins mismatch
   const lowValZeroWin = FACTION_ORDER.filter(f => {
