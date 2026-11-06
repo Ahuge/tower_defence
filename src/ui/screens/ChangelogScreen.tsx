@@ -10,6 +10,13 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-11-05',
+    title: 'Nature: Bramble Hedge gains splash',
+    changes: [
+      'Bramble Hedge now deals splash damage (1 tile radius) — helps it clear early creep groups without changing its wall identity.',
+    ],
+  },
+  {
     date: '2026-11-04',
     title: 'Celestial rework: Martyr + Prophet',
     changes: [

@@ -438,11 +438,11 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   nature_bramble: def({
     id: 'nature_bramble', name: 'Bramble Hedge',
-    description: 'Dense thornbrush. Pricks constantly. At Lv2, choose Hedge (wider maze) or Razor Bramble (vicious DPS).',
+    description: 'Dense thornbrush. Pricks constantly. Small splash lets it handle early creep groups. At Lv2, choose Hedge (wider maze) or Razor Bramble (vicious DPS).',
     role: 'wall',
     faction: 'nature', damageType: 'physical', cost: 12, damage: 3, range: 1.2, fireRate: 400,
     color: 0x447733, projectileSpeed: 260, hotkey: '1',
-    traits: [{ id: 'direct_damage' }],
+    traits: [{ id: 'direct_damage' }, { id: 'splash_damage', radius: 28 }],
     upgrades: [
       // L2 is the branch point. Default = Hedge (keeps the wall
       // identity and cheap-maze scaling). Branch = Razor Bramble,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-05
+
+### Nature: Bramble Hedge gains splash
+
+Alex lost two nature Hard games at waves 3-4 with mostly brambles and roots on the board. The Hedge is nature's main early-game tower (12g, 3 damage, single-target) and early waves come in groups — it couldn't clear them fast enough.
+
+- **Bramble Hedge gains `splash_damage` (radius 28, 1 tile).** Lets it handle early creep groups without changing its identity as a wall. Razor Bramble stays the dedicated DPS branch for later.
+
 ## 2026-11-04
 
 ### Celestial rework: Martyr + Prophet replace Sanctuary
