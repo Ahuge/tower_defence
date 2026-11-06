@@ -295,6 +295,8 @@ export class GameScene extends Phaser.Scene {
   modifier: DraftModifier | null = null;
   activeTowerIds: string[] = TOWER_ORDER;
   lives: number = STARTING_LIVES;
+  /** Accumulated leak details for the current wave (for capture). Reset at wave start. */
+  private _waveLeaks: { creepType: string; count: number; damage: number }[] = [];
   // Wave state delegated to WaveController — getters for backward compat
   get currentWave(): number { return this.waveMgr?.currentWave ?? this._currentWave; }
   set currentWave(v: number) { if (this.waveMgr) this.waveMgr.currentWave = v; else this._currentWave = v; }
@@ -1537,6 +1539,8 @@ export class GameScene extends Phaser.Scene {
         if (wave.isBoss && this.matchMode !== 'endless') {
           dispatchBossWaveBanner(wave, waveNum);
         }
+        // Live-capture: wave-start snapshot (tower inventory, composition)
+        this._captureWaveStart(wave, waveNum);
       },
       onWaveCleared: (waveNum) => {
         this.onWaveCleared(waveNum);
@@ -3038,6 +3042,69 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** Build tower snapshots for capture (wave-start inventory, wave-end damage). */
+  private _buildTowerSnapshots(): any[] {
+    return this.towerMgr.towers
+      .filter(t => (t as any).ownerIndex === undefined)
+      .map(t => ({
+        towerId: t.typeId,
+        col: t.col,
+        row: t.row,
+        level: t.level,
+        damageDealt: (t as any).damageDealt ?? 0,
+        goldEarned: (t as any).goldEarned ?? 0,
+      }));
+  }
+
+  /** Live-capture: wave-start snapshot. Records tower inventory,
+   *  board state, and incoming wave composition. No-op when capture is off. */
+  private _captureWaveStart(wave: any, waveNum: number): void {
+    // Reset per-wave leak accumulator
+    this._waveLeaks = [];
+    void import('../systems/learning/LiveCapture').then(m => {
+      if (!m.isCaptureEnabled()) return;
+      const towers = this._buildTowerSnapshots();
+      // Aggregate wave composition by creep type
+      const compMap = new Map<string, number>();
+      for (const g of (wave.groups ?? [])) {
+        compMap.set(g.creepType, (compMap.get(g.creepType) ?? 0) + (g.count ?? 0));
+      }
+      const composition = [...compMap.entries()].map(([creepType, count]) => ({
+        creepType,
+        count,
+      }));
+      // For chaos mode: which towers are currently available
+      let availableTowers: string[] | undefined;
+      if (this.faction === 'chaos') {
+        availableTowers = [...this.activeTowerIds];
+      }
+      m.recordWaveStart(
+        waveNum,
+        this.economy?.gold ?? 0,
+        this.lives,
+        towers,
+        composition,
+        availableTowers,
+      );
+    });
+  }
+
+  /** Live-capture: wave-end summary. Records leaks, income breakdown,
+   *  and per-tower damage deltas. No-op when capture is off. */
+  private _captureWaveEnd(waveNum: number, leaks: any[]): void {
+    void import('../systems/learning/LiveCapture').then(m => {
+      if (!m.isCaptureEnabled()) return;
+      const towers = this._buildTowerSnapshots();
+      m.recordWaveEnd(
+        waveNum,
+        this.economy?.gold ?? 0,
+        this.lives,
+        leaks,
+        towers,
+      );
+    });
+  }
+
   /** Mech M10: route a click through the sabotage interaction model.
    *  Returns true when the click was consumed (caller short-circuits
    *  the normal handler). */
@@ -3883,6 +3950,18 @@ export class GameScene extends Phaser.Scene {
 
     // Creep updates: movement, leak handling, kill processing, cleanup
     const leakResult = this.creepMgr.update(delta);
+    // Accumulate leak details for capture (per-wave)
+    if (leakResult.leakedTypes.length > 0) {
+      for (const lt of leakResult.leakedTypes) {
+        const existing = this._waveLeaks.find(l => l.creepType === lt.creepType);
+        if (existing) {
+          existing.count += lt.count;
+          existing.damage += lt.damage;
+        } else {
+          this._waveLeaks.push({ ...lt });
+        }
+      }
+    }
     // After all creeps have moved and been culled, repaint the shared
     // overlay (HP bars, shadows, status rings) in one pass.
     this.creepMgr.drawAll();
@@ -4802,7 +4881,11 @@ export class GameScene extends Phaser.Scene {
     // localStorage with the match outcome attached.
     void import('../systems/learning/LiveCapture').then(m => {
       if (m.isCaptureEnabled()) {
-        m.finishSession(this.lives > 0 ? 'win' : 'loss', this.currentWave);
+        m.finishSession(
+          this.lives > 0 ? 'win' : 'loss',
+          this.currentWave,
+          this._buildTowerSnapshots(),
+        );
       }
     });
 
@@ -5519,6 +5602,8 @@ export class GameScene extends Phaser.Scene {
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
     }
+    // Live-capture: wave-end summary (leaks, income, per-tower damage)
+    this._captureWaveEnd(waveNum, this._waveLeaks);
   }
 
   /** Gauntlet: transition to the next stage */

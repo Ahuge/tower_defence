@@ -154,6 +154,19 @@ export abstract class BaseFrontierMode implements GameMode {
     }
     if (breakdown.sends > 0) {
       this.ctx.statsTracker.recordSendsEarned(breakdown.sends);
+      // Live-capture: track send income
+      const sendAmount = breakdown.sends;
+      void import('../learning/LiveCapture').then(m => {
+        if (m.isCaptureEnabled()) m.recordIncome('sends', sendAmount);
+      }).catch(() => {});
+    }
+    if (breakdown.frontier > 0) {
+      this.ctx.statsTracker.recordFrontierEarned(breakdown.frontier);
+      // Live-capture: track frontier income as 'other'
+      const frontierAmount = breakdown.frontier;
+      void import('../learning/LiveCapture').then(m => {
+        if (m.isCaptureEnabled()) m.recordIncome('other', frontierAmount);
+      }).catch(() => {});
     }
   }
 
