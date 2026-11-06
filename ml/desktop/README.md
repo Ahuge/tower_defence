@@ -152,6 +152,25 @@ plus ~1% of losses — with an `index.json` listing them. Open
 
 Run this after every model iteration to track progress.
 
+### Training dashboard
+
+`ml/desktop/training-dashboard.html` visualizes progress across eval rounds.
+Open it directly in a browser (no server needed) — eval data from baseline
+through eval-v5 is embedded, so it works immediately:
+
+- **Overall trend**: win rate % and avg wave across rounds (dual-axis line chart).
+- **Per-faction table**: wins/total per round, color-coded vs previous round
+  (green = improved, red = regressed). Click a faction to expand its trend
+  chart with per-round wins, avg wave, training examples, and val loss.
+- **Key insights**: auto-generated bullets (biggest improver, regressions,
+  factions still at 0%, val-loss-vs-wins mismatches).
+- **Training data composition**: per-faction example counts and best val loss
+  from the latest training run.
+
+To update with newer evals: use "Load eval JSONs…" (multi-select eval-*.json
+files), or serve the directory over HTTP and it will auto-load eval-*.json
+files from the same folder. `?evals=eval-v6.json,eval-v5.json` also works.
+
 ## Recursive Self-Improvement
 
 The pipeline can improve itself. After each eval:
