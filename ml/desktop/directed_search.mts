@@ -221,6 +221,8 @@ async function main() {
               branchWave,
             }) + '\n');
           }
+          // Free the placements array — it's on disk now, don't keep it in memory
+          searchResult.placements = [];
           totalKept++;
         }
       }
