@@ -311,6 +311,10 @@ export interface GameUIState {
    *  renders tick/X buttons over the cell. GameScene mirrors its
    *  internal PlacementGateController state into this slot. */
   placementGhost: { col: number; row: number; towerTypeId: string } | null;
+  /** Placement Advisor (learned-model heatmap) active. GameScene
+   *  mirrors its internal toggle here so the status-bar button can
+   *  show the active state. */
+  advisorActive: boolean;
   /** Continue-ad offer. Set when the player's lives hit zero and we
    *  can still legitimately offer a revive. Drives the
    *  ContinueOfferModal in the DOM layer; GameScene sets it and pauses
@@ -596,6 +600,8 @@ class GameUIStoreClass {
     onCycleSpeed?: () => void;
     onRequestSpeedBoost?: () => void;
     onPause?: () => void;
+    /** Placement Advisor toggle (status-bar button / G key). */
+    onToggleAdvisor?: () => void;
     onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
     onAttackerAdjust?: (creepTypeId: string, delta: number) => void;
     onAttackerClear?: () => void;
@@ -651,6 +657,7 @@ class GameUIStoreClass {
       finaleHud: null,
       sabotageHud: null,
       placementGhost: null,
+      advisorActive: false,
     };
   }
 
@@ -1015,6 +1022,18 @@ class GameUIStoreClass {
 
   requestPause(): void {
     this.callbacks.onPause?.();
+  }
+
+  /** Placement Advisor toggle — DOM status-bar button / G key. */
+  requestToggleAdvisor(): void {
+    this.callbacks.onToggleAdvisor?.();
+  }
+
+  /** GameScene mirrors its internal advisor toggle here. */
+  setAdvisorActive(active: boolean): void {
+    if (this.state.advisorActive === active) return;
+    this.state = { ...this.state, advisorActive: active };
+    this.notify();
   }
 
   placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): { destroy(): void } | null {

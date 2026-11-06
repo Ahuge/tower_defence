@@ -10,6 +10,15 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-11-06',
+    title: 'Placement Advisor (learned-model heatmap)',
+    changes: [
+      'New 🎯 Advisor toggle in the status bar (or press G). Scores every empty cell with your faction\'s trained placement model and paints a heatmap on the grid — green = where the model would build, red = unlikely spots.',
+      'Top 3 recommended cells get a pulsing outline with their scores. Clicking a highlighted cell in build mode places the selected tower there as normal.',
+      'The model loads on demand (~217KB per faction). If a faction has no trained model yet, the advisor says so instead of guessing.',
+    ],
+  },
+  {
     date: '2026-11-05',
     title: 'Nature: Bramble Hedge gains splash',
     changes: [

@@ -78,6 +78,7 @@ import { preloadSprites, createSpriteAnimations, getTowerSpriteConfig } from '..
 import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
+import { PlacementAdvisor } from '../systems/PlacementAdvisor';
 import { Analytics } from '../systems/AnalyticsClient';
 import { PlayerProfile } from '../systems/profile/PlayerProfile';
 import { platformBridge } from '../systems/platform';
@@ -379,6 +380,10 @@ export class GameScene extends Phaser.Scene {
   /** Graphics layer for the ghost cell highlight. Drawn during
    *  the per-frame render pass next to hoverGraphics. */
   private _ghostGraphics!: Phaser.GameObjects.Graphics;
+  /** Placement Advisor — learned-model heatmap overlay (tutorial mode).
+   *  Scores every empty cell with the faction's placement scorer and
+   *  highlights the top 3. Purely visual; never places towers itself. */
+  private placementAdvisor: PlacementAdvisor | null = null;
 
   constructor() {
     super('GameScene');
@@ -756,6 +761,9 @@ export class GameScene extends Phaser.Scene {
       },
       onPause: () => {
         this.togglePause();
+      },
+      onToggleAdvisor: () => {
+        void this.togglePlacementAdvisor();
       },
       onFrontierDoodad: (color: number, buildingId: string, factionFallback?: string) => {
         return this.placeFrontierDoodad(color, buildingId, factionFallback);
@@ -1587,6 +1595,24 @@ export class GameScene extends Phaser.Scene {
     // pending cell stays visible against tower-range overlays.
     this._ghostGraphics = this.add.graphics().setDepth(21);
 
+    // Placement Advisor — learned-model heatmap. Created here so the
+    // graphics layers exist before any toggle; the model itself loads
+    // lazily on first enable.
+    this.placementAdvisor = new PlacementAdvisor(
+      this,
+      () => ({
+        faction: this.faction,
+        wave: this.currentWave,
+        placedTowers: this._towers.map(t => ({ towerId: t.typeId, col: t.col, row: t.row })),
+        isCandidateCell: (col, row) =>
+          this.grid.canPlaceTower(col, row)
+          && this.canBuildInZone(col, row)
+          && (this._playerBuildableSet.size === 0 || this._playerBuildableSet.has(`${col},${row}`)),
+        towerTypeId: this.selectedBuildType ?? this.activeTowerIds[0] ?? null,
+      }),
+      (msg) => this.eventLog.gameMessage(msg),
+    );
+
     // Sidebar — DOM UI handles all panels now.
     // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
     // Don't add EventLog/UpcomingWaves containers — they're DOM-only stubs.
@@ -1651,6 +1677,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.inputMgr.onKey('P', () => this.togglePause());
     this.inputMgr.onKey('A', () => this.toggleAutoPlay());
+    this.inputMgr.onKey('G', () => void this.togglePlacementAdvisor());
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
     this.inputMgr.onKey('ENTER', () => this.openChat());
     this.inputMgr.onKey('L', () => this.enterLinkMode());
@@ -3803,6 +3830,12 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.paused) return;
 
+    // Placement Advisor: pulse the top-3 outline; re-score when the
+    // board changed (refresh() no-ops when tower/wave/count are
+    // unchanged, so this is cheap per frame).
+    this.placementAdvisor?.update(time);
+    this.placementAdvisor?.refresh();
+
     // Phase B (aspect refactor): tick the per-mission lifecycle aspect.
     // Legacy `_finaleController` / `_sabotageController` / etc. ticks
     // remain in place below; this dispatches the new path. Both can
@@ -4992,6 +5025,19 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Placement Advisor toggle (G key / status-bar button). Loads the
+   *  faction model on first enable (~217KB chunk); a missing model
+   *  leaves the advisor off and posts an event-log message. */
+  private async togglePlacementAdvisor(): Promise<void> {
+    if (!this.placementAdvisor) return;
+    const next = !this.placementAdvisor.isEnabled();
+    await this.placementAdvisor.setEnabled(next);
+    GameUIStore.setAdvisorActive(this.placementAdvisor.isEnabled());
+    if (this.placementAdvisor.isEnabled()) {
+      this.eventLog.gameMessage('Placement Advisor ON — green = where the model would build. G to hide.');
+    }
+  }
+
   private showPauseMenu(): void {
     if (this.pauseOverlay) return;
 
@@ -5717,6 +5763,10 @@ export class GameScene extends Phaser.Scene {
   /** Clean up on scene shutdown (returning to menu, restarting) */
   shutdown(): void {
     GameUIStore.deactivate();
+    // Placement Advisor — destroy its graphics/text objects so a
+    // scene restart doesn't leak overlay objects.
+    this.placementAdvisor?.destroy();
+    this.placementAdvisor = null;
     // Phase B (aspect refactor): tear down the campaign runtime in
     // strict reverse-install order — gameplay first (drop EventBus
     // subscriptions before the bus is cleared below), then lifecycle

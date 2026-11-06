@@ -39,6 +39,20 @@
   .legend { display: flex; gap: 16px; margin-top: 16px; font-size: 12px; color: #888; flex-wrap: wrap; }
   .legend span { display: flex; align-items: center; gap: 6px; }
   .legend-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid; display: inline-block; }
+  .layer-narrow { flex: 0 0 64px; }
+  /* Interactive feature explorer */
+  .explorer { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+  .explorer canvas { border: 1px solid #222; border-radius: 8px; cursor: crosshair; display: block; }
+  .explorer-controls { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; font-size: 13px; }
+  .explorer-controls label { display: flex; align-items: center; gap: 6px; color: #aaa; }
+  .explorer-controls select, .explorer-controls input[type=range] { background: #1a1a22; color: #ddd; border: 1px solid #333; border-radius: 6px; padding: 4px 8px; }
+  .feat-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .feat-table th { text-align: left; color: #888; font-weight: normal; padding: 4px 8px 4px 0; border-bottom: 1px solid #222; }
+  .feat-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid #1a1a22; vertical-align: top; }
+  .feat-table .fval { font-family: monospace; color: #ffcc44; white-space: nowrap; }
+  .feat-table .fval.hot { color: #66ffaa; font-weight: bold; }
+  .feat-table .fexpl { color: #888; font-size: 12px; }
+  .feat-group { color: #aaa; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding-top: 10px !important; border-bottom: none !important; }
 </style>
 </head>
 <body>
@@ -61,12 +75,32 @@
         <div class="layer-sub">128 neurons · ReLU</div>
         <div class="nodes" id="hidden1-nodes"></div>
       </div>
+      <div class="arrow">→</div>
+      <!-- Dropout 1 -->
+      <div class="layer layer-narrow">
+        <div class="layer-label">Dropout</div>
+        <div class="layer-sub">p = 0.3</div>
+        <div class="nodes">
+          <div class="node node-dropout" title="Randomly zeroes 30% of activations during training">30%</div>
+          <div style="font-size: 10px; color: #888; margin-top: 6px; text-align: center;">training<br>only</div>
+        </div>
+      </div>
       <div class="arrow">→<div class="arrow-label">8,256<br>params</div></div>
       <!-- Hidden 2 -->
       <div class="layer">
         <div class="layer-label">Hidden 2</div>
         <div class="layer-sub">64 neurons · ReLU</div>
         <div class="nodes" id="hidden2-nodes"></div>
+      </div>
+      <div class="arrow">→</div>
+      <!-- Dropout 2 -->
+      <div class="layer layer-narrow">
+        <div class="layer-label">Dropout</div>
+        <div class="layer-sub">p = 0.3</div>
+        <div class="nodes">
+          <div class="node node-dropout" title="Randomly zeroes 30% of activations during training">30%</div>
+          <div style="font-size: 10px; color: #888; margin-top: 6px; text-align: center;">training<br>only</div>
+        </div>
       </div>
       <div class="arrow">→<div class="arrow-label">65<br>params</div></div>
       <!-- Output -->
@@ -131,6 +165,32 @@
       </div>
     </div>
   </div>
+
+  <div class="card" style="margin-bottom: 24px;">
+    <h2>Try It: What Does the Model See?</h2>
+    <p style="color: #888; font-size: 13px; margin: 0 0 16px 0;">Click any cell on the board. The table shows all 13 input features the model computes for that cell, given the example towers already placed (a void-style entry cluster). Change the wave or the tower type to see how the features shift.</p>
+    <div class="explorer-controls">
+      <label>Placing: <select id="explorer-tower">
+        <option value="void_gambler">Gambler (void)</option>
+        <option value="void_siphon">Siphon (void)</option>
+        <option value="void_rift">Rift (void)</option>
+      </select></label>
+      <label>Wave: <input type="range" id="explorer-wave" min="0" max="20" value="5" step="1"> <span id="explorer-wave-label" style="color:#ffcc44; font-family: monospace;">5</span></label>
+      <label><input type="checkbox" id="explorer-regions" checked> Show region boundaries</label>
+    </div>
+    <div class="explorer">
+      <canvas id="explorer-canvas" width="792" height="572"></canvas>
+      <div>
+        <div id="explorer-cell" style="font-size: 14px; color: #fff; margin-bottom: 8px;">Click a cell to inspect its features</div>
+        <table class="feat-table" id="explorer-table">
+          <thead><tr><th>Feature</th><th>Value</th><th>What it means</th></tr></thead>
+          <tbody id="explorer-body">
+            <tr><td colspan="3" style="color:#666;">No cell selected yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -162,6 +222,148 @@ function fillNodes(id, count, cls, labels) {
 fillNodes('input-nodes', 13, 'node-input', ['x','y','L','M','R','T','M','B','d','ρ','s','w','n']);
 fillNodes('hidden1-nodes', 128, 'node-hidden');
 fillNodes('hidden2-nodes', 64, 'node-hidden');
+
+// ─── Interactive feature explorer ──────────────────────────────────────
+// Feature computation mirrors ml/desktop/train_gpu.py cell_features /
+// board_features exactly (COLS=36, ROWS=26).
+(function () {
+  const COLS = 36, ROWS = 26, CELL = 22;
+  const canvas = document.getElementById('explorer-canvas');
+  const ctx = canvas.getContext('2d');
+  const towerSel = document.getElementById('explorer-tower');
+  const waveSlider = document.getElementById('explorer-wave');
+  const waveLabel = document.getElementById('explorer-wave-label');
+  const regionsChk = document.getElementById('explorer-regions');
+  const cellLabel = document.getElementById('explorer-cell');
+  const tbody = document.getElementById('explorer-body');
+
+  // Example board: a void-style entry cluster (gamblers at spawn) plus
+  // a siphon pair and a rift further in. [towerId, col, row]
+  const board = [
+    ['void_gambler', 0, 12], ['void_gambler', 1, 12], ['void_gambler', 0, 14],
+    ['void_gambler', 1, 14], ['void_gambler', 2, 13],
+    ['void_siphon', 5, 10], ['void_siphon', 5, 16],
+    ['void_rift', 10, 13],
+  ];
+  const TOWER_COLORS = { void_gambler: '#e8b76d', void_siphon: '#44dd88', void_rift: '#aa66ff' };
+  const TOWER_LETTERS = { void_gambler: 'G', void_siphon: 'S', void_rift: 'R' };
+
+  let selected = null; // {col, row}
+
+  function computeFeatures(col, row, towerId, wave) {
+    const f = [];
+    f.push({ name: 'col / 36', val: col / COLS, expl: 'Column ' + col + ' of 36 — how far right on the map (0 = left edge, ~1 = right edge).' });
+    f.push({ name: 'row / 26', val: row / ROWS, expl: 'Row ' + row + ' of 26 — how far down the map (0 = top, ~1 = bottom).' });
+    const left = col < 12 ? 1 : 0, mid = (col >= 12 && col < 24) ? 1 : 0, right = col >= 24 ? 1 : 0;
+    f.push({ name: 'left third', val: left, expl: left ? 'This cell IS in the left third (cols 0–11) — near the creep entry.' : 'Not in the left third (cols 0–11).' });
+    f.push({ name: 'mid third', val: mid, expl: mid ? 'This cell IS in the middle third (cols 12–23).' : 'Not in the middle third (cols 12–23).' });
+    f.push({ name: 'right third', val: right, expl: right ? 'This cell IS in the right third (cols 24–35) — near the exit.' : 'Not in the right third (cols 24–35).' });
+    const top = row < 9 ? 1 : 0, vmid = (row >= 9 && row < 17) ? 1 : 0, bot = row >= 17 ? 1 : 0;
+    f.push({ name: 'top third', val: top, expl: top ? 'This cell IS in the top third (rows 0–8).' : 'Not in the top third (rows 0–8).' });
+    f.push({ name: 'middle third', val: vmid, expl: vmid ? 'This cell IS in the middle third (rows 9–16) — the path row (13) runs through here.' : 'Not in the middle third (rows 9–16).' });
+    f.push({ name: 'bottom third', val: bot, expl: bot ? 'This cell IS in the bottom third (rows 17–25).' : 'Not in the bottom third (rows 17–25).' });
+    // Board-context features
+    let minDist = Infinity;
+    for (const b of board) minDist = Math.min(minDist, Math.hypot(col - b[1], row - b[2]));
+    const minDistF = Math.min(minDist / 10, 1);
+    f.push({ name: 'min dist to tower / 10', val: minDistF, expl: 'Nearest tower is ' + minDist.toFixed(1) + ' tiles away. 0 = right next to a tower, 1 = 10+ tiles from any tower (isolated).' });
+    let nearby = 0;
+    for (const b of board) if (Math.abs(b[1] - col) <= 1 && Math.abs(b[2] - row) <= 1) nearby++;
+    f.push({ name: '3×3 density / 5', val: Math.min(nearby / 5, 1), expl: nearby + ' tower(s) in the 3×3 square around this cell. High = clustered build, low = open space.' });
+    const same = board.filter(b => b[0] === towerId);
+    let sameDist = 1.0, sameExpl;
+    if (same.length > 0) {
+      let d = Infinity;
+      for (const b of same) d = Math.min(d, Math.hypot(col - b[1], row - b[2]));
+      sameDist = Math.min(d / 10, 1);
+      sameExpl = 'Nearest ' + towerId.replace('void_', '') + ' is ' + d.toFixed(1) + ' tiles away. Low = close to same-type towers (synergy/clustering), 1 = none nearby.';
+    } else {
+      sameExpl = 'No ' + towerId.replace('void_', '') + ' on the board yet — defaults to 1.0 (far).';
+    }
+    f.push({ name: 'dist to same-type / 10', val: sameDist, expl: sameExpl });
+    f.push({ name: 'wave / 20', val: wave / 20, expl: 'Wave ' + wave + ' of 20. Early waves favor cheap/economy placements; late waves favor damage.' });
+    f.push({ name: 'tower count / 100', val: Math.min(board.length / 100, 1), expl: board.length + ' towers placed so far. Early game = few towers, late game = dense board.' });
+    return f;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Grass
+    ctx.fillStyle = '#16241a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Path row 13
+    ctx.fillStyle = '#3a2f1e';
+    ctx.fillRect(0, 13 * CELL, canvas.width, CELL);
+    // Lakes (approximate plains map)
+    ctx.fillStyle = '#1a3a4a';
+    ctx.beginPath(); ctx.ellipse(30 * CELL, 4 * CELL, 3 * CELL, 2 * CELL, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8 * CELL, 21 * CELL, 2.5 * CELL, 1.8 * CELL, 0, 0, Math.PI * 2); ctx.fill();
+    // Region boundaries
+    if (regionsChk.checked) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1;
+      for (const c of [12, 24]) { ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, canvas.height); ctx.stroke(); }
+      for (const r of [9, 17]) { ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(canvas.width, r * CELL); ctx.stroke(); }
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '10px monospace';
+      ctx.fillText('LEFT', 4, 12); ctx.fillText('MID', 12 * CELL + 4, 12); ctx.fillText('RIGHT', 24 * CELL + 4, 12);
+      ctx.fillText('TOP', 4, 9 * CELL - 4); ctx.fillText('BOTTOM', 4, 17 * CELL - 4);
+    }
+    // Grid lines (light)
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, canvas.height); ctx.stroke(); }
+    for (let r = 0; r <= ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(canvas.width, r * CELL); ctx.stroke(); }
+    // Towers
+    for (const b of board) {
+      const x = b[1] * CELL, y = b[2] * CELL;
+      ctx.fillStyle = TOWER_COLORS[b[0]] || '#888';
+      ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(TOWER_LETTERS[b[0]] || '?', x + CELL / 2, y + CELL / 2 + 1);
+    }
+    // Selected cell
+    if (selected) {
+      ctx.strokeStyle = '#ffcc44';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(selected.col * CELL + 1, selected.row * CELL + 1, CELL - 2, CELL - 2);
+    }
+  }
+
+  function showFeatures() {
+    if (!selected) return;
+    const wave = parseInt(waveSlider.value, 10);
+    const towerId = towerSel.value;
+    const feats = computeFeatures(selected.col, selected.row, towerId, wave);
+    cellLabel.textContent = 'Cell (' + selected.col + ', ' + selected.row + ') — placing ' + towerId.replace('void_', '') + ' at wave ' + wave;
+    const groups = ['Position', null, 'Column region (one-hot)', null, null, 'Row region (one-hot)', null, null, 'Board context', null, null, 'Game state', null];
+    let html = '';
+    feats.forEach((f, i) => {
+      if (groups[i]) html += '<tr><td colspan="3" class="feat-group">' + groups[i] + '</td></tr>';
+      const hot = (f.val === 1 && (i >= 2 && i <= 7)) ? ' hot' : '';
+      html += '<tr><td style="white-space:nowrap;">' + f.name + '</td><td class="fval' + hot + '">' + f.val.toFixed(4) + '</td><td class="fexpl">' + f.expl + '</td></tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const col = Math.floor((e.clientX - rect.left) / rect.width * COLS);
+    const row = Math.floor((e.clientY - rect.top) / rect.height * ROWS);
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+    selected = { col, row };
+    draw();
+    showFeatures();
+  });
+  towerSel.addEventListener('change', showFeatures);
+  waveSlider.addEventListener('input', () => { waveLabel.textContent = waveSlider.value; showFeatures(); });
+  regionsChk.addEventListener('change', draw);
+  draw();
+})();
 </script>
 </body>
 </html>

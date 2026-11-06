@@ -8,7 +8,7 @@ import { platformBridge } from '../../systems/platform';
 import { isRewardInstant, BattlePass, PlayerInventory } from '../../systems/monetization';
 
 export function StatusBarDOM() {
-  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, paused, versusTimer, essence, speedBoostRemainingSec, matchMode, attackerProgress } = useGameUI();
+  const { active, gold, lives, currentWave, totalWaves, income, speed, waveActive, betweenWaves, autoPlay, paused, versusTimer, essence, speedBoostRemainingSec, matchMode, attackerProgress, advisorActive } = useGameUI();
 
   if (!active) return null;
 
@@ -90,6 +90,17 @@ export function StatusBarDOM() {
         )}
         <button class="status-btn status-btn-pause" onClick={() => GameUIStore.requestPause()}>
           {paused ? '▶' : '⏸'}
+        </button>
+        <button
+          class="status-btn"
+          style={{
+            color: advisorActive ? '#7ee787' : '#888',
+            borderColor: advisorActive ? '#7ee78755' : '#55555555',
+          }}
+          onClick={() => GameUIStore.requestToggleAdvisor()}
+          title="Placement Advisor (G): heatmap of where the learned model would build. Green = best."
+        >
+          🎯 Advisor
         </button>
         {autoPlay && <span class="status-auto">AUTO</span>}
       </div>
