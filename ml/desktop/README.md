@@ -205,22 +205,24 @@ question.
 
 A placement policy: given (board state, tower to place), where to put it.
 
-**Input features** (17 per candidate cell — see `ml/desktop/model-architecture.html`
+**Input features** (11 per candidate cell — see `ml/desktop/model-architecture.html`
 for the interactive diagram and explorer):
 - Normalized position (col/36, row/26)
-- Board region one-hots (left/mid/right, top/mid/bottom)
 - Distance to nearest tower, tower density nearby
 - Distance to nearest same-type tower
 - Distance to creep path (plains: row 13) / 20
 - Wave, tower count (global)
 - Gold / 1000, tower cost / 500, lives / 100
 
-**Architecture**: MLP 17 -> 128 -> 64 -> 1 with dropout 0.3.
+Region one-hots (left/mid/right, top/mid/bottom) were removed 2026-11-06 —
+redundant with col/row; the MLP learns region thresholds itself.
+
+**Architecture**: MLP 11 -> 128 -> 64 -> 1 with dropout 0.3.
 Bigger than the CPU version (which was 13 -> 64 -> 32 -> 1).
 
 **Loss**: Binary cross-entropy. Alex's chosen cell = 1, random alternatives = 0.
 
-**Feature parity**: the 17 features must be computed identically in Python
+**Feature parity**: the 11 features must be computed identically in Python
 (`ml/desktop/train_gpu.py`, `ml/train_placement.py`) and TypeScript
 (`playtest/LearnedScorer.ts`, `src/systems/PlacementAdvisor.ts`). The order
 is defined by `FEATURE_NAMES` in train_gpu.py. A cross-language parity test
@@ -238,23 +240,26 @@ Tower cost and path distance are derived from data already present (tower
 id, row), so they're informative on legacy data too. Remaining follow-up:
 record gold/lives in the human capture format (`?capture=1` recordings).
 
-**Stale models**: models in `playtest/models/` trained on the old 13-feature
-set will NOT work with the 17-feature code — the TypeScript side detects
-the `input_dim` mismatch, warns once, and returns neutral scores (0.5)
-instead of NaN. Retrain + re-export after any feature change.
+**Stale models**: models in `playtest/models/` trained on the old 13- or
+17-feature sets will NOT work with the 11-feature code — the TypeScript side
+detects the `input_dim` mismatch, warns once, and returns neutral scores (0.5)
+instead of NaN. Retrain + re-export after any feature change. (The
+`imitation_accuracy.py` script and the model-architecture page handle old
+models by expanding the 11 features with the region one-hots, so they can
+still be evaluated and visualized.)
 
 ### Model architecture page
 
 `ml/desktop/model-architecture.html` — open directly in a browser. Shows the
 network diagram (with dropout layers), the full feature list with
-explanations, and an interactive explorer: click any cell to see all 17
+explanations, and an interactive explorer: click any cell to see all 11
 features with plain-English meanings, plus gold/lives/wave sliders. The
 **model recommendations** toggle loads the real trained model
 (`playtest/models/scorer-<faction>.json`) and scores every cell — top 5
 outlined with scores, heatmap overlay. Needs HTTP serving for fetch
 (`python3 -m http.server` from the repo root); from `file://` it offers a
-manual file load instead. Old 13-feature models are supported (features are
-sliced to the old layout).
+manual file load instead. Old 13- and 17-feature models are supported
+(features are expanded with the region one-hots to match).
 
 ### Imitation accuracy — does the model place like Alex?
 
@@ -280,10 +285,9 @@ python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --all --faction 
 Retrains with a feature (or group) zeroed out and compares best val loss
 to the full-feature baseline. Same seeds for both runs, so deltas are
 signal, not sampling noise. Models go to a temp dir — ablation never
-clobbers production models. Groups: `position`, `col_region`
-(`left_mid_right`), `row_region` (`top_mid_bottom`), `region`,
-`min_dist`, `density`, `same_dist`, `path_dist`, `wave`, `tower_count`,
-`gold`, `tower_cost`, `lives`. Deltas at 50 epochs are noisy — re-run
+clobbers production models. Groups: `position`, `min_dist`, `density`,
+`same_dist`, `path_dist`, `wave`, `tower_count`, `gold`, `tower_cost`,
+`lives`. Deltas at 50 epochs are noisy — re-run
 interesting ones with `--epochs 100+` before removing a feature for real.
 
 ## Expected results

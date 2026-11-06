@@ -179,12 +179,12 @@ export class PlacementAdvisor {
     const ctx = this.getCtx();
     const towerId = ctx.towerTypeId;
     if (!towerId) return;
-    // Stale models (old 13-feature set) would produce NaN — guard instead
+    // Stale models (old 17-feature set) would produce NaN — guard instead
     // of drawing garbage. Retrain + re-export to fix.
-    if (this.model.input_dim !== 17) {
+    if (this.model.input_dim !== 11) {
       if (!this.warnedDimMismatch) {
         this.warnedDimMismatch = true;
-        this.onMessage(`Placement Advisor: ${this.modelFaction} model is the old 13-feature version — retrain and re-export to use the advisor.`);
+        this.onMessage(`Placement Advisor: ${this.modelFaction} model is the old 17-feature version — retrain and re-export to use the advisor.`);
       }
       return;
     }
@@ -276,27 +276,23 @@ export class PlacementAdvisor {
   }
 
   /**
-   * Same 17 features as train_gpu.py (FEATURE_NAMES), in the same order.
+   * Same 11 features as train_gpu.py (FEATURE_NAMES), in the same order.
    * Must stay in sync with playtest/LearnedScorer.extractFeatures.
-   *   0-7   position + region one-hots
-   *   8-10  board context (min dist, 3x3 density, same-type dist)
-   *   11    distance to creep path / 20
-   *   12-13 wave / 20, tower count / 100
-   *   14    gold / 1000
-   *   15    tower cost / 500
-   *   16    lives / 100
+   *   0-1   position (col / 36, row / 26)
+   *   2-4   board context (min dist, 3x3 density, same-type dist)
+   *   5     distance to creep path / 20
+   *   6-7   wave / 20, tower count / 100
+   *   8     gold / 1000
+   *   9     tower cost / 500
+   *   10    lives / 100
+   *
+   * Region one-hots removed 2026-11-06 (redundant with col/row).
    */
   private extractFeatures(ctx: AdvisorContext, col: number, row: number, towerId: string): number[] {
     const feats: number[] = [];
     const board = ctx.placedTowers;
     feats.push(col / COLS);
     feats.push(row / ROWS);
-    feats.push(col < 12 ? 1.0 : 0.0);
-    feats.push(col >= 12 && col < 24 ? 1.0 : 0.0);
-    feats.push(col >= 24 ? 1.0 : 0.0);
-    feats.push(row < 9 ? 1.0 : 0.0);
-    feats.push(row >= 9 && row < 17 ? 1.0 : 0.0);
-    feats.push(row >= 17 ? 1.0 : 0.0);
 
     if (board.length > 0) {
       let minDist = Infinity;
@@ -327,7 +323,7 @@ export class PlacementAdvisor {
       feats.push(1.0, 0.0, 1.0);
     }
 
-    // Distance to the creep path (index 11). On plains the path runs the
+    // Distance to the creep path (index 5). On plains the path runs the
     // full row 13, so min distance to a path point equals |row - 13| —
     // exactly what train_gpu.py computes. Fall back to that when paths
     // aren't available yet.

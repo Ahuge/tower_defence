@@ -31,7 +31,7 @@ MODEL_DIR.mkdir(exist_ok=True)
 COLS, ROWS = 36, 26
 
 # Plains map path is row 13. See ml/desktop/train_gpu.py for the canonical
-# feature list — this file mirrors it (17 features).
+# feature list — this file mirrors it (11 features).
 PATH_ROW = 13
 
 TOWER_COSTS = {
@@ -73,8 +73,9 @@ TOWER_COSTS = {
 
 # Canonical feature order — MUST match ml/desktop/train_gpu.py, the
 # TypeScript LearnedScorer and the PlacementAdvisor.
+# Region one-hots removed 2026-11-06 (redundant with col/row).
 FEATURE_NAMES = [
-    'col', 'row', 'left', 'mid_col', 'right', 'top', 'mid_row', 'bottom',
+    'col', 'row',
     'min_dist', 'density', 'same_dist', 'path_dist',
     'wave', 'tower_count', 'gold', 'tower_cost', 'lives',
 ]
@@ -91,14 +92,7 @@ def cell_features(col, row, board, tower_id):
     # Normalized position
     feats.append(col / COLS)
     feats.append(row / ROWS)
-    # Board region one-hots: left/right, top/mid/bottom
-    feats.append(1.0 if col < 12 else 0.0)  # left third
-    feats.append(1.0 if 12 <= col < 24 else 0.0)  # middle third
-    feats.append(1.0 if col >= 24 else 0.0)  # right third
-    feats.append(1.0 if row < 9 else 0.0)  # top third
-    feats.append(1.0 if 9 <= row < 17 else 0.0)  # middle third
-    feats.append(1.0 if row >= 17 else 0.0)  # bottom third
-    
+
     # Distance to nearest tower (any)
     if board:
         min_dist = min(math.hypot(col - bc, row - br) for _, bc, br in board)
@@ -122,15 +116,15 @@ def cell_features(col, row, board, tower_id):
 
     return feats
 
-def board_features(board, wave, gold=500.0, lives=20.0, tower_cost=50.0):
+def board_features(board, wave, gold=1000.0, lives=100.0, tower_cost=50.0):
     """Global board state features. gold/lives default to full for legacy
     examples that don't record them (see train_gpu.py)."""
     return [
         wave / 20.0,
         min(len(board) / 100.0, 1.0),  # tower count normalized
-        min(gold / 500.0, 1.0),
+        min(gold / 1000.0, 1.0),
         min(tower_cost / 500.0, 1.0),
-        min(lives / 20.0, 1.0),
+        min(lives / 100.0, 1.0),
     ]
 
 class PlacementDataset(Dataset):
@@ -142,8 +136,8 @@ class PlacementDataset(Dataset):
             chosen_col, chosen_row = ex['chosen']
             wave = ex['wave']
             
-            gold = ex.get('gold', 500.0)
-            lives = ex.get('lives', 20.0)
+            gold = ex.get('gold', 1000.0)
+            lives = ex.get('lives', 100.0)
             tower_cost = TOWER_COSTS.get(tower_id, 50)
             # Positive example
             pos_feats = (cell_features(chosen_col, chosen_row, board, tower_id) +

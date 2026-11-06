@@ -106,15 +106,19 @@ export class LearnedScorer {
   }
 
   /**
-   * 17 features, in the canonical order shared with train_gpu.py
+   * 11 features, in the canonical order shared with train_gpu.py
    * (FEATURE_NAMES), PlacementAdvisor and model-architecture.html:
-   *   0-7   position + region one-hots
-   *   8-10  board context (min dist, 3x3 density, same-type dist)
-   *   11    distance to creep path / 20
-   *   12-13 wave / 20, tower count / 100
-   *   14    gold (ctx.budget) / 1000
-   *   15    tower cost / 500
-   *   16    lives / 100
+   *   0-1   position (col / 36, row / 26)
+   *   2-4   board context (min dist, 3x3 density, same-type dist)
+   *   5     distance to creep path / 20
+   *   6-7   wave / 20, tower count / 100
+   *   8     gold (ctx.budget) / 1000
+   *   9     tower cost / 500
+   *   10    lives / 100
+   *
+   * Region one-hots (left/mid/right, top/mid/bottom) were removed
+   * 2026-11-06 — redundant with col/row, the MLP learns region
+   * thresholds itself.
    */
   private extractFeatures(ctx: BotContext, cell: Cell, tower: TowerType): number[] {
     const feats: number[] = [];
@@ -126,12 +130,6 @@ export class LearnedScorer {
     // Cell features (must match train_gpu.py cell_features)
     feats.push(col / COLS);
     feats.push(row / ROWS);
-    feats.push(col < 12 ? 1.0 : 0.0);
-    feats.push(col >= 12 && col < 24 ? 1.0 : 0.0);
-    feats.push(col >= 24 ? 1.0 : 0.0);
-    feats.push(row < 9 ? 1.0 : 0.0);
-    feats.push(row >= 9 && row < 17 ? 1.0 : 0.0);
-    feats.push(row >= 17 ? 1.0 : 0.0);
 
     if (board.length > 0) {
       let minDist = Infinity;
@@ -162,7 +160,7 @@ export class LearnedScorer {
       feats.push(1.0, 0.0, 1.0);
     }
 
-    // Distance to the creep path (index 11). On plains the path runs the
+    // Distance to the creep path (index 5). On plains the path runs the
     // full row 13, so min distance to a path point equals |row - 13| —
     // exactly what train_gpu.py computes. Fall back to that when the
     // driver hasn't supplied paths.

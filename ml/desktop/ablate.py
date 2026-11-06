@@ -14,8 +14,8 @@ Usage:
     # Single feature, void, 50 epochs
     python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --feature gold
 
-    # Whole group (e.g. all region one-hots)
-    python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --feature region
+    # Whole group (e.g. all board-context features)
+    python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --feature position
 
     # Every group, ranked by importance
     python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --all --faction psionic
@@ -23,20 +23,18 @@ Usage:
     # More epochs for more stable deltas (slower)
     python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --all --epochs 100
 
-Feature groups (indices into FEATURE_NAMES):
+Feature groups (indices into FEATURE_NAMES — 11 features since the
+region one-hots were removed 2026-11-06):
     position      col, row
-    col_region    left, mid_col, right        (alias: left_mid_right)
-    row_region    top, mid_row, bottom        (alias: top_mid_bottom)
-    region        all 6 region one-hots
     min_dist      distance to nearest tower
     density       3x3 tower density
     same_dist     distance to nearest same-type tower
     path_dist     distance to creep path
     wave          wave / 20
     tower_count   towers placed / 100
-    gold          gold / 500
+    gold          gold / 1000
     tower_cost    tower cost / 500
-    lives         lives / 20
+    lives         lives / 100
 """
 
 import argparse
@@ -52,20 +50,15 @@ from train_gpu import FEATURE_NAMES, train_faction  # noqa: E402
 
 GROUPS = {
     'position': [0, 1],
-    'col_region': [2, 3, 4],
-    'left_mid_right': [2, 3, 4],
-    'row_region': [5, 6, 7],
-    'top_mid_bottom': [5, 6, 7],
-    'region': [2, 3, 4, 5, 6, 7],
-    'min_dist': [8],
-    'density': [9],
-    'same_dist': [10],
-    'path_dist': [11],
-    'wave': [12],
-    'tower_count': [13],
-    'gold': [14],
-    'tower_cost': [15],
-    'lives': [16],
+    'min_dist': [2],
+    'density': [3],
+    'same_dist': [4],
+    'path_dist': [5],
+    'wave': [6],
+    'tower_count': [7],
+    'gold': [8],
+    'tower_cost': [9],
+    'lives': [10],
 }
 
 # Single features by name (for --feature gold etc. without group syntax).
@@ -106,7 +99,7 @@ def main():
         return
 
     targets = list(GROUPS) if args.all else [args.feature]
-    # Deduplicate aliases (left_mid_right == col_region etc.)
+    # Deduplicate aliases (none currently — kept for future group aliases)
     seen = set()
     uniq_targets = []
     for t in targets:

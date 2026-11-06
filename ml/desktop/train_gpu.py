@@ -2,7 +2,7 @@
 train_gpu.py — Train placement scorers on GPU.
 
 Bigger model than the CPU version, trained on synthetic + expert data.
-17 input features (see FEATURE_NAMES) — must match the TypeScript side.
+11 input features (see FEATURE_NAMES) — must match the TypeScript side.
 Uses CUDA automatically if available (RTX 4080).
 
 Usage:
@@ -69,26 +69,22 @@ TOWER_COSTS = {
 
 # Canonical feature order — MUST match playtest/LearnedScorer.ts,
 # src/systems/PlacementAdvisor.ts and ml/desktop/model-architecture.html.
+# Region one-hots (left/mid/right, top/mid/bottom) were removed 2026-11-06:
+# redundant with col/row, the MLP learns region thresholds itself.
 FEATURE_NAMES = [
-    'col', 'row', 'left', 'mid_col', 'right', 'top', 'mid_row', 'bottom',
+    'col', 'row',
     'min_dist', 'density', 'same_dist', 'path_dist',
     'wave', 'tower_count', 'gold', 'tower_cost', 'lives',
 ]
 
 def cell_features(col, row, board, tower_id):
-    """Spatial features for a candidate cell. Indices 0-11 of FEATURE_NAMES.
+    """Spatial features for a candidate cell. Indices 0-5 of FEATURE_NAMES.
 
     Must match TypeScript LearnedScorer.extractFeatures / PlacementAdvisor.
     """
     feats = []
     feats.append(col / COLS)
     feats.append(row / ROWS)
-    feats.append(1.0 if col < 12 else 0.0)
-    feats.append(1.0 if 12 <= col < 24 else 0.0)
-    feats.append(1.0 if col >= 24 else 0.0)
-    feats.append(1.0 if row < 9 else 0.0)
-    feats.append(1.0 if 9 <= row < 17 else 0.0)
-    feats.append(1.0 if row >= 17 else 0.0)
 
     if board:
         min_dist = min(math.hypot(col - bc, row - br) for _, bc, br in board)
@@ -111,7 +107,7 @@ def cell_features(col, row, board, tower_id):
     return feats
 
 def board_features(board, wave, gold=1000.0, lives=100.0, tower_cost=50.0):
-    """Game-state features. Indices 12-16 of FEATURE_NAMES.
+    """Game-state features. Indices 6-10 of FEATURE_NAMES.
 
     gold/lives default to full (1000/100) for legacy examples that don't
     record them — placements happened, so they were affordable, and most
@@ -174,7 +170,7 @@ class PlacementDataset(Dataset):
         return torch.tensor(feats, dtype=torch.float32), torch.tensor([label], dtype=torch.float32)
 
 class ScorerMLP(nn.Module):
-    """Bigger than CPU version: 17 -> 128 -> 64 -> 1"""
+    """Bigger than CPU version: 11 -> 128 -> 64 -> 1"""
     def __init__(self, input_dim):
         super().__init__()
         self.net = nn.Sequential(
