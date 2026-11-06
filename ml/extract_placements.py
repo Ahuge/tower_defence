@@ -91,6 +91,8 @@ def extract():
                     'towerId': tower_id,
                     'chosen': [col, row],
                     'board': [list(b) for b in board],  # all previous placements
+                    'gold': t.get('gold', 1000.0),
+                    'lives': t.get('lives', 100.0),
                 })
                 board.append((tower_id, col, row))
     
