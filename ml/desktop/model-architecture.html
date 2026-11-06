@@ -166,9 +166,9 @@
       <ul class="feature-list">
         <li><span class="fname">wave / 20</span><span class="fdesc">current wave</span></li>
         <li><span class="fname">tower count / 100</span><span class="fdesc">towers already placed</span></li>
-        <li><span class="fname">gold / 500</span><span class="fdesc">current gold — can you afford to keep building?</span></li>
+        <li><span class="fname">gold / 1000</span><span class="fdesc">current gold — can you afford to keep building?</span></li>
         <li><span class="fname">tower cost / 500</span><span class="fdesc">cost of the tower being placed</span></li>
-        <li><span class="fname">lives / 20</span><span class="fdesc">current lives — risk tolerance</span></li>
+        <li><span class="fname">lives / 100</span><span class="fdesc">current lives — risk tolerance</span></li>
       </ul>
       <div class="note"><b>Are the region one-hots redundant?</b> Yes, strictly — the network could infer "left third" from col / 36. They were added as an explicit hint so region boundaries are sharp instead of something the first layer has to discover. Whether they actually help is an empirical question: run <code>python ml/desktop/ablate.py --feature region</code> and see if val loss moves. If it doesn't, they're removable.</div>
     </div>
@@ -196,8 +196,8 @@
         <option value="void_rift">Rift (void, 120g)</option>
       </select></label>
       <label>Wave: <input type="range" id="explorer-wave" min="0" max="20" value="5" step="1"> <span id="explorer-wave-label" class="val">5</span></label>
-      <label>Gold: <input type="range" id="explorer-gold" min="0" max="500" value="250" step="10"> <span id="explorer-gold-label" class="val">250</span></label>
-      <label>Lives: <input type="range" id="explorer-lives" min="0" max="20" value="20" step="1"> <span id="explorer-lives-label" class="val">20</span></label>
+      <label>Gold: <input type="range" id="explorer-gold" min="0" max="1000" value="500" step="10"> <span id="explorer-gold-label" class="val">500</span></label>
+      <label>Lives: <input type="range" id="explorer-lives" min="0" max="100" value="20" step="1"> <span id="explorer-lives-label" class="val">20</span></label>
       <label><input type="checkbox" id="explorer-regions" checked> Show region boundaries</label>
       <label><input type="checkbox" id="explorer-reco"> Show model recommendations</label>
     </div>
@@ -323,9 +323,9 @@ fillNodes('hidden2-nodes', 64, 'node-hidden');
     f.push(Math.min(Math.abs(row - PATH_ROW) / 20, 1)); // path_dist
     f.push(wave / 20);
     f.push(Math.min(board.length / 100, 1));
-    f.push(Math.min(gold / 500, 1));
+    f.push(Math.min(gold / 1000, 1));
     f.push(Math.min((TOWER_COSTS[towerId] ?? 50) / 500, 1));
-    f.push(Math.min(lives / 20, 1));
+    f.push(Math.min(lives / 100, 1));
     return f;
   }
 
@@ -350,9 +350,9 @@ fillNodes('hidden2-nodes', 64, 'node-hidden');
     f.push({ name: 'dist to path / 20', val: v[11], expl: pathD === 0 ? 'This cell IS on the creep path (row 13) — not placeable, but the model still scores it.' : 'This cell is ' + pathD + ' tile(s) from the creep path (row 13). 0 = on the path, 1 = 20+ tiles away.' });
     f.push({ name: 'wave / 20', val: v[12], expl: 'Wave ' + wave + ' of 20. Early waves favor cheap/economy placements; late waves favor damage.' });
     f.push({ name: 'tower count / 100', val: v[13], expl: board.length + ' towers placed so far. Early game = few towers, late game = dense board.' });
-    f.push({ name: 'gold / 500', val: v[14], expl: gold + ' gold. High gold = you can afford to keep building; low gold = the model should favor cheap towers and economy.' });
+    f.push({ name: 'gold / 1000', val: v[14], expl: gold + ' gold. High gold = you can afford to keep building; low gold = the model should favor cheap towers and economy.' });
     f.push({ name: 'tower cost / 500', val: v[15], expl: shortName + ' costs ' + (TOWER_COSTS[towerId] ?? 50) + 'g. Cheap towers are spammed early; expensive ones are placed deliberately.' });
-    f.push({ name: 'lives / 20', val: v[16], expl: lives + ' lives of 20. Low lives = play safe and defend; full lives = you can afford to leak while building economy.' });
+    f.push({ name: 'lives / 100', val: v[16], expl: lives + ' lives of 100. Low lives = play safe and defend; full lives = you can afford to leak while building economy.' });
     return f;
   }
 

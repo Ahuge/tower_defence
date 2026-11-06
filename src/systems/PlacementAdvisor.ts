@@ -282,9 +282,9 @@ export class PlacementAdvisor {
    *   8-10  board context (min dist, 3x3 density, same-type dist)
    *   11    distance to creep path / 20
    *   12-13 wave / 20, tower count / 100
-   *   14    gold / 500
+   *   14    gold / 1000
    *   15    tower cost / 500
-   *   16    lives / 20
+   *   16    lives / 100
    */
   private extractFeatures(ctx: AdvisorContext, col: number, row: number, towerId: string): number[] {
     const feats: number[] = [];
@@ -347,9 +347,9 @@ export class PlacementAdvisor {
 
     feats.push(ctx.wave / 20.0);
     feats.push(Math.min(board.length / 100.0, 1.0));
-    feats.push(Math.min(ctx.gold / 500.0, 1.0));
+    feats.push(Math.min(ctx.gold / 1000.0, 1.0));
     feats.push(Math.min((ctx.towerCost ?? 50) / 500.0, 1.0));
-    feats.push(Math.min(ctx.lives / 20.0, 1.0));
+    feats.push(Math.min(ctx.lives / 100.0, 1.0));
     return feats;
   }
 

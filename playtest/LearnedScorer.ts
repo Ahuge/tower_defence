@@ -112,9 +112,9 @@ export class LearnedScorer {
    *   8-10  board context (min dist, 3x3 density, same-type dist)
    *   11    distance to creep path / 20
    *   12-13 wave / 20, tower count / 100
-   *   14    gold (ctx.budget) / 500
+   *   14    gold (ctx.budget) / 1000
    *   15    tower cost / 500
-   *   16    lives / 20
+   *   16    lives / 100
    */
   private extractFeatures(ctx: BotContext, cell: Cell, tower: TowerType): number[] {
     const feats: number[] = [];
@@ -183,9 +183,9 @@ export class LearnedScorer {
     // Board features (must match train_gpu.py board_features)
     feats.push((ctx.wave ?? 0) / 20.0);
     feats.push(Math.min(board.length / 100.0, 1.0));
-    feats.push(Math.min((ctx.budget ?? 0) / 500.0, 1.0));
+    feats.push(Math.min((ctx.budget ?? 0) / 1000.0, 1.0));
     feats.push(Math.min(tower.cost / 500.0, 1.0));
-    feats.push(Math.min((ctx.lives ?? 20) / 20.0, 1.0));
+    feats.push(Math.min((ctx.lives ?? 100) / 100.0, 1.0));
 
     return feats;
   }

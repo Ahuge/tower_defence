@@ -110,10 +110,10 @@ def cell_features(col, row, board, tower_id):
 
     return feats
 
-def board_features(board, wave, gold=500.0, lives=20.0, tower_cost=50.0):
+def board_features(board, wave, gold=1000.0, lives=100.0, tower_cost=50.0):
     """Game-state features. Indices 12-16 of FEATURE_NAMES.
 
-    gold/lives default to full (500/20) for legacy examples that don't
+    gold/lives default to full (1000/100) for legacy examples that don't
     record them — placements happened, so they were affordable, and most
     expert data is early/mid game with lives intact. Once captures record
     gold/lives, these become informative; until then they are near-constant
@@ -123,9 +123,9 @@ def board_features(board, wave, gold=500.0, lives=20.0, tower_cost=50.0):
     return [
         wave / 20.0,
         min(len(board) / 100.0, 1.0),
-        min(gold / 500.0, 1.0),
+        min(gold / 1000.0, 1.0),
         min(tower_cost / 500.0, 1.0),
-        min(lives / 20.0, 1.0),
+        min(lives / 100.0, 1.0),
     ]
 
 class PlacementDataset(Dataset):
@@ -138,8 +138,8 @@ class PlacementDataset(Dataset):
             tower_id = ex['towerId']
             chosen_col, chosen_row = ex['chosen']
             wave = ex['wave']
-            gold = ex.get('gold', 500.0)
-            lives = ex.get('lives', 20.0)
+            gold = ex.get('gold', 1000.0)
+            lives = ex.get('lives', 100.0)
             tower_cost = TOWER_COSTS.get(tower_id, 50)
 
             pos_feats = self._feats(chosen_col, chosen_row, board, tower_id,
