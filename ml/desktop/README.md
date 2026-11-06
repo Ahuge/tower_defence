@@ -88,12 +88,12 @@ python ml/desktop/combine_data.py \
 source venv-gpu/bin/activate
 python ml/desktop/train_gpu.py \
   --data ml/desktop/combined.jsonl \
-  --epochs 100 \
+  --epochs 300 \
   --batch-size 256 \
   --out ml/desktop/models/
 ```
 
-Uses CUDA automatically if available. The 4080 should train 100 epochs in under an hour.
+Uses CUDA automatically if available. Val loss levels out around epoch 270, so 300 is the default. The 4070/4080 should train 300 epochs in ~2-3 hours.
 
 ### Step 4: Export for game use
 

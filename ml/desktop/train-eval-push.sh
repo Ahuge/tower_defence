@@ -13,7 +13,7 @@ set -e
 BRANCH="feature/imitation-placement"
 DATA_FILE="${1:-ml/desktop/combined.jsonl}"
 EVAL_NAME="${2:-eval-v2}"
-EPOCHS="${3:-100}"
+EPOCHS="${3:-300}"
 EVAL_FILE="ml/desktop/${EVAL_NAME}.json"
 
 cd "$(git rev-parse --show-toplevel)"

@@ -162,7 +162,7 @@ def train_faction(faction, examples, device, epochs, batch_size, out_dir):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--data', required=True)
-    p.add_argument('--epochs', type=int, default=100)
+    p.add_argument('--epochs', type=int, default=300)
     p.add_argument('--batch-size', type=int, default=256)
     p.add_argument('--out', required=True)
     args = p.parse_args()
