@@ -108,9 +108,33 @@ export function FactionEncyclopediaModal({
         .filter(Boolean);
     }
     if (!faction) return [];
-    return faction.towerIds
+    const base = faction.towerIds
       .map(tId => getTowerType(tId))
       .filter(Boolean);
+    // Include upgrade-branch targets (e.g. Piercer from Turret L2) —
+    // they're not dock-placeable so they're not in towerIds, but players
+    // need to see them. Mark them with their source tower.
+    const seen = new Set(base.map(t => t.id));
+    const branches: { tower: any; fromName: string; branchCost: number }[] = [];
+    for (const t of base) {
+      for (const u of (t.upgrades ?? [])) {
+        for (const b of (u.branches ?? [])) {
+          if (b.transformsTo && !seen.has(b.transformsTo)) {
+            const target = getTowerType(b.transformsTo);
+            if (target) {
+              seen.add(b.transformsTo);
+              branches.push({ tower: target, fromName: t.name, branchCost: target.cost });
+            }
+          }
+        }
+      }
+    }
+    // Attach branch info to the tower objects for display
+    for (const br of branches) {
+      (br.tower as any)._branchFrom = br.fromName;
+      (br.tower as any)._branchCost = br.branchCost;
+    }
+    return [...base, ...branches.map(b => b.tower)];
   }, [faction, towerIds]);
 
   // For chaos mode (custom list), use generic styling
@@ -198,6 +222,15 @@ export function FactionEncyclopediaModal({
                       <span style={{ color: '#ffdd44', marginLeft: '8px', fontSize: '14px' }}>
                         {t.cost}g
                       </span>
+                      {(t as any)._branchFrom && (
+                        <span style={{
+                          background: '#aa66ff', color: '#fff',
+                          fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
+                          marginLeft: '8px', fontWeight: 'bold',
+                        }}>
+                          BRANCH from {(t as any)._branchFrom}
+                        </span>
+                      )}
                       {t.ultimate && (
                         <span style={{
                           background: '#ffaa00', color: '#000',
