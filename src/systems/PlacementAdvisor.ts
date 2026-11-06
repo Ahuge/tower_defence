@@ -184,7 +184,7 @@ export class PlacementAdvisor {
 
   private heatGraphics: Phaser.GameObjects.Graphics;
   private pulseGraphics: Phaser.GameObjects.Graphics;
-  private scoreTexts: Phaser.GameObjects.Text[] = [];
+  private scoreTexts: (Phaser.GameObjects.Text | Phaser.GameObjects.Graphics)[] = [];
 
   private model: ScorerModel | null = null;
   private modelFaction: string | null = null;
@@ -430,6 +430,18 @@ export class PlacementAdvisor {
         { fontSize: '11px', color: it.color, fontFamily: 'monospace', backgroundColor: '#00000088', padding: { x: 2, y: 1 } },
       ).setOrigin(0.5).setDepth(18);
       this.scoreTexts.push(label);
+      // Leader line from the label back to its cell, so a staggered label
+      // is still unambiguously tied to the right cell.
+      const cellCx = gridLeftX(this.topRecs[i].col) + TILE_SIZE / 2;
+      const cellCy = gridY(this.topRecs[i].row) + TILE_SIZE / 2;
+      const dx = positions[i].x - cellCx;
+      const dy = positions[i].y - cellCy;
+      if (Math.hypot(dx, dy) > TILE_SIZE / 2) {
+        const line = this.scene.add.graphics().setDepth(17);
+        line.lineStyle(1, 0xffffff, 0.5);
+        line.lineBetween(positions[i].x, positions[i].y, cellCx, cellCy);
+        this.scoreTexts.push(line);
+      }
     });
   }
 
