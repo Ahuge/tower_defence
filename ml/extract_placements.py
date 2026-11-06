@@ -35,6 +35,14 @@ FILES = [
     'alex_celestial_2026-11-06_1793925216433.jsonl',  # celestial win (Martyr/Prophet rework)
     'alex_celestial_2026-11-06_1793925909289.jsonl',  # celestial win (Martyr/Prophet rework)
     'alex_military_2026-11-06_1793934774558.jsonl',  # military win (sniper/artillery)
+    'alex_celestial_2026-11-06_1793824905407_win.jsonl',  # celestial win (76 acolytes)
+    'alex_mechanical_2026-11-06_1793937065902_win.jsonl',  # mech win (mortar heavy)
+    'alex_mechanical_2026-11-06_1793937875897_win.jsonl',  # mech win (turret/wall)
+    'alex_void_2026-11-06_1793941040026_win.jsonl',  # void win (siphon/gambler/spike)
+    'alex_void_2026-11-06_1793941705026_win.jsonl',  # void win (90 spikes!)
+    'alex_cypherpunk_2026-11-06_1793942302569_win.jsonl',  # cypherpunk win (188 pings)
+    'alex_cypherpunk_2026-11-06_1793942710094_win.jsonl',  # cypherpunk win (mixed)
+    'alex_nature_2026-11-06_1793944333260_win.jsonl',  # nature win (bramble/root/blossom)
 ]
 
 def extract():
@@ -48,6 +56,11 @@ def extract():
         matches = {}
         for line in open(path):
             r = json.loads(line)
+            # Skip capture-v2 event/summary rows (no turnIdx)
+            if r.get('rowType') not in (None, 'turn'):
+                continue
+            if 'turnIdx' not in r:
+                continue
             # Only Hard difficulty wins
             if r.get('difficulty') != 'hard':
                 continue
