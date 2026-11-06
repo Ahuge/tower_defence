@@ -32,6 +32,9 @@ FILES = [
     'alex_void_2026-11-04_1793808508111.jsonl',  # void win (pure gamblers)
     'alex_celestial_2026-11-04_1793808114275.jsonl',  # celestial win (144 acolytes)
     'alex_celestial_2026-11-04_1793808983155.jsonl',  # celestial win (acolytes + smites)
+    'alex_celestial_2026-11-06_1793925216433.jsonl',  # celestial win (Martyr/Prophet rework)
+    'alex_celestial_2026-11-06_1793925909289.jsonl',  # celestial win (Martyr/Prophet rework)
+    'alex_military_2026-11-06_1793934774558.jsonl',  # military win (sniper/artillery)
 ]
 
 def extract():
