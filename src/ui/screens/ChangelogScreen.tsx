@@ -11,6 +11,18 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-11-06',
+    title: 'Placement Advisor fixes: refresh, unplaceable cells, upgrades, SAVE, legend',
+    changes: [
+      'Advisor now re-scores immediately after you place a tower (it used to read a stale tower list and only update when toggled off/on).',
+      'Advisor no longer recommends cells the game would reject — it now runs the same legality check as real placement, including the maze path-blocking test.',
+      'Advisor now recommends upgrades too: the best value upgrade (DPS gained per gold) shows as a cyan ↑ UPG pick in the top 3. Click the tower to apply it.',
+      'When no placement or upgrade is worth the gold, the advisor shows a 💰 SAVE hint — hold gold for a bigger buy.',
+      'New legend under the status bar while the advisor is on, explaining the heatmap colors and the top-pick / upgrade labels.',
+      'Top-3 labels now name the tower ("1 · Gambler 0.62") and the legend states which tower the scores are for. With no dock tower selected, the advisor scores the cheapest affordable tower. Adjacent labels stagger vertically instead of overlapping.',
+    ],
+  },
+  {
+    date: '2026-11-06',
     title: 'Placement Advisor (learned-model heatmap)',
     changes: [
       'New 🎯 Advisor toggle in the status bar (or press G). Scores every empty cell with your faction\'s trained placement model and paints a heatmap on the grid — green = where the model would build, red = unlikely spots.',

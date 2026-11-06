@@ -715,19 +715,7 @@ export class GameScene extends Phaser.Scene {
     GameUIStore.activate(this.matchMode, this.waves?.length ?? 0);
     GameUIStore.registerCallbacks({
       onUpgrade: (tower, branchId) => {
-        if (!this.canModifyTower(tower.col, tower.row)) return;
-        // Re-read options off the live tower so we spend the right
-        // cost even if a stale click event carries an old branch id.
-        const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
-        if (!opt) return;
-        if (this.economy.spend(opt.cost)) {
-          this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
-          tower.upgrade(branchId ?? null);
-          GameUIStore.selectTower(this.towerToStats(tower));
-          const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
-          this.versus?.send(msg);
-          this.circle?.broadcast(msg);
-        }
+        this.upgradeTower(tower, branchId ?? null);
       },
       onSell: (tower) => {
         this.handleRightClick(tower.col, tower.row);
@@ -1600,23 +1588,36 @@ export class GameScene extends Phaser.Scene {
     // lazily on first enable.
     this.placementAdvisor = new PlacementAdvisor(
       this,
-      () => ({
-        faction: this.faction,
-        wave: this.currentWave,
-        placedTowers: this._towers.map(t => ({ towerId: t.typeId, col: t.col, row: t.row })),
-        isCandidateCell: (col, row) =>
-          this.grid.canPlaceTower(col, row)
-          && this.canBuildInZone(col, row)
-          && (this._playerBuildableSet.size === 0 || this._playerBuildableSet.has(`${col},${row}`)),
-        towerTypeId: this.selectedBuildType ?? this.activeTowerIds[0] ?? null,
-        gold: this.economy.gold,
-        lives: this.lives,
-        towerCost: (() => {
-          const id = this.selectedBuildType ?? this.activeTowerIds[0] ?? null;
-          return id ? getTowerType(id).cost : null;
-        })(),
-        allPaths: this.allPaths,
-      }),
+      () => {
+        const advId = this.getAdvisorTowerTypeId();
+        return {
+          faction: this.faction,
+          wave: this.currentWave,
+          // NOTE: read through the `towers` getter, NOT `this._towers`
+          // directly. `_towers` is a pre-TowerManager fallback that stays
+          // empty once the manager exists — the advisor's refresh gate
+          // compared its length, so it never saw a placement and never
+          // re-scored until toggled off/on (bug, 2026-11-06).
+          placedTowers: this.towers.map(t => {
+            const opt = t.getUpgradeOptions()[0] ?? null;
+            return {
+              towerId: t.typeId, name: t.displayName ?? t.typeDef.name,
+              col: t.col, row: t.row,
+              level: t.level, damage: t.damage, fireRate: t.fireRate,
+              upgradeCost: opt ? opt.cost : null,
+              nextDamage: opt ? opt.damage : null,
+              nextFireRate: opt ? opt.fireRate : null,
+            };
+          }),
+          isCandidateCell: (col, row) => this.canPlaceSelectedTowerAt(col, row),
+          towerTypeId: advId,
+          towerName: advId ? getTowerType(advId).name : null,
+          gold: this.economy.gold,
+          lives: this.lives,
+          towerCost: advId ? getTowerType(advId).cost : null,
+          allPaths: this.allPaths,
+        };
+      },
       (msg) => this.eventLog.gameMessage(msg),
     );
 
@@ -2675,7 +2676,18 @@ export class GameScene extends Phaser.Scene {
     switch (this.selectionMode) {
       case 'build':
         if (existingTower) {
-          this.enterInspectMode(existingTower);
+          // Placement Advisor: clicking a tower the advisor flagged
+          // for upgrade applies the upgrade (default linear option)
+          // instead of opening inspect. Only when the advisor is on
+          // and this exact cell is a current upgrade recommendation.
+          const upg = this.placementAdvisor?.isEnabled()
+            ? this.placementAdvisor.getTopUpgradeAt(existingTower.col, existingTower.row)
+            : null;
+          if (upg) {
+            this.upgradeTower(existingTower, null);
+          } else {
+            this.enterInspectMode(existingTower);
+          }
         } else {
           this.tryBuildTower(col, row);
         }
@@ -3593,6 +3605,12 @@ export class GameScene extends Phaser.Scene {
 
     if (!result) return;
 
+    // Placement Advisor: re-score now that the board changed. The
+    // advisor's own refresh gate would catch this via its board
+    // signature, but forcing here keeps the overlay in sync on the
+    // same frame as the placement.
+    this.placementAdvisor?.refresh(true);
+
     // Track tower ownership for circle co-op
     if (this.circle) {
       this.towerOwners.set(`${col},${row}`, this.circle.playerIndex);
@@ -3614,6 +3632,31 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  /**
+   * Shared upgrade path: DOM panel button, Placement Advisor upgrade
+   * recommendation click, and anything else that upgrades a tower.
+   * Spends the live option cost, captures the action, applies the
+   * upgrade, and broadcasts. Returns true when the upgrade happened.
+   */
+  private upgradeTower(tower: Tower, branchId: string | null): boolean {
+    if (!this.canModifyTower(tower.col, tower.row)) return false;
+    // Re-read options off the live tower so we spend the right
+    // cost even if a stale click event carries an old branch id.
+    const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
+    if (!opt) return false;
+    if (!this.economy.spend(opt.cost)) return false;
+    this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
+    tower.upgrade(branchId ?? null);
+    GameUIStore.selectTower(this.towerToStats(tower));
+    const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
+    this.versus?.send(msg);
+    this.circle?.broadcast(msg);
+    // Placement Advisor: an upgrade changes tower levels, so the
+    // board signature moved — re-score now.
+    this.placementAdvisor?.refresh(true);
+    return true;
   }
 
   // ─── Place-and-approve gate (commit 3) ───────────────────────
@@ -3647,6 +3690,7 @@ export class GameScene extends Phaser.Scene {
       return this.allPaths;
     });
     if (!result) return;
+    this.placementAdvisor?.refresh(true);
     if (this.circle) {
       this.towerOwners.set(`${spec.col},${spec.row}`, this.circle.playerIndex);
       this.circle.broadcast({ type: 'tower_placed', towerId: towerType.id, col: spec.col, row: spec.row });
@@ -3838,10 +3882,20 @@ export class GameScene extends Phaser.Scene {
     if (this.paused) return;
 
     // Placement Advisor: pulse the top-3 outline; re-score when the
-    // board changed (refresh() no-ops when tower/wave/count are
-    // unchanged, so this is cheap per frame).
+    // board changed (refresh() no-ops when the board signature is
+    // unchanged, so this is cheap per frame). Sync the SAVE hint and
+    // the scored-tower display to the status-bar legend.
     this.placementAdvisor?.update(time);
     this.placementAdvisor?.refresh();
+    const advisorOn = this.placementAdvisor?.isEnabled() === true;
+    GameUIStore.setAdvisorSave(
+      advisorOn && this.placementAdvisor!.isSaveRecommended(),
+    );
+    const advTowerId = advisorOn ? this.getAdvisorTowerTypeId() : null;
+    GameUIStore.setAdvisorTower(advTowerId
+      ? { name: getTowerType(advTowerId).name, cost: getTowerType(advTowerId).cost }
+      : null,
+    );
 
     // Phase B (aspect refactor): tick the per-mission lifecycle aspect.
     // Legacy `_finaleController` / `_sabotageController` / etc. ticks
@@ -5400,6 +5454,114 @@ export class GameScene extends Phaser.Scene {
   private canBuildInZone(col: number, row: number): boolean {
     if (!this.circleMyZone) return true; // no zone restriction
     return this.circleMyZone.has(`${col},${row}`);
+  }
+
+  /**
+   * Which tower the Placement Advisor scores for. The selected dock
+   * tower when one is picked; otherwise the cheapest affordable tower
+   * in the dock (so the advisor always has something sensible to
+   * recommend even in inspect/none mode), falling back to the
+   * cheapest tower overall when nothing is affordable. The advisor's
+   * refresh gate compares this id, so a fallback change (e.g. gold
+   * crossing a cost threshold mid-wave) re-scores automatically.
+   */
+  private getAdvisorTowerTypeId(): string | null {
+    if (this.selectedBuildType) return this.selectedBuildType;
+    const costOf = (id: string): number => {
+      const raw = getTowerType(id).cost;
+      return this.towerMgr ? this.towerMgr.getEffectiveCost(raw) : raw;
+    };
+    const affordable = this.activeTowerIds.filter(id =>
+      this.economy.canAfford(costOf(id)),
+    );
+    const pool = affordable.length > 0 ? affordable : this.activeTowerIds;
+    let best: string | null = null;
+    let bestCost = Infinity;
+    for (const id of pool) {
+      const cost = costOf(id);
+      if (cost < bestCost) { bestCost = cost; best = id; }
+    }
+    return best;
+  }
+
+  /**
+   * Full "would tryBuildTower succeed here" check for the currently
+   * selected tower type — the exact legality the real placement path
+   * enforces (tryBuildTower gates + TowerManager.placeTower gates).
+   * Used by the Placement Advisor so it never recommends a cell the
+   * game would reject. The old advisor check (canPlaceTower +
+   * canBuildInZone + buildable-set) missed the path-blocking test:
+   * TowerManager tentatively places, recalculates paths, and rolls
+   * back when a placement would sever every entry→exit route — so
+   * the advisor happily recommended maze-closing cells (bug,
+   * 2026-11-06: three 0.62 cells at the left edge that all failed
+   * on click).
+   */
+  canPlaceSelectedTowerAt(col: number, row: number): boolean {
+    // Same tower the advisor scores for — selected dock tower, else
+    // cheapest affordable fallback (see getAdvisorTowerTypeId).
+    const typeId = this.getAdvisorTowerTypeId();
+    if (!typeId) return false;
+    if (this.matchMode === 'attacker') return false;
+    if (!this.canBuildInZone(col, row)) return false;
+    if (this._playerBuildableSet.size > 0 && !this._playerBuildableSet.has(`${col},${row}`)) return false;
+
+    const towerType = getTowerType(typeId);
+
+    // Mission restrictions (same as tryBuildTower).
+    if (this.missionContext?.restrictions) {
+      const r = this.missionContext.restrictions;
+      if (r.allowedTowerIds && !r.allowedTowerIds.includes(towerType.id)) return false;
+      if (r.allowedFactions && towerType.faction && !r.allowedFactions.includes(towerType.faction)) return false;
+      if (r.noWalls && isWallTower(towerType.id)) return false;
+      if (r.maxTowers !== undefined) {
+        const placed = this.towers.filter(t => !isWallTower(t.typeId)).length;
+        if (placed >= r.maxTowers) return false;
+      }
+    }
+
+    // Affordability (same as TowerManager.placeTower).
+    if (!this.economy.canAfford(this.towerMgr.getEffectiveCost(towerType.cost))) return false;
+
+    // Mobile units don't occupy grid cells or block paths — they only
+    // need an in-bounds, non-blocked cell (same as TowerManager).
+    if (towerType.traits.some(t => t.id === 'mobile_unit')) {
+      return col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS
+        && this.grid.cells[row][col] !== CellType.Blocked;
+    }
+
+    if (!this.grid.canPlaceTower(col, row)) return false;
+    // Path-blocking: placing here must leave every route open.
+    return !this.wouldBlockPath(col, row);
+  }
+
+  /**
+   * True if occupying (col,row) with a tower would sever every path.
+   * Temporarily marks the cell as Tower, runs the same pathfinding
+   * recalculatePaths() uses, then restores the cell. Pure w.r.t.
+   * scene state: allPaths / currentPath are never touched.
+   * Cost is one BFS per entry→exit pair — fine inside the advisor's
+   * gated refresh, which runs only when the board actually changes.
+   */
+  private wouldBlockPath(col: number, row: number): boolean {
+    const prev = this.grid.cells[row][col];
+    this.grid.cells[row][col] = CellType.Tower;
+    try {
+      if (this.mapDef?.spawners && this.mapDef.spawners.length > 0) {
+        for (const spawner of this.mapDef.spawners) {
+          if (!findPathWithWaypoints(this.grid, spawner.entry, spawner.waypoints, spawner.exit)) return true;
+        }
+        return false;
+      }
+      for (const entry of this.grid.entries) {
+        for (const exit of this.grid.exits) {
+          if (!findPath(this.grid, entry, exit)) return true;
+        }
+      }
+      return false;
+    } finally {
+      this.grid.cells[row][col] = prev;
+    }
   }
 
   /** Draw zone tint overlay on the grid for circle co-op */

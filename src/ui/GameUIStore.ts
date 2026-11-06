@@ -315,6 +315,15 @@ export interface GameUIState {
    *  mirrors its internal toggle here so the status-bar button can
    *  show the active state. */
   advisorActive: boolean;
+  /** Placement Advisor recommends saving gold: the best placement
+   *  and best upgrade both score below threshold. Drives the SAVE
+   *  pill in the advisor legend. GameScene syncs it every frame. */
+  advisorSave: boolean;
+  /** Tower the advisor is currently scoring placements for
+   *  ({name, cost}). Shown in the advisor legend so the player
+   *  knows which tower the recommendations are for. Null when the
+   *  advisor is off or no tower is available. */
+  advisorTower: { name: string; cost: number } | null;
   /** Continue-ad offer. Set when the player's lives hit zero and we
    *  can still legitimately offer a revive. Drives the
    *  ContinueOfferModal in the DOM layer; GameScene sets it and pauses
@@ -658,6 +667,8 @@ class GameUIStoreClass {
       sabotageHud: null,
       placementGhost: null,
       advisorActive: false,
+      advisorSave: false,
+      advisorTower: null,
     };
   }
 
@@ -1033,6 +1044,23 @@ class GameUIStoreClass {
   setAdvisorActive(active: boolean): void {
     if (this.state.advisorActive === active) return;
     this.state = { ...this.state, advisorActive: active };
+    this.notify();
+  }
+
+  /** GameScene mirrors the advisor's SAVE recommendation here.
+   *  Idempotent — called every frame from GameScene.update. */
+  setAdvisorSave(save: boolean): void {
+    if (this.state.advisorSave === save) return;
+    this.state = { ...this.state, advisorSave: save };
+    this.notify();
+  }
+
+  /** GameScene mirrors the tower the advisor scores for here.
+   *  Idempotent on name+cost — called every frame. */
+  setAdvisorTower(tower: { name: string; cost: number } | null): void {
+    const prev = this.state.advisorTower;
+    if (prev?.name === tower?.name && prev?.cost === tower?.cost) return;
+    this.state = { ...this.state, advisorTower: tower };
     this.notify();
   }
 
