@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Placement Scorer — Model Architecture</title>
+<style>
+  body { background: #0a0a0f; color: #ddd; font-family: -apple-system, 'Segoe UI', sans-serif; margin: 0; padding: 24px; }
+  h1 { color: #fff; margin: 0 0 4px 0; font-size: 22px; }
+  .sub { color: #888; margin-bottom: 24px; font-size: 14px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .diagram { background: #111118; border: 1px solid #222; border-radius: 12px; padding: 24px; margin-bottom: 24px; overflow-x: auto; }
+  .layers { display: flex; align-items: stretch; gap: 0; min-width: 900px; }
+  .layer { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0 8px; }
+  .layer-label { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px; text-align: center; }
+  .layer-sub { font-size: 11px; color: #888; margin-bottom: 12px; text-align: center; }
+  .nodes { display: flex; flex-direction: column; gap: 3px; align-items: center; flex: 1; justify-content: center; }
+  .node { border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; }
+  .node-input { width: 28px; height: 28px; border-color: #4a9eff; background: #1a2a4a; color: #88bbff; }
+  .node-hidden { width: 22px; height: 22px; border-color: #ffaa00; background: #2a2210; color: #ffcc44; }
+  .node-output { width: 36px; height: 36px; border-color: #44dd88; background: #0a2a1a; color: #66ffaa; font-size: 11px; }
+  .node-dropout { width: 18px; height: 18px; border-color: #aa66ff; background: #1a0a2a; color: #cc88ff; border-style: dashed; }
+  .arrow { display: flex; align-items: center; justify-content: center; color: #555; font-size: 20px; padding: 0 4px; flex-shrink: 0; }
+  .arrow-label { font-size: 10px; color: #666; text-align: center; margin-top: 4px; }
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .card { background: #111118; border: 1px solid #222; border-radius: 12px; padding: 20px; }
+  .card h2 { color: #fff; font-size: 16px; margin: 0 0 12px 0; }
+  .card h3 { color: #aaa; font-size: 13px; margin: 16px 0 8px 0; }
+  .feature-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+  .feature-list li { padding: 4px 0; border-bottom: 1px solid #1a1a22; display: flex; justify-content: space-between; }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list .fname { color: #ccc; }
+  .feature-list .fdesc { color: #888; font-size: 12px; }
+  .stat { display: inline-block; background: #1a1a22; border-radius: 6px; padding: 6px 12px; margin: 0 8px 8px 0; font-size: 13px; }
+  .stat b { color: #fff; }
+  .stat span { color: #888; }
+  .flow { font-size: 13px; line-height: 1.7; color: #bbb; }
+  .flow b { color: #fff; }
+  .flow code { background: #1a1a22; padding: 1px 6px; border-radius: 4px; font-size: 12px; color: #ffcc44; }
+  .legend { display: flex; gap: 16px; margin-top: 16px; font-size: 12px; color: #888; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Placement Scorer — Model Architecture</h1>
+  <div class="sub">One MLP per faction (12 models: 11 factions + chaos). Each predicts P(good placement) for a given cell.</div>
+
+  <div class="diagram">
+    <div class="layers">
+      <!-- Input -->
+      <div class="layer">
+        <div class="layer-label">Input</div>
+        <div class="layer-sub">13 features</div>
+        <div class="nodes" id="input-nodes"></div>
+      </div>
+      <div class="arrow">→<div class="arrow-label">1,792<br>params</div></div>
+      <!-- Hidden 1 -->
+      <div class="layer">
+        <div class="layer-label">Hidden 1</div>
+        <div class="layer-sub">128 neurons · ReLU</div>
+        <div class="nodes" id="hidden1-nodes"></div>
+      </div>
+      <div class="arrow">→<div class="arrow-label">8,256<br>params</div></div>
+      <!-- Hidden 2 -->
+      <div class="layer">
+        <div class="layer-label">Hidden 2</div>
+        <div class="layer-sub">64 neurons · ReLU</div>
+        <div class="nodes" id="hidden2-nodes"></div>
+      </div>
+      <div class="arrow">→<div class="arrow-label">65<br>params</div></div>
+      <!-- Output -->
+      <div class="layer">
+        <div class="layer-label">Output</div>
+        <div class="layer-sub">Sigmoid → probability</div>
+        <div class="nodes">
+          <div class="node node-output">P</div>
+          <div style="font-size: 11px; color: #888; margin-top: 8px; text-align: center;">P(good<br>placement)</div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="legend-dot" style="border-color: #4a9eff; background: #1a2a4a;"></span> Input feature</span>
+      <span><span class="legend-dot" style="border-color: #ffaa00; background: #2a2210;"></span> Hidden neuron (ReLU)</span>
+      <span><span class="legend-dot" style="border-color: #aa66ff; background: #1a0a2a; border-style: dashed;"></span> Dropout 0.3 (training only)</span>
+      <span><span class="legend-dot" style="border-color: #44dd88; background: #0a2a1a;"></span> Output (Sigmoid)</span>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 24px;">
+    <span class="stat"><b>10,113</b> <span>parameters per model</span></span>
+    <span class="stat"><b>12</b> <span>models (one per faction)</span></span>
+    <span class="stat"><b>121,356</b> <span>total parameters</span></span>
+    <span class="stat"><b>BCELoss</b> <span>binary cross-entropy</span></span>
+    <span class="stat"><b>AdamW</b> <span>lr 0.001, wd 0.01</span></span>
+    <span class="stat"><b>Cosine</b> <span>LR schedule, 300 epochs</span></span>
+    <span class="stat"><b>5:1</b> <span>negatives per positive</span></span>
+  </div>
+
+  <div class="features">
+    <div class="card">
+      <h2>Input Features (13)</h2>
+      <h3>Position (8)</h3>
+      <ul class="feature-list">
+        <li><span class="fname">col / 36</span><span class="fdesc">normalized column</span></li>
+        <li><span class="fname">row / 26</span><span class="fdesc">normalized row</span></li>
+        <li><span class="fname">left / mid / right</span><span class="fdesc">column third (one-hot ×3)</span></li>
+        <li><span class="fname">top / mid / bottom</span><span class="fdesc">row third (one-hot ×3)</span></li>
+      </ul>
+      <h3>Board context (3)</h3>
+      <ul class="feature-list">
+        <li><span class="fname">min dist to tower / 10</span><span class="fdesc">nearest existing tower</span></li>
+        <li><span class="fname">3×3 density / 5</span><span class="fdesc">towers in adjacent cells</span></li>
+        <li><span class="fname">dist to same-type / 10</span><span class="fdesc">nearest tower of same type</span></li>
+      </ul>
+      <h3>Game state (2)</h3>
+      <ul class="feature-list">
+        <li><span class="fname">wave / 20</span><span class="fdesc">current wave</span></li>
+        <li><span class="fname">tower count / 100</span><span class="fdesc">towers already placed</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>How It Works</h2>
+      <div class="flow">
+        <p>For each candidate cell, the model scores <b>how likely Alex would place a tower there</b> given the current board state.</p>
+        <p><b>Training:</b> positive examples are cells where Alex (or a winning bot) actually placed a tower. Negative examples are 5 random other cells from the same board state. The model learns to distinguish good placements from random ones.</p>
+        <p><b>Inference:</b> StrategistBrain evaluates all candidate cells through the model, picks the highest-scoring cell above a threshold (0.3). If no cell scores high enough, it falls back to hand-coded logic.</p>
+        <p><b>What's missing:</b> the model sees <b>where</b> towers go but not <b>when</b> in the wave cycle, <b>what</b> creeps are coming, or <b>how much gold</b> is available. It also can't see the path — it doesn't know if a cell blocks the maze. These are the main limitations.</p>
+        <p><b>Per-faction:</b> each faction gets its own model because placement patterns are faction-specific (void gamblers cluster at entry, psionic probes interleave with mesmers, etc.). A single shared model would blur these patterns.</p>
+        <p><b>Training data:</b> 897,947 examples in v5 — synthetic bot wins, expert replays (×10 weight), augmented expert (×3), procgen patterns (×2), directed search (×5).</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Draw representative nodes (not all 128/64 — show a sample)
+function fillNodes(id, count, cls, labels) {
+  const el = document.getElementById(id);
+  const show = Math.min(count, 13);
+  for (let i = 0; i < show; i++) {
+    const d = document.createElement('div');
+    d.className = 'node ' + cls;
+    d.textContent = labels ? labels[i] || '' : '';
+    el.appendChild(d);
+  }
+  if (count > show) {
+    const dots = document.createElement('div');
+    dots.style.cssText = 'color: #555; font-size: 14px; letter-spacing: 2px;';
+    dots.textContent = '⋮';
+    el.appendChild(dots);
+    const last = document.createElement('div');
+    last.className = 'node ' + cls;
+    last.textContent = '…';
+    el.appendChild(last);
+    const total = document.createElement('div');
+    total.style.cssText = 'font-size: 10px; color: #666; margin-top: 4px;';
+    total.textContent = count + ' total';
+    el.appendChild(total);
+  }
+}
+fillNodes('input-nodes', 13, 'node-input', ['x','y','L','M','R','T','M','B','d','ρ','s','w','n']);
+fillNodes('hidden1-nodes', 128, 'node-hidden');
+fillNodes('hidden2-nodes', 64, 'node-hidden');
+</script>
+</body>
+</html>
