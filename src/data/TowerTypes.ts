@@ -449,11 +449,11 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       // which swaps the tower's typeDef to nature_razor_bramble
       // (see the sibling definition below for Razor's stats).
       {
-        level: 2, cost: 15, damage: 2, range: 1.2, fireRate: 350,
+        level: 2, cost: 15, damage: 4, range: 1.3, fireRate: 350,
         branchLabel: 'Hedge',
         branches: [{ id: 'razor', label: 'Razor Bramble', transformsTo: 'nature_razor_bramble' }],
       },
-      { level: 3, cost: 25, damage: 3, range: 1.5, fireRate: 300 },
+      { level: 3, cost: 25, damage: 6, range: 1.5, fireRate: 300 },
     ],
   }),
   // Razor Bramble — not in `Factions.nature.towerIds`, so it can't
