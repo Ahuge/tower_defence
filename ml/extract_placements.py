@@ -43,6 +43,7 @@ FILES = [
     'alex_cypherpunk_2026-11-06_1793942302569_win.jsonl',  # cypherpunk win (188 pings)
     'alex_cypherpunk_2026-11-06_1793942710094_win.jsonl',  # cypherpunk win (mixed)
     'alex_nature_2026-11-06_1793944333260_win.jsonl',  # nature win (bramble/root/blossom)
+    'alex_nature_2026-11-06_1793945760940_win_splash.jsonl',  # nature win (splash Hedge)
 ]
 
 def extract():
