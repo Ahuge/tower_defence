@@ -205,17 +205,81 @@ question.
 
 A placement policy: given (board state, tower to place), where to put it.
 
-**Input features** (per candidate cell):
+**Input features** (17 per candidate cell — see `ml/desktop/model-architecture.html`
+for the interactive diagram and explorer):
 - Normalized position (col/36, row/26)
-- Board region (left/mid/right, top/mid/bottom)
+- Board region one-hots (left/mid/right, top/mid/bottom)
 - Distance to nearest tower, tower density nearby
 - Distance to nearest same-type tower
+- Distance to creep path (plains: row 13) / 20
 - Wave, tower count (global)
+- Gold / 500, tower cost / 500, lives / 20
 
-**Architecture**: MLP 13 -> 128 -> 64 -> 1 with dropout.
+**Architecture**: MLP 17 -> 128 -> 64 -> 1 with dropout 0.3.
 Bigger than the CPU version (which was 13 -> 64 -> 32 -> 1).
 
 **Loss**: Binary cross-entropy. Alex's chosen cell = 1, random alternatives = 0.
+
+**Feature parity**: the 17 features must be computed identically in Python
+(`ml/desktop/train_gpu.py`, `ml/train_placement.py`) and TypeScript
+(`playtest/LearnedScorer.ts`, `src/systems/PlacementAdvisor.ts`). The order
+is defined by `FEATURE_NAMES` in train_gpu.py. A cross-language parity test
+(same board state in both) is the way to verify after any change.
+
+**Legacy data caveat**: existing training examples don't record gold or
+lives, so those default to full (500/20) during training — near-constant
+until new captures include them. Tower cost and path distance are derived
+from data already present (tower id, row), so they're informative on legacy
+data too. Follow-ups: record gold/lives in the capture format, and in the
+headless data generators (they know budget/lives at decision time).
+
+**Stale models**: models in `playtest/models/` trained on the old 13-feature
+set will NOT work with the 17-feature code — the TypeScript side detects
+the `input_dim` mismatch, warns once, and returns neutral scores (0.5)
+instead of NaN. Retrain + re-export after any feature change.
+
+### Model architecture page
+
+`ml/desktop/model-architecture.html` — open directly in a browser. Shows the
+network diagram (with dropout layers), the full feature list with
+explanations, and an interactive explorer: click any cell to see all 17
+features with plain-English meanings, plus gold/lives/wave sliders. The
+**model recommendations** toggle loads the real trained model
+(`playtest/models/scorer-<faction>.json`) and scores every cell — top 5
+outlined with scores, heatmap overlay. Needs HTTP serving for fetch
+(`python3 -m http.server` from the repo root); from `file://` it offers a
+manual file load instead. Old 13-feature models are supported (features are
+sliced to the old layout).
+
+### Imitation accuracy — does the model place like Alex?
+
+```bash
+python ml/desktop/imitation_accuracy.py --models ml/desktop/models/ [--faction void] [--limit 200]
+```
+
+For each expert placement, scores Alex's actual cell against every other
+legal cell and reports how often his choice ranks top 1 / 3 / 5, per
+faction and overall. Random guessing over ~900 cells would be ~0.1%.
+Top-3/5 above ~50% means the model genuinely learned his style.
+
+### Feature ablation — which features matter?
+
+```bash
+# Single feature (void, 50 epochs)
+python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --feature gold
+
+# Every group, ranked by val-loss delta
+python ml/desktop/ablate.py --data ml/desktop/combined-v5.jsonl --all --faction psionic
+```
+
+Retrains with a feature (or group) zeroed out and compares best val loss
+to the full-feature baseline. Same seeds for both runs, so deltas are
+signal, not sampling noise. Models go to a temp dir — ablation never
+clobbers production models. Groups: `position`, `col_region`
+(`left_mid_right`), `row_region` (`top_mid_bottom`), `region`,
+`min_dist`, `density`, `same_dist`, `path_dist`, `wave`, `tower_count`,
+`gold`, `tower_cost`, `lives`. Deltas at 50 epochs are noisy — re-run
+interesting ones with `--epochs 100+` before removing a feature for real.
 
 ## Expected results
 

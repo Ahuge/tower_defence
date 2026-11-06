@@ -27,7 +27,7 @@ interface LayerWeights {
 interface ScorerModel {
   faction: string;
   input_dim: number;
-  layers: LayerWeights[];  // 3 layers: input->64, 64->32, 32->1
+  layers: LayerWeights[];  // 3 layers: input->128, 128->64, 64->1
 }
 
 const COLS = 36;
@@ -36,6 +36,7 @@ const ROWS = 26;
 export class LearnedScorer {
   private models = new Map<string, ScorerModel>();
   private enabledFactions = new Set<string>();
+  private warnedDimMismatch = new Set<string>();
 
   constructor(factions?: string[]) {
     // Load models for specified factions (or all if not specified)
@@ -69,8 +70,18 @@ export class LearnedScorer {
     const faction = ctx.faction as string;
     const model = this.models.get(faction);
     if (!model) return 0.5;  // fallback: neutral score
-    
+
     const feats = this.extractFeatures(ctx, cell, tower);
+    // Stale models (trained on the old 13-feature set) would produce NaN
+    // because the first layer has fewer weights than features. Guard here
+    // instead of silently poisoning scores — retrain + re-export to fix.
+    if (model.input_dim !== feats.length) {
+      if (!this.warnedDimMismatch.has(faction)) {
+        this.warnedDimMismatch.add(faction);
+        console.warn(`LearnedScorer: ${faction} model expects ${model.input_dim} features but got ${feats.length} — retrain and re-export (see ml/desktop/train_gpu.py). Using neutral scores.`);
+      }
+      return 0.5;
+    }
     return this.forward(model, feats);
   }
 
@@ -94,14 +105,25 @@ export class LearnedScorer {
     return best;
   }
 
+  /**
+   * 17 features, in the canonical order shared with train_gpu.py
+   * (FEATURE_NAMES), PlacementAdvisor and model-architecture.html:
+   *   0-7   position + region one-hots
+   *   8-10  board context (min dist, 3x3 density, same-type dist)
+   *   11    distance to creep path / 20
+   *   12-13 wave / 20, tower count / 100
+   *   14    gold (ctx.budget) / 500
+   *   15    tower cost / 500
+   *   16    lives / 20
+   */
   private extractFeatures(ctx: BotContext, cell: Cell, tower: TowerType): number[] {
     const feats: number[] = [];
     const { col, row } = cell;
     const board = ctx.placedTowers.map(p => ({
       towerId: p.towerId, col: p.col, row: p.row
     }));
-    
-    // Cell features (must match train_placement.py cell_features)
+
+    // Cell features (must match train_gpu.py cell_features)
     feats.push(col / COLS);
     feats.push(row / ROWS);
     feats.push(col < 12 ? 1.0 : 0.0);
@@ -110,7 +132,7 @@ export class LearnedScorer {
     feats.push(row < 9 ? 1.0 : 0.0);
     feats.push(row >= 9 && row < 17 ? 1.0 : 0.0);
     feats.push(row >= 17 ? 1.0 : 0.0);
-    
+
     if (board.length > 0) {
       let minDist = Infinity;
       for (const b of board) {
@@ -118,13 +140,13 @@ export class LearnedScorer {
         if (d < minDist) minDist = d;
       }
       feats.push(Math.min(minDist / 10.0, 1.0));
-      
+
       let nearby = 0;
       for (const b of board) {
         if (Math.abs(b.col - col) <= 1 && Math.abs(b.row - row) <= 1) nearby++;
       }
       feats.push(Math.min(nearby / 5.0, 1.0));
-      
+
       const same = board.filter(b => b.towerId === tower.id);
       if (same.length > 0) {
         let d = Infinity;
@@ -139,11 +161,32 @@ export class LearnedScorer {
     } else {
       feats.push(1.0, 0.0, 1.0);
     }
-    
-    // Board features (must match train_placement.py board_features)
+
+    // Distance to the creep path (index 11). On plains the path runs the
+    // full row 13, so min distance to a path point equals |row - 13| —
+    // exactly what train_gpu.py computes. Fall back to that when the
+    // driver hasn't supplied paths.
+    let pathDist = Math.abs(row - 13) / 20.0;
+    if (ctx.allPaths) {
+      let minPath = Infinity;
+      for (const path of ctx.allPaths) {
+        if (!path) continue;
+        for (const p of path) {
+          const d = Math.hypot(col - p.col, row - p.row);
+          if (d < minPath) minPath = d;
+        }
+      }
+      if (minPath !== Infinity) pathDist = minPath / 20.0;
+    }
+    feats.push(Math.min(pathDist, 1.0));
+
+    // Board features (must match train_gpu.py board_features)
     feats.push((ctx.wave ?? 0) / 20.0);
     feats.push(Math.min(board.length / 100.0, 1.0));
-    
+    feats.push(Math.min((ctx.budget ?? 0) / 500.0, 1.0));
+    feats.push(Math.min(tower.cost / 500.0, 1.0));
+    feats.push(Math.min((ctx.lives ?? 20) / 20.0, 1.0));
+
     return feats;
   }
 

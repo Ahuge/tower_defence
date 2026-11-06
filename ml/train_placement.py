@@ -30,6 +30,55 @@ MODEL_DIR.mkdir(exist_ok=True)
 # Grid dimensions
 COLS, ROWS = 36, 26
 
+# Plains map path is row 13. See ml/desktop/train_gpu.py for the canonical
+# feature list — this file mirrors it (17 features).
+PATH_ROW = 13
+
+TOWER_COSTS = {
+    'acolyte_blessing_aura': 45, 'adjacency_buff': 55, 'alien_acid': 100, 'alien_brood_mother': 80,
+    'alien_hive_spire': 180, 'alien_overmind': 700, 'alien_spitter': 12, 'alien_stinger': 25,
+    'alien_swarm_node': 60, 'alien_swarmling': 15, 'arcane_bolt': 25, 'arcane_conduit': 40,
+    'arcane_drain': 120, 'arcane_focus': 90, 'arcane_frost': 35, 'arcane_meteor': 200,
+    'arcane_nova': 700, 'arcane_storm': 55, 'arcane_ult_throne': 0, 'armor_scaling_damage': 70,
+    'armor_shred_on_hit': 250, 'arrow': 20, 'barbed_wire': 30, 'bonus_vs_boss': 90,
+    'bonus_vs_mage': 130, 'burn_dot': 160, 'cannon': 35, 'celestial_absolution': 600,
+    'celestial_acolyte': 25, 'celestial_martyr': 120, 'celestial_prophet': 180, 'celestial_smite': 80,
+    'celestial_ward': 40, 'chain_damage': 150, 'coalition_root': 100, 'coalition_wall': 10,
+    'commander_aura': 70, 'conduit_link': 90, 'confuse_on_hit': 50, 'crit_aura': 75,
+    'crit_chance': 100, 'cyber_backdoor': 90, 'cyber_ddos': 150, 'cyber_firewall': 35,
+    'cyber_ping': 15, 'cyber_rootkit': 300, 'cyber_virus': 55, 'cyber_zeroday': 800,
+    'damage_amp_on_hit': 180, 'damage_aura': 35, 'damage_variance': 40, 'decay_per_wave': 50,
+    'direct_damage': 40, 'faction_speed_aura': 55, 'firewall_link': 40, 'gold_on_hit': 55,
+    'gold_per_kill_range': 65, 'hack_reverse': 80, 'harmonic_amplifier': 30, 'harmonic_conduit': 100,
+    'harmonic_crescendo': 650, 'harmonic_critical_mass': 80, 'harmonic_quickener': 40, 'harmonic_reach': 50,
+    'harmonic_resonator': 20, 'infernal_apocalypse': 900, 'infernal_bomber': 20, 'infernal_hellfire': 45,
+    'infernal_immolate': 200, 'infernal_imp': 12, 'infernal_soul_drain': 90, 'jackpot': 30,
+    'life_execute': 10, 'life_on_kill': 30, 'life_scaling': 150, 'mech_flamethrower': 40,
+    'mech_mortar': 120, 'mech_piercer': 45, 'mech_railgun': 300, 'mech_shredder': 150,
+    'mech_tesla': 80, 'mech_titan': 800, 'mech_turret': 30, 'mech_wall': 8,
+    'mil_artillery': 220, 'mil_brawler': 55, 'mil_commander': 750, 'mil_heavy': 120,
+    'mil_rifleman': 40, 'mil_sandbag': 4, 'mil_sniper': 85, 'mil_wire': 25,
+    'mobile_unit': 15, 'nature_blossom': 60, 'nature_bramble': 12, 'nature_elder': 450,
+    'nature_razor_bramble': 15, 'nature_root': 25, 'nature_spore': 100, 'nature_sunroot': 140,
+    'nature_vine': 160, 'nature_viper': 30, 'pierce_delivery': 250, 'piercer': 60,
+    'poison_dot': 90, 'psi_mesmer': 45, 'psi_mind_spike': 150, 'psi_overmind': 750,
+    'psi_probe': 20, 'psi_terror': 80, 'ramp_up': 35, 'range_aura': 55,
+    'rate_aura': 45, 'razor': 25, 'root_on_hit': 120, 'siphons_pylons': 80,
+    'slow': 25, 'slow_aura': 75, 'slow_on_hit': 40, 'sniper': 50,
+    'splash_damage': 100, 'teleport_delivery': 100, 'true_damage': 25, 'virus_spread': 60,
+    'void_gambler': 15, 'void_oblivion': 900, 'void_rift': 120, 'void_siphon': 50,
+    'void_spike': 30,
+}
+
+
+# Canonical feature order — MUST match ml/desktop/train_gpu.py, the
+# TypeScript LearnedScorer and the PlacementAdvisor.
+FEATURE_NAMES = [
+    'col', 'row', 'left', 'mid_col', 'right', 'top', 'mid_row', 'bottom',
+    'min_dist', 'density', 'same_dist', 'path_dist',
+    'wave', 'tower_count', 'gold', 'tower_cost', 'lives',
+]
+
 def load_examples():
     examples = []
     for line in open(DATA):
@@ -67,14 +116,21 @@ def cell_features(col, row, board, tower_id):
             feats.append(1.0)  # no same-type yet
     else:
         feats.extend([1.0, 0.0, 1.0])  # empty board
-    
+
+    # Distance to the creep path (plains: full row 13), / 20 capped at 1.
+    feats.append(min(abs(row - PATH_ROW) / 20.0, 1.0))
+
     return feats
 
-def board_features(board, wave):
-    """Global board state features."""
+def board_features(board, wave, gold=500.0, lives=20.0, tower_cost=50.0):
+    """Global board state features. gold/lives default to full for legacy
+    examples that don't record them (see train_gpu.py)."""
     return [
         wave / 20.0,
         min(len(board) / 100.0, 1.0),  # tower count normalized
+        min(gold / 500.0, 1.0),
+        min(tower_cost / 500.0, 1.0),
+        min(lives / 20.0, 1.0),
     ]
 
 class PlacementDataset(Dataset):
@@ -86,9 +142,12 @@ class PlacementDataset(Dataset):
             chosen_col, chosen_row = ex['chosen']
             wave = ex['wave']
             
+            gold = ex.get('gold', 500.0)
+            lives = ex.get('lives', 20.0)
+            tower_cost = TOWER_COSTS.get(tower_id, 50)
             # Positive example
             pos_feats = (cell_features(chosen_col, chosen_row, board, tower_id) +
-                         board_features(board, wave))
+                         board_features(board, wave, gold, lives, tower_cost))
             self.pairs.append((pos_feats, 1.0))
             
             # Negative examples: random other cells
@@ -104,7 +163,7 @@ class PlacementDataset(Dataset):
                         continue
                     break
                 neg_feats = (cell_features(nc, nr, board, tower_id) +
-                             board_features(board, wave))
+                             board_features(board, wave, gold, lives, tower_cost))
                 self.pairs.append((neg_feats, 0.0))
     
     def __len__(self):

@@ -1609,6 +1609,13 @@ export class GameScene extends Phaser.Scene {
           && this.canBuildInZone(col, row)
           && (this._playerBuildableSet.size === 0 || this._playerBuildableSet.has(`${col},${row}`)),
         towerTypeId: this.selectedBuildType ?? this.activeTowerIds[0] ?? null,
+        gold: this.economy.gold,
+        lives: this.lives,
+        towerCost: (() => {
+          const id = this.selectedBuildType ?? this.activeTowerIds[0] ?? null;
+          return id ? getTowerType(id).cost : null;
+        })(),
+        allPaths: this.allPaths,
       }),
       (msg) => this.eventLog.gameMessage(msg),
     );

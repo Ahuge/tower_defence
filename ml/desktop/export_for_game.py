@@ -10,7 +10,7 @@ import torch
 def export_model(pt_path, out_path):
     state = torch.load(pt_path, map_location='cpu', weights_only=True)
     
-    # Architecture: 14 -> 128 -> 64 -> 1
+    # Architecture: 17 -> 128 -> 64 -> 1
     # net.0: Linear(14 -> 128), net.3: Linear(128 -> 64), net.6: Linear(64 -> 1)
     layers = []
     for i, (w_key, b_key) in enumerate([

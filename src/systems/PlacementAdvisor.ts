@@ -26,6 +26,14 @@ export interface AdvisorContext {
   isCandidateCell: (col: number, row: number) => boolean;
   /** Tower type being scored (selected dock tower, or first in dock). */
   towerTypeId: string | null;
+  /** Current gold (economy.gold). */
+  gold: number;
+  /** Current lives. */
+  lives: number;
+  /** Base cost of towerTypeId, or null when no tower is selected. */
+  towerCost: number | null;
+  /** All active creep paths ({col,row} points), or null when unknown. */
+  allPaths: ({ col: number; row: number }[] | null)[] | null;
 }
 
 interface LayerWeights {
@@ -82,6 +90,7 @@ export class PlacementAdvisor {
   private model: ScorerModel | null = null;
   private modelFaction: string | null = null;
   private modelMissing = false;
+  private warnedDimMismatch = false;
   private loading = false;
   private enabled = false;
   private topCells: ScoredCell[] = [];
@@ -170,7 +179,20 @@ export class PlacementAdvisor {
     const ctx = this.getCtx();
     const towerId = ctx.towerTypeId;
     if (!towerId) return;
+    // Stale models (old 13-feature set) would produce NaN — guard instead
+    // of drawing garbage. Retrain + re-export to fix.
+    if (this.model.input_dim !== 17) {
+      if (!this.warnedDimMismatch) {
+        this.warnedDimMismatch = true;
+        this.onMessage(`Placement Advisor: ${this.modelFaction} model is the old 13-feature version — retrain and re-export to use the advisor.`);
+      }
+      return;
+    }
     const placedCount = ctx.placedTowers.length;
+    // Note: gold/lives are NOT part of the gate — they change constantly
+    // mid-wave as creeps die. Re-scoring on every gold change would be
+    // wasteful; the decision points (placement, wave, tower switch) are
+    // what matter, and gold/lives are read fresh at each of those.
     if (!force && towerId === this.lastScoredTower && ctx.wave === this.lastScoredWave && placedCount === this.lastScoredCount) {
       return; // nothing the model sees has changed
     }
@@ -254,8 +276,15 @@ export class PlacementAdvisor {
   }
 
   /**
-   * Same 13 features as train_gpu.py cell_features + board_features.
+   * Same 17 features as train_gpu.py (FEATURE_NAMES), in the same order.
    * Must stay in sync with playtest/LearnedScorer.extractFeatures.
+   *   0-7   position + region one-hots
+   *   8-10  board context (min dist, 3x3 density, same-type dist)
+   *   11    distance to creep path / 20
+   *   12-13 wave / 20, tower count / 100
+   *   14    gold / 500
+   *   15    tower cost / 500
+   *   16    lives / 20
    */
   private extractFeatures(ctx: AdvisorContext, col: number, row: number, towerId: string): number[] {
     const feats: number[] = [];
@@ -298,8 +327,29 @@ export class PlacementAdvisor {
       feats.push(1.0, 0.0, 1.0);
     }
 
+    // Distance to the creep path (index 11). On plains the path runs the
+    // full row 13, so min distance to a path point equals |row - 13| —
+    // exactly what train_gpu.py computes. Fall back to that when paths
+    // aren't available yet.
+    let pathDist = Math.abs(row - 13) / 20.0;
+    if (ctx.allPaths) {
+      let minPath = Infinity;
+      for (const path of ctx.allPaths) {
+        if (!path) continue;
+        for (const p of path) {
+          const d = Math.hypot(col - p.col, row - p.row);
+          if (d < minPath) minPath = d;
+        }
+      }
+      if (minPath !== Infinity) pathDist = minPath / 20.0;
+    }
+    feats.push(Math.min(pathDist, 1.0));
+
     feats.push(ctx.wave / 20.0);
     feats.push(Math.min(board.length / 100.0, 1.0));
+    feats.push(Math.min(ctx.gold / 500.0, 1.0));
+    feats.push(Math.min((ctx.towerCost ?? 50) / 500.0, 1.0));
+    feats.push(Math.min(ctx.lives / 20.0, 1.0));
     return feats;
   }
 
