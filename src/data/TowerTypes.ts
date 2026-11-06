@@ -442,7 +442,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     role: 'wall',
     faction: 'nature', damageType: 'physical', cost: 12, damage: 3, range: 1.2, fireRate: 400,
     color: 0x447733, projectileSpeed: 260, hotkey: '1',
-    traits: [{ id: 'direct_damage' }, { id: 'splash_damage', radius: 28 }],
+    traits: [{ id: 'direct_damage' }, { id: 'splash_damage', radius: 28 }, { id: 'root_on_hit', chance: 0.15, duration: 600, minLevel: 3 }],
     upgrades: [
       // L2 is the branch point. Default = Hedge (keeps the wall
       // identity and cheap-maze scaling). Branch = Razor Bramble,

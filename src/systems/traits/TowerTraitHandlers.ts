@@ -535,6 +535,9 @@ registerHitEffect('damage_amp_on_hit', (trait: Trait, ctx: HitContext) => {
 });
 
 registerHitEffect('root_on_hit', (trait: Trait, ctx: HitContext) => {
+  // Optional minLevel gate — trait only fires at or above this level
+  const minLevel = (trait as any).minLevel ?? 1;
+  if (ctx.towerLevel < minLevel) return;
   // Chance scales: +3% per level, duration scales: +15% per level
   const baseChance = trait.chance ?? 0.2;
   const chance = Math.min(0.6, baseChance + 0.03 * (ctx.towerLevel - 1));
