@@ -15,10 +15,18 @@
 # Or with nohup:
 #   nohup ./ml/desktop/rl/sweep.sh 24 > ml/desktop/rl/sweep.log 2>&1 &
 #
-# Results land in ml/desktop/rl/sweep-results/ as one JSON per config,
-# plus a running CSV summary at ml/desktop/rl/sweep-results/summary.csv.
-# The best policy (by eval win rate) is copied to
-# ml/desktop/rl/policy-best.json.
+# Results land in ml/desktop/rl/sweep-results-<faction>/ as one JSON
+# per config, plus a running CSV summary at
+# ml/desktop/rl/sweep-results-<faction>/summary.csv. The best policy
+# (by eval win rate) is copied to
+# ml/desktop/rl/policy-best-<faction>.json.
+#
+# Parallel sweeps: each faction writes to its own results dir, traj
+# dir, and best-policy file, so two factions can run at once — use
+# sweep-multi.sh to launch several. A lockfile
+# ml/desktop/rl/.sweep-<faction>.lock prevents double-launching the
+# same faction (it holds the sweep's PID; a stale lock from a dead
+# process is reclaimed automatically).
 #
 # Speed: episode collection runs in parallel across all CPU cores
 # (--workers, default $(nproc) via RL_WORKERS). Game simulation is the
@@ -53,26 +61,88 @@ if [ ! -f "ml/desktop/rl/train_ppo.py" ]; then
   exit 1
 fi
 
-# Bundle the episode runner once up front so every worker spawn is a
-# plain `node` launch (~0.2s) instead of tsx transpiling (~1-4s).
-# Falls back to tsx at runtime if the build fails — warn, don't abort.
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bundling episode runner (esbuild)..."
-if node ml/desktop/rl/build-runner.mjs; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Runner bundle ready."
-else
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: bundle build failed — workers will fall back to tsx (slow startup)."
-fi
-
 MAX_HOURS="${1:-24}"
 FACTION="${2:-arcane}"
+case "$FACTION" in
+  arcane|psionic) ;;
+  *)
+    echo "ERROR: unknown faction '$FACTION' (known: arcane, psionic)" >&2
+    exit 1
+    ;;
+esac
+
+# --- Single-instance lock for this faction ---
+# Refuse to run if a live sweep for the same faction already holds
+# the lock; reclaim a stale lock (PID no longer alive). Checked
+# BEFORE the bundle build so a double-launched sweep exits fast
+# instead of wasting time building.
+LOCK_FILE="ml/desktop/rl/.sweep-${FACTION}.lock"
+if [ -f "$LOCK_FILE" ]; then
+  LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+  if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+    echo "ERROR: a $FACTION sweep is already running (PID $LOCK_PID, lock $LOCK_FILE). Not double-launching." >&2
+    exit 1
+  fi
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Reclaiming stale lock $LOCK_FILE (PID $LOCK_PID not alive)."
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
+# Bundle the episode runner once up front so every worker spawn is a
+# plain `node` launch (~0.2s) instead of tsx transpiling (~1-4s).
+# Skip the build when the bundle is newer than its sources; when a
+# build is needed, take a lock dir so two parallel sweeps don't race
+# writing the same bundle file (mkdir is atomic). If the lock is held
+# by another sweep, wait for the bundle to appear instead of building.
+# Falls back to tsx at runtime if the build fails — warn, don't abort.
+BUNDLE="ml/desktop/rl/run_episode.bundle.mjs"
+if [ ! -f "$BUNDLE" ] || [ "ml/desktop/rl/run_episode.mts" -nt "$BUNDLE" ] || [ "ml/desktop/rl/build-runner.mjs" -nt "$BUNDLE" ]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bundling episode runner (esbuild)..."
+  BUNDLE_LOCK="ml/desktop/rl/.bundle-build.lock"
+  if mkdir "$BUNDLE_LOCK" 2>/dev/null; then
+    if node ml/desktop/rl/build-runner.mjs; then
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Runner bundle ready."
+    else
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: bundle build failed — workers will fall back to tsx (slow startup)."
+    fi
+    rmdir "$BUNDLE_LOCK" 2>/dev/null || true
+  else
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Another sweep is building the bundle — waiting..."
+    for _ in $(seq 1 60); do
+      [ -f "$BUNDLE" ] && break
+      sleep 2
+    done
+    if [ -f "$BUNDLE" ]; then
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Runner bundle ready (built by the other sweep)."
+    else
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: bundle never appeared — workers will fall back to tsx (slow startup)."
+    fi
+  fi
+else
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Runner bundle up to date, skipping build."
+fi
+
 # Parallel episode-runner processes (default: all cores). Override with
 # RL_WORKERS=4 ./ml/desktop/rl/sweep.sh 24 if RAM is tight.
+# NOTE: when running several factions at once via sweep-multi.sh, the
+# workers are shared across sweeps — with 2 factions on 20 cores each
+# sweep gets ~10 effective workers. Pass RL_WORKERS explicitly if you
+# want a hard cap per sweep.
 WORKERS="${RL_WORKERS:-$(nproc)}"
 START_TIME=$(date +%s)
 DEADLINE=$((START_TIME + MAX_HOURS * 3600))
-RESULTS_DIR="ml/desktop/rl/sweep-results"
+RESULTS_DIR="ml/desktop/rl/sweep-results-${FACTION}"
 mkdir -p "$RESULTS_DIR"
 SUMMARY_CSV="$RESULTS_DIR/summary.csv"
+
+# One-time migration: sweeps before the per-faction split wrote to
+# ml/desktop/rl/sweep-results/ (arcane only). Move it into the new
+# per-faction dir so resume still finds the completed configs.
+if [ "$FACTION" = "arcane" ] && [ ! -f "$SUMMARY_CSV" ] && [ -d "ml/desktop/rl/sweep-results" ] && [ -f "ml/desktop/rl/sweep-results/summary.csv" ]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Migrating legacy sweep-results/ -> $RESULTS_DIR (arcane resume state preserved)."
+  cp -a ml/desktop/rl/sweep-results/. "$RESULTS_DIR"/ 2>/dev/null || true
+  mv ml/desktop/rl/sweep-results "ml/desktop/rl/sweep-results-legacy-$(date '+%Y%m%d-%H%M%S')" 2>/dev/null || true
+fi
 
 # Header for the summary CSV (only if it doesn't exist yet).
 if [ ! -f "$SUMMARY_CSV" ]; then
@@ -109,15 +179,16 @@ run_config() {
   log "=== $name ==="
   log "  lr=$lr entropy=$ent clip=$clip life_penalty=$life wave_reward=$wave iters=$iters"
 
-  local policy="ml/desktop/rl/sweep-results/policy-${name}.json"
-  local ckpt="ml/desktop/rl/sweep-results/ckpt-${name}"
+  local policy="$RESULTS_DIR/policy-${name}.json"
+  local ckpt="$RESULTS_DIR/ckpt-${name}"
 
   # Train with this config's reward shaping via env vars.
   RL_REWARD_LIFE_PENALTY="$life" RL_REWARD_WAVE="$wave" \
-    python ml/desktop/rl/train_ppo.py --pretrain \
+    python ml/desktop/rl/train_ppo.py --pretrain --faction "$FACTION" \
       --init-from-scorer "ml/desktop/models/scorer-${FACTION}.pt" \
       --policy-out "$policy" \
       --ckpt-dir "$ckpt" \
+      --traj-dir "$RESULTS_DIR/trajectories" \
       --lr "$lr" --entropy-coef "$ent" --clip "$clip" \
       --iters "$iters" --workers "$WORKERS" \
       --episodes-per-iter 64 \
@@ -130,8 +201,9 @@ run_config() {
   fi
 
   # Eval: 50 episodes, deterministic, fixed seeds.
-  python ml/desktop/rl/eval_rl.py --policy "$policy" \
+  python ml/desktop/rl/eval_rl.py --policy "$policy" --faction "$FACTION" \
       --episodes 50 --deterministic --workers "$WORKERS" \
+      --traj-dir "$RESULTS_DIR/eval-trajs" \
       --out "$RESULTS_DIR/${name}-eval.json" \
       > "$RESULTS_DIR/${name}-eval.log" 2>&1
   local eval_rc=$?
@@ -175,9 +247,9 @@ json.dump(r, open('$result_file', 'w'), indent=2)
       best_wins=$(python3 -c "import json; print(json.load(open('$RESULTS_DIR/best.json'))['wins'])" 2>/dev/null || echo 0)
     fi
     if [ "$wins" -gt "$best_wins" ]; then
-      cp "$policy" "ml/desktop/rl/policy-best.json"
+      cp "$policy" "ml/desktop/rl/policy-best-${FACTION}.json"
       cp "$result_file" "$RESULTS_DIR/best.json"
-      log "  *** NEW BEST: $wins wins — policy copied to ml/desktop/rl/policy-best.json ***"
+      log "  *** NEW BEST: $wins wins — policy copied to ml/desktop/rl/policy-best-${FACTION}.json ***"
     fi
   fi
   return 0
@@ -191,14 +263,17 @@ log "Results: $RESULTS_DIR"
 # Establishes whether the warm start alone beats 0%.
 if [ ! -f "$RESULTS_DIR/bc-only.json" ]; then
   log "=== Phase 0: BC-only baseline ==="
-  python ml/desktop/rl/train_ppo.py --pretrain \
+  python ml/desktop/rl/train_ppo.py --pretrain --faction "$FACTION" \
       --init-from-scorer "ml/desktop/models/scorer-${FACTION}.pt" \
       --policy-out "$RESULTS_DIR/policy-bc-only.json" \
       --ckpt-dir "$RESULTS_DIR/ckpt-bc-only" \
+      --traj-dir "$RESULTS_DIR/trajectories" \
       --iters 0 --workers "$WORKERS" \
       > "$RESULTS_DIR/bc-only-train.log" 2>&1
   python ml/desktop/rl/eval_rl.py --policy "$RESULTS_DIR/policy-bc-only.json" \
+      --faction "$FACTION" \
       --episodes 50 --deterministic --workers "$WORKERS" \
+      --traj-dir "$RESULTS_DIR/eval-trajs" \
       --out "$RESULTS_DIR/bc-only.json" \
       > "$RESULTS_DIR/bc-only-eval.log" 2>&1
   bc_wins=$(python3 -c "import json; print(json.load(open('$RESULTS_DIR/bc-only.json'))['wins'])" 2>/dev/null || echo "?")
@@ -267,17 +342,34 @@ log "Summary: $SUMMARY_CSV"
 if [ -f "$RESULTS_DIR/best.json" ]; then
   log "Best config:"
   python3 -c "import json; d=json.load(open('$RESULTS_DIR/best.json')); print(f\"  {d['config']}: {d['wins']}/{d['episodes']} wins, avg wave {d['avg_wave']:.1f}\")"
-  log "Best policy: ml/desktop/rl/policy-best.json"
+  log "Best policy: ml/desktop/rl/policy-best-${FACTION}.json"
 fi
 log "Full results in $RESULTS_DIR"
 
 # --- Push results so Muse can see them ---
+# Parallel sweeps share this branch: another faction's sweep may
+# have pushed first, so rebase and retry the push (up to 3 tries).
 log "Pushing sweep results to feature/imitation-placement..."
-git add "$RESULTS_DIR" ml/desktop/rl/policy-best.json 2>/dev/null
+git add "$RESULTS_DIR" "ml/desktop/rl/policy-best-${FACTION}.json" 2>/dev/null
 if git diff --cached --quiet; then
   log "Nothing new to push."
 else
-  git -c user.name="Alex Hughes" -c user.email="Ahuge@users.noreply.github.com" commit -m "RL sweep results ($(date '+%Y-%m-%d %H:%M'))" 2>&1 | tail -1
-  git push origin feature/imitation-placement 2>&1 | tail -1
-  log "Results pushed."
+  git -c user.name="Alex Hughes" -c user.email="Ahuge@users.noreply.github.com" commit -m "RL sweep results ${FACTION} ($(date '+%Y-%m-%d %H:%M'))" 2>&1 | tail -1
+  push_ok=0
+  for _try in 1 2 3; do
+    if git push origin feature/imitation-placement > /tmp/rl-push.log 2>&1; then
+      tail -1 /tmp/rl-push.log
+      push_ok=1
+      break
+    fi
+    tail -1 /tmp/rl-push.log
+    log "Push rejected (another sweep pushed first?) — rebasing and retrying ($_try/3)..."
+    git pull --rebase origin feature/imitation-placement > /tmp/rl-pull.log 2>&1
+    tail -1 /tmp/rl-pull.log
+  done
+  if [ "$push_ok" = 1 ]; then
+    log "Results pushed."
+  else
+    log "WARNING: push failed after 3 tries — results are committed locally, push manually with: git push origin feature/imitation-placement"
+  fi
 fi

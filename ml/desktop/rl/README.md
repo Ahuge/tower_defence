@@ -1,7 +1,9 @@
-# RL Prototype — PPO for Tower Defence (arcane)
+# RL Prototype — PPO for Tower Defence
 
 Reinforcement learning that can eventually surpass imitation learning.
-Start narrow (arcane only), prove the pipeline, then expand.
+Faction-parameterized: arcane and psionic are wired up; the policy
+shape (17-dim state, 9 actions) is shared, with trailing build slots
+padded/masked for factions with fewer than 7 towers.
 
 ## Why RL, why arcane
 
@@ -62,7 +64,7 @@ can't learn.
 | 1 | gold / 1000 | |
 | 2 | lives / 100 | |
 | 3 | tower_count / 100 | |
-| 4–10 | count per arcane tower / 20 | bolt, frost, storm, focus, drain, meteor, nova |
+| 4–10 | count per faction tower / 20 | arcane: bolt, frost, storm, focus, drain, meteor, nova; psionic: probe, mesmer, terror, mind_spike, overmind + 2 unused slots (always 0) |
 | 11 | next wave creep count / 50 | from ctx.upcomingWaves[0] |
 | 12 | next wave has armored 0/1 | |
 | 13 | next wave has flying 0/1 | |
@@ -78,7 +80,7 @@ in sync.
 
 | # | Action |
 |---|--------|
-| 0–6 | build arcane_bolt / frost / storm / focus / drain / meteor / nova |
+| 0–6 | build the faction's towers in cost order (arcane: bolt / frost / storm / focus / drain / meteor / nova; psionic: probe / mesmer / terror / mind_spike / overmind — slots 5–6 unused, permanently masked) |
 | 7 | save (skip — ends the decision round, starts the next wave) |
 | 8 | upgrade cheapest upgradable tower |
 
@@ -104,11 +106,13 @@ No dropout (PPO policies typically don't use it). ~11k parameters.
 
 **Pre-training — two warm starts, both optional:**
 1. **Behavior cloning** (`--pretrain`): trains the policy head with
-   cross-entropy on arcane examples from `ml/placement-data.jsonl`
-   (state reconstructed from board/wave/gold/lives, action = tower
-   built). Teaches "build what Alex builds". Currently thin — only 49
-   arcane examples, mostly bolt — so it teaches little beyond "build
-   bolt". Still worth keeping as a warm start.
+   cross-entropy on the faction's examples from
+   `ml/placement-data.jsonl` (state reconstructed from board/wave/
+   gold/lives, action = tower built). Teaches "build what Alex
+   builds". Arcane is thin — only 49 examples, mostly bolt — so it
+   teaches little beyond "build bolt". Psionic is better: 106
+   examples (65 probe, 34 mesmer, 7 terror; no mind_spike/overmind
+   in his wins — his psionic games never built the expensive towers).
 2. **Scorer weight transfer** (`--init-from-scorer`): copies the
    imitation scorer's 128→64 trunk layer and 64→1 output layer into
    the RL network (same shapes). The 17→128 first layer can't transfer
@@ -165,18 +169,26 @@ improve as the policy learns to survive longer.
 | `ml/desktop/rl/run_episode.mts` | Episode runner: plays N matches, writes trajectories + summary |
 | `ml/desktop/rl/policy.py` | ActorCritic, export/load JSON, scorer weight transfer |
 | `ml/desktop/rl/env.py` | Constants, reward docs, trajectory loading, GAE, subprocess wrapper |
-| `ml/desktop/rl/train_ppo.py` | PPO loop + BC pre-training |
-| `ml/desktop/rl/eval_rl.py` | Fixed-seed eval vs the 20/50 imitation baseline |
+| `ml/desktop/rl/train_ppo.py` | PPO loop + BC pre-training (`--faction`) |
+| `ml/desktop/rl/eval_rl.py` | Fixed-seed eval vs the faction's imitation baseline (`--faction`) |
 | `ml/desktop/rl/test_rl.py` | Verification tests (GAE, masking, BC state) |
+| `ml/desktop/rl/sweep.sh` | Hyperparameter sweep for one faction (`[hours] [faction]`) |
+| `ml/desktop/rl/sweep-multi.sh` | Parallel sweeps for several factions (`[hours] faction...`) |
+| `ml/desktop/rl/build-runner.mjs` | esbuild bundle for the episode runner |
 
 ## Usage
 
 ```bash
 # Behavior-cloning warm start + PPO (50 iters × 32 episodes)
 # Needs a CUDA torch install on the training machine.
-python ml/desktop/rl/train_ppo.py --pretrain \
+python ml/desktop/rl/train_ppo.py --pretrain --faction arcane \
     --init-from-scorer ml/desktop/models/scorer-arcane.pt \
     --policy-out ml/desktop/rl/policy-arcane.json
+
+# Psionic: same pipeline, different tower set + baseline (13/50)
+python ml/desktop/rl/train_ppo.py --pretrain --faction psionic \
+    --init-from-scorer ml/desktop/models/scorer-psionic.pt \
+    --policy-out ml/desktop/rl/policy-psionic.json
 
 # Resume from a checkpoint
 python ml/desktop/rl/train_ppo.py \
@@ -184,8 +196,68 @@ python ml/desktop/rl/train_ppo.py \
 
 # Evaluate a policy on 50 fixed seeds, deterministic
 python ml/desktop/rl/eval_rl.py --policy ml/desktop/rl/policy-arcane.json \
+    --faction arcane \
     --episodes 50 --deterministic --out ml/desktop/rl/eval-arcane.json
 ```
+
+**Imitation baselines** (eval-v5, hard, 50 episodes) — what RL has
+to beat: arcane 20/50 (40%), psionic 13/50 (26%). The psionic v7
+collapse to 0/50 was a one-hot-removal artifact, so v5 is the
+comparison point for both.
+
+## Multi-faction sweeps
+
+A single sweep only reaches ~35% CPU on a 20-core machine — the game
+sim + tiny PPO update can't saturate it. Run several factions at
+once to use the hardware:
+
+```bash
+# Two factions in parallel, 24h each
+./ml/desktop/rl/sweep-multi.sh 24 arcane psionic
+
+# Just psionic
+./ml/desktop/rl/sweep-multi.sh 12 psionic
+
+# See what would launch, without launching anything
+./ml/desktop/rl/sweep-multi.sh --dry-run 24 arcane psionic
+```
+
+Each faction gets its own results dir
+(`ml/desktop/rl/sweep-results-<faction>/`), traj dir, log
+(`ml/desktop/rl/sweep-<faction>.log`), and best policy
+(`ml/desktop/rl/policy-best-<faction>.json`), so parallel sweeps
+never overwrite each other. `sweep-multi.sh` waits for all of them
+and prints a combined summary at the end; Ctrl-C stops the waiting,
+not the sweeps (they keep running in the background — stop one with
+`kill "$(cat ml/desktop/rl/.sweep-<faction>.lock)"`).
+
+**Double-launch protection:** `sweep.sh` writes its PID to
+`ml/desktop/rl/.sweep-<faction>.lock` and refuses to start if a live
+sweep for the same faction already holds it (a stale lock from a dead
+process is reclaimed). The runner bundle is built once up front by
+`sweep-multi.sh`; `sweep.sh` also builds it, behind a lock dir, if
+it's stale.
+
+**Workers are shared:** each sweep defaults to `$(nproc)` parallel
+episode runners, so 2 factions on 20 cores each get ~10 effective
+workers. Pass `RL_WORKERS=10` to cap per sweep explicitly.
+
+**Push races:** parallel sweeps share the
+`feature/imitation-placement` branch. Each sweep's end-of-run push
+rebases and retries (up to 3 tries) if another sweep pushed first;
+if all tries fail the results stay committed locally and the log
+says so — push manually.
+
+**Legacy results:** sweeps before the per-faction split wrote to
+`ml/desktop/rl/sweep-results/` (arcane only). On first run, the
+arcane sweep moves that dir into `sweep-results-arcane/` (renaming
+the old one with a timestamp) so resume still finds the completed
+configs.
+
+**Stopping a running sweep before pulling:** bash reads a running
+script from disk as it executes — pulling a new `sweep.sh` while one
+is running can corrupt the run. Stop the sweep first (Ctrl-C in its
+tmux session), then `git pull`, then relaunch.
 
 **Timing estimate:** each headless match takes ~1–5s. 32 episodes per
 iteration ≈ 1–3 min *sequentially*. The bottleneck is game simulation,
@@ -268,7 +340,8 @@ a CUDA torch install for actual runs.
   A future version could let RL pick the cell too (much larger action
   space — needs a CNN board encoding).
 - **Single map (plains), single difficulty default (hard).**
-- **BC data is thin** (49 arcane examples) — the warm start is weak.
+- **BC data is thin** (49 arcane examples; psionic 106 is better) —
+  the warm start is weak for arcane.
 - **Reward shaping is a guess.** The +0.1/wave, −0.5/life weights
   were chosen by intuition, not tuned. If training stalls or the
   agent learns degenerate behavior (e.g. never spending gold, or
@@ -283,9 +356,12 @@ a CUDA torch install for actual runs.
    behavior.
 3. **Add mid-wave upgrade actions** (the brain already gets called
    mid-wave every 30 ticks).
-4. **Expand to other factions** — same pipeline, different tower set.
-   Void is the interesting test: 0% imitation baseline means any RL
-   win is pure discovery.
+4. **Expand to other factions** — psionic is wired up (5 towers,
+   slots 5–6 padded/masked, baseline 13/50). Adding another faction
+   is: a `FACTION_TOWERS` entry in `env.py` + `RL_FACTION_TOWERS` in
+   `RLBrain.ts` + a baseline in `eval_rl.py` + the faction name in
+   `sweep.sh`/`sweep-multi.sh`. Void is the interesting test: 0%
+   imitation baseline means any RL win is pure discovery.
 5. **CNN board encoding** — replace the 17-dim hand-crafted state
    with a spatial board representation so the policy can see the maze.
 6. **Persistent Node process** (JSON-RPC) for faster episode

@@ -1,4 +1,9 @@
-"""RL environment interface for the tower_defence game (arcane faction).
+"""RL environment interface for the tower_defence game.
+
+Faction-parameterized (see FACTION_TOWERS): the policy shape is the
+same for every faction — 17-dim state, 9 actions (up to 7 builds +
+save + upgrade) — with trailing build slots padded/masked for
+factions with fewer than 7 towers.
 
 The game itself runs in TypeScript — Python NEVER steps the game directly.
 This module documents the shared state/action/reward contract and provides
@@ -26,45 +31,95 @@ import numpy as np
 STATE_DIM = 17
 ACTION_DIM = 9
 
+# Max build actions per faction (slots 0-6). Factions with fewer towers
+# pad the remaining slots — those actions are permanently masked out,
+# so every faction shares one 17-dim state / 9-action policy shape.
+MAX_BUILD_ACTIONS = 7
+
+# Buildable towers per faction, in action order (cost order). The RL
+# policy is faction-agnostic: actions 0-6 build FACTION_TOWERS[f][i],
+# 7 saves, 8 upgrades the cheapest tower. A faction with fewer than 7
+# towers leaves the trailing build slots empty (always masked).
+FACTION_TOWERS = {
+    'arcane': [
+        'arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus',
+        'arcane_drain', 'arcane_meteor', 'arcane_nova',
+    ],
+    'psionic': [
+        'psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike',
+        'psi_overmind',
+    ],
+}
+
+
+def build_towers(faction):
+    """Build-action tower ids for a faction (up to MAX_BUILD_ACTIONS)."""
+    if faction not in FACTION_TOWERS:
+        raise ValueError(
+            f'no RL tower table for faction {faction!r} '
+            f'(known: {sorted(FACTION_TOWERS)})')
+    return FACTION_TOWERS[faction]
+
+
+def state_names(faction):
+    """Canonical state feature names for a faction.
+
+    Slots 4-10 are per-tower counts in FACTION_TOWERS order; trailing
+    slots beyond the faction's roster are unused (always 0).
+    """
+    towers = build_towers(faction)
+    names = [
+        'wave',                 # 0: wave / 20
+        'gold',                 # 1: gold / 1000
+        'lives',                # 2: lives / 100
+        'tower_count',          # 3: tower_count / 100
+    ]
+    for i in range(MAX_BUILD_ACTIONS):
+        if i < len(towers):
+            names.append(f'count_{towers[i]}')  # 4-10: / 20
+        else:
+            names.append(f'count_unused_{i}')   # always 0
+    names += [
+        'next_wave_creeps',     # 11: next wave total creep count / 50
+        'next_wave_armored',    # 12: 0/1
+        'next_wave_flying',     # 13: 0/1
+        'next_wave_shielded',   # 14: 0/1
+        'between_waves',        # 15: 0/1
+        'candidate_cells',      # 16: candidate cells / 936
+    ]
+    assert len(names) == STATE_DIM
+    return names
+
+
+def action_names(faction):
+    """Action names for a faction (build slots pad with unused)."""
+    towers = build_towers(faction)
+    names = []
+    for i in range(MAX_BUILD_ACTIONS):
+        if i < len(towers):
+            names.append(f'build_{towers[i]}')  # 0-6
+        else:
+            names.append(f'build_unused_{i}')   # always masked
+    names += [
+        'save',                 # 7: skip / save gold
+        'upgrade_cheapest',     # 8: upgrade cheapest upgradable tower
+    ]
+    assert len(names) == ACTION_DIM
+    return names
+
+
 # Canonical state feature names, in the exact order of the state vector.
 # MUST match the TypeScript side (RLBrain / episode runner).
-STATE_NAMES = [
-    'wave',                 # 0: wave / 20
-    'gold',                 # 1: gold / 1000
-    'lives',                # 2: lives / 100
-    'tower_count',          # 3: tower_count / 100
-    'count_arcane_bolt',    # 4: / 20
-    'count_arcane_frost',   # 5: / 20
-    'count_arcane_storm',   # 6: / 20
-    'count_arcane_focus',   # 7: / 20
-    'count_arcane_drain',   # 8: / 20
-    'count_arcane_meteor',  # 9: / 20
-    'count_arcane_nova',    # 10: / 20
-    'next_wave_creeps',     # 11: next wave total creep count / 50
-    'next_wave_armored',    # 12: 0/1
-    'next_wave_flying',     # 13: 0/1
-    'next_wave_shielded',   # 14: 0/1
-    'between_waves',        # 15: 0/1
-    'candidate_cells',      # 16: candidate cells / 936
-]
+# Arcane defaults kept for backward compatibility; use state_names(f)
+# for other factions.
+STATE_NAMES = state_names('arcane')
 
-ACTION_NAMES = [
-    'build_arcane_bolt',    # 0
-    'build_arcane_frost',   # 1
-    'build_arcane_storm',   # 2
-    'build_arcane_focus',   # 3
-    'build_arcane_drain',   # 4
-    'build_arcane_meteor',  # 5
-    'build_arcane_nova',    # 6
-    'save',                 # 7: skip / save gold
-    'upgrade_cheapest',     # 8: upgrade cheapest upgradable tower
-]
+ACTION_NAMES = action_names('arcane')
 
 # Tower built by each build action (actions 0-6), in action order.
-BUILD_TOWERS = [
-    'arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus',
-    'arcane_drain', 'arcane_meteor', 'arcane_nova',
-]
+# Arcane default kept for backward compatibility; use
+# build_towers(faction) for other factions.
+BUILD_TOWERS = FACTION_TOWERS['arcane']
 
 # Reward shaping, as implemented on the TypeScript side. Python only
 # consumes these rewards; the terms are documented here so the training

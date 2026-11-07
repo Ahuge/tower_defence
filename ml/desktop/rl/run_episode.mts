@@ -1,12 +1,14 @@
 /**
- * run_episode.mts — RL episode runner for the arcane prototype.
+ * run_episode.mts — RL episode runner.
  *
- * Runs headless arcane matches with RLBrain and writes the
- * trajectory JSONL + episode summary the Python trainer consumes.
+ * Runs headless matches with RLBrain and writes the trajectory
+ * JSONL + episode summary the Python trainer consumes. Faction-
+ * parameterized via --faction (default arcane).
  *
  * Usage:
  *   node --import tsx ml/desktop/rl/run_episode.mts \
  *     [--policy ml/desktop/rl/policy.json] \
+ *     [--faction arcane|psionic] \
  *     [--episodes 8] [--difficulty hard|normal] \
  *     [--seeds 100,200,300 | --seed-base 1000] \
  *     [--out ml/desktop/rl/trajectories.jsonl] \
@@ -21,7 +23,7 @@
 await import('../../../src/headless/harness/jsdom-setup.ts');
 
 const { runMatch } = await import('../../../src/headless/HeadlessMatch.ts');
-const { RLBrain } = await import('../../../src/systems/bots/brains/RLBrain.ts');
+const { RLBrain, RL_FACTION_TOWERS } = await import('../../../src/systems/bots/brains/RLBrain.ts');
 
 import { writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -33,6 +35,7 @@ const getArg = (name: string): string | null => {
 };
 
 const POLICY = getArg('policy') ?? undefined;
+const FACTION = getArg('faction') ?? 'arcane';
 const EPISODES = parseInt(getArg('episodes') ?? '8', 10);
 const DIFFICULTY = (getArg('difficulty') ?? 'hard') as 'hard' | 'normal';
 const OUT = getArg('out') ?? 'ml/desktop/rl/trajectories.jsonl';
@@ -44,6 +47,11 @@ const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
 const REWARD_GOLD_COEF = parseFloat(process.env.RL_REWARD_GOLD_COEF ?? '0.002');
 const REWARD_GOLD_CAP = parseFloat(process.env.RL_REWARD_GOLD_CAP ?? '0.2');
 const REWARD_LIFE_PENALTY = parseFloat(process.env.RL_REWARD_LIFE_PENALTY ?? '0.5');
+
+if (!(FACTION in RL_FACTION_TOWERS)) {
+  console.error(`--faction must be one of ${Object.keys(RL_FACTION_TOWERS).join(', ')}, got ${FACTION}`);
+  process.exit(1);
+}
 
 if (DIFFICULTY !== 'hard' && DIFFICULTY !== 'normal') {
   console.error(`--difficulty must be hard|normal, got ${DIFFICULTY}`);
@@ -102,7 +110,7 @@ async function main(): Promise<void> {
   writeFileSync(OUT, '');
 
   console.log(
-    `RL run: ${episodes} episode(s), arcane/${DIFFICULTY}, ` +
+    `RL run: ${episodes} episode(s), ${FACTION}/${DIFFICULTY}, ` +
     `policy=${POLICY ?? 'random'}, deterministic=${DETERMINISTIC}`,
   );
 
@@ -112,6 +120,7 @@ async function main(): Promise<void> {
   for (let ep = 0; ep < episodes; ep++) {
     const seed = seeds[ep];
     const brain = new RLBrain({
+      faction: FACTION,
       policyPath: POLICY,
       deterministic: DETERMINISTIC,
       recordTrajectory: true,
@@ -122,12 +131,12 @@ async function main(): Promise<void> {
     });
     const result = await runMatch(
       {
-        faction: 'arcane',
+        faction: FACTION as 'arcane' | 'psionic',
         difficulty: DIFFICULTY,
         mapId: 'plains',
         // brainId is unused when a brain override is supplied, but
         // MatchConfig requires it.
-        brainId: 'rl-arcane',
+        brainId: `rl-${FACTION}`,
         matchMode: 'standard',
         waveCount: 20,
         seed,

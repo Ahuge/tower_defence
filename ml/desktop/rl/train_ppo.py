@@ -1,5 +1,9 @@
-"""PPO training loop for the tower_defence RL prototype (arcane faction).
+"""PPO training loop for the tower_defence RL prototype.
 
+Faction-parameterized (--faction, default arcane): the policy shape
+is shared across factions (17-dim state, 9 actions), with trailing
+build slots padded/masked for factions with fewer than 7 towers
+(see env.FACTION_TOWERS).
 The game runs in TypeScript. Each iteration:
   1. Export the current policy to JSON (the live policy the TS runner loads).
   2. Run the TS episode runner as a subprocess to collect trajectories.
@@ -27,8 +31,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from env import (ACTION_DIM, BUILD_TOWERS, STATE_DIM, collect_trajectories,
-                 compute_gae, episode_stats, load_trajectories, summary_stats)
+from env import (ACTION_DIM, BUILD_TOWERS, STATE_DIM, build_towers,
+                 collect_trajectories, compute_gae, episode_stats,
+                 load_trajectories, summary_stats)
 from policy import ActorCritic
 
 logging.basicConfig(level=logging.INFO,
@@ -47,7 +52,7 @@ DEFAULT_BC_DATA = REPO_ROOT / 'ml' / 'placement-data.jsonl'
 # Behavior-cloning warm start
 # ---------------------------------------------------------------------------
 
-def reconstruct_bc_state(example):
+def reconstruct_bc_state(example, faction='arcane'):
     """Rebuild the 17-dim RL state at a recorded placement.
 
     From a placement-data example (wave, gold/lives if recorded, board
@@ -55,13 +60,14 @@ def reconstruct_bc_state(example):
     capture time so they are 0; placements happen between waves so
     betweenWaves is 1; candidate-cell count is unknown, use 0.5.
     Returns (state list of 17 floats, action int) or None if the tower
-    built is not one of the 7 arcane build actions.
+    built is not one of the faction's build actions.
     """
+    towers = build_towers(faction)
     tower_id = example.get('towerId')
-    if tower_id not in BUILD_TOWERS:
+    if tower_id not in towers:
         return None
     board = example.get('board', []) or []
-    counts = {t: 0 for t in BUILD_TOWERS}
+    counts = {t: 0 for t in towers}
     for entry in board:
         tid = entry[0] if entry else None
         if tid in counts:
@@ -72,12 +78,15 @@ def reconstruct_bc_state(example):
         min(example.get('lives', 100.0) / 100.0, 1.0),
         min(len(board) / 100.0, 1.0),
     ]
-    state += [min(counts[t] / 20.0, 1.0) for t in BUILD_TOWERS]
+    # Per-tower counts in action order; trailing slots pad with 0 for
+    # factions with fewer than 7 towers (always-masked actions).
+    state += [min(counts.get(t, 0) / 20.0, 1.0) for t in towers]
+    state += [0.0] * (len(BUILD_TOWERS) - len(towers))
     state += [0.0, 0.0, 0.0, 0.0]  # next-wave features unknown
     state += [1.0]                  # betweenWaves
     state += [0.5]                  # candidate cells unknown
     assert len(state) == STATE_DIM
-    return state, BUILD_TOWERS.index(tower_id)
+    return state, towers.index(tower_id)
 
 
 def load_bc_data(path, faction='arcane'):
@@ -97,7 +106,7 @@ def load_bc_data(path, faction='arcane'):
             ex = json.loads(line)
             if ex.get('faction') != faction:
                 continue
-            rec = reconstruct_bc_state(ex)
+            rec = reconstruct_bc_state(ex, faction)
             if rec is None:
                 n_skipped += 1
                 continue
@@ -233,10 +242,10 @@ def ppo_update(policy, opt, batch, device, clip, ppo_epochs, minibatch,
     return stats
 
 
-def save_checkpoint(policy, opt, iteration, history, ckpt_dir):
+def save_checkpoint(policy, opt, iteration, history, ckpt_dir, faction='arcane'):
     ckpt_dir = Path(ckpt_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
-    path = ckpt_dir / f'ppo-arcane-iter{iteration}.pt'
+    path = ckpt_dir / f'ppo-{faction}-iter{iteration}.pt'
     torch.save({
         'iteration': iteration,
         'policy_state': policy.state_dict(),
@@ -248,10 +257,13 @@ def save_checkpoint(policy, opt, iteration, history, ckpt_dir):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--faction', default='arcane',
+                   help='faction to train (arcane, psionic, ...)')
     p.add_argument('--episodes-per-iter', type=int, default=32)
     p.add_argument('--iters', type=int, default=50)
-    p.add_argument('--policy-out', default=str(DEFAULT_POLICY_OUT),
-                   help='live policy weights JSON the TS runner loads')
+    p.add_argument('--policy-out', default=None,
+                   help='live policy weights JSON the TS runner loads '
+                        '(default: policy-<faction>.json)')
     p.add_argument('--ckpt-dir', default=str(DEFAULT_CKPT_DIR))
     p.add_argument('--resume', default=None, help='checkpoint .pt to resume from')
     p.add_argument('--lr', type=float, default=3e-4)
@@ -271,12 +283,23 @@ def main():
                    help='imitation scorer .pt to warm-start trunk2/value')
     p.add_argument('--runner', default=str(DEFAULT_RUNNER),
                    help='path to run_episode.mts')
-    p.add_argument('--traj-dir', default=str(DEFAULT_TRAJ_DIR))
+    p.add_argument('--traj-dir', default=None,
+                   help='trajectory output dir '
+                        '(default: trajectories-<faction>)')
     p.add_argument('--difficulty', default='hard')
     p.add_argument('--workers', type=int, default=None,
                    help='parallel episode-runner processes (default: CPU '
                         'count, clamped to episodes per iteration)')
     args = p.parse_args()
+
+    # Validate the faction early — build_towers raises for unknown ones.
+    build_towers(args.faction)
+    if args.policy_out is None:
+        args.policy_out = str(Path(__file__).parent
+                              / f'policy-{args.faction}.json')
+    if args.traj_dir is None:
+        args.traj_dir = str(Path(__file__).parent
+                            / f'trajectories-{args.faction}')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info('Device: %s', device)
@@ -305,9 +328,10 @@ def main():
                     transferred or 'none (all skipped)')
 
     if args.pretrain:
-        logger.info('Behavior-cloning warm start...')
+        logger.info('Behavior-cloning warm start (%s)...', args.faction)
         behavior_clone(policy, args.bc_data, device,
-                       epochs=args.bc_epochs, lr=args.bc_lr)
+                       epochs=args.bc_epochs, lr=args.bc_lr,
+                       faction=args.faction)
 
     policy_out = Path(args.policy_out)
     traj_dir = Path(args.traj_dir)
@@ -325,6 +349,7 @@ def main():
             episodes, summary = collect_trajectories(
                 policy_out, args.episodes_per_iter, args.difficulty,
                 traj_path, summary_path, args.runner,
+                extra_args=['--faction', args.faction],
                 workers=args.workers)
         except (FileNotFoundError, RuntimeError) as e:
             logger.error('iteration %d: runner failed, skipping: %s', it, e)
@@ -362,13 +387,15 @@ def main():
         # 6. Checkpoint every 5 iterations; always keep weights JSON fresh.
         policy.export_json(policy_out)
         if it % 5 == 0:
-            ckpt_path = save_checkpoint(policy, opt, it, history, args.ckpt_dir)
+            ckpt_path = save_checkpoint(policy, opt, it, history,
+                                        args.ckpt_dir, args.faction)
             logger.info('checkpoint saved: %s', ckpt_path)
         hist_path = Path(args.ckpt_dir) / 'history.json'
         hist_path.parent.mkdir(parents=True, exist_ok=True)
         hist_path.write_text(json.dumps(history, indent=2))
 
-    save_checkpoint(policy, opt, start_iter + args.iters, history, args.ckpt_dir)
+    save_checkpoint(policy, opt, start_iter + args.iters, history,
+                    args.ckpt_dir, args.faction)
     policy.export_json(policy_out)
     logger.info('Done. Final policy: %s', policy_out)
 

@@ -1,12 +1,18 @@
 /**
- * RLBrain — policy-network brain for the arcane RL prototype.
+ * RLBrain — policy-network brain for the RL prototype.
  *
  * Two-stage design: the policy (an MLP trained in Python) picks WHAT
- * to do — build one of the 7 arcane towers, save, or upgrade — and
+ * to do — build one of the faction's towers, save, or upgrade — and
  * the imitation LearnedScorer picks WHERE to place it. This brain is
  * the TypeScript half of the shared contract with the Python trainer
  * (see ml/desktop/rl/): the 17-dim state, 9 actions, action masking,
  * reward shaping, and trajectory JSONL format must match exactly.
+ *
+ * Faction-parameterized (RL_FACTION_TOWERS): every faction shares one
+ * 9-action / 17-dim policy shape. Actions 0-6 build the faction's
+ * towers in cost order; factions with fewer than 7 towers leave the
+ * trailing build slots empty (permanently masked, counts always 0).
+ * Pass `faction` in RLBrainOptions (default 'arcane').
  *
  * Decision cadence: only between-waves decide() calls act. Mid-wave
  * calls return `skip` without recording — the in-wave decide() the
@@ -43,7 +49,26 @@ export const ARCANE_TOWER_IDS = [
   'arcane_nova',
 ] as const;
 
-/** Action ids. 0-6 build ARCANE_TOWER_IDS[i], 7 save, 8 upgrade. */
+/** Psionic tower ids in action order (actions 0-4; actions 5-6 are
+ *  permanently masked — the faction has no 6th/7th tower). Costs:
+ *  probe 20, mesmer 45, terror 80, mind_spike 150, overmind 750. */
+export const PSIONIC_TOWER_IDS = [
+  'psi_probe',
+  'psi_mesmer',
+  'psi_terror',
+  'psi_mind_spike',
+  'psi_overmind',
+] as const;
+
+/** Build-action tower ids per faction, in action order. MUST match
+ *  the Python side (ml/desktop/rl/env.py FACTION_TOWERS) exactly —
+ *  action i builds RL_FACTION_TOWERS[faction][i]. */
+export const RL_FACTION_TOWERS: Record<string, readonly string[]> = {
+  arcane: ARCANE_TOWER_IDS,
+  psionic: PSIONIC_TOWER_IDS,
+};
+
+/** Action ids. 0-6 build RL_FACTION_TOWERS[faction][i], 7 save, 8 upgrade. */
 export const RL_ACTION_SAVE = 7;
 export const RL_ACTION_UPGRADE = 8;
 export const RL_STATE_DIM = 17;
@@ -72,6 +97,9 @@ export interface TrajectoryStep {
 }
 
 export interface RLBrainOptions {
+  /** Faction to play (default 'arcane'). Must have an entry in
+   *  RL_FACTION_TOWERS. */
+  faction?: string;
   /** Path to a policy weights JSON (see PolicyWeights below). Omit
    *  for uniform-random actions. */
   policyPath?: string;
@@ -115,8 +143,10 @@ interface PendingStep {
 }
 
 export class RLBrain implements BotBrain {
-  readonly name = 'RL-arcane';
+  readonly name: string;
 
+  private faction: string;
+  private towerIds: readonly string[];
   private policy: PolicyWeights | null = null;
   private deterministic: boolean;
   private recordTrajectory: boolean;
@@ -131,6 +161,16 @@ export class RLBrain implements BotBrain {
   private pending: PendingStep | null = null;
 
   constructor(options: RLBrainOptions = {}) {
+    this.faction = options.faction ?? 'arcane';
+    const towerIds = RL_FACTION_TOWERS[this.faction];
+    if (!towerIds) {
+      throw new Error(
+        `RLBrain: no tower table for faction ${this.faction} ` +
+        `(known: ${Object.keys(RL_FACTION_TOWERS).join(', ')})`,
+      );
+    }
+    this.towerIds = towerIds;
+    this.name = `RL-${this.faction}`;
     this.deterministic = options.deterministic ?? false;
     this.recordTrajectory = options.recordTrajectory ?? true;
     this.rewardWave = options.rewardWave ?? 0.1;
@@ -140,11 +180,11 @@ export class RLBrain implements BotBrain {
     if (options.policyPath) {
       this.policy = loadPolicy(options.policyPath);
     }
-    this.scorer = new LearnedScorer(['arcane']);
-    if (!this.scorer.hasModel('arcane') && !this.warnedNoScorer) {
+    this.scorer = new LearnedScorer([this.faction]);
+    if (!this.scorer.hasModel(this.faction) && !this.warnedNoScorer) {
       this.warnedNoScorer = true;
       console.warn(
-        'RLBrain: no LearnedScorer model for arcane — using closest-to-path fallback cells.',
+        `RLBrain: no LearnedScorer model for ${this.faction} — using closest-to-path fallback cells.`,
       );
     }
   }
@@ -159,7 +199,7 @@ export class RLBrain implements BotBrain {
     // was recorded (wave cleared? gold gained? lives lost?).
     this.settlePendingReward(ctx);
 
-    const state = extractState(ctx);
+    const state = extractState(ctx, this.towerIds);
     const mask = this.computeMask(ctx);
     const { action, logprob, value, probs } = this.chooseAction(state, mask);
 
@@ -234,7 +274,8 @@ export class RLBrain implements BotBrain {
    *   1  gold / 1000
    *   2  lives / 100
    *   3  tower_count / 100
-   *   4-10  per-tower counts / 20, in ARCANE_TOWER_IDS order
+   *   4-10  per-tower counts / 20, in the faction's tower order
+   *         (trailing slots pad with 0 for factions with < 7 towers)
    *   11 next wave total creep count / 50 (0 if unknown)
    *   12 next wave has armored 0/1
    *   13 next wave has flying 0/1 (creepType contains 'fly')
@@ -294,11 +335,13 @@ export class RLBrain implements BotBrain {
   }
 
   /** Build valid iff affordable; upgrade valid iff an upgradable
-   *  affordable tower exists; save always valid. */
+   *  affordable tower exists; save always valid. Trailing build
+   *  slots beyond the faction's roster are always invalid. */
   private computeMask(ctx: BotContext): number[] {
     const mask = new Array<number>(RL_ACTION_DIM).fill(0);
-    for (let i = 0; i < ARCANE_TOWER_IDS.length; i++) {
-      const tower = TOWER_TYPES[ARCANE_TOWER_IDS[i]];
+    for (let i = 0; i < RL_ACTION_DIM - 2; i++) {
+      const towerId = this.towerIds[i];
+      const tower = towerId ? TOWER_TYPES[towerId] : undefined;
       mask[i] = tower && ctx.budget >= tower.cost ? 1 : 0;
     }
     mask[RL_ACTION_SAVE] = 1;
@@ -316,7 +359,7 @@ export class RLBrain implements BotBrain {
       return { kind: 'upgrade', col: target.col, row: target.row };
     }
     // Build action 0-6.
-    const towerId = ARCANE_TOWER_IDS[action];
+    const towerId = this.towerIds[action];
     const tower = towerId ? TOWER_TYPES[towerId] : undefined;
     if (!tower) return { kind: 'skip' };
     if (ctx.budget < tower.cost) return { kind: 'skip' };
@@ -331,7 +374,7 @@ export class RLBrain implements BotBrain {
     ctx: BotContext,
     tower: TowerType,
   ): { col: number; row: number } | null {
-    if (this.scorer.hasModel('arcane')) {
+    if (this.scorer.hasModel(this.faction)) {
       const learned = this.scorer.scorerFn(ctx, tower, 0.0);
       if (learned) return learned;
     }
@@ -414,12 +457,16 @@ export function loadPolicy(path: string): PolicyWeights {
 }
 
 /** Extract the 17-dim state from a BotContext. Exported for tests
- *  and for the runner's sanity checks. */
-export function extractState(ctx: BotContext): number[] {
+ *  and for the runner's sanity checks. towerIds defaults to the
+ *  arcane roster; pass the faction's tower list for other factions. */
+export function extractState(
+  ctx: BotContext,
+  towerIds: readonly string[] = ARCANE_TOWER_IDS,
+): number[] {
   const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
-  const counts = new Array<number>(ARCANE_TOWER_IDS.length).fill(0);
+  const counts = new Array<number>(RL_ACTION_DIM - 2).fill(0);
   for (const t of ctx.placedTowers) {
-    const idx = ARCANE_TOWER_IDS.indexOf(t.towerId as (typeof ARCANE_TOWER_IDS)[number]);
+    const idx = towerIds.indexOf(t.towerId);
     if (idx >= 0) counts[idx]++;
   }
 
