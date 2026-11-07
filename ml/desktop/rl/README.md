@@ -188,8 +188,31 @@ python ml/desktop/rl/eval_rl.py --policy ml/desktop/rl/policy-arcane.json \
 ```
 
 **Timing estimate:** each headless match takes ~1–5s. 32 episodes per
-iteration ≈ 1–3 min. 50 iterations ≈ 1–3 hours on a desktop. The
-bottleneck is game simulation, not the PPO update.
+iteration ≈ 1–3 min *sequentially*. The bottleneck is game simulation,
+not the PPO update — and the GPU sits idle while it runs.
+
+**Parallel collection:** episodes are collected across `--workers`
+parallel Node processes (default: CPU count, clamped to episode
+count). Each worker gets its own trajectory/summary part file and its
+own slice of the seeds (`--seeds`/`--seed-base` are split, never
+duplicated); parts are merged into the single output files, so the
+merged format is identical to a single-worker run. Speedup is roughly
+linear up to core count *for the simulation-bound portion* — but each
+Node worker pays ~4s of startup (tsx transpiles the jsdom import
+graph), so short episodes are startup-bound and gain little: on a
+4-core VM, 32 sub-second episodes measured 0.74x (slower). On a
+desktop with 2–3s episodes and 8+ cores, expect ~3–6x per config
+(100 iters × 32 eps ≈ 20 min instead of ~2h). Lower `--workers` if
+parallel Node processes run out of RAM.
+
+```bash
+# 8 parallel runners for training and eval
+python ml/desktop/rl/train_ppo.py --pretrain --workers 8 \
+    --init-from-scorer ml/desktop/models/scorer-arcane.pt \
+    --policy-out ml/desktop/rl/policy-arcane.json
+python ml/desktop/rl/eval_rl.py --policy ml/desktop/rl/policy-arcane.json \
+    --episodes 50 --deterministic --workers 8 --out ml/desktop/rl/eval-arcane.json
+```
 
 **Torch:** this VM has CPU torch 2.15 in `~/.venvs/rl-torch` (for
 verification only — too slow for real training). Alex's desktop needs

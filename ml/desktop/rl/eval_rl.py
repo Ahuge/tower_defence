@@ -42,6 +42,9 @@ def main():
     p.add_argument('--out', default=None, help='results JSON path')
     p.add_argument('--runner', default=str(Path(__file__).parent / 'run_episode.mts'))
     p.add_argument('--traj-dir', default=str(Path(__file__).parent / 'eval-trajs'))
+    p.add_argument('--workers', type=int, default=None,
+                   help='parallel episode-runner processes (default: CPU '
+                        'count, clamped to episode count)')
     args = p.parse_args()
 
     seeds = EVAL_SEEDS[:args.episodes]
@@ -60,7 +63,8 @@ def main():
         extra_args.append('--deterministic')
     episodes, summary = collect_trajectories(
         args.policy, args.episodes, args.difficulty,
-        traj_path, summary_path, args.runner, extra_args=extra_args)
+        traj_path, summary_path, args.runner, extra_args=extra_args,
+        workers=args.workers)
 
     stats = summary_stats(summary, episode_stats(episodes))
 

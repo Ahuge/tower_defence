@@ -273,6 +273,9 @@ def main():
                    help='path to run_episode.mts')
     p.add_argument('--traj-dir', default=str(DEFAULT_TRAJ_DIR))
     p.add_argument('--difficulty', default='hard')
+    p.add_argument('--workers', type=int, default=None,
+                   help='parallel episode-runner processes (default: CPU '
+                        'count, clamped to episodes per iteration)')
     args = p.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -321,7 +324,8 @@ def main():
         try:
             episodes, summary = collect_trajectories(
                 policy_out, args.episodes_per_iter, args.difficulty,
-                traj_path, summary_path, args.runner)
+                traj_path, summary_path, args.runner,
+                workers=args.workers)
         except (FileNotFoundError, RuntimeError) as e:
             logger.error('iteration %d: runner failed, skipping: %s', it, e)
             continue

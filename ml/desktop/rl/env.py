@@ -15,7 +15,9 @@ granularity is sufficient because the runner records every step.
 """
 
 import json
+import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -220,38 +222,64 @@ def episode_stats(episodes):
     }
 
 
-def collect_trajectories(policy_json, n_episodes, difficulty, traj_path,
-                         summary_path, runner_path, extra_args=None):
-    """Run the TypeScript episode runner and return (episodes, summary).
+def _split_work(n_episodes, n_workers, extra_args):
+    """Split episodes (and seed args) across workers.
 
-    This is the episode-granularity equivalent of env.step(): the runner
-    loads the policy JSON, plays ``n_episodes`` full games, and writes a
-    trajectory JSONL plus a summary JSON.
-
-    Args:
-        policy_json: path to the policy weights JSON the runner loads.
-        n_episodes: number of episodes to run.
-        difficulty: e.g. 'hard'.
-        traj_path: where the runner writes trajectories.
-        summary_path: where the runner writes its summary JSON.
-        runner_path: path to run_episode.mts (TypeScript side).
-        extra_args: optional extra CLI flags for the runner, e.g.
-            ['--deterministic', '--seeds', '100,200'].
-
-    Returns (episodes, summary dict or None). Raises FileNotFoundError if
-    the runner is missing, RuntimeError if the runner exits non-zero.
-    Callers that want to survive a failed iteration should catch these.
+    Returns a list of (episode_count, extra_args) tuples, one per
+    worker, in episode order. Seed-bearing args are split so no two
+    workers replay the same seed:
+    - ``--seeds a,b,c,...`` is chunked across workers;
+    - ``--seed-base N`` becomes per-worker bases N + offset;
+    - no seed args means random seeds per invocation (no collision
+      risk — each worker is a fresh process).
+    All other extra args pass through unchanged to every worker.
     """
-    runner_path = Path(runner_path)
-    if not runner_path.exists():
-        raise FileNotFoundError(
-            f'episode runner not found: {runner_path} '
-            '(TypeScript side — RLBrain + run_episode.mts)')
-    traj_path = Path(traj_path)
-    summary_path = Path(summary_path)
-    traj_path.parent.mkdir(parents=True, exist_ok=True)
-    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    extra_args = list(extra_args or [])
+    counts = [n_episodes // n_workers + (1 if i < n_episodes % n_workers else 0)
+              for i in range(n_workers)]
+    counts = [c for c in counts if c > 0]
 
+    def _arg_value(name):
+        if name in extra_args:
+            idx = extra_args.index(name)
+            return extra_args[idx + 1] if idx + 1 < len(extra_args) else None
+        return None
+
+    seeds = _arg_value('--seeds')
+    seed_base = _arg_value('--seed-base')
+    if seeds is not None:
+        seed_list = [s.strip() for s in seeds.split(',') if s.strip()]
+        if len(seed_list) < n_episodes:
+            raise ValueError(
+                f'--seeds gave {len(seed_list)} seeds but {n_episodes} '
+                'episodes were requested')
+        chunks, off = [], 0
+        for c in counts:
+            chunks.append(seed_list[off:off + c])
+            off += c
+        out = []
+        for c, chunk in zip(counts, chunks):
+            args = [a for a in extra_args]
+            idx = args.index('--seeds')
+            args[idx + 1] = ','.join(chunk)
+            out.append((c, args))
+        return out
+    if seed_base is not None:
+        base = int(seed_base)
+        out, off = [], 0
+        for c in counts:
+            args = [a for a in extra_args]
+            idx = args.index('--seed-base')
+            args[idx + 1] = str(base + off)
+            out.append((c, args))
+            off += c
+        return out
+    return [(c, list(extra_args)) for c in counts]
+
+
+def _run_one_worker(policy_json, n_episodes, difficulty, traj_path,
+                    summary_path, runner_path, extra_args):
+    """Run the episode runner once; return (episodes, summary)."""
     cmd = [
         'node', '--import', 'tsx', str(runner_path),
         '--policy', str(policy_json),
@@ -270,7 +298,129 @@ def collect_trajectories(policy_json, n_episodes, difficulty, traj_path,
             f'stderr: {result.stderr[-2000:]}')
     if result.stdout.strip():
         print(result.stdout.strip()[-2000:])
+    episodes = load_trajectories(traj_path) if traj_path.exists() else []
+    summary = None
+    if summary_path.exists():
+        summary = json.loads(summary_path.read_text())
+    return episodes, summary
 
+
+def _merge_parts(traj_path, summary_path, part_traj_paths,
+                 part_summary_paths):
+    """Merge per-worker trajectory/summary files into the final outputs.
+
+    Episode ids restart at 0 in every part file, so each part's ids are
+    shifted by the cumulative episode count of the earlier parts.
+    Part files are deleted after a successful merge.
+    """
+    traj_path = Path(traj_path)
+    summary_path = Path(summary_path)
+    merged_summaries = []
+    offset = 0
+    with open(traj_path, 'w') as out_f:
+        for part_traj, part_summary in zip(part_traj_paths,
+                                           part_summary_paths):
+            part_eps = load_trajectories(part_traj) if part_traj.exists() else []
+            n_eps = len(part_eps)
+            # Rewrite episode ids with the global offset, streaming.
+            if part_traj.exists():
+                with open(part_traj) as in_f:
+                    for line in in_f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        step = json.loads(line)
+                        step['episode'] += offset
+                        out_f.write(json.dumps(step) + '\n')
+            if part_summary.exists():
+                part_sum = json.loads(part_summary.read_text())
+                for e in part_sum.get('episodes', []):
+                    e = dict(e)
+                    e['episode'] += offset
+                    merged_summaries.append(e)
+            offset += n_eps
+    summary_path.write_text(
+        json.dumps({'episodes': merged_summaries}, indent=2))
+    for p in list(part_traj_paths) + list(part_summary_paths):
+        try:
+            p.unlink()
+        except FileNotFoundError:
+            pass
+    return offset
+
+
+def collect_trajectories(policy_json, n_episodes, difficulty, traj_path,
+                         summary_path, runner_path, extra_args=None,
+                         workers=None):
+    """Run the TypeScript episode runner and return (episodes, summary).
+
+    This is the episode-granularity equivalent of env.step(): the runner
+    loads the policy JSON, plays ``n_episodes`` full games, and writes a
+    trajectory JSONL plus a summary JSON.
+
+    Episodes are collected in parallel across ``workers`` Node processes
+    (default: CPU count, clamped to ``n_episodes``) and merged into the
+    single ``traj_path``/``summary_path`` outputs, so the merged files
+    are identical in format to a single-worker run. Each worker gets its
+    own trajectory/summary part files and its own slice of the seeds
+    (``--seeds``/``--seed-base`` in ``extra_args`` are split, never
+    duplicated). A single worker (``workers=1``) behaves exactly as
+    before. If any worker fails, the whole call raises RuntimeError.
+
+    Args:
+        policy_json: path to the policy weights JSON the runner loads.
+        n_episodes: number of episodes to run.
+        difficulty: e.g. 'hard'.
+        traj_path: where the runner writes trajectories.
+        summary_path: where the runner writes its summary JSON.
+        runner_path: path to run_episode.mts (TypeScript side).
+        extra_args: optional extra CLI flags for the runner, e.g.
+            ['--deterministic', '--seeds', '100,200'].
+        workers: parallel runner processes; default os.cpu_count().
+
+    Returns (episodes, summary dict or None). Raises FileNotFoundError if
+    the runner is missing, RuntimeError if the runner exits non-zero.
+    Callers that want to survive a failed iteration should catch these.
+    """
+    runner_path = Path(runner_path)
+    if not runner_path.exists():
+        raise FileNotFoundError(
+            f'episode runner not found: {runner_path} '
+            '(TypeScript side — RLBrain + run_episode.mts)')
+    traj_path = Path(traj_path)
+    summary_path = Path(summary_path)
+    traj_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+
+    n_workers = workers if workers is not None else (os.cpu_count() or 4)
+    n_workers = max(1, min(int(n_workers), n_episodes))
+    if n_workers <= 1:
+        return _run_one_worker(policy_json, n_episodes, difficulty,
+                               traj_path, summary_path, runner_path,
+                               extra_args)
+
+    splits = _split_work(n_episodes, n_workers, extra_args)
+    part_trajs = []
+    part_summaries = []
+    for i, (count, _args) in enumerate(splits):
+        part_trajs.append(traj_path.with_name(
+            f'{traj_path.stem}-part{i}{traj_path.suffix}'))
+        part_summaries.append(summary_path.with_name(
+            f'{summary_path.stem}-part{i}{summary_path.suffix}'))
+
+    def _run(idx):
+        count, w_args = splits[idx]
+        return _run_one_worker(policy_json, count, difficulty,
+                               part_trajs[idx], part_summaries[idx],
+                               runner_path, w_args)
+
+    with ThreadPoolExecutor(max_workers=len(splits)) as pool:
+        # list() forces all futures to resolve; the first exception
+        # propagates (subprocess.run releases the GIL while waiting,
+        # so threads genuinely overlap here).
+        list(pool.map(_run, range(len(splits))))
+
+    _merge_parts(traj_path, summary_path, part_trajs, part_summaries)
     episodes = load_trajectories(traj_path) if traj_path.exists() else []
     summary = None
     if summary_path.exists():

@@ -20,6 +20,13 @@
 # The best policy (by eval win rate) is copied to
 # ml/desktop/rl/policy-best.json.
 #
+# Speed: episode collection runs in parallel across all CPU cores
+# (--workers, default $(nproc) via RL_WORKERS). Game simulation is the
+# bottleneck and parallelizes nearly linearly up to core count — expect
+# roughly 3-4x faster configs on a 4-core machine, more on many-core
+# desktops. Lower RL_WORKERS if Node processes run out of RAM:
+#   RL_WORKERS=4 ./ml/desktop/rl/sweep.sh 24
+#
 # Resume: if the script is interrupted, re-running it skips configs
 # that already have a result file. Delete a result file to re-run it.
 
@@ -38,6 +45,9 @@ fi
 
 MAX_HOURS="${1:-24}"
 FACTION="${2:-arcane}"
+# Parallel episode-runner processes (default: all cores). Override with
+# RL_WORKERS=4 ./ml/desktop/rl/sweep.sh 24 if RAM is tight.
+WORKERS="${RL_WORKERS:-$(nproc)}"
 START_TIME=$(date +%s)
 DEADLINE=$((START_TIME + MAX_HOURS * 3600))
 RESULTS_DIR="ml/desktop/rl/sweep-results"
@@ -89,7 +99,7 @@ run_config() {
       --policy-out "$policy" \
       --ckpt-dir "$ckpt" \
       --lr "$lr" --entropy-coef "$ent" --clip "$clip" \
-      --iters "$iters" \
+      --iters "$iters" --workers "$WORKERS" \
       > "$RESULTS_DIR/${name}-train.log" 2>&1
   local train_rc=$?
   if [ $train_rc -ne 0 ]; then
@@ -100,7 +110,7 @@ run_config() {
 
   # Eval: 50 episodes, deterministic, fixed seeds.
   python ml/desktop/rl/eval_rl.py --policy "$policy" \
-      --episodes 50 --deterministic \
+      --episodes 50 --deterministic --workers "$WORKERS" \
       --out "$RESULTS_DIR/${name}-eval.json" \
       > "$RESULTS_DIR/${name}-eval.log" 2>&1
   local eval_rc=$?
@@ -164,10 +174,10 @@ if [ ! -f "$RESULTS_DIR/bc-only.json" ]; then
       --init-from-scorer "ml/desktop/models/scorer-${FACTION}.pt" \
       --policy-out "$RESULTS_DIR/policy-bc-only.json" \
       --ckpt-dir "$RESULTS_DIR/ckpt-bc-only" \
-      --iters 0 \
+      --iters 0 --workers "$WORKERS" \
       > "$RESULTS_DIR/bc-only-train.log" 2>&1
   python ml/desktop/rl/eval_rl.py --policy "$RESULTS_DIR/policy-bc-only.json" \
-      --episodes 50 --deterministic \
+      --episodes 50 --deterministic --workers "$WORKERS" \
       --out "$RESULTS_DIR/bc-only.json" \
       > "$RESULTS_DIR/bc-only-eval.log" 2>&1
   bc_wins=$(python3 -c "import json; print(json.load(open('$RESULTS_DIR/bc-only.json'))['wins'])" 2>/dev/null || echo "?")
