@@ -24,7 +24,17 @@
 # that already have a result file. Delete a result file to re-run it.
 
 set -u
-cd "$(dirname "$0")/../.." || exit 1
+# Resolve the repo root from this script's location (ml/desktop/rl/sweep.sh).
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+cd "$REPO_ROOT" || exit 1
+
+# Sanity check: the trainer must exist here, otherwise we'd silently
+# fail every config (as happened when the cd was wrong).
+if [ ! -f "ml/desktop/rl/train_ppo.py" ]; then
+  echo "ERROR: ml/desktop/rl/train_ppo.py not found in $REPO_ROOT — aborting."
+  exit 1
+fi
 
 MAX_HOURS="${1:-24}"
 FACTION="${2:-arcane}"
@@ -52,7 +62,9 @@ run_config() {
   local name="$1" lr="$2" ent="$3" clip="$4" life="$5" wave="$6" iters="$7"
   local result_file="$RESULTS_DIR/${name}.json"
 
-  if [ -f "$result_file" ]; then
+  # Only skip configs that completed successfully. A previous run that
+  # wrote an error result (train/eval failed) should be retried.
+  if [ -f "$result_file" ] && ! python3 -c "import json,sys; sys.exit(0 if 'error' not in json.load(open('$result_file')) else 1)" 2>/dev/null; then
     log "SKIP $name (already done)"
     return 0
   fi
