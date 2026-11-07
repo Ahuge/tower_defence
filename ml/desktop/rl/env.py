@@ -305,10 +305,11 @@ def _split_work(n_episodes, n_workers, extra_args):
     seed_base = _arg_value('--seed-base')
     if seeds is not None:
         seed_list = [s.strip() for s in seeds.split(',') if s.strip()]
+        # Fewer seeds than episodes: cycle the list (eval does 50 eps on
+        # 25 seeds, each seed twice) — the old sequential path did this.
         if len(seed_list) < n_episodes:
-            raise ValueError(
-                f'--seeds gave {len(seed_list)} seeds but {n_episodes} '
-                'episodes were requested')
+            reps = (n_episodes + len(seed_list) - 1) // len(seed_list)
+            seed_list = (seed_list * reps)[:n_episodes]
         chunks, off = [], 0
         for c in counts:
             chunks.append(seed_list[off:off + c])
