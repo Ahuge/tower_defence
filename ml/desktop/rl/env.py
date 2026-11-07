@@ -17,6 +17,7 @@ granularity is sufficient because the runner records every step.
 import json
 import os
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -277,11 +278,31 @@ def _split_work(n_episodes, n_workers, extra_args):
     return [(c, list(extra_args)) for c in counts]
 
 
+def _runner_cmd(runner_path):
+    """Build the node invocation for the episode runner.
+
+    Prefers the esbuild bundle (run_episode.bundle.mjs) when it exists
+    next to the .mts runner — plain `node`, no tsx startup tax (~1-4s
+    saved per worker spawn). Falls back to `node --import tsx` with a
+    warning when the bundle is missing (run
+    `node ml/desktop/rl/build-runner.mjs` to build it).
+    """
+    runner_path = Path(runner_path)
+    bundle = runner_path.with_name('run_episode.bundle.mjs')
+    if runner_path.suffix == '.mjs' and runner_path.exists():
+        return ['node', str(runner_path)]
+    if bundle.exists():
+        return ['node', str(bundle)]
+    print(f'WARNING: runner bundle not found at {bundle} — falling back '
+          f'to tsx (slow startup). Run node ml/desktop/rl/build-runner.mjs.',
+          file=sys.stderr)
+    return ['node', '--import', 'tsx', str(runner_path)]
+
+
 def _run_one_worker(policy_json, n_episodes, difficulty, traj_path,
                     summary_path, runner_path, extra_args):
     """Run the episode runner once; return (episodes, summary)."""
-    cmd = [
-        'node', '--import', 'tsx', str(runner_path),
+    cmd = _runner_cmd(runner_path) + [
         '--policy', str(policy_json),
         '--episodes', str(n_episodes),
         '--difficulty', difficulty,
@@ -373,7 +394,11 @@ def collect_trajectories(policy_json, n_episodes, difficulty, traj_path,
         difficulty: e.g. 'hard'.
         traj_path: where the runner writes trajectories.
         summary_path: where the runner writes its summary JSON.
-        runner_path: path to run_episode.mts (TypeScript side).
+        runner_path: path to run_episode.mts (TypeScript side) or
+            run_episode.bundle.mjs. When given the .mts path, the
+            esbuild bundle is preferred if it exists next to it
+            (see _runner_cmd); pass the .bundle.mjs path directly to
+            force the bundle.
         extra_args: optional extra CLI flags for the runner, e.g.
             ['--deterministic', '--seeds', '100,200'].
         workers: parallel runner processes; default os.cpu_count().

@@ -44,3 +44,9 @@ harness-runs/
 /ml/.venv/
 # /ml/captured/ is NOT ignored — those are committed human-played
 # JSONL files (hand-collected positive examples for hard cells).
+
+# RL episode-runner bundle (esbuild build artifact) + the scorer-model
+# copies the build script places next to it. Rebuilt by
+# `node ml/desktop/rl/build-runner.mjs` (sweep.sh does this up front).
+ml/desktop/rl/run_episode.bundle.mjs
+ml/desktop/rl/models/

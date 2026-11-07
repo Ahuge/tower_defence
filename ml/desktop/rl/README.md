@@ -197,13 +197,30 @@ count). Each worker gets its own trajectory/summary part file and its
 own slice of the seeds (`--seeds`/`--seed-base` are split, never
 duplicated); parts are merged into the single output files, so the
 merged format is identical to a single-worker run. Speedup is roughly
-linear up to core count *for the simulation-bound portion* — but each
-Node worker pays ~4s of startup (tsx transpiles the jsdom import
-graph), so short episodes are startup-bound and gain little: on a
-4-core VM, 32 sub-second episodes measured 0.74x (slower). On a
-desktop with 2–3s episodes and 8+ cores, expect ~3–6x per config
-(100 iters × 32 eps ≈ 20 min instead of ~2h). Lower `--workers` if
-parallel Node processes run out of RAM.
+linear up to core count *for the simulation-bound portion*. Lower
+`--workers` if parallel Node processes run out of RAM.
+
+**Bundled runner (startup):** each worker used to pay ~1–4s of tsx
+startup (transpiling the jsdom import graph) before simulating a
+single episode — with 20 workers that's most of the wall clock.
+`node ml/desktop/rl/build-runner.mjs` bundles `run_episode.mts` with
+esbuild into `run_episode.bundle.mjs` (plain `node`, ~0.2s startup).
+`env.py` prefers the bundle when it exists and falls back to tsx
+with a warning when it doesn't. The bundle is a build artifact
+(gitignored), as are the scorer-model copies the build script places
+in `ml/desktop/rl/models/` — `LearnedScorer` resolves models relative
+to its own file, which after bundling is the bundle's directory.
+jsdom stays external (bundling it breaks on its internal dynamic
+`require()` calls); Node resolves it from node_modules at runtime.
+`sweep.sh` builds the bundle up front. Measured on this VM: cold tsx
+2.4s vs bundle 1.35s for 2 episodes (the tsx tax was ~4s on Alex's
+WSL desktop). With the bundle, 100 iters × 64 eps on 8+ cores is
+roughly 20–30 min per config instead of ~2h.
+
+**Episodes per iteration:** the sweep uses `--episodes-per-iter 64`
+(trainer default is 32). With startup fixed and 20 workers, 32
+episodes is only 1–2 per worker — poor amortization — and 64 gives
+better PPO gradient estimates for the same wall-clock cost.
 
 ```bash
 # 8 parallel runners for training and eval

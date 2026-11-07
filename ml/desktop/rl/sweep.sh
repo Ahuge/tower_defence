@@ -27,6 +27,16 @@
 # desktops. Lower RL_WORKERS if Node processes run out of RAM:
 #   RL_WORKERS=4 ./ml/desktop/rl/sweep.sh 24
 #
+# The episode runner is bundled with esbuild before the sweep starts
+# (node ml/desktop/rl/build-runner.mjs) so each worker pays ~0.2s of
+# Node startup instead of ~1-4s of tsx transpiling. The bundle and its
+# copied scorer models are build artifacts (gitignored).
+#
+# Episodes per PPO iteration default to 64 (not the trainer's 32):
+# with startup fixed and 20 workers, 32 episodes is only 1-2 per
+# worker — poor amortization — and 64 gives better PPO gradient
+# estimates for the same wall-clock cost.
+#
 # Resume: if the script is interrupted, re-running it skips configs
 # that already have a result file. Delete a result file to re-run it.
 
@@ -41,6 +51,16 @@ cd "$REPO_ROOT" || exit 1
 if [ ! -f "ml/desktop/rl/train_ppo.py" ]; then
   echo "ERROR: ml/desktop/rl/train_ppo.py not found in $REPO_ROOT — aborting."
   exit 1
+fi
+
+# Bundle the episode runner once up front so every worker spawn is a
+# plain `node` launch (~0.2s) instead of tsx transpiling (~1-4s).
+# Falls back to tsx at runtime if the build fails — warn, don't abort.
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Bundling episode runner (esbuild)..."
+if node ml/desktop/rl/build-runner.mjs; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Runner bundle ready."
+else
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: bundle build failed — workers will fall back to tsx (slow startup)."
 fi
 
 MAX_HOURS="${1:-24}"
@@ -100,6 +120,7 @@ run_config() {
       --ckpt-dir "$ckpt" \
       --lr "$lr" --entropy-coef "$ent" --clip "$clip" \
       --iters "$iters" --workers "$WORKERS" \
+      --episodes-per-iter 64 \
       > "$RESULTS_DIR/${name}-train.log" 2>&1
   local train_rc=$?
   if [ $train_rc -ne 0 ]; then
