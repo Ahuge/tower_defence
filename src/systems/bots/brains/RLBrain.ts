@@ -79,6 +79,12 @@ export interface RLBrainOptions {
   deterministic?: boolean;
   /** Record trajectory steps. Default true. */
   recordTrajectory?: boolean;
+  /** Reward shaping coefficients. Defaults match the originals.
+   *  Override via env vars in run_episode.mts for sweeps. */
+  rewardWave?: number;
+  rewardGoldCoef?: number;
+  rewardGoldCap?: number;
+  rewardLifePenalty?: number;
 }
 
 /** Policy weights JSON, produced by the Python trainer.
@@ -116,6 +122,10 @@ export class RLBrain implements BotBrain {
   private recordTrajectory: boolean;
   private scorer: LearnedScorer;
   private warnedNoScorer = false;
+  private rewardWave: number;
+  private rewardGoldCoef: number;
+  private rewardGoldCap: number;
+  private rewardLifePenalty: number;
 
   private trajectory: TrajectoryStep[] = [];
   private pending: PendingStep | null = null;
@@ -123,6 +133,10 @@ export class RLBrain implements BotBrain {
   constructor(options: RLBrainOptions = {}) {
     this.deterministic = options.deterministic ?? false;
     this.recordTrajectory = options.recordTrajectory ?? true;
+    this.rewardWave = options.rewardWave ?? 0.1;
+    this.rewardGoldCoef = options.rewardGoldCoef ?? 0.002;
+    this.rewardGoldCap = options.rewardGoldCap ?? 0.2;
+    this.rewardLifePenalty = options.rewardLifePenalty ?? 0.5;
     if (options.policyPath) {
       this.policy = loadPolicy(options.policyPath);
     }
@@ -346,11 +360,11 @@ export class RLBrain implements BotBrain {
   /**
    * Patch the pending step's reward from deltas since it was
    * recorded:
-   *   +0.1 per wave cleared
-   *   +0.002 per gold gained (contribution capped at +0.2, floored
-   *     at 0 — spending gold must NOT be punished, otherwise the
-   *     agent learns to never build anything)
-   *   -0.5 per life lost
+   *   +rewardWave per wave cleared
+   *   +rewardGoldCoef per gold gained (capped at rewardGoldCap,
+   *     floored at 0 — spending gold must NOT be punished, otherwise
+   *     the agent learns to never build anything)
+   *   -rewardLifePenalty per life lost
    */
   private settlePendingReward(ctx: BotContext): void {
     if (!this.pending) return;
@@ -359,9 +373,9 @@ export class RLBrain implements BotBrain {
     const goldDelta = ctx.budget - gold;
     const livesLost = Math.max(0, lives - ctx.lives);
     step.reward =
-      0.1 * wavesCleared +
-      Math.min(0.002 * Math.max(0, goldDelta), 0.2) -
-      0.5 * livesLost;
+      this.rewardWave * wavesCleared +
+      Math.min(this.rewardGoldCoef * Math.max(0, goldDelta), this.rewardGoldCap) -
+      this.rewardLifePenalty * livesLost;
     this.pending = null;
   }
 }

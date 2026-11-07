@@ -39,6 +39,12 @@ const OUT = getArg('out') ?? 'ml/desktop/rl/trajectories.jsonl';
 const SUMMARY = getArg('summary') ?? 'ml/desktop/rl/summary.json';
 const DETERMINISTIC = args.includes('--deterministic');
 
+// Reward shaping overrides for sweeps (env vars, defaults = originals).
+const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
+const REWARD_GOLD_COEF = parseFloat(process.env.RL_REWARD_GOLD_COEF ?? '0.002');
+const REWARD_GOLD_CAP = parseFloat(process.env.RL_REWARD_GOLD_CAP ?? '0.2');
+const REWARD_LIFE_PENALTY = parseFloat(process.env.RL_REWARD_LIFE_PENALTY ?? '0.5');
+
 if (DIFFICULTY !== 'hard' && DIFFICULTY !== 'normal') {
   console.error(`--difficulty must be hard|normal, got ${DIFFICULTY}`);
   process.exit(1);
@@ -109,6 +115,10 @@ async function main(): Promise<void> {
       policyPath: POLICY,
       deterministic: DETERMINISTIC,
       recordTrajectory: true,
+      rewardWave: REWARD_WAVE,
+      rewardGoldCoef: REWARD_GOLD_COEF,
+      rewardGoldCap: REWARD_GOLD_CAP,
+      rewardLifePenalty: REWARD_LIFE_PENALTY,
     });
     const result = await runMatch(
       {
