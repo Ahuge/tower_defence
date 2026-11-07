@@ -145,6 +145,10 @@ async function runMatchInner(
   let currentWave = 0;
   let lives = STARTING_LIVES;
 
+  // Lives access for Celestial Martyr/Prophet traits
+  towerMgr.getLives = () => lives;
+  towerMgr.spendLives = (n: number) => { lives = Math.max(0, lives - n); };
+
   const allPaths: (PathPoint[] | null)[] = [];
   const recalcPaths = (): (PathPoint[] | null)[] => {
     allPaths.length = 0;
@@ -309,7 +313,7 @@ async function runMatchInner(
     scene.tick(stepMs);
 
     // Tower AI + combat.
-    towerMgr.updateTowers(simTime, stepMs, creepMgr.creeps, creepMgr.justDiedCreeps);
+    towerMgr.updateTowers(simTime, stepMs, creepMgr.creeps, creepMgr.justDiedCreeps, () => lives);
     towerMgr.cleanupExpired();
 
     // Creep movement + leak processing.
