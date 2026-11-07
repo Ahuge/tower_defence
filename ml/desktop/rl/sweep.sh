@@ -239,3 +239,14 @@ if [ -f "$RESULTS_DIR/best.json" ]; then
   log "Best policy: ml/desktop/rl/policy-best.json"
 fi
 log "Full results in $RESULTS_DIR"
+
+# --- Push results so Muse can see them ---
+log "Pushing sweep results to feature/imitation-placement..."
+git add "$RESULTS_DIR" ml/desktop/rl/policy-best.json 2>/dev/null
+if git diff --cached --quiet; then
+  log "Nothing new to push."
+else
+  git -c user.name="Alex Hughes" -c user.email="Ahuge@users.noreply.github.com" commit -m "RL sweep results ($(date '+%Y-%m-%d %H:%M'))" 2>&1 | tail -1
+  git push origin feature/imitation-placement 2>&1 | tail -1
+  log "Results pushed."
+fi
