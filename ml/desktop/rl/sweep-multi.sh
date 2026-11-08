@@ -22,9 +22,14 @@
 # holds a per-faction lockfile (ml/desktop/rl/.sweep-<faction>.lock)
 # and refuses to start a second sweep for the same faction.
 #
-# Workers: each sweep defaults to $(nproc) parallel episode runners,
-# but the workers are shared across sweeps — 2 factions on 20 cores
-# each get ~10 effective workers. Pass RL_WORKERS to cap per sweep:
+# Workers: each sweep would default to $(nproc) parallel episode
+# runners, so N factions means N x $(nproc) Node processes — heavy
+# oversubscription (2 factions on 28 threads = 56 runnable processes).
+# This script divides the logical CPU count across the factions instead
+# (2 factions on 28 threads = 14 workers each). Hyperthreads are worth
+# keeping: measured 56 episodes in 2.44s on 28 workers vs 2.90s on 14
+# physical cores (~19% more throughput). Override with RL_WORKERS to
+# set a hard per-sweep cap:
 #   RL_WORKERS=10 ./ml/desktop/rl/sweep-multi.sh 24 arcane psionic
 #
 # Stopping: Ctrl-C here only stops the waiting, NOT the sweeps — they
@@ -59,6 +64,17 @@ if [ "$#" -eq 0 ]; then
   exit 1
 fi
 FACTIONS=("$@")
+
+# Divide the logical CPU budget across factions so N sweeps don't each
+# spawn $(nproc) workers. Keep SMT siblings: the sim is single-threaded
+# per worker, but 2 threads/core still measured ~19% more throughput.
+if [ -z "${RL_WORKERS:-}" ]; then
+  TOTAL_THREADS=$(nproc)
+  PER_FACTION=$(( TOTAL_THREADS / ${#FACTIONS[@]} ))
+  [ "$PER_FACTION" -lt 1 ] && PER_FACTION=1
+  export RL_WORKERS="$PER_FACTION"
+  log "Workers: $TOTAL_THREADS logical CPUs / ${#FACTIONS[@]} factions = $RL_WORKERS per sweep"
+fi
 
 # Validate factions up front so a typo doesn't launch a half-set.
 for f in "${FACTIONS[@]}"; do

@@ -3,12 +3,12 @@
  * build-runner.mjs — bundle the RL episode runner with esbuild.
  *
  * The parallel sweep spawns one Node process per worker per iteration,
- * and each one pays ~4s of tsx startup (transpiling the jsdom import
- * graph) before simulating a single episode. Bundling once up front
- * cuts that to a plain `node` launch (~0.2s).
+ * and each one pays tsx startup (transpiling the whole import graph)
+ * before simulating a single episode. Bundling once up front cuts that
+ * to a plain `node` launch (~0.2s).
  *
  * Usage:
- *   node ml/desktop/rl/build-runner.mjs [--no-jsdom-bundle]
+ *   node ml/desktop/rl/build-runner.mjs
  *
  * Produces:
  *   ml/desktop/rl/run_episode.bundle.mjs — self-contained ESM bundle
@@ -17,15 +17,17 @@
  *     import.meta.url-relative paths, which point at the bundle's
  *     directory once bundled, so the models must live next to it)
  *
- * jsdom is left external by default: bundling it breaks on its internal
- * dynamic require() calls (esbuild ESM bundles can't do dynamic require
- * of builtins). Node resolves it from node_modules at runtime. Pass
- * --bundle-jsdom to try bundling it anyway (currently broken — see
- * above).
+ * The bundle is written to a temp file and renamed into place, so a
+ * sweep that spawns a worker mid-build can never read a half-written
+ * bundle.
+ *
+ * jsdom is no longer imported by the runner (see jsdom-setup.ts — it
+ * uses a tiny DOM shim). It stays in `external` only for the opt-in
+ * TD_HEADLESS_DOM=jsdom path.
  */
 
 import { build } from 'esbuild';
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, readdirSync, renameSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,10 +35,11 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const RL_DIR = join(ROOT, 'ml', 'desktop', 'rl');
 const ENTRY = join(RL_DIR, 'run_episode.mts');
 const OUTFILE = join(RL_DIR, 'run_episode.bundle.mjs');
+// Build to a sibling temp file, then rename (atomic on one filesystem)
+// so a worker spawned by a running sweep never reads a partial bundle.
+const OUTFILE_TMP = join(RL_DIR, '.run_episode.bundle.mjs.tmp');
 const MODELS_SRC = join(ROOT, 'playtest', 'models');
 const MODELS_DST = join(RL_DIR, 'models');
-
-const bundleJsdom = process.argv.includes('--bundle-jsdom');
 
 const t0 = Date.now();
 const result = await build({
@@ -44,15 +47,12 @@ const result = await build({
   bundle: true,
   platform: 'node',
   format: 'esm',
-  outfile: OUTFILE,
-  // jsdom is external by default (bundling it breaks on its internal
-  // dynamic require() calls). Node resolves it from node_modules at
-  // runtime — the bundle lives in the repo, so module resolution walks
-  // up to the root node_modules. --bundle-jsdom tries inlining it.
-  // `canvas` is jsdom's optional native peer (a .node binary esbuild
-  // can't bundle). It must stay external either way — jsdom wraps the
-  // require in try/catch and runs fine without a real canvas.
-  external: [...(bundleJsdom ? [] : ['jsdom']), 'canvas'],
+  outfile: OUTFILE_TMP,
+  // jsdom is only loaded by the opt-in TD_HEADLESS_DOM=jsdom path (via
+  // createRequire), so keep it external. `canvas` is jsdom's optional
+  // native peer (a .node binary esbuild can't bundle) and must stay
+  // external too — jsdom wraps the require in try/catch.
+  external: ['jsdom', 'canvas'],
   // The game reads .json maps and tower data via static imports;
   // esbuild inlines those. Keep the log quiet unless something breaks.
   logLevel: 'warning',
@@ -67,6 +67,7 @@ if (result.errors.length > 0) {
   for (const e of result.errors) console.error(e.text);
   process.exit(1);
 }
+renameSync(OUTFILE_TMP, OUTFILE);
 console.log(`bundle: ${OUTFILE} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 
 // LearnedScorer resolves scorer JSONs relative to its own file, which

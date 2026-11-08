@@ -273,6 +273,10 @@ def main():
     p.add_argument('--ppo-epochs', type=int, default=4)
     p.add_argument('--minibatch', type=int, default=64)
     p.add_argument('--entropy-coef', type=float, default=0.01)
+    p.add_argument('--entropy-final', type=float, default=None,
+                   help='if set, linearly anneal the entropy coefficient '
+                        'from --entropy-coef to this value over the run. '
+                        'High early exploration, low late convergence.')
     p.add_argument('--value-coef', type=float, default=0.5)
     p.add_argument('--pretrain', action='store_true',
                    help='behavior-cloning warm start before PPO')
@@ -290,6 +294,12 @@ def main():
     p.add_argument('--workers', type=int, default=None,
                    help='parallel episode-runner processes (default: CPU '
                         'count, clamped to episodes per iteration)')
+    p.add_argument('--device', default='auto',
+                   choices=['auto', 'cpu', 'cuda'],
+                   help='torch device. auto (default) uses CPU: the policy '
+                        'is a tiny 17->128->64 MLP, and a PPO update on an '
+                        'RTX 4070 measured ~3x SLOWER than CPU (kernel-launch '
+                        'overhead dominates). Pass cuda to force the GPU.')
     args = p.parse_args()
 
     # Validate the faction early — build_towers raises for unknown ones.
@@ -301,10 +311,24 @@ def main():
         args.traj_dir = str(Path(__file__).parent
                             / f'trajectories-{args.faction}')
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logger.info('Device: %s', device)
-    if device.type == 'cuda':
-        logger.info('GPU: %s', torch.cuda.get_device_name(0))
+    if args.device == 'auto':
+        # The policy is 17->128->64->9: ~13k params. At that size a PPO
+        # update (4 epochs x ~240 minibatches) is dominated by per-kernel
+        # launch latency, so CPU is faster than the GPU (measured 0.29 s
+        # vs 0.88 s per iteration on an RTX 4070). GPU is also 6% idle by
+        # design here — the bottleneck is episode simulation, not the net.
+        device = torch.device('cpu')
+        logger.info('Device: cpu (auto: tiny MLP is faster on CPU; '
+                    'pass --device cuda to force the GPU)')
+    else:
+        device = torch.device(args.device)
+        if device.type == 'cuda' and not torch.cuda.is_available():
+            logger.warning('--device cuda requested but CUDA is not '
+                           'available — falling back to CPU')
+            device = torch.device('cpu')
+        logger.info('Device: %s', device)
+        if device.type == 'cuda':
+            logger.info('GPU: %s', torch.cuda.get_device_name(0))
     torch.manual_seed(0)
     random.seed(0)
     np.random.seed(0)
@@ -364,25 +388,51 @@ def main():
         adv = batch['advantages']
         batch['advantages'] = (adv - adv.mean()) / (adv.std() + 1e-8)
 
+        # Entropy coefficient: optionally anneal over the run so the
+        # agent explores hard early (escaping the cheap-tower local
+        # optimum) and sharpens late.
+        total = max(args.iters, 1)
+        progress = (it - start_iter - 1) / max(total - 1, 1)
+        progress = min(1.0, max(0.0, progress))
+        ent_coef = args.entropy_coef
+        if args.entropy_final is not None:
+            ent_coef = (args.entropy_coef
+                        + (args.entropy_final - args.entropy_coef) * progress)
+
         # 4. PPO update (recomputes logprobs with current policy + mask).
         upd = ppo_update(policy, opt, batch, device, args.clip,
                          args.ppo_epochs, args.minibatch,
-                         args.entropy_coef, args.value_coef)
+                         ent_coef, args.value_coef)
+
+        # Action mix, so a collapse to one action is visible in the log
+        # (psionic previously collapsed to 100% cheapest-tower builds).
+        act_counts = np.bincount(batch['actions'], minlength=ACTION_DIM)
+        n_act = max(int(act_counts.sum()), 1)
+        build_frac = float(act_counts[:ACTION_DIM - 2].sum()) / n_act
+        save_frac = float(act_counts[7]) / n_act
+        upg_frac = float(act_counts[8]) / n_act
+        top_action = int(act_counts.argmax())
 
         # 5. Log. Prefer the runner summary (waveReached/won) over the
         # trajectory-derived fallback (see env.summary_stats).
         stats = summary_stats(summary, episode_stats(episodes))
-        rec = {'iteration': it, **stats, **upd}
+        rec = {'iteration': it, **stats, **upd,
+               'entropy_coef': ent_coef,
+               'build_frac': build_frac, 'save_frac': save_frac,
+               'upgrade_frac': upg_frac, 'top_action': top_action,
+               'action_counts': act_counts.tolist()}
         history.append(rec)
         logger.info(
             'iter %d: mean_reward=%.3f win_rate=%s avg_wave=%.1f '
             'mean_len=%.1f pol_loss=%.4f val_loss=%.4f entropy=%.4f '
-            'approx_kl=%.4f clip_frac=%.3f',
+            'approx_kl=%.4f clip_frac=%.3f ent_coef=%.4f '
+            'mix(build/save/upg)=%.2f/%.2f/%.2f top=%d',
             it, rec['mean_reward'],
             ('%.3f' % rec['win_rate']) if rec['win_rate'] is not None else 'n/a',
             rec['avg_wave'], rec['mean_length'],
             upd['policy_loss'], upd['value_loss'], upd['entropy'],
-            upd['approx_kl'], upd['clip_frac'])
+            upd['approx_kl'], upd['clip_frac'], ent_coef,
+            build_frac, save_frac, upg_frac, top_action)
 
         # 6. Checkpoint every 5 iterations; always keep weights JSON fresh.
         policy.export_json(policy_out)

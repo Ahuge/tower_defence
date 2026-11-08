@@ -59,6 +59,7 @@ const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
 const REWARD_GOLD_COEF = parseFloat(process.env.RL_REWARD_GOLD_COEF ?? '0.002');
 const REWARD_GOLD_CAP = parseFloat(process.env.RL_REWARD_GOLD_CAP ?? '0.2');
 const REWARD_LIFE_PENALTY = parseFloat(process.env.RL_REWARD_LIFE_PENALTY ?? '0.5');
+const REWARD_BUILD_COEF = parseFloat(process.env.RL_REWARD_BUILD_COEF ?? '0.002');
 
 if (!(FACTION in RL_FACTION_TOWERS)) {
   console.error(`--faction must be one of ${Object.keys(RL_FACTION_TOWERS).join(', ')}, got ${FACTION}`);
@@ -209,6 +210,7 @@ async function main(): Promise<void> {
       rewardGoldCoef: REWARD_GOLD_COEF,
       rewardGoldCap: REWARD_GOLD_CAP,
       rewardLifePenalty: REWARD_LIFE_PENALTY,
+      rewardBuildCoef: REWARD_BUILD_COEF,
     });
     if (PLACEMENTS) wrapBrainForPlacements(brain, ep, PLACEMENTS);
     const result = await runMatch(
@@ -233,10 +235,14 @@ async function main(): Promise<void> {
 
     const steps = brain.getTrajectory();
     let totalReward = 0;
+    // Batch the whole episode into one append. A synchronous append per
+    // step is ~60 syscalls/episode; on a slow filesystem (WSL /mnt/d)
+    // that was ~0.4 s/episode of blocked I/O. One write per episode
+    // keeps the crash-resilience (finished episodes are on disk).
+    const lines: string[] = [];
     for (const s of steps) {
       totalReward += s.reward;
-      appendFileSync(
-        OUT,
+      lines.push(
         JSON.stringify({
           episode: ep,
           step: s.step,
@@ -250,6 +256,7 @@ async function main(): Promise<void> {
         }) + '\n',
       );
     }
+    appendFileSync(OUT, lines.join(''));
     totalReward = round6(totalReward);
 
     summaries.push({

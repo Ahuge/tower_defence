@@ -113,6 +113,11 @@ export interface RLBrainOptions {
   rewardGoldCoef?: number;
   rewardGoldCap?: number;
   rewardLifePenalty?: number;
+  /** Immediate reward per gold spent on a build/upgrade. Gives the
+   *  agent a positive signal for investing in its board so a leak
+   *  penalty cannot teach it to hoard. Default 0.002 (a 20-gold
+   *  probe = +0.04, a 200-gold meteor = +0.4). */
+  rewardBuildCoef?: number;
 }
 
 /** Policy weights JSON, produced by the Python trainer.
@@ -133,13 +138,46 @@ interface PolicyWeights {
   };
 }
 
-/** Raw (unclamped) snapshot kept alongside a pending step so the
- *  lazy reward can be computed from exact deltas. Not serialized. */
+/** Process-wide caches. The episode runner constructs a fresh RLBrain
+ *  per episode; without these it would re-read + JSON.parse the 240 KB
+ *  policy file and the 210 KB scorer model every episode (a large
+ *  fraction of per-episode wall time on a slow filesystem). Both are
+ *  immutable after load, so sharing is safe. */
+const policyCache = new Map<string, PolicyWeights>();
+const scorerCache = new Map<string, LearnedScorer>();
+
+function loadPolicyCached(path: string): PolicyWeights {
+  const hit = policyCache.get(path);
+  if (hit) return hit;
+  const loaded = loadPolicy(path);
+  policyCache.set(path, loaded);
+  return loaded;
+}
+
+function getScorer(faction: string): LearnedScorer {
+  const hit = scorerCache.get(faction);
+  if (hit) return hit;
+  const scorer = new LearnedScorer([faction]);
+  scorerCache.set(faction, scorer);
+  return scorer;
+}
+
+/** One decision in the current between-wave window. `spent` is the
+ *  gold this decision committed (0 for save/skip); it weights how much
+ *  of the wave outcome this step is credited with.
+ *
+ *  Why a window and not a single pending step: a between-wave period is
+ *  usually several decisions (build, build, upgrade, ... save starts the
+ *  wave). The wave outcome only becomes known at the NEXT wave boundary.
+ *  The old code credited the last decision only — which is almost always
+ *  a *forced* save (mask `000000010`). A forced action has zero policy
+ *  gradient, so the wave reward taught the policy nothing, while every
+ *  build got exactly 0. Crediting the whole window (weighted by gold
+ *  spent) gives the build decisions the signal they need to learn WHICH
+ *  tower to build. */
 interface PendingStep {
   step: TrajectoryStep;
-  wave: number;
-  gold: number;
-  lives: number;
+  spent: number;
 }
 
 export class RLBrain implements BotBrain {
@@ -156,9 +194,14 @@ export class RLBrain implements BotBrain {
   private rewardGoldCoef: number;
   private rewardGoldCap: number;
   private rewardLifePenalty: number;
+  private rewardBuildCoef: number;
 
   private trajectory: TrajectoryStep[] = [];
-  private pending: PendingStep | null = null;
+  /** Decisions since the last observed wave boundary (see PendingStep). */
+  private window: PendingStep[] = [];
+  private windowStartWave = 0;
+  private windowStartGold = 0;
+  private windowStartLives = 0;
 
   constructor(options: RLBrainOptions = {}) {
     this.faction = options.faction ?? 'arcane';
@@ -177,10 +220,11 @@ export class RLBrain implements BotBrain {
     this.rewardGoldCoef = options.rewardGoldCoef ?? 0.002;
     this.rewardGoldCap = options.rewardGoldCap ?? 0.2;
     this.rewardLifePenalty = options.rewardLifePenalty ?? 0.5;
+    this.rewardBuildCoef = options.rewardBuildCoef ?? 0.002;
     if (options.policyPath) {
-      this.policy = loadPolicy(options.policyPath);
+      this.policy = loadPolicyCached(options.policyPath);
     }
-    this.scorer = new LearnedScorer([this.faction]);
+    this.scorer = getScorer(this.faction);
     if (!this.scorer.hasModel(this.faction) && !this.warnedNoScorer) {
       this.warnedNoScorer = true;
       console.warn(
@@ -191,13 +235,18 @@ export class RLBrain implements BotBrain {
 
   decide(ctx: BotContext): BotDecision {
     // Only between-waves decisions. Mid-wave calls return skip
-    // without recording — and without settling the pending reward,
+    // without recording — and without settling the window reward,
     // which is only knowable once the wave resolves.
     if (!ctx.betweenWaves) return { kind: 'skip' };
 
-    // Settle the previous step's reward from state deltas since it
-    // was recorded (wave cleared? gold gained? lives lost?).
-    this.settlePendingReward(ctx);
+    // If a wave resolved since the last decision, credit the decisions
+    // that produced it (wave cleared? gold gained? lives lost?).
+    this.settleWindow(ctx);
+    if (this.window.length === 0) {
+      this.windowStartWave = ctx.wave ?? 0;
+      this.windowStartGold = ctx.budget ?? 0;
+      this.windowStartLives = ctx.lives ?? 0;
+    }
 
     const state = extractState(ctx, this.towerIds);
     const mask = this.computeMask(ctx);
@@ -217,6 +266,17 @@ export class RLBrain implements BotBrain {
       ? logprob
       : Math.log(Math.max(probs[executedAction], 1e-12));
 
+    // Gold this decision will commit — used to weight wave credit.
+    let spent = 0;
+    if (decision.kind === 'place') {
+      spent = decision.type.cost;
+    } else if (decision.kind === 'upgrade') {
+      const target = ctx.placedTowers.find(
+        t => t.col === decision.col && t.row === decision.row,
+      );
+      spent = target ? target.upgradeCost : 0;
+    }
+
     if (this.recordTrajectory) {
       const step: TrajectoryStep = {
         step: this.trajectory.length,
@@ -224,17 +284,15 @@ export class RLBrain implements BotBrain {
         action: executedAction,
         logprob: executedLogprob,
         value,
-        reward: 0,
+        // Intrinsic reward for investing in the board. Without this a
+        // leak penalty can dominate and teach the agent to hoard gold
+        // (observed on psionic: 66% saves, wipe at wave 3).
+        reward: this.rewardBuildCoef * spent,
         mask,
         done: false,
       };
       this.trajectory.push(step);
-      this.pending = {
-        step,
-        wave: ctx.wave,
-        gold: ctx.budget,
-        lives: ctx.lives,
-      };
+      this.window.push({ step, spent });
     }
 
     return decision;
@@ -248,22 +306,26 @@ export class RLBrain implements BotBrain {
 
   resetTrajectory(): void {
     this.trajectory = [];
-    this.pending = null;
+    this.window = [];
+    this.windowStartWave = 0;
+    this.windowStartGold = 0;
+    this.windowStartLives = 0;
   }
 
   /**
    * End-of-episode finalization, called by the runner after
-   * runMatch returns. Applies the terminal +1 (win) / -1 (loss)
-   * bonus to the last recorded step and marks it done. The last
-   * step's shaped reward stays unsettled (0) — its wave outcome
-   * is exactly what the terminal bonus stands in for.
+   * runMatch returns. Credits the terminal +1 (win) / -1 (loss) to
+   * the decisions that led to the final wave (same weighting as the
+   * shaped reward), then marks the last step done. The final wave's
+   * shaped reward is intentionally left unsettled — the terminal
+   * bonus stands in for it.
    */
   finalize(won: boolean): void {
     const last = this.trajectory[this.trajectory.length - 1];
     if (!last) return;
-    last.reward += won ? 1.0 : -1.0;
+    this.creditWindow(won ? 1.0 : -1.0);
+    this.window = [];
     last.done = true;
-    this.pending = null;
   }
 
   // ===== State / mask / policy =====
@@ -401,25 +463,57 @@ export class RLBrain implements BotBrain {
   // ===== Lazy reward =====
 
   /**
-   * Patch the pending step's reward from deltas since it was
-   * recorded:
+   * If a wave boundary has been crossed, compute the outcome of the
+   * wave(s) just resolved and credit it to the decisions in the
+   * window that produced it:
    *   +rewardWave per wave cleared
-   *   +rewardGoldCoef per gold gained (capped at rewardGoldCap,
-   *     floored at 0 — spending gold must NOT be punished, otherwise
-   *     the agent learns to never build anything)
+   *   +rewardGoldCoef per gold EARNED (income = budget delta + gold
+   *     spent, floored at 0 — spending must not be punished, otherwise
+   *     the agent learns to never build; capped at rewardGoldCap per
+   *     wave so hoarding cannot farm it)
    *   -rewardLifePenalty per life lost
+   *
+   * Credit is weighted by (1 + gold spent), so build/upgrade decisions
+   * receive most of the outcome and the save that starts the wave gets
+   * a small share. Without this the outcome lands on the (usually
+   * forced) save and every build gets 0 — see PendingStep.
    */
-  private settlePendingReward(ctx: BotContext): void {
-    if (!this.pending) return;
-    const { step, wave, gold, lives } = this.pending;
-    const wavesCleared = Math.max(0, ctx.wave - wave);
-    const goldDelta = ctx.budget - gold;
-    const livesLost = Math.max(0, lives - ctx.lives);
-    step.reward =
-      this.rewardWave * wavesCleared +
-      Math.min(this.rewardGoldCoef * Math.max(0, goldDelta), this.rewardGoldCap) -
-      this.rewardLifePenalty * livesLost;
-    this.pending = null;
+  private settleWindow(ctx: BotContext): void {
+    if (this.window.length === 0) return;
+    const wavesCleared = Math.max(0, (ctx.wave ?? 0) - this.windowStartWave);
+    if (wavesCleared === 0) return;
+    const livesLost = Math.max(0, this.windowStartLives - (ctx.lives ?? 0));
+    const totalSpent = this.window.reduce((sum, p) => sum + p.spent, 0);
+    const goldIncome = Math.max(
+      0,
+      (ctx.budget ?? 0) - this.windowStartGold + totalSpent,
+    );
+    const goldReward = Math.min(
+      this.rewardGoldCoef * goldIncome,
+      this.rewardGoldCap * Math.max(1, wavesCleared),
+    );
+    const total =
+      this.rewardWave * wavesCleared -
+      this.rewardLifePenalty * livesLost +
+      goldReward;
+    this.creditWindow(total);
+    this.window = [];
+  }
+
+  /** Distribute `total` across the window's decisions, weighted by
+   *  (1 + gold spent). Falls back to the last step when the window is
+   *  empty (e.g. a terminal bonus after no recorded decision). */
+  private creditWindow(total: number): void {
+    if (this.window.length === 0) {
+      const last = this.trajectory[this.trajectory.length - 1];
+      if (last) last.reward += total;
+      return;
+    }
+    const weights = this.window.map(p => 1 + p.spent);
+    const wsum = weights.reduce((a, b) => a + b, 0);
+    this.window.forEach((p, i) => {
+      p.step.reward += total * (weights[i] / wsum);
+    });
   }
 }
 

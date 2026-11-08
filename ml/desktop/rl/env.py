@@ -132,29 +132,36 @@ reward_terms = {
                'from the sparse terminal win/loss.',
     },
     'gold': {
-        'value': '+0.002 per gold gained since the last decision, '
-                 'capped at +0.2 per step',
-        'when': 'settled at the next between-waves decision, from the '
-                'budget delta since the previous step was recorded',
-        'why': 'rewards economy (kill income) without punishing spending: '
-               'building lowers the budget, so a gold-held term would '
+        'value': '+0.002 per gold EARNED, capped at +0.2 per wave',
+        'when': 'settled at the next wave boundary; income is '
+                '(budget delta + gold spent), so spending is not punished',
+        'why': 'rewards economy (kill income) without teaching hoarding: '
+               'building lowers the budget, so a raw gold-held term would '
                'penalize the very builds the policy must learn.',
     },
     'life_lost': {
-        'value': '-0.5 per life lost',
-        'when': 'when a creep leaks',
+        'value': '-0.05 per life lost (sweepable via RL_REWARD_LIFE_PENALTY)',
+        'when': 'when a creep leaks, settled at the next wave boundary',
         'why': 'the actual failure pressure — lives are the loss '
-               'condition, so leaks must hurt immediately, not only at '
-               'the terminal -1.',
+               'condition. Kept small by default: a large penalty '
+               'dominates the build reward and teaches hoarding.',
+    },
+    'gold_spent': {
+        'value': '+0.002 per gold spent on a build/upgrade '
+                 '(RL_REWARD_BUILD_COEF)',
+        'when': 'immediately on the build/upgrade decision',
+        'why': 'positive signal for investing in the board, so the leak '
+               'penalty cannot teach the agent to sit on gold.',
     },
     'terminal_win': {
         'value': '+1.0',
-        'when': 'last step of a won episode',
+        'when': 'distributed across the decisions leading to the final '
+                'wave, weighted by (1 + gold spent)',
         'why': 'the true objective: beating all 20 waves on hard.',
     },
     'terminal_loss': {
         'value': '-1.0',
-        'when': 'last step of a lost episode',
+        'when': 'distributed like terminal_win',
         'why': 'the true objective, negative side.',
     },
 }

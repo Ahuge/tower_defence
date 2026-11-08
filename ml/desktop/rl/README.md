@@ -126,40 +126,60 @@ training nearly impossible when the agent dies at wave 3.
 | Term | Value | Why |
 |------|-------|-----|
 | Wave cleared | +0.1 per wave | Surviving longer is the primary goal |
-| Gold gained | +0.002 per gold, capped at +0.2/step | Economy matters; dense signal for kills + income |
-| Life lost | −0.5 per life | Leaks are costly; the dominant negative signal early |
+| Gold earned | +0.002 per gold, capped at +0.2/wave | Economy matters; dense signal for kills + income |
+| Life lost | −0.05 per life (sweepable) | Leaks are costly, but a large penalty teaches hoarding |
+| Gold spent | +0.002 per gold | Positive signal for investing in the board |
 | Win | +1.0 terminal | The actual objective |
 | Loss | −1.0 terminal | |
 
-**Gold is delta-based and floored at 0.** Only gold *gains* are
-rewarded — spending gold is NOT punished (an earlier version
-punished spending, which taught the agent to never build anything).
+**Gold is income-based and floored at 0.** Income is
+`budget_delta + gold_spent`, so spending gold is NOT punished. An
+earlier version rewarded the raw delta, which taught the agent to never
+build anything.
 
-**Pending rewards.** The reward for a "save" action (which launches
-the next wave) is only known once that wave resolves. The brain
-records each step with reward 0 and patches it at the next
-between-waves `decide()` from wave/gold/lives deltas. The terminal
-+1/−1 is applied by the runner to the last step.
+**Wave credit is distributed across the between-wave window.** A wave
+outcome only becomes known at the next wave boundary, and the last
+decision before a wave is usually a *forced* `save` (mask `000000010`).
+A forced action has zero policy gradient, so crediting only the last
+step threw the wave signal away and every build received reward 0 —
+which is why psionic collapsed to spamming the cheapest tower. The
+brain now keeps every decision since the last boundary in a window and
+splits the outcome across it, weighted by `(1 + gold spent)`. Builds and
+upgrades get most of the credit; the save gets a small share. The
+terminal ±1 is distributed the same way.
 
-**Known issue:** early-training rewards run strongly negative
-(−8 to −9 per episode) because a random policy loses ~15 lives
-(−7.5) plus the terminal −1. This is expected — the value function
-starts near 0 and has to learn the negative baseline. It should
-improve as the policy learns to survive longer.
+**Build-investment reward.** Each build/upgrade also receives
+`rewardBuildCoef × gold spent` (default 0.002) immediately. Without it a
+large leak penalty dominates and the agent learns to hoard gold and die
+(observed on psionic: 66% saves, wipe at wave 3). With it, psionic's
+average wave went from 3.0 to 9.3 in 60 iterations.
+
+**Known issue (mitigated):** early-training rewards run strongly
+negative because a random policy loses many lives plus the terminal −1.
+This is expected — the value function starts near 0 and learns the
+negative baseline. The build-investment reward and smaller default leak
+penalty soften it substantially.
 
 ## PPO hyperparameters
 
-| Param | Value |
-|-------|-------|
-| Learning rate | 3e-4 (AdamW) |
-| Clip ratio | 0.2 |
-| Gamma (discount) | 0.99 |
-| GAE lambda | 0.95 |
-| PPO epochs per update | 4 |
-| Minibatch size | 64 |
-| Entropy coefficient | 0.01 |
-| Value loss coefficient | 0.5 |
-| Grad clip norm | 1.0 |
+| Param | Default | Sweeped? |
+|-------|---------|----------|
+| Learning rate | 1e-3 (AdamW) | yes (`lr`) |
+| Clip ratio | 0.2 | yes (`clip`) |
+| Gamma (discount) | 0.99 | yes (`gamma`) |
+| GAE lambda | 0.95 | yes (`lam`) |
+| PPO epochs per update | 4 | yes (`ppo_epochs`) |
+| Minibatch size | 64 | yes (`minibatch`) |
+| Entropy coefficient | 0.3 → 0.05 annealed | yes (`entropy`, `entropy_final`) |
+| Value loss coefficient | 0.5 | yes (`value_coef`) |
+| Grad clip norm | 1.0 | no |
+
+**Entropy annealing.** `--entropy-final` linearly anneals the entropy
+coefficient over the run: high early exploration (to escape the
+cheap-tower local optimum) and sharpening late. The trainer logs the
+current coefficient, the per-action mix (`build/save/upg`), and the
+argmax action every iteration, so a collapse to one action is visible in
+the log instead of only in a post-hoc trajectory audit.
 
 ## Files
 
@@ -205,11 +225,41 @@ to beat: arcane 20/50 (40%), psionic 13/50 (26%). The psionic v7
 collapse to 0/50 was a one-hot-removal artifact, so v5 is the
 comparison point for both.
 
+## Sweep config syntax
+
+`sweep.sh` runs a fixed grid via `run_config NAME key=value ...`.
+Defaults are the validated shaping config (lr 1e-3, entropy 0.3→0.05,
+life 0.05, build 0.002, no BC), so a config only names what it varies:
+
+```bash
+run_config "v2-life-0.02" life=0.02
+run_config "v2-lr-3e-3" lr=3e-3
+run_config "v2-pretrain" pretrain=1 init_scorer=1
+run_config "v2-ent-flat" entropy=0.3 entropy_final=
+```
+
+Keys: `lr entropy entropy_final clip life wave gold_coef gold_cap
+build gamma lam ppo_epochs minibatch value_coef pretrain init_scorer
+iters`. `pretrain=1` behavior-clones `ml/placement-data.jsonl`;
+`init_scorer=1` initialises the trunk/heads from
+`ml/desktop/models/scorer-<faction>.pt`. `entropy_final=` (empty)
+disables annealing.
+
+Every config writes one row to `summary.csv` (schema v2) with all
+knobs, eval wins, avg wave, and mean reward. Phase 5 picks the best
+non-BC config by **(wins, avg wave)** and runs it for 300 iterations.
+The best policy is tracked with the same tie-break, so a 0-win config
+that survives much deeper still replaces a shallower one. Config names
+are prefixed `v2-` so results from the old reward code are never
+mistaken for new ones on resume; an old `summary.csv` is archived to
+`summary-legacy-<timestamp>.csv` when the schema changes.
+
 ## Multi-faction sweeps
 
-A single sweep only reaches ~35% CPU on a 20-core machine — the game
-sim + tiny PPO update can't saturate it. Run several factions at
-once to use the hardware:
+A single sweep saturates roughly one core per worker during episode
+collection, then goes quiet during the tiny PPO update, so one faction
+leaves most of a many-core desktop idle. Run several factions at once
+to use the hardware (workers are divided between them — see below):
 
 ```bash
 # Two factions in parallel, 24h each
@@ -238,9 +288,14 @@ process is reclaimed). The runner bundle is built once up front by
 `sweep-multi.sh`; `sweep.sh` also builds it, behind a lock dir, if
 it's stale.
 
-**Workers are shared:** each sweep defaults to `$(nproc)` parallel
-episode runners, so 2 factions on 20 cores each get ~10 effective
-workers. Pass `RL_WORKERS=10` to cap per sweep explicitly.
+**Workers are split across factions:** each sweep would default to
+`$(nproc)` runners, so N factions meant N × `$(nproc)` Node processes
+(2 factions on a 28-thread i7-14700K = 56 runnable processes on 28
+threads). `sweep-multi.sh` now divides the *logical* CPU count across
+the requested factions (28 threads / 2 factions = 14 workers each) and
+exports `RL_WORKERS`. Keeping SMT siblings is worth it: 56 episodes
+measured 2.44s on 28 workers vs 2.90s on 14 physical cores (~19% more
+throughput). Pass `RL_WORKERS=10` to override the split explicitly.
 
 **Push races:** parallel sweeps share the
 `feature/imitation-placement` branch. Each sweep's end-of-run push
@@ -259,9 +314,11 @@ script from disk as it executes — pulling a new `sweep.sh` while one
 is running can corrupt the run. Stop the sweep first (Ctrl-C in its
 tmux session), then `git pull`, then relaunch.
 
-**Timing estimate:** each headless match takes ~1–5s. 32 episodes per
-iteration ≈ 1–3 min *sequentially*. The bottleneck is game simulation,
-not the PPO update — and the GPU sits idle while it runs.
+**Timing estimate:** each headless match is ~0.5–2s of CPU (60-step
+episodes are ~1s). With the fixes below, a 64–84 episode iteration
+takes ~3–8s wall on 14–28 workers instead of 40–85s. The bottleneck is
+game simulation, not the PPO update — the GPU sits idle by design (the
+policy is a tiny 13k-param MLP).
 
 **Parallel collection:** episodes are collected across `--workers`
 parallel Node processes (default: CPU count, clamped to episode
@@ -272,27 +329,47 @@ merged format is identical to a single-worker run. Speedup is roughly
 linear up to core count *for the simulation-bound portion*. Lower
 `--workers` if parallel Node processes run out of RAM.
 
-**Bundled runner (startup):** each worker used to pay ~1–4s of tsx
-startup (transpiling the jsdom import graph) before simulating a
-single episode — with 20 workers that's most of the wall clock.
-`node ml/desktop/rl/build-runner.mjs` bundles `run_episode.mts` with
-esbuild into `run_episode.bundle.mjs` (plain `node`, ~0.2s startup).
-`env.py` prefers the bundle when it exists and falls back to tsx
-with a warning when it doesn't. The bundle is a build artifact
-(gitignored), as are the scorer-model copies the build script places
-in `ml/desktop/rl/models/` — `LearnedScorer` resolves models relative
-to its own file, which after bundling is the bundle's directory.
-jsdom stays external (bundling it breaks on its internal dynamic
-`require()` calls); Node resolves it from node_modules at runtime.
-`sweep.sh` builds the bundle up front. Measured on this VM: cold tsx
-2.4s vs bundle 1.35s for 2 episodes (the tsx tax was ~4s on Alex's
-WSL desktop). With the bundle, 100 iters × 64 eps on 8+ cores is
-roughly 20–30 min per config instead of ~2h.
+**Bundled runner (startup):** each worker used to pay tsx startup
+(transpiling the whole import graph) before simulating a single
+episode. `node ml/desktop/rl/build-runner.mjs` bundles
+`run_episode.mts` with esbuild into `run_episode.bundle.mjs` (plain
+`node`, ~0.2s startup). `env.py` prefers the bundle when it exists and
+falls back to tsx with a warning when it doesn't. The bundle is a build
+artifact (gitignored), as are the scorer-model copies the build script
+places in `ml/desktop/rl/models/` — `LearnedScorer` resolves models
+relative to its own file, which after bundling is the bundle's
+directory. `sweep.sh` builds the bundle up front (temp file + atomic
+rename, so a running sweep never reads a partial bundle).
 
-**Episodes per iteration:** the sweep uses `--episodes-per-iter 64`
-(trainer default is 32). With startup fixed and 20 workers, 32
-episodes is only 1–2 per worker — poor amortization — and 64 gives
-better PPO gradient estimates for the same wall-clock cost.
+**The real startup killer was jsdom, not tsx.** `jsdom-setup.ts` used
+to `import { JSDOM } from 'jsdom'` before every headless run. jsdom is
+~10 MB across ~700 files plus its dependency tree; on a repo checked
+out on WSL `/mnt/d` (DrvFs) that import alone took **25–45s wall and
+~3s CPU per process** — and the sweep spawns one process per worker per
+iteration. The harness now installs a ~1 ms hand-rolled DOM shim
+(window/document/2d-canvas/localStorage) that is enough for Phaser's
+import-time feature detection; headless game code never renders.
+Set `TD_HEADLESS_DOM=jsdom` to force the old behaviour. One episode
+went from ~27s wall to ~0.5s. This also speeds up `playtest/`,
+`generate_data.mts` and brain-search, which share `jsdom-setup`.
+
+**Per-episode I/O:** the runner batches a whole episode's trajectory
+into one append instead of one `appendFileSync` per step (~60 sync
+writes/episode; on `/mnt/d` that was ~0.4s/episode of blocked I/O).
+`RLBrain` also caches the parsed policy JSON (240 KB) and scorer model
+(210 KB) per process instead of re-reading them for every episode.
+
+**Episodes per iteration:** the sweep targets ~3 episodes per worker
+and rounds up to a multiple of `--workers` (minimum 64), e.g. 84 for
+28 workers. A static split of 64 across 28 workers leaves 8 workers
+with 3 episodes and 20 with 2, so most cores idle at the end of
+collection. Override with `RL_EPISODES_PER_ITER`.
+
+**PPO device:** `train_ppo.py` defaults to `--device auto`, which
+picks **CPU**. The policy is 17→128→64→9 (~13k params); a PPO update
+measured 0.29s on CPU vs 0.88s on an RTX 4070 because kernel-launch
+latency dominates. Pass `--device cuda` to force the GPU. This is why
+GPU utilisation stays near 0% — it is not the bottleneck.
 
 ```bash
 # 8 parallel runners for training and eval
