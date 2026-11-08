@@ -13,7 +13,18 @@
  *     [--seeds 100,200,300 | --seed-base 1000] \
  *     [--out ml/desktop/rl/trajectories.jsonl] \
  *     [--summary ml/desktop/rl/summary.json] \
+ *     [--placements ml/desktop/rl/placements.jsonl] \
  *     [--deterministic]
+ *
+ * --placements records every place/upgrade decision the brain
+ * returns (same wrap-decide() pattern as eval_set.mts
+ * wrapBrainForReplay) as JSONL: {episode, wave, kind, col, row,
+ * tower, cost, gold_after, level?, branch?}. The cell recorded is
+ * the cell in the returned decision — the cell HeadlessMatch
+ * actually places on, not the scorer's internal top candidate.
+ * (RLBrain only ever picks from ctx.candidateCells, which are
+ * legal by construction, so applyDecision cannot reject one.)
+ * rl_to_replay.py converts this file to replay-viewer format.
  *
  * No --policy means uniform-random actions (smoke tests). Seeds
  * default to random when neither --seeds nor --seed-base is given.
@@ -40,6 +51,7 @@ const EPISODES = parseInt(getArg('episodes') ?? '8', 10);
 const DIFFICULTY = (getArg('difficulty') ?? 'hard') as 'hard' | 'normal';
 const OUT = getArg('out') ?? 'ml/desktop/rl/trajectories.jsonl';
 const SUMMARY = getArg('summary') ?? 'ml/desktop/rl/summary.json';
+const PLACEMENTS = getArg('placements') ?? undefined;
 const DETERMINISTIC = args.includes('--deterministic');
 
 // Reward shaping overrides for sweeps (env vars, defaults = originals).
@@ -84,6 +96,71 @@ function resolveSeeds(): number[] {
   return Array.from({ length: EPISODES }, () => Math.floor(Math.random() * 100000));
 }
 
+interface PlacementRecord {
+  episode: number;
+  wave: number;
+  kind: 'place' | 'upgrade';
+  col: number;
+  row: number;
+  tower: string;
+  cost?: number;
+  gold_after?: number;
+  level?: number;
+  branch?: string | null;
+}
+
+/**
+ * Wrap a brain's decide() to record every place/upgrade decision
+ * it returns — same pattern as eval_set.mts wrapBrainForReplay.
+ * The recorded cell is the cell in the returned decision, i.e.
+ * the cell HeadlessMatch places the tower on. gold_after is the
+ * decision-time budget minus the decision's cost (exactly what
+ * HeadlessMatch spends via economy.spend).
+ */
+function wrapBrainForPlacements(
+  brain: { decide: (ctx: any) => any },
+  episode: number,
+  outPath: string,
+): void {
+  const origDecide = brain.decide.bind(brain);
+  brain.decide = (ctx: any) => {
+    const d = origDecide(ctx);
+    if (!d || d.kind === 'skip' || d.kind === 'send' || d.kind === 'frontier' || d.kind === 'frontierManage' || d.kind === 'sell') {
+      return d;
+    }
+    let rec: PlacementRecord | null = null;
+    if (d.kind === 'place' && d.type) {
+      rec = {
+        episode,
+        wave: ctx.wave,
+        kind: 'place',
+        col: d.col,
+        row: d.row,
+        tower: d.type.id,
+        cost: d.type.cost,
+        gold_after: ctx.budget - d.type.cost,
+      };
+    } else if (d.kind === 'upgrade') {
+      const existing = ctx.placedTowers?.find((t: any) => t.col === d.col && t.row === d.row);
+      const cost = d.branch ? existing?.branchUpgradeCosts?.[d.branch] : existing?.upgradeCost;
+      rec = {
+        episode,
+        wave: ctx.wave,
+        kind: 'upgrade',
+        col: d.col,
+        row: d.row,
+        tower: existing?.towerId ?? 'unknown',
+        cost,
+        gold_after: typeof cost === 'number' ? ctx.budget - cost : undefined,
+        level: (existing?.level ?? 0) + 1,
+        branch: d.branch ?? null,
+      };
+    }
+    if (rec) appendFileSync(outPath, JSON.stringify(rec) + '\n');
+    return d;
+  };
+}
+
 const round6 = (v: number): number => Math.round(v * 1e6) / 1e6;
 
 interface EpisodeSummary {
@@ -108,6 +185,10 @@ async function main(): Promise<void> {
   // Fresh run: truncate the trajectory file up front, then append
   // per episode so a crash mid-run keeps what finished.
   writeFileSync(OUT, '');
+  if (PLACEMENTS) {
+    mkdirSync(dirname(PLACEMENTS), { recursive: true });
+    writeFileSync(PLACEMENTS, '');
+  }
 
   console.log(
     `RL run: ${episodes} episode(s), ${FACTION}/${DIFFICULTY}, ` +
@@ -129,6 +210,7 @@ async function main(): Promise<void> {
       rewardGoldCap: REWARD_GOLD_CAP,
       rewardLifePenalty: REWARD_LIFE_PENALTY,
     });
+    if (PLACEMENTS) wrapBrainForPlacements(brain, ep, PLACEMENTS);
     const result = await runMatch(
       {
         faction: FACTION as 'arcane' | 'psionic',
@@ -197,6 +279,7 @@ async function main(): Promise<void> {
   console.log(`avg steps/episode: ${avgSteps.toFixed(1)}`);
   console.log(`trajectories: ${OUT}`);
   console.log(`summary: ${SUMMARY}`);
+  if (PLACEMENTS) console.log(`placements: ${PLACEMENTS}`);
 }
 
 main().catch((e) => {

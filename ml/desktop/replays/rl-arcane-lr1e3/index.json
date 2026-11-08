@@ -1,0 +1,26 @@
+[
+  {
+    "file": "arcane-hard-100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-200-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 200,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-300-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 300,
+    "won": true,
+    "waveReached": 20
+  }
+]
