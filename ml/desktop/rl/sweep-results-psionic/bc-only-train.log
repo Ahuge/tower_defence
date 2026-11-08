@@ -1,0 +1,16 @@
+2026-11-07 11:34:42,411 INFO Device: cuda
+2026-11-07 11:34:42,435 INFO GPU: NVIDIA GeForce RTX 4070
+2026-11-07 11:34:48,669 INFO init_from_scorer: trunk1 (17->128) — shape mismatch scorer (128, 11) vs policy (128, 17), skipped (random init kept)
+2026-11-07 11:34:48,670 INFO init_from_scorer: transferred trunk2 (128->64)
+2026-11-07 11:34:48,670 INFO init_from_scorer: transferred value head (64->1)
+2026-11-07 11:34:48,671 INFO init_from_scorer: policy head (64->9) has no scorer counterpart — randomly initialized
+2026-11-07 11:34:48,671 INFO init_from_scorer transferred: ['trunk2.weight', 'value_head.weight']
+2026-11-07 11:34:48,681 INFO Behavior-cloning warm start (psionic)...
+2026-11-07 11:34:48,835 INFO BC data: 106 psionic examples (0 skipped: non-build towers)
+2026-11-07 11:34:49,273 INFO   BC epoch 1/20: loss=2.3204 top1-acc=0.066
+2026-11-07 11:34:49,315 INFO   BC epoch 5/20: loss=2.1353 top1-acc=0.132
+2026-11-07 11:34:49,361 INFO   BC epoch 10/20: loss=1.4128 top1-acc=0.321
+2026-11-07 11:34:49,409 INFO   BC epoch 15/20: loss=0.9155 top1-acc=0.613
+2026-11-07 11:34:49,478 INFO   BC epoch 20/20: loss=0.8635 top1-acc=0.613
+2026-11-07 11:34:49,487 INFO BC pre-training done: top-1 accuracy 0.613 on 106 examples
+2026-11-07 11:34:49,684 INFO Done. Final policy: ml/desktop/rl/sweep-results-psionic/policy-bc-only.json
