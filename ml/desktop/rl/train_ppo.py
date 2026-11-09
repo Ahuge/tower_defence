@@ -1,7 +1,7 @@
 """PPO training loop for the tower_defence RL prototype.
 
 Faction-parameterized (--faction, default arcane): the policy shape
-is shared across factions (17-dim state, 9 actions), with trailing
+is shared across factions (17-dim state, 86 actions), with trailing
 build slots padded/masked for factions with fewer than 7 towers
 (see env.FACTION_TOWERS).
 The game runs in TypeScript. Each iteration:
@@ -31,9 +31,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from env import (ACTION_DIM, BUILD_TOWERS, STATE_DIM, build_towers,
-                 collect_trajectories, compute_gae, episode_stats,
-                 load_trajectories, summary_stats)
+from env import (ACTION_DIM, ACTION_SAVE, ACTION_UPGRADE, MAX_BUILD_ACTIONS,
+                 STATE_DIM, ZONE_DIM, build_towers, collect_trajectories,
+                 compute_gae, episode_stats, load_trajectories,
+                 summary_stats, zone_of_cell)
 from policy import ActorCritic
 
 logging.basicConfig(level=logging.INFO,
@@ -53,25 +54,32 @@ DEFAULT_BC_DATA = REPO_ROOT / 'ml' / 'placement-data.jsonl'
 # ---------------------------------------------------------------------------
 
 def reconstruct_bc_state(example, faction='arcane'):
-    """Rebuild the 17-dim RL state at a recorded placement.
+    """Rebuild the 17-dim RL state and v2 action at a recorded placement.
 
     From a placement-data example (wave, gold/lives if recorded, board
-    list of [towerId, col, row]). Next-wave features are unknown at
-    capture time so they are 0; placements happen between waves so
-    betweenWaves is 1; candidate-cell count is unknown, use 0.5.
+    list of [towerId, col, row], chosen [col, row]). Next-wave features
+    are unknown at capture time so they are 0; candidate-cell count is
+    unknown, use 0.5. Feature 15 is occupied zones / 12.
     Returns (state list of 17 floats, action int) or None if the tower
-    built is not one of the faction's build actions.
+    built is not one of the faction's build actions or the placement
+    cell is missing.
     """
     towers = build_towers(faction)
     tower_id = example.get('towerId')
     if tower_id not in towers:
         return None
+    chosen = example.get('chosen')
+    if not chosen or len(chosen) < 2:
+        return None
     board = example.get('board', []) or []
     counts = {t: 0 for t in towers}
+    occupied = set()
     for entry in board:
         tid = entry[0] if entry else None
         if tid in counts:
             counts[tid] += 1
+        if entry and len(entry) >= 3:
+            occupied.add(zone_of_cell(entry[1], entry[2]))
     state = [
         example.get('wave', 0) / 20.0,
         min(example.get('gold', 1000.0) / 1000.0, 1.0),
@@ -81,12 +89,14 @@ def reconstruct_bc_state(example, faction='arcane'):
     # Per-tower counts in action order; trailing slots pad with 0 for
     # factions with fewer than 7 towers (always-masked actions).
     state += [min(counts.get(t, 0) / 20.0, 1.0) for t in towers]
-    state += [0.0] * (len(BUILD_TOWERS) - len(towers))
+    state += [0.0] * (MAX_BUILD_ACTIONS - len(towers))
     state += [0.0, 0.0, 0.0, 0.0]  # next-wave features unknown
-    state += [1.0]                  # betweenWaves
+    state += [min(len(occupied) / ZONE_DIM, 1.0)]  # occupied zones
     state += [0.5]                  # candidate cells unknown
     assert len(state) == STATE_DIM
-    return state, towers.index(tower_id)
+    tower_idx = towers.index(tower_id)
+    zone = zone_of_cell(chosen[0], chosen[1])
+    return state, tower_idx * ZONE_DIM + zone
 
 
 def load_bc_data(path, faction='arcane'):
@@ -116,8 +126,8 @@ def load_bc_data(path, faction='arcane'):
     if not states:
         logger.warning('BC data: no usable %s examples in %s', faction, path)
         return None, None
-    logger.info('BC data: %d %s examples (%d skipped: non-build towers)',
-                len(states), faction, n_skipped)
+    logger.info('BC data: %d %s examples (%d skipped: non-build tower '
+                'or missing placement)', len(states), faction, n_skipped)
     return (torch.tensor(states, dtype=torch.float32),
             torch.tensor(actions, dtype=torch.long))
 
@@ -312,7 +322,7 @@ def main():
                             / f'trajectories-{args.faction}')
 
     if args.device == 'auto':
-        # The policy is 17->128->64->9: ~13k params. At that size a PPO
+        # The policy is 17->128->64->86: ~16k params. At that size a PPO
         # update (4 epochs x ~240 minibatches) is dominated by per-kernel
         # launch latency, so CPU is faster than the GPU (measured 0.29 s
         # vs 0.88 s per iteration on an RTX 4070). GPU is also 6% idle by
@@ -408,9 +418,9 @@ def main():
         # (psionic previously collapsed to 100% cheapest-tower builds).
         act_counts = np.bincount(batch['actions'], minlength=ACTION_DIM)
         n_act = max(int(act_counts.sum()), 1)
-        build_frac = float(act_counts[:ACTION_DIM - 2].sum()) / n_act
-        save_frac = float(act_counts[7]) / n_act
-        upg_frac = float(act_counts[8]) / n_act
+        build_frac = float(act_counts[:ACTION_SAVE].sum()) / n_act
+        save_frac = float(act_counts[ACTION_SAVE]) / n_act
+        upg_frac = float(act_counts[ACTION_UPGRADE]) / n_act
         top_action = int(act_counts.argmax())
 
         # 5. Log. Prefer the runner summary (waveReached/won) over the

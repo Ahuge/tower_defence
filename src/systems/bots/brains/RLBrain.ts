@@ -3,16 +3,28 @@
  *
  * Two-stage design: the policy (an MLP trained in Python) picks WHAT
  * to do — build one of the faction's towers, save, or upgrade — and
- * the imitation LearnedScorer picks WHERE to place it. This brain is
- * the TypeScript half of the shared contract with the Python trainer
- * (see ml/desktop/rl/): the 17-dim state, 9 actions, action masking,
- * reward shaping, and trajectory JSONL format must match exactly.
+ * WHERE to place a build, at zone granularity. The imitation
+ * LearnedScorer then picks the exact cell inside the chosen zone. This
+ * brain is the TypeScript half of the shared contract with the Python
+ * trainer (see ml/desktop/rl/): the 17-dim state, action space, action
+ * masking, reward shaping, and trajectory JSONL format must match
+ * exactly.
+ *
+ * Placement action space (v2): the board is split into 12 zones
+ * (6 columns x 2 rows). Build actions are `towerIdx * 12 + zone`, so
+ * the policy chooses both the tower and a coarse location. Save and
+ * upgrade remain single actions. That is 7*12 + 2 = 86 actions.
  *
  * Faction-parameterized (RL_FACTION_TOWERS): every faction shares one
- * 9-action / 17-dim policy shape. Actions 0-6 build the faction's
- * towers in cost order; factions with fewer than 7 towers leave the
- * trailing build slots empty (permanently masked, counts always 0).
+ * 86-action / 17-dim policy shape. Actions build the faction's towers
+ * in cost order; factions with fewer than 7 towers leave the trailing
+ * build slots empty (permanently masked, counts always 0).
  * Pass `faction` in RLBrainOptions (default 'arcane').
+ *
+ * Backward compatibility: v1 policies (action_dim 9) are still
+ * loadable. They keep the old 9-action mask/execute path and the old
+ * state feature 15 (betweenWaves). New v2 policies use zone actions
+ * and state feature 15 = occupied zones / 12.
  *
  * Decision cadence: only between-waves decide() calls act. Mid-wave
  * calls return `skip` without recording — the in-wave decide() the
@@ -68,11 +80,44 @@ export const RL_FACTION_TOWERS: Record<string, readonly string[]> = {
   psionic: PSIONIC_TOWER_IDS,
 };
 
-/** Action ids. 0-6 build RL_FACTION_TOWERS[faction][i], 7 save, 8 upgrade. */
-export const RL_ACTION_SAVE = 7;
-export const RL_ACTION_UPGRADE = 8;
+/** Action ids for the v2 (zone) action space.
+ *
+ *  Build actions occupy [0, RL_MAX_BUILD_ACTIONS * RL_ZONE_DIM):
+ *  `towerIdx * RL_ZONE_DIM + zone`, where zone is
+ *  `rowBucket * RL_ZONE_COLS + colBucket` on a 6x2 grid over the
+ *  board. Save and upgrade are the final two actions.
+ *
+ *  v1 policies (action_dim 9) use the legacy ids RL_ACTION_SAVE_V1 /
+ *  RL_ACTION_UPGRADE_V1 instead. */
+export const RL_GRID_COLS = 36;
+export const RL_GRID_ROWS = 26;
+export const RL_ZONE_COLS = 6;
+export const RL_ZONE_ROWS = 2;
+export const RL_ZONE_DIM = RL_ZONE_COLS * RL_ZONE_ROWS; // 12
+export const RL_MAX_BUILD_ACTIONS = 7;
+export const RL_ACTION_SAVE = RL_MAX_BUILD_ACTIONS * RL_ZONE_DIM; // 84
+export const RL_ACTION_UPGRADE = RL_ACTION_SAVE + 1; // 85
+export const RL_ACTION_DIM = RL_ACTION_UPGRADE + 1; // 86
 export const RL_STATE_DIM = 17;
-export const RL_ACTION_DIM = 9;
+/** Legacy 9-action space: actions 0-6 build, 7 save, 8 upgrade. */
+export const RL_ACTION_DIM_V1 = 9;
+export const RL_ACTION_SAVE_V1 = 7;
+export const RL_ACTION_UPGRADE_V1 = 8;
+
+/** Zone index of a board cell: rowBucket * ZONE_COLS + colBucket. */
+export function zoneOfCell(col: number, row: number): number {
+  const zoneColWidth = RL_GRID_COLS / RL_ZONE_COLS;
+  const zoneRowHeight = RL_GRID_ROWS / RL_ZONE_ROWS;
+  const colBucket = Math.min(
+    RL_ZONE_COLS - 1,
+    Math.max(0, Math.floor(col / zoneColWidth)),
+  );
+  const rowBucket = Math.min(
+    RL_ZONE_ROWS - 1,
+    Math.max(0, Math.floor(row / zoneRowHeight)),
+  );
+  return rowBucket * RL_ZONE_COLS + colBucket;
+}
 
 /** One recorded decision step. Serialized by the runner as a JSONL
  *  line with `episode` added (the brain doesn't know its episode). */
@@ -81,7 +126,8 @@ export interface TrajectoryStep {
   step: number;
   /** 17-dim state, canonical order (see extractState). */
   state: number[];
-  /** Action taken, 0-8. */
+  /** Action taken. v2: 0-85 (build = tower*12+zone, 84 save,
+   *  85 upgrade). v1: 0-8. */
   action: number;
   /** log P(action) under the masked softmax. */
   logprob: number;
@@ -90,7 +136,8 @@ export interface TrajectoryStep {
   /** Shaped reward, patched in lazily at the next decide() call.
    *  0 until settled; the runner adds the terminal bonus. */
   reward: number;
-  /** 9-dim action mask at decision time (1 = valid). */
+  /** Action mask at decision time (1 = valid); same length as the
+   *  policy's action_dim (86 for v2, 9 for v1). */
   mask: number[];
   /** True only on the last step of the episode (set by finalize). */
   done: boolean;
@@ -186,6 +233,10 @@ export class RLBrain implements BotBrain {
   private faction: string;
   private towerIds: readonly string[];
   private policy: PolicyWeights | null = null;
+  /** 1 = legacy 9-action policy, 2 = zone placement (86 actions). */
+  private policyVersion: 1 | 2 = 2;
+  /** Action-space size for this brain (86 for v2, 9 for v1). */
+  private actionDim: number = RL_ACTION_DIM;
   private deterministic: boolean;
   private recordTrajectory: boolean;
   private scorer: LearnedScorer;
@@ -223,6 +274,9 @@ export class RLBrain implements BotBrain {
     this.rewardBuildCoef = options.rewardBuildCoef ?? 0.002;
     if (options.policyPath) {
       this.policy = loadPolicyCached(options.policyPath);
+      this.policyVersion =
+        this.policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
+      this.actionDim = this.policy.action_dim;
     }
     this.scorer = getScorer(this.faction);
     if (!this.scorer.hasModel(this.faction) && !this.warnedNoScorer) {
@@ -248,7 +302,7 @@ export class RLBrain implements BotBrain {
       this.windowStartLives = ctx.lives ?? 0;
     }
 
-    const state = extractState(ctx, this.towerIds);
+    const state = extractState(ctx, this.towerIds, this.policyVersion);
     const mask = this.computeMask(ctx);
     const { action, logprob, value, probs } = this.chooseAction(state, mask);
 
@@ -260,8 +314,8 @@ export class RLBrain implements BotBrain {
     const executedAction = decision.kind === 'place'
       ? action
       : decision.kind === 'upgrade'
-        ? RL_ACTION_UPGRADE
-        : RL_ACTION_SAVE;
+        ? this.upgradeAction
+        : this.saveAction;
     const executedLogprob = executedAction === action
       ? logprob
       : Math.log(Math.max(probs[executedAction], 1e-12));
@@ -330,6 +384,15 @@ export class RLBrain implements BotBrain {
 
   // ===== State / mask / policy =====
 
+  /** Save/upgrade action id for the active policy version. */
+  private get saveAction(): number {
+    return this.policyVersion === 1 ? RL_ACTION_SAVE_V1 : RL_ACTION_SAVE;
+  }
+
+  private get upgradeAction(): number {
+    return this.policyVersion === 1 ? RL_ACTION_UPGRADE_V1 : RL_ACTION_UPGRADE;
+  }
+
   /**
    * 17-dim state, canonical order (shared with the Python trainer):
    *   0  wave / 20
@@ -342,7 +405,7 @@ export class RLBrain implements BotBrain {
    *   12 next wave has armored 0/1
    *   13 next wave has flying 0/1 (creepType contains 'fly')
    *   14 next wave has shielded 0/1
-   *   15 betweenWaves 0/1
+   *   15 v2: occupied zones / 12; v1: betweenWaves 0/1
    *   16 candidate cells / 936 (36x26 grid)
    * Every dim is clamped to [0, 1] — late-game gold / creep counts
    * can exceed their denominators, and the trainer consumes these
@@ -356,14 +419,14 @@ export class RLBrain implements BotBrain {
     if (valid.length === 0) {
       // Unreachable in practice (save is always valid), but never
       // crash the match over it.
-      const probs = new Array<number>(RL_ACTION_DIM).fill(0);
-      probs[RL_ACTION_SAVE] = 1;
-      return { action: RL_ACTION_SAVE, logprob: 0, value: 0, probs };
+      const probs = new Array<number>(this.actionDim).fill(0);
+      probs[this.saveAction] = 1;
+      return { action: this.saveAction, logprob: 0, value: 0, probs };
     }
 
     if (!this.policy) {
       const action = valid[Math.floor(rng() * valid.length)];
-      const probs = new Array<number>(RL_ACTION_DIM).fill(0);
+      const probs = new Array<number>(this.actionDim).fill(0);
       for (const i of valid) probs[i] = 1 / valid.length;
       return { action, logprob: Math.log(1 / valid.length), value: 0, probs };
     }
@@ -396,15 +459,40 @@ export class RLBrain implements BotBrain {
     return { logits, value };
   }
 
-  /** Build valid iff affordable; upgrade valid iff an upgradable
-   *  affordable tower exists; save always valid. Trailing build
-   *  slots beyond the faction's roster are always invalid. */
+  /**
+   * v2: a build action `tower*ZONE_DIM+zone` is valid iff the tower
+   * is affordable AND that zone contains at least one candidate cell.
+   * v1: build i is valid iff affordable. Save is always valid;
+   * upgrade is valid iff an upgradable affordable tower exists.
+   * Trailing build slots beyond the faction's roster are always
+   * invalid.
+   */
   private computeMask(ctx: BotContext): number[] {
-    const mask = new Array<number>(RL_ACTION_DIM).fill(0);
-    for (let i = 0; i < RL_ACTION_DIM - 2; i++) {
+    const mask = new Array<number>(this.actionDim).fill(0);
+
+    if (this.policyVersion === 1) {
+      for (let i = 0; i < RL_MAX_BUILD_ACTIONS; i++) {
+        const towerId = this.towerIds[i];
+        const tower = towerId ? TOWER_TYPES[towerId] : undefined;
+        mask[i] = tower && ctx.budget >= tower.cost ? 1 : 0;
+      }
+      mask[RL_ACTION_SAVE_V1] = 1;
+      mask[RL_ACTION_UPGRADE_V1] = this.cheapestUpgradable(ctx) ? 1 : 0;
+      return mask;
+    }
+
+    // Zones that currently have at least one legal candidate cell.
+    const populatedZones = new Set<number>();
+    for (const c of ctx.candidateCells) {
+      populatedZones.add(zoneOfCell(c.col, c.row));
+    }
+    for (let i = 0; i < RL_MAX_BUILD_ACTIONS; i++) {
       const towerId = this.towerIds[i];
       const tower = towerId ? TOWER_TYPES[towerId] : undefined;
-      mask[i] = tower && ctx.budget >= tower.cost ? 1 : 0;
+      if (!tower || ctx.budget < tower.cost) continue;
+      for (const zone of populatedZones) {
+        mask[i * RL_ZONE_DIM + zone] = 1;
+      }
     }
     mask[RL_ACTION_SAVE] = 1;
     mask[RL_ACTION_UPGRADE] = this.cheapestUpgradable(ctx) ? 1 : 0;
@@ -414,18 +502,24 @@ export class RLBrain implements BotBrain {
   // ===== Action execution =====
 
   private executeAction(ctx: BotContext, action: number): BotDecision {
-    if (action === RL_ACTION_SAVE) return { kind: 'skip' };
-    if (action === RL_ACTION_UPGRADE) {
+    if (action === this.saveAction) return { kind: 'skip' };
+    if (action === this.upgradeAction) {
       const target = this.cheapestUpgradable(ctx);
       if (!target) return { kind: 'skip' };
       return { kind: 'upgrade', col: target.col, row: target.row };
     }
-    // Build action 0-6.
-    const towerId = this.towerIds[action];
+    // Build action. v2 packs tower and zone; v1 is tower-only.
+    const towerIdx = this.policyVersion === 1
+      ? action
+      : Math.floor(action / RL_ZONE_DIM);
+    const zone = this.policyVersion === 1 ? null : action % RL_ZONE_DIM;
+    const towerId = this.towerIds[towerIdx];
     const tower = towerId ? TOWER_TYPES[towerId] : undefined;
     if (!tower) return { kind: 'skip' };
     if (ctx.budget < tower.cost) return { kind: 'skip' };
-    const cell = this.pickCell(ctx, tower);
+    const cell = zone === null
+      ? this.pickCell(ctx, tower)
+      : this.pickCellInZone(ctx, tower, zone);
     if (!cell) return { kind: 'skip' };
     return { kind: 'place', col: cell.col, row: cell.row, type: tower };
   }
@@ -441,6 +535,22 @@ export class RLBrain implements BotBrain {
       if (learned) return learned;
     }
     return closestCellToPath(ctx);
+  }
+
+  /** Same as pickCell, but only cells inside `zone`. The RL policy
+   *  chose the zone; the scorer picks the exact cell within it. */
+  private pickCellInZone(
+    ctx: BotContext,
+    tower: TowerType,
+    zone: number,
+  ): { col: number; row: number } | null {
+    if (this.scorer.hasModel(this.faction)) {
+      const learned = this.scorer.scorerFn(
+        ctx, tower, 0.0, c => zoneOfCell(c.col, c.row) === zone,
+      );
+      if (learned) return learned;
+    }
+    return closestCellToPath(ctx, zone);
   }
 
   /** Cheapest upgradable tower: lowest upgradeCost, tie-break
@@ -519,7 +629,8 @@ export class RLBrain implements BotBrain {
 
 /** Load + validate a policy weights JSON. Throws on unreadable or
  *  wrong-shaped files — a silently-random policy would corrupt
- *  training data, so fail fast instead. */
+ *  training data, so fail fast instead. Accepts both the v1
+ *  9-action space and the v2 86-action zone space. */
 export function loadPolicy(path: string): PolicyWeights {
   const raw = JSON.parse(readFileSync(path, 'utf-8')) as PolicyWeights;
   if (raw.state_dim !== RL_STATE_DIM) {
@@ -527,9 +638,10 @@ export function loadPolicy(path: string): PolicyWeights {
       `RLBrain: policy ${path} has state_dim ${raw.state_dim}, expected ${RL_STATE_DIM}`,
     );
   }
-  if (raw.action_dim !== RL_ACTION_DIM) {
+  if (raw.action_dim !== RL_ACTION_DIM && raw.action_dim !== RL_ACTION_DIM_V1) {
     throw new Error(
-      `RLBrain: policy ${path} has action_dim ${raw.action_dim}, expected ${RL_ACTION_DIM}`,
+      `RLBrain: policy ${path} has action_dim ${raw.action_dim}, expected ` +
+      `${RL_ACTION_DIM} (v2 zone) or ${RL_ACTION_DIM_V1} (v1)`,
     );
   }
   if (!raw.hidden || raw.hidden[0] !== 128 || raw.hidden[1] !== 64) {
@@ -542,7 +654,7 @@ export function loadPolicy(path: string): PolicyWeights {
     !L ||
     L.trunk1_w.length !== 128 || L.trunk1_b.length !== 128 ||
     L.trunk2_w.length !== 64 || L.trunk2_b.length !== 64 ||
-    L.policy_w.length !== 9 || L.policy_b.length !== 9 ||
+    L.policy_w.length !== raw.action_dim || L.policy_b.length !== raw.action_dim ||
     L.value_w.length !== 1 || L.value_b.length !== 1
   ) {
     throw new Error(`RLBrain: policy ${path} has wrong layer shapes`);
@@ -550,18 +662,27 @@ export function loadPolicy(path: string): PolicyWeights {
   return raw;
 }
 
-/** Extract the 17-dim state from a BotContext. Exported for tests
- *  and for the runner's sanity checks. towerIds defaults to the
- *  arcane roster; pass the faction's tower list for other factions. */
+/**
+ * Extract the 17-dim state from a BotContext. Exported for tests
+ * and for the runner's sanity checks. towerIds defaults to the
+ * arcane roster; pass the faction's tower list for other factions.
+ *
+ * `version` selects feature 15: v2 (default) is occupied zones / 12;
+ * v1 is the legacy betweenWaves 0/1, so old 9-action policies see the
+ * same state they were trained on.
+ */
 export function extractState(
   ctx: BotContext,
   towerIds: readonly string[] = ARCANE_TOWER_IDS,
+  version: 1 | 2 = 2,
 ): number[] {
   const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
-  const counts = new Array<number>(RL_ACTION_DIM - 2).fill(0);
+  const counts = new Array<number>(RL_MAX_BUILD_ACTIONS).fill(0);
+  const occupiedZones = new Set<number>();
   for (const t of ctx.placedTowers) {
     const idx = towerIds.indexOf(t.towerId);
     if (idx >= 0) counts[idx]++;
+    occupiedZones.add(zoneOfCell(t.col, t.row));
   }
 
   const next = ctx.upcomingWaves?.[0];
@@ -588,24 +709,31 @@ export function extractState(
     hasArmored,
     hasFlying,
     hasShielded,
-    ctx.betweenWaves ? 1 : 0,
+    version === 1
+      ? (ctx.betweenWaves ? 1 : 0)
+      : clamp01(occupiedZones.size / RL_ZONE_DIM),
     clamp01(ctx.candidateCells.length / 936),
   ];
 }
 
 /** Candidate cell closest to any path point (squared distance).
+ *  When `zone` is given, only cells in that zone are considered.
  *  Null when there are no candidates or no known path. */
 export function closestCellToPath(
   ctx: BotContext,
+  zone?: number,
 ): { col: number; row: number } | null {
-  if (ctx.candidateCells.length === 0) return null;
+  const cells = zone === undefined
+    ? ctx.candidateCells
+    : ctx.candidateCells.filter(c => zoneOfCell(c.col, c.row) === zone);
+  if (cells.length === 0) return null;
   const paths = (ctx.allPaths ?? []).filter(
     (p): p is { col: number; row: number }[] => !!p && p.length > 0,
   );
-  if (paths.length === 0) return ctx.candidateCells[0];
+  if (paths.length === 0) return cells[0];
   let best: { col: number; row: number } | null = null;
   let bestDist = Infinity;
-  for (const c of ctx.candidateCells) {
+  for (const c of cells) {
     for (const path of paths) {
       for (const p of path) {
         const dx = p.col - c.col;

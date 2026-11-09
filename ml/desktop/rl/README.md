@@ -2,7 +2,7 @@
 
 Reinforcement learning that can eventually surpass imitation learning.
 Faction-parameterized: arcane and psionic are wired up; the policy
-shape (17-dim state, 9 actions) is shared, with trailing build slots
+shape (17-dim state, 86 actions) is shared, with trailing build slots
 padded/masked for factions with fewer than 7 towers.
 
 ## Why RL, why arcane
@@ -22,17 +22,19 @@ from a hard faction.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  RL policy (WHAT)          Imitation scorer (WHERE)    │
-│  17-dim state → 9 actions  cell → score                 │
-│  "build frost"             "put it at (5, 12)"          │
+│  RL policy (WHAT + ZONE)   Imitation scorer (EXACT CELL)│
+│  17-dim state → 86 actions cell → score                 │
+│  "build frost in zone 7"   "put it at (5, 12)"          │
 └─────────────────────────────────────────────────────────┘
 ```
 
 The RL policy decides **what** to do (which tower to build, when to
-save, when to upgrade). The existing imitation placement scorer decides
-**where** to put it. This reuses what works (the scorer knows Alex's
-placement patterns) and lets RL focus on strategy — the part imitation
-can't learn.
+save, when to upgrade) and **which zone** to build in. The existing
+imitation placement scorer picks the exact cell inside that zone.
+This reuses what works (the scorer knows Alex's placement patterns)
+while letting RL learn board-level placement — the part imitation
+can't learn. Without zone control the policy built towers in a blob:
+every build went to the scorer's single favourite cell region.
 
 ```
                     ┌──────────────┐
@@ -69,27 +71,39 @@ can't learn.
 | 12 | next wave has armored 0/1 | |
 | 13 | next wave has flying 0/1 | |
 | 14 | next wave has shielded 0/1 | |
-| 15 | betweenWaves 0/1 | |
+| 15 | occupied zones / 12 | v2 placement signal; v1 policies still see betweenWaves 0/1 |
 | 16 | candidate cells / 936 | |
 
 All values clamped to [0, 1]. The canonical order is defined in
 `env.py` (`STATE_NAMES`) and mirrored in `RLBrain.ts` — they must stay
 in sync.
 
-## Action space (9 actions)
+## Action space (86 actions)
+
+The 36x26 board is split into 12 zones (6 columns x 2 rows). Zone
+index = `rowBucket * 6 + colBucket` (0-5 top row, 6-11 bottom row).
 
 | # | Action |
 |---|--------|
-| 0–6 | build the faction's towers in cost order (arcane: bolt / frost / storm / focus / drain / meteor / nova; psionic: probe / mesmer / terror / mind_spike / overmind — slots 5–6 unused, permanently masked) |
-| 7 | save (skip — ends the decision round, starts the next wave) |
-| 8 | upgrade cheapest upgradable tower |
+| 0–83 | build tower `i` in zone `z`: `i * 12 + z` (arcane slots 0-6: bolt / frost / storm / focus / drain / meteor / nova; psionic slots 0-4: probe / mesmer / terror / mind_spike / overmind — slots 5-6 unused, permanently masked) |
+| 84 | save (skip — ends the decision round, starts the next wave) |
+| 85 | upgrade cheapest upgradable tower |
 
-**Action masking:** build actions are valid only if affordable;
+The LearnedScorer picks the exact cell inside the chosen zone. The
+policy therefore controls board-level placement while the scorer keeps
+Alex's fine-grained positioning.
+
+**Action masking:** a build action is valid only if the tower is
+affordable *and* the chosen zone contains at least one candidate cell;
 upgrade only if an upgradable affordable tower exists; save is always
 valid. The mask is applied to logits (invalid → −1e9) before softmax,
 both in the TS brain (when acting) and in Python (when recomputing
 logprobs for the PPO loss). The mask is recorded in every trajectory
 step.
+
+**Legacy v1 policies.** Policies with `action_dim: 9` still load: they
+use the old 9-action mask/execute path and the old state feature 15
+(betweenWaves), so previously trained policies remain evaluable.
 
 **Send is excluded.** Standard mode has no send target
 (`HeadlessMatch` returns false for sends), so including it would teach
@@ -98,25 +112,26 @@ the agent a no-op action.
 ## Policy network
 
 ```
-17 → 128 (ReLU) → 64 (ReLU) → policy head → 9 logits (softmax)
+17 → 128 (ReLU) → 64 (ReLU) → policy head → 86 logits (softmax)
                               → value head  → 1 (state value)
 ```
 
-No dropout (PPO policies typically don't use it). ~11k parameters.
+No dropout (PPO policies typically don't use it). ~16k parameters.
 
 **Pre-training — two warm starts, both optional:**
 1. **Behavior cloning** (`--pretrain`): trains the policy head with
    cross-entropy on the faction's examples from
    `ml/placement-data.jsonl` (state reconstructed from board/wave/
-   gold/lives, action = tower built). Teaches "build what Alex
-   builds". Arcane is thin — only 49 examples, mostly bolt — so it
-   teaches little beyond "build bolt". Psionic is better: 106
-   examples (65 probe, 34 mesmer, 7 terror; no mind_spike/overmind
-   in his wins — his psionic games never built the expensive towers).
+   gold/lives, action = tower built + zone of the recorded cell).
+   Teaches "build what Alex builds, roughly where he builds it".
+   Arcane is thin — only 49 examples, mostly bolt — so it teaches
+   little beyond "build bolt". Psionic is better: 106 examples (65
+   probe, 34 mesmer, 7 terror; no mind_spike/overmind in his wins —
+   his psionic games never built the expensive towers).
 2. **Scorer weight transfer** (`--init-from-scorer`): copies the
    imitation scorer's 128→64 trunk layer and 64→1 output layer into
    the RL network (same shapes). The 17→128 first layer can't transfer
-   (scorer is 11-dim input) and the 64→9 policy head is random.
+   (scorer is 11-dim input) and the 64→86 policy head is random.
 
 ## Reward function
 

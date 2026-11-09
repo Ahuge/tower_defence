@@ -160,7 +160,9 @@ if [ "$FACTION" = "arcane" ] && [ ! -f "$SUMMARY_CSV" ] && [ -d "ml/desktop/rl/s
 fi
 
 # Header for the summary CSV. Schema v2 adds the entropy schedule and the
-# PPO/reward knobs the grid now varies. If an older summary exists with a
+# PPO/reward knobs the grid now varies. The v3 sweep keeps the same
+# columns; config names are prefixed v3- so the v1-action-space results
+# are not skipped/reused. If an older summary exists with a
 # different header, archive it: appending v2 rows under a v1 header would
 # make DictReader misparse every column.
 SUMMARY_HEADER="config,lr,entropy_coef,entropy_final,clip,life_penalty,wave_reward,gold_coef,gold_cap,build_coef,gamma,gae_lambda,ppo_epochs,minibatch,value_coef,pretrain,init_scorer,iters,eval_wins,eval_total,eval_win_rate,avg_wave,mean_reward,elapsed_min"
@@ -378,28 +380,30 @@ log "Deadline: $(date -d "@$DEADLINE" '+%Y-%m-%d %H:%M:%S')"
 log "Results: $RESULTS_DIR"
 
 # --- Phase 0: BC-only baseline (no PPO) ---
-# Establishes whether the warm start alone beats 0%.
-if [ ! -f "$RESULTS_DIR/bc-only.json" ]; then
+# Establishes whether the warm start alone beats 0% in the v3
+# (zone-placement) action space. Names are v3- so the v2 baseline
+# results from the previous action space are not reused.
+if [ ! -f "$RESULTS_DIR/v3-bc-only.json" ]; then
   log "=== Phase 0: BC-only baseline ==="
   python ml/desktop/rl/train_ppo.py --pretrain --faction "$FACTION" \
       --init-from-scorer "ml/desktop/models/scorer-${FACTION}.pt" \
-      --policy-out "$RESULTS_DIR/policy-bc-only.json" \
-      --ckpt-dir "$RESULTS_DIR/ckpt-bc-only" \
+      --policy-out "$RESULTS_DIR/policy-v3-bc-only.json" \
+      --ckpt-dir "$RESULTS_DIR/ckpt-v3-bc-only" \
       --traj-dir "$RESULTS_DIR/trajectories" \
       --iters 0 --workers "$WORKERS" \
-      > "$RESULTS_DIR/bc-only-train.log" 2>&1
-  python ml/desktop/rl/eval_rl.py --policy "$RESULTS_DIR/policy-bc-only.json" \
+      > "$RESULTS_DIR/v3-bc-only-train.log" 2>&1
+  python ml/desktop/rl/eval_rl.py --policy "$RESULTS_DIR/policy-v3-bc-only.json" \
       --faction "$FACTION" \
       --episodes 50 --deterministic --workers "$WORKERS" \
       --traj-dir "$RESULTS_DIR/eval-trajs" \
-      --out "$RESULTS_DIR/bc-only.json" \
-      > "$RESULTS_DIR/bc-only-eval.log" 2>&1
-  bc_wins=$(python3 -c "import json; print(json.load(open('$RESULTS_DIR/bc-only.json'))['wins'])" 2>/dev/null || echo "?")
-  bc_wave=$(python3 -c "import json; print(round(json.load(open('$RESULTS_DIR/bc-only.json'))['avg_wave'],1))" 2>/dev/null || echo "?")
-  echo "bc-only,-,-,-,-,-,-,-,-,-,-,-,-,-,-,1,1,0,$bc_wins,50,?,${bc_wave},?,-" >> "$SUMMARY_CSV"
+      --out "$RESULTS_DIR/v3-bc-only.json" \
+      > "$RESULTS_DIR/v3-bc-only-eval.log" 2>&1
+  bc_wins=$(python3 -c "import json; print(json.load(open('$RESULTS_DIR/v3-bc-only.json'))['wins'])" 2>/dev/null || echo "?")
+  bc_wave=$(python3 -c "import json; print(round(json.load(open('$RESULTS_DIR/v3-bc-only.json'))['avg_wave'],1))" 2>/dev/null || echo "?")
+  echo "v3-bc-only,-,-,-,-,-,-,-,-,-,-,-,-,-,-,1,1,0,$bc_wins,50,?,${bc_wave},?,-" >> "$SUMMARY_CSV"
   log "  BC-only: $bc_wins/50 wins, avg wave $bc_wave"
 else
-  log "SKIP Phase 0 (bc-only already done)"
+  log "SKIP Phase 0 (v3-bc-only already done)"
 fi
 
 # --- Phase 1: reward shaping under the new credit assignment ---
@@ -407,31 +411,31 @@ fi
 # the leak penalty / build-investment balance. Defaults (lr 1e-3, annealed
 # entropy 0.3->0.05, no BC) are the config that took psionic from wave 3.0
 # to wave 9.3 in 60 iters.
-run_config "v2-life-0.05-build-0.002" || exit 0
-run_config "v2-life-0.02-build-0.002" life=0.02 || exit 0
-run_config "v2-life-0.10-build-0.002" life=0.10 || exit 0
-run_config "v2-life-0.00-build-0.002" life=0.0 || exit 0
-run_config "v2-life-0.05-build-0.005" build=0.005 || exit 0
-run_config "v2-life-0.05-build-0.001" build=0.001 || exit 0
-run_config "v2-life-0.05-build-0.000" build=0.0 || exit 0
+run_config "v3-life-0.05-build-0.002" || exit 0
+run_config "v3-life-0.02-build-0.002" life=0.02 || exit 0
+run_config "v3-life-0.10-build-0.002" life=0.10 || exit 0
+run_config "v3-life-0.00-build-0.002" life=0.0 || exit 0
+run_config "v3-life-0.05-build-0.005" build=0.005 || exit 0
+run_config "v3-life-0.05-build-0.001" build=0.001 || exit 0
+run_config "v3-life-0.05-build-0.000" build=0.0 || exit 0
 # Does the build reward rescue the old high leak penalty (which used to
 # teach hoarding)? Old code at life=0.5 got 0 wins / wave 8.8.
-run_config "v2-life-0.50-build-0.002" life=0.5 || exit 0
+run_config "v3-life-0.50-build-0.002" life=0.5 || exit 0
 
 # --- Phase 2: learning rate / wave weight around the 1e-3 winner ---
-run_config "v2-lr-3e-3" lr=3e-3 || exit 0
-run_config "v2-lr-5e-4" lr=5e-4 || exit 0
-run_config "v2-wave-0.3" wave=0.3 || exit 0
+run_config "v3-lr-3e-3" lr=3e-3 || exit 0
+run_config "v3-lr-5e-4" lr=5e-4 || exit 0
+run_config "v3-wave-0.3" wave=0.3 || exit 0
 
 # --- Phase 3: exploration schedule ---
-run_config "v2-ent-0.5-0.1" entropy=0.5 entropy_final=0.1 || exit 0
-run_config "v2-ent-0.2-0.02" entropy=0.2 entropy_final=0.02 || exit 0
-run_config "v2-ent-0.3-flat" entropy=0.3 entropy_final= || exit 0
+run_config "v3-ent-0.5-0.1" entropy=0.5 entropy_final=0.1 || exit 0
+run_config "v3-ent-0.2-0.02" entropy=0.2 entropy_final=0.02 || exit 0
+run_config "v3-ent-0.3-flat" entropy=0.3 entropy_final= || exit 0
 
 # --- Phase 4: warm start (BC data is probe-biased for psionic) ---
 # Compare the BC warm start and scorer init against from-scratch above.
-run_config "v2-pretrain" pretrain=1 init_scorer=1 || exit 0
-run_config "v2-init-scorer" init_scorer=1 || exit 0
+run_config "v3-pretrain" pretrain=1 init_scorer=1 || exit 0
+run_config "v3-init-scorer" init_scorer=1 || exit 0
 
 # --- Phase 5: long run on the best config so far ---
 # Re-read the summary CSV, pick the best non-BC config by (wins, avg_wave),
@@ -442,7 +446,7 @@ best = None
 best_key = (-1, -1.0)
 with open('$SUMMARY_CSV') as f:
     for row in csv.DictReader(f):
-        if row['config'] == 'bc-only':
+        if row['config'] in ('bc-only', 'v3-bc-only'):
             continue
         try:
             w = int(row['eval_wins'])

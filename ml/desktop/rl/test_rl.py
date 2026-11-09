@@ -84,20 +84,28 @@ def test_bc_state_reconstruction():
         print(f'BC test skipped (torch unavailable: {e})')
         return
     ex = {'faction': 'arcane', 'wave': 10, 'towerId': 'arcane_storm',
+          'chosen': [7, 14],
           'board': [['arcane_bolt', 1, 13], ['arcane_bolt', 2, 13],
                     ['arcane_frost', 5, 10]]}
     rec = train_ppo.reconstruct_bc_state(ex)
     assert rec is not None
     state, action = rec
     assert len(state) == 17, len(state)
-    assert action == 2  # arcane_storm
+    # storm is build slot 2; [7, 14] is col bucket 1, row bucket 1 -> zone 7.
+    assert action == 2 * env.ZONE_DIM + 7, action
     assert state[0] == 0.5 and state[1] == 1.0 and state[2] == 1.0
     assert state[3] == 0.03  # 3 towers / 100
     assert state[4] == 0.1 and state[5] == 0.05 and state[6] == 0.0
-    assert state[15] == 1.0 and state[16] == 0.5
+    # Board zones: (1,13) and (2,13) -> 6, (5,10) -> 0. Two occupied.
+    assert np.isclose(state[15], 2 / env.ZONE_DIM), state[15]
+    assert state[16] == 0.5
     # Non-build tower (e.g. conduit) is skipped, not crashed on.
     assert train_ppo.reconstruct_bc_state(
-        {'wave': 0, 'towerId': 'arcane_conduit', 'board': []}) is None
+        {'wave': 0, 'towerId': 'arcane_conduit', 'chosen': [1, 1],
+         'board': []}) is None
+    # Missing placement cell is skipped (v2 needs a zone).
+    assert train_ppo.reconstruct_bc_state(
+        {'wave': 0, 'towerId': 'arcane_bolt', 'board': []}) is None
     # Real data: arcane examples exist and reconstruct to 17 dims.
     states, actions = train_ppo.load_bc_data(
         train_ppo.DEFAULT_BC_DATA, 'arcane')
@@ -116,28 +124,28 @@ def test_policy_forward_mask_export():
     model = ActorCritic()
     x = torch.randn(4, 17)
     logits, value = model(x)
-    assert logits.shape == (4, 9), logits.shape
+    assert logits.shape == (4, env.ACTION_DIM), logits.shape
     assert value.shape == (4, 1), value.shape
     # Masking: invalid actions get ~0 probability after softmax.
-    mask = torch.ones(4, 9)
+    mask = torch.ones(4, env.ACTION_DIM)
     mask[:, 3:] = 0  # only actions 0-2 valid
     logits_m, _ = model(x, mask)
     probs = torch.softmax(logits_m, dim=-1)
-    assert torch.allclose(probs[:, 3:], torch.zeros(4, 6), atol=1e-6)
+    assert torch.allclose(probs[:, 3:], torch.zeros(4, env.ACTION_DIM - 3), atol=1e-6)
     assert torch.allclose(probs.sum(-1), torch.ones(4), atol=1e-6)
     # act() returns a valid action / sane logprob / value.
-    a, lp, v = model.act(torch.randn(17), torch.ones(9))
-    assert 0 <= a < 9 and lp <= 0.0
+    a, lp, v = model.act(torch.randn(17), torch.ones(env.ACTION_DIM))
+    assert 0 <= a < env.ACTION_DIM and lp <= 0.0
     # Export -> load round trip preserves weights exactly.
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / 'policy.json'
         model.export_json(p)
         data = json.loads(p.read_text())
         assert data['state_dim'] == 17 and data['hidden'] == [128, 64]
-        assert data['action_dim'] == 9
+        assert data['action_dim'] == env.ACTION_DIM
         assert len(data['layers']['trunk1_w']) == 128
         assert len(data['layers']['trunk1_w'][0]) == 17
-        assert len(data['layers']['policy_w']) == 9
+        assert len(data['layers']['policy_w']) == env.ACTION_DIM
         model2 = ActorCritic.load_json(p)
         for k in model.state_dict():
             assert torch.equal(model.state_dict()[k], model2.state_dict()[k]), k

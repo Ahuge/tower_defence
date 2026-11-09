@@ -88,14 +88,21 @@ export class LearnedScorer {
   /**
    * Scorer function compatible with WishlistItem scorer signature.
    * Returns the best-scoring cell, or null if none score above threshold.
+   * `filter` optionally restricts candidates (e.g. to one RL zone).
    */
-  scorerFn(ctx: BotContext, tower: TowerType, threshold = 0.3): Cell | null {
+  scorerFn(
+    ctx: BotContext,
+    tower: TowerType,
+    threshold = 0.3,
+    filter?: (cell: Cell) => boolean,
+  ): Cell | null {
     if (!this.hasModel(ctx.faction as string)) return null;
     
     let best: Cell | null = null;
     let bestScore = threshold;
     
     for (const c of ctx.candidateCells) {
+      if (filter && !filter(c)) continue;
       const s = this.score(ctx, c, tower);
       if (s > bestScore) {
         bestScore = s;

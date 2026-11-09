@@ -1,11 +1,15 @@
 """PPO policy for the tower_defence RL prototype (arcane faction).
 
-Shared trunk 17 -> 128 -> 64 (ReLU), policy head 64 -> 9 (logits),
+Shared trunk 17 -> 128 -> 64 (ReLU), policy head 64 -> 86 (logits),
 value head 64 -> 1. No dropout in the RL policy.
+
+Actions are tower x zone builds (0-83), save (84) and upgrade (85);
+see env.py for the zone layout. Legacy v1 9-action policies still
+load in the TypeScript brain but this trainer always emits v2.
 
 Weights are exchanged with the TypeScript brain (RLBrain) as JSON in the
 shared contract format:
-    {"state_dim": 17, "hidden": [128, 64], "action_dim": 9,
+    {"state_dim": 17, "hidden": [128, 64], "action_dim": 86,
      "layers": {"trunk1_w": [[out][in]], "trunk1_b": [...],
                 "trunk2_w": ..., "trunk2_b": ...,
                 "policy_w": ..., "policy_b": ...,
@@ -25,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 STATE_DIM = 17
 HIDDEN = [128, 64]
-ACTION_DIM = 9
+ACTION_DIM = 86
 
 
 class ActorCritic(nn.Module):
@@ -43,7 +47,7 @@ class ActorCritic(nn.Module):
     def forward(self, state, mask=None):
         """Return (logits, value).
 
-        state: [B, 17] float tensor. mask: optional [B, 9] float tensor
+        state: [B, 17] float tensor. mask: optional [B, 86] float tensor
         (1 = valid, 0 = invalid). The mask is applied to the logits
         (invalid -> -1e9) BEFORE any softmax — the caller handles softmax.
         value: [B, 1].
@@ -60,7 +64,7 @@ class ActorCritic(nn.Module):
     def act(self, state, mask=None):
         """Sample one action. Returns (action:int, logprob:float, value:float).
 
-        state: [17] tensor/array or [1, 17]. mask: [9] tensor/array or None.
+        state: [17] tensor/array or [1, 17]. mask: [86] tensor/array or None.
         Used for eval/testing — the TypeScript brain does the acting during
         training rollouts.
         """
@@ -131,7 +135,7 @@ class ActorCritic(nn.Module):
         its 128 -> 64 trunk layer and 64 -> 1 output layer have the same
         shapes as this policy's trunk2 and value head and transfer
         directly. Its 17 -> 128 first layer does NOT match (11 inputs vs
-        17) and is skipped; the 64 -> 9 policy head has no scorer
+        17) and is skipped; the 64 -> 86 policy head has no scorer
         counterpart and stays randomly initialized.
 
         Returns the list of transferred layer names. Logs what happened.
@@ -167,6 +171,6 @@ class ActorCritic(nn.Module):
             transferred.append(dst_w)
             logger.info('init_from_scorer: transferred %s', label)
         self.load_state_dict(own)
-        logger.info('init_from_scorer: policy head (64->9) has no scorer '
+        logger.info('init_from_scorer: policy head (64->86) has no scorer '
                     'counterpart — randomly initialized')
         return transferred

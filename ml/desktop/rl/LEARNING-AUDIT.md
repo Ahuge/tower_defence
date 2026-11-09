@@ -79,21 +79,20 @@ already stuck in. The sweep now includes `v2-pretrain` and
 
 ## Open questions / suggested next steps
 
-- **Dead state feature.** State index 15 is `betweenWaves`, always 1
-  because the brain only acts between waves. It contributes nothing.
-  Replacing it with board strength (e.g. total upgrade levels, or a
-  cheap DPS/coverage proxy) is the highest-value state change. The old
-  arcane policy was trained with this feature constant, so either keep a
-  `RL_STATE_V2` escape hatch or accept re-training.
-- **Placement quality.** The policy chooses *what* to build; the
-  imitation `LearnedScorer` chooses *where*. If psionic plateaus around
-  wave 10 while the hand-coded StrategistBrain reaches wave 20, the
-  scorer's psionic placement is a likely bottleneck. Compare scorer-only
-  vs. StrategistBrain placement on the same build order.
+- **Dead state feature — fixed.** State index 15 was `betweenWaves`,
+  always 1 because the brain only acts between waves. It is now
+  `occupied zones / 12` (v2 policies); v1 policies still see the old
+  constant so they remain evaluable.
+- **Placement quality — partially fixed.** The policy now chooses both
+  *what* and *which of 12 zones* to build in; the imitation
+  `LearnedScorer` chooses the exact cell inside that zone. This breaks
+  the "blob of towers" failure where every build landed in the scorer's
+  favourite region. Whether zone granularity is enough (vs. per-cell)
+  is an open question for the next sweep.
 - **Better BC data.** Generate build-order demonstrations from
-  `StrategistBrain` (record its `place` decisions in the 9-action space)
-  instead of reusing placement data. Balance or reweight by tower so
-  probe does not dominate.
+  `StrategistBrain` (record its `place` decisions as tower × zone
+  actions) instead of reusing placement data. Balance or reweight by
+  tower so probe does not dominate.
 - **Periodic evaluation.** The trainer only evaluates at the end of a
   config. A mid-run eval every N iterations would catch collapse or
   regression and enable best-checkpoint selection.

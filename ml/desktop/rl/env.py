@@ -1,9 +1,9 @@
 """RL environment interface for the tower_defence game.
 
 Faction-parameterized (see FACTION_TOWERS): the policy shape is the
-same for every faction — 17-dim state, 9 actions (up to 7 builds +
-save + upgrade) — with trailing build slots padded/masked for
-factions with fewer than 7 towers.
+same for every faction — 17-dim state, 86 actions (up to 7 towers x
+12 zones + save + upgrade) — with trailing build slots padded/masked
+for factions with fewer than 7 towers.
 
 The game itself runs in TypeScript — Python NEVER steps the game directly.
 This module documents the shared state/action/reward contract and provides
@@ -29,17 +29,36 @@ from pathlib import Path
 import numpy as np
 
 STATE_DIM = 17
-ACTION_DIM = 9
 
 # Max build actions per faction (slots 0-6). Factions with fewer towers
 # pad the remaining slots — those actions are permanently masked out,
-# so every faction shares one 17-dim state / 9-action policy shape.
+# so every faction shares one 17-dim state / 86-action policy shape.
 MAX_BUILD_ACTIONS = 7
 
+# Placement zones: the 36x26 board is split into 6 columns x 2 rows.
+# Build action = tower_idx * ZONE_DIM + zone, where
+# zone = row_bucket * ZONE_COLS + col_bucket. The RL policy picks the
+# zone; the imitation scorer picks the exact cell inside it.
+GRID_COLS = 36
+GRID_ROWS = 26
+ZONE_COLS = 6
+ZONE_ROWS = 2
+ZONE_DIM = ZONE_COLS * ZONE_ROWS  # 12
+ACTION_SAVE = MAX_BUILD_ACTIONS * ZONE_DIM  # 84
+ACTION_UPGRADE = ACTION_SAVE + 1  # 85
+ACTION_DIM = ACTION_UPGRADE + 1  # 86
+
+# Legacy 9-action space (v1 policies): 0-6 build, 7 save, 8 upgrade.
+ACTION_DIM_V1 = 9
+ACTION_SAVE_V1 = 7
+ACTION_UPGRADE_V1 = 8
+
 # Buildable towers per faction, in action order (cost order). The RL
-# policy is faction-agnostic: actions 0-6 build FACTION_TOWERS[f][i],
-# 7 saves, 8 upgrades the cheapest tower. A faction with fewer than 7
-# towers leaves the trailing build slots empty (always masked).
+# policy is faction-agnostic: for tower i, actions
+# i*ZONE_DIM .. i*ZONE_DIM+ZONE_DIM-1 build FACTION_TOWERS[f][i] in
+# each zone; ACTION_SAVE saves, ACTION_UPGRADE upgrades the cheapest
+# tower. A faction with fewer than 7 towers leaves the trailing build
+# slots empty (always masked).
 FACTION_TOWERS = {
     'arcane': [
         'arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus',
@@ -50,6 +69,15 @@ FACTION_TOWERS = {
         'psi_overmind',
     ],
 }
+
+
+def zone_of_cell(col, row):
+    """Zone index of a board cell: row_bucket * ZONE_COLS + col_bucket."""
+    col_width = GRID_COLS / ZONE_COLS
+    row_height = GRID_ROWS / ZONE_ROWS
+    col_bucket = min(ZONE_COLS - 1, max(0, int(col // col_width)))
+    row_bucket = min(ZONE_ROWS - 1, max(0, int(row // row_height)))
+    return row_bucket * ZONE_COLS + col_bucket
 
 
 def build_towers(faction):
@@ -84,7 +112,7 @@ def state_names(faction):
         'next_wave_armored',    # 12: 0/1
         'next_wave_flying',     # 13: 0/1
         'next_wave_shielded',   # 14: 0/1
-        'between_waves',        # 15: 0/1
+        'occupied_zones',       # 15: occupied zones / 12
         'candidate_cells',      # 16: candidate cells / 936
     ]
     assert len(names) == STATE_DIM
@@ -92,17 +120,22 @@ def state_names(faction):
 
 
 def action_names(faction):
-    """Action names for a faction (build slots pad with unused)."""
+    """Action names for a faction (build slots pad with unused).
+
+    Build actions are tower x zone: index i*ZONE_DIM+zone. Zones are
+    numbered row-major (0-5 top row, 6-11 bottom row).
+    """
     towers = build_towers(faction)
     names = []
     for i in range(MAX_BUILD_ACTIONS):
-        if i < len(towers):
-            names.append(f'build_{towers[i]}')  # 0-6
-        else:
-            names.append(f'build_unused_{i}')   # always masked
+        for zone in range(ZONE_DIM):
+            if i < len(towers):
+                names.append(f'build_{towers[i]}@z{zone}')
+            else:
+                names.append(f'build_unused_{i}@z{zone}')
     names += [
-        'save',                 # 7: skip / save gold
-        'upgrade_cheapest',     # 8: upgrade cheapest upgradable tower
+        'save',                 # 84: skip / save gold
+        'upgrade_cheapest',     # 85: upgrade cheapest upgradable tower
     ]
     assert len(names) == ACTION_DIM
     return names
@@ -116,8 +149,8 @@ STATE_NAMES = state_names('arcane')
 
 ACTION_NAMES = action_names('arcane')
 
-# Tower built by each build action (actions 0-6), in action order.
-# Arcane default kept for backward compatibility; use
+# Towers per build slot (slot i = actions i*ZONE_DIM .. i*ZONE_DIM+11),
+# in action order. Arcane default kept for backward compatibility; use
 # build_towers(faction) for other factions.
 BUILD_TOWERS = FACTION_TOWERS['arcane']
 
@@ -173,7 +206,7 @@ def load_trajectories(path):
     Each line is one step:
         {"episode": 0, "step": 3, "state": [...17 floats...],
          "action": 2, "logprob": -1.23, "value": 0.45, "reward": 0.12,
-         "mask": [1,1,1,1,1,1,1,1,1], "done": false}
+         "mask": [1,1,...86...], "done": false}
 
     Returns a list of episodes; each episode is a list of step dicts
     sorted by ``step``. Episodes are ordered by their ``episode`` id.
