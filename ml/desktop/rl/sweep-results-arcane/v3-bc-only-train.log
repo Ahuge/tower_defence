@@ -1,0 +1,15 @@
+2026-11-08 22:14:49,640 INFO Device: cpu (auto: tiny MLP is faster on CPU; pass --device cuda to force the GPU)
+2026-11-08 22:15:11,124 INFO init_from_scorer: trunk1 (17->128) — shape mismatch scorer (128, 11) vs policy (128, 17), skipped (random init kept)
+2026-11-08 22:15:11,134 INFO init_from_scorer: transferred trunk2 (128->64)
+2026-11-08 22:15:11,134 INFO init_from_scorer: transferred value head (64->1)
+2026-11-08 22:15:11,141 INFO init_from_scorer: policy head (64->86) has no scorer counterpart — randomly initialized
+2026-11-08 22:15:11,142 INFO init_from_scorer transferred: ['trunk2.weight', 'value_head.weight']
+2026-11-08 22:15:11,153 INFO Behavior-cloning warm start (arcane)...
+2026-11-08 22:15:11,748 INFO BC data: 49 arcane examples (0 skipped: non-build tower or missing placement)
+2026-11-08 22:15:11,910 INFO   BC epoch 1/20: loss=4.4521 top1-acc=0.000
+2026-11-08 22:15:11,929 INFO   BC epoch 5/20: loss=3.7304 top1-acc=0.122
+2026-11-08 22:15:11,942 INFO   BC epoch 10/20: loss=2.2886 top1-acc=0.286
+2026-11-08 22:15:11,965 INFO   BC epoch 15/20: loss=1.9785 top1-acc=0.286
+2026-11-08 22:15:11,989 INFO   BC epoch 20/20: loss=1.8973 top1-acc=0.327
+2026-11-08 22:15:11,996 INFO BC pre-training done: top-1 accuracy 0.286 on 49 examples
+2026-11-08 22:15:12,035 INFO Done. Final policy: ml/desktop/rl/sweep-results-arcane/policy-v3-bc-only.json
